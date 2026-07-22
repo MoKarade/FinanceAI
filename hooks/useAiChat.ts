@@ -19,6 +19,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { useFinanceStore } from '../store/useFinanceStore';
 import type { WritePreview, WriteDecision } from '../services/aiTools/writeExecutor';
 import { neutralizeFrameTags } from '../utils/promptSafety';
+import { importWithRetry, isChunkLoadError } from '../utils/lazyWithRetry';
 import { logError } from '../services/errorLogger';
 import type { AiMessage } from '../types';
 
@@ -161,11 +162,17 @@ export function useAiChat(apiKey: string): UseAiChat {
         try {
             // [AITOOLS-E] Chargement à la demande (boot-safe) — le SDK Anthropic n'entre dans aucun
             // chunk avant le 1er message. vi.mock intercepte aussi les imports dynamiques (tests OK).
-            const [{ runAgentLoop }, { appStateProvider }, { executeWriteTool }] = await Promise.all([
-                import('../services/aiTools/agentLoop'),
-                import('../services/aiTools/appStateProvider'),
-                import('../services/aiTools/writeExecutor'),
-            ]);
+            // [Finding panel ai-reviewer] Enveloppé dans importWithRetry (même protection anti-chunk-
+            // périmé que le reste de l'app) : un déploiement Vercel entre l'ouverture de l'onglet et le
+            // 1er message ferait sinon boucler le 404 sans réparation possible.
+            const [{ runAgentLoop }, { appStateProvider }, { executeWriteTool }] = await importWithRetry(
+                () => Promise.all([
+                    import('../services/aiTools/agentLoop'),
+                    import('../services/aiTools/appStateProvider'),
+                    import('../services/aiTools/writeExecutor'),
+                ]),
+                'aiChat',
+            );
             const result = await runAgentLoop(history, {
                 apiKey,
                 getState: appStateProvider,
@@ -192,10 +199,14 @@ export function useAiChat(apiKey: string): UseAiChat {
             });
         } catch (e) {
             // runAgentLoop rend les échecs (API, abort, état corrompu) en RÉSULTAT — un throw ici
-            // = bug inattendu. Message honnête, jamais un texte vide qui ressemble à une réponse.
+            // = bug inattendu OU chunk périmé dont le reload a été refusé (garde anti-boucle).
             logError({ source: 'ai', severity: 'error', message: 'Chat in-app : échec inattendu de la boucle', error: e });
+            // Message HONNÊTE et actionnable : distinguer « nouvelle version » (recharger) d'un vrai bug.
+            const chunkStale = isChunkLoadError(e);
             updateModelMessage(modelMsgId, {
-                text: accumulated || 'Oups — la conversation a échoué. Réessaie dans un instant.',
+                text: accumulated || (chunkStale
+                    ? 'Une nouvelle version de l\'app est disponible — recharge la page (Ctrl/Cmd+R), puis repose ta question.'
+                    : 'Oups — la conversation a échoué. Réessaie dans un instant.'),
             });
         } finally {
             inFlightRef.current = false;
@@ -212,19 +223,20 @@ export function useAiChat(apiKey: string): UseAiChat {
         abortRef.current?.abort(new DOMException('User cancelled', 'AbortError'));
     }, [resolvePendingWrite]);
 
-    // [Findings panel 2026-07-21 — CRITIQUE, mesuré] `AiAssistant` n'est monté que sur l'onglet
-    // Assistant (TabRouter) : changer d'onglet PENDANT qu'un modal de confirmation est ouvert démonte
-    // ce hook → `writeResolverRef` disparaît → la promesse de `requestConfirmation` ne se résout
-    // JAMAIS → toute la boucle agentique (déjà payée) reste suspendue sans trace. Cleanup au
-    // démontage : refuser toute écriture en attente + abort le tour API en vol (ne PAS passer par
-    // `resolvePendingWrite` — son `setPendingWrite` déclencherait un setState sur composant démonté ;
-    // les refs, elles, sont stables → deps []).
+    // [Findings panel — ceinture de démontage] CEINTURE au démontage du PROVIDER (`AiChatProvider`,
+    // seul appelant de ce hook depuis AITOOLS-E). ⚠️ Depuis le Lot E, le provider vit au niveau App et
+    // n'est PLUS démonté par un changement d'onglet (c'était le scénario CRITIQUE du Lot D, désormais
+    // résolu à la racine — cf `components/aiChat/AiChatContext.tsx`). Ce cleanup reste néanmoins requis
+    // pour tout démontage RÉEL du provider (fin de vie de l'app, route conditionnelle, harnais de test) :
+    // une confirmation en attente est refusée + le tour API en vol aborté, pour ne jamais laisser une
+    // promesse `requestConfirmation` orpheline. On NE passe PAS par `resolvePendingWrite` (son
+    // `setPendingWrite` ferait un setState sur composant démonté) ; les refs sont stables → deps [].
     useEffect(() => {
         return () => {
             if (writeResolverRef.current) {
                 logError({
                     source: 'ai', severity: 'warning',
-                    message: 'Chat in-app : écriture en attente de confirmation abandonnée au démontage (changement d\'onglet ?) — refusée automatiquement.',
+                    message: 'Chat in-app : écriture en attente de confirmation abandonnée au démontage du provider — refusée automatiquement.',
                 });
                 writeResolverRef.current('cancel');
                 writeResolverRef.current = null;

@@ -9,13 +9,22 @@
 // ont déménagé dans `aiChat/AiChatLauncher.tsx` (global), le rendu dans `aiChat/AiChatView.tsx`.
 
 import React from 'react';
+import { PageHeader } from './ui/PageHeader';
 import { AiChatView } from './aiChat/AiChatView';
 
 export const AiAssistant: React.FC = () => {
     return (
-        // Pleine hauteur sous l'en-tête d'onglet ; le conteneur borne le scroll interne de la vue.
-        <div className="h-[calc(100vh-12rem)] min-h-[480px] bg-[#141414]/60 border border-white/10 rounded-3xl overflow-hidden">
-            <AiChatView variant="tab" />
+        <div>
+            {/* [Finding panel a11y #4] En vraie page pleine écran, l'onglet doit porter le <h1> de
+                page (comme Budget/Dashboard) — sinon le 1er titre saute au <h3> du header interne. */}
+            <PageHeader
+                title="Assistant IA"
+                subtitle="Discute avec ton conseiller — il consulte tes vraies données à la demande."
+            />
+            {/* Pleine hauteur sous l'en-tête ; le conteneur borne le scroll interne de la vue. */}
+            <div className="h-[calc(100vh-16rem)] min-h-[440px] bg-[#141414]/60 border border-white/10 rounded-3xl overflow-hidden">
+                <AiChatView variant="tab" />
+            </div>
         </div>
     );
 };

@@ -61,6 +61,14 @@
   finding Lot D « promesse orpheline au démontage d'onglet » (chat monté App, jamais démonté par onglet ;
   modal rendu 1× par le provider). Boot inchangé (~107 kB gzip mesuré : SDK Anthropic en import dynamique
   dans `useAiChat`, panneau lazy). Mode discret masque tout ; pastille d'activité sur le FAB panneau fermé.
+- [ ] **`[PERF-SDK-BOOT-PRELOAD]`** 🟡 (S/M, découvert au panel Lot E, PRÉ-EXISTANT) — `ai-vendor` (SDK
+  Anthropic) apparaît en `<link rel="modulepreload">` dans `dist/index.html` → le navigateur télécharge
+  le SDK au boot (sans l'exécuter). Cause : `services/claude.ts:13` fait `import Anthropic from '@anthropic-ai/sdk'`
+  STATIQUEMENT, et claude.ts est importé statiquement par 5 onglets lazy (Investments/Planning/TaxCenter/
+  Transactions/BudgetAiModal) → Rollup hisse claude.ts+SDK dans un chunk préchargé. NON introduit par le Lot E
+  (le marqueur `dispatchAnyTool` du Lot E, lui, est bien absent du boot). Fix = rendre l'usage du SDK dans
+  claude.ts lazy (dynamic import par fonction) OU retirer le modulepreload via config Vite — à mesurer (gain
+  gzip réel) et vérifier qu'aucun chemin critique ne régresse. Ticket distinct, pas urgent.
 - [ ] **`[AITOOLS-SEC]` Audit sécurité FINAL du chantier** (M, exigence Marc) — panel security-privacy +
   ai-reviewer sur TOUT le chantier : injection indirecte via tool_result, aucune écriture sans confirmation
   (prouvé par test), clé API, Loi 25, mode discret, personas. + vérif « aucune donnée changée » en lecture.

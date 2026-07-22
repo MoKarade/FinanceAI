@@ -71,6 +71,17 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [aiConversation, isLoading]);
 
+    // [Findings panel a11y/code-reviewer — HIGH] Autofocus du champ à l'OUVERTURE du panneau (le
+    // variant panel est monté/démonté à chaque ouverture → cet effet ne se déclenche qu'au montage,
+    // jamais à chaque render : conforme à la leçon PROJECTION-PERSIST « ne pas voler le focus »).
+    // Le variant tab (page) ne vole PAS le focus à l'arrivée sur l'onglet. Skippé en mode discret
+    // (l'input n'est pas rendu).
+    useEffect(() => {
+        if (variant !== 'panel' || isPrivacyMode) return;
+        const t = setTimeout(() => inputRef.current?.focus(), 80);
+        return () => clearTimeout(t);
+    }, [variant, isPrivacyMode]);
+
     const handleSend = (overrideText?: string) => {
         const userText = (overrideText ?? input).trim();
         if (!userText || isLoading) return;
@@ -151,8 +162,11 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                                         </div>
                                     )}
                                     {m.text.split('\n').map((line, idx) => renderMarkdownLine(line, idx))}
+                                    {/* [Finding panel a11y — contraste mesuré] user : green-200 sur
+                                        bg-primary clair ≈ 1:1 (invisible) → text-dark/60 ; model :
+                                        ink-500 sur #2a2a2a ≈ 3,1:1 (< AA) → ink-400 (≥ 4,5:1). */}
                                     {m.timestamp && (
-                                        <div className={`text-tiny mt-1 text-right ${m.role === 'user' ? 'text-green-200' : 'text-ink-500'}`}>
+                                        <div className={`text-tiny mt-1 text-right ${m.role === 'user' ? 'text-dark/60' : 'text-ink-400'}`}>
                                             {formatTime(m.timestamp)}
                                         </div>
                                     )}
@@ -179,10 +193,14 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                         {isLoading && (
                             <div className="flex justify-start">
                                 <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mr-2 flex-shrink-0 border border-white/10"><Icon name="bot" size={16} className="text-ink-300" /></div>
-                                <div className="bg-[#2a2a2a] rounded-2xl rounded-tl-none px-4 py-3 border border-white/5" aria-label="Chargement de la réponse">
+                                {/* [Finding panel a11y #5] role="status"+aria-live sur le conteneur
+                                    EXTERNE → l'insertion du bloc de chargement est annoncée AUSSI pendant
+                                    la phase « points animés » (avant qu'un tool démarre), pas seulement
+                                    quand un nom de tool est disponible. */}
+                                <div className="bg-[#2a2a2a] rounded-2xl rounded-tl-none px-4 py-3 border border-white/5" role="status" aria-live="polite" aria-label="Chargement de la réponse">
                                     {/* [AITOOLS-C] État de chargement NOMMÉ (« Consulte : Situation fiscale… »). */}
                                     {activeTools.length > 0 ? (
-                                        <span className="text-meta text-ink-300" role="status">Consulte : {activeTools[activeTools.length - 1]}…</span>
+                                        <span className="text-meta text-ink-300">Consulte : {activeTools[activeTools.length - 1]}…</span>
                                     ) : (
                                         <div className="flex gap-1.5 items-center py-1">
                                             <div className="w-2 h-2 bg-ink-300 rounded-full animate-[bounce_1.4s_infinite_0ms]"></div>
@@ -206,7 +224,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                                 placeholder="Analyser mon budget…"
                                 aria-label="Question au conseiller IA"
-                                className="flex-1 bg-transparent px-4 text-body text-white outline-none disabled:opacity-50 placeholder-ink-500 font-medium"
+                                className="flex-1 bg-transparent px-4 text-body text-white outline-none disabled:opacity-50 placeholder-ink-400 font-medium"
                                 disabled={isLoading}
                             />
                             {isLoading ? (

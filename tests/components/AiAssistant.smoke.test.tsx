@@ -212,6 +212,25 @@ describe('Chat in-app — provider + panneau global (AITOOLS-E)', () => {
         await waitFor(() => expect(decisions).toEqual(['cancel']));
     });
 
+    it('[AITOOLS-E a11y] ouvrir le panneau met le focus sur le champ de saisie (régression autofocus)', async () => {
+        renderPanel();
+        openPanel();
+        await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(/Question au conseiller IA/i)));
+    });
+
+    it('[AITOOLS-E] DÉMONTAGE du provider pendant une confirmation → cleanup refuse l\'écriture (jamais orpheline)', async () => {
+        // Le finding Lot D est résolu à la racine (le provider ne se démonte plus par onglet), MAIS la
+        // ceinture de cleanup doit rester fonctionnelle pour tout démontage RÉEL du provider.
+        const decisions = scriptWriteFlow();
+        const { unmount } = render(<AiChatProvider><AiChatLauncher /></AiChatProvider>);
+        openPanel();
+        fireEvent.change(screen.getByLabelText(/Question au conseiller IA/i), { target: { value: 'Ajoute ma dette' } });
+        fireEvent.click(screen.getByRole('button', { name: /Envoyer le message/i }));
+        await waitFor(() => expect(screen.getByText(/Confirmer la modification/i)).toBeInTheDocument());
+        unmount(); // démonte le provider ENTIER
+        await waitFor(() => expect(decisions).toEqual(['cancel']));
+    });
+
     it('[AITOOLS-E] le provider est monté au niveau App → changer de surface NE démonte PAS la confirmation', async () => {
         // Discriminant du finding Lot D résolu à la racine : le provider (donc useAiChat) vit au-dessus
         // des onglets ; démonter le PANNEAU (fermer) ne détruit plus l'instance → la promesse survit.

@@ -15,7 +15,8 @@ import { AiChatView } from './AiChatView';
 export const AiChatLauncher: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
     const { isLoading } = useAiChatContext();
-    const panelRef = useRef<HTMLDivElement>(null);
+    const fabRef = useRef<HTMLButtonElement>(null);
+    const wasOpenRef = useRef(false);
 
     // Échap ferme le panneau (a11y clavier) — sans intercepter quand il est fermé.
     useEffect(() => {
@@ -25,9 +26,18 @@ export const AiChatLauncher: React.FC = () => {
         return () => document.removeEventListener('keydown', onKey);
     }, [isOpen]);
 
+    // [Finding panel a11y #1] Restaure le focus sur le FAB à la FERMETURE (Échap/✕/toggle) : sans ça,
+    // le focus clavier tombe sur <body> quand le panneau quitte le DOM (l'utilisateur « perd sa place »).
+    // Seulement sur transition ouvert→fermé (jamais au montage initial où isOpen est déjà false).
+    useEffect(() => {
+        if (wasOpenRef.current && !isOpen) fabRef.current?.focus();
+        wasOpenRef.current = isOpen;
+    }, [isOpen]);
+
     return (
         <>
             <button
+                ref={fabRef}
                 onClick={() => setIsOpen((v) => !v)}
                 aria-label={isOpen ? 'Fermer le conseiller IA' : 'Ouvrir le conseiller IA'}
                 aria-expanded={isOpen}
@@ -42,10 +52,9 @@ export const AiChatLauncher: React.FC = () => {
 
             {isOpen && (
                 <div
-                    ref={panelRef}
                     role="dialog"
                     aria-modal="false"
-                    aria-label="Conseiller IA"
+                    aria-label="Assistant IA"
                     className="fixed bottom-40 right-2 left-2 md:left-auto md:bottom-24 md:right-8 z-50 w-auto md:w-[420px] h-[550px] max-h-[60vh] md:max-h-[550px] bg-[#1a1a1a]/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-slide-up origin-bottom-right"
                 >
                     <AiChatView variant="panel" onClose={() => setIsOpen(false)} />

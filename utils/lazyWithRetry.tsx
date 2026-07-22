@@ -25,7 +25,7 @@ import { logError } from '../services/errorLogger';
 const RELOAD_FLAG_KEY = 'financeai:chunkReloaded:v1'; // valeur = Date.now() du dernier reload auto
 const RELOAD_MIN_INTERVAL_MS = 60_000;
 
-function isChunkLoadError(err: unknown): boolean {
+export function isChunkLoadError(err: unknown): boolean {
     if (!err || typeof err !== 'object') return false;
     const msg = (err as Error).message ?? '';
     // « Unable to preload » = échec de preload d'une DÉPENDANCE (CSS ou module) signalé par Vite.
@@ -54,40 +54,45 @@ function markReloadAttempt(): boolean {
     }
 }
 
+/**
+ * Import dynamique NON-composant avec la MÊME protection que lazyWithRetry (retry 500 ms puis hard
+ * reload gardé anti-boucle sur chunk périmé post-deploy). À utiliser pour tout `await import()` NU
+ * d'un module lourd hors du chemin React.lazy (ex. le SDK chat chargé au 1er message, AITOOLS-E) —
+ * sinon un déploiement Vercel entre l'ouverture de l'onglet et le 1er message ferait boucler le 404
+ * alors que le reste de l'app se répare tout seul.
+ */
+export async function importWithRetry<T>(factory: () => Promise<T>, chunkName?: string): Promise<T> {
+    try {
+        return await factory();
+    } catch (firstError) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        try {
+            return await factory();
+        } catch (secondError) {
+            logError({
+                source: 'ui',
+                severity: 'critical',
+                message: `Dynamic import failed twice${chunkName ? ` (${chunkName})` : ''}`,
+                error: secondError,
+                context: { chunkName, firstError: (firstError as Error)?.message },
+            });
+            if (isChunkLoadError(secondError) && typeof window !== 'undefined'
+                && shouldAttemptReload() && markReloadAttempt()) {
+                window.location.reload();
+                return new Promise<T>(() => {}); // jamais résolue — la page se recharge
+            }
+            // Reload déjà tenté il y a < 1 min (ou storage KO) → on remonte l'erreur à l'appelant.
+            throw secondError;
+        }
+    }
+}
+
 export function lazyWithRetry<T extends React.ComponentType<unknown>>(
     factory: () => Promise<{ default: T }>,
     chunkName?: string,
 ): React.LazyExoticComponent<T> {
-    return React.lazy(async () => {
-        try {
-            return await factory();
-        } catch (firstError) {
-            // Retry après 500ms (réseau qui vacille, etc.)
-            await new Promise(resolve => setTimeout(resolve, 500));
-            try {
-                return await factory();
-            } catch (secondError) {
-                // Chunk vraiment introuvable. Probablement vieux index.html cached.
-                logError({
-                    source: 'ui',
-                    severity: 'critical',
-                    message: `Chunk load failed twice${chunkName ? ` (${chunkName})` : ''}`,
-                    error: secondError,
-                    context: { chunkName, firstError: (firstError as Error)?.message },
-                });
-                if (isChunkLoadError(secondError) && typeof window !== 'undefined'
-                    && shouldAttemptReload() && markReloadAttempt()) {
-                    // Hard reload pour forcer le re-fetch de index.html
-                    window.location.reload();
-                    // Promise jamais résolue — la page se recharge
-                    return new Promise<{ default: T }>(() => {});
-                }
-                // Reload déjà tenté il y a < 1 min (ou storage KO) → on remonte l'erreur
-                // au composant pour qu'ErrorBoundary l'affiche proprement
-                throw secondError;
-            }
-        }
-    });
+    // Mutualise la stratégie retry+reload (importWithRetry) ; l'échec final remonte à ErrorBoundary.
+    return React.lazy(() => importWithRetry(factory, chunkName));
 }
 
 /**

@@ -236,6 +236,72 @@ Le hub enverra ce même jeton dans le header `x-hub-token`. Rotation : ajoute un
 version au secret (`gcloud secrets versions add financeai-hub-token --data-file=-`) puis
 redéploie.
 
+## Refresh planifié — POST /refresh (HUB-REFRESH-CRON)
+
+Jusqu'ici, **seule l'app navigateur** poussait l'état dans Drive : dès l'onglet fermé, la
+valeur nette figeait (les cours ne bougeaient plus). Cette route permet à un déclencheur
+EXTERNE de rafraîchir les prix côté serveur — plus besoin d'ouvrir FinanceAI pour que le
+hub soit à jour.
+
+- **Ce que ça fait** : lit le blob Drive, rafraîchit les `currentPrice` via le moteur PARTAGÉ
+  (`services/priceRefresh` — devise protégée, changement réel uniquement, provider-aware),
+  et RÉÉCRIT le blob avec la garde de concurrence OCC (`save(next, version)`). **Ne touche
+  QUE les cours** : dettes, budgets, relevés saisis ne sont jamais modifiés. Aucun prix
+  inventé — un symbole sans provider est SKIPPÉ avec sa raison (no-fake-data).
+- **Activation** : définir `FINANCEAI_REFRESH_SECRET` (≥16 caractères — refus de démarrer
+  sinon). Sans la variable, la route n'existe pas (404), comme `/hub/summary`.
+- **Auth** : header `Authorization: Bearer <secret>` ; comparaison en temps constant,
+  **401** si absent ou invalide. Réponse `Cache-Control: no-store`.
+- **Réponse** : `200 { ok:true, saved, refreshed[], unchanged[], skipped[] }` au succès. Un
+  conflit de concurrence (l'app a poussé au même instant) renvoie `200 { ok:false, conflict:true }`
+  — TRANSITOIRE, le prochain tick réessaie (le cron ne rougit pas). Une panne RÉELLE (Drive
+  injoignable, jeton révoqué, coffre chiffré) renvoie un **5xx** → le job GitHub rougit et alerte,
+  au lieu de rester vert sur des prix figés. Le secret n'est jamais dans le corps.
+- **Cours des actions** : nécessite une clé Finnhub (`FINANCEAI_FINNHUB_KEY`). Sans elle,
+  seule la crypto (CoinGecko, sans clé) est rafraîchie — le serveur le journalise au boot.
+
+### Le déclencheur : GitHub Actions planifié (gratuit)
+
+Cloud Run dort (scale-to-zero) : un `setInterval` interne ne tournerait pas. Un cron
+EXTERNE le réveille. GitHub Actions est gratuit et sans la limite « 1×/jour » de Vercel Hobby
+→ `.github/workflows/refresh-prices.yml` (toutes les 6 h + déclenchement manuel). Il POST
+`${MCP_URL}/refresh` avec le Bearer et « rougit » seulement si le serveur est injoignable.
+
+Secrets GitHub à créer (Settings → Secrets and variables → Actions) :
+
+```
+FINANCEAI_MCP_URL        = https://financeai-mcp-xxxx.run.app   # URL du service Cloud Run
+FINANCEAI_REFRESH_SECRET = <le même secret que Cloud Run>
+```
+
+### Sur Cloud Run — via Secret Manager (comme le hub)
+
+Même logique que `financeai-hub-token` : le secret vit dans Secret Manager, `deploy.sh` le
+monte automatiquement s'il existe (survit à chaque redéploiement).
+
+```bash
+# 1. Le secret d'auth du refresh (≥16 caractères ; garde-le, c'est le même côté GitHub)
+node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))" \
+  | tr -d '\n' | gcloud secrets create financeai-refresh-secret --data-file=- --project="$PROJECT_ID"
+
+# 2. (Optionnel mais recommandé) la clé Finnhub, pour rafraîchir aussi les ACTIONS
+printf '%s' "TA_CLE_FINNHUB" \
+  | gcloud secrets create financeai-finnhub-key --data-file=- --project="$PROJECT_ID"
+
+# 3. Accès en lecture au compte de service Cloud Run (même SA que les autres secrets)
+for S in financeai-refresh-secret financeai-finnhub-key; do
+  gcloud secrets add-iam-policy-binding "$S" \
+    --member="serviceAccount:$RUNTIME_SA" \
+    --role="roles/secretmanager.secretAccessor" --project="$PROJECT_ID"
+done
+
+# 4. Redéployer : deploy.sh détecte les secrets, les monte, rebuild l'image à jour
+PROJECT_ID="$PROJECT_ID" ./mcp/deploy.sh
+```
+
+Rotation : `gcloud secrets versions add financeai-refresh-secret --data-file=-`, mets à jour
+le secret GitHub `FINANCEAI_REFRESH_SECRET`, puis redéploie.
+
 ## Synchronisation Google Drive (auto) — recommandé
 
 Au lieu d'exporter un fichier, le connecteur lit/écrit le **même blob Drive que l'app**

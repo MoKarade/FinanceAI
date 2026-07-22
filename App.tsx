@@ -35,6 +35,11 @@ import { startGuidedTour } from './components/tour/tourControl';
 import { PassphraseGate } from './components/auth/PassphraseGate';
 import { SyncConflictModal } from './components/sync/SyncConflictModal';
 import { SyncStatusBanner } from './components/sync/SyncStatusBanner';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
+// [AITOOLS-E] Provider = 1 instance de chat pour toute l'app (boot-safe : le SDK Anthropic est en
+// import dynamique dans useAiChat). Le panneau latéral global est lazy (hors bundle de boot).
+import { AiChatProvider } from './components/aiChat/AiChatContext';
+const AiChatLauncher = lazyWithRetry(() => import('./components/aiChat/AiChatLauncher').then(m => ({ default: m.AiChatLauncher })), 'AiChatLauncher');
 
 const GuideModal = lazyWithRetry(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })), 'GuideModal');
 // PH2-c — moteur de projection app-level LAZY-chargé : garde le bundle de BOOT léger (le code du
@@ -607,6 +612,11 @@ export const App: React.FC = () => {
     }
 
     return (
+        // [Finding panel silent-failure ÉLEVÉ] Le provider vit AU-DESSUS de tout l'app (nécessaire au
+        // context partagé) → sans filet, un crash du hook chat = écran blanc global (avant, l'onglet
+        // Assistant était isolé par l'ErrorBoundary de TabRouter). Ceinture anti-écran-blanc.
+        <ErrorBoundary label="FinanceAI">
+        <AiChatProvider>
         <div>
             {/* Bandeau de statut sync EN TÊTE (in-flow → pousse le contenu, ne le recouvre pas) :
                 alerte « non connecté / non sauvegardé » ou « échec de sauvegarde ». Rendu null si
@@ -727,6 +737,19 @@ export const App: React.FC = () => {
             <CommandPalette open={cmdK.isOpen} onClose={cmdK.close} actions={cmdActions} />
             {/* G22-F4 — tutoriel guidé (overlay global, démarré par event). */}
             <GuidedTour />
+            {/* [AITOOLS-E] Panneau latéral GLOBAL du chat (FAB partout) — lazy, hors bundle de boot.
+                Masqué pendant l'accueil (pas de données à consulter, l'onboarding occupe l'écran).
+                ErrorBoundary dédié : un crash du RENDU du panneau ne fait tomber que le panneau
+                (isolation fine, restaure la protection par-onglet d'avant le refactor). */}
+            {!isFirstLaunch && (
+                <ErrorBoundary label="Assistant IA">
+                    <Suspense fallback={null}>
+                        <AiChatLauncher />
+                    </Suspense>
+                </ErrorBoundary>
+            )}
         </div>
+        </AiChatProvider>
+        </ErrorBoundary>
     );
 };

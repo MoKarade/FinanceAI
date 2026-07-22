@@ -6,6 +6,35 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — chantier Claude-in-app, Lot E : chat partout (panneau global + onglet)] — 2026-07-22
+
+### Améliorations (Assistant)
+- **Le conseiller IA est maintenant accessible PARTOUT** via un bouton flottant présent sur tous les
+  onglets (panneau latéral global), en plus de l'onglet Assistant agrandi en pleine page. Les deux
+  surfaces partagent la **même conversation, le même état** (une seule instance `useAiChat` via
+  `AiChatProvider` monté au niveau App) — envoie une question depuis le panneau, retrouve-la dans
+  l'onglet, et vice-versa. Une pastille sur le bouton flottant signale qu'une réponse arrive pendant
+  que tu navigues ailleurs.
+- **Résout à la racine le finding Lot D « promesse orpheline au changement d'onglet »** : le chat
+  n'est plus monté/démonté par onglet (il vit au niveau App) → une confirmation d'écriture en attente
+  survit à la navigation. Le modal de confirmation est rendu une seule fois par le provider.
+- **Bundle de boot inchangé** (mesuré ~107 kB gzip) : `useAiChat` charge le SDK Anthropic en import
+  DYNAMIQUE (au 1er message), le panneau global est lazy — le provider monté App ne tire rien de lourd.
+- Rendu mutualisé `AiChatView` (variant panneau/onglet) : une seule source pour les deux surfaces.
+
+### Correctifs du panel (4 agents, sondes exécutées)
+- **ErrorBoundary autour du chat** (silent-failure, ÉLEVÉ) : le provider vit au-dessus de toute l'app ;
+  sans filet, un crash du hook = écran blanc global. Ceinture `ErrorBoundary` autour du provider +
+  `ErrorBoundary` dédié au panneau (isole un crash de rendu à la seule surface chat).
+- **Autofocus du champ restauré** (3 agents, HIGH) : l'ouverture du panneau redonne le focus au champ ;
+  la fermeture (Échap/✕/toggle) restaure le focus sur le bouton flottant (WCAG 2.4.3).
+- **Contrastes** (a11y, mesurés) : horodatage message user `green-200`→`dark/60` (était ~1:1, invisible) ;
+  horodatage assistant + placeholder `ink-500`→`ink-400` (< AA → ≥ 4,5:1).
+- **`<h1>` de page** sur l'onglet Assistant (a11y) : l'onglet pleine page porte un `PageHeader` comme
+  les autres onglets (hiérarchie de titres) ; `role="status"`+`aria-live` sur le bloc de chargement.
+- **Résilience chunk périmé** (ai-reviewer) : les imports dynamiques du chat passent par `importWithRetry`
+  (retry + reload gardé), comme le reste de l'app — un déploiement pendant une session ne boucle plus en 404.
+
 ## [unreleased — chantier Claude-in-app, Lot D : écritures avec confirmation] — 2026-07-21
 
 ### Améliorations (Assistant)

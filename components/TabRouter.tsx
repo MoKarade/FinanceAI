@@ -276,9 +276,9 @@ export const TabRouter: React.FC<TabRouterProps> = ({
 
                 {activeTab === Tab.ASSISTANT && (
                     <PageSetupGate tab={Tab.ASSISTANT}>
-                        {/* [AITOOLS-C] Le chat lit l'état via appStateProvider (tool-use) — plus
-                            besoin de lui passer les tranches de données en props. */}
-                        <AiAssistant apiKey={state.apiKeys.anthropic} />
+                        {/* [AITOOLS-E] L'onglet rend la conversation partagée (variant tab) via le
+                            context AiChatProvider (monté App) — même instance que le panneau global. */}
+                        <AiAssistant />
                     </PageSetupGate>
                 )}
                 </div>

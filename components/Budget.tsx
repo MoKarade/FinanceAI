@@ -18,6 +18,8 @@ import { Pill } from './ui/Pill';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { formatCAD, formatSigned, formatPercent } from '../utils/format';
+import { useViewContextPublisher } from '../hooks/useViewContextPublisher';
+import type { BudgetViewDetail } from '../services/aiChat/viewContext';
 import { computeBudgetParity, matchTransactionToCategory, computeGoldenSplit, GOLDEN_IDEAL, computeActualByOwner, isSavingsNature, type OrphanCategory } from '../utils/budget';
 import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages, computeIncomeBreakdown } from '../utils/budgetSync';
 import { DualKPIStat } from './budget/DualKPIStat';
@@ -338,6 +340,46 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [transactions, timeView, customStart, customEnd, periodOffset]);
     const totalActualIncomeDisplay = incomeBreakdown.total;
+
+    // [CHAT-PAGE-CONTEXT] Contexte d'écran publié pour le chat : RÉUTILISE STRICTEMENT les valeurs
+    // déjà calculées pour le rendu (totalSpentDisplay/totalBudgetDisplay/totalActualIncomeDisplay/
+    // actualsMap) — AUCUNE nouvelle expression arithmétique (« jamais un 3e chiffre », classes
+    // PH4D-BUDGET-RATIOS / BUDGET-INCOME-REAL). Le gate mode discret vit dans le hook (à la source).
+    const chatViewDetail = useMemo<BudgetViewDetail>(() => {
+        const { start } = getDateRange();
+        const periodLabel = timeView === 'MONTH'
+            ? new Intl.DateTimeFormat('fr-CA', { month: 'long', year: 'numeric' }).format(start)
+            : timeView === 'QUARTER'
+                ? `T${Math.floor(start.getMonth() / 3) + 1} ${start.getFullYear()}`
+                : timeView === 'YEAR'
+                    ? String(start.getFullYear())
+                    : `du ${customStart} au ${customEnd}`;
+        const timeViewLabel = timeView === 'MONTH' ? 'mois'
+            : timeView === 'QUARTER' ? 'trimestre'
+                : timeView === 'YEAR' ? 'année' : 'plage personnalisée';
+        const topCategories = Object.entries(actualsMap)
+            .filter(([, spent]) => Number.isFinite(spent) && spent > 0)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([name, spent]) => ({ name, spent }));
+        const personName = personFilter !== null ? config.users[personFilter]?.name?.trim() : '';
+        return {
+            kind: 'budget',
+            timeViewLabel,
+            periodLabel,
+            totalSpent: totalSpentDisplay,
+            totalBudgetTarget: totalBudgetDisplay,
+            totalRealIncome: totalActualIncomeDisplay,
+            topCategories,
+            ...(personName ? { personFilterLabel: personName } : {}),
+        };
+    // getDateRange est recréée à chaque render ; ses VRAIES deps (timeView, periodOffset,
+    // customStart, customEnd — leçon BUDGET-MONTH-NAV : lister TOUS les états qu'elle lit)
+    // sont listées directement, comme le memo incomeBreakdown voisin.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [timeView, periodOffset, customStart, customEnd, totalSpentDisplay, totalBudgetDisplay,
+        totalActualIncomeDisplay, actualsMap, personFilter, config.users]);
+    useViewContextPublisher('budget', chatViewDetail);
 
     // --- 2. GROUPING LOGIC ---
     const groupedItems = useMemo(() => {

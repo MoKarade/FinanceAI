@@ -60,6 +60,10 @@ export interface AgentLoopOptions {
     model?: string;
     maxTokens?: number;
     system?: string;
+    /** [CHAT-PAGE-CONTEXT] Ligne « CONTEXTE ÉCRAN » capturée par l'appelant AU MOMENT de l'envoi
+     *  (figée pour toute la boucle via `system` — jamais relue mi-envoi). Ignorée si `system` est
+     *  fourni explicitement. */
+    viewContextLine?: string;
     /** Client injectable (tests). Défaut : makeClient(apiKey) — même transport que le reste de l'app. */
     client?: AgentClientLike;
 }
@@ -173,7 +177,7 @@ export async function runAgentLoop(
     // [AITOOLS-D] Les tools d'écriture ne sont déclarés QUE si un exécuteur de confirmation existe.
     const tools = toAnthropicTools(opts.onWriteToolUse ? [...READ_SPECS, ...WRITE_SPECS] : READ_SPECS);
     const maxTurns = opts.maxTurns ?? DEFAULT_MAX_TURNS;
-    const system = opts.system ?? buildAgentSystemPrompt();
+    const system = opts.system ?? buildAgentSystemPrompt(opts.viewContextLine);
 
     const messages: Anthropic.MessageParam[] = [...history];
     const toolsUsed: string[] = [];

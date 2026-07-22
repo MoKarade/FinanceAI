@@ -6,6 +6,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Chat conscient de la page (vague 1)] — 2026-07-22
+
+### Nouveau (demande Marc « le chat peut réagir à tout sur la page »)
+- **Le chat sait ce que tu regardes** : sur toutes les pages, il connaît l'onglet ouvert ; sur
+  Budget, il voit EXACTEMENT ce que la page affiche (période naviguée, vue mois/trimestre/année,
+  dépenses réelles, cible, revenus de la période, top 3 catégories, filtre personne) — « explique-moi
+  ce chiffre » répond sur le chiffre de TON écran, pas un recalcul d'un autre mois.
+- **Badge « Contexte : Budget — juillet 2026 »** au-dessus du champ de saisie : tu vois (et peux
+  contester) ce que le chat perçoit. Le contexte est capturé au moment où tu envoies — naviguer
+  pendant la réponse ne la fait pas dériver.
+- **Honnêteté** : sur une page non encore instrumentée, le chat dit qu'il ne voit pas le détail et
+  consulte ses outils (jamais « je vois » sans voir). Mode discret : les montants sortent du
+  contexte À LA SOURCE (rien ne part vers l'API pendant que l'écran masque).
+- Fondation extensible : les autres onglets s'ajoutent en vague 2 (`[CHAT-PAGE-CONTEXT-V2]`).
+
 ## [unreleased — Chat : choix du modèle par conversation + coût réel (B3+B4)] — 2026-07-22
 
 ### Nouveau (demande Marc « choisir quel ia, prix total prix de la conv etc »)

@@ -1,5 +1,27 @@
 
-import { BudgetCategory, BudgetConfig, ProjectionConfig, User, RealEstateGoal, ChildGoal } from "./types";
+import { BudgetCategory, BudgetConfig, ProjectionConfig, User, RealEstateGoal, ChildGoal, Tab } from "./types";
+
+// [CHAT-PAGE-CONTEXT] Libellés FR des onglets — SOURCE UNIQUE (consommée par TabRouter ET le
+// contexte d'écran du chat, services/aiChat/viewContext.ts). Ne pas redéclarer ailleurs.
+export const TAB_LABELS: Record<Tab, string> = {
+    [Tab.DASHBOARD]: 'Accueil',
+    [Tab.TRANSACTIONS]: 'Transactions',
+    [Tab.BUDGET]: 'Budget',
+    [Tab.DEBT]: 'Dettes',
+    [Tab.INVESTMENTS]: 'Investissements',
+    [Tab.FUTURE]: 'Futur',
+    [Tab.ACTIONS]: 'Prochaine action',
+    [Tab.REAL_ESTATE]: 'Immobilier',
+    [Tab.CHILD]: 'Enfant',
+    [Tab.TRAVEL]: 'Voyages',
+    [Tab.LIFE_EVENTS]: 'Parcours de Vie',
+    [Tab.LIFE_PROJECTS]: 'Projets de vie',
+    [Tab.RETIREMENT]: 'Retraite',
+    [Tab.TAX]: 'Impôts & Docs',
+    [Tab.SETTINGS]: 'Paramètres',
+    [Tab.PROFILE]: 'Profil',
+    [Tab.ASSISTANT]: 'Assistant IA',
+};
 
 // ============================================================
 // PROFIL PAR DÉFAUT — Neutre, à configurer dans Settings

@@ -121,6 +121,20 @@
   0,00 $) : par réponse (bulle), par conversation (header + sidebar), total à vie (header). Parité
   ids↔tarifs verrouillée par test (un modèle sans tarif = garde rouge, jamais un coût non compté muet).
 
+## 🖥️ Chat conscient de la page (demande Marc 2026-07-22 : « le chat peut réagir à tout sur la page »)
+- [x] **`[CHAT-PAGE-CONTEXT]`** ✅ vague 1 (2026-07-22, PR #490) — onglet actif (Tier 1, TOUTES les pages,
+  `TAB_LABELS` déplacé en source unique dans `constants.ts`) + Budget en contexte FIN (Tier 2 : période
+  humanisée, vue, dépenses/cible/revenus AFFICHÉS, top 3 catégories, filtre personne) via le registre pur
+  `services/aiChat/viewContext.ts` + `useViewContextPublisher` (gate mode discret À LA SOURCE). Injection en
+  FIN de `system` (figée par envoi — ADR docs/decisions.md, PAS un tool). Badge « Contexte : Budget —
+  juillet 2026 » contestable dans le chat. Page non instrumentée → aveu honnête. Parité canonique verrouillée
+  (`Budget.viewContext.test.tsx` : détail ≡ computeBudgetParity/computeIncomeBreakdown — jamais un 3e chiffre).
+- [ ] **`[CHAT-PAGE-CONTEXT-V2]`** (M) — vague 2 : instrumenter les autres onglets (Investissements : filtres/
+  compte ; Futur : scénario + année survolée ; Impôts : année ; Dettes ; Transactions : recherche/filtre actifs).
+  Un onglet = un petit detail typé ajouté à l'union `ViewContextDetail` + un publisher — le pipeline est en place.
+- [ ] **`[CHAT-PAGE-CONTEXT-V3]`** (M) — vague 3 : état fin volatile (modal ouvert, tooltip figé du graphe Futur,
+  ligne sélectionnée) — évaluer la valeur réelle avant (fragile, très volatile).
+
 ## 🔐 Drive — « je veux plus devoir me reconnecter tout le temps » (rappel Marc 2026-07-22)
 - [ ] **`[AUTH-DRIVE-STILL-RECONNECT]`** 🔴 (suivi actif, demande Marc réitérée APRÈS le merge de #483) —
   exigence : connecté UNE fois → ça tient (reconnexion seulement après ~8h d'inactivité). `[AUTH-DRIVE-INACTIVITY]`

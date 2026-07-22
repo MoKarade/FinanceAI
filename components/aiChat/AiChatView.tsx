@@ -10,7 +10,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Icon, type IconName } from '../ui/Icon';
-import { AiMessage } from '../../types';
+import { AiMessage, Tab } from '../../types';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { useAiChatContext } from './AiChatContext';
 // [AITOOLS-B1] Pièces jointes : validation à la SÉLECTION (un fichier refusé n'entre jamais dans
@@ -25,6 +25,9 @@ import { AiConversationList } from './AiConversationList';
 import { AI_CHAT_MODELS, resolveChatModelKey } from '../../services/aiChat/models';
 import { sumMessagesCostUsd } from '../../services/aiChat/pricing';
 import { formatCostCad } from '../../utils/format';
+// [CHAT-PAGE-CONTEXT] Badge du contexte d'écran perçu (contestable par l'utilisateur — confiance).
+import { useViewContextSnapshot } from '../../hooks/useViewContextSnapshot';
+import { TAB_LABELS } from '../../constants';
 
 export type AiChatVariant = 'panel' | 'tab';
 
@@ -82,6 +85,15 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
     // useMemo (finding panel #489, perf) : recalculé sinon à CHAQUE delta streamé (chaque
     // updateModelMessage recrée le tableau → re-render → re-scan de tout l'historique).
     const convCostUsd = React.useMemo(() => sumMessagesCostUsd(aiConversation), [aiConversation]);
+    // [CHAT-PAGE-CONTEXT] Contexte d'écran perçu — badge affiché pour que l'utilisateur puisse le
+    // CONTESTER (critère produit #5). Détail présent → « Budget — juillet 2026 » ; sinon, le nom
+    // d'onglet n'a de sens que dans le PANNEAU (sur l'onglet Assistant, « Contexte : Assistant IA »
+    // serait du bruit).
+    const activeTab = useFinanceStore(s => s.activeTab);
+    const viewCtx = useViewContextSnapshot();
+    const contextBadge = viewCtx
+        ? `${TAB_LABELS[activeTab] ?? ''} — ${viewCtx.detail.periodLabel}`
+        : (variant === 'panel' && activeTab !== Tab.ASSISTANT ? (TAB_LABELS[activeTab] ?? null) : null);
 
     const [input, setInput] = useState('');
     const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -343,6 +355,14 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                     </div>
 
                     <div className="p-4 bg-black/40 backdrop-blur-md border-t border-white/5 flex-shrink-0">
+                        {/* [CHAT-PAGE-CONTEXT] Contexte d'écran perçu, contestable d'un coup d'œil.
+                            Texte visible (pas title seul — leçon a11y #489) ; dans la zone
+                            !isPrivacyMode (la période peut indirectement révéler l'activité). */}
+                        {contextBadge && (
+                            <p className={`text-tiny text-ink-400 mb-1.5 ${isPanel ? '' : 'max-w-3xl mx-auto'}`}>
+                                Contexte : {contextBadge}
+                            </p>
+                        )}
                         {/* [AITOOLS-B1] Puces des fichiers EN ATTENTE d'envoi (retirables).
                             role=status + aria-live (finding panel a11y) : l'AJOUT d'une puce est
                             annoncé au lecteur d'écran (le REFUS l'était déjà via le toast alert) ;

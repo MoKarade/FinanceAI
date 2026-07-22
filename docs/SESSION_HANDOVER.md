@@ -4,6 +4,16 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-22 (suite 6) — CHAT-PAGE-CONTEXT vague 1 : chat conscient de la page (PR #490)
+> **✅ `[CHAT-PAGE-CONTEXT]` vague 1** (demande Marc « le chat réagit à tout sur la page », OK donné d'avance,
+> plan PM+architect suivi) : registre pur `services/aiChat/viewContext.ts` (Tier 1 = onglet actif partout via
+> `TAB_LABELS` déplacé dans `constants.ts` ; Tier 2 = détail publié par la page) + `useViewContextPublisher`
+> (gate mode discret À LA SOURCE) + `useViewContextSnapshot` (badge). Injection en FIN de `system` (figée par
+> envoi — ADR : PAS un tool, relu à chaque tour = dérive ; registre app↔MCP jamais forké), capture SYNCHRONE
+> avant tout await dans sendMessage. Budget instrumenté (période/vue/dépenses/cible/revenus/top3/filtre —
+> RÉUTILISE totalSpentDisplay/computeIncomeBreakdown, jamais un 3e chiffre, parité verrouillée par test).
+> Page non instrumentée → aveu honnête. Vague 2 (autres onglets) : `[CHAT-PAGE-CONTEXT-V2]` au BACKLOG.
+>
 > ## 🟢 Session 2026-07-22 (suite 5) — B3+B4 : choix du modèle par conversation + coût réel (PR #489)
 > **✅ `[B3-CHAT-MODEL]` + `[B4-CHAT-COST]`** (fin de la roadmap chat B de Marc) : sélecteur Haiku/Sonnet/Opus
 > dans le header du chat, PAR conversation (`AppState.aiChatModel` additif pour l'active, porté dans

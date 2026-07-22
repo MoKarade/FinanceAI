@@ -171,8 +171,11 @@ par `registryParity`) — un tool app-only casserait cette frontière pour un co
 ligne compacte (moins cher en tokens qu'un aller-retour tool_use/tool_result).
 
 **Trade-offs** : la ligne est renvoyée sur chaque tour de la boucle (bornée : top 3 catégories,
-montants arrondis) ; le jour où `[AITOOLS-PROMPT-CACHE]` pose un cache sur le préfixe system, il
-faudra scinder system en blocs (statique caché / ligne dynamique) — noté dans systemPrompt.ts.
+montants arrondis). ⚠️ MAJ commit de suivi (finding ai-reviewer) : le split en blocs est FAIT —
+`buildAgentSystemBlocks` = préfixe statique AVEC `cache_control` ephemeral + ligne dynamique
+séparée (un `system` string variable invalidait le préfixe de cache entier, pièces jointes
+incluses) ; livre l'essentiel d'`[AITOOLS-PROMPT-CACHE]`. Résiduel assumé : l'entrée de cache des
+MESSAGES est ré-écrite quand la ligne de contexte change entre deux envois.
 
 **Alternatives rejetées** : (a) tool `get_current_view` app-only (fraîcheur incompatible multi-tours,
 frontière app↔MCP cassée) ; (b) contexte dans le message user (entrerait dans le transcript persisté,

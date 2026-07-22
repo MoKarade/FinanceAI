@@ -11,7 +11,7 @@
 // Cleanup au démontage GUARDÉ par scope (clearViewContext no-op si une autre page a publié
 // entre-temps) — StrictMode-safe.
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import {
     publishViewContext, clearViewContext, type ViewContextDetail,
@@ -19,12 +19,21 @@ import {
 
 export function useViewContextPublisher(scope: string, detail: ViewContextDetail | null): void {
     const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
+    // [Finding code-reviewer #490 — ÉLEVÉ préventif, prouvé par sonde] Dédup PAR VALEUR : la clé
+    // SÉRIALISÉE est la dépendance de l'effet, pas la référence de l'objet. Un consommateur futur
+    // qui construirait `detail` inline (sans useMemo) déclenchait sinon une boucle infinie
+    // publish → notify → re-render → nouvel objet → effet re-déclenché → … (gel à 100 % CPU puis
+    // OOM). Avec la clé par valeur, un objet reconstruit au contenu IDENTIQUE ne re-déclenche
+    // rien — le contrat « mémoïse ! » n'est plus qu'une optimisation, pas une condition de survie.
+    const detailJson = detail === null ? null : JSON.stringify(detail);
+    const detailRef = useRef(detail);
+    detailRef.current = detail;
     useEffect(() => {
-        if (isPrivacyMode || detail === null) {
+        if (isPrivacyMode || detailJson === null) {
             clearViewContext(scope);
             return;
         }
-        publishViewContext(scope, detail);
+        publishViewContext(scope, detailRef.current!);
         return () => clearViewContext(scope);
-    }, [scope, detail, isPrivacyMode]);
+    }, [scope, detailJson, isPrivacyMode]);
 }

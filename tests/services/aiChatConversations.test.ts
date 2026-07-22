@@ -94,6 +94,44 @@ describe('switchConversation', () => {
     });
 });
 
+describe('[B3-CHAT-MODEL] modèle par conversation dans les transitions', () => {
+    it('archivage : le modèle de l\'active part AVEC elle ; nouvelle conversation = préférence collante', () => {
+        const { patch } = startNewConversation({
+            aiConversation: [msg('m1', 'user', 'Q1')],
+            aiConversations: [],
+            activeAiConversationId: 'conv_A',
+            aiChatModel: 'opus',
+        });
+        expect(patch.aiConversations[0].model).toBe('opus');
+        expect(patch.aiChatModel).toBe('opus'); // la nouvelle garde le dernier choix
+    });
+
+    it('bascule : restaure le modèle DE la conversation chargée', () => {
+        const { patch } = switchConversation({
+            aiConversation: [msg('m1', 'user', 'QA')],
+            aiConversations: [{ id: 'conv_B', title: 'B', createdAt: '', updatedAt: '', messages: [msg('b1', 'user', 'QB')], model: 'haiku' as const }],
+            activeAiConversationId: 'conv_A',
+            aiChatModel: 'opus',
+        }, 'conv_B')!;
+        expect(patch.aiChatModel).toBe('haiku'); // le modèle suit la conversation, pas l'appareil
+        expect(patch.aiConversations[0].model).toBe('opus'); // l'ancienne active archivée avec le sien
+    });
+
+    it('archive PRÉ-B3 (sans model) → défaut sonnet (le seul modèle qui existait alors) ; valeur corrompue → défaut', () => {
+        const base = {
+            aiConversation: [],
+            aiConversations: [{ id: 'conv_B', title: 'B', createdAt: '', updatedAt: '', messages: [msg('b1', 'user', 'QB')] }],
+            activeAiConversationId: null,
+        };
+        expect(switchConversation(base, 'conv_B')!.patch.aiChatModel).toBe('sonnet');
+        const corrupted = {
+            ...base,
+            aiConversations: [{ ...base.aiConversations[0], model: 'gpt-5' as unknown as 'sonnet' }],
+        };
+        expect(switchConversation(corrupted, 'conv_B')!.patch.aiChatModel).toBe('sonnet');
+    });
+});
+
 describe('deleteConversation', () => {
     const archived = { id: 'conv_B', title: 'B', createdAt: '', updatedAt: '', messages: [msg('b1', 'user', 'QB')] };
 

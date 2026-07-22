@@ -9,6 +9,7 @@ import { saveLockedProjection, clearLockedProjection } from '../services/lockedP
 import { loadLegacyHealthWeights } from '../utils/healthWeights';
 import { sanitizePersonaArtifacts } from '../services/personaSanitizer';
 import { clearAttachmentCache } from '../services/aiChat/attachments';
+import { DEFAULT_AI_CHAT_MODEL } from '../services/aiChat/models';
 
 // Phase B2 — Deep-link cross-tab: un onglet pose un "intent" de focus, la page
 // destination le consomme au mount (scroll, highlight, focus, etc.).
@@ -177,6 +178,9 @@ const DEFAULT_APP_STATE: AppState = {
     // [B2-CHAT-HISTORY] Multi-conversations (additif, persisté via partialize allow-all — sync Drive).
     aiConversations: [],
     activeAiConversationId: null,
+    // [B3+B4] Modèle par conversation + coût API cumulé à vie (additifs, persistés/synchronisés).
+    aiChatModel: DEFAULT_AI_CHAT_MODEL,
+    aiChatCostUsdTotal: 0,
     // W5.x — Nouveaux containers (vide par défaut)
     insurancePolicies: [],
     rentalProperties: [],
@@ -316,6 +320,8 @@ export const getInitialStateWithMigration = (): AppState => {
             aiConversation: [],
             aiConversations: [],
             activeAiConversationId: null,
+            aiChatModel: DEFAULT_AI_CHAT_MODEL,
+            aiChatCostUsdTotal: 0,
             // FIX agents (HIGH code-reviewer): defaults manquants dans le retour de migration
             insurancePolicies: (() => { try { const r = localStorage.getItem('app_insurance_policies'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
             rentalProperties: (() => { try { const r = localStorage.getItem('app_rental_properties'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
@@ -591,10 +597,17 @@ export const useFinanceStore = create<FinanceState>()(
                 const singularResets: Partial<FinanceState> = {};
                 if (report.bySlice.childGoal) singularResets.childGoal = structuredClone(INITIAL_CHILD_GOAL);
                 if (report.bySlice.weddingGoal) singularResets.weddingGoal = undefined;
+                // [B4-CHAT-COST, finding panel #489 prouvé par sonde] Le coût API dépensé PENDANT la
+                // démo persona est RÉEL (vraie clé, vrais appels) : personaResetBase l'a remis à 0 à
+                // l'entrée → la valeur courante = dépense de la démo. La restauration verbatim du
+                // snapshot la jetait en silence → on l'ADDITIONNE au cumul réel restauré.
+                const demoSpendUsd = Number.isFinite(prev.aiChatCostUsdTotal) ? (prev.aiChatCostUsdTotal ?? 0) : 0;
+                const snapTotal = Number.isFinite(cleanSnap.aiChatCostUsdTotal) ? (cleanSnap.aiChatCostUsdTotal ?? 0) : 0;
                 return {
                     ...prev,
                     ...cleanSnap,
                     ...singularResets,
+                    aiChatCostUsdTotal: snapTotal + demoSpendUsd,
                     isTestMode: false,
                     realDataSnapshot: null,
                     activeTestPersonaId: null,

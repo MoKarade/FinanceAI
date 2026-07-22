@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-22 (suite 5) — B3+B4 : choix du modèle par conversation + coût réel (PR #489)
+> **✅ `[B3-CHAT-MODEL]` + `[B4-CHAT-COST]`** (fin de la roadmap chat B de Marc) : sélecteur Haiku/Sonnet/Opus
+> dans le header du chat, PAR conversation (`AppState.aiChatModel` additif pour l'active, porté dans
+> `AiConversation.model` à l'archivage, restauré à la bascule ; pré-B3 → sonnet). Source unique des ids :
+> `services/aiChat/models.ts` (`MODEL_IDS` — `services/claude.ts` en dérive ses constantes). Coût RÉEL :
+> `agentLoop` accumule `msg.usage` par tour (présent sur TOUS les stopReasons — l'annulation compte ses
+> tours payés) → `services/aiChat/pricing.ts` (tarifs $/MTok datés/sourcés : haiku 1/5, sonnet 3/15, opus
+> 5/25 ; cache read 0,1×/write 1,25×) → `costUsd` par réponse (persisté) + cumul à vie `aiChatCostUsdTotal`.
+> Affichage CAD via `fxRates.USD` (`formatCostCad` — « < 0,01 $ », jamais un faux 0,00 $) : bulle, header
+> (conv + total), sidebar (coût + modèle par archive). Modèle sans tarif → null honnête + logError (garde de
+> parité ids↔tarifs par test). Défauts store/MCP/backup en parité. **Roadmap chat B TERMINÉE (B1→B4).**
+>
 > ## 🟢 Session 2026-07-22 (suite 4) — B2 : onglet + historique multi-conversations + pièces jointes cross-device
 > **✅ `[B2-CHAT-HISTORY]` implémenté** : `aiConversations`/`activeAiConversationId` (additifs — `aiConversation`
 > RESTE l'active, source unique, jamais dupliquée dans la liste), logique pure `services/aiChat/conversations.ts`,
@@ -953,11 +965,11 @@
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
 | **Dernière PR mergée** | **#430** [DETTE-RE-SALE] (vente immo ciblée par `propertyId`, 2026-07-07) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
-| **Tests** | **2352/2352 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
+| **Tests** | **2872/2872 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
 | **Schema store** | **v7** (Zustand persist, migrations v1→v7) |
-| **Stack IA** | `@anthropic-ai/sdk` (Sonnet 4.6 + Haiku 4.5) — Gemini retiré |
+| **Stack IA** | `@anthropic-ai/sdk` (Haiku 4.5 + Sonnet 4.6 + Opus 4.8) — choix modèle par conversation, coût réel CAD ; Gemini retiré |
 | **Banque** | CSV **+ import relevé PDF** (Claude Vision, #285) → pipeline `parseBankCsv` ; CSV 100 % local |
 | **Crypto** | CoinGecko (gratuit, sans clé) |
 | **Stock/ETF** | Finnhub REST (gratuit) |

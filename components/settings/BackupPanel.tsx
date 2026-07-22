@@ -48,6 +48,9 @@ const BackupSchema = z.object({
   // un export qui porte ces champs ne doit pas être rejeté à la validation).
   aiConversations: z.array(z.unknown()).optional(),
   activeAiConversationId: z.string().nullable().optional(),
+  // [B3+B4] même symétrie : modèle du chat + coût cumulé (finite : jamais d'Infinity dans un $).
+  aiChatModel: z.string().optional(),
+  aiChatCostUsdTotal: z.number().finite().optional(),
   // S-E : pas de .passthrough() — les clés inconnues sont écartées (strip) au lieu
   // d'être propagées. doRestore ne lit que des clés connues → aucun impact
   // fonctionnel ; on évite de conserver du contenu non validé en mémoire.

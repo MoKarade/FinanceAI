@@ -13,13 +13,16 @@
 //    surfaces UI désactivent les actions quand isLoading ; les helpers restent purs (l'appelant
 //    applique le patch via setAppState).
 
-import type { AiConversation, AiMessage, AppState } from '../../types';
+import type { AiChatModelKey, AiConversation, AiMessage, AppState } from '../../types';
+import { DEFAULT_AI_CHAT_MODEL, resolveChatModelKey } from './models';
 
 /** Patch d'état à appliquer via setAppState (les 3 tranches concernées, toujours ensemble). */
 export interface ConversationsPatch {
     aiConversation: AiMessage[];
     aiConversations: AiConversation[];
     activeAiConversationId: string | null;
+    /** [B3-CHAT-MODEL] Modèle de la conversation ACTIVE après la transition (porté par archive/bascule). */
+    aiChatModel: AiChatModelKey;
 }
 
 /**
@@ -29,7 +32,7 @@ export interface ConversationsPatch {
  */
 export const MAX_ARCHIVED_CONVERSATIONS = 30;
 
-type ConversationsState = Pick<AppState, 'aiConversation' | 'aiConversations' | 'activeAiConversationId'>;
+type ConversationsState = Pick<AppState, 'aiConversation' | 'aiConversations' | 'activeAiConversationId' | 'aiChatModel'>;
 
 let _convSeq = 0;
 export const nextConversationId = (): string => `aiconv_${Date.now()}_${++_convSeq}`;
@@ -75,13 +78,19 @@ function archiveActive(state: ConversationsState): { list: AiConversation[]; dro
     const updatedAt = messages[messages.length - 1]?.timestamp || createdAt;
     // Remplace une éventuelle entrée du même id (ré-archivage après bascule aller-retour).
     const without = list.filter((c) => c.id !== id);
-    without.unshift({ id, title: conversationTitle(messages), createdAt, updatedAt, messages });
+    // [B3-CHAT-MODEL] Le modèle de l'active part avec elle dans l'archive (choix PAR conversation).
+    without.unshift({
+        id, title: conversationTitle(messages), createdAt, updatedAt, messages,
+        model: resolveChatModelKey(state.aiChatModel),
+    });
     const { kept, droppedMessageIds } = cap(without);
     return { list: kept, droppedMessageIds };
 }
 
 /** Nouvelle conversation : archive l'active (si non vide) et repart à vide. */
 export function startNewConversation(state: ConversationsState): ConversationsTransition {
+    // [B3-CHAT-MODEL] Une NOUVELLE conversation garde le dernier modèle choisi (préférence collante).
+    const keepModel = resolveChatModelKey(state.aiChatModel);
     if ((state.aiConversation ?? []).length === 0) {
         // Déjà vide : no-op logique (on renouvelle juste l'id actif pour une identité fraîche).
         return {
@@ -89,13 +98,14 @@ export function startNewConversation(state: ConversationsState): ConversationsTr
                 aiConversation: [],
                 aiConversations: state.aiConversations ?? [],
                 activeAiConversationId: nextConversationId(),
+                aiChatModel: keepModel,
             },
             droppedMessageIds: [],
         };
     }
     const { list, droppedMessageIds } = archiveActive(state);
     return {
-        patch: { aiConversation: [], aiConversations: list, activeAiConversationId: nextConversationId() },
+        patch: { aiConversation: [], aiConversations: list, activeAiConversationId: nextConversationId(), aiChatModel: keepModel },
         droppedMessageIds,
     };
 }
@@ -110,6 +120,9 @@ export function switchConversation(state: ConversationsState, id: string): Conve
             aiConversation: target.messages,
             aiConversations: list.filter((c) => c.id !== id),
             activeAiConversationId: target.id,
+            // [B3-CHAT-MODEL] Restaure le modèle DE la conversation chargée. Une archive pré-B3
+            // n'en a pas → défaut historique ('sonnet' — le seul modèle qui existait alors).
+            aiChatModel: target.model !== undefined ? resolveChatModelKey(target.model) : DEFAULT_AI_CHAT_MODEL,
         },
         droppedMessageIds,
     };
@@ -131,6 +144,7 @@ export function deleteConversation(
                 aiConversation: [],
                 aiConversations: state.aiConversations ?? [],
                 activeAiConversationId: nextConversationId(),
+                aiChatModel: resolveChatModelKey(state.aiChatModel),
             },
             removedMessageIds: removed,
         };
@@ -142,6 +156,7 @@ export function deleteConversation(
             aiConversation: state.aiConversation ?? [],
             aiConversations: (state.aiConversations ?? []).filter((c) => c.id !== id),
             activeAiConversationId: state.activeAiConversationId ?? null,
+            aiChatModel: resolveChatModelKey(state.aiChatModel),
         },
         removedMessageIds: target.messages.map((m) => m.id).filter((x): x is string => Boolean(x)),
     };

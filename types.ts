@@ -709,7 +709,14 @@ export interface AiMessage {
    *  le cache mémoire de session (services/aiChat/attachments), B2 le déplacera en fichiers Drive
    *  appdata séparés. */
   attachments?: Array<{ name: string; kind: 'image' | 'pdf' | 'text'; mimeType: string; size: number }>;
+  /** [B4-CHAT-COST] Coût API RÉEL de CETTE réponse en USD (tokens usage × tarif du modèle,
+   *  services/aiChat/pricing). Messages modèle seulement ; ADDITIF optionnel (zéro migration).
+   *  Jamais fabriqué : absent si l'usage n'a pas pu être mesuré (no-fake-data). */
+  costUsd?: number;
 }
+
+/** [B3-CHAT-MODEL] Clés des modèles offerts dans le chat (mapping id complet : services/aiChat/models). */
+export type AiChatModelKey = 'haiku' | 'sonnet' | 'opus';
 
 export interface AppState {
   transactions: Transaction[];
@@ -761,6 +768,13 @@ export interface AppState {
   aiConversations?: AiConversation[];
   /** Id de la conversation ACTIVE (celle d'`aiConversation`) — null tant qu'aucune n'a été archivée. */
   activeAiConversationId?: string | null;
+  /** [B3-CHAT-MODEL] Modèle Claude de la conversation ACTIVE (choix par conversation — porté dans
+   *  `AiConversation.model` à l'archivage/bascule). ADDITIF optionnel (absent = 'sonnet', le
+   *  comportement historique). */
+  aiChatModel?: AiChatModelKey;
+  /** [B4-CHAT-COST] Coût API CUMULÉ À VIE du chat en USD (survit à la suppression des conversations —
+   *  affiché en CAD via fxRates.USD au rendu). ADDITIF optionnel (absent = 0). */
+  aiChatCostUsdTotal?: number;
   // W5.x — Nouveaux containers
   insurancePolicies?: InsurancePolicy[];
   rentalProperties?: RentalProperty[];
@@ -781,6 +795,9 @@ export interface AiConversation {
   createdAt: string;
   updatedAt: string;
   messages: AiMessage[];
+  /** [B3-CHAT-MODEL] Modèle de CETTE conversation (restauré à la bascule). ADDITIF optionnel :
+   *  une archive pré-B3 n'en a pas → 'sonnet' (le seul modèle qui existait alors). */
+  model?: AiChatModelKey;
 }
 
 export interface RecurringItem {

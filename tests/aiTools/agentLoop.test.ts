@@ -368,4 +368,42 @@ describe('runAgentLoop', () => {
         expect(res.stopReason).toBe('max_turns');
         expect(res.messages.at(-1)!.role).toBe('assistant'); // ancien code : finissait sur user/tool_result
     });
+
+    it('[B4-CHAT-COST] usage ACCUMULÉ sur tous les tours (input/output/cache), champs cache absents = 0', async () => {
+        const withUsage = (m: Anthropic.Message, u: Record<string, number>): Anthropic.Message =>
+            ({ ...m, usage: u } as unknown as Anthropic.Message);
+        const { client } = scriptedClient([
+            withUsage(toolMsg('get_financial_overview', {}), { input_tokens: 1000, output_tokens: 50 }),
+            withUsage(textMsg('Voilà.'), { input_tokens: 200, output_tokens: 30, cache_read_input_tokens: 800, cache_creation_input_tokens: 100 }),
+        ]);
+        const res = await runAgentLoop([{ role: 'user', content: 'q' }], { apiKey: 'sk-test', getState, client });
+        expect(res.usage).toEqual({ inputTokens: 1200, outputTokens: 80, cacheReadTokens: 800, cacheWriteTokens: 100 });
+    });
+
+    it('[B4-CHAT-COST] les tours DÉJÀ payés restent comptés même quand la boucle finit en ÉCHEC/annulation', async () => {
+        // Tour 1 abouti (payé), tour 2 : l'appel API rejette → stopReason error, usage du tour 1 conservé.
+        const usageMsg = { ...toolMsg('get_financial_overview', {}), usage: { input_tokens: 500, output_tokens: 40 } } as unknown as Anthropic.Message;
+        let call = 0;
+        const client: AgentClientLike = {
+            messages: {
+                stream: () => ({
+                    on: () => undefined,
+                    finalMessage: async () => {
+                        call += 1;
+                        if (call === 1) return usageMsg;
+                        throw new Error('503 service unavailable');
+                    },
+                }),
+            },
+        };
+        const res = await runAgentLoop([{ role: 'user', content: 'q' }], { apiKey: 'sk-test', getState, client });
+        expect(res.stopReason).toBe('error');
+        expect(res.usage).toEqual({ inputTokens: 500, outputTokens: 40, cacheReadTokens: 0, cacheWriteTokens: 0 });
+    });
+
+    it('[B4-CHAT-COST] message SANS champ usage (mock/SDK inattendu) → zéros, jamais NaN', async () => {
+        const { client } = scriptedClient([textMsg('OK.')]);
+        const res = await runAgentLoop([{ role: 'user', content: 'q' }], { apiKey: 'sk-test', getState, client });
+        expect(res.usage).toEqual({ inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 });
+    });
 });

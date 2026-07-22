@@ -115,3 +115,15 @@ export function formatCompactCAD(n: unknown): string {
     }
     return formatCAD(n);
 }
+
+/**
+ * [B4-CHAT-COST] Coût API en CAD depuis un coût USD + le taux fxRates.USD de l'app.
+ * Micro-montants : un coût réel > 0 qui arrondirait à « 0,00 $ » rend « < 0,01 $ » (jamais un
+ * zéro qui laisse croire à de la gratuité). Entrées non finies → « — » (no-fake-data).
+ */
+export function formatCostCad(usd: unknown, fxUsdToCad: unknown): string {
+    if (!isFiniteNumber(usd) || !isFiniteNumber(fxUsdToCad) || fxUsdToCad <= 0) return '—';
+    const cad = usd * fxUsdToCad;
+    if (cad > 0 && cad < 0.005) return '< 0,01 $';
+    return formatCAD(cad, { decimals: 2 });
+}

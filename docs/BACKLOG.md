@@ -108,8 +108,18 @@
   ne scanne pas `aiConversation`/`aiConversations` (aucun persona n'y écrit AUJOURD'HUI — pas de fuite
   active). Si un futur persona pré-remplit un chat de démo, la ceinture PERSONA-PURGE ne l'attraperait
   pas. Étendre le scan (ids `aimsg_` de fixtures enregistrés dans artifactIds) + test de parité.
-- [ ] **`[B3-CHAT-MODEL]`** (S) — choix du modèle par conversation (Haiku / Sonnet / Opus).
-- [ ] **`[B4-CHAT-COST]`** (M) — coût réel (tokens usage × tarif → CAD), total cumulé + par conversation.
+- [x] **`[B3-CHAT-MODEL]`** ✅ (2026-07-22, PR #489) — choix du modèle PAR conversation (Haiku / Sonnet /
+  Opus) : sélecteur dans le header du chat (gelé pendant un envoi), `AppState.aiChatModel` (additif) pour
+  l'active, porté dans `AiConversation.model` à l'archivage et RESTAURÉ à la bascule (archive pré-B3 →
+  sonnet, le seul modèle d'alors). Source unique des ids : `services/aiChat/models.ts` (`MODEL_IDS` —
+  `services/claude.ts` en dérive MODEL_SONNET/MODEL_HAIKU, plus deux littéraux qui divergent).
+- [x] **`[B4-CHAT-COST]`** ✅ (2026-07-22, PR #489) — coût API RÉEL : `agentLoop` accumule `msg.usage`
+  par tour (rendu sur TOUS les stopReasons — un envoi annulé a payé ses tours aboutis) →
+  `services/aiChat/pricing.ts` (tarifs $/MTok datés/sourcés 2026-06 : haiku 1/5, sonnet 3/15, opus 5/25 ;
+  cache read 0,1×, write 1,25×) → `costUsd` sur chaque réponse (persisté, léger) + cumul à vie
+  `aiChatCostUsdTotal`. Affichage CAD via `fxRates.USD` (`formatCostCad`, « < 0,01 $ » jamais un faux
+  0,00 $) : par réponse (bulle), par conversation (header + sidebar), total à vie (header). Parité
+  ids↔tarifs verrouillée par test (un modèle sans tarif = garde rouge, jamais un coût non compté muet).
 
 ## 🔐 Drive — « je veux plus devoir me reconnecter tout le temps » (rappel Marc 2026-07-22)
 - [ ] **`[AUTH-DRIVE-STILL-RECONNECT]`** 🔴 (suivi actif, demande Marc réitérée APRÈS le merge de #483) —

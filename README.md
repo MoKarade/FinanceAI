@@ -26,7 +26,7 @@ npm run preview
 ## Lancer les tests
 
 ```bash
-npm run test          # Vitest (2334 tests, 207 fichiers)
+npm run test          # Vitest (2872 tests, 251 fichiers)
 npm run typecheck     # TypeScript strict mode (clean)
 npm run build         # Vite 8 (--mode production)
 ```
@@ -98,11 +98,11 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 
 - **Frontend** : React 19.2 + Vite 8 (Rolldown) + TypeScript 5.8 strict + Tailwind CSS 3
 - **State** : Zustand 5 (avec `persist` + `partialize`, schema v7 + migrations v1→v7)
-- **Tests** : Vitest 4 + @testing-library/react + axe-core (2334 tests, 207 fichiers)
+- **Tests** : Vitest 4 + @testing-library/react + axe-core (2872 tests, 251 fichiers)
 - **Validation** : Zod 3
 - **Charts** : Recharts 3 (lazy-loaded)
 - **Backend** : aucun — 100 % navigateur, déploiement statique **Vercel** (`vercel.json`)
-- **LLM** : Anthropic Claude (Sonnet 4.6 + Haiku 4.5 via `@anthropic-ai/sdk`)
+- **LLM** : Anthropic Claude (Haiku 4.5 + Sonnet 4.6 + Opus 4.8 via `@anthropic-ai/sdk` — choix du modèle par conversation, coût réel CAD)
 - **Vision** : Claude Vision pour OCR relevés/paies PDF
 - **Data marché** : Finnhub REST API (cours actions + ETF, cache 1h) ; CoinGecko (crypto)
 - **Sync** : Google Drive (chiffrement optionnel par passphrase, AES-256-GCM)
@@ -155,7 +155,10 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 - Zéro transmission de PII — toutes les données restent dans le navigateur
 
 ### Assistant IA
-- Chat persisté Claude (Sonnet 4.6) avec contexte financier complet
+- Chat persisté Claude avec contexte financier complet (tools de lecture/écriture partagés avec le MCP)
+- Modèle au choix PAR conversation : Haiku / Sonnet (défaut) / Opus — le choix suit la conversation
+- Coût API réel affiché en CAD (par réponse, par conversation, total cumulé) — tokens facturés × tarif
+- Onglet dédié avec historique multi-conversations (sync Drive) + pièces jointes (images, PDF, CSV)
 - Haiku 4.5 pour les tâches rapides (catégorisation, suggestions)
 - Réponses streamées avec bouton annulation
 - Privacy : aucune PII envoyée

@@ -16,12 +16,15 @@ import { Transaction, RecurringItem } from '../types';
 import { logError } from './errorLogger';
 import { sanitizePromptText, wrapUserData, VISION_INJECTION_GUARD } from '../utils/promptSafety';
 import { isInternalTransferLabel } from '../utils/transactionParser';
+import { MODEL_IDS } from './aiChat/models';
 
 // ─── Modèles ─────────────────────────────────────────────────────────────────
 
+// [B3-CHAT-MODEL] Les ids vivent dans services/aiChat/models.ts (source unique, module léger que
+// l'UI peut importer sans tirer le SDK) — plus jamais deux littéraux d'id qui divergent.
 // [AITOOLS-B] Export ADDITIF : services/aiTools/agentLoop.ts (Sonnet = chat interactif, choix Marc).
-export const MODEL_SONNET = 'claude-sonnet-4-6';
-const MODEL_HAIKU = 'claude-haiku-4-5-20251001';
+export const MODEL_SONNET = MODEL_IDS.sonnet;
+const MODEL_HAIKU = MODEL_IDS.haiku;
 
 // ─── Privacy hardening ───────────────────────────────────────────────────────
 // La neutralisation des libellés utilisateur est centralisée dans

@@ -6,6 +6,37 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Chat : choix du modèle par conversation + coût réel (B3+B4)] — 2026-07-22
+
+### Nouveau (demande Marc « choisir quel ia, prix total prix de la conv etc »)
+- **Choix du modèle PAR conversation** : sélecteur Haiku / Sonnet / Opus dans le header du chat.
+  Le choix suit la conversation : archivée avec elle, restauré quand tu la rouvres ; une nouvelle
+  conversation garde ton dernier choix. Gelé pendant qu'une réponse est en cours (le modèle d'un
+  message est celui au moment de l'envoi). Les anciennes conversations comptent comme Sonnet
+  (le seul modèle qui existait avant).
+- **Coût API réel, en CAD** : chaque réponse affiche son coût exact (tokens réellement facturés ×
+  tarif public Anthropic du modèle, cache compris), converti en CAD avec le taux de l'app. Le header
+  montre le coût de la conversation en cours + le total cumulé à vie ; la sidebar montre le coût et
+  le modèle de chaque conversation archivée. Un envoi annulé ou en échec compte ses tours déjà payés
+  (jamais de coût maquillé). Micro-coûts : « < 0,01 $ » plutôt qu'un faux « 0,00 $ ».
+- Garde-fous : un modèle sans tarif connu ne fabrique JAMAIS un coût (absence honnête + trace) ;
+  tarifs datés/sourcés dans `services/aiChat/pricing.ts` ; parité modèles↔tarifs verrouillée par test.
+
+### Correctifs du panel B3+B4 (6 agents, sondes — 2 élevés + moyens appliqués)
+- **Coût dépensé en mode démo plus jamais perdu** (prouvé par sonde) : le chat en démo fait de VRAIS
+  appels facturés — la sortie du mode test ADDITIONNE désormais cette dépense au cumul réel (avant :
+  jetée en silence par la restauration du snapshot).
+- **Ratio de coût du sélecteur DÉRIVÉ du tarif réel** : le libellé « 5× le coût de Sonnet » était
+  faux (5/3 ≈ 1,7×) — il est maintenant calculé depuis la table (drift impossible).
+- **Mode discret** : la ligne de coût du header est masquée comme tout montant (« masquer = ne pas
+  rendre », sans exception).
+- **a11y** : id du sélecteur unique par instance (panneau + onglet montés ensemble = id dupliqué,
+  le label pouvait cibler le mauvais select) ; étiquette « Coût : » lisible au lecteur d'écran sur
+  le coût par bulle.
+- Robustesse : lecture TYPÉE de `msg.usage` (un renommage de champ SDK casserait le typecheck au
+  lieu de sous-compter à 0 en silence) ; trace quand une réponse en vol perd sa bulle (pull Drive
+  concurrent) ; ceinture `resolveChatModelKey` sur l'affichage sidebar ; micro-perf (memo).
+
 ## [unreleased — Chat : historique multi-conversations + pièces jointes cross-device (B2)] — 2026-07-22
 
 ### Nouveau (demande Marc « un onglet dédié avec historique »)

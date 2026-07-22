@@ -78,6 +78,25 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Résilience chunk périmé** (ai-reviewer) : les imports dynamiques du chat passent par `importWithRetry`
   (retry + reload gardé), comme le reste de l'app — un déploiement pendant une session ne boucle plus en 404.
 
+## [unreleased — HUB-REFRESH-CRON : refresh serveur autonome des prix] — 2026-07-22
+
+### Ajouts (serveur)
+- **Refresh planifié des prix (`HUB-REFRESH-CRON`)** : le serveur MCP (Cloud Run) rafraîchit
+  désormais les cours de marché SANS que l'app navigateur soit ouverte. Nouvelle route
+  `POST /refresh` (activée si `FINANCEAI_REFRESH_SECRET` ≥16 car., sinon 404 comme `/hub/summary`),
+  authentifiée par `Authorization: Bearer` en temps constant. Elle lit le blob Drive, rafraîchit
+  les `currentPrice` via le moteur PARTAGÉ (`services/priceRefresh` — devise protégée, changement
+  réel uniquement, provider-aware) et réécrit avec la garde OCC. **Ne touche QUE les cours**
+  (dettes/budgets/relevés intacts) ; un symbole sans provider est SKIPPÉ (no-fake-data). Erreurs
+  HONNÊTES : conflit de concurrence → `200 { ok:false, conflict:true }` transitoire (réessai au tick),
+  mais une panne RÉELLE (Drive KO, jeton révoqué, coffre chiffré) → `5xx` pour que le cron rougisse
+  au lieu de rester vert sur des prix figés (`StateConflictError` typée). Déclencheur : GitHub Actions
+  planifié gratuit (`.github/workflows/refresh-prices.yml`, toutes les 6 h + manuel) — Cloud Run
+  dort (scale-to-zero), un cron externe le réveille. `deploy.sh` monte `financeai-refresh-secret` et
+  la `financeai-finnhub-key` (optionnelle, cours actions) depuis Secret Manager s'ils existent.
+  Tests : `tests/mcp/refreshPrices.test.ts` (OCC, no-write-si-inchangé, skip honnête, source non
+  inscriptible). ADR : `docs/decisions.md` § `HUB-REFRESH-CRON`.
+
 ## [unreleased — chantier Claude-in-app, Lot D : écritures avec confirmation] — 2026-07-21
 
 ### Améliorations (Assistant)

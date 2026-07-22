@@ -30,6 +30,9 @@ import { createServer as createMcpServer } from './server';
 import { MCP_SERVER_VERSION, resolveState, type ResolvedState } from './bootstrap';
 import { makeOAuthProvider, OAuthError, type OAuthProvider } from './auth/oauthProvider';
 import { buildHubSummary, errorHubSummary } from './hubSummary';
+import { runPriceRefresh } from './refreshPrices';
+import { isStateConflictError } from './state/stateErrors';
+import { configureMarketDataProvider } from '../services/marketData';
 
 /** Cap du corps de requête : largement suffisant pour du JSON-RPC MCP, borne l'OOM (mesuré : RSS ~7× la taille du corps). */
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -60,6 +63,12 @@ export interface HttpServerOptions {
     /** [HUB-01] jeton du hub perso : si présent, GET /hub/summary est exposé
      *  (header x-hub-token, 401 sinon, Cache-Control: no-store). Absent = route désactivée. */
     hubToken?: string;
+    /** [HUB-REFRESH-CRON] secret du déclencheur planifié : si présent, POST /refresh est exposé
+     *  (header Authorization: Bearer, 401 sinon). Absent = route désactivée. */
+    refreshSecret?: string;
+    /** [HUB-REFRESH-CRON] clé Finnhub (env) : configure le provider marché avant /refresh, pour
+     *  rafraîchir aussi les ACTIONS (la crypto CoinGecko marche sans clé). Absente = actions skippées. */
+    finnhubKey?: string;
 }
 
 export interface RunningHttpServer {
@@ -348,7 +357,48 @@ ${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_metho
         return false;
     };
 
-    const knownEndpoints = ['/mcp', '/health', ...(options.hubToken ? ['/hub/summary'] : [])];
+    const knownEndpoints = [
+        '/mcp',
+        '/health',
+        ...(options.hubToken ? ['/hub/summary'] : []),
+        ...(options.refreshSecret ? ['/refresh'] : []),
+    ];
+
+    // [HUB-REFRESH-CRON] POST /refresh — rafraîchit les prix de marché dans le blob Drive, sans
+    // ouvrir l'app. Déclenché par un job planifié EXTERNE (GitHub Actions), authentifié par un
+    // secret dédié (Authorization: Bearer). Réponses : 200 { ok:true, saved, refreshed[], skipped[] }
+    // au succès ; 200 { ok:false, conflict:true } si l'app a poussé entre-temps (transitoire, le
+    // prochain tick réessaie) ; 5xx sur panne RÉELLE (Drive KO, jeton révoqué, coffre chiffré) pour
+    // que le cron rougisse au lieu de rester vert sur des prix figés. Ne modifie QUE les cours.
+    const handleRefresh = (req: IncomingMessage, res: ServerResponse, refreshSecret: string, finnhubKey?: string): void => {
+        if (req.method !== 'POST') {
+            sendJson(res, 405, { error: 'POST uniquement.' }, HUB_NO_STORE);
+            return;
+        }
+        const header = req.headers.authorization;
+        const provided = typeof header === 'string' && header.startsWith('Bearer ') ? header.slice(7) : '';
+        if (!provided || !hubTokensMatch(provided, refreshSecret)) {
+            sendJson(res, 401, { error: 'Authorization: Bearer absent ou invalide.' }, HUB_NO_STORE);
+            return;
+        }
+        if (finnhubKey) configureMarketDataProvider({ finnhubKey });
+        runPriceRefresh(state.store)
+            .then((outcome) => sendJson(res, 200, { ok: true, ...outcome }, HUB_NO_STORE))
+            .catch((err: unknown) => {
+                const reason = err instanceof Error ? err.message : String(err);
+                // Conflit OCC (l'app a poussé entre-temps) = TRANSITOIRE, rien d'écrasé → 200 { ok:false,
+                // conflict:true } : le prochain tick réessaie, le cron ne doit pas rougir. Toute AUTRE
+                // erreur (source non inscriptible, jeton Drive révoqué, coffre chiffré, Drive KO) est une
+                // panne RÉELLE → 5xx, pour que le job planifié rougisse et alerte au lieu de rester vert
+                // à jamais sur des prix qui ne se rafraîchissent plus (silence = pire que l'erreur).
+                if (isStateConflictError(err)) {
+                    sendJson(res, 200, { ok: false, conflict: true, error: reason }, HUB_NO_STORE);
+                    return;
+                }
+                console.error('[FinanceAI MCP http] /refresh : échec —', reason);
+                sendJson(res, 503, { ok: false, error: reason }, HUB_NO_STORE);
+            });
+    };
 
     // [HUB-01] GET /hub/summary — résumé conforme au contrat hub, données réelles.
     // Un échec de lecture d'état renvoie un summary status "error" (HTTP 200) : le
@@ -380,6 +430,10 @@ ${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_metho
         }
         if (url === '/hub/summary' && options.hubToken) {
             handleHubSummary(req, res, options.hubToken);
+            return;
+        }
+        if (url === '/refresh' && options.refreshSecret) {
+            handleRefresh(req, res, options.refreshSecret, options.finnhubKey);
             return;
         }
         if (options.auth && (url.startsWith('/oauth/') || url.startsWith('/.well-known/'))) {
@@ -510,6 +564,17 @@ if (isDirectRun) {
             process.exit(1);
         }
 
+        // [HUB-REFRESH-CRON] secret du déclencheur planifié (POST /refresh) : optionnel (route
+        // désactivée sans lui), mais jamais faible — il autorise une ÉCRITURE Drive, autant refuser
+        // de démarrer plutôt que d'exposer un secret brute-forçable.
+        const refreshSecret = process.env.FINANCEAI_REFRESH_SECRET;
+        if (refreshSecret !== undefined && refreshSecret.length < 16) {
+            console.error('[FinanceAI MCP http] REFUS de démarrer : FINANCEAI_REFRESH_SECRET trop court (< 16 caractères).');
+            process.exit(1);
+        }
+        // Clé Finnhub (env/Secret Manager) : sans elle, /refresh ne rafraîchit que la crypto.
+        const finnhubKey = process.env.FINANCEAI_FINNHUB_KEY;
+
         if (!isLoopback && !auth && process.env.MCP_HTTP_ALLOW_EXPOSED !== '1') {
             console.error(
                 `[FinanceAI MCP http] REFUS de démarrer : hôte non-loopback (${host}) SANS authentification — ` +
@@ -521,7 +586,7 @@ if (isDirectRun) {
         }
 
         const state = await resolveState(process.argv[2]);
-        const running = await startHttpServer({ port, host, state, dnsRebindingProtection: isLoopback, auth, hubToken });
+        const running = await startHttpServer({ port, host, state, dnsRebindingProtection: isLoopback, auth, hubToken, refreshSecret, finnhubKey });
 
         console.error(`[FinanceAI MCP http] v${MCP_SERVER_VERSION} — écoute http://${host}:${running.port}/mcp (santé : /health)`);
         console.error(`[FinanceAI MCP http] Source d'état : ${state.describe()}`);
@@ -531,6 +596,9 @@ if (isDirectRun) {
         console.error(hubToken
             ? '[FinanceAI MCP http] Hub : GET /hub/summary ACTIF (header x-hub-token exigé).'
             : '[FinanceAI MCP http] Hub : /hub/summary désactivé (FINANCEAI_HUB_TOKEN absent).');
+        console.error(refreshSecret
+            ? `[FinanceAI MCP http] Refresh planifié : POST /refresh ACTIF (Bearer exigé)${finnhubKey ? '' : ' — SANS clé Finnhub : seule la crypto sera rafraîchie'}.`
+            : '[FinanceAI MCP http] Refresh planifié : /refresh désactivé (FINANCEAI_REFRESH_SECRET absent).');
         if (isLoopback) {
             console.error('[FinanceAI MCP http] Mode LOCAL : loopback seulement, anti-DNS-rebinding actif.');
         } else if (!auth) {

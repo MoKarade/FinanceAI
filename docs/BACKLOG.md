@@ -347,6 +347,15 @@
   (désormais JOURNALISÉ par `assetValueCad`, plus muet) ; le fix propre = backfill de migration (défaut assumé +
   documenté) OU invite UI à préciser la devise. Attendre de VOIR le log apparaître chez un utilisateur réel avant
   de migrer (peut ne concerner personne). Effort S.
+- **`[HUB-REFRESH-CRON]`** ✅ **LIVRÉ 2026-07-22** — refresh AUTONOME des prix côté serveur (Marc : « les données
+  de finance ai sont pas à jour mais j'ai pas envie d'aller dans l'app »). `mcp/refreshPrices.ts` (`runPriceRefresh` :
+  `getWithVersion` → `refreshAssetPrices` en `force:true` via le MÊME moteur que le boot app → `applyPricePatches` →
+  `save(next, version)` OCC ; écrit SEULEMENT si un cours a changé ; ne touche QUE `currentPrice`, jamais les données
+  saisies ; skip honnête si pas de provider) + route `POST /refresh` (`mcp/http.ts`, activée par `FINANCEAI_REFRESH_SECRET`
+  ≥16 car., Bearer temps constant, conflit OCC = `200 {ok:false}` transitoire). Déclencheur GitHub Actions gratuit
+  (`.github/workflows/refresh-prices.yml`, 6 h + manuel — Cloud Run scale-to-zero, cron externe le réveille).
+  `deploy.sh` monte `financeai-refresh-secret` + `financeai-finnhub-key` (optionnelle, actions) s'ils existent.
+  5 tests (`tests/mcp/refreshPrices.test.ts`). ADR `docs/decisions.md`. ⚠️ Marc : secrets Cloud Run + GitHub + redéploiement.
 - **`[PRICE-REFRESH-LIVE]`** ✅ **LIVRÉ 2026-07-14 (PR à venir)** — `services/priceRefresh.ts` : `refreshAssetPrices`
   (getQuote séquentiel espacé 2 500 ms ≈ 24/min, sous CoinGecko free ~30/min — jamais de Promise.all) + patches par
   symbole fusionnés sur l'état FRAIS (`applyPricePatches`, anti-course avec un pull Drive/édition). Gardes : prix natif

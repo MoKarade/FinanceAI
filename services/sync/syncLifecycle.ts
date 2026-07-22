@@ -13,8 +13,32 @@ import {
     getValidAccessToken,
     renewTokenSilently,
     revokeAccess,
+    AuthInteractionRequiredError,
 } from '../googleDrive/gisAuth';
 import { isInactivityExpired, recordActivity, clearActivity } from './inactivityLogout';
+import { logError } from '../errorLogger';
+
+/**
+ * [Finding panel silent-failure] Reprise silencieuse au boot : un échec par « interaction requise »
+ * (pas de session Google) est NOMINAL → silence. Un échec ANORMAL (script GIS injoignable, timeout
+ * réseau) doit laisser une trace (`logError` warning) — sinon un boot pendant une panne réseau renvoie
+ * au login SANS trace, indiscernable d'un « jamais connecté » (classe GATE-SILENT-DRIVE). Retourne le
+ * jeton, ou null si la reprise a échoué (l'appelant renvoie alors au login).
+ */
+async function trySilentReauth(phase: 'gate' | 'boot'): Promise<string | null> {
+    try {
+        return await renewTokenSilently();
+    } catch (e) {
+        if (!(e instanceof AuthInteractionRequiredError)) {
+            logError({
+                source: 'network', severity: 'warning',
+                message: `Reprise silencieuse Drive au ${phase} échouée (anormale : réseau/GIS) — renvoi au login.`,
+                error: e instanceof Error ? e : new Error(String(e)),
+            });
+        }
+        return null;
+    }
+}
 import {
     findSyncFile,
     deleteSyncFile,
@@ -113,12 +137,13 @@ export async function gateSilentResume(): Promise<boolean> {
     try {
         token = await getValidAccessToken(); // cache-only : rejette si pas de jeton valide en cache
     } catch {
-        try {
-            token = await renewTokenSilently(); // réseau, sans popup — reconnexion silencieuse tant que session Google OK
-        } catch {
+        // Cache vide/expiré → ré-auth silencieuse réseau (prompt='', sans popup). Échec anormal tracé.
+        const renewed = await trySilentReauth('gate');
+        if (!renewed) {
             setStatus({ busy: false, connected: false });
             return false;
         }
+        token = renewed;
     }
     recordActivity(); // reprise réussie = activité (réarme le compte à rebours 8h)
     // 2) Le jeton est en main → une erreur APRÈS (identité/lecture Drive, ex. TIMEOUT réseau) est ANORMALE :
@@ -160,12 +185,12 @@ export async function runBootSync(): Promise<void> {
     try {
         token = await getValidAccessToken();
     } catch {
-        try {
-            token = await renewTokenSilently();
-        } catch {
+        const renewed = await trySilentReauth('boot');
+        if (!renewed) {
             setStatus({ connected: false });
             return;
         }
+        token = renewed;
     }
     recordActivity();
     // 2) Le jeton est en main → une erreur APRÈS (lecture/écriture Drive) est, elle, anormale → handleError.

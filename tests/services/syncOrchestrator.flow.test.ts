@@ -34,15 +34,21 @@ const saveApiKeysMock = vi.fn(async (..._args: unknown[]) => undefined);
 const createBackupMock = vi.fn(async (..._args: unknown[]) => null);
 
 // [AUTH-DRIVE-INACTIVITY] Mocks gisAuth contrôlables par test (vi.hoisted → dispo dans la factory).
-const gisMocks = vi.hoisted(() => ({
-    getValidAccessToken: vi.fn(async () => 'tok-silent'),
-    renewTokenSilently: vi.fn(async () => 'tok-renewed'),
-    requestAccessToken: vi.fn(async () => 'tok-interactive'),
-    revokeAccess: vi.fn(() => {}),
-}));
+const gisMocks = vi.hoisted(() => {
+    // Même classe que celle importée par syncLifecycle (via ce mock) → `instanceof` fiable dans le test.
+    class AuthInteractionRequiredError extends Error {}
+    return {
+        AuthInteractionRequiredError,
+        getValidAccessToken: vi.fn(async () => 'tok-silent'),
+        renewTokenSilently: vi.fn(async () => 'tok-renewed'),
+        requestAccessToken: vi.fn(async () => 'tok-interactive'),
+        revokeAccess: vi.fn(() => {}),
+    };
+});
 vi.mock('../../services/googleDrive/gisAuth', () => ({
     isGoogleAuthConfigured: () => true,
     configureGoogleAuth: () => {},
+    AuthInteractionRequiredError: gisMocks.AuthInteractionRequiredError,
     getValidAccessToken: gisMocks.getValidAccessToken,
     renewTokenSilently: gisMocks.renewTokenSilently,
     requestAccessToken: gisMocks.requestAccessToken,
@@ -545,5 +551,30 @@ describe('pullNow — déchiffrement des clés ÉCHOUE (SF-3 : données OK, clé
         expect(gisMocks.getValidAccessToken).not.toHaveBeenCalled(); // court-circuit AVANT toute reprise
         expect(gisMocks.renewTokenSilently).not.toHaveBeenCalled();
         expect(getSyncStatus().connected).toBe(false);
+    });
+
+    it('[Finding panel] ré-auth silencieuse : « pas de session » (interaction requise) = SILENCE, pas de logError', async () => {
+        recordActivity(Date.now());
+        gisMocks.getValidAccessToken.mockRejectedValueOnce(new Error('cache expiré'));
+        gisMocks.renewTokenSilently.mockRejectedValueOnce(new gisMocks.AuthInteractionRequiredError('pas de session'));
+        const logSpy = vi.spyOn(errorLogger, 'logError');
+        const ok = await gateSilentResume();
+        expect(ok).toBe(false);
+        expect(logSpy).not.toHaveBeenCalled(); // cas nominal → aucun bruit
+        logSpy.mockRestore();
+    });
+
+    it('[Finding panel] ré-auth silencieuse : échec ANORMAL (réseau/CDN) → logError warning (trace, pas de silence)', async () => {
+        recordActivity(Date.now());
+        gisMocks.getValidAccessToken.mockRejectedValueOnce(new Error('cache expiré'));
+        gisMocks.renewTokenSilently.mockRejectedValueOnce(new Error('Échec de chargement du script Google Identity Services'));
+        const logSpy = vi.spyOn(errorLogger, 'logError');
+        const ok = await gateSilentResume();
+        expect(ok).toBe(false);
+        expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({
+            source: 'network', severity: 'warning',
+            message: expect.stringMatching(/[Rr]eprise silencieuse Drive.*échouée/),
+        }));
+        logSpy.mockRestore();
     });
 });

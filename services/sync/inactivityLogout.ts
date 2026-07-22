@@ -93,6 +93,11 @@ function onActivity(): void {
     // `visibilitychange` couvre le retour sur l'onglet ; on n'enregistre que quand la page est visible
     // (un onglet en arrière-plan n'est pas de l'« activité »).
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    // [Finding panel silent-failure] ⚠️ Un onglet SPA GELÉ par le navigateur (tab freezing, veille)
+    // > 8h peut ne PAS avoir exécuté son setTimeout : au retour, il faut VÉRIFIER l'expiration AVANT
+    // de réenregistrer l'activité — sinon on écraserait silencieusement une expiration déjà consommée
+    // (la borne 8h ne tiendrait pas pour un onglet jamais rechargé). Si déjà expiré → déconnexion.
+    if (isInactivityExpired()) { _onExpire?.(); return; }
     recordActivity();
     reschedule();
 }

@@ -7,6 +7,21 @@
 // drive.appdata → un vol éventuel ne donne accès qu'au dossier app, et le jeton expire en ~1h.
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
+
+/**
+ * [AUTH-DRIVE-INACTIVITY] Erreur d'auth NOMINALE : une interaction utilisateur est requise (pas de
+ * session Google active, consentement absent, cookies tiers bloqués, refus). Émise par le chemin GIS
+ * `error_callback` / réponse refusée. À DISTINGUER d'une erreur ANORMALE (chargement du script GIS
+ * échoué, timeout réseau) qui, elle, reste une `Error` générique. L'appelant (gateSilentResume/
+ * runBootSync) journalise l'anormale mais garde le silence sur celle-ci (une reprise silencieuse qui
+ * échoue faute de session est le cas normal, pas un incident à tracer).
+ */
+export class AuthInteractionRequiredError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'AuthInteractionRequiredError';
+    }
+}
 export const DRIVE_SCOPES = [
     'https://www.googleapis.com/auth/drive.appdata',
     'https://www.googleapis.com/auth/userinfo.email',
@@ -187,7 +202,8 @@ function ensureTokenClient(): GisTokenClient {
             error_callback: (err) => {
                 const reject = _pendingReject;
                 _pendingReject = null;
-                if (reject) reject(new Error(`Échec de l'autorisation Google${err?.type ? ` (${err.type})` : ''}`));
+                // Interaction requise (pas de session / popup bloqué / cookies tiers) = NOMINAL au boot.
+                if (reject) reject(new AuthInteractionRequiredError(`Échec de l'autorisation Google${err?.type ? ` (${err.type})` : ''}`));
             },
         });
     }
@@ -232,7 +248,8 @@ function acquireTokenViaNetwork(prompt: 'consent' | '', timeoutMs: number): Prom
                 );
                 client.callback = (resp: GisTokenResponse) => {
                     if (resp.error || !resp.access_token) {
-                        settle(() => reject(new Error(`Autorisation Google refusée${resp.error ? `: ${resp.error}` : ''}`)));
+                        // Refus / pas de jeton = interaction requise (nominal en reprise silencieuse).
+                        settle(() => reject(new AuthInteractionRequiredError(`Autorisation Google refusée${resp.error ? `: ${resp.error}` : ''}`)));
                         return;
                     }
                     // Capturé en const : `resp.access_token` est narrowé à `string` ici, mais TS

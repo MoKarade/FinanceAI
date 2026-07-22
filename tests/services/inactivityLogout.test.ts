@@ -80,6 +80,19 @@ describe('inactivityLogout — minuteur (startInactivityWatch)', () => {
         stop();
     });
 
+    it('[Finding panel] onglet GELÉ > 8h (minuteur jamais tiré) → l\'activité au retour DÉCLENCHE la déconnexion (pas de réarmement silencieux)', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(40_000_000));
+        const onExpire = vi.fn();
+        const stop = startInactivityWatch(onExpire); // enregistre l'activité à T0
+        // Simule un onglet gelé par le navigateur : l'HORLOGE avance de 9h mais les timers vitest NE
+        // sont PAS avancés (le setTimeout n'a jamais pu s'exécuter). Puis l'utilisateur revient.
+        vi.setSystemTime(new Date(40_000_000 + 9 * 3600_000));
+        document.dispatchEvent(new Event('keydown'));
+        expect(onExpire).toHaveBeenCalledTimes(1); // vérif d'expiration AVANT de réenregistrer l'activité
+        stop();
+    });
+
     it('stop() détache les écouteurs et annule le minuteur', () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date(30_000_000));

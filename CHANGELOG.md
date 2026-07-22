@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Google Drive : rester connecté + déconnexion auto après inactivité] — 2026-07-22
+
+### Améliorations (sauvegarde Drive)
+- **Plus besoin de te reconnecter à chaque fois** (demande Marc) : au boot, si le jeton en cache a expiré
+  (~1h) mais que tu as été actif il y a moins de 8h, l'app tente une **ré-authentification silencieuse**
+  (sans popup) — tu restes connecté tant que ta session Google est valide. Avant, le boot n'utilisait que
+  le cache → reconnexion au clic dès que le jeton avait expiré.
+- **Déconnexion automatique après ~8h d'inactivité** (sécurité / Loi 25) : un minuteur suit ton activité
+  (clic/clavier/retour d'onglet, horodatage persisté device-local) ; au bout de 8h sans interaction, le
+  jeton Drive est **révoqué** et un message t'invite à te reconnecter. Tes **données locales ne sont jamais
+  touchées** ; la reconnexion se fait en un clic (l'anti-clobber protège toujours contre l'écrasement).
+- Limite assumée : sans refresh token (archi 100% navigateur, ADR-002), « rester connecté » tient tant que
+  ta **session Google** vit ; si Google te déconnecte, il faut un clic.
+
 ## [unreleased — chantier Claude-in-app, AITOOLS-SEC : audit sécurité final] — 2026-07-22
 
 ### Sécurité (audit de clôture du chantier — rapport `docs/AUDIT_SEC_CLAUDE_IN_APP_2026-07-22.md`)

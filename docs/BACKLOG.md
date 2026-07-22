@@ -467,6 +467,18 @@
   ✅ **FAIT (R4-P4, 2026-06-22)** : cap fixe baissé 40/24 → **24/16** (`MAX_LIFE_ICONS`/`MAX_FLOW_ICONS`). Le LOD « zoom = toutes »
   était déjà là (fenêtre zoomée < cap). ⚠️ La formule `(visMax−visMin)/6` du plan était à l'envers (rejetée) → cap fixe plus bas.
   **R4-P1 (boot-restore au mount)** : ✅ déjà en place (`App.tsx:72-96`, PH2-d), vérifié — aucun patch.
+- **`[FUTURE-ICONS-EXHAUSTIVE]`** 🔵 (brief Marc 2026-07-22, plan-first) — **une icône pour LITTÉRALEMENT TOUT**
+  sur la courbe Futur : chaque impôt (règlement/acompte annuel), chaque achat immobilier, **chaque enfant**,
+  **transferts inter-comptes** (retrait d'un compte pour mettre dans un autre — nouvelle icône), FIRE atteint,
+  retraite, tout autre événement. ⚠️ **RÉVISE le périmètre antérieur** de ce Q1 (qui disait « PAS : impôts,
+  RRQ/PSV/CELIAPP ») → Marc veut désormais TOUT visible. Couplé au **LOD par PRIORITÉ** (pas juste un cap fixe
+  R4-P4) : dézoomé = seulement les icônes IMPORTANTES ; en zoomant, de plus en plus d'icônes moins importantes
+  apparaissent (rangs d'importance par type d'événement, révélés progressivement selon le niveau de zoom).
+  Travail probable : (1) le moteur émet-il déjà un `lifeEvent` pour chaque type (impôts annuels, transferts
+  inter-comptes) ? sinon les AJOUTER à `chartData.lifeEvents` (source unique — ne PAS recalculer côté UI, cf R2-FIRE) ;
+  (2) mapper chaque type d'événement à un rang d'importance + une icône ; (3) LOD = filtrer par rang selon le zoom
+  (remplace/complète le cap fixe `MAX_LIFE_ICONS`/`MAX_FLOW_ICONS`). Plan-first (design du barème de priorité + inventaire
+  exhaustif des types d'événements émis par le moteur) avant de coder.
 - **★ VERROUILLAGE + PERSISTANCE de la courbe** (clé de voûte Phase 2) : une fois leviers + courbe choisis, elle
   **reste affichée** en changeant de page ET **après déconnexion/reconnexion**, jusqu'à ce que Marc la change ou
   **compare** des courbes. → persistance (store + IndexedDB), pas un recalcul volatil.

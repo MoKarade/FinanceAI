@@ -33,12 +33,20 @@ const reloadMock = vi.fn();
 const saveApiKeysMock = vi.fn(async (..._args: unknown[]) => undefined);
 const createBackupMock = vi.fn(async (..._args: unknown[]) => null);
 
+// [AUTH-DRIVE-INACTIVITY] Mocks gisAuth contrôlables par test (vi.hoisted → dispo dans la factory).
+const gisMocks = vi.hoisted(() => ({
+    getValidAccessToken: vi.fn(async () => 'tok-silent'),
+    renewTokenSilently: vi.fn(async () => 'tok-renewed'),
+    requestAccessToken: vi.fn(async () => 'tok-interactive'),
+    revokeAccess: vi.fn(() => {}),
+}));
 vi.mock('../../services/googleDrive/gisAuth', () => ({
     isGoogleAuthConfigured: () => true,
     configureGoogleAuth: () => {},
-    getValidAccessToken: vi.fn(async () => 'tok-silent'),
-    requestAccessToken: vi.fn(async () => 'tok-interactive'),
-    revokeAccess: () => {},
+    getValidAccessToken: gisMocks.getValidAccessToken,
+    renewTokenSilently: gisMocks.renewTokenSilently,
+    requestAccessToken: gisMocks.requestAccessToken,
+    revokeAccess: gisMocks.revokeAccess,
 }));
 
 vi.mock('../../services/googleDrive/driveAppData', () => {
@@ -84,6 +92,7 @@ import {
 } from '../../services/sync/syncOrchestrator';
 import { buildEnvelope } from '../../services/sync/syncEngine';
 import { isGateAuthedThisSession } from '../../services/sync/authGate';
+import { recordActivity, clearActivity, INACTIVITY_LIMIT_MS } from '../../services/sync/inactivityLogout';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import * as errorLogger from '../../services/errorLogger';
 
@@ -96,6 +105,12 @@ beforeEach(() => {
     reloadMock.mockClear();
     saveApiKeysMock.mockClear();
     createBackupMock.mockClear();
+    // [AUTH-DRIVE-INACTIVITY] défauts gisAuth + ardoise d'activité propre par test.
+    gisMocks.getValidAccessToken.mockReset().mockResolvedValue('tok-silent');
+    gisMocks.renewTokenSilently.mockReset().mockResolvedValue('tok-renewed');
+    gisMocks.requestAccessToken.mockReset().mockResolvedValue('tok-interactive');
+    gisMocks.revokeAccess.mockReset();
+    clearActivity();
     // Stub window.location.reload (jsdom le marque « Not implemented » sinon).
     Object.defineProperty(window, 'location', {
         configurable: true,
@@ -506,5 +521,29 @@ describe('pullNow — déchiffrement des clés ÉCHOUE (SF-3 : données OK, clé
         } finally {
             logSpy.mockRestore();
         }
+    });
+
+    // ── [AUTH-DRIVE-INACTIVITY] rester connecté (ré-auth silencieuse) + déconnexion 8h ──────────
+
+    it('actif < 8h + cache expiré → gateSilentResume tente la ré-auth SILENCIEUSE réseau et REPREND', async () => {
+        // Activité récente (dans la fenêtre 8h), mais le cache jeton est vide/expiré → au lieu de renvoyer
+        // au login (ancien comportement), on tente `renewTokenSilently` (prompt='', sans popup).
+        recordActivity(Date.now());
+        gisMocks.getValidAccessToken.mockRejectedValueOnce(new Error('cache expiré'));
+        const ok = await gateSilentResume();
+        expect(ok).toBe(true);
+        expect(gisMocks.renewTokenSilently).toHaveBeenCalledTimes(1); // reconnexion silencieuse tentée
+        expect(getSyncStatus().connected).toBe(true);
+    });
+
+    it('inactif ≥ 8h → gateSilentResume NE reprend PAS, révoque le jeton, renvoie au login', async () => {
+        // Dernière activité il y a plus de 8h → borne de session (Loi 25) : pas de reprise silencieuse.
+        recordActivity(Date.now() - INACTIVITY_LIMIT_MS - 1000);
+        const ok = await gateSilentResume();
+        expect(ok).toBe(false);
+        expect(gisMocks.revokeAccess).toHaveBeenCalledTimes(1);      // jeton purgé
+        expect(gisMocks.getValidAccessToken).not.toHaveBeenCalled(); // court-circuit AVANT toute reprise
+        expect(gisMocks.renewTokenSilently).not.toHaveBeenCalled();
+        expect(getSyncStatus().connected).toBe(false);
     });
 });

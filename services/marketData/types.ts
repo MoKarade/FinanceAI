@@ -82,8 +82,10 @@ export interface MarketDataProvider {
     name: string;
     /** Quote courante. Retourne null si symbole inconnu/erreur. */
     getQuote(symbol: string): Promise<Quote | null>;
-    /** Historique sur une période. Retourne [] si aucun point. */
-    getHistory(symbol: string, from: Date, to: Date): Promise<HistoryPoint[]>;
+    /** Historique sur une période. [PORTFOLIO-HISTORY] Contrat : `[]` = RÉPONSE VALIDE sans point
+     *  (cacheable 24h) ; `null` = ERREUR (403/429/réseau) — withCache ne cache pas null → retry
+     *  possible + la façade peut tenter un provider de REPLI (un `[]` d'erreur cachait 24h le trou). */
+    getHistory(symbol: string, from: Date, to: Date): Promise<HistoryPoint[] | null>;
     /** Profil statique. Cache fortement recommandé côté caller. */
     getProfile(symbol: string): Promise<AssetProfile | null>;
     /** Prochains dividendes. Optionnel selon le provider. */

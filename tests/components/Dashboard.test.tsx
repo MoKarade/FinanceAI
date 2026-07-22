@@ -6,9 +6,8 @@ import { logError } from '../../services/errorLogger';
 import { Tab } from '../../types';
 import type { Transaction, RetirementGoal, BudgetConfig, User } from '../../types';
 
-vi.mock('../../services/finance', () => ({
-    fetchPortfolioHistory: vi.fn().mockResolvedValue([]),
-}));
+// [panel 2026-07-22] Mock services/finance retiré : les stubs fetchPortfolioHistory/fetchAssetHistory
+// n'existent plus (PORTFOLIO-HISTORY) — un mock d'exports morts laissait croire au chemin réseau.
 vi.mock('../../services/errorLogger', () => ({
     logError: vi.fn(),
 }));

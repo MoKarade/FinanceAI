@@ -168,7 +168,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
             const to = new Date(date);
             to.setDate(to.getDate() + 3);
             const history = await getHistory(validatedSymbol, from, to);
-            if (history.length > 0) {
+            if (history && history.length > 0) {
                 // Trouve le point le plus proche
                 const targetTime = date.getTime();
                 const closest = history.reduce((best, p) => {

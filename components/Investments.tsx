@@ -21,6 +21,7 @@ import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Skeleton } from './ui/Skeleton';
 import { MarketDataPoint } from '../services/finance';
 import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
+import { historyKeyMatchesSymbol } from '../services/history/buildMarketData';
 import { StockChart } from './StockChart';
 import { ASSET_META } from '../services/assetMeta';
 import { assetValueCad, toCurrencyFactor } from '../services/portfolio';
@@ -211,9 +212,12 @@ export const Investments: React.FC<InvestmentsProps> = ({
             setMarketData(data);
 
             if (data.length > 0) {
-                const allKeys = Object.keys(data[0]);
-                // Select Total and CW8 (Benchmark) by default
-                const keysToSelect = allKeys.filter(k => k.includes('TOTAL'));
+                // [panel 2026-07-22] UNION des clés (les lignes réelles sont ÉPARSES — la ligne 0
+                // ne porte pas les buckets nuls à cette date ni les actifs achetés plus tard).
+                const allKeys = new Set<string>();
+                data.forEach(row => Object.keys(row).forEach(k => allKeys.add(k)));
+                // Sélection par défaut : le TOTAL portefeuille + les totaux par compte.
+                const keysToSelect = [...allKeys].filter(k => k.includes('TOTAL'));
                 setSelectedKeys(new Set(keysToSelect));
             }
             setIsLoading(false);
@@ -259,23 +263,34 @@ export const Investments: React.FC<InvestmentsProps> = ({
         }
 
         // (b) Séries + tendances (depuis le CSV). Vide s'il n'y a pas de CSV.
+        // [panel 2026-07-22] `isTotal` = STRICTEMENT la clé 'TOTAL' : l'ancien `includes('TOTAL')`
+        // flaggait AUSSI les buckets TOTAL_CELI/TOTAL_REER/… → 4-5 chips toutes étiquetées « TOTAL
+        // PORTEFEUILLE » et le KPI « Votre Portefeuille (24h) » pouvait lire la tendance d'un
+        // bucket (comparateur de tri inconsistant quand plusieurs isTotal). Chaque bucket garde
+        // désormais son propre libellé.
+        const BUCKET_LABELS: Record<string, string> = {
+            TOTAL_CELI: 'CELI (total)', TOTAL_REER: 'REER (total)',
+            'TOTAL_NON-ENREG': 'Non-enregistré (total)', TOTAL_CRYPTO: 'Crypto (total)',
+        };
         const availableSeriesWithTrend = Object.keys(latestValues).map(k => {
             const current = latestValues[k] || 0;
             if (current === 0) return null;
             const prev = prevValues[k] || 0;
             const trend = prev > 0 ? ((current - prev) / prev) * 100 : 0;
-            const isTotal = k.includes('TOTAL');
+            const isTotal = k === 'TOTAL';
             const meta = ASSET_META[k] || { name: k.replace('NASDAQ:', '').replace('NYSE:', '') };
-            return { id: k, name: isTotal ? 'TOTAL PORTEFEUILLE' : meta.name, trend, isTotal };
+            const name = isTotal ? 'TOTAL PORTEFEUILLE' : (BUCKET_LABELS[k] ?? meta.name);
+            return { id: k, name, trend, isTotal };
         }).filter((x): x is SeriesWithTrend => x !== null).sort((a, b) => {
-            if (a.isTotal) return -1;
-            if (b.isTotal) return 1;
+            if (a.isTotal !== b.isTotal) return a.isTotal ? -1 : 1;
             return b.trend - a.trend;
         });
         const totalSerie = availableSeriesWithTrend.find(s => s.isTotal);
         const cw8Serie = availableSeriesWithTrend.find(s => s.id.includes('CW8') || s.name.includes('MSCI'));
-        const portfolioTrend = totalSerie ? totalSerie.trend : 0;
-        const benchmarkTrend = cw8Serie ? cw8Serie.trend : 0;
+        // [PORTFOLIO-HISTORY / no-fake-data] null = « pas de donnée » (affiché « — »), jamais un
+        // +0.00% présenté comme mesuré quand l'historique manque (finding scout 2026-07-22).
+        const portfolioTrend = totalSerie ? totalSerie.trend : null;
+        const benchmarkTrend = cw8Serie ? cw8Serie.trend : null;
 
         // (c) ALLOCATION = portefeuille réel (assets). trend24h enrichi depuis le CSV par symbole si dispo.
         const FREQ_MAP: Record<string, number> = { Monthly: 12, Quarterly: 4, Yearly: 1 };
@@ -328,9 +343,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
         let safePts = (indexWeight / 40) * 60;
         if (safePts > 60) safePts = 60;
         let trendPts = 20;
-        if (portfolioTrend > benchmarkTrend && portfolioTrend > 0) trendPts += 20;
-        else if (portfolioTrend > 0) trendPts += 10;
-        else if (portfolioTrend < 0) trendPts -= 10;
+        // Momentum NEUTRE (ni bonus ni malus) quand l'historique manque (trend null) — cohérent
+        // avec l'affichage « — » : pas de donnée ≠ performance nulle.
+        const pt = portfolioTrend ?? 0;
+        const bt = benchmarkTrend ?? 0;
+        if (portfolioTrend !== null && pt > bt && pt > 0) trendPts += 20;
+        else if (portfolioTrend !== null && pt > 0) trendPts += 10;
+        else if (portfolioTrend !== null && pt < 0) trendPts -= 10;
         if (trendPts > 40) trendPts = 40;
         if (trendPts < 0) trendPts = 0;
         const diversificationScore = Math.round(safePts + trendPts);
@@ -411,7 +430,9 @@ export const Investments: React.FC<InvestmentsProps> = ({
     };
 
     const handleAssetAccountChange = (symbolKey: string, newAccount: string) => {
-        const assetIdx = assets.findIndex(a => symbolKey.includes(a.symbol));
+        // Matching EXACT (l'id d'allocation EST le symbole) — `includes` faisait matcher « VFV.TO »
+        // avec l'actif « V » (Visa) selon l'ordre du tableau → mauvais actif modifié/supprimé.
+        const assetIdx = assets.findIndex(a => historyKeyMatchesSymbol(symbolKey, a.symbol));
         if (assetIdx >= 0) {
             const newAssets = [...assets];
             newAssets[assetIdx] = { ...newAssets[assetIdx], accountType: newAccount as RegisteredAccountType };
@@ -421,7 +442,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
     // Retire une position du portefeuille (le symbolKey est l'id d'allocation, qui contient le symbole).
     const handleDeleteAsset = (symbolKey: string) => {
-        const target = assets.find(a => symbolKey.includes(a.symbol));
+        const target = assets.find(a => historyKeyMatchesSymbol(symbolKey, a.symbol));
         if (!target) return;
         setAssets(assets.filter(a => a !== target));
         setConfirmDeleteId(null);
@@ -516,14 +537,14 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                     <div className="card-subtle p-4 flex flex-col items-center justify-center">
                         <div className="kpi-label mb-1">Votre Portefeuille</div>
-                        <div className={`text-kpi tabular-nums ${portfolioTrend >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                            {portfolioTrend > 0 ? '+' : ''}{portfolioTrend.toFixed(2)}%
+                        <div className={`text-kpi tabular-nums ${portfolioTrend === null ? 'text-ink-400' : portfolioTrend >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                            {portfolioTrend === null ? '—' : `${portfolioTrend > 0 ? '+' : ''}${portfolioTrend.toFixed(2)}%`}
                         </div>
                     </div>
                     <div className="card-subtle p-4 flex flex-col items-center justify-center">
                         <div className="kpi-label mb-1">Marché (CW8 / MSCI)</div>
-                        <div className={`text-kpi tabular-nums ${benchmarkTrend >= 0 ? 'text-info-400' : 'text-danger-400'}`}>
-                            {benchmarkTrend > 0 ? '+' : ''}{benchmarkTrend.toFixed(2)}%
+                        <div className={`text-kpi tabular-nums ${benchmarkTrend === null ? 'text-ink-400' : benchmarkTrend >= 0 ? 'text-info-400' : 'text-danger-400'}`}>
+                            {benchmarkTrend === null ? '—' : `${benchmarkTrend > 0 ? '+' : ''}${benchmarkTrend.toFixed(2)}%`}
                         </div>
                     </div>
                 </div>
@@ -1024,8 +1045,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
             >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {currentAllocation.map((asset) => {
-                    // Try to find matching asset in props to get saved account type
-                    const savedAsset = assets.find(a => asset.id.includes(a.symbol));
+                    // Try to find matching asset in props to get saved account type (matching EXACT)
+                    const savedAsset = assets.find(a => historyKeyMatchesSymbol(asset.id, a.symbol));
                     const accountType = savedAsset?.accountType || 'NON-ENREG';
                     // Phase E.8 — stats DCA si purchases[] présent. ⚠️ Prix NATIF de l'actif (comme
                     // buyPrice/purchases[].price) — surtout PAS re-dérivé de asset.value, qui est

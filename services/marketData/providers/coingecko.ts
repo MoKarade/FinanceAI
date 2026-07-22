@@ -50,6 +50,18 @@ export const coinGeckoIdFor = (symbol: string): string | null => {
     return CRYPTO_IDS[parseSymbol(symbol).ticker] ?? null;
 };
 
+/**
+ * [PORTFOLIO-HISTORY] Devise dans laquelle CoinGecko rendra les clôtures de ce symbole (déduite du
+ * SUFFIXE : « BTC-CAD » → CAD, « BTC » nu → USD), ou null si ce n'est pas un crypto connu. Permet
+ * la garde « currency-mismatch » de l'hydratation d'historique (un close USD stocké sur un actif
+ * déclaré CAD serait valorisé ×1 — faux en silence).
+ */
+export const coinGeckoQuoteCurrencyFor = (symbol: string): string | null => {
+    if (!symbol) return null;
+    const parsed = parseSymbol(symbol);
+    return CRYPTO_IDS[parsed.ticker] ? parsed.currency : null;
+};
+
 async function cgFetch(path: string): Promise<unknown> {
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
@@ -121,7 +133,7 @@ export class CoinGeckoProvider implements MarketDataProvider {
         }
     }
 
-    async getHistory(symbol: string, from: Date, to: Date): Promise<HistoryPoint[]> {
+    async getHistory(symbol: string, from: Date, to: Date): Promise<HistoryPoint[] | null> {
         const id = coinGeckoIdFor(symbol);
         if (!id) return [];
         const { currency } = parseSymbol(symbol);
@@ -135,11 +147,12 @@ export class CoinGeckoProvider implements MarketDataProvider {
             const data = await cgFetch(
                 `/coins/${id}/market_chart?vs_currency=${vs}&days=${days}`,
             ) as { prices?: Array<[number, number]> };
-            if (!data || !Array.isArray(data.prices)) return [];
+            if (!data || !Array.isArray(data.prices)) return null; // forme inattendue = erreur (pas de cache)
             return toDailyPoints(data.prices, from, to);
         } catch (e) {
+            // [PORTFOLIO-HISTORY] null = erreur (429/réseau) → non caché, retry possible.
             logProviderError('CoinGecko', 'getHistory', symbol, e);
-            return [];
+            return null;
         }
     }
 

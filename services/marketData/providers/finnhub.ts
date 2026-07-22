@@ -105,7 +105,7 @@ export class FinnhubProvider implements MarketDataProvider {
         }
     }
 
-    async getHistory(symbol: string, from: Date, to: Date): Promise<HistoryPoint[]> {
+    async getHistory(symbol: string, from: Date, to: Date): Promise<HistoryPoint[] | null> {
         const fnSymbol = toFinnhubSymbol(symbol);
         const fromTs = Math.floor(from.getTime() / 1000);
         const toTs = Math.floor(to.getTime() / 1000);
@@ -120,7 +120,9 @@ export class FinnhubProvider implements MarketDataProvider {
             const hArr = data.h as number[] | undefined;
             const lArr = data.l as number[] | undefined;
             const vArr = data.v as number[] | undefined;
-            if (!data || data.s !== 'ok' || !Array.isArray(tArr)) return [];
+            // `no_data` = réponse VALIDE sans point (cacheable) ; toute autre forme inattendue = erreur.
+            if (data && data.s === 'no_data') return [];
+            if (!data || data.s !== 'ok' || !Array.isArray(tArr)) return null;
             return tArr.map((ts: number, i: number) => ({
                 date: new Date(ts * 1000).toISOString().slice(0, 10),
                 close: num(cArr?.[i]),
@@ -130,8 +132,10 @@ export class FinnhubProvider implements MarketDataProvider {
                 volume: vArr?.[i],
             }));
         } catch (e) {
+            // [PORTFOLIO-HISTORY] null = ERREUR (403 premium candles, 429, réseau) : withCache ne la
+            // cache PAS (avant : `[]` d'erreur caché 24h = trou silencieux) et la façade peut replier.
             logProviderError('Finnhub', 'getHistory', symbol, e);
-            return [];
+            return null;
         }
     }
 

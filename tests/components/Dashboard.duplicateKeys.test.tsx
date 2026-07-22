@@ -16,16 +16,19 @@ import type { MarketDataPoint } from '../../services/finance';
 // alimentent à la fois les chips de bascule (`.map(key => <button key={key}>`) et
 // les séries recharts → warning de clé dupliquée + rendu non garanti.
 
-// marketData synthétique : colonnes mappées vers des actifs CELI/REER pour que
-// `lastPoint.CELI`/`lastPoint.REER` soient non-nuls (sinon le `.filter` les retire).
+// marketData synthétique AU CONTRAT PRODUCTEUR (panel 2026-07-22) : les piles CELI/REER du
+// Dashboard lisent les buckets TOTAL_* ÉMIS (buildMarketData réel + generateTestMarketData les
+// portent tous deux) — plus de recomposition locale depuis les colonnes par-symbole.
 const marketData: MarketDataPoint[] = [
-    { date: '2024-01-01', 'VFV.TO': 1000, 'VEQT.TO': 2000 },
-    { date: '2024-06-01', 'VFV.TO': 1100, 'VEQT.TO': 2200 },
+    { date: '2024-01-01', 'VFV.TO': 1000, 'VEQT.TO': 2000, TOTAL_CELI: 1000, TOTAL_REER: 2000, TOTAL: 3000 },
+    { date: '2024-06-01', 'VFV.TO': 1100, 'VEQT.TO': 2200, TOTAL_CELI: 1100, TOTAL_REER: 2200, TOTAL: 3300 },
 ];
 
 vi.mock('../../hooks/usePortfolioHistory', () => ({
-    usePortfolioHistory: () => ({ history: marketData, isLoading: false, error: null }),
-    invalidatePortfolioHistoryCache: () => {},
+    usePortfolioHistory: () => ({
+        history: marketData, isLoading: false, error: null,
+        excludedSymbols: [], partialHistorySymbols: [],
+    }),
 }));
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (k: string) => k, i18n: { language: 'fr' } }),

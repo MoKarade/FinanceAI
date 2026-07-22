@@ -3,7 +3,7 @@
 // pour garder des données fraîches. Si besoin de persistence cross-session,
 // upgrade futur vers IndexedDB.
 
-import { idbGetEntry, idbSetEntry, idbClearEntries } from './persistentCache';
+import { idbGetEntry, idbSetEntry, idbClearEntries, idbSweepExpired } from './persistentCache';
 
 interface CachedEntry<T> {
     value: T;
@@ -24,6 +24,7 @@ const TTL_PRESETS = {
 export type CacheBucket = keyof typeof TTL_PRESETS;
 
 const store = new Map<string, CachedEntry<unknown>>();
+let sweepScheduled = false;
 
 // Buckets persistés en IndexedDB (survivent au rechargement de page).
 // 'quote' (spot 5 min) reste mémoire-seule : on le veut toujours frais.
@@ -52,6 +53,12 @@ export async function withCache<T>(
 
     // L2 — cache IndexedDB persistant (buckets lents seulement). No-op si IDB absent.
     if (PERSISTENT_BUCKETS.has(bucket)) {
+        // Balayage UNIQUE par session des lignes expirées (les clés d'historique tournent chaque
+        // jour → sans sweep, croissance IDB à vie maintenant que le cache survit aux reloads).
+        if (!sweepScheduled) {
+            sweepScheduled = true;
+            void idbSweepExpired();
+        }
         const persisted = await idbGetEntry<T>(cacheKey);
         if (persisted && persisted.expiresAt > Date.now()) {
             store.set(cacheKey, persisted); // réhydrate L1

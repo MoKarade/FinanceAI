@@ -150,32 +150,10 @@ export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: n
     return fallback;
 };
 
-// P1 — STUB : Google Sheet legacy COMPLÈTEMENT supprimé (demande utilisateur :
-// "je veux que plus rien ai accès à ce sheet"). Aucune requête vers
-// docs.google.com depuis l'app. La source de vérité pour les données
-// boursières est désormais Finnhub (services/marketData/) ou les saisies
-// manuelles de l'utilisateur dans Configuration/Investments.
-//
-// Conservée pour ses consumers restants (StockComparisonModal, usePortfolioHistory,
-// fetchAssetHistory ci-dessous) — retourne toujours un tableau vide. [DEAD-FLT] : Retirement
-// purgé 2026-06-11 ; candidat : purger toute la chaîne du stub (cf BACKLOG).
-export const fetchPortfolioHistory = async (): Promise<MarketDataPoint[]> => {
-    return [];
-};
-
-
-export const fetchAssetHistory = async (symbol: string, _currency: string, _currentPrice: number, _performance: number) => {
-    const data = await fetchPortfolioHistory();
-    const cleanSym = symbol.split('.')[0];
-    const keys = data.length > 0 ? Object.keys(data[0]) : [];
-    const colKey = keys.find(k => k.includes(cleanSym) || k === symbol);
-
-    if (!colKey) return { history: [], fromCache: true };
-
-    const history = data.map(d => ({
-        date: d.date as string,
-        price: Number(d[colKey]) || 0
-    }));
-
-    return { history, fromCache: true };
-};
+// [PORTFOLIO-HISTORY 2026-07-22] Les STUBS `fetchPortfolioHistory`/`fetchAssetHistory` (Google Sheet
+// legacy supprimé → toujours []) sont RETIRÉS : ils rendaient tous les graphes de cours VIDES en
+// données réelles (bug Marc « je vois pas le cours »). Remplaçants :
+//  - hydratation : services/history/hydrateAssetHistories (marketData.getHistory : Finnhub → repli
+//    Yahoo proxy → CoinGecko crypto), écrit Asset.priceHistory depuis le 1er achat ;
+//  - lignes de graphe : services/history/buildMarketData (pur, dérivé du store) via usePortfolioHistory.
+// Le type MarketDataPoint reste ici (importé par les composants de graphe).

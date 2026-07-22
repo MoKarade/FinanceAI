@@ -38,10 +38,10 @@ vi.mock('../../services/marketData', () => ({
     configureMarketDataProvider: vi.fn(),
     getQuote: vi.fn().mockResolvedValue(null),
 }));
+// [panel 2026-07-22] fetchAssetHistory/fetchPortfolioHistory retirés du mock : ces stubs n'existent
+// plus dans services/finance (PORTFOLIO-HISTORY). Seul fetchFxRates (Banque du Canada) reste réel.
 vi.mock('../../services/finance', () => ({
-    fetchAssetHistory: vi.fn().mockResolvedValue([]),
     fetchFxRates: vi.fn().mockResolvedValue({ USD: 1.35, EUR: 1.45, CAD: 1 }),
-    fetchPortfolioHistory: vi.fn().mockResolvedValue([]),
 }));
 
 // Helper : axe ne tolère pas serious/critical

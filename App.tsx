@@ -10,7 +10,7 @@ import { INITIAL_CHILD_GOAL } from './constants';
 import { markDuplicates } from './utils/transactionParser';
 import { parseBankCsv } from './services/import/parseBankCsv';
 import { logAudit } from './services/auditLog';
-import { fetchAssetHistory, fetchFxRates } from './services/finance';
+import { fetchFxRates } from './services/finance';
 // Phase 3E perf — lazy-load pdfReport (jspdf = 595KB) seulement au clic
 // "Générer PDF" plutôt qu'au boot de l'app.
 import { useFinanceStore, getMigrationStatus, getHydrationStatus } from './store/useFinanceStore';
@@ -477,36 +477,26 @@ export const App: React.FC = () => {
 
     useEffect(() => {
         let cancelled = false;
+        // [PORTFOLIO-HISTORY] Hydrate priceHistory (clôtures natives datées) DEPUIS LE 1ER ACHAT via
+        // la chaîne marketData (Finnhub → repli Yahoo proxy → CoinGecko crypto) — remplace l'ancien
+        // stub CSV mort (priceHistory jamais rempli → graphes de cours vides, bug Marc 2026-07-22).
+        // Sauté en mode test (les fixtures persona portent leur propre priceHistory).
         const hydrateAssets = async () => {
-            const updates = new Map();
-            let changed = false;
-
-            for (const asset of state.assets) {
-                if (cancelled) return;
-                if (!asset.priceHistory || asset.priceHistory.length === 0) {
-                    try {
-                        const { history, fromCache } = await fetchAssetHistory(
-                            asset.symbol,
-                            asset.currency,
-                            asset.currentPrice,
-                            asset.performance
-                        );
-                        if (cancelled) return;
-                        if (history && history.length > 0) {
-                            updates.set(asset.symbol, history);
-                            changed = true;
-                        }
-                        if (!fromCache) await new Promise(r => setTimeout(r, 2500));
-                    } catch (e) {
-                        logError({ source: 'network', severity: 'warning', message: "Hydratation du prix d'un actif échouée", context: { symbol: asset.symbol }, error: e });
-                    }
-                }
-            }
-
-            if (!cancelled && changed) {
-                setAppState({
-                    assets: state.assets.map(a => updates.has(a.symbol) ? { ...a, priceHistory: updates.get(a.symbol) } : a)
-                });
+            const s = useFinanceStore.getState();
+            if (s.isTestMode === true) return;
+            const current = s.assets ?? [];
+            if (current.length === 0) return;
+            try {
+                const { hydrateAssetHistories, applyHistoryPatches } = await import('./services/history/hydrateAssetHistories');
+                const { getHistory, hasHistoryProvider } = await import('./services/marketData');
+                const res = await hydrateAssetHistories(current, { getHistory, hasProvider: hasHistoryProvider });
+                if (cancelled || res.patches.size === 0) return;
+                // Anti-course : patch par symbole sur l'état FRAIS (un pull Drive pendant l'hydratation
+                // n'est pas écrasé) — même patron qu'applyPricePatches.
+                const fresh = useFinanceStore.getState().assets ?? [];
+                setAppState({ assets: applyHistoryPatches(fresh, res.patches) });
+            } catch (e) {
+                logError({ source: 'network', severity: 'warning', message: 'Hydratation des historiques de cours échouée (graphes partiels).', error: e });
             }
         };
         // [PRICE-REFRESH-LIVE] — après l'hydratation d'historique, rafraîchit les currentPrice

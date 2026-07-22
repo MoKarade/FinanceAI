@@ -1,7 +1,8 @@
 // tests/services/finance.test.ts
-// Couverture de services/finance.ts :
-// fetchPortfolioHistory (stub vide), fetchAssetHistory (stub vide),
-// fetchFxRates (cache mémoire, fallback localStorage, fallback par défaut).
+// Couverture de services/finance.ts : fetchFxRates (cache mémoire, fallback localStorage, fallback
+// par défaut). [PORTFOLIO-HISTORY 2026-07-22] Les stubs fetchPortfolioHistory/fetchAssetHistory ont
+// été RETIRÉS (remplacés par services/history/hydrateAssetHistories + buildMarketData) — leurs tests
+// de stub avec.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -9,33 +10,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // en mémoire (cachedFxRates est un module-level state).
 beforeEach(() => {
     vi.resetModules();
-});
-
-describe('fetchPortfolioHistory', () => {
-    it('retourne toujours un tableau vide (Google Sheet supprimé)', async () => {
-        // Arrange
-        const { fetchPortfolioHistory } = await import('../../services/finance');
-
-        // Act
-        const result = await fetchPortfolioHistory();
-
-        // Assert — stub permanent depuis suppression du Google Sheet
-        expect(result).toEqual([]);
-    });
-});
-
-describe('fetchAssetHistory', () => {
-    it('retourne un objet avec history vide et fromCache true quand pas de données', async () => {
-        // Arrange
-        const { fetchAssetHistory } = await import('../../services/finance');
-
-        // Act
-        const result = await fetchAssetHistory('AAPL', 'USD', 150, 10);
-
-        // Assert — fetchPortfolioHistory retourne [], donc colKey introuvable
-        expect(result.history).toEqual([]);
-        expect(result.fromCache).toBe(true);
-    });
 });
 
 describe('fetchFxRates', () => {

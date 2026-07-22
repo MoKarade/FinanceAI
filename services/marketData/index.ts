@@ -11,12 +11,14 @@ import type { Quote, HistoryPoint, AssetProfile, SymbolSearchResult, MarketDataP
 import { withCache, clearMarketDataCache } from './cache';
 import { FinnhubProvider } from './providers/finnhub';
 import { CoinGeckoProvider, coinGeckoIdFor } from './providers/coingecko';
+import { getYahooHistory } from './providers/yahooProxy';
 
 export * from './types';
 export { clearMarketDataCache } from './cache';
 
 // Provider actions (Finnhub) — instancié quand la clé API est fournie.
 let activeProvider: MarketDataProvider | null = null;
+let activeFinnhubKey = '';
 
 // Provider crypto (CoinGecko) — GRATUIT, sans clé, TOUJOURS disponible.
 // Indépendant de la clé Finnhub : le crypto marche même sans rien configurer.
@@ -30,13 +32,17 @@ function pickProvider(symbol: string): MarketDataProvider | null {
 /**
  * Configure le provider actif. Appelé par l'app quand la clé Finnhub change
  * (Settings ou Onboarding). Si key vide → provider null (mode dégradé).
+ *
+ * ⚠️ IDEMPOTENT sur la MÊME clé (panel 2026-07-22) : App.tsx (boot) et usePastPortfolioHistory
+ * appellent cette fonction avec la clé COURANTE — un clear inconditionnel vidait le cache IDB
+ * « persistant » (historique 24 h) à CHAQUE reload, annulant sa raison d'être (rate-limit,
+ * vitesse). On ne vide que sur un VRAI changement de clé.
  */
 export function configureMarketDataProvider(opts: { finnhubKey?: string }): void {
-    if (opts.finnhubKey && opts.finnhubKey.trim().length > 0) {
-        activeProvider = new FinnhubProvider(opts.finnhubKey);
-    } else {
-        activeProvider = null;
-    }
+    const key = (opts.finnhubKey || '').trim();
+    if (key === activeFinnhubKey) return; // même clé (ou toujours sans clé) → provider et cache intacts
+    activeFinnhubKey = key;
+    activeProvider = key.length > 0 ? new FinnhubProvider(key) : null;
     // Vide le cache pour forcer un re-fetch avec le nouveau provider
     clearMarketDataCache();
 }
@@ -61,15 +67,40 @@ export async function getQuote(symbol: string): Promise<Quote | null> {
 }
 
 /**
- * Historique journalier sur une période. Retourne [] si pas de provider
- * ou aucun point disponible.
+ * [PORTFOLIO-HISTORY] Y a-t-il un chemin d'HISTORIQUE pour ce symbole ? Crypto → CoinGecko
+ * (toujours) ; sinon Finnhub (si clé) OU le repli Yahoo via proxy same-origin (navigateur
+ * seulement — hors DOM, ex. Node/MCP, le proxy `/api/...` n'existe pas).
  */
-export async function getHistory(symbol: string, from: Date, to: Date): Promise<HistoryPoint[]> {
-    const provider = pickProvider(symbol);
-    if (!provider) return [];
+export function hasHistoryProvider(symbol: string): boolean {
+    if (coinGeckoIdFor(symbol)) return true;
+    if (activeProvider) return true;
+    return typeof window !== 'undefined'; // repli Yahoo = proxy same-origin, navigateur uniquement
+}
+
+/**
+ * Historique journalier sur une période, avec CHAÎNE DE REPLI (choix Marc « tout gratuit ») :
+ *   crypto → CoinGecko ; actions/ETF → Finnhub (clé Marc — candles souvent 403 en tier gratuit)
+ *   → repli Yahoo via proxy same-origin. Contrat provider PROPAGÉ à l'appelant : `[]` = vide
+ *   VALIDE (cacheable 24h), `null` = erreur (JAMAIS cachée → retry/repli au prochain appel).
+ *   ⚠️ Ne PAS aplatir null en [] ici (panel 2026-07-22) : l'hydratation distingue « échec de la
+ *   chaîne » (logError + retry, historique existant préservé) d'un « vide légitime » (skip).
+ */
+export async function getHistory(symbol: string, from: Date, to: Date): Promise<HistoryPoint[] | null> {
     const key = `${symbol}::${from.toISOString().slice(0, 10)}::${to.toISOString().slice(0, 10)}`;
-    const result = await withCache('history', key, () => provider.getHistory(symbol, from, to));
-    return result ?? [];
+    return withCache('history', key, async () => {
+        const isCrypto = Boolean(coinGeckoIdFor(symbol));
+        if (isCrypto) return cryptoProvider.getHistory(symbol, from, to); // pas de repli Yahoo (crypto)
+        // 1. Finnhub si configuré. `[]`/`null` → tenter Yahoo (candles gratuits absents chez Finnhub).
+        if (activeProvider) {
+            const primary = await activeProvider.getHistory(symbol, from, to);
+            if (primary && primary.length > 0) return primary;
+        }
+        // 2. Repli Yahoo (proxy same-origin, navigateur seulement).
+        if (typeof window !== 'undefined') {
+            return getYahooHistory(symbol, from, to);
+        }
+        return null; // hors navigateur sans Finnhub : pas de chemin (non caché)
+    });
 }
 
 /**

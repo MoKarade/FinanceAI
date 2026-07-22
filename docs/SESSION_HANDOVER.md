@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-22 (suite 2) — PORTFOLIO-HISTORY : courbes de cours réelles (bug Marc) — PR #485
+> **✅ `[PORTFOLIO-HISTORY]` implémenté + panel appliqué** (bug Marc « je vois pas le cours ni le cours du
+> portefeuille ») : cause = stub CSV mort (`fetchPortfolioHistory`→[]) → graphes vides en réel. Livré : chaîne
+> d'historique gratuite `marketData.getHistory` (Finnhub clé Marc → repli Yahoo via proxy same-origin
+> `/api/history/yahoo` [rewrite vercel.json + proxy vite dev] → CoinGecko crypto ; contrat null=erreur JAMAIS
+> cachée / []=vide cacheable, PROPAGÉ jusqu'à l'hydratation) ; hydratation `services/history/hydrateAssetHistories`
+> (depuis 1er achat, pacing 2,5s, fraîcheur 24h, FUSION ancien∪nouveau au re-sync, garde devise crypto,
+> anti-course, skip mode test) au boot App ; builder pur `services/history/buildMarketData` (DCA qty(t) ×
+> close natif × FX → CAD, colonnes AGRÉGÉES multi-comptes, buckets TOTAL_*, prix périmé >7 j exclu,
+> excludedSymbols + partialHistorySymbols) ; `usePortfolioHistory` DÉRIVE du store → Dashboard (piles depuis
+> les buckets émis), Investissements (chips distinctes, isTotal strict), StockComparisonModal (union des
+> clés) ; matching par `historyKeyMatchesSymbol` (exact, jamais includes). **Panel adversarial wf 30 agents :
+> 9 confirmés appliqués, 17 vérifiés inline après un « session limit » des agents verify** (8 réels corrigés,
+> 3 → BACKLOG [HIST-*], reste réfuté). Cache IDB survit au boot (configure idempotent + sweep expirés).
+> ⚠️ Suivi : smoke test Yahoo proxy en PROD après deploy (query params period1/period2 — prouvés OK en dev,
+> [Probable] côté Vercel).
+>
 > ## 🟢 Session 2026-07-22 (suite) — Google Drive : rester connecté + déconnexion auto 8h + roadmap chat
 > **En cours `[AUTH-DRIVE-INACTIVITY]`** (demande Marc « plus me reconnecter à chaque fois + déconnexion ~8h d'inactivité ») :
 > ré-auth SILENCIEUSE au boot (`renewTokenSilently` prompt='' sur cache-miss, GATÉE sur < 8h d'inactivité) + minuteur 8h

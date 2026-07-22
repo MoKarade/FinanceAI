@@ -73,13 +73,22 @@ describe('FinnhubProvider — getHistory', () => {
     it('status ok → points (close coercé)', async () => {
         mockFetch({ s: 'ok', t: [1_700_000_000, 1_700_086_400], c: [100, 'bad'], o: [99, 101] });
         const h = await p.getHistory('AAPL', new Date('2026-01-01'), new Date('2026-01-03'));
-        expect(h.length).toBe(2);
-        expect(h[0].close).toBe(100);
-        expect(h[1].close).toBe(0); // 'bad' coercé (D5)
+        expect(h).not.toBeNull();
+        expect(h!.length).toBe(2);
+        expect(h![0].close).toBe(100);
+        expect(h![1].close).toBe(0); // 'bad' coercé (D5)
     });
-    it('status no_data → []', async () => {
+    it('status no_data → [] (vide VALIDE, cacheable)', async () => {
         mockFetch({ s: 'no_data' });
         expect(await p.getHistory('AAPL', new Date(), new Date())).toEqual([]);
+    });
+    it('[PORTFOLIO-HISTORY] 403 (candles premium) → null (ERREUR, jamais cachée → repli possible)', async () => {
+        mockFetch({}, 403);
+        expect(await p.getHistory('AAPL', new Date(), new Date())).toBeNull();
+    });
+    it('[PORTFOLIO-HISTORY] forme inattendue (s manquant) → null', async () => {
+        mockFetch({ bizarre: true });
+        expect(await p.getHistory('AAPL', new Date(), new Date())).toBeNull();
     });
 });
 

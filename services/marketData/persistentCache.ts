@@ -72,6 +72,34 @@ export async function idbSetEntry<T>(key: string, entry: { value: T; expiresAt: 
     }
 }
 
+/**
+ * Balaye les lignes EXPIRÉES (expiresAt < now). Nécessaire depuis que le cache survit aux reloads
+ * (fix « wipe-au-boot » 2026-07-22) : la clé d'historique tourne chaque jour (`symbol::from::to`)
+ * → sans balayage, 1 nouvelle entrée/symbole/jour s'accumulerait à vie. Best-effort.
+ */
+export async function idbSweepExpired(now: number = Date.now()): Promise<void> {
+    if (typeof indexedDB === 'undefined') return;
+    try {
+        const db = await openDB();
+        await new Promise<void>((resolve) => {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            const cursorReq = store.openCursor();
+            cursorReq.onsuccess = () => {
+                const cursor = cursorReq.result;
+                if (!cursor) return;
+                const row = cursor.value as PersistedRow<unknown>;
+                if (typeof row?.expiresAt !== 'number' || row.expiresAt < now) cursor.delete();
+                cursor.continue();
+            };
+            tx.oncomplete = () => { db.close(); resolve(); };
+            tx.onerror = () => { db.close(); resolve(); };
+        });
+    } catch {
+        // best-effort
+    }
+}
+
 /** Vide tout le cache persisté (refresh forcé). */
 export async function idbClearEntries(): Promise<void> {
     if (typeof indexedDB === 'undefined') return;

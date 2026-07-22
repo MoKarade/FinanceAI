@@ -47,9 +47,12 @@ jobs:
           # --max-time 240 : le refresh espace ses appels de 2 500 ms (anti-quota) ; avec beaucoup
           # de titres, la passe peut durer > 2 min. On reste sous le timeout-minutes: 5 du job pour
           # ne pas couper une passe qui, côté serveur, sauvegarde quand même.
+          # --data '' : POST à corps VIDE mais avec Content-Length: 0 — le frontal Google de Cloud Run
+          # refuse un POST sans Content-Length (411 Length Required avant d'atteindre le serveur).
           code=$(curl -sS --max-time 240 -o /tmp/refresh_out -w '%{http_code}' \
             -X POST "${MCP_URL%/}/refresh" \
-            -H "Authorization: Bearer ${REFRESH_SECRET}")
+            -H "Authorization: Bearer ${REFRESH_SECRET}" \
+            --data '')
           echo "HTTP ${code}"
           # Le secret n'est jamais dans le corps ; l'afficher aide au diagnostic (updated/skipped).
           cat /tmp/refresh_out; echo

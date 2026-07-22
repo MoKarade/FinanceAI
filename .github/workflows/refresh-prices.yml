@@ -20,6 +20,10 @@ on:
     - cron: '3 */6 * * *'
   workflow_dispatch: {} # déclenchement manuel possible depuis l'onglet Actions
 
+# Moindre privilège : ce job ne fait qu'un curl vers un service externe (aucun checkout, aucune
+# écriture GitHub) → le GITHUB_TOKEN n'a besoin d'AUCUN droit sur le dépôt (CodeQL, moindre privilège).
+permissions: {}
+
 # Un seul refresh à la fois (un run planifié + un manuel ne se chevauchent pas).
 concurrency:
   group: refresh-prices

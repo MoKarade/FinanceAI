@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
     pushAttachmentsToDrive, fetchAttachmentsFromDrive, deleteAttachmentsFromDrive,
-    _resetAttachmentDriveStoreForTests,
+    deleteAllChatAttachmentsFromDrive, _resetAttachmentDriveStoreForTests,
 } from '../../services/aiChat/attachmentDriveStore';
 import type { AiAttachmentPayload } from '../../services/aiChat/attachments';
 
@@ -54,11 +54,20 @@ describe('fetchAttachmentsFromDrive', () => {
         expect(await fetchAttachmentsFromDrive('aimsg_4', { token: 'tk', list, read })).toEqual(P);
     });
 
-    it('fichier ABSENT → null + raté MÉMORISÉ (un 2e appel ne re-liste pas)', async () => {
+    it('fichier ABSENT → null + raté mémorisé À TTL : pas de re-listing immédiat, RE-TENTÉ après le TTL', async () => {
+        // TTL et non « à vie » (finding panel) : l'autre appareil peut pousser le fichier quelques
+        // secondes APRÈS le premier raté (course de sync) — un mémo permanent rendait le contenu
+        // introuvable pour toute la session.
+        let clock = 1_000_000;
+        const now = () => clock;
         const list = vi.fn(async () => []);
-        expect(await fetchAttachmentsFromDrive('aimsg_5', { token: 'tk', list })).toBeNull();
-        expect(await fetchAttachmentsFromDrive('aimsg_5', { token: 'tk', list })).toBeNull();
+        expect(await fetchAttachmentsFromDrive('aimsg_5', { token: 'tk', list, now })).toBeNull();
+        expect(await fetchAttachmentsFromDrive('aimsg_5', { token: 'tk', list, now })).toBeNull();
         expect(list).toHaveBeenCalledTimes(1); // pas de latence répétée à chaque tour
+        clock += 61_000; // après le TTL : le push de l'autre appareil a maintenant abouti
+        const found = vi.fn(async () => [{ id: 'fid', name: 'financeai-chat-attach-aimsg_5.json', modifiedTime: '' }]);
+        const read = vi.fn(async () => ({ version: 1, messageId: 'aimsg_5', payloads: P }));
+        expect(await fetchAttachmentsFromDrive('aimsg_5', { token: 'tk', list: found, read, now })).toEqual(P);
     });
 
     it('contenu invalide ou échec réseau → null honnête, jamais de throw', async () => {
@@ -91,5 +100,30 @@ describe('deleteAttachmentsFromDrive', () => {
     it('sans jeton ou liste vide → no-op sans throw', async () => {
         await expect(deleteAttachmentsFromDrive([], { token: 'tk' })).resolves.toBeUndefined();
         await expect(deleteAttachmentsFromDrive(['x'], { token: null })).resolves.toBeUndefined();
+    });
+
+    it('échec de suppression PAR FICHIER : jamais avalé en silence (compte tracé), pas de throw', async () => {
+        const list = vi.fn(async () => [{ id: 'f1', name: 'financeai-chat-attach-aimsg_10.json', modifiedTime: '' }]);
+        const remove = vi.fn(async () => { throw new Error('403'); });
+        await expect(deleteAttachmentsFromDrive(['aimsg_10'], { token: 'tk', list, remove })).resolves.toBeUndefined();
+        expect(remove).toHaveBeenCalledTimes(1); // tenté, échec tracé via logError (orphelin signalé)
+    });
+});
+
+describe('deleteAllChatAttachmentsFromDrive (droit à l\'effacement, Loi 25)', () => {
+    it('supprime TOUS les fichiers chat-attach (le wipe « Supprimer mes données » les inclut désormais)', async () => {
+        const list = vi.fn(async () => [
+            { id: 'f1', name: 'financeai-chat-attach-aimsg_a.json', modifiedTime: '' },
+            { id: 'f2', name: 'financeai-chat-attach-aimsg_b.json', modifiedTime: '' },
+        ]);
+        const remove = vi.fn(async () => undefined);
+        await deleteAllChatAttachmentsFromDrive('tk', { list, remove });
+        expect(remove).toHaveBeenCalledTimes(2);
+    });
+
+    it('échec de LISTING → throw (l\'appelant doit savoir que le wipe n\'a pas pu se faire)', async () => {
+        await expect(deleteAllChatAttachmentsFromDrive('tk', {
+            list: async () => { throw new Error('réseau'); },
+        })).rejects.toThrow();
     });
 });

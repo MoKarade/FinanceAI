@@ -149,6 +149,15 @@ export function useAiChat(apiKey: string): UseAiChat {
             return;
         }
 
+        // [Finding panel B2 ÉLEVÉ — course PROUVÉE par sonde] Les flags d'envoi montent AVANT le
+        // premier `await` (la lecture des fichiers cède la main à l'event loop) : sinon, pendant la
+        // lecture d'une pièce jointe, `isLoading` restait false → la sidebar des conversations
+        // permettait une bascule/nouvelle conversation et le message atterrissait dans la MAUVAISE
+        // conversation. Tout chemin de sortie repasse par le `finally` global ci-dessous.
+        inFlightRef.current = true;
+        setIsLoading(true);
+        try {
+
         // [AITOOLS-B1] Lecture des pièces jointes AVANT tout append : un fichier illisible refuse
         // l'envoi ENTIER honnêtement (jamais d'envoi partiel silencieux — le message resterait dans
         // le transcript en laissant croire que le document a été analysé).
@@ -193,7 +202,6 @@ export function useAiChat(apiKey: string): UseAiChat {
             }
         }
 
-        inFlightRef.current = true;
         const userMsgId = nextMessageId();
         appendMessage({
             id: userMsgId, role: 'user', text: userText, timestamp: new Date().toISOString(),
@@ -209,7 +217,6 @@ export function useAiChat(apiKey: string): UseAiChat {
             // (une pièce jointe de démo ne doit pas atterrir dans le vrai Drive).
             if (!useFinanceStore.getState().isTestMode) pushAttachmentsToDrive(userMsgId, payloads);
         }
-        setIsLoading(true);
         setActiveTools([]);
         // Éviction : les payloads des messages sortis de la fenêtre d'historique ne seront plus
         // jamais relus (finding panel — croissance mémoire non bornée sur longue session).
@@ -327,10 +334,15 @@ export function useAiChat(apiKey: string): UseAiChat {
                     : 'Oups — la conversation a échoué. Réessaie dans un instant.'),
             });
         } finally {
-            inFlightRef.current = false;
-            setIsLoading(false);
             setActiveTools([]);
             abortRef.current = null;
+        }
+
+        // Fin du bloc ouvert AVANT le premier await (fix course B2) : tout chemin — succès, refus
+        // de budget/lecture, throw — rend la main proprement (les actions de conversation dégèlent).
+        } finally {
+            inFlightRef.current = false;
+            setIsLoading(false);
         }
     }, [apiKey, appendMessage, updateModelMessage, requestConfirmation]);
 

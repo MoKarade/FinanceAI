@@ -104,6 +104,10 @@
   gelées isLoading). **Pièces jointes cross-device** : `attachmentDriveStore.ts` — un fichier appdata
   par message (`financeai-chat-attach-<msgId>.json`), push fire-and-forget à l'envoi, fetch au
   cache-miss (ratés mémorisés), delete avec la conversation, skip mode test/sans jeton.
+- [ ] **`[PERSONA-SANITIZE-CHAT]`** 🟡 (S, defense-in-depth — finding panel B2, LATENT) : `personaSanitizer`
+  ne scanne pas `aiConversation`/`aiConversations` (aucun persona n'y écrit AUJOURD'HUI — pas de fuite
+  active). Si un futur persona pré-remplit un chat de démo, la ceinture PERSONA-PURGE ne l'attraperait
+  pas. Étendre le scan (ids `aimsg_` de fixtures enregistrés dans artifactIds) + test de parité.
 - [ ] **`[B3-CHAT-MODEL]`** (S) — choix du modèle par conversation (Haiku / Sonnet / Opus).
 - [ ] **`[B4-CHAT-COST]`** (M) — coût réel (tokens usage × tarif → CAD), total cumulé + par conversation.
 

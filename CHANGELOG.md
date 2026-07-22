@@ -23,6 +23,25 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - Garde-fou : aucune bascule/suppression pendant qu'une réponse est en cours (la réponse payée
   serait perdue) ; zone entièrement masquée en mode discret (les titres peuvent porter des montants).
 
+### Correctifs du panel B2 (4 agents, sondes — 1 critique + 2 élevés + moyens appliqués)
+- **Droit à l'effacement complet (Loi 25)** : « Supprimer mes données de Google Drive » efface
+  désormais AUSSI les fichiers de pièces jointes du chat — avant, seuls le fichier de sync partait,
+  les relevés/PDF joints restaient dans le Drive indéfiniment.
+- **Course corrigée (prouvée par sonde)** : pendant la lecture d'une pièce jointe, on pouvait
+  changer de conversation et le message atterrissait dans la MAUVAISE — les actions gèlent
+  désormais dès le clic Envoyer, avant toute lecture.
+- **Suppression Drive fiable** : listing paginé (au-delà de 50 fichiers, des pièces jointes
+  « supprimées » restaient silencieusement), échec par-fichier tracé (jamais avalé), mémo conservé
+  pour retenter.
+- **Récupération cross-device robuste** : un contenu introuvable est re-tenté après 60 s (avant :
+  raté mémorisé pour toute la session — l'appareil B qui regardait AVANT que l'appareil A ait fini
+  d'envoyer ne retrouvait jamais le document).
+- **Historique borné** : maximum 30 conversations archivées (les plus anciennes tombent, leurs
+  fichiers Drive nettoyés) — le payload de sync ne croît pas sans fin.
+- **Accessibilité (mesurée)** : le focus ne retombe plus sur la page à chaque bascule/suppression,
+  bordure visible sur la confirmation « Oui » (contraste non-texte 6,6:1), annonces lecteur
+  d'écran des transitions, purge des caches au changement de compte Google.
+
 ## [unreleased — Chat : pièces jointes multimodales (B1)] — 2026-07-22
 
 ### Nouveau (demande Marc « que je puisse mettre des docs ou image ou autre »)

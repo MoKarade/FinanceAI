@@ -12,9 +12,11 @@ import React, { useState } from 'react';
 import { Icon } from '../ui/Icon';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import {
-    startNewConversation, switchConversation, deleteConversation,
+    startNewConversation, switchConversation, deleteConversation, aliveAttachmentMessageIds,
 } from '../../services/aiChat/conversations';
 import { deleteAttachmentsFromDrive } from '../../services/aiChat/attachmentDriveStore';
+import { pruneAttachmentCache } from '../../services/aiChat/attachments';
+import { logError } from '../../services/errorLogger';
 
 interface AiConversationListProps {
     isLoading: boolean;
@@ -22,30 +24,55 @@ interface AiConversationListProps {
     compact?: boolean;
 }
 
-function useConversationActions(isLoading: boolean) {
+const HISTORY_WINDOW = 10; // même fenêtre que useAiChat (éviction du cache de pièces jointes)
+
+/** Nettoyage commun post-transition : cache mémoire + fichiers Drive des messages sortis. */
+function cleanupRemoved(removedMessageIds: string[]): void {
+    const s = useFinanceStore.getState();
+    pruneAttachmentCache(aliveAttachmentMessageIds(s, HISTORY_WINDOW));
+    if (!s.isTestMode && removedMessageIds.length > 0) {
+        void deleteAttachmentsFromDrive(removedMessageIds);
+    }
+}
+
+function useConversationActions(isLoading: boolean, announce: (msg: string) => void) {
     const doNew = () => {
         if (isLoading) return;
         const s = useFinanceStore.getState();
-        s.setAppState(startNewConversation(s));
+        const { patch, droppedMessageIds } = startNewConversation(s);
+        s.setAppState(patch);
+        cleanupRemoved(droppedMessageIds);
+        announce('Nouvelle conversation démarrée.');
     };
     const doSwitch = (id: string) => {
         if (isLoading) return;
         const s = useFinanceStore.getState();
-        const patch = switchConversation(s, id);
-        if (patch) s.setAppState(patch);
+        const res = switchConversation(s, id);
+        if (!res) {
+            // [Finding panel] Id devenu invalide (liste périmée par une sync concurrente) : tracé,
+            // jamais un no-op muet qui laisserait le sélecteur mobile inerte sans explication.
+            logError({ source: 'ui', severity: 'warning', message: 'Chat : bascule vers une conversation introuvable (liste probablement périmée par la sync).' });
+            announce('Conversation introuvable — la liste vient peut-être d\'être mise à jour.');
+            return;
+        }
+        const title = s.aiConversations?.find((c) => c.id === id)?.title ?? '';
+        s.setAppState(res.patch);
+        cleanupRemoved(res.droppedMessageIds);
+        announce(`Conversation chargée : ${title}`);
     };
     const doDelete = (id: string) => {
         if (isLoading) return;
         const s = useFinanceStore.getState();
         const res = deleteConversation(s, id);
-        if (res) {
-            s.setAppState(res.patch);
-            // [B2] Nettoyage des fichiers Drive des pièces jointes de la conversation supprimée
-            // (best-effort — pas d'orphelins accumulés). Jamais en mode test.
-            if (!s.isTestMode && res.removedMessageIds.length > 0) {
-                void deleteAttachmentsFromDrive(res.removedMessageIds);
-            }
+        if (!res) {
+            logError({ source: 'ui', severity: 'warning', message: 'Chat : suppression d\'une conversation introuvable (liste probablement périmée par la sync).' });
+            return;
         }
+        s.setAppState(res.patch);
+        // [B2] Nettoyage des fichiers Drive + du cache mémoire des pièces jointes supprimées
+        // (finding panel : le cache n'était purgé qu'au prochain envoi). Jamais en mode test.
+        cleanupRemoved(res.removedMessageIds);
+        announce('Conversation supprimée.');
     };
     return { doNew, doSwitch, doDelete };
 }
@@ -59,14 +86,30 @@ const fmtDate = (iso: string): string => {
 export const AiConversationList: React.FC<AiConversationListProps> = ({ isLoading, compact = false }) => {
     const aiConversations = useFinanceStore((s) => s.aiConversations) ?? [];
     const activeId = useFinanceStore((s) => s.activeAiConversationId);
-    const activeCount = useFinanceStore((s) => s.aiConversation).length;
+    // Sélecteur ATOMIQUE (finding panel perf) : retourner le tableau re-rendait la sidebar à
+    // CHAQUE delta streamé (updateModelMessage recrée le tableau) pour un .length inchangé.
+    const activeCount = useFinanceStore((s) => s.aiConversation.length);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-    const { doNew, doSwitch, doDelete } = useConversationActions(isLoading);
+    // [Finding panel a11y] Annonce SR des transitions (bascule/suppression/confirmation) + point de
+    // chute du FOCUS : les boutons cliqués disparaissent du DOM (le focus retombait sur <body> à
+    // CHAQUE bascule — WCAG 2.4.3) → re-focus explicite sur le conteneur de liste.
+    const [srMessage, setSrMessage] = useState('');
+    const listRef = React.useRef<HTMLDivElement>(null);
+    const announce = (msg: string) => {
+        setSrMessage(msg);
+        listRef.current?.focus();
+    };
+    const { doNew, doSwitch, doDelete } = useConversationActions(isLoading, announce);
+    const armDelete = (id: string, title: string) => {
+        setConfirmDeleteId(id);
+        setSrMessage(`Confirmation requise : clique à nouveau pour supprimer « ${title} ».`);
+    };
 
     if (compact) {
         // Mobile : sélecteur natif (accessible clavier/SR sans travail custom) + bouton nouvelle.
         return (
             <div className="flex gap-2 items-center">
+                <span className="sr-only" role="status" aria-live="polite">{srMessage}</span>
                 <label htmlFor="ai-conv-select" className="sr-only">Conversations précédentes</label>
                 <select
                     id="ai-conv-select"
@@ -108,12 +151,21 @@ export const AiConversationList: React.FC<AiConversationListProps> = ({ isLoadin
                     <Icon name="plus" size={14} aria-hidden="true" />Nouvelle conversation
                 </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-1" role="list" aria-label="Conversations précédentes">
-                {aiConversations.length === 0 && (
-                    <p className="text-tiny text-ink-400 px-2 py-3">
-                        Tes conversations archivées apparaîtront ici (synchronisées via Drive).
-                    </p>
-                )}
+            {/* Annonce SR des transitions (bascule/suppression/confirmation — WCAG 4.1.3). */}
+            <span className="sr-only" role="status" aria-live="polite">{srMessage}</span>
+            {/* État vide HORS du role=list (un enfant non-listitem y est invalide, finding a11y). */}
+            {aiConversations.length === 0 && (
+                <p className="text-tiny text-ink-400 px-4 py-3">
+                    Tes conversations archivées apparaîtront ici (synchronisées via Drive).
+                </p>
+            )}
+            <div
+                ref={listRef}
+                tabIndex={-1}
+                className="flex-1 overflow-y-auto p-2 space-y-1 outline-none"
+                role="list"
+                aria-label="Conversations précédentes"
+            >
                 {aiConversations.map((c) => (
                     <div key={c.id} role="listitem" className="group flex items-center gap-1">
                         <button
@@ -134,14 +186,14 @@ export const AiConversationList: React.FC<AiConversationListProps> = ({ isLoadin
                                 onClick={() => { doDelete(c.id); setConfirmDeleteId(null); }}
                                 disabled={isLoading}
                                 aria-label={`Confirmer la suppression de la conversation ${c.title}`}
-                                className="min-w-[28px] min-h-[28px] inline-flex items-center justify-center rounded-lg bg-danger-500/20 text-danger-400 hover:bg-danger-500/30 focus-ring text-tiny font-bold"
+                                className="min-w-[28px] min-h-[28px] inline-flex items-center justify-center rounded-lg bg-danger-500/20 text-danger-400 hover:bg-danger-500/30 border border-danger-400 focus-ring text-tiny font-bold"
                             >
                                 Oui
                             </button>
                         ) : (
                             <button
                                 type="button"
-                                onClick={() => setConfirmDeleteId(c.id)}
+                                onClick={() => armDelete(c.id, c.title)}
                                 disabled={isLoading}
                                 aria-label={`Supprimer la conversation ${c.title}`}
                                 className="min-w-[28px] min-h-[28px] inline-flex items-center justify-center rounded-lg text-ink-400 hover:text-danger-400 hover:bg-white/5 focus-ring opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"

@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     startNewConversation, switchConversation, deleteConversation,
-    conversationTitle, aliveAttachmentMessageIds,
+    conversationTitle, aliveAttachmentMessageIds, MAX_ARCHIVED_CONVERSATIONS,
 } from '../../services/aiChat/conversations';
 import type { AiMessage } from '../../types';
 
@@ -36,7 +36,7 @@ describe('startNewConversation', () => {
             aiConversations: [],
             activeAiConversationId: 'conv_A',
         };
-        const patch = startNewConversation(state);
+        const { patch } = startNewConversation(state);
         expect(patch.aiConversation).toEqual([]);
         expect(patch.aiConversations).toHaveLength(1);
         expect(patch.aiConversations[0].id).toBe('conv_A');
@@ -46,8 +46,23 @@ describe('startNewConversation', () => {
     });
 
     it('active VIDE → rien archivé (pas de conversation fantôme dans la liste)', () => {
-        const patch = startNewConversation({ aiConversation: [], aiConversations: [], activeAiConversationId: null });
+        const { patch } = startNewConversation({ aiConversation: [], aiConversations: [], activeAiConversationId: null });
         expect(patch.aiConversations).toEqual([]);
+    });
+
+    it('PLAFOND d\'archives : au-delà, les plus ANCIENNES tombent et leurs ids de messages sont rendus (nettoyage Drive/cache)', () => {
+        const full = Array.from({ length: MAX_ARCHIVED_CONVERSATIONS }, (_, i) => ({
+            id: `conv_${i}`, title: `C${i}`, createdAt: '', updatedAt: '',
+            messages: [msg(`old_${i}`, 'user', `Q${i}`)],
+        }));
+        const { patch, droppedMessageIds } = startNewConversation({
+            aiConversation: [msg('m1', 'user', 'Récente')],
+            aiConversations: full, // déjà au plafond → archiver l'active en évince une
+            activeAiConversationId: 'conv_new',
+        });
+        expect(patch.aiConversations).toHaveLength(MAX_ARCHIVED_CONVERSATIONS);
+        expect(patch.aiConversations[0].id).toBe('conv_new'); // la plus récente en tête
+        expect(droppedMessageIds).toEqual([`old_${MAX_ARCHIVED_CONVERSATIONS - 1}`]); // la plus vieille évincée
     });
 });
 
@@ -55,7 +70,7 @@ describe('switchConversation', () => {
     const archived = { id: 'conv_B', title: 'B', createdAt: '', updatedAt: '', messages: [msg('b1', 'user', 'QB')] };
 
     it('charge la cible dans l\'active, archive l\'ancienne active, retire la cible de la liste', () => {
-        const patch = switchConversation({
+        const { patch } = switchConversation({
             aiConversation: [msg('m1', 'user', 'QA')],
             aiConversations: [archived],
             activeAiConversationId: 'conv_A',
@@ -71,8 +86,8 @@ describe('switchConversation', () => {
 
     it('aller-retour : re-basculer ne DUPLIQUE pas (ré-archivage remplace par id)', () => {
         const s1 = { aiConversation: [msg('a1', 'user', 'QA')], aiConversations: [archived], activeAiConversationId: 'conv_A' };
-        const p1 = switchConversation(s1, 'conv_B')!;
-        const p2 = switchConversation({ ...p1 }, 'conv_A')!;
+        const p1 = switchConversation(s1, 'conv_B')!.patch;
+        const p2 = switchConversation({ ...p1 }, 'conv_A')!.patch;
         expect(p2.activeAiConversationId).toBe('conv_A');
         expect(p2.aiConversations.map((c) => c.id)).toEqual(['conv_B']);
         expect(p2.aiConversation).toEqual(s1.aiConversation);

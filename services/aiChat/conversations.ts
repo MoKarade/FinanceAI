@@ -22,6 +22,13 @@ export interface ConversationsPatch {
     activeAiConversationId: string | null;
 }
 
+/**
+ * Plafond d'archives (finding panel sécurité — minimisation Loi 25 + taille du payload sync : les
+ * conversations voyagent EN ENTIER dans chaque push Drive). Au-delà, les plus ANCIENNES tombent ;
+ * leurs ids de messages sont rendus à l'appelant (nettoyage cache + fichiers Drive de pièces jointes).
+ */
+export const MAX_ARCHIVED_CONVERSATIONS = 30;
+
 type ConversationsState = Pick<AppState, 'aiConversation' | 'aiConversations' | 'activeAiConversationId'>;
 
 let _convSeq = 0;
@@ -39,43 +46,72 @@ export function conversationTitle(messages: AiMessage[]): string {
     return `Conversation du ${Number.isNaN(d.getTime()) ? '?' : d.toISOString().slice(0, 10)}`;
 }
 
-/** Archive la conversation ACTIVE (si non vide) dans la liste. Interne aux transitions ci-dessous. */
-function archiveActive(state: ConversationsState): { list: AiConversation[]; } {
+/** Résultat d'une transition : patch + ids de messages DÉFINITIVEMENT sortis (cap d'archives). */
+export interface ConversationsTransition {
+    patch: ConversationsPatch;
+    /** Messages des conversations évincées par le plafond (nettoyage cache + fichiers Drive). */
+    droppedMessageIds: string[];
+}
+
+/** Archive la conversation ACTIVE (si non vide) dans la liste, PLAFONNÉE. Interne aux transitions. */
+function archiveActive(state: ConversationsState): { list: AiConversation[]; droppedMessageIds: string[] } {
     const list = [...(state.aiConversations ?? [])];
     const messages = state.aiConversation ?? [];
-    if (messages.length === 0) return { list };
+    const cap = (arr: AiConversation[]): { kept: AiConversation[]; droppedMessageIds: string[] } => {
+        if (arr.length <= MAX_ARCHIVED_CONVERSATIONS) return { kept: arr, droppedMessageIds: [] };
+        const kept = arr.slice(0, MAX_ARCHIVED_CONVERSATIONS);
+        const dropped = arr.slice(MAX_ARCHIVED_CONVERSATIONS);
+        return {
+            kept,
+            droppedMessageIds: dropped.flatMap((c) => c.messages.map((m) => m.id).filter((x): x is string => Boolean(x))),
+        };
+    };
+    if (messages.length === 0) {
+        const { kept, droppedMessageIds } = cap(list);
+        return { list: kept, droppedMessageIds };
+    }
     const id = state.activeAiConversationId ?? nextConversationId();
     const createdAt = messages[0]?.timestamp || new Date().toISOString();
     const updatedAt = messages[messages.length - 1]?.timestamp || createdAt;
     // Remplace une éventuelle entrée du même id (ré-archivage après bascule aller-retour).
     const without = list.filter((c) => c.id !== id);
     without.unshift({ id, title: conversationTitle(messages), createdAt, updatedAt, messages });
-    return { list: without };
+    const { kept, droppedMessageIds } = cap(without);
+    return { list: kept, droppedMessageIds };
 }
 
 /** Nouvelle conversation : archive l'active (si non vide) et repart à vide. */
-export function startNewConversation(state: ConversationsState): ConversationsPatch {
+export function startNewConversation(state: ConversationsState): ConversationsTransition {
     if ((state.aiConversation ?? []).length === 0) {
         // Déjà vide : no-op logique (on renouvelle juste l'id actif pour une identité fraîche).
         return {
-            aiConversation: [],
-            aiConversations: state.aiConversations ?? [],
-            activeAiConversationId: nextConversationId(),
+            patch: {
+                aiConversation: [],
+                aiConversations: state.aiConversations ?? [],
+                activeAiConversationId: nextConversationId(),
+            },
+            droppedMessageIds: [],
         };
     }
-    const { list } = archiveActive(state);
-    return { aiConversation: [], aiConversations: list, activeAiConversationId: nextConversationId() };
+    const { list, droppedMessageIds } = archiveActive(state);
+    return {
+        patch: { aiConversation: [], aiConversations: list, activeAiConversationId: nextConversationId() },
+        droppedMessageIds,
+    };
 }
 
 /** Bascule vers une conversation archivée (l'active est archivée à sa place). Null si id inconnu. */
-export function switchConversation(state: ConversationsState, id: string): ConversationsPatch | null {
+export function switchConversation(state: ConversationsState, id: string): ConversationsTransition | null {
     const target = (state.aiConversations ?? []).find((c) => c.id === id);
     if (!target) return null;
-    const { list } = archiveActive(state);
+    const { list, droppedMessageIds } = archiveActive(state);
     return {
-        aiConversation: target.messages,
-        aiConversations: list.filter((c) => c.id !== id),
-        activeAiConversationId: target.id,
+        patch: {
+            aiConversation: target.messages,
+            aiConversations: list.filter((c) => c.id !== id),
+            activeAiConversationId: target.id,
+        },
+        droppedMessageIds,
     };
 }
 

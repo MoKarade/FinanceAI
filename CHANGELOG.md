@@ -6,6 +6,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — chantier Claude-in-app, Lot E : chat partout (panneau global + onglet)] — 2026-07-22
+
+### Améliorations (Assistant)
+- **Le conseiller IA est maintenant accessible PARTOUT** via un bouton flottant présent sur tous les
+  onglets (panneau latéral global), en plus de l'onglet Assistant agrandi en pleine page. Les deux
+  surfaces partagent la **même conversation, le même état** (une seule instance `useAiChat` via
+  `AiChatProvider` monté au niveau App) — envoie une question depuis le panneau, retrouve-la dans
+  l'onglet, et vice-versa. Une pastille sur le bouton flottant signale qu'une réponse arrive pendant
+  que tu navigues ailleurs.
+- **Résout à la racine le finding Lot D « promesse orpheline au changement d'onglet »** : le chat
+  n'est plus monté/démonté par onglet (il vit au niveau App) → une confirmation d'écriture en attente
+  survit à la navigation. Le modal de confirmation est rendu une seule fois par le provider.
+- **Bundle de boot inchangé** (mesuré ~107 kB gzip) : `useAiChat` charge le SDK Anthropic en import
+  DYNAMIQUE (au 1er message), le panneau global est lazy — le provider monté App ne tire rien de lourd.
+- Rendu mutualisé `AiChatView` (variant panneau/onglet) : une seule source pour les deux surfaces.
+
 ## [unreleased — chantier Claude-in-app, Lot D : écritures avec confirmation] — 2026-07-21
 
 ### Améliorations (Assistant)

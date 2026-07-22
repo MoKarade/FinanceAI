@@ -17,12 +17,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type Anthropic from '@anthropic-ai/sdk';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { runAgentLoop } from '../services/aiTools/agentLoop';
-import { appStateProvider } from '../services/aiTools/appStateProvider';
-import { executeWriteTool, type WritePreview, type WriteDecision } from '../services/aiTools/writeExecutor';
+import type { WritePreview, WriteDecision } from '../services/aiTools/writeExecutor';
 import { neutralizeFrameTags } from '../utils/promptSafety';
 import { logError } from '../services/errorLogger';
 import type { AiMessage } from '../types';
+
+// [AITOOLS-E] Imports DYNAMIQUES du lourd (agentLoop tire le SDK Anthropic, writeExecutor tire
+// applyDocument + le moteur de backup) : ce hook est désormais monté au niveau App via AiChatProvider
+// (une seule instance partagée entre le panneau global et l'onglet). Un import STATIQUE de ces modules
+// tirerait le SDK dans le bundle de BOOT (règle CLAUDE.md) → on ne les charge qu'au 1er envoi.
 
 /** Libellés FR lisibles des tools pour les chips « a consulté : X ». */
 export const TOOL_LABELS: Record<string, string> = {
@@ -156,6 +159,13 @@ export function useAiChat(apiKey: string): UseAiChat {
         const usedLabels: string[] = [];
 
         try {
+            // [AITOOLS-E] Chargement à la demande (boot-safe) — le SDK Anthropic n'entre dans aucun
+            // chunk avant le 1er message. vi.mock intercepte aussi les imports dynamiques (tests OK).
+            const [{ runAgentLoop }, { appStateProvider }, { executeWriteTool }] = await Promise.all([
+                import('../services/aiTools/agentLoop'),
+                import('../services/aiTools/appStateProvider'),
+                import('../services/aiTools/writeExecutor'),
+            ]);
             const result = await runAgentLoop(history, {
                 apiKey,
                 getState: appStateProvider,

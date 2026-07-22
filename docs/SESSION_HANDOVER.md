@@ -4,6 +4,16 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-22 — Chantier Claude-in-app : Lot E livré (chat PARTOUT)
+> **✅ `[AITOOLS-E]` livré** : le conseiller IA est accessible sur TOUS les onglets (panneau latéral global
+> `AiChatLauncher`, FAB partout, lazy) + onglet Assistant pleine page. `AiChatProvider` (monté App) = UNE
+> instance `useAiChat` partagée → même conversation/état sur les deux surfaces ; rendu mutualisé `AiChatView`
+> (variant panneau/onglet). Résout à la RACINE le finding Lot D « promesse orpheline au démontage d'onglet »
+> (chat plus jamais démonté par onglet ; modal rendu 1× par le provider). Boot inchangé (~107 kB gzip : SDK en
+> import dynamique dans useAiChat). ⏳ Panel (a11y + code-reviewer + silent-failure + ai-reviewer) en cours sur
+> le diff commité. **Reste au chantier** : SEC (audit sécurité final, exigence Marc). Puis P2 (tools d'écriture
+> supplémentaires) + P3 (visuels des 5 surfaces).
+>
 > ## 🟢 Session 2026-07-21 (suite) — Chantier Claude-in-app LANCÉ (GO Marc) — Lot A livré
 > **GO Marc** : « go jusqu'à tout fini et testé + audit de sec à la fin + aucune donnée changée + résultat fiable ».
 > Plan 5 lots validé (PM + architect) — détail et décisions verrouillées : BACKLOG §Chantier Claude-in-app.

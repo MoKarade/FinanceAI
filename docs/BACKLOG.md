@@ -55,8 +55,12 @@
   d'usage dans `applyDocument.ts` (touche du code moteur PARTAGÉ → à faire avec panel `financial-integrity` +
   vérif que les golden/tests de `summary` MCP ne régressent pas). Limite assumée : injection en langage naturel
   passe toujours (defense-in-depth).
-- [ ] **`[AITOOLS-E]` UI partagée** (L) — `useAiChat` + panneau latéral global (lazy) + onglet Assistant
-  agrandi (même conversation partout), `PrivateBlock` en mode discret, audit a11y, mesure gzip du chunk.
+- [x] **`[AITOOLS-E]` UI partagée** (L) — ✅ 2026-07-22 : `AiChatProvider` (1 instance `useAiChat` au niveau
+  App) + panneau latéral GLOBAL (`AiChatLauncher`, FAB partout, lazy) + onglet Assistant pleine page —
+  rendu mutualisé `AiChatView` (variant panneau/onglet), MÊME conversation partout. Résout à la racine le
+  finding Lot D « promesse orpheline au démontage d'onglet » (chat monté App, jamais démonté par onglet ;
+  modal rendu 1× par le provider). Boot inchangé (~107 kB gzip mesuré : SDK Anthropic en import dynamique
+  dans `useAiChat`, panneau lazy). Mode discret masque tout ; pastille d'activité sur le FAB panneau fermé.
 - [ ] **`[AITOOLS-SEC]` Audit sécurité FINAL du chantier** (M, exigence Marc) — panel security-privacy +
   ai-reviewer sur TOUT le chantier : injection indirecte via tool_result, aucune écriture sans confirmation
   (prouvé par test), clé API, Loi 25, mode discret, personas. + vérif « aucune donnée changée » en lecture.

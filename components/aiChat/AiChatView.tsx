@@ -20,6 +20,7 @@ import {
     MAX_ATTACHMENTS_PER_MESSAGE, MAX_TOTAL_ATTACHMENT_BYTES,
 } from '../../services/aiChat/attachments';
 import { showToast } from '../ui/Toast';
+import { AiConversationList } from './AiConversationList';
 
 export type AiChatVariant = 'panel' | 'tab';
 
@@ -184,7 +185,21 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                     <span className="sr-only">Conversation masquée en mode discret</span>
                 </div>
             ) : (
-                <>
+                <div className="flex flex-1 min-h-0">
+                    {/* [B2-CHAT-HISTORY] Historique multi-conversations — ONGLET seulement (le panneau
+                        reste compact), sidebar md+ / sélecteur mobile, DANS la zone masquée du mode
+                        discret (les titres = premières questions → montants potentiels). */}
+                    {!isPanel && (
+                        <div className="hidden md:flex flex-shrink-0 min-h-0">
+                            <AiConversationList isLoading={isLoading} />
+                        </div>
+                    )}
+                    <div className="flex flex-col flex-1 min-h-0">
+                    {!isPanel && (
+                        <div className="md:hidden p-2 border-b border-white/5 flex-shrink-0">
+                            <AiConversationList isLoading={isLoading} compact />
+                        </div>
+                    )}
                     <div className={`flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide ${isPanel ? '' : 'max-w-3xl mx-auto w-full'}`}>
                         {messagesToRender.map((m, i) => (
                             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -353,7 +368,8 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                             )}
                         </div>
                     </div>
-                </>
+                    </div>
+                </div>
             )}
         </div>
     );

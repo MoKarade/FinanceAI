@@ -754,6 +754,13 @@ export interface AppState {
   lastUpdate: number;
   categorizationRules: CategorizationRule[];
   aiConversation: AiMessage[];
+  // [B2-CHAT-HISTORY] Multi-conversations : `aiConversation` reste la conversation ACTIVE (source
+  // unique — tous les consommateurs existants inchangés) ; les conversations ARCHIVÉES vivent ici.
+  // ADDITIF optionnel (zéro migration) ; synchronisé Drive (texte + métadonnées de pièces jointes
+  // seulement — jamais d'octets, ADR-4).
+  aiConversations?: AiConversation[];
+  /** Id de la conversation ACTIVE (celle d'`aiConversation`) — null tant qu'aucune n'a été archivée. */
+  activeAiConversationId?: string | null;
   // W5.x — Nouveaux containers
   insurancePolicies?: InsurancePolicy[];
   rentalProperties?: RentalProperty[];
@@ -764,6 +771,16 @@ export interface AppState {
   charitableGoals?: CharitableGoal[];
   // Phase G.1 — métadonnées des documents uploadés (blobs stockés séparément)
   documents?: DocumentMeta[];
+}
+
+/** [B2-CHAT-HISTORY] Une conversation ARCHIVÉE du chat Assistant (l'active vit dans `aiConversation`). */
+export interface AiConversation {
+  id: string;
+  /** Titre auto (première question tronquée) — peut porter un montant → zone masquée en mode discret. */
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: AiMessage[];
 }
 
 export interface RecurringItem {

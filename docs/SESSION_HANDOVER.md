@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-22 (suite 4) — B2 : onglet + historique multi-conversations + pièces jointes cross-device
+> **✅ `[B2-CHAT-HISTORY]` implémenté** : `aiConversations`/`activeAiConversationId` (additifs — `aiConversation`
+> RESTE l'active, source unique, jamais dupliquée dans la liste), logique pure `services/aiChat/conversations.ts`,
+> UI `AiConversationList` (sidebar onglet md+ / sélecteur mobile, gelée pendant un envoi, zone mode discret),
+> octets des pièces jointes en fichiers Drive appdata SÉPARÉS (`attachmentDriveStore.ts` : push best-effort à
+> l'envoi, fetch au cache-miss sur l'autre appareil, delete avec la conversation, skip mode test). Défauts MCP
+> mis en parité (appStateDefaults). 25 tests neufs, suite 2844 verte, boot ~113 kB gzip SDK-free. ⏳ Panel à
+> lancer post-commit ; ensuite B3 (choix modèle) + B4 (coût CAD).
+>
 > ## 🟢 Session 2026-07-22 (suite 3) — B1 : pièces jointes multimodales du chat (PR #487)
 > **Panel 5 agents APPLIQUÉ en commit de suivi** : CRITIQUE fichier 0 octet (tour évaporé de l'historique
 > modèle, sonde) → plancher + garde par type + repli honnête ; ÉLEVÉS : suggestion-jette-fichier (sonde),

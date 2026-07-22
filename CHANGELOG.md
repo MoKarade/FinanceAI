@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Chat : historique multi-conversations + pièces jointes cross-device (B2)] — 2026-07-22
+
+### Nouveau (demande Marc « un onglet dédié avec historique »)
+- **Historique de conversations dans l'onglet Assistant** : sidebar (mobile : sélecteur) listant tes
+  conversations archivées — « Nouvelle conversation » archive l'active et repart à zéro, cliquer une
+  ancienne la recharge (l'active du moment s'archive à sa place), suppression en 2 clics. Titre auto =
+  ta première question. Le panneau latéral reste compact (conversation active seulement).
+- **Synchronisé via Drive** : les conversations (texte + métadonnées) voyagent avec le reste de l'état —
+  tu retrouves ton historique sur l'autre PC.
+- **Pièces jointes cross-device** : le CONTENU des fichiers joints est stocké en fichiers SÉPARÉS du
+  dossier caché Drive (jamais dans l'état synchronisé — il reste léger) : envoyé en arrière-plan à
+  l'envoi, récupéré automatiquement sur l'autre appareil quand tu poses une question de suivi.
+  Sans Drive connecté : comportement d'avant (note honnête « contenu non disponible »). Supprimés
+  avec leur conversation (pas d'orphelins). Jamais actif en mode démo.
+- Garde-fou : aucune bascule/suppression pendant qu'une réponse est en cours (la réponse payée
+  serait perdue) ; zone entièrement masquée en mode discret (les titres peuvent porter des montants).
+
 ## [unreleased — Chat : pièces jointes multimodales (B1)] — 2026-07-22
 
 ### Nouveau (demande Marc « que je puisse mettre des docs ou image ou autre »)

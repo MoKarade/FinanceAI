@@ -96,8 +96,14 @@
   tour évaporé ; 3 ÉLEVÉS suggestion-jette-fichier / budget agrégé / cache_control ; 6 MOYENS a11y-sécurité).
   Suivi non bloquant : `max_tokens` 2048 court pour « liste tout le PDF » (marqueur [Réponse coupée] honnête),
   timeout 60 s premier tour PDF lourd à instrumenter si vu en prod. B2 déplacera les octets en fichiers Drive appdata.
-- [ ] **`[B2-CHAT-HISTORY]`** (L) — onglet dédié + historique MULTI-conversations synchronisé Drive
-  (texte dans l'état sync ; pièces jointes en FICHIERS appdata séparés, jamais inline base64).
+- [x] **`[B2-CHAT-HISTORY]`** ✅ 2026-07-22 — multi-conversations : `aiConversations` (archivées) +
+  `activeAiConversationId` (additifs, zéro migration) ; `aiConversation` RESTE l'active (source unique,
+  l'active ne figure JAMAIS dans la liste — pas de double copie qui diverge). Logique pure
+  `services/aiChat/conversations.ts` (new/switch/delete, titre auto, aliveAttachmentMessageIds),
+  UI `AiConversationList` (sidebar md+ / sélecteur mobile, onglet seulement, zone mode discret, actions
+  gelées isLoading). **Pièces jointes cross-device** : `attachmentDriveStore.ts` — un fichier appdata
+  par message (`financeai-chat-attach-<msgId>.json`), push fire-and-forget à l'envoi, fetch au
+  cache-miss (ratés mémorisés), delete avec la conversation, skip mode test/sans jeton.
 - [ ] **`[B3-CHAT-MODEL]`** (S) — choix du modèle par conversation (Haiku / Sonnet / Opus).
 - [ ] **`[B4-CHAT-COST]`** (M) — coût réel (tokens usage × tarif → CAD), total cumulé + par conversation.
 

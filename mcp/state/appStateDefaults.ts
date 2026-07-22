@@ -45,6 +45,8 @@ export function buildDefaultAppState(): AppState {
         lastUpdate: Date.now(),
         categorizationRules: [],
         aiConversation: [],
+        aiConversations: [],
+        activeAiConversationId: null,
         insurancePolicies: [],
         rentalProperties: [],
         privateBusinesses: [],

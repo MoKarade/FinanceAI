@@ -134,17 +134,29 @@ export async function listAppDataFiles(
     fetchFn?: FetchLike,
 ): Promise<AppDataFileRef[]> {
     const f = resolveFetch(fetchFn);
-    const params = new URLSearchParams({
-        spaces: 'appDataFolder',
-        q: `name contains '${nameContains}'`,
-        fields: 'files(id,name,modifiedTime)',
-        pageSize: '50',
-    });
-    return withDriveTimeout(f, `${DRIVE_FILES}?${params.toString()}`, { headers: authHeader(token) }, async (res) => {
-        if (!res.ok) await failFromResponse(res);
-        const data = (await res.json()) as { files?: AppDataFileRef[] };
-        return data.files ?? [];
-    });
+    // [B2, finding panel] PAGINÉ (boucle nextPageToken) : avec un fichier de pièce jointe de chat
+    // par message (`financeai-chat-attach-*`), une seule page de 50 rendait la suppression/le wipe
+    // SILENCIEUSEMENT partiels au-delà de 50 fichiers (orphelins jamais retrouvés). Garde-fou de
+    // boucle : 40 pages (4 000 fichiers) — largement au-delà de tout usage réel.
+    const out: AppDataFileRef[] = [];
+    let pageToken: string | undefined;
+    for (let page = 0; page < 40; page++) {
+        const params = new URLSearchParams({
+            spaces: 'appDataFolder',
+            q: `name contains '${nameContains}'`,
+            fields: 'nextPageToken,files(id,name,modifiedTime)',
+            pageSize: '100',
+        });
+        if (pageToken) params.set('pageToken', pageToken);
+        const data = await withDriveTimeout(f, `${DRIVE_FILES}?${params.toString()}`, { headers: authHeader(token) }, async (res) => {
+            if (!res.ok) await failFromResponse(res);
+            return (await res.json()) as { files?: AppDataFileRef[]; nextPageToken?: string };
+        });
+        out.push(...(data.files ?? []));
+        pageToken = data.nextPageToken;
+        if (!pageToken) break;
+    }
+    return out;
 }
 
 /**

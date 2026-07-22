@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-22 (suite 4) — B2 : onglet + historique multi-conversations + pièces jointes cross-device
+> **✅ `[B2-CHAT-HISTORY]` implémenté** : `aiConversations`/`activeAiConversationId` (additifs — `aiConversation`
+> RESTE l'active, source unique, jamais dupliquée dans la liste), logique pure `services/aiChat/conversations.ts`,
+> UI `AiConversationList` (sidebar onglet md+ / sélecteur mobile, gelée pendant un envoi, zone mode discret),
+> octets des pièces jointes en fichiers Drive appdata SÉPARÉS (`attachmentDriveStore.ts` : push best-effort à
+> l'envoi, fetch au cache-miss sur l'autre appareil, delete avec la conversation, skip mode test). Défauts MCP
+> mis en parité (appStateDefaults). **Panel 4 agents APPLIQUÉ** : CRITIQUE droit-à-l'effacement
+> (`deleteRemoteData` wipe désormais les `financeai-chat-attach-*`) ; ÉLEVÉS course flags-avant-await
+> (sonde : un message atterrissait dans la MAUVAISE conversation pendant la lecture d'un fichier) +
+> suppression Drive paginée/tracée ; MOYENS TTL 60s sur les fetch ratés (course de sync cross-device),
+> cap 30 archives (payload sync borné), focus/contraste/SR a11y, purge caches au changement de compte.
+> Reste latent → BACKLOG `[PERSONA-SANITIZE-CHAT]`. Ensuite B3 (choix modèle) + B4 (coût CAD).
+>
 > ## 🟢 Session 2026-07-22 (suite 3) — B1 : pièces jointes multimodales du chat (PR #487)
 > **Panel 5 agents APPLIQUÉ en commit de suivi** : CRITIQUE fichier 0 octet (tour évaporé de l'historique
 > modèle, sonde) → plancher + garde par type + repli honnête ; ÉLEVÉS : suggestion-jette-fichier (sonde),

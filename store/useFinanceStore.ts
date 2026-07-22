@@ -174,6 +174,9 @@ const DEFAULT_APP_STATE: AppState = {
     lastUpdate: Date.now(),
     categorizationRules: [],
     aiConversation: [],
+    // [B2-CHAT-HISTORY] Multi-conversations (additif, persisté via partialize allow-all — sync Drive).
+    aiConversations: [],
+    activeAiConversationId: null,
     // W5.x — Nouveaux containers (vide par défaut)
     insurancePolicies: [],
     rentalProperties: [],
@@ -311,6 +314,8 @@ export const getInitialStateWithMigration = (): AppState => {
             lastUpdate: Date.now(),
             categorizationRules: (() => { try { const r = localStorage.getItem('categorization_rules'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
             aiConversation: [],
+            aiConversations: [],
+            activeAiConversationId: null,
             // FIX agents (HIGH code-reviewer): defaults manquants dans le retour de migration
             insurancePolicies: (() => { try { const r = localStorage.getItem('app_insurance_policies'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
             rentalProperties: (() => { try { const r = localStorage.getItem('app_rental_properties'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),

@@ -25,10 +25,14 @@ import type { AiMessage } from '../types';
 // [AITOOLS-B1] Pièces jointes : module LÉGER (aucun import lourd — types SDK effacés) → statique OK.
 import {
     readAttachment, buildUserContent, cacheAttachments, getCachedAttachments,
-    clearAttachmentCache, pruneAttachmentCache, unavailableAttachmentsNote,
+    pruneAttachmentCache, unavailableAttachmentsNote,
     totalAttachmentBytes, MAX_ATTACHMENTS_PER_MESSAGE, MAX_TOTAL_ATTACHMENT_BYTES,
     type AiAttachmentPayload,
 } from '../services/aiChat/attachments';
+import { aliveAttachmentMessageIds } from '../services/aiChat/conversations';
+// [B2] Octets des pièces jointes en fichiers Drive appdata SÉPARÉS (cross-device) — best-effort,
+// jamais bloquant, module léger (fetch nu, aucun SDK).
+import { pushAttachmentsToDrive, fetchAttachmentsFromDrive, deleteAttachmentsFromDrive } from '../services/aiChat/attachmentDriveStore';
 
 // [AITOOLS-E] Imports DYNAMIQUES du lourd (agentLoop tire le SDK Anthropic, writeExecutor tire
 // applyDocument + le moteur de backup) : ce hook est désormais monté au niveau App via AiChatProvider
@@ -145,6 +149,15 @@ export function useAiChat(apiKey: string): UseAiChat {
             return;
         }
 
+        // [Finding panel B2 ÉLEVÉ — course PROUVÉE par sonde] Les flags d'envoi montent AVANT le
+        // premier `await` (la lecture des fichiers cède la main à l'event loop) : sinon, pendant la
+        // lecture d'une pièce jointe, `isLoading` restait false → la sidebar des conversations
+        // permettait une bascule/nouvelle conversation et le message atterrissait dans la MAUVAISE
+        // conversation. Tout chemin de sortie repasse par le `finally` global ci-dessous.
+        inFlightRef.current = true;
+        setIsLoading(true);
+        try {
+
         // [AITOOLS-B1] Lecture des pièces jointes AVANT tout append : un fichier illisible refuse
         // l'envoi ENTIER honnêtement (jamais d'envoi partiel silencieux — le message resterait dans
         // le transcript en laissant croire que le document a été analysé).
@@ -189,7 +202,6 @@ export function useAiChat(apiKey: string): UseAiChat {
             }
         }
 
-        inFlightRef.current = true;
         const userMsgId = nextMessageId();
         appendMessage({
             id: userMsgId, role: 'user', text: userText, timestamp: new Date().toISOString(),
@@ -198,12 +210,19 @@ export function useAiChat(apiKey: string): UseAiChat {
                 ? { attachments: payloads.map(({ name, kind, mimeType, size }) => ({ name, kind, mimeType, size })) }
                 : {}),
         });
-        if (payloads.length > 0) cacheAttachments(userMsgId, payloads);
-        setIsLoading(true);
+        if (payloads.length > 0) {
+            cacheAttachments(userMsgId, payloads);
+            // [B2] Cross-device : octets poussés en fichier Drive appdata SÉPARÉ (fire-and-forget —
+            // un échec = comportement B1, note honnête sur l'autre appareil). JAMAIS en mode test
+            // (une pièce jointe de démo ne doit pas atterrir dans le vrai Drive).
+            if (!useFinanceStore.getState().isTestMode) pushAttachmentsToDrive(userMsgId, payloads);
+        }
         setActiveTools([]);
         // Éviction : les payloads des messages sortis de la fenêtre d'historique ne seront plus
         // jamais relus (finding panel — croissance mémoire non bornée sur longue session).
-        pruneAttachmentCache(useFinanceStore.getState().aiConversation.slice(-HISTORY_WINDOW).map((m) => m.id));
+        // [B2] La fenêtre de CHAQUE conversation (active + archivées) reste vivante : une bascule
+        // de conversation retrouve ses pièces jointes en session.
+        pruneAttachmentCache(aliveAttachmentMessageIds(useFinanceStore.getState(), HISTORY_WINDOW));
 
         // H3 (sécurité, hérité de l'ancien assistant) : neutraliser les fausses balises de cadre
         // dans l'HISTORIQUE (un libellé importé peut y ressortir) et le tour utilisateur.
@@ -212,6 +231,17 @@ export function useAiChat(apiKey: string): UseAiChat {
         // est dans le cache de session (questions de suivi sur le même document) ; après un reload,
         // le contenu n'existe plus → note honnête (le modèle ne reçoit jamais un contenu fabriqué).
         const recent = useFinanceStore.getState().aiConversation.slice(-HISTORY_WINDOW);
+        // [B2] Cache-miss local (autre appareil / reload) : tentative de récupération des octets
+        // depuis Drive AVANT de construire l'historique — une seule fois par id et par session
+        // (les ratés sont mémorisés), jamais de popup, skip en mode test. Échec → note honnête (B1).
+        if (!useFinanceStore.getState().isTestMode) {
+            for (const m of recent) {
+                if (m.role === 'user' && m.id && (m.attachments?.length ?? 0) > 0 && !getCachedAttachments(m.id)) {
+                    const fetched = await fetchAttachmentsFromDrive(m.id);
+                    if (fetched) cacheAttachments(m.id, fetched);
+                }
+            }
+        }
         const history: Anthropic.MessageParam[] = recent
             .map((m): Anthropic.MessageParam => {
                 const role = (m.role === 'model' ? 'assistant' : 'user') as 'user' | 'assistant';
@@ -304,10 +334,15 @@ export function useAiChat(apiKey: string): UseAiChat {
                     : 'Oups — la conversation a échoué. Réessaie dans un instant.'),
             });
         } finally {
-            inFlightRef.current = false;
-            setIsLoading(false);
             setActiveTools([]);
             abortRef.current = null;
+        }
+
+        // Fin du bloc ouvert AVANT le premier await (fix course B2) : tout chemin — succès, refus
+        // de budget/lecture, throw — rend la main proprement (les actions de conversation dégèlent).
+        } finally {
+            inFlightRef.current = false;
+            setIsLoading(false);
         }
     }, [apiKey, appendMessage, updateModelMessage, requestConfirmation]);
 
@@ -344,8 +379,14 @@ export function useAiChat(apiKey: string): UseAiChat {
         // Ceinture : ne JAMAIS vider pendant un envoi (la réponse en cours — déjà payée — serait
         // perdue sans trace). L'UI désactive le bouton, ce garde couvre les appels programmatiques.
         if (inFlightRef.current) return;
-        useFinanceStore.getState().setAppState({ aiConversation: [] });
-        clearAttachmentCache(); // les payloads d'une conversation effacée sont libérés (mémoire)
+        const s = useFinanceStore.getState();
+        const clearedIds = s.aiConversation.map((m) => m.id).filter((x): x is string => Boolean(x));
+        s.setAppState({ aiConversation: [] });
+        // [B2] Effacer = suppression DÉFINITIVE de la conversation ACTIVE seulement : on ne vide
+        // plus TOUT le cache (les payloads des conversations ARCHIVÉES doivent survivre à un
+        // Effacer de l'active) — éviction par liste vivante + nettoyage des fichiers Drive associés.
+        pruneAttachmentCache(aliveAttachmentMessageIds(useFinanceStore.getState(), HISTORY_WINDOW));
+        if (!s.isTestMode && clearedIds.length > 0) void deleteAttachmentsFromDrive(clearedIds);
     }, []);
 
     return { isLoading, activeTools, pendingWrite, resolvePendingWrite, sendMessage, cancel, clearConversation };

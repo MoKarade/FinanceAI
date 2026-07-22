@@ -55,6 +55,8 @@ import { currentMeta, readDrive } from './syncMeta';
 import { handleError } from './syncErrors';
 import { pushNow } from './syncPush';
 import { pullNow } from './syncPull';
+import { deleteAllChatAttachmentsFromDrive, resetAttachmentDriveMemos } from '../aiChat/attachmentDriveStore';
+import { clearAttachmentCache } from '../aiChat/attachments';
 
 /**
  * A-t-on DÉJÀ connecté un compte Drive sur cet appareil ? (méta locale présente). Sert à l'app pour
@@ -308,6 +310,10 @@ export function disconnectSync(): void {
     // La passphrase est un secret de SESSION : on la purge à la déconnexion (sinon elle resterait
     // déchiffrer un blob d'un autre compte reconnecté dans le même onglet).
     clearPassphrase();
+    // [B2, hygiène panel] Mémos Drive du chat (dédup push/fetch) + octets en mémoire : purgés au
+    // changement de compte — des mémos d'un compte A ne doivent pas piloter les push/fetch du compte B.
+    resetAttachmentDriveMemos();
+    clearAttachmentCache();
     setStatus({ connected: false, email: null, conflict: false, conflictSummary: null, lastSyncedAt: 0, needsPassphrase: false });
 }
 
@@ -323,10 +329,16 @@ export async function deleteRemoteData(): Promise<void> {
         const token = await getValidAccessToken();
         const ref = await findSyncFile(token);
         if (ref) await deleteSyncFile(token, ref.id);
+        // [Finding panel CRITIQUE — Loi 25] Le bouton « Supprimer mes données de Google Drive »
+        // doit AUSSI effacer les fichiers de pièces jointes du chat (`financeai-chat-attach-*` :
+        // relevés/PDF réels) — sinon l'effacement « irréversible » mentait : le fichier de sync
+        // partait, les documents restaient dans l'appDataFolder indéfiniment.
+        await deleteAllChatAttachmentsFromDrive(token);
         revokeAccess();
         clearActivity();
         clearSyncMeta();
         clearPassphrase(); // secret de session purgé avec la déconnexion qui suit la suppression
+        clearAttachmentCache(); // les octets en mémoire suivent l'effacement
         setStatus({ busy: false, connected: false, email: null, conflict: false, conflictSummary: null, lastSyncedAt: 0, needsPassphrase: false });
     } catch (e) {
         handleError('delete', e);

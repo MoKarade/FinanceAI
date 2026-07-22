@@ -44,6 +44,10 @@ const BackupSchema = z.object({
   majorRenovations: z.array(z.unknown()).optional(),
   charitableGoals: z.array(z.unknown()).optional(),
   aiConversation: z.array(z.unknown()).optional(),
+  // [B2] symétrie de schéma (le chat n'est pas restauré par le backup JSON — cf doRestore — mais
+  // un export qui porte ces champs ne doit pas être rejeté à la validation).
+  aiConversations: z.array(z.unknown()).optional(),
+  activeAiConversationId: z.string().nullable().optional(),
   // S-E : pas de .passthrough() — les clés inconnues sont écartées (strip) au lieu
   // d'être propagées. doRestore ne lit que des clés connues → aucun impact
   // fonctionnel ; on évite de conserver du contenu non validé en mémoire.

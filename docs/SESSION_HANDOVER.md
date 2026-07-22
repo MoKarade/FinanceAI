@@ -660,7 +660,7 @@
 > `*Debt` non redactées ; leçon « mesurer les findings »). Gates verts.
 >
 > **Session 2026-06-19 — FISC-RE-CAPITAL-LOSS (#371)** (money-critical, découverte panel #368) : un IMMEUBLE LOCATIF vendu
-> SOUS son coût réalisait une perte en capital SILENCIEUSEMENT ignorée (`gain = max(0, produit − coût)` + `if (gain > 0)`)
+> SOUS son coût réelisait une perte en capital SILENCIEUSEMENT ignorée (`gain = max(0, produit − coût)` + `if (gain > 0)`)
 > → avantage fiscal LIR 111(1)b perdu. Fix : helper SOURCE UNIQUE `applyCapitalDisposition(state, rawGain signé)` (`portfolioOps.ts`)
 > — perte < 0 → banque de pertes ; gain ≥ 0 → nette la banque puis impose. `handleNonRegSale`/`handleCryptoSale` refactorés
 > dessus (zéro duplication, 3 copies → 1). Mutator immo `realizeCapitalGain` → `realizeCapitalDisposition` (nom honnête : gère
@@ -965,11 +965,11 @@
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
 | **Dernière PR mergée** | **#430** [DETTE-RE-SALE] (vente immo ciblée par `propertyId`, 2026-07-07) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
-| **Tests** | **2352/2352 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
+| **Tests** | **2872/2872 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
 | **Schema store** | **v7** (Zustand persist, migrations v1→v7) |
-| **Stack IA** | `@anthropic-ai/sdk` (Sonnet 4.6 + Haiku 4.5) — Gemini retiré |
+| **Stack IA** | `@anthropic-ai/sdk` (Haiku 4.5 + Sonnet 4.6 + Opus 4.8) — choix modèle par conversation, coût réel CAD ; Gemini retiré |
 | **Banque** | CSV **+ import relevé PDF** (Claude Vision, #285) → pipeline `parseBankCsv` ; CSV 100 % local |
 | **Crypto** | CoinGecko (gratuit, sans clé) |
 | **Stock/ETF** | Finnhub REST (gratuit) |

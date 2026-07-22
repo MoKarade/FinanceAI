@@ -50,6 +50,18 @@ export const coinGeckoIdFor = (symbol: string): string | null => {
     return CRYPTO_IDS[parseSymbol(symbol).ticker] ?? null;
 };
 
+/**
+ * [PORTFOLIO-HISTORY] Devise dans laquelle CoinGecko rendra les clôtures de ce symbole (déduite du
+ * SUFFIXE : « BTC-CAD » → CAD, « BTC » nu → USD), ou null si ce n'est pas un crypto connu. Permet
+ * la garde « currency-mismatch » de l'hydratation d'historique (un close USD stocké sur un actif
+ * déclaré CAD serait valorisé ×1 — faux en silence).
+ */
+export const coinGeckoQuoteCurrencyFor = (symbol: string): string | null => {
+    if (!symbol) return null;
+    const parsed = parseSymbol(symbol);
+    return CRYPTO_IDS[parsed.ticker] ? parsed.currency : null;
+};
+
 async function cgFetch(path: string): Promise<unknown> {
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);

@@ -69,14 +69,23 @@ export function holdingsAt(asset: MinimalAsset, t: string): number {
 
 // Prix natif à la date t : dernier point d'historique ≤ t. Renvoie null si aucun
 // (→ le caller retombe sur le prix actuel et marque l'estimation).
-export function priceAt(asset: MinimalAsset, t: string): number | null {
+// `maxStaleDays` (optionnel — buildMarketData passe 7) : au-delà de ce retard entre le close
+// retenu et t, le prix est PÉRIMÉ → null (un titre à l'historique arrêté — délisting, sync en
+// échec — ne doit pas afficher un close de 11 mois comme une valeur du jour ; panel 2026-07-22).
+// Sans le param (reconstruction mensuelle du Futur) : comportement historique inchangé.
+export function priceAt(asset: MinimalAsset, t: string, maxStaleDays?: number): number | null {
     const hist = asset.priceHistory;
     if (!hist || hist.length === 0) return null;
     let best: MinimalPricePoint | null = null;
     for (const p of hist) {
         if (p.date <= t && (!best || p.date > best.date)) best = p;
     }
-    return best ? best.price : null;
+    if (!best) return null;
+    if (maxStaleDays !== undefined) {
+        const ageDays = (Date.parse(`${t}T00:00:00Z`) - Date.parse(`${best.date}T00:00:00Z`)) / 86_400_000;
+        if (ageDays > maxStaleDays) return null;
+    }
+    return best.price;
 }
 
 const lastDayOfMonth = (year: number, monthIdx0: number): string => {

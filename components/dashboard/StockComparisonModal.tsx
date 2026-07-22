@@ -4,6 +4,7 @@ import { Icon } from '../ui/Icon';
 import { StockChart } from '../StockChart';
 import { Skeleton } from '../ui/Skeleton';
 import { usePortfolioHistory } from '../../hooks/usePortfolioHistory';
+import { historyKeyMatchesSymbol } from '../../services/history/buildMarketData';
 
 /**
  * Phase D.4 — modal de comparaison de stocks superposés.
@@ -35,10 +36,16 @@ export const StockComparisonModal: React.FC<StockComparisonModalProps> = ({
 
     // Trouve les colonnes du dataset correspondant aux symbols (les clés peuvent
     // être "NASDAQ:AAPL" mais le symbol exposé est "AAPL").
+    // ⚠️ [panel 2026-07-22] UNION des clés de TOUTES les lignes : les lignes réelles sont ÉPARSES
+    // (un actif acheté après la 1re date est ABSENT de la ligne 0 → « Voir courbe » rendait
+    // « Aucune donnée » à tort). Et matching EXACT, jamais `includes` : « V » (Visa) matchait
+    // « VFV.TO » → la MAUVAISE courbe affichée sous le titre « Évolution — V » (fausse donnée).
     const visibleKeys = React.useMemo(() => {
         if (data.length === 0) return new Set<string>();
-        const allKeys = Object.keys(data[0]).filter(k => k !== 'date' && k !== 'Date' && !k.startsWith('Taux') && !k.includes('TOTAL'));
-        const matched = allKeys.filter(k => symbols.some(s => k.includes(s)));
+        const allKeys = new Set<string>();
+        data.forEach(row => Object.keys(row).forEach(k => allKeys.add(k)));
+        const candidate = [...allKeys].filter(k => k !== 'date' && k !== 'Date' && !k.startsWith('Taux') && !k.includes('TOTAL'));
+        const matched = candidate.filter(k => symbols.some(s => historyKeyMatchesSymbol(k, s)));
         return new Set(matched);
     }, [data, symbols]);
 

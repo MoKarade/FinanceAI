@@ -86,6 +86,35 @@
 > Restes uniquement : suivis LOW (DEP-UNDICI-VULN, FISC-CONST-LINT-LIMITS, FISC-RRSP-PRE2010-FALLBACK + suivi FUZZ-ONETIME-FLOWS) +
 > blocages Marc (RECH-ACTION-UX confirmée visuellement, phases 2-4 brief plan-first, P0-*, design Budget/Transactions/Retraite).
 
+## 📈 PORTFOLIO-HISTORY — courbes de cours réelles (bug Marc 2026-07-22, PR #485)
+- [x] **`[PORTFOLIO-HISTORY]`** ✅ 2026-07-22 — courbes par action (depuis 1er achat) + courbe portefeuille
+  entier sur les vraies surfaces. Chaîne gratuite Finnhub→Yahoo proxy→CoinGecko (contrat null=erreur/
+  []=vide), hydratation persistée (`hydrateAssetHistories`, fraîcheur 24h, pacing 2,5s, FUSION au re-sync),
+  builder pur (`buildMarketData` : DCA×close natif×FX, buckets TOTAL_*, agrégat multi-comptes, prix périmé
+  >7j exclu, partialHistorySymbols). **Panel adversarial 30 agents : 9 findings confirmés APPLIQUÉS** (dont
+  3 ÉLEVÉS mesurés : écrasement colonne multi-comptes 10 k$, garde devise crypto −27,5 %, clés éparses
+  ligne 0 → piles Dashboard fausses/modal vide) + matching exact (`historyKeyMatchesSymbol`), cache IDB
+  qui survit au boot (+ sweep), chips Investissements distinctes, note honnête excluded/partial.
+- [ ] **`[HIST-SESSION-HYDRATE]`** 🟡 (S) — hydratation UNIQUEMENT au boot (`useEffect []`) : un actif
+  AJOUTÉ en cours de session n'a pas de courbe (ni part au TOTAL) avant le prochain reload, sans message.
+  Déclencher une hydratation ciblée à l'ajout d'actif (AddStockForm/import courtier) ou sur changement de
+  la liste des symboles.
+- [ ] **`[HIST-INFLIGHT-DEDUP]`** 🟢 (S) — au PREMIER boot (store sans priceHistory), `usePastPortfolioHistory`
+  (Futur, sans pacing) et `hydrateAssetHistories` (pacé) peuvent fetcher les MÊMES symboles en parallèle
+  (withCache ne déduplique pas l'in-flight). Bénin après le 1er boot (le store est hydraté). Dédup in-flight
+  dans withCache ou skip usePast quand l'hydratation est en cours.
+- [ ] **`[HIST-BENCH-SYMBOL]`** 🟢 (décision produit Marc) — la carte « Marché (CW8 / MSCI) » d'Investissements
+  est STRUCTURELLEMENT morte en données réelles (buildMarketData n'émet que les symboles détenus — pas de
+  benchmark) → « — » permanent + momentum « bat le marché » comparé à 0. Soit hydrater un benchmark (ex.
+  XWD.TO) via la même chaîne, soit retirer la carte et la branche momentum-vs-marché.
+- [ ] **`[HIST-STORE-SIZE]`** 🟡 (M, à MESURER) — `priceHistory` quotidien depuis le 1er achat vit dans le
+  store PERSISTÉ (localStorage + chaque push Drive) : ~25-30 Ko/symbole/3 ans, croît sans cap (surtout avec
+  la fusion crypto > 365 j). Mesurer la taille réelle du payload sync ; si notable → downsample du stocké
+  (quotidien 1 an, hebdo au-delà) ou sortir l'historique vers IDB device-local (pattern PROJECTION-PERSIST).
+- [ ] **`[HIST-PREVIEW-PROXY]`** 🟢 (XS) — `vite preview` n'a pas de proxy `/api/history/yahoo` (seul `server.proxy`
+  dev est configuré) → repli Yahoo → fallback SPA → HTML → null honnête, graphes vides en preview local.
+  Ajouter `preview.proxy` miroir si on se met à utiliser vite preview.
+
 ## 🔎 Analyse app complète 2026-07-15 (panel 4 agents — rapport : `docs/ANALYSE_APP_2026-07-15.md`)
 > Demande Marc : « une grosse analyse de l'app ». Détail, preuves fichier:ligne et plan d'ordre dans le rapport.
 

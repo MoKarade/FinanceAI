@@ -18,6 +18,7 @@ export { clearMarketDataCache } from './cache';
 
 // Provider actions (Finnhub) — instancié quand la clé API est fournie.
 let activeProvider: MarketDataProvider | null = null;
+let activeFinnhubKey = '';
 
 // Provider crypto (CoinGecko) — GRATUIT, sans clé, TOUJOURS disponible.
 // Indépendant de la clé Finnhub : le crypto marche même sans rien configurer.
@@ -31,13 +32,17 @@ function pickProvider(symbol: string): MarketDataProvider | null {
 /**
  * Configure le provider actif. Appelé par l'app quand la clé Finnhub change
  * (Settings ou Onboarding). Si key vide → provider null (mode dégradé).
+ *
+ * ⚠️ IDEMPOTENT sur la MÊME clé (panel 2026-07-22) : App.tsx (boot) et usePastPortfolioHistory
+ * appellent cette fonction avec la clé COURANTE — un clear inconditionnel vidait le cache IDB
+ * « persistant » (historique 24 h) à CHAQUE reload, annulant sa raison d'être (rate-limit,
+ * vitesse). On ne vide que sur un VRAI changement de clé.
  */
 export function configureMarketDataProvider(opts: { finnhubKey?: string }): void {
-    if (opts.finnhubKey && opts.finnhubKey.trim().length > 0) {
-        activeProvider = new FinnhubProvider(opts.finnhubKey);
-    } else {
-        activeProvider = null;
-    }
+    const key = (opts.finnhubKey || '').trim();
+    if (key === activeFinnhubKey) return; // même clé (ou toujours sans clé) → provider et cache intacts
+    activeFinnhubKey = key;
+    activeProvider = key.length > 0 ? new FinnhubProvider(key) : null;
     // Vide le cache pour forcer un re-fetch avec le nouveau provider
     clearMarketDataCache();
 }
@@ -75,13 +80,14 @@ export function hasHistoryProvider(symbol: string): boolean {
 /**
  * Historique journalier sur une période, avec CHAÎNE DE REPLI (choix Marc « tout gratuit ») :
  *   crypto → CoinGecko ; actions/ETF → Finnhub (clé Marc — candles souvent 403 en tier gratuit)
- *   → repli Yahoo via proxy same-origin. Contrat provider : `[]` = vide VALIDE (cacheable 24h),
- *   `null` = erreur (JAMAIS cachée → retry/repli au prochain appel — avant, un `[]` d'erreur était
- *   caché 24h : trou silencieux). Retourne [] à l'appelant en dernier ressort (affichage honnête).
+ *   → repli Yahoo via proxy same-origin. Contrat provider PROPAGÉ à l'appelant : `[]` = vide
+ *   VALIDE (cacheable 24h), `null` = erreur (JAMAIS cachée → retry/repli au prochain appel).
+ *   ⚠️ Ne PAS aplatir null en [] ici (panel 2026-07-22) : l'hydratation distingue « échec de la
+ *   chaîne » (logError + retry, historique existant préservé) d'un « vide légitime » (skip).
  */
-export async function getHistory(symbol: string, from: Date, to: Date): Promise<HistoryPoint[]> {
+export async function getHistory(symbol: string, from: Date, to: Date): Promise<HistoryPoint[] | null> {
     const key = `${symbol}::${from.toISOString().slice(0, 10)}::${to.toISOString().slice(0, 10)}`;
-    const result = await withCache('history', key, async () => {
+    return withCache('history', key, async () => {
         const isCrypto = Boolean(coinGeckoIdFor(symbol));
         if (isCrypto) return cryptoProvider.getHistory(symbol, from, to); // pas de repli Yahoo (crypto)
         // 1. Finnhub si configuré. `[]`/`null` → tenter Yahoo (candles gratuits absents chez Finnhub).
@@ -95,7 +101,6 @@ export async function getHistory(symbol: string, from: Date, to: Date): Promise<
         }
         return null; // hors navigateur sans Finnhub : pas de chemin (non caché)
     });
-    return result ?? [];
 }
 
 /**

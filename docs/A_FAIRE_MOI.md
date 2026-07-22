@@ -7,6 +7,15 @@
 
 ---
 
+## PORTFOLIO-HISTORY — vérif visuelle post-deploy (remonté par Claude 2026-07-22, PR #485)
+- [ ] **Smoke test du repli Yahoo en PROD** (2 min, après le deploy Vercel) : ouvre le Dashboard en données
+  réelles → la courbe « Évolution détaillée » doit se remplir (au besoin recharge une fois passé ~1 min
+  d'hydratation). Si les courbes restent vides pour tes actions (pas la crypto), le suspect n°1 est le
+  rewrite Vercel `/api/history/yahoo/:symbol` qui ne transmettrait pas les query params `period1/period2`
+  (prouvé OK en dev, [Probable] côté Vercel — jamais exécuté en prod). Test direct :
+  `https://<ton-domaine>/api/history/yahoo/XEQT.TO?period1=1700000000&period2=1750000000&interval=1d`
+  doit rendre du JSON Yahoo (pas la page HTML de l'app). Dis-le à Claude si ça rend du HTML.
+
 ## O-SYNC — Décisions durcissement sync (Vague 3, remontées par Claude 2026-07-16)
 > Les 2 gros wins de Vague 3 sont livrés (ARCH-SYNC-SPLIT #455, SYNC-FETCH-TIMEOUT #456). Les 2 items
 > restants touchent des chemins money-critical (ta zone de perte 230k$) et méritent TON arbitrage avant

@@ -17,6 +17,7 @@ import { StatGrid } from './ui/StatGrid';
 import { Skeleton } from './ui/Skeleton';
 import { MarketDataPoint } from '../services/finance';
 import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
+import { historyKeyMatchesSymbol } from '../services/history/buildMarketData';
 import { ASSET_META } from '../services/assetMeta';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { StockComparisonModal } from './dashboard/StockComparisonModal';
@@ -139,7 +140,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     // Avant : fetch redondant à chaque mount Dashboard (et chaque autre tab
     // qui en a besoin). Maintenant : un seul fetch global mis en cache pour
     // toute la session.
-    const { history: portfolioHistory } = usePortfolioHistory();
+    const { history: portfolioHistory, excludedSymbols, partialHistorySymbols } = usePortfolioHistory();
     useEffect(() => {
         setMarketData(portfolioHistory);
     }, [portfolioHistory]);
@@ -223,7 +224,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 const perf = prevVal > 0 ? (diffCAD / prevVal) * 100 : 0;
 
                 const cleanSymbol = k.replace('NASDAQ:', '').replace('NYSE:', '').replace('EPA:', '');
-                const mappedAsset = assets.find(a => k.includes(a.symbol));
+                // Matching EXACT (clé réelle = symbole ; legacy = préfixe place) — jamais includes :
+                // « V » (Visa) matchait « VFV.TO » → mauvais type de compte (panel 2026-07-22).
+                const mappedAsset = assets.find(a => historyKeyMatchesSymbol(k, a.symbol));
 
                 const estYield = ASSET_YIELDS[cleanSymbol] || 0;
                 const revMensuel = val * (estYield / 100) / 12;
@@ -268,11 +271,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         // 3. Chart History Building
         let txIdx = 0;
         let rc: Record<string, number> = { ...initialBalances };
-        const keyToAccount: Record<string, string> = {};
-        assets.forEach(a => {
-            const fullKey = Object.keys(marketData[0]).find(k => k.includes(a.symbol));
-            if (fullKey) keyToAccount[fullKey] = a.accountType || 'Non-Enreg';
-        });
 
         const currentRealEstateEquity = realEstateGoals.reduce((sum, g) => sum + (g.currentValue || 0) - (g.mortgageBalance || 0), 0);
         // [DASH-NW-DUP] source unique gardée NaN/Infinity (l'ancienne somme inline propageait un solde corrompu).
@@ -292,16 +290,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
             let total = 0;
             cashAccountsList.forEach(acc => { point[acc] = rc[acc]; total += rc[acc]; });
 
-            const invMap: Record<string, number> = { CELI: 0, REER: 0, NonReg: 0, Crypto: 0 };
-            Object.keys(row).forEach(key => {
-                if (key === 'date' || key === 'Date' || key.includes('Taux') || key.includes('TOTAL')) return;
-                const val = Number(row[key]) || 0;
-                const type = keyToAccount[key] || 'NonReg';
-                if (type === 'CELI') invMap.CELI += val;
-                else if (type === 'REER') invMap.REER += val;
-                else if (type === 'CRYPTO') invMap.Crypto += val;
-                else invMap.NonReg += val;
-            });
+            // [PORTFOLIO-HISTORY, panel 2026-07-22] Piles CELI/REER/NonReg/Crypto = buckets TOTAL_*
+            // ÉMIS par le producteur (buildMarketData réel ET generateTestMarketData en portent) —
+            // l'ancienne recomposition depuis les colonnes par-symbole lisait les clés de la LIGNE 0
+            // (désormais ÉPARSE : un actif acheté après la 1re date en est absent) → tout actif non
+            // mappé tombait en « NonReg » (mesuré : 45 k$ de BTC empilés sous NonReg, Crypto à 0),
+            // et le matching par sous-chaîne mélangeait « V » (Visa) et « VFV.TO ».
+            const invMap: Record<string, number> = {
+                CELI: Number(row['TOTAL_CELI']) || 0,
+                REER: Number(row['TOTAL_REER']) || 0,
+                NonReg: Number(row['TOTAL_NON-ENREG']) || 0,
+                Crypto: Number(row['TOTAL_CRYPTO']) || 0,
+            };
             point.CELI = invMap.CELI; point.REER = invMap.REER; point.NonReg = invMap.NonReg; point.Crypto = invMap.Crypto;
             point.Immobilier = currentRealEstateEquity;
             point.Dettes = -currentDebts;
@@ -548,12 +548,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         L'hydratation remplit le store au boot → le graphe apparaît tout seul. */}
                     {unifiedHistory.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full gap-2 text-center px-6">
-                            <p className="text-body text-ink-200 font-medium">Historique en cours de récupération…</p>
-                            <p className="text-meta text-ink-400">
-                                Les cours historiques de tes placements se chargent depuis tes dates d'achat.
-                                Si rien n'apparaît après quelques instants, vérifie ta clé Finnhub (Réglages → Clés API)
-                                — le repli gratuit couvre la plupart des titres.
-                            </p>
+                            {assets.some(a => a.symbol) ? (
+                                <>
+                                    <p className="text-body text-ink-200 font-medium">Historique de cours indisponible pour l'instant</p>
+                                    <p className="text-meta text-ink-400">
+                                        Les cours historiques se chargent au démarrage depuis tes dates d'achat
+                                        (la courbe apparaît toute seule quand ils arrivent). Si rien n'apparaît
+                                        après un rechargement, vérifie ta clé Finnhub (Réglages → Clés API) —
+                                        le repli gratuit couvre la plupart des titres.
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-body text-ink-200 font-medium">Aucun placement à tracer</p>
+                                    <p className="text-meta text-ink-400">
+                                        Ajoute tes actions/FNB (Investissements → Ajouter) pour voir l'évolution
+                                        de ton portefeuille ici.
+                                    </p>
+                                </>
+                            )}
                         </div>
                     ) : (
                     <Suspense fallback={<Skeleton variant="chart" />}>
@@ -568,6 +581,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </Suspense>
                     )}
                 </div>
+                {/* [PORTFOLIO-HISTORY] Signalement HONNÊTE des courbes incomplètes : un actif sans
+                    historique est RETRANCHÉ des courbes/totaux (jamais inventé), et un historique
+                    borné par le provider (ex. CoinGecko ~365 j) fait démarrer le titre en cours de
+                    route (« marche » sur TOTAL). Sans cette note, le retrait était invisible. */}
+                {(excludedSymbols.length > 0 || partialHistorySymbols.length > 0) && (
+                    <p className="text-tiny text-ink-400 mt-2">
+                        {excludedSymbols.length > 0 && (
+                            <>Courbe partielle : {excludedSymbols.join(', ')} sans historique de cours
+                            (exclu{excludedSymbols.length > 1 ? 's' : ''} des courbes et des totaux). </>
+                        )}
+                        {partialHistorySymbols.length > 0 && (
+                            <>Historique borné pour {partialHistorySymbols.map(p => `${p.symbol} (depuis ${p.historyStart})`).join(', ')} —
+                            avant cette date, le titre ne compte pas dans le total.</>
+                        )}
+                    </p>
+                )}
             </Card>
 
             {/* Phase D.5 — Cash/Saving/Dette/Jalons retirés (doc directives §2).

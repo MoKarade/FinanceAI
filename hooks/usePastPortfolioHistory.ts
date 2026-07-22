@@ -128,8 +128,10 @@ export function usePastPortfolioHistory(): UsePastPortfolioHistoryResult {
                     const firstDate = purchases.length ? purchases[0].date : a.dateBought;
                     if (!firstDate) continue;
                     try {
+                        // null = échec de toute la chaîne (contrat façade) → pas de cache, retry
+                        // possible au prochain lot ; [] = vide légitime.
                         const hist = await getHistory(a.symbol, new Date(`${firstDate}T00:00:00Z`), today);
-                        if (hist.length > 0) {
+                        if (hist && hist.length > 0) {
                             next[a.symbol] = hist.map((h) => ({ date: h.date, price: h.close }));
                         }
                     } catch (e) {

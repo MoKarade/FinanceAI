@@ -84,6 +84,17 @@ describe('marketData façade', () => {
         configureMarketDataProvider({ finnhubKey: 'k2' });
         expect(getCacheSize()).toBe(0);
     });
+
+    it('re-configurer avec la MÊME clé est un no-op : le cache persistant SURVIT (fix wipe-au-boot, panel 2026-07-22)', async () => {
+        // App.tsx (boot) et usePastPortfolioHistory rappellent configure avec la clé COURANTE —
+        // avant fix, le clear inconditionnel vidait le cache IDB « 24h » à CHAQUE reload.
+        configureMarketDataProvider({ finnhubKey: 'k-stable' });
+        await withCache('history', 'H', async () => [{ date: '2026-01-01', close: 1 }]);
+        expect(getCacheSize()).toBe(1);
+        configureMarketDataProvider({ finnhubKey: 'k-stable' });
+        expect(getCacheSize()).toBe(1); // intact
+        expect(getActiveProviderName()).toBe('finnhub');
+    });
 });
 
 describe('FinnhubProvider', () => {

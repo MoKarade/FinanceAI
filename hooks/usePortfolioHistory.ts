@@ -24,6 +24,8 @@ export interface UsePortfolioHistoryResult {
     error: Error | null;
     /** Symboles détenus SANS historique de prix (exclus des courbes/totaux — affichage honnête). */
     excludedSymbols: string[];
+    /** Symboles à historique PARTIEL (commence après le 1er achat — provider borné, ex. CoinGecko 365 j). */
+    partialHistorySymbols: Array<{ symbol: string; historyStart: string }>;
 }
 
 export function usePortfolioHistory(): UsePortfolioHistoryResult {
@@ -39,10 +41,11 @@ export function usePortfolioHistory(): UsePortfolioHistoryResult {
                 isLoading: false,
                 error: null,
                 excludedSymbols: [],
+                partialHistorySymbols: [],
             };
         }
-        const { rows, excludedSymbols } = buildMarketData(assets, fxRates as Record<string, number>);
-        return { history: rows, isLoading: false, error: null, excludedSymbols };
+        const { rows, excludedSymbols, partialHistorySymbols } = buildMarketData(assets, fxRates as Record<string, number>);
+        return { history: rows, isLoading: false, error: null, excludedSymbols, partialHistorySymbols };
     }, [isTestMode, assets, initialBalances, fxRates]);
 
     return result;

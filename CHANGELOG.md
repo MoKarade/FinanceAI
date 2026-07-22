@@ -27,6 +27,38 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - Fraîcheur : re-sync automatique d'un historique > 24h (`lastHistorySync`), pacing séquentiel 2,5s
   (rate-limit du provider le plus strict), anti-course sur l'état frais, sauté en mode test.
 
+### Correctifs du panel adversarial (2026-07-22, 30 agents — 9 confirmés appliqués)
+- **Même titre dans DEUX comptes** (ex. XEQT en CELI ET REER) : la colonne du graphe est désormais
+  l'AGRÉGAT des positions — avant, la seconde écrasait la première (position sous-comptée de sa
+  valeur entière, mesuré 10 k$).
+- **Piles du Dashboard (CELI/REER/Non-enr./Crypto)** : lues depuis les totaux par compte ÉMIS par le
+  builder (mêmes règles partout — CELIAPP compte en CELI, REEE en REER) — avant, une recomposition
+  locale classait tout actif acheté après la 1re date en « Non-enregistré » (45 k$ de BTC mal empilés
+  mesurés) et divergeait d'Investissements pour CELIAPP/REEE.
+- **« Voir courbe » / matching des titres** : correspondance EXACTE partout — avant, « V » (Visa)
+  matchait « VFV.TO » par sous-chaîne (mauvaise courbe affichée, mauvais actif modifié/supprimé
+  dans Investissements), et le modal lisait les clés de la 1re ligne (éparse) → « Aucune donnée »
+  à tort pour un titre acheté après le 1er achat global.
+- **Garde de devise crypto** : « BTC » nu (CoinGecko répond en USD) sur un actif déclaré CAD n'est
+  PLUS hydraté tel quel (valeurs fausses de −27,5 % mesurées) — ignoré avec message expliquant le
+  correctif (renommer en BTC-CAD ou corriger la devise).
+- **Fusion d'historique au re-sync** : les nouveaux points FUSIONNENT avec l'ancien historique —
+  avant, le remplacement intégral faisait perdre chaque jour le point le plus ancien d'un crypto
+  détenu > 1 an (fenêtre CoinGecko bornée à ~365 j).
+- **Le cache persistant survit enfin aux rechargements** : configurer le provider avec la MÊME clé
+  ne vide plus le cache IndexedDB 24h (il était vidé à CHAQUE boot — sa raison d'être annulée) ;
+  balayage des entrées expirées ajouté (croissance bornée).
+- **Signalement honnête des courbes incomplètes** : note sous le graphe listant les titres sans
+  historique (exclus) et ceux à historique borné par le provider (« depuis AAAA-MM-JJ » — la marche
+  du TOTAL ce jour-là est expliquée, mesurée +90 k$ sans transaction avant fix).
+- **Prix périmé jamais forward-fillé** : un titre dont l'historique s'arrête (délisting, sync en
+  échec) sort de la courbe après 7 jours au lieu d'afficher un vieux close comme valeur du jour.
+- **Chips du graphe Investissements** : chaque total par compte a son libellé (« CELI (total) »…) —
+  avant, 4-5 chips s'appelaient toutes « TOTAL PORTEFEUILLE » et le KPI « Votre Portefeuille (24h) »
+  pouvait lire la tendance d'un bucket ; le sous-échantillonnage garde les 2 derniers points réels
+  (« 24h » redevient vrai) ; un échec TOTAL de la chaîne d'historique est tracé (`error`) au lieu
+  d'être confondu avec un « vide légitime ».
+
 ## [unreleased — Google Drive : rester connecté + déconnexion auto après inactivité] — 2026-07-22
 
 ### Améliorations (sauvegarde Drive)

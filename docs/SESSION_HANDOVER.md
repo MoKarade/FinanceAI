@@ -660,7 +660,7 @@
 > `*Debt` non redactées ; leçon « mesurer les findings »). Gates verts.
 >
 > **Session 2026-06-19 — FISC-RE-CAPITAL-LOSS (#371)** (money-critical, découverte panel #368) : un IMMEUBLE LOCATIF vendu
-> SOUS son coût réelisait une perte en capital SILENCIEUSEMENT ignorée (`gain = max(0, produit − coût)` + `if (gain > 0)`)
+> SOUS son coût réalisait une perte en capital SILENCIEUSEMENT ignorée (`gain = max(0, produit − coût)` + `if (gain > 0)`)
 > → avantage fiscal LIR 111(1)b perdu. Fix : helper SOURCE UNIQUE `applyCapitalDisposition(state, rawGain signé)` (`portfolioOps.ts`)
 > — perte < 0 → banque de pertes ; gain ≥ 0 → nette la banque puis impose. `handleNonRegSale`/`handleCryptoSale` refactorés
 > dessus (zéro duplication, 3 copies → 1). Mutator immo `realizeCapitalGain` → `realizeCapitalDisposition` (nom honnête : gère

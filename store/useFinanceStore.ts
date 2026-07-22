@@ -597,10 +597,17 @@ export const useFinanceStore = create<FinanceState>()(
                 const singularResets: Partial<FinanceState> = {};
                 if (report.bySlice.childGoal) singularResets.childGoal = structuredClone(INITIAL_CHILD_GOAL);
                 if (report.bySlice.weddingGoal) singularResets.weddingGoal = undefined;
+                // [B4-CHAT-COST, finding panel #489 prouvé par sonde] Le coût API dépensé PENDANT la
+                // démo persona est RÉEL (vraie clé, vrais appels) : personaResetBase l'a remis à 0 à
+                // l'entrée → la valeur courante = dépense de la démo. La restauration verbatim du
+                // snapshot la jetait en silence → on l'ADDITIONNE au cumul réel restauré.
+                const demoSpendUsd = Number.isFinite(prev.aiChatCostUsdTotal) ? (prev.aiChatCostUsdTotal ?? 0) : 0;
+                const snapTotal = Number.isFinite(cleanSnap.aiChatCostUsdTotal) ? (cleanSnap.aiChatCostUsdTotal ?? 0) : 0;
                 return {
                     ...prev,
                     ...cleanSnap,
                     ...singularResets,
+                    aiChatCostUsdTotal: snapTotal + demoSpendUsd,
                     isTestMode: false,
                     realDataSnapshot: null,
                     activeTestPersonaId: null,

@@ -97,16 +97,17 @@ function flattenContent(content: Array<{ type: 'text'; text: string }>): string 
     return content.map((b) => b.text).join('\n\n');
 }
 
-/** [B4-CHAT-COST] Usage d'UN tour depuis `msg.usage` du SDK — champs absents/non finis = 0 (les
- *  champs cache n'existent que si le cache a servi ; jamais de NaN dans un cumul money-critical). */
+/** [B4-CHAT-COST] Usage d'UN tour depuis `msg.usage` du SDK — champs null/non finis = 0 (les champs
+ *  cache sont nullables ; jamais de NaN dans un cumul money-critical). ⚠️ Accès TYPÉ (finding panel
+ *  #489) : un cast `as unknown` compilerait encore après un renommage de champ SDK → coût sous-compté
+ *  à 0 en silence ; avec l'accès typé, le renommage casse `npm run typecheck`. */
 function usageFromMessage(msg: Anthropic.Message): AiTokenUsage {
-    const u = (msg as unknown as { usage?: Record<string, unknown> }).usage;
-    const n = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0);
+    const n = (v: number | null | undefined): number => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0);
     return {
-        inputTokens: n(u?.input_tokens),
-        outputTokens: n(u?.output_tokens),
-        cacheWriteTokens: n(u?.cache_creation_input_tokens),
-        cacheReadTokens: n(u?.cache_read_input_tokens),
+        inputTokens: n(msg.usage?.input_tokens),
+        outputTokens: n(msg.usage?.output_tokens),
+        cacheWriteTokens: n(msg.usage?.cache_creation_input_tokens),
+        cacheReadTokens: n(msg.usage?.cache_read_input_tokens),
     };
 }
 

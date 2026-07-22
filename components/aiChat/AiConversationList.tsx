@@ -19,6 +19,7 @@ import { pruneAttachmentCache } from '../../services/aiChat/attachments';
 import { logError } from '../../services/errorLogger';
 // [B4-CHAT-COST] Coût par conversation archivée (Σ des réponses) — affiché en CAD via fxRates.USD.
 import { sumMessagesCostUsd } from '../../services/aiChat/pricing';
+import { resolveChatModelKey } from '../../services/aiChat/models';
 import { formatCostCad } from '../../utils/format';
 
 interface AiConversationListProps {
@@ -170,7 +171,14 @@ export const AiConversationList: React.FC<AiConversationListProps> = ({ isLoadin
                 role="list"
                 aria-label="Conversations précédentes"
             >
-                {aiConversations.map((c) => (
+                {aiConversations.map((c) => {
+                    // [Findings panel #489] resolveChatModelKey en ceinture (une valeur corrompue par
+                    // la sync affichait un texte arbitraire — seul point de lecture sans la ceinture) ;
+                    // coût calculé UNE fois par item (était appelé deux fois). Archive pré-B3 sans
+                    // model : rien d'affiché plutôt qu'un « Sonnet » supposé.
+                    const modelKey = c.model !== undefined ? resolveChatModelKey(c.model) : null;
+                    const costUsd = sumMessagesCostUsd(c.messages);
+                    return (
                     <div key={c.id} role="listitem" className="group flex items-center gap-1">
                         <button
                             type="button"
@@ -180,12 +188,10 @@ export const AiConversationList: React.FC<AiConversationListProps> = ({ isLoadin
                             title={c.title}
                         >
                             <span className="block text-meta text-ink-100 truncate">{c.title}</span>
-                            {/* [B3+B4] Modèle de la conversation (archive pré-B3 : aucun → rien
-                                d'affiché plutôt qu'un « Sonnet » supposé) + coût réel si > 0. */}
                             <span className="block text-tiny text-ink-400">
                                 {fmtDate(c.updatedAt)} · {c.messages.length} message{c.messages.length > 1 ? 's' : ''}
-                                {c.model ? ` · ${c.model.charAt(0).toUpperCase()}${c.model.slice(1)}` : ''}
-                                {sumMessagesCostUsd(c.messages) > 0 ? ` · ${formatCostCad(sumMessagesCostUsd(c.messages), fxUsd)}` : ''}
+                                {modelKey ? ` · ${modelKey.charAt(0).toUpperCase()}${modelKey.slice(1)}` : ''}
+                                {costUsd > 0 ? ` · ${formatCostCad(costUsd, fxUsd)}` : ''}
                             </span>
                         </button>
                         {confirmDeleteId === c.id ? (
@@ -210,7 +216,8 @@ export const AiConversationList: React.FC<AiConversationListProps> = ({ isLoadin
                             </button>
                         )}
                     </div>
-                ))}
+                    );
+                })}
             </div>
             {activeId && activeCount > 0 && (
                 <p className="p-3 text-tiny text-ink-400 border-t border-white/5">

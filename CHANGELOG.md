@@ -22,6 +22,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - Garde-fous : un modèle sans tarif connu ne fabrique JAMAIS un coût (absence honnête + trace) ;
   tarifs datés/sourcés dans `services/aiChat/pricing.ts` ; parité modèles↔tarifs verrouillée par test.
 
+### Correctifs du panel B3+B4 (6 agents, sondes — 2 élevés + moyens appliqués)
+- **Coût dépensé en mode démo plus jamais perdu** (prouvé par sonde) : le chat en démo fait de VRAIS
+  appels facturés — la sortie du mode test ADDITIONNE désormais cette dépense au cumul réel (avant :
+  jetée en silence par la restauration du snapshot).
+- **Ratio de coût du sélecteur DÉRIVÉ du tarif réel** : le libellé « 5× le coût de Sonnet » était
+  faux (5/3 ≈ 1,7×) — il est maintenant calculé depuis la table (drift impossible).
+- **Mode discret** : la ligne de coût du header est masquée comme tout montant (« masquer = ne pas
+  rendre », sans exception).
+- **a11y** : id du sélecteur unique par instance (panneau + onglet montés ensemble = id dupliqué,
+  le label pouvait cibler le mauvais select) ; étiquette « Coût : » lisible au lecteur d'écran sur
+  le coût par bulle.
+- Robustesse : lecture TYPÉE de `msg.usage` (un renommage de champ SDK casserait le typecheck au
+  lieu de sous-compter à 0 en silence) ; trace quand une réponse en vol perd sa bulle (pull Drive
+  concurrent) ; ceinture `resolveChatModelKey` sur l'affichage sidebar ; micro-perf (memo).
+
 ## [unreleased — Chat : historique multi-conversations + pièces jointes cross-device (B2)] — 2026-07-22
 
 ### Nouveau (demande Marc « un onglet dédié avec historique »)

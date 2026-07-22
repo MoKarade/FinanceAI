@@ -126,12 +126,25 @@ export function useAiChat(apiKey: string): UseAiChat {
 
     // Mise à jour PAR IDENTITÉ (finding panel : « le dernier message » se trompait de cible après
     // un Effacer mi-stream ou un chevauchement — la réponse payée atterrissait dans la mauvaise
-    // bulle ou disparaissait). No-op si le message n'existe plus (conversation effacée) : assumé,
-    // le bouton Effacer est désactivé pendant un envoi (ceinture UI).
+    // bulle ou disparaissait). No-op si le message n'existe plus (conversation effacée) : assumé
+    // côté UI (Effacer désactivé pendant un envoi), mais un PULL Drive concurrent (polling 60 s,
+    // remplacement intégral de l'état) peut aussi faire disparaître l'id mi-vol → TRACÉ (finding
+    // panel #489 : la réponse payée + son costUsd se perdaient sans aucun signal). Dédup par id —
+    // jamais un logError par delta de stream (règle throttle HARDEN-NETWORTH-NAN).
+    const missingMsgWarnedRef = useRef<Set<string>>(new Set());
     const updateModelMessage = useCallback((id: string, patch: Partial<AiMessage>) => {
         const { aiConversation, setAppState } = useFinanceStore.getState();
         const idx = aiConversation.findIndex((m) => m.id === id);
-        if (idx === -1) return;
+        if (idx === -1) {
+            if (!missingMsgWarnedRef.current.has(id)) {
+                missingMsgWarnedRef.current.add(id);
+                logError({
+                    source: 'ai', severity: 'warning',
+                    message: 'Chat in-app : message cible introuvable pendant la mise à jour (conversation remplacée mi-vol — pull Drive/effacement) : la réponse en cours ne sera pas affichée.',
+                });
+            }
+            return;
+        }
         const updated = [...aiConversation];
         updated[idx] = { ...updated[idx], ...patch };
         setAppState({ aiConversation: updated });

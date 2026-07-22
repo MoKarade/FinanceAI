@@ -6,6 +6,7 @@
 // (jamais deux littéraux d'id qui divergent — classe « littéral dupliqué à côté de la source »).
 
 import type { AiChatModelKey } from '../../types';
+import { PRICING_USD_PER_MTOK } from './pricing';
 
 /** Ids API complets par clé de chat. ⚠️ Chaque id DOIT avoir une entrée dans PRICING_USD_PER_MTOK
  *  (services/aiChat/pricing) — parité verrouillée par tests/services/aiChatPricing.test.ts. */
@@ -18,11 +19,19 @@ export const MODEL_IDS: Record<AiChatModelKey, string> = {
 /** Défaut historique du chat (choix Marc, AITOOLS-B) — utilisé quand `aiChatModel` est absent. */
 export const DEFAULT_AI_CHAT_MODEL: AiChatModelKey = 'sonnet';
 
+// [Finding ai-reviewer #489] Le ratio de coût affiché DÉRIVE du tarif réel (pricing.ts) — un texte
+// en dur (« 5× ») avait déjà divergé de la table (5/3 ≈ 1,7×) dans le même diff.
+const ratioVsSonnet = (key: AiChatModelKey): string => {
+    const a = PRICING_USD_PER_MTOK[MODEL_IDS[key]]?.input;
+    const b = PRICING_USD_PER_MTOK[MODEL_IDS.sonnet]?.input;
+    return a && b ? `≈ ${(a / b).toFixed(1).replace('.', ',')}×` : '';
+};
+
 /** Options du sélecteur UI (ordre = du plus économique au plus capable). */
 export const AI_CHAT_MODELS: Array<{ key: AiChatModelKey; label: string; description: string }> = [
-    { key: 'haiku', label: 'Haiku', description: 'Rapide et économique' },
+    { key: 'haiku', label: 'Haiku', description: `Rapide et économique (${ratioVsSonnet('haiku')} le coût de Sonnet)` },
     { key: 'sonnet', label: 'Sonnet', description: 'Équilibre qualité/coût (défaut)' },
-    { key: 'opus', label: 'Opus', description: 'Le plus capable (5× le coût de Sonnet)' },
+    { key: 'opus', label: 'Opus', description: `Le plus capable (${ratioVsSonnet('opus')} le coût de Sonnet)` },
 ];
 
 /** Ceinture : une valeur inconnue (état synchronisé par une version future/corrompu) retombe sur le

@@ -118,6 +118,18 @@ describe('useFinanceStore', () => {
         expect(store().realDataSnapshot).toBeNull();
     });
 
+    it('[B4-CHAT-COST, finding panel #489] le coût API dépensé PENDANT la démo est ADDITIONNÉ au cumul réel à la sortie (jamais jeté)', () => {
+        // Le chat en mode démo fait de VRAIS appels facturés (vraie clé) — la restauration verbatim
+        // du snapshot jetait cette dépense en silence (prouvé par sonde : 5 → 0 → +2 → retour à 5).
+        const store = () => useFinanceStore.getState();
+        store().setAppState({ aiChatCostUsdTotal: 5 });
+        store().enableTestMode({ transactions: [] }, 'A');
+        expect(store().aiChatCostUsdTotal).toBe(0);                   // la démo repart de 0 (pas de fuite du vrai total)
+        store().setAppState({ aiChatCostUsdTotal: 2 });               // dépense réelle pendant la démo
+        store().disableTestMode();
+        expect(store().aiChatCostUsdTotal).toBe(7);                   // 5 (réel) + 2 (démo) — rien de perdu
+    });
+
     it('retirementGoal.lifeExpectancy peut être mis à jour via setAppState (Phase C.3)', () => {
         const store = useFinanceStore.getState();
         const goal = store.retirementGoal;

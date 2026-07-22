@@ -79,10 +79,13 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
     const fxUsd = useFinanceStore(s => s.fxRates.USD);
     const totalCostUsd = useFinanceStore(s => s.aiChatCostUsdTotal) ?? 0;
     const { isLoading, activeTools, sendMessage, cancel, clearConversation } = useAiChatContext();
-    const convCostUsd = sumMessagesCostUsd(aiConversation);
+    // useMemo (finding panel #489, perf) : recalculé sinon à CHAQUE delta streamé (chaque
+    // updateModelMessage recrée le tableau → re-render → re-scan de tout l'historique).
+    const convCostUsd = React.useMemo(() => sumMessagesCostUsd(aiConversation), [aiConversation]);
 
     const [input, setInput] = useState('');
     const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+    const modelSelectId = React.useId();
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -167,9 +170,11 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                         <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                         <span className="text-tiny text-green-300 font-medium">{isLoading ? 'Réflexion…' : 'En ligne'}</span>
                         {/* [B4-CHAT-COST] Coût API réel (CAD via fxRates.USD) — conversation + cumul à
-                            vie. Coût d'infrastructure, pas une donnée financière personnelle → hors du
-                            gate mode discret. Rien d'affiché tant que rien n'a été dépensé. */}
-                        {(convCostUsd > 0 || totalCostUsd > 0) && (
+                            vie. Rien d'affiché tant que rien n'a été dépensé.
+                            [Finding panel #489] GATÉ mode discret comme tout montant : la règle
+                            « masquer = ne pas rendre » est non négociable — un coût d'infra reste un
+                            montant $ à l'écran, pas d'exception décidée en commentaire. */}
+                        {!isPrivacyMode && (convCostUsd > 0 || totalCostUsd > 0) && (
                             <span className="text-tiny text-ink-400" title="Coût API réel (tokens facturés × tarif Anthropic), converti en CAD">
                                 · conv. {formatCostCad(convCostUsd, fxUsd)} · total {formatCostCad(totalCostUsd, fxUsd)}
                             </span>
@@ -179,10 +184,13 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                 <div className="ml-auto flex items-center gap-2">
                     {/* [B3-CHAT-MODEL] Modèle PAR conversation (porté dans l'archive à la bascule).
                         Gelé pendant un envoi : le modèle d'un message est capturé à l'envoi — changer
-                        mi-stream sèmerait la confusion sur « quel modèle a répondu/coûté ». */}
-                    <label htmlFor="ai-chat-model" className="sr-only">Modèle IA de cette conversation</label>
+                        mi-stream sèmerait la confusion sur « quel modèle a répondu/coûté ».
+                        [Finding a11y #489] id via useId : panneau + onglet peuvent être montés EN MÊME
+                        TEMPS (FAB sans garde d'onglet) — un id littéral serait dupliqué dans le DOM et
+                        le label résoudrait vers le MAUVAIS select (WCAG 4.1.1/1.3.1). */}
+                    <label htmlFor={modelSelectId} className="sr-only">Modèle IA de cette conversation</label>
                     <select
-                        id="ai-chat-model"
+                        id={modelSelectId}
                         value={chatModel}
                         disabled={isLoading}
                         onChange={(e) => setAppState({ aiChatModel: resolveChatModelKey(e.target.value) })}
@@ -280,9 +288,12 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                                         ink-500 sur #2a2a2a ≈ 3,1:1 (< AA) → ink-400 (≥ 4,5:1). */}
                                     {m.timestamp && (
                                         <div className={`text-tiny mt-1 text-right ${m.role === 'user' ? 'text-dark/60' : 'text-ink-400'}`}>
-                                            {/* [B4-CHAT-COST] Coût réel de CETTE réponse (détail demandé). */}
+                                            {/* [B4-CHAT-COST] Coût réel de CETTE réponse (détail demandé).
+                                                [Finding a11y #489] étiquette sr-only : sans elle un lecteur
+                                                d'écran entend deux nombres accolés (« 0,03 $ 14 h 32 ») —
+                                                title n'est pas annoncé de façon fiable (WCAG 1.3.1). */}
                                             {m.role === 'model' && typeof m.costUsd === 'number' && m.costUsd > 0 && (
-                                                <span title="Coût API réel de cette réponse (CAD)">{formatCostCad(m.costUsd, fxUsd)} · </span>
+                                                <span title="Coût API réel de cette réponse (CAD)"><span className="sr-only">Coût : </span>{formatCostCad(m.costUsd, fxUsd)} · </span>
                                             )}
                                             {formatTime(m.timestamp)}
                                         </div>

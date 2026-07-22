@@ -15,7 +15,10 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 import { useAiChatContext } from './AiChatContext';
 // [AITOOLS-B1] Pièces jointes : validation à la SÉLECTION (un fichier refusé n'entre jamais dans
 // les puces — message honnête immédiat), envoi multimodal via useAiChat.sendMessage(text, files).
-import { classifyAttachment, ATTACHMENT_ACCEPT, MAX_ATTACHMENTS_PER_MESSAGE } from '../../services/aiChat/attachments';
+import {
+    classifyAttachment, totalAttachmentBytes, ATTACHMENT_ACCEPT,
+    MAX_ATTACHMENTS_PER_MESSAGE, MAX_TOTAL_ATTACHMENT_BYTES,
+} from '../../services/aiChat/attachments';
 import { showToast } from '../ui/Toast';
 
 export type AiChatVariant = 'panel' | 'tab';
@@ -83,7 +86,16 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
             }
             const cls = classifyAttachment(f);
             if (!cls.ok) { showToast(cls.reason, 'error'); continue; }
-            if (next.some((p) => p.name === f.name && p.size === f.size)) continue; // doublon
+            if (next.some((p) => p.name === f.name && p.size === f.size)) {
+                showToast(`${f.name} est déjà joint.`, 'info'); // jamais un skip muet (cohérence des refus)
+                continue;
+            }
+            // Budget AGRÉGÉ (finding panel ÉLEVÉ) : 3 PDF de 10 Mo passent un à un mais dépassent
+            // la limite API par requête — refuser à la SÉLECTION, pas après un envoi payant raté.
+            if (totalAttachmentBytes([...next, f]) > MAX_TOTAL_ATTACHMENT_BYTES) {
+                showToast(`${f.name} refusé : le total des pièces jointes dépasserait ${(MAX_TOTAL_ATTACHMENT_BYTES / (1024 * 1024)).toFixed(0)} Mo par message.`, 'error');
+                continue;
+            }
             next.push(f);
         }
         setPendingFiles(next);
@@ -112,7 +124,11 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
     const handleSend = (overrideText?: string) => {
         const userText = (overrideText ?? input).trim();
         // [AITOOLS-B1] Un envoi peut être « pièces jointes seules » (ex. déposer un relevé sans question).
-        const files = overrideText ? [] : pendingFiles;
+        // ⚠️ TOUJOURS transmettre pendingFiles, même pour un clic de SUGGESTION (finding panel ÉLEVÉ,
+        // prouvé par sonde) : les suggestions ne s'affichent qu'à conversation vide — précisément la
+        // fenêtre où on peut avoir joint un fichier avant le 1er message ; l'ancien `overrideText ?
+        // [] : pendingFiles` jetait alors le fichier EN SILENCE (puce disparue comme si envoyée).
+        const files = pendingFiles;
         if ((!userText && files.length === 0) || isLoading) return;
         setInput('');
         setPendingFiles([]);
@@ -184,8 +200,10 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                                     {/* [AITOOLS-C] Chips de transparence : quels tools ont nourri CETTE réponse. */}
                                     {m.role === 'model' && m.toolsUsed && m.toolsUsed.length > 0 && (
                                         <div className="flex flex-wrap gap-1 mb-2">
+                                            {/* [panel a11y B1] ink-300 sur ce fond composé = 4,09:1 (< AA) —
+                                                défaut LATENT pré-existant, mesuré et corrigé au passage. */}
                                             {[...new Set(m.toolsUsed)].map((label) => (
-                                                <span key={label} className="text-tiny px-2 py-0.5 rounded-full bg-white/10 text-ink-300 border border-white/10">
+                                                <span key={label} className="text-tiny px-2 py-0.5 rounded-full bg-white/10 text-ink-200 border border-white/10">
                                                     a consulté : {label}
                                                 </span>
                                             ))}
@@ -193,10 +211,12 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                                     )}
                                     {/* [AITOOLS-B1] Puces des pièces jointes du message (métadonnées du
                                         transcript — le contenu n'est jamais persisté, ADR-4). */}
+                                    {/* [Finding panel a11y — contraste MESURÉ] côté modèle : ink-300 sur
+                                        white/10∘#2a2a2a = 4,09:1 (< AA 4,5) → ink-200 (7,09:1). */}
                                     {m.attachments && m.attachments.length > 0 && (
                                         <div className="flex flex-wrap gap-1 mb-2">
                                             {m.attachments.map((a, ai) => (
-                                                <span key={`${a.name}-${ai}`} className={`inline-flex items-center gap-1 text-tiny px-2 py-0.5 rounded-full border ${m.role === 'user' ? 'bg-black/10 text-dark/80 border-black/10' : 'bg-white/10 text-ink-300 border-white/10'}`}>
+                                                <span key={`${a.name}-${ai}`} className={`inline-flex items-center gap-1 text-tiny px-2 py-0.5 rounded-full border ${m.role === 'user' ? 'bg-black/10 text-dark/80 border-black/10' : 'bg-white/10 text-ink-200 border-white/10'}`}>
                                                     <Icon name={a.kind === 'image' ? 'image' : 'document'} size={11} aria-hidden="true" />
                                                     {a.name}
                                                 </span>
@@ -257,18 +277,21 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                     </div>
 
                     <div className="p-4 bg-black/40 backdrop-blur-md border-t border-white/5 flex-shrink-0">
-                        {/* [AITOOLS-B1] Puces des fichiers EN ATTENTE d'envoi (retirables). */}
+                        {/* [AITOOLS-B1] Puces des fichiers EN ATTENTE d'envoi (retirables).
+                            role=status + aria-live (finding panel a11y) : l'AJOUT d'une puce est
+                            annoncé au lecteur d'écran (le REFUS l'était déjà via le toast alert) ;
+                            bouton retirer : cible ≥ 24 px (WCAG 2.5.8, leçon SEC-PRIVACY-BLUR-INPUTS). */}
                         {pendingFiles.length > 0 && (
-                            <div className={`flex flex-wrap gap-1.5 mb-2 ${isPanel ? '' : 'max-w-3xl mx-auto'}`}>
+                            <div role="status" aria-live="polite" className={`flex flex-wrap gap-1.5 mb-2 ${isPanel ? '' : 'max-w-3xl mx-auto'}`}>
                                 {pendingFiles.map((f, i) => (
-                                    <span key={`${f.name}-${f.size}`} className="inline-flex items-center gap-1.5 text-tiny px-2.5 py-1 rounded-full bg-white/10 text-ink-200 border border-white/15">
+                                    <span key={`${f.name}-${f.size}`} className="inline-flex items-center gap-1 text-tiny px-2.5 py-1 rounded-full bg-white/10 text-ink-200 border border-white/15">
                                         <Icon name={f.type.startsWith('image/') ? 'image' : 'document'} size={12} aria-hidden="true" />
                                         <span className="max-w-[160px] truncate">{f.name}</span>
                                         <button
                                             type="button"
                                             onClick={() => removeFile(i)}
                                             aria-label={`Retirer la pièce jointe ${f.name}`}
-                                            className="text-ink-400 hover:text-white focus-ring rounded-full"
+                                            className="text-ink-400 hover:text-white focus-ring rounded-full min-w-[24px] min-h-[24px] inline-flex items-center justify-center"
                                         >
                                             <Icon name="close" size={12} />
                                         </button>

@@ -18,6 +18,7 @@
 
 import type Anthropic from '@anthropic-ai/sdk';
 import { neutralizeFrameTags, sanitizePromptText } from '../../utils/promptSafety';
+import { logError } from '../errorLogger';
 
 export type AiAttachmentKind = 'image' | 'pdf' | 'text';
 
@@ -42,8 +43,19 @@ export interface AiAttachmentPayload extends AiAttachmentMeta {
 // pour garder des envois rapides et un coût de tokens raisonnable sur la clé BYOK).
 export const MAX_ATTACHMENTS_PER_MESSAGE = 5;
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;   // 5 Mo (limite API par image)
-export const MAX_PDF_BYTES = 10 * 1024 * 1024;    // 10 Mo (~100 pages max côté API)
+// ⚠️ Proxy IMPARFAIT de la vraie contrainte API (~100 pages) : un PDF texte dense de 10 Mo peut
+// dépasser 100 pages et échouer côté API malgré la validation locale (finding panel ai-reviewer).
+export const MAX_PDF_BYTES = 10 * 1024 * 1024;
 export const MAX_TEXT_BYTES = 1 * 1024 * 1024;    // 1 Mo de texte ≈ largement au-delà d'un CSV utile
+// Budget AGRÉGÉ par message (finding panel ÉLEVÉ) : la limite API est ~32 Mo par REQUÊTE et le
+// base64 gonfle de ×4/3 — valider chaque fichier ne suffit pas (3 PDF de 10 Mo passent un à un
+// mais font ~40 Mo encodés → rejet API générique après coup). 20 Mo bruts ≈ 27 Mo base64, marge saine.
+export const MAX_TOTAL_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+
+/** Somme des octets d'un lot de fichiers/payloads (pour le budget agrégé). */
+export function totalAttachmentBytes(files: Array<{ size: number }>): number {
+    return files.reduce((s, f) => s + (f.size || 0), 0);
+}
 
 const IMAGE_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 const TEXT_MIMES = new Set(['text/plain', 'text/csv', 'text/markdown', 'application/json']);
@@ -72,6 +84,12 @@ const mb = (bytes: number): string => `${(bytes / (1024 * 1024)).toFixed(1)} Mo`
  */
 export function classifyAttachment(file: { name: string; type: string; size: number }): ClassifyResult {
     const mime = (file.type || '').toLowerCase();
+    // Plancher : un fichier de 0 octet (scan cassé, téléchargement partiel) produirait un base64
+    // VIDE → bloc droppé → le tour utilisateur ENTIER disparaissait de l'historique modèle pendant
+    // que la puce s'affichait comme analysée (finding panel CRITIQUE, prouvé par sonde).
+    if ((file.size || 0) === 0) {
+        return { ok: false, reason: `${file.name} : fichier vide (0 octet) — rien à analyser.` };
+    }
     if (IMAGE_MIMES.has(mime)) {
         if (file.size > MAX_IMAGE_BYTES) {
             return { ok: false, reason: `${file.name} : image trop lourde (${mb(file.size)} > ${mb(MAX_IMAGE_BYTES)}).` };
@@ -84,7 +102,7 @@ export function classifyAttachment(file: { name: string; type: string; size: num
         }
         return { ok: true, kind: 'pdf', mimeType: 'application/pdf' };
     }
-    if (TEXT_MIMES.has(mime) || (mime === '' && TEXT_EXTENSIONS.has(extOf(file.name))) || TEXT_EXTENSIONS.has(extOf(file.name))) {
+    if (TEXT_MIMES.has(mime) || TEXT_EXTENSIONS.has(extOf(file.name))) {
         if (file.size > MAX_TEXT_BYTES) {
             return { ok: false, reason: `${file.name} : fichier texte trop lourd (${mb(file.size)} > ${mb(MAX_TEXT_BYTES)}).` };
         }
@@ -132,26 +150,36 @@ export function buildUserContent(
 ): Anthropic.ContentBlockParam[] {
     const blocks: Anthropic.ContentBlockParam[] = [];
     for (const a of attachments) {
-        if (a.kind === 'image' && a.data) {
+        // Garde par TYPE + longueur, jamais par truthiness seule : un base64 VIDE ('') passait la
+        // truthiness et droppait le bloc EN SILENCE — combiné à un envoi sans texte, le tour
+        // utilisateur ENTIER disparaissait de l'historique modèle pendant que la puce s'affichait
+        // comme analysée (finding panel CRITIQUE, prouvé par sonde ; aussi bloqué en amont par le
+        // plancher 0 octet de classifyAttachment).
+        if (a.kind === 'image' && typeof a.data === 'string' && a.data.length > 0) {
             blocks.push({
                 type: 'image',
                 source: { type: 'base64', media_type: a.mimeType as 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif', data: a.data },
             });
-        } else if (a.kind === 'pdf' && a.data) {
+        } else if (a.kind === 'pdf' && typeof a.data === 'string' && a.data.length > 0) {
             blocks.push({
                 type: 'document',
                 source: { type: 'base64', media_type: 'application/pdf', data: a.data },
                 title: sanitizePromptText(a.name, 120) || 'document.pdf',
-            } as Anthropic.ContentBlockParam);
+            });
         } else if (a.kind === 'text' && typeof a.text === 'string') {
             blocks.push({
                 type: 'document',
                 source: { type: 'text', media_type: 'text/plain', data: neutralizeFrameTags(a.text) },
                 title: sanitizePromptText(a.name, 120) || 'document.txt',
-            } as Anthropic.ContentBlockParam);
+            });
+        } else {
+            // Payload incohérent (kind sans contenu) : la méta reste visible dans la bulle, le
+            // modèle ne reçoit rien de fabriqué — mais JAMAIS en silence.
+            logError({
+                source: 'ai', severity: 'warning',
+                message: `Chat in-app : pièce jointe « ${sanitizePromptText(a.name, 80)} » sans contenu exploitable — omise du message au modèle.`,
+            });
         }
-        // Payload incohérent (kind sans contenu) : ignoré — la méta reste visible dans la bulle,
-        // le modèle ne reçoit rien de fabriqué.
     }
     if (neutralizedText.trim() !== '') blocks.push({ type: 'text', text: neutralizedText });
     return blocks;
@@ -166,6 +194,19 @@ const _sessionAttachments = new Map<string, AiAttachmentPayload[]>();
 
 export function cacheAttachments(messageId: string, payloads: AiAttachmentPayload[]): void {
     if (payloads.length > 0) _sessionAttachments.set(messageId, payloads);
+}
+
+/**
+ * Éviction (finding panel MOYEN ×2) : un payload dont le message est sorti de la fenêtre
+ * d'historique (HISTORY_WINDOW) ne sera PLUS JAMAIS relu — sans purge, une longue session à
+ * gros PDF accumule des dizaines de Mo morts en mémoire (classe « déborner sans purge »,
+ * AUTH-DRIVE-PERSIST). Appelée à chaque envoi avec les ids encore VIVANTS.
+ */
+export function pruneAttachmentCache(aliveMessageIds: Iterable<string | undefined>): void {
+    const alive = new Set([...aliveMessageIds].filter((id): id is string => Boolean(id)));
+    for (const key of _sessionAttachments.keys()) {
+        if (!alive.has(key)) _sessionAttachments.delete(key);
+    }
 }
 
 export function getCachedAttachments(messageId: string | undefined): AiAttachmentPayload[] | undefined {

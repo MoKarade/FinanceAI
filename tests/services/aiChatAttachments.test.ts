@@ -7,7 +7,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
     classifyAttachment, readAttachment, buildUserContent, arrayBufferToBase64,
-    cacheAttachments, getCachedAttachments, clearAttachmentCache, unavailableAttachmentsNote,
+    cacheAttachments, getCachedAttachments, clearAttachmentCache, pruneAttachmentCache,
+    unavailableAttachmentsNote, totalAttachmentBytes,
     MAX_IMAGE_BYTES, MAX_PDF_BYTES, MAX_TEXT_BYTES,
     type AiAttachmentPayload,
 } from '../../services/aiChat/attachments';
@@ -43,6 +44,16 @@ describe('classifyAttachment (allowlist + bornes)', () => {
         const res = classifyAttachment({ name: 'app.exe', type: 'application/octet-stream', size: 10 });
         expect(res.ok).toBe(false);
         if (!res.ok) expect(res.reason).toContain('app.exe');
+    });
+
+    it('fichier de 0 OCTET → refusé (finding panel CRITIQUE : base64 vide → tour évaporé en silence)', () => {
+        const res = classifyAttachment({ name: 'scan.png', type: 'image/png', size: 0 });
+        expect(res.ok).toBe(false);
+        if (!res.ok) expect(res.reason).toMatch(/vide/);
+    });
+
+    it('totalAttachmentBytes : somme du lot (budget agrégé, la limite API est PAR REQUÊTE)', () => {
+        expect(totalAttachmentBytes([{ size: 100 }, { size: 200 }, { size: 0 }])).toBe(300);
     });
 });
 
@@ -105,6 +116,15 @@ describe('cache de session (jamais persisté)', () => {
         expect(getCachedAttachments(undefined)).toBeUndefined();
         clearAttachmentCache();
         expect(getCachedAttachments('aimsg_1')).toBeUndefined();
+    });
+
+    it('pruneAttachmentCache : les payloads HORS fenêtre d\'historique sont libérés (croissance bornée)', () => {
+        const p: AiAttachmentPayload = { name: 'a.png', kind: 'image', mimeType: 'image/png', size: 1, data: 'QQ==' };
+        cacheAttachments('aimsg_vieux', [p]);
+        cacheAttachments('aimsg_vivant', [p]);
+        pruneAttachmentCache(['aimsg_vivant', undefined, 'aimsg_autre']);
+        expect(getCachedAttachments('aimsg_vieux')).toBeUndefined();  // plus jamais relu → purgé
+        expect(getCachedAttachments('aimsg_vivant')).toEqual([p]);    // encore dans la fenêtre → gardé
     });
 });
 

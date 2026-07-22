@@ -87,11 +87,15 @@
 > blocages Marc (RECH-ACTION-UX confirmée visuellement, phases 2-4 brief plan-first, P0-*, design Budget/Transactions/Retraite).
 
 ## 💬 Roadmap chat (B, scope validé Marc 2026-07-22 par AskUserQuestion)
-- [x] **`[B1-CHAT-ATTACHMENTS]`** ✅ 2026-07-22 — pièces jointes multimodales (images ≤5 Mo, PDF ≤10 Mo,
-  texte/CSV ≤1 Mo, max 5/message) : `services/aiChat/attachments.ts` (classify/read/buildUserContent,
-  cache session par id de message), `useAiChat.sendMessage(text, files)`, UI trombone + puces
-  (AiChatView), clause anti-injection system prompt. Transcript = MÉTA seulement (ADR-4) ; contenu
-  post-reload → note honnête. B2 déplacera les octets en fichiers Drive appdata séparés.
+- [x] **`[B1-CHAT-ATTACHMENTS]`** ✅ 2026-07-22 (PR #487) — pièces jointes multimodales (images ≤5 Mo, PDF ≤10 Mo,
+  texte/CSV ≤1 Mo, max 5/message, budget agrégé 20 Mo) : `services/aiChat/attachments.ts` (classify/read/
+  buildUserContent, cache session par id de message + éviction hors fenêtre + purge inter-persona),
+  `useAiChat.sendMessage(text, files)` (+ `cache_control` sur le dernier bloc pièce jointe — coût BYOK),
+  UI trombone + puces (AiChatView), clause anti-injection system prompt. Transcript = MÉTA seulement
+  (ADR-4) ; contenu post-reload → note honnête. **Panel 5 agents appliqué** (1 CRITIQUE fichier 0 octet →
+  tour évaporé ; 3 ÉLEVÉS suggestion-jette-fichier / budget agrégé / cache_control ; 6 MOYENS a11y-sécurité).
+  Suivi non bloquant : `max_tokens` 2048 court pour « liste tout le PDF » (marqueur [Réponse coupée] honnête),
+  timeout 60 s premier tour PDF lourd à instrumenter si vu en prod. B2 déplacera les octets en fichiers Drive appdata.
 - [ ] **`[B2-CHAT-HISTORY]`** (L) — onglet dédié + historique MULTI-conversations synchronisé Drive
   (texte dans l'état sync ; pièces jointes en FICHIERS appdata séparés, jamais inline base64).
 - [ ] **`[B3-CHAT-MODEL]`** (S) — choix du modèle par conversation (Haiku / Sonnet / Opus).

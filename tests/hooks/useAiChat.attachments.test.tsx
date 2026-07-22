@@ -93,6 +93,34 @@ describe('useAiChat — pièces jointes (B1)', () => {
         expect(oldTurn.content as string).toContain('non disponible');
     });
 
+    it('budget AGRÉGÉ dépassé (fichiers valides un à un) → envoi refusé AVANT l\'API, message nommé', async () => {
+        const { result } = renderHook(() => useAiChat('sk-test'));
+        // 3 « PDF » de 8 Mo déclarés : chacun sous la borne unitaire (10 Mo), somme 24 Mo > 20 Mo.
+        const big = (name: string) => {
+            const f = new File(['x'], name, { type: 'application/pdf' });
+            Object.defineProperty(f, 'size', { value: 8 * 1024 * 1024 });
+            return f;
+        };
+        await act(async () => {
+            await result.current.sendMessage('Analyse mes relevés', [big('a.pdf'), big('b.pdf'), big('c.pdf')]);
+        });
+        expect(captured.history).toBeNull(); // jamais parti (la requête aurait été rejetée par l'API)
+        const conv = useFinanceStore.getState().aiConversation;
+        expect(conv.some((m) => m.role === 'model' && /maximum par message/i.test(m.text))).toBe(true);
+    });
+
+    it('cache_control (prompt caching) posé sur le DERNIER bloc de pièce jointe — coût BYOK borné', async () => {
+        const { result } = renderHook(() => useAiChat('sk-test'));
+        const file = new File([PNG_BYTES], 'capture.png', { type: 'image/png' });
+        await act(async () => {
+            await result.current.sendMessage('Analyse', [file]);
+        });
+        await waitFor(() => expect(captured.history).not.toBeNull());
+        const lastUser = captured.history!.find((m) => m.role === 'user')!;
+        const blocks = lastUser.content as unknown as Array<Record<string, unknown>>;
+        expect(blocks[0].cache_control).toEqual({ type: 'ephemeral' }); // les tours 2-6 re-servent le préfixe depuis le cache
+    });
+
     it('fichier illisible → envoi REFUSÉ avec message honnête (jamais d\'envoi partiel)', async () => {
         const { result } = renderHook(() => useAiChat('sk-test'));
         const bad = new File(['x'], 'virus.exe', { type: 'application/octet-stream' });

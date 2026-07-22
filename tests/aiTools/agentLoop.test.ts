@@ -161,6 +161,17 @@ describe('runAgentLoop', () => {
         }
     });
 
+    it('[AITOOLS-B1] 400 API sur une PIÈCE JOINTE (document invalide) → message « retire-la », pas « réessaie » (le retry rééchouerait à l\'identique)', async () => {
+        const apiErr = Object.assign(new Error('invalid_request_error: document exceeds maximum pages'), { status: 400 });
+        const client: AgentClientLike = {
+            messages: { stream: () => ({ on: () => undefined, finalMessage: async () => { throw apiErr; } }) },
+        };
+        const res = await runAgentLoop([{ role: 'user', content: 'q' }], { apiKey: 'sk-test', getState, client });
+        expect(res.stopReason).toBe('error');
+        expect(res.text).toContain('pièce jointe');
+        expect(res.text).not.toContain('réessaie dans un instant');
+    });
+
     it('[SEC] réponse REFUSÉE (refusal) → stopReason refused + marqueur honnête + logError (pas « réessaie » aveugle)', async () => {
         const refused = { content: [{ type: 'text', text: '' }], stop_reason: 'refusal' } as unknown as Anthropic.Message;
         const { client } = scriptedClient([refused]);

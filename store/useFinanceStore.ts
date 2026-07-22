@@ -8,6 +8,7 @@ import { logError } from '../services/errorLogger';
 import { saveLockedProjection, clearLockedProjection } from '../services/lockedProjectionStore';
 import { loadLegacyHealthWeights } from '../utils/healthWeights';
 import { sanitizePersonaArtifacts } from '../services/personaSanitizer';
+import { clearAttachmentCache } from '../services/aiChat/attachments';
 
 // Phase B2 — Deep-link cross-tab: un onglet pose un "intent" de focus, la page
 // destination le consomme au mount (scroll, highlight, focus, etc.).
@@ -523,7 +524,10 @@ export const useFinanceStore = create<FinanceState>()(
 
             // Mode test : sauve l'état "vrai" actuel, applique les fixtures,
             // active le flag (banner visible via Layout).
-            enableTestMode: (fixtures, personaId) => set((prev) => {
+            // [AITOOLS-B1, finding panel sécurité] Le cache mémoire des pièces jointes du chat porte
+            // des OCTETS réels (relevés/PDF) — purgé à CHAQUE bascule de mode (hygiène inter-persona,
+            // discipline PERSONA-PURGE ; le transcript, lui, est déjà couvert par personaResetBase).
+            enableTestMode: (fixtures, personaId) => { clearAttachmentCache(); return set((prev) => {
                 // Snapshot des VRAIES données SEULEMENT à la 1re activation (hors flags UI/credentials).
                 // Au changement de persona (déjà en test), on CONSERVE ce snapshot initial — sinon on
                 // « sauvegarderait » les données fictives par-dessus les vraies (perte définitive).
@@ -550,9 +554,9 @@ export const useFinanceStore = create<FinanceState>()(
                     realDataSnapshot,
                     activeTestPersonaId: personaId ?? null,
                 };
-            }),
+            }); },
             // Restaure les vraies données sauvegardées + désactive le flag.
-            disableTestMode: () => set((prev) => {
+            disableTestMode: () => { clearAttachmentCache(); return set((prev) => {
                 if (!prev.isTestMode) return prev;
                 const snap = prev.realDataSnapshot;
                 if (!snap) {
@@ -590,7 +594,7 @@ export const useFinanceStore = create<FinanceState>()(
                     realDataSnapshot: null,
                     activeTestPersonaId: null,
                 };
-            }),
+            }); },
 
             // [PERSONA-PURGE] Self-heal du mode réel (appelé au boot par App.tsx) : purge par id
             // déterministe (registre artifactIds), JAMAIS en mode test (fixtures légitimes).

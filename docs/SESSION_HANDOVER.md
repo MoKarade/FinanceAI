@@ -4,7 +4,14 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟢 Session 2026-07-22 (suite 3) — B1 : pièces jointes multimodales du chat
+> ## 🟢 Session 2026-07-22 (suite 3) — B1 : pièces jointes multimodales du chat (PR #487)
+> **Panel 5 agents APPLIQUÉ en commit de suivi** : CRITIQUE fichier 0 octet (tour évaporé de l'historique
+> modèle, sonde) → plancher + garde par type + repli honnête ; ÉLEVÉS : suggestion-jette-fichier (sonde),
+> budget agrégé 20 Mo/message (limite API par REQUÊTE ≠ par fichier), `cache_control` sur le dernier bloc
+> pièce jointe (un PDF était re-facturé jusqu'à ~30× sur la clé BYOK) ; MOYENS : éviction cache hors fenêtre
+> + purge inter-persona (enableTestMode/disableTestMode), nom de fichier jamais dans logError (peut porter
+> un montant), erreur API 400 pièce jointe → « retire-la » (pas « réessaie »), contraste puces ink-200
+> (mesuré 7,1:1, l'ancienne puce toolsUsed corrigée au passage), cible retirer ≥24 px, aria-live.
 > **✅ `[B1-CHAT-ATTACHMENTS]`** (roadmap chat B, scope validé Marc) : images/PDF/texte-CSV joignables au
 > chat (trombone, panneau + onglet), envoyés en blocs multimodaux Anthropic. `services/aiChat/attachments.ts`
 > (pur : classify allowlist+bornes, read → base64/texte, buildUserContent, cache session par id message),

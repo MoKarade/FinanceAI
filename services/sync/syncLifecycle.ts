@@ -11,8 +11,34 @@ import {
     isGoogleAuthConfigured,
     requestAccessToken,
     getValidAccessToken,
+    renewTokenSilently,
     revokeAccess,
+    AuthInteractionRequiredError,
 } from '../googleDrive/gisAuth';
+import { isInactivityExpired, recordActivity, clearActivity } from './inactivityLogout';
+import { logError } from '../errorLogger';
+
+/**
+ * [Finding panel silent-failure] Reprise silencieuse au boot : un échec par « interaction requise »
+ * (pas de session Google) est NOMINAL → silence. Un échec ANORMAL (script GIS injoignable, timeout
+ * réseau) doit laisser une trace (`logError` warning) — sinon un boot pendant une panne réseau renvoie
+ * au login SANS trace, indiscernable d'un « jamais connecté » (classe GATE-SILENT-DRIVE). Retourne le
+ * jeton, ou null si la reprise a échoué (l'appelant renvoie alors au login).
+ */
+async function trySilentReauth(phase: 'gate' | 'boot'): Promise<string | null> {
+    try {
+        return await renewTokenSilently();
+    } catch (e) {
+        if (!(e instanceof AuthInteractionRequiredError)) {
+            logError({
+                source: 'network', severity: 'warning',
+                message: `Reprise silencieuse Drive au ${phase} échouée (anormale : réseau/GIS) — renvoi au login.`,
+                error: e instanceof Error ? e : new Error(String(e)),
+            });
+        }
+        return null;
+    }
+}
 import {
     findSyncFile,
     deleteSyncFile,
@@ -60,6 +86,7 @@ export async function connectAndSync(): Promise<void> {
     setStatus({ busy: true, error: null });
     try {
         const token = await requestAccessToken(true);
+        recordActivity(); // [AUTH-DRIVE-INACTIVITY] la connexion démarre le compte à rebours 8h
         const { email, sub } = await fetchUserIdentity(token); // sub → clé de chiffrement des clés API
         const meta = currentMeta();
         writeSyncMeta({ ...meta, connectedEmail: email, connectedSub: sub ?? meta.connectedSub ?? null });
@@ -93,16 +120,35 @@ export async function connectAndSync(): Promise<void> {
  */
 export async function gateSilentResume(): Promise<boolean> {
     if (!isGoogleAuthConfigured()) return false;
+    // [AUTH-DRIVE-INACTIVITY] Au-delà de 8h sans activité : NE PAS reprendre silencieusement → borne de
+    // session (Loi 25). On purge tout jeton résiduel et on renvoie au login (clic pour se reconnecter).
+    if (isInactivityExpired()) {
+        revokeAccess();
+        setStatus({ busy: false, connected: false });
+        return false;
+    }
     setStatus({ busy: true, error: null });
-    // 1) Jeton silencieux (cache only). Un échec ICI est le cas NORMAL (pas de session/consentement, ou
-    //    jeton expiré ~1 h) → no-op SANS journaliser (sinon bruit + faux positifs SystemView à chaque boot).
+    // 1) Jeton silencieux (cache d'abord). Actif < 8h → si le cache est vide/expiré, on tente une ré-auth
+    //    SILENCIEUSE RÉSEAU (prompt='' → PAS de popup ; réussit tant que la session Google est valide).
+    //    C'est le changement demandé par Marc (2026-07-22 : « je veux plus me reconnecter à chaque fois »).
+    //    Échec = cas NORMAL (session Google absente/cookies tiers bloqués) → no-op SANS journaliser, le gate
+    //    montre « Se connecter ». ⚠️ prompt='' ne lève JAMAIS de popup au boot (contrairement à 'consent').
     let token: string;
     try {
         token = await getValidAccessToken(); // cache-only : rejette si pas de jeton valide en cache
     } catch {
-        setStatus({ busy: false, connected: false });
-        return false;
+        // Cache vide/expiré → ré-auth silencieuse réseau (prompt='', sans popup). Échec anormal tracé.
+        const renewed = await trySilentReauth('gate');
+        if (!renewed) {
+            setStatus({ busy: false, connected: false });
+            return false;
+        }
+        token = renewed;
     }
+    // [Finding panel sécurité CRITIQUE] NE PAS recordActivity ici : une reprise silencieuse (déclenchée
+    // aussi par le POLLING toutes les 60s, cf startDrivePolling) n'est PAS une interaction utilisateur.
+    // Sinon le polling réarme l'horloge en boucle et la déconnexion 8h ne se déclenche JAMAIS. Seuls un
+    // vrai geste DOM (onActivity) et une connexion explicite (connectAndSync) avancent `lastActivity`.
     // 2) Le jeton est en main → une erreur APRÈS (identité/lecture Drive, ex. TIMEOUT réseau) est ANORMALE :
     //    on la ROUTE via handleError (→ logError + status.error) au lieu de l'avaler en silence comme un
     //    « pas de session ». Sinon un Drive injoignable renvoyait l'utilisateur au login SANS trace ni message,
@@ -129,17 +175,28 @@ export async function runBootSync(): Promise<void> {
     if (!isGoogleAuthConfigured()) return;
     const meta = readSyncMeta();
     if (!meta?.connectedEmail) return; // jamais connecté → rien au boot
-    // 1) Jeton silencieux (cache only — cf gisAuth : pas de popup au boot). Un échec ICI est le cas
-    //    NORMAL après expiration du jeton (~1 h) : reprise silencieuse impossible sans geste utilisateur.
-    //    On le traite comme un no-op SANS journaliser d'erreur (sinon bruit à chaque boot + faux
-    //    positifs dans SystemView). L'utilisateur recliquera « Connecter ».
+    // [AUTH-DRIVE-INACTIVITY] > 8h d'inactivité → pas de reprise silencieuse (borne de session).
+    if (isInactivityExpired()) {
+        revokeAccess();
+        setStatus({ connected: false });
+        return;
+    }
+    // 1) Jeton silencieux (cache d'abord ; sinon ré-auth silencieuse réseau prompt='' — pas de popup).
+    //    Échec = cas NORMAL (session Google absente) → no-op SANS journaliser. Actif < 8h → on tente le
+    //    réseau silencieux pour rester connecté sans reconnexion (demande Marc 2026-07-22).
     let token: string;
     try {
         token = await getValidAccessToken();
     } catch {
-        setStatus({ connected: false });
-        return;
+        const renewed = await trySilentReauth('boot');
+        if (!renewed) {
+            setStatus({ connected: false });
+            return;
+        }
+        token = renewed;
     }
+    // [Finding panel sécurité CRITIQUE] Idem gateSilentResume : le polling appelle runBootSync toutes
+    // les 60s → ne PAS recordActivity ici (sinon l'horloge d'inactivité ne vieillit jamais).
     // 2) Le jeton est en main → une erreur APRÈS (lecture/écriture Drive) est, elle, anormale → handleError.
     try {
         setStatus({ connected: true });
@@ -226,9 +283,26 @@ export async function resolveConflict(keep: 'local' | 'drive'): Promise<void> {
     else await pullNow();
 }
 
+/**
+ * [AUTH-DRIVE-INACTIVITY] Déconnexion AUTOMATIQUE après 8h d'inactivité (déclenchée par le minuteur de
+ * `inactivityLogout`). Révoque le jeton (arrête le renouvellement + la sync) MAIS garde la meta
+ * (`connectedEmail`) → reconnexion facile en un clic, pas de ré-onboarding, et l'anti-clobber (conflict,
+ * jamais d'écrasement) protège déjà la reconnexion. La bannière `SyncStatusBanner` (déconnecté + données)
+ * invite alors à se reconnecter. Distinct de `disconnectSync` (déconnexion MANUELLE, qui efface la meta).
+ */
+export function handleInactivityLogout(): void {
+    revokeAccess();
+    // [Finding panel sécurité CRITIQUE] NE PAS clearActivity : garder l'horodatage périmé (déjà ≥8h
+    // dans le passé) → `isInactivityExpired()` reste TRUE jusqu'à une VRAIE reconnexion (connectAndSync,
+    // qui recordActivity). Sinon `null → isInactivityExpired false` → le polling reconnecte tout seul en
+    // ≤60s et la déconnexion ne « colle » jamais. `clearActivity` est réservé aux déconnexions MANUELLES.
+    setStatus({ connected: false, busy: false });
+}
+
 /** Déconnexion : révoque le token et efface la meta de sync. */
 export function disconnectSync(): void {
     revokeAccess();
+    clearActivity();
     clearSyncMeta();
     clearGateAuthedThisSession(); // re-demande le login au prochain accès (sinon le gate serait sauté)
     // La passphrase est un secret de SESSION : on la purge à la déconnexion (sinon elle resterait
@@ -250,6 +324,7 @@ export async function deleteRemoteData(): Promise<void> {
         const ref = await findSyncFile(token);
         if (ref) await deleteSyncFile(token, ref.id);
         revokeAccess();
+        clearActivity();
         clearSyncMeta();
         clearPassphrase(); // secret de session purgé avec la déconnexion qui suit la suppression
         setStatus({ busy: false, connected: false, email: null, conflict: false, conflictSummary: null, lastSyncedAt: 0, needsPassphrase: false });

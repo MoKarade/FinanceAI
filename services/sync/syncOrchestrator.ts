@@ -37,7 +37,11 @@ export {
     disconnectSync,
     deleteRemoteData,
     hasConnectedBefore,
+    handleInactivityLogout,
 } from './syncLifecycle';
+
+// ── Déconnexion auto après inactivité (inactivityLogout) ─────────────────────
+export { startInactivityWatch, INACTIVITY_LIMIT_MS } from './inactivityLogout';
 
 // ── Polling Drive (syncPolling) ──────────────────────────────────────────────
 export { startDrivePolling } from './syncPolling';

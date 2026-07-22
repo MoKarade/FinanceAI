@@ -28,7 +28,7 @@ import { initAutoBackup, createBackupNow } from './services/backupAuto';
 import { sanitizePersonaArtifacts } from './services/personaSanitizer';
 import { RULE_CATEGORIES } from './services/import/categoryRules';
 import { loadLockedProjection } from './services/lockedProjectionStore';
-import { initSync, runBootSync, schedulePush, pushNow, flushPush, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, markApiKeysHydrated, type SyncStatus } from './services/sync/syncOrchestrator';
+import { initSync, runBootSync, schedulePush, pushNow, flushPush, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, markApiKeysHydrated, startInactivityWatch, handleInactivityLogout, type SyncStatus } from './services/sync/syncOrchestrator';
 import { trackPageView } from './services/analytics';
 import { GuidedTour } from './components/tour/GuidedTour';
 import { startGuidedTour } from './components/tour/tourControl';
@@ -169,6 +169,14 @@ export const App: React.FC = () => {
         initSync(import.meta.env.VITE_GOOGLE_CLIENT_ID);
         const syncTimer = setTimeout(() => { void runBootSync(); }, 2500);
         const unsubSync = useFinanceStore.subscribe(() => schedulePush());
+        // [AUTH-DRIVE-INACTIVITY] Déconnexion auto après 8h d'inactivité (demande Marc 2026-07-22) :
+        // le minuteur suit l'activité (clic/clavier/retour d'onglet) et, au bout de 8h sans interaction,
+        // révoque le jeton Drive + prévient. La reprise silencieuse au boot s'appuie sur le même seuil
+        // (< 8h → reconnexion sans clic ; ≥ 8h → login requis). Données locales jamais touchées.
+        const stopInactivity = startInactivityWatch(() => {
+            handleInactivityLogout();
+            showToast('Déconnecté de Google Drive après 8 h d\'inactivité (sécurité). Reconnecte-toi pour reprendre la sauvegarde.', 'info');
+        });
         // Rafraîchissement « fluide » : reflète SEUL les changements de Drive (ex. doc rangé par le
         // connecteur MCP) sur intervalle + au retour sur l'onglet (garde anti-perte réutilisée).
         const stopPolling = startDrivePolling();
@@ -187,6 +195,7 @@ export const App: React.FC = () => {
             clearTimeout(syncTimer);
             unsubSync();
             stopPolling();
+            stopInactivity();
             if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onHide);
             if (typeof window !== 'undefined') window.removeEventListener('pagehide', onPageHide);
         };

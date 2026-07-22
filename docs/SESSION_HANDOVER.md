@@ -4,6 +4,17 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-22 (suite) — Google Drive : rester connecté + déconnexion auto 8h + roadmap chat
+> **En cours `[AUTH-DRIVE-INACTIVITY]`** (demande Marc « plus me reconnecter à chaque fois + déconnexion ~8h d'inactivité ») :
+> ré-auth SILENCIEUSE au boot (`renewTokenSilently` prompt='' sur cache-miss, GATÉE sur < 8h d'inactivité) + minuteur 8h
+> (`services/sync/inactivityLogout.ts`) → `handleInactivityLogout` révoque le jeton (garde la meta, reconnexion 1-clic).
+> Données locales jamais touchées. Tests : `inactivityLogout.test.ts` (8) + 2 dans `syncOrchestrator.flow.test.ts`. Panel
+> security-privacy + cycle PR à suivre. **ROADMAP CHAT (B, plan-first, scope validé Marc)** : B1 pièces jointes (images+PDF+CSV
+> multimodal, stockées en fichiers Drive appdata SÉPARÉS — pas inline), B2 onglet dédié + historique multi-conversations (sync
+> Drive), B3 choix modèle Haiku/Sonnet/Opus par conv, B4 coût (tokens×tarif → total + par conv, CAD). + BACKLOG `[FUTURE-ICONS-EXHAUSTIVE]`
+> (icône pour tout événement + LOD par priorité au zoom). ⚠️ Rappel : fix SEC `[MCP-WRITE-SUMMARY-SCRUB]` actif sur claude.ai
+> seulement au **prochain deploy Cloud Run** (workflow deploy-mcp SKIPPED : `GCP_PROJECT_ID` non défini → deploy manuel).
+>
 > ## 🟢 Session 2026-07-22 — Refresh planifié des prix (`HUB-REFRESH-CRON`) livré (GO Marc « code tout »)
 > **Problème Marc** : « les données de finance ai sont pas à jour mais j'ai pas envie d'aller dans l'app
 > pour que ce soit à jour ». Cause racine : seule l'app navigateur poussait l'état dans Drive → tout

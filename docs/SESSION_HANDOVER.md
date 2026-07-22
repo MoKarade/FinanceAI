@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-22 (suite 3) — B1 : pièces jointes multimodales du chat (PR #487)
+> **Panel 5 agents APPLIQUÉ en commit de suivi** : CRITIQUE fichier 0 octet (tour évaporé de l'historique
+> modèle, sonde) → plancher + garde par type + repli honnête ; ÉLEVÉS : suggestion-jette-fichier (sonde),
+> budget agrégé 20 Mo/message (limite API par REQUÊTE ≠ par fichier), `cache_control` sur le dernier bloc
+> pièce jointe (un PDF était re-facturé jusqu'à ~30× sur la clé BYOK) ; MOYENS : éviction cache hors fenêtre
+> + purge inter-persona (enableTestMode/disableTestMode), nom de fichier jamais dans logError (peut porter
+> un montant), erreur API 400 pièce jointe → « retire-la » (pas « réessaie »), contraste puces ink-200
+> (mesuré 7,1:1, l'ancienne puce toolsUsed corrigée au passage), cible retirer ≥24 px, aria-live.
+> **✅ `[B1-CHAT-ATTACHMENTS]`** (roadmap chat B, scope validé Marc) : images/PDF/texte-CSV joignables au
+> chat (trombone, panneau + onglet), envoyés en blocs multimodaux Anthropic. `services/aiChat/attachments.ts`
+> (pur : classify allowlist+bornes, read → base64/texte, buildUserContent, cache session par id message),
+> `useAiChat.sendMessage(text, files?)` (lecture AVANT append — échec = refus honnête de l'envoi entier ;
+> historique multimodal tant que le cache vit, note « contenu non disponible » post-reload), transcript =
+> MÉTA seulement (ADR-4, jamais d'octets dans le store/push Drive), anti-injection (neutralizeFrameTags sur
+> fichiers texte + clause system prompt). 15+4 tests. Boot inchangé (~109 kB gzip, SDK toujours absent).
+> **Suite : B2 (onglet + multi-conversations Drive, octets → fichiers appdata), B3 (choix modèle), B4 (coût).**
+> ⚠️ Marc a RÉITÉRÉ « plus me reconnecter à Drive tout le temps » APRÈS le merge de #483 → suivi
+> `[AUTH-DRIVE-STILL-RECONNECT]` au BACKLOG (vérifier en prod post-deploy ; instrumenter si ça persiste).
+>
 > ## 🟢 Session 2026-07-22 (suite 2) — PORTFOLIO-HISTORY : courbes de cours réelles (bug Marc) — PR #485
 > **✅ `[PORTFOLIO-HISTORY]` implémenté + panel appliqué** (bug Marc « je vois pas le cours ni le cours du
 > portefeuille ») : cause = stub CSV mort (`fetchPortfolioHistory`→[]) → graphes vides en réel. Livré : chaîne

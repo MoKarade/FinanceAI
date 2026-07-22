@@ -21,6 +21,7 @@ import {
   Heart, Hammer, Car, Rocket, ShoppingCart, Ambulance,
   X, SendHorizontal, FlaskConical, ChevronLeft, ChevronRight, Trophy,
   Music, Tv, Wifi, Plus, Minus, Pencil, RefreshCw, Cpu, Gem, Factory,
+  Paperclip, Image as ImageIcon,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -114,6 +115,8 @@ const REGISTRY = {
   cpu: Cpu,
   gem: Gem,
   factory: Factory,
+  paperclip: Paperclip,
+  image: ImageIcon,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof REGISTRY;

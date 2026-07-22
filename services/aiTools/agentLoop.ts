@@ -159,10 +159,20 @@ export async function runAgentLoop(
     let text = '';
 
     // Résultat d'ÉCHEC honnête : texte accumulé + trace + historique (rien de perdu pour l'UI).
-    const failResult = (errorMessage: string, turns: number): AgentLoopResult => {
+    const failResult = (errorMessage: string, turns: number, friendlyText?: string): AgentLoopResult => {
         text += (text ? '\n\n' : '')
-            + '[Erreur] La conversation n\'a pas pu aboutir — réessaie dans un instant.';
+            + (friendlyText ?? '[Erreur] La conversation n\'a pas pu aboutir — réessaie dans un instant.');
         return { text, toolsUsed, turns, stopReason: 'error', errorMessage, messages };
+    };
+
+    // [AITOOLS-B1, finding panel] Un 400 API sur une PIÈCE JOINTE (PDF corrompu, trop de pages,
+    // image invalide) est STRUCTUREL : « réessaie » renverrait le même payload payant qui rééchouera
+    // à l'identique — le message doit dire de retirer/remplacer le fichier.
+    const attachmentApiFailure = (err: Error): string | undefined => {
+        const status = (err as { status?: number }).status;
+        return status === 400 && /(image|document|pdf|page)/i.test(err.message)
+            ? '[Erreur] Une pièce jointe n\'a pas pu être traitée par l\'API (corrompue, trop de pages ou format non supporté) — retire-la ou remplace-la, puis renvoie ton message.'
+            : undefined;
     };
 
     // Snapshot UNIQUE de l'état pour tout l'envoi (cohérence inter-tools du même tour de question).
@@ -216,7 +226,7 @@ export async function runAgentLoop(
                 message: `Chat in-app : échec de l'appel Claude au tour ${turn} — conversation interrompue.`,
                 error: err,
             });
-            return failResult(err.message, turn);
+            return failResult(err.message, turn, attachmentApiFailure(err));
         } finally {
             cleanup();
         }

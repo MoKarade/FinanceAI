@@ -30,6 +30,9 @@ import {
     type AiAttachmentPayload,
 } from '../services/aiChat/attachments';
 import { aliveAttachmentMessageIds } from '../services/aiChat/conversations';
+// [B3+B4] Modèle par conversation + coût réel — modules purs/légers (boot-safe en import statique).
+import { MODEL_IDS, resolveChatModelKey } from '../services/aiChat/models';
+import { chatCostUsd } from '../services/aiChat/pricing';
 // [B2] Octets des pièces jointes en fichiers Drive appdata SÉPARÉS (cross-device) — best-effort,
 // jamais bloquant, module léger (fetch nu, aucun SDK).
 import { pushAttachmentsToDrive, fetchAttachmentsFromDrive, deleteAttachmentsFromDrive } from '../services/aiChat/attachmentDriveStore';
@@ -298,8 +301,12 @@ export function useAiChat(apiKey: string): UseAiChat {
                 ]),
                 'aiChat',
             );
+            // [B3-CHAT-MODEL] Modèle DE la conversation active, capturé à l'envoi (un changement de
+            // sélecteur pendant le stream ne s'applique qu'au message suivant — cohérence coût/réponse).
+            const modelId = MODEL_IDS[resolveChatModelKey(useFinanceStore.getState().aiChatModel)];
             const result = await runAgentLoop(history, {
                 apiKey,
+                model: modelId,
                 getState: appStateProvider,
                 signal: abortRef.current.signal,
                 onTextDelta: (delta) => {
@@ -316,11 +323,30 @@ export function useAiChat(apiKey: string): UseAiChat {
                 // apply/refus. Sans ce callback, les tools apply_* ne seraient même pas déclarés.
                 onWriteToolUse: (spec, args) => executeWriteTool(spec, args, requestConfirmation),
             });
+            // [B4-CHAT-COST] Coût RÉEL de l'envoi (tokens facturés × tarif du modèle), crédité sur
+            // TOUS les stopReasons — une annulation/un échec au tour N a payé les tours aboutis.
+            // Ceinture : un résultat SANS usage (mock/version décalée) = coût non mesuré, silencieux ;
+            // un usage AVEC modèle sans tarif (dérive de table) = trace, jamais un costUsd fabriqué.
+            let cost: number | null = null;
+            if (result.usage) {
+                cost = chatCostUsd(result.usage, modelId);
+                if (cost === null) {
+                    logError({
+                        source: 'ai', severity: 'warning',
+                        message: `Chat in-app : aucun tarif connu pour le modèle ${modelId} — coût non comptabilisé (table pricing à mettre à jour).`,
+                    });
+                }
+            }
+            if (cost !== null && cost > 0) {
+                const s = useFinanceStore.getState();
+                s.setAppState({ aiChatCostUsdTotal: (s.aiChatCostUsdTotal ?? 0) + cost });
+            }
             // Le texte FINAL fait foi (marqueurs honnêtes [Réponse coupée]/[Erreur]/[Annulé]/
             // [Limite atteinte] inclus — les deltas streamés ne portent pas ces marqueurs).
             updateModelMessage(modelMsgId, {
                 text: result.text.trim() !== '' ? result.text : 'Oups — aucune réponse reçue. Réessaie dans un instant.',
                 toolsUsed: [...usedLabels],
+                ...(cost !== null && cost > 0 ? { costUsd: cost } : {}),
             });
         } catch (e) {
             // runAgentLoop rend les échecs (API, abort, état corrompu) en RÉSULTAT — un throw ici

@@ -17,6 +17,9 @@ import {
 import { deleteAttachmentsFromDrive } from '../../services/aiChat/attachmentDriveStore';
 import { pruneAttachmentCache } from '../../services/aiChat/attachments';
 import { logError } from '../../services/errorLogger';
+// [B4-CHAT-COST] Coût par conversation archivée (Σ des réponses) — affiché en CAD via fxRates.USD.
+import { sumMessagesCostUsd } from '../../services/aiChat/pricing';
+import { formatCostCad } from '../../utils/format';
 
 interface AiConversationListProps {
     isLoading: boolean;
@@ -86,6 +89,7 @@ const fmtDate = (iso: string): string => {
 export const AiConversationList: React.FC<AiConversationListProps> = ({ isLoading, compact = false }) => {
     const aiConversations = useFinanceStore((s) => s.aiConversations) ?? [];
     const activeId = useFinanceStore((s) => s.activeAiConversationId);
+    const fxUsd = useFinanceStore((s) => s.fxRates.USD);
     // Sélecteur ATOMIQUE (finding panel perf) : retourner le tableau re-rendait la sidebar à
     // CHAQUE delta streamé (updateModelMessage recrée le tableau) pour un .length inchangé.
     const activeCount = useFinanceStore((s) => s.aiConversation.length);
@@ -176,8 +180,12 @@ export const AiConversationList: React.FC<AiConversationListProps> = ({ isLoadin
                             title={c.title}
                         >
                             <span className="block text-meta text-ink-100 truncate">{c.title}</span>
+                            {/* [B3+B4] Modèle de la conversation (archive pré-B3 : aucun → rien
+                                d'affiché plutôt qu'un « Sonnet » supposé) + coût réel si > 0. */}
                             <span className="block text-tiny text-ink-400">
                                 {fmtDate(c.updatedAt)} · {c.messages.length} message{c.messages.length > 1 ? 's' : ''}
+                                {c.model ? ` · ${c.model.charAt(0).toUpperCase()}${c.model.slice(1)}` : ''}
+                                {sumMessagesCostUsd(c.messages) > 0 ? ` · ${formatCostCad(sumMessagesCostUsd(c.messages), fxUsd)}` : ''}
                             </span>
                         </button>
                         {confirmDeleteId === c.id ? (

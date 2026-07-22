@@ -83,7 +83,7 @@ export function sanitizePersonaArtifacts<T extends Partial<AppState>>(input: T):
     // font un spread `{...prev, ...cleaned}` doivent traiter ces clés EXPLICITEMENT (une clé
     // supprimée n'écrase rien — cf. fix disableTestMode, finding panel 2026-07-15).
     for (const single of ['childGoal', 'weddingGoal'] as const) {
-        const value = (input as Record<string, { id?: unknown } | null | undefined>)[single];
+        const value = (input as unknown as Record<string, { id?: unknown } | null | undefined>)[single];
         if (value && isPersonaArtifactId(value.id)) {
             ensureCopy();
             delete (out as Record<string, unknown>)[single];

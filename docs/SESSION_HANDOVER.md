@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-22 (suite 5) — B3+B4 : choix du modèle par conversation + coût réel (PR #489)
+> **✅ `[B3-CHAT-MODEL]` + `[B4-CHAT-COST]`** (fin de la roadmap chat B de Marc) : sélecteur Haiku/Sonnet/Opus
+> dans le header du chat, PAR conversation (`AppState.aiChatModel` additif pour l'active, porté dans
+> `AiConversation.model` à l'archivage, restauré à la bascule ; pré-B3 → sonnet). Source unique des ids :
+> `services/aiChat/models.ts` (`MODEL_IDS` — `services/claude.ts` en dérive ses constantes). Coût RÉEL :
+> `agentLoop` accumule `msg.usage` par tour (présent sur TOUS les stopReasons — l'annulation compte ses
+> tours payés) → `services/aiChat/pricing.ts` (tarifs $/MTok datés/sourcés : haiku 1/5, sonnet 3/15, opus
+> 5/25 ; cache read 0,1×/write 1,25×) → `costUsd` par réponse (persisté) + cumul à vie `aiChatCostUsdTotal`.
+> Affichage CAD via `fxRates.USD` (`formatCostCad` — « < 0,01 $ », jamais un faux 0,00 $) : bulle, header
+> (conv + total), sidebar (coût + modèle par archive). Modèle sans tarif → null honnête + logError (garde de
+> parité ids↔tarifs par test). Défauts store/MCP/backup en parité. **Roadmap chat B TERMINÉE (B1→B4).**
+>
 > ## 🟢 Session 2026-07-22 (suite 4) — B2 : onglet + historique multi-conversations + pièces jointes cross-device
 > **✅ `[B2-CHAT-HISTORY]` implémenté** : `aiConversations`/`activeAiConversationId` (additifs — `aiConversation`
 > RESTE l'active, source unique, jamais dupliquée dans la liste), logique pure `services/aiChat/conversations.ts`,

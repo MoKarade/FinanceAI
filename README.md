@@ -155,7 +155,10 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 - Zéro transmission de PII — toutes les données restent dans le navigateur
 
 ### Assistant IA
-- Chat persisté Claude (Sonnet 4.6) avec contexte financier complet
+- Chat persisté Claude avec contexte financier complet (tools de lecture/écriture partagés avec le MCP)
+- Modèle au choix PAR conversation : Haiku / Sonnet (défaut) / Opus — le choix suit la conversation
+- Coût API réel affiché en CAD (par réponse, par conversation, total cumulé) — tokens facturés × tarif
+- Onglet dédié avec historique multi-conversations (sync Drive) + pièces jointes (images, PDF, CSV)
 - Haiku 4.5 pour les tâches rapides (catégorisation, suggestions)
 - Réponses streamées avec bouton annulation
 - Privacy : aucune PII envoyée

@@ -24,6 +24,8 @@ import { dispatchReadTool } from './dispatch';
 import { toAnthropicTools } from './toAnthropicTools';
 import { READ_SPECS, WRITE_SPECS, WRITE_SPECS_BY_NAME } from './registry';
 import { buildAgentSystemPrompt } from './systemPrompt';
+// [B4-CHAT-COST] Accumulation de l'usage RÉEL (tokens facturés) par tour — module pur/léger.
+import { addUsage, EMPTY_USAGE, type AiTokenUsage } from '../aiChat/pricing';
 
 const DEFAULT_MAX_TURNS = 6;
 const DEFAULT_TURN_TIMEOUT_MS = 60_000;
@@ -83,11 +85,29 @@ export interface AgentLoopResult {
      *  repartent du transcript TEXTE seul, et le modèle re-consulte les tools au besoin (lecture
      *  idempotente sur le même état → mêmes chiffres). Jamais persisté/synchronisé (ADR-4). */
     messages: Anthropic.MessageParam[];
+    /** [B4-CHAT-COST] Tokens FACTURÉS, agrégés sur tous les tours ABOUTIS de cet envoi (présent sur
+     *  TOUS les stopReasons — un envoi annulé/en échec a quand même coûté ses tours complétés).
+     *  Un tour dont l'appel API a échoué avant `finalMessage` n'a pas d'usage mesurable → non
+     *  compté (jamais estimé/fabriqué). */
+    usage: AiTokenUsage;
 }
 
 /** Aplati les blocs texte d'un ToolTextResult en string pour le tool_result Anthropic. */
 function flattenContent(content: Array<{ type: 'text'; text: string }>): string {
     return content.map((b) => b.text).join('\n\n');
+}
+
+/** [B4-CHAT-COST] Usage d'UN tour depuis `msg.usage` du SDK — champs absents/non finis = 0 (les
+ *  champs cache n'existent que si le cache a servi ; jamais de NaN dans un cumul money-critical). */
+function usageFromMessage(msg: Anthropic.Message): AiTokenUsage {
+    const u = (msg as unknown as { usage?: Record<string, unknown> }).usage;
+    const n = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0);
+    return {
+        inputTokens: n(u?.input_tokens),
+        outputTokens: n(u?.output_tokens),
+        cacheWriteTokens: n(u?.cache_creation_input_tokens),
+        cacheReadTokens: n(u?.cache_read_input_tokens),
+    };
 }
 
 /**
@@ -157,12 +177,14 @@ export async function runAgentLoop(
     const messages: Anthropic.MessageParam[] = [...history];
     const toolsUsed: string[] = [];
     let text = '';
+    // [B4-CHAT-COST] Cumul des tokens FACTURÉS sur les tours aboutis (rendu sur TOUS les chemins).
+    let usage: AiTokenUsage = EMPTY_USAGE;
 
     // Résultat d'ÉCHEC honnête : texte accumulé + trace + historique (rien de perdu pour l'UI).
     const failResult = (errorMessage: string, turns: number, friendlyText?: string): AgentLoopResult => {
         text += (text ? '\n\n' : '')
             + (friendlyText ?? '[Erreur] La conversation n\'a pas pu aboutir — réessaie dans un instant.');
-        return { text, toolsUsed, turns, stopReason: 'error', errorMessage, messages };
+        return { text, toolsUsed, turns, stopReason: 'error', errorMessage, messages, usage };
     };
 
     // [AITOOLS-B1, finding panel] Un 400 API sur une PIÈCE JOINTE (PDF corrompu, trop de pages,
@@ -216,7 +238,7 @@ export async function runAgentLoop(
             // et masque les vrais échecs API), texte honnête « [Annulé] ».
             if (opts.signal?.aborted || err.name === 'AbortError' || e instanceof DOMException) {
                 text += (text ? '\n\n' : '') + '[Annulé]';
-                return { text, toolsUsed, turns: turn, stopReason: 'aborted', messages };
+                return { text, toolsUsed, turns: turn, stopReason: 'aborted', messages, usage };
             }
             // [Finding panel CRITIQUE] Échec API (réseau, 429/5xx, timeout) : journaliser et rendre
             // un résultat HONNÊTE (texte déjà streamé + historique préservés pour l'UI/retry)
@@ -230,6 +252,10 @@ export async function runAgentLoop(
         } finally {
             cleanup();
         }
+
+        // [B4-CHAT-COST] Le tour a abouti : ses tokens sont facturés — cumulés quel que soit le
+        // dénouement de la boucle (une annulation au tour 3 a quand même payé les tours 1-2).
+        usage = addUsage(usage, usageFromMessage(msg));
 
         for (const block of msg.content) {
             if (block.type === 'text') text += (text ? '\n' : '') + block.text;
@@ -245,7 +271,7 @@ export async function runAgentLoop(
                     message: 'Chat in-app : réponse TRONQUÉE (max_tokens) — signalée à l\'utilisateur.',
                 });
                 text += '\n\n[Réponse coupée] La réponse a atteint sa longueur maximale — demande-moi de continuer.';
-                return { text, toolsUsed, turns: turn, stopReason: 'truncated', messages };
+                return { text, toolsUsed, turns: turn, stopReason: 'truncated', messages, usage };
             }
             if (msg.stop_reason === 'refusal') {
                 // [Finding SEC ai-reviewer] Fin DÉGRADÉE comme max_tokens : un refus sans bloc texte
@@ -257,12 +283,12 @@ export async function runAgentLoop(
                     message: 'Chat in-app : réponse REFUSÉE par le modèle — signalée à l\'utilisateur.',
                 });
                 text += (text ? '\n\n' : '') + '[Réponse refusée] Le modèle n\'a pas pu répondre à cette demande — reformule-la différemment.';
-                return { text, toolsUsed, turns: turn, stopReason: 'refused', messages };
+                return { text, toolsUsed, turns: turn, stopReason: 'refused', messages, usage };
             }
             // 'end_turn' / 'stop_sequence' — fins normales. NB : 'pause_turn' (tools SERVEUR type
             // web-search) est inatteignable ici (aucun tool serveur configuré) ; si un futur lot en
             // ajoute, ce chemin devra le gérer explicitement.
-            return { text, toolsUsed, turns: turn, stopReason: 'end', messages };
+            return { text, toolsUsed, turns: turn, stopReason: 'end', messages, usage };
         }
 
         // Tour d'outils : exécuter chaque tool_use LOCALEMENT (séquentiel — déterminisme), puis
@@ -308,5 +334,5 @@ export async function runAgentLoop(
     // Clôturer l'historique par un tour ASSISTANT (finding panel : finir sur un tour user/tool_result
     // ferait fusionner d'anciens tool_results JSON avec la PROCHAINE question de l'utilisateur).
     messages.push({ role: 'assistant', content: capNote });
-    return { text, toolsUsed, turns: maxTurns, stopReason: 'max_turns', messages };
+    return { text, toolsUsed, turns: maxTurns, stopReason: 'max_turns', messages, usage };
 }

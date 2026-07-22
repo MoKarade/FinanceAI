@@ -7,6 +7,7 @@
 // loadAppState ré-exporte ces symboles (compat : aucun consommateur existant à retoucher).
 
 import type { AppState } from '../../types';
+import { DEFAULT_AI_CHAT_MODEL } from '../../services/aiChat/models';
 import {
     INITIAL_BUDGET,
     INITIAL_CONFIG,
@@ -47,6 +48,8 @@ export function buildDefaultAppState(): AppState {
         aiConversation: [],
         aiConversations: [],
         activeAiConversationId: null,
+        aiChatModel: DEFAULT_AI_CHAT_MODEL,
+        aiChatCostUsdTotal: 0,
         insurancePolicies: [],
         rentalProperties: [],
         privateBusinesses: [],

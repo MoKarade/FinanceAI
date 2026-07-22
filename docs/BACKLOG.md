@@ -86,6 +86,28 @@
 > Restes uniquement : suivis LOW (DEP-UNDICI-VULN, FISC-CONST-LINT-LIMITS, FISC-RRSP-PRE2010-FALLBACK + suivi FUZZ-ONETIME-FLOWS) +
 > blocages Marc (RECH-ACTION-UX confirmée visuellement, phases 2-4 brief plan-first, P0-*, design Budget/Transactions/Retraite).
 
+## 💬 Roadmap chat (B, scope validé Marc 2026-07-22 par AskUserQuestion)
+- [x] **`[B1-CHAT-ATTACHMENTS]`** ✅ 2026-07-22 — pièces jointes multimodales (images ≤5 Mo, PDF ≤10 Mo,
+  texte/CSV ≤1 Mo, max 5/message) : `services/aiChat/attachments.ts` (classify/read/buildUserContent,
+  cache session par id de message), `useAiChat.sendMessage(text, files)`, UI trombone + puces
+  (AiChatView), clause anti-injection system prompt. Transcript = MÉTA seulement (ADR-4) ; contenu
+  post-reload → note honnête. B2 déplacera les octets en fichiers Drive appdata séparés.
+- [ ] **`[B2-CHAT-HISTORY]`** (L) — onglet dédié + historique MULTI-conversations synchronisé Drive
+  (texte dans l'état sync ; pièces jointes en FICHIERS appdata séparés, jamais inline base64).
+- [ ] **`[B3-CHAT-MODEL]`** (S) — choix du modèle par conversation (Haiku / Sonnet / Opus).
+- [ ] **`[B4-CHAT-COST]`** (M) — coût réel (tokens usage × tarif → CAD), total cumulé + par conversation.
+
+## 🔐 Drive — « je veux plus devoir me reconnecter tout le temps » (rappel Marc 2026-07-22)
+- [ ] **`[AUTH-DRIVE-STILL-RECONNECT]`** 🔴 (suivi actif, demande Marc réitérée APRÈS le merge de #483) —
+  exigence : connecté UNE fois → ça tient (reconnexion seulement après ~8h d'inactivité). `[AUTH-DRIVE-INACTIVITY]`
+  (#483, mergée 2026-07-22) livre exactement ça (jeton en localStorage + `renewTokenSilently` prompt='' au boot,
+  gaté < 8h d'inactivité). **À VÉRIFIER par Marc une fois le deploy Vercel en prod** : si la reconnexion est
+  encore demandée, investiguer les causes résiduelles : (a) session Google elle-même expirée/déconnectée
+  (le silencieux ne peut rien), (b) ITP/cookies tiers bloquant l'iframe GIS `prompt=''` (Safari/brave →
+  `error_callback`), (c) `lastActivity` jamais enregistré ou > 8h (gate refuse le silencieux), (d) multi-onglets/
+  multi-PC (le jeton est device-local — chaque appareil a sa première connexion). Instrumenter au besoin :
+  logError info sur CHAQUE échec de `renewTokenSilently` avec la raison GIS exacte, visible dans Réglages → Diagnostics.
+
 ## 📈 PORTFOLIO-HISTORY — courbes de cours réelles (bug Marc 2026-07-22, PR #485)
 - [x] **`[PORTFOLIO-HISTORY]`** ✅ 2026-07-22 — courbes par action (depuis 1er achat) + courbe portefeuille
   entier sur les vraies surfaces. Chaîne gratuite Finnhub→Yahoo proxy→CoinGecko (contrat null=erreur/

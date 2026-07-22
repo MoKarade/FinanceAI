@@ -704,6 +704,11 @@ export interface AiMessage {
    *  Situation fiscale »). ADDITIF optionnel (zéro migration) — libellés seulement, JAMAIS les
    *  payloads (ADR-4 : le transcript persisté/synchronisé reste léger). */
   toolsUsed?: string[];
+  /** [AITOOLS-B1] MÉTADONNÉES des pièces jointes du message (nom/type/taille) — ADDITIF optionnel.
+   *  ⚠️ JAMAIS les octets ici (ADR-4 : transcript léger, synchronisé Drive) : le contenu vit dans
+   *  le cache mémoire de session (services/aiChat/attachments), B2 le déplacera en fichiers Drive
+   *  appdata séparés. */
+  attachments?: Array<{ name: string; kind: 'image' | 'pdf' | 'text'; mimeType: string; size: number }>;
 }
 
 export interface AppState {

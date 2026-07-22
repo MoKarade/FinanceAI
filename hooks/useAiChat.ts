@@ -22,6 +22,12 @@ import { neutralizeFrameTags } from '../utils/promptSafety';
 import { importWithRetry, isChunkLoadError } from '../utils/lazyWithRetry';
 import { logError } from '../services/errorLogger';
 import type { AiMessage } from '../types';
+// [AITOOLS-B1] Pièces jointes : module LÉGER (aucun import lourd — types SDK effacés) → statique OK.
+import {
+    readAttachment, buildUserContent, cacheAttachments, getCachedAttachments,
+    clearAttachmentCache, unavailableAttachmentsNote, MAX_ATTACHMENTS_PER_MESSAGE,
+    type AiAttachmentPayload,
+} from '../services/aiChat/attachments';
 
 // [AITOOLS-E] Imports DYNAMIQUES du lourd (agentLoop tire le SDK Anthropic, writeExecutor tire
 // applyDocument + le moteur de backup) : ce hook est désormais monté au niveau App via AiChatProvider
@@ -58,7 +64,8 @@ export interface UseAiChat {
     pendingWrite: WritePreview | null;
     /** Tranche l'écriture en attente (bouton Appliquer → 'apply', Annuler → 'cancel'). */
     resolvePendingWrite: (decision: WriteDecision) => void;
-    sendMessage: (text: string) => Promise<void>;
+    /** [AITOOLS-B1] `files` : pièces jointes DÉJÀ validées par l'UI (classifyAttachment à la sélection). */
+    sendMessage: (text: string, files?: File[]) => Promise<void>;
     cancel: () => void;
     clearConversation: () => void;
 }
@@ -122,9 +129,10 @@ export function useAiChat(apiKey: string): UseAiChat {
         setAppState({ aiConversation: updated });
     }, []);
 
-    const sendMessage = useCallback(async (rawText: string) => {
+    const sendMessage = useCallback(async (rawText: string, files?: File[]) => {
         const userText = rawText.trim();
-        if (!userText || inFlightRef.current) return;
+        const hasFiles = (files?.length ?? 0) > 0;
+        if ((!userText && !hasFiles) || inFlightRef.current) return;
         if (!apiKey) {
             appendMessage({ id: nextMessageId(), role: 'user', text: userText, timestamp: new Date().toISOString() });
             appendMessage({
@@ -136,21 +144,62 @@ export function useAiChat(apiKey: string): UseAiChat {
             return;
         }
 
+        // [AITOOLS-B1] Lecture des pièces jointes AVANT tout append : un fichier illisible refuse
+        // l'envoi ENTIER honnêtement (jamais d'envoi partiel silencieux — le message resterait dans
+        // le transcript en laissant croire que le document a été analysé).
+        let payloads: AiAttachmentPayload[] = [];
+        if (hasFiles) {
+            try {
+                payloads = await Promise.all(files!.slice(0, MAX_ATTACHMENTS_PER_MESSAGE).map(readAttachment));
+            } catch (e) {
+                logError({
+                    source: 'ui', severity: 'warning',
+                    message: 'Chat in-app : lecture d\'une pièce jointe échouée — envoi refusé.',
+                    error: e instanceof Error ? e : new Error(String(e)),
+                });
+                appendMessage({
+                    id: nextMessageId(), role: 'model', timestamp: new Date().toISOString(),
+                    text: `Je n'ai pas pu lire une des pièces jointes${e instanceof Error && e.message ? ` (${e.message})` : ''} — le message n'a pas été envoyé. Réessaie ou retire le fichier.`,
+                });
+                return;
+            }
+        }
+
         inFlightRef.current = true;
-        appendMessage({ id: nextMessageId(), role: 'user', text: userText, timestamp: new Date().toISOString() });
+        const userMsgId = nextMessageId();
+        appendMessage({
+            id: userMsgId, role: 'user', text: userText, timestamp: new Date().toISOString(),
+            // Transcript LÉGER (ADR-4) : métadonnées seulement — les octets vont au cache de session.
+            ...(payloads.length > 0
+                ? { attachments: payloads.map(({ name, kind, mimeType, size }) => ({ name, kind, mimeType, size })) }
+                : {}),
+        });
+        if (payloads.length > 0) cacheAttachments(userMsgId, payloads);
         setIsLoading(true);
         setActiveTools([]);
 
         // H3 (sécurité, hérité de l'ancien assistant) : neutraliser les fausses balises de cadre
         // dans l'HISTORIQUE (un libellé importé peut y ressortir) et le tour utilisateur.
         // NB : slice APRÈS l'append du message utilisateur → le tour courant EST dans l'historique.
+        // [AITOOLS-B1] Un tour utilisateur à pièces jointes redevient MULTIMODAL tant que le contenu
+        // est dans le cache de session (questions de suivi sur le même document) ; après un reload,
+        // le contenu n'existe plus → note honnête (le modèle ne reçoit jamais un contenu fabriqué).
         const recent = useFinanceStore.getState().aiConversation.slice(-HISTORY_WINDOW);
         const history: Anthropic.MessageParam[] = recent
-            .map((m) => ({
-                role: (m.role === 'model' ? 'assistant' : 'user') as 'user' | 'assistant',
-                content: neutralizeFrameTags(m.text),
-            }))
-            .filter((m) => m.content.trim() !== ''); // l'API rejette un content vide
+            .map((m): Anthropic.MessageParam => {
+                const role = (m.role === 'model' ? 'assistant' : 'user') as 'user' | 'assistant';
+                const neutralized = neutralizeFrameTags(m.text);
+                if (role === 'user' && m.attachments && m.attachments.length > 0) {
+                    const cached = getCachedAttachments(m.id);
+                    if (cached && cached.length > 0) {
+                        return { role, content: buildUserContent(neutralized, cached) };
+                    }
+                    const note = unavailableAttachmentsNote(m.attachments);
+                    return { role, content: neutralized.trim() !== '' ? `${neutralized}\n\n${note}` : note };
+                }
+                return { role, content: neutralized };
+            })
+            .filter((m) => (typeof m.content === 'string' ? m.content.trim() !== '' : m.content.length > 0)); // l'API rejette un content vide
 
         // Message modèle « vide » (ID capturé — toutes les mises à jour de CET envoi le ciblent).
         const modelMsgId = nextMessageId();
@@ -250,6 +299,7 @@ export function useAiChat(apiKey: string): UseAiChat {
         // perdue sans trace). L'UI désactive le bouton, ce garde couvre les appels programmatiques.
         if (inFlightRef.current) return;
         useFinanceStore.getState().setAppState({ aiConversation: [] });
+        clearAttachmentCache(); // les payloads d'une conversation effacée sont libérés (mémoire)
     }, []);
 
     return { isLoading, activeTools, pendingWrite, resolvePendingWrite, sendMessage, cancel, clearConversation };

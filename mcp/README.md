@@ -274,6 +274,14 @@ FINANCEAI_MCP_URL        = https://financeai-mcp-xxxx.run.app   # URL du service
 FINANCEAI_REFRESH_SECRET = <le même secret que Cloud Run>
 ```
 
+Test manuel (curl) — **le `--data ''` est obligatoire** : le frontal Google de Cloud Run refuse
+un POST sans `Content-Length` (`411 Length Required` avant même d'atteindre le serveur) :
+
+```bash
+curl -sS -X POST "$MCP_URL/refresh" -H "Authorization: Bearer $REFRESH_SECRET" --data ''
+# → {"ok":true,"refreshed":[…],"unchanged":[…],"skipped":[…],"saved":true}
+```
+
 ### Sur Cloud Run — via Secret Manager (comme le hub)
 
 Même logique que `financeai-hub-token` : le secret vit dans Secret Manager, `deploy.sh` le

@@ -20,6 +20,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - Limite assumée : sans refresh token (archi 100% navigateur, ADR-002), « rester connecté » tient tant que
   ta **session Google** vit ; si Google te déconnecte, il faut un clic.
 
+### Correctifs du panel (sécurité + silent-failure, sondes exécutées)
+- **CRITIQUE — la déconnexion 8h était neutralisée par le polling Drive** : le tick de sync (60s) comptait
+  comme « activité » → l'horloge ne vieillissait jamais, et après une déconnexion l'horodatage effacé
+  permettait au polling de reconnecter en ≤60s. Désormais SEULE une vraie interaction (clic/clavier) ou une
+  connexion explicite avance l'horloge ; l'horodatage périmé est conservé après la déconnexion auto (la
+  reconnexion exige un vrai clic). Discriminant : N ticks de polling → horloge inchangée.
+- **Onglet gelé >8h** (navigateur qui suspend les timers) : l'activité au retour vérifie l'expiration AVANT
+  de réarmer → la déconnexion se déclenche au retour au lieu d'être silencieusement effacée.
+- **Échec réseau de la ré-auth silencieuse tracé** : « pas de session Google » (nominal) reste silencieux,
+  mais un échec réseau/CDN au boot est journalisé (avant : renvoi au login sans trace, indiscernable d'un
+  premier accès).
+
 ## [unreleased — chantier Claude-in-app, AITOOLS-SEC : audit sécurité final] — 2026-07-22
 
 ### Sécurité (audit de clôture du chantier — rapport `docs/AUDIT_SEC_CLAUDE_IN_APP_2026-07-22.md`)

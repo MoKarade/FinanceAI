@@ -98,7 +98,8 @@ import {
 } from '../../services/sync/syncOrchestrator';
 import { buildEnvelope } from '../../services/sync/syncEngine';
 import { isGateAuthedThisSession } from '../../services/sync/authGate';
-import { recordActivity, clearActivity, INACTIVITY_LIMIT_MS } from '../../services/sync/inactivityLogout';
+import { recordActivity, clearActivity, getLastActivityAt, INACTIVITY_LIMIT_MS } from '../../services/sync/inactivityLogout';
+import { runBootSync } from '../../services/sync/syncOrchestrator';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import * as errorLogger from '../../services/errorLogger';
 
@@ -551,6 +552,17 @@ describe('pullNow — déchiffrement des clés ÉCHOUE (SF-3 : données OK, clé
         expect(gisMocks.getValidAccessToken).not.toHaveBeenCalled(); // court-circuit AVANT toute reprise
         expect(gisMocks.renewTokenSilently).not.toHaveBeenCalled();
         expect(getSyncStatus().connected).toBe(false);
+    });
+
+    it('[Finding panel CRITIQUE] le POLLING (runBootSync) ne réinitialise PAS l\'horloge d\'inactivité', async () => {
+        // Discriminant du bug « déconnexion 8h cosmétique » : startDrivePolling appelle runBootSync
+        // toutes les 60s ; si runBootSync recordActivity, l'horloge ne vieillit jamais. Après le fix,
+        // runBootSync (jeton en cache OK) NE touche PAS lastActivity.
+        const t0 = Date.now() - 3 * 3600_000; // dernière vraie activité il y a 3h
+        recordActivity(t0);
+        await runBootSync(); // simule un tick de polling (cache-hit 'tok-silent')
+        await runBootSync();
+        expect(getLastActivityAt()).toBe(t0); // inchangé : le polling ne compte pas comme activité
     });
 
     it('[Finding panel] ré-auth silencieuse : « pas de session » (interaction requise) = SILENCE, pas de logError', async () => {

@@ -20,13 +20,20 @@ const logErrorMock = vi.fn();
 
 // Mocks de la couche Google. Les fns I/O sont des vi.fn() qu'on pourra faire échouer par test ;
 // leurs implémentations par défaut (succès) sont rétablies dans beforeEach pour l'isolation.
-vi.mock('../../services/googleDrive/gisAuth', () => ({
-    isGoogleAuthConfigured: () => true,
-    configureGoogleAuth: () => {},
-    getValidAccessToken: vi.fn(async () => 'tok-silent'),
-    requestAccessToken: vi.fn(async () => 'tok-interactive'),
-    revokeAccess: () => {},
-}));
+vi.mock('../../services/googleDrive/gisAuth', () => {
+    // [AUTH-DRIVE-INACTIVITY] La classe doit exister dans le mock (instanceof dans trySilentReauth).
+    class AuthInteractionRequiredError extends Error {}
+    return {
+        isGoogleAuthConfigured: () => true,
+        configureGoogleAuth: () => {},
+        AuthInteractionRequiredError,
+        getValidAccessToken: vi.fn(async () => 'tok-silent'),
+        // Défaut : la ré-auth silencieuse échoue NOMINALEMENT (pas de session) → silence, comme avant.
+        renewTokenSilently: vi.fn(async () => { throw new AuthInteractionRequiredError('pas de session'); }),
+        requestAccessToken: vi.fn(async () => 'tok-interactive'),
+        revokeAccess: () => {},
+    };
+});
 
 vi.mock('../../services/googleDrive/driveAppData', () => {
     class DriveAuthError extends Error {}

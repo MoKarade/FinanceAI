@@ -114,7 +114,11 @@ export function startInactivityWatch(onExpire: () => void): () => void {
         _bound = true;
         for (const ev of ACTIVITY_EVENTS) document.addEventListener(ev, onActivity, { passive: true });
     }
-    recordActivity(); // ancre le début de session comme activité (le compte à rebours part de maintenant)
+    // [Finding panel sécurité CRITIQUE] NE PAS recordActivity au montage : un reload/boot n'est PAS une
+    // interaction utilisateur (sinon chaque chargement réarmerait l'horloge → 8h jamais atteint). On
+    // planifie depuis l'horodatage EXISTANT (dernière vraie interaction / connexion) ; s'il est absent,
+    // reschedule part de « maintenant » mais isInactivityExpired reste false (null) jusqu'à une vraie
+    // activité. L'horloge n'avance que via onActivity (geste DOM) et connectAndSync.
     reschedule();
     return () => {
         clearTimer();

@@ -145,7 +145,10 @@ export async function gateSilentResume(): Promise<boolean> {
         }
         token = renewed;
     }
-    recordActivity(); // reprise réussie = activité (réarme le compte à rebours 8h)
+    // [Finding panel sécurité CRITIQUE] NE PAS recordActivity ici : une reprise silencieuse (déclenchée
+    // aussi par le POLLING toutes les 60s, cf startDrivePolling) n'est PAS une interaction utilisateur.
+    // Sinon le polling réarme l'horloge en boucle et la déconnexion 8h ne se déclenche JAMAIS. Seuls un
+    // vrai geste DOM (onActivity) et une connexion explicite (connectAndSync) avancent `lastActivity`.
     // 2) Le jeton est en main → une erreur APRÈS (identité/lecture Drive, ex. TIMEOUT réseau) est ANORMALE :
     //    on la ROUTE via handleError (→ logError + status.error) au lieu de l'avaler en silence comme un
     //    « pas de session ». Sinon un Drive injoignable renvoyait l'utilisateur au login SANS trace ni message,
@@ -192,7 +195,8 @@ export async function runBootSync(): Promise<void> {
         }
         token = renewed;
     }
-    recordActivity();
+    // [Finding panel sécurité CRITIQUE] Idem gateSilentResume : le polling appelle runBootSync toutes
+    // les 60s → ne PAS recordActivity ici (sinon l'horloge d'inactivité ne vieillit jamais).
     // 2) Le jeton est en main → une erreur APRÈS (lecture/écriture Drive) est, elle, anormale → handleError.
     try {
         setStatus({ connected: true });
@@ -288,7 +292,10 @@ export async function resolveConflict(keep: 'local' | 'drive'): Promise<void> {
  */
 export function handleInactivityLogout(): void {
     revokeAccess();
-    clearActivity(); // repart d'une ardoise propre au prochain login
+    // [Finding panel sécurité CRITIQUE] NE PAS clearActivity : garder l'horodatage périmé (déjà ≥8h
+    // dans le passé) → `isInactivityExpired()` reste TRUE jusqu'à une VRAIE reconnexion (connectAndSync,
+    // qui recordActivity). Sinon `null → isInactivityExpired false` → le polling reconnecte tout seul en
+    // ≤60s et la déconnexion ne « colle » jamais. `clearActivity` est réservé aux déconnexions MANUELLES.
     setStatus({ connected: false, busy: false });
 }
 

@@ -50,9 +50,10 @@ describe('inactivityLogout — horodatage & seuil (purs)', () => {
 describe('inactivityLogout — minuteur (startInactivityWatch)', () => {
     afterEach(() => { vi.useRealTimers(); });
 
-    it('déclenche onExpire après 8h sans activité', () => {
+    it('déclenche onExpire après 8h sans activité (à partir de la dernière activité RÉELLE)', () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date(10_000_000));
+        recordActivity(); // simule une connexion / interaction (l'horloge part d'ici, PAS du montage)
         const onExpire = vi.fn();
         const stop = startInactivityWatch(onExpire);
         expect(onExpire).not.toHaveBeenCalled();
@@ -66,6 +67,7 @@ describe('inactivityLogout — minuteur (startInactivityWatch)', () => {
     it('une activité repousse le déclenchement (le compte à rebours redémarre)', () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date(20_000_000));
+        recordActivity();
         const onExpire = vi.fn();
         const stop = startInactivityWatch(onExpire);
         // À 7h, on simule une activité (dispatch d'un événement écouté).
@@ -83,8 +85,9 @@ describe('inactivityLogout — minuteur (startInactivityWatch)', () => {
     it('[Finding panel] onglet GELÉ > 8h (minuteur jamais tiré) → l\'activité au retour DÉCLENCHE la déconnexion (pas de réarmement silencieux)', () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date(40_000_000));
+        recordActivity(); // dernière activité réelle à T0
         const onExpire = vi.fn();
-        const stop = startInactivityWatch(onExpire); // enregistre l'activité à T0
+        const stop = startInactivityWatch(onExpire);
         // Simule un onglet gelé par le navigateur : l'HORLOGE avance de 9h mais les timers vitest NE
         // sont PAS avancés (le setTimeout n'a jamais pu s'exécuter). Puis l'utilisateur revient.
         vi.setSystemTime(new Date(40_000_000 + 9 * 3600_000));
@@ -93,9 +96,24 @@ describe('inactivityLogout — minuteur (startInactivityWatch)', () => {
         stop();
     });
 
+    it('[Finding panel CRITIQUE] le montage NE réarme PAS l\'horloge : une activité vieille de 8h+ reste expirée au démarrage du watch', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(50_000_000));
+        recordActivity(); // activité réelle à T0
+        vi.setSystemTime(new Date(50_000_000 + INACTIVITY_LIMIT_MS + 1000)); // >8h plus tard
+        const onExpire = vi.fn();
+        // Démarrer le watch NE doit pas remettre l'horloge à « maintenant » (sinon reload = reset).
+        const stop = startInactivityWatch(onExpire);
+        expect(isInactivityExpired()).toBe(true); // toujours expiré malgré le montage
+        vi.advanceTimersByTime(1); // le timer planifié à delay 0 tire immédiatement
+        expect(onExpire).toHaveBeenCalledTimes(1);
+        stop();
+    });
+
     it('stop() détache les écouteurs et annule le minuteur', () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date(30_000_000));
+        recordActivity();
         const onExpire = vi.fn();
         const stop = startInactivityWatch(onExpire);
         stop();

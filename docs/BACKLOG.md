@@ -479,6 +479,14 @@
   (2) mapper chaque type d'événement à un rang d'importance + une icône ; (3) LOD = filtrer par rang selon le zoom
   (remplace/complète le cap fixe `MAX_LIFE_ICONS`/`MAX_FLOW_ICONS`). Plan-first (design du barème de priorité + inventaire
   exhaustif des types d'événements émis par le moteur) avant de coder.
+- **`[SUBS-TAB]` Abonnements : onglet dédié + retrait + détection auto des nouveaux** 🔵 (brief Marc 2026-07-22) —
+  Marc veut : (a) pouvoir RETIRER un abonnement qu'il n'a plus, (b) que ça s'ACTUALISE selon ses transactions pour
+  voir les NOUVEAUX abonnements. ⚠️ **Vérifier l'existant AVANT de coder** (leçon R2-FIRE/PM-STALE-BACKLOG) : une
+  bonne partie existe déjà dans `components/Planning.tsx` (sous-onglet de `BudgetWorkspace`) — `detectSubscriptionsAI`
+  (`services/claude.ts`), `utils/subscriptions.ts` (`addSubscription`/`removeSubscription`/`mergeSubscriptions`/
+  `subscriptionDueLabel`…), champ store `subscriptions`. Le vrai gap probable = (1) le SURFACER en onglet DÉDIÉ (vs
+  sous-onglet Budget), (2) un flux clair « nouveaux abonnements détectés depuis tes transactions → confirmer/ignorer »,
+  (3) retrait facile d'un abo obsolète. Plan-first : auditer Planning.tsx d'abord, puis décider ce qui manque vraiment.
 - **★ VERROUILLAGE + PERSISTANCE de la courbe** (clé de voûte Phase 2) : une fois leviers + courbe choisis, elle
   **reste affichée** en changeant de page ET **après déconnexion/reconnexion**, jusqu'à ce que Marc la change ou
   **compare** des courbes. → persistance (store + IndexedDB), pas un recalcul volatil.

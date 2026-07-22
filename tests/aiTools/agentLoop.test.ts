@@ -161,6 +161,17 @@ describe('runAgentLoop', () => {
         }
     });
 
+    it('[SEC] réponse REFUSÉE (refusal) → stopReason refused + marqueur honnête + logError (pas « réessaie » aveugle)', async () => {
+        const refused = { content: [{ type: 'text', text: '' }], stop_reason: 'refusal' } as unknown as Anthropic.Message;
+        const { client } = scriptedClient([refused]);
+        const res = await runAgentLoop([{ role: 'user', content: 'q' }], { apiKey: 'sk-test', getState, client });
+        expect(res.stopReason).toBe('refused');
+        expect(res.text).toContain('[Réponse refusée]');
+        expect(logError).toHaveBeenCalledWith(expect.objectContaining({
+            severity: 'warning', message: expect.stringMatching(/REFUS/),
+        }));
+    });
+
     it('[ceinture panel] réponse TRONQUÉE (max_tokens) → stopReason truncated + marqueur honnête + logError', async () => {
         // Discriminant : l'ancien code rendait stopReason 'end' — une phrase coupée en plein chiffre
         // était présentée avec l'autorité d'une réponse complète (no-fake-data version texte).

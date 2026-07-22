@@ -238,6 +238,15 @@ export async function runAgentLoop(
                 return { text, toolsUsed, turns: turn, stopReason: 'truncated', messages };
             }
             if (msg.stop_reason === 'refusal') {
+                // [Finding SEC ai-reviewer] Fin DÉGRADÉE comme max_tokens : un refus sans bloc texte
+                // retombait sinon sur « aucune réponse reçue, réessaie » (invite à re-poser une
+                // question qui sera re-refusée à l'identique) + AUCUNE trace pour diagnostiquer des
+                // refus récurrents. Marqueur honnête + logError, cohérent avec truncated.
+                logError({
+                    source: 'ai', severity: 'warning',
+                    message: 'Chat in-app : réponse REFUSÉE par le modèle — signalée à l\'utilisateur.',
+                });
+                text += (text ? '\n\n' : '') + '[Réponse refusée] Le modèle n\'a pas pu répondre à cette demande — reformule-la différemment.';
                 return { text, toolsUsed, turns: turn, stopReason: 'refused', messages };
             }
             // 'end_turn' / 'stop_sequence' — fins normales. NB : 'pause_turn' (tools SERVEUR type

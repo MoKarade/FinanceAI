@@ -17,7 +17,7 @@ const inputSchema = {
     .describe("Annee d'arrivee au Canada. Le CELI s'accumule a partir du max entre 18 ans et l'arrivee, jamais avant 2009."),
   currentYear: z.number().int().min(2009).max(2050)
     .describe('Annee courante pour le calcul (ex: 2026)'),
-  currentCeliBalance: z.number().nonnegative().optional()
+  currentCeliBalance: z.number().nonnegative().finite().optional()
     .describe('Solde CELI actuel en CAD (cotisations nettes cumulees). Defaut: 0.'),
 };
 

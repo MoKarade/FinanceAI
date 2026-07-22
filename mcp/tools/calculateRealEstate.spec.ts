@@ -12,9 +12,9 @@ import { jsonContent } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
 
 const inputSchema = {
-  price: z.number().positive()
+  price: z.number().positive().finite()
     .describe("Prix d'achat de la propriete en CAD"),
-  downPayment: z.number().nonnegative()
+  downPayment: z.number().nonnegative().finite()
     .describe('Mise de fonds en CAD'),
   rate: z.number().min(0).max(20)
     .describe('Taux hypothecaire annuel initial (%, ex: 4.5)'),
@@ -24,11 +24,11 @@ const inputSchema = {
     .describe('Taux de renouvellement projete (% annuel, applique tous les 5 ans). Defaut: rate.'),
   propertyGrowthRate: z.number().min(0).max(20).optional()
     .describe('Appreciation annuelle projetee de la propriete (%). Defaut: 3.'),
-  initialRenovations: z.number().nonnegative().optional()
+  initialRenovations: z.number().nonnegative().finite().optional()
     .describe('Renovations initiales avant emmenagement (CAD). Defaut: 0.'),
-  yearlyRenovations: z.number().nonnegative().optional()
+  yearlyRenovations: z.number().nonnegative().finite().optional()
     .describe('Renovations annuelles recurrentes (CAD). Defaut: 0.'),
-  maxValue: z.number().nonnegative().optional()
+  maxValue: z.number().nonnegative().finite().optional()
     .describe('Plafond de valeur projetee (CAD). 0 = aucun plafond. Defaut: 0.'),
   startYear: z.number().int().min(2000).max(2050).optional()
     .describe('Annee de depart de la projection. Defaut: annee courante.'),

@@ -1,24 +1,28 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+// [PORTFOLIO-HISTORY] Le modal DÉRIVE du store via usePortfolioHistory (plus aucun fetch réseau —
+// l'ancien fetchPortfolioHistory était un stub mort → « Aucune donnée » à chaque ouverture).
+import { describe, it, expect, beforeEach } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import { StockComparisonModal } from '../../../components/dashboard/StockComparisonModal';
+import { useFinanceStore } from '../../../store/useFinanceStore';
+import type { Asset } from '../../../types';
 
-vi.mock('../../../services/finance', () => ({
-    fetchPortfolioHistory: vi.fn(),
-}));
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockFetch: any = (await import('../../../services/finance')).fetchPortfolioHistory;
-
-const mockData = [
-    { date: '2026-01-01', 'NASDAQ:AAPL': 150, 'NASDAQ:TSLA': 200 },
-    { date: '2026-02-01', 'NASDAQ:AAPL': 160, 'NASDAQ:TSLA': 180 },
-];
+const mkAsset = (symbol: string, price: number): Asset => ({
+    symbol, quantity: 10, currency: 'CAD', currentPrice: price, name: symbol,
+    performance: 0, dateBought: '2026-01-10',
+    purchases: [{ date: '2026-01-10', quantity: 10, price }],
+    priceHistory: [
+        { date: '2026-01-10', price },
+        { date: '2026-02-10', price: price * 1.1 },
+    ],
+    accountType: 'NON-ENREG',
+} as Asset);
 
 beforeEach(() => {
-    vi.clearAllMocks();
+    useFinanceStore.getState().resetState();
+    useFinanceStore.setState({ isTestMode: false, assets: [mkAsset('AAPL', 150), mkAsset('TSLA', 200)] } as never);
 });
 
-describe('StockComparisonModal', () => {
+describe('StockComparisonModal (dérivé du store)', () => {
     it('ne rend rien quand isOpen=false', () => {
         const { container } = render(
             <StockComparisonModal symbols={['AAPL']} isOpen={false} onClose={() => {}} />,
@@ -27,33 +31,22 @@ describe('StockComparisonModal', () => {
     });
 
     it('affiche le titre "Évolution — SYMBOL" pour 1 stock', () => {
-        mockFetch.mockResolvedValue(mockData);
         render(<StockComparisonModal symbols={['AAPL']} isOpen onClose={() => {}} />);
         expect(screen.getByText(/Évolution.*AAPL/i)).toBeInTheDocument();
     });
 
     it('affiche "Comparaison — N actions" pour 2+ stocks', () => {
-        mockFetch.mockResolvedValue(mockData);
         render(<StockComparisonModal symbols={['AAPL', 'TSLA']} isOpen onClose={() => {}} />);
         expect(screen.getByText(/Comparaison.*2 actions/i)).toBeInTheDocument();
     });
 
-    it('appelle fetchPortfolioHistory au montage si isOpen', async () => {
-        mockFetch.mockResolvedValue(mockData);
+    it('rend la courbe depuis le priceHistory du store (pas « Aucune donnée »)', () => {
         render(<StockComparisonModal symbols={['AAPL']} isOpen onClose={() => {}} />);
-        await waitFor(() => expect(mockFetch).toHaveBeenCalled());
+        expect(screen.queryByText(/Aucune donnée disponible/i)).toBeNull();
     });
 
-    it("n'appelle pas fetch si isOpen=false", () => {
-        mockFetch.mockResolvedValue(mockData);
-        render(<StockComparisonModal symbols={['AAPL']} isOpen={false} onClose={() => {}} />);
-        expect(mockFetch).not.toHaveBeenCalled();
-    });
-
-    it("affiche un message quand aucune donnée correspond aux symbols", async () => {
-        mockFetch.mockResolvedValue(mockData);
+    it('affiche un message honnête quand aucune donnée ne correspond aux symbols', () => {
         render(<StockComparisonModal symbols={['NVDA']} isOpen onClose={() => {}} />);
-        await waitFor(() => expect(mockFetch).toHaveBeenCalled());
-        await screen.findByText(/Aucune donnée disponible/i);
+        expect(screen.getByText(/Aucune donnée disponible/i)).toBeInTheDocument();
     });
 });

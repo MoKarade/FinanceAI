@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Modal } from '../ui/Modal';
 import { Icon } from '../ui/Icon';
 import { StockChart } from '../StockChart';
-import { fetchPortfolioHistory, type MarketDataPoint } from '../../services/finance';
 import { Skeleton } from '../ui/Skeleton';
-import { logError } from '../../services/errorLogger';
+import { usePortfolioHistory } from '../../hooks/usePortfolioHistory';
 
 /**
  * Phase D.4 — modal de comparaison de stocks superposés.
@@ -30,19 +29,9 @@ export const StockComparisonModal: React.FC<StockComparisonModalProps> = ({
     onClose,
     isPrivacyMode = false,
 }) => {
-    const [data, setData] = useState<MarketDataPoint[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-        if (!isOpen) return;
-        setIsLoading(true);
-        let cancelled = false;
-        fetchPortfolioHistory()
-            .then(d => { if (!cancelled) setData(d); })
-            .catch(err => { logError({ source: 'network', severity: 'warning', message: 'StockComparisonModal : historique de portefeuille indisponible', error: err instanceof Error ? err : new Error(String(err)) }); })
-            .finally(() => { if (!cancelled) setIsLoading(false); });
-        return () => { cancelled = true; };
-    }, [isOpen]);
+    // [PORTFOLIO-HISTORY] Dérivé du store (priceHistory hydraté au boot) — plus aucun fetch ici.
+    // Avant : fetchPortfolioHistory() (stub CSV mort → toujours []) → « Aucune donnée » à chaque fois.
+    const { history: data, isLoading } = usePortfolioHistory();
 
     // Trouve les colonnes du dataset correspondant aux symbols (les clés peuvent
     // être "NASDAQ:AAPL" mais le symbol exposé est "AAPL").

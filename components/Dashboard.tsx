@@ -543,6 +543,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 )}
                 <div className="w-full h-[380px]">
+                    {/* [PORTFOLIO-HISTORY] État HONNÊTE quand l'historique n'est pas (encore) là :
+                        avant, un ComposedChart VIDE (grille sans message) laissait croire à un bug.
+                        L'hydratation remplit le store au boot → le graphe apparaît tout seul. */}
+                    {unifiedHistory.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full gap-2 text-center px-6">
+                            <p className="text-body text-ink-200 font-medium">Historique en cours de récupération…</p>
+                            <p className="text-meta text-ink-400">
+                                Les cours historiques de tes placements se chargent depuis tes dates d'achat.
+                                Si rien n'apparaît après quelques instants, vérifie ta clé Finnhub (Réglages → Clés API)
+                                — le repli gratuit couvre la plupart des titres.
+                            </p>
+                        </div>
+                    ) : (
                     <Suspense fallback={<Skeleton variant="chart" />}>
                         <DashboardEvolutionChart
                             unifiedHistory={unifiedHistory}
@@ -553,6 +566,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             showTotalLine={showTotalLine}
                         />
                     </Suspense>
+                    )}
                 </div>
             </Card>
 

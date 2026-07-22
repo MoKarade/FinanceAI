@@ -57,7 +57,9 @@ const fxToCad = (currency: string, fx: Record<string, number>): number => {
 };
 
 // Détention cumulée d'un titre à la date t (somme des achats jusqu'à t).
-function holdingsAt(asset: MinimalAsset, t: string): number {
+// [PORTFOLIO-HISTORY] Exportée : buildMarketData (courbes Dashboard/Investissements) partage la
+// MÊME définition de détention/prix — jamais deux copies qui divergent (source unique).
+export function holdingsAt(asset: MinimalAsset, t: string): number {
     if (asset.purchases && asset.purchases.length > 0) {
         return asset.purchases.reduce((q, p) => (p.date <= t ? q + p.quantity : q), 0);
     }
@@ -67,7 +69,7 @@ function holdingsAt(asset: MinimalAsset, t: string): number {
 
 // Prix natif à la date t : dernier point d'historique ≤ t. Renvoie null si aucun
 // (→ le caller retombe sur le prix actuel et marque l'estimation).
-function priceAt(asset: MinimalAsset, t: string): number | null {
+export function priceAt(asset: MinimalAsset, t: string): number | null {
     const hist = asset.priceHistory;
     if (!hist || hist.length === 0) return null;
     let best: MinimalPricePoint | null = null;

@@ -80,6 +80,16 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        // [PORTFOLIO-HISTORY] Miroir DEV du rewrite Vercel `/api/history/yahoo/:symbol` →
+        // query1.finance.yahoo.com (le repli d'historique passe par un proxy same-origin :
+        // CSP inchangée + pas de CORS). En prod c'est vercel.json qui fait ce travail.
+        proxy: {
+          '/api/history/yahoo': {
+            target: 'https://query1.finance.yahoo.com',
+            changeOrigin: true,
+            rewrite: (path: string) => path.replace(/^\/api\/history\/yahoo/, '/v8/finance/chart'),
+          },
+        },
       },
       plugins: [react(), claudeRelayDevPlugin(env)],
       define: {

@@ -11,6 +11,7 @@ import type { Quote, HistoryPoint, AssetProfile, SymbolSearchResult, MarketDataP
 import { withCache, clearMarketDataCache } from './cache';
 import { FinnhubProvider } from './providers/finnhub';
 import { CoinGeckoProvider, coinGeckoIdFor } from './providers/coingecko';
+import { getYahooHistory } from './providers/yahooProxy';
 
 export * from './types';
 export { clearMarketDataCache } from './cache';
@@ -61,14 +62,39 @@ export async function getQuote(symbol: string): Promise<Quote | null> {
 }
 
 /**
- * Historique journalier sur une période. Retourne [] si pas de provider
- * ou aucun point disponible.
+ * [PORTFOLIO-HISTORY] Y a-t-il un chemin d'HISTORIQUE pour ce symbole ? Crypto → CoinGecko
+ * (toujours) ; sinon Finnhub (si clé) OU le repli Yahoo via proxy same-origin (navigateur
+ * seulement — hors DOM, ex. Node/MCP, le proxy `/api/...` n'existe pas).
+ */
+export function hasHistoryProvider(symbol: string): boolean {
+    if (coinGeckoIdFor(symbol)) return true;
+    if (activeProvider) return true;
+    return typeof window !== 'undefined'; // repli Yahoo = proxy same-origin, navigateur uniquement
+}
+
+/**
+ * Historique journalier sur une période, avec CHAÎNE DE REPLI (choix Marc « tout gratuit ») :
+ *   crypto → CoinGecko ; actions/ETF → Finnhub (clé Marc — candles souvent 403 en tier gratuit)
+ *   → repli Yahoo via proxy same-origin. Contrat provider : `[]` = vide VALIDE (cacheable 24h),
+ *   `null` = erreur (JAMAIS cachée → retry/repli au prochain appel — avant, un `[]` d'erreur était
+ *   caché 24h : trou silencieux). Retourne [] à l'appelant en dernier ressort (affichage honnête).
  */
 export async function getHistory(symbol: string, from: Date, to: Date): Promise<HistoryPoint[]> {
-    const provider = pickProvider(symbol);
-    if (!provider) return [];
     const key = `${symbol}::${from.toISOString().slice(0, 10)}::${to.toISOString().slice(0, 10)}`;
-    const result = await withCache('history', key, () => provider.getHistory(symbol, from, to));
+    const result = await withCache('history', key, async () => {
+        const isCrypto = Boolean(coinGeckoIdFor(symbol));
+        if (isCrypto) return cryptoProvider.getHistory(symbol, from, to); // pas de repli Yahoo (crypto)
+        // 1. Finnhub si configuré. `[]`/`null` → tenter Yahoo (candles gratuits absents chez Finnhub).
+        if (activeProvider) {
+            const primary = await activeProvider.getHistory(symbol, from, to);
+            if (primary && primary.length > 0) return primary;
+        }
+        // 2. Repli Yahoo (proxy same-origin, navigateur seulement).
+        if (typeof window !== 'undefined') {
+            return getYahooHistory(symbol, from, to);
+        }
+        return null; // hors navigateur sans Finnhub : pas de chemin (non caché)
+    });
     return result ?? [];
 }
 

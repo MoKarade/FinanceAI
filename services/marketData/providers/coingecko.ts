@@ -121,7 +121,7 @@ export class CoinGeckoProvider implements MarketDataProvider {
         }
     }
 
-    async getHistory(symbol: string, from: Date, to: Date): Promise<HistoryPoint[]> {
+    async getHistory(symbol: string, from: Date, to: Date): Promise<HistoryPoint[] | null> {
         const id = coinGeckoIdFor(symbol);
         if (!id) return [];
         const { currency } = parseSymbol(symbol);
@@ -135,11 +135,12 @@ export class CoinGeckoProvider implements MarketDataProvider {
             const data = await cgFetch(
                 `/coins/${id}/market_chart?vs_currency=${vs}&days=${days}`,
             ) as { prices?: Array<[number, number]> };
-            if (!data || !Array.isArray(data.prices)) return [];
+            if (!data || !Array.isArray(data.prices)) return null; // forme inattendue = erreur (pas de cache)
             return toDailyPoints(data.prices, from, to);
         } catch (e) {
+            // [PORTFOLIO-HISTORY] null = erreur (429/réseau) → non caché, retry possible.
             logProviderError('CoinGecko', 'getHistory', symbol, e);
-            return [];
+            return null;
         }
     }
 

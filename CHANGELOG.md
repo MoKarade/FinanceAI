@@ -6,6 +6,27 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — PORTFOLIO-HISTORY : les courbes de cours marchent enfin en données réelles] — 2026-07-22
+
+### Correctif majeur (bug Marc « je vois pas le cours ni le cours du portefeuille »)
+- **Cause racine** : tous les graphes de cours (Dashboard « Évolution détaillée », Investissements
+  « Performance comparée », modal « Voir courbe ») reposaient sur un **stub mort** (l'ancien CSV Google
+  Sheet supprimé → toujours vide) — ils ne marchaient qu'en mode démo (données synthétiques).
+- **Historique réel par action, DEPUIS TON PREMIER ACHAT** : `priceHistory` est hydraté au boot via une
+  chaîne de sources gratuite : **Finnhub (ta clé)** → **repli Yahoo** (proxy same-origin via rewrite
+  Vercel — zéro nouveau domaine CSP, indispensable car les chandelles Finnhub sont réservées au tier
+  payant) → **CoinGecko** pour la crypto. Fenêtre : de ta première date d'achat à aujourd'hui.
+- **Courbe du portefeuille ENTIER** : reconstruction jour par jour = quantité détenue à chaque date
+  (tes achats DCA datés) × clôture native × taux de change → valeur CAD par titre + totaux par compte
+  (CELI/REER/Non-enr./Crypto) + TOTAL. Placements seulement (scope validé).
+- **No-fake-data** : un titre sans historique disponible est EXCLU des courbes et totaux (signalé),
+  jamais une ligne plate inventée ; « Performance (24h) » affiche « — » au lieu d'un faux +0.00% ;
+  le cadre vide du Dashboard devient un message honnête avec quoi faire.
+- **Robustesse cache** : une erreur provider (403 candles premium, 429) n'est PLUS cachée 24h comme
+  « vide » — contrat `null` = erreur (retry/repli), `[]` = vide valide (cacheable).
+- Fraîcheur : re-sync automatique d'un historique > 24h (`lastHistorySync`), pacing séquentiel 2,5s
+  (rate-limit du provider le plus strict), anti-course sur l'état frais, sauté en mode test.
+
 ## [unreleased — Google Drive : rester connecté + déconnexion auto après inactivité] — 2026-07-22
 
 ### Améliorations (sauvegarde Drive)

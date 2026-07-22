@@ -274,8 +274,10 @@ export const Investments: React.FC<InvestmentsProps> = ({
         });
         const totalSerie = availableSeriesWithTrend.find(s => s.isTotal);
         const cw8Serie = availableSeriesWithTrend.find(s => s.id.includes('CW8') || s.name.includes('MSCI'));
-        const portfolioTrend = totalSerie ? totalSerie.trend : 0;
-        const benchmarkTrend = cw8Serie ? cw8Serie.trend : 0;
+        // [PORTFOLIO-HISTORY / no-fake-data] null = « pas de donnée » (affiché « — »), jamais un
+        // +0.00% présenté comme mesuré quand l'historique manque (finding scout 2026-07-22).
+        const portfolioTrend = totalSerie ? totalSerie.trend : null;
+        const benchmarkTrend = cw8Serie ? cw8Serie.trend : null;
 
         // (c) ALLOCATION = portefeuille réel (assets). trend24h enrichi depuis le CSV par symbole si dispo.
         const FREQ_MAP: Record<string, number> = { Monthly: 12, Quarterly: 4, Yearly: 1 };
@@ -328,9 +330,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
         let safePts = (indexWeight / 40) * 60;
         if (safePts > 60) safePts = 60;
         let trendPts = 20;
-        if (portfolioTrend > benchmarkTrend && portfolioTrend > 0) trendPts += 20;
-        else if (portfolioTrend > 0) trendPts += 10;
-        else if (portfolioTrend < 0) trendPts -= 10;
+        // Momentum NEUTRE (ni bonus ni malus) quand l'historique manque (trend null) — cohérent
+        // avec l'affichage « — » : pas de donnée ≠ performance nulle.
+        const pt = portfolioTrend ?? 0;
+        const bt = benchmarkTrend ?? 0;
+        if (portfolioTrend !== null && pt > bt && pt > 0) trendPts += 20;
+        else if (portfolioTrend !== null && pt > 0) trendPts += 10;
+        else if (portfolioTrend !== null && pt < 0) trendPts -= 10;
         if (trendPts > 40) trendPts = 40;
         if (trendPts < 0) trendPts = 0;
         const diversificationScore = Math.round(safePts + trendPts);
@@ -516,14 +522,14 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                     <div className="card-subtle p-4 flex flex-col items-center justify-center">
                         <div className="kpi-label mb-1">Votre Portefeuille</div>
-                        <div className={`text-kpi tabular-nums ${portfolioTrend >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                            {portfolioTrend > 0 ? '+' : ''}{portfolioTrend.toFixed(2)}%
+                        <div className={`text-kpi tabular-nums ${portfolioTrend === null ? 'text-ink-400' : portfolioTrend >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                            {portfolioTrend === null ? '—' : `${portfolioTrend > 0 ? '+' : ''}${portfolioTrend.toFixed(2)}%`}
                         </div>
                     </div>
                     <div className="card-subtle p-4 flex flex-col items-center justify-center">
                         <div className="kpi-label mb-1">Marché (CW8 / MSCI)</div>
-                        <div className={`text-kpi tabular-nums ${benchmarkTrend >= 0 ? 'text-info-400' : 'text-danger-400'}`}>
-                            {benchmarkTrend > 0 ? '+' : ''}{benchmarkTrend.toFixed(2)}%
+                        <div className={`text-kpi tabular-nums ${benchmarkTrend === null ? 'text-ink-400' : benchmarkTrend >= 0 ? 'text-info-400' : 'text-danger-400'}`}>
+                            {benchmarkTrend === null ? '—' : `${benchmarkTrend > 0 ? '+' : ''}${benchmarkTrend.toFixed(2)}%`}
                         </div>
                     </div>
                 </div>

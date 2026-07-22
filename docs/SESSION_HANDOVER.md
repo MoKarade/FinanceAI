@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-22 (suite 2) — PORTFOLIO-HISTORY : courbes de cours réelles (bug Marc)
+> **✅ `[PORTFOLIO-HISTORY]` implémenté** (bug Marc « je vois pas le cours ni le cours du portefeuille ») :
+> cause = stub CSV mort (`fetchPortfolioHistory`→[]) → graphes vides en réel. Livré : chaîne d'historique
+> gratuite `marketData.getHistory` (Finnhub clé Marc → repli Yahoo via proxy same-origin `/api/history/yahoo`
+> [rewrite vercel.json + proxy vite dev] → CoinGecko crypto ; contrat null=erreur JAMAIS cachée / []=vide
+> cacheable) ; hydratation `services/history/hydrateAssetHistories` (depuis 1er achat, pacing 2,5s, fraîcheur
+> 24h via lastHistorySync, anti-course, skip mode test) branchée au boot App ; lignes de graphe
+> `services/history/buildMarketData` (pur : DCA qty(t) × close natif × FX → CAD, buckets TOTAL_*, exclusions
+> no-fake-data + excludedSymbols) ; `usePortfolioHistory` DÉRIVE du store (plus de réseau) → Dashboard,
+> Investissements, StockComparisonModal branchés ; « Performance 24h » = « — » sans donnée ; état vide
+> honnête Dashboard. Suite 2780 verte. ⏳ Panel adversarial (financial-integrity FX/DCA) à lancer post-commit.
+>
 > ## 🟢 Session 2026-07-22 (suite) — Google Drive : rester connecté + déconnexion auto 8h + roadmap chat
 > **En cours `[AUTH-DRIVE-INACTIVITY]`** (demande Marc « plus me reconnecter à chaque fois + déconnexion ~8h d'inactivité ») :
 > ré-auth SILENCIEUSE au boot (`renewTokenSilently` prompt='' sur cache-miss, GATÉE sur < 8h d'inactivité) + minuteur 8h

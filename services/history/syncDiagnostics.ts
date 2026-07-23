@@ -43,7 +43,11 @@ export function clearHistorySyncReport(): void {
     for (const l of _listeners) {
         try {
             l();
-        } catch { /* même isolation que setHistorySyncReport */ }
+        } catch (e) {
+            // Même isolation ET même traçabilité que setHistorySyncReport (finding silent-failure
+            // #494 : un catch muet ici cachait un bug de listener qui ne se manifeste qu'au clear).
+            logError({ source: 'ui', severity: 'warning', message: 'Listener de diagnostic de sync en échec au clear (ignoré).', error: e instanceof Error ? e : new Error(String(e)) });
+        }
     }
 }
 

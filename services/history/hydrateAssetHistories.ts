@@ -37,11 +37,14 @@ export interface HydrateHistoryResult {
      *  pour que les syncs suivantes frappent directement le bon symbole). */
     patches: Map<string, { priceHistory: Array<{ date: string; price: number }>; lastHistorySync: number; historySymbol?: string }>;
     /** [HIST-MULTI-PROVIDER] `detail` = phrase FR prête à afficher (diagnostic par titre) ;
-     *  `triedSymbols` = tous les symboles réellement tentés (principal + variantes). */
+     *  `detailPrivacySafe` = même diagnostic SANS AUCUN montant (rendu en mode discret — finding
+     *  sécurité #494 : `detail` peut interpoler `currentPrice`, un montant $ ne sort pas du DOM
+     *  masqué) ; `triedSymbols` = tous les symboles réellement tentés (principal + variantes). */
     skipped: Array<{
         symbol: string;
         reason: 'fresh' | 'no-provider' | 'no-first-date' | 'empty' | 'error' | 'currency-mismatch';
         detail?: string;
+        detailPrivacySafe?: string;
         triedSymbols?: string[];
     }>;
 }
@@ -123,7 +126,14 @@ function firstPurchaseDate(a: Asset): string | null {
     return first || null;
 }
 
-export async function hydrateAssetHistories(
+// [Finding code-reviewer #494 — ÉLEVÉ, mesuré] MUTEX module (même patron que priceRefresh
+// `_refreshQueue`) : le boot (App.tsx) et le bouton « Actualiser » (Investments) pouvaient tourner
+// EN CONCURRENCE — sonde : 2 appels réseau réels pour le même symbole, débit doublé face au
+// provider le plus strict (CoinGecko ~30/min) → 429 en « panne » trompeuse dans le diagnostic.
+// Les passes sont SÉRIALISÉES ; la fraîcheur (needsHistorySync + cache 24 h) évite le sur-coût.
+let _hydrateQueue: Promise<unknown> = Promise.resolve();
+
+export function hydrateAssetHistories(
     assets: Asset[],
     deps: HydrateHistoryDeps,
     opts?: {
@@ -131,6 +141,16 @@ export async function hydrateAssetHistories(
          *  (l'appelant purge aussi le cache 'history' du jour) — jamais utilisé au boot. */
         force?: boolean;
     },
+): Promise<HydrateHistoryResult> {
+    const run = _hydrateQueue.then(() => runHydrate(assets, deps, opts));
+    _hydrateQueue = run.catch(() => undefined); // une passe en échec ne bloque pas la file
+    return run;
+}
+
+async function runHydrate(
+    assets: Asset[],
+    deps: HydrateHistoryDeps,
+    opts?: { force?: boolean },
 ): Promise<HydrateHistoryResult> {
     const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
     const delayMs = deps.delayMs ?? DEFAULT_DELAY_MS;
@@ -248,6 +268,7 @@ export async function hydrateAssetHistories(
                 skipped.push({
                     symbol: a.symbol, reason: 'error', triedSymbols,
                     detail: `Panne du fournisseur de cours sur ${primarySymbol} — nouvel essai automatique au prochain chargement.`,
+                    detailPrivacySafe: `Panne du fournisseur de cours sur ${primarySymbol} — nouvel essai automatique au prochain chargement.`,
                 });
                 logError({
                     source: 'network', severity: 'warning',
@@ -262,6 +283,7 @@ export async function hydrateAssetHistories(
                     skipped.push({
                         symbol: a.symbol, reason: 'error', triedSymbols,
                         detail: `Aucun historique sur ${primarySymbol} et panne réseau sur ${variantNetFailures.join(', ')} — nouvel essai automatique au prochain chargement.`,
+                        detailPrivacySafe: `Aucun historique sur ${primarySymbol} et panne réseau sur ${variantNetFailures.join(', ')} — nouvel essai automatique au prochain chargement.`,
                     });
                     logError({
                         source: 'network', severity: 'warning',
@@ -275,6 +297,11 @@ export async function hydrateAssetHistories(
                         symbol: a.symbol, reason: 'empty', triedSymbols,
                         detail: rejected
                             ? `${rejected.alt} répond (cours ${rejected.lastClose}) mais ce cours est incompatible avec le prix actuel de l'actif (${a.currentPrice || 'inconnu'}) — probable confusion de ticker ou prix de l'actif périmé. Corrige le prix de l'actif ou fixe le symbole de cotation ci-dessous.`
+                            : `Introuvable chez les fournisseurs (essayé : ${triedSymbols.join(', ')}). Fixe le symbole de cotation exact ci-dessous (ex. ticker Yahoo « ${a.symbol}.PA »).`,
+                        // Version SANS montant (mode discret) — la variante à cours interpolé est la
+                        // seule branche qui porte des $ ; la branche « introuvable » n'en a pas.
+                        detailPrivacySafe: rejected
+                            ? `${rejected.alt} répond mais son cours est incompatible avec le prix actuel de l'actif (montants masqués) — probable confusion de ticker ou prix de l'actif périmé. Corrige le prix de l'actif ou fixe le symbole de cotation ci-dessous.`
                             : `Introuvable chez les fournisseurs (essayé : ${triedSymbols.join(', ')}). Fixe le symbole de cotation exact ci-dessous (ex. ticker Yahoo « ${a.symbol}.PA »).`,
                     });
                 }

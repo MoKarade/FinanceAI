@@ -29,6 +29,7 @@ interface Props {
 export const HistorySyncDoctor: React.FC<Props> = ({ onApplyQuoteSymbol, isSyncing }) => {
     const report = useSyncExternalStore(subscribeHistorySyncReport, getHistorySyncReport, getHistorySyncReport);
     const isTestMode = useFinanceStore((s) => s.isTestMode);
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
     const assets = useFinanceStore((s) => s.assets);
     const [drafts, setDrafts] = useState<Record<string, string>>({});
     const [suggestions, setSuggestions] = useState<Record<string, YahooSearchResult[]>>({});
@@ -58,7 +59,15 @@ export const HistorySyncDoctor: React.FC<Props> = ({ onApplyQuoteSymbol, isSynci
     // Seuls les échecs ACTIONNABLES : 'empty' (introuvable/refusé) et 'error' (panne). Les raisons
     // nominales (fresh) ou couvertes ailleurs (no-provider hors navigateur, currency-mismatch déjà
     // détaillée au journal) n'appellent pas d'action ici.
-    const actionable = report.skipped.filter((s) => s.reason === 'empty' || s.reason === 'error');
+    // [Finding code-reviewer #494 — MOYEN, mesuré] DÉDUP par symbole : le même titre détenu dans
+    // 2 comptes (CELI+REER) produit 2 skips → clé React + id DOM dupliqués (htmlFor cassé) et
+    // drafts/suggestions partagés entre les 2 lignes. Une seule ligne par symbole (le remède —
+    // historySymbol — s'applique de toute façon à TOUS les actifs de ce symbole).
+    const bySymbol = new Map<string, (typeof report.skipped)[number]>();
+    for (const s of report.skipped) {
+        if ((s.reason === 'empty' || s.reason === 'error') && !bySymbol.has(s.symbol)) bySymbol.set(s.symbol, s);
+    }
+    const actionable = [...bySymbol.values()];
     if (actionable.length === 0) return null;
 
     const currentQuoteSymbol = (symbol: string): string =>
@@ -75,9 +84,15 @@ export const HistorySyncDoctor: React.FC<Props> = ({ onApplyQuoteSymbol, isSynci
                     <li key={s.symbol} className="text-meta text-ink-200">
                         <span className="font-bold text-white">{s.symbol}</span>
                         {' — '}
-                        {s.detail ?? (s.reason === 'error'
-                            ? 'Panne du fournisseur de cours — nouvel essai automatique au prochain chargement.'
-                            : 'Aucun historique trouvé pour ce titre.')}
+                        {/* [Finding sécurité #494 — mode discret] `detail` peut interpoler des
+                            montants (currentPrice) : en mode discret, on rend la variante SANS
+                            montant, avec un générique en défaut SÛR (jamais le detail chiffré). */}
+                        {(isPrivacyMode
+                            ? (s.detailPrivacySafe ?? 'Diagnostic masqué (mode discret) — désactive-le pour le détail complet.')
+                            : s.detail)
+                            ?? (s.reason === 'error'
+                                ? 'Panne du fournisseur de cours — nouvel essai automatique au prochain chargement.'
+                                : 'Aucun historique trouvé pour ce titre.')}
                         {s.reason === 'empty' && (suggestions[s.symbol]?.length ?? 0) > 0 && (
                             <ul className="mt-1.5 flex flex-wrap gap-2" aria-label={`Titres suggérés pour ${s.symbol}`}>
                                 {suggestions[s.symbol].map((sug) => (

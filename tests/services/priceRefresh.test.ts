@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
     refreshAssetPrices,
     applyPricePatches,
+    asSupportedCurrency,
     __resetPriceRefreshThrottle,
 } from '../../services/priceRefresh';
 import type { Asset } from '../../types';
@@ -121,6 +122,20 @@ describe('refreshAssetPrices', () => {
         expect(hasProvider).toHaveBeenCalledWith('CW8.PA');
         expect(getQuote).toHaveBeenCalledWith('CW8.PA');
         expect(res.patches.get('CW8')?.currentPrice).toBe(550); // patch keyé par le symbole de l'ACTIF
+    });
+
+    it('[Finding sécurité #494] actif legacy SANS devise + quote en devise NON SUPPORTÉE (GBP) → skip complet, jamais de heal', async () => {
+        // Depuis le repli Yahoo mondial, quote.currency peut porter GBP (voire « GBp » pence aplati
+        // en GBP par toUpperCase, ~100×) — hors de l'union Asset.currency, ni le prix ni la devise
+        // ne doivent s'écrire (toCurrencyFactor replierait 1:1 → valorisation fausse).
+        const res = await refreshAssetPrices(
+            [asset({ currency: undefined, currentPrice: 100 })],
+            deps(async () => quote({ price: 250, currency: 'GBP' })),
+        );
+        expect(res.patches.size).toBe(0);
+        expect(res.skipped[0].reason).toBe('currency-mismatch');
+        expect(asSupportedCurrency('GBP')).toBeUndefined();
+        expect(asSupportedCurrency('EUR')).toBe('EUR');
     });
 
     it('ignore les actifs sans symbole ou quantité ≤ 0 (aucun appel réseau)', async () => {

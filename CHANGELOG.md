@@ -22,6 +22,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   le titre » qui propose les bons tickers par NOM (ex. « Amundi EM Asia » → AASI.PA) en un clic.
 - Un ticker résolu (automatiquement ou à la main) sert aussi aux cotations, et corriger un ticker
   purge l'historique du titre (jamais deux titres mélangés dans une courbe).
+- Correctifs du panel de revue (3 agents, sondes) : un échec de resynchronisation est maintenant dit
+  dans le message final (jamais masqué par « N cours mis à jour ») ; les resynchronisations boot et
+  bouton ne peuvent plus tourner en même temps (respect des limites des fournisseurs) ; un même titre
+  détenu dans deux comptes n'affiche qu'une ligne de diagnostic ; en mode discret, le diagnostic ne
+  montre aucun montant ; une devise non supportée par l'app (ex. livre sterling) ne peut plus s'écrire
+  sur un actif via le repli Yahoo ; le rapport de diagnostic est purgé à l'entrée en mode démo.
 
 ## [unreleased — Investissements : la courbe TOTAL couvre TOUT le portefeuille] — 2026-07-23
 

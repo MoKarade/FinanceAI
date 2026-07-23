@@ -9,6 +9,7 @@ import { saveLockedProjection, clearLockedProjection } from '../services/lockedP
 import { loadLegacyHealthWeights } from '../utils/healthWeights';
 import { sanitizePersonaArtifacts } from '../services/personaSanitizer';
 import { clearAttachmentCache } from '../services/aiChat/attachments';
+import { clearHistorySyncReport } from '../services/history/syncDiagnostics';
 import { DEFAULT_AI_CHAT_MODEL } from '../services/aiChat/models';
 
 // Phase B2 — Deep-link cross-tab: un onglet pose un "intent" de focus, la page
@@ -546,7 +547,10 @@ export const useFinanceStore = create<FinanceState>()(
             // [AITOOLS-B1, finding panel sécurité] Le cache mémoire des pièces jointes du chat porte
             // des OCTETS réels (relevés/PDF) — purgé à CHAQUE bascule de mode (hygiène inter-persona,
             // discipline PERSONA-PURGE ; le transcript, lui, est déjà couvert par personaResetBase).
-            enableTestMode: (fixtures, personaId) => { clearAttachmentCache(); return set((prev) => {
+            // [Finding sécurité #494] + purge du rapport de sync des historiques : il porte les
+            // TICKERS RÉELS — un futur consommateur sans re-check isTestMode les afficherait en démo
+            // persona (même classe PERSONA-PURGE). La purge rend vrai le contrat documenté du module.
+            enableTestMode: (fixtures, personaId) => { clearAttachmentCache(); clearHistorySyncReport(); return set((prev) => {
                 // Snapshot des VRAIES données SEULEMENT à la 1re activation (hors flags UI/credentials).
                 // Au changement de persona (déjà en test), on CONSERVE ce snapshot initial — sinon on
                 // « sauvegarderait » les données fictives par-dessus les vraies (perte définitive).

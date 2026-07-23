@@ -139,6 +139,14 @@
   tickers nus (EUR → .PA/.DE/.AS/.MI, CAD → .TO/.V), validées par plausibilité de prix (facteur ≤ 2 vs
   currentPrice, sinon refus anti-collision) et persistées via `Asset.historySymbol` (additif). NB : si
   « Amundi EM Asia » ne se résout toujours pas en prod, préciser le ticker suffixé (ex. AASI.PA) dans l'actif.
+- [ ] **`[QUOTE-NEGATIVE-CACHE]`** (S, finding code-reviewer #494 FAIBLE) — depuis le repli Yahoo, `hasQuoteProvider`
+  est vrai pour TOUT non-crypto en navigateur → un titre MANUEL/GIC (jamais coté nulle part) paie un aller-retour
+  Yahoo + 2,5 s de pacing à CHAQUE refresh, à vie (null jamais caché). Ajouter un négative-cache par symbole après
+  N échecs consécutifs (ou un flag « titre manuel » sur l'actif) pour re-sauter ces symboles sans réseau.
+- [ ] **`[QUOTE-MARKET-TIMESTAMP]`** (S, finding code-reviewer #494 FAIBLE) — `priceUpdatedAt = now()` = heure du
+  FETCH, pas du marché ; `Quote.timestamp` (Yahoo `regularMarketTime`) est calculé mais jamais consommé. Le raccord
+  `quoteFresh` (7 j) mesure la fraîcheur de fetch. Impact faible (dernier prix connu = meilleure approximation),
+  mais consommer `quote.timestamp` rendrait le raccord plus honnête (week-ends/jours fériés).
 - [ ] **`[INVEST-CURVES-LOW]`** (S) — « certaines courbes trop basses, je les vois pas » : les titres à petite valeur
   sont illisibles sur l'échelle Prix ($) commune. La vue Base 100 (%) existe — évaluer : défaut Base 100 en multi-courbes,
   ou axe log, ou petits multiples.

@@ -351,6 +351,40 @@ describe('hydrateAssetHistories — [HIST-MULTI-PROVIDER] force + diagnostic', (
     });
 });
 
+describe('hydrateAssetHistories — [Finding code-reviewer #494] mutex module', () => {
+    it('deux passes CONCURRENTES (boot + bouton) sont SÉRIALISÉES — jamais deux fetches entrelacés', async () => {
+        // Sonde du finding : sans mutex, 2 appels réseau réels pour le même symbole en parallèle
+        // (débit doublé face à CoinGecko free ~30/min → 429 en « panne » trompeuse au diagnostic).
+        const order: string[] = [];
+        const getHistory = vi.fn(async (s: string) => {
+            order.push(`start:${s}`);
+            await new Promise((r) => setTimeout(r, 5));
+            order.push(`end:${s}`);
+            return [{ date: '2026-01-10', close: 1 }];
+        });
+        await Promise.all([
+            hydrateAssetHistories([mk({ symbol: 'P1A' }), mk({ symbol: 'P1B' })], { getHistory, now: () => NOW, sleep: async () => {} }),
+            hydrateAssetHistories([mk({ symbol: 'P2A' })], { getHistory, now: () => NOW, sleep: async () => {} }, { force: true }),
+        ]);
+        // La passe 2 ne DÉMARRE qu'après la fin complète de la passe 1 (aucun entrelacement).
+        expect(order).toEqual(['start:P1A', 'end:P1A', 'start:P1B', 'end:P1B', 'start:P2A', 'end:P2A']);
+    });
+
+    it('une passe en ÉCHEC (deps cassées → skips error) ne bloque pas la file — la suivante aboutit', async () => {
+        // La défense PAR ACTIF convertit même un deps invalide en skip 'error' (la fonction ne
+        // rejette jamais en pratique) ; le .catch de la file reste une ceinture. On prouve que la
+        // passe suivante tourne normalement derrière une passe entièrement en échec.
+        const bad = hydrateAssetHistories([mk({})], {
+            getHistory: undefined as never, now: () => NOW, sleep: async () => {},
+        });
+        const good = hydrateAssetHistories([mk({})], {
+            getHistory: async () => [{ date: '2026-01-10', close: 1 }], now: () => NOW, sleep: async () => {},
+        });
+        expect((await bad).skipped[0]?.reason).toBe('error'); // échec honnête, pas un crash
+        expect((await good).patches.has('XEQT.TO')).toBe(true);
+    });
+});
+
 describe('mergePriceHistories', () => {
     it('union par date, le nouveau gagne, points invalides de l\'ancien purgés, tri croissant', () => {
         expect(mergePriceHistories(

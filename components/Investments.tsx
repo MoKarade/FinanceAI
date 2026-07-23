@@ -409,6 +409,10 @@ export const Investments: React.FC<InvestmentsProps> = ({
             // 'history' du jour (un « vide » caché 24 h bloquerait le nouvel essai) + hydratation
             // FORCÉE (variantes de suffixe incluses) + publication du diagnostic par titre.
             // AVANT le refresh des quotes : une variante résolue ici sert immédiatement aux quotes.
+            // [Finding silent-failure #494 — ÉLEVÉ] L'échec de CETTE moitié du geste doit remonter
+            // au TOAST final : sinon « N cours mis à jour » (vert) masque un resync d'historique
+            // raté — le cœur même du bouton.
+            let historySyncFailed = false;
             try {
                 const { clearMarketDataCache, getHistory, hasHistoryProvider } = await import('../services/marketData');
                 const { hydrateAssetHistories, applyHistoryPatches } = await import('../services/history/hydrateAssetHistories');
@@ -422,8 +426,10 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     setAssets(applyHistoryPatches(freshAssets, histRes.patches));
                 }
             } catch (e) {
-                // L'échec de l'hydratation ne bloque PAS le refresh des quotes (indépendants).
-                logError({ source: 'network', severity: 'warning', message: 'Resynchronisation des historiques échouée (les quotes sont quand même actualisées).', error: e });
+                // L'échec de l'hydratation ne bloque PAS le refresh des quotes (indépendants),
+                // mais il est TRACÉ en erreur et DIT dans le toast final (jamais avalé).
+                historySyncFailed = true;
+                logError({ source: 'network', severity: 'error', message: 'Resynchronisation des historiques échouée (les quotes sont quand même actualisées).', error: e });
             }
             // force:true = geste explicite (le gate 5 min du service ne s'applique pas au bouton ;
             // le cache quote 5 min absorbe de toute façon les re-clics rapprochés côté réseau).
@@ -443,7 +449,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 if (res.unchanged.length > 0) parts.push(`${res.unchanged.length} déjà à jour`);
                 if (uncovered.length > 0) parts.push(`${uncovered.length} sans cours disponible (${uncovered.map(s => s.symbol).slice(0, 4).join(', ')}${uncovered.length > 4 ? '…' : ''}) — introuvable chez Finnhub/Yahoo : fixe le symbole de cotation dans le diagnostic sous le graphe`);
                 if (mismatched.length > 0) parts.push(`${mismatched.length} ignoré(s) : devise du quote ≠ devise stockée (${mismatched.map(s => s.symbol).join(', ')})`);
-                showToast(parts.join(' · '), uncovered.length + mismatched.length > 0 ? 'info' : 'success');
+                if (historySyncFailed) parts.push('historiques de cours NON resynchronisés (échec inattendu) — réessaie dans un instant');
+                showToast(parts.join(' · '), historySyncFailed ? 'error' : (uncovered.length + mismatched.length > 0 ? 'info' : 'success'));
             }
         } catch (e) {
             logError({ source: 'network', severity: 'warning', message: 'Actualisation des cours échouée (prix existants conservés)', error: e });
@@ -457,7 +464,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
     // suggestion de recherche) : purge l'historique du titre (un historique fusionné d'un MAUVAIS
     // titre ne doit pas survivre à la correction — même classe que le scénario « variante d'un
     // autre titre » du panel #493) puis relance la resynchronisation complète.
-    const handleApplyQuoteSymbol = (assetSymbol: string, quoteSymbol: string) => {
+    const handleApplyQuoteSymbol = async (assetSymbol: string, quoteSymbol: string) => {
         const trimmed = quoteSymbol.trim();
         if (!trimmed) return;
         const current = useFinanceStore.getState().assets ?? [];
@@ -465,7 +472,10 @@ export const Investments: React.FC<InvestmentsProps> = ({
             ? { ...a, historySymbol: trimmed === a.symbol ? undefined : trimmed, priceHistory: [], lastHistorySync: undefined }
             : a);
         setAssets(next);
-        void handleRefreshPrices(); // recharge historique (cache purgé + force) + quotes
+        // [Finding silent-failure #494] AWAIT (pas fire-and-forget) : la purge du priceHistory est
+        // optimiste — le resync doit aboutir (ou son échec être dit par le toast/rapport) avant que
+        // le geste soit considéré terminé.
+        await handleRefreshPrices(); // recharge historique (cache purgé + force) + quotes
     };
 
     const handleAssetAccountChange = (symbolKey: string, newAccount: string) => {

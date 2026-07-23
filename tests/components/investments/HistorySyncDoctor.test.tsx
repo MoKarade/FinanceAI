@@ -55,11 +55,51 @@ describe('HistorySyncDoctor', () => {
         expect(onApply).toHaveBeenCalledWith('CW8', 'AASI.PA');
     });
 
+    it('[Finding sécurité #494] MODE DISCRET → detailPrivacySafe rendu, JAMAIS le detail à montants', () => {
+        useFinanceStore.setState({ isPrivacyMode: true } as never);
+        setHistorySyncReport({
+            at: 1, patchedCount: 0,
+            skipped: [{
+                symbol: 'CW8', reason: 'empty',
+                detail: 'CW8.PA répond (cours 5000) mais incompatible avec le prix actuel de l\'actif (500).',
+                detailPrivacySafe: 'CW8.PA répond mais son cours est incompatible avec le prix actuel de l\'actif (montants masqués).',
+            }],
+        });
+        const { container } = render(<HistorySyncDoctor onApplyQuoteSymbol={onApply} isSyncing={false} />);
+        expect(container.textContent).not.toContain('5000');
+        expect(container.textContent).not.toContain('500');
+        expect(container.textContent).toContain('montants masqués');
+    });
+
+    it('[Finding sécurité #494] MODE DISCRET sans detailPrivacySafe → générique sûr (jamais le detail chiffré en repli)', () => {
+        useFinanceStore.setState({ isPrivacyMode: true } as never);
+        setHistorySyncReport({
+            at: 1, patchedCount: 0,
+            skipped: [{ symbol: 'CW8', reason: 'empty', detail: 'Contient un montant 12345.' }],
+        });
+        const { container } = render(<HistorySyncDoctor onApplyQuoteSymbol={onApply} isSyncing={false} />);
+        expect(container.textContent).not.toContain('12345');
+        expect(container.textContent).toContain('Diagnostic masqué');
+    });
+
     it('MODE TEST → aucun rendu (les diagnostics portent les tickers RÉELS)', () => {
         useFinanceStore.setState({ isTestMode: true } as never);
         setHistorySyncReport({ at: 1, patchedCount: 0, skipped: [{ symbol: 'CW8', reason: 'empty' }] });
         const { container } = render(<HistorySyncDoctor onApplyQuoteSymbol={onApply} isSyncing={false} />);
         expect(container.firstChild).toBeNull();
+    });
+
+    it('[Finding code-reviewer #494] même symbole en 2 comptes (2 skips) → UNE seule ligne (pas de clé/id dupliqués)', () => {
+        setHistorySyncReport({
+            at: 1, patchedCount: 0,
+            skipped: [
+                { symbol: 'CW8', reason: 'empty', detail: 'Introuvable (CELI).' },
+                { symbol: 'CW8', reason: 'empty', detail: 'Introuvable (REER).' },
+            ],
+        });
+        render(<HistorySyncDoctor onApplyQuoteSymbol={onApply} isSyncing={false} />);
+        expect(screen.getAllByLabelText(/Symbole de cotation/)).toHaveLength(1); // htmlFor unique
+        expect(screen.getByText(/Cours non synchronisés \(1\)/)).toBeInTheDocument();
     });
 
     it('aucun échec actionnable (fresh/no-provider seulement) → aucun rendu', () => {

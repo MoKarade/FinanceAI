@@ -809,7 +809,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   quotes Finnhub free = US only → les ETF Euronext restaient à un prix saisi vieux/absent (TOTAL toujours faux de
   ~40 k$). Fermer le trou de la donnée sœur (chaîne de quotes → Yahoo) vaut mieux que raffiner l'agrégat. Le endpoint
   chart Yahoo porte DÉJÀ la quote (`meta.regularMarketPrice` + devise) → repli quote sans nouveau rewrite. Rewrites Vercel :
-  `/api/history/yahoo/:symbol` → query1.finance.yahoo.com (historiques) + `/api/search/yahoo?q=` → query1.finance.yahoo.com/v10/finance/search
+  `/api/history/yahoo/:symbol` → query1.finance.yahoo.com (historiques) + `/api/search/yahoo?q=` → query1.finance.yahoo.com/v1/finance/search
   (recherche par NOM via HistorySyncDoctor) ; `connect-src 'self'` couvre, zéro domaine ajouté. (2) **la
   config vitest du repo est `environment: 'jsdom'` PAR DÉFAUT** — un gate `typeof window` rend la branche navigateur
   dans TOUS les tests sans directive ; un test qui encode le comportement « hors navigateur » (`hasQuoteProvider ===
@@ -818,7 +818,14 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   garanti** — la raison du skip (`detail` + `triedSymbols`) doit remonter jusqu'à l'UI avec le remède inline (champ
   symbole de cotation + recherche par NOM), pas seulement au journal d'erreurs. (4) corriger un ticker à la main DOIT
   purger `priceHistory` du titre (un historique fusionné d'un MAUVAIS titre survivrait à la correction — même classe
-  que « variante d'un autre titre »).
+  que « variante d'un autre titre »). Leçons du panel (3 agents, sondes) : (5) **une protection posée sur UNE chaîne
+  (mutex boot+bouton de priceRefresh, leçon PERF-BOOT-RATELIMIT) doit être portée à sa chaîne SŒUR (hydratation
+  d'historique)** — la classe de bug re-rentre par la nouvelle chaîne (instance de [[AITOOLS-SEC]] « fix porté à
+  toutes les surfaces ») ; (6) **élargir un provider élargit le DOMAINE DES VALEURS en aval** : le repli Yahoo mondial
+  peut rendre une devise HORS de l'union `Asset.currency` (GBP — voire « GBp » pence aplati ×100 par toUpperCase) →
+  allowlist au point d'écriture (`asSupportedCurrency`), jamais un cast `as` ; (7) un `detail` de diagnostic composé
+  côté SERVICE peut interpoler un montant → fournir `detailPrivacySafe` jumeau et rendre le générique en défaut SÛR
+  côté UI (mode discret, jamais de fallback vers la version chiffrée).
 - ⚠️ **[AITOOLS-SEC] 2026-07-22 — audit de clôture du chantier Claude-in-app, leçons** : (1) **Un fix de
   sécurité appliqué à UNE surface doit être porté à TOUTES les surfaces qui partagent le vecteur** — le scrub
   anti-injection du `summary`/`changes` d'une écriture avait été fait côté app (`writeExecutor`, Lot D) mais

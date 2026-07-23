@@ -80,6 +80,22 @@ const defaultYFormatter = (val: number) => {
     return formatCAD(val);
 };
 
+/**
+ * Valeur du TOOLTIP (exporté pour test — findings panel #495) :
+ *  - un point `null` (trou HONNÊTE d'une série éparse, ex. titre pas encore acheté en Base 100)
+ *    rend « — », jamais un 0 fabriqué (`val || 0` affichait « +0,00 % » sur l'absence de donnée) ;
+ *  - la valeur passe par `yFormatter` (avant : `formatCAD` EN DUR → « 10 $ » affiché en mode
+ *    Base 100 au lieu de « +10 % » — devenu visible partout avec l'auto-défaut Base 100).
+ */
+export function tooltipValue(
+    val: number | null | undefined,
+    privacyMode: boolean,
+    yFormatter: (v: number) => string,
+): string {
+    if (val == null || !Number.isFinite(val)) return '—';
+    return privacyMode ? MASKED_AMOUNT_LABEL : yFormatter(val);
+}
+
 export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
     data,
     xKey,
@@ -222,7 +238,7 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
                     <Tooltip
                         contentStyle={{ backgroundColor: '#1a1a1a', borderColor: '#333', borderRadius: '8px', fontSize: '12px' }}
                         itemStyle={{ color: '#fff' }}
-                        formatter={(val: number, name: string) => [privacyMode ? '*** $' : formatCAD(val || 0), name]}
+                        formatter={(val, name) => [tooltipValue(typeof val === 'number' ? val : null, privacyMode, yFormatter), String(name)]}
                         labelFormatter={(label) => new Date(label).toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' })}
                     />
                     <Legend verticalAlign="top" iconSize={8} wrapperStyle={{ fontSize: '10px' }} />

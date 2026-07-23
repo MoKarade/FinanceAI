@@ -147,9 +147,12 @@
   FETCH, pas du marché ; `Quote.timestamp` (Yahoo `regularMarketTime`) est calculé mais jamais consommé. Le raccord
   `quoteFresh` (7 j) mesure la fraîcheur de fetch. Impact faible (dernier prix connu = meilleure approximation),
   mais consommer `quote.timestamp` rendrait le raccord plus honnête (week-ends/jours fériés).
-- [ ] **`[INVEST-CURVES-LOW]`** (S) — « certaines courbes trop basses, je les vois pas » : les titres à petite valeur
-  sont illisibles sur l'échelle Prix ($) commune. La vue Base 100 (%) existe — évaluer : défaut Base 100 en multi-courbes,
-  ou axe log, ou petits multiples.
+- [x] **`[INVEST-CURVES-LOW]`** (S) — ✅ 2026-07-23 (avec [INVEST-CHART-CLEAN], demande Marc « la courbe est mal
+  visible ») : (1) auto-défaut **Base 100 (%)** quand ≥ 2 séries d'échelles disparates (> 20×) partagent l'axe $
+  (le choix manuel du toggle prime toujours) ; (2) fix Base 100 sur lignes ÉPARSES — base de CHAQUE série = son
+  premier point FINI (avant : ligne 0 → un titre acheté plus tard avait base 0 → courbe FIGÉE À 0, invisible),
+  point manquant → null (trou honnête). + graphe 400→520 px, notes de couverture et diagnostic REPLIABLES
+  (une ligne compacte, détails au clic), ligne « N points · période » retirée.
 - [ ] **`[INVEST-ALLOC-GEO-SECTOR]`** (M) — « la répartition géographique marche pas et sectorielle non plus » :
   vérifier la source (profil Finnhub par titre ? statique ?) — probablement vide pour les ETF européens/Amundi.
   Diagnostiquer avec les vrais tickers de Marc.

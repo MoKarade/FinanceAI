@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { BudgetGroupTable } from '../../components/budget/BudgetGroupTable';
 import type { BudgetCategory } from '../../types';
 
@@ -79,8 +79,12 @@ describe('BudgetGroupTable — colonne moyenne 12 mois', () => {
             />
         );
         expect(screen.getByText('Moy. 12m')).toBeInTheDocument();
-        // 2 occurrences : la cellule du poste + le total du bandeau de groupe (1 seul poste → même valeur)
-        expect(screen.getAllByText(/372/)).toHaveLength(2);
+        // Assertions SCOPÉES (finding panel : un regex global sur la page est fragile) :
+        // la cellule de la LIGNE du poste, puis le total du bandeau de groupe.
+        const row = screen.getByDisplayValue('Épicerie').closest('tr')!;
+        expect(within(row as HTMLElement).getByText(/372/)).toBeInTheDocument();
+        const header = screen.getByTitle('Réel · moyenne 12 mois · cible');
+        expect(within(header).getByText(/372/)).toBeInTheDocument();
     });
 
     it('affiche « — » (jamais un faux 0) quand aucun historique révolu', () => {
@@ -98,5 +102,9 @@ describe('BudgetGroupTable — colonne moyenne 12 mois', () => {
         // Cellule du poste + total du bandeau : les deux rendent « — », aucun « 0 $ » de moyenne
         expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
         expect(screen.getByTitle(/moyenne indisponible/i)).toBeInTheDocument();
+        // A11y (finding panel) : le « — » porte un texte accessible sr-only aux DEUX endroits
+        // (title seul n'est pas fiable pour lecteur d'écran).
+        expect(screen.getByText('Moyenne indisponible (aucun mois plein d\'historique)')).toBeInTheDocument();
+        expect(screen.getByText('Moyenne du groupe indisponible (aucun mois plein d\'historique)')).toBeInTheDocument();
     });
 });

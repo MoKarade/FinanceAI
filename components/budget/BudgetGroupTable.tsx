@@ -43,8 +43,9 @@ interface BudgetGroupTableProps {
     onExpandToggle: (id: string | null) => void;
     getDisplayTarget: (item: BudgetCategory) => number;
     /**
-     * [BUDGET-3-VUES] Moyenne des 12 derniers mois pleins, ramenée à la période affichée
-     * (même normalisation que la cible). `null` = aucun historique révolu → « — » honnête.
+     * [BUDGET-3-VUES] Moyenne mensuelle des 12 derniers mois (mois courant partiel exclu — donc
+     * au plus 11 mois pleins), ramenée à la période affichée (même normalisation que la cible).
+     * `null` = aucun historique révolu → « — » honnête.
      */
     getDisplayAvg: (item: BudgetCategory) => number | null;
     isSolo: boolean;
@@ -69,8 +70,12 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
 
     const groupTotalTarget = items.reduce((sum, i) => sum + getDisplayTarget(i), 0);
     const groupTotalSpent = items.reduce((sum, i) => sum + (actualsMap[i.name] || 0), 0);
-    // [BUDGET-3-VUES] Total moyenne du groupe = Σ des moyennes DISPONIBLES ; null (« — ») si
-    // AUCUN poste n'a d'historique révolu (jamais un faux 0 — no-fake-data).
+    // [BUDGET-3-VUES] Total moyenne du groupe = Σ des moyennes ; null (« — ») quand aucun
+    // historique révolu (jamais un faux 0 — no-fake-data). TOUT-OU-RIEN par construction :
+    // la disponibilité vient de `coveredFullMonths`, GLOBAL au ledger → tous les postes sont
+    // `null` ou aucun (prouvé par le panel financial-integrity, PR #500) — jamais de somme
+    // PARTIELLE silencieuse. Le `.filter` ne sert que de ceinture si un futur refactor
+    // désalignait les listes poste/ledger.
     const groupAvgs = items.map(i => getDisplayAvg(i)).filter((v): v is number => v !== null);
     const groupTotalAvg = groupAvgs.length > 0 ? groupAvgs.reduce((s, v) => s + v, 0) : null;
 
@@ -91,7 +96,12 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                     </PrivateAmount>
                     <span className="opacity-50"> · moy. </span>
                     {groupTotalAvg === null
-                        ? <span className="opacity-50">—</span>
+                        ? (
+                            <span className="opacity-50">
+                                <span aria-hidden="true">—</span>
+                                <span className="sr-only">Moyenne du groupe indisponible (aucun mois plein d'historique)</span>
+                            </span>
+                        )
                         : <PrivateAmount className="opacity-70">{formatCAD(groupTotalAvg)}</PrivateAmount>}
                     <span className="opacity-50"> / </span>
                     <PrivateAmount className="opacity-50">{formatCAD(groupTotalTarget)}</PrivateAmount>
@@ -115,7 +125,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                             <th className="p-3 font-normal text-right hidden sm:table-cell">Répartition</th>
                             <th
                                 className="p-3 font-normal text-right hidden sm:table-cell"
-                                title="Moyenne des 12 derniers mois pleins, ramenée à la période affichée"
+                                title="Moyenne mensuelle des 12 derniers mois (mois courant, partiel, exclu), ramenée à la période affichée"
                             >
                                 Moy. 12m
                             </th>
@@ -222,7 +232,8 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                     className="text-ink-400 font-mono"
                                                     title="Aucun mois plein d'historique — moyenne indisponible"
                                                 >
-                                                    —
+                                                    <span aria-hidden="true">—</span>
+                                                    <span className="sr-only">Moyenne indisponible (aucun mois plein d'historique)</span>
                                                 </span>
                                             ) : (
                                                 <PrivateAmount as="div" className="font-mono text-ink-300">

@@ -352,3 +352,30 @@ export function buildMonthlyLedger(
         coveredFullMonths,
     };
 }
+
+/**
+ * [BUDGET-3-VUES] Moyenne mensuelle PAR POSTE depuis le ledger, prête pour l'UI :
+ * - `null` = indisponible (aucun mois plein d'historique) → afficher « — », jamais un faux 0.
+ *   TOUT-OU-RIEN : `coveredFullMonths` est GLOBAL au ledger → toutes les lignes sont `null`
+ *   ou aucune (pas de somme partielle silencieuse possible en aval).
+ * - Une moyenne NON FINIE (transaction corrompue NaN en amont) est rabattue sur `null` ET
+ *   signalée via `onNonFinite` — sinon elle s'afficherait « — » indiscernable d'une absence
+ *   légitime, sans trace (finding silent-failure-hunter, PR #500).
+ */
+export function computeAvgByItem(
+    ledger: MonthlyLedger,
+    onNonFinite?: (category: string) => void,
+): Record<string, number | null> {
+    const map: Record<string, number | null> = {};
+    for (const row of ledger.expenseRows) {
+        if (ledger.coveredFullMonths <= 0) {
+            map[row.category] = null;
+        } else if (!Number.isFinite(row.monthlyAverage)) {
+            onNonFinite?.(row.category);
+            map[row.category] = null;
+        } else {
+            map[row.category] = row.monthlyAverage;
+        }
+    }
+    return map;
+}

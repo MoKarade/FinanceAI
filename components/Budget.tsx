@@ -21,7 +21,7 @@ import { formatCAD, formatSigned, formatPercent } from '../utils/format';
 import { useViewContextPublisher } from '../hooks/useViewContextPublisher';
 import type { BudgetViewDetail } from '../services/aiChat/viewContext';
 import { computeBudgetParity, matchTransactionToCategory, computeGoldenSplit, GOLDEN_IDEAL, computeActualByOwner, isSavingsNature, type OrphanCategory } from '../utils/budget';
-import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages, computeIncomeBreakdown } from '../utils/budgetSync';
+import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages, computeIncomeBreakdown, computeAvgByItem } from '../utils/budgetSync';
 import { DualKPIStat } from './budget/DualKPIStat';
 import { calculateFiscalReport } from '../utils/tax';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
@@ -269,17 +269,17 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // moyennes mensuelles GLOBALES (dépenses/revenus) sur tous les mois PLEINS d'historique.
     const pastAverages = useMemo(() => computeMonthlyActualAverages(transactions), [transactions]);
 
-    // [BUDGET-3-VUES] Moyenne MENSUELLE des 12 derniers mois pleins PAR POSTE (demande Marc :
-    // « réel actuel, moyenne des derniers mois, prévision » — 3 colonnes). Base = le ledger 12 mois
-    // (MÊME source que l'historique par poste, sœur de PH4D « calculs voisins sur la même base »).
-    // `null` = aucun mois plein d'historique → « — » honnête, jamais un faux 0 (no-fake-data).
-    const avg12ByItem = useMemo(() => {
-        const map: Record<string, number | null> = {};
-        for (const row of ledger.expenseRows) {
-            map[row.category] = ledger.coveredFullMonths > 0 ? row.monthlyAverage : null;
-        }
-        return map;
-    }, [ledger]);
+    // [BUDGET-3-VUES] Moyenne MENSUELLE par poste sur la fenêtre du ledger 12 mois — mois courant
+    // (partiel) EXCLU, donc au plus 11 mois pleins (demande Marc : « réel actuel, moyenne des
+    // derniers mois, prévision » — 3 colonnes). MÊME source que l'historique par poste (ledger,
+    // sœur de PH4D « calculs voisins sur la même base »). `null` = « — » honnête (cf helper).
+    const avg12ByItem = useMemo(
+        () => computeAvgByItem(ledger, (category) => logError({
+            source: 'storage', severity: 'warning',
+            message: `Budget : moyenne mensuelle NON FINIE pour le poste « ${category} » (transaction corrompue ?) — affichée indisponible.`,
+        })),
+        [ledger],
+    );
 
     // Moyenne ramenée à la PÉRIODE affichée (×3 trimestre, ×12 année — même normalisation que la
     // cible, sinon comparaison mensuel-vs-trimestre faussée). PAS d'inflationSim : la moyenne est

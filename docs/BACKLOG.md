@@ -225,6 +225,15 @@
   réel · moy. · cible (montants gatés mode discret) + « — » honnête sans historique révolu
   (`coveredFullMonths` exposé, additif). La « projection fin de mois » (réel extrapolé au prorata)
   n'a PAS été retenue au cadrage — la rouvrir seulement si Marc la demande.
+- [ ] **`[BUDGET-MATCH-UNIFY]`** (M) — unifier la BASE DE RAPPROCHEMENT tx→poste des 3 calculs voisins
+  (finding financial-integrity PR #500, prouvé par sonde) : le RÉEL (`actualsMap`) rapproche en FUZZY
+  (`matchTransactionToCategory`), la MOYENNE (ledger) et la CIBLE AUTO (`historicalMonthlyAverage`)
+  en EXACT → un poste dont le nom diffère de la catégorie par fuzzy seul (poste renommé à la main)
+  affiche réel 600 $ · moy 0 $ (l'historique file dans « Autres / non classées », 0 $ plausible mais
+  faux). Portée limitée (la sync réaligne les noms en régime établi) mais réel. Fix = UNE source de
+  rapprochement pour les trois (attention : changer l'attribution du ledger touche aussi le grand
+  livre affiché, et rendre la moy fuzzy SEULE créerait une divergence moy↔cible-auto — faire les
+  trois ensemble, classe [[PH4D-BUDGET-RATIOS]]).
 
 ## 🤝 Assistant fusionné (demande Marc 2026-07-23 : « combiner Prochaine action à l'Assistant »)
 - [x] **`[ASSISTANT-HUB]`** ✅ (2026-07-23, PR #492) — onglet Assistant VISIBLE dans la nav (remplace

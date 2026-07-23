@@ -18,7 +18,7 @@ import { Skeleton } from './ui/Skeleton';
 import { MarketDataPoint } from '../services/finance';
 import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import { historyKeyMatchesSymbol } from '../services/history/buildMarketData';
-import { ASSET_META } from '../services/assetMeta';
+import { ASSET_META, lookupSeedMeta } from '../services/assetMeta';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { StockComparisonModal } from './dashboard/StockComparisonModal';
 import { HistoryCoverageNote } from './dashboard/HistoryCoverageNote';
@@ -229,7 +229,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 // « V » (Visa) matchait « VFV.TO » → mauvais type de compte (panel 2026-07-22).
                 const mappedAsset = assets.find(a => historyKeyMatchesSymbol(k, a.symbol));
 
-                const estYield = ASSET_YIELDS[cleanSymbol] || 0;
+                // [Finding panel #496 — hors-diff, MÊME classe que INVEST-ALLOC-GEO-SECTOR]
+                // ASSET_YIELDS était keyé BRUT (« EPA:CW8 ») et interrogé avec un symbole strippé
+                // (« CW8 ») → 0 hit, revenu passif estimé toujours 0 même pour les titres du seed.
+                // lookupSeedMeta normalise préfixe↔suffixe (même remède que les donuts).
+                const estYield = ASSET_YIELDS[cleanSymbol] ?? lookupSeedMeta(cleanSymbol)?.yield ?? 0;
                 const revMensuel = val * (estYield / 100) / 12;
                 passiveIncome += revMensuel;
 

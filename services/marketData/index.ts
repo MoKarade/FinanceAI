@@ -116,9 +116,15 @@ export async function getHistory(symbol: string, from: Date, to: Date): Promise<
     });
 }
 
+/** [INVEST-ALLOC-GEO-SECTOR] Un provider de PROFIL existe-t-il ? (pas de repli Yahoo pour les
+ *  profils — Finnhub/CoinGecko seulement) : évite de payer pacing + no-op quand il n'y a pas de clé. */
+export function hasProfileProvider(symbol: string): boolean {
+    return pickProvider(symbol) != null;
+}
+
 /**
- * Profil statique d'un actif. Recommandé pour auto-populate assetMeta
- * (sector/region/yield) au lieu de hardcoder dans services/assetMeta.ts.
+ * Profil statique d'un actif. Utilisé par l'auto-populate des répartitions
+ * (services/assetProfileSync.ts → Asset.sector/region).
  */
 export async function getProfile(symbol: string): Promise<AssetProfile | null> {
     const provider = pickProvider(symbol);

@@ -139,10 +139,12 @@
   tickers nus (EUR → .PA/.DE/.AS/.MI, CAD → .TO/.V), validées par plausibilité de prix (facteur ≤ 2 vs
   currentPrice, sinon refus anti-collision) et persistées via `Asset.historySymbol` (additif). NB : si
   « Amundi EM Asia » ne se résout toujours pas en prod, préciser le ticker suffixé (ex. AASI.PA) dans l'actif.
-- [ ] **`[QUOTE-NEGATIVE-CACHE]`** (S, finding code-reviewer #494 FAIBLE) — depuis le repli Yahoo, `hasQuoteProvider`
-  est vrai pour TOUT non-crypto en navigateur → un titre MANUEL/GIC (jamais coté nulle part) paie un aller-retour
-  Yahoo + 2,5 s de pacing à CHAQUE refresh, à vie (null jamais caché). Ajouter un négative-cache par symbole après
-  N échecs consécutifs (ou un flag « titre manuel » sur l'actif) pour re-sauter ces symboles sans réseau.
+- [ ] **`[QUOTE-NEGATIVE-CACHE]`** (S, finding code-reviewer #494 FAIBLE ; étendu #496) — depuis le repli Yahoo,
+  `hasQuoteProvider` est vrai pour TOUT non-crypto en navigateur → un titre MANUEL/GIC (jamais coté nulle part)
+  paie un aller-retour Yahoo + 2,5 s de pacing à CHAQUE refresh, à vie (null jamais caché). 3ᵉ instance (#496,
+  silent-failure) : `hydrateAssetProfiles` retente les profils Finnhub non couverts à CHAQUE boot (~2,5 s/actif
+  `unknown`). Ajouter un négative-cache par symbole après N échecs consécutifs (ou un flag « titre manuel » sur
+  l'actif) couvrant quotes + historiques + PROFILS, pour re-sauter ces symboles sans réseau.
 - [ ] **`[QUOTE-MARKET-TIMESTAMP]`** (S, finding code-reviewer #494 FAIBLE) — `priceUpdatedAt = now()` = heure du
   FETCH, pas du marché ; `Quote.timestamp` (Yahoo `regularMarketTime`) est calculé mais jamais consommé. Le raccord
   `quoteFresh` (7 j) mesure la fraîcheur de fetch. Impact faible (dernier prix connu = meilleure approximation),
@@ -153,9 +155,12 @@
   premier point FINI (avant : ligne 0 → un titre acheté plus tard avait base 0 → courbe FIGÉE À 0, invisible),
   point manquant → null (trou honnête). + graphe 400→520 px, notes de couverture et diagnostic REPLIABLES
   (une ligne compacte, détails au clic), ligne « N points · période » retirée.
-- [ ] **`[INVEST-ALLOC-GEO-SECTOR]`** (M) — « la répartition géographique marche pas et sectorielle non plus » :
-  vérifier la source (profil Finnhub par titre ? statique ?) — probablement vide pour les ETF européens/Amundi.
-  Diagnostiquer avec les vrais tickers de Marc.
+- [x] **`[INVEST-ALLOC-GEO-SECTOR]`** (M) — ✅ 2026-07-23 : cause DOUBLE — table `ASSET_META` statique (13 titres)
+  ET keyée préfixe place (`EPA:CW8`) face à des symboles réels suffixe (`CW8.PA`) → quasi tout en « Autre ».
+  Livré : `Asset.sector`/`region` additifs (persistés) ; `resolveAssetMeta` (source unique : champ > seed
+  NORMALISÉ préfixe↔suffixe > crypto > Autre) ; auto-remplissage au boot via le profil Finnhub
+  (`assetProfileSync`, séquentiel, information utile seulement, jamais d'écrasement) ; édition inline
+  région/secteur dans les cartes d'allocation (tout titre classable même sans provider).
 - [x] **`[HIST-MULTI-PROVIDER]`** 🔴 — ✅ 2026-07-23 (retour Marc post-#493 : TOTAL ~200 k$ et titres toujours
   sans courbe ; « plusieurs providers pour tout avoir ») : chaîne de QUOTES multi-providers (crypto → CoinGecko ;
   Finnhub → repli Yahoo via le proxy chart, `meta.regularMarketPrice`, devise vérifiée) ; `priceRefresh` quote

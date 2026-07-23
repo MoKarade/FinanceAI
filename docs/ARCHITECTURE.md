@@ -217,6 +217,20 @@ Historique de portefeuille / Courbes de cours
   │    (`noHistorySymbols` + HistoryCoverageNote sur Dashboard/Investissements)
   ├─ Persistance : Asset.historySymbol (additif, par titre) pour resolver variantes durables
   └─► Dashboard (piles), Investissements (chips TOTAL), Futur (poids/gains)
+
+Classification des actifs — Répartitions géo/secteur
+  ├─ **Champs additifs optionnels** : Asset.sector, Asset.region (zéro migration)
+  ├─ **resolveAssetMeta** (`services/assetMeta.ts`) — pipeline de classification :
+  │    1. Champs éditables inline (secteur/région saisis manuellement)
+  │    2. Seed normalisé (lookups ASSET_META : normalisation champ > suffixe/préfixe)
+  │    3. Fallback crypto : `isCryptocurrency()` → « Crypto »
+  │    4. Défaut : « Autre »
+  ├─ **assetProfileSync** (`services/assetProfileSync.ts`) — auto-remplissage au boot :
+  │    hydrateAssetProfiles() appelle Finnhub `company()` (/company/profile) pour les assets
+  │    SANS secteur/région → remplit les champs (Finnhub renvoie sector, industry, …)
+  │    Repli gracieux si provider indisponible → reste « Autre »
+  ├─ Sélecteurs éditables : **Investissements → Allocation → Région/Secteur** (inline, sauvegardes immédiates)
+  └─► Donuts (Investissements) — répartitions visualisées par région (geo-pie) et secteur (sector-pie)
 ```
 
 ## 6. IA — pipeline composé

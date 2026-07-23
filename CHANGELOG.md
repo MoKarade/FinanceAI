@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Investissements : répartitions géographique et sectorielle réparées] — 2026-07-23
+
+### Correctif (bug signalé Marc : « la répartition géographique marche pas et sectorielle non plus »)
+- **Les donuts de répartition fonctionnent pour TOUS les titres** : la classification lisait une
+  table figée de 13 titres, avec des clés dans un ancien format qui ne correspondait même plus aux
+  symboles réels — presque tout tombait dans « Autre ». Désormais : classification portée par
+  l'actif lui-même, remplie automatiquement au démarrage quand le fournisseur connaît le titre
+  (crypto classée par construction), et **éditable directement sur chaque carte d'allocation**
+  (sélecteurs Région et Secteur, à côté du type de compte) — aucun titre n'est plus une impasse.
+- Un même titre détenu dans plusieurs comptes garde une classification unique.
+
 ## [unreleased — Investissements : graphe dégagé, courbes lisibles] — 2026-07-23
 
 ### Amélioration (demande Marc : « ya du texte sur le graph… la courbe est mal visible »)

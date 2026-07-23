@@ -25,7 +25,7 @@ import { HistoryCoverageNote } from './dashboard/HistoryCoverageNote';
 import { HistorySyncDoctor } from './investments/HistorySyncDoctor';
 import { historyKeyMatchesSymbol } from '../services/history/buildMarketData';
 import { StockChart } from './StockChart';
-import { ASSET_META } from '../services/assetMeta';
+import { resolveAssetMeta, lookupSeedMeta, CANONICAL_SECTORS, CANONICAL_REGIONS } from '../services/assetMeta';
 import { assetValueCad, toCurrencyFactor } from '../services/portfolio';
 import { getQuote, hasQuoteProvider } from '../services/marketData';
 import { refreshAssetPrices, applyPricePatches } from '../services/priceRefresh';
@@ -60,21 +60,27 @@ interface InvestmentsProps {
     setProjection: (projection: AppState['projection']) => void;
 }
 
+// [Finding panel #496 — MOYEN] Couvre TOUTES les valeurs canoniques (CANONICAL_SECTORS/REGIONS) :
+// « Crypto »/« Canada »/« Autre » sont désormais atteignables (résolution + auto-populate + selects)
+// — sans couleur dédiée, leur segment tombait sur le gris de repli, indiscernable.
 const COLORS_SECTOR: Record<string, string> = {
     "Technologie": "#5b82bf", // Blue
     "Industrie": "#c2974f", // Orange
     "Finance": "#4f9d86", // Green
     "Mines/Or": "#b8a45e", // Yellow
     "Index": "#8a7cc0", // Purple
+    "Crypto": "#f97316",  // Orange vif
     "Autre": "#6b7280"
 };
 
 const COLORS_REGION: Record<string, string> = {
     "USA": "#5b82bf",
+    "Canada": "#ef8fa0",
     "Europe": "#4f9d86",
     "Asie": "#ef4444",
     "Global": "#8a7cc0",
-    "Ameriques": "#c2974f"
+    "Ameriques": "#c2974f",
+    "Autre": "#6b7280"
 };
 
 type TimeRange = '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL';
@@ -280,7 +286,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             const prev = prevValues[k] || 0;
             const trend = prev > 0 ? ((current - prev) / prev) * 100 : 0;
             const isTotal = k === 'TOTAL';
-            const meta = ASSET_META[k] || { name: k.replace('NASDAQ:', '').replace('NYSE:', '') };
+            const meta = lookupSeedMeta(k) || { name: k.replace('NASDAQ:', '').replace('NYSE:', '') };
             const name = isTotal ? 'TOTAL PORTEFEUILLE' : (BUCKET_LABELS[k] ?? meta.name);
             return { id: k, name, trend, isTotal };
         }).filter((x): x is SeriesWithTrend => x !== null).sort((a, b) => {
@@ -300,7 +306,12 @@ export const Investments: React.FC<InvestmentsProps> = ({
             // [ASSET-FX-DISPLAY] valeur en CAD (prix natif × FX) — l'ancien qty×prix brut mélangeait
             // USD/EUR/CAD (portefeuille sous-affiché de ~70 k$, incident Marc 2026-07-14).
             const value = assetValueCad(a, fxRates);
-            const meta = ASSET_META[a.symbol] || { name: a.name || a.symbol, sector: 'Autre', region: 'Autre', yield: 0, freq: 1 };
+            // [INVEST-ALLOC-GEO-SECTOR] Résolution PARTAGÉE (champ persisté > seed normalisé
+            // préfixe↔suffixe > crypto > Autre) — l'ancien lookup statique `ASSET_META[a.symbol]`
+            // ratait même les titres du seed (clés « EPA:CW8 » vs symboles réels « CW8.PA »)
+            // → donuts « tout en Autre » (bug Marc).
+            const { source: _metaSource, ...meta } = resolveAssetMeta(a);
+            void _metaSource; // la provenance ne fait pas partie d'AllocationItem (affichage seul)
             const cur = latestValues[a.symbol] ?? 0;
             const prev = prevValues[a.symbol] ?? 0;
             const trend24h = cur > 0 && prev > 0 ? ((cur - prev) / prev) * 100 : 0;
@@ -476,6 +487,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
         // optimiste — le resync doit aboutir (ou son échec être dit par le toast/rapport) avant que
         // le geste soit considéré terminé.
         await handleRefreshPrices(); // recharge historique (cache purgé + force) + quotes
+    };
+
+    // [INVEST-ALLOC-GEO-SECTOR] Édition inline région/secteur : appliquée à TOUS les actifs du
+    // symbole (même titre en 2 comptes = même secteur/région — jamais deux classifications).
+    const handleAssetMetaChange = (symbolKey: string, field: 'sector' | 'region', value: string) => {
+        const next = assets.map((a) => historyKeyMatchesSymbol(symbolKey, a.symbol) ? { ...a, [field]: value } : a);
+        setAssets(next);
     };
 
     const handleAssetAccountChange = (symbolKey: string, newAccount: string) => {
@@ -1171,6 +1189,27 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             </button>
                                         )
                                     )}
+                                    {/* [INVEST-ALLOC-GEO-SECTOR] Région/secteur éditables inline :
+                                        tout titre est classable même quand aucun provider ne le
+                                        connaît (les donuts n'ont plus d'impasse « Autre »). */}
+                                    <select
+                                        aria-label={`Région pour ${asset.id}`}
+                                        value={asset.region}
+                                        onChange={(e) => handleAssetMetaChange(asset.id, 'region', e.target.value)}
+                                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-tiny text-ink-200 outline-none hover:bg-white/10 cursor-pointer transition-colors"
+                                    >
+                                        {CANONICAL_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                                        {!CANONICAL_REGIONS.includes(asset.region as never) && <option value={asset.region}>{asset.region}</option>}
+                                    </select>
+                                    <select
+                                        aria-label={`Secteur pour ${asset.id}`}
+                                        value={asset.sector}
+                                        onChange={(e) => handleAssetMetaChange(asset.id, 'sector', e.target.value)}
+                                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-tiny text-ink-200 outline-none hover:bg-white/10 cursor-pointer transition-colors"
+                                    >
+                                        {CANONICAL_SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
+                                        {!CANONICAL_SECTORS.includes(asset.sector as never) && <option value={asset.sector}>{asset.sector}</option>}
+                                    </select>
                                     <select
                                         aria-label={`Type de compte pour ${asset.id}`}
                                         value={accountType}

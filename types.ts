@@ -58,6 +58,11 @@ export interface Asset {
    *  rien chez les providers (ex. ticker Euronext sans suffixe : « CW8 » → « CW8.PA »). Alimenté par
    *  hydrateAssetHistories (variante validée par plausibilité de prix). Champ ADDITIF optionnel. */
   historySymbol?: string;
+  /** [INVEST-ALLOC-GEO-SECTOR] Secteur/région pour les répartitions (donuts Investissements).
+   *  Priorité : ces champs (édités inline ou auto-remplis via le profil provider) > seed statique
+   *  normalisé > déduction crypto > « Autre ». Champs ADDITIFS optionnels (zéro migration). */
+  sector?: string;
+  region?: string;
   /** [PRICE-REFRESH-LIVE] Epoch ms de la dernière mise à jour de `currentPrice` par un quote live.
    *  Absent = prix jamais rafraîchi (figé à l'ajout/saisie manuelle). Champ ADDITIF optionnel. */
   priceUpdatedAt?: number;

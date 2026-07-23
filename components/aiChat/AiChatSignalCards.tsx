@@ -23,6 +23,18 @@ import { formatCAD } from '../../utils/format';
 import { Tab } from '../../types';
 import type { FinancialSignal } from '../../mcp/financialSignals';
 
+// [Finding sécurité #492 — ÉLEVÉ, prouvé par sonde] En mode discret, l'OBSERVATION porte le
+// montant CUIT dans la phrase (« …pour 8500$… ») : la rendre = fuite d'affichage pendant que le
+// badge à côté affiche ••• . Règle « masquer = ne pas rendre » → libellé GÉNÉRIQUE code-auteur par
+// type de signal (aucune valeur dans le DOM), jamais une redaction regex de la phrase.
+const PRIVACY_SAFE_LABELS: Record<string, string> = {
+    high_interest_debt: 'Dette(s) à taux élevé détectée(s)',
+    negative_cashflow: 'Flux de trésorerie mensuel négatif',
+    thin_emergency_fund: 'Coussin de sécurité sous la cible',
+    unused_celi_room: 'Espace CELI inexploité',
+    unused_reer_room: 'Espace REER inexploité',
+};
+
 const PRIORITY_STYLES: Record<FinancialSignal['priority'], { dot: string; border: string }> = {
     high: { dot: 'bg-danger-500', border: 'border-danger-500/30' },
     medium: { dot: 'bg-warning-400', border: 'border-warning-400/30' },
@@ -81,16 +93,24 @@ export const AiChatSignalCards: React.FC = () => {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2" role="list" aria-label="Signaux financiers">
                 {signals.map((s) => (
+                    // [Finding a11y #492 — ÉLEVÉ, mesuré axe] role=listitem sur un <button> est
+                    // INVALIDE (écrase le rôle natif — le SR perd « bouton ») : wrapper <div
+                    // role=listitem> autour d'un bouton au rôle natif, même pattern
+                    // qu'AiConversationList.
+                    <div key={s.id} role="listitem">
                     <button
-                        key={s.id}
                         type="button"
-                        role="listitem"
                         onClick={() => discuss(s)}
                         aria-disabled={isPrivacyMode || isLoading}
                         title={isPrivacyMode ? 'Mode discret actif — clic désactivé' : 'Discuter de ce signal avec l\'assistant'}
-                        className={`text-left bg-white/[0.03] hover:bg-white/[0.06] border ${PRIORITY_STYLES[s.priority].border} rounded-card p-3 transition-colors focus-ring ${isPrivacyMode || isLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        className={`w-full h-full text-left bg-white/[0.03] hover:bg-white/[0.06] border ${PRIORITY_STYLES[s.priority].border} rounded-card p-3 transition-colors focus-ring ${isPrivacyMode || isLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
                     >
                         <div className="flex items-center gap-2 mb-1">
+                            {/* [Finding a11y #492 — MOYEN, WCAG 1.4.1] La priorité n'était portée que
+                                par la COULEUR (pastille aria-hidden) : libellé sr-only pour les SR. */}
+                            <span className="sr-only">
+                                Priorité {s.priority === 'high' ? 'élevée' : s.priority === 'medium' ? 'moyenne' : 'faible'} —{' '}
+                            </span>
                             <span className={`w-2 h-2 rounded-full ${PRIORITY_STYLES[s.priority].dot} flex-shrink-0`} aria-hidden="true" />
                             {typeof s.metricCad === 'number' && Number.isFinite(s.metricCad) && (
                                 <PrivateAmount as="span" className="text-body font-bold text-white">
@@ -98,12 +118,17 @@ export const AiChatSignalCards: React.FC = () => {
                                 </PrivateAmount>
                             )}
                         </div>
-                        <p className="text-meta text-ink-200 leading-snug">{s.observation}</p>
+                        <p className="text-meta text-ink-200 leading-snug">
+                            {isPrivacyMode
+                                ? `${PRIVACY_SAFE_LABELS[s.id] ?? 'Signal financier'} (montants masqués)`
+                                : s.observation}
+                        </p>
                         <p className="text-tiny text-ink-400 mt-1.5 flex items-center gap-1">
                             <Icon name="bot" size={11} aria-hidden="true" />
                             {isPrivacyMode ? 'Mode discret — clic désactivé' : 'Clique pour en discuter'}
                         </p>
                     </button>
+                    </div>
                 ))}
             </div>
         </div>

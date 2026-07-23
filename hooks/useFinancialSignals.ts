@@ -19,8 +19,7 @@ import type { AppState } from '../types';
 /** Tranches d'AppState consommées par computeFinancialSignals (exportées pour le test de parité). */
 export const SIGNAL_STATE_KEYS = [
     'assets', 'fxRates', 'initialBalances', 'transactions', 'debts', 'config',
-    'budgetItems', 'retirementGoal', 'financialGoals', 'investmentAccounts',
-    'investmentTransactions', 'realEstateGoals', 'savingsGoals', 'lifeEvents', 'projection',
+    'budgetItems', 'retirementGoal', 'financialGoals',
 ] as const;
 
 export function useFinancialSignals(): FinancialSignals {
@@ -33,21 +32,13 @@ export function useFinancialSignals(): FinancialSignals {
     const budgetItems = useFinanceStore((s) => s.budgetItems);
     const retirementGoal = useFinanceStore((s) => s.retirementGoal);
     const financialGoals = useFinanceStore((s) => s.financialGoals);
-    const investmentAccounts = useFinanceStore((s) => s.investmentAccounts);
-    const investmentTransactions = useFinanceStore((s) => s.investmentTransactions);
-    const realEstateGoals = useFinanceStore((s) => s.realEstateGoals);
-    const savingsGoals = useFinanceStore((s) => s.savingsGoals);
-    const lifeEvents = useFinanceStore((s) => s.lifeEvents);
-    const projection = useFinanceStore((s) => s.projection);
 
     return useMemo(
         () => computeFinancialSignals({
             assets, fxRates, initialBalances, transactions, debts, config, budgetItems,
-            retirementGoal, financialGoals, investmentAccounts, investmentTransactions,
-            realEstateGoals, savingsGoals, lifeEvents, projection,
+            retirementGoal, financialGoals,
         } as AppState),
         [assets, fxRates, initialBalances, transactions, debts, config, budgetItems,
-            retirementGoal, financialGoals, investmentAccounts, investmentTransactions,
-            realEstateGoals, savingsGoals, lifeEvents, projection],
+            retirementGoal, financialGoals],
     );
 }

@@ -4,6 +4,7 @@
 // partagés entre l'outil MCP `get_next_best_actions` et le résumé hub (`/hub/summary`).
 // Aucun appel LLM, aucune I/O : uniquement des faits chiffrés calculés sur l'état.
 import type { AppState, User } from '../types';
+import { formatCAD } from '../utils/format';
 import { buildFinancialOverview, type FinancialOverview } from '../services/financialSnapshot';
 import { computeHistoricalContributionRoom } from '../services/projection/setupSimulation';
 import { computeAssetBreakdown } from '../services/portfolio';
@@ -46,7 +47,7 @@ export function computeFinancialSignals(
         signals.push({
             id: 'high_interest_debt',
             priority: 'high',
-            observation: `${toxicDebts.length} dette(s) à taux ≥ 8% pour ${Math.round(total)}$ ` +
+            observation: `${toxicDebts.length} dette(s) à taux ≥ 8% pour ${formatCAD(total)} ` +
                 `(${toxicDebts.map((d) => `${d.name} ${d.interestRate}%`).join(', ')}).`,
             metricCad: Math.round(total),
         });
@@ -57,7 +58,7 @@ export function computeFinancialSignals(
         signals.push({
             id: 'negative_cashflow',
             priority: 'high',
-            observation: `Cashflow mensuel ≤ 0 (épargne ${Math.round(overview.monthlyCashflow)}$/mois).`,
+            observation: `Cashflow mensuel ≤ 0 (épargne ${formatCAD(overview.monthlyCashflow)}/mois).`,
             metricCad: Math.round(overview.monthlyCashflow),
         });
     }
@@ -78,7 +79,7 @@ export function computeFinancialSignals(
         signals.push({
             id: 'unused_celi_room',
             priority: 'medium',
-            observation: `Espace CELI inexploité ≈ ${Math.round(celiRoom)}$ (croissance libre d'impôt).`,
+            observation: `Espace CELI inexploité ≈ ${formatCAD(celiRoom)} (croissance libre d'impôt).`,
             metricCad: Math.round(celiRoom),
         });
     }
@@ -86,7 +87,7 @@ export function computeFinancialSignals(
         signals.push({
             id: 'unused_reer_room',
             priority: 'medium',
-            observation: `Espace REER inexploité ≈ ${Math.round(reerRoom)}$ (déduction au taux marginal).`,
+            observation: `Espace REER inexploité ≈ ${formatCAD(reerRoom)} (déduction au taux marginal).`,
             metricCad: Math.round(reerRoom),
         });
     }

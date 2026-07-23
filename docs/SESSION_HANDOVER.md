@@ -993,7 +993,7 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#490** [CHAT-PAGE-CONTEXT] (chat conscient de la page affichée, vague 1, 2026-07-22) |
+| **Dernière PR mergée** | **#492** [ASSISTANT-HUB] (fusion Prochaine action + Assistant, onglet visible, signaux cliquables, 2026-07-23) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
 | **Tests** | **2872/2872 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
 | **Typecheck** | Clean en mode strict |

@@ -11,9 +11,10 @@ import { AiChatSignalCards } from '../../../components/aiChat/AiChatSignalCards'
 import { useFinanceStore } from '../../../store/useFinanceStore';
 
 const sendMessage = vi.fn(async () => {});
+let mockIsLoading = false;
 vi.mock('../../../components/aiChat/AiChatContext', () => ({
     useAiChatContext: () => ({
-        isLoading: false, activeTools: [], pendingWrite: null,
+        get isLoading() { return mockIsLoading; }, activeTools: [], pendingWrite: null,
         resolvePendingWrite: vi.fn(), sendMessage: (...a: unknown[]) => sendMessage(...a as []),
         cancel: vi.fn(), clearConversation: vi.fn(),
     }),
@@ -37,6 +38,7 @@ const seedSignalState = () => {
 beforeEach(() => {
     sendMessage.mockClear();
     toastSpy.mockClear();
+    mockIsLoading = false;
     useFinanceStore.getState().resetState();
     useFinanceStore.setState({ isPrivacyMode: false } as never);
 });
@@ -61,6 +63,25 @@ describe('AiChatSignalCards', () => {
         fireEvent.click(card);
         expect(sendMessage).not.toHaveBeenCalled(); // discriminant : sans le gate, ce test échoue
         expect(toastSpy).toHaveBeenCalled();
+    });
+
+    it('[Finding sécurité #492] MODE DISCRET → AUCUN montant de l\'observation rendu (libellé générique)', () => {
+        // Sonde du panel : la phrase « …pour 8500$… » restait en clair pendant que le badge affichait
+        // ••• — la carte doit rendre un libellé code-auteur SANS valeur (masquer = ne pas rendre).
+        seedSignalState();
+        useFinanceStore.setState({ isPrivacyMode: true } as never);
+        const { container } = render(<AiChatSignalCards />);
+        expect(container.textContent).not.toContain('8500');
+        expect(container.textContent).not.toContain('19.99');
+        expect(screen.getByText(/Dette\(s\) à taux élevé détectée\(s\)/)).toBeInTheDocument();
+    });
+
+    it('réponse en cours (isLoading) → clic no-op (un envoi à la fois, convention du champ de saisie)', () => {
+        seedSignalState();
+        mockIsLoading = true;
+        render(<AiChatSignalCards />);
+        fireEvent.click(screen.getByText(/dette\(s\) à taux/i).closest('button')!);
+        expect(sendMessage).not.toHaveBeenCalled();
     });
 
     it('0 signal (finances saines) → message positif honnête, JAMAIS de cartes fabriquées', () => {

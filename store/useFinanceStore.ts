@@ -209,6 +209,14 @@ export const getInitialStateWithMigration = (): AppState => {
 
     if (typeof window === 'undefined') return defaultState;
 
+    // [ASSISTANT-HUB, finding sécurité #492 + code-reviewer 2bis] Cache de l'ancien widget
+    // « Prochaine action » (conseils IA dérivés du patrimoine = PII, Loi 25) : le widget est retiré,
+    // plus aucun code ne purgeait cette clé. Purge INCONDITIONNELLE — quiconque a cette clé a
+    // forcément `financeai-storage` (le widget lisait le store hydraté), donc une purge placée dans
+    // le bloc legacy ci-dessous (early-return si financeai-storage existe) ne s'exécuterait JAMAIS
+    // pour la population concernée (code mort — 1er jet du fix, réfuté par le panel).
+    try { localStorage.removeItem('nba:cache:v1'); } catch { /* localStorage indispo */ }
+
     // CONSOLIDATION persistance (2026-05-25) : `financeai-storage` (Zustand persist)
     // est LA source de vérité. S'il existe, persist hydrate les vraies données
     // juste après → inutile (et risqué) de relire ~25 clés legacy `app_*` à chaque

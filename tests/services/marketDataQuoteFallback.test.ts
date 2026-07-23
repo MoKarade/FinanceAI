@@ -17,6 +17,16 @@ const yahooChartResponse = (price: number, currency: string) => new Response(JSO
     chart: { result: [{ meta: { currency, regularMarketPrice: price, chartPreviousClose: price - 1 } }] },
 }), { status: 200 });
 
+/** Hostname PARSÉ d'une URL absolue ('' si relative) — jamais un substring d'URL (CodeQL :
+ *  « finnhub.io » en substring matcherait evil.com/finnhub.io ; pattern hostOf de marketDataRouting). */
+const hostOf = (u: string): string => {
+    try {
+        return new URL(u).hostname;
+    } catch {
+        return ''; // URL relative (proxy same-origin) → pas un host externe
+    }
+};
+
 describe('[HIST-MULTI-PROVIDER] repli quote Yahoo (navigateur)', () => {
     beforeEach(() => {
         clearMarketDataCache();
@@ -45,11 +55,11 @@ describe('[HIST-MULTI-PROVIDER] repli quote Yahoo (navigateur)', () => {
         vi.stubGlobal('fetch', vi.fn(async (input: string | URL) => {
             const s = String(input);
             calls.push(s);
-            if (s.includes('finnhub.io')) return new Response('forbidden', { status: 403 });
+            if (hostOf(s) === 'finnhub.io') return new Response('forbidden', { status: 403 });
             return yahooChartResponse(551, 'EUR');
         }));
         const q = await getQuote('CW8.PA');
-        expect(calls.some((u) => u.includes('finnhub.io'))).toBe(true);       // le primaire a été tenté
+        expect(calls.some((u) => hostOf(u) === 'finnhub.io')).toBe(true);          // le primaire a été tenté
         expect(calls.some((u) => u.startsWith('/api/history/yahoo/'))).toBe(true); // puis le repli
         expect(q?.price).toBe(551);
     });

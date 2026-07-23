@@ -808,7 +808,9 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   d'une donnée SŒUR hérite de SES trous** — le repli « valeur actuelle » (#493) dépendait de `currentPrice`, or les
   quotes Finnhub free = US only → les ETF Euronext restaient à un prix saisi vieux/absent (TOTAL toujours faux de
   ~40 k$). Fermer le trou de la donnée sœur (chaîne de quotes → Yahoo) vaut mieux que raffiner l'agrégat. Le endpoint
-  chart Yahoo porte DÉJÀ la quote (`meta.regularMarketPrice` + devise) → repli quote sans nouveau rewrite. (2) **la
+  chart Yahoo porte DÉJÀ la quote (`meta.regularMarketPrice` + devise) → repli quote sans nouveau rewrite. Rewrites Vercel :
+  `/api/history/yahoo/:symbol` → query1.finance.yahoo.com (historiques) + `/api/search/yahoo?q=` → query1.finance.yahoo.com/v10/finance/search
+  (recherche par NOM via HistorySyncDoctor) ; `connect-src 'self'` couvre, zéro domaine ajouté. (2) **la
   config vitest du repo est `environment: 'jsdom'` PAR DÉFAUT** — un gate `typeof window` rend la branche navigateur
   dans TOUS les tests sans directive ; un test qui encode le comportement « hors navigateur » (`hasQuoteProvider ===
   false`) casse dès qu'on étend la branche navigateur, et un test « pas de fetch » peut passer PAR ACCIDENT (mock qui

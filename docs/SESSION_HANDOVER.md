@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-23 (suite 3) — HIST-MULTI-PROVIDER : quotes multi-providers (PR #494)
+> **✅ `[HIST-MULTI-PROVIDER]`** (suite de #493 coverage-total) : chaîne de quotes multi-providers
+> (CoinGecko crypto, Finnhub stock-US, Yahoo Finance via proxy same-origin `/api/history/yahoo/:symbol`
+> pour Euronext/CAD) + repli quote `meta.regularMarketPrice` sans nouveau rewrite. Actualiser les cours =
+> purge cache history + hydratation forcée + quotes fraîches. HistorySyncDoctor : diagnostic par titre
+> (symbole de cotation inline, recherche `/api/search/yahoo` par NOM de titre), module `services/history/syncDiagnostics.ts`,
+> composant `HistorySyncDoctor` sur Investissements. Rewrites vercel.json + proxy vite dev. Tests 2954 verts (+24).
+> ADR complet docs/decisions.md (bloc HIST-MULTI-PROVIDER). Leçons CLAUDE.md portées.
+>
 > ## 🟢 Session 2026-07-23 (suite 2) — HIST-COVERAGE-TOTAL : portefeuille complet (PR #493)
 > **✅ `[HIST-COVERAGE-TOTAL]`** (panel 30 agents, 9 confirmés, 17 vérifiés) : le TOTAL du portefeuille couvre
 > TOUT — titres sans historique comptés à valeur actuelle (contribution plate, noHistorySymbols), backfill pré-historique,
@@ -1001,9 +1010,9 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#493** [HIST-COVERAGE-TOTAL] (TOTAL portefeuille complet, titres sans historique, ADR, persistance Asset.historySymbol, 2026-07-23) |
+| **Dernière PR mergée** | **#494** [HIST-MULTI-PROVIDER] (chaîne de quotes multi-providers, HistorySyncDoctor, rewrites Vercel, 2026-07-23) ; suite de **#493** HIST-COVERAGE-TOTAL |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
-| **Tests** | **2930/2930 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
+| **Tests** | **2954/2954 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
 | **Schema store** | **v7** (Zustand persist, migrations v1→v7) |

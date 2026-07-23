@@ -60,21 +60,27 @@ interface InvestmentsProps {
     setProjection: (projection: AppState['projection']) => void;
 }
 
+// [Finding panel #496 — MOYEN] Couvre TOUTES les valeurs canoniques (CANONICAL_SECTORS/REGIONS) :
+// « Crypto »/« Canada »/« Autre » sont désormais atteignables (résolution + auto-populate + selects)
+// — sans couleur dédiée, leur segment tombait sur le gris de repli, indiscernable.
 const COLORS_SECTOR: Record<string, string> = {
     "Technologie": "#5b82bf", // Blue
     "Industrie": "#c2974f", // Orange
     "Finance": "#4f9d86", // Green
     "Mines/Or": "#b8a45e", // Yellow
     "Index": "#8a7cc0", // Purple
+    "Crypto": "#f97316",  // Orange vif
     "Autre": "#6b7280"
 };
 
 const COLORS_REGION: Record<string, string> = {
     "USA": "#5b82bf",
+    "Canada": "#ef8fa0",
     "Europe": "#4f9d86",
     "Asie": "#ef4444",
     "Global": "#8a7cc0",
-    "Ameriques": "#c2974f"
+    "Ameriques": "#c2974f",
+    "Autre": "#6b7280"
 };
 
 type TimeRange = '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL';

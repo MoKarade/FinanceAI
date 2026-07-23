@@ -4,6 +4,12 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-23 (suite 5) — INVEST-ALLOC-GEO-SECTOR : répartitions géo/secteur (PR #496)
+> **✅ `[INVEST-ALLOC-GEO-SECTOR]`** : Asset.sector/region champs additifs optionnels ; resolveAssetMeta
+> (normalisation : champ > seed statique > crypto > « Autre ») ; assetProfileSync (auto-populate profil
+> Finnhub au boot) ; sélecteurs Région/Secteur inline dans les cartes d'allocation (Investissements).
+> Tests 2985 verts (+14). BACKLOG [INVEST-ALLOC-GEO-SECTOR] ✅ coché. Suite : [BUDGET-3-VUES] (plan-first).
+>
 > ## 🟢 Session 2026-07-23 (suite 4) — INVEST-CURVES-LOW : graphe investissements (PR #495)
 > **✅ `[INVEST-CURVES-LOW]`** : graphe Investissements dégagé (notes de couverture + diagnostic repliés en
 > `<details>`, ligne « N points » retirée, 400→520px), StockChart auto-défaut Base 100 en séries disparates
@@ -1018,9 +1024,9 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#495** [INVEST-CURVES-LOW] (graphe investissements, StockChart Base 100, correctifs panel a11y, 2026-07-23) ; suite de **#494** HIST-MULTI-PROVIDER |
+| **Dernière PR mergée** | **#496** [INVEST-ALLOC-GEO-SECTOR] (répartitions géo/secteur, Asset.sector/region additifs, resolveAssetMeta, assetProfileSync, 2026-07-23) ; suite de **#495** INVEST-CURVES-LOW |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
-| **Tests** | **2971/2971 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
+| **Tests** | **2985/2985 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
 | **Schema store** | **v7** (Zustand persist, migrations v1→v7) |

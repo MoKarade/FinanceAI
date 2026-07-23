@@ -274,6 +274,12 @@ export interface MonthlyLedger {
     netByMonth: number[];
     /** Index de la colonne « mois courant » (toujours la dernière). */
     currentMonthIndex: number;
+    /**
+     * Mois PLEINS de la fenêtre couverts par l'historique (diviseur des `monthlyAverage`).
+     * 0 = aucun historique révolu → toute moyenne vaut 0 par CONVENTION, à afficher « — »
+     * (indisponible), jamais comme un vrai zéro ([BUDGET-3-VUES]).
+     */
+    coveredFullMonths: number;
 }
 
 /** Statuts « à classer » (partagés : dénominateur commun de NON_BUDGET_CATEGORIES). */
@@ -343,5 +349,6 @@ export function buildMonthlyLedger(
         totalIncomeByMonth,
         netByMonth: months.map((_, i) => totalIncomeByMonth[i] - totalExpenseByMonth[i]),
         currentMonthIndex,
+        coveredFullMonths,
     };
 }

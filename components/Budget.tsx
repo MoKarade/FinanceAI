@@ -269,6 +269,27 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // moyennes mensuelles GLOBALES (dépenses/revenus) sur tous les mois PLEINS d'historique.
     const pastAverages = useMemo(() => computeMonthlyActualAverages(transactions), [transactions]);
 
+    // [BUDGET-3-VUES] Moyenne MENSUELLE des 12 derniers mois pleins PAR POSTE (demande Marc :
+    // « réel actuel, moyenne des derniers mois, prévision » — 3 colonnes). Base = le ledger 12 mois
+    // (MÊME source que l'historique par poste, sœur de PH4D « calculs voisins sur la même base »).
+    // `null` = aucun mois plein d'historique → « — » honnête, jamais un faux 0 (no-fake-data).
+    const avg12ByItem = useMemo(() => {
+        const map: Record<string, number | null> = {};
+        for (const row of ledger.expenseRows) {
+            map[row.category] = ledger.coveredFullMonths > 0 ? row.monthlyAverage : null;
+        }
+        return map;
+    }, [ledger]);
+
+    // Moyenne ramenée à la PÉRIODE affichée (×3 trimestre, ×12 année — même normalisation que la
+    // cible, sinon comparaison mensuel-vs-trimestre faussée). PAS d'inflationSim : la moyenne est
+    // un RÉEL historique, la simulation d'inflation ne s'applique qu'aux cibles projetées.
+    const getDisplayAvg = (item: BudgetCategory): number | null => {
+        const avg = avg12ByItem[item.name];
+        if (avg === null || avg === undefined) return null;
+        return avg * getMultiplier();
+    };
+
     const totalBudgetDisplay = budgetItems.reduce((sum, item) => sum + getDisplayTarget(item), 0);
     // [PH4-A/F1] Total dépensé = TOUTES les dépenses (postes rapprochés + orphelins), via
     // `totalSpent` — préserve le total d'AVANT le refactor (les orphelins comptent dans le réel).
@@ -1211,6 +1232,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             expandedId={expandedId}
                             onExpandToggle={setExpandedId}
                             getDisplayTarget={getDisplayTarget}
+                            getDisplayAvg={getDisplayAvg}
                             isSolo={coupleAnalysis.isSolo}
                             splitRatio1={coupleAnalysis.splitRatio1}
                             userNames={[config.users[0].name, config.users[1]?.name ?? '']}

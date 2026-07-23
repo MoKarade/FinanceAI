@@ -42,6 +42,11 @@ interface BudgetGroupTableProps {
     expandedId: string | null;
     onExpandToggle: (id: string | null) => void;
     getDisplayTarget: (item: BudgetCategory) => number;
+    /**
+     * [BUDGET-3-VUES] Moyenne des 12 derniers mois pleins, ramenée à la période affichée
+     * (même normalisation que la cible). `null` = aucun historique révolu → « — » honnête.
+     */
+    getDisplayAvg: (item: BudgetCategory) => number | null;
     isSolo: boolean;
     splitRatio1: number;
     userNames: [string, string];
@@ -54,7 +59,7 @@ interface BudgetGroupTableProps {
 export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
     nature, items, allItems, actualsMap, trendMap, monthlyDataMap,
     totalBudgetDisplay, monthProgress, expandedId, onExpandToggle,
-    getDisplayTarget, isSolo, splitRatio1, userNames, timeView,
+    getDisplayTarget, getDisplayAvg, isSolo, splitRatio1, userNames, timeView,
     onUpdateItem, onDeleteItem, onAddItem,
 }) => {
     // NB : on ne masque PLUS les groupes vides. Sinon le bouton « + Ajouter »
@@ -64,6 +69,10 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
 
     const groupTotalTarget = items.reduce((sum, i) => sum + getDisplayTarget(i), 0);
     const groupTotalSpent = items.reduce((sum, i) => sum + (actualsMap[i.name] || 0), 0);
+    // [BUDGET-3-VUES] Total moyenne du groupe = Σ des moyennes DISPONIBLES ; null (« — ») si
+    // AUCUN poste n'a d'historique révolu (jamais un faux 0 — no-fake-data).
+    const groupAvgs = items.map(i => getDisplayAvg(i)).filter((v): v is number => v !== null);
+    const groupTotalAvg = groupAvgs.length > 0 ? groupAvgs.reduce((s, v) => s + v, 0) : null;
 
     const labelPeriod = timeView === 'YEAR' ? '12 Mois' :
         timeView === 'QUARTER' ? 'Trimestre' :
@@ -76,11 +85,16 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                     <span className="font-bold uppercase tracking-wider text-meta">{nature}</span>
                     <span className="text-tiny opacity-70">({items.length})</span>
                 </div>
-                <div className="text-meta font-mono">
-                    <span className={groupTotalSpent > groupTotalTarget ? 'text-danger-400' : 'opacity-80'}>
+                <div className="text-meta font-mono" title="Réel · moyenne 12 mois · cible">
+                    <PrivateAmount className={groupTotalSpent > groupTotalTarget ? 'text-danger-400' : 'opacity-80'}>
                         {formatCAD(groupTotalSpent)}
-                    </span>
-                    <span className="opacity-50"> / {formatCAD(groupTotalTarget)}</span>
+                    </PrivateAmount>
+                    <span className="opacity-50"> · moy. </span>
+                    {groupTotalAvg === null
+                        ? <span className="opacity-50">—</span>
+                        : <PrivateAmount className="opacity-70">{formatCAD(groupTotalAvg)}</PrivateAmount>}
+                    <span className="opacity-50"> / </span>
+                    <PrivateAmount className="opacity-50">{formatCAD(groupTotalTarget)}</PrivateAmount>
                 </div>
             </div>
 
@@ -99,6 +113,12 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                             <th className="p-3 font-normal text-right">Cible ({labelPeriod})</th>
                             <th className="p-3 font-normal text-right text-tiny w-16">% Budget</th>
                             <th className="p-3 font-normal text-right hidden sm:table-cell">Répartition</th>
+                            <th
+                                className="p-3 font-normal text-right hidden sm:table-cell"
+                                title="Moyenne des 12 derniers mois pleins, ramenée à la période affichée"
+                            >
+                                Moy. 12m
+                            </th>
                             <th className="p-3 font-normal text-right">Réel ({labelPeriod})</th>
                             <th className="p-3 font-normal text-right hidden md:table-cell">Écart</th>
                             <th className="p-3 w-10"></th>
@@ -108,6 +128,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                         {items.map((item) => {
                             const idx = allItems.findIndex(i => i.id === item.id);
                             const displayTarget = getDisplayTarget(item);
+                            const displayAvg = getDisplayAvg(item);
                             const spent = actualsMap[item.name] || 0;
                             const remaining = displayTarget - spent;
                             const isOver = spent > displayTarget;
@@ -195,6 +216,20 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                         <td className="p-3 text-right hidden sm:table-cell">
                                             <div className="text-tiny text-ink-300 font-mono whitespace-nowrap">{splitDisplay}</div>
                                         </td>
+                                        <td className="p-3 text-right hidden sm:table-cell">
+                                            {displayAvg === null ? (
+                                                <span
+                                                    className="text-ink-400 font-mono"
+                                                    title="Aucun mois plein d'historique — moyenne indisponible"
+                                                >
+                                                    —
+                                                </span>
+                                            ) : (
+                                                <PrivateAmount as="div" className="font-mono text-ink-300">
+                                                    {formatCAD(displayAvg)}
+                                                </PrivateAmount>
+                                            )}
+                                        </td>
                                         <td className="p-3 text-right">
                                             <PrivateAmount as="div" className={`font-mono font-bold ${isOver ? 'text-danger-400' : 'text-ink-100'}`}>
                                                 {formatCAD(spent)}
@@ -232,7 +267,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                     </tr>
                                     {isExpanded && (
                                         <tr className="bg-black/30 border-b border-white/5 animate-fade-in">
-                                            <td colSpan={8} className="p-4">
+                                            <td colSpan={9} className="p-4">
                                                 <div className="flex flex-col gap-2">
                                                     <div className="text-meta font-bold text-ink-300 uppercase">Historique (6 derniers mois)</div>
                                                     <div style={{ width: '100%', height: '150px' }}>

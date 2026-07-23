@@ -184,6 +184,29 @@ describe('buildMonthlyLedger (réel revenus + dépenses par mois)', () => {
     it('lastMonths rend N clés YYYY-MM, ancien → récent', () => {
         expect(lastMonths(3, REF)).toEqual(['2026-05', '2026-06', '2026-07']);
     });
+
+    // [BUDGET-3-VUES] coveredFullMonths exposé — distingue « moyenne = 0 » d'« aucun historique ».
+    it('coveredFullMonths = mois pleins de la fenêtre couverts par l\'historique', () => {
+        const transactions = [
+            tx({ category: 'Épicerie', amount: -200, date: '2026-05-05' }),
+            tx({ category: 'Épicerie', amount: -100, date: '2026-07-02' }), // mois courant, partiel
+        ];
+        const l = buildMonthlyLedger(transactions, ['Épicerie'], 12, REF);
+        expect(l.coveredFullMonths).toBe(2); // mai + juin (depuis le 1er mois d'historique), juillet exclu
+        const epicerie = l.expenseRows.find(r => r.category === 'Épicerie')!;
+        expect(epicerie.monthlyAverage).toBeCloseTo(200 / 2, 4);
+    });
+
+    it('coveredFullMonths = 0 quand tout l\'historique tient dans le mois courant (moyenne indisponible)', () => {
+        const transactions = [
+            tx({ category: 'Épicerie', amount: -100, date: '2026-07-02' }),
+        ];
+        const l = buildMonthlyLedger(transactions, ['Épicerie'], 12, REF);
+        expect(l.coveredFullMonths).toBe(0);
+        // La moyenne vaut 0 par CONVENTION dans ce cas — le consommateur DOIT la traiter
+        // comme indisponible (« — »), jamais comme un vrai zéro.
+        expect(l.expenseRows.find(r => r.category === 'Épicerie')!.monthlyAverage).toBe(0);
+    });
 });
 
 describe('moyennes de TOUT le passé (mois pleins)', () => {

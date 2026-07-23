@@ -10,7 +10,6 @@ export const TAB_LABELS: Record<Tab, string> = {
     [Tab.DEBT]: 'Dettes',
     [Tab.INVESTMENTS]: 'Investissements',
     [Tab.FUTURE]: 'Futur',
-    [Tab.ACTIONS]: 'Prochaine action',
     [Tab.REAL_ESTATE]: 'Immobilier',
     [Tab.CHILD]: 'Enfant',
     [Tab.TRAVEL]: 'Voyages',

@@ -6,6 +6,25 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Assistant fusionné : onglet visible + prochaines actions cliquables] — 2026-07-23
+
+### Nouveau (demande Marc « combiner Prochaine action à l'Assistant » + « je ne vois pas l'onglet assistant »)
+- **L'onglet Assistant est maintenant VISIBLE dans la barre de navigation** (groupe Plan, à la place
+  de « Prochaine action ») — il n'était accessible que par Alt+9/Cmd+K, c'est pour ça qu'il était
+  introuvable. Alt+9 et la recherche (mots-clés « reco », « conseil », « prochaine ») y mènent toujours.
+- **Prochaines actions fusionnées dans l'Assistant** : cartes compactes au-dessus du chat — dettes à
+  taux élevé, cashflow négatif, coussin insuffisant, espace CELI/REER inexploité — chacune cliquable
+  pour en discuter avec l'assistant (« Explique-moi ce signal et aide-moi à agir dessus »), qui a les
+  outils pour le faire.
+- **Un seul moteur de recommandations** : les cartes utilisent les MÊMES signaux purs que le chat
+  (calcul direct, toujours frais) — fini l'ancien widget qui appelait l'IA avec « exactement 3
+  actions » forcées (source des recommandations de remplissage peu pertinentes) et son cache d'1 h
+  (recommandations périmées). Plus jamais deux avis contradictoires sur la même page.
+- Honnêteté : 0 signal = « rien d'anormal détecté » (jamais de cartes fabriquées) ; profil vide =
+  invitation à configurer ; mode discret = montants masqués ET clic désactivé (rien ne part vers
+  l'API pendant que l'écran masque).
+- Un lien/bookmark vers l'ancien onglet (#ACTIONS) redirige automatiquement vers l'Assistant.
+
 ## [unreleased — Chat : panneau réparé + Budget compris à 100 % (vague 1.5)] — 2026-07-23
 
 ### Correctif (bug signalé Marc, captures)

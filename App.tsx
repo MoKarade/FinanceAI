@@ -245,6 +245,13 @@ export const App: React.FC = () => {
     useEffect(() => {
         const applyHash = () => {
             const hash = window.location.hash.replace('#', '');
+            // [ASSISTANT-HUB] L'onglet ACTIONS a fusionné dans ASSISTANT : un deep-link/bookmark
+            // #ACTIONS redirige explicitement (jamais un 404 silencieux) et l'URL est réécrite.
+            if (hash === 'ACTIONS') {
+                setActiveTab(Tab.ASSISTANT);
+                window.history.replaceState(null, '', '#ASSISTANT');
+                return;
+            }
             if (Object.values(Tab).includes(hash as Tab) && hash !== activeTab) {
                 setActiveTab(hash as Tab);
             }

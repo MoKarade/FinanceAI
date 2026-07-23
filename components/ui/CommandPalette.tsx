@@ -59,14 +59,13 @@ export function makeNavigationActions(setActiveTab: (t: Tab) => void): CommandAc
         { tab: Tab.DEBT, label: 'Dettes', icon: <Icon name="debt" size={sz} />, keywords: ['debt', 'pret', 'credit'] },
         { tab: Tab.INVESTMENTS, label: 'Investissements', icon: <Icon name="investments" size={sz} />, keywords: ['invest', 'bourse', 'actions'] },
         { tab: Tab.FUTURE, label: 'Projection Future', icon: <Icon name="future" size={sz} />, keywords: ['future', 'projection', 'simulation', 'mc'] },
-        { tab: Tab.ACTIONS, label: 'Prochaine action', icon: <Icon name="actions" size={sz} />, keywords: ['action', 'reco', 'recommandation', 'ia', 'conseil', 'prochaine'] },
         { tab: Tab.REAL_ESTATE, label: 'Immobilier', icon: <Icon name="real-estate" size={sz} />, keywords: ['immo', 'maison', 'hypotheque'] },
         { tab: Tab.CHILD, label: 'Enfants', icon: <Icon name="child" size={sz} />, keywords: ['enfant', 'reee', 'famille'] },
         // Phase F.12 — Tab.TRAVEL et Tab.LIFE_EVENTS fusionnés en LIFE_PROJECTS
         { tab: Tab.LIFE_PROJECTS, label: 'Projets de vie', icon: <Icon name="life-projects" size={sz} />, keywords: ['voyage', 'travel', 'mariage', 'event', 'parcours', 'projet'] },
         { tab: Tab.RETIREMENT, label: 'Retraite', icon: <Icon name="retirement" size={sz} />, keywords: ['retraite', 'pension', 'rrq'] },
         { tab: Tab.TAX, label: 'Centre fiscal', icon: <Icon name="tax" size={sz} />, keywords: ['tax', 'impot', 'declaration'] },
-        { tab: Tab.ASSISTANT, label: 'Assistant', icon: <Icon name="bot" size={sz} />, keywords: ['ai', 'claude', 'chat', 'assistant'] },
+        { tab: Tab.ASSISTANT, label: 'Assistant', icon: <Icon name="bot" size={sz} />, keywords: ['ai', 'claude', 'chat', 'assistant', 'action', 'reco', 'recommandation', 'conseil', 'prochaine'] },
         // G22-N5 — Système fusionné dans Configuration ; keywords 'system'/'diagnostic'
         // gardés ici pour que la recherche y mène toujours.
         { tab: Tab.SETTINGS, label: 'Paramètres', icon: <Icon name="settings" size={sz} />, keywords: ['settings', 'config', 'reglages', 'system', 'systeme', 'admin', 'diagnostic', 'version'] },

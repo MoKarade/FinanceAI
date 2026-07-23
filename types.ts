@@ -668,7 +668,7 @@ export enum Tab {
   INVESTMENTS = 'INVESTMENTS',
   FUTURE = 'FUTURE',
   // NBA-PAGE — « Prochaine action » (ex-widget sidebar) devient un onglet à part.
-  ACTIONS = 'ACTIONS',
+  // [ASSISTANT-HUB 2026-07-23] ACTIONS retiré : fusionné dans ASSISTANT (deep-link #ACTIONS redirigé, App.tsx).
   REAL_ESTATE = 'REAL_ESTATE',
   CHILD = 'CHILD',
   TRAVEL = 'TRAVEL',

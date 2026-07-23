@@ -20,7 +20,7 @@ import { REQUIREMENTS } from './requirements';
 const TAB_ORDER: Tab[] = [
     Tab.DASHBOARD, Tab.TRANSACTIONS, Tab.BUDGET, Tab.TAX, Tab.INVESTMENTS,
     Tab.FUTURE, Tab.RETIREMENT, Tab.REAL_ESTATE, Tab.CHILD, Tab.LIFE_PROJECTS,
-    Tab.DEBT, Tab.ACTIONS, Tab.ASSISTANT,
+    Tab.DEBT, Tab.ASSISTANT,
 ];
 
 export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) => {

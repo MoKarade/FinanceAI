@@ -217,14 +217,14 @@ pour toute la réponse (pas de dérive si l'utilisateur navigue).
 
 **Séparation des modèles** :
 - `claude-sonnet-4-6` — chat, analyses budget, suggestions Planning, vision payslip
-- `claude-haiku-4-5` — catégorisation batch transactions (volume + vitesse), justifications rééquilibrage, NextBestAction, optimisation fiscale couple, conseils Immobilier (refonte v3.0)
+- `claude-haiku-4-5` — catégorisation batch transactions (volume + vitesse), justifications rééquilibrage, optimisation fiscale couple, conseils Immobilier (refonte v3.0)
 
 **Services IA exposés** (refonte v3.0, tous gratuits avec clé utilisateur) :
 - `chat()` / `chatStream()` — one-shot et streaming Sonnet
 - `categorizeBatch()` — catégorisation transactions par lot (Haiku)
 - `analyzePayslip()` — Vision IA fiches de paie (Sonnet Vision)
 - `detectSubscriptionsAI()` — détection abonnements récurrents (Haiku)
-- `getNextBestActions()` — Phase B.3, sidebar widget IA (Haiku, cache 1h localStorage)
+- [ASSISTANT-HUB 2026-07-23] `getNextBestActions()` (widget Haiku + cache 1h) RETIRÉ — les « prochaines actions » viennent de `computeFinancialSignals` (mcp/financialSignals.ts, pur, partagé avec le tool MCP), rendues en cartes dans l'onglet Assistant fusionné (`AiChatSignalCards`)
 - `getRebalanceJustifications()` — Phase E.7, batch justifs Investments (Haiku)
 - `getCoupleOptimizationStrategies()` — Phase G.4, Spousal RRSP / pension splitting (Haiku)
 - `getRealEstateAdvice()` — Phase F.8, 5 catégories cost/timing/leverage/tax/risk (Haiku)

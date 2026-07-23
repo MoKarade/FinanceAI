@@ -11,6 +11,7 @@
 import React from 'react';
 import { PageHeader } from './ui/PageHeader';
 import { AiChatView } from './aiChat/AiChatView';
+import { AiChatSignalCards } from './aiChat/AiChatSignalCards';
 
 export const AiAssistant: React.FC = () => {
     return (
@@ -19,8 +20,11 @@ export const AiAssistant: React.FC = () => {
                 page (comme Budget/Dashboard) — sinon le 1er titre saute au <h3> du header interne. */}
             <PageHeader
                 title="Assistant IA"
-                subtitle="Discute avec ton conseiller — il consulte tes vraies données à la demande."
+                subtitle="Tes prochaines actions + ton conseiller — il consulte tes vraies données à la demande."
             />
+            {/* [ASSISTANT-HUB] Cartes de signaux (fusion « Prochaine action ») AU-DESSUS du chat :
+                même moteur que le tool get_next_best_actions — clic = discussion contextualisée. */}
+            <AiChatSignalCards />
             {/* Pleine hauteur sous l'en-tête ; le conteneur borne le scroll interne de la vue. */}
             <div className="h-[calc(100vh-16rem)] min-h-[440px] bg-[#141414]/60 border border-white/10 rounded-3xl overflow-hidden">
                 <AiChatView variant="tab" />

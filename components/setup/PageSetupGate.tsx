@@ -132,14 +132,6 @@ export const PAGE_SETUP: Partial<Record<Tab, PageSetup>> = {
             'Saisis-le, importe un talon, ou explore avec des données de test.',
         requirementIds: ['salary'],
     },
-    [Tab.ACTIONS]: {
-        mode: 'hard',
-        title: 'Prochaine action',
-        intro:
-            'Pour te suggérer la meilleure prochaine action (analyse IA), il me faut ta clé API ' +
-            'Anthropic et ton salaire.',
-        requirementIds: ['anthropicKey', 'salary'],
-    },
     [Tab.ASSISTANT]: {
         mode: 'hard',
         title: 'Assistant IA',

@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-23 (suite) — ASSISTANT-HUB : fusion Prochaine action + Assistant (PR #492)
+> **✅ `[ASSISTANT-HUB]`** (plan PM+architect suivi) : onglet Assistant VISIBLE dans la nav (remplace
+> ACTIONS — cause du « je ne vois pas l'onglet assistant ») ; cartes de signaux purs
+> (`useFinancialSignals`→`computeFinancialSignals`, MÊME moteur que le tool MCP — un seul avis) au-dessus
+> du chat, clic → discussion contextualisée ; widget Haiku getNextBestActions + cache 1h RETIRÉS ;
+> `Tab.ACTIONS` retiré de l'enum (8 sites, typecheck = filet) + redirect `#ACTIONS`→`#ASSISTANT` ;
+> mode discret = clic désactivé (ADR). Tests : parité narrow↔full (garde anti-staleness du hook),
+> clic/discret discriminants, scan redirect. ADR : docs/decisions.md.
+>
 > ## 🟢 Session 2026-07-23 — vague 1.5 : panneau réparé + Budget à 100 % (PR #491)
 > **Fix bug Marc (captures)** : auto-scroll du chat par `scrollTop` sur le CONTENEUR de messages —
 > `scrollIntoView` scrollait le drawer overflow-hidden parent (header/conversation invisibles). Prouvé/

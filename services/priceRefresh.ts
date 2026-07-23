@@ -38,8 +38,17 @@ export interface PricePatch {
      *  est ABANDONNÉ (un prix natif de l'ancienne devise sur la nouvelle = montant mal dénominé). */
     forCurrency: string | undefined;
     /** Self-heal legacy : devise du quote à ÉCRIRE quand l'actif n'en avait pas (le refresh connaît
-     *  la vraie devise du titre — sans ça, un actif legacy USD/EUR resterait compté 1:1 CAD à vie). */
-    healCurrency?: string;
+     *  la vraie devise du titre — sans ça, un actif legacy USD/EUR resterait compté 1:1 CAD à vie).
+     *  [Finding sécurité #494] TYPÉE sur l'union supportée (jamais un cast) : depuis le repli Yahoo,
+     *  `quote.currency` peut porter n'importe quelle devise mondiale (GBP — voire « GBp » pence
+     *  aplati par toUpperCase, facteur ~100×) → une devise hors USD/CAD/EUR ne doit JAMAIS entrer
+     *  dans `Asset.currency` (toCurrencyFactor la replierait 1:1, valorisation fausse). */
+    healCurrency?: Asset['currency'];
+}
+
+/** Devise du quote → union supportée par l'app, ou undefined (rejet). Exporté pour test. */
+export function asSupportedCurrency(c: string | undefined): Asset['currency'] | undefined {
+    return c === 'USD' || c === 'CAD' || c === 'EUR' ? c : undefined;
 }
 
 export type PriceSkipReason = 'no-quote' | 'invalid-price' | 'currency-mismatch' | 'error';
@@ -125,9 +134,13 @@ async function runRefresh(
 
     let quoteCalls = 0;
     for (const a of targets) {
+        // [HIST-MULTI-PROVIDER] Le symbole de COTATION peut différer du symbole saisi : une
+        // résolution de suffixe (`historySymbol`, auto ou saisie) vaut pour les quotes AUSSI —
+        // sinon un ticker nu résolu « CW8 → CW8.PA » garderait un prix figé à vie.
+        const quoteSymbol = a.historySymbol || a.symbol;
         // Pas de provider pour ce symbole (ex. pas de clé Finnhub, titre manuel) → skip IMMÉDIAT,
         // sans consommer de pacing (getQuote rendrait un null instantané de toute façon).
-        if (deps.hasProvider && !deps.hasProvider(a.symbol)) {
+        if (deps.hasProvider && !deps.hasProvider(quoteSymbol)) {
             result.skipped.push({ symbol: a.symbol, reason: 'no-quote' });
             continue;
         }
@@ -138,7 +151,7 @@ async function runRefresh(
 
         let quote: Quote | null;
         try {
-            quote = await deps.getQuote(a.symbol);
+            quote = await deps.getQuote(quoteSymbol);
         } catch (e) {
             // Contrat « getQuote ne rejette jamais » non garanti structurellement : une exception ne
             // doit PAS jeter le progrès des symboles déjà traités ni masquer lesquels ont réussi.
@@ -162,6 +175,18 @@ async function runRefresh(
             result.skipped.push({ symbol: a.symbol, reason: 'currency-mismatch' });
             continue;
         }
+        // [Finding sécurité #494] Actif legacy SANS devise + quote dans une devise NON SUPPORTÉE
+        // (repli Yahoo mondial : GBP/JPY/…) → skip COMPLET : on ne peut ni écrire la devise (hors
+        // union Asset.currency) ni écrire le prix (il serait dénommé dans une devise que l'app ne
+        // convertit pas — repli 1:1 faux, et « GBp » pence aplati serait ~100× le prix).
+        if (!a.currency && quote.currency && !asSupportedCurrency(quote.currency)) {
+            result.skipped.push({ symbol: a.symbol, reason: 'currency-mismatch' });
+            logError({
+                source: 'network', severity: 'warning',
+                message: `Cours de ${a.symbol} ignoré : devise ${quote.currency} non supportée (USD/CAD/EUR seulement) — précise la devise de l'actif ou un symbole coté dans une devise supportée.`,
+            });
+            continue;
+        }
         // Prix IDENTIQUE au stocké → aucun patch (pas d'horodatage « frais » trompeur, pas de churn
         // de push Drive, pas de conflit fantôme multi-appareils). Le quote CONFIRME, il ne change
         // rien. Exception : un actif LEGACY sans devise avec un prix identique reçoit quand même le
@@ -176,7 +201,10 @@ async function runRefresh(
             priceUpdatedAt: now(),
             forCurrency: a.currency || undefined,
         };
-        if (!a.currency && quote.currency) patch.healCurrency = quote.currency;
+        if (!a.currency) {
+            const healed = asSupportedCurrency(quote.currency);
+            if (healed) patch.healCurrency = healed;
+        }
         result.patches.set(a.symbol, patch);
         result.refreshed.push(a.symbol);
     }
@@ -205,7 +233,7 @@ export function applyPricePatches(assets: readonly Asset[], patches: Map<string,
         // NOUVELLE (montant mal dénominé) → patch abandonné, le prochain refresh repartira propre.
         if ((a.currency || undefined) !== p.forCurrency) return a;
         const next: Asset = { ...a, currentPrice: p.currentPrice, priceUpdatedAt: p.priceUpdatedAt };
-        if (p.healCurrency && !a.currency) next.currency = p.healCurrency as Asset['currency'];
+        if (p.healCurrency && !a.currency) next.currency = p.healCurrency; // typé sur l'union — plus de cast
         if ((a.buyPrice || 0) > 0) {
             next.performance = ((p.currentPrice - (a.buyPrice as number)) / (a.buyPrice as number)) * 100;
         }

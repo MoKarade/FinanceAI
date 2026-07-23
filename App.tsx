@@ -497,7 +497,12 @@ export const App: React.FC = () => {
                 const { hydrateAssetHistories, applyHistoryPatches } = await import('./services/history/hydrateAssetHistories');
                 const { getHistory, hasHistoryProvider } = await import('./services/marketData');
                 const res = await hydrateAssetHistories(current, { getHistory, hasProvider: hasHistoryProvider });
-                if (cancelled || res.patches.size === 0) return;
+                if (cancelled) return;
+                // [HIST-MULTI-PROVIDER] Publier le rapport MÊME sans patch (c'est justement quand
+                // rien n'a pu être hydraté que le diagnostic par titre est utile à l'écran).
+                const { setHistorySyncReport } = await import('./services/history/syncDiagnostics');
+                setHistorySyncReport({ at: Date.now(), skipped: res.skipped, patchedCount: res.patches.size });
+                if (res.patches.size === 0) return;
                 // Anti-course : patch par symbole sur l'état FRAIS (un pull Drive pendant l'hydratation
                 // n'est pas écrasé) — même patron qu'applyPricePatches.
                 const fresh = useFinanceStore.getState().assets ?? [];

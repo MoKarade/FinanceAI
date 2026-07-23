@@ -50,9 +50,12 @@ describe('[DETTE-TESTGAP-MARKETDATA] routage pickProvider', () => {
         clearMarketDataCache();
     });
 
-    it('SANS clé Finnhub : un crypto est routable (CoinGecko), une action ne l\'est pas', () => {
+    it('SANS clé Finnhub : un crypto est routable (CoinGecko), une action AUSSI ([HIST-MULTI-PROVIDER] repli Yahoo navigateur)', () => {
         expect(hasQuoteProvider(CRYPTO)).toBe(true);  // CoinGecko indépendant de la clé
-        expect(hasQuoteProvider(STOCK)).toBe(false);  // pas de provider actions sans clé
+        // Avant : false (les actions étaient inquotables sans clé → prix figés à vie). Depuis le
+        // repli quote Yahoo (proxy same-origin), toute action/ETF est quotable dans le navigateur
+        // (jsdom = env navigateur ; la branche hors-navigateur rend toujours false).
+        expect(hasQuoteProvider(STOCK)).toBe(true);
     });
 
     it('AVEC clé Finnhub : l\'action devient routable, le crypto le reste', () => {
@@ -71,12 +74,23 @@ describe('[DETTE-TESTGAP-MARKETDATA] routage pickProvider', () => {
         expect(hosts).not.toContain(FINNHUB_HOST);
     });
 
-    it('SANS clé : getQuote(action) renvoie null (aucun provider — pas de fetch)', async () => {
-        const hosts: string[] = [];
-        stubFetchCapturingHosts(hosts);
+    it('SANS clé : getQuote(action) va au REPLI Yahoo (proxy same-origin), jamais à Finnhub', async () => {
+        // [HIST-MULTI-PROVIDER] Avant : null sans réseau (action inquotable sans clé). Désormais le
+        // repli Yahoo répond — URLs RELATIVES `/api/...` (le mock par hostname ne les voit pas).
+        const relativeUrls: string[] = [];
+        vi.stubGlobal('fetch', vi.fn(async (input: string | URL) => {
+            const s = String(input);
+            if (s.startsWith('/')) {
+                relativeUrls.push(s);
+                return new Response(JSON.stringify({
+                    chart: { result: [{ meta: { currency: 'USD', regularMarketPrice: 101 } }] },
+                }), { status: 200 });
+            }
+            throw new Error(`appel direct inattendu : ${s}`); // ni finnhub.io ni yahoo.com en direct
+        }));
         const q = await getQuote(STOCK);
-        expect(q).toBeNull();
-        expect(hosts).toHaveLength(0); // court-circuité avant tout réseau
+        expect(q?.price).toBe(101);
+        expect(relativeUrls.some((u) => u.startsWith('/api/history/yahoo/'))).toBe(true);
     });
 
     it('AVEC clé : un crypto va TOUJOURS à CoinGecko, JAMAIS à Finnhub (le routage prime sur la clé)', async () => {

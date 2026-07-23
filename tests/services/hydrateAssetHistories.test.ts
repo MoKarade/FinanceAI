@@ -302,6 +302,89 @@ describe('hydrateAssetHistories — variantes de suffixe', () => {
     });
 });
 
+describe('hydrateAssetHistories — [HIST-MULTI-PROVIDER] force + diagnostic', () => {
+    it('force:true → un actif FRAIS est quand même resynchronisé (geste explicite « Resynchroniser »)', async () => {
+        const getHistory = vi.fn(async () => [{ date: '2026-01-10', close: 29 }]);
+        const res = await hydrateAssetHistories(
+            [mk({ priceHistory: [{ date: '2026-01-10', price: 28 }], lastHistorySync: NOW - 1000 })], // frais
+            { getHistory, now: () => NOW, sleep: async () => {} },
+            { force: true },
+        );
+        expect(getHistory).toHaveBeenCalledTimes(1); // sans force : skip 'fresh', 0 appel
+        expect(res.patches.get('XEQT.TO')!.priceHistory).toEqual([{ date: '2026-01-10', price: 29 }]);
+    });
+
+    it('force:true → l\'éligibilité de base tient (sans symbole/détention : aucun appel)', async () => {
+        const getHistory = vi.fn(async () => [{ date: '2026-01-10', close: 29 }]);
+        await hydrateAssetHistories(
+            [mk({ quantity: 0, purchases: [], dateBought: undefined, buyPrice: undefined })],
+            { getHistory, now: () => NOW, sleep: async () => {} },
+            { force: true },
+        );
+        expect(getHistory).not.toHaveBeenCalled();
+    });
+
+    it('skip « empty » introuvable → detail ACTIONNABLE + triedSymbols (tout ce qui a été essayé)', async () => {
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'CW8', currency: 'EUR', currentPrice: 500 })],
+            { getHistory: async () => [], now: () => NOW, sleep: async () => {} },
+        );
+        const skip = res.skipped[0];
+        expect(skip.reason).toBe('empty');
+        expect(skip.triedSymbols).toEqual(['CW8', 'CW8.PA', 'CW8.DE', 'CW8.AS', 'CW8.MI']);
+        expect(skip.detail).toContain('Introuvable');
+        expect(skip.detail).toContain('CW8.PA'); // la liste essayée est DITE (pas un échec muet)
+    });
+
+    it('skip « empty » après variante REFUSÉE (plausibilité) → detail explique la confusion de ticker', async () => {
+        const getHistory = vi.fn(async (s: string) =>
+            s === 'CW8.PA' ? [{ date: '2026-01-10', close: 5000 }] : []);
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'CW8', currency: 'EUR', currentPrice: 500 })],
+            { getHistory, now: () => NOW, sleep: async () => {} },
+        );
+        const skip = res.skipped[0];
+        expect(skip.reason).toBe('empty');
+        expect(skip.detail).toContain('CW8.PA');
+        expect(skip.detail).toContain('5000');   // le cours refusé est montré
+        expect(skip.detail).toContain('500');    // vs le prix de l'actif → diagnostic complet
+    });
+});
+
+describe('hydrateAssetHistories — [Finding code-reviewer #494] mutex module', () => {
+    it('deux passes CONCURRENTES (boot + bouton) sont SÉRIALISÉES — jamais deux fetches entrelacés', async () => {
+        // Sonde du finding : sans mutex, 2 appels réseau réels pour le même symbole en parallèle
+        // (débit doublé face à CoinGecko free ~30/min → 429 en « panne » trompeuse au diagnostic).
+        const order: string[] = [];
+        const getHistory = vi.fn(async (s: string) => {
+            order.push(`start:${s}`);
+            await new Promise((r) => setTimeout(r, 5));
+            order.push(`end:${s}`);
+            return [{ date: '2026-01-10', close: 1 }];
+        });
+        await Promise.all([
+            hydrateAssetHistories([mk({ symbol: 'P1A' }), mk({ symbol: 'P1B' })], { getHistory, now: () => NOW, sleep: async () => {} }),
+            hydrateAssetHistories([mk({ symbol: 'P2A' })], { getHistory, now: () => NOW, sleep: async () => {} }, { force: true }),
+        ]);
+        // La passe 2 ne DÉMARRE qu'après la fin complète de la passe 1 (aucun entrelacement).
+        expect(order).toEqual(['start:P1A', 'end:P1A', 'start:P1B', 'end:P1B', 'start:P2A', 'end:P2A']);
+    });
+
+    it('une passe en ÉCHEC (deps cassées → skips error) ne bloque pas la file — la suivante aboutit', async () => {
+        // La défense PAR ACTIF convertit même un deps invalide en skip 'error' (la fonction ne
+        // rejette jamais en pratique) ; le .catch de la file reste une ceinture. On prouve que la
+        // passe suivante tourne normalement derrière une passe entièrement en échec.
+        const bad = hydrateAssetHistories([mk({})], {
+            getHistory: undefined as never, now: () => NOW, sleep: async () => {},
+        });
+        const good = hydrateAssetHistories([mk({})], {
+            getHistory: async () => [{ date: '2026-01-10', close: 1 }], now: () => NOW, sleep: async () => {},
+        });
+        expect((await bad).skipped[0]?.reason).toBe('error'); // échec honnête, pas un crash
+        expect((await good).patches.has('XEQT.TO')).toBe(true);
+    });
+});
+
 describe('mergePriceHistories', () => {
     it('union par date, le nouveau gagne, points invalides de l\'ancien purgés, tri croissant', () => {
         expect(mergePriceHistories(

@@ -199,16 +199,23 @@ API keys (Anthropic, Finnhub)
   └─► Zustand + localStorage chiffré
 
 Historique de portefeuille / Courbes de cours
-  ├─ Sources : Finnhub (stock/ETF) + Yahoo Finance (via proxy same-origin)
-  │            + CoinGecko (crypto) + CSV legacy importé
-  ├─ Pipeline : hydrateAssetHistories (boot, pacing 2,5s) 
-  │    → `getHistory` par symbole (avec variantes devise Yahoo)
-  │    → stocké IDB + cache 24h
-  │    → buildMarketData (pur, colonnes AGRÉGÉES multi-comptes)
-  ├─ Contrat : null = erreur (jamais cachée), [] = vide valide (24h cache)
+  ├─ **Chaîne multi-providers** : 
+  │    Finnhub (stock/ETF US) → fallback Yahoo Finance (Euronext/CAD via proxy rewrite Vercel)
+  │    + CoinGecko (crypto) + CSV legacy importé
+  ├─ Pipeline hydratation :
+  │    hydrateAssetHistories (boot, pacing 2,5s) 
+  │      → `getHistory(symbol, asset.currency)` par titre + devise
+  │      → resolve variantes suffixes (Asset.historySymbol, ex. VFV.TO vs VFV)
+  │      → **HistorySyncDoctor** : diagnostic par titre (symbole cotation inline, recherche
+  │         `/api/search/yahoo` par NOM de titre sans historique, interface UI Investissements)
+  │      → stocké IDB + cache 24h (contrat : [] = vide valide cacheable ; null = erreur jamais cachée)
+  │      → buildMarketData (pur, colonnes AGRÉGÉES multi-comptes, TOTAL + repli valeur actuelle)
+  ├─ Quotes fraîches :
+  │    Bouton « Actualiser les cours » = purge cache history + hydratation forcée
+  │    + quotes en temps réel via `priceRefresh` (Finnhub brut ou Yahoo chart `meta.regularMarketPrice`)
   ├─ Repli no-fake-data : titres sans historique → valeur actuelle signalée
   │    (`noHistorySymbols` + HistoryCoverageNote sur Dashboard/Investissements)
-  ├─ Persistance : Asset.historySymbol (additif) pour resolver variantes suffixes
+  ├─ Persistance : Asset.historySymbol (additif, par titre) pour resolver variantes durables
   └─► Dashboard (piles), Investissements (chips TOTAL), Futur (poids/gains)
 ```
 

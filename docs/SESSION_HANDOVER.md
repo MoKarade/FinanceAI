@@ -4,12 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟢 Session 2026-07-23 (suite 7) — INVEST-PERF-PERIOD : sélecteur de période Performance (PR #498, en panel)
+> ## 🟢 Session 2026-07-23 (suite 8) — QUOTE-NEGATIVE-CACHE, QUOTE-MARKET-TIMESTAMP : cache négatif + horodatage marché (PR #499, panel fait)
+> **✅ `[QUOTE-NEGATIVE-CACHE]` + `[QUOTE-MARKET-TIMESTAMP]`** (PR #499) : cache négatif TTL par symbole —
+> 3 échecs CONSÉCUTIFS (fenêtre 7 j) → skip 24 h quotes / 7 j profils, auto-guérison à l'expiration, entrées
+> non FINIES rejetées à la lecture (durcissement anti-tampering `1e999`→Infinity, finding sécurité), purge au
+> bouton Actualiser + changement de clé provider. Contrat historique null=erreur / []=vide cacheable PRÉSERVÉ
+> (périmètre historique exclu volontairement). Horodatage marché (`priceUpdatedAt` = heure du COURS si plausible
+> ≥ 2000-01-01 et ≤ maintenant+10 min, sinon heure de fetch). BACKLOG cochés, CHANGELOG fait.
+>
+> ## 🟢 Session 2026-07-23 (suite 7) — INVEST-PERF-PERIOD : sélecteur de période Performance (PR #498, MERGÉE)
 > **En cours `[INVEST-PERF-PERIOD]`** : sélecteur de période (24h / 7j / 1M / 3M / 6M / YTD / 1a) sur la carte
 > Performance d'Investissements + chips du graphe + cartes par titre. Helper pur `services/history/periodReturn.ts` :
 > `seriesReturnPct` (variation valeur TOTAL/buckets) + `priceReturnPct` (performance titre natif via `priceHistory`).
 > Benchmark Marché = prix CW8/MSCI (repli CSV). Pas de baseline → null/« — ». Score santé : momentum fixé 24h.
-> Tests 3003 verts (+18). Panel en cours. **Suite : `/review-all` si pas fini + merge si gate vert.**
+> Panel : finding ÉLEVÉ corrigé (`isBenchmarkCandidate` — « MSCI » nu matchait Amundi MSCI Em Asia) + tri
+> déterministe dates dupliquées. MERGÉE (squash `7fbdccb`).
 >
 > ## 🟢 Session 2026-07-23 (suite 6) — DEP-DEPENDABOT-2026-07 : npm audit + assetMeta seed (PR #497)
 > **✅ `[DEP-DEPENDABOT-2026-07]`** : `npm audit fix` — HIGH corrigés (fast-uri 0.1.50, dompurify 3.0.11) ;
@@ -1037,9 +1046,9 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#497** [DEP-DEPENDABOT-2026-07] (npm audit fix fast-uri/dompurify HIGH, assetMeta seed EPA:GBS/AASI, 2026-07-23) ; suite de **#496** INVEST-ALLOC-GEO-SECTOR |
+| **Dernière PR mergée** | **#498** [INVEST-PERF-PERIOD] (période de performance au choix, 2026-07-23) ; **#499** [QUOTE-NEGATIVE-CACHE][QUOTE-MARKET-TIMESTAMP] en auto-merge (panel fait) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
-| **Tests** | **2985/2985 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
+| **Tests** | **~3020 verts, suite complète** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation — compte exact au gate/CI) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
 | **Schema store** | **v7** (Zustand persist, migrations v1→v7) |

@@ -65,8 +65,12 @@ function load(): Record<string, NegativeEntry> {
                 if (parsed && typeof parsed === 'object') {
                     for (const [key, e] of Object.entries(parsed as Record<string, unknown>)) {
                         const entry = e as Partial<NegativeEntry>;
-                        if (typeof entry?.fails === 'number' && typeof entry?.lastFailAt === 'number') {
-                            _entries[key] = { fails: entry.fails, lastFailAt: entry.lastFailAt, until: typeof entry.until === 'number' ? entry.until : undefined };
+                        // FINITUDE exigée (finding sécurité #499) : JSON.parse accepte `1e999` →
+                        // Infinity, typeof 'number' — un `until` infini gèlerait le symbole à VIE
+                        // (self-heal TTL cassé). Entrée non finie = corrompue → ignorée.
+                        if (Number.isFinite(entry?.fails) && Number.isFinite(entry?.lastFailAt)
+                            && (entry.until === undefined || Number.isFinite(entry.until))) {
+                            _entries[key] = { fails: entry.fails as number, lastFailAt: entry.lastFailAt as number, until: entry.until };
                         }
                     }
                 }

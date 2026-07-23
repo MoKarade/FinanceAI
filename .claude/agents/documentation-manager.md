@@ -15,6 +15,12 @@ C'est TA responsabilité n°1, pas une option. Le handover est l'état que LIT l
 - **Table §1 « État en une page »** : mets à jour si ça a bougé — **Dernière PR mergée**, **nb de tests** (`~N/N verts`), schema store, auth, toute valeur d'indicateur changée. (C'est cette table qui était périmée #292/2042/Cloudflare → #350.)
 - **Chantiers ouverts / suite proposée** : reflète ce qui vient d'être fermé/ouvert.
 Si on te lance SANS contexte des PR récentes, lis `git log --oneline -15 origin/main` + `docs/BACKLOG.md` (ID récemment cochés) pour reconstituer ce qui a changé depuis le dernier état du handover.
+⚠️ **ZÉRO fait inventé** (récidive 2026-07-23, PR #499) : chaque CHIFFRE écrit au handover (seuil, TTL, nb de
+tests) doit être LU dans le diff/le code — « 3 échecs ≥15 s » a été inventé alors que le code dit « fenêtre 7 j ».
+Et **« Dernière PR mergée » = une PR dont le merge est CONFIRMÉ** (dans `git log origin/main`), JAMAIS la PR en
+cours de panel/auto-merge — la marquer mergée d'avance fausse la reprise de la prochaine session. En cas de doute
+sur un état (mergée ? nb exact de tests ?), écrire l'état INCERTAIN honnêtement (« en auto-merge », « ~N, compte
+exact au gate ») plutôt qu'un fait précis non vérifié.
 
 Sur le diff (et la doc associée) :
 1. **Incohérences code↔doc** : un champ / calcul / règle / valeur fiscale ajouté ou changé sans sa doc (`PROJECTION.md`, `PROJECTION_OUTPUT_SCHEMA.md`, `FISCAL_REFERENCE.md`, `ARCHITECTURE.md`, README). Une valeur fiscale doc ≠ code = drapeau (mais l'arbitrage de la BONNE valeur revient à financial-integrity).

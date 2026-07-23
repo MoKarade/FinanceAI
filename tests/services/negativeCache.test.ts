@@ -92,6 +92,14 @@ describe('negativeCache', () => {
         expect(localStorage.getItem('financeai:marketdata:negcache:v1')).not.toContain('VIEUX');
     });
 
+    it('une entrée à `until` INFINI (tampering `1e999`) est rejetée à la lecture — pas de gel à vie', () => {
+        // Finding sécurité #499 : JSON.parse('1e999') === Infinity, typeof 'number' → sans garde de
+        // finitude, shouldSkipNegative resterait vrai pour toujours (self-heal TTL cassé).
+        localStorage.setItem('financeai:marketdata:negcache:v1',
+            '{"quote::EVIL":{"fails":3,"lastFailAt":1,"until":1e999}}');
+        expect(shouldSkipNegative('quote', 'EVIL', T0)).toBe(false);
+    });
+
     it('un JSON corrompu dans localStorage repart propre (jamais de crash)', () => {
         localStorage.setItem('financeai:marketdata:negcache:v1', '{corrompu');
         expect(shouldSkipNegative('quote', 'GIC', T0)).toBe(false);

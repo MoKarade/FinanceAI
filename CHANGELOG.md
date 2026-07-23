@@ -6,6 +6,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Chat : panneau réparé + Budget compris à 100 % (vague 1.5)] — 2026-07-23
+
+### Correctif (bug signalé Marc, captures)
+- **Panneau de chat réparé** : l'auto-scroll utilisait `scrollIntoView`, qui fait défiler TOUS les
+  conteneurs parents — y compris le panneau lui-même → le header et la conversation sortaient par le
+  haut (saisie affichée en haut, chat invisible, « je vois pas le chat »). Le défilement cible
+  maintenant UNIQUEMENT le fil de messages. Vérifié en vrai navigateur (test e2e Playwright ajouté :
+  header en haut, messages au milieu, saisie en bas).
+
+### Nouveau (demande Marc « qu'il comprenne toute la page + les calculs derrière »)
+- **Budget compris à 100 %** : le chat voit désormais TOUTES les cartes de la page — Impact à long
+  terme, Sensibilité, projection Fin de mois, ventilation des revenus (Salaire/Divers), statut
+  Excédentaire/Déficitaire, dépassements détectés — chacune avec sa PROVENANCE (d'où vient le
+  chiffre, quel calcul derrière : ex. « Impact à long terme = patrimoine successoral de la
+  projection Futur, rentes RRQ/PSV incluses »). « Explique-moi ce 6 104 080 $ » reçoit maintenant
+  une vraie réponse au lieu d'un « je ne vois pas ce chiffre ».
+- Prochaines vagues : mêmes cartes+provenance sur les autres onglets (V2 au BACKLOG).
+
 ## [unreleased — Chat conscient de la page (vague 1)] — 2026-07-22
 
 ### Nouveau (demande Marc « le chat peut réagir à tout sur la page »)

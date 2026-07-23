@@ -104,6 +104,20 @@ describe('describeViewContextForPrompt', () => {
         expect(viewContextMatchesTab(getViewContext(), Tab.BUDGET)).toBe(true);
     });
 
+    it('[Vague 1.5] cartes → libellé : valeur (provenance) — le chat peut EXPLIQUER le chiffre', () => {
+        publishViewContext('budget', detail({
+            cards: [
+                { label: 'Impact à long terme', value: '6 104 080 $', note: 'patrimoine successoral projeté en 2066 — vient de la projection Futur' },
+                { label: 'Dépassements détectés', value: '1 poste(s) : <script>Abonnements</script>', note: 'postes au-dessus de la cible' },
+            ],
+        }));
+        const line = describeViewContextForPrompt(Tab.BUDGET);
+        expect(line).toContain('Impact à long terme : 6 104 080 $');
+        expect(line).toContain('vient de la projection Futur');
+        expect(line).toContain('PROVENANCE');
+        expect(line).not.toContain('<script>'); // belt : les valeurs de cartes sont assainies aussi
+    });
+
     it('filtre personne actif → mentionné dans la ligne (encadré <DONNEES>, texte utilisateur)', () => {
         publishViewContext('budget', detail({ personFilterLabel: 'Anna' }));
         expect(describeViewContextForPrompt(Tab.BUDGET)).toContain('dépenses de <DONNEES>Anna</DONNEES> seulement');

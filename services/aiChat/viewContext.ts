@@ -37,6 +37,12 @@ export interface BudgetViewDetail {
     topCategories: Array<{ name: string; spent: number }>;
     /** Libellé du filtre personne actif (mode couple) — TEXTE UTILISATEUR. Absent = tout combiné. */
     personFilterLabel?: string;
+    /** [Vague 1.5 — demande Marc « qu'il comprenne TOUTE la page + les calculs derrière »] Autres
+     *  cartes affichées : `value` = la valeur TELLE QU'AFFICHÉE (formatCAD de la page — réutilisée,
+     *  jamais recalculée), `note` = PROVENANCE du chiffre (quel calcul/source derrière — le chat
+     *  peut alors l'EXPLIQUER). ⚠️ Tout champ peut porter du texte utilisateur (ex. noms de postes
+     *  dans une alerte) : le prompt builder assainit CHAQUE champ (belt). Borné à ~8 cartes. */
+    cards?: Array<{ label: string; value: string; note?: string }>;
 }
 
 /** Union à étendre page par page (vague 2+). */
@@ -153,5 +159,13 @@ export function describeViewContextForPrompt(activeTab: Tab): string {
     const filterNote = d.personFilterLabel
         ? ` Filtre actif : dépenses de <DONNEES>${sanitizePromptText(d.personFilterLabel)}</DONNEES> seulement.`
         : '';
-    return `CONTEXTE ÉCRAN : l'utilisateur est sur l'onglet « ${tabLabel} » — période affichée : ${d.periodLabel} (vue ${d.timeViewLabel}).${filterNote} Chiffres AFFICHÉS À L'ÉCRAN (cite CEUX-CI pour toute question sur « ce qui est affiché » — pour un chiffre absent d'ici, consulte tes outils en le disant) : ${parts.join(', ')}.${top.length > 0 ? ` Top catégories dépensées : <DONNEES>${top.join(', ')}</DONNEES>.` : ''} Si un outil rend un montant DIFFÉRENT pour un concept proche, ce ne sont PAS des contradictions : des PÉRIMÈTRES différents (période affichée vs agrégat mensuel standard) — cite le chiffre ÉCRAN pour « ce qui est affiché » et explique la différence de base si l'outil est aussi pertinent.`;
+    // Cartes additionnelles : chaque champ assaini (belt — une carte peut interpoler du texte
+    // utilisateur), maxLen généreux pour ne pas tronquer les notes de provenance code-auteur.
+    const cards = (d.cards ?? [])
+        .slice(0, 8)
+        .map((c) => `${sanitizePromptText(c.label, 120)} : ${sanitizePromptText(c.value, 120)}${c.note ? ` (${sanitizePromptText(c.note, 300)})` : ''}`);
+    const cardsNote = cards.length > 0
+        ? ` Autres cartes affichées sur la page — avec la PROVENANCE de chaque chiffre entre parenthèses (sers-t'en pour EXPLIQUER un chiffre demandé) : ${cards.join(' ; ')}.`
+        : '';
+    return `CONTEXTE ÉCRAN : l'utilisateur est sur l'onglet « ${tabLabel} » — période affichée : ${d.periodLabel} (vue ${d.timeViewLabel}).${filterNote} Chiffres AFFICHÉS À L'ÉCRAN (cite CEUX-CI pour toute question sur « ce qui est affiché » — pour un chiffre absent d'ici, consulte tes outils en le disant) : ${parts.join(', ')}.${top.length > 0 ? ` Top catégories dépensées : <DONNEES>${top.join(', ')}</DONNEES>.` : ''}${cardsNote} Si un outil rend un montant DIFFÉRENT pour un concept proche, ce ne sont PAS des contradictions : des PÉRIMÈTRES différents (période affichée vs agrégat mensuel standard) — cite le chiffre ÉCRAN pour « ce qui est affiché » et explique la différence de base si l'outil est aussi pertinent.`;
 }

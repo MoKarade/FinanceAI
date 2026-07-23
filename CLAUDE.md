@@ -847,7 +847,12 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   un consommateur futur sans useMemo = boucle publish→notify→re-render→nouvel objet→effet → gel 100 % CPU puis OOM —
   un contrat « mémoïse ! » en commentaire ne protège rien). (5) **Un `system` qui varie par envoi invalide le préfixe
   de prompt-caching ENTIER** (pièces jointes incluses) → scinder en blocs [statique+cache_control, dynamique] dès
-  qu'on injecte du contenu par-envoi dans system. ADR complet : docs/decisions.md.
+  qu'on injecte du contenu par-envoi dans system. ADR complet : docs/decisions.md. (6) **`scrollIntoView` sur une
+  sentinelle fait défiler TOUS les ancêtres scrollables — y compris un drawer `overflow-hidden` (scrollable par
+  script)** : header/fil sortaient par le haut du panneau (bug Marc, intermittent). Auto-scroll d'un fil de messages =
+  `scrollTop = scrollHeight` sur le CONTENEUR du fil, jamais scrollIntoView. Vérité d'un bug de layout = e2e Chromium
+  réel (env cloud : `PW_LOCAL_CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, le @playwright/test du repo
+  attend une révision plus récente que celle préinstallée).
 - ⚠️ **[B3B4-CHAT-MODEL-COST] 2026-07-22 — modèle par conversation + coût réel, leçons** : (1) **des ids/tarifs
   de modèles consommés par l'UI = module LÉGER source-unique** (`services/aiChat/models.ts`/`pricing.ts`, zéro
   import) — `services/claude.ts` (qui tire le SDK) en DÉRIVE ses constantes, jamais l'inverse ni deux littéraux

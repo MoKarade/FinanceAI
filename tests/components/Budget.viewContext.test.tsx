@@ -96,4 +96,18 @@ describe('Budget — publication du contexte d\'écran', () => {
         render(<Budget {...props} />);
         expect(getViewContext()?.detail.totalBudgetTarget).toBe(800);
     });
+
+    it('[Vague 1.5] les CARTES de la page sont publiées avec leur provenance (ventilation revenus, statut)', () => {
+        render(<Budget {...props} />);
+        const cards = getViewContext()?.detail.cards ?? [];
+        const labels = cards.map((c) => c.label);
+        expect(labels).toContain('Revenus (ventilation)');
+        expect(labels).toContain('Statut du budget');
+        expect(labels).toContain('Fin de mois (projection)'); // mois courant (periodOffset 0)
+        // Sans lastProjection dans le store : PAS de carte Impact à long terme fabriquée (no-fake-data).
+        expect(labels).not.toContain('Impact à long terme');
+        const ventilation = cards.find((c) => c.label === 'Revenus (ventilation)')!;
+        expect(ventilation.value).toContain('Salaire'); // valeur telle qu'affichée (formatCAD de la page)
+        expect(ventilation.note).toContain('pas le salaire déclaré'); // provenance explicite
+    });
 });

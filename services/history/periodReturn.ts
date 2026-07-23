@@ -39,6 +39,18 @@ export function periodStartDate(refDate: string, period: Exclude<PerfPeriod, '24
 const pct = (from: number, to: number): number => ((to - from) / from) * 100;
 
 /**
+ * Le titre/la série est-il le benchmark « marché » (MSCI World / CW8) ?
+ * Matching STRICT (finding ÉLEVÉ panel #498, prouvé par sonde) : un `name.includes('MSCI')` nu
+ * matchait « Amundi MSCI Em Asia » (AASI.PA, titre réel du portefeuille) → la carte « Marché »
+ * pouvait afficher l'Asie émergente comme benchmark mondial selon l'ordre des actifs — 3ᵉ
+ * instance de la classe « matching par sous-chaîne » (cf historyKeyMatchesSymbol).
+ */
+export function isBenchmarkCandidate(symbol: string, name?: string): boolean {
+    if (symbol.toUpperCase().includes('CW8')) return true; // CW8.PA / EPA:CW8 / CW8
+    return (name || '').toUpperCase().includes('MSCI WORLD');
+}
+
+/**
  * Variation % de la série `key` du marketData entre son dernier point et la DERNIÈRE ligne datée
  * ≤ (dernière date − période) qui porte la clé (> 0). null si pas de baseline dans la fenêtre.
  */
@@ -78,7 +90,12 @@ export function priceReturnPct(
 ): number | null {
     const hist = (priceHistory || []).filter((p) => p.date && Number.isFinite(p.price) && p.price > 0);
     if (hist.length === 0) return null;
-    const sorted = [...hist].sort((a, b) => (a.date < b.date ? -1 : 1));
+    // Comparateur STRICT (0 sur égalité — finding silent-failure #498) : un comparateur qui ne
+    // rend jamais 0 donne un ordre DÉPENDANT DE L'ORDRE D'ARRIVÉE pour deux entrées à la même
+    // date → `last` (la référence du calcul) devenait non déterministe. Avec 0, le tri est stable
+    // (ES2019) : à dates égales, l'ordre d'insertion est préservé — la DERNIÈRE entrée écrite
+    // gagne, déterministe. (mergePriceHistories dédoublonne déjà par date en amont — ceinture.)
+    const sorted = [...hist].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
     const last = sorted[sorted.length - 1];
     if (period === '24H') {
         const prev = sorted[sorted.length - 2];

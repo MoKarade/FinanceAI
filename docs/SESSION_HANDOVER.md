@@ -4,6 +4,13 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-23 (suite 7) — INVEST-PERF-PERIOD : sélecteur de période Performance (PR #498, en panel)
+> **En cours `[INVEST-PERF-PERIOD]`** : sélecteur de période (24h / 7j / 1M / 3M / 6M / YTD / 1a) sur la carte
+> Performance d'Investissements + chips du graphe + cartes par titre. Helper pur `services/history/periodReturn.ts` :
+> `seriesReturnPct` (variation valeur TOTAL/buckets) + `priceReturnPct` (performance titre natif via `priceHistory`).
+> Benchmark Marché = prix CW8/MSCI (repli CSV). Pas de baseline → null/« — ». Score santé : momentum fixé 24h.
+> Tests 3003 verts (+18). Panel en cours. **Suite : `/review-all` si pas fini + merge si gate vert.**
+>
 > ## 🟢 Session 2026-07-23 (suite 6) — DEP-DEPENDABOT-2026-07 : npm audit + assetMeta seed (PR #497)
 > **✅ `[DEP-DEPENDABOT-2026-07]`** : `npm audit fix` — HIGH corrigés (fast-uri 0.1.50, dompurify 3.0.11) ;
 > résiduel @hono/node-server (2 MODERATE, inexploitable mesuré) documenté BACKLOG. + 2 entrées seed assetMeta

@@ -182,6 +182,20 @@
   Benchmark « Marché » = prix natif du titre CW8/MSCI détenu (repli série CSV). Pas de baseline dans la
   fenêtre (titre plus récent que la période) → `null`/« — » honnête, jamais un 0. Score de santé : momentum
   FIXÉ sur 24h (indépendant du sélecteur — badge header stable).
+- [ ] **`[PERF-STALE-TAIL-ZERO]`** (S, finding MOYEN code-reviewer #498, pré-existant mais désormais en HEADLINE) —
+  quand la queue d'une série est RACCORDÉE au même `currentPrice` sur 2 jours (`quoteFresh`, cas « quote OK,
+  candles KO » type GBS.PA), `seriesReturnPct(…, '24H')` rend un **0,00 %** techniquement exact mais trompeur
+  (« ça n'a pas bougé » = donnée figée, pas marché plat). Avant, ce 0 n'alimentait que le score ; le sélecteur
+  de période l'expose en carte Performance. Piste : marquer les lignes raccordées (flag `synthetic` par clé) et
+  rendre « — » ou un badge « donnée figée » quand latest ET baseline sont synthétiques.
+- [ ] **`[A11Y-PILL-RADIOGROUP]`** (S, finding a11y-auditor #498, pré-existant — 3 instances page Investissements) —
+  `components/ui/Pill.tsx` rend un radiogroup ARIA sans navigation flèches (pattern APG : roving tabindex
+  `tabIndex={isSelected ? 0 : -1}` + flèches) → Tab traverse chaque option une à une (7 arrêts pour le sélecteur
+  de période). Corriger UNE fois dans le composant partagé (profite aux 3+ usages). Cible tactile `sm` (~22 px)
+  sous 44 px : à évaluer dans le même passage.
+- [ ] **`[A11Y-DASH-SRONLY]`** (S, finding a11y-auditor #498, transverse) — les « — » (pas de donnée) rendus
+  par formatCAD/formatPercent et les KPI null n'ont pas d'alternative sr-only « Pas de donnée » ; convention
+  GLOBALE de l'app → ticket transverse (ne pas corriger site par site).
 - [x] **`[HIST-GOOGLE-PARITY]`** — ✅ 2026-07-23 absorbé par [HIST-COVERAGE-TOTAL] (couverture complète livrée ;
   l'écart résiduel attendu vs Google = granularité daily + heure FX, documenté ci-dessous). Question Marc :
   (« utiliser exactement la courbe de google finance c'est possible ? ») —

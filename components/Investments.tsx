@@ -24,7 +24,7 @@ import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import { HistoryCoverageNote } from './dashboard/HistoryCoverageNote';
 import { HistorySyncDoctor } from './investments/HistorySyncDoctor';
 import { historyKeyMatchesSymbol } from '../services/history/buildMarketData';
-import { seriesReturnPct, priceReturnPct, PERF_PERIODS, PERF_PERIOD_LABELS, type PerfPeriod } from '../services/history/periodReturn';
+import { seriesReturnPct, priceReturnPct, isBenchmarkCandidate, PERF_PERIODS, PERF_PERIOD_LABELS, type PerfPeriod } from '../services/history/periodReturn';
 import { StockChart } from './StockChart';
 import { resolveAssetMeta, lookupSeedMeta, CANONICAL_SECTORS, CANONICAL_REGIONS } from '../services/assetMeta';
 import { assetValueCad, toCurrencyFactor } from '../services/portfolio';
@@ -299,19 +299,28 @@ export const Investments: React.FC<InvestmentsProps> = ({
             return { id: k, name, trend, isTotal };
         }).filter((x): x is SeriesWithTrend => x !== null).sort((a, b) => {
             if (a.isTotal !== b.isTotal) return a.isTotal ? -1 : 1;
-            return (b.trend ?? -Infinity) - (a.trend ?? -Infinity); // « — » en queue
+            // « — » (null) en queue — sans soustraction d'Infinity (deux null → NaN, comparateur
+            // hors-spec ; finding FAIBLE panel #498).
+            if (a.trend === null && b.trend === null) return 0;
+            if (a.trend === null) return 1;
+            if (b.trend === null) return -1;
+            return b.trend - a.trend;
         });
         const totalSerie = availableSeriesWithTrend.find(s => s.isTotal);
         // [PORTFOLIO-HISTORY / no-fake-data] null = « pas de donnée » (affiché « — »), jamais un
         // +0.00% présenté comme mesuré quand l'historique manque (finding scout 2026-07-22).
         const portfolioTrend = totalSerie?.trend ?? null;
-        // [INVEST-PERF-PERIOD] Benchmark = performance de PRIX NATIF du titre CW8/MSCI détenu
-        // (insensible aux ACHATS — la colonne CSV, en valeur, gonflerait le « marché » de chaque
-        // apport sur les périodes longues). Repli sur la série CSV si le priceHistory manque.
-        const benchAsset = assets.find(a =>
-            a.symbol.toUpperCase().includes('CW8') || (a.name || '').toUpperCase().includes('MSCI'));
-        const cw8Serie = availableSeriesWithTrend.find(s => s.id.includes('CW8') || s.name.includes('MSCI'));
-        const benchmarkTrend = priceReturnPct(benchAsset?.priceHistory, perfPeriod) ?? cw8Serie?.trend ?? null;
+        // [INVEST-PERF-PERIOD] Benchmark = performance de PRIX NATIF du titre CW8/MSCI World détenu
+        // (insensible aux ACHATS — une série en valeur gonflerait le « marché » de chaque apport).
+        // Matching STRICT via isBenchmarkCandidate (finding ÉLEVÉ panel #498 : `includes('MSCI')`
+        // nu matchait « Amundi MSCI Em Asia » → mauvais titre affiché comme benchmark mondial).
+        // Repli série CSV (sémantique VALEUR) restreint à 24H : au-delà, la valeur diverge du prix
+        // à chaque apport → « — » honnête plutôt qu'un chiffre à sémantique différente sous le
+        // même libellé (finding MOYEN panel #498).
+        const benchAsset = assets.find(a => isBenchmarkCandidate(a.symbol, a.name));
+        const cw8Serie = availableSeriesWithTrend.find(s => isBenchmarkCandidate(s.id, s.name));
+        const benchmarkTrend = priceReturnPct(benchAsset?.priceHistory, perfPeriod)
+            ?? (perfPeriod === '24H' ? cw8Serie?.trend ?? null : null);
 
         // (c) ALLOCATION = portefeuille réel (assets). trendPct = performance de PRIX NATIF du titre
         // sur la période choisie ([INVEST-PERF-PERIOD] — insensible aux achats, règle ASSET-FX « les

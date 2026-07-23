@@ -8,6 +8,7 @@ import {
     periodStartDate,
     seriesReturnPct,
     priceReturnPct,
+    isBenchmarkCandidate,
 } from '../../services/history/periodReturn';
 import type { MarketDataPoint } from '../../services/finance';
 
@@ -130,6 +131,25 @@ describe('priceReturnPct', () => {
         expect(priceReturnPct([{ date: '2026-07-22', price: 100 }], '24H')).toBeNull();
     });
 
+    it('dates DUPLIQUÉES : ordre déterministe (tri stable — la dernière entrée insérée gagne)', () => {
+        // Finding silent-failure #498 : l'ancien comparateur (jamais 0) rendait `last` dépendant
+        // de l'ordre d'arrivée. Avec le comparateur strict + tri stable, à dates égales l'ordre
+        // d'insertion est préservé → résultat identique quel que soit le placement du doublon.
+        const dup1 = [
+            { date: '2026-07-21', price: 100 },
+            { date: '2026-07-22', price: 200 },
+            { date: '2026-07-22', price: 150 },
+        ];
+        const dup2 = [
+            { date: '2026-07-22', price: 200 },
+            { date: '2026-07-21', price: 100 },
+            { date: '2026-07-22', price: 150 },
+        ];
+        // Dans les deux cas, la DERNIÈRE entrée insérée pour le 22 (150) est `last`.
+        expect(priceReturnPct(dup1, '24H')).toBeCloseTo(priceReturnPct(dup2, '24H')!, 10);
+        expect(priceReturnPct(dup1, '24H')).toBeCloseTo(((150 - 200) / 200) * 100, 10);
+    });
+
     it('filtre les prix non finis ou ≤ 0', () => {
         const dirty = [
             { date: '2026-07-20', price: 100 },
@@ -138,5 +158,22 @@ describe('priceReturnPct', () => {
             { date: '2026-07-23', price: 110 },
         ];
         expect(priceReturnPct(dirty, '24H')).toBeCloseTo(10, 10);
+    });
+});
+
+describe('isBenchmarkCandidate', () => {
+    it('matche le CW8 par symbole (tous formats) et le MSCI World par nom', () => {
+        expect(isBenchmarkCandidate('CW8.PA', 'Amundi MSCI World')).toBe(true);
+        expect(isBenchmarkCandidate('EPA:CW8')).toBe(true);
+        expect(isBenchmarkCandidate('LU1681043599', 'MSCI World UCITS')).toBe(true);
+    });
+
+    it('NE matche PAS un autre fonds MSCI (finding ÉLEVÉ panel #498 : « Amundi MSCI Em Asia »)', () => {
+        // Titre réel du portefeuille : l'ancien `name.includes('MSCI')` le prenait pour le
+        // benchmark mondial selon l'ordre des actifs.
+        expect(isBenchmarkCandidate('AASI.PA', 'Amundi MSCI Em Asia')).toBe(false);
+        expect(isBenchmarkCandidate('PAASI.PA', 'Emerging Asia')).toBe(false);
+        expect(isBenchmarkCandidate('NVDA', 'Nvidia')).toBe(false);
+        expect(isBenchmarkCandidate('', '')).toBe(false);
     });
 });

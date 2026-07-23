@@ -779,7 +779,11 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   `<details>` fermé (pas de règle UA) → « replié par défaut » s'asserte sur l'ATTRIBUT `open`, pas sur la visibilité.
   Sœur : le matching par SOUS-CHAÎNE (`k.includes(sym)`)
   sur des clés devenues = symboles exacts fait matcher « V » (Visa) avec « VFV.TO » → helper partagé
-  `historyKeyMatchesSymbol` (exact + préfixe place legacy), 6 sites corrigés. (6) **Une écriture par clé
+  `historyKeyMatchesSymbol` (exact + préfixe place legacy), 6 sites corrigés. ↻ **RÉCIDIVE INVEST-PERF-PERIOD
+  2026-07-23 (sur les NOMS cette fois)** : `name.includes('MSCI')` pour trouver le benchmark matchait « Amundi
+  **MSCI** Em Asia » (AASI.PA, titre réel) → l'Asie émergente affichée comme « Marché » mondial selon l'ordre des
+  actifs (prouvé par sonde du code-reviewer). Un discriminant de MARQUE (`MSCI`) n'est pas un discriminant de
+  PRODUIT (`MSCI WORLD`) → helper `isBenchmarkCandidate` (symbole CW8, sinon nom « MSCI WORLD » complet), testé. (6) **Une écriture par clé
   partagée dans une boucle multi-entités (`row[symbol] = v`) écrase quand 2 entités partagent la clé**
   (même titre en CELI + REER) → agréger AVANT d'écrire. (7) **Un `configure()` appelé au boot avec la MÊME
   config qui fait `clearCache()` inconditionnel ANNULE un cache persistant** (vidé à chaque reload « pour

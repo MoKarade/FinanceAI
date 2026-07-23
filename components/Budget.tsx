@@ -608,6 +608,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         return {
             estateNetWorth: lastProjection.estateNetWorth ?? last?.NetWorth ?? 0,
             finalYear: last?.year ?? new Date().getFullYear() + Math.round(horizonYears),
+            horizonYears: Math.round(horizonYears),
             per100Boost: per100,
             currentMonthlySavings: monthlyTotalSavings,
         };
@@ -663,7 +664,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             cards.push({
                 label: 'Impact à long terme',
                 value: formatCAD(projectionSummary.estateNetWorth),
-                note: `patrimoine successoral projeté en ${projectionSummary.finalYear}, rentes RRQ/PSV incluses — vient de la PROJECTION de l'onglet Futur (lastProjection.estateNetWorth), pas d'un calcul du Budget`,
+                note: `patrimoine successoral projeté en ${projectionSummary.finalYear} (horizon ${projectionSummary.horizonYears} ans), rentes RRQ/PSV incluses — vient de la PROJECTION de l'onglet Futur (lastProjection.estateNetWorth) ; pour comparer avec get_projection, utiliser years=${projectionSummary.horizonYears}`,
             }, {
                 label: 'Sensibilité',
                 value: `+${formatCAD(projectionSummary.per100Boost)}`,

@@ -161,11 +161,19 @@ export function describeViewContextForPrompt(activeTab: Tab): string {
         : '';
     // Cartes additionnelles : chaque champ assaini (belt — une carte peut interpoler du texte
     // utilisateur), maxLen généreux pour ne pas tronquer les notes de provenance code-auteur.
+    // [Finding panel #491 — ÉLEVÉ] Troncature JAMAIS muette : sanitizePromptText coupe sans marqueur
+    // (une valeur agrégée — ex. 3 postes en dépassement — pouvait être coupée EN PLEIN MONTANT et lue
+    // par le modèle comme un chiffre complet). Marqueur honnête « (tronqué) » quand le cap est atteint.
+    const sane = (text: string, max: number): string =>
+        sanitizePromptText(text, max) + (text.length > max ? '… (tronqué)' : '');
+    // Valeurs de cartes encadrées <DONNEES> au PROMPT-BUILD (finding ai-reviewer #491 : une carte
+    // peut interpoler du texte utilisateur — noms de postes — et un framing posé dans la carte
+    // serait détruit par le belt qui retire < et >). Labels/notes = code-auteur, non encadrés.
     const cards = (d.cards ?? [])
         .slice(0, 8)
-        .map((c) => `${sanitizePromptText(c.label, 120)} : ${sanitizePromptText(c.value, 120)}${c.note ? ` (${sanitizePromptText(c.note, 300)})` : ''}`);
+        .map((c) => `${sane(c.label, 120)} : <DONNEES>${sane(c.value, 300)}</DONNEES>${c.note ? ` (${sane(c.note, 300)})` : ''}`);
     const cardsNote = cards.length > 0
-        ? ` Autres cartes affichées sur la page — avec la PROVENANCE de chaque chiffre entre parenthèses (sers-t'en pour EXPLIQUER un chiffre demandé) : ${cards.join(' ; ')}.`
+        ? ` Autres cartes affichées sur la page — avec la PROVENANCE de chaque chiffre entre parenthèses (sers-t'en pour EXPLIQUER un chiffre demandé ; n'invente JAMAIS un détail de calcul au-delà de la note — si on te demande la formule exacte, dis que tu n'as que la provenance résumée, pas le détail du moteur) : ${cards.join(' ; ')}.`
         : '';
     return `CONTEXTE ÉCRAN : l'utilisateur est sur l'onglet « ${tabLabel} » — période affichée : ${d.periodLabel} (vue ${d.timeViewLabel}).${filterNote} Chiffres AFFICHÉS À L'ÉCRAN (cite CEUX-CI pour toute question sur « ce qui est affiché » — pour un chiffre absent d'ici, consulte tes outils en le disant) : ${parts.join(', ')}.${top.length > 0 ? ` Top catégories dépensées : <DONNEES>${top.join(', ')}</DONNEES>.` : ''}${cardsNote} Si un outil rend un montant DIFFÉRENT pour un concept proche, ce ne sont PAS des contradictions : des PÉRIMÈTRES différents (période affichée vs agrégat mensuel standard) — cite le chiffre ÉCRAN pour « ce qui est affiché » et explique la différence de base si l'outil est aussi pertinent.`;
 }

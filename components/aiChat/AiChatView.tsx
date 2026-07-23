@@ -145,9 +145,17 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
     // scrollables — y compris le drawer overflow-hidden du panneau (scrollable par script) →
     // le header et le fil sortaient par le haut (saisie affichée en HAUT, conversation
     // invisible — captures Marc). scrollTop sur le conteneur ne peut pas toucher les ancêtres.
+    // [Finding code-reviewer #491 — MOYEN] Pin-to-bottom CONDITIONNEL : on ne colle au bas que si
+    // l'utilisateur y était déjà (suivait la conversation). Sinon, chaque delta de stream le
+    // ramenait de force en bas — impossible de remonter relire pendant une réponse longue.
+    const stickToBottomRef = useRef(true);
+    const onMessagesScroll = () => {
+        const el = messagesContainerRef.current;
+        if (el) stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    };
     useEffect(() => {
         const el = messagesContainerRef.current;
-        if (el) el.scrollTop = el.scrollHeight;
+        if (el && stickToBottomRef.current) el.scrollTop = el.scrollHeight;
     }, [aiConversation, isLoading]);
 
     // [Findings panel a11y/code-reviewer — HIGH] Autofocus du champ à l'OUVERTURE du panneau (le
@@ -172,6 +180,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
         if ((!userText && files.length === 0) || isLoading) return;
         setInput('');
         setPendingFiles([]);
+        stickToBottomRef.current = true; // son propre envoi ramène toujours au bas (convention chat)
         void sendMessage(userText, files.length > 0 ? files : undefined);
     };
 
@@ -268,7 +277,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                             <AiConversationList isLoading={isLoading} compact />
                         </div>
                     )}
-                    <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide ${isPanel ? '' : 'max-w-3xl mx-auto w-full'}`}>
+                    <div ref={messagesContainerRef} onScroll={onMessagesScroll} className={`flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide ${isPanel ? '' : 'max-w-3xl mx-auto w-full'}`}>
                         {messagesToRender.map((m, i) => (
                             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 {m.role === 'model' && (

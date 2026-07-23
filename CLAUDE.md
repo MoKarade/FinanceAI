@@ -832,6 +832,13 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   allowlist au point d'écriture (`asSupportedCurrency`), jamais un cast `as` ; (7) un `detail` de diagnostic composé
   côté SERVICE peut interpoler un montant → fournir `detailPrivacySafe` jumeau et rendre le générique en défaut SÛR
   côté UI (mode discret, jamais de fallback vers la version chiffrée).
+- ⚠️ **[INVEST-ALLOC-GEO-SECTOR] 2026-07-23** : (1) **une table de lookup dont le FORMAT de clé a dérivé de celui
+  des données réelles est une table entièrement MORTE en silence** (`ASSET_META` keyée `EPA:CW8` vs symboles réels
+  `CW8.PA` → 0 hit, tout en « Autre » sans erreur) — normaliser le LOOKUP (pas les données), même classe que
+  `historyKeyMatchesSymbol` ; (2) l'en-tête du module promettait un `getAssetMeta` dynamique JAMAIS écrit (doc
+  menteuse, classe [[Lot audit n°2]] « une affirmation de commentaire se vérifie ») ; (3) un auto-remplissage de
+  champ persisté n'écrit QUE l'information UTILE — persister le DÉFAUT du mapping (« Autre »/« Global ») figerait
+  la résolution et bloquerait tout meilleur remplissage futur (édition, provider enrichi).
 - ⚠️ **[AITOOLS-SEC] 2026-07-22 — audit de clôture du chantier Claude-in-app, leçons** : (1) **Un fix de
   sécurité appliqué à UNE surface doit être porté à TOUTES les surfaces qui partagent le vecteur** — le scrub
   anti-injection du `summary`/`changes` d'une écriture avait été fait côté app (`writeExecutor`, Lot D) mais

@@ -153,9 +153,12 @@
   premier point FINI (avant : ligne 0 → un titre acheté plus tard avait base 0 → courbe FIGÉE À 0, invisible),
   point manquant → null (trou honnête). + graphe 400→520 px, notes de couverture et diagnostic REPLIABLES
   (une ligne compacte, détails au clic), ligne « N points · période » retirée.
-- [ ] **`[INVEST-ALLOC-GEO-SECTOR]`** (M) — « la répartition géographique marche pas et sectorielle non plus » :
-  vérifier la source (profil Finnhub par titre ? statique ?) — probablement vide pour les ETF européens/Amundi.
-  Diagnostiquer avec les vrais tickers de Marc.
+- [x] **`[INVEST-ALLOC-GEO-SECTOR]`** (M) — ✅ 2026-07-23 : cause DOUBLE — table `ASSET_META` statique (13 titres)
+  ET keyée préfixe place (`EPA:CW8`) face à des symboles réels suffixe (`CW8.PA`) → quasi tout en « Autre ».
+  Livré : `Asset.sector`/`region` additifs (persistés) ; `resolveAssetMeta` (source unique : champ > seed
+  NORMALISÉ préfixe↔suffixe > crypto > Autre) ; auto-remplissage au boot via le profil Finnhub
+  (`assetProfileSync`, séquentiel, information utile seulement, jamais d'écrasement) ; édition inline
+  région/secteur dans les cartes d'allocation (tout titre classable même sans provider).
 - [x] **`[HIST-MULTI-PROVIDER]`** 🔴 — ✅ 2026-07-23 (retour Marc post-#493 : TOTAL ~200 k$ et titres toujours
   sans courbe ; « plusieurs providers pour tout avoir ») : chaîne de QUOTES multi-providers (crypto → CoinGecko ;
   Finnhub → repli Yahoo via le proxy chart, `meta.regularMarketPrice`, devise vérifiée) ; `priceRefresh` quote

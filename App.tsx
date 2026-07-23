@@ -533,7 +533,28 @@ export const App: React.FC = () => {
                 logError({ source: 'network', severity: 'warning', message: 'Rafraîchissement des cours au boot échoué (prix existants conservés)', error: e });
             }
         };
-        hydrateAssets().then(() => { if (!cancelled) void refreshPricesAtBoot(); });
+        // [INVEST-ALLOC-GEO-SECTOR] Après les prix : auto-remplit Asset.sector/region (profil
+        // provider) pour les actifs non résolus — répare les donuts « tout en Autre ». Même garde
+        // mode test + patches sur l'état FRAIS (anti-course).
+        const hydrateProfilesAtBoot = async (): Promise<void> => {
+            const s = useFinanceStore.getState();
+            if (s.isTestMode === true) return;
+            const current = s.assets ?? [];
+            if (current.length === 0) return;
+            try {
+                const { hydrateAssetProfiles, applyProfilePatches } = await import('./services/assetProfileSync');
+                const { getProfile, hasProfileProvider } = await import('./services/marketData');
+                const res = await hydrateAssetProfiles(current, { getProfile, hasProvider: hasProfileProvider });
+                if (cancelled || res.size === 0) return;
+                const fresh = useFinanceStore.getState().assets ?? [];
+                setAppState({ assets: applyProfilePatches(fresh, res) });
+            } catch (e) {
+                logError({ source: 'network', severity: 'warning', message: 'Auto-remplissage secteur/région échoué (répartitions inchangées).', error: e });
+            }
+        };
+        hydrateAssets()
+            .then(() => { if (!cancelled) return refreshPricesAtBoot(); })
+            .then(() => { if (!cancelled) void hydrateProfilesAtBoot(); });
         return () => { cancelled = true; };
     // Effet run-once au boot : setAppState et state.assets omis pour éviter une boucle de re-fetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps

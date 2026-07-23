@@ -73,12 +73,15 @@ export const HistorySyncDoctor: React.FC<Props> = ({ onApplyQuoteSymbol, isSynci
     const currentQuoteSymbol = (symbol: string): string =>
         (assets || []).find((a) => a.symbol === symbol)?.historySymbol ?? '';
 
+    // [INVEST-CHART-CLEAN] REPLIÉ par défaut (demande Marc « enlève le texte, qu'on voie le
+    // graphe ») : une ligne d'alerte compacte, le diagnostic + remèdes au clic.
     return (
-        <div className="mt-3 bg-white/[0.03] border border-warning-400/30 rounded-card p-3">
-            <h4 className="text-tiny uppercase font-bold text-ink-300 tracking-widest mb-2 flex items-center gap-2">
+        <details className="mt-2 bg-white/[0.03] border border-warning-400/30 rounded-card px-3 py-2">
+            <summary className="text-tiny font-bold text-ink-300 cursor-pointer select-none hover:text-white focus-ring rounded flex items-center gap-2">
                 <Icon name="alert" size={12} aria-hidden="true" />
-                Cours non synchronisés ({actionable.length})
-            </h4>
+                Cours non synchronisés ({actionable.length}) — diagnostiquer et corriger
+            </summary>
+            <div className="mt-2">
             <ul className="space-y-3">
                 {actionable.map((s) => (
                     <li key={s.symbol} className="text-meta text-ink-200">
@@ -151,6 +154,7 @@ export const HistorySyncDoctor: React.FC<Props> = ({ onApplyQuoteSymbol, isSynci
                     </li>
                 ))}
             </ul>
-        </div>
+            </div>
+        </details>
     );
 };

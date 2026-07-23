@@ -625,11 +625,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
             {/* 1. CHART SECTION — Phase E.3 overview only */}
             {subTab === 'overview' && <Card className="min-h-[550px]" title="Performance Comparée">
-                {/* Phase E.1 — Pill TimeRange déplacée en haut de page (global) */}
-                <div className="flex justify-end items-center mb-2 text-meta text-ink-400">
-                    {filteredMarketData.length} points · période <strong className="text-ink-200 ml-1">{timeRange}</strong>
-                </div>
-
+                {/* [INVEST-CHART-CLEAN] Ligne « N points · période » retirée (demande Marc : moins
+                    de texte autour du graphe — la période est déjà dans la pill globale). */}
                 {/* SERIES TOGGLES */}
                 <div className="mb-4 flex flex-wrap gap-2 max-h-[100px] overflow-y-auto custom-scrollbar p-1">
                     {availableSeriesWithTrend.map(asset => {
@@ -661,7 +658,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     })}
                 </div>
 
-                <div style={{ width: '100%', height: '400px' }}>
+                {/* [INVEST-CHART-CLEAN] 400 → 520 px : le graphe est la pièce maîtresse de la page. */}
+                <div style={{ width: '100%', height: '520px' }}>
                     {isLoading ? (
                         <div className="w-full h-full flex flex-col gap-4">
                             <Skeleton variant="chart" className="!h-auto flex-1" />

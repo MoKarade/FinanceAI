@@ -32,8 +32,16 @@ export const HistoryCoverageNote: React.FC<Props> = ({
     if (noHistorySymbols.length === 0 && partialHistorySymbols.length === 0 && staleTailSymbols.length === 0) return null;
     const counted = noHistorySymbols.filter((s) => s.valueCad > 0);
     const unpriced = noHistorySymbols.filter((s) => s.valueCad <= 0);
+    // [INVEST-CHART-CLEAN] Demande Marc « ya du texte sur le graph enleve » : REPLIÉ par défaut —
+    // une ligne discrète, le détail honnête au clic (le garde-fou reste accessible, il n'écrase
+    // plus le graphe). <details> natif = focusable/annonçable sans JS.
+    const totalNotes = noHistorySymbols.length + partialHistorySymbols.length + staleTailSymbols.length;
     return (
-        <p className="text-tiny text-ink-400 mt-2">
+        <details className="mt-2">
+            <summary className="text-tiny text-ink-400 cursor-pointer select-none hover:text-ink-200 focus-ring rounded">
+                Couverture des courbes : {totalNotes} note{totalNotes > 1 ? 's' : ''} (approximations signalées) — détails
+            </summary>
+            <p className="text-tiny text-ink-400 mt-1">
             {counted.length > 0 && (hasChart ? (
                 <>Sans courbe (aucun historique de cours) : {counted.map((s) => s.symbol).join(', ')} —
                 compté{counted.length > 1 ? 's' : ''} dans le total à la valeur actuelle
@@ -55,6 +63,7 @@ export const HistoryCoverageNote: React.FC<Props> = ({
                 <>Historique borné pour {partialHistorySymbols.map((p) => `${p.symbol} (depuis ${p.historyStart})`).join(', ')} —
                 avant cette date, le titre compte à son premier cours connu (approximation).</>
             )}
-        </p>
+            </p>
+        </details>
     );
 };

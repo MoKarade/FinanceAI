@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Investissements : graphe dégagé, courbes lisibles] — 2026-07-23
+
+### Amélioration (demande Marc : « ya du texte sur le graph… la courbe est mal visible »)
+- **Le graphe respire** : plus grand (+30 %), les notes de couverture et le diagnostic des cours
+  sont maintenant repliés en une ligne discrète chacun (le détail honnête reste à un clic), et la
+  ligne « N points · période » est retirée.
+- **Les petites courbes sont enfin lisibles** : quand plusieurs séries d'échelles très différentes
+  sont affichées (ton TOTAL à ~240 k$ à côté d'un titre à 30 $), le graphe passe automatiquement en
+  vue Base 100 (%) — la même convention que Google Finance pour comparer ; ton choix manuel
+  Prix ($) / Base 100 garde toujours le dernier mot.
+- **Correctif** : en Base 100, un titre acheté après le début de la fenêtre restait figé à 0 %
+  (courbe invisible — sa base était prise sur le premier jour du graphe, où il n'existait pas).
+  Chaque série démarre maintenant à son propre premier point.
+
 ## [unreleased — Cours multi-fournisseurs : « tout ce que j'ai et plus »] — 2026-07-23
 
 ### Correctif (retour Marc post-couverture TOTAL : ~200 k$ affichés et titres toujours sans courbe)

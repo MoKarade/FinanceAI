@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Moins d'appels réseau inutiles + horodatage honnête des cours] — 2026-07-23
+
+### Amélioration
+- **Un titre que les fournisseurs ne connaissent pas (GIC, titre manuel) n'est plus retenté en
+  boucle** : après 3 échecs consécutifs, l'app saute ce titre pendant 24 h (cours) ou 7 jours
+  (secteur/région) au lieu de payer un appel réseau et 2,5 s d'attente à chaque démarrage —
+  puis réessaie automatiquement (jamais bloqué à vie). Le bouton « Actualiser les cours »
+  force toujours un nouvel essai immédiat de tout.
+- **« Cours mis à jour » affiche l'heure du COURS, plus celle du téléchargement** : un dimanche,
+  tu vois la clôture de vendredi datée de vendredi — plus honnête sur la fraîcheur réelle.
+
 ## [unreleased — Investissements : période de performance au choix] — 2026-07-23
 
 ### Amélioration (demande Marc : « la performance actuellement c'est 24h mais je veux pouvoir choisir moi »)

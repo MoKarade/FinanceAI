@@ -836,6 +836,17 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   allowlist au point d'écriture (`asSupportedCurrency`), jamais un cast `as` ; (7) un `detail` de diagnostic composé
   côté SERVICE peut interpoler un montant → fournir `detailPrivacySafe` jumeau et rendre le générique en défaut SÛR
   côté UI (mode discret, jamais de fallback vers la version chiffrée).
+- ⚠️ **[QUOTE-NEGATIVE-CACHE] 2026-07-23 — cache négatif quotes/profils, leçons du panel (3 agents, sondes)** :
+  (1) **un cache négatif nourri par des providers qui aplatissent TOUTE erreur en `null` (429 compris) gèle des
+  VRAIS titres** (sonde : 3×429 → vrai symbole skippé 24 h, staleness invisible PIRE que le problème résolu) —
+  sans distinction du type d'échec, le skip long doit se MÉRITER : TTL GRADUÉ (1er skip court 1 h, long après
+  5 échecs) ; fix structurel = propager le type d'erreur ([QUOTE-ERRKIND]). (2) **un check de skip placé AVANT
+  la lecture du cache positif masque une réponse déjà connue et fraîche** (sonde : clé de casse divergente) →
+  le skip vit DANS le fetcher de `withCache`, jamais avant. (3) **`null` compté mais EXCEPTION non comptée =
+  compteur asymétrique** — try/catch qui enregistre puis relance. (4) un skip automatique nouveau doit laisser
+  une TRACE (journal) + un geste de reprise immédiat (le bouton Actualiser wipe le cache négatif) — un mécanisme
+  d'économie réseau sans signal = classe « staleness silencieuse ». (5) **le documentation-manager peut INVENTER
+  un chiffre et marquer mergée une PR en vol** — relire ses éditions du handover comme un finding (agent durci).
 - ⚠️ **[INVEST-ALLOC-GEO-SECTOR] 2026-07-23** : (1) **une table de lookup dont le FORMAT de clé a dérivé de celui
   des données réelles est une table entièrement MORTE en silence** (`ASSET_META` keyée `EPA:CW8` vs symboles réels
   `CW8.PA` → 0 hit, tout en « Autre » sans erreur) — normaliser le LOOKUP (pas les données), même classe que

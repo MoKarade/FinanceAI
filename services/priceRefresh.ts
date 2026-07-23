@@ -51,6 +51,24 @@ export function asSupportedCurrency(c: string | undefined): Asset['currency'] | 
     return c === 'USD' || c === 'CAD' || c === 'EUR' ? c : undefined;
 }
 
+// [QUOTE-MARKET-TIMESTAMP] Borne basse de plausibilité d'un horodatage de MARCHÉ (2000-01-01 UTC) :
+// en-dessous = valeur sentinelle/défaut cassé du provider (Finnhub t=0, epoch en secondes non
+// converti…), on retombe sur l'heure de fetch.
+const MIN_PLAUSIBLE_MARKET_TS = Date.UTC(2000, 0, 1);
+const MAX_FUTURE_SKEW_MS = 10 * 60 * 1000;
+
+/**
+ * Horodatage de MARCHÉ du quote s'il est plausible, sinon l'heure de fetch (`nowMs`).
+ * `priceUpdatedAt` portait l'heure du FETCH — le raccord `quoteFresh` (7 j) de buildMarketData
+ * mesurait la fraîcheur du réseau, pas celle du cours (week-ends/fériés). Exporté pour test.
+ */
+export function marketTimestampOrNow(tsMs: number | undefined, nowMs: number): number {
+    if (typeof tsMs !== 'number' || !Number.isFinite(tsMs)) return nowMs;
+    if (tsMs < MIN_PLAUSIBLE_MARKET_TS) return nowMs;
+    if (tsMs > nowMs + MAX_FUTURE_SKEW_MS) return nowMs; // futur = horloge provider cassée
+    return tsMs;
+}
+
 export type PriceSkipReason = 'no-quote' | 'invalid-price' | 'currency-mismatch' | 'error';
 
 export interface PriceRefreshResult {
@@ -198,7 +216,12 @@ async function runRefresh(
 
         const patch: PricePatch = {
             currentPrice: quote.price,
-            priceUpdatedAt: now(),
+            // [QUOTE-MARKET-TIMESTAMP] Heure du MARCHÉ (regularMarketTime/t Finnhub) quand elle est
+            // plausible — le raccord quoteFresh (7 j) mesure alors la fraîcheur du COURS, pas du fetch.
+            // MONOTONE (finding code-reviewer #499, prouvé par sonde) : deux providers peuvent
+            // rapporter des horodatages incohérents pour le même titre (bascule Finnhub↔Yahoo) —
+            // sans clamp, priceUpdatedAt pouvait RECULER (quoteFresh/« Cours mis à jour » régressent).
+            priceUpdatedAt: Math.max(a.priceUpdatedAt ?? 0, marketTimestampOrNow(quote.timestamp, now())),
             forCurrency: a.currency || undefined,
         };
         if (!a.currency) {

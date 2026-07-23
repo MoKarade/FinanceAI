@@ -10,8 +10,9 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
-    configureMarketDataProvider, hasQuoteProvider, getQuote, clearMarketDataCache,
+    configureMarketDataProvider, hasQuoteProvider, canAttemptQuote, getQuote, getHistory, clearMarketDataCache,
 } from '../../services/marketData';
+import { __resetNegativeCacheForTests } from '../../services/marketData/negativeCache';
 
 const yahooChartResponse = (price: number, currency: string) => new Response(JSON.stringify({
     chart: { result: [{ meta: { currency, regularMarketPrice: price, chartPreviousClose: price - 1 } }] },
@@ -31,6 +32,10 @@ describe('[HIST-MULTI-PROVIDER] repli quote Yahoo (navigateur)', () => {
     beforeEach(() => {
         clearMarketDataCache();
         configureMarketDataProvider({});
+        // [QUOTE-NEGATIVE-CACHE] Isolation : les nulls des tests précédents ne doivent pas
+        // armer un skip négatif qui changerait le comportement des tests suivants.
+        localStorage.clear();
+        __resetNegativeCacheForTests();
     });
     afterEach(() => {
         vi.unstubAllGlobals();
@@ -79,5 +84,57 @@ describe('[HIST-MULTI-PROVIDER] repli quote Yahoo (navigateur)', () => {
         const fetchMock2 = vi.fn(async () => yahooChartResponse(550, 'EUR'));
         vi.stubGlobal('fetch', fetchMock2);
         expect((await getQuote('CW8.PA'))?.price).toBe(550);
+    });
+
+    // [QUOTE-NEGATIVE-CACHE] Intégration façade : 3 nulls consécutifs → skip sans réseau ;
+    // un succès efface l'entrée.
+    it('après 3 échecs consécutifs, getQuote rend null SANS toucher au réseau (skip négatif)', async () => {
+        const failMock = vi.fn(async () => new Response('down', { status: 502 }));
+        vi.stubGlobal('fetch', failMock);
+        for (let i = 0; i < 3; i++) expect(await getQuote('GICXYZ')).toBeNull();
+        expect(canAttemptQuote('GICXYZ')).toBe(false); // les boucles pacées skippent d'emblée
+        const countAfter3 = failMock.mock.calls.length;
+        expect(await getQuote('GICXYZ')).toBeNull(); // 4e appel : skip
+        expect(failMock.mock.calls.length).toBe(countAfter3); // AUCUN fetch de plus
+    });
+
+    it('PÉRIMÈTRE : les échecs d\'HISTORIQUE n\'arment JAMAIS le cache négatif (contrat []/null préservé)', async () => {
+        // Verrou anti-régression (finding code-reviewer #499) : getHistory est VOLONTAIREMENT hors
+        // du mécanisme — son contrat [] (vide confirmé) / null (erreur) pilote la résolution de
+        // variantes de hydrateAssetHistories ; un skip négatif qui rendrait null la masquerait.
+        vi.stubGlobal('fetch', vi.fn(async () => new Response('down', { status: 502 })));
+        for (let i = 0; i < 4; i++) {
+            expect(await getHistory('CW8.PA', new Date('2026-01-01'), new Date('2026-07-01'))).toBeNull();
+        }
+        expect(canAttemptQuote('CW8.PA')).toBe(true); // aucun skip quote armé par les échecs history
+        const fetchMock = vi.fn(async () => yahooChartResponse(553, 'EUR'));
+        vi.stubGlobal('fetch', fetchMock);
+        expect((await getQuote('CW8.PA'))?.price).toBe(553); // la quote passe toujours au réseau
+        expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it('SKIP négatif : une valeur ENCORE VALIDE du cache positif sert malgré un skip armé', async () => {
+        // Finding silent-failure #499 (sonde) : le check placé AVANT withCache masquait un cache
+        // positif frais → déplacé DANS le fetcher (une réponse déjà connue sert toujours).
+        vi.stubGlobal('fetch', vi.fn(async () => yahooChartResponse(560, 'EUR')));
+        expect((await getQuote('CW8.PA'))?.price).toBe(560); // remplit le cache positif 5 min
+        const { recordNegative } = await import('../../services/marketData/negativeCache');
+        for (let i = 0; i < 3; i++) recordNegative('quote', 'CW8.PA'); // skip armé par ailleurs
+        const fetchMock = vi.fn(async () => new Response('down', { status: 502 }));
+        vi.stubGlobal('fetch', fetchMock);
+        expect((await getQuote('CW8.PA'))?.price).toBe(560); // le cache positif sert, zéro réseau
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('un succès efface le compteur négatif (2 échecs puis succès → pas de skip)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response('down', { status: 502 })));
+        expect(await getQuote('CW8.PA')).toBeNull();
+        expect(await getQuote('CW8.PA')).toBeNull();
+        vi.stubGlobal('fetch', vi.fn(async () => yahooChartResponse(552, 'EUR')));
+        expect((await getQuote('CW8.PA'))?.price).toBe(552); // succès → compteur effacé
+        clearMarketDataCache(); // vide le cache positif 5 min pour forcer un vrai re-fetch
+        vi.stubGlobal('fetch', vi.fn(async () => new Response('down', { status: 502 })));
+        expect(await getQuote('CW8.PA')).toBeNull(); // 1er échec d'une NOUVELLE série
+        expect(canAttemptQuote('CW8.PA')).toBe(true); // pas de skip (compteur reparti à 1)
     });
 });

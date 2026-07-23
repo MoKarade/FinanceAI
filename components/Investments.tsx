@@ -452,10 +452,14 @@ export const Investments: React.FC<InvestmentsProps> = ({
             // raté — le cœur même du bouton.
             let historySyncFailed = false;
             try {
-                const { clearMarketDataCache, getHistory, hasHistoryProvider } = await import('../services/marketData');
+                const { clearMarketDataCache, clearNegativeCache, getHistory, hasHistoryProvider } = await import('../services/marketData');
                 const { hydrateAssetHistories, applyHistoryPatches } = await import('../services/history/hydrateAssetHistories');
                 const { setHistorySyncReport } = await import('../services/history/syncDiagnostics');
                 clearMarketDataCache('history');
+                // [QUOTE-NEGATIVE-CACHE] Geste EXPLICITE = repartir de zéro : les skips négatifs
+                // (quotes/profils) sautent aussi — un titre corrigé/nouvellement couvert ré-essaie
+                // immédiatement au lieu d'attendre l'expiration du TTL.
+                clearNegativeCache();
                 const current = useFinanceStore.getState().assets ?? [];
                 const histRes = await hydrateAssetHistories(current, { getHistory, hasProvider: hasHistoryProvider }, { force: true });
                 setHistorySyncReport({ at: Date.now(), skipped: histRes.skipped, patchedCount: histRes.patches.size });
@@ -1123,7 +1127,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     {lastPriceRefreshAt != null && (
                         <span className="text-tiny text-ink-400 mr-auto">
                             {/* formatDate (fr-CA, NaN→—) + heure, même patron qu'AutoBackupPanel. */}
-                            Cours mis à jour : {formatDate(lastPriceRefreshAt)} {new Date(lastPriceRefreshAt).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}
+                            Cours au {formatDate(lastPriceRefreshAt)} {new Date(lastPriceRefreshAt).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                     )}
                     <button

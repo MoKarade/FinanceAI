@@ -12,9 +12,11 @@ import { withCache, clearMarketDataCache } from './cache';
 import { FinnhubProvider } from './providers/finnhub';
 import { CoinGeckoProvider, coinGeckoIdFor } from './providers/coingecko';
 import { getYahooHistory, getYahooQuote } from './providers/yahooProxy';
+import { shouldSkipNegative, recordNegative, clearNegative, clearNegativeCache } from './negativeCache';
 
 export * from './types';
 export { clearMarketDataCache } from './cache';
+export { clearNegativeCache } from './negativeCache';
 
 // Provider actions (Finnhub) — instancié quand la clé API est fournie.
 let activeProvider: MarketDataProvider | null = null;
@@ -45,6 +47,9 @@ export function configureMarketDataProvider(opts: { finnhubKey?: string }): void
     activeProvider = key.length > 0 ? new FinnhubProvider(key) : null;
     // Vide le cache pour forcer un re-fetch avec le nouveau provider
     clearMarketDataCache();
+    // [QUOTE-NEGATIVE-CACHE] Nouvelle clé = nouvelle COUVERTURE (un symbole « introuvable » sans
+    // clé peut être couvert avec) → les skips négatifs ne tiennent plus.
+    clearNegativeCache();
 }
 
 /**
@@ -59,24 +64,61 @@ export function hasQuoteProvider(symbol: string): boolean {
 }
 
 /**
+ * [QUOTE-NEGATIVE-CACHE] Un essai de quote vaut-il la peine MAINTENANT ? = provider existant ET
+ * pas de skip négatif actif (3 nulls consécutifs → skip TTL 24 h, self-heal à l'expiration).
+ * À passer comme `hasProvider` aux boucles pacées (priceRefresh) : un titre manuel/GIC ne paie
+ * plus réseau + 2,5 s de pacing à chaque refresh.
+ */
+export function canAttemptQuote(symbol: string): boolean {
+    return hasQuoteProvider(symbol) && !shouldSkipNegative('quote', symbol);
+}
+
+/**
  * Quote spot, avec CHAÎNE DE REPLI ([HIST-MULTI-PROVIDER], choix Marc « tout gratuit / plusieurs
  * providers pour tout avoir ») : crypto → CoinGecko ; actions/ETF → Finnhub (si clé — quotes
  * européennes 403 en tier gratuit) → repli Yahoo via proxy same-origin (meta du chart). `null` si
  * aucun maillon ne répond (jamais caché → retry au prochain appel).
  */
 export async function getQuote(symbol: string): Promise<Quote | null> {
-    return withCache('quote', symbol, async () => {
-        const isCrypto = Boolean(coinGeckoIdFor(symbol));
-        if (isCrypto) return cryptoProvider.getQuote(symbol); // pas de repli Yahoo (crypto)
-        if (activeProvider) {
-            const primary = await activeProvider.getQuote(symbol);
-            if (primary) return primary;
-        }
-        if (typeof window !== 'undefined') {
-            return getYahooQuote(symbol);
-        }
-        return null; // hors navigateur sans Finnhub : pas de chemin (non caché)
-    });
+    const hadPath = hasQuoteProvider(symbol);
+    // [QUOTE-NEGATIVE-CACHE] Le skip négatif vit DANS le fetcher (finding silent-failure #499,
+    // prouvé par sonde) : placé AVANT withCache, il masquait une valeur ENCORE VALIDE du cache
+    // positif (clé de casse divergente) — une réponse déjà connue et fraîche doit toujours servir.
+    let skippedNegative = false;
+    let value: Quote | null;
+    try {
+        value = await withCache('quote', symbol, async () => {
+            if (shouldSkipNegative('quote', symbol)) {
+                skippedNegative = true;
+                return null; // zéro réseau (self-heal par TTL) — non compté comme nouvel échec
+            }
+            const isCrypto = Boolean(coinGeckoIdFor(symbol));
+            if (isCrypto) return cryptoProvider.getQuote(symbol); // pas de repli Yahoo (crypto)
+            if (activeProvider) {
+                const primary = await activeProvider.getQuote(symbol);
+                if (primary) return primary;
+            }
+            if (typeof window !== 'undefined') {
+                return getYahooQuote(symbol);
+            }
+            return null; // hors navigateur sans Finnhub : pas de chemin (non caché)
+        });
+    } catch (e) {
+        // Une EXCEPTION du fetcher est aussi un échec de chaîne (finding silent-failure #499 :
+        // sans ça, seuls les null comptaient — compteur sous-armé) ; relancée à l'appelant
+        // (priceRefresh la convertit déjà en skip 'error' + logError).
+        if (hadPath) recordNegative('quote', symbol);
+        throw e;
+    }
+    // Comptabilité négative : un null AVEC chemin disponible = échec réel de toute la chaîne
+    // (« sans chemin » ne compte pas — rien n'a été tenté ; un skip non plus — rien tenté).
+    // Succès → entrée effacée (no-op sans entrée).
+    if (value === null) {
+        if (hadPath && !skippedNegative) recordNegative('quote', symbol);
+    } else {
+        clearNegative('quote', symbol);
+    }
+    return value;
 }
 
 /**
@@ -123,13 +165,43 @@ export function hasProfileProvider(symbol: string): boolean {
 }
 
 /**
+ * [QUOTE-NEGATIVE-CACHE] Un essai de PROFIL vaut-il la peine maintenant ? = provider existant ET
+ * pas de skip négatif (3 nulls consécutifs → skip TTL 7 j — un profil non couvert par Finnhub
+ * était sinon retenté à CHAQUE boot avec 2,5 s de pacing, à vie ; finding silent-failure #496).
+ */
+export function canAttemptProfile(symbol: string): boolean {
+    return hasProfileProvider(symbol) && !shouldSkipNegative('profile', symbol);
+}
+
+/**
  * Profil statique d'un actif. Utilisé par l'auto-populate des répartitions
  * (services/assetProfileSync.ts → Asset.sector/region).
  */
 export async function getProfile(symbol: string): Promise<AssetProfile | null> {
     const provider = pickProvider(symbol);
     if (!provider) return null;
-    return withCache('profile', symbol, () => provider.getProfile(symbol));
+    // [QUOTE-NEGATIVE-CACHE] Skip DANS le fetcher (cache positif IDB 24 h consulté d'abord — un
+    // profil déjà connu sert toujours) + exceptions comptées (mêmes findings que getQuote).
+    let skippedNegative = false;
+    let value: AssetProfile | null;
+    try {
+        value = await withCache('profile', symbol, async () => {
+            if (shouldSkipNegative('profile', symbol)) {
+                skippedNegative = true;
+                return null;
+            }
+            return provider.getProfile(symbol);
+        });
+    } catch (e) {
+        recordNegative('profile', symbol);
+        throw e;
+    }
+    if (value === null) {
+        if (!skippedNegative) recordNegative('profile', symbol); // provider présent → échec/non couvert réel
+    } else {
+        clearNegative('profile', symbol);
+    }
+    return value;
 }
 
 /**

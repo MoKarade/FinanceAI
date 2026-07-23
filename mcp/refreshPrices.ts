@@ -25,7 +25,7 @@ import {
     type PriceRefreshDeps,
     type PriceSkipReason,
 } from '../services/priceRefresh';
-import { getQuote, hasQuoteProvider } from '../services/marketData';
+import { getQuote, canAttemptQuote } from '../services/marketData';
 
 export interface PriceRefreshOutcome {
     /** Symboles dont le prix a réellement changé (et donc l'état réécrit). */
@@ -61,7 +61,9 @@ export async function runPriceRefresh(
         state.assets,
         {
             getQuote: deps?.getQuote ?? getQuote,
-            hasProvider: deps?.hasProvider ?? hasQuoteProvider,
+            // [QUOTE-NEGATIVE-CACHE] négative-aware comme le boot app (« fix porté à toutes les
+            // surfaces ») — un symbole connu-mort ne paie pas le pacing 2,5 s ici non plus.
+            hasProvider: deps?.hasProvider ?? canAttemptQuote,
             sleep: deps?.sleep,
             delayMs: deps?.delayMs,
             now: deps?.now,

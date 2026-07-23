@@ -20,7 +20,7 @@ import { useDerivedFinancials } from './utils/useDerivedFinancials';
 import { TabRouter } from './components/TabRouter';
 import { CommandPalette, useCommandPalette, makeNavigationActions } from './components/ui/CommandPalette';
 import { useTranslation } from 'react-i18next';
-import { configureMarketDataProvider, getQuote, hasQuoteProvider } from './services/marketData';
+import { configureMarketDataProvider, getQuote, canAttemptQuote } from './services/marketData';
 import { refreshAssetPrices, applyPricePatches } from './services/priceRefresh';
 import { installGlobalErrorHandlers, logError } from './services/errorLogger';
 import { lazyWithRetry } from './utils/lazyWithRetry';
@@ -525,7 +525,9 @@ export const App: React.FC = () => {
             try {
                 // Boot = passe NON forcée : sautée si une passe a fini il y a < 5 min (mutex +
                 // intervalle min du service — anti-entrelacement avec le bouton, anti-spam reload).
-                const res = await refreshAssetPrices(current, { getQuote, hasProvider: hasQuoteProvider });
+                // [QUOTE-NEGATIVE-CACHE] hasProvider = provider présent ET pas de skip négatif :
+                // un titre manuel/GIC (3 nulls consécutifs) ne repaie plus réseau + pacing au boot.
+                const res = await refreshAssetPrices(current, { getQuote, hasProvider: canAttemptQuote });
                 if (cancelled || res.patches.size === 0) return;
                 const fresh = useFinanceStore.getState().assets ?? [];
                 setAppState({ assets: applyPricePatches(fresh, res.patches) });
@@ -543,8 +545,10 @@ export const App: React.FC = () => {
             if (current.length === 0) return;
             try {
                 const { hydrateAssetProfiles, applyProfilePatches } = await import('./services/assetProfileSync');
-                const { getProfile, hasProfileProvider } = await import('./services/marketData');
-                const res = await hydrateAssetProfiles(current, { getProfile, hasProvider: hasProfileProvider });
+                // [QUOTE-NEGATIVE-CACHE] canAttemptProfile : un profil non couvert (3 nulls
+                // consécutifs) n'est plus retenté à chaque boot (skip TTL 7 j, self-heal).
+                const { getProfile, canAttemptProfile } = await import('./services/marketData');
+                const res = await hydrateAssetProfiles(current, { getProfile, hasProvider: canAttemptProfile });
                 if (cancelled || res.size === 0) return;
                 const fresh = useFinanceStore.getState().assets ?? [];
                 setAppState({ assets: applyProfilePatches(fresh, res) });

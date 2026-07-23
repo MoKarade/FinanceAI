@@ -145,16 +145,19 @@
   tickers nus (EUR → .PA/.DE/.AS/.MI, CAD → .TO/.V), validées par plausibilité de prix (facteur ≤ 2 vs
   currentPrice, sinon refus anti-collision) et persistées via `Asset.historySymbol` (additif). NB : si
   « Amundi EM Asia » ne se résout toujours pas en prod, préciser le ticker suffixé (ex. AASI.PA) dans l'actif.
-- [ ] **`[QUOTE-NEGATIVE-CACHE]`** (S, finding code-reviewer #494 FAIBLE ; étendu #496) — depuis le repli Yahoo,
-  `hasQuoteProvider` est vrai pour TOUT non-crypto en navigateur → un titre MANUEL/GIC (jamais coté nulle part)
-  paie un aller-retour Yahoo + 2,5 s de pacing à CHAQUE refresh, à vie (null jamais caché). 3ᵉ instance (#496,
-  silent-failure) : `hydrateAssetProfiles` retente les profils Finnhub non couverts à CHAQUE boot (~2,5 s/actif
-  `unknown`). Ajouter un négative-cache par symbole après N échecs consécutifs (ou un flag « titre manuel » sur
-  l'actif) couvrant quotes + historiques + PROFILS, pour re-sauter ces symboles sans réseau.
-- [ ] **`[QUOTE-MARKET-TIMESTAMP]`** (S, finding code-reviewer #494 FAIBLE) — `priceUpdatedAt = now()` = heure du
-  FETCH, pas du marché ; `Quote.timestamp` (Yahoo `regularMarketTime`) est calculé mais jamais consommé. Le raccord
-  `quoteFresh` (7 j) mesure la fraîcheur de fetch. Impact faible (dernier prix connu = meilleure approximation),
-  mais consommer `quote.timestamp` rendrait le raccord plus honnête (week-ends/jours fériés).
+- [x] **`[QUOTE-NEGATIVE-CACHE]`** (S) — ✅ 2026-07-23 : cache négatif TTL par symbole
+  (`services/marketData/negativeCache.ts`, localStorage clé dédiée jamais synchronisée, repli mémoire hors
+  navigateur) : 3 échecs CONSÉCUTIFS (fenêtre 7 j) → skip borné (quote 24 h, profil 7 j), succès = effacement,
+  self-heal à l'expiration, purge > 30 j. Intégré à la façade (`getQuote`/`getProfile` + `canAttemptQuote`/
+  `canAttemptProfile` consommés par le boot) ; wipe sur changement de clé provider ET sur le bouton
+  « Actualiser » (geste explicite = repartir de zéro). ⚠️ Périmètre RÉDUIT vs le ticket : l'HISTORIQUE est
+  EXCLU volontairement — son contrat `[]` (vide confirmé, caché 24 h) vs `null` (erreur) pilote la résolution
+  de variantes de `hydrateAssetHistories` (un négative-cache qui rendrait `null` masquerait ce contrat), et le
+  coût résiduel est déjà borné ~1 essai/symbole/jour (`needsHistorySync` + cache 24 h).
+- [x] **`[QUOTE-MARKET-TIMESTAMP]`** (S) — ✅ 2026-07-23 : `priceUpdatedAt = marketTimestampOrNow(quote.timestamp,
+  now)` (garde de plausibilité : ≥ 2000-01-01, ≤ now+10 min, sinon repli heure de fetch) → le raccord
+  `quoteFresh` (7 j) et le libellé « Cours mis à jour » mesurent la fraîcheur du COURS (clôture de vendredi
+  affichée comme telle un dimanche), pas celle du réseau.
 - [x] **`[INVEST-CURVES-LOW]`** (S) — ✅ 2026-07-23 (avec [INVEST-CHART-CLEAN], demande Marc « la courbe est mal
   visible ») : (1) auto-défaut **Base 100 (%)** quand ≥ 2 séries d'échelles disparates (> 20×) partagent l'axe $
   (le choix manuel du toggle prime toujours) ; (2) fix Base 100 sur lignes ÉPARSES — base de CHAQUE série = son

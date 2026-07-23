@@ -8,6 +8,7 @@ import {
     refreshAssetPrices,
     applyPricePatches,
     asSupportedCurrency,
+    marketTimestampOrNow,
     __resetPriceRefreshThrottle,
 } from '../../services/priceRefresh';
 import type { Asset } from '../../types';
@@ -36,8 +37,26 @@ describe('refreshAssetPrices', () => {
         expect(res.refreshed).toEqual(['NVDA']);
         const p = res.patches.get('NVDA')!;
         expect(p.currentPrice).toBe(120);
-        expect(p.priceUpdatedAt).toBe(NOW);
+        expect(p.priceUpdatedAt).toBe(NOW); // timestamp 0 (fixture) = implausible → repli heure de fetch
         expect(p.forCurrency).toBe('USD');
+    });
+
+    // [QUOTE-MARKET-TIMESTAMP] priceUpdatedAt = heure du MARCHÉ quand elle est plausible — le
+    // raccord quoteFresh (7 j) de buildMarketData mesure alors la fraîcheur du COURS, pas du fetch.
+    it('MARKET-TIMESTAMP : un timestamp de marché plausible devient priceUpdatedAt', async () => {
+        const marketTs = NOW - 3 * 24 * 60 * 60 * 1000; // clôture de vendredi, fetch le lundi
+        const res = await refreshAssetPrices([asset({})], deps(async () => quote({ price: 120, timestamp: marketTs })));
+        expect(res.patches.get('NVDA')!.priceUpdatedAt).toBe(marketTs);
+    });
+
+    it('MARKET-TIMESTAMP : timestamps implausibles (0, futur, non fini) → repli heure de fetch', () => {
+        expect(marketTimestampOrNow(0, NOW)).toBe(NOW);                    // sentinelle provider
+        expect(marketTimestampOrNow(undefined, NOW)).toBe(NOW);
+        expect(marketTimestampOrNow(NaN, NOW)).toBe(NOW);
+        expect(marketTimestampOrNow(NOW + 60 * 60 * 1000, NOW)).toBe(NOW); // 1 h dans le futur = horloge cassée
+        expect(marketTimestampOrNow(NOW / 1000, NOW)).toBe(NOW);           // secondes non converties (< 2000-01-01)
+        expect(marketTimestampOrNow(NOW - 1000, NOW)).toBe(NOW - 1000);    // plausible → conservé
+        expect(marketTimestampOrNow(NOW + 60 * 1000, NOW)).toBe(NOW + 60 * 1000); // skew ≤ 10 min toléré
     });
 
     it('ANTI-CHURN : prix IDENTIQUE au stocké → aucun patch (unchanged), aucun push/horodatage parasite', async () => {

@@ -4,6 +4,14 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-23 (suite 4) — INVEST-CURVES-LOW : graphe investissements (PR #495)
+> **✅ `[INVEST-CURVES-LOW]`** : graphe Investissements dégagé (notes de couverture + diagnostic repliés en
+> `<details>`, ligne « N points » retirée, 400→520px), StockChart auto-défaut Base 100 en séries disparates
+> (choix manuel prime) + fix base éparse (courbe figée à 0), correctifs panel (tooltipValue « — » sur null +
+> yFormatter respecté, aria-pressed + aria-live, cibles tactiles summary, h4 sr-only, isPrivacyMode enfin
+> passé au StockChart). Tests 2971 verts. BACKLOG [INVEST-CURVES-LOW] ✅ coché, CHANGELOG et leçon CLAUDE.md
+> déjà faits. **Suite : [INVEST-ALLOC-GEO-SECTOR], [BUDGET-3-VUES] (plan-first).**
+>
 > ## 🟢 Session 2026-07-23 (suite 3) — HIST-MULTI-PROVIDER : quotes multi-providers (PR #494)
 > **✅ `[HIST-MULTI-PROVIDER]`** (suite de #493 coverage-total) : chaîne de quotes multi-providers
 > (CoinGecko crypto, Finnhub stock-US, Yahoo Finance via proxy same-origin `/api/history/yahoo/:symbol`
@@ -1010,9 +1018,9 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#494** [HIST-MULTI-PROVIDER] (chaîne de quotes multi-providers, HistorySyncDoctor, rewrites Vercel, 2026-07-23) ; suite de **#493** HIST-COVERAGE-TOTAL |
+| **Dernière PR mergée** | **#495** [INVEST-CURVES-LOW] (graphe investissements, StockChart Base 100, correctifs panel a11y, 2026-07-23) ; suite de **#494** HIST-MULTI-PROVIDER |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
-| **Tests** | **2954/2954 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
+| **Tests** | **2971/2971 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
 | **Schema store** | **v7** (Zustand persist, migrations v1→v7) |

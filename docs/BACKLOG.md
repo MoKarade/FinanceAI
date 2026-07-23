@@ -158,6 +158,16 @@
   l'historique — la cible auto utilise déjà « moyenne de tout le passé ») ? interaction avec les tuiles
   Réel/Prévu actuelles (les KPI portent déjà réel ET prévu — la demande vise probablement le PAR-POSTE).
 
+## 🤝 Assistant fusionné (demande Marc 2026-07-23 : « combiner Prochaine action à l'Assistant »)
+- [x] **`[ASSISTANT-HUB]`** ✅ (2026-07-23, PR #492) — onglet Assistant VISIBLE dans la nav (remplace
+  « Prochaine action » — il n'était accessible que par Alt+9/Cmd+K) ; cartes de signaux
+  (`AiChatSignalCards` ← `useFinancialSignals` ← `computeFinancialSignals`, moteur PUR partagé avec le
+  tool MCP — un seul avis) au-dessus du chat, clic → discussion contextualisée ; widget Haiku
+  `getNextBestActions` + cache 1h RETIRÉS de services/claude.ts ; enum `Tab.ACTIONS` retiré (8 sites
+  migrés, typecheck comme filet) + redirect deep-link `#ACTIONS`→`#ASSISTANT` ; mode discret = clic
+  désactivé (ADR : pas de redaction fragile). Tests : parité narrow↔full du hook, clic/mode discret
+  discriminants, scan redirect. ADR complet : docs/decisions.md.
+
 ## 🖥️ Chat conscient de la page (demande Marc 2026-07-22 : « le chat peut réagir à tout sur la page »)
 - [x] **`[CHAT-PAGE-CONTEXT]`** ✅ vague 1 (2026-07-22, PR #490) — onglet actif (Tier 1, TOUTES les pages,
   `TAB_LABELS` déplacé en source unique dans `constants.ts`) + Budget en contexte FIN (Tier 2 : période

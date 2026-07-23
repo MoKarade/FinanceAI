@@ -1,6 +1,6 @@
 ---
 name: ai-reviewer
-description: Qualité et robustesse de l'intégration du SDK Anthropic dans FinanceAI — prompts, coût API, hallucinations, fallback, validation des réponses du modèle. À utiliser PROACTIVEMENT quand le diff touche services/claude.ts ou une des surfaces qui appellent Claude (AiAssistant, NextBestAction, CoupleOptimizationCard, import relevé/paie, BudgetAiModal, TaxCenter…). Lecture seule.
+description: Qualité et robustesse de l'intégration du SDK Anthropic dans FinanceAI — prompts, coût API, hallucinations, fallback, validation des réponses du modèle. À utiliser PROACTIVEMENT quand le diff touche services/claude.ts ou une des surfaces qui appellent Claude (AiAssistant, AiChatSignalCards, CoupleOptimizationCard, import relevé/paie, BudgetAiModal, TaxCenter…). Lecture seule.
 tools: Read, Grep, Glob
 model: sonnet
 ---

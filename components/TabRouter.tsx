@@ -21,7 +21,6 @@ const Settings = lazyWithRetry(() => import('./Settings').then(m => ({ default: 
 const Profile = lazyWithRetry(() => import('./Profile').then(m => ({ default: m.Profile })), 'Profile');
 const AiAssistant = lazyWithRetry(() => import('./AiAssistant').then(m => ({ default: m.AiAssistant })), 'AiAssistant');
 // NBA-PAGE — « Prochaine action » en page dédiée (même composant que l'ex-widget, mode asPage).
-const NextBestActionsPage = lazyWithRetry(() => import('./sidebar/NextBestAction').then(m => ({ default: m.NextBestAction })), 'NextBestActionsPage');
 const FutureProjection = lazyWithRetry(() => import('./FutureProjection').then(m => ({ default: m.FutureProjection })), 'FutureProjection');
 const DebtManager = lazyWithRetry(() => import('./DebtManager').then(m => ({ default: m.DebtManager })), 'DebtManager');
 // G22-N5 — SystemView n'est plus une route top-level : fusionné dans Settings
@@ -83,12 +82,6 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                             onNavigate={setActiveTab}
                             isPrivacyMode={isPrivacyMode}
                         />
-                    </PageSetupGate>
-                )}
-
-                {activeTab === Tab.ACTIONS && (
-                    <PageSetupGate tab={Tab.ACTIONS}>
-                        <NextBestActionsPage asPage />
                     </PageSetupGate>
                 )}
 

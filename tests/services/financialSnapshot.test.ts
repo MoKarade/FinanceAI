@@ -10,7 +10,6 @@ import {
     buildFinancialOverview,
     type FinancialSnapshot,
 } from '../../services/financialSnapshot';
-import type { FinancialSnapshot as ClaudeFinancialSnapshot } from '../../services/claude';
 
 function state(id: string) {
     return normalizeAppState(TEST_PERSONAS.find((p) => p.id === id)!.build());
@@ -65,14 +64,8 @@ describe('buildFinancialSnapshot', () => {
         expect(snap.projectedNetWorth20y).toBe(123456);
     });
 
-    it('structurellement compatible avec FinancialSnapshot de claude.ts', () => {
-        // Compat de FORME : l'objet pur est assignable au type attendu par
-        // getNextBestActions (services/claude.ts). Échoue à la compilation sinon.
-        const snap = buildFinancialSnapshot(state('couple-confort'));
-        const asClaude: ClaudeFinancialSnapshot = snap;
-        const roundTrip: FinancialSnapshot = asClaude;
-        expect(roundTrip.netWorth).toBe(snap.netWorth);
-    });
+    // [ASSISTANT-HUB] Le test de compatibilité avec le FinancialSnapshot homonyme de claude.ts a été
+    // retiré avec la section getNextBestActions (le type dupliqué n'existe plus — source unique ici).
 });
 
 describe('buildFinancialOverview', () => {

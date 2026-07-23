@@ -79,7 +79,9 @@ export const Layout: React.FC<LayoutProps> = ({
       icon: 'group-plan',
       items: [
         { id: Tab.FUTURE, label: t('tabs.future'), icon: 'future' },
-        { id: Tab.ACTIONS, label: 'Prochaine action', icon: 'actions' },
+        // [ASSISTANT-HUB] L'onglet fusionné (chat + prochaines actions) prend la place d'ACTIONS —
+        // l'Assistant n'était accessible que par Alt+9/Cmd+K (invisible dans la nav, retour Marc).
+        { id: Tab.ASSISTANT, label: 'Assistant', icon: 'bot' },
         { id: Tab.INVESTMENTS, label: t('tabs.investments'), icon: 'investments' },
         { id: Tab.RETIREMENT, label: t('tabs.retirement'), icon: 'retirement' },
       ],

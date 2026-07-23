@@ -109,6 +109,20 @@ describe('refreshAssetPrices', () => {
         expect(res.skipped).toContainEqual({ symbol: 'MANUEL', reason: 'no-quote' });
     });
 
+    it('[HIST-MULTI-PROVIDER] historySymbol résolu → utilisé pour hasProvider ET getQuote (le patch reste keyé par symbol)', async () => {
+        // Sans ça, un ticker nu résolu « CW8 → CW8.PA » gardait un prix figé à vie (la quote du
+        // symbole nu rend null pendant que le symbole résolu, lui, cote).
+        const getQuote = vi.fn(async (s: string) => (s === 'CW8.PA' ? quote({ symbol: 'CW8.PA', price: 550, currency: 'EUR' }) : null));
+        const hasProvider = vi.fn((s: string) => s === 'CW8.PA');
+        const res = await refreshAssetPrices(
+            [asset({ symbol: 'CW8', currency: 'EUR', currentPrice: 500, historySymbol: 'CW8.PA' })],
+            { ...deps(getQuote), hasProvider },
+        );
+        expect(hasProvider).toHaveBeenCalledWith('CW8.PA');
+        expect(getQuote).toHaveBeenCalledWith('CW8.PA');
+        expect(res.patches.get('CW8')?.currentPrice).toBe(550); // patch keyé par le symbole de l'ACTIF
+    });
+
     it('ignore les actifs sans symbole ou quantité ≤ 0 (aucun appel réseau)', async () => {
         const getQuote = vi.fn(async () => quote({ price: 120 }));
         await refreshAssetPrices(

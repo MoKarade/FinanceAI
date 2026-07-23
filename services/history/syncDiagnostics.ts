@@ -1,0 +1,58 @@
+// services/history/syncDiagnostics.ts
+//
+// [HIST-MULTI-PROVIDER] Dernier rapport de synchronisation des historiques de cours, exposé à
+// l'UI (diagnostic PAR TITRE + correction inline du symbole de cotation dans Investissements).
+// Module PUR (pattern viewContext/ARCH-SYNC-SPLIT) : aucun store persisté — le rapport est un
+// état de SESSION (recalculé à chaque hydratation), rien à synchroniser ni à migrer.
+//
+// ⚠️ Vie privée / mode test : le rapport porte les TICKERS RÉELS de l'utilisateur → il n'est
+// JAMAIS rendu en mode démo persona (gate côté UI) et il est PURGÉ à l'entrée en mode test
+// (clearHistorySyncReport — même classe que PERSONA-PURGE « zéro fuite inter-persona »).
+
+import type { HydrateHistoryResult } from './hydrateAssetHistories';
+import { logError } from '../errorLogger';
+
+export interface HistorySyncReport {
+    /** Epoch ms de la fin de l'hydratation. */
+    at: number;
+    /** Skips de la dernière passe (raisons + détails actionnables). */
+    skipped: HydrateHistoryResult['skipped'];
+    /** Nombre de titres patchés (historique mis à jour) par la dernière passe. */
+    patchedCount: number;
+}
+
+let _report: HistorySyncReport | null = null;
+const _listeners = new Set<() => void>();
+
+export function setHistorySyncReport(report: HistorySyncReport): void {
+    _report = report;
+    for (const l of _listeners) {
+        try {
+            l();
+        } catch (e) {
+            // Un listener UI qui jette ne doit pas casser les autres ni l'hydratation (même
+            // patron que les callbacks isolés d'agentLoop).
+            logError({ source: 'ui', severity: 'warning', message: 'Listener de diagnostic de sync en échec (ignoré).', error: e instanceof Error ? e : new Error(String(e)) });
+        }
+    }
+}
+
+export function clearHistorySyncReport(): void {
+    if (_report === null) return;
+    _report = null;
+    for (const l of _listeners) {
+        try {
+            l();
+        } catch { /* même isolation que setHistorySyncReport */ }
+    }
+}
+
+/** Snapshot stable pour useSyncExternalStore (référence inchangée tant que rien n'est publié). */
+export function getHistorySyncReport(): HistorySyncReport | null {
+    return _report;
+}
+
+export function subscribeHistorySyncReport(listener: () => void): () => void {
+    _listeners.add(listener);
+    return () => { _listeners.delete(listener); };
+}

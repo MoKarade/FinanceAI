@@ -302,6 +302,55 @@ describe('hydrateAssetHistories — variantes de suffixe', () => {
     });
 });
 
+describe('hydrateAssetHistories — [HIST-MULTI-PROVIDER] force + diagnostic', () => {
+    it('force:true → un actif FRAIS est quand même resynchronisé (geste explicite « Resynchroniser »)', async () => {
+        const getHistory = vi.fn(async () => [{ date: '2026-01-10', close: 29 }]);
+        const res = await hydrateAssetHistories(
+            [mk({ priceHistory: [{ date: '2026-01-10', price: 28 }], lastHistorySync: NOW - 1000 })], // frais
+            { getHistory, now: () => NOW, sleep: async () => {} },
+            { force: true },
+        );
+        expect(getHistory).toHaveBeenCalledTimes(1); // sans force : skip 'fresh', 0 appel
+        expect(res.patches.get('XEQT.TO')!.priceHistory).toEqual([{ date: '2026-01-10', price: 29 }]);
+    });
+
+    it('force:true → l\'éligibilité de base tient (sans symbole/détention : aucun appel)', async () => {
+        const getHistory = vi.fn(async () => [{ date: '2026-01-10', close: 29 }]);
+        await hydrateAssetHistories(
+            [mk({ quantity: 0, purchases: [], dateBought: undefined, buyPrice: undefined })],
+            { getHistory, now: () => NOW, sleep: async () => {} },
+            { force: true },
+        );
+        expect(getHistory).not.toHaveBeenCalled();
+    });
+
+    it('skip « empty » introuvable → detail ACTIONNABLE + triedSymbols (tout ce qui a été essayé)', async () => {
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'CW8', currency: 'EUR', currentPrice: 500 })],
+            { getHistory: async () => [], now: () => NOW, sleep: async () => {} },
+        );
+        const skip = res.skipped[0];
+        expect(skip.reason).toBe('empty');
+        expect(skip.triedSymbols).toEqual(['CW8', 'CW8.PA', 'CW8.DE', 'CW8.AS', 'CW8.MI']);
+        expect(skip.detail).toContain('Introuvable');
+        expect(skip.detail).toContain('CW8.PA'); // la liste essayée est DITE (pas un échec muet)
+    });
+
+    it('skip « empty » après variante REFUSÉE (plausibilité) → detail explique la confusion de ticker', async () => {
+        const getHistory = vi.fn(async (s: string) =>
+            s === 'CW8.PA' ? [{ date: '2026-01-10', close: 5000 }] : []);
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'CW8', currency: 'EUR', currentPrice: 500 })],
+            { getHistory, now: () => NOW, sleep: async () => {} },
+        );
+        const skip = res.skipped[0];
+        expect(skip.reason).toBe('empty');
+        expect(skip.detail).toContain('CW8.PA');
+        expect(skip.detail).toContain('5000');   // le cours refusé est montré
+        expect(skip.detail).toContain('500');    // vs le prix de l'actif → diagnostic complet
+    });
+});
+
 describe('mergePriceHistories', () => {
     it('union par date, le nouveau gagne, points invalides de l\'ancien purgés, tri croissant', () => {
         expect(mergePriceHistories(

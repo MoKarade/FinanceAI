@@ -36,7 +36,14 @@ export interface HydrateHistoryResult {
      *  (+ `historySymbol` quand une VARIANTE de suffixe a résolu le titre — persisté sur l'actif
      *  pour que les syncs suivantes frappent directement le bon symbole). */
     patches: Map<string, { priceHistory: Array<{ date: string; price: number }>; lastHistorySync: number; historySymbol?: string }>;
-    skipped: Array<{ symbol: string; reason: 'fresh' | 'no-provider' | 'no-first-date' | 'empty' | 'error' | 'currency-mismatch' }>;
+    /** [HIST-MULTI-PROVIDER] `detail` = phrase FR prête à afficher (diagnostic par titre) ;
+     *  `triedSymbols` = tous les symboles réellement tentés (principal + variantes). */
+    skipped: Array<{
+        symbol: string;
+        reason: 'fresh' | 'no-provider' | 'no-first-date' | 'empty' | 'error' | 'currency-mismatch';
+        detail?: string;
+        triedSymbols?: string[];
+    }>;
 }
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000; // au-delà : re-sync (aligné sur le TTL cache 'history')
@@ -119,6 +126,11 @@ function firstPurchaseDate(a: Asset): string | null {
 export async function hydrateAssetHistories(
     assets: Asset[],
     deps: HydrateHistoryDeps,
+    opts?: {
+        /** [HIST-MULTI-PROVIDER] Geste EXPLICITE « Resynchroniser » : ignore la fraîcheur 24 h
+         *  (l'appelant purge aussi le cache 'history' du jour) — jamais utilisé au boot. */
+        force?: boolean;
+    },
 ): Promise<HydrateHistoryResult> {
     const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
     const delayMs = deps.delayMs ?? DEFAULT_DELAY_MS;
@@ -129,8 +141,12 @@ export async function hydrateAssetHistories(
     let networkCalls = 0;
 
     for (const a of assets || []) {
-        if (!needsHistorySync(a, now())) {
+        if (!opts?.force && !needsHistorySync(a, now())) {
             if (a.symbol) skipped.push({ symbol: a.symbol, reason: 'fresh' });
+            continue;
+        }
+        // En force, l'ÉLIGIBILITÉ de base reste requise (symbole présent, détenu ou déjà acheté).
+        if (opts?.force && (!a.symbol || ((a.quantity || 0) === 0 && getEffectivePurchases(a).length === 0))) {
             continue;
         }
         if (deps.hasProvider && !deps.hasProvider(a.symbol)) {
@@ -176,6 +192,8 @@ export async function hydrateAssetHistories(
             let fresh = hist === null ? null : toFresh(hist);
             let resolvedSymbol: string | undefined;
             const variantNetFailures: string[] = [];
+            const triedSymbols: string[] = [primarySymbol];
+            const rejectedVariants: Array<{ alt: string; lastClose: number }> = [];
             // ⚠️ Variantes SEULEMENT sur un vide CONFIRMÉ (`[]`), JAMAIS sur `null` (panne
             // réseau/provider) — finding code-reviewer #493, prouvé par sonde : une panne
             // transitoire sur le VRAI symbole partait à la pêche et pouvait PERSISTER
@@ -193,6 +211,7 @@ export async function hydrateAssetHistories(
                 for (const alt of fallbacks) {
                     await sleep(delayMs);
                     networkCalls++;
+                    triedSymbols.push(alt);
                     const altHist = await deps.getHistory(alt, from, new Date(now()));
                     if (altHist === null) {
                         // Échec RÉSEAU d'une variante ≠ « ce symbole n'existe pas » — collecté pour
@@ -210,6 +229,7 @@ export async function hydrateAssetHistories(
                         if (!variantClosePlausible(lastClose, a.currentPrice)) {
                             // Collision de ticker probable (ou pas de prix de référence) → REFUS
                             // plutôt que d'afficher la courbe d'un autre titre (no-fake-data).
+                            rejectedVariants.push({ alt, lastClose });
                             logError({
                                 source: 'network', severity: 'warning',
                                 message: `Historique ${a.symbol} : la variante ${alt} répond mais son cours est incompatible avec le prix courant de l'actif — ignorée (risque de mauvais titre). Précise le symbole avec son suffixe (ex. ${a.symbol}.PA).`,
@@ -225,7 +245,10 @@ export async function hydrateAssetHistories(
             if (fresh === null) {
                 // Contrat façade : null = ÉCHEC de toute la chaîne (≠ vide légitime) → tracé,
                 // pas de patch (l'historique existant SURVIT), retry au prochain boot.
-                skipped.push({ symbol: a.symbol, reason: 'error' });
+                skipped.push({
+                    symbol: a.symbol, reason: 'error', triedSymbols,
+                    detail: `Panne du fournisseur de cours sur ${primarySymbol} — nouvel essai automatique au prochain chargement.`,
+                });
                 logError({
                     source: 'network', severity: 'warning',
                     message: `Historique ${a.symbol} : tous les providers ont échoué (graphe partiel, nouvel essai au prochain démarrage).`,
@@ -236,13 +259,24 @@ export async function hydrateAssetHistories(
                 if (variantNetFailures.length > 0) {
                     // Indéterminé (le principal a répondu vide mais des variantes ont ÉCHOUÉ en
                     // réseau) → 'error' (retry au prochain cycle), pas un « vide légitime » menteur.
-                    skipped.push({ symbol: a.symbol, reason: 'error' });
+                    skipped.push({
+                        symbol: a.symbol, reason: 'error', triedSymbols,
+                        detail: `Aucun historique sur ${primarySymbol} et panne réseau sur ${variantNetFailures.join(', ')} — nouvel essai automatique au prochain chargement.`,
+                    });
                     logError({
                         source: 'network', severity: 'warning',
                         message: `Historique ${a.symbol} : aucun historique sur le symbole principal et échec réseau des variantes ${variantNetFailures.join(', ')} — indéterminé, nouvel essai au prochain démarrage.`,
                     });
                 } else {
-                    skipped.push({ symbol: a.symbol, reason: 'empty' });
+                    // [HIST-MULTI-PROVIDER] Diagnostic ACTIONNABLE par titre : dire ce qui a été
+                    // essayé et quoi faire — un « sans courbe » muet laissait Marc sans recours.
+                    const rejected = rejectedVariants[0];
+                    skipped.push({
+                        symbol: a.symbol, reason: 'empty', triedSymbols,
+                        detail: rejected
+                            ? `${rejected.alt} répond (cours ${rejected.lastClose}) mais ce cours est incompatible avec le prix actuel de l'actif (${a.currentPrice || 'inconnu'}) — probable confusion de ticker ou prix de l'actif périmé. Corrige le prix de l'actif ou fixe le symbole de cotation ci-dessous.`
+                            : `Introuvable chez les fournisseurs (essayé : ${triedSymbols.join(', ')}). Fixe le symbole de cotation exact ci-dessous (ex. ticker Yahoo « ${a.symbol}.PA »).`,
+                    });
                 }
                 continue;
             }

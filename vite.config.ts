@@ -89,6 +89,12 @@ export default defineConfig(({ mode }) => {
             changeOrigin: true,
             rewrite: (path: string) => path.replace(/^\/api\/history\/yahoo/, '/v8/finance/chart'),
           },
+          // [HIST-MULTI-PROVIDER] Recherche de titre par nom (diagnostic « Cours non synchronisés »).
+          '/api/search/yahoo': {
+            target: 'https://query1.finance.yahoo.com',
+            changeOrigin: true,
+            rewrite: (path: string) => path.replace(/^\/api\/search\/yahoo/, '/v1/finance/search'),
+          },
         },
       },
       plugins: [react(), claudeRelayDevPlugin(env)],

@@ -804,6 +804,19 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   du TOTAL sans signal — à chaque branche `continue` d'un agrégat, se demander « quel signal l'UI reçoit-elle ? ».
   (6) un montant affiché dans un bandeau doit partager la MÊME base que ce qu'il prétend décrire (`holdingsAt`
   vs `a.quantity` désynchronisable — instance de [[PH4D-BUDGET-RATIOS]] « calculs voisins sur la même base »).
+- ⚠️ **[HIST-MULTI-PROVIDER] 2026-07-23 — quotes multi-providers, leçons** : (1) **un REPLI d'agrégat qui dépend
+  d'une donnée SŒUR hérite de SES trous** — le repli « valeur actuelle » (#493) dépendait de `currentPrice`, or les
+  quotes Finnhub free = US only → les ETF Euronext restaient à un prix saisi vieux/absent (TOTAL toujours faux de
+  ~40 k$). Fermer le trou de la donnée sœur (chaîne de quotes → Yahoo) vaut mieux que raffiner l'agrégat. Le endpoint
+  chart Yahoo porte DÉJÀ la quote (`meta.regularMarketPrice` + devise) → repli quote sans nouveau rewrite. (2) **la
+  config vitest du repo est `environment: 'jsdom'` PAR DÉFAUT** — un gate `typeof window` rend la branche navigateur
+  dans TOUS les tests sans directive ; un test qui encode le comportement « hors navigateur » (`hasQuoteProvider ===
+  false`) casse dès qu'on étend la branche navigateur, et un test « pas de fetch » peut passer PAR ACCIDENT (mock qui
+  throw sur URL relative avant de compter). (3) **un échec de résolution sans RECOURS à l'écran = ticket de retour
+  garanti** — la raison du skip (`detail` + `triedSymbols`) doit remonter jusqu'à l'UI avec le remède inline (champ
+  symbole de cotation + recherche par NOM), pas seulement au journal d'erreurs. (4) corriger un ticker à la main DOIT
+  purger `priceHistory` du titre (un historique fusionné d'un MAUVAIS titre survivrait à la correction — même classe
+  que « variante d'un autre titre »).
 - ⚠️ **[AITOOLS-SEC] 2026-07-22 — audit de clôture du chantier Claude-in-app, leçons** : (1) **Un fix de
   sécurité appliqué à UNE surface doit être porté à TOUTES les surfaces qui partagent le vecteur** — le scrub
   anti-injection du `summary`/`changes` d'une écriture avait été fait côté app (`writeExecutor`, Lot D) mais

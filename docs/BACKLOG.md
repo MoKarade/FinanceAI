@@ -145,6 +145,12 @@
 - [ ] **`[INVEST-ALLOC-GEO-SECTOR]`** (M) — « la répartition géographique marche pas et sectorielle non plus » :
   vérifier la source (profil Finnhub par titre ? statique ?) — probablement vide pour les ETF européens/Amundi.
   Diagnostiquer avec les vrais tickers de Marc.
+- [x] **`[HIST-MULTI-PROVIDER]`** 🔴 — ✅ 2026-07-23 (retour Marc post-#493 : TOTAL ~200 k$ et titres toujours
+  sans courbe ; « plusieurs providers pour tout avoir ») : chaîne de QUOTES multi-providers (crypto → CoinGecko ;
+  Finnhub → repli Yahoo via le proxy chart, `meta.regularMarketPrice`, devise vérifiée) ; `priceRefresh` quote
+  `historySymbol || symbol` ; bouton « Actualiser les cours » = resync COMPLÈTE (purge cache history + hydratation
+  forcée + quotes + diagnostic) ; `HistorySyncDoctor` (Investissements) : raison exacte par titre + symbole de
+  cotation inline + recherche par NOM (`/api/search/yahoo`). ADR docs/decisions.md.
 - [x] **`[HIST-GOOGLE-PARITY]`** — ✅ 2026-07-23 absorbé par [HIST-COVERAGE-TOTAL] (couverture complète livrée ;
   l'écart résiduel attendu vs Google = granularité daily + heure FX, documenté ci-dessous). Question Marc :
   (« utiliser exactement la courbe de google finance c'est possible ? ») —

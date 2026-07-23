@@ -22,6 +22,7 @@ import { Skeleton } from './ui/Skeleton';
 import { MarketDataPoint } from '../services/finance';
 import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import { HistoryCoverageNote } from './dashboard/HistoryCoverageNote';
+import { HistorySyncDoctor } from './investments/HistorySyncDoctor';
 import { historyKeyMatchesSymbol } from '../services/history/buildMarketData';
 import { StockChart } from './StockChart';
 import { ASSET_META } from '../services/assetMeta';
@@ -404,9 +405,31 @@ export const Investments: React.FC<InvestmentsProps> = ({
         }
         setIsRefreshingPrices(true);
         try {
+            // [HIST-MULTI-PROVIDER] Le geste couvre aussi les HISTORIQUES : purge du cache
+            // 'history' du jour (un « vide » caché 24 h bloquerait le nouvel essai) + hydratation
+            // FORCÉE (variantes de suffixe incluses) + publication du diagnostic par titre.
+            // AVANT le refresh des quotes : une variante résolue ici sert immédiatement aux quotes.
+            try {
+                const { clearMarketDataCache, getHistory, hasHistoryProvider } = await import('../services/marketData');
+                const { hydrateAssetHistories, applyHistoryPatches } = await import('../services/history/hydrateAssetHistories');
+                const { setHistorySyncReport } = await import('../services/history/syncDiagnostics');
+                clearMarketDataCache('history');
+                const current = useFinanceStore.getState().assets ?? [];
+                const histRes = await hydrateAssetHistories(current, { getHistory, hasProvider: hasHistoryProvider }, { force: true });
+                setHistorySyncReport({ at: Date.now(), skipped: histRes.skipped, patchedCount: histRes.patches.size });
+                if (histRes.patches.size > 0) {
+                    const freshAssets = useFinanceStore.getState().assets ?? [];
+                    setAssets(applyHistoryPatches(freshAssets, histRes.patches));
+                }
+            } catch (e) {
+                // L'échec de l'hydratation ne bloque PAS le refresh des quotes (indépendants).
+                logError({ source: 'network', severity: 'warning', message: 'Resynchronisation des historiques échouée (les quotes sont quand même actualisées).', error: e });
+            }
             // force:true = geste explicite (le gate 5 min du service ne s'applique pas au bouton ;
             // le cache quote 5 min absorbe de toute façon les re-clics rapprochés côté réseau).
-            const res = await refreshAssetPrices(assets, { getQuote, hasProvider: hasQuoteProvider }, { force: true });
+            // État FRAIS du store (pas la capture du render) : un historySymbol résolu par
+            // l'hydratation ci-dessus sert immédiatement de symbole de cotation.
+            const res = await refreshAssetPrices(useFinanceStore.getState().assets ?? [], { getQuote, hasProvider: hasQuoteProvider }, { force: true });
             if (res.patches.size > 0) {
                 const fresh = useFinanceStore.getState().assets ?? [];
                 setAssets(applyPricePatches(fresh, res.patches));
@@ -418,7 +441,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             } else {
                 const parts: string[] = [`${res.refreshed.length} cours mis à jour`];
                 if (res.unchanged.length > 0) parts.push(`${res.unchanged.length} déjà à jour`);
-                if (uncovered.length > 0) parts.push(`${uncovered.length} sans cours disponible (${uncovered.map(s => s.symbol).slice(0, 4).join(', ')}${uncovered.length > 4 ? '…' : ''}) — clé Finnhub requise, ou titre non coté à mettre à jour à la main`);
+                if (uncovered.length > 0) parts.push(`${uncovered.length} sans cours disponible (${uncovered.map(s => s.symbol).slice(0, 4).join(', ')}${uncovered.length > 4 ? '…' : ''}) — introuvable chez Finnhub/Yahoo : fixe le symbole de cotation dans le diagnostic sous le graphe`);
                 if (mismatched.length > 0) parts.push(`${mismatched.length} ignoré(s) : devise du quote ≠ devise stockée (${mismatched.map(s => s.symbol).join(', ')})`);
                 showToast(parts.join(' · '), uncovered.length + mismatched.length > 0 ? 'info' : 'success');
             }
@@ -428,6 +451,21 @@ export const Investments: React.FC<InvestmentsProps> = ({
         } finally {
             setIsRefreshingPrices(false);
         }
+    };
+
+    // [HIST-MULTI-PROVIDER] Fixe le symbole de COTATION d'un actif (saisie utilisateur ou
+    // suggestion de recherche) : purge l'historique du titre (un historique fusionné d'un MAUVAIS
+    // titre ne doit pas survivre à la correction — même classe que le scénario « variante d'un
+    // autre titre » du panel #493) puis relance la resynchronisation complète.
+    const handleApplyQuoteSymbol = (assetSymbol: string, quoteSymbol: string) => {
+        const trimmed = quoteSymbol.trim();
+        if (!trimmed) return;
+        const current = useFinanceStore.getState().assets ?? [];
+        const next = current.map((a) => a.symbol === assetSymbol
+            ? { ...a, historySymbol: trimmed === a.symbol ? undefined : trimmed, priceHistory: [], lastHistorySync: undefined }
+            : a);
+        setAssets(next);
+        void handleRefreshPrices(); // recharge historique (cache purgé + force) + quotes
     };
 
     const handleAssetAccountChange = (symbolKey: string, newAccount: string) => {
@@ -634,6 +672,9 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     partagé) : c'est ICI que Marc lit la courbe TOTAL. */}
                 <HistoryCoverageNote noHistorySymbols={noHistorySymbols} partialHistorySymbols={partialHistorySymbols}
                     staleTailSymbols={staleTailSymbols} hasChart={portfolioHistory.length > 0} />
+                {/* [HIST-MULTI-PROVIDER] Diagnostic par titre + remède inline (symbole de cotation,
+                    recherche par nom). Jamais rendu en mode test (tickers réels). */}
+                <HistorySyncDoctor onApplyQuoteSymbol={handleApplyQuoteSymbol} isSyncing={isRefreshingPrices} />
             </Card>}
 
             {/* 2. ALLOCATION PANORAMIQUE — Phase E.3 sub-tab 'allocation' */}

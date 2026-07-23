@@ -11,7 +11,7 @@ import type { Quote, HistoryPoint, AssetProfile, SymbolSearchResult, MarketDataP
 import { withCache, clearMarketDataCache } from './cache';
 import { FinnhubProvider } from './providers/finnhub';
 import { CoinGeckoProvider, coinGeckoIdFor } from './providers/coingecko';
-import { getYahooHistory } from './providers/yahooProxy';
+import { getYahooHistory, getYahooQuote } from './providers/yahooProxy';
 
 export * from './types';
 export { clearMarketDataCache } from './cache';
@@ -48,22 +48,35 @@ export function configureMarketDataProvider(opts: { finnhubKey?: string }): void
 }
 
 /**
- * [PRICE-REFRESH-LIVE] Un provider peut-il quoter ce symbole ? (crypto → CoinGecko toujours ;
- * autres → Finnhub seulement si la clé est configurée). Permet aux appelants de SAUTER d'emblée
+ * [PRICE-REFRESH-LIVE] Un provider peut-il quoter ce symbole ? Crypto → CoinGecko toujours ;
+ * autres → Finnhub (si clé) OU le repli quote Yahoo via proxy same-origin ([HIST-MULTI-PROVIDER] —
+ * navigateur seulement, comme le repli d'historique). Permet aux appelants de SAUTER d'emblée
  * les symboles sans provider au lieu de consommer du pacing (sleep) pour des null instantanés.
  */
 export function hasQuoteProvider(symbol: string): boolean {
-    return pickProvider(symbol) != null;
+    if (pickProvider(symbol) != null) return true;
+    return !coinGeckoIdFor(symbol) && typeof window !== 'undefined'; // repli Yahoo (non-crypto)
 }
 
 /**
- * Quote spot. Retourne null si pas de provider configuré ou si le symbole
- * est inconnu / erreur réseau.
+ * Quote spot, avec CHAÎNE DE REPLI ([HIST-MULTI-PROVIDER], choix Marc « tout gratuit / plusieurs
+ * providers pour tout avoir ») : crypto → CoinGecko ; actions/ETF → Finnhub (si clé — quotes
+ * européennes 403 en tier gratuit) → repli Yahoo via proxy same-origin (meta du chart). `null` si
+ * aucun maillon ne répond (jamais caché → retry au prochain appel).
  */
 export async function getQuote(symbol: string): Promise<Quote | null> {
-    const provider = pickProvider(symbol);
-    if (!provider) return null;
-    return withCache('quote', symbol, () => provider.getQuote(symbol));
+    return withCache('quote', symbol, async () => {
+        const isCrypto = Boolean(coinGeckoIdFor(symbol));
+        if (isCrypto) return cryptoProvider.getQuote(symbol); // pas de repli Yahoo (crypto)
+        if (activeProvider) {
+            const primary = await activeProvider.getQuote(symbol);
+            if (primary) return primary;
+        }
+        if (typeof window !== 'undefined') {
+            return getYahooQuote(symbol);
+        }
+        return null; // hors navigateur sans Finnhub : pas de chemin (non caché)
+    });
 }
 
 /**

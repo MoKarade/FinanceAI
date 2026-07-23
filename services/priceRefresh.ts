@@ -125,9 +125,13 @@ async function runRefresh(
 
     let quoteCalls = 0;
     for (const a of targets) {
+        // [HIST-MULTI-PROVIDER] Le symbole de COTATION peut différer du symbole saisi : une
+        // résolution de suffixe (`historySymbol`, auto ou saisie) vaut pour les quotes AUSSI —
+        // sinon un ticker nu résolu « CW8 → CW8.PA » garderait un prix figé à vie.
+        const quoteSymbol = a.historySymbol || a.symbol;
         // Pas de provider pour ce symbole (ex. pas de clé Finnhub, titre manuel) → skip IMMÉDIAT,
         // sans consommer de pacing (getQuote rendrait un null instantané de toute façon).
-        if (deps.hasProvider && !deps.hasProvider(a.symbol)) {
+        if (deps.hasProvider && !deps.hasProvider(quoteSymbol)) {
             result.skipped.push({ symbol: a.symbol, reason: 'no-quote' });
             continue;
         }
@@ -138,7 +142,7 @@ async function runRefresh(
 
         let quote: Quote | null;
         try {
-            quote = await deps.getQuote(a.symbol);
+            quote = await deps.getQuote(quoteSymbol);
         } catch (e) {
             // Contrat « getQuote ne rejette jamais » non garanti structurellement : une exception ne
             // doit PAS jeter le progrès des symboles déjà traités ni masquer lesquels ont réussi.

@@ -75,9 +75,15 @@ export const HistorySyncDoctor: React.FC<Props> = ({ onApplyQuoteSymbol, isSynci
 
     // [INVEST-CHART-CLEAN] REPLIÉ par défaut (demande Marc « enlève le texte, qu'on voie le
     // graphe ») : une ligne d'alerte compacte, le diagnostic + remèdes au clic.
+    // [Finding a11y #495] Le <h4> sr-only HORS du <details> préserve la navigation par TITRES des
+    // lecteurs d'écran (un summary a un rôle bouton, pas heading — et un heading DANS un details
+    // fermé est caché) ; py-1.5 sur le summary = boîte ≥ 24 px (WCAG 2.5.8, padding sur le summary
+    // lui-même, pas le parent).
     return (
-        <details className="mt-2 bg-white/[0.03] border border-warning-400/30 rounded-card px-3 py-2">
-            <summary className="text-tiny font-bold text-ink-300 cursor-pointer select-none hover:text-white focus-ring rounded flex items-center gap-2">
+        <div className="mt-2">
+        <h4 className="sr-only">Cours non synchronisés</h4>
+        <details className="bg-white/[0.03] border border-warning-400/30 rounded-card px-3 py-1">
+            <summary className="text-tiny font-bold text-ink-300 cursor-pointer select-none hover:text-white focus-ring rounded flex items-center gap-2 py-1.5">
                 <Icon name="alert" size={12} aria-hidden="true" />
                 Cours non synchronisés ({actionable.length}) — diagnostiquer et corriger
             </summary>
@@ -156,5 +162,6 @@ export const HistorySyncDoctor: React.FC<Props> = ({ onApplyQuoteSymbol, isSynci
             </ul>
             </div>
         </details>
+        </div>
     );
 };

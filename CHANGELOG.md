@@ -19,6 +19,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Correctif** : en Base 100, un titre acheté après le début de la fenêtre restait figé à 0 %
   (courbe invisible — sa base était prise sur le premier jour du graphe, où il n'existait pas).
   Chaque série démarre maintenant à son propre premier point.
+- Correctifs du panel de revue : l'infobulle du graphe affiche « — » sur un jour sans donnée (plus
+  de faux « +0,00 % ») et respecte le mode Base 100 (elle affichait des dollars sur une échelle en
+  pourcentage) ; le mode discret masque enfin les montants du graphe de comparaison (il ne les
+  masquait jamais) ; boutons Prix/Base 100 annoncés aux lecteurs d'écran (y compris la bascule
+  automatique) ; zones de clic des panneaux repliables agrandies.
 
 ## [unreleased — Cours multi-fournisseurs : « tout ce que j'ai et plus »] — 2026-07-23
 

@@ -773,7 +773,11 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   donnée » à tort) lisaient la ligne 0 ; au changement de forme, grep TOUS les lecteurs de la ligne 0/du
   scan de clés (union des lignes, pattern Investments) — ↻ 3ᵉ instance INVEST-CURVES-LOW 2026-07-23 : la BASE du
   mode Base 100 de StockChart était prise sur la ligne 0 → un titre apparu plus tard avait base 0 → courbe FIGÉE à
-  0 invisible (base par série = SON premier point fini, point manquant → null). Sœur : le matching par SOUS-CHAÎNE (`k.includes(sym)`)
+  0 invisible (base par série = SON premier point fini, point manquant → null) — et le FIX doit couvrir TOUTE la
+  chaîne d'affichage : le tooltip (`val || 0`) réintroduisait le faux « +0,00 % » que la courbe venait d'éliminer,
+  et formatait en $ EN DUR ce que l'axe rendait en % (panel #495) ; NB test : jsdom ne cache PAS le contenu d'un
+  `<details>` fermé (pas de règle UA) → « replié par défaut » s'asserte sur l'ATTRIBUT `open`, pas sur la visibilité.
+  Sœur : le matching par SOUS-CHAÎNE (`k.includes(sym)`)
   sur des clés devenues = symboles exacts fait matcher « V » (Visa) avec « VFV.TO » → helper partagé
   `historyKeyMatchesSymbol` (exact + préfixe place legacy), 6 sites corrigés. (6) **Une écriture par clé
   partagée dans une boucle multi-entités (`row[symbol] = v`) écrase quand 2 entités partagent la clé**

@@ -32,6 +32,13 @@ beforeEach(() => {
 });
 
 describe('HistorySyncDoctor', () => {
+    it('[INVEST-CHART-CLEAN] REPLIÉ par défaut (details sans open) + heading sr-only conservé', () => {
+        setHistorySyncReport({ at: 1, patchedCount: 0, skipped: [{ symbol: 'CW8', reason: 'empty', detail: 'x' }] });
+        const { container } = render(<HistorySyncDoctor onApplyQuoteSymbol={onApply} isSyncing={false} />);
+        expect(container.querySelector('details')?.open).toBeFalsy(); // jsdom ne cache pas le contenu : `open` est le discriminant
+        expect(screen.getByRole('heading', { level: 4, name: 'Cours non synchronisés' })).toBeInTheDocument(); // navigation par titres SR
+    });
+
     it('skip « empty » → détail affiché + champ symbole de cotation ; Appliquer → callback', () => {
         setHistorySyncReport({
             at: 1, patchedCount: 0,

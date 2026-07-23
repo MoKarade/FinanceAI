@@ -19,6 +19,18 @@ describe('HistoryCoverageNote', () => {
         expect(container.textContent).toContain('GBS.PA');
     });
 
+    it('[INVEST-CHART-CLEAN] REPLIÉ par défaut (details sans open) — le but même de la PR #495', () => {
+        // ⚠️ jsdom n'applique pas le display:none UA d'un details fermé → getByText « voit » le
+        // contenu quand même : l'attribut `open` est le SEUL discriminant testable ici.
+        const { container } = render(
+            <HistoryCoverageNote hasChart
+                noHistorySymbols={[{ symbol: 'GBS.PA', valueCad: 7350 }]}
+                partialHistorySymbols={[]} staleTailSymbols={[]} />,
+        );
+        expect(container.querySelector('details')?.open).toBeFalsy();
+        expect(container.querySelector('summary')?.textContent).toContain('Couverture des courbes');
+    });
+
     it('[Finding code-reviewer #493] SANS courbe : ne prétend PAS « compté dans le total » (aucun total tracé)', () => {
         // Mesuré : rows vides + bandeau « compté dans le total : X $ » sous un graphe « Aucune
         // donnée » = affirmation sans rien pour l'appuyer.

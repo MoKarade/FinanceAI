@@ -71,7 +71,11 @@ export function toPerformanceRows(data: MarketDataPoint[], visibleKeys: Set<stri
 }
 
 export const StockChart: React.FC<StockChartProps> = ({ data, visibleKeys, isPrivacyMode = false }) => {
-    const [mode, setMode] = useState<'PRICE' | 'PERFORMANCE'>('PRICE');
+    // Init PARESSEUX (finding panel #495) : démarrer directement dans le bon mode — un init 'PRICE'
+    // corrigé par effet après le 1er paint flashait une frame de courbes plates $ (le cas même
+    // que la feature corrige).
+    const [mode, setMode] = useState<'PRICE' | 'PERFORMANCE'>(
+        () => (seriesScaleDisparity(data, visibleKeys) ? 'PERFORMANCE' : 'PRICE'));
     // L'utilisateur a-t-il CHOISI le mode ? (clic bouton) — l'auto-défaut ne s'applique qu'avant.
     const userChoseRef = useRef(false);
 
@@ -115,9 +119,16 @@ export const StockChart: React.FC<StockChartProps> = ({ data, visibleKeys, isPri
     return (
         <div className="w-full h-full flex flex-col">
             <div className="flex justify-end mb-2 gap-2 relative z-10 shrink-0">
+                {/* [Finding a11y #495] aria-pressed (état exposé aux SR — convention aria-pressed
+                    des toggles d'Investments) + zone live : depuis l'auto-défaut, le mode peut
+                    changer SANS geste (axe $ → %) — un SR doit en être informé (WCAG 4.1.3). */}
+                <span className="sr-only" aria-live="polite">
+                    Mode d'affichage du graphique : {mode === 'PRICE' ? 'prix en dollars' : 'base 100, pourcentage'}
+                </span>
                 <div className="bg-black/40 rounded-lg p-0.5 border border-white/10 flex">
                     <button
                         type="button"
+                        aria-pressed={mode === 'PRICE'}
                         onClick={() => chooseMode('PRICE')}
                         className={`px-3 py-1 text-tiny font-bold rounded transition-colors ${mode === 'PRICE' ? 'bg-info-600 text-white shadow' : 'text-ink-300 hover:text-white'}`}
                     >
@@ -125,6 +136,7 @@ export const StockChart: React.FC<StockChartProps> = ({ data, visibleKeys, isPri
                     </button>
                     <button
                         type="button"
+                        aria-pressed={mode === 'PERFORMANCE'}
                         onClick={() => chooseMode('PERFORMANCE')}
                         className={`px-3 py-1 text-tiny font-bold rounded transition-colors ${mode === 'PERFORMANCE' ? 'bg-purple-600 text-white shadow' : 'text-ink-300 hover:text-white'}`}
                     >

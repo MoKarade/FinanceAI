@@ -669,6 +669,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         <StockChart
                             data={filteredMarketData}
                             visibleKeys={selectedKeys}
+                            isPrivacyMode={isPrivacyMode}
                         />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center text-ink-400 bg-white/5 rounded-xl">

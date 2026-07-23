@@ -41,19 +41,25 @@ describe('toPerformanceRows (Base 100 sur lignes éparses)', () => {
 });
 
 describe('StockChart — auto-défaut Base 100', () => {
-    it('séries disparates → démarre en Base 100 ; clic « Prix ($) » → le choix manuel prime', () => {
+    it('séries disparates → démarre DIRECTEMENT en Base 100 (init paresseux, pas de flash $) + aria-pressed', () => {
         render(<StockChart data={rows} visibleKeys={new Set(['TOTAL', 'XEQT.TO'])} />);
-        const price = screen.getByRole('button', { name: 'Prix ($)' });
         const perf = screen.getByRole('button', { name: 'Base 100 (%)' });
-        expect(perf.className).toContain('bg-purple-600'); // auto-défaut actif
-        fireEvent.click(price);
-        expect(price.className).toContain('bg-info-600');  // choix manuel appliqué…
-        // …et il PRIME : un re-render avec les mêmes données ne réimpose pas l'auto.
-        expect(screen.getByRole('button', { name: 'Prix ($)' }).className).toContain('bg-info-600');
+        expect(perf.className).toContain('bg-purple-600');       // auto-défaut actif dès le 1er rendu
+        expect(perf).toHaveAttribute('aria-pressed', 'true');    // état exposé aux SR
+        expect(screen.getByRole('button', { name: 'Prix ($)' })).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('[Finding panel #495] le choix MANUEL prime : un re-render avec un NOUVEAU Set équivalent ne réimpose pas l\'auto', () => {
+        // Cas réel : chaque toggle de série dans Investments crée un new Set() → l'effet re-tourne.
+        // Sans userChoseRef, l'auto réimposerait Base 100 après le choix manuel Prix ($).
+        const { rerender } = render(<StockChart data={rows} visibleKeys={new Set(['TOTAL', 'XEQT.TO'])} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Prix ($)' }));
+        rerender(<StockChart data={[...rows]} visibleKeys={new Set(['TOTAL', 'XEQT.TO'])} />); // nouvelles RÉFÉRENCES
+        expect(screen.getByRole('button', { name: 'Prix ($)' })).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('séries homogènes → démarre en Prix ($)', () => {
         render(<StockChart data={rows} visibleKeys={new Set(['XEQT.TO', 'TARD'])} />);
-        expect(screen.getByRole('button', { name: 'Prix ($)' }).className).toContain('bg-info-600');
+        expect(screen.getByRole('button', { name: 'Prix ($)' })).toHaveAttribute('aria-pressed', 'true');
     });
 });

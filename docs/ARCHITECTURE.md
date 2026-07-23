@@ -197,6 +197,19 @@ API keys (Anthropic, Finnhub)
   ├─ Chiffrées AES-256-GCM (services/secureKeyStore.ts)
   ├─ Clé device IndexedDB (non-extractible)
   └─► Zustand + localStorage chiffré
+
+Historique de portefeuille / Courbes de cours
+  ├─ Sources : Finnhub (stock/ETF) + Yahoo Finance (via proxy same-origin)
+  │            + CoinGecko (crypto) + CSV legacy importé
+  ├─ Pipeline : hydrateAssetHistories (boot, pacing 2,5s) 
+  │    → `getHistory` par symbole (avec variantes devise Yahoo)
+  │    → stocké IDB + cache 24h
+  │    → buildMarketData (pur, colonnes AGRÉGÉES multi-comptes)
+  ├─ Contrat : null = erreur (jamais cachée), [] = vide valide (24h cache)
+  ├─ Repli no-fake-data : titres sans historique → valeur actuelle signalée
+  │    (`noHistorySymbols` + HistoryCoverageNote sur Dashboard/Investissements)
+  ├─ Persistance : Asset.historySymbol (additif) pour resolver variantes suffixes
+  └─► Dashboard (piles), Investissements (chips TOTAL), Futur (poids/gains)
 ```
 
 ## 6. IA — pipeline composé

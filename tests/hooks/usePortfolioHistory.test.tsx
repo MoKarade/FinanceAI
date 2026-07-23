@@ -50,16 +50,16 @@ describe('usePortfolioHistory (dérivé du store)', () => {
         expect(rows[0]['XEQT.TO']).toBe(280);  // 10 × 28 (CAD)
         expect(rows[1]['XEQT.TO']).toBe(300);  // 10 × 30
         expect(rows[1].TOTAL).toBe(300);
-        expect(result.current.excludedSymbols).toEqual([]);
+        expect(result.current.noHistorySymbols).toEqual([]);
     });
 
-    it('mode réel : un actif SANS historique est EXCLU (colonnes + totaux) et signalé', () => {
+    it('[HIST-COVERAGE-TOTAL] mode réel : un actif SANS historique n\'a pas de colonne mais COMPTE au TOTAL (valeur actuelle) et est signalé', () => {
         useFinanceStore.setState({
-            assets: [mkAsset({}), mkAsset({ symbol: 'NOHIST', priceHistory: [] })],
+            assets: [mkAsset({}), mkAsset({ symbol: 'NOHIST', priceHistory: [], currentPrice: 30 })],
         } as never);
         const { result } = renderHook(() => usePortfolioHistory());
-        expect(result.current.excludedSymbols).toEqual(['NOHIST']);
-        expect(result.current.history[1].TOTAL).toBe(300); // pas de valeur inventée pour NOHIST
-        expect(result.current.history[1].NOHIST).toBeUndefined();
+        expect(result.current.noHistorySymbols).toEqual([{ symbol: 'NOHIST', valueCad: 300 }]);
+        expect(result.current.history[1].TOTAL).toBe(600); // 300 (XEQT) + 300 (repli valeur actuelle)
+        expect(result.current.history[1].NOHIST).toBeUndefined(); // aucune courbe inventée
     });
 });

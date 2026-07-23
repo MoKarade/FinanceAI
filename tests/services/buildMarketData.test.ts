@@ -62,19 +62,57 @@ describe('buildMarketData', () => {
         expect(rows[0].date).toBe('2026-01-10');
     });
 
-    it('no-fake-data : actif sans historique EXCLU des colonnes ET des totaux + signalé', () => {
-        const { rows, excludedSymbols } = buildMarketData([
+    it('[HIST-COVERAGE-TOTAL] sans historique : PAS de colonne, mais COMPTÉ au TOTAL/bucket à la valeur actuelle + signalé', () => {
+        // Décision Marc 2026-07-23 : avant, SANSHIST était exclu des totaux → TOTAL sous-compté
+        // (~50 k$ réels : Amundi EM Asia, CW8.PA, GBS.PA absents de la courbe ~190 k$ vs ~242 k$).
+        const { rows, noHistorySymbols } = buildMarketData([
             mk({}),
-            mk({ symbol: 'SANSHIST', priceHistory: [], accountType: 'REER' }),
+            mk({ symbol: 'SANSHIST', priceHistory: [], accountType: 'REER', currentPrice: 30 }),
         ], FX);
-        expect(excludedSymbols).toEqual(['SANSHIST']);
-        expect(rows.at(-1)!.TOTAL).toBe(300); // seulement XEQT (10 × 30)
-        expect(rows.at(-1)!.SANSHIST).toBeUndefined();
-        expect(rows.at(-1)!.TOTAL_REER).toBeUndefined(); // bucket vide non émis
+        expect(noHistorySymbols).toEqual([{ symbol: 'SANSHIST', valueCad: 300 }]); // 10 × 30 (CAD)
+        expect(rows.at(-1)!.SANSHIST).toBeUndefined();  // aucune courbe inventée
+        expect(rows.at(-1)!.TOTAL).toBe(600);           // 300 (XEQT) + 300 (repli valeur actuelle)
+        expect(rows.at(-1)!.TOTAL_REER).toBe(300);      // le bucket le porte aussi
     });
 
-    it('un titre sans point ≤ t (acheté avant le début de SON historique) ne contribue pas ce jour-là', () => {
-        const { rows } = buildMarketData([
+    it('[HIST-COVERAGE-TOTAL] sans historique NI prix courant → rien compté (0 honnête), signalé valueCad 0', () => {
+        const { rows, noHistorySymbols } = buildMarketData([
+            mk({}),
+            mk({ symbol: 'SANSPRIX', priceHistory: [], currentPrice: 0, accountType: 'REER' }),
+        ], FX);
+        expect(noHistorySymbols).toEqual([{ symbol: 'SANSPRIX', valueCad: 0 }]);
+        expect(rows.at(-1)!.TOTAL).toBe(300);           // XEQT seul — jamais un montant fabriqué
+        expect(rows.at(-1)!.TOTAL_REER).toBeUndefined();
+    });
+
+    it('[Finding #493] bandeau et courbe partagent la MÊME base de quantité (holdingsAt, pas a.quantity)', () => {
+        // Mesuré par financial-integrity : `a.quantity` désynchronisé de Σ purchases (sells non
+        // reflétés) faisait annoncer au bandeau jusqu'à ~99× le montant réellement tracé.
+        const { rows, noHistorySymbols } = buildMarketData([
+            mk({}),
+            mk({ symbol: 'DESYNC', priceHistory: [], accountType: 'REER', currentPrice: 30,
+                 quantity: 999, purchases: [{ date: '2026-01-10', quantity: 10, price: 28 }] }),
+        ], FX);
+        expect(noHistorySymbols).toEqual([{ symbol: 'DESYNC', valueCad: 300 }]); // 10 × 30, PAS 999 × 30
+        expect(rows.at(-1)!.TOTAL).toBe(600); // le bandeau == ce qui est compté
+    });
+
+    it('[HIST-COVERAGE-TOTAL] repli valeur actuelle en DEVISE étrangère → FX appliqué', () => {
+        const { rows, noHistorySymbols } = buildMarketData([
+            mk({}),
+            mk({ symbol: 'GBS', priceHistory: [], currency: 'EUR', currentPrice: 20,
+                 purchases: [{ date: '2026-01-10', quantity: 100, price: 18 }], quantity: 100,
+                 accountType: 'NON-ENREG' }),
+        ], FX);
+        expect(noHistorySymbols).toEqual([{ symbol: 'GBS', valueCad: 2900 }]); // 100 × 20 × 1.45
+        expect(rows.at(-1)!.TOTAL).toBe(3200); // 300 + 2900
+    });
+
+    it('[HIST-COVERAGE-TOTAL] backfill borné : avant le début de SON historique, le titre compte au PREMIER close connu', () => {
+        // Avant : la marche fantôme — TARD détenu dès janvier mais TOTAL +60 seulement en février
+        // (mesuré +90 k$ sans transaction sur un vrai portefeuille). Désormais : premier close
+        // backfillé (signalé partialHistorySymbols), le TOTAL n'a plus de saut sans transaction.
+        const { rows, partialHistorySymbols } = buildMarketData([
             mk({}),
             mk({ symbol: 'TARD', accountType: 'CRYPTO',
                  purchases: [{ date: '2026-01-10', quantity: 1, price: 50 }],
@@ -82,10 +120,83 @@ describe('buildMarketData', () => {
         ], FX);
         const jan = rows.find((r) => r.date === '2026-01-10')!;
         const fev = rows.find((r) => r.date === '2026-02-10')!;
-        expect(jan.TARD).toBeUndefined();     // pas de prix connu → pas de valeur inventée
-        expect(jan.TOTAL).toBe(280);          // XEQT seul
-        expect(fev.TARD).toBe(60);            // 1 × 60 CAD
+        expect(jan.TARD).toBe(60);            // backfill au premier close (approximation signalée)
+        expect(jan.TOTAL).toBe(340);          // 280 + 60 — plus de marche fantôme
+        expect(fev.TARD).toBe(60);            // 1 × 60 CAD (close réel)
         expect(fev.TOTAL).toBe(360);          // 300 + 60
+        expect(partialHistorySymbols).toEqual([{ symbol: 'TARD', historyStart: '2026-02-10' }]);
+    });
+
+    it('[HIST-COVERAGE-TOTAL] queue PÉRIMÉE + quote live FRAÎCHE → raccord au currentPrice sur les derniers jours', () => {
+        const nowMs = Date.parse('2026-03-01T00:00:00Z');
+        const daily = Array.from({ length: 60 }, (_, i) => ({
+            date: new Date(Date.UTC(2026, 0, 1) + i * 86_400_000).toISOString().slice(0, 10),
+            price: 50,
+        })); // VIVANT : couvre jusqu'au 2026-03-01
+        const { rows } = buildMarketData([
+            mk({ symbol: 'VIVANT', purchases: [{ date: '2026-01-01', quantity: 1, price: 50 }], priceHistory: daily }),
+            mk({ symbol: 'CANDLES-KO', accountType: 'REER', currentPrice: 45,
+                 priceUpdatedAt: nowMs - 3_600_000, // quote rafraîchie il y a 1 h
+                 purchases: [{ date: '2026-01-01', quantity: 10, price: 40 }],
+                 priceHistory: daily.slice(0, 51).map(p => ({ ...p, price: 41 })) }), // s'arrête au 2026-02-20
+        ], FX, { nowMs });
+        const last = rows.at(-1)!;                    // 2026-03-01 : close vieux de 9 j (> 7)
+        expect(last['CANDLES-KO']).toBe(450);         // raccord 10 × 45 (currentPrice frais)
+        expect(last.TOTAL).toBe(500);                 // 50 + 450
+        const mid = rows.find((r) => r.date === '2026-02-25')!; // close vieux de 5 j (≤ 7) → close réel
+        expect(mid['CANDLES-KO']).toBe(410);
+    });
+
+    it('[Finding silent-failure #493] titre absent de la DERNIÈRE date (queue périmée, pas de raccord) → SIGNALÉ staleTailSymbols', () => {
+        // Mesuré par sonde : sans ce signal, un titre à historique arrêté disparaissait des jours
+        // les plus consultés du TOTAL sans AUCUN avertissement (ni noHistory ni partial ne couvrent
+        // la queue) — la classe de bug même que [HIST-COVERAGE-TOTAL] corrige.
+        const nowMs = Date.parse('2026-03-01T00:00:00Z');
+        const daily = Array.from({ length: 60 }, (_, i) => ({
+            date: new Date(Date.UTC(2026, 0, 1) + i * 86_400_000).toISOString().slice(0, 10),
+            price: 50,
+        }));
+        const { staleTailSymbols } = buildMarketData([
+            mk({ symbol: 'VIVANT', purchases: [{ date: '2026-01-01', quantity: 1, price: 50 }], priceHistory: daily }),
+            mk({ symbol: 'ARRETE', accountType: 'REER', currentPrice: 45,
+                 // priceUpdatedAt ABSENT (jamais rafraîchi) → pas de raccord possible
+                 purchases: [{ date: '2026-01-01', quantity: 10, price: 40 }],
+                 priceHistory: daily.slice(0, 51).map(p => ({ ...p, price: 41 })) }), // s'arrête au 2026-02-20
+        ], FX, { nowMs });
+        expect(staleTailSymbols).toEqual([{ symbol: 'ARRETE', lastKnownDate: '2026-02-20' }]);
+    });
+
+    it('[Finding silent-failure #493] raccord appliqué (quote fraîche) → PAS de staleTail (couverture réelle)', () => {
+        const nowMs = Date.parse('2026-03-01T00:00:00Z');
+        const daily = Array.from({ length: 60 }, (_, i) => ({
+            date: new Date(Date.UTC(2026, 0, 1) + i * 86_400_000).toISOString().slice(0, 10),
+            price: 50,
+        }));
+        const { staleTailSymbols } = buildMarketData([
+            mk({ symbol: 'VIVANT', purchases: [{ date: '2026-01-01', quantity: 1, price: 50 }], priceHistory: daily }),
+            mk({ symbol: 'CANDLES-KO', accountType: 'REER', currentPrice: 45, priceUpdatedAt: nowMs - 3_600_000,
+                 purchases: [{ date: '2026-01-01', quantity: 10, price: 40 }],
+                 priceHistory: daily.slice(0, 51).map(p => ({ ...p, price: 41 })) }),
+        ], FX, { nowMs });
+        expect(staleTailSymbols).toEqual([]);
+    });
+
+    it('[HIST-COVERAGE-TOTAL] queue périmée SANS quote fraîche → pas de raccord (rien d\'inventé)', () => {
+        const nowMs = Date.parse('2026-03-01T00:00:00Z');
+        const daily = Array.from({ length: 60 }, (_, i) => ({
+            date: new Date(Date.UTC(2026, 0, 1) + i * 86_400_000).toISOString().slice(0, 10),
+            price: 50,
+        }));
+        const { rows } = buildMarketData([
+            mk({ symbol: 'VIVANT', purchases: [{ date: '2026-01-01', quantity: 1, price: 50 }], priceHistory: daily }),
+            mk({ symbol: 'CANDLES-KO', accountType: 'REER', currentPrice: 45,
+                 priceUpdatedAt: nowMs - 30 * 86_400_000, // quote PÉRIMÉE (30 j)
+                 purchases: [{ date: '2026-01-01', quantity: 10, price: 40 }],
+                 priceHistory: daily.slice(0, 51).map(p => ({ ...p, price: 41 })) }),
+        ], FX, { nowMs });
+        const last = rows.at(-1)!;
+        expect(last['CANDLES-KO']).toBeUndefined();   // close ET quote périmés → honnêtement absent
+        expect(last.TOTAL).toBe(50);
     });
 
     it('downsample : > maxPoints → sous-échantillonné en gardant les DEUX derniers points (« variation 24h » honnête)', () => {

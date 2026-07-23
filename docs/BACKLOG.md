@@ -130,20 +130,24 @@
   vérifier l'état RÉEL du lockfile avant de coder (Dependabot a pu déjà ouvrir des PR).
 
 ## 📈 Investissements — couverture d'historique incomplète (demande Marc 2026-07-22, verbatim « backlog », captures)
-- [ ] **`[HIST-COVERAGE-TOTAL]`** 🔴 (M-L) — la courbe TOTAL affiche ~190 k$ alors que le portefeuille réel = ~242 k$
-  (Google Finance) : des titres SANS historique (chips sans flèche sur la capture : « Amundi Em. Asia », « CW8.PA »)
-  sont EXCLUS de la somme → total structurellement sous-évalué SANS avertissement visible assez fort. Exigence Marc :
-  « des infos pour toutes les types de courbes possibles même international ». Pistes : (a) mapping Yahoo des tickers
-  européens/Amundi (proxy same-origin déjà en place — vérifier le symbole Yahoo exact d'Amundi EM Asia et GBS.PA) ;
-  (b) repli « dernier prix connu × qty » pour les titres sans candles (courbe plate mais TOTAL juste — mieux qu'un
-  trou de 50 k$) ; (c) bandeau « N titres exclus de la courbe (X $) » au lieu du badge discret partialHistorySymbols.
+- [x] **`[HIST-COVERAGE-TOTAL]`** 🔴 (M-L) — ✅ 2026-07-23 (PR #493, ADR docs/decisions.md) : la courbe TOTAL
+  n'omet PLUS aucun titre détenu. Livré : (b) titre sans historique → compté au TOTAL/buckets à sa valeur
+  actuelle (contribution plate, AUCUNE colonne inventée, `noHistorySymbols` signalé) ; backfill borné
+  pré-historique au PREMIER close (plus de « marche » fantôme) ; queue périmée raccordée au `currentPrice`
+  si la quote est fraîche (`priceUpdatedAt` < 7 j — cas GBS.PA quote OK/candles KO) ; (c) bandeau Dashboard
+  honnête avec le montant compté (<PrivateAmount>) ; (a) variantes de suffixe Yahoo par DEVISE pour les
+  tickers nus (EUR → .PA/.DE/.AS/.MI, CAD → .TO/.V), validées par plausibilité de prix (facteur ≤ 2 vs
+  currentPrice, sinon refus anti-collision) et persistées via `Asset.historySymbol` (additif). NB : si
+  « Amundi EM Asia » ne se résout toujours pas en prod, préciser le ticker suffixé (ex. AASI.PA) dans l'actif.
 - [ ] **`[INVEST-CURVES-LOW]`** (S) — « certaines courbes trop basses, je les vois pas » : les titres à petite valeur
   sont illisibles sur l'échelle Prix ($) commune. La vue Base 100 (%) existe — évaluer : défaut Base 100 en multi-courbes,
   ou axe log, ou petits multiples.
 - [ ] **`[INVEST-ALLOC-GEO-SECTOR]`** (M) — « la répartition géographique marche pas et sectorielle non plus » :
   vérifier la source (profil Finnhub par titre ? statique ?) — probablement vide pour les ETF européens/Amundi.
   Diagnostiquer avec les vrais tickers de Marc.
-- [ ] **`[HIST-GOOGLE-PARITY]`** (question Marc : « utiliser exactement la courbe de google finance c'est possible ? ») —
+- [x] **`[HIST-GOOGLE-PARITY]`** — ✅ 2026-07-23 absorbé par [HIST-COVERAGE-TOTAL] (couverture complète livrée ;
+  l'écart résiduel attendu vs Google = granularité daily + heure FX, documenté ci-dessous). Question Marc :
+  (« utiliser exactement la courbe de google finance c'est possible ? ») —
   RÉPONSE COURTE : non, pas directement (Google Finance n'a PAS d'API publique de portefeuille/courbes ; la scraper
   violerait les ToS et casserait sans prévenir). La bonne cible = PARITÉ par couverture complète (HIST-COVERAGE-TOTAL) :
   mêmes titres tous couverts + FX → la courbe converge vers celle de Google (même donnée sous-jacente). Écart résiduel

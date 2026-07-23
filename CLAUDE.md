@@ -784,6 +784,26 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   étaient des HYPOTHÈSES non vérifiées, dont 8 VRAIS (vérifiés inline ensuite). Trier par « détail de
   réfutation présent », jamais par bucket seul ; un verify peut aussi être remplacé par lecture inline
   ciblée quand la capacité d'agents est épuisée.
+- ⚠️ **[HIST-COVERAGE-TOTAL] 2026-07-23 — le TOTAL couvre tout le portefeuille, leçons** : (1) **Un agrégat
+  qui EXCLUT des éléments non mesurables devient un chiffre FAUX affiché avec assurance** — l'exclusion no-fake-data
+  « titre sans historique = hors totaux » (panel 2026-07-22) produisait un TOTAL ~190 k$ vs ~242 k$ réels : pour un
+  AGRÉGAT, le repli approximatif SIGNALÉ (valeur actuelle plate, bandeau avec montant) bat l'omission silencieuse ;
+  la frontière no-fake-data = « jamais approximer SANS le dire », pas « jamais approximer ». Une décision de panel
+  peut être RÉVISÉE par l'usage réel — la surclasser EXPLICITEMENT (ADR + en-tête du module), pas en douce.
+  (2) **Une variante de symbole auto-résolue (suffixe deviné) exige une garde de PLAUSIBILITÉ** (dernier close vs
+  `currentPrice`, facteur ≤ 2 ; REFUS sans référence) — sinon collision de ticker = la courbe d'un AUTRE titre.
+  Persister la résolution (`Asset.historySymbol`, additif) pour ne pas re-scanner à chaque sync. (3) Le repli
+  « valeur actuelle » contribue au TOTAL/buckets mais JAMAIS en colonne → la reconstructibilité `TOTAL == Σ colonnes`
+  ne tient plus dès qu'un titre sans historique existe — tout test/consommateur qui somme les colonnes doit le savoir.
+  Leçons du panel (4 agents, sondes) : (4) **un mécanisme de résolution AUTO (fallback devineur) ne se déclenche que
+  sur une réponse NÉGATIVE CONFIRMÉE (`[]`), JAMAIS sur une erreur/indéterminé (`null`)** — sinon une panne réseau
+  transitoire sur le VRAI symbole fait adopter (et PERSISTER) une mauvaise résolution ; corollaire : toute résolution
+  persistée doit avoir un chemin de SELF-HEAL quand elle cesse de répondre (sinon gel à vie, aucune UI ne l'expose).
+  (5) **fermer un trou d'agrégat crée le trou SUIVANT à sa frontière** : après le repli « sans historique » et le
+  raccord « quote fraîche », le cas résiduel (historique arrêté SANS quote fraîche) disparaissait des derniers jours
+  du TOTAL sans signal — à chaque branche `continue` d'un agrégat, se demander « quel signal l'UI reçoit-elle ? ».
+  (6) un montant affiché dans un bandeau doit partager la MÊME base que ce qu'il prétend décrire (`holdingsAt`
+  vs `a.quantity` désynchronisable — instance de [[PH4D-BUDGET-RATIOS]] « calculs voisins sur la même base »).
 - ⚠️ **[AITOOLS-SEC] 2026-07-22 — audit de clôture du chantier Claude-in-app, leçons** : (1) **Un fix de
   sécurité appliqué à UNE surface doit être porté à TOUTES les surfaces qui partagent le vecteur** — le scrub
   anti-injection du `summary`/`changes` d'une écriture avait été fait côté app (`writeExecutor`, Lot D) mais

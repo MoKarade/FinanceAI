@@ -18,7 +18,7 @@
 
 import type { Asset } from '../../types';
 import type { HistoryPoint } from '../marketData';
-import { coinGeckoQuoteCurrencyFor } from '../marketData/providers/coingecko';
+import { coinGeckoQuoteCurrencyFor, coinGeckoIdFor } from '../marketData/providers/coingecko';
 import { getEffectivePurchases } from '../../utils/assetPurchases';
 import { logError } from '../errorLogger';
 
@@ -32,8 +32,10 @@ export interface HydrateHistoryDeps {
 }
 
 export interface HydrateHistoryResult {
-    /** Patches par symbole : historique natif FUSIONNÉ (ancien ∪ nouveau) + horodatage de sync. */
-    patches: Map<string, { priceHistory: Array<{ date: string; price: number }>; lastHistorySync: number }>;
+    /** Patches par symbole : historique natif FUSIONNÉ (ancien ∪ nouveau) + horodatage de sync
+     *  (+ `historySymbol` quand une VARIANTE de suffixe a résolu le titre — persisté sur l'actif
+     *  pour que les syncs suivantes frappent directement le bon symbole). */
+    patches: Map<string, { priceHistory: Array<{ date: string; price: number }>; lastHistorySync: number; historySymbol?: string }>;
     skipped: Array<{ symbol: string; reason: 'fresh' | 'no-provider' | 'no-first-date' | 'empty' | 'error' | 'currency-mismatch' }>;
 }
 
@@ -71,6 +73,36 @@ export function mergePriceHistories(
     return [...byDate.entries()]
         .map(([date, price]) => ({ date, price }))
         .sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+/**
+ * [HIST-COVERAGE-TOTAL] Variantes de symbole à tenter quand la chaîne d'historique ne rend RIEN
+ * pour le symbole saisi (bug Marc 2026-07-23 : « Amundi EM Asia marche pas », ticker Euronext
+ * saisi sans suffixe → Yahoo 404 → « vide légitime » caché 24 h). Seulement pour un ticker NU
+ * (sans suffixe `.XX`, sans préfixe place `X:`, sans `-` crypto) et NON-crypto ; les suffixes
+ * sont déduits de la DEVISE déclarée de l'actif (EUR → Euronext/XETRA, CAD → TSX/TSXV).
+ * Exporté pour test.
+ */
+export function historySymbolVariants(symbol: string, currency: string | undefined): string[] {
+    if (!symbol || /[.:\-]/.test(symbol)) return [];
+    if (coinGeckoIdFor(symbol)) return []; // crypto : CoinGecko fait foi, jamais de suffixe boursier
+    const SUFFIXES: Record<string, string[]> = {
+        EUR: ['.PA', '.DE', '.AS', '.MI'],
+        CAD: ['.TO', '.V'],
+    };
+    return (SUFFIXES[(currency || '').toUpperCase()] ?? []).map((s) => `${symbol}${s}`);
+}
+
+/**
+ * Le dernier close d'une VARIANTE est-il PLAUSIBLE vs le prix courant connu de l'actif ?
+ * Garde anti-collision de ticker (« ABC » nu peut désigner un AUTRE titre sur « ABC.PA ») : sans
+ * référence de prix courant on REFUSE (afficher la courbe d'un autre titre avec assurance serait
+ * la pire violation no-fake-data) ; avec référence, on exige un facteur ≤ 2. Exporté pour test.
+ */
+export function variantClosePlausible(lastClose: number, currentPrice: number | undefined): boolean {
+    const ref = Number(currentPrice);
+    if (!Number.isFinite(ref) || ref <= 0) return false;
+    return lastClose >= ref * 0.5 && lastClose <= ref * 2;
 }
 
 /** Date du premier achat connu (purchases effectifs, sinon dateBought), ou null. */
@@ -132,8 +164,65 @@ export async function hydrateAssetHistories(
             // instantanément, mais on ne peut pas le savoir d'ici → prudence : provider le plus strict).
             if (networkCalls > 0) await sleep(delayMs);
             networkCalls++;
-            const hist = await deps.getHistory(a.symbol, from, new Date(now()));
-            if (hist === null) {
+            // Filtre AVANT le check vide : une réponse non-vide mais 100 % invalide est un VIDE
+            // (skip), jamais un patch `[]` qui écraserait un historique existant valide.
+            const toFresh = (hist: HistoryPoint[]): Array<{ date: string; price: number }> => hist
+                .filter((h) => h.date && Number.isFinite(h.close) && h.close > 0)
+                .map((h) => ({ date: h.date, price: h.close }));
+            // [HIST-COVERAGE-TOTAL] Une variante déjà RÉSOLUE (`historySymbol`) frappe directement
+            // le bon symbole ; sinon symbole saisi, puis variantes de suffixe.
+            const primarySymbol = a.historySymbol || a.symbol;
+            const hist = await deps.getHistory(primarySymbol, from, new Date(now()));
+            let fresh = hist === null ? null : toFresh(hist);
+            let resolvedSymbol: string | undefined;
+            const variantNetFailures: string[] = [];
+            // ⚠️ Variantes SEULEMENT sur un vide CONFIRMÉ (`[]`), JAMAIS sur `null` (panne
+            // réseau/provider) — finding code-reviewer #493, prouvé par sonde : une panne
+            // transitoire sur le VRAI symbole partait à la pêche et pouvait PERSISTER
+            // (`historySymbol`) un AUTRE titre dont le prix coïncidait dans la bande ×2.
+            // Une panne → skip 'error' + retry du MÊME symbole au prochain cycle, point.
+            if (fresh !== null && fresh.length === 0) {
+                // Candidats de secours : le symbole SAISI d'abord si le primaire était une variante
+                // résolue devenue muette (self-heal d'un `historySymbol` mort — finding
+                // silent-failure #493 : sans ça, un symbole résolu délisté gelait l'actif à VIE),
+                // puis les variantes de suffixe restantes.
+                const fallbacks = [
+                    ...(a.historySymbol && a.historySymbol !== a.symbol ? [a.symbol] : []),
+                    ...historySymbolVariants(a.symbol, a.currency).filter((v) => v !== primarySymbol),
+                ];
+                for (const alt of fallbacks) {
+                    await sleep(delayMs);
+                    networkCalls++;
+                    const altHist = await deps.getHistory(alt, from, new Date(now()));
+                    if (altHist === null) {
+                        // Échec RÉSEAU d'une variante ≠ « ce symbole n'existe pas » — collecté pour
+                        // que le verdict final ne mente pas (finding silent-failure #493 : avalé
+                        // en « empty » silencieux avant).
+                        variantNetFailures.push(alt);
+                        continue;
+                    }
+                    const altFresh = toFresh(altHist);
+                    if (altFresh.length === 0) continue;
+                    // Garde de plausibilité pour un suffixe DEVINÉ seulement — le symbole SAISI
+                    // par l'utilisateur n'a pas à la passer (c'est sa donnée, pas une devinette).
+                    if (alt !== a.symbol) {
+                        const lastClose = altFresh.reduce((best, p) => (p.date > best.date ? p : best), altFresh[0]).price;
+                        if (!variantClosePlausible(lastClose, a.currentPrice)) {
+                            // Collision de ticker probable (ou pas de prix de référence) → REFUS
+                            // plutôt que d'afficher la courbe d'un autre titre (no-fake-data).
+                            logError({
+                                source: 'network', severity: 'warning',
+                                message: `Historique ${a.symbol} : la variante ${alt} répond mais son cours est incompatible avec le prix courant de l'actif — ignorée (risque de mauvais titre). Précise le symbole avec son suffixe (ex. ${a.symbol}.PA).`,
+                            });
+                            continue;
+                        }
+                    }
+                    fresh = altFresh;
+                    resolvedSymbol = alt;
+                    break;
+                }
+            }
+            if (fresh === null) {
                 // Contrat façade : null = ÉCHEC de toute la chaîne (≠ vide légitime) → tracé,
                 // pas de patch (l'historique existant SURVIT), retry au prochain boot.
                 skipped.push({ symbol: a.symbol, reason: 'error' });
@@ -143,18 +232,24 @@ export async function hydrateAssetHistories(
                 });
                 continue;
             }
-            // Filtre AVANT le check vide : une réponse non-vide mais 100 % invalide est un VIDE
-            // (skip), jamais un patch `[]` qui écraserait un historique existant valide.
-            const fresh = hist
-                .filter((h) => h.date && Number.isFinite(h.close) && h.close > 0)
-                .map((h) => ({ date: h.date, price: h.close }));
             if (fresh.length === 0) {
-                skipped.push({ symbol: a.symbol, reason: 'empty' });
+                if (variantNetFailures.length > 0) {
+                    // Indéterminé (le principal a répondu vide mais des variantes ont ÉCHOUÉ en
+                    // réseau) → 'error' (retry au prochain cycle), pas un « vide légitime » menteur.
+                    skipped.push({ symbol: a.symbol, reason: 'error' });
+                    logError({
+                        source: 'network', severity: 'warning',
+                        message: `Historique ${a.symbol} : aucun historique sur le symbole principal et échec réseau des variantes ${variantNetFailures.join(', ')} — indéterminé, nouvel essai au prochain démarrage.`,
+                    });
+                } else {
+                    skipped.push({ symbol: a.symbol, reason: 'empty' });
+                }
                 continue;
             }
             patches.set(a.symbol, {
                 priceHistory: mergePriceHistories(a.priceHistory, fresh),
                 lastHistorySync: now(),
+                ...(resolvedSymbol ? { historySymbol: resolvedSymbol } : {}),
             });
         } catch (e) {
             skipped.push({ symbol: a.symbol, reason: 'error' });

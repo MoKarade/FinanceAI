@@ -8,7 +8,6 @@ import { normalizeAppState } from '../../mcp/state/loadAppState';
 import {
     buildFinancialSnapshot,
     buildFinancialOverview,
-    type FinancialSnapshot,
 } from '../../services/financialSnapshot';
 
 function state(id: string) {

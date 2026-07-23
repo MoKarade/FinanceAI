@@ -22,10 +22,14 @@ export interface UsePortfolioHistoryResult {
     history: MarketDataPoint[];
     isLoading: boolean;
     error: Error | null;
-    /** Symboles détenus SANS historique de prix (exclus des courbes/totaux — affichage honnête). */
-    excludedSymbols: string[];
-    /** Symboles à historique PARTIEL (commence après le 1er achat — provider borné, ex. CoinGecko 365 j). */
+    /** [HIST-COVERAGE-TOTAL] Symboles détenus SANS historique de prix : pas de courbe, mais INCLUS
+     *  au TOTAL à leur valeur actuelle (`valueCad` ; 0 = aucun prix connu → non compté). */
+    noHistorySymbols: Array<{ symbol: string; valueCad: number }>;
+    /** Symboles à historique PARTIEL (commence après le 1er achat — provider borné, ex. CoinGecko 365 j) :
+     *  avant `historyStart`, le titre compte à son PREMIER cours connu (approximation signalée). */
     partialHistorySymbols: Array<{ symbol: string; historyStart: string }>;
+    /** Symboles à queue d'historique PÉRIMÉE sans quote fraîche : absents du total des derniers jours. */
+    staleTailSymbols: Array<{ symbol: string; lastKnownDate: string }>;
 }
 
 export function usePortfolioHistory(): UsePortfolioHistoryResult {
@@ -40,12 +44,13 @@ export function usePortfolioHistory(): UsePortfolioHistoryResult {
                 history: generateTestMarketData(assets, initialBalances as Record<string, number>),
                 isLoading: false,
                 error: null,
-                excludedSymbols: [],
+                noHistorySymbols: [],
                 partialHistorySymbols: [],
+                staleTailSymbols: [],
             };
         }
-        const { rows, excludedSymbols, partialHistorySymbols } = buildMarketData(assets, fxRates as Record<string, number>);
-        return { history: rows, isLoading: false, error: null, excludedSymbols, partialHistorySymbols };
+        const { rows, noHistorySymbols, partialHistorySymbols, staleTailSymbols } = buildMarketData(assets, fxRates as Record<string, number>);
+        return { history: rows, isLoading: false, error: null, noHistorySymbols, partialHistorySymbols, staleTailSymbols };
     }, [isTestMode, assets, initialBalances, fxRates]);
 
     return result;

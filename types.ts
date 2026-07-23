@@ -54,6 +54,10 @@ export interface Asset {
   purchases?: AssetPurchase[];
   priceHistory?: Array<{ date: string; price: number; rawPrice?: number; fxRate?: number }>;
   lastHistorySync?: number;
+  /** [HIST-COVERAGE-TOTAL] Symbole RÉSOLU pour l'historique de cours quand le symbole saisi ne rend
+   *  rien chez les providers (ex. ticker Euronext sans suffixe : « CW8 » → « CW8.PA »). Alimenté par
+   *  hydrateAssetHistories (variante validée par plausibilité de prix). Champ ADDITIF optionnel. */
+  historySymbol?: string;
   /** [PRICE-REFRESH-LIVE] Epoch ms de la dernière mise à jour de `currentPrice` par un quote live.
    *  Absent = prix jamais rafraîchi (figé à l'ajout/saisie manuelle). Champ ADDITIF optionnel. */
   priceUpdatedAt?: number;

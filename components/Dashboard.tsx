@@ -21,6 +21,7 @@ import { historyKeyMatchesSymbol } from '../services/history/buildMarketData';
 import { ASSET_META } from '../services/assetMeta';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { StockComparisonModal } from './dashboard/StockComparisonModal';
+import { HistoryCoverageNote } from './dashboard/HistoryCoverageNote';
 import { Tab as TabEnum } from '../types';
 import { formatCAD, formatPercent, formatSigned } from '../utils/format';
 import { ProjectionRequired } from './ui/ProjectionRequired';
@@ -140,7 +141,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     // Avant : fetch redondant à chaque mount Dashboard (et chaque autre tab
     // qui en a besoin). Maintenant : un seul fetch global mis en cache pour
     // toute la session.
-    const { history: portfolioHistory, excludedSymbols, partialHistorySymbols } = usePortfolioHistory();
+    const { history: portfolioHistory, noHistorySymbols, partialHistorySymbols } = usePortfolioHistory();
     useEffect(() => {
         setMarketData(portfolioHistory);
     }, [portfolioHistory]);
@@ -581,22 +582,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </Suspense>
                     )}
                 </div>
-                {/* [PORTFOLIO-HISTORY] Signalement HONNÊTE des courbes incomplètes : un actif sans
-                    historique est RETRANCHÉ des courbes/totaux (jamais inventé), et un historique
-                    borné par le provider (ex. CoinGecko ~365 j) fait démarrer le titre en cours de
-                    route (« marche » sur TOTAL). Sans cette note, le retrait était invisible. */}
-                {(excludedSymbols.length > 0 || partialHistorySymbols.length > 0) && (
-                    <p className="text-tiny text-ink-400 mt-2">
-                        {excludedSymbols.length > 0 && (
-                            <>Courbe partielle : {excludedSymbols.join(', ')} sans historique de cours
-                            (exclu{excludedSymbols.length > 1 ? 's' : ''} des courbes et des totaux). </>
-                        )}
-                        {partialHistorySymbols.length > 0 && (
-                            <>Historique borné pour {partialHistorySymbols.map(p => `${p.symbol} (depuis ${p.historyStart})`).join(', ')} —
-                            avant cette date, le titre ne compte pas dans le total.</>
-                        )}
-                    </p>
-                )}
+                {/* [HIST-COVERAGE-TOTAL] Signalement HONNÊTE des approximations de couverture
+                    (composant partagé avec Investissements — jamais deux copies qui dérivent). */}
+                <HistoryCoverageNote noHistorySymbols={noHistorySymbols} partialHistorySymbols={partialHistorySymbols} />
+
             </Card>
 
             {/* Phase D.5 — Cash/Saving/Dette/Jalons retirés (doc directives §2).

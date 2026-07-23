@@ -6,6 +6,28 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Investissements : la courbe TOTAL couvre TOUT le portefeuille] — 2026-07-23
+
+### Correctif (bug signalé Marc : « normalement j'ai 230K mais dans la courbe je vois 180k »)
+- **Le TOTAL de la courbe de portefeuille n'omet plus aucun titre détenu** : un titre sans historique
+  de cours (ex. ETF européens Amundi/CW8/GBS sans candles chez les providers gratuits) est désormais
+  COMPTÉ dans le total à sa valeur actuelle (contribution plate) au lieu d'être silencieusement exclu
+  (~50 k$ manquants). Aucune courbe individuelle n'est inventée pour autant — le bandeau sous le
+  graphe liste ces titres et le montant compté.
+- **Plus de « marche » fantôme** : quand l'historique d'un titre commence après son achat (provider
+  borné, ex. crypto ~365 j), les dates antérieures comptent à son premier cours connu (approximation
+  signalée) au lieu de faire sauter le total sans transaction.
+- **Raccord au cours du jour** : un titre dont l'historique s'arrête mais dont le prix live est frais
+  (quote < 7 j) est raccordé à son prix actuel sur les derniers jours (cas GBS.PA : cotation OK,
+  historique cassé).
+- **Tickers européens sans suffixe résolus automatiquement** : un ticker nu qui ne répond pas est
+  réessayé avec les suffixes de sa devise (EUR → .PA/.DE/.AS/.MI, CAD → .TO/.V), accepté seulement si
+  le cours trouvé est cohérent avec le prix actuel de l'actif (anti-confusion de ticker), et la
+  résolution est mémorisée sur l'actif.
+- Réponse à « utiliser exactement la courbe de Google Finance, c'est possible ? » : pas d'API publique —
+  la parité s'obtient par la couverture complète ci-dessus ; l'écart résiduel attendu vient de la
+  granularité (clôtures quotidiennes) et de l'heure du taux de change.
+
 ## [unreleased — Assistant fusionné : onglet visible + prochaines actions cliquables] — 2026-07-23
 
 ### Nouveau (demande Marc « combiner Prochaine action à l'Assistant » + « je ne vois pas l'onglet assistant »)

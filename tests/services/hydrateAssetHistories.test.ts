@@ -7,6 +7,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
     hydrateAssetHistories, applyHistoryPatches, needsHistorySync, mergePriceHistories,
+    historySymbolVariants, variantClosePlausible,
 } from '../../services/history/hydrateAssetHistories';
 import type { Asset } from '../../types';
 
@@ -175,6 +176,90 @@ describe('hydrateAssetHistories', () => {
         expect(res.patches.has('BTC-CAD')).toBe(true);
         expect(res.patches.has('BTC')).toBe(true);
         expect(res.skipped).toEqual([]);
+    });
+});
+
+// ── [HIST-COVERAGE-TOTAL] Variantes de suffixe par devise (bug Marc : Amundi EM Asia sans suffixe) ──
+
+describe('historySymbolVariants', () => {
+    it('ticker NU + devise EUR → suffixes Euronext/XETRA ; CAD → TSX/TSXV ; USD → aucun', () => {
+        expect(historySymbolVariants('CW8', 'EUR')).toEqual(['CW8.PA', 'CW8.DE', 'CW8.AS', 'CW8.MI']);
+        expect(historySymbolVariants('ABC', 'CAD')).toEqual(['ABC.TO', 'ABC.V']);
+        expect(historySymbolVariants('AAPL', 'USD')).toEqual([]);
+    });
+    it('déjà suffixé/préfixé/crypto → JAMAIS de variante', () => {
+        expect(historySymbolVariants('CW8.PA', 'EUR')).toEqual([]);   // suffixe déjà là
+        expect(historySymbolVariants('EPA:CW8', 'EUR')).toEqual([]);  // préfixe place
+        expect(historySymbolVariants('BTC-CAD', 'CAD')).toEqual([]);  // tiret crypto
+        expect(historySymbolVariants('BTC', 'CAD')).toEqual([]);      // crypto CoinGecko connue
+    });
+});
+
+describe('variantClosePlausible', () => {
+    it('facteur ≤ 2 vs le prix courant → plausible ; au-delà → collision de ticker probable', () => {
+        expect(variantClosePlausible(100, 100)).toBe(true);
+        expect(variantClosePlausible(51, 100)).toBe(true);
+        expect(variantClosePlausible(199, 100)).toBe(true);
+        expect(variantClosePlausible(49, 100)).toBe(false);
+        expect(variantClosePlausible(201, 100)).toBe(false);
+    });
+    it('SANS prix de référence → REFUS (afficher la courbe d\'un autre titre = pire que rien)', () => {
+        expect(variantClosePlausible(100, undefined)).toBe(false);
+        expect(variantClosePlausible(100, 0)).toBe(false);
+        expect(variantClosePlausible(100, NaN)).toBe(false);
+    });
+});
+
+describe('hydrateAssetHistories — variantes de suffixe', () => {
+    it('symbole EUR nu VIDE → variante .PA plausible essayée → patch + historySymbol résolu', async () => {
+        const getHistory = vi.fn(async (s: string) =>
+            s === 'CW8.PA' ? [{ date: '2026-01-10', close: 480 }] : []);
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'CW8', currency: 'EUR', currentPrice: 500 })],
+            { getHistory, now: () => NOW, sleep: async () => {} },
+        );
+        // Avant fix : « CW8 » → Yahoo 404 → « vide légitime » caché 24 h, titre sans courbe à vie.
+        expect(getHistory.mock.calls.map((c) => c[0])).toEqual(['CW8', 'CW8.PA']);
+        const patch = res.patches.get('CW8')!;
+        expect(patch.priceHistory).toEqual([{ date: '2026-01-10', price: 480 }]);
+        expect(patch.historySymbol).toBe('CW8.PA');
+    });
+
+    it('variante IMPLAUSIBLE (close ~10× le prix courant = autre titre) → refusée, skip « empty »', async () => {
+        const getHistory = vi.fn(async (s: string) =>
+            s === 'CW8.PA' ? [{ date: '2026-01-10', close: 5000 }] : (s === 'CW8' ? [] : null));
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'CW8', currency: 'EUR', currentPrice: 500 })],
+            { getHistory, now: () => NOW, sleep: async () => {} },
+        );
+        expect(res.patches.size).toBe(0); // jamais la courbe d'un autre titre
+        expect(res.skipped[0].reason).toBe('empty');
+    });
+
+    it('historySymbol DÉJÀ résolu → frappe directement la variante (1 seul appel), patch sous le symbole de l\'actif', async () => {
+        const getHistory = vi.fn(async () => [{ date: '2026-01-10', close: 480 }]);
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'CW8', currency: 'EUR', currentPrice: 500, historySymbol: 'CW8.PA' })],
+            { getHistory, now: () => NOW, sleep: async () => {} },
+        );
+        expect(getHistory).toHaveBeenCalledTimes(1);
+        const [calledSym] = getHistory.mock.calls[0] as unknown as [string];
+        expect(calledSym).toBe('CW8.PA');
+        expect(res.patches.has('CW8')).toBe(true); // toujours keyé par le symbole de l'actif
+    });
+
+    it('pacing : chaque variante est PRÉCÉDÉE d\'un sleep (rate-limit respecté)', async () => {
+        const calls: string[] = [];
+        const getHistory = vi.fn(async (s: string) => { calls.push(`fetch:${s}`); return []; });
+        const sleep = vi.fn(async () => { calls.push('sleep'); });
+        await hydrateAssetHistories(
+            [mk({ symbol: 'CW8', currency: 'EUR', currentPrice: 500 })],
+            { getHistory, sleep, now: () => NOW },
+        );
+        expect(calls).toEqual([
+            'fetch:CW8',
+            'sleep', 'fetch:CW8.PA', 'sleep', 'fetch:CW8.DE', 'sleep', 'fetch:CW8.AS', 'sleep', 'fetch:CW8.MI',
+        ]);
     });
 });
 

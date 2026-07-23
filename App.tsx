@@ -528,6 +528,15 @@ export const App: React.FC = () => {
                 // [QUOTE-NEGATIVE-CACHE] hasProvider = provider présent ET pas de skip négatif :
                 // un titre manuel/GIC (3 nulls consécutifs) ne repaie plus réseau + pacing au boot.
                 const res = await refreshAssetPrices(current, { getQuote, hasProvider: canAttemptQuote });
+                // [Finding silent-failure #499] Des cours non rafraîchis au boot laissent une trace
+                // au JOURNAL (pas de toast — les titres manuels skippés par design en feraient un
+                // bruit permanent) : sans ça, un skip négatif post-panne était strictement invisible.
+                if (res.skipped.length > 0) {
+                    logError({
+                        source: 'network', severity: 'warning',
+                        message: `Cours non rafraîchis au boot pour ${res.skipped.length} titre(s) : ${res.skipped.map(s => s.symbol).slice(0, 6).join(', ')}${res.skipped.length > 6 ? '…' : ''} — bouton « Actualiser les cours » pour forcer un nouvel essai.`,
+                    });
+                }
                 if (cancelled || res.patches.size === 0) return;
                 const fresh = useFinanceStore.getState().assets ?? [];
                 setAppState({ assets: applyPricePatches(fresh, res.patches) });

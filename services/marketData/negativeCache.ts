@@ -10,8 +10,9 @@
 //  - seuil de 3 échecs CONSÉCUTIFS (une panne isolée ne déclenche rien) ;
 //  - la consécutivité a une FENÊTRE (7 j) : deux échecs espacés de plusieurs semaines ne
 //    s'additionnent pas (le compteur repart à 1) ;
-//  - skip BORNÉ par TTL par genre (quote 24 h, profil 7 j) → self-heal automatique : à
-//    l'expiration, UN nouvel essai est permis (succès → entrée effacée ; échec → skip réarmé) ;
+//  - skip BORNÉ par TTL GRADUÉ par genre (3-4 échecs → court : quote 1 h / profil 24 h ;
+//    ≥ 5 échecs → long : quote 24 h / profil 7 j) → self-heal automatique : à l'expiration,
+//    UN nouvel essai est permis (succès → entrée effacée ; échec → skip réarmé) ;
 //  - un succès EFFACE l'entrée (retour au comportement normal, zéro écriture si pas d'entrée) ;
 //  - purge des entrées mortes (> 30 j sans échec) à chaque sauvegarde (classe « déborner sans purge ») ;
 //  - changement de clé provider / resync forcé → wipe complet (la couverture change).
@@ -37,11 +38,23 @@ interface NegativeEntry {
 
 const STORAGE_KEY = 'financeai:marketdata:negcache:v1';
 const FAIL_THRESHOLD = 3;
+/** Au-delà : le symbole est considéré durablement non couvert → TTL long. */
+const LONG_TTL_THRESHOLD = 5;
 const CONSEC_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const PRUNE_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
-const SKIP_TTL_MS: Record<NegativeKind, number> = {
-    quote: 24 * 60 * 60 * 1000,
-    profile: 7 * 24 * 60 * 60 * 1000,
+// [Finding ÉLEVÉ code-reviewer #499, prouvé par sonde] TTL GRADUÉ : les providers aplatissent
+// TOUTE erreur en null (429 rate-limit compris) → 3 échecs transitoires armeraient un skip long
+// sur un VRAI titre (staleness invisible pire que le problème résolu). Premier skip COURT
+// (rafale transitoire → au pire 1 h de cours figé), TTL long seulement après 5 échecs
+// consécutifs (un titre manuel/GIC vraiment non coté l'atteint en quelques jours).
+// Fix structurel (propager le TYPE d'erreur provider→façade) : ticket [QUOTE-ERRKIND].
+const SHORT_TTL_MS: Record<NegativeKind, number> = {
+    quote: 60 * 60 * 1000,           // 1 h
+    profile: 24 * 60 * 60 * 1000,    // 24 h
+};
+const LONG_TTL_MS: Record<NegativeKind, number> = {
+    quote: 24 * 60 * 60 * 1000,      // 24 h
+    profile: 7 * 24 * 60 * 60 * 1000, // 7 j
 };
 
 let _entries: Record<string, NegativeEntry> | null = null;
@@ -113,7 +126,9 @@ export function recordNegative(kind: NegativeKind, symbol: string, now: number =
     // Fenêtre de consécutivité : un échec trop ancien ne compte plus (le compteur repart).
     const fails = prev && now - prev.lastFailAt <= CONSEC_WINDOW_MS ? prev.fails + 1 : 1;
     const entry: NegativeEntry = { fails, lastFailAt: now };
-    if (fails >= FAIL_THRESHOLD) entry.until = now + SKIP_TTL_MS[kind];
+    if (fails >= FAIL_THRESHOLD) {
+        entry.until = now + (fails >= LONG_TTL_THRESHOLD ? LONG_TTL_MS : SHORT_TTL_MS)[kind];
+    }
     entries[key] = entry;
     save(now);
 }

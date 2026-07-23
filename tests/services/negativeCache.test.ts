@@ -27,24 +27,35 @@ describe('negativeCache', () => {
         expect(shouldSkipNegative('quote', 'GIC-MANUEL', T0 + 3)).toBe(false);
     });
 
-    it('3 échecs consécutifs → skip actif, borné par le TTL (24 h pour quote)', () => {
+    it('3 échecs consécutifs → skip COURT (1 h pour quote — finding ÉLEVÉ #499 : une rafale transitoire ne gèle pas 24 h)', () => {
         for (let i = 0; i < 3; i++) recordNegative('quote', 'GIC-MANUEL', T0 + i);
         expect(shouldSkipNegative('quote', 'GIC-MANUEL', T0 + 5)).toBe(true);
-        // À l'expiration du TTL, un nouvel essai est permis (self-heal).
-        expect(shouldSkipNegative('quote', 'GIC-MANUEL', T0 + 2 + DAY + 1)).toBe(false);
+        // À l'expiration du TTL COURT (1 h), un nouvel essai est permis (self-heal).
+        expect(shouldSkipNegative('quote', 'GIC-MANUEL', T0 + 2 + HOUR + 1)).toBe(false);
     });
 
-    it('profile a un TTL plus long (7 j) que quote (24 h)', () => {
+    it('≥ 5 échecs consécutifs → TTL LONG (quote 24 h) : un titre vraiment non coté finit par coûter zéro réseau', () => {
+        for (let i = 0; i < 5; i++) recordNegative('quote', 'GIC-MANUEL', T0 + i * HOUR * 2);
+        const last = T0 + 4 * HOUR * 2;
+        expect(shouldSkipNegative('quote', 'GIC-MANUEL', last + 2 * HOUR)).toBe(true); // > 1 h : encore actif
+        expect(shouldSkipNegative('quote', 'GIC-MANUEL', last + DAY + 1)).toBe(false); // expiré à 24 h
+    });
+
+    it('profile : TTL court 24 h (3-4 échecs), long 7 j (≥ 5)', () => {
         for (let i = 0; i < 3; i++) recordNegative('profile', 'XYZ', T0 + i);
-        expect(shouldSkipNegative('profile', 'XYZ', T0 + 2 + DAY + 1)).toBe(true); // encore actif à J+1
-        expect(shouldSkipNegative('profile', 'XYZ', T0 + 2 + 7 * DAY + 1)).toBe(false); // expiré à J+7
+        expect(shouldSkipNegative('profile', 'XYZ', T0 + 2 + HOUR)).toBe(true); // actif à +1 h
+        expect(shouldSkipNegative('profile', 'XYZ', T0 + 2 + DAY + 1)).toBe(false); // court expiré à 24 h
+        recordNegative('profile', 'XYZ', T0 + 2 + DAY + 2); // 4e
+        recordNegative('profile', 'XYZ', T0 + 2 + DAY + 3); // 5e → long
+        expect(shouldSkipNegative('profile', 'XYZ', T0 + 2 + 3 * DAY)).toBe(true); // actif à J+3
+        expect(shouldSkipNegative('profile', 'XYZ', T0 + 2 + DAY + 3 + 7 * DAY + 1)).toBe(false); // expiré à J+7
     });
 
     it('un échec APRÈS expiration du TTL ré-arme immédiatement le skip (compteur déjà au seuil)', () => {
         for (let i = 0; i < 3; i++) recordNegative('quote', 'GIC-MANUEL', T0 + i);
-        const afterTtl = T0 + 2 + DAY + 1;
+        const afterTtl = T0 + 2 + HOUR + 1;
         expect(shouldSkipNegative('quote', 'GIC-MANUEL', afterTtl)).toBe(false); // essai permis
-        recordNegative('quote', 'GIC-MANUEL', afterTtl); // ...qui échoue encore
+        recordNegative('quote', 'GIC-MANUEL', afterTtl); // ...qui échoue encore (4e)
         expect(shouldSkipNegative('quote', 'GIC-MANUEL', afterTtl + 1)).toBe(true);
     });
 

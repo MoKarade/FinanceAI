@@ -218,7 +218,10 @@ async function runRefresh(
             currentPrice: quote.price,
             // [QUOTE-MARKET-TIMESTAMP] Heure du MARCHÉ (regularMarketTime/t Finnhub) quand elle est
             // plausible — le raccord quoteFresh (7 j) mesure alors la fraîcheur du COURS, pas du fetch.
-            priceUpdatedAt: marketTimestampOrNow(quote.timestamp, now()),
+            // MONOTONE (finding code-reviewer #499, prouvé par sonde) : deux providers peuvent
+            // rapporter des horodatages incohérents pour le même titre (bascule Finnhub↔Yahoo) —
+            // sans clamp, priceUpdatedAt pouvait RECULER (quoteFresh/« Cours mis à jour » régressent).
+            priceUpdatedAt: Math.max(a.priceUpdatedAt ?? 0, marketTimestampOrNow(quote.timestamp, now())),
             forCurrency: a.currency || undefined,
         };
         if (!a.currency) {

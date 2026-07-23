@@ -49,6 +49,17 @@ describe('refreshAssetPrices', () => {
         expect(res.patches.get('NVDA')!.priceUpdatedAt).toBe(marketTs);
     });
 
+    it('MARKET-TIMESTAMP : priceUpdatedAt est MONOTONE — jamais plus ancien que celui déjà stocké', async () => {
+        // Finding code-reviewer #499 (sonde) : bascule Finnhub↔Yahoo = horodatages incohérents
+        // possibles pour le même titre → sans clamp, « Cours mis à jour »/quoteFresh régressaient.
+        const oldMarketTs = NOW - 30 * 24 * 60 * 60 * 1000;
+        const res = await refreshAssetPrices(
+            [asset({ priceUpdatedAt: NOW - 1000 })],
+            deps(async () => quote({ price: 120, timestamp: oldMarketTs })),
+        );
+        expect(res.patches.get('NVDA')!.priceUpdatedAt).toBe(NOW - 1000); // l'existant plus récent gagne
+    });
+
     it('MARKET-TIMESTAMP : timestamps implausibles (0, futur, non fini) → repli heure de fetch', () => {
         expect(marketTimestampOrNow(0, NOW)).toBe(NOW);                    // sentinelle provider
         expect(marketTimestampOrNow(undefined, NOW)).toBe(NOW);

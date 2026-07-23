@@ -1127,7 +1127,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     {lastPriceRefreshAt != null && (
                         <span className="text-tiny text-ink-400 mr-auto">
                             {/* formatDate (fr-CA, NaN→—) + heure, même patron qu'AutoBackupPanel. */}
-                            Cours mis à jour : {formatDate(lastPriceRefreshAt)} {new Date(lastPriceRefreshAt).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}
+                            Cours au {formatDate(lastPriceRefreshAt)} {new Date(lastPriceRefreshAt).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                     )}
                     <button

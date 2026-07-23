@@ -185,6 +185,16 @@
   Benchmark « Marché » = prix natif du titre CW8/MSCI détenu (repli série CSV). Pas de baseline dans la
   fenêtre (titre plus récent que la période) → `null`/« — » honnête, jamais un 0. Score de santé : momentum
   FIXÉ sur 24h (indépendant du sélecteur — badge header stable).
+- [ ] **`[QUOTE-ERRKIND]`** (M, finding ÉLEVÉ code-reviewer #499, mitigé par TTL gradué) — les providers
+  aplatissent TOUTE erreur en `null` (429 rate-limit, réseau, auth, « symbole inconnu » indistincts) → le
+  cache négatif compte des échecs TRANSITOIRES comme « non couvert ». Mitigation livrée : TTL gradué (3-4
+  échecs → 1 h quote / 24 h profil ; ≥ 5 → 24 h / 7 j). Fix structurel : propager le TYPE d'erreur
+  (`MarketDataError.code`) provider→façade et ne compter que les « confirmé inconnu » (rate-limit/réseau →
+  retry court ou pas de comptage).
+- [ ] **`[PRICE-SYNC-REPORT]`** (S-M, finding ÉLEVÉ silent-failure #499, mitigé) — les skips du refresh de
+  BOOT (quotes/profils) n'ont AUCUNE surface UI (contrairement à l'historique → HistorySyncDoctor). Mitigation
+  livrée : logError au journal quand des titres sont skippés au boot + TTL gradué (staleness bornée ~1 h).
+  Fix complet : un rapport publié (patron setHistorySyncReport) consommé par le doctor/une note discrète.
 - [ ] **`[PERF-STALE-TAIL-ZERO]`** (S, finding MOYEN code-reviewer #498, pré-existant mais désormais en HEADLINE) —
   quand la queue d'une série est RACCORDÉE au même `currentPrice` sur 2 jours (`quoteFresh`, cas « quote OK,
   candles KO » type GBS.PA), `seriesReturnPct(…, '24H')` rend un **0,00 %** techniquement exact mais trompeur

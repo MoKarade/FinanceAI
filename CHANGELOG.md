@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Investissements : période de performance au choix] — 2026-07-23
+
+### Amélioration (demande Marc : « la performance actuellement c'est 24h mais je veux pouvoir choisir moi »)
+- **Sélecteur de période sur la carte Performance** : 24h / 7 j / 1 mois / 3 mois / 6 mois /
+  cette année / 1 an. Le choix pilote toute la page : la carte Performance (portefeuille vs
+  marché), les flèches de tendance des chips du graphe et la « Variation » des cartes par titre.
+- **Deux mesures honnêtes selon la surface** : le portefeuille et les comptes affichent la
+  variation de leur VALEUR (sensible aux apports) ; chaque titre affiche la performance de son
+  PRIX (insensible à tes achats — un dépôt ne « performe » pas). Le benchmark Marché utilise
+  désormais le prix du CW8/MSCI, plus la valeur de ta position (un apport gonflait le « marché »).
+- **Pas de donnée dans la fenêtre → « — »** (un titre acheté il y a 2 mois n'affiche pas un faux
+  « 1 an »). Le score de diversification du haut de page reste calé sur 24h (stable quel que soit
+  le sélecteur).
+
 ## [unreleased — Sécurité des dépendances + 2 tickers de plus au catalogue] — 2026-07-23
 
 ### Sécurité

@@ -173,6 +173,15 @@
   `historySymbol || symbol` ; bouton « Actualiser les cours » = resync COMPLÈTE (purge cache history + hydratation
   forcée + quotes + diagnostic) ; `HistorySyncDoctor` (Investissements) : raison exacte par titre + symbole de
   cotation inline + recherche par NOM (`/api/search/yahoo`). ADR docs/decisions.md.
+- [x] **`[INVEST-PERF-PERIOD]`** (S-M) — ✅ 2026-07-23 (demande Marc : « la performance actuellement c'est 24h
+  mais je veux pouvoir choisir moi ») : sélecteur de période (24h / 7 j / 1 mois / 3 mois / 6 mois / cette
+  année / 1 an) sur la carte Performance, qui pilote AUSSI les chips du graphe et les cartes par titre.
+  Helper pur `services/history/periodReturn.ts` à DEUX sémantiques honnêtes : `seriesReturnPct` (variation
+  de VALEUR d'une série marketData — TOTAL/buckets, sensible aux apports) et `priceReturnPct` (performance
+  de PRIX NATIF d'un titre via `priceHistory`, insensible aux achats — les cartes par titre l'utilisent).
+  Benchmark « Marché » = prix natif du titre CW8/MSCI détenu (repli série CSV). Pas de baseline dans la
+  fenêtre (titre plus récent que la période) → `null`/« — » honnête, jamais un 0. Score de santé : momentum
+  FIXÉ sur 24h (indépendant du sélecteur — badge header stable).
 - [x] **`[HIST-GOOGLE-PARITY]`** — ✅ 2026-07-23 absorbé par [HIST-COVERAGE-TOTAL] (couverture complète livrée ;
   l'écart résiduel attendu vs Google = granularité daily + heure FX, documenté ci-dessous). Question Marc :
   (« utiliser exactement la courbe de google finance c'est possible ? ») —

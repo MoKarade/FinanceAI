@@ -3,7 +3,7 @@
 // (verbatim Marc 2026-07-15). Sync idempotente + historique mensuel par catégorie.
 
 import { describe, it, expect } from 'vitest';
-import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages, computeIncomeBreakdown, fullHistoryMonths, lastMonths } from '../../utils/budgetSync';
+import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages, computeIncomeBreakdown, computeAvgByItem, fullHistoryMonths, lastMonths } from '../../utils/budgetSync';
 import type { BudgetCategory, Transaction } from '../../types';
 
 const REF = new Date(2026, 6, 15); // 15 juillet 2026 (mois 6 = juillet)
@@ -183,6 +183,70 @@ describe('buildMonthlyLedger (réel revenus + dépenses par mois)', () => {
 
     it('lastMonths rend N clés YYYY-MM, ancien → récent', () => {
         expect(lastMonths(3, REF)).toEqual(['2026-05', '2026-06', '2026-07']);
+    });
+
+    // [BUDGET-3-VUES] coveredFullMonths exposé — distingue « moyenne = 0 » d'« aucun historique ».
+    it('coveredFullMonths = mois pleins de la fenêtre couverts par l\'historique', () => {
+        const transactions = [
+            tx({ category: 'Épicerie', amount: -200, date: '2026-05-05' }),
+            tx({ category: 'Épicerie', amount: -100, date: '2026-07-02' }), // mois courant, partiel
+        ];
+        const l = buildMonthlyLedger(transactions, ['Épicerie'], 12, REF);
+        expect(l.coveredFullMonths).toBe(2); // mai + juin (depuis le 1er mois d'historique), juillet exclu
+        const epicerie = l.expenseRows.find(r => r.category === 'Épicerie')!;
+        expect(epicerie.monthlyAverage).toBeCloseTo(200 / 2, 4);
+    });
+
+    it('coveredFullMonths = 0 quand tout l\'historique tient dans le mois courant (moyenne indisponible)', () => {
+        const transactions = [
+            tx({ category: 'Épicerie', amount: -100, date: '2026-07-02' }),
+        ];
+        const l = buildMonthlyLedger(transactions, ['Épicerie'], 12, REF);
+        expect(l.coveredFullMonths).toBe(0);
+        // La moyenne vaut 0 par CONVENTION dans ce cas — le consommateur DOIT la traiter
+        // comme indisponible (« — »), jamais comme un vrai zéro.
+        expect(l.expenseRows.find(r => r.category === 'Épicerie')!.monthlyAverage).toBe(0);
+    });
+});
+
+// [BUDGET-3-VUES] computeAvgByItem — la conversion « convention 0 → null » testée sur un VRAI
+// ledger (finding panel : le garde vivait inline dans Budget.tsx, exercé par aucun test).
+describe('computeAvgByItem (moyenne par poste prête pour l\'UI)', () => {
+    it('rend la moyenne quand l\'historique couvre des mois pleins, un vrai 0 pour un poste sans dépense', () => {
+        const transactions = [
+            tx({ category: 'Épicerie', amount: -200, date: '2026-05-05' }),
+            tx({ category: 'Épicerie', amount: -100, date: '2026-06-05' }),
+        ];
+        const l = buildMonthlyLedger(transactions, ['Épicerie', 'Loyer'], 12, REF);
+        const map = computeAvgByItem(l);
+        expect(map['Épicerie']).toBeCloseTo(150, 4);
+        // Poste fourni SANS transaction : ligne pré-seedée à 0 → VRAI zéro (pas « — »).
+        expect(map['Loyer']).toBe(0);
+    });
+
+    it('rend null pour TOUS les postes quand aucun mois plein (tout-ou-rien, jamais un faux 0)', () => {
+        const transactions = [tx({ category: 'Épicerie', amount: -100, date: '2026-07-02' })];
+        const l = buildMonthlyLedger(transactions, ['Épicerie', 'Loyer'], 12, REF);
+        const map = computeAvgByItem(l);
+        expect(map['Épicerie']).toBeNull();
+        expect(map['Loyer']).toBeNull();
+    });
+
+    it('rabat une moyenne NON FINIE sur null ET la signale (jamais un « — » muet sur corruption)', () => {
+        // NB : un `amount: NaN` ne TRAVERSE pas le gate `t.amount < 0` (NaN < 0 === false → tx
+        // ignorée, moyenne 0) — le vecteur non-fini qui passe le gate est -Infinity.
+        const transactions = [
+            tx({ category: 'Épicerie', amount: Number.NEGATIVE_INFINITY, date: '2026-06-05' }),
+            tx({ category: 'Restaurants', amount: -50, date: '2026-06-05' }),
+        ];
+        const l = buildMonthlyLedger(transactions, ['Épicerie', 'Restaurants'], 12, REF);
+        // Pré-condition : la corruption produit bien une moyenne BRUTE non finie (sinon test vacant).
+        expect(Number.isFinite(l.expenseRows.find(r => r.category === 'Épicerie')!.monthlyAverage)).toBe(false);
+        const flagged: string[] = [];
+        const map = computeAvgByItem(l, c => flagged.push(c));
+        expect(map['Épicerie']).toBeNull();
+        expect(flagged).toEqual(['Épicerie']);
+        expect(map['Restaurants']).toBeCloseTo(50, 4); // le poste sain n'est pas affecté
     });
 });
 

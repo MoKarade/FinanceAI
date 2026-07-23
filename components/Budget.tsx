@@ -21,7 +21,7 @@ import { formatCAD, formatSigned, formatPercent } from '../utils/format';
 import { useViewContextPublisher } from '../hooks/useViewContextPublisher';
 import type { BudgetViewDetail } from '../services/aiChat/viewContext';
 import { computeBudgetParity, matchTransactionToCategory, computeGoldenSplit, GOLDEN_IDEAL, computeActualByOwner, isSavingsNature, type OrphanCategory } from '../utils/budget';
-import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages, computeIncomeBreakdown } from '../utils/budgetSync';
+import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages, computeIncomeBreakdown, computeAvgByItem } from '../utils/budgetSync';
 import { DualKPIStat } from './budget/DualKPIStat';
 import { calculateFiscalReport } from '../utils/tax';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
@@ -268,6 +268,27 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // [BUDGET-PAST-AVG] « Budget du mois en cours = moyenne de tout le passé » (demande Marc) :
     // moyennes mensuelles GLOBALES (dépenses/revenus) sur tous les mois PLEINS d'historique.
     const pastAverages = useMemo(() => computeMonthlyActualAverages(transactions), [transactions]);
+
+    // [BUDGET-3-VUES] Moyenne MENSUELLE par poste sur la fenêtre du ledger 12 mois — mois courant
+    // (partiel) EXCLU, donc au plus 11 mois pleins (demande Marc : « réel actuel, moyenne des
+    // derniers mois, prévision » — 3 colonnes). MÊME source que l'historique par poste (ledger,
+    // sœur de PH4D « calculs voisins sur la même base »). `null` = « — » honnête (cf helper).
+    const avg12ByItem = useMemo(
+        () => computeAvgByItem(ledger, (category) => logError({
+            source: 'storage', severity: 'warning',
+            message: `Budget : moyenne mensuelle NON FINIE pour le poste « ${category} » (transaction corrompue ?) — affichée indisponible.`,
+        })),
+        [ledger],
+    );
+
+    // Moyenne ramenée à la PÉRIODE affichée (×3 trimestre, ×12 année — même normalisation que la
+    // cible, sinon comparaison mensuel-vs-trimestre faussée). PAS d'inflationSim : la moyenne est
+    // un RÉEL historique, la simulation d'inflation ne s'applique qu'aux cibles projetées.
+    const getDisplayAvg = (item: BudgetCategory): number | null => {
+        const avg = avg12ByItem[item.name];
+        if (avg === null || avg === undefined) return null;
+        return avg * getMultiplier();
+    };
 
     const totalBudgetDisplay = budgetItems.reduce((sum, item) => sum + getDisplayTarget(item), 0);
     // [PH4-A/F1] Total dépensé = TOUTES les dépenses (postes rapprochés + orphelins), via
@@ -1211,6 +1232,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             expandedId={expandedId}
                             onExpandToggle={setExpandedId}
                             getDisplayTarget={getDisplayTarget}
+                            getDisplayAvg={getDisplayAvg}
                             isSolo={coupleAnalysis.isSolo}
                             splitRatio1={coupleAnalysis.splitRatio1}
                             userNames={[config.users[0].name, config.users[1]?.name ?? '']}

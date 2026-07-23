@@ -4,7 +4,13 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟢 Session 2026-07-23 (suite 8) — QUOTE-NEGATIVE-CACHE, QUOTE-MARKET-TIMESTAMP : cache négatif + horodatage marché (PR #499, panel fait)
+> ## 🟡 Session 2026-07-23 (suite 9) — BUDGET-3-VUES : Budget par poste 3 colonnes réel/moy.12m/cible (PR #500, DRAFT — auto-merge armé)
+> **En cours** `[BUDGET-3-VUES]` : tableau Budget 3 colonnes — réel période · moyenne 12 mois (mois courant exclu, sans historique → « — ») · cible.
+> Bandeau groupe (réel/moy/cible gaté mode discret). `buildMonthlyLedger` + `computeAvgByItem` sources uniques. Panel `/review-all` fait (4 agents) :
+> findings a11y (sr-only sur colonnes) + tests câblage corrigés ; finding financial-integrity (rapprochement fuzzy vs exact) routé BACKLOG `[BUDGET-MATCH-UNIFY]`.
+> Auto-merge sera armé immédiatement après ce handover.
+>
+> ## 🟢 Session 2026-07-23 (suite 8) — QUOTE-NEGATIVE-CACHE, QUOTE-MARKET-TIMESTAMP : cache négatif + horodatage marché (PR #499, MERGÉE)
 > **✅ `[QUOTE-NEGATIVE-CACHE]` + `[QUOTE-MARKET-TIMESTAMP]`** (PR #499) : cache négatif TTL par symbole —
 > 3 échecs CONSÉCUTIFS (fenêtre 7 j) → skip 24 h quotes / 7 j profils, auto-guérison à l'expiration, entrées
 > non FINIES rejetées à la lecture (durcissement anti-tampering `1e999`→Infinity, finding sécurité), purge au
@@ -1046,7 +1052,8 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#498** [INVEST-PERF-PERIOD] (période de performance au choix, 2026-07-23) ; **#499** [QUOTE-NEGATIVE-CACHE][QUOTE-MARKET-TIMESTAMP] en auto-merge (panel fait) |
+| **Dernière PR mergée** | **#499** [QUOTE-NEGATIVE-CACHE + QUOTE-MARKET-TIMESTAMP] (cache négatif + horodatage marché, 2026-07-23, MERGÉE) |
+| **PR en cours** | **#500** [BUDGET-3-VUES] DRAFT sur `claude/progress-check-yua8yy` — auto-merge armé immédiatement |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
 | **Tests** | **~3020 verts, suite complète** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation — compte exact au gate/CI) |
 | **Typecheck** | Clean en mode strict |

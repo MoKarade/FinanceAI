@@ -218,13 +218,22 @@
   attendu : granularité (daily close vs intraday) et heure de FX.
 
 ## 💰 Budget — 3 vues (demande Marc 2026-07-22, verbatim « backlog: »)
-- [ ] **`[BUDGET-3-VUES]`** (M) — « je veux que le budget affiche le budget réel actuel, la moyenne des
-  derniers mois, et le budget de prévision » : pour chaque poste/section, TROIS colonnes/vues distinctes —
-  (a) RÉEL du mois affiché (transactions de la période), (b) MOYENNE des derniers mois (la base
-  `computeMonthlyActualAverages`/tendance 6 mois existe déjà), (c) PRÉVISION (cible/projection fin de mois).
-  Cadrage à faire (plan-first) : par poste ou seulement les tuiles ? période de la moyenne (6 mois vs tout
-  l'historique — la cible auto utilise déjà « moyenne de tout le passé ») ? interaction avec les tuiles
-  Réel/Prévu actuelles (les KPI portent déjà réel ET prévu — la demande vise probablement le PAR-POSTE).
+- [x] **`[BUDGET-3-VUES]`** ✅ (2026-07-23, PR #500) — cadrage validé Marc : PAR POSTE · moyenne
+  **12 mois** · prévision = la CIBLE saisie · 3 colonnes. Livré : colonne « Moy. 12m » par poste
+  (`BudgetGroupTable`, moyenne des 12 derniers mois pleins via `buildMonthlyLedger` — même base que
+  l'historique par poste ; ramenée à la période affichée, sans inflationSim) + bandeau de groupe
+  réel · moy. · cible (montants gatés mode discret) + « — » honnête sans historique révolu
+  (`coveredFullMonths` exposé, additif). La « projection fin de mois » (réel extrapolé au prorata)
+  n'a PAS été retenue au cadrage — la rouvrir seulement si Marc la demande.
+- [ ] **`[BUDGET-MATCH-UNIFY]`** (M) — unifier la BASE DE RAPPROCHEMENT tx→poste des 3 calculs voisins
+  (finding financial-integrity PR #500, prouvé par sonde) : le RÉEL (`actualsMap`) rapproche en FUZZY
+  (`matchTransactionToCategory`), la MOYENNE (ledger) et la CIBLE AUTO (`historicalMonthlyAverage`)
+  en EXACT → un poste dont le nom diffère de la catégorie par fuzzy seul (poste renommé à la main)
+  affiche réel 600 $ · moy 0 $ (l'historique file dans « Autres / non classées », 0 $ plausible mais
+  faux). Portée limitée (la sync réaligne les noms en régime établi) mais réel. Fix = UNE source de
+  rapprochement pour les trois (attention : changer l'attribution du ledger touche aussi le grand
+  livre affiché, et rendre la moy fuzzy SEULE créerait une divergence moy↔cible-auto — faire les
+  trois ensemble, classe [[PH4D-BUDGET-RATIOS]]).
 
 ## 🤝 Assistant fusionné (demande Marc 2026-07-23 : « combiner Prochaine action à l'Assistant »)
 - [x] **`[ASSISTANT-HUB]`** ✅ (2026-07-23, PR #492) — onglet Assistant VISIBLE dans la nav (remplace

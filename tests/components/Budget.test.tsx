@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, within } from '@testing-library/react';
 import { Budget } from '../../components/Budget';
 import type { BudgetConfig, BudgetCategory, User, Transaction } from '../../types';
+import { formatCAD } from '../../utils/format';
 
 // Mock recharts (jsdom n'a pas SVG dimensions)
 vi.mock('recharts', async () => {
@@ -125,6 +126,30 @@ describe('Budget — refonte UI (Phase C3)', () => {
         fireEvent.click(getByLabelText('Période précédente')); // periodOffset → -1
 
         expect(reelDigits()).toBe('9999'); // mois précédent : le memo a bien recalculé (échoue sur l'ancien code)
+    });
+
+    it('[BUDGET-3-VUES] la colonne « Moy. 12m » câble le VRAI calcul (ledger → cellule) et suit la période (×12 en Année)', () => {
+        // Finding panel PR #500 : les tests de BudgetGroupTable MOCKENT getDisplayAvg → le câblage
+        // réel de Budget.tsx (lookup avg12ByItem + × getMultiplier) n'était exercé par aucun test.
+        const now = new Date();
+        const iso = (d: Date) => d.toISOString().split('T')[0];
+        const prevDate = iso(new Date(now.getFullYear(), now.getMonth() - 1, 15)); // mois précédent (1 mois plein)
+        const transactions = [
+            { id: 'p1', date: prevDate, description: 'Resto', category: 'Restaurants', amount: -123 } as unknown as Transaction,
+        ];
+        const { getByDisplayValue, getByText } = render(<Budget {...baseProps} transactions={transactions} />);
+
+        // 1 mois plein d'historique → moyenne mensuelle = 123 $, rendue dans la LIGNE du poste.
+        // NB : getByText(string) compare l'attendu BRUT au texte DOM NORMALISÉ (les espaces
+        // insécables de formatCAD deviennent des espaces simples) → normaliser l'attendu pareil.
+        const cad = (n: number) => formatCAD(n).replace(/[  ]/g, ' ');
+        const row = () => getByDisplayValue('Restaurants').closest('tr') as HTMLElement;
+        expect(within(row()).getByText(cad(123))).toBeInTheDocument();
+
+        // Vue Année : la moyenne suit la MÊME normalisation de période que la cible (×12).
+        // Échoue si le multiplicateur n'est pas appliqué à la moyenne (câblage getMultiplier).
+        fireEvent.click(getByText('Année'));
+        expect(within(row()).getByText(cad(123 * 12))).toBeInTheDocument();
     });
 
     it('[BUDGET-INCOME-REAL] Revenus = vraies transactions salaire+divers (pas les positifs non-revenu), avec ventilation', () => {

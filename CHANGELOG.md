@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Budget : réel · moyenne 12 mois · prévu par poste] — 2026-07-23
+
+### Amélioration (demande Marc : « le budget affiche le réel actuel, la moyenne des derniers mois, et la prévision »)
+- **Nouvelle colonne « Moy. 12m » sur chaque poste du budget** : la moyenne de tes dépenses
+  réelles des 12 derniers mois complets (le mois en cours, partiel, ne fausse pas la moyenne),
+  à côté du Réel de la période et de la Cible — les trois se comparent d'un coup d'œil.
+- **La moyenne suit la période affichée** (mois / trimestre / année) avec la même règle que la
+  cible, pour comparer des pommes avec des pommes.
+- **Pas d'historique complet → « — »** honnête, jamais un faux 0 $.
+- **Bandeau de chaque groupe** (Besoins / Envies / Épargne) : réel · moy. · cible — et ces
+  totaux sont maintenant masqués en mode discret (ils restaient en clair).
+
 ## [unreleased — Moins d'appels réseau inutiles + horodatage honnête des cours] — 2026-07-23
 
 ### Amélioration

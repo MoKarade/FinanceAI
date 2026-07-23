@@ -419,6 +419,13 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   2026-06-26) — la sortie n'apparaît PAS en `vitest run` (m'a coûté 2 cycles à grep dans le vide). Écrire via `process.stderr.write(...)`
   (non intercepté) ou dans un fichier (`writeFileSync`), PUIS grep. Réflexe pour un git-stash de mesure : log → run NOUVEAU → `git stash push --
   <fichiers moteur>` → run ANCIEN → `git stash pop`, SÉQUENTIEL (jamais en // d'agents qui stashent, cf course git-stash), working tree isolé.
+- ⚠️ **Testing-library `getByText('123 $')` sur un montant `formatCAD` : la CHAÎNE attendue n'est PAS normalisée**
+  (leçon BUDGET-3-VUES 2026-07-23) : le texte DOM est normalisé (`\s+`→espace simple, ce qui CONVERTIT les espaces
+  insécables U+00A0/U+202F de formatCAD) mais le matcher string est comparé BRUT → « Unable to find "123 $" » alors
+  que la cellule est là. Normaliser l'attendu (`formatCAD(n).replace(/[  ]/g, ' ')`) ou matcher par regex.
+  Sœur (direction d'un vecteur non-fini) : `NaN` ne FRANCHIT PAS un gate de signe (`NaN < 0` === false → tx ignorée,
+  aucune contamination) — le vecteur qui le franchit est `-Infinity` ; prouver la PRÉ-CONDITION du test (la valeur
+  brute est bien non finie) avant d'asserter la garde, sinon test vacant (cf NAN-INPUT-HARDENING).
 - ⚠️ **Après un changement de FIXTURES/personas, relancer la SUITE VITEST COMPLÈTE — pas seulement les tests ciblés**
   (leçon R6-MICRO-ASSET 2026-06-22) : ajouter un MICRO-actif (~182 $) à un persona « fauché » a cassé 2 tests à SEUIL
   GROSSIER keyés sur un binaire « a-t-il des avoirs » (`personaAudit` + `futureSeedContinuity` : `investedTotal/seed.TOTAL > 1000`)

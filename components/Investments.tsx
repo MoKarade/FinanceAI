@@ -24,6 +24,7 @@ import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import { HistoryCoverageNote } from './dashboard/HistoryCoverageNote';
 import { HistorySyncDoctor } from './investments/HistorySyncDoctor';
 import { historyKeyMatchesSymbol } from '../services/history/buildMarketData';
+import { seriesReturnPct, priceReturnPct, isBenchmarkCandidate, PERF_PERIODS, PERF_PERIOD_LABELS, type PerfPeriod } from '../services/history/periodReturn';
 import { StockChart } from './StockChart';
 import { resolveAssetMeta, lookupSeedMeta, CANONICAL_SECTORS, CANONICAL_REGIONS } from '../services/assetMeta';
 import { assetValueCad, toCurrencyFactor } from '../services/portfolio';
@@ -88,7 +89,8 @@ type TimeRange = '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'ALL';
 interface AllocationItem {
     id: string;
     value: number;
-    trend24h: number;
+    /** Performance % de PRIX NATIF sur la période choisie ; null = pas d'historique (« — »). */
+    trendPct: number | null;
     weight: number;
     dividendYearly: number;
     name: string;
@@ -103,7 +105,8 @@ interface AllocationItem {
 interface SeriesWithTrend {
     id: string;
     name: string;
-    trend: number;
+    /** Variation % sur la période choisie ; null = pas de baseline dans la fenêtre (« — »). */
+    trend: number | null;
     isTotal: boolean;
 }
 
@@ -140,6 +143,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
     const [isLoading, setIsLoading] = useState(true);
     const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
     const [timeRange, setTimeRange] = useState<TimeRange>('1Y');
+    // [INVEST-PERF-PERIOD] Période des variations/performances affichées (demande Marc 2026-07-23 :
+    // « la performance actuellement c'est 24h mais je veux pouvoir choisir moi »). Pilote la carte
+    // Performance, les chips du graphe et les cartes par titre. Le score de santé reste FIXÉ sur 24h
+    // (momentum court terme — indépendant du sélecteur, sinon le badge header changerait avec la vue).
+    const [perfPeriod, setPerfPeriod] = useState<PerfPeriod>('24H');
     // Phase E.3 — sous-onglets pour aérer la page (doc directives §4)
     // PH4-INV-4 — « moins de pages » : Rééquilibrage fusionné dans Allocation (4 → 3 sous-onglets).
     const [subTab, setSubTab] = useState<'overview' | 'allocation' | 'detail'>('overview');
@@ -249,11 +257,12 @@ export const Investments: React.FC<InvestmentsProps> = ({
         // PH4-INV-2 — SOURCE DE VÉRITÉ de l'allocation = le portefeuille `assets` saisi (qty × prix
         // courant), PAS le CSV historique (Google Sheet déprécié) qui divergeait du portefeuille réel
         // (bug Marc : allocation fausse dès qu'un CSV existait). Le CSV ne sert plus qu'aux SÉRIES
-        // temporelles (tendances 24 h, benchmark, score de santé) quand il est présent.
+        // temporelles (tendances sur la période choisie, benchmark, score de santé) quand il est présent.
 
-        // (a) Dernières valeurs par colonne du CSV (si présent) — pour les TENDANCES uniquement.
+        // (a) Dernières valeurs par colonne du CSV (si présent) — pour l'EXISTENCE des séries.
+        // [INVEST-PERF-PERIOD] La tendance elle-même vient de seriesReturnPct (période au choix),
+        // plus du couple latest/prev « 2 dernières lignes » (qui était figé 24h).
         const latestValues: Record<string, number> = {};
-        const prevValues: Record<string, number> = {};
         if (marketData.length > 0) {
             const allKeys = new Set<string>();
             marketData.forEach(row => Object.keys(row).forEach(k => allKeys.add(k)));
@@ -261,12 +270,10 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 k !== 'date' && k !== 'Date' && !k.startsWith('Taux') && k.trim() !== '' && k !== '1' && k.toLowerCase() !== 'colonne 1' && k !== 'Unnamed: 1',
             );
             cleanKeys.forEach(k => {
-                let latestIdx = -1;
                 for (let i = marketData.length - 1; i >= 0; i--) {
                     const val = Number(marketData[i][k]);
-                    if (val > 0) { latestValues[k] = val; latestIdx = i; break; }
+                    if (val > 0) { latestValues[k] = val; break; }
                 }
-                prevValues[k] = latestIdx > 0 ? (Number(marketData[latestIdx - 1][k]) || 0) : 0;
             });
         }
 
@@ -283,24 +290,41 @@ export const Investments: React.FC<InvestmentsProps> = ({
         const availableSeriesWithTrend = Object.keys(latestValues).map(k => {
             const current = latestValues[k] || 0;
             if (current === 0) return null;
-            const prev = prevValues[k] || 0;
-            const trend = prev > 0 ? ((current - prev) / prev) * 100 : 0;
+            // [INVEST-PERF-PERIOD] Variation de VALEUR de la série sur la période choisie ;
+            // null (« — ») quand la série est plus récente que la période (no-fake-data).
+            const trend = seriesReturnPct(marketData, k, perfPeriod);
             const isTotal = k === 'TOTAL';
             const meta = lookupSeedMeta(k) || { name: k.replace('NASDAQ:', '').replace('NYSE:', '') };
             const name = isTotal ? 'TOTAL PORTEFEUILLE' : (BUCKET_LABELS[k] ?? meta.name);
             return { id: k, name, trend, isTotal };
         }).filter((x): x is SeriesWithTrend => x !== null).sort((a, b) => {
             if (a.isTotal !== b.isTotal) return a.isTotal ? -1 : 1;
+            // « — » (null) en queue — sans soustraction d'Infinity (deux null → NaN, comparateur
+            // hors-spec ; finding FAIBLE panel #498).
+            if (a.trend === null && b.trend === null) return 0;
+            if (a.trend === null) return 1;
+            if (b.trend === null) return -1;
             return b.trend - a.trend;
         });
         const totalSerie = availableSeriesWithTrend.find(s => s.isTotal);
-        const cw8Serie = availableSeriesWithTrend.find(s => s.id.includes('CW8') || s.name.includes('MSCI'));
         // [PORTFOLIO-HISTORY / no-fake-data] null = « pas de donnée » (affiché « — »), jamais un
         // +0.00% présenté comme mesuré quand l'historique manque (finding scout 2026-07-22).
-        const portfolioTrend = totalSerie ? totalSerie.trend : null;
-        const benchmarkTrend = cw8Serie ? cw8Serie.trend : null;
+        const portfolioTrend = totalSerie?.trend ?? null;
+        // [INVEST-PERF-PERIOD] Benchmark = performance de PRIX NATIF du titre CW8/MSCI World détenu
+        // (insensible aux ACHATS — une série en valeur gonflerait le « marché » de chaque apport).
+        // Matching STRICT via isBenchmarkCandidate (finding ÉLEVÉ panel #498 : `includes('MSCI')`
+        // nu matchait « Amundi MSCI Em Asia » → mauvais titre affiché comme benchmark mondial).
+        // Repli série CSV (sémantique VALEUR) restreint à 24H : au-delà, la valeur diverge du prix
+        // à chaque apport → « — » honnête plutôt qu'un chiffre à sémantique différente sous le
+        // même libellé (finding MOYEN panel #498).
+        const benchAsset = assets.find(a => isBenchmarkCandidate(a.symbol, a.name));
+        const cw8Serie = availableSeriesWithTrend.find(s => isBenchmarkCandidate(s.id, s.name));
+        const benchmarkTrend = priceReturnPct(benchAsset?.priceHistory, perfPeriod)
+            ?? (perfPeriod === '24H' ? cw8Serie?.trend ?? null : null);
 
-        // (c) ALLOCATION = portefeuille réel (assets). trend24h enrichi depuis le CSV par symbole si dispo.
+        // (c) ALLOCATION = portefeuille réel (assets). trendPct = performance de PRIX NATIF du titre
+        // sur la période choisie ([INVEST-PERF-PERIOD] — insensible aux achats, règle ASSET-FX « les
+        // % sont des ratios natifs ») ; l'ancien calcul lisait 2 lignes du CSV (valeur, figé 24h).
         const FREQ_MAP: Record<string, number> = { Monthly: 12, Quarterly: 4, Yearly: 1 };
         const allocation = assets.map(a => {
             // [ASSET-FX-DISPLAY] valeur en CAD (prix natif × FX) — l'ancien qty×prix brut mélangeait
@@ -312,14 +336,12 @@ export const Investments: React.FC<InvestmentsProps> = ({
             // → donuts « tout en Autre » (bug Marc).
             const { source: _metaSource, ...meta } = resolveAssetMeta(a);
             void _metaSource; // la provenance ne fait pas partie d'AllocationItem (affichage seul)
-            const cur = latestValues[a.symbol] ?? 0;
-            const prev = prevValues[a.symbol] ?? 0;
-            const trend24h = cur > 0 && prev > 0 ? ((cur - prev) / prev) * 100 : 0;
+            const trendPct = priceReturnPct(a.priceHistory, perfPeriod);
             // PH4-INV-3 — dividendes : priorité au rendement/fréquence SAISIS sur l'Asset (réels du
             // titre) sur l'estimation de la table statique ASSET_META.
             const effYield = a.dividendYield != null && a.dividendYield > 0 ? a.dividendYield : meta.yield;
             const effFreq = a.dividendFreq ? (FREQ_MAP[a.dividendFreq] ?? meta.freq) : meta.freq;
-            return { id: a.symbol, value, trend24h, weight: 0, ...meta, yield: effYield, freq: effFreq, dividendYearly: value * (effYield / 100) };
+            return { id: a.symbol, value, trendPct, weight: 0, ...meta, yield: effYield, freq: effFreq, dividendYearly: value * (effYield / 100) };
         }).filter((a): a is AllocationItem => a.value > 0);
         const totalPortfolio = allocation.reduce((s, a) => s + a.value, 0) || 1;
         allocation.forEach(a => { a.weight = (a.value / totalPortfolio) * 100; });
@@ -356,13 +378,18 @@ export const Investments: React.FC<InvestmentsProps> = ({
         let safePts = (indexWeight / 40) * 60;
         if (safePts > 60) safePts = 60;
         let trendPts = 20;
-        // Momentum NEUTRE (ni bonus ni malus) quand l'historique manque (trend null) — cohérent
-        // avec l'affichage « — » : pas de donnée ≠ performance nulle.
-        const pt = portfolioTrend ?? 0;
-        const bt = benchmarkTrend ?? 0;
-        if (portfolioTrend !== null && pt > bt && pt > 0) trendPts += 20;
-        else if (portfolioTrend !== null && pt > 0) trendPts += 10;
-        else if (portfolioTrend !== null && pt < 0) trendPts -= 10;
+        // [INVEST-PERF-PERIOD] Le momentum du score reste FIXÉ sur 24h (indépendant du sélecteur
+        // d'affichage — sinon le badge « Diversification » du header changerait selon la période
+        // regardée, un score instable pour la même réalité). Momentum NEUTRE (ni bonus ni malus)
+        // quand l'historique manque (trend null) — pas de donnée ≠ performance nulle.
+        const portfolioTrend24 = seriesReturnPct(marketData, 'TOTAL', '24H');
+        const benchmarkTrend24 = priceReturnPct(benchAsset?.priceHistory, '24H')
+            ?? (cw8Serie ? seriesReturnPct(marketData, cw8Serie.id, '24H') : null);
+        const pt = portfolioTrend24 ?? 0;
+        const bt = benchmarkTrend24 ?? 0;
+        if (portfolioTrend24 !== null && pt > bt && pt > 0) trendPts += 20;
+        else if (portfolioTrend24 !== null && pt > 0) trendPts += 10;
+        else if (portfolioTrend24 !== null && pt < 0) trendPts -= 10;
         if (trendPts > 40) trendPts = 40;
         if (trendPts < 0) trendPts = 0;
         const diversificationScore = Math.round(safePts + trendPts);
@@ -378,7 +405,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             portfolioTrend,
             benchmarkTrend,
         };
-    }, [marketData, assets, fxRates]);
+    }, [marketData, assets, fxRates, perfPeriod]); // perfPeriod : leçon BUDGET-MONTH-NAV (dep manquante = memo figé)
 
     // --- FILTERED DATA FOR CHART ---
     const filteredMarketData = useMemo(() => {
@@ -599,8 +626,21 @@ export const Investments: React.FC<InvestmentsProps> = ({
             </div>
 
             {/* [EP-4] Donut « Score de Santé » retiré : il dupliquait le badge header « Santé X/100 ».
-                Reste la performance 24h (portefeuille vs marché), non affichée ailleurs. */}
-            <Card title="Performance (24h)">
+                Reste la performance (portefeuille vs marché), non affichée ailleurs.
+                [INVEST-PERF-PERIOD] Période AU CHOIX (24h par défaut) — pilote aussi les chips du
+                graphe et les cartes par titre. */}
+            <Card
+                title={`Performance (${PERF_PERIOD_LABELS[perfPeriod]})`}
+                action={
+                    <Pill
+                        aria-label="Période de performance"
+                        size="sm"
+                        value={perfPeriod}
+                        onChange={(v) => setPerfPeriod(v as PerfPeriod)}
+                        options={PERF_PERIODS.map(p => ({ value: p, label: PERF_PERIOD_LABELS[p] }))}
+                    />
+                }
+            >
                 <div className="grid grid-cols-2 gap-4">
                     <div className="card-subtle p-4 flex flex-col items-center justify-center">
                         <div className="kpi-label mb-1">Votre Portefeuille</div>
@@ -666,7 +706,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     <span className={`w-1.5 h-1.5 rounded-full ${isActive ? (asset.isTotal ? 'bg-green-400' : 'bg-info-400') : 'bg-white/10'}`}></span>
                                     {asset.name}
                                 </div>
-                                {Math.abs(asset.trend) > 0.5 && (
+                                {asset.trend !== null && Math.abs(asset.trend) > 0.5 && (
                                     <span className={`text-tiny ${asset.trend > 0 ? 'text-green-500' : 'text-danger-500'}`}>
                                         {asset.trend > 0 ? '↗' : '↘'}
                                     </span>
@@ -865,8 +905,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             <span className="text-tiny text-ink-400 font-mono">{a.weight.toFixed(1)}%</span>
                                         </div>
                                         <PrivateAmount as="div" className="text-meta font-mono text-ink-200">{formatCAD(a.value)}</PrivateAmount>
-                                        <div className={`text-tiny font-mono ${a.trend24h >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                            {a.trend24h >= 0 ? '+' : ''}{a.trend24h.toFixed(2)}% (24h)
+                                        <div className={`text-tiny font-mono ${a.trendPct === null ? 'text-ink-400' : a.trendPct >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                            {a.trendPct === null ? '—' : `${a.trendPct >= 0 ? '+' : ''}${a.trendPct.toFixed(2)}%`} ({PERF_PERIOD_LABELS[perfPeriod]})
                                         </div>
                                     </div>
                                 ))}
@@ -1154,9 +1194,9 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         <div className="text-white font-mono font-bold text-meta">{formatCAD(asset.value)}</div>
                                     </div>
                                     <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
-                                        <div className="text-ink-400 mb-1 font-bold">Variation 24h</div>
-                                        <div className={`font-bold text-meta ${asset.trend24h >= 0 ? 'text-green-400' : 'text-danger-400'}`}>
-                                            {asset.trend24h > 0 ? '+' : ''}{asset.trend24h.toFixed(1)}%
+                                        <div className="text-ink-400 mb-1 font-bold">Variation {PERF_PERIOD_LABELS[perfPeriod]}</div>
+                                        <div className={`font-bold text-meta ${asset.trendPct === null ? 'text-ink-400' : asset.trendPct >= 0 ? 'text-green-400' : 'text-danger-400'}`}>
+                                            {asset.trendPct === null ? '—' : `${asset.trendPct > 0 ? '+' : ''}${asset.trendPct.toFixed(1)}%`}
                                         </div>
                                     </div>
                                 </div>

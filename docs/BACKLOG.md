@@ -128,6 +128,12 @@
   CUSTOM_ELEMENT_HANDLING bypass). Passe de bump ciblée : `npm audit` + bump lockfile (fast-uri est
   probablement transitif — `npm ls fast-uri`), suite complète + build ensuite. Leçon PM-STALE-BACKLOG :
   vérifier l'état RÉEL du lockfile avant de coder (Dependabot a pu déjà ouvrir des PR).
+  ✅ 2026-07-23 (PR #497) : `npm audit fix` → fast-uri (HIGH ×2 advisories) et dompurify (LOW) corrigés.
+  ⚠️ RÉSIDUEL ASSUMÉ (2 MODERATE) : `@hono/node-server` <2.0.5 épinglé par `@modelcontextprotocol/sdk`
+  (^1.19.9, même @latest) — le fix est une MAJOR hors range. Exploitabilité MESURÉE nulle dans notre usage :
+  l'advisory vise `serve-static` sur WINDOWS (grep : 0 usage dans mcp/ ET dans le dist du SDK ; prod = Cloud
+  Run Linux). Pas d'override major non testé par l'upstream. → `[DEP-HONO-NODE-SERVER]` : re-vérifier à chaque
+  bump du SDK MCP (dès qu'il passe à node-server 2.x, le résiduel tombe tout seul).
 
 ## 📈 Investissements — couverture d'historique incomplète (demande Marc 2026-07-22, verbatim « backlog », captures)
 - [x] **`[HIST-COVERAGE-TOTAL]`** 🔴 (M-L) — ✅ 2026-07-23 (PR #493, ADR docs/decisions.md) : la courbe TOTAL

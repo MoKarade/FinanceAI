@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Sécurité des dépendances + 2 tickers de plus au catalogue] — 2026-07-23
+
+### Sécurité
+- Dépendances vulnérables corrigées (`npm audit fix`) : fast-uri (élevée) et dompurify (faible).
+  Résiduel assumé et documenté : une alerte modérée sur un module épinglé par le SDK MCP, mesurée
+  inexploitable dans notre usage (fonction non utilisée + prod Linux) — retombera au prochain bump
+  du SDK.
+
+### Correctif
+- `GBS.PA` et `AASI.PA` (or Paris, Amundi MSCI Em Asia) ajoutés au catalogue de classification —
+  les deux seuls tickers du portefeuille mesurés non couverts par les répartitions après la #496.
+
 ## [unreleased — Investissements : répartitions géographique et sectorielle réparées] — 2026-07-23
 
 ### Correctif (bug signalé Marc : « la répartition géographique marche pas et sectorielle non plus »)

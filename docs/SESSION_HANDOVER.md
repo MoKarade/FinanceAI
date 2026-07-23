@@ -4,6 +4,12 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-23 (suite 6) — DEP-DEPENDABOT-2026-07 : npm audit + assetMeta seed (PR #497)
+> **✅ `[DEP-DEPENDABOT-2026-07]`** : `npm audit fix` — HIGH corrigés (fast-uri 0.1.50, dompurify 3.0.11) ;
+> résiduel @hono/node-server (2 MODERATE, inexploitable mesuré) documenté BACKLOG. + 2 entrées seed assetMeta
+> (EPA:GBS, EPA:AASI — tickers de Marc non couverts Finnhub). Tests 2985 verts (inchangés). Build OK.
+> BACKLOG+CHANGELOG déjà à jour. **Suite : [INVEST-ALLOC-GEO-SECTOR] (déjà livré, #496).**
+>
 > ## 🟢 Session 2026-07-23 (suite 5) — INVEST-ALLOC-GEO-SECTOR : répartitions géo/secteur (PR #496)
 > **✅ `[INVEST-ALLOC-GEO-SECTOR]`** : Asset.sector/region champs additifs optionnels ; resolveAssetMeta
 > (normalisation : champ > seed statique > crypto > « Autre ») ; assetProfileSync (auto-populate profil
@@ -1024,7 +1030,7 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#496** [INVEST-ALLOC-GEO-SECTOR] (répartitions géo/secteur, Asset.sector/region additifs, resolveAssetMeta, assetProfileSync, 2026-07-23) ; suite de **#495** INVEST-CURVES-LOW |
+| **Dernière PR mergée** | **#497** [DEP-DEPENDABOT-2026-07] (npm audit fix fast-uri/dompurify HIGH, assetMeta seed EPA:GBS/AASI, 2026-07-23) ; suite de **#496** INVEST-ALLOC-GEO-SECTOR |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
 | **Tests** | **2985/2985 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
 | **Typecheck** | Clean en mode strict |
@@ -1034,7 +1040,7 @@
 | **Banque** | CSV **+ import relevé PDF** (Claude Vision, #285) → pipeline `parseBankCsv` ; CSV 100 % local |
 | **Crypto** | CoinGecko (gratuit, sans clé) |
 | **Stock/ETF** | Finnhub REST (gratuit) |
-| **Sécurité storage** | AES-256-GCM + IndexedDB non-extractible (`services/secureKeyStore.ts`) ; `npm audit` = **0** |
+| **Sécurité storage** | AES-256-GCM + IndexedDB non-extractible (`services/secureKeyStore.ts`) ; `npm audit` = **0 HIGH/CRITICAL, 2 MODERATE** (@hono/node-server, MCP-CloudRun séparé) |
 | **Auth** | **Gate Google in-app** (`LoginGate`+`authGate`, `VITE_GOOGLE_GATE=1`) — **Cloudflare RETIRÉ le 2026-06-16** (Access + proxy DNS). Gate SOFT (trappe `?nogate=1`) ; données privées par compte Google |
 | **Lighthouse prod** | Performance 97 / A11y 100 / BP 100 / SEO 90 (dernière mesure connue) |
 | **PWA** | manifest + SW v2 (precache résilient) — installable Chrome/Edge/Mobile |

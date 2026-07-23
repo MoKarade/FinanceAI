@@ -203,7 +203,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
     // Sprint 3B M3 + test-mode-complet : utilise usePortfolioHistory hook qui
     // retourne le marketData synthétique en mode test (depuis testFixtures)
     // ou le CSV externe sinon.
-    const { history: portfolioHistory, noHistorySymbols, partialHistorySymbols } = usePortfolioHistory();
+    const { history: portfolioHistory, noHistorySymbols, partialHistorySymbols, staleTailSymbols } = usePortfolioHistory();
     useEffect(() => {
         let cancelled = false;
         const load = async () => {
@@ -632,7 +632,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 </div>
                 {/* [HIST-COVERAGE-TOTAL] Même signalement honnête que le Dashboard (composant
                     partagé) : c'est ICI que Marc lit la courbe TOTAL. */}
-                <HistoryCoverageNote noHistorySymbols={noHistorySymbols} partialHistorySymbols={partialHistorySymbols} />
+                <HistoryCoverageNote noHistorySymbols={noHistorySymbols} partialHistorySymbols={partialHistorySymbols}
+                    staleTailSymbols={staleTailSymbols} hasChart={portfolioHistory.length > 0} />
             </Card>}
 
             {/* 2. ALLOCATION PANORAMIQUE — Phase E.3 sub-tab 'allocation' */}

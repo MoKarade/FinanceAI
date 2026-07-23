@@ -4,6 +4,14 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-23 (suite 2) — HIST-COVERAGE-TOTAL : portefeuille complet (PR #493)
+> **✅ `[HIST-COVERAGE-TOTAL]`** (panel 30 agents, 9 confirmés, 17 vérifiés) : le TOTAL du portefeuille couvre
+> TOUT — titres sans historique comptés à valeur actuelle (contribution plate, noHistorySymbols), backfill pré-historique,
+> queue périmée au currentPrice, variantes Yahoo-devise persistées (Asset.historySymbol, additif). ADR-complet docs/decisions.md.
+> Trade-off assumé : reconstructibilité `TOTAL == Σ colonnes` ne tient plus dès qu'existe un titre sans historique —
+> test coché, usage cohérent (UI+modals). Tests 2930 verts (+24 dont correctifs panel, gate propre). BACKLOG [HIST-COVERAGE-TOTAL] ✅ coché,
+> [HIST-GOOGLE-PARITY] absorbé. Suite : [INVEST-CURVES-LOW], [INVEST-ALLOC-GEO-SECTOR], [BUDGET-3-VUES] (plan-first).
+>
 > ## 🟢 Session 2026-07-23 (suite) — ASSISTANT-HUB : fusion Prochaine action + Assistant (PR #492)
 > **✅ `[ASSISTANT-HUB]`** (plan PM+architect suivi) : onglet Assistant VISIBLE dans la nav (remplace
 > ACTIONS — cause du « je ne vois pas l'onglet assistant ») ; cartes de signaux purs
@@ -993,9 +1001,9 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#492** [ASSISTANT-HUB] (fusion Prochaine action + Assistant, onglet visible, signaux cliquables, 2026-07-23) |
+| **Dernière PR mergée** | **#493** [HIST-COVERAGE-TOTAL] (TOTAL portefeuille complet, titres sans historique, ADR, persistance Asset.historySymbol, 2026-07-23) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
-| **Tests** | **2872/2872 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
+| **Tests** | **2930/2930 verts** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
 | **Schema store** | **v7** (Zustand persist, migrations v1→v7) |

@@ -141,7 +141,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     // Avant : fetch redondant à chaque mount Dashboard (et chaque autre tab
     // qui en a besoin). Maintenant : un seul fetch global mis en cache pour
     // toute la session.
-    const { history: portfolioHistory, noHistorySymbols, partialHistorySymbols } = usePortfolioHistory();
+    const { history: portfolioHistory, noHistorySymbols, partialHistorySymbols, staleTailSymbols } = usePortfolioHistory();
     useEffect(() => {
         setMarketData(portfolioHistory);
     }, [portfolioHistory]);
@@ -584,7 +584,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
                 {/* [HIST-COVERAGE-TOTAL] Signalement HONNÊTE des approximations de couverture
                     (composant partagé avec Investissements — jamais deux copies qui dérivent). */}
-                <HistoryCoverageNote noHistorySymbols={noHistorySymbols} partialHistorySymbols={partialHistorySymbols} />
+                <HistoryCoverageNote noHistorySymbols={noHistorySymbols} partialHistorySymbols={partialHistorySymbols}
+                    staleTailSymbols={staleTailSymbols} hasChart={portfolioHistory.length > 0} />
 
             </Card>
 

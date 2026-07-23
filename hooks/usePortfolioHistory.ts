@@ -28,6 +28,8 @@ export interface UsePortfolioHistoryResult {
     /** Symboles à historique PARTIEL (commence après le 1er achat — provider borné, ex. CoinGecko 365 j) :
      *  avant `historyStart`, le titre compte à son PREMIER cours connu (approximation signalée). */
     partialHistorySymbols: Array<{ symbol: string; historyStart: string }>;
+    /** Symboles à queue d'historique PÉRIMÉE sans quote fraîche : absents du total des derniers jours. */
+    staleTailSymbols: Array<{ symbol: string; lastKnownDate: string }>;
 }
 
 export function usePortfolioHistory(): UsePortfolioHistoryResult {
@@ -44,10 +46,11 @@ export function usePortfolioHistory(): UsePortfolioHistoryResult {
                 error: null,
                 noHistorySymbols: [],
                 partialHistorySymbols: [],
+                staleTailSymbols: [],
             };
         }
-        const { rows, noHistorySymbols, partialHistorySymbols } = buildMarketData(assets, fxRates as Record<string, number>);
-        return { history: rows, isLoading: false, error: null, noHistorySymbols, partialHistorySymbols };
+        const { rows, noHistorySymbols, partialHistorySymbols, staleTailSymbols } = buildMarketData(assets, fxRates as Record<string, number>);
+        return { history: rows, isLoading: false, error: null, noHistorySymbols, partialHistorySymbols, staleTailSymbols };
     }, [isTestMode, assets, initialBalances, fxRates]);
 
     return result;

@@ -227,13 +227,52 @@ describe('hydrateAssetHistories — variantes de suffixe', () => {
 
     it('variante IMPLAUSIBLE (close ~10× le prix courant = autre titre) → refusée, skip « empty »', async () => {
         const getHistory = vi.fn(async (s: string) =>
-            s === 'CW8.PA' ? [{ date: '2026-01-10', close: 5000 }] : (s === 'CW8' ? [] : null));
+            s === 'CW8.PA' ? [{ date: '2026-01-10', close: 5000 }] : []);
         const res = await hydrateAssetHistories(
             [mk({ symbol: 'CW8', currency: 'EUR', currentPrice: 500 })],
             { getHistory, now: () => NOW, sleep: async () => {} },
         );
         expect(res.patches.size).toBe(0); // jamais la courbe d'un autre titre
         expect(res.skipped[0].reason).toBe('empty');
+    });
+
+    it('[Finding code-reviewer #493] PANNE réseau du principal (null) → variantes JAMAIS tentées (retry même symbole)', async () => {
+        // Prouvé par sonde : une panne transitoire sur le VRAI symbole partait à la pêche aux
+        // variantes et pouvait PERSISTER (historySymbol) un AUTRE titre au prix coïncident.
+        const getHistory = vi.fn(async (s: string) =>
+            s === 'CW8' ? null : [{ date: '2026-01-10', close: 490 }]); // la variante répondrait « plausible »
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'CW8', currency: 'EUR', currentPrice: 500 })],
+            { getHistory, now: () => NOW, sleep: async () => {} },
+        );
+        expect(getHistory).toHaveBeenCalledTimes(1); // AUCUNE variante sur une panne
+        expect(res.patches.size).toBe(0);
+        expect(res.skipped[0].reason).toBe('error'); // retry au prochain cycle, même symbole
+    });
+
+    it('[Finding silent-failure #493] historySymbol MORT (vide confirmé) → self-heal : retour au symbole saisi', async () => {
+        // Avant : dès que historySymbol était posé, la boucle de secours était court-circuitée à
+        // VIE — un symbole résolu délisté gelait l'actif sans recours.
+        const getHistory = vi.fn(async (s: string) =>
+            s === 'CW8' ? [{ date: '2026-01-10', close: 480 }] : []); // la variante résolue ne répond plus
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'CW8', currency: 'EUR', currentPrice: 500, historySymbol: 'CW8.PA' })],
+            { getHistory, now: () => NOW, sleep: async () => {} },
+        );
+        expect(getHistory.mock.calls.map((c) => c[0])).toEqual(['CW8.PA', 'CW8']);
+        const patch = res.patches.get('CW8')!;
+        expect(patch.priceHistory).toEqual([{ date: '2026-01-10', price: 480 }]);
+        expect(patch.historySymbol).toBe('CW8'); // le champ se répare (pointera le symbole vivant)
+    });
+
+    it('[Finding silent-failure #493] principal vide + variantes en PANNE réseau → « error » (indéterminé), jamais « empty » menteur', async () => {
+        const getHistory = vi.fn(async (s: string) => (s === 'CW8' ? [] : null));
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'CW8', currency: 'EUR', currentPrice: 500 })],
+            { getHistory, now: () => NOW, sleep: async () => {} },
+        );
+        expect(res.patches.size).toBe(0);
+        expect(res.skipped[0].reason).toBe('error'); // avant fix : « empty » silencieux (0 logError)
     });
 
     it('historySymbol DÉJÀ résolu → frappe directement la variante (1 seul appel), patch sous le symbole de l\'actif', async () => {

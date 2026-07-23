@@ -75,6 +75,14 @@ export interface BuildMarketDataResult {
      * l'approximation.
      */
     partialHistorySymbols: Array<{ symbol: string; historyStart: string }>;
+    /**
+     * [Finding silent-failure #493 — CRITIQUE, mesuré] Symboles dont la QUEUE d'historique est
+     * périmée SANS quote live fraîche pour la raccorder : le titre est ABSENT du TOTAL à la
+     * dernière date tracée (les jours les plus consultés). Sans ce signal, on reproduisait en
+     * silence le trou même que ce module corrige (TOTAL amputé sans avertissement). L'UI doit
+     * le signaler (« historique arrêté depuis le X, absent du total des derniers jours »).
+     */
+    staleTailSymbols: Array<{ symbol: string; lastKnownDate: string }>;
 }
 
 /** Au-delà de ce retard entre le dernier close connu et la date t, le prix est PÉRIMÉ (pas de forward-fill). */
@@ -139,7 +147,7 @@ export function buildMarketData(
     const nowMs = opts?.nowMs ?? Date.now();
     const todayStr = new Date(nowMs).toISOString().slice(0, 10);
     const held = (assets || []).filter((a) => a.symbol && ((a.quantity || 0) !== 0 || (a.purchases?.length ?? 0) > 0));
-    if (held.length === 0) return { rows: [], noHistorySymbols: [], partialHistorySymbols: [] };
+    if (held.length === 0) return { rows: [], noHistorySymbols: [], partialHistorySymbols: [], staleTailSymbols: [] };
 
     // Entrées minimales (mêmes conventions que la reconstruction du Futur : purchases effectifs,
     // priceHistory natif). Un actif sans le MOINDRE point d'historique n'a pas de colonne mais
@@ -149,6 +157,7 @@ export function buildMarketData(
         firstPurchase: string | null;
         historyStart: string;
         firstClose: number;
+        lastCloseDate: string;
         quoteFresh: boolean;
     }
     const withHistory: HistEntry[] = [];
@@ -171,7 +180,10 @@ export function buildMarketData(
         };
         if (hist.length === 0) {
             const cur = Number(a.currentPrice);
-            const qtyNow = a.quantity || 0;
+            // [Finding financial-integrity #493 — MOYEN, mesuré] MÊME base de quantité que la
+            // contribution aux lignes (`holdingsAt`, achats datés) — `a.quantity` peut être
+            // désynchronisé de Σ purchases (sells) → le bandeau annonçait un montant ≠ tracé.
+            const qtyNow = holdingsAt(minimal, todayStr);
             const flatValue = Number.isFinite(cur) && cur > 0 && qtyNow > 0
                 ? qtyNow * cur * toCurrencyFactor(fxRates, minimal.currency)
                 : 0;
@@ -183,6 +195,7 @@ export function buildMarketData(
         const historyStart = hist.reduce((min, p) => (p.date < min ? p.date : min), hist[0].date);
         const firstClose = hist.reduce(
             (best, p) => (p.date === historyStart ? p.price : best), hist[0].price);
+        const lastCloseDate = hist.reduce((max, p) => (p.date > max ? p.date : max), hist[0].date);
         if (firstPurchase && daysBetween(firstPurchase, historyStart) > PARTIAL_WINDOW_TOLERANCE_DAYS
             && !partialHistorySymbols.some((p) => p.symbol === a.symbol)) {
             partialHistorySymbols.push({ symbol: a.symbol, historyStart });
@@ -190,11 +203,11 @@ export function buildMarketData(
         const quoteFresh = typeof a.priceUpdatedAt === 'number'
             && nowMs - a.priceUpdatedAt <= STALE_PRICE_DAYS * DAY_MS
             && Number.isFinite(a.currentPrice) && (a.currentPrice || 0) > 0;
-        withHistory.push({ minimal, firstPurchase, historyStart, firstClose, quoteFresh });
+        withHistory.push({ minimal, firstPurchase, historyStart, firstClose, lastCloseDate, quoteFresh });
     }
     const noHistorySymbols: BuildMarketDataResult['noHistorySymbols'] =
         [...noHistoryValue.entries()].map(([symbol, valueCad]) => ({ symbol, valueCad: Number(valueCad.toFixed(2)) }));
-    if (withHistory.length === 0) return { rows: [], noHistorySymbols, partialHistorySymbols };
+    if (withHistory.length === 0) return { rows: [], noHistorySymbols, partialHistorySymbols, staleTailSymbols: [] };
 
     // Axe des dates = UNION des dates d'historique, bornée à partir du 1er achat GLOBAL connu
     // (« depuis que je les ai ») — les titres SANS historique comptent aussi pour cette borne.
@@ -210,8 +223,10 @@ export function buildMarketData(
         }
     }
     const dates = [...dateSet].sort();
-    if (dates.length === 0) return { rows: [], noHistorySymbols, partialHistorySymbols };
+    if (dates.length === 0) return { rows: [], noHistorySymbols, partialHistorySymbols, staleTailSymbols: [] };
 
+    const lastAxisDate = dates[dates.length - 1];
+    const staleTailSymbols: BuildMarketDataResult['staleTailSymbols'] = [];
     const rows: MarketDataPoint[] = dates.map((t) => {
         const row: MarketDataPoint = { date: t };
         let total = 0;
@@ -222,7 +237,7 @@ export function buildMarketData(
         // REER) — une affectation directe `row[symbol] = v` écrasait la 1re position (colonne
         // sous-comptée de la valeur ENTIÈRE d'une position ; mesuré 10 k$, panel 2026-07-22).
         const bySymbol: Record<string, number> = {};
-        for (const { minimal, historyStart, firstClose, quoteFresh } of withHistory) {
+        for (const { minimal, historyStart, firstClose, lastCloseDate, quoteFresh } of withHistory) {
             const qty = holdingsAt(minimal, t);
             if (qty <= 0) continue;
             let price = priceAt(minimal, t, STALE_PRICE_DAYS);
@@ -237,7 +252,14 @@ export function buildMarketData(
                     // derniers jours (cas « quote OK, candles cassées » — GBS.PA).
                     price = minimal.currentPrice;
                 } else {
-                    continue; // périmé sans quote fraîche → pas de valeur inventée
+                    // Périmé sans quote fraîche → pas de valeur inventée. MAIS un titre absent de
+                    // la DERNIÈRE date tracée = TOTAL récent amputé → SIGNALER (finding
+                    // silent-failure #493 : sans ce signal, on reproduisait en silence le trou
+                    // même que ce module corrige).
+                    if (t === lastAxisDate && !staleTailSymbols.some((s) => s.symbol === minimal.symbol)) {
+                        staleTailSymbols.push({ symbol: minimal.symbol, lastKnownDate: lastCloseDate });
+                    }
+                    continue;
                 }
             }
             const valueCad = qty * price * toCurrencyFactor(fxRates, minimal.currency);
@@ -267,5 +289,5 @@ export function buildMarketData(
         return row;
     });
 
-    return { rows: downsample(rows, maxPoints), noHistorySymbols, partialHistorySymbols };
+    return { rows: downsample(rows, maxPoints), noHistorySymbols, partialHistorySymbols, staleTailSymbols };
 }

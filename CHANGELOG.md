@@ -27,6 +27,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - Réponse à « utiliser exactement la courbe de Google Finance, c'est possible ? » : pas d'API publique —
   la parité s'obtient par la couverture complète ci-dessus ; l'écart résiduel attendu vient de la
   granularité (clôtures quotidiennes) et de l'heure du taux de change.
+- Correctifs du panel de revue (4 agents, sondes exécutées) : un titre dont l'historique s'arrête sans
+  cotation fraîche est maintenant SIGNALÉ (« absent du total des derniers jours ») au lieu de disparaître
+  en silence ; une panne réseau ne déclenche plus la recherche de variantes de ticker (risque d'adopter un
+  autre titre) ; un ticker résolu qui cesse de répondre se répare seul au cycle suivant ; le montant du
+  bandeau partage exactement la base de quantité de la courbe (achats datés).
 
 ## [unreleased — Assistant fusionné : onglet visible + prochaines actions cliquables] — 2026-07-23
 

@@ -27,7 +27,7 @@ const marketData: MarketDataPoint[] = [
 vi.mock('../../hooks/usePortfolioHistory', () => ({
     usePortfolioHistory: () => ({
         history: marketData, isLoading: false, error: null,
-        noHistorySymbols: [], partialHistorySymbols: [],
+        noHistorySymbols: [], partialHistorySymbols: [], staleTailSymbols: [],
     }),
 }));
 vi.mock('react-i18next', () => ({

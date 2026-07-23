@@ -85,6 +85,18 @@ describe('buildMarketData', () => {
         expect(rows.at(-1)!.TOTAL_REER).toBeUndefined();
     });
 
+    it('[Finding #493] bandeau et courbe partagent la MÊME base de quantité (holdingsAt, pas a.quantity)', () => {
+        // Mesuré par financial-integrity : `a.quantity` désynchronisé de Σ purchases (sells non
+        // reflétés) faisait annoncer au bandeau jusqu'à ~99× le montant réellement tracé.
+        const { rows, noHistorySymbols } = buildMarketData([
+            mk({}),
+            mk({ symbol: 'DESYNC', priceHistory: [], accountType: 'REER', currentPrice: 30,
+                 quantity: 999, purchases: [{ date: '2026-01-10', quantity: 10, price: 28 }] }),
+        ], FX);
+        expect(noHistorySymbols).toEqual([{ symbol: 'DESYNC', valueCad: 300 }]); // 10 × 30, PAS 999 × 30
+        expect(rows.at(-1)!.TOTAL).toBe(600); // le bandeau == ce qui est compté
+    });
+
     it('[HIST-COVERAGE-TOTAL] repli valeur actuelle en DEVISE étrangère → FX appliqué', () => {
         const { rows, noHistorySymbols } = buildMarketData([
             mk({}),
@@ -133,6 +145,40 @@ describe('buildMarketData', () => {
         expect(last.TOTAL).toBe(500);                 // 50 + 450
         const mid = rows.find((r) => r.date === '2026-02-25')!; // close vieux de 5 j (≤ 7) → close réel
         expect(mid['CANDLES-KO']).toBe(410);
+    });
+
+    it('[Finding silent-failure #493] titre absent de la DERNIÈRE date (queue périmée, pas de raccord) → SIGNALÉ staleTailSymbols', () => {
+        // Mesuré par sonde : sans ce signal, un titre à historique arrêté disparaissait des jours
+        // les plus consultés du TOTAL sans AUCUN avertissement (ni noHistory ni partial ne couvrent
+        // la queue) — la classe de bug même que [HIST-COVERAGE-TOTAL] corrige.
+        const nowMs = Date.parse('2026-03-01T00:00:00Z');
+        const daily = Array.from({ length: 60 }, (_, i) => ({
+            date: new Date(Date.UTC(2026, 0, 1) + i * 86_400_000).toISOString().slice(0, 10),
+            price: 50,
+        }));
+        const { staleTailSymbols } = buildMarketData([
+            mk({ symbol: 'VIVANT', purchases: [{ date: '2026-01-01', quantity: 1, price: 50 }], priceHistory: daily }),
+            mk({ symbol: 'ARRETE', accountType: 'REER', currentPrice: 45,
+                 // priceUpdatedAt ABSENT (jamais rafraîchi) → pas de raccord possible
+                 purchases: [{ date: '2026-01-01', quantity: 10, price: 40 }],
+                 priceHistory: daily.slice(0, 51).map(p => ({ ...p, price: 41 })) }), // s'arrête au 2026-02-20
+        ], FX, { nowMs });
+        expect(staleTailSymbols).toEqual([{ symbol: 'ARRETE', lastKnownDate: '2026-02-20' }]);
+    });
+
+    it('[Finding silent-failure #493] raccord appliqué (quote fraîche) → PAS de staleTail (couverture réelle)', () => {
+        const nowMs = Date.parse('2026-03-01T00:00:00Z');
+        const daily = Array.from({ length: 60 }, (_, i) => ({
+            date: new Date(Date.UTC(2026, 0, 1) + i * 86_400_000).toISOString().slice(0, 10),
+            price: 50,
+        }));
+        const { staleTailSymbols } = buildMarketData([
+            mk({ symbol: 'VIVANT', purchases: [{ date: '2026-01-01', quantity: 1, price: 50 }], priceHistory: daily }),
+            mk({ symbol: 'CANDLES-KO', accountType: 'REER', currentPrice: 45, priceUpdatedAt: nowMs - 3_600_000,
+                 purchases: [{ date: '2026-01-01', quantity: 10, price: 40 }],
+                 priceHistory: daily.slice(0, 51).map(p => ({ ...p, price: 41 })) }),
+        ], FX, { nowMs });
+        expect(staleTailSymbols).toEqual([]);
     });
 
     it('[HIST-COVERAGE-TOTAL] queue périmée SANS quote fraîche → pas de raccord (rien d\'inventé)', () => {

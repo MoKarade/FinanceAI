@@ -231,10 +231,17 @@ avec assurance — pire que l'approximation qu'on évitait.
 2. Dates AVANT le début d'historique d'un titre détenu (provider borné) → PREMIER close connu (backfill
    borné, signalé `partialHistorySymbols`) — supprime la « marche » fantôme du TOTAL.
 3. Queue PÉRIMÉE (> 7 j) → raccord au `currentPrice` sur les 7 derniers jours SI la quote live est fraîche
-   (`priceUpdatedAt` < 7 j) — cas « quote OK, candles cassées » (GBS.PA) ; sinon le titre sort de la courbe.
+   (`priceUpdatedAt` < 7 j) — cas « quote OK, candles cassées » (GBS.PA) ; sinon le titre sort de la courbe
+   ET est SIGNALÉ `staleTailSymbols` (« absent du total des derniers jours ») — correctif panel #493
+   (silent-failure, CRITIQUE) : sans ce signal, on reproduisait en silence le trou même que ce lot corrige.
 4. Tickers NUS sans réponse → variantes de suffixe par DEVISE à l'hydratation (EUR → .PA/.DE/.AS/.MI,
    CAD → .TO/.V), acceptées SEULEMENT si le dernier close est plausible vs `currentPrice` (facteur ≤ 2,
    refus sans référence — anti-collision de ticker) ; résolution persistée `Asset.historySymbol` (additif).
+   ⚠️ Correctifs panel #493 : (a) variantes déclenchées UNIQUEMENT sur un vide CONFIRMÉ (`[]`), jamais sur
+   `null` (panne réseau) — une panne transitoire sur le vrai symbole ne doit pas faire adopter un autre
+   titre (code-reviewer, prouvé par sonde) ; (b) un `historySymbol` résolu qui répond vide déclenche le
+   retour au symbole saisi + autres variantes (self-heal, pas de gel à vie) ; (c) des variantes en échec
+   réseau après un principal vide → verdict « error » (retry) + logError, jamais « empty » menteur.
 
 **Pourquoi** : la frontière no-fake-data se déplace de « ne jamais approximer » à « ne jamais approximer
 SANS le dire » : chaque approximation est signalée à l'écran, mais le TOTAL reflète TOUT le portefeuille.

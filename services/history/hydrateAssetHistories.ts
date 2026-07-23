@@ -170,28 +170,52 @@ export async function hydrateAssetHistories(
                 .filter((h) => h.date && Number.isFinite(h.close) && h.close > 0)
                 .map((h) => ({ date: h.date, price: h.close }));
             // [HIST-COVERAGE-TOTAL] Une variante déjà RÉSOLUE (`historySymbol`) frappe directement
-            // le bon symbole ; sinon symbole saisi, puis variantes de suffixe sur échec/vide.
+            // le bon symbole ; sinon symbole saisi, puis variantes de suffixe.
             const primarySymbol = a.historySymbol || a.symbol;
             const hist = await deps.getHistory(primarySymbol, from, new Date(now()));
             let fresh = hist === null ? null : toFresh(hist);
             let resolvedSymbol: string | undefined;
-            if ((fresh === null || fresh.length === 0) && !a.historySymbol) {
-                for (const alt of historySymbolVariants(a.symbol, a.currency)) {
+            const variantNetFailures: string[] = [];
+            // ⚠️ Variantes SEULEMENT sur un vide CONFIRMÉ (`[]`), JAMAIS sur `null` (panne
+            // réseau/provider) — finding code-reviewer #493, prouvé par sonde : une panne
+            // transitoire sur le VRAI symbole partait à la pêche et pouvait PERSISTER
+            // (`historySymbol`) un AUTRE titre dont le prix coïncidait dans la bande ×2.
+            // Une panne → skip 'error' + retry du MÊME symbole au prochain cycle, point.
+            if (fresh !== null && fresh.length === 0) {
+                // Candidats de secours : le symbole SAISI d'abord si le primaire était une variante
+                // résolue devenue muette (self-heal d'un `historySymbol` mort — finding
+                // silent-failure #493 : sans ça, un symbole résolu délisté gelait l'actif à VIE),
+                // puis les variantes de suffixe restantes.
+                const fallbacks = [
+                    ...(a.historySymbol && a.historySymbol !== a.symbol ? [a.symbol] : []),
+                    ...historySymbolVariants(a.symbol, a.currency).filter((v) => v !== primarySymbol),
+                ];
+                for (const alt of fallbacks) {
                     await sleep(delayMs);
                     networkCalls++;
                     const altHist = await deps.getHistory(alt, from, new Date(now()));
-                    if (altHist === null) continue;
+                    if (altHist === null) {
+                        // Échec RÉSEAU d'une variante ≠ « ce symbole n'existe pas » — collecté pour
+                        // que le verdict final ne mente pas (finding silent-failure #493 : avalé
+                        // en « empty » silencieux avant).
+                        variantNetFailures.push(alt);
+                        continue;
+                    }
                     const altFresh = toFresh(altHist);
                     if (altFresh.length === 0) continue;
-                    const lastClose = altFresh.reduce((best, p) => (p.date > best.date ? p : best), altFresh[0]).price;
-                    if (!variantClosePlausible(lastClose, a.currentPrice)) {
-                        // Collision de ticker probable (ou pas de prix de référence) → on REFUSE la
-                        // variante plutôt que d'afficher la courbe d'un autre titre (no-fake-data).
-                        logError({
-                            source: 'network', severity: 'warning',
-                            message: `Historique ${a.symbol} : la variante ${alt} répond mais son cours est incompatible avec le prix courant de l'actif — ignorée (risque de mauvais titre). Précise le symbole avec son suffixe (ex. ${a.symbol}.PA).`,
-                        });
-                        continue;
+                    // Garde de plausibilité pour un suffixe DEVINÉ seulement — le symbole SAISI
+                    // par l'utilisateur n'a pas à la passer (c'est sa donnée, pas une devinette).
+                    if (alt !== a.symbol) {
+                        const lastClose = altFresh.reduce((best, p) => (p.date > best.date ? p : best), altFresh[0]).price;
+                        if (!variantClosePlausible(lastClose, a.currentPrice)) {
+                            // Collision de ticker probable (ou pas de prix de référence) → REFUS
+                            // plutôt que d'afficher la courbe d'un autre titre (no-fake-data).
+                            logError({
+                                source: 'network', severity: 'warning',
+                                message: `Historique ${a.symbol} : la variante ${alt} répond mais son cours est incompatible avec le prix courant de l'actif — ignorée (risque de mauvais titre). Précise le symbole avec son suffixe (ex. ${a.symbol}.PA).`,
+                            });
+                            continue;
+                        }
                     }
                     fresh = altFresh;
                     resolvedSymbol = alt;
@@ -209,7 +233,17 @@ export async function hydrateAssetHistories(
                 continue;
             }
             if (fresh.length === 0) {
-                skipped.push({ symbol: a.symbol, reason: 'empty' });
+                if (variantNetFailures.length > 0) {
+                    // Indéterminé (le principal a répondu vide mais des variantes ont ÉCHOUÉ en
+                    // réseau) → 'error' (retry au prochain cycle), pas un « vide légitime » menteur.
+                    skipped.push({ symbol: a.symbol, reason: 'error' });
+                    logError({
+                        source: 'network', severity: 'warning',
+                        message: `Historique ${a.symbol} : aucun historique sur le symbole principal et échec réseau des variantes ${variantNetFailures.join(', ')} — indéterminé, nouvel essai au prochain démarrage.`,
+                    });
+                } else {
+                    skipped.push({ symbol: a.symbol, reason: 'empty' });
+                }
                 continue;
             }
             patches.set(a.symbol, {

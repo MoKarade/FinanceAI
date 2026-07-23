@@ -121,6 +121,43 @@
   0,00 $) : par réponse (bulle), par conversation (header + sidebar), total à vie (header). Parité
   ids↔tarifs verrouillée par test (un modèle sans tarif = garde rouge, jamais un coût non compté muet).
 
+## 🛡️ Dépendances — alertes Dependabot ouvertes (capture Marc 2026-07-22, « backlog aussi »)
+- [ ] **`[DEP-DEPENDABOT-2026-07]`** (S) — 4 alertes ouvertes sur package-lock : fast-uri ×2 (HIGH, host
+  confusion via IDN/backslash), @hono/node-server (MODERATE, path traversal serve-static Windows — serveur
+  MCP ; vecteur limité : Cloud Run Linux, pas de serve-static exposé, à vérifier), dompurify (LOW,
+  CUSTOM_ELEMENT_HANDLING bypass). Passe de bump ciblée : `npm audit` + bump lockfile (fast-uri est
+  probablement transitif — `npm ls fast-uri`), suite complète + build ensuite. Leçon PM-STALE-BACKLOG :
+  vérifier l'état RÉEL du lockfile avant de coder (Dependabot a pu déjà ouvrir des PR).
+
+## 📈 Investissements — couverture d'historique incomplète (demande Marc 2026-07-22, verbatim « backlog », captures)
+- [ ] **`[HIST-COVERAGE-TOTAL]`** 🔴 (M-L) — la courbe TOTAL affiche ~190 k$ alors que le portefeuille réel = ~242 k$
+  (Google Finance) : des titres SANS historique (chips sans flèche sur la capture : « Amundi Em. Asia », « CW8.PA »)
+  sont EXCLUS de la somme → total structurellement sous-évalué SANS avertissement visible assez fort. Exigence Marc :
+  « des infos pour toutes les types de courbes possibles même international ». Pistes : (a) mapping Yahoo des tickers
+  européens/Amundi (proxy same-origin déjà en place — vérifier le symbole Yahoo exact d'Amundi EM Asia et GBS.PA) ;
+  (b) repli « dernier prix connu × qty » pour les titres sans candles (courbe plate mais TOTAL juste — mieux qu'un
+  trou de 50 k$) ; (c) bandeau « N titres exclus de la courbe (X $) » au lieu du badge discret partialHistorySymbols.
+- [ ] **`[INVEST-CURVES-LOW]`** (S) — « certaines courbes trop basses, je les vois pas » : les titres à petite valeur
+  sont illisibles sur l'échelle Prix ($) commune. La vue Base 100 (%) existe — évaluer : défaut Base 100 en multi-courbes,
+  ou axe log, ou petits multiples.
+- [ ] **`[INVEST-ALLOC-GEO-SECTOR]`** (M) — « la répartition géographique marche pas et sectorielle non plus » :
+  vérifier la source (profil Finnhub par titre ? statique ?) — probablement vide pour les ETF européens/Amundi.
+  Diagnostiquer avec les vrais tickers de Marc.
+- [ ] **`[HIST-GOOGLE-PARITY]`** (question Marc : « utiliser exactement la courbe de google finance c'est possible ? ») —
+  RÉPONSE COURTE : non, pas directement (Google Finance n'a PAS d'API publique de portefeuille/courbes ; la scraper
+  violerait les ToS et casserait sans prévenir). La bonne cible = PARITÉ par couverture complète (HIST-COVERAGE-TOTAL) :
+  mêmes titres tous couverts + FX → la courbe converge vers celle de Google (même donnée sous-jacente). Écart résiduel
+  attendu : granularité (daily close vs intraday) et heure de FX.
+
+## 💰 Budget — 3 vues (demande Marc 2026-07-22, verbatim « backlog: »)
+- [ ] **`[BUDGET-3-VUES]`** (M) — « je veux que le budget affiche le budget réel actuel, la moyenne des
+  derniers mois, et le budget de prévision » : pour chaque poste/section, TROIS colonnes/vues distinctes —
+  (a) RÉEL du mois affiché (transactions de la période), (b) MOYENNE des derniers mois (la base
+  `computeMonthlyActualAverages`/tendance 6 mois existe déjà), (c) PRÉVISION (cible/projection fin de mois).
+  Cadrage à faire (plan-first) : par poste ou seulement les tuiles ? période de la moyenne (6 mois vs tout
+  l'historique — la cible auto utilise déjà « moyenne de tout le passé ») ? interaction avec les tuiles
+  Réel/Prévu actuelles (les KPI portent déjà réel ET prévu — la demande vise probablement le PAR-POSTE).
+
 ## 🖥️ Chat conscient de la page (demande Marc 2026-07-22 : « le chat peut réagir à tout sur la page »)
 - [x] **`[CHAT-PAGE-CONTEXT]`** ✅ vague 1 (2026-07-22, PR #490) — onglet actif (Tier 1, TOUTES les pages,
   `TAB_LABELS` déplacé en source unique dans `constants.ts`) + Budget en contexte FIN (Tier 2 : période

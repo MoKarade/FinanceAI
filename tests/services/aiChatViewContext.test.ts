@@ -104,6 +104,35 @@ describe('describeViewContextForPrompt', () => {
         expect(viewContextMatchesTab(getViewContext(), Tab.BUDGET)).toBe(true);
     });
 
+    it('[Vague 1.5] cartes → libellé : valeur (provenance) — le chat peut EXPLIQUER le chiffre', () => {
+        publishViewContext('budget', detail({
+            cards: [
+                { label: 'Impact à long terme', value: '6 104 080 $', note: 'patrimoine successoral projeté en 2066 — vient de la projection Futur' },
+                { label: 'Dépassements détectés', value: '1 poste(s) : <script>Abonnements</script>', note: 'postes au-dessus de la cible' },
+            ],
+        }));
+        const line = describeViewContextForPrompt(Tab.BUDGET);
+        expect(line).toContain('Impact à long terme : <DONNEES>6 104 080 $</DONNEES>'); // valeur encadrée (donnée, pas instruction)
+        expect(line).toContain('vient de la projection Futur');
+        expect(line).toContain('PROVENANCE');
+        expect(line).not.toContain('<script>'); // belt : les valeurs de cartes sont assainies aussi
+    });
+
+    it('[Finding panel #491] valeur de carte au-delà du cap → coupée AVEC marqueur « (tronqué) », jamais en silence', () => {
+        // Une valeur agrégée (3 postes en dépassement) peut dépasser le cap — sans marqueur, le
+        // modèle lisait un montant coupé en plein chiffre comme s'il était complet.
+        publishViewContext('budget', detail({
+            cards: [{ label: 'Dépassements détectés', value: `3 poste(s) : ${'x'.repeat(320)} 123 456 $`, note: 'postes au-dessus de la cible' }],
+        }));
+        const line = describeViewContextForPrompt(Tab.BUDGET);
+        expect(line).toContain('(tronqué)');
+        // Et une valeur SOUS le cap ne porte jamais le marqueur (pas de faux signal).
+        publishViewContext('budget', detail({
+            cards: [{ label: 'Statut du budget', value: 'Excédentaire' }],
+        }));
+        expect(describeViewContextForPrompt(Tab.BUDGET)).not.toContain('(tronqué)');
+    });
+
     it('filtre personne actif → mentionné dans la ligne (encadré <DONNEES>, texte utilisateur)', () => {
         publishViewContext('budget', detail({ personFilterLabel: 'Anna' }));
         expect(describeViewContextForPrompt(Tab.BUDGET)).toContain('dépenses de <DONNEES>Anna</DONNEES> seulement');

@@ -4,6 +4,17 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-23 — vague 1.5 : panneau réparé + Budget à 100 % (PR #491)
+> **Fix bug Marc (captures)** : auto-scroll du chat par `scrollTop` sur le CONTENEUR de messages —
+> `scrollIntoView` scrollait le drawer overflow-hidden parent (header/conversation invisibles). Prouvé/
+> verrouillé par e2e `e2e/chatPanel.spec.ts` (Chromium réel ; env cloud : PW_LOCAL_CHROMIUM pour pointer
+> le Chromium préinstallé). **Vague 1.5** : `BudgetViewDetail.cards` (label/valeur AFFICHÉE/note de
+> PROVENANCE, assainies au prompt-build) — Impact à long terme (estateNetWorth de lastProjection),
+> Sensibilité, Fin de mois, ventilation revenus, statut, dépassements. Le chat peut EXPLIQUER chaque
+> chiffre de la page Budget. BACKLOG enrichi (demandes Marc) : [BUDGET-3-VUES], [HIST-COVERAGE-TOTAL]
+> (courbe 190k vs 242k réels — titres sans historique exclus), [INVEST-ALLOC-GEO-SECTOR], [INVEST-CURVES-LOW],
+> [HIST-GOOGLE-PARITY] (réponse : pas d'API Google Finance — viser la parité par couverture), [DEP-DEPENDABOT-2026-07].
+>
 > ## 🟢 Session 2026-07-22 (suite 6) — CHAT-PAGE-CONTEXT vague 1 : chat conscient de la page (PR #490)
 > **✅ `[CHAT-PAGE-CONTEXT]` vague 1** (demande Marc « le chat réagit à tout sur la page », OK donné d'avance,
 > plan PM+architect suivi) : registre pur `services/aiChat/viewContext.ts` (Tier 1 = onglet actif partout via

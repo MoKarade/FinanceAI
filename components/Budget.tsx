@@ -341,45 +341,6 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     }, [transactions, timeView, customStart, customEnd, periodOffset]);
     const totalActualIncomeDisplay = incomeBreakdown.total;
 
-    // [CHAT-PAGE-CONTEXT] Contexte d'écran publié pour le chat : RÉUTILISE STRICTEMENT les valeurs
-    // déjà calculées pour le rendu (totalSpentDisplay/totalBudgetDisplay/totalActualIncomeDisplay/
-    // actualsMap) — AUCUNE nouvelle expression arithmétique (« jamais un 3e chiffre », classes
-    // PH4D-BUDGET-RATIOS / BUDGET-INCOME-REAL). Le gate mode discret vit dans le hook (à la source).
-    const chatViewDetail = useMemo<BudgetViewDetail>(() => {
-        const { start } = getDateRange();
-        const periodLabel = timeView === 'MONTH'
-            ? new Intl.DateTimeFormat('fr-CA', { month: 'long', year: 'numeric' }).format(start)
-            : timeView === 'QUARTER'
-                ? `T${Math.floor(start.getMonth() / 3) + 1} ${start.getFullYear()}`
-                : timeView === 'YEAR'
-                    ? String(start.getFullYear())
-                    : `du ${customStart} au ${customEnd}`;
-        const timeViewLabel = timeView === 'MONTH' ? 'mois'
-            : timeView === 'QUARTER' ? 'trimestre'
-                : timeView === 'YEAR' ? 'année' : 'plage personnalisée';
-        const topCategories = Object.entries(actualsMap)
-            .filter(([, spent]) => Number.isFinite(spent) && spent > 0)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([name, spent]) => ({ name, spent }));
-        const personName = personFilter !== null ? config.users[personFilter]?.name?.trim() : '';
-        return {
-            kind: 'budget',
-            timeViewLabel,
-            periodLabel,
-            totalSpent: totalSpentDisplay,
-            totalBudgetTarget: totalBudgetDisplay,
-            totalRealIncome: totalActualIncomeDisplay,
-            topCategories,
-            ...(personName ? { personFilterLabel: personName } : {}),
-        };
-    // getDateRange est recréée à chaque render ; ses VRAIES deps (timeView, periodOffset,
-    // customStart, customEnd — leçon BUDGET-MONTH-NAV : lister TOUS les états qu'elle lit)
-    // sont listées directement, comme le memo incomeBreakdown voisin.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [timeView, periodOffset, customStart, customEnd, totalSpentDisplay, totalBudgetDisplay,
-        totalActualIncomeDisplay, actualsMap, personFilter, config.users]);
-    useViewContextPublisher('budget', chatViewDetail);
 
     // --- 2. GROUPING LOGIC ---
     const groupedItems = useMemo(() => {
@@ -647,6 +608,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         return {
             estateNetWorth: lastProjection.estateNetWorth ?? last?.NetWorth ?? 0,
             finalYear: last?.year ?? new Date().getFullYear() + Math.round(horizonYears),
+            horizonYears: Math.round(horizonYears),
             per100Boost: per100,
             currentMonthlySavings: monthlyTotalSavings,
         };
@@ -654,6 +616,87 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // sont implicitement couvertes par coupleAnalysis.totalSavings qui se recalcule avec elles.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [lastProjection, coupleAnalysis.totalSavings]);
+
+    // [CHAT-PAGE-CONTEXT] Contexte d'écran publié pour le chat : RÉUTILISE STRICTEMENT les valeurs
+    // déjà calculées pour le rendu (totalSpentDisplay/totalBudgetDisplay/totalActualIncomeDisplay/
+    // actualsMap/projectionSummary/alerts) — AUCUNE nouvelle expression arithmétique (« jamais un
+    // 3e chiffre », classes PH4D-BUDGET-RATIOS / BUDGET-INCOME-REAL). Le gate mode discret vit dans
+    // le hook (à la source). [Vague 1.5, demande Marc] TOUTES les cartes de la page + la PROVENANCE
+    // de chaque chiffre (le chat peut expliquer « d'où ça vient », pas seulement le citer).
+    const chatViewDetail = useMemo<BudgetViewDetail>(() => {
+        const { start } = getDateRange();
+        const periodLabel = timeView === 'MONTH'
+            ? new Intl.DateTimeFormat('fr-CA', { month: 'long', year: 'numeric' }).format(start)
+            : timeView === 'QUARTER'
+                ? `T${Math.floor(start.getMonth() / 3) + 1} ${start.getFullYear()}`
+                : timeView === 'YEAR'
+                    ? String(start.getFullYear())
+                    : `du ${customStart} au ${customEnd}`;
+        const timeViewLabel = timeView === 'MONTH' ? 'mois'
+            : timeView === 'QUARTER' ? 'trimestre'
+                : timeView === 'YEAR' ? 'année' : 'plage personnalisée';
+        const topCategories = Object.entries(actualsMap)
+            .filter(([, spent]) => Number.isFinite(spent) && spent > 0)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([name, spent]) => ({ name, spent }));
+        const personName = personFilter !== null ? config.users[personFilter]?.name?.trim() : '';
+        const cards: NonNullable<BudgetViewDetail['cards']> = [
+            {
+                label: 'Revenus (ventilation)',
+                value: `Salaire ${formatCAD(incomeBreakdown.salary)} · Divers ${formatCAD(incomeBreakdown.other)}`,
+                note: 'revenus RÉELS des transactions de la période (catégories de revenu), pas le salaire déclaré du profil',
+            },
+            {
+                label: 'Statut du budget',
+                value: avgRealIncomeDisplay >= totalBudgetDisplay ? 'Excédentaire' : 'Déficitaire',
+                note: 'compare la moyenne des revenus réels des mois passés à la cible totale du budget',
+            },
+        ];
+        if (timeView === 'MONTH' && periodOffset === 0) {
+            cards.push({
+                label: 'Fin de mois (projection)',
+                value: formatCAD(projectedTotalDisplay),
+                note: 'dépenses du mois projetées au rythme actuel (réel ÷ avancement du mois) — mois en cours seulement',
+            });
+        }
+        if (projectionSummary) {
+            cards.push({
+                label: 'Impact à long terme',
+                value: formatCAD(projectionSummary.estateNetWorth),
+                note: `patrimoine successoral projeté en ${projectionSummary.finalYear} (horizon ${projectionSummary.horizonYears} ans), rentes RRQ/PSV incluses — vient de la PROJECTION de l'onglet Futur (lastProjection.estateNetWorth) ; pour comparer avec get_projection, utiliser years=${projectionSummary.horizonYears}`,
+            }, {
+                label: 'Sensibilité',
+                value: `+${formatCAD(projectionSummary.per100Boost)}`,
+                note: `gain estimé de patrimoine final pour +100 $/mois d'épargne (valeur future d'une rente, rendement réel ~5 %)`,
+            });
+        }
+        if (timeView === 'MONTH' && alerts.length > 0) {
+            cards.push({
+                label: 'Dépassements détectés',
+                value: `${alerts.length} poste(s) : ${alerts.slice(0, 3).join(', ')}`,
+                note: 'postes dont le réel dépasse la cible de la période',
+            });
+        }
+        return {
+            kind: 'budget',
+            timeViewLabel,
+            periodLabel,
+            totalSpent: totalSpentDisplay,
+            totalBudgetTarget: totalBudgetDisplay,
+            totalRealIncome: totalActualIncomeDisplay,
+            topCategories,
+            ...(personName ? { personFilterLabel: personName } : {}),
+            cards,
+        };
+    // getDateRange est recréée à chaque render ; ses VRAIES deps (timeView, periodOffset,
+    // customStart, customEnd — leçon BUDGET-MONTH-NAV : lister TOUS les états qu'elle lit)
+    // sont listées directement, comme le memo incomeBreakdown voisin.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [timeView, periodOffset, customStart, customEnd, totalSpentDisplay, totalBudgetDisplay,
+        totalActualIncomeDisplay, actualsMap, personFilter, config.users, incomeBreakdown,
+        avgRealIncomeDisplay, projectedTotalDisplay, projectionSummary, alerts]);
+    useViewContextPublisher('budget', chatViewDetail);
 
     return (
         <div className="space-y-6 stagger-in pb-20">

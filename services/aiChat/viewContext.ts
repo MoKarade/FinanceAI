@@ -37,6 +37,12 @@ export interface BudgetViewDetail {
     topCategories: Array<{ name: string; spent: number }>;
     /** Libellé du filtre personne actif (mode couple) — TEXTE UTILISATEUR. Absent = tout combiné. */
     personFilterLabel?: string;
+    /** [Vague 1.5 — demande Marc « qu'il comprenne TOUTE la page + les calculs derrière »] Autres
+     *  cartes affichées : `value` = la valeur TELLE QU'AFFICHÉE (formatCAD de la page — réutilisée,
+     *  jamais recalculée), `note` = PROVENANCE du chiffre (quel calcul/source derrière — le chat
+     *  peut alors l'EXPLIQUER). ⚠️ Tout champ peut porter du texte utilisateur (ex. noms de postes
+     *  dans une alerte) : le prompt builder assainit CHAQUE champ (belt). Borné à ~8 cartes. */
+    cards?: Array<{ label: string; value: string; note?: string }>;
 }
 
 /** Union à étendre page par page (vague 2+). */
@@ -153,5 +159,21 @@ export function describeViewContextForPrompt(activeTab: Tab): string {
     const filterNote = d.personFilterLabel
         ? ` Filtre actif : dépenses de <DONNEES>${sanitizePromptText(d.personFilterLabel)}</DONNEES> seulement.`
         : '';
-    return `CONTEXTE ÉCRAN : l'utilisateur est sur l'onglet « ${tabLabel} » — période affichée : ${d.periodLabel} (vue ${d.timeViewLabel}).${filterNote} Chiffres AFFICHÉS À L'ÉCRAN (cite CEUX-CI pour toute question sur « ce qui est affiché » — pour un chiffre absent d'ici, consulte tes outils en le disant) : ${parts.join(', ')}.${top.length > 0 ? ` Top catégories dépensées : <DONNEES>${top.join(', ')}</DONNEES>.` : ''} Si un outil rend un montant DIFFÉRENT pour un concept proche, ce ne sont PAS des contradictions : des PÉRIMÈTRES différents (période affichée vs agrégat mensuel standard) — cite le chiffre ÉCRAN pour « ce qui est affiché » et explique la différence de base si l'outil est aussi pertinent.`;
+    // Cartes additionnelles : chaque champ assaini (belt — une carte peut interpoler du texte
+    // utilisateur), maxLen généreux pour ne pas tronquer les notes de provenance code-auteur.
+    // [Finding panel #491 — ÉLEVÉ] Troncature JAMAIS muette : sanitizePromptText coupe sans marqueur
+    // (une valeur agrégée — ex. 3 postes en dépassement — pouvait être coupée EN PLEIN MONTANT et lue
+    // par le modèle comme un chiffre complet). Marqueur honnête « (tronqué) » quand le cap est atteint.
+    const sane = (text: string, max: number): string =>
+        sanitizePromptText(text, max) + (text.length > max ? '… (tronqué)' : '');
+    // Valeurs de cartes encadrées <DONNEES> au PROMPT-BUILD (finding ai-reviewer #491 : une carte
+    // peut interpoler du texte utilisateur — noms de postes — et un framing posé dans la carte
+    // serait détruit par le belt qui retire < et >). Labels/notes = code-auteur, non encadrés.
+    const cards = (d.cards ?? [])
+        .slice(0, 8)
+        .map((c) => `${sane(c.label, 120)} : <DONNEES>${sane(c.value, 300)}</DONNEES>${c.note ? ` (${sane(c.note, 300)})` : ''}`);
+    const cardsNote = cards.length > 0
+        ? ` Autres cartes affichées sur la page — avec la PROVENANCE de chaque chiffre entre parenthèses (sers-t'en pour EXPLIQUER un chiffre demandé ; n'invente JAMAIS un détail de calcul au-delà de la note — si on te demande la formule exacte, dis que tu n'as que la provenance résumée, pas le détail du moteur) : ${cards.join(' ; ')}.`
+        : '';
+    return `CONTEXTE ÉCRAN : l'utilisateur est sur l'onglet « ${tabLabel} » — période affichée : ${d.periodLabel} (vue ${d.timeViewLabel}).${filterNote} Chiffres AFFICHÉS À L'ÉCRAN (cite CEUX-CI pour toute question sur « ce qui est affiché » — pour un chiffre absent d'ici, consulte tes outils en le disant) : ${parts.join(', ')}.${top.length > 0 ? ` Top catégories dépensées : <DONNEES>${top.join(', ')}</DONNEES>.` : ''}${cardsNote} Si un outil rend un montant DIFFÉRENT pour un concept proche, ce ne sont PAS des contradictions : des PÉRIMÈTRES différents (période affichée vs agrégat mensuel standard) — cite le chiffre ÉCRAN pour « ce qui est affiché » et explique la différence de base si l'outil est aussi pertinent.`;
 }

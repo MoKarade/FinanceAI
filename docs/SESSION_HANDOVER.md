@@ -7,7 +7,7 @@
 > ## 🟢 Session 2026-07-24 — BUDGET-3-VUES + BUDGET-MATCH-UNIFY + MCP-CATEGORY-ALLOWLIST (PR #501 MERGÉE ; PR suivante imminente)
 > **✅ `[BUDGET-3-VUES]`** (PR #500, squash 7e80af2, 2026-07-23) : tableau Budget 3 colonnes — réel période · moyenne 12 mois · cible. Panel `/review-all` : findings a11y corrigés.
 > **✅ `[BUDGET-MATCH-UNIFY]`** (PR #501, squash ace36bf, 2026-07-24) : rapprochement catégorie fuzzy via `matchCategoryToName` prédicat partagé, allocation zéro-overhead, auto-target. Panel : financial-integrity 0 findings (mesurés), code-reviewer 1 perf (allocation/appel, corrigé), silent-failure-hunter 1 ÉLEVÉ → déploiement imédiat.
-> **En cours `[MCP-CATEGORY-ALLOWLIST]`** (PR imminente — branche `claude/progress-check-yua8yy`) : validations catégorie libre au point d'écriture `applyDocument.ts` (app↔MCP partagé), allowlist postes/RULE_CATEGORIES, remap casse/accents, inconnue → ruleCategorize sinon « Non catégorisé », remaps comptés au summary. Description du tool dérivée de source unique.
+> **PR #502 `[MCP-CATEGORY-ALLOWLIST]` (DRAFT, branche `claude/progress-check-yua8yy`, 3 commits)** : validations catégorie libre au point d'écriture `applyDocument.ts` (app↔MCP partagé), allowlist postes/RULE_CATEGORIES, remap casse/accents, inconnue → ruleCategorize sinon « Non catégorisé », remaps comptés au summary. Description du tool dérivée de source unique. Panel 4 agents fait (code-reviewer, silent-failure-hunter, security-privacy, ai-reviewer) ; import CSV réfuté. Nouveau ticket [AI-CATEGORIZE-MISSING-ID] (S) au BACKLOG.
 >
 > ## 🟡 Session 2026-07-23 (suite 9) — BUDGET-3-VUES : Budget par poste 3 colonnes réel/moy.12m/cible (PR #500, DRAFT — auto-merge armé)
 > **En cours** `[BUDGET-3-VUES]` : tableau Budget 3 colonnes — réel période · moyenne 12 mois (mois courant exclu, sans historique → « — ») · cible.
@@ -1058,7 +1058,7 @@
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
 | **Dernière PR mergée** | **#501** [BUDGET-MATCH-UNIFY] (rapprochement catégorie fuzzy via `matchCategoryToName`, 2026-07-24, squash ace36bf, MERGÉE) |
-| **PR en cours** | [MCP-CATEGORY-ALLOWLIST] (PR imminente, branche `claude/progress-check-yua8yy`) — validations catégorie libre au point d'écriture |
+| **PR en cours (DRAFT)** | **#502** [MCP-CATEGORY-ALLOWLIST] (branche `claude/progress-check-yua8yy`, 3 commits, auto-merge à armer) — validations catégorie libre au point d'écriture `applyDocument.ts` partagé app↔MCP ; allowlist RULE_CATEGORIES, remaps casse/accents, inconnue → ruleCategorize ; panel 4 agents ✅ |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
 | **Tests** | **~3020 verts, suite complète** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation — compte exact au gate/CI) |
 | **Typecheck** | Clean en mode strict |

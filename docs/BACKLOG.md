@@ -246,6 +246,15 @@
   poste gagne). **Réfuté pour l'import CSV** : la catégorie d'un CSV est une DONNÉE RÉELLE de la banque —
   par design Lot C (postes ≡ catégories observées), elle devient légitimement un poste au prochain sync ;
   l'allowlist la détruirait. Fenêtre fuzzy pré-sync transitoire, s'auto-résout au sync.
+  **2ᵉ passe (ai-reviewer)** : sur un remap, `isTransfer`/`confidence` recyclés portaient sur la catégorie
+  REJETÉE (« Transfert » avec isTransfer:false = compté à tort dans le Σ affiché) → isTransfer dérivé de la
+  catégorie FINALE, confiance 100 (règle) / 0 (repli honnête) ; logError AGRÉGÉ 1×/batch (pas 1×/chunk —
+  ~40/100 entrées du journal sinon) ; défaut `safeCategories` aligné sur `RULE_CATEGORIES` (littéral
+  divergent « Alimentation »/« Loisir » retiré).
+- [ ] **`[AI-CATEGORIZE-MISSING-ID]`** (S, FAIBLE) — `categorizeBatch` : une transaction dont l'`id` est
+  ABSENT de la réponse JSON du modèle est renvoyée inchangée SANS trace (`if (!r) return t;`,
+  `services/claude.ts`) — silent-drop pré-existant, voisin du garde-fou allowlist (finding ai-reviewer
+  PR #502). Compter les ids manquants + logError agrégé (même pattern que offListCount).
 
 ## 🤝 Assistant fusionné (demande Marc 2026-07-23 : « combiner Prochaine action à l'Assistant »)
 - [x] **`[ASSISTANT-HUB]`** ✅ (2026-07-23, PR #492) — onglet Assistant VISIBLE dans la nav (remplace

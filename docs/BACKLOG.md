@@ -230,6 +230,20 @@
   - **Reste (différé, non bloquant)** : `[FUTUR-HIST-FX-DATED]` (FX historique daté via proxy Yahoo `USDCAD=X`/`EURCAD=X`, plus
     juste que le change du jour — money-critical, garder le point d'AUJOURD'HUI au FX courant pour le raccord exact ; no-fake si
     FX daté manquant → repli FX courant signalé) ; recherche binaire dans `priceAt` si un jour mesuré lent.
+- [x] **`[FUTUR-ICONS-RICH]`** ✅ (2026-07-24, PR suivante — bug Marc « quasi aucune icône », le fix
+  [FUTUR-ICON-DENSITY] ne suffisait pas) — le graphe Futur n'affichait des icônes que pour les rares `lifeEvents`/
+  `flowEvents` du moteur (0-2 sur un plan normal). Fix 3 volets : (a) module pur `services/projection/milestoneIcons.ts`
+  `deriveMilestoneIcons` = jalons dérivés des CHAMPS `chartData` (🏛️ RRQ/PSV, 📤 retraits REER/CELI, 💸 impôt, 🏠 locatif ;
+  présentation pure, jamais retraite/FIRE = anti-doublon structurel) ; (b) gate `.includes('-')` (tiret ASCII vs cadratin « — »)
+  RETIRÉ → flowEvents moteur enfin visibles ; (c) toutes les pastilles sur la courbe (`val=NetWorth`, avant les flux étaient
+  à `ImpotLatent` = invisibles). RRQ/PSV migrés de lignes verticales → icônes cliquables. **Validé e2e Playwright RÉEL**
+  (`e2e/futureIcons.spec.ts`) : 29 icônes vs 0-2. Tests purs (`projection.milestoneIcons.test.ts`).
+- [ ] **`[A11Y-FUTUR-MILESTONES-KEYBOARD]`** 🔵 (M, finding a11y-auditor PR #516) — les pastilles d'événements du
+  graphe Futur (`ClickableEventIcon`, `<g role="button" tabIndex={-1}>`) ne sont pas atteignables au CLAVIER (WCAG 2.1.1) :
+  aucun `onKeyDown`, conteneur graphe `tabIndex=-1`. Une liste sr-only des jalons (parité SR) a été livrée avec FUTUR-ICONS-RICH,
+  mais l'OPÉRABILITÉ clavier reste à faire → rendre les pastilles VISIBLES focusables (`tabIndex=0` + Enter/Space → `onSelect`,
+  focus-ring) OU un contrôle clavier alternatif ouvrant `FutureDetailModal`. ⚠️ Impact sur le pattern « clic n'importe où » (G12) →
+  trancher avec Marc. Aria-label des jalons récurrents (impôt) : inclure `dateLabel`/année si focusables (sinon ~N boutons identiques).
 - [x] **`[A11Y-DASH-SRONLY]`** ✅ (2026-07-24, PR suivante) — convention GLOBALE : helper pur
   `components/ui/emptyAware` — quand la valeur rendue EST le tiret « — » (état vide de formatCAD/formatPercent),
   il remplace le tiret muet par `<span aria-hidden>—</span>` + `<span class="sr-only">Pas de donnée</span>`

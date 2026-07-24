@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Futur : beaucoup plus d'icônes sur le graphe] — 2026-07-24
+
+### Onglet Futur
+- **Le graphe affiche maintenant des icônes pour tous tes jalons** : 🏛️ début RRQ / PSV, 📤 1er retrait REER / CELI,
+  💸 règlements d'impôt, 🏠 début revenu locatif — en plus de la retraite 📍 et du FIRE 🔥. Avant, il n'y avait
+  quasiment aucune icône (validé : ~29 pastilles sur un plan retraité, contre 0-2 auparavant).
+- Les événements de flux du moteur (renouvellements d'hypothèque, retraits par palier, RAMQ…) étaient **filtrés à
+  tort** et n'apparaissaient jamais — ils s'affichent désormais. Toutes les pastilles se posent sur la courbe (avant,
+  les flux étaient placés tout en bas, quasi invisibles).
+
+### Interne
+- Nouveau module pur `services/projection/milestoneIcons.ts` (`deriveMilestoneIcons`) — jalons dérivés des champs
+  `chartData` (présentation, zéro recalcul $). Test e2e Playwright réel (`e2e/futureIcons.spec.ts`) prouvant le rendu
+  des icônes (Recharts a besoin d'un vrai viewport). RRQ/PSV migrés de lignes verticales vers icônes cliquables.
+
+---
+
 ## [unreleased — Futur : « aujourd'hui » qui avance + assemblage du passé testé] — 2026-07-24
 
 ### Onglet Futur

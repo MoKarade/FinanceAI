@@ -256,7 +256,9 @@ export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?:
     const isLife = kind === 'life';
     const sub = payload.subIdx || 0;
     const dy = isLife ? -(20 + sub * 24) : (20 + sub * 20);
-    const r = isLife ? 12 : 9;
+    // [FUTUR-ICONS-RICH, a11y] cible flux montée 9→12 (diamètre 24 = plancher WCAG 2.5.8 AA ; avant 18 px sous
+    // le seuil, heurté bien plus souvent avec ~29 pastilles). Zone de clic transparente élargie ci-dessous (≈44 px AAA).
+    const r = isLife ? 12 : 12;
     // [R2] Couleur PAR ÉVÉNEMENT si fournie (ex. FIRE atteint = orange #f97316), sinon défaut du kind.
     const color = payload.color ?? (isLife ? '#d8c06a' : '#7ba0cf');
     return (
@@ -269,6 +271,8 @@ export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?:
             tabIndex={-1}
             aria-label={`Événement : ${payload.label}`}
         >
+            {/* [a11y] cible de clic transparente élargie (≈44 px, WCAG 2.5.5 AAA) sans changer le rendu visuel. */}
+            <circle cy={dy} r={22} fill="transparent" />
             {/* ancre sur la courbe + tige vers la pastille */}
             <circle r={3} fill={color} stroke="#0B0E14" strokeWidth={1} />
             <line x1={0} y1={0} x2={0} y2={dy} stroke={color} strokeWidth={1} strokeOpacity={0.45} />

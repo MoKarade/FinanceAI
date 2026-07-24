@@ -862,6 +862,15 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   menteuse, classe [[Lot audit n°2]] « une affirmation de commentaire se vérifie ») ; (3) un auto-remplissage de
   champ persisté n'écrit QUE l'information UTILE — persister le DÉFAUT du mapping (« Autre »/« Global ») figerait
   la résolution et bloquerait tout meilleur remplissage futur (édition, provider enrichi).
+- ⚠️ **[MCP-CATEGORY-ALLOWLIST] 2026-07-24** : (1) une catégorie de transaction LIBRE écrite par l'IA
+  (apply_bank_statement) entre dans le rapprochement fuzzy PARTAGÉ (réel/moyenne/grand livre) → un nom
+  inventé (« Sport ») est absorbé par un poste englobant (« Tran-sport ») SANS trace. Fix = allowlist au
+  point d'écriture (`applyDocument.ts`, module partagé app↔MCP = les deux surfaces par construction) :
+  postes + RULE_CATEGORIES, remap casse/accents vers la forme canonique, inconnue → ruleCategorize(payee)
+  sinon « Non catégorisé », remaps COMPTÉS au summary. (2) **L'EXEMPLE d'une description de tool enseignait
+  une catégorie HORS canon** (« Alimentation ») — le modèle apprend des exemples : exemples/listes de
+  descriptions de tools se DÉRIVENT de la source unique (`RULE_CATEGORIES.join`), jamais re-codés
+  (classe A11Y-CHECK-CONTRAST-DRIFT appliquée aux prompts de tools).
 - ⚠️ **[AITOOLS-SEC] 2026-07-22 — audit de clôture du chantier Claude-in-app, leçons** : (1) **Un fix de
   sécurité appliqué à UNE surface doit être porté à TOUTES les surfaces qui partagent le vecteur** — le scrub
   anti-injection du `summary`/`changes` d'une écriture avait été fait côté app (`writeExecutor`, Lot D) mais

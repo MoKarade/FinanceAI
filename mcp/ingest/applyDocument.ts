@@ -7,7 +7,7 @@
 
 import type { AppState, User, Asset, Transaction, Debt } from '../../types';
 import { annualSalaryToMonthly } from '../../utils/salary';
-import { ruleCategorize } from '../../services/import/categoryRules';
+import { ruleCategorize, RULE_CATEGORIES } from '../../services/import/categoryRules';
 
 /** Fiche de paie — valeurs ANNUELLES (Claude multiplie période × fréquence). */
 export interface PayslipPayload {
@@ -245,29 +245,57 @@ function applyTaxSlip(state: AppState, doc: TaxSlipPayload): ApplyResult {
 const txnKey = (t: { date: string; amount: number; payee: string }): string =>
     `${t.date}|${Math.round((t.amount || 0) * 100)}|${String(t.payee || '').trim().toLowerCase()}`;
 
+// [MCP-CATEGORY-ALLOWLIST] Clé de comparaison insensible casse/accents (une catégorie « épicerie »
+// écrite par l'IA doit retomber sur le canonique « Épicerie », pas créer un doublon).
+const catKey = (s: string): string =>
+    s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+
+/**
+ * [MCP-CATEGORY-ALLOWLIST] Jeu canonique des catégories acceptées à l'ÉCRITURE : les postes de
+ * budget EXISTANTS + les catégories des règles (`RULE_CATEGORIES`). La catégorie du tool MCP est
+ * du TEXTE LIBRE écrit par l'IA : hors allowlist, elle entrerait dans le rapprochement fuzzy
+ * partagé (réel/moyenne/grand livre) et pourrait être absorbée par un poste au nom englobant
+ * (« Sport » ⊂ « Tran-sport ») SANS trace (finding silent-failure-hunter PR #501). Inconnue →
+ * règles déterministes sur le payee, sinon « Non catégorisé » — et le résumé le DIT.
+ */
+function buildCategoryAllowlist(state: AppState): Map<string, string> {
+    const allowed = new Map<string, string>();
+    for (const name of RULE_CATEGORIES) allowed.set(catKey(name), name);
+    for (const item of state.budgetItems ?? []) {
+        const name = item?.name?.trim();
+        if (name) allowed.set(catKey(name), name);
+    }
+    return allowed;
+}
+
 function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyResult {
     const existing = (state.transactions ?? []) as Transaction[];
     const seen = new Set(existing.map(txnKey));
     let maxId = existing.reduce((m, t) => Math.max(m, t.id || 0), 0);
+    const allowedCategories = buildCategoryAllowlist(state);
 
     const added: Transaction[] = [];
     let dupCount = 0;
     let rejCount = 0;
+    let remapCount = 0;
     for (const tx of doc.transactions ?? []) {
         if (!tx || typeof tx.amount !== 'number' || !tx.date) continue;
         if (!plausible(tx.amount, MAX_TXN_AMOUNT)) { rejCount++; continue; } // D9 : montant aberrant ignoré
         const k = txnKey(tx);
         if (seen.has(k)) { dupCount++; continue; } // doublon (déjà présent OU déjà ajouté dans ce lot)
         seen.add(k);
+        // [TX-CATEGORY-RULES] + [MCP-CATEGORY-ALLOWLIST] Catégorie fournie ACCEPTÉE seulement si
+        // canonique (remap vers la casse canonique) ; inconnue ou absente → règles déterministes
+        // sur le payee (mêmes règles que l'import CSV de l'app — cohérence app↔MCP), sinon
+        // « Non catégorisé » (l'IA de l'app peut re-passer dessus). Un remap est COMPTÉ (résumé).
+        const canonical = tx.category ? allowedCategories.get(catKey(tx.category)) : undefined;
+        if (tx.category && !canonical) remapCount++;
         added.push({
             id: ++maxId,
             date: tx.date,
             payee: tx.payee || '',
             amount: tx.amount,
-            // [TX-CATEGORY-RULES] Catégorie fournie par l'appelant si présente, sinon règles
-            // déterministes sur le payee (mêmes règles que l'import CSV de l'app — cohérence
-            // app↔MCP), sinon « Non catégorisé » (l'IA de l'app peut re-passer dessus).
-            category: tx.category || ruleCategorize(tx.payee || '') || 'Non catégorisé',
+            category: canonical || ruleCategorize(tx.payee || '') || 'Non catégorisé',
             status: 'processed',
             isTransfer: !!tx.isTransfer,
             ...(doc.accountName ? { accountName: doc.accountName } : {}),
@@ -287,8 +315,14 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
         ? { ...state, transactions: [...existing, ...added], lastUpdate: Date.now() }
         : state;
     const rej = rejCount ? `, ${rejCount} montant(s) aberrant(s) ignoré(s)` : '';
+    // [MCP-CATEGORY-ALLOWLIST] Signal honnête : un remap silencieux serait la classe
+    // « staleness/attribution silencieuse » — l'appelant doit savoir que ses catégories
+    // inventées ont été re-catégorisées par les règles.
+    const remap = remapCount
+        ? `, ${remapCount} catégorie(s) non canonique(s) re-catégorisée(s) par les règles`
+        : '';
     const summary = added.length
-        ? `Relevé bancaire : ${added.length} transaction(s) ajoutée(s)${dupCount ? `, ${dupCount} doublon(s) ignoré(s)` : ''}${rej}.`
+        ? `Relevé bancaire : ${added.length} transaction(s) ajoutée(s)${dupCount ? `, ${dupCount} doublon(s) ignoré(s)` : ''}${rej}${remap}.`
         : `Relevé bancaire : aucune nouvelle transaction${dupCount || rejCount ? ` (${dupCount} doublon(s) ignoré(s)${rej})` : ''}.`;
     return { nextState, changes, summary };
 }

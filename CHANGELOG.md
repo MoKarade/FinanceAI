@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Import IA : catégories validées contre ton budget] — 2026-07-24
+
+### Sécurité / robustesse
+- **Une catégorie inventée par l'IA lors d'un import de relevé** (via Claude/MCP) n'entre plus
+  telle quelle dans tes données : elle doit correspondre à une catégorie canonique ou à un de
+  tes postes de budget (peu importe la casse/les accents). Sinon, la transaction est
+  re-catégorisée par les règles habituelles sur le marchand — et le résumé de l'import
+  l'indique. Avant, une catégorie comme « Sport » pouvait être silencieusement absorbée par
+  le poste « Transport » à l'affichage.
+
 ## [unreleased — Budget : la moyenne et le grand livre rapprochent comme le réel] — 2026-07-24
 
 ### Correction

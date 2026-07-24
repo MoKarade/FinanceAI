@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 import type { WriteToolSpec } from './_toolSpec';
+import { RULE_CATEGORIES } from '../../services/import/categoryRules';
 
 const inputSchema = {
     accountName: z.string().optional().describe('Nom du compte (ex: « Chèque RBC »).'),
@@ -14,7 +15,13 @@ const inputSchema = {
         date: z.string().describe('Date ISO (YYYY-MM-DD).'),
         payee: z.string().describe('Marchand / description.'),
         amount: z.number().finite().describe('Montant SIGNÉ : négatif = dépense, positif = entrée.'),
-        category: z.string().optional().describe('Catégorie (ex: Alimentation, Transport).'),
+        // [MCP-CATEGORY-ALLOWLIST] Liste DÉRIVÉE de RULE_CATEGORIES (jamais re-codée — un exemple
+        // hors canon comme l'ancien « Alimentation » enseignait au modèle une catégorie inventée).
+        category: z.string().optional().describe(
+            `Catégorie CANONIQUE (une de : ${RULE_CATEGORIES.join(', ')}) ou le nom d'un poste de ` +
+            'budget existant. Une catégorie inconnue est re-catégorisée automatiquement par règles ' +
+            'sur le marchand.',
+        ),
         isTransfer: z.boolean().optional().describe('Vrai si c\'est un virement interne.'),
     })).describe('Transactions extraites du relevé.'),
 };

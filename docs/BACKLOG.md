@@ -232,16 +232,13 @@
   SUR-prescrivait « les trois ensemble » : la CIBLE AUTO est restée exacte À RAISON — au moment du
   calcul, les noms de postes ≡ catégories observées (la sync canonicalise avant) → l'exact n'y diverge
   jamais du fuzzy, et un fuzzy mono-catégorie aurait risqué un double-comptage cross-poste.
-- [ ] **`[MCP-CATEGORY-ALLOWLIST]`** (S) — valider la catégorie LIBRE des tools MCP d'écriture contre la
-  liste canonique (finding silent-failure-hunter PR #501, prouvé par sonde) : `apply_bank_statement`
-  (`mcp/tools/applyBankStatement.spec.ts`) accepte `category: z.string()` sans contrainte → une catégorie
-  inventée (« Sport ») entre dans les données et le rapprochement fuzzy PARTAGÉ (réel + moyenne + grand
-  livre depuis PR #501) la classe sous un poste au nom englobant (« Tran-sport ») SANS trace — déplacement
-  d'argent d'un poste vers un autre, plausible et silencieux. L'UI est immune (catégories au `<select>`) ;
-  la frontière à durcir est le MCP : allowlist des catégories canoniques (postes + RULE_CATEGORIES) au
-  point d'écriture, repli « Uncategorized » + note honnête si inconnue (classe « allowlist au point
-  d'écriture », cf. [[HIST-MULTI-PROVIDER]] (6) `asSupportedCurrency`). NB : ne PAS « corriger » en
-  ancrant le fuzzy sur mots entiers — ça casserait le cas principal (« Restaurant » ⊂ « Restaurants »).
+- [x] **`[MCP-CATEGORY-ALLOWLIST]`** ✅ (2026-07-24, PR suivante) — la catégorie LIBRE d'`apply_bank_statement`
+  est validée au point d'écriture (`mcp/ingest/applyDocument.ts`, module PARTAGÉ app↔MCP → les deux surfaces
+  couvertes par construction) : allowlist = postes existants + `RULE_CATEGORIES`, insensible casse/accents
+  (remap vers la forme canonique) ; inconnue (« Sport ») → `ruleCategorize(payee)` sinon « Non catégorisé »,
+  et le summary COMPTE les remaps (jamais silencieux). Discriminant prouvé par git stash. Bonus : l'exemple
+  de la description du tool enseignait « Alimentation » (hors canon !) — désormais DÉRIVÉ de `RULE_CATEGORIES`.
+  NB conservé : ne PAS ancrer le fuzzy sur mots entiers (casserait « Restaurant » ⊂ « Restaurants »).
 
 ## 🤝 Assistant fusionné (demande Marc 2026-07-23 : « combiner Prochaine action à l'Assistant »)
 - [x] **`[ASSISTANT-HUB]`** ✅ (2026-07-23, PR #492) — onglet Assistant VISIBLE dans la nav (remplace

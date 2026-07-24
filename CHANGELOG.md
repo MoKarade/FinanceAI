@@ -18,7 +18,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Même garde-fou sur le bouton « Classer » (catégorisation IA)** : le modèle recevait la
   consigne « toute autre valeur sera rejetée » mais rien ne la faisait respecter — c'est
   maintenant appliqué en code (hors liste → règles sur le marchand, sinon « Autre »), avec
-  une trace au journal. Les catégories d'un CSV bancaire importé restent, elles, acceptées
+  une trace au journal. Une transaction que le modèle omet de sa réponse laisse aussi une
+  trace (avant : ignorée en silence). Les catégories d'un CSV bancaire importé restent, elles, acceptées
   telles quelles : ce sont de vraies données de ta banque, qui deviennent des postes au
   prochain alignement du budget.
 

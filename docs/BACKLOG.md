@@ -122,7 +122,7 @@
   ids↔tarifs verrouillée par test (un modèle sans tarif = garde rouge, jamais un coût non compté muet).
 
 ## 🛡️ Dépendances — alertes Dependabot ouvertes (capture Marc 2026-07-22, « backlog aussi »)
-- [ ] **`[DEP-DEPENDABOT-2026-07]`** (S) — 4 alertes ouvertes sur package-lock : fast-uri ×2 (HIGH, host
+- [x] **`[DEP-DEPENDABOT-2026-07]`** ✅ (2026-07-23, PR #497 — coché 2026-07-24 au balayage) — 4 alertes ouvertes sur package-lock : fast-uri ×2 (HIGH, host
   confusion via IDN/backslash), @hono/node-server (MODERATE, path traversal serve-static Windows — serveur
   MCP ; vecteur limité : Cloud Run Linux, pas de serve-static exposé, à vérifier), dompurify (LOW,
   CUSTOM_ELEMENT_HANDLING bypass). Passe de bump ciblée : `npm audit` + bump lockfile (fast-uri est
@@ -251,10 +251,14 @@
   catégorie FINALE, confiance 100 (règle) / 0 (repli honnête) ; logError AGRÉGÉ 1×/batch (pas 1×/chunk —
   ~40/100 entrées du journal sinon) ; défaut `safeCategories` aligné sur `RULE_CATEGORIES` (littéral
   divergent « Alimentation »/« Loisir » retiré).
-- [ ] **`[AI-CATEGORIZE-MISSING-ID]`** (S, FAIBLE) — `categorizeBatch` : une transaction dont l'`id` est
-  ABSENT de la réponse JSON du modèle est renvoyée inchangée SANS trace (`if (!r) return t;`,
-  `services/claude.ts`) — silent-drop pré-existant, voisin du garde-fou allowlist (finding ai-reviewer
-  PR #502). Compter les ids manquants + logError agrégé (même pattern que offListCount).
+- [x] **`[AI-CATEGORIZE-MISSING-ID]`** ✅ (2026-07-24, PR suivante) — `missingIdCount` agrégé sur le
+  batch + logError warning (même pattern que `offListCount`) : une transaction absente de la réponse
+  JSON du modèle laisse désormais une trace au lieu d'un silent-drop.
+- [x] **`[DEP-HONO-TRAVERSAL]`** ✅ DOUBLON (2026-07-24) — même résiduel que `[DEP-HONO-NODE-SERVER]`
+  déjà triagé sous `[DEP-DEPENDABOT-2026-07]` (§ Dépendances) ; re-triage 2026-07-24 identique (patch
+  2.0.5 publié le jour même, toujours hors range du SDK 1.29.0, exploitabilité nulle : zéro
+  serveStatic/hono dans `mcp/`, Cloud Run Linux). Suivi UNIQUE : `[DEP-HONO-NODE-SERVER]` — re-vérifier
+  à chaque bump du SDK MCP. Leçon : GREP le BACKLOG avant de créer un ticket sur un finding « nouveau ».
 
 ## 🤝 Assistant fusionné (demande Marc 2026-07-23 : « combiner Prochaine action à l'Assistant »)
 - [x] **`[ASSISTANT-HUB]`** ✅ (2026-07-23, PR #492) — onglet Assistant VISIBLE dans la nav (remplace

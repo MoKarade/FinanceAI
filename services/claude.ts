@@ -296,10 +296,17 @@ export const categorizeBatch = async (
     let processed = 0;
     // [MCP-CATEGORY-ALLOWLIST] Allowlist construite 1× (safeCategories est fixe pour tout le batch).
     const allowedMap = buildCategoryCanonicalMap(safeCategories);
-    // Compteur AGRÉGÉ sur tout le batch → UN SEUL logError après la boucle (convention
+    // Compteurs AGRÉGÉS sur tout le batch → UN SEUL logError chacun après la boucle (convention
     // analyzeBankStatement ; un log par chunk pouvait consommer ~40 des 100 entrées du journal
     // sur un gros import — finding ai-reviewer PR #502).
     let offListCount = 0;
+    // [AI-CATEGORIZE-MISSING-ID] Une transaction ABSENTE de la réponse JSON du modèle était
+    // renvoyée inchangée SANS trace (silent-drop) — comptée désormais (finding ai-reviewer PR #502).
+    let missingIdCount = 0;
+    // Symétrique (finding silent-failure PR #503) : entrées de la réponse JAMAIS consommées —
+    // id halluciné (aucune tx du chunk) ou dupliqué (écrasé par la Map) — signal diagnostique
+    // « le modèle a décalé/inventé sa numérotation », distinct d'un simple item manquant.
+    let unknownIdCount = 0;
 
     for (let i = 0; i < transactions.length; i += CHUNK_SIZE) {
         const chunk = transactions.slice(i, i + CHUNK_SIZE);
@@ -340,6 +347,11 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict, sans markdown, sans commentaire:
             const validated = safeJsonValidate(text, CategorizeArraySchema);
             if (validated) {
                 const byId = new Map(validated.map(v => [v.id, v]));
+                // Entrées gaspillées = total renvoyé − ids DISTINCTS effectivement consommables
+                // (présents dans le chunk) : couvre doublons ET ids inconnus, chacun compté 1×.
+                const chunkIds = new Set(toAnalyze.map(t => t.id));
+                const usableIds = [...byId.keys()].filter(id => chunkIds.has(id)).length;
+                unknownIdCount += validated.length - usableIds;
                 // [MCP-CATEGORY-ALLOWLIST] Le prompt AFFIRME « toute autre valeur sera rejetée »
                 // mais rien ne le faisait (affirmation non vérifiée par le code — finding
                 // silent-failure-hunter PR #502) : une dérive du modèle hors liste entrait
@@ -348,7 +360,7 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict, sans markdown, sans commentaire:
                 // consigne du prompt), COMPTÉ + tracé (jamais silencieux).
                 const merged = toAnalyze.map(t => {
                     const r = byId.get(t.id);
-                    if (!r) return t;
+                    if (!r) { missingIdCount++; return t; }
                     const resolved = resolveCandidateCategory(r.category, allowedMap, t.payee || '', 'Autre');
                     if (resolved.remapped) offListCount++;
                     // ⚠️ Sur un remap, r.isTransfer/r.confidence portaient sur la catégorie
@@ -390,6 +402,18 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict, sans markdown, sans commentaire:
         logError({
             source: 'ai', severity: 'warning',
             message: `categorizeBatch : ${offListCount} catégorie(s) hors liste renvoyée(s) par le modèle sur le batch, remappée(s) par règles.`,
+        });
+    }
+    if (missingIdCount > 0) {
+        logError({
+            source: 'ai', severity: 'warning',
+            message: `categorizeBatch : ${missingIdCount} transaction(s) absente(s) de la réponse du modèle (id manquant) — laissée(s) non catégorisée(s).`,
+        });
+    }
+    if (unknownIdCount > 0) {
+        logError({
+            source: 'ai', severity: 'warning',
+            message: `categorizeBatch : ${unknownIdCount} entrée(s) de la réponse du modèle à id inconnu ou dupliqué — ignorée(s).`,
         });
     }
 

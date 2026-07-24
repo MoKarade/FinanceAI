@@ -201,11 +201,11 @@
   (« ça n'a pas bougé » = donnée figée, pas marché plat). Avant, ce 0 n'alimentait que le score ; le sélecteur
   de période l'expose en carte Performance. Piste : marquer les lignes raccordées (flag `synthetic` par clé) et
   rendre « — » ou un badge « donnée figée » quand latest ET baseline sont synthétiques.
-- [ ] **`[A11Y-PILL-RADIOGROUP]`** (S, finding a11y-auditor #498, pré-existant — 3 instances page Investissements) —
-  `components/ui/Pill.tsx` rend un radiogroup ARIA sans navigation flèches (pattern APG : roving tabindex
-  `tabIndex={isSelected ? 0 : -1}` + flèches) → Tab traverse chaque option une à une (7 arrêts pour le sélecteur
-  de période). Corriger UNE fois dans le composant partagé (profite aux 3+ usages). Cible tactile `sm` (~22 px)
-  sous 44 px : à évaluer dans le même passage.
+- [x] **`[A11Y-PILL-RADIOGROUP]`** ✅ (2026-07-24, PR suivante) — `components/ui/Pill.tsx` (radiogroup partagé)
+  a désormais la navigation clavier APG : roving tabindex (`tabIndex={isSelected ? 0 : -1}`, 1 seul arrêt de
+  Tab, repli sur la 1re option si `value` hors liste → jamais intabbable) + flèches ←→↑↓ (wrap) + Home/End,
+  la sélection SUIT le focus. Corrigé UNE fois → profite aux 3+ usages (Investissements/Budget/Futur). Cible
+  tactile `sm` : `min-h-[24px]` (WCAG 2.2 SC 2.5.8). Tests clavier + discriminant (4 tests échouent sur l'ancien).
 - [ ] **`[A11Y-DASH-SRONLY]`** (S, finding a11y-auditor #498, transverse) — les « — » (pas de donnée) rendus
   par formatCAD/formatPercent et les KPI null n'ont pas d'alternative sr-only « Pas de donnée » ; convention
   GLOBALE de l'app → ticket transverse (ne pas corriger site par site).

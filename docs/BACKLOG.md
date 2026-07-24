@@ -251,10 +251,16 @@
   catégorie FINALE, confiance 100 (règle) / 0 (repli honnête) ; logError AGRÉGÉ 1×/batch (pas 1×/chunk —
   ~40/100 entrées du journal sinon) ; défaut `safeCategories` aligné sur `RULE_CATEGORIES` (littéral
   divergent « Alimentation »/« Loisir » retiré).
-- [ ] **`[AI-CATEGORIZE-MISSING-ID]`** (S, FAIBLE) — `categorizeBatch` : une transaction dont l'`id` est
-  ABSENT de la réponse JSON du modèle est renvoyée inchangée SANS trace (`if (!r) return t;`,
-  `services/claude.ts`) — silent-drop pré-existant, voisin du garde-fou allowlist (finding ai-reviewer
-  PR #502). Compter les ids manquants + logError agrégé (même pattern que offListCount).
+- [x] **`[AI-CATEGORIZE-MISSING-ID]`** ✅ (2026-07-24, PR suivante) — `missingIdCount` agrégé sur le
+  batch + logError warning (même pattern que `offListCount`) : une transaction absente de la réponse
+  JSON du modèle laisse désormais une trace au lieu d'un silent-drop.
+- [ ] **`[DEP-HONO-TRAVERSAL]`** (S, EN ATTENTE UPSTREAM) — alerte Dependabot #26 / `npm audit` :
+  `@hono/node-server` <2.0.5, path traversal dans `serve-static` sur WINDOWS (%5C), transitive via
+  `@modelcontextprotocol/sdk@1.29.0` (épingle `^1.19.9` ; patch 2.0.5 publié le 2026-07-24, PAS de
+  patch 1.x). **Triage 2026-07-24 : NON exploitable chez nous** — zéro usage de serveStatic/hono dans
+  `mcp/` (grep vide), serveur Cloud Run LINUX, transport SDK seul. `npm audit fix` = no-op (hors range
+  semver) ; un override forcé vers 2.x risquerait de casser le serveur MCP pour une exposition nulle.
+  Action : bump du SDK dès qu'une version reprend hono/node-server ≥2.0.5 (Dependabot le proposera).
 
 ## 🤝 Assistant fusionné (demande Marc 2026-07-23 : « combiner Prochaine action à l'Assistant »)
 - [x] **`[ASSISTANT-HUB]`** ✅ (2026-07-23, PR #492) — onglet Assistant VISIBLE dans la nav (remplace

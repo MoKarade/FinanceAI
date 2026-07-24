@@ -7,6 +7,14 @@
 
 ---
 
+## MCP-CATEGORY-ALLOWLIST — redéploiement Cloud Run requis (remonté par Claude 2026-07-24, PR #502)
+- [ ] **Redéployer le serveur MCP sur Cloud Run** pour que l'allowlist de catégories (PR #502) prenne
+  effet côté claude.ai (leçon AITOOLS-SEC : une révision Cloud Run est séparée du deploy Vercel — l'app
+  web, elle, est déjà protégée par le même module partagé). Commande habituelle dans `mcp/README.md`
+  § Cloud Run (`gcloud run deploy --source .`). Sans ça, claude.ai peut encore écrire des catégories
+  inventées (la validation n'agit qu'à l'ÉCRITURE — rien ne re-valide rétroactivement l'existant ;
+  au pire, une catégorie inventée devient un poste au prochain sync du Budget, design Lot C).
+
 ## PORTFOLIO-HISTORY — vérif visuelle post-deploy (remonté par Claude 2026-07-22, PR #485)
 - [ ] **Smoke test du repli Yahoo en PROD** (2 min, après le deploy Vercel) : ouvre le Dashboard en données
   réelles → la courbe « Évolution détaillée » doit se remplir (au besoin recharge une fois passé ~1 min

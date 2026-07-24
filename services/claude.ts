@@ -296,10 +296,13 @@ export const categorizeBatch = async (
     let processed = 0;
     // [MCP-CATEGORY-ALLOWLIST] Allowlist construite 1× (safeCategories est fixe pour tout le batch).
     const allowedMap = buildCategoryCanonicalMap(safeCategories);
-    // Compteur AGRÉGÉ sur tout le batch → UN SEUL logError après la boucle (convention
+    // Compteurs AGRÉGÉS sur tout le batch → UN SEUL logError chacun après la boucle (convention
     // analyzeBankStatement ; un log par chunk pouvait consommer ~40 des 100 entrées du journal
     // sur un gros import — finding ai-reviewer PR #502).
     let offListCount = 0;
+    // [AI-CATEGORIZE-MISSING-ID] Une transaction ABSENTE de la réponse JSON du modèle était
+    // renvoyée inchangée SANS trace (silent-drop) — comptée désormais (finding ai-reviewer PR #502).
+    let missingIdCount = 0;
 
     for (let i = 0; i < transactions.length; i += CHUNK_SIZE) {
         const chunk = transactions.slice(i, i + CHUNK_SIZE);
@@ -348,7 +351,7 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict, sans markdown, sans commentaire:
                 // consigne du prompt), COMPTÉ + tracé (jamais silencieux).
                 const merged = toAnalyze.map(t => {
                     const r = byId.get(t.id);
-                    if (!r) return t;
+                    if (!r) { missingIdCount++; return t; }
                     const resolved = resolveCandidateCategory(r.category, allowedMap, t.payee || '', 'Autre');
                     if (resolved.remapped) offListCount++;
                     // ⚠️ Sur un remap, r.isTransfer/r.confidence portaient sur la catégorie
@@ -390,6 +393,12 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict, sans markdown, sans commentaire:
         logError({
             source: 'ai', severity: 'warning',
             message: `categorizeBatch : ${offListCount} catégorie(s) hors liste renvoyée(s) par le modèle sur le batch, remappée(s) par règles.`,
+        });
+    }
+    if (missingIdCount > 0) {
+        logError({
+            source: 'ai', severity: 'warning',
+            message: `categorizeBatch : ${missingIdCount} transaction(s) absente(s) de la réponse du modèle (id manquant) — laissée(s) non catégorisée(s).`,
         });
     }
 

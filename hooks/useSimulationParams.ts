@@ -7,7 +7,7 @@
 // `calculatedMonthlySavings` est passé en argument car il est dérivé en amont par
 // `useDerivedFinancials` (App) — on évite de le recalculer ici.
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useShallow } from 'zustand/shallow';
 import { buildSimulationParams } from '../services/projection/buildSimulationParams';
@@ -90,10 +90,33 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
 
     // La projection démarre AUJOURD'HUI (mois courant), pas au 1er janvier en dur :
     // passé reconstruit et futur projeté se rejoignent au point « aujourd'hui ».
-    const { startYear, startMonth } = useMemo(() => {
+    // [FUTUR-HIST-DAILY-REFRESH] « Aujourd'hui » AVANCE quand le mois calendaire change, même onglet ouvert :
+    // avant, `startYear/startMonth` étaient figés au MONTAGE (`useMemo([])`) → un onglet laissé ouvert à cheval
+    // sur un changement de mois gardait un « aujourd'hui » périmé jusqu'au prochain remount. `monthEpoch` (an×12+mois)
+    // se réévalue à chaque heure + au retour de visibilité → au passage de mois, la projection re-seed et le passé
+    // gagne son point manquant. Granularité MOIS (le passé/moteur sont mensuels ; un tick quotidien n'ajouterait rien).
+    const [monthEpoch, setMonthEpoch] = useState(() => {
         const d = new Date();
-        return { startYear: d.getFullYear(), startMonth: d.getMonth() };
+        return d.getFullYear() * 12 + d.getMonth();
+    });
+    useEffect(() => {
+        const check = () => {
+            const d = new Date();
+            const e = d.getFullYear() * 12 + d.getMonth();
+            setMonthEpoch((prev) => (prev === e ? prev : e)); // no-op si même mois → pas de re-render inutile
+        };
+        const id = setInterval(check, 60 * 60 * 1000); // horaire (onglet idle mais visible à cheval sur minuit)
+        const onVis = () => { if (typeof document !== 'undefined' && document.visibilityState === 'visible') check(); };
+        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVis);
+        return () => {
+            clearInterval(id);
+            if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
+        };
     }, []);
+    const { startYear, startMonth } = useMemo(
+        () => ({ startYear: Math.floor(monthEpoch / 12), startMonth: monthEpoch % 12 }),
+        [monthEpoch],
+    );
 
     const todayMonthIndex = useMemo(() => {
         const now = new Date();

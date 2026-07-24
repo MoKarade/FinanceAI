@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Futur : « aujourd'hui » qui avance + assemblage du passé testé] — 2026-07-24
+
+### Onglet Futur
+- **« Aujourd'hui » avance tout seul** : si tu laisses l'onglet ouvert au passage d'un mois, la courbe se recale
+  sur le nouveau mois (avant, « aujourd'hui » restait figé jusqu'à un rechargement).
+
+### Interne
+- Assemblage du segment passé de la courbe extrait en fonction pure `services/history/buildPastPrefix.ts`
+  (unit-testable hors composant) — verrouille le câblage money-critical (buckets, dette soustraite, dates) contre
+  toute régression, et allège le composant. `startYear/startMonth` réactifs au calendrier (check horaire + visibilité).
+
+---
+
 ## [unreleased — Futur : historique réel raccordé exactement à aujourd'hui] — 2026-07-24
 
 ### Onglet Futur

@@ -899,7 +899,15 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   bases différentes (dérive = Σ virements/doublons). Fix : exclure dup/transfert des deux côtés. Discriminant : 3 tests rouges
   sur l'ancien code (git-stash du seul `reconstructCashHistory.ts`). (3) **FX du passé = prix natif × FX du JOUR** (pas de FX
   historique daté) : choix no-fake assumé (garantit le raccord exact au présent où FX du jour = vérité) + note au bandeau ;
-  FX historique daté = ticket différé `[FUTUR-HIST-FX-DATED]`, non bloquant.
+  FX historique daté = ticket différé `[FUTUR-HIST-FX-DATED]`, non bloquant. (4) **Extraire un type d'objet en
+  `interface` PEUT casser un typecheck que le `type` alias inline passait** (leçon FUTUR-HIST-WIRING-TEST) : un
+  `interface` est mergeable → TS ne lui donne PAS de signature d'index implicite, donc il n'est PAS assignable à
+  `Record<string, unknown>` ; un `type Foo = {…}` (object-literal) l'est. En extrayant `PastPrefixPoint` d'un composant
+  vers un module (pour le rendre testable), le passer en `interface` a cassé l'assignabilité de `displayData` (consommé
+  par ChartDataTable en `Record<string, unknown>[]`). Réflexe : pour un type d'objet DESTINÉ à circuler comme
+  `Record<string, unknown>`, garder un `type` alias, pas une `interface`. (5) **Extraire l'assemblage inline d'un
+  `useMemo` money-critical en fonction PURE = le rendre unit-testable SANS harnais de rendu lourd** (buildPastPrefix) —
+  meilleur que mocker `lastProjection`+hooks pour tester le câblage ; discriminant vs substitution `DetteTotale`.
 - ⚠️ **[INVEST-ALLOC-GEO-SECTOR] 2026-07-23** : (1) **une table de lookup dont le FORMAT de clé a dérivé de celui
   des données réelles est une table entièrement MORTE en silence** (`ASSET_META` keyée `EPA:CW8` vs symboles réels
   `CW8.PA` → 0 hit, tout en « Autre » sans erreur) — normaliser le LOOKUP (pas les données), même classe que

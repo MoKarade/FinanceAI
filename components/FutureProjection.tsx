@@ -28,9 +28,7 @@ import { useChartTooltipPosition } from '../hooks/useChartTooltipPosition';
 import { resolvePointFromClick } from '../utils/chartTooltip';
 import { ProjectionControls } from './projection/ProjectionControls';
 import { useSimulationParams } from '../hooks/useSimulationParams';
-import { reconstructCashHistory } from '../services/history/reconstructCashHistory';
-import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
-import { pastNetWorthAt } from '../services/history/pastNetWorth';
+import { buildPastPrefix } from '../services/history/buildPastPrefix';
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
 import { ProjectionExplains } from './projection/ProjectionExplains';
 import { StrategyOptimizerPanel } from './projection/StrategyOptimizerPanel';
@@ -322,70 +320,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             logError({ source: 'ui', severity: 'warning', message: 'FutureProjection : chartData[0].DettesNonImmo non fini — dette du passé rabattue à 0', context: { rawDebtNonImmo } });
         }
     }, [debtAnomaly, rawDebtNonImmo]);
+    // [FUTUR-HIST-WIRING-TEST] Assemblage du segment passé extrait en fonction PURE `buildPastPrefix`
+    // (unit-testable, hors composant) → le câblage money-critical (buckets → helper, dette soustraite,
+    // dates) se prouve sans rendre le composant. Vide → `EMPTY_ARRAY` (référence stable pour l'aval).
     const pastPrefix = useMemo(() => {
-        const miOf = (ym: string): number => {
-            const [y, m] = ym.split('-').map(Number);
-            // Index relatif au DÉBUT de projection (mois 0 = startYear/startMonth).
-            // Le « -startMonth » est indispensable quand la projection démarre ≠ janvier.
-            return (y - startYear) * 12 + (m - 1 - startMonth);
-        };
-        const nowMonthKey = `${startYear}-${String(startMonth + 1).padStart(2, '0')}`;
-        const cashRes = reconstructCashHistory(transactions, calculatedStartingCash || 0, nowMonthKey);
-        const equityByYear = reconstructRealEstateEquityByYear(realEstateGoals, startYear);
-
-        const invByMi = new Map<number, import('../services/history/reconstructPortfolioHistory').PortfolioHistoryPoint>();
-        for (const p of pastHistory.points) {
-            const mi = miOf(p.date);
-            if (mi < 0) invByMi.set(mi, p);
-        }
-        const cashByMi = new Map<number, number>();
-        for (const c of cashRes.points) {
-            const mi = miOf(c.month);
-            if (mi < 0) cashByMi.set(mi, c.cash);
-        }
-        const mis = [...invByMi.keys(), ...cashByMi.keys()];
-        if (mis.length === 0) return EMPTY_ARRAY;
-        const minMi = Math.min(...mis);
-        const firstTxnMi = cashRes.firstMonth ? miOf(cashRes.firstMonth) : 1; // 1 = jamais de passé connu
-
-        type InvPoint = import('../services/history/reconstructPortfolioHistory').PortfolioHistoryPoint;
-        type PastPrefixPoint = { monthIndex: number; year: number; dateLabel: string; Liquidites: number; Immobilier: number; CELI: number; CELIAPP: number; REER: number; REEE: number; NonReg: number; Crypto: number; NetWorth: number | undefined; isPast: boolean };
-        const out: PastPrefixPoint[] = [];
-        let lastInv: InvPoint | null = null;
-        for (let mi = minMi; mi < 0; mi++) {
-            const invHere = invByMi.get(mi);
-            if (invHere) lastInv = invHere;
-            const inv = invHere ?? lastInv;
-            const cash = cashByMi.get(mi);
-            // Date calendaire réelle du point = startMonth + mi (mi est négatif au
-            // passé). Le « + startMonth » est indispensable quand la projection
-            // démarre ≠ janvier, sinon les libellés de date du passé sont décalés.
-            const absMonth = startMonth + mi;
-            const year = startYear + Math.floor(absMonth / 12);
-            const month = (((absMonth % 12) + 12) % 12) + 1;
-            const immo = equityByYear.get(year) ?? 0;
-            const celi = inv?.CELI ?? 0, celiapp = inv?.CELIAPP ?? 0, reer = inv?.REER ?? 0,
-                reee = inv?.REEE ?? 0, nonReg = inv?.NonReg ?? 0, crypto = inv?.Crypto ?? 0;
-            const hasNW = mi >= firstTxnMi; // VN seulement à partir de la 1re transaction connue
-            // [FUTUR-REAL-HISTORY, Option A 2026-07-24] Le NetWorth du PASSÉ = placements + cash + équité immo
-            // − `currentDebtNonImmo` (dette courante), via `pastNetWorthAt` → `computeRawNetWorth` (source
-            // unique). Raccord EXACT au futur qui soustrait la même dette dès le mois 0 (fin du saut « aujourd'hui »
-            // pour un endetté). Approximation assumée (dette supposée constante dans le passé — pas d'historique
-            // d'amortissement) SIGNALÉE dans le bandeau. Remplace [HIST-NW-NO-DEBT] (passé sans dettes = gonflé).
-            out.push({
-                monthIndex: mi,
-                year,
-                dateLabel: `${year}-${String(month).padStart(2, '0')}`,
-                Liquidites: hasNW ? (cash ?? 0) : 0,
-                Immobilier: immo,
-                CELI: celi, CELIAPP: celiapp, REER: reer, REEE: reee, NonReg: nonReg, Crypto: crypto,
-                NetWorth: hasNW
-                    ? pastNetWorthAt({ CELI: celi, CELIAPP: celiapp, REER: reer, REEE: reee, NonReg: nonReg, Crypto: crypto }, cash ?? 0, immo, currentDebtNonImmo)
-                    : undefined,
-                isPast: true,
-            });
-        }
-        return out;
+        const built = buildPastPrefix({ pastHistoryPoints: pastHistory.points, transactions, calculatedStartingCash, realEstateGoals, startYear, startMonth, currentDebtNonImmo });
+        return built.length ? built : EMPTY_ARRAY;
     }, [pastHistory.points, startYear, startMonth, transactions, calculatedStartingCash, realEstateGoals, currentDebtNonImmo]);
     // PH2-d — index NetWorth de la courbe VERROUILLÉE par monthIndex (référence à superposer).
     const lockedByMonth = useMemo(

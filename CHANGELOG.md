@@ -6,6 +6,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Futur : historique réel raccordé exactement à aujourd'hui] — 2026-07-24
+
+### Onglet Futur
+- **La courbe avant « aujourd'hui »** (ton historique réel reconstruit depuis tes transactions et placements)
+  **atteint maintenant EXACTEMENT ton patrimoine net d'aujourd'hui**, sans saut à la jointure. Avant, si tu avais
+  des dettes (carte, prêt), le passé les ignorait et sautait vers le bas pile à aujourd'hui. Désormais le passé
+  soustrait tes dettes au niveau actuel (approximation signalée sous le graphe : « dettes au niveau actuel »).
+- **Cohérence du cash passé** : la reconstruction du solde de liquidités ignore désormais les virements et doublons
+  exactement comme le calcul du solde présent — les deux bouts de la courbe partaient de bases différentes.
+- Bandeau d'honnêteté sous le graphe : « Patrimoine net réel depuis … · dettes au niveau actuel · titres étrangers
+  au change du jour » (aucune donnée inventée).
+
+### Interne
+- Nouveau helper pur `services/history/pastNetWorth.ts` (`pastNetWorthAt`) routant par `computeRawNetWorth`
+  (source unique du patrimoine net) — zéro copie locale de la formule. Tests discriminants (raccord dette + base cash).
+
+---
+
 ## [unreleased — Accessibilité : « Pas de donnée » annoncé au lecteur d'écran] — 2026-07-24
 
 ### Accessibilité

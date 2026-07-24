@@ -30,6 +30,7 @@ import { ProjectionControls } from './projection/ProjectionControls';
 import { useSimulationParams } from '../hooks/useSimulationParams';
 import { reconstructCashHistory } from '../services/history/reconstructCashHistory';
 import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
+import { pastNetWorthAt } from '../services/history/pastNetWorth';
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
 import { ProjectionExplains } from './projection/ProjectionExplains';
 import { StrategyOptimizerPanel } from './projection/StrategyOptimizerPanel';
@@ -182,6 +183,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // PH2-c — résultat LU depuis la SOURCE UNIQUE (publiée par ProjectionEngine, app-level).
     // Plus aucun calcul ni repli local : la courbe affichée EST celle du moteur (sauf GEL, ci-dessous).
     const liveResults = useFinanceStore(s => s.lastProjection);
+    // [FUTUR-REAL-HISTORY] La mention « change du jour » ne concerne QUE les titres en devise étrangère
+    // (facteur FX=1 pour CAD) → ne l'affiche pas pour un portefeuille 100 % CAD (finding code-reviewer :
+    // sinon on suggère un risque de change qui ne s'applique pas). Sélecteur booléen = re-render minimal.
+    const hasForeignHoldings = useFinanceStore(s => (s.assets ?? []).some(a => (a.currency || 'CAD') !== 'CAD'));
 
     // [PROJECTION-PERSIST 2026-07-16, demande Marc] — la projection révélée RESTE (reload / changement
     // de page / autre PC) et se FIGE quand les entrées changent (badge « pas à jour », choix Marc :
@@ -301,6 +306,22 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // VN laissée vide → pas de fausse ligne à 0). Carry-forward des placements pour
     // une courbe continue. Le cash actuel = cash au début de projection (jan 2026).
     // (pastHistory est déclaré plus haut — il sert aussi à amorcer liveCSVBalances.)
+    // [FUTUR-REAL-HISTORY, Option A] Dette hors hypothèque AU NIVEAU ACTUEL (source unique du moteur,
+    // `chartData[0].DettesNonImmo`) → soustraite du patrimoine net de CHAQUE point passé pour un raccord
+    // EXACT au présent (le futur soustrait la même dette dès le mois 0). Approximation assumée (dette
+    // supposée constante dans le passé, faute d'historique d'amortissement) — SIGNALÉE dans le bandeau.
+    // ⚠️ Garde tracée (finding silent-failure) : un `chartData` NON vide dont `DettesNonImmo` serait non fini
+    // (refactor moteur qui omettrait le champ) NE doit PAS retomber en silence à 0 (= régression MONEY-PHANTOM
+    // « passé gonflé » que ce fix corrige). `chartData` vide (avant 1er calcul) = nominal, silencieux. Log en
+    // useEffect (pas dans le render) → 1×/valeur distincte, jamais de thrash localStorage.
+    const rawDebtNonImmo = chartData[0]?.DettesNonImmo;
+    const currentDebtNonImmo = Number(rawDebtNonImmo) || 0;
+    const debtAnomaly = chartData.length > 0 && !Number.isFinite(Number(rawDebtNonImmo));
+    useEffect(() => {
+        if (debtAnomaly) {
+            logError({ source: 'ui', severity: 'warning', message: 'FutureProjection : chartData[0].DettesNonImmo non fini — dette du passé rabattue à 0', context: { rawDebtNonImmo } });
+        }
+    }, [debtAnomaly, rawDebtNonImmo]);
     const pastPrefix = useMemo(() => {
         const miOf = (ym: string): number => {
             const [y, m] = ym.split('-').map(Number);
@@ -346,12 +367,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             const celi = inv?.CELI ?? 0, celiapp = inv?.CELIAPP ?? 0, reer = inv?.REER ?? 0,
                 reee = inv?.REEE ?? 0, nonReg = inv?.NonReg ?? 0, crypto = inv?.Crypto ?? 0;
             const hasNW = mi >= firstTxnMi; // VN seulement à partir de la 1re transaction connue
-            // [HIST-NW-NO-DEBT, audit 2026-06-23] ⚠️ Le NetWorth du PASSÉ = placements + cash + équité immo,
-            // SANS dettes (on n'a pas l'historique des soldes de dette, seulement le solde courant) → pour un
-            // endetté, le passé est GONFLÉ vs le futur (qui soustrait les dettes). Limite assumée, pas un bug
-            // de conservation. Une approx (soustraire la dette COURANTE) ou un disclaimer = décision produit
-            // (cf docs/A_FAIRE_MOI HIST-NW-DEBT-DISCLAIMER).
-            const investSum = celi + celiapp + reer + reee + nonReg + crypto;
+            // [FUTUR-REAL-HISTORY, Option A 2026-07-24] Le NetWorth du PASSÉ = placements + cash + équité immo
+            // − `currentDebtNonImmo` (dette courante), via `pastNetWorthAt` → `computeRawNetWorth` (source
+            // unique). Raccord EXACT au futur qui soustrait la même dette dès le mois 0 (fin du saut « aujourd'hui »
+            // pour un endetté). Approximation assumée (dette supposée constante dans le passé — pas d'historique
+            // d'amortissement) SIGNALÉE dans le bandeau. Remplace [HIST-NW-NO-DEBT] (passé sans dettes = gonflé).
             out.push({
                 monthIndex: mi,
                 year,
@@ -359,12 +379,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 Liquidites: hasNW ? (cash ?? 0) : 0,
                 Immobilier: immo,
                 CELI: celi, CELIAPP: celiapp, REER: reer, REEE: reee, NonReg: nonReg, Crypto: crypto,
-                NetWorth: hasNW ? Math.round(investSum + (cash ?? 0) + immo) : undefined,
+                NetWorth: hasNW
+                    ? pastNetWorthAt({ CELI: celi, CELIAPP: celiapp, REER: reer, REEE: reee, NonReg: nonReg, Crypto: crypto }, cash ?? 0, immo, currentDebtNonImmo)
+                    : undefined,
                 isPast: true,
             });
         }
         return out;
-    }, [pastHistory.points, startYear, startMonth, transactions, calculatedStartingCash, realEstateGoals]);
+    }, [pastHistory.points, startYear, startMonth, transactions, calculatedStartingCash, realEstateGoals, currentDebtNonImmo]);
     // PH2-d — index NetWorth de la courbe VERROUILLÉE par monthIndex (référence à superposer).
     const lockedByMonth = useMemo(
         () => buildLockedByMonth(lockedProjection, isProjectionLocked, (p) => p.NetWorth ?? NaN),
@@ -933,12 +955,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         </button>
                     </div>
                 </div>
-                {/* A3 — note d'honnêteté sur le passé reconstruit (placements seulement). */}
+                {/* [FUTUR-REAL-HISTORY] Note d'honnêteté sur le passé reconstruit : patrimoine net réel
+                    (placements + cash + immo − dettes), avec deux approximations SIGNALÉES (Option A + FX du jour). */}
                 {pastPrefix.length > 0 && (
                     <div className="-mt-1 mb-2 text-tiny text-cyan-300/80 flex items-center gap-1.5 flex-wrap">
                         <span aria-hidden="true">⟵</span>
                         <span>
-                            Passé réel des placements{pastHistory.firstDate ? ` depuis ${pastHistory.firstDate.slice(0, 7)}` : ''}
+                            Patrimoine net réel{pastHistory.firstDate ? ` depuis ${pastHistory.firstDate.slice(0, 7)}` : ''}
+                            {currentDebtNonImmo > 0 ? ' · dettes au niveau actuel' : ''}
+                            {hasForeignHoldings ? ' · titres étrangers au change du jour' : ''}
                             {pastHistory.isLoading ? ' · chargement des prix…' : (pastHistory.coverage < 0.99 ? ' · partiellement estimé aux prix actuels' : '')}
                         </span>
                     </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { PrivateAmount } from './PrivateAmount';
+import { emptyAware } from './emptyAware';
 import { Tooltip } from './Tooltip';
 
 type KPIVariant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'primary';
@@ -87,10 +88,11 @@ export const KPIStat: React.FC<KPIStatProps> = ({
                 </span>
                 {icon && <span className="text-ink-300 text-meta" aria-hidden="true">{icon}</span>}
             </div>
-            {/* [D6-SR] — privacy passe par PrivateAmount : blur visuel (CSS inchangé) + masquage SR. */}
+            {/* [D6-SR] — privacy passe par PrivateAmount : blur visuel (CSS inchangé) + masquage SR.
+                [A11Y-DASH-SRONLY] hors privacy, un « — » (pas de donnée) devient aria-hidden + sr-only. */}
             {privacy
                 ? <PrivateAmount as="div" className="text-kpi text-ink-50 tabular-nums">{value}</PrivateAmount>
-                : <div className="text-kpi text-ink-50 tabular-nums">{value}</div>}
+                : <div className="text-kpi text-ink-50 tabular-nums">{emptyAware(value)}</div>}
             {(sublabel || trend !== undefined) && (
                 <div className="flex items-center justify-between gap-2 text-meta">
                     {sublabel && <span className="text-ink-400">{sublabel}</span>}

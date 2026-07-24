@@ -11,6 +11,7 @@
 import React from 'react';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
+import { emptyAware } from './emptyAware';
 
 export const PrivateAmount: React.FC<{
     children: React.ReactNode;
@@ -30,9 +31,11 @@ export const PrivateAmount: React.FC<{
             </Tag>
         );
     }
+    // [A11Y-DASH-SRONLY] hors mode discret, un « — » (pas de donnée) devient aria-hidden + sr-only
+    // « Pas de donnée » (couvre DualKPIStat et tout consommateur direct de PrivateAmount).
     return (
         <Tag className={className} title={title}>
-            {children}
+            {emptyAware(children)}
         </Tag>
     );
 };

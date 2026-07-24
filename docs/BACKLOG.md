@@ -208,9 +208,32 @@
   Tab, repli sur la 1re option si `value` hors liste → jamais intabbable) + flèches ←→↑↓ (wrap) + Home/End,
   la sélection SUIT le focus. Corrigé UNE fois → profite aux 3+ usages (Investissements/Budget/Futur). Cible
   tactile `sm` : `min-h-[24px]` (WCAG 2.2 SC 2.5.8). Tests clavier + discriminant (4 tests échouent sur l'ancien).
-- [ ] **`[A11Y-DASH-SRONLY]`** (S, finding a11y-auditor #498, transverse) — les « — » (pas de donnée) rendus
-  par formatCAD/formatPercent et les KPI null n'ont pas d'alternative sr-only « Pas de donnée » ; convention
-  GLOBALE de l'app → ticket transverse (ne pas corriger site par site).
+- [ ] **`[FUTUR-REAL-HISTORY]`** 🔵 (M-L, demande Marc 2026-07-24) — la courbe **Futur** doit montrer, AVANT
+  aujourd'hui, l'historique RÉEL du patrimoine « depuis que j'ai l'app » (pas seulement la projection future).
+  Objectif Marc : « la courbe avant aujourd'hui matche EXACTEMENT ce que j'avais — mes transactions/investissements
+  pour atteindre le niveau d'aujourd'hui » ; « se met à jour chaque jour + à chaque upload de transactions ou
+  changement d'investissements » = historique fidèle depuis la 1ʳᵉ donnée.
+  - **Segment PASSÉ (réel, reconstruit)** : patrimoine net par date = solde de liquidités reconstruit depuis les
+    TRANSACTIONS (running balance rétrograde depuis le solde actuel, ou progressif depuis le 1ᵉʳ mouvement) +
+    valeur des investissements à la date `t` (réutiliser `reconstructPortfolioHistory`/`holdingsAt`/`priceAt` de
+    [[PORTFOLIO-HISTORY]] × FX) − dettes à `t`. Ancré à AUJOURD'HUI = le patrimoine présent EXACT
+    (`computeRawNetWorth`/`chartData[0]` — source unique, ne PAS diverger au point d'ancrage, cf [[NW-PARITY-INVARIANT]]).
+  - **Raccord** : segment passé réel ⌢ à `t=aujourd'hui` ⌢ segment futur = projection (`lastProjection.chartData`).
+    Une seule courbe continue, aujourd'hui = jointure (marqueur visuel « aujourd'hui »).
+  - **Mises à jour** : recalcul du passé sur changement de date (nouveau jour), upload de transactions, édition
+    d'investissements/soldes (réactivité store) — comme les graphes Invest.
+  - **Garde-fous** : no-fake-data (jours sans donnée avant la 1ʳᵉ transaction = pas de courbe inventée ; trou =
+    honnête) ; « depuis que j'ai l'app » = borne = date de la 1ʳᵉ transaction/donnée ; la reconstruction du passé NW
+    doit être PROUVÉE reconstructible depuis les transactions affichées (`NW(t)=Σactifs(t)−dettes(t)`), pas un
+    lissage. ⚠️ Scoper avec `architect` (source de vérité du passé : moteur vs helper dédié ; perf du recalcul
+    quotidien) + `financial-integrity` (le NW passé reconstruit doit matcher le présent au point d'ancrage). Plan-first.
+- [x] **`[A11Y-DASH-SRONLY]`** ✅ (2026-07-24, PR suivante) — convention GLOBALE : helper pur
+  `components/ui/emptyAware` — quand la valeur rendue EST le tiret « — » (état vide de formatCAD/formatPercent),
+  il remplace le tiret muet par `<span aria-hidden>—</span>` + `<span class="sr-only">Pas de donnée</span>`
+  (un SR lirait sinon « tiret cadratin »/rien). Appliqué au CENTRE (slot `value` de `KPIStat` hors privacy +
+  branche non-privée de `PrivateAmount` → couvre aussi `DualKPIStat`) → pas de correction site-par-site.
+  Miroir de `PrivateAmount` (« ••• » + « Montant masqué »). Tests : « — » → sr-only exposé + dash aria-hidden ;
+  discriminant valeur finie → aucun sr-only fabriqué.
 - [x] **`[HIST-GOOGLE-PARITY]`** — ✅ 2026-07-23 absorbé par [HIST-COVERAGE-TOTAL] (couverture complète livrée ;
   l'écart résiduel attendu vs Google = granularité daily + heure FX, documenté ci-dessous). Question Marc :
   (« utiliser exactement la courbe de google finance c'est possible ? ») —

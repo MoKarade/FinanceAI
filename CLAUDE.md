@@ -661,6 +661,12 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   `<PrivateAmount>`/`<PrivateBlock>` qui rendent `•••` (`aria-hidden`) + un `sr-only` « Montant masqué » → la
   vraie valeur **sort du DOM**. JAMAIS un simple blur CSS (`privacy-blur`) : il laisse la valeur en clair
   (copier-coller / inspecteur / lecteur d'écran / désactivation de classe) — fuite Loi 25. Pas de survol-révèle.
+  ⚠️ **État vide « — » (A11Y-DASH-SRONLY 2026-07-24) : `components/ui/emptyAware` = MIROIR de PrivateAmount** —
+  quand la valeur rendue EST le tiret « — » (sortie de `formatCAD`/`formatPercent` sur une valeur non finie), il
+  rend `<span aria-hidden>—</span>` + `<span class="sr-only">Pas de donnée</span>` (un SR lit sinon « tiret cadratin »/
+  rien). Corrigé au CENTRE — le slot `value` des composants PARTAGÉS (`KPIStat` hors privacy, branche non-privée de
+  `PrivateAmount` → couvre `DualKPIStat`), JAMAIS site-par-site : un état vide global se détecte à la CHAÎNE (string
+  exactement « — » après trim), pas à chaque `formatCAD(x)`. Ne traite QUE la chaîne-tiret exacte (montant réel/nœud composé passe intact).
   ⚠️ **Champ ÉDITABLE → `<PrivateNumberInput>` (focus-to-edit), JAMAIS `type=password` ni `privacy-blur`** (leçon
   SEC-PRIVACY-BLUR-INPUTS 2026-06-23) : en mode discret hors-focus il rend `•••` SANS spread `...rest` (donc `value`
   HORS du DOM, comme `<PrivateAmount>`), et révèle un vrai `<input>` au clic/focus clavier ; il re-masque au blur ET

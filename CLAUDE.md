@@ -855,6 +855,16 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   une TRACE (journal) + un geste de reprise immédiat (le bouton Actualiser wipe le cache négatif) — un mécanisme
   d'économie réseau sans signal = classe « staleness silencieuse ». (5) **le documentation-manager peut INVENTER
   un chiffre et marquer mergée une PR en vol** — relire ses éditions du handover comme un finding (agent durci).
+- ⚠️ **[AITOOLS-PROMPT-CACHE] 2026-07-24 — prompt caching Anthropic : l'ORDRE de préfixe est la vraie mécanique** :
+  le prompt caching est un **match de PRÉFIXE** dans l'ordre canonique **`tools` → `system` → `messages`** — un
+  `cache_control` sur le bloc `system` cache DÉJÀ **tout ce qui le précède, dont les tools** (confirmé skill claude-api).
+  Donc « cache_control sur system ET tools » du ticket était en partie DÉJÀ livré par le breakpoint system (#490) : les
+  16 schémas de tools étaient cachés par l'ordre. Le delta utile = un breakpoint EXPLICITE sur le DERNIER tool (un seul
+  suffit pour tout le préfixe tools) → défense en profondeur (tools cachés même si le préfixe system change), pas un gain
+  fonctionnel immédiat. Réflexe : avant de coder un fix de caching, tracer l'ORDRE de préfixe et les breakpoints DÉJÀ posés
+  (leçon « vérifier l'état réel ») ; un marqueur sous le minimum cacheable (~1-2k tokens) est IGNORÉ sans erreur (sans risque) ;
+  max 4 breakpoints. Preuve = guard-test de FORME de requête (capturer `requests[0].tools`/`.system`, asserter les marqueurs),
+  pas une mesure de tokens (non déterministe en test). `usage.cache_read_input_tokens` est l'arbitre en prod (B4-CHAT-COST le remonte).
 - ⚠️ **[QUOTE-ERRKIND] 2026-07-24 — propager le TYPE d'erreur provider→façade (fix structurel de QUOTE-NEGATIVE-CACHE)** :
   les providers PROPAGENT (throw `MarketDataError` typée) les erreurs TRANSITOIRES (RATE_LIMIT/NETWORK/AUTH/UNKNOWN) au
   lieu de les aplatir en `null` ; l'ABSENCE confirmée reste `null` ; la façade (`runLink`, `services/marketData/index.ts`)

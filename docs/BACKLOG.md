@@ -60,12 +60,13 @@
   finding Lot D « promesse orpheline au démontage d'onglet » (chat monté App, jamais démonté par onglet ;
   modal rendu 1× par le provider). Boot inchangé (~107 kB gzip mesuré : SDK Anthropic en import dynamique
   dans `useAiChat`, panneau lazy). Mode discret masque tout ; pastille d'activité sur le FAB panneau fermé.
-- [ ] **`[AITOOLS-PROMPT-CACHE]`** 🟡 (S/M, découvert à l'audit SEC) — pas de prompt caching Anthropic :
-  chaque tour de `runAgentLoop` (jusqu'à 6) resoumet system + 16 schémas de tools + tool_results accumulés
-  → coût BYOK repayé à chaque consultation d'outil. Fix = `cache_control: {type:'ephemeral'}` sur le bloc
-  `system` et le tableau `tools` (stables d'un tour à l'autre) dans `agentLoop.ts` — gain direct, zéro
-  changement de comportement. À MESURER (économie réelle de tokens) et tester la forme de requête (les
-  tests scriptés capturent `requests[0]`). Optimisation coût, pas sécurité → ticket dédié hors SEC.
+- [x] **`[AITOOLS-PROMPT-CACHE]`** ✅ (2026-07-24, PR suivante) — état réel : le `cache_control` du bloc
+  `system` statique (livré en #490) cachait DÉJÀ les 16 schémas de tools par l'ORDRE de préfixe Anthropic
+  (tools → system → messages : un breakpoint sur system cache tout ce qui le précède). Complété : marqueur
+  `cache_control` EXPLICITE sur le DERNIER tool dans `agentLoop.ts` → les tools sont cachés INDÉPENDAMMENT
+  du system (défense en profondeur si le préfixe system change) ; le préfixe (system+tools+historique) est
+  re-servi du cache aux tours 2-6 + messages suivants (coût BYOK). Guard-test de forme de requête (2 marqueurs
+  présents). Zéro changement de comportement ; `usage.cache_read_input_tokens` déjà remonté (B4-CHAT-COST).
 - [ ] **`[PERF-SDK-BOOT-PRELOAD]`** 🟡 (S/M, découvert au panel Lot E, PRÉ-EXISTANT) — `ai-vendor` (SDK
   Anthropic) apparaît en `<link rel="modulepreload">` dans `dist/index.html` → le navigateur télécharge
   le SDK au boot (sans l'exécuter). Cause : `services/claude.ts:13` fait `import Anthropic from '@anthropic-ai/sdk'`

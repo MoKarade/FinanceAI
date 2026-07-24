@@ -176,6 +176,18 @@ export async function runAgentLoop(
     const client = opts.client ?? (makeClient(opts.apiKey) as unknown as AgentClientLike);
     // [AITOOLS-D] Les tools d'écriture ne sont déclarés QUE si un exécuteur de confirmation existe.
     const tools = toAnthropicTools(opts.onWriteToolUse ? [...READ_SPECS, ...WRITE_SPECS] : READ_SPECS);
+    // [AITOOLS-PROMPT-CACHE] Point de cache EXPLICITE sur le DERNIER tool. Dans l'ordre canonique
+    // Anthropic (tools → system → messages), le `cache_control` du bloc system statique (#490) cache
+    // DÉJÀ les tools qui le précèdent — mais un breakpoint propre sur les tools les rend cacheables
+    // INDÉPENDAMMENT du system (défense en profondeur : les 16 schémas restent servis du cache même si
+    // le préfixe system venait à changer). Re-servi aux tours 2-6 de la boucle + aux messages suivants
+    // (coût BYOK). Sans risque : l'API IGNORE le marqueur sous le minimum cacheable, sans erreur (le seuil
+    // varie par modèle — plus haut sur Haiku ; le repli est le no-op documenté). NB position-préfixe :
+    // les tools sont AVANT le system dans l'ordre Anthropic ; ce marqueur est le 3ᵉ breakpoint POSÉ sur ce
+    // chantier (system statique #490 + dernière pièce jointe B1 = les 2 autres), bien sous la limite de 4.
+    if (tools.length > 0) {
+        tools[tools.length - 1] = { ...tools[tools.length - 1], cache_control: { type: 'ephemeral' } };
+    }
     const maxTurns = opts.maxTurns ?? DEFAULT_MAX_TURNS;
     // [Finding ai-reviewer #490] Blocs système : préfixe statique CACHÉ (cache_control) + ligne de
     // contexte d'écran dynamique séparée — un `system` string variable invalidait le cache entier.

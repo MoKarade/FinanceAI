@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Assistant IA : coût réduit par la mise en cache du prompt] — 2026-07-24
+
+### Amélioration
+- **L'assistant IA in-app réutilise désormais explicitement le cache de prompt d'Anthropic** pour les
+  définitions d'outils, en plus du contexte système déjà mis en cache. Sur une conversation qui consulte
+  plusieurs outils (jusqu'à 6 allers-retours), la partie stable de la requête est re-servie du cache au
+  lieu d'être refacturée à chaque tour — moins de coût sur ta clé API, aucun changement de comportement.
+
 ## [unreleased — Cours : un rate-limit temporaire ne gèle plus un vrai titre] — 2026-07-24
 
 ### Correction

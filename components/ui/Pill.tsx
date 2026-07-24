@@ -10,10 +10,17 @@ export interface PillOption<T extends string> {
 interface PillProps<T extends string> {
     options: PillOption<T>[];
     value: T;
+    /**
+     * [A11Y-PILL-RADIOGROUP] La sélection SUIT le focus (flèches = activation immédiate, pattern
+     * radio APG) → `onChange` peut être appelé en rafale sur une navigation clavier maintenue.
+     * Le réserver à des actions BON MARCHÉ/idempotentes (setState, filtre client) ou débouncées —
+     * PAS un fetch réseau synchrone soumis à rate-limit (finding a11y-auditor #506).
+     */
     onChange: (value: T) => void;
     size?: 'sm' | 'md';
     fullWidth?: boolean;
-    'aria-label'?: string;
+    /** [A11Y-PILL-RADIOGROUP] REQUIS : un radiogroup sans nom accessible viole WCAG 4.1.2 (finding a11y-auditor). */
+    'aria-label': string;
     className?: string;
 }
 

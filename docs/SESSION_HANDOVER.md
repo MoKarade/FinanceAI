@@ -4,11 +4,12 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟢 Session 2026-07-24 — BUDGET-3-VUES + BUDGET-MATCH-UNIFY + MCP-CATEGORY-ALLOWLIST + AI-CATEGORIZE-MISSING-ID (PR #502 MERGÉE ; PR #503 en DRAFT)
+> ## 🟢 Session 2026-07-24 — BUDGET-3-VUES + BUDGET-MATCH-UNIFY + MCP-CATEGORY-ALLOWLIST + AI-CATEGORIZE-MISSING-ID + AUTH-DRIVE-STILL-RECONNECT (PR #503 MERGÉE ; PR #504 DRAFT, « pas assez d'icônes Futur » #35)
 > **✅ `[BUDGET-3-VUES]`** (PR #500, squash 7e80af2, 2026-07-23) : tableau Budget 3 colonnes — réel période · moyenne 12 mois · cible. Panel `/review-all` : findings a11y corrigés.
 > **✅ `[BUDGET-MATCH-UNIFY]`** (PR #501, squash ace36bf, 2026-07-24) : rapprochement catégorie fuzzy via `matchCategoryToName` prédicat partagé, allocation zéro-overhead, auto-target. Panel : financial-integrity 0 findings (mesurés), code-reviewer 1 perf (allocation/appel, corrigé), silent-failure-hunter 1 ÉLEVÉ → déploiement imédiat.
 > **✅ `[MCP-CATEGORY-ALLOWLIST]`** (PR #502, squash 9686691, 2026-07-24) : validations catégorie libre au point d'écriture `applyDocument.ts` (app↔MCP partagé), allowlist postes/RULE_CATEGORIES, remap casse/accents, inconnue → ruleCategorize sinon « Non catégorisé », remaps comptés au summary. Description du tool dérivée de source unique. Panel 4 agents (code-reviewer, silent-failure-hunter, security-privacy, ai-reviewer) appliqué. MERGÉE. Nouveau ticket [AI-CATEGORIZE-MISSING-ID] (S) découvert.
-> **PR #503 `[AI-CATEGORIZE-MISSING-ID]` (DRAFT, branche `claude/progress-check-yua8yy`, 1 commit `7ec7fff`)** : trace des transactions omises par le modèle dans `categorizeBatch` + triage Dependabot #26 ([DEP-HONO-TRAVERSAL] non exploitable, en attente upstream) + action Cloud Run remise en attente. Auto-merge à armer après panel.
+> **✅ PR #503 `[AI-CATEGORIZE-MISSING-ID]` (MERGÉE, squash fde0eec, 2026-07-24, branche `claude/progress-check-yua8yy`)** : trace des transactions omises par le modèle dans `categorizeBatch` + triage Dependabot #26 ([DEP-HONO-TRAVERSAL] non exploitable, en attente upstream) + action Cloud Run remise en attente. Panel 2 agents appliqué.
+> **PR #504 `[AUTH-DRIVE-STILL-RECONNECT]` (DRAFT, branche `claude/progress-check-yua8yy`)** : instrumentation des échecs de renouvellement Drive (traceSilentAuthFailure : raison GIS throttlée, sévérité info/warning) + fermeture trou 401 DriveAuthError. Panel 2 agents en cours, ready+auto-merge imminents. ⚠️ **Bug Marc signalé : « pas assez d'icônes dans Futur »** — cause trouvée (thinEvents sous-remplit cap de densité), fix prévu tâche #35 PR séparée post-merge #504.
 >
 > ## 🟡 Session 2026-07-23 (suite 9) — BUDGET-3-VUES : Budget par poste 3 colonnes réel/moy.12m/cible (PR #500, DRAFT — auto-merge armé)
 > **En cours** `[BUDGET-3-VUES]` : tableau Budget 3 colonnes — réel période · moyenne 12 mois (mois courant exclu, sans historique → « — ») · cible.
@@ -1058,8 +1059,8 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#502** [MCP-CATEGORY-ALLOWLIST] (validations catégorie libre au point d'écriture `applyDocument.ts` partagé app↔MCP ; allowlist RULE_CATEGORIES, remaps casse/accents, inconnue → ruleCategorize ; 2026-07-24, squash 9686691, MERGÉE) |
-| **PR en cours (DRAFT)** | **#503** [AI-CATEGORIZE-MISSING-ID] (branche `claude/progress-check-yua8yy`, 1 commit `7ec7fff`, auto-merge à armer) — trace des tx omises par modèle dans `categorizeBatch` + triage Dependabot #26 + action Cloud Run ; panel en cours |
+| **Dernière PR mergée** | **#503** [AI-CATEGORIZE-MISSING-ID] (trace des transactions omises par modèle dans `categorizeBatch` + triage Dependabot #26 + Cloud Run ; 2026-07-24, squash fde0eec, MERGÉE) |
+| **PR en cours (DRAFT)** | **#504** [AUTH-DRIVE-STILL-RECONNECT] (branche `claude/progress-check-yua8yy`, instrumentation GIS throttle + fermeture 401 DriveAuthError, panel 2 agents, ready+auto-merge imminents) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
 | **Tests** | **~3020 verts, suite complète** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation — compte exact au gate/CI) |
 | **Typecheck** | Clean en mode strict |

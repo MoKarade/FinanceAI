@@ -11,7 +11,7 @@
 
 /**
  * Rend au plus `cap` éléments de `arr`, uniformément répartis (1er et dernier toujours inclus quand
- * `arr.length > cap`). Si `arr.length <= cap`, rend `arr` tel quel (tous les éléments tiennent).
+ * `arr.length > cap`). Si `arr.length <= cap`, rend une COPIE de `arr` (tous les éléments tiennent).
  * Préserve l'ordre. Ne duplique jamais un élément.
  */
 export function sampleEvenly<T>(arr: readonly T[], cap: number): T[] {

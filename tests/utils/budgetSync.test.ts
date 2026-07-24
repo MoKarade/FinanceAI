@@ -168,6 +168,27 @@ describe('buildMonthlyLedger (réel revenus + dépenses par mois)', () => {
         expect(l.netByMonth[10]).toBeCloseTo(1494.62, 2);
     });
 
+    // [BUDGET-MATCH-UNIFY] Le ledger rapproche par la MÊME règle que le réel (fuzzy) — avant,
+    // match EXACT seul : « Restaurant » (tx) ne comptait PAS dans le poste « Restaurants »
+    // (réel 600 $ · moy 0 $, l'historique filait dans « Autres » — finding financial-integrity PR #500).
+    it('rapproche en fuzzy comme le réel : « Restaurant » compte dans le poste « Restaurants »', () => {
+        const transactions = [
+            tx({ category: 'Restaurant', amount: -300, date: '2026-05-10' }),
+            tx({ category: 'Restaurant', amount: -300, date: '2026-06-10' }),
+            tx({ category: 'Impôts', amount: -100, date: '2026-06-15' }), // aucun poste → Autres
+        ];
+        const l = buildMonthlyLedger(transactions, ['Restaurants'], 12, REF);
+        const resto = l.expenseRows.find(r => r.category === 'Restaurants')!;
+        expect(resto.byMonth[10]).toBe(300); // juin
+        expect(resto.monthlyAverage).toBeCloseTo(300, 4); // 600 $ / 2 mois pleins (mai-juin)
+        // La dépense rapprochée ne fuit PLUS dans « Autres » ; la vraie orpheline y reste.
+        const autres = l.expenseRows.find(r => r.category === 'Autres / non classées')!;
+        expect(autres.byMonth[10]).toBe(100);
+        // L'invariant de visibilité tient toujours : Σ(lignes) == Total dépenses.
+        const sum = l.expenseRows.reduce((s, r) => s + r.byMonth[10], 0);
+        expect(sum).toBeCloseTo(l.totalExpenseByMonth[10], 2);
+    });
+
     it('une dépense HORS postes tombe dans « Autres / non classées » — Σ(lignes) == Total (finding panel)', () => {
         const transactions = [
             tx({ category: 'Épicerie', amount: -100, date: '2026-06-05' }),

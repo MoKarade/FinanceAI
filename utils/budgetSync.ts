@@ -10,7 +10,7 @@
 //   - buildMonthlyLedger : grand livre mensuel (réel REVENUS + DÉPENSES + solde par mois).
 
 import type { BudgetCategory, Transaction } from '../types';
-import { matchTransactionToCategory } from './budget';
+import { matchTransactionToCategory, matchCategoryToName } from './budget';
 
 /** Catégories de dépense JAMAIS transformées en poste de budget (statuts/mouvements). */
 const NON_BUDGET_CATEGORIES = new Set([
@@ -305,6 +305,8 @@ export function buildMonthlyLedger(
 
     const expense = new Map<string, number[]>(expenseCategories.map(c => [c, months.map(() => 0)]));
     const income = new Map<string, number[]>();
+    // [BUDGET-MATCH-UNIFY] Cache catégorie→poste résolu (le fuzzy est O(postes) ; ~2000 tx).
+    const resolved = new Map<string, string>();
     const totalExpenseByMonth = months.map(() => 0);
     const totalIncomeByMonth = months.map(() => 0);
 
@@ -314,10 +316,17 @@ export function buildMonthlyLedger(
         if (mi === undefined) continue;
         if (t.amount < 0) {
             totalExpenseByMonth[mi] += Math.abs(t.amount);
-            // Toute dépense HORS postes (Uncategorized, Impôts, poste retiré…) tombe dans un
-            // bucket VISIBLE — sinon Σ(lignes) < Total dépenses sans explication (finding panel,
-            // miroir du bucket « Autres revenus »).
-            const cat = expense.has(t.category) ? t.category : 'Autres / non classées';
+            // [BUDGET-MATCH-UNIFY] Attribution tx→poste par la MÊME règle que le réel
+            // (`matchCategoryToName` : exact, sinon substring) — avant, le ledger matchait en
+            // EXACT seul → un poste « Restaurants » avec des tx « Restaurant » affichait
+            // réel 600 $ · moy 0 $ (l'historique filait dans « Autres »). Toute dépense qui ne
+            // rapproche AUCUN poste (Uncategorized, Impôts, poste retiré…) tombe dans un bucket
+            // VISIBLE — sinon Σ(lignes) < Total dépenses sans explication (finding panel).
+            let cat = resolved.get(t.category);
+            if (cat === undefined) {
+                cat = matchCategoryToName(t.category, expenseCategories) ?? 'Autres / non classées';
+                resolved.set(t.category, cat);
+            }
             if (!expense.has(cat)) expense.set(cat, months.map(() => 0));
             expense.get(cat)![mi] += Math.abs(t.amount);
         } else if (t.amount > 0) {

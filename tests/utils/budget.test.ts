@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchTransactionToCategory, computeBudgetParity, computeGoldenSplit, GOLDEN_IDEAL, resolveTransactionOwner, computeActualByOwner } from '../../utils/budget';
+import { matchTransactionToCategory, matchCategoryToName, computeBudgetParity, computeGoldenSplit, GOLDEN_IDEAL, resolveTransactionOwner, computeActualByOwner } from '../../utils/budget';
 import type { BudgetCategory, Transaction } from '../../types';
 
 const cat = (name: string, nature: BudgetCategory['nature'] = 'Besoin'): BudgetCategory =>
@@ -31,6 +31,23 @@ describe('matchTransactionToCategory — règle unique', () => {
     it('priorise le match EXACT sur le substring', () => {
         const items = [cat('Resto du coin'), cat('Resto')];
         expect(matchTransactionToCategory('Resto', items)?.name).toBe('Resto');
+    });
+});
+
+// [BUDGET-MATCH-UNIFY] Variante noms-seuls : MÊME règle (exact d'abord, sinon premier substring
+// bicase), consommée par le ledger pour rapprocher comme le réel.
+describe('matchCategoryToName — même règle au niveau noms', () => {
+    const NAMES = ['Épicerie', 'Restaurants', 'Loyer'];
+    it('exact, substring bicase dans les deux sens, orphelin, vide', () => {
+        expect(matchCategoryToName('Restaurants', NAMES)).toBe('Restaurants');
+        expect(matchCategoryToName('Restaurant', NAMES)).toBe('Restaurants'); // catégorie ⊂ poste
+        expect(matchCategoryToName('Loyer appartement', NAMES)).toBe('Loyer'); // poste ⊂ catégorie
+        expect(matchCategoryToName('Crypto', NAMES)).toBeUndefined();
+        expect(matchCategoryToName('', NAMES)).toBeUndefined();
+        expect(matchCategoryToName(undefined, NAMES)).toBeUndefined();
+    });
+    it('priorise l\'EXACT sur le substring (parité avec matchTransactionToCategory)', () => {
+        expect(matchCategoryToName('Resto', ['Resto du coin', 'Resto'])).toBe('Resto');
     });
 });
 

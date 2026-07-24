@@ -24,12 +24,26 @@ export function matchTransactionToCategory(
     category: string | undefined | null,
     items: readonly BudgetCategory[],
 ): BudgetCategory | undefined {
+    const name = matchCategoryToName(category, items.map((b) => b.name));
+    return name === undefined ? undefined : items.find((b) => b.name === name);
+}
+
+/**
+ * [BUDGET-MATCH-UNIFY] Variante NOMS SEULS de la MÊME règle (exact d'abord, sinon premier
+ * substring bicase) — consommée par le ledger (`utils/budgetSync.ts`) pour que la moyenne
+ * par poste et le grand livre rapprochent EXACTEMENT comme le réel (`computeBudgetParity`).
+ * Finding financial-integrity PR #500 : réel en fuzzy vs moyenne en exact → un poste
+ * « Restaurants » avec des tx « Restaurant » affichait réel 600 $ · moy 0 $.
+ */
+export function matchCategoryToName(
+    category: string | undefined | null,
+    names: readonly string[],
+): string | undefined {
     if (!category) return undefined;
-    const exact = items.find((b) => b.name === category);
-    if (exact) return exact;
+    if (names.includes(category)) return category;
     const c = category.toLowerCase();
-    return items.find((b) => {
-        const n = b.name.toLowerCase();
+    return names.find((name) => {
+        const n = name.toLowerCase();
         return n.includes(c) || c.includes(n);
     });
 }

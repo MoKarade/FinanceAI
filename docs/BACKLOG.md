@@ -232,16 +232,29 @@
   SUR-prescrivait « les trois ensemble » : la CIBLE AUTO est restée exacte À RAISON — au moment du
   calcul, les noms de postes ≡ catégories observées (la sync canonicalise avant) → l'exact n'y diverge
   jamais du fuzzy, et un fuzzy mono-catégorie aurait risqué un double-comptage cross-poste.
-- [ ] **`[MCP-CATEGORY-ALLOWLIST]`** (S) — valider la catégorie LIBRE des tools MCP d'écriture contre la
-  liste canonique (finding silent-failure-hunter PR #501, prouvé par sonde) : `apply_bank_statement`
-  (`mcp/tools/applyBankStatement.spec.ts`) accepte `category: z.string()` sans contrainte → une catégorie
-  inventée (« Sport ») entre dans les données et le rapprochement fuzzy PARTAGÉ (réel + moyenne + grand
-  livre depuis PR #501) la classe sous un poste au nom englobant (« Tran-sport ») SANS trace — déplacement
-  d'argent d'un poste vers un autre, plausible et silencieux. L'UI est immune (catégories au `<select>`) ;
-  la frontière à durcir est le MCP : allowlist des catégories canoniques (postes + RULE_CATEGORIES) au
-  point d'écriture, repli « Uncategorized » + note honnête si inconnue (classe « allowlist au point
-  d'écriture », cf. [[HIST-MULTI-PROVIDER]] (6) `asSupportedCurrency`). NB : ne PAS « corriger » en
-  ancrant le fuzzy sur mots entiers — ça casserait le cas principal (« Restaurant » ⊂ « Restaurants »).
+- [x] **`[MCP-CATEGORY-ALLOWLIST]`** ✅ (2026-07-24, PR suivante) — la catégorie LIBRE d'`apply_bank_statement`
+  est validée au point d'écriture (`mcp/ingest/applyDocument.ts`, module PARTAGÉ app↔MCP → les deux surfaces
+  couvertes par construction) : allowlist = postes existants + `RULE_CATEGORIES`, insensible casse/accents
+  (remap vers la forme canonique) ; inconnue (« Sport ») → `ruleCategorize(payee)` sinon « Non catégorisé »,
+  et le summary COMPTE les remaps (jamais silencieux). Discriminant prouvé par git stash. Bonus : l'exemple
+  de la description du tool enseignait « Alimentation » (hors canon !) — désormais DÉRIVÉ de `RULE_CATEGORIES`.
+  NB conservé : ne PAS ancrer le fuzzy sur mots entiers (casserait « Restaurant » ⊂ « Restaurants »).
+  **Extension (panel PR #502)** : helpers PURS partagés (`categoryKey`/`buildCategoryCanonicalMap`/
+  `resolveCandidateCategory` dans `categoryRules.ts`) + le MÊME enforcement porté à `categorizeBatch`
+  (finding ÉLEVÉ silent-failure : le prompt affirmait « sera rejetée » sans code — désormais hors liste →
+  règles payee sinon « Autre », compté + logError). Collision poste↔RULE_CATEGORY documentée+testée (le
+  poste gagne). **Réfuté pour l'import CSV** : la catégorie d'un CSV est une DONNÉE RÉELLE de la banque —
+  par design Lot C (postes ≡ catégories observées), elle devient légitimement un poste au prochain sync ;
+  l'allowlist la détruirait. Fenêtre fuzzy pré-sync transitoire, s'auto-résout au sync.
+  **2ᵉ passe (ai-reviewer)** : sur un remap, `isTransfer`/`confidence` recyclés portaient sur la catégorie
+  REJETÉE (« Transfert » avec isTransfer:false = compté à tort dans le Σ affiché) → isTransfer dérivé de la
+  catégorie FINALE, confiance 100 (règle) / 0 (repli honnête) ; logError AGRÉGÉ 1×/batch (pas 1×/chunk —
+  ~40/100 entrées du journal sinon) ; défaut `safeCategories` aligné sur `RULE_CATEGORIES` (littéral
+  divergent « Alimentation »/« Loisir » retiré).
+- [ ] **`[AI-CATEGORIZE-MISSING-ID]`** (S, FAIBLE) — `categorizeBatch` : une transaction dont l'`id` est
+  ABSENT de la réponse JSON du modèle est renvoyée inchangée SANS trace (`if (!r) return t;`,
+  `services/claude.ts`) — silent-drop pré-existant, voisin du garde-fou allowlist (finding ai-reviewer
+  PR #502). Compter les ids manquants + logError agrégé (même pattern que offListCount).
 
 ## 🤝 Assistant fusionné (demande Marc 2026-07-23 : « combiner Prochaine action à l'Assistant »)
 - [x] **`[ASSISTANT-HUB]`** ✅ (2026-07-23, PR #492) — onglet Assistant VISIBLE dans la nav (remplace

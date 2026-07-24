@@ -17,6 +17,7 @@ import { logError } from './errorLogger';
 import { sanitizePromptText, wrapUserData, VISION_INJECTION_GUARD } from '../utils/promptSafety';
 import { isInternalTransferLabel } from '../utils/transactionParser';
 import { MODEL_IDS } from './aiChat/models';
+import { RULE_CATEGORIES, ruleCategorize, buildCategoryCanonicalMap, resolveCandidateCategory } from './import/categoryRules';
 
 // ─── Modèles ─────────────────────────────────────────────────────────────────
 
@@ -283,13 +284,22 @@ export const categorizeBatch = async (
 ): Promise<Transaction[]> => {
     if (!apiKey || transactions.length === 0) return transactions;
 
+    // [MCP-CATEGORY-ALLOWLIST] Défaut = RULE_CATEGORIES (source unique) — l'ancien littéral
+    // (« Alimentation », « Loisir »…) divergeait du canon : un futur appelant sans allowlist
+    // aurait accepté ces formes comme canoniques, zéro trace (finding ai-reviewer PR #502).
     const safeCategories = allowedCategories.length > 0
         ? allowedCategories
-        : ['Alimentation', 'Transport', 'Logement', 'Loisir', 'Sante', 'Autre', 'Transfert'];
+        : [...RULE_CATEGORIES];
 
     const CHUNK_SIZE = 50;
     const out: Transaction[] = [];
     let processed = 0;
+    // [MCP-CATEGORY-ALLOWLIST] Allowlist construite 1× (safeCategories est fixe pour tout le batch).
+    const allowedMap = buildCategoryCanonicalMap(safeCategories);
+    // Compteur AGRÉGÉ sur tout le batch → UN SEUL logError après la boucle (convention
+    // analyzeBankStatement ; un log par chunk pouvait consommer ~40 des 100 entrées du journal
+    // sur un gros import — finding ai-reviewer PR #502).
+    let offListCount = 0;
 
     for (let i = 0; i < transactions.length; i += CHUNK_SIZE) {
         const chunk = transactions.slice(i, i + CHUNK_SIZE);
@@ -330,14 +340,35 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict, sans markdown, sans commentaire:
             const validated = safeJsonValidate(text, CategorizeArraySchema);
             if (validated) {
                 const byId = new Map(validated.map(v => [v.id, v]));
+                // [MCP-CATEGORY-ALLOWLIST] Le prompt AFFIRME « toute autre valeur sera rejetée »
+                // mais rien ne le faisait (affirmation non vérifiée par le code — finding
+                // silent-failure-hunter PR #502) : une dérive du modèle hors liste entrait
+                // verbatim, puis le fuzzy partagé pouvait l'absorber sous un poste voisin.
+                // Enforcement réel : hors liste → règles sur le payee, sinon « Autre » (la
+                // consigne du prompt), COMPTÉ + tracé (jamais silencieux).
                 const merged = toAnalyze.map(t => {
                     const r = byId.get(t.id);
                     if (!r) return t;
+                    const resolved = resolveCandidateCategory(r.category, allowedMap, t.payee || '', 'Autre');
+                    if (resolved.remapped) offListCount++;
+                    // ⚠️ Sur un remap, r.isTransfer/r.confidence portaient sur la catégorie
+                    // REJETÉE : les recycler créerait « Transfert » avec isTransfer:false (exclu
+                    // à tort du filtre mais compté dans le Σ affiché) ou une confiance 92 % sur
+                    // une catégorie jamais proposée (finding ai-reviewer PR #502). Invariant
+                    // couplé du codebase (cf Transactions.tsx « cat === 'Transfert' ? true ») :
+                    // isTransfer dérivé de la catégorie FINALE ; confiance = 100 si règle
+                    // déterministe (convention des catégorisations par règle), 0 honnête sinon.
+                    const isTransfer = resolved.category === 'Transfert'
+                        ? true
+                        : (resolved.remapped ? false : r.isTransfer);
+                    const confidence = resolved.remapped
+                        ? (ruleCategorize(t.payee || '') !== null ? 100 : 0)
+                        : r.confidence;
                     return {
                         ...t,
-                        category: r.category,
-                        isTransfer: r.isTransfer,
-                        confidence: r.confidence,
+                        category: resolved.category,
+                        isTransfer,
+                        confidence,
                         isAiProcessed: true,
                         status: 'processed' as const,
                     };
@@ -353,6 +384,13 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict, sans markdown, sans commentaire:
 
         processed += chunk.length;
         onProgress?.(processed, transactions.length, `Traité ${processed}/${transactions.length}`, out);
+    }
+
+    if (offListCount > 0) {
+        logError({
+            source: 'ai', severity: 'warning',
+            message: `categorizeBatch : ${offListCount} catégorie(s) hors liste renvoyée(s) par le modèle sur le batch, remappée(s) par règles.`,
+        });
     }
 
     return out;

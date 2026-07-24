@@ -41,6 +41,64 @@ describe('applyDocument — relevé bancaire', () => {
         const r = applyDocument(s, { kind: 'bank_statement', transactions: [{ date: '2026-01-01', payee: 'X', amount: -10 }] });
         expect(r.changes.length).toBe(0);
     });
+
+    // [MCP-CATEGORY-ALLOWLIST] La catégorie du tool est du texte LIBRE écrit par l'IA : hors du
+    // jeu canonique (postes existants + RULE_CATEGORIES), elle serait absorbée par le fuzzy
+    // partagé (« Sport » ⊂ « Tran-sport ») sans trace (finding silent-failure-hunter PR #501).
+    describe('[MCP-CATEGORY-ALLOWLIST] catégorie validée à l\'écriture', () => {
+        it('canonique acceptée verbatim ; variante casse/accents REMAPPÉE vers la canonique', () => {
+            const r = applyDocument(state(), {
+                kind: 'bank_statement',
+                transactions: [
+                    { date: '2026-02-01', payee: 'IGA', amount: -50, category: 'Épicerie' },
+                    { date: '2026-02-02', payee: 'IGA', amount: -60, category: 'epicerie' }, // remap casse/accents
+                ],
+            });
+            const cats = r.nextState.transactions.map((t) => t.category);
+            expect(cats).toEqual(['Épicerie', 'Épicerie']);
+            // Un remap de casse vers la canonique n'est PAS compté « non canonique » dans le résumé.
+            expect(r.summary).not.toMatch(/re-catégorisée/);
+        });
+
+        it('collision poste↔RULE_CATEGORY : le POSTE impose sa forme (cible réelle de réconciliation)', () => {
+            const s = state();
+            s.budgetItems = [{ id: 'b1', name: 'épicerie', target: 400, frequency: 'Monthly', type: 'Commun', nature: 'Besoin' }] as unknown as AppState['budgetItems'];
+            const r = applyDocument(s, {
+                kind: 'bank_statement',
+                transactions: [{ date: '2026-02-01', payee: 'IGA', amount: -50, category: 'Épicerie' }],
+            });
+            // Le poste « épicerie » (minuscule) écrase la forme canonique des règles.
+            expect(r.nextState.transactions[0].category).toBe('épicerie');
+        });
+
+        it('le nom d\'un poste de budget EXISTANT est accepté', () => {
+            const s = state();
+            s.budgetItems = [{ id: 'b1', name: 'Gym', target: 50, frequency: 'Monthly', type: 'Commun', nature: 'Envie' }] as unknown as AppState['budgetItems'];
+            const r = applyDocument(s, {
+                kind: 'bank_statement',
+                transactions: [{ date: '2026-02-01', payee: 'Energie Cardio', amount: -45, category: 'Gym' }],
+            });
+            expect(r.nextState.transactions[0].category).toBe('Gym');
+        });
+
+        it('catégorie INVENTÉE (« Sport ») → re-catégorisée par règles sur le payee, et le résumé le DIT', () => {
+            const r = applyDocument(state(), {
+                kind: 'bank_statement',
+                transactions: [
+                    // « Sport » n'est PAS canonique — sans allowlist elle serait absorbée par le
+                    // poste « Transport » via le fuzzy (« sport » ⊂ « tran-sport »).
+                    { date: '2026-02-01', payee: 'UBERTRIP 8XZK4', amount: -20, category: 'Sport' },
+                    // Payee sans règle → « Non catégorisé » (repli honnête, pas la catégorie inventée).
+                    { date: '2026-02-02', payee: 'ZZZZZ INCONNU', amount: -30, category: 'Sport' },
+                ],
+            });
+            const cats = r.nextState.transactions.map((t) => t.category);
+            expect(cats[0]).toBe('Transport'); // règle UBER → Transport (déterministe, pas le fuzzy)
+            expect(cats[1]).toBe('Non catégorisé');
+            expect(cats).not.toContain('Sport'); // la catégorie inventée n'entre JAMAIS
+            expect(r.summary).toMatch(/2 catégorie\(s\) non canonique\(s\) re-catégorisée\(s\)/);
+        });
+    });
 });
 
 describe('applyDocument — relevé de courtage', () => {

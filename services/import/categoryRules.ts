@@ -33,6 +33,49 @@ export const RULE_CATEGORIES = [
 
 export type RuleCategory = (typeof RULE_CATEGORIES)[number];
 
+// ─── [MCP-CATEGORY-ALLOWLIST] Allowlist canonique de catégories (partagée) ───
+// Une catégorie CANDIDATE issue d'un texte LIBRE écrit par l'IA (tool MCP apply_bank_statement,
+// categorizeBatch) ne doit JAMAIS entrer verbatim dans les données : hors du jeu canonique, le
+// rapprochement fuzzy partagé (réel/moyenne/grand livre) peut l'absorber sous un poste au nom
+// englobant (« Sport » ⊂ « Tran-sport ») sans trace (finding silent-failure-hunter PR #501/#502).
+// Helpers PURS consommés par mcp/ingest/applyDocument.ts ET services/claude.ts (une seule source,
+// pas deux copies qui dérivent — leçon AITOOLS-SEC).
+
+/** Clé de comparaison insensible casse/accents (« epicerie » ≡ « Épicerie »). */
+export const categoryKey = (s: string): string =>
+    s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+
+/**
+ * Map clé normalisée → forme CANONIQUE. En cas de collision de clé, le DERNIER nom fourni gagne
+ * (l'appelant place ses noms prioritaires en fin de liste — ex. applyDocument met les postes de
+ * budget APRÈS RULE_CATEGORIES : le poste, cible réelle de réconciliation, impose sa casse).
+ */
+export function buildCategoryCanonicalMap(names: readonly string[]): Map<string, string> {
+    const m = new Map<string, string>();
+    for (const raw of names) {
+        const name = raw?.trim();
+        if (name) m.set(categoryKey(name), name);
+    }
+    return m;
+}
+
+/**
+ * Résout une catégorie candidate vers l'allowlist : canonique → forme canonique ; hors liste ou
+ * absente → règles déterministes sur le payee, sinon `fallback`. `remapped` n'est vrai que pour
+ * une candidate FOURNIE et hors liste (une absence n'est pas un remap — l'appelant COMPTE les
+ * remaps et les signale, jamais une re-catégorisation silencieuse).
+ */
+export function resolveCandidateCategory(
+    candidate: string | undefined | null,
+    allowed: ReadonlyMap<string, string>,
+    payee: string,
+    fallback: string,
+): { category: string; remapped: boolean } {
+    const canonical = candidate ? allowed.get(categoryKey(candidate)) : undefined;
+    if (canonical) return { category: canonical, remapped: false };
+    return { category: ruleCategorize(payee) ?? fallback, remapped: !!candidate };
+}
+
 const normalizePayee = (s: string): string =>
     s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase();
 

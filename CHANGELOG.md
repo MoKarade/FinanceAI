@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Accessibilité : sélecteurs de période navigables au clavier] — 2026-07-24
+
+### Accessibilité
+- **Les sélecteurs en pilules** (période de performance des Investissements, vues du Budget, mode de
+  données du Futur…) se naviguent maintenant aux flèches ←→↑↓ (avec Home/End) comme un vrai groupe de
+  boutons radio — un seul arrêt de tabulation pour tout le groupe au lieu d'un par option. Cible tactile
+  minimale garantie (≥ 24 px).
+
 ## [unreleased — Projection Future : plus d'icônes d'événements affichées] — 2026-07-24
 
 ### Correction (bug Marc : « pas assez d'icônes dans Futur »)

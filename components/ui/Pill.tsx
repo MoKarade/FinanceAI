@@ -33,6 +33,9 @@ export function Pill<T extends string>({
     // comportement natif d'un radio). Avant : chaque option était un arrêt de Tab, sans flèches (7 arrêts
     // pour le sélecteur de période — finding a11y-auditor #498). Corrigé UNE fois → profite aux 3+ usages.
     const btnRefs = useRef<(HTMLButtonElement | null)[]>([]);
+    // Hoisté (finding code-reviewer) : évite de dépendre du court-circuit `&&`/`||` pour rester en O(n)
+    // — sert au repli du roving tabindex quand `value` ne matche aucune option (groupe jamais intabbable).
+    const hasSelection = options.some(o => o.value === value);
 
     const focusAndSelect = (index: number) => {
         const n = options.length;
@@ -89,7 +92,7 @@ export function Pill<T extends string>({
                         aria-checked={isSelected}
                         // Roving tabindex : seule l'option sélectionnée est tabbable (repli sur la 1re
                         // si `value` ne matche aucune option, pour ne jamais rendre le groupe intabbable).
-                        tabIndex={isSelected || (index === 0 && !options.some(o => o.value === value)) ? 0 : -1}
+                        tabIndex={isSelected || (index === 0 && !hasSelection) ? 0 : -1}
                         onClick={() => onChange(opt.value)}
                         onKeyDown={(e) => onKeyDown(e, index)}
                         title={opt.title}

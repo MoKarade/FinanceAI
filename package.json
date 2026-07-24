@@ -28,7 +28,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "@mokarade/hub-contract": "github:MoKarade/hub-contract#v1.0.0",
+    "@mokarade/hub-contract": "github:MoKarade/hub-contract#2d37a61c337d485ab9ec716d9c7507972e807226",
     "i18next": "^25.8.13",
     "jspdf": "^4.2.0",
     "lucide-react": "^1.17.0",

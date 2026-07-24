@@ -95,7 +95,10 @@ describe('seriesReturnPct', () => {
             row('2026-07-22', { 'GBS.PA': 50 }),   // raccordé au prix courant (synthétique) — même valeur
         ];
         const isSynth = (date: string, key: string) =>
-            new Set(['2026-07-21|GBS.PA', '2026-07-22|GBS.PA']).has(`${date}|${key}`);
+            new Set([
+                JSON.stringify(['2026-07-21', 'GBS.PA']),
+                JSON.stringify(['2026-07-22', 'GBS.PA']),
+            ]).has(JSON.stringify([date, key]));
 
         it('24H : latest ET baseline synthétiques → null (« — » plutôt qu\'un faux 0 %)', () => {
             // Sans le prédicat : 0 % trompeur (50→50). Avec : null.

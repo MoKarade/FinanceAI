@@ -4,7 +4,12 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟢 Session 2026-07-24 — BUDGET-3-VUES + BUDGET-MATCH-UNIFY + MCP-CATEGORY-ALLOWLIST + AI-CATEGORIZE-MISSING-ID + AUTH-DRIVE-STILL-RECONNECT (PR #503 MERGÉE ; PR #504 DRAFT, « pas assez d'icônes Futur » #35)
+> ## 🟢 Session 2026-07-24 (suite) — FUTUR-ICON-DENSITY + A11Y-PILL-RADIOGROUP + PERF-STALE-TAIL-ZERO (PR #505/#506 MERGÉES ; PR #507 DRAFT auto-merge armé)
+> **✅ `[FUTUR-ICON-DENSITY]`** (PR #505, mergée) : bug Marc « pas assez d'icônes dans Futur » — `thinEvents` sous-remplissait le cap de densité (pas entier `Math.ceil(n/cap)` → jusqu'à 2× trop peu d'icônes). Remplacé par `utils/sampleEvenly.ts` (répartition uniforme atteignant EXACTEMENT `cap` indices). Panel + tests discriminants.
+> **✅ `[A11Y-PILL-RADIOGROUP]`** (PR #506, mergée) : navigation clavier APG du composant `Pill` partagé (roving tabindex + flèches + Home/End, sélection suit le focus, `aria-label` requis, cible ≥ 24 px). Panel a11y.
+> **PR #507 `[PERF-STALE-TAIL-ZERO]` (DRAFT, auto-merge armé)** : `seriesReturnPct` rend « — » au lieu d'un 0 % TROMPEUR quand latest ET baseline sont des valeurs raccordées au prix courant (candles KO + quote fraîche, cas GBS.PA). `buildMarketData.syntheticTailKeys` (clés `JSON.stringify([date, symbol])` anti-collision) trace ces valeurs figées ; prédicat optionnel `isSynthetic` (rétrocompat bit-identique). Panel financial-integrity (SÛR, 5 points sondés) + code-reviewer (finding clé anti-collision appliqué). Un SEUL endpoint synthétique → mouvement réel conservé.
+>
+> ## 🟢 Session 2026-07-24 — BUDGET-3-VUES + BUDGET-MATCH-UNIFY + MCP-CATEGORY-ALLOWLIST + AI-CATEGORIZE-MISSING-ID + AUTH-DRIVE-STILL-RECONNECT (PR #503/#504 MERGÉES)
 > **✅ `[BUDGET-3-VUES]`** (PR #500, squash 7e80af2, 2026-07-23) : tableau Budget 3 colonnes — réel période · moyenne 12 mois · cible. Panel `/review-all` : findings a11y corrigés.
 > **✅ `[BUDGET-MATCH-UNIFY]`** (PR #501, squash ace36bf, 2026-07-24) : rapprochement catégorie fuzzy via `matchCategoryToName` prédicat partagé, allocation zéro-overhead, auto-target. Panel : financial-integrity 0 findings (mesurés), code-reviewer 1 perf (allocation/appel, corrigé), silent-failure-hunter 1 ÉLEVÉ → déploiement imédiat.
 > **✅ `[MCP-CATEGORY-ALLOWLIST]`** (PR #502, squash 9686691, 2026-07-24) : validations catégorie libre au point d'écriture `applyDocument.ts` (app↔MCP partagé), allowlist postes/RULE_CATEGORIES, remap casse/accents, inconnue → ruleCategorize sinon « Non catégorisé », remaps comptés au summary. Description du tool dérivée de source unique. Panel 4 agents (code-reviewer, silent-failure-hunter, security-privacy, ai-reviewer) appliqué. MERGÉE. Nouveau ticket [AI-CATEGORIZE-MISSING-ID] (S) découvert.

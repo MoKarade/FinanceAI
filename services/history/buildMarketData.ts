@@ -84,7 +84,7 @@ export interface BuildMarketDataResult {
      */
     staleTailSymbols: Array<{ symbol: string; lastKnownDate: string }>;
     /**
-     * [PERF-STALE-TAIL-ZERO] Clés `${date}|${symbol}` dont la valeur du jour a été RACCORDÉE au prix
+     * [PERF-STALE-TAIL-ZERO] Clés `JSON.stringify([date, symbol])` dont la valeur du jour a été RACCORDÉE au prix
      * courant (queue de candles cassée MAIS quote live fraîche — cas GBS.PA). Deux jours consécutifs
      * raccordés au même `currentPrice` donnent un `seriesReturnPct` de 0,00 % techniquement exact mais
      * TROMPEUR (donnée figée ≠ marché plat). L'UI/`seriesReturnPct` doit rendre « — » quand latest ET
@@ -235,7 +235,7 @@ export function buildMarketData(
 
     const lastAxisDate = dates[dates.length - 1];
     const staleTailSymbols: BuildMarketDataResult['staleTailSymbols'] = [];
-    // [PERF-STALE-TAIL-ZERO] `${date}|${symbol}` raccordés au prix courant (candles KO, quote fraîche).
+    // [PERF-STALE-TAIL-ZERO] `JSON.stringify([date, symbol])` raccordés au prix courant (candles KO, quote fraîche).
     const syntheticTailKeys = new Set<string>();
     const rows: MarketDataPoint[] = dates.map((t) => {
         const row: MarketDataPoint = { date: t };
@@ -263,7 +263,7 @@ export function buildMarketData(
                     price = minimal.currentPrice;
                     // [PERF-STALE-TAIL-ZERO] Valeur du jour SYNTHÉTIQUE (prix figé) → traçable pour
                     // que seriesReturnPct ne rende pas un 0 % trompeur si latest ET baseline le sont.
-                    syntheticTailKeys.add(`${t}|${minimal.symbol}`);
+                    syntheticTailKeys.add(JSON.stringify([t, minimal.symbol]));
                 } else {
                     // Périmé sans quote fraîche → pas de valeur inventée. MAIS un titre absent de
                     // la DERNIÈRE date tracée = TOTAL récent amputé → SIGNALER (finding

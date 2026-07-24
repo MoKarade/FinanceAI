@@ -222,7 +222,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
     // [PERF-STALE-TAIL-ZERO] Prédicat pour seriesReturnPct : une valeur (date, clé) est-elle raccordée
     // au prix courant (candles KO) ? Deux endpoints synthétiques → « — » plutôt qu'un 0 % trompeur.
     const isSyntheticValue = useCallback(
-        (date: string, key: string) => syntheticTailKeys.has(`${date}|${key}`),
+        (date: string, key: string) => syntheticTailKeys.has(JSON.stringify([date, key])),
         [syntheticTailKeys],
     );
     useEffect(() => {

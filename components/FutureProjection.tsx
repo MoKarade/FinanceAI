@@ -183,6 +183,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // PH2-c — résultat LU depuis la SOURCE UNIQUE (publiée par ProjectionEngine, app-level).
     // Plus aucun calcul ni repli local : la courbe affichée EST celle du moteur (sauf GEL, ci-dessous).
     const liveResults = useFinanceStore(s => s.lastProjection);
+    // [FUTUR-REAL-HISTORY] La mention « change du jour » ne concerne QUE les titres en devise étrangère
+    // (facteur FX=1 pour CAD) → ne l'affiche pas pour un portefeuille 100 % CAD (finding code-reviewer :
+    // sinon on suggère un risque de change qui ne s'applique pas). Sélecteur booléen = re-render minimal.
+    const hasForeignHoldings = useFinanceStore(s => (s.assets ?? []).some(a => (a.currency || 'CAD') !== 'CAD'));
 
     // [PROJECTION-PERSIST 2026-07-16, demande Marc] — la projection révélée RESTE (reload / changement
     // de page / autre PC) et se FIGE quand les entrées changent (badge « pas à jour », choix Marc :
@@ -306,7 +310,18 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // `chartData[0].DettesNonImmo`) → soustraite du patrimoine net de CHAQUE point passé pour un raccord
     // EXACT au présent (le futur soustrait la même dette dès le mois 0). Approximation assumée (dette
     // supposée constante dans le passé, faute d'historique d'amortissement) — SIGNALÉE dans le bandeau.
-    const currentDebtNonImmo = Number(chartData[0]?.DettesNonImmo) || 0;
+    // ⚠️ Garde tracée (finding silent-failure) : un `chartData` NON vide dont `DettesNonImmo` serait non fini
+    // (refactor moteur qui omettrait le champ) NE doit PAS retomber en silence à 0 (= régression MONEY-PHANTOM
+    // « passé gonflé » que ce fix corrige). `chartData` vide (avant 1er calcul) = nominal, silencieux. Log en
+    // useEffect (pas dans le render) → 1×/valeur distincte, jamais de thrash localStorage.
+    const rawDebtNonImmo = chartData[0]?.DettesNonImmo;
+    const currentDebtNonImmo = Number(rawDebtNonImmo) || 0;
+    const debtAnomaly = chartData.length > 0 && !Number.isFinite(Number(rawDebtNonImmo));
+    useEffect(() => {
+        if (debtAnomaly) {
+            logError({ source: 'ui', severity: 'warning', message: 'FutureProjection : chartData[0].DettesNonImmo non fini — dette du passé rabattue à 0', context: { rawDebtNonImmo } });
+        }
+    }, [debtAnomaly, rawDebtNonImmo]);
     const pastPrefix = useMemo(() => {
         const miOf = (ym: string): number => {
             const [y, m] = ym.split('-').map(Number);
@@ -948,7 +963,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         <span>
                             Patrimoine net réel{pastHistory.firstDate ? ` depuis ${pastHistory.firstDate.slice(0, 7)}` : ''}
                             {currentDebtNonImmo > 0 ? ' · dettes au niveau actuel' : ''}
-                            {' · titres étrangers au change du jour'}
+                            {hasForeignHoldings ? ' · titres étrangers au change du jour' : ''}
                             {pastHistory.isLoading ? ' · chargement des prix…' : (pastHistory.coverage < 0.99 ? ' · partiellement estimé aux prix actuels' : '')}
                         </span>
                     </div>

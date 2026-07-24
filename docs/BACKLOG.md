@@ -222,7 +222,10 @@
   - **FX** : titres étrangers valorisés au change DU JOUR (déjà en place, choix Marc) — note d'honnêteté ajoutée au bandeau.
   - **Reste (Lot 4, différé, non bloquant)** : `[FUTUR-HIST-DAILY-REFRESH]` (rafraîchir « aujourd'hui » sans remount —
     `startYear/startMonth` figés au montage) ; `[FUTUR-HIST-FX-DATED]` (FX historique daté via proxy Yahoo, plus juste que le
-    change du jour) ; recherche binaire dans `priceAt` si un jour mesuré lent. Aucun n'affecte le raccord exact d'aujourd'hui.
+    change du jour) ; `[FUTUR-HIST-WIRING-TEST]` (S — test d'intégration `FutureProjection` prouvant que le dernier point `isPast`
+    a `NetWorth ≈ Σplacements+cash+immo − chartData[0].DettesNonImmo`, pour verrouiller le câblage contre une substitution
+    accidentelle `DetteTotale` — finding code-reviewer ; harnais lourd : mock `lastProjection` + hook historique) ; recherche
+    binaire dans `priceAt` si un jour mesuré lent. Aucun n'affecte le raccord exact d'aujourd'hui.
 - [x] **`[A11Y-DASH-SRONLY]`** ✅ (2026-07-24, PR suivante) — convention GLOBALE : helper pur
   `components/ui/emptyAware` — quand la valeur rendue EST le tiret « — » (état vide de formatCAD/formatPercent),
   il remplace le tiret muet par `<span aria-hidden>—</span>` + `<span class="sr-only">Pas de donnée</span>`

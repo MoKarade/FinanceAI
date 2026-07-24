@@ -303,6 +303,10 @@ export const categorizeBatch = async (
     // [AI-CATEGORIZE-MISSING-ID] Une transaction ABSENTE de la réponse JSON du modèle était
     // renvoyée inchangée SANS trace (silent-drop) — comptée désormais (finding ai-reviewer PR #502).
     let missingIdCount = 0;
+    // Symétrique (finding silent-failure PR #503) : entrées de la réponse JAMAIS consommées —
+    // id halluciné (aucune tx du chunk) ou dupliqué (écrasé par la Map) — signal diagnostique
+    // « le modèle a décalé/inventé sa numérotation », distinct d'un simple item manquant.
+    let unknownIdCount = 0;
 
     for (let i = 0; i < transactions.length; i += CHUNK_SIZE) {
         const chunk = transactions.slice(i, i + CHUNK_SIZE);
@@ -343,6 +347,11 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict, sans markdown, sans commentaire:
             const validated = safeJsonValidate(text, CategorizeArraySchema);
             if (validated) {
                 const byId = new Map(validated.map(v => [v.id, v]));
+                // Entrées gaspillées = total renvoyé − ids DISTINCTS effectivement consommables
+                // (présents dans le chunk) : couvre doublons ET ids inconnus, chacun compté 1×.
+                const chunkIds = new Set(toAnalyze.map(t => t.id));
+                const usableIds = [...byId.keys()].filter(id => chunkIds.has(id)).length;
+                unknownIdCount += validated.length - usableIds;
                 // [MCP-CATEGORY-ALLOWLIST] Le prompt AFFIRME « toute autre valeur sera rejetée »
                 // mais rien ne le faisait (affirmation non vérifiée par le code — finding
                 // silent-failure-hunter PR #502) : une dérive du modèle hors liste entrait
@@ -399,6 +408,12 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict, sans markdown, sans commentaire:
         logError({
             source: 'ai', severity: 'warning',
             message: `categorizeBatch : ${missingIdCount} transaction(s) absente(s) de la réponse du modèle (id manquant) — laissée(s) non catégorisée(s).`,
+        });
+    }
+    if (unknownIdCount > 0) {
+        logError({
+            source: 'ai', severity: 'warning',
+            message: `categorizeBatch : ${unknownIdCount} entrée(s) de la réponse du modèle à id inconnu ou dupliqué — ignorée(s).`,
         });
     }
 

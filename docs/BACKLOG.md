@@ -122,7 +122,7 @@
   ids↔tarifs verrouillée par test (un modèle sans tarif = garde rouge, jamais un coût non compté muet).
 
 ## 🛡️ Dépendances — alertes Dependabot ouvertes (capture Marc 2026-07-22, « backlog aussi »)
-- [ ] **`[DEP-DEPENDABOT-2026-07]`** (S) — 4 alertes ouvertes sur package-lock : fast-uri ×2 (HIGH, host
+- [x] **`[DEP-DEPENDABOT-2026-07]`** ✅ (2026-07-23, PR #497 — coché 2026-07-24 au balayage) — 4 alertes ouvertes sur package-lock : fast-uri ×2 (HIGH, host
   confusion via IDN/backslash), @hono/node-server (MODERATE, path traversal serve-static Windows — serveur
   MCP ; vecteur limité : Cloud Run Linux, pas de serve-static exposé, à vérifier), dompurify (LOW,
   CUSTOM_ELEMENT_HANDLING bypass). Passe de bump ciblée : `npm audit` + bump lockfile (fast-uri est
@@ -254,13 +254,11 @@
 - [x] **`[AI-CATEGORIZE-MISSING-ID]`** ✅ (2026-07-24, PR suivante) — `missingIdCount` agrégé sur le
   batch + logError warning (même pattern que `offListCount`) : une transaction absente de la réponse
   JSON du modèle laisse désormais une trace au lieu d'un silent-drop.
-- [ ] **`[DEP-HONO-TRAVERSAL]`** (S, EN ATTENTE UPSTREAM) — alerte Dependabot #26 / `npm audit` :
-  `@hono/node-server` <2.0.5, path traversal dans `serve-static` sur WINDOWS (%5C), transitive via
-  `@modelcontextprotocol/sdk@1.29.0` (épingle `^1.19.9` ; patch 2.0.5 publié le 2026-07-24, PAS de
-  patch 1.x). **Triage 2026-07-24 : NON exploitable chez nous** — zéro usage de serveStatic/hono dans
-  `mcp/` (grep vide), serveur Cloud Run LINUX, transport SDK seul. `npm audit fix` = no-op (hors range
-  semver) ; un override forcé vers 2.x risquerait de casser le serveur MCP pour une exposition nulle.
-  Action : bump du SDK dès qu'une version reprend hono/node-server ≥2.0.5 (Dependabot le proposera).
+- [x] **`[DEP-HONO-TRAVERSAL]`** ✅ DOUBLON (2026-07-24) — même résiduel que `[DEP-HONO-NODE-SERVER]`
+  déjà triagé sous `[DEP-DEPENDABOT-2026-07]` (§ Dépendances) ; re-triage 2026-07-24 identique (patch
+  2.0.5 publié le jour même, toujours hors range du SDK 1.29.0, exploitabilité nulle : zéro
+  serveStatic/hono dans `mcp/`, Cloud Run Linux). Suivi UNIQUE : `[DEP-HONO-NODE-SERVER]` — re-vérifier
+  à chaque bump du SDK MCP. Leçon : GREP le BACKLOG avant de créer un ticket sur un finding « nouveau ».
 
 ## 🤝 Assistant fusionné (demande Marc 2026-07-23 : « combiner Prochaine action à l'Assistant »)
 - [x] **`[ASSISTANT-HUB]`** ✅ (2026-07-23, PR #492) — onglet Assistant VISIBLE dans la nav (remplace

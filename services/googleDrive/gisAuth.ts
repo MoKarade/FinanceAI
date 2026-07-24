@@ -6,7 +6,25 @@
 // fermeture d'onglet, + renouvellement silencieux avant expiration (cf plus bas). Scope minimal
 // drive.appdata → un vol éventuel ne donne accès qu'au dossier app, et le jeton expire en ~1h.
 
+import { logErrorThrottled } from '../errorLogger';
+
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
+
+/**
+ * [AUTH-DRIVE-STILL-RECONNECT] Trace DIAGNOSTIQUE d'un renouvellement silencieux impossible, throttlée
+ * 1×/(contexte+raison)/session (`logErrorThrottled`) : le polling 60 s re-tente sinon → journal noyé.
+ * `info` (pas un incident : une reprise sans session Google est nominale), mais la RAISON GIS exacte
+ * (`popup_failed_to_open`, `login_required`, cookies tiers bloqués…) est ce qui permet à Marc de
+ * diagnostiquer POURQUOI la reconnexion est redemandée — visible dans Réglages → Diagnostics.
+ */
+export function traceSilentRenewalFailure(context: 'minuteur' | 'gate' | 'boot', error: unknown): void {
+    const reason = error instanceof Error ? error.message : String(error);
+    logErrorThrottled(`drive-renew-fail:${context}:${reason}`, {
+        source: 'network',
+        severity: 'info',
+        message: `Renouvellement Drive silencieux impossible (${context}) — ${reason}. La bannière de reconnexion prend le relais.`,
+    });
+}
 
 /**
  * [AUTH-DRIVE-INACTIVITY] Erreur d'auth NOMINALE : une interaction utilisateur est requise (pas de
@@ -293,8 +311,11 @@ function scheduleTokenRenewal(): void {
         // promesse en cours. On re-programme pour plus tard ; l'acquisition en vol, en cas de succès,
         // ré-arme de toute façon le renouvellement.
         if (_pendingReject) { scheduleTokenRenewal(); return; }
-        // Succès → le callback réseau reprogramme via scheduleTokenRenewal. Échec → silencieux (bannière).
-        renewTokenSilently().catch(() => { /* best-effort : reconnexion proposée par la bannière */ });
+        // Succès → le callback réseau reprogramme via scheduleTokenRenewal. Échec → best-effort
+        // (bannière), mais TRACÉ : le minuteur n'a AUCUN appelant pour router son échec → sans cette
+        // trace, un jeton qui meurt à ~1h renvoie Marc au login sans qu'on sache pourquoi (le trou noir
+        // de [AUTH-DRIVE-STILL-RECONNECT]).
+        renewTokenSilently().catch((e: unknown) => traceSilentRenewalFailure('minuteur', e));
     }, delay);
 }
 

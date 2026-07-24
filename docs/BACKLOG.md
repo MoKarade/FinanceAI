@@ -294,6 +294,13 @@
   `error_callback`), (c) `lastActivity` jamais enregistré ou > 8h (gate refuse le silencieux), (d) multi-onglets/
   multi-PC (le jeton est device-local — chaque appareil a sa première connexion). Instrumenter au besoin :
   logError info sur CHAQUE échec de `renewTokenSilently` avec la raison GIS exacte, visible dans Réglages → Diagnostics.
+  ✅ **Instrumentation livrée (2026-07-24, PR suivante)** : `traceSilentRenewalFailure(context, error)`
+  (`gisAuth.ts`) trace `info` la raison GIS exacte, throttlée 1×/(contexte+raison)/session
+  (`logErrorThrottled` — le polling 60 s noierait le journal sinon). Câblée aux DEUX trous : le minuteur
+  de renouvellement (`gisAuth.ts`, qui avalait TOUT en `.catch(()=>{})` — le vrai trou noir, aucun
+  appelant) ET le cas NOMINAL de `trySilentReauth` boot/gate (`syncLifecycle.ts`, jusqu'ici muet). Reste
+  la vérif HUMAINE de Marc en prod : ouvrir Diagnostics après une reconnexion redemandée → la raison GIS
+  (`login_required` = session Google expirée, `popup_failed_to_open`/cookies = ITP Safari/Brave) tranche.
 
 ## 📈 PORTFOLIO-HISTORY — courbes de cours réelles (bug Marc 2026-07-22, PR #485)
 - [x] **`[PORTFOLIO-HISTORY]`** ✅ 2026-07-22 — courbes par action (depuis 1er achat) + courbe portefeuille

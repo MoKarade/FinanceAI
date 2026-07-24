@@ -14,6 +14,7 @@ import {
     renewTokenSilently,
     revokeAccess,
     AuthInteractionRequiredError,
+    traceSilentRenewalFailure,
 } from '../googleDrive/gisAuth';
 import { isInactivityExpired, recordActivity, clearActivity } from './inactivityLogout';
 import { logError } from '../errorLogger';
@@ -29,7 +30,12 @@ async function trySilentReauth(phase: 'gate' | 'boot'): Promise<string | null> {
     try {
         return await renewTokenSilently();
     } catch (e) {
-        if (!(e instanceof AuthInteractionRequiredError)) {
+        if (e instanceof AuthInteractionRequiredError) {
+            // [AUTH-DRIVE-STILL-RECONNECT] Cas NOMINAL (pas de session Google / cookies tiers bloqués) :
+            // pas un incident, MAIS la raison GIS exacte diagnostique POURQUOI la reconnexion est
+            // redemandée (session expirée vs ITP/Safari). Trace `info` throttlée, visible dans Diagnostics.
+            traceSilentRenewalFailure(phase, e);
+        } else {
             logError({
                 source: 'network', severity: 'warning',
                 message: `Reprise silencieuse Drive au ${phase} échouée (anormale : réseau/GIS) — renvoi au login.`,

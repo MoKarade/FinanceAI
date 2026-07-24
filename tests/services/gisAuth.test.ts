@@ -6,8 +6,10 @@ import {
     requestAccessToken,
     getCachedToken,
     getValidAccessToken,
+    traceSilentRenewalFailure,
     _resetForTests,
 } from '../../services/googleDrive/gisAuth';
+import { filterErrors, clearErrors, __resetErrorThrottle } from '../../services/errorLogger';
 
 // Clé localStorage du jeton GIS (doit rester alignée sur TOKEN_STORAGE_KEY de gisAuth.ts).
 const TOKEN_KEY = 'financeai:gis:token:v1';
@@ -204,8 +206,9 @@ describe('renouvellement silencieux du jeton', () => {
         }
     });
 
-    it('un échec de renouvellement est SILENCIEUX (ne lève pas) — la bannière prend le relais', async () => {
+    it('un échec de renouvellement ne LÈVE pas mais laisse une TRACE diagnostique (raison GIS), throttlée', async () => {
         vi.useFakeTimers();
+        __resetErrorThrottle(); // le throttle est module-scope → isoler ce test
         try {
             let calls = 0;
             let errorCb: ((e: { type?: string }) => void) | undefined;
@@ -228,9 +231,32 @@ describe('renouvellement silencieux du jeton', () => {
             // minuteur, l'avance des timers propagerait l'erreur (unhandled) et ferait échouer le test.
             await vi.advanceTimersByTimeAsync(31_000); // franchit le plancher de 30 s → déclenche le renouvellement
             expect(calls).toBe(2); // le renouvellement a bien été tenté (2e appel), puis avalé proprement
+
+            // [AUTH-DRIVE-STILL-RECONNECT] La trace diagnostique existe désormais, avec la raison GIS
+            // (`popup_failed_to_open`) et la source réseau — visible dans Diagnostics.
+            const traces = filterErrors({ source: 'network' })
+                .filter(e => e.message.includes('Renouvellement Drive silencieux'));
+            expect(traces).toHaveLength(1);
+            expect(traces[0].severity).toBe('info');
+            expect(traces[0].message).toMatch(/minuteur/);
+            expect(traces[0].message).toMatch(/popup_failed_to_open/);
         } finally {
             vi.useRealTimers();
         }
+    });
+
+    it('traceSilentRenewalFailure : throttlé 1×/(contexte+raison)/session, mais une raison DIFFÉRENTE re-loggue', () => {
+        __resetErrorThrottle();
+        clearErrors();
+        const err = new Error('login_required');
+        traceSilentRenewalFailure('minuteur', err);
+        traceSilentRenewalFailure('minuteur', err); // même contexte + même raison → supprimé
+        traceSilentRenewalFailure('boot', err);     // contexte différent → nouvelle entrée
+        traceSilentRenewalFailure('minuteur', new Error('access_denied')); // raison différente → nouvelle entrée
+        const traces = filterErrors({ source: 'network' })
+            .filter(e => e.message.includes('Renouvellement Drive silencieux'));
+        expect(traces).toHaveLength(3);
+        expect(traces.every(t => t.severity === 'info')).toBe(true);
     });
 });
 

@@ -33,6 +33,7 @@ import { aliveAttachmentMessageIds } from '../services/aiChat/conversations';
 // [B3+B4] Modèle par conversation + coût réel — modules purs/légers (boot-safe en import statique).
 import { MODEL_IDS, resolveChatModelKey } from '../services/aiChat/models';
 import { chatCostUsd } from '../services/aiChat/pricing';
+import { flushPush } from '../services/sync/syncOrchestrator';
 // [CHAT-PAGE-CONTEXT] Contexte d'écran (module pur, boot-safe) — lu en IMPÉRATIF à l'envoi.
 import { describeViewContextForPrompt } from '../services/aiChat/viewContext';
 // [B2] Octets des pièces jointes en fichiers Drive appdata SÉPARÉS (cross-device) — best-effort,
@@ -398,6 +399,10 @@ export function useAiChat(apiKey: string): UseAiChat {
         } finally {
             inFlightRef.current = false;
             setIsLoading(false);
+            // Pousse le coût du chat (et le message final) au serveur TOUT DE SUITE, sans
+            // attendre le debounce de 8 s : le hub perso voit le coût à jour au prochain
+            // refresh. flushPush est gardé (no-op si non connecté / conflit / rien de neuf).
+            flushPush();
         }
     }, [apiKey, appendMessage, updateModelMessage, requestConfirmation]);
 

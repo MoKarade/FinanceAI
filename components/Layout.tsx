@@ -9,6 +9,9 @@ import { useFinanceStore } from '../store/useFinanceStore';
 import { BackupReminder } from './BackupReminder';
 import { getPersonaById, getPersonaOrDefault, TEST_PERSONAS } from '../services/testFixtures';
 
+// Hub perso — cible du lien « ← Hub » de la sidebar (overridable au build via VITE_HUB_URL).
+const HUB_URL = (import.meta.env.VITE_HUB_URL as string | undefined)?.replace(/\/+$/, '') || 'https://hubperso.com';
+
 interface LayoutProps {
   activeTab: Tab;
   setActiveTab: (tab: Tab) => void;
@@ -384,6 +387,17 @@ export const Layout: React.FC<LayoutProps> = ({
                 </span>
               </button>
             ))}
+            {/* Retour au hub perso (lien externe ; URL overridable via VITE_HUB_URL). */}
+            <a
+              href={HUB_URL}
+              title="Retour au hub"
+              className="flex flex-row items-center gap-3 px-3 py-2 rounded-card text-tiny font-medium text-ink-400 hover:bg-white/5 hover:text-ink-100 transition-colors focus-ring"
+            >
+              <span aria-hidden className="shrink-0 w-[18px] text-center text-base leading-none">←</span>
+              <span className={`whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
+                Hub
+              </span>
+            </a>
           </nav>
           {/* G22-B2 — clic = BASCULE directe Couple ⇄ Individuel (ajoute/retire le
               conjoint), propagée à toute l'app. Détails du conjoint dans Configuration. */}

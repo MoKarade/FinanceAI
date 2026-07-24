@@ -4,6 +4,10 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-24 — BUDGET-3-VUES mergée + BUDGET-MATCH-UNIFY en cours (PR #500 MERGÉE, PR #501 DRAFT)
+> **✅ `[BUDGET-3-VUES]`** (PR #500, squash 7e80af2, 2026-07-23) : tableau Budget 3 colonnes — réel période · moyenne 12 mois · cible. Panel `/review-all` : findings a11y corrigés.
+> **En cours `[BUDGET-MATCH-UNIFY]`** (PR #501, DRAFT `claude/progress-check-yua8yy`) : rapprochement catégorie fuzzy via `matchCategoryToName` prédicat partagé, allocation zéro-overhead, auto-target. Panel : financial-integrity 0 findings (mesurés), code-reviewer 1 perf (allocation/appel, corrigé), silent-failure-hunter 1 ÉLEVÉ → BACKLOG `[MCP-CATEGORY-ALLOWLIST]`.
+>
 > ## 🟡 Session 2026-07-23 (suite 9) — BUDGET-3-VUES : Budget par poste 3 colonnes réel/moy.12m/cible (PR #500, DRAFT — auto-merge armé)
 > **En cours** `[BUDGET-3-VUES]` : tableau Budget 3 colonnes — réel période · moyenne 12 mois (mois courant exclu, sans historique → « — ») · cible.
 > Bandeau groupe (réel/moy/cible gaté mode discret). `buildMonthlyLedger` + `computeAvgByItem` sources uniques. Panel `/review-all` fait (4 agents) :
@@ -1052,8 +1056,8 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#499** [QUOTE-NEGATIVE-CACHE + QUOTE-MARKET-TIMESTAMP] (cache négatif + horodatage marché, 2026-07-23, MERGÉE) |
-| **PR en cours** | **#500** [BUDGET-3-VUES] DRAFT sur `claude/progress-check-yua8yy` — auto-merge armé immédiatement |
+| **Dernière PR mergée** | **#500** [BUDGET-3-VUES] (Budget par poste 3 colonnes réel/moy.12m/cible, 2026-07-23, MERGÉE) |
+| **PR en cours** | **#501** [BUDGET-MATCH-UNIFY] DRAFT sur `claude/progress-check-yua8yy` — rapprochement fuzzy |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
 | **Tests** | **~3020 verts, suite complète** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation — compte exact au gate/CI) |
 | **Typecheck** | Clean en mode strict |

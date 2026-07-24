@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Budget : la moyenne et le grand livre rapprochent comme le réel] — 2026-07-24
+
+### Correction
+- **Un poste dont le nom diffère légèrement de la catégorie de tes transactions** (ex. poste
+  « Restaurants », transactions « Restaurant ») affichait un réel correct mais une moyenne 12 mois
+  à 0 $ et un grand livre qui rangeait ces dépenses dans « Autres / non classées ». Les trois
+  surfaces utilisent maintenant la même règle de rapprochement — plus de contradiction à l'écran.
+
 ## [unreleased — Budget : réel · moyenne 12 mois · prévu par poste] — 2026-07-23
 
 ### Amélioration (demande Marc : « le budget affiche le réel actuel, la moyenne des derniers mois, et la prévision »)

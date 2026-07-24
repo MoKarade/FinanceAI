@@ -225,15 +225,23 @@
   réel · moy. · cible (montants gatés mode discret) + « — » honnête sans historique révolu
   (`coveredFullMonths` exposé, additif). La « projection fin de mois » (réel extrapolé au prorata)
   n'a PAS été retenue au cadrage — la rouvrir seulement si Marc la demande.
-- [ ] **`[BUDGET-MATCH-UNIFY]`** (M) — unifier la BASE DE RAPPROCHEMENT tx→poste des 3 calculs voisins
-  (finding financial-integrity PR #500, prouvé par sonde) : le RÉEL (`actualsMap`) rapproche en FUZZY
-  (`matchTransactionToCategory`), la MOYENNE (ledger) et la CIBLE AUTO (`historicalMonthlyAverage`)
-  en EXACT → un poste dont le nom diffère de la catégorie par fuzzy seul (poste renommé à la main)
-  affiche réel 600 $ · moy 0 $ (l'historique file dans « Autres / non classées », 0 $ plausible mais
-  faux). Portée limitée (la sync réaligne les noms en régime établi) mais réel. Fix = UNE source de
-  rapprochement pour les trois (attention : changer l'attribution du ledger touche aussi le grand
-  livre affiché, et rendre la moy fuzzy SEULE créerait une divergence moy↔cible-auto — faire les
-  trois ensemble, classe [[PH4D-BUDGET-RATIOS]]).
+- [x] **`[BUDGET-MATCH-UNIFY]`** ✅ (2026-07-24, PR #501) — le ledger (moyenne 12m + grand livre)
+  rapproche tx→poste par la MÊME règle fuzzy que le réel : `matchCategoryToName` (variante noms-seuls
+  extraite de `matchTransactionToCategory`, qui délègue — UNE source de la règle). Discriminant prouvé
+  par git stash (« Restaurant » → poste « Restaurants » : moy 300 $ au lieu de 0 $). ⚠️ Le ticket
+  SUR-prescrivait « les trois ensemble » : la CIBLE AUTO est restée exacte À RAISON — au moment du
+  calcul, les noms de postes ≡ catégories observées (la sync canonicalise avant) → l'exact n'y diverge
+  jamais du fuzzy, et un fuzzy mono-catégorie aurait risqué un double-comptage cross-poste.
+- [ ] **`[MCP-CATEGORY-ALLOWLIST]`** (S) — valider la catégorie LIBRE des tools MCP d'écriture contre la
+  liste canonique (finding silent-failure-hunter PR #501, prouvé par sonde) : `apply_bank_statement`
+  (`mcp/tools/applyBankStatement.spec.ts`) accepte `category: z.string()` sans contrainte → une catégorie
+  inventée (« Sport ») entre dans les données et le rapprochement fuzzy PARTAGÉ (réel + moyenne + grand
+  livre depuis PR #501) la classe sous un poste au nom englobant (« Tran-sport ») SANS trace — déplacement
+  d'argent d'un poste vers un autre, plausible et silencieux. L'UI est immune (catégories au `<select>`) ;
+  la frontière à durcir est le MCP : allowlist des catégories canoniques (postes + RULE_CATEGORIES) au
+  point d'écriture, repli « Uncategorized » + note honnête si inconnue (classe « allowlist au point
+  d'écriture », cf. [[HIST-MULTI-PROVIDER]] (6) `asSupportedCurrency`). NB : ne PAS « corriger » en
+  ancrant le fuzzy sur mots entiers — ça casserait le cas principal (« Restaurant » ⊂ « Restaurants »).
 
 ## 🤝 Assistant fusionné (demande Marc 2026-07-23 : « combiner Prochaine action à l'Assistant »)
 - [x] **`[ASSISTANT-HUB]`** ✅ (2026-07-23, PR #492) — onglet Assistant VISIBLE dans la nav (remplace

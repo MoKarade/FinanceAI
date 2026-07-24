@@ -28,10 +28,41 @@ export function matchTransactionToCategory(
     const exact = items.find((b) => b.name === category);
     if (exact) return exact;
     const c = category.toLowerCase();
-    return items.find((b) => {
-        const n = b.name.toLowerCase();
-        return n.includes(c) || c.includes(n);
-    });
+    return items.find((b) => fuzzyNameMatch(c, b.name));
+}
+
+/**
+ * [BUDGET-MATCH-UNIFY] Volet FLOU de la règle unique (substring bicase) — prédicat PARTAGÉ
+ * entre `matchTransactionToCategory` (réel) et `matchCategoryToName` (ledger : moyenne +
+ * grand livre) pour que la règle n'existe qu'UNE fois. Le squelette « exact d'abord » est
+ * structurel dans chaque variante (verrouillé par les tests de parité des deux fonctions).
+ * Pas de délégation par `items.map(name)` : appelée par transaction sans cache dans
+ * `computeBudgetParity` — l'allocation par appel coûtait ~2,3× (finding code-reviewer PR #501).
+ */
+const fuzzyNameMatch = (categoryLower: string, name: string): boolean => {
+    const n = name.toLowerCase();
+    return n.includes(categoryLower) || categoryLower.includes(n);
+};
+
+/**
+ * Variante NOMS SEULS de la MÊME règle (exact d'abord, sinon premier substring bicase) —
+ * consommée par le ledger (`utils/budgetSync.ts`). Finding financial-integrity PR #500 :
+ * réel en fuzzy vs moyenne en exact → un poste « Restaurants » avec des tx « Restaurant »
+ * affichait réel 600 $ · moy 0 $.
+ * ⚠️ Hérite de la LIMITE CONNUE du fuzzy (cf. matchTransactionToCategory) : un nom court
+ * sur-matche (« Sport » ⊂ « Tran-sport ») — atteignable via une catégorie LIBRE écrite par
+ * le MCP (pas par l'UI, contrainte au select). Cohérent avec le réel PAR DESIGN (re-diverger
+ * recréerait le bug fermé ici) ; le fix racine est l'allowlist de catégories à la frontière
+ * d'écriture MCP → ticket `[MCP-CATEGORY-ALLOWLIST]`.
+ */
+export function matchCategoryToName(
+    category: string | undefined | null,
+    names: readonly string[],
+): string | undefined {
+    if (!category) return undefined;
+    if (names.includes(category)) return category;
+    const c = category.toLowerCase();
+    return names.find((name) => fuzzyNameMatch(c, name));
 }
 
 export interface OrphanCategory {

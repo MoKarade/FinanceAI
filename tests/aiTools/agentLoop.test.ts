@@ -154,6 +154,21 @@ describe('runAgentLoop', () => {
         expect(system[0].cache_control).toEqual({ type: 'ephemeral' });
     });
 
+    it('[AITOOLS-PROMPT-CACHE] le préfixe `tools` (marqueur compris) est STABLE au tour 2 d\'une même boucle', async () => {
+        // Finding ai-reviewer : un cache hit Anthropic exige des tool defs BYTE-identiques d'un appel à
+        // l'autre. Le code référence le MÊME tableau `tools` à chaque tour (jamais reconstruit) → discriminant
+        // contre un futur refactor qui rebâtirait les tools par tour (casserait le cache SANS ce test).
+        const { client, requests } = scriptedClient([
+            toolMsg('get_financial_overview', {}),
+            textMsg('ok'),
+        ]);
+        await runAgentLoop([{ role: 'user', content: 'q' }], { apiKey: 'sk-test', getState, client });
+        expect(requests.length).toBe(2); // tour 1 (tool_use) + tour 2 (réponse finale)
+        expect(requests[1].tools).toEqual(requests[0].tools); // préfixe tools identique → cache réutilisable
+        expect((requests[1].tools as Array<{ cache_control?: unknown }>).at(-1)!.cache_control)
+            .toEqual({ type: 'ephemeral' }); // le marqueur persiste au 2e appel
+    });
+
     it('[ceinture panel] échec API (finalMessage rejette) → résultat HONNÊTE stopReason error + logError, timers nettoyés', async () => {
         // Discriminant : l'ancien code REJETAIT la promesse entière (texte + tool_results déjà payés
         // perdus, zéro logError). Un hoquet réseau ne doit plus jeter le travail accompli.

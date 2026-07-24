@@ -11,18 +11,24 @@ import { logErrorThrottled } from '../errorLogger';
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 
 /**
- * [AUTH-DRIVE-STILL-RECONNECT] Trace DIAGNOSTIQUE d'un renouvellement silencieux impossible, throttlée
- * 1×/(contexte+raison)/session (`logErrorThrottled`) : le polling 60 s re-tente sinon → journal noyé.
- * `info` (pas un incident : une reprise sans session Google est nominale), mais la RAISON GIS exacte
- * (`popup_failed_to_open`, `login_required`, cookies tiers bloqués…) est ce qui permet à Marc de
- * diagnostiquer POURQUOI la reconnexion est redemandée — visible dans Réglages → Diagnostics.
+ * [AUTH-DRIVE-STILL-RECONNECT] Trace DIAGNOSTIQUE d'une reprise silencieuse de session Drive impossible
+ * (renouvellement GIS échoué OU jeton rejeté par l'API Drive / 401), throttlée 1×/(contexte+raison)/
+ * session (`logErrorThrottled`) : le polling 60 s re-tente sinon → journal noyé. La RAISON exacte
+ * (`popup_failed_to_open`, `login_required`, cookies tiers, 401 scope révoqué…) est ce qui permet à
+ * Marc de diagnostiquer POURQUOI la reconnexion est redemandée — visible dans Réglages → Diagnostics.
+ * ⚠️ Sévérité DÉRIVÉE (findings panel PR #504, homogène avec `trySilentReauth`) : `info` pour un cas
+ * NOMINAL (`AuthInteractionRequiredError` : pas de session Google — attendu) ; `warning` + stack pour
+ * tout le reste (panne réseau/script GIS, 401 Drive) — sinon un vrai bug du minuteur (qui tourne
+ * ~1×/h) resterait déclassé en `info` sans stack, indiscernable d'un simple « pas de session ».
  */
-export function traceSilentRenewalFailure(context: 'minuteur' | 'gate' | 'boot', error: unknown): void {
+export function traceSilentAuthFailure(context: 'minuteur' | 'gate' | 'boot', error: unknown): void {
     const reason = error instanceof Error ? error.message : String(error);
-    logErrorThrottled(`drive-renew-fail:${context}:${reason}`, {
+    const nominal = error instanceof AuthInteractionRequiredError;
+    logErrorThrottled(`drive-auth-fail:${context}:${reason}`, {
         source: 'network',
-        severity: 'info',
-        message: `Renouvellement Drive silencieux impossible (${context}) — ${reason}. La bannière de reconnexion prend le relais.`,
+        severity: nominal ? 'info' : 'warning',
+        message: `Reprise silencieuse de la session Drive impossible (${context}) — ${reason}. La bannière de reconnexion prend le relais.`,
+        ...(nominal ? {} : { error: error instanceof Error ? error : new Error(String(error)) }),
     });
 }
 
@@ -315,7 +321,7 @@ function scheduleTokenRenewal(): void {
         // (bannière), mais TRACÉ : le minuteur n'a AUCUN appelant pour router son échec → sans cette
         // trace, un jeton qui meurt à ~1h renvoie Marc au login sans qu'on sache pourquoi (le trou noir
         // de [AUTH-DRIVE-STILL-RECONNECT]).
-        renewTokenSilently().catch((e: unknown) => traceSilentRenewalFailure('minuteur', e));
+        renewTokenSilently().catch((e: unknown) => traceSilentAuthFailure('minuteur', e));
     }, delay);
 }
 

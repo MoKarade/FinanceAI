@@ -6,7 +6,8 @@ import {
     requestAccessToken,
     getCachedToken,
     getValidAccessToken,
-    traceSilentRenewalFailure,
+    traceSilentAuthFailure,
+    AuthInteractionRequiredError,
     _resetForTests,
 } from '../../services/googleDrive/gisAuth';
 import { filterErrors, clearErrors, __resetErrorThrottle } from '../../services/errorLogger';
@@ -233,9 +234,10 @@ describe('renouvellement silencieux du jeton', () => {
             expect(calls).toBe(2); // le renouvellement a bien été tenté (2e appel), puis avalé proprement
 
             // [AUTH-DRIVE-STILL-RECONNECT] La trace diagnostique existe désormais, avec la raison GIS
-            // (`popup_failed_to_open`) et la source réseau — visible dans Diagnostics.
+            // (`popup_failed_to_open`) et la source réseau — visible dans Diagnostics. Le chemin
+            // error_callback lève un AuthInteractionRequiredError (cas NOMINAL) → sévérité `info`.
             const traces = filterErrors({ source: 'network' })
-                .filter(e => e.message.includes('Renouvellement Drive silencieux'));
+                .filter(e => e.message.includes('Reprise silencieuse de la session Drive'));
             expect(traces).toHaveLength(1);
             expect(traces[0].severity).toBe('info');
             expect(traces[0].message).toMatch(/minuteur/);
@@ -245,18 +247,23 @@ describe('renouvellement silencieux du jeton', () => {
         }
     });
 
-    it('traceSilentRenewalFailure : throttlé 1×/(contexte+raison)/session, mais une raison DIFFÉRENTE re-loggue', () => {
+    it('traceSilentAuthFailure : sévérité dérivée (info nominal / warning anormal) + throttle par (contexte+raison)', () => {
         __resetErrorThrottle();
         clearErrors();
-        const err = new Error('login_required');
-        traceSilentRenewalFailure('minuteur', err);
-        traceSilentRenewalFailure('minuteur', err); // même contexte + même raison → supprimé
-        traceSilentRenewalFailure('boot', err);     // contexte différent → nouvelle entrée
-        traceSilentRenewalFailure('minuteur', new Error('access_denied')); // raison différente → nouvelle entrée
+        // Cas NOMINAL (AuthInteractionRequiredError) → info ; throttlé sur (contexte+raison).
+        const nominal = new AuthInteractionRequiredError('login_required');
+        traceSilentAuthFailure('minuteur', nominal);
+        traceSilentAuthFailure('minuteur', nominal); // même contexte + même raison → supprimé
+        traceSilentAuthFailure('boot', nominal);     // contexte différent → nouvelle entrée
+        // Cas ANORMAL (Error nu = panne réseau/GIS, ou 401 DriveAuthError) → warning + stack.
+        traceSilentAuthFailure('minuteur', new Error('network_down'));
         const traces = filterErrors({ source: 'network' })
-            .filter(e => e.message.includes('Renouvellement Drive silencieux'));
-        expect(traces).toHaveLength(3);
-        expect(traces.every(t => t.severity === 'info')).toBe(true);
+            .filter(e => e.message.includes('Reprise silencieuse de la session Drive'));
+        expect(traces).toHaveLength(3); // 2 nominaux dédupliqués → 2 entrées + 1 anormale
+        expect(traces.filter(t => t.severity === 'info')).toHaveLength(2);
+        const anormal = traces.filter(t => t.severity === 'warning');
+        expect(anormal).toHaveLength(1);
+        expect(anormal[0].message).toMatch(/network_down/);
     });
 });
 

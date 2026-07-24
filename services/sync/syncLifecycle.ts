@@ -13,11 +13,9 @@ import {
     getValidAccessToken,
     renewTokenSilently,
     revokeAccess,
-    AuthInteractionRequiredError,
-    traceSilentRenewalFailure,
+    traceSilentAuthFailure,
 } from '../googleDrive/gisAuth';
 import { isInactivityExpired, recordActivity, clearActivity } from './inactivityLogout';
-import { logError } from '../errorLogger';
 
 /**
  * [Finding panel silent-failure] Reprise silencieuse au boot : un échec par « interaction requise »
@@ -30,18 +28,10 @@ async function trySilentReauth(phase: 'gate' | 'boot'): Promise<string | null> {
     try {
         return await renewTokenSilently();
     } catch (e) {
-        if (e instanceof AuthInteractionRequiredError) {
-            // [AUTH-DRIVE-STILL-RECONNECT] Cas NOMINAL (pas de session Google / cookies tiers bloqués) :
-            // pas un incident, MAIS la raison GIS exacte diagnostique POURQUOI la reconnexion est
-            // redemandée (session expirée vs ITP/Safari). Trace `info` throttlée, visible dans Diagnostics.
-            traceSilentRenewalFailure(phase, e);
-        } else {
-            logError({
-                source: 'network', severity: 'warning',
-                message: `Reprise silencieuse Drive au ${phase} échouée (anormale : réseau/GIS) — renvoi au login.`,
-                error: e instanceof Error ? e : new Error(String(e)),
-            });
-        }
+        // [AUTH-DRIVE-STILL-RECONNECT] Une seule voie : le helper dérive la sévérité (NOMINAL « pas de
+        // session Google » → `info` ; anormal réseau/GIS → `warning` + stack) et throttle par raison.
+        // La raison GIS exacte diagnostique POURQUOI la reconnexion est redemandée, visible dans Diagnostics.
+        traceSilentAuthFailure(phase, e);
         return null;
     }
 }
@@ -173,7 +163,12 @@ export async function gateSilentResume(): Promise<boolean> {
         return true;
     } catch (e) {
         setStatus({ busy: false, connected: false });
-        if (!(e instanceof DriveAuthError)) handleError('boot', e);
+        // [AUTH-DRIVE-STILL-RECONNECT] Un 401 Drive (jeton accepté par GIS mais rejeté par l'API :
+        // scope révoqué en amont, Drive désactivé) était TOTALEMENT muet (finding silent-failure PR
+        // #504) → même surface « reconnexion redemandée » que le renouvellement : tracé aussi, sinon
+        // Diagnostics n'explique rien et Marc rouvre le même ticket. Le reste (anormal) → handleError.
+        if (e instanceof DriveAuthError) traceSilentAuthFailure('gate', e);
+        else handleError('boot', e);
         return false;
     }
 }
@@ -211,7 +206,9 @@ export async function runBootSync(): Promise<void> {
         await runDecision(token); // garde anti-perte stricte (identique au gate désormais)
     } catch (e) {
         setStatus({ connected: false });
-        if (!(e instanceof DriveAuthError)) handleError('boot', e);
+        // [AUTH-DRIVE-STILL-RECONNECT] cf gateSilentResume : le 401 Drive est tracé (plus muet), le reste → handleError.
+        if (e instanceof DriveAuthError) traceSilentAuthFailure('boot', e);
+        else handleError('boot', e);
     }
 }
 

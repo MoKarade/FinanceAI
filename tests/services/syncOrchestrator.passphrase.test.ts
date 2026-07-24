@@ -31,6 +31,7 @@ vi.mock('../../services/googleDrive/gisAuth', () => ({
     getValidAccessToken: vi.fn(async () => 'tok-silent'),
     requestAccessToken: vi.fn(async () => 'tok-interactive'),
     revokeAccess: () => {},
+    traceSilentAuthFailure: () => {},
 }));
 
 vi.mock('../../services/googleDrive/driveAppData', () => {

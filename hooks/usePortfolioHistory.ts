@@ -30,6 +30,10 @@ export interface UsePortfolioHistoryResult {
     partialHistorySymbols: Array<{ symbol: string; historyStart: string }>;
     /** Symboles à queue d'historique PÉRIMÉE sans quote fraîche : absents du total des derniers jours. */
     staleTailSymbols: Array<{ symbol: string; lastKnownDate: string }>;
+    /** [PERF-STALE-TAIL-ZERO] Clés `JSON.stringify([date, symbol])` raccordées au prix courant (candles
+     *  KO, quote fraîche) → `seriesReturnPct` rend « — » plutôt qu'un 0 % trompeur si latest ET baseline
+     *  le sont. Sérialisation JSON (pas `date|symbol`) : un symbole manuel peut contenir « | ». */
+    syntheticTailKeys: Set<string>;
 }
 
 export function usePortfolioHistory(): UsePortfolioHistoryResult {
@@ -47,10 +51,11 @@ export function usePortfolioHistory(): UsePortfolioHistoryResult {
                 noHistorySymbols: [],
                 partialHistorySymbols: [],
                 staleTailSymbols: [],
+                syntheticTailKeys: new Set(),
             };
         }
-        const { rows, noHistorySymbols, partialHistorySymbols, staleTailSymbols } = buildMarketData(assets, fxRates as Record<string, number>);
-        return { history: rows, isLoading: false, error: null, noHistorySymbols, partialHistorySymbols, staleTailSymbols };
+        const { rows, noHistorySymbols, partialHistorySymbols, staleTailSymbols, syntheticTailKeys } = buildMarketData(assets, fxRates as Record<string, number>);
+        return { history: rows, isLoading: false, error: null, noHistorySymbols, partialHistorySymbols, staleTailSymbols, syntheticTailKeys };
     }, [isTestMode, assets, initialBalances, fxRates]);
 
     return result;

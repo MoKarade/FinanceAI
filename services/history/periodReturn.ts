@@ -53,9 +53,21 @@ export function isBenchmarkCandidate(symbol: string, name?: string): boolean {
 /**
  * Variation % de la série `key` du marketData entre son dernier point et la DERNIÈRE ligne datée
  * ≤ (dernière date − période) qui porte la clé (> 0). null si pas de baseline dans la fenêtre.
+ *
+ * [PERF-STALE-TAIL-ZERO] `isSynthetic(date, key)` (optionnel, depuis `buildMarketData.syntheticTailKeys`) :
+ * si le point LATEST **et** le point BASELINE sont tous deux raccordés au prix courant (candles KO), le
+ * % est un 0,00 % techniquement exact mais TROMPEUR (donnée figée ≠ marché plat) → `null` (« — » honnête).
+ * Si UN SEUL des deux est synthétique, le mouvement est réel (prix figé vs prix réel) → on garde le %.
  */
-export function seriesReturnPct(rows: MarketDataPoint[], key: string, period: PerfPeriod): number | null {
+export function seriesReturnPct(
+    rows: MarketDataPoint[],
+    key: string,
+    period: PerfPeriod,
+    isSynthetic?: (date: string, key: string) => boolean,
+): number | null {
     if (!rows || rows.length === 0) return null;
+    const bothSynthetic = (baselineDate: string, latestDate: string): boolean =>
+        !!isSynthetic && isSynthetic(latestDate, key) && isSynthetic(baselineDate, key);
     let latest: number | null = null;
     let latestIdx = -1;
     for (let i = rows.length - 1; i >= 0; i--) {
@@ -63,18 +75,23 @@ export function seriesReturnPct(rows: MarketDataPoint[], key: string, period: Pe
         if (Number.isFinite(v) && v > 0) { latest = v; latestIdx = i; break; }
     }
     if (latest === null) return null;
+    const latestDate = String(rows[latestIdx].date);
     if (period === '24H') {
         for (let i = latestIdx - 1; i >= 0; i--) {
             const v = Number(rows[i][key]);
-            if (Number.isFinite(v) && v > 0) return pct(v, latest);
+            if (Number.isFinite(v) && v > 0) {
+                return bothSynthetic(String(rows[i].date), latestDate) ? null : pct(v, latest);
+            }
         }
         return null;
     }
-    const start = periodStartDate(String(rows[latestIdx].date), period);
+    const start = periodStartDate(latestDate, period);
     for (let i = latestIdx - 1; i >= 0; i--) {
         if (String(rows[i].date) > start) continue;
         const v = Number(rows[i][key]);
-        if (Number.isFinite(v) && v > 0) return pct(v, latest);
+        if (Number.isFinite(v) && v > 0) {
+            return bothSynthetic(String(rows[i].date), latestDate) ? null : pct(v, latest);
+        }
         // Ligne à la bonne date mais sans la clé → continuer vers le passé (lignes éparses).
     }
     return null; // série plus récente que la période → « — » honnête

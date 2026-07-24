@@ -376,16 +376,21 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             // (`.includes('-')` cherchait un tiret ASCII alors que les messages portent un tiret cadratin « — »
             // → seuls les mois à remboursement d'impôt passaient). La densité est gérée par sampleEvenly, pas ici.
             (d.flowEvents || []).forEach((label: string) => {
-                if (lastFlow[label] != null && d.monthIndex - lastFlow[label] <= DEDUP_GAP) return;
-                lastFlow[label] = d.monthIndex;
+                // Dédup par MOTIF (finding silent-failure) : le moteur émet un flowEvent de retrait CHAQUE mois
+                // avec un MONTANT UNIQUE (« Retrait REER … +5 605 $ », « +5 609 $ »…) → un dédup par chaîne EXACTE
+                // ne collapse jamais et inonde le cap flux. On normalise les nombres (→ « # ») avant dédup.
+                const dedupKey = label.replace(/\d[\d\s.,]*/g, '#');
+                if (lastFlow[dedupKey] != null && d.monthIndex - lastFlow[dedupKey] <= DEDUP_GAP) return;
+                lastFlow[dedupKey] = d.monthIndex;
                 flows.push({ ...meta, label, subIdx: 0, index: 0, kind: 'flow' });
             });
         });
-        // [FUTUR-ICONS-RICH] Jalons DÉRIVÉS des champs chartData (RRQ/PSV/retraits/locatif/impôt) — présentation
-        // pure (aucun recalcul $). Jamais retraite/FIRE (émis par le moteur → anti-doublon structurel).
-        const { lifeMilestones, flowMilestones } = deriveMilestoneIcons(chartData);
-        lifes.push(...lifeMilestones.map((m) => ({ ...m, subIdx: 0, index: 0 })));
-        flows.push(...flowMilestones.map((m) => ({ ...m, subIdx: 0, index: 0 })));
+        // [FUTUR-ICONS-RICH] Jalons DÉRIVÉS des champs chartData (RRQ/PSV/1er retrait REER-CELI/locatif) —
+        // présentation pure (aucun recalcul $). Jamais retraite/FIRE/impôt (émis par le moteur → anti-doublon
+        // structurel). `pinned` : peu nombreux (one-time) → JAMAIS écrêtés par sampleEvenly, toujours visibles
+        // (finding silent-failure : sinon noyés par le volume de flowEvents dégatés).
+        const milestones = deriveMilestoneIcons(chartData);
+        lifes.push(...milestones.map((m) => ({ ...m, subIdx: 0, index: 0, pinned: true })));
         // ⚠️ RE-TRI par monthIndex OBLIGATOIRE avant `sampleEvenly` (contrat « tableau ORDONNÉ », finding architect
         // ÉLEVÉ : un merge non trié casse l'échantillonnage uniforme) + réassignation `subIdx` (empilement vertical
         // par mois) et `index` (clé unique).
@@ -1069,6 +1074,21 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     columns={dataColumns}
                     rows={displayData}
                 />
+                {/* [FUTUR-ICONS-RICH, a11y] Liste sr-only des JALONS affichés sur la courbe (RRQ/PSV/retraits/
+                    impôts/retraite/FIRE…) : les pastilles SVG ne sont pas atteignables au clavier (dette
+                    A11Y-FUTUR-MILESTONES-KEYBOARD au BACKLOG) → cette liste donne au lecteur d'écran la PARITÉ
+                    d'information (date + libellé), sans échantillonnage (bornée par le cap visuel des icônes). */}
+                {(shownLifeEvents.length > 0 || shownFlowEvents.length > 0) && (
+                    <ul className="sr-only">
+                        <li>Jalons de la projection :</li>
+                        {[...shownLifeEvents, ...shownFlowEvents]
+                            .slice()
+                            .sort((a, b) => a.monthIndex - b.monthIndex)
+                            .map((e, i) => (
+                                <li key={`ms-sr-${i}`}>{e.dateLabel ? `${e.dateLabel} : ` : ''}{e.label}</li>
+                            ))}
+                    </ul>
+                )}
 
                 {/* [R3] Tooltip portail : survol (pointer-events:none, suit la souris) ou
                     figé (pointer-events:auto, scrollable, ancré, focusable). Positionné par

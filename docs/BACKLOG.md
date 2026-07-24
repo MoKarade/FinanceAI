@@ -238,6 +238,12 @@
   RETIRÉ → flowEvents moteur enfin visibles ; (c) toutes les pastilles sur la courbe (`val=NetWorth`, avant les flux étaient
   à `ImpotLatent` = invisibles). RRQ/PSV migrés de lignes verticales → icônes cliquables. **Validé e2e Playwright RÉEL**
   (`e2e/futureIcons.spec.ts`) : 29 icônes vs 0-2. Tests purs (`projection.milestoneIcons.test.ts`).
+- [ ] **`[A11Y-FUTUR-MILESTONES-KEYBOARD]`** 🔵 (M, finding a11y-auditor PR #516) — les pastilles d'événements du
+  graphe Futur (`ClickableEventIcon`, `<g role="button" tabIndex={-1}>`) ne sont pas atteignables au CLAVIER (WCAG 2.1.1) :
+  aucun `onKeyDown`, conteneur graphe `tabIndex=-1`. Une liste sr-only des jalons (parité SR) a été livrée avec FUTUR-ICONS-RICH,
+  mais l'OPÉRABILITÉ clavier reste à faire → rendre les pastilles VISIBLES focusables (`tabIndex=0` + Enter/Space → `onSelect`,
+  focus-ring) OU un contrôle clavier alternatif ouvrant `FutureDetailModal`. ⚠️ Impact sur le pattern « clic n'importe où » (G12) →
+  trancher avec Marc. Aria-label des jalons récurrents (impôt) : inclure `dateLabel`/année si focusables (sinon ~N boutons identiques).
 - [x] **`[A11Y-DASH-SRONLY]`** ✅ (2026-07-24, PR suivante) — convention GLOBALE : helper pur
   `components/ui/emptyAware` — quand la valeur rendue EST le tiret « — » (état vide de formatCAD/formatPercent),
   il remplace le tiret muet par `<span aria-hidden>—</span>` + `<span class="sr-only">Pas de donnée</span>`

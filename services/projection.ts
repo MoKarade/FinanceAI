@@ -559,9 +559,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
         // Phase 2: Restitution du CELI en JANVIER (Mois 0)
         if (currentMonthIndex === 0 && m > 0) {
-            celiRoom += celiWithdrawalsThisYear;
+            celiRoom += celiWithdrawalsThisYear; // +0 si aucun retrait → celiRoom inchangé (zéro effet $)
+            // [FUTUR-ICONS-RICH] Ne journaliser la régénération QUE s'il y a eu un vrai retrait à restituer :
+            // sinon ~30-40 flowEvents « régénération de 0 $ » polluent les icônes du graphe (finding code-reviewer).
+            if (celiWithdrawalsThisYear > 0) flowEventsLog.push(`🔄 CELI: Régénération de l'espace de cotisation`);
             celiWithdrawalsThisYear = 0;
-            flowEventsLog.push(`🔄 CELI: Régénération de l'espace de cotisation`);
         }
         let fluxImpots = 0;
         let impotGainsMois = 0; // V29: Gains en capital (taxes payées ce mois ou différées)

@@ -933,6 +933,17 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   Marc « valide avant de dire que c'est bon » = e2e Playwright RÉEL** (`e2e/futureIcons.spec.ts`, chromium préinstallé via
   `PW_LOCAL_CHROMIUM`) : le preview headless rend Recharts en 0×0 (leçon R3-TOOLTIP) → seul un vrai viewport prouve les icônes.
   Mesuré : 29 pastilles (RRQ/PSV/retraits/impôts/retraite/FIRE) vs 0-2 avant. Un « c'est bon » sur du Recharts sans e2e réel = non prouvé.
+  **Leçons du panel (4 agents, sondes exécutées) :** (7) **RETIRER un filtre expose ce qu'il MASQUAIT — auditer les DOUBLONS
+  avec ce qui redevient visible** : mon jalon dérivé « 💸 Règlement d'impôt » DOUBLONNAIT le flowEvent moteur « 💸 Remboursement
+  d'impôt: +X$ » (émis en avril, invisible AVANT car gaté) — 17/17 mois d'impôt avaient déjà l'événement moteur (sonde). Anti-doublon
+  structurel étendu : ne PAS dériver un concept que le moteur émet DÉJÀ (retraite/FIRE/impôt). (8) **Un label moteur à MONTANT
+  interpolé (« Retrait REER … +5 605 $ », « +5 609 $ »…) n'est JAMAIS collapsé par un dédup à CHAÎNE EXACTE** → ~400 labels distincts
+  inondent le cap d'icônes. Dédup par MOTIF (normaliser les nombres → « # » avant la clé de dédup). (9) **Un garde d'exemption
+  (locatif déjà actif au mois 0) doit être SYMÉTRIQUE sur tous les champs de même nature** : je l'avais mis sur le locatif mais pas
+  RRQ/PSV/REER/CELI → « 1er retrait REER » au mois 0 pour un déjà-retraité (faux « 1er »). Initialiser chaque flag `xxxDone` à
+  `actif-au-mois-0`. (10) **Une couche d'AFFICHAGE qui MULTIPLIE ×15 les éléments cliquables amplifie une dette a11y pré-existante**
+  (tabIndex=-1 + alternative sr-only qui ne couvre pas les événements) : livrer la liste sr-only des jalons (parité SR) DANS la même PR,
+  router l'opérabilité clavier au BACKLOG ; cible tactile flux 18→24 px (WCAG 2.5.8) + zone de clic transparente 44 px (2.5.5).
 - ⚠️ **[INVEST-ALLOC-GEO-SECTOR] 2026-07-23** : (1) **une table de lookup dont le FORMAT de clé a dérivé de celui
   des données réelles est une table entièrement MORTE en silence** (`ASSET_META` keyée `EPA:CW8` vs symboles réels
   `CW8.PA` → 0 hit, tout en « Autre » sans erreur) — normaliser le LOOKUP (pas les données), même classe que

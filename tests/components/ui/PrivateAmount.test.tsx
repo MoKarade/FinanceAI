@@ -42,4 +42,18 @@ describe('[PRIV-DISCRET-DOM] PrivateAmount', () => {
         const { container } = render(<PrivateAmount title="Écart vs référence">7$</PrivateAmount>);
         expect(container.firstElementChild?.getAttribute('title')).toBe('Écart vs référence');
     });
+
+    it('[A11Y-DASH-SRONLY] mode discret INACTIF + valeur « — » → tiret aria-hidden + sr-only « Pas de donnée »', () => {
+        // Prouve la branche `emptyAware` de PrivateAmount (celle que DualKPIStat consomme) : le commentaire
+        // du module affirme « couvre DualKPIStat » — ce test le vérifie plutôt que de le supposer.
+        const { container } = render(<PrivateAmount>—</PrivateAmount>);
+        expect(container.querySelector('[aria-hidden="true"]')?.textContent).toBe('—');
+        expect(container.querySelector('.sr-only')?.textContent).toBe('Pas de donnée');
+    });
+
+    it('[A11Y-DASH-SRONLY] discriminant : une valeur FINIE via PrivateAmount ne fabrique PAS de sr-only', () => {
+        const { container } = render(<PrivateAmount>320 000 $</PrivateAmount>);
+        expect(screen.getByText('320 000 $')).toBeInTheDocument();
+        expect(container.querySelector('.sr-only')).toBeNull();
+    });
 });

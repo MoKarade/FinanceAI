@@ -260,7 +260,15 @@
   serveStatic/hono dans `mcp/`, Cloud Run Linux). Suivi UNIQUE : `[DEP-HONO-NODE-SERVER]` — re-vérifier
   à chaque bump du SDK MCP. Leçon : GREP le BACKLOG avant de créer un ticket sur un finding « nouveau ».
 
-## 🤝 Assistant fusionné (demande Marc 2026-07-23 : « combiner Prochaine action à l'Assistant »)
+## 🔮 Futur — densité d'icônes (bug Marc 2026-07-24 : « pas assez d'icônes dans futur »)
+- [x] **`[FUTUR-ICON-DENSITY]`** ✅ (2026-07-24, PR suivante) — l'échantillonnage des pastilles
+  d'événements (`thinEvents`, `FutureProjection.tsx`) utilisait un PAS ENTIER `step = ceil(len/cap)`
+  qui SOUS-REMPLISSAIT le plafond dès que `len` dépasse un peu `cap` : mesuré 25 événements cap 24 →
+  **13 montrés** (au lieu de ~24), 17 flux cap 16 → 9, 30→15, 49→17. Marc voyait ~la MOITIÉ du cap.
+  Fix : `utils/sampleEvenly.ts` (pur, testé) répartit EXACTEMENT `cap` indices uniformément (extrémités
+  incluses, ordre préservé, zéro doublon) → le plafond 24/16 est enfin ATTEINT. Les `pinned` (FIRE) et
+  le LOD « zoom = toutes » (fenêtre zoomée < cap → `len<=cap` rend tout) restent inchangés. Le plafond
+  lui-même (24/16) est laissé tel quel (décision Marc R4 2026-06-22) ; à MONTER seulement s'il en veut plus.
 - [x] **`[ASSISTANT-HUB]`** ✅ (2026-07-23, PR #492) — onglet Assistant VISIBLE dans la nav (remplace
   « Prochaine action » — il n'était accessible que par Alt+9/Cmd+K) ; cartes de signaux
   (`AiChatSignalCards` ← `useFinancialSignals` ← `computeFinancialSignals`, moteur PUR partagé avec le

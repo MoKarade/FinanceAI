@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Accessibilité : « Pas de donnée » annoncé au lecteur d'écran] — 2026-07-24
+
+### Accessibilité
+- **Quand un chiffre est indisponible**, l'app affiche un tiret « — ». Les lecteurs d'écran annoncent
+  désormais « Pas de donnée » à sa place (au lieu de « tiret cadratin » ou d'un silence), sur toutes les
+  tuiles de statistiques (Tableau de bord, Budget, Investissements, Futur). Aucun changement visuel.
+
 ## [unreleased — Assistant IA : coût réduit par la mise en cache du prompt] — 2026-07-24
 
 ### Amélioration

@@ -51,6 +51,21 @@ describe('KPIStat', () => {
         }
     });
 
+    it('[A11Y-DASH-SRONLY] value « — » (pas de donnée) → tiret aria-hidden + sr-only « Pas de donnée »', () => {
+        // formatCAD/formatPercent rendent « — » pour une valeur non finie ; un lecteur d'écran lirait
+        // sinon « tiret cadratin » ou rien. La convention globale expose « Pas de donnée » au SR.
+        const { container } = render(<KPIStat label="Patrimoine" value="—" />);
+        const dash = container.querySelector('[aria-hidden="true"]');
+        expect(dash?.textContent).toBe('—');           // tiret visible, masqué au SR
+        expect(container.querySelector('.sr-only')?.textContent).toBe('Pas de donnée'); // lu par le SR
+    });
+
+    it('[A11Y-DASH-SRONLY] discriminant : une valeur FINIE ne déclenche PAS le sr-only « Pas de donnée »', () => {
+        const { container } = render(<KPIStat label="L" value="320 000 $" />);
+        expect(screen.getByText('320 000 $')).toBeInTheDocument();
+        expect(container.querySelector('.sr-only')).toBeNull(); // aucun sr-only fabriqué sur une vraie valeur
+    });
+
     it('[Revue #247] value INTERACTIVE (CTA) → NE PAS passer privacy : le bouton reste accessible', () => {
         // Garde le contrat du fix Dashboard `privacy={hasValue}` : un consommateur qui met un CTA en
         // value DOIT gater privacy, sinon PrivateAmount rendrait le bouton aria-hidden (WCAG 4.1.2).

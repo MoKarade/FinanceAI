@@ -3,8 +3,8 @@ import { renderHook, act } from '@testing-library/react';
 import { useSimulationParams } from '../../hooks/useSimulationParams';
 
 // [FUTUR-HIST-DAILY-REFRESH] « Aujourd'hui » (startYear/startMonth) doit AVANCER quand le mois calendaire
-// change, même onglet resté ouvert (avant : figé au montage via useMemo([])). Le check horaire (setInterval)
-// réévalue monthEpoch → au passage de mois, startMonth avance (et la projection re-seed).
+// change, même onglet resté ouvert (avant : figé au montage via useMemo([])). Source PARTAGÉE module-level
+// (un seul timer) → les 2 montages du hook (ProjectionEngine + FutureProjection) lisent le MÊME mois.
 
 describe('[FUTUR-HIST-DAILY-REFRESH] useSimulationParams', () => {
     afterEach(() => { vi.useRealTimers(); });
@@ -16,7 +16,7 @@ describe('[FUTUR-HIST-DAILY-REFRESH] useSimulationParams', () => {
         expect(result.current.startMonth).toBe(0); // janvier
         expect(result.current.startYear).toBe(2026);
 
-        // Encore janvier, 1h plus tard → le tick ne change RIEN (no-op, pas de re-render inutile).
+        // Encore janvier, 1h plus tard → le tick ne change RIEN (bail-out React sur valeur primitive égale).
         act(() => { vi.setSystemTime(new Date('2026-01-15T13:05:00')); vi.advanceTimersByTime(60 * 60 * 1000); });
         expect(result.current.startMonth).toBe(0);
 
@@ -29,5 +29,20 @@ describe('[FUTUR-HIST-DAILY-REFRESH] useSimulationParams', () => {
         act(() => { vi.setSystemTime(new Date('2027-01-02T00:00:00')); vi.advanceTimersByTime(60 * 60 * 1000); });
         expect(result.current.startMonth).toBe(0);
         expect(result.current.startYear).toBe(2027);
+    });
+
+    it('[source partagée] DEUX instances (ProjectionEngine + FutureProjection) lisent le MÊME mois — pas de divergence', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-05-20T10:00:00'));
+        const a = renderHook(() => useSimulationParams(0));
+        const b = renderHook(() => useSimulationParams(0));
+        expect(a.result.current.startMonth).toBe(b.result.current.startMonth); // 4 (mai)
+        expect(a.result.current.startMonth).toBe(4);
+
+        // Passage de mois : les DEUX avancent au même mois (source unique module-level, plus de désync <1h).
+        act(() => { vi.setSystemTime(new Date('2026-06-01T00:10:00')); vi.advanceTimersByTime(60 * 60 * 1000); });
+        expect(a.result.current.startMonth).toBe(5);
+        expect(b.result.current.startMonth).toBe(5);
+        expect(a.result.current.startMonth).toBe(b.result.current.startMonth);
     });
 });

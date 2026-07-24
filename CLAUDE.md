@@ -908,6 +908,13 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   `Record<string, unknown>`, garder un `type` alias, pas une `interface`. (5) **Extraire l'assemblage inline d'un
   `useMemo` money-critical en fonction PURE = le rendre unit-testable SANS harnais de rendu lourd** (buildPastPrefix) —
   meilleur que mocker `lastProjection`+hooks pour tester le câblage ; discriminant vs substitution `DetteTotale`.
+  (6) **Un `useState`+`setInterval` PAR instance pour un concept qui doit être PARTAGÉ (« aujourd'hui ») DIVERGE**
+  (finding silent-failure) : `useSimulationParams` est monté 2× (ProjectionEngine + FutureProjection) → 2 horloges
+  horaires décalées peuvent avancer le mois à des instants différents → `chartData` (moteur) et `pastPrefix` (affichage)
+  sur un `startMonth` décalé d'un mois à cheval sur minuit du 1er (incohérence visuelle SILENCIEUSE). Fix = état
+  module-level partagé via `useSyncExternalStore` (un seul timer, `getSnapshot` frais `monthEpochOf()` = stable par
+  valeur → bail-out React) — même pattern que la dédup `usePastPortfolioHistory`. Règle : tout « maintenant » réactif
+  consommé par ≥2 montages du même hook = source UNIQUE module-level, jamais un timer par instance.
 - ⚠️ **[INVEST-ALLOC-GEO-SECTOR] 2026-07-23** : (1) **une table de lookup dont le FORMAT de clé a dérivé de celui
   des données réelles est une table entièrement MORTE en silence** (`ASSET_META` keyée `EPA:CW8` vs symboles réels
   `CW8.PA` → 0 hit, tout en « Autre » sans erreur) — normaliser le LOOKUP (pas les données), même classe que

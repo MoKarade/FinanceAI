@@ -7,7 +7,7 @@
 // `calculatedMonthlySavings` est passé en argument car il est dérivé en amont par
 // `useDerivedFinancials` (App) — on évite de le recalculer ici.
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useShallow } from 'zustand/shallow';
 import { buildSimulationParams } from '../services/projection/buildSimulationParams';
@@ -17,6 +17,36 @@ import { usePastPortfolioHistory } from './usePastPortfolioHistory';
 import { deriveStartingBalancesFromHistory } from '../services/history/startingBalancesFromHistory';
 
 const EMPTY_ARRAY: never[] = [];
+
+// [FUTUR-HIST-DAILY-REFRESH] « Aujourd'hui » (mois calendaire) = source UNIQUE PARTAGÉE au niveau MODULE
+// (finding silent-failure PR #514) : `useSimulationParams` est monté 2× (ProjectionEngine + FutureProjection).
+// Un `useState`/`setInterval` PAR instance ferait diverger transitoirement leurs « aujourd'hui » (2 horloges
+// horaires décalées) → `chartData` (moteur) et `pastPrefix` (affichage) sur un `startMonth` décalé d'un mois à
+// cheval sur minuit du 1er (incohérence visuelle silencieuse). Un SEUL timer + `getSnapshot` frais garantit que
+// les DEUX call-sites lisent le MÊME mois (règle « Future = source unique »), comme la dédup de `usePastPortfolioHistory`.
+const monthEpochOf = (): number => { const d = new Date(); return d.getFullYear() * 12 + d.getMonth(); };
+const _monthListeners = new Set<() => void>();
+let _monthTimer: ReturnType<typeof setInterval> | null = null;
+const _notifyMonth = (): void => { _monthListeners.forEach((l) => l()); };
+const _onMonthVisibility = (): void => { if (typeof document !== 'undefined' && document.visibilityState === 'visible') _notifyMonth(); };
+const _subscribeMonthEpoch = (cb: () => void): (() => void) => {
+    _monthListeners.add(cb);
+    if (_monthTimer === null && typeof window !== 'undefined') {
+        _monthTimer = setInterval(_notifyMonth, 60 * 60 * 1000); // horaire (onglet idle mais visible à cheval sur minuit)
+        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', _onMonthVisibility);
+    }
+    return () => {
+        _monthListeners.delete(cb);
+        if (_monthListeners.size === 0 && _monthTimer !== null) {
+            clearInterval(_monthTimer);
+            _monthTimer = null;
+            if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', _onMonthVisibility);
+        }
+    };
+};
+// `getSnapshot` recalcule le mois courant à CHAQUE lecture (primitif → stable par valeur : bail-out React si inchangé).
+// Le timer/visibility ne fait que NOTIFIER (re-lecture) ; au vrai passage de mois, la valeur change → re-render.
+const _getMonthEpoch = (): number => monthEpochOf();
 
 export interface SimulationParamsBundle {
     /** Entrée du moteur : `calculateFutureProjection(params, …)`. */
@@ -90,29 +120,10 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
 
     // La projection démarre AUJOURD'HUI (mois courant), pas au 1er janvier en dur :
     // passé reconstruit et futur projeté se rejoignent au point « aujourd'hui ».
-    // [FUTUR-HIST-DAILY-REFRESH] « Aujourd'hui » AVANCE quand le mois calendaire change, même onglet ouvert :
-    // avant, `startYear/startMonth` étaient figés au MONTAGE (`useMemo([])`) → un onglet laissé ouvert à cheval
-    // sur un changement de mois gardait un « aujourd'hui » périmé jusqu'au prochain remount. `monthEpoch` (an×12+mois)
-    // se réévalue à chaque heure + au retour de visibilité → au passage de mois, la projection re-seed et le passé
-    // gagne son point manquant. Granularité MOIS (le passé/moteur sont mensuels ; un tick quotidien n'ajouterait rien).
-    const [monthEpoch, setMonthEpoch] = useState(() => {
-        const d = new Date();
-        return d.getFullYear() * 12 + d.getMonth();
-    });
-    useEffect(() => {
-        const check = () => {
-            const d = new Date();
-            const e = d.getFullYear() * 12 + d.getMonth();
-            setMonthEpoch((prev) => (prev === e ? prev : e)); // no-op si même mois → pas de re-render inutile
-        };
-        const id = setInterval(check, 60 * 60 * 1000); // horaire (onglet idle mais visible à cheval sur minuit)
-        const onVis = () => { if (typeof document !== 'undefined' && document.visibilityState === 'visible') check(); };
-        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVis);
-        return () => {
-            clearInterval(id);
-            if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
-        };
-    }, []);
+    // [FUTUR-HIST-DAILY-REFRESH] « Aujourd'hui » (mois) AVANCE quand le mois calendaire change, même onglet ouvert
+    // (avant : figé au MONTAGE via `useMemo([])`). Source PARTAGÉE module-level (une seule horloge pour les 2 montages
+    // du hook → pas de divergence inter-instances, cf bloc ci-dessus). Granularité MOIS (passé/moteur mensuels).
+    const monthEpoch = useSyncExternalStore(_subscribeMonthEpoch, _getMonthEpoch, _getMonthEpoch);
     const { startYear, startMonth } = useMemo(
         () => ({ startYear: Math.floor(monthEpoch / 12), startMonth: monthEpoch % 12 }),
         [monthEpoch],

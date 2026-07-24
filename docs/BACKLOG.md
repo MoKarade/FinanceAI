@@ -301,6 +301,10 @@
   appelant) ET le cas NOMINAL de `trySilentReauth` boot/gate (`syncLifecycle.ts`, jusqu'ici muet). Reste
   la vérif HUMAINE de Marc en prod : ouvrir Diagnostics après une reconnexion redemandée → la raison GIS
   (`login_required` = session Google expirée, `popup_failed_to_open`/cookies = ITP Safari/Brave) tranche.
+  **Panel PR #504** : sévérité DÉRIVÉE (`info` nominal / `warning`+stack anormal — un vrai bug du minuteur ne se
+  déclasse plus en info) ; **trou 401 fermé** (un `DriveAuthError` — jeton rejeté par l'API Drive, scope révoqué —
+  était TOTALEMENT muet aux 2 sites gate+boot ; même surface « reconnexion redemandée » → tracé) ; helper renommé
+  `traceSilentAuthFailure` (couvre renouvellement GIS ET 401 Drive).
 
 ## 📈 PORTFOLIO-HISTORY — courbes de cours réelles (bug Marc 2026-07-22, PR #485)
 - [x] **`[PORTFOLIO-HISTORY]`** ✅ 2026-07-22 — courbes par action (depuis 1er achat) + courbe portefeuille

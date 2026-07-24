@@ -20,6 +20,7 @@
 // Contrat getQuote : `Quote` ou `null` (pas de « vide légitime » pour une quote).
 
 import type { HistoryPoint, Quote } from '../types';
+import { MarketDataError } from '../types';
 import { toFinnhubSymbol } from './finnhub';
 import { logProviderError } from './providerError';
 
@@ -107,12 +108,19 @@ export async function getYahooQuote(symbol: string): Promise<Quote | null> {
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
         const res = await fetch(url, { signal: controller.signal });
-        if (!res.ok) return null;
+        // [QUOTE-ERRKIND] 404 = symbole inconnu chez Yahoo = ABSENCE confirmée → `null` (comptée au
+        // cache négatif). 429/5xx = erreur TRANSITOIRE → throw (la façade ne compte pas : un rate-limit
+        // ne doit pas geler un vrai titre). parseYahooQuote → `null` si forme sans prix (absence confirmée).
+        if (res.status === 404) return null;
+        if (!res.ok) {
+            throw new MarketDataError(`Yahoo ${res.status}`, res.status === 429 ? 'RATE_LIMIT' : 'NETWORK', 'yahoo');
+        }
         const data = (await res.json()) as YahooChartResponse;
         return parseYahooQuote(data, symbol);
     } catch (e) {
         logProviderError('YahooProxy', 'getQuote', symbol, e);
-        return null;
+        if (e instanceof MarketDataError) throw e;
+        throw new MarketDataError(String(e), 'NETWORK', 'yahoo'); // abort/timeout/réseau = transitoire
     } finally {
         clearTimeout(timer);
     }

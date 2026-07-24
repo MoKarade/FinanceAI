@@ -185,12 +185,12 @@
   Benchmark « Marché » = prix natif du titre CW8/MSCI détenu (repli série CSV). Pas de baseline dans la
   fenêtre (titre plus récent que la période) → `null`/« — » honnête, jamais un 0. Score de santé : momentum
   FIXÉ sur 24h (indépendant du sélecteur — badge header stable).
-- [ ] **`[QUOTE-ERRKIND]`** (M, finding ÉLEVÉ code-reviewer #499, mitigé par TTL gradué) — les providers
-  aplatissent TOUTE erreur en `null` (429 rate-limit, réseau, auth, « symbole inconnu » indistincts) → le
-  cache négatif compte des échecs TRANSITOIRES comme « non couvert ». Mitigation livrée : TTL gradué (3-4
-  échecs → 1 h quote / 24 h profil ; ≥ 5 → 24 h / 7 j). Fix structurel : propager le TYPE d'erreur
-  (`MarketDataError.code`) provider→façade et ne compter que les « confirmé inconnu » (rate-limit/réseau →
-  retry court ou pas de comptage).
+- [x] **`[QUOTE-ERRKIND]`** ✅ (2026-07-24, PR suivante) — fix structurel livré : les providers PROPAGENT
+  désormais (throw) une `MarketDataError` typée pour les échecs TRANSITOIRES (RATE_LIMIT/NETWORK/AUTH/UNKNOWN)
+  au lieu de les aplatir en `null` ; l'ABSENCE confirmée (Finnhub `c:0`, Yahoo 404, crypto id inconnu) reste
+  `null`. La façade (`runLink`) classe : transitoire → avalé en `null` mais NON compté au cache négatif (un
+  429/réseau ne gèle plus un vrai titre) ; absence confirmée → compté au skip. Le TTL gradué reste 2ᵉ ceinture.
+  Discriminant : 3× 429 → `canAttemptQuote` reste `true` (échouait avant) ; 3× 404 → skip armé.
 - [ ] **`[PRICE-SYNC-REPORT]`** (S-M, finding ÉLEVÉ silent-failure #499, mitigé) — les skips du refresh de
   BOOT (quotes/profils) n'ont AUCUNE surface UI (contrairement à l'historique → HistorySyncDoctor). Mitigation
   livrée : logError au journal quand des titres sont skippés au boot + TTL gradué (staleness bornée ~1 h).

@@ -100,8 +100,11 @@ export class FinnhubProvider implements MarketDataProvider {
                 timestamp: num(t, Math.floor(Date.now() / 1000)) * 1000,
             };
         } catch (e) {
+            // [QUOTE-ERRKIND] Une ERREUR (429/AUTH/réseau) se PROPAGE (throw) : la façade la classe
+            // transitoire → NE l'arme PAS au cache négatif (429 ne doit pas geler un vrai titre).
+            // Une ABSENCE confirmée (c===0/!data ci-dessus) reste `null` → comptée au skip.
             logProviderError('Finnhub', 'getQuote', symbol, e);
-            return null;
+            throw e;
         }
     }
 
@@ -159,8 +162,9 @@ export class FinnhubProvider implements MarketDataProvider {
                 industry: finnhubIndustry,
             };
         } catch (e) {
+            // [QUOTE-ERRKIND] Erreur propagée (cf getQuote) ; l'absence confirmée (!data/!name) reste `null`.
             logProviderError('Finnhub', 'getProfile', symbol, e);
-            return null;
+            throw e;
         }
     }
 

@@ -86,16 +86,32 @@ describe('[HIST-MULTI-PROVIDER] repli quote Yahoo (navigateur)', () => {
         expect((await getQuote('CW8.PA'))?.price).toBe(550);
     });
 
-    // [QUOTE-NEGATIVE-CACHE] Intégration façade : 3 nulls consécutifs → skip sans réseau ;
-    // un succès efface l'entrée.
-    it('après 3 échecs consécutifs, getQuote rend null SANS toucher au réseau (skip négatif)', async () => {
-        const failMock = vi.fn(async () => new Response('down', { status: 502 }));
+    // [QUOTE-NEGATIVE-CACHE] Intégration façade : 3 ABSENCES CONFIRMÉES (404) consécutives → skip sans
+    // réseau ; un succès efface l'entrée. [QUOTE-ERRKIND] : seul le 404 (symbole inconnu chez Yahoo)
+    // compte — cf le discriminant transitoire ci-dessous.
+    it('après 3 absences confirmées (404), getQuote rend null SANS toucher au réseau (skip négatif)', async () => {
+        const failMock = vi.fn(async () => new Response('not found', { status: 404 }));
         vi.stubGlobal('fetch', failMock);
         for (let i = 0; i < 3; i++) expect(await getQuote('GICXYZ')).toBeNull();
         expect(canAttemptQuote('GICXYZ')).toBe(false); // les boucles pacées skippent d'emblée
         const countAfter3 = failMock.mock.calls.length;
         expect(await getQuote('GICXYZ')).toBeNull(); // 4e appel : skip
         expect(failMock.mock.calls.length).toBe(countAfter3); // AUCUN fetch de plus
+    });
+
+    // [QUOTE-ERRKIND] Discriminant : une erreur TRANSITOIRE (429 rate-limit, 5xx) N'arme PAS le skip —
+    // un 429 ne doit pas geler un VRAI titre (finding ÉLEVÉ #499). Sur l'ANCIEN code (tout null compté),
+    // ce test échouait (canAttemptQuote deviendrait false après 3× 429).
+    it('3 erreurs TRANSITOIRES (429) N\'arment PAS le cache négatif (le vrai titre reste interrogeable)', async () => {
+        const rateLimitMock = vi.fn(async () => new Response('slow down', { status: 429 }));
+        vi.stubGlobal('fetch', rateLimitMock);
+        for (let i = 0; i < 3; i++) expect(await getQuote('CW8.PA')).toBeNull();
+        expect(canAttemptQuote('CW8.PA')).toBe(true); // AUCUN skip (429 = transitoire, non compté)
+        // 4e appel : le réseau est RE-tenté (pas de skip) → un succès passe.
+        const okMock = vi.fn(async () => yahooChartResponse(555, 'EUR'));
+        vi.stubGlobal('fetch', okMock);
+        expect((await getQuote('CW8.PA'))?.price).toBe(555);
+        expect(okMock).toHaveBeenCalled(); // vraiment allé au réseau (non skippé)
     });
 
     it('PÉRIMÈTRE : les échecs d\'HISTORIQUE n\'arment JAMAIS le cache négatif (contrat []/null préservé)', async () => {
@@ -126,15 +142,15 @@ describe('[HIST-MULTI-PROVIDER] repli quote Yahoo (navigateur)', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('un succès efface le compteur négatif (2 échecs puis succès → pas de skip)', async () => {
-        vi.stubGlobal('fetch', vi.fn(async () => new Response('down', { status: 502 })));
+    it('un succès efface le compteur négatif (2 absences confirmées puis succès → pas de skip)', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response('not found', { status: 404 })));
         expect(await getQuote('CW8.PA')).toBeNull();
         expect(await getQuote('CW8.PA')).toBeNull();
         vi.stubGlobal('fetch', vi.fn(async () => yahooChartResponse(552, 'EUR')));
         expect((await getQuote('CW8.PA'))?.price).toBe(552); // succès → compteur effacé
         clearMarketDataCache(); // vide le cache positif 5 min pour forcer un vrai re-fetch
-        vi.stubGlobal('fetch', vi.fn(async () => new Response('down', { status: 502 })));
-        expect(await getQuote('CW8.PA')).toBeNull(); // 1er échec d'une NOUVELLE série
+        vi.stubGlobal('fetch', vi.fn(async () => new Response('not found', { status: 404 })));
+        expect(await getQuote('CW8.PA')).toBeNull(); // 1re absence d'une NOUVELLE série
         expect(canAttemptQuote('CW8.PA')).toBe(true); // pas de skip (compteur reparti à 1)
     });
 });

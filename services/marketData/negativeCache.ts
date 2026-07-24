@@ -42,12 +42,12 @@ const FAIL_THRESHOLD = 3;
 const LONG_TTL_THRESHOLD = 5;
 const CONSEC_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const PRUNE_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
-// [Finding ÉLEVÉ code-reviewer #499, prouvé par sonde] TTL GRADUÉ : les providers aplatissent
-// TOUTE erreur en null (429 rate-limit compris) → 3 échecs transitoires armeraient un skip long
-// sur un VRAI titre (staleness invisible pire que le problème résolu). Premier skip COURT
-// (rafale transitoire → au pire 1 h de cours figé), TTL long seulement après 5 échecs
-// consécutifs (un titre manuel/GIC vraiment non coté l'atteint en quelques jours).
-// Fix structurel (propager le TYPE d'erreur provider→façade) : ticket [QUOTE-ERRKIND].
+// [Finding ÉLEVÉ code-reviewer #499, prouvé par sonde] TTL GRADUÉ + [QUOTE-ERRKIND] : depuis
+// [QUOTE-ERRKIND] (livré) la façade ne compte au skip QUE l'absence CONFIRMÉE (404/`c:0`) — un
+// échec TRANSITOIRE (429/réseau/AUTH) est propagé par le provider (throw), classé par `runLink` et
+// N'incrémente PAS ce compteur. Le TTL gradué reste la 2ᵉ ceinture (defense-in-depth) : premier skip
+// COURT (au pire 1 h de cours figé), TTL long seulement après 5 échecs CONFIRMÉS consécutifs (un
+// titre manuel/GIC vraiment non coté l'atteint en quelques jours).
 const SHORT_TTL_MS: Record<NegativeKind, number> = {
     quote: 60 * 60 * 1000,           // 1 h
     profile: 24 * 60 * 60 * 1000,    // 24 h

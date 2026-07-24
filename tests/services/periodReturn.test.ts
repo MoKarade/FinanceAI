@@ -86,6 +86,34 @@ describe('seriesReturnPct', () => {
         expect(seriesReturnPct([row('2026-07-22', { TOTAL: 100 })], 'TOTAL', '24H')).toBeNull();
     });
 
+    // [PERF-STALE-TAIL-ZERO] Deux jours consécutifs raccordés au prix courant (candles KO, quote
+    // fraîche — cas GBS.PA) → 0 % techniquement exact mais TROMPEUR (donnée figée ≠ marché plat).
+    describe('[PERF-STALE-TAIL-ZERO] endpoints synthétiques', () => {
+        const gbs = [
+            row('2026-07-10', { 'GBS.PA': 48 }),   // close RÉEL, ≤ borne 7D (2026-07-15)
+            row('2026-07-21', { 'GBS.PA': 50 }),   // raccordé au prix courant (synthétique)
+            row('2026-07-22', { 'GBS.PA': 50 }),   // raccordé au prix courant (synthétique) — même valeur
+        ];
+        const isSynth = (date: string, key: string) =>
+            new Set(['2026-07-21|GBS.PA', '2026-07-22|GBS.PA']).has(`${date}|${key}`);
+
+        it('24H : latest ET baseline synthétiques → null (« — » plutôt qu\'un faux 0 %)', () => {
+            // Sans le prédicat : 0 % trompeur (50→50). Avec : null.
+            expect(seriesReturnPct(gbs, 'GBS.PA', '24H')).toBe(0); // comportement d'avant (discriminant)
+            expect(seriesReturnPct(gbs, 'GBS.PA', '24H', isSynth)).toBeNull();
+        });
+
+        it('un SEUL endpoint synthétique → mouvement RÉEL conservé (prix figé vs prix réel)', () => {
+            // 7D : latest (22, synthétique 50) vs baseline (18, réel 48) → +4,17 %, PAS null.
+            const r = seriesReturnPct(gbs, 'GBS.PA', '7D', isSynth);
+            expect(r).toBeCloseTo(((50 - 48) / 48) * 100, 6);
+        });
+
+        it('sans prédicat isSynthetic : comportement inchangé (rétrocompat)', () => {
+            expect(seriesReturnPct(gbs, 'GBS.PA', '24H')).toBe(0);
+        });
+    });
+
     it('ignore les valeurs non finies ou ≤ 0 (jamais un % fabriqué)', () => {
         const dirty = [
             row('2026-07-20', { X: 100 }),

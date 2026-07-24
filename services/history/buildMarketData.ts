@@ -83,6 +83,14 @@ export interface BuildMarketDataResult {
      * le signaler (« historique arrêté depuis le X, absent du total des derniers jours »).
      */
     staleTailSymbols: Array<{ symbol: string; lastKnownDate: string }>;
+    /**
+     * [PERF-STALE-TAIL-ZERO] Clés `${date}|${symbol}` dont la valeur du jour a été RACCORDÉE au prix
+     * courant (queue de candles cassée MAIS quote live fraîche — cas GBS.PA). Deux jours consécutifs
+     * raccordés au même `currentPrice` donnent un `seriesReturnPct` de 0,00 % techniquement exact mais
+     * TROMPEUR (donnée figée ≠ marché plat). L'UI/`seriesReturnPct` doit rendre « — » quand latest ET
+     * baseline sont synthétiques. Scope PER-SYMBOLE (les agrégats TOTAL/buckets mêlent réel+synthétique).
+     */
+    syntheticTailKeys: Set<string>;
 }
 
 /** Au-delà de ce retard entre le dernier close connu et la date t, le prix est PÉRIMÉ (pas de forward-fill). */
@@ -147,7 +155,7 @@ export function buildMarketData(
     const nowMs = opts?.nowMs ?? Date.now();
     const todayStr = new Date(nowMs).toISOString().slice(0, 10);
     const held = (assets || []).filter((a) => a.symbol && ((a.quantity || 0) !== 0 || (a.purchases?.length ?? 0) > 0));
-    if (held.length === 0) return { rows: [], noHistorySymbols: [], partialHistorySymbols: [], staleTailSymbols: [] };
+    if (held.length === 0) return { rows: [], noHistorySymbols: [], partialHistorySymbols: [], staleTailSymbols: [], syntheticTailKeys: new Set() };
 
     // Entrées minimales (mêmes conventions que la reconstruction du Futur : purchases effectifs,
     // priceHistory natif). Un actif sans le MOINDRE point d'historique n'a pas de colonne mais
@@ -207,7 +215,7 @@ export function buildMarketData(
     }
     const noHistorySymbols: BuildMarketDataResult['noHistorySymbols'] =
         [...noHistoryValue.entries()].map(([symbol, valueCad]) => ({ symbol, valueCad: Number(valueCad.toFixed(2)) }));
-    if (withHistory.length === 0) return { rows: [], noHistorySymbols, partialHistorySymbols, staleTailSymbols: [] };
+    if (withHistory.length === 0) return { rows: [], noHistorySymbols, partialHistorySymbols, staleTailSymbols: [], syntheticTailKeys: new Set() };
 
     // Axe des dates = UNION des dates d'historique, bornée à partir du 1er achat GLOBAL connu
     // (« depuis que je les ai ») — les titres SANS historique comptent aussi pour cette borne.
@@ -223,10 +231,12 @@ export function buildMarketData(
         }
     }
     const dates = [...dateSet].sort();
-    if (dates.length === 0) return { rows: [], noHistorySymbols, partialHistorySymbols, staleTailSymbols: [] };
+    if (dates.length === 0) return { rows: [], noHistorySymbols, partialHistorySymbols, staleTailSymbols: [], syntheticTailKeys: new Set() };
 
     const lastAxisDate = dates[dates.length - 1];
     const staleTailSymbols: BuildMarketDataResult['staleTailSymbols'] = [];
+    // [PERF-STALE-TAIL-ZERO] `${date}|${symbol}` raccordés au prix courant (candles KO, quote fraîche).
+    const syntheticTailKeys = new Set<string>();
     const rows: MarketDataPoint[] = dates.map((t) => {
         const row: MarketDataPoint = { date: t };
         let total = 0;
@@ -251,6 +261,9 @@ export function buildMarketData(
                     // Queue périmée MAIS quote live fraîche : raccord au prix courant pour les
                     // derniers jours (cas « quote OK, candles cassées » — GBS.PA).
                     price = minimal.currentPrice;
+                    // [PERF-STALE-TAIL-ZERO] Valeur du jour SYNTHÉTIQUE (prix figé) → traçable pour
+                    // que seriesReturnPct ne rende pas un 0 % trompeur si latest ET baseline le sont.
+                    syntheticTailKeys.add(`${t}|${minimal.symbol}`);
                 } else {
                     // Périmé sans quote fraîche → pas de valeur inventée. MAIS un titre absent de
                     // la DERNIÈRE date tracée = TOTAL récent amputé → SIGNALER (finding
@@ -289,5 +302,5 @@ export function buildMarketData(
         return row;
     });
 
-    return { rows: downsample(rows, maxPoints), noHistorySymbols, partialHistorySymbols, staleTailSymbols };
+    return { rows: downsample(rows, maxPoints), noHistorySymbols, partialHistorySymbols, staleTailSymbols, syntheticTailKeys };
 }

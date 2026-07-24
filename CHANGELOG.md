@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Investissements : plus de « 0 % » trompeur sur un cours figé] — 2026-07-24
+
+### Correction
+- **Un titre dont le cours réel s'est arrêté mais dont on garde le dernier prix connu** (candles du
+  fournisseur cassées, ex. certains titres Euronext) affichait « +0,00 % » sur la période — comme si
+  le marché était plat, alors que la donnée est simplement figée. Il affiche maintenant « — » (donnée
+  indisponible) quand les deux bornes de la période sont des prix figés. Un vrai mouvement (prix figé
+  aujourd'hui vs prix réel plus ancien) reste affiché normalement.
+
 ## [unreleased — Accessibilité : sélecteurs de période navigables au clavier] — 2026-07-24
 
 ### Accessibilité

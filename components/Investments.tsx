@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
     Asset,
     AppState,
@@ -218,7 +218,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
     // Sprint 3B M3 + test-mode-complet : utilise usePortfolioHistory hook qui
     // retourne le marketData synthétique en mode test (depuis testFixtures)
     // ou le CSV externe sinon.
-    const { history: portfolioHistory, noHistorySymbols, partialHistorySymbols, staleTailSymbols } = usePortfolioHistory();
+    const { history: portfolioHistory, noHistorySymbols, partialHistorySymbols, staleTailSymbols, syntheticTailKeys } = usePortfolioHistory();
+    // [PERF-STALE-TAIL-ZERO] Prédicat pour seriesReturnPct : une valeur (date, clé) est-elle raccordée
+    // au prix courant (candles KO) ? Deux endpoints synthétiques → « — » plutôt qu'un 0 % trompeur.
+    const isSyntheticValue = useCallback(
+        (date: string, key: string) => syntheticTailKeys.has(`${date}|${key}`),
+        [syntheticTailKeys],
+    );
     useEffect(() => {
         let cancelled = false;
         const load = async () => {
@@ -292,7 +298,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             if (current === 0) return null;
             // [INVEST-PERF-PERIOD] Variation de VALEUR de la série sur la période choisie ;
             // null (« — ») quand la série est plus récente que la période (no-fake-data).
-            const trend = seriesReturnPct(marketData, k, perfPeriod);
+            const trend = seriesReturnPct(marketData, k, perfPeriod, isSyntheticValue);
             const isTotal = k === 'TOTAL';
             const meta = lookupSeedMeta(k) || { name: k.replace('NASDAQ:', '').replace('NYSE:', '') };
             const name = isTotal ? 'TOTAL PORTEFEUILLE' : (BUCKET_LABELS[k] ?? meta.name);
@@ -405,7 +411,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             portfolioTrend,
             benchmarkTrend,
         };
-    }, [marketData, assets, fxRates, perfPeriod]); // perfPeriod : leçon BUDGET-MONTH-NAV (dep manquante = memo figé)
+    }, [marketData, assets, fxRates, perfPeriod, isSyntheticValue]); // perfPeriod : leçon BUDGET-MONTH-NAV (dep manquante = memo figé)
 
     // --- FILTERED DATA FOR CHART ---
     const filteredMarketData = useMemo(() => {

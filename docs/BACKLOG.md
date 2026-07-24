@@ -195,12 +195,13 @@
   BOOT (quotes/profils) n'ont AUCUNE surface UI (contrairement à l'historique → HistorySyncDoctor). Mitigation
   livrée : logError au journal quand des titres sont skippés au boot + TTL gradué (staleness bornée ~1 h).
   Fix complet : un rapport publié (patron setHistorySyncReport) consommé par le doctor/une note discrète.
-- [ ] **`[PERF-STALE-TAIL-ZERO]`** (S, finding MOYEN code-reviewer #498, pré-existant mais désormais en HEADLINE) —
-  quand la queue d'une série est RACCORDÉE au même `currentPrice` sur 2 jours (`quoteFresh`, cas « quote OK,
-  candles KO » type GBS.PA), `seriesReturnPct(…, '24H')` rend un **0,00 %** techniquement exact mais trompeur
-  (« ça n'a pas bougé » = donnée figée, pas marché plat). Avant, ce 0 n'alimentait que le score ; le sélecteur
-  de période l'expose en carte Performance. Piste : marquer les lignes raccordées (flag `synthetic` par clé) et
-  rendre « — » ou un badge « donnée figée » quand latest ET baseline sont synthétiques.
+- [x] **`[PERF-STALE-TAIL-ZERO]`** ✅ (2026-07-24, PR suivante) — `buildMarketData` trace les valeurs
+  raccordées au prix courant (`syntheticTailKeys` = `${date}|${symbol}`, posé au splice `quoteFresh`) ;
+  `seriesReturnPct(rows, key, period, isSynthetic?)` rend `null` (« — » honnête) quand latest ET baseline
+  sont tous deux synthétiques (au lieu d'un 0,00 % trompeur — donnée figée ≠ marché plat, cas GBS.PA). UN
+  SEUL endpoint synthétique = mouvement RÉEL (prix figé vs réel) → % conservé. Scope PER-SYMBOLE (les
+  agrégats TOTAL/buckets mêlent réel+synthétique). Câblé dans `Investments` (tendances par série).
+  Discriminant baked dans le test (ancien = 0, nouveau = null). Rétrocompat : prédicat optionnel.
 - [x] **`[A11Y-PILL-RADIOGROUP]`** ✅ (2026-07-24, PR suivante) — `components/ui/Pill.tsx` (radiogroup partagé)
   a désormais la navigation clavier APG : roving tabindex (`tabIndex={isSelected ? 0 : -1}`, 1 seul arrêt de
   Tab, repli sur la 1re option si `value` hors liste → jamais intabbable) + flèches ←→↑↓ (wrap) + Home/End,

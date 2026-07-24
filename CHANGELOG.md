@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Projection Future : plus d'icônes d'événements affichées] — 2026-07-24
+
+### Correction (bug Marc : « pas assez d'icônes dans Futur »)
+- **Le graphe de projection montrait souvent la moitié des icônes d'événements possibles** en vue
+  dézoomée : l'échantillonnage sautait à un pas de 2 dès qu'il y avait un peu plus d'événements que
+  le plafond (25 événements → 13 affichés au lieu de 24). Désormais il répartit uniformément et
+  atteint le plafond (jusqu'à 24 événements de vie / 16 flux), premier et dernier toujours inclus.
+  Le zoom continue d'afficher tous les événements de la fenêtre, et la pastille FIRE reste épinglée.
+
 ## [unreleased — Import IA : catégories validées contre ton budget] — 2026-07-24
 
 ### Sécurité / robustesse

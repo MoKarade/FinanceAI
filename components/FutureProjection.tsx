@@ -15,6 +15,7 @@ import { loadRevealedProjection, saveRevealedProjection, clearRevealedProjection
 import { usePendingFocus } from '../utils/usePendingFocus';
 import { buildLockedByMonth } from '../utils/lockedCurveOverlay';
 import { findInsolvencyPoint } from '../utils/insolvency';
+import { sampleEvenly } from '../utils/sampleEvenly';
 
 // Sprint 2 PH2 — constante stable pour éviter de créer un nouveau [] à chaque
 // render (qui invaliderait les useMemo deps en aval).
@@ -639,11 +640,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const visibleFlowEvents = flowChartEvents.filter((e) => e.monthIndex >= visMinMonth && e.monthIndex <= visMaxMonth);
     // Plafond de densité : en vue large on échantillonne uniformément (lisibilité
     // + fluidité). En zoomant, la fenêtre contient moins d'événements → tous visibles.
-    const thinEvents = <T,>(arr: T[], cap: number): T[] => {
-        if (arr.length <= cap) return arr;
-        const step = Math.ceil(arr.length / cap);
-        return arr.filter((_, i) => i % step === 0);
-    };
+    // [FUTUR-ICON-DENSITY] `sampleEvenly` répartit EXACTEMENT `cap` icônes (bug Marc « pas assez
+    // d'icônes » : l'ancien pas entier `ceil(len/cap)` sous-remplissait — 25 events cap 24 → 13 montrés).
+    const thinEvents = sampleEvenly;
     // [R4] Cap de densité en vue dézoomée (décision Marc 2026-06-22 : 40/24 → 24/16) : la vue large
     // reste « peu d'icônes » (échantillonnage uniforme) ; en zoomant, la fenêtre contient moins
     // d'événements que le cap → tous affichés (« jusqu'à toutes »). Cap FIXE (densité écran ≈ constante),

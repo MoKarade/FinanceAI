@@ -8,6 +8,7 @@
 // Toutes les requêtes passent par le cache TTL automatique.
 
 import type { Quote, HistoryPoint, AssetProfile, SymbolSearchResult, MarketDataProvider } from './types';
+import { MarketDataError } from './types';
 import { withCache, clearMarketDataCache } from './cache';
 import { FinnhubProvider } from './providers/finnhub';
 import { CoinGeckoProvider, coinGeckoIdFor } from './providers/coingecko';
@@ -29,6 +30,27 @@ const cryptoProvider = new CoinGeckoProvider();
 /** Route par symbole : crypto connu → CoinGecko, sinon Finnhub (si configuré). */
 function pickProvider(symbol: string): MarketDataProvider | null {
     return coinGeckoIdFor(symbol) ? cryptoProvider : activeProvider;
+}
+
+/**
+ * [QUOTE-ERRKIND] Exécute UN maillon de la chaîne de quotes/profils en distinguant le TYPE d'échec :
+ *  - erreur TRANSITOIRE (`MarketDataError` code ≠ NOT_FOUND : RATE_LIMIT/NETWORK/AUTH/UNKNOWN) →
+ *    avalée en `null` MAIS signalée via `onTransient` → la façade NE l'arme PAS au cache négatif
+ *    (un 429/réseau ne doit pas geler un VRAI titre — finding ÉLEVÉ #499) ;
+ *  - ABSENCE confirmée (`null` rendu par le provider, ou `MarketDataError` NOT_FOUND) → `null` NON
+ *    signalé → comptée au skip (un titre manuel/GIC vraiment non coté l'atteint) ;
+ *  - erreur NON typée (vrai bug) → propagée à l'appelant (inchangé).
+ */
+async function runLink<T>(fn: () => Promise<T | null>, onTransient: () => void): Promise<T | null> {
+    try {
+        return await fn();
+    } catch (e) {
+        if (e instanceof MarketDataError) {
+            if (e.code !== 'NOT_FOUND') onTransient();
+            return null;
+        }
+        throw e;
+    }
 }
 
 /**
@@ -85,6 +107,8 @@ export async function getQuote(symbol: string): Promise<Quote | null> {
     // prouvé par sonde) : placé AVANT withCache, il masquait une valeur ENCORE VALIDE du cache
     // positif (clé de casse divergente) — une réponse déjà connue et fraîche doit toujours servir.
     let skippedNegative = false;
+    let transientError = false; // [QUOTE-ERRKIND] un maillon a échoué de façon TRANSITOIRE (429/réseau)
+    const markTransient = () => { transientError = true; };
     let value: Quote | null;
     try {
         value = await withCache('quote', symbol, async () => {
@@ -93,28 +117,29 @@ export async function getQuote(symbol: string): Promise<Quote | null> {
                 return null; // zéro réseau (self-heal par TTL) — non compté comme nouvel échec
             }
             const isCrypto = Boolean(coinGeckoIdFor(symbol));
-            if (isCrypto) return cryptoProvider.getQuote(symbol); // pas de repli Yahoo (crypto)
+            if (isCrypto) return runLink(() => cryptoProvider.getQuote(symbol), markTransient); // pas de repli Yahoo (crypto)
             if (activeProvider) {
-                const primary = await activeProvider.getQuote(symbol);
+                const primary = await runLink(() => activeProvider!.getQuote(symbol), markTransient);
                 if (primary) return primary;
             }
             if (typeof window !== 'undefined') {
-                return getYahooQuote(symbol);
+                return runLink(() => getYahooQuote(symbol), markTransient);
             }
             return null; // hors navigateur sans Finnhub : pas de chemin (non caché)
         });
     } catch (e) {
-        // Une EXCEPTION du fetcher est aussi un échec de chaîne (finding silent-failure #499 :
-        // sans ça, seuls les null comptaient — compteur sous-armé) ; relancée à l'appelant
-        // (priceRefresh la convertit déjà en skip 'error' + logError).
+        // Une EXCEPTION NON typée (vrai bug) du fetcher = échec de chaîne ; relancée à l'appelant
+        // (priceRefresh la convertit déjà en skip 'error' + logError). Les erreurs typées transitoires
+        // sont désormais avalées par runLink (comptées via transientError, pas ici).
         if (hadPath) recordNegative('quote', symbol);
         throw e;
     }
-    // Comptabilité négative : un null AVEC chemin disponible = échec réel de toute la chaîne
-    // (« sans chemin » ne compte pas — rien n'a été tenté ; un skip non plus — rien tenté).
-    // Succès → entrée effacée (no-op sans entrée).
+    // [QUOTE-ERRKIND] Comptabilité négative : un null AVEC chemin = échec de toute la chaîne, MAIS on
+    // n'arme le skip QUE sur une absence CONFIRMÉE (aucune erreur transitoire vue) — un null issu d'un
+    // 429/réseau ne doit pas geler un vrai titre (staleness pire que le problème). « Sans chemin » /
+    // skip / transitoire = rien compté. Succès → entrée effacée (no-op sans entrée).
     if (value === null) {
-        if (hadPath && !skippedNegative) recordNegative('quote', symbol);
+        if (hadPath && !skippedNegative && !transientError) recordNegative('quote', symbol);
     } else {
         clearNegative('quote', symbol);
     }
@@ -183,6 +208,7 @@ export async function getProfile(symbol: string): Promise<AssetProfile | null> {
     // [QUOTE-NEGATIVE-CACHE] Skip DANS le fetcher (cache positif IDB 24 h consulté d'abord — un
     // profil déjà connu sert toujours) + exceptions comptées (mêmes findings que getQuote).
     let skippedNegative = false;
+    let transientError = false; // [QUOTE-ERRKIND] échec transitoire (429/réseau) → non compté
     let value: AssetProfile | null;
     try {
         value = await withCache('profile', symbol, async () => {
@@ -190,14 +216,16 @@ export async function getProfile(symbol: string): Promise<AssetProfile | null> {
                 skippedNegative = true;
                 return null;
             }
-            return provider.getProfile(symbol);
+            return runLink(() => provider.getProfile(symbol), () => { transientError = true; });
         });
     } catch (e) {
         recordNegative('profile', symbol);
         throw e;
     }
+    // [QUOTE-ERRKIND] Compter seulement l'absence CONFIRMÉE (cf getQuote) — un 429/réseau transitoire
+    // sur un profil non plus ne doit pas armer un skip 7 j sur un vrai titre.
     if (value === null) {
-        if (!skippedNegative) recordNegative('profile', symbol); // provider présent → échec/non couvert réel
+        if (!skippedNegative && !transientError) recordNegative('profile', symbol);
     } else {
         clearNegative('profile', symbol);
     }

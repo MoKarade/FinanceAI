@@ -128,8 +128,10 @@ export class CoinGeckoProvider implements MarketDataProvider {
                 timestamp: Date.now(),
             };
         } catch (e) {
+            // [QUOTE-ERRKIND] Erreur (429/réseau) propagée → transitoire côté façade (non comptée) ;
+            // l'absence confirmée (`!id`/prix absent ci-dessus) reste `null` (comptée au skip).
             logProviderError('CoinGecko', 'getQuote', symbol, e);
-            return null;
+            throw e;
         }
     }
 

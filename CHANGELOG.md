@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — Cours : un rate-limit temporaire ne gèle plus un vrai titre] — 2026-07-24
+
+### Correction
+- **Quand un fournisseur de cours répond « trop de requêtes » (429) ou tombe en panne réseau**, l'app
+  ne considère plus le titre comme « introuvable » : ces erreurs sont temporaires et le prochain
+  rafraîchissement retente normalement. Seul un symbole vraiment inconnu (404) ou sans cotation est mis
+  en pause pour économiser le réseau — et cette pause s'auto-répare à l'expiration. Avant, une simple
+  rafale de 429 pouvait figer le cours d'un vrai titre pendant des heures.
+
 ## [unreleased — Investissements : plus de « 0 % » trompeur sur un cours figé] — 2026-07-24
 
 ### Correction

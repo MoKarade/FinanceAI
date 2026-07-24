@@ -167,14 +167,16 @@ describe('FinnhubProvider', () => {
         vi.unstubAllGlobals();
     });
 
-    it('throw MarketDataError AUTH si 401', async () => {
+    it('[QUOTE-ERRKIND] getQuote PROPAGE (throw) une erreur AUTH (401) au lieu de l\'aplatir en null', async () => {
+        // Depuis [QUOTE-ERRKIND] : une ERREUR (≠ absence confirmée) est propagée pour que la façade la
+        // classe transitoire → ne PAS armer le cache négatif (un 401/429 ne doit pas geler un vrai titre).
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
             ok: false,
             status: 401,
         }));
         const p = new FinnhubProvider('bad');
-        const q = await p.getQuote('NVDA'); // wrappé en console.warn + null
-        expect(q).toBeNull();
+        await expect(p.getQuote('NVDA')).rejects.toBeInstanceOf(MarketDataError);
+        await expect(p.getQuote('NVDA')).rejects.toMatchObject({ code: 'AUTH' });
         vi.unstubAllGlobals();
     });
 });

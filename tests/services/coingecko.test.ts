@@ -80,24 +80,26 @@ describe('CoinGeckoProvider', () => {
         expect(p!.currency).toBe('CAD');
     });
 
-    it('getQuote : erreur réseau → null (ne lève pas)', async () => {
+    it('[QUOTE-ERRKIND] getQuote : erreur 500 → throw MarketDataError UNKNOWN (transitoire, non aplati)', async () => {
         globalThis.fetch = vi.fn(async () => jsonRes({}, 500)) as unknown as typeof fetch;
-        expect(await cg.getQuote('BTC-CAD')).toBeNull();
+        await expect(cg.getQuote('BTC-CAD')).rejects.toMatchObject({ code: 'UNKNOWN' });
     });
 
-    it('getQuote : erreur 500 → logError appelé (non silencieux) + null', async () => {
+    it('[QUOTE-ERRKIND] getQuote : erreur 500 → logError appelé (non silencieux) AVANT le throw', async () => {
         vi.mocked(logError).mockClear();
         globalThis.fetch = vi.fn(async () => jsonRes({}, 500)) as unknown as typeof fetch;
-        expect(await cg.getQuote('BTC-CAD')).toBeNull();
+        await expect(cg.getQuote('BTC-CAD')).rejects.toMatchObject({ code: 'UNKNOWN' });
         expect(logError).toHaveBeenCalledWith(
             expect.objectContaining({ message: expect.stringContaining('getQuote') }),
         );
     });
 
-    it('getQuote : 404 NOT_FOUND (crypto inconnue) → PAS de logError (cas légitime) + null', async () => {
+    it('[QUOTE-ERRKIND] getQuote : 404 NOT_FOUND (crypto inconnue) → throw NOT_FOUND, PAS de logError (cas légitime)', async () => {
         vi.mocked(logError).mockClear();
         globalThis.fetch = vi.fn(async () => jsonRes({}, 404)) as unknown as typeof fetch;
-        expect(await cg.getQuote('BTC-CAD')).toBeNull();
+        // La façade reclasse ce NOT_FOUND en absence CONFIRMÉE (comptée au skip) ; ici on vérifie le
+        // contrat provider (propagation) + le silence légitime (pas de bruit sur une crypto inconnue).
+        await expect(cg.getQuote('BTC-CAD')).rejects.toMatchObject({ code: 'NOT_FOUND' });
         expect(logError).not.toHaveBeenCalled();
     });
 });

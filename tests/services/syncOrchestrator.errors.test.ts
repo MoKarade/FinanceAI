@@ -32,6 +32,7 @@ vi.mock('../../services/googleDrive/gisAuth', () => {
         renewTokenSilently: vi.fn(async () => { throw new AuthInteractionRequiredError('pas de session'); }),
         requestAccessToken: vi.fn(async () => 'tok-interactive'),
         revokeAccess: () => {},
+        traceSilentAuthFailure: () => {},
     };
 });
 

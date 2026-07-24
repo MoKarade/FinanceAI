@@ -6,8 +6,11 @@ import {
     requestAccessToken,
     getCachedToken,
     getValidAccessToken,
+    traceSilentAuthFailure,
+    AuthInteractionRequiredError,
     _resetForTests,
 } from '../../services/googleDrive/gisAuth';
+import { filterErrors, clearErrors, __resetErrorThrottle } from '../../services/errorLogger';
 
 // Clé localStorage du jeton GIS (doit rester alignée sur TOKEN_STORAGE_KEY de gisAuth.ts).
 const TOKEN_KEY = 'financeai:gis:token:v1';
@@ -204,8 +207,9 @@ describe('renouvellement silencieux du jeton', () => {
         }
     });
 
-    it('un échec de renouvellement est SILENCIEUX (ne lève pas) — la bannière prend le relais', async () => {
+    it('un échec de renouvellement ne LÈVE pas mais laisse une TRACE diagnostique (raison GIS), throttlée', async () => {
         vi.useFakeTimers();
+        __resetErrorThrottle(); // le throttle est module-scope → isoler ce test
         try {
             let calls = 0;
             let errorCb: ((e: { type?: string }) => void) | undefined;
@@ -228,9 +232,38 @@ describe('renouvellement silencieux du jeton', () => {
             // minuteur, l'avance des timers propagerait l'erreur (unhandled) et ferait échouer le test.
             await vi.advanceTimersByTimeAsync(31_000); // franchit le plancher de 30 s → déclenche le renouvellement
             expect(calls).toBe(2); // le renouvellement a bien été tenté (2e appel), puis avalé proprement
+
+            // [AUTH-DRIVE-STILL-RECONNECT] La trace diagnostique existe désormais, avec la raison GIS
+            // (`popup_failed_to_open`) et la source réseau — visible dans Diagnostics. Le chemin
+            // error_callback lève un AuthInteractionRequiredError (cas NOMINAL) → sévérité `info`.
+            const traces = filterErrors({ source: 'network' })
+                .filter(e => e.message.includes('Reprise silencieuse de la session Drive'));
+            expect(traces).toHaveLength(1);
+            expect(traces[0].severity).toBe('info');
+            expect(traces[0].message).toMatch(/minuteur/);
+            expect(traces[0].message).toMatch(/popup_failed_to_open/);
         } finally {
             vi.useRealTimers();
         }
+    });
+
+    it('traceSilentAuthFailure : sévérité dérivée (info nominal / warning anormal) + throttle par (contexte+raison)', () => {
+        __resetErrorThrottle();
+        clearErrors();
+        // Cas NOMINAL (AuthInteractionRequiredError) → info ; throttlé sur (contexte+raison).
+        const nominal = new AuthInteractionRequiredError('login_required');
+        traceSilentAuthFailure('minuteur', nominal);
+        traceSilentAuthFailure('minuteur', nominal); // même contexte + même raison → supprimé
+        traceSilentAuthFailure('boot', nominal);     // contexte différent → nouvelle entrée
+        // Cas ANORMAL (Error nu = panne réseau/GIS, ou 401 DriveAuthError) → warning + stack.
+        traceSilentAuthFailure('minuteur', new Error('network_down'));
+        const traces = filterErrors({ source: 'network' })
+            .filter(e => e.message.includes('Reprise silencieuse de la session Drive'));
+        expect(traces).toHaveLength(3); // 2 nominaux dédupliqués → 2 entrées + 1 anormale
+        expect(traces.filter(t => t.severity === 'info')).toHaveLength(2);
+        const anormal = traces.filter(t => t.severity === 'warning');
+        expect(anormal).toHaveLength(1);
+        expect(anormal[0].message).toMatch(/network_down/);
     });
 });
 

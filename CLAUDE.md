@@ -1215,8 +1215,15 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   ré-onboarding). La reprise silencieuse au boot est GATÉE sur `isInactivityExpired()` (≥8h → login requis). C'est la
   protection « session bornée » que [[AUTH-DRIVE-PERSIST]] recommandait (fenêtre fantôme fermée). (3) `isInactivityExpired`
   rend `false` si `lastActivity` jamais enregistré (pas d'expiration spontanée avant la 1ʳᵉ connexion). Test du minuteur =
-  `vi.useFakeTimers` + `vi.setSystemTime` (le reschedule lit `Date.now()`). ⚠️ Un mock `gisAuth` d'un test sync doit
-  désormais exporter `renewTokenSilently` + `AuthInteractionRequiredError` (sinon `undefined` si cache-miss emprunté).
+  `vi.useFakeTimers` + `vi.setSystemTime` (le reschedule lit `Date.now()`). ⚠️ **TOUT nouvel export de `gisAuth`
+  consommé par `syncLifecycle` doit être ajouté aux 3+ MOCKS `gisAuth` des tests sync** (`syncOrchestrator.{errors,
+  flow,passphrase}.test.ts`) — sinon `undefined` → throw au 1er appel, et le `commit-gate` local ne l'attrape PAS si
+  seuls les tests ciblés tournent : la SUITE COMPLÈTE (ou la CI) le révèle. Historique : `renewTokenSilently` +
+  `AuthInteractionRequiredError` (AUTH-DRIVE-INACTIVITY), puis `traceSilentAuthFailure` (AUTH-DRIVE-STILL-RECONNECT,
+  PR #504 — CI rouge sur ce piège exact, 2ᵉ récidive). Réflexe : grep `vi.mock.*gisAuth` sur tout `tests/` au moindre
+  ajout d'export. ⚠️ **Déplacer la logique de sévérité DANS un helper de `gisAuth` (mocké dans les tests sync) rend le
+  spy `logError` du test sync AVEUGLE** — le test sync doit alors vérifier le CÂBLAGE (`helper appelé avec l'erreur`),
+  la sévérité étant unit-testée là où le VRAI helper tourne (`gisAuth.test.ts`).
   ⚠️ **CRITIQUE (finding panel sécurité, mesuré) — un « horodatage d'activité » ne doit avancer QUE sur une VRAIE
   interaction, jamais sur un chemin AUTOMATIQUE** : le 1er jet appelait `recordActivity()` sur tout succès de jeton
   (`gateSilentResume`/`runBootSync`) ET au montage du watch. Or `startDrivePolling` appelle `runBootSync` **toutes les

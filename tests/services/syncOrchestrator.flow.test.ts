@@ -43,6 +43,7 @@ const gisMocks = vi.hoisted(() => {
         renewTokenSilently: vi.fn(async () => 'tok-renewed'),
         requestAccessToken: vi.fn(async () => 'tok-interactive'),
         revokeAccess: vi.fn(() => {}),
+        traceSilentAuthFailure: vi.fn(() => {}),
     };
 });
 vi.mock('../../services/googleDrive/gisAuth', () => ({
@@ -53,6 +54,7 @@ vi.mock('../../services/googleDrive/gisAuth', () => ({
     renewTokenSilently: gisMocks.renewTokenSilently,
     requestAccessToken: gisMocks.requestAccessToken,
     revokeAccess: gisMocks.revokeAccess,
+    traceSilentAuthFailure: gisMocks.traceSilentAuthFailure,
 }));
 
 vi.mock('../../services/googleDrive/driveAppData', () => {
@@ -565,28 +567,32 @@ describe('pullNow — déchiffrement des clés ÉCHOUE (SF-3 : données OK, clé
         expect(getLastActivityAt()).toBe(t0); // inchangé : le polling ne compte pas comme activité
     });
 
-    it('[Finding panel] ré-auth silencieuse : « pas de session » (interaction requise) = SILENCE, pas de logError', async () => {
+    // [AUTH-DRIVE-STILL-RECONNECT PR #504] Les DEUX cas (nominal « pas de session » ET anormal réseau/CDN)
+    // sont désormais ROUTÉS via `traceSilentAuthFailure` (helper unique, qui dérive la sévérité info/warning
+    // — sévérité testée en unité dans gisAuth.test.ts). Ici on vérifie le CÂBLAGE : trySilentReauth passe
+    // bien l'erreur au helper et ne log JAMAIS en direct (pas de double-log).
+    it('[Finding panel] ré-auth silencieuse « pas de session » (nominal) → routée au helper, pas de logError direct', async () => {
         recordActivity(Date.now());
+        gisMocks.traceSilentAuthFailure.mockClear();
         gisMocks.getValidAccessToken.mockRejectedValueOnce(new Error('cache expiré'));
-        gisMocks.renewTokenSilently.mockRejectedValueOnce(new gisMocks.AuthInteractionRequiredError('pas de session'));
+        const nominal = new gisMocks.AuthInteractionRequiredError('pas de session');
+        gisMocks.renewTokenSilently.mockRejectedValueOnce(nominal);
         const logSpy = vi.spyOn(errorLogger, 'logError');
         const ok = await gateSilentResume();
         expect(ok).toBe(false);
-        expect(logSpy).not.toHaveBeenCalled(); // cas nominal → aucun bruit
+        expect(gisMocks.traceSilentAuthFailure).toHaveBeenCalledWith('gate', nominal);
+        expect(logSpy).not.toHaveBeenCalled(); // jamais de log EN DIRECT depuis trySilentReauth
         logSpy.mockRestore();
     });
 
-    it('[Finding panel] ré-auth silencieuse : échec ANORMAL (réseau/CDN) → logError warning (trace, pas de silence)', async () => {
+    it('[Finding panel] ré-auth silencieuse échec ANORMAL (réseau/CDN) → routée au helper (qui trace warning)', async () => {
         recordActivity(Date.now());
+        gisMocks.traceSilentAuthFailure.mockClear();
         gisMocks.getValidAccessToken.mockRejectedValueOnce(new Error('cache expiré'));
-        gisMocks.renewTokenSilently.mockRejectedValueOnce(new Error('Échec de chargement du script Google Identity Services'));
-        const logSpy = vi.spyOn(errorLogger, 'logError');
+        const anormal = new Error('Échec de chargement du script Google Identity Services');
+        gisMocks.renewTokenSilently.mockRejectedValueOnce(anormal);
         const ok = await gateSilentResume();
         expect(ok).toBe(false);
-        expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({
-            source: 'network', severity: 'warning',
-            message: expect.stringMatching(/[Rr]eprise silencieuse Drive.*échouée/),
-        }));
-        logSpy.mockRestore();
+        expect(gisMocks.traceSilentAuthFailure).toHaveBeenCalledWith('gate', anormal);
     });
 });

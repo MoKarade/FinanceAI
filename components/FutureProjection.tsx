@@ -29,6 +29,7 @@ import { resolvePointFromClick } from '../utils/chartTooltip';
 import { ProjectionControls } from './projection/ProjectionControls';
 import { useSimulationParams } from '../hooks/useSimulationParams';
 import { buildPastPrefix } from '../services/history/buildPastPrefix';
+import { deriveMilestoneIcons } from '../services/projection/milestoneIcons';
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
 import { ProjectionExplains } from './projection/ProjectionExplains';
 import { StrategyOptimizerPanel } from './projection/StrategyOptimizerPanel';
@@ -350,8 +351,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         type ChartEvent = { monthIndex: number; year: number | undefined; age: number | undefined; dateLabel: string | undefined; val: number | undefined; netWorth: number | undefined; label: string; subIdx: number; index: number; kind: 'life' | 'flow'; color?: string; pinned?: boolean };
         const lifes: ChartEvent[] = [];
         const flows: ChartEvent[] = [];
-        let lifeIdx = 0;
-        let flowIdx = 0;
         // Anti-spam : le moteur ré-émet certains labels (renouvellements, stress
         // tests) plusieurs mois d'affilée. On collapse les répétitions du même
         // label rapprochées (≤ DEDUP_GAP mois) pour ne garder qu'une pastille.
@@ -363,24 +362,43 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         // #f97316 + `pinned` (jamais écrêtée par thinEvents). Cohérent avec « Future = source unique ».
         const FIRE_RE = /\bfire\b/i;
         chartData.forEach((d: ProjectionChartPoint) => {
-            const meta = { monthIndex: d.monthIndex, year: d.year, age: d.age, dateLabel: d.dateLabel };
-            let lifeSub = 0;
+            // `val` = coordonnée Y de la pastille → `NetWorth` : TOUTES les pastilles (vie ET flux) se posent
+            // SUR la courbe (visibles). [FUTUR-ICONS-RICH] avant, les flux étaient à `val=ImpotLatent` (position
+            // basse, quasi invisibles — une des causes du « je ne vois presque aucune icône »).
+            const meta = { monthIndex: d.monthIndex, year: d.year, age: d.age, dateLabel: d.dateLabel, val: d.NetWorth, netWorth: d.NetWorth };
             (d.lifeEvents || []).forEach((label: string) => {
                 if (lastLife[label] != null && d.monthIndex - lastLife[label] <= DEDUP_GAP) return;
                 lastLife[label] = d.monthIndex;
                 const isFire = FIRE_RE.test(label);
-                lifes.push({ ...meta, val: d.NetWorth, netWorth: d.NetWorth, label, subIdx: lifeSub++, index: lifeIdx++, kind: 'life', ...(isFire ? { color: '#f97316', pinned: true } : null) });
+                lifes.push({ ...meta, label, subIdx: 0, index: 0, kind: 'life', ...(isFire ? { color: '#f97316', pinned: true } : null) });
             });
-            if ((d.flowEvents?.length ?? 0) > 0 && ((d.FluxImpots ?? 0) < 0 || (d.flowEvents || []).some((x: string) => x.includes('-')))) {
-                let flowSub = 0;
-                (d.flowEvents || []).forEach((label: string) => {
-                    if (lastFlow[label] != null && d.monthIndex - lastFlow[label] <= DEDUP_GAP) return;
-                    lastFlow[label] = d.monthIndex;
-                    flows.push({ ...meta, val: d.ImpotLatent || 0, netWorth: d.NetWorth, label, subIdx: flowSub++, index: flowIdx++, kind: 'flow' });
-                });
-            }
+            // [FUTUR-ICONS-RICH, ADR-2] Gate RETIRÉ : il filtrait la quasi-totalité des flowEvents
+            // (`.includes('-')` cherchait un tiret ASCII alors que les messages portent un tiret cadratin « — »
+            // → seuls les mois à remboursement d'impôt passaient). La densité est gérée par sampleEvenly, pas ici.
+            (d.flowEvents || []).forEach((label: string) => {
+                if (lastFlow[label] != null && d.monthIndex - lastFlow[label] <= DEDUP_GAP) return;
+                lastFlow[label] = d.monthIndex;
+                flows.push({ ...meta, label, subIdx: 0, index: 0, kind: 'flow' });
+            });
         });
-        return { lifeChartEvents: lifes, flowChartEvents: flows };
+        // [FUTUR-ICONS-RICH] Jalons DÉRIVÉS des champs chartData (RRQ/PSV/retraits/locatif/impôt) — présentation
+        // pure (aucun recalcul $). Jamais retraite/FIRE (émis par le moteur → anti-doublon structurel).
+        const { lifeMilestones, flowMilestones } = deriveMilestoneIcons(chartData);
+        lifes.push(...lifeMilestones.map((m) => ({ ...m, subIdx: 0, index: 0 })));
+        flows.push(...flowMilestones.map((m) => ({ ...m, subIdx: 0, index: 0 })));
+        // ⚠️ RE-TRI par monthIndex OBLIGATOIRE avant `sampleEvenly` (contrat « tableau ORDONNÉ », finding architect
+        // ÉLEVÉ : un merge non trié casse l'échantillonnage uniforme) + réassignation `subIdx` (empilement vertical
+        // par mois) et `index` (clé unique).
+        const finalize = (arr: ChartEvent[]): ChartEvent[] => {
+            const sorted = [...arr].sort((a, b) => a.monthIndex - b.monthIndex);
+            const perMonth: Record<number, number> = {};
+            return sorted.map((e, i) => {
+                const s = perMonth[e.monthIndex] ?? 0;
+                perMonth[e.monthIndex] = s + 1;
+                return { ...e, subIdx: s, index: i };
+            });
+        };
+        return { lifeChartEvents: finalize(lifes), flowChartEvents: finalize(flows) };
     }, [chartData]);
 
     // PH4-FUT — ANNOTATIONS sur la courbe (choix Marc : âge de retraite, épuisement d'un compte, bascule
@@ -388,7 +406,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // via le toggle « Événements » de la légende). Les ÉVÉNEMENTS DE VIE restent les pastilles cliquables.
     const lifeMarkers = useMemo(() => {
         const markers: { monthIndex: number; label: string; color: string }[] = [];
-        let retDone = false, rrqDone = false, psvDone = false;
+        let retDone = false;
         const accounts: Array<[keyof ProjectionChartPoint, string]> = [
             ['REER', 'REER'], ['CELI', 'CELI'], ['NonReg', 'Non-enr.'], ['CELIAPP', 'CELIAPP'],
         ];
@@ -397,8 +415,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         for (const d of chartData as ProjectionChartPoint[]) {
             if (d.monthIndex < 0) continue; // pas d'annotation sur le passé reconstruit
             if (!retDone && d.isRetired) { markers.push({ monthIndex: d.monthIndex, label: `Retraite${d.age ? ` ${d.age}` : ''}`, color: '#f97316' }); retDone = true; }
-            if (!rrqDone && (d.pensionRRQ ?? 0) > 0) { markers.push({ monthIndex: d.monthIndex, label: 'RRQ', color: '#22d3ee' }); rrqDone = true; }
-            if (!psvDone && (d.pensionPSV ?? 0) > 0) { markers.push({ monthIndex: d.monthIndex, label: 'PSV', color: '#2dd4bf' }); psvDone = true; }
+            // [FUTUR-ICONS-RICH, ADR-3] RRQ/PSV retirés des lignes verticales → désormais icônes-jalons cliquables
+            // (`deriveMilestoneIcons`) : évite la double représentation (ligne + pastille) du même mois.
             for (const [key, short] of accounts) {
                 const v = (d[key] as number | undefined) ?? 0;
                 if (v > 5000) sig[key as string] = true;

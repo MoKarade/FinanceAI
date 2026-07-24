@@ -55,6 +55,16 @@ describe('buildHubSummary (unitaire)', () => {
         expect(summary.actions[0]?.kind).toBe('link');
     });
 
+    it('publie usage.cost (coût cumulé du chat IA, USD) depuis l’AppState', () => {
+        const summary = buildHubSummary({ ...personaState(), aiChatCostUsdTotal: 1.234 });
+        expect(summary.usage?.cost).toEqual({ amount: 1.23, currency: 'USD', period: 'total' });
+    });
+
+    it('coût absent/0 → usage.cost à 0 (l’app suit vraiment, jamais un chiffre inventé)', () => {
+        const summary = buildHubSummary({ ...personaState(), aiChatCostUsdTotal: undefined });
+        expect(summary.usage?.cost?.amount).toBe(0);
+    });
+
     it('passe en degraded avec dataAsOf et une alerte quand l’état date de plus de 6 h', () => {
         const now = Date.now();
         setStateFreshness({ updatedAt: now - STALE_THRESHOLD_MS - 60_000, source: 'test' });

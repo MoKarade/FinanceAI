@@ -73,6 +73,13 @@ export function buildHubSummary(state: AppState, now: number = Date.now()): HubS
         alerts.push({ label: clip(signal.observation), severity: ALERT_SEVERITY[signal.priority] });
     }
 
+    // Coût cumulé du chat IA (mesuré côté app en USD, cf. services/aiChat/pricing) → bloc
+    // usage du hub. Déjà présent dans l'AppState synchronisé : aucune donnée nouvelle exposée.
+    const aiChatCostUsd =
+        typeof state.aiChatCostUsdTotal === 'number' && state.aiChatCostUsdTotal >= 0
+            ? Math.round(state.aiChatCostUsdTotal * 100) / 100
+            : 0;
+
     return validateSummary({
         contractVersion: CONTRACT_VERSION,
         app: HUB_APP,
@@ -82,6 +89,7 @@ export function buildHubSummary(state: AppState, now: number = Date.now()): HubS
         metrics,
         alerts: alerts.slice(0, MAX_ALERTS),
         actions: OPEN_ACTION,
+        usage: { cost: { amount: aiChatCostUsd, currency: 'USD', period: 'total' } },
     });
 }
 

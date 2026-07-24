@@ -15,6 +15,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   re-catégorisée par les règles habituelles sur le marchand — et le résumé de l'import
   l'indique. Avant, une catégorie comme « Sport » pouvait être silencieusement absorbée par
   le poste « Transport » à l'affichage.
+- **Même garde-fou sur le bouton « Classer » (catégorisation IA)** : le modèle recevait la
+  consigne « toute autre valeur sera rejetée » mais rien ne la faisait respecter — c'est
+  maintenant appliqué en code (hors liste → règles sur le marchand, sinon « Autre »), avec
+  une trace au journal. Les catégories d'un CSV bancaire importé restent, elles, acceptées
+  telles quelles : ce sont de vraies données de ta banque, qui deviennent des postes au
+  prochain alignement du budget.
 
 ## [unreleased — Budget : la moyenne et le grand livre rapprochent comme le réel] — 2026-07-24
 

@@ -60,6 +60,17 @@ describe('applyDocument — relevé bancaire', () => {
             expect(r.summary).not.toMatch(/re-catégorisée/);
         });
 
+        it('collision poste↔RULE_CATEGORY : le POSTE impose sa forme (cible réelle de réconciliation)', () => {
+            const s = state();
+            s.budgetItems = [{ id: 'b1', name: 'épicerie', target: 400, frequency: 'Monthly', type: 'Commun', nature: 'Besoin' }] as unknown as AppState['budgetItems'];
+            const r = applyDocument(s, {
+                kind: 'bank_statement',
+                transactions: [{ date: '2026-02-01', payee: 'IGA', amount: -50, category: 'Épicerie' }],
+            });
+            // Le poste « épicerie » (minuscule) écrase la forme canonique des règles.
+            expect(r.nextState.transactions[0].category).toBe('épicerie');
+        });
+
         it('le nom d\'un poste de budget EXISTANT est accepté', () => {
             const s = state();
             s.budgetItems = [{ id: 'b1', name: 'Gym', target: 50, frequency: 'Monthly', type: 'Commun', nature: 'Envie' }] as unknown as AppState['budgetItems'];

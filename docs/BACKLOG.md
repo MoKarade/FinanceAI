@@ -239,6 +239,13 @@
   et le summary COMPTE les remaps (jamais silencieux). Discriminant prouvé par git stash. Bonus : l'exemple
   de la description du tool enseignait « Alimentation » (hors canon !) — désormais DÉRIVÉ de `RULE_CATEGORIES`.
   NB conservé : ne PAS ancrer le fuzzy sur mots entiers (casserait « Restaurant » ⊂ « Restaurants »).
+  **Extension (panel PR #502)** : helpers PURS partagés (`categoryKey`/`buildCategoryCanonicalMap`/
+  `resolveCandidateCategory` dans `categoryRules.ts`) + le MÊME enforcement porté à `categorizeBatch`
+  (finding ÉLEVÉ silent-failure : le prompt affirmait « sera rejetée » sans code — désormais hors liste →
+  règles payee sinon « Autre », compté + logError). Collision poste↔RULE_CATEGORY documentée+testée (le
+  poste gagne). **Réfuté pour l'import CSV** : la catégorie d'un CSV est une DONNÉE RÉELLE de la banque —
+  par design Lot C (postes ≡ catégories observées), elle devient légitimement un poste au prochain sync ;
+  l'allowlist la détruirait. Fenêtre fuzzy pré-sync transitoire, s'auto-résout au sync.
 
 ## 🤝 Assistant fusionné (demande Marc 2026-07-23 : « combiner Prochaine action à l'Assistant »)
 - [x] **`[ASSISTANT-HUB]`** ✅ (2026-07-23, PR #492) — onglet Assistant VISIBLE dans la nav (remplace

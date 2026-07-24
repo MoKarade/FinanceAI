@@ -870,7 +870,14 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   sinon « Non catégorisé », remaps COMPTÉS au summary. (2) **L'EXEMPLE d'une description de tool enseignait
   une catégorie HORS canon** (« Alimentation ») — le modèle apprend des exemples : exemples/listes de
   descriptions de tools se DÉRIVENT de la source unique (`RULE_CATEGORIES.join`), jamais re-codés
-  (classe A11Y-CHECK-CONTRAST-DRIFT appliquée aux prompts de tools).
+  (classe A11Y-CHECK-CONTRAST-DRIFT appliquée aux prompts de tools). (3) **La même classe vivait dans
+  `categorizeBatch`** : le prompt AFFIRMAIT « toute autre valeur sera rejetée » sans AUCUN code d'enforcement
+  (classe « une affirmation se vérifie », ici une affirmation de PROMPT) → helpers purs partagés
+  (`resolveCandidateCategory`, `categoryRules.ts`) consommés par applyDocument ET categorizeBatch.
+  (4) **Réfuté pour l'import CSV** : une catégorie de CSV bancaire = donnée RÉELLE → devient un poste au
+  prochain sync (design Lot C « postes ≡ catégories observées ») — lui appliquer l'allowlist détruirait
+  les nouvelles catégories légitimes. Le discriminant IA-vs-donnée-réelle : l'IA a un CONTRAT « choisis
+  dans la liste » (enforcer), la banque apporte du VRAI nouveau (laisser passer).
 - ⚠️ **[AITOOLS-SEC] 2026-07-22 — audit de clôture du chantier Claude-in-app, leçons** : (1) **Un fix de
   sécurité appliqué à UNE surface doit être porté à TOUTES les surfaces qui partagent le vecteur** — le scrub
   anti-injection du `summary`/`changes` d'une écriture avait été fait côté app (`writeExecutor`, Lot D) mais

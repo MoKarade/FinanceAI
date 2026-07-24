@@ -7,7 +7,7 @@
 
 import type { AppState, User, Asset, Transaction, Debt } from '../../types';
 import { annualSalaryToMonthly } from '../../utils/salary';
-import { ruleCategorize, RULE_CATEGORIES } from '../../services/import/categoryRules';
+import { RULE_CATEGORIES, buildCategoryCanonicalMap, resolveCandidateCategory } from '../../services/import/categoryRules';
 
 /** Fiche de paie — valeurs ANNUELLES (Claude multiplie période × fréquence). */
 export interface PayslipPayload {
@@ -245,11 +245,6 @@ function applyTaxSlip(state: AppState, doc: TaxSlipPayload): ApplyResult {
 const txnKey = (t: { date: string; amount: number; payee: string }): string =>
     `${t.date}|${Math.round((t.amount || 0) * 100)}|${String(t.payee || '').trim().toLowerCase()}`;
 
-// [MCP-CATEGORY-ALLOWLIST] Clé de comparaison insensible casse/accents (une catégorie « épicerie »
-// écrite par l'IA doit retomber sur le canonique « Épicerie », pas créer un doublon).
-const catKey = (s: string): string =>
-    s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
-
 /**
  * [MCP-CATEGORY-ALLOWLIST] Jeu canonique des catégories acceptées à l'ÉCRITURE : les postes de
  * budget EXISTANTS + les catégories des règles (`RULE_CATEGORIES`). La catégorie du tool MCP est
@@ -257,15 +252,15 @@ const catKey = (s: string): string =>
  * partagé (réel/moyenne/grand livre) et pourrait être absorbée par un poste au nom englobant
  * (« Sport » ⊂ « Tran-sport ») SANS trace (finding silent-failure-hunter PR #501). Inconnue →
  * règles déterministes sur le payee, sinon « Non catégorisé » — et le résumé le DIT.
+ * Postes APRÈS RULE_CATEGORIES : en cas de collision de clé normalisée (poste « épicerie » vs
+ * canonique « Épicerie »), le POSTE gagne — c'est la cible réelle de réconciliation du Budget
+ * (priorité documentée + testée, finding code-reviewer PR #502).
  */
 function buildCategoryAllowlist(state: AppState): Map<string, string> {
-    const allowed = new Map<string, string>();
-    for (const name of RULE_CATEGORIES) allowed.set(catKey(name), name);
-    for (const item of state.budgetItems ?? []) {
-        const name = item?.name?.trim();
-        if (name) allowed.set(catKey(name), name);
-    }
-    return allowed;
+    return buildCategoryCanonicalMap([
+        ...RULE_CATEGORIES,
+        ...(state.budgetItems ?? []).map((item) => item?.name ?? ''),
+    ]);
 }
 
 function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyResult {
@@ -288,14 +283,14 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
         // canonique (remap vers la casse canonique) ; inconnue ou absente → règles déterministes
         // sur le payee (mêmes règles que l'import CSV de l'app — cohérence app↔MCP), sinon
         // « Non catégorisé » (l'IA de l'app peut re-passer dessus). Un remap est COMPTÉ (résumé).
-        const canonical = tx.category ? allowedCategories.get(catKey(tx.category)) : undefined;
-        if (tx.category && !canonical) remapCount++;
+        const resolvedCat = resolveCandidateCategory(tx.category, allowedCategories, tx.payee || '', 'Non catégorisé');
+        if (resolvedCat.remapped) remapCount++;
         added.push({
             id: ++maxId,
             date: tx.date,
             payee: tx.payee || '',
             amount: tx.amount,
-            category: canonical || ruleCategorize(tx.payee || '') || 'Non catégorisé',
+            category: resolvedCat.category,
             status: 'processed',
             isTransfer: !!tx.isTransfer,
             ...(doc.accountName ? { accountName: doc.accountName } : {}),

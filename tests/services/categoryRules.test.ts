@@ -5,7 +5,7 @@
 // par les MÊMES règles — cohérence app↔MCP.
 
 import { describe, it, expect } from 'vitest';
-import { ruleCategorize, RULE_CATEGORIES } from '../../services/import/categoryRules';
+import { ruleCategorize, RULE_CATEGORIES, categoryKey, buildCategoryCanonicalMap, resolveCandidateCategory } from '../../services/import/categoryRules';
 import { parseBankCsv } from '../../services/import/parseBankCsv';
 import { applyDocument } from '../../mcp/ingest/applyDocument';
 import { buildDefaultAppState } from '../../mcp/state/loadAppState';
@@ -136,5 +136,40 @@ describe('intégration — les règles s\'appliquent à l\'import', () => {
         expect(nextState.transactions.map(t => t.category)).toEqual([
             'Salaire', 'Restaurants', 'Autre', 'Non catégorisé',
         ]);
+    });
+});
+
+// [MCP-CATEGORY-ALLOWLIST] Helpers purs partagés (applyDocument + categorizeBatch) — une seule
+// source de la validation, jamais deux copies qui dérivent.
+describe('allowlist canonique de catégories (helpers partagés)', () => {
+    it('categoryKey : insensible casse/accents/espaces', () => {
+        expect(categoryKey('  Épicerie ')).toBe('epicerie');
+        expect(categoryKey('epicerie')).toBe('epicerie');
+    });
+
+    it('buildCategoryCanonicalMap : en cas de collision de clé, le DERNIER nom gagne (priorité poste)', () => {
+        // applyDocument place les postes APRÈS RULE_CATEGORIES → un poste renommé « épicerie »
+        // impose SA casse sur la forme canonique des règles (cible réelle de réconciliation).
+        const m = buildCategoryCanonicalMap(['Épicerie', 'épicerie']);
+        expect(m.get('epicerie')).toBe('épicerie');
+        expect(m.size).toBe(1);
+        // Noms vides/espaces ignorés (jamais de clé '' qui matcherait un blanc).
+        expect(buildCategoryCanonicalMap(['', '   ', 'Loyer']).size).toBe(1);
+    });
+
+    it('resolveCandidateCategory : canonique remappée, hors-liste → règles payee, absente ≠ remap', () => {
+        const allowed = buildCategoryCanonicalMap(['Épicerie', 'Transport']);
+        // Canonique (variante casse) → forme canonique, PAS un remap.
+        expect(resolveCandidateCategory('epicerie', allowed, 'IGA', 'Autre'))
+            .toEqual({ category: 'Épicerie', remapped: false });
+        // Hors liste + règle payee → règle, COMPTÉ remap (le vecteur « Sport » du finding).
+        expect(resolveCandidateCategory('Sport', allowed, 'UBERTRIP 8XZK4', 'Autre'))
+            .toEqual({ category: 'Transport', remapped: true });
+        // Hors liste + payee sans règle → fallback, COMPTÉ remap.
+        expect(resolveCandidateCategory('Sport', allowed, 'ZZZZZ INCONNU', 'Autre'))
+            .toEqual({ category: 'Autre', remapped: true });
+        // Absente → règles/fallback, PAS un remap (une absence n'est pas une invention).
+        expect(resolveCandidateCategory(undefined, allowed, 'ZZZZZ INCONNU', 'Autre'))
+            .toEqual({ category: 'Autre', remapped: false });
     });
 });

@@ -17,6 +17,7 @@ import { logError } from './errorLogger';
 import { sanitizePromptText, wrapUserData, VISION_INJECTION_GUARD } from '../utils/promptSafety';
 import { isInternalTransferLabel } from '../utils/transactionParser';
 import { MODEL_IDS } from './aiChat/models';
+import { buildCategoryCanonicalMap, resolveCandidateCategory } from './import/categoryRules';
 
 // ─── Modèles ─────────────────────────────────────────────────────────────────
 
@@ -290,6 +291,8 @@ export const categorizeBatch = async (
     const CHUNK_SIZE = 50;
     const out: Transaction[] = [];
     let processed = 0;
+    // [MCP-CATEGORY-ALLOWLIST] Allowlist construite 1× (safeCategories est fixe pour tout le batch).
+    const allowedMap = buildCategoryCanonicalMap(safeCategories);
 
     for (let i = 0; i < transactions.length; i += CHUNK_SIZE) {
         const chunk = transactions.slice(i, i + CHUNK_SIZE);
@@ -330,18 +333,33 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict, sans markdown, sans commentaire:
             const validated = safeJsonValidate(text, CategorizeArraySchema);
             if (validated) {
                 const byId = new Map(validated.map(v => [v.id, v]));
+                // [MCP-CATEGORY-ALLOWLIST] Le prompt AFFIRME « toute autre valeur sera rejetée »
+                // mais rien ne le faisait (affirmation non vérifiée par le code — finding
+                // silent-failure-hunter PR #502) : une dérive du modèle hors liste entrait
+                // verbatim, puis le fuzzy partagé pouvait l'absorber sous un poste voisin.
+                // Enforcement réel : hors liste → règles sur le payee, sinon « Autre » (la
+                // consigne du prompt), COMPTÉ + tracé (jamais silencieux).
+                let offListCount = 0;
                 const merged = toAnalyze.map(t => {
                     const r = byId.get(t.id);
                     if (!r) return t;
+                    const resolved = resolveCandidateCategory(r.category, allowedMap, t.payee || '', 'Autre');
+                    if (resolved.remapped) offListCount++;
                     return {
                         ...t,
-                        category: r.category,
+                        category: resolved.category,
                         isTransfer: r.isTransfer,
                         confidence: r.confidence,
                         isAiProcessed: true,
                         status: 'processed' as const,
                     };
                 });
+                if (offListCount > 0) {
+                    logError({
+                        source: 'ai', severity: 'warning',
+                        message: `categorizeBatch : ${offListCount} catégorie(s) hors liste renvoyée(s) par le modèle, remappée(s) par règles.`,
+                    });
+                }
                 out.push(...merged);
             } else {
                 out.push(...toAnalyze);

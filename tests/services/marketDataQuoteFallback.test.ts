@@ -114,6 +114,27 @@ describe('[HIST-MULTI-PROVIDER] repli quote Yahoo (navigateur)', () => {
         expect(okMock).toHaveBeenCalled(); // vraiment allé au réseau (non skippé)
     });
 
+    // [QUOTE-ERRKIND] Discriminant par MAILLON : le PRIMAIRE Finnhub qui 429 (transitoire) N'arme pas
+    // non plus le skip — le repli Yahoo 429 aussi transitoire → aucun maillon compté (finding FAIBLE #508,
+    // « couverture par maillon »). Prouve que le throw de Finnhub est classé transitoire par runLink.
+    it('avec clé Finnhub : 3× (Finnhub 429 + Yahoo 429) N\'arment PAS le skip', async () => {
+        configureMarketDataProvider({ finnhubKey: 'k' });
+        vi.stubGlobal('fetch', vi.fn(async () => new Response('slow down', { status: 429 })));
+        for (let i = 0; i < 3; i++) expect(await getQuote('CW8.PA')).toBeNull();
+        expect(canAttemptQuote('CW8.PA')).toBe(true); // ni Finnhub ni Yahoo 429 comptés
+    });
+
+    // [QUOTE-ERRKIND] Yahoo 200 AVEC `chart.error` peuplé = TRANSITOIRE (hoquet backend), pas une absence.
+    // Discriminant : sur l'ancien code (parseYahooQuote → null → compté), 3× → skip armé ; ici → non compté.
+    it('Yahoo 200 + chart.error peuplé = transitoire (N\'arme PAS le skip)', async () => {
+        const errBody = () => new Response(JSON.stringify({
+            chart: { result: null, error: { code: 'Unavailable', description: 'backend hiccup' } },
+        }), { status: 200 });
+        vi.stubGlobal('fetch', vi.fn(errBody));
+        for (let i = 0; i < 3; i++) expect(await getQuote('CW8.PA')).toBeNull();
+        expect(canAttemptQuote('CW8.PA')).toBe(true); // 200-malformé = transitoire, non compté
+    });
+
     it('PÉRIMÈTRE : les échecs d\'HISTORIQUE n\'arment JAMAIS le cache négatif (contrat []/null préservé)', async () => {
         // Verrou anti-régression (finding code-reviewer #499) : getHistory est VOLONTAIREMENT hors
         // du mécanisme — son contrat [] (vide confirmé) / null (erreur) pilote la résolution de

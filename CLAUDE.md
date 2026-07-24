@@ -855,6 +855,18 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   une TRACE (journal) + un geste de reprise immédiat (le bouton Actualiser wipe le cache négatif) — un mécanisme
   d'économie réseau sans signal = classe « staleness silencieuse ». (5) **le documentation-manager peut INVENTER
   un chiffre et marquer mergée une PR en vol** — relire ses éditions du handover comme un finding (agent durci).
+- ⚠️ **[QUOTE-ERRKIND] 2026-07-24 — propager le TYPE d'erreur provider→façade (fix structurel de QUOTE-NEGATIVE-CACHE)** :
+  les providers PROPAGENT (throw `MarketDataError` typée) les erreurs TRANSITOIRES (RATE_LIMIT/NETWORK/AUTH/UNKNOWN) au
+  lieu de les aplatir en `null` ; l'ABSENCE confirmée reste `null` ; la façade (`runLink`, `services/marketData/index.ts`)
+  ne compte au cache négatif QUE l'absence confirmée. (1) **Classer par CODE HTTP a un ANGLE MORT : un provider peut
+  répondre 200 AVEC un corps d'ERREUR** (Yahoo `chart.error` peuplé sans statut ≠2xx) → `parse→null` le classerait
+  « absence confirmée » et re-gèlerait un vrai titre par un CHEMIN DIFFÉRENT (la classe de bug qu'on corrige, réintroduite) ;
+  distinguer le corps d'erreur (throw transitoire) AVANT le `return null`. Le code-reviewer a trouvé ce voisin. (2) **AUTH
+  = transitoire per-symbole VOULU** : une clé invalide ne dit rien sur CE titre → ne pas négative-cacher par symbole (sinon
+  une clé expirée gèlerait TOUT le portefeuille) ; le coût = re-tentatives Finnhub à chaque cycle (borné, hors scope). (3)
+  **Finnhub signale l'absence par le PAYLOAD (`c===0`), jamais par un 404** → le seul chemin « absence confirmée » Finnhub est
+  le corps, pas le statut ; un 200 dégradé y reste un angle mort assumé (documenté, hors scope). Test discriminant par MAILLON
+  (Finnhub-primaire + Yahoo repli + chart.error), pas seulement un maillon.
 - ⚠️ **[INVEST-ALLOC-GEO-SECTOR] 2026-07-23** : (1) **une table de lookup dont le FORMAT de clé a dérivé de celui
   des données réelles est une table entièrement MORTE en silence** (`ASSET_META` keyée `EPA:CW8` vs symboles réels
   `CW8.PA` → 0 hit, tout en « Autre » sans erreur) — normaliser le LOOKUP (pas les données), même classe que

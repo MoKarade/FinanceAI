@@ -58,13 +58,13 @@ describe('FinnhubProvider — getQuote', () => {
         mockFetch({ c: 0, d: 0, dp: 0 });
         expect(await p.getQuote('NADA')).toBeNull();
     });
-    it('401 (clé invalide) → null, sans crash', async () => {
+    it('[QUOTE-ERRKIND] 401 (clé invalide) → throw MarketDataError AUTH (erreur propagée, pas aplatie)', async () => {
         mockFetch({}, 401);
-        expect(await p.getQuote('AAPL')).toBeNull();
+        await expect(p.getQuote('AAPL')).rejects.toMatchObject({ code: 'AUTH' });
     });
-    it('429 (rate limit) → null', async () => {
+    it('[QUOTE-ERRKIND] 429 (rate limit) → throw MarketDataError RATE_LIMIT (transitoire, non compté au skip)', async () => {
         mockFetch({}, 429);
-        expect(await p.getQuote('AAPL')).toBeNull();
+        await expect(p.getQuote('AAPL')).rejects.toMatchObject({ code: 'RATE_LIMIT' });
     });
 });
 

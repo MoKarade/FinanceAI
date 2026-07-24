@@ -116,6 +116,14 @@ export async function getYahooQuote(symbol: string): Promise<Quote | null> {
             throw new MarketDataError(`Yahoo ${res.status}`, res.status === 429 ? 'RATE_LIMIT' : 'NETWORK', 'yahoo');
         }
         const data = (await res.json()) as YahooChartResponse;
+        // [QUOTE-ERRKIND] Yahoo peut répondre 200 avec `chart.error` PEUPLÉ (hoquet backend, throttle
+        // applicatif) SANS statut HTTP d'erreur → c'est TRANSITOIRE, pas une absence (finding MOYEN
+        // code-reviewer #508 : sinon 3× → skip d'un vrai titre, la classe de bug corrigée ici
+        // réintroduite par le chemin 200-malformé). Un 200 « propre » sans prix (meta présent, pas de
+        // `regularMarketPrice`) reste `null` = absence confirmée légitime.
+        if (data?.chart?.error) {
+            throw new MarketDataError(`Yahoo chart.error ${data.chart.error.code ?? ''}`.trim(), 'UNKNOWN', 'yahoo');
+        }
         return parseYahooQuote(data, symbol);
     } catch (e) {
         logProviderError('YahooProxy', 'getQuote', symbol, e);

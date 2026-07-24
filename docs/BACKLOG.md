@@ -220,12 +220,16 @@
   - **Cohérence de base cash** : `reconstructCashHistory` EXCLUT désormais `isDuplicate`/`isTransfer` comme l'ancre
     `computeStartingCash` (les 2 bouts de la courbe divergeaient — finding financial-integrity). Tests discriminants (3 rouges sur l'ancien).
   - **FX** : titres étrangers valorisés au change DU JOUR (déjà en place, choix Marc) — note d'honnêteté ajoutée au bandeau.
-  - **Reste (Lot 4, différé, non bloquant)** : `[FUTUR-HIST-DAILY-REFRESH]` (rafraîchir « aujourd'hui » sans remount —
-    `startYear/startMonth` figés au montage) ; `[FUTUR-HIST-FX-DATED]` (FX historique daté via proxy Yahoo, plus juste que le
-    change du jour) ; `[FUTUR-HIST-WIRING-TEST]` (S — test d'intégration `FutureProjection` prouvant que le dernier point `isPast`
-    a `NetWorth ≈ Σplacements+cash+immo − chartData[0].DettesNonImmo`, pour verrouiller le câblage contre une substitution
-    accidentelle `DetteTotale` — finding code-reviewer ; harnais lourd : mock `lastProjection` + hook historique) ; recherche
-    binaire dans `priceAt` si un jour mesuré lent. Aucun n'affecte le raccord exact d'aujourd'hui.
+  - [x] **`[FUTUR-HIST-WIRING-TEST]`** ✅ (PR A, 2026-07-24) — assemblage du passé EXTRAIT en fonction pure
+    `services/history/buildPastPrefix.ts` (unit-testable hors composant, ≠ harnais de rendu lourd) ; test prouve le câblage
+    (buckets 1:1, dette COURANTE soustraite, dates, gate no-fake) + discriminant vs `DetteTotale`. Sort la logique money-critical
+    du composant de ~1000 l. ⚠️ `type` alias (pas `interface`) pour garder l'assignabilité `Record<string, unknown>` de `displayData`.
+  - [x] **`[FUTUR-HIST-DAILY-REFRESH]`** ✅ (PR A, 2026-07-24) — `startYear/startMonth` ne sont plus figés au montage :
+    `monthEpoch` (an×12+mois) réévalué par un check HORAIRE + au retour de visibilité → au passage de mois, « aujourd'hui »
+    avance (projection re-seed, le passé gagne son point). Granularité mois (passé/moteur mensuels). Test fake-timers.
+  - **Reste (différé, non bloquant)** : `[FUTUR-HIST-FX-DATED]` (FX historique daté via proxy Yahoo `USDCAD=X`/`EURCAD=X`, plus
+    juste que le change du jour — money-critical, garder le point d'AUJOURD'HUI au FX courant pour le raccord exact ; no-fake si
+    FX daté manquant → repli FX courant signalé) ; recherche binaire dans `priceAt` si un jour mesuré lent.
 - [x] **`[A11Y-DASH-SRONLY]`** ✅ (2026-07-24, PR suivante) — convention GLOBALE : helper pur
   `components/ui/emptyAware` — quand la valeur rendue EST le tiret « — » (état vide de formatCAD/formatPercent),
   il remplace le tiret muet par `<span aria-hidden>—</span>` + `<span class="sr-only">Pas de donnée</span>`

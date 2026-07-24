@@ -2,13 +2,14 @@
 // G22-B1 — reconstruit le solde de CASH (compte chèque) passé, mois par mois, à
 // partir du cash actuel et des transactions, en remontant le temps.
 //
-// Modèle (documenté, no-fake) : on suppose que les transactions importées
-// représentent les mouvements du compte de liquidités (un relevé bancaire chèque).
-// Chaque transaction est donc un vrai mouvement de cash — y compris les virements
-// vers les placements (montants négatifs dans le chèque). On ne double compte donc
-// PAS avec les courbes de placements (reconstruites séparément depuis les prix).
+// Modèle (documenté, no-fake) : on remonte depuis le cash ACTUEL en retirant, mois par
+// mois, les flux qui l'ont réellement fait varier. La base des flux DOIT être IDENTIQUE
+// à celle de l'ancre `computeStartingCash` (= cash présent du moteur) sinon les deux bouts
+// de la MÊME courbe divergent (finding financial-integrity 2026-07-24, classe PH4D « calculs
+// voisins, même base ») : `computeStartingCash` EXCLUT `isDuplicate` (artefacts, pas de vrai
+// mouvement) ET `isTransfer` (virements neutres dans son modèle) → on EXCLUT les mêmes ici.
 //
-//   cash(fin du mois M) = cash_actuel − Σ(montants des transactions des mois > M)
+//   cash(fin du mois M) = cash_actuel − Σ(montants des transactions NON dup/transfert des mois > M)
 //
 // On ne remonte que jusqu'au mois de la 1re transaction connue : avant, le solde est
 // inconnu (décision Marc : la VN passée démarre à la 1re transaction). PUR & testable.
@@ -44,20 +45,23 @@ function addMonth(key: string, n: number): string {
  *                      produit est le mois PRÉCÉDENT (le présent vient de la projection).
  */
 export function reconstructCashHistory(
-    transactions: ReadonlyArray<{ date: string; amount: number }>,
+    transactions: ReadonlyArray<{ date: string; amount: number; isDuplicate?: boolean; isTransfer?: boolean }>,
     currentCash: number,
     nowMonth: string = new Date().toISOString().slice(0, 7),
 ): CashHistoryResult {
     if (!transactions || transactions.length === 0) return { points: [], firstMonth: null };
 
-    // Flux net par mois + borne inférieure (1re transaction).
+    // Flux net par mois + borne inférieure (1re transaction). ⚠️ Exclure dup/transfert EXACTEMENT comme
+    // `computeStartingCash` (cohérence de base ancre↔walk-back). `firstMonth` inclut TOUTE transaction
+    // datée (la VN passée démarre à la 1re transaction connue, dup/transfert compris comme repère de date).
     const flowByMonth = new Map<string, number>();
     let firstMonth: string | null = null;
     for (const t of transactions) {
         if (!t.date || t.date.length < 7 || !Number.isFinite(t.amount)) continue;
         const mk = monthKey(t.date);
-        flowByMonth.set(mk, (flowByMonth.get(mk) ?? 0) + t.amount);
         if (firstMonth === null || mk < firstMonth) firstMonth = mk;
+        if (t.isDuplicate || t.isTransfer) continue; // n'affecte PAS le solde de cash (comme computeStartingCash)
+        flowByMonth.set(mk, (flowByMonth.get(mk) ?? 0) + t.amount);
     }
     if (firstMonth === null) return { points: [], firstMonth: null };
 

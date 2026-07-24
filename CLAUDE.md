@@ -883,6 +883,23 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   **Finnhub signale l'absence par le PAYLOAD (`c===0`), jamais par un 404** → le seul chemin « absence confirmée » Finnhub est
   le corps, pas le statut ; un 200 dégradé y reste un angle mort assumé (documenté, hors scope). Test discriminant par MAILLON
   (Finnhub-primaire + Yahoo repli + chart.error), pas seulement un maillon.
+- ⚠️ **[FUTUR-REAL-HISTORY] 2026-07-24 — courbe passée du Futur raccordée EXACTEMENT à aujourd'hui, leçons** :
+  (0) **La feature était DÉJÀ construite à ~90 %** (segment passé `pastPrefix` dans `FutureProjection.tsx`, reconstruit
+  + recalculé à chaque upload par les deps du `useMemo`) — le cadrage (architect + financial-integrity) l'a établi AVANT
+  tout code (classe [[R2-FIRE]]/[[PM-STALE-BACKLOG]] : vérifier l'état RÉEL avant de coder). Le vrai travail = fermer 2 écarts
+  money-critical, pas reconstruire. (1) **Un raccord passé↔présent d'une COURBE de patrimoine doit soustraire la MÊME dette
+  des deux côtés** : le passé (`pastPrefix`) ne soustrayait AUCUNE dette alors que le moteur soustrait `DettesNonImmo` dès le
+  mois 0 → SAUT visible « aujourd'hui » = tout le solde des dettes (bug MONEY-PHANTOM d'un endetté). Fix (Option A, décision
+  Marc) : soustraire `chartData[0].DettesNonImmo` (dette COURANTE, source unique du moteur) via un helper qui route par
+  `computeRawNetWorth` (`services/history/pastNetWorth.ts` — `DettesNonImmo` entier dans `activeDebtsTotal`, autres à 0),
+  JAMAIS une copie locale de la formule. Raccord EXACT (même dette aux 2 bouts) ; approximation « dette constante dans le
+  passé » (pas d'historique d'amortissement) ASSUMÉE + SIGNALÉE au bandeau. (2) **Instance de [[PH4D-BUDGET-RATIOS]] « calculs
+  voisins, même base »** : `reconstructCashHistory` (walk-back du cash passé) sommait TOUTES les transactions, alors que son
+  ANCRE `computeStartingCash` (cash présent) EXCLUT `isDuplicate`/`isTransfer` → les 2 bouts de la MÊME courbe partaient de
+  bases différentes (dérive = Σ virements/doublons). Fix : exclure dup/transfert des deux côtés. Discriminant : 3 tests rouges
+  sur l'ancien code (git-stash du seul `reconstructCashHistory.ts`). (3) **FX du passé = prix natif × FX du JOUR** (pas de FX
+  historique daté) : choix no-fake assumé (garantit le raccord exact au présent où FX du jour = vérité) + note au bandeau ;
+  FX historique daté = ticket différé `[FUTUR-HIST-FX-DATED]`, non bloquant.
 - ⚠️ **[INVEST-ALLOC-GEO-SECTOR] 2026-07-23** : (1) **une table de lookup dont le FORMAT de clé a dérivé de celui
   des données réelles est une table entièrement MORTE en silence** (`ASSET_META` keyée `EPA:CW8` vs symboles réels
   `CW8.PA` → 0 hit, tout en « Autre » sans erreur) — normaliser le LOOKUP (pas les données), même classe que

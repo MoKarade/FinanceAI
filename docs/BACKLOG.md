@@ -208,25 +208,21 @@
   Tab, repli sur la 1re option si `value` hors liste → jamais intabbable) + flèches ←→↑↓ (wrap) + Home/End,
   la sélection SUIT le focus. Corrigé UNE fois → profite aux 3+ usages (Investissements/Budget/Futur). Cible
   tactile `sm` : `min-h-[24px]` (WCAG 2.2 SC 2.5.8). Tests clavier + discriminant (4 tests échouent sur l'ancien).
-- [ ] **`[FUTUR-REAL-HISTORY]`** 🔵 (M-L, demande Marc 2026-07-24) — la courbe **Futur** doit montrer, AVANT
-  aujourd'hui, l'historique RÉEL du patrimoine « depuis que j'ai l'app » (pas seulement la projection future).
-  Objectif Marc : « la courbe avant aujourd'hui matche EXACTEMENT ce que j'avais — mes transactions/investissements
-  pour atteindre le niveau d'aujourd'hui » ; « se met à jour chaque jour + à chaque upload de transactions ou
-  changement d'investissements » = historique fidèle depuis la 1ʳᵉ donnée.
-  - **Segment PASSÉ (réel, reconstruit)** : patrimoine net par date = solde de liquidités reconstruit depuis les
-    TRANSACTIONS (running balance rétrograde depuis le solde actuel, ou progressif depuis le 1ᵉʳ mouvement) +
-    valeur des investissements à la date `t` (réutiliser `reconstructPortfolioHistory`/`holdingsAt`/`priceAt` de
-    [[PORTFOLIO-HISTORY]] × FX) − dettes à `t`. Ancré à AUJOURD'HUI = le patrimoine présent EXACT
-    (`computeRawNetWorth`/`chartData[0]` — source unique, ne PAS diverger au point d'ancrage, cf [[NW-PARITY-INVARIANT]]).
-  - **Raccord** : segment passé réel ⌢ à `t=aujourd'hui` ⌢ segment futur = projection (`lastProjection.chartData`).
-    Une seule courbe continue, aujourd'hui = jointure (marqueur visuel « aujourd'hui »).
-  - **Mises à jour** : recalcul du passé sur changement de date (nouveau jour), upload de transactions, édition
-    d'investissements/soldes (réactivité store) — comme les graphes Invest.
-  - **Garde-fous** : no-fake-data (jours sans donnée avant la 1ʳᵉ transaction = pas de courbe inventée ; trou =
-    honnête) ; « depuis que j'ai l'app » = borne = date de la 1ʳᵉ transaction/donnée ; la reconstruction du passé NW
-    doit être PROUVÉE reconstructible depuis les transactions affichées (`NW(t)=Σactifs(t)−dettes(t)`), pas un
-    lissage. ⚠️ Scoper avec `architect` (source de vérité du passé : moteur vs helper dédié ; perf du recalcul
-    quotidien) + `financial-integrity` (le NW passé reconstruit doit matcher le présent au point d'ancrage). Plan-first.
+- [x] **`[FUTUR-REAL-HISTORY]`** ✅ (2026-07-24, PR suivante — cadrage architect + financial-integrity, décision Marc
+  Option A + FX du jour) — la courbe **Futur** montre AVANT aujourd'hui l'historique RÉEL du patrimoine « depuis que j'ai
+  l'app ». **CONSTAT du cadrage : déjà construit à ~90 %** (segment passé `pastPrefix` dans `FutureProjection.tsx`,
+  reconstruit placements + cash + immo, recalculé à chaque upload/changement via les deps du `useMemo` — cf [[R2-FIRE]]).
+  Cette PR ferme les 2 écarts money-critical qui empêchaient « matcher EXACTEMENT le niveau d'aujourd'hui » :
+  - **Raccord dette EXACT (Option A)** : le passé soustrait `chartData[0].DettesNonImmo` (dette courante, source unique)
+    via `pastNetWorthAt` → `computeRawNetWorth` (zéro copie locale) → fin du SAUT « aujourd'hui » pour un endetté (le futur
+    soustrait la même dette dès le mois 0). Approximation assumée (dette supposée constante dans le passé) SIGNALÉE au bandeau.
+    Remplace la limite [[HIST-NW-DEBT-DISCLAIMER]] (option b, jamais livrée) — Marc a re-tranché (a) le 2026-07-24.
+  - **Cohérence de base cash** : `reconstructCashHistory` EXCLUT désormais `isDuplicate`/`isTransfer` comme l'ancre
+    `computeStartingCash` (les 2 bouts de la courbe divergeaient — finding financial-integrity). Tests discriminants (3 rouges sur l'ancien).
+  - **FX** : titres étrangers valorisés au change DU JOUR (déjà en place, choix Marc) — note d'honnêteté ajoutée au bandeau.
+  - **Reste (Lot 4, différé, non bloquant)** : `[FUTUR-HIST-DAILY-REFRESH]` (rafraîchir « aujourd'hui » sans remount —
+    `startYear/startMonth` figés au montage) ; `[FUTUR-HIST-FX-DATED]` (FX historique daté via proxy Yahoo, plus juste que le
+    change du jour) ; recherche binaire dans `priceAt` si un jour mesuré lent. Aucun n'affecte le raccord exact d'aujourd'hui.
 - [x] **`[A11Y-DASH-SRONLY]`** ✅ (2026-07-24, PR suivante) — convention GLOBALE : helper pur
   `components/ui/emptyAware` — quand la valeur rendue EST le tiret « — » (état vide de formatCAD/formatPercent),
   il remplace le tiret muet par `<span aria-hidden>—</span>` + `<span class="sr-only">Pas de donnée</span>`

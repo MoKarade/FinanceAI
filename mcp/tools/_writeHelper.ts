@@ -11,7 +11,16 @@ import { scrubWriteResultForModel } from './scrubWriteResult';
 import type { StateStore } from '../state/stateStore';
 import { logError } from '../../services/errorLogger';
 
-export async function runApply(store: StateStore, doc: DocumentPayload): Promise<ToolTextResult> {
+/** [MCP-DIRECT-EDIT] Options de confirmation à 2 temps (demande Marc « confirmation »). Quand
+ *  `requireConfirm` est vrai et `confirmed` faux, le tool renvoie un APERÇU (diff avant→après) SANS écrire ;
+ *  un 2ᵉ appel avec `confirm:true` persiste. La confirmation in-app passe, elle, par le modal `writeExecutor`
+ *  (qui n'appelle PAS runApply) → chaque surface a sa propre confirmation native, pas de double-gate. */
+export interface RunApplyOptions {
+    requireConfirm?: boolean;
+    confirmed?: boolean;
+}
+
+export async function runApply(store: StateStore, doc: DocumentPayload, opts?: RunApplyOptions): Promise<ToolTextResult> {
     if (!store.canWrite) {
         return errorContent(
             'État en lecture seule : configure une source inscriptible (fichier $FINANCEAI_STATE_FILE, ou Drive via npm run mcp:auth).',
@@ -38,6 +47,14 @@ export async function runApply(store: StateStore, doc: DocumentPayload): Promise
         if (changes.length === 0) {
             const safe = scrubWriteResultForModel(summary, []);
             return jsonContent({ applied: false, summary: safe.summary, changes: [] });
+        }
+        // [MCP-DIRECT-EDIT] Dry-run : confirmation requise mais pas donnée → APERÇU seul, aucune écriture.
+        if (opts?.requireConfirm && !opts.confirmed) {
+            const safe = scrubWriteResultForModel(summary, changes);
+            return jsonContent({
+                applied: false, preview: true, summary: safe.summary, changes: safe.changes,
+                note: 'APERÇU — rien n\'a été écrit. Montre ce changement à l\'utilisateur ; s\'il confirme, rappelle ce tool avec confirm:true pour appliquer.',
+            });
         }
         const { backupPath } = await store.save(nextState, version);
         const safe = scrubWriteResultForModel(summary, changes);

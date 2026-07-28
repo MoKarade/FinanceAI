@@ -8,6 +8,7 @@
 import type { AppState, User, Asset, Transaction, Debt } from '../../types';
 import { annualSalaryToMonthly } from '../../utils/salary';
 import { RULE_CATEGORIES, buildCategoryCanonicalMap, resolveCandidateCategory } from '../../services/import/categoryRules';
+import { computeStartingCash } from '../../services/projection/buildSimulationParams';
 
 /** Fiche de paie — valeurs ANNUELLES (Claude multiplie période × fréquence). */
 export interface PayslipPayload {
@@ -76,12 +77,23 @@ export interface DebtPayload {
     rateProvider?: string;
 }
 
+/** [MCP-DIRECT-EDIT] Ajustement DIRECT du solde de liquidités (cash) à une cible. Le cash n'est PAS un
+ *  champ brut : il est DÉRIVÉ (`computeStartingCash` = Σ initialBalances + Σ transactions non-dup/transfert).
+ *  On applique donc un DELTA sur `initialBalances.LIQUIDITE` (compte visible dans Réglages → Comptes) pour
+ *  que le cash calculé atteigne la cible — idempotent, jamais d'écrasement de la map entière. */
+export interface CashBalancePayload {
+    kind: 'cash_balance';
+    /** Nouveau solde de liquidités TOTAL visé ($ CAD). */
+    targetCad: number;
+}
+
 export type DocumentPayload =
     | PayslipPayload
     | BankStatementPayload
     | BrokerStatementPayload
     | TaxSlipPayload
-    | DebtPayload;
+    | DebtPayload
+    | CashBalancePayload;
 
 export interface Change {
     field: string;
@@ -103,6 +115,7 @@ export function applyDocument(state: AppState, doc: DocumentPayload): ApplyResul
         case 'broker_statement': return applyBrokerStatement(state, doc);
         case 'tax_slip': return applyTaxSlip(state, doc);
         case 'debt': return applyDebt(state, doc);
+        case 'cash_balance': return applyCashBalance(state, doc);
         default: {
             const k = (doc as { kind?: string }).kind ?? 'inconnu';
             throw new Error(`Type de document non supporté : « ${k} ».`);
@@ -136,7 +149,47 @@ const MAX_PRICE = 10_000_000;           // 10 M$ par unité
 const MAX_DEBT_BALANCE = 50_000_000;    // 50 M$ de solde de dette personnelle
 const MAX_MONTHLY_PAYMENT = 1_000_000;  // 1 M$/mois de paiement
 const MAX_INTEREST_RATE = 100;          // 100 %/an (au-delà = aberrant/injection)
+const MAX_CASH_BALANCE = 100_000_000;   // 100 M$ de liquidités : au-delà = aberrant/injection
 const plausible = (v: number, max: number): boolean => Number.isFinite(v) && Math.abs(v) <= max;
+
+// ── Ajustement direct du solde de liquidités (cash) ─────────────────────────
+// [MCP-DIRECT-EDIT] « Mets mes liquidités à X » : le cash est DÉRIVÉ (computeStartingCash = Σ initialBalances
+// + Σ transactions non-dup/transfert, source unique) → on n'écrase PAS un champ, on ajoute un DELTA sur
+// `initialBalances.LIQUIDITE` (compte VISIBLE dans Réglages → Comptes) pour que le cash calculé atteigne la
+// cible. Idempotent (2ᵉ appel même cible = 0 changement). Sauvegarde horodatée créée avant l'écriture (runApply).
+function applyCashBalance(state: AppState, doc: CashBalancePayload): ApplyResult {
+    // Ceinture métier (un appel direct du handler bypasse Zod, leçon MCP-WHATIF) — SANS interpoler le montant
+    // dans le message (Loi 25 : le message remonte à logError côté serveur ; ne pas y mettre de valeur brute).
+    if (!plausible(doc.targetCad, MAX_CASH_BALANCE) || doc.targetCad < 0) {
+        throw new Error('Solde de liquidités invalide ou aberrant (négatif / non fini / hors bornes). Rien n\'a été écrit.');
+    }
+    const current = computeStartingCash(state.initialBalances ?? {}, state.transactions ?? []);
+    const target = doc.targetCad;
+    const delta = target - current;
+    // [HARDEN-NETWORTH-NAN] `current` est DÉRIVÉ de données PERSISTÉES (initialBalances/transactions) que le
+    // schéma ne garantit PAS finies (Zod `z.number()` laisse passer ±Infinity ; `transactions` = `z.unknown()`).
+    // Un seul solde/montant non fini en amont ferait `current`/`delta` non finis → on écrirait `NaN` dans
+    // LIQUIDITE en SILENCE (applied:true, patrimoine empoisonné). Garder l'AGRÉGAT avant toute écriture : non
+    // fini → throw (runApply logError + errorContent), JAMAIS d'écriture. Message sans montant brut (Loi 25).
+    if (!Number.isFinite(current) || !Number.isFinite(delta)) {
+        throw new Error('Solde de liquidités actuel non calculable (un solde de départ ou une transaction est corrompu / non fini). Rien n\'a été écrit — corrige la donnée en cause d\'abord.');
+    }
+    if (Math.abs(delta) < 0.005) {
+        return { nextState: state, changes: [], summary: `Solde de liquidités déjà à ${Math.round(target)} $ : aucune modification.` };
+    }
+    const initialBalances: Record<string, number> = { ...(state.initialBalances ?? {}) };
+    initialBalances.LIQUIDITE = (Number(initialBalances.LIQUIDITE) || 0) + delta;
+    const changes: Change[] = [{
+        field: 'liquidités (solde de cash)',
+        before: Math.round(current),
+        after: Math.round(target),
+        note: 'ajusté via le compte LIQUIDITE des soldes de départ (Réglages → Comptes) — réversible',
+    }];
+    const nextState: AppState = { ...state, initialBalances, lastUpdate: Date.now() };
+    const summary = `Solde de liquidités ajusté : ${Math.round(current)} $ → ${Math.round(target)} $ `
+        + `(compte LIQUIDITE, visible dans Réglages → Comptes). Sauvegarde créée avant l'écriture.`;
+    return { nextState, changes, summary };
+}
 
 // ── Fiche de paie ────────────────────────────────────────────────────────────
 function applyPayslip(state: AppState, doc: PayslipPayload): ApplyResult {

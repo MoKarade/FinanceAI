@@ -60,6 +60,7 @@ l'écriture, le tool refuse (rien d'écrasé) et invite à relancer. Exposés un
 | `apply_broker_statement` | Met à jour / ajoute les positions (par symbole + compte fiscal) |
 | `apply_tax_slip` | T4 / RL-1 → revenu d'emploi annuel (→ brut mensuel) + cotisations REER |
 | `apply_debt` | Dette RÉELLE (prêt auto, carte, perso) — ajout ou mise à jour PAR NOM, PARTIELLE (seuls les champs fournis changent ; même nom = écrasement, jamais de doublon). ⚠️ Dettes déjà contractées seulement : la projection les sert dès le mois 0 ; un achat FUTUR/hypothétique passe par `simulate_what_if` |
+| `set_cash` | Ajuste le solde de LIQUIDITÉS (cash) à une cible en $ CAD. Cash DÉRIVÉ → delta sur le compte `LIQUIDITE` des soldes de départ (visible Réglages → Comptes), transactions intactes, idempotent. ⚠️ **Confirmation à 2 temps** : sans `confirm:true`, renvoie un APERÇU (avant→après) SANS écrire ; n'applique qu'après accord explicite de l'utilisateur |
 
 ### Connexion (amorçage)
 | `connect_drive` | Autorise le Google Drive de l'utilisateur **dans la conversation** (consentement navigateur, client OAuth partagé) — pour l'install `.mcpb` sans terminal |

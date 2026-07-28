@@ -31,6 +31,7 @@ import { applyPayslipSpec } from '../../mcp/tools/applyPayslip.spec';
 import { applyBankStatementSpec } from '../../mcp/tools/applyBankStatement.spec';
 import { applyBrokerStatementSpec } from '../../mcp/tools/applyBrokerStatement.spec';
 import { applyTaxSlipSpec } from '../../mcp/tools/applyTaxSlip.spec';
+import { setCashSpec } from '../../mcp/tools/setCash.spec';
 
 /** Tools de LECTURE exposés au chat in-app. AUCUNE mutation possible par ces handlers. */
 export const READ_SPECS: AnyReadToolSpec[] = [
@@ -64,6 +65,7 @@ export const WRITE_SPECS: AnyWriteToolSpec[] = [
     applyBankStatementSpec,
     applyBrokerStatementSpec,
     applyTaxSlipSpec,
+    setCashSpec,
 ];
 
 export const WRITE_SPECS_BY_NAME: ReadonlyMap<string, AnyWriteToolSpec> =

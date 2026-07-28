@@ -642,6 +642,18 @@
   côté MÉTIER (bypass-Zod couvert, leçon MCP-WHATIF). ⚠️ Sémantique moteur documentée dans la description : dettes
   DÉJÀ CONTRACTÉES seulement (servies dès le mois 0) — achat FUTUR/hypothétique routé vers `simulate_what_if`
   (garde-fou [MCP-WHATIF-DATED-DEBT]). ⚠️ Redéploiement Cloud Run requis.
+- **`[MCP-DIRECT-EDIT]`** 🚧 (demande Marc 2026-07-28 « change mes liquidités et tout tout tout avec mcp juste en le
+  demandant » + « confirmation » avant chaque écriture) — écritures directes « juste en le demandant », avec
+  confirmation à 2 temps (dry-run + `confirm:true`, cf `RunApplyOptions`/`runApply`) :
+  - [x] **Lot 1 — `set_cash`** ✅ 2026-07-28 : ajuste le solde de LIQUIDITÉS à une cible. Cash DÉRIVÉ
+    (`computeStartingCash`, source unique) → DELTA sur `initialBalances.LIQUIDITE` (visible Réglages → Comptes,
+    jamais d'écrasement des transactions), idempotent, borné (0 → 100 M$) + garde non-fini métier. Invariant
+    round-trip prouvé (`computeStartingCash(next) === target`). ⚠️ Redéploiement Cloud Run requis pour claude.ai.
+  - [ ] **Lot 2 — `set_budget_item`** (poste de budget : cible mensuelle).
+  - [ ] **Lot 3 — `upsert_savings_goal`** (objectif d'épargne).
+  - [ ] **Lot 4 — vente totale d'un titre** (`apply_broker_statement` quantité 0 / helper dédié).
+  - [ ] **Lot 5 — suppression** (dette/objectif/transaction) — exige ADR + `confirm:true` strict (décision Marc).
+  - Salaire : DÉJÀ couvert par `apply_payslip` (aucun nouveau tool). Immobilier : différé.
 - **`[ASSET-CURRENCY-BACKFILL]`** 🔧 (résidu panel FX) — un actif LEGACY sans champ `currency` est traité 1:1 CAD
   (désormais JOURNALISÉ par `assetValueCad`, plus muet) ; le fix propre = backfill de migration (défaut assumé +
   documenté) OU invite UI à préciser la devise. Attendre de VOIR le log apparaître chez un utilisateur réel avant

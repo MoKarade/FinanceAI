@@ -1210,6 +1210,17 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   Pattern : payload optionnel + « si fourni, alors valide » (bornes D9) + requis seulement quand la cible n'existe pas.
   Sœur : une regex d'inférence sur un NOM utilisateur → accents strippés (`normalize('NFD')`+`\p{Diacritic}`) et mots
   COURTS ancrés `\b…\b` (« char » nu matchait « Chargex »/« recharge » — prouvé par le panel).
+- ⚠️ **Rendre ÉDITABLE un AGRÉGAT DÉRIVÉ (via MCP/IA) = appliquer un DELTA sur UN terme de la somme, JAMAIS écraser
+  l'agrégat** (leçon MCP-DIRECT-EDIT/set_cash 2026-07-28) : le cash est DÉRIVÉ (`computeStartingCash` = Σ initialBalances
+  + Σ transactions non-dup/transfert, source unique) — « mets mes liquidités à X » ne peut pas écrire un champ `cash`
+  (il n'existe pas). Le fix source-unique = `initialBalances.LIQUIDITE += (X − current)` → la somme atteint la cible sans
+  toucher les transactions ni les autres soldes (compte visible/réversible dans Réglages → Comptes). L'invariant de test
+  est le **ROUND-TRIP `f(next) === target`** (impl-agnostique : peu importe COMMENT le delta est réparti, le calcul dérivé
+  DOIT redonner la cible) + idempotence (2ᵉ appel même cible = 0 changement, discriminant delta-vs-écrasement) + les
+  AUTRES termes intacts. Ne JAMAIS recopier la formule de l'agrégat côté écriture (le helper `computeStartingCash` reste
+  l'unique lecteur). **Confirmation MCP à 2 temps** = `RunApplyOptions {requireConfirm, confirmed}` dans `runApply` (dry-run
+  APERÇU sans écriture si `confirm` absent → 2ᵉ appel `confirm:true` persiste) ; le `confirm` est un flag de CONTRÔLE, PAS
+  une donnée du DocumentPayload (`toDocument` l'exclut) ; l'app garde son modal `writeExecutor` (chaque surface sa confirmation native, pas de double-gate).
 - ⚠️ **La SORTIE JSON d'un tool MCP data-aware est une surface d'INJECTION de prompt indirecte — MAIS scruber en AVEUGLE
   détruit des garde-fous** (leçon MCP-PROMPT-SCRUB 2026-07-16, DOUBLE finding panel security+code-reviewer) : un nom d'actif
   (auto-rempli Finnhub), un payee/catégorie (extrait d'un PDF de courtage), un nom de projet/utilisateur = TEXTE LIBRE lu par

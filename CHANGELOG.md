@@ -6,6 +6,25 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — MCP : changer tes liquidités juste en le demandant] — 2026-07-28
+
+### Assistant / MCP
+- **Nouveau tool d'écriture `set_cash`** : demande à Claude « mets mes liquidités à 50 000 $ » et il ajuste ton
+  solde de cash à la cible. Le cash étant calculé depuis tes transactions + soldes de départ, l'ajustement passe
+  par le compte « LIQUIDITE » des soldes de départ (visible dans Réglages → Comptes) — tes transactions ne sont
+  jamais écrasées, et c'est réversible. Idempotent (redemander la même cible ne change rien).
+- **Confirmation à 2 temps** (demande Marc) : sur claude.ai, le 1er appel renvoie un APERÇU (solde avant → après)
+  sans rien écrire ; Claude te le montre et n'applique qu'après ton accord (2ᵉ appel `confirm:true`). Dans l'app,
+  le modal de confirmation existant fait foi. Une sauvegarde horodatée est créée avant chaque écriture.
+
+### Interne
+- `set_cash` = 1ᵉʳ lot de `[MCP-DIRECT-EDIT]` : nouveau `kind: 'cash_balance'` dans `applyDocument` (delta sur
+  `initialBalances.LIQUIDITE` via la source unique `computeStartingCash`, jamais d'écrasement de la map), garde
+  de confirmation `RunApplyOptions` dans `runApply` (dry-run + `confirm`), spec/tool scindés (parité app↔MCP).
+  ⚠️ Actif sur claude.ai seulement après redéploiement Cloud Run (révision séparée de Vercel).
+
+---
+
 ## [unreleased — Futur : beaucoup plus d'icônes sur le graphe] — 2026-07-24
 
 ### Onglet Futur

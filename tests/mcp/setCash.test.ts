@@ -90,6 +90,16 @@ describe('applyCashBalance — idempotence (discriminant delta vs écrasement)',
         const { changes } = applyDocument(s, setCash(15380.004));
         expect(changes).toHaveLength(0);
     });
+
+    it('cibles ENCHAÎNÉES A → B (différentes) : le delta s\'ACCUMULE sur LIQUIDITE existant, round-trip exact à chaque étape', () => {
+        const a = applyDocument(richState(), setCash(20000)); // 15380 → 20000
+        expect(computeStartingCash(a.nextState.initialBalances, a.nextState.transactions ?? [])).toBeCloseTo(20000, 6);
+        const liqAfterA = a.nextState.initialBalances.LIQUIDITE;
+        const b = applyDocument(a.nextState, setCash(33000)); // 20000 → 33000
+        expect(computeStartingCash(b.nextState.initialBalances, b.nextState.transactions ?? [])).toBeCloseTo(33000, 6);
+        // Discriminant vs « écrase LIQUIDITE = target » : la 2ᵉ écriture ajoute (33000−20000) à la valeur EXISTANTE.
+        expect(b.nextState.initialBalances.LIQUIDITE).toBeCloseTo(liqAfterA + 13000, 6);
+    });
 });
 
 describe('applyCashBalance — bornes anti-injection + gardes non-fini (throw, rien écrit)', () => {
@@ -97,6 +107,17 @@ describe('applyCashBalance — bornes anti-injection + gardes non-fini (throw, r
         for (const t of [-1, -100, Infinity, -Infinity, NaN, 200_000_000]) {
             expect(() => applyDocument(baseState(), setCash(t))).toThrow(/invalide|aberrant/i);
         }
+    });
+
+    it('REJETTE si le CASH ACTUEL est non calculable (solde/transaction corrompu = non fini) — pas d\'écriture de NaN', () => {
+        // [HARDEN-NETWORTH-NAN] Zod laisse passer ±Infinity dans initialBalances / transactions non validées.
+        const s1 = baseState();
+        s1.initialBalances = { LIQUIDITE: Infinity, REER: 1000 };
+        expect(() => applyDocument(s1, setCash(50000))).toThrow(/non calculable|corrompu/i);
+
+        const s2 = baseState();
+        s2.transactions = [{ id: 1, date: '2026-01-05', amount: Infinity, category: 'Salaire', payee: 'x', status: 'processed' }] satisfies Transaction[];
+        expect(() => applyDocument(s2, setCash(50000))).toThrow(/non calculable|corrompu/i);
     });
 
     it('le rejet ne MUTE pas l\'état d\'entrée (fonction pure)', () => {

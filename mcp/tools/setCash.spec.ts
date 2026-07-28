@@ -14,9 +14,10 @@ const inputSchema = {
             'CIBLE après ajustement, pas un delta. N\'invente jamais ce chiffre : ne le renseigne que si ' +
             'l\'utilisateur l\'a donné.'),
     confirm: z.boolean().optional()
-        .describe('Laisse VIDE au 1er appel → tu reçois un APERÇU (solde avant → après) SANS rien écrire. ' +
-            'Montre cet aperçu à l\'utilisateur ; APRÈS son accord explicite, rappelle ce tool avec ' +
-            'confirm:true (mêmes arguments) pour appliquer réellement.'),
+        .describe('Laisse VIDE au 1er appel. SI la réponse est un APERÇU (preview:true = solde avant → après, ' +
+            'rien écrit), montre-le à l\'utilisateur et, APRÈS son accord explicite, rappelle ce tool avec ' +
+            'confirm:true (mêmes arguments) pour appliquer. SI la réponse est déjà appliquée (applied:true — ' +
+            'certaines surfaces confirment visuellement d\'elles-mêmes), NE rappelle PAS : c\'est déjà fait.'),
 };
 
 type Args = z.infer<z.ZodObject<typeof inputSchema>>;

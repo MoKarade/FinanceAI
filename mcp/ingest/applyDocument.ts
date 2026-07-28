@@ -166,6 +166,14 @@ function applyCashBalance(state: AppState, doc: CashBalancePayload): ApplyResult
     const current = computeStartingCash(state.initialBalances ?? {}, state.transactions ?? []);
     const target = doc.targetCad;
     const delta = target - current;
+    // [HARDEN-NETWORTH-NAN] `current` est DÉRIVÉ de données PERSISTÉES (initialBalances/transactions) que le
+    // schéma ne garantit PAS finies (Zod `z.number()` laisse passer ±Infinity ; `transactions` = `z.unknown()`).
+    // Un seul solde/montant non fini en amont ferait `current`/`delta` non finis → on écrirait `NaN` dans
+    // LIQUIDITE en SILENCE (applied:true, patrimoine empoisonné). Garder l'AGRÉGAT avant toute écriture : non
+    // fini → throw (runApply logError + errorContent), JAMAIS d'écriture. Message sans montant brut (Loi 25).
+    if (!Number.isFinite(current) || !Number.isFinite(delta)) {
+        throw new Error('Solde de liquidités actuel non calculable (un solde de départ ou une transaction est corrompu / non fini). Rien n\'a été écrit — corrige la donnée en cause d\'abord.');
+    }
     if (Math.abs(delta) < 0.005) {
         return { nextState: state, changes: [], summary: `Solde de liquidités déjà à ${Math.round(target)} $ : aucune modification.` };
     }

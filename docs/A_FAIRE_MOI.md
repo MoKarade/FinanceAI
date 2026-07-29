@@ -7,47 +7,35 @@
 
 ---
 
-## FINTABLE — dry-run bloqué : jeton à recréer proprement (remonté par Claude 2026-07-29)
-- [x] **Forme de l'API fournie** — docs officielles de l'API Fintable V2 collées le 2026-07-29 →
-  Lot 1 livré (PR #522, mergée). (Je ne peux toujours PAS appeler `fintable.io` depuis l'exécution
-  cloud : 403 au tunnel CONNECT sur tous les chemins, endpoints publics compris.)
-- [x] **Fix `pending field must be true or false`** — le 1ᵉʳ essai réel du dry-run a buté sur un 422 ;
-  corrigé (PR #524) : les booléens de query string s'encodent en `1`/`0`, pas `true`/`false`
-  (validation Laravel côté API). Diagnostic par la forme du message, non re-testé contre l'API réelle.
-- [ ] **⚠️ CORRECTION — le jeton lecture-seule n'a JAMAIS été mis en Secret Manager** : j'avais coché
-  ce point à tort le 2026-07-29 sur la foi de ton « oui cest bon cest fait ». `gcloud secrets versions
-  access` a rendu `NOT_FOUND` sur `financeai-fintable-token` (projet `financeai-497112`) — le secret
-  n'existe pas, ou existe ailleurs (autre nom/projet). Et **un 2ᵉ jeton (scopes read+write, émis
-  2026-07-29 14:39 UTC) a été collé en clair dans le chat** pendant le test du dry-run → compromis dès
-  qu'il apparaît dans l'historique, quel que soit l'usage prévu.
-  **À faire, dans cet ordre** :
-  1. **Révoque** ce 2ᵉ jeton dans Dashboard → API Fintable (et le 1ᵉʳ si jamais il traîne encore).
-  2. Crée un **nouveau jeton lecture seule** (scope `read` uniquement — pas `write`, jamais utile ici).
-  3. Stocke-le **sans repasser par le chat** :
-     ```bash
-     echo "<jeton>" | gcloud secrets create financeai-fintable-token --data-file=- --project=financeai-497112
-     ```
-     (ou `versions add` si le secret existe déjà sous ce nom exact — vérifie d'abord avec
-     `gcloud secrets list --project=financeai-497112 --filter="name:fintable"`).
-- [ ] **Lancer le dry-run Fintable et me coller la sortie** (5 min), une fois le jeton en Secret Manager :
+## FINTABLE — pourquoi aucune position ? (remonté par Claude 2026-07-29)
+- [x] **Forme de l'API fournie, jeton en place, dry-run RÉUSSI** — 6 comptes, 121 transactions lues.
+  Le fix `pending=1/0` (PR #524) est confirmé **par mesure**. (Je ne peux toujours PAS appeler
+  `fintable.io` depuis l'exécution cloud : 403 au tunnel CONNECT sur tous les chemins.)
+- [x] **Décidé par la mesure : on GARDE tes 18 mois d'historique manuel** — 90 jours demandés,
+  **30 rendus** (2026-06-29 → 2026-07-28). Ta réponse de cadrage « supprimer l'historique, n'utiliser
+  que Plaid » est caduque : l'appliquer coûtait ~17 mois de données.
+- [ ] **🔴 Lancer le docteur et me coller la sortie** — c'est le point bloquant : tes 3 comptes de
+  placement (Disnat ×2, SHR) remontent **zéro position**, alors qu'ils contiennent des titres. Ce n'est
+  pas une panne (aucune erreur), Fintable répond littéralement « pas de positions ». J'ai écrit un
+  diagnostic qui lit l'état de ton COMPTE plutôt que les données :
   ```bash
   FINTABLE_TOKEN="$(gcloud secrets versions access latest --secret=financeai-fintable-token --project=financeai-497112)" \
-    npm run fintable:dry -- --days 90
+    npm run fintable:doctor
   ```
-  (Git Bash — sur PowerShell : `$env:FINTABLE_TOKEN = (gcloud secrets versions access latest --secret=financeai-fintable-token --project=financeai-497112)`.)
-  Le script fait **uniquement des GET** — aucune écriture, ni dans FinanceAI, ni dans Drive, ni chez
-  Fintable. **Les montants sont MASQUÉS par défaut** (`•••`) : la sortie est conçue pour être recollée
-  ici sans exposer tes chiffres. Ajoute `--show-amounts` seulement si tu veux les voir toi-même à l'écran.
-  Ce que j'ai besoin de lire dans la sortie, pour cadrer le Lot 2 :
-  1. la liste des **comptes** avec leur `type=` brut (c'est du texte libre côté Fintable — il faut qu'on
-     décide ENSEMBLE quel compte est CELI / REER / NON-ENREG, je ne dois pas le deviner) ;
-  2. les **devises** rencontrées dans les transactions (si tu as des comptes en USD/EUR, la conversion
-     devient une décision money-critical, pas un détail) ;
-  3. la liste des **catégories Fintable** (je dois les faire correspondre à nos postes canoniques) ;
-  4. l'**étendue de dates** réellement rendue par compte → c'est la mesure qui décidera du Lot 5
-     (garder ou remplacer tes 18 mois d'historique manuel).
-  Si le script échoue, colle l'erreur telle quelle : elle est typée (`AUTH`, `RATE_LIMIT`, `MALFORMED`…)
-  et ne contient jamais ton jeton.
+  (PowerShell : `$env:FINTABLE_TOKEN = (gcloud secrets versions access latest --secret=financeai-fintable-token --project=financeai-497112)` puis `npm run fintable:doctor`.)
+  Lecture seule, **aucun montant ni numéro de compte dans la sortie** — recollable telle quelle.
+  Il vérifie et explique : droits du plan (`can_sync` est `false` sur un compte gratuit → aucune sync
+  ne tourne), santé de chaque connexion, dernière sync réussie, et surtout **quel PROVIDER** porte tes
+  comptes. Piste principale : chez Fintable le **courtage passe par SnapTrade** — un compte de
+  placement lié via un provider bancaire (PLAID, etc.) peut exposer son solde sans jamais exposer ses
+  positions. Si c'est ça, il faudra relier tes comptes Disnat via SnapTrade dans le dashboard Fintable.
+- [ ] **Vérifier le doublon de dette carte de crédit** (avant le Lot 2) — tu as choisi que la Mastercard
+  Desjardins alimente une dette dans FinanceAI. Regarde dans Réglages → Dettes si tu en as déjà une
+  saisie à la main pour cette carte : si oui, il faudra la retirer au moment de brancher la sync, sinon
+  elle sera comptée deux fois dans ton patrimoine.
+- [ ] **Rappel sécurité — 2 jetons Fintable ont été collés en clair dans le chat** (les deux avec scope
+  `read+write`). Si tu ne l'as pas déjà fait, révoque-les dans Dashboard → API et garde uniquement le
+  jeton lecture-seule qui est en Secret Manager.
 
 ## MCP-CATEGORY-ALLOWLIST — redéploiement Cloud Run requis (remonté par Claude 2026-07-24, PR #502)
 - [ ] **Redéployer le serveur MCP sur Cloud Run** pour que l'allowlist de catégories (PR #502) prenne

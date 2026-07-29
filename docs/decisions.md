@@ -438,3 +438,42 @@ le bon choix, et l'option Google Sheet redevient ce qu'elle était : un repli, p
 authentification (`/rates` taux BCE, `/prices` actions US). On ne s'en sert pas : FinanceAI a déjà
 sa chaîne de cours (Finnhub/Yahoo) et son propre connecteur MCP — les mélanger créerait deux
 sources pour la même grandeur, exactement ce que la règle « source unique » interdit.
+
+### Mise à jour 2026-07-29 (n°2) — premières mesures RÉELLES : le Lot 5 est tranché, les positions sont un blocage
+
+Premier dry-run réussi contre le compte Fintable de Marc (6 comptes, 121 transactions). Trois décisions
+en découlent, toutes fondées sur la MESURE et non sur la doc :
+
+1. **`[FINTABLE-BOOL-QUERY]` confirmé par mesure** (était [Probable]) : `pending=0` passe là où
+   `pending=false` était rejeté en 422. Le diagnostic « validation `boolean` de Laravel » est donc
+   [Certain]. Règle générale qui en découle : **un booléen de query string s'encode `1`/`0`**, jamais
+   via `String(booléen)` — la sérialisation « naturelle » de JS n'est pas celle qu'attendent les
+   validateurs côté serveur.
+2. **Le Lot 5 est TRANCHÉ par la donnée : on GARDE les 18 mois d'historique manuel.** On a demandé
+   90 jours, Fintable en rend **30** (2026-06-29 → 2026-07-28). La réponse initiale de Marc au cadrage
+   (« supprimer l'historique, n'utiliser que Plaid », Q8) est donc **caduque** : l'appliquer serait une
+   perte sèche de ~17 mois. C'est exactement la raison pour laquelle ce lot était gaté par une mesure
+   plutôt que par une intention — l'intention était sincère et fausse. À réévaluer si la fenêtre
+   s'élargit (les connexions sont peut-être récentes), mais **jamais de suppression sur une promesse**.
+3. **Mapping des comptes, décidé par Marc** (le champ `type` est du texte libre, la doc interdit d'en
+   déduire quoi que ce soit) : les deux comptes Disnat (`investment / brokerage`, l'un USD l'autre CAD)
+   sont **non-enregistrés** ; la Mastercard Desjardins (`credit / credit card`) doit alimenter une
+   **dette**, pas les liquidités — 90 des 121 transactions en viennent, et confondre son solde avec du
+   cash gonflerait le patrimoine du montant dû.
+
+**Blocage ouvert — zéro position sur 3 comptes de placement.** Les appels `/accounts/{id}/holdings`
+ont **réussi** en rendant des listes VIDES (aucun skip tracé), sur des comptes qui contiennent
+réellement des titres (confirmé par Marc). C'est la moitié de la demande initiale (« mes
+investissements en temps réel ») qui ne fonctionne pas. Comme un agrégat vide SANS erreur est la
+classe « staleness silencieuse », on ne devine pas : `[FINTABLE-1b]` ajoute un **docteur**
+(`npm run fintable:doctor`) qui lit l'état du COMPTE plutôt que les données — droits du plan
+(`can_sync` est `false` sur un compte gratuit), santé et historique de sync des connexions,
+intégrations. Piste principale encodée dans son raisonnement : chez Fintable le **courtage passe par
+SnapTrade**, donc un compte de placement lié via un provider bancaire (PLAID…) peut exposer son solde
+sans jamais exposer ses positions.
+
+**Conséquence de cadrage** : le volet « positions » du Lot 2 reste NON codé tant que la donnée
+n'arrive pas — un mapper de positions qui ne peut être exercé sur aucune donnée réelle n'est pas
+vérifiable, et la leçon `PORTFOLIO-HISTORY` (« un stub qui nourrit un graphe est une dette qui MENT »)
+s'applique directement. Le volet transactions/liquidités/dette, lui, est pleinement exerçable (121
+transactions réelles) et peut avancer.

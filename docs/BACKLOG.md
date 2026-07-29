@@ -25,31 +25,51 @@
   `npm run fintable:dry` (montants MASQUÉS par défaut → sortie partageable ; `--show-amounts` en local).
   50 tests. ⚠️ Le dry-run RÉEL doit être lancé par Marc (`fintable.io` inatteignable depuis l'exécution
   cloud) → routé dans `A_FAIRE_MOI.md`.
-- [ ] **`[FINTABLE-2]` Mapper pur `snapshot → DocumentPayload[]` + dry-run** (M) — transactions →
-  `bank_statement` (dédup + allowlist héritées), positions → `broker_statement` (Fintable gagne d'office,
-  Q10), soldes → `cash_balance` (delta `initialBalances.LIQUIDITE`, jamais d'écrasement d'agrégat — cf.
-  `MCP-DIRECT-EDIT`/set_cash). ⚠️ Points money-critical à trancher AVEC preuve : (a) devise native des
-  positions → `assetValueCad` jamais qty×prix nu (`ASSET-FX-DISPLAY`) ; (b) sémantique exacte de
-  `applyBrokerStatement` (remplace ou fusionne) à MESURER avant de s'y appuyer ; (c) un compte Fintable
-  fermé/absent ne doit pas faire disparaître un actif en silence. Rapport dry-run AVANT toute écriture.
-  **Nouveaux points ouverts révélés par la doc de l'API** : (d) `costBasisTotal` est un coût TOTAL —
-  le convertir en `buyPrice` PAR PART exige `quantity` non nul et non nul-divisé (sinon ne pas mapper) ;
-  (e) `Account.type` étant du texte libre, la correspondance compte Fintable → type fiscal
-  (CELI/REER/NON-ENREG) doit être une **table pilotée par Marc**, jamais une inférence ; (f) les
-  catégories Fintable sont libres → passer par `resolveCandidateCategory` (allowlist) et COMPTER les
-  remaps, comme `MCP-CATEGORY-ALLOWLIST` ; (g) multi-devises : `Transaction.currency` peut différer de
-  CAD, alors que nos transactions sont supposées CAD → décider explicitement (conversion au taux du
-  jour vs rejet signalé), ne jamais empiler des devises sans conversion.
+- [x] **`[FINTABLE-1b]` Docteur « pourquoi ma donnée n'arrive pas »** (S) — ✅ 2026-07-29, né du 1ᵉʳ
+  dry-run réel : 3 comptes de placement, **0 position**, et AUCUNE erreur (les appels ont réussi en
+  rendant des listes vides). Un vide sans explication est la classe « staleness silencieuse » → lire
+  l'état du COMPTE, pas les données. `readDiagnostics.ts` (`/me` droits du plan, `/connections` santé +
+  historique de sync, `/integrations`) + `explainMissingData` (raisonnement PUR, testable sans réseau) +
+  `npm run fintable:doctor`. Défauts prudents : `can_sync`/`healthy` absents → `false` (un docteur
+  optimiste écarte la cause la plus probable). 16 tests.
+- [ ] **`[FINTABLE-2]` Mapper pur `snapshot → DocumentPayload[]` + dry-run** (M) — ⚠️ **SCINDÉ par la
+  mesure du 2026-07-29** : le volet transactions/liquidités/dette est pleinement exerçable (121 tx
+  réelles) ; le volet **positions est GELÉ** tant que Fintable n'en remonte aucune (coder un mapper
+  qu'aucune donnée réelle ne peut exercer = la dette qui MENT de `PORTFOLIO-HISTORY`).
+  **Décisions de mapping tranchées par Marc** (le champ `type` est du texte libre, la doc interdit
+  d'en déduire quoi que ce soit) : les 2 comptes Disnat (`investment / brokerage`, USD et CAD) sont
+  **non-enregistrés** ; la Mastercard Desjardins (`credit / credit card`) alimente une **dette**, PAS
+  les liquidités (90 des 121 tx en viennent — confondre son solde avec du cash gonflerait le
+  patrimoine du montant dû) ; ⚠️ vérifier qu'elle ne DOUBLONNE pas une dette déjà saisie à la main.
+  **Simplification mesurée** : 0 catégorie Fintable et 121 tx non catégorisées → aucun conflit de
+  taxonomie, notre `ruleCategorize(payee)` prend le relais comme pour les imports actuels.
+  Points money-critical restants : (a) devise native des positions → `assetValueCad`, jamais qty×prix
+  nu (`ASSET-FX-DISPLAY`) ; (b) sémantique réelle d'`applyBrokerStatement` (remplace ou fusionne) à
+  MESURER avant de s'y appuyer ; (c) un compte absent ne doit pas faire disparaître un actif en
+  silence ; (d) `costBasisTotal` → `buyPrice` PAR PART exige `quantity` non nul (sinon ne pas mapper) ;
+  (e) multi-devises : les tx sont 100 % CAD aujourd'hui, mais le compte Disnat USD en produira —
+  décider explicitement (conversion au taux du jour vs rejet signalé), jamais d'empilement sans conversion.
 - [ ] **`[FINTABLE-3]` Cron quotidien Cloud Run + `sync_bank_now`** (M) — patron du `POST /refresh` existant
   (secret dédié, `mcp/deploy.sh`). Écriture via `runApply` → OCC + backup. Trace + rapport de la dernière
   passe (comptes vus, tx ajoutées, positions mises à jour, échecs) — un skip sans signal = classe
   « staleness silencieuse ».
 - [ ] **`[FINTABLE-4]` Import manuel répliqué et masqué** (S) — CONSERVÉ intégralement comme repli (Q1),
   déplacé hors du flux principal. Ne RIEN supprimer : c'est le filet quand Fintable/Plaid tombe.
-- [ ] **`[FINTABLE-5]` Bascule de l'historique 18 mois** (M) — 🚦 **GATÉ PAR UNE MESURE** : Plaid rend de
-  90 jours à 24 mois SELON l'institution. Étape 1 = rapport de couverture réelle par compte (date la plus
-  ancienne, nb de tx). L'historique manuel n'est retiré (Q8) QUE si la couverture le justifie ; sinon
-  conservation + raccord à la date de bascule. Jamais de suppression sur hypothèse.
+- [x] **`[FINTABLE-5]` Bascule de l'historique 18 mois — ✅ TRANCHÉ 2026-07-29 : ON GARDE.** La mesure
+  est tombée : 90 jours demandés, **30 rendus** (2026-06-29 → 2026-07-28). La réponse de cadrage de Marc
+  (« supprimer l'historique, n'utiliser que Plaid », Q8) est donc **caduque** — l'appliquer aurait coûté
+  ~17 mois de données. C'est précisément pourquoi ce lot était gaté par une MESURE et non par une
+  intention : l'intention était sincère et fausse. Rien à coder ; l'import manuel reste la source du
+  passé, Fintable celle du présent. À réévaluer si la fenêtre s'élargit (connexions peut-être récentes),
+  mais **jamais de suppression sur une promesse**.
+- [ ] **`[FINTABLE-POSITIONS]` 🔴 Zéro position sur 3 comptes de placement** (?) — BLOQUE la moitié de la
+  demande initiale (« mes investissements en temps réel »). Les appels `/accounts/{id}/holdings` RÉUSSISSENT
+  en rendant des listes vides, sur des comptes qui contiennent réellement des titres (confirmé Marc).
+  Étape 1 = `npm run fintable:doctor` (livré en `[FINTABLE-1b]`) → routé dans `A_FAIRE_MOI.md`. Piste
+  principale encodée dans son raisonnement : chez Fintable le **courtage passe par SnapTrade**, donc un
+  compte de placement lié via un provider bancaire (PLAID…) peut exposer son solde sans jamais exposer ses
+  positions. Autres suspects : plan sans droit de sync (`can_sync:false`), connexion à ré-authentifier,
+  sync jamais exécutée. Tant que ce n'est pas résolu, le volet positions du `[FINTABLE-2]` reste GELÉ.
 
 ## 🚧 Chantier Claude-in-app (GO Marc 2026-07-21 : « go jusqu'à tout fini et testé + audit de sec à la fin + aucune donnée changée + résultat fiable »)
 > Plan validé (panel PM + architect, 2026-07-21). P1 = Claude intégré à l'app (tool-use sur les MÊMES

@@ -1444,3 +1444,26 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   n'était (« ce qui reste est une proposition beaucoup plus petite que celle achetée mentalement au départ »).
   ⚠️ Corollaire : ma reco (« ne pas payer ») a été REJETÉE par Marc, qui a choisi de prendre un plan. Tracer
   l'arbitrage ET le désaccord dans l'ADR/BACKLOG — la prochaine session doit savoir que le coût est assumé.
+- ⚠️ **[TX-DUPLICATES] 2026-07-29 — un flag RESPECTÉ partout mais que PERSONNE n'écrit = une machinerie
+  d'exclusion sans alimentation** : `Transaction.isDuplicate` était lu par `computeStartingCash`, le
+  Budget, les revenus, le patrimoine… mais `parseBankCsv` l'initialisait à `false` et **aucun code ne le
+  passait jamais à `true`**. Le filtre UI « afficher les doublons » était mort (`_setShowDuplicates` jamais
+  appelé — le `_` l'exempte de `no-unused-vars`, classe [[DETTE-DEADCODE]]). Réflexe : quand un champ
+  d'exclusion existe, GREPPER ses ÉCRIVAINS (`= true`), pas seulement ses lecteurs — un champ que seuls des
+  lecteurs référencent est une fonctionnalité fantôme. Conception du détecteur : critère = **montant exact
+  + date proche**, le LIBELLÉ volontairement EXCLU du critère (c'est précisément quand il diffère — deux
+  sources d'import — que la dédup `txnKey` laisse passer le doublon) ; on **marque, on ne supprime pas**
+  (cash dérivé → suppression = solde déplacé en silence) ; **jamais de marquage automatique** sur du
+  money-critical (deux cafés identiques le même jour sont un vrai faux positif, et marquer à tort RETIRE
+  de l'argent réel des calculs) ; marquage réversible.
+- ⚠️ **Un CLI qui IGNORE silencieusement une option inconnue rend « code périmé » indistinguable de
+  « l'option n'a rien fait »** (incident 2026-07-29, coûté un aller-retour) : `fintable:dry` ignorait les
+  `--roles`/`--after`/`--show-ids` d'un binaire pré-Lot-2 et rendait une sortie NORMALE — Marc a cru que la
+  feature était cassée alors que son clone n'était pas à jour. Toute option non reconnue doit désormais
+  ÉCHOUER en nommant le remède (`git pull origin main`). Sœur de « un fix mergé n'est pas un fix déployé ».
+- ⚠️ **Vérifier une classe Tailwind dans le CSS buildé : `grep -F` avec l'antislash, pas une regex** (piège
+  2026-07-29) — une classe à opacité s'écrit `.bg-warning-500\/5` dans le CSS (slash ÉCHAPPÉ). Un
+  `grep "bg-warning-500\/5"` en guillemets DOUBLES fait manger l'antislash par le shell → « ABSENTE » à
+  tort, et on croit à une classe morte. Utiliser `grep -qF 'classe\/opacité'` en guillemets SIMPLES.
+  (Le vrai contrôle anti-classe-morte reste : vérifier que le SHADE existe dans `tailwind.config.js` —
+  ici `warning` = 400/500/600 seulement, donc `warning-900` aurait été un no-op silencieux.)

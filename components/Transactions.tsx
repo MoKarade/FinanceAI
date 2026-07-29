@@ -14,6 +14,8 @@ import { ImportBankStatement } from './import/ImportBankStatement';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { formatCAD } from '../utils/format';
+import { DuplicatesPanel } from './transactions/DuplicatesPanel';
+import { markTransactionsAsDuplicate, unmarkTransactionsAsDuplicate } from '../services/transactions/duplicateDetection';
 
 interface TransactionsProps {
     transactions: Transaction[];
@@ -51,7 +53,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
     const [showWizard, setShowWizard] = useState(false);
 
     const [filterText, setFilterText] = useState('');
-    const [showDuplicates, _setShowDuplicates] = useState(false);
+    // [TX-DUPLICATES] Ce setter était `_`-préfixé et JAMAIS appelé : le filtre était figé à `false`
+    // à vie, donc les doublons marqués étaient invisibles et impossibles à revoir (code mort qui
+    // échappe au lint via le `_`, cf. DETTE-DEADCODE). Rebranché avec le panneau de détection.
+    const [showDuplicates, setShowDuplicates] = useState(false);
     const [dateStart, _setDateStart] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [typeFilter, _setTypeFilter] = useState<'All' | 'Income' | 'Expense' | 'Transfer'>('All');
@@ -94,6 +99,26 @@ export const Transactions: React.FC<TransactionsProps> = ({
     const [showRulesPanel, setShowRulesPanel] = useState(false);
     const [newPattern, setNewPattern] = useState('');
     const [newRuleCategory, setNewRuleCategory] = useState('');
+
+    // [TX-DUPLICATES] Marquage/démarquage — passe par les helpers PURS (aucune suppression : le cash
+    // est dérivé des transactions, cf. ADR « Suppressions via MCP/IA »). Le filtre s'ouvre après un
+    // marquage pour que le résultat soit VISIBLE : marquer sans rien voir serait une action aveugle.
+    const markedDuplicateCount = useMemo(
+        () => transactions.filter((t) => t.isDuplicate).length,
+        [transactions],
+    );
+    const handleMarkDuplicates = (ids: number[]): void => {
+        if (ids.length === 0) return;
+        setTransactions(prev => markTransactionsAsDuplicate(prev, ids));
+        setShowDuplicates(true);
+        showToast(`${ids.length} transaction(s) marquée(s) en doublon — exclues des calculs, réversible.`, 'success');
+    };
+    const handleUnmarkAllDuplicates = (): void => {
+        const ids = transactions.filter((t) => t.isDuplicate).map((t) => t.id);
+        if (ids.length === 0) return;
+        setTransactions(prev => unmarkTransactionsAsDuplicate(prev, ids));
+        showToast(`${ids.length} marquage(s) annulé(s).`, 'success');
+    };
 
     const handleAddRule = () => {
         if (!newPattern.trim() || !newRuleCategory) return;
@@ -424,6 +449,14 @@ export const Transactions: React.FC<TransactionsProps> = ({
             {onImport && (showImport || transactions.length === 0) && (
                 <ImportBankStatement onImport={onImport} apiKey={apiKey} />
             )}
+
+            {/* [TX-DUPLICATES] Détection de doublons — propose, ne marque jamais d'office. */}
+            <DuplicatesPanel
+                transactions={transactions}
+                markedCount={markedDuplicateCount}
+                onMarkDuplicates={handleMarkDuplicates}
+                onUnmarkAll={handleUnmarkAllDuplicates}
+            />
 
             <div className="rounded-xl border border-indigo-500/20 bg-indigo-900/10">
                 <button

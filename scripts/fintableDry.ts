@@ -58,6 +58,17 @@ function parseArgs(argv: string[]): Args {
             if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error('--after attend une date YYYY-MM-DD.');
             out.after = d;
             i++;
+        } else {
+            // ⚠️ REJETER l'inconnu plutôt que l'ignorer (incident 2026-07-29) : un binaire PÉRIMÉ
+            // ignorait silencieusement `--roles`/`--after`/`--show-ids` et rendait la sortie NORMALE
+            // — impossible de distinguer « l'option n'a rien donné » de « mon code n'est pas à jour ».
+            // Une option inconnue est désormais une erreur qui NOMME le remède.
+            throw new Error(
+                `Option inconnue : « ${argv[i]} ». Options valides : --days <n> · --after <YYYY-MM-DD> · `
+                + '--roles <fichier.json> · --show-ids · --show-amounts · --include-disabled.\n'
+                + 'Si tu es sûr de l\'avoir tapée correctement, ton clone est probablement périmé : '
+                + '`git pull origin main`.',
+            );
         }
     }
     return out;

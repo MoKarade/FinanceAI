@@ -1366,3 +1366,23 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   dans une fixture de TEST d'un chemin réel (vu : `debts:[{id:'d1'}]` dans syncOrchestrator.flow — purgé
   par la ceinture push, à raison) ; (2) les ids réels sont horodatés (`cat_/debt_/rule_/<ts>`) — garder
   cette convention pour préserver « zéro faux positif » du purgeur.
+- ⚠️ **[FINTABLE] 2026-07-29 — API « money is a string » : le décodage est le vrai chemin money-critical** :
+  l'API Fintable V2 (`https://fintable.io/api/v2`, Bearer, enveloppe `{data}`) rend TOUS les montants en
+  CHAÎNES décimales exactes. (1) **`Number('') === 0` ET `Number(null) === 0`** → sans garde explicite AVANT
+  la conversion, un champ vide/absent devient un montant de **0 $ parfaitement crédible** (no-fake-data violé
+  en silence ; extension de [[NAN-INPUT-HARDENING]] aux montants TYPÉS STRING). Règle : montant obligatoire
+  illisible → erreur `MALFORMED` qui NOMME le champ (`transactions[12].amount`, diagnosticable depuis un cron
+  à 3 h) ; montant absent → `null`, jamais 0. Tests discriminants qui PROUVENT le piège (`expect(Number('')).toBe(0)`).
+  (2) **Les avertissements en petits caractères d'une doc d'API sont des EXIGENCES de code, pas du folklore** —
+  trois lignes de « fine print » sont devenues trois règles non négociables : `pending=false` FORCÉ (les
+  suppressions sont invisibles au polling et une pending est REMPLACÉE en se postant → `applyDocument` déduplique
+  mais ne SUPPRIME jamais ⇒ doublon À VIE qui fausse `computeStartingCash`) ; `cost_basis` = coût **TOTAL** de la
+  position, pas unitaire (notre `Asset.buyPrice` est PAR PART → champ nommé `costBasisTotal` pour rendre la
+  confusion impossible, classe FISC-RRQ-UNIT) ; `Account.type` = texte libre « display it, don't switch on it »
+  → on interroge les positions de TOUS les comptes actifs au lieu de deviner lesquels sont des comptes de
+  placement (un compte mal étiqueté par le provider serait sinon ignoré sans erreur), et le type fiscal
+  CELI/REER/NON-ENREG ne s'INFÈRE jamais — c'est une table pilotée par Marc.
+  (3) **Un dry-run dont la sortie doit revenir dans le chat se conçoit MASQUÉ par défaut** (`•••`, `--show-amounts`
+  en option locale) : c'est ce qui rend le diagnostic partageable sans exposer les chiffres réels. Corollaire du
+  blocage : quand seul Marc peut exécuter (hôte hors politique réseau), la valeur du livrable EST la qualité de
+  ce qu'il aura à recoller — dimensionner le rapport sur les décisions qu'il débloque, pas sur « ça marche ».

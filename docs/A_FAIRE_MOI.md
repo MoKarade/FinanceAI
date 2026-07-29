@@ -13,19 +13,28 @@
   Secret Manager (`financeai-fintable-token`, projet `financeai-497112`). Confirmé fait par Marc.
   ⚠️ Règle à garder : un secret ne transite JAMAIS par le chat — `echo "<jeton>" | gcloud secrets versions add …`
   depuis ton poste, jamais un copier-coller ici.
-- [ ] **Me donner la forme de l'API Fintable** (5 min) — je ne peux pas la découvrir depuis l'exécution
-  cloud : `docs.fintable.io` ne résout pas (NXDOMAIN), et `fintable.io` / `api.fintable.com` sont bloqués
-  par la politique réseau du conteneur (403 au tunnel CONNECT). Il me faut, depuis ta doc Fintable ou un
-  appel réel sur ton poste :
-  1. l'**URL de base** (ex. `https://api.fintable.io/v1`) ;
-  2. l'**en-tête d'authentification** (`Authorization: Bearer …` ? `X-Api-Key` ?) ;
-  3. les **chemins** comptes / transactions / positions ;
-  4. **une réponse réelle tronquée** (3-5 lignes de JSON suffisent) — c'est ce qui me donne les noms de
-     champs exacts (date, montant, devise, symbole, quantité…).
-  ⚠️ **Masque les montants et le jeton** avant de coller — je n'ai besoin que de la STRUCTURE.
-  Tant que je n'ai pas ça, je n'écris pas le lecteur : coder un client contre une API devinée sur un chemin
-  money-critical est exactement ce qu'on s'interdit. Si tu préfères, le repli documenté (lire le Google
-  Sheet que Fintable alimente déjà) est immédiatement faisable — dis-le et je pars là-dessus.
+- [x] **Forme de l'API fournie** — docs officielles de l'API Fintable V2 collées le 2026-07-29 →
+  blocage levé, Lot 1 livré. (Je ne peux toujours PAS appeler `fintable.io` depuis l'exécution cloud :
+  403 au tunnel CONNECT sur tous les chemins, y compris les endpoints publics — d'où le point suivant.)
+- [ ] **Lancer le dry-run Fintable et me coller la sortie** (5 min) — c'est la seule vérification que je
+  ne peux pas faire moi-même. Depuis le repo à jour, dans PowerShell :
+  ```powershell
+  $env:FINTABLE_TOKEN="<ton jeton lecture seule>"
+  npm run fintable:dry -- --days 90
+  ```
+  Le script fait **uniquement des GET** — aucune écriture, ni dans FinanceAI, ni dans Drive, ni chez
+  Fintable. **Les montants sont MASQUÉS par défaut** (`•••`) : la sortie est conçue pour être recollée
+  ici sans exposer tes chiffres. Ajoute `--show-amounts` seulement si tu veux les voir toi-même à l'écran.
+  Ce que j'ai besoin de lire dans la sortie, pour cadrer le Lot 2 :
+  1. la liste des **comptes** avec leur `type=` brut (c'est du texte libre côté Fintable — il faut qu'on
+     décide ENSEMBLE quel compte est CELI / REER / NON-ENREG, je ne dois pas le deviner) ;
+  2. les **devises** rencontrées dans les transactions (si tu as des comptes en USD/EUR, la conversion
+     devient une décision money-critical, pas un détail) ;
+  3. la liste des **catégories Fintable** (je dois les faire correspondre à nos postes canoniques) ;
+  4. l'**étendue de dates** réellement rendue par compte → c'est la mesure qui décidera du Lot 5
+     (garder ou remplacer tes 18 mois d'historique manuel).
+  Si le script échoue, colle l'erreur telle quelle : elle est typée (`AUTH`, `RATE_LIMIT`, `MALFORMED`…)
+  et ne contient jamais ton jeton.
 
 ## MCP-CATEGORY-ALLOWLIST — redéploiement Cloud Run requis (remonté par Claude 2026-07-24, PR #502)
 - [ ] **Redéployer le serveur MCP sur Cloud Run** pour que l'allowlist de catégories (PR #502) prenne

@@ -23,7 +23,8 @@
     "mcp:auth": "tsx mcp/auth.ts",
     "mcp:connect": "node mcp/install-desktop.mjs && tsx mcp/auth.ts",
     "mcp:pack": "node mcp/pack.mjs",
-    "mcp:build-server": "node mcp/build-server.mjs"
+    "mcp:build-server": "node mcp/build-server.mjs",
+    "fintable:dry": "tsx scripts/fintableDry.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",

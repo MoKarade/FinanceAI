@@ -17,11 +17,14 @@
   un chat → RÉVOQUÉ et remplacé avant tout usage. Découverte de cadrage qui RÉDUIT le chantier : la chaîne
   d'ingestion existante couvre déjà toute la fusion → le travail restant est un lecteur + un mapper pur,
   pas un pipeline (classe `R2-FIRE` : vérifier l'état RÉEL avant de coder).
-- [ ] **`[FINTABLE-1]` Lecteur → `FintableSnapshot` normalisé** (M) — 🔴 **BLOQUÉ** : la forme de l'API
-  Fintable n'est pas vérifiable depuis le conteneur (`docs.fintable.io` NXDOMAIN ; `fintable.io` et
-  `api.fintable.com` bloqués par la politique réseau — 403 au tunnel CONNECT). Attend de Marc : URL de base,
-  en-tête d'auth, chemins comptes/transactions/positions + **une réponse réelle tronquée** (noms de champs).
-  Critère d'arrêt : `npm run fintable:dry` liste comptes + N transactions + N positions, **zéro écriture**.
+- [x] **`[FINTABLE-1]` Lecteur → `FintableSnapshot` normalisé** (M) — ✅ 2026-07-29. Forme de l'API
+  **VÉRIFIÉE** (docs officielles fournies par Marc → ADR mis à jour). `services/fintable/` : `types.ts`
+  (formes brutes + modèle normalisé + `FintableError` à code typé transitoire/confirmé), `decode.ts`
+  (décodage STRICT), `client.ts` (Bearer, enveloppe, pagination par curseur, 429 + `Retry-After`,
+  timeout couvrant la LECTURE DU CORPS), `readSnapshot.ts` (orchestration, pannes partielles tracées).
+  `npm run fintable:dry` (montants MASQUÉS par défaut → sortie partageable ; `--show-amounts` en local).
+  50 tests. ⚠️ Le dry-run RÉEL doit être lancé par Marc (`fintable.io` inatteignable depuis l'exécution
+  cloud) → routé dans `A_FAIRE_MOI.md`.
 - [ ] **`[FINTABLE-2]` Mapper pur `snapshot → DocumentPayload[]` + dry-run** (M) — transactions →
   `bank_statement` (dédup + allowlist héritées), positions → `broker_statement` (Fintable gagne d'office,
   Q10), soldes → `cash_balance` (delta `initialBalances.LIQUIDITE`, jamais d'écrasement d'agrégat — cf.
@@ -29,6 +32,14 @@
   positions → `assetValueCad` jamais qty×prix nu (`ASSET-FX-DISPLAY`) ; (b) sémantique exacte de
   `applyBrokerStatement` (remplace ou fusionne) à MESURER avant de s'y appuyer ; (c) un compte Fintable
   fermé/absent ne doit pas faire disparaître un actif en silence. Rapport dry-run AVANT toute écriture.
+  **Nouveaux points ouverts révélés par la doc de l'API** : (d) `costBasisTotal` est un coût TOTAL —
+  le convertir en `buyPrice` PAR PART exige `quantity` non nul et non nul-divisé (sinon ne pas mapper) ;
+  (e) `Account.type` étant du texte libre, la correspondance compte Fintable → type fiscal
+  (CELI/REER/NON-ENREG) doit être une **table pilotée par Marc**, jamais une inférence ; (f) les
+  catégories Fintable sont libres → passer par `resolveCandidateCategory` (allowlist) et COMPTER les
+  remaps, comme `MCP-CATEGORY-ALLOWLIST` ; (g) multi-devises : `Transaction.currency` peut différer de
+  CAD, alors que nos transactions sont supposées CAD → décider explicitement (conversion au taux du
+  jour vs rejet signalé), ne jamais empiler des devises sans conversion.
 - [ ] **`[FINTABLE-3]` Cron quotidien Cloud Run + `sync_bank_now`** (M) — patron du `POST /refresh` existant
   (secret dédié, `mcp/deploy.sh`). Écriture via `runApply` → OCC + backup. Trace + rapport de la dernière
   passe (comptes vus, tx ajoutées, positions mises à jour, échecs) — un skip sans signal = classe

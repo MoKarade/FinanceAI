@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟠 Session 2026-07-29 (suite 3) — 1ᵉʳ dry-run RÉEL : Lot 5 tranché, positions BLOQUÉES, docteur livré
+> **Le dry-run passe** (6 comptes, 121 transactions). Fix `pending=1/0` (#524) **confirmé par mesure**.
+> ⚠️ Piège rencontré : le 422 est revenu VERBATIM après le merge — pas un mauvais diagnostic, le clone de
+> Marc était sur un `main` périmé. Une erreur identique au caractère près après un fix = code non rapatrié.
+> **🔵 `[FINTABLE-5]` TRANCHÉ — ON GARDE les 18 mois d'historique manuel** : 90 jours demandés, **30 rendus**
+> (2026-06-29 → 2026-07-28). La réponse de cadrage de Marc (« supprimer l'historique, que Plaid », Q8) était
+> sincère et FAUSSE → l'appliquer coûtait ~17 mois. C'est exactement pourquoi ce lot était gaté par une MESURE.
+> **🔴 `[FINTABLE-POSITIONS]` BLOQUANT** : 3 comptes de placement (Disnat ×2, SHR), **0 position**, et les
+> appels `/holdings` RÉUSSISSENT en rendant des listes vides (aucun skip à tracer). Marc confirme que ces
+> comptes contiennent des titres → c'est la moitié de la demande initiale qui ne marche pas.
+> **🔵 `[FINTABLE-1b]` docteur livré** (cette PR) : `readDiagnostics.ts` (`/me` droits du plan, `/connections`
+> santé + historique de sync, `/integrations`) + `explainMissingData` (raisonnement PUR, testable sans réseau)
+> + `npm run fintable:doctor`. Décodeurs à défauts PRUDENTS (`can_sync`/`healthy` absents → `false`). Piste
+> n°1 encodée : chez Fintable le **courtage passe par SnapTrade** — un compte de placement lié via un provider
+> bancaire expose son solde sans ses positions. 16 tests (66 au total sur `services/fintable/`).
+> **Décisions de mapping tranchées par Marc** (AskUserQuestion) : les 2 Disnat = **non-enregistrés** ; la
+> Mastercard Desjardins alimente une **dette**, pas les liquidités (90/121 tx en viennent). Simplification
+> mesurée : **0 catégorie Fintable**, 121 tx non catégorisées → aucun conflit de taxonomie, `ruleCategorize` prend le relais.
+> **Suite** : Marc lance `npm run fintable:doctor` (routé `A_FAIRE_MOI.md`). Le `[FINTABLE-2]` est SCINDÉ —
+> volet transactions/liquidités/dette exerçable (121 tx réelles), volet **positions GELÉ** tant qu'aucune
+> donnée réelle ne peut l'exercer (leçon PORTFOLIO-HISTORY : un stub qui nourrit une surface est une dette qui MENT).
+>
 > ## 🟢 Session 2026-07-29 (suite 2) — FINTABLE Lot 1 LIVRÉ : lecteur API + dry-run (blocage levé)
 > **Marc a fourni la doc officielle de l'API Fintable V2** → le « Ouvert » de l'ADR est fermé (mise à jour
 > ajoutée à `docs/decisions.md` : base `https://fintable.io/api/v2`, Bearer, enveloppe `{data}`, curseur,

@@ -1386,3 +1386,26 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   en option locale) : c'est ce qui rend le diagnostic partageable sans exposer les chiffres réels. Corollaire du
   blocage : quand seul Marc peut exécuter (hôte hors politique réseau), la valeur du livrable EST la qualité de
   ce qu'il aura à recoller — dimensionner le rapport sur les décisions qu'il débloque, pas sur « ça marche ».
+- ⚠️ **[FINTABLE-BOOL-QUERY + FINTABLE-DOCTOR] 2026-07-29 — deux leçons du 1ᵉʳ contact avec une API tierce RÉELLE** :
+  (1) **Un booléen de query string s'encode `1`/`0`, JAMAIS via `String(booléen)`** : `pending=false` a été
+  rejeté en 422 (« The pending field must be true or false » — message par défaut de la règle `boolean` de
+  Laravel, qui n'accepte que `0/1/"0"/"1"` et pas les chaînes `"true"`/`"false"`). Diagnostiqué [Probable] par
+  la FORME EXACTE du message d'erreur (identifier le framework serveur depuis son libellé est un signal fort),
+  puis **confirmé par mesure**. Sœur de `NAN-INPUT-HARDENING` : la sérialisation « naturelle » de JS n'est pas
+  celle qu'attend le validateur d'en face. (2) **Un fix mergé n'est pas un fix DÉPLOYÉ chez l'utilisateur** :
+  le 422 est revenu à l'identique après le merge — non parce que le diagnostic était faux, mais parce que le
+  clone de Marc était sur un `main` périmé. Réflexe avant de conclure « mon diagnostic est faux » quand une
+  erreur se répète VERBATIM : faire confirmer `git fetch && git merge --ff-only` + un `grep` du marqueur du fix
+  dans le fichier. Une erreur *identique au caractère près* après un fix est bien plus souvent un code non
+  rapatrié qu'un diagnostic erroné (un mauvais fix produit en général une erreur DIFFÉRENTE).
+  (3) **Un agrégat VIDE sans erreur ne se débugge pas dans les données mais dans l'ÉTAT DU COMPTE** (leçon
+  FINTABLE-DOCTOR) : 3 comptes de placement ont rendu 0 position avec des appels qui RÉUSSISSENT — rien à
+  tracer côté skips. Le bon outil n'est pas un log de plus sur le chemin de données, c'est un **docteur** qui
+  lit les endpoints d'ÉTAT (droits du plan, santé/historique de sync des connexions, intégrations) et porte le
+  raisonnement dans une fonction PURE (`explainMissingData`, testable sans réseau). Ses décodeurs prennent des
+  défauts PRUDENTS (`can_sync`/`healthy` absents → `false`) : un docteur optimiste écarte silencieusement la
+  cause la plus probable. Et il ne doit crier au loup sur AUCUNE cause quand tout est sain, sinon on cesse de le lire.
+  (4) **Une réponse de cadrage de Marc peut être sincèrement FAUSSE — c'est pour ça qu'on gate par une MESURE** :
+  il avait répondu « supprimer l'historique, utiliser que Plaid » (Q8) ; la mesure a donné **30 jours rendus sur
+  90 demandés**, donc l'appliquer aurait coûté ~17 mois de données réelles. Un lot destructif se gate TOUJOURS
+  sur une mesure du réel, jamais sur une intention — même exprimée clairement et de bonne foi.

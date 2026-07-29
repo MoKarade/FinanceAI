@@ -178,3 +178,78 @@ export class FintableError extends Error {
         return this.code === 'RATE_LIMIT' || this.code === 'SERVER' || this.code === 'NETWORK';
     }
 }
+
+// ─────────────────── Diagnostic (Lot 1b) — pourquoi la donnée n'arrive-t-elle pas ? ───────────────────
+//
+// Ces formes servent au « docteur » (`npm run fintable:doctor`) : quand une lecture rend VIDE sans
+// erreur — le cas rencontré le 2026-07-29, 3 comptes de placement et zéro position — la cause n'est
+// pas dans les données mais dans l'ÉTAT DU COMPTE Fintable (droits du plan, santé de la connexion,
+// sync jamais exécutée). Un agrégat vide sans explication est la classe « staleness silencieuse » :
+// il faut pouvoir répondre « pourquoi » sans ouvrir le dashboard.
+
+/** `GET /me` — profil et droits. `canSync: false` sur un compte gratuit = aucune sync ne tourne. */
+export interface FintableProfile {
+    name: string | null;
+    /** `free`, `trial`, `personal`, `office`, `enterprise`. */
+    tier: string;
+    planPeriod: string | null;
+    connectionLimit: number | null;
+    connectionsUsed: number | null;
+    /** ⚠️ `false` sur un compte gratuit → les syncs ne s'exécutent pas (suspect n°1 d'un vide). */
+    canSync: boolean;
+    expiresAt: string | null;
+}
+
+/** État d'une passe de sync (présent sur chaque connexion et dans `GET /sync`). */
+export interface FintableSyncStatus {
+    /** `queued`, `executing`, `finished`, `failed`, `retrying`. */
+    state: string | null;
+    stage: string | null;
+    startedAt: string | null;
+    finishedAt: string | null;
+}
+
+/** `GET /connections` — une banque liée (un login chez une institution). */
+export interface FintableConnection {
+    id: string;
+    /** `PLAID`, `NORDIGEN`, `AKOYA`, `FINICITY`, `MERCURY`, `SNAPTRADE`… */
+    provider: string;
+    institutionName: string;
+    /** `false` = la connexion demande de l'attention (le `statusText` dit quoi). */
+    healthy: boolean;
+    statusText: string;
+    /** `true` = la banque exige une ré-authentification → plus rien ne se synchronise. */
+    needsReconnect: boolean;
+    lastSuccessfulUpdate: string | null;
+    accountsCount: number | null;
+    syncStatus: FintableSyncStatus | null;
+}
+
+/** Onglet d'une feuille Google configuré côté Fintable (`null` = non configuré). */
+export interface FintableSheetTabs {
+    accounts: string | null;
+    transactions: string | null;
+    /** ⚠️ `null` = l'onglet Positions n'est pas configuré côté Fintable. */
+    holdings: string | null;
+}
+
+/** `GET /integrations` — destinations tableur, utile pour repérer une intégration en panne. */
+export interface FintableIntegrations {
+    airtable: { healthy: boolean; error: string | null; holdingsTableName: string | null } | null;
+    googleSheets: Array<{
+        title: string;
+        healthy: boolean;
+        error: string | null;
+        tabs: FintableSheetTabs;
+    }>;
+}
+
+/** Ce que le docteur rassemble en une passe. */
+export interface FintableDiagnostics {
+    readAt: number;
+    profile: FintableProfile;
+    connections: FintableConnection[];
+    integrations: FintableIntegrations | null;
+    /** Sections dont la lecture a échoué — tracées, jamais avalées (le docteur reste utile partiel). */
+    failures: Array<{ section: string; reason: string }>;
+}

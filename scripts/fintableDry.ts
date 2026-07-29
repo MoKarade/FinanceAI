@@ -196,6 +196,12 @@ async function main(): Promise<void> {
             + ` · compte sans rôle=${t.skippedUnroutedAccount} · compte de placement=${t.skippedInvestmentAccount}`,
         );
         console.log(`  Liquidités visées : ${report.cashTargetCad === null ? 'NON MISES À JOUR' : money(report.cashTargetCad, args.showAmounts)}`);
+        if (report.transferPairs.length > 0) {
+            console.log(`  Paiements de carte reconnus (marqués VIREMENT, hors dépenses) : ${report.transferPairs.length}`);
+            for (const p of report.transferPairs) {
+                console.log(`    - ${money(p.amount, args.showAmounts)}`);
+            }
+        }
         for (const d of report.debts) {
             console.log(`  Dette « ${d.name} » → solde ${money(d.balanceCad, args.showAmounts)}`);
         }

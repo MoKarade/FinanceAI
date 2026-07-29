@@ -28,6 +28,7 @@
 
 import type { BankStatementPayload, CashBalancePayload, DebtPayload, DocumentPayload } from '../../mcp/ingest/applyDocument';
 import type { FintableSnapshot, FintableTransaction } from './types';
+import { detectInternalTransfers, type TransferPair } from './detectTransfers';
 
 /** Rôle d'un compte Fintable dans FinanceAI. Toujours EXPLICITE (cf. piège n°2). */
 export type FintableAccountRole =
@@ -51,6 +52,13 @@ export interface FintableMappingConfig {
     transactionsAfter: string | null;
     /** Devise de l'app. Toute transaction dans une AUTRE devise est écartée et signalée. */
     baseCurrency?: string;
+    /**
+     * [FINTABLE-TRANSFERS] Fenêtre (jours) pour apparier un paiement de carte : la sortie du compte
+     * de liquidités et l'entrée sur le compte de dette. Défaut 3. `0` désactive de fait
+     * l'appariement au-delà du même jour ; passer `-1` ne le désactive PAS (borné à 0) — pour
+     * désactiver, ne donner à aucun compte le rôle `debt`.
+     */
+    transferToleranceDays?: number;
 }
 
 export interface FintableMappingReport {
@@ -72,6 +80,8 @@ export interface FintableMappingReport {
     investmentBalances: Array<{ label: string; currency: string; balance: number | null }>;
     /** Comptes sans rôle assigné — À TRAITER, pas à ignorer. */
     accountsWithoutRole: Array<{ id: string; label: string; rawType: string }>;
+    /** [FINTABLE-TRANSFERS] Paiements de carte reconnus : les 2 côtés sont marqués `isTransfer`. */
+    transferPairs: TransferPair[];
     /** Avertissements destinés à l'humain (jamais silencieux). */
     warnings: string[];
 }
@@ -177,6 +187,13 @@ export function mapFintableSnapshot(
     }
 
     // ── Transactions ────────────────────────────────────────────────────────────────────────────
+    // [FINTABLE-TRANSFERS] Apparier AVANT le filtrage : le paiement de carte n'est reconnaissable
+    // que si ses deux côtés sont visibles ensemble. (La borne de bascule s'applique ensuite aux
+    // deux côtés de la même façon — ils portent la même date à quelques jours près.)
+    const { transferIds, pairs: transferPairs } = detectInternalTransfers(
+        snapshot.transactions, config.roles, config.transferToleranceDays,
+    );
+
     const bankTransactions: BankStatementPayload['transactions'] = [];
     let skippedBeforeCutover = 0;
     let skippedForeignCurrency = 0;
@@ -202,6 +219,9 @@ export function mapFintableSnapshot(
             // les mêmes règles que l'import CSV de l'app. Passer une catégorie Fintable libre la
             // ferait re-mapper ou tomber en « Non catégorisé » (cf. MCP-CATEGORY-ALLOWLIST).
             ...(tx.categoryName ? { category: tx.categoryName } : {}),
+            // [FINTABLE-TRANSFERS] Un paiement de carte n'est PAS une dépense : marqué transfert,
+            // il sort des dépenses réelles (`budgetSync.ts:58`) et des revenus (`:37`).
+            ...(transferIds.has(tx.id) ? { isTransfer: true } : {}),
         });
     }
 
@@ -265,6 +285,7 @@ export function mapFintableSnapshot(
             debts,
             investmentBalances,
             accountsWithoutRole,
+            transferPairs,
             warnings,
         },
     };

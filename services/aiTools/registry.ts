@@ -55,7 +55,7 @@ export const READ_SPECS_BY_NAME: ReadonlyMap<string, AnyReadToolSpec> =
     new Map(READ_SPECS.map((s) => [s.name, s]));
 
 /**
- * [AITOOLS-D] Tools d'ÉCRITURE exposés au chat in-app — les MÊMES 5 specs que le serveur MCP.
+ * [AITOOLS-D] Tools d'ÉCRITURE exposés au chat in-app — les MÊMES specs que le serveur MCP.
  * ⚠️ Contrat NON NÉGOCIABLE (exigence Marc « aucune donnée changée » sans consentement) : ces specs
  * ne PERSISTENT rien (`toDocument` seulement) — l'écriture réelle passe par
  * `services/aiTools/writeExecutor.ts` : diff pur → CONFIRMATION visuelle (modal) → clic Appliquer.

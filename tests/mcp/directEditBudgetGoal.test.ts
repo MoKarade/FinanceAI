@@ -69,13 +69,25 @@ describe('applyBudgetItem — mise à jour PAR NOM (partielle, idempotente)', ()
         expect(noop.nextState.budgetItems.find((x) => x.name === 'Épicerie')!.autoTarget).toBe(true);
     });
 
-    it('met à jour fréquence/nature/type SANS toucher la cible (autoTarget PRÉSERVÉ)', () => {
+    it('met à jour nature/type SANS toucher la cible (autoTarget PRÉSERVÉ)', () => {
         const { nextState, changes } = applyDocument(withBudget(), budgetDoc({ nature: 'Envie' }));
         const b = nextState.budgetItems.find((x) => x.name === 'Épicerie')!;
         expect(b.nature).toBe('Envie');
         expect(b.target).toBe(550);
-        expect(b.autoTarget).toBe(true); // la cible n'a pas été éditée → l'auto reste accroché
+        expect(b.autoTarget).toBe(true); // ni cible ni fréquence éditées → l'auto reste accroché
         expect(changes).toHaveLength(1);
+    });
+
+    it('éditer la FRÉQUENCE seule DÉCROCHE autoTarget (parité Budget.tsx — finding ÉLEVÉ panel)', () => {
+        // Sans le décrochage, le refresh auto réécrit une moyenne MENSUELLE dans un poste devenu
+        // Yearly → cible mensuelle effective ÷12 (+épargne fabriquée dans la projection).
+        const { nextState, changes } = applyDocument(withBudget(), budgetDoc({ frequency: 'Yearly' }));
+        const b = nextState.budgetItems.find((x) => x.name === 'Épicerie')!;
+        expect(b.frequency).toBe('Yearly');
+        expect(b.autoTarget).toBe(false); // décroché, comme l'édition UI de la fréquence
+        expect(b.target).toBe(550);       // la cible elle-même n'a pas bougé
+        // L'aperçu montre l'équivalent MENSUEL avant/après (piège ×12 visible à la confirmation).
+        expect(String(changes[0].note)).toMatch(/550 \$ à 46 \$/);
     });
 
     it('AJOUT : cible requise ; défauts Monthly/Commun/Besoin, autoTarget false, id horodaté cat_', () => {
@@ -90,6 +102,20 @@ describe('applyBudgetItem — mise à jour PAR NOM (partielle, idempotente)', ()
         expect(b.autoTarget).toBe(false);
         expect(b.id).toMatch(/^cat_\d+_[a-z0-9]+$/);
         expect(changes).toHaveLength(1);
+    });
+
+    it('AJOUT d\'un poste SANS catégorie de transactions observée → avertit qu\'il sera RETIRÉ au prochain sync', () => {
+        const s = withBudget(); // aucune transaction → toute catégorie est non observée
+        const { changes, summary } = applyDocument(s, budgetDoc({ name: 'Cadeaux Noël', targetCad: 1200, frequency: 'Yearly' }));
+        expect(String(changes[0].note)).toMatch(/RETIRÉ au prochain chargement/);
+        expect(summary).toMatch(/RETIRÉ au prochain chargement/);
+    });
+
+    it('AJOUT d\'un poste dont le nom rapproche une catégorie OBSERVÉE (fuzzy budgetSync) → pas d\'avertissement', () => {
+        const s = withBudget();
+        s.transactions = [{ id: 9, date: '2026-01-05', amount: -80, category: 'Restaurants', payee: 'Bistro', status: 'processed' }] as AppState['transactions'];
+        const { changes } = applyDocument(s, budgetDoc({ name: 'Restaurant', targetCad: 300 }));
+        expect(String(changes[0].note ?? '')).not.toMatch(/RETIRÉ/);
     });
 
     it('REJETTE (throw, rien écrit) : cible négative / non finie / aberrante ; nom vide', () => {
@@ -140,9 +166,50 @@ describe('applySavingsGoal — mise à jour PAR NOM (partielle, idempotente)', (
         expect(() => applyDocument(withGoal(), goalDoc({ currentAmountCad: -1 }))).toThrow(/invalide|aberrant/i);
         expect(() => applyDocument(withGoal(), goalDoc({ deadline: 'juin 2027' }))).toThrow(/Échéance|format/i);
         expect(() => applyDocument(withGoal(), goalDoc({ deadline: '2027-6-1' }))).toThrow(/Échéance|format/i);
+        // Bornes calendaires (la regex seule laissait passer « 2027-13-45 », finding panel).
+        expect(() => applyDocument(withGoal(), goalDoc({ deadline: '2027-13-01' }))).toThrow(/mois|jour/i);
+        expect(() => applyDocument(withGoal(), goalDoc({ deadline: '2027-12-45' }))).toThrow(/mois|jour/i);
         // YYYY-MM accepté.
         const ok = applyDocument(withGoal(), goalDoc({ deadline: '2027-12' }));
         expect(ok.nextState.savingsGoals[0].deadline).toBe('2027-12');
+    });
+
+    it("'' = EFFACER (échéance/icône) — finding panel : un test truthy dans toDocument l'avalait", () => {
+        // Handler : '' efface l'échéance (parité UI Planning) et l'icône.
+        const cleared = applyDocument(withGoal(), goalDoc({ deadline: '', icon: '' }));
+        expect(cleared.nextState.savingsGoals[0].deadline).toBe('');
+        expect(cleared.nextState.savingsGoals[0].icon).toBe('');
+        expect(cleared.changes).toHaveLength(2);
+        // toDocument (spec) : '' doit SURVIVRE au mapping (pas de test de vérité qui l'avale).
+        // À l'AJOUT en revanche, '' d'icône retombe sur 💰 (défaut honnête).
+        const added = applyDocument(baseState(), goalDoc({ name: 'Neuf', targetAmountCad: 100, icon: '' }));
+        expect(added.nextState.savingsGoals[0].icon).toBe('💰');
+    });
+});
+
+describe('upsertSavingsGoalSpec.toDocument — \'\' survit au mapping (finding ÉLEVÉ panel)', () => {
+    it("deadline:'' et icon:'' fournis explicitement sont PRÉSENTS dans le DocumentPayload", async () => {
+        const { upsertSavingsGoalSpec } = await import('../../mcp/tools/upsertSavingsGoal.spec');
+        const doc = upsertSavingsGoalSpec.toDocument({ name: 'Voyage Japon', deadline: '', icon: '' }) as SavingsGoalPayload;
+        expect(doc.deadline).toBe('');  // un test truthy (`args.deadline ?`) l'avalait en silence
+        expect(doc.icon).toBe('');
+        // Et le confirm reste EXCLU du document.
+        expect('confirm' in doc).toBe(false);
+    });
+});
+
+describe('applyBudgetItem — garde ménage solo (Perso 2)', () => {
+    it("rejette « Perso 2 » quand aucun 2ᵉ conjoint n'est NOMMÉ (contenu, pas longueur du tuple)", () => {
+        const solo = withBudget();
+        if (solo.config?.users?.[1]) solo.config.users[1].name = '';
+        expect(() => applyDocument(solo, budgetDoc({ type: 'Perso 2' }))).toThrow(/2ᵉ conjoint|Perso 2/);
+    });
+
+    it('accepte « Perso 2 » quand le 2ᵉ conjoint est nommé', () => {
+        const duo = withBudget();
+        if (duo.config?.users?.[1]) duo.config.users[1].name = 'Sophie';
+        const { nextState } = applyDocument(duo, budgetDoc({ type: 'Perso 2' }));
+        expect(nextState.budgetItems.find((x) => x.name === 'Épicerie')!.type).toBe('Perso 2');
     });
 });
 

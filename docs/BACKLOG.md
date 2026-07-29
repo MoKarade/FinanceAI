@@ -654,6 +654,11 @@
     bornes 0→1 M$ + non-fini, id `cat_<ts>_<rand>`. Confirmation 2 temps. MCP v0.9.0.
   - [x] **Lot 3 — `upsert_savings_goal`** ✅ 2026-07-29 : upsert PAR NOM, update PARTIEL (cible/accumulé/
     échéance `YYYY-MM(-DD)`/icône), défauts ajout (accumulé 0, 💰), id `goal_<ts>_<rand>`. Confirmation 2 temps.
+  - [ ] **`[GOAL-DEADLINE-UI]`** 🟡 (S, finding financial-integrity PR #518) — la carte d'un objectif
+    existant (Planning.tsx) n'affiche NI n'édite `deadline`, alors que l'échéance pilote un décaissement
+    RÉEL dans la projection (retrait cible−accumulé au mois de l'échéance) et que le MCP peut désormais la
+    poser : une écriture IA non visible/réversible à l'écran. Afficher l'échéance sur la carte + permettre
+    de l'éditer/effacer.
   - [ ] **Lot 4 — vente totale d'un titre** (`apply_broker_statement` quantité 0 / helper dédié).
   - [ ] **Lot 5 — suppression** (dette/objectif/transaction) — exige ADR + `confirm:true` strict (décision Marc).
   - Salaire : DÉJÀ couvert par `apply_payslip` (aucun nouveau tool). Immobilier : différé.

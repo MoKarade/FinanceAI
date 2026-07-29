@@ -15,10 +15,14 @@ const inputSchema = {
             'partielle. N\'invente jamais ce chiffre.'),
     currentAmountCad: z.number().min(0).finite().optional()
         .describe('Montant DÉJÀ accumulé en $ CAD. Optionnel (0 par défaut à l\'ajout ; inchangé en mise à jour).'),
-    deadline: z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/).optional()
-        .describe('Échéance au format YYYY-MM-DD (ou YYYY-MM). Optionnelle.'),
+    deadline: z.string().regex(/^(\d{4}-\d{2}(-\d{2})?)?$/).optional()
+        .describe('Échéance au format YYYY-MM-DD (ou YYYY-MM). Optionnelle. ⚠️ CONSÉQUENCE RÉELLE : au mois ' +
+            'de l\'échéance, la projection RETIRE (cible − accumulé) des liquidités (l\'objectif est « payé »). ' +
+            'Si l\'utilisateur a déjà épargné une partie, fournis currentAmountCad — sinon la cible ENTIÈRE ' +
+            'sera décaissée. Passe une chaîne VIDE \'\' pour EFFACER une échéance existante (plus aucun ' +
+            'décaissement planifié).'),
     icon: z.string().max(8).optional()
-        .describe('Emoji d\'icône (ex. ✈️). Optionnel (💰 par défaut à l\'ajout).'),
+        .describe('Emoji d\'icône (ex. ✈️). Optionnel (💰 par défaut à l\'ajout). Chaîne vide \'\' = retirer l\'icône.'),
     confirm: z.boolean().optional()
         .describe('Laisse VIDE au 1er appel. SI la réponse est un APERÇU (preview:true, rien écrit), montre-le ' +
             'à l\'utilisateur et, APRÈS son accord explicite, rappelle ce tool avec confirm:true (mêmes ' +
@@ -45,7 +49,9 @@ export const upsertSavingsGoalSpec = {
         name: args.name,
         ...(args.targetAmountCad != null ? { targetAmountCad: args.targetAmountCad } : {}),
         ...(args.currentAmountCad != null ? { currentAmountCad: args.currentAmountCad } : {}),
-        ...(args.deadline ? { deadline: args.deadline } : {}),
-        ...(args.icon ? { icon: args.icon } : {}),
+        // `!= null` (PAS un test de vérité) : '' est une VALEUR (effacer l'échéance/l'icône) — un
+        // test truthy l'avalerait en silence (finding panel ÉLEVÉ 2026-07-29).
+        ...(args.deadline != null ? { deadline: args.deadline } : {}),
+        ...(args.icon != null ? { icon: args.icon } : {}),
     }),
 } satisfies WriteToolSpec<Args>;

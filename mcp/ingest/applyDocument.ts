@@ -9,6 +9,8 @@ import type { AppState, User, Asset, Transaction, Debt } from '../../types';
 import { annualSalaryToMonthly } from '../../utils/salary';
 import { RULE_CATEGORIES, buildCategoryCanonicalMap, resolveCandidateCategory } from '../../services/import/categoryRules';
 import { computeStartingCash } from '../../services/projection/buildSimulationParams';
+import { monthlyTargetOf } from '../../utils/healthRatios';
+import { matchCategoryToName } from '../../utils/budget';
 
 /** Fiche de paie — valeurs ANNUELLES (Claude multiplie période × fréquence). */
 export interface PayslipPayload {
@@ -242,25 +244,46 @@ function applyBudgetItem(state: AppState, doc: BudgetItemPayload): ApplyResult {
     if (doc.targetCad != null && (!plausible(doc.targetCad, MAX_BUDGET_TARGET) || doc.targetCad < 0)) {
         throw new Error('Cible de budget invalide ou aberrante (négative / non finie / hors bornes). Rien n\'a été écrit.');
     }
+    // Garde ménage SOLO (leçon PH4E-OWNER-EDIT : tester le CONTENU, jamais la longueur du tuple
+    // `users` qui vaut toujours 2) : « Perso 2 » sans 2ᵉ conjoint nommé disparaîtrait du breakdown
+    // couple en silence → rejet honnête.
+    if (doc.type === 'Perso 2' && !(state.config?.users?.[1]?.name ?? '').trim()) {
+        throw new Error('Répartition « Perso 2 » impossible : aucun 2ᵉ conjoint configuré. Rien n\'a été écrit.');
+    }
 
     const items = (state.budgetItems ?? []).map((b) => ({ ...b }));
     const changes: Change[] = [];
     const key = budgetNameKey(name);
     const idx = items.findIndex((b) => budgetNameKey(b.name) === key);
 
+    // Doublons de noms équivalents (ex. « RESTAURANT » vs « Restaurant » importés d'un CSV) : le
+    // premier est retenu — le signaler plutôt que de laisser croire à une mise à jour de l'autre.
+    const twinCount = items.filter((b) => budgetNameKey(b.name) === key).length;
+    const twinNote = twinCount > 1 ? ` ⚠️ ${twinCount} postes ont un nom équivalent — le premier a été retenu.` : '';
+
     if (idx >= 0) {
         const b = items[idx];
         if (doc.targetCad != null && doc.targetCad !== b.target) {
+            const freq = doc.frequency ?? b.frequency;
             changes.push({
-                field: `poste « ${b.name} » (cible)`, before: b.target, after: doc.targetCad,
-                note: b.autoTarget ? 'cible auto-gérée décrochée (édition manuelle)' : undefined,
+                field: `poste « ${b.name} » (cible)`, before: b.target,
+                after: `${doc.targetCad} $ / ${freq} (≈ ${Math.round(monthlyTargetOf({ target: doc.targetCad, frequency: freq }))} $/mois)`,
+                note: (b.autoTarget ? 'cible auto-gérée décrochée (édition manuelle)' : undefined),
             });
             b.target = doc.targetCad;
             b.autoTarget = false; // édition manuelle = décrochage de la cible auto (BUDGET-TX-CATEGORIES)
         }
         if (doc.frequency && doc.frequency !== b.frequency) {
-            changes.push({ field: `poste « ${b.name} » (fréquence)`, before: b.frequency, after: doc.frequency });
+            // ⚠️ Même DÉCROCHAGE que l'UI (Budget.tsx : target OU frequency) — finding ÉLEVÉ panel :
+            // sans lui, le refresh auto réécrit une moyenne MENSUELLE dans un poste devenu Yearly
+            // (cible mensuelle effective ÷12, +épargne fabriquée dans toute la projection).
+            changes.push({
+                field: `poste « ${b.name} » (fréquence)`, before: b.frequency, after: doc.frequency,
+                note: `la cible mensuelle effective passe de ${Math.round(monthlyTargetOf(b))} $ à `
+                    + `${Math.round(monthlyTargetOf({ target: b.target, frequency: doc.frequency }))} $ (cible inchangée : ${b.target} $)`,
+            });
             b.frequency = doc.frequency;
+            b.autoTarget = false;
         }
         if (doc.nature && doc.nature !== b.nature) {
             changes.push({ field: `poste « ${b.name} » (nature)`, before: b.nature, after: doc.nature });
@@ -271,10 +294,10 @@ function applyBudgetItem(state: AppState, doc: BudgetItemPayload): ApplyResult {
             b.type = doc.type;
         }
         if (changes.length === 0) {
-            return { nextState: state, changes: [], summary: `Poste « ${b.name} » : aucune modification (valeurs identiques).` };
+            return { nextState: state, changes: [], summary: `Poste « ${b.name} » : aucune modification (valeurs identiques).${twinNote}` };
         }
         const nextState: AppState = { ...state, budgetItems: items, lastUpdate: Date.now() };
-        return { nextState, changes, summary: `Poste de budget « ${b.name} » mis à jour (${changes.length} champ(s)).` };
+        return { nextState, changes, summary: `Poste de budget « ${b.name} » mis à jour (${changes.length} champ(s)).${twinNote}` };
     }
 
     // AJOUT : la cible est requise (jamais inventer un montant pour l'utilisateur).
@@ -291,19 +314,35 @@ function applyBudgetItem(state: AppState, doc: BudgetItemPayload): ApplyResult {
         autoTarget: false, // cible posée explicitement par l'utilisateur — pas auto-gérée
     };
     items.push(added);
+    // [Finding ÉLEVÉ panel] Le sync budget (Lot C : postes ≡ catégories OBSERVÉES) RETIRE au prochain
+    // chargement tout poste dont le nom ne rapproche aucune catégorie de transactions (même règle
+    // fuzzy que budgetSync : `matchCategoryToName` cat→nom). Prévenir AVANT plutôt que laisser le
+    // poste s'évaporer en silence après un « ajouté ✓ ».
+    const observedCats = Array.from(new Set(
+        (state.transactions ?? []).map((t) => (t.category || '').trim()).filter(Boolean),
+    ));
+    const matchesObserved = observedCats.some((cat) => matchCategoryToName(cat, [name]) !== undefined);
+    const orphanNote = matchesObserved
+        ? undefined
+        : `⚠️ aucune transaction de catégorie « ${name} » : le poste sera RETIRÉ au prochain chargement de l'app tant qu'aucune dépense ne s'y rattache (le budget suit les catégories observées).`;
     changes.push({
         field: `poste « ${name} »`, before: null,
-        after: `${added.target} $ / ${added.frequency}`,
-        note: 'nouveau poste — il ne rapproche des dépenses réelles que si son nom correspond à une catégorie de transactions',
+        after: `${added.target} $ / ${added.frequency} (≈ ${Math.round(monthlyTargetOf(added))} $/mois)`,
+        note: orphanNote ?? 'nouveau poste — rapproché des dépenses réelles de la catégorie du même nom (un nom proche peut être auto-renommé vers la catégorie observée)',
     });
     const nextState: AppState = { ...state, budgetItems: items, lastUpdate: Date.now() };
-    return { nextState, changes, summary: `Poste de budget « ${name} » ajouté (${added.target} $ / ${added.frequency}, ${added.nature}, ${added.type}).` };
+    return {
+        nextState, changes,
+        summary: `Poste de budget « ${name} » ajouté (${added.target} $ / ${added.frequency}, ${added.nature}, ${added.type}).`
+            + (orphanNote ? ` ${orphanNote}` : ''),
+    };
 }
 
 // ── Objectif d'épargne — ajout OU mise à jour PARTIELLE par nom ──────────────
 // [MCP-DIRECT-EDIT Lot 3] Même pattern : upsert par nom normalisé, update partiel, bornes D9.
 
-const GOAL_DEADLINE_RE = /^\d{4}-\d{2}(-\d{2})?$/;
+// '' est ACCEPTÉ = « effacer l'échéance » (parité avec l'UI Planning qui autorise une échéance vide).
+const GOAL_DEADLINE_RE = /^(\d{4}-\d{2}(-\d{2})?)?$/;
 
 function applySavingsGoal(state: AppState, doc: SavingsGoalPayload): ApplyResult {
     const name = String(doc.name || '').trim();
@@ -315,7 +354,15 @@ function applySavingsGoal(state: AppState, doc: SavingsGoalPayload): ApplyResult
         throw new Error('Montant accumulé d\'objectif invalide ou aberrant (négatif / non fini / hors bornes). Rien n\'a été écrit.');
     }
     if (doc.deadline != null && !GOAL_DEADLINE_RE.test(doc.deadline)) {
-        throw new Error('Échéance d\'objectif invalide : format attendu YYYY-MM-DD (ou YYYY-MM). Rien n\'a été écrit.');
+        throw new Error('Échéance d\'objectif invalide : format attendu YYYY-MM-DD (ou YYYY-MM), ou \'\' pour effacer. Rien n\'a été écrit.');
+    }
+    // Bornes calendaires (la regex laisse passer « 2027-13-45 ») : mois 01-12, jour 01-31.
+    if (doc.deadline) {
+        const [, mm, dd] = doc.deadline.split('-');
+        const m = Number(mm), d = dd == null ? 1 : Number(dd);
+        if (m < 1 || m > 12 || d < 1 || d > 31) {
+            throw new Error('Échéance d\'objectif invalide : mois 01-12 et jour 01-31 attendus. Rien n\'a été écrit.');
+        }
     }
 
     const goals = (state.savingsGoals ?? []).map((g) => ({ ...g }));
@@ -334,7 +381,16 @@ function applySavingsGoal(state: AppState, doc: SavingsGoalPayload): ApplyResult
             g.currentAmount = doc.currentAmountCad;
         }
         if (doc.deadline != null && doc.deadline !== g.deadline) {
-            changes.push({ field: `objectif « ${g.name} » (échéance)`, before: g.deadline, after: doc.deadline });
+            // [Finding MOYEN panel] L'échéance PILOTE un décaissement réel dans la projection
+            // (applySavingsGoalDeadlines retire cible − accumulé du liquide au mois de l'échéance)
+            // → la conséquence $ doit être visible dans l'aperçu de confirmation.
+            const willWithdraw = Math.max(0, (doc.targetAmountCad ?? g.targetAmount) - (doc.currentAmountCad ?? g.currentAmount));
+            changes.push({
+                field: `objectif « ${g.name} » (échéance)`, before: g.deadline, after: doc.deadline,
+                note: doc.deadline
+                    ? `⚠️ la projection retirera ${Math.round(willWithdraw)} $ (cible − accumulé) des liquidités au mois ${doc.deadline.slice(0, 7)}`
+                    : 'échéance effacée : plus aucun décaissement planifié pour cet objectif dans la projection',
+            });
             g.deadline = doc.deadline;
         }
         if (doc.icon != null && doc.icon !== g.icon) {
@@ -360,7 +416,13 @@ function applySavingsGoal(state: AppState, doc: SavingsGoalPayload): ApplyResult
         icon: doc.icon || '💰',
     };
     goals.push(added);
-    changes.push({ field: `objectif « ${name} »`, before: null, after: `${added.targetAmount} $ (accumulé : ${added.currentAmount} $)` });
+    changes.push({
+        field: `objectif « ${name} »`, before: null,
+        after: `${added.targetAmount} $ (accumulé : ${added.currentAmount} $)`,
+        note: added.deadline
+            ? `⚠️ échéance ${added.deadline} : la projection retirera ${Math.round(Math.max(0, added.targetAmount - added.currentAmount))} $ (cible − accumulé) des liquidités ce mois-là — fournis le montant DÉJÀ épargné (currentAmountCad) s'il y en a un`
+            : undefined,
+    });
     const nextState: AppState = { ...state, savingsGoals: goals, lastUpdate: Date.now() };
     return { nextState, changes, summary: `Objectif d'épargne « ${name} » ajouté (cible ${added.targetAmount} $).` };
 }

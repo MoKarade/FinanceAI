@@ -388,3 +388,53 @@ d'exécution : `docs.fintable.io` ne résout pas (NXDOMAIN) et `fintable.io` / `
 par la politique réseau du conteneur (403 au tunnel CONNECT). À fournir par Marc — une réponse réelle
 tronquée suffit. Coder un client contre une API DEVINÉE serait exactement le contre-modèle « vérifier avant
 d'affirmer » : le lecteur reste non écrit tant que la forme n'est pas mesurée.
+
+### Mise à jour 2026-07-29 — forme de l'API VÉRIFIÉE (le « Ouvert » du Lot 1 est fermé)
+
+Marc a fourni la documentation officielle de l'**API Fintable V2**. Le point « Ouvert » ci-dessus est
+résolu ; la décision 3 (source = API directe) est **confirmée** et se précise :
+
+| | Valeur vérifiée |
+|---|---|
+| Base | `https://fintable.io/api/v2` |
+| Auth | `Authorization: Bearer <jeton>` (jetons 1 an, scopes `read` / `write`) |
+| Enveloppe | `{data: …}` ; listes de transactions : `next_cursor` (opaque, `null` = fin) |
+| Erreurs | `{error: {type, message}}` — une seule forme pour toute l'API |
+| Lecture | `GET /accounts`, `GET /accounts/{id}/holdings`, `GET /transactions` |
+| Incrémental | `?order=updated&updated_since=<ISO>` |
+| Quotas | 300 lectures/min par jeton ; `POST /sync` 2/jour (plan Personal) |
+
+**Quatre contraintes de la doc qui deviennent des règles de code** (elles ne se devinaient pas) :
+
+1. **« Money is a string »** — montants et soldes sont des chaînes décimales exactes, jamais des
+   flottants ; négatif = argent sortant. Le décodage est donc strict : `Number('')` et `Number(null)`
+   valent **0** en JS, donc un champ vide deviendrait un montant de 0 $ crédible. Un montant présent
+   mais illisible est une erreur `MALFORMED` nommant le champ ; une absence vaut `null`, jamais 0.
+2. **`pending=false` FORCÉ, non configurable.** La doc dit que les suppressions sont invisibles au
+   polling et qu'une transaction `pending` est **remplacée** (nouvel id, montant/date ajustés)
+   quand elle se poste. Or `applyDocument` déduplique mais ne supprime **jamais** → une pending
+   importée puis repostée serait un doublon **à vie** qui fausserait le cash dérivé
+   (`computeStartingCash`). La doc recommande explicitement `pending=false` pour tout miroir.
+3. **`cost_basis` est le coût TOTAL de la position, pas unitaire** (quirk provider assumé par
+   Fintable). Notre `Asset.buyPrice` est **par part** → le champ normalisé s'appelle
+   `costBasisTotal` pour rendre la confusion impossible (classe `FISC-RRQ-UNIT` : bug d'échelle
+   silencieux, ici ×quantité).
+4. **`Account.type` est du texte libre « provider-flavored »** (`depository / checking`,
+   `investment / brokerage`) et la doc dit « display it, don't switch on it » → on ne déduit
+   **jamais** le type de compte fiscal (CELI / REER / NON-ENREG) de ce champ, et on interroge les
+   positions de **tous** les comptes actifs plutôt que de deviner lesquels sont des comptes de
+   placement (un compte mal étiqueté par le provider serait sinon ignoré en silence).
+
+**Correction d'une affirmation antérieure** : j'avais écrit que Fintable synchronise « une fois par
+jour », d'après un extrait indexé. La doc réelle dit **balayage randomisé toutes les 6 à 23 h**,
+sans heure exacte garantie, plus `POST /sync` à la demande (2/jour en Personal). La conclusion en
+dépendait : l'API n'était « pas plus fraîche que le Sheet » — c'est faux, elle permet en plus le
+**polling incrémental** (`updated_since`) et le **déclenchement** de sync. L'API directe reste donc
+le bon choix, et l'option Google Sheet redevient ce qu'elle était : un repli, pas une alternative
+équivalente.
+
+**Noté, hors périmètre** : Fintable expose aussi un serveur MCP (`https://fintable.io/mcp`, scope
+`mcp:use`) que Marc peut brancher directement à claude.ai, ainsi que des endpoints publics sans
+authentification (`/rates` taux BCE, `/prices` actions US). On ne s'en sert pas : FinanceAI a déjà
+sa chaîne de cours (Finnhub/Yahoo) et son propre connecteur MCP — les mélanger créerait deux
+sources pour la même grandeur, exactement ce que la règle « source unique » interdit.

@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-29 (suite 2) — FINTABLE Lot 1 LIVRÉ : lecteur API + dry-run (blocage levé)
+> **Marc a fourni la doc officielle de l'API Fintable V2** → le « Ouvert » de l'ADR est fermé (mise à jour
+> ajoutée à `docs/decisions.md` : base `https://fintable.io/api/v2`, Bearer, enveloppe `{data}`, curseur,
+> `order=updated&updated_since` pour l'incrémental, 300 lectures/min).
+> **🔵 `[FINTABLE-1]` livré** : `services/fintable/` = `types.ts` (formes brutes + modèle normalisé +
+> `FintableError` à code typé transitoire/confirmé, classe QUOTE-ERRKIND) · `decode.ts` (décodage STRICT) ·
+> `client.ts` (pagination curseur + garde anti-curseur-répété, 429 avec `Retry-After`, **timeout couvrant la
+> LECTURE DU CORPS** — leçon SYNC-FETCH-TIMEOUT, jeton jamais dans une URL ni un message d'erreur) ·
+> `readSnapshot.ts`. `npm run fintable:dry` (montants MASQUÉS par défaut). **50 tests**, typecheck + lint propres.
+> **4 contraintes de la doc devenues règles de code** (ADR) : `pending=false` FORCÉ (une pending repostée =
+> doublon À VIE, `applyDocument` ne supprime jamais) · `cost_basis` = coût **TOTAL** → champ `costBasisTotal`
+> (notre `buyPrice` est PAR PART) · `Account.type` = texte libre → aucune inférence du type fiscal, positions
+> demandées pour TOUS les comptes actifs · « money is a string » → `Number('')===0` gardé explicitement.
+> **⚠️ CORRECTION d'une affirmation antérieure** : j'avais dit « Fintable sync 1×/jour, donc l'API n'apporte
+> rien de plus que le Sheet » (extrait indexé). La doc réelle dit **balayage randomisé 6-23 h** + `POST /sync`
+> à la demande + polling incrémental → l'API directe reste le bon choix, le Sheet redevient un simple repli.
+> **Suite (bloquée sur Marc, routé `A_FAIRE_MOI.md`)** : il doit lancer `npm run fintable:dry -- --days 90`
+> (je ne peux PAS appeler `fintable.io` depuis l'exécution cloud — 403 au tunnel CONNECT sur TOUS les chemins,
+> endpoints publics compris). Sa sortie débloque le Lot 2 sur 4 décisions : mapping compte→type fiscal
+> (CELI/REER/NON-ENREG, non inférable), devises rencontrées, catégories Fintable → postes canoniques, et
+> l'étendue de dates réelle qui tranchera le Lot 5 (garder ou remplacer les 18 mois d'historique manuel).
+>
 > ## 🟠 Session 2026-07-29 (suite) — nouveau chantier FINTABLE : cadrage + ADR livrés, Lot 1 BLOQUÉ sur la forme de l'API
 > **Demande Marc** : « mettre en place Fintable pour récupérer mes transactions et mes investissements en temps réel »,
 > sans perdre l'import manuel (le mettre de côté), en gardant tous les tools MCP. 14 questions de cadrage répondues.

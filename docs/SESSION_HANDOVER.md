@@ -16,7 +16,15 @@
 > `AppState.fintableSyncReport` TOUJOURS écrit (succès/échec) → carte « Sync Fintable » dans Système &
 > diagnostics. Conflit OCC = transitoire (relancé sans rapport d'échec) ; panne réelle = rapport persisté + 5xx.
 > `parseRolesJson` extrait en module PARTAGÉ (`services/fintable/rolesConfig.ts`, consommé par `fintable:dry`
-> ET le serveur). 16 tests.
+> ET le serveur). 20 tests.
+> **Panel de 7 agents post-commit** (code-reviewer, silent-failure-hunter, financial-integrity, security-privacy,
+> projection-validator, documentation-manager, a11y-auditor) — 6 findings vrais, chacun vérifié par lecture du
+> code puis corrigé avec test discriminant prouvé : isolation par payload (un rejet légitime n'avortait plus
+> toute la passe de sync), bascule plafonnée à aujourd'hui (transaction future ne gèle plus l'import, no silent
+> cap), garantie « rapport toujours écrit » élargie à la lecture d'état initiale, montant $ retiré d'un
+> avertissement (fuite mode discret + logs GitHub), `fintableSyncReport` ajouté à `DEFAULT_APP_STATE` (purge
+> persona), carte UI durcie contre une forme corrompue. Détail complet dans `CLAUDE.md` (bloc
+> `[FUTUR-PAST-DEBT-FREEZE]`, sous-point panel) et `docs/decisions.md` (n°5).
 > **🔵 `[FUTUR-PAST-DEBT-FREEZE]` LIVRÉ** (même PR) — demande Marc distincte, arrivée en cours de Lot 3 :
 > « assure-toi que le passé marche… le passé doit être exactement ce que c'était à cette date ». Audit
 > lecture seule d'abord (3/4 volets déjà corrects) puis fix d'un écart réel : `currentDebtNonImmo` (segment
@@ -1233,10 +1241,10 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#530** [FINTABLE-TRANSFERS] (paiement de carte reconnu comme virement ; 2026-07-29, MERGÉE — chantier Fintable #521→#530, cf bandeau ci-dessus) |
-| **PR en cours (DRAFT)** | Aucune au moment d'écrire — **`[FINTABLE-3]`** (cron sync serveur + fix `[FUTUR-PAST-DEBT-FREEZE]`) est la PROCHAINE à ouvrir (branche `claude/progress-check-yua8yy`) |
+| **Dernière PR mergée** | **#531** [FINTABLE-3] + [FUTUR-PAST-DEBT-FREEZE] (cron sync serveur + fix passé/gel ; 2026-07-29, MERGÉE — panel de 7 agents, 6 findings vrais corrigés, cf bandeau ci-dessus — chantier Fintable #521→#531) |
+| **PR en cours (DRAFT)** | Aucune — prochain item : **`[FINTABLE-4]`** (import manuel masqué, dernier item du chantier Fintable) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
-| **Tests** | **3285 verts, suite complète** (288 fichiers, Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation — compte exact au gate/CI, mesuré 2026-07-29) |
+| **Tests** | **3290 verts, suite complète** (288 fichiers, Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation — compte exact au gate/CI, mesuré 2026-07-29) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
 | **Schema store** | **v7** (Zustand persist, migrations v1→v7) |

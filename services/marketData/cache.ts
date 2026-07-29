@@ -26,6 +26,14 @@ export type CacheBucket = keyof typeof TTL_PRESETS;
 const store = new Map<string, CachedEntry<unknown>>();
 let sweepScheduled = false;
 
+// [HIST-INFLIGHT-DEDUP] Requêtes EN VOL par clé : deux appelants concurrents du même (bucket, key)
+// partagent la MÊME promesse (au 1er boot, usePastPortfolioHistory (sans pacing) et
+// hydrateAssetHistories (pacé) fetchaient les MÊMES symboles en parallèle — double réseau face au
+// provider le plus strict). Le rejet est PARTAGÉ (le 2ᵉ appelant reçoit la même erreur typée que le
+// 1er, cf QUOTE-ERRKIND) et l'entrée est TOUJOURS purgée en fin de vol (finally) — jamais de promesse
+// morte qui gèlerait la clé.
+const pending = new Map<string, Promise<unknown>>();
+
 // Buckets persistés en IndexedDB (survivent au rechargement de page).
 // 'quote' (spot 5 min) reste mémoire-seule : on le veut toujours frais.
 const PERSISTENT_BUCKETS = new Set<CacheBucket>(['history', 'profile', 'dividends']);
@@ -51,30 +59,44 @@ export async function withCache<T>(
         return cached.value;
     }
 
-    // L2 — cache IndexedDB persistant (buckets lents seulement). No-op si IDB absent.
-    if (PERSISTENT_BUCKETS.has(bucket)) {
-        // Balayage UNIQUE par session des lignes expirées (les clés d'historique tournent chaque
-        // jour → sans sweep, croissance IDB à vie maintenant que le cache survit aux reloads).
-        if (!sweepScheduled) {
-            sweepScheduled = true;
-            void idbSweepExpired();
-        }
-        const persisted = await idbGetEntry<T>(cacheKey);
-        if (persisted && persisted.expiresAt > Date.now()) {
-            store.set(cacheKey, persisted); // réhydrate L1
-            return persisted.value;
-        }
-    }
+    // [HIST-INFLIGHT-DEDUP] Un vol est déjà en cours pour cette clé → partager sa promesse
+    // (résultat OU rejet) au lieu de relancer L2 + réseau en parallèle.
+    const inFlight = pending.get(cacheKey) as Promise<T | null> | undefined;
+    if (inFlight) return inFlight;
 
-    const value = await fetcher();
-    if (value !== null) {
-        const entry: CachedEntry<T> = { value, expiresAt: Date.now() + TTL_PRESETS[bucket] };
-        store.set(cacheKey, entry);
+    const flight = (async (): Promise<T | null> => {
+        // L2 — cache IndexedDB persistant (buckets lents seulement). No-op si IDB absent.
         if (PERSISTENT_BUCKETS.has(bucket)) {
-            void idbSetEntry(cacheKey, entry); // fire-and-forget, best-effort
+            // Balayage UNIQUE par session des lignes expirées (les clés d'historique tournent chaque
+            // jour → sans sweep, croissance IDB à vie maintenant que le cache survit aux reloads).
+            if (!sweepScheduled) {
+                sweepScheduled = true;
+                void idbSweepExpired();
+            }
+            const persisted = await idbGetEntry<T>(cacheKey);
+            if (persisted && persisted.expiresAt > Date.now()) {
+                store.set(cacheKey, persisted); // réhydrate L1
+                return persisted.value;
+            }
         }
+
+        const value = await fetcher();
+        if (value !== null) {
+            const entry: CachedEntry<T> = { value, expiresAt: Date.now() + TTL_PRESETS[bucket] };
+            store.set(cacheKey, entry);
+            if (PERSISTENT_BUCKETS.has(bucket)) {
+                void idbSetEntry(cacheKey, entry); // fire-and-forget, best-effort
+            }
+        }
+        return value;
+    })();
+
+    pending.set(cacheKey, flight);
+    try {
+        return await flight;
+    } finally {
+        pending.delete(cacheKey);
     }
-    return value;
 }
 
 /** Invalidation manuelle (pour tests + refresh forcé). */

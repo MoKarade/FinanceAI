@@ -73,6 +73,23 @@ const _now = new Date();
 const APP_VERSION = `${_now.getFullYear()}.${_now.getMonth() + 1}.${_now.getDate()}`;
 const BUILD_DATE = _now.toISOString().slice(0, 16).replace('T', ' '); // 'AAAA-MM-JJ HH:MM' UTC
 
+// [PORTFOLIO-HISTORY] Miroir LOCAL (dev + preview) du rewrite Vercel `/api/history/yahoo/:symbol` →
+// query1.finance.yahoo.com (le repli d'historique passe par un proxy same-origin : CSP inchangée +
+// pas de CORS). En prod c'est vercel.json qui fait ce travail. Partagé server/preview (source unique).
+const yahooProxy = {
+  '/api/history/yahoo': {
+    target: 'https://query1.finance.yahoo.com',
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/api\/history\/yahoo/, '/v8/finance/chart'),
+  },
+  // [HIST-MULTI-PROVIDER] Recherche de titre par nom (diagnostic « Cours non synchronisés »).
+  '/api/search/yahoo': {
+    target: 'https://query1.finance.yahoo.com',
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/api\/search\/yahoo/, '/v1/finance/search'),
+  },
+};
+
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
@@ -80,22 +97,12 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
-        // [PORTFOLIO-HISTORY] Miroir DEV du rewrite Vercel `/api/history/yahoo/:symbol` →
-        // query1.finance.yahoo.com (le repli d'historique passe par un proxy same-origin :
-        // CSP inchangée + pas de CORS). En prod c'est vercel.json qui fait ce travail.
-        proxy: {
-          '/api/history/yahoo': {
-            target: 'https://query1.finance.yahoo.com',
-            changeOrigin: true,
-            rewrite: (path: string) => path.replace(/^\/api\/history\/yahoo/, '/v8/finance/chart'),
-          },
-          // [HIST-MULTI-PROVIDER] Recherche de titre par nom (diagnostic « Cours non synchronisés »).
-          '/api/search/yahoo': {
-            target: 'https://query1.finance.yahoo.com',
-            changeOrigin: true,
-            rewrite: (path: string) => path.replace(/^\/api\/search\/yahoo/, '/v1/finance/search'),
-          },
-        },
+        proxy: yahooProxy,
+      },
+      // [HIST-PREVIEW-PROXY] `vite preview` a besoin du MÊME proxy que le dev server : sans lui, le
+      // repli Yahoo tombe sur le fallback SPA (HTML → null honnête) → graphes vides en preview local.
+      preview: {
+        proxy: yahooProxy,
       },
       plugins: [react(), claudeRelayDevPlugin(env)],
       define: {

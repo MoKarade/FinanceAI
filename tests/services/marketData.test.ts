@@ -28,6 +28,44 @@ describe('marketData.cache', () => {
         expect(calls).toBe(2);
     });
 
+    it('[HIST-INFLIGHT-DEDUP] 2 appels CONCURRENTS de la même clé partagent UN seul fetch', async () => {
+        let calls = 0;
+        let release: (v: { value: string }) => void = () => undefined;
+        const gate = new Promise<{ value: string }>((r) => { release = r; });
+        const fetcher = async () => { calls++; return gate; };
+        // Les deux appels partent AVANT que le fetch ne résolve (vraie concurrence).
+        const p1 = withCache('quote', 'DEDUP', fetcher);
+        const p2 = withCache('quote', 'DEDUP', fetcher);
+        release({ value: 'X' });
+        const [a, b] = await Promise.all([p1, p2]);
+        expect(a).toEqual({ value: 'X' });
+        expect(b).toEqual({ value: 'X' });
+        expect(calls).toBe(1); // discriminant : sans dédup in-flight, calls === 2
+        // Après la fin du vol, la clé n'est PAS gelée : un null (non caché) re-fetch normalement.
+        clearMarketDataCache();
+        let calls2 = 0;
+        await withCache('quote', 'DEDUP', async () => { calls2++; return null; });
+        await withCache('quote', 'DEDUP', async () => { calls2++; return null; });
+        expect(calls2).toBe(2);
+    });
+
+    it('[HIST-INFLIGHT-DEDUP] un REJET est partagé par les appelants concurrents puis la clé se libère', async () => {
+        let calls = 0;
+        let reject: (e: Error) => void = () => undefined;
+        const gate = new Promise<never>((_r, rj) => { reject = rj; });
+        const fetcher = async () => { calls++; return gate; };
+        const p1 = withCache('quote', 'REJ', fetcher).catch((e: Error) => `caught:${e.message}`);
+        const p2 = withCache('quote', 'REJ', fetcher).catch((e: Error) => `caught:${e.message}`);
+        reject(new Error('boom'));
+        expect(await p1).toBe('caught:boom');
+        expect(await p2).toBe('caught:boom');
+        expect(calls).toBe(1);
+        // La clé est libérée après le rejet : l'appel suivant relance un vrai fetch.
+        const ok = await withCache('quote', 'REJ', async () => { calls++; return 42; });
+        expect(ok).toBe(42);
+        expect(calls).toBe(2);
+    });
+
     it('clearMarketDataCache(bucket) ne vide que le bucket spécifié', async () => {
         await withCache('quote', 'A', async () => 1);
         await withCache('profile', 'A', async () => 2);

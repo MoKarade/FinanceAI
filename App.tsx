@@ -482,6 +482,16 @@ export const App: React.FC = () => {
     }, []);
 
 
+    // [HIST-SESSION-HYDRATE] Clé stable = ENSEMBLE des symboles (tri + join) : un actif AJOUTÉ en cours
+    // de session redéclenche l'hydratation (avant : useEffect [] = boot seulement → pas de courbe ni de
+    // part au TOTAL avant le prochain reload, sans message). Pas de boucle : les patchs (priceHistory/
+    // currentPrice/secteur) ne changent PAS les symboles ; une re-passe est bon marché (fraîcheur 24 h
+    // par actif + mutex module `_hydrateQueue` + mutex/intervalle min de priceRefresh).
+    const assetSymbolsKey = useMemo(
+        () => (state.assets ?? []).map(a => a?.symbol || '').filter(Boolean).sort().join(','),
+        [state.assets],
+    );
+
     useEffect(() => {
         let cancelled = false;
         // [PORTFOLIO-HISTORY] Hydrate priceHistory (clôtures natives datées) DEPUIS LE 1ER ACHAT via
@@ -569,9 +579,11 @@ export const App: React.FC = () => {
             .then(() => { if (!cancelled) return refreshPricesAtBoot(); })
             .then(() => { if (!cancelled) void hydrateProfilesAtBoot(); });
         return () => { cancelled = true; };
-    // Effet run-once au boot : setAppState et state.assets omis pour éviter une boucle de re-fetch.
+    // [HIST-SESSION-HYDRATE] Re-run quand l'ENSEMBLE des symboles change (ajout/retrait d'actif en
+    // session) — jamais sur un simple patch de prix/historique (la clé ne bouge pas). setAppState et
+    // state.assets restent volontairement omis (une dep sur l'objet assets re-fetcherait en boucle).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [assetSymbolsKey]);
 
     const handleUpdateApiKeys = async (keys: AppState['apiKeys']) => {
         state.updateApiKeys(keys);

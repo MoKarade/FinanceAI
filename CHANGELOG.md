@@ -16,10 +16,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Nouveau tool `upsert_savings_goal`** : « crée un objectif Voyage Japon de 8 000 $ » — ajoute ou met à
   jour un objectif d'épargne par nom (cible, accumulé, échéance, icône). Même confirmation à 2 temps.
 
+- **Nouveau tool `delete_item`** : « j'ai tout vendu mes VFV.TO » / « supprime ma dette soldée » /
+  « retire l'objectif X » — supprime un actif, une dette ou un objectif, avec correspondance EXACTE
+  (jamais d'à-peu-près sur une suppression), aperçu des effets (courbe, patrimoine, décaissement) et
+  confirmation stricte avant d'agir. Sauvegarde horodatée avant chaque suppression (annulable).
+
 ### Interne
 - `[MCP-DIRECT-EDIT]` Lots 2-3 : kinds `budget_item` + `savings_goal` dans `applyDocument` (upsert par nom
-  normalisé, bornes D9, gardes non-fini), specs/tools scindés, parité app↔MCP (WRITE_SPECS). MCP v0.9.0.
+  normalisé, bornes D9, gardes non-fini), specs/tools scindés, parité app↔MCP (WRITE_SPECS).
+- `[MCP-DIRECT-EDIT]` Lots 4-5 : kind `delete_item` + ADR « Suppressions via MCP/IA » (docs/decisions.md —
+  vente totale = suppression, quantity:0 réfuté preuve holdingsAt ; transactions différées). MCP v0.10.0.
   ⚠️ Actif sur claude.ai après redéploiement Cloud Run.
+- `[HIST-INFLIGHT-DEDUP]` withCache déduplique les requêtes en vol ; `[HIST-SESSION-HYDRATE]` un actif
+  ajouté en session obtient sa courbe sans reload ; `[HIST-PREVIEW-PROXY]` proxy Yahoo en vite preview.
 
 ---
 

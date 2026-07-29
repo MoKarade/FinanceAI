@@ -119,6 +119,19 @@ export interface SavingsGoalPayload {
     icon?: string;
 }
 
+/** [MCP-DIRECT-EDIT Lots 4-5] Suppression d'une entité (cf ADR « Suppressions via MCP/IA ») :
+ *  correspondance par nom/symbole normalisé EXACT (jamais de fuzzy sur un geste destructif),
+ *  ambiguïté → erreur. « Vente totale » d'un titre = suppression (quantity:0 fausserait la courbe
+ *  d'historique à vie — holdingsAt compte les purchases). Transactions : DIFFÉRÉ (cash dérivé). */
+export interface DeleteItemPayload {
+    kind: 'delete_item';
+    entity: 'asset' | 'debt' | 'savings_goal';
+    /** Nom (dette/objectif) ou SYMBOLE (actif) de l'entité à supprimer. */
+    name: string;
+    /** Désambiguïsation d'un actif détenu dans PLUSIEURS comptes (CELI / REER / NON-ENREG…). */
+    accountType?: string;
+}
+
 export type DocumentPayload =
     | PayslipPayload
     | BankStatementPayload
@@ -127,7 +140,8 @@ export type DocumentPayload =
     | DebtPayload
     | CashBalancePayload
     | BudgetItemPayload
-    | SavingsGoalPayload;
+    | SavingsGoalPayload
+    | DeleteItemPayload;
 
 export interface Change {
     field: string;
@@ -152,6 +166,7 @@ export function applyDocument(state: AppState, doc: DocumentPayload): ApplyResul
         case 'cash_balance': return applyCashBalance(state, doc);
         case 'budget_item': return applyBudgetItem(state, doc);
         case 'savings_goal': return applySavingsGoal(state, doc);
+        case 'delete_item': return applyDeleteItem(state, doc);
         default: {
             const k = (doc as { kind?: string }).kind ?? 'inconnu';
             throw new Error(`Type de document non supporté : « ${k} ».`);
@@ -425,6 +440,71 @@ function applySavingsGoal(state: AppState, doc: SavingsGoalPayload): ApplyResult
     });
     const nextState: AppState = { ...state, savingsGoals: goals, lastUpdate: Date.now() };
     return { nextState, changes, summary: `Objectif d'épargne « ${name} » ajouté (cible ${added.targetAmount} $).` };
+}
+
+// ── Suppression d'entité (actif / dette / objectif) — ADR Lots 4-5 ───────────
+// Correspondance NORMALISÉE EXACTE (casse/accents — jamais de fuzzy sur un geste destructif) ;
+// ambiguïté (2 noms équivalents, même symbole dans 2 comptes sans précision) → throw, pas de choix
+// silencieux. L'aperçu LISTE ce qui disparaît + les effets dérivés (NW, courbe, décaissement).
+
+function applyDeleteItem(state: AppState, doc: DeleteItemPayload): ApplyResult {
+    const name = String(doc.name || '').trim();
+    if (!name) throw new Error('Nom/symbole requis pour une suppression.');
+    const key = budgetNameKey(name);
+
+    if (doc.entity === 'asset') {
+        const all = (state.assets ?? []);
+        let matches = all.filter((a) => budgetNameKey(a.symbol || '') === key);
+        if (matches.length === 0) throw new Error(`Aucun actif au symbole « ${name} » dans le portefeuille. Rien n'a été supprimé.`);
+        if (matches.length > 1 && doc.accountType) {
+            matches = matches.filter((a) => (a.accountType || '') === doc.accountType);
+        }
+        if (matches.length !== 1) {
+            throw new Error(`Plusieurs actifs portent le symbole « ${name} » (comptes différents) : précise le compte (accountType, ex. CELI / REER / NON-ENREG). Rien n'a été supprimé.`);
+        }
+        const target = matches[0];
+        const changes: Change[] = [{
+            field: `actif ${target.symbol}${target.accountType ? ` (${target.accountType})` : ''}`,
+            before: `${target.quantity} × ${Math.round(Number(target.currentPrice) || 0)} ${target.currency || 'CAD'}`,
+            after: 'supprimé',
+            note: '⚠️ la courbe d\'historique du portefeuille perd AUSSI sa contribution passée (pas de registre de ventes) ; le produit d\'une vente réelle doit arriver par tes transactions bancaires (import relevé)',
+        }];
+        const nextState: AppState = { ...state, assets: all.filter((a) => a !== target), lastUpdate: Date.now() };
+        return { nextState, changes, summary: `Actif ${target.symbol} supprimé du portefeuille. Sauvegarde créée avant l'écriture (annulable via Réglages → Sauvegarde).` };
+    }
+
+    if (doc.entity === 'debt') {
+        const all = (state.debts ?? []);
+        const matches = all.filter((d) => budgetNameKey(d.name || '') === key);
+        if (matches.length === 0) throw new Error(`Aucune dette nommée « ${name} ». Rien n'a été supprimé.`);
+        if (matches.length > 1) throw new Error(`Plusieurs dettes portent un nom équivalent à « ${name} » : renomme-les d'abord (noms distinctifs). Rien n'a été supprimé.`);
+        const target = matches[0];
+        const changes: Change[] = [{
+            field: `dette « ${target.name} »`,
+            before: `${Math.round(Number(target.balance) || 0)} $ à ${target.interestRate} %`,
+            after: 'supprimée',
+            note: '⚠️ le patrimoine net MONTE du solde supprimé — réservé à une dette réellement soldée ou saisie par erreur',
+        }];
+        const nextState: AppState = { ...state, debts: all.filter((d) => d !== target), lastUpdate: Date.now() };
+        return { nextState, changes, summary: `Dette « ${target.name} » supprimée. Sauvegarde créée avant l'écriture (annulable via Réglages → Sauvegarde).` };
+    }
+
+    // savings_goal
+    const all = (state.savingsGoals ?? []);
+    const matches = all.filter((g) => budgetNameKey(g.name || '') === key);
+    if (matches.length === 0) throw new Error(`Aucun objectif nommé « ${name} ». Rien n'a été supprimé.`);
+    if (matches.length > 1) throw new Error(`Plusieurs objectifs portent un nom équivalent à « ${name} » : renomme-les d'abord. Rien n'a été supprimé.`);
+    const target = matches[0];
+    const changes: Change[] = [{
+        field: `objectif « ${target.name} »`,
+        before: `${Math.round(Number(target.targetAmount) || 0)} $ (accumulé : ${Math.round(Number(target.currentAmount) || 0)} $)`,
+        after: 'supprimé',
+        note: target.deadline
+            ? `le décaissement planifié de ${Math.round(Math.max(0, (Number(target.targetAmount) || 0) - (Number(target.currentAmount) || 0)))} $ (échéance ${target.deadline}) est ANNULÉ dans la projection`
+            : undefined,
+    }];
+    const nextState: AppState = { ...state, savingsGoals: all.filter((g) => g !== target), lastUpdate: Date.now() };
+    return { nextState, changes, summary: `Objectif « ${target.name} » supprimé. Sauvegarde créée avant l'écriture (annulable via Réglages → Sauvegarde).` };
 }
 
 // ── Fiche de paie ────────────────────────────────────────────────────────────

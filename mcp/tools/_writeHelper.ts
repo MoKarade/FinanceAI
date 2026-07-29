@@ -10,6 +10,7 @@ import { jsonContent, errorContent, type ToolTextResult } from './_dataAware';
 import { scrubWriteResultForModel } from './scrubWriteResult';
 import type { StateStore } from '../state/stateStore';
 import { logError } from '../../services/errorLogger';
+import { sanitizePromptText } from '../../utils/promptSafety';
 
 /** [MCP-DIRECT-EDIT] Options de confirmation à 2 temps (demande Marc « confirmation »). Quand
  *  `requireConfirm` est vrai et `confirmed` faux, le tool renvoie un APERÇU (diff avant→après) SANS écrire ;
@@ -37,7 +38,7 @@ export async function runApply(store: StateStore, doc: DocumentPayload, opts?: R
             message: `MCP runApply(${doc.kind}) : chargement de l'état avant écriture ÉCHOUÉ.`,
             error: err instanceof Error ? err : new Error(String(err)),
         });
-        return errorContent(`Impossible de charger l'état avant écriture. ${err instanceof Error ? err.message : String(err)}`);
+        return errorContent(`Impossible de charger l'état avant écriture. ${sanitizePromptText(err instanceof Error ? err.message : String(err), 300)}`);
     }
     try {
         const { nextState, changes, summary } = applyDocument(state, doc);
@@ -66,6 +67,8 @@ export async function runApply(store: StateStore, doc: DocumentPayload, opts?: R
             message: `MCP runApply(${doc.kind}) : application/écriture du document ÉCHOUÉE.`,
             error: err instanceof Error ? err : new Error(String(err)),
         });
-        return errorContent(`Écriture impossible. ${err instanceof Error ? err.message : String(err)}`);
+        // [Finding code-reviewer #519] err.message peut interpoler le `name` FOURNI PAR LE MODÈLE (throws
+        // d'applyDocument) — les erreurs ne passaient par AUCUN scrub, contrairement au chemin succès.
+        return errorContent(`Écriture impossible. ${sanitizePromptText(err instanceof Error ? err.message : String(err), 300)}`);
     }
 }

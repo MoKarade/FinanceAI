@@ -36,7 +36,7 @@
   routés sur `runProjectionAsync` (drop-in : même signature, Worker + timeout 30s côté navigateur, repli
   synchrone IDENTIQUE côté Node/MCP) ; `withState` élargi aux fn async (rétrocompat sync). Parité re-prouvée
   (registryParity vert sur le chemin async) + garde-scan « jamais d'appel moteur DIRECT dans un spec ».
-- [ ] **`[AITOOLS-HISTORY-BOUND]`** 🟡 MOYEN (S, à traiter au Lot C/E) — finding ai-reviewer : l'API est
+- [x] **`[AITOOLS-HISTORY-BOUND]`** ✅ 2026-07-29 (PR #519) — vérif de l'état RÉEL : entre deux ENVOIS, useAiChat resoumet du TEXTE seul (prémisse à moitié périmée) ; le vrai coût était INTRA-boucle (tours 2-6 re-paient les tool_results). Fix = breakpoint de cache TOURNANT sur le dernier tool_result (4ᵉ/4 marqueurs, l'ancien marqueur est retiré à chaque tour — 5 marqueurs = erreur API). Préfixe re-servi du cache (0,1×) au lieu d'une troncature qui l'aurait cassé. Guard-test de forme. Ex-finding ai-reviewer : l'API est
   stateless → réinjecter `messages` (avec tool_results volumineux, ex. simulate_what_if includeSeries ~1400
   points) RE-paie ces tokens à CHAQUE tour suivant sur la clé BYOK. Borner l'historique resoumis (tronquer les
   vieux tool_results, garder le texte). NB : ne PAS changer `includeSeries` défaut (surface claude.ai, parité).
@@ -105,7 +105,7 @@
   gelées isLoading). **Pièces jointes cross-device** : `attachmentDriveStore.ts` — un fichier appdata
   par message (`financeai-chat-attach-<msgId>.json`), push fire-and-forget à l'envoi, fetch au
   cache-miss (ratés mémorisés), delete avec la conversation, skip mode test/sans jeton.
-- [ ] **`[PERSONA-SANITIZE-CHAT]`** 🟡 (S, defense-in-depth — finding panel B2, LATENT) : `personaSanitizer`
+- [x] **`[PERSONA-SANITIZE-CHAT]`** ✅ 2026-07-29 (PR #519) — sanitizer étendu : `aiConversation` filtrée par id de message, archive `aiConversations` contaminée (id OU message de fixture) retirée EN ENTIER + test de parité. Ex-finding : `personaSanitizer`
   ne scanne pas `aiConversation`/`aiConversations` (aucun persona n'y écrit AUJOURD'HUI — pas de fuite
   active). Si un futur persona pré-remplit un chat de démo, la ceinture PERSONA-PURGE ne l'attraperait
   pas. Étendre le scan (ids `aimsg_` de fixtures enregistrés dans artifactIds) + test de parité.

@@ -447,6 +447,12 @@ function applySavingsGoal(state: AppState, doc: SavingsGoalPayload): ApplyResult
 // ambiguïté (2 noms équivalents, même symbole dans 2 comptes sans précision) → throw, pas de choix
 // silencieux. L'aperçu LISTE ce qui disparaît + les effets dérivés (NW, courbe, décaissement).
 
+// [Finding panel — classe AI-PROMPT-FAKE-ZERO] Un montant NON FINI (état corrompu) affiché « 0 $ »
+// dans l'aperçu d'une SUPPRESSION ferait confirmer l'utilisateur sur une donnée fabriquée → frontière
+// de formatage honnête : « (non disponible) », jamais un 0 plausible.
+const fmtOrUnavailable = (v: unknown): string =>
+    Number.isFinite(Number(v)) ? String(Math.round(Number(v))) : '(non disponible)';
+
 function applyDeleteItem(state: AppState, doc: DeleteItemPayload): ApplyResult {
     const name = String(doc.name || '').trim();
     if (!name) throw new Error('Nom/symbole requis pour une suppression.');
@@ -457,7 +463,14 @@ function applyDeleteItem(state: AppState, doc: DeleteItemPayload): ApplyResult {
         let matches = all.filter((a) => budgetNameKey(a.symbol || '') === key);
         if (matches.length === 0) throw new Error(`Aucun actif au symbole « ${name} » dans le portefeuille. Rien n'a été supprimé.`);
         if (matches.length > 1 && doc.accountType) {
-            matches = matches.filter((a) => (a.accountType || '') === doc.accountType);
+            const inAccount = matches.filter((a) => (a.accountType || '') === doc.accountType);
+            // [Finding panel] Distinguer « ta précision est INVALIDE » de « précise » — sinon un agent
+            // boucle en renvoyant le même accountType fautif en croyant devoir juste « préciser ».
+            if (inAccount.length === 0) {
+                const accounts = matches.map((a) => a.accountType || '(sans compte)').join(', ');
+                throw new Error(`Aucun actif « ${name} » dans le compte « ${doc.accountType} » — ce symbole est détenu dans : ${accounts}. Rien n'a été supprimé.`);
+            }
+            matches = inAccount;
         }
         if (matches.length !== 1) {
             throw new Error(`Plusieurs actifs portent le symbole « ${name} » (comptes différents) : précise le compte (accountType, ex. CELI / REER / NON-ENREG). Rien n'a été supprimé.`);
@@ -465,7 +478,7 @@ function applyDeleteItem(state: AppState, doc: DeleteItemPayload): ApplyResult {
         const target = matches[0];
         const changes: Change[] = [{
             field: `actif ${target.symbol}${target.accountType ? ` (${target.accountType})` : ''}`,
-            before: `${target.quantity} × ${Math.round(Number(target.currentPrice) || 0)} ${target.currency || 'CAD'}`,
+            before: `${target.quantity} × ${fmtOrUnavailable(target.currentPrice)} ${target.currency || 'CAD'}`,
             after: 'supprimé',
             note: '⚠️ la courbe d\'historique du portefeuille perd AUSSI sa contribution passée (pas de registre de ventes) ; le produit d\'une vente réelle doit arriver par tes transactions bancaires (import relevé)',
         }];
@@ -481,7 +494,7 @@ function applyDeleteItem(state: AppState, doc: DeleteItemPayload): ApplyResult {
         const target = matches[0];
         const changes: Change[] = [{
             field: `dette « ${target.name} »`,
-            before: `${Math.round(Number(target.balance) || 0)} $ à ${target.interestRate} %`,
+            before: `${fmtOrUnavailable(target.balance)} $ à ${target.interestRate} %`,
             after: 'supprimée',
             note: '⚠️ le patrimoine net MONTE du solde supprimé — réservé à une dette réellement soldée ou saisie par erreur',
         }];
@@ -497,7 +510,7 @@ function applyDeleteItem(state: AppState, doc: DeleteItemPayload): ApplyResult {
     const target = matches[0];
     const changes: Change[] = [{
         field: `objectif « ${target.name} »`,
-        before: `${Math.round(Number(target.targetAmount) || 0)} $ (accumulé : ${Math.round(Number(target.currentAmount) || 0)} $)`,
+        before: `${fmtOrUnavailable(target.targetAmount)} $ (accumulé : ${fmtOrUnavailable(target.currentAmount)} $)`,
         after: 'supprimé',
         note: target.deadline
             ? `le décaissement planifié de ${Math.round(Math.max(0, (Number(target.targetAmount) || 0) - (Number(target.currentAmount) || 0)))} $ (échéance ${target.deadline}) est ANNULÉ dans la projection`

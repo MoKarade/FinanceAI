@@ -56,6 +56,22 @@ describe('applyDeleteItem — actif (« vente totale »)', () => {
         expect(rest[0].accountType).toBe('REER');
     });
 
+    it('accountType fourni mais INVALIDE → message distinct listant les comptes réels (pas « précise le compte »)', () => {
+        // Finding panel : le message générique faisait boucler l'agent avec le même accountType fautif.
+        expect(() => applyDocument(richState(), del('asset', 'VFV.TO', 'TFSA-WRONG')))
+            .toThrow(/dans le compte « TFSA-WRONG ».*CELI.*REER/s);
+    });
+
+    it('montant NON FINI sur l\'entité → « (non disponible) » dans l\'aperçu, jamais un « 0 » fabriqué', () => {
+        // Classe AI-PROMPT-FAKE-ZERO : l'utilisateur confirme une suppression IRRÉVERSIBLE sur la foi
+        // de ce texte — un 0 plausible masquerait la corruption.
+        const s = richState();
+        s.debts[0].balance = NaN;
+        const { changes } = applyDocument(s, del('debt', 'Prêt auto Honda'));
+        expect(String(changes[0].before)).toContain('(non disponible)');
+        expect(String(changes[0].before)).not.toMatch(/^0 \$/);
+    });
+
     it('symbole inconnu → throw, rien supprimé, état non muté', () => {
         const s = richState();
         expect(() => applyDocument(s, del('asset', 'TSLA'))).toThrow(/Aucun actif/);
@@ -85,6 +101,22 @@ describe('applyDeleteItem — dette et objectif', () => {
         const s = richState();
         s.debts = [...s.debts, { id: 'debt_1700000000001', name: 'PRÊT AUTO HONDA', balance: 1, interestRate: 1, minimumPayment: 1, category: 'Car' } as Debt];
         expect(() => applyDocument(s, del('debt', 'Prêt auto Honda'))).toThrow(/Plusieurs dettes/);
+    });
+});
+
+describe('scrub des textes d\'écriture — la prose de sécurité SURVIT au retour vers le modèle', () => {
+    it('les avertissements clés (courbe passée, NW monte, annulable) ne sont PAS tronqués par le scrub', async () => {
+        // Finding code-reviewer #519 (mesuré) : le cap 60 car. du scrub mutilait les notes de
+        // sécurité — le modèle sur claude.ai ne pouvait plus les relayer à l'utilisateur.
+        const { scrubWriteResultForModel } = await import('../../mcp/tools/scrubWriteResult');
+        const { changes, summary } = applyDocument(richState(), del('asset', 'BTC'));
+        const safe = scrubWriteResultForModel(summary, changes);
+        expect(String(safe.changes[0].note)).toContain('contribution passée');
+        expect(String(safe.changes[0].note)).toContain('transactions bancaires');
+        expect(safe.summary).toContain('annulable via Réglages');
+
+        const debt = applyDocument(richState(), del('debt', 'Prêt auto Honda'));
+        expect(String(scrubWriteResultForModel(debt.summary, debt.changes).changes[0].note)).toContain('patrimoine net MONTE');
     });
 });
 

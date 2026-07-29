@@ -84,6 +84,31 @@ describe('runAgentLoop', () => {
         expect(logError).not.toHaveBeenCalled(); // nominal = zéro bruit
     });
 
+    it('[AITOOLS-HISTORY-BOUND] breakpoint de cache TOURNANT : un SEUL tool_result marqué par requête (le dernier)', async () => {
+        // 3 tours d'outils : au tour N, le tool_result du tour N-1 doit avoir PERDU son marqueur
+        // (budget API = 4 marqueurs/requête : tools + system + pièce jointe + CE tournant — un
+        // marqueur qui s'accumulerait ferait 5 au tour 3 → erreur API).
+        const { client, requests } = scriptedClient([
+            toolMsg('get_financial_overview', {}),
+            toolMsg('get_holdings', {}),
+            textMsg('fin'),
+        ]);
+        await runAgentLoop([{ role: 'user', content: 'q' }], { apiKey: 'sk-test', getState, client });
+        // 3 requêtes ; la 3e porte 2 messages de tool_results dans son historique.
+        const lastReq = requests[2].messages as Anthropic.MessageParam[];
+        const marked: string[] = [];
+        for (const m of lastReq) {
+            if (m.role !== 'user' || !Array.isArray(m.content)) continue;
+            for (const b of m.content as Array<{ type?: string; cache_control?: unknown; tool_use_id?: string }>) {
+                if (b.type === 'tool_result' && b.cache_control) marked.push(String(b.tool_use_id));
+            }
+        }
+        expect(marked).toHaveLength(1); // un SEUL marqueur tournant…
+        const lastToolResultMsg = lastReq.filter((m) => m.role === 'user' && Array.isArray(m.content)).at(-1)!;
+        const lastBlock = (lastToolResultMsg.content as Array<{ tool_use_id?: string }>).at(-1)!;
+        expect(marked[0]).toBe(String(lastBlock.tool_use_id)); // …posé sur le DERNIER tool_result
+    });
+
     it('cap DUR de tours : un modèle qui boucle s\'arrête avec message honnête + logError', async () => {
         const { client } = scriptedClient([toolMsg('get_financial_overview', {})]); // répète à l'infini
         const res = await runAgentLoop([{ role: 'user', content: 'q' }], {

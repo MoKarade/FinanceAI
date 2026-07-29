@@ -65,6 +65,7 @@
   une suppression déplacerait le solde en silence) et **aucun marquage automatique** (deux dépenses
   identiques le même jour sont un vrai faux positif → l'humain valide). Marquage réversible.
   `components/transactions/DuplicatesPanel.tsx` + toggle `showDuplicates` ressuscité. 18 tests.
+- [x] **`[FINTABLE-TRANSFERS]` Paiement de carte reconnu comme virement** (S) — ✅ 2026-07-29, trouvé en LISANT l'aperçu réel : importer les deux côtés compte↔carte ferait compter le paiement mensuel comme une dépense EN PLUS des achats (`budgetSync.ts:58` somme les négatifs hors transferts). Le patrimoine reste juste (soldes recalés) — seul le BUDGET mentirait, donc aucun invariant de conservation ne l'attrape. `detectTransfers.ts` : montants exactement opposés + rôles différents (cash→dette) + dates proches + appariement UN POUR UN, déterministe. 13 tests.
 - [ ] **`[FINTABLE-3]` Cron quotidien Cloud Run + `sync_bank_now`** (M) — patron du `POST /refresh` existant
   (secret dédié, `mcp/deploy.sh`). Écriture via `runApply` → OCC + backup. Trace + rapport de la dernière
   passe (comptes vus, tx ajoutées, positions mises à jour, échecs) — un skip sans signal = classe

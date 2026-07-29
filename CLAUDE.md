@@ -1467,3 +1467,15 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   tort, et on croit à une classe morte. Utiliser `grep -qF 'classe\/opacité'` en guillemets SIMPLES.
   (Le vrai contrôle anti-classe-morte reste : vérifier que le SHADE existe dans `tailwind.config.js` —
   ici `warning` = 400/500/600 seulement, donc `warning-900` aurait été un no-op silencieux.)
+- ⚠️ **[FINTABLE-TRANSFERS] 2026-07-29 — importer les DEUX CÔTÉS d'une relation compte↔carte double les
+  dépenses du Budget si le paiement n'est pas marqué `isTransfer`** : le paiement mensuel de la carte
+  apparaît en SORTIE du compte chèque ET en ENTRÉE sur la carte. Ce n'est pas une dépense, c'est un
+  déplacement entre deux poches. Vérifié dans le code (pas supposé) : `budgetSync.ts:58` somme les
+  négatifs HORS transferts → le paiement gonfle les dépenses réelles du mois, EN PLUS des achats déjà
+  comptés sur la carte ; `:37` fait le symétrique sur les revenus. ⚠️ **Le PATRIMOINE, lui, reste juste**
+  (les soldes sont recalés par `cash_balance`/`debt`) — c'est le BUDGET seul qui ment, donc le symptôme
+  est discret et n'apparaît PAS dans les invariants de conservation. Détection = paires montants
+  EXACTEMENT opposés + rôles DIFFÉRENTS (cash→dette) + dates proches + appariement **un pour un** (sinon
+  deux paiements du même montant s'apparient en croix). Réflexe général : dès qu'on ingère deux comptes
+  qui s'alimentent l'un l'autre, chercher les FLUX INTERNES avant d'écrire — un virement non marqué est
+  compté deux fois, et aucun invariant de conservation ne l'attrape.

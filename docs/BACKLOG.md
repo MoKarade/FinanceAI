@@ -5,6 +5,41 @@
 > Audit qualité détaillé : voir `docs/HISTORIQUE.md` (section `AAA_AUDIT_2026-06.md`).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
 
+## 🏦 Chantier FINTABLE — sync bancaire & investissements (cadrage validé Marc 2026-07-29, 14 questions)
+> ADR complet : `docs/decisions.md` § « Sync bancaire & investissements via Fintable ».
+> Décisions verrouillées : Fintable = PRODUCTEUR de `DocumentPayload` (aucun nouveau moteur de fusion —
+> `applyDocument` couvre déjà `bank_statement` / `broker_statement` / `cash_balance`) ; exécution SERVEUR
+> (Cloud Run, cron quotidien) jamais navigateur ; jeton lecture seule en Secret Manager ; écriture via
+> `runApply` (OCC + sauvegarde horodatée) ; import manuel CONSERVÉ mais masqué ; tools MCP existants INCHANGÉS.
+
+- [x] **`[FINTABLE-0]` ADR + jeton en Secret Manager** (S) — ✅ 2026-07-29. Jeton `financeai-fintable-token`
+  créé par Marc (scope lecture seule). ⚠️ Incident : le 1ᵉʳ jeton (read+write) avait été collé en clair dans
+  un chat → RÉVOQUÉ et remplacé avant tout usage. Découverte de cadrage qui RÉDUIT le chantier : la chaîne
+  d'ingestion existante couvre déjà toute la fusion → le travail restant est un lecteur + un mapper pur,
+  pas un pipeline (classe `R2-FIRE` : vérifier l'état RÉEL avant de coder).
+- [ ] **`[FINTABLE-1]` Lecteur → `FintableSnapshot` normalisé** (M) — 🔴 **BLOQUÉ** : la forme de l'API
+  Fintable n'est pas vérifiable depuis le conteneur (`docs.fintable.io` NXDOMAIN ; `fintable.io` et
+  `api.fintable.com` bloqués par la politique réseau — 403 au tunnel CONNECT). Attend de Marc : URL de base,
+  en-tête d'auth, chemins comptes/transactions/positions + **une réponse réelle tronquée** (noms de champs).
+  Critère d'arrêt : `npm run fintable:dry` liste comptes + N transactions + N positions, **zéro écriture**.
+- [ ] **`[FINTABLE-2]` Mapper pur `snapshot → DocumentPayload[]` + dry-run** (M) — transactions →
+  `bank_statement` (dédup + allowlist héritées), positions → `broker_statement` (Fintable gagne d'office,
+  Q10), soldes → `cash_balance` (delta `initialBalances.LIQUIDITE`, jamais d'écrasement d'agrégat — cf.
+  `MCP-DIRECT-EDIT`/set_cash). ⚠️ Points money-critical à trancher AVEC preuve : (a) devise native des
+  positions → `assetValueCad` jamais qty×prix nu (`ASSET-FX-DISPLAY`) ; (b) sémantique exacte de
+  `applyBrokerStatement` (remplace ou fusionne) à MESURER avant de s'y appuyer ; (c) un compte Fintable
+  fermé/absent ne doit pas faire disparaître un actif en silence. Rapport dry-run AVANT toute écriture.
+- [ ] **`[FINTABLE-3]` Cron quotidien Cloud Run + `sync_bank_now`** (M) — patron du `POST /refresh` existant
+  (secret dédié, `mcp/deploy.sh`). Écriture via `runApply` → OCC + backup. Trace + rapport de la dernière
+  passe (comptes vus, tx ajoutées, positions mises à jour, échecs) — un skip sans signal = classe
+  « staleness silencieuse ».
+- [ ] **`[FINTABLE-4]` Import manuel répliqué et masqué** (S) — CONSERVÉ intégralement comme repli (Q1),
+  déplacé hors du flux principal. Ne RIEN supprimer : c'est le filet quand Fintable/Plaid tombe.
+- [ ] **`[FINTABLE-5]` Bascule de l'historique 18 mois** (M) — 🚦 **GATÉ PAR UNE MESURE** : Plaid rend de
+  90 jours à 24 mois SELON l'institution. Étape 1 = rapport de couverture réelle par compte (date la plus
+  ancienne, nb de tx). L'historique manuel n'est retiré (Q8) QUE si la couverture le justifie ; sinon
+  conservation + raccord à la date de bascule. Jamais de suppression sur hypothèse.
+
 ## 🚧 Chantier Claude-in-app (GO Marc 2026-07-21 : « go jusqu'à tout fini et testé + audit de sec à la fin + aucune donnée changée + résultat fiable »)
 > Plan validé (panel PM + architect, 2026-07-21). P1 = Claude intégré à l'app (tool-use sur les MÊMES
 > specs que le MCP — parité « mêmes réponses que claude.ai ») ; P2 = tools MCP d'écriture manquants

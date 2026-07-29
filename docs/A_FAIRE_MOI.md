@@ -7,6 +7,26 @@
 
 ---
 
+## FINTABLE — forme de l'API à fournir (BLOQUE le Lot 1, remonté par Claude 2026-07-29)
+- [x] **Jeton compromis révoqué** — le 1ᵉʳ jeton Fintable (scopes read+write, expiration 2027) avait été
+  collé en clair dans le chat le 2026-07-29 → révoqué, remplacé par un jeton **lecture seule** stocké dans
+  Secret Manager (`financeai-fintable-token`, projet `financeai-497112`). Confirmé fait par Marc.
+  ⚠️ Règle à garder : un secret ne transite JAMAIS par le chat — `echo "<jeton>" | gcloud secrets versions add …`
+  depuis ton poste, jamais un copier-coller ici.
+- [ ] **Me donner la forme de l'API Fintable** (5 min) — je ne peux pas la découvrir depuis l'exécution
+  cloud : `docs.fintable.io` ne résout pas (NXDOMAIN), et `fintable.io` / `api.fintable.com` sont bloqués
+  par la politique réseau du conteneur (403 au tunnel CONNECT). Il me faut, depuis ta doc Fintable ou un
+  appel réel sur ton poste :
+  1. l'**URL de base** (ex. `https://api.fintable.io/v1`) ;
+  2. l'**en-tête d'authentification** (`Authorization: Bearer …` ? `X-Api-Key` ?) ;
+  3. les **chemins** comptes / transactions / positions ;
+  4. **une réponse réelle tronquée** (3-5 lignes de JSON suffisent) — c'est ce qui me donne les noms de
+     champs exacts (date, montant, devise, symbole, quantité…).
+  ⚠️ **Masque les montants et le jeton** avant de coller — je n'ai besoin que de la STRUCTURE.
+  Tant que je n'ai pas ça, je n'écris pas le lecteur : coder un client contre une API devinée sur un chemin
+  money-critical est exactement ce qu'on s'interdit. Si tu préfères, le repli documenté (lire le Google
+  Sheet que Fintable alimente déjà) est immédiatement faisable — dis-le et je pars là-dessus.
+
 ## MCP-CATEGORY-ALLOWLIST — redéploiement Cloud Run requis (remonté par Claude 2026-07-24, PR #502)
 - [ ] **Redéployer le serveur MCP sur Cloud Run** pour que l'allowlist de catégories (PR #502) prenne
   effet côté claude.ai (leçon AITOOLS-SEC : une révision Cloud Run est séparée du deploy Vercel — l'app

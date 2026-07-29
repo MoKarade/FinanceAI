@@ -6,6 +6,40 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — sync bancaire automatique Fintable (cron quotidien) + fix courbe Futur] — 2026-07-29
+
+### Sync bancaire (chantier Fintable)
+- **`[FINTABLE-3]` Sync automatique quotidienne** : un cron serveur (Cloud Run, réveillé par GitHub Actions
+  1×/jour) lit Fintable et met à jour tes transactions, tes liquidités et tes dettes — sans que tu ouvres
+  l'app. Complète le chantier commencé plus tôt cette session (lecteur, mapper, détection de doublons et de
+  virements internes) : c'est la première écriture NON supervisée du chantier. Le résultat de chaque passe
+  (comptes vus, transactions ajoutées, virements détectés, erreurs) apparaît dans Système & diagnostics.
+- Une panne réelle (jeton Fintable révoqué, Drive inaccessible) reste visible ; un simple conflit avec une
+  écriture depuis l'app (les deux ont poussé au même instant) est réessayé automatiquement, sans alerte.
+
+### Projection Futur
+- **Le segment PASSÉ du graphe Futur reste exact même quand le futur affiché est figé** : si tu ajoutes une
+  dette ou une transaction pendant que ta projection future est « en pause » (badge « Pas à jour »), la
+  partie passée du graphe (ta valeur nette réelle) se met maintenant à jour immédiatement — avant, elle
+  pouvait rester bloquée sur l'ancien montant de dette jusqu'à ce que tu relances le calcul.
+
+### Interne
+- `mcp/runFintableSync.ts` (orchestrateur, patron `runPriceRefresh`) + `POST /fintable-sync` dans `mcp/
+  http.ts` (secret dédié `FINANCEAI_FINTABLE_SYNC_SECRET`) + `.github/workflows/fintable-sync.yml`. Date de
+  bascule anti-doublon DÉRIVÉE à chaque passe (`deriveCutoverDate`), jamais figée — et plafonnée à AUJOURD'HUI
+  (une transaction mal datée dans le futur ne peut plus geler la sync en silence). `AppState.
+  fintableSyncReport` (additif, zéro migration ; purgé au switch de persona démo). `services/fintable/
+  rolesConfig.ts` consolidé (CLI + serveur). Un payload rejeté (ex. solde de dette à 0 $) devient un
+  avertissement local — il n'avorte plus toute la passe, les autres payloads valides restent appliqués.
+- `FutureProjection.tsx` : `currentDebtNonImmo` route désormais par `liveResults` (jamais le blob figé de
+  PROJECTION-PERSIST), avec repli sur la courbe affichée (jamais 0) pendant la fenêtre de démarrage où le
+  moteur n'a pas encore republié. Tests discriminants prouvés par `git stash` (échouent sur l'ancien code).
+- Panel de 7 agents sur cette PR : 6 findings vrais corrigés (isolation par payload, plafond de bascule,
+  garantie « rapport toujours écrit » élargie à la lecture initiale, montant $ retiré d'un message de log,
+  purge persona du nouveau champ, carte UI durcie contre une forme corrompue).
+
+---
+
 ## [unreleased — MCP : budget et objectifs « juste en le demandant »] — 2026-07-29
 
 ### Assistant / MCP

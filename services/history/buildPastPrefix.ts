@@ -5,8 +5,10 @@
 // composant de ~1000 lignes). Verbatim : aucun changement de logique vs l'inline d'origine.
 //
 // Le patrimoine net de chaque point route par `pastNetWorthAt` → `computeRawNetWorth` (source unique),
-// en soustrayant `currentDebtNonImmo` (dette hors hypothèque AU NIVEAU ACTUEL, `chartData[0].DettesNonImmo`)
-// → raccord EXACT au présent (Option A, décision Marc 2026-07-24).
+// en soustrayant `currentDebtNonImmo` (dette hors hypothèque AU NIVEAU ACTUEL, `DettesNonImmo` du
+// moteur) → raccord EXACT au présent (Option A, décision Marc 2026-07-24). ⚠️ [FUTUR-PAST-DEBT-FREEZE
+// 2026-07-29] Ce module reste AGNOSTIQUE de la provenance exacte : c'est à l'APPELANT (`FutureProjection.
+// tsx`) de garantir une valeur FRAÎCHE (jamais un blob figé PROJECTION-PERSIST) — voir son commentaire dédié.
 
 import { reconstructCashHistory } from './reconstructCashHistory';
 import { reconstructRealEstateEquityByYear } from './reconstructRealEstateEquity';
@@ -40,7 +42,7 @@ export interface BuildPastPrefixInput {
     realEstateGoals: ReadonlyArray<RealEstateGoal>;
     startYear: number;
     startMonth: number;
-    /** Dette hors hypothèque au niveau actuel (`chartData[0].DettesNonImmo`), soustraite de chaque point. */
+    /** Dette hors hypothèque au niveau actuel (`DettesNonImmo` du moteur, valeur FRAÎCHE — cf en-tête), soustraite de chaque point. */
     currentDebtNonImmo: number;
 }
 

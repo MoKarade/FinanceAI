@@ -800,6 +800,30 @@ export interface AppState {
   charitableGoals?: CharitableGoal[];
   // Phase G.1 — métadonnées des documents uploadés (blobs stockés séparément)
   documents?: DocumentMeta[];
+  /** [FINTABLE-3] Rapport de la dernière passe de sync serveur (cron Cloud Run). ADDITIF optionnel
+   *  (absent = jamais synchronisé). Écrit par le cron à CHAQUE passe (succès ou échec) pour que
+   *  l'état de la sync soit visible dans l'app sans notification proactive (choix Marc). */
+  fintableSyncReport?: FintableSyncReport;
+}
+
+/** [FINTABLE-3] Résultat d'une passe de synchronisation Fintable, PERSISTÉ dans l'état pour
+ *  affichage (Réglages → Système). `error` non-null = la passe a échoué ; les compteurs restent
+ *  alors à 0 (aucune donnée fabriquée sur un échec). */
+export interface FintableSyncReport {
+  /** Epoch ms de la fin de la passe. */
+  at: number;
+  /** Date de bascule (dérivée automatiquement) utilisée pour cette passe, ou `null` si vierge. */
+  cutoverDateUsed: string | null;
+  accountsSeen: number;
+  accountsWithoutRole: number;
+  transactionsAdded: number;
+  transfersDetected: number;
+  cashUpdated: boolean;
+  debtsUpdated: string[];
+  investmentReferenceCount: number;
+  warnings: string[];
+  /** Raison de l'échec, ou `null` si la passe a réussi. */
+  error: string | null;
 }
 
 /** [B2-CHAT-HISTORY] Une conversation ARCHIVÉE du chat Assistant (l'active vit dans `aiConversation`). */

@@ -1,0 +1,65 @@
+# [FINTABLE-3] Synchronisation quotidienne Fintable (transactions/soldes/dettes).
+#
+# Déclenche le serveur MCP (Cloud Run) qui lit Fintable, mappe vers des documents FinanceAI
+# (relevé bancaire, soldes liquides, dettes) et réécrit l'état Drive — sans que l'utilisateur
+# ouvre l'app. Même mécanique que `refresh-prices.yml` (Cloud Run peut dormir, ce cron externe
+# le réveille ; gratuit, pas de limite « 1×/jour » comme Vercel Hobby). Cadence : 1×/jour
+# (choix Marc 2026-07-29) — la date de bascule anti-doublon est DÉRIVÉE à chaque passe côté
+# serveur (`deriveCutoverDate`), aucune valeur figée ici.
+#
+# Secrets requis (Settings → Secrets and variables → Actions) :
+#   FINANCEAI_MCP_URL              — URL du serveur MCP (le même que refresh-prices.yml)
+#   FINANCEAI_FINTABLE_SYNC_SECRET — secret DÉDIÉ (distinct de FINANCEAI_REFRESH_SECRET)
+#
+# Le job « rougit » sur tout non-200 : serveur injoignable, 401 (mauvais secret), ou 5xx = panne
+# RÉELLE (Fintable KO/jeton révoqué, Drive KO) → alerte GitHub. Un conflit de concurrence (l'app a
+# poussé au même moment) reste 200 { ok:false, conflict:true } et sera réessayé au tick suivant.
+# Échec/succès sont aussi écrits dans `AppState.fintableSyncReport` — visible dans l'app (Réglages),
+# sans notification proactive (choix Marc : « visible dans l'app seulement »).
+
+name: Sync Fintable FinanceAI
+
+on:
+  schedule:
+    # 10:00 UTC ≈ 6h (EDT) / 5h (EST) — après que les transactions de la veille se soient
+    # postées côté banques, avant que Marc consulte l'app le matin.
+    - cron: '0 10 * * *'
+  workflow_dispatch: {} # déclenchement manuel possible depuis l'onglet Actions
+
+# Moindre privilège : ce job ne fait qu'un curl vers un service externe (aucun checkout, aucune
+# écriture GitHub) → le GITHUB_TOKEN n'a besoin d'AUCUN droit sur le dépôt (CodeQL, moindre privilège).
+permissions: {}
+
+# Une seule sync à la fois (un run planifié + un manuel ne se chevauchent pas).
+concurrency:
+  group: fintable-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: POST /fintable-sync
+        env:
+          MCP_URL: ${{ secrets.FINANCEAI_MCP_URL }}
+          SYNC_SECRET: ${{ secrets.FINANCEAI_FINTABLE_SYNC_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MCP_URL:-}" ] || [ -z "${SYNC_SECRET:-}" ]; then
+            echo "::error::Secrets FINANCEAI_MCP_URL / FINANCEAI_FINTABLE_SYNC_SECRET manquants."
+            exit 1
+          fi
+          # --data '' : POST à corps VIDE mais avec Content-Length: 0 — le frontal Google de Cloud Run
+          # refuse un POST sans Content-Length (411 Length Required avant d'atteindre le serveur).
+          code=$(curl -sS --max-time 240 -o /tmp/fintable_sync_out -w '%{http_code}' \
+            -X POST "${MCP_URL%/}/fintable-sync" \
+            -H "Authorization: Bearer ${SYNC_SECRET}" \
+            --data '')
+          echo "HTTP ${code}"
+          # Le secret n'est jamais dans le corps ; l'afficher aide au diagnostic. Le rapport peut
+          # contenir des COMPTEURS (nb de tx/comptes) mais jamais de montant ni de libellé.
+          cat /tmp/fintable_sync_out; echo
+          # 200 = OK (ok:true) ou conflit transitoire (ok:false, conflict:true — réessai au tick suivant).
+          # 5xx = panne RÉELLE (Fintable KO/jeton révoqué, Drive KO) → le job rougit et alerte.
+          test "${code}" = "200"

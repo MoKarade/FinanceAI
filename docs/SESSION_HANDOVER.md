@@ -4,6 +4,31 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-29 (suite 7) — `[FINTABLE-3]` LIVRÉ (cron serveur, 1ʳᵉ écriture auto du chantier) + `[FUTUR-PAST-DEBT-FREEZE]`
+> **🔵 `[FINTABLE-3]` LIVRÉ** (cette PR) — cadrage validé par Marc (4 questions) : écriture réelle DÈS LE
+> DÉPART, 1×/jour, date de bascule AUTO-DÉRIVÉE, échecs visibles dans l'app seulement (pas de notif proactive).
+> `mcp/runFintableSync.ts` : lecture Fintable → mapper (Lot 2) → `applyDocument` → écriture ATOMIQUE
+> (`store.save(next, version)`), patron EXACT de `runPriceRefresh`/HUB-REFRESH-CRON. `POST /fintable-sync`
+> dans `mcp/http.ts`, secret **DÉDIÉ** `FINANCEAI_FINTABLE_SYNC_SECRET` (distinct de `FINANCEAI_REFRESH_SECRET`
+> — celui-ci autorise l'écriture de tx/soldes réels). Déclencheur = **GitHub Actions** (`.github/workflows/
+> fintable-sync.yml`, 10:00 UTC), PAS Cloud Scheduler — le patron `refresh-prices.yml` couvrait déjà
+> exactement ce besoin (réveiller Cloud Run endormi), gratuitement, sans nouveau service GCP. Rapport
+> `AppState.fintableSyncReport` TOUJOURS écrit (succès/échec) → carte « Sync Fintable » dans Système &
+> diagnostics. Conflit OCC = transitoire (relancé sans rapport d'échec) ; panne réelle = rapport persisté + 5xx.
+> `parseRolesJson` extrait en module PARTAGÉ (`services/fintable/rolesConfig.ts`, consommé par `fintable:dry`
+> ET le serveur). 16 tests.
+> **🔵 `[FUTUR-PAST-DEBT-FREEZE]` LIVRÉ** (même PR) — demande Marc distincte, arrivée en cours de Lot 3 :
+> « assure-toi que le passé marche… le passé doit être exactement ce que c'était à cette date ». Audit
+> lecture seule d'abord (3/4 volets déjà corrects) puis fix d'un écart réel : `currentDebtNonImmo` (segment
+> PASSÉ) lisait `chartData[0]` — qui peut être le blob FIGÉ (PROJECTION-PERSIST) — au lieu de `liveResults`
+> (toujours frais). Conséquence : quand le futur affiché est gelé (badge « Pas à jour »), le passé continuait
+> de soustraire l'ANCIENNE dette. Fix : lire depuis `liveResults` systématiquement. Test discriminant qui
+> échoue sur l'ancien code (`git stash`, prouvé) : gèle le futur, bondit la dette live de +10 M$, vérifie
+> que le NetWorth du passé CHANGE.
+> **Suite** : `[FINTABLE-4]` (import manuel masqué, dernier item du chantier Fintable) ; Marc doit encore créer
+> les 3 secrets GCP (`financeai-fintable-sync-secret`/`-token`/`-roles-json`) et les 2 secrets GitHub Actions
+> avant que le cron ne tourne réellement (cf `mcp/README.md` § Sync Fintable planifiée).
+>
 > ## 🟢 Session 2026-07-29 (suite 6) — TX-DUPLICATES : détection de doublons (demande Marc) + durcissement CLI
 > **🔵 `[TX-DUPLICATES]` LIVRÉ** (cette PR). Demande Marc : « enlève les transactions en double ».
 > **Constat en vérifiant l'état réel** : `Transaction.isDuplicate` était RESPECTÉ partout (exclu de
@@ -1208,10 +1233,10 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#503** [AI-CATEGORIZE-MISSING-ID] (trace des transactions omises par modèle dans `categorizeBatch` + triage Dependabot #26 + Cloud Run ; 2026-07-24, squash fde0eec, MERGÉE) |
-| **PR en cours (DRAFT)** | **#504** [AUTH-DRIVE-STILL-RECONNECT] (branche `claude/progress-check-yua8yy`, instrumentation GIS throttle + fermeture 401 DriveAuthError, panel 2 agents, ready+auto-merge imminents) |
+| **Dernière PR mergée** | **#530** [FINTABLE-TRANSFERS] (paiement de carte reconnu comme virement ; 2026-07-29, MERGÉE — chantier Fintable #521→#530, cf bandeau ci-dessus) |
+| **PR en cours (DRAFT)** | Aucune au moment d'écrire — **`[FINTABLE-3]`** (cron sync serveur + fix `[FUTUR-PAST-DEBT-FREEZE]`) est la PROCHAINE à ouvrir (branche `claude/progress-check-yua8yy`) |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
-| **Tests** | **~3020 verts, suite complète** (Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation — compte exact au gate/CI) |
+| **Tests** | **3285 verts, suite complète** (288 fichiers, Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation — compte exact au gate/CI, mesuré 2026-07-29) |
 | **Typecheck** | Clean en mode strict |
 | **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
 | **Schema store** | **v7** (Zustand persist, migrations v1→v7) |

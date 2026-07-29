@@ -66,10 +66,28 @@
   identiques le même jour sont un vrai faux positif → l'humain valide). Marquage réversible.
   `components/transactions/DuplicatesPanel.tsx` + toggle `showDuplicates` ressuscité. 18 tests.
 - [x] **`[FINTABLE-TRANSFERS]` Paiement de carte reconnu comme virement** (S) — ✅ 2026-07-29, trouvé en LISANT l'aperçu réel : importer les deux côtés compte↔carte ferait compter le paiement mensuel comme une dépense EN PLUS des achats (`budgetSync.ts:58` somme les négatifs hors transferts). Le patrimoine reste juste (soldes recalés) — seul le BUDGET mentirait, donc aucun invariant de conservation ne l'attrape. `detectTransfers.ts` : montants exactement opposés + rôles différents (cash→dette) + dates proches + appariement UN POUR UN, déterministe. 13 tests.
-- [ ] **`[FINTABLE-3]` Cron quotidien Cloud Run + `sync_bank_now`** (M) — patron du `POST /refresh` existant
-  (secret dédié, `mcp/deploy.sh`). Écriture via `runApply` → OCC + backup. Trace + rapport de la dernière
-  passe (comptes vus, tx ajoutées, positions mises à jour, échecs) — un skip sans signal = classe
-  « staleness silencieuse ».
+- [x] **`[FINTABLE-3]` Cron quotidien Cloud Run** (M) — ✅ 2026-07-29. `mcp/runFintableSync.ts` (orchestrateur :
+  lecture Fintable → mapper Lot 2 → `applyDocument` → écriture ATOMIQUE `store.save(next, version)`, patron
+  EXACT de `runPriceRefresh`/HUB-REFRESH-CRON). `POST /fintable-sync` dans `mcp/http.ts` (secret DÉDIÉ
+  `FINANCEAI_FINTABLE_SYNC_SECRET`, distinct de `FINANCEAI_REFRESH_SECRET` — périmètre différent, autorise
+  l'écriture de tx/soldes réels). Cadence 1×/jour (choix Marc), déclencheur `.github/workflows/fintable-sync.yml`
+  (gratuit, même mécanique que `refresh-prices.yml`). Date de bascule anti-doublon **DÉRIVÉE À CHAQUE PASSE**
+  (`deriveCutoverDate` — la transaction la plus récente déjà connue, jamais une valeur figée à maintenir).
+  Rapport `AppState.fintableSyncReport` **TOUJOURS écrit** (succès ou échec — comptes vus, tx ajoutées, virements
+  détectés, cash/dettes MAJ, avertissements, erreur) → carte « Sync Fintable » dans Système & diagnostics, visible
+  sans notification proactive (choix Marc). Conflit OCC = transitoire (relancé tel quel, PAS de rapport d'échec,
+  le prochain tick réessaie) ; panne réelle Fintable/Drive = rapport d'échec persisté + 5xx (le cron GitHub rougit).
+  20 tests (`deriveCutoverDate` 4 + `runFintableSync` 10 + carte UI 6). `parseRolesJson` extrait en module
+  PARTAGÉ (`services/fintable/rolesConfig.ts`) consommé par `fintable:dry` ET le serveur — zéro copie qui dérive.
+  ⚠️ **Panel de 7 agents (code-reviewer, silent-failure-hunter, financial-integrity, security-privacy,
+  projection-validator, documentation-manager, a11y-auditor) sur cette même PR : 6 findings VRAIS corrigés**
+  (tous mesurés/vérifiés) — voir le bloc de leçons `[FUTUR-PAST-DEBT-FREEZE]` dans `CLAUDE.md` pour le détail :
+  isolation par payload dans la boucle d'application (un solde de dette 0 bloquait TOUTE la sync), bascule
+  plafonnée à aujourd'hui (une transaction future gelait la sync à `transactionsAdded:0` en silence), lecture
+  d'état initiale déplacée DANS le bloc protégé (garantit le rapport « toujours écrit » même si `getWithVersion`
+  échoue), montant $ retiré d'un message d'avertissement (fuyait en clair dans les logs GitHub Actions),
+  `fintableSyncReport` ajouté à `DEFAULT_APP_STATE` (sinon survivait au switch de persona démo), carte UI
+  durcie contre une forme corrompue (`Array.isArray` + `logError`, jamais un crash de render).
 - [ ] **`[FINTABLE-4]` Import manuel répliqué et masqué** (S) — CONSERVÉ intégralement comme repli (Q1),
   déplacé hors du flux principal. Ne RIEN supprimer : c'est le filet quand Fintable/Plaid tombe.
 - [x] **`[FINTABLE-5]` Bascule de l'historique 18 mois — ✅ TRANCHÉ 2026-07-29 : ON GARDE.** La mesure
@@ -322,6 +340,22 @@
   - **Reste (différé, non bloquant)** : `[FUTUR-HIST-FX-DATED]` (FX historique daté via proxy Yahoo `USDCAD=X`/`EURCAD=X`, plus
     juste que le change du jour — money-critical, garder le point d'AUJOURD'HUI au FX courant pour le raccord exact ; no-fake si
     FX daté manquant → repli FX courant signalé) ; recherche binaire dans `priceAt` si un jour mesuré lent.
+  - [x] **`[FUTUR-PAST-DEBT-FREEZE]`** ✅ (2026-07-29, demande Marc « assure-toi que le passé marche… le passé doit
+    être exactement ce que c'était à cette date ») — audit lecture seule PROACTIF (avant tout code) qui a confirmé le
+    câblage réactif (transactions/actifs/dettes → recalcul de `pastPrefix`, 3/3 dépendances OK) mais trouvé UN écart
+    réel : `currentDebtNonImmo` lisait `chartData[0]` (dérivé de `results = frozenUsable ?? liveResults`) → quand le
+    FUTUR est gelé (PROJECTION-PERSIST, badge « Pas à jour »), le segment PASSÉ continuait de soustraire l'ANCIENNE
+    dette jusqu'au clic « Recharger ». Fix : lire depuis `liveResults` (JAMAIS `results`/`chartData`, qui peuvent être
+    le blob figé) — le passé reste réel, indépendant du gel du futur. Test discriminant (`FutureProjection.
+    pastDebtFreeze.test.tsx`) : gèle le futur, bondit la dette LIVE de +10 M$, prouve que le NetWorth affiché du passé
+    CHANGE (échoue sur l'ancien code — vérifié par `git stash`). Seule composante affectée (buckets cash/placements/immo
+    du passé étaient déjà corrects, non gelés).
+    ⚠️ **2 agents (financial-integrity + projection-validator) ont mesuré INDÉPENDAMMENT une 2ᵉ fenêtre** que le 1ᵉʳ
+    jet du fix rouvrait : au boot/reload, `lastProjection` (exclu de la persistance) vaut `null` le temps que le
+    moteur recalcule (~300 ms+), alors que le blob figé restauré depuis IDB affiche DÉJÀ une courbe → le 1ᵉʳ jet
+    retombait à une dette de 0 (271 k$ mesuré vs 221 k$ attendu). Fix affiné : repli sur `chartData` (ce qui est
+    RÉELLEMENT affiché, live ou figé) plutôt que sur 0 — `liveResults?.chartData?.length ? liveResults.chartData
+    : chartData`. 2ᵉ test discriminant ajouté (remontage avant publication moteur + blob figé dispo).
 - [x] **`[FUTUR-ICONS-RICH]`** ✅ (2026-07-24, PR suivante — bug Marc « quasi aucune icône », le fix
   [FUTUR-ICON-DENSITY] ne suffisait pas) — le graphe Futur n'affichait des icônes que pour les rares `lifeEvents`/
   `flowEvents` du moteur (0-2 sur un plan normal). Fix 3 volets : (a) module pur `services/projection/milestoneIcons.ts`

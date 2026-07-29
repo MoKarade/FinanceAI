@@ -149,7 +149,13 @@ describe('dette carte de crédit', () => {
         // Une dette négative gonflerait le patrimoine au lieu de le réduire.
         const r = mapFintableSnapshot(snap({ accounts: [account({ ...card, balance: -50 })], transactions: [] }), cardCfg);
         expect(r.report.debts).toEqual([{ name: 'Desjardins Cash Back Mastercard', balanceCad: 50 }]);
-        expect(r.report.warnings.some((w) => w.includes('négatif'))).toBe(true);
+        const negWarning = r.report.warnings.find((w) => w.includes('négatif'));
+        expect(negWarning).toBeDefined();
+        // ⚠️ [finding panel, PR #531] ce warning finit dans FintableSyncReport.warnings, rendu SANS gate
+        // mode discret dans SystemView.tsx ET dumpé en clair dans les logs GitHub Actions (fintable-sync.yml)
+        // — le montant ($50) ne doit JAMAIS y être interpolé, même si le vrai solde (`report.debts[0]
+        // .balanceCad`) reste, lui, correctement gardé par le mode discret dans Réglages → Dettes.
+        expect(negWarning).not.toMatch(/\b50\b/);
     });
 
     it('les transactions de la carte SONT importées (ce sont des dépenses)', () => {

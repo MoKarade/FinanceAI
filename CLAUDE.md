@@ -1479,3 +1479,74 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   deux paiements du même montant s'apparient en croix). Réflexe général : dès qu'on ingère deux comptes
   qui s'alimentent l'un l'autre, chercher les FLUX INTERNES avant d'écrire — un virement non marqué est
   compté deux fois, et aucun invariant de conservation ne l'attrape.
+- ⚠️ **[FINTABLE-3] 2026-07-29 — cron serveur (1ʳᵉ écriture non supervisée du chantier), leçons** :
+  (1) **Un besoin d'infra (« réveiller un service endormi sur un cron ») peut déjà avoir sa solution ÉTABLIE
+  ailleurs dans le repo** — au lieu de Cloud Scheduler (nouveau service GCP, coût au-delà du free tier), le
+  patron `.github/workflows/refresh-prices.yml` (HUB-REFRESH-CRON) couvrait déjà EXACTEMENT ce besoin →
+  cloné à l'identique pour `fintable-sync.yml`. Réflexe : avant d'introduire un nouveau mécanisme d'infra,
+  chercher un jumeau déjà en place qui résout le MÊME problème structurel (ici : « POST un endpoint secret-gated
+  vers un Cloud Run qui dort »), pas seulement un jumeau au nom similaire. (2) **Deux routes serveur qui
+  écrivent des CLASSES de données différentes méritent des secrets DISTINCTS**, même si le patron HTTP est
+  identique : `FINANCEAI_REFRESH_SECRET` (cours de marché seulement) vs `FINANCEAI_FINTABLE_SYNC_SECRET`
+  (transactions/soldes/dettes réels) — compromettre l'un ne doit pas donner accès à l'écriture de l'autre.
+  (3) **Un parseur de config dupliqué entre un CLI et son futur serveur = extraire AVANT que la 2ᵉ copie
+  existe**, pas après (classe `[[Lot audit n°2]]` étendue au moment de la CRÉATION, pas seulement à sa
+  découverte) : `parseRolesJson` a été sorti de `fintableDry.ts` vers `services/fintable/rolesConfig.ts` en
+  écrivant `runFintableSync`/`http.ts`, plutôt que de coller un 2ᵉ `JSON.parse` à côté.
+- ⚠️ **[FUTUR-PAST-DEBT-FREEZE] 2026-07-29 — demande Marc « assure-toi que le passé marche… doit être
+  exactement ce que c'était à cette date »** : un audit lecture seule PROACTIF (lancé en tâche de fond
+  AVANT de coder quoi que ce soit, en parallèle du Lot 3) a confirmé 3 volets sur 4 (transactions/actifs/
+  dettes → `pastPrefix` recalculé, deps `useMemo` complètes) et trouvé UN écart réel : `currentDebtNonImmo`
+  (dette soustraite du segment PASSÉ) lisait `chartData[0]`, dérivé de `results = frozenUsable ?? liveResults`
+  (PROJECTION-PERSIST) — donc quand le FUTUR affiché est GELÉ (badge « Pas à jour »), le PASSÉ continuait de
+  soustraire l'ANCIENNE dette jusqu'au clic « Recharger ». **Un état FIGÉ pour UNE raison (le futur, par
+  design, ne doit pas recalculer tant que l'utilisateur n'a pas validé) peut contaminer un consommateur
+  voisin qui n'a AUCUNE raison d'être figé** (le passé est du RÉEL, indépendant du gel du futur) — le bug
+  n'est pas dans le mécanisme de gel lui-même, mais dans un lecteur en aval qui ne distingue pas ses DEUX
+  sources (`results` figeable vs `liveResults` toujours frais). Fix : lire `currentDebtNonImmo` depuis
+  `liveResults` explicitement, jamais `results`/`chartData`. Réflexe généralisable : quand un composant
+  expose DEUX résultats du même calcul (un figé pour l'affichage principal, un frais pour tout le reste),
+  auditer CHAQUE dérivation en aval pour confirmer qu'elle lit la bonne source — un seul `chartData[0]`
+  ambigu suffit à faire fuiter le gel là où il n'était pas voulu. Discriminant prouvé par `git stash` (le
+  test échoue sur l'ancien code : geler le futur, bondir la dette LIVE de +10 M$, le NetWorth du passé
+  affiché ne bouge PAS sur l'ancien code, CHUTE avec le fix).
+  ⚠️ **7 agents en panel sur cette même PR ont trouvé 6 findings VRAIS supplémentaires (mesurés/vérifiés,
+  pas de faux positifs cette fois) — leçons génériques au-delà du fix ci-dessus** :
+  (1) **Un repli « live sinon frais » a lui-même une fenêtre morte au BOOT** — mon 1er jet
+  (`liveResults?.chartData?.[0]?.DettesNonImmo`) réglait le gel PROJECTION-PERSIST mais, mesuré par 2 agents
+  indépendamment (financial-integrity + projection-validator, mêmes chiffres : 271k$ vs 221k$ attendu),
+  retombait à 0 dans la fenêtre boot/reload où `lastProjection` (EXCLU de la persistance, `partialize`) vaut
+  encore `null` alors que le blob figé restauré depuis IDB affiche DÉJÀ une courbe. Un repli à DEUX niveaux
+  (« live » puis « frais » puis seulement « rien ») a un angle mort si le niveau intermédiaire n'est jamais
+  essayé : `liveResults?.chartData?.length ? liveResults.chartData : chartData` (repli sur ce qui est
+  RÉELLEMENT affiché, jamais sur 0) ferme les DEUX fenêtres. Généralise [[HARDEN-NETWORTH-NAN]] : un repli de
+  sécurité doit lui-même être testé aux LIMITES de son propre mécanisme (ici : booting avant que la source
+  primaire soit prête), pas seulement au cas nominal qu'il corrige. (2) **Une boucle qui applique plusieurs
+  payloads dans un cron NON supervisé doit isoler CHAQUE payload** — `applyDocument` REJETTE volontairement
+  un solde de dette ≤0 (design voulu, `MCP-APPLY-DEBT`), mais sans `try/catch` PAR itération, ce rejet LÉGITIME
+  avortait TOUTE la passe avant `store.save` : une carte remboursée à 0 $ un mois bloquait la sync ENTIÈRE
+  (transactions ET cash compris) CHAQUE JOUR tant que la condition persistait — mesuré par financial-integrity
+  via une sonde end-to-end. Un rejet de validation en aval doit devenir un avertissement LOCAL, jamais une
+  panne qui efface le travail des payloads voisins déjà valides. (3) **Un plafond « aujourd'hui » manquant sur
+  une date DÉRIVÉE (max d'un tableau) peut être poussé hors du réel par UNE SEULE entrée corrompue** — une
+  transaction mal datée dans le futur (typo) pousse `deriveCutoverDate` en avant, et le mapper filtre alors
+  TOUTES les vraies transactions Fintable comme « avant la bascule », indéfiniment, avec `ok:true` (silence
+  total). Fix = plafond `min(dérivé, aujourd'hui)` + avertissement TRACÉ (jamais un cap silencieux, cf règle
+  Workflow "no silent caps" étendue au code applicatif). (4) **Un champ `AppState` optionnel ADDITIF (nouveau
+  cette PR) doit être ajouté EXPLICITEMENT à `DEFAULT_APP_STATE`** (même `: undefined`) — sinon `personaResetBase()`
+  (qui dérive `DEFAULT_APP_STATE`) n'a PAS cette clé dans son objet retourné, et spreader un objet sans une clé
+  ne réinitialise PAS cette clé : la VRAIE valeur (ici `fintableSyncReport` — comptes/dettes/dates réels de
+  Marc) traverse `enableTestMode` intacte et s'affiche pendant une démo persona. Extension directe de
+  [[PERSONA-PURGE]] à tout NOUVEAU champ `AppState?` — le réflexe s'applique à la CRÉATION du champ, pas
+  seulement quand un futur audit le découvre. (5) **Un texte destiné à un LOG EXTERNE (GitHub Actions `cat`)
+  mérite le MÊME scrub qu'un affichage UI** — `mapSnapshot.ts` interpolait un montant $ brut dans un message
+  d'avertissement (solde de dette négatif chez Fintable) ; ce message atterrit à la fois dans la carte UI
+  (non gatée mode discret — aucun $ n'y était PRÉVU) et dans les logs CI persistants (`fintable-sync.yml`,
+  rétention ~90j, hors du droit à l'effacement de l'app). Le fix retire le montant du TEXTE à la source
+  (le vrai chiffre reste disponible, gardé par le mode discret, via le champ `debt.balanceCad` normal) plutôt
+  que de gater deux surfaces différemment. (6) **Une lecture `getWithVersion()` placée AVANT le `try` d'un
+  orchestrateur qui promet « rapport TOUJOURS écrit » viole sa propre garantie** — silent-failure-hunter a
+  trouvé que la toute première lecture d'état de `runFintableSync` vivait hors du bloc protégé : une panne
+  PRÉCISÉMENT là (Drive KO, jeton révoqué) ne déclenchait aucune écriture de `fintableSyncReport`, contredisant
+  le commentaire d'en-tête du fichier. Élargir le `try` pour englober TOUT ce qui doit contribuer à la garantie
+  documentée, pas seulement la partie qui semblait risquée au premier jet.

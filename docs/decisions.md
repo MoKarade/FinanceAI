@@ -518,3 +518,68 @@ patrimoine du montant dû) ; liquidités en **tout-ou-rien** (`cash_balance` éc
 négatif → `Math.abs` + alerte (une dette négative gonflerait le patrimoine) ; devise ≠ CAD écartée et
 signalée, jamais empilée sans conversion ; dette mise à jour en **solde seulement** — ni taux ni
 paiement minimum inventés, donc elle doit préexister (`MCP-APPLY-DEBT` : update partiel, strict à l'ajout).
+
+### Mise à jour 2026-07-29 (n°4) — `[FINTABLE-3]` livré : cron serveur + déclencheur GitHub Actions (pas Cloud Scheduler)
+
+Cadrage validé par Marc (4 questions) : écriture réelle DÈS LE DÉPART (pas de période dry-run-only) ;
+1×/jour ; date de bascule AUTO-DÉRIVÉE (jamais une valeur figée à maintenir) ; échecs visibles dans
+l'app SEULEMENT (pas de notification proactive au démarrage).
+
+**Déclencheur choisi : GitHub Actions, pas Cloud Scheduler** (écart au plan initial du BACKLOG, décision
+prise en exécutant, pas re-demandée à Marc). Raison : `.github/workflows/refresh-prices.yml` (HUB-REFRESH-CRON)
+résout DÉJÀ exactement ce besoin — réveiller un Cloud Run endormi (scale-to-zero) sur un cron externe —
+gratuitement, sans la limite « 1×/jour » de Vercel Hobby, sans nouveau service GCP à activer/apprendre.
+`.github/workflows/fintable-sync.yml` clone ce patron à l'identique (10:00 UTC, secret DÉDIÉ
+`FINANCEAI_FINTABLE_SYNC_SECRET`, `POST /fintable-sync`). Cloud Scheduler aurait ajouté une dépendance
+GCP payante (au-delà du free tier) et un mécanisme SUPPLÉMENTAIRE pour un besoin déjà couvert —
+contraire à « stack ennuyeuse » et « tout gratuit » (CLAUDE.md global de Marc).
+
+**Deux secrets DISTINCTS, jamais partagés** : `FINANCEAI_REFRESH_SECRET` (prix de marché seulement) et
+`FINANCEAI_FINTABLE_SYNC_SECRET` (transactions/soldes/dettes réels). Périmètre différent → rotation
+indépendante ; compromettre l'un ne donne pas accès à l'écriture de l'autre.
+
+**Rapport TOUJOURS écrit, jamais de notification proactive** (choix Marc, 4ᵉ réponse) : `AppState.
+fintableSyncReport` (additif optionnel, zéro bump de version) est réécrit à CHAQUE passe — succès ou
+échec — et affiché dans Système & diagnostics. Un conflit OCC (l'app a poussé entre-temps) N'ÉCRIT PAS
+de rapport d'échec (transitoire, pas une panne) ; une panne RÉELLE (Fintable KO/jeton révoqué, Drive KO)
+écrit le rapport d'échec ET fait rougir le job GitHub (5xx) — Marc voit l'échec au prochain "check" de la
+Routine GitHub, sans avoir eu besoin d'ouvrir l'app.
+
+**Consolidation évitée** : le parseur du JSON de rôles (`--roles` du CLI ET `FINTABLE_ROLES_JSON` du
+serveur) vivait dupliqué dans `fintableDry.ts` avant ce lot — extrait en `services/fintable/
+rolesConfig.ts` (classe `[[Lot audit n°2]]` « appliquer le même delta à deux copies = signal de
+consolider »), consommé par les deux surfaces.
+
+### Mise à jour 2026-07-29 (n°5) — panel de 7 agents sur la PR `[FINTABLE-3]` : 6 findings vrais corrigés
+
+Revue adversariale (code-reviewer, silent-failure-hunter, financial-integrity, security-privacy,
+projection-validator, documentation-manager, a11y-auditor) sur le diff COMMITÉ (`origin/main...HEAD`).
+Détail complet des leçons dans `CLAUDE.md` (bloc `[FUTUR-PAST-DEBT-FREEZE]`, sous-point panel) ; résumé
+décisionnel ici :
+
+1. **Isolation par payload** — `applyDocument` rejette légitimement un payload aberrant (solde de dette
+   ≤0, dette introuvable), mais sans `try/catch` PAR itération, ce rejet avortait TOUTE la passe avant
+   `store.save` : une carte remboursée à 0 $ un mois bloquait la sync ENTIÈRE (transactions ET cash
+   compris), chaque jour, tant que la condition persistait. Décision : un payload rejeté devient un
+   avertissement LOCAL dans le rapport ; les payloads valides restent appliqués et sauvegardés.
+2. **Bascule plafonnée à aujourd'hui** — une transaction mal datée dans le futur pousserait la bascule
+   en avant, filtrant TOUTES les vraies transactions Fintable comme « avant la bascule » indéfiniment,
+   sans signal. Plafond `min(dérivé, aujourd'hui)` + avertissement tracé.
+3. **Garantie « rapport toujours écrit » élargie** — la lecture d'état initiale vivait hors du bloc
+   protégé : une panne PRÉCISÉMENT là (Drive KO, jeton révoqué) ne déclenchait aucune écriture de
+   rapport, contredisant la garantie documentée au point précédent. Le `try` couvre désormais cette lecture.
+4. **Montant $ retiré d'un message d'avertissement** — un solde de dette négatif chez Fintable produisait
+   un avertissement avec le montant en clair, rendu SANS gate mode discret dans la carte UI ET dumpé dans
+   les logs GitHub Actions (rétention ~90j, hors du droit à l'effacement de l'app). Le vrai montant reste
+   disponible, gardé par le mode discret, via le champ normal de la dette — pas besoin de le répéter en clair.
+5. **`fintableSyncReport` purgé au switch de persona démo** — champ `AppState` optionnel ADDITIF absent de
+   `DEFAULT_APP_STATE`, donc jamais réinitialisé par `personaResetBase()` : le vrai rapport (comptes/dettes/
+   dates réels) survivait à une démo persona. Ajouté explicitement à `DEFAULT_APP_STATE` (même `undefined`).
+6. **Carte UI durcie contre une forme corrompue** — `debtsUpdated`/`warnings` ne sont validés par AUCUN
+   schéma Zod (champ hors `.passthrough()`). Un état Drive ancien/corrompu ferait planter le render. Ajout
+   d'une normalisation défensive (`Array.isArray`) + trace (`logError`) si l'anomalie survient.
+
+Un 2ᵉ écart a aussi été mesuré INDÉPENDAMMENT par 2 agents sur le fix `[FUTUR-PAST-DEBT-FREEZE]` (composant
+`FutureProjection.tsx`, hors chantier Fintable mais même PR) : voir le détail dans `CLAUDE.md` et
+`docs/BACKLOG.md` (sous-item du même nom) — le repli sur `liveResults` retombait à 0 dans la fenêtre boot/
+reload où le moteur n'a pas encore republié ; corrigé par un repli sur la courbe RÉELLEMENT affichée.

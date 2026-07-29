@@ -63,6 +63,30 @@ if gcloud secrets describe financeai-finnhub-key --project "$PROJECT_ID" >/dev/n
   echo "  Refresh : secret financeai-finnhub-key trouvé → cours actions via Finnhub."
 fi
 
+# [FINTABLE-3] Sync planifiée (cron quotidien) — OPTIONNELLE, même logique. Le jeton Fintable
+# (`financeai-fintable-token`, LECTURE SEULE — cf FINTABLE-0/decisions.md) suffit : cette route
+# ne fait que des GET vers Fintable, elle n'écrit QUE dans l'état FinanceAI (Drive), jamais
+# chez Fintable. `financeai-fintable-roles-json` associe chaque compte Fintable à son rôle
+# FinanceAI ({"<id-compte>":{"kind":"cash"|"debt"|"investment"|"ignore",...}}) — sans lui, la
+# route tourne mais ne reconnaît aucun compte (mapper à vide, rapport avec accountsWithoutRole).
+if gcloud secrets describe financeai-fintable-sync-secret --project "$PROJECT_ID" >/dev/null 2>&1; then
+  SECRETS="${SECRETS},FINANCEAI_FINTABLE_SYNC_SECRET=financeai-fintable-sync-secret:latest"
+  echo "  Fintable : secret financeai-fintable-sync-secret trouvé → POST /fintable-sync ACTIF."
+  if gcloud secrets describe financeai-fintable-token --project "$PROJECT_ID" >/dev/null 2>&1; then
+    SECRETS="${SECRETS},FINTABLE_TOKEN=financeai-fintable-token:latest"
+  else
+    echo "            ⚠️ MAIS financeai-fintable-token absent → chaque appel échouera (503)."
+  fi
+  if gcloud secrets describe financeai-fintable-roles-json --project "$PROJECT_ID" >/dev/null 2>&1; then
+    SECRETS="${SECRETS},FINTABLE_ROLES_JSON=financeai-fintable-roles-json:latest"
+  else
+    echo "            ⚠️ MAIS financeai-fintable-roles-json absent → aucun compte ne sera reconnu."
+  fi
+else
+  echo "  Fintable : secret financeai-fintable-sync-secret absent → POST /fintable-sync désactivé."
+  echo "             Pour l'activer : crée les 3 secrets (sync-secret + token + roles-json) puis redéploie."
+fi
+
 gcloud run deploy "$SERVICE" \
   --project "$PROJECT_ID" \
   --region "$REGION" \

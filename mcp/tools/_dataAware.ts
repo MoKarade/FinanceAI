@@ -8,7 +8,7 @@
 import type { AppState } from '../../types';
 import { freshnessNotice } from '../state/freshness';
 import { sanitizePromptText } from '../../utils/promptSafety';
-import { logError, onLogEntry } from '../../services/errorLogger';
+import { logError, onLogEntry, __resetErrorThrottle } from '../../services/errorLogger';
 
 // [MCP-PROMPT-SCRUB] Longueur max d'un champ TEXTE LIBRE utilisateur exposé à Claude via un tool
 // data-aware. Assez large pour un nom d'actif / payee / nom de projet normal (banques : < 60), mais
@@ -137,10 +137,18 @@ export async function withState(
     const engineWarnings: string[] = [];
     const als = await getRequestAls();
     const token = {};
+    // [F2 projection-validator] logErrorThrottled garde ses signatures À VIE du process → sur un
+    // Cloud Run long-vécu, un même avertissement moteur ne tirait qu'UNE fois (2ᵉ requête muette,
+    // mesuré). Purge au DÉBUT de chaque collecte : le throttle intra-run (hot-path MC) reste actif.
+    __resetErrorThrottle();
     const unsubscribe = onLogEntry((e) => {
         if (als && als.getStore() !== token) return; // log d'une AUTRE requête en vol → ignoré
         if (e.source === 'projection' && (e.severity === 'warning' || e.severity === 'error' || e.severity === 'critical')) {
-            if (engineWarnings.length < 5 && !engineWarnings.includes(e.message)) engineWarnings.push(e.message);
+            // [F1 projection-validator — ÉLEVÉ, mesuré] e.message peut interpoler un nom d'événement
+            // SAISI PAR L'UTILISATEUR (monthlyEvents interpole e.name) : ce bloc texte contourne le
+            // chokepoint jsonContent/scrubMcpDeep → scrub anti-injection ICI, au point de collecte.
+            const safe = sanitizePromptText(e.message, 300);
+            if (engineWarnings.length < 5 && !engineWarnings.includes(safe)) engineWarnings.push(safe);
         }
     });
     try {
@@ -166,8 +174,11 @@ export async function withState(
             message: 'MCP withState : calcul d\'un tool data-aware ÉCHOUÉ (réponse d\'erreur renvoyée à Claude).',
             error: err instanceof Error ? err : new Error(String(err)),
         });
+        // [F4 projection-validator] Un calcul qui ÉCHOUE garde ses indices : les avertissements
+        // moteur collectés avant le crash expliquent souvent l'échec.
+        const hint = engineWarnings.length > 0 ? ` Avertissements moteur : ${engineWarnings.join(' · ')}` : '';
         return errorContent(
-            `Calcul impossible sur ton état. ${err instanceof Error ? err.message : String(err)}`,
+            `Calcul impossible sur ton état. ${err instanceof Error ? err.message : String(err)}${hint}`,
         );
     } finally {
         unsubscribe(); // jamais d'écouteur qui fuit d'une requête à l'autre

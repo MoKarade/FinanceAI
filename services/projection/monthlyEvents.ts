@@ -123,7 +123,9 @@ export function applyLifeEvents(
             // force la vente, 'NONE' la désarme ; absent → détection historique par sous-chaîne (« vente »
             // = mot réservé, rétrocompat exacte des événements UI existants).
             const isVente = e.eventKind === 'VENTE_IMMO'
-                || (e.eventKind === undefined && !!e.name && e.name.toLowerCase().includes('vente'));
+                // `== null` (pas `=== undefined`) : un `null` issu d'un JSON tiers doit suivre le
+                // chemin historique, pas désarmer la vente (F6 projection-validator).
+                || (e.eventKind == null && !!e.name && e.name.toLowerCase().includes('vente'));
             if (isVente) {
                 // `mortgage < currentValue` : équité positive requise. Cas-limite intentionnel : un bien TRULY
                 // underwater (`mortgage >= currentValue`) n'est PAS vendu (on ne modélise pas la vente à perte

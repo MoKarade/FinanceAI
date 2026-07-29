@@ -17,6 +17,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { makeClient, makeTimeoutSignal, MODEL_SONNET } from '../claude';
 import { logError } from '../errorLogger';
+import { sanitizePromptText } from '../../utils/promptSafety';
 import type { StateProvider, ToolTextResult } from '../../mcp/tools/_dataAware';
 import { errorContent } from '../../mcp/tools/_dataAware';
 import type { AnyWriteToolSpec } from '../../mcp/tools/_toolSpec';
@@ -147,7 +148,8 @@ async function dispatchAnyTool(
                 message: `Chat in-app : l'exécuteur d'écriture ${name} a levé (ceinture) — AUCUNE écriture appliquée.`,
                 error: err instanceof Error ? err : new Error(String(err)),
             });
-            return errorContent(`L'écriture ${name} a échoué. ${err instanceof Error ? err.message : String(err)}`);
+            // [Finding code-reviewer #519] même scrub que côté MCP : err.message peut porter du texte modèle.
+            return errorContent(`L'écriture ${name} a échoué. ${sanitizePromptText(err instanceof Error ? err.message : String(err), 300)}`);
         }
     }
     return dispatchReadTool(name, rawArgs, getState);
@@ -233,6 +235,8 @@ export async function runAgentLoop(
     }
     const frozenState: StateProvider = async () => state;
 
+    // [AITOOLS-HISTORY-BOUND] Réf. du tool_result portant le breakpoint de cache tournant (cf. push).
+    let lastToolResultMarked: { cache_control?: { type: 'ephemeral' } } | null = null;
     for (let turn = 1; turn <= maxTurns; turn++) {
         const { signal, cleanup } = makeTimeoutSignal(opts.signal, opts.turnTimeoutMs ?? DEFAULT_TURN_TIMEOUT_MS);
         let msg: Anthropic.Message;
@@ -339,6 +343,20 @@ export async function runAgentLoop(
                 ...(res.isError ? { is_error: true } : {}),
             });
         }
+        // [AITOOLS-HISTORY-BOUND] Breakpoint de cache TOURNANT sur le dernier tool_result du tour :
+        // l'API stateless re-paie tout le préfixe (system + tools + tours passés + tool_results) à
+        // CHAQUE tour de la boucle — un tool_result volumineux (ex. simulate_what_if includeSeries
+        // ~1400 points) était re-facturé plein tarif aux tours suivants. Avec le marqueur, le préfixe
+        // est re-servi du cache (lecture 0,1×). NB budget de 4 marqueurs PAR REQUÊTE : tools (1) +
+        // system statique (1) + dernière pièce jointe B1 (≤1) + celui-ci (1) = 4 → on RETIRE le
+        // marqueur posé au tour précédent avant d'en poser un nouveau (sinon 5 au tour 3 → erreur API).
+        // ⚠️ Vérifier l'état réel (leçon PM-STALE-BACKLOG) : entre deux ENVOIS, useAiChat reconstruit
+        // l'historique en TEXTE seul (aucun tool_result resoumis) — le coût était bien INTRA-boucle ;
+        // une troncature aurait cassé la continuité du cache au lieu de l'exploiter.
+        if (lastToolResultMarked) delete lastToolResultMarked.cache_control;
+        const lastResult = results[results.length - 1] as (typeof results)[number] & { cache_control?: { type: 'ephemeral' } };
+        lastResult.cache_control = { type: 'ephemeral' };
+        lastToolResultMarked = lastResult;
         messages.push({ role: 'user', content: results });
     }
 

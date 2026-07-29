@@ -19,18 +19,27 @@
 import { sanitizePromptText } from '../../utils/promptSafety';
 import type { Change } from '../ingest/applyDocument';
 
-const scrubValue = (v: unknown): unknown => (typeof v === 'string' ? sanitizePromptText(v) : v);
+// [Finding code-reviewer PR #519 — ÉLEVÉ, mesuré] Le défaut de `sanitizePromptText` (60 car.) est
+// calibré pour un LIBELLÉ user (payee, nom de projet), pas pour la PROSE code-auteur des écritures :
+// il tronquait en plein mot les avertissements de sécurité (« la courbe d'historique perd… », « le
+// patrimoine net MONTE… », « annulable via Réglages ») → le modèle sur claude.ai ne pouvait plus les
+// relayer. Le summary/field/note restent SCRUBÉS (les substrings user interpolées y sont neutralisées)
+// mais avec une borne adaptée à de la prose — même distinction code-auteur vs user-libre que
+// MCP-PROMPT-SCRUB (les notes rédigées par le code ne doivent pas subir un cap conçu pour l'autre).
+const WRITE_TEXT_MAX = 400;
+
+const scrubValue = (v: unknown): unknown => (typeof v === 'string' ? sanitizePromptText(v, WRITE_TEXT_MAX) : v);
 
 export function scrubChangesForModel(changes: Change[]): Change[] {
     return changes.map((c) => ({
-        field: sanitizePromptText(c.field),
+        field: sanitizePromptText(c.field, WRITE_TEXT_MAX),
         before: scrubValue(c.before),
         after: scrubValue(c.after),
-        ...(c.note !== undefined ? { note: sanitizePromptText(c.note) } : {}),
+        ...(c.note !== undefined ? { note: sanitizePromptText(c.note, WRITE_TEXT_MAX) } : {}),
     }));
 }
 
 /** Résultat d'écriture prêt à renvoyer au modèle : summary + changes désinfectés. */
 export function scrubWriteResultForModel(summary: string, changes: Change[]): { summary: string; changes: Change[] } {
-    return { summary: sanitizePromptText(summary), changes: scrubChangesForModel(changes) };
+    return { summary: sanitizePromptText(summary, WRITE_TEXT_MAX), changes: scrubChangesForModel(changes) };
 }

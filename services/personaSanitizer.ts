@@ -92,6 +92,42 @@ export function sanitizePersonaArtifacts<T extends Partial<AppState>>(input: T):
         }
     }
 
+    // [PERSONA-SANITIZE-CHAT] Chat IA (defense-in-depth, finding panel B2 — LATENT : aucun persona
+    // n'écrit de chat AUJOURD'HUI, mais un futur persona de démo qui pré-remplirait une conversation
+    // passerait sinon entre les mailles). Deux tranches : `aiConversation` (messages de la
+    // conversation ACTIVE, filtrés par id) et `aiConversations` (archives : une archive dont l'ID
+    // OU un message est un artefact de persona est retirée EN ENTIER — une conversation de démo ne
+    // se « répare » pas message par message).
+    {
+        const active = (input as Record<string, unknown>).aiConversation;
+        if (Array.isArray(active) && active.length > 0) {
+            const kept = active.filter(m => !isPersonaArtifactId((m as { id?: unknown } | null)?.id));
+            const removed = active.length - kept.length;
+            if (removed > 0) {
+                ensureCopy();
+                (out as Record<string, unknown>).aiConversation = kept;
+                bySlice.aiConversation = removed;
+                removedTotal += removed;
+            }
+        }
+        const archives = (input as Record<string, unknown>).aiConversations;
+        if (Array.isArray(archives) && archives.length > 0) {
+            const kept = archives.filter((c) => {
+                const conv = c as { id?: unknown; messages?: Array<{ id?: unknown }> } | null;
+                if (!conv) return true;
+                if (isPersonaArtifactId(conv.id)) return false;
+                return !(conv.messages ?? []).some(m => isPersonaArtifactId(m?.id));
+            });
+            const removed = archives.length - kept.length;
+            if (removed > 0) {
+                ensureCopy();
+                (out as Record<string, unknown>).aiConversations = kept;
+                bySlice.aiConversations = removed;
+                removedTotal += removed;
+            }
+        }
+    }
+
     return { state: out, report: { removedTotal, bySlice } };
 }
 

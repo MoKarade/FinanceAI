@@ -125,6 +125,26 @@ describe('sanitizePersonaArtifacts', () => {
         expect('weddingGoal' in cleaned).toBe(false);
     });
 
+    it('[PERSONA-SANITIZE-CHAT] purge les messages/conversations de chat à ids de persona (défense en profondeur)', () => {
+        const input = {
+            aiConversation: [
+                { id: 'kar-fg1', role: 'user', text: 'fixture', timestamp: '' },      // id de fixture connu
+                { id: 'aimsg_1700000000000', role: 'user', text: 'réel', timestamp: '' }, // id réel horodaté
+            ],
+            aiConversations: [
+                { id: 'cd-fg1', title: 'démo', createdAt: '', updatedAt: '', messages: [] },  // archive à id de fixture
+                { id: 'conv_1700000000000', title: 'réelle', createdAt: '', updatedAt: '', messages: [{ id: 'b1' }] }, // message de fixture DANS l'archive
+                { id: 'conv_1700000000001', title: 'propre', createdAt: '', updatedAt: '', messages: [{ id: 'aimsg_1' }] },
+            ],
+        } as never;
+        const { state, report } = sanitizePersonaArtifacts(input);
+        const out = state as { aiConversation: Array<{ id: string }>; aiConversations: Array<{ id: string }> };
+        expect(out.aiConversation.map((m) => m.id)).toEqual(['aimsg_1700000000000']);
+        expect(out.aiConversations.map((c) => c.id)).toEqual(['conv_1700000000001']); // archives contaminées retirées EN ENTIER
+        expect(report.bySlice.aiConversation).toBe(1);
+        expect(report.bySlice.aiConversations).toBe(2);
+    });
+
     it('couvre categorizationRules (finding panel : tranche à id oubliée)', () => {
         const state = {
             categorizationRules: [

@@ -36,7 +36,7 @@
   routés sur `runProjectionAsync` (drop-in : même signature, Worker + timeout 30s côté navigateur, repli
   synchrone IDENTIQUE côté Node/MCP) ; `withState` élargi aux fn async (rétrocompat sync). Parité re-prouvée
   (registryParity vert sur le chemin async) + garde-scan « jamais d'appel moteur DIRECT dans un spec ».
-- [ ] **`[AITOOLS-HISTORY-BOUND]`** 🟡 MOYEN (S, à traiter au Lot C/E) — finding ai-reviewer : l'API est
+- [x] **`[AITOOLS-HISTORY-BOUND]`** ✅ 2026-07-29 (PR #519) — vérif de l'état RÉEL : entre deux ENVOIS, useAiChat resoumet du TEXTE seul (prémisse à moitié périmée) ; le vrai coût était INTRA-boucle (tours 2-6 re-paient les tool_results). Fix = breakpoint de cache TOURNANT sur le dernier tool_result (4ᵉ/4 marqueurs, l'ancien marqueur est retiré à chaque tour — 5 marqueurs = erreur API). Préfixe re-servi du cache (0,1×) au lieu d'une troncature qui l'aurait cassé. Guard-test de forme. Ex-finding ai-reviewer : l'API est
   stateless → réinjecter `messages` (avec tool_results volumineux, ex. simulate_what_if includeSeries ~1400
   points) RE-paie ces tokens à CHAQUE tour suivant sur la clé BYOK. Borner l'historique resoumis (tronquer les
   vieux tool_results, garder le texte). NB : ne PAS changer `includeSeries` défaut (surface claude.ai, parité).
@@ -105,7 +105,7 @@
   gelées isLoading). **Pièces jointes cross-device** : `attachmentDriveStore.ts` — un fichier appdata
   par message (`financeai-chat-attach-<msgId>.json`), push fire-and-forget à l'envoi, fetch au
   cache-miss (ratés mémorisés), delete avec la conversation, skip mode test/sans jeton.
-- [ ] **`[PERSONA-SANITIZE-CHAT]`** 🟡 (S, defense-in-depth — finding panel B2, LATENT) : `personaSanitizer`
+- [x] **`[PERSONA-SANITIZE-CHAT]`** ✅ 2026-07-29 (PR #519) — sanitizer étendu : `aiConversation` filtrée par id de message, archive `aiConversations` contaminée (id OU message de fixture) retirée EN ENTIER + test de parité. Ex-finding : `personaSanitizer`
   ne scanne pas `aiConversation`/`aiConversations` (aucun persona n'y écrit AUJOURD'HUI — pas de fuite
   active). Si un futur persona pré-remplit un chat de démo, la ceinture PERSONA-PURGE ne l'attraperait
   pas. Étendre le scan (ids `aimsg_` de fixtures enregistrés dans artifactIds) + test de parité.
@@ -365,11 +365,11 @@
   3 ÉLEVÉS mesurés : écrasement colonne multi-comptes 10 k$, garde devise crypto −27,5 %, clés éparses
   ligne 0 → piles Dashboard fausses/modal vide) + matching exact (`historyKeyMatchesSymbol`), cache IDB
   qui survit au boot (+ sweep), chips Investissements distinctes, note honnête excluded/partial.
-- [ ] **`[HIST-SESSION-HYDRATE]`** 🟡 (S) — hydratation UNIQUEMENT au boot (`useEffect []`) : un actif
+- [x] **`[HIST-SESSION-HYDRATE]`** ✅ 2026-07-29 (PR #518) — clé stable de symboles en dep de l'effet boot. (S) — hydratation UNIQUEMENT au boot (`useEffect []`) : un actif
   AJOUTÉ en cours de session n'a pas de courbe (ni part au TOTAL) avant le prochain reload, sans message.
   Déclencher une hydratation ciblée à l'ajout d'actif (AddStockForm/import courtier) ou sur changement de
   la liste des symboles.
-- [ ] **`[HIST-INFLIGHT-DEDUP]`** 🟢 (S) — au PREMIER boot (store sans priceHistory), `usePastPortfolioHistory`
+- [x] **`[HIST-INFLIGHT-DEDUP]`** ✅ 2026-07-29 (PR #518) — dédup in-flight dans withCache (rejet partagé, clé libérée en finally). (S) — au PREMIER boot (store sans priceHistory), `usePastPortfolioHistory`
   (Futur, sans pacing) et `hydrateAssetHistories` (pacé) peuvent fetcher les MÊMES symboles en parallèle
   (withCache ne déduplique pas l'in-flight). Bénin après le 1er boot (le store est hydraté). Dédup in-flight
   dans withCache ou skip usePast quand l'hydratation est en cours.
@@ -381,7 +381,7 @@
   store PERSISTÉ (localStorage + chaque push Drive) : ~25-30 Ko/symbole/3 ans, croît sans cap (surtout avec
   la fusion crypto > 365 j). Mesurer la taille réelle du payload sync ; si notable → downsample du stocké
   (quotidien 1 an, hebdo au-delà) ou sortir l'historique vers IDB device-local (pattern PROJECTION-PERSIST).
-- [ ] **`[HIST-PREVIEW-PROXY]`** 🟢 (XS) — `vite preview` n'a pas de proxy `/api/history/yahoo` (seul `server.proxy`
+- [x] **`[HIST-PREVIEW-PROXY]`** ✅ 2026-07-29 (PR #518) — const yahooProxy partagée server/preview. (XS) — `vite preview` n'a pas de proxy `/api/history/yahoo` (seul `server.proxy`
   dev est configuré) → repli Yahoo → fallback SPA → HTML → null honnête, graphes vides en preview local.
   Ajouter `preview.proxy` miroir si on se met à utiliser vite preview.
 
@@ -659,8 +659,11 @@
     RÉEL dans la projection (retrait cible−accumulé au mois de l'échéance) et que le MCP peut désormais la
     poser : une écriture IA non visible/réversible à l'écran. Afficher l'échéance sur la carte + permettre
     de l'éditer/effacer.
-  - [ ] **Lot 4 — vente totale d'un titre** (`apply_broker_statement` quantité 0 / helper dédié).
-  - [ ] **Lot 5 — suppression** (dette/objectif/transaction) — exige ADR + `confirm:true` strict (décision Marc).
+  - [x] **Lots 4-5 — `delete_item`** ✅ 2026-07-29 (ADR docs/decisions.md) : suppression actif/dette/objectif,
+    correspondance normalisée EXACTE (ambiguïté → throw, accountType pour un symbole multi-comptes),
+    aperçu des effets (courbe passée, NW, décaissement), confirmation 2 temps stricte. « Vente totale » =
+    suppression (quantity:0 réfuté : holdingsAt compte les purchases → courbe fausse à vie). Transactions
+    DIFFÉRÉES (cash dérivé — chemin sûr = isDuplicate, sémantique à ne pas deviner par l'IA). MCP v0.10.0.
   - Salaire : DÉJÀ couvert par `apply_payslip` (aucun nouveau tool). Immobilier : différé.
 - **`[ASSET-CURRENCY-BACKFILL]`** 🔧 (résidu panel FX) — un actif LEGACY sans champ `currency` est traité 1:1 CAD
   (désormais JOURNALISÉ par `assetValueCad`, plus muet) ; le fix propre = backfill de migration (défaut assumé +

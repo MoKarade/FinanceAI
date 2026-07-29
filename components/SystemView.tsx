@@ -238,7 +238,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                                 )}
                                 <div className="flex items-center justify-between py-2 border-b border-white/5">
                                     <span className="text-ink-300">Bascule utilisée</span>
-                                    <span className="font-mono text-ink-200">{state.fintableSyncReport.cutoverDateUsed ?? '—'}</span>
+                                    <span className="font-mono text-ink-200">{state.fintableSyncReport.cutoverDateUsed ?? 'aucune'}</span>
                                 </div>
                                 <div className="flex items-center justify-between py-2 border-b border-white/5">
                                     <span className="text-ink-300">Comptes vus</span>

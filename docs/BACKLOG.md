@@ -77,7 +77,7 @@
   détectés, cash/dettes MAJ, avertissements, erreur) → carte « Sync Fintable » dans Système & diagnostics, visible
   sans notification proactive (choix Marc). Conflit OCC = transitoire (relancé tel quel, PAS de rapport d'échec,
   le prochain tick réessaie) ; panne réelle Fintable/Drive = rapport d'échec persisté + 5xx (le cron GitHub rougit).
-  25 tests (`deriveCutoverDate` + `runFintableSync` + carte UI). `parseRolesJson` extrait en module PARTAGÉ
+  16 tests (`deriveCutoverDate` + `runFintableSync` + carte UI). `parseRolesJson` extrait en module PARTAGÉ
   (`services/fintable/rolesConfig.ts`) consommé par `fintable:dry` ET le serveur — zéro copie qui dérive.
 - [ ] **`[FINTABLE-4]` Import manuel répliqué et masqué** (S) — CONSERVÉ intégralement comme repli (Q1),
   déplacé hors du flux principal. Ne RIEN supprimer : c'est le filet quand Fintable/Plaid tombe.

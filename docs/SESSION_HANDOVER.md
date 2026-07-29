@@ -16,7 +16,7 @@
 > `AppState.fintableSyncReport` TOUJOURS écrit (succès/échec) → carte « Sync Fintable » dans Système &
 > diagnostics. Conflit OCC = transitoire (relancé sans rapport d'échec) ; panne réelle = rapport persisté + 5xx.
 > `parseRolesJson` extrait en module PARTAGÉ (`services/fintable/rolesConfig.ts`, consommé par `fintable:dry`
-> ET le serveur). 25 tests.
+> ET le serveur). 16 tests.
 > **🔵 `[FUTUR-PAST-DEBT-FREEZE]` LIVRÉ** (même PR) — demande Marc distincte, arrivée en cours de Lot 3 :
 > « assure-toi que le passé marche… le passé doit être exactement ce que c'était à cette date ». Audit
 > lecture seule d'abord (3/4 volets déjà corrects) puis fix d'un écart réel : `currentDebtNonImmo` (segment

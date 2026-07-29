@@ -62,7 +62,7 @@
   jeton lecture-seule qui est en Secret Manager.
 
 ## FINTABLE-3 — activer le cron de sync quotidien (remonté par Claude 2026-07-29)
-> Le code (orchestrateur serveur + endpoint + workflow GitHub) est livré et testé (25 tests) — ce qui
+> Le code (orchestrateur serveur + endpoint + workflow GitHub) est livré et testé (16 tests) — ce qui
 > reste est de la CONFIGURATION que je ne peux pas faire à ta place (Secret Manager + secrets GitHub).
 > Tant que ces 5 secrets n'existent pas, `/fintable-sync` reste DÉSACTIVÉ (404, aucun risque) — rien
 > ne se déclenche tout seul avant que tu aies fait ces étapes. Détail complet : `mcp/README.md`

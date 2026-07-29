@@ -330,3 +330,61 @@ ticket séparé si le besoin réel apparaît.
 **Alternatives rejetées** : `quantity: 0` (courbe fausse à vie, cf. point 2) ; purchases négatifs
 (casse potentiellement `computePurchaseStats`/DCA sans audit dédié) ; un tool par entité (3 surfaces
 de description pour le même contrat de confirmation).
+
+## ADR — Sync bancaire & investissements via Fintable (`FINTABLE`, 2026-07-29)
+
+**Contexte** : Marc veut ses transactions ET ses positions en quasi temps réel, sans saisie. Aujourd'hui :
+import manuel (relevés PDF/CSV → `applyDocument`), 18 mois d'historique constitués à la main. Fintable
+(fintable.io) agrège les banques via Plaid / GoCardless / Akoya et les comptes de courtage/crypto via
+SnapTrade, avec Google Sheets ou Airtable en destination. Marc a un abonnement et un jeton d'API.
+Cadrage validé (14 questions, 2026-07-29) : garder l'import manuel mais MASQUÉ (Q1) ; tous les comptes
+(Q3) ; Fintable gagne d'office sur les positions (Q10) ; liquidités auto-synchronisées (Q12) ; historique
+manuel remplacé par Plaid à terme (Q8) ; les tools MCP existants restent INCHANGÉS.
+
+**Décision** :
+
+1. **Aucun nouveau moteur de fusion.** `applyDocument` couvre DÉJÀ les trois besoins par construction :
+   `bank_statement` (transactions + dédup + allowlist de catégories), `broker_statement` (snapshot de
+   positions), `cash_balance` (delta sur `initialBalances.LIQUIDITE`, source unique `computeStartingCash`).
+   Fintable est donc un **PRODUCTEUR de `DocumentPayload`**, pas une 2ᵉ voie d'écriture. Ceintures héritées
+   gratuitement : dédup, `MCP-CATEGORY-ALLOWLIST`, sauvegarde horodatée + OCC (`runApply`), scrub
+   anti-injection (`scrubWriteResultForModel`).
+2. **Frontière à deux étages** dans `services/fintable/` : (a) un LECTEUR qui rend un `FintableSnapshot`
+   NORMALISÉ (comptes / transactions / positions) ; (b) un MAPPER **pur** `snapshot → DocumentPayload[]`.
+   Le mapper est money-critical et unit-testable ; le lecteur est remplaçable (API directe ou Sheet) sans
+   toucher au mapper.
+3. **Source = API Fintable directe** (choix Marc), le Google Sheet produit par Fintable restant le REPLI
+   documenté. ⚠️ La FORME de l'API n'est pas encore vérifiée — cf. « Ouvert ».
+4. **Jeton en Secret Manager** (`financeai-fintable-token`), **scope lecture seule**, monté en variable
+   d'env de la révision Cloud Run comme les 4 secrets existants (`mcp/deploy.sh`). Jamais dans le repo, le
+   bundle navigateur, ni l'état Drive. Le jeton collé en clair dans un chat le 2026-07-29 a été RÉVOQUÉ et
+   remplacé (incident traité, cf. `docs/A_FAIRE_MOI.md`).
+5. **Exécution SERVEUR (Cloud Run), pas navigateur** : cron quotidien, sur le patron du `POST /refresh`
+   existant (secret dédié). Le navigateur ne voit jamais le jeton et la sync tourne app fermée.
+6. **Écriture via `runApply`** → OCC (`getWithVersion` / `save(next, version)`) + sauvegarde horodatée
+   AVANT chaque écriture. C'est ce qui rend un écrivain SERVEUR compatible avec `SYNC-ANTI-CLOBBER` : une
+   écriture concurrente d'un appareil fait ÉCHOUER l'OCC (visible, retentée) au lieu d'écraser en silence.
+7. **La bascule de l'historique 18 mois est GATÉE PAR UNE MESURE**, jamais par hypothèse : Plaid rend de
+   90 jours à 24 mois SELON l'institution. Le Lot 5 commence par un rapport de couverture réelle (par
+   compte : date la plus ancienne, nombre de transactions) ; l'historique manuel n'est retiré que si la
+   couverture le justifie — sinon il est CONSERVÉ et raccordé à la date de bascule.
+
+**Pourquoi** : le risque n°1 d'une sync automatique n'est pas la lecture, c'est l'ÉCRITURE non surveillée
+dans un état money-critical. En passant par `applyDocument` / `runApply`, la sync hérite de ceintures déjà
+éprouvées au lieu d'en recréer des copies qui dériveront (classe `AITOOLS-SEC` : consolider, pas dupliquer).
+
+**Trade-offs** : dépendance à un service tiers payant pour la fraîcheur — d'où la CONSERVATION (masquée) de
+l'import manuel comme repli, pas sa suppression. Une sync serveur quotidienne peut heurter l'OCC d'un
+appareil qui pousse au même instant : l'échec est tracé et rejoué, jamais silencieux.
+
+**Alternatives rejetées** : (a) **lire le Google Sheet** produit par Fintable au lieu de son API — un étage
+de plus qui peut dériver (colonnes renommées) pour zéro gain dès que l'API est disponible ; gardé en REPLI
+documenté ; (b) **sync côté navigateur** — exposerait le jeton au bundle et ne tournerait qu'app ouverte ;
+(c) **un chemin d'écriture dédié** court-circuitant `applyDocument` — perdrait dédup, allowlist, backup et OCC.
+
+**Ouvert (BLOQUANT le Lot 1)** : la forme exacte de l'API Fintable (URL de base, en-tête d'authentification,
+chemins comptes / transactions / positions, noms de champs). Non vérifiable depuis l'environnement
+d'exécution : `docs.fintable.io` ne résout pas (NXDOMAIN) et `fintable.io` / `api.fintable.com` sont bloqués
+par la politique réseau du conteneur (403 au tunnel CONNECT). À fournir par Marc — une réponse réelle
+tronquée suffit. Coder un client contre une API DEVINÉE serait exactement le contre-modèle « vérifier avant
+d'affirmer » : le lecteur reste non écrit tant que la forme n'est pas mesurée.

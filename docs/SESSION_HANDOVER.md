@@ -4,6 +4,29 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟠 Session 2026-07-29 (suite) — nouveau chantier FINTABLE : cadrage + ADR livrés, Lot 1 BLOQUÉ sur la forme de l'API
+> **Demande Marc** : « mettre en place Fintable pour récupérer mes transactions et mes investissements en temps réel »,
+> sans perdre l'import manuel (le mettre de côté), en gardant tous les tools MCP. 14 questions de cadrage répondues.
+> **🔵 `[FINTABLE-0]` LIVRÉ (cette PR)** : ADR (`docs/decisions.md`) + plan en 6 lots (`docs/BACKLOG.md` § 🏦 FINTABLE).
+> **Découverte de cadrage qui RÉDUIT le chantier** (classe `R2-FIRE` — vérifier l'état RÉEL avant de coder) :
+> `mcp/ingest/applyDocument.ts` couvre DÉJÀ toute la fusion via 3 payloads existants — `bank_statement`
+> (transactions + dédup + allowlist), `broker_statement` (positions), `cash_balance` (delta `initialBalances.LIQUIDITE`).
+> Fintable est donc un **PRODUCTEUR de `DocumentPayload`**, pas un nouveau pipeline : il reste un LECTEUR + un MAPPER pur.
+> L'écriture passe par `runApply` → OCC + sauvegarde horodatée héritées (c'est ce qui rend un écrivain SERVEUR
+> compatible avec `SYNC-ANTI-CLOBBER`). Exécution = cron Cloud Run (jamais navigateur : le jeton n'entre pas dans le bundle).
+> **🔴 BLOCAGE Lot 1 (routé `A_FAIRE_MOI.md`)** : la forme de l'API Fintable n'est PAS vérifiable depuis l'exécution
+> cloud — `docs.fintable.io` NXDOMAIN, `fintable.io`/`api.fintable.com` bloqués par la politique réseau du conteneur
+> (403 au tunnel CONNECT ; `WebSearch` passe, `curl` non). Marc doit fournir URL de base + en-tête d'auth + chemins
+> + **une réponse réelle tronquée** (noms de champs). Le lecteur n'est PAS écrit tant que la forme n'est pas mesurée.
+> Repli documenté et immédiatement faisable si Marc préfère : lire le Google Sheet que Fintable alimente déjà.
+> **⚠️ Incident sécurité traité** : le 1ᵉʳ jeton Fintable (read+write, exp. 2027) a été collé en clair dans le chat →
+> RÉVOQUÉ par Marc, remplacé par un jeton **lecture seule** dans Secret Manager (`financeai-fintable-token`). Leçon
+> portée dans `CLAUDE.md` (§ Exécution cloud) avec la commande PIPÉE correcte (`gcloud secrets … --data-file=-` sans
+> pipe reste bloqué sur stdin — ça ressemble à un plantage).
+> **Suite** : dès la forme d'API reçue → Lot 1 (lecteur + `fintable:dry`, zéro écriture) puis Lot 2 (mapper pur + panel
+> money-critical : FX natif via `assetValueCad`, sémantique réelle d'`applyBrokerStatement` à MESURER, compte fermé
+> ≠ actif disparu). Lot 5 (bascule des 18 mois d'historique) reste GATÉ par une mesure de couverture Plaid réelle.
+>
 > ## 🟢 Session 2026-07-29 — DIRECTIVE MARC : « vider entièrement le backlog, non stop » → MCP-DIRECT-EDIT Lots 2-3 (PR en cours)
 > **Contexte** : `set_cash` (#517) mergé + **déployé par Marc sur Cloud Run (v0.8.0 → confirmé fonctionnel sur claude.ai)**. Marc a ensuite donné la directive : vider TOUT le backlog, trouver/corriger les erreurs, non-stop. Stratégie : lots de PR sur les items actionnables (vérifier l'état RÉEL avant de coder, leçon PM-STALE-BACKLOG) ; items gated décision/action humaine → routés `A_FAIRE_MOI.md`.
 > **🔵 Lots 2-3 MCP-DIRECT-EDIT** (cette PR) : `set_budget_item` (upsert poste par nom, édition cible → `autoTarget:false`) + `upsert_savings_goal` (upsert objectif par nom). Même pattern que set_cash (confirmation 2 temps, bornes D9, update partiel). MCP v0.9.0. ⚠️ Chaque lot MCP mergé exige un redéploiement Cloud Run par Marc (manuel — deploy-mcp.yml PAS configuré, `gcloud` non dispo en session cloud) → regrouper les lots avant de lui demander.

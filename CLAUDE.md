@@ -203,6 +203,22 @@ Doc détaillée dans `docs/`, qui fait foi.
 - Un commit de merge GitHub (`noreply@github.com` sur `main`) signalé « Unverified » par le stop-hook
   n'est PAS un commit local à corriger — l'ignorer.
 - ⚠️ **La suppression d'une branche DISTANTE est un no-op silencieux** (vu 2026-07-06 : `git push origin :branche` répond "Everything up-to-date" sans supprimer). Une branche périmée ne peut donc être ni force-poussée ni supprimée → réconcilier par `checkout -B <br> <tip-distant>` + `merge -X theirs origin/main` + **forcer l'arbre ≡ main** (`git checkout origin/main -- .` puis vérifier `git diff origin/main` VIDE) + commit de merge + push fast-forward. ⚠️ Avant de "sauver" les commits d'une branche périmée, TRIAGER : après des semaines, ils peuvent être superseded voire CONTRAIRES à une décision prise depuis (vu : suppression de l'alias tax vs décision Marc 2026-06-19 de le GARDER).
+- ⚠️ **La politique réseau du conteneur BLOQUE les hôtes tiers non allowlistés → une API externe peut être
+  NON-vérifiable depuis l'exécution cloud** (leçon FINTABLE-0 2026-07-29) : `curl: (56) CONNECT tunnel failed,
+  response 403` = refus du PROXY (hôte hors politique), **PAS** un problème de l'origine — ne pas débugger TLS/UA.
+  Asymétrie utile : `WebSearch` passe (chemin Anthropic) et `WebFetch` atteint l'origine (403 Cloudflare ≠ 403 proxy),
+  mais `curl`/`fetch` depuis le conteneur non ; `getent hosts` distingue en plus le NXDOMAIN (l'hôte deviné n'existe
+  pas) du blocage. Conséquence de CADRAGE : pour intégrer une API tierce non documentée publiquement, la forme
+  (URL de base, en-tête d'auth, chemins, NOMS DE CHAMPS) doit venir de Marc — **une réponse réelle tronquée, montants
+  masqués**. Coder un client contre une API DEVINÉE sur un chemin money-critical = le contre-modèle « vérifier avant
+  d'affirmer » ; livrer plutôt l'ADR + le plan + le blocage précis dans `A_FAIRE_MOI.md`, et ne pas écrire le lecteur.
+- ⚠️ **Un secret collé dans le chat est COMPROMIS — révocation d'abord, tout le reste après** (incident FINTABLE
+  2026-07-29 : jeton Fintable read+write, expiration 2027) : l'historique de conversation est persisté, donc « personne
+  ne l'a vu » n'est pas une mitigation. Séquence : révoquer → régénérer au **scope minimal** (lecture seule ici) →
+  `echo "<jeton>" | gcloud secrets versions add <nom> --data-file=- --project=<projet>` depuis le poste de Marc, jamais
+  un aller-retour par le chat. ⚠️ `gcloud secrets create … --data-file=-` **SANS pipe reste bloqué en attente de stdin**
+  (lit l'entrée standard) — ça ressemble à un plantage, c'est juste un `-` sans amont : toujours donner la commande
+  PIPÉE complète à Marc (cf. règle « son poste = Windows PowerShell », pas de bash/openssl).
 
 ## Agents — deux niveaux
 **Globaux** (`~/.claude/agents/` via claude-config / ECC) : dispo dans tous les projets.

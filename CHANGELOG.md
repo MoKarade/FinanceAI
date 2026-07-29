@@ -6,6 +6,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — import manuel de relevés replié par défaut] — 2026-07-29
+
+### Transactions
+- **`[FINTABLE-4]` Import manuel de relevé (CSV/PDF) déplacé hors du bouton d'en-tête** : maintenant que la
+  sync Fintable (`[FINTABLE-3]`) importe automatiquement tes transactions récentes, l'import manuel n'a plus
+  besoin d'être une action de premier plan — il reste **entièrement fonctionnel**, juste replié par défaut
+  (« Import manuel (repli — CSV/PDF) », un clic pour l'ouvrir) dès que tu as des transactions. Toujours
+  ouvert automatiquement si l'onglet est vide (premier import). L'import de relevé de courtage reste au
+  premier plan (c'est le seul chemin pour tes positions).
+
+### Interne
+- `Transactions.tsx` : bouton + state `showImport` remplacés par une disclosure `<details>` native (même
+  convention que `AdvancedProjectionParams`/`HistoryCoverageNote`). 3 tests mis à jour.
+- Découverte en chemin : `text-info-300` (~12 sites) est un token Tailwind inexistant (palette `info` =
+  400/500/600) — no-op silencieux. Corrigé sur le site touché par ce diff ; sweep dédié au BACKLOG (`[A11Y-INFO300-SWEEP]`).
+
+---
+
 ## [unreleased — sync bancaire automatique Fintable (cron quotidien) + fix courbe Futur] — 2026-07-29
 
 ### Sync bancaire (chantier Fintable)

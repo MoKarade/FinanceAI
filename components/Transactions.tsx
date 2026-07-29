@@ -44,7 +44,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
     const isCouple = !!coupleUsers[1]?.name?.trim();
     const ownerFirstName = (i: 0 | 1): string => coupleUsers[i]?.name?.trim().split(' ')[0] || `Conjoint ${i + 1}`;
 
-    const [showImport, setShowImport] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [progressStatus, setProgressStatus] = useState({ current: 0, total: 0 });
     const [liveLogs, setLiveLogs] = useState<string[]>([]);
@@ -415,17 +414,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 subtitle={`${transactions.length} transactions au total · ${uncategorizedGroups.length} groupe(s) à classer`}
                 actions={
                     <div className="flex items-center gap-2">
-                        {onImport && (
-                            <button
-                                type="button"
-                                onClick={() => setShowImport(v => !v)}
-                                aria-expanded={showImport}
-                                className="px-3 py-1.5 bg-primary/15 hover:bg-primary/25 border border-primary/30 rounded-card text-primary text-tiny font-bold transition-colors focus-ring"
-                                title="Importer un relevé bancaire CSV"
-                            >
-                                Importer un relevé
-                            </button>
-                        )}
                         {transactions.length > 0 && (
                             <button
                                 type="button"
@@ -433,7 +421,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     const { exportTransactionsCSV, downloadCSV, dateForFilename } = await import('../utils/csvExport');
                                     downloadCSV(`transactions-${dateForFilename()}`, exportTransactionsCSV(transactions));
                                 }}
-                                className="px-3 py-1.5 bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded-card text-info-300 text-tiny font-bold transition-colors focus-ring"
+                                className="px-3 py-1.5 bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded-card text-info-400 text-tiny font-bold transition-colors focus-ring"
                                 title="Exporter toutes les transactions en CSV"
                             >
                                 Export CSV
@@ -443,11 +431,23 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 }
             />
 
-            {/* Activation (D2) : import accessible DEPUIS Transactions (avant, l'écran vide disait
-                « importez un CSV » sans aucun bouton → impasse n°1). Auto-affiché quand il n'y a
-                aucune transaction ; sinon togglé via le bouton « Importer un relevé ». */}
-            {onImport && (showImport || transactions.length === 0) && (
-                <ImportBankStatement onImport={onImport} apiKey={apiKey} />
+            {/* [FINTABLE-4] Import manuel — repli JAMAIS supprimé (seul chemin quand Fintable/Plaid
+                est indisponible), mais déplacé HORS du flux principal (retiré des actions du header)
+                maintenant que Fintable synchronise les transactions récentes automatiquement, 1×/jour.
+                Disclosure native `<details>` (convention établie, cf `AdvancedProjectionParams` /
+                `HistoryCoverageNote`) : ouverte par défaut UNIQUEMENT à l'onboarding (aucune transaction,
+                D2 activation — l'écran vide ne doit jamais être une impasse) ; repliée sinon, un clic pour
+                l'atteindre. ⚠️ jsdom ne cache pas le contenu d'un `<details>` fermé → le test discrimine
+                sur l'attribut `open`, pas sur la présence du panneau (cf CLAUDE.md [[INVEST-CHART-CLEAN]]). */}
+            {onImport && (
+                <details open={transactions.length === 0}>
+                    <summary className="cursor-pointer text-body text-ink-300 hover:text-white transition-colors focus-ring rounded-card inline-block px-1">
+                        Import manuel (repli — CSV/PDF)
+                    </summary>
+                    <div className="mt-3">
+                        <ImportBankStatement onImport={onImport} apiKey={apiKey} />
+                    </div>
+                </details>
             )}
 
             {/* [TX-DUPLICATES] Détection de doublons — propose, ne marque jamais d'office. */}

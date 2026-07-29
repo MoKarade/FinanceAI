@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@mokarade/hub-contract": "github:MoKarade/hub-contract#2d37a61c337d485ab9ec716d9c7507972e807226",
     "i18next": "^25.8.13",
     "jspdf": "^4.2.0",
@@ -64,7 +64,7 @@
     "fast-check": "^4.8.0",
     "jsdom": "^29.1.1",
     "knip": "^5.0.0",
-    "postcss": "^8.4.0",
+    "postcss": "^8.5.25",
     "tailwindcss": "^3.4.0",
     "tsx": "^4.19.0",
     "typescript": "~5.8.2",

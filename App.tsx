@@ -547,6 +547,11 @@ export const App: React.FC = () => {
                         message: `Cours non rafraîchis au boot pour ${res.skipped.length} titre(s) : ${res.skipped.map(s => s.symbol).slice(0, 6).join(', ')}${res.skipped.length > 6 ? '…' : ''} — bouton « Actualiser les cours » pour forcer un nouvel essai.`,
                     });
                 }
+                // [PRICE-SYNC-REPORT] Publier les skips de quotes à l'ÉCRAN (doctor Investissements) —
+                // le journal seul était invisible (finding ÉLEVÉ #499). Toujours publié ([] efface
+                // les skips périmés d'une passe précédente).
+                const { updateQuoteSkips } = await import('./services/history/syncDiagnostics');
+                updateQuoteSkips(res.skipped);
                 if (cancelled || res.patches.size === 0) return;
                 const fresh = useFinanceStore.getState().assets ?? [];
                 setAppState({ assets: applyPricePatches(fresh, res.patches) });

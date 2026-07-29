@@ -41,3 +41,29 @@ describe('syncDiagnostics', () => {
         expect(listener).not.toHaveBeenCalled();
     });
 });
+
+describe('[PRICE-SYNC-REPORT] updateQuoteSkips', () => {
+    it('fusionne les skips de quotes dans le rapport courant SANS écraser skipped/patchedCount', async () => {
+        const { setHistorySyncReport, updateQuoteSkips, getHistorySyncReport, clearHistorySyncReport } = await import('../../services/history/syncDiagnostics');
+        setHistorySyncReport({ at: 1, skipped: [{ symbol: 'AASI.PA', reason: 'empty' }], patchedCount: 3 });
+        updateQuoteSkips([{ symbol: 'GBS.PA', reason: 'no-quote' }]);
+        const r = getHistorySyncReport()!;
+        expect(r.quoteSkips).toEqual([{ symbol: 'GBS.PA', reason: 'no-quote' }]);
+        expect(r.skipped).toHaveLength(1);   // hydratation préservée
+        expect(r.patchedCount).toBe(3);
+        // Une passe PROPRE ([]) efface les skips périmés (anti « staleness silencieuse »).
+        updateQuoteSkips([]);
+        expect(getHistorySyncReport()!.quoteSkips).toEqual([]);
+        clearHistorySyncReport();
+    });
+
+    it('crée un rapport minimal si aucun (le refresh quotes peut tourner sans hydratation)', async () => {
+        const { updateQuoteSkips, getHistorySyncReport, clearHistorySyncReport } = await import('../../services/history/syncDiagnostics');
+        clearHistorySyncReport();
+        updateQuoteSkips([{ symbol: 'BTC', reason: 'error' }]);
+        const r = getHistorySyncReport()!;
+        expect(r.quoteSkips).toEqual([{ symbol: 'BTC', reason: 'error' }]);
+        expect(r.skipped).toEqual([]);
+        clearHistorySyncReport();
+    });
+});

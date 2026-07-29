@@ -488,6 +488,9 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 const fresh = useFinanceStore.getState().assets ?? [];
                 setAssets(applyPricePatches(fresh, res.patches));
             }
+            // [PRICE-SYNC-REPORT] Skips de quotes publiés au doctor ([] efface les périmés).
+            const { updateQuoteSkips } = await import('../services/history/syncDiagnostics');
+            updateQuoteSkips(res.skipped);
             const uncovered = res.skipped.filter(s => s.reason === 'no-quote' || s.reason === 'invalid-price' || s.reason === 'error');
             const mismatched = res.skipped.filter(s => s.reason === 'currency-mismatch');
             if (res.refreshed.length + res.unchanged.length + uncovered.length + mismatched.length === 0) {

@@ -192,7 +192,7 @@
   `null`. La façade (`runLink`) classe : transitoire → avalé en `null` mais NON compté au cache négatif (un
   429/réseau ne gèle plus un vrai titre) ; absence confirmée → compté au skip. Le TTL gradué reste 2ᵉ ceinture.
   Discriminant : 3× 429 → `canAttemptQuote` reste `true` (échouait avant) ; 3× 404 → skip armé.
-- [ ] **`[PRICE-SYNC-REPORT]`** (S-M, finding ÉLEVÉ silent-failure #499, mitigé) — les skips du refresh de
+- [x] **`[PRICE-SYNC-REPORT]`** ✅ 2026-07-29 — `updateQuoteSkips` (syncDiagnostics, fusion sans écraser l'hydratation, [] efface les périmés) publié par le boot (App) ET le bouton Actualiser (Investments) → section « Prix non actualisés (N) » du HistorySyncDoctor (repliée, raisons en français, dédup avec la liste historique). Ex-finding : les skips du refresh de
   BOOT (quotes/profils) n'ont AUCUNE surface UI (contrairement à l'historique → HistorySyncDoctor). Mitigation
   livrée : logError au journal quand des titres sont skippés au boot + TTL gradué (staleness bornée ~1 h).
   Fix complet : un rapport publié (patron setHistorySyncReport) consommé par le doctor/une note discrète.

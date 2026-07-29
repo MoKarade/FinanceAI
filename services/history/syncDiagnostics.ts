@@ -19,6 +19,10 @@ export interface HistorySyncReport {
     skipped: HydrateHistoryResult['skipped'];
     /** Nombre de titres patchés (historique mis à jour) par la dernière passe. */
     patchedCount: number;
+    /** [PRICE-SYNC-REPORT] Titres dont la QUOTE (currentPrice) n'a pas pu être rafraîchie à la
+     *  dernière passe (boot ou bouton) — avant, ces skips n'avaient AUCUNE surface UI (journal
+     *  seulement, finding ÉLEVÉ silent-failure #499). Publié via `updateQuoteSkips`. */
+    quoteSkips?: Array<{ symbol: string; reason: string }>;
 }
 
 let _report: HistorySyncReport | null = null;
@@ -32,6 +36,26 @@ export function setHistorySyncReport(report: HistorySyncReport): void {
         } catch (e) {
             // Un listener UI qui jette ne doit pas casser les autres ni l'hydratation (même
             // patron que les callbacks isolés d'agentLoop).
+            logError({ source: 'ui', severity: 'warning', message: 'Listener de diagnostic de sync en échec (ignoré).', error: e instanceof Error ? e : new Error(String(e)) });
+        }
+    }
+}
+
+/** [PRICE-SYNC-REPORT] Publie les skips de QUOTES de la dernière passe (boot/bouton) en les
+ *  FUSIONNANT dans le rapport courant (créé au besoin — le refresh des quotes peut tourner sans
+ *  hydratation d'historique). Toujours appelé, même avec [] : une passe propre EFFACE les skips
+ *  périmés de la passe précédente (classe « staleness silencieuse »). */
+export function updateQuoteSkips(quoteSkips: Array<{ symbol: string; reason: string }>): void {
+    _report = {
+        at: Date.now(),
+        skipped: _report?.skipped ?? [],
+        patchedCount: _report?.patchedCount ?? 0,
+        quoteSkips,
+    };
+    for (const l of _listeners) {
+        try {
+            l();
+        } catch (e) {
             logError({ source: 'ui', severity: 'warning', message: 'Listener de diagnostic de sync en échec (ignoré).', error: e instanceof Error ? e : new Error(String(e)) });
         }
     }

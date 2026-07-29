@@ -499,6 +499,26 @@ le cœur de la demande étant impossible, le gain restant ne justifiait pas de c
 abonnement »). Arbitrage assumé, tracé pour la prochaine session — la valeur retenue est l'import
 automatique des transactions + les soldes de référence.
 
+**3. La date de bascule remplace la dédup comme protection anti-doublon** (piège trouvé en LISANT le
+code plutôt qu'en le supposant). `applyDocument` déduplique sur `txnKey = date|montant_en_cents|payee`.
+Or le `payee` de Fintable (`merchant`/`description`) ne sera **jamais** la même chaîne que celui
+extrait des relevés PDF importés à la main : même dépense, clé différente, **doublon accepté en
+silence** — qui fausserait `computeStartingCash` ET les dépenses réelles du Budget. Et la fenêtre
+Fintable (30 jours mesurés) **recouvre** l'historique manuel : le risque est réel, pas théorique.
+→ `mapSnapshot` n'émet que les transactions **strictement postérieures** à `transactionsAfter`
+(= la dernière transaction déjà connue). Pas de recouvrement, donc aucune dépendance à la dédup ;
+la dédup reste la ceinture, la date de bascule est la bretelle. Généralisable : **quand deux sources
+alimentent le même journal, c'est la borne temporelle qui protège, pas la déduplication** — une clé de
+dédup qui inclut un libellé ne survit pas à un changement de fournisseur du libellé.
+
+**4. Autres garde-fous du mapper** (tous testés) : rôle de compte toujours EXPLICITE (un compte sans
+rôle est signalé, jamais rangé par défaut — ranger une carte de crédit en liquidités gonflerait le
+patrimoine du montant dû) ; liquidités en **tout-ou-rien** (`cash_balance` écrit un DELTA sur
+`initialBalances` : une cible partielle déplacerait durablement le cash, en silence) ; solde de carte
+négatif → `Math.abs` + alerte (une dette négative gonflerait le patrimoine) ; devise ≠ CAD écartée et
+signalée, jamais empilée sans conversion ; dette mise à jour en **solde seulement** — ni taux ni
+paiement minimum inventés, donc elle doit préexister (`MCP-APPLY-DEBT` : update partiel, strict à l'ajout).
+
 ### Mise à jour 2026-07-29 (n°4) — `[FINTABLE-3]` livré : cron serveur + déclencheur GitHub Actions (pas Cloud Scheduler)
 
 Cadrage validé par Marc (4 questions) : écriture réelle DÈS LE DÉPART (pas de période dry-run-only) ;
@@ -530,22 +550,36 @@ serveur) vivait dupliqué dans `fintableDry.ts` avant ce lot — extrait en `ser
 rolesConfig.ts` (classe `[[Lot audit n°2]]` « appliquer le même delta à deux copies = signal de
 consolider »), consommé par les deux surfaces.
 
-**3. La date de bascule remplace la dédup comme protection anti-doublon** (piège trouvé en LISANT le
-code plutôt qu'en le supposant). `applyDocument` déduplique sur `txnKey = date|montant_en_cents|payee`.
-Or le `payee` de Fintable (`merchant`/`description`) ne sera **jamais** la même chaîne que celui
-extrait des relevés PDF importés à la main : même dépense, clé différente, **doublon accepté en
-silence** — qui fausserait `computeStartingCash` ET les dépenses réelles du Budget. Et la fenêtre
-Fintable (30 jours mesurés) **recouvre** l'historique manuel : le risque est réel, pas théorique.
-→ `mapSnapshot` n'émet que les transactions **strictement postérieures** à `transactionsAfter`
-(= la dernière transaction déjà connue). Pas de recouvrement, donc aucune dépendance à la dédup ;
-la dédup reste la ceinture, la date de bascule est la bretelle. Généralisable : **quand deux sources
-alimentent le même journal, c'est la borne temporelle qui protège, pas la déduplication** — une clé de
-dédup qui inclut un libellé ne survit pas à un changement de fournisseur du libellé.
+### Mise à jour 2026-07-29 (n°5) — panel de 7 agents sur la PR `[FINTABLE-3]` : 6 findings vrais corrigés
 
-**4. Autres garde-fous du mapper** (tous testés) : rôle de compte toujours EXPLICITE (un compte sans
-rôle est signalé, jamais rangé par défaut — ranger une carte de crédit en liquidités gonflerait le
-patrimoine du montant dû) ; liquidités en **tout-ou-rien** (`cash_balance` écrit un DELTA sur
-`initialBalances` : une cible partielle déplacerait durablement le cash, en silence) ; solde de carte
-négatif → `Math.abs` + alerte (une dette négative gonflerait le patrimoine) ; devise ≠ CAD écartée et
-signalée, jamais empilée sans conversion ; dette mise à jour en **solde seulement** — ni taux ni
-paiement minimum inventés, donc elle doit préexister (`MCP-APPLY-DEBT` : update partiel, strict à l'ajout).
+Revue adversariale (code-reviewer, silent-failure-hunter, financial-integrity, security-privacy,
+projection-validator, documentation-manager, a11y-auditor) sur le diff COMMITÉ (`origin/main...HEAD`).
+Détail complet des leçons dans `CLAUDE.md` (bloc `[FUTUR-PAST-DEBT-FREEZE]`, sous-point panel) ; résumé
+décisionnel ici :
+
+1. **Isolation par payload** — `applyDocument` rejette légitimement un payload aberrant (solde de dette
+   ≤0, dette introuvable), mais sans `try/catch` PAR itération, ce rejet avortait TOUTE la passe avant
+   `store.save` : une carte remboursée à 0 $ un mois bloquait la sync ENTIÈRE (transactions ET cash
+   compris), chaque jour, tant que la condition persistait. Décision : un payload rejeté devient un
+   avertissement LOCAL dans le rapport ; les payloads valides restent appliqués et sauvegardés.
+2. **Bascule plafonnée à aujourd'hui** — une transaction mal datée dans le futur pousserait la bascule
+   en avant, filtrant TOUTES les vraies transactions Fintable comme « avant la bascule » indéfiniment,
+   sans signal. Plafond `min(dérivé, aujourd'hui)` + avertissement tracé.
+3. **Garantie « rapport toujours écrit » élargie** — la lecture d'état initiale vivait hors du bloc
+   protégé : une panne PRÉCISÉMENT là (Drive KO, jeton révoqué) ne déclenchait aucune écriture de
+   rapport, contredisant la garantie documentée au point précédent. Le `try` couvre désormais cette lecture.
+4. **Montant $ retiré d'un message d'avertissement** — un solde de dette négatif chez Fintable produisait
+   un avertissement avec le montant en clair, rendu SANS gate mode discret dans la carte UI ET dumpé dans
+   les logs GitHub Actions (rétention ~90j, hors du droit à l'effacement de l'app). Le vrai montant reste
+   disponible, gardé par le mode discret, via le champ normal de la dette — pas besoin de le répéter en clair.
+5. **`fintableSyncReport` purgé au switch de persona démo** — champ `AppState` optionnel ADDITIF absent de
+   `DEFAULT_APP_STATE`, donc jamais réinitialisé par `personaResetBase()` : le vrai rapport (comptes/dettes/
+   dates réels) survivait à une démo persona. Ajouté explicitement à `DEFAULT_APP_STATE` (même `undefined`).
+6. **Carte UI durcie contre une forme corrompue** — `debtsUpdated`/`warnings` ne sont validés par AUCUN
+   schéma Zod (champ hors `.passthrough()`). Un état Drive ancien/corrompu ferait planter le render. Ajout
+   d'une normalisation défensive (`Array.isArray`) + trace (`logError`) si l'anomalie survient.
+
+Un 2ᵉ écart a aussi été mesuré INDÉPENDAMMENT par 2 agents sur le fix `[FUTUR-PAST-DEBT-FREEZE]` (composant
+`FutureProjection.tsx`, hors chantier Fintable mais même PR) : voir le détail dans `CLAUDE.md` et
+`docs/BACKLOG.md` (sous-item du même nom) — le repli sur `liveResults` retombait à 0 dans la fenêtre boot/
+reload où le moteur n'a pas encore republié ; corrigé par un repli sur la courbe RÉELLEMENT affichée.

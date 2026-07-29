@@ -11,6 +11,7 @@ import { FutureProjection } from '../../components/FutureProjection';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { getPersonaOrDefault, DEFAULT_PERSONA_ID } from '../../services/testFixtures';
 import type { ProjectionResult, ProjectionChartPoint } from '../../services/projection/types';
+import type { LoadLockedResult } from '../../services/lockedProjectionStore';
 import type { Transaction } from '../../types';
 
 vi.mock('recharts', async () => {
@@ -24,10 +25,15 @@ vi.mock('recharts', async () => {
     };
 });
 vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+const idbMocks = vi.hoisted(() => ({
+    loadRevealed: vi.fn<() => Promise<LoadLockedResult>>(async () => ({ status: 'empty' as const })),
+    saveRevealed: vi.fn(async () => true),
+    clearRevealed: vi.fn(async () => undefined),
+}));
 vi.mock('../../services/lockedProjectionStore', () => ({
-    loadRevealedProjection: vi.fn(async () => ({ status: 'empty' as const })),
-    saveRevealedProjection: vi.fn(async () => true),
-    clearRevealedProjection: vi.fn(async () => undefined),
+    loadRevealedProjection: idbMocks.loadRevealed,
+    saveRevealedProjection: idbMocks.saveRevealed,
+    clearRevealedProjection: idbMocks.clearRevealed,
     saveLockedProjection: vi.fn(async () => true),
     loadLockedProjection: vi.fn(async () => ({ status: 'empty' as const })),
     clearLockedProjection: vi.fn(async () => undefined),
@@ -128,5 +134,40 @@ describe('FutureProjection — segment PASSÉ reste réel même quand le FUTUR e
         const netWorthAfter = netWorthCell()[1].textContent;
         expect(netWorthAfter).not.toBe(netWorthBefore);
         expect(netWorthAfter).toMatch(/-\s?\d/); // devenu franchement négatif (dette de 10 M$ >> cash de 200k$)
+    });
+
+    // [finding financial-integrity + projection-validator, PR #531, MESURÉ] Fenêtre boot/reload :
+    // `lastProjection` est EXCLU de la persistance (partialize) → `null` tant que ProjectionEngine n'a
+    // pas recalculé (~300 ms+), alors que le blob figé restauré depuis IDB affiche DÉJÀ une courbe
+    // (`revealedProjectionSig` persisté, `loadRevealedProjection` résout typiquement plus vite). Sans
+    // repli, `currentDebtNonImmo` retombait à 0 dans cette fenêtre → passé gonflé de TOUTE la dette
+    // (régression MONEY-PHANTOM que ce fix ferme par ailleurs). Le repli doit utiliser la dette de la
+    // courbe RÉELLEMENT affichée (le blob figé), jamais 0.
+    it('remontage AVANT publication moteur (lastProjection null) + blob figé dispo → dette du blob figé soustraite, PAS 0', async () => {
+        const frozen = resultWithDebt('STRAT-FROZEN', 50_000);
+        idbMocks.loadRevealed.mockResolvedValueOnce({ status: 'ok' as const, result: frozen });
+
+        // Signature PÉRIMÉE d'emblée (remontage avec des paramètres qui ont changé depuis la révélation)
+        // ET aucun résultat LIVE encore publié par le moteur — exactement la fenêtre de course du boot.
+        act(() => {
+            useFinanceStore.setState({
+                revealedProjectionSig: 'sig-perimee-depuis-remontage',
+                lastProjection: null,
+            });
+        });
+
+        render(<Harness />);
+        // Le blob figé (restauré depuis l'IDB mocké) doit s'afficher — la garde `results !== null`
+        // couvre cette branche (curveRestoring seulement si AUCUN résultat, ni live ni figé).
+        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-FROZEN/i)).toBeInTheDocument());
+        expect(screen.getByText(/Pas à jour/i)).toBeInTheDocument();
+
+        const table = document.querySelector('table.sr-only') as HTMLTableElement;
+        const firstDataRow = within(table).getAllByRole('row')[1];
+        const netWorthCell = within(firstDataRow).getAllByRole('rowheader').concat(within(firstDataRow).getAllByRole('cell'))[1];
+        // Discriminant : sans repli (ancien comportement de cette fenêtre précise), la dette serait 0 →
+        // NetWorth = seulement le cash (271 k$, positif). Avec le repli sur le blob figé (50 000 $ de
+        // dette), le NetWorth doit être ce cash MOINS cette dette — donc strictement plus bas.
+        expect(netWorthCell.textContent).not.toMatch(/^271\s?k\$/);
     });
 });

@@ -26,10 +26,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ### Interne
 - `mcp/runFintableSync.ts` (orchestrateur, patron `runPriceRefresh`) + `POST /fintable-sync` dans `mcp/
   http.ts` (secret dédié `FINANCEAI_FINTABLE_SYNC_SECRET`) + `.github/workflows/fintable-sync.yml`. Date de
-  bascule anti-doublon DÉRIVÉE à chaque passe (`deriveCutoverDate`), jamais figée. `AppState.
-  fintableSyncReport` (additif, zéro migration). `services/fintable/rolesConfig.ts` consolidé (CLI + serveur).
+  bascule anti-doublon DÉRIVÉE à chaque passe (`deriveCutoverDate`), jamais figée — et plafonnée à AUJOURD'HUI
+  (une transaction mal datée dans le futur ne peut plus geler la sync en silence). `AppState.
+  fintableSyncReport` (additif, zéro migration ; purgé au switch de persona démo). `services/fintable/
+  rolesConfig.ts` consolidé (CLI + serveur). Un payload rejeté (ex. solde de dette à 0 $) devient un
+  avertissement local — il n'avorte plus toute la passe, les autres payloads valides restent appliqués.
 - `FutureProjection.tsx` : `currentDebtNonImmo` route désormais par `liveResults` (jamais le blob figé de
-  PROJECTION-PERSIST). Test discriminant prouvé par `git stash` (échoue sur l'ancien code).
+  PROJECTION-PERSIST), avec repli sur la courbe affichée (jamais 0) pendant la fenêtre de démarrage où le
+  moteur n'a pas encore republié. Tests discriminants prouvés par `git stash` (échouent sur l'ancien code).
+- Panel de 7 agents sur cette PR : 6 findings vrais corrigés (isolation par payload, plafond de bascule,
+  garantie « rapport toujours écrit » élargie à la lecture initiale, montant $ retiré d'un message de log,
+  purge persona du nouveau champ, carte UI durcie contre une forme corrompue).
 
 ---
 

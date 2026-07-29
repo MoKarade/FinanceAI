@@ -310,22 +310,24 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // EXACT au présent (le futur soustrait la même dette dès le mois 0). Approximation assumée (dette
     // supposée constante dans le passé, faute d'historique d'amortissement) — SIGNALÉE dans le bandeau.
     // ⚠️ [FUTUR-PAST-DEBT-FREEZE 2026-07-29, audit demande Marc « le passé doit être exactement ce que
-    // c'était à cette date »] Lu depuis `liveResults` (TOUJOURS frais), JAMAIS `results`/`chartData`
-    // (qui peuvent être le blob FIGÉ de PROJECTION-PERSIST) : le segment PASSÉ doit refléter la dette
-    // RÉELLE actuelle même quand la courbe FUTURE affichée est gelée (badge « Pas à jour ») — sinon la
-    // ligne Valeur Nette du passé continue de soustraire une dette PÉRIMÉE tant que Marc ne relance pas
-    // le calcul (écart confirmé par audit lecture seule, borné à cette seule composante).
-    // ⚠️ Garde tracée (finding silent-failure) : un `chartData` NON vide dont `DettesNonImmo` serait non fini
-    // (refactor moteur qui omettrait le champ) NE doit PAS retomber en silence à 0 (= régression MONEY-PHANTOM
-    // « passé gonflé » que ce fix corrige). `chartData` vide (avant 1er calcul) = nominal, silencieux. Log en
-    // useEffect (pas dans le render) → 1×/valeur distincte, jamais de thrash localStorage.
-    const liveChartData = liveResults?.chartData;
-    const rawDebtNonImmo = liveChartData?.[0]?.DettesNonImmo;
+    // c'était à cette date »] PRÉFÈRE `liveResults` (TOUJOURS frais) à `results`/`chartData` (qui peuvent
+    // être le blob FIGÉ de PROJECTION-PERSIST) : le segment PASSÉ doit refléter la dette RÉELLE actuelle
+    // même quand la courbe FUTURE affichée est gelée (badge « Pas à jour ») — sinon la ligne Valeur Nette
+    // du passé continue de soustraire une dette PÉRIMÉE tant que Marc ne relance pas le calcul.
+    // ⚠️ [finding financial-integrity, PR #531, MESURÉ par sonde de rendu] Ne JAMAIS retomber sur 0 quand
+    // `liveResults` n'est pas encore publié (fenêtre boot/reload : `lastProjection` est EXCLU de la
+    // persistance — `useFinanceStore.ts` partialize — donc `null` tant que ProjectionEngine n'a pas
+    // recalculé, ~300 ms+, alors que le blob figé restauré depuis IDB affiche DÉJÀ une courbe) : un
+    // repli sur 0 gonflerait le passé de TOUTE la dette hors hypothèque — exactement le MONEY-PHANTOM que
+    // ce fix ferme par ailleurs. Repli sur `chartData` (= ce que la courbe affiche déjà, live ou figé),
+    // jamais sur 0 — seul un état SANS AUCUNE donnée (ni live ni figé) reste à 0 (nominal, avant 1er calcul).
+    const effectiveChartData = liveResults?.chartData?.length ? liveResults.chartData : chartData;
+    const rawDebtNonImmo = effectiveChartData?.[0]?.DettesNonImmo;
     const currentDebtNonImmo = Number(rawDebtNonImmo) || 0;
-    const debtAnomaly = (liveChartData?.length ?? 0) > 0 && !Number.isFinite(Number(rawDebtNonImmo));
+    const debtAnomaly = (effectiveChartData?.length ?? 0) > 0 && !Number.isFinite(Number(rawDebtNonImmo));
     useEffect(() => {
         if (debtAnomaly) {
-            logError({ source: 'ui', severity: 'warning', message: 'FutureProjection : chartData[0].DettesNonImmo non fini — dette du passé rabattue à 0', context: { rawDebtNonImmo } });
+            logError({ source: 'ui', severity: 'warning', message: 'FutureProjection : DettesNonImmo (liveResults, repli chartData) non fini — dette du passé rabattue à 0', context: { rawDebtNonImmo } });
         }
     }, [debtAnomaly, rawDebtNonImmo]);
     // [FUTUR-HIST-WIRING-TEST] Assemblage du segment passé extrait en fonction PURE `buildPastPrefix`

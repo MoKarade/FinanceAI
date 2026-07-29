@@ -74,6 +74,22 @@ describe('runFintableSync — écriture atomique', () => {
         expect(report.cutoverDateUsed).toBeNull();
         expect(report.error).toBeNull();
     });
+
+    // [finding financial-integrity A3, PR #531] Une transaction mal datée dans le FUTUR pousserait la
+    // bascule en avant → le mapper filtrerait TOUTES les transactions Fintable comme "avant la
+    // bascule", chaque jour, sans aucun signal (transactionsAdded:0 indéfiniment). La bascule ne doit
+    // JAMAIS dépasser aujourd'hui, et le plafonnement doit être TRACÉ (pas un cap silencieux).
+    it('transaction datée dans le futur → bascule plafonnée à AUJOURD\'HUI, avec avertissement', async () => {
+        const farFuture = '2099-01-01';
+        const { store } = makeStore(baseState({ transactions: [tx(1, farFuture)] }));
+        const report = await runFintableSync(store, { token: 't', roles: {}, client: makeFakeClient() });
+
+        const todayStr = new Date().toISOString().slice(0, 10);
+        expect(report.cutoverDateUsed).toBe(todayStr); // jamais la date future brute
+        expect(report.cutoverDateUsed).not.toBe(farFuture);
+        expect(report.warnings.some((w) => w.includes('dans le FUTUR'))).toBe(true);
+        expect(report.error).toBeNull(); // un plafonnement n'est pas une panne
+    });
 });
 
 describe('runFintableSync — gestion des pannes', () => {
@@ -151,5 +167,77 @@ describe('runFintableSync — gestion des pannes', () => {
         await expect(
             runFintableSync(store, { token: 't', roles: {}, client: failingClient }),
         ).rejects.toThrow(/panne réseau/);
+    });
+
+    // [finding silent-failure-hunter, PR #531] Avant le fix, la lecture initiale (`getWithVersion`)
+    // vivait HORS du `try` : une panne à CET endroit précis (Drive KO, jeton révoqué, coffre chiffré)
+    // ne déclenchait AUCUN rapport d'échec, contredisant la garantie documentée « TOUJOURS écrit ».
+    it('la lecture INITIALE de l\'état échoue → un rapport d\'échec est quand même écrit', async () => {
+        const fallbackState = baseState();
+        const saved: AppState[] = [];
+        let getCalls = 0;
+        const store: StateStore = {
+            get: async () => fallbackState,
+            getWithVersion: async () => {
+                getCalls++;
+                // 1er appel = celui de runFintableSync (échoue) ; 2e = celui de persistFailureReport (réussit).
+                if (getCalls === 1) throw new Error('Drive inaccessible (jeton révoqué)');
+                return { state: fallbackState, version: 1 };
+            },
+            save: async (next) => { saved.push(next); return { backupPath: '/backup' }; },
+            canWrite: true,
+        };
+        await expect(
+            runFintableSync(store, { token: 't', roles: {}, client: makeFakeClient() }),
+        ).rejects.toThrow(/Drive inaccessible/);
+
+        expect(saved).toHaveLength(1);
+        expect(saved[0].fintableSyncReport?.error).toContain('Drive inaccessible');
+        // La bascule n'a jamais pu être dérivée (la lecture d'état a échoué avant) : honnête, pas 0/fabriqué.
+        expect(saved[0].fintableSyncReport?.cutoverDateUsed).toBeNull();
+    });
+});
+
+describe('runFintableSync — isolation par payload (un payload rejeté n\'avorte pas les autres)', () => {
+    // [finding financial-integrity, PR #531, MESURÉ] Une carte remboursée à 0 $ ce mois-ci est un
+    // solde LÉGITIME chez Fintable, mais `applyDocument` le juge « aberrant » pour une dette (design
+    // volontaire, cf applyDebt). Avant le fix, ce rejet AVORTAIT toute la boucle avant `store.save` —
+    // aucun payload, même valide (transactions, cash), n'était écrit tant que la carte restait à 0 $.
+    it('une dette à solde 0 (rejetée) devient un AVERTISSEMENT — transaction + cash restent appliqués', async () => {
+        const state = baseState({ transactions: [] });
+        const { store, saved } = makeStore(state);
+        const client = {
+            get: vi.fn(async (path: string) => {
+                if (path === '/accounts') {
+                    return {
+                        data: [
+                            { id: 'acc_cash', connection_id: 'conn_1', name: 'PCA', type: 'depository', currency: 'CAD', balance: '1000.00', enabled: true },
+                            { id: 'acc_visa', connection_id: 'conn_1', name: 'Visa', type: 'credit', currency: 'CAD', balance: '0.00', enabled: true },
+                        ],
+                        nextCursor: null, snapshotDate: null,
+                    };
+                }
+                if (path.endsWith('/holdings')) return { data: [], nextCursor: null, snapshotDate: null };
+                throw new Error(`route inattendue : ${path}`);
+            }),
+            getAllPages: vi.fn(async () => ([
+                { id: 'tx1', account_id: 'acc_cash', date: '2026-07-15', amount: '-50.00', currency: 'CAD', description: 'Test' },
+            ])),
+        } as unknown as FintableClient;
+
+        const report = await runFintableSync(store, {
+            token: 't',
+            roles: { acc_cash: { kind: 'cash' }, acc_visa: { kind: 'debt', debtName: 'Visa Card' } },
+            client,
+        });
+
+        expect(report.error).toBeNull();
+        expect(report.debtsUpdated).toEqual([]); // le payload dette a échoué : pas de fausse réussite
+        expect(report.warnings.some((w) => w.includes('Payload « debt » NON appliqué'))).toBe(true);
+        // Les payloads VALIDES sont bien appliqués ET sauvegardés malgré l'échec du 3e.
+        expect(report.transactionsAdded).toBe(1);
+        expect(report.cashUpdated).toBe(true);
+        expect(saved).toHaveLength(1);
+        expect(saved[0].transactions).toHaveLength(1);
     });
 });

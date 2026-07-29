@@ -1,12 +1,13 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from './ui/Card';
-import { AppState } from '../types';
+import { AppState, FintableSyncReport } from '../types';
 import { getMigrationStatus, getHydrationStatus } from '../store/useFinanceStore';
 import { ErrorLogViewer } from './system/ErrorLogViewer';
 import { AuditLogViewer } from './system/AuditLogViewer';
 import { Icon } from './ui/Icon';
 import { TAX_BASE_YEAR, FED_BRACKETS, BASIC_PERSONAL_AMOUNT_FED } from '../utils/tax';
+import { logError } from '../services/errorLogger';
 
 interface SystemViewProps {
     state: AppState;
@@ -142,6 +143,25 @@ const computeDiagnostics = (state: AppState): LogLine[] => {
     return lines;
 };
 
+// [finding silent-failure-hunter, PR #531] `fintableSyncReport` traverse une frontière de sync/
+// persistance SANS validation Zod (champ additif, hors schéma `.passthrough()`). Aujourd'hui
+// l'unique écrivain (`runFintableSync`) produit toujours des tableaux — mais un état Drive ancien/
+// corrompu ou un futur bug ne doit JAMAIS faire planter le RENDER : `debtsUpdated`/`warnings` sont
+// rabattus à `[]` s'ils ne sont pas des tableaux, et l'anomalie est TRACÉE (jamais un `?? []` muet).
+function normalizeFintableSyncReport(report: FintableSyncReport): { report: FintableSyncReport; anomaly: boolean } {
+    const debtsOk = Array.isArray(report.debtsUpdated);
+    const warningsOk = Array.isArray(report.warnings);
+    if (debtsOk && warningsOk) return { report, anomaly: false };
+    return {
+        report: {
+            ...report,
+            debtsUpdated: debtsOk ? report.debtsUpdated : [],
+            warnings: warningsOk ? report.warnings : [],
+        },
+        anomaly: true,
+    };
+}
+
 export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
     const [refreshKey, setRefreshKey] = useState(0);
 
@@ -152,6 +172,19 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
     const dbSize = useMemo(() => {
         try { return JSON.stringify(state).length / 1024; } catch { return 0; }
     }, [state]);
+
+    const fintableReportSafe = useMemo(
+        () => (state.fintableSyncReport ? normalizeFintableSyncReport(state.fintableSyncReport) : null),
+        [state.fintableSyncReport],
+    );
+    useEffect(() => {
+        if (fintableReportSafe?.anomaly) {
+            logError({
+                source: 'ui', severity: 'warning',
+                message: 'fintableSyncReport de forme inattendue (debtsUpdated/warnings non-tableau) — rabattu à [].',
+            });
+        }
+    }, [fintableReportSafe]);
 
     return (
         <div className="space-y-6 animate-fade-in pb-20">
@@ -213,9 +246,11 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                     {/* [FINTABLE-3] Rapport de la dernière passe de sync serveur (cron quotidien) — VISIBLE
                         dans l'app sans notification proactive (choix Marc). Zéro montant $ dans ce rapport
                         (compteurs, dates, noms de dettes saisis par Marc) → pas de gate mode discret nécessaire
-                        (la règle protège les VALEURS $, cf CLAUDE.md « Mode discret »). */}
+                        (la règle protège les VALEURS $, cf CLAUDE.md « Mode discret »). `fintableReportSafe`
+                        rabat `debtsUpdated`/`warnings` à `[]` si jamais mal formés (champ additif hors
+                        schéma Zod) plutôt que de planter le render (finding silent-failure, PR #531). */}
                     <Card icon={<Icon name="bank" size={18} />} title="Sync Fintable">
-                        {!state.fintableSyncReport ? (
+                        {!fintableReportSafe ? (
                             <p className="text-meta text-ink-400">
                                 Aucune sync automatique n'a encore eu lieu (cron serveur non configuré, ou pas encore déclenché).
                             </p>
@@ -223,55 +258,55 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                             <div className="space-y-0 text-body">
                                 <div className="flex items-center justify-between py-2 border-b border-white/5">
                                     <span className="text-ink-300">Dernière passe</span>
-                                    <span className="font-mono text-white">{formatRelative(state.fintableSyncReport.at)}</span>
+                                    <span className="font-mono text-white">{formatRelative(fintableReportSafe.report.at)}</span>
                                 </div>
                                 <div className="flex items-center justify-between py-2 border-b border-white/5">
                                     <span className="text-ink-300">Statut</span>
-                                    <span className={state.fintableSyncReport.error ? 'text-danger-400 font-bold' : 'text-success-400 font-bold'}>
-                                        {state.fintableSyncReport.error ? 'Échec' : 'OK'}
+                                    <span className={fintableReportSafe.report.error ? 'text-danger-400 font-bold' : 'text-success-400 font-bold'}>
+                                        {fintableReportSafe.report.error ? 'Échec' : 'OK'}
                                     </span>
                                 </div>
-                                {state.fintableSyncReport.error && (
+                                {fintableReportSafe.report.error && (
                                     <p className="text-meta text-danger-400 break-words py-2 border-b border-white/5">
-                                        {state.fintableSyncReport.error}
+                                        {fintableReportSafe.report.error}
                                     </p>
                                 )}
                                 <div className="flex items-center justify-between py-2 border-b border-white/5">
                                     <span className="text-ink-300">Bascule utilisée</span>
-                                    <span className="font-mono text-ink-200">{state.fintableSyncReport.cutoverDateUsed ?? 'aucune'}</span>
+                                    <span className="font-mono text-ink-200">{fintableReportSafe.report.cutoverDateUsed ?? 'aucune'}</span>
                                 </div>
                                 <div className="flex items-center justify-between py-2 border-b border-white/5">
                                     <span className="text-ink-300">Comptes vus</span>
                                     <span className="font-mono text-white">
-                                        {state.fintableSyncReport.accountsSeen}
-                                        {state.fintableSyncReport.accountsWithoutRole > 0 && (
-                                            <span className="text-yellow-400"> ({state.fintableSyncReport.accountsWithoutRole} sans rôle)</span>
+                                        {fintableReportSafe.report.accountsSeen}
+                                        {fintableReportSafe.report.accountsWithoutRole > 0 && (
+                                            <span className="text-yellow-400"> ({fintableReportSafe.report.accountsWithoutRole} sans rôle)</span>
                                         )}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between py-2 border-b border-white/5">
                                     <span className="text-ink-300">Transactions ajoutées</span>
-                                    <span className="font-mono text-white">{state.fintableSyncReport.transactionsAdded}</span>
+                                    <span className="font-mono text-white">{fintableReportSafe.report.transactionsAdded}</span>
                                 </div>
-                                {state.fintableSyncReport.transfersDetected > 0 && (
+                                {fintableReportSafe.report.transfersDetected > 0 && (
                                     <div className="flex items-center justify-between py-2 border-b border-white/5">
                                         <span className="text-ink-300">Virements internes détectés</span>
-                                        <span className="font-mono text-white">{state.fintableSyncReport.transfersDetected}</span>
+                                        <span className="font-mono text-white">{fintableReportSafe.report.transfersDetected}</span>
                                     </div>
                                 )}
                                 <div className="flex items-center justify-between py-2 border-b border-white/5">
                                     <span className="text-ink-300">Liquidités</span>
-                                    <span className="font-mono text-white">{state.fintableSyncReport.cashUpdated ? 'mises à jour' : 'inchangées'}</span>
+                                    <span className="font-mono text-white">{fintableReportSafe.report.cashUpdated ? 'mises à jour' : 'inchangées'}</span>
                                 </div>
                                 <div className="flex items-center justify-between py-2 gap-3">
                                     <span className="text-ink-300 shrink-0">Dettes mises à jour</span>
                                     <span className="font-mono text-white text-right">
-                                        {state.fintableSyncReport.debtsUpdated.length > 0 ? state.fintableSyncReport.debtsUpdated.join(', ') : 'aucune'}
+                                        {fintableReportSafe.report.debtsUpdated.length > 0 ? fintableReportSafe.report.debtsUpdated.join(', ') : 'aucune'}
                                     </span>
                                 </div>
-                                {state.fintableSyncReport.warnings.length > 0 && (
+                                {fintableReportSafe.report.warnings.length > 0 && (
                                     <div className="pt-2 space-y-1">
-                                        {state.fintableSyncReport.warnings.map((w, i) => (
+                                        {fintableReportSafe.report.warnings.map((w, i) => (
                                             <p key={i} className="text-tiny text-yellow-400">{w}</p>
                                         ))}
                                     </div>

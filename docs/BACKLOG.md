@@ -77,8 +77,17 @@
   détectés, cash/dettes MAJ, avertissements, erreur) → carte « Sync Fintable » dans Système & diagnostics, visible
   sans notification proactive (choix Marc). Conflit OCC = transitoire (relancé tel quel, PAS de rapport d'échec,
   le prochain tick réessaie) ; panne réelle Fintable/Drive = rapport d'échec persisté + 5xx (le cron GitHub rougit).
-  16 tests (`deriveCutoverDate` + `runFintableSync` + carte UI). `parseRolesJson` extrait en module PARTAGÉ
-  (`services/fintable/rolesConfig.ts`) consommé par `fintable:dry` ET le serveur — zéro copie qui dérive.
+  20 tests (`deriveCutoverDate` 4 + `runFintableSync` 10 + carte UI 6). `parseRolesJson` extrait en module
+  PARTAGÉ (`services/fintable/rolesConfig.ts`) consommé par `fintable:dry` ET le serveur — zéro copie qui dérive.
+  ⚠️ **Panel de 7 agents (code-reviewer, silent-failure-hunter, financial-integrity, security-privacy,
+  projection-validator, documentation-manager, a11y-auditor) sur cette même PR : 6 findings VRAIS corrigés**
+  (tous mesurés/vérifiés) — voir le bloc de leçons `[FUTUR-PAST-DEBT-FREEZE]` dans `CLAUDE.md` pour le détail :
+  isolation par payload dans la boucle d'application (un solde de dette 0 bloquait TOUTE la sync), bascule
+  plafonnée à aujourd'hui (une transaction future gelait la sync à `transactionsAdded:0` en silence), lecture
+  d'état initiale déplacée DANS le bloc protégé (garantit le rapport « toujours écrit » même si `getWithVersion`
+  échoue), montant $ retiré d'un message d'avertissement (fuyait en clair dans les logs GitHub Actions),
+  `fintableSyncReport` ajouté à `DEFAULT_APP_STATE` (sinon survivait au switch de persona démo), carte UI
+  durcie contre une forme corrompue (`Array.isArray` + `logError`, jamais un crash de render).
 - [ ] **`[FINTABLE-4]` Import manuel répliqué et masqué** (S) — CONSERVÉ intégralement comme repli (Q1),
   déplacé hors du flux principal. Ne RIEN supprimer : c'est le filet quand Fintable/Plaid tombe.
 - [x] **`[FINTABLE-5]` Bascule de l'historique 18 mois — ✅ TRANCHÉ 2026-07-29 : ON GARDE.** La mesure
@@ -341,6 +350,12 @@
     pastDebtFreeze.test.tsx`) : gèle le futur, bondit la dette LIVE de +10 M$, prouve que le NetWorth affiché du passé
     CHANGE (échoue sur l'ancien code — vérifié par `git stash`). Seule composante affectée (buckets cash/placements/immo
     du passé étaient déjà corrects, non gelés).
+    ⚠️ **2 agents (financial-integrity + projection-validator) ont mesuré INDÉPENDAMMENT une 2ᵉ fenêtre** que le 1ᵉʳ
+    jet du fix rouvrait : au boot/reload, `lastProjection` (exclu de la persistance) vaut `null` le temps que le
+    moteur recalcule (~300 ms+), alors que le blob figé restauré depuis IDB affiche DÉJÀ une courbe → le 1ᵉʳ jet
+    retombait à une dette de 0 (271 k$ mesuré vs 221 k$ attendu). Fix affiné : repli sur `chartData` (ce qui est
+    RÉELLEMENT affiché, live ou figé) plutôt que sur 0 — `liveResults?.chartData?.length ? liveResults.chartData
+    : chartData`. 2ᵉ test discriminant ajouté (remontage avant publication moteur + blob figé dispo).
 - [x] **`[FUTUR-ICONS-RICH]`** ✅ (2026-07-24, PR suivante — bug Marc « quasi aucune icône », le fix
   [FUTUR-ICON-DENSITY] ne suffisait pas) — le graphe Futur n'affichait des icônes que pour les rares `lifeEvents`/
   `flowEvents` du moteur (0-2 sur un plan normal). Fix 3 volets : (a) module pur `services/projection/milestoneIcons.ts`

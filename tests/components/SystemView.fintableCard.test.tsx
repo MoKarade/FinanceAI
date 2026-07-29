@@ -1,11 +1,17 @@
 // [FINTABLE-3] Carte "Sync Fintable" de SystemView — rend l'état honnête (jamais synchronisé,
 // succès, échec) sans crash. Zéro montant $ dans ce rapport → pas de gate mode discret à tester.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { SystemView } from '../../components/SystemView';
 import { buildDefaultAppState } from '../../mcp/state/appStateDefaults';
 import type { AppState, FintableSyncReport } from '../../types';
+
+const logErrorMock = vi.hoisted(() => vi.fn());
+vi.mock('../../services/errorLogger', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../services/errorLogger')>();
+    return { ...actual, logError: logErrorMock };
+});
 
 function baseReport(over: Partial<FintableSyncReport> = {}): FintableSyncReport {
     return {
@@ -61,5 +67,21 @@ describe('SystemView — carte Sync Fintable', () => {
         } as AppState;
         render(<SystemView state={state} />);
         expect(screen.getByText(/1 sans rôle/)).toBeInTheDocument();
+    });
+
+    // [finding silent-failure-hunter, PR #531] `fintableSyncReport` traverse une frontière de
+    // sync/persistance SANS validation Zod — une forme corrompue (état Drive ancien, futur bug) ne
+    // doit JAMAIS planter le render. Discriminant : un `debtsUpdated`/`warnings` malformé (non-tableau).
+    it('forme corrompue (debtsUpdated/warnings non-tableau) : rend SANS planter, rabat à vide, trace l\'anomalie', () => {
+        logErrorMock.mockClear();
+        const corrupted = {
+            ...baseReport(),
+            debtsUpdated: undefined, warnings: null,
+        } as unknown as FintableSyncReport;
+        const state = { ...buildDefaultAppState(), fintableSyncReport: corrupted } as AppState;
+
+        expect(() => render(<SystemView state={state} />)).not.toThrow();
+        expect(screen.getByText('aucune')).toBeInTheDocument(); // rabattu à [] → "Dettes mises à jour : aucune"
+        expect(logErrorMock).toHaveBeenCalledWith(expect.objectContaining({ severity: 'warning' }));
     });
 });

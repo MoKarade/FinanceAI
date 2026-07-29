@@ -79,18 +79,39 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
         throw new Error('Source d\'état non inscriptible : sync Fintable impossible.');
     }
 
-    const { state, version } = await store.getWithVersion();
-    const cutoverDateUsed = deriveCutoverDate(state.transactions);
-    const client = opts.client ?? new FintableClient({ token: opts.token });
+    // ⚠️ [finding silent-failure-hunter, PR #531] `cutoverDateUsed` vit HORS du `try` (déclaré avant)
+    // pour rester disponible à `persistFailureReport` même si la lecture d'état elle-même échoue —
+    // mais la lecture (`getWithVersion`) est désormais DANS le `try` (elle en était exclue avant :
+    // une panne de lecture initiale — Drive KO, jeton révoqué, coffre chiffré — ne déclenchait AUCUN
+    // rapport d'échec, contredisant la garantie documentée « TOUJOURS écrit »). `null` si la lecture
+    // échoue avant d'avoir pu dériver quoi que ce soit.
+    let cutoverDateUsed: string | null = null;
+    const preflightWarnings: string[] = [];
 
     try {
-        const today = new Date();
+        const { state, version } = await store.getWithVersion();
+        const todayStr = new Date().toISOString().slice(0, 10);
+        cutoverDateUsed = deriveCutoverDate(state.transactions);
+        // ⚠️ [finding financial-integrity A3, PR #531] Une transaction datée dans le FUTUR (typo,
+        // saisie pré-datée) pousserait la bascule EN AVANT de la date réelle → le mapper filtrerait
+        // TOUTES les transactions Fintable comme « avant la bascule » (`transactionsAfter`), CHAQUE
+        // JOUR, sans aucun signal (`ok:true, transactionsAdded:0` indéfiniment). Plafonné à
+        // AUJOURD'HUI, et le plafonnement est TRACÉ (no silent caps) plutôt que simplement appliqué.
+        if (cutoverDateUsed !== null && cutoverDateUsed > todayStr) {
+            preflightWarnings.push(
+                `Bascule dérivée (${cutoverDateUsed}) dans le FUTUR — une transaction existante est ` +
+                `mal datée. Plafonnée à aujourd'hui (${todayStr}) pour ne pas bloquer la sync ; corrige la date en cause.`,
+            );
+            cutoverDateUsed = todayStr;
+        }
+        const client = opts.client ?? new FintableClient({ token: opts.token });
+
         const snapshot = await readFintableSnapshot(client, {
             // Filtre grossier côté API (réduit la page) ; la borne EXACTE (stricte) est appliquée
             // par le mapper via `transactionsAfter` — les deux se recoupent, aucun risque à ce que
             // l'API soit inclusive du jour de bascule.
             dateFrom: cutoverDateUsed ?? undefined,
-            dateTo: today.toISOString().slice(0, 10),
+            dateTo: todayStr,
         });
 
         const { payloads, report: mapReport } = mapFintableSnapshot(snapshot, {
@@ -98,9 +119,33 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
             transactionsAfter: cutoverDateUsed,
         });
 
+        // ⚠️ [finding financial-integrity, PR #531, MESURÉ] Isolation PAR PAYLOAD : `applyDocument`
+        // REJETTE volontairement un payload aberrant (solde de dette 0/négatif, dette introuvable,
+        // cible de cash non finie…) — un rejet LÉGITIME côté validation, mais SANS isolation ici, il
+        // avortait TOUTE la passe avant `store.save` : aucun payload valide n'était écrit, CHAQUE JOUR,
+        // tant que la condition persistait (ex. une carte de crédit remboursée à 0 $ ce mois-ci). Les
+        // compteurs du rapport reflètent maintenant ce qui a RÉELLEMENT été appliqué (pas ce que le
+        // mapper a seulement PROPOSÉ) — un payload rejeté devient un avertissement, jamais un silence.
+        // ⚠️ [finding financial-integrity A4, PR #531] Applique les payloads dans l'ORDRE fourni par
+        // `mapFintableSnapshot` (bank_statement → cash_balance → debt) — ceci EST le contrat : `applyCashBalance`
+        // calcule sa cible via `computeStartingCash(state)` À L'INSTANT de son application, donc appliquer
+        // le `bank_statement` D'ABORD garantit que le cash tient compte des nouvelles transactions. Inverser
+        // l'ordre déplacerait le cash de la valeur des transactions du jour — ne JAMAIS trier/réordonner `payloads`.
         let nextState: AppState = state;
+        const applyWarnings: string[] = [];
+        let transactionsAdded = 0;
+        let cashUpdated = false;
+        const debtsUpdated: string[] = [];
         for (const doc of payloads) {
-            nextState = applyDocument(nextState, doc).nextState;
+            try {
+                nextState = applyDocument(nextState, doc).nextState;
+                if (doc.kind === 'bank_statement') transactionsAdded += doc.transactions.length;
+                else if (doc.kind === 'cash_balance') cashUpdated = true;
+                else if (doc.kind === 'debt') debtsUpdated.push(doc.name);
+            } catch (payloadErr) {
+                const reason = payloadErr instanceof Error ? payloadErr.message : String(payloadErr);
+                applyWarnings.push(`Payload « ${doc.kind} » NON appliqué : ${reason}`);
+            }
         }
 
         const report: FintableSyncReport = {
@@ -108,12 +153,12 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
             cutoverDateUsed,
             accountsSeen: snapshot.accounts.length,
             accountsWithoutRole: mapReport.accountsWithoutRole.length,
-            transactionsAdded: mapReport.transactions.mapped,
+            transactionsAdded,
             transfersDetected: mapReport.transferPairs.length,
-            cashUpdated: mapReport.cashTargetCad !== null,
-            debtsUpdated: mapReport.debts.map((d) => d.name),
+            cashUpdated,
+            debtsUpdated,
             investmentReferenceCount: mapReport.investmentBalances.length,
-            warnings: mapReport.warnings,
+            warnings: [...preflightWarnings, ...mapReport.warnings, ...applyWarnings],
             error: null,
         };
         nextState = { ...nextState, fintableSyncReport: report };

@@ -190,6 +190,12 @@ const DEFAULT_APP_STATE: AppState = {
     majorRenovations: [],
     charitableGoals: [],
     documents: [],
+    // [FINTABLE-3, finding sécurité panel PR #531] Présent EXPLICITEMENT (pas omis) pour que
+    // `personaResetBase()` (dérivé de ce littéral) le remette à `undefined` à CHAQUE entrée en mode
+    // démo persona — sinon le rapport RÉEL (comptes/dettes/dates de Marc) traverserait le spread de
+    // `enableTestMode` intact (un objet qui n'a pas une clé ne la réinitialise pas). Même classe que
+    // PERSONA-PURGE : « zéro fuite inter-persona ».
+    fintableSyncReport: undefined,
 };
 
 // Base PROPRE pour charger un persona de test : toutes les tranches de DONNÉES remises aux défauts

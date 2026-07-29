@@ -155,9 +155,15 @@ export function mapFintableSnapshot(
                 // le porter tel quel donnerait une dette NÉGATIVE qui gonflerait le patrimoine.
                 const owed = Math.abs(account.balance);
                 if (account.balance < 0) {
+                    // ⚠️ Le MONTANT n'est PAS interpolé ici (finding panel, PR #531) : ce warning finit
+                    // dans FintableSyncReport.warnings, rendu sans gate mode discret dans SystemView.tsx
+                    // ET dumpé en clair dans les logs GitHub Actions (fintable-sync.yml, `cat` du corps) —
+                    // une surface plus persistante que l'app. Le vrai montant est déjà visible, gardé par
+                    // le mode discret, dans Réglages → Dettes (via `debts.push({..., balanceCad: owed})`
+                    // ci-dessous) : pas besoin de le répéter ici en clair.
                     warnings.push(
                         `Dette « ${role.debtName} » : solde négatif chez Fintable (crédit en ta faveur) `
-                        + `→ interprété comme ${owed} dû. À vérifier.`,
+                        + '→ interprété comme un montant dû (positif). Vérifie dans Réglages → Dettes.',
                     );
                 }
                 debts.push({ name: role.debtName, balanceCad: owed });

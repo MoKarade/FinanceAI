@@ -226,6 +226,9 @@ export function applyWhatIfChanges(
                         state.lifeEvents = [...(state.lifeEvents ?? []), {
                             id: nextId(), type: 'GROS_ACHAT', name: `${engineName.name} (mise de fonds)`,
                             date, impactAmount: downPayment,
+                            // [ENG-LIFEEVENT-VENTE-SUBSTRING] Ceinture STRUCTURELLE : un achat n'est
+                            // JAMAIS une vente, quel que soit le nom (safeEngineName reste la bretelle).
+                            eventKind: 'NONE',
                         } satisfies LifeEvent];
                     }
                     const payment = loanMonthlyPayment(financed, ratePct, termYears);
@@ -243,6 +246,7 @@ export function applyWhatIfChanges(
                     state.lifeEvents = [...(state.lifeEvents ?? []), {
                         id: nextId(), type: 'GROS_ACHAT', name: engineName.name,
                         date, impactAmount: change.amount,
+                        eventKind: 'NONE', // ceinture structurelle (cf mise de fonds ci-dessus)
                     } satisfies LifeEvent];
                     assumptions.push(`« ${change.label} » payé comptant : bien de consommation, non compté comme actif.`);
                     applied.push(`Achat comptant « ${change.label} » : ${fmt(change.amount)} en ${date}.`);

@@ -488,6 +488,9 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 const fresh = useFinanceStore.getState().assets ?? [];
                 setAssets(applyPricePatches(fresh, res.patches));
             }
+            // [PRICE-SYNC-REPORT] Skips de quotes publiés au doctor ([] efface les périmés).
+            const { updateQuoteSkips } = await import('../services/history/syncDiagnostics');
+            updateQuoteSkips(res.skipped);
             const uncovered = res.skipped.filter(s => s.reason === 'no-quote' || s.reason === 'invalid-price' || s.reason === 'error');
             const mismatched = res.skipped.filter(s => s.reason === 'currency-mismatch');
             if (res.refreshed.length + res.unchanged.length + uncovered.length + mismatched.length === 0) {
@@ -501,6 +504,10 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 showToast(parts.join(' · '), historySyncFailed ? 'error' : (uncovered.length + mismatched.length > 0 ? 'info' : 'success'));
             }
         } catch (e) {
+            // [PRICE-SYNC-REPORT] Échec TOTAL du refresh : on GARDE les quoteSkips précédents du
+            // doctor (décision, finding #520) — ils restent VRAIS (ces titres n'ont toujours pas de
+            // prix frais) ; fabriquer un [] « tout va bien » serait pire. L'échec global, lui, est
+            // porté par le toast + logError.
             logError({ source: 'network', severity: 'warning', message: 'Actualisation des cours échouée (prix existants conservés)', error: e });
             showToast('Actualisation des cours impossible (réseau/fournisseur). Prix existants conservés.', 'error');
         } finally {

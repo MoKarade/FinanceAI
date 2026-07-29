@@ -9,7 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { HistorySyncDoctor } from '../../../components/investments/HistorySyncDoctor';
-import { setHistorySyncReport, clearHistorySyncReport } from '../../../services/history/syncDiagnostics';
+import { setHistorySyncReport, clearHistorySyncReport, updateQuoteSkips } from '../../../services/history/syncDiagnostics';
 import { useFinanceStore } from '../../../store/useFinanceStore';
 
 const searchMock = vi.fn();
@@ -32,6 +32,25 @@ beforeEach(() => {
 });
 
 describe('HistorySyncDoctor', () => {
+    it('[PRICE-SYNC-REPORT] skips de QUOTES → section « Prix non actualisés » avec raison en français', () => {
+        clearHistorySyncReport();
+        updateQuoteSkips([{ symbol: 'GBS.PA', reason: 'no-quote' }, { symbol: 'BTC', reason: 'error' }]);
+        render(<HistorySyncDoctor onApplyQuoteSymbol={onApply} isSyncing={false} />);
+        expect(screen.getByText(/Prix non actualisés \(2\)/)).toBeInTheDocument();
+        expect(screen.getByText('GBS.PA')).toBeInTheDocument();
+        expect(screen.getByText(/aucun cours disponible/)).toBeInTheDocument();
+        expect(screen.getByText(/panne du fournisseur/)).toBeInTheDocument();
+    });
+
+    it('[PRICE-SYNC-REPORT] DÉDUP : un symbole déjà listé côté HISTORIQUE n\'apparaît PAS en double côté quotes', () => {
+        setHistorySyncReport({ at: 1, patchedCount: 0, skipped: [{ symbol: 'CW8', reason: 'empty', detail: 'Introuvable.' }] });
+        updateQuoteSkips([{ symbol: 'CW8', reason: 'no-quote' }, { symbol: 'GBS.PA', reason: 'no-quote' }]);
+        render(<HistorySyncDoctor onApplyQuoteSymbol={onApply} isSyncing={false} />);
+        expect(screen.getByText(/Prix non actualisés \(1\)/)).toBeInTheDocument(); // CW8 dédupliqué
+        expect(screen.getAllByText('CW8')).toHaveLength(1);                        // une seule ligne CW8 (historique)
+        expect(screen.getByText('GBS.PA')).toBeInTheDocument();
+    });
+
     it('[INVEST-CHART-CLEAN] REPLIÉ par défaut (details sans open) + heading sr-only conservé', () => {
         setHistorySyncReport({ at: 1, patchedCount: 0, skipped: [{ symbol: 'CW8', reason: 'empty', detail: 'x' }] });
         const { container } = render(<HistorySyncDoctor onApplyQuoteSymbol={onApply} isSyncing={false} />);

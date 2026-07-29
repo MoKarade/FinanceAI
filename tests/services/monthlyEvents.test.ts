@@ -106,6 +106,35 @@ describe('applyLifeEvents', () => {
         return { mutator, s };
     };
 
+    // [ENG-LIFEEVENT-VENTE-SUBSTRING] Sémantique explicite : eventKind prime sur le mot réservé.
+    it('eventKind:VENTE_IMMO force la vente SANS le mot « vente » dans le nom', () => {
+        const event: LifeEvent = { id: 'v', date: '2035-06', type: 'GROS_ACHAT', name: 'Disposition du chalet', eventKind: 'VENTE_IMMO' };
+        const { mutator } = makeState();
+        const props: PropertyStateMutable[] = [{ id: 'c', isBought: true, mortgage: 0, currentValue: 400000, cost: 300000, isPrimaryResidence: false }];
+        applyLifeEvents([event], '2035-06', 1.0, props, mutator);
+        expect(props[0].isSold).toBe(true); // vendu sans dépendre du mot réservé
+    });
+
+    it("eventKind:NONE DÉSARME la sous-chaîne : « GROS_ACHAT … après vente de l'ancienne » n'est PLUS avalé en vente", () => {
+        const event: LifeEvent = {
+            id: 'g', date: '2035-06', type: 'GROS_ACHAT', name: 'Nouvelle maison après vente de l\'ancienne',
+            impactAmount: 30000, eventKind: 'NONE',
+        };
+        const { mutator, s } = makeState();
+        const props: PropertyStateMutable[] = [{ id: 'c', isBought: true, mortgage: 0, currentValue: 400000, cost: 300000, isPrimaryResidence: false }];
+        applyLifeEvents([event], '2035-06', 1.0, props, mutator);
+        expect(props[0].isSold).toBeUndefined();       // AUCUNE vente déclenchée
+        expect(s.expense).toBeGreaterThan(0);          // le GROS_ACHAT s'applique (impactAmount honoré)
+    });
+
+    it('eventKind absent = comportement HISTORIQUE exact (sous-chaîne « vente » détecte)', () => {
+        const event: LifeEvent = { id: 'v', date: '2035-06', type: 'GROS_ACHAT', name: 'Vente chalet' };
+        const { mutator } = makeState();
+        const props: PropertyStateMutable[] = [{ id: 'c', isBought: true, mortgage: 0, currentValue: 400000, cost: 300000, isPrimaryResidence: false }];
+        applyLifeEvents([event], '2035-06', 1.0, props, mutator);
+        expect(props[0].isSold).toBe(true);
+    });
+
     // RE-GAIN — gain en capital à la disposition d'un immeuble (vente via LifeEvent « vente »).
     it('RE-GAIN : vente d\'un LOCATIF réalise le gain (produit 95 % − coût) ; 50 % imposé en aval', () => {
         const event: LifeEvent = { id: 'v', date: '2035-06', type: 'GROS_ACHAT', name: 'Vente chalet locatif' };

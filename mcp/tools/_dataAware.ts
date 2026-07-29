@@ -8,7 +8,7 @@
 import type { AppState } from '../../types';
 import { freshnessNotice } from '../state/freshness';
 import { sanitizePromptText } from '../../utils/promptSafety';
-import { logError } from '../../services/errorLogger';
+import { logError, onLogEntry, __resetErrorThrottle } from '../../services/errorLogger';
 
 // [MCP-PROMPT-SCRUB] Longueur max d'un champ TEXTE LIBRE utilisateur exposé à Claude via un tool
 // data-aware. Assez large pour un nom d'actif / payee / nom de projet normal (banques : < 60), mais
@@ -70,6 +70,23 @@ export interface ToolTextResult {
  */
 export type StateProvider = () => Promise<AppState>;
 
+// [MCP-ENGINE-WARNINGS] ALS Node-only, chargé paresseusement (import dynamique : ce module est
+// AUSSI importé côté navigateur via les specs — un import statique de node:async_hooks casserait
+// le bundle). null = indisponible (navigateur) → collecte non scopée, sûre car séquentielle.
+type RequestAls = { run<T>(store: object, fn: () => T): T; getStore(): object | undefined };
+let _requestAls: RequestAls | null | undefined;
+async function getRequestAls(): Promise<RequestAls | null> {
+    if (_requestAls !== undefined) return _requestAls;
+    if (typeof window !== 'undefined') { _requestAls = null; return null; }
+    try {
+        const { AsyncLocalStorage } = await import('node:async_hooks');
+        _requestAls = new AsyncLocalStorage<object>() as unknown as RequestAls;
+    } catch {
+        _requestAls = null; // runtime sans async_hooks → repli non scopé (comportement séquentiel sûr)
+    }
+    return _requestAls;
+}
+
 /** Emballe un objet sérialisable en réponse MCP texte (JSON indenté).
  *  [MCP-PROMPT-SCRUB] Les champs texte libres sont neutralisés en profondeur (anti-injection). */
 export function jsonContent(payload: unknown): ToolTextResult {
@@ -108,14 +125,46 @@ export async function withState(
             `Impossible de charger ton état FinanceAI. ${err instanceof Error ? err.message : String(err)}`,
         );
     }
+    // [MCP-ENGINE-WARNINGS] Collecte les logs MOTEUR (source 'projection', warning+) émis PENDANT le
+    // calcul : sous Node, le sink localStorage est un no-op → « montant non fini → dépense ignorée »
+    // et consorts étaient INVISIBLES pour Claude (le calcul répondait avec assurance). Les messages
+    // sont déjà scrubés par logError (montants/PII masqués). Bloc texte ADDITIF, JSON intact.
+    // ⚠️ Concurrence (finding code-reviewer #520) : le Set d'écouteurs est PARTAGÉ par le process —
+    // deux withState EN VOL (Cloud Run HTTP) capteraient les logs l'un de l'autre. Sous Node, on
+    // scope donc la collecte au contexte async de CETTE requête (AsyncLocalStorage) ; en navigateur
+    // (pas d'ALS), la boucle de dispatch in-app est séquentielle ET le moteur tourne dans un Web
+    // Worker (module errorLogger séparé) → le cross-talk n'y est pas atteignable.
+    const engineWarnings: string[] = [];
+    const als = await getRequestAls();
+    const token = {};
+    // [F2 projection-validator] logErrorThrottled garde ses signatures À VIE du process → sur un
+    // Cloud Run long-vécu, un même avertissement moteur ne tirait qu'UNE fois (2ᵉ requête muette,
+    // mesuré). Purge au DÉBUT de chaque collecte : le throttle intra-run (hot-path MC) reste actif.
+    __resetErrorThrottle();
+    const unsubscribe = onLogEntry((e) => {
+        if (als && als.getStore() !== token) return; // log d'une AUTRE requête en vol → ignoré
+        if (e.source === 'projection' && (e.severity === 'warning' || e.severity === 'error' || e.severity === 'critical')) {
+            // [F1 projection-validator — ÉLEVÉ, mesuré] e.message peut interpoler un nom d'événement
+            // SAISI PAR L'UTILISATEUR (monthlyEvents interpole e.name) : ce bloc texte contourne le
+            // chokepoint jsonContent/scrubMcpDeep → scrub anti-injection ICI, au point de collecte.
+            const safe = sanitizePromptText(e.message, 300);
+            if (engineWarnings.length < 5 && !engineWarnings.includes(safe)) engineWarnings.push(safe);
+        }
+    });
     try {
-        const res = await fn(state);
+        const res = als ? await als.run(token, () => fn(state)) : await fn(state);
         // [MCP-STALE-FRESHNESS] — appose l'âge des données à CHAQUE réponse (bloc texte ADDITIF,
         // le JSON du 1er bloc reste intact). Si la source n'a pas d'horodatage (fixture, fichier
         // local), pas de note. Claude voit ainsi quand la copie Drive est périmée au lieu de
         // présenter des chiffres morts comme actuels (incident 2026-07-14).
         const notice = freshnessNotice();
         if (notice) res.content.push({ type: 'text', text: notice });
+        if (engineWarnings.length > 0) {
+            res.content.push({
+                type: 'text',
+                text: `⚠️ Avertissements du moteur pendant ce calcul (à relayer si pertinent) :\n- ${engineWarnings.join('\n- ')}`,
+            });
+        }
         return res;
     } catch (err) {
         // [MCP-TOOLS-SILENT-CATCH] Un bug de CALCUL dans un tool (NaN, forme d'état inattendue)
@@ -125,8 +174,13 @@ export async function withState(
             message: 'MCP withState : calcul d\'un tool data-aware ÉCHOUÉ (réponse d\'erreur renvoyée à Claude).',
             error: err instanceof Error ? err : new Error(String(err)),
         });
+        // [F4 projection-validator] Un calcul qui ÉCHOUE garde ses indices : les avertissements
+        // moteur collectés avant le crash expliquent souvent l'échec.
+        const hint = engineWarnings.length > 0 ? ` Avertissements moteur : ${engineWarnings.join(' · ')}` : '';
         return errorContent(
-            `Calcul impossible sur ton état. ${err instanceof Error ? err.message : String(err)}`,
+            `Calcul impossible sur ton état. ${err instanceof Error ? err.message : String(err)}${hint}`,
         );
+    } finally {
+        unsubscribe(); // jamais d'écouteur qui fuit d'une requête à l'autre
     }
 }

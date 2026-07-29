@@ -611,6 +611,12 @@ export interface LifeEvent {
    *  bien à vendre par son `RealEstateGoal.id`. Absent ⇒ fallback historique (premier bien à équité
    *  positive). Champ additif optionnel ⇒ aucun bump de schéma persist (v7 conservé). */
   propertyId?: string;
+  /** [ENG-LIFEEVENT-VENTE-SUBSTRING] Sémantique EXPLICITE de l'événement, pour les producteurs
+   *  PROGRAMMATIQUES (MCP/IA) : `'VENTE_IMMO'` déclenche la vente immobilière SANS dépendre du mot
+   *  réservé « vente » dans le nom ; `'NONE'` désarme la détection par sous-chaîne (un GROS_ACHAT
+   *  nommé « … après vente de l'ancienne » n'est PLUS avalé en vente). Absent ⇒ comportement
+   *  historique exact (détection par sous-chaîne). Champ additif optionnel ⇒ zéro bump persist. */
+  eventKind?: 'VENTE_IMMO' | 'NONE';
 }
 
 export interface RetirementGoal {

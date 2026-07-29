@@ -577,3 +577,33 @@ describe('Lot 1 — loader & validation AppState', () => {
         await expect(provider()).rejects.toThrow(/source d'état/i);
     });
 });
+
+describe('[MCP-ENGINE-WARNINGS] withState remonte les logs moteur émis pendant le calcul', () => {
+    it('un logError source projection PENDANT fn → bloc texte additif « Avertissements du moteur » (JSON intact)', async () => {
+        const { withState, jsonContent } = await import('../../mcp/tools/_dataAware');
+        const { logError } = await import('../../services/errorLogger');
+        const { buildDefaultAppState } = await import('../../mcp/state/loadAppState');
+        const res = await withState(async () => buildDefaultAppState(), (s) => {
+            logError({ source: 'projection', severity: 'warning', message: 'montant non fini -> depense ignoree (test)' });
+            return jsonContent({ ok: true, nw: s.transactions?.length ?? 0 });
+        });
+        expect(JSON.parse(res.content[0].text).ok).toBe(true); // JSON du 1er bloc INTACT
+        const warnBlock = res.content.find((b) => b.text.includes('Avertissements du moteur'));
+        expect(warnBlock).toBeTruthy();
+        expect(warnBlock!.text).toContain('depense ignoree (test)');
+    });
+
+    it('les logs HORS run (après la réponse) ou hors source projection ne fuient PAS ; écouteur désabonné', async () => {
+        const { withState, jsonContent } = await import('../../mcp/tools/_dataAware');
+        const { logError } = await import('../../services/errorLogger');
+        const { buildDefaultAppState } = await import('../../mcp/state/loadAppState');
+        const res = await withState(async () => buildDefaultAppState(), () => {
+            logError({ source: 'network', severity: 'warning', message: 'hors périmètre moteur' });
+            return jsonContent({ ok: true });
+        });
+        expect(res.content.some((b) => b.text.includes('Avertissements du moteur'))).toBe(false);
+        // Après la fin du run, un log projection n'ajoute RIEN à cette réponse déjà rendue (désabonné).
+        logError({ source: 'projection', severity: 'warning', message: 'post-run: ne doit pas fuir' });
+        expect(res.content.some((b) => b.text.includes('post-run'))).toBe(false);
+    });
+});

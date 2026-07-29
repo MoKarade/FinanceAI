@@ -68,7 +68,15 @@ export const HistorySyncDoctor: React.FC<Props> = ({ onApplyQuoteSymbol, isSynci
         if ((s.reason === 'empty' || s.reason === 'error') && !bySymbol.has(s.symbol)) bySymbol.set(s.symbol, s);
     }
     const actionable = [...bySymbol.values()];
-    if (actionable.length === 0) return null;
+    // [PRICE-SYNC-REPORT] Skips de QUOTES (currentPrice non rafraîchi) — dédup par symbole, et on
+    // n'affiche pas en double un titre déjà listé ci-dessus (le remède — symbole de cotation — est
+    // le même). currency-mismatch inclus (raison actionnable : corriger la devise/le suffixe).
+    const quoteBySymbol = new Map<string, { symbol: string; reason: string }>();
+    for (const q of report.quoteSkips ?? []) {
+        if (!bySymbol.has(q.symbol) && !quoteBySymbol.has(q.symbol)) quoteBySymbol.set(q.symbol, q);
+    }
+    const quoteActionable = [...quoteBySymbol.values()];
+    if (actionable.length === 0 && quoteActionable.length === 0) return null;
 
     const currentQuoteSymbol = (symbol: string): string =>
         (assets || []).find((a) => a.symbol === symbol)?.historySymbol ?? '';
@@ -79,9 +87,35 @@ export const HistorySyncDoctor: React.FC<Props> = ({ onApplyQuoteSymbol, isSynci
     // lecteurs d'écran (un summary a un rôle bouton, pas heading — et un heading DANS un details
     // fermé est caché) ; py-1.5 sur le summary = boîte ≥ 24 px (WCAG 2.5.8, padding sur le summary
     // lui-même, pas le parent).
+    // [PRICE-SYNC-REPORT] Raisons de skip de quote en français (labels courts, sans montant).
+    const QUOTE_REASON_LABELS: Record<string, string> = {
+        'no-quote': 'aucun cours disponible chez Finnhub/Yahoo — fixe le symbole de cotation ci-dessus',
+        'invalid-price': 'cours reçu invalide (rejeté par la garde de plausibilité)',
+        'currency-mismatch': 'devise du cours ≠ devise de l\'actif (corrige la devise ou le suffixe du symbole)',
+        'error': 'panne du fournisseur — nouvel essai automatique au prochain chargement',
+    };
+
     return (
         <div className="mt-2">
         <h4 className="sr-only">Cours non synchronisés</h4>
+        {quoteActionable.length > 0 && (
+            <details className="bg-white/[0.03] border border-warning-400/30 rounded-card px-3 py-1 mb-2">
+                <summary className="text-tiny font-bold text-ink-300 cursor-pointer select-none hover:text-white focus-ring rounded flex items-center gap-2 py-1.5">
+                    <Icon name="alert" size={12} aria-hidden="true" />
+                    Prix non actualisés ({quoteActionable.length}) — ces titres gardent leur dernier prix connu
+                </summary>
+                <ul className="mt-2 space-y-1">
+                    {quoteActionable.map((q) => (
+                        <li key={q.symbol} className="text-meta text-ink-200">
+                            <span className="font-bold text-white">{q.symbol}</span>
+                            {' — '}
+                            {QUOTE_REASON_LABELS[q.reason] ?? `non actualisé (${q.reason})`}
+                        </li>
+                    ))}
+                </ul>
+            </details>
+        )}
+        {actionable.length > 0 && (
         <details className="bg-white/[0.03] border border-warning-400/30 rounded-card px-3 py-1">
             <summary className="text-tiny font-bold text-ink-300 cursor-pointer select-none hover:text-white focus-ring rounded flex items-center gap-2 py-1.5">
                 <Icon name="alert" size={12} aria-hidden="true" />
@@ -162,6 +196,7 @@ export const HistorySyncDoctor: React.FC<Props> = ({ onApplyQuoteSymbol, isSynci
             </ul>
             </div>
         </details>
+        )}
         </div>
     );
 };

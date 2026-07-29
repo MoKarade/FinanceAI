@@ -192,7 +192,7 @@
   `null`. La façade (`runLink`) classe : transitoire → avalé en `null` mais NON compté au cache négatif (un
   429/réseau ne gèle plus un vrai titre) ; absence confirmée → compté au skip. Le TTL gradué reste 2ᵉ ceinture.
   Discriminant : 3× 429 → `canAttemptQuote` reste `true` (échouait avant) ; 3× 404 → skip armé.
-- [ ] **`[PRICE-SYNC-REPORT]`** (S-M, finding ÉLEVÉ silent-failure #499, mitigé) — les skips du refresh de
+- [x] **`[PRICE-SYNC-REPORT]`** ✅ 2026-07-29 — `updateQuoteSkips` (syncDiagnostics, fusion sans écraser l'hydratation, [] efface les périmés) publié par le boot (App) ET le bouton Actualiser (Investments) → section « Prix non actualisés (N) » du HistorySyncDoctor (repliée, raisons en français, dédup avec la liste historique). Ex-finding : les skips du refresh de
   BOOT (quotes/profils) n'ont AUCUNE surface UI (contrairement à l'historique → HistorySyncDoctor). Mitigation
   livrée : logError au journal quand des titres sont skippés au boot + TTL gradué (staleness bornée ~1 h).
   Fix complet : un rapport publié (patron setHistorySyncReport) consommé par le doctor/une note discrète.
@@ -1076,11 +1076,11 @@
   date de DÉBUT (servies dès le mois 0) → le what-if rejette un achat FINANCÉ différé (`monthsFromNow > 1`).
   Pour le supporter : soit un champ `startDate?` sur `Debt` honoré par le moteur (plan-first, touche le moteur),
   soit une modélisation « flux de paiements » côté what-if. Décision Marc requise sur la sémantique.
-- [ ] **[MCP-ENGINE-WARNINGS]** 🔧 LOW (suivi panel silent-failure 2026-07-13) — les `logErrorThrottled` du moteur
+- [x] **[MCP-ENGINE-WARNINGS]** ✅ 2026-07-29 — `onLogEntry` (écouteur éphémère d'errorLogger, isolé) + collecte dans `withState` (source projection, warning+, cap 5, dédup, désabonné en finally) → bloc texte additif « ⚠️ Avertissements du moteur » dans la réponse (JSON intact). Ex-suivi : les `logErrorThrottled` du moteur
   (ex. « montant non fini → dépense ignorée ») partent dans un sink NAVIGATEUR (localStorage, no-op sous Node) →
   invisibles pour Claude côté MCP. Piste : `withState` collecte les logs moteur pendant le run et les remonte dans
   la réponse JSON (champ `engineWarnings`). Zéro impact app web.
-- [ ] **[ENG-LIFEEVENT-VENTE-SUBSTRING]** 🔧 LOW (racine du finding « vente », pré-existant) — `applyLifeEvents`
+- [x] **[ENG-LIFEEVENT-VENTE-SUBSTRING]** ✅ 2026-07-29 — `LifeEvent.eventKind?: 'VENTE_IMMO' | 'NONE'` (additif, zéro bump persist) : sémantique EXPLICITE prime, absent = sous-chaîne historique exacte (golden inchangé, conservation 20/20). Le what-if MCP pose eventKind:'NONE' sur ses GROS_ACHAT (ceinture structurelle, safeEngineName reste la bretelle). 3 tests discriminants. Ex : `applyLifeEvents`
   détecte une vente immobilière par SOUS-CHAÎNE `name.includes('vente')` : fragile pour tout producteur de
   LifeEvent non humain (MCP assainit déjà via `safeEngineName`). Piste : type d'événement EXPLICITE
   (`'VENTE_IMMO'` dans `LifeEventType`) + migration douce du fallback substring. Plan-first (touche le moteur).
@@ -1608,7 +1608,7 @@
 ### IA / SDK Anthropic (ai-reviewer)
 - [x] **[NBA-CACHE-STALE]** ✅ MEDIUM (2026-06-17, BATCH2b) — `snapshotSig()` (netWorth arrondi + revenu + dépenses + nb dettes/objectifs + couple) stockée avec le cache ; `readCache(sig)` invalide si la signature diffère → plus de conseils basés sur un profil périmé. Rétro-compat : ancien cache sans `sig` valide par TTL, réécrit au 1er fetch.
 - [x] **[AI-VISION-TIMEOUT]** ✅ MEDIUM (2026-06-17, BATCH2a) — `analyzePayslip` + `analyzeBankStatement` bornés par `makeTimeoutSignal(undefined, 90_000)` + `{ signal }` passé à `messages.create` + `cleanup()` → abort au timeout, fin du spinner infini.
-- [ ] ~~**[AI-SNAPSHOT-DUP]** (fix d'origine)~~ ⚠️ **PRÉMISSE FAUSSE** (vérifié 2026-06-17, lecture du code) — les 2 `FinancialSnapshot` ne sont PAS identiques (`claude.ts` = `topDebts`/`activeGoals`/âges/soldes ; `financialSnapshot.ts` = `totalDebt`/`userCount`) et `buildFinancialSnapshot` n'est appelé par AUCUN runtime (def + tests + docs seulement). Le fix naïf (NextBestAction appelle `buildFinancialSnapshot`) serait FAUX (shapes incompatibles). **Résidu RÉEL restreint** : (a) collision de NOM entre 2 interfaces → en renommer une (`FinancialOverviewSnapshot` ?) ; (b) `buildFinancialSnapshot` = dead code → vérifier/supprimer (lié [CA-01]). NE PAS appliquer le fix d'origine.
+- [x] ~~**[AI-SNAPSHOT-DUP]** (fix d'origine)~~ ✅ RÉSIDUS RÉSOLUS AILLEURS (vérifié 2026-07-29) : une SEULE `interface FinancialSnapshot` subsiste (financialSnapshot.ts — la collision de nom a disparu) et `buildFinancialSnapshot` a désormais un consommateur RUNTIME (`buildFinancialOverview` → MCP + financialSignals, plus du code mort). ⚠️ **PRÉMISSE FAUSSE** (vérifié 2026-06-17, lecture du code) — les 2 `FinancialSnapshot` ne sont PAS identiques (`claude.ts` = `topDebts`/`activeGoals`/âges/soldes ; `financialSnapshot.ts` = `totalDebt`/`userCount`) et `buildFinancialSnapshot` n'est appelé par AUCUN runtime (def + tests + docs seulement). Le fix naïf (NextBestAction appelle `buildFinancialSnapshot`) serait FAUX (shapes incompatibles). **Résidu RÉEL restreint** : (a) collision de NOM entre 2 interfaces → en renommer une (`FinancialOverviewSnapshot` ?) ; (b) `buildFinancialSnapshot` = dead code → vérifier/supprimer (lié [CA-01]). NE PAS appliquer le fix d'origine.
 - [x] **[AI-NBA-MODEL]** ✅ LOW (2026-06-17, BATCH2a) — `getNextBestActions` `temperature:0` (actions déterministes) + `impact_estimate` borné `.max(60)` Zod + disclaimer UI « Recommandations générées par IA — à valider ». Modèle gardé Haiku (suffisant + caché 1h). `safeParse` cosmétique NON fait (le `schema.parse` est dans un try/catch testé qui retourne null = correct ; le changer = risque pour 0 gain).
 
 ### Vie privée — Loi 25 / RGPD (security-privacy)
@@ -1742,7 +1742,7 @@
   RetirementSettingsCard (5), UserConfigFields salary (2×idx), UsersCard nom/âge (2×idx) ;
   aria-label sur le select RepartitionField + l'input « Nom du profil ». Reste la dette
   hors-Profil (8/30 fichiers htmlFor) — opportuniste.
-- [ ] **[DEAD-FLT-2]** 🧹 (suite #246) — purger toute la CHAÎNE du stub `fetchPortfolioHistory`
+- [x] **[DEAD-FLT-2]** ✅ PÉRIMÉ/RÉSOLU AILLEURS (vérifié 2026-07-29, leçon PM-STALE-BACKLOG) — le stub `fetchPortfolioHistory` a été RETIRÉ par [PORTFOLIO-HISTORY] 2026-07-22 (grep : seuls des commentaires historiques le mentionnent). Ex : purger toute la CHAÎNE du stub `fetchPortfolioHistory`
   (`services/finance.ts` return []) : consumers restants = StockComparisonModal (+ son
   `.catch(console.warn)` à router logError), `hooks/usePortfolioHistory`, `fetchAssetHistory`.
 - [x] **[DEAD-FLT]** ✅ — bloc `fetchLiveTotals` purgé (45 lignes mortes : l'async ne tournait

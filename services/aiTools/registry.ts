@@ -32,6 +32,8 @@ import { applyBankStatementSpec } from '../../mcp/tools/applyBankStatement.spec'
 import { applyBrokerStatementSpec } from '../../mcp/tools/applyBrokerStatement.spec';
 import { applyTaxSlipSpec } from '../../mcp/tools/applyTaxSlip.spec';
 import { setCashSpec } from '../../mcp/tools/setCash.spec';
+import { setBudgetItemSpec } from '../../mcp/tools/setBudgetItem.spec';
+import { upsertSavingsGoalSpec } from '../../mcp/tools/upsertSavingsGoal.spec';
 
 /** Tools de LECTURE exposés au chat in-app. AUCUNE mutation possible par ces handlers. */
 export const READ_SPECS: AnyReadToolSpec[] = [
@@ -53,7 +55,7 @@ export const READ_SPECS_BY_NAME: ReadonlyMap<string, AnyReadToolSpec> =
     new Map(READ_SPECS.map((s) => [s.name, s]));
 
 /**
- * [AITOOLS-D] Tools d'ÉCRITURE exposés au chat in-app — les MÊMES 5 specs que le serveur MCP.
+ * [AITOOLS-D] Tools d'ÉCRITURE exposés au chat in-app — les MÊMES specs que le serveur MCP.
  * ⚠️ Contrat NON NÉGOCIABLE (exigence Marc « aucune donnée changée » sans consentement) : ces specs
  * ne PERSISTENT rien (`toDocument` seulement) — l'écriture réelle passe par
  * `services/aiTools/writeExecutor.ts` : diff pur → CONFIRMATION visuelle (modal) → clic Appliquer.
@@ -66,6 +68,8 @@ export const WRITE_SPECS: AnyWriteToolSpec[] = [
     applyBrokerStatementSpec,
     applyTaxSlipSpec,
     setCashSpec,
+    setBudgetItemSpec,
+    upsertSavingsGoalSpec,
 ];
 
 export const WRITE_SPECS_BY_NAME: ReadonlyMap<string, AnyWriteToolSpec> =

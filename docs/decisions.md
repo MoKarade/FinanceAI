@@ -499,6 +499,37 @@ le cœur de la demande étant impossible, le gain restant ne justifiait pas de c
 abonnement »). Arbitrage assumé, tracé pour la prochaine session — la valeur retenue est l'import
 automatique des transactions + les soldes de référence.
 
+### Mise à jour 2026-07-29 (n°4) — `[FINTABLE-3]` livré : cron serveur + déclencheur GitHub Actions (pas Cloud Scheduler)
+
+Cadrage validé par Marc (4 questions) : écriture réelle DÈS LE DÉPART (pas de période dry-run-only) ;
+1×/jour ; date de bascule AUTO-DÉRIVÉE (jamais une valeur figée à maintenir) ; échecs visibles dans
+l'app SEULEMENT (pas de notification proactive au démarrage).
+
+**Déclencheur choisi : GitHub Actions, pas Cloud Scheduler** (écart au plan initial du BACKLOG, décision
+prise en exécutant, pas re-demandée à Marc). Raison : `.github/workflows/refresh-prices.yml` (HUB-REFRESH-CRON)
+résout DÉJÀ exactement ce besoin — réveiller un Cloud Run endormi (scale-to-zero) sur un cron externe —
+gratuitement, sans la limite « 1×/jour » de Vercel Hobby, sans nouveau service GCP à activer/apprendre.
+`.github/workflows/fintable-sync.yml` clone ce patron à l'identique (10:00 UTC, secret DÉDIÉ
+`FINANCEAI_FINTABLE_SYNC_SECRET`, `POST /fintable-sync`). Cloud Scheduler aurait ajouté une dépendance
+GCP payante (au-delà du free tier) et un mécanisme SUPPLÉMENTAIRE pour un besoin déjà couvert —
+contraire à « stack ennuyeuse » et « tout gratuit » (CLAUDE.md global de Marc).
+
+**Deux secrets DISTINCTS, jamais partagés** : `FINANCEAI_REFRESH_SECRET` (prix de marché seulement) et
+`FINANCEAI_FINTABLE_SYNC_SECRET` (transactions/soldes/dettes réels). Périmètre différent → rotation
+indépendante ; compromettre l'un ne donne pas accès à l'écriture de l'autre.
+
+**Rapport TOUJOURS écrit, jamais de notification proactive** (choix Marc, 4ᵉ réponse) : `AppState.
+fintableSyncReport` (additif optionnel, zéro bump de version) est réécrit à CHAQUE passe — succès ou
+échec — et affiché dans Système & diagnostics. Un conflit OCC (l'app a poussé entre-temps) N'ÉCRIT PAS
+de rapport d'échec (transitoire, pas une panne) ; une panne RÉELLE (Fintable KO/jeton révoqué, Drive KO)
+écrit le rapport d'échec ET fait rougir le job GitHub (5xx) — Marc voit l'échec au prochain "check" de la
+Routine GitHub, sans avoir eu besoin d'ouvrir l'app.
+
+**Consolidation évitée** : le parseur du JSON de rôles (`--roles` du CLI ET `FINTABLE_ROLES_JSON` du
+serveur) vivait dupliqué dans `fintableDry.ts` avant ce lot — extrait en `services/fintable/
+rolesConfig.ts` (classe `[[Lot audit n°2]]` « appliquer le même delta à deux copies = signal de
+consolider »), consommé par les deux surfaces.
+
 **3. La date de bascule remplace la dédup comme protection anti-doublon** (piège trouvé en LISANT le
 code plutôt qu'en le supposant). `applyDocument` déduplique sur `txnKey = date|montant_en_cents|payee`.
 Or le `payee` de Fintable (`merchant`/`description`) ne sera **jamais** la même chaîne que celui

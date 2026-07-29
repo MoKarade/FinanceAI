@@ -31,6 +31,10 @@ import { MCP_SERVER_VERSION, resolveState, type ResolvedState } from './bootstra
 import { makeOAuthProvider, OAuthError, type OAuthProvider } from './auth/oauthProvider';
 import { buildHubSummary, errorHubSummary } from './hubSummary';
 import { runPriceRefresh } from './refreshPrices';
+import { runFintableSync } from './runFintableSync';
+import { FintableClient } from '../services/fintable/client';
+import type { FintableMappingConfig } from '../services/fintable/mapSnapshot';
+import { parseRolesJson } from '../services/fintable/rolesConfig';
 import { isStateConflictError } from './state/stateErrors';
 import { configureMarketDataProvider } from '../services/marketData';
 
@@ -69,6 +73,14 @@ export interface HttpServerOptions {
     /** [HUB-REFRESH-CRON] clé Finnhub (env) : configure le provider marché avant /refresh, pour
      *  rafraîchir aussi les ACTIONS (la crypto CoinGecko marche sans clé). Absente = actions skippées. */
     finnhubKey?: string;
+    /** [FINTABLE-3] secret du déclencheur planifié (cron quotidien) : si présent, POST /fintable-sync
+     *  est exposé (header Authorization: Bearer, 401 sinon). Absent = route désactivée. */
+    fintableSyncSecret?: string;
+    /** [FINTABLE-3] jeton Fintable (API V2) + config des rôles de comptes — requis ENSEMBLE avec
+     *  `fintableSyncSecret` pour que la route fasse quoi que ce soit d'utile (sans rôles, le mapper
+     *  n'a rien à mapper — pas une erreur de démarrage, juste une sync qui ne trouve aucun compte connu). */
+    fintableToken?: string;
+    fintableRoles?: FintableMappingConfig['roles'];
 }
 
 export interface RunningHttpServer {
@@ -362,6 +374,7 @@ ${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_metho
         '/health',
         ...(options.hubToken ? ['/hub/summary'] : []),
         ...(options.refreshSecret ? ['/refresh'] : []),
+        ...(options.fintableSyncSecret ? ['/fintable-sync'] : []),
     ];
 
     // [HUB-REFRESH-CRON] POST /refresh — rafraîchit les prix de marché dans le blob Drive, sans
@@ -400,6 +413,48 @@ ${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_metho
             });
     };
 
+    // [FINTABLE-3] POST /fintable-sync — synchronise transactions/soldes/dettes depuis Fintable dans
+    // le blob Drive, sans ouvrir l'app. Déclenché par un cron EXTERNE (Cloud Scheduler), authentifié
+    // par un secret DÉDIÉ (distinct de FINANCEAI_REFRESH_SECRET — périmètre différent : celui-ci
+    // AUTORISE l'écriture de transactions/soldes réels, pas seulement des cours de marché). Réponses :
+    // 200 { ok:true, report } au succès (report = FintableSyncReport, TOUJOURS persisté aussi dans
+    // AppState — visible dans l'app sans notification proactive, choix Marc) ; 200 { ok:false,
+    // conflict:true } si l'app a poussé entre-temps (transitoire, le prochain tick réessaie) ; 5xx sur
+    // panne RÉELLE (Fintable KO/jeton révoqué, Drive KO) pour que le cron rougisse au lieu de rester
+    // vert sur une sync qui ne progresse plus.
+    const handleFintableSync = (
+        req: IncomingMessage, res: ServerResponse, syncSecret: string,
+        fintableToken: string | undefined, fintableRoles: FintableMappingConfig['roles'] | undefined,
+    ): void => {
+        if (req.method !== 'POST') {
+            sendJson(res, 405, { error: 'POST uniquement.' }, HUB_NO_STORE);
+            return;
+        }
+        const header = req.headers.authorization;
+        const provided = typeof header === 'string' && header.startsWith('Bearer ') ? header.slice(7) : '';
+        if (!provided || !hubTokensMatch(provided, syncSecret)) {
+            sendJson(res, 401, { error: 'Authorization: Bearer absent ou invalide.' }, HUB_NO_STORE);
+            return;
+        }
+        if (!fintableToken) {
+            sendJson(res, 503, { ok: false, error: 'FINTABLE_TOKEN absent : sync impossible.' }, HUB_NO_STORE);
+            return;
+        }
+        const client = new FintableClient({ token: fintableToken });
+        runFintableSync(state.store, { token: fintableToken, roles: fintableRoles ?? {}, client })
+            .then((report) => sendJson(res, 200, { ok: true, report }, HUB_NO_STORE))
+            .catch((err: unknown) => {
+                const reason = err instanceof Error ? err.message : String(err);
+                // Conflit OCC = TRANSITOIRE (cf /refresh) : rien d'écrasé, le prochain tick réessaie.
+                if (isStateConflictError(err)) {
+                    sendJson(res, 200, { ok: false, conflict: true, error: reason }, HUB_NO_STORE);
+                    return;
+                }
+                console.error('[FinanceAI MCP http] /fintable-sync : échec —', reason);
+                sendJson(res, 503, { ok: false, error: reason }, HUB_NO_STORE);
+            });
+    };
+
     // [HUB-01] GET /hub/summary — résumé conforme au contrat hub, données réelles.
     // Un échec de lecture d'état renvoie un summary status "error" (HTTP 200) : le
     // widget du hub affiche la panne au lieu de traiter l'app comme injoignable.
@@ -434,6 +489,10 @@ ${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_metho
         }
         if (url === '/refresh' && options.refreshSecret) {
             handleRefresh(req, res, options.refreshSecret, options.finnhubKey);
+            return;
+        }
+        if (url === '/fintable-sync' && options.fintableSyncSecret) {
+            handleFintableSync(req, res, options.fintableSyncSecret, options.fintableToken, options.fintableRoles);
             return;
         }
         if (options.auth && (url.startsWith('/oauth/') || url.startsWith('/.well-known/'))) {
@@ -575,6 +634,31 @@ if (isDirectRun) {
         // Clé Finnhub (env/Secret Manager) : sans elle, /refresh ne rafraîchit que la crypto.
         const finnhubKey = process.env.FINANCEAI_FINNHUB_KEY;
 
+        // [FINTABLE-3] secret du cron Fintable (POST /fintable-sync) : optionnel (route désactivée
+        // sans lui), mais jamais faible — il autorise une ÉCRITURE de transactions/soldes réels.
+        // DISTINCT de FINANCEAI_REFRESH_SECRET (périmètres différents, rotation indépendante).
+        const fintableSyncSecret = process.env.FINANCEAI_FINTABLE_SYNC_SECRET;
+        if (fintableSyncSecret !== undefined && fintableSyncSecret.length < 16) {
+            console.error('[FinanceAI MCP http] REFUS de démarrer : FINANCEAI_FINTABLE_SYNC_SECRET trop court (< 16 caractères).');
+            process.exit(1);
+        }
+        const fintableToken = process.env.FINTABLE_TOKEN;
+        let fintableRoles: FintableMappingConfig['roles'] | undefined;
+        if (fintableSyncSecret) {
+            const rawRoles = process.env.FINTABLE_ROLES_JSON;
+            if (rawRoles) {
+                try {
+                    fintableRoles = parseRolesJson(rawRoles);
+                } catch (err) {
+                    console.error(
+                        '[FinanceAI MCP http] REFUS de démarrer : FINTABLE_ROLES_JSON invalide —',
+                        err instanceof Error ? err.message : String(err),
+                    );
+                    process.exit(1);
+                }
+            }
+        }
+
         if (!isLoopback && !auth && process.env.MCP_HTTP_ALLOW_EXPOSED !== '1') {
             console.error(
                 `[FinanceAI MCP http] REFUS de démarrer : hôte non-loopback (${host}) SANS authentification — ` +
@@ -586,7 +670,10 @@ if (isDirectRun) {
         }
 
         const state = await resolveState(process.argv[2]);
-        const running = await startHttpServer({ port, host, state, dnsRebindingProtection: isLoopback, auth, hubToken, refreshSecret, finnhubKey });
+        const running = await startHttpServer({
+            port, host, state, dnsRebindingProtection: isLoopback, auth, hubToken, refreshSecret, finnhubKey,
+            fintableSyncSecret, fintableToken, fintableRoles,
+        });
 
         console.error(`[FinanceAI MCP http] v${MCP_SERVER_VERSION} — écoute http://${host}:${running.port}/mcp (santé : /health)`);
         console.error(`[FinanceAI MCP http] Source d'état : ${state.describe()}`);
@@ -599,6 +686,9 @@ if (isDirectRun) {
         console.error(refreshSecret
             ? `[FinanceAI MCP http] Refresh planifié : POST /refresh ACTIF (Bearer exigé)${finnhubKey ? '' : ' — SANS clé Finnhub : seule la crypto sera rafraîchie'}.`
             : '[FinanceAI MCP http] Refresh planifié : /refresh désactivé (FINANCEAI_REFRESH_SECRET absent).');
+        console.error(fintableSyncSecret
+            ? `[FinanceAI MCP http] Sync Fintable planifiée : POST /fintable-sync ACTIF (Bearer exigé)${fintableToken ? '' : ' — SANS FINTABLE_TOKEN : chaque appel échouera 503'}${fintableRoles ? '' : ' — SANS rôles de comptes (FINTABLE_ROLES_JSON absent) : aucun compte ne sera reconnu'}.`
+            : '[FinanceAI MCP http] Sync Fintable planifiée : /fintable-sync désactivé (FINANCEAI_FINTABLE_SYNC_SECRET absent).');
         if (isLoopback) {
             console.error('[FinanceAI MCP http] Mode LOCAL : loopback seulement, anti-DNS-rebinding actif.');
         } else if (!auth) {

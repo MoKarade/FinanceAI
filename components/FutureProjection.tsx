@@ -309,13 +309,20 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // `chartData[0].DettesNonImmo`) → soustraite du patrimoine net de CHAQUE point passé pour un raccord
     // EXACT au présent (le futur soustrait la même dette dès le mois 0). Approximation assumée (dette
     // supposée constante dans le passé, faute d'historique d'amortissement) — SIGNALÉE dans le bandeau.
+    // ⚠️ [FUTUR-PAST-DEBT-FREEZE 2026-07-29, audit demande Marc « le passé doit être exactement ce que
+    // c'était à cette date »] Lu depuis `liveResults` (TOUJOURS frais), JAMAIS `results`/`chartData`
+    // (qui peuvent être le blob FIGÉ de PROJECTION-PERSIST) : le segment PASSÉ doit refléter la dette
+    // RÉELLE actuelle même quand la courbe FUTURE affichée est gelée (badge « Pas à jour ») — sinon la
+    // ligne Valeur Nette du passé continue de soustraire une dette PÉRIMÉE tant que Marc ne relance pas
+    // le calcul (écart confirmé par audit lecture seule, borné à cette seule composante).
     // ⚠️ Garde tracée (finding silent-failure) : un `chartData` NON vide dont `DettesNonImmo` serait non fini
     // (refactor moteur qui omettrait le champ) NE doit PAS retomber en silence à 0 (= régression MONEY-PHANTOM
     // « passé gonflé » que ce fix corrige). `chartData` vide (avant 1er calcul) = nominal, silencieux. Log en
     // useEffect (pas dans le render) → 1×/valeur distincte, jamais de thrash localStorage.
-    const rawDebtNonImmo = chartData[0]?.DettesNonImmo;
+    const liveChartData = liveResults?.chartData;
+    const rawDebtNonImmo = liveChartData?.[0]?.DettesNonImmo;
     const currentDebtNonImmo = Number(rawDebtNonImmo) || 0;
-    const debtAnomaly = chartData.length > 0 && !Number.isFinite(Number(rawDebtNonImmo));
+    const debtAnomaly = (liveChartData?.length ?? 0) > 0 && !Number.isFinite(Number(rawDebtNonImmo));
     useEffect(() => {
         if (debtAnomaly) {
             logError({ source: 'ui', severity: 'warning', message: 'FutureProjection : chartData[0].DettesNonImmo non fini — dette du passé rabattue à 0', context: { rawDebtNonImmo } });

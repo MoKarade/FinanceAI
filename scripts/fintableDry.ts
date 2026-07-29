@@ -17,6 +17,7 @@ import { readFileSync } from 'node:fs';
 import { FintableClient } from '../services/fintable/client';
 import { readFintableSnapshot } from '../services/fintable/readSnapshot';
 import { mapFintableSnapshot, type FintableMappingConfig } from '../services/fintable/mapSnapshot';
+import { parseRolesJson } from '../services/fintable/rolesConfig';
 import { FintableError } from '../services/fintable/types';
 
 interface Args {
@@ -74,28 +75,14 @@ function parseArgs(argv: string[]): Args {
     return out;
 }
 
-/** Charge le fichier de rôles. Sa FORME est validée : un rôle inconnu passerait sinon en silence. */
+/** Charge le fichier de rôles (la FORME est validée par le parseur partagé `parseRolesJson`). */
 function loadRoles(path: string): FintableMappingConfig['roles'] {
-    const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'));
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        throw new Error(`${path} : objet { "<id de compte>": { "kind": … } } attendu.`);
+    try {
+        return parseRolesJson(readFileSync(path, 'utf8'));
+    } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
+        throw new Error(`${path} : ${reason}`);
     }
-    const roles: FintableMappingConfig['roles'] = {};
-    for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
-        const kind = (value as { kind?: unknown })?.kind;
-        if (kind === 'cash' || kind === 'investment' || kind === 'ignore') {
-            roles[id] = { kind };
-        } else if (kind === 'debt') {
-            const debtName = (value as { debtName?: unknown }).debtName;
-            if (typeof debtName !== 'string' || debtName.trim() === '') {
-                throw new Error(`${path} : le rôle « debt » du compte ${id} exige un "debtName" non vide.`);
-            }
-            roles[id] = { kind: 'debt', debtName };
-        } else {
-            throw new Error(`${path} : rôle inconnu pour le compte ${id} (attendu : cash | debt | investment | ignore).`);
-        }
-    }
-    return roles;
 }
 
 function isoDay(d: Date): string {

@@ -61,6 +61,40 @@
   `read+write`). Si tu ne l'as pas déjà fait, révoque-les dans Dashboard → API et garde uniquement le
   jeton lecture-seule qui est en Secret Manager.
 
+## FINTABLE-3 — activer le cron de sync quotidien (remonté par Claude 2026-07-29)
+> Le code (orchestrateur serveur + endpoint + workflow GitHub) est livré et testé (25 tests) — ce qui
+> reste est de la CONFIGURATION que je ne peux pas faire à ta place (Secret Manager + secrets GitHub).
+> Tant que ces 5 secrets n'existent pas, `/fintable-sync` reste DÉSACTIVÉ (404, aucun risque) — rien
+> ne se déclenche tout seul avant que tu aies fait ces étapes. Détail complet : `mcp/README.md`
+> § « Sync Fintable planifiée — POST /fintable-sync ».
+- [ ] **3 secrets Google Secret Manager** (le jeton `financeai-fintable-token` existe déjà, lecture seule) :
+  ```bash
+  # Secret d'auth de la route (≥16 caractères, garde-le pour l'étape GitHub)
+  node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))" \
+    | tr -d '\n' | gcloud secrets create financeai-fintable-sync-secret --data-file=- --project=financeai-497112
+
+  # Le fichier de rôles que tu as déjà construit (.fintable-roles.json, à la racine du repo, gitignoré)
+  gcloud secrets create financeai-fintable-roles-json --data-file=.fintable-roles.json --project=financeai-497112
+
+  # Accès en lecture au service Cloud Run (même $RUNTIME_SA que pour les autres secrets déjà en place)
+  for S in financeai-fintable-sync-secret financeai-fintable-token financeai-fintable-roles-json; do
+    gcloud secrets add-iam-policy-binding "$S" \
+      --member="serviceAccount:$RUNTIME_SA" \
+      --role="roles/secretmanager.secretAccessor" --project=financeai-497112
+  done
+  ```
+- [ ] **Redéployer le serveur MCP** : `PROJECT_ID=financeai-497112 ./mcp/deploy.sh` — `deploy.sh` détecte
+  les 3 secrets et active `POST /fintable-sync` automatiquement (log au démarrage confirme).
+- [ ] **2 secrets GitHub Actions** (repo → Settings → Secrets and variables → Actions) :
+  ```
+  FINANCEAI_MCP_URL              = <la même URL que celle déjà utilisée pour refresh-prices.yml>
+  FINANCEAI_FINTABLE_SYNC_SECRET = <le secret généré à l'étape 1 ci-dessus>
+  ```
+  Une fois posés, `.github/workflows/fintable-sync.yml` tourne automatiquement 1×/jour (10:00 UTC) —
+  aucune autre action de ta part. Tu peux le déclencher manuellement dans l'onglet Actions du repo
+  pour vérifier tout de suite sans attendre le lendemain.
+- [ ] **Vérifier le résultat de la 1ʳᵉ passe** dans l'app → Système & diagnostics → carte « Sync Fintable ».
+
 ## MCP-CATEGORY-ALLOWLIST — redéploiement Cloud Run requis (remonté par Claude 2026-07-24, PR #502)
 - [ ] **Redéployer le serveur MCP sur Cloud Run** pour que l'allowlist de catégories (PR #502) prenne
   effet côté claude.ai (leçon AITOOLS-SEC : une révision Cloud Run est séparée du deploy Vercel — l'app

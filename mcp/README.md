@@ -1,4 +1,4 @@
-# FinanceAI MCP Server (v0.7.3)
+# FinanceAI MCP Server (v0.10.0)
 
 Serveur MCP (Model Context Protocol) qui expose FinanceAI à Claude : **poser des
 questions** sur ses vraies finances (patrimoine, projection, impôts, retraite) ET
@@ -313,6 +313,87 @@ PROJECT_ID="$PROJECT_ID" ./mcp/deploy.sh
 
 Rotation : `gcloud secrets versions add financeai-refresh-secret --data-file=-`, mets à jour
 le secret GitHub `FINANCEAI_REFRESH_SECRET`, puis redéploie.
+
+## Sync Fintable planifiée — POST /fintable-sync (FINTABLE-3)
+
+Même besoin que le refresh de prix, mais pour les **transactions bancaires, soldes liquides et
+dettes** : sans cette route, seule l'app ouverte poussait ces données. Un cron quotidien réveille
+Cloud Run, lit Fintable, et écrit dans Drive — 100 % en arrière-plan.
+
+- **Ce que ça fait** : lit Fintable (comptes/transactions/positions, LECTURE SEULE), les mappe
+  vers des documents FinanceAI via le mapper PARTAGÉ (`services/fintable/mapSnapshot.ts` — même
+  logique que `npm run fintable:dry`), les applique (`applyDocument`), et RÉÉCRIT le blob Drive
+  avec la garde OCC (`save(next, version)`). La date de bascule anti-doublon (transactions déjà
+  connues vs nouvelles) est **DÉRIVÉE à chaque passe** depuis l'état réel (`deriveCutoverDate`) —
+  aucune date figée à maintenir. Un rapport (`AppState.fintableSyncReport`) est **TOUJOURS écrit**
+  (succès ou échec) : comptes vus, tx ajoutées, virements internes détectés, cash/dettes mis à
+  jour, avertissements, erreur — visible dans l'app (Réglages), sans notification proactive
+  (choix Marc). Ne touche QUE ce que le mapper produit : budgets, objectifs, dettes saisies
+  manuellement (hors solde) restent intacts.
+- **Activation** : définir `FINANCEAI_FINTABLE_SYNC_SECRET` (≥16 caractères — refus de démarrer
+  sinon), **DISTINCT** de `FINANCEAI_REFRESH_SECRET` (périmètre différent : celui-ci autorise
+  l'écriture de transactions/soldes réels). Sans la variable, la route n'existe pas (404).
+  Nécessite aussi `FINTABLE_TOKEN` (jeton Fintable **lecture seule**, cf `[FINTABLE-0]`) et
+  `FINTABLE_ROLES_JSON` (JSON `{"<id-compte>":{"kind":"cash"|"debt"|"investment"|"ignore",...}}`,
+  même forme que `--roles` de `fintable:dry`) — sans eux, la route répond mais ne fait rien
+  d'utile (503 sans jeton ; aucun compte reconnu sans rôles).
+- **Auth** : header `Authorization: Bearer <secret>` ; comparaison en temps constant, **401** si
+  absent ou invalide. Réponse `Cache-Control: no-store`.
+- **Réponse** : `200 { ok:true, report }` au succès. Un conflit de concurrence (l'app a poussé au
+  même instant) renvoie `200 { ok:false, conflict:true }` — TRANSITOIRE, le prochain tick réessaie.
+  Une panne RÉELLE (Fintable injoignable/jeton révoqué, Drive KO) renvoie un **5xx** → le job
+  GitHub rougit et alerte. Le secret et le jeton Fintable ne sont jamais dans le corps.
+
+### Le déclencheur : GitHub Actions planifié (gratuit, 1×/jour)
+
+Même mécanique que le refresh de prix → `.github/workflows/fintable-sync.yml` (10:00 UTC, une
+fois par jour — choix Marc, après que les transactions de la veille se soient postées côté
+banques). Il POST `${MCP_URL}/fintable-sync` avec le Bearer et « rougit » seulement si le serveur
+est injoignable ou en panne réelle.
+
+Secrets GitHub à créer (Settings → Secrets and variables → Actions) :
+
+```
+FINANCEAI_MCP_URL              = https://financeai-mcp-xxxx.run.app   # le même que refresh-prices
+FINANCEAI_FINTABLE_SYNC_SECRET = <un secret DÉDIÉ, distinct de FINANCEAI_REFRESH_SECRET>
+```
+
+Test manuel (curl) — **le `--data ''` est obligatoire** (même piège Cloud Run que `/refresh`) :
+
+```bash
+curl -sS -X POST "$MCP_URL/fintable-sync" -H "Authorization: Bearer $FINTABLE_SYNC_SECRET" --data ''
+# → {"ok":true,"report":{"cutoverDateUsed":"2026-07-08","transactionsAdded":12,…}}
+```
+
+### Sur Cloud Run — via Secret Manager (comme le refresh)
+
+```bash
+# 1. Le secret d'auth de la sync (≥16 caractères ; garde-le, c'est le même côté GitHub)
+node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))" \
+  | tr -d '\n' | gcloud secrets create financeai-fintable-sync-secret --data-file=- --project="$PROJECT_ID"
+
+# 2. Le jeton Fintable existe déjà (financeai-fintable-token, cf FINTABLE-0) — sinon :
+#    gcloud secrets create financeai-fintable-token --data-file=- --project="$PROJECT_ID"
+#    (LECTURE SEULE : cette route ne fait que des GET vers Fintable)
+
+# 3. Les rôles de comptes (le même JSON que ton .fintable-roles.json local, JAMAIS commité)
+gcloud secrets create financeai-fintable-roles-json --data-file=.fintable-roles.json --project="$PROJECT_ID"
+
+# 4. Accès en lecture au compte de service Cloud Run (même SA que les autres secrets)
+for S in financeai-fintable-sync-secret financeai-fintable-token financeai-fintable-roles-json; do
+  gcloud secrets add-iam-policy-binding "$S" \
+    --member="serviceAccount:$RUNTIME_SA" \
+    --role="roles/secretmanager.secretAccessor" --project="$PROJECT_ID"
+done
+
+# 5. Redéployer : deploy.sh détecte les 3 secrets, les monte, rebuild l'image à jour
+PROJECT_ID="$PROJECT_ID" ./mcp/deploy.sh
+```
+
+Rotation : `gcloud secrets versions add financeai-fintable-sync-secret --data-file=-`, mets à jour
+le secret GitHub `FINANCEAI_FINTABLE_SYNC_SECRET`, puis redéploie. Pour changer les rôles de
+comptes (nouveau compte Fintable, dette renommée) : `gcloud secrets versions add
+financeai-fintable-roles-json --data-file=.fintable-roles.json`, puis redéploie.
 
 ## Synchronisation Google Drive (auto) — recommandé
 

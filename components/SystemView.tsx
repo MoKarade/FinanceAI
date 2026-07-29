@@ -210,6 +210,76 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                         </Card>
                     </div>
 
+                    {/* [FINTABLE-3] Rapport de la dernière passe de sync serveur (cron quotidien) — VISIBLE
+                        dans l'app sans notification proactive (choix Marc). Zéro montant $ dans ce rapport
+                        (compteurs, dates, noms de dettes saisis par Marc) → pas de gate mode discret nécessaire
+                        (la règle protège les VALEURS $, cf CLAUDE.md « Mode discret »). */}
+                    <Card icon={<Icon name="bank" size={18} />} title="Sync Fintable">
+                        {!state.fintableSyncReport ? (
+                            <p className="text-meta text-ink-400">
+                                Aucune sync automatique n'a encore eu lieu (cron serveur non configuré, ou pas encore déclenché).
+                            </p>
+                        ) : (
+                            <div className="space-y-0 text-body">
+                                <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                    <span className="text-ink-300">Dernière passe</span>
+                                    <span className="font-mono text-white">{formatRelative(state.fintableSyncReport.at)}</span>
+                                </div>
+                                <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                    <span className="text-ink-300">Statut</span>
+                                    <span className={state.fintableSyncReport.error ? 'text-danger-400 font-bold' : 'text-success-400 font-bold'}>
+                                        {state.fintableSyncReport.error ? 'Échec' : 'OK'}
+                                    </span>
+                                </div>
+                                {state.fintableSyncReport.error && (
+                                    <p className="text-meta text-danger-400 break-words py-2 border-b border-white/5">
+                                        {state.fintableSyncReport.error}
+                                    </p>
+                                )}
+                                <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                    <span className="text-ink-300">Bascule utilisée</span>
+                                    <span className="font-mono text-ink-200">{state.fintableSyncReport.cutoverDateUsed ?? '—'}</span>
+                                </div>
+                                <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                    <span className="text-ink-300">Comptes vus</span>
+                                    <span className="font-mono text-white">
+                                        {state.fintableSyncReport.accountsSeen}
+                                        {state.fintableSyncReport.accountsWithoutRole > 0 && (
+                                            <span className="text-yellow-400"> ({state.fintableSyncReport.accountsWithoutRole} sans rôle)</span>
+                                        )}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                    <span className="text-ink-300">Transactions ajoutées</span>
+                                    <span className="font-mono text-white">{state.fintableSyncReport.transactionsAdded}</span>
+                                </div>
+                                {state.fintableSyncReport.transfersDetected > 0 && (
+                                    <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                        <span className="text-ink-300">Virements internes détectés</span>
+                                        <span className="font-mono text-white">{state.fintableSyncReport.transfersDetected}</span>
+                                    </div>
+                                )}
+                                <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                    <span className="text-ink-300">Liquidités</span>
+                                    <span className="font-mono text-white">{state.fintableSyncReport.cashUpdated ? 'mises à jour' : 'inchangées'}</span>
+                                </div>
+                                <div className="flex items-center justify-between py-2 gap-3">
+                                    <span className="text-ink-300 shrink-0">Dettes mises à jour</span>
+                                    <span className="font-mono text-white text-right">
+                                        {state.fintableSyncReport.debtsUpdated.length > 0 ? state.fintableSyncReport.debtsUpdated.join(', ') : 'aucune'}
+                                    </span>
+                                </div>
+                                {state.fintableSyncReport.warnings.length > 0 && (
+                                    <div className="pt-2 space-y-1">
+                                        {state.fintableSyncReport.warnings.map((w, i) => (
+                                            <p key={i} className="text-tiny text-yellow-400">{w}</p>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </Card>
+
                     <Card title="Version & build">
                         <div className="space-y-3 text-body">
                             <p className="text-meta text-ink-400">Auto-injecté à chaque build/déploiement.</p>

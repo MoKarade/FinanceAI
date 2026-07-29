@@ -649,8 +649,11 @@
     (`computeStartingCash`, source unique) → DELTA sur `initialBalances.LIQUIDITE` (visible Réglages → Comptes,
     jamais d'écrasement des transactions), idempotent, borné (0 → 100 M$) + garde non-fini métier. Invariant
     round-trip prouvé (`computeStartingCash(next) === target`). ⚠️ Redéploiement Cloud Run requis pour claude.ai.
-  - [ ] **Lot 2 — `set_budget_item`** (poste de budget : cible mensuelle).
-  - [ ] **Lot 3 — `upsert_savings_goal`** (objectif d'épargne).
+  - [x] **Lot 2 — `set_budget_item`** ✅ 2026-07-29 : upsert PAR NOM (casse/accents ignorés), update
+    PARTIEL (cible/fréquence/nature/répartition), éditer la cible → `autoTarget:false` (BUDGET-TX-CATEGORIES),
+    bornes 0→1 M$ + non-fini, id `cat_<ts>_<rand>`. Confirmation 2 temps. MCP v0.9.0.
+  - [x] **Lot 3 — `upsert_savings_goal`** ✅ 2026-07-29 : upsert PAR NOM, update PARTIEL (cible/accumulé/
+    échéance `YYYY-MM(-DD)`/icône), défauts ajout (accumulé 0, 💰), id `goal_<ts>_<rand>`. Confirmation 2 temps.
   - [ ] **Lot 4 — vente totale d'un titre** (`apply_broker_statement` quantité 0 / helper dédié).
   - [ ] **Lot 5 — suppression** (dette/objectif/transaction) — exige ADR + `confirm:true` strict (décision Marc).
   - Salaire : DÉJÀ couvert par `apply_payslip` (aucun nouveau tool). Immobilier : différé.

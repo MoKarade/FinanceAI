@@ -61,6 +61,8 @@ l'écriture, le tool refuse (rien d'écrasé) et invite à relancer. Exposés un
 | `apply_tax_slip` | T4 / RL-1 → revenu d'emploi annuel (→ brut mensuel) + cotisations REER |
 | `apply_debt` | Dette RÉELLE (prêt auto, carte, perso) — ajout ou mise à jour PAR NOM, PARTIELLE (seuls les champs fournis changent ; même nom = écrasement, jamais de doublon). ⚠️ Dettes déjà contractées seulement : la projection les sert dès le mois 0 ; un achat FUTUR/hypothétique passe par `simulate_what_if` |
 | `set_cash` | Ajuste le solde de LIQUIDITÉS (cash) à une cible en $ CAD. Cash DÉRIVÉ → delta sur le compte `LIQUIDITE` des soldes de départ (visible Réglages → Comptes), transactions intactes, idempotent. ⚠️ **Confirmation à 2 temps** : sans `confirm:true`, renvoie un APERÇU (avant→après) SANS écrire ; n'applique qu'après accord explicite de l'utilisateur |
+| `set_budget_item` | Ajoute ou met à jour PAR NOM un poste de budget (cible/fréquence/nature/répartition, update PARTIEL). ⚠️ Éditer la cible décroche la cible auto-gérée (`autoTarget:false`). Confirmation à 2 temps (`confirm`) |
+| `upsert_savings_goal` | Ajoute ou met à jour PAR NOM un objectif d'épargne (cible/accumulé/échéance/icône, update PARTIEL). Confirmation à 2 temps (`confirm`) |
 
 ### Connexion (amorçage)
 | `connect_drive` | Autorise le Google Drive de l'utilisateur **dans la conversation** (consentement navigateur, client OAuth partagé) — pour l'install `.mcpb` sans terminal |

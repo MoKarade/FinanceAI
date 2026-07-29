@@ -87,13 +87,45 @@ export interface CashBalancePayload {
     targetCad: number;
 }
 
+/** [MCP-DIRECT-EDIT Lot 2] Poste de budget — ajout OU mise à jour PARTIELLE par nom.
+ *  ⚠️ Une édition de `targetCad` pose `autoTarget: false` (règle BUDGET-TX-CATEGORIES : une édition
+ *  MANUELLE de la cible décroche la cible auto-gérée — sinon la moyenne du passé écraserait la
+ *  demande de l'utilisateur au prochain chargement). */
+export interface BudgetItemPayload {
+    kind: 'budget_item';
+    /** Nom du poste (clé d'upsert, normalisée casse/accents contre les postes existants). */
+    name: string;
+    /** Cible en $ CAD (dans la fréquence du poste). Requise à l'AJOUT ; optionnelle en mise à jour. */
+    targetCad?: number;
+    frequency?: 'Monthly' | 'Yearly' | 'Weekly' | 'Quarterly';
+    nature?: 'Besoin' | 'Envie' | 'Epargne';
+    type?: 'Commun' | 'Perso 1' | 'Perso 2';
+}
+
+/** [MCP-DIRECT-EDIT Lot 3] Objectif d'épargne — ajout OU mise à jour PARTIELLE par nom. */
+export interface SavingsGoalPayload {
+    kind: 'savings_goal';
+    /** Nom de l'objectif (clé d'upsert, normalisée casse/accents). */
+    name: string;
+    /** Montant CIBLE ($ CAD). Requis à l'AJOUT ; optionnel en mise à jour. */
+    targetAmountCad?: number;
+    /** Montant DÉJÀ accumulé ($ CAD). Optionnel (défaut 0 à l'ajout). */
+    currentAmountCad?: number;
+    /** Échéance `YYYY-MM-DD` (ou `YYYY-MM`). Optionnelle. */
+    deadline?: string;
+    /** Emoji d'icône. Optionnel (défaut 💰 à l'ajout). */
+    icon?: string;
+}
+
 export type DocumentPayload =
     | PayslipPayload
     | BankStatementPayload
     | BrokerStatementPayload
     | TaxSlipPayload
     | DebtPayload
-    | CashBalancePayload;
+    | CashBalancePayload
+    | BudgetItemPayload
+    | SavingsGoalPayload;
 
 export interface Change {
     field: string;
@@ -116,6 +148,8 @@ export function applyDocument(state: AppState, doc: DocumentPayload): ApplyResul
         case 'tax_slip': return applyTaxSlip(state, doc);
         case 'debt': return applyDebt(state, doc);
         case 'cash_balance': return applyCashBalance(state, doc);
+        case 'budget_item': return applyBudgetItem(state, doc);
+        case 'savings_goal': return applySavingsGoal(state, doc);
         default: {
             const k = (doc as { kind?: string }).kind ?? 'inconnu';
             throw new Error(`Type de document non supporté : « ${k} ».`);
@@ -189,6 +223,146 @@ function applyCashBalance(state: AppState, doc: CashBalancePayload): ApplyResult
     const summary = `Solde de liquidités ajusté : ${Math.round(current)} $ → ${Math.round(target)} $ `
         + `(compte LIQUIDITE, visible dans Réglages → Comptes). Sauvegarde créée avant l'écriture.`;
     return { nextState, changes, summary };
+}
+
+// ── Poste de budget — ajout OU mise à jour PARTIELLE par nom ─────────────────
+// [MCP-DIRECT-EDIT Lot 2] Clé d'upsert = nom normalisé (casse/accents) contre les postes existants.
+// ⚠️ Éditer la CIBLE pose `autoTarget: false` (BUDGET-TX-CATEGORIES : une édition manuelle décroche
+// la cible auto-gérée, sinon la moyenne du passé écraserait la demande au prochain chargement).
+
+/** Clé d'upsert : nom trim + minuscules + accents strippés (même normalisation que categoryRules). */
+const budgetNameKey = (name: string): string =>
+    String(name || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+
+const MAX_BUDGET_TARGET = 1_000_000;    // 1 M$ par période pour un poste de budget (au-delà = aberrant)
+
+function applyBudgetItem(state: AppState, doc: BudgetItemPayload): ApplyResult {
+    const name = String(doc.name || '').trim();
+    if (!name) throw new Error('Nom de poste de budget requis (ex. « Épicerie »).');
+    if (doc.targetCad != null && (!plausible(doc.targetCad, MAX_BUDGET_TARGET) || doc.targetCad < 0)) {
+        throw new Error('Cible de budget invalide ou aberrante (négative / non finie / hors bornes). Rien n\'a été écrit.');
+    }
+
+    const items = (state.budgetItems ?? []).map((b) => ({ ...b }));
+    const changes: Change[] = [];
+    const key = budgetNameKey(name);
+    const idx = items.findIndex((b) => budgetNameKey(b.name) === key);
+
+    if (idx >= 0) {
+        const b = items[idx];
+        if (doc.targetCad != null && doc.targetCad !== b.target) {
+            changes.push({
+                field: `poste « ${b.name} » (cible)`, before: b.target, after: doc.targetCad,
+                note: b.autoTarget ? 'cible auto-gérée décrochée (édition manuelle)' : undefined,
+            });
+            b.target = doc.targetCad;
+            b.autoTarget = false; // édition manuelle = décrochage de la cible auto (BUDGET-TX-CATEGORIES)
+        }
+        if (doc.frequency && doc.frequency !== b.frequency) {
+            changes.push({ field: `poste « ${b.name} » (fréquence)`, before: b.frequency, after: doc.frequency });
+            b.frequency = doc.frequency;
+        }
+        if (doc.nature && doc.nature !== b.nature) {
+            changes.push({ field: `poste « ${b.name} » (nature)`, before: b.nature, after: doc.nature });
+            b.nature = doc.nature;
+        }
+        if (doc.type && doc.type !== b.type) {
+            changes.push({ field: `poste « ${b.name} » (répartition)`, before: b.type, after: doc.type });
+            b.type = doc.type;
+        }
+        if (changes.length === 0) {
+            return { nextState: state, changes: [], summary: `Poste « ${b.name} » : aucune modification (valeurs identiques).` };
+        }
+        const nextState: AppState = { ...state, budgetItems: items, lastUpdate: Date.now() };
+        return { nextState, changes, summary: `Poste de budget « ${b.name} » mis à jour (${changes.length} champ(s)).` };
+    }
+
+    // AJOUT : la cible est requise (jamais inventer un montant pour l'utilisateur).
+    if (doc.targetCad == null) {
+        throw new Error(`Poste « ${name} » introuvable : pour l'AJOUTER, la cible (targetCad) est requise.`);
+    }
+    const added = {
+        id: `cat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, // horodaté (convention PERSONA-PURGE)
+        name,
+        target: doc.targetCad,
+        frequency: doc.frequency ?? 'Monthly' as const,
+        type: doc.type ?? 'Commun' as const,
+        nature: doc.nature ?? 'Besoin' as const,
+        autoTarget: false, // cible posée explicitement par l'utilisateur — pas auto-gérée
+    };
+    items.push(added);
+    changes.push({
+        field: `poste « ${name} »`, before: null,
+        after: `${added.target} $ / ${added.frequency}`,
+        note: 'nouveau poste — il ne rapproche des dépenses réelles que si son nom correspond à une catégorie de transactions',
+    });
+    const nextState: AppState = { ...state, budgetItems: items, lastUpdate: Date.now() };
+    return { nextState, changes, summary: `Poste de budget « ${name} » ajouté (${added.target} $ / ${added.frequency}, ${added.nature}, ${added.type}).` };
+}
+
+// ── Objectif d'épargne — ajout OU mise à jour PARTIELLE par nom ──────────────
+// [MCP-DIRECT-EDIT Lot 3] Même pattern : upsert par nom normalisé, update partiel, bornes D9.
+
+const GOAL_DEADLINE_RE = /^\d{4}-\d{2}(-\d{2})?$/;
+
+function applySavingsGoal(state: AppState, doc: SavingsGoalPayload): ApplyResult {
+    const name = String(doc.name || '').trim();
+    if (!name) throw new Error('Nom d\'objectif requis (ex. « Voyage Japon »).');
+    if (doc.targetAmountCad != null && (!plausible(doc.targetAmountCad, MAX_CASH_BALANCE) || doc.targetAmountCad <= 0)) {
+        throw new Error('Montant cible d\'objectif invalide ou aberrant (≤ 0 / non fini / hors bornes). Rien n\'a été écrit.');
+    }
+    if (doc.currentAmountCad != null && (!plausible(doc.currentAmountCad, MAX_CASH_BALANCE) || doc.currentAmountCad < 0)) {
+        throw new Error('Montant accumulé d\'objectif invalide ou aberrant (négatif / non fini / hors bornes). Rien n\'a été écrit.');
+    }
+    if (doc.deadline != null && !GOAL_DEADLINE_RE.test(doc.deadline)) {
+        throw new Error('Échéance d\'objectif invalide : format attendu YYYY-MM-DD (ou YYYY-MM). Rien n\'a été écrit.');
+    }
+
+    const goals = (state.savingsGoals ?? []).map((g) => ({ ...g }));
+    const changes: Change[] = [];
+    const key = budgetNameKey(name);
+    const idx = goals.findIndex((g) => budgetNameKey(g.name) === key);
+
+    if (idx >= 0) {
+        const g = goals[idx];
+        if (doc.targetAmountCad != null && doc.targetAmountCad !== g.targetAmount) {
+            changes.push({ field: `objectif « ${g.name} » (cible)`, before: g.targetAmount, after: doc.targetAmountCad });
+            g.targetAmount = doc.targetAmountCad;
+        }
+        if (doc.currentAmountCad != null && doc.currentAmountCad !== g.currentAmount) {
+            changes.push({ field: `objectif « ${g.name} » (accumulé)`, before: g.currentAmount, after: doc.currentAmountCad });
+            g.currentAmount = doc.currentAmountCad;
+        }
+        if (doc.deadline != null && doc.deadline !== g.deadline) {
+            changes.push({ field: `objectif « ${g.name} » (échéance)`, before: g.deadline, after: doc.deadline });
+            g.deadline = doc.deadline;
+        }
+        if (doc.icon != null && doc.icon !== g.icon) {
+            changes.push({ field: `objectif « ${g.name} » (icône)`, before: g.icon, after: doc.icon });
+            g.icon = doc.icon;
+        }
+        if (changes.length === 0) {
+            return { nextState: state, changes: [], summary: `Objectif « ${g.name} » : aucune modification (valeurs identiques).` };
+        }
+        const nextState: AppState = { ...state, savingsGoals: goals, lastUpdate: Date.now() };
+        return { nextState, changes, summary: `Objectif d'épargne « ${g.name} » mis à jour (${changes.length} champ(s)).` };
+    }
+
+    if (doc.targetAmountCad == null) {
+        throw new Error(`Objectif « ${name} » introuvable : pour l'AJOUTER, le montant cible (targetAmountCad) est requis.`);
+    }
+    const added = {
+        id: `goal_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, // horodaté (convention PERSONA-PURGE)
+        name,
+        targetAmount: doc.targetAmountCad,
+        currentAmount: doc.currentAmountCad ?? 0,
+        deadline: doc.deadline ?? '',
+        icon: doc.icon || '💰',
+    };
+    goals.push(added);
+    changes.push({ field: `objectif « ${name} »`, before: null, after: `${added.targetAmount} $ (accumulé : ${added.currentAmount} $)` });
+    const nextState: AppState = { ...state, savingsGoals: goals, lastUpdate: Date.now() };
+    return { nextState, changes, summary: `Objectif d'épargne « ${name} » ajouté (cible ${added.targetAmount} $).` };
 }
 
 // ── Fiche de paie ────────────────────────────────────────────────────────────

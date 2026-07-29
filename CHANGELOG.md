@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — MCP : budget et objectifs « juste en le demandant »] — 2026-07-29
+
+### Assistant / MCP
+- **Nouveau tool `set_budget_item`** : « mets mon budget épicerie à 600 $ » — ajoute ou met à jour un poste
+  de budget par nom (casse/accents ignorés, jamais de doublon), mise à jour PARTIELLE (seuls les champs
+  fournis changent). Éditer la cible fige le poste en cible MANUELLE (la moyenne auto-calculée ne
+  l'écrasera plus). Confirmation avant chaque écriture (aperçu avant→après) + sauvegarde horodatée.
+- **Nouveau tool `upsert_savings_goal`** : « crée un objectif Voyage Japon de 8 000 $ » — ajoute ou met à
+  jour un objectif d'épargne par nom (cible, accumulé, échéance, icône). Même confirmation à 2 temps.
+
+### Interne
+- `[MCP-DIRECT-EDIT]` Lots 2-3 : kinds `budget_item` + `savings_goal` dans `applyDocument` (upsert par nom
+  normalisé, bornes D9, gardes non-fini), specs/tools scindés, parité app↔MCP (WRITE_SPECS). MCP v0.9.0.
+  ⚠️ Actif sur claude.ai après redéploiement Cloud Run.
+
+---
+
 ## [unreleased — MCP : changer tes liquidités juste en le demandant] — 2026-07-28
 
 ### Assistant / MCP

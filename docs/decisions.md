@@ -477,3 +477,44 @@ n'arrive pas — un mapper de positions qui ne peut être exercé sur aucune don
 vérifiable, et la leçon `PORTFOLIO-HISTORY` (« un stub qui nourrit un graphe est une dette qui MENT »)
 s'applique directement. Le volet transactions/liquidités/dette, lui, est pleinement exerçable (121
 transactions réelles) et peut avancer.
+
+### Mise à jour 2026-07-29 (n°3) — positions IMPOSSIBLES, et la date de bascule remplace la dédup
+
+**1. Les positions détaillées sont hors de portée via Fintable [Certain, mesuré].** L'annuaire PUBLIC
+(`GET /institutions?provider=SNAPTRADE&country=CA`, sans authentification) rend **exactement trois
+courtiers** : Webull Canada, Questrade, Wealthsimple Trade. `q=disnat` → **0 résultat** ; l'entrée
+« Desjardins Online Solutions » est `supported: false`. Le compte Disnat de Marc est donc lié par un
+lien **bancaire** (PLAID), qui expose le `balance` du compte mais jamais ses `holdings`.
+
+Ce n'est pas une configuration à corriger, c'est une **limite du produit**. Conséquences :
+- volet positions du `[FINTABLE-2]` **abandonné** (pas « différé ») ;
+- les positions continuent de passer par `apply_broker_statement` — dépôt d'un relevé Disnat dans le
+  chat — qui fonctionne déjà et ne coûte rien ;
+- les soldes des comptes de placement sont conservés comme **valeur de RÉFÉRENCE du courtier**, à
+  comparer au patrimoine calculé. C'est précisément le garde-fou qui manquait lors de l'incident
+  `ASSET-FX-DISPLAY` (patrimoine sous-affiché de ~70 k$ : « l'arbitre est le COURTIER »).
+
+**2. Marc a choisi de prendre un plan payant**, contre ma recommandation (je conseillais d'arrêter :
+le cœur de la demande étant impossible, le gain restant ne justifiait pas de casser sa règle « zéro
+abonnement »). Arbitrage assumé, tracé pour la prochaine session — la valeur retenue est l'import
+automatique des transactions + les soldes de référence.
+
+**3. La date de bascule remplace la dédup comme protection anti-doublon** (piège trouvé en LISANT le
+code plutôt qu'en le supposant). `applyDocument` déduplique sur `txnKey = date|montant_en_cents|payee`.
+Or le `payee` de Fintable (`merchant`/`description`) ne sera **jamais** la même chaîne que celui
+extrait des relevés PDF importés à la main : même dépense, clé différente, **doublon accepté en
+silence** — qui fausserait `computeStartingCash` ET les dépenses réelles du Budget. Et la fenêtre
+Fintable (30 jours mesurés) **recouvre** l'historique manuel : le risque est réel, pas théorique.
+→ `mapSnapshot` n'émet que les transactions **strictement postérieures** à `transactionsAfter`
+(= la dernière transaction déjà connue). Pas de recouvrement, donc aucune dépendance à la dédup ;
+la dédup reste la ceinture, la date de bascule est la bretelle. Généralisable : **quand deux sources
+alimentent le même journal, c'est la borne temporelle qui protège, pas la déduplication** — une clé de
+dédup qui inclut un libellé ne survit pas à un changement de fournisseur du libellé.
+
+**4. Autres garde-fous du mapper** (tous testés) : rôle de compte toujours EXPLICITE (un compte sans
+rôle est signalé, jamais rangé par défaut — ranger une carte de crédit en liquidités gonflerait le
+patrimoine du montant dû) ; liquidités en **tout-ou-rien** (`cash_balance` écrit un DELTA sur
+`initialBalances` : une cible partielle déplacerait durablement le cash, en silence) ; solde de carte
+négatif → `Math.abs` + alerte (une dette négative gonflerait le patrimoine) ; devise ≠ CAD écartée et
+signalée, jamais empilée sans conversion ; dette mise à jour en **solde seulement** — ni taux ni
+paiement minimum inventés, donc elle doit préexister (`MCP-APPLY-DEBT` : update partiel, strict à l'ajout).

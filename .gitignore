@@ -61,3 +61,6 @@ mcp/drive/connector-client.json
 financeai-state*.json
 .financeai-mcp/
 dist-mcp
+
+# [FINTABLE] Fichier local de rôles de comptes (contient des ids de comptes bancaires) — jamais versionné.
+.fintable-roles.json

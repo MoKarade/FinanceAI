@@ -32,23 +32,26 @@
   historique de sync, `/integrations`) + `explainMissingData` (raisonnement PUR, testable sans réseau) +
   `npm run fintable:doctor`. Défauts prudents : `can_sync`/`healthy` absents → `false` (un docteur
   optimiste écarte la cause la plus probable). 16 tests.
-- [ ] **`[FINTABLE-2]` Mapper pur `snapshot → DocumentPayload[]` + dry-run** (M) — ⚠️ **SCINDÉ par la
-  mesure du 2026-07-29** : le volet transactions/liquidités/dette est pleinement exerçable (121 tx
-  réelles) ; le volet **positions est GELÉ** tant que Fintable n'en remonte aucune (coder un mapper
-  qu'aucune donnée réelle ne peut exercer = la dette qui MENT de `PORTFOLIO-HISTORY`).
-  **Décisions de mapping tranchées par Marc** (le champ `type` est du texte libre, la doc interdit
-  d'en déduire quoi que ce soit) : les 2 comptes Disnat (`investment / brokerage`, USD et CAD) sont
-  **non-enregistrés** ; la Mastercard Desjardins (`credit / credit card`) alimente une **dette**, PAS
-  les liquidités (90 des 121 tx en viennent — confondre son solde avec du cash gonflerait le
-  patrimoine du montant dû) ; ⚠️ vérifier qu'elle ne DOUBLONNE pas une dette déjà saisie à la main.
-  **Simplification mesurée** : 0 catégorie Fintable et 121 tx non catégorisées → aucun conflit de
-  taxonomie, notre `ruleCategorize(payee)` prend le relais comme pour les imports actuels.
-  Points money-critical restants : (a) devise native des positions → `assetValueCad`, jamais qty×prix
-  nu (`ASSET-FX-DISPLAY`) ; (b) sémantique réelle d'`applyBrokerStatement` (remplace ou fusionne) à
-  MESURER avant de s'y appuyer ; (c) un compte absent ne doit pas faire disparaître un actif en
-  silence ; (d) `costBasisTotal` → `buyPrice` PAR PART exige `quantity` non nul (sinon ne pas mapper) ;
-  (e) multi-devises : les tx sont 100 % CAD aujourd'hui, mais le compte Disnat USD en produira —
-  décider explicitement (conversion au taux du jour vs rejet signalé), jamais d'empilement sans conversion.
+- [x] **`[FINTABLE-2]` Mapper pur `snapshot → DocumentPayload[]` + aperçu** (M) — ✅ 2026-07-29
+  (GO Marc : « je paie, on finit le Lot 2 sans les positions »). `services/fintable/mapSnapshot.ts`,
+  fonction PURE (aucun réseau, aucune écriture) → `bank_statement` + `cash_balance` + `debt`.
+  ⚠️ **Piège money-critical trouvé en LISANT le vrai code de dédup** : `txnKey` porte sur
+  `date|montant|PAYEE`, or le payee de Fintable (`merchant`/`description`) ne sera JAMAIS la même
+  chaîne que celui extrait des relevés PDF importés à la main → même dépense, clé différente,
+  **doublon accepté en silence** qui fausserait `computeStartingCash` ET les dépenses réelles du
+  Budget. La fenêtre Fintable (30 j) RECOUVRE l'historique manuel : risque réel, pas théorique.
+  Parade = **date de bascule** (`transactionsAfter`, strictement postérieur) — pas de recouvrement,
+  donc aucune dépendance à la dédup ; la dédup reste la ceinture. Autres garde-fous : rôle de compte
+  toujours EXPLICITE (un compte sans rôle est signalé, jamais rangé par défaut) ; liquidités en
+  **tout-ou-rien** (un seul solde manquant suspend la mise à jour — `cash_balance` écrit un DELTA,
+  une cible partielle déplacerait le cash en silence) ; solde de carte négatif → `Math.abs` + alerte
+  (une dette négative gonflerait le patrimoine) ; devise ≠ CAD écartée et signalée, jamais empilée ;
+  dette en mise à jour de SOLDE seulement (ni taux ni paiement minimum inventés → elle doit préexister).
+  Aperçu via `npm run fintable:dry -- --roles <fichier.json> --after YYYY-MM-DD` (+ `--show-ids`
+  pour construire le fichier ; `.fintable-roles.json` est gitignoré — il contient des ids de comptes).
+  16 tests dédiés, dont le scénario réel à 6 comptes. **Volet positions ABANDONNÉ** : Disnat n'est pas
+  couvert par SnapTrade chez Fintable (mesuré sur l'annuaire public) — les soldes des comptes de
+  placement servent de valeur de RÉFÉRENCE du courtier, jamais de source d'actifs.
 - [ ] **`[FINTABLE-3]` Cron quotidien Cloud Run + `sync_bank_now`** (M) — patron du `POST /refresh` existant
   (secret dédié, `mcp/deploy.sh`). Écriture via `runApply` → OCC + backup. Trace + rapport de la dernière
   passe (comptes vus, tx ajoutées, positions mises à jour, échecs) — un skip sans signal = classe
@@ -62,23 +65,23 @@
   intention : l'intention était sincère et fausse. Rien à coder ; l'import manuel reste la source du
   passé, Fintable celle du présent. À réévaluer si la fenêtre s'élargit (connexions peut-être récentes),
   mais **jamais de suppression sur une promesse**.
-- [ ] **`[FINTABLE-POSITIONS]` 🔴 Zéro position — CAUSE IDENTIFIÉE, action côté Marc** — le docteur a
-  tranché le 2026-07-29 : les 6 comptes arrivent par **UNE SEULE connexion, Desjardins via PLAID**
-  (santé OK, sync réussie le jour même) et il n'y a **aucune connexion SNAPTRADE**. Chez Fintable le
-  courtage passe par SnapTrade → un compte de placement lié via un lien bancaire expose son solde sans
-  ses positions. Le plan et la santé des connexions sont hors de cause (`can_sync: true`). La piste
-  encodée dans `explainMissingData` a donc désigné la bonne cause du premier coup. **Action Marc**
-  (routée `A_FAIRE_MOI.md`) : vérifier la couverture Disnat via l'annuaire PUBLIC
-  (`GET /institutions?q=disnat&provider=SNAPTRADE`) puis créer la connexion SnapTrade. Si Disnat n'est
-  pas couvert, le volet « investissements temps réel » est impossible via Fintable → rouvrir le cadrage.
-  Le volet positions du `[FINTABLE-2]` reste GELÉ d'ici là.
-- [ ] **`[FINTABLE-PLAN]` 🔴 L'essai Fintable expire le 2026-08-01 — décision Marc** — le palier
-  **gratuit a `can_sync: false`** : à l'expiration, plus AUCUNE synchronisation ne tourne (pas de
-  dégradation partielle, arrêt total). Ça heurte la règle « zéro abonnement » du `CLAUDE.md` global →
-  arbitrage de Marc : payer, ou acter que ce chantier s'arrête et rester sur l'import manuel.
-  **Ne pas coder le `[FINTABLE-2]` avant sa réponse** : sans plan actif, tout l'aval est mort-né.
-  NB mesuré au passage : ni Airtable ni Google Sheets ne sont connectés chez lui — le « repli Sheet »
-  documenté à l'ADR n'a donc jamais existé en pratique, ce qui conforte le choix de l'API directe.
+- [x] **`[FINTABLE-POSITIONS]` ❌ IMPOSSIBLE — clos par la mesure (2026-07-29)** — le docteur a d'abord
+  montré que les 6 comptes arrivent par **UNE SEULE connexion Desjardins via PLAID**, sans aucune
+  connexion SNAPTRADE (plan et santé hors de cause). L'annuaire PUBLIC a ensuite tranché : SnapTrade
+  au Canada chez Fintable = **exactement 3 courtiers** (Webull Canada, Questrade, Wealthsimple Trade) ;
+  `q=disnat` → **0 résultat**, et « Desjardins Online Solutions » est `supported: false`. Ce n'est donc
+  pas un problème de configuration mais une **limite du produit** : les positions détaillées sont hors
+  de portée via Fintable, quoi que Marc fasse. Décision : volet abandonné ; les positions continuent
+  de passer par `apply_broker_statement` (dépôt d'un relevé Disnat dans le chat), qui fonctionne déjà.
+  À rouvrir seulement si Marc change de courtier ou si Fintable élargit sa couverture SnapTrade.
+- [x] **`[FINTABLE-PLAN]` ✅ Marc paie (décision 2026-07-29)** — l'essai expirait le 2026-08-01 et le
+  palier gratuit a `can_sync: false` (arrêt TOTAL des syncs, pas de dégradation). Après avoir vu que
+  les positions étaient impossibles, Marc a choisi de prendre un plan pour conserver l'import
+  automatique des transactions + les soldes de référence. ⚠️ Ma recommandation était l'inverse (ne pas
+  payer, le gain restant ne justifiant pas de casser la règle « zéro abonnement ») — arbitrage assumé
+  par Marc, tracé ici pour la prochaine session. NB mesuré : ni Airtable ni Google Sheets ne sont
+  connectés chez lui — le « repli Sheet » de l'ADR n'a jamais existé en pratique, ce qui conforte le
+  choix de l'API directe.
 
 ## 🚧 Chantier Claude-in-app (GO Marc 2026-07-21 : « go jusqu'à tout fini et testé + audit de sec à la fin + aucune donnée changée + résultat fiable »)
 > Plan validé (panel PM + architect, 2026-07-21). P1 = Claude intégré à l'app (tool-use sur les MÊMES

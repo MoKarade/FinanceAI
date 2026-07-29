@@ -13,14 +13,29 @@
 //
 // Ce script n'écrit rien : ni dans l'état FinanceAI, ni dans Drive, ni chez Fintable (que des GET).
 
+import { readFileSync } from 'node:fs';
 import { FintableClient } from '../services/fintable/client';
 import { readFintableSnapshot } from '../services/fintable/readSnapshot';
+import { mapFintableSnapshot, type FintableMappingConfig } from '../services/fintable/mapSnapshot';
 import { FintableError } from '../services/fintable/types';
 
-interface Args { days: number; showAmounts: boolean; includeDisabled: boolean }
+interface Args {
+    days: number;
+    showAmounts: boolean;
+    includeDisabled: boolean;
+    /** Affiche les ids de compte (nécessaires pour écrire le fichier de rôles). Hors sortie partageable. */
+    showIds: boolean;
+    /** Chemin d'un JSON de rôles → active l'APERÇU DE MAPPING (toujours sans écriture). */
+    rolesPath: string | null;
+    /** Date de bascule `YYYY-MM-DD` : seules les transactions strictement après sont mappées. */
+    after: string | null;
+}
 
 function parseArgs(argv: string[]): Args {
-    const out: Args = { days: 30, showAmounts: false, includeDisabled: false };
+    const out: Args = {
+        days: 30, showAmounts: false, includeDisabled: false,
+        showIds: false, rolesPath: null, after: null,
+    };
     for (let i = 0; i < argv.length; i++) {
         if (argv[i] === '--days') {
             const n = Number(argv[i + 1]);
@@ -31,9 +46,45 @@ function parseArgs(argv: string[]): Args {
             out.showAmounts = true;
         } else if (argv[i] === '--include-disabled') {
             out.includeDisabled = true;
+        } else if (argv[i] === '--show-ids') {
+            out.showIds = true;
+        } else if (argv[i] === '--roles') {
+            const p = argv[i + 1];
+            if (!p) throw new Error('--roles attend un chemin de fichier JSON.');
+            out.rolesPath = p;
+            i++;
+        } else if (argv[i] === '--after') {
+            const d = argv[i + 1];
+            if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error('--after attend une date YYYY-MM-DD.');
+            out.after = d;
+            i++;
         }
     }
     return out;
+}
+
+/** Charge le fichier de rôles. Sa FORME est validée : un rôle inconnu passerait sinon en silence. */
+function loadRoles(path: string): FintableMappingConfig['roles'] {
+    const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'));
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        throw new Error(`${path} : objet { "<id de compte>": { "kind": … } } attendu.`);
+    }
+    const roles: FintableMappingConfig['roles'] = {};
+    for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
+        const kind = (value as { kind?: unknown })?.kind;
+        if (kind === 'cash' || kind === 'investment' || kind === 'ignore') {
+            roles[id] = { kind };
+        } else if (kind === 'debt') {
+            const debtName = (value as { debtName?: unknown }).debtName;
+            if (typeof debtName !== 'string' || debtName.trim() === '') {
+                throw new Error(`${path} : le rôle « debt » du compte ${id} exige un "debtName" non vide.`);
+            }
+            roles[id] = { kind: 'debt', debtName };
+        } else {
+            throw new Error(`${path} : rôle inconnu pour le compte ${id} (attendu : cash | debt | investment | ignore).`);
+        }
+    }
+    return roles;
 }
 
 function isoDay(d: Date): string {
@@ -70,9 +121,12 @@ async function main(): Promise<void> {
 
     console.log(`COMPTES (${snap.accounts.length})`);
     for (const a of snap.accounts) {
+        // L'id n'est affiché que sur demande : il identifie un compte bancaire, la sortie par
+        // défaut doit rester recollable sans divulguer d'identifiants.
         console.log(
             `  - ${a.label} [${a.currency}] type="${a.rawType}" solde=${money(a.balance, args.showAmounts)}`
-            + ` dernière_tx=${a.lastTxDate ?? '(aucune)'} actif=${a.enabled}`,
+            + ` dernière_tx=${a.lastTxDate ?? '(aucune)'} actif=${a.enabled}`
+            + (args.showIds ? `\n      id=${a.id}` : ''),
         );
     }
 
@@ -115,6 +169,39 @@ async function main(): Promise<void> {
     if (snap.transactions.length > 0) {
         const dates = snap.transactions.map((t) => t.date).sort();
         console.log(`  Étendue de dates : ${dates[0]} → ${dates[dates.length - 1]}`);
+    }
+
+    // ── Aperçu de MAPPING (Lot 2) — toujours sans écriture ──────────────────────────────────────
+    if (args.rolesPath) {
+        const roles = loadRoles(args.rolesPath);
+        const { payloads, report } = mapFintableSnapshot(snap, { roles, transactionsAfter: args.after });
+
+        console.log('');
+        console.log(`APERÇU DE MAPPING (rôles : ${args.rolesPath}, bascule : ${args.after ?? 'AUCUNE'})`);
+        const t = report.transactions;
+        console.log(`  Transactions retenues : ${t.mapped}`);
+        console.log(
+            `    écartées → avant bascule=${t.skippedBeforeCutover} · devise≠CAD=${t.skippedForeignCurrency}`
+            + ` · compte sans rôle=${t.skippedUnroutedAccount} · compte de placement=${t.skippedInvestmentAccount}`,
+        );
+        console.log(`  Liquidités visées : ${report.cashTargetCad === null ? 'NON MISES À JOUR' : money(report.cashTargetCad, args.showAmounts)}`);
+        for (const d of report.debts) {
+            console.log(`  Dette « ${d.name} » → solde ${money(d.balanceCad, args.showAmounts)}`);
+        }
+        for (const inv of report.investmentBalances) {
+            console.log(`  Placement (référence courtier, non importé) : ${inv.label} [${inv.currency}] ${money(inv.balance, args.showAmounts)}`);
+        }
+        if (report.accountsWithoutRole.length > 0) {
+            console.log('  ⚠ Comptes SANS RÔLE (à déclarer dans le fichier de rôles) :');
+            for (const a of report.accountsWithoutRole) {
+                console.log(`    - ${a.label} type="${a.rawType}"${args.showIds ? ` id=${a.id}` : ''}`);
+            }
+        }
+        if (report.warnings.length > 0) {
+            console.log('  Avertissements :');
+            for (const w of report.warnings) console.log(`    - ${w}`);
+        }
+        console.log(`  Documents qui SERAIENT appliqués : ${payloads.map((p) => p.kind).join(', ') || '(aucun)'}`);
     }
 
     console.log('');

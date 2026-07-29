@@ -52,6 +52,19 @@
   16 tests dédiés, dont le scénario réel à 6 comptes. **Volet positions ABANDONNÉ** : Disnat n'est pas
   couvert par SnapTrade chez Fintable (mesuré sur l'annuaire public) — les soldes des comptes de
   placement servent de valeur de RÉFÉRENCE du courtier, jamais de source d'actifs.
+- [x] **`[TX-DUPLICATES]` Détection de doublons (demande Marc « enlève les transactions en double »)** (M)
+  — ✅ 2026-07-29. **Constat qui a motivé le lot** : `Transaction.isDuplicate` était RESPECTÉ partout
+  (exclu de `computeStartingCash`, du Budget, des revenus, du patrimoine) mais **rien ne le mettait
+  jamais à `true`** — `parseBankCsv` l'initialise à `false`, personne ne le change ensuite ; et le
+  filtre « afficher les doublons » était du code MORT (`_setShowDuplicates` jamais appelé, le `_`
+  l'exemptant du lint — classe `DETTE-DEADCODE`). La machinerie d'exclusion existait sans personne
+  pour l'alimenter. `services/transactions/duplicateDetection.ts` (PUR) : regroupement par **montant
+  exact + date proche** (tolérance 0/1/3 j), le **libellé n'entre PAS dans le critère** — c'est
+  justement quand il diffère (deux sources d'import) que la dédup `txnKey` laisse passer le doublon.
+  ⚠️ **On MARQUE, on ne SUPPRIME pas** (ADR « Suppressions via MCP/IA » : le cash est dérivé →
+  une suppression déplacerait le solde en silence) et **aucun marquage automatique** (deux dépenses
+  identiques le même jour sont un vrai faux positif → l'humain valide). Marquage réversible.
+  `components/transactions/DuplicatesPanel.tsx` + toggle `showDuplicates` ressuscité. 18 tests.
 - [ ] **`[FINTABLE-3]` Cron quotidien Cloud Run + `sync_bank_now`** (M) — patron du `POST /refresh` existant
   (secret dédié, `mcp/deploy.sh`). Écriture via `runApply` → OCC + backup. Trace + rapport de la dernière
   passe (comptes vus, tx ajoutées, positions mises à jour, échecs) — un skip sans signal = classe

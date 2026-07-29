@@ -4,6 +4,29 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-29 (suite 6) — TX-DUPLICATES : détection de doublons (demande Marc) + durcissement CLI
+> **🔵 `[TX-DUPLICATES]` LIVRÉ** (cette PR). Demande Marc : « enlève les transactions en double ».
+> **Constat en vérifiant l'état réel** : `Transaction.isDuplicate` était RESPECTÉ partout (exclu de
+> `computeStartingCash`, Budget, revenus, patrimoine) mais **rien ne le mettait jamais à `true`** —
+> `parseBankCsv` l'initialise à `false`, personne ne le change ; et le filtre UI « afficher les doublons »
+> était du CODE MORT (`_setShowDuplicates` jamais appelé, le `_` l'exemptant du lint). Une machinerie
+> d'exclusion complète… sans personne pour l'alimenter. Marc n'avait donc AUCUN moyen de voir ni marquer
+> ses doublons. `services/transactions/duplicateDetection.ts` (PUR, 18 tests) : critère = **montant exact
+> + date proche** (tolérance 0/1/3 j), **libellé volontairement EXCLU** du critère — c'est justement quand
+> il diffère (deux sources d'import) que la dédup `txnKey` laisse passer. ⚠️ On **MARQUE, on ne SUPPRIME
+> pas** (cash dérivé → suppression = solde déplacé en silence, ADR suppressions) et **jamais de marquage
+> automatique** (deux dépenses identiques le même jour = vrai faux positif ; marquer à tort RETIRE de
+> l'argent réel des calculs). Réversible. `components/transactions/DuplicatesPanel.tsx` + toggle ressuscité.
+> **🔵 Durcissement CLI** : `fintable:dry` REJETTE désormais une option inconnue. Un binaire pré-Lot-2
+> ignorait `--roles`/`--after`/`--show-ids` en silence et rendait une sortie normale → Marc a cru la feature
+> cassée alors que son clone n'était pas à jour (2ᵉ occurrence de « mergé ≠ déployé chez l'utilisateur »).
+> **Comptes de Marc mappés** (ids obtenus via `--show-ids`) : PCA + TS1 = `cash` · Mastercard = `debt` ·
+> 2 Disnat + SHR = `investment`. Date de bascule retenue : **2026-06-29** (à confirmer contre la dernière
+> transaction RÉELLE de l'app, pas la date d'import).
+> **Suite** : `[FINTABLE-3]` cron Cloud Run + écriture via `runApply` (OCC + backup) — PREMIÈRE écriture
+> réelle du chantier, plan-first obligatoire. 💡 Y dériver la date de bascule automatiquement
+> (`max(date)` des transactions existantes) au lieu d'un paramètre que Marc maintient.
+>
 > ## 🟢 Session 2026-07-29 (suite 5) — Lot 2 LIVRÉ (mapper pur) · positions IMPOSSIBLES, clos · Marc paie
 > **❌ `[FINTABLE-POSITIONS]` CLOS — impossible, mesuré.** L'annuaire PUBLIC de Fintable rend
 > **3 courtiers SnapTrade au Canada** (Webull, Questrade, Wealthsimple Trade) ; `q=disnat` → 0 résultat,

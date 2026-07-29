@@ -556,6 +556,8 @@ export const App: React.FC = () => {
                 const fresh = useFinanceStore.getState().assets ?? [];
                 setAppState({ assets: applyPricePatches(fresh, res.patches) });
             } catch (e) {
+                // [PRICE-SYNC-REPORT] Échec TOTAL : quoteSkips précédents CONSERVÉS à dessein
+                // (toujours vrais — pas de prix frais) ; l'échec global part au journal.
                 logError({ source: 'network', severity: 'warning', message: 'Rafraîchissement des cours au boot échoué (prix existants conservés)', error: e });
             }
         };

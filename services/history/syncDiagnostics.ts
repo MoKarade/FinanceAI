@@ -10,6 +10,7 @@
 // (clearHistorySyncReport — même classe que PERSONA-PURGE « zéro fuite inter-persona »).
 
 import type { HydrateHistoryResult } from './hydrateAssetHistories';
+import type { PriceSkipReason } from '../priceRefresh';
 import { logError } from '../errorLogger';
 
 export interface HistorySyncReport {
@@ -22,7 +23,7 @@ export interface HistorySyncReport {
     /** [PRICE-SYNC-REPORT] Titres dont la QUOTE (currentPrice) n'a pas pu être rafraîchie à la
      *  dernière passe (boot ou bouton) — avant, ces skips n'avaient AUCUNE surface UI (journal
      *  seulement, finding ÉLEVÉ silent-failure #499). Publié via `updateQuoteSkips`. */
-    quoteSkips?: Array<{ symbol: string; reason: string }>;
+    quoteSkips?: Array<{ symbol: string; reason: PriceSkipReason }>;
 }
 
 let _report: HistorySyncReport | null = null;
@@ -45,7 +46,7 @@ export function setHistorySyncReport(report: HistorySyncReport): void {
  *  FUSIONNANT dans le rapport courant (créé au besoin — le refresh des quotes peut tourner sans
  *  hydratation d'historique). Toujours appelé, même avec [] : une passe propre EFFACE les skips
  *  périmés de la passe précédente (classe « staleness silencieuse »). */
-export function updateQuoteSkips(quoteSkips: Array<{ symbol: string; reason: string }>): void {
+export function updateQuoteSkips(quoteSkips: Array<{ symbol: string; reason: PriceSkipReason }>): void {
     _report = {
         at: Date.now(),
         skipped: _report?.skipped ?? [],

@@ -70,6 +70,23 @@ export interface ToolTextResult {
  */
 export type StateProvider = () => Promise<AppState>;
 
+// [MCP-ENGINE-WARNINGS] ALS Node-only, chargé paresseusement (import dynamique : ce module est
+// AUSSI importé côté navigateur via les specs — un import statique de node:async_hooks casserait
+// le bundle). null = indisponible (navigateur) → collecte non scopée, sûre car séquentielle.
+type RequestAls = { run<T>(store: object, fn: () => T): T; getStore(): object | undefined };
+let _requestAls: RequestAls | null | undefined;
+async function getRequestAls(): Promise<RequestAls | null> {
+    if (_requestAls !== undefined) return _requestAls;
+    if (typeof window !== 'undefined') { _requestAls = null; return null; }
+    try {
+        const { AsyncLocalStorage } = await import('node:async_hooks');
+        _requestAls = new AsyncLocalStorage<object>() as unknown as RequestAls;
+    } catch {
+        _requestAls = null; // runtime sans async_hooks → repli non scopé (comportement séquentiel sûr)
+    }
+    return _requestAls;
+}
+
 /** Emballe un objet sérialisable en réponse MCP texte (JSON indenté).
  *  [MCP-PROMPT-SCRUB] Les champs texte libres sont neutralisés en profondeur (anti-injection). */
 export function jsonContent(payload: unknown): ToolTextResult {
@@ -112,14 +129,22 @@ export async function withState(
     // calcul : sous Node, le sink localStorage est un no-op → « montant non fini → dépense ignorée »
     // et consorts étaient INVISIBLES pour Claude (le calcul répondait avec assurance). Les messages
     // sont déjà scrubés par logError (montants/PII masqués). Bloc texte ADDITIF, JSON intact.
+    // ⚠️ Concurrence (finding code-reviewer #520) : le Set d'écouteurs est PARTAGÉ par le process —
+    // deux withState EN VOL (Cloud Run HTTP) capteraient les logs l'un de l'autre. Sous Node, on
+    // scope donc la collecte au contexte async de CETTE requête (AsyncLocalStorage) ; en navigateur
+    // (pas d'ALS), la boucle de dispatch in-app est séquentielle ET le moteur tourne dans un Web
+    // Worker (module errorLogger séparé) → le cross-talk n'y est pas atteignable.
     const engineWarnings: string[] = [];
+    const als = await getRequestAls();
+    const token = {};
     const unsubscribe = onLogEntry((e) => {
+        if (als && als.getStore() !== token) return; // log d'une AUTRE requête en vol → ignoré
         if (e.source === 'projection' && (e.severity === 'warning' || e.severity === 'error' || e.severity === 'critical')) {
             if (engineWarnings.length < 5 && !engineWarnings.includes(e.message)) engineWarnings.push(e.message);
         }
     });
     try {
-        const res = await fn(state);
+        const res = als ? await als.run(token, () => fn(state)) : await fn(state);
         // [MCP-STALE-FRESHNESS] — appose l'âge des données à CHAQUE réponse (bloc texte ADDITIF,
         // le JSON du 1er bloc reste intact). Si la source n'a pas d'horodatage (fixture, fichier
         // local), pas de note. Claude voit ainsi quand la copie Drive est périmée au lieu de

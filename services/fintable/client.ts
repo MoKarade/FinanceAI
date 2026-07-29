@@ -186,7 +186,13 @@ export class FintableClient {
     private buildUrl(path: string, query?: Record<string, string | number | boolean | undefined>): string {
         const url = new URL(`${this.baseUrl}${path.startsWith('/') ? path : `/${path}`}`);
         for (const [k, v] of Object.entries(query ?? {})) {
-            if (v !== undefined) url.searchParams.set(k, String(v));
+            if (v === undefined) continue;
+            // ⚠️ [FINTABLE-BOOL-QUERY] Un booléen JS devient la chaîne "true"/"false" via String(v) —
+            // mais la validation `boolean` par défaut de Laravel (le framework derrière l'API,
+            // déduit du message d'erreur exact « The pending field must be true or false ») accepte
+            // seulement 0/1/"0"/"1"/true/false RÉELS, PAS les chaînes "true"/"false" transmises par
+            // une query string. Encoder en "1"/"0" plutôt qu'en toute confiance sur String().
+            url.searchParams.set(k, typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
         }
         return url.toString();
     }

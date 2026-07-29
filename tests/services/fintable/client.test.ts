@@ -48,6 +48,26 @@ describe('FintableClient — enveloppe et en-têtes', () => {
         expect(url).toContain('limit=500');
     });
 
+    it('encode un booléen en "1"/"0", JAMAIS "true"/"false"', async () => {
+        // Discriminant (leçon FINTABLE-BOOL-QUERY, incident réel 2026-07-29) : Fintable a rejeté
+        // `pending=false` (HTTP 422 « The pending field must be true or false ») — le message est
+        // celui, EXACT, de la règle `boolean` par défaut de Laravel, qui n'accepte que 0/1/"0"/"1",
+        // PAS les chaînes "true"/"false" qu'un `String(booléen)` naïf produirait. Ce test aurait
+        // échoué sur `String(v)` seul (il aurait produit "false", pas "0").
+        const fetchImpl = vi.fn(async () => res(200, { data: [] }));
+        const { client } = makeClient(fetchImpl as unknown as typeof fetch);
+
+        await client.get('/transactions', { pending: false, limit: 100 });
+        const [urlFalse] = fetchImpl.mock.calls[0] as unknown as [string];
+        expect(urlFalse).toContain('pending=0');
+        expect(urlFalse).not.toContain('pending=false');
+
+        await client.get('/transactions', { pending: true });
+        const [urlTrue] = fetchImpl.mock.calls[1] as unknown as [string];
+        expect(urlTrue).toContain('pending=1');
+        expect(urlTrue).not.toContain('pending=true');
+    });
+
     it('remonte `snapshot_date` de l\'enveloppe (il n\'est pas dans `data`)', async () => {
         const fetchImpl = vi.fn(async () => res(200, { data: [], snapshot_date: '2026-07-26' }));
         const { client } = makeClient(fetchImpl as unknown as typeof fetch);

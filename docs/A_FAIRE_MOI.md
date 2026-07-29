@@ -7,21 +7,34 @@
 
 ---
 
-## FINTABLE — forme de l'API à fournir (BLOQUE le Lot 1, remonté par Claude 2026-07-29)
-- [x] **Jeton compromis révoqué** — le 1ᵉʳ jeton Fintable (scopes read+write, expiration 2027) avait été
-  collé en clair dans le chat le 2026-07-29 → révoqué, remplacé par un jeton **lecture seule** stocké dans
-  Secret Manager (`financeai-fintable-token`, projet `financeai-497112`). Confirmé fait par Marc.
-  ⚠️ Règle à garder : un secret ne transite JAMAIS par le chat — `echo "<jeton>" | gcloud secrets versions add …`
-  depuis ton poste, jamais un copier-coller ici.
+## FINTABLE — dry-run bloqué : jeton à recréer proprement (remonté par Claude 2026-07-29)
 - [x] **Forme de l'API fournie** — docs officielles de l'API Fintable V2 collées le 2026-07-29 →
-  blocage levé, Lot 1 livré. (Je ne peux toujours PAS appeler `fintable.io` depuis l'exécution cloud :
-  403 au tunnel CONNECT sur tous les chemins, y compris les endpoints publics — d'où le point suivant.)
-- [ ] **Lancer le dry-run Fintable et me coller la sortie** (5 min) — c'est la seule vérification que je
-  ne peux pas faire moi-même. Depuis le repo à jour, dans PowerShell :
-  ```powershell
-  $env:FINTABLE_TOKEN="<ton jeton lecture seule>"
-  npm run fintable:dry -- --days 90
+  Lot 1 livré (PR #522, mergée). (Je ne peux toujours PAS appeler `fintable.io` depuis l'exécution
+  cloud : 403 au tunnel CONNECT sur tous les chemins, endpoints publics compris.)
+- [x] **Fix `pending field must be true or false`** — le 1ᵉʳ essai réel du dry-run a buté sur un 422 ;
+  corrigé (PR #524) : les booléens de query string s'encodent en `1`/`0`, pas `true`/`false`
+  (validation Laravel côté API). Diagnostic par la forme du message, non re-testé contre l'API réelle.
+- [ ] **⚠️ CORRECTION — le jeton lecture-seule n'a JAMAIS été mis en Secret Manager** : j'avais coché
+  ce point à tort le 2026-07-29 sur la foi de ton « oui cest bon cest fait ». `gcloud secrets versions
+  access` a rendu `NOT_FOUND` sur `financeai-fintable-token` (projet `financeai-497112`) — le secret
+  n'existe pas, ou existe ailleurs (autre nom/projet). Et **un 2ᵉ jeton (scopes read+write, émis
+  2026-07-29 14:39 UTC) a été collé en clair dans le chat** pendant le test du dry-run → compromis dès
+  qu'il apparaît dans l'historique, quel que soit l'usage prévu.
+  **À faire, dans cet ordre** :
+  1. **Révoque** ce 2ᵉ jeton dans Dashboard → API Fintable (et le 1ᵉʳ si jamais il traîne encore).
+  2. Crée un **nouveau jeton lecture seule** (scope `read` uniquement — pas `write`, jamais utile ici).
+  3. Stocke-le **sans repasser par le chat** :
+     ```bash
+     echo "<jeton>" | gcloud secrets create financeai-fintable-token --data-file=- --project=financeai-497112
+     ```
+     (ou `versions add` si le secret existe déjà sous ce nom exact — vérifie d'abord avec
+     `gcloud secrets list --project=financeai-497112 --filter="name:fintable"`).
+- [ ] **Lancer le dry-run Fintable et me coller la sortie** (5 min), une fois le jeton en Secret Manager :
+  ```bash
+  FINTABLE_TOKEN="$(gcloud secrets versions access latest --secret=financeai-fintable-token --project=financeai-497112)" \
+    npm run fintable:dry -- --days 90
   ```
+  (Git Bash — sur PowerShell : `$env:FINTABLE_TOKEN = (gcloud secrets versions access latest --secret=financeai-fintable-token --project=financeai-497112)`.)
   Le script fait **uniquement des GET** — aucune écriture, ni dans FinanceAI, ni dans Drive, ni chez
   Fintable. **Les montants sont MASQUÉS par défaut** (`•••`) : la sortie est conçue pour être recollée
   ici sans exposer tes chiffres. Ajoute `--show-amounts` seulement si tu veux les voir toi-même à l'écran.

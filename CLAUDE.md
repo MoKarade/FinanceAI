@@ -1409,3 +1409,27 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   il avait répondu « supprimer l'historique, utiliser que Plaid » (Q8) ; la mesure a donné **30 jours rendus sur
   90 demandés**, donc l'appliquer aurait coûté ~17 mois de données réelles. Un lot destructif se gate TOUJOURS
   sur une mesure du réel, jamais sur une intention — même exprimée clairement et de bonne foi.
+- ⚠️ **[FINTABLE-2] 2026-07-29 — quand DEUX sources alimentent le même journal, c'est la BORNE TEMPORELLE
+  qui protège, pas la déduplication** : `applyDocument` déduplique sur `txnKey = date|montant_en_cents|PAYEE`,
+  or le `payee` d'un nouveau fournisseur (Fintable : `merchant`/`description`) n'est JAMAIS la même chaîne
+  que celui extrait des relevés PDF importés à la main → même dépense, clé différente, **doublon accepté en
+  silence** qui fausse `computeStartingCash` ET les dépenses réelles du Budget. Et la fenêtre du nouveau
+  fournisseur RECOUVRE l'historique existant → risque réel, pas théorique. Parade : n'émettre que ce qui est
+  **strictement postérieur** à la dernière donnée déjà connue (date de bascule) — la dédup reste la ceinture,
+  la borne est la bretelle. Généralisation : **une clé de dédup qui inclut un LIBELLÉ ne survit pas à un
+  changement de fournisseur du libellé** — le vérifier en LISANT la fonction de dédup, jamais en la supposant.
+  Corollaires du même mapper : (a) un agrégat écrit en DELTA (`cash_balance` → `initialBalances`) se calcule
+  en **tout-ou-rien** — une cible partielle (un solde manquant) déplacerait durablement le solde en silence,
+  donc on suspend la mise à jour au lieu de l'approximer ; (b) un solde de carte de crédit NÉGATIF (crédit en
+  ta faveur) doit passer par `Math.abs` — une dette négative GONFLE le patrimoine au lieu de le réduire ;
+  (c) un rôle de compte (liquidités / dette / placement) est toujours EXPLICITE et un compte non déclaré est
+  SIGNALÉ, jamais rangé par défaut (ranger une carte en liquidités gonflerait le patrimoine du montant dû).
+- ⚠️ **Une intégration tierce peut être IMPOSSIBLE — le mesurer AVANT de coder l'aval, et le dire** (leçon
+  FINTABLE-POSITIONS 2026-07-29) : la moitié « investissements temps réel » du chantier était irréalisable —
+  l'annuaire PUBLIC de Fintable rend **3 courtiers SnapTrade au Canada** (Webull, Questrade, Wealthsimple) et
+  Disnat n'y est pas. Ce n'était pas une config à corriger mais une limite produit. Réflexe : quand une donnée
+  attendue n'arrive pas, chercher la **table de couverture du fournisseur** avant de débugger son propre code
+  — et quand le cœur d'une demande tombe, le DIRE franchement plutôt que livrer le reste comme si de rien
+  n'était (« ce qui reste est une proposition beaucoup plus petite que celle achetée mentalement au départ »).
+  ⚠️ Corollaire : ma reco (« ne pas payer ») a été REJETÉE par Marc, qui a choisi de prendre un plan. Tracer
+  l'arbitrage ET le désaccord dans l'ADR/BACKLOG — la prochaine session doit savoir que le coût est assumé.

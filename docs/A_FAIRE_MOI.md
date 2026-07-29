@@ -19,24 +19,40 @@
   SNAPTRADE** — or chez Fintable le courtage passe par SnapTrade. Un compte de placement lié via un
   lien bancaire expose son solde sans jamais exposer ses positions. Le plan n'est PAS en cause
   (`can_sync: OUI`), les connexions sont saines : c'est bien un problème de **type de lien**.
-- [ ] **🔴 Vérifier que Disnat est couvert par SnapTrade, puis créer la connexion** — l'annuaire
-  d'institutions est **public** (aucun jeton requis), donc tu peux chercher directement :
+- [x] **Positions : IMPOSSIBLE via Fintable — clos par la mesure (2026-07-29)** — l'annuaire public
+  donne **3 courtiers SnapTrade au Canada** (Webull, Questrade, Wealthsimple Trade) ; `q=disnat` → 0
+  résultat, « Desjardins Online Solutions » est `supported: false`. Limite du produit, pas une config.
+  Tes positions continuent de passer par `apply_broker_statement` (dépose un relevé Disnat dans le
+  chat) — ça marche déjà et ça ne coûte rien. À rouvrir seulement si tu changes de courtier.
+- [x] **Plan payant : tu as tranché (2026-07-29)** — tu prends un plan pour garder l'import automatique
+  des transactions + les soldes de référence. (Ma reco était l'inverse ; arbitrage assumé, tracé.)
+- [ ] **Créer la dette « Desjardins Cash Back Mastercard » dans FinanceAI, une seule fois** — la sync
+  ne mettra à jour que le **solde** : Fintable ne fournit ni taux d'intérêt ni paiement minimum, et je
+  refuse de les inventer. Va dans Réglages → Dettes et crée-la avec son vrai taux et son paiement
+  minimum. ⚠️ Si tu en as **déjà** une pour cette carte, ne la duplique pas — dis-moi son nom exact et
+  je le mettrai dans la config, sinon elle sera comptée deux fois dans ton patrimoine.
+- [ ] **Me donner la date de bascule** — le jour de ta dernière transaction déjà importée à la main.
+  C'est ce qui empêche les doublons : la dédup de l'app compare `date|montant|libellé`, or le libellé
+  de Fintable (« Blue Bottle Coffee ») ne sera pas celui de tes relevés PDF → même dépense, clé
+  différente, doublon silencieux qui fausserait ton solde ET tes dépenses réelles. En ne prenant que
+  ce qui est strictement après cette date, il n'y a aucun recouvrement possible.
+- [ ] **Construire le fichier de rôles de comptes** (une fois) — pour l'aperçu de mapping :
   ```bash
-  curl -s "https://fintable.io/api/v2/institutions?q=disnat&provider=SNAPTRADE"
-  curl -s "https://fintable.io/api/v2/institutions?q=desjardins&provider=SNAPTRADE"
+  # 1. Récupère les ids de tes comptes (sortie locale, ne la recolle pas telle quelle)
+  FINTABLE_TOKEN="$(gcloud secrets versions access latest --secret=financeai-fintable-token --project=financeai-497112)" \
+    npm run fintable:dry -- --show-ids
+  # 2. Crée .fintable-roles.json à la racine (gitignoré) :
+  #   { "<id PCA>":  {"kind":"cash"},
+  #     "<id TS1>":  {"kind":"cash"},
+  #     "<id MC>":   {"kind":"debt","debtName":"Desjardins Cash Back Mastercard"},
+  #     "<id Disnat L7B1>": {"kind":"investment"},
+  #     "<id Disnat L7A3>": {"kind":"investment"},
+  #     "<id SHR>":  {"kind":"investment"} }
+  # 3. Aperçu — TOUJOURS sans écriture :
+  FINTABLE_TOKEN="…" npm run fintable:dry -- --days 90 --roles .fintable-roles.json --after <ta-date-de-bascule>
   ```
-  (Je ne peux pas le faire moi-même : `fintable.io` est bloqué depuis l'exécution cloud, 403 au tunnel
-  CONNECT même sur les endpoints publics.) Si un résultat sort avec `"supported": true`, ajoute la
-  connexion depuis le dashboard Fintable (elle consommera 1 des 2 emplacements libres — tu es à 1/3).
-  Puis relance `npm run fintable:doctor` et `npm run fintable:dry -- --days 90` pour confirmer que les
-  positions arrivent. Si Disnat n'est **pas** couvert par SnapTrade, dis-le moi : le volet
-  « investissements temps réel » devient impossible via Fintable et il faudra rouvrir le cadrage.
-- [ ] **🔴 DÉCISION — ton essai Fintable expire le 2026-08-01** (dans 3 jours au moment où j'écris).
-  ⚠️ Le palier **gratuit a `can_sync: false`** : à l'expiration, **aucune synchronisation ne tournera
-  plus** — pas de dégradation partielle, l'intégration entière s'arrête. Ça heurte ta règle « zéro
-  abonnement » (`CLAUDE.md` global), donc c'est un arbitrage qui t'appartient : payer (Fintable a une
-  offre à vie, mentionnée sur leur site), ou considérer que ce chantier s'arrête et qu'on reste sur
-  l'import manuel. Dis-le moi avant de coder le Lot 2 : sans plan actif, tout ce qui suit est mort-né.
+  Colle-moi l'aperçu (montants masqués par défaut) : je vérifie que le compte de transactions retenues,
+  les liquidités visées et la dette correspondent à ce que tu attends **avant** qu'on écrive quoi que ce soit.
 - [ ] **Vérifier le doublon de dette carte de crédit** (avant le Lot 2) — tu as choisi que la Mastercard
   Desjardins alimente une dette dans FinanceAI. Regarde dans Réglages → Dettes si tu en as déjà une
   saisie à la main pour cette carte : si oui, il faudra la retirer au moment de brancher la sync, sinon

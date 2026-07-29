@@ -4,6 +4,31 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-29 (suite 5) — Lot 2 LIVRÉ (mapper pur) · positions IMPOSSIBLES, clos · Marc paie
+> **❌ `[FINTABLE-POSITIONS]` CLOS — impossible, mesuré.** L'annuaire PUBLIC de Fintable rend
+> **3 courtiers SnapTrade au Canada** (Webull, Questrade, Wealthsimple Trade) ; `q=disnat` → 0 résultat,
+> « Desjardins Online Solutions » = `supported: false`. Limite PRODUIT, pas une config. Les positions
+> restent sur `apply_broker_statement` (relevé déposé dans le chat), qui marche déjà.
+> **✅ `[FINTABLE-PLAN]`** : Marc prend un plan payant — CONTRE ma reco (j'ai conseillé d'arrêter, le
+> cœur de la demande étant impossible). Arbitrage assumé, tracé ADR + BACKLOG.
+> **🔵 `[FINTABLE-2]` LIVRÉ** (cette PR) : `services/fintable/mapSnapshot.ts`, fonction PURE →
+> `bank_statement` + `cash_balance` + `debt`. 16 tests (82 au total sur `services/fintable/`).
+> ⚠️ **Piège money-critical trouvé en LISANT `txnKey`** : la dédup porte sur `date|montant|PAYEE`, et le
+> payee Fintable ne sera jamais celui des relevés PDF → même dépense, clé différente, **doublon
+> silencieux** qui fausserait `computeStartingCash` + les dépenses du Budget. La fenêtre Fintable (30 j)
+> RECOUVRE l'historique manuel. Parade = **date de bascule** (`transactionsAfter`, strictement postérieur).
+> Leçon générale portée dans CLAUDE.md : quand 2 sources alimentent le même journal, c'est la BORNE
+> TEMPORELLE qui protège, pas la dédup — une clé qui inclut un libellé ne survit pas au changement de fournisseur.
+> Autres garde-fous testés : rôle de compte EXPLICITE (jamais deviné) · liquidités en TOUT-OU-RIEN
+> (`cash_balance` écrit un DELTA → cible partielle = dérive silencieuse) · solde de carte négatif →
+> `Math.abs` (une dette négative gonflerait le patrimoine) · devise ≠ CAD écartée et signalée · dette en
+> SOLDE seulement (ni taux ni paiement minimum inventés → elle doit préexister).
+> Aperçu : `npm run fintable:dry -- --roles <f.json> --after YYYY-MM-DD` (`--show-ids` pour construire le
+> fichier ; `.fintable-roles.json` gitignoré = ids de comptes bancaires).
+> **Suite — 3 actions Marc (routées `A_FAIRE_MOI.md`)** : créer la dette Mastercard une fois (avec son
+> VRAI taux), donner la date de bascule, construire le fichier de rôles puis me coller l'aperçu. Ensuite
+> `[FINTABLE-3]` (cron Cloud Run + écriture via `runApply`) et `[FINTABLE-4]` (import manuel masqué).
+>
 > ## 🟠 Session 2026-07-29 (suite 4) — docteur lancé : cause des positions TROUVÉE + essai qui expire le 01-08
 > **Le docteur a désigné la bonne cause du premier coup** : les 6 comptes de Marc arrivent par **UNE
 > SEULE connexion, Desjardins via PLAID**, et il n'y a **aucune connexion SNAPTRADE**. Chez Fintable le

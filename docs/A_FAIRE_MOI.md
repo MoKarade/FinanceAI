@@ -14,21 +14,29 @@
 - [x] **Décidé par la mesure : on GARDE tes 18 mois d'historique manuel** — 90 jours demandés,
   **30 rendus** (2026-06-29 → 2026-07-28). Ta réponse de cadrage « supprimer l'historique, n'utiliser
   que Plaid » est caduque : l'appliquer coûtait ~17 mois de données.
-- [ ] **🔴 Lancer le docteur et me coller la sortie** — c'est le point bloquant : tes 3 comptes de
-  placement (Disnat ×2, SHR) remontent **zéro position**, alors qu'ils contiennent des titres. Ce n'est
-  pas une panne (aucune erreur), Fintable répond littéralement « pas de positions ». J'ai écrit un
-  diagnostic qui lit l'état de ton COMPTE plutôt que les données :
+- [x] **Docteur lancé — CAUSE IDENTIFIÉE (2026-07-29)** : tes 6 comptes arrivent par **UNE SEULE
+  connexion, Desjardins via PLAID** (santé OK, dernière sync réussie le jour même). **Aucune connexion
+  SNAPTRADE** — or chez Fintable le courtage passe par SnapTrade. Un compte de placement lié via un
+  lien bancaire expose son solde sans jamais exposer ses positions. Le plan n'est PAS en cause
+  (`can_sync: OUI`), les connexions sont saines : c'est bien un problème de **type de lien**.
+- [ ] **🔴 Vérifier que Disnat est couvert par SnapTrade, puis créer la connexion** — l'annuaire
+  d'institutions est **public** (aucun jeton requis), donc tu peux chercher directement :
   ```bash
-  FINTABLE_TOKEN="$(gcloud secrets versions access latest --secret=financeai-fintable-token --project=financeai-497112)" \
-    npm run fintable:doctor
+  curl -s "https://fintable.io/api/v2/institutions?q=disnat&provider=SNAPTRADE"
+  curl -s "https://fintable.io/api/v2/institutions?q=desjardins&provider=SNAPTRADE"
   ```
-  (PowerShell : `$env:FINTABLE_TOKEN = (gcloud secrets versions access latest --secret=financeai-fintable-token --project=financeai-497112)` puis `npm run fintable:doctor`.)
-  Lecture seule, **aucun montant ni numéro de compte dans la sortie** — recollable telle quelle.
-  Il vérifie et explique : droits du plan (`can_sync` est `false` sur un compte gratuit → aucune sync
-  ne tourne), santé de chaque connexion, dernière sync réussie, et surtout **quel PROVIDER** porte tes
-  comptes. Piste principale : chez Fintable le **courtage passe par SnapTrade** — un compte de
-  placement lié via un provider bancaire (PLAID, etc.) peut exposer son solde sans jamais exposer ses
-  positions. Si c'est ça, il faudra relier tes comptes Disnat via SnapTrade dans le dashboard Fintable.
+  (Je ne peux pas le faire moi-même : `fintable.io` est bloqué depuis l'exécution cloud, 403 au tunnel
+  CONNECT même sur les endpoints publics.) Si un résultat sort avec `"supported": true`, ajoute la
+  connexion depuis le dashboard Fintable (elle consommera 1 des 2 emplacements libres — tu es à 1/3).
+  Puis relance `npm run fintable:doctor` et `npm run fintable:dry -- --days 90` pour confirmer que les
+  positions arrivent. Si Disnat n'est **pas** couvert par SnapTrade, dis-le moi : le volet
+  « investissements temps réel » devient impossible via Fintable et il faudra rouvrir le cadrage.
+- [ ] **🔴 DÉCISION — ton essai Fintable expire le 2026-08-01** (dans 3 jours au moment où j'écris).
+  ⚠️ Le palier **gratuit a `can_sync: false`** : à l'expiration, **aucune synchronisation ne tournera
+  plus** — pas de dégradation partielle, l'intégration entière s'arrête. Ça heurte ta règle « zéro
+  abonnement » (`CLAUDE.md` global), donc c'est un arbitrage qui t'appartient : payer (Fintable a une
+  offre à vie, mentionnée sur leur site), ou considérer que ce chantier s'arrête et qu'on reste sur
+  l'import manuel. Dis-le moi avant de coder le Lot 2 : sans plan actif, tout ce qui suit est mort-né.
 - [ ] **Vérifier le doublon de dette carte de crédit** (avant le Lot 2) — tu as choisi que la Mastercard
   Desjardins alimente une dette dans FinanceAI. Regarde dans Réglages → Dettes si tu en as déjà une
   saisie à la main pour cette carte : si oui, il faudra la retirer au moment de brancher la sync, sinon

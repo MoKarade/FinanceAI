@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟠 Session 2026-07-29 (suite 4) — docteur lancé : cause des positions TROUVÉE + essai qui expire le 01-08
+> **Le docteur a désigné la bonne cause du premier coup** : les 6 comptes de Marc arrivent par **UNE
+> SEULE connexion, Desjardins via PLAID**, et il n'y a **aucune connexion SNAPTRADE**. Chez Fintable le
+> courtage passe par SnapTrade → un compte de placement lié via un lien bancaire expose son solde sans
+> ses positions. Plan et santé des connexions HORS DE CAUSE (`can_sync: true`, sync réussie le jour même).
+> **Action Marc** : vérifier la couverture Disnat via l'annuaire PUBLIC (`GET /institutions?q=disnat&provider=SNAPTRADE`,
+> sans jeton) puis créer la connexion. Si Disnat n'est pas couvert par SnapTrade → « investissements
+> temps réel » impossible via Fintable, rouvrir le cadrage.
+> **🔴 `[FINTABLE-PLAN]` NOUVEAU BLOCAGE, échéance dure** : l'essai de Marc **expire le 2026-08-01**, et
+> le palier **gratuit a `can_sync: false`** → à l'expiration plus AUCUNE sync ne tourne (arrêt total, pas
+> de dégradation). Heurte la règle « zéro abonnement » du CLAUDE.md global → arbitrage Marc.
+> **NE PAS coder le `[FINTABLE-2]` avant sa réponse** : sans plan actif tout l'aval est mort-né.
+> **Mesuré au passage** : ni Airtable ni Google Sheets ne sont connectés chez lui → le « repli Sheet »
+> documenté à l'ADR n'a JAMAIS existé en pratique, ce qui conforte le choix de l'API directe.
+>
 > ## 🟠 Session 2026-07-29 (suite 3) — 1ᵉʳ dry-run RÉEL : Lot 5 tranché, positions BLOQUÉES, docteur livré
 > **Le dry-run passe** (6 comptes, 121 transactions). Fix `pending=1/0` (#524) **confirmé par mesure**.
 > ⚠️ Piège rencontré : le 422 est revenu VERBATIM après le merge — pas un mauvais diagnostic, le clone de

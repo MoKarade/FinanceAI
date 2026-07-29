@@ -153,6 +153,17 @@ Doc détaillée dans `docs/`, qui fait foi.
   zéro conflit. Le `reset --hard` n'est justifié que pour ré-aligner après un REVERT conteneur (état local
   corrompu), pas après un merge propre. Le stop-hook « commit Unverified noreply@github.com » sur le tip =
   commit de merge GitHub partagé avec `main` → l'ignorer, NE PAS reset pour le « nettoyer ».
+  ⚠️ **PRÉCISION (leçon FINTABLE 2026-07-29, vu 3× dans une seule session) : cette règle suppose que la
+  branche DISTANTE EXISTE ENCORE.** GitHub SUPPRIME la branche au squash-merge → `git ls-remote --heads origin
+  <branche>` rend VIDE. Il n'y a alors plus aucune lignée distante à préserver, et `git merge origin/main`
+  fabrique un commit de merge **VIDE** (`git show --stat` = 0 fichier, `git diff origin/main` = 0 ligne) que
+  le stop-hook signale « Unverified » à CHAQUE fin de tour. Dans ce cas précis, préférer
+  `git checkout -B <branche> origin/main` : ni merge vide, ni bruit récurrent, et zéro risque (rien
+  d'unpushed — le vérifier par `git status --porcelain` vide + `git diff origin/main --stat` vide AVANT).
+  ⚠️ Et ne JAMAIS « corriger » ce commit vide en le poussant (conseil littéral du stop-hook) : le push
+  RE-CRÉERAIT une branche que GitHub a délibérément supprimée, avec dessus un commit ABSENT de `main` —
+  exactement le piège du commit orphelin. Décision : brancher distante absente → `checkout -B` ; branche
+  distante présente → `git merge origin/main` comme ci-dessus.
   ⚠️ **Branche assignée STALE/divergée** (leçon 2026-06-16, FISC-REER-WHT-DOUBLE) : la branche imposée par la
   tâche (`claude/jolly-…`) pointait sur de VIEUX commits divergés (une migration Vite déjà refaite autrement sur
   `main`) → committer le fix dessus tel quel aurait injecté cette divergence Vite dans la PR (risque de casser le

@@ -8,7 +8,7 @@
 import type { AppState } from '../../types';
 import { freshnessNotice } from '../state/freshness';
 import { sanitizePromptText } from '../../utils/promptSafety';
-import { logError } from '../../services/errorLogger';
+import { logError, onLogEntry } from '../../services/errorLogger';
 
 // [MCP-PROMPT-SCRUB] Longueur max d'un champ TEXTE LIBRE utilisateur exposé à Claude via un tool
 // data-aware. Assez large pour un nom d'actif / payee / nom de projet normal (banques : < 60), mais
@@ -108,6 +108,16 @@ export async function withState(
             `Impossible de charger ton état FinanceAI. ${err instanceof Error ? err.message : String(err)}`,
         );
     }
+    // [MCP-ENGINE-WARNINGS] Collecte les logs MOTEUR (source 'projection', warning+) émis PENDANT le
+    // calcul : sous Node, le sink localStorage est un no-op → « montant non fini → dépense ignorée »
+    // et consorts étaient INVISIBLES pour Claude (le calcul répondait avec assurance). Les messages
+    // sont déjà scrubés par logError (montants/PII masqués). Bloc texte ADDITIF, JSON intact.
+    const engineWarnings: string[] = [];
+    const unsubscribe = onLogEntry((e) => {
+        if (e.source === 'projection' && (e.severity === 'warning' || e.severity === 'error' || e.severity === 'critical')) {
+            if (engineWarnings.length < 5 && !engineWarnings.includes(e.message)) engineWarnings.push(e.message);
+        }
+    });
     try {
         const res = await fn(state);
         // [MCP-STALE-FRESHNESS] — appose l'âge des données à CHAQUE réponse (bloc texte ADDITIF,
@@ -116,6 +126,12 @@ export async function withState(
         // présenter des chiffres morts comme actuels (incident 2026-07-14).
         const notice = freshnessNotice();
         if (notice) res.content.push({ type: 'text', text: notice });
+        if (engineWarnings.length > 0) {
+            res.content.push({
+                type: 'text',
+                text: `⚠️ Avertissements du moteur pendant ce calcul (à relayer si pertinent) :\n- ${engineWarnings.join('\n- ')}`,
+            });
+        }
         return res;
     } catch (err) {
         // [MCP-TOOLS-SILENT-CATCH] Un bug de CALCUL dans un tool (NaN, forme d'état inattendue)
@@ -128,5 +144,7 @@ export async function withState(
         return errorContent(
             `Calcul impossible sur ton état. ${err instanceof Error ? err.message : String(err)}`,
         );
+    } finally {
+        unsubscribe(); // jamais d'écouteur qui fuit d'une requête à l'autre
     }
 }

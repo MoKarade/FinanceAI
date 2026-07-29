@@ -1076,11 +1076,11 @@
   date de DÉBUT (servies dès le mois 0) → le what-if rejette un achat FINANCÉ différé (`monthsFromNow > 1`).
   Pour le supporter : soit un champ `startDate?` sur `Debt` honoré par le moteur (plan-first, touche le moteur),
   soit une modélisation « flux de paiements » côté what-if. Décision Marc requise sur la sémantique.
-- [ ] **[MCP-ENGINE-WARNINGS]** 🔧 LOW (suivi panel silent-failure 2026-07-13) — les `logErrorThrottled` du moteur
+- [x] **[MCP-ENGINE-WARNINGS]** ✅ 2026-07-29 — `onLogEntry` (écouteur éphémère d'errorLogger, isolé) + collecte dans `withState` (source projection, warning+, cap 5, dédup, désabonné en finally) → bloc texte additif « ⚠️ Avertissements du moteur » dans la réponse (JSON intact). Ex-suivi : les `logErrorThrottled` du moteur
   (ex. « montant non fini → dépense ignorée ») partent dans un sink NAVIGATEUR (localStorage, no-op sous Node) →
   invisibles pour Claude côté MCP. Piste : `withState` collecte les logs moteur pendant le run et les remonte dans
   la réponse JSON (champ `engineWarnings`). Zéro impact app web.
-- [ ] **[ENG-LIFEEVENT-VENTE-SUBSTRING]** 🔧 LOW (racine du finding « vente », pré-existant) — `applyLifeEvents`
+- [x] **[ENG-LIFEEVENT-VENTE-SUBSTRING]** ✅ 2026-07-29 — `LifeEvent.eventKind?: 'VENTE_IMMO' | 'NONE'` (additif, zéro bump persist) : sémantique EXPLICITE prime, absent = sous-chaîne historique exacte (golden inchangé, conservation 20/20). Le what-if MCP pose eventKind:'NONE' sur ses GROS_ACHAT (ceinture structurelle, safeEngineName reste la bretelle). 3 tests discriminants. Ex : `applyLifeEvents`
   détecte une vente immobilière par SOUS-CHAÎNE `name.includes('vente')` : fragile pour tout producteur de
   LifeEvent non humain (MCP assainit déjà via `safeEngineName`). Piste : type d'événement EXPLICITE
   (`'VENTE_IMMO'` dans `LifeEventType`) + migration douce du fallback substring. Plan-first (touche le moteur).

@@ -119,7 +119,11 @@ export function applyLifeEvents(
             state.shockPortfolio(drop);
             state.logLife(`Krach (-${e.impactPercent}%) 📉`);
         } else {
-            const isVente = e.name && e.name.toLowerCase().includes('vente');
+            // [ENG-LIFEEVENT-VENTE-SUBSTRING] Sémantique explicite d'abord (`eventKind`) : 'VENTE_IMMO'
+            // force la vente, 'NONE' la désarme ; absent → détection historique par sous-chaîne (« vente »
+            // = mot réservé, rétrocompat exacte des événements UI existants).
+            const isVente = e.eventKind === 'VENTE_IMMO'
+                || (e.eventKind === undefined && !!e.name && e.name.toLowerCase().includes('vente'));
             if (isVente) {
                 // `mortgage < currentValue` : équité positive requise. Cas-limite intentionnel : un bien TRULY
                 // underwater (`mortgage >= currentValue`) n'est PAS vendu (on ne modélise pas la vente à perte

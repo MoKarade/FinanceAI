@@ -147,6 +147,16 @@ function sanitizeContext(value: unknown, depth = 0): unknown {
     return String(value);
 }
 
+// [MCP-ENGINE-WARNINGS] Écouteurs ÉPHÉMÈRES d'entrées de log (collecte pendant un run de tool MCP).
+const logListeners = new Set<(entry: LoggedError) => void>();
+
+/** S'abonne aux entrées de log au fil de l'eau ; renvoie le désabonnement. Les entrées reçues sont
+ *  DÉJÀ scrubées (montants/PII masqués par logError) — sûres à remonter dans une réponse de tool. */
+export function onLogEntry(cb: (entry: LoggedError) => void): () => void {
+    logListeners.add(cb);
+    return () => { logListeners.delete(cb); };
+}
+
 export function logError(input: {
     source: ErrorSource;
     message: string;
@@ -185,6 +195,13 @@ export function logError(input: {
     // Rolling buffer : on garde les MAX_ENTRIES plus récentes
     const entries = [entry, ...state.entries].slice(0, MAX_ENTRIES);
     writeState({ entries });
+
+    // [MCP-ENGINE-WARNINGS] Notifie les écouteurs éphémères (collecte des logs moteur pendant un run
+    // MCP — sous Node, localStorage est absent donc writeState est un no-op : sans écouteur, ces
+    // entrées étaient INVISIBLES côté MCP). Isolé : un écouteur qui throw ne casse jamais le logger.
+    for (const cb of logListeners) {
+        try { cb(entry); } catch { /* écouteur défaillant ignoré */ }
+    }
 
     // Aussi en console pour DX (peut être stripé en prod via vite define)
     if (typeof console !== 'undefined') {

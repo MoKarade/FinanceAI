@@ -818,6 +818,13 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   chaîne d'affichage : le tooltip (`val || 0`) réintroduisait le faux « +0,00 % » que la courbe venait d'éliminer,
   et formatait en $ EN DUR ce que l'axe rendait en % (panel #495) ; NB test : jsdom ne cache PAS le contenu d'un
   `<details>` fermé (pas de règle UA) → « replié par défaut » s'asserte sur l'ATTRIBUT `open`, pas sur la visibilité.
+  ⚠️ **Complément [FINTABLE-4] 2026-07-29** : `fireEvent.click` sur un `<summary>` BASCULE bien l'attribut natif
+  `open` de son `<details>` parent en jsdom (mesuré, pas supposé — aucun test existant du repo ne le vérifiait
+  avant). Et un `<summary>` qui ENVELOPPE un composant ayant lui-même un titre `<Card title="Importer un
+  relevé bancaire…">` partageant un PRÉFIXE de texte avec le libellé de la disclosure (« Importer un relevé »)
+  fait échouer `getByText(/Importer un relevé/i)` (« Found multiple elements ») dès que le contenu masqué reste
+  dans le DOM (cf phrase précédente) — choisir un libellé de `<summary>` qui ne partage AUCUNE sous-chaîne avec
+  le contenu qu'il déplie (ici « Import manuel (repli — … » vs « Importer un relevé bancaire… »).
   Sœur : le matching par SOUS-CHAÎNE (`k.includes(sym)`)
   sur des clés devenues = symboles exacts fait matcher « V » (Visa) avec « VFV.TO » → helper partagé
   `historyKeyMatchesSymbol` (exact + préfixe place legacy), 6 sites corrigés. ↻ **RÉCIDIVE INVEST-PERF-PERIOD

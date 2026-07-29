@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-29 (suite 8) — `[FINTABLE-4]` LIVRÉ (import manuel replié par défaut) — chantier Fintable CLOS côté code
+> **🔵 `[FINTABLE-4]` LIVRÉ** — dernier item du chantier Fintable. L'import manuel (`ImportBankStatement`,
+> CSV/PDF) reste ENTIÈREMENT fonctionnel (aucune ligne de logique retirée) mais le bouton d'en-tête de
+> `Transactions.tsx` est remplacé par une disclosure `<details>` native (même convention que
+> `AdvancedProjectionParams`/`HistoryCoverageNote`) : **repliée par défaut** dès qu'il y a des transactions
+> (Fintable synchronise déjà le quotidien), **ouverte automatiquement** à l'onboarding (0 transaction, D2 —
+> l'écran vide ne doit jamais être une impasse). L'instance de Réglages → Comptes était déjà hors du flux
+> principal, inchangée. L'import de courtage (`Investments.tsx`) reste au premier plan — seul chemin pour
+> les positions (FINTABLE-POSITIONS : Disnat hors SnapTrade). 3 tests mis à jour, discriminant sur l'attribut
+> `open` (jsdom ne cache pas le contenu d'un `<details>` fermé). Découverte en chemin : `text-info-300`
+> (token Tailwind inexistant, ~12 sites) → `[A11Y-INFO300-SWEEP]` au BACKLOG (1 site corrigé ici).
+> **Chantier Fintable CLOS côté code** (`[FINTABLE-0]`→`[FINTABLE-4]`, #521→ce jour) — ce qui reste est
+> CONFIGURATION côté Marc : voir `docs/A_FAIRE_MOI.md` § FINTABLE-3 (3 secrets Secret Manager + redeploy
+> Cloud Run + 2 secrets GitHub Actions) pour que le cron tourne réellement.
+>
 > ## 🟢 Session 2026-07-29 (suite 7) — `[FINTABLE-3]` LIVRÉ (cron serveur, 1ʳᵉ écriture auto du chantier) + `[FUTUR-PAST-DEBT-FREEZE]`
 > **🔵 `[FINTABLE-3]` LIVRÉ** (cette PR) — cadrage validé par Marc (4 questions) : écriture réelle DÈS LE
 > DÉPART, 1×/jour, date de bascule AUTO-DÉRIVÉE, échecs visibles dans l'app seulement (pas de notif proactive).
@@ -1241,8 +1256,8 @@
 |---|---|
 | **Repo** | https://github.com/MoKarade/FinanceAI |
 | **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
-| **Dernière PR mergée** | **#531** [FINTABLE-3] + [FUTUR-PAST-DEBT-FREEZE] (cron sync serveur + fix passé/gel ; 2026-07-29, MERGÉE — panel de 7 agents, 6 findings vrais corrigés, cf bandeau ci-dessus — chantier Fintable #521→#531) |
-| **PR en cours (DRAFT)** | Aucune — prochain item : **`[FINTABLE-4]`** (import manuel masqué, dernier item du chantier Fintable) |
+| **Dernière PR mergée** | **#532** [DOC] correction post-merge #531 (compte de tests + résumé panel dans SESSION_HANDOVER.md) |
+| **PR en cours (DRAFT)** | **`[FINTABLE-4]`** (import manuel replié par défaut, dernier item du chantier Fintable — cf bandeau ci-dessus) — en cours d'ouverture |
 | **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
 | **Tests** | **3290 verts, suite complète** (288 fichiers, Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation — compte exact au gate/CI, mesuré 2026-07-29) |
 | **Typecheck** | Clean en mode strict |

@@ -88,8 +88,43 @@
   échoue), montant $ retiré d'un message d'avertissement (fuyait en clair dans les logs GitHub Actions),
   `fintableSyncReport` ajouté à `DEFAULT_APP_STATE` (sinon survivait au switch de persona démo), carte UI
   durcie contre une forme corrompue (`Array.isArray` + `logError`, jamais un crash de render).
-- [ ] **`[FINTABLE-4]` Import manuel répliqué et masqué** (S) — CONSERVÉ intégralement comme repli (Q1),
-  déplacé hors du flux principal. Ne RIEN supprimer : c'est le filet quand Fintable/Plaid tombe.
+- [x] **`[FINTABLE-4]` Import manuel répliqué et masqué** (S) — ✅ 2026-07-29. CONSERVÉ intégralement comme
+  repli (Q1) : `ImportBankStatement` reste pleinement fonctionnel (même composant, même pipeline
+  `parseBankCsv`/`applyDocument`), rien retiré. Déplacé hors du flux principal : le bouton du header
+  `Transactions.tsx` (toujours visible dans les actions de la `PageHeader`, donc « dans » le flux principal
+  au sens propre) est remplacé par une disclosure `<details>` native (convention établie, cf
+  `AdvancedProjectionParams`/`HistoryCoverageNote`) — **repliée par défaut** dès qu'il y a des transactions
+  (Fintable synchronise déjà le quotidien), **ouverte automatiquement** à l'onboarding (0 transaction, D2 —
+  l'écran vide reste jamais une impasse). L'instance de Réglages → Comptes (`AccountsSection.tsx`) était déjà
+  hors du flux principal, INCHANGÉE. Le formulaire de courtage (`ImportBrokerPositions`, `Investments.tsx`)
+  reste au premier plan — c'est le SEUL chemin pour les positions (FINTABLE-POSITIONS : Disnat hors SnapTrade).
+  Panel ciblé de 3 agents (code-reviewer, a11y-auditor, silent-failure-hunter — pur diff UI, pas de calcul $) :
+  ZÉRO finding bloquant. Confirmé empiriquement : `aria-expanded` retiré n'est pas une régression (le rôle
+  natif `<details>/<summary>` expose déjà l'état à l'arbre d'a11y) ; `text-ink-300` du summary passe AA/AAA
+  sur les 3 fonds sombres (6,93-7,77:1, mesuré) ; `open={transactions.length===0}` ne fige qu'UNE transition
+  (true→false au 1er import, jamais recontesté ensuite — comportement voulu, pas un bug de contrôle React).
+  1 finding non-bloquant routé au BACKLOG (`[A11Y-DETAILS-TAP-TARGET]`, ci-dessous — pré-existant, pas
+  introduit par ce diff).
+  3 tests mis à jour (`Transactions.import.test.tsx`) : discriminant sur l'attribut `open` de `<details>`,
+  PAS `queryByText` (jsdom ne cache pas le contenu d'un details fermé, cf leçon `[[INVEST-CHART-CLEAN]]`) —
+  et un `fireEvent.click` sur `<summary>` bascule bien `open` en jsdom (mesuré, pas supposé).
+  ⚠️ **Découverte en chemin** : `text-info-300` est un token Tailwind INEXISTANT (palette `info` = 400/500/600
+  seulement, cf `[[FIX-INK600-TOKEN]]`) — no-op silencieux, ~12 occurrences dans `components/` (corrigé
+  seulement l'instance touchée par ce diff, `Transactions.tsx:436`) → nouvel item `[A11Y-INFO300-SWEEP]` ci-dessous.
+- [ ] **`[A11Y-INFO300-SWEEP]` `text-info-300` inexistant (no-op silencieux) — sweep dédié** (S, découvert en
+  FINTABLE-4 2026-07-29) : la palette `info` (`tailwind.config.js`) s'arrête à 600/500/400, aucun shade 300 →
+  `text-info-300` ne génère AUCUNE règle CSS (le texte hérite du parent, contraste imprévisible, zéro erreur
+  build/lint — même classe que `[[FIX-INK600-TOKEN]]`). ~12 occurrences à corriger en `text-info-400` (mesuré
+  AA normal ≥4,5:1) : `LifeProjects.tsx:61`, `MissingDataBanner.tsx:136`, `ChildPlanning.tsx:301`,
+  `AutoBackupPanel.tsx:170`, `UsersCard.tsx:140`, `PayslipUploadCard.tsx:164`, `UserConfigFields.tsx:98`,
+  `Investments.tsx:1286`, `AuditLogViewer.tsx:15,126`, `ErrorLogViewer.tsx:147`, `AddStockForm.tsx:416,432`.
+  Vérifier chaque site avec `npm run check-contrast` avant de committer (ne pas recopier le shade au jugé).
+- [ ] **`[A11Y-DETAILS-TAP-TARGET]` `<summary>` sous la cible tactile 24×24px (WCAG 2.5.8)** (S, découvert
+  par le panel FINTABLE-4 2026-07-29, finding a11y-auditor) : le `<summary>` de la disclosure `<details>`
+  n'a qu'un padding horizontal (`px-1`, pas de `py-*`) → hauteur cliquable sous 24px CSS. PAS introduit par
+  FINTABLE-4 — la MÊME convention existe déjà dans `AdvancedProjectionParams.tsx` et `HistoryCoverageNote.tsx`
+  (pré-existante). Un sweep dédié (ajouter `py-1`/`py-1.5` aux `<summary>` du repo, cf `grep -n '<summary'`)
+  uniformiserait les ~5 sites `<details>` du repo en une seule PR, plutôt que de corriger un site isolément.
 - [x] **`[FINTABLE-5]` Bascule de l'historique 18 mois — ✅ TRANCHÉ 2026-07-29 : ON GARDE.** La mesure
   est tombée : 90 jours demandés, **30 rendus** (2026-06-29 → 2026-07-28). La réponse de cadrage de Marc
   (« supprimer l'historique, n'utiliser que Plaid », Q8) est donc **caduque** — l'appliquer aurait coûté

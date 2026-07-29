@@ -62,14 +62,23 @@
   intention : l'intention était sincère et fausse. Rien à coder ; l'import manuel reste la source du
   passé, Fintable celle du présent. À réévaluer si la fenêtre s'élargit (connexions peut-être récentes),
   mais **jamais de suppression sur une promesse**.
-- [ ] **`[FINTABLE-POSITIONS]` 🔴 Zéro position sur 3 comptes de placement** (?) — BLOQUE la moitié de la
-  demande initiale (« mes investissements en temps réel »). Les appels `/accounts/{id}/holdings` RÉUSSISSENT
-  en rendant des listes vides, sur des comptes qui contiennent réellement des titres (confirmé Marc).
-  Étape 1 = `npm run fintable:doctor` (livré en `[FINTABLE-1b]`) → routé dans `A_FAIRE_MOI.md`. Piste
-  principale encodée dans son raisonnement : chez Fintable le **courtage passe par SnapTrade**, donc un
-  compte de placement lié via un provider bancaire (PLAID…) peut exposer son solde sans jamais exposer ses
-  positions. Autres suspects : plan sans droit de sync (`can_sync:false`), connexion à ré-authentifier,
-  sync jamais exécutée. Tant que ce n'est pas résolu, le volet positions du `[FINTABLE-2]` reste GELÉ.
+- [ ] **`[FINTABLE-POSITIONS]` 🔴 Zéro position — CAUSE IDENTIFIÉE, action côté Marc** — le docteur a
+  tranché le 2026-07-29 : les 6 comptes arrivent par **UNE SEULE connexion, Desjardins via PLAID**
+  (santé OK, sync réussie le jour même) et il n'y a **aucune connexion SNAPTRADE**. Chez Fintable le
+  courtage passe par SnapTrade → un compte de placement lié via un lien bancaire expose son solde sans
+  ses positions. Le plan et la santé des connexions sont hors de cause (`can_sync: true`). La piste
+  encodée dans `explainMissingData` a donc désigné la bonne cause du premier coup. **Action Marc**
+  (routée `A_FAIRE_MOI.md`) : vérifier la couverture Disnat via l'annuaire PUBLIC
+  (`GET /institutions?q=disnat&provider=SNAPTRADE`) puis créer la connexion SnapTrade. Si Disnat n'est
+  pas couvert, le volet « investissements temps réel » est impossible via Fintable → rouvrir le cadrage.
+  Le volet positions du `[FINTABLE-2]` reste GELÉ d'ici là.
+- [ ] **`[FINTABLE-PLAN]` 🔴 L'essai Fintable expire le 2026-08-01 — décision Marc** — le palier
+  **gratuit a `can_sync: false`** : à l'expiration, plus AUCUNE synchronisation ne tourne (pas de
+  dégradation partielle, arrêt total). Ça heurte la règle « zéro abonnement » du `CLAUDE.md` global →
+  arbitrage de Marc : payer, ou acter que ce chantier s'arrête et rester sur l'import manuel.
+  **Ne pas coder le `[FINTABLE-2]` avant sa réponse** : sans plan actif, tout l'aval est mort-né.
+  NB mesuré au passage : ni Airtable ni Google Sheets ne sont connectés chez lui — le « repli Sheet »
+  documenté à l'ADR n'a donc jamais existé en pratique, ce qui conforte le choix de l'API directe.
 
 ## 🚧 Chantier Claude-in-app (GO Marc 2026-07-21 : « go jusqu'à tout fini et testé + audit de sec à la fin + aucune donnée changée + résultat fiable »)
 > Plan validé (panel PM + architect, 2026-07-21). P1 = Claude intégré à l'app (tool-use sur les MÊMES

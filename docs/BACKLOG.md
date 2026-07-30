@@ -129,6 +129,29 @@
   (`Number(null) === 0`) → un solde ABSENT devenait un **0 $ crédible** effaçant le compte du patrimoine.
   Exactement le piège `[[FINTABLE]]`, retombé dedans en l'écrivant. Garde null-explicite AVANT conversion,
   aux DEUX bouts (écriture + lecture d'un état Drive non validé par Zod). 19 tests.
+- [x] **`[FINTABLE-7]` Sync Fintable DEPUIS LE NAVIGATEUR — réseau + runner** (M) — ✅ 2026-07-30.
+  Demande Marc : « je veux que tu fasses tout toi, sans que j'aie besoin de t'aider ». **Mesuré avant
+  de décider** : `gcloud` ABSENT du conteneur, aucun identifiant GCP, `fintable.io` = 403 CONNECT
+  (politique réseau), aucun outil MCP pour créer un secret GitHub → le chemin Cloud Run exige
+  IRRÉDUCTIBLEMENT les identifiants de Marc (3 secrets + redeploy + secret Actions). Le chemin
+  navigateur ne demande QUE de coller le jeton dans Réglages. Livré : (a) proxy same-origin
+  `/api/fintable/:path*` → `fintable.io/api/v2/*` (`vercel.json` + `server.proxy` vite dev/preview),
+  patron EXACT de Yahoo → `connect-src 'self'` couvre, **zéro domaine ajouté à la CSP** ; (b)
+  `apiKeys.fintable` (optionnel, même traitement que les autres clés) ; (c) `AppState.fintableRoles`
+  — remplace le fichier `.fintable-roles.json` que Marc devait écrire à la main puis pousser en secret
+  GCP ; (d) `services/fintable/browserSync.ts` qui RÉUTILISE tel quel lecteur/mapper/`applyDocument`/
+  `toPersistableBrokerBalances` (zéro logique dupliquée — seuls le transport et le porteur d'état
+  changent), avec les MÊMES garanties que le cron : rapport toujours rendu, isolation par payload,
+  bascule plafonnée à aujourd'hui, et `nextState: null` sur échec (jamais d'état à moitié appliqué).
+  Garde de parité au COMPILE entre le rôle PERSISTÉ (`types.ts`, sans dépendance) et le rôle du
+  MAPPER (pur) — les deux formes sont volontairement séparées, leur divergence casse le typecheck.
+  ⚠️ **Compromis assumé, dit dans la PR** : le jeton vit dans le navigateur et transite par l'edge
+  Vercel (vs Secret Manager) — scope LECTURE SEULE, ce qui borne le risque ; et ça ne tourne pas
+  application fermée. Le cron serveur reste en place, prioritaire si Marc monte la config un jour. 7 tests.
+- [ ] **`[FINTABLE-7]` Lot 2 — UI Réglages : coller le jeton + assigner les rôles par clic** (M) —
+  bouton « Tester » qui liste les comptes réels, puis un rôle par compte (liquidités / dette + nom /
+  placement + régime / ignorer). ⚠️ Marc a dit « c'est tout non enregistré pour le moment » →
+  pré-remplir `NON-ENREG`. Déclenchement de la passe : bouton + auto à l'ouverture, throttlé 1×/jour.
 - [ ] **`[FINTABLE-6]` Lot 2 — consommer le montant courtier dans Investissements + Accueil** (M) —
   brancher `reconcileBrokerBalances` : total affiché = solde courtier, ligne « écart courtier (non
   ventilé) » explicite, badge de fraîcheur. Dépend du Lot 1 (livré) ET de la sync qui tourne réellement.

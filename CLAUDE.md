@@ -1404,6 +1404,26 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   en option locale) : c'est ce qui rend le diagnostic partageable sans exposer les chiffres réels. Corollaire du
   blocage : quand seul Marc peut exécuter (hôte hors politique réseau), la valeur du livrable EST la qualité de
   ce qu'il aura à recoller — dimensionner le rapport sur les décisions qu'il débloque, pas sur « ça marche ».
+- ⚠️ **[FINTABLE-7] 2026-07-30 — « je veux que tu fasses tout toi » : MESURER ses propres accès avant
+  de renvoyer une liste de tâches à Marc** : je lui avais donné 6 gestes d'infra (secrets GCP, redeploy,
+  secret GitHub). Sa réponse a forcé la bonne question — *qu'est-ce qui est VRAIMENT bloqué ?* Vérifié
+  plutôt que supposé : `which gcloud` ABSENT, aucun `~/.config/gcloud`, `fintable.io` = **403 CONNECT**
+  (politique réseau du conteneur), et `ToolSearch` ne rend AUCUN outil de création de secret GitHub.
+  Conclusion honnête : le chemin serveur exige irréductiblement des identifiants de SES comptes — ce
+  n'est pas une limite à contourner, c'est une propriété de sécurité. **Mais l'irréductible portait sur
+  le CHEMIN, pas sur le BESOIN** : rejouer la même passe dans le navigateur (proxy same-origin déjà
+  éprouvé pour Yahoo → zéro domaine CSP, zéro CORS) ramène le coût côté Marc à « coller un jeton ».
+  Réflexe : quand une demande bute sur un mur d'infra, chercher un TRANSPORT alternatif avant de
+  déclarer la demande bloquée — et ne migrer QUE le transport (le lecteur, le mapper, `applyDocument`
+  et la persistance sont réutilisés TELS QUELS, sinon deux copies divergent, cf [[Lot audit n°2]]).
+  Corollaire : dire le compromis (jeton dans le navigateur via l'edge Vercel vs Secret Manager ; pas
+  d'exécution app fermée) AU MOMENT du choix, pas quand il se retourne contre nous.
+  ⚠️ **Piège d'outillage du même lot** : réécrire un JSON via `json.load`/`json.dumps` REFORMATE tout
+  le fichier (52 lignes touchées pour UNE addition, bloc CSP compris) — sur `vercel.json`, du bruit
+  dans un fichier sensible. Édition CHIRURGICALE (Edit sur la ligne voisine), jamais un round-trip.
+  ⚠️ Et un `npm run typecheck` ne couvre QUE ce qui existe au moment où il tourne : mon import fautif
+  (`buildDefaultAppState` depuis le store au lieu de `mcp/state/appStateDefaults`) est passé parce que
+  le fichier de test n'était pas encore écrit. Re-typechecker APRÈS avoir ajouté des fichiers, pas avant.
 - ⚠️ **[FINTABLE-6] 2026-07-30 — « utilise exactement le montant que j'ai dans Fintable », leçons** :
   (1) **Une donnée CALCULÉE puis jetée est indiscernable d'une donnée absente — greper les CONSOMMATEURS
   avant de promettre un branchement** : `investmentBalances` était produit par le mapper depuis le Lot 2,

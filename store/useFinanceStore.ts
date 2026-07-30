@@ -199,6 +199,9 @@ const DEFAULT_APP_STATE: AppState = {
     // [FINTABLE-6] MÊME raison que ci-dessus : soldes RÉELS des comptes de placement de Marc — la
     // donnée la plus sensible du lot. Présent explicitement pour être purgé au switch de persona.
     fintableBrokerBalances: undefined,
+    // [FINTABLE-7] Rôles assignés depuis Réglages. Présent explicitement (même raison) : la liste
+    // des comptes réels de Marc n'a rien à faire dans une démo persona.
+    fintableRoles: undefined,
 };
 
 // Base PROPRE pour charger un persona de test : toutes les tranches de DONNÉES remises aux défauts

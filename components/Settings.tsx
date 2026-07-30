@@ -27,6 +27,7 @@ import { ProfileSection } from './settings/sections/ProfileSection';
 import { AccountsSection } from './settings/sections/AccountsSection';
 import { PatrimoineSection } from './settings/sections/PatrimoineSection';
 import { IntegrationsSection } from './settings/sections/IntegrationsSection';
+import { FintableSyncCard } from './settings/FintableSyncCard';
 import { AnalyticsConsentCard } from './settings/sections/AnalyticsConsentCard';
 import { BackupSection } from './settings/sections/BackupSection';
 // G22-N5 — Système fusionné dans Config (6e sous-onglet « Système & diagnostics »).
@@ -197,6 +198,8 @@ export const Settings: React.FC<SettingsProps> = ({
       {sub === 'integrations' && (
         <div className="space-y-6">
           <IntegrationsSection apiKeys={apiKeys} setApiKeys={setApiKeys} />
+          {/* [FINTABLE-7] Sync bancaire in-app : jeton + rôles de comptes, sans aucune config externe. */}
+          <FintableSyncCard />
           <AnalyticsConsentCard />
         </div>
       )}

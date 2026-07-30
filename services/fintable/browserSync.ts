@@ -9,14 +9,26 @@
 // l'environnement d'exécution, il n'y a aucun identifiant GCP, et `fintable.io` y est bloqué (403
 // au tunnel CONNECT). Ce chemin-ci ne demande qu'UNE chose : coller le jeton dans Réglages.
 //
-// Ce module ne DUPLIQUE aucune logique métier : il réutilise `readFintableSnapshot` (lecteur),
-// `mapFintableSnapshot` (mapper pur), `deriveCutoverDate`, `applyDocument` et
-// `toPersistableBrokerBalances` — exactement comme le cron serveur. Seuls changent le TRANSPORT
-// (proxy same-origin) et le porteur de l'état (le store, pas le Drive via OCC).
+// Ce module ne DUPLIQUE aucune logique métier : lecteur (`readFintableSnapshot`), mapper pur
+// (`mapFintableSnapshot`), persistance des soldes (`toPersistableBrokerBalances`) ET orchestration
+// money-critical (`syncCore` : plafonnement de bascule + application isolée par payload) sont
+// PARTAGÉS avec le cron serveur. Seuls changent le TRANSPORT (proxy same-origin) et le porteur de
+// l'état (rendu à l'appelant, pas écrit au Drive via OCC).
+// ⚠️ Le premier jet de ce module COPIAIT le plafonnement et la boucle d'isolation — deux correctifs
+// de panel (PR #531) — et l'affirmait pourtant « aucune logique dupliquée » (finding code-reviewer,
+// PR #535). Une affirmation de commentaire se vérifie : elle fabriquait le prochain faux négatif.
 //
 // ⚠️ TRANSPORT : `/api/fintable/*` est un rewrite same-origin (`vercel.json` en prod, `server.proxy`
 // en dev) vers `https://fintable.io/api/v2/*`. C'est le patron déjà éprouvé pour Yahoo : la CSP
 // (`connect-src 'self'`) couvre sans ajouter de domaine, et il n'y a pas de préflight CORS.
+// ⚠️ DIFFÉRENCE avec le proxy Yahoo, à ne pas sous-estimer (finding security-privacy, PR #535) :
+// celui-ci relaie un en-tête `Authorization` (Bearer), là où Yahoo ne sert que de la donnée publique
+// non authentifiée. L'hôte et le schéma sont FIXES côté rewrite (donc pas de SSRF : un `../` dans le
+// chemin ne peut qu'atterrir ailleurs sur fintable.io, joignable directement de toute façon), et
+// aucun jeton n'est intégré côté serveur — le relais ne peut donc pas fuiter CELUI de Marc. Reste
+// qu'il est ouvert et sans limite de débit : un tiers peut s'en servir pour masquer l'origine de son
+// trafic vers fintable.io et consommer de la bande passante. Compromis ACCEPTÉ pour une app solo
+// sans backend (ADR-002), consigné ici plutôt que découvert plus tard.
 //
 // ⚠️ COMPROMIS ASSUMÉ vs le cron serveur, à ne pas masquer : (a) le jeton vit dans le navigateur
 // (chiffré comme les autres clés) et transite par l'edge Vercel, au lieu de rester dans Secret
@@ -24,11 +36,10 @@
 // fermée. Le cron serveur reste en place et prioritaire si Marc monte un jour la config.
 
 import type { AppState, FintableSyncReport, FintableAccountRoleConfig } from '../../types';
-import { applyDocument } from '../../mcp/ingest/applyDocument';
 import { FintableClient } from './client';
 import { readFintableSnapshot } from './readSnapshot';
-import { mapFintableSnapshot, type FintableAccountRole } from './mapSnapshot';
-import { deriveCutoverDate } from './deriveCutoverDate';
+import { mapFintableSnapshot, FINTABLE_TAX_REGIMES, type FintableAccountRole, type FintableTaxRegime } from './mapSnapshot';
+import { decideCutoverDate, applyPayloadsIsolated } from './syncCore';
 import { toPersistableBrokerBalances } from './brokerBalances';
 import { FintableError } from './types';
 import { logError } from '../errorLogger';
@@ -77,9 +88,15 @@ function toMapperRoles(
         } else if (role?.kind === 'cash' || role?.kind === 'ignore') {
             out[id] = { kind: role.kind };
         } else if (role?.kind === 'investment') {
-            out[id] = role.taxRegime === undefined
-                ? { kind: 'investment' }
-                : { kind: 'investment', taxRegime: role.taxRegime };
+            // ⚠️ Régime VALIDÉ contre la source unique, pas recopié (finding code-reviewer, PR #535) :
+            // le parseur du chemin serveur (`rolesConfig`) rejette déjà une valeur invalide, mais ici
+            // l'état vient du Drive et n'est validé par aucun schéma. Une valeur invalide non-undefined
+            // passerait entre les mailles — le mapper ne teste que `=== undefined` pour signaler
+            // « régime non déclaré » → ni ventilation, ni avertissement : le pire des deux mondes.
+            const regime = (FINTABLE_TAX_REGIMES as readonly string[]).includes(role.taxRegime as string)
+                ? (role.taxRegime as FintableTaxRegime)
+                : undefined;
+            out[id] = regime === undefined ? { kind: 'investment' } : { kind: 'investment', taxRegime: regime };
         }
     }
     return out;
@@ -111,18 +128,19 @@ export async function runFintableBrowserSync(
 
     try {
         const todayStr = new Date(now()).toISOString().slice(0, 10);
-        cutoverDateUsed = deriveCutoverDate(state.transactions);
-        // Même plafond que le cron (finding financial-integrity, PR #531) : une transaction mal
-        // datée dans le FUTUR filtrerait sinon TOUT l'import, chaque jour, sans aucun signal.
-        if (cutoverDateUsed !== null && cutoverDateUsed > todayStr) {
-            preflightWarnings.push(
-                `Bascule dérivée (${cutoverDateUsed}) dans le FUTUR — une transaction existante est mal `
-                + `datée. Plafonnée à aujourd'hui (${todayStr}) ; corrige la date en cause.`,
-            );
-            cutoverDateUsed = todayStr;
-        }
+        // Plafonnement PARTAGÉ avec le cron (`syncCore`) — même correctif des deux côtés, par
+        // construction plutôt que par vigilance.
+        const cutover = decideCutoverDate(state.transactions, todayStr);
+        cutoverDateUsed = cutover.cutoverDateUsed;
+        preflightWarnings.push(...cutover.warnings);
 
         const client = opts.client ?? new FintableClient({ token, baseUrl: FINTABLE_BROWSER_BASE });
+        // ⚠️ ÉCART ASSUMÉ avec le cron, qui laisse `dateFrom: undefined` (illimité) sur état vierge :
+        // ici on borne à 90 jours. Ce n'est PAS une protection anti-doublon — celle-ci est la bascule
+        // (`transactionsAfter`, appliquée strictement par le mapper) et elle vaut `null` seulement si
+        // `state.transactions` est réellement vide, donc il n'y a rien à recouvrir. La borne sert à ne
+        // pas rapatrier des mois de données dans un onglet au premier lancement (le cron, lui, tourne
+        // sans utilisateur qui attend). Divergence documentée pour ne pas passer pour un oubli.
         const dateFrom = cutoverDateUsed
             ?? new Date(now() - LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 10);
         const snapshot = await readFintableSnapshot(client, { dateFrom, dateTo: todayStr });
@@ -132,27 +150,9 @@ export async function runFintableBrowserSync(
             transactionsAfter: cutoverDateUsed,
         });
 
-        // Isolation PAR PAYLOAD (leçon PR #531) : `applyDocument` rejette volontairement un payload
-        // aberrant (dette à 0 $…). Sans try/catch par itération, ce rejet LÉGITIME avorterait toute
-        // la passe et rien ne serait écrit — chaque jour, tant que la condition persiste.
-        let nextState: AppState = state;
-        const applyWarnings: string[] = [];
-        let transactionsAdded = 0;
-        let cashUpdated = false;
-        const debtsUpdated: string[] = [];
-        for (const doc of payloads) {
-            try {
-                nextState = applyDocument(nextState, doc).nextState;
-                if (doc.kind === 'bank_statement') transactionsAdded += doc.transactions.length;
-                else if (doc.kind === 'cash_balance') cashUpdated = true;
-                else if (doc.kind === 'debt') debtsUpdated.push(doc.name);
-            } catch (payloadErr) {
-                applyWarnings.push(
-                    `Payload « ${doc.kind} » NON appliqué : `
-                    + (payloadErr instanceof Error ? payloadErr.message : String(payloadErr)),
-                );
-            }
-        }
+        // Isolation PAR PAYLOAD : PARTAGÉE avec le cron (`syncCore`), voir son en-tête.
+        const applied = applyPayloadsIsolated(state, payloads);
+        const { nextState, transactionsAdded, cashUpdated, debtsUpdated, warnings: applyWarnings } = applied;
 
         const report: FintableSyncReport = {
             at: now(),

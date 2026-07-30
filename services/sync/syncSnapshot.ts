@@ -16,6 +16,10 @@ export const STORE_KEY = 'financeai-storage';
 function currentApiKeys(): ApiKeys {
     try {
         const k = useFinanceStore.getState().apiKeys;
+        // [FINTABLE-7] `fintable` est délibérément ABSENT de cette projection : le jeton reste
+        // DEVICE-LOCAL (coffre chiffré), il ne voyage pas par le Drive. Choix conservateur — un
+        // jeton bancaire synchronisé cross-device élargirait sa surface sans nécessité (la sync
+        // in-app tourne là où Marc ouvre l'app, il peut le recoller ailleurs si besoin).
         return { anthropic: k?.anthropic ?? '', finnhub: k?.finnhub ?? '' };
     } catch {
         return { anthropic: '', finnhub: '' };

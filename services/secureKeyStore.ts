@@ -42,6 +42,11 @@
 export interface PersistedApiKeys {
     anthropic: string;
     finnhub: string;
+    /** [FINTABLE-7] Jeton Fintable (lecture seule). Optionnel : absent = sync in-app inactive.
+     *  ⚠️ Déclaré ICI dès l'introduction du champ (finding security-privacy, PR #535) — pas au
+     *  moment où l'UI l'écrira : un champ absent de ce type pousse la surface suivante à le
+     *  sauvegarder par un AUTRE chemin, non chiffré. Le coffre est la seule voie. */
+    fintable?: string;
 }
 
 const DB_NAME = 'financeai-secure';

@@ -21,12 +21,11 @@
 
 import type { AppState, FintableSyncReport } from '../types';
 import type { StateStore } from './state/stateStore';
-import { applyDocument } from './ingest/applyDocument';
 import { FintableClient } from '../services/fintable/client';
 import { readFintableSnapshot } from '../services/fintable/readSnapshot';
 import { mapFintableSnapshot, type FintableMappingConfig } from '../services/fintable/mapSnapshot';
 import { toPersistableBrokerBalances } from '../services/fintable/brokerBalances';
-import { deriveCutoverDate } from '../services/fintable/deriveCutoverDate';
+import { decideCutoverDate, applyPayloadsIsolated } from '../services/fintable/syncCore';
 import { FintableError } from '../services/fintable/types';
 import { isStateConflictError } from './state/stateErrors';
 import { logError } from '../services/errorLogger';
@@ -92,19 +91,12 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
     try {
         const { state, version } = await store.getWithVersion();
         const todayStr = new Date().toISOString().slice(0, 10);
-        cutoverDateUsed = deriveCutoverDate(state.transactions);
-        // ⚠️ [finding financial-integrity A3, PR #531] Une transaction datée dans le FUTUR (typo,
-        // saisie pré-datée) pousserait la bascule EN AVANT de la date réelle → le mapper filtrerait
-        // TOUTES les transactions Fintable comme « avant la bascule » (`transactionsAfter`), CHAQUE
-        // JOUR, sans aucun signal (`ok:true, transactionsAdded:0` indéfiniment). Plafonné à
-        // AUJOURD'HUI, et le plafonnement est TRACÉ (no silent caps) plutôt que simplement appliqué.
-        if (cutoverDateUsed !== null && cutoverDateUsed > todayStr) {
-            preflightWarnings.push(
-                `Bascule dérivée (${cutoverDateUsed}) dans le FUTUR — une transaction existante est ` +
-                `mal datée. Plafonnée à aujourd'hui (${todayStr}) pour ne pas bloquer la sync ; corrige la date en cause.`,
-            );
-            cutoverDateUsed = todayStr;
-        }
+        // Plafonnement de la bascule : logique PARTAGÉE avec le chemin navigateur (`syncCore`) —
+        // elle était copiée dans les deux, alors que c'est un correctif de panel qui doit rester
+        // identique des deux côtés (finding code-reviewer, PR #535).
+        const cutover = decideCutoverDate(state.transactions, todayStr);
+        cutoverDateUsed = cutover.cutoverDateUsed;
+        preflightWarnings.push(...cutover.warnings);
         const client = opts.client ?? new FintableClient({ token: opts.token });
 
         const snapshot = await readFintableSnapshot(client, {
@@ -120,34 +112,12 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
             transactionsAfter: cutoverDateUsed,
         });
 
-        // ⚠️ [finding financial-integrity, PR #531, MESURÉ] Isolation PAR PAYLOAD : `applyDocument`
-        // REJETTE volontairement un payload aberrant (solde de dette 0/négatif, dette introuvable,
-        // cible de cash non finie…) — un rejet LÉGITIME côté validation, mais SANS isolation ici, il
-        // avortait TOUTE la passe avant `store.save` : aucun payload valide n'était écrit, CHAQUE JOUR,
-        // tant que la condition persistait (ex. une carte de crédit remboursée à 0 $ ce mois-ci). Les
-        // compteurs du rapport reflètent maintenant ce qui a RÉELLEMENT été appliqué (pas ce que le
-        // mapper a seulement PROPOSÉ) — un payload rejeté devient un avertissement, jamais un silence.
-        // ⚠️ [finding financial-integrity A4, PR #531] Applique les payloads dans l'ORDRE fourni par
-        // `mapFintableSnapshot` (bank_statement → cash_balance → debt) — ceci EST le contrat : `applyCashBalance`
-        // calcule sa cible via `computeStartingCash(state)` À L'INSTANT de son application, donc appliquer
-        // le `bank_statement` D'ABORD garantit que le cash tient compte des nouvelles transactions. Inverser
-        // l'ordre déplacerait le cash de la valeur des transactions du jour — ne JAMAIS trier/réordonner `payloads`.
-        let nextState: AppState = state;
-        const applyWarnings: string[] = [];
-        let transactionsAdded = 0;
-        let cashUpdated = false;
-        const debtsUpdated: string[] = [];
-        for (const doc of payloads) {
-            try {
-                nextState = applyDocument(nextState, doc).nextState;
-                if (doc.kind === 'bank_statement') transactionsAdded += doc.transactions.length;
-                else if (doc.kind === 'cash_balance') cashUpdated = true;
-                else if (doc.kind === 'debt') debtsUpdated.push(doc.name);
-            } catch (payloadErr) {
-                const reason = payloadErr instanceof Error ? payloadErr.message : String(payloadErr);
-                applyWarnings.push(`Payload « ${doc.kind} » NON appliqué : ${reason}`);
-            }
-        }
+        // Isolation PAR PAYLOAD : logique PARTAGÉE (`syncCore`) — voir son en-tête pour les deux
+        // findings de panel qu'elle porte (rejet légitime qui avortait toute la passe ; ordre des
+        // payloads qui EST le contrat de `applyCashBalance`).
+        const applied = applyPayloadsIsolated(state, payloads);
+        let nextState: AppState = applied.nextState;
+        const { transactionsAdded, cashUpdated, debtsUpdated, warnings: applyWarnings } = applied;
 
         const report: FintableSyncReport = {
             at: Date.now(),

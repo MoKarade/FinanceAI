@@ -109,13 +109,26 @@ export const FintableSyncCard: React.FC = () => {
                 setError(fresh.error ?? 'La synchronisation a échoué.');
                 return;
             }
-            setAppState({
-                transactions: nextState.transactions,
-                initialBalances: nextState.initialBalances,
-                debts: nextState.debts,
-                fintableSyncReport: nextState.fintableSyncReport,
-                fintableBrokerBalances: nextState.fintableBrokerBalances,
-            });
+            // ⚠️ [finding silent-failure-hunter, PR #536] NE PAS énumérer les champs à la main : mon
+            // 1er jet copiait 5 clés choisies et PERDAIT déjà `lastUpdate` (que les 3 branches de
+            // `applyDocument` mettent à jour) — l'indicateur de fraîcheur restait périmé après une
+            // passe qui venait d'écrire de l'argent réel, sans le moindre signal. Et la liste aurait
+            // silencieusement lâché tout NOUVEAU champ dès qu'un futur payload Fintable en toucherait
+            // un (assets, budgetItems…), alors que le chemin serveur, lui, continuerait de marcher.
+            //
+            // À la place : DELTA par identité de référence. `applyDocument` fait des mises à jour
+            // immuables, donc une clé modifiée porte une nouvelle référence. On n'écrit QUE celles-là.
+            // Double bénéfice : (a) tout champ futur est capté sans y penser ; (b) on ne réécrit pas
+            // les clés inchangées, donc une modification concurrente survenue pendant la passe n'est
+            // pas écrasée (le chemin serveur, lui, s'en protège par l'OCC — le navigateur n'en a pas).
+            // Les actions du store ont une référence stable → elles ne peuvent pas entrer dans le patch.
+            const patch: Partial<AppState> = {};
+            for (const key of Object.keys(nextState) as (keyof AppState)[]) {
+                if (nextState[key] !== (current as AppState)[key]) {
+                    (patch as Record<string, unknown>)[key] = nextState[key];
+                }
+            }
+            setAppState(patch);
             setNotice(`Synchronisé : ${fresh.transactionsAdded} transaction(s) ajoutée(s).`);
         } catch (err) {
             setError(isChunkLoadError(err)
@@ -136,7 +149,7 @@ export const FintableSyncCard: React.FC = () => {
                 </p>
 
                 {isTestMode && (
-                    <div role="status" className="text-meta text-amber-300 bg-amber-900/10 border border-warning-500/20 rounded-lg px-3 py-2">
+                    <div role="status" className="text-meta text-warning-400 bg-warning-500/10 border border-warning-500/20 rounded-lg px-3 py-2">
                         Mode démo actif : la synchronisation est désactivée pour ne pas mélanger des données
                         de démonstration avec tes vraies données.
                     </div>
@@ -155,17 +168,21 @@ export const FintableSyncCard: React.FC = () => {
                         placeholder="ft_..."
                         aria-describedby="fintable-token-help"
                     />
-                    <p id="fintable-token-help" className="text-meta text-ink-500 mt-1">
+                    <p id="fintable-token-help" className="text-meta text-ink-400 mt-1">
                         Crée-le dans Fintable → Dashboard → API, en <strong>lecture seule</strong>. Il reste sur
                         cet appareil (chiffré) et n'est jamais synchronisé.
                     </p>
                 </div>
 
+                {/* ⚠️ [finding a11y-auditor, PR #536] Un bouton désactivé ne dit QUE « estompé » à un
+                    lecteur d'écran. La raison est donc explicitée dans un texte lié par
+                    `aria-describedby`, mis à jour selon ce qui bloque réellement. */}
                 <div className="flex flex-wrap items-center gap-2">
                     <button
                         type="button"
                         onClick={() => { void handleTest(); }}
                         disabled={busy !== 'idle' || token.trim() === ''}
+                        aria-describedby="fintable-actions-why"
                         className="px-3 py-2 bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded-card text-info-400 text-meta font-bold transition-colors focus-ring disabled:opacity-50"
                     >
                         {busy === 'testing' ? 'Test en cours…' : 'Tester la connexion'}
@@ -174,34 +191,53 @@ export const FintableSyncCard: React.FC = () => {
                         type="button"
                         onClick={() => { void handleSync(); }}
                         disabled={busy !== 'idle' || token.trim() === '' || isTestMode}
+                        aria-describedby="fintable-actions-why"
                         className="px-3 py-2 bg-primary/90 hover:bg-primary text-dark rounded-card text-meta font-bold transition-colors focus-ring disabled:opacity-50"
                     >
                         {busy === 'syncing' ? 'Synchronisation…' : 'Synchroniser maintenant'}
                     </button>
                 </div>
+                <p id="fintable-actions-why" className="sr-only">
+                    {token.trim() === ''
+                        ? 'Ces actions nécessitent un jeton Fintable.'
+                        : isTestMode
+                            ? 'La synchronisation est indisponible en mode démo.'
+                            : busy !== 'idle'
+                                ? 'Une opération est déjà en cours.'
+                                : 'Prêt.'}
+                </p>
 
-                <div role="status" aria-live="polite" className="sr-only">
+                {/* ⚠️ [finding a11y-auditor, PR #536] Régions live montées en PERMANENCE, dont le
+                    TEXTE change — une région insérée dans le DOM au moment du résultat n'est pas
+                    annoncée de façon fiable par tous les lecteurs d'écran (WCAG 4.1.3). Quand elles
+                    sont vides, `sr-only` les retire visuellement sans les démonter. Une seule région
+                    par canal (alerte / statut) → aucune double annonce du même message. */}
+                <div
+                    role="alert"
+                    className={error
+                        ? 'text-meta text-danger-400 bg-danger-500/10 border border-danger-500/20 rounded-card p-2'
+                        : 'sr-only'}
+                >
+                    {error ?? ''}
+                </div>
+                <div
+                    role="status"
+                    aria-live="polite"
+                    className={notice && !error
+                        ? 'text-meta text-success-400 bg-success-500/10 border border-success-500/20 rounded-card p-2'
+                        : 'sr-only'}
+                >
                     {busy === 'testing' ? 'Test de connexion en cours.' : ''}
                     {busy === 'syncing' ? 'Synchronisation en cours.' : ''}
+                    {busy === 'idle' && !error ? (notice ?? '') : ''}
                 </div>
-
-                {error && (
-                    <div role="alert" className="text-meta text-danger-400 bg-danger-500/10 border border-danger-500/20 rounded-card p-2">
-                        {error}
-                    </div>
-                )}
-                {notice && !error && (
-                    <div role="status" className="text-meta text-success-400 bg-success-500/10 border border-success-500/20 rounded-card p-2">
-                        {notice}
-                    </div>
-                )}
 
                 {accounts !== null && accounts.length > 0 && (
                     <div className="space-y-2">
-                        <h4 className="text-meta font-bold uppercase tracking-widest text-ink-400">
+                        <h3 className="text-meta font-bold uppercase tracking-widest text-ink-400">
                             Rôle de chaque compte
-                        </h4>
-                        <p className="text-tiny text-ink-500">
+                        </h3>
+                        <p className="text-tiny text-ink-400">
                             Rien n'est deviné : un compte sans rôle est simplement ignoré, et signalé après chaque passe.
                             {unassigned > 0 && <> Il en reste <strong>{unassigned}</strong> à déclarer.</>}
                         </p>
@@ -213,7 +249,7 @@ export const FintableSyncCard: React.FC = () => {
                                         <div className="flex flex-wrap items-center gap-2 justify-between">
                                             <div className="min-w-0">
                                                 <div className="text-body text-ink-200 truncate">{a.label}</div>
-                                                <div className="text-tiny text-ink-500">{a.rawType} · {a.currency}</div>
+                                                <div className="text-tiny text-ink-400">{a.rawType} · {a.currency}</div>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <label className="sr-only" htmlFor={`role-${a.id}`}>Rôle de {a.label}</label>
@@ -250,7 +286,7 @@ export const FintableSyncCard: React.FC = () => {
                                                     className="w-full bg-dark border border-border rounded px-2 py-1 text-meta text-white focus:border-primary outline-none"
                                                     placeholder="Desjardins Cash Back Mastercard"
                                                 />
-                                                <p className="text-tiny text-ink-500 mt-1">
+                                                <p className="text-tiny text-ink-400 mt-1">
                                                     Seul le SOLDE est mis à jour — le taux et le paiement minimum restent les tiens.
                                                 </p>
                                             </div>
@@ -277,7 +313,7 @@ export const FintableSyncCard: React.FC = () => {
                                                     <option value="CELI">CELI</option>
                                                     <option value="REER">REER</option>
                                                 </select>
-                                                <p className="text-tiny text-ink-500 mt-1">
+                                                <p className="text-tiny text-ink-400 mt-1">
                                                     Détermine où l'écart entre le solde du courtier et tes titres saisis entre dans
                                                     ta projection. Non déclaré = le montant s'affiche, mais reste hors projection.
                                                 </p>
@@ -297,7 +333,7 @@ export const FintableSyncCard: React.FC = () => {
                 )}
 
                 {report && (
-                    <div className="text-tiny text-ink-500 border-t border-white/5 pt-2">
+                    <div className="text-tiny text-ink-400 border-t border-white/5 pt-2">
                         Dernière passe : {new Date(report.at).toLocaleString('fr-CA')} ·{' '}
                         {report.error === null
                             ? `${report.transactionsAdded} transaction(s) ajoutée(s), ${report.accountsSeen} compte(s) vu(s)`

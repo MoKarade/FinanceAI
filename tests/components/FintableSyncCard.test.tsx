@@ -80,6 +80,53 @@ describe('FintableSyncCard — garde-fous d\'action', () => {
     });
 });
 
+describe('FintableSyncCard — écriture de l\'état après une passe', () => {
+    it('écrit TOUT champ modifié par la passe, y compris ceux qu\'aucune liste ne nomme', async () => {
+        // [finding silent-failure-hunter, PR #536] Le 1er jet énumérait 5 clés à la main et perdait
+        // déjà `lastUpdate`. Ce test utilise un champ VOLONTAIREMENT hors de cette liste historique
+        // (`assets`) : il échoue sur l'ancien code, passe avec le delta par référence.
+        useFinanceStore.setState({ transactions: [], assets: [], lastUpdate: 1 });
+        const before = useFinanceStore.getState() as unknown as Record<string, unknown>;
+        syncMock.mockImplementation(async (state: Record<string, unknown>) => ({
+            report: { at: 42, error: null, transactionsAdded: 3, accountsSeen: 1, warnings: [] },
+            nextState: {
+                ...state,
+                transactions: [{ id: 9, date: '2026-07-30', payee: 'X', amount: -5, category: 'Autre', status: 'processed' }],
+                assets: [{ symbol: 'ZZZ', quantity: 1, currency: 'CAD', currentPrice: 1, name: 'Z', performance: 0, dateBought: '2026-01-01' }],
+                lastUpdate: 999,
+            },
+        }));
+
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Synchroniser maintenant/i }));
+        // NB : deux régions `role=status` coexistent (zone sr-only d'occupation + notice visible)
+        // → cibler le TEXTE, pas le rôle, sinon le matcher est ambigu.
+        await waitFor(() => expect(screen.getByText(/3 transaction\(s\) ajoutée/)).toBeInTheDocument());
+
+        const after = useFinanceStore.getState() as unknown as Record<string, unknown>;
+        expect((after.transactions as unknown[]).length).toBe(1);
+        expect(after.lastUpdate).toBe(999);                       // ← perdu par l'ancienne liste
+        expect((after.assets as unknown[])[0]).toMatchObject({ symbol: 'ZZZ' }); // ← idem
+        // Et les clés INCHANGÉES ne sont pas réécrites : pas d'écrasement d'une modif concurrente.
+        expect(after.budgetItems).toBe(before.budgetItems);
+    });
+
+    it('échec de passe → SEUL le rapport est écrit, aucun contenu', async () => {
+        useFinanceStore.setState({ transactions: [] });
+        syncMock.mockResolvedValue({
+            report: { at: 7, error: '[NETWORK] panne', transactionsAdded: 0, accountsSeen: 0, warnings: [] },
+            nextState: null,
+        });
+
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Synchroniser maintenant/i }));
+        await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/NETWORK/));
+
+        expect(useFinanceStore.getState().fintableSyncReport?.error).toContain('NETWORK');
+        expect(useFinanceStore.getState().transactions).toEqual([]);
+    });
+});
+
 describe('FintableSyncCard — assignation des rôles', () => {
     it('choisir « Placement » pré-remplit NON-ENREG (réponse de Marc), sans rien deviner d\'autre', async () => {
         listMock.mockResolvedValue({ accounts: ACCOUNTS, error: null });

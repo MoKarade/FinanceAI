@@ -9,6 +9,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased — la sync Fintable tourne dans l'app (plus besoin de rien configurer)] — 2026-07-30
 
 ### Sync bancaire
+- **`[FINTABLE-7]` Lot 2 — l'écran est là** : **Réglages → Clés API**, carte « Synchronisation bancaire
+  (Fintable) ». Tu colles ton jeton, tu cliques « Tester la connexion » — tes vrais comptes s'affichent
+  —, tu choisis pour chacun ce qu'il est (liquidités / carte de crédit + le nom EXACT de la dette /
+  compte de placement / à ignorer), puis « Synchroniser maintenant ». Un compte que tu ne déclares pas
+  reste ignoré : rien n'est rangé d'office.
+- « Compte de placement » propose le régime fiscal, pré-rempli sur **non enregistré** (ta réponse).
+- La carte **n'affiche aucun montant** — ni solde de compte, ni total : déclarer un rôle ne demande que
+  le nom et le type, donc rien à masquer en mode discret.
+- La synchronisation est **désactivée en mode démo**, et le dit : sinon des données de démonstration se
+  mêleraient à tes vraies données.
 - **`[FINTABLE-7]`** — la synchronisation Fintable peut maintenant tourner **depuis l'app elle-même**,
   sans serveur, sans Google Cloud, sans secret à créer. La seule chose à faire : coller ton jeton
   Fintable une fois dans Réglages (chiffré dans le navigateur, comme tes autres clés).

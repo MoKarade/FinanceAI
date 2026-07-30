@@ -196,6 +196,9 @@ const DEFAULT_APP_STATE: AppState = {
     // `enableTestMode` intact (un objet qui n'a pas une clé ne la réinitialise pas). Même classe que
     // PERSONA-PURGE : « zéro fuite inter-persona ».
     fintableSyncReport: undefined,
+    // [FINTABLE-6] MÊME raison que ci-dessus : soldes RÉELS des comptes de placement de Marc — la
+    // donnée la plus sensible du lot. Présent explicitement pour être purgé au switch de persona.
+    fintableBrokerBalances: undefined,
 };
 
 // Base PROPRE pour charger un persona de test : toutes les tranches de DONNÉES remises aux défauts

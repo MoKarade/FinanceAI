@@ -6,6 +6,34 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — le montant du courtier fait autorité (fondation) + diagnostic du cron] — 2026-07-30
+
+### Placements
+- **`[FINTABLE-6]` Lot 1** — les soldes réels de tes comptes de placement lus chez le courtier sont
+  désormais **conservés** (avant : calculés puis jetés, seul un compteur survivait). C'est la fondation
+  de « Investissements utilise exactement le montant que j'ai dans Fintable » : le total du courtier
+  fera autorité, et l'écart avec tes titres saisis apparaîtra en ligne explicite plutôt que noyé.
+- Chaque compte de placement porte son **régime fiscal déclaré par toi** (CELI / REER / NON-ENREG) —
+  jamais deviné. Non déclaré n'est pas bloquant : le montant s'affiche, mais l'écart reste hors
+  projection et l'aperçu te le signale.
+
+### Sync bancaire — diagnostic
+- Le cron quotidien échouait avec un message ambigu qui nommait **deux** secrets alors qu'un seul
+  manquait. Il nomme maintenant précisément le secret absent, et explique un 404 (« le serveur n'a pas
+  la route → redéploie ») ou un 401/403 (« les deux secrets ne portent pas la même valeur »).
+
+### Interne
+- `services/fintable/brokerBalances.ts` : module PUR, source unique de la réconciliation courtier↔titres
+  (consommé plus tard par Investissements ET Accueil — pas deux copies qui dérivent). Réconciliation
+  par **panier fiscal**, pas par compte : les `Asset` ne portent pas d'id de compte courtier.
+- `AppState.fintableBrokerBalances` (additif, zéro migration), clé sur l'id de compte STABLE + horodatage.
+  Ajouté explicitement à `DEFAULT_APP_STATE` → purgé au switch de persona démo.
+- ⚠️ Bug attrapé par son propre test pendant l'écriture : `Number.isFinite(Number(x))` ne protège pas
+  de `null` (`Number(null) === 0`) → un solde absent devenait un 0 $ crédible qui aurait effacé un
+  compte du patrimoine. Garde null-explicite avant conversion, aux deux bouts. 19 tests.
+
+---
+
 ## [unreleased — import manuel de relevés replié par défaut] — 2026-07-29
 
 ### Transactions

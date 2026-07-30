@@ -81,12 +81,40 @@ describe('rôles de compte — jamais devinés', () => {
         }), { roles: { acc_disnat: { kind: 'investment' } }, transactionsAfter: '2026-07-01' });
 
         expect(r.report.transactions.skippedInvestmentAccount).toBe(1);
-        // Le solde reste disponible comme valeur de RÉFÉRENCE du courtier…
+        // [FINTABLE-6] Le solde du courtier fait AUTORITÉ (ex-« référence »), et porte désormais
+        // `accountId` — clé STABLE d'appariement (un compte renommé côté banque ne doit rien casser).
         expect(r.report.investmentBalances).toEqual([
-            { label: 'Disnat (L7A3)', currency: 'CAD', balance: 136863.18 },
+            { accountId: 'acc_disnat', label: 'Disnat (L7A3)', currency: 'CAD', balance: 136863.18 },
         ]);
         // …mais n'entre JAMAIS dans les liquidités.
         expect(r.report.cashTargetCad).toBeNull();
+    });
+
+    it('[FINTABLE-6] régime fiscal DÉCLARÉ → propagé ; ABSENT → signalé, jamais deviné', () => {
+        const declare = mapFintableSnapshot(snap({
+            accounts: [account({ id: 'acc_celi', label: 'CELI Disnat', rawType: 'brokerage', balance: 40_000 })],
+        }), { roles: { acc_celi: { kind: 'investment', taxRegime: 'CELI' } }, transactionsAfter: '2026-07-01' });
+        expect(declare.report.investmentBalances[0].taxRegime).toBe('CELI');
+        expect(declare.report.warnings.some((w) => w.includes('régime fiscal'))).toBe(false);
+
+        const silent = mapFintableSnapshot(snap({
+            accounts: [account({ id: 'acc_x', label: 'Compte mystère', rawType: 'brokerage', balance: 40_000 })],
+        }), { roles: { acc_x: { kind: 'investment' } }, transactionsAfter: '2026-07-01' });
+        expect(silent.report.investmentBalances[0].taxRegime).toBeUndefined();
+        // Le solde reste AFFICHABLE, mais l'absence de régime est dite — jamais rangée au hasard.
+        expect(silent.report.warnings.some((w) => w.includes('régime fiscal non déclaré'))).toBe(true);
+    });
+
+    it('[FINTABLE-6] un placement en devise ≠ CAD ou sans solde est signalé (jamais 0 $ silencieux)', () => {
+        const usd = mapFintableSnapshot(snap({
+            accounts: [account({ id: 'a', label: 'Compte USD', rawType: 'brokerage', balance: 10_000, currency: 'USD' })],
+        }), { roles: { a: { kind: 'investment', taxRegime: 'NON-ENREG' } }, transactionsAfter: '2026-07-01' });
+        expect(usd.report.warnings.some((w) => w.includes('conversion non') && w.includes('Compte USD'))).toBe(true);
+
+        const noBal = mapFintableSnapshot(snap({
+            accounts: [account({ id: 'b', label: 'Compte muet', rawType: 'brokerage', balance: null })],
+        }), { roles: { b: { kind: 'investment', taxRegime: 'CELI' } }, transactionsAfter: '2026-07-01' });
+        expect(noBal.report.warnings.some((w) => w.includes('solde absent') && w.includes('Compte muet'))).toBe(true);
     });
 });
 

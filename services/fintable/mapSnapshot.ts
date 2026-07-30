@@ -30,14 +30,34 @@ import type { BankStatementPayload, CashBalancePayload, DebtPayload, DocumentPay
 import type { FintableSnapshot, FintableTransaction } from './types';
 import { detectInternalTransfers, type TransferPair } from './detectTransfers';
 
+/**
+ * [FINTABLE-6] Régime fiscal d'un compte de placement. Déclaré par Marc dans le fichier de rôles,
+ * jamais deviné depuis `Account.type` (texte libre côté Fintable : « display it, don't switch on it »).
+ * Détermine dans quel panier l'écart courtier (solde réel − Σ titres saisis) est ventilé — s'y tromper
+ * fausserait l'impôt de toute la projection, pas seulement un affichage.
+ *
+ * ⚠️ Les valeurs sont EXACTEMENT celles de `RegisteredAccountType` (`types.ts`) — surtout pas une
+ * graphie parallèle type `NON_ENREGISTRE` : deux formats pour la même notion, c'est la table de
+ * lookup morte en silence de [[INVEST-ALLOC-GEO-SECTOR]]. Ce module reste sans dépendance (mapper
+ * PUR), donc la parité est verrouillée par test plutôt que par un import.
+ */
+export type FintableTaxRegime = 'CELI' | 'REER' | 'NON-ENREG';
+
 /** Rôle d'un compte Fintable dans FinanceAI. Toujours EXPLICITE (cf. piège n°2). */
 export type FintableAccountRole =
     /** Compte courant / épargne → son solde entre dans les liquidités, ses transactions sont importées. */
     | { kind: 'cash' }
     /** Carte de crédit → son solde met à jour une DETTE ; ses transactions sont des dépenses. */
     | { kind: 'debt'; debtName: string }
-    /** Compte de placement → solde en référence seulement (positions hors de portée). */
-    | { kind: 'investment' }
+    /**
+     * Compte de placement → son SOLDE fait autorité (positions hors de portée, cf FINTABLE-POSITIONS).
+     * `taxRegime` est OPTIONNEL et n'est JAMAIS inféré (règle : « le type fiscal CELI/REER/NON-ENREG
+     * ne s'infère jamais — c'est une table pilotée par Marc »). Absent → le solde est quand même
+     * enregistré (référence + affichage), mais l'écart courtier ne peut pas être ventilé dans le bon
+     * panier fiscal → il est SIGNALÉ plutôt que rangé au hasard. Dégradation gracieuse voulue : un
+     * régime manquant ne doit pas faire échouer toute la passe (leçon « isolation par payload »).
+     */
+    | { kind: 'investment'; taxRegime?: FintableTaxRegime }
     /** Explicitement ignoré. */
     | { kind: 'ignore' };
 
@@ -76,8 +96,21 @@ export interface FintableMappingReport {
     cashAccountsMissingBalance: string[];
     /** Dettes mises à jour (nom → solde dû). */
     debts: Array<{ name: string; balanceCad: number }>;
-    /** Comptes de placement, pour référence (valeur du courtier). Jamais convertis en actifs. */
-    investmentBalances: Array<{ label: string; currency: string; balance: number | null }>;
+    /**
+     * Comptes de placement : le solde du COURTIER, qui fait autorité sur le total du compte (choix
+     * Marc 2026-07-30 — « utilise exactement le montant que j'ai dans Fintable »). Jamais converti en
+     * titres : Fintable ne rend pas les positions (FINTABLE-POSITIONS, limite produit mesurée).
+     * ⚠️ Clé stable = `accountId` (l'id Fintable), JAMAIS `label` — un compte renommé côté banque
+     * casserait sinon tout appariement en silence (classe [[INVEST-ALLOC-GEO-SECTOR]] : « une table
+     * de lookup dont le format de clé a dérivé est une table entièrement morte, sans erreur »).
+     */
+    investmentBalances: Array<{
+        accountId: string;
+        label: string;
+        currency: string;
+        balance: number | null;
+        taxRegime?: FintableTaxRegime;
+    }>;
     /** Comptes sans rôle assigné — À TRAITER, pas à ignorer. */
     accountsWithoutRole: Array<{ id: string; label: string; rawType: string }>;
     /** [FINTABLE-TRANSFERS] Paiements de carte reconnus : les 2 côtés sont marqués `isTransfer`. */
@@ -169,11 +202,38 @@ export function mapFintableSnapshot(
                 debts.push({ name: role.debtName, balanceCad: owed });
                 break;
             }
-            case 'investment':
+            case 'investment': {
+                // Le solde du courtier fait autorité — mais seulement s'il est LISIBLE et en CAD.
+                // Mêmes règles que `cash`/`debt` : on ne convertit pas de devise, et un solde absent
+                // ne devient JAMAIS 0 (un 0 crédible effacerait un compte entier du patrimoine).
+                if (account.balance === null) {
+                    warnings.push(
+                        `Placement « ${account.label} » : solde absent chez Fintable → le montant du `
+                        + 'courtier ne peut pas faire autorité pour ce compte (tes titres saisis restent utilisés).',
+                    );
+                } else if (account.currency.toUpperCase() !== baseCurrency) {
+                    warnings.push(
+                        `Placement « ${account.label} » est en ${account.currency} : conversion non `
+                        + 'implémentée → montant du courtier IGNORÉ pour ce compte (tes titres saisis restent utilisés).',
+                    );
+                } else if (role.taxRegime === undefined) {
+                    // Enregistré quand même (affichage/référence), mais l'écart ne sera pas ventilé :
+                    // ranger un écart dans le mauvais panier fiscal fausserait l'impôt de la projection.
+                    warnings.push(
+                        `Placement « ${account.label} » : régime fiscal non déclaré → le montant du courtier `
+                        + 's\'affiche, mais l\'écart avec tes titres n\'entre pas dans la projection. '
+                        + 'Ajoute "taxRegime": "CELI" | "REER" | "NON_ENREGISTRE" à ce compte dans le fichier de rôles.',
+                    );
+                }
                 investmentBalances.push({
-                    label: account.label, currency: account.currency, balance: account.balance,
+                    accountId: account.id,
+                    label: account.label,
+                    currency: account.currency,
+                    balance: account.balance,
+                    ...(role.taxRegime !== undefined ? { taxRegime: role.taxRegime } : {}),
                 });
                 break;
+            }
             case 'ignore':
                 break;
         }

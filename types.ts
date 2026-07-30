@@ -804,6 +804,33 @@ export interface AppState {
    *  (absent = jamais synchronisé). Écrit par le cron à CHAQUE passe (succès ou échec) pour que
    *  l'état de la sync soit visible dans l'app sans notification proactive (choix Marc). */
   fintableSyncReport?: FintableSyncReport;
+  /** [FINTABLE-6] Soldes RÉELS des comptes de placement lus chez le courtier (via Fintable), qui font
+   *  AUTORITÉ sur le total de chaque compte (choix Marc 2026-07-30). ADDITIF optionnel (absent = jamais
+   *  synchronisé → l'app retombe sur la somme des titres saisis, comportement d'avant). */
+  fintableBrokerBalances?: FintableBrokerBalance[];
+}
+
+/**
+ * [FINTABLE-6] Solde d'UN compte de placement tel que le courtier le voit. C'est la « vérité terrain »
+ * de l'incident [[ASSET-FX-DISPLAY]] (« l'arbitre est le COURTIER »), désormais lue automatiquement.
+ *
+ * ⚠️ Fintable ne rend JAMAIS les positions de ce compte (FINTABLE-POSITIONS : Disnat hors SnapTrade,
+ * limite produit mesurée) — donc ce solde est un TOTAL sans ventilation. L'écart avec la somme des
+ * titres saisis est matérialisé en ligne explicite plutôt que laissé inexpliqué (choix Marc : le
+ * patrimoine doit rester reconstructible, cf. checklist VALIDATION FINANCIÈRE).
+ */
+export interface FintableBrokerBalance {
+  /** Id de compte Fintable — clé STABLE d'appariement. Ne JAMAIS apparier sur `label` (renommable). */
+  accountId: string;
+  /** Libellé lisible, AFFICHAGE seulement (peut changer côté banque sans rien casser). */
+  label: string;
+  /** Solde en CAD. Toujours fini : un compte au solde illisible ou en devise ≠ CAD n'est pas émis. */
+  balanceCad: number;
+  /** Régime fiscal DÉCLARÉ par Marc. Absent = écart non ventilable → affiché mais hors projection.
+   *  Valeurs = sous-ensemble EXACT de `RegisteredAccountType` (aucune graphie parallèle). */
+  taxRegime?: Extract<RegisteredAccountType, 'CELI' | 'REER' | 'NON-ENREG'>;
+  /** Epoch ms de la lecture — permet d'afficher honnêtement la fraîcheur (« vu il y a 3 jours »). */
+  at: number;
 }
 
 /** [FINTABLE-3] Résultat d'une passe de synchronisation Fintable, PERSISTÉ dans l'état pour

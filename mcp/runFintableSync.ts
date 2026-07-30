@@ -25,6 +25,7 @@ import { applyDocument } from './ingest/applyDocument';
 import { FintableClient } from '../services/fintable/client';
 import { readFintableSnapshot } from '../services/fintable/readSnapshot';
 import { mapFintableSnapshot, type FintableMappingConfig } from '../services/fintable/mapSnapshot';
+import { toPersistableBrokerBalances } from '../services/fintable/brokerBalances';
 import { deriveCutoverDate } from '../services/fintable/deriveCutoverDate';
 import { FintableError } from '../services/fintable/types';
 import { isStateConflictError } from './state/stateErrors';
@@ -161,7 +162,18 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
             warnings: [...preflightWarnings, ...mapReport.warnings, ...applyWarnings],
             error: null,
         };
-        nextState = { ...nextState, fintableSyncReport: report };
+        // [FINTABLE-6] Les soldes courtier étaient CALCULÉS par le mapper puis JETÉS (seul un
+        // compteur survivait dans le rapport) — une donnée produite sans consommateur, exactement la
+        // classe [[TX-DUPLICATES]] « une machinerie sans alimentation », à l'envers. On les persiste
+        // maintenant : ils font autorité sur le total des comptes de placement (choix Marc).
+        // Écrits même si la liste est VIDE : une liste vide signifie « le courtier n'a rien dit
+        // d'exploitable cette passe », ce qui doit EFFACER une valeur d'hier devenue fausse plutôt
+        // que la laisser traîner (une autorité périmée est pire qu'une absence assumée).
+        nextState = {
+            ...nextState,
+            fintableSyncReport: report,
+            fintableBrokerBalances: toPersistableBrokerBalances(mapReport.investmentBalances, report.at),
+        };
 
         await store.save(nextState, version);
         return report;

@@ -45,9 +45,15 @@
   #   { "<id PCA>":  {"kind":"cash"},
   #     "<id TS1>":  {"kind":"cash"},
   #     "<id MC>":   {"kind":"debt","debtName":"Desjardins Cash Back Mastercard"},
-  #     "<id Disnat L7B1>": {"kind":"investment"},
-  #     "<id Disnat L7A3>": {"kind":"investment"},
-  #     "<id SHR>":  {"kind":"investment"} }
+  #     "<id Disnat L7B1>": {"kind":"investment","taxRegime":"NON-ENREG"},
+  #     "<id Disnat L7A3>": {"kind":"investment","taxRegime":"CELI"},
+  #     "<id SHR>":  {"kind":"investment","taxRegime":"REER"} }
+  #
+  # ⚠️ [FINTABLE-6] `taxRegime` (CELI | REER | NON-ENREG) : mets le VRAI régime de chaque compte —
+  # je ne le devine jamais. Il décide dans quel panier fiscal l'écart entre le solde du courtier et
+  # tes titres saisis est ventilé ; s'y tromper fausse l'impôt de toute la projection. Omettre le
+  # champ n'est pas bloquant : le montant du courtier s'affiche quand même, mais l'écart reste hors
+  # projection et l'aperçu te le signale (« ⚠ régime NON déclaré »).
   # 3. Aperçu — TOUJOURS sans écriture :
   FINTABLE_TOKEN="…" npm run fintable:dry -- --days 90 --roles .fintable-roles.json --after <ta-date-de-bascule>
   ```

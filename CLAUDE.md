@@ -1440,6 +1440,34 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   à un lecteur d'écran → la RAISON du blocage va dans un `aria-describedby` (sr-only) qui suit l'état.
   ⚠️ **`text-ink-500` échoue AA-normal (3,86–4,33:1, MESURÉ via `npm run check-contrast`)** — c'est le
   shade réflexe pour « texte secondaire » et il est faux : `ink-400` passe. Cf [[FIX-INK600-TOKEN]].
+  ⚠️ **[FINTABLE-BROWSER-RELATIVE-BASE] `new URL(x)` à UN argument EXIGE une URL absolue → une base
+  relative lève `TypeError: Invalid URL`** (bug Marc : il colle son jeton, l'app répond « url invalide »
+  — *« mais c'est un jeton pas une url »*, et il a raison : le message accuse la mauvaise chose). En
+  portant le transport du serveur (`https://fintable.io/api/v2`) au navigateur (proxy same-origin
+  `/api/fintable`), `buildUrl` a gardé `new URL(base + path)` : absolu OK, relatif THROW. Fix = résoudre
+  une base relative contre `location.origin` (2ᵉ argument ; `new URL(absolue, undefined)` ignore le 2ᵉ
+  argument → chemin cron INCHANGÉ), et transformer le cas « relatif sans origine » en erreur NOMMÉE au
+  lieu d'un « Invalid URL » opaque. **La vraie leçon est le trou de test, identique au test de câblage
+  de la carte** : les 7 tests de `browserSync` injectaient TOUS un `client` factice (`opts.client`) →
+  la ligne `new FintableClient({ baseUrl: FINTABLE_BROWSER_BASE })` n'était exécutée par AUCUN test.
+  **Un paramètre d'injection pour les tests crée un chemin PAR DÉFAUT que plus personne n'exerce** —
+  c'est précisément celui de la production. Réflexe : pour tout `opts.x ?? new Truc()`, garder au moins
+  un test SANS l'injection, qui descend jusqu'au vrai transport (faux `fetch`, pas faux client).
+  Discriminant : remettre `undefined` en 2ᵉ argument → `expected 'Invalid URL' to be null`, le message
+  exact de Marc reproduit. ⚠️ Reste NON vérifiable depuis le conteneur (`fintable.io` = 403 CONNECT,
+  cf [[FINTABLE-0]]) : que l'edge Vercel FORWARDE bien l'en-tête `Authorization` sur un rewrite externe
+  — à confirmer par l'usage réel, pas à affirmer.
+  ⚠️ **Un rewrite externe Vercel peut CACHER la réponse à l'edge — le trancher explicitement sur un
+  proxy AUTHENTIFIÉ** (trouvé en cherchant la réponse à la question ci-dessus, doc Vercel « rewrites » —
+  chercher la doc de la plateforme a rapporté plus que la question posée) : le cache des rewrites
+  externes est opt-IN pour les projets créés avant le 2026-04-06, donc **opt-OUT (actif par défaut)
+  après**. Or une réponse de `/api/fintable/*` porte les transactions et soldes RÉELS, et un cache
+  d'edge est keyé par URL — l'en-tête `Authorization` n'entre pas dans la clé. Laisser le défaut de la
+  plateforme mélange donc « donnée privée » et « cache partagé » (Loi 25) et peut servir des montants
+  périmés. Coupé par `x-vercel-enable-rewrite-caching: 0` + `Cache-Control: private, no-store` sur ce
+  seul chemin. Les proxys Yahoo restent cachables (cotations PUBLIQUES) : le discriminant est « la
+  réponse dépend-elle d'un secret ? », PAS « est-ce un proxy ? ». Réflexe : tout rewrite externe ajouté
+  tranche la question du cache dans le MÊME diff, jamais par omission.
 - ⚠️ **[FINTABLE-6] 2026-07-30 — « utilise exactement le montant que j'ai dans Fintable », leçons** :
   (1) **Une donnée CALCULÉE puis jetée est indiscernable d'une donnée absente — greper les CONSOMMATEURS
   avant de promettre un branchement** : `investmentBalances` était produit par le mapper depuis le Lot 2,

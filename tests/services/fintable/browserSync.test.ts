@@ -173,3 +173,66 @@ describe('garde de parité : rôle PERSISTÉ ≡ rôle du MAPPER', () => {
         expect(backAgain).toHaveLength(5);
     });
 });
+
+/**
+ * ⚠️ [FINTABLE-BROWSER-RELATIVE-BASE] Marc, après avoir collé son jeton : « ça me dit url invalide
+ * mais c'est un jeton pas une url ». Il avait raison — le message venait de `new URL()`, pas de lui.
+ *
+ * Cause : TOUS les tests ci-dessus injectent un `client` factice, donc la ligne qui construit le
+ * VRAI client (`new FintableClient({ baseUrl: '/api/fintable' })`) n'était exécutée par AUCUN test.
+ * Or `new URL('/api/fintable/accounts')` à un seul argument LÈVE `TypeError: Invalid URL` : une base
+ * relative n'est pas une URL absolue. Même classe que le test de câblage de la carte — le chemin par
+ * DÉFAUT (celui qu'emprunte la production) n'était couvert nulle part.
+ *
+ * Ces tests-ci n'injectent donc AUCUN client : ils exercent le vrai transport via un faux `fetch`.
+ */
+describe('transport RÉEL depuis le navigateur (aucun client injecté)', () => {
+    it('résout la base relative contre l\'origine — pas de « Invalid URL »', async () => {
+        const calls: string[] = [];
+        const fetchMock = vi.fn(async (url: string | URL) => {
+            calls.push(String(url));
+            return new Response(JSON.stringify({ data: [] }), { status: 200 });
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const r = await listFintableAccountsForSetup('jeton');
+
+        expect(r.error).toBeNull();           // ← « Invalid URL » sur l'ancien code
+        expect(calls.length).toBeGreaterThan(0);
+        // L'appel part bien vers le proxy same-origin, sur l'origine courante.
+        expect(calls[0]).toContain('/api/fintable/accounts');
+        expect(calls[0].startsWith(window.location.origin)).toBe(true);
+        vi.unstubAllGlobals();
+    });
+
+    it('le jeton voyage en en-tête Authorization, JAMAIS dans l\'URL', async () => {
+        let seenUrl = '';
+        let seenAuth: string | null = null;
+        vi.stubGlobal('fetch', vi.fn(async (url: string | URL, init?: RequestInit) => {
+            seenUrl = String(url);
+            const h = init?.headers as Record<string, string> | undefined;
+            seenAuth = h?.Authorization ?? null;
+            return new Response(JSON.stringify({ data: [] }), { status: 200 });
+        }));
+
+        await listFintableAccountsForSetup('jeton-ultra-secret');
+
+        expect(seenAuth).toBe('Bearer jeton-ultra-secret');
+        expect(seenUrl).not.toContain('jeton-ultra-secret');
+        vi.unstubAllGlobals();
+    });
+
+    it('un 401 devient un message qui parle du JETON, pas une erreur générique', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(
+            JSON.stringify({ error: { type: 'unauthorized', message: 'Invalid token' } }),
+            { status: 401 },
+        )));
+
+        const r = await listFintableAccountsForSetup('mauvais-jeton');
+
+        expect(r.accounts).toEqual([]);
+        expect(r.error).toContain('AUTH');
+        expect(r.error).toMatch(/jeton/i);   // « jeton absent, expiré ou révoqué »
+        vi.unstubAllGlobals();
+    });
+});

@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴→🟢 Session 2026-07-30 (correctif) — `[FINTABLE-BROWSER-RELATIVE-BASE]` : « url invalide » sur un JETON
+> Marc a collé son jeton et l'app a répondu **« url invalide »** — *« mais c'est un jeton pas une url »*.
+> Il avait raison, le message accusait la mauvaise chose. Cause RACINE : `FintableClient.buildUrl`
+> faisait `new URL(base + path)` **à un seul argument**, ce qui EXIGE une URL absolue. Ça marchait
+> côté cron (`https://fintable.io/api/v2`) et lève `TypeError: Invalid URL` côté navigateur, où la
+> base est le proxy same-origin **relatif** `/api/fintable`. Fix : résoudre une base relative contre
+> `location.origin` (2ᵉ argument ; `new URL(absolue, undefined)` ignore le 2ᵉ argument → chemin cron
+> BIT-IDENTIQUE), + erreur NOMMÉE si base relative sans origine.
+> ⚠️ **Le vrai défaut était le trou de test**, jumeau du test de câblage de la carte : les 7 tests de
+> `browserSync` injectaient TOUS un `client` factice → la ligne `new FintableClient({ baseUrl })`
+> n'était exécutée par AUCUN test. Un paramètre d'injection crée un chemin PAR DÉFAUT que plus
+> personne n'exerce — et c'est celui de la production. 3 tests ajoutés SANS injection (faux `fetch`,
+> vrai client) ; discriminant : `expected 'Invalid URL' to be null`, le message exact de Marc.
+> ⚠️ **NON vérifiable depuis le conteneur** (`fintable.io` = 403 CONNECT) : que l'edge Vercel forwarde
+> l'en-tête `Authorization` sur un rewrite externe. À confirmer par l'usage réel de Marc.
+>
 > ## 🟢 Session 2026-07-30 (fin) — `[FINTABLE-7]` Lot 2 : l'ÉCRAN existe (Réglages → Clés API)
 > Marc, 2× : « dans mes clés api je vois pas pour le jeton », puis « je ne vois toujours pas ». Les deux
 > fois c'était vrai : la 1ʳᵉ PR ne livrait que la plomberie, et la 2ᵉ n'était pas encore MERGÉE (donc pas

@@ -157,6 +157,12 @@
   surface à garder en mode discret. Sync coupée en mode démo. Échec de passe → seul le RAPPORT est
   écrit. L'état est écrit par **delta de référence** (jamais une liste de clés à la main : la 1ʳᵉ
   version perdait déjà `lastUpdate`). 8 tests.
+- [x] **`[FINTABLE-BROWSER-RELATIVE-BASE]` « url invalide » alors que Marc collait un JETON** — ✅ 2026-07-30.
+  `buildUrl` faisait `new URL(base + path)` à UN argument (exige une URL absolue) → `TypeError: Invalid
+  URL` sur la base relative du proxy navigateur `/api/fintable`. Résolue contre `location.origin` ;
+  chemin cron bit-identique (`new URL(absolue, undefined)` ignore le 2ᵉ argument). ⚠️ Cause du trou de
+  test : les 7 tests `browserSync` injectaient tous un client factice → le chemin PAR DÉFAUT (celui de
+  la prod) n'était exercé nulle part. 3 tests ajoutés sans injection, discriminant prouvé.
 - [ ] **`[FINTABLE-7]` Lot 3 — déclenchement AUTOMATIQUE de la passe à l'ouverture** (S) — throttlé
   1×/jour (la carte ne donne pour l'instant qu'un bouton manuel « Synchroniser maintenant »).
 - [ ] **`[FINTABLE-6]` Lot 2 — consommer le montant courtier dans Investissements + Accueil** (M) —

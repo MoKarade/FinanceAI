@@ -39,6 +39,12 @@ export interface ReadSnapshotOptions {
     includeDisabled?: boolean;
     /** Ne pas lire les positions (dry-run rapide). */
     skipHoldings?: boolean;
+    /**
+     * [FINTABLE-7] Ne pas lire les transactions. Sert l'écran de CONFIGURATION (« Tester la
+     * connexion » → lister les comptes pour leur assigner un rôle) : y pager tout l'historique
+     * serait lent, inutile et coûteux en quota alors qu'on n'affiche que des comptes.
+     */
+    skipTransactions?: boolean;
 }
 
 /**
@@ -87,6 +93,12 @@ export async function readFintableSnapshot(
                 holdingsSkipped.push({ accountId: account.id, reason });
             }
         }
+    }
+
+    if (opts.skipTransactions) {
+        // Sortie ANTICIPÉE explicite : rendre un tableau vide sans appeler l'API. Ne jamais laisser
+        // croire « aucune transaction chez Fintable » — c'est l'appelant qui a demandé à ne pas lire.
+        return { readAt, accounts, holdings, transactions: [], holdingsSkipped };
     }
 
     const txQuery: Record<string, string | number | boolean | undefined> = {

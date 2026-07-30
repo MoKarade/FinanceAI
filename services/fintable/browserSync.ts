@@ -38,6 +38,7 @@
 import type { AppState, FintableSyncReport, FintableAccountRoleConfig } from '../../types';
 import { FintableClient } from './client';
 import { readFintableSnapshot } from './readSnapshot';
+import type { FintableSnapshot } from './types';
 import { mapFintableSnapshot, FINTABLE_TAX_REGIMES, type FintableAccountRole, type FintableTaxRegime } from './mapSnapshot';
 import { decideCutoverDate, applyPayloadsIsolated } from './syncCore';
 import { toPersistableBrokerBalances } from './brokerBalances';
@@ -100,6 +101,32 @@ function toMapperRoles(
         }
     }
     return out;
+}
+
+/**
+ * [FINTABLE-7] Liste les comptes pour l'ÉCRAN DE CONFIGURATION (« Tester la connexion »).
+ *
+ * Volontairement plus léger que `readFintableSnapshot` : celui-ci enchaîne aussi les positions de
+ * CHAQUE compte et les transactions — inutile (et lent, et coûteux en quota) quand on veut juste
+ * afficher la liste à Marc pour qu'il assigne les rôles. `skipHoldings` évite N appels superflus.
+ *
+ * Ne lève pas : rend un message d'erreur exploitable à l'écran. Un jeton refusé (401) doit dire
+ * « jeton refusé », pas « quelque chose a échoué ».
+ */
+export async function listFintableAccountsForSetup(
+    token: string,
+    opts: { client?: FintableClient } = {},
+): Promise<{ accounts: FintableSnapshot['accounts']; error: string | null }> {
+    if (typeof token !== 'string' || token.trim() === '') {
+        return { accounts: [], error: 'Jeton Fintable absent.' };
+    }
+    try {
+        const client = opts.client ?? new FintableClient({ token, baseUrl: FINTABLE_BROWSER_BASE });
+        const snapshot = await readFintableSnapshot(client, { skipHoldings: true, skipTransactions: true });
+        return { accounts: snapshot.accounts, error: null };
+    } catch (err) {
+        return { accounts: [], error: describeError(err) };
+    }
 }
 
 /**

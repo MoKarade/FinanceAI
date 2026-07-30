@@ -6,7 +6,7 @@
  * bascule plafonnée, et surtout « aucun état écrit à moitié » quand la passe échoue.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { runFintableBrowserSync } from '../../../services/fintable/browserSync';
+import { runFintableBrowserSync, listFintableAccountsForSetup } from '../../../services/fintable/browserSync';
 import { FintableClient } from '../../../services/fintable/client';
 import { FintableError } from '../../../services/fintable/types';
 import { buildDefaultAppState } from '../../../mcp/state/appStateDefaults';
@@ -114,6 +114,44 @@ describe('runFintableBrowserSync — garanties de la passe', () => {
         });
         expect(r.report.error).toBeNull();          // la passe survit
         expect(r.report.accountsWithoutRole).toBe(1); // et le compte est signalé, pas avalé
+    });
+});
+
+describe('listFintableAccountsForSetup — écran de configuration', () => {
+    it('liste les comptes SANS pager les transactions ni les positions (quota + latence)', async () => {
+        const getAllPages = vi.fn(async () => []);
+        const get = vi.fn(async (path: string) => {
+            if (path.startsWith('/accounts')) return { data: [account(), account({ id: 'acc_2', name: 'Disnat' })] };
+            return { data: [] };
+        });
+        const client = { get, getAllPages } as unknown as FintableClient;
+
+        const r = await listFintableAccountsForSetup('jeton', { client });
+
+        expect(r.error).toBeNull();
+        expect(r.accounts.map((a) => a.id)).toEqual(['acc_1', 'acc_2']);
+        // Le discriminant : aucun appel de pagination (transactions) ni de positions par compte.
+        expect(getAllPages).not.toHaveBeenCalled();
+        expect(get.mock.calls.every(([p]) => String(p).startsWith('/accounts'))).toBe(true);
+    });
+
+    it('jeton refusé → message EXPLOITABLE (« pourquoi »), pas un échec générique', async () => {
+        const client = {
+            get: vi.fn(async () => { throw new FintableError('jeton invalide', 'AUTH'); }),
+            getAllPages: vi.fn(async () => []),
+        } as unknown as FintableClient;
+
+        const r = await listFintableAccountsForSetup('mauvais-jeton', { client });
+        expect(r.accounts).toEqual([]);
+        expect(r.error).toContain('AUTH');
+        expect(r.error).toContain('jeton invalide');
+    });
+
+    it('jeton vide → refus immédiat, aucun appel réseau', async () => {
+        const get = vi.fn();
+        const r = await listFintableAccountsForSetup('   ', { client: { get } as unknown as FintableClient });
+        expect(r.error).toMatch(/[Jj]eton Fintable absent/);
+        expect(get).not.toHaveBeenCalled();
     });
 });
 

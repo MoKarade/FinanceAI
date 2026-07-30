@@ -128,6 +128,16 @@ describe('Settings', () => {
         expect(passwordInputs.length).toBeGreaterThanOrEqual(1);
     });
 
+    // [FINTABLE-7 Lot 2] Marc, DEUX fois : « je ne vois pas pour mettre la clé api ».
+    // Les tests de `FintableSyncCard` la rendent en ISOLATION — ils passeraient à l'identique
+    // si `Settings.tsx` cessait de la monter. Ce test-ci verrouille le CÂBLAGE : depuis
+    // l'onglet réellement libellé « Clés API », le champ du jeton doit exister.
+    it('le champ du jeton Fintable est ATTEIGNABLE depuis le sous-onglet « Clés API »', () => {
+        render(<Settings {...baseProps} />);
+        fireEvent.click(screen.getByRole('tab', { name: 'Clés API' }));
+        expect(screen.getByLabelText(/Jeton Fintable/i)).toBeInTheDocument();
+    });
+
     it("dans la modal chiffrée, le bouton confirmer est désactivé si passphrase vide", async () => {
         render(<Settings {...baseProps} />);
         goToBackupTab();

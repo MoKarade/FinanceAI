@@ -1424,6 +1424,22 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   ⚠️ Et un `npm run typecheck` ne couvre QUE ce qui existe au moment où il tourne : mon import fautif
   (`buildDefaultAppState` depuis le store au lieu de `mcp/state/appStateDefaults`) est passé parce que
   le fichier de test n'était pas encore écrit. Re-typechecker APRÈS avoir ajouté des fichiers, pas avant.
+  ⚠️ **Lot 2 (UI) — recopier un `nextState` dans un store par une LISTE DE CLÉS À LA MAIN est une fuite
+  garantie** (finding `silent-failure-hunter`, mesuré) : mon 1er jet énumérait 5 champs et perdait DÉJÀ
+  `lastUpdate` (que les 3 branches d'`applyDocument` écrivent) → indicateur de fraîcheur périmé juste
+  après une passe qui venait d'écrire de l'argent réel, sans signal ; et tout champ FUTUR touché par un
+  payload aurait été lâché côté navigateur pendant que le chemin serveur, lui, continuait de marcher
+  (deux surfaces qui divergent, cf [[Lot audit n°2]]). Fix = **delta par IDENTITÉ DE RÉFÉRENCE**
+  (`applyDocument` est immuable → une clé modifiée porte une nouvelle référence) : capte tout champ
+  futur gratuitement ET n'écrase pas une modification concurrente (le serveur a l'OCC, le navigateur
+  non). Discriminant : restaurer la liste à la main → le test sur un champ HORS liste (`assets`) casse.
+  ⚠️ **Une région live (`role=alert`/`status`) INSÉRÉE au moment du résultat n'est pas annoncée de façon
+  fiable** (WCAG 4.1.3) : la monter en PERMANENCE et n'en changer que le TEXTE (`sr-only` quand vide,
+  stylée quand pleine), UNE seule région par canal. Corollaire de test : deux `role="status"` coexistant
+  rendent `getByRole('status')` AMBIGU → cibler le texte. Et un bouton `disabled` ne dit que « estompé »
+  à un lecteur d'écran → la RAISON du blocage va dans un `aria-describedby` (sr-only) qui suit l'état.
+  ⚠️ **`text-ink-500` échoue AA-normal (3,86–4,33:1, MESURÉ via `npm run check-contrast`)** — c'est le
+  shade réflexe pour « texte secondaire » et il est faux : `ink-400` passe. Cf [[FIX-INK600-TOKEN]].
 - ⚠️ **[FINTABLE-6] 2026-07-30 — « utilise exactement le montant que j'ai dans Fintable », leçons** :
   (1) **Une donnée CALCULÉE puis jetée est indiscernable d'une donnée absente — greper les CONSOMMATEURS
   avant de promettre un branchement** : `investmentBalances` était produit par le mapper depuis le Lot 2,

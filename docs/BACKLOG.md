@@ -148,10 +148,17 @@
   ⚠️ **Compromis assumé, dit dans la PR** : le jeton vit dans le navigateur et transite par l'edge
   Vercel (vs Secret Manager) — scope LECTURE SEULE, ce qui borne le risque ; et ça ne tourne pas
   application fermée. Le cron serveur reste en place, prioritaire si Marc monte la config un jour. 7 tests.
-- [ ] **`[FINTABLE-7]` Lot 2 — UI Réglages : coller le jeton + assigner les rôles par clic** (M) —
-  bouton « Tester » qui liste les comptes réels, puis un rôle par compte (liquidités / dette + nom /
-  placement + régime / ignorer). ⚠️ Marc a dit « c'est tout non enregistré pour le moment » →
-  pré-remplir `NON-ENREG`. Déclenchement de la passe : bouton + auto à l'ouverture, throttlé 1×/jour.
+- [x] **`[FINTABLE-7]` Lot 2 — UI Réglages : coller le jeton + assigner les rôles par clic** (M) — ✅ 2026-07-30.
+  `components/settings/FintableSyncCard.tsx`, rendue dans **Réglages → Clés API** (sous-onglet
+  `integrations`, `Settings.tsx`). Bouton « Tester » qui liste les comptes réels (sans pager les
+  transactions ni les positions), puis un rôle par compte (liquidités / dette + nom EXACT / placement
+  + régime / ignorer). Marc a dit « c'est tout non enregistré pour le moment » → « Placement »
+  pré-remplit `NON-ENREG`. ⚠️ **AUCUN montant rendu** par la carte (verrouillé par test) → pas de
+  surface à garder en mode discret. Sync coupée en mode démo. Échec de passe → seul le RAPPORT est
+  écrit. L'état est écrit par **delta de référence** (jamais une liste de clés à la main : la 1ʳᵉ
+  version perdait déjà `lastUpdate`). 8 tests.
+- [ ] **`[FINTABLE-7]` Lot 3 — déclenchement AUTOMATIQUE de la passe à l'ouverture** (S) — throttlé
+  1×/jour (la carte ne donne pour l'instant qu'un bouton manuel « Synchroniser maintenant »).
 - [ ] **`[FINTABLE-6]` Lot 2 — consommer le montant courtier dans Investissements + Accueil** (M) —
   brancher `reconcileBrokerBalances` : total affiché = solde courtier, ligne « écart courtier (non
   ventilé) » explicite, badge de fraîcheur. Dépend du Lot 1 (livré) ET de la sync qui tourne réellement.

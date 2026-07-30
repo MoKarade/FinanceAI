@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-30 (fin) — `[FINTABLE-7]` Lot 2 : l'ÉCRAN existe (Réglages → Clés API)
+> Marc, 2× : « dans mes clés api je vois pas pour le jeton », puis « je ne vois toujours pas ». Les deux
+> fois c'était vrai : la 1ʳᵉ PR ne livrait que la plomberie, et la 2ᵉ n'était pas encore MERGÉE (donc pas
+> déployée — un merge n'est pas un déploiement, cf `[[FINTABLE-BOOL-QUERY]]` §2 appliqué à Vercel).
+> Livré : `components/settings/FintableSyncCard.tsx`, rendue **inconditionnellement** dans le sous-onglet
+> `integrations` de `Settings.tsx` — libellé de l'onglet = **« Clés API »**. Contenu : champ jeton
+> (`type=password`, `apiKeys.fintable`, device-local, JAMAIS poussé sur Drive), « Tester la connexion »
+> (liste les comptes RÉELS sans pager transactions/positions), un rôle par compte (liquidités / dette +
+> nom EXACT / placement + régime pré-rempli NON-ENREG / ignorer), « Synchroniser maintenant », et le
+> rapport de la dernière passe. ⚠️ **Aucun montant rendu** (verrouillé par test) → zéro surface à garder
+> en mode discret. Sync coupée en mode démo. Écriture de l'état par **delta de référence** (la 1ʳᵉ
+> version énumérait 5 clés et perdait déjà `lastUpdate`). **RESTE** : Lot 3 = déclenchement AUTO à
+> l'ouverture (throttlé 1×/jour) ; `[FINTABLE-6]` Lot 2 = afficher le montant courtier + ligne d'écart
+> dans Investissements et Accueil ; `[DASH-NETWORTH-CANONICAL]`.
+>
 > ## 🟢 Session 2026-07-30 (suite) — `[FINTABLE-7]` : la sync passe DANS LE NAVIGATEUR (zéro config pour Marc)
 > **Demande Marc, non négociable** : « je veux que tu fasses tout toi, sans que j'aie besoin de t'aider ».
 > **Mesuré avant de décider** (ne pas re-supposer) : `gcloud` ABSENT du conteneur, aucun identifiant

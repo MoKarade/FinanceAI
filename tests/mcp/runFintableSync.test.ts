@@ -198,6 +198,63 @@ describe('runFintableSync — gestion des pannes', () => {
     });
 });
 
+// [FINTABLE-6] Les soldes courtier étaient calculés par le mapper puis JETÉS (seul un compteur
+// survivait). Sans persistance, la demande de Marc — « dans investissements, utilise exactement le
+// montant que j'ai dans Fintable » — n'a aucune donnée à consommer.
+describe('runFintableSync — persistance des soldes courtier (FINTABLE-6)', () => {
+    it('un compte de placement CAD avec régime déclaré est PERSISTÉ (id stable + horodatage)', async () => {
+        const { store, saved } = makeStore(baseState({ transactions: [] }));
+        const client = {
+            get: vi.fn(async (path: string) => {
+                if (path.startsWith('/accounts')) {
+                    return {
+                        data: [{
+                            id: 'acc_disnat', connection_id: 'conn_1', name: 'Disnat L7B1',
+                            type: 'brokerage', currency: 'CAD', balance: '136863.18',
+                            cash_balance: null, debt: null,
+                        }],
+                    };
+                }
+                return { data: [] };
+            }),
+            getAllPages: vi.fn(async () => []),
+        } as unknown as FintableClient;
+
+        const report = await runFintableSync(store, {
+            token: 't',
+            roles: { acc_disnat: { kind: 'investment', taxRegime: 'NON-ENREG' } },
+            client,
+        });
+
+        expect(report.error).toBeNull();
+        expect(saved).toHaveLength(1);
+        const balances = saved[0].fintableBrokerBalances;
+        expect(balances).toHaveLength(1);
+        expect(balances?.[0]).toMatchObject({
+            accountId: 'acc_disnat',        // clé STABLE (pas le libellé, renommable côté banque)
+            balanceCad: 136863.18,
+            taxRegime: 'NON-ENREG',
+        });
+        // Horodatage réel → l'UI peut dire honnêtement « vu il y a N jours » plutôt que faire semblant.
+        expect(balances?.[0].at).toBe(report.at);
+    });
+
+    it('aucun compte de placement exploitable → liste VIDE écrite (efface une autorité périmée)', async () => {
+        // Une valeur d'hier laissée en place ferait autorité à tort : une autorité périmée est pire
+        // qu'une absence assumée (l'app retombe alors sur la somme des titres saisis, comportement connu).
+        const previous = baseState({ transactions: [] });
+        previous.fintableBrokerBalances = [
+            { accountId: 'vieux', label: 'Compte fermé', balanceCad: 999_999, taxRegime: 'CELI', at: 1 },
+        ];
+        const { store, saved } = makeStore(previous);
+
+        await runFintableSync(store, { token: 't', roles: {}, client: makeFakeClient() });
+
+        expect(saved).toHaveLength(1);
+        expect(saved[0].fintableBrokerBalances).toEqual([]);
+    });
+});
+
 describe('runFintableSync — isolation par payload (un payload rejeté n\'avorte pas les autres)', () => {
     // [finding financial-integrity, PR #531, MESURÉ] Une carte remboursée à 0 $ ce mois-ci est un
     // solde LÉGITIME chez Fintable, mais `applyDocument` le juge « aberrant » pour une dette (design

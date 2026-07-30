@@ -46,8 +46,17 @@ jobs:
           SYNC_SECRET: ${{ secrets.FINANCEAI_FINTABLE_SYNC_SECRET }}
         run: |
           set -euo pipefail
-          if [ -z "${MCP_URL:-}" ] || [ -z "${SYNC_SECRET:-}" ]; then
-            echo "::error::Secrets FINANCEAI_MCP_URL / FINANCEAI_FINTABLE_SYNC_SECRET manquants."
+          # Nommer LE secret qui manque, pas les deux : le message générique « X / Y manquants » a
+          # coûté un aller-retour de diagnostic le 2026-07-30 (seul SYNC_SECRET manquait, MCP_URL
+          # était bien posé) — même classe que « un message d'erreur générique est FAUX pour un
+          # échec structurel ». Les valeurs ne sont jamais affichées, seulement leur présence.
+          # ⚠️ `if` explicites, PAS `[ -z … ] && missing=…` : sous `set -e`, un test FAUX en fin de
+          # ligne rend un code non-nul et tuerait le job (le cas nominal « secret présent » !).
+          missing=''
+          if [ -z "${MCP_URL:-}" ]; then missing="${missing} FINANCEAI_MCP_URL"; fi
+          if [ -z "${SYNC_SECRET:-}" ]; then missing="${missing} FINANCEAI_FINTABLE_SYNC_SECRET"; fi
+          if [ -n "${missing}" ]; then
+            echo "::error::Secret(s) GitHub Actions absent(s) :${missing} — à créer dans Settings → Secrets and variables → Actions."
             exit 1
           fi
           # --data '' : POST à corps VIDE mais avec Content-Length: 0 — le frontal Google de Cloud Run
@@ -60,6 +69,14 @@ jobs:
           # Le secret n'est jamais dans le corps ; l'afficher aide au diagnostic. Le rapport peut
           # contenir des COMPTEURS (nb de tx/comptes) mais jamais de montant ni de libellé.
           cat /tmp/fintable_sync_out; echo
+          # Un 404 n'est PAS une panne de la sync : c'est un serveur qui n'a pas (encore) la route.
+          # Le dire explicitement évite de chercher côté Fintable/Drive un problème de déploiement.
+          if [ "${code}" = "404" ]; then
+            echo "::error::404 — le serveur Cloud Run n'expose pas /fintable-sync : il tourne une révision antérieure à FINTABLE-3, ou les 3 secrets Secret Manager manquent (la route ne s'active que s'ils existent). Remède : créer les secrets puis redéployer (PROJECT_ID=… ./mcp/deploy.sh)."
+          fi
+          if [ "${code}" = "401" ] || [ "${code}" = "403" ]; then
+            echo "::error::${code} — le serveur a refusé le secret : FINANCEAI_FINTABLE_SYNC_SECRET (GitHub) et financeai-fintable-sync-secret (Secret Manager) ne portent pas la même valeur."
+          fi
           # 200 = OK (ok:true) ou conflit transitoire (ok:false, conflict:true — réessai au tick suivant).
           # 5xx = panne RÉELLE (Fintable KO/jeton révoqué, Drive KO) → le job rougit et alerte.
           test "${code}" = "200"

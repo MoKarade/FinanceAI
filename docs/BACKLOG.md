@@ -111,6 +111,42 @@
   ⚠️ **Découverte en chemin** : `text-info-300` est un token Tailwind INEXISTANT (palette `info` = 400/500/600
   seulement, cf `[[FIX-INK600-TOKEN]]`) — no-op silencieux, ~12 occurrences dans `components/` (corrigé
   seulement l'instance touchée par ce diff, `Transactions.tsx:436`) → nouvel item `[A11Y-INFO300-SWEEP]` ci-dessous.
+- [x] **`[FINTABLE-6]` Lot 1 — le montant du COURTIER fait autorité : fondation** (M) — ✅ 2026-07-30.
+  Demande Marc : « je veux que dans investissements ça utilise exactement le montant que j'ai dans
+  Fintable » + « que l'accueil utilise Fintable aussi ». **Constat en LISANT le code** : `investmentBalances`
+  était calculé par `mapSnapshot` puis **JETÉ** — seul un compteur (`investmentReferenceCount`) survivait
+  dans le rapport. Une donnée produite sans consommateur : rien à brancher, il fallait d'abord la stocker.
+  Livré : (a) `FintableAccountRole.investment` porte un `taxRegime` OPTIONNEL (`CELI|REER|NON-ENREG`),
+  **jamais inféré** — absent = solde affiché mais écart hors projection, SIGNALÉ (dégradation gracieuse,
+  pas d'échec de passe) ; (b) `AppState.fintableBrokerBalances` (additif, zéro migration) clé sur
+  `accountId` STABLE — jamais le libellé, renommable côté banque (classe `[[INVEST-ALLOC-GEO-SECTOR]]`) —
+  + horodatage `at` pour afficher honnêtement la fraîcheur ; (c) `services/fintable/brokerBalances.ts`,
+  module PUR source-unique de la réconciliation, consommé plus tard par Investissements ET Accueil (pas
+  deux copies qui dérivent) ; (d) ajouté explicitement à `DEFAULT_APP_STATE` (leçon PERSONA-PURGE de la PR #531).
+  **Granularité = le PANIER FISCAL, pas le compte** : les `Asset` ne portent pas d'id de compte courtier,
+  seulement `accountType` → réconcilier par compte est structurellement impossible, c'est documenté et non subi.
+  ⚠️ **Mon propre test a attrapé mon propre bug** : `Number.isFinite(Number(x))` ne protège PAS de `null`
+  (`Number(null) === 0`) → un solde ABSENT devenait un **0 $ crédible** effaçant le compte du patrimoine.
+  Exactement le piège `[[FINTABLE]]`, retombé dedans en l'écrivant. Garde null-explicite AVANT conversion,
+  aux DEUX bouts (écriture + lecture d'un état Drive non validé par Zod). 19 tests.
+- [ ] **`[FINTABLE-6]` Lot 2 — consommer le montant courtier dans Investissements + Accueil** (M) —
+  brancher `reconcileBrokerBalances` : total affiché = solde courtier, ligne « écart courtier (non
+  ventilé) » explicite, badge de fraîcheur. Dépend du Lot 1 (livré) ET de la sync qui tourne réellement.
+- [ ] **`[DASH-NETWORTH-CANONICAL]` L'Accueil est la SEULE surface qui recalcule le patrimoine** (M,
+  diagnostic `financial-integrity` 2026-07-30, demande Marc « l'accueil fait aucun sens ») — le KPI
+  `Dashboard.tsx:425` lit `latestTotals.Total` (dernier point de `usePortfolioHistory`) au lieu de la
+  source unique, ce qui explique les 4 symptômes d'un coup : (1) **figé** — l'axe des dates est l'union
+  des `asset.priceHistory`, sans ligne « aujourd'hui », et le cash n'intègre que les transactions
+  `<= rowDate` → tout ce qui suit le dernier close est invisible ; (2) **faux** — le cash ne somme que
+  les transactions à `accountName` non vide (`Dashboard.tsx:204,:289`) alors que `computeCurrentLiquidity`
+  les somme TOUTES ; or le mapper Fintable **n'émet aucun `accountName`** (`mapSnapshot.ts:275-279`) →
+  même une fois la sync réparée, l'Accueil ignorerait les transactions Fintable ; (3) **cartes vides** —
+  hydratation jamais réussie → `rows: []` → repli qui met `accountKeys: []` ; (4) **incohérent** — toutes
+  les autres surfaces (App/TabRouter, PDF, snapshot IA, Santé, Investissements, Futur) routent bien par
+  `computePresentNetWorth`/`computeRawNetWorth`. ⚠️ Le fix ne peut PAS être un simple passage à
+  `computePresentNetWorth` : celui-ci EXCLUT l'immobilier alors que le KPI l'INCLUT → le patrimoine
+  affiché CHUTERAIT de l'équité immo (piège `[[ASSET-FX-DISPLAY]]` : le chiffre juste pris pour un bug).
+  Cible = `computePresentNetWorth + équité immo`, comme le fait déjà le repli `Dashboard.tsx:178`.
 - [ ] **`[A11Y-INFO300-SWEEP]` `text-info-300` inexistant (no-op silencieux) — sweep dédié** (S, découvert en
   FINTABLE-4 2026-07-29) : la palette `info` (`tailwind.config.js`) s'arrête à 600/500/400, aucun shade 300 →
   `text-info-300` ne génère AUCUNE règle CSS (le texte hérite du parent, contraste imprévisible, zéro erreur

@@ -1404,6 +1404,34 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   en option locale) : c'est ce qui rend le diagnostic partageable sans exposer les chiffres réels. Corollaire du
   blocage : quand seul Marc peut exécuter (hôte hors politique réseau), la valeur du livrable EST la qualité de
   ce qu'il aura à recoller — dimensionner le rapport sur les décisions qu'il débloque, pas sur « ça marche ».
+- ⚠️ **[FINTABLE-6] 2026-07-30 — « utilise exactement le montant que j'ai dans Fintable », leçons** :
+  (1) **Une donnée CALCULÉE puis jetée est indiscernable d'une donnée absente — greper les CONSOMMATEURS
+  avant de promettre un branchement** : `investmentBalances` était produit par le mapper depuis le Lot 2,
+  mais seul un COMPTEUR (`investmentReferenceCount`) atterrissait dans l'état ; les montants n'existaient
+  nulle part. Miroir exact de [[TX-DUPLICATES]] (« un flag respecté partout que personne n'écrit ») : ici
+  c'est l'inverse — quelque chose d'écrit que personne ne lit. Réflexe commun : pour un champ, greper
+  SES DEUX BOUTS (écrivains ET lecteurs) ; un seul bout = fonctionnalité fantôme.
+  (2) **`Number.isFinite(Number(x))` ne protège PAS de `null`** (`Number(null) === 0`) — je suis retombé
+  dans le piège `[[FINTABLE]]` en écrivant le code censé l'appliquer, et c'est MON PROPRE TEST qui l'a
+  attrapé (un solde courtier absent devenait un **0 $ crédible**, effaçant un compte entier du patrimoine).
+  La garde doit être un rejet EXPLICITE de `null`/`undefined` AVANT toute conversion, et posée aux DEUX
+  bouts : à l'écriture, et à la lecture d'un état Drive qu'aucun schéma Zod ne valide (champ additif).
+  Corollaire : écrire le test « jamais rabattu sur 0 » AVANT de croire la garde, même quand on vient de
+  relire la leçon qui la décrit.
+  (3) **La granularité d'une réconciliation est imposée par le MODÈLE DE DONNÉES, pas par le souhait** :
+  Fintable donne un total PAR COMPTE, mais `Asset` ne porte pas d'id de compte courtier (seulement
+  `accountType`) → réconcilier par compte est structurellement impossible ; on réconcilie par PANIER
+  FISCAL. Le documenter explicitement (module + ADR) évite qu'une session future le prenne pour un oubli
+  et « corrige » vers un appariement qui ne peut pas exister.
+  (4) **Aligner la graphie d'un nouveau champ sur l'union EXISTANTE, jamais en inventer une parallèle** :
+  mon 1er jet écrivait `NON_ENREGISTRE` alors que l'app utilise `'NON-ENREG'` (`RegisteredAccountType`) —
+  deux graphies pour la même notion = la table de lookup morte en silence d'[[INVEST-ALLOC-GEO-SECTOR]].
+  Corrigé avant tout code consommateur, et verrouillé par une garde de parité au COMPILE (assignation
+  croisée dans un test) plutôt que par un import qui coûterait sa pureté au mapper.
+  (5) **Sous `set -e`, `[ -z "$X" ] && var=…` TUE le job quand le test est FAUX** (le cas nominal !) —
+  piège bash introduit puis attrapé à la relecture dans le même diff. Utiliser des `if … fi` explicites.
+  Et un message d'échec doit nommer LE secret manquant, pas les deux : le générique « X / Y manquants »
+  a coûté un aller-retour de diagnostic réel (seul l'un des deux manquait).
 - ⚠️ **[FINTABLE-BOOL-QUERY + FINTABLE-DOCTOR] 2026-07-29 — deux leçons du 1ᵉʳ contact avec une API tierce RÉELLE** :
   (1) **Un booléen de query string s'encode `1`/`0`, JAMAIS via `String(booléen)`** : `pending=false` a été
   rejeté en 422 (« The pending field must be true or false » — message par défaut de la règle `boolean` de

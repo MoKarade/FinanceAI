@@ -5,7 +5,10 @@
 // « appliquer le même delta à deux copies = le signal de consolider »). La FORME est validée : un
 // rôle inconnu ou un `debtName` vide passerait sinon en silence jusqu'au mapper.
 
-import type { FintableMappingConfig } from './mapSnapshot';
+import type { FintableMappingConfig, FintableTaxRegime } from './mapSnapshot';
+// Liste IMPORTÉE, pas re-codée : une 2ᵉ copie diverge (elle l'avait déjà fait, cf. le message de
+// remède qui enseignait une graphie que ce parseur rejette).
+import { FINTABLE_TAX_REGIMES as TAX_REGIMES } from './mapSnapshot';
 
 /** @throws si la chaîne n'est pas un JSON d'objet `{ "<id de compte>": { "kind": … } }` valide. */
 export function parseRolesJson(raw: string): FintableMappingConfig['roles'] {
@@ -16,7 +19,24 @@ export function parseRolesJson(raw: string): FintableMappingConfig['roles'] {
     const roles: FintableMappingConfig['roles'] = {};
     for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
         const kind = (value as { kind?: unknown })?.kind;
-        if (kind === 'cash' || kind === 'investment' || kind === 'ignore') {
+        if (kind === 'investment') {
+            // [FINTABLE-6] `taxRegime` est OPTIONNEL (absent = solde affiché mais écart non ventilé,
+            // signalé par le mapper) — mais s'il est FOURNI, il doit être valide : une faute de frappe
+            // (« celi », « non-enregistre ») passerait sinon en silence et l'écart atterrirait dans le
+            // mauvais panier fiscal, ce qui fausse l'impôt de toute la projection. Bretelle ici,
+            // ceinture côté mapper (classe MCP-WHATIF : « le schéma est la bretelle, pas la ceinture »).
+            const rawRegime = (value as { taxRegime?: unknown }).taxRegime;
+            if (rawRegime === undefined || rawRegime === null) {
+                roles[id] = { kind: 'investment' };
+            } else if (typeof rawRegime === 'string' && (TAX_REGIMES as readonly string[]).includes(rawRegime)) {
+                roles[id] = { kind: 'investment', taxRegime: rawRegime as FintableTaxRegime };
+            } else {
+                throw new Error(
+                    `Rôles Fintable : "taxRegime" invalide pour le compte ${id} `
+                    + `(attendu : ${TAX_REGIMES.join(' | ')}, ou champ absent).`,
+                );
+            }
+        } else if (kind === 'cash' || kind === 'ignore') {
             roles[id] = { kind };
         } else if (kind === 'debt') {
             const debtName = (value as { debtName?: unknown }).debtName;

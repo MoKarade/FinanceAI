@@ -4,6 +4,32 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-07-30 — LA SYNC FINTABLE N'A JAMAIS TOURNÉ + `[FINTABLE-6]` Lot 1 (montant courtier = autorité)
+> **⛔ CONSTAT MESURÉ (ne pas supposer le contraire)** : le cron s'est déclenché pour la 1ʳᵉ fois le
+> 2026-07-30 11:49 UTC et a ÉCHOUÉ. Deux blocages, tous deux côté Marc :
+> (1) le secret GitHub `FINANCEAI_FINTABLE_SYNC_SECRET` est **absent** (`FINANCEAI_MCP_URL`, lui, est
+> bien posé — le log montre `SYNC_SECRET:` vide) ; (2) `deploy-mcp.yml` est **skipped à chaque push**
+> (garde `vars.GCP_PROJECT_ID` non défini = déploiement manuel voulu) → **le Cloud Run tourne une
+> révision d'avant `[FINTABLE-3]` et n'expose pas `/fintable-sync`**. Donc ZÉRO donnée Fintable n'est
+> jamais entrée dans l'app, et tout ce que Marc demande en aval en dépend.
+> **🔵 `[FINTABLE-6]` Lot 1 LIVRÉ** — demandes Marc : « dans investissements utilise exactement le
+> montant que j'ai dans Fintable » + « l'accueil aussi, chaque jour ». Décision Marc (question posée) :
+> **autorité + ligne d'écart explicite** (pas autorité muette, pas simple référence). En LISANT le code :
+> `investmentBalances` était calculé puis **jeté** (seul un compteur survivait) → rien à brancher.
+> Livré : `taxRegime` OPTIONNEL par compte (jamais inféré, absent = signalé et hors projection),
+> `AppState.fintableBrokerBalances` (clé `accountId` stable + horodatage), module PUR
+> `services/fintable/brokerBalances.ts` (source unique de la réconciliation, **par PANIER FISCAL** — les
+> `Asset` ne portent pas d'id de compte courtier, réconcilier par compte est impossible par construction).
+> ⚠️ Mon propre test a attrapé mon propre bug : `Number(null) === 0` → un solde absent devenait un 0 $
+> crédible effaçant un compte. Garde null-explicite aux deux bouts. 19 tests.
+> **🩺 Diagnostic Accueil (agent `financial-integrity`)** — les 4 symptômes de Marc ont UNE cause :
+> le KPI `Dashboard.tsx:425` est **la seule surface de l'app qui recalcule localement** le patrimoire au
+> lieu de la source unique. ⚠️ Pour la suite : son cash ne somme que les transactions à `accountName`
+> non vide, or **le mapper Fintable n'en émet aucun** → réparer la sync ne suffirait PAS à réparer
+> l'Accueil. Ticket `[DASH-NETWORTH-CANONICAL]` au BACKLOG avec le piège à éviter (passer naïvement à
+> `computePresentNetWorth` FERAIT CHUTER le patrimoine de l'équité immo → cible = `+ équité immo`).
+> **Suite** : `[FINTABLE-6]` Lot 2 (consommer dans Investissements + Accueil) puis `[DASH-NETWORTH-CANONICAL]`.
+>
 > ## 🟢 Session 2026-07-29 (suite 8) — `[FINTABLE-4]` LIVRÉ (import manuel replié par défaut) — chantier Fintable CLOS côté code
 > **🔵 `[FINTABLE-4]` LIVRÉ** — dernier item du chantier Fintable. L'import manuel (`ImportBankStatement`,
 > CSV/PDF) reste ENTIÈREMENT fonctionnel (aucune ligne de logique retirée) mais le bouton d'en-tête de

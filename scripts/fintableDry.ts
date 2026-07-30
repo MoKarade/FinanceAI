@@ -193,7 +193,11 @@ async function main(): Promise<void> {
             console.log(`  Dette « ${d.name} » → solde ${money(d.balanceCad, args.showAmounts)}`);
         }
         for (const inv of report.investmentBalances) {
-            console.log(`  Placement (référence courtier, non importé) : ${inv.label} [${inv.currency}] ${money(inv.balance, args.showAmounts)}`);
+            // [FINTABLE-6] Ce solde FAIT AUTORITÉ sur le total du compte (ce n'est plus une simple
+            // « référence ») — sauf si le régime fiscal manque : le dire ici évite de découvrir
+            // l'omission seulement quand l'écart n'apparaît pas dans la projection.
+            const regime = inv.taxRegime ?? '⚠ régime NON déclaré';
+            console.log(`  Placement (solde courtier, fait autorité) : ${inv.label} [${inv.currency}] ${money(inv.balance, args.showAmounts)} · ${regime}${args.showIds ? ` id=${inv.accountId}` : ''}`);
         }
         if (report.accountsWithoutRole.length > 0) {
             console.log('  ⚠ Comptes SANS RÔLE (à déclarer dans le fichier de rôles) :');

@@ -3,6 +3,7 @@
   "rewrites": [
     { "source": "/api/history/yahoo/:symbol", "destination": "https://query1.finance.yahoo.com/v8/finance/chart/:symbol" },
     { "source": "/api/search/yahoo", "destination": "https://query1.finance.yahoo.com/v1/finance/search" },
+    { "source": "/api/fintable/:path*", "destination": "https://fintable.io/api/v2/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

@@ -88,6 +88,15 @@ const yahooProxy = {
     changeOrigin: true,
     rewrite: (path: string) => path.replace(/^\/api\/search\/yahoo/, '/v1/finance/search'),
   },
+  // [FINTABLE-7] Sync Fintable DEPUIS LE NAVIGATEUR (décision 2026-07-30) : même patron same-origin
+  // que Yahoo ci-dessus → `connect-src 'self'` couvre, AUCUN domaine ajouté à la CSP, pas de CORS.
+  // Le jeton voyage dans l'en-tête `Authorization` que le proxy relaie tel quel ; il n'est jamais
+  // dans l'URL (les URL finissent dans les logs — contrat explicite de `client.ts`).
+  '/api/fintable': {
+    target: 'https://fintable.io',
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/api\/fintable/, '/api/v2'),
+  },
 };
 
 export default defineConfig(({ mode }) => {

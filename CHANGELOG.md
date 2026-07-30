@@ -6,6 +6,28 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — la sync Fintable tourne dans l'app (plus besoin de rien configurer)] — 2026-07-30
+
+### Sync bancaire
+- **`[FINTABLE-7]`** — la synchronisation Fintable peut maintenant tourner **depuis l'app elle-même**,
+  sans serveur, sans Google Cloud, sans secret à créer. La seule chose à faire : coller ton jeton
+  Fintable une fois dans Réglages (chiffré dans le navigateur, comme tes autres clés).
+- Les rôles de tes comptes (liquidités / dette / placement) se déclarent **dans l'app** au lieu d'un
+  fichier JSON à écrire à la main puis à pousser dans un secret Google Cloud.
+- Ce que ça coûte, dit franchement : ça ne tourne pas quand l'app est fermée, et ton jeton transite
+  par l'edge Vercel au lieu de rester dans Secret Manager (le jeton est en lecture seule, ce qui
+  borne le risque). Le cron serveur reste en place et reprend la main si tu montes sa config un jour.
+
+### Interne
+- Proxy same-origin `/api/fintable/*` (`vercel.json` + `server.proxy` vite) — patron déjà éprouvé
+  pour Yahoo : **aucun domaine ajouté à la CSP**, pas de préflight CORS.
+- `services/fintable/browserSync.ts` réutilise TEL QUEL le lecteur, le mapper, `applyDocument` et la
+  persistance des soldes courtier : seuls le transport et le porteur d'état changent, zéro logique
+  dupliquée qui pourrait dériver. Mêmes garanties que le cron (rapport toujours rendu, isolation par
+  payload, bascule plafonnée) + `nextState: null` sur échec — jamais d'état à moitié appliqué.
+
+---
+
 ## [unreleased — le montant du courtier fait autorité (fondation) + diagnostic du cron] — 2026-07-30
 
 ### Placements

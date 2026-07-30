@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-30 (suite) — `[FINTABLE-7]` : la sync passe DANS LE NAVIGATEUR (zéro config pour Marc)
+> **Demande Marc, non négociable** : « je veux que tu fasses tout toi, sans que j'aie besoin de t'aider ».
+> **Mesuré avant de décider** (ne pas re-supposer) : `gcloud` ABSENT du conteneur, aucun identifiant
+> GCP, `fintable.io` = 403 CONNECT, aucun outil MCP pour créer un secret GitHub → le chemin Cloud Run
+> exige IRRÉDUCTIBLEMENT les identifiants de Marc. Donc bascule : la passe tourne dans l'app.
+> Livré (réseau + runner) : proxy same-origin `/api/fintable/:path*` (vercel.json + vite dev/preview,
+> patron Yahoo → **zéro domaine CSP ajouté**), `apiKeys.fintable`, `AppState.fintableRoles` (remplace
+> le fichier JSON + secret GCP), `services/fintable/browserSync.ts` qui RÉUTILISE lecteur/mapper/
+> `applyDocument`/persistance TELS QUELS — mêmes garanties que le cron + `nextState: null` sur échec.
+> ⚠️ Compromis assumé : jeton dans le navigateur via l'edge Vercel (lecture seule → risque borné), et
+> pas d'exécution app fermée. Le cron serveur reste en place, prioritaire si la config est montée.
+> **RESTE** : `[FINTABLE-7]` Lot 2 = UI Réglages (coller le jeton, bouton « Tester », rôles par clic —
+> Marc a dit « tout non enregistré pour le moment » → pré-remplir NON-ENREG) + déclenchement auto 1×/jour.
+>
 > ## 🔴 Session 2026-07-30 — LA SYNC FINTABLE N'A JAMAIS TOURNÉ + `[FINTABLE-6]` Lot 1 (montant courtier = autorité)
 > **⛔ CONSTAT MESURÉ (ne pas supposer le contraire)** : le cron s'est déclenché pour la 1ʳᵉ fois le
 > 2026-07-30 11:49 UTC et a ÉCHOUÉ. Deux blocages, tous deux côté Marc :

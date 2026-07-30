@@ -766,6 +766,10 @@ export interface AppState {
   apiKeys: {
     anthropic: string; // Phase 4 A5 — Claude API key (Anthropic) — remplace Gemini
     finnhub: string;   // §7.F.5 — marketData (quotes/history/profile) — optionnel
+    /** [FINTABLE-7] Jeton Fintable LECTURE SEULE — sync bancaire depuis le navigateur. Optionnel
+     *  (absent = la sync in-app est simplement inactive). Comme les autres clés : jamais persisté
+     *  en clair, exclu des sauvegardes et du push Drive. */
+    fintable?: string;
   };
   fxRates: {
     USD: number;
@@ -808,7 +812,23 @@ export interface AppState {
    *  AUTORITÉ sur le total de chaque compte (choix Marc 2026-07-30). ADDITIF optionnel (absent = jamais
    *  synchronisé → l'app retombe sur la somme des titres saisis, comportement d'avant). */
   fintableBrokerBalances?: FintableBrokerBalance[];
+  /** [FINTABLE-7] Rôle de chaque compte Fintable, assigné DANS L'APP (Réglages) — remplace le
+   *  fichier `.fintable-roles.json` que Marc devait écrire à la main puis pousser en secret GCP.
+   *  Clé = id de compte Fintable (stable). Un compte absent d'ici est SIGNALÉ, jamais deviné. */
+  fintableRoles?: Record<string, FintableAccountRoleConfig>;
 }
+
+/**
+ * [FINTABLE-7] Forme PERSISTÉE d'un rôle de compte. Structurellement identique à
+ * `FintableAccountRole` (`services/fintable/mapSnapshot.ts`) mais redéclarée ici pour que le mapper
+ * reste SANS dépendance (fonction pure) et que `types.ts` ne dépende pas de `services/`. La parité
+ * des deux formes est verrouillée par test (assignation croisée) — pas laissée à la vigilance.
+ */
+export type FintableAccountRoleConfig =
+  | { kind: 'cash' }
+  | { kind: 'debt'; debtName: string }
+  | { kind: 'investment'; taxRegime?: Extract<RegisteredAccountType, 'CELI' | 'REER' | 'NON-ENREG'> }
+  | { kind: 'ignore' };
 
 /**
  * [FINTABLE-6] Solde d'UN compte de placement tel que le courtier le voit. C'est la « vérité terrain »

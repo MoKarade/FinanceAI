@@ -57,6 +57,31 @@ function parseRetryAfter(header: string | null): number | undefined {
 
 const defaultSleep = (ms: number) => new Promise<void>((r) => { setTimeout(r, ms); });
 
+/**
+ * ⚠️ [FINTABLE-BROWSER-RELATIVE-BASE] `new URL(x)` à UN argument exige une URL ABSOLUE : sur une
+ * base relative comme `/api/fintable` (le proxy same-origin du chemin navigateur), il lève
+ * `TypeError: Invalid URL`. Cette erreur remontait telle quelle jusqu'à l'écran — Marc a collé son
+ * jeton et lu « url invalide », un message qui accuse une URL alors qu'il venait de saisir un jeton.
+ *
+ * On résout donc une base relative contre l'ORIGINE COURANTE (exactement ce que vise le proxy
+ * same-origin), et on laisse une base absolue intacte (chemin serveur / Cloud Run, où il n'y a
+ * aucune origine). `new URL(absolue, undefined)` ignore le 2ᵉ argument : rien ne change côté cron.
+ *
+ * Le cas « base relative SANS origine » (Node sans `location`) est une erreur de programmation, pas
+ * une panne réseau : elle doit se lire comme telle plutôt que resurgir en « Invalid URL » opaque.
+ */
+function originForRelativeBase(baseUrl: string): string | undefined {
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(baseUrl)) return undefined;
+    const origin = (globalThis as { location?: { origin?: string } }).location?.origin;
+    if (typeof origin !== 'string' || origin === '' || origin === 'null') {
+        throw new FintableError(
+            `Base d'API relative (« ${baseUrl} ») sans origine pour la résoudre : ce chemin exige un navigateur.`,
+            'UNKNOWN',
+        );
+    }
+    return origin;
+}
+
 export class FintableClient {
     private readonly token: string;
     private readonly baseUrl: string;
@@ -184,7 +209,10 @@ export class FintableClient {
     }
 
     private buildUrl(path: string, query?: Record<string, string | number | boolean | undefined>): string {
-        const url = new URL(`${this.baseUrl}${path.startsWith('/') ? path : `/${path}`}`);
+        const url = new URL(
+            `${this.baseUrl}${path.startsWith('/') ? path : `/${path}`}`,
+            originForRelativeBase(this.baseUrl),
+        );
         for (const [k, v] of Object.entries(query ?? {})) {
             if (v === undefined) continue;
             // ⚠️ [FINTABLE-BOOL-QUERY] Un booléen JS devient la chaîne "true"/"false" via String(v) —

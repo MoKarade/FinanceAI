@@ -1457,6 +1457,17 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   exact de Marc reproduit. ⚠️ Reste NON vérifiable depuis le conteneur (`fintable.io` = 403 CONNECT,
   cf [[FINTABLE-0]]) : que l'edge Vercel FORWARDE bien l'en-tête `Authorization` sur un rewrite externe
   — à confirmer par l'usage réel, pas à affirmer.
+  ⚠️ **Un rewrite externe Vercel peut CACHER la réponse à l'edge — le trancher explicitement sur un
+  proxy AUTHENTIFIÉ** (trouvé en cherchant la réponse à la question ci-dessus, doc Vercel « rewrites » —
+  chercher la doc de la plateforme a rapporté plus que la question posée) : le cache des rewrites
+  externes est opt-IN pour les projets créés avant le 2026-04-06, donc **opt-OUT (actif par défaut)
+  après**. Or une réponse de `/api/fintable/*` porte les transactions et soldes RÉELS, et un cache
+  d'edge est keyé par URL — l'en-tête `Authorization` n'entre pas dans la clé. Laisser le défaut de la
+  plateforme mélange donc « donnée privée » et « cache partagé » (Loi 25) et peut servir des montants
+  périmés. Coupé par `x-vercel-enable-rewrite-caching: 0` + `Cache-Control: private, no-store` sur ce
+  seul chemin. Les proxys Yahoo restent cachables (cotations PUBLIQUES) : le discriminant est « la
+  réponse dépend-elle d'un secret ? », PAS « est-ce un proxy ? ». Réflexe : tout rewrite externe ajouté
+  tranche la question du cache dans le MÊME diff, jamais par omission.
 - ⚠️ **[FINTABLE-6] 2026-07-30 — « utilise exactement le montant que j'ai dans Fintable », leçons** :
   (1) **Une donnée CALCULÉE puis jetée est indiscernable d'une donnée absente — greper les CONSOMMATEURS
   avant de promettre un branchement** : `investmentBalances` était produit par le mapper depuis le Lot 2,

@@ -19,6 +19,13 @@
       ]
     },
     {
+      "source": "/api/fintable/:path*",
+      "headers": [
+        { "key": "x-vercel-enable-rewrite-caching", "value": "0" },
+        { "key": "Cache-Control", "value": "private, no-store" }
+      ]
+    },
+    {
       "source": "/",
       "headers": [
         { "key": "Cache-Control", "value": "public, no-cache, must-revalidate" }

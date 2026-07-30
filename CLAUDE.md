@@ -1468,6 +1468,25 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   seul chemin. Les proxys Yahoo restent cachables (cotations PUBLIQUES) : le discriminant est « la
   réponse dépend-elle d'un secret ? », PAS « est-ce un proxy ? ». Réflexe : tout rewrite externe ajouté
   tranche la question du cache dans le MÊME diff, jamais par omission.
+  ⚠️ **[FINTABLE-BROWSER-FETCH-RECEIVER] `this.fetchImpl = opts.fetchImpl ?? fetch` casse le RÉCEPTEUR
+  de `fetch` dans un navigateur** (2ᵉ bug du même écran, signalé par Marc : « [NETWORK] Appel Fintable
+  /accounts : échec réseau (TypeError) », jeton pourtant bon) : stocker `fetch` dans une propriété puis
+  l'appeler par `this.fetchImpl(...)` fait de `this` l'INSTANCE au lieu de `window`, et le binding
+  WebIDL REJETTE ça. **MESURÉ dans un vrai Chromium** (sonde Playwright, `PW_LOCAL_CHROMIUM=/opt/
+  pw-browsers/chromium-1194/chrome-linux/chrome`) sur une vraie origine, pas déduit :
+  `bare(url)` OK · `obj.f(url)` → **`TypeError: Failed to execute 'fetch' on 'Window': Illegal
+  invocation`** · `(i,x) => fetch(i,x)` OK · `fetch.bind(globalThis)` OK. Fix = wrapper (corrige le
+  récepteur ET garde la résolution du global à l'APPEL, donc `vi.stubGlobal` reste intercepté).
+  ⚠️ **Ni jsdom ni undici n'appliquent cette vérification** → aucun test Node ne peut l'attraper tel
+  quel ; le garde est une SIMULATION de la règle WebIDL (un faux `fetch` global qui lève si
+  `this !== globalThis`). Généralise : **toute API de plateforme rangée dans une propriété/variable
+  (`fetch`, `setTimeout`, `alert`, `matchMedia`, `crypto.subtle`…) doit être enveloppée ou `bind`ée** —
+  le pattern « injectable pour les tests » (`?? apiGlobale`) est précisément ce qui l'introduit.
+  Discriminant : restaurer `?? fetch` → le test tombe en ~5 s (les 3 re-tentatives du back-off, soit
+  EXACTEMENT le chemin qu'a vu Marc : TypeError → NETWORK → retries → message final).
+  ⚠️ Réflexe de session : **3 bugs de suite sur cet écran ont la MÊME cause profonde** — le chemin par
+  DÉFAUT (non injecté, non monté, non construit) n'était exercé par aucun test. Grep de la classe fait :
+  instance unique dans le dépôt.
 - ⚠️ **[FINTABLE-6] 2026-07-30 — « utilise exactement le montant que j'ai dans Fintable », leçons** :
   (1) **Une donnée CALCULÉE puis jetée est indiscernable d'une donnée absente — greper les CONSOMMATEURS
   avant de promettre un branchement** : `investmentBalances` était produit par le mapper depuis le Lot 2,

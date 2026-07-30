@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴→🟢 Session 2026-07-30 (correctif 2) — `[FINTABLE-BROWSER-FETCH-RECEIVER]` : « échec réseau (TypeError) »
+> 2ᵉ bug du même écran, signalé par Marc juste après le déploiement du 1ᵉʳ. `this.fetchImpl =
+> opts.fetchImpl ?? fetch` puis `this.fetchImpl(...)` change le RÉCEPTEUR de `fetch` (`this` =
+> l'instance au lieu de `window`) → le binding WebIDL du navigateur lève `TypeError: Illegal
+> invocation`, remonté en `[NETWORK] … (TypeError)` après les 3 re-tentatives.
+> **MESURÉ dans un vrai Chromium** (sonde Playwright, pas déduit) : `bare(u)` OK · `obj.f(u)` ILLEGAL
+> INVOCATION · wrapper OK · bind OK. Fix = wrapper `(input, init) => fetch(input, init)`.
+> ⚠️ **jsdom/undici n'appliquent PAS la vérification de récepteur** → le garde est une SIMULATION de la
+> règle WebIDL dans `client.test.ts`. Discriminant : restaurer `?? fetch` → test rouge en ~5 s.
+> ⚠️ **Les 3 bugs de la session ont la MÊME cause profonde** : le chemin par DÉFAUT (carte non montée
+> en test, client non construit en test, `fetch` non exercé en test) n'était couvert nulle part.
+> Grep de la classe fait : instance unique. RESTE : que l'edge Vercel forwarde `Authorization`.
+>
 > ## 🔴→🟢 Session 2026-07-30 (correctif) — `[FINTABLE-BROWSER-RELATIVE-BASE]` : « url invalide » sur un JETON
 > Marc a collé son jeton et l'app a répondu **« url invalide »** — *« mais c'est un jeton pas une url »*.
 > Il avait raison, le message accusait la mauvaise chose. Cause RACINE : `FintableClient.buildUrl`

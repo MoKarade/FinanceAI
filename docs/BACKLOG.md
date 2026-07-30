@@ -163,6 +163,11 @@
   chemin cron bit-identique (`new URL(absolue, undefined)` ignore le 2ᵉ argument). ⚠️ Cause du trou de
   test : les 7 tests `browserSync` injectaient tous un client factice → le chemin PAR DÉFAUT (celui de
   la prod) n'était exercé nulle part. 3 tests ajoutés sans injection, discriminant prouvé.
+- [x] **`[FINTABLE-BROWSER-FETCH-RECEIVER]` « échec réseau (TypeError) » avec un jeton valide** — ✅ 2026-07-30.
+  `this.fetchImpl = opts.fetchImpl ?? fetch` puis `this.fetchImpl(...)` fait de `this` l'INSTANCE au
+  lieu de `window` → le binding WebIDL lève `Illegal invocation`. MESURÉ dans un vrai Chromium (sonde
+  Playwright), pas déduit. Fix = wrapper. ⚠️ jsdom/undici n'appliquent pas la règle → le garde SIMULE
+  la vérification de récepteur. Grep de la classe : instance unique dans le dépôt.
 - [ ] **`[FINTABLE-7]` Lot 3 — déclenchement AUTOMATIQUE de la passe à l'ouverture** (S) — throttlé
   1×/jour (la carte ne donne pour l'instant qu'un bouton manuel « Synchroniser maintenant »).
 - [ ] **`[FINTABLE-6]` Lot 2 — consommer le montant courtier dans Investissements + Accueil** (M) —

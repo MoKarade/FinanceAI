@@ -6,8 +6,9 @@
 // rôle inconnu ou un `debtName` vide passerait sinon en silence jusqu'au mapper.
 
 import type { FintableMappingConfig, FintableTaxRegime } from './mapSnapshot';
-
-const TAX_REGIMES: readonly FintableTaxRegime[] = ['CELI', 'REER', 'NON-ENREG'];
+// Liste IMPORTÉE, pas re-codée : une 2ᵉ copie diverge (elle l'avait déjà fait, cf. le message de
+// remède qui enseignait une graphie que ce parseur rejette).
+import { FINTABLE_TAX_REGIMES as TAX_REGIMES } from './mapSnapshot';
 
 /** @throws si la chaîne n'est pas un JSON d'objet `{ "<id de compte>": { "kind": … } }` valide. */
 export function parseRolesJson(raw: string): FintableMappingConfig['roles'] {

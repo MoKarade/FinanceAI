@@ -43,6 +43,16 @@ import { detectInternalTransfers, type TransferPair } from './detectTransfers';
  */
 export type FintableTaxRegime = 'CELI' | 'REER' | 'NON-ENREG';
 
+/**
+ * SOURCE UNIQUE des valeurs acceptées, à l'exécution. Tout message de remède et toute validation
+ * en DÉRIVENT (`join(' | ')`) au lieu de re-taper la liste : une graphie re-codée à côté finit
+ * toujours par diverger — et ici le prix est lourd, un `taxRegime` invalide fait `throw` dans
+ * `parseRolesJson`, donc `process.exit(1)` du serveur MCP ENTIER au démarrage (pas seulement la
+ * sync). Classe [[MCP-CATEGORY-ALLOWLIST]] : « les listes des messages se dérivent de la source
+ * unique, jamais re-codées ».
+ */
+export const FINTABLE_TAX_REGIMES: readonly FintableTaxRegime[] = ['CELI', 'REER', 'NON-ENREG'];
+
 /** Rôle d'un compte Fintable dans FinanceAI. Toujours EXPLICITE (cf. piège n°2). */
 export type FintableAccountRole =
     /** Compte courant / épargne → son solde entre dans les liquidités, ses transactions sont importées. */
@@ -222,7 +232,11 @@ export function mapFintableSnapshot(
                     warnings.push(
                         `Placement « ${account.label} » : régime fiscal non déclaré → le montant du courtier `
                         + 's\'affiche, mais l\'écart avec tes titres n\'entre pas dans la projection. '
-                        + 'Ajoute "taxRegime": "CELI" | "REER" | "NON_ENREGISTRE" à ce compte dans le fichier de rôles.',
+                        // Liste DÉRIVÉE de la source unique : re-taper les valeurs ici avait produit
+                        // « NON_ENREGISTRE », que `parseRolesJson` REJETTE → suivre ce conseil aurait
+                        // fait `process.exit(1)` du serveur MCP entier au démarrage suivant.
+                        + `Ajoute "taxRegime": ${FINTABLE_TAX_REGIMES.map((r) => `"${r}"`).join(' | ')} `
+                        + 'à ce compte dans le fichier de rôles.',
                     );
                 }
                 investmentBalances.push({

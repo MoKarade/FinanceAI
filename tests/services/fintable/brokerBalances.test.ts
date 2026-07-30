@@ -101,6 +101,28 @@ describe('reconcileBrokerBalances — autorité + écart', () => {
         );
         expect(r.regimes[0].observedAt).toBe(vieux);
     });
+
+    // [finding financial-integrity, PR #534, MESURÉ] `bucket.observedAt || at` faisait qu'un compte
+    // SANS horodatage s'effaçait au profit du voisin → le panier s'affichait « vu aujourd'hui »
+    // alors qu'une part de son montant était d'âge inconnu. Sur-promesse de fraîcheur.
+    it('un compte SANS horodatage rend la fraîcheur du panier INCONNUE (null), jamais « aujourd\'hui »', () => {
+        const sansDate = { ...bal({ accountId: 'a' }), at: undefined } as unknown as FintableBrokerBalance;
+        const r = reconcileBrokerBalances([sansDate, bal({ accountId: 'b', at: AT })], { 'NON-ENREG': 0 });
+        expect(r.regimes[0].observedAt).toBeNull();
+        // Discriminant : l'ancien code rendait AT (« à jour ») — la valeur la plus flatteuse.
+        expect(r.regimes[0].observedAt).not.toBe(AT);
+        // Le montant, lui, reste bien agrégé : on perd la date, pas l'argent.
+        expect(r.regimes[0].brokerTotalCad).toBe(200_000);
+    });
+
+    // [finding silent-failure-hunter, PR #534] Un solde illisible dans un état Drive ancien/corrompu
+    // (aucun schéma Zod ne valide ce champ additif) disparaissait du panier SANS aucune trace.
+    it('un solde ILLISIBLE est listé dans `unreadableAccountLabels`, pas avalé en silence', () => {
+        const corrompu = { ...bal({ label: 'Compte corrompu' }), balanceCad: null } as unknown as FintableBrokerBalance;
+        const r = reconcileBrokerBalances([corrompu, bal({ accountId: 'b', balanceCad: 5_000 })], { 'NON-ENREG': 0 });
+        expect(r.unreadableAccountLabels).toEqual(['Compte corrompu']);
+        expect(r.brokerTotalCad).toBe(5_000); // le compte lisible passe normalement
+    });
 });
 
 describe('toPersistableBrokerBalances — n\'émet que ce qui peut faire autorité', () => {

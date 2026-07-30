@@ -39,8 +39,12 @@ export interface RegimeReconciliation {
     gapCad: number;
     /** Libellés des comptes courtier agrégés ici (affichage : « Disnat L7B1 + Disnat L7A3 »). */
     accountLabels: string[];
-    /** Lecture la plus ANCIENNE du panier (epoch ms) — c'est elle qui borne la fraîcheur affichée. */
-    observedAt: number;
+    /**
+     * Lecture la plus ANCIENNE du panier (epoch ms) — c'est elle qui borne la fraîcheur affichée.
+     * `null` si AU MOINS un compte du panier n'a pas d'horodatage exploitable : mieux vaut ne rien
+     * promettre que promettre « vu aujourd'hui » sur un panier dont une part est d'âge inconnu.
+     */
+    observedAt: number | null;
 }
 
 export interface BrokerReconciliation {
@@ -48,6 +52,14 @@ export interface BrokerReconciliation {
     regimes: RegimeReconciliation[];
     /** Comptes ignorés faute de régime déclaré — à SIGNALER, jamais à ranger d'office. */
     unassignedAccountLabels: string[];
+    /**
+     * Comptes écartés parce que leur solde persisté est ILLISIBLE (null/NaN dans un état Drive
+     * ancien ou corrompu, qu'aucun schéma Zod ne valide). Sans cette liste, le `continue` les
+     * faisait disparaître de la réconciliation SANS aucun signal — la « staleness silencieuse »
+     * que ce projet s'est déjà prise plusieurs fois. Inatteignable via l'écrivain normal
+     * (`toPersistableBrokerBalances` ne persiste que du fini), mais un état ne se suppose pas.
+     */
+    unreadableAccountLabels: string[];
     /** Somme des soldes courtier de tous les régimes réconciliés. */
     brokerTotalCad: number;
     /** Somme des écarts. Peut être négatif. */
@@ -77,39 +89,50 @@ export function reconcileBrokerBalances(
     holdingsByRegime: Readonly<Partial<Record<ReconcilableRegime, number>>>,
 ): BrokerReconciliation {
     const empty: BrokerReconciliation = {
-        regimes: [], unassignedAccountLabels: [], brokerTotalCad: 0, totalGapCad: 0,
+        regimes: [], unassignedAccountLabels: [], unreadableAccountLabels: [],
+        brokerTotalCad: 0, totalGapCad: 0,
     };
     if (!Array.isArray(balances) || balances.length === 0) return empty;
 
-    const byRegime = new Map<ReconcilableRegime, { total: number; labels: string[]; observedAt: number }>();
+    // `observedAt: number | null` — `null` = au moins un compte du panier sans horodatage lisible.
+    const byRegime = new Map<ReconcilableRegime, { total: number; labels: string[]; observedAt: number | null }>();
     const unassignedAccountLabels: string[] = [];
+    const unreadableAccountLabels: string[] = [];
 
     for (const b of balances) {
         // Même garde null-explicite qu'à l'écriture : `balanceCad` est typé `number`, mais cet état
         // vient du Drive et n'est validé par AUCUN schéma Zod (champ additif) — une copie ancienne
         // ou corrompue peut porter un `null` que le typage ne voit pas (cf. carte UI durcie, PR #531).
         const rawBalance = b?.balanceCad as number | null | undefined;
-        if (rawBalance === null || rawBalance === undefined) continue;
+        if (rawBalance === null || rawBalance === undefined || !Number.isFinite(Number(rawBalance))) {
+            // Solde illisible → écarté, mais JAMAIS en silence : sans cette liste, un compte
+            // disparaissait du panier sans trace (finding silent-failure-hunter, PR #534).
+            unreadableAccountLabels.push(String(b?.label ?? '(compte sans nom)'));
+            continue;
+        }
         const amount = Number(rawBalance);
-        if (!Number.isFinite(amount)) continue; // solde illisible → le compte n'a simplement pas d'avis
         if (!isReconcilable(b?.taxRegime)) {
             unassignedAccountLabels.push(String(b?.label ?? '(compte sans nom)'));
             continue;
         }
-        const at = Number(b?.at);
+        const rawAt = b?.at as number | null | undefined;
+        const at = rawAt === null || rawAt === undefined || !Number.isFinite(Number(rawAt))
+            ? null
+            : Number(rawAt);
         const bucket = byRegime.get(b.taxRegime);
         if (bucket === undefined) {
-            byRegime.set(b.taxRegime, {
-                total: amount,
-                labels: [String(b.label ?? '')],
-                observedAt: Number.isFinite(at) ? at : 0,
-            });
+            byRegime.set(b.taxRegime, { total: amount, labels: [String(b.label ?? '')], observedAt: at });
         } else {
             bucket.total += amount;
             bucket.labels.push(String(b.label ?? ''));
             // La fraîcheur d'un panier vaut celle de son compte le PLUS ANCIEN : afficher la plus
             // récente laisserait croire à jour un panier dont la moitié date de deux semaines.
-            if (Number.isFinite(at)) bucket.observedAt = Math.min(bucket.observedAt || at, at);
+            // ⚠️ Un horodatage MANQUANT contamine à `null` (âge inconnu), il ne s'efface pas au
+            // profit du voisin : `bucket.observedAt || at` promouvait « vu aujourd'hui » un panier
+            // dont un compte n'avait aucune date (finding financial-integrity, PR #534, mesuré).
+            bucket.observedAt = bucket.observedAt === null || at === null
+                ? null
+                : Math.min(bucket.observedAt, at);
         }
     }
 
@@ -132,6 +155,7 @@ export function reconcileBrokerBalances(
     return {
         regimes,
         unassignedAccountLabels,
+        unreadableAccountLabels,
         brokerTotalCad: regimes.reduce((s, r) => s + r.brokerTotalCad, 0),
         totalGapCad: regimes.reduce((s, r) => s + r.gapCad, 0),
     };

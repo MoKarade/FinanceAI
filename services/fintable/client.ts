@@ -96,7 +96,15 @@ export class FintableClient {
         this.token = opts.token;
         this.baseUrl = (opts.baseUrl ?? FINTABLE_API_BASE).replace(/\/+$/, '');
         this.timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-        this.fetchImpl = opts.fetchImpl ?? fetch;
+        // ⚠️ [FINTABLE-BROWSER-FETCH-RECEIVER] JAMAIS `?? fetch` NU ici. Stocker `fetch` dans une
+        // propriété puis l'appeler par `this.fetchImpl(...)` change son RÉCEPTEUR : `this` devient
+        // l'instance du client au lieu de `window`, et le binding WebIDL du navigateur REJETTE ça —
+        // MESURÉ dans un vrai Chromium : `TypeError: Failed to execute 'fetch' on 'Window': Illegal
+        // invocation`. C'est ce que Marc a vu (« [NETWORK] … échec réseau (TypeError) »).
+        // Le wrapper corrige le récepteur ET garde la résolution du global au moment de l'APPEL
+        // (donc un `vi.stubGlobal('fetch', …)` posé après la construction reste intercepté).
+        // ⚠️ jsdom/undici ne reproduisent PAS ce rejet : seul un vrai navigateur l'expose.
+        this.fetchImpl = opts.fetchImpl ?? ((input, init) => fetch(input, init));
         this.sleepImpl = opts.sleepImpl ?? defaultSleep;
     }
 

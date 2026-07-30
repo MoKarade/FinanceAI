@@ -217,3 +217,60 @@ describe('FintableClient — le timeout couvre la LECTURE DU CORPS', () => {
         expect(err.code).toBe('NETWORK');
     }, 10_000);
 });
+
+/**
+ * ⚠️ [FINTABLE-BROWSER-FETCH-RECEIVER] Marc, après le correctif de l'URL relative :
+ * « [NETWORK] Appel Fintable /accounts : échec réseau (TypeError). »
+ *
+ * Cause MESURÉE dans un vrai Chromium (sonde Playwright, pas une déduction) : stocker `fetch` dans
+ * une propriété (`this.fetchImpl = fetch`) puis l'appeler par `this.fetchImpl(...)` change son
+ * RÉCEPTEUR — `this` devient l'instance du client au lieu de `window`. Le binding WebIDL du
+ * navigateur rejette ça :
+ *
+ *     appel nu       bare(url)            → OK
+ *     propriété      this.fetchImpl(url)  → TypeError: Failed to execute 'fetch' on 'Window':
+ *                                           Illegal invocation
+ *     wrapper        (i, x) => fetch(i, x) → OK
+ *
+ * ⚠️ Ni jsdom ni undici n'appliquent cette vérification de récepteur : AUCUN test de ce dépôt ne
+ * pouvait l'attraper tel quel. On SIMULE donc la règle du navigateur — c'est la seule façon de
+ * garder le correctif verrouillé sans lancer un navigateur à chaque suite.
+ */
+describe('récepteur de fetch (règle WebIDL du navigateur, simulée)', () => {
+    it('n\'appelle jamais le `fetch` global avec un récepteur autre que le global', async () => {
+        const seenReceivers: unknown[] = [];
+        // Reproduit la garde du navigateur : `fetch` appelé sur autre chose que Window lève.
+        function webidlFetch(this: unknown, _input: RequestInfo | URL, _init?: RequestInit) {
+            seenReceivers.push(this);
+            if (this !== undefined && this !== globalThis) {
+                throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
+            }
+            return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+        }
+        vi.stubGlobal('fetch', webidlFetch);
+
+        // Aucun `fetchImpl` injecté : c'est le chemin PAR DÉFAUT, celui de la production.
+        const client = new FintableClient({ token: 'jeton', baseUrl: 'https://exemple.test/api/v2' });
+        const res = await client.get('/accounts');
+
+        expect(res.data).toEqual([]);
+        expect(seenReceivers.length).toBeGreaterThan(0);
+        // Le discriminant : sur l'ancien code, le récepteur était l'instance du client.
+        for (const r of seenReceivers) {
+            expect(r === undefined || r === globalThis).toBe(true);
+        }
+        vi.unstubAllGlobals();
+    });
+
+    it('un `fetchImpl` explicitement injecté reste prioritaire (tests, cron)', async () => {
+        const injected = vi.fn(async () => new Response(JSON.stringify({ data: [1] }), { status: 200 }));
+        vi.stubGlobal('fetch', () => { throw new Error('le global ne doit PAS être utilisé'); });
+
+        const client = new FintableClient({
+            token: 'jeton', baseUrl: 'https://exemple.test/api/v2', fetchImpl: injected,
+        });
+        await expect(client.get('/accounts').then((r) => r.data)).resolves.toEqual([1]);
+        expect(injected).toHaveBeenCalledTimes(1);
+        vi.unstubAllGlobals();
+    });
+});

@@ -5,6 +5,52 @@
 > Audit qualité détaillé : voir `docs/HISTORIQUE.md` (section `AAA_AUDIT_2026-06.md`).
 > Actions humaines (Marc) : [`docs/A_FAIRE_MOI.md`](A_FAIRE_MOI.md).
 
+## 🔎 Chantier « analyse des transactions » (cadrage validé Marc 2026-07-31, 27 questions — 3 PR)
+
+> Demande verbatim : « je veux une meilleure analyse de mes transactions […] ça detecte mal mes
+> transferts entre comptes ça met abonnement pour tout et nimporte quoi je veux du précis ».
+> **Critère d'arrêt (Marc)** : moins de **1 % de transactions mal classées, mesuré sur 300 tirages**
+> (revue d'échantillon DANS l'app — Marc a refusé de fournir un export de référence, donc la mesure
+> doit être un outil de l'app, pas un jeu de test hors ligne).
+> **Décisions Marc** : marquage des virements AUTOMATIQUE · la re-catégorisation peut ÉCRASER une
+> catégorie existante, SAUF une correction manuelle (verrou par transaction, PAS de règle par
+> marchand) · écran de tri dans l'onglet Transactions · moteur HYBRIDE règles + IA, « vraiment précis
+> pas sur des mots bateau » · passe IA sur tout l'historique · catégories à plat, jeu actuel OK ·
+> abonnement = service RÉCURRENT (achat unique chez un marchand d'abo → Loisirs) · abos fantômes oui.
+> **Comptes de Marc** : PCA = compte courant, TS1 = épargne, Mastercard = crédit, + placements.
+
+- [x] **`[TX-TRANSFERS]`** ✅ (2026-07-31, PR 1/3) — appariement des virements internes SORTI de
+  `services/fintable/` vers un cœur générique `services/transactions/detectTransfers.ts` (montants
+  exactement opposés au cent, ≤ 3 jours, comptes DIFFÉRENTS, appariement 1:1 sur la contrepartie la
+  plus proche, Interac exclu par règle métier). Fintable délègue au cœur en gardant sa contrainte de
+  rôles via la garde `canPair` → une seule copie de l'algorithme. Appliqué automatiquement à l'import
+  (`App.tsx`, sur l'historique COMPLET : les deux côtés peuvent venir de deux imports différents) +
+  panneau « Virements internes » (`components/transactions/TransfersPanel.tsx`) pour le rattrapage et
+  la confirmation. **Deux régimes** : `confirmed` (comptes connus et différents → marqué d'office) vs
+  `suggested` (compte inconnu d'un côté → jamais écrit). `accountName` désormais émis PAR TRANSACTION
+  (Fintable n'en émettait aucun). 19 tests dédiés, suite complète verte (3352).
+- [ ] **`[TX-CATEGORIZE]`** (PR 2/3) — catégorisation précise. **Cause racine mesurée** : la règle
+  « Abonnements » (`services/import/categoryRules.ts:115`) décide sur le LIBELLÉ seul (`GOOGLE \*`,
+  `MICROSOFT`, `APPLE\.COM`, `\bBELL\b`) et passe AVANT Santé/Loisirs/Magasinage → un accessoire
+  Apple, un jeu Xbox et un achat Google Play tombent tous en « Abonnements ». Or la décision de Marc
+  (achat unique chez un marchand d'abo → Loisirs) rend le libellé structurellement insuffisant :
+  il faut un **profil de récurrence par marchand** (nb d'occurrences, régularité, stabilité du montant)
+  calculé AVANT de décider, puis règles précises, puis IA sur le reste avec ce contexte.
+  Inclut : verrou `status === 'manual'`, passe sur tout l'historique, écran de tri, revue
+  d'échantillon (300 tirages) pour mesurer le critère d'arrêt.
+- [ ] **`[TX-INTERAC-BUDGET]`** (PR 2/3, découvert au cadrage) — Marc veut qu'un Interac à sa conjointe
+  compte comme une **vraie dépense**, mais « Remboursement » est dans `NON_BUDGET_CATEGORIES`
+  (`utils/budgetSync.ts:16-26`) → aujourd'hui ces montants sont invisibles au Budget (ni dépense, ni
+  revenu). ⚠️ Le sortant et l'entrant ne sont pas symétriques : compter le sortant en dépense sans
+  traiter l'entrant (« on me rembourse ») surévaluerait les dépenses. Design proposé : poste à part
+  entière, l'entrant venant en crédit du même poste.
+- [ ] **`[TX-SUBSCRIPTIONS]`** (PR 3/3) — abonnements fantômes (hausse de prix silencieuse, service qui
+  a cessé d'être débité, coût annuel réel). Repose sur le profil de récurrence de la PR 2. ⚠️ L'actuel
+  détecteur heuristique (`components/Planning.tsx:55`) exige ≥ 2 occurrences, montant stable à ±5 $ et
+  20-40 jours d'écart : un abo dont le prix monte de 3 $ finit par sortir de la liste.
+
+---
+
 ## 🏦 Chantier FINTABLE — sync bancaire & investissements (cadrage validé Marc 2026-07-29, 14 questions)
 > ADR complet : `docs/decisions.md` § « Sync bancaire & investissements via Fintable ».
 > Décisions verrouillées : Fintable = PRODUCTEUR de `DocumentPayload` (aucun nouveau moteur de fusion —

@@ -274,6 +274,11 @@ export function mapFintableSnapshot(
         snapshot.transactions, config.roles, config.transferToleranceDays,
     );
 
+    // [TX-TRANSFERS] Nom de compte par transaction : c'est la seule preuve de « deux poches
+    // différentes » côté app. Sans lui, l'appariement des virements internes de l'historique ne peut
+    // que SUGGÉRER (jamais marquer d'office) — cf. services/transactions/detectTransfers.ts.
+    const accountLabelById = new Map(snapshot.accounts.map((a) => [a.id, a.label]));
+
     const bankTransactions: BankStatementPayload['transactions'] = [];
     let skippedBeforeCutover = 0;
     let skippedForeignCurrency = 0;
@@ -302,6 +307,11 @@ export function mapFintableSnapshot(
             // [FINTABLE-TRANSFERS] Un paiement de carte n'est PAS une dépense : marqué transfert,
             // il sort des dépenses réelles (`budgetSync.ts:58`) et des revenus (`:37`).
             ...(transferIds.has(tx.id) ? { isTransfer: true } : {}),
+            // [TX-TRANSFERS] Le compte porteur, persisté par transaction (un lot Fintable couvre
+            // plusieurs comptes — le `accountName` du document ne peut pas les distinguer).
+            ...(accountLabelById.get(tx.accountId)
+                ? { accountName: accountLabelById.get(tx.accountId) }
+                : {}),
         });
     }
 

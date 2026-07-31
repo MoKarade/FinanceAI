@@ -31,6 +31,13 @@ export interface BankTransaction {
     amount: number;
     category?: string;
     isTransfer?: boolean;
+    /**
+     * [TX-TRANSFERS] Compte porteur de CETTE transaction. Prioritaire sur le `accountName` du
+     * document (qui reste le défaut quand un relevé ne couvre qu'un seul compte). C'est la seule
+     * information qui permet à l'appariement des virements internes de PROUVER « deux poches
+     * différentes » : sans elle, une paire de montants opposés reste une simple suggestion.
+     */
+    accountName?: string;
 }
 export interface BankStatementPayload {
     kind: 'bank_statement';
@@ -675,7 +682,11 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
             category: resolvedCat.category,
             status: 'processed',
             isTransfer: !!tx.isTransfer,
-            ...(doc.accountName ? { accountName: doc.accountName } : {}),
+            // [TX-TRANSFERS] Le compte de la LIGNE prime sur celui du document : un lot Fintable
+            // couvre plusieurs comptes, alors qu'un relevé PDF n'en couvre qu'un.
+            ...(tx.accountName || doc.accountName
+                ? { accountName: tx.accountName || doc.accountName }
+                : {}),
         });
     }
 

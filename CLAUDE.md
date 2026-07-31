@@ -1668,3 +1668,33 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   PRÉCISÉMENT là (Drive KO, jeton révoqué) ne déclenchait aucune écriture de `fintableSyncReport`, contredisant
   le commentaire d'en-tête du fichier. Élargir le `try` pour englober TOUT ce qui doit contribuer à la garantie
   documentée, pas seulement la partie qui semblait risquée au premier jet.
+- ⚠️ **[TX-TRANSFERS] 2026-07-31 — « ça détecte mal mes transferts entre comptes » (bug Marc), leçons** :
+  (1) **Une capacité écrite DANS le dossier d'un fournisseur ne couvre pas la CLASSE de problème** :
+  l'appariement des virements internes ne vivait que dans `services/fintable/detectTransfers.ts`, donc
+  l'import CSV/relevés (tout l'historique) n'avait AUCUNE détection — `utils/transactionParser.ts:198`
+  se contentait du mot « virement » dans la colonne catégorie de la banque. Réflexe : au moment d'écrire
+  un détecteur pour une source, se demander si le PROBLÈME est propre à cette source (ici non : deux
+  côtés importés = deux fois comptés, quel que soit le fournisseur) → cœur GÉNÉRIQUE
+  (`services/transactions/detectTransfers.ts`) + garde spécifique passée en paramètre (`canPair`), une
+  seule copie de l'algorithme. (2) **Une garde peut être trop ÉTROITE parce qu'elle utilise un PROXY du
+  vrai critère** : le module Fintable exigeait des RÔLES différents (`cash` → `debt`, pensé pour le
+  paiement de carte) ; le rôle n'était qu'un proxy de « deux poches différentes ». Résultat : un virement
+  **compte courant → épargne** (deux comptes `cash`, le cas n°1 de Marc) n'était JAMAIS apparié. Le
+  critère structurel correct est « comptes DIFFÉRENTS » ; garder la garde de rôle là où elle a un sens
+  métier (Fintable), pas dans le cœur. (3) **Une preuve exige que sa donnée soit PERSISTÉE — greper les
+  DEUX bouts avant de promettre une détection** (classe [[FINTABLE-6]]/[[TX-DUPLICATES]]) : `mapSnapshot`
+  n'émettait AUCUN `accountName` par transaction (le payload n'a qu'un `accountName` de DOCUMENT, or un
+  lot Fintable couvre plusieurs comptes) → côté app, l'appariement ne pouvait rien confirmer, même sur
+  des données fraîches. Fix : `BankTransaction.accountName` (additif) + le compte de la LIGNE prime sur
+  celui du document. (4) **Un littéral sentinelle est une ABSENCE, pas une valeur** : `parseBankCsv`
+  écrit `accountName: "Unknown"` quand le CSV n'a pas de colonne compte — le traiter comme un vrai nom
+  ferait apparier deux « Unknown » entre eux et marquerait de VRAIES dépenses en virements (un faux
+  positif RETIRE la dépense du budget, `budgetSync.ts:58`). Normaliser en `null` au point de lecture.
+  (5) **Obéir à « marquage automatique » sans baisser le seuil de preuve = deux régimes explicites** :
+  `confirmed` (deux comptes connus et différents → écrit d'office) vs `suggested` (compte inconnu d'un
+  côté → JAMAIS écrit, remonte à l'écran de tri). Baisser le seuil pour « couvrir plus » aurait marqué
+  des achats suivis d'un remboursement, qui ont exactement la même forme. Et une paire dont UN côté est
+  verrouillé (`status === 'manual'`) n'est pas appliquée DU TOUT : marquer un seul côté déséquilibre le
+  budget (sortie neutralisée, entrée toujours comptée). (6) **Un `toEqual` sur un objet COMPLET casse à
+  l'ajout d'un champ additif** — c'est le signal voulu, pas une régression : le test devient la preuve
+  que le nouveau champ est bien émis (mise à jour du test = documentation de la nouvelle forme).

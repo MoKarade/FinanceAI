@@ -31,14 +31,16 @@ vi.mock('recharts', async () => {
         ResponsiveContainer: ({ children }: { children: React.ReactNode }) => React.createElement('div', null, children),
     };
 });
-// Historique STALE injecté : un seul point ancien, TOTAL/colonnes figés à des valeurs d'il y a
-// longtemps. L'ancien KPI affichait CE total ; le nouveau doit afficher le présent.
+// Historique injecté : totaux de COURBE (~500 $) sans rapport avec le présent (~140 k$) — l'ancien
+// KPI affichait la courbe ; le nouveau doit afficher le présent. Deux points récents pour que la
+// « Variation (1M) » soit calculable (fenêtre de dates).
 // ⚠️ Identité STABLE (constante hoistée) : un mock qui fabrique un NOUVEAU tableau à chaque appel
 // relance `useEffect([portfolioHistory])` → setMarketData → re-render → boucle infinie qui PEND le
 // test (leçon CHAT-PAGE-CONTEXT « dédupe par valeur, pas par référence » — vécue ici même).
 const STALE_HISTORY = vi.hoisted(() => ({
     history: [
-        { date: '2026-01-02', 'VFV.TO': 500, TOTAL: 500, 'TOTAL_NON-ENREG': 500 },
+        { date: '2026-07-29', 'VFV.TO': 500, TOTAL: 500, 'TOTAL_NON-ENREG': 500 },
+        { date: '2026-07-30', 'VFV.TO': 550, TOTAL: 550, 'TOTAL_NON-ENREG': 550 },
     ],
     noHistorySymbols: [] as string[], partialHistorySymbols: [] as string[], staleTailSymbols: [] as string[],
 }));
@@ -88,5 +90,32 @@ describe('Dashboard — [DASH-NETWORTH-CANONICAL] le KPI patrimoine dit le PRÉS
         // \s couvre les espaces insécables U+00A0/U+202F de formatCAD (leçon BUDGET-3-VUES).
         const text = (container.textContent ?? '').replace(/\s+/g, ' ');
         expect(text).toMatch(/140 600/); // ÉCHOUE sur l'ancien code (KPI = dernier point ≈ 500)
+    });
+
+    it('[finding financial-integrity #544] la Variation n\'est PAS figée à 0,00 % quand un compte vient des transactions', () => {
+        // Mécanisme mesuré : un accountName ABSENT d'initialBalances (cas normal Fintable/CSV)
+        // laissait rc[acc] undefined avant sa 1re transaction → point.Total = NaN → la Variation
+        // lisait Number(NaN)||0 et restait à 0,00 % en permanence. Avec l'amorçage :
+        // ligne 1 : Compte 1000 + Desjardins 0 + bucket 500 = 1500 ; ligne 2 : +200 et bucket 550
+        // → 1750 → Variation (1750−1500)/1500 = +16,67 %.
+        const { container } = render(
+            <Dashboard
+                transactions={[{
+                    id: -2, date: '2026-07-30', payee: 'Dépôt', amount: 200, category: 'Autre',
+                    accountName: 'Desjardins', status: 'processed', isTransfer: false, isDuplicate: false,
+                }]}
+                assets={[]}
+                initialBalances={{ Compte: 1000 }}
+                budgetItems={[]}
+                realEstateGoals={[]}
+                travelGoals={[]}
+                lifeEvents={[]}
+                retirementGoal={goal}
+                config={config}
+            />,
+        );
+        const text = (container.textContent ?? '').replace(/\s+/g, ' ');
+        expect(text).toMatch(/16,67\s?%/);   // ÉCHOUE sur l'ancien code (0,00 % à la place)
+        expect(text).not.toMatch(/0,00 %/);
     });
 });

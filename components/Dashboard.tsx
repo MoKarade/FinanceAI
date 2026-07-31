@@ -261,6 +261,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
         // 3. Chart History Building
         let txIdx = 0;
         let rc: Record<string, number> = { ...initialBalances };
+        // [Finding financial-integrity #544, MESURÉ] Amorcer TOUS les comptes connus à 0 (comme
+        // `runningCash` plus haut) : un compte découvert via une TRANSACTION (accountName
+        // Fintable/CSV absent d'initialBalances) laissait `rc[acc]` undefined sur les lignes
+        // antérieures à sa 1re transaction → `total += undefined` = NaN → `point.Total` NaN sur ces
+        // lignes → la « Variation » lisait `Number(NaN) || 0` = 0 et restait FIGÉE à 0,00 % en
+        // permanence (mesuré : « Desjardins » → 0,00 % ; « Compte » → 18,18 % sur mêmes fixtures).
+        cashAccountsList.forEach(acc => { if (rc[acc] === undefined) rc[acc] = 0; });
 
         const currentRealEstateEquity = realEstateGoals.reduce((sum, g) => sum + (g.currentValue || 0) - (g.mortgageBalance || 0), 0);
         // [DASH-NW-DUP] source unique gardée NaN/Infinity (l'ancienne somme inline propageait un solde corrompu).

@@ -259,6 +259,35 @@
   Restes du ticket NON couverts ici (symptômes 2-3, périmètre graphe/cartes — l'axe des dates, le
   cash `accountName`-gated de l'HISTORIQUE, les cartes vides) : l'essentiel (le chiffre-titre faux)
   est réglé ; le graphe historique est un chantier séparé si Marc le redemande.
+  **Panel #544 (3 agents)** : silent-failure = 0 finding (le retrait du `Number(x)||0` CORRIGE même un
+  masquage — NaN affichait « 0 $ », désormais « — ») ; code-reviewer → Variation étiquetée « (courbe
+  historique) » + tooltip (sinon la classe « deux patrimoines à l'écran » revenait entre 2 KPIs
+  adjacents) ; financial-integrity (MESURÉ, parité 203 800 $ exacte sur toutes les surfaces hors immo,
+  double-comptage immo RÉFUTÉ) → F1 corrigé même PR : `rc` non amorcé sur les comptes venus des
+  TRANSACTIONS (accountName Fintable/CSV ∉ initialBalances) → `point.Total` NaN → **Variation figée à
+  0,00 % en permanence** (mesuré) — amorçage à 0 comme `runningCash` + test discriminant. F2-F4 → tickets ci-dessous.
+- [ ] **`[DASH-IMMO-EQUITY-WRITERS]`** (M, finding financial-integrity #544 F2/F4, MESURÉ) — le terme
+  « équité immo » du KPI Accueil est INERTE en prod : `RealEstateGoal.currentValue`/`mortgageBalance`
+  n'ont AUCUN écrivain (aucune UI ne les édite — RealEstate.tsx ne les expose pas, PatrimoineExtended
+  édite `RentalProperty`, un autre type) → `hasRealEstate` toujours false, l'étiquette « équité immo
+  incluse » ne s'affiche jamais, et un propriétaire modélisé par `price`/`downPayment` a un KPI SANS sa
+  maison pendant que le Futur l'inclut (mesuré : `Immobilier` 81 609 $ moteur vs 0 au KPI). Classe
+  [[TX-DUPLICATES]] « champ que seuls des lecteurs référencent ». À trancher : brancher l'équité sur ce
+  que le moteur/l'UI possèdent réellement, OU retirer le terme + l'étiquette. En même temps (F4) : gater
+  l'étiquette sur `equity !== 0` (pas `currentValue > 0`), filtrer `isActive` (comme moteur/PDF), et
+  ajouter la garde `Number.isFinite` + `logErrorThrottled` sur currentValue/mortgageBalance (3 sites,
+  note silent-failure : `||0` couvre NaN mais pas Infinity — aujourd'hui rattrapé en « — » par formatCAD,
+  sans trace pour diagnostiquer).
+- [ ] **`[NW-PARITY-SURFACES-TEST]`** (S-M, reco financial-integrity #544 — le garde-fou keystone de
+  l'audit 2026-06-17, toujours manquant) — test de PARITÉ « NW présent ≡ toutes surfaces (KPI Accueil,
+  useDerivedFinancials, financialSnapshot IA/MCP, PDF) ≡ `chartData[0]` (modulo équité immo, convention
+  par surface EXPLICITE) » sur un persona endetté + propriétaire. C'est le test qui aurait attrapé
+  mécaniquement F2 et l'inexactitude doc F5. `tests/services/nwParity.test.ts` couvre déjà
+  moteur↔computePresentNetWorth — l'étendre aux surfaces UI.
+- [ ] **`[DASH-HIST-CARDS-LABEL]`** (S, finding financial-integrity #544 F3) — sur l'Accueil, le KPI dit
+  le PRÉSENT mais les cartes « Actifs individuels » et le graphe restent au dernier close → la
+  reconstructabilité à l'écran ne tient plus SANS que rien ne le dise. Étiqueter les cartes « au dernier
+  cours de clôture » (réutiliser `staleTailSymbols`/`noHistorySymbols` de usePortfolioHistory).
 - [ ] **`[A11Y-INFO300-SWEEP]` `text-info-300` inexistant (no-op silencieux) — sweep dédié** (S, découvert en
   FINTABLE-4 2026-07-29) : la palette `info` (`tailwind.config.js`) s'arrête à 600/500/400, aucun shade 300 →
   `text-info-300` ne génère AUCUNE règle CSS (le texte hérite du parent, contraste imprévisible, zéro erreur

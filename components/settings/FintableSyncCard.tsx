@@ -20,6 +20,8 @@ import { Card } from '../ui/Card';
 import { Icon } from '../ui/Icon';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { importWithRetry, isChunkLoadError } from '../../utils/lazyWithRetry';
+import { referenceDeltaPatch } from '../../services/fintable/applyStatePatch';
+import { acquireFintableSyncLock, releaseFintableSyncLock } from '../../services/fintable/autoSync';
 import { logError } from '../../services/errorLogger';
 import type { AppState, FintableAccountRoleConfig } from '../../types';
 
@@ -93,6 +95,13 @@ export const FintableSyncCard: React.FC = () => {
     };
 
     const handleSync = async () => {
+        // [Finding code-reviewer #545, CRITIQUE] Verrou PARTAGÉ avec la sync AUTO : sans lui, une
+        // passe manuelle lancée pendant la passe auto (fenêtre réseau de plusieurs secondes)
+        // calculerait son patch sur une base figée → dernier-écrivain-gagne sur transactions/soldes.
+        if (!acquireFintableSyncLock()) {
+            setError('Une synchronisation est déjà en cours — réessaie dans un instant.');
+            return;
+        }
         setBusy('syncing'); setError(null); setNotice(null);
         try {
             const { runFintableBrowserSync } = await importWithRetry(
@@ -102,6 +111,12 @@ export const FintableSyncCard: React.FC = () => {
             // écrirait par-dessus un état périmé perdrait ce qui a changé entre-temps.
             const current = useFinanceStore.getState() as unknown as AppState;
             const { report: fresh, nextState } = await runFintableBrowserSync(current, token);
+            // [Finding security-privacy #545] Mode démo activé PENDANT le fetch → ne RIEN écrire
+            // (de vraies données dans une session persona = l'inverse de PERSONA-PURGE).
+            if (useFinanceStore.getState().isTestMode === true) {
+                setError('Mode démo activé pendant la synchronisation — rien n\'a été écrit.');
+                return;
+            }
             if (nextState === null) {
                 // Échec : on écrit LE RAPPORT seul (pour que la carte de diagnostic le montre), et
                 // surtout AUCUN contenu — `nextState: null` signifie « rien d'exploitable ».
@@ -109,33 +124,17 @@ export const FintableSyncCard: React.FC = () => {
                 setError(fresh.error ?? 'La synchronisation a échoué.');
                 return;
             }
-            // ⚠️ [finding silent-failure-hunter, PR #536] NE PAS énumérer les champs à la main : mon
-            // 1er jet copiait 5 clés choisies et PERDAIT déjà `lastUpdate` (que les 3 branches de
-            // `applyDocument` mettent à jour) — l'indicateur de fraîcheur restait périmé après une
-            // passe qui venait d'écrire de l'argent réel, sans le moindre signal. Et la liste aurait
-            // silencieusement lâché tout NOUVEAU champ dès qu'un futur payload Fintable en toucherait
-            // un (assets, budgetItems…), alors que le chemin serveur, lui, continuerait de marcher.
-            //
-            // À la place : DELTA par identité de référence. `applyDocument` fait des mises à jour
-            // immuables, donc une clé modifiée porte une nouvelle référence. On n'écrit QUE celles-là.
-            // Double bénéfice : (a) tout champ futur est capté sans y penser ; (b) on ne réécrit pas
-            // les clés inchangées, donc une modification concurrente survenue pendant la passe n'est
-            // pas écrasée (le chemin serveur, lui, s'en protège par l'OCC — le navigateur n'en a pas).
-            // Les actions du store ont une référence stable → elles ne peuvent pas entrer dans le patch.
-            const patch: Partial<AppState> = {};
-            for (const key of Object.keys(nextState) as (keyof AppState)[]) {
-                if (nextState[key] !== (current as AppState)[key]) {
-                    (patch as Record<string, unknown>)[key] = nextState[key];
-                }
-            }
-            setAppState(patch);
+            // Delta par IDENTITÉ DE RÉFÉRENCE — helper PARTAGÉ avec la sync auto quotidienne
+            // ([FINTABLE-7 Lot 3], `services/fintable/applyStatePatch.ts`, qui porte le pourquoi :
+            // finding silent-failure PR #536, jamais de liste de clés à la main).
+            setAppState(referenceDeltaPatch(current, nextState));
             setNotice(`Synchronisé : ${fresh.transactionsAdded} transaction(s) ajoutée(s).`);
         } catch (err) {
             setError(isChunkLoadError(err)
                 ? 'Nouvelle version de l\'app disponible — recharge la page puis réessaie.'
                 : 'La synchronisation a échoué. Réessaie dans un moment.');
             logError({ source: 'ui', severity: 'error', message: '[FINTABLE-7] Synchronisation manuelle échouée.' });
-        } finally { setBusy('idle'); }
+        } finally { releaseFintableSyncLock(); setBusy('idle'); }
     };
 
     const unassigned = (accounts ?? []).filter((a) => roleOf(fintableRoles, a.id) === undefined).length;

@@ -32,6 +32,7 @@ import { sanitizePersonaArtifacts } from './services/personaSanitizer';
 import { RULE_CATEGORIES } from './services/import/categoryRules';
 import { loadLockedProjection } from './services/lockedProjectionStore';
 import { initSync, runBootSync, schedulePush, pushNow, flushPush, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, startDrivePolling, markApiKeysHydrated, startInactivityWatch, handleInactivityLogout, type SyncStatus } from './services/sync/syncOrchestrator';
+import { maybeRunDailyFintableSync } from './services/fintable/autoSync';
 import { trackPageView } from './services/analytics';
 import { GuidedTour } from './components/tour/GuidedTour';
 import { startGuidedTour } from './components/tour/tourControl';
@@ -343,7 +344,11 @@ export const App: React.FC = () => {
                     );
                     return;
                 }
-                if (result.status === 'ok' && (result.keys.anthropic || result.keys.finnhub)) {
+                // ⚠️ [Finding silent-failure #545, ÉLEVÉ] `fintable` DOIT compter dans la garde :
+                // un coffre qui ne contient QUE le jeton Fintable (ni Anthropic ni Finnhub) n'était
+                // JAMAIS restauré dans le store → jeton perdu à chaque reload, sync auto neutralisée
+                // en silence (reason 'no-token' en boucle, zéro trace).
+                if (result.status === 'ok' && (result.keys.anthropic || result.keys.finnhub || result.keys.fintable)) {
                     useFinanceStore.getState().updateApiKeys(result.keys);
                     return;
                 }
@@ -362,6 +367,34 @@ export const App: React.FC = () => {
         return () => { cancelled = true; };
     }, []);
 
+    // [FINTABLE-7 Lot 3] Sync bancaire AUTOMATIQUE à l'ouverture, throttlée 1×/jour (demande Marc).
+    // Effet RÉACTIF au jeton (hydraté ASYNC depuis le coffre par l'effet ci-dessus) — un timer au
+    // boot lirait un store encore vide et ne partirait jamais. Toutes les gardes (mode test, passe
+    // réussie < 24 h, cooldown de tentative 1 h, mutex) vivent dans le service ; ici on ne fait que
+    // déclencher et montrer un signal DISCRET (compte de transactions, jamais de montant).
+    const fintableToken = useFinanceStore((s) => s.apiKeys?.fintable ?? '');
+    useEffect(() => {
+        if (!fintableToken) return;
+        let cancelled = false;
+        // [Finding code-reviewer #545 §3] Debounce 3 s : `saveToken` persiste le jeton à CHAQUE
+        // frappe → sans délai, taper le jeton à la main déclencherait une passe réseau avec un jeton
+        // incomplet (faux « jeton refusé » dans Diagnostics). Une frappe suivante annule et re-arme.
+        const timer = setTimeout(() => {
+            void (async () => {
+                // `autoSync` est LÉGER (store + gardes) — import statique, pas de chunk à risque ; le
+                // LOURD (browserSync → client HTTP + mapper) est chargé DANS le service via importWithRetry.
+                const outcome = await maybeRunDailyFintableSync();
+                if (cancelled || !outcome.ran) return;
+                if (outcome.report.error === null && outcome.report.transactionsAdded > 0) {
+                    showToast(`Sync bancaire : ${outcome.report.transactionsAdded} transaction(s) importée(s).`, 'success');
+                }
+                // Échec : PAS de toast d'erreur à chaque boot (le rapport est visible dans Réglages →
+                // Sync Fintable / Diagnostics, et logError a tracé) — un échec récurrent de sync AUTO ne
+                // doit pas devenir une bannière quotidienne anxiogène ; le manuel reste disponible.
+            })();
+        }, 3000);
+        return () => { cancelled = true; clearTimeout(timer); };
+    }, [fintableToken]);
 
     const handleSetTab = (tab: Tab) => {
         setActiveTab(tab);

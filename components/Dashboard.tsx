@@ -155,30 +155,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
         [config],
     );
 
-    const { unifiedHistory, latestTotals, accountKeys, segmentedData, totalMonthlyPassive } = useMemo(() => {
-        // Bug fix test-mode : si marketData (CSV historique externe) vide, on
-        // calcule quand même un latestTotals.Total à partir de initialBalances +
-        // transactions (cash) + assets (portfolio courant) pour que NetWorth
-        // s'affiche correctement en mode test ou pour user sans CSV.
+    const { unifiedHistory, accountKeys, segmentedData, totalMonthlyPassive } = useMemo(() => {
+        // Sans CSV historique : pas de graphe ni de listes segmentées — le KPI patrimoine, lui,
+        // vient de `presentNetWorth` (source unique, ci-dessous) dans TOUS les cas.
+        // [DASH-NETWORTH-CANONICAL] L'ancien `latestTotals.Total` (dernier point de l'historique,
+        // consommé par le KPI) est RETIRÉ : le KPI ne lit plus jamais l'historique.
         if (marketData.length === 0) {
-            // [DASH-NW-DUP, audit 2026-07-16] Repli SOURCE UNIQUE : l'ancien calcul inline
-            // (`cash + portefeuille`) ne soustrayait JAMAIS les dettes (pattern MONEY-PHANTOM/H1
-            // réapparu — un utilisateur endetté sans CSV voyait un patrimoine gonflé de sa dette).
-            // `computePresentNetWorth` = cash + placements − dettes (gardé NaN/Infinity), la même
-            // formule que le snapshot IA/MCP et useDerivedFinancials. + équité immo (valeur −
-            // hypothèque, même expression que le chemin principal l.~270) : ce KPI l'INCLUT par
-            // convention (étiquette « équité immo incluse ») — sans ce terme, un propriétaire
-            // sans CSV verrait un patrimoine amputé de sa maison SOUS une étiquette qui ment
-            // (finding panel financial-integrity, lot audit 2026-07-17).
-            const fallbackRealEstateEquity = realEstateGoals.reduce(
-                (sum, g) => sum + (g.currentValue || 0) - (g.mortgageBalance || 0), 0);
             return {
                 unifiedHistory: [],
-                latestTotals: {
-                    date: new Date().toISOString().split('T')[0],
-                    Total: computePresentNetWorth(initialBalances, transactions, assets, fxRates, debts)
-                        + fallbackRealEstateEquity,
-                } as MarketDataPoint,
                 accountKeys: [],
                 segmentedData: { assets: [], cash: [], credit: [] },
                 totalMonthlyPassive: 0,
@@ -277,6 +261,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
         // 3. Chart History Building
         let txIdx = 0;
         let rc: Record<string, number> = { ...initialBalances };
+        // [Finding financial-integrity #544, MESURÉ] Amorcer TOUS les comptes connus à 0 (comme
+        // `runningCash` plus haut) : un compte découvert via une TRANSACTION (accountName
+        // Fintable/CSV absent d'initialBalances) laissait `rc[acc]` undefined sur les lignes
+        // antérieures à sa 1re transaction → `total += undefined` = NaN → `point.Total` NaN sur ces
+        // lignes → la « Variation » lisait `Number(NaN) || 0` = 0 et restait FIGÉE à 0,00 % en
+        // permanence (mesuré : « Desjardins » → 0,00 % ; « Compte » → 18,18 % sur mêmes fixtures).
+        cashAccountsList.forEach(acc => { if (rc[acc] === undefined) rc[acc] = 0; });
 
         const currentRealEstateEquity = realEstateGoals.reduce((sum, g) => sum + (g.currentValue || 0) - (g.mortgageBalance || 0), 0);
         // [DASH-NW-DUP] source unique gardée NaN/Infinity (l'ancienne somme inline propageait un solde corrompu).
@@ -344,16 +335,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         return {
             unifiedHistory: filteredHist,
-            latestTotals: lastPoint,
             accountKeys: combinedKeys,
             segmentedData: { assets: indAssets, cash: cashList, credit: creditList },
             totalMonthlyPassive: passiveIncome
         };
-    }, [marketData, assets, timeRange, customStart, customEnd, transactions, initialBalances, debts, realEstateGoals, fxRates]);
+    }, [marketData, assets, timeRange, customStart, customEnd, transactions, initialBalances, debts, realEstateGoals]);
 
     // [DASH-NW-DUP] pilote l'étiquette de périmètre du KPI patrimoine (la série historique inclut
     // l'équité immo — convention moteur — contrairement au NW « hors immo » des surfaces IA).
     const hasRealEstate = realEstateGoals.some(g => (g.currentValue || 0) > 0);
+
+    // [DASH-NETWORTH-CANONICAL] Le KPI « patrimoine global » = le PRÉSENT par la SOURCE UNIQUE
+    // (`computePresentNetWorth` + équité immo — même expression que le repli sans CSV ci-dessus),
+    // plus JAMAIS `latestTotals.Total` (dernier point de l'HISTORIQUE : figé au dernier close, cash
+    // borné aux transactions ≤ dernière date et gated par accountName → les 4 symptômes « l'accueil
+    // fait aucun sens » de Marc, diagnostic financial-integrity 2026-07-30). L'historique reste la
+    // base du GRAPHE et de la variation — le présent et l'histoire sont deux choses ; le KPI dit le
+    // présent, comme toutes les autres surfaces (App/TabRouter, PDF, snapshot IA, Investissements).
+    const presentNetWorth = useMemo(() => {
+        const realEstateEquity = realEstateGoals.reduce(
+            (sum, g) => sum + (g.currentValue || 0) - (g.mortgageBalance || 0), 0);
+        return computePresentNetWorth(initialBalances, transactions, assets, fxRates, debts)
+            + realEstateEquity;
+    }, [initialBalances, transactions, assets, fxRates, debts, realEstateGoals]);
 
     const performance = useMemo(() => {
         if (unifiedHistory.length < 2) return { global: 0, diff: 0 };
@@ -423,7 +427,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <KPIStat
                     label={t('dashboard.global_net_worth')}
                     icon={<Icon name="money" size={16} />}
-                    value={formatCAD(Number(latestTotals?.Total) || 0)}
+                    value={formatCAD(presentNetWorth)}
                     // [DASH-NW-DUP] Étiquette de PÉRIMÈTRE : la série historique inclut l'équité
                     // immobilière (convention moteur/chartData), contrairement au NW « hors immo »
                     // des surfaces IA (computePresentNetWorth) — l'écart entre les deux est l'équité
@@ -434,11 +438,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     privacy
                     variant="primary"
                 />
+                {/* [DASH-NETWORTH-CANONICAL, finding code-reviewer #544] La variation reste dérivée
+                    de l'HISTORIQUE (graphe) alors que le KPI patrimoine dit désormais le PRÉSENT →
+                    l'ÉTIQUETER, comme le voisin immo : sans ça, « X $ » et « +Z $ » adjacents ne sont
+                    plus algébriquement cohérents et la classe « deux patrimoines à l'écran » revient. */}
                 <KPIStat
                     label={`${t('dashboard.global_variation')} (${timeRange})`}
                     icon={<Icon name="investments" size={16} />}
                     value={formatPercent(performance.global)}
-                    sublabel={formatSigned(performance.diff || 0, { withCurrency: true, decimals: 2 })}
+                    sublabel={`${formatSigned(performance.diff || 0, { withCurrency: true, decimals: 2 })} (courbe historique)`}
+                    tooltip="Évolution de la courbe historique du graphe (dernier cours de clôture), pas du patrimoine présent affiché à gauche — les deux peuvent différer légèrement."
                     privacy
                     variant={performance.global >= 0 ? 'success' : 'danger'}
                 />

@@ -245,21 +245,49 @@
   affichait « vu jamais » et contaminait le panier via Math.min → traité inconnu à la lecture ;
   (5) doc : base carte = PRÉSENT (quote × quantité courantes) ≠ piles TOTAL_* (close daté × détention
   datée) — divergence VOULUE, documentée en tête de module pour la prochaine session.
-- [ ] **`[DASH-NETWORTH-CANONICAL]` L'Accueil est la SEULE surface qui recalcule le patrimoine** (M,
-  diagnostic `financial-integrity` 2026-07-30, demande Marc « l'accueil fait aucun sens ») — le KPI
-  `Dashboard.tsx:425` lit `latestTotals.Total` (dernier point de `usePortfolioHistory`) au lieu de la
-  source unique, ce qui explique les 4 symptômes d'un coup : (1) **figé** — l'axe des dates est l'union
-  des `asset.priceHistory`, sans ligne « aujourd'hui », et le cash n'intègre que les transactions
-  `<= rowDate` → tout ce qui suit le dernier close est invisible ; (2) **faux** — le cash ne somme que
-  les transactions à `accountName` non vide (`Dashboard.tsx:204,:289`) alors que `computeCurrentLiquidity`
-  les somme TOUTES ; or le mapper Fintable **n'émet aucun `accountName`** (`mapSnapshot.ts:275-279`) →
-  même une fois la sync réparée, l'Accueil ignorerait les transactions Fintable ; (3) **cartes vides** —
-  hydratation jamais réussie → `rows: []` → repli qui met `accountKeys: []` ; (4) **incohérent** — toutes
-  les autres surfaces (App/TabRouter, PDF, snapshot IA, Santé, Investissements, Futur) routent bien par
-  `computePresentNetWorth`/`computeRawNetWorth`. ⚠️ Le fix ne peut PAS être un simple passage à
-  `computePresentNetWorth` : celui-ci EXCLUT l'immobilier alors que le KPI l'INCLUT → le patrimoine
-  affiché CHUTERAIT de l'équité immo (piège `[[ASSET-FX-DISPLAY]]` : le chiffre juste pris pour un bug).
-  Cible = `computePresentNetWorth + équité immo`, comme le fait déjà le repli `Dashboard.tsx:178`.
+- [x] **`[DASH-NETWORTH-CANONICAL]` L'Accueil est la SEULE surface qui recalcule le patrimoine** (M,
+  diagnostic `financial-integrity` 2026-07-30, demande Marc « l'accueil fait aucun sens » / « je veux
+  source unique ») — ✅ 2026-07-31. Le KPI « patrimoine global » lit désormais `presentNetWorth` =
+  `computePresentNetWorth(initialBalances, transactions, assets, fxRates, debts) + équité immo`
+  (MÊME expression que l'ex-repli sans CSV — le piège « computePresentNetWorth nu ferait CHUTER le
+  patrimoine de l'équité immo » évité comme prévu au ticket), dans TOUS les cas — plus JAMAIS
+  `latestTotals.Total` (dernier point d'un historique figé au dernier close, cash gated accountName).
+  `latestTotals` retiré du memo (code mort dans le même diff, leçon DETTE-DEADCODE). Le GRAPHE et la
+  variation restent sur l'historique (présent ≠ histoire, assumé — le KPI dit le présent comme toutes
+  les autres surfaces). Discriminant : test avec historique PÉRIMÉ injecté (mock `usePortfolioHistory`)
+  → l'ancien KPI affichait ~500 $, le nouveau 140 600 $ (rouge sur l'ancien code, prouvé git-stash).
+  Restes du ticket NON couverts ici (symptômes 2-3, périmètre graphe/cartes — l'axe des dates, le
+  cash `accountName`-gated de l'HISTORIQUE, les cartes vides) : l'essentiel (le chiffre-titre faux)
+  est réglé ; le graphe historique est un chantier séparé si Marc le redemande.
+  **Panel #544 (3 agents)** : silent-failure = 0 finding (le retrait du `Number(x)||0` CORRIGE même un
+  masquage — NaN affichait « 0 $ », désormais « — ») ; code-reviewer → Variation étiquetée « (courbe
+  historique) » + tooltip (sinon la classe « deux patrimoines à l'écran » revenait entre 2 KPIs
+  adjacents) ; financial-integrity (MESURÉ, parité 203 800 $ exacte sur toutes les surfaces hors immo,
+  double-comptage immo RÉFUTÉ) → F1 corrigé même PR : `rc` non amorcé sur les comptes venus des
+  TRANSACTIONS (accountName Fintable/CSV ∉ initialBalances) → `point.Total` NaN → **Variation figée à
+  0,00 % en permanence** (mesuré) — amorçage à 0 comme `runningCash` + test discriminant. F2-F4 → tickets ci-dessous.
+- [ ] **`[DASH-IMMO-EQUITY-WRITERS]`** (M, finding financial-integrity #544 F2/F4, MESURÉ) — le terme
+  « équité immo » du KPI Accueil est INERTE en prod : `RealEstateGoal.currentValue`/`mortgageBalance`
+  n'ont AUCUN écrivain (aucune UI ne les édite — RealEstate.tsx ne les expose pas, PatrimoineExtended
+  édite `RentalProperty`, un autre type) → `hasRealEstate` toujours false, l'étiquette « équité immo
+  incluse » ne s'affiche jamais, et un propriétaire modélisé par `price`/`downPayment` a un KPI SANS sa
+  maison pendant que le Futur l'inclut (mesuré : `Immobilier` 81 609 $ moteur vs 0 au KPI). Classe
+  [[TX-DUPLICATES]] « champ que seuls des lecteurs référencent ». À trancher : brancher l'équité sur ce
+  que le moteur/l'UI possèdent réellement, OU retirer le terme + l'étiquette. En même temps (F4) : gater
+  l'étiquette sur `equity !== 0` (pas `currentValue > 0`), filtrer `isActive` (comme moteur/PDF), et
+  ajouter la garde `Number.isFinite` + `logErrorThrottled` sur currentValue/mortgageBalance (3 sites,
+  note silent-failure : `||0` couvre NaN mais pas Infinity — aujourd'hui rattrapé en « — » par formatCAD,
+  sans trace pour diagnostiquer).
+- [ ] **`[NW-PARITY-SURFACES-TEST]`** (S-M, reco financial-integrity #544 — le garde-fou keystone de
+  l'audit 2026-06-17, toujours manquant) — test de PARITÉ « NW présent ≡ toutes surfaces (KPI Accueil,
+  useDerivedFinancials, financialSnapshot IA/MCP, PDF) ≡ `chartData[0]` (modulo équité immo, convention
+  par surface EXPLICITE) » sur un persona endetté + propriétaire. C'est le test qui aurait attrapé
+  mécaniquement F2 et l'inexactitude doc F5. `tests/services/nwParity.test.ts` couvre déjà
+  moteur↔computePresentNetWorth — l'étendre aux surfaces UI.
+- [ ] **`[DASH-HIST-CARDS-LABEL]`** (S, finding financial-integrity #544 F3) — sur l'Accueil, le KPI dit
+  le PRÉSENT mais les cartes « Actifs individuels » et le graphe restent au dernier close → la
+  reconstructabilité à l'écran ne tient plus SANS que rien ne le dise. Étiqueter les cartes « au dernier
+  cours de clôture » (réutiliser `staleTailSymbols`/`noHistorySymbols` de usePortfolioHistory).
 - [ ] **`[A11Y-INFO300-SWEEP]` `text-info-300` inexistant (no-op silencieux) — sweep dédié** (S, découvert en
   FINTABLE-4 2026-07-29) : la palette `info` (`tailwind.config.js`) s'arrête à 600/500/400, aucun shade 300 →
   `text-info-300` ne génère AUCUNE règle CSS (le texte hérite du parent, contraste imprévisible, zéro erreur

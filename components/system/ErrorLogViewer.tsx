@@ -144,7 +144,7 @@ export const ErrorLogViewer: React.FC = () => {
                             type="button"
                             onClick={handleExport}
                             disabled={errors.length === 0}
-                            className="px-3 py-1 text-tiny bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded text-info-300 transition-colors focus-ring disabled:opacity-50"
+                            className="px-3 py-1 text-tiny bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded text-info-400 transition-colors focus-ring disabled:opacity-50"
                         >
                             Exporter JSON
                         </button>

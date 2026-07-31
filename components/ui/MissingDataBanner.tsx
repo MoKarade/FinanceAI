@@ -133,7 +133,7 @@ interface MissingDataBannerProps {
 }
 
 const VARIANT_STYLES: Record<NonNullable<MissingDataBannerProps['variant']>, string> = {
-    info: 'bg-info-500/10 border-info-500/30 text-info-300',
+    info: 'bg-info-500/10 border-info-500/30 text-info-400',
     warning: 'bg-warning-500/10 border-warning-500/30 text-amber-300',
     danger: 'bg-danger-500/10 border-danger-500/30 text-red-300',
 };

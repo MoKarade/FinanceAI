@@ -1289,7 +1289,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             {/* Phase E.8 — DCA stats si purchases[] non-vide */}
                             {purchaseStats && purchaseStats.purchaseCount > 1 && (
                                 <div className="mt-3 pt-3 border-t border-white/5">
-                                    <div className="text-tiny text-info-300 uppercase font-bold mb-1">DCA · {purchaseStats.purchaseCount} achats</div>
+                                    <div className="text-tiny text-info-400 uppercase font-bold mb-1">DCA · {purchaseStats.purchaseCount} achats</div>
                                     <div className="space-y-0.5 text-tiny">
                                         {/* [ASSET-FX-DISPLAY] les stats DCA sont calculées en devise NATIVE
                                             (prix comparés entre eux) → conversion CAD à l'AFFICHAGE seulement,

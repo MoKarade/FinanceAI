@@ -115,7 +115,7 @@ export const RentalPropertyPanel: React.FC<{
                     const capRate = rp.currentValue > 0 ? (noi / rp.currentValue * 100).toFixed(2) : '0.00';
                     return (
                         <details key={rp.id} className="p-2 bg-black/30 rounded border border-white/5">
-                            <summary className="text-meta font-bold text-white cursor-pointer">
+                            <summary className="text-meta font-bold text-white cursor-pointer py-1.5">
                                 {rp.name} — NOI: {noi.toLocaleString('fr-CA')}$ · Cap: {capRate}%
                             </summary>
                             <div className="mt-2 grid grid-cols-3 gap-1">

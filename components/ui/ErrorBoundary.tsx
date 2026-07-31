@@ -52,7 +52,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                     Quelque chose s'est mal passé. Tes données sont en sécurité — tu peux réessayer ou changer d'onglet.
                 </p>
                 <details className="mb-6 max-w-md w-full">
-                    <summary className="text-meta text-ink-500 cursor-pointer hover:text-ink-200 select-none">
+                    <summary className="text-meta text-ink-500 cursor-pointer hover:text-ink-200 select-none py-1.5">
                         Détails techniques
                     </summary>
                     <pre className="text-tiny text-red-200/70 bg-black/40 p-3 rounded mt-2 overflow-auto max-h-48 whitespace-pre-wrap break-words">

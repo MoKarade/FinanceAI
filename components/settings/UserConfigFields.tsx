@@ -95,7 +95,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                         />
                                     </div>
                                     <div data-focus-section={`profile-user${idx + 1}-netSalary`}>
-                                        <label htmlFor={`ucf-net-${idx}`} className="text-meta font-bold text-info-300">Salaire Net mensuel ($)</label>
+                                        <label htmlFor={`ucf-net-${idx}`} className="text-meta font-bold text-info-400">Salaire Net mensuel ($)</label>
                                         <input
                                             id={`ucf-net-${idx}`}
                                             type="number"

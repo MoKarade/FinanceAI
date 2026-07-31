@@ -314,20 +314,21 @@
   le PRÉSENT mais les cartes « Actifs individuels » et le graphe restent au dernier close → la
   reconstructabilité à l'écran ne tient plus SANS que rien ne le dise. Étiqueter les cartes « au dernier
   cours de clôture » (réutiliser `staleTailSymbols`/`noHistorySymbols` de usePortfolioHistory).
-- [ ] **`[A11Y-INFO300-SWEEP]` `text-info-300` inexistant (no-op silencieux) — sweep dédié** (S, découvert en
-  FINTABLE-4 2026-07-29) : la palette `info` (`tailwind.config.js`) s'arrête à 600/500/400, aucun shade 300 →
-  `text-info-300` ne génère AUCUNE règle CSS (le texte hérite du parent, contraste imprévisible, zéro erreur
-  build/lint — même classe que `[[FIX-INK600-TOKEN]]`). ~12 occurrences à corriger en `text-info-400` (mesuré
-  AA normal ≥4,5:1) : `LifeProjects.tsx:61`, `MissingDataBanner.tsx:136`, `ChildPlanning.tsx:301`,
-  `AutoBackupPanel.tsx:170`, `UsersCard.tsx:140`, `PayslipUploadCard.tsx:164`, `UserConfigFields.tsx:98`,
-  `Investments.tsx:1286`, `AuditLogViewer.tsx:15,126`, `ErrorLogViewer.tsx:147`, `AddStockForm.tsx:416,432`.
-  Vérifier chaque site avec `npm run check-contrast` avant de committer (ne pas recopier le shade au jugé).
-- [ ] **`[A11Y-DETAILS-TAP-TARGET]` `<summary>` sous la cible tactile 24×24px (WCAG 2.5.8)** (S, découvert
-  par le panel FINTABLE-4 2026-07-29, finding a11y-auditor) : le `<summary>` de la disclosure `<details>`
-  n'a qu'un padding horizontal (`px-1`, pas de `py-*`) → hauteur cliquable sous 24px CSS. PAS introduit par
-  FINTABLE-4 — la MÊME convention existe déjà dans `AdvancedProjectionParams.tsx` et `HistoryCoverageNote.tsx`
-  (pré-existante). Un sweep dédié (ajouter `py-1`/`py-1.5` aux `<summary>` du repo, cf `grep -n '<summary'`)
-  uniformiserait les ~5 sites `<details>` du repo en une seule PR, plutôt que de corriger un site isolément.
+- [x] **`[A11Y-INFO300-SWEEP]` `text-info-300` inexistant (no-op silencieux) — sweep dédié** (S) —
+  ✅ 2026-07-31. 13 occurrences → `text-info-400`, MESURÉ `check-contrast` (7,84 / 7,49 / 6,99:1, AA
+  normal ✅ sur les 3 fonds opaques). Preuve build PROPRE (`rm -rf dist`) : `.text-info-400` générée,
+  `.text-info-300` absente du CSS (le no-op silencieux confirmé — le texte héritait du parent).
+- [x] **`[A11Y-DETAILS-TAP-TARGET]` `<summary>` sous la cible tactile 24×24px (WCAG 2.5.8)** (S) —
+  ✅ 2026-07-31. Sweep des 9 `<summary>` du repo : 4 avaient déjà un `py-*` (Budget, HistoryCoverageNote,
+  HistorySyncDoctor ×2), les 5 autres reçoivent `py-1.5` (26-34 px mesurés). ⚠️ **Finding a11y-auditor
+  (MESURÉ en Chromium réel) : `inline-block` sur un `<summary>` est INUTILE pour la hauteur (le padding
+  compte déjà sur `list-item`) et NUISIBLE — il supprime le triangle natif ▶/▼ (seule affordance
+  visuelle d'état) et rétrécit la cible cliquable de la pleine largeur à la largeur du texte** → retiré
+  des 2 sites où je venais de l'ajouter. Contrastes translucides du sweep info-400 composités à la main
+  (check-contrast ne couvre que l'opaque) : tous ≥ 4,69:1 AA — marge la plus fine = AutoBackupPanel
+  hover, premier site à surveiller si un token de fond bouge. Reste (pré-existant, hors PR) :
+  `Transactions.tsx:492` porte un `inline-block` d'avant — même symptôme triangle perdu, à reprendre
+  avec un éventuel design-system des disclosures.
 - [x] **`[FINTABLE-5]` Bascule de l'historique 18 mois — ✅ TRANCHÉ 2026-07-29 : ON GARDE.** La mesure
   est tombée : 90 jours demandés, **30 rendus** (2026-06-29 → 2026-07-28). La réponse de cadrage de Marc
   (« supprimer l'historique, n'utiliser que Plaid », Q8) est donc **caduque** — l'appliquer aurait coûté

@@ -6,6 +6,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — le montant du courtier s'affiche enfin] — 2026-07-31
+
+### Investissements & Accueil
+- **`[FINTABLE-6]` Lot 2 — le total de ton courtier fait autorité, à l'écran.** Investissements
+  affiche par panier fiscal (CELI / REER / non enregistré) le solde exact vu chez le courtier via
+  Fintable, la somme de tes titres saisis, et **l'écart** entre les deux — matérialisé au lieu d'être
+  noyé (Fintable ne fournit pas les positions, seulement le total du compte). L'Accueil affiche la
+  version condensée : total courtier + écart.
+- Chaque panier porte sa **fraîcheur** (« vu il y a 2 h »), bornée par le compte le plus ancien —
+  jamais « à jour » promis sur un panier dont une part est d'âge inconnu.
+- Un compte au régime fiscal non déclaré ou au solde illisible est **signalé**, jamais rangé d'office
+  ni rabattu sur 0.
+
+---
+
 ## [unreleased — la bannière rouge de sync ne crie plus au loup] — 2026-07-31
 
 ### Sync Google Drive

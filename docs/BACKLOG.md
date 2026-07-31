@@ -223,9 +223,28 @@
   la vérification de récepteur. Grep de la classe : instance unique dans le dépôt.
 - [ ] **`[FINTABLE-7]` Lot 3 — déclenchement AUTOMATIQUE de la passe à l'ouverture** (S) — throttlé
   1×/jour (la carte ne donne pour l'instant qu'un bouton manuel « Synchroniser maintenant »).
-- [ ] **`[FINTABLE-6]` Lot 2 — consommer le montant courtier dans Investissements + Accueil** (M) —
-  brancher `reconcileBrokerBalances` : total affiché = solde courtier, ligne « écart courtier (non
-  ventilé) » explicite, badge de fraîcheur. Dépend du Lot 1 (livré) ET de la sync qui tourne réellement.
+- [x] **`[FINTABLE-6]` Lot 2 — consommer le montant courtier dans Investissements + Accueil** (M) —
+  ✅ 2026-07-31. `BrokerReconciliationCard` (UNE implémentation, variantes `full` Investissements /
+  `compact` Accueil — pas deux copies) : total par panier = solde COURTIER (autorité), ligne « écart
+  (non ventilé) » explicite (Σ titres + écart == total courtier, reconstructible), badge de fraîcheur
+  borné par la lecture la plus ANCIENNE (`fraîcheur inconnue` si un compte n'a pas d'horodatage),
+  avertissements comptes sans régime déclaré / soldes illisibles. `holdingsCadByRegime`
+  (`services/fintable/holdingsByRegime.ts`) DÉRIVE la famille fiscale de `BUCKET_OF` (source unique,
+  même table que les piles de l'Accueil : CELIAPP→CELI, REEE→REER, MARGE/AUTRE/absent→NON-ENREG,
+  CRYPTO hors réconciliation) et somme via `assetValueCad`. `formatRelative` extrait de SystemView
+  vers `utils/relativeTime.ts` (consolidé AVANT la 2ᵉ copie). Ship dark sans sync Fintable ; purge
+  persona par construction (`fintableBrokerBalances` ∈ DEFAULT_APP_STATE). 11 tests.
+  **Panel #543 (4 agents — 5 vrais findings, tous corrigés même PR ; reconstructibilité et FX vérifiés
+  EXACTS, résidu 0,0)** : (1) CRITIQUE convergent (3 agents, mesuré −171 k$) — la variante compacte
+  rendait « 0 $ » d'autorité quand tous les comptes étaient non déclarés → état honnête sans montant
+  (« N comptes sans régime déclaré ») + mention « + N compte(s) hors total » quand des comptes sont
+  exclus d'un total affiché ; (2) valeur NÉGATIVE (quantité corrompue) écartée en silence avec un
+  commentaire qui prétendait qu'assetValueCad la signalait (il ne loggue que NaN/devise) → tracée
+  `logErrorThrottled` ; (3) a11y : `role=status/alert` sur les avertissements (ils apparaissent en
+  cours de session via le polling Drive — WCAG 4.1.3) ; (4) `at ≤ 0` (horodatage corrompu encodé 0)
+  affichait « vu jamais » et contaminait le panier via Math.min → traité inconnu à la lecture ;
+  (5) doc : base carte = PRÉSENT (quote × quantité courantes) ≠ piles TOTAL_* (close daté × détention
+  datée) — divergence VOULUE, documentée en tête de module pour la prochaine session.
 - [ ] **`[DASH-NETWORTH-CANONICAL]` L'Accueil est la SEULE surface qui recalcule le patrimoine** (M,
   diagnostic `financial-integrity` 2026-07-30, demande Marc « l'accueil fait aucun sens ») — le KPI
   `Dashboard.tsx:425` lit `latestTotals.Total` (dernier point de `usePortfolioHistory`) au lieu de la

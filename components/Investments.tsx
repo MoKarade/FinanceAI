@@ -41,6 +41,7 @@ import { ImportBrokerPositions } from './investments/ImportBrokerPositions';
 import { computePurchaseStats } from '../utils/assetPurchases';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { NetWorthByOwnerCard } from './investments/NetWorthByOwnerCard';
+import { BrokerReconciliationCard } from './investments/BrokerReconciliationCard';
 import { CeliAssetNudge } from './CeliAssetNudge';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
@@ -619,6 +620,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
             {/* CI-1000x Phase 1 (axe B) — répartition du portefeuille par personne (mode couple). */}
             <NetWorthByOwnerCard assets={assets} setAssets={setAssets} />
+
+            {/* [FINTABLE-6 Lot 2] Le total du COURTIER fait autorité (demande Marc) : solde Fintable
+                par panier fiscal + écart explicite avec les titres saisis + fraîcheur. Ship dark
+                tant que la sync Fintable n'a jamais tourné. */}
+            <BrokerReconciliationCard variant="full" />
 
             {/* Phase E.3 — Sous-onglets + Phase E.1 — TimeRange global au sommet */}
             <div className="flex flex-wrap items-center justify-center gap-3">

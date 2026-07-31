@@ -17,6 +17,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   amortie (mêmes conventions que l'achat simulé : prime SCHL, paiement d'origine), sans débit de
   cash ; le loyer n'est plus facturé si la résidence principale est déjà détenue. Le KPI patrimoine
   de l'Accueil lit la MÊME source (helper partagé) — le terme « équité immo » n'est plus inerte.
+- **`[ENG-FERR-FLOW-INVISIBLE]` — les conversions FERR obligatoires (71+) et les retraits REER
+  d'objectifs sont désormais VISIBLES dans le flux « Retrait REER »** du graphe/tooltip/jalons/MCP
+  (mesuré : 11,6 % des sorties REER étaient invisibles ; un retraité 71+ dont la première sortie
+  est une FERR ne voyait jamais son jalon « 1er retrait REER »).
 
 ## [unreleased — meltdown REER honnête] — 2026-07-31
 

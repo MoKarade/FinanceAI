@@ -89,6 +89,31 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         expect(melt.totalTaxesPaid / auto.totalTaxesPaid).toBeGreaterThan(0.8);
     });
 
+    it('[ENG-FERR-FLOW-INVISIBLE] la FERR obligatoire (71+) est VISIBLE dans RetraitREER (4e source)', () => {
+        // Fixture où la FERR DOMINE : pension publique couvre les dépenses (cascade ≈ 0),
+        // couple 73 ans → conversions FERR obligatoires chaque janvier. Ancien code : la FERR
+        // n'alimentait pas retraitReerMois → Σ RetraitREER ≈ 0 pour un REER pourtant drainé
+        // (mesuré panel #551 : 113 418 $ = 11,6 % invisibles sur AUTO_MARGINAL) → ÉCHOUE avant.
+        const ferrParams = {
+            ...params,
+            projection: { ...projection, years: 10, returnRates: { celi: 3, reer: 3, nonReg: 3, crypto: 4, cash: 1 } },
+            liveCSVBalances: { CELI: 0, CELIAPP: 0, REER: 400_000, NON_ENREG: 0, CRYPTO: 0, REEE: 0 },
+            retirementGoal: { targetAge: 60, targetMonthlyIncome: 3000, governmentPension: 4500, lifeExpectancy: 95 },
+            baseMonthlyExpenses: 2_800,
+            config: {
+                ...config,
+                users: config.users.map(u => ({ ...u, age: 73, birthYear: 1953 })) as typeof config.users,
+            },
+        } as SimulationParams;
+        const r = __runScenarioForTests(ferrParams, 'AUTO_MARGINAL' as AllocationStrategy, false, false);
+        const cd = r.chartData;
+        const sumRetraits = cd.reduce((s, d) => s + num(d.RetraitREER), 0);
+        const reerEnd = num(cd[cd.length - 1].REER);
+        const drained = 400_000 - reerEnd;
+        expect(drained).toBeGreaterThan(80_000); // non-vacuité : la FERR draine vraiment
+        expect(sumRetraits).toBeGreaterThanOrEqual(0.9 * drained); // ancien code : ≈ 0 → échoue
+    });
+
     it('NEUTRALITÉ NW : les compteurs d\'affichage ne touchent AUCUNE grandeur de patrimoine (golden)', () => {
         // Pin de la preuve bit-identique du validator (301 mois × 9 grandeurs, 2 worktrees) :
         // si un futur refactor fait fuir un compteur d'affichage dans un solde, ce golden casse.

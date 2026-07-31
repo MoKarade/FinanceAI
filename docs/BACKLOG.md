@@ -145,7 +145,7 @@
   au lieu de ~53 % (−10 pts FVI), taxLeakage 115 % au lieu de 47 %. Fix : `+= fluxImpots + taxOnRrif`
   seulement (⚠️ re-mesurer taxOnRrif, même risque) + re-baseliner MC/strategySearch SCIEMMENT.
   Classement ordre-préservant (vérifié) → pas de flip attendu.
-- [ ] **`[ENG-FERR-FLOW-INVISIBLE]`** (S, MOYEN [Certain, MESURÉ]) — même classe que le fix V2, 4ᵉ
+- [x] **`[ENG-FERR-FLOW-INVISIBLE]`** ✅ 2026-07-31 (V2'' — FERR + goals alimentent retraitReerMois, test de parité discriminant : Σ RetraitREER ≈ 0 sur l'ancien code pour un REER drainé par la FERR) — même classe que le fix V2, 4ᵉ
   source : la FERR obligatoire (`projection.ts:999-1002`) et les retraits REER d'objectifs
   (`:1219-1226`) n'alimentent pas `retraitReerMois` → 113 418 $ (11,6 %) de sorties invisibles sur
   AUTO_MARGINAL ; « 1er retrait REER » jamais déclenché pour un retraité 71+ dont la 1re sortie est

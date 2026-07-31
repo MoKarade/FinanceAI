@@ -1015,6 +1015,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 taxCurrentYear.reer += janResult.ferrTaxOnRrif;
                 impotReerMois += janResult.ferrTaxOnRrif;
                 accRetraitsReerYear += janResult.ferrMandatoryGross;
+                // [ENG-FERR-FLOW-INVISIBLE] (panel #551, MESURÉ : 113 418 $ = 11,6 % des sorties
+                // REER invisibles sur AUTO_MARGINAL) — la FERR est un retrait REER : elle alimente
+                // le flux AFFICHÉ comme les autres sources, sinon « 1er retrait REER » ne se
+                // déclenche jamais pour un retraité 71+ et le tooltip/MCP sous-affichent.
+                // (taxOnRrif est déjà compté à part dans totalTaxesPaid — rien d'autre à toucher.)
+                retraitReerMois += janResult.ferrMandatoryGross;
                 // [ITEM-2C] La FERR de chaque conjoint sort de SA part REER (registre per-conjoint), pas au
                 // pro-rata du pool → le solde REER de chaque conjoint reflète SES conversions obligatoires
                 // (et conditionne SON FERR de l'an suivant). La réconciliation de fin de mois préserve l'attribution.
@@ -1234,6 +1240,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     reer -= drawn; accRetraitsReerYear += drawn; remaining -= drawn;
                     accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, drawn, reerByUser);
                     withdrawalREER += drawn;
+                    // [ENG-FERR-FLOW-INVISIBLE] même parité pour les retraits de GOALS (3ᵉ source).
+                    retraitReerMois += drawn;
                 } else if (account === 'CRYPTO') {
                     // [PV-7] gain proportionnel + banque de pertes via le helper partagé.
                     const drawn = handleCryptoSaleLocal(remaining);

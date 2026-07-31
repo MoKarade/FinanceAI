@@ -14,6 +14,7 @@ import {
     renewTokenSilently,
     revokeAccess,
     traceSilentAuthFailure,
+    AuthInteractionRequiredError,
 } from '../googleDrive/gisAuth';
 import { isInactivityExpired, recordActivity, clearActivity } from './inactivityLogout';
 
@@ -22,19 +23,33 @@ import { isInactivityExpired, recordActivity, clearActivity } from './inactivity
  * (pas de session Google) est NOMINAL → silence. Un échec ANORMAL (script GIS injoignable, timeout
  * réseau) doit laisser une trace (`logError` warning) — sinon un boot pendant une panne réseau renvoie
  * au login SANS trace, indiscernable d'un « jamais connecté » (classe GATE-SILENT-DRIVE). Retourne le
- * jeton, ou null si la reprise a échoué (l'appelant renvoie alors au login).
+ * jeton, ou (`token: null`) si la reprise a échoué — avec `interactionRequired` pour que l'appelant
+ * distingue l'échec DÉFINITIF (session Google absente : seule une reconnexion manuelle débloquera)
+ * d'un raté TRANSITOIRE (réseau/GIS) que le tick suivant peut résorber tout seul.
  */
-async function trySilentReauth(phase: 'gate' | 'boot'): Promise<string | null> {
+async function trySilentReauth(
+    phase: 'gate' | 'boot',
+): Promise<{ token: string | null; interactionRequired: boolean }> {
     try {
-        return await renewTokenSilently();
+        return { token: await renewTokenSilently(), interactionRequired: false };
     } catch (e) {
         // [AUTH-DRIVE-STILL-RECONNECT] Une seule voie : le helper dérive la sévérité (NOMINAL « pas de
         // session Google » → `info` ; anormal réseau/GIS → `warning` + stack) et throttle par raison.
         // La raison GIS exacte diagnostique POURQUOI la reconnexion est redemandée, visible dans Diagnostics.
         traceSilentAuthFailure(phase, e);
-        return null;
+        return { token: null, interactionRequired: e instanceof AuthInteractionRequiredError };
     }
 }
+
+// [AUTH-DRIVE-BANNER-FLICKER] Échecs TRANSITOIRES consécutifs du renouvellement silencieux côté
+// polling (`runBootSync`, tick 60 s + retour d'onglet). Un raté réseau isolé (réveil de veille, Wi-Fi
+// qui remonte, hoquet GIS) ne doit PAS afficher « Non connecté — tes changements ne sont PAS
+// sauvegardés » : le message serait faux (rien n'a été perdu, le tick suivant retente et réussit) et
+// c'est exactement la bannière-qui-clignote signalée par Marc. On ne bascule `connected:false` qu'après
+// N échecs consécutifs — ou IMMÉDIATEMENT quand l'échec est définitif (`AuthInteractionRequiredError` :
+// session Google morte, seule une reconnexion manuelle débloquera → là, la bannière dit vrai).
+let _transientAuthFailStreak = 0;
+const TRANSIENT_AUTH_FAIL_GRACE = 3;
 import {
     findSyncFile,
     deleteSyncFile,
@@ -85,6 +100,7 @@ export async function connectAndSync(): Promise<void> {
     try {
         const token = await requestAccessToken(true);
         recordActivity(); // [AUTH-DRIVE-INACTIVITY] la connexion démarre le compte à rebours 8h
+        _transientAuthFailStreak = 0; // [AUTH-DRIVE-BANNER-FLICKER] reconnexion explicite → série close
         const { email, sub } = await fetchUserIdentity(token); // sub → clé de chiffrement des clés API
         const meta = currentMeta();
         writeSyncMeta({ ...meta, connectedEmail: email, connectedSub: sub ?? meta.connectedSub ?? null });
@@ -136,12 +152,14 @@ export async function gateSilentResume(): Promise<boolean> {
         token = await getValidAccessToken(); // cache-only : rejette si pas de jeton valide en cache
     } catch {
         // Cache vide/expiré → ré-auth silencieuse réseau (prompt='', sans popup). Échec anormal tracé.
+        // (Pas de grâce ici : le gate doit trancher « app ou login » MAINTENANT — montrer le login sur
+        // un raté transitoire est le comportement sûr, et un clic le résout.)
         const renewed = await trySilentReauth('gate');
-        if (!renewed) {
+        if (renewed.token === null) {
             setStatus({ busy: false, connected: false });
             return false;
         }
-        token = renewed;
+        token = renewed.token;
     }
     // [Finding panel sécurité CRITIQUE] NE PAS recordActivity ici : une reprise silencieuse (déclenchée
     // aussi par le POLLING toutes les 60s, cf startDrivePolling) n'est PAS une interaction utilisateur.
@@ -192,12 +210,23 @@ export async function runBootSync(): Promise<void> {
         token = await getValidAccessToken();
     } catch {
         const renewed = await trySilentReauth('boot');
-        if (!renewed) {
-            setStatus({ connected: false });
+        if (renewed.token === null) {
+            // [AUTH-DRIVE-BANNER-FLICKER] Définitif (interaction requise) → bannière IMMÉDIATE : elle
+            // dit vrai, seule une reconnexion manuelle débloquera. Transitoire (réseau/GIS) → GRÂCE :
+            // on garde l'état affiché tel quel et le tick suivant (60 s) retente ; on ne bascule la
+            // bannière qu'après N ratés consécutifs (panne qui dure = il faut le dire honnêtement).
+            if (renewed.interactionRequired) {
+                _transientAuthFailStreak = 0;
+                setStatus({ connected: false });
+            } else {
+                _transientAuthFailStreak++;
+                if (_transientAuthFailStreak >= TRANSIENT_AUTH_FAIL_GRACE) setStatus({ connected: false });
+            }
             return;
         }
-        token = renewed;
+        token = renewed.token;
     }
+    _transientAuthFailStreak = 0; // jeton en main → la série d'échecs transitoires est close
     // [Finding panel sécurité CRITIQUE] Idem gateSilentResume : le polling appelle runBootSync toutes
     // les 60s → ne PAS recordActivity ici (sinon l'horloge d'inactivité ne vieillit jamais).
     // 2) Le jeton est en main → une erreur APRÈS (lecture/écriture Drive) est, elle, anormale → handleError.
@@ -205,10 +234,19 @@ export async function runBootSync(): Promise<void> {
         setStatus({ connected: true });
         await runDecision(token); // garde anti-perte stricte (identique au gate désormais)
     } catch (e) {
-        setStatus({ connected: false });
-        // [AUTH-DRIVE-STILL-RECONNECT] cf gateSilentResume : le 401 Drive est tracé (plus muet), le reste → handleError.
-        if (e instanceof DriveAuthError) traceSilentAuthFailure('boot', e);
-        else handleError('boot', e);
+        // [AUTH-DRIVE-BANNER-FLICKER] Un jeton VALIDE + une erreur Drive transitoire (timeout, réseau
+        // au réveil de veille) ≠ « non connecté ». L'ancien `connected:false` inconditionnel ici était
+        // la 1ʳᵉ cause de la bannière qui clignote : chaque hoquet réseau du polling 60 s affichait
+        // « tes changements ne sont PAS sauvegardés » (faux — le jeton est bon, le tick suivant
+        // synchronise). On ne déconnecte que si l'API Drive REJETTE le jeton (401 `DriveAuthError` :
+        // scope révoqué, vraie perte d'accès) ; le reste est routé handleError (trace + status.error,
+        // visible dans Diagnostics) en RESTANT connecté.
+        if (e instanceof DriveAuthError) {
+            setStatus({ connected: false, busy: false }); // busy:false : sinon le polling reste gelé (skip si busy)
+            traceSilentAuthFailure('boot', e);
+        } else {
+            handleError('boot', e);
+        }
     }
 }
 
@@ -308,6 +346,7 @@ export function handleInactivityLogout(): void {
 export function disconnectSync(): void {
     revokeAccess();
     clearActivity();
+    _transientAuthFailStreak = 0; // état neuf : une future connexion repart sans série héritée
     clearSyncMeta();
     clearGateAuthedThisSession(); // re-demande le login au prochain accès (sinon le gate serait sauté)
     // La passphrase est un secret de SESSION : on la purge à la déconnexion (sinon elle resterait

@@ -1371,6 +1371,17 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   ⚠️ **Distinguer l'échec NOMINAL du réseau au boot** : `renewTokenSilently` (nouvel appel réseau pré-jeton) échoue soit
   par interaction requise (pas de session → `AuthInteractionRequiredError`, SILENCE), soit par réseau/CDN (→ `logError`
   warning) — sinon un boot en panne réseau renvoie au login sans trace (classe GATE-SILENT-DRIVE, étendue au pré-jeton).
+- ⚠️ **[AUTH-DRIVE-BANNER-FLICKER] 2026-07-31 — un booléen d'état AFFICHÉ nourri par « la dernière tentative a-t-elle
+  réussi ? » fait CLIGNOTER l'UI** (bug Marc : bannière rouge fréquente qui « s'enlève seule ») : `runBootSync` (polling
+  60 s + focus) basculait `connected:false` sur TOUTE erreur post-jeton (timeout Drive transitoire) et dès le 1er raté du
+  renouvellement silencieux → « tes changements ne sont PAS sauvegardés » affiché à tort, corrigé au tick suivant. Un état
+  DURABLE montré à l'utilisateur (connecté/déconnecté) ne doit basculer que sur (a) un échec DÉFINITIF discriminé par une
+  CLASSE d'erreur typée (`AuthInteractionRequiredError` : seule une action utilisateur débloquera ; 401 `DriveAuthError` :
+  jeton rejeté) ou (b) une panne transitoire qui DURE (grâce de N ticks consécutifs, `_transientAuthFailStreak` ≥ 3, série
+  remise à zéro à chaque succès) — JAMAIS sur un raté isolé d'une boucle de fond. Corollaires : pendant la grâce, le canal
+  d'erreur HONNÊTE reste ouvert (un push raté affiche la bannière « échec de sauvegarde », `errorPhase='push'`) ; le chemin
+  de déconnexion doit poser `busy:false` (sinon le polling — skip si busy — reste gelé à vie) ; et l'erreur transitoire
+  routée `handleError('boot')` reste visible en Diagnostics (pas avalée).
 - Persistance : localStorage + IndexedDB chiffré (AES-256-GCM, PBKDF2 600k). apiKeys exclues.
 - Mode test : PERSISTÉ depuis #217 (bannière survit au reload) ; push Drive coupé en test
   (`shouldPush`). Switch de persona = base propre (`personaResetBase`), zéro fuite inter-persona.

@@ -646,6 +646,16 @@
   déclasse plus en info) ; **trou 401 fermé** (un `DriveAuthError` — jeton rejeté par l'API Drive, scope révoqué —
   était TOTALEMENT muet aux 2 sites gate+boot ; même surface « reconnexion redemandée » → tracé) ; helper renommé
   `traceSilentAuthFailure` (couvre renouvellement GIS ET 401 Drive).
+  ✅ **`[AUTH-DRIVE-BANNER-FLICKER]` fix livré (2026-07-31)** — cause de la « bannière rouge qui apparaît souvent
+  et s'enlève parfois seule » (rappel Marc 2026-07-31) : `runBootSync` (polling 60 s + retour d'onglet) basculait
+  `connected:false` sur TOUTE erreur post-jeton (timeout Drive transitoire, réseau au réveil de veille) ET dès le
+  1er raté du renouvellement silencieux → la bannière « tes changements ne sont PAS sauvegardés » mentait puis
+  disparaissait au tick suivant. Désormais (`syncLifecycle.ts`) : jeton valide + erreur Drive non-401 → on RESTE
+  connecté (`handleError('boot')`, trace Diagnostics) ; raté TRANSITOIRE du renouvellement → grâce de 3 ticks
+  (~2 min) avant la bannière ; échec DÉFINITIF (`AuthInteractionRequiredError` session Google morte, 401
+  `DriveAuthError`) → bannière immédiate (elle dit vrai). Pendant la grâce, un push raté affiche la bannière
+  « échec de sauvegarde » (honnête, bouton Réessayer). Reste le cas légitime « faut me reconnecter » : session
+  Google expirée / cookies tiers — la raison GIS exacte est dans Réglages → Diagnostics.
 
 ## 📈 PORTFOLIO-HISTORY — courbes de cours réelles (bug Marc 2026-07-22, PR #485)
 - [x] **`[PORTFOLIO-HISTORY]`** ✅ 2026-07-22 — courbes par action (depuis 1er achat) + courbe portefeuille

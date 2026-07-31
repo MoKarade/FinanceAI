@@ -88,6 +88,7 @@ import * as driveApi from '../../services/googleDrive/driveAppData';
 import type { SyncMeta } from '../../services/sync/syncTypes';
 
 const getValidAccessTokenMock = gisAuth.getValidAccessToken as ReturnType<typeof vi.fn>;
+const renewTokenSilentlyMock = gisAuth.renewTokenSilently as ReturnType<typeof vi.fn>;
 const requestAccessTokenMock = gisAuth.requestAccessToken as ReturnType<typeof vi.fn>;
 const findSyncFileMock = driveApi.findSyncFile as ReturnType<typeof vi.fn>;
 const readSyncFileMock = driveApi.readSyncFile as ReturnType<typeof vi.fn>;
@@ -119,6 +120,9 @@ beforeEach(() => {
     // car certains tests posent des *Once rejetés ; sans reset, ils fuiteraient sur le test suivant.
     vi.clearAllMocks();
     getValidAccessTokenMock.mockImplementation(async () => 'tok-silent');
+    renewTokenSilentlyMock.mockImplementation(async () => {
+        throw new gisAuth.AuthInteractionRequiredError('pas de session');
+    });
     requestAccessTokenMock.mockImplementation(async () => 'tok-interactive');
     findSyncFileMock.mockImplementation(async () => ({ id: 'file-1', modifiedTime: '2024' }));
     readSyncFileMock.mockImplementation(async () => null);
@@ -302,6 +306,85 @@ describe('pullNow — échec de lecture Drive (les données locales sont protég
         // Le store n'a pas été réhydraté avec des données fantômes.
         expect(useFinanceStore.getState().transactions).toEqual([]);
         expect(getSyncStatus().error).toContain('pull');
+    });
+});
+
+describe('runBootSync — [AUTH-DRIVE-BANNER-FLICKER] les échecs transitoires ne crient pas « non connecté »', () => {
+    /** Amène le statut à `connected: true` par un boot RÉUSSI (mocks par défaut). Remet aussi à zéro
+     *  la série d'échecs transitoires (état module de syncLifecycle) — chaque test part propre. */
+    async function bootConnected(): Promise<void> {
+        seedSyncedMeta();
+        localStorage.setItem(STORE_KEY, JSON.stringify(NONEMPTY_LOCAL));
+        await runBootSync();
+        expect(getSyncStatus().connected).toBe(true); // pré-condition du scénario
+    }
+
+    it('jeton VALIDE + erreur Drive transitoire (timeout) → RESTE connecté, erreur routée (pas de bannière-mensonge)', async () => {
+        // Discriminant : sur l'ancien code, le catch de runBootSync faisait `connected:false`
+        // inconditionnel → chaque hoquet réseau du polling 60 s affichait « tes changements ne sont
+        // PAS sauvegardés » (faux — le jeton est bon). C'est la bannière qui clignote de Marc.
+        await bootConnected();
+        findSyncFileMock.mockRejectedValueOnce(new Error('Drive : délai dépassé — réseau lent'));
+
+        await runBootSync();
+
+        const status = getSyncStatus();
+        expect(status.connected).toBe(true); // ÉCHOUE sur l'ancien code (connected:false)
+        expect(status.busy).toBe(false);
+        expect(status.error).toContain('boot'); // l'erreur reste visible (Diagnostics), pas avalée
+        expect(logErrorMock).toHaveBeenCalled();
+    });
+
+    it('jeton REJETÉ par l\'API Drive (401 DriveAuthError) → vraie déconnexion, busy retombé', async () => {
+        await bootConnected();
+        findSyncFileMock.mockRejectedValueOnce(new driveApi.DriveAuthError('401'));
+
+        await runBootSync();
+
+        const status = getSyncStatus();
+        expect(status.connected).toBe(false); // accès réellement perdu → la bannière dit vrai
+        expect(status.busy).toBe(false); // sinon le polling (skip si busy) resterait gelé à vie
+    });
+
+    it('renouvellement silencieux : un raté RÉSEAU isolé ne déconnecte pas (grâce), la persistance oui', async () => {
+        await bootConnected();
+        // Jeton expiré du cache + renouvellement qui échoue de façon TRANSITOIRE (pas AuthInteractionRequired).
+        getValidAccessTokenMock.mockRejectedValue(new Error('Session Google expirée'));
+        renewTokenSilentlyMock.mockRejectedValue(new Error('réseau indisponible (réveil de veille)'));
+
+        await runBootSync(); // raté 1
+        expect(getSyncStatus().connected).toBe(true); // ÉCHOUE sur l'ancien code (false dès le 1er raté)
+        await runBootSync(); // raté 2
+        expect(getSyncStatus().connected).toBe(true);
+        await runBootSync(); // raté 3 = la panne DURE → on le dit honnêtement
+        expect(getSyncStatus().connected).toBe(false);
+    });
+
+    it('un renouvellement qui REDEVIENT bon efface la série (pas de déconnexion à retardement)', async () => {
+        await bootConnected();
+        getValidAccessTokenMock.mockRejectedValue(new Error('Session Google expirée'));
+        renewTokenSilentlyMock.mockRejectedValue(new Error('réseau indisponible'));
+        await runBootSync(); // raté 1
+        await runBootSync(); // raté 2
+        renewTokenSilentlyMock.mockResolvedValue('tok-renewed'); // le réseau revient
+
+        await runBootSync(); // succès → série close
+
+        expect(getSyncStatus().connected).toBe(true);
+        renewTokenSilentlyMock.mockRejectedValue(new Error('re-hoquet'));
+        await runBootSync(); // un NOUVEAU raté isolé repart de zéro : pas d'effet cumulatif
+        expect(getSyncStatus().connected).toBe(true);
+    });
+
+    it('échec DÉFINITIF (interaction requise : session Google morte) → bannière IMMÉDIATE, sans grâce', async () => {
+        await bootConnected();
+        getValidAccessTokenMock.mockRejectedValue(new Error('Session Google expirée'));
+        // Défaut du mock : renewTokenSilently lève AuthInteractionRequiredError → définitif.
+
+        await runBootSync();
+
+        // Là, « reconnecte-toi » est le bon message dès le 1er échec : rien ne se résorbera tout seul.
+        expect(getSyncStatus().connected).toBe(false);
     });
 });
 

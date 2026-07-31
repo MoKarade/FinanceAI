@@ -25,14 +25,21 @@ const saveApiKeysMock = vi.fn(async (..._args: unknown[]) => undefined);
 const createBackupMock = vi.fn(async (..._args: unknown[]) => null);
 const logErrorMock = vi.fn();
 
-vi.mock('../../services/googleDrive/gisAuth', () => ({
-    isGoogleAuthConfigured: () => true,
-    configureGoogleAuth: () => {},
-    getValidAccessToken: vi.fn(async () => 'tok-silent'),
-    requestAccessToken: vi.fn(async () => 'tok-interactive'),
-    revokeAccess: () => {},
-    traceSilentAuthFailure: () => {},
-}));
+vi.mock('../../services/googleDrive/gisAuth', () => {
+    // [AUTH-DRIVE-BANNER-FLICKER] La classe doit exister dans le mock : syncLifecycle fait un
+    // `instanceof AuthInteractionRequiredError` (un import undefined → TypeError au 1er échec d'auth).
+    class AuthInteractionRequiredError extends Error {}
+    return {
+        isGoogleAuthConfigured: () => true,
+        configureGoogleAuth: () => {},
+        AuthInteractionRequiredError,
+        getValidAccessToken: vi.fn(async () => 'tok-silent'),
+        renewTokenSilently: vi.fn(async () => { throw new AuthInteractionRequiredError('pas de session'); }),
+        requestAccessToken: vi.fn(async () => 'tok-interactive'),
+        revokeAccess: () => {},
+        traceSilentAuthFailure: () => {},
+    };
+});
 
 vi.mock('../../services/googleDrive/driveAppData', () => {
     class DriveAuthError extends Error {}

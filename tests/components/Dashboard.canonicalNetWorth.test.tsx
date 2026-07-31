@@ -69,7 +69,8 @@ beforeEach(() => {
 describe('Dashboard — [DASH-NETWORTH-CANONICAL] le KPI patrimoine dit le PRÉSENT', () => {
     it('avec un historique PÉRIMÉ, le KPI = source unique (présent), pas le dernier point du graphe', () => {
         // Présent : cash 1 000 + placements 100 000 − dette 400 + équité immo 40 000 = 140 600.
-        // L'ancien code affichait le total du dernier point d'historique (~500 + cash gated…).
+        // L'ancien code affichait 0 $ (MESURÉ par git-stash : le cash gated accountName du dernier
+        // point d'historique rendait NaN, absorbé en 0 par `Number(...) || 0` — un faux zéro crédible).
         const { container } = render(
             <Dashboard
                 transactions={[tx]}

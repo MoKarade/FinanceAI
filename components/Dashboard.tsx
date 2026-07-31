@@ -431,11 +431,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     privacy
                     variant="primary"
                 />
+                {/* [DASH-NETWORTH-CANONICAL, finding code-reviewer #544] La variation reste dérivée
+                    de l'HISTORIQUE (graphe) alors que le KPI patrimoine dit désormais le PRÉSENT →
+                    l'ÉTIQUETER, comme le voisin immo : sans ça, « X $ » et « +Z $ » adjacents ne sont
+                    plus algébriquement cohérents et la classe « deux patrimoines à l'écran » revient. */}
                 <KPIStat
                     label={`${t('dashboard.global_variation')} (${timeRange})`}
                     icon={<Icon name="investments" size={16} />}
                     value={formatPercent(performance.global)}
-                    sublabel={formatSigned(performance.diff || 0, { withCurrency: true, decimals: 2 })}
+                    sublabel={`${formatSigned(performance.diff || 0, { withCurrency: true, decimals: 2 })} (courbe historique)`}
+                    tooltip="Évolution de la courbe historique du graphe (dernier cours de clôture), pas du patrimoine présent affiché à gauche — les deux peuvent différer légèrement."
                     privacy
                     variant={performance.global >= 0 ? 'success' : 'danger'}
                 />

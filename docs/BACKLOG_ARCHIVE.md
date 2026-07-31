@@ -27,6 +27,17 @@ fichier:ligne). Verdicts appliqués à la refonte :
   confirmer Marc), spec/critères/contraintes MCP-CLOUDRUN (lot livré).
 - **Le reste (PARTIELS, PAS FAIT, différés, décisions, actions Marc)** → extrait vers le
   nouveau `BACKLOG.md`.
+- **11 items COUPÉS par le PM** (analyse valeur 2026-07-31, demande Marc « demande au PM si c'est
+  utile chaque tâche ou non ») — récupérables ici si le contexte change :
+  `HARDEN-SAFEBLOCK` (protection déjà live, DRY pur) · `HARDEN-ZOD-GATEKEEP` (boundary numericInput
+  déjà couvert) · `BUDGET-KEY-WARNING` (warning dev, zéro impact utilisateur) · `ONB-TOUR-OPTIN` +
+  `ONB-OVERLAY-SEQ` (perception seule, validés FAUX à l'audit UX) · `U5` export PNG (confort) ·
+  `NW-ASSETBREAKDOWN-DRY` (DRY pur, aucun bug identifié) · `PERF-WK` + `DT5` (perf non mesurée comme
+  problème ; le sharding multi-workers existe déjà, runAsync.ts:199) · `B4` audit assertions (vague,
+  sans critère d'arrêt) · `CA-01` orphelins def-only (code mort sans risque) · `PH3-c-bis/futureProvince`
+  (orphelin — suppression liée à la question RSU).
+- **DT3** (aligner UI↔moteur ChildPlanning) : vérifié FAIT — `childCosts.ts` est la source unique
+  partagée (ChildPlanning.tsx:25,37-38).
 
 ---
 

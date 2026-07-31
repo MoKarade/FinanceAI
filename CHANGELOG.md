@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — backlog refondu + audits] — 2026-07-31
+
+### Documentation / gouvernance
+- **`[BACKLOG-REFONTE]` — le backlog a été entièrement vérifié et refondu** (demande Marc) :
+  chaque tâche a désormais une case cocheable, les tâches finies + validées vivent dans le nouveau
+  `docs/BACKLOG_ARCHIVE.md`, et le backlog ne garde que le vivant (~60 items, plan en 12 vagues).
+  ~180 items ont été confrontés au code réel : ~65 étaient déjà faits sans être cochés, 12 obsolètes,
+  11 coupés après analyse de valeur (PM).
+- **Trois audits (PM, code, fiscal) alimentent le plan** — l'audit fiscal a notamment mesuré une
+  double indexation des paliers d'imposition (les projections long-terme sous-estiment l'impôt réel —
+  correctif majeur planifié, décision requise) et requalifié le compteur d'impôt de la stratégie
+  meltdown REER (le classement de stratégies s'appuyait sur un chiffre sous-compté — correctif planifié).
+
 ## [unreleased — démarrage 24 % plus léger] — 2026-07-31
 
 ### Performance

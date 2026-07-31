@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-31 (suite 7) — REFONTE DU BACKLOG (directive Marc) + 3 analyses
+> **Directive Marc** : cases cocheables partout, archive, vérif de tout, PM (ordre/utilité), grosse
+> analyse code, analyse fiscale, puis TOUT exécuter sans s'arrêter. Livré (PR #548) :
+> `docs/BACKLOG_ARCHIVE.md` (contenu pré-refonte + note de vérification) + `BACKLOG.md` refondu
+> (~60 items vivants, 100 % cases, plan en 12 vagues) + règle CLAUDE.md. Vérification : ~180 items
+> confrontés au code (2 agents) — ~65 FAITS non cochés archivés, 12 obsolètes, 11 coupés par le PM.
+> **Analyse fiscale (MESURÉE)** : `[FISC-BRACKET-REALINDEX]` CRITIQUE (double indexation des paliers
+> → impôt réel fond de 8 192 $/an/pers à l'an 30, patrimoine/FIRE optimistes — fusionne avec ITEM-2A,
+> gaté Q1) ; `[FISC-WHT-92PCT]` (0.92 non sourcé → ~3 600 $/an sur-facturés au couple, Q2) ;
+> `[WHT-DISPLAY-MELTDOWN]` requalifié ÉLEVÉ (le ranking de stratégies pèse un impôt sous-compté ×2,6)
+> + `[ENG-MELTDOWN-FLOW-INVISIBLE]` (774 k$ de retraits absents des flux affichés) ; SRG couple 2×
+> trop rapide ; NONREG-LOSS requalifié timing-only. **Analyse code** : `[DEFAULTS-DRIFT-FINTABLE-FIELDS]`
+> (4 champs invisibles au chat/MCP, garde-test unidirectionnel) + 3 TEST-GAP + 8 shades hors palette +
+> esbuild non déclaré + filtres Transactions morts. **Questions Marc posées en un lot (13+3)** —
+> V5/V12 gatées dessus ; exécution des vagues non gatées EN COURS (V1 d'abord).
+
 > ## 🟢 Session 2026-07-31 (suite 6) — `[PERF-SDK-BOOT-PRELOAD]` (perf, file Marc)
 > **Boot −54 Ko gzip (225,6 → 171,6, −24 %), mesuré git-stash avant/après.** Le ticket accusait les
 > onglets lazy — la VRAIE chaîne (tracée par walker d'imports statiques depuis index.tsx) était

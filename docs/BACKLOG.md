@@ -17,53 +17,118 @@
 
 ---
 
-## Plan d'exécution (vagues)
+## Plan d'exécution (vagues — PM + analyses code/fiscal 2026-07-31)
 
-> Ordre PM en cours d'établissement (analyse 2026-07-31 : PM + code-analyzer + financial-integrity
-> en vol). Sera remplacé par les vagues priorisées ; en attendant, l'ordre des sections ci-dessous
-> reflète la priorité par défaut : money-critical → sync/données → UX confiance → a11y/perf → dette → gros chantiers.
+> Synthèse des 3 analyses (PM : ordre/valeur · code-analyzer : 15 findings nouveaux ·
+> financial-integrity : 8 findings nouveaux MESURÉS + requalifications). Rapports condensés en
+> scratchpad de session ; détail par item dans les sections ci-dessous.
+> ⚠️ Les vagues V5 et V12 sont GATÉES sur les réponses Marc (section 🧭) — les autres s'exécutent
+> sans attendre, dans l'ordre.
+
+- [ ] **V1 — Quick wins confiance + hygiène** (1-2 PR) : `[MCP-TAX-FHSA-BALANCE]` (clamp) +
+  `[DASH-HIST-CARDS-LABEL]` + `[PROJ-TAXPAID-LABEL]` + `[BIAIS-CAGR]` + `[DEP-ESBUILD-UNLISTED]` +
+  `[DETTE-SHADE-OUTOFPALETTE]` + `[DEADCODE-TX-TYPEFILTER]` + `[FISC-REF-FRESHNESS]`
+  (doc : dater §4, nettoyer réserve §8, documenter 0.92/EST_*/REEE_AIP au doc).
+- [ ] **V2 — Meltdown honnête** (1 PR, money-critical, discriminant + panel) :
+  `[WHT-DISPLAY-MELTDOWN]` (requalifié ÉLEVÉ — le ranking de stratégies pèse un impôt sous-compté
+  ×2,6, MESURÉ) + `[ENG-MELTDOWN-FLOW-INVISIBLE]` (774 k$ de retraits invisibles des flux).
+- [ ] **V3 — Parité état + tests money-critical** (1-2 PR) : `[DEFAULTS-DRIFT-FINTABLE-FIELDS]`
+  (bug réel + garde bidirectionnel) + `[TEST-GAP-TAXESTIMATE]` + `[TEST-GAP-SUBSCRIPTIONS]` +
+  `[TEST-GAP-ROLESCONFIG]` + `[PV-11e]` + `[NW-PARITY-SURFACES-TEST]`.
+- [ ] **V4 — Vie privée / profils** (1 PR) : `[PROFIL-SWITCH]` + `[D6-PRIV-MONTANTS]` (décision
+  déjà prise) + `[SEC-GA-DEFER-CONSENT]` + `[HIST-STORE-SIZE]` (downsample >365 j, mesure faite).
+- [ ] **V5 — Fiscal gaté décisions Marc** : `[FISC-BRACKET-REALINDEX]`/ITEM-2A (CRITIQUE, Q1) +
+  `[FISC-WHT-92PCT]` fix 1.0 (Q2) + `[FISC-SOLO-INVEST-SPLIT]` (Q3) + `[FISC-GIS-COUPLE-RATE]`
+  (table Service Canada requise) + `[FISC-LINE361-PERCONJOINT-REDUC]` (Annexe B d'abord) +
+  `[FISC-FED-CREDITRATE-15]` (source ARC).
+- [ ] **V6 — Fiscal non gaté** (1 PR) : `[FISC-DTC-ABATEMENT-ORDER]` + `[FISC-STACK-GAINS-DIV]`
+  (même bloc taxDecember) + `[FISC-REEE-GRANT-CLAWBACK]`.
+- [ ] **V7 — Sécurité serveur + sync** (1 PR) : `[MCP-CLOUDRUN-AUTH-HARDENING]` +
+  `[MCP-CHARTDATA-SUM-GUARD]` + `[FINTABLE-SYNC-STALE-BASE]` + `[FISC-CONST-GUARD-V2]`.
+- [ ] **V8 — Features demandées** (2-3 PR) : `[SUBS-TAB]` · `[GOAL-DEADLINE-UI]` +
+  `[PH4C-SAVINGS-NATURE]` · `[ASSET-CURRENCY-BACKFILL]` (si log) · `[CHAT-PAGE-CONTEXT-V2]`
+  (file explicite Marc — maintenu malgré le « différer » PM).
+- [ ] **V9 — Couverture moteur** (1-2 PR) : `[FUZZ-ONETIME-FLOWS]` + `[HARDEN-SNAPSHOT-RACE]`.
+- [ ] **V10 — A11y** (1-2 PR) : `[A11Y-INK500]` + `[FUT-TOUCH-TARGETS]` + `[D6-KBD]` +
+  `[A11Y-BORDER-PROMINENCE-SWEEP]` (+ `[A11Y-FUTUR-MILESTONES-KEYBOARD]` si Q4 répondue).
+- [ ] **V11 — Dette structurée** (fond, par lots) : `[GODFILE-APPLYDOCUMENT]` → `[GODFILE-MCPHTTP]` →
+  `[DETTE-GODFILES]` (Budget/FutureProjection/…) + `[DETTE-UI-PRIMITIVES]` + `[CA-07]` + `[T4]`.
+- [ ] **V12 — Gros chantiers gatés** : `[IA-NAV-CONSOLIDATE]` (Q8) → `[UI-TABS-RICH]`+`[IA-NAV-LABELS]` ;
+  `[P0-IDB]` (si quota le justifie) ; `[CIX-*]` (Q10 vision couple : CIX-B → CIX-A1B d'abord).
 
 ---
 
 ## 🔴 Money-critical — fiabilité des chiffres
 
-- [ ] **`[NONREG-LOSS]`** (M, money-critical, CONFIRMÉ vérif 2026-07-31) — les pertes en capital
-  NonReg sont inatteignables : `portfolioOps.ts:70` `proportion = Math.min(1, ACB/nonReg)` ⇒
-  `costBasis ≤ sold` ⇒ `rawGain ≥ 0` — la branche perte d'`applyCapitalDisposition` (livrée pour
-  l'immo, FISC-RE-CAPITAL-LOSS) n'est jamais exercée par une vente NonReg → sous-estime l'efficacité
-  fiscale en marché baissier. Fix : retirer le cap pour réaliser la perte. ⚠️ Discriminant git-stash
-  + panel obligatoires.
-- [ ] **`[FISC-SOLO-INVEST-SPLIT]`** (M, money-critical, 🧭 validation Marc — change les chiffres) —
-  `mcp/tools/getTaxSituation.spec.ts:64` : `splitRatio = 1/users.length` répartit le revenu de
-  placement imposable également entre conjoints au lieu des contribuables RÉELS → sous/sur-imposition
-  selon qui détient quoi. Splitter par détention réelle (owner), app+MCP.
-- [ ] **`[MCP-TAX-FHSA-BALANCE]`** (S, money-critical) — `getTaxSituation.spec.ts:78` passe
-  `u.fhsaBalance` (SOLDE) à `calculateFiscalReport` en position COTISATION annuelle → déduction
-  CELIAPP surévaluée dès que le solde dépasse le plafond annuel. Champ cotisation dédié ou clamp.
-- [ ] **`[WHT-DISPLAY-MELTDOWN]`** (S, affichage seulement) — `projection.ts:1348-1354` : la retenue
-  REER du meltdown est provisionnée (NW correct) mais absente du compteur d'affichage
-  `totalTaxesPaid` (`rrspWithholdingMois`) → sous-estime l'impôt affiché en stratégie MELTDOWN_REER.
-  ⚠️ Change le ranking de stratégies + golden → discriminant + mesure obligatoires.
-- [ ] **`[FISC-RRSP-PRE2010-FALLBACK]`** (S) — `utils/tax.ts:585-588` : plafond REER 2025 (32 490 $)
-  appliqué aux années < 2010 (anachronique, réel ~16,5 k$ en 2005) → sur-estime les droits REER des
-  vieux profils à hauts salaires. Étendre la table ou extrapoler à la baisse.
-- [ ] **`[FISC-LINE361-PERCONJOINT-REDUC]`** (M, money-critical) — `taxDecember.ts:~530` : la
-  réduction 18,75 % de la ligne 361 QC est appliquée PAR conjoint avec le revenu familial TOTAL →
-  possible double-comptage dans la bande de réduction partielle. ⚠️ Vérifier la structure réelle de
-  l'Annexe B AVANT de coder (réduction sur le total ménage vs per-déclaration).
-- [ ] **`[FISC-REEE-AIP-MODEL]`** (M) — `childrenReee.ts` : impôt PRA 20 % appliqué au SOLDE TOTAL
-  du REEE à la fermeture au lieu de la seule portion revenu accumulé + surtaxe en sus de l'impôt
-  ordinaire. Approximation marquée ; raffiner = séparer cotisations/gains.
-- [ ] **`[PV-11e]`** (S, test) — pinner par un test le micro-réalignement per-conjoint dans la
-  fenêtre couple inégal + goal REER + cotisation REER le même mois (`stepReerByUser`).
+> Analyse fiscale 2026-07-31 (financial-integrity, findings MESURÉS via npx tsx sur le vrai moteur).
+> ⚠️ Un finding = une hypothèse : chaque fix passe par discriminant git-stash + panel adversarial.
+
+- [ ] **`[FISC-BRACKET-REALINDEX]`** (L, **CRITIQUE** [Certain, MESURÉ], 🧭 Q1 — fusionne avec
+  ITEM-2A) — DOUBLE indexation des paliers : le moteur DÉFLATE le revenu (`taxDecember.ts:370-371`)
+  puis passe `loopYear` à un barème LUI-MÊME indexé 1,02^Δ (`utils/tax.ts:694`) et re-nominalise →
+  les paliers s'élargissent de 2 %/an EN DOLLARS RÉELS, indépendamment de simInflation (présent au
+  réglage par défaut). Mesuré (98 400 $ réel constant) : impôt réel 24 932 → 16 740 $ à l'an 30
+  (−8 192 $/an/personne ; couple ~−16 k$/an ; cumul ~250-300 k$/30 ans, sens NON conservateur —
+  patrimoine/FIRE optimistes). Gonfle aussi RAMQ/FSS/ligne 361. Correctif juste :
+  `palier_réel = palier_2026 × (1,02/(1+i))^Δ`. ⚠️ Déplace TOUS les goldens (~12 sites).
+- [ ] **`[FISC-WHT-92PCT]`** (S-M, ÉLEVÉ [Certain algèbre], 🧭 Q2 pour le fix) —
+  `taxDecember.ts:407-410` : `estimatedWithholding = totalEmployerTax * 0.92` → ~8 % de l'impôt
+  salarial facturé EN DOUBLE chaque avril (mesuré : ~1 995 $/an solo, ~3 608 $/an couple, sens
+  conservateur). Le `netSalary` saisi incorpore déjà ~100 % de la retenue (vérifié : 5 604 vs
+  5 620 $/mois) ; `0.92` n'est sourcé NULLE PART et échappe au garde FISC-CONST-LINT (constante
+  nouvelle). Minimal (V1) : documenter au FISCAL_REFERENCE ; juste : `1.0` + discriminant.
+- [ ] **`[WHT-DISPLAY-MELTDOWN]`** (M, **requalifié ÉLEVÉ décisionnel** [MESURÉ] — V2) —
+  `projection.ts:1348-1354` : la retenue meltdown n'entre ni dans `rrspWithholdingMois` ni dans le
+  crédit décembre → `totalTaxesPaid` 139 306 $ vs 243 549 $ (AUTO_MARGINAL) pour un estate
+  SUPÉRIEUR (~224 k$ de retenue invisible) — or `strategyRanking.ts:66,83,93` pèse ce compteur à
+  25-100 % → **l'optimiseur recommande MELTDOWN_REER sur un impôt truqué**. Discriminant + re-baser
+  goldens sciemment.
+- [ ] **`[ENG-MELTDOWN-FLOW-INVISIBLE]`** (S, ÉLEVÉ [MESURÉ] — V2, même PR) — le meltdown n'alimente
+  jamais `retraitReerMois` → Σ `RetraitREER` affiché 22 547 $ pour ~796 k$ de sorties réelles :
+  tooltip/modal/milestoneIcons (« 1er retrait REER » jamais déclenché)/MCP aveugles. Aucun impact NW
+  (angle mort de la conservation).
+- [ ] **`[FISC-GIS-COUPLE-RATE]`** (M, ÉLEVÉ hors profil Marc [Probable — table Service Canada NON
+  confirmable du conteneur]) — `utils/tax.ts:497-498` : clawback SRG 0,50 PAR ADULTE sur le revenu
+  COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la
+  formule s'annule dès 15 888 $) ; test `tax.test.ts:968` VACUEUX. Mesuré : 0 $ vs 7 944 $/an à
+  15 888 $ combiné. ⚠️ Exiger la table SC + corriger FISCAL_REFERENCE §6 + remplacer le test, même PR.
+- [ ] **`[FISC-DTC-ABATEMENT-ORDER]`** (S, MOYEN [Certain mécanisme] — V6) — le CID fédéral est
+  soustrait APRÈS l'abattement QC 16,5 % (`taxDecember.ts:734-739` + `tax.ts:906-907`) alors que
+  BPA/âge sont avant → sur-crédit de 16,5 % du CID (+49 $/an profil Marc, +308 $ à 9 k$ div).
+- [ ] **`[FISC-STACK-GAINS-DIV]`** (S, MOYEN [MESURÉ] — V6, même PR) — gains (`taxDecember.ts:703`)
+  et dividendes (`:737`) empilés CHACUN sur la même base → bande commune facturée 2× au taux bas
+  (mesuré : −1 346 $/an sur base 100k/gains 30k/div 15k). Mord un retraité à gros non-enregistré.
+- [ ] **`[FISC-REEE-GRANT-CLAWBACK]`** (S, [Probable] — V6) — à la fermeture du REEE,
+  `liquidDelta += reeeNewBalance` verse 100 % du solde aux liquidités : les subventions SCEE/IQEE
+  non utilisées (jusqu'à ~10 800 $/enfant) doivent être REMBOURSÉES au gouvernement → patrimoine
+  surévalué. (Découvert en re-validant FISC-REEE-AIP-MODEL — défaut plus gros que le taux.)
+- [ ] **`[FISC-FED-CREDITRATE-15]`** (S vérif, 🧭 source ARC requise) — `FED_NONREFUNDABLE_RATE`
+  15 % vs 1er palier fédéral 14 % (C-4) : seule affirmation du doc SANS source (profil
+  TP1G-VIVANT-SEUL : chiffre non sourcé = suspect). Si faux : ~165 $/pers/an. Re-sourcer AVANT tout changement.
+- [ ] **`[FISC-SOLO-INVEST-SPLIT]`** (M, 🧭 Q3 — conditionnel au profil) — `getTaxSituation.spec.ts:64`
+  + MIROIR app `TaxCenter.tsx:173` : split 1/2 du revenu de placement. Ne mord QUE si un seul
+  conjoint a un salaire (mesuré : −2 530 $/an) ; 0 $ si les deux. Fix par détention réelle (owner),
+  app+MCP au même helper.
+- [ ] **`[MCP-TAX-FHSA-BALANCE]`** (S — V1) — `getTaxSituation.spec.ts:78` passe `u.fhsaBalance`
+  (SOLDE) en position COTISATION. Effet actuel NUL (`fhsaBalance` n'a AUCUN écrivain — vérifié) mais
+  bombe dès qu'un écrivain arrive → clamp `min(fhsaBalance, FHSA_ANNUAL_LIMIT)` maintenant.
+- [ ] **`[FISC-LINE361-PERCONJOINT-REDUC]`** (M, [À vérifier] — V5) — réduction 18,75 % ligne 361
+  appliquée par conjoint avec le revenu familial TOTAL (`taxDecember.ts:529` → `tax.ts:255`).
+  Plafonné ~986 $/an, couple retraité 65+ seulement (0 $ Marc aujourd'hui). Lire l'Annexe B d'abord.
+- [ ] **`[PV-11e]`** (S, test — V3) — PAS un bug (invariant Σ reerByUser == reer préservé par
+  construction, re-vérifié) : écrire le test de pin couple-inégal + goal REER + cotisation même mois.
+- [ ] **`[FISC-REF-FRESHNESS]`** (S, doc — V1) — FISCAL_REFERENCE : dater l'en-tête (§4 réécrit
+  2026-07-07 sans bump), nettoyer la réserve §8 obsolète (barème 2026 déjà là), DOCUMENTER les
+  hypothèses de modèle absentes (0.92, EST_DIVIDEND_YIELD 0,02 / EST_CAPITAL_GAINS_YIELD 0,07,
+  REEE_AIP_TAX_RATE 0,20, NONREG_DIVIDEND_DISTRIBUTION_SHARE, FSS retraité, PAE REEE non modélisés).
+  + Ticket daté : confirmer CELI/REER 2027 au Budget (nov-déc 2026 — la garde 12 mois ne le verra pas).
+- [ ] **`[FISC-CONST-GUARD-V2]`** (S, garde — V7) — le garde FISC-CONST-LINT ne détecte pas une
+  constante fiscale NOUVELLE non sourcée (c'est le trou par lequel 0.92 est passé) → garde
+  complémentaire : constante $ de `services/projection/` participant à l'impôt ⇒ ancre FISCAL_REFERENCE.
 - [ ] **`[NW-PARITY-SURFACES-TEST]`** (S-M, garde-fou keystone audit 2026-06-17) — étendre
   `tests/services/nwParity.test.ts` (aujourd'hui moteur↔computePresentNetWorth) aux surfaces
   UI/IA/PDF (KPI Accueil, useDerivedFinancials, financialSnapshot, pdfReport) sur persona endetté +
   propriétaire, convention équité immo EXPLICITE par surface.
-- [ ] **`[NW-ASSETBREAKDOWN-DRY]`** (M — PAS un quick win, analyse 2026-06-18) —
-  `utils/useDerivedFinancials.ts:46-70` recalcule assetBreakdown/currentLiquidity inline (reee=0 en
-  dur, crypto dans nonReg) au lieu des helpers `services/portfolio.ts`. 3 deltas sémantiques sur un
-  agrégat partagé → rescoper chaque consommateur + décider crypto/reee délibérément.
 - [ ] **`[BIAIS-CAGR]`** (S) — `startingBalancesFromHistory.ts:55-63` : bornes livrées, mais le
   « rendement réel » ne retire toujours pas les apports → surestime. Note UI ou retrait des apports.
 - [ ] **`[MCP-CHARTDATA-SUM-GUARD]`** (S, garde) — aucun test/lint de convention sur les sommes de
@@ -77,6 +142,13 @@
   héritage, REEE. Les couvrir (mesurer la couverture, pas la supposer).
 
 ## 🏦 Sync & données (Fintable, Drive, persistance)
+
+- [ ] **`[DEFAULTS-DRIFT-FINTABLE-FIELDS]`** (S effort, L sévérité — V3, finding code-analyzer
+  2026-07-31) — `buildDefaultAppState()` (`mcp/state/appStateDefaults.ts:22-60`) OMET 4 champs du
+  store : `categoryReview`, `fintableSyncReport`, `fintableBrokerBalances`, `fintableRoles` →
+  structurellement INVISIBLES au chat in-app (`appStateProvider.ts:33` dérive de Object.keys) et à
+  `normalizeAppState`. Cause racine : `registryParity.test.ts:104-113` UNIDIRECTIONNEL (n'itère que
+  sur mcpDefaults). Fix : +4 champs (`: undefined`) + test bidirectionnel.
 
 - [ ] **`[FINTABLE-SYNC-STALE-BASE]`** (M, résiduel #545 ASSUMÉ) — une passe de sync calcule son
   `nextState` sur un snapshot capturé AVANT le fetch réseau (`browserSync.ts:181`,
@@ -116,8 +188,6 @@
   par onglet, pipeline en place.
 - [ ] **`[CHAT-PAGE-CONTEXT-V3]`** (M, évaluer AVANT) — état fin volatile (modal ouvert, tooltip figé
   du Futur, ligne sélectionnée) — fragile ; juger la valeur réelle avant de coder.
-- [ ] **`[HARDEN-SAFEBLOCK]`** (S, reste) — protection anti-injection live partout, mais pas de
-  helper unique `buildSafeUserBlock` ni de lint anti-régression. Factoriser + lint.
 
 ## 📈 Investissements & historique
 
@@ -130,7 +200,6 @@
   (mesuré : 81 609 $ moteur vs 0 KPI). Trancher : brancher sur ce que l'UI possède OU retirer le
   terme. En même temps (F4) : gate `equity !== 0`, filtre `isActive`, gardes `Number.isFinite` +
   logErrorThrottled (3 sites).
-- [ ] **`[U5]`** (S) — export PNG du graphe « Évolution détaillée » (Dashboard).
 - [ ] **`[SUBS-TAB]`** (M, reste) — détection/alertes abonnements livrées (TX-SUBSCRIPTIONS) ;
   restent : surface dédiée (onglet ou sous-onglet) + flux « confirmer/ignorer » les nouveaux détectés.
 - [ ] **`[GOAL-DEADLINE-UI]`** (S) — la carte d'un objectif existant (`Planning.tsx`) n'affiche ni
@@ -160,16 +229,11 @@
   `disabled={!isSidebarOpen}` bloque l'accordéon (`Layout.tsx:286`).
 - [ ] **`[IA-NAV-LABELS]`** (S) — sidebar w-16 par défaut, libellés opacity-0, icônes cryptiques →
   libellés visibles par défaut (ou rail plus large).
-- [ ] **`[ONB-TOUR-OPTIN]`** (S) — le tour guidé se lance AUTO à 700 ms post-onboarding
-  (`App.tsx:749`) → le rendre opt-in (bouton « Visite guidée »). Règle aussi [ONB-OVERLAY-SEQ]
-  (coexistence tour + bandeau consentement).
 - [ ] **`[NAV-IA-CONSOLIDATE]`** (L, ⏳, 🧭 OK Marc requis) — 14 destinations → ~6 (Accueil · Budget ·
   Patrimoine · Futur · Impôts&Docs · Réglages). Gros chantier nav (routes, deep-links, tests) →
   plan-first + OK Marc.
 - [ ] **`[UI-TABS-RICH]`** (M) — généraliser le pattern sous-onglets à Retraite (4 outils empilés) et
   Profil (long scroll). Plan-first.
-- [ ] **`[BUDGET-KEY-WARNING]`** (S) — warning dev clés dupliquées Recharts (`Budget.tsx:1133-1170`,
-  2 `<Pie dataKey="value">` + Legend) — investigation dédiée, non fatal.
 - [ ] **`[DETTE-CHART-THEME-DUP]`** (S) — tooltip/thème Recharts partagé (`CHART_TOOLTIP_STYLE`
   inexistant) — dédupliquer les styles inline des graphes.
 - [ ] **`[D6-GRAPH]`** (M, résiduel) — accès clavier aux graphes restants (projections,
@@ -180,11 +244,38 @@
 - [ ] **`[PERF-BOOT]`** (M-L, différé SCIEMMENT — provider-aware) — paralléliser
   `hydrateAssets`/priceRefresh SANS dépasser CoinGecko free ~30/min (le sleep 2500 protège le
   provider le PLUS strict). Fix provider-aware planifié, pas un Promise.all aveugle. (≡ D7.)
-- [ ] **`[PERF-WK]`** (M) — profiler le worker projection (latence keystroke des sliders Futur).
 - [ ] **`[HARDEN-SNAPSHOT-RACE]`** (S, reste) — abort sur le chemin run projection simple
   (la recherche de stratégies a déjà son AbortSignal, `runAsync.ts:222,235`).
 
 ## 🧱 Dette technique
+
+> Findings code-analyzer 2026-07-31 (preuve fichier:ligne, chacun vérifié par grep) :
+
+- [ ] **`[DEADCODE-TX-TYPEFILTER]`** (S — V1) — `Transactions.tsx:70,72` : `_setDateStart`/
+  `_setTypeFilter` JAMAIS appelés → filtres date-début + type (Income/Expense/Transfer) morts
+  structurels (pourtant dans les deps du useMemo :216). Câbler une vraie UI ou supprimer l'état +
+  les branches.
+- [ ] **`[DEP-ESBUILD-UNLISTED]`** (S — V1) — `esbuild` importé par `mcp/build-server.mjs:10` +
+  `mcp/pack.mjs:10` mais ABSENT de package.json (transitive seulement) → un bump Vite/Vitest peut
+  casser le build Cloud Run en silence. `npm i -D esbuild` épinglé.
+- [ ] **`[DETTE-SHADE-OUTOFPALETTE]`** (S — V1) — 8 classes Tailwind hors palette = no-op silencieux
+  (classe FIX-INK600-TOKEN) : `LifeProjects.tsx:62` text-info-100 · `AssetLocationCard.tsx:120`
+  text-info-200 · `ZoomableTimeChart.tsx:170` bg-ink-950 · `StrategyOptimizerPanel.tsx:461`
+  bg-ink-900/95 · `ProjectionControls.tsx:109` + `UserConfigFields.tsx:84` text-success-300 ·
+  `UsersCard.tsx:297` + `PageSetupGate.tsx:377` text-warning-300 → shade existant le plus proche.
+- [ ] **`[TEST-GAP-TAXESTIMATE]`** (S — V3) — `services/taxEstimate.ts:22-35` (assiette fiscale
+  placement, app+MCP, money-critical depuis TAX-AVGRATE-BASE) : AUCUN test unitaire direct.
+- [ ] **`[TEST-GAP-SUBSCRIPTIONS]`** (S — V3) — `subscriptionAlerts.ts` (152 l., $ visibles
+  utilisateur, seuils/médiane) : aucun test dédié.
+- [ ] **`[TEST-GAP-ROLESCONFIG]`** (S — V3) — `parseRolesJson` (`rolesConfig.ts:14-47`) : aucun test
+  (une faute de parse route un compte dans le mauvais panier fiscal).
+- [ ] **`[GODFILE-APPLYDOCUMENT]`** (M — V11, 1er par impact) — `mcp/ingest/applyDocument.ts` 873 l.,
+  5 handlers indépendants (:531,597,655,719,792) → split `applyDocument/<type>.ts` + orchestrateur mince.
+- [ ] **`[GODFILE-MCPHTTP]`** (M — V11) — `mcp/http.ts` 710 l. (OAuth+CORS+DNS-guard+dispatch) →
+  split `http/oauth.ts` + `http/security.ts` + `http/server.ts` (auditabilité sécurité).
+- [ ] **`[GODFILE-APP]`** (M — V11) — `App.tsx` 866 l. → extraire `AppProviders.tsx`.
+  **`[GODFILE-STORE]`** `useFinanceStore.ts` 717 l. (slices par domaine — DERNIER, risque migration).
+  **`[GODFILE-REALESTATE-CMP]`** RealEstate.tsx 624 · **`[GODFILE-FUTUREDETAILMODAL]`** 606.
 
 - [ ] **`[DETTE-GODFILES]`** (L, ⏳, par barrel — au fil de l'eau) — restent : `Budget.tsx` 1413 l.
   (a GROSSI), `Investments.tsx` 1345, `FutureProjection.tsx` 1199, `Transactions.tsx` 982,
@@ -196,8 +287,6 @@
   19, Onboarding 11, ProjectionControls 10). (≡ CA-08.)
 - [ ] **`[CA-07]`** (M) — tokens couleur : `constants/chartColors.ts` (source Recharts), ~200 hex en
   className → tokens sémantiques + règle ESLint anti-régression. (≡ D3 restes ; text-gray = 0 ✓.)
-- [ ] **`[CA-01]`** (S) — trancher les 2 orphelins def-only : `addPurchase`/`removePurchase`
-  (utils/assetPurchases.ts) et `getHasUserDataSnapshot` (utils/useHasUserData.ts).
 - [ ] **`[PH3-c-bis]`** (S, reste) — `futureProvince`/`futureMoveYear` orphelins (types.ts:343-344,
   0 consommateur services/) ; `rsuYearsRemaining` consommé (activeIncome.ts:101) mais AUCUN éditeur
   UI → auditer W2.7 + éditeur ou retrait.
@@ -207,12 +296,6 @@
   aujourd'hui, cible 20-30 (depuis MANUAL_TEST_CHECKLIST.md).
 - [ ] **`[T3]`** (S pour mesurer) — lancer un run coverage pour trancher la cible 64→80 % (jamais
   mesuré depuis ~2350 tests ajoutés).
-- [ ] **`[B4-TESTS]`** (S, 🧭 fermer ?) — audit des assertions obsolètes des tests — vague, sans
-  critère d'arrêt : soit le définir, soit fermer.
-- [ ] **`[DT5]`** (requalifier) — splitter le worker projection : le sharding multi-workers existe
-  DÉJÀ (`runAsync.ts:199`) → requalifier en « split par type de calcul si le moteur grossit » ou fermer.
-- [ ] **`[HARDEN-ZOD-GATEKEEP]`** (S, requalifié LOW) — `numericInput.ts` couvre déjà NaN/Infinity au
-  boundary UI ; schémas Zod systématiques = défense en profondeur optionnelle.
 - [ ] **`[ENG-LIFEEVENT-VENTE-SUBSTRING]`** (S, racine) — « vente » mot réservé détecté par
   sous-chaîne sur LifeEvent.name (`applyLifeEvents`) → détection par champ typé, plus de string-matching.
 
@@ -242,6 +325,16 @@
 
 ## 🧊 Différés SCIEMMENT (ne pas prendre sans le déclencheur noté)
 
+- [ ] **`[NONREG-LOSS]`** (M, REQUALIFIÉ FAIBLE par l'analyse fiscale 2026-07-31) — branche perte
+  NonReg inatteignable (`portfolioOps.ts:70-75`) MAIS l'ACB excédentaire est CONSERVÉ → la perte est
+  DIFFÉRÉE, pas détruite (effet de timing seulement, ~0 $ permanent). Déjà limite assumée
+  FISCAL_REFERENCE §3. Prendre seulement avec un scénario où le timing compte (décaissement baissier).
+- [ ] **`[FISC-RRSP-PRE2010-FALLBACK]`** (S, RÉFUTÉ pour le profil actuel) — plafond fallback ne mord
+  que si salaire passé > 180 500 $ avant 2010 (mesuré). Latent — reprendre si un tel profil apparaît.
+- [ ] **`[FISC-REEE-AIP-MODEL]`** (M, FAIBLE — conditionnel enfants + solde survivant aux études) —
+  impôt PRA 20 % sur le solde total au lieu de la portion gains + surtaxe. Le défaut PLUS GROS
+  (subventions non remboursées) est ticketé séparément : `[FISC-REEE-GRANT-CLAWBACK]` (V6).
+
 - [ ] **`[NAN-MUTATOR-CENTRAL]`** (S) — garde centrale des 4 mutateurs nus — SEULEMENT si un vecteur
   d'entrée non-UI apparaît (numericInput couvre le boundary ; plan prêt en réserve).
 - [ ] **`[DETTE-RE-SALE-PURGE]`** (S, 🧭 décision Marc A/B/C) — purge propertyId à la suppression d'un
@@ -261,8 +354,16 @@
 - [ ] **`[HARDEN-DECIMAL-STUDY]`** (S, étude) — PoC centimes entiers/decimal.js sur un sous-module —
   dérive flottante déjà bornée ≤ 0,02 $ ; mesurer le coût MC avant d'adopter.
 
-## 🧭 Décisions Marc requises (à poser en UN lot après l'analyse en cours)
+## 🧭 Décisions Marc requises (posées en UN lot le 2026-07-31)
 
+- [ ] **`[Q1-BRACKET-REALINDEX]`** — `[FISC-BRACKET-REALINDEX]` (CRITIQUE) : OK pour corriger la
+  double indexation des paliers ? Ton impôt projeté long-terme va MONTER (réaliste) et le patrimoine
+  final BAISSER — tous les goldens re-basés. C'est le cœur d'ITEM-2A (déjà approuvé dans son principe).
+- [ ] **`[Q2-WHT-92PCT]`** — `[FISC-WHT-92PCT]` : le `0.92` non sourcé te surfacture ~3 600 $/an
+  (couple) en avril. OK pour passer à 1.0 (fix mesuré, discriminant) — ou tu préfères qu'on documente
+  seulement l'hypothèse ?
+- [ ] **`[Q3-SOLO-SPLIT]`** — `[FISC-SOLO-INVEST-SPLIT]` ne mord QUE si un seul conjoint a un
+  salaire : est-ce ta config réelle ? Si oui, le fix AUGMENTE l'impôt affiché (~2 530 $/an) — je code ?
 - [ ] **`[Q-TAXDEC-INCR]`** — `[FISC-TAXDEC-INCR]` : confirmer l'interprétation de ta décision
   2026-07-06 (coder le fix risqué vs statu quo documenté).
 - [ ] **`[Q-MILESTONES-KBD]`** — pastilles Futur : focusables (~29 stops tab) vs contrôle clavier alternatif.
@@ -277,6 +378,8 @@
 - [ ] **`[Q-SOLO-SPLIT]`** — `[FISC-SOLO-INVEST-SPLIT]` change les chiffres affichés : OK pour splitter
   par détention réelle ?
 - [ ] **`[Q-COUPLE-VISION]`** — « mode couple plus concret » (vision PH4) : critère d'arrêt ?
+- [ ] **`[Q-RSU]`** — as-tu des RSU (actions d'employeur) ? Sinon je supprime `rsuYearsRemaining`
+  (consommé par le moteur mais AUCUN éditeur UI) avec `futureProvince` (orphelin).
 
 ## 👤 Actions humaines Marc (jamais auto-cochées)
 

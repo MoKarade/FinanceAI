@@ -21,6 +21,7 @@ import { useFinanceStore } from '../store/useFinanceStore';
 import { formatCAD } from '../utils/format';
 import { DuplicatesPanel } from './transactions/DuplicatesPanel';
 import { TransfersPanel } from './transactions/TransfersPanel';
+import { CategoryReviewPanel } from './transactions/CategoryReviewPanel';
 import { markTransactionsAsDuplicate, unmarkTransactionsAsDuplicate } from '../services/transactions/duplicateDetection';
 
 interface TransactionsProps {
@@ -46,6 +47,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
     // [PH4E-OWNER-EDIT] mode couple : colonne « Conjoint » pour OVERRIDER l'attribution auto (par type de poste).
     // Hooks de store regroupés en tête (avant les useState) pour la lisibilité.
     const config = useFinanceStore(s => s.config);
+    // [TX-REVIEW] Revue d'échantillon persistée (graine + jugements) — l'échantillon ne doit pas
+    // changer entre deux ouvertures, sinon le dénominateur du taux ne veut plus rien dire.
+    const categoryReview = useFinanceStore(s => s.categoryReview);
+    const setAppState = useFinanceStore(s => s.setAppState);
     const coupleUsers = config?.users ?? [];
     const isCouple = !!coupleUsers[1]?.name?.trim();
     const ownerFirstName = (i: 0 | 1): string => coupleUsers[i]?.name?.trim().split(' ')[0] || `Conjoint ${i + 1}`;
@@ -504,6 +509,19 @@ export const Transactions: React.FC<TransactionsProps> = ({
             {/* [TX-TRANSFERS] Virements internes — marque d'office ce qui est PROUVÉ (deux comptes
                 connus et différents), fait confirmer le reste. */}
             <TransfersPanel transactions={transactions} onMarkTransfers={handleMarkTransfers} />
+
+            {/* [TX-REVIEW] Mesure du taux réel d'erreurs — le seul moyen de vérifier l'objectif. */}
+            <CategoryReviewPanel
+                transactions={transactions}
+                review={categoryReview}
+                onChange={(next) => setAppState({ categoryReview: next })}
+                onFixCategory={(id) => {
+                    // Amène la transaction à l'écran pour la corriger : filtre sur son marchand et
+                    // remonte en haut de liste. Sans ça, « mal classée » serait un vote sans suite.
+                    const target = transactions.find((t) => t.id === id);
+                    if (target?.payee) { setFilterText(target.payee); setCurrentPage(1); }
+                }}
+            />
 
             <div className="rounded-xl border border-indigo-500/20 bg-indigo-900/10">
                 <button

@@ -40,15 +40,18 @@
   en « Abonnements » réservée aux marchands AMBIGUS que le profil prouve) + `AMBIGUOUS_SUBSCRIPTION_RULES`
   (Google Play / App Store / Microsoft / YouTube / Twitch / Patreon / Steam / PlayStation / Nintendo →
   Loisirs par défaut) + bouton « Tout recatégoriser » (historique complet, verrou `status === 'manual'`).
-  **RESTE en PR 3** : écran de tri des cas douteux + revue d'échantillon (300 tirages) qui mesure le
-  critère d'arrêt « < 1 % » — sans elle, le critère n'est pas vérifiable.
+  **PR 3 livrée** : `[TX-REVIEW]` — `services/transactions/reviewSample.ts` (tirage seedé déterministe,
+  intervalle de WILSON, verdict « indéterminé » tant que l'intervalle chevauche le seuil) + panneau
+  « Mesurer la qualité du classement ». ⚠️ **Le « 300 tirages » du cadrage est INTENABLE** : à 300
+  jugements sans aucune erreur, la borne haute reste à 1,26 % — il en faut **390**, et la constante est
+  DÉRIVÉE du calcul (`samplesNeededForThreshold`), jamais re-tapée.
 - [x] **`[TX-INTERAC-BUDGET]`** ✅ (2026-07-31, PR 2/3) — Marc veut qu'un Interac à sa conjointe
   compte comme une **vraie dépense**, mais « Remboursement » est dans `NON_BUDGET_CATEGORIES`
   (`utils/budgetSync.ts:16-26`) → aujourd'hui ces montants sont invisibles au Budget (ni dépense, ni
   revenu). ⚠️ Le sortant et l'entrant ne sont pas symétriques : compter le sortant en dépense sans
   traiter l'entrant (« on me rembourse ») surévaluerait les dépenses. Design proposé : poste à part
   entière, l'entrant venant en crédit du même poste.
-- [ ] **`[TX-SUBSCRIPTIONS]`** (PR 3/3) — abonnements fantômes (hausse de prix silencieuse, service qui
+- [x] **`[TX-SUBSCRIPTIONS]`** ✅ (2026-07-31, PR 3/3) — abonnements fantômes (hausse de prix silencieuse, service qui
   a cessé d'être débité, coût annuel réel). Repose sur le profil de récurrence de la PR 2. ⚠️ L'actuel
   détecteur heuristique (`components/Planning.tsx:55`) exige ≥ 2 occurrences, montant stable à ±5 $ et
   20-40 jours d'écart : un abo dont le prix monte de 3 $ finit par sortir de la liste.

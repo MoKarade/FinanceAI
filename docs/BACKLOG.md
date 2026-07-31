@@ -85,12 +85,12 @@
   conservateur). Le `netSalary` saisi incorpore déjà ~100 % de la retenue (vérifié : 5 604 vs
   5 620 $/mois) ; `0.92` n'est sourcé NULLE PART et échappe au garde FISC-CONST-LINT (constante
   nouvelle). Minimal (V1) : documenter au FISCAL_REFERENCE ; juste : `1.0` + discriminant.
-- [x] **`[WHT-DISPLAY-MELTDOWN]`** ✅ 2026-07-31 (V2 — `rrspWithholdingMois += meltResult.withholding`, discriminant prouvé, conservation 12/12 + goldens intacts) —
-  `projection.ts:1348-1354` : la retenue meltdown n'entre ni dans `rrspWithholdingMois` ni dans le
-  crédit décembre → `totalTaxesPaid` 139 306 $ vs 243 549 $ (AUTO_MARGINAL) pour un estate
-  SUPÉRIEUR (~224 k$ de retenue invisible) — or `strategyRanking.ts:66,83,93` pèse ce compteur à
-  25-100 % → **l'optimiseur recommande MELTDOWN_REER sur un impôt truqué**. Discriminant + re-baser
-  goldens sciemment.
+- [x] **`[WHT-DISPLAY-MELTDOWN]`** ✅ 2026-07-31 (V2 — `rrspWithholdingMois += meltResult.withholding`,
+  discriminant prouvé, NW bit-identique prouvé + pinné par golden). ⚠️ Précision du panel #551 (2 agents,
+  mesuré au cent) : la retenue ENTRAIT déjà dans le crédit décembre (`taxCurrentYear.reer +=`, pré-existant) ;
+  le vrai gain = COHÉRENCE de convention entre stratégies (ratio MELTDOWN/AUTO 0,601 → 1,400) — la reco
+  « objectif impôt » recommandait MELTDOWN à tort sur main (corrigé). La valeur ABSOLUE du compteur reste
+  sur-évaluée pour toutes les stratégies → `[PROJ-TTP-DOUBLECOUNT]`.
 - [x] **`[ENG-MELTDOWN-FLOW-INVISIBLE]`** ✅ 2026-07-31 (V2 — `retraitReerMois += meltResult.reerDrawn`, Σ RetraitREER ≥ 90 % du REER drainé prouvé) — le meltdown n'alimente
   jamais `retraitReerMois` → Σ `RetraitREER` affiché 22 547 $ pour ~796 k$ de sorties réelles :
   tooltip/modal/milestoneIcons (« 1er retrait REER » jamais déclenché)/MCP aveugles. Aucun impact NW
@@ -135,6 +135,24 @@
 - [ ] **`[FUZZ-ONETIME-FLOWS]`** (M, reste) — flux non exercés par le fuzz de conservation
   (`projection.fuzzConservation.test.ts:21-23`) : vente/gain locatif, équité négative, véhicule,
   héritage, REEE. Les couvrir (mesurer la couverture, pas la supposer).
+
+- [ ] **`[PROJ-TTP-DOUBLECOUNT]`** (M, ÉLEVÉ [Certain, MESURÉ au cent — panel #551, 2 agents]) —
+  `totalTaxesPaid` DOUBLE-COMPTE la retenue REER pour TOUTES les stratégies : `projection.ts:1457`
+  ajoute `rrspWithholdingMois` alors qu'avril débite le bucket `.reer` ENTIER (`taxApril.ts:55` :
+  `fluxImpots = … + taxPaidREER`) — décembre ne consomme pas `.reer`, il calcule la réconciliation
+  versée dans `.revenu`. « Impôt à vie » (StrategyOptimizerPanel:353,480) affiché +144 % (MELTDOWN :
+  321 122 $ vs 131 871 $ réels ; AUTO : 229 338 $ vs 29 806 $). Dérivés : efficacité fiscale MC 0 %
+  au lieu de ~53 % (−10 pts FVI), taxLeakage 115 % au lieu de 47 %. Fix : `+= fluxImpots + taxOnRrif`
+  seulement (⚠️ re-mesurer taxOnRrif, même risque) + re-baseliner MC/strategySearch SCIEMMENT.
+  Classement ordre-préservant (vérifié) → pas de flip attendu.
+- [ ] **`[ENG-FERR-FLOW-INVISIBLE]`** (S, MOYEN [Certain, MESURÉ]) — même classe que le fix V2, 4ᵉ
+  source : la FERR obligatoire (`projection.ts:999-1002`) et les retraits REER d'objectifs
+  (`:1219-1226`) n'alimentent pas `retraitReerMois` → 113 418 $ (11,6 %) de sorties invisibles sur
+  AUTO_MARGINAL ; « 1er retrait REER » jamais déclenché pour un retraité 71+ dont la 1re sortie est
+  une FERR. Fix : 2 `+=` + étendre le test meltdownDisplay (parité Σ RetraitREER ≈ Σ accRetraitsReerYear).
+- [ ] **`[MELTDOWN-THRESHOLDS-DOC]`** (S, doc) — `meltdownReer.ts:9-13` : seuils
+  MELTDOWN_NW_HIGH/MID (2 M/1 M) + cibles 220 k/140 k/90 k × adultes = heuristiques de CONCEPTION
+  non documentées (pas des constantes fiscales) — les documenter (module + FISCAL_REFERENCE §9).
 
 ## 🏦 Sync & données (Fintable, Drive, persistance)
 

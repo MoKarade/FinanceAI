@@ -1347,14 +1347,17 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // +retenue), et la retenue n'est débitée qu'UNE fois (avril). Cohérent avec drawReer/CF-2.
             liquid += meltResult.withholding;
             // [WHT-DISPLAY-MELTDOWN + ENG-MELTDOWN-FLOW-INVISIBLE] (findings MESURÉS 2026-07-31)
-            // Le meltdown est un RETRAIT REER comme les autres : il doit alimenter les compteurs
-            // d'AFFICHAGE comme les tirages en cascade — sinon (1) `totalTaxesPaid` (qui somme
-            // `rrspWithholdingMois`, cf :1446) sous-compte ~toute la retenue du meltdown (mesuré :
-            // 139 306 $ vs 243 549 $ pour un estate SUPÉRIEUR) et `strategyRanking` recommande
-            // MELTDOWN_REER sur un impôt truqué ; (2) `chartData.RetraitREER` (= retraitReerMois)
-            // rendait ~774 k$ de sorties invisibles (tooltip/modal/milestoneIcons/MCP aveugles).
-            // Aucun impact NW : décembre crédite `taxCurrentYear.reer` (retenue = acompte), avril ne
-            // paie que la réconciliation — identique aux tirages cascade (pas de double comptage).
+            // Le meltdown est un RETRAIT REER comme les autres : il alimente les compteurs
+            // d'AFFICHAGE comme les tirages en cascade — sinon (1) `totalTaxesPaid` suivait une
+            // convention DIFFÉRENTE des autres stratégies (mesuré sur le scénario du test :
+            // ratio MELTDOWN/AUTO 0,601 → 1,400) et `strategyRanking` recommandait MELTDOWN_REER
+            // à tort sous l'objectif « impôt » (corrigé, mesuré) ; (2) `chartData.RetraitREER`
+            // rendait ~96 % des sorties invisibles (30 496 $ affichés pour 794 303 $ tirés).
+            // Aucun impact NW : PROUVÉ bit-identique (301 mois × 9 grandeurs, 2 worktrees).
+            // ⚠️ Le compteur `totalTaxesPaid` lui-même DOUBLE-COMPTE la retenue REER pour TOUTES
+            // les stratégies (avril débite le bucket .reer ENTIER via taxApril, PAS seulement la
+            // réconciliation — mesuré au cent près) : pré-existant, ticket [PROJ-TTP-DOUBLECOUNT].
+            // Ce fix rend la convention COHÉRENTE entre stratégies, il ne corrige pas l'absolu.
             retraitReerMois += meltResult.reerDrawn;
             rrspWithholdingMois += meltResult.withholding;
             accRetraitsReerYear += meltResult.reerDrawn;

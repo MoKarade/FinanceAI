@@ -2,14 +2,17 @@
  * [WHT-DISPLAY-MELTDOWN + ENG-MELTDOWN-FLOW-INVISIBLE] (V2, findings financial-integrity
  * MESURÉS 2026-07-31) — le meltdown REER doit alimenter les compteurs d'AFFICHAGE comme
  * les tirages en cascade :
- *  1. `chartData.RetraitREER` : l'ancien code rendait ~3 % des sorties réelles visibles
- *     (22 547 $ affichés pour ~796 k$ tirés) → tooltip/modal/milestoneIcons/MCP aveugles.
- *  2. `totalTaxesPaid` (somme `rrspWithholdingMois`, projection.ts:1446) : la retenue du
- *     meltdown n'y entrait jamais → 139 306 $ vs 243 549 $ (AUTO_MARGINAL) pour un estate
- *     SUPÉRIEUR — `strategyRanking` (poids 25-100 % sur ce compteur) recommandait
- *     MELTDOWN_REER sur un impôt truqué.
+ *  1. `chartData.RetraitREER` : l'ancien code rendait ~4 % des sorties réelles visibles
+ *     (mesuré SUR CE scénario : 30 496 $ affichés pour 794 303 $ tirés) →
+ *     tooltip/modal/milestoneIcons/MCP aveugles.
+ *  2. `totalTaxesPaid` : la retenue du meltdown n'y entrait jamais → convention DIFFÉRENTE
+ *     des autres stratégies (mesuré : 137 940 $ vs 229 338 $ AUTO, ratio 0,601) —
+ *     `strategyRanking` (poids 25-100 % sur ce compteur) recommandait MELTDOWN_REER à tort
+ *     sous l'objectif « impôt » (corrigé, mesuré). ⚠️ Le compteur double-compte la retenue
+ *     pour TOUTES les stratégies (pré-existant) : ticket [PROJ-TTP-DOUBLECOUNT].
  * Discriminant prouvé par restauration du code d'avant (les deux assertions échouent).
- * Aucun impact NW (décembre crédite la retenue, avril ne paie que la réconciliation).
+ * Aucun impact NW : PROUVÉ bit-identique par le validator (301 mois × 9 grandeurs) et
+ * pinné par le golden de neutralité ci-dessous.
  */
 import { describe, it, expect } from 'vitest';
 import { __runScenarioForTests, type SimulationParams } from '../../services/projection';
@@ -74,15 +77,23 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         const drained = REER_START - reerEnd;
         // Non-vacuité : le scénario melt VRAIMENT (sinon le test ne prouve rien).
         expect(drained).toBeGreaterThan(300_000);
-        // Ancien code : sumRetraits ≈ tirages cascade seuls (petite fraction) → échoue.
+        // Ancien code mesuré : ratio 0,044 → échoue. Nouveau : 1,135 (croissance incluse).
         expect(sumRetraits).toBeGreaterThanOrEqual(0.9 * drained);
     });
 
     it('totalTaxesPaid compte la retenue du meltdown (plus jamais << AUTO_MARGINAL pour un estate ≥)', () => {
         const melt = runWith('MELTDOWN_REER' as AllocationStrategy);
         const auto = runWith('AUTO_MARGINAL' as AllocationStrategy);
-        // Ancien code mesuré : ratio 139 306 / 243 549 ≈ 0,57 (impôt truqué) → échoue à 0,8.
+        // Ancien code mesuré : 137 940 / 229 338 = 0,601 → échoue à 0,8. Nouveau : 1,400.
         expect(auto.totalTaxesPaid).toBeGreaterThan(0);
         expect(melt.totalTaxesPaid / auto.totalTaxesPaid).toBeGreaterThan(0.8);
+    });
+
+    it('NEUTRALITÉ NW : les compteurs d\'affichage ne touchent AUCUNE grandeur de patrimoine (golden)', () => {
+        // Pin de la preuve bit-identique du validator (301 mois × 9 grandeurs, 2 worktrees) :
+        // si un futur refactor fait fuir un compteur d'affichage dans un solde, ce golden casse.
+        const melt = runWith('MELTDOWN_REER' as AllocationStrategy);
+        expect(melt.finalNetWorth).toBeCloseTo(3628, 0);
+        expect(melt.estateNetWorth).toBeCloseTo(155057, 0);
     });
 });

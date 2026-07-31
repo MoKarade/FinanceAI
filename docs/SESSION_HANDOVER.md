@@ -9,10 +9,12 @@
 > (bug FVI « 103/100 » réel corrigé — mesuré), note CAGR, esbuild épinglé, 8 shades hors palette,
 > filtres morts Transactions, FISCAL_REFERENCE 3ᵉ passe, Dependabot #26 (hono 2.0.12). Panel 3
 > agents : tous findings traités (taxLeakage SANS cap haut — un ratio > 1 en décaissement est une
-> info réelle ; bornes sliders TaxCenter = constantes fiscales). **V2 en cours** : le meltdown REER
-> alimente désormais `retraitReerMois` + `rrspWithholdingMois` (l'optimiseur classait les stratégies
-> sur un impôt sous-compté ×2,6 ; ~97 % des sorties invisibles du graphe) — discriminant git-stash
-> prouvé 2/2, conservation 12/12 + goldens intacts. **Marc a répondu aux 14 questions** (toutes les
+> info réelle ; bornes sliders TaxCenter = constantes fiscales). **V2 LIVRÉE (PR #551)** : le meltdown REER
+> alimente `retraitReerMois` (exact au dollar : 794 303 $ = sorties réelles) + `rrspWithholdingMois`
+> (convention cohérente entre stratégies — la reco « objectif impôt » était FAUSSE sur main, corrigée,
+> mesuré par 2 agents). NW bit-identique prouvé + pinné par golden. Panel : 2 tickets racine ouverts,
+> [PROJ-TTP-DOUBLECOUNT] (le compteur double-compte la retenue pour TOUTES les stratégies, « Impôt à
+> vie » +144 %) et [ENG-FERR-FLOW-INVISIBLE] (FERR/goals invisibles, 4ᵉ source). **Marc a répondu aux 14 questions** (toutes les
 > vagues débloquées). Suite : V2' équité immo (BRANCHER) → V3 parité état/tests → V4 → V5 fiscal
 > (paliers GO, 0.92→1.0, split GO) → … → V12 (nav + Budget : GROS batch de questions d'abord).
 

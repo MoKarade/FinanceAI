@@ -67,7 +67,9 @@ export function processReerMeltdown(
     if (currentTotalGross >= targetMeltGross) return null;
 
     const meltAmountBrut = Math.min(reer, (targetMeltGross - currentTotalGross) / 12);
-    if (meltAmountBrut <= 200) return null;
+    // [Finding projection-validator #551] `NaN <= 200 === false` : un solde REER non fini
+    // passerait la garde et sortirait en chartData.RetraitREER = NaN. Rejet explicite.
+    if (!Number.isFinite(meltAmountBrut) || meltAmountBrut <= 200) return null;
 
     // F-fix (audit 2026-06) : la retenue suit la source de vérité RRSP_WITHHOLDING_QC
     // (19/24/29 % par tranche, sur le brut mensuel — même convention que le décaissement

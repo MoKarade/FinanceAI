@@ -386,6 +386,40 @@ describe('runBootSync — [AUTH-DRIVE-BANNER-FLICKER] les échecs transitoires n
         // Là, « reconnecte-toi » est le bon message dès le 1er échec : rien ne se résorbera tout seul.
         expect(getSyncStatus().connected).toBe(false);
     });
+
+    it('[silent-failure #542 §2] une panne Drive qui PERSISTE finit par basculer la bannière (3 ticks)', async () => {
+        // Jeton VALIDE mais Drive en panne DURABLE (non-401) : un seul tick raté ne dit rien (grâce),
+        // mais si la panne dure, « plus rien ne se sauvegarde » doit devenir VISIBLE en flux — sans ce
+        // volet, seule la carte Réglages (que personne n'ouvre) montrait status.error, tick après tick.
+        await bootConnected();
+        findSyncFileMock.mockRejectedValue(new Error('Drive 500 — panne durable'));
+
+        await runBootSync(); // raté 1
+        expect(getSyncStatus().connected).toBe(true);
+        await runBootSync(); // raté 2
+        expect(getSyncStatus().connected).toBe(true);
+        await runBootSync(); // raté 3 → la panne dure, on le dit
+        expect(getSyncStatus().connected).toBe(false);
+    });
+
+    it('[code-reviewer #542] deux runBootSync CONCURRENTS (focus + visibilitychange) comptent pour UN tick', async () => {
+        // Prouvé par sonde du code-reviewer : sans verrou de réentrance, un seul retour d'onglet
+        // pendant un hoquet réseau incrémentait la série DEUX fois → bannière dès 2 alt-tab au lieu
+        // de 3 ticks. Le verrou fait qu'un appel concurrent réutilise le tick en vol.
+        await bootConnected();
+        getValidAccessTokenMock.mockRejectedValue(new Error('Session Google expirée'));
+        renewTokenSilentlyMock.mockRejectedValue(new Error('réseau indisponible'));
+
+        await Promise.all([runBootSync(), runBootSync()]); // retour d'onglet n°1 (double événement)
+        await Promise.all([runBootSync(), runBootSync()]); // retour d'onglet n°2
+
+        // 2 événements logiques = série à 2 < 3 → PAS de bannière. Sur le code sans verrou, la série
+        // serait à 4 → connected:false (échec du test).
+        expect(getSyncStatus().connected).toBe(true);
+
+        await Promise.all([runBootSync(), runBootSync()]); // n°3 → la panne dure vraiment
+        expect(getSyncStatus().connected).toBe(false);
+    });
 });
 
 describe('runBootSync — aucune connexion antérieure (pas de connectedEmail)', () => {

@@ -1381,7 +1381,14 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   remise à zéro à chaque succès) — JAMAIS sur un raté isolé d'une boucle de fond. Corollaires : pendant la grâce, le canal
   d'erreur HONNÊTE reste ouvert (un push raté affiche la bannière « échec de sauvegarde », `errorPhase='push'`) ; le chemin
   de déconnexion doit poser `busy:false` (sinon le polling — skip si busy — reste gelé à vie) ; et l'erreur transitoire
-  routée `handleError('boot')` reste visible en Diagnostics (pas avalée).
+  routée `handleError('boot')` reste visible en Diagnostics (pas avalée). ⚠️ **Un compteur de grâce module-level exige
+  la RÉENTRANCE-SÛRETÉ de son incrémenteur** (finding code-reviewer #542, prouvé par sonde) : `focus` + `visibilitychange`
+  tirent le MÊME handler quasi simultanément au retour d'onglet → 2 `runBootSync` concurrents = +2 sur la série pour UN
+  événement logique (bannière dès 2 alt-tab au lieu de 3 ticks — le symptôme même qu'on corrigeait) → verrou de
+  réentrance sur TOUTE la fonction qui mute le compteur (`_bootSyncInFlight`, modèle `_decisionInFlight`), pas seulement
+  sur la sous-phase déjà verrouillée. Symétrique silent-failure : la grâce doit compter TOUTES les causes transitoires
+  (échec renouvellement ET erreur Drive post-jeton) — sinon une panne Drive persistante reste invisible en flux (la
+  bannière n'affiche que déconnexion/push, la carte Réglages ne suffit pas).
 - Persistance : localStorage + IndexedDB chiffré (AES-256-GCM, PBKDF2 600k). apiKeys exclues.
 - Mode test : PERSISTÉ depuis #217 (bannière survit au reload) ; push Drive coupé en test
   (`shouldPush`). Switch de persona = base propre (`personaResetBase`), zéro fuite inter-persona.

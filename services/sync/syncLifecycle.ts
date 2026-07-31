@@ -41,15 +41,26 @@ async function trySilentReauth(
     }
 }
 
-// [AUTH-DRIVE-BANNER-FLICKER] Échecs TRANSITOIRES consécutifs du renouvellement silencieux côté
-// polling (`runBootSync`, tick 60 s + retour d'onglet). Un raté réseau isolé (réveil de veille, Wi-Fi
-// qui remonte, hoquet GIS) ne doit PAS afficher « Non connecté — tes changements ne sont PAS
-// sauvegardés » : le message serait faux (rien n'a été perdu, le tick suivant retente et réussit) et
-// c'est exactement la bannière-qui-clignote signalée par Marc. On ne bascule `connected:false` qu'après
-// N échecs consécutifs — ou IMMÉDIATEMENT quand l'échec est définitif (`AuthInteractionRequiredError` :
-// session Google morte, seule une reconnexion manuelle débloquera → là, la bannière dit vrai).
-let _transientAuthFailStreak = 0;
-const TRANSIENT_AUTH_FAIL_GRACE = 3;
+// [AUTH-DRIVE-BANNER-FLICKER] Ticks de sync ÉCHOUÉS consécutifs pour une cause TRANSITOIRE côté
+// polling (`runBootSync`, tick 60 s + retour d'onglet) — renouvellement silencieux raté (réseau/GIS)
+// OU erreur Drive post-jeton non-401 (timeout, 500). Un raté isolé (réveil de veille, Wi-Fi qui
+// remonte) ne doit PAS afficher « Non connecté — tes changements ne sont PAS sauvegardés » : le
+// message serait faux (rien n'a été perdu, le tick suivant retente et réussit) et c'est exactement la
+// bannière-qui-clignote signalée par Marc. On ne bascule `connected:false` qu'après N échecs
+// consécutifs (~N min : la panne DURE, la bannière dit alors vrai — plus rien n'est sauvegardé depuis
+// N ticks) — ou IMMÉDIATEMENT quand l'échec est définitif (`AuthInteractionRequiredError` : session
+// Google morte ; 401 `DriveAuthError` : jeton rejeté — seule une reconnexion manuelle débloquera).
+// La série n'est close que par un tick COMPLET réussi (jeton + décision), une connexion explicite, ou
+// une déconnexion. [Finding silent-failure #542 §2] Sans le volet « erreur Drive qui persiste », une
+// panne Drive durable restait invisible hors de Réglages (la bannière n'affiche que déconnexion/push).
+let _transientSyncFailStreak = 0;
+const TRANSIENT_SYNC_FAIL_GRACE = 3;
+
+/** Un tick de sync a échoué pour une cause transitoire : bascule la bannière si la panne DURE. */
+function noteTransientSyncFailure(): void {
+    _transientSyncFailStreak++;
+    if (_transientSyncFailStreak >= TRANSIENT_SYNC_FAIL_GRACE) setStatus({ connected: false });
+}
 import {
     findSyncFile,
     deleteSyncFile,
@@ -100,7 +111,7 @@ export async function connectAndSync(): Promise<void> {
     try {
         const token = await requestAccessToken(true);
         recordActivity(); // [AUTH-DRIVE-INACTIVITY] la connexion démarre le compte à rebours 8h
-        _transientAuthFailStreak = 0; // [AUTH-DRIVE-BANNER-FLICKER] reconnexion explicite → série close
+        _transientSyncFailStreak = 0; // [AUTH-DRIVE-BANNER-FLICKER] reconnexion explicite → série close
         const { email, sub } = await fetchUserIdentity(token); // sub → clé de chiffrement des clés API
         const meta = currentMeta();
         writeSyncMeta({ ...meta, connectedEmail: email, connectedSub: sub ?? meta.connectedSub ?? null });
@@ -191,8 +202,25 @@ export async function gateSilentResume(): Promise<boolean> {
     }
 }
 
+// [AUTH-DRIVE-BANNER-FLICKER, finding code-reviewer #542] Garde de réentrance de runBootSync : au
+// retour d'onglet, `visibilitychange` ET `focus` (syncPolling attache le même handler aux deux) tirent
+// deux runBootSync quasi simultanés, et la garde `busy` du polling ne couvre PAS la phase jeton
+// (busy n'est posé que dans runDecision). Sans verrou, UN événement logique (alt-tab pendant un hoquet
+// réseau) incrémentait `_transientSyncFailStreak` DEUX fois (prouvé par sonde : bannière dès 2 retours
+// d'onglet au lieu de 3 ticks) et deux `renewTokenSilently` concurrents se marchaient dessus dans
+// gisAuth (`_pendingReject` singleton → le perdant tombe en timeout). Un appel concurrent réutilise le
+// tick en vol — même modèle que `_decisionInFlight`.
+let _bootSyncInFlight: Promise<void> | null = null;
+
 /** Sync au boot (silencieux) si l'utilisateur a déjà connecté Drive. Ne bloque jamais l'app. */
-export async function runBootSync(): Promise<void> {
+export function runBootSync(): Promise<void> {
+    if (_bootSyncInFlight) return _bootSyncInFlight;
+    const run = runBootSyncTick().finally(() => { _bootSyncInFlight = null; });
+    _bootSyncInFlight = run;
+    return run;
+}
+
+async function runBootSyncTick(): Promise<void> {
     if (!isGoogleAuthConfigured()) return;
     const meta = readSyncMeta();
     if (!meta?.connectedEmail) return; // jamais connecté → rien au boot
@@ -216,36 +244,39 @@ export async function runBootSync(): Promise<void> {
             // on garde l'état affiché tel quel et le tick suivant (60 s) retente ; on ne bascule la
             // bannière qu'après N ratés consécutifs (panne qui dure = il faut le dire honnêtement).
             if (renewed.interactionRequired) {
-                _transientAuthFailStreak = 0;
+                _transientSyncFailStreak = 0;
                 setStatus({ connected: false });
             } else {
-                _transientAuthFailStreak++;
-                if (_transientAuthFailStreak >= TRANSIENT_AUTH_FAIL_GRACE) setStatus({ connected: false });
+                noteTransientSyncFailure();
             }
             return;
         }
         token = renewed.token;
     }
-    _transientAuthFailStreak = 0; // jeton en main → la série d'échecs transitoires est close
     // [Finding panel sécurité CRITIQUE] Idem gateSilentResume : le polling appelle runBootSync toutes
     // les 60s → ne PAS recordActivity ici (sinon l'horloge d'inactivité ne vieillit jamais).
     // 2) Le jeton est en main → une erreur APRÈS (lecture/écriture Drive) est, elle, anormale → handleError.
     try {
         setStatus({ connected: true });
         await runDecision(token); // garde anti-perte stricte (identique au gate désormais)
+        _transientSyncFailStreak = 0; // tick COMPLET réussi (jeton + décision) → la série est close
     } catch (e) {
         // [AUTH-DRIVE-BANNER-FLICKER] Un jeton VALIDE + une erreur Drive transitoire (timeout, réseau
         // au réveil de veille) ≠ « non connecté ». L'ancien `connected:false` inconditionnel ici était
         // la 1ʳᵉ cause de la bannière qui clignote : chaque hoquet réseau du polling 60 s affichait
         // « tes changements ne sont PAS sauvegardés » (faux — le jeton est bon, le tick suivant
-        // synchronise). On ne déconnecte que si l'API Drive REJETTE le jeton (401 `DriveAuthError` :
-        // scope révoqué, vraie perte d'accès) ; le reste est routé handleError (trace + status.error,
-        // visible dans Diagnostics) en RESTANT connecté.
+        // synchronise). On ne déconnecte IMMÉDIATEMENT que si l'API Drive REJETTE le jeton (401
+        // `DriveAuthError` : scope révoqué, vraie perte d'accès) ; le reste est routé handleError
+        // (trace + status.error, visible dans Diagnostics) en RESTANT connecté — MAIS compté dans la
+        // série [finding silent-failure #542 §2] : une panne Drive qui PERSISTE (N ticks) finit par
+        // basculer la bannière, sinon « plus rien ne se sauvegarde » resterait invisible hors Réglages.
         if (e instanceof DriveAuthError) {
+            _transientSyncFailStreak = 0;
             setStatus({ connected: false, busy: false }); // busy:false : sinon le polling reste gelé (skip si busy)
             traceSilentAuthFailure('boot', e);
         } else {
             handleError('boot', e);
+            noteTransientSyncFailure();
         }
     }
 }
@@ -346,7 +377,7 @@ export function handleInactivityLogout(): void {
 export function disconnectSync(): void {
     revokeAccess();
     clearActivity();
-    _transientAuthFailStreak = 0; // état neuf : une future connexion repart sans série héritée
+    _transientSyncFailStreak = 0; // état neuf : une future connexion repart sans série héritée
     clearSyncMeta();
     clearGateAuthedThisSession(); // re-demande le login au prochain accès (sinon le gate serait sauté)
     // La passphrase est un secret de SESSION : on la purge à la déconnexion (sinon elle resterait

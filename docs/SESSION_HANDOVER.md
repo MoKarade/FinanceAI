@@ -15,7 +15,11 @@
 > 401 `DriveAuthError`) → bannière immédiate + `busy:false` (sinon polling gelé). Discriminant prouvé
 > par git-stash (4 tests rouges sur l'ancien code, `syncOrchestrator.errors.test.ts`). ⚠️ Le mock
 > `gisAuth` du test passphrase a reçu `AuthInteractionRequiredError` + `renewTokenSilently` (leçon
-> AUTH-DRIVE-INACTIVITY : un import non mocké = TypeError). **File restante de Marc (dans l'ordre)** :
+> AUTH-DRIVE-INACTIVITY : un import non mocké = TypeError). **Panel #542, 2 vrais findings corrigés** :
+> verrou de réentrance `_bootSyncInFlight` (focus+visibilitychange = 2 ticks concurrents → compteur +2
+> pour UN alt-tab, prouvé par sonde) et grâce étendue aux erreurs Drive post-jeton persistantes (3 ticks
+> ratés toutes causes → bannière, sinon une panne durable restait invisible hors Réglages). Fenêtre
+> `flushPush`-pendant-grâce assumée + documentée (zéro perte, le prochain boot pousse). **File restante de Marc (dans l'ordre)** :
 > FINTABLE-6 Lot 2 (montant courtier + écart dans Investissements/Accueil) → DASH-NETWORTH-CANONICAL
 > (« je veux source unique ») → FINTABLE-7 Lot 3 (sync auto 1×/jour à l'ouverture) → petits a11y →
 > perf → chat conscient de la page → gros chantiers.

@@ -18,6 +18,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   dit vrai et le bouton Reconnecter est le bon geste.
 - Pendant une panne transitoire, une sauvegarde qui échoue affiche la bannière « échec de la dernière
   sauvegarde » avec Réessayer — le message honnête, au lieu du faux « non connecté ».
+- Une panne qui **dure** (~3 min sans aucune sync réussie, quelle qu'en soit la cause) finit par
+  afficher la bannière : ne rien dire indéfiniment serait l'excès inverse.
+- Revenir sur l'onglet ne compte plus double : deux rafraîchissements déclenchés en même temps
+  (focus + changement de visibilité) sont fusionnés en un seul.
 
 ---
 

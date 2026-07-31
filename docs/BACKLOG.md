@@ -656,6 +656,16 @@
   `DriveAuthError`) → bannière immédiate (elle dit vrai). Pendant la grâce, un push raté affiche la bannière
   « échec de sauvegarde » (honnête, bouton Réessayer). Reste le cas légitime « faut me reconnecter » : session
   Google expirée / cookies tiers — la raison GIS exacte est dans Réglages → Diagnostics.
+  **Panel #542 (code-reviewer + silent-failure-hunter, 2 vrais findings, tous corrigés dans la même PR)** :
+  (1) réentrance PROUVÉE par sonde — `focus` + `visibilitychange` tirent 2 `runBootSync` quasi simultanés et la
+  garde `busy` ne couvre pas la phase jeton → le compteur avançait de 2 pour UN retour d'onglet (bannière dès
+  2 alt-tab) → verrou `_bootSyncInFlight` (modèle `_decisionInFlight`), qui déduplique AUSSI les
+  `renewTokenSilently` concurrents (`_pendingReject` singleton gisAuth) ; (2) une panne Drive PERSISTANTE
+  non-401 restait invisible hors Réglages (la bannière n'affiche que déconnexion/push) → la série de grâce
+  compte AUSSI les erreurs Drive post-jeton : 3 ticks ratés consécutifs (toutes causes transitoires
+  confondues) → bannière. §3 assumé + documenté (`flushPush`) : pendant la grâce (~3 min max), un flush au
+  pagehide peut échouer sans signal — zéro perte (le prochain boot pousse), seul coût = copie Drive périmée
+  pour le MCP jusqu'à la prochaine ouverture.
 
 ## 📈 PORTFOLIO-HISTORY — courbes de cours réelles (bug Marc 2026-07-22, PR #485)
 - [x] **`[PORTFOLIO-HISTORY]`** ✅ 2026-07-22 — courbes par action (depuis 1er achat) + courbe portefeuille

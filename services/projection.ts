@@ -1346,6 +1346,17 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // comptage. Avec cette ligne le meltdown est NW-neutre (reer −brut, nonReg +net, liquid
             // +retenue), et la retenue n'est débitée qu'UNE fois (avril). Cohérent avec drawReer/CF-2.
             liquid += meltResult.withholding;
+            // [WHT-DISPLAY-MELTDOWN + ENG-MELTDOWN-FLOW-INVISIBLE] (findings MESURÉS 2026-07-31)
+            // Le meltdown est un RETRAIT REER comme les autres : il doit alimenter les compteurs
+            // d'AFFICHAGE comme les tirages en cascade — sinon (1) `totalTaxesPaid` (qui somme
+            // `rrspWithholdingMois`, cf :1446) sous-compte ~toute la retenue du meltdown (mesuré :
+            // 139 306 $ vs 243 549 $ pour un estate SUPÉRIEUR) et `strategyRanking` recommande
+            // MELTDOWN_REER sur un impôt truqué ; (2) `chartData.RetraitREER` (= retraitReerMois)
+            // rendait ~774 k$ de sorties invisibles (tooltip/modal/milestoneIcons/MCP aveugles).
+            // Aucun impact NW : décembre crédite `taxCurrentYear.reer` (retenue = acompte), avril ne
+            // paie que la réconciliation — identique aux tirages cascade (pas de double comptage).
+            retraitReerMois += meltResult.reerDrawn;
+            rrspWithholdingMois += meltResult.withholding;
             accRetraitsReerYear += meltResult.reerDrawn;
             // 5e source de retrait REER (audit fiscal-accuracy) : attribuer le meltdown par conjoint
             // comme FERR/goals/cashflow, sinon Σ(byUser) < accRetraitsReerYear → sous-imposition sous

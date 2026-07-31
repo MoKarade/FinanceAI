@@ -374,6 +374,15 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   (`f([a,b]) == f([b,a])`) discrimine sans nombre magique. Et « 0 régression baseline » d'un agent ≠ vérité :
   lancer la SUITE COMPLÈTE — un changement peut toucher des fixtures encodant un état INVALIDE inatteignable
   en prod (ex. `canadaArrivalYear` sans `isImmigrant`, gardé par l'UI) ; ce n'est alors pas une vraie régression.
+  ⚠️ **Un flux moteur alimente PLUSIEURS registres parallèles (solde, fiscal, per-conjoint, AFFICHAGE) —
+  un nouveau producteur du flux doit alimenter TOUS les registres, et chaque correctif partiel doit re-vérifier
+  les AUTRES** (leçon WHT-DISPLAY-MELTDOWN/ENG-MELTDOWN-FLOW-INVISIBLE 2026-07-31) : le meltdown REER alimentait
+  soldes + bucket fiscal + per-conjoint (rajouté par un audit) mais JAMAIS `retraitReerMois`/`rrspWithholdingMois`
+  (affichage) → `totalTaxesPaid` sous-compté ×2,6 (MESURÉ) et `strategyRanking` (poids 25-100 % sur ce compteur)
+  recommandait MELTDOWN_REER sur un impôt truqué ; ~97 % des sorties absentes de `chartData.RetraitREER`
+  (tooltip/jalons/MCP aveugles). La conservation NE l'attrape PAS (compteurs d'affichage, NW intact) — c'est un
+  invariant de PARITÉ flux-affiché ↔ flux-réel qui manquait ; deux passes antérieures (FISC-REER-WHT-DOUBLE,
+  audit per-conjoint) avaient corrigé CE bloc sans voir les registres d'affichage voisins.
   ⚠️ **Un registre PER-CONJOINT qui passe de SHADOW à PILOTE doit gérer TOUS les événements de vie (décès)**
   (leçon ITEM-2C-FERR 2026-06-25) : brancher la FERR au per-conjoint (chaque conjoint convertit SA part `reerByUser[i]`
   à SON âge) a créé un FLUX FISCAL FANTÔME — après le DÉCÈS du conjoint, sa part (registre `[1]`) continuait de

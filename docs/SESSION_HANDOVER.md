@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-31 (suite 8) — V1 (PR #549) + V2 meltdown honnête
+> **V1 mergée (#549)** : clamp CELIAPP signalé, étiquettes « dernier close » Accueil, clamps MC
+> (bug FVI « 103/100 » réel corrigé — mesuré), note CAGR, esbuild épinglé, 8 shades hors palette,
+> filtres morts Transactions, FISCAL_REFERENCE 3ᵉ passe, Dependabot #26 (hono 2.0.12). Panel 3
+> agents : tous findings traités (taxLeakage SANS cap haut — un ratio > 1 en décaissement est une
+> info réelle ; bornes sliders TaxCenter = constantes fiscales). **V2 en cours** : le meltdown REER
+> alimente désormais `retraitReerMois` + `rrspWithholdingMois` (l'optimiseur classait les stratégies
+> sur un impôt sous-compté ×2,6 ; ~97 % des sorties invisibles du graphe) — discriminant git-stash
+> prouvé 2/2, conservation 12/12 + goldens intacts. **Marc a répondu aux 14 questions** (toutes les
+> vagues débloquées). Suite : V2' équité immo (BRANCHER) → V3 parité état/tests → V4 → V5 fiscal
+> (paliers GO, 0.92→1.0, split GO) → … → V12 (nav + Budget : GROS batch de questions d'abord).
+
 > ## 🟢 Session 2026-07-31 (suite 7) — REFONTE DU BACKLOG (directive Marc) + 3 analyses
 > **Directive Marc** : cases cocheables partout, archive, vérif de tout, PM (ordre/utilité), grosse
 > analyse code, analyse fiscale, puis TOUT exécuter sans s'arrêter. Livré (PR #548) :

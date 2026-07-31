@@ -1062,7 +1062,11 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   chiffre, parité verrouillée par test contre les helpers canoniques). (4) **Un hook de publication dont l'effet
   dépend d'un OBJET doit déduper PAR VALEUR (clé sérialisée en dep), pas par référence** (finding prouvé par sonde :
   un consommateur futur sans useMemo = boucle publish→notify→re-render→nouvel objet→effet → gel 100 % CPU puis OOM —
-  un contrat « mémoïse ! » en commentaire ne protège rien). (5) **Un `system` qui varie par envoi invalide le préfixe
+  un contrat « mémoïse ! » en commentaire ne protège rien). ↻ **Instance TEST (DASH-NETWORTH-CANONICAL 2026-07-31)** :
+  un `vi.mock` de hook qui FABRIQUE un nouvel objet à chaque appel (`usePortfolioHistory: () => ({ history: [...] })`)
+  relance `useEffect([portfolioHistory])` → setState → re-render → boucle infinie qui PEND le run vitest (timeout 240 s,
+  zéro output). Tout mock de hook consommé par un useEffect à dep-référence → constante HOISTÉE (identité stable), et
+  un vitest qui pend sans sortie = suspecter cette boucle avant tout le reste. (5) **Un `system` qui varie par envoi invalide le préfixe
   de prompt-caching ENTIER** (pièces jointes incluses) → scinder en blocs [statique+cache_control, dynamique] dès
   qu'on injecte du contenu par-envoi dans system. ADR complet : docs/decisions.md. (6) **`scrollIntoView` sur une
   sentinelle fait défiler TOUS les ancêtres scrollables — y compris un drawer `overflow-hidden` (scrollable par

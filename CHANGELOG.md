@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — le patrimoine de l'Accueil dit le présent] — 2026-07-31
+
+### Accueil
+- **`[DASH-NETWORTH-CANONICAL]` — le KPI « patrimoine global » vient de la source unique.** Il
+  lisait le dernier point du graphe historique — figé au dernier cours de clôture, avec un cash
+  partiel — ce qui rendait l'Accueil faux et incohérent avec toutes les autres surfaces (« l'accueil
+  fait aucun sens »). Il affiche maintenant le patrimoine **présent** (cash + placements − dettes +
+  équité immo), calculé par la même formule que le PDF, l'IA et Investissements. Le graphe, lui,
+  reste l'histoire — c'est son rôle.
+
+---
+
 ## [unreleased — le montant du courtier s'affiche enfin] — 2026-07-31
 
 ### Investissements & Accueil

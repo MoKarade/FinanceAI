@@ -4,6 +4,16 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-31 (suite 3) — `[DASH-NETWORTH-CANONICAL]` (Lot C de la file Marc)
+> « Je veux source unique » : le KPI patrimoine de l'Accueil lisait `latestTotals.Total` (dernier
+> point de l'HISTORIQUE — figé au dernier close, cash gated `accountName`) → il lit désormais
+> `computePresentNetWorth + équité immo` (même expression que l'ex-repli sans CSV) dans TOUS les cas ;
+> `latestTotals` retiré (code mort). Le graphe/variation restent sur l'historique (présent ≠ histoire).
+> Discriminant : historique périmé injecté (mock `usePortfolioHistory` à identité STABLE — ⚠️ un mock
+> qui fabrique un nouvel objet par appel relance `useEffect([portfolioHistory])` en boucle et PEND le
+> test, classe CHAT-PAGE-CONTEXT « dédupe par référence », vécue ici). Symptômes 2-3 du ticket
+> (périmètre graphe/cartes historiques) : hors de ce fix, chantier séparé si redemandé.
+
 > ## 🟢 Session 2026-07-31 (suite 2) — `[FINTABLE-6]` Lot 2 (Lot B de la file Marc)
 > Lot A (bannière sync) MERGÉ (#542). Lot B livré : `BrokerReconciliationCard` (full/compact —
 > une implémentation) branche `reconcileBrokerBalances` dans Investissements ET Accueil : total par

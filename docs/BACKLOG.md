@@ -245,21 +245,20 @@
   affichait « vu jamais » et contaminait le panier via Math.min → traité inconnu à la lecture ;
   (5) doc : base carte = PRÉSENT (quote × quantité courantes) ≠ piles TOTAL_* (close daté × détention
   datée) — divergence VOULUE, documentée en tête de module pour la prochaine session.
-- [ ] **`[DASH-NETWORTH-CANONICAL]` L'Accueil est la SEULE surface qui recalcule le patrimoine** (M,
-  diagnostic `financial-integrity` 2026-07-30, demande Marc « l'accueil fait aucun sens ») — le KPI
-  `Dashboard.tsx:425` lit `latestTotals.Total` (dernier point de `usePortfolioHistory`) au lieu de la
-  source unique, ce qui explique les 4 symptômes d'un coup : (1) **figé** — l'axe des dates est l'union
-  des `asset.priceHistory`, sans ligne « aujourd'hui », et le cash n'intègre que les transactions
-  `<= rowDate` → tout ce qui suit le dernier close est invisible ; (2) **faux** — le cash ne somme que
-  les transactions à `accountName` non vide (`Dashboard.tsx:204,:289`) alors que `computeCurrentLiquidity`
-  les somme TOUTES ; or le mapper Fintable **n'émet aucun `accountName`** (`mapSnapshot.ts:275-279`) →
-  même une fois la sync réparée, l'Accueil ignorerait les transactions Fintable ; (3) **cartes vides** —
-  hydratation jamais réussie → `rows: []` → repli qui met `accountKeys: []` ; (4) **incohérent** — toutes
-  les autres surfaces (App/TabRouter, PDF, snapshot IA, Santé, Investissements, Futur) routent bien par
-  `computePresentNetWorth`/`computeRawNetWorth`. ⚠️ Le fix ne peut PAS être un simple passage à
-  `computePresentNetWorth` : celui-ci EXCLUT l'immobilier alors que le KPI l'INCLUT → le patrimoine
-  affiché CHUTERAIT de l'équité immo (piège `[[ASSET-FX-DISPLAY]]` : le chiffre juste pris pour un bug).
-  Cible = `computePresentNetWorth + équité immo`, comme le fait déjà le repli `Dashboard.tsx:178`.
+- [x] **`[DASH-NETWORTH-CANONICAL]` L'Accueil est la SEULE surface qui recalcule le patrimoine** (M,
+  diagnostic `financial-integrity` 2026-07-30, demande Marc « l'accueil fait aucun sens » / « je veux
+  source unique ») — ✅ 2026-07-31. Le KPI « patrimoine global » lit désormais `presentNetWorth` =
+  `computePresentNetWorth(initialBalances, transactions, assets, fxRates, debts) + équité immo`
+  (MÊME expression que l'ex-repli sans CSV — le piège « computePresentNetWorth nu ferait CHUTER le
+  patrimoine de l'équité immo » évité comme prévu au ticket), dans TOUS les cas — plus JAMAIS
+  `latestTotals.Total` (dernier point d'un historique figé au dernier close, cash gated accountName).
+  `latestTotals` retiré du memo (code mort dans le même diff, leçon DETTE-DEADCODE). Le GRAPHE et la
+  variation restent sur l'historique (présent ≠ histoire, assumé — le KPI dit le présent comme toutes
+  les autres surfaces). Discriminant : test avec historique PÉRIMÉ injecté (mock `usePortfolioHistory`)
+  → l'ancien KPI affichait ~500 $, le nouveau 140 600 $ (rouge sur l'ancien code, prouvé git-stash).
+  Restes du ticket NON couverts ici (symptômes 2-3, périmètre graphe/cartes — l'axe des dates, le
+  cash `accountName`-gated de l'HISTORIQUE, les cartes vides) : l'essentiel (le chiffre-titre faux)
+  est réglé ; le graphe historique est un chantier séparé si Marc le redemande.
 - [ ] **`[A11Y-INFO300-SWEEP]` `text-info-300` inexistant (no-op silencieux) — sweep dédié** (S, découvert en
   FINTABLE-4 2026-07-29) : la palette `info` (`tailwind.config.js`) s'arrête à 600/500/400, aucun shade 300 →
   `text-info-300` ne génère AUCUNE règle CSS (le texte hérite du parent, contraste imprévisible, zéro erreur

@@ -223,9 +223,17 @@
   la vérification de récepteur. Grep de la classe : instance unique dans le dépôt.
 - [ ] **`[FINTABLE-7]` Lot 3 — déclenchement AUTOMATIQUE de la passe à l'ouverture** (S) — throttlé
   1×/jour (la carte ne donne pour l'instant qu'un bouton manuel « Synchroniser maintenant »).
-- [ ] **`[FINTABLE-6]` Lot 2 — consommer le montant courtier dans Investissements + Accueil** (M) —
-  brancher `reconcileBrokerBalances` : total affiché = solde courtier, ligne « écart courtier (non
-  ventilé) » explicite, badge de fraîcheur. Dépend du Lot 1 (livré) ET de la sync qui tourne réellement.
+- [x] **`[FINTABLE-6]` Lot 2 — consommer le montant courtier dans Investissements + Accueil** (M) —
+  ✅ 2026-07-31. `BrokerReconciliationCard` (UNE implémentation, variantes `full` Investissements /
+  `compact` Accueil — pas deux copies) : total par panier = solde COURTIER (autorité), ligne « écart
+  (non ventilé) » explicite (Σ titres + écart == total courtier, reconstructible), badge de fraîcheur
+  borné par la lecture la plus ANCIENNE (`fraîcheur inconnue` si un compte n'a pas d'horodatage),
+  avertissements comptes sans régime déclaré / soldes illisibles. `holdingsCadByRegime`
+  (`services/fintable/holdingsByRegime.ts`) DÉRIVE la famille fiscale de `BUCKET_OF` (source unique,
+  même table que les piles de l'Accueil : CELIAPP→CELI, REEE→REER, MARGE/AUTRE/absent→NON-ENREG,
+  CRYPTO hors réconciliation) et somme via `assetValueCad`. `formatRelative` extrait de SystemView
+  vers `utils/relativeTime.ts` (consolidé AVANT la 2ᵉ copie). Ship dark sans sync Fintable ; purge
+  persona par construction (`fintableBrokerBalances` ∈ DEFAULT_APP_STATE). 11 tests.
 - [ ] **`[DASH-NETWORTH-CANONICAL]` L'Accueil est la SEULE surface qui recalcule le patrimoine** (M,
   diagnostic `financial-integrity` 2026-07-30, demande Marc « l'accueil fait aucun sens ») — le KPI
   `Dashboard.tsx:425` lit `latestTotals.Total` (dernier point de `usePortfolioHistory`) au lieu de la

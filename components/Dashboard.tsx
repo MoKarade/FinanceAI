@@ -21,6 +21,7 @@ import { historyKeyMatchesSymbol } from '../services/history/buildMarketData';
 import { ASSET_META, lookupSeedMeta } from '../services/assetMeta';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { StockComparisonModal } from './dashboard/StockComparisonModal';
+import { BrokerReconciliationCard } from './investments/BrokerReconciliationCard';
 import { HistoryCoverageNote } from './dashboard/HistoryCoverageNote';
 import { Tab as TabEnum } from '../types';
 import { formatCAD, formatPercent, formatSigned } from '../utils/format';
@@ -479,6 +480,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     onClick={futureKpi.hasValue ? () => navigateWithFocus(TabEnum.FUTURE) : undefined}
                 />
             </StatGrid>
+
+            {/* [FINTABLE-6 Lot 2] « Que l'accueil utilise Fintable aussi » (Marc) : total courtier
+                (autorité) + écart avec les titres saisis + fraîcheur. Ship dark sans sync Fintable. */}
+            <BrokerReconciliationCard variant="compact" />
 
             {/* [PH4-D] L'indicateur de santé financière a été DÉPLACÉ dans l'onglet Budget → sous-onglet « Santé »
                 (regroupement avec le budget, qui porte le contexte des ratios). */}

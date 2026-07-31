@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-31 (suite 2) — `[FINTABLE-6]` Lot 2 (Lot B de la file Marc)
+> Lot A (bannière sync) MERGÉ (#542). Lot B livré : `BrokerReconciliationCard` (full/compact —
+> une implémentation) branche `reconcileBrokerBalances` dans Investissements ET Accueil : total par
+> panier = solde COURTIER (autorité), écart explicite reconstructible, fraîcheur bornée par le compte
+> le plus ancien, comptes non déclarés/illisibles signalés. `holdingsCadByRegime` dérive la famille
+> fiscale de `BUCKET_OF` (source unique) + `assetValueCad`. Ship dark sans sync Fintable.
+> **File restante** : DASH-NETWORTH-CANONICAL (Lot C, « source unique ») → FINTABLE-7 Lot 3 (sync
+> auto 1×/jour) → a11y → perf → chat-page-context → gros chantiers.
+
 > ## 🟢 Session 2026-07-31 (suite) — `[AUTH-DRIVE-BANNER-FLICKER]` (Lot A de la file Marc)
 > **Marc a relancé** : « la bannière rouge apparaît souvent, parfois elle s'enlève seule, parfois faut
 > que je me connecte ». Cause trouvée dans `syncLifecycle.runBootSync` (appelé toutes les 60 s par le

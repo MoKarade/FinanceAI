@@ -58,6 +58,11 @@ interface ProjectionResult {
 
 `RetraitREER`, `RetraitCELI`.
 
+> `RetraitREER` agrège **4 sources** (2026-07-31, PR #551/#552) : cascade de décaissement,
+> meltdown REER (`[V2]`), conversion FERR obligatoire 71+ de janvier (`[V2'']`) et retraits de
+> goals (`FinancialGoal.targetAccount === 'REER'`). Compteur d'AFFICHAGE brut — il n'entre dans
+> aucun calcul fiscal ni de solde (neutralité NW pinnée par golden).
+
 ### Impôts
 
 Mensuels ($/mois) : `ImpotLatent`, `FluxImpots`, `ImpotRetraitREER`, `ImpotSalaireMois`, `ImpotGainsCap`, `ImpotDivers`, `WithheldTaxRrif`.

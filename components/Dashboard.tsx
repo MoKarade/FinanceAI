@@ -29,6 +29,7 @@ import { ProjectionRequired } from './ui/ProjectionRequired';
 import { logError, logErrorThrottled } from '../services/errorLogger';
 import { toCurrencyFactor, computePresentNetWorth, computeTotalDebt } from '../services/portfolio';
 import { presentEquityOfGoal, monthsSince } from '../services/projection/pastPurchaseInit';
+import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { PrivateBlock } from './ui/PrivateBlock';
 
@@ -276,6 +277,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
         // price/downPayment/amortissement — avant, le terme était INERTE (aucun écrivain UI).
         const currentRealEstateEquity = realEstateGoals.reduce(
             (sum, g) => sum + presentEquityOfGoal(g, monthsSince(g.purchaseDate)), 0);
+        // [DASH-HIST-IMMO-FLAT] (finding financial-integrity #552, MESURÉ) : peindre l'équité
+        // PRÉSENTE constante sur tout l'historique faussait le niveau passé (+77 097 $ mesurés sur
+        // 2022) et diluait les % de variation. Équité PAR ANNÉE via le helper existant
+        // (reconstructRealEstateEquityByYear) ; l'année COURANTE reste la valeur présente (source
+        // unique KPI) pour ne pas créer de marche au raccord avec le point d'aujourd'hui.
+        const equityByYear = reconstructRealEstateEquityByYear(realEstateGoals);
+        const nowYearImmo = new Date().getFullYear();
         // [DASH-NW-DUP] source unique gardée NaN/Infinity (l'ancienne somme inline propageait un solde corrompu).
         const currentDebts = computeTotalDebt(debts);
 
@@ -306,10 +314,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 Crypto: Number(row['TOTAL_CRYPTO']) || 0,
             };
             point.CELI = invMap.CELI; point.REER = invMap.REER; point.NonReg = invMap.NonReg; point.Crypto = invMap.Crypto;
-            point.Immobilier = currentRealEstateEquity;
+            const rowYear = rowDate.getFullYear();
+            const immoAtRow = rowYear >= nowYearImmo
+                ? currentRealEstateEquity
+                : (equityByYear.get(rowYear) ?? 0);
+            point.Immobilier = immoAtRow;
             point.Dettes = -currentDebts;
 
-            total += invMap.CELI + invMap.REER + invMap.NonReg + invMap.Crypto + currentRealEstateEquity - currentDebts;
+            total += invMap.CELI + invMap.REER + invMap.NonReg + invMap.Crypto + immoAtRow - currentDebts;
             point.Total = total;
             return point;
         });

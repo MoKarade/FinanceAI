@@ -118,6 +118,29 @@ export function applyLifeEvents(
             const drop = 1 - ((e.impactPercent || 30) / 100);
             state.shockPortfolio(drop);
             state.logLife(`Krach (-${e.impactPercent}%) 📉`);
+        } else if (e.type === 'HERITAGE') {
+            // [ENG-HERITAGE-INFLOW] Un héritage/gain est une RENTRÉE d'argent, pas une dépense
+            // (bug rapporté par Marc 2026-07-31 : le montant était débité par le chemin one-shot
+            // ci-dessous, sans aucun moyen UI de l'inverser). Non imposable pour le bénéficiaire
+            // au Canada (pas d'impôt successoral — le tip de l'UI l'affirme déjà) → +liquide,
+            // investi ensuite par la cascade mensuelle. Indexé par `expenseMultiplier` (inflation
+            // composée) comme tout montant saisi en dollars d'aujourd'hui (convention voyages/goals).
+            // Testé AVANT vente : un héritage nommé « après vente de la maison » ne doit jamais
+            // déclencher la vente d'un bien (même classe qu'ENG-LIFEEVENT-VENTE-SUBSTRING).
+            const rawGain = (e.impactAmount ?? 0) * expenseMultiplier;
+            if (!Number.isFinite(rawGain)) {
+                logErrorThrottled(`lifeEvent-nan:${e.id}`, {
+                    source: 'projection', severity: 'warning',
+                    message: `Événement "${e.name}" : montant non fini → gain ignoré`,
+                    context: { id: e.id, droppedValue: Number.isNaN(rawGain) ? 'NaN' : 'Infinity' },
+                });
+            }
+            // Clamp ≥ 0 : un « héritage négatif » n'a pas de sens — la saisie d'une dépense passe
+            // par les types de dépense, pas par un signe caché.
+            const gain = Number.isFinite(rawGain) ? Math.max(0, rawGain) : 0;
+            state.addLiquid(gain);
+            state.logLife(`${e.name} 💰`);
+            state.logFlow(`💰 Héritage/Gain (${e.name}): +${Math.round(gain).toLocaleString('fr-CA')}$`);
         } else {
             // [ENG-LIFEEVENT-VENTE-SUBSTRING] Sémantique explicite d'abord (`eventKind`) : 'VENTE_IMMO'
             // force la vente, 'NONE' la désarme ; absent → détection historique par sous-chaîne (« vente »

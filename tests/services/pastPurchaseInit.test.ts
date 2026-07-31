@@ -133,3 +133,66 @@ describe('Moteur — bien acheté dans le PASSÉ', () => {
         expect(num(p0.DetteTotale)).toBe(0);
     });
 });
+
+// ── Findings panel #552 (commit de suivi) ──────────────────────────────────
+describe('Moteur — findings panel #552', () => {
+    it('[PV ÉLEVÉ-1] la graine prevNW/minNetWorth INCLUT l\'équité du bien passé (pas de flux fantôme)', () => {
+        // Ancien code mesuré : diffNW[0] = +158 732 $ (toute l'équité comptée comme « variation du
+        // mois ») et minNetWorth = 20 000 $ (sous le vrai plancher de 158 731 $) → biais pessimiste
+        // dans safetyScore/goalSeek/strategyRanking. Les DEUX assertions échouent sur l'ancien code.
+        const r = __runScenarioForTests(engineParams([goal()]), 'AUTO_MARGINAL' as AllocationStrategy, false, false);
+        const d0 = num((r.chartData[0] as Record<string, unknown>).diffNW);
+        const d1 = num((r.chartData[1] as Record<string, unknown>).diffNW);
+        expect(Math.abs(d0 - d1)).toBeLessThan(500);
+        expect(r.minNetWorth).toBeGreaterThan(100_000);
+    });
+
+    it('[FI ÉLEVÉ-1] RP passée : le proxy loyer n\'entre plus dans la substitution (offset = PMT reconstruit)', () => {
+        // Ancien code : monthlyExpenses -= currentRentExpense (défaut 1 600 $) + PMT ajouté →
+        // deux runs identiques sauf currentRentExpense divergeaient de (Δloyer)×36 mois ≈ 60 k$.
+        // Nouveau : l'offset est le PMT+charges reconstruits, currentRentExpense est IGNORÉ pour
+        // une RP déjà détenue au boot → les deux runs sont IDENTIQUES.
+        const a = __runScenarioForTests({ ...engineParams([goal()]), currentRentExpense: 0 } as SimulationParams, 'AUTO_MARGINAL' as AllocationStrategy, false, false);
+        const b = __runScenarioForTests({ ...engineParams([goal()]), currentRentExpense: 1_600 } as SimulationParams, 'AUTO_MARGINAL' as AllocationStrategy, false, false);
+        expect(Math.abs(a.finalNetWorth - b.finalNetWorth)).toBeLessThan(1);
+    });
+
+    it('[PV MOYEN-2] les champs EXPLICITES currentValue/mortgageBalance sont honorés par le MOTEUR', () => {
+        // Ancien code : le moteur reconstruisait toujours (chartData[0].Immobilier = 158 324 $) et
+        // le KPI lisait l'explicite (450 000 $) → écart 291 676 $ entre l'Accueil et le Futur.
+        const g = goal({ currentValue: 600_000, mortgageBalance: 150_000 });
+        const r = __runScenarioForTests(engineParams([g]), 'AUTO_MARGINAL' as AllocationStrategy, false, false);
+        const immo0 = num((r.chartData[0] as Record<string, unknown>).Immobilier);
+        // m0 est émis APRÈS un mois de traitement (croissance + capital) — tolérance 5 k$.
+        expect(Math.abs(immo0 - 450_000)).toBeLessThan(5_000);
+        // Et le KPI (presentEquityOfGoal) dit LA MÊME CHOSE (même helper, même convention).
+        expect(Math.abs(presentEquityOfGoal(g, 60) - 450_000)).toBeLessThan(1);
+    });
+
+    it('[PV MOYEN-5] mortgageRate NaN assaini à la frontière : AUCUN non-fini dans chartData', () => {
+        // Ancien code mesuré : 968 valeurs non finies (NaN propagé par goal.mortgageRate / 100),
+        // rabattues en « 0 $ crédible » par la garde de computeRawNetWorth.
+        const r = __runScenarioForTests(engineParams([goal({ mortgageRate: NaN as never })]), 'AUTO_MARGINAL' as AllocationStrategy, false, false);
+        let nonFinite = 0;
+        for (const row of r.chartData) {
+            for (const [, v] of Object.entries(row as Record<string, unknown>)) {
+                if (typeof v === 'number' && !Number.isFinite(v)) nonFinite++;
+            }
+        }
+        expect(nonFinite).toBe(0);
+        expect(num((r.chartData[0] as Record<string, unknown>).Immobilier)).toBeGreaterThan(100_000);
+    });
+
+    it('[SF MOYEN] mortgageBalance explicite à 0 (maison PAYÉE) honoré même sans currentValue', () => {
+        const s = initPastPurchase(goal({ mortgageBalance: 0 }), 60);
+        expect(s.mortgage).toBe(0);
+        expect(s.isPaidOff).toBe(true);
+        expect(s.currentValue).toBeGreaterThan(400_000); // valeur reconstruite, pas 0
+    });
+
+    it('[SF CRITIQUE] donnée corrompue (mortgageBalance NaN) → bien EXCLU (0) et jamais l\'hypothèque avalée', () => {
+        // Ancien code mesuré : currentValue 500 000 + mortgageBalance NaN → équité 500 000 (la
+        // dette disparaissait en silence). La garde vit dans le helper → couvre les 3 consommateurs.
+        expect(presentEquityOfGoal(goal({ currentValue: 500_000, mortgageBalance: NaN as never }), 60)).toBe(0);
+    });
+});

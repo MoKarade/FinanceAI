@@ -78,6 +78,12 @@ export interface RealEstateCtx {
     incomeRetirement: number;
     useSmithManoeuvre: boolean;
     currentRentExpense: number;
+    /** [Panel #552] RP DÉJÀ détenue au boot : offset logement = PMT reconstruit + charges
+     *  (constant, aligné sur ce que le moteur AJOUTE), à la place du proxy loyer indexé — le
+     *  budget de base d'un propriétaire contient déjà son versement réel. 0/absent = comportement
+     *  historique (achat FUTUR : loyer indexé retiré à partir de l'achat). Optionnel à défaut
+     *  neutre → rétrocompat bit-identique. */
+    bootPrimaryHousingOffset?: number;
     /** C3 suite — si true, saute le RAP à l'achat (CELI avant REER non-imposable). */
     skipRapForPurchase?: boolean;
     /** PH4-FUT-B-4 — true UNIQUEMENT au mois exact de la retraite si le levier downsizing est actif :
@@ -110,6 +116,7 @@ export function processRealEstate(
         m, loopYear, isRetired, activeUsersCount, simInflation, simSalaryGrowth,
         grossMarcBaseAnnual, grossAnnaBaseAnnual, incomeRetirement,
         useSmithManoeuvre, currentRentExpense,
+        bootPrimaryHousingOffset = 0,
         skipRapForPurchase = false,
         downsizeThisMonth = false,
     } = ctx;
@@ -398,9 +405,14 @@ export function processRealEstate(
         }
     });
 
-    // Si résidence principale achetée, ne plus payer le loyer
+    // Si résidence principale achetée, ne plus payer le loyer. Pour une RP DÉJÀ détenue au boot
+    // (achat passé), l'offset est le PMT+charges reconstruits (constant) — le proxy loyer indexé
+    // sur-chargeait jusqu'à 20 084 $/an mesurés quand `currentRentExpense` retombait sur le défaut
+    // 1 600 $ (panel #552, financial-integrity ÉLEVÉ-1).
     if (state.hasPurchasedPrimary) {
-        state.monthlyExpenses -= currentRentExpense * Math.pow(1 + simInflation / 100, m / 12);
+        state.monthlyExpenses -= bootPrimaryHousingOffset > 0
+            ? bootPrimaryHousingOffset
+            : currentRentExpense * Math.pow(1 + simInflation / 100, m / 12);
     }
 
     // RAP repayment

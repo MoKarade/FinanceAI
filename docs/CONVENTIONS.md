@@ -412,6 +412,26 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   (avril débite le bucket .reer entier — [PROJ-TTP-DOUBLECOUNT]) et que la FERR a le même trou d'affichage
   ([ENG-FERR-FLOW-INVISIBLE]) : deux passes antérieures avaient corrigé CE bloc sans voir les registres voisins —
   vérifier TOUTES les sources ET tous les consommateurs du registre, pas le seul producteur qu'on corrige.
+  ⚠️ **Un chemin par défaut TYPÉ « dépense » avale tout nouveau type de flux** (leçon ENG-HERITAGE-INFLOW
+  2026-07-31, rapporté par Marc) : `applyLifeEvents` routait TOUT type hors KRACH/perte-de-revenu/vente vers
+  `addExpense` — le type `HERITAGE` (offert par l'UI avec tips « investissez-le ») était DÉBITÉ comme une dépense
+  one-shot, impact net −2× le montant, et AUCUN moyen UI de l'inverser. Quand un dispatch a une branche par défaut
+  qui impose un SIGNE (dépense/rentrée), chaque type doit déclarer le sien explicitement — un enum qui grandit ne
+  crie pas quand sa nouvelle valeur tombe dans le mauvais défaut. Fix : branche `HERITAGE` → `addLiquid` (non
+  imposable au bénéficiaire, ARC), testée AVANT la détection « vente » par sous-chaîne.
+  ⚠️ **Un helper $ PARTAGÉ porte sa garde non-fini LUI-MÊME, pas ses appelants** (leçon panel #552 2026-07-31) :
+  la garde « valeur non finie → exclue + tracée » de `presentEquityOfGoal` vivait dans UN des TROIS consommateurs
+  (le KPI ; le graphe historique et `hasRealEstate` avalaient un `mortgageBalance` NaN → l'hypothèque ENTIÈRE
+  disparaissait du patrimoine affiché, mesuré 500 k$). Une garde côté appelant se copie mal et dérive ; dans le
+  helper, elle couvre les consommateurs FUTURS aussi. Corollaire silent-failure : `fin(NaN) → 0` sans logError
+  = neutralisation muette interdite (no-fake-data).
+  ⚠️ **Un nouvel actif présent AU BOOT doit ensemencer TOUTES les graines qui résument l'état initial**
+  (leçon panel #552 2026-07-31, cousin « état initial » de la leçon meltdown ci-dessus) : brancher le bien passé
+  dans `propertiesState` SANS re-semer `prevNW`/`minNetWorth` (calculées avant que le moteur publie l'équité) a
+  créé un « flux fantôme » diffNW[0] de +156 629 $ ET un `minNetWorth` sous-évalué de 158 731 $ → biais pessimiste
+  dans safetyScore/goalSeek/strategyRanking. La conservation ne l'attrape pas (les GRANDEURS sont justes, ce sont
+  les DÉRIVÉES de la graine qui mentent). Grep les `let xxx = currentRawNetWorth()`-style seeds quand l'état
+  initial gagne un constituant.
   ⚠️ **Un registre PER-CONJOINT qui passe de SHADOW à PILOTE doit gérer TOUS les événements de vie (décès)**
   (leçon ITEM-2C-FERR 2026-06-25) : brancher la FERR au per-conjoint (chaque conjoint convertit SA part `reerByUser[i]`
   à SON âge) a créé un FLUX FISCAL FANTÔME — après le DÉCÈS du conjoint, sa part (registre `[1]`) continuait de

@@ -141,6 +141,12 @@ Pour **chaque** mois `m`, le moteur exécute ces 9 phases séquentiellement. Com
 ### Phase 6 — Immobilier
 
 Pour chaque `RealEstateGoal` actif :
+- **Si `purchaseDate` est PASSÉE** (2026-07-31, `[V2']` PR #552) : le bien est initialisé **DÉTENU
+  dès le mois 0** via `pastPurchaseInit.ts` (principal = (prix − mise) + prime SCHL — même
+  `calculateSchlPremium` que l'achat futur ; PMT annuité au taux/amortissement d'origine ; solde
+  restant en forme fermée ; valeur = prix apprécié, plafonné `maxValue`). Aucun débit de mise de
+  fonds au mois 0, pas de re-achat ni d'« Achat reporté ». Approximation assumée : pas de choc de
+  renouvellement rétroactif (taux d'origine constant sur le passé).
 - **Si pas encore acheté** et mois = `purchaseOffset` :
   - Calcul mise de fonds nécessaire
   - Retrait CELIAPP/FHSA si éligible (40k$ max à vie)

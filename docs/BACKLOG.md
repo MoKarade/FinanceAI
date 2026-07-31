@@ -33,9 +33,14 @@
 - [x] **V2 — Meltdown honnête** ✅ 2026-07-31 (PR V2, discriminant git-stash prouvé 2/2) :
   `[WHT-DISPLAY-MELTDOWN]` (requalifié ÉLEVÉ — le ranking de stratégies pèse un impôt sous-compté
   ×2,6, MESURÉ) + `[ENG-MELTDOWN-FLOW-INVISIBLE]` (774 k$ de retraits invisibles des flux).
-- [ ] **V3 — Parité état + tests money-critical** (1-2 PR) : `[DEFAULTS-DRIFT-FINTABLE-FIELDS]`
-  (bug réel + garde bidirectionnel) + `[TEST-GAP-TAXESTIMATE]` + `[TEST-GAP-SUBSCRIPTIONS]` +
-  `[TEST-GAP-ROLESCONFIG]` + `[PV-11e]` + `[NW-PARITY-SURFACES-TEST]`.
+- [x] **V3 — Parité état + tests money-critical** ✅ 2026-07-31 (PR #552, 40 tests) :
+  `[DEFAULTS-DRIFT-FINTABLE-FIELDS]` (4 champs + garde bidirectionnel) + `[TEST-GAP-TAXESTIMATE]` +
+  `[TEST-GAP-SUBSCRIPTIONS]` + `[TEST-GAP-ROLESCONFIG]` + `[PV-11e]` + `[NW-PARITY-SURFACES-TEST]`
+  (+ fix PDF `equity: 0` en dur → `presentEquityOfGoal`). Archive au merge de #552.
+- [x] **`[ENG-HERITAGE-INFLOW]`** ✅ 2026-07-31 (PR #552, rapporté par Marc « héritage marche pas ») —
+  `applyLifeEvents` n'avait AUCUNE branche de rentrée d'argent : un HERITAGE était DÉBITÉ comme
+  dépense one-shot (impact net −2× le montant). Branche +liquide non imposable + 4 tests (delta
+  ±50 k$, saut au mois de l'événement, piège « vente » dans le nom, NaN).
 - [ ] **V4 — Vie privée / profils** (1 PR) : `[PROFIL-SWITCH]` + `[D6-PRIV-MONTANTS]` (décision
   déjà prise) + `[SEC-GA-DEFER-CONSENT]` + `[HIST-STORE-SIZE]` (downsample >365 j, mesure faite).
 - [ ] **V5 — Fiscal débloqué (Marc : Q1 ok, Q2 fix, Q3 go)** : `[FISC-BRACKET-REALINDEX]`/ITEM-2A (CRITIQUE) +
@@ -153,6 +158,50 @@
 - [ ] **`[MELTDOWN-THRESHOLDS-DOC]`** (S, doc) — `meltdownReer.ts:9-13` : seuils
   MELTDOWN_NW_HIGH/MID (2 M/1 M) + cibles 220 k/140 k/90 k × adultes = heuristiques de CONCEPTION
   non documentées (pas des constantes fiscales) — les documenter (module + FISCAL_REFERENCE §9).
+
+> Findings panel #552 (financial-integrity MESURÉ + silent-failure + code-reviewer, 2026-07-31) —
+> les corrigés dans #552 même sont dans l'archive au merge ; ici le RESTE à faire :
+
+- [ ] **`[ENG-PAST-OWNED-VS-PLANNED]`** (M, ÉLEVÉ [Certain, mesuré] — panel #552) — `RealEstateGoal`
+  n'a AUCUN discriminant « bien DÉTENU » vs « objectif planifié non réalisé » : un objectif saisi
+  pour 2024 jamais mis à jour injecte +156 628 $ d'équité et +307 081 $ de dette FANTÔMES au m0
+  (`purchaseOffset < 0` suffit depuis V2'). Mitigé dans #552 par un log lifeEvents visible au m0 ;
+  vrai fix = champ explicite `isOwned` + question UI à la saisie d'une date passée → **décision
+  Marc requise** (UX). 
+- [ ] **`[IMMO-3-FORMULES]`** (M, MOYEN [Certain, mesuré 8 364 $] — panel #552) — TROIS formules
+  concurrentes pour l'équité passée/présente : `initPastPurchase` (SCHL, sans rénos), 
+  `runAmortization` (`realEstate.ts:118` — IGNORE la prime SCHL, clampe l'équité ≥ 0, rénos),
+  moteur mensuel. Écart mesuré 8 364,31 $ au raccord historique↔présent du MÊME écran. Fix :
+  intégrer la prime SCHL au principal de `runAmortization` (même `calculateSchlPremium`) + revisiter
+  le clamp ≥ 0 (perte d'info underwater), puis re-baseliner les tests d'historique.
+- [ ] **`[ENG-PROPGROWTH-ZERO-INEXPRIMABLE]`** (S, MOYEN — panel #552) — `realEstateMonth.ts:347`
+  `(propertyGrowthRate || 3)` rend une croissance immobilière NULLE inexprimable (0 → 3 %/an).
+  #552 aligne `initPastPurchase` sur cette convention (parité) ; le vrai fix (accepter 0, défaut 3
+  seulement si absent) touche tous les scénarios existants → re-baseliner SCIEMMENT.
+- [ ] **`[ENG-RENEWAL-M0]`** (S, FAIBLE — panel #552) — un bien passé détenu depuis un multiple
+  exact de 60 mois subit le RENOUVELLEMENT (choc déterministe `charCodeAt % 3`) dès le mois 0
+  (PMT −240 $ mesuré au 1er point affiché). Préexistant, atteignable au m0 depuis V2'. Option :
+  décaler le 1er renouvellement d'un mois ou seeder le choc à 0 au m0.
+- [ ] **`[ENG-CELIAPP-RESIDUAL-PASTBUY]`** (S, FAIBLE — panel #552) — un solde CELIAPP résiduel
+  n'est plus liquidé quand l'achat est déjà fait (bloc d'achat sauté) ; repli 15 ans/71 ans
+  (`taxJanuary.ts:149-153`) → retrait non imposable MANQUÉ (pas de perte de capital). Détecter le
+  cas « CELIAPP > 0 + bien passé » et le signaler (ou transférer au REER à l'init).
+- [ ] **`[ENG-RENEWAL-RATE-MISMATCH]`** (M, ÉLEVÉ [Certain, mesuré] — panel #552, PRÉ-EXISTANT) —
+  au renouvellement hypothécaire, le PMT est recalculé au NOUVEAU taux mais l'intérêt mensuel reste
+  à `goal.mortgageRate` (`realEstateMonth.ts:~349`) : renouvellement 4,5 %→3 % mesuré → capital
+  551 $/mois seulement, solde encore 211 569 $ après 10 ans sur un prêt censé s'éteindre à 240 mois.
+  Frappe tout achat (futur à m+60, passé dès m0 si multiple de 60). Fix : porter le taux courant
+  dans pState (ex. `currentRate`) et le consommer pour l'intérêt. Re-baseliner SCIEMMENT.
+- [ ] **`[ENG-NETTRANSFER-REER-INCOMPLET]`** (S — panel #552) — `NetTransferREER`
+  (`monthlyOutput.ts:291` = ContribREER − withdrawalREER) ne voit ni FERR ni meltdown (écart
+  cumulé 330 353 $ vs `RetraitREER` sur 301 mois) ; les deux séries cohabitent dans
+  `ProjectionExplains.tsx:41`. Aligner (ou documenter la sémantique « transferts de la cascade
+  seulement » à l'écran).
+- [ ] **`[UX-ISACTIVE-SEMANTIQUE]`** (S, **décision Marc** — panel #552) — un bien créé dans
+  l'onglet Immobilier naît `isActive: false` (« Activer dans Simulation ») → il ne compte NI au
+  KPI Accueil NI au moteur tant qu'on ne l'active pas. Cohérent (mêmes conventions partout) mais
+  piégeux : ta maison saisie sans clic « Activer » = patrimoine amputé de l'équité. Trancher :
+  activer par défaut à la création ? Badge « non comptée » sur le KPI ?
 
 ## 🏦 Sync & données (Fintable, Drive, persistance)
 

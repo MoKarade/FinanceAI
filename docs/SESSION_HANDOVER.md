@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-31 — `[TX-REVIEW]` + `[TX-SUBSCRIPTIONS]` (PR 3/3, chantier CLOS)
+> **Le chantier « analyse des transactions » est complet** : virements (#539), catégorisation (#540),
+> mesure + abos fantômes (cette PR).
+> ⚠️ **LE point à retenir : le critère d'arrêt de Marc était STATISTIQUEMENT INTENABLE.** Il a fixé
+> « < 1 % mal classé sur 300 tirages » ; le test qui l'encodait a ÉCHOUÉ. Mesuré : à 300 jugements
+> SANS AUCUNE erreur, la borne haute de Wilson (95 %) monte encore à **1,26 %** → il faut **390**
+> tirages. `RECOMMENDED_SAMPLE_SIZE` est donc DÉRIVÉE de `samplesNeededForThreshold(1)`, jamais
+> re-tapée. Si Marc rediscute le seuil, c'est la constante qui suit, pas le test.
+> **Livré** : `services/transactions/reviewSample.ts` (tirage seedé déterministe — graine PERSISTÉE
+> dans `AppState.categoryReview`, sinon les jugements ne portent plus sur le même dénominateur ;
+> intervalle de Wilson ; verdict « indéterminé » tant qu'il chevauche le seuil) +
+> `subscriptionAlerts.ts` (hausse de prix vs le prix D'AVANT ; « arrêté » après 2 cadences manquées ;
+> coût annuel EXCLUANT les arrêtés) + `CategoryReviewPanel.tsx` (Transactions) + alertes dans Planning.
+> ⚠️ `AppState.categoryReview` est ADDITIF → déclaré EXPLICITEMENT dans `DEFAULT_APP_STATE`
+> (`: undefined`), sinon la vraie revue de Marc traverserait le mode démo (PERSONA-PURGE).
+> ⚠️ Piège d'unité rencontré : `formatPercent` prend DÉJÀ un pourcentage (×100), pas un ratio.
+> **Suite possible** (rien de bloqué) : Marc lance la revue et me dit le taux mesuré ; si > 1 %, ses
+> corrections indiquent QUELLES classes d'erreurs restent — c'est le prochain lot, guidé par la mesure
+> plutôt que par l'intuition.
+
 > ## 🟢 Session 2026-07-31 — `[TX-CATEGORIZE]` + `[TX-INTERAC-BUDGET]` (PR 2/3)
 > **Cause racine du « ça met abonnement pour tout et n'importe quoi »** : la catégorie « Abonnements »
 > se décidait sur le seul LIBELLÉ (`APPLE\.COM`, `GOOGLE \*`, `MICROSOFT`) et passait AVANT

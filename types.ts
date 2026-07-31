@@ -733,6 +733,20 @@ export interface AiMessage {
 /** [B3-CHAT-MODEL] Clés des modèles offerts dans le chat (mapping id complet : services/aiChat/models). */
 export type AiChatModelKey = 'haiku' | 'sonnet' | 'opus';
 
+/** [TX-REVIEW] État d'une revue d'échantillon en cours (persisté, device-agnostique). */
+export interface CategoryReviewState {
+  /** Graine du tirage — fige l'échantillon d'une session à l'autre. */
+  seed: number;
+  /** Taille demandée au moment du tirage. */
+  size: number;
+  /** Ids jugés CORRECTS ou mal classés (le dénominateur). */
+  reviewedIds: number[];
+  /** Ids jugés MAL CLASSÉS (le numérateur). Toujours inclus dans `reviewedIds`. */
+  errorIds: number[];
+  /** Epoch ms du début de la revue (traçabilité : un taux vieux de 6 mois ne dit plus rien). */
+  startedAt: number;
+}
+
 export interface AppState {
   transactions: Transaction[];
   assets: Asset[];
@@ -804,6 +818,11 @@ export interface AppState {
   charitableGoals?: CharitableGoal[];
   // Phase G.1 — métadonnées des documents uploadés (blobs stockés séparément)
   documents?: DocumentMeta[];
+  /** [TX-REVIEW] Revue d'échantillon de la catégorisation : mesure le taux réel de transactions mal
+   *  classées (critère d'arrêt de Marc). ADDITIF optionnel (absent = jamais lancée). La GRAINE est
+   *  persistée : rouvrir l'écran doit re-tirer le MÊME échantillon, sinon les jugements déjà faits ne
+   *  portent plus sur le même dénominateur. */
+  categoryReview?: CategoryReviewState;
   /** [FINTABLE-3] Rapport de la dernière passe de sync serveur (cron Cloud Run). ADDITIF optionnel
    *  (absent = jamais synchronisé). Écrit par le cron à CHAQUE passe (succès ou échec) pour que
    *  l'état de la sync soit visible dans l'app sans notification proactive (choix Marc). */

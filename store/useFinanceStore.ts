@@ -195,6 +195,10 @@ const DEFAULT_APP_STATE: AppState = {
     // démo persona — sinon le rapport RÉEL (comptes/dettes/dates de Marc) traverserait le spread de
     // `enableTestMode` intact (un objet qui n'a pas une clé ne la réinitialise pas). Même classe que
     // PERSONA-PURGE : « zéro fuite inter-persona ».
+    // [TX-REVIEW] Champ ADDITIF déclaré EXPLICITEMENT ici : `personaResetBase()` dérive de
+    // DEFAULT_APP_STATE, et spreader un objet SANS une clé ne réinitialise pas cette clé — la vraie
+    // revue de Marc traverserait alors le mode démo (extension de PERSONA-PURGE).
+    categoryReview: undefined,
     fintableSyncReport: undefined,
     // [FINTABLE-6] MÊME raison que ci-dessus : soldes RÉELS des comptes de placement de Marc — la
     // donnée la plus sensible du lot. Présent explicitement pour être purgé au switch de persona.

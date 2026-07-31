@@ -6,6 +6,32 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — vérifier la qualité du classement, et les abonnements qui dérivent] — 2026-07-31
+
+### Transactions
+- **`[TX-REVIEW]` — « Mesurer la qualité du classement »** (onglet Transactions). L'app tire des
+  transactions au hasard et te les présente une par une : tu dis si la catégorie est bonne, elle en
+  déduit ton taux d'erreur réel. C'est le seul moyen de vérifier ton objectif « moins de 1 % » — il
+  n'existe aucune liste de référence à laquelle se comparer.
+- **Le verdict n'est annoncé que quand il est démontrable.** Tant que la marge d'erreur chevauche le
+  seuil, l'app dit « pas encore concluant » et combien il reste à juger, plutôt qu'un pourcentage qui
+  fait semblant d'être précis.
+- ⚠️ **300 tirages ne suffisent pas** : avec zéro erreur sur 300, la marge monte encore à 1,26 %. Il en
+  faut **390** pour trancher 1 %. La taille recommandée est calculée à partir du seuil, pas devinée.
+- L'échantillon **ne bouge pas** entre deux ouvertures : tu peux t'arrêter et reprendre.
+
+### Abonnements
+- **`[TX-SUBSCRIPTIONS]` — abonnements fantômes** : l'app signale un abonnement dont **le prix a monté**
+  sans que tu l'aies vu passer, et un abonnement **qui a cessé d'être débité** (arrêté, ou prélèvement
+  en retard ?). Avec le coût annuel au tarif courant.
+- Une hausse se mesure contre le prix **d'avant**, pas contre la moyenne — qui inclurait le nouveau prix
+  et amortirait justement la hausse.
+- Un seul cycle manqué ne déclenche rien : c'est un retard banal. Il en faut deux.
+- Le coût annuel total **exclut** les abonnements signalés arrêtés : annoncer une dépense éteinte
+  serait un faux chiffre.
+
+---
+
 ## [unreleased — « Abonnements » ne se décide plus sur le nom du marchand] — 2026-07-31
 
 ### Transactions

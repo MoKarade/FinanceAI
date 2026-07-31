@@ -1726,3 +1726,30 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   (`utils/spendRules.ts`) — importer `budgetSync` depuis `budget` aurait créé un cycle, et dupliquer
   `isSpend` aurait fait diverger deux définitions d'une règle money-critical. Vérifié par
   `npx madge --circular --extensions ts utils/` = 0.
+- ⚠️ **[TX-REVIEW + TX-SUBSCRIPTIONS] 2026-07-31 — mesurer un critère d'arrêt, leçons** :
+  (1) **Un critère d'arrêt CHIFFRÉ doit être confronté à la statistique AVANT d'être promis** : Marc a
+  fixé « moins de 1 % mal classé sur **300** tirages », et j'ai écrit le test qui l'encodait — il a
+  ÉCHOUÉ. Mesuré : à 300 jugements **sans aucune erreur**, la borne haute de Wilson (95 %) monte encore
+  à **1,26 %** ; il en faut **390**. Les deux nombres du cadrage étaient incompatibles, et afficher
+  « moins de 1 % » sur 300 aurait été un faux avec l'autorité d'un chiffre. Fix : la constante
+  `RECOMMENDED_SAMPLE_SIZE` est **DÉRIVÉE du calcul** (`samplesNeededForThreshold(1)`), jamais re-tapée
+  — elle reste vraie si le seuil ou la méthode d'intervalle change (classe A11Y-CHECK-CONTRAST-DRIFT
+  appliquée à un seuil statistique). Réflexe : quand l'utilisateur donne « X % sur N essais », vérifier
+  que N peut PROUVER X avant de bâtir dessus ; corriger la constante, jamais le test.
+  (2) **Un taux d'échantillon sans son INTERVALLE est un chiffre faux** : on rend toujours
+  `[low, high]` + un `verdict` qui vaut « indéterminé » tant que l'intervalle chevauche le seuil —
+  dire « pas encore concluant, encore N à juger » est plus utile qu'un pourcentage qui fait semblant.
+  **Wilson, pas l'approximation normale** : sur un taux proche de 0 (notre cas), la normale rend un
+  intervalle qui déborde sous zéro et SOUS-ESTIME l'incertitude.
+  (3) **Un tirage d'échantillon doit être SEEDÉ et la graine PERSISTÉE** : `Math.random()` re-tirerait
+  à chaque rendu → les jugements déjà faits ne porteraient plus sur le même dénominateur, et le taux ne
+  mesurerait plus rien. Corollaire : trier le pool par id AVANT de mélanger — l'ordre du tableau
+  d'entrée change (tri UI, ré-import) et ferait dériver l'échantillon malgré la graine.
+  (4) **Une alerte « prix en hausse » se compare au prix D'AVANT, pas à la médiane globale** — celle-ci
+  inclut le nouveau prix et amortit exactement la hausse qu'on cherche. Et un abonnement n'est
+  « peut-être arrêté » qu'après **2** cadences manquées : crier au loup sur un simple retard de
+  prélèvement fait cesser de lire les alertes. Le coût annuel total EXCLUT les abos signalés arrêtés
+  (annoncer une dépense éteinte = no-fake-data).
+  (5) ⚠️ **`formatPercent` (utils/format) prend DÉJÀ un pourcentage (×100), pas un ratio** — j'ai
+  écrit `formatPercent(x / 100)` par réflexe, ce qui divise deux fois et affiche « 0,01 % » pour 1 %.
+  Piège d'unité silencieux (aucune erreur de type, le résultat est juste faux) : lire la signature.

@@ -7,9 +7,13 @@ import { ProjectionRequired } from './ui/ProjectionRequired';
 import { PrivateAmount } from './ui/PrivateAmount';
 // Phase 4 A5: bascule sur services/claude.ts (Haiku 4.5)
 import { detectSubscriptionsAI } from '../services/claude';
+// [TX-SUBSCRIPTIONS] Abonnements fantômes : hausse de prix silencieuse, service qui a cessé d'être
+// débité. Modules PURS et légers (aucune dépendance) — dérivés des profils de récurrence.
+import { buildMerchantProfiles, merchantKey } from '../services/transactions/merchantProfile';
+import { detectSubscriptionAlerts, type SubscriptionAlertInput } from '../services/transactions/subscriptionAlerts';
 import { showToast } from './ui/Toast';
 import { ConfirmModal } from './ui/ConfirmModal';
-import { formatCAD } from '../utils/format';
+import { formatCAD, formatPercent } from '../utils/format';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { mergeSubscriptions, addSubscription, removeSubscription, isPinned, subscriptionKey, monthlyEquivalent, totalMonthlyCost, totalYearlyCost, isAnnualSubscription, subscriptionDueLabel } from '../utils/subscriptions';
 
@@ -84,6 +88,30 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
             }
         });
         return detected.sort((a, b) => b.averageAmount - a.averageAmount);
+    }, [transactions]);
+
+    // [TX-SUBSCRIPTIONS] Alertes sur les abonnements RECONNUS (profil de récurrence) : prix qui monte
+    // sans qu'on l'ait vu passer, service qui a cessé d'être débité. Ce sont des invitations à
+    // regarder, pas des verdicts — un « arrêté » peut être un simple retard de prélèvement.
+    const subscriptionAlerts = useMemo(() => {
+        const spends = transactions
+            .filter(t => t.amount < 0 && !t.isTransfer && !t.isDuplicate)
+            .map(t => ({ payee: t.payee, amount: t.amount, date: t.date }));
+        const profiles = buildMerchantProfiles(spends);
+        const byKey = new Map<string, number[]>();
+        for (const s of [...spends].sort((a, b) => a.date.localeCompare(b.date))) {
+            const k = merchantKey(s.payee);
+            if (!k) continue;
+            const list = byKey.get(k);
+            if (list) list.push(Math.abs(s.amount));
+            else byKey.set(k, [Math.abs(s.amount)]);
+        }
+        const inputs: SubscriptionAlertInput[] = [];
+        for (const [key, profile] of profiles) {
+            inputs.push({ profile, amounts: byKey.get(key) ?? [] });
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        return detectSubscriptionAlerts(inputs, today);
     }, [transactions]);
 
     // [PH4-F] liste affichée = abos ÉPINGLÉS (persistés) + DÉTECTÉS non déjà épinglés (dédup par marchand).
@@ -179,6 +207,35 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                     <Card title="Abonnements & Récurrents" action={
                         <div className="flex gap-2">{!aiSubs ? (<button onClick={handleAiAnalysis} disabled={isAnalyzing} className="text-tiny bg-primary text-dark px-2 py-1 rounded font-bold hover:bg-white disabled:opacity-50">{isAnalyzing ? '...' : 'IA'}</button>) : (<button onClick={() => setAiSubs(null)} className="text-tiny bg-white/10 px-2 py-1 rounded text-ink-300">Reset</button>)}</div>
                     }>
+                        {subscriptionAlerts.length > 0 && (
+                            <ul className="space-y-2 mb-3">
+                                {subscriptionAlerts.map((a) => (
+                                    <li
+                                        key={`${a.kind}-${a.merchantKey}`}
+                                        className={`rounded-lg border p-2 text-meta ${a.kind === 'price_rise' ? 'border-warning-500/30 bg-warning-500/5' : 'border-info-500/30 bg-info-500/5'}`}
+                                    >
+                                        <div className="font-bold text-ink-100 truncate">{a.label}</div>
+                                        {a.kind === 'price_rise' ? (
+                                            <div className="text-ink-300">
+                                                Le prix a monté de {formatPercent((a.risePct ?? 0) * 100, 0)} —{' '}
+                                                <PrivateAmount>{formatCAD(a.baselineAmount)}</PrivateAmount> puis{' '}
+                                                <PrivateAmount>{formatCAD(a.latestAmount)}</PrivateAmount>.{' '}
+                                                <span className="text-ink-400">
+                                                    Soit <PrivateAmount>{formatCAD(a.yearlyCostAtLatest)}</PrivateAmount> par an au tarif actuel.
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div className="text-ink-300">
+                                                Plus débité depuis {a.daysSinceLast} jours — arrêté, ou prélèvement en retard ?{' '}
+                                                <span className="text-ink-400">
+                                                    <PrivateAmount>{formatCAD(a.yearlyCostAtLatest)}</PrivateAmount> par an s&apos;il reprend.
+                                                </span>
+                                            </div>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                         <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
                             {activeSubs.map((sub, idx) => (
                                 <div key={subscriptionKey(sub) || idx} className="flex justify-between items-center p-3 bg-[#1a1a1a] rounded-xl border border-white/5 hover:border-white/20 transition-all group">

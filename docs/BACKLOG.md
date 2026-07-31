@@ -428,6 +428,19 @@
   source n'existait ; en retirant la règle SDK, `pdf-vendor` est APPARU dans le preload à sa place, même
   piège). Sans les règles, Rolldown range SDK et jspdf dans les chunks async naturels (sdk-*.js /
   jspdf.es.min-*.js) — téléchargés au premier usage seulement. Preload final : react-vendor + cœur.
+  Panel #547 (code-reviewer + silent-failure + ai-reviewer, 0 bloquant) : test de résolution du chunk lazy
+  ajouté (PageSetupGate → vraie PayslipUploadCard, pas le fallback à vie) + `ErrorBoundary.componentDidCatch`
+  route désormais vers `logError` (un crash de rendu — ex. chunk périmé post-déploiement — était visible à
+  l'écran mais INVISIBLE dans Réglages → Diagnostics). Suivi routé : `[SDK-IMPORT-TIMEOUT]` ci-dessous.
+- [ ] **`[SDK-IMPORT-TIMEOUT]`** (S, résiduel panel #547, NON bloquant — ai-reviewer MOYEN + code-reviewer
+  FAIBLE, convergents) — le chargement du chunk SDK (`await importWithRetry(() => import('@anthropic-ai/sdk'))`,
+  `services/claude.ts:157`) n'est couvert par AUCUN timeout : `makeTimeoutSignal` est construit APRÈS. Un
+  `import()` dont le fetch STALLE sans jamais rejeter pend indéfiniment (aucun recours sauf recharger l'onglet).
+  Borné en pratique : 1er usage par session d'onglet seulement (registre ESM dédup ensuite), et un « Annuler »
+  pendant le chargement est honoré AVANT l'appel API (makeTimeoutSignal teste `aborted` à sa création — zéro
+  coût facturé). Fix candidat : course `import()` vs timer 8-10 s dans importWithRetry (rejet propre routé vers
+  les messages d'erreur existants, tous les appelants catchent déjà). ⚠️ importWithRetry est PARTAGÉ par tous
+  les lazy — dimensionner le timeout pour les gros chunks (recharts) sur connexion lente avant de l'appliquer.
 - [x] **`[AITOOLS-SEC]` Audit sécurité FINAL du chantier** ✅ 2026-07-22 (exigence Marc) — panel security-privacy
   + ai-reviewer sur TOUT le chantier. **Verdict : sain.** Rapport daté `docs/AUDIT_SEC_CLAUDE_IN_APP_2026-07-22.md`.
   Prouvés SAINS (mesuré) : aucune écriture sans confirmation, clés API exclues, Loi 25/mode discret, isolation

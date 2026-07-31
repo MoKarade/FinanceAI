@@ -21,7 +21,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
     return (
         <Card icon={<Icon name="settings" size={18} />} title="Paramètres avancés">
             <details className="space-y-4">
-                <summary className="cursor-pointer text-body text-ink-200 hover:text-white py-1.5 inline-block">Déplier — paramètres habituellement masqués</summary>
+                <summary className="cursor-pointer text-body text-ink-200 hover:text-white py-1.5">Déplier — paramètres habituellement masqués</summary>
 
                 {/* ─────────────────────────────────────────────────────────── */}
                 <div className="mt-4 pt-3 border-t border-white/5">

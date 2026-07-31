@@ -320,9 +320,15 @@
   `.text-info-300` absente du CSS (le no-op silencieux confirmé — le texte héritait du parent).
 - [x] **`[A11Y-DETAILS-TAP-TARGET]` `<summary>` sous la cible tactile 24×24px (WCAG 2.5.8)** (S) —
   ✅ 2026-07-31. Sweep des 9 `<summary>` du repo : 4 avaient déjà un `py-*` (Budget, HistoryCoverageNote,
-  HistorySyncDoctor ×2), les 5 autres reçoivent `py-1.5` (ErrorBoundary, AdvancedProjectionParams,
-  PatrimoineExtended, TaxBracketViz, Transactions ; + `inline-block` où le summary était inline pour que
-  le padding compte dans la cible).
+  HistorySyncDoctor ×2), les 5 autres reçoivent `py-1.5` (26-34 px mesurés). ⚠️ **Finding a11y-auditor
+  (MESURÉ en Chromium réel) : `inline-block` sur un `<summary>` est INUTILE pour la hauteur (le padding
+  compte déjà sur `list-item`) et NUISIBLE — il supprime le triangle natif ▶/▼ (seule affordance
+  visuelle d'état) et rétrécit la cible cliquable de la pleine largeur à la largeur du texte** → retiré
+  des 2 sites où je venais de l'ajouter. Contrastes translucides du sweep info-400 composités à la main
+  (check-contrast ne couvre que l'opaque) : tous ≥ 4,69:1 AA — marge la plus fine = AutoBackupPanel
+  hover, premier site à surveiller si un token de fond bouge. Reste (pré-existant, hors PR) :
+  `Transactions.tsx:492` porte un `inline-block` d'avant — même symptôme triangle perdu, à reprendre
+  avec un éventuel design-system des disclosures.
 - [x] **`[FINTABLE-5]` Bascule de l'historique 18 mois — ✅ TRANCHÉ 2026-07-29 : ON GARDE.** La mesure
   est tombée : 90 jours demandés, **30 rendus** (2026-06-29 → 2026-07-28). La réponse de cadrage de Marc
   (« supprimer l'historique, n'utiliser que Plaid », Q8) est donc **caduque** — l'appliquer aurait coûté

@@ -26,11 +26,11 @@
 > sur lui. Restent gatés sur des SOURCES EXTERNES : FISC-GIS-COUPLE-RATE (table Service Canada),
 > FISC-LINE361 (Annexe B), FISC-FED-CREDITRATE-15 (source ARC primaire).
 
-- [ ] **V1 — Quick wins confiance + hygiène** (1-2 PR) : `[MCP-TAX-FHSA-BALANCE]` (clamp) +
+- [x] **V1 — Quick wins confiance + hygiène** ✅ 2026-07-31 (PR #549, items archivés) : `[MCP-TAX-FHSA-BALANCE]` (clamp) +
   `[DASH-HIST-CARDS-LABEL]` + `[PROJ-TAXPAID-LABEL]` + `[BIAIS-CAGR]` + `[DEP-ESBUILD-UNLISTED]` +
   `[DETTE-SHADE-OUTOFPALETTE]` + `[DEADCODE-TX-TYPEFILTER]` + `[FISC-REF-FRESHNESS]`
   (doc : dater §4, nettoyer réserve §8, documenter 0.92/EST_*/REEE_AIP au doc).
-- [ ] **V2 — Meltdown honnête** (1 PR, money-critical, discriminant + panel) :
+- [x] **V2 — Meltdown honnête** ✅ 2026-07-31 (PR V2, discriminant git-stash prouvé 2/2) :
   `[WHT-DISPLAY-MELTDOWN]` (requalifié ÉLEVÉ — le ranking de stratégies pèse un impôt sous-compté
   ×2,6, MESURÉ) + `[ENG-MELTDOWN-FLOW-INVISIBLE]` (774 k$ de retraits invisibles des flux).
 - [ ] **V3 — Parité état + tests money-critical** (1-2 PR) : `[DEFAULTS-DRIFT-FINTABLE-FIELDS]`
@@ -85,13 +85,13 @@
   conservateur). Le `netSalary` saisi incorpore déjà ~100 % de la retenue (vérifié : 5 604 vs
   5 620 $/mois) ; `0.92` n'est sourcé NULLE PART et échappe au garde FISC-CONST-LINT (constante
   nouvelle). Minimal (V1) : documenter au FISCAL_REFERENCE ; juste : `1.0` + discriminant.
-- [ ] **`[WHT-DISPLAY-MELTDOWN]`** (M, **requalifié ÉLEVÉ décisionnel** [MESURÉ] — V2) —
-  `projection.ts:1348-1354` : la retenue meltdown n'entre ni dans `rrspWithholdingMois` ni dans le
-  crédit décembre → `totalTaxesPaid` 139 306 $ vs 243 549 $ (AUTO_MARGINAL) pour un estate
-  SUPÉRIEUR (~224 k$ de retenue invisible) — or `strategyRanking.ts:66,83,93` pèse ce compteur à
-  25-100 % → **l'optimiseur recommande MELTDOWN_REER sur un impôt truqué**. Discriminant + re-baser
-  goldens sciemment.
-- [ ] **`[ENG-MELTDOWN-FLOW-INVISIBLE]`** (S, ÉLEVÉ [MESURÉ] — V2, même PR) — le meltdown n'alimente
+- [x] **`[WHT-DISPLAY-MELTDOWN]`** ✅ 2026-07-31 (V2 — `rrspWithholdingMois += meltResult.withholding`,
+  discriminant prouvé, NW bit-identique prouvé + pinné par golden). ⚠️ Précision du panel #551 (2 agents,
+  mesuré au cent) : la retenue ENTRAIT déjà dans le crédit décembre (`taxCurrentYear.reer +=`, pré-existant) ;
+  le vrai gain = COHÉRENCE de convention entre stratégies (ratio MELTDOWN/AUTO 0,601 → 1,400) — la reco
+  « objectif impôt » recommandait MELTDOWN à tort sur main (corrigé). La valeur ABSOLUE du compteur reste
+  sur-évaluée pour toutes les stratégies → `[PROJ-TTP-DOUBLECOUNT]`.
+- [x] **`[ENG-MELTDOWN-FLOW-INVISIBLE]`** ✅ 2026-07-31 (V2 — `retraitReerMois += meltResult.reerDrawn`, Σ RetraitREER ≥ 90 % du REER drainé prouvé) — le meltdown n'alimente
   jamais `retraitReerMois` → Σ `RetraitREER` affiché 22 547 $ pour ~796 k$ de sorties réelles :
   tooltip/modal/milestoneIcons (« 1er retrait REER » jamais déclenché)/MCP aveugles. Aucun impact NW
   (angle mort de la conservation).
@@ -117,19 +117,11 @@
   + MIROIR app `TaxCenter.tsx:173` : split 1/2 du revenu de placement. Ne mord QUE si un seul
   conjoint a un salaire (mesuré : −2 530 $/an) ; 0 $ si les deux. Fix par détention réelle (owner),
   app+MCP au même helper.
-- [x] **`[MCP-TAX-FHSA-BALANCE]`** ✅ 2026-07-31 (V1) (S — V1) — `getTaxSituation.spec.ts:78` passe `u.fhsaBalance`
-  (SOLDE) en position COTISATION. Effet actuel NUL (`fhsaBalance` n'a AUCUN écrivain — vérifié) mais
-  bombe dès qu'un écrivain arrive → clamp `min(fhsaBalance, FHSA_ANNUAL_LIMIT)` maintenant.
 - [ ] **`[FISC-LINE361-PERCONJOINT-REDUC]`** (M, [À vérifier] — V5) — réduction 18,75 % ligne 361
   appliquée par conjoint avec le revenu familial TOTAL (`taxDecember.ts:529` → `tax.ts:255`).
   Plafonné ~986 $/an, couple retraité 65+ seulement (0 $ Marc aujourd'hui). Lire l'Annexe B d'abord.
 - [ ] **`[PV-11e]`** (S, test — V3) — PAS un bug (invariant Σ reerByUser == reer préservé par
   construction, re-vérifié) : écrire le test de pin couple-inégal + goal REER + cotisation même mois.
-- [x] **`[FISC-REF-FRESHNESS]`** ✅ 2026-07-31 (V1 — 3ᵉ passe datée, réserve §8 levée, hypothèses de modèle documentées §9) (S, doc — V1) — FISCAL_REFERENCE : dater l'en-tête (§4 réécrit
-  2026-07-07 sans bump), nettoyer la réserve §8 obsolète (barème 2026 déjà là), DOCUMENTER les
-  hypothèses de modèle absentes (0.92, EST_DIVIDEND_YIELD 0,02 / EST_CAPITAL_GAINS_YIELD 0,07,
-  REEE_AIP_TAX_RATE 0,20, NONREG_DIVIDEND_DISTRIBUTION_SHARE, FSS retraité, PAE REEE non modélisés).
-  + Ticket daté : confirmer CELI/REER 2027 au Budget (nov-déc 2026 — la garde 12 mois ne le verra pas).
 - [ ] **`[FISC-CONST-GUARD-V2]`** (S, garde — V7) — le garde FISC-CONST-LINT ne détecte pas une
   constante fiscale NOUVELLE non sourcée (c'est le trou par lequel 0.92 est passé) → garde
   complémentaire : constante $ de `services/projection/` participant à l'impôt ⇒ ancre FISCAL_REFERENCE.
@@ -137,17 +129,30 @@
   `tests/services/nwParity.test.ts` (aujourd'hui moteur↔computePresentNetWorth) aux surfaces
   UI/IA/PDF (KPI Accueil, useDerivedFinancials, financialSnapshot, pdfReport) sur persona endetté +
   propriétaire, convention équité immo EXPLICITE par surface.
-- [x] **`[BIAIS-CAGR]`** ✅ 2026-07-31 (V1 — note UI honnête + doc source ; retrait des apports = impossible sans transactions datées par bucket) (S) — `startingBalancesFromHistory.ts:55-63` : bornes livrées, mais le
-  « rendement réel » ne retire toujours pas les apports → surestime. Note UI ou retrait des apports.
 - [ ] **`[MCP-CHARTDATA-SUM-GUARD]`** (S, garde) — aucun test/lint de convention sur les sommes de
   flux chartData dans `mcp/tools/*` (le décaissement non-enregistré/liquide n'a AUCUN champ
   `Retrait*` — leçon MCP-RETIREMENT-VERDICT) → scan-garde qui interdit une somme de flux comme revenu.
-- [x] **`[PROJ-TAXPAID-LABEL]`** ✅ 2026-07-31 (V1 — clamp [0,1] efficacité + taxLeakage ; renommage de totalTaxesPaid jugé non rentable, sémantique déjà documentée projection.ts:573) (S, reste moteur) — `monteCarlo.ts:106` : plafond sans plancher 0
-  (compteur négatif → efficacité > 100 % possible) ; `taxLeakage` :137 non borné ; `totalTaxesPaid`
-  non renommé. Re-baseliner les tests MC sciemment.
 - [ ] **`[FUZZ-ONETIME-FLOWS]`** (M, reste) — flux non exercés par le fuzz de conservation
   (`projection.fuzzConservation.test.ts:21-23`) : vente/gain locatif, équité négative, véhicule,
   héritage, REEE. Les couvrir (mesurer la couverture, pas la supposer).
+
+- [ ] **`[PROJ-TTP-DOUBLECOUNT]`** (M, ÉLEVÉ [Certain, MESURÉ au cent — panel #551, 2 agents]) —
+  `totalTaxesPaid` DOUBLE-COMPTE la retenue REER pour TOUTES les stratégies : `projection.ts:1457`
+  ajoute `rrspWithholdingMois` alors qu'avril débite le bucket `.reer` ENTIER (`taxApril.ts:55` :
+  `fluxImpots = … + taxPaidREER`) — décembre ne consomme pas `.reer`, il calcule la réconciliation
+  versée dans `.revenu`. « Impôt à vie » (StrategyOptimizerPanel:353,480) affiché +144 % (MELTDOWN :
+  321 122 $ vs 131 871 $ réels ; AUTO : 229 338 $ vs 29 806 $). Dérivés : efficacité fiscale MC 0 %
+  au lieu de ~53 % (−10 pts FVI), taxLeakage 115 % au lieu de 47 %. Fix : `+= fluxImpots + taxOnRrif`
+  seulement (⚠️ re-mesurer taxOnRrif, même risque) + re-baseliner MC/strategySearch SCIEMMENT.
+  Classement ordre-préservant (vérifié) → pas de flip attendu.
+- [ ] **`[ENG-FERR-FLOW-INVISIBLE]`** (S, MOYEN [Certain, MESURÉ]) — même classe que le fix V2, 4ᵉ
+  source : la FERR obligatoire (`projection.ts:999-1002`) et les retraits REER d'objectifs
+  (`:1219-1226`) n'alimentent pas `retraitReerMois` → 113 418 $ (11,6 %) de sorties invisibles sur
+  AUTO_MARGINAL ; « 1er retrait REER » jamais déclenché pour un retraité 71+ dont la 1re sortie est
+  une FERR. Fix : 2 `+=` + étendre le test meltdownDisplay (parité Σ RetraitREER ≈ Σ accRetraitsReerYear).
+- [ ] **`[MELTDOWN-THRESHOLDS-DOC]`** (S, doc) — `meltdownReer.ts:9-13` : seuils
+  MELTDOWN_NW_HIGH/MID (2 M/1 M) + cibles 220 k/140 k/90 k × adultes = heuristiques de CONCEPTION
+  non documentées (pas des constantes fiscales) — les documenter (module + FISCAL_REFERENCE §9).
 
 ## 🏦 Sync & données (Fintable, Drive, persistance)
 
@@ -199,9 +204,6 @@
 
 ## 📈 Investissements & historique
 
-- [x] **`[DASH-HIST-CARDS-LABEL]`** ✅ 2026-07-31 (V1) (S, reste du finding #544 F3) — étiqueter les cartes « Actifs
-  individuels » + le graphe Accueil « au dernier cours de clôture » (le tooltip Variation est fait) —
-  réutiliser `staleTailSymbols`/`noHistorySymbols`.
 - [ ] **`[DASH-IMMO-EQUITY-WRITERS]`** (M, ✅ tranché Marc 2026-07-31 : BRANCHER) — le terme équité immo du KPI Accueil
   est INERTE (`RealEstateGoal.currentValue`/`mortgageBalance` sans AUCUN écrivain UI) → un
   propriétaire modélisé par price/downPayment a un KPI sans sa maison pendant que le Futur l'inclut
@@ -259,18 +261,6 @@
 
 > Findings code-analyzer 2026-07-31 (preuve fichier:ligne, chacun vérifié par grep) :
 
-- [x] **`[DEADCODE-TX-TYPEFILTER]`** ✅ 2026-07-31 (V1 — états + branches supprimés) (S — V1) — `Transactions.tsx:70,72` : `_setDateStart`/
-  `_setTypeFilter` JAMAIS appelés → filtres date-début + type (Income/Expense/Transfer) morts
-  structurels (pourtant dans les deps du useMemo :216). Câbler une vraie UI ou supprimer l'état +
-  les branches.
-- [x] **`[DEP-ESBUILD-UNLISTED]`** ✅ 2026-07-31 (V1 — esbuild 0.28.1 épinglé en devDependency) (S — V1) — `esbuild` importé par `mcp/build-server.mjs:10` +
-  `mcp/pack.mjs:10` mais ABSENT de package.json (transitive seulement) → un bump Vite/Vitest peut
-  casser le build Cloud Run en silence. `npm i -D esbuild` épinglé.
-- [x] **`[DETTE-SHADE-OUTOFPALETTE]`** ✅ 2026-07-31 (V1 — 8/8 remplacés : info-400/success-400/warning-400/surface) (S — V1) — 8 classes Tailwind hors palette = no-op silencieux
-  (classe FIX-INK600-TOKEN) : `LifeProjects.tsx:62` text-info-100 · `AssetLocationCard.tsx:120`
-  text-info-200 · `ZoomableTimeChart.tsx:170` bg-ink-950 · `StrategyOptimizerPanel.tsx:461`
-  bg-ink-900/95 · `ProjectionControls.tsx:109` + `UserConfigFields.tsx:84` text-success-300 ·
-  `UsersCard.tsx:297` + `PageSetupGate.tsx:377` text-warning-300 → shade existant le plus proche.
 - [ ] **`[TEST-GAP-TAXESTIMATE]`** (S — V3) — `services/taxEstimate.ts:22-35` (assiette fiscale
   placement, app+MCP, money-critical depuis TAX-AVGRATE-BASE) : AUCUN test unitaire direct.
 - [ ] **`[TEST-GAP-SUBSCRIPTIONS]`** (S — V3) — `subscriptionAlerts.ts` (152 l., $ visibles
@@ -402,5 +392,3 @@
   chaîne eslint (outillage dev, DoS théorique) — fix = eslint@10 (breaking : config + règles à migrer).
   À prendre comme un lot dédié, pas un audit fix --force aveugle.
 
-- [x] **`[DEP-DEPENDABOT-26]`** ✅ 2026-07-31 (V1 — @hono/node-server 2.0.12 via npm audit fix ; 0 moderate restant) (S) — 1 alerte moderate ouverte sur main
-  (https://github.com/MoKarade/FinanceAI/security/dependabot/26) — bump + npm audit.

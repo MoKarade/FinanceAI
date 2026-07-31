@@ -41,6 +41,41 @@ fichier:ligne). Verdicts appliqués à la refonte :
 
 ---
 
+## ✅ Vague 1 — quick wins confiance (PR #549, mergée 2026-07-31)
+
+- [x] **`[MCP-TAX-FHSA-BALANCE]`** ✅ 2026-07-31 (V1) (S — V1) — `getTaxSituation.spec.ts:78` passe `u.fhsaBalance`
+  (SOLDE) en position COTISATION. Effet actuel NUL (`fhsaBalance` n'a AUCUN écrivain — vérifié) mais
+  bombe dès qu'un écrivain arrive → clamp `min(fhsaBalance, FHSA_ANNUAL_LIMIT)` maintenant.
+- [x] **`[FISC-REF-FRESHNESS]`** ✅ 2026-07-31 (V1 — 3ᵉ passe datée, réserve §8 levée, hypothèses de modèle documentées §9) (S, doc — V1) — FISCAL_REFERENCE : dater l'en-tête (§4 réécrit
+  2026-07-07 sans bump), nettoyer la réserve §8 obsolète (barème 2026 déjà là), DOCUMENTER les
+  hypothèses de modèle absentes (0.92, EST_DIVIDEND_YIELD 0,02 / EST_CAPITAL_GAINS_YIELD 0,07,
+  REEE_AIP_TAX_RATE 0,20, NONREG_DIVIDEND_DISTRIBUTION_SHARE, FSS retraité, PAE REEE non modélisés).
+  + Ticket daté : confirmer CELI/REER 2027 au Budget (nov-déc 2026 — la garde 12 mois ne le verra pas).
+- [x] **`[BIAIS-CAGR]`** ✅ 2026-07-31 (V1 — note UI honnête + doc source ; retrait des apports = impossible sans transactions datées par bucket) (S) — `startingBalancesFromHistory.ts:55-63` : bornes livrées, mais le
+  « rendement réel » ne retire toujours pas les apports → surestime. Note UI ou retrait des apports.
+- [x] **`[PROJ-TAXPAID-LABEL]`** ✅ 2026-07-31 (V1 — clamp [0,1] efficacité + taxLeakage ; renommage de totalTaxesPaid jugé non rentable, sémantique déjà documentée projection.ts:573) (S, reste moteur) — `monteCarlo.ts:106` : plafond sans plancher 0
+  (compteur négatif → efficacité > 100 % possible) ; `taxLeakage` :137 non borné ; `totalTaxesPaid`
+  non renommé. Re-baseliner les tests MC sciemment.
+- [x] **`[DASH-HIST-CARDS-LABEL]`** ✅ 2026-07-31 (V1) (S, reste du finding #544 F3) — étiqueter les cartes « Actifs
+  individuels » + le graphe Accueil « au dernier cours de clôture » (le tooltip Variation est fait) —
+  réutiliser `staleTailSymbols`/`noHistorySymbols`.
+- [x] **`[DEADCODE-TX-TYPEFILTER]`** ✅ 2026-07-31 (V1 — états + branches supprimés) (S — V1) — `Transactions.tsx:70,72` : `_setDateStart`/
+  `_setTypeFilter` JAMAIS appelés → filtres date-début + type (Income/Expense/Transfer) morts
+  structurels (pourtant dans les deps du useMemo :216). Câbler une vraie UI ou supprimer l'état +
+  les branches.
+- [x] **`[DEP-ESBUILD-UNLISTED]`** ✅ 2026-07-31 (V1 — esbuild 0.28.1 épinglé en devDependency) (S — V1) — `esbuild` importé par `mcp/build-server.mjs:10` +
+  `mcp/pack.mjs:10` mais ABSENT de package.json (transitive seulement) → un bump Vite/Vitest peut
+  casser le build Cloud Run en silence. `npm i -D esbuild` épinglé.
+- [x] **`[DETTE-SHADE-OUTOFPALETTE]`** ✅ 2026-07-31 (V1 — 8/8 remplacés : info-400/success-400/warning-400/surface) (S — V1) — 8 classes Tailwind hors palette = no-op silencieux
+  (classe FIX-INK600-TOKEN) : `LifeProjects.tsx:62` text-info-100 · `AssetLocationCard.tsx:120`
+  text-info-200 · `ZoomableTimeChart.tsx:170` bg-ink-950 · `StrategyOptimizerPanel.tsx:461`
+  bg-ink-900/95 · `ProjectionControls.tsx:109` + `UserConfigFields.tsx:84` text-success-300 ·
+  `UsersCard.tsx:297` + `PageSetupGate.tsx:377` text-warning-300 → shade existant le plus proche.
+- [x] **`[DEP-DEPENDABOT-26]`** ✅ 2026-07-31 (V1 — @hono/node-server 2.0.12 via npm audit fix ; 0 moderate restant) (S) — 1 alerte moderate ouverte sur main
+  (https://github.com/MoKarade/FinanceAI/security/dependabot/26) — bump + npm audit.
+
+---
+
 # (Contenu intégral du BACKLOG au 2026-07-31, avant refonte)
 
 # BACKLOG — FinanceAI (actionnable)

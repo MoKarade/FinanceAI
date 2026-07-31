@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — meltdown REER honnête] — 2026-07-31
+
+### Corrections money-critical
+- **`[WHT-DISPLAY-MELTDOWN]` + `[ENG-MELTDOWN-FLOW-INVISIBLE]` — le classement de stratégies ne
+  compare plus des impôts à conventions différentes.** Les retraits du meltdown REER n'alimentaient
+  ni le compteur d'impôt affiché ni le flux « Retrait REER » du graphe (~96 % des sorties invisibles :
+  30 k$ affichés pour 794 k$ tirés). Sous l'objectif « impôt », l'optimiseur recommandait le meltdown
+  À TORT (mesuré : il paie en réalité ~4,4× l'impôt de la stratégie standard) — corrigé. Le flux
+  « Retrait REER » est désormais exact au dollar près ; le compteur d'impôt est COHÉRENT entre
+  stratégies (sa valeur absolue reste sur-évaluée pour toutes — double comptage pré-existant de la
+  retenue, ticket `[PROJ-TTP-DOUBLECOUNT]`). Aucun impact sur le patrimoine calculé — prouvé
+  bit-identique (301 mois × 9 grandeurs), conservation 12/12, discriminant prouvé.
+
 ## [unreleased — backlog refondu + audits] — 2026-07-31
 
 ### Documentation / gouvernance

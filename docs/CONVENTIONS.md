@@ -400,6 +400,18 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   (`f([a,b]) == f([b,a])`) discrimine sans nombre magique. Et « 0 régression baseline » d'un agent ≠ vérité :
   lancer la SUITE COMPLÈTE — un changement peut toucher des fixtures encodant un état INVALIDE inatteignable
   en prod (ex. `canadaArrivalYear` sans `isImmigrant`, gardé par l'UI) ; ce n'est alors pas une vraie régression.
+  ⚠️ **Un flux moteur alimente PLUSIEURS registres parallèles (solde, fiscal, per-conjoint, AFFICHAGE) —
+  un nouveau producteur du flux doit alimenter TOUS les registres, et chaque correctif partiel doit re-vérifier
+  les AUTRES** (leçon WHT-DISPLAY-MELTDOWN/ENG-MELTDOWN-FLOW-INVISIBLE 2026-07-31) : le meltdown REER alimentait
+  soldes + bucket fiscal + per-conjoint (rajouté par un audit) mais JAMAIS `retraitReerMois`/`rrspWithholdingMois`
+  (affichage) → convention d'impôt DIFFÉRENTE des autres stratégies (ratio MELTDOWN/AUTO 0,601 mesuré — la reco
+  « objectif impôt » recommandait MELTDOWN à tort, corrigé) ; ~96 % des sorties absentes de `chartData.RetraitREER`
+  (30 496 $ affichés pour 794 303 $ tirés — tooltip/jalons/MCP aveugles). La conservation NE l'attrape PAS
+  (compteurs d'affichage, NW intact — prouvé bit-identique) : c'est un invariant de PARITÉ flux-affiché ↔ flux-réel
+  qui manquait. ⚠️ Le panel a aussi MESURÉ que le compteur double-compte la retenue pour TOUTES les stratégies
+  (avril débite le bucket .reer entier — [PROJ-TTP-DOUBLECOUNT]) et que la FERR a le même trou d'affichage
+  ([ENG-FERR-FLOW-INVISIBLE]) : deux passes antérieures avaient corrigé CE bloc sans voir les registres voisins —
+  vérifier TOUTES les sources ET tous les consommateurs du registre, pas le seul producteur qu'on corrige.
   ⚠️ **Un registre PER-CONJOINT qui passe de SHADOW à PILOTE doit gérer TOUS les événements de vie (décès)**
   (leçon ITEM-2C-FERR 2026-06-25) : brancher la FERR au per-conjoint (chaque conjoint convertit SA part `reerByUser[i]`
   à SON âge) a créé un FLUX FISCAL FANTÔME — après le DÉCÈS du conjoint, sa part (registre `[1]`) continuait de

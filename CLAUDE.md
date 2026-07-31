@@ -151,6 +151,9 @@ scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (41 s
 
 ## Index des pièges — détail dans `docs/CONVENTIONS.md`
 
+- Un flux moteur alimente PLUSIEURS registres (solde/fiscal/per-conjoint/affichage) : un producteur
+  nouveau ou corrigé doit alimenter TOUS les registres (meltdown REER, 2026-07-31).
+
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 **Money-critical / moteur**

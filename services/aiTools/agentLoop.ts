@@ -175,7 +175,9 @@ export async function runAgentLoop(
     history: Anthropic.MessageParam[],
     opts: AgentLoopOptions,
 ): Promise<AgentLoopResult> {
-    const client = opts.client ?? (makeClient(opts.apiKey) as unknown as AgentClientLike);
+    // [PERF-SDK-BOOT-PRELOAD] makeClient est désormais ASYNC (SDK chargé au premier usage, plus
+    // jamais préchargé au boot) — l'injectable de test (opts.client) reste synchrone, inchangé.
+    const client = opts.client ?? (await makeClient(opts.apiKey) as unknown as AgentClientLike);
     // [AITOOLS-D] Les tools d'écriture ne sont déclarés QUE si un exécuteur de confirmation existe.
     const tools = toAnthropicTools(opts.onWriteToolUse ? [...READ_SPECS, ...WRITE_SPECS] : READ_SPECS);
     // [AITOOLS-PROMPT-CACHE] Point de cache EXPLICITE sur le DERNIER tool. Dans l'ordre canonique

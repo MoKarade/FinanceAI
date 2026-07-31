@@ -1,9 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense } from 'react';
 import { Tab, AppState } from '../../types';
 import { useFinanceStore, type FinanceState } from '../../store/useFinanceStore';
 import { Icon } from '../ui/Icon';
 import { showToast } from '../ui/Toast';
-import { PayslipUploadCard } from '../settings/PayslipUploadCard';
+// [PERF-SDK-BOOT-PRELOAD] LAZY : cette carte importe `services/claude.ts` (analyzePayslip) — son
+// import STATIQUE ici mettait claude.ts dans le graphe de BOOT (TabRouter → PageSetupGate → carte),
+// ce qui hissait le SDK Anthropic (`ai-vendor`, ~126 Ko) dans le modulepreload téléchargé par TOUS
+// les visiteurs au démarrage. C'était LA chaîne responsable (tracée), pas les onglets lazy du ticket.
+import { lazyWithRetry } from '../../utils/lazyWithRetry';
+const PayslipUploadCard = lazyWithRetry(
+    () => import('../settings/PayslipUploadCard').then((m) => ({ default: m.PayslipUploadCard })),
+    'PayslipUploadCard',
+);
 import { getPersonaOrDefault, DEFAULT_PERSONA_ID } from '../../services/testFixtures';
 import { REQUIREMENTS, type Requirement, type RequirementId, type RequirementField, type ImportKind } from './requirements';
 
@@ -144,7 +152,13 @@ const EMPTY_FIELDS: RequirementField[] = [];
 
 /** Composants d'import autonomes par type de document (complété au déroulé). */
 const IMPORT_COMPONENTS: Partial<Record<ImportKind, React.FC>> = {
-    payslip: () => <PayslipUploadCard />,
+    // Suspense LOCAL : la carte n'apparaît que dans un écran de setup — un skeleton discret suffit
+    // pendant le chargement du chunk (jamais au boot, c'est le but).
+    payslip: () => (
+        <Suspense fallback={<div className="text-meta text-ink-400 py-2">Chargement…</div>}>
+            <PayslipUploadCard />
+        </Suspense>
+    ),
 };
 
 // ───────────────────────────────────────────────────── Requirement card ────

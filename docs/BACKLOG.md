@@ -416,14 +416,18 @@
   du system (défense en profondeur si le préfixe system change) ; le préfixe (system+tools+historique) est
   re-servi du cache aux tours 2-6 + messages suivants (coût BYOK). Guard-test de forme de requête (2 marqueurs
   présents). Zéro changement de comportement ; `usage.cache_read_input_tokens` déjà remonté (B4-CHAT-COST).
-- [ ] **`[PERF-SDK-BOOT-PRELOAD]`** 🟡 (S/M, découvert au panel Lot E, PRÉ-EXISTANT) — `ai-vendor` (SDK
-  Anthropic) apparaît en `<link rel="modulepreload">` dans `dist/index.html` → le navigateur télécharge
-  le SDK au boot (sans l'exécuter). Cause : `services/claude.ts:13` fait `import Anthropic from '@anthropic-ai/sdk'`
-  STATIQUEMENT, et claude.ts est importé statiquement par 5 onglets lazy (Investments/Planning/TaxCenter/
-  Transactions/BudgetAiModal) → Rollup hisse claude.ts+SDK dans un chunk préchargé. NON introduit par le Lot E
-  (le marqueur `dispatchAnyTool` du Lot E, lui, est bien absent du boot). Fix = rendre l'usage du SDK dans
-  claude.ts lazy (dynamic import par fonction) OU retirer le modulepreload via config Vite — à mesurer (gain
-  gzip réel) et vérifier qu'aucun chemin critique ne régresse. Ticket distinct, pas urgent.
+- [x] **`[PERF-SDK-BOOT-PRELOAD]`** ✅ 2026-07-31 — **boot −54 Ko gzip (225,6 → 171,6 Ko, −24 %), mesuré
+  par git-stash avant/après**. Le diagnostic du ticket était INCOMPLET (« les 5 onglets lazy ») — la vraie
+  chaîne, tracée par un walker d'imports STATIQUES depuis index.tsx : `TabRouter → PageSetupGate →
+  PayslipUploadCard → claude.ts → SDK` (le gate de setup est monté au BOOT). Fix en 3 morceaux, chacun
+  prouvé par rebuild+mesure : (1) `makeClient` ASYNC (`import type` pour les types — effacés — + SDK
+  chargé via importWithRetry au premier usage) ; (2) `PayslipUploadCard` lazy dans PageSetupGate
+  (Suspense local) — casse la chaîne statique boot→claude ; (3) ⚠️ **retrait des règles `manualChunks`
+  `ai-vendor`/`pdf-vendor` : un manualChunk atteint UNIQUEMENT par `import()` devient EAGER** (le chunk
+  manuel casse la frontière asynchrone — l'entry l'importait STATIQUEMENT alors qu'AUCUNE chaîne statique
+  source n'existait ; en retirant la règle SDK, `pdf-vendor` est APPARU dans le preload à sa place, même
+  piège). Sans les règles, Rolldown range SDK et jspdf dans les chunks async naturels (sdk-*.js /
+  jspdf.es.min-*.js) — téléchargés au premier usage seulement. Preload final : react-vendor + cœur.
 - [x] **`[AITOOLS-SEC]` Audit sécurité FINAL du chantier** ✅ 2026-07-22 (exigence Marc) — panel security-privacy
   + ai-reviewer sur TOUT le chantier. **Verdict : sain.** Rapport daté `docs/AUDIT_SEC_CLAUDE_IN_APP_2026-07-22.md`.
   Prouvés SAINS (mesuré) : aucune écriture sans confirmation, clés API exclues, Loi 25/mode discret, isolation

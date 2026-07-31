@@ -793,6 +793,20 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   mais bloque toujours `rm -rf` sensible / `--no-verify` / `.env` (en ignorant le corps des messages).
 
 ## Notes
+- ⚠️ **[PERF-SDK-BOOT-PRELOAD] 2026-07-31 — deux leçons de bundling MESURÉES (boot −54 Ko gzip, −24 %)** :
+  (1) **Un manualChunk (Rolldown/Vite) atteint UNIQUEMENT par `import()` devient EAGER** — le chunk manuel
+  casse la frontière asynchrone : l'entry importait STATIQUEMENT `ai-vendor` (SDK Anthropic, 126 Ko →
+  modulepreload au boot) alors qu'AUCUNE chaîne d'imports statiques source n'existait ; preuve en retirant
+  la règle : `pdf-vendor` (jspdf) est APPARU dans le preload à sa place (même piège, 2ᵉ occurrence). Règle :
+  ne mettre en manualChunks QUE des paquets consommés statiquement au boot (react-vendor) ; un vendor
+  lazy-only se laisse découper naturellement. Vérité = `grep modulepreload dist/index.html` après build
+  PROPRE, jamais la config. (2) **Le diagnostic d'un ticket perf se RE-TRACE avant de coder** : le ticket
+  accusait « claude.ts importé par 5 onglets lazy » ; la vraie chaîne de boot (walker d'imports statiques
+  récursif depuis index.tsx, en ignorant `import type` et `import()`) était `TabRouter → PageSetupGate →
+  PayslipUploadCard → claude.ts` — un composant de SETUP monté au boot. Sans le traceur, le fix « SDK
+  dynamique dans makeClient » seul ne sortait RIEN du preload (mesuré : 3 hypothèses successives réfutées
+  par rebuild). Le walker (~30 lignes node) vaut mieux que N greps : les chunks Rolldown s'entre-importent
+  pour l'ordre d'exécution et rendent le dist illisible pour ce diagnostic.
 - ⚠️ **[PORTFOLIO-HISTORY] 2026-07-22 — courbes de cours réelles (bug Marc), leçons** : (1) **Un STUB
   documenté « retourne toujours [] » peut rester branché à N surfaces pendant des mois SANS alerte parce que le
   MODE TEST les nourrit en synthétique** — les graphes marchaient en démo (fixtures) et étaient vides en réel :

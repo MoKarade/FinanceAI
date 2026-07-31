@@ -74,6 +74,25 @@ describe('runMonteCarlo — agrégation', () => {
         expect(cb).toHaveBeenCalled();
     });
 
+    it('[PROJ-TAXPAID-LABEL] totalTaxesPaid NÉGATIF (remboursement net) : leakage/efficacité clampés [0,1]', () => {
+        // Discriminant : sur l'ancien code (sans Math.max(0, …)), leakage = -0,5 → efficacité 1,5
+        // → contribution FVI > 100 % et taxLeakage négatif (« -50 % d'impôt sur la croissance »).
+        const negTaxRun = vi.fn(() => ({
+            chartData: Array.from({ length: 13 }, () => ({ NetWorth: 1000 })),
+            finalNetWorth: 1000,
+            estateNetWorth: 1000,
+            totalTaxesPaid: -500,
+            totalGrowth: 1000,
+            totalExpenses: 1000,
+            minNetWorth: 1000,
+            shortfallRate: 0,
+        }));
+        const r = runMonteCarlo(negTaxRun as never, makeParams(), STRAT, false, 10);
+        expect(r.expertMetrics.taxLeakage).toBe(0);
+        expect(r.fvi).toBeGreaterThanOrEqual(0);
+        expect(r.fvi).toBeLessThanOrEqual(100);
+    });
+
     it('expertMetrics : toutes les métriques sont des nombres finis', () => {
         const r = runMonteCarlo(makeRun(idx => idx * 1000), makeParams(), STRAT, false, 100);
         const m = r.expertMetrics;

@@ -98,10 +98,18 @@ Doc détaillée dans `docs/`, qui fait foi.
   2026-06-18, après 6 PR mergées sans MAJ du handover) : il est désormais dans le « Toujours » de `/review-all` →
   il met à jour le bandeau de tête + la table §1 à CHAQUE PR, pas seulement « quand on y pense ». Le hook
   `learn-on-push` le rappelle (point 3). Le handover n'est PAS optionnel : c'est l'état que LIT la prochaine session.
-- **Backlog tenu par Claude** (l'Action `backlog-autocheck` a été RETIRÉE — choix Marc 2026-06-09) :
+- **Backlog tenu par Claude** (l'Action `backlog-autocheck` a été RETIRÉE — choix Marc 2026-06-09 ;
+  règles RENFORCÉES Marc 2026-07-31) :
   au moment du MERGE d'une PR, Claude coche lui-même les `[ID]` livrés dans `docs/BACKLOG.md`
   (dans la PR même ou la suivante), ajoute les découvertes, et route les blocages humains
   vers `docs/A_FAIRE_MOI.md`. Fin de session : BACKLOG + SESSION_HANDOVER à jour = partie du travail.
+  ⚠️ **CHAQUE tâche du BACKLOG a une case `- [ ]`** — aucune puce de tâche sans case (une note sans
+  travail à faire n'est pas une tâche : archive ou decisions.md). ⚠️ **Item fini + validé (mergé,
+  gate vert) → DÉMÉNAGE vers `docs/BACKLOG_ARCHIVE.md`** (avec date + PR), au plus tard à la PR
+  suivante — le BACKLOG ne garde que le vivant. ⚠️ Leçon de la refonte 2026-07-31 : ~65 items étaient
+  FAITS sans case cochée et ~128 puces n'avaient pas de case — un backlog qui mélange fait/à-faire
+  trompe le PM et la reprise de session (classe PM-STALE-BACKLOG) ; c'est la tenue À CHAQUE push qui
+  empêche la dérive, pas les grandes passes de nettoyage.
 - **Garde-fou (non négociable)** : avant CHAQUE commit, `typecheck` clean + `build`
   qui passe + `test` vert (hook `commit-gate`). Jamais `--no-verify`.
 - **Vigilance** (à signaler dans le plan, pas interdit) : migrations schema Zustand

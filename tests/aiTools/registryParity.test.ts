@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TEST_PERSONAS } from '../../services/testPersonas';
 import { normalizeAppState, buildDefaultAppState } from '../../mcp/state/appStateDefaults';
-import { useFinanceStore } from '../../store/useFinanceStore';
+import { useFinanceStore, personaResetBase } from '../../store/useFinanceStore';
 import { READ_SPECS } from '../../services/aiTools/registry';
 import { appStateProvider } from '../../services/aiTools/appStateProvider';
 
@@ -111,6 +111,24 @@ describe('[AITOOLS-B] parité de payloads MCP ↔ app (même état → même JSO
         for (const key of Object.keys(mcpDefaults)) {
             if (skip.has(key)) continue;
             expect(store[key], `défaut divergent pour « ${key} » (MCP vs store)`).toEqual(mcpDefaults[key]);
+        }
+    });
+
+    it('[DEFAULTS-DRIFT-FINTABLE-FIELDS] BIDIRECTIONNEL : chaque champ du store existe dans buildDefaultAppState', () => {
+        // Cause racine du drift 2026-07-31 : le test ci-dessus n'itère QUE sur les clés de
+        // buildDefaultAppState → un champ ajouté au store SEULEMENT (categoryReview,
+        // fintableSyncReport, fintableBrokerBalances, fintableRoles) passait inaperçu, et
+        // `snapshotAppState` (qui pick ses clés depuis buildDefaultAppState) le rendait
+        // structurellement INVISIBLE au chat in-app. Ici on itère dans l'AUTRE sens : l'univers
+        // des clés de données du store = personaResetBase() + les 3 clés qu'il retire.
+        const mcpDefaults = buildDefaultAppState();
+        const storeKeys = [...Object.keys(personaResetBase()), 'apiKeys', 'fxRates', 'lastUpdate'];
+        expect(storeKeys.length).toBeGreaterThan(20); // non-vacuité : l'univers est bien peuplé
+        for (const key of storeKeys) {
+            expect(
+                key in mcpDefaults,
+                `champ « ${key} » présent au store mais ABSENT de buildDefaultAppState — invisible au chat in-app`,
+            ).toBe(true);
         }
     });
 

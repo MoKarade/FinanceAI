@@ -6,7 +6,7 @@
 // Pourquoi c'est nécessaire (constaté sur l'aperçu réel du 2026-07-29) : quand on importe LES DEUX
 // CÔTÉS d'une relation compte-chèque ↔ carte de crédit, le **paiement mensuel de la carte** apparaît
 // deux fois — en sortie du compte chèque, et en entrée sur la carte. Ce n'est pas une dépense, c'est
-// un déplacement d'argent entre deux poches de l'utilisateur.
+// un déplacement d'argent entre deux poches.
 //
 // Effet si on ne fait rien (vérifié dans le code, pas supposé) :
 //   - `budgetSync.ts:58` somme les montants NÉGATIFS hors transferts → le paiement de carte gonfle
@@ -16,17 +16,26 @@
 // Le patrimoine, lui, reste juste (les soldes sont recalés sur les vrais chiffres via `cash_balance`
 // et `debt`) : c'est bien le BUDGET qui mentirait. D'où un correctif ciblé, pas un garde global.
 //
+// ⚠️ [TX-TRANSFERS 2026-07-31] L'ALGORITHME d'appariement vit désormais dans
+// `services/transactions/detectTransfers.ts` (cœur générique, partagé avec l'import CSV/relevés de
+// l'app — Marc déplace de l'argent entre 4 poches, pas seulement compte↔carte). Ce module ne garde
+// que ce qui est SPÉCIFIQUE à Fintable : la contrainte de RÔLES (sortie d'un compte `cash`, entrée
+// sur un compte `debt`), passée au cœur via sa garde `canPair`. Une seule copie de l'algorithme —
+// deux copies auraient dérivé (cf. leçon « consolider au lieu de dupliquer le fix »).
+//
 // ⚠️ Ce module ne SUPPRIME rien et n'invente aucune transaction : il pose seulement `isTransfer` sur
-// des lignes déjà destinées à l'import. Un faux positif exclut une vraie dépense du budget — d'où
-// des critères stricts (montants exactement opposés, comptes de RÔLES différents, dates proches) et
-// un appariement UN POUR UN.
+// des lignes déjà destinées à l'import. Un faux positif exclut une vraie dépense du budget.
 
+import {
+    DEFAULT_TRANSFER_TOLERANCE_DAYS,
+    detectInternalTransfers as detectGenericTransfers,
+    type TransferCandidate,
+} from '../transactions/detectTransfers';
 import type { FintableAccountRole } from './mapSnapshot';
 import type { FintableTransaction } from './types';
 
 /** Fenêtre par défaut : un paiement de carte est débité et crédité à quelques jours d'intervalle. */
-const DEFAULT_TOLERANCE_DAYS = 3;
-const DAY_MS = 86_400_000;
+const DEFAULT_TOLERANCE_DAYS = DEFAULT_TRANSFER_TOLERANCE_DAYS;
 
 export interface TransferPair {
     /** Transaction sortante (compte de liquidités). */
@@ -44,74 +53,47 @@ export interface DetectTransfersResult {
     pairs: TransferPair[];
 }
 
-function dayNumber(isoDate: string): number | null {
-    const t = Date.parse(`${isoDate}T00:00:00Z`);
-    return Number.isFinite(t) ? Math.round(t / DAY_MS) : null;
-}
-
-function cents(amount: number): number {
-    return Math.round(amount * 100);
+/** Libellé utilisé pour l'exclusion Interac (même dérivation que `payeeOf` du mapper). */
+function payeeOf(tx: FintableTransaction): string {
+    const merchant = tx.merchant?.trim();
+    if (merchant) return merchant;
+    return tx.description.trim();
 }
 
 /**
  * Apparie les virements internes entre un compte `cash` et un compte `debt`.
  *
- * Critères, tous nécessaires :
- *   1. montants **exactement opposés** (au cent) ;
- *   2. la sortie vient d'un compte `cash`, l'entrée d'un compte `debt` — deux RÔLES différents.
- *      Deux mouvements opposés sur le MÊME compte ne sont pas un virement (achat puis remboursement) ;
- *   3. dates séparées d'au plus `toleranceDays`.
+ * Critères communs (cœur générique) : montants exactement opposés au cent, dates séparées d'au plus
+ * `toleranceDays`, comptes différents, aucun côté Interac, appariement un pour un sur la candidate
+ * la plus proche en date. Critère SPÉCIFIQUE ici : la sortie vient d'un compte `cash` et l'entrée
+ * d'un compte `debt` — c'est le sens d'un paiement de carte, et deux mouvements opposés sur des
+ * comptes de même rôle relèvent d'un autre scénario que Fintable ne doit pas trancher seul.
  *
- * L'appariement est **un pour un** : une même sortie ne peut pas légitimer deux entrées. Sans ça,
- * deux paiements du même montant dans le mois s'apparieraient en croix et on marquerait trop.
+ * Les comptes Fintable sont TOUJOURS identifiés (`accountId`) : toutes les paires sortent donc
+ * `confirmed` du cœur, et `transferIds` reste l'ensemble des ids à marquer — API inchangée.
  */
 export function detectInternalTransfers(
     transactions: readonly FintableTransaction[],
     roles: Readonly<Record<string, FintableAccountRole>>,
     toleranceDays: number = DEFAULT_TOLERANCE_DAYS,
 ): DetectTransfersResult {
-    const tolerance = Math.max(0, Math.floor(toleranceDays));
+    const candidates: Array<TransferCandidate<string>> = transactions.map((tx) => ({
+        id: tx.id,
+        date: tx.date,
+        amount: tx.amount,
+        account: tx.accountId,
+        payee: payeeOf(tx),
+    }));
 
-    const outs: Array<{ tx: FintableTransaction; day: number }> = [];
-    const ins: Array<{ tx: FintableTransaction; day: number }> = [];
-
-    for (const tx of transactions) {
-        if (!Number.isFinite(tx.amount) || tx.amount === 0) continue;
-        const day = dayNumber(tx.date);
-        if (day === null) continue;
-        const kind = roles[tx.accountId]?.kind;
+    const result = detectGenericTransfers(candidates, {
+        toleranceDays,
         // Sortie DEPUIS les liquidités, entrée SUR la dette : le sens d'un paiement de carte.
-        if (kind === 'cash' && tx.amount < 0) outs.push({ tx, day });
-        else if (kind === 'debt' && tx.amount > 0) ins.push({ tx, day });
-    }
+        canPair: (out, incoming) =>
+            roles[out.account ?? '']?.kind === 'cash' && roles[incoming.account ?? '']?.kind === 'debt',
+    });
 
-    const pairs: TransferPair[] = [];
-    const transferIds = new Set<string>();
-    const usedIns = new Set<string>();
-
-    // Ordre déterministe : date puis id, pour que deux exécutions rendent le même appariement.
-    outs.sort((a, b) => (a.day - b.day) || a.tx.id.localeCompare(b.tx.id));
-    ins.sort((a, b) => (a.day - b.day) || a.tx.id.localeCompare(b.tx.id));
-
-    for (const out of outs) {
-        const wanted = -cents(out.tx.amount);
-        // La PLUS PROCHE en date parmi les candidates encore libres — sinon un paiement de janvier
-        // pourrait s'apparier à celui de mars au seul motif du montant.
-        let best: { tx: FintableTransaction; day: number } | null = null;
-        let bestGap = Infinity;
-        for (const candidate of ins) {
-            if (usedIns.has(candidate.tx.id)) continue;
-            if (cents(candidate.tx.amount) !== wanted) continue;
-            const gap = Math.abs(candidate.day - out.day);
-            if (gap > tolerance) continue;
-            if (gap < bestGap) { best = candidate; bestGap = gap; }
-        }
-        if (!best) continue;
-        usedIns.add(best.tx.id);
-        transferIds.add(out.tx.id);
-        transferIds.add(best.tx.id);
-        pairs.push({ outId: out.tx.id, inId: best.tx.id, amount: Math.abs(out.tx.amount) });
-    }
-
-    return { transferIds, pairs };
+    return {
+        transferIds: result.confirmedIds,
+        pairs: result.pairs.map((p) => ({ outId: p.outId, inId: p.inId, amount: p.amount })),
+    };
 }

@@ -6,6 +6,32 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — les virements entre tes comptes ne comptent plus comme des dépenses] — 2026-07-31
+
+### Transactions
+- **`[TX-TRANSFERS]` — détection des virements internes, sur TOUT l'historique** (bug Marc : « ça
+  détecte mal mes transferts entre comptes »). Un virement entre ton compte courant, ton épargne, ta
+  Mastercard ou tes placements n'est pas une dépense : ses deux côtés sont importés, et sans marquage
+  il était compté deux fois par le Budget. L'appariement (montants exactement opposés, à quelques jours
+  d'écart, sur deux comptes différents, un pour un) ne vivait que côté Fintable — il s'applique
+  désormais à l'import CSV et aux relevés, donc à l'historique complet.
+- **Deux régimes, jamais confondus** : ce qui est PROUVÉ (le compte est connu et différent des deux
+  côtés) est marqué automatiquement ; ce qui est seulement plausible (compte inconnu d'un côté) est
+  proposé dans le panneau « Virements internes » de l'onglet Transactions et n'est jamais écrit sans
+  toi — deux montants opposés à deux jours d'écart, c'est aussi la signature d'un achat suivi d'un
+  remboursement, et marquer à tort retire une vraie dépense du budget.
+- **Un virement courant → épargne est enfin reconnu** : l'ancienne règle exigeait un mouvement
+  liquidités → carte de crédit, donc les virements entre deux comptes de même nature passaient au
+  travers.
+- **Les Interac restent des remboursements**, jamais des virements internes, même quand les deux côtés
+  s'apparient parfaitement (ta règle).
+- **Une correction manuelle n'est jamais écrasée** : une paire dont une ligne a été corrigée à la main
+  est laissée intacte — les deux côtés, pas seulement celui que tu as touché.
+- Le compte porteur est désormais enregistré **par transaction** (avant : un seul nom pour tout un lot,
+  alors qu'une passe Fintable couvre plusieurs comptes). C'est ce qui permet de prouver « deux poches ».
+
+---
+
 ## [unreleased — la sync Fintable tourne dans l'app (plus besoin de rien configurer)] — 2026-07-30
 
 ### Sync bancaire

@@ -15,6 +15,7 @@ import { PrivateAmount } from './ui/PrivateAmount';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { formatCAD } from '../utils/format';
 import { DuplicatesPanel } from './transactions/DuplicatesPanel';
+import { TransfersPanel } from './transactions/TransfersPanel';
 import { markTransactionsAsDuplicate, unmarkTransactionsAsDuplicate } from '../services/transactions/duplicateDetection';
 
 interface TransactionsProps {
@@ -117,6 +118,25 @@ export const Transactions: React.FC<TransactionsProps> = ({
         if (ids.length === 0) return;
         setTransactions(prev => unmarkTransactionsAsDuplicate(prev, ids));
         showToast(`${ids.length} marquage(s) annulé(s).`, 'success');
+    };
+
+    // [TX-TRANSFERS] Marque les deux côtés d'un virement interne. Même forme que `toggleTransfer`
+    // (catégorie « Transfert », `originalCategory` préservée pour pouvoir défaire) — une seule
+    // sémantique du marquage, quel que soit le point d'entrée.
+    const handleMarkTransfers = (ids: number[]): void => {
+        if (ids.length === 0) return;
+        const idSet = new Set(ids);
+        setTransactions(prev => prev.map(t => (idSet.has(t.id)
+            ? {
+                ...t,
+                isTransfer: true,
+                originalCategory: t.originalCategory ?? t.category,
+                category: 'Transfert',
+                status: 'processed' as const,
+                confidence: 100,
+            }
+            : t)));
+        showToast(`${ids.length} transaction(s) marquée(s) comme virement interne — exclues du budget, réversible.`, 'success');
     };
 
     const handleAddRule = () => {
@@ -457,6 +477,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 onMarkDuplicates={handleMarkDuplicates}
                 onUnmarkAll={handleUnmarkAllDuplicates}
             />
+
+            {/* [TX-TRANSFERS] Virements internes — marque d'office ce qui est PROUVÉ (deux comptes
+                connus et différents), fait confirmer le reste. */}
+            <TransfersPanel transactions={transactions} onMarkTransfers={handleMarkTransfers} />
 
             <div className="rounded-xl border border-indigo-500/20 bg-indigo-900/10">
                 <button

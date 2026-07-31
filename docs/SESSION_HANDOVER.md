@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-31 — `[TX-TRANSFERS]` (PR 1/3 du chantier « analyse des transactions »)
+> Demande Marc : « ça détecte mal mes transferts entre comptes, ça met abonnement pour tout et
+> n'importe quoi ». Cadrage fait (27 questions), découpé en **3 PR** : 1) transferts, 2) catégorisation
+> (règles + IA, hybride — profil de récurrence par marchand), 3) abonnements fantômes.
+> **Livré ici (PR 1)** : cœur d'appariement GÉNÉRIQUE `services/transactions/detectTransfers.ts`
+> (montants exactement opposés, ≤3 j, comptes différents, 1:1, Interac exclu) — il ne vivait que dans
+> `services/fintable/`, qui délègue désormais au cœur en gardant SA contrainte de rôles via `canPair`.
+> Appliqué automatiquement à l'import (`App.tsx`) + panneau « Virements internes » (onglet Transactions).
+> ⚠️ **Deux régimes** : `confirmed` (comptes connus ET différents) marqué d'office ; `suggested`
+> (compte inconnu d'un côté) JAMAIS écrit — un faux positif retire une vraie dépense du budget.
+> ⚠️ **`accountName` est maintenant émis PAR TRANSACTION** (Fintable n'en émettait aucun : le payload
+> n'a qu'un compte de DOCUMENT alors qu'un lot couvre plusieurs comptes) — sans lui, rien n'est
+> prouvable. L'historique déjà importé sans compte reste en « suggestions ».
+> **Décisions Marc à respecter en PR 2** : catégoriser en HYBRIDE (règles précises d'abord, IA ensuite
+> — « pas sur des mots bateau ») ; passe IA sur tout l'historique ; écraser oui, SAUF une correction
+> manuelle (verrou par transaction, pas de règle par marchand) ; écran de tri dans Transactions ;
+> Interac = « Remboursement » MAIS doit compter comme **vraie dépense** (il est aujourd'hui dans
+> `NON_BUDGET_CATEGORIES`, donc invisible au Budget — à traiter en PR 2) ; abonnement = service
+> récurrent, achat unique chez un marchand d'abo → Loisirs (donc la catégorie ne peut PAS se décider
+> sur le libellé seul) ; critère d'arrêt = **< 1 % d'erreur mesuré sur 300 tirages** (revue
+> d'échantillon dans l'app — Marc refuse un export de données).
+
 > ## 🔴→🟢 Session 2026-07-30 (correctif 2) — `[FINTABLE-BROWSER-FETCH-RECEIVER]` : « échec réseau (TypeError) »
 > 2ᵉ bug du même écran, signalé par Marc juste après le déploiement du 1ᵉʳ. `this.fetchImpl =
 > opts.fetchImpl ?? fetch` puis `this.fetchImpl(...)` change le RÉCEPTEUR de `fetch` (`this` =

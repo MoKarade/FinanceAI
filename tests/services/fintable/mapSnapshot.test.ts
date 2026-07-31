@@ -201,8 +201,11 @@ describe('forme des transactions émises', () => {
             transactions: [tx({ date: '2026-07-20', amount: -4.5 })],
         }), CASH_ONLY);
         const bank = r.payloads.find((p) => p.kind === 'bank_statement');
+        // [TX-TRANSFERS] `accountName` est émis par transaction : c'est la seule preuve de « deux
+        // poches différentes » côté app, sans laquelle l'appariement des virements internes ne peut
+        // que SUGGÉRER. Un lot Fintable couvre plusieurs comptes → le nom vit sur la LIGNE.
         expect(bank && 'transactions' in bank && bank.transactions[0]).toEqual({
-            date: '2026-07-20', payee: 'Blue Bottle Coffee', amount: -4.5,
+            date: '2026-07-20', payee: 'Blue Bottle Coffee', amount: -4.5, accountName: 'PCA Everyday',
         });
     });
 

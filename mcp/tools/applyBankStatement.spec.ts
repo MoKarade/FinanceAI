@@ -23,6 +23,13 @@ const inputSchema = {
             'sur le marchand.',
         ),
         isTransfer: z.boolean().optional().describe('Vrai si c\'est un virement interne.'),
+        // [TX-TRANSFERS] Sans compte par ligne, deux montants opposés ne prouvent pas un virement
+        // interne : la détection ne peut alors que le suggérer, jamais le marquer automatiquement.
+        accountName: z.string().optional().describe(
+            'Compte porteur de CETTE transaction (ex. « Compte courant », « Mastercard »). À fournir '
+            + 'quand le relevé couvre plusieurs comptes ; sinon le compte du relevé s\'applique. '
+            + 'Ne devine pas : omets-le si le relevé ne le dit pas.',
+        ),
     })).describe('Transactions extraites du relevé.'),
 };
 

@@ -167,7 +167,7 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
         <>
         <div
             ref={containerRef}
-            className={`relative w-full h-full select-none ${isZoomed && isPanning ? 'cursor-grabbing' : (isZoomed ? 'cursor-grab' : 'cursor-default')} ${isFullscreen ? 'bg-ink-950 p-4' : ''}`}
+            className={`relative w-full h-full select-none ${isZoomed && isPanning ? 'cursor-grabbing' : (isZoomed ? 'cursor-grab' : 'cursor-default')} ${isFullscreen ? 'bg-surface p-4' : ''}`}
             {...handlers}
             style={{ height: isFullscreen ? '100vh' : height }}
             role="img"

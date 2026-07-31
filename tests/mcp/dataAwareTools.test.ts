@@ -293,6 +293,28 @@ describe('Lot 1 — get_tax_situation', () => {
         expect(perUser[0].grossAnnual).toBe(60000);
     });
 
+    it('[MCP-TAX-FHSA-BALANCE] un fhsaBalance > plafond CELIAPP est CLAMPÉ et SIGNALÉ dans les notes', async () => {
+        // fhsaBalance est un SOLDE ; calculateFiscalReport attend une COTISATION annuelle.
+        // Discriminant : sur l'ancien code (sans clamp), 20 000 $ de solde déduisaient 20 000 $
+        // → l'impôt de ce scénario serait STRICTEMENT INFÉRIEUR à celui du clamp à 8 000 $.
+        const mk = async (fhsa: number) => {
+            const state = karimState();
+            state.config.users[0] = { ...state.config.users[0], name: 'A', grossSalary: 5000, netSalary: 3800, rrspContributed: 0, fhsaBalance: fhsa };
+            const h = captureTool(registerGetTaxSituation, providerFor(state));
+            return callJson(h, { year: 2026 });
+        };
+        const clamped = await mk(20000);
+        const atLimit = await mk(8000);
+        const none = await mk(0);
+        // Le clamp borne la déduction au plafond : même impôt qu'une cotisation de 8 000 $.
+        expect(clamped.totalTax).toBe(atLimit.totalTax);
+        // Et la déduction s'applique bien (impôt < sans CELIAPP).
+        expect(clamped.totalTax as number).toBeLessThan(none.totalTax as number);
+        // Ceinture SIGNALÉE : la note explique le clamp (jamais un clamp muet).
+        expect(String(clamped.notes)).toContain('plafond annuel CELIAPP');
+        expect(String(atLimit.notes)).not.toContain('plafond annuel CELIAPP');
+    });
+
     it('[TAX-APP-MCP-BASE] impose le placement (aligné app) MAIS RRQ/RQAP/AE sur le SALAIRE seul', async () => {
         const base = karimState();
         // Solo, salaire 60 k/an (sous les maximums de cotisation), muté EN PLACE (tuple).

@@ -103,7 +103,9 @@ export function runMonteCarlo(
     const survivalScore = successRate / 100;
     const safetyScore = allRuns.filter(r => r.minNetWorth > startNW * 0.1).length / iterations;
     const avgEfficiency = allRuns.reduce((acc, r) => {
-        const leakage = r.totalGrowth > 0 ? Math.min(1, r.totalTaxesPaid / r.totalGrowth) : 0.5;
+        // [PROJ-TAXPAID-LABEL] Clamp [0,1] : `totalTaxesPaid` peut être NÉGATIF (année à gros
+        // remboursement net) → sans plancher 0, leakage < 0 donnait une « efficacité » > 100 %.
+        const leakage = r.totalGrowth > 0 ? Math.min(1, Math.max(0, r.totalTaxesPaid / r.totalGrowth)) : 0.5;
         return acc + (1 - leakage);
     }, 0) / iterations;
     const avgLegacyRatio = allRuns.reduce((acc, r) => acc + Math.min(3, r.estateNetWorth / (startNW || 1)), 0) / iterations;
@@ -134,7 +136,14 @@ export function runMonteCarlo(
     const representativeRun = sorted[p50Index] || sorted[0];
     const expertMetrics = {
         swr: representativeRun ? (representativeRun.totalExpenses / (representativeRun.chartDataLength || 1) * 12) / (startNW || 1) : 0,
-        taxLeakage: representativeRun ? (representativeRun.totalTaxesPaid / (representativeRun.totalGrowth || 1)) : 0,
+        // [PROJ-TAXPAID-LABEL] Plancher 0 seulement (un compteur net négatif — année à gros
+        // remboursement — rendait un « -50 % » absurde). PAS de cap haut : en décaissement, un
+        // ratio > 1 est une INFORMATION réelle (impôts payés > croissance de la période, mesuré
+        // 3-5× sur un retraité REER) — le capper fabriquerait un 100 % plausible (finding
+        // financial-integrity #549). growth ≤ 0 → 0 honnête (pas « ratio = dollars bruts »).
+        taxLeakage: representativeRun && representativeRun.totalGrowth > 0
+            ? Math.max(0, representativeRun.totalTaxesPaid / representativeRun.totalGrowth)
+            : 0,
         shortfallRisk: representativeRun ? representativeRun.shortfallRate : 0,
         sequenceRiskPct,
         worstDecadeDrawdown,

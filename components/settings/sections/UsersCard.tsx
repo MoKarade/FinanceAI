@@ -294,7 +294,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
                   />
                 </div>
                 <div>
-                  <label className="flex items-center gap-2 text-meta text-warning-300 cursor-pointer">
+                  <label className="flex items-center gap-2 text-meta text-warning-400 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={!!user.isImmigrant}

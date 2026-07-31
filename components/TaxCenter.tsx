@@ -12,6 +12,11 @@ import { logError } from '../services/errorLogger';
 import { assetValueCad } from '../services/portfolio';
 import { calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
 import { estimateTaxableInvestmentIncome } from '../services/taxEstimate';
+import { FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK } from '../utils/tax';
+
+// [Finding financial-integrity #549] Borne du slider REER = plafond de l'ANNÉE COURANTE
+// (source unique utils/tax) — un `max="30000"` en dur dérivait en silence à chaque indexation.
+const RRSP_SLIDER_MAX = RRSP_ANNUAL_LIMITS[new Date().getFullYear()] ?? RRSP_ANNUAL_LIMIT_FALLBACK;
 import { annualSalaryToMonthly } from '../utils/salary';
 import { computeMonthlyActualAverages } from '../utils/budgetSync';
 import { PrivateAmount } from './ui/PrivateAmount';
@@ -408,14 +413,14 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                         <span>Cotisation REER</span>
                                         <span>{formatCAD(rrspContribution)}</span>
                                     </label>
-                                    <input type="range" aria-label="Cotisation REER" min="0" max="30000" step="100" value={rrspContribution} onChange={e => setRrspContribution(parseFloat(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
+                                    <input type="range" aria-label="Cotisation REER" min="0" max={RRSP_SLIDER_MAX} step="100" value={rrspContribution} onChange={e => setRrspContribution(parseFloat(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
                                 </div>
                                 <div>
                                     <label className="flex justify-between text-meta text-ink-200 mb-1">
                                         <span>CELIAPP</span>
                                         <span>{formatCAD(fhsaContribution)}</span>
                                     </label>
-                                    <input type="range" aria-label="CELIAPP" min="0" max="8000" step="100" value={fhsaContribution} onChange={e => setFhsaContribution(parseFloat(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
+                                    <input type="range" aria-label="CELIAPP" min="0" max={FHSA_ANNUAL_LIMIT_PER_USER} step="100" value={fhsaContribution} onChange={e => setFhsaContribution(parseFloat(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
                                 </div>
                             </div>
                         </div>

@@ -117,7 +117,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                     </div>
                     <div className="bg-info-500/10 rounded p-3 border border-info-500/20">
                         <div className="text-tiny text-info-400 uppercase tracking-wide mb-1">REER</div>
-                        <div className="text-base font-bold text-info-200 font-mono">{formatCAD(accountTotals.totals.REER)}</div>
+                        <div className="text-base font-bold text-info-400 font-mono">{formatCAD(accountTotals.totals.REER)}</div>
                         <div className="text-tiny text-ink-400">{accountTotals.total > 0 ? ((accountTotals.totals.REER / accountTotals.total) * 100).toFixed(0) : 0}%</div>
                     </div>
                     <div className="bg-warning-500/10 rounded p-3 border border-warning-500/20">

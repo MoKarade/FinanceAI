@@ -59,7 +59,7 @@ export const LifeProjects: React.FC<LifeProjectsProps> = ({
                     </div>
                     <div className="px-3 py-2 bg-info-500/10 rounded-card border border-info-500/20">
                         <div className="text-tiny text-info-400 uppercase font-bold">Voyages à venir</div>
-                        <div className="text-base font-bold text-info-100">{upcomingTravel}</div>
+                        <div className="text-base font-bold text-info-400">{upcomingTravel}</div>
                     </div>
                     <div className="px-3 py-2 bg-purple-500/10 rounded-card border border-purple-500/20">
                         <div className="text-tiny text-purple-300 uppercase font-bold">Événements à venir</div>

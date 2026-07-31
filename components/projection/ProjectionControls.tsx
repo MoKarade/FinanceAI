@@ -106,7 +106,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                     <label
                         className={`px-3 py-1.5 rounded-lg text-meta font-semibold transition-all cursor-pointer select-none ${
                             !runMC
-                                ? 'bg-success-500/20 text-success-300 border border-success-500/30 shadow-sm'
+                                ? 'bg-success-500/20 text-success-400 border border-success-500/30 shadow-sm'
                                 : 'text-ink-400 hover:text-ink-200 border border-transparent'
                         } ${isComputing ? 'pointer-events-none opacity-50' : ''}`}
                         title="Projection unique, sans aléatoire. Rapide (~150 ms). Pas de bandes P10-P90."
@@ -216,7 +216,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                                     onClick={applyHistoricalRate}
                                     variant="ghost"
                                     size="sm"
-                                    title="Appliquer le rendement historique réel de votre Google Sheet"
+                                    title="Appliquer le rendement composé observé sur ton historique. ⚠️ Il inclut tes APPORTS (pas seulement la croissance des titres) → il SURESTIME le rendement pur, surtout sur un historique court (fiable à partir de ~3 ans)."
                                     className="!px-2 !py-0.5 !text-tiny"
                                 >
                                     Auto ({liveCSVBalances.historicalRate.toFixed(1)}%)

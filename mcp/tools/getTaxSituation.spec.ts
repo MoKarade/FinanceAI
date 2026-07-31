@@ -5,7 +5,7 @@
 
 import { z } from 'zod';
 import type { AppState, Transaction, User } from '../../types';
-import { calculateFiscalReport } from '../../utils/tax';
+import { calculateFiscalReport, FHSA_ANNUAL_LIMIT_PER_USER } from '../../utils/tax';
 import { computeMonthlyActualAverages } from '../../utils/budgetSync';
 import { computeHistoricalContributionRoom } from '../../services/projection/setupSimulation';
 import { computeAssetBreakdown } from '../../services/portfolio';
@@ -75,7 +75,12 @@ export const getTaxSituationSpec = {
                     salarySource: u.salarySource,
                     report: calculateFiscalReport(
                         taxableBase,
-                        u.rrspContributed || 0, u.fhsaBalance || 0, year, true,
+                        // [MCP-TAX-FHSA-BALANCE] `fhsaBalance` est un SOLDE, pas une cotisation
+                        // annuelle : clampé au plafond CELIAPP. Effet actuel nul (aucun écrivain ne
+                        // peuple encore fhsaBalance) — ceinture pour le jour où un apply_* l'écrira.
+                        u.rrspContributed || 0,
+                        Math.min(u.fhsaBalance || 0, FHSA_ANNUAL_LIMIT_PER_USER),
+                        year, true,
                         undefined, g,
                     ),
                 };
@@ -157,6 +162,16 @@ export const getTaxSituationSpec = {
                 reer: Math.round(breakdown.reer),
             },
             notes:
+                // [MCP-TAX-FHSA-BALANCE] Ceinture SIGNALÉE (finding silent-failure #549) : si le
+                // clamp CELIAPP engage réellement un jour, le dire dans les notes — un clamp muet
+                // rendrait totalTax inexplicable depuis le solde réel.
+                // Déclencheur = la MÊME population que le clamp (contribuables à salaire > 0,
+                // cf perUserReports) — sinon un conjoint sans brut déclencherait la note sans
+                // qu'aucun clamp n'ait engagé (finding financial-integrity #549).
+                (activeUsers.some((u) => ((u.grossSalary || 0) * 12) > 0 && (u.fhsaBalance || 0) > FHSA_ANNUAL_LIMIT_PER_USER)
+                    ? `⚠️ Un fhsaBalance dépasse le plafond annuel CELIAPP (${FHSA_ANNUAL_LIMIT_PER_USER} $) : ` +
+                      "c'est un SOLDE, pas une cotisation de l'année — la déduction est clampée au plafond. "
+                    : '') +
                 'Impôt calculé PAR CONTRIBUABLE puis sommé (aucune fusion des revenus du couple). ' +
                 "marginalRatePct = marginal du conjoint au plus haut revenu ; voir perUser pour chacun. " +
                 'celiRoomRemaining/reerRoomRemaining sont des AGRÉGATS du ménage (somme des droits des ' +

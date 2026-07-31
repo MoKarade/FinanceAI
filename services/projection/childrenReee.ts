@@ -218,9 +218,10 @@ export function processOneChild(
             careMonthly = 0;
         }
 
-        // Frais garderie nets après crédit d'impôt fédéral 30% au-delà de 400$/mois
-        // Compatible avec la logique historique (CPE déjà subventionné → < 400$
-        //  → pas de crédit ; garderie privée 1400$ → ~30% remboursés).
+        // Frais garderie nets : au-delà de 400 $/mois, il RESTE ~30 % du coût à charge
+        // (≈70 % d'aide implicite — heuristique FISC-CHILDCARE, cf FISCAL_REFERENCE §9).
+        // CPE déjà subventionné → < 400 $ → pas de réduction. ⚠️ L'ancien commentaire disait
+        // « ~30 % remboursés » : c'était l'inverse de ce que fait la ligne (× 0.30 = on GARDE 30 %).
         if (careMonthly > 400) {
             careMonthly = careMonthly * 0.30;
         }

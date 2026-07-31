@@ -74,22 +74,42 @@ describe('runMonteCarlo — agrégation', () => {
         expect(cb).toHaveBeenCalled();
     });
 
-    it('[PROJ-TAXPAID-LABEL] totalTaxesPaid NÉGATIF (remboursement net) : leakage/efficacité clampés [0,1]', () => {
-        // Discriminant : sur l'ancien code (sans Math.max(0, …)), leakage = -0,5 → efficacité 1,5
-        // → contribution FVI > 100 % et taxLeakage négatif (« -50 % d'impôt sur la croissance »).
+    it('[PROJ-TAXPAID-LABEL] totalTaxesPaid NÉGATIF (remboursement net) : leakage plancher 0 + FVI ≤ 100', () => {
+        // Fixture calibrée pour que l'ANCIEN code dépasse 100 (le vrai symptôme user-visible
+        // « FVI 103/100 », finding financial-integrity #549) : survie 0,3 + sécurité 0,3
+        // (minNW > 10 % du startNW 100 000) + legacy 0,2 (ratio 3 → score 1) + efficacité
+        // 1,1 × 0,2 = 0,22 → ancien fvi = 102 ; nouveau (efficacité clampée) = 100.
         const negTaxRun = vi.fn(() => ({
+            chartData: Array.from({ length: 13 }, () => ({ NetWorth: 300000 })),
+            finalNetWorth: 300000,
+            estateNetWorth: 300000,
+            totalTaxesPaid: -20000,
+            totalGrowth: 200000,
+            totalExpenses: 1000,
+            minNetWorth: 300000,
+            shortfallRate: 0,
+        }));
+        const r = runMonteCarlo(negTaxRun as never, makeParams(), STRAT, false, 10);
+        expect(r.expertMetrics.taxLeakage).toBe(0); // plancher 0, jamais négatif
+        expect(r.fvi).toBe(100); // ancien code : 102 (échoue)
+    });
+
+    it('[PROJ-TAXPAID-LABEL] taxLeakage > 1 en décaissement = INFORMATION conservée (pas de cap haut)', () => {
+        // En décaissement, payer plus d'impôt que la croissance de la période est un état RÉEL
+        // (mesuré 3-5× sur un retraité REER) — un cap à 1,0 fabriquerait un « 100 % » plausible.
+        const drawdownRun = vi.fn(() => ({
             chartData: Array.from({ length: 13 }, () => ({ NetWorth: 1000 })),
             finalNetWorth: 1000,
             estateNetWorth: 1000,
-            totalTaxesPaid: -500,
+            totalTaxesPaid: 3000,
             totalGrowth: 1000,
             totalExpenses: 1000,
             minNetWorth: 1000,
             shortfallRate: 0,
         }));
-        const r = runMonteCarlo(negTaxRun as never, makeParams(), STRAT, false, 10);
-        expect(r.expertMetrics.taxLeakage).toBe(0);
-        expect(r.fvi).toBeGreaterThanOrEqual(0);
+        const r = runMonteCarlo(drawdownRun as never, makeParams(), STRAT, false, 10);
+        expect(r.expertMetrics.taxLeakage).toBe(3);
+        // L'efficacité du FVI, elle, RESTE bornée [0,1] (score, pas mesure).
         expect(r.fvi).toBeLessThanOrEqual(100);
     });
 

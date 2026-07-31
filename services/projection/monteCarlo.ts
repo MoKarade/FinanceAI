@@ -136,10 +136,13 @@ export function runMonteCarlo(
     const representativeRun = sorted[p50Index] || sorted[0];
     const expertMetrics = {
         swr: representativeRun ? (representativeRun.totalExpenses / (representativeRun.chartDataLength || 1) * 12) / (startNW || 1) : 0,
-        // [PROJ-TAXPAID-LABEL] Même clamp que avgEfficiency : ratio borné [0,1] (un compteur net
-        // négatif ou une croissance quasi nulle rendait un « % d'impôt sur la croissance » absurde).
-        taxLeakage: representativeRun
-            ? Math.min(1, Math.max(0, representativeRun.totalTaxesPaid / (representativeRun.totalGrowth || 1)))
+        // [PROJ-TAXPAID-LABEL] Plancher 0 seulement (un compteur net négatif — année à gros
+        // remboursement — rendait un « -50 % » absurde). PAS de cap haut : en décaissement, un
+        // ratio > 1 est une INFORMATION réelle (impôts payés > croissance de la période, mesuré
+        // 3-5× sur un retraité REER) — le capper fabriquerait un 100 % plausible (finding
+        // financial-integrity #549). growth ≤ 0 → 0 honnête (pas « ratio = dollars bruts »).
+        taxLeakage: representativeRun && representativeRun.totalGrowth > 0
+            ? Math.max(0, representativeRun.totalTaxesPaid / representativeRun.totalGrowth)
             : 0,
         shortfallRisk: representativeRun ? representativeRun.shortfallRate : 0,
         sequenceRiskPct,

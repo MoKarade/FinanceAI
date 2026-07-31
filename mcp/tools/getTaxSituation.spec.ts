@@ -165,7 +165,10 @@ export const getTaxSituationSpec = {
                 // [MCP-TAX-FHSA-BALANCE] Ceinture SIGNALÉE (finding silent-failure #549) : si le
                 // clamp CELIAPP engage réellement un jour, le dire dans les notes — un clamp muet
                 // rendrait totalTax inexplicable depuis le solde réel.
-                (activeUsers.some((u) => (u.fhsaBalance || 0) > FHSA_ANNUAL_LIMIT_PER_USER)
+                // Déclencheur = la MÊME population que le clamp (contribuables à salaire > 0,
+                // cf perUserReports) — sinon un conjoint sans brut déclencherait la note sans
+                // qu'aucun clamp n'ait engagé (finding financial-integrity #549).
+                (activeUsers.some((u) => ((u.grossSalary || 0) * 12) > 0 && (u.fhsaBalance || 0) > FHSA_ANNUAL_LIMIT_PER_USER)
                     ? `⚠️ Un fhsaBalance dépasse le plafond annuel CELIAPP (${FHSA_ANNUAL_LIMIT_PER_USER} $) : ` +
                       "c'est un SOLDE, pas une cotisation de l'année — la déduction est clampée au plafond. "
                     : '') +

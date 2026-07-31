@@ -413,7 +413,7 @@ pour minimiser l'impôt combiné (élection optionnelle).
 |---|---|---|
 | RAP (Régime accession propriété) | `RAP_LIMIT_PER_USER` | 60 000 $ / personne |
 | CELIAPP — plafond à vie | `FHSA_LIFETIME_LIMIT_PER_USER` | 40 000 $ / personne |
-| CELIAPP — plafond annuel | `FHSA_ANNUAL_LIMIT_PER_USER` | 8 000 $ / personne |
+| CELIAPP — plafond annuel | `FHSA_ANNUAL_LIMIT_PER_USER` | 8 000 $ / personne — ⚠️ le REPORT de droits (jusqu'à 8 000 $ d'années antérieures, déduction max 16 000 $/an à l'ARC) n'est PAS modélisé (choix de modèle, cf clamp `getTaxSituation` + `taxJanuary.ts` : 8 000 × users). Ne pas « corriger » le clamp sans modéliser le report entier. |
 | PBMA (palier de base montant ajusté) | `PBMA_THRESHOLD_PER_USER` | 17 183 $ |
 
 ### CELI — plafonds annuels (`CELI_ANNUAL_LIMITS`)
@@ -608,7 +608,7 @@ choisir). Calcul cumulatif par tranche (style impôt).
   sont pas modélisés.
 - **FSS d'un retraité** : assiette simplifiée vs Annexe F réelle (seule l'exclusion SRG est
   documentée §5) — écart borné par le plafond 1 000 $/adulte.
-- **Frais de garde — modèle SIMPLIFIÉ** (`childrenReee.ts:199-201`, FISC-CHILDCARE) : le moteur applique
+- **Frais de garde — modèle SIMPLIFIÉ** (`childrenReee.ts:~225`, FISC-CHILDCARE) : le moteur applique
   un facteur de coût résiduel de **30 %** (= aide implicite ~70 %) sur la garde privée > 400 $/mois. C'est
   une **HEURISTIQUE conservatrice**, PAS le vrai régime (féd = déduction T778 ligne 21400 plafonnée par
   âge/revenu ; QC = crédit remboursable dégressif ~67-78 %, CPE déjà subventionné exclu). À sourcer/raffiner

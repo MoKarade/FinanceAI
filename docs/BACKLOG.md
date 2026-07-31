@@ -221,8 +221,14 @@
   lieu de `window` → le binding WebIDL lève `Illegal invocation`. MESURÉ dans un vrai Chromium (sonde
   Playwright), pas déduit. Fix = wrapper. ⚠️ jsdom/undici n'appliquent pas la règle → le garde SIMULE
   la vérification de récepteur. Grep de la classe : instance unique dans le dépôt.
-- [ ] **`[FINTABLE-7]` Lot 3 — déclenchement AUTOMATIQUE de la passe à l'ouverture** (S) — throttlé
-  1×/jour (la carte ne donne pour l'instant qu'un bouton manuel « Synchroniser maintenant »).
+- [x] **`[FINTABLE-7]` Lot 3 — déclenchement AUTOMATIQUE de la passe à l'ouverture** (S) — ✅ 2026-07-31.
+  `services/fintable/autoSync.ts` (`maybeRunDailyFintableSync`) : gardes = jeton présent + PAS mode test +
+  dernière passe RÉUSSIE ≥ 24 h (un ÉCHEC ne gèle pas 24 h — c'est le cooldown de TENTATIVE 1 h,
+  device-local, qui borne les retries anti-boucle-F5) + mutex en vol. Déclenché par un effet App RÉACTIF
+  au jeton (hydraté async depuis le coffre — un timer au boot lirait un store vide). Patch d'état par
+  `referenceDeltaPatch` (`applyStatePatch.ts`), EXTRAIT de FintableSyncCard au moment du 2ᵉ consommateur
+  (une seule copie). Échec → seul le rapport est persisté (diagnostics), pas de toast anxiogène quotidien ;
+  succès avec transactions → toast discret (compte, jamais de montant). 10 tests.
 - [x] **`[FINTABLE-6]` Lot 2 — consommer le montant courtier dans Investissements + Accueil** (M) —
   ✅ 2026-07-31. `BrokerReconciliationCard` (UNE implémentation, variantes `full` Investissements /
   `compact` Accueil — pas deux copies) : total par panier = solde COURTIER (autorité), ligne « écart

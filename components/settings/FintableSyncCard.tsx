@@ -20,6 +20,7 @@ import { Card } from '../ui/Card';
 import { Icon } from '../ui/Icon';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { importWithRetry, isChunkLoadError } from '../../utils/lazyWithRetry';
+import { referenceDeltaPatch } from '../../services/fintable/applyStatePatch';
 import { logError } from '../../services/errorLogger';
 import type { AppState, FintableAccountRoleConfig } from '../../types';
 
@@ -109,26 +110,10 @@ export const FintableSyncCard: React.FC = () => {
                 setError(fresh.error ?? 'La synchronisation a échoué.');
                 return;
             }
-            // ⚠️ [finding silent-failure-hunter, PR #536] NE PAS énumérer les champs à la main : mon
-            // 1er jet copiait 5 clés choisies et PERDAIT déjà `lastUpdate` (que les 3 branches de
-            // `applyDocument` mettent à jour) — l'indicateur de fraîcheur restait périmé après une
-            // passe qui venait d'écrire de l'argent réel, sans le moindre signal. Et la liste aurait
-            // silencieusement lâché tout NOUVEAU champ dès qu'un futur payload Fintable en toucherait
-            // un (assets, budgetItems…), alors que le chemin serveur, lui, continuerait de marcher.
-            //
-            // À la place : DELTA par identité de référence. `applyDocument` fait des mises à jour
-            // immuables, donc une clé modifiée porte une nouvelle référence. On n'écrit QUE celles-là.
-            // Double bénéfice : (a) tout champ futur est capté sans y penser ; (b) on ne réécrit pas
-            // les clés inchangées, donc une modification concurrente survenue pendant la passe n'est
-            // pas écrasée (le chemin serveur, lui, s'en protège par l'OCC — le navigateur n'en a pas).
-            // Les actions du store ont une référence stable → elles ne peuvent pas entrer dans le patch.
-            const patch: Partial<AppState> = {};
-            for (const key of Object.keys(nextState) as (keyof AppState)[]) {
-                if (nextState[key] !== (current as AppState)[key]) {
-                    (patch as Record<string, unknown>)[key] = nextState[key];
-                }
-            }
-            setAppState(patch);
+            // Delta par IDENTITÉ DE RÉFÉRENCE — helper PARTAGÉ avec la sync auto quotidienne
+            // ([FINTABLE-7 Lot 3], `services/fintable/applyStatePatch.ts`, qui porte le pourquoi :
+            // finding silent-failure PR #536, jamais de liste de clés à la main).
+            setAppState(referenceDeltaPatch(current, nextState));
             setNotice(`Synchronisé : ${fresh.transactionsAdded} transaction(s) ajoutée(s).`);
         } catch (err) {
             setError(isChunkLoadError(err)

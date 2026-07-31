@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-31 (suite 4) — `[FINTABLE-7]` Lot 3 (Lot D de la file Marc)
+> Sync bancaire AUTO à l'ouverture, 1×/jour : `services/fintable/autoSync.ts` (gardes jeton/mode
+> test/24 h-succès/cooldown-tentative 1 h/mutex), effet App RÉACTIF au jeton hydraté (un timer au
+> boot lirait un store vide), `referenceDeltaPatch` extrait de la carte vers
+> `services/fintable/applyStatePatch.ts` (partagé, une seule copie). Échec → rapport seul persisté,
+> pas de toast quotidien anxiogène ; succès → toast compte-seulement. **File restante** : petits a11y
+> (A11Y-INFO300-SWEEP, A11Y-DETAILS-TAP-TARGET, A11Y-FUTUR-MILESTONES-KEYBOARD) → perf
+> (PERF-SDK-BOOT-PRELOAD, HIST-STORE-SIZE) → chat conscient de la page (V2/V3) → gros chantiers.
+
 > ## 🟢 Session 2026-07-31 (suite 3) — `[DASH-NETWORTH-CANONICAL]` (Lot C de la file Marc)
 > « Je veux source unique » : le KPI patrimoine de l'Accueil lisait `latestTotals.Total` (dernier
 > point de l'HISTORIQUE — figé au dernier close, cash gated `accountName`) → il lit désormais

@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — la sync bancaire tourne toute seule] — 2026-07-31
+
+### Sync bancaire Fintable
+- **`[FINTABLE-7]` Lot 3 — synchronisation automatique à l'ouverture**, une fois par jour. Plus
+  besoin d'ouvrir Réglages et de cliquer « Synchroniser maintenant » : si un jeton Fintable est
+  configuré, l'app rapatrie transactions et soldes toute seule au premier lancement de la journée.
+  Un toast discret annonce le nombre de transactions importées (jamais de montant).
+- Un échec ne bloque pas la journée : l'app retentera à la prochaine ouverture (au plus 1×/heure),
+  et le détail reste visible dans Réglages → Sync bancaire Fintable. Jamais en mode démo.
+
+---
+
 ## [unreleased — le patrimoine de l'Accueil dit le présent] — 2026-07-31
 
 ### Accueil

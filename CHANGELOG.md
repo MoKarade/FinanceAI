@@ -6,6 +6,25 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — la bannière rouge de sync ne crie plus au loup] — 2026-07-31
+
+### Sync Google Drive
+- **`[AUTH-DRIVE-BANNER-FLICKER]` — fin de la bannière qui clignote** (bug Marc : « elle apparaît
+  souvent, parfois elle s'enlève seule »). Un hoquet réseau du rafraîchissement automatique (toutes les
+  60 s) affichait « Non connecté — tes changements ne sont PAS sauvegardés » alors que la connexion
+  était bonne — le tick suivant la faisait disparaître. Désormais un raté **transitoire** (timeout,
+  réveil de veille) ne déclenche plus la bannière : elle n'apparaît que si la panne **dure** (~2 min)
+  ou si la reconnexion est **réellement** requise (session Google expirée, accès révoqué) — là, elle
+  dit vrai et le bouton Reconnecter est le bon geste.
+- Pendant une panne transitoire, une sauvegarde qui échoue affiche la bannière « échec de la dernière
+  sauvegarde » avec Réessayer — le message honnête, au lieu du faux « non connecté ».
+- Une panne qui **dure** (~3 min sans aucune sync réussie, quelle qu'en soit la cause) finit par
+  afficher la bannière : ne rien dire indéfiniment serait l'excès inverse.
+- Revenir sur l'onglet ne compte plus double : deux rafraîchissements déclenchés en même temps
+  (focus + changement de visibilité) sont fusionnés en un seul.
+
+---
+
 ## [unreleased — vérifier la qualité du classement, et les abonnements qui dérivent] — 2026-07-31
 
 ### Transactions

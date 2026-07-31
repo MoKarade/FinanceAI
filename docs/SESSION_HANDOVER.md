@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-31 (suite) — `[AUTH-DRIVE-BANNER-FLICKER]` (Lot A de la file Marc)
+> **Marc a relancé** : « la bannière rouge apparaît souvent, parfois elle s'enlève seule, parfois faut
+> que je me connecte ». Cause trouvée dans `syncLifecycle.runBootSync` (appelé toutes les 60 s par le
+> polling + au focus) : il basculait `connected:false` sur TOUTE erreur post-jeton (timeout Drive
+> transitoire, réveil de veille) et dès le 1er raté du renouvellement silencieux → bannière-mensonge
+> qui disparaissait au tick suivant. **Fix** : (1) jeton valide + erreur Drive non-401 → on RESTE
+> connecté (`handleError('boot')`, visible Diagnostics) ; (2) raté transitoire du renouvellement →
+> grâce de 3 ticks (~2 min, `_transientAuthFailStreak`) ; (3) définitif (`AuthInteractionRequiredError`,
+> 401 `DriveAuthError`) → bannière immédiate + `busy:false` (sinon polling gelé). Discriminant prouvé
+> par git-stash (4 tests rouges sur l'ancien code, `syncOrchestrator.errors.test.ts`). ⚠️ Le mock
+> `gisAuth` du test passphrase a reçu `AuthInteractionRequiredError` + `renewTokenSilently` (leçon
+> AUTH-DRIVE-INACTIVITY : un import non mocké = TypeError). **Panel #542, 2 vrais findings corrigés** :
+> verrou de réentrance `_bootSyncInFlight` (focus+visibilitychange = 2 ticks concurrents → compteur +2
+> pour UN alt-tab, prouvé par sonde) et grâce étendue aux erreurs Drive post-jeton persistantes (3 ticks
+> ratés toutes causes → bannière, sinon une panne durable restait invisible hors Réglages). Fenêtre
+> `flushPush`-pendant-grâce assumée + documentée (zéro perte, le prochain boot pousse). **File restante de Marc (dans l'ordre)** :
+> FINTABLE-6 Lot 2 (montant courtier + écart dans Investissements/Accueil) → DASH-NETWORTH-CANONICAL
+> (« je veux source unique ») → FINTABLE-7 Lot 3 (sync auto 1×/jour à l'ouverture) → petits a11y →
+> perf → chat conscient de la page → gros chantiers.
+
 > ## 🟢 Session 2026-07-31 — `[TX-REVIEW]` + `[TX-SUBSCRIPTIONS]` (PR 3/3, chantier CLOS)
 > **Le chantier « analyse des transactions » est complet** : virements (#539), catégorisation (#540),
 > mesure + abos fantômes (cette PR).

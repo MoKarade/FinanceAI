@@ -182,6 +182,13 @@ export function schedulePush(): void {
  * parte, sans attendre le debounce (sinon un changement suivi d'une fermeture rapide ne serait jamais
  * poussé → le connecteur MCP lirait une copie Drive périmée quand Marc parle à Claude). No-op si non
  * connecté, si un conflit/passphrase est en attente, ou si rien n'a changé depuis la dernière sync.
+ *
+ * ⚠️ [AUTH-DRIVE-BANNER-FLICKER, finding silent-failure #542 §3] Fenêtre assumée : pendant la GRÂCE
+ * anti-clignotement (jusqu'à ~3 ticks de polling où `connected` reste vrai sur un raté transitoire),
+ * un flush au pagehide peut échouer sans signal (fire-and-forget, l'onglet se ferme). AUCUNE donnée
+ * n'est perdue : le local persiste et le prochain boot pousse (`decideOnLoad` : local avancé → push) ;
+ * le seul coût est une copie Drive périmée pour le MCP jusqu'à la prochaine ouverture. Tenter un
+ * renouvellement réseau ici serait inutile (la page meurt avant la réponse GIS).
  */
 export function flushPush(): void {
     if (!isGoogleAuthConfigured() || !getSyncStatus().connected) return;

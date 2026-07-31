@@ -646,6 +646,26 @@
   déclasse plus en info) ; **trou 401 fermé** (un `DriveAuthError` — jeton rejeté par l'API Drive, scope révoqué —
   était TOTALEMENT muet aux 2 sites gate+boot ; même surface « reconnexion redemandée » → tracé) ; helper renommé
   `traceSilentAuthFailure` (couvre renouvellement GIS ET 401 Drive).
+  ✅ **`[AUTH-DRIVE-BANNER-FLICKER]` fix livré (2026-07-31)** — cause de la « bannière rouge qui apparaît souvent
+  et s'enlève parfois seule » (rappel Marc 2026-07-31) : `runBootSync` (polling 60 s + retour d'onglet) basculait
+  `connected:false` sur TOUTE erreur post-jeton (timeout Drive transitoire, réseau au réveil de veille) ET dès le
+  1er raté du renouvellement silencieux → la bannière « tes changements ne sont PAS sauvegardés » mentait puis
+  disparaissait au tick suivant. Désormais (`syncLifecycle.ts`) : jeton valide + erreur Drive non-401 → on RESTE
+  connecté (`handleError('boot')`, trace Diagnostics) ; raté TRANSITOIRE du renouvellement → grâce de 3 ticks
+  (~2 min) avant la bannière ; échec DÉFINITIF (`AuthInteractionRequiredError` session Google morte, 401
+  `DriveAuthError`) → bannière immédiate (elle dit vrai). Pendant la grâce, un push raté affiche la bannière
+  « échec de sauvegarde » (honnête, bouton Réessayer). Reste le cas légitime « faut me reconnecter » : session
+  Google expirée / cookies tiers — la raison GIS exacte est dans Réglages → Diagnostics.
+  **Panel #542 (code-reviewer + silent-failure-hunter, 2 vrais findings, tous corrigés dans la même PR)** :
+  (1) réentrance PROUVÉE par sonde — `focus` + `visibilitychange` tirent 2 `runBootSync` quasi simultanés et la
+  garde `busy` ne couvre pas la phase jeton → le compteur avançait de 2 pour UN retour d'onglet (bannière dès
+  2 alt-tab) → verrou `_bootSyncInFlight` (modèle `_decisionInFlight`), qui déduplique AUSSI les
+  `renewTokenSilently` concurrents (`_pendingReject` singleton gisAuth) ; (2) une panne Drive PERSISTANTE
+  non-401 restait invisible hors Réglages (la bannière n'affiche que déconnexion/push) → la série de grâce
+  compte AUSSI les erreurs Drive post-jeton : 3 ticks ratés consécutifs (toutes causes transitoires
+  confondues) → bannière. §3 assumé + documenté (`flushPush`) : pendant la grâce (~3 min max), un flush au
+  pagehide peut échouer sans signal — zéro perte (le prochain boot pousse), seul coût = copie Drive périmée
+  pour le MCP jusqu'à la prochaine ouverture.
 
 ## 📈 PORTFOLIO-HISTORY — courbes de cours réelles (bug Marc 2026-07-22, PR #485)
 - [x] **`[PORTFOLIO-HISTORY]`** ✅ 2026-07-22 — courbes par action (depuis 1er achat) + courbe portefeuille

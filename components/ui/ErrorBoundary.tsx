@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon } from './Icon';
+import { logError } from '../../services/errorLogger';
 
 interface ErrorBoundaryProps {
     children: React.ReactNode;
@@ -24,6 +25,17 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
     componentDidCatch(error: Error, info: React.ErrorInfo) {
         console.error('[FinanceAI ErrorBoundary]', this.props.label || 'unknown', error, info.componentStack);
+        // [PERF-SDK-BOOT-PRELOAD, finding silent-failure #547] La trace doit atterrir dans le
+        // journal interne (Réglages → Diagnostics), pas seulement en console : un crash de rendu
+        // (ex. chunk périmé après un déploiement) laisse sinon un fallback visible à l'utilisateur
+        // mais invisible dans les diagnostics (mobile / devtools fermés).
+        logError({
+            source: 'ui',
+            severity: 'error',
+            message: `Erreur de rendu — ${this.props.label || 'section inconnue'}`,
+            error,
+            context: { componentStack: info.componentStack ?? undefined },
+        });
     }
 
     componentDidUpdate(prevProps: ErrorBoundaryProps) {

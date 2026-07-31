@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — démarrage 24 % plus léger] — 2026-07-31
+
+### Performance
+- **`[PERF-SDK-BOOT-PRELOAD]` — le SDK Anthropic et jsPDF ne sont plus téléchargés au démarrage.**
+  L'app préchargeait ~126 Ko de SDK IA (et jsPDF) à chaque ouverture, alors qu'aucun appel IA ni PDF
+  n'a lieu sans geste. Boot mesuré : **225,6 → 171,6 Ko gzip (−24 %)**. Les deux bibliothèques se
+  chargent désormais au premier usage (avec reprise automatique si une mise à jour de l'app a
+  invalidé le fichier entre-temps).
+
+---
+
 ## [unreleased — petits gestes d'accessibilité] — 2026-07-31
 
 ### Accessibilité

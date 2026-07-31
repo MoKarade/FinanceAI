@@ -148,8 +148,15 @@ export default defineConfig(({ mode }) => {
               if (!id.includes('node_modules/')) return undefined;
               if (/[\\/]node_modules[\\/](react|react-dom|scheduler|use-sync-external-store)[\\/]/.test(id)) return 'react-vendor';
               if (/[\\/]node_modules[\\/](recharts|victory-vendor|d3-[^/]+|internmap)[\\/]/.test(id)) return 'recharts';
-              if (id.includes('node_modules/@anthropic-ai/')) return 'ai-vendor';
-              if (id.includes('node_modules/jspdf/')) return 'pdf-vendor';
+              // [PERF-SDK-BOOT-PRELOAD] La règle `@anthropic-ai/ → 'ai-vendor'` est RETIRÉE : un
+              // manualChunk dont le contenu n'est atteint QUE par import() devient EAGER (le chunk
+              // manuel casse la frontière asynchrone — l'entry l'importait STATIQUEMENT et le SDK
+              // ~126 Ko était modulepreload au BOOT, mesuré, alors qu'aucune chaîne statique source
+              // n'existe). Sans la règle, Rolldown range le SDK dans le chunk async naturel de
+              // claude.ts — téléchargé au PREMIER usage IA seulement (mesuré sur dist/index.html).
+              // Même retrait pour `jspdf → 'pdf-vendor'` : dès que la règle SDK est partie, le
+              // reshuffle a fait apparaître pdf-vendor dans le preload de boot (MÊME piège manualChunk
+              // eager) — jspdf n'est atteint que par import() (pdfReport), il n'a rien à faire au boot.
               return undefined;
             },
           },

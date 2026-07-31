@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-31 (suite 6) — `[PERF-SDK-BOOT-PRELOAD]` (perf, file Marc)
+> **Boot −54 Ko gzip (225,6 → 171,6, −24 %), mesuré git-stash avant/après.** Le ticket accusait les
+> onglets lazy — la VRAIE chaîne (tracée par walker d'imports statiques depuis index.tsx) était
+> `TabRouter → PageSetupGate → PayslipUploadCard → claude.ts → SDK`. Fix : makeClient ASYNC (SDK via
+> importWithRetry au 1er usage), PayslipUploadCard lazy dans le gate, et ⚠️ retrait des manualChunks
+> `ai-vendor`/`pdf-vendor` — **un manualChunk atteint seulement par import() devient EAGER** (leçon
+> CLAUDE.md, prouvée 2× : pdf-vendor est apparu dans le preload dès le retrait de la règle SDK).
+> Preload final : react-vendor + cœur seulement. Reste perf : HIST-STORE-SIZE (à mesurer).
+
 > ## 🟢 Session 2026-07-31 (suite 5) — petits a11y (Lot E de la file Marc)
 > `[A11Y-INFO300-SWEEP]` : 13 `text-info-300` (shade INEXISTANT → aucune règle CSS, texte héritant du
 > parent) → `info-400`, MESURÉ check-contrast (6,99-7,84:1 AA) + preuve build propre (`.text-info-300`

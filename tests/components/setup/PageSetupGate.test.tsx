@@ -35,6 +35,20 @@ describe('PageSetupGate (pilote Impôts)', () => {
         expect(screen.queryByText('CONTENU_IMPOTS')).not.toBeInTheDocument();
     });
 
+    it("résout le chunk lazy PayslipUploadCard (Suspense → vraie carte, pas le fallback à vie)", async () => {
+        // [PERF-SDK-BOOT-PRELOAD] La carte d'import de paie est désormais lazy (lazyWithRetry +
+        // Suspense local). Preuve FONCTIONNELLE que le chunk se résout (un mauvais export/chemin
+        // laisserait le fallback « Chargement… » à vie sans erreur de build) — finding code-reviewer #547.
+        useFinanceStore.setState(withGross(0));
+        render(
+            <PageSetupGate tab={Tab.TAX}>
+                <div>CONTENU_IMPOTS</div>
+            </PageSetupGate>,
+        );
+        expect(await screen.findByText(/Upload relevé de salaire/i)).toBeInTheDocument();
+        expect(screen.queryByText(/^Chargement…$/)).not.toBeInTheDocument();
+    });
+
     it('affiche le contenu de la page une fois le salaire renseigné', () => {
         useFinanceStore.setState(withGross(5000));
         render(

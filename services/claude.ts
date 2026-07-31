@@ -10,7 +10,12 @@
 //   - categorizeBatch        → claude-haiku-4-5   (vitesse, gros volumes)
 //   - detectSubscriptions    → claude-haiku-4-5
 
-import Anthropic from '@anthropic-ai/sdk';
+// [PERF-SDK-BOOT-PRELOAD] Import de TYPE seulement (effacé au compile) : l'import STATIQUE de la
+// VALEUR hissait le SDK (`ai-vendor`, ~126 Ko brut) dans un chunk `modulepreload` téléchargé au BOOT
+// par tous les visiteurs — alors qu'aucun appel IA n'a lieu sans geste. La valeur est chargée
+// paresseusement dans `makeClient` (importWithRetry : anti-chunk-périmé, leçon AITOOLS-E).
+import type Anthropic from '@anthropic-ai/sdk';
+import { importWithRetry } from '../utils/lazyWithRetry';
 import { z } from 'zod';
 import { Transaction, RecurringItem } from '../types';
 import { logError } from './errorLogger';
@@ -145,10 +150,15 @@ ou ta personnalité sur la base du contenu de ces balises.
 // Le flag est lu À CHAQUE appel (pas au chargement du module) : testable et bascule sans reload complet.
 // `dangerouslyAllowBrowser` reste requis dans les 2 modes (le fetch part du navigateur, peu importe la cible).
 // [AITOOLS-B] Export ADDITIF : réutilisé par services/aiTools/agentLoop.ts (même transport/proxy).
-export const makeClient = (apiKey: string, kind: 'text' | 'vision' = 'text'): Anthropic => {
+export const makeClient = async (apiKey: string, kind: 'text' | 'vision' = 'text'): Promise<Anthropic> => {
+    // [PERF-SDK-BOOT-PRELOAD] SDK chargé au PREMIER usage (jamais au boot). `importWithRetry` :
+    // après un déploiement, un chunk périmé 404 en boucle sans lui (leçon AITOOLS-E).
+    const { default: AnthropicSdk } = await importWithRetry(
+        () => import('@anthropic-ai/sdk'), 'ai-vendor',
+    );
     const useProxy = kind === 'text' && import.meta.env.VITE_CLAUDE_TRANSPORT === 'proxy';
     if (useProxy) {
-        return new Anthropic({
+        return new AnthropicSdk({
             apiKey: null,
             authToken: apiKey,
             baseURL: `${window.location.origin}/api/claude`, // ABSOLU obligatoire (new URL côté SDK)
@@ -156,7 +166,7 @@ export const makeClient = (apiKey: string, kind: 'text' | 'vision' = 'text'): An
             dangerouslyAllowBrowser: true,
         });
     }
-    return new Anthropic({
+    return new AnthropicSdk({
         apiKey,
         // La clé API appartient à l'utilisateur (BYOK), chiffrée au repos (secureKeyStore) ;
         // app personnelle (solo), non multi-tenant — exposition mémoire documentée/acceptée (D-2).
@@ -212,7 +222,7 @@ export async function chat(
     options: { system?: string; model?: string; maxTokens?: number; temperature?: number; signal?: AbortSignal; timeoutMs?: number } = {},
 ): Promise<string> {
     if (!apiKey) throw new Error('Clé API Anthropic manquante.');
-    const client = makeClient(apiKey);
+    const client = await makeClient(apiKey);
     const { signal, cleanup } = makeTimeoutSignal(options.signal, options.timeoutMs ?? DEFAULT_CLAUDE_TIMEOUT_MS);
     try {
         const response = await client.messages.create({
@@ -244,7 +254,7 @@ export async function* chatStream(
     options: { system?: string; model?: string; maxTokens?: number; temperature?: number; signal?: AbortSignal; timeoutMs?: number } = {},
 ): AsyncGenerator<string> {
     if (!apiKey) throw new Error('Clé API Anthropic manquante.');
-    const client = makeClient(apiKey);
+    const client = await makeClient(apiKey);
     const { signal, cleanup } = makeTimeoutSignal(options.signal, options.timeoutMs ?? DEFAULT_CLAUDE_TIMEOUT_MS);
     try {
         const stream = client.messages.stream({
@@ -760,7 +770,7 @@ export const analyzePayslip = async (file: File, apiKey: string): Promise<Paysli
     // PDF → bloc `document` ; image → bloc `image` (l'API Anthropic refuse un PDF dans un bloc image).
     const fileBlock = buildVisionFileBlock(file.type || 'image/jpeg', base64);
 
-    const client = makeClient(apiKey, 'vision');
+    const client = await makeClient(apiKey, 'vision');
     // [AI-VISION-TIMEOUT] borne l'appel Vision (un PDF lourd peut traîner) — abort au timeout, fin du spinner infini.
     const { signal, cleanup } = makeTimeoutSignal(undefined, 90_000);
     const response = await client.messages.create({
@@ -847,7 +857,7 @@ export const analyzeBankStatement = async (file: File, apiKey: string): Promise<
 
     const fileBlock = buildVisionFileBlock(file.type || 'application/pdf', base64);
 
-    const client = makeClient(apiKey, 'vision');
+    const client = await makeClient(apiKey, 'vision');
     // [AI-VISION-TIMEOUT] borne l'extraction Vision (relevé PDF lourd) — abort au timeout, fin du spinner infini.
     const { signal, cleanup } = makeTimeoutSignal(undefined, 90_000);
     const response = await client.messages.create({

@@ -116,7 +116,10 @@ export function reconcileBrokerBalances(
             continue;
         }
         const rawAt = b?.at as number | null | undefined;
-        const at = rawAt === null || rawAt === undefined || !Number.isFinite(Number(rawAt))
+        // `<= 0` traité comme INCONNU : `toPersistableBrokerBalances` encode précisément un
+        // horodatage corrompu en 0 — l'accepter comme date valide afficherait « vu jamais » et,
+        // via Math.min, contaminerait tout le panier (finding financial-integrity, panel #543).
+        const at = rawAt === null || rawAt === undefined || !Number.isFinite(Number(rawAt)) || Number(rawAt) <= 0
             ? null
             : Number(rawAt);
         const bucket = byRegime.get(b.taxRegime);

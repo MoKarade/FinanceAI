@@ -234,6 +234,17 @@
   CRYPTO hors réconciliation) et somme via `assetValueCad`. `formatRelative` extrait de SystemView
   vers `utils/relativeTime.ts` (consolidé AVANT la 2ᵉ copie). Ship dark sans sync Fintable ; purge
   persona par construction (`fintableBrokerBalances` ∈ DEFAULT_APP_STATE). 11 tests.
+  **Panel #543 (4 agents — 5 vrais findings, tous corrigés même PR ; reconstructibilité et FX vérifiés
+  EXACTS, résidu 0,0)** : (1) CRITIQUE convergent (3 agents, mesuré −171 k$) — la variante compacte
+  rendait « 0 $ » d'autorité quand tous les comptes étaient non déclarés → état honnête sans montant
+  (« N comptes sans régime déclaré ») + mention « + N compte(s) hors total » quand des comptes sont
+  exclus d'un total affiché ; (2) valeur NÉGATIVE (quantité corrompue) écartée en silence avec un
+  commentaire qui prétendait qu'assetValueCad la signalait (il ne loggue que NaN/devise) → tracée
+  `logErrorThrottled` ; (3) a11y : `role=status/alert` sur les avertissements (ils apparaissent en
+  cours de session via le polling Drive — WCAG 4.1.3) ; (4) `at ≤ 0` (horodatage corrompu encodé 0)
+  affichait « vu jamais » et contaminait le panier via Math.min → traité inconnu à la lecture ;
+  (5) doc : base carte = PRÉSENT (quote × quantité courantes) ≠ piles TOTAL_* (close daté × détention
+  datée) — divergence VOULUE, documentée en tête de module pour la prochaine session.
 - [ ] **`[DASH-NETWORTH-CANONICAL]` L'Accueil est la SEULE surface qui recalcule le patrimoine** (M,
   diagnostic `financial-integrity` 2026-07-30, demande Marc « l'accueil fait aucun sens ») — le KPI
   `Dashboard.tsx:425` lit `latestTotals.Total` (dernier point de `usePortfolioHistory`) au lieu de la

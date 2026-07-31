@@ -52,6 +52,16 @@ describe('holdingsCadByRegime', () => {
         expect(Object.values(out).reduce((s, v) => s + v, 0)).toBeCloseTo(100, 2);
     });
 
+    it('[panel #543] une valeur NÉGATIVE (quantité négative) est écartée — sans fausser le panier', () => {
+        // assetValueCad ne signale QUE NaN/devise : une valeur finie négative passerait muette et
+        // fausserait l'écart « reconstructible ». Elle est écartée ET tracée (logErrorThrottled).
+        const out = holdingsCadByRegime([
+            mkAsset({ accountType: 'CELI', quantity: -5, currentPrice: 100 }),
+            mkAsset({ accountType: 'CELI', quantity: 1, currentPrice: 100 }),
+        ], {});
+        expect(out.CELI).toBeCloseTo(100, 2); // le -500 n'a PAS réduit le panier
+    });
+
     it('un actif à valeur corrompue (NaN) ne contamine pas le panier', () => {
         const out = holdingsCadByRegime([
             mkAsset({ accountType: 'CELI', quantity: Number.NaN, currentPrice: 100 }),

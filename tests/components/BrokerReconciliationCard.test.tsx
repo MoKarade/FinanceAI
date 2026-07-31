@@ -83,6 +83,36 @@ describe('BrokerReconciliationCard — variant compact (Accueil)', () => {
         expect(text).toMatch(/136 863/);
         expect(text).toMatch(/\+36 863/);
     });
+
+    it('[panel #543 CRITIQUE] AUCUN panier déclaré → PAS de « 0 $ » fabriqué, un état honnête à la place', () => {
+        // 2 comptes réels (~171 k$) sans régime déclaré : l'ancien code affichait « 0 $ » avec
+        // l'autorité du mot « courtier » (no-fake-data violé, mesuré par financial-integrity).
+        useFinanceStore.setState({
+            fintableBrokerBalances: [
+                { accountId: 'a1', label: 'Disnat L7B1', balanceCad: 136_863, at: Date.now() },
+                { accountId: 'a2', label: 'Disnat L7A3', balanceCad: 34_112, at: Date.now() },
+            ],
+        });
+        const { container } = render(<BrokerReconciliationCard variant="compact" />);
+        const text = textOf(container);
+        expect(text).not.toMatch(/0 \$/);           // aucun montant — surtout pas un zéro crédible
+        expect(text).toMatch(/2 comptes courtier/); // l'état réel, dit
+        expect(text).toMatch(/sans régime fiscal déclaré/);
+    });
+
+    it('[panel #543 ÉLEVÉ] des comptes EXCLUS du total sont signalés à côté du total (jamais omis en silence)', () => {
+        useFinanceStore.setState({
+            fintableBrokerBalances: [
+                ...BALANCES,
+                { accountId: 'a9', label: 'Compte mystère', balanceCad: 99_999, at: Date.now() },
+            ],
+            assets: [ASSET],
+        });
+        const { container } = render(<BrokerReconciliationCard variant="compact" />);
+        const text = textOf(container);
+        expect(text).toMatch(/136 863/);            // le total des paniers déclarés reste affiché
+        expect(text).toMatch(/\+ 1 compte hors total/); // …mais l'omission est DITE
+    });
 });
 
 describe('BrokerReconciliationCard — mode discret (Loi 25)', () => {

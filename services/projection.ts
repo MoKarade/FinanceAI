@@ -21,6 +21,7 @@ import { computeRetirementIncome } from './projection/retirementIncome';
 import { processOneChild } from './projection/childrenReee';
 import { computeActiveIncome } from './projection/activeIncome';
 import { processReerMeltdown } from './projection/meltdownReer';
+import { initPastPurchase } from './projection/pastPurchaseInit';
 import { applyTravelExpenses, applyLifeEvents, computeStressTest, applySavingsGoalDeadlines, applyFinancialGoalDeadlines, computeIncomeLossFactor } from './projection/monthlyEvents';
 import { computeLatentTax } from './projection/latentTax';
 import { computeGlidepathRates } from './projection/glidepathRates';
@@ -141,18 +142,28 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     let realEstateEquity = 0;
     let mortgageBalance = 0;
-    let propertiesState = activeRE.map(g => ({
-        id: g.id || 'anon',
-        isBought: false,
-        mortgage: (g.price || 0) - (g.downPayment || 0),
-        currentValue: g.price || 0,
-        calculatedPmt: 0,
-        isSold: false,
-        // RE-GAIN — coût d'achat (ACB approx) + nature RP/locatif, pour imposer le gain en capital
-        // à la disposition d'un immeuble locatif (vente via LifeEvent ou disposition réputée au décès).
-        cost: g.price || 0,
-        isPrimaryResidence: g.isPrimaryResidence ?? false,
-    }));
+    let propertiesState = activeRE.map(g => {
+        // [ENG-PAST-PURCHASE] (décision Marc 2026-07-31) Un bien acheté dans le PASSÉ démarre
+        // DÉJÀ DÉTENU : équité présente dès le mois 0, hypothèque restante amortie, AUCUN débit
+        // de mise de fonds du cash d'aujourd'hui. Avant : re-achat au m0 si le cash suffisait
+        // (mise de fonds dépensée DEUX fois) ou « Achat reporté » à l'infini sinon (le Futur
+        // perdait la maison — mesuré Immobilier = 0 sur tout l'horizon).
+        const purchaseOffset = getMonthOffset(g.purchaseDate);
+        const past = g.isActive && purchaseOffset < 0 ? initPastPurchase(g, -purchaseOffset) : null;
+        return {
+            id: g.id || 'anon',
+            isBought: past ? true : false,
+            mortgage: past ? past.mortgage : (g.price || 0) - (g.downPayment || 0),
+            currentValue: past ? past.currentValue : (g.price || 0),
+            calculatedPmt: past ? past.calculatedPmt : 0,
+            isPaidOff: past ? past.isPaidOff : false,
+            isSold: false,
+            // RE-GAIN — coût d'achat (ACB approx) + nature RP/locatif, pour imposer le gain en capital
+            // à la disposition d'un immeuble locatif (vente via LifeEvent ou disposition réputée au décès).
+            cost: g.price || 0,
+            isPrimaryResidence: g.isPrimaryResidence ?? false,
+        };
+    });
 
     // Sanitisation à la frontière : un champ vidé dans l'UI (`parseFloat('')` = NaN, DebtManager)
     // contaminerait sinon `d.balance` (NaN persistant via l'amortissement) → `rawNetWorth` = NaN →
@@ -206,7 +217,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let fhsaLifetimeContrib = Math.min(celiapp, FHSA_LIFETIME_LIMIT_PER_USER * fhsaEligibleUsersCount);
     let accFhsaYear = 0;
     
-    let hasPurchasedPrimary = false;
+    // [ENG-PAST-PURCHASE] Une résidence principale DÉJÀ détenue au boot (achat passé) → le loyer
+    // n'est pas facturé dès le mois 0 (avant : facturé jusqu'à l'« achat » simulé, jamais si reporté).
+    let hasPurchasedPrimary = propertiesState.some(
+        (p, i) => p.isBought && p.isPrimaryResidence && activeRE[i]?.isActive !== false,
+    );
     const hasFuturePurchase = realEstateGoals.some(g => g.isActive && g.isPrimaryResidence);
     let hasLoggedRetirement = false;
 

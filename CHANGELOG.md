@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — ta maison existe dans le Futur] — 2026-07-31
+
+### Corrections money-critical
+- **`[DASH-IMMO-EQUITY-WRITERS]` / `[ENG-PAST-PURCHASE]` — un bien immobilier acheté dans le PASSÉ
+  est désormais DÉTENU dès le départ.** Avant, le moteur le traitait comme un achat à venir : la mise
+  de fonds était re-débitée de ton cash d'aujourd'hui (dépensée deux fois) ou, si le cash ne couvrait
+  pas, l'« achat » était reporté à l'infini — la projection perdait la maison (équité 0 sur tout
+  l'horizon, mesuré). Le moteur démarre maintenant avec la valeur appréciée et l'hypothèque restante
+  amortie (mêmes conventions que l'achat simulé : prime SCHL, paiement d'origine), sans débit de
+  cash ; le loyer n'est plus facturé si la résidence principale est déjà détenue. Le KPI patrimoine
+  de l'Accueil lit la MÊME source (helper partagé) — le terme « équité immo » n'est plus inerte.
+
 ## [unreleased — meltdown REER honnête] — 2026-07-31
 
 ### Corrections money-critical

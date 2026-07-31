@@ -226,7 +226,8 @@ describe('Dashboard', () => {
         // qu'un bien existe → un propriétaire sans CSV voyait 590 $ sous une étiquette qui ment.
         // Attendu : 590 + (100 000 − 60 000) = 40 590.
         const debt = { id: 'debt_1752585600001', name: 'Auto', balance: 400, interestRate: 6.5, minimumPayment: 50 };
-        const home = { id: 'reg_1752585600002', name: 'Maison', currentValue: 100000, mortgageBalance: 60000 };
+        // [DASH-IMMO-EQUITY-WRITERS F4] isActive requis : le KPI filtre désormais comme le moteur/PDF.
+        const home = { id: 'reg_1752585600002', name: 'Maison', isActive: true, currentValue: 100000, mortgageBalance: 60000 };
         const { container } = render(
             <Dashboard
                 {...baseProps}

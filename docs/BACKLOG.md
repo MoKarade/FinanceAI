@@ -204,7 +204,15 @@
 
 ## 📈 Investissements & historique
 
-- [ ] **`[DASH-IMMO-EQUITY-WRITERS]`** (M, ✅ tranché Marc 2026-07-31 : BRANCHER) — le terme équité immo du KPI Accueil
+- [x] **`[DASH-IMMO-EQUITY-WRITERS]`** ✅ 2026-07-31 (V2' — racine trouvée et corrigée : **le MOTEUR
+  traitait un bien à purchaseDate PASSÉE comme un achat À FAIRE** — re-débit de la mise de fonds au
+  m0 si le cash suffisait, « Achat reporté » à l'INFINI sinon → Immobilier = 0 sur tout l'horizon
+  (mesuré). Fix : helper partagé `services/projection/pastPurchaseInit.ts` (init DÉTENU aux
+  conventions du moteur : prime SCHL, PMT d'origine, solde amorti forme fermée, valeur appréciée)
+  consommé par l'init `propertiesState` du moteur ET par le KPI Accueil (`presentEquityOfGoal` —
+  champs explicites prioritaires, F4 : filtre isActive + gate équité ≠ 0 + garde non-fini tracée).
+  11 tests dont discriminant (Immobilier = 0 sur l'ancien code) + INV-9 + conservation/fuzz/personas
+  verts.) — ancien texte : le terme équité immo du KPI Accueil
   est INERTE (`RealEstateGoal.currentValue`/`mortgageBalance` sans AUCUN écrivain UI) → un
   propriétaire modélisé par price/downPayment a un KPI sans sa maison pendant que le Futur l'inclut
   (mesuré : 81 609 $ moteur vs 0 KPI). Trancher : brancher sur ce que l'UI possède OU retirer le

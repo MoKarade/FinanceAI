@@ -4,6 +4,16 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-31 (suite 9) — V2' : un bien PASSÉ est DÉTENU (moteur + KPI)
+> Racine du ticket DASH-IMMO-EQUITY-WRITERS (décision Marc « brancher ») : le moteur traitait un
+> `purchaseDate` passé comme un achat À FAIRE (re-débit de la mise de fonds au m0, ou « Achat
+> reporté » à l'infini → le Futur perdait la maison, Immobilier = 0 mesuré). Nouveau
+> `services/projection/pastPurchaseInit.ts` (pur, conventions moteur : SCHL + PMT origine + solde
+> amorti + valeur appréciée) branché sur l'init moteur ET le KPI Accueil (F4 : isActive, gate
+> équité ≠ 0, non-fini tracé). 11 tests + discriminant + conservation 20/20 + fuzz + personas verts.
+> ⚠️ Sémantique : les personas/fixtures à bien passé voient leur NW BOUGER (voulu — avant ils
+> perdaient ou re-payaient la maison).
+
 > ## 🟢 Session 2026-07-31 (suite 8) — V1 (PR #549) + V2 meltdown honnête
 > **V1 mergée (#549)** : clamp CELIAPP signalé, étiquettes « dernier close » Accueil, clamps MC
 > (bug FVI « 103/100 » réel corrigé — mesuré), note CAGR, esbuild épinglé, 8 shades hors palette,

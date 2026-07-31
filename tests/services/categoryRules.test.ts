@@ -47,7 +47,10 @@ describe('ruleCategorize — corpus réel (payees Desjardins compte + MasterCard
         ['ACHAT PREAUTORISE / COUCHETARD', 'Transport'],
         ['NETFLIX.COM', 'Abonnements'],
         ['VIRGIN PLUS', 'Abonnements'],
-        ['GOOGLE *Cell to Singul', 'Abonnements'],
+        // [TX-CATEGORIZE] Google Play est une plateforme AMBIGUË (achat unique OU abonnement) :
+        // le libellé seul ne peut plus décider « Abonnements » — c'est le profil de récurrence du
+        // marchand qui promeut (cf. services/transactions/contextualCategorize.ts).
+        ['GOOGLE *Cell to Singul', 'Loisirs'],
         ['CLAUDE.AI SUBSCRIPTION', 'Abonnements'],
         ['BRUNET MARAIS 6433', 'Santé'],
         ['ECONOFITNESS ADMIN MON', 'Santé'],

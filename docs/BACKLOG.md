@@ -29,16 +29,20 @@
   la confirmation. **Deux régimes** : `confirmed` (comptes connus et différents → marqué d'office) vs
   `suggested` (compte inconnu d'un côté → jamais écrit). `accountName` désormais émis PAR TRANSACTION
   (Fintable n'en émettait aucun). 19 tests dédiés, suite complète verte (3352).
-- [ ] **`[TX-CATEGORIZE]`** (PR 2/3) — catégorisation précise. **Cause racine mesurée** : la règle
+- [x] **`[TX-CATEGORIZE]`** ✅ (2026-07-31, PR 2/3) — catégorisation précise. **Cause racine mesurée** : la règle
   « Abonnements » (`services/import/categoryRules.ts:115`) décide sur le LIBELLÉ seul (`GOOGLE \*`,
   `MICROSOFT`, `APPLE\.COM`, `\bBELL\b`) et passe AVANT Santé/Loisirs/Magasinage → un accessoire
   Apple, un jeu Xbox et un achat Google Play tombent tous en « Abonnements ». Or la décision de Marc
   (achat unique chez un marchand d'abo → Loisirs) rend le libellé structurellement insuffisant :
   il faut un **profil de récurrence par marchand** (nb d'occurrences, régularité, stabilité du montant)
   calculé AVANT de décider, puis règles précises, puis IA sur le reste avec ce contexte.
-  Inclut : verrou `status === 'manual'`, passe sur tout l'historique, écran de tri, revue
-  d'échantillon (300 tirages) pour mesurer le critère d'arrêt.
-- [ ] **`[TX-INTERAC-BUDGET]`** (PR 2/3, découvert au cadrage) — Marc veut qu'un Interac à sa conjointe
+  **Livré** : `merchantProfile.ts` (profil de récurrence pur) + `contextualCategorize.ts` (promotion
+  en « Abonnements » réservée aux marchands AMBIGUS que le profil prouve) + `AMBIGUOUS_SUBSCRIPTION_RULES`
+  (Google Play / App Store / Microsoft / YouTube / Twitch / Patreon / Steam / PlayStation / Nintendo →
+  Loisirs par défaut) + bouton « Tout recatégoriser » (historique complet, verrou `status === 'manual'`).
+  **RESTE en PR 3** : écran de tri des cas douteux + revue d'échantillon (300 tirages) qui mesure le
+  critère d'arrêt « < 1 % » — sans elle, le critère n'est pas vérifiable.
+- [x] **`[TX-INTERAC-BUDGET]`** ✅ (2026-07-31, PR 2/3) — Marc veut qu'un Interac à sa conjointe
   compte comme une **vraie dépense**, mais « Remboursement » est dans `NON_BUDGET_CATEGORIES`
   (`utils/budgetSync.ts:16-26`) → aujourd'hui ces montants sont invisibles au Budget (ni dépense, ni
   revenu). ⚠️ Le sortant et l'entrant ne sont pas symétriques : compter le sortant en dépense sans

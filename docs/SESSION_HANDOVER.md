@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-31 — `[TX-CATEGORIZE]` + `[TX-INTERAC-BUDGET]` (PR 2/3)
+> **Cause racine du « ça met abonnement pour tout et n'importe quoi »** : la catégorie « Abonnements »
+> se décidait sur le seul LIBELLÉ (`APPLE\.COM`, `GOOGLE \*`, `MICROSOFT`) et passait AVANT
+> Santé/Loisirs/Magasinage. Or la décision de Marc (« achat unique chez un marchand d'abo → Loisirs »)
+> est INDÉCIDABLE sur une ligne : un jeu Steam et un abonnement Steam ont le même libellé.
+> **Livré** : `services/transactions/merchantProfile.ts` (profil de récurrence PUR : ≥3 occurrences,
+> cadence weekly/monthly/quarterly/yearly, écart RELATIF ≤15 % — un abo qui passe de 9,99 à 12,99 reste
+> stable, ce que le ±5 $ absolu de `Planning.tsx` perdait) + `contextualCategorize.ts` (promotion
+> « Abonnements » réservée aux marchands AMBIGUS listés dans `AMBIGUOUS_SUBSCRIPTION_RULES`) + bouton
+> « Tout recatégoriser » (`handleAutoCategorizeAll('all')`, verrou `status === 'manual'`).
+> ⚠️ **Ne JAMAIS promouvoir un marchand SANS règle** même parfaitement régulier (loyer/assurance/prêt
+> auto ont la même forme) — c'est testé.
+> **`[TX-INTERAC-BUDGET]`** : « Remboursement » retiré de `NON_BUDGET_CATEGORIES` → un Interac sortant
+> est une VRAIE dépense (décision Marc) ; l'entrant vient en CRÉDIT du même poste. Règles extraites dans
+> `utils/spendRules.ts` (module NEUTRE : `budgetSync` ↔ `budget` s'importent déjà, cycle évité, madge = 0).
+> ⚠️ **Finding attrapé par un test MCP existant** : mon 1er jet soustrayait le crédit du TOTAL global →
+> 500 $ reçus sans sortie correspondante EFFAÇAIENT 400 $ de restaurants réels. Le crédit est désormais
+> borné à SON poste (`max(0, sorties − crédits)`).
+> **RESTE (PR 3)** : écran de tri des cas douteux + **revue d'échantillon 300 tirages** (le critère
+> d'arrêt de Marc « < 1 % mal classé » n'est PAS vérifiable sans elle — il a refusé de fournir un export)
+> + abonnements fantômes (hausse de prix, service qui a cessé d'être débité).
+
 > ## 🟢 Session 2026-07-31 — `[TX-TRANSFERS]` (PR 1/3 du chantier « analyse des transactions »)
 > Demande Marc : « ça détecte mal mes transferts entre comptes, ça met abonnement pour tout et
 > n'importe quoi ». Cadrage fait (27 questions), découpé en **3 PR** : 1) transferts, 2) catégorisation

@@ -1698,3 +1698,31 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   budget (sortie neutralisée, entrée toujours comptée). (6) **Un `toEqual` sur un objet COMPLET casse à
   l'ajout d'un champ additif** — c'est le signal voulu, pas une régression : le test devient la preuve
   que le nouveau champ est bien émis (mise à jour du test = documentation de la nouvelle forme).
+- ⚠️ **[TX-CATEGORIZE + TX-INTERAC-BUDGET] 2026-07-31 — « ça met abonnement pour tout et n'importe
+  quoi », leçons** : (1) **Une règle de décision qui n'a pas accès à l'information décisive produit un
+  faux systématique, pas un cas limite** : la catégorie « Abonnements » se décidait sur le seul LIBELLÉ
+  (`APPLE\.COM`, `GOOGLE \*`, `MICROSOFT`), et cette règle passait AVANT Santé/Loisirs/Magasinage → un
+  accessoire Apple, un jeu Xbox et un achat unique sur Google Play y tombaient tous. Or la décision de
+  Marc (« un achat unique chez un marchand d'abonnement va dans Loisirs ») est INDÉCIDABLE sur une ligne :
+  un jeu Steam et un abonnement Steam portent le même libellé. Fix structurel = calculer un **profil de
+  récurrence par marchand** (`merchantProfile.ts` : ≥3 occurrences, cadence reconnue, montant stable)
+  AVANT de décider, et ne promouvoir en « Abonnements » que les marchands AMBIGUS que ce profil prouve
+  (`contextualCategorize.ts`). Réflexe : quand une règle doit trancher entre deux natures qu'un même
+  libellé peut porter, la donnée décisive est dans l'HISTORIQUE — ni une regex plus fine ni l'IA sur une
+  ligne isolée ne la fabriqueront. (2) **Un seuil de stabilité ABSOLU périme la chose qu'il mesure** :
+  l'ancien détecteur (`Planning.tsx`) exigeait ±5 $ → un abonnement passant de 9,99 $ à 12,99 $ sortait de
+  la liste au moment PRÉCIS où il devenait intéressant à signaler. Un écart RELATIF (15 %) suit l'objet.
+  (3) **Ne JAMAIS promouvoir un marchand SANS règle, même parfaitement régulier** : un loyer, une prime
+  d'assurance et un prêt auto sont mensuels, stables et récurrents — « je ne sais pas ce que c'est » +
+  « ça revient chaque mois » ne fait pas un abonnement. (4) **[TX-INTERAC-BUDGET] Un crédit ne doit
+  réduire QUE son propre poste** : rendre « Remboursement » visible au Budget (décision Marc : un Interac
+  à sa conjointe EST une dépense) imposait de traiter l'entrant (« on me rembourse »), sinon les dépenses
+  sont surévaluées. Mon 1er jet soustrayait le crédit du TOTAL global → un remboursement reçu de 500 $
+  sans sortie correspondante dans la fenêtre EFFAÇAIT 400 $ de restaurants bien réels (mesuré par un test
+  MCP existant, pas par le mien). Fix : accumuler sorties et crédits PAR catégorie, contribution nette
+  `max(0, sorties − crédits)` — le crédit est borné par son poste et ne peut pas éroder les voisins.
+  Le plancher 0 s'applique par poste, jamais au total (il masquerait un chiffre faux). (5) **Deux modules
+  qui ont besoin de la MÊME règle et s'importent déjà l'un l'autre = extraire dans un 3ᵉ module neutre**
+  (`utils/spendRules.ts`) — importer `budgetSync` depuis `budget` aurait créé un cycle, et dupliquer
+  `isSpend` aurait fait diverger deux définitions d'une règle money-critical. Vérifié par
+  `npx madge --circular --extensions ts utils/` = 0.

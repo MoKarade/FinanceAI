@@ -298,7 +298,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         aria-pressed={activeTabIndex === idx}
                         className={`px-4 py-1.5 rounded-pill font-medium text-meta transition-colors focus-ring ${
                             activeTabIndex === idx
-                                ? 'bg-info-500/15 text-info-300 border border-info-500/30'
+                                ? 'bg-info-500/15 text-info-400 border border-info-500/30'
                                 : 'bg-white/5 text-ink-400 hover:bg-white/10 border border-white/10'
                         }`}
                     >

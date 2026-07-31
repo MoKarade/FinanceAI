@@ -123,7 +123,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
 
                 {/* Phase G.3 — Détail $ par palier consommé */}
                 <details className="text-tiny">
-                    <summary className="cursor-pointer text-ink-400 hover:text-ink-200 italic">
+                    <summary className="cursor-pointer text-ink-400 hover:text-ink-200 italic py-1.5 inline-block">
                         Voir décomposition $ par tranche
                     </summary>
                     <div className="mt-1 space-y-0.5 pl-2 border-l border-white/10">

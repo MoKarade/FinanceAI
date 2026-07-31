@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — petits gestes d'accessibilité] — 2026-07-31
+
+### Accessibilité
+- **`[A11Y-INFO300-SWEEP]`** — 13 textes utilisaient une couleur qui n'existe pas dans la palette
+  (`text-info-300`) : aucun style n'était généré, le texte héritait de la couleur du parent avec un
+  contraste imprévisible. Corrigés vers `info-400`, mesuré AA (≥ 6,99:1) sur tous les fonds.
+- **`[A11Y-DETAILS-TAP-TARGET]`** — les 5 disclosures « déplier » qui n'avaient pas de padding
+  vertical passent la cible tactile minimale de 24 px (WCAG 2.5.8).
+
+---
+
 ## [unreleased — la sync bancaire tourne toute seule] — 2026-07-31
 
 ### Sync bancaire Fintable

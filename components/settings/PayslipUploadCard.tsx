@@ -161,7 +161,7 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
                         </div>
                         <div>
                             <div className="text-tiny text-ink-400 uppercase tracking-wider">Net/an</div>
-                            <div className="text-meta font-bold text-info-300 font-mono">{formatCAD(result.net)}</div>
+                            <div className="text-meta font-bold text-info-400 font-mono">{formatCAD(result.net)}</div>
                         </div>
                         <div>
                             <div className="text-tiny text-ink-400 uppercase tracking-wider">Impôt/an</div>

@@ -167,7 +167,7 @@ export const AutoBackupPanel: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => setConfirmRestore(entry)}
-                                    className="px-2 py-1 text-tiny bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded text-info-300 transition-colors focus-ring"
+                                    className="px-2 py-1 text-tiny bg-info-500/15 hover:bg-info-500/25 border border-info-500/30 rounded text-info-400 transition-colors focus-ring"
                                     title="Restaurer ce backup (reload)"
                                 >
                                     ↻ Restaurer

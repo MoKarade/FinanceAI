@@ -413,7 +413,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                         {/* Récapitulatif */}
                         {quantity && buyPrice && (
                             <div className="p-3 bg-info-500/10 border border-info-500/30 rounded">
-                                <div className="text-tiny text-info-300 uppercase font-bold mb-1">Récapitulatif</div>
+                                <div className="text-tiny text-info-400 uppercase font-bold mb-1">Récapitulatif</div>
                                 <div className="text-meta text-ink-100">
                                     <strong className="font-mono">{quantity}</strong> × <strong className="font-mono">{formatCAD(parseFloat(buyPrice) || 0)}</strong> {currency}
                                     {' '}= <strong className="font-mono">{formatCAD((parseFloat(quantity) || 0) * (parseFloat(buyPrice) || 0))}</strong> investi le {new Date(dateBought).toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' })}
@@ -429,7 +429,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                 )}
 
                 {notice && (
-                    <div className="p-2 bg-info-500/10 border border-info-500/30 rounded text-meta text-info-300" role="status">
+                    <div className="p-2 bg-info-500/10 border border-info-500/30 rounded text-meta text-info-400" role="status">
                         {notice}
                     </div>
                 )}

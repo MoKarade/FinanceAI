@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-31 (suite 5) — petits a11y (Lot E de la file Marc)
+> `[A11Y-INFO300-SWEEP]` : 13 `text-info-300` (shade INEXISTANT → aucune règle CSS, texte héritant du
+> parent) → `info-400`, MESURÉ check-contrast (6,99-7,84:1 AA) + preuve build propre (`.text-info-300`
+> absente du CSS). `[A11Y-DETAILS-TAP-TARGET]` : `py-1.5` sur les 5 `<summary>` sans padding vertical
+> (WCAG 2.5.8 ; 4 autres en avaient déjà). `[A11Y-FUTUR-MILESTONES-KEYBOARD]` reste au backlog — le
+> ticket exige de TRANCHER AVEC MARC (focusabiliser ~29 pastilles vs contrôle clavier alternatif,
+> impact sur le pattern « clic n'importe où »). **Suite** : perf (PERF-SDK-BOOT-PRELOAD, HIST-STORE-SIZE
+> à mesurer) → chat conscient de la page (V2/V3) → gros chantiers.
+
 > ## 🟢 Session 2026-07-31 (suite 4) — `[FINTABLE-7]` Lot 3 (Lot D de la file Marc)
 > Sync bancaire AUTO à l'ouverture, 1×/jour : `services/fintable/autoSync.ts` (gardes jeton/mode
 > test/24 h-succès/cooldown-tentative 1 h/mutex), effet App RÉACTIF au jeton hydraté (un timer au

@@ -489,7 +489,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 sur l'attribut `open`, pas sur la présence du panneau (cf CLAUDE.md [[INVEST-CHART-CLEAN]]). */}
             {onImport && (
                 <details open={transactions.length === 0}>
-                    <summary className="cursor-pointer text-body text-ink-300 hover:text-white transition-colors focus-ring rounded-card inline-block px-1">
+                    <summary className="cursor-pointer text-body text-ink-300 hover:text-white transition-colors focus-ring rounded-card inline-block px-1 py-1.5">
                         Import manuel (repli — CSV/PDF)
                     </summary>
                     <div className="mt-3">

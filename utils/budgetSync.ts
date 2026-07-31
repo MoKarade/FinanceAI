@@ -11,19 +11,11 @@
 
 import type { BudgetCategory, Transaction } from '../types';
 import { matchTransactionToCategory, matchCategoryToName } from './budget';
+// Règles de dépense PARTAGÉES (module neutre : évite le cycle budgetSync ↔ budget).
+import { CREDIT_BACK_CATEGORIES, isCreditBack, isSpend, spendAmountOf } from './spendRules';
 
-/** Catégories de dépense JAMAIS transformées en poste de budget (statuts/mouvements). */
-const NON_BUDGET_CATEGORIES = new Set([
-    // Statuts « à classer » — même liste que STATUS_CATEGORIES plus bas (dupliquée à plat pour
-    // rester lisible ; le test de parité des jeux garde les deux alignées).
-    'Uncategorized', 'Inconnu', 'Unknown', '', 'Non catégorisé',
-    'Transfert', 'Investissement', 'Remboursement',
-    'Salaire', 'Revenus divers', // revenus : jamais des postes de dépense
-    // Impôts : un règlement d'impôt N'EST PAS de la consommation — le revenu projeté est déjà
-    // NET (le compter en poste gonflerait baseMonthlyExpenses → double-comptage vs revenu net ;
-    // finding financial-integrity F3 2026-07-15). Reste visible dans Transactions.
-    'Impôts',
-]);
+export { CREDIT_BACK_CATEGORIES, isSpend, spendAmountOf } from './spendRules';
+
 
 /**
  * Catégories de REVENU réel (transactions positives) — la SOURCE DE VÉRITÉ du revenu affiché au Budget,
@@ -54,8 +46,6 @@ const NEED_CATEGORIES = new Set([
     'Logement', 'Épicerie', 'Transport', 'Santé', 'Assurances', 'Frais bancaires', 'Impôts',
 ]);
 
-const isSpend = (t: Transaction): boolean =>
-    t.amount < 0 && !t.isTransfer && !t.isDuplicate && !NON_BUDGET_CATEGORIES.has(t.category ?? '');
 
 /** Clé mois « YYYY-MM » des N derniers mois, du plus ancien au plus récent (mois courant inclus). */
 export const lastMonths = (n: number, ref: Date = new Date()): string[] => {
@@ -112,9 +102,11 @@ export const historicalMonthlyAverage = (transactions: Transaction[], category: 
         const m = t.date?.slice(0, 7) ?? '';
         // Repli « mois courant seul » : STRICTEMENT le mois courant — jamais une transaction
         // datée dans le futur (import erroné/planifié — finding panel).
-        if (currentOnly ? m === current : inWindow.has(m)) total += Math.abs(t.amount);
+        if (currentOnly ? m === current : inWindow.has(m)) total += spendAmountOf(t);
     }
-    return Math.round(total / Math.max(1, months.length));
+    // Un poste dont les crédits DÉPASSENT les sorties sur la fenêtre ne devient pas une « dépense
+    // négative » (une cible de budget négative n'a pas de sens et polluerait la projection) : plancher 0.
+    return Math.max(0, Math.round(total / Math.max(1, months.length)));
 };
 
 /**
@@ -132,18 +124,36 @@ export function computeMonthlyActualAverages(
     let expense = 0;
     let salary = 0;
     let other = 0;
+    // [TX-INTERAC-BUDGET] Sorties et crédits des catégories « à crédit », comptés À PART : un crédit
+    // ne réduit QUE son propre poste. Le soustraire du total global éroderait les dépenses d'AUTRES
+    // catégories — mesuré par `dataAwareTools` : un remboursement reçu de 500 $ sans sortie
+    // correspondante dans la fenêtre effaçait 400 $ de restaurants bien réels.
+    const creditCatSpend = new Map<string, number>();
+    const creditCatCredit = new Map<string, number>();
+    const bump = (m: Map<string, number>, k: string, v: number): void => { m.set(k, (m.get(k) ?? 0) + v); };
     for (const t of transactions) {
         if (t.isTransfer || t.isDuplicate) continue;
         const m = t.date?.slice(0, 7) ?? '';
         if (!inWindow.has(m)) continue;
-        if (t.amount < 0) { expense += Math.abs(t.amount); continue; }
+        const cat = t.category ?? '';
+        if (t.amount < 0) {
+            if (CREDIT_BACK_CATEGORIES.has(cat)) bump(creditCatSpend, cat, Math.abs(t.amount));
+            else expense += Math.abs(t.amount);
+            continue;
+        }
+        if (isCreditBack(t)) { bump(creditCatCredit, cat, t.amount); continue; }
         if (t.category === INCOME_CATEGORIES.salary) salary += t.amount;
         else if (t.category === INCOME_CATEGORIES.other) other += t.amount;
+    }
+    // Contribution NETTE de chaque catégorie à crédit, plancher 0 (mêmes bornes que
+    // `historicalMonthlyAverage` → le total global et la somme des postes restent cohérents).
+    for (const [cat, spent] of creditCatSpend) {
+        expense += Math.max(0, spent - (creditCatCredit.get(cat) ?? 0));
     }
     const salaryAvg = Math.round(salary / months.length);
     const otherAvg = Math.round(other / months.length);
     return {
-        expenseAvg: Math.round(expense / months.length),
+        expenseAvg: Math.max(0, Math.round(expense / months.length)),
         incomeAvg: salaryAvg + otherAvg,
         salaryAvg,
         otherAvg,

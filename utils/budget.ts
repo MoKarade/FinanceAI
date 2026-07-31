@@ -9,6 +9,7 @@
 // transactions sans poste, postes sans dépense).
 
 import type { BudgetCategory, Transaction } from '../types';
+import { isSpend } from './spendRules';
 
 /**
  * Rapproche une catégorie de transaction d'un poste de budget. Règle (préservée
@@ -147,8 +148,11 @@ export function monthlyActualsMap(
     items: readonly BudgetCategory[],
     monthStr: string,
 ): Record<string, number> {
+    // [TX-INTERAC-BUDGET] `isSpend` (source unique, budgetSync) plutôt qu'un `amount < 0` local :
+    // il inclut les CRÉDITS des catégories à crédit (« on me rembourse ») qui viennent en déduction
+    // du poste. Un filtre local divergerait de la moyenne historique du même poste.
     const monthSpend = transactions.filter(
-        (t) => typeof t.date === 'string' && t.date.startsWith(monthStr) && t.amount < 0 && !t.isTransfer && !t.isDuplicate,
+        (t) => typeof t.date === 'string' && t.date.startsWith(monthStr) && isSpend(t),
     );
     return computeBudgetParity(monthSpend, items).actualsMap;
 }

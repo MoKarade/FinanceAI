@@ -112,7 +112,13 @@ const RULES: ReadonlyArray<readonly [RegExp, RuleCategory]> = [
     // — Transport —
     [/SONIC|PETRO-?CAN|\bESSO\b|SHELL|ULTRAMAR|COSTCO ESSENCE|COUCHE.?TARD|UBERTRIP|COMMUNAUTO|\bSTM\b|\bRTC\b|STATIONNEMENT|PARC INDIGO|PETROLES|AIR-SERV|\bCAA\b|GARAGE|PNEUS/, 'Transport'],
     // — Abonnements (télécom + numériques) —
-    [/NETFLIX|CRUNCHYROLL|SPOTIFY|DISNEY|GOOGLE \*|CAPCUT|BOOSTEROID|VIRGIN PLUS|VIDEOTRON|\bBELL\b|\bTELUS\b|\bFIZZ\b|CLAUDE\.AI|OPENAI|WINDSURF|APPLE\.COM|AMAZON PRIME|YOUTUBE|TWITCH|PATREON|MICROSOFT|ADOBE|\bICLOUD\b/, 'Abonnements'],
+    // ⚠️ [TX-CATEGORIZE] Ne restent ici que les marchands dont un achat UNIQUE n'existe
+    // pratiquement pas (un forfait Vidéotron, un abonnement Netflix). Les plateformes où l'on
+    // achète aussi bien un jeu qu'un abonnement (Google Play, App Store, Microsoft, YouTube,
+    // Twitch, Patreon) ont été DÉPLACÉES dans `AMBIGUOUS_SUBSCRIPTION_RULES` : décider
+    // « Abonnements » sur leur seul libellé rangeait un accessoire Apple et un jeu Xbox parmi les
+    // abonnements (bug Marc 2026-07-31, « ça met abonnement pour tout et n'importe quoi »).
+    [/NETFLIX|CRUNCHYROLL|SPOTIFY|DISNEY|CAPCUT|BOOSTEROID|VIRGIN PLUS|VIDEOTRON|\bBELL\b|\bTELUS\b|\bFIZZ\b|CLAUDE\.AI|OPENAI|WINDSURF|AMAZON PRIME|ADOBE|\bICLOUD\b/, 'Abonnements'],
     // — Santé —
     [/BRUNET|PHARMAPRIX|JEAN COUTU|UNIPRIX|ECONOFITNESS|\bGYM\b|CLINIQUE|DENTAIRE|OPTOMETR|PHYSIO|MASSOTHERAP/, 'Santé'],
     // — Loisirs —
@@ -123,15 +129,58 @@ const RULES: ReadonlyArray<readonly [RegExp, RuleCategory]> = [
     [/AIRBNB|AIR TRANSAT|AIR CANADA|HOTEL|EXPEDIA|BOOKING|\bFLAIR\b|PORTER|VIA RAIL/, 'Voyages'],
 ];
 
+// ─── [TX-CATEGORIZE] Marchands AMBIGUS : plateforme d'achat ET d'abonnement ───────────────────
+// Chez ces marchands, le libellé ne dit PAS s'il s'agit d'un achat unique (un jeu, une app, un
+// accessoire) ou d'un abonnement. Décision Marc 2026-07-31 : « un achat unique chez un marchand
+// d'abonnement va dans Loisirs ». Ils reçoivent donc leur catégorie NATURELLE par défaut, et ne
+// sont promus « Abonnements » que si le PROFIL DE RÉCURRENCE du marchand le prouve (au moins 3
+// occurrences, cadence reconnue, montant stable — cf. services/transactions/merchantProfile.ts).
+//
+// ⚠️ Ces motifs sont évalués AVANT `RULES` : sans ça, `AMAZON`/`\bBELL\b` et consorts les
+// captureraient d'abord et l'ambiguïté serait perdue.
+const AMBIGUOUS_SUBSCRIPTION_RULES: ReadonlyArray<readonly [RegExp, RuleCategory]> = [
+    [/GOOGLE \*|GOOGLE PLAY/, 'Loisirs'],
+    [/APPLE\.COM|ITUNES/, 'Loisirs'],
+    [/MICROSOFT|\bXBOX\b/, 'Loisirs'],
+    [/YOUTUBE|TWITCH|PATREON/, 'Loisirs'],
+    [/\bSTEAM\b|PLAYSTATION|NINTENDO/, 'Loisirs'],
+];
+
+/** Résultat détaillé d'une catégorisation par règles. */
+export interface RuleCategorization {
+    /** Catégorie déterministe, `null` si aucune règle ne matche. */
+    category: RuleCategory | null;
+    /**
+     * Vrai quand le marchand est une plateforme où l'achat unique ET l'abonnement existent : la
+     * catégorie rendue est un DÉFAUT, promouvable en « Abonnements » par le profil de récurrence.
+     */
+    subscriptionCandidate: boolean;
+}
+
+/**
+ * Catégorise un payee par règles, en signalant les marchands AMBIGUS.
+ * Déterministe et pur : même entrée, même sortie, zéro réseau.
+ */
+export function ruleCategorizeDetailed(payee: string): RuleCategorization {
+    if (!payee) return { category: null, subscriptionCandidate: false };
+    const p = normalizePayee(payee);
+    for (const [rx, cat] of AMBIGUOUS_SUBSCRIPTION_RULES) {
+        if (rx.test(p)) return { category: cat, subscriptionCandidate: true };
+    }
+    for (const [rx, cat] of RULES) {
+        if (rx.test(p)) return { category: cat, subscriptionCandidate: false };
+    }
+    return { category: null, subscriptionCandidate: false };
+}
+
 /**
  * Catégorise un payee par règles. `null` si aucune règle ne matche (→ candidat IA/`Uncategorized`).
  * Déterministe et pur : même entrée, même sortie, zéro réseau.
+ *
+ * ⚠️ Ne connaît pas l'historique : chez un marchand AMBIGU (Steam, App Store…) elle rend la
+ * catégorie par défaut. La promotion en « Abonnements » exige le contexte —
+ * `services/transactions/contextualCategorize.ts`.
  */
 export function ruleCategorize(payee: string): RuleCategory | null {
-    if (!payee) return null;
-    const p = normalizePayee(payee);
-    for (const [rx, cat] of RULES) {
-        if (rx.test(p)) return cat;
-    }
-    return null;
+    return ruleCategorizeDetailed(payee).category;
 }

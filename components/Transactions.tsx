@@ -5,7 +5,12 @@ import { Transaction, BudgetCategory, CategorizationRule } from '../types';
 import { showToast } from './ui/Toast';
 // Phase 4 A3: bascule sur services/claude.ts (Haiku 4.5 pour vitesse)
 import { categorizeBatch } from '../services/claude';
-import { ruleCategorize, RULE_CATEGORIES } from '../services/import/categoryRules';
+import { RULE_CATEGORIES } from '../services/import/categoryRules';
+// [TX-CATEGORIZE] La catégorie « Abonnements » ne se décide plus sur le seul libellé : chez un
+// marchand de plateforme (Steam, App Store…), seul le profil de récurrence distingue un achat
+// unique d'un abonnement. Modules PURS et légers.
+import { buildMerchantProfiles } from '../services/transactions/merchantProfile';
+import { contextualCategorize } from '../services/transactions/contextualCategorize';
 import { Card } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
@@ -275,23 +280,30 @@ export const Transactions: React.FC<TransactionsProps> = ({
         setTransactions(prev => prev.map(t => (t.id === id ? { ...t, ownerId } : t)));
     };
 
-    const handleAutoCategorizeAll = async () => {
+    // [TX-CATEGORIZE] `scope: 'all'` = passe sur TOUT l'historique (demande Marc : « une passe tout
+    // historique », avec écrasement des catégories existantes). Dans les deux modes, une transaction
+    // corrigée à la main (`status === 'manual'`) est un VERROU : jamais réécrite (seule exception au
+    // « écraser aussi », décision Marc 2026-07-31).
+    const handleAutoCategorizeAll = async (scope: 'gaps' | 'all' = 'gaps') => {
         setProcessing(true);
         setLiveLogs(['Demarrage de l\'analyse...']);
         setProgressStatus({ current: 0, total: 0 });
 
+        const isLocked = (t: Transaction): boolean => t.status === 'manual';
         let targetTxs: Transaction[] = [];
         if (selectedIds.size > 0) {
-            targetTxs = transactions.filter(t => selectedIds.has(t.id));
+            targetTxs = transactions.filter(t => selectedIds.has(t.id) && !isLocked(t));
+        } else if (scope === 'all') {
+            targetTxs = transactions.filter(t => !t.isDuplicate && !t.isTransfer && !isLocked(t));
         } else {
             targetTxs = transactions.filter(t =>
-                !t.isDuplicate &&
+                !t.isDuplicate && !isLocked(t) &&
                 (t.category === 'Uncategorized' || t.category === '' || t.category === 'Unknown' || t.category === 'Inconnu')
             );
         }
 
         if (targetTxs.length === 0) {
-            targetTxs = transactions.filter(t => !t.isDuplicate && t.category === 'Autre');
+            targetTxs = transactions.filter(t => !t.isDuplicate && !isLocked(t) && t.category === 'Autre');
             if (targetTxs.length === 0) {
                 showToast("Tout semble deja classe ! Utilisez le mode manuel si besoin.", "info");
                 setProcessing(false);
@@ -301,10 +313,21 @@ export const Transactions: React.FC<TransactionsProps> = ({
 
         // [TX-CATEGORY-RULES] Passe RÈGLES d'abord (déterministe, gratuite, ~88 % du corpus réel) :
         // ce que les règles classent est appliqué immédiatement ; l'IA ne reçoit QUE le reste.
+        // [TX-CATEGORIZE] Profils de récurrence construits sur les DÉPENSES réelles (hors
+        // transferts et doublons, qui fausseraient la cadence) — ils permettent de distinguer un
+        // achat unique chez un marchand de plateforme d'un vrai abonnement.
+        const profiles = buildMerchantProfiles(
+            transactions
+                .filter(t => !t.isDuplicate && !t.isTransfer)
+                .map(t => ({ payee: t.payee, amount: t.amount, date: t.date })),
+        );
         const ruled = new Map<number, string>();
+        let promoted = 0;
         for (const t of targetTxs) {
-            const cat = ruleCategorize(t.payee);
-            if (cat) ruled.set(t.id, cat);
+            const decision = contextualCategorize(t.payee, profiles);
+            if (!decision.category) continue;
+            ruled.set(t.id, decision.category);
+            if (decision.source === 'recurrence') promoted++;
         }
         if (ruled.size > 0) {
             setTransactions(prev => prev.map(t => {
@@ -313,7 +336,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                     ? { ...t, category: cat, status: 'processed' as const, isTransfer: cat === 'Transfert' ? true : t.isTransfer, isAiProcessed: false, confidence: 100 }
                     : t;
             }));
-            setLiveLogs(prev => [...prev, `${ruled.size} classee(s) par regles (sans IA).`]);
+            setLiveLogs(prev => [...prev, `${ruled.size} classee(s) par regles (sans IA)${promoted > 0 ? `, dont ${promoted} abonnement(s) reconnu(s) a la recurrence` : ''}.`]);
             targetTxs = targetTxs.filter(t => !ruled.has(t.id));
         }
         if (targetTxs.length === 0) {
@@ -643,7 +666,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             />
                         </div>
                         <button
-                            onClick={handleAutoCategorizeAll}
+                            onClick={() => { void handleAutoCategorizeAll('gaps'); }}
                             disabled={processing}
                             aria-label={processing ? 'Scan IA en cours' : 'Demarrer le scan IA'}
                             className={`px-3 sm:px-4 py-2 rounded-full text-meta font-bold shadow-lg transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap ${processing ? 'bg-white/10 text-white cursor-not-allowed' : apiKey ? 'bg-primary text-dark hover:bg-white' : 'bg-surfaceHighlight text-white'
@@ -651,6 +674,18 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         >
                             <span className="hidden sm:inline">{processing ? 'Catégorisation…' : 'Auto-catégoriser'}</span>
                             <span className="sm:hidden">{processing ? '…' : 'Auto'}</span>
+                        </button>
+                        {/* [TX-CATEGORIZE] Passe sur TOUT l'historique (demande Marc). Les catégories
+                            existantes sont réécrites — SAUF les corrections manuelles, verrouillées. */}
+                        <button
+                            onClick={() => { void handleAutoCategorizeAll('all'); }}
+                            disabled={processing}
+                            aria-label="Recatégoriser tout l'historique (les corrections manuelles sont conservées)"
+                            className={`px-3 sm:px-4 py-2 rounded-full text-meta font-bold border transition-all active:scale-95 whitespace-nowrap ${processing ? 'bg-white/5 text-ink-400 border-white/10 cursor-not-allowed' : 'bg-white/5 text-ink-200 border-white/10 hover:text-ink-50'
+                                }`}
+                        >
+                            <span className="hidden sm:inline">Tout recatégoriser</span>
+                            <span className="sm:hidden">Tout</span>
                         </button>
                     </div>
 

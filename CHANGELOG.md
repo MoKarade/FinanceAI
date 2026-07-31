@@ -6,6 +6,34 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — « Abonnements » ne se décide plus sur le nom du marchand] — 2026-07-31
+
+### Transactions
+- **`[TX-CATEGORIZE]` — fin du « abonnement pour tout et n'importe quoi »** (bug Marc). La catégorie
+  « Abonnements » se décidait sur le seul libellé (`APPLE.COM`, `GOOGLE *`, `MICROSOFT`) et cette règle
+  passait avant Santé, Loisirs et Magasinage : un accessoire Apple, un jeu Xbox et un achat unique sur
+  Google Play y tombaient tous.
+- **Ce qui décide maintenant, c'est ton historique** : l'app calcule un profil de récurrence par
+  marchand (au moins 3 fois, à cadence reconnue, montant stable) et ne classe en « Abonnements » que ce
+  qui le mérite. Un jeu acheté une fois sur Steam va dans Loisirs ; un abonnement Steam mensuel devient
+  un abonnement. C'est ta règle, appliquée à la lettre — et elle est indécidable sur une seule ligne.
+- **Un abonnement dont le prix monte reste un abonnement** : la stabilité se mesure en relatif (15 %) et
+  non plus à ±5 $, seuil qui faisait disparaître un abo de la liste au moment où il devenait
+  intéressant à signaler.
+- **Un marchand inconnu mais régulier n'est jamais promu** : un loyer, une prime d'assurance et un prêt
+  auto ont exactement cette forme.
+- **Nouveau bouton « Tout recatégoriser »** : passe sur l'historique complet, réécrit les catégories —
+  sauf celles que tu as corrigées à la main, qui sont verrouillées.
+
+### Budget
+- **`[TX-INTERAC-BUDGET]` — tes Interac comptent enfin comme des dépenses** (ta réponse au cadrage).
+  « Remboursement » était exclu du Budget : ces montants n'apparaissaient ni en dépense ni en revenu,
+  alors qu'ils sortent bien de ton compte.
+- Un remboursement **reçu** vient en déduction de ce poste (et de lui seul) : le net est ce que ça t'a
+  réellement coûté. Il n'est jamais compté comme un revenu.
+
+---
+
 ## [unreleased — les virements entre tes comptes ne comptent plus comme des dépenses] — 2026-07-31
 
 ### Transactions

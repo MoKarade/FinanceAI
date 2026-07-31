@@ -34,5 +34,8 @@ Le `commit-gate` (typecheck + test + build) reste la vérif finale, indépendant
 conseillent ; ils ne remplacent ni les tests ni le jugement de Marc.
 
 ## Entretien
-Les agents et CLAUDE.md **s'améliorent à chaque push** : un angle mort ou du bruit d'un agent → delta dans
-son fichier (et `docs/agents.md` si le rôle change), MÊME PR. Le hook `learn-on-push` le rappelle.
+Les agents et `docs/CONVENTIONS.md` **s'améliorent à chaque push** : un angle mort ou du bruit d'un agent
+→ delta dans son fichier (et `docs/agents.md` si le rôle change), MÊME PR. Le hook `learn-on-push` le
+rappelle. ⚠️ Depuis le 2026-07-31, les LEÇONS vont dans `docs/CONVENTIONS.md`, pas dans `CLAUDE.md` :
+ce dernier se charge à chaque session et doit rester court — il ne reçoit qu'une LIGNE d'index quand une
+classe de piège est nouvelle.

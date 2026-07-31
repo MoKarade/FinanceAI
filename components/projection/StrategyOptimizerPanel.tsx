@@ -458,7 +458,7 @@ const ResultsTable: React.FC<{
 
             <div className="max-h-72 overflow-y-auto rounded-lg border border-white/10">
                 <table className="w-full text-tiny">
-                    <thead className="sticky top-0 bg-ink-900/95 text-ink-400">
+                    <thead className="sticky top-0 bg-surface/95 text-ink-400">
                         <tr>
                             <th className="px-2 py-1.5 text-left font-medium">#</th>
                             <th className="px-2 py-1.5 text-right font-medium">Succès</th>

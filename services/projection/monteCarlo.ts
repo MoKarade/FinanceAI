@@ -103,7 +103,9 @@ export function runMonteCarlo(
     const survivalScore = successRate / 100;
     const safetyScore = allRuns.filter(r => r.minNetWorth > startNW * 0.1).length / iterations;
     const avgEfficiency = allRuns.reduce((acc, r) => {
-        const leakage = r.totalGrowth > 0 ? Math.min(1, r.totalTaxesPaid / r.totalGrowth) : 0.5;
+        // [PROJ-TAXPAID-LABEL] Clamp [0,1] : `totalTaxesPaid` peut être NÉGATIF (année à gros
+        // remboursement net) → sans plancher 0, leakage < 0 donnait une « efficacité » > 100 %.
+        const leakage = r.totalGrowth > 0 ? Math.min(1, Math.max(0, r.totalTaxesPaid / r.totalGrowth)) : 0.5;
         return acc + (1 - leakage);
     }, 0) / iterations;
     const avgLegacyRatio = allRuns.reduce((acc, r) => acc + Math.min(3, r.estateNetWorth / (startNW || 1)), 0) / iterations;
@@ -134,7 +136,11 @@ export function runMonteCarlo(
     const representativeRun = sorted[p50Index] || sorted[0];
     const expertMetrics = {
         swr: representativeRun ? (representativeRun.totalExpenses / (representativeRun.chartDataLength || 1) * 12) / (startNW || 1) : 0,
-        taxLeakage: representativeRun ? (representativeRun.totalTaxesPaid / (representativeRun.totalGrowth || 1)) : 0,
+        // [PROJ-TAXPAID-LABEL] Même clamp que avgEfficiency : ratio borné [0,1] (un compteur net
+        // négatif ou une croissance quasi nulle rendait un « % d'impôt sur la croissance » absurde).
+        taxLeakage: representativeRun
+            ? Math.min(1, Math.max(0, representativeRun.totalTaxesPaid / (representativeRun.totalGrowth || 1)))
+            : 0,
         shortfallRisk: representativeRun ? representativeRun.shortfallRate : 0,
         sequenceRiskPct,
         worstDecadeDrawdown,

@@ -51,6 +51,10 @@ export function deriveStartingBalancesFromHistory(points: readonly PortfolioHist
     const CRYPTO = Number(last.Crypto) || 0;
     const TOTAL = CELI + CELIAPP + REER + REEE + NON_ENREG + CRYPTO;
 
+    // [BIAIS-CAGR] Ce CAGR compare 1er↔dernier point SANS retirer les apports → il SURESTIME le
+    // rendement pur (un portefeuille alimenté chaque mois « croît » même à rendement nul). Bornes
+    // [-10, 30] + garde > 30 j ci-dessous ; l'UI qui l'applique (bouton « Auto ») porte la mise en
+    // garde. Retrait des apports = exigerait les transactions datées par bucket (non disponible ici).
     let historicalRate = 0;
     if (points.length > 1) {
         const first = points[0];

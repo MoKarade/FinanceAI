@@ -67,9 +67,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
     // à vie, donc les doublons marqués étaient invisibles et impossibles à revoir (code mort qui
     // échappe au lint via le `_`, cf. DETTE-DEADCODE). Rebranché avec le panneau de détection.
     const [showDuplicates, setShowDuplicates] = useState(false);
-    const [dateStart, _setDateStart] = useState('');
+    // [DEADCODE-TX-TYPEFILTER] `dateStart`/`typeFilter` étaient des états dont les setters
+    // (`_`-préfixés) n'étaient JAMAIS appelés : filtres morts structurels (aucune UI ne pouvait
+    // les changer). Retirés — les rebrancher = re-créer l'état AVEC son contrôle UI.
     const [selectedCategory, setSelectedCategory] = useState('All');
-    const [typeFilter, _setTypeFilter] = useState<'All' | 'Income' | 'Expense' | 'Transfer'>('All');
     const [quickFilter, setQuickFilter] = useState<'NONE' | 'BIG_SPEND' | 'RECENT' | 'TO_REVIEW'>('NONE');
     // PH4-TX — tri par colonne (date / marchand / montant / catégorie). Défaut : date décroissante.
     const [sortKey, setSortKey] = useState<'date' | 'payee' | 'amount' | 'category'>('date');
@@ -205,15 +206,11 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 (t.category || '').toLowerCase().includes(filterText.toLowerCase());
             if (!searchMatch) return false;
 
-            if (dateStart && t.date < dateStart) return false;
             if (selectedCategory !== 'All' && t.category !== selectedCategory) return false;
-            if (typeFilter === 'Transfer' && !t.isTransfer) return false;
-            if (typeFilter === 'Income' && (t.amount < 0 || t.isTransfer)) return false;
-            if (typeFilter === 'Expense' && (t.amount > 0 || t.isTransfer)) return false;
 
             return true;
         });
-    }, [transactions, filterText, showDuplicates, dateStart, selectedCategory, typeFilter, quickFilter]);
+    }, [transactions, filterText, showDuplicates, selectedCategory, quickFilter]);
 
     // PH4-TX — tri appliqué APRÈS le filtre. localeCompare 'fr' pour marchand/catégorie ; numérique
     // pour le montant ; comparaison de chaîne ISO pour la date (YYYY-MM-DD trie correctement).

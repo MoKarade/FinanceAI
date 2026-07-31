@@ -374,7 +374,7 @@ const SoftSetupBanner: React.FC<{ title: string; requirements: Requirement[]; cu
     return (
         <div className="mb-6">
             <div className="rounded-2xl border border-warning-500/25 bg-warning-500/[0.06] p-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-meta text-warning-300">
+                <div className="flex items-center gap-2 text-meta text-warning-400">
                     <Icon name="alert" size={16} className="shrink-0" />
                     <span>{missing} donnée{missing > 1 ? 's' : ''} recommandée{missing > 1 ? 's' : ''} pour enrichir « {title} ».</span>
                 </div>

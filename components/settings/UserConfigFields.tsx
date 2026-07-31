@@ -81,7 +81,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                             {section === 'salary' && (
                                 <div className="grid grid-cols-2 gap-2">
                                     <div data-focus-section={`profile-user${idx + 1}-grossSalary`}>
-                                        <label htmlFor={`ucf-gross-${idx}`} className="text-meta font-bold text-success-300">Salaire Brut annuel ($)</label>
+                                        <label htmlFor={`ucf-gross-${idx}`} className="text-meta font-bold text-success-400">Salaire Brut annuel ($)</label>
                                         <input
                                             id={`ucf-gross-${idx}`}
                                             type="number"

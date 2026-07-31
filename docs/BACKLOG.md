@@ -22,8 +22,9 @@
 > Synthèse des 3 analyses (PM : ordre/valeur · code-analyzer : 15 findings nouveaux ·
 > financial-integrity : 8 findings nouveaux MESURÉS + requalifications). Rapports condensés en
 > scratchpad de session ; détail par item dans les sections ci-dessous.
-> ⚠️ Les vagues V5 et V12 sont GATÉES sur les réponses Marc (section 🧭) — les autres s'exécutent
-> sans attendre, dans l'ordre.
+> ✅ TOUTES les questions Marc sont répondues (2026-07-31, section 🧭) — plus aucune vague gatée
+> sur lui. Restent gatés sur des SOURCES EXTERNES : FISC-GIS-COUPLE-RATE (table Service Canada),
+> FISC-LINE361 (Annexe B), FISC-FED-CREDITRATE-15 (source ARC primaire).
 
 - [ ] **V1 — Quick wins confiance + hygiène** (1-2 PR) : `[MCP-TAX-FHSA-BALANCE]` (clamp) +
   `[DASH-HIST-CARDS-LABEL]` + `[PROJ-TAXPAID-LABEL]` + `[BIAIS-CAGR]` + `[DEP-ESBUILD-UNLISTED]` +
@@ -37,12 +38,12 @@
   `[TEST-GAP-ROLESCONFIG]` + `[PV-11e]` + `[NW-PARITY-SURFACES-TEST]`.
 - [ ] **V4 — Vie privée / profils** (1 PR) : `[PROFIL-SWITCH]` + `[D6-PRIV-MONTANTS]` (décision
   déjà prise) + `[SEC-GA-DEFER-CONSENT]` + `[HIST-STORE-SIZE]` (downsample >365 j, mesure faite).
-- [ ] **V5 — Fiscal gaté décisions Marc** : `[FISC-BRACKET-REALINDEX]`/ITEM-2A (CRITIQUE, Q1) +
+- [ ] **V5 — Fiscal débloqué (Marc : Q1 ok, Q2 fix, Q3 go)** : `[FISC-BRACKET-REALINDEX]`/ITEM-2A (CRITIQUE) +
   `[FISC-WHT-92PCT]` fix 1.0 (Q2) + `[FISC-SOLO-INVEST-SPLIT]` (Q3) + `[FISC-GIS-COUPLE-RATE]`
   (table Service Canada requise) + `[FISC-LINE361-PERCONJOINT-REDUC]` (Annexe B d'abord) +
   `[FISC-FED-CREDITRATE-15]` (source ARC).
 - [ ] **V6 — Fiscal non gaté** (1 PR) : `[FISC-DTC-ABATEMENT-ORDER]` + `[FISC-STACK-GAINS-DIV]`
-  (même bloc taxDecember) + `[FISC-REEE-GRANT-CLAWBACK]`.
+  (même bloc taxDecember) + `[FISC-REEE-GRANT-CLAWBACK]` + `[FISC-TAXDEC-INCR]` (Marc : « fix »).
 - [ ] **V7 — Sécurité serveur + sync** (1 PR) : `[MCP-CLOUDRUN-AUTH-HARDENING]` +
   `[MCP-CHARTDATA-SUM-GUARD]` + `[FINTABLE-SYNC-STALE-BASE]` + `[FISC-CONST-GUARD-V2]`.
 - [ ] **V8 — Features demandées** (2-3 PR) : `[SUBS-TAB]` · `[GOAL-DEADLINE-UI]` +
@@ -50,11 +51,18 @@
   (file explicite Marc — maintenu malgré le « différer » PM).
 - [ ] **V9 — Couverture moteur** (1-2 PR) : `[FUZZ-ONETIME-FLOWS]` + `[HARDEN-SNAPSHOT-RACE]`.
 - [ ] **V10 — A11y** (1-2 PR) : `[A11Y-INK500]` + `[FUT-TOUCH-TARGETS]` + `[D6-KBD]` +
-  `[A11Y-BORDER-PROMINENCE-SWEEP]` (+ `[A11Y-FUTUR-MILESTONES-KEYBOARD]` si Q4 répondue).
+  `[A11Y-BORDER-PROMINENCE-SWEEP]` + `[A11Y-FUTUR-MILESTONES-KEYBOARD]` (Marc : focusables).
 - [ ] **V11 — Dette structurée** (fond, par lots) : `[GODFILE-APPLYDOCUMENT]` → `[GODFILE-MCPHTTP]` →
   `[DETTE-GODFILES]` (Budget/FutureProjection/…) + `[DETTE-UI-PRIMITIVES]` + `[CA-07]` + `[T4]`.
-- [ ] **V12 — Gros chantiers gatés** : `[IA-NAV-CONSOLIDATE]` (Q8) → `[UI-TABS-RICH]`+`[IA-NAV-LABELS]` ;
-  `[P0-IDB]` (si quota le justifie) ; `[CIX-*]` (Q10 vision couple : CIX-B → CIX-A1B d'abord).
+- [ ] **V12 — Gros chantiers (tous GO Marc 2026-07-31, plan-first chacun)** :
+  `[IA-NAV-CONSOLIDATE]` (GO — préparer un GROS batch de questions de cadrage d'abord) →
+  `[UI-TABS-RICH]`+`[IA-NAV-LABELS]` ; `[PH4-BUD]` refonte Budget (GO — « faut tout refaire »,
+  batch de questions d'abord) ; `[CIX-*]` (critère défini : bascule couple↔solo fiable →
+  CIX-B → CIX-F → CIX-A1B en priorité) ; `[MCP-WHATIF-DATED-DEBT]` (Debt.startDate moteur) ;
+  `[P0-IDB]` (si quota le justifie).
+- [ ] **V3' — Nettoyage décidé** (S, greffé à V3) : supprimer `rsuYearsRemaining` +
+  `futureProvince`/`futureMoveYear` (Marc : « retire ») ; `[DETTE-RE-SALE-PURGE]` option
+  « supprimer l'événement » ; archiver SEC-DRIVE-ENCRYPT-DEFAULT (Marc : « non ») + .mcpb (fermé).
 
 ---
 
@@ -109,7 +117,7 @@
   + MIROIR app `TaxCenter.tsx:173` : split 1/2 du revenu de placement. Ne mord QUE si un seul
   conjoint a un salaire (mesuré : −2 530 $/an) ; 0 $ si les deux. Fix par détention réelle (owner),
   app+MCP au même helper.
-- [ ] **`[MCP-TAX-FHSA-BALANCE]`** (S — V1) — `getTaxSituation.spec.ts:78` passe `u.fhsaBalance`
+- [x] **`[MCP-TAX-FHSA-BALANCE]`** ✅ 2026-07-31 (V1) (S — V1) — `getTaxSituation.spec.ts:78` passe `u.fhsaBalance`
   (SOLDE) en position COTISATION. Effet actuel NUL (`fhsaBalance` n'a AUCUN écrivain — vérifié) mais
   bombe dès qu'un écrivain arrive → clamp `min(fhsaBalance, FHSA_ANNUAL_LIMIT)` maintenant.
 - [ ] **`[FISC-LINE361-PERCONJOINT-REDUC]`** (M, [À vérifier] — V5) — réduction 18,75 % ligne 361
@@ -117,7 +125,7 @@
   Plafonné ~986 $/an, couple retraité 65+ seulement (0 $ Marc aujourd'hui). Lire l'Annexe B d'abord.
 - [ ] **`[PV-11e]`** (S, test — V3) — PAS un bug (invariant Σ reerByUser == reer préservé par
   construction, re-vérifié) : écrire le test de pin couple-inégal + goal REER + cotisation même mois.
-- [ ] **`[FISC-REF-FRESHNESS]`** (S, doc — V1) — FISCAL_REFERENCE : dater l'en-tête (§4 réécrit
+- [x] **`[FISC-REF-FRESHNESS]`** ✅ 2026-07-31 (V1 — 3ᵉ passe datée, réserve §8 levée, hypothèses de modèle documentées §9) (S, doc — V1) — FISCAL_REFERENCE : dater l'en-tête (§4 réécrit
   2026-07-07 sans bump), nettoyer la réserve §8 obsolète (barème 2026 déjà là), DOCUMENTER les
   hypothèses de modèle absentes (0.92, EST_DIVIDEND_YIELD 0,02 / EST_CAPITAL_GAINS_YIELD 0,07,
   REEE_AIP_TAX_RATE 0,20, NONREG_DIVIDEND_DISTRIBUTION_SHARE, FSS retraité, PAE REEE non modélisés).
@@ -129,12 +137,12 @@
   `tests/services/nwParity.test.ts` (aujourd'hui moteur↔computePresentNetWorth) aux surfaces
   UI/IA/PDF (KPI Accueil, useDerivedFinancials, financialSnapshot, pdfReport) sur persona endetté +
   propriétaire, convention équité immo EXPLICITE par surface.
-- [ ] **`[BIAIS-CAGR]`** (S) — `startingBalancesFromHistory.ts:55-63` : bornes livrées, mais le
+- [x] **`[BIAIS-CAGR]`** ✅ 2026-07-31 (V1 — note UI honnête + doc source ; retrait des apports = impossible sans transactions datées par bucket) (S) — `startingBalancesFromHistory.ts:55-63` : bornes livrées, mais le
   « rendement réel » ne retire toujours pas les apports → surestime. Note UI ou retrait des apports.
 - [ ] **`[MCP-CHARTDATA-SUM-GUARD]`** (S, garde) — aucun test/lint de convention sur les sommes de
   flux chartData dans `mcp/tools/*` (le décaissement non-enregistré/liquide n'a AUCUN champ
   `Retrait*` — leçon MCP-RETIREMENT-VERDICT) → scan-garde qui interdit une somme de flux comme revenu.
-- [ ] **`[PROJ-TAXPAID-LABEL]`** (S, reste moteur) — `monteCarlo.ts:106` : plafond sans plancher 0
+- [x] **`[PROJ-TAXPAID-LABEL]`** ✅ 2026-07-31 (V1 — clamp [0,1] efficacité + taxLeakage ; renommage de totalTaxesPaid jugé non rentable, sémantique déjà documentée projection.ts:573) (S, reste moteur) — `monteCarlo.ts:106` : plafond sans plancher 0
   (compteur négatif → efficacité > 100 % possible) ; `taxLeakage` :137 non borné ; `totalTaxesPaid`
   non renommé. Re-baseliner les tests MC sciemment.
 - [ ] **`[FUZZ-ONETIME-FLOWS]`** (M, reste) — flux non exercés par le fuzz de conservation
@@ -191,10 +199,10 @@
 
 ## 📈 Investissements & historique
 
-- [ ] **`[DASH-HIST-CARDS-LABEL]`** (S, reste du finding #544 F3) — étiqueter les cartes « Actifs
+- [x] **`[DASH-HIST-CARDS-LABEL]`** ✅ 2026-07-31 (V1) (S, reste du finding #544 F3) — étiqueter les cartes « Actifs
   individuels » + le graphe Accueil « au dernier cours de clôture » (le tooltip Variation est fait) —
   réutiliser `staleTailSymbols`/`noHistorySymbols`.
-- [ ] **`[DASH-IMMO-EQUITY-WRITERS]`** (M, 🧭 décision Marc) — le terme équité immo du KPI Accueil
+- [ ] **`[DASH-IMMO-EQUITY-WRITERS]`** (M, ✅ tranché Marc 2026-07-31 : BRANCHER) — le terme équité immo du KPI Accueil
   est INERTE (`RealEstateGoal.currentValue`/`mortgageBalance` sans AUCUN écrivain UI) → un
   propriétaire modélisé par price/downPayment a un KPI sans sa maison pendant que le Futur l'inclut
   (mesuré : 81 609 $ moteur vs 0 KPI). Trancher : brancher sur ce que l'UI possède OU retirer le
@@ -251,14 +259,14 @@
 
 > Findings code-analyzer 2026-07-31 (preuve fichier:ligne, chacun vérifié par grep) :
 
-- [ ] **`[DEADCODE-TX-TYPEFILTER]`** (S — V1) — `Transactions.tsx:70,72` : `_setDateStart`/
+- [x] **`[DEADCODE-TX-TYPEFILTER]`** ✅ 2026-07-31 (V1 — états + branches supprimés) (S — V1) — `Transactions.tsx:70,72` : `_setDateStart`/
   `_setTypeFilter` JAMAIS appelés → filtres date-début + type (Income/Expense/Transfer) morts
   structurels (pourtant dans les deps du useMemo :216). Câbler une vraie UI ou supprimer l'état +
   les branches.
-- [ ] **`[DEP-ESBUILD-UNLISTED]`** (S — V1) — `esbuild` importé par `mcp/build-server.mjs:10` +
+- [x] **`[DEP-ESBUILD-UNLISTED]`** ✅ 2026-07-31 (V1 — esbuild 0.28.1 épinglé en devDependency) (S — V1) — `esbuild` importé par `mcp/build-server.mjs:10` +
   `mcp/pack.mjs:10` mais ABSENT de package.json (transitive seulement) → un bump Vite/Vitest peut
   casser le build Cloud Run en silence. `npm i -D esbuild` épinglé.
-- [ ] **`[DETTE-SHADE-OUTOFPALETTE]`** (S — V1) — 8 classes Tailwind hors palette = no-op silencieux
+- [x] **`[DETTE-SHADE-OUTOFPALETTE]`** ✅ 2026-07-31 (V1 — 8/8 remplacés : info-400/success-400/warning-400/surface) (S — V1) — 8 classes Tailwind hors palette = no-op silencieux
   (classe FIX-INK600-TOKEN) : `LifeProjects.tsx:62` text-info-100 · `AssetLocationCard.tsx:120`
   text-info-200 · `ZoomableTimeChart.tsx:170` bg-ink-950 · `StrategyOptimizerPanel.tsx:461`
   bg-ink-900/95 · `ProjectionControls.tsx:109` + `UserConfigFields.tsx:84` text-success-300 ·
@@ -337,8 +345,8 @@
 
 - [ ] **`[NAN-MUTATOR-CENTRAL]`** (S) — garde centrale des 4 mutateurs nus — SEULEMENT si un vecteur
   d'entrée non-UI apparaît (numericInput couvre le boundary ; plan prêt en réserve).
-- [ ] **`[DETTE-RE-SALE-PURGE]`** (S, 🧭 décision Marc A/B/C) — purge propertyId à la suppression d'un
-  bien : re-cibler une vente = money-critical → décision délibérée (purge / remove / warn), pas un batch.
+- [ ] **`[DETTE-RE-SALE-PURGE]`** (S, ✅ tranché Marc 2026-07-31 : SUPPRIMER l'événement) — à la
+  suppression d'un bien, supprimer les lifeEvents de vente qui le référencent (+ confirmation UI).
 - [ ] **`[FISC-RAP-REPAY]`** (M, fixIsSafe:false) — inclusion ligne 12900 + passif successoral RAP —
   risque double-comptage estate ; limite consignée FISCAL_REFERENCE §9.
 - [ ] **`[FISC-CHILDCARE]`** (M) — T778/crédit QC exacts au lieu de l'heuristique 30 % — travail dédié.
@@ -347,8 +355,9 @@
 - [ ] **`[FISC-ASSETLOC-INTL]`** (M) — withholdingDrag international en CELI/REER — rouvrir si la
   classe international entre au portefeuille (CELI-ASSET-NUDGE).
 - [ ] **`[PROJ-REVEAL-RACE]`** (S, LOW) — course Rechoisir vs miroir IDB — récupérable en re-révélant.
-- [ ] **`[MCP-WHATIF-DATED-DEBT]`** (M, 🧭 sémantique à trancher) — dettes sans date de début (servies
-  dès le mois 0) → soit `Debt.startDate` honoré par le moteur, soit modélisation flux de paiements.
+- [ ] **`[MCP-WHATIF-DATED-DEBT]`** (M, ✅ tranché Marc 2026-07-31 : MOTEUR) — `Debt.startDate`
+  optionnel honoré par le moteur (dette servie à partir de sa date, pas du mois 0). Plan-first
+  (touche le moteur, money-critical) ; débloque le volet immobilier de MCP-DIRECT-EDIT.
 - [ ] **`[FISC-CONST-LINT-LIMITS]`** (note de vigilance) — étendre le scan aux taux 2-3 décimales et
   RRIF_RATES = arbitrage faux-positifs à faire — seulement si une fuite réelle apparaît.
 - [ ] **`[HARDEN-DECIMAL-STUDY]`** (S, étude) — PoC centimes entiers/decimal.js sur un sous-module —
@@ -356,30 +365,23 @@
 
 ## 🧭 Décisions Marc requises (posées en UN lot le 2026-07-31)
 
-- [ ] **`[Q1-BRACKET-REALINDEX]`** — `[FISC-BRACKET-REALINDEX]` (CRITIQUE) : OK pour corriger la
-  double indexation des paliers ? Ton impôt projeté long-terme va MONTER (réaliste) et le patrimoine
-  final BAISSER — tous les goldens re-basés. C'est le cœur d'ITEM-2A (déjà approuvé dans son principe).
-- [ ] **`[Q2-WHT-92PCT]`** — `[FISC-WHT-92PCT]` : le `0.92` non sourcé te surfacture ~3 600 $/an
-  (couple) en avril. OK pour passer à 1.0 (fix mesuré, discriminant) — ou tu préfères qu'on documente
-  seulement l'hypothèse ?
-- [ ] **`[Q3-SOLO-SPLIT]`** — `[FISC-SOLO-INVEST-SPLIT]` ne mord QUE si un seul conjoint a un
-  salaire : est-ce ta config réelle ? Si oui, le fix AUGMENTE l'impôt affiché (~2 530 $/an) — je code ?
-- [ ] **`[Q-TAXDEC-INCR]`** — `[FISC-TAXDEC-INCR]` : confirmer l'interprétation de ta décision
-  2026-07-06 (coder le fix risqué vs statu quo documenté).
-- [ ] **`[Q-MILESTONES-KBD]`** — pastilles Futur : focusables (~29 stops tab) vs contrôle clavier alternatif.
-- [ ] **`[Q-IMMO-EQUITY]`** — KPI Accueil : brancher l'équité immo sur les biens réels OU retirer le terme.
-- [ ] **`[Q-RE-SALE-PURGE]`** — suppression d'un bien : purge / suppression d'événement / avertir.
-- [ ] **`[Q-DRIVE-ENCRYPT]`** — `[SEC-DRIVE-ENCRYPT-DEFAULT]` : passphrase par défaut (enc:true) ou
-  opt-in actuel.
-- [ ] **`[Q-WHATIF-DEBT]`** — sémantique dette datée (champ moteur vs flux de paiements).
-- [ ] **`[Q-PH4-BUD]`** — refonte Budget : tes irritants concrets (ou on ferme).
-- [ ] **`[Q-NAV]`** — GO pour le chantier nav 14→6 destinations ?
-- [ ] **`[Q-MCPB]`** — confirmer la fermeture du chemin .mcpb Desktop (supersedé par Cloud Run/claude.ai).
+- [x] **`[Q1-BRACKET-REALINDEX]`** ✅ Marc 2026-07-31 : « ok » — GO pour corriger la double
+  indexation (`[FISC-BRACKET-REALINDEX]`, goldens re-basés sciemment).
+- [x] **`[Q2-WHT-92PCT]`** ✅ Marc 2026-07-31 : « fix » — passer le `0.92` à `1.0` (discriminant).
+- [x] **`[Q3-SOLO-SPLIT]`** ✅ Marc : « les deux ont un salaire mais possible que pendant un temps juste un en ait » → le fix par détention réelle est le bon dans les DEUX configs (0 $ d'écart aujourd'hui, juste demain) — GO, V5.
+- [x] **`[Q-TAXDEC-INCR]`** ✅ Marc : « fix » → coder les 3 sous-fixes de taxDecember (crédit d'âge sur incrément, empilement gains+div, FSS) avec discriminants — fusionne avec [FISC-STACK-GAINS-DIV] en V6.
+- [x] **`[Q-MILESTONES-KBD]`** ✅ Marc : « focusable » → pastilles focusables directement (tabIndex=0 + Enter/Space), V10.
+- [x] **`[Q-IMMO-EQUITY]`** ✅ Marc : « dans l'app oui » (propriétaire modélisé) → BRANCHER l'équité immo du KPI sur les vrais biens, V2'.
+- [x] **`[Q-RE-SALE-PURGE]`** ✅ Marc : « supprimer » → à la suppression d'un bien, SUPPRIMER les lifeEvents de vente qui le référencent (option B).
+- [x] **`[Q-DRIVE-ENCRYPT]`** ✅ Marc : « non » → l'opt-in actuel reste ; SEC-DRIVE-ENCRYPT-DEFAULT FERMÉ (archivé).
+- [x] **`[Q-WHATIF-DEBT]`** ✅ Marc : « moteur » → champ `Debt.startDate` honoré par le moteur (MCP-WHATIF-DATED-DEBT sort des différés, plan-first moteur).
+- [x] **`[Q-PH4-BUD]`** ✅ Marc : « pose plein de questions, faut tout refaire » → refonte Budget CONFIRMÉE, cadrage par batch de questions à préparer (PH4-BUD → V12, plan-first).
+- [x] **`[Q-NAV]`** ✅ Marc : « go, pose plein de questions » → IA-NAV-CONSOLIDATE GO, cadrage par batch de questions à préparer (V12, plan-first).
+- [x] **`[Q-MCPB]`** ✅ Marc : « cloudrun » → chemin .mcpb FERMÉ définitivement.
 - [ ] **`[Q-SOLO-SPLIT]`** — `[FISC-SOLO-INVEST-SPLIT]` change les chiffres affichés : OK pour splitter
   par détention réelle ?
-- [ ] **`[Q-COUPLE-VISION]`** — « mode couple plus concret » (vision PH4) : critère d'arrêt ?
-- [ ] **`[Q-RSU]`** — as-tu des RSU (actions d'employeur) ? Sinon je supprime `rsuYearsRemaining`
-  (consommé par le moteur mais AUCUN éditeur UI) avec `futureProvince` (orphelin).
+- [x] **`[Q-COUPLE-VISION]`** ✅ Marc : « deux façons de voir l'app, mode couple et pas couple, et que tous les résultats et données soient fiables » → critère CIX défini : bascule couple↔solo (CIX-F) + fiabilité per-conjoint de bout en bout (CIX-A1B). Bloc CIX DÉBLOQUÉ : CIX-B → CIX-F → CIX-A1B en priorité.
+- [x] **`[Q-RSU]`** ✅ Marc : « retire » → supprimer `rsuYearsRemaining` + `futureProvince`/`futureMoveYear` (lot nettoyage, V3').
 
 ## 👤 Actions humaines Marc (jamais auto-cochées)
 
@@ -396,5 +398,9 @@
 
 ## 🛡️ Dépendances
 
-- [ ] **`[DEP-DEPENDABOT-26]`** (S) — 1 alerte moderate ouverte sur main
+- [ ] **`[DEP-ESLINT10]`** (M, dev-only) — 5 vulnérabilités high `brace-expansion`/`minimatch` dans la
+  chaîne eslint (outillage dev, DoS théorique) — fix = eslint@10 (breaking : config + règles à migrer).
+  À prendre comme un lot dédié, pas un audit fix --force aveugle.
+
+- [x] **`[DEP-DEPENDABOT-26]`** ✅ 2026-07-31 (V1 — @hono/node-server 2.0.12 via npm audit fix ; 0 moderate restant) (S) — 1 alerte moderate ouverte sur main
   (https://github.com/MoKarade/FinanceAI/security/dependabot/26) — bump + npm audit.

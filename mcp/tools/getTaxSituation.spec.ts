@@ -5,7 +5,7 @@
 
 import { z } from 'zod';
 import type { AppState, Transaction, User } from '../../types';
-import { calculateFiscalReport } from '../../utils/tax';
+import { calculateFiscalReport, FHSA_ANNUAL_LIMIT_PER_USER } from '../../utils/tax';
 import { computeMonthlyActualAverages } from '../../utils/budgetSync';
 import { computeHistoricalContributionRoom } from '../../services/projection/setupSimulation';
 import { computeAssetBreakdown } from '../../services/portfolio';
@@ -75,7 +75,12 @@ export const getTaxSituationSpec = {
                     salarySource: u.salarySource,
                     report: calculateFiscalReport(
                         taxableBase,
-                        u.rrspContributed || 0, u.fhsaBalance || 0, year, true,
+                        // [MCP-TAX-FHSA-BALANCE] `fhsaBalance` est un SOLDE, pas une cotisation
+                        // annuelle : clampé au plafond CELIAPP. Effet actuel nul (aucun écrivain ne
+                        // peuple encore fhsaBalance) — ceinture pour le jour où un apply_* l'écrira.
+                        u.rrspContributed || 0,
+                        Math.min(u.fhsaBalance || 0, FHSA_ANNUAL_LIMIT_PER_USER),
+                        year, true,
                         undefined, g,
                     ),
                 };

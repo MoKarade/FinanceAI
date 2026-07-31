@@ -561,6 +561,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </button>
                     </div>
                 )}
+                {/* [DASH-HIST-CARDS-LABEL] Même étiquette d'honnêteté que la carte d'actifs : cette
+                    courbe est l'HISTORIQUE (dernier close), pas le patrimoine présent du KPI. */}
+                {unifiedHistory.length > 0 && (
+                    <p className="text-tiny text-ink-400 mb-1">Courbe au dernier cours de clôture (historique).</p>
+                )}
                 <div className="w-full h-[380px]">
                     {/* [PORTFOLIO-HISTORY] État HONNÊTE quand l'historique n'est pas (encore) là :
                         avant, un ComposedChart VIDE (grille sans message) laissait croire à un bug.
@@ -636,6 +641,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     )
                 }
             >
+                {/* [DASH-HIST-CARDS-LABEL] Ces valeurs viennent de l'HISTORIQUE (dernier close),
+                    pas des cotations présentes — sans étiquette, l'écart avec le KPI Patrimoine
+                    (au présent) est inexpliqué à l'écran (finding financial-integrity #544 F3). */}
+                <p className="text-tiny text-ink-400 mb-2">
+                    Valeurs au dernier cours de clôture (courbe historique) — le KPI Patrimoine, lui, est au présent.
+                </p>
                 <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
                     {segmentedData.assets.map(asset => {
                         const isSelected = selectedStockSymbols.has(asset.symbol);

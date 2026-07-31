@@ -21,6 +21,7 @@ import { Icon } from '../ui/Icon';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { importWithRetry, isChunkLoadError } from '../../utils/lazyWithRetry';
 import { referenceDeltaPatch } from '../../services/fintable/applyStatePatch';
+import { acquireFintableSyncLock, releaseFintableSyncLock } from '../../services/fintable/autoSync';
 import { logError } from '../../services/errorLogger';
 import type { AppState, FintableAccountRoleConfig } from '../../types';
 
@@ -94,6 +95,13 @@ export const FintableSyncCard: React.FC = () => {
     };
 
     const handleSync = async () => {
+        // [Finding code-reviewer #545, CRITIQUE] Verrou PARTAGÉ avec la sync AUTO : sans lui, une
+        // passe manuelle lancée pendant la passe auto (fenêtre réseau de plusieurs secondes)
+        // calculerait son patch sur une base figée → dernier-écrivain-gagne sur transactions/soldes.
+        if (!acquireFintableSyncLock()) {
+            setError('Une synchronisation est déjà en cours — réessaie dans un instant.');
+            return;
+        }
         setBusy('syncing'); setError(null); setNotice(null);
         try {
             const { runFintableBrowserSync } = await importWithRetry(
@@ -103,6 +111,12 @@ export const FintableSyncCard: React.FC = () => {
             // écrirait par-dessus un état périmé perdrait ce qui a changé entre-temps.
             const current = useFinanceStore.getState() as unknown as AppState;
             const { report: fresh, nextState } = await runFintableBrowserSync(current, token);
+            // [Finding security-privacy #545] Mode démo activé PENDANT le fetch → ne RIEN écrire
+            // (de vraies données dans une session persona = l'inverse de PERSONA-PURGE).
+            if (useFinanceStore.getState().isTestMode === true) {
+                setError('Mode démo activé pendant la synchronisation — rien n\'a été écrit.');
+                return;
+            }
             if (nextState === null) {
                 // Échec : on écrit LE RAPPORT seul (pour que la carte de diagnostic le montre), et
                 // surtout AUCUN contenu — `nextState: null` signifie « rien d'exploitable ».
@@ -120,7 +134,7 @@ export const FintableSyncCard: React.FC = () => {
                 ? 'Nouvelle version de l\'app disponible — recharge la page puis réessaie.'
                 : 'La synchronisation a échoué. Réessaie dans un moment.');
             logError({ source: 'ui', severity: 'error', message: '[FINTABLE-7] Synchronisation manuelle échouée.' });
-        } finally { setBusy('idle'); }
+        } finally { releaseFintableSyncLock(); setBusy('idle'); }
     };
 
     const unassigned = (accounts ?? []).filter((a) => roleOf(fintableRoles, a.id) === undefined).length;

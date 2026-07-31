@@ -228,7 +228,27 @@
   au jeton (hydraté async depuis le coffre — un timer au boot lirait un store vide). Patch d'état par
   `referenceDeltaPatch` (`applyStatePatch.ts`), EXTRAIT de FintableSyncCard au moment du 2ᵉ consommateur
   (une seule copie). Échec → seul le rapport est persisté (diagnostics), pas de toast anxiogène quotidien ;
-  succès avec transactions → toast discret (compte, jamais de montant). 10 tests.
+  succès avec transactions → toast discret (compte, jamais de montant). 15 tests.
+  **Panel #545 (3 agents — 5 vrais findings, tous corrigés même PR)** : (1) CRITIQUE code-reviewer —
+  AUCUNE exclusion mutuelle auto↔manuel (2 passes concurrentes sur bases figées = dernier-écrivain-
+  gagne sur transactions/soldes) → verrou PARTAGÉ `acquireFintableSyncLock` consommé par les deux
+  chemins ; (2) ÉLEVÉ security-privacy PROUVÉ PAR SONDE — TOCTOU `isTestMode` : basculer en démo
+  PENDANT le fetch écrivait de VRAIES transactions dans la session persona (inverse de PERSONA-PURGE)
+  → re-check FRAIS avant TOUTE écriture (contenu ET rapport), les 2 chemins ; (3) ÉLEVÉ silent-failure
+  — un coffre avec le jeton Fintable SEUL (ni Anthropic ni Finnhub) n'était JAMAIS restauré au boot
+  (`App.tsx` gate `anthropic||finnhub`) → jeton perdu à chaque reload, feature neutralisée en silence
+  → `|| fintable` ajouté ; (4) « ne LÈVE jamais » était faux (throw importWithRetry → unhandledrejection)
+  → catch + outcome 'error' + rapport d'échec écrit ; (5) debounce 3 s de l'effet (jeton tapé
+  caractère par caractère → passe avec jeton incomplet). Discriminants = sondes des agents (code non
+  encore mergé au moment des fixes, leçon AITOOLS-B).
+- [ ] **`[FINTABLE-SYNC-STALE-BASE]`** (M, résiduel code-reviewer + security-privacy #545, ASSUMÉ) —
+  une passe de sync (auto ou manuelle) calcule son `nextState` sur un snapshot capturé AVANT le fetch
+  réseau (plusieurs secondes) : une ÉDITION manuelle d'une transaction pendant cette fenêtre peut être
+  écrasée par le patch (dernier-écrivain-gagne sur les clés que la sync touche). Le verrou #545 exclut
+  les passes ENTRE ELLES, pas sync-vs-édition. Vrai fix = séparer fetch et application (ré-appliquer
+  `applyPayloadsIsolated` sur l'état FRAIS au moment de l'écriture). Sœur : le cooldown localStorage
+  n'est pas un mutex CROSS-ONGLET (2 onglets bootant en même temps peuvent courir tous les deux —
+  fenêtre étroite, même jeton, intégrité seulement).
 - [x] **`[FINTABLE-6]` Lot 2 — consommer le montant courtier dans Investissements + Accueil** (M) —
   ✅ 2026-07-31. `BrokerReconciliationCard` (UNE implémentation, variantes `full` Investissements /
   `compact` Accueil — pas deux copies) : total par panier = solde COURTIER (autorité), ligne « écart

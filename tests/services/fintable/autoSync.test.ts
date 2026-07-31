@@ -12,6 +12,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
     maybeRunDailyFintableSync,
     isDailySyncDue,
+    acquireFintableSyncLock,
+    releaseFintableSyncLock,
     _resetAutoSyncForTests,
 } from '../../../services/fintable/autoSync';
 import { useFinanceStore } from '../../../store/useFinanceStore';
@@ -87,6 +89,66 @@ describe('maybeRunDailyFintableSync — gardes', () => {
         const out = await maybeRunDailyFintableSync();
         expect(out).toEqual({ ran: false, reason: 'cooldown' });
         expect(runMock).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('maybeRunDailyFintableSync — « ne lève jamais » tenu même sur un throw', () => {
+    it('[finding silent-failure #545] un throw du chargement/run → outcome { reason: "error" }, pas de rejection', async () => {
+        runMock.mockRejectedValue(new Error('chunk périmé'));
+        // Sans le catch, cette promesse REJETTERAIT (unhandledrejection dans l'effet App).
+        const out = await maybeRunDailyFintableSync();
+        expect(out).toEqual({ ran: false, reason: 'error' });
+    });
+
+    it('[finding code-reviewer #545 §2] le throw écrit quand même un RAPPORT d\'échec (diagnostics jamais muets)', async () => {
+        runMock.mockRejectedValue(new Error('chunk périmé'));
+        await maybeRunDailyFintableSync();
+        const report = useFinanceStore.getState().fintableSyncReport;
+        expect(report?.error).toContain('chunk périmé');
+    });
+});
+
+describe('maybeRunDailyFintableSync — verrou partagé auto ↔ manuel', () => {
+    it('[finding code-reviewer #545 CRITIQUE] une passe MANUELLE en vol (verrou pris) bloque l\'auto', async () => {
+        // La carte Réglages acquiert CE verrou avant runFintableBrowserSync — sans exclusion
+        // mutuelle, deux passes concurrentes sur des bases figées = dernier-écrivain-gagne.
+        expect(acquireFintableSyncLock()).toBe(true);
+        try {
+            const out = await maybeRunDailyFintableSync();
+            expect(out).toEqual({ ran: false, reason: 'in-flight' });
+            expect(runMock).not.toHaveBeenCalled();
+        } finally {
+            releaseFintableSyncLock();
+        }
+        expect(acquireFintableSyncLock()).toBe(true); // relâché → reprenable
+        releaseFintableSyncLock();
+    });
+});
+
+describe('maybeRunDailyFintableSync — TOCTOU mode démo (finding security-privacy #545, prouvé par sonde)', () => {
+    it('basculer en mode DÉMO pendant le fetch → RIEN n\'est écrit (ni contenu, ni rapport)', async () => {
+        const personaTx = { id: -7, date: '2026-07-01', payee: 'persona', amount: -1, category: 'Autre', status: 'processed' as const };
+        useFinanceStore.setState({ transactions: [personaTx] as never });
+        const report = mkReport({ transactionsAdded: 1 });
+        runMock.mockImplementation(async (current: { transactions: unknown[] }) => {
+            // Simule la bascule en démo PENDANT l'attente réseau (le scénario mesuré par l'agent).
+            useFinanceStore.setState({ isTestMode: true });
+            return {
+                report,
+                nextState: {
+                    ...(current as Record<string, unknown>),
+                    transactions: [...current.transactions, { id: 42, payee: 'REAL-TXN', amount: -99, date: '2026-07-30', category: 'Autre', status: 'processed' }],
+                    fintableSyncReport: report,
+                },
+            };
+        });
+
+        const out = await maybeRunDailyFintableSync();
+
+        expect(out).toEqual({ ran: false, reason: 'test-mode' });
+        // Les VRAIES données n'ont PAS contaminé la session de démonstration.
+        expect(useFinanceStore.getState().transactions.some((t) => t.id === 42)).toBe(false);
+        expect(useFinanceStore.getState().fintableSyncReport).toBeUndefined();
     });
 });
 

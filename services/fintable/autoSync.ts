@@ -21,6 +21,7 @@
 import type { AppState, FintableSyncReport } from '../../types';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { importWithRetry } from '../../utils/lazyWithRetry';
+import { logError } from '../errorLogger';
 import { referenceDeltaPatch } from './applyStatePatch';
 
 /** Une passe réussie par 24 h — la cadence demandée. */
@@ -30,7 +31,24 @@ const ATTEMPT_COOLDOWN_MS = 3600_000;
 /** Horodatage device-local de la dernière tentative AUTO (≠ clic manuel, qui reste illimité). */
 const ATTEMPT_KEY = 'financeai:fintable:lastAutoAttempt:v1';
 
+// [Finding code-reviewer #545, CRITIQUE] Verrou PARTAGÉ auto ↔ manuel : la carte Réglages appelle
+// `runFintableBrowserSync` directement — sans exclusion mutuelle, une passe MANUELLE lancée pendant
+// la passe AUTO (fenêtre réseau de plusieurs secondes) calculerait son patch sur une base FIGÉE
+// antérieure à l'écriture de l'autre → dernier-écrivain-gagne sur `transactions`/soldes/dettes
+// (perte silencieuse de données réelles). Les DEUX chemins acquièrent CE verrou.
 let _inFlight = false;
+
+/** Tente de prendre le verrou de sync Fintable (auto OU manuel). `false` = une passe est en vol. */
+export function acquireFintableSyncLock(): boolean {
+    if (_inFlight) return false;
+    _inFlight = true;
+    return true;
+}
+
+/** Relâche le verrou (TOUJOURS en finally chez l'appelant). */
+export function releaseFintableSyncLock(): void {
+    _inFlight = false;
+}
 
 function readLastAttempt(): number {
     try {
@@ -45,13 +63,18 @@ function writeLastAttempt(at: number): void {
 }
 
 export type AutoSyncOutcome =
-    | { ran: false; reason: 'no-token' | 'test-mode' | 'fresh' | 'cooldown' | 'in-flight' }
+    | { ran: false; reason: 'no-token' | 'test-mode' | 'fresh' | 'cooldown' | 'in-flight' | 'error' }
     | { ran: true; report: FintableSyncReport };
 
 /** Exporté pour test : la passe réussie d'hier déclenche, celle d'il y a 2 h non. */
 export function isDailySyncDue(report: FintableSyncReport | undefined, now: number): boolean {
     if (!report || report.error !== null) return true; // jamais réussi (ou dernier = échec) → dû
     return now - report.at >= DAILY_MS;
+}
+
+/** Le mode test est-il actif MAINTENANT (lecture fraîche du store) ? */
+function isTestModeNow(): boolean {
+    return (useFinanceStore.getState() as { isTestMode?: boolean }).isTestMode === true;
 }
 
 /**
@@ -66,21 +89,39 @@ export async function maybeRunDailyFintableSync(
     const token = state.apiKeys?.fintable ?? '';
 
     if (typeof token !== 'string' || token.trim() === '') return { ran: false, reason: 'no-token' };
-    if ((state as { isTestMode?: boolean }).isTestMode === true) return { ran: false, reason: 'test-mode' };
+    if (isTestModeNow()) return { ran: false, reason: 'test-mode' };
     if (!isDailySyncDue(state.fintableSyncReport, now())) return { ran: false, reason: 'fresh' };
     if (now() - readLastAttempt() < ATTEMPT_COOLDOWN_MS) return { ran: false, reason: 'cooldown' };
-    if (_inFlight) return { ran: false, reason: 'in-flight' };
+    if (!acquireFintableSyncLock()) return { ran: false, reason: 'in-flight' };
 
-    _inFlight = true;
     writeLastAttempt(now());
     try {
+        // [Finding silent-failure #545] TOUT le corps est sous UN catch : `importWithRetry` PEUT
+        // lever (erreur non chunk-load, ou reload anti-boucle déjà consommé) et
+        // `runFintableBrowserSync` ne lève pas par contrat mais le catch le couvre quand même
+        // (ceinture). Sans lui, « ne LÈVE jamais » était faux : la rejection traversait le
+        // `void (async…)` de l'effet App jusqu'au handler générique `unhandledrejection`
+        // (source 'unknown', signal dilué). Outcome honnête + trace ciblée à la place.
         const { runFintableBrowserSync } = await importWithRetry(
             () => import('./browserSync'), 'fintable-sync',
         );
-        // État relu au moment de COURIR (pas celui capturé aux gardes) : une passe qui écrirait
-        // par-dessus un état plus vieux perdrait ce qui a changé entre-temps (même règle que la carte).
+        // [Finding code-reviewer #545 §4] Gardes RE-vérifiées à l'état FRAIS après l'await : le
+        // jeton peut avoir été effacé et le mode démo activé pendant le chargement du chunk.
         const current = useFinanceStore.getState() as unknown as AppState;
-        const { report, nextState } = await runFintableBrowserSync(current, token);
+        const freshToken = current.apiKeys?.fintable ?? '';
+        if (typeof freshToken !== 'string' || freshToken.trim() === '') return { ran: false, reason: 'no-token' };
+        if (isTestModeNow()) return { ran: false, reason: 'test-mode' };
+
+        const { report, nextState } = await runFintableBrowserSync(current, freshToken);
+
+        // ⚠️ [Finding security-privacy #545, ÉLEVÉ, PROUVÉ par sonde] Re-vérifier le mode démo
+        // APRÈS le réseau, AVANT toute écriture : basculer en persona PENDANT le fetch (plusieurs
+        // secondes) faisait écrire de VRAIES transactions/soldes dans la session de DÉMONSTRATION
+        // affichée à un tiers — l'inverse exact de PERSONA-PURGE. Abandon honnête : rien n'est
+        // écrit (pas même le rapport), le travail réseau est perdu, la prochaine ouverture hors
+        // démo re-synchronisera.
+        if (isTestModeNow()) return { ran: false, reason: 'test-mode' };
+
         const setAppState = (useFinanceStore.getState() as unknown as {
             setAppState: (p: Partial<AppState>) => void;
         }).setAppState;
@@ -91,8 +132,31 @@ export async function maybeRunDailyFintableSync(
         }
         setAppState(referenceDeltaPatch(current, nextState));
         return { ran: true, report };
+    } catch (err) {
+        logError({
+            source: 'ui', severity: 'error',
+            message: '[FINTABLE-7] Sync auto : passe interrompue par une exception (chunk périmé ?).',
+            error: err instanceof Error ? err : new Error(String(err)),
+        });
+        // [Finding code-reviewer #545 §2] « Rapport toujours écrit » vaut AUSSI pour ce chemin :
+        // sans lui, la carte Réglages ne montrait RIEN de cette tentative. Gaté mode démo (jamais
+        // d'écriture pendant un persona, même un rapport).
+        if (!isTestModeNow()) {
+            const setAppState = (useFinanceStore.getState() as unknown as {
+                setAppState: (p: Partial<AppState>) => void;
+            }).setAppState;
+            setAppState({
+                fintableSyncReport: {
+                    at: now(), cutoverDateUsed: null, accountsSeen: 0, accountsWithoutRole: 0,
+                    transactionsAdded: 0, transfersDetected: 0, cashUpdated: false, debtsUpdated: [],
+                    investmentReferenceCount: 0, warnings: [],
+                    error: err instanceof Error ? err.message : String(err),
+                },
+            });
+        }
+        return { ran: false, reason: 'error' };
     } finally {
-        _inFlight = false;
+        releaseFintableSyncLock();
     }
 }
 

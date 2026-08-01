@@ -54,10 +54,12 @@ export interface CashflowState {
     fhsaLifetimeContrib: number;
     celiWithdrawalsThisYear: number;
     retraitReerMois: number;
-    /** [WHT-DISPLAY-EXACT volet a] Retenue REER PAR TIRAGE cumulée sur le mois (cascade shortfall +
-     *  sauvetage de découvert) — alimente le compteur d'affichage `totalTaxesPaid` à l'EXACT (le barème
-     *  par palier n'est pas additif : recalculer sur le brut mensuel agrégé sur-estime les mois à
-     *  plusieurs tirages). Réinitialisé à 0 chaque mois par le caller, comme `retraitReerMois`. */
+    /** [WHT-DISPLAY-EXACT volet a → PROJ-TTP-DOUBLECOUNT 2026-08-01] Retenue REER PAR TIRAGE
+     *  cumulée sur le mois (cascade shortfall + sauvetage de découvert). N'alimente PLUS
+     *  `totalTaxesPaid` (l'impôt y arrive via le débit d'avril du bucket .reer, une seule fois)
+     *  et n'atteint PAS chartData : son seul consommateur restant est le re-crédit CF-2 plus bas
+     *  (la retenue reste au patrimoine jusqu'au règlement — retrait NW-neutre). Réinitialisé à 0
+     *  chaque mois par le caller, comme `retraitReerMois`. */
     rrspWithholdingMois: number;
     retraitCeliMois: number;
     withdrawalREER: number;

@@ -8,8 +8,9 @@
  *  2. `totalTaxesPaid` : la retenue du meltdown n'y entrait jamais → convention DIFFÉRENTE
  *     des autres stratégies (mesuré : 137 940 $ vs 229 338 $ AUTO, ratio 0,601) —
  *     `strategyRanking` (poids 25-100 % sur ce compteur) recommandait MELTDOWN_REER à tort
- *     sous l'objectif « impôt » (corrigé, mesuré). ⚠️ Le compteur double-compte la retenue
- *     pour TOUTES les stratégies (pré-existant) : ticket [PROJ-TTP-DOUBLECOUNT].
+ *     sous l'objectif « impôt » (corrigé, mesuré). Le double-comptage de la retenue pour
+ *     TOUTES les stratégies a depuis été corrigé ([PROJ-TTP-DOUBLECOUNT] 2026-08-01 :
+ *     compteur = Σ FluxImpots seul — ratio MELT/AUTO honnête ~4,42, cf projection.totalTaxesPaid.test).
  * Discriminant prouvé par restauration du code d'avant (les deux assertions échouent).
  * Aucun impact NW : PROUVÉ bit-identique par le validator (301 mois × 9 grandeurs) et
  * pinné par le golden de neutralité ci-dessous.
@@ -84,7 +85,9 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
     it('totalTaxesPaid compte la retenue du meltdown (plus jamais << AUTO_MARGINAL pour un estate ≥)', () => {
         const melt = runWith('MELTDOWN_REER' as AllocationStrategy);
         const auto = runWith('AUTO_MARGINAL' as AllocationStrategy);
-        // Ancien code mesuré : 137 940 / 229 338 = 0,601 → échoue à 0,8. Nouveau : 1,400.
+        // Ancien code (avant V2) mesuré : 137 940 / 229 338 = 0,601 → échoue à 0,8. Après V2 :
+        // 1,400 ; après [PROJ-TTP-DOUBLECOUNT] (compteur = Σ FluxImpots seul) : 4,42 — le
+        // meltdown paie RÉELLEMENT ~4,4× l'impôt cash de la cascade sur ce scénario.
         expect(auto.totalTaxesPaid).toBeGreaterThan(0);
         expect(melt.totalTaxesPaid / auto.totalTaxesPaid).toBeGreaterThan(0.8);
     });

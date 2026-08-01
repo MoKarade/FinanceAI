@@ -1080,7 +1080,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 // REER invisibles sur AUTO_MARGINAL) — la FERR est un retrait REER : elle alimente
                 // le flux AFFICHÉ comme les autres sources, sinon « 1er retrait REER » ne se
                 // déclenche jamais pour un retraité 71+ et le tooltip/MCP sous-affichent.
-                // (taxOnRrif est déjà compté à part dans totalTaxesPaid — rien d'autre à toucher.)
+                // (l'impôt FERR arrive à totalTaxesPaid via le débit d'avril du bucket .reer —
+                // [PROJ-TTP-DOUBLECOUNT] : plus AUCUN terme séparé à ajouter.)
                 retraitReerMois += janResult.ferrMandatoryGross;
                 // [ITEM-2C] La FERR de chaque conjoint sort de SA part REER (registre per-conjoint), pas au
                 // pro-rata du pool → le solde REER de chaque conjoint reflète SES conversions obligatoires
@@ -1439,10 +1440,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // à tort sous l'objectif « impôt » (corrigé, mesuré) ; (2) `chartData.RetraitREER`
             // rendait ~96 % des sorties invisibles (30 496 $ affichés pour 794 303 $ tirés).
             // Aucun impact NW : PROUVÉ bit-identique (301 mois × 9 grandeurs, 2 worktrees).
-            // ⚠️ Le compteur `totalTaxesPaid` lui-même DOUBLE-COMPTE la retenue REER pour TOUTES
-            // les stratégies (avril débite le bucket .reer ENTIER via taxApril, PAS seulement la
-            // réconciliation — mesuré au cent près) : pré-existant, ticket [PROJ-TTP-DOUBLECOUNT].
-            // Ce fix rend la convention COHÉRENTE entre stratégies, il ne corrige pas l'absolu.
+            // NB : depuis [PROJ-TTP-DOUBLECOUNT] (2026-08-01), `rrspWithholdingMois` n'entre PLUS
+            // dans totalTaxesPaid (l'impôt arrive au compteur via le débit d'avril du bucket
+            // .reer, une seule fois) et n'atteint PAS chartData (vérifié par grep — panel #554) :
+            // son seul rôle restant est le re-crédit CF-2 de cashflowAllocation (NW-neutralité).
             retraitReerMois += meltResult.reerDrawn;
             rrspWithholdingMois += meltResult.withholding;
             accRetraitsReerYear += meltResult.reerDrawn;
@@ -1532,17 +1533,19 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         liquid = g.liquid.newVal; growthLiquid = g.liquid.growth; growthPctLiquid = g.liquid.pct;
         reee = g.reee.newVal; growthREEE = g.reee.growth; growthPctREEE = g.reee.pct;
         totalGrowth += g.totalGrowth;
-        // [FISC-WHT-HARDCODE 2026-06-23 → WHT-DISPLAY-EXACT 2026-06-26] Retenue à la source sur les retraits
-        // REER du mois, pas encore régularisée par la déclaration (acompte). AVANT : `* 0.15` en dur, puis
-        // `withholdingForGrossRRSP(retraitReerMois)` recalculé sur le brut MENSUEL agrégé (sur-estimait les mois
-        // à plusieurs tirages, barème par palier non additif). DÉSORMAIS : `rrspWithholdingMois`, la SOMME des
-        // retenues PAR TIRAGE déjà calculées par la cascade (`drawReer`) — exact au cent près ET identique à
-        // ce que `taxCurrentYear.reer` a réellement provisionné (cohérence interne du compteur). Compteur
-        // d'AFFICHAGE, non conservé (n'entre pas dans le NW). Pas de double-compte : ce terme est l'ACOMPTE ;
-        // `taxCurrentYear.reer` cumule ces mêmes acomptes et décembre n'ajoute ENSUITE que le complément
-        // (réconciliation = `totalAnnualTax − taxCurrentYear.reer`) → l'impôt n'est compté qu'une fois.
-        // `taxOnRrif` (FERR) reste un terme séparé, base disjointe.
-        totalTaxesPaid += fluxImpots + taxOnRrif + rrspWithholdingMois;
+        // [PROJ-TTP-DOUBLECOUNT] (panel #551, MESURÉ au cent — corrigé 2026-08-01) « Impôt à vie »
+        // = Σ des flux d'impôt réellement DÉBITÉS du liquide, c'est-à-dire `fluxImpots` SEUL :
+        // avril débite le bucket `.reer` ENTIER (taxApril.ts — retenues cascade + meltdown + FERR,
+        // toutes provisionnées dedans) + `.revenu` (le COMPLÉMENT de décembre). Les retenues ne
+        // sont « débitées qu'UNE fois, en avril » (contrat FISC-REER-WHT-DOUBLE,
+        // cashflowAllocation.ts : le brut reste au patrimoine jusqu'au règlement) — ajouter
+        // `rrspWithholdingMois` et `taxOnRrif` ici RE-COMPTAIT donc les mêmes dollars (mesuré :
+        // MELTDOWN 321 122 $ affichés pour 131 871 $ réels, +144 % ; AUTO 229 338 $ pour
+        // 29 806 $). L'ancien raisonnement (« décembre n'ajoute que le complément ») protégeait
+        // l'ASSIETTE, pas le compteur : le complément ET les acomptes passent tous deux par avril.
+        // Borne assumée : les acomptes de la DERNIÈRE année (sans avril suivant) ne sont pas
+        // comptés — vision cash honnête ; la succession a son propre `totalEstateTax`.
+        totalTaxesPaid += fluxImpots;
         totalExpenses += monthlyExpenses;
 
         // Patrimoine net = actifs − TOUTES les dettes. realEstateEquity est DÉJÀ net

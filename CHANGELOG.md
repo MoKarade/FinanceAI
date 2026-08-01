@@ -6,6 +6,29 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — « Impôt à vie » honnête] — 2026-08-01
+
+### Corrections money-critical
+- **`[PROJ-TTP-DOUBLECOUNT]` — « Impôt à vie » n'est plus gonflé de +144 %.** Le compteur
+  additionnait les retenues à la source (cascade REER, meltdown, FERR) PUIS le règlement d'avril
+  qui débite ces mêmes retenues — les mêmes dollars comptés deux fois (mesuré : stratégie meltdown
+  affichée 321 122 $ pour 131 871 $ réellement payés ; cascade 229 338 $ pour 29 806 $). Désormais
+  le compteur = la somme exacte des flux d'impôt débités du compte (identité vérifiée au cent sur
+  3 scénarios). Aucun patrimoine ne bouge (prouvé bit-identique sur 5 scénarios). ⚠️ **La stratégie
+  recommandée PEUT changer** : l'ancien classement pesait un impôt double-compté différemment selon
+  la stratégie (mesuré : sous l'objectif par défaut, le meilleur choix bascule sur certains profils
+  retraités) — c'est l'effet voulu d'un compteur réparé, l'ancien ordre reposait sur des chiffres
+  faux. Le meltdown paie réellement ~4,4× l'impôt de la cascade sur le scénario de référence.
+  Effet visible assumé : la « fuite fiscale » Monte-Carlo et l'efficacité fiscale du FVI se
+  recalent sur le vrai impôt (mesuré : taxLeakage 115 % → 47 % meltdown, 81 % → 10 % cascade ;
+  FVI +10 à +14 points) — ta situation n'a pas changé, le thermomètre est réparé.
+- **L'étiquette « Impôt à vie » devient « Régularisations d'impôt (net) »** (panel #554) : ce
+  compteur n'a JAMAIS inclus l'impôt retenu à la source sur les salaires (mesuré : un couple
+  salarié affichait −47 k$ pour ~846 k$ d'impôt réel à vie) — même sémantique que le MCP
+  (`netTaxSettlements`), infobulle explicative ajoutée. ⚠️ Reste [ENG-TTP-UNSETTLED-HORIZON] au
+  backlog : la dernière année fiscale (sans avril suivant) échappe encore au compteur (jusqu'à
+  −49 % sur un horizon de 10 ans).
+
 ## [unreleased — vie privée V4] — 2026-08-01
 
 ### Vie privée / Loi 25

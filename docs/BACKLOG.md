@@ -82,6 +82,33 @@
   (−8 192 $/an/personne ; couple ~−16 k$/an ; cumul ~250-300 k$/30 ans, sens NON conservateur —
   patrimoine/FIRE optimistes). Gonfle aussi RAMQ/FSS/ligne 361. Correctif juste :
   `palier_réel = palier_2026 × (1,02/(1+i))^Δ`. ⚠️ Déplace TOUS les goldens (~12 sites).
+- [ ] **`[ENG-TTP-UNSETTLED-HORIZON]`** (M, **CRITIQUE horizon court** [Certain, MESURÉ — panel
+  #554]) — la dernière année fiscale simulée n'a jamais son avril → son impôt réconcilié disparaît
+  du compteur : FERR 10 ans = −48,6 % (5 815,50 $ non comptés) ; couple 65/REER 1,2 M = −18,4 % à
+  10 ans, −3,2 % à 20 ans, 0 % à 30 ans. `totalEstateTax` ne couvre PAS ce solde (impôt de
+  liquidation, grandeurs disjointes — vérifié). Fix : champ `unsettledTaxAtHorizon` =
+  `taxPreviousYear.{revenu,gains,divers,reer}` (le bucket DÉJÀ réconcilié — surtout PAS
+  `taxCurrentYear`, année partielle non réconciliée) retourné par runScenario ; UI/strategySearch
+  affichent `totalTaxesPaid + unsettledTaxAtHorizon`. Couvre AUSSI le décès mi-simulation
+  (`break` avant avril — même classe, borné à 1 année fiscale, chemin MC seulement). Test
+  discriminant : 5 815,50 $ ± 1 sur la fixture FERR 10 ans, 0 sur le 30 ans épuisé.
+- [ ] **`[ENG-RANKING-ORDER-PIN]`** (S — panel #554) — `rankStrategies` normalise min-max sur le
+  compteur (poids 0,25) : pinner l'ORDRE complet (objectifs `tax` et `balanced`) sur une fixture de
+  référence, pas seulement la paire MELT/AUTO. Le validator a MESURÉ le nouvel ordre post-fix
+  (balanced : MELTDOWN > PRIO_REER > AUTO sur retraité 62) — c'est LA baseline à pinner.
+- [ ] **`[ENG-RANKTAX-ESTATE]`** (M, MOYEN [Certain, mesuré ×3,6] — panel #554, PRÉ-EXISTANT
+  amplifié) — l'objectif « impôt » de `rankStrategies` ne score QUE `totalTaxesPaid` :
+  `totalEstateTax` n'entre nulle part → « impôt minimum » récompense le REPORT (mesuré : PRIO_CELI
+  classé 1er avec ttp −189 849 $ + estateTax 1 299 510 $ = 3,6× l'impôt TOTAL de MELTDOWN).
+  `avgEfficiency`/FVI ont le même angle mort (PRIO_CELI « 98,9 % efficace » avec 1,3 M$ d'impôt
+  latent). Fix : `nTax` sur `totalTaxesPaid + totalEstateTax` OU libeller « impôt payé de son
+  vivant » — décision produit, poser à Marc.
+- [ ] **`[ENG-RAP-MISSED-REPAYMENT-TAX]`** (S — panel #554, PRÉ-EXISTANT) — un remboursement RAP
+  sauté (liquide insuffisant, `realEstateMonth.ts:419-427`) devrait ajouter 1/15 du solde au revenu
+  IMPOSABLE (règle ARC) — jamais modélisé, dans aucun compteur.
+- [ ] **`[UI-FMTM-FORMATCAD]`** (S — panel #554, PRÉ-EXISTANT) — `fmtM` maison
+  (`StrategyOptimizerPanel.tsx:57`, `(v/1e6).toFixed(2)M$`) viole « formatCAD UNIQUEMENT » et
+  écrase la granularité (6 157 $ → « 0.01M$ »).
 - [ ] **`[FISC-WHT-92PCT]`** (S-M, ÉLEVÉ [Certain algèbre], 🧭 Q2 pour le fix) —
   `taxDecember.ts:407-410` : `estimatedWithholding = totalEmployerTax * 0.92` → ~8 % de l'impôt
   salarial facturé EN DOUBLE chaque avril (mesuré : ~1 995 $/an solo, ~3 608 $/an couple, sens
@@ -129,15 +156,13 @@
   (`projection.fuzzConservation.test.ts:21-23`) : vente/gain locatif, équité négative, véhicule,
   héritage, REEE. Les couvrir (mesurer la couverture, pas la supposer).
 
-- [ ] **`[PROJ-TTP-DOUBLECOUNT]`** (M, ÉLEVÉ [Certain, MESURÉ au cent — panel #551, 2 agents]) —
-  `totalTaxesPaid` DOUBLE-COMPTE la retenue REER pour TOUTES les stratégies : `projection.ts:1457`
-  ajoute `rrspWithholdingMois` alors qu'avril débite le bucket `.reer` ENTIER (`taxApril.ts:55` :
-  `fluxImpots = … + taxPaidREER`) — décembre ne consomme pas `.reer`, il calcule la réconciliation
-  versée dans `.revenu`. « Impôt à vie » (StrategyOptimizerPanel:353,480) affiché +144 % (MELTDOWN :
-  321 122 $ vs 131 871 $ réels ; AUTO : 229 338 $ vs 29 806 $). Dérivés : efficacité fiscale MC 0 %
-  au lieu de ~53 % (−10 pts FVI), taxLeakage 115 % au lieu de 47 %. Fix : `+= fluxImpots + taxOnRrif`
-  seulement (⚠️ re-mesurer taxOnRrif, même risque) + re-baseliner MC/strategySearch SCIEMMENT.
-  Classement ordre-préservant (vérifié) → pas de flip attendu.
+- [x] **`[PROJ-TTP-DOUBLECOUNT]`** ✅ 2026-08-01 (PR V5a — compteur = Σ FluxImpots SEUL, identité
+  vérifiée au cent sur 3 scénarios, NW bit-identique, discriminant git-stash 2/3, goldens ITEM-2C
+  + WHT re-basés SCIEMMENT ; le discriminant tiered-vs-0,15 repointé sur le flux ImpotRetraitREER
+  — le taux de retenue n'influence plus le compteur, décembre réconcilie au vrai impôt).
+  Mesures : MELTDOWN 321 122 → 131 871 $ ; AUTO 229 338 → 29 806 $ ; ratio MELT/AUTO honnête 4,42.
+  ⚠️ Le validator a MESURÉ que l'ordre du ranking CHANGE (balanced : best PRIO_REER → MELTDOWN sur
+  le retraité 62 ; tax : → PRIO_CELI) — voulu, l'ancien ordre reposait sur le double-comptage.
 - [ ] **`[MELTDOWN-THRESHOLDS-DOC]`** (S, doc) — `meltdownReer.ts:9-13` : seuils
   MELTDOWN_NW_HIGH/MID (2 M/1 M) + cibles 220 k/140 k/90 k × adultes = heuristiques de CONCEPTION
   non documentées (pas des constantes fiscales) — les documenter (module + FISCAL_REFERENCE §9).

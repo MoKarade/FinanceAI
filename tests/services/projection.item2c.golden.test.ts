@@ -83,13 +83,17 @@ describe('[ITEM-2C] gates de timing per-conjoint — FERR (conversion) + PSV/RRQ
     // Golden re-basés (projection déterministe, hors Monte-Carlo) APRÈS le fix FERR per-conjoint
     // (`taxJanuary.ts` : boucle sur `reerByUser` + âge par conjoint). Les ANCRES (equal/solo) sont INCHANGÉES
     // vs le comportement ménage (preuve du défaut additif) ; les age-gap reflètent le timing per-conjoint CORRECT.
+    // `tax` re-basé SCIEMMENT 2026-08-01 ([PROJ-TTP-DOUBLECOUNT]) : le compteur = Σ FluxImpots
+    // seul (les retenues ne sont plus re-comptées) → valeurs cash APRÈS réconciliation de
+    // décembre — les remboursements d'avril absorbent l'essentiel des retenues RRIF sur ces
+    // profils à faible revenu imposable. `ferr`/`nw` STRICTEMENT inchangés (neutralité NW mesurée).
     const GOLDEN = {
-        coupleUser1Older:   { ferr: 24, nw: -78025, tax: 107558 }, // FERR + PSV/RRQ per-conjoint (user2=64 : PSV démarre à SES 65)
-        coupleUser1Younger: { ferr: 24, nw: -77614, tax: 107558 }, // idem ; user0=64<65 mais user1=70 touche PSV → SRG calculé (psvMonthly>0)
-        coupleEqual:        { ferr: 24, nw: -72522, tax: 111442 }, // ANCRE — inchangé vs ménage
-        solo:               { ferr: 24, nw: -110523, tax: 151234 }, // ANCRE — inchangé vs ménage ; re-basé TP1G-VIVANT-SEUL (solo 65+ gagne le crédit « personne vivant seule » → impôt −9 175 cumulé)
-        couplePsvBonus:     { ferr: 12, nw: -84001, tax: 109358 }, // bonus PSV 75+ SEULEMENT sur user1=76 ; user2=64 pas de PSV
-        couplePsvStartGap:  { ferr: 72, nw: -81592, tax: 105441 }, // user1=66 PSV démarrée ; user2=63 PSV démarre à SES 65 ; re-basé TP1G (seuil couple 45 270→42 955 → impôt +9)
+        coupleUser1Older:   { ferr: 24, nw: -78025, tax: 7852 },  // FERR + PSV/RRQ per-conjoint (user2=64 : PSV démarre à SES 65)
+        coupleUser1Younger: { ferr: 24, nw: -77614, tax: 7852 },  // idem ; user0=64<65 mais user1=70 touche PSV → SRG calculé (psvMonthly>0)
+        coupleEqual:        { ferr: 24, nw: -72522, tax: 7858 },  // ANCRE — inchangé vs ménage
+        solo:               { ferr: 24, nw: -110523, tax: 50441 }, // ANCRE — inchangé vs ménage ; TP1G-VIVANT-SEUL conservé
+        couplePsvBonus:     { ferr: 12, nw: -84001, tax: 8656 },  // bonus PSV 75+ SEULEMENT sur user1=76 ; user2=64 pas de PSV
+        couplePsvStartGap:  { ferr: 72, nw: -81592, tax: 8760 },  // user1=66 PSV démarrée ; user2=63 PSV démarre à SES 65
     } as const;
 
     // ── ANCRES ZÉRO-RÉGRESSION : le fix per-conjoint NE change RIEN quand les âges coïncident ──────

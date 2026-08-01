@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-01 (suite 12) — #553 MERGÉE + V5a : PROJ-TTP-DOUBLECOUNT corrigé
+> **#553 mergée** (auto-merge squash — l'API l'accepte quand le statut Vercel est vert). **V5a
+> livrée** : `totalTaxesPaid` = Σ FluxImpots SEUL (avril débite le bucket .reer entier — retenues
+> cascade/meltdown/FERR — + le complément de décembre : les additionner re-comptait les mêmes
+> dollars, +144 % mesuré). Identité vérifiée au cent sur 3 scénarios + salarié, NW bit-identique
+> (5 scénarios git-archive), ratio MELT/AUTO honnête 4,42 — ⚠️ l'ORDRE du ranking CHANGE (voulu :
+> l'ancien reposait sur le double-comptage ; balanced best bascule sur retraité 62). Re-basés
+> SCIEMMENT : goldens ITEM-2C (tax seul, nw/ferr intacts) + test WHT-tiered repointé sur le flux
+> ImpotRetraitREER (le taux de retenue n'influence plus le compteur — décembre réconcilie).
+> Suite V5 : [FISC-BRACKET-REALINDEX] (GO Marc, L, ~12 goldens — PR dédiée), [FISC-WHT-92PCT]
+> 0.92→1.0, [FISC-SOLO-INVEST-SPLIT]. [PROFIL-SWITCH] toujours gaté sur les 4 questions Marc.
+
 > ## 🟢 Session 2026-08-01 (suite 11) — #552 MERGÉE + V4 vie privée (3/4)
 > **#552 mergée** (squash `32a112f`, merge direct — l'API auto-merge refusait sur le statut Vercel
 > non-requis « unstable » ; CI 6/6 verte). Branche réconciliée, items #551/#552 ARCHIVÉS dans

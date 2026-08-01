@@ -504,6 +504,8 @@ describe('[FISC-WHT-HARDCODE] retenue REER affichée = tiered (19/24/29 %), pas 
         expect(sumWht).toBeGreaterThan(130_000);
         // Et le compteur suit la nouvelle identité : Σ FluxImpots exactement (± 1 $).
         const sumFlux = r.chartData.reduce((s, d) => s + (Number.isFinite(Number(d.FluxImpots)) ? Number(d.FluxImpots) : 0), 0);
-        expect(Math.abs(r.totalTaxesPaid - sumFlux)).toBeLessThan(1);
+        const ttp = r.totalTaxesPaid ?? Number.NaN; // absent = échec franc, pas un 0 crédible
+        expect(ttp).toBeGreaterThan(50_000); // non-vacuité : de l'impôt coule vraiment
+        expect(Math.abs(ttp - sumFlux)).toBeLessThan(1);
     });
 });

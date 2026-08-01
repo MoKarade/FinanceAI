@@ -15,6 +15,7 @@ import { ConfirmModal } from './ui/ConfirmModal';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { PrivateAmount } from './ui/PrivateAmount';
+import { PrivateSliderValue } from './ui/PrivateSliderValue';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import {
@@ -63,6 +64,8 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     const [universityType, setUniversityTypeLocal] = useState<UniversityType>((goal?.universityType as UniversityType) || 'uni_local');
     const [carGift, setCarGiftLocal] = useState<CarGift>((goal?.carGift as CarGift) || 'non');
     const [respContribution, setRespContributionLocal] = useState(goal?.respContribution ?? 2500);
+    // [D6-PRIV-MONTANTS] focus du slider → étiquette révélée pendant l'ajustement seulement.
+    const [respSliderFocus, setRespSliderFocus] = useState(false);
 
     // C8 fix : la garde `if (!goal) return null` est déplacée APRÈS tous les
     // hooks (juste avant le `return` JSX final). Les hooks qui dépendent de
@@ -484,9 +487,9 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                             <div>
                                 <label className="flex justify-between text-meta text-ink-200 mb-1">
                                     <span>Cotisation annuelle REEE</span>
-                                    <span className="text-info-400 font-bold">{fmt(respContribution)}</span>
+                                    <PrivateSliderValue revealed={respSliderFocus} className="text-info-400 font-bold">{fmt(respContribution)}</PrivateSliderValue>
                                 </label>
-                                <input type="range" aria-label="Cotisation annuelle REEE" min="0" max="5000" step="100" value={respContribution} onChange={e => setRespContribution(Number(e.target.value))} className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-info-500" />
+                                <input type="range" aria-label="Cotisation annuelle REEE" min="0" max="5000" step="100" value={respContribution} onChange={e => setRespContribution(Number(e.target.value))} onFocus={() => setRespSliderFocus(true)} onBlur={() => setRespSliderFocus(false)} className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-info-500" />
                                 <p className="text-tiny text-ink-400 mt-1">Optimal : 2 500$/an pour maximiser les subventions (30% = fed 20% + QC 10%)</p>
                             </div>
                             <div className="grid grid-cols-3 gap-2">

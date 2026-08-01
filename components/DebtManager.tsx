@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Card } from './ui/Card';
+import { PrivateAmount } from './ui/PrivateAmount';
+import { PrivateSliderValue } from './ui/PrivateSliderValue';
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
 import { Icon } from './ui/Icon';
@@ -24,6 +26,8 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     const [isAdding, setIsAdding] = useState(false);
     const [newDebt, setNewDebt] = useState<Partial<Debt>>({ name: '', balance: 0, interestRate: 0, minimumPayment: 0, category: 'CreditCard' });
     const [extraPayment, setExtraPayment] = useState(200);
+    // [D6-PRIV-MONTANTS] focus du slider → étiquette révélée pendant l'ajustement seulement.
+    const [extraSliderFocus, setExtraSliderFocus] = useState(false);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
     const handleAdd = () => {
@@ -137,9 +141,9 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                     <Card title="Remboursement">
                         <div className="space-y-4">
                             <div>
-                                <label className="flex justify-between text-meta text-ink-200 mb-1"><span>Paiement Mensuel Supplémentaire</span><span className="font-bold text-green-400">{formatCAD(extraPayment)}</span></label>
-                                <input type="range" aria-label="Paiement Mensuel Supplémentaire" min="0" max="2000" step="50" value={extraPayment} onChange={e => setExtraPayment(Number(e.target.value))} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
-                                <div className="text-tiny text-ink-500 mt-1">En plus des minimums ({formatCAD(totalMinPayment)}). Total payé: <strong className="text-white">{formatCAD(totalMinPayment + extraPayment)}/mois</strong>.</div>
+                                <label className="flex justify-between text-meta text-ink-200 mb-1"><span>Paiement Mensuel Supplémentaire</span><PrivateSliderValue revealed={extraSliderFocus} className="font-bold text-green-400">{formatCAD(extraPayment)}</PrivateSliderValue></label>
+                                <input type="range" aria-label="Paiement Mensuel Supplémentaire" min="0" max="2000" step="50" value={extraPayment} onChange={e => setExtraPayment(Number(e.target.value))} onFocus={() => setExtraSliderFocus(true)} onBlur={() => setExtraSliderFocus(false)} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
+                                <div className="text-tiny text-ink-500 mt-1">En plus des minimums (<PrivateAmount>{formatCAD(totalMinPayment)}</PrivateAmount>). Total payé: <strong className="text-white"><PrivateAmount>{formatCAD(totalMinPayment + extraPayment)}</PrivateAmount>/mois</strong>.</div>
                             </div>
                             <div className="p-3 bg-white/5 rounded border border-white/10">
                                 <div className="flex justify-between items-center mb-1"><span className="text-meta text-ink-300">Liberté dans</span><span className="text-body font-bold text-white">{(simulation.months / 12).toFixed(1)} ans</span></div>

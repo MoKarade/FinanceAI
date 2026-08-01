@@ -76,6 +76,58 @@ fichier:ligne). Verdicts appliqués à la refonte :
 
 ---
 
+## ✅ Vagues 2 + 3 + findings (PR #551 mergée 2026-07-31, PR #552 mergée 2026-08-01)
+
+> V2 (meltdown honnête, #551) · V2'/V2''/V3/findings panel/héritage (#552, squash `32a112f`).
+> Panel #552 : 4 agents, tout MESURÉ (conservation 20/20, INV-9 ≤ 0,02 $/301 mois, amortissement
+> forme fermée écart 0, achat futur bit-identique). Tickets RESTANTS ouverts par le panel :
+> [ENG-PAST-OWNED-VS-PLANNED], [ENG-RENEWAL-RATE-MISMATCH], [IMMO-3-FORMULES],
+> [ENG-PROPGROWTH-ZERO-INEXPRIMABLE], [ENG-NETTRANSFER-REER-INCOMPLET], [ENG-RENEWAL-M0],
+> [ENG-CELIAPP-RESIDUAL-PASTBUY], [UX-ISACTIVE-SEMANTIQUE] — au BACKLOG vivant.
+
+- [x] **`[WHT-DISPLAY-MELTDOWN]`** ✅ 2026-07-31 (V2, PR #551 — `rrspWithholdingMois += meltResult.withholding`,
+  discriminant prouvé, NW bit-identique pinné par golden). Précision panel #551 : la retenue entrait
+  déjà dans le crédit décembre ; le vrai gain = COHÉRENCE de convention entre stratégies (ratio
+  MELTDOWN/AUTO 0,601 → 1,400) — la reco « objectif impôt » recommandait MELTDOWN à tort (corrigé).
+  Valeur absolue toujours sur-évaluée pour toutes → [PROJ-TTP-DOUBLECOUNT] (vivant).
+- [x] **`[ENG-MELTDOWN-FLOW-INVISIBLE]`** ✅ 2026-07-31 (V2, PR #551 — `retraitReerMois += meltResult.reerDrawn`,
+  Σ RetraitREER ≥ 90 % du REER drainé prouvé) — ~96 % des sorties invisibles avant (30 496 $ affichés
+  pour 794 303 $ tirés) : tooltip/modal/jalons/MCP aveugles.
+- [x] **`[ENG-FERR-FLOW-INVISIBLE]`** ✅ 2026-07-31 (V2'', PR #552) — FERR obligatoire + retraits de
+  goals alimentent `retraitReerMois` (113 418 $ = 11,6 % invisibles avant) ; test discriminant
+  fixture 73 ans (Σ ≈ 0 sur l'ancien code pour 80 k$+ drainés). Identité de compte REER :
+  Σ|résidu| 330 354 $ → 1 $ sur 301 mois (mesuré par le validator).
+- [x] **`[ENG-HERITAGE-INFLOW]`** ✅ 2026-08-01 (PR #552, rapporté par Marc « héritage marche pas ») —
+  `applyLifeEvents` n'avait AUCUNE branche de rentrée d'argent : un HERITAGE était DÉBITÉ comme
+  dépense one-shot (impact net −2× le montant). Branche +liquide non imposable + 4 tests (delta
+  ±50 k$, saut au mois de l'événement, piège « vente » dans le nom, NaN) — discriminant prouvé par
+  stash (3/4 échouent sur l'ancien code).
+- [x] **`[DASH-IMMO-EQUITY-WRITERS]`** ✅ 2026-07-31 (V2' — racine trouvée et corrigée : **le MOTEUR
+  traitait un bien à purchaseDate PASSÉE comme un achat À FAIRE** — re-débit de la mise de fonds au
+  m0 si le cash suffisait, « Achat reporté » à l'INFINI sinon → Immobilier = 0 sur tout l'horizon
+  (mesuré). Fix : helper partagé `services/projection/pastPurchaseInit.ts` (init DÉTENU aux
+  conventions du moteur : prime SCHL, PMT d'origine, solde amorti forme fermée, valeur appréciée)
+  consommé par l'init `propertiesState` du moteur ET par le KPI Accueil (`presentEquityOfGoal` —
+  champs explicites prioritaires, F4 : filtre isActive + gate équité ≠ 0 + garde non-fini tracée).
+  11 tests dont discriminant (Immobilier = 0 sur l'ancien code) + INV-9 + conservation/fuzz/personas
+  verts.) — ancien texte : le terme équité immo du KPI Accueil
+  est INERTE (`RealEstateGoal.currentValue`/`mortgageBalance` sans AUCUN écrivain UI) → un
+  propriétaire modélisé par price/downPayment a un KPI sans sa maison pendant que le Futur l'inclut
+  (mesuré : 81 609 $ moteur vs 0 KPI). Trancher : brancher sur ce que l'UI possède OU retirer le
+  terme. En même temps (F4) : gate `equity !== 0`, filtre `isActive`, gardes `Number.isFinite` +
+  logErrorThrottled (3 sites).
+- [x] **V3 détail** ✅ (PR #552) : [DEFAULTS-DRIFT-FINTABLE-FIELDS] (4 champs + garde
+  bidirectionnelle registryParity) · [TEST-GAP-TAXESTIMATE] · [TEST-GAP-SUBSCRIPTIONS] ·
+  [TEST-GAP-ROLESCONFIG] · [PV-11e] (pin Σ reerByUser == REER, couple inégal + goal REER) ·
+  [NW-PARITY-SURFACES-TEST] (conventions équité immo par surface + fix PDF `equity: 0`).
+- [x] **Findings panel #552 corrigés dans #552 même** ✅ 2026-08-01 : graine prevNW/minNetWorth
+  ensemencée (flux fantôme +156 629 $, plancher −158 731 $) · substitution loyer↔PMT neutre au boot
+  (sur-charge 20 084 $/an) · champs explicites honorés par le moteur (écart 291 676 $) ·
+  sanitisation immo frontière (968 non-finis) · garde non-fini dans presentEquityOfGoal
+  (3 consommateurs) · équité historique PAR ANNÉE au graphe Accueil (+77 097 $ sur 2022) ·
+  log « supposée DÉTENUE » au m0 · docs PROJECTION/OUTPUT_SCHEMA + 3 leçons CONVENTIONS.
+
+
 # (Contenu intégral du BACKLOG au 2026-07-31, avant refonte)
 
 # BACKLOG — FinanceAI (actionnable)

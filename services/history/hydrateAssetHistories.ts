@@ -85,6 +85,36 @@ export function mergePriceHistories(
         .sort((a, b) => (a.date < b.date ? -1 : 1));
 }
 
+/** [HIST-STORE-SIZE] Au-delà de cet âge, le stocké passe à 1 point/semaine. */
+export const DOWNSAMPLE_AFTER_DAYS = 365;
+const DAY_MS = 86_400_000;
+
+/**
+ * [HIST-STORE-SIZE] (mesuré 2026-07-31 : ~116 Ko persistés, +6 Ko/mois, ~384 Ko à 5 ans — dans
+ * CHAQUE push Drive + localStorage) Downsample du STOCKÉ : les points plus vieux que 365 j sont
+ * réduits à 1 point/semaine (le DERNIER de chaque semaine — ÷5 le stock ancien) ; la dernière
+ * année reste quotidienne (courbes 1M/3M/6M/YTD/1A intactes). Appliqué au moment d'écrire le
+ * patch d'hydratation (après mergePriceHistories) : les points crypto > 365 j (fenêtre CoinGecko,
+ * non re-téléchargeables) sont CONSERVÉS en hebdomadaire, jamais supprimés — c'est la raison
+ * d'être de mergePriceHistories, le downsample ne la trahit pas. Pur, `nowMs` injectable.
+ */
+export function downsamplePriceHistory(
+    history: Array<{ date: string; price: number }>,
+    nowMs: number,
+): Array<{ date: string; price: number }> {
+    const cutoffMs = nowMs - DOWNSAMPLE_AFTER_DAYS * DAY_MS;
+    const recent: Array<{ date: string; price: number }> = [];
+    // Semaine → DERNIER point (l'entrée est triée ascendante : les suivants écrasent).
+    const oldByWeek = new Map<number, { date: string; price: number }>();
+    for (const p of history) {
+        const t = Date.parse(`${p.date}T00:00:00Z`);
+        if (!Number.isFinite(t)) continue; // date illisible : ne pas la garder ni la propager
+        if (t >= cutoffMs) recent.push(p);
+        else oldByWeek.set(Math.floor(t / (7 * DAY_MS)), p);
+    }
+    return [...oldByWeek.values(), ...recent];
+}
+
 /**
  * [HIST-COVERAGE-TOTAL] Variantes de symbole à tenter quand la chaîne d'historique ne rend RIEN
  * pour le symbole saisi (bug Marc 2026-07-23 : « Amundi EM Asia marche pas », ticker Euronext
@@ -308,7 +338,10 @@ async function runHydrate(
                 continue;
             }
             patches.set(a.symbol, {
-                priceHistory: mergePriceHistories(a.priceHistory, fresh),
+                // [HIST-STORE-SIZE] fusion (aucune perte de fenêtre provider) PUIS downsample du
+                // stocké (> 365 j → hebdomadaire) — l'ordre compte : on ne downsample jamais AVANT
+                // d'avoir réinjecté les points anciens que le provider ne re-fournit pas.
+                priceHistory: downsamplePriceHistory(mergePriceHistories(a.priceHistory, fresh), now()),
                 lastHistorySync: now(),
                 ...(resolvedSymbol ? { historySymbol: resolvedSymbol } : {}),
             });

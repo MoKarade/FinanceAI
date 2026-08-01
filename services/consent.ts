@@ -37,12 +37,31 @@ export function applyGtagConsent(choice: ConsentChoice): void {
     window.gtag('consent', 'update', { analytics_storage: choice });
 }
 
-/** Persiste le choix ET le propage immédiatement à gtag. */
+/** URL du tag GA4 — DOIT rester synchronisée avec public/ga-init.js. */
+export const GTAG_SRC = 'https://www.googletagmanager.com/gtag/js?id=G-5WLQGBF1VL';
+
+/**
+ * [SEC-GA-DEFER-CONSENT] (Loi 25) Injecte le SCRIPT gtag.js s'il ne l'est pas déjà.
+ * Avant consentement, aucune requête ne part vers Google (le script n'est plus dans
+ * index.html) ; au premier « Accepter », on charge le tag ici — les événements
+ * accumulés dans dataLayer par le stub (ga-init.js) sont alors rejoués par gtag.
+ */
+export function ensureGtagLoaded(): void {
+    if (typeof document === 'undefined') return;
+    if (document.querySelector('script[src^="https://www.googletagmanager.com/gtag/js"]')) return;
+    const s = document.createElement('script');
+    s.async = true;
+    s.src = GTAG_SRC;
+    document.head.appendChild(s);
+}
+
+/** Persiste le choix, charge le tag si accordé, ET propage immédiatement à gtag. */
 export function setConsent(choice: ConsentChoice): void {
     try {
         if (typeof localStorage !== 'undefined') localStorage.setItem(CONSENT_STORAGE_KEY, choice);
     } catch {
         // localStorage indisponible : on applique quand même à gtag pour la session.
     }
+    if (choice === 'granted') ensureGtagLoaded();
     applyGtagConsent(choice);
 }

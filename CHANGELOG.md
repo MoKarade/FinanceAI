@@ -22,6 +22,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   Effet visible assumé : la « fuite fiscale » Monte-Carlo et l'efficacité fiscale du FVI se
   recalent sur le vrai impôt (mesuré : taxLeakage 115 % → 47 % meltdown, 81 % → 10 % cascade ;
   FVI +10 à +14 points) — ta situation n'a pas changé, le thermomètre est réparé.
+- **`[ENG-TTP-UNSETTLED-HORIZON]` — l'impôt de la dernière année n'échappe plus à l'optimiseur.**
+  L'année réconciliée par le dernier décembre n'a jamais son règlement d'avril dans l'horizon :
+  ce solde (mesuré 13 542 $, soit 8,6 % du total, sur un retraité solvable à 10 ans) est désormais
+  exposé (`unsettledTaxAtHorizon`) et additionné dans l'« impôt » de l'optimiseur de stratégies.
 - **L'étiquette « Impôt à vie » devient « Régularisations d'impôt (net) »** (panel #554) : ce
   compteur n'a JAMAIS inclus l'impôt retenu à la source sur les salaires (mesuré : un couple
   salarié affichait −47 k$ pour ~846 k$ d'impôt réel à vie) — même sémantique que le MCP

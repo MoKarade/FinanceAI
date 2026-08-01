@@ -149,6 +149,10 @@ export interface ProjectionResult {
     /** Phase 1 refactor « REER par conjoint » : solde REER final attribué par conjoint
      *  (Σ == solde REER commun final). Shadow/diagnostic ; consommé par la fiscalité en Phase 2. */
     reerByUserFinal?: number[];
+    /** [ENG-TTP-UNSETTLED-HORIZON] Dette fiscale RÉCONCILIÉE (dernier décembre) jamais réglée par un
+     *  avril dans l'horizon — à ADDITIONNER à totalTaxesPaid pour un « impôt de l'horizon » complet
+     *  (jusqu'à 49 % du compteur sur 10 ans, mesuré). Signé ; disjoint de totalEstateTax. */
+    unsettledTaxAtHorizon?: number;
     totalTaxesPaid?: number;
     totalGrowth?: number;
     totalExpenses?: number;

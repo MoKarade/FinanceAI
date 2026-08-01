@@ -82,16 +82,12 @@
   (−8 192 $/an/personne ; couple ~−16 k$/an ; cumul ~250-300 k$/30 ans, sens NON conservateur —
   patrimoine/FIRE optimistes). Gonfle aussi RAMQ/FSS/ligne 361. Correctif juste :
   `palier_réel = palier_2026 × (1,02/(1+i))^Δ`. ⚠️ Déplace TOUS les goldens (~12 sites).
-- [ ] **`[ENG-TTP-UNSETTLED-HORIZON]`** (M, **CRITIQUE horizon court** [Certain, MESURÉ — panel
-  #554]) — la dernière année fiscale simulée n'a jamais son avril → son impôt réconcilié disparaît
-  du compteur : FERR 10 ans = −48,6 % (5 815,50 $ non comptés) ; couple 65/REER 1,2 M = −18,4 % à
-  10 ans, −3,2 % à 20 ans, 0 % à 30 ans. `totalEstateTax` ne couvre PAS ce solde (impôt de
-  liquidation, grandeurs disjointes — vérifié). Fix : champ `unsettledTaxAtHorizon` =
-  `taxPreviousYear.{revenu,gains,divers,reer}` (le bucket DÉJÀ réconcilié — surtout PAS
-  `taxCurrentYear`, année partielle non réconciliée) retourné par runScenario ; UI/strategySearch
-  affichent `totalTaxesPaid + unsettledTaxAtHorizon`. Couvre AUSSI le décès mi-simulation
-  (`break` avant avril — même classe, borné à 1 année fiscale, chemin MC seulement). Test
-  discriminant : 5 815,50 $ ± 1 sur la fixture FERR 10 ans, 0 sur le 30 ans épuisé.
+- [x] **`[ENG-TTP-UNSETTLED-HORIZON]`** ✅ 2026-08-01 (PR V5b) — champ `unsettledTaxAtHorizon`
+  photographié à la réconciliation de DÉCEMBRE (pas via taxPreviousYear : le transfert est en
+  janvier), remis à 0 au règlement d'avril ; `strategySearch.lifetimeTax` l'additionne.
+  ⚠️ Magnitude re-mesurée en NET (= le débit d'avril manquant, buckets SIGNÉS) : 13 542 $ (8,6 %)
+  sur retraité solvable 10 ans, 171,89 $ sur la fixture FERR (le −49 % de l'audit sommait le BRUT
+  sans netter le remboursement), 0 sur portefeuille épuisé. 3 pins + leçon CONVENTIONS.
 - [ ] **`[ENG-RANKING-ORDER-PIN]`** (S — panel #554) — `rankStrategies` normalise min-max sur le
   compteur (poids 0,25) : pinner l'ORDRE complet (objectifs `tax` et `balanced`) sur une fixture de
   référence, pas seulement la paire MELT/AUTO. Le validator a MESURÉ le nouvel ordre post-fix

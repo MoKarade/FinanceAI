@@ -68,6 +68,28 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
         expect(run(ferrParams, 'AUTO_MARGINAL').finalNetWorth).toBeCloseTo(375783.25, 0);
     });
 
+    it('[ENG-TTP-UNSETTLED-HORIZON] la dette fiscale réconciliée non réglée à l\'horizon est EXPOSÉE', () => {
+        // La dernière année réconciliée par décembre n'a jamais son avril → son débit échappe au
+        // compteur. `unsettledTaxAtHorizon` = EXACTEMENT ce qu'avril aurait débité (les 4 buckets
+        // SIGNÉS — le panel #554 annonçait 5 815 $ sur la fixture FERR en sommant le BRUT ; le NET
+        // réel y est 171,89 $ car la réconciliation contient un remboursement qui compense la
+        // retenue RRIF). Discriminant : le champ n'existe pas sur l'ancien code (undefined).
+        const solvable = base({
+            projection: { ...projection, years: 10, returnRate: 4, returnRates: { celi: 4, reer: 4, nonReg: 4, crypto: 5, cash: 1 } },
+            calculatedStartingCash: 10_000,
+            liveCSVBalances: { CELI: 0, CELIAPP: 0, REER: 1_500_000, NON_ENREG: 0, CRYPTO: 0, REEE: 0 },
+            retirementGoal: { targetAge: 60, targetMonthlyIncome: 8000, governmentPension: 800, lifeExpectancy: 95 } as RetirementGoal,
+            baseMonthlyExpenses: 7_000,
+        });
+        const rs = run(solvable, 'AUTO_MARGINAL');
+        // Solvable 10 ans : vraie dette nette au dernier décembre (mesuré 13 542,07 — 8,6 % du compteur).
+        expect(rs.unsettledTaxAtHorizon).toBeCloseTo(13_542.07, 0);
+        // FERR 10 ans : net PETIT (remboursement compense la retenue) — pin de la sémantique NETTE.
+        expect(run(ferrParams, 'AUTO_MARGINAL').unsettledTaxAtHorizon).toBeCloseTo(171.89, 0);
+        // Portefeuille épuisé avant la fin : plus d'impôt la dernière année → 0 (jamais un fantôme).
+        expect(Math.abs(run(base(), 'MELTDOWN_REER').unsettledTaxAtHorizon ?? Number.NaN)).toBeLessThan(1);
+    });
+
     it('ratio MELT/AUTO borné (~4,4 mesuré) — PAS un pin d\'ordre du ranking complet', () => {
         // ⚠️ Le validator #554 a MESURÉ que l'ordre de rankStrategies CHANGE avec le compteur
         // corrigé (balanced : best PRIO_REER → MELTDOWN sur le retraité 62) — voulu, l'ancien

@@ -13,7 +13,7 @@ import { ConfirmModal } from './ui/ConfirmModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ZoomContainer } from './ui/ZoomContainer';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
-import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
+import { MASKED_AMOUNT_LABEL, maskedSliderAria } from '../utils/privacyAria';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { formatCAD } from '../utils/format';
 
@@ -142,7 +142,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                         <div className="space-y-4">
                             <div>
                                 <label className="flex justify-between text-meta text-ink-200 mb-1"><span>Paiement Mensuel Supplémentaire</span><PrivateSliderValue revealed={extraSliderFocus} className="font-bold text-green-400">{formatCAD(extraPayment)}</PrivateSliderValue></label>
-                                <input type="range" aria-label="Paiement Mensuel Supplémentaire" min="0" max="2000" step="50" value={extraPayment} onChange={e => setExtraPayment(Number(e.target.value))} onFocus={() => setExtraSliderFocus(true)} onBlur={() => setExtraSliderFocus(false)} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
+                                <input type="range" aria-label="Paiement Mensuel Supplémentaire" min="0" max="2000" step="50" value={extraPayment} {...maskedSliderAria(isPrivacyMode)} onChange={e => setExtraPayment(Number(e.target.value))} onFocus={() => setExtraSliderFocus(true)} onBlur={() => setExtraSliderFocus(false)} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
                                 <div className="text-tiny text-ink-500 mt-1">En plus des minimums (<PrivateAmount>{formatCAD(totalMinPayment)}</PrivateAmount>). Total payé: <strong className="text-white"><PrivateAmount>{formatCAD(totalMinPayment + extraPayment)}</PrivateAmount>/mois</strong>.</div>
                             </div>
                             <div className="p-3 bg-white/5 rounded border border-white/10">

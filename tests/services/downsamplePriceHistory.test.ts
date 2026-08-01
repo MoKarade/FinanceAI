@@ -57,8 +57,18 @@ describe('[HIST-STORE-SIZE] downsamplePriceHistory', () => {
         expect(oldest.length).toBeLessThanOrEqual(16);
     });
 
-    it('date illisible : point retiré (jamais propagé), pas de crash', () => {
-        const h = [{ date: 'n/a', price: 5 }, { date: daysAgo(2), price: 10 }];
+    it('point corrompu (date illisible, prix NaN/≤ 0) : retiré ET tracé (jamais un drop muet)', async () => {
+        // [Panel #553] un prix NaN/négatif qui deviendrait le point « retenu » d'une semaine
+        // persisterait une valeur corrompue indéfiniment ; et un drop sans log est indiagnosticable.
+        const { getErrors } = await import('../../services/errorLogger');
+        const h = [
+            { date: 'n/a', price: 5 },
+            { date: daysAgo(400), price: NaN },
+            { date: daysAgo(399), price: -3 },
+            { date: daysAgo(2), price: 10 },
+        ];
         expect(downsamplePriceHistory(h, NOW)).toEqual([{ date: daysAgo(2), price: 10 }]);
+        const logged = getErrors().filter((e) => e.message.includes('downsamplePriceHistory'));
+        expect(logged.length).toBeGreaterThanOrEqual(1); // tracé, pas avalé
     });
 });

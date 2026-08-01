@@ -17,7 +17,7 @@ import { useFinanceStore } from '../store/useFinanceStore';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { PrivateSliderValue } from './ui/PrivateSliderValue';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
-import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
+import { MASKED_AMOUNT_LABEL, maskedSliderAria } from '../utils/privacyAria';
 import {
     DAYCARE_INFO, SCHOOL_INFO, ACTIVITIES_INFO, UNI_INFO, CAR_INFO,
     getAnnualChildCost,
@@ -489,7 +489,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <span>Cotisation annuelle REEE</span>
                                     <PrivateSliderValue revealed={respSliderFocus} className="text-info-400 font-bold">{fmt(respContribution)}</PrivateSliderValue>
                                 </label>
-                                <input type="range" aria-label="Cotisation annuelle REEE" min="0" max="5000" step="100" value={respContribution} onChange={e => setRespContribution(Number(e.target.value))} onFocus={() => setRespSliderFocus(true)} onBlur={() => setRespSliderFocus(false)} className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-info-500" />
+                                <input type="range" aria-label="Cotisation annuelle REEE" min="0" max="5000" step="100" value={respContribution} {...maskedSliderAria(isPrivacyMode)} onChange={e => setRespContribution(Number(e.target.value))} onFocus={() => setRespSliderFocus(true)} onBlur={() => setRespSliderFocus(false)} className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-info-500" />
                                 <p className="text-tiny text-ink-400 mt-1">Optimal : 2 500$/an pour maximiser les subventions (30% = fed 20% + QC 10%)</p>
                             </div>
                             <div className="grid grid-cols-3 gap-2">

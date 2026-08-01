@@ -20,7 +20,7 @@ import type { Asset } from '../../types';
 import type { HistoryPoint } from '../marketData';
 import { coinGeckoQuoteCurrencyFor, coinGeckoIdFor } from '../marketData/providers/coingecko';
 import { getEffectivePurchases } from '../../utils/assetPurchases';
-import { logError } from '../errorLogger';
+import { logError, logErrorThrottled } from '../errorLogger';
 
 export interface HydrateHistoryDeps {
     /** Contrat façade : `[]` = vide VALIDE, `null` = ERREUR (chaîne entière en échec). */
@@ -108,7 +108,17 @@ export function downsamplePriceHistory(
     const oldByWeek = new Map<number, { date: string; price: number }>();
     for (const p of history) {
         const t = Date.parse(`${p.date}T00:00:00Z`);
-        if (!Number.isFinite(t)) continue; // date illisible : ne pas la garder ni la propager
+        // [Panel #553, silent-failure] point corrompu (date illisible OU prix non fini/≤ 0 — même
+        // garde que mergePriceHistories, qui ne filtre PAS les points `fresh`) : retiré mais
+        // JAMAIS en silence — un point qui disparaît du stocké sans trace est indiagnosticable.
+        if (!Number.isFinite(t) || !Number.isFinite(p.price) || p.price <= 0) {
+            logErrorThrottled(`downsample-point-corrompu:${p.date}`, {
+                source: 'storage', severity: 'warning',
+                message: 'downsamplePriceHistory : point corrompu retiré (date ou prix invalide)',
+                context: { date: String(p.date).slice(0, 10) },
+            });
+            continue;
+        }
         if (t >= cutoffMs) recent.push(p);
         else oldByWeek.set(Math.floor(t / (7 * DAY_MS)), p);
     }

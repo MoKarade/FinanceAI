@@ -3,8 +3,11 @@
 // DISCRET, symétrique de PrivateNumberInput : masquée « ••• » au repos, RÉVÉLÉE pendant que le
 // slider a le focus (on ne peut pas ajuster un montant qu'on ne voit pas). La vraie valeur n'est
 // pas rendue au repos (hors DOM — mêmes garanties que PrivateAmount) ; le sr-only annonce le
-// masquage aux lecteurs d'écran (l'input range porte déjà la valeur via aria-valuenow quand il a
-// le focus, donc aucune perte d'information pour l'utilisateur SR qui AJUSTE).
+// masquage aux lecteurs d'écran.
+// ⚠️ (panel #553) L'<input type="range"> associé garde son aria-valuenow RÉEL en tout temps — un
+// lecteur d'écran en mode PARCOURS l'annonce même hors focus : chaque slider consommateur DOIT
+// aussi porter `{...maskedSliderAria(isPrivacyMode)}` (utils/privacyAria), sinon ce composant ne
+// masque que la moitié de la fuite.
 //
 // Usage : l'appelant fournit `revealed` (focus du slider associé, via onFocus/onBlur) :
 //   const [sliderFocus, setSliderFocus] = useState(false);

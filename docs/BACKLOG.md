@@ -82,16 +82,19 @@
   (−8 192 $/an/personne ; couple ~−16 k$/an ; cumul ~250-300 k$/30 ans, sens NON conservateur —
   patrimoine/FIRE optimistes). Gonfle aussi RAMQ/FSS/ligne 361. Correctif juste :
   `palier_réel = palier_2026 × (1,02/(1+i))^Δ`. ⚠️ Déplace TOUS les goldens (~12 sites).
-- [ ] **`[ENG-TTP-UNSETTLED-HORIZON]`** (M, **CRITIQUE horizon court** [Certain, MESURÉ — panel
-  #554]) — la dernière année fiscale simulée n'a jamais son avril → son impôt réconcilié disparaît
-  du compteur : FERR 10 ans = −48,6 % (5 815,50 $ non comptés) ; couple 65/REER 1,2 M = −18,4 % à
-  10 ans, −3,2 % à 20 ans, 0 % à 30 ans. `totalEstateTax` ne couvre PAS ce solde (impôt de
-  liquidation, grandeurs disjointes — vérifié). Fix : champ `unsettledTaxAtHorizon` =
-  `taxPreviousYear.{revenu,gains,divers,reer}` (le bucket DÉJÀ réconcilié — surtout PAS
-  `taxCurrentYear`, année partielle non réconciliée) retourné par runScenario ; UI/strategySearch
-  affichent `totalTaxesPaid + unsettledTaxAtHorizon`. Couvre AUSSI le décès mi-simulation
-  (`break` avant avril — même classe, borné à 1 année fiscale, chemin MC seulement). Test
-  discriminant : 5 815,50 $ ± 1 sur la fixture FERR 10 ans, 0 sur le 30 ans épuisé.
+- [x] **`[ENG-TTP-UNSETTLED-HORIZON]`** ✅ 2026-08-01 (PR #555) — champ `unsettledTaxAtHorizon`
+  photographié à la réconciliation de DÉCEMBRE (≡ taxPreviousYear, transfert dans le même bloc —
+  contre-vérifié #555), remis à 0 au règlement d'avril (garde `m > 0`) ;
+  `strategySearch.lifetimeTax` l'additionne. Magnitudes NET vérifiées : 8,6 % à 10 ans, 51,5 % à
+  2 ans, 100 % à 1 an ; ADDITIVITÉ prouvée au cent (unsettled(N) == FluxImpots d'avril du run
+  N+1) ; signe négatif honnête (−9 558 $ mesuré). L'audit #554 sommait AccruedTax* (réconcilié +
+  stub brut). Pins : 3 valeurs + additivité + signe.
+- [ ] **`[ENG-TTP-UNSETTLED-PROPAGATE]`** (S-M — contre-vérif #555) — 4 surfaces lisent encore
+  `totalTaxesPaid` NU : `monteCarlo.ts:108,145` (taxLeakage), `getProjection.spec.ts:99` +
+  `simulateWhatIf.spec.ts:131` (netTaxSettlements servi à l'IA), `drawdownOptimizer.ts:61`
+  (GoalSeekerCard). Le terme dépend de la STRATÉGIE (AUTO 13 542 vs MELT 15 933 sur le même
+  scénario) → l'IA et l'optimiseur peuvent annoncer deux « impôts » divergents de 8,6 % (100 % à
+  1 an). Propager `+ unsettledTaxAtHorizon` OU documenter la divergence par surface.
 - [ ] **`[ENG-RANKING-ORDER-PIN]`** (S — panel #554) — `rankStrategies` normalise min-max sur le
   compteur (poids 0,25) : pinner l'ORDRE complet (objectifs `tax` et `balanced`) sur une fixture de
   référence, pas seulement la paire MELT/AUTO. Le validator a MESURÉ le nouvel ordre post-fix

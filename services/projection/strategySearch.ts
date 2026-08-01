@@ -34,6 +34,8 @@ type RunScenarioFn = (
     finalNetWorth: number;
     estateNetWorth: number;
     totalTaxesPaid: number;
+    /** [ENG-TTP-UNSETTLED-HORIZON] dette fiscale réconciliée non réglée à l'horizon (signée). */
+    unsettledTaxAtHorizon?: number;
     totalGrowth: number;
     totalExpenses: number;
     minNetWorth: number;
@@ -129,7 +131,9 @@ export function runStrategySearch(
             finalNWp10: lastFinalNW(mc.p10Data),
             finalNWp50: lastFinalNW(mc.p50Data),
             finalNWp90: lastFinalNW(mc.p90Data),
-            lifetimeTax: baseline?.totalTaxesPaid ?? 0,
+            // [ENG-TTP-UNSETTLED-HORIZON] + la dette fiscale réconciliée non réglée à l'horizon —
+            // sans elle, un horizon court sous-affichait (mesuré NET : 8,6 % à 10 ans, 100 % à 1 an).
+            lifetimeTax: (baseline?.totalTaxesPaid ?? 0) + (baseline?.unsettledTaxAtHorizon ?? 0),
             fireAge: findFireAge(baseline?.chartData ?? []),
             sequenceRiskPct: mc.expertMetrics.sequenceRiskPct,
         };

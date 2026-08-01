@@ -358,7 +358,7 @@ const WinnerCard: React.FC<{
                     label="Régularisations d'impôt (net)"
                     value={fmtM(r.lifetimeTax)}
                     blur
-                    title="Soldes et remboursements d'avril sur l'horizon (l'impôt des décaissements en retraite y est réglé). N'inclut PAS l'impôt retenu à la source sur les salaires, ni l'impôt successoral. Négatif = remboursements nets."
+                    title="Soldes et remboursements d'avril sur l'horizon (l'impôt des décaissements en retraite y est réglé), + le solde de la dernière année — réglé l'avril suivant la fin de l'horizon. N'inclut PAS l'impôt retenu à la source sur les salaires, ni l'impôt successoral. Négatif = remboursements nets."
                 />
                 <Metric label="FIRE" value={r.fireAge !== null ? `${Math.round(r.fireAge)} ans` : '—'} />
             </div>

@@ -4,6 +4,16 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-01 (suite 13) — #554 MERGÉE + V5b : unsettledTaxAtHorizon
+> **#554 mergée** (auto-merge squash `acfa035`). **V5b** : `unsettledTaxAtHorizon` (photographié à
+> la réconciliation de décembre — ≡ taxPreviousYear, transfert dans le MÊME bloc, contre-vérifié
+> #555 ; remis à 0 à l'avril) + `strategySearch.lifetimeTax` l'additionne + étiquette « Régularisations d'impôt
+> (net) » + tickets [ENG-RANKING-ORDER-PIN]/[ENG-RANKTAX-ESTATE] (décision produit à poser).
+> ⚠️ Leçon : la magnitude de l'audit (−49 %) était en BRUT — le NET réel (= débit d'avril
+> manquant) : 8,6 % solvable 10 ans, 171,89 $ sur la fixture FERR. Re-mesurer le CORRECTIF d'un
+> agent, pas seulement son diagnostic. Suite V5 : [FISC-BRACKET-REALINDEX] (GO, PR dédiée) →
+> [FISC-WHT-92PCT] → [FISC-SOLO-INVEST-SPLIT].
+
 > ## 🟢 Session 2026-08-01 (suite 12) — #553 MERGÉE + V5a : PROJ-TTP-DOUBLECOUNT corrigé
 > **#553 mergée** (auto-merge squash — l'API l'accepte quand le statut Vercel est vert). **V5a
 > livrée** : `totalTaxesPaid` = Σ FluxImpots SEUL (avril débite le bucket .reer entier — retenues

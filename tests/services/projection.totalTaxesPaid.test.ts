@@ -68,11 +68,15 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
         expect(run(ferrParams, 'AUTO_MARGINAL').finalNetWorth).toBeCloseTo(375783.25, 0);
     });
 
-    it('le classement « impôt » reste ordre-préservé : MELTDOWN paie PLUS que AUTO (ratio ~4,4 mesuré)', () => {
+    it('ratio MELT/AUTO borné (~4,4 mesuré) — PAS un pin d\'ordre du ranking complet', () => {
+        // ⚠️ Le validator #554 a MESURÉ que l'ordre de rankStrategies CHANGE avec le compteur
+        // corrigé (balanced : best PRIO_REER → MELTDOWN sur le retraité 62) — voulu, l'ancien
+        // ordre reposait sur le double-comptage. Le pin d'ordre COMPLET (objectifs tax/balanced)
+        // est le ticket [ENG-RANKING-ORDER-PIN]. Ici : la paire MELT/AUTO seulement.
         const melt = run(base(), 'MELTDOWN_REER');
         const auto = run(base(), 'AUTO_MARGINAL');
         const ratio = melt.totalTaxesPaid / auto.totalTaxesPaid;
-        expect(ratio).toBeGreaterThan(2);   // l'ordre (AUTO gagne sous l'objectif impôt) est net
-        expect(ratio).toBeLessThan(8);      // et borné (un ×20 signalerait une régression d'assiette)
+        expect(ratio).toBeGreaterThan(2);   // discriminant : ancien code = 1,400 → échoue
+        expect(ratio).toBeLessThan(8);      // borné (un ×20 signalerait une régression d'assiette)
     });
 });

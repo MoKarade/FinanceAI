@@ -67,12 +67,18 @@ interface ProjectionResult {
 
 Mensuels ($/mois) : `ImpotLatent`, `FluxImpots`, `ImpotRetraitREER`, `ImpotSalaireMois`, `ImpotGainsCap`, `ImpotDivers`, `WithheldTaxRrif`.
 
-> `totalTaxesPaid` (résultat scalaire, « Impôt à vie ») **= Σ FluxImpots exactement**
-> ([PROJ-TTP-DOUBLECOUNT] 2026-08-01) : avril débite le bucket `.reer` entier (retenues cascade +
-> meltdown + FERR provisionnées) + le complément de décembre — les retenues ne sont débitées
-> qu'une fois. `ImpotRetraitREER`/`WithheldTaxRrif` restent des flux d'AFFICHAGE (acomptes),
-> ils n'entrent plus dans le compteur. Borne assumée : les acomptes de la dernière année
-> (sans avril suivant) ne sont pas comptés ; la succession a `totalEstateTax`.
+> `totalTaxesPaid` (résultat scalaire, UI « Régularisations d'impôt (net) ») **= Σ FluxImpots
+> exactement** ([PROJ-TTP-DOUBLECOUNT] 2026-08-01) : avril débite le bucket `.reer` entier
+> (retenues cascade + meltdown + FERR provisionnées) + le complément de décembre — les retenues ne
+> sont débitées qu'une fois. Il n'inclut PAS l'impôt retenu à la source des salaires (le moteur
+> travaille en `netSalary`) — il peut être NÉGATIF (remboursements nets) chez un salarié.
+> `WithheldTaxRrif` = retenue FERR (acompte, affichage). ⚠️ `ImpotRetraitREER` n'est PAS un
+> acompte : mesuré = Σ TaxPaidREER (règlement d'avril) + Σ WithheldTaxRrif — la retenue FERR y
+> figure DEUX fois dans la série (aucun consommateur applicatif, panel #554). Borne de fin
+> d'horizon MESURÉE : l'année fiscale finale (sans avril suivant) échappe au compteur — ~5-6 %
+> sur un horizon 20 ans solvable, jusqu'à ~49 % sur 10 ans (ticket [ENG-TTP-UNSETTLED-HORIZON]) ;
+> `totalEstateTax` (impôt de liquidation successorale) est une grandeur DISJOINTE, il ne couvre
+> pas ce solde.
 Payés (cumul YTD) : `TaxPaidRevenu`, `TaxPaidGains`, `TaxPaidDivers`, `TaxPaidREER`.
 Provisionnés (current + previous year) : `AccruedTaxRevenu`, `AccruedTaxGains`, `AccruedTaxDivers`, `AccruedTaxREER`.
 

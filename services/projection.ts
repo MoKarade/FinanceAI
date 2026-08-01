@@ -1440,9 +1440,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // à tort sous l'objectif « impôt » (corrigé, mesuré) ; (2) `chartData.RetraitREER`
             // rendait ~96 % des sorties invisibles (30 496 $ affichés pour 794 303 $ tirés).
             // Aucun impact NW : PROUVÉ bit-identique (301 mois × 9 grandeurs, 2 worktrees).
-            // NB : `rrspWithholdingMois` reste un compteur d'AFFICHAGE (chartData) — depuis
-            // [PROJ-TTP-DOUBLECOUNT] (2026-08-01) il n'entre PLUS dans totalTaxesPaid (l'impôt
-            // arrive au compteur via le débit d'avril du bucket .reer, une seule fois).
+            // NB : depuis [PROJ-TTP-DOUBLECOUNT] (2026-08-01), `rrspWithholdingMois` n'entre PLUS
+            // dans totalTaxesPaid (l'impôt arrive au compteur via le débit d'avril du bucket
+            // .reer, une seule fois) et n'atteint PAS chartData (vérifié par grep — panel #554) :
+            // son seul rôle restant est le re-crédit CF-2 de cashflowAllocation (NW-neutralité).
             retraitReerMois += meltResult.reerDrawn;
             rrspWithholdingMois += meltResult.withholding;
             accRetraitsReerYear += meltResult.reerDrawn;

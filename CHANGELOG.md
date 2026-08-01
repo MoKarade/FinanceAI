@@ -14,8 +14,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   qui débite ces mêmes retenues — les mêmes dollars comptés deux fois (mesuré : stratégie meltdown
   affichée 321 122 $ pour 131 871 $ réellement payés ; cascade 229 338 $ pour 29 806 $). Désormais
   le compteur = la somme exacte des flux d'impôt débités du compte (identité vérifiée au cent sur
-  3 scénarios). Aucun patrimoine ne bouge (prouvé au cent) ; le classement de stratégies garde le
-  même ordre — le meltdown paie réellement ~4,4× l'impôt de la cascade sur le scénario de référence.
+  3 scénarios). Aucun patrimoine ne bouge (prouvé bit-identique sur 5 scénarios). ⚠️ **La stratégie
+  recommandée PEUT changer** : l'ancien classement pesait un impôt double-compté différemment selon
+  la stratégie (mesuré : sous l'objectif par défaut, le meilleur choix bascule sur certains profils
+  retraités) — c'est l'effet voulu d'un compteur réparé, l'ancien ordre reposait sur des chiffres
+  faux. Le meltdown paie réellement ~4,4× l'impôt de la cascade sur le scénario de référence.
   Effet visible assumé : la « fuite fiscale » Monte-Carlo et l'efficacité fiscale du FVI se
   recalent sur le vrai impôt (mesuré : taxLeakage 115 % → 47 % meltdown, 81 % → 10 % cascade ;
   FVI +10 à +14 points) — ta situation n'a pas changé, le thermomètre est réparé.

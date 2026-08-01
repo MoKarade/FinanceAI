@@ -497,9 +497,12 @@ describe('[FISC-WHT-HARDCODE] retenue REER affichée = tiered (19/24/29 %), pas 
         // [PROJ-TTP-DOUBLECOUNT 2026-08-01] `totalTaxesPaid` ne porte PLUS la retenue en direct
         // (compteur = Σ FluxImpots ; décembre réconcilie au vrai impôt, donc le TAUX de retenue
         // n'influence plus sa valeur — l'ancien seuil 250 000 sur le compteur est mort par design).
-        // Le discriminant tiered-vs-0,15 vit désormais sur le FLUX affiché `ImpotRetraitREER`
-        // (retenue exacte PAR TIRAGE) : mesuré 155 114 $ tiered ; un 0,15 plat donnerait ~97 k$
-        // (Σbrut ≈ 650 k × 0,15) → le seuil 130 000 reste inatteignable en flat.
+        // Le discriminant tiered-vs-0,15 vit désormais sur le FLUX affiché `ImpotRetraitREER`.
+        // ⚠️ Sémantique exacte (panel #554, mesurée au dollar) : cette série = Σ TaxPaidREER
+        // (règlement d'avril du bucket, qui PORTE la retenue tiered provisionnée) + Σ
+        // WithheldTaxRrif (FERR — 0 ici, pas de 71+) : c'est via le bucket d'avril que le barème
+        // tiered reste discriminant. Mesuré 155 114 $ tiered ; un 0,15 plat donnerait ~98 k$
+        // (Σbrut ≈ 655 k × 0,15) → le seuil 130 000 reste inatteignable en flat.
         const sumWht = r.chartData.reduce((s, d) => s + (Number.isFinite(Number(d.ImpotRetraitREER)) ? Number(d.ImpotRetraitREER) : 0), 0);
         expect(sumWht).toBeGreaterThan(130_000);
         // Et le compteur suit la nouvelle identité : Σ FluxImpots exactement (± 1 $).

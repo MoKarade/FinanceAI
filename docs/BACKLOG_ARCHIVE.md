@@ -127,6 +127,26 @@ fichier:ligne). Verdicts appliqués à la refonte :
   (3 consommateurs) · équité historique PAR ANNÉE au graphe Accueil (+77 097 $ sur 2022) ·
   log « supposée DÉTENUE » au m0 · docs PROJECTION/OUTPUT_SCHEMA + 3 leçons CONVENTIONS.
 
+## ✅ V4 vie privée + V5a/V5b impôt à vie (PR #553 `000eec6`, #554 `acfa035`, #555 `22d128a` — mergées 2026-08-01)
+
+- [x] **`[D6-PRIV-MONTANTS]`** ✅ (PR #553) — montants des sliders REER/CELIAPP (TaxCenter), REEE
+  (ChildPlanning) et paiement suppl. (DebtManager) masqués en mode discret via `PrivateSliderValue`
+  (révélation au focus, aria-label SR-safe), symétrie PrivateNumberInput.
+- [x] **`[SEC-GA-DEFER-CONSENT]`** ✅ (PR #553, Loi 25) — le SCRIPT gtag n'est chargé qu'au
+  consentement accordé (plus aucun octet vers Google avant).
+- [x] **`[HIST-STORE-SIZE]`** ✅ (PR #553) — downsample du `priceHistory` stocké (> 365 j →
+  1 pt/semaine, idempotent, compose avec mergePriceHistories) : ÷5 le stock ancien dans chaque
+  push Drive/localStorage.
+- [x] **`[PROJ-TTP-DOUBLECOUNT]`** ✅ (PR #554) — « Impôt à vie » = Σ FluxImpots SEUL (identité au
+  cent sur 3 scénarios, NW bit-identique, discriminant git-stash). Mesures : MELTDOWN
+  321 122 → 131 871 $ ; AUTO 229 338 → 29 806 $ ; ratio honnête 4,42. UI relibellée
+  « Régularisations d'impôt (net) » + tooltip. ⚠️ L'ordre du ranking CHANGE (voulu — l'ancien
+  reposait sur le double-comptage) → tickets [ENG-RANKING-ORDER-PIN]/[ENG-RANKTAX-ESTATE] au vivant.
+- [x] **`[ENG-TTP-UNSETTLED-HORIZON]`** ✅ (PR #555) — `unsettledTaxAtHorizon` (NET signé, photo à
+  la réconciliation de décembre, reset à l'avril suivant) exposé et additionné dans
+  `strategySearch.lifetimeTax`. Additivité prouvée au cent ; magnitudes 8,6 %/51,5 %/100 % à
+  10/2/1 ans ; signe négatif honnête. Reste : [ENG-TTP-UNSETTLED-PROPAGATE] (4 surfaces au compteur nu).
+
 
 # (Contenu intégral du BACKLOG au 2026-07-31, avant refonte)
 

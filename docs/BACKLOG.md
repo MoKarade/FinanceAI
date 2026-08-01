@@ -74,21 +74,16 @@
 > Analyse fiscale 2026-07-31 (financial-integrity, findings MESURÉS via npx tsx sur le vrai moteur).
 > ⚠️ Un finding = une hypothèse : chaque fix passe par discriminant git-stash + panel adversarial.
 
-- [ ] **`[FISC-BRACKET-REALINDEX]`** (L, **CRITIQUE** [Certain, MESURÉ], 🧭 Q1 — fusionne avec
-  ITEM-2A) — DOUBLE indexation des paliers : le moteur DÉFLATE le revenu (`taxDecember.ts:370-371`)
-  puis passe `loopYear` à un barème LUI-MÊME indexé 1,02^Δ (`utils/tax.ts:694`) et re-nominalise →
-  les paliers s'élargissent de 2 %/an EN DOLLARS RÉELS, indépendamment de simInflation (présent au
-  réglage par défaut). Mesuré (98 400 $ réel constant) : impôt réel 24 932 → 16 740 $ à l'an 30
-  (−8 192 $/an/personne ; couple ~−16 k$/an ; cumul ~250-300 k$/30 ans, sens NON conservateur —
-  patrimoine/FIRE optimistes). Gonfle aussi RAMQ/FSS/ligne 361. Correctif juste :
-  `palier_réel = palier_2026 × (1,02/(1+i))^Δ`. ⚠️ Déplace TOUS les goldens (~12 sites).
-- [x] **`[ENG-TTP-UNSETTLED-HORIZON]`** ✅ 2026-08-01 (PR #555) — champ `unsettledTaxAtHorizon`
-  photographié à la réconciliation de DÉCEMBRE (≡ taxPreviousYear, transfert dans le même bloc —
-  contre-vérifié #555), remis à 0 au règlement d'avril (garde `m > 0`) ;
-  `strategySearch.lifetimeTax` l'additionne. Magnitudes NET vérifiées : 8,6 % à 10 ans, 51,5 % à
-  2 ans, 100 % à 1 an ; ADDITIVITÉ prouvée au cent (unsettled(N) == FluxImpots d'avril du run
-  N+1) ; signe négatif honnête (−9 558 $ mesuré). L'audit #554 sommait AccruedTax* (réconcilié +
-  stub brut). Pins : 3 valeurs + additivité + signe.
+- [x] **`[FISC-BRACKET-REALINDEX]`** ✅ 2026-08-01 (PR en cours, fusionne ITEM-2A) — param
+  `realDeflator` (défaut 1 = rétrocompat bit-identique) sur `getIndexedBracketsForYear` + dérivés
+  (paliers, BPA, crédits d'âge/ligne 361, RAMQ, FSS, `getMarginalRate`, `calculateFiscalReport`) ;
+  seuls les sites RÉELS de `taxDecember` le passent (salarial, combinedTaxFor retraité, RAMQ, FSS) —
+  les blocs gains/dividendes sont NOMINAUX-cohérents et n'y touchent pas (documenté en code).
+  Discriminant prouvé (5/5 échouent sur l'ancien code) : impôt réel CONSTANT 2 702 $/an à revenu
+  réel constant (dérivait à 3 235 $) ; retraité 62 : ttp +62 % (29 806 → 48 314), direction
+  conservatrice. 10 goldens re-basés SCIEMMENT (item2c, meltdownDisplay, returnProfile,
+  totalTaxesPaid). Nuance MESURÉE : chez le SALARIÉ le NW monte (~+0,8 %) — la retenue employeur
+  (sans déductions) était SUR-évaluée par les paliers doublement indexés.
 - [ ] **`[ENG-TTP-UNSETTLED-PROPAGATE]`** (S-M — contre-vérif #555) — 4 surfaces lisent encore
   `totalTaxesPaid` NU : `monteCarlo.ts:108,145` (taxLeakage), `getProjection.spec.ts:99` +
   `simulateWhatIf.spec.ts:131` (netTaxSettlements servi à l'IA), `drawdownOptimizer.ts:61`
@@ -159,13 +154,6 @@
   (`projection.fuzzConservation.test.ts:21-23`) : vente/gain locatif, équité négative, véhicule,
   héritage, REEE. Les couvrir (mesurer la couverture, pas la supposer).
 
-- [x] **`[PROJ-TTP-DOUBLECOUNT]`** ✅ 2026-08-01 (PR V5a — compteur = Σ FluxImpots SEUL, identité
-  vérifiée au cent sur 3 scénarios, NW bit-identique, discriminant git-stash 2/3, goldens ITEM-2C
-  + WHT re-basés SCIEMMENT ; le discriminant tiered-vs-0,15 repointé sur le flux ImpotRetraitREER
-  — le taux de retenue n'influence plus le compteur, décembre réconcilie au vrai impôt).
-  Mesures : MELTDOWN 321 122 → 131 871 $ ; AUTO 229 338 → 29 806 $ ; ratio MELT/AUTO honnête 4,42.
-  ⚠️ Le validator a MESURÉ que l'ordre du ranking CHANGE (balanced : best PRIO_REER → MELTDOWN sur
-  le retraité 62 ; tax : → PRIO_CELI) — voulu, l'ancien ordre reposait sur le double-comptage.
 - [ ] **`[MELTDOWN-THRESHOLDS-DOC]`** (S, doc) — `meltdownReer.ts:9-13` : seuils
   MELTDOWN_NW_HIGH/MID (2 M/1 M) + cibles 220 k/140 k/90 k × adultes = heuristiques de CONCEPTION
   non documentées (pas des constantes fiscales) — les documenter (module + FISCAL_REFERENCE §9).
@@ -228,11 +216,6 @@
   `runFintableSync.ts:118`) : une édition manuelle pendant la fenêtre peut être écrasée. Vrai fix =
   ré-appliquer `applyPayloadsIsolated` sur l'état FRAIS au moment de l'écriture. Sœur : cooldown
   localStorage ≠ mutex cross-onglet (fenêtre étroite, intégrité seulement).
-- [ ] **`[HIST-STORE-SIZE]`** (M, MESURÉ 2026-07-31) — `priceHistory` dans le store persisté :
-  ~116 Ko aujourd'hui (8 titres, 18 mois, 37 o/point), +6 Ko/mois, ~384 Ko à 5 ans — dans CHAQUE
-  push Drive + localStorage. Reco : downsample du stocké (> 365 j → 1 point/semaine, ÷5 le stock
-  ancien) ; PAS d'IDB device-local (un nouvel appareil perdrait les points crypto > 365 j, fenêtre
-  CoinGecko — c'est pourquoi mergePriceHistories existe).
 - [ ] **`[SDK-IMPORT-TIMEOUT]`** (S, résiduel panel #547, non bloquant) — le chargement du chunk SDK
   (`services/claude.ts:157`) n'est couvert par aucun timeout : un `import()` qui stalle sans rejeter
   pend indéfiniment (borné : 1er usage par session). Fix : course import() vs timer 8-10 s dans
@@ -254,9 +237,6 @@
 - [ ] **`[MCP-CLOUDRUN-AUTH-HARDENING]`** (M, 2/4 faits, pré-exposition) — restent : rate-limit sur
   `POST /oauth/authorize` (grep 429 oauthProvider.ts = 0) + runbook rotation
   `FINANCEAI_OAUTH_SIGNING_KEY` (kill-switch d'incident).
-- [ ] **`[SEC-GA-DEFER-CONSENT]`** (S, Loi 25) — `index.html:49` : gtag chargé inconditionnellement
-  AVANT le consentement → différer au consentement accordé.
-
 ## 💬 Chat / IA
 
 - [ ] **`[CHAT-PAGE-CONTEXT-V2]`** (M, file Marc « chat conscient de la page ») — instrumenter les
@@ -280,10 +260,6 @@
 
 ## 🎨 UI / UX / a11y
 
-- [ ] **`[D6-PRIV-MONTANTS]`** (S, décision Marc OUI déjà prise 2026-07-06) — les montants des
-  sliders REER/CELIAPP (`TaxCenter.tsx:409,417`), REEE (`ChildPlanning.tsx:489`) et paiement suppl.
-  (`DebtManager.tsx:141`) s'affichent EN CLAIR en mode discret → masquer au repos, révéler au focus
-  (symétrie PrivateNumberInput), aria-label SR-safe.
 - [ ] **`[A11Y-INK500]`** (M, par lots — 115 occurrences restantes, ~37 fichiers) — migrer ink-500 →
   ink-400 sur le contenu actif (échec AA normal), classification par-occurrence (PAS un sed aveugle) :
   investments/, projection/, sidebar/, setup/, realestate/, AdvancedProjectionParams…

@@ -198,11 +198,14 @@ export interface AgeCreditOptions {
  * @param opts          Âge, revenu pension admissible, statut conjoint, revenu familial
  * @param netTaxableIncome Revenu net après déductions (sert au seuil fed et fallback QC)
  * @param year          Année fiscale pour indexer les seuils et montants (défaut 2026)
+ * @param realDeflator  [FISC-BRACKET-REALINDEX] déflateur (1+i)^Δ quand le revenu passé est
+ *                      en dollars RÉELS (défaut 1 = espace nominal, rétrocompat bit-identique)
  */
 export const calculateAgeAndPensionCredits = (
     opts: AgeCreditOptions,
     netTaxableIncome: number,
     year: number = 2026,
+    realDeflator: number = 1,
 ): { fedCredit: number; qcCredit: number } => {
     // Guard NaN/Infinity (audit silent-failure-hunter §6.2) : un NaN injecté via
     // opts (e.g. activeUsersCount = 0 → division NaN) polluerait tout le calcul.
@@ -217,7 +220,7 @@ export const calculateAgeAndPensionCredits = (
 
     // Indexation des seuils et montants 2026 selon l'année (fact mutualisé
     // avec getIndexedBracketsForYear pour cohérence avec les paliers).
-    const { inflationFactor } = getIndexedBracketsForYear(year);
+    const { inflationFactor } = getIndexedBracketsForYear(year, realDeflator);
     const ageAmountFed = AGE_AMOUNT_FED_2026 * inflationFactor;
     const ageThresholdFed = AGE_AMOUNT_FED_THRESHOLD_2026 * inflationFactor;
     const ageAmountQc = AGE_AMOUNT_QC_2026 * inflationFactor;
@@ -329,6 +332,8 @@ export interface RamqOptions {
  * @param familyNetIncome Revenu familial NET (après déductions REER/FHSA).
  * @param opts            hasSpouse, childrenCount, exempt
  * @param year            Année fiscale pour indexer seuils + prime max (défaut 2026).
+ * @param realDeflator    [FISC-BRACKET-REALINDEX] déflateur (1+i)^Δ pour un revenu en $ RÉELS
+ *                        (défaut 1 = nominal).
  * @returns Prime annuelle PAR ADULTE (0 à RAMQ_MAX_PREMIUM_2026 × indexation).
  *          Multiplier par activeUsersCount pour le total famille.
  */
@@ -336,6 +341,7 @@ export const calculateRamqPremium = (
     familyNetIncome: number,
     opts: RamqOptions = {},
     year: number = 2026,
+    realDeflator: number = 1,
 ): number => {
     if (opts.exempt) return 0;
     if (!Number.isFinite(familyNetIncome) || familyNetIncome <= 0) return 0;
@@ -345,7 +351,7 @@ export const calculateRamqPremium = (
 
     // Indexation annuelle des seuils et de la prime max (mutualisée avec les
     // paliers d'impôt via getIndexedBracketsForYear).
-    const { inflationFactor } = getIndexedBracketsForYear(year);
+    const { inflationFactor } = getIndexedBracketsForYear(year, realDeflator);
 
     let exemption = (isCouple ? RAMQ_EXEMPTION_COUPLE_2026 : RAMQ_EXEMPTION_SINGLE_2026) * inflationFactor;
     if (children >= 1) {
@@ -417,15 +423,18 @@ export const FSS_MAX_PREMIUM = 1000;
  *
  * @param netIncome  Revenu net imposable (après déductions).
  * @param year       Année fiscale pour indexation (défaut 2026).
+ * @param realDeflator [FISC-BRACKET-REALINDEX] déflateur (1+i)^Δ pour un revenu en $ RÉELS
+ *                   (défaut 1 = nominal).
  * @returns Cotisation FSS annuelle (0 à FSS_MAX_PREMIUM × indexation).
  */
 export const calculateFSSPremium = (
     netIncome: number,
     year: number = 2026,
+    realDeflator: number = 1,
 ): number => {
     if (!Number.isFinite(netIncome) || netIncome <= 0) return 0;
 
-    const { inflationFactor } = getIndexedBracketsForYear(year);
+    const { inflationFactor } = getIndexedBracketsForYear(year, realDeflator);
     const t1 = FSS_THRESHOLD_ZERO * inflationFactor;
     const t2 = FSS_THRESHOLD_FLAT * inflationFactor;
     const t3 = FSS_THRESHOLD_RAMP * inflationFactor;
@@ -681,7 +690,7 @@ export const calculateDetailedTax = (income: number, brackets: typeof FED_BRACKE
     return { totalTax, breakdown };
 };
 
-const bracketsCache: Record<number, {
+const bracketsCache: Record<string, {
     fed: typeof FED_BRACKETS,
     qc: typeof QC_BRACKETS,
     basicFed: number,
@@ -689,15 +698,26 @@ const bracketsCache: Record<number, {
     inflationFactor: number
 }> = {};
 
-const getIndexedBracketsForYear = (year: number) => {
-    if (bracketsCache[year]) return bracketsCache[year];
-    const inflationFactor = Math.pow(1.02, Math.max(0, year - TAX_BASE_YEAR));
+/**
+ * [FISC-BRACKET-REALINDEX] `realDeflator` (optionnel, défaut 1 = rétrocompat bit-identique) :
+ * quand l'APPELANT calcule en dollars RÉELS (taxDecember déflate le revenu par (1+i)^Δ puis
+ * re-nominalise), les paliers/montants indexés 1,02^Δ NOMINAUX doivent être ramenés au même
+ * espace — palier_réel = palier_2026 × 1,02^Δ / (1+i)^Δ. Sans ça, les paliers s'élargissaient de
+ * 2 %/an EN DOLLARS RÉELS quel que soit i (mesuré : l'impôt réel d'un revenu réel constant fondait
+ * de 24 932 → 16 740 $/pers à l'an 30 — sens NON conservateur). Tout ce qui dérive du facteur
+ * (paliers, BPA, crédits d'âge, ligne 361, RAMQ, FSS) suit automatiquement.
+ */
+const getIndexedBracketsForYear = (year: number, realDeflator: number = 1) => {
+    const deflator = Number.isFinite(realDeflator) && realDeflator > 0 ? realDeflator : 1;
+    const cacheKey = deflator === 1 ? String(year) : `${year}|${deflator.toPrecision(12)}`;
+    if (bracketsCache[cacheKey]) return bracketsCache[cacheKey];
+    const inflationFactor = Math.pow(1.02, Math.max(0, year - TAX_BASE_YEAR)) / deflator;
     const indexedFed = FED_BRACKETS.map(b => ({ ...b, upTo: b.upTo === Infinity ? Infinity : b.upTo * inflationFactor }));
     const indexedQc = QC_BRACKETS.map(b => ({ ...b, upTo: b.upTo === Infinity ? Infinity : b.upTo * inflationFactor }));
     const basicFed = BASIC_PERSONAL_AMOUNT_FED * inflationFactor;
     const basicQc = BASIC_PERSONAL_AMOUNT_QC * inflationFactor;
-    bracketsCache[year] = { fed: indexedFed, qc: indexedQc, basicFed, basicQc, inflationFactor };
-    return bracketsCache[year];
+    bracketsCache[cacheKey] = { fed: indexedFed, qc: indexedQc, basicFed, basicQc, inflationFactor };
+    return bracketsCache[cacheKey];
 };
 
 /**
@@ -715,13 +735,13 @@ export const firstCombinedBracketTopForYear = (year: number): number => {
 // d'impôt de 1965). On l'applique partout où on calcule le fédéral net au QC.
 const QC_FEDERAL_ABATEMENT_RATE = 0.165;
 
-export const getMarginalRate = (income: number, year: number = 2026) => {
+export const getMarginalRate = (income: number, year: number = 2026, realDeflator: number = 1) => {
     // GUARD-NAN — un income NON FINI (NaN/Infinity, bug amont) ne matche aucun palier (`income <= upTo`
     // toujours faux) → tombait SILENCIEUSEMENT sur le taux MAX via `|| 0.33`. On le rabat sur 0 (1er
     // palier) : dégradation PRÉVISIBLE et bornée plutôt qu'un taux marginal plein fantôme. `utils/tax.ts`
     // reste sans dépendance (pas de logError importé ici) — le repli explicite EST le signal.
     const safeIncome = Number.isFinite(income) ? income : 0;
-    const { fed, qc } = getIndexedBracketsForYear(year);
+    const { fed, qc } = getIndexedBracketsForYear(year, realDeflator);
     const fedRate = fed.find(b => safeIncome <= b.upTo)?.rate || 0.33;
     const qcRate = qc.find(b => safeIncome <= b.upTo)?.rate || 0.2575;
     // Fédéral effectif au QC = taux fédéral diminué de l'abattement de 16,5 %.
@@ -745,6 +765,10 @@ export const calculateFiscalReport = (
     // (`undefined`) → défaut = `grossIncome` : rétrocompat TOTALE pour les appelants dont le gross EST
     // le salaire (moteur de projection, PDF, viz…). Une valeur explicite (même 0) est respectée.
     employmentIncome?: number,
+    // [FISC-BRACKET-REALINDEX] déflateur (1+i)^Δ quand `grossIncome` est en dollars RÉELS
+    // (taxDecember déflate les revenus par ctx.inflationFactor avant d'appeler ici). Défaut 1 =
+    // espace nominal, rétrocompat bit-identique. Propagé aux paliers, BPA et crédits d'âge.
+    realDeflator: number = 1,
 ) => {
     grossIncome = Number(grossIncome) || 0;
     rrspContribution = Number(rrspContribution) || 0;
@@ -754,7 +778,7 @@ export const calculateFiscalReport = (
     // le signal). Les 2 appelants vivants (TaxCenter uGross, get_tax_situation g filtré > 0) sont pré-assainis
     // en amont ; un futur appelant qui brancherait un employmentIncome non validé doit loguer côté appelant.
     const employmentBase = employmentIncome === undefined ? grossIncome : (Number(employmentIncome) || 0);
-    const { fed: indexedFedBrackets, qc: indexedQcBrackets, basicFed: indexedBasicFed, basicQc: indexedBasicQc } = getIndexedBracketsForYear(year);
+    const { fed: indexedFedBrackets, qc: indexedQcBrackets, basicFed: indexedBasicFed, basicQc: indexedBasicQc } = getIndexedBracketsForYear(year, realDeflator);
 
     const netTaxable = Math.max(0, grossIncome - rrspContribution - fhsaContribution);
 
@@ -762,7 +786,7 @@ export const calculateFiscalReport = (
     // appliqués au fédéral AVANT l'abatement QC et au provincial APRÈS le BPA.
     // L'année est propagée pour indexer seuils et montants ligne 361 + ligne 30100.
     const ageCredits = ageOpts
-        ? calculateAgeAndPensionCredits(ageOpts, netTaxable, year)
+        ? calculateAgeAndPensionCredits(ageOpts, netTaxable, year, realDeflator)
         : { fedCredit: 0, qcCredit: 0 };
 
     const fedData = calculateDetailedTax(netTaxable, indexedFedBrackets, skipBreakdown);

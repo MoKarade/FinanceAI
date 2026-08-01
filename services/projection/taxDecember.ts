@@ -324,7 +324,11 @@ export interface DecemberContext {
 }
 
 export interface DecemberHelpers {
-    calculateFiscalReport: (gross: number, deductions: number, withheld: number, year: number, mc?: boolean, ageOpts?: AgeCreditOptions) => FiscalReport;
+    // [FISC-BRACKET-REALINDEX] `realDeflator` (positionnel 8, après employmentIncome) : déflateur
+    // (1+i)^Δ à passer quand `gross` est en dollars RÉELS — les paliers/crédits sont alors ramenés
+    // dans le même espace (facteur effectif 1,02^Δ/(1+i)^Δ au lieu du double-indexé 1,02^Δ sur un
+    // revenu déflaté). Les appels en espace NOMINAL (gains, dividendes) ne le passent PAS.
+    calculateFiscalReport: (gross: number, deductions: number, withheld: number, year: number, mc?: boolean, ageOpts?: AgeCreditOptions, employmentIncome?: number, realDeflator?: number) => FiscalReport;
     getMarginalRate: (income: number, year: number) => number;
     // ITEM 2d — 4e arg optionnel : impôt brut PROGRESSIF (bande sur le montant majoré).
     // Quand fourni, il remplace le calcul plat (montant majoré × taux marginal).
@@ -391,8 +395,11 @@ export function processDecemberTaxFiling(
         const ageOptsMarc = mkActiveAgeOpts(ctx.age);
         const ageOptsAnna = mkActiveAgeOpts(ctx.ageSpouse);
 
-        const taxMarcReal = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, deductionsMarc, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsMarc).totalTax : 0;
-        const taxAnnaReal = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, deductionsAnna, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna).totalTax : 0;
+        // [FISC-BRACKET-REALINDEX] revenus en dollars RÉELS (déflatés ci-dessus) → paliers/crédits
+        // ramenés en réel via realDeflator = ctx.inflationFactor (sinon : double indexation, les
+        // paliers s'élargissaient de ~2 %/an en termes réels → impôt long-terme sous-évalué).
+        const taxMarcReal = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, deductionsMarc, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsMarc, undefined, ctx.inflationFactor).totalTax : 0;
+        const taxAnnaReal = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, deductionsAnna, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna, undefined, ctx.inflationFactor).totalTax : 0;
         const totalAnnualTax = (taxMarcReal + taxAnnaReal) * ctx.inflationFactor;
         grossIncomeTax = totalAnnualTax; // [FA-6-CREDIT-CAP] liability salariale de l'année
 
@@ -400,8 +407,8 @@ export function processDecemberTaxFiling(
         let taxMarcEmployer = taxMarcReal;
         let taxAnnaEmployer = taxAnnaReal;
         if (!ctx.optimizeSourceDeductions) {
-            taxMarcEmployer = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsMarc).totalTax : 0;
-            taxAnnaEmployer = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna).totalTax : 0;
+            taxMarcEmployer = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsMarc, undefined, ctx.inflationFactor).totalTax : 0;
+            taxAnnaEmployer = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna, undefined, ctx.inflationFactor).totalTax : 0;
         }
         const totalEmployerTax = (taxMarcEmployer + taxAnnaEmployer) * ctx.inflationFactor;
         const estimatedWithholding = totalEmployerTax * 0.92;
@@ -541,7 +548,8 @@ export function processDecemberTaxFiling(
                 let t = 0;
                 for (let i = 0; i < n; i++) {
                     const ageOpts = mkRetiredAgeOpts(ages[i], eligibles[i]);
-                    t += helpers.calculateFiscalReport(taxables[i], 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOpts).totalTax;
+                    // [FISC-BRACKET-REALINDEX] taxables[i] est en $ RÉELS → paliers/crédits en réel.
+                    t += helpers.calculateFiscalReport(taxables[i], 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOpts, undefined, ctx.inflationFactor).totalTax;
                 }
                 return t;
             };
@@ -639,6 +647,7 @@ export function processDecemberTaxFiling(
                 exempt: !!ctx.ramqExempt,
             },
             ctx.loopYear,  // indexation seuils + prime max
+            ctx.inflationFactor,  // [FISC-BRACKET-REALINDEX] familyNetIncome est en $ RÉELS → seuils en réel
         );
         const ramqTotal = ramqPerAdult * ctx.activeUsersCount * ctx.inflationFactor;
         if (ramqTotal > 0) {
@@ -670,7 +679,8 @@ export function processDecemberTaxFiling(
             + ctx.accRetraitsReerYear
             + ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD
         ) / ctx.activeUsersCount / ctx.inflationFactor;
-        const fssPerAdult = calculateFSSPremium(individualNetIncome, ctx.loopYear);
+        // [FISC-BRACKET-REALINDEX] individualNetIncome est en $ RÉELS → seuils FSS en réel.
+        const fssPerAdult = calculateFSSPremium(individualNetIncome, ctx.loopYear, ctx.inflationFactor);
         const fssTotal = fssPerAdult * ctx.activeUsersCount * ctx.inflationFactor;
         if (fssTotal > 0) {
             taxCurrent.divers += fssTotal;
@@ -697,6 +707,9 @@ export function processDecemberTaxFiling(
         // un incrément ≈ gain × taux marginal (cohérent avec l'ancien comportement).
         const perAdultIncome = incomeForGains / ctx.activeUsersCount;
         const perAdultGains = taxableCapGains / ctx.activeUsersCount;
+        // [FISC-BRACKET-REALINDEX] bloc NOMINAL-cohérent : revenus/gains JAMAIS déflatés ici, impôt
+        // ajouté sans re-nominalisation → paliers ×1,02^Δ nominal = le bon espace. PAS de realDeflator
+        // (en passer un déflaterait les paliers sous un revenu nominal → sur-imposition croissante).
         const taxBase = helpers.calculateFiscalReport(perAdultIncome, 0, 0, ctx.loopYear, true).totalTax;
         const taxTop = helpers.calculateFiscalReport(perAdultIncome + perAdultGains, 0, 0, ctx.loopYear, true).totalTax;
         const tax = Math.max(0, taxTop - taxBase) * ctx.activeUsersCount;
@@ -720,6 +733,8 @@ export function processDecemberTaxFiling(
             ? ((ctx.incomeRetirementMonthly - gisMonthlySafe) * 12 + ctx.accRentesYear + ctx.accRetraitsReerYear)
             : (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual) * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed)
         ) / ctx.activeUsersCount;
+        // [FISC-BRACKET-REALINDEX] bloc NOMINAL-cohérent (comme les gains §2) : incomeForDiv est
+        // nominal, l'impôt s'ajoute sans re-nominalisation → PAS de realDeflator.
         const currentMarginal = helpers.getMarginalRate(incomeForDiv, ctx.loopYear);
         // ITEM 2d — empilement PROGRESSIF du dividende majoré (comme B-AUDIT-2 pour les
         // gains). Le dividende MAJORÉ (gross-up) s'empile sur le revenu : l'impôt brut =

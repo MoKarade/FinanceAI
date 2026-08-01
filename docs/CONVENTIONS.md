@@ -435,6 +435,20 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   par test. Corollaire : un discriminant bâti sur l'ancienne sémantique meurt avec elle — le test
   tiered-vs-flat a dû être repointé sur le flux d'affichage (le taux de retenue n'influence plus
   le compteur, décembre réconcilie au vrai impôt).
+  ⚠️ **Un fix d'espace réel↔nominal ne s'applique qu'aux sites du MÊME espace — et la direction
+  peut s'inverser selon la phase** (leçon FISC-BRACKET-REALINDEX 2026-08-01) : la double indexation
+  (revenu déflaté en réel, paliers ×1,02^Δ nominal) ne vivait QUE dans les sites de taxDecember qui
+  déflatent puis re-nominalisent (salarial, combinedTaxFor, RAMQ, FSS). Les blocs voisins gains/
+  dividendes du MÊME fichier sont nominal-cohérents (revenu jamais déflaté, impôt jamais
+  re-nominalisé) : leur passer le deflator aurait créé le bug INVERSE — le périmètre d'un fix
+  d'espace se décide site par site en suivant les ÷/× inflationFactor, pas par fichier. Et la
+  direction mesurée diffère par phase : retraité = impôt à vie +62 % (tout l'impôt transite par
+  décembre), salarié = NW en légère HAUSSE (seule la régularisation d'avril est visible, et la
+  retenue employeur — calculée sans déductions, plus haut dans le barème — était PLUS sur-évaluée
+  que l'impôt réel : le net d'avril baisse). Vérifier la direction du fix PAR PHASE avant d'écrire
+  les commentaires de re-base, sinon on documente un sens faux. Bonus rétrocompat : parce que le
+  barème est homogène de degré 1, l'ancien monde == `realDeflator = 1` exactement (paramètre
+  optionnel à défaut neutre, zéro migration).
   ⚠️ **Des fixtures de test à dates ABSOLUES vieillissent contre un NOW fixe** (leçon HIST-STORE-SIZE
   2026-08-01) : les tests de fusion d'historique utilisaient des closes datés « 2026-01-10 » avec un
   NOW figé à 2027-01-15 — l'ajout de la politique d'âge (downsample > 365 j) les a fait basculer du

@@ -16,6 +16,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   le compteur = la somme exacte des flux d'impôt débités du compte (identité vérifiée au cent sur
   3 scénarios). Aucun patrimoine ne bouge (prouvé au cent) ; le classement de stratégies garde le
   même ordre — le meltdown paie réellement ~4,4× l'impôt de la cascade sur le scénario de référence.
+  Effet visible assumé : la « fuite fiscale » Monte-Carlo et l'efficacité fiscale du FVI se
+  recalent sur le vrai impôt (mesuré : taxLeakage 115 % → 47 % meltdown, 81 % → 10 % cascade ;
+  FVI +10 à +14 points) — ta situation n'a pas changé, le thermomètre est réparé.
+- **L'étiquette « Impôt à vie » devient « Régularisations d'impôt (net) »** (panel #554) : ce
+  compteur n'a JAMAIS inclus l'impôt retenu à la source sur les salaires (mesuré : un couple
+  salarié affichait −47 k$ pour ~846 k$ d'impôt réel à vie) — même sémantique que le MCP
+  (`netTaxSettlements`), infobulle explicative ajoutée. ⚠️ Reste [ENG-TTP-UNSETTLED-HORIZON] au
+  backlog : la dernière année fiscale (sans avril suivant) échappe encore au compteur (jusqu'à
+  −49 % sur un horizon de 10 ans).
 
 ## [unreleased — vie privée V4] — 2026-08-01
 

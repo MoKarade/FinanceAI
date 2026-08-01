@@ -350,7 +350,16 @@ const WinnerCard: React.FC<{
             <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <Metric label="Succès" value={`${r.successRate}%`} />
                 <Metric label="Patrimoine méd." value={fmtM(r.finalNWp50)} blur />
-                <Metric label="Impôt à vie" value={fmtM(r.lifetimeTax)} blur />
+                {/* [PROJ-TTP-DOUBLECOUNT F2] « Impôt à vie » était trompeur : le compteur = les
+                    régularisations d'avril + impôt des décaissements — il n'a JAMAIS inclus la
+                    retenue à la source des salaires (mesuré : −47 k$ affichés pour ~846 k$ réels
+                    chez un couple salarié). Même sémantique que le MCP (netTaxSettlements). */}
+                <Metric
+                    label="Régularisations d'impôt (net)"
+                    value={fmtM(r.lifetimeTax)}
+                    blur
+                    title="Soldes et remboursements d'avril sur l'horizon (+ impôt des décaissements en retraite). N'inclut PAS l'impôt retenu à la source sur les salaires, ni l'impôt successoral. Négatif = remboursements nets."
+                />
                 <Metric label="FIRE" value={r.fireAge !== null ? `${Math.round(r.fireAge)} ans` : '—'} />
             </div>
 
@@ -395,8 +404,8 @@ const WinnerCard: React.FC<{
     );
 };
 
-const Metric: React.FC<{ label: string; value: string; blur?: boolean }> = ({ label, value, blur }) => (
-    <div className="rounded-lg bg-white/5 px-2.5 py-1.5">
+const Metric: React.FC<{ label: string; value: string; blur?: boolean; title?: string }> = ({ label, value, blur, title }) => (
+    <div className="rounded-lg bg-white/5 px-2.5 py-1.5" title={title}>
         <div className="text-tiny text-ink-400">{label}</div>
         {blur
             ? <PrivateAmount as="div" className="text-meta font-black text-white tabular-nums">{value}</PrivateAmount>
@@ -463,7 +472,7 @@ const ResultsTable: React.FC<{
                             <th className="px-2 py-1.5 text-left font-medium">#</th>
                             <th className="px-2 py-1.5 text-right font-medium">Succès</th>
                             <th className="px-2 py-1.5 text-right font-medium">Patrim. méd.</th>
-                            <th className="px-2 py-1.5 text-right font-medium">Impôt</th>
+                            <th className="px-2 py-1.5 text-right font-medium" title="Régularisations d'impôt nettes sur l'horizon (n'inclut pas la retenue à la source des salaires)">Régul. impôt</th>
                             <th className="px-2 py-1.5 text-right font-medium">FIRE</th>
                             <th className="px-2 py-1.5 text-right font-medium">Score</th>
                         </tr>

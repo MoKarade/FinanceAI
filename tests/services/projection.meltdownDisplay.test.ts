@@ -120,8 +120,12 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
     it('NEUTRALITÉ NW : les compteurs d\'affichage ne touchent AUCUNE grandeur de patrimoine (golden)', () => {
         // Pin de la preuve bit-identique du validator (301 mois × 9 grandeurs, 2 worktrees) :
         // si un futur refactor fait fuir un compteur d'affichage dans un solde, ce golden casse.
+        // Re-basé SCIEMMENT 2026-08-01 ([FISC-BRACKET-REALINDEX], était 3628 / 155057) : les paliers
+        // en $ RÉELS relèvent l'impôt des années tardives → NW final plus bas (vrai changement
+        // fiscal, PAS une fuite de compteur — la neutralité des compteurs reste garantie par
+        // l'identité ttp == Σ FluxImpots de projection.totalTaxesPaid.test.ts).
         const melt = runWith('MELTDOWN_REER' as AllocationStrategy);
-        expect(melt.finalNetWorth).toBeCloseTo(3628, 0);
-        expect(melt.estateNetWorth).toBeCloseTo(155057, 0);
+        expect(melt.finalNetWorth).toBeCloseTo(-7169.52, 0);
+        expect(melt.estateNetWorth).toBeCloseTo(144260, 0);
     });
 });

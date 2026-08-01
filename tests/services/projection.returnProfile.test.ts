@@ -97,11 +97,16 @@ describe('PH4-FUT-B — profil de rendement dans le moteur (déterministe, 30 an
         // Calibré le 2026-06-11 ; RE-CALIBRÉ 2026-06-25 (ITEM-2C PSV/RRQ per-conjoint) : la fixture est un couple
         // à écart d'âge (35/33) → à l'horizon, user1 (63) voit SA PSV/RRQ retardée à SES 65 ans (avant : versée
         // dès les 65 de user0) → −476 $ sur les 3 profils (dérive VOULUE, prouvée par git-stash, pas une régression).
-        expect(finalNetWorth('conservative')).toBeCloseTo(1_546_072.43, 1);
-        expect(finalNetWorth('balanced')).toBeCloseTo(1_883_319.95, 1);
-        expect(finalNetWorth('aggressive')).toBeCloseTo(2_966_372.01, 1);
+        // RE-CALIBRÉ 2026-08-01 ([FISC-BRACKET-REALINDEX]) : paliers/crédits en $ RÉELS. Fixture SALARIÉE →
+        // NW ↑ ~0,8 % (+13 158/+14 282/+17 166 $). Cause MESURÉE (panel 2026-08-01) — PAS la retenue (elle
+        // MONTE comme tout l'impôt post-fix, 20 495 → 32 879 $ à Δ=29) : la prime RAMQ/FSS doublement
+        // indexée redescend à son niveau légal (−2 050 $/an, terme dominant vs impôt +1 077 $/an), amplifié
+        // par l'heuristique 92 % ([FISC-WHT-92PCT] : en mode T1213 la direction est conservatrice, NW −1,9 %).
+        expect(finalNetWorth('conservative')).toBeCloseTo(1_559_230.44, 1);
+        expect(finalNetWorth('balanced')).toBeCloseTo(1_897_602.38, 1);
+        expect(finalNetWorth('aggressive')).toBeCloseTo(2_983_538.23, 1);
         // Le run historique (champ absent) est pinné sur la valeur 'balanced'.
-        expect(finalNetWorth(undefined)).toBeCloseTo(1_883_319.95, 1);
+        expect(finalNetWorth(undefined)).toBeCloseTo(1_897_602.38, 1);
     });
 
     it("'aggressive' + asset location > 'aggressive' seul (le bonus 0.4pp s'empile sur le preset)", () => {

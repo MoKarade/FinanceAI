@@ -435,6 +435,31 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   par test. Corollaire : un discriminant bâti sur l'ancienne sémantique meurt avec elle — le test
   tiered-vs-flat a dû être repointé sur le flux d'affichage (le taux de retenue n'influence plus
   le compteur, décembre réconcilie au vrai impôt).
+  ⚠️ **Un fix d'espace réel↔nominal ne s'applique qu'aux sites du MÊME espace — et la direction
+  peut s'inverser selon la phase** (leçon FISC-BRACKET-REALINDEX 2026-08-01) : la double indexation
+  (revenu déflaté en réel, paliers ×1,02^Δ nominal) ne vivait QUE dans les sites de taxDecember qui
+  déflatent puis re-nominalisent (salarial, combinedTaxFor, RAMQ, FSS). Les blocs voisins gains/
+  dividendes du MÊME fichier sont nominal-cohérents (revenu jamais déflaté, impôt jamais
+  re-nominalisé) : leur passer le deflator aurait créé le bug INVERSE — le périmètre d'un fix
+  d'espace se décide site par site en suivant les ÷/× inflationFactor, pas par fichier. MAIS
+  l'énumération doit être EXHAUSTIVE (grep du motif « ÷ inflationFactor … × inflationFactor »
+  sur tout services/) AVANT de fermer le périmètre : la passe initiale a raté `latentTax.ts`
+  (même motif exact, −53 k$ d'obligation latente affichée à 30 ans) ET a documenté ce site
+  « nominal — le bon espace pour lui » dans FISCAL_REFERENCE — une doc qui déclare un site sain
+  sans mesure est un piège armé pour la session suivante (trouvé par le panel, 2026-08-01).
+  Et la direction mesurée diffère par phase : retraité = impôt à vie +62 % (tout l'impôt transite
+  par décembre), salarié = NW en légère HAUSSE. ⚠️ **Le MÉCANISME d'une direction se MESURE terme
+  à terme, il ne se déduit pas** : la première explication écrite (« la retenue employeur était
+  sur-évaluée, le net d'avril baisse ») était plausible et FAUSSE — mesuré : la retenue MONTE
+  (20 495 → 32 879 $ à Δ=29) comme tout l'impôt post-fix. La vraie cause : la prime RAMQ/FSS était
+  DOUBLEMENT indexée (766 $ × 1,02^Δ en $ réels puis re-nominalisé, ×1,81 à 30 ans) et son retour
+  au niveau légal (−2 050 $/an) domine la hausse d'impôt (+1 077 $/an) sur une fixture sans
+  déductions ; le reste est un artefact de l'heuristique 92 % ([FISC-WHT-92PCT] — en mode T1213 la
+  direction salariée redevient conservatrice, NW −1,9 %). Le claim faux avait été répété dans
+  3 docs (CHANGELOG, ici, commentaire de test) avant d'être réfuté par mesure. Vérifier la
+  direction ET son mécanisme PAR PHASE avant d'écrire les commentaires de re-base. Bonus
+  rétrocompat : parce que le barème est homogène de degré 1, l'ancien monde == `realDeflator = 1`
+  exactement (paramètre optionnel à défaut neutre, zéro migration).
   ⚠️ **Des fixtures de test à dates ABSOLUES vieillissent contre un NOW fixe** (leçon HIST-STORE-SIZE
   2026-08-01) : les tests de fusion d'historique utilisaient des closes datés « 2026-01-10 » avec un
   NOW figé à 2027-01-15 — l'ajout de la politique d'âge (downsample > 365 j) les a fait basculer du

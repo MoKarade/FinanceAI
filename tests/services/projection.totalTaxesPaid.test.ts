@@ -63,9 +63,12 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
     });
 
     it('NEUTRALITÉ NW : le fix du compteur ne touche AUCUN patrimoine (goldens mesurés avant/après)', () => {
-        // Mesuré identique avant/après le fix (compteur d'affichage pur).
-        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(3627.79, 0);
-        expect(run(ferrParams, 'AUTO_MARGINAL').finalNetWorth).toBeCloseTo(375783.25, 0);
+        // Mesuré identique avant/après le fix TTP (compteur d'affichage pur). Re-basé SCIEMMENT
+        // 2026-08-01 ([FISC-BRACKET-REALINDEX], était 3627,79 / 375783,25) : le fix des paliers
+        // réels est un VRAI changement fiscal (impôt tardif ↑ → NW ↓) — la neutralité du COMPTEUR,
+        // elle, reste garantie par l'identité ttp == Σ FluxImpots du 1er test.
+        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(-7169.52, 0);
+        expect(run(ferrParams, 'AUTO_MARGINAL').finalNetWorth).toBeCloseTo(372625.14, 0);
     });
 
     it('[ENG-TTP-UNSETTLED-HORIZON] la dette fiscale réconciliée non réglée à l\'horizon est EXPOSÉE', () => {
@@ -82,10 +85,12 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
             baseMonthlyExpenses: 7_000,
         });
         const rs = run(solvable, 'AUTO_MARGINAL');
-        // Solvable 10 ans : vraie dette nette au dernier décembre (mesuré 13 542,07 — 8,6 % du compteur).
-        expect(rs.unsettledTaxAtHorizon).toBeCloseTo(13_542.07, 0);
-        // FERR 10 ans : net PETIT (remboursement compense la retenue) — pin de la sémantique NETTE.
-        expect(run(ferrParams, 'AUTO_MARGINAL').unsettledTaxAtHorizon).toBeCloseTo(171.89, 0);
+        // Solvable 10 ans : vraie dette nette au dernier décembre (mesuré 16 404,67 — re-basé
+        // [FISC-BRACKET-REALINDEX] 2026-08-01, était 13 542,07 : impôt réel tardif ↑).
+        expect(rs.unsettledTaxAtHorizon).toBeCloseTo(16_404.67, 0);
+        // FERR 10 ans : net PETIT (remboursement compense la retenue) — pin de la sémantique NETTE
+        // (re-basé, était 171,89).
+        expect(run(ferrParams, 'AUTO_MARGINAL').unsettledTaxAtHorizon).toBeCloseTo(907.71, 0);
         // Portefeuille épuisé avant la fin : plus d'impôt la dernière année → 0 (jamais un fantôme).
         expect(Math.abs(run(base(), 'MELTDOWN_REER').unsettledTaxAtHorizon ?? Number.NaN)).toBeLessThan(1);
 
@@ -94,10 +99,10 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
         // (le seul flux d'impôt des mois N*12..N*12+11 est cet avril).
         const solvable11 = { ...solvable, projection: { ...solvable.projection, years: 11 } } as SimulationParams;
         expect((rs.totalTaxesPaid ?? 0) + (rs.unsettledTaxAtHorizon ?? 0))
-            .toBeCloseTo(run(solvable11, 'AUTO_MARGINAL').totalTaxesPaid, 0); // mesuré : 170 822,16 des deux côtés
+            .toBeCloseTo(run(solvable11, 'AUTO_MARGINAL').totalTaxesPaid, 0); // mesuré : 184 686,88 des deux côtés
 
         // SIGNE : année finale en REMBOURSEMENT net (salarié PRIO_REER, grosses déductions) →
-        // négatif porté honnêtement, aucun clamp (mesuré −15 892,45).
+        // négatif porté honnêtement, aucun clamp (mesuré −17 159,55, re-basé [FISC-BRACKET-REALINDEX]).
         const salarie = base({
             liveCSVBalances: { CELI: 0, CELIAPP: 0, REER: 100_000, NON_ENREG: 0, CRYPTO: 0, REEE: 0 },
             projection: { ...projection, years: 10, returnRate: 4, returnRates: { celi: 4, reer: 4, nonReg: 4, crypto: 5, cash: 1 } },
@@ -106,10 +111,10 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
             config: { ...config, users: config.users.map(u => ({ ...u, grossSalary: 10_000, netSalary: 7_000, age: 45, birthYear: 1981 })) as typeof config.users },
             baseGrossAnnual: 240_000, baseNetAnnual: 168_000, baseMonthlyExpenses: 9_000,
         });
-        expect(run(salarie, 'PRIO_REER').unsettledTaxAtHorizon).toBeCloseTo(-15_892.45, 0);
+        expect(run(salarie, 'PRIO_REER').unsettledTaxAtHorizon).toBeCloseTo(-17_159.55, 0);
     });
 
-    it('ratio MELT/AUTO borné (~4,4 mesuré) — PAS un pin d\'ordre du ranking complet', () => {
+    it('ratio MELT/AUTO borné (~2,8 mesuré post-REALINDEX, était ~4,4) — PAS un pin d\'ordre du ranking complet', () => {
         // ⚠️ Le validator #554 a MESURÉ que l'ordre de rankStrategies CHANGE avec le compteur
         // corrigé (balanced : best PRIO_REER → MELTDOWN sur le retraité 62) — voulu, l'ancien
         // ordre reposait sur le double-comptage. Le pin d'ordre COMPLET (objectifs tax/balanced)

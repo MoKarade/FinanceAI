@@ -4,6 +4,35 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-01 (suite 15) — PR #556 : panel traité, latentTax corrigé, ready+auto-merge
+> Panel #556 rendu (projection-validator + financial-integrity, tous deux MESURÉS) : cœur du fix
+> confirmé (homogénéité exacte à 1e-9, conservation 0,02 $, rétrocompat bit-identique). 3 findings
+> traités dans la PR : (1) **site oublié `latentTax.ts`** — même motif déflaté-sans-deflator, impôt
+> latent affiché sous-évalué ~53 k$/−35 % à 30 ans → corrigé (8e arg `realDeflator`), discriminant
+> unitaire d'homogénéité prouvé (échoue pré-fix) ; (2) **claim « retenue sur-évaluée » RÉFUTÉ par
+> mesure** (elle MONTE ; la vraie cause du NW salarié ↑ = prime RAMQ/FSS doublement indexée ×1,81 à
+> 30 ans qui redescend, + artefact 92 %) → CHANGELOG/CONVENTIONS/commentaire de test réécrits ;
+> (3) doc FISCAL_REFERENCE corrigée (latent + taxJanuary sont RÉELS, exception crédit pension
+> 2 000 $ notée). Nouveaux tickets : [FISC-PENSION-CREDIT-REAL] (GO Marc, re-base goldens),
+> [FISC-BRACKET-CPI-STRESS] (décision modèle i≠2 %), [FISC-MARGINAL-SPACE]. Suite V5 :
+> [FISC-WHT-92PCT] 0.92→1.0 (GO) → [FISC-SOLO-INVEST-SPLIT] (GO) ; puis ENG-TTP-UNSETTLED-PROPAGATE,
+> ENG-RANKING-ORDER-PIN (baseline mesurée dispo).
+>
+> ## 🟢 Session 2026-08-01 (suite 14) — #555 MERGÉE + V5c : FISC-BRACKET-REALINDEX (CRITIQUE)
+> **#555 mergée** (`22d128a`). **V5c livrée** : `realDeflator` (défaut 1 = bit-identique) sur
+> `getIndexedBracketsForYear` + dérivés (paliers, BPA, crédits d'âge/361, RAMQ, FSS,
+> getMarginalRate, calculateFiscalReport) ; passé par les sites RÉELS de taxDecember
+> (salarial ×4, combinedTaxFor, RAMQ, FSS) **+ latentTax (ajouté au panel #556)** —
+> gains/dividendes sont NOMINAL-cohérents (documenté en
+> code, leur passer le deflator = bug inverse). Discriminant 5/5 (impôt réel CONSTANT 2 702 $/an à
+> revenu réel constant ; dérivait à 3 235 $). Direction PAR PHASE : retraité ttp +62 %
+> (29 806 → 48 314, conservateur) ; salarié NW +0,8 % (cause mesurée par le panel : RAMQ/FSS
+> doublement indexées redescendent — PAS la retenue, cf suite 15).
+> 10 goldens re-basés SCIEMMENT (item2c, meltdownDisplay ~−10,8 k$ NW, returnProfile +0,8 %,
+> totalTaxesPaid). Archivés : #553/#554/#555 dans BACKLOG_ARCHIVE. Suite V5 : [FISC-WHT-92PCT]
+> 0.92→1.0 (GO) → [FISC-SOLO-INVEST-SPLIT] (GO) ; puis tickets panel (ENG-TTP-UNSETTLED-PROPAGATE,
+> ENG-RANKING-ORDER-PIN — baseline mesurée dispo).
+>
 > ## 🟢 Session 2026-08-01 (suite 13) — #554 MERGÉE + V5b : unsettledTaxAtHorizon
 > **#554 mergée** (auto-merge squash `acfa035`). **V5b** : `unsettledTaxAtHorizon` (photographié à
 > la réconciliation de décembre — ≡ taxPreviousYear, transfert dans le MÊME bloc, contre-vérifié

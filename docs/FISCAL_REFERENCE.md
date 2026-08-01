@@ -585,14 +585,29 @@ choisir). Calcul cumulatif par tranche (style impôt).
 - **BPA fédéral dégressif** haut revenu (> ~177 k$) : non modélisé (on retient le palier max).
 - **Indexation 2027+** : repose sur ~+2 %/an estimé tant que les montants officiels ne sont
   pas publiés (`getIndexedBracketsForYear`).
-- **Aller-retour réel↔nominal** des paliers : ⚠️ **REQUALIFIÉ 2026-07-31 (`[FISC-BRACKET-REALINDEX]`,
-  MESURÉ)** — l'erreur n'est PAS « à forte inflation » : le moteur déflate le revenu PUIS applique un
-  barème indexé `1,02^Δ` → les paliers s'élargissent de 2 %/an EN DOLLARS RÉELS, **indépendamment de
-  `simInflation`** (présent au réglage par défaut). Mesuré : à revenu réel constant 98 400 $, l'impôt
-  réel fond de 24 932 $ (an 0) à 16 740 $ (an 30) = −8 192 $/an/personne — projections long-terme
-  OPTIMISTES (sens non conservateur). Le rejet du « fix naïf » (indexer sur simInflation) reste vrai
-  (il AGGRAVE) ; le correctif juste = `palier_réel = palier_2026 × (1,02/(1+i))^Δ` (ou impôt NOMINAL,
-  ITEM-2A). ✅ **Décision Marc 2026-07-31 : GO** (goldens re-basés sciemment) — cf BACKLOG V5.
+- **Aller-retour réel↔nominal** des paliers : ✅ **CORRIGÉ 2026-08-01 (`[FISC-BRACKET-REALINDEX]`)**.
+  L'erreur (requalifiée MESURÉE 2026-07-31) n'était PAS « à forte inflation » : le moteur déflatait
+  le revenu PUIS appliquait un barème indexé `1,02^Δ` → paliers élargis de 2 %/an EN DOLLARS RÉELS,
+  indépendamment de `simInflation` (présent au réglage par défaut ; à revenu réel constant 98 400 $,
+  l'impôt réel fondait de 24 932 $ à 16 740 $/pers sur 30 ans). **Modèle corrigé** : param
+  `realDeflator` (= `(1+i)^Δ`) sur `getIndexedBracketsForYear` et ses dérivés (paliers, BPA,
+  crédits d'âge/ligne 361, RAMQ, FSS, `getMarginalRate`, `calculateFiscalReport`) → facteur effectif
+  `1,02^Δ/(1+i)^Δ` : `palier_réel = palier_2026 × (1,02/(1+i))^Δ`, soit l'indexation légale
+  2 %/an vue en termes réels (constant si `i = 2 %`). **Une exception mesurée** (panel 2026-08-01) :
+  le crédit pension fédéral 2 000 $ (GELÉ nominalement, `utils/tax.ts` `PENSION_INCOME_AMOUNT_FED`)
+  n'est pas divisé par le déflateur → en espace réel il vaut de facto 2 000 $ constants au lieu de
+  `2 000/(1+i)^Δ` (sous-imposition ≤ 250,50 $ réels/pers/an ; pré-existant, correctif =
+  `/realDeflator`, chantier séparé avec re-base de goldens — cf BACKLOG `[FISC-PENSION-CREDIT-REAL]`).
+  Sites en espace RÉEL qui passent le deflator : `taxDecember` (salarial, `combinedTaxFor`,
+  RAMQ, FSS) **et l'impôt latent** (`latentTax.ts` — site oublié de la passe initiale, corrigé
+  2026-08-01 : sous-évaluait l'obligation dormante affichée de ~35 %/~53 k$ à 30 ans).
+  `taxJanuary` est AUSSI en espace réel (revenu déflaté → `.marginalRate` au barème 2026 :
+  cohérent avec décembre seulement à i = 2 % ; effet de timing pur, réconcilié en décembre via
+  `withholdingAlreadyTaken`). Les blocs NOMINAUX (empilement gains, dividendes, estate,
+  `firstCombinedBracketTopForYear`) restent en `1,02^Δ` nominal — c'est le bon espace pour
+  eux. Discriminant : impôt réel CONSTANT (2 702 $/an sur 29 ans, écart < 1 $) sur salarié à revenu
+  réel constant ; goldens re-basés SCIEMMENT (retraités : impôt à vie +62 % sur le scénario de
+  référence, direction conservatrice restaurée). Cf `tests/services/projection.bracketRealIndex.test.ts`.
 - **Retenue salariale employeur = 92 % de l'impôt modélisé** (`taxDecember.ts:407`,
   `[FISC-WHT-92PCT]`, hypothèse NON SOURCÉE documentée 2026-07-31) : le solde d'avril facture les
   ~8 % restants ALORS QUE le `netSalary` saisi incorpore déjà ~100 % de la retenue réelle (vérifié

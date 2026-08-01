@@ -77,9 +77,14 @@ Mensuels ($/mois) : `ImpotLatent`, `FluxImpots`, `ImpotRetraitREER`, `ImpotSalai
 > figure DEUX fois dans la série (aucun consommateur applicatif, panel #554). Borne de fin
 > d'horizon : l'année réconciliée par le DERNIER décembre n'a jamais son avril — exposée par
 > **`unsettledTaxAtHorizon`** (scalaire SIGNÉ = le débit d'avril manquant, NET remboursements
-> inclus — mesuré 13 542 $ / 8,6 % sur retraité solvable 10 ans, ~0 sur portefeuille épuisé) ;
-> `strategySearch.lifetimeTax` l'additionne au compteur. `totalEstateTax` (impôt de liquidation
-> successorale) reste une grandeur DISJOINTE.
+> inclus — mesuré 13 542 $ / 8,6 % sur retraité solvable 10 ans, 51,5 % à 2 ans, 100 % à 1 an,
+> ~0 sur portefeuille épuisé ; ADDITIVITÉ prouvée : TTP(N) + unsettled(N) == TTP(N+1) au cent) ;
+> `strategySearch.lifetimeTax` l'additionne. Exclusion assumée : les retenues des décaissements du
+> mois de DÉCEMBRE tombent après la réconciliation (stub non réconcilié, ~1 900 $ mesurés) — elles
+> se règlent dans l'avril de l'année suivante, hors horizon. ⚠️ 4 surfaces lisent encore le
+> compteur NU (taxLeakage MC, netTaxSettlements MCP, drawdownOptimizer) — ticket
+> [ENG-TTP-UNSETTLED-PROPAGATE]. `totalEstateTax` (impôt de liquidation successorale) reste une
+> grandeur DISJOINTE.
 Payés (cumul YTD) : `TaxPaidRevenu`, `TaxPaidGains`, `TaxPaidDivers`, `TaxPaidREER`.
 Provisionnés (current + previous year) : `AccruedTaxRevenu`, `AccruedTaxGains`, `AccruedTaxDivers`, `AccruedTaxREER`.
 

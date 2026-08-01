@@ -861,8 +861,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             impotDiversMois = taxPaidDivers;
         }
         // [ENG-TTP-UNSETTLED-HORIZON] Avril vient de RÉGLER l'année réconciliée (le settlement ne
-        // s'exécute qu'à currentMonthIndex === 3, cf taxApril.ts) → plus de dette en suspens.
-        if (currentMonthIndex === 3) reconciledUnsettledTax = 0;
+        // s'exécute qu'à currentMonthIndex === 3 ET m > 0, cf taxApril.ts:44 — garde alignée #555 :
+        // une future reprise d'état avec report fiscal au m0 ne doit pas effacer une dette).
+        if (currentMonthIndex === 3 && m > 0) reconciledUnsettledTax = 0;
         taxPreviousYear = aprilResult.newTaxPreviousYear;
 
         // [FISC-SRCDED-NOOP — retenue mensuelle retirée 2026-06-26] La provision salariale mensuelle
@@ -964,11 +965,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 taxCurrentYear,
             );
             taxCurrentYear = decResult.newTaxCurrentYear;
-            // [ENG-TTP-UNSETTLED-HORIZON] Décembre vient de RÉCONCILIER l'année : ce montant est la
-            // vraie dette fiscale de l'année (retenues provisionnées + complément), réglée par
-            // l'avril SUIVANT. On la photographie ICI (pas via taxPreviousYear : le transfert se
-            // fait en janvier — un horizon qui s'arrête après décembre laisserait l'année
-            // réconciliée dans taxCurrentYear, mesuré 171,89 $ au lieu de 5 815,50 $).
+            // [ENG-TTP-UNSETTLED-HORIZON] Décembre vient de RÉCONCILIER l'année : ce montant est
+            // la vraie dette fiscale de l'année (retenues provisionnées + complément), réglée par
+            // l'avril SUIVANT. Photo ICI ≡ lire taxPreviousYear (son transfert est quelques lignes
+            // plus bas, MÊME bloc décembre — vérifié #555) : la photo est le point le plus lisible.
+            // NB : l'audit #554 mesurait 5 815,50 $ en sommant les séries AccruedTax* = année
+            // réconciliée (171,89 $ NET) + stub de l'année en cours NON réconciliée (5 643,61 $ de
+            // retenues brutes) — c'est le NET réconcilié seul qui est la vraie dette.
             reconciledUnsettledTax = (['revenu', 'gains', 'divers', 'reer'] as const)
                 .reduce((s, k) => s + (Number.isFinite(taxCurrentYear[k]) ? taxCurrentYear[k] : 0), 0);
             decResult.logs.forEach(msg => logEvent(flowEventsLog, msg));
@@ -1695,9 +1698,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         finalNetWorth: estate.finalRawNetWorth,
         estateNetWorth: estate.estateNetWorth,
         reerByUserFinal: reerByUser,
-        // [ENG-TTP-UNSETTLED-HORIZON] (panel #554, CRITIQUE horizon court — jusqu'à −49 % du
-        // compteur sur 10 ans) : la dernière année RÉCONCILIÉE par décembre n'a jamais son avril →
-        // sa dette fiscale échappe à totalTaxesPaid. On l'expose SÉPARÉMENT (l'affichage additionne)
+        // [ENG-TTP-UNSETTLED-HORIZON] (panel #554/#555, mesuré NET : 8,6 % du compteur à 10 ans,
+        // 51,5 % à 2 ans, 100 % à 1 an) : la dernière année RÉCONCILIÉE par décembre n'a jamais
+        // son avril → sa dette échappe à totalTaxesPaid. On l'expose SÉPARÉMENT (l'affichage additionne)
         // plutôt que de la fondre dans le compteur : l'identité totalTaxesPaid == Σ FluxImpots reste
         // vraie et testable. SURTOUT PAS taxCurrentYear (année partielle NON réconciliée = retenues
         // brutes → ré-introduirait la sur-estimation). Signé (négatif = remboursement dû au

@@ -88,6 +88,25 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
         expect(run(ferrParams, 'AUTO_MARGINAL').unsettledTaxAtHorizon).toBeCloseTo(171.89, 0);
         // Portefeuille épuisé avant la fin : plus d'impôt la dernière année → 0 (jamais un fantôme).
         expect(Math.abs(run(base(), 'MELTDOWN_REER').unsettledTaxAtHorizon ?? Number.NaN)).toBeLessThan(1);
+
+        // ADDITIVITÉ (contre-vérif #555, la propriété la plus discriminante — exacte au cent) :
+        // l'unsettled du run N == le FluxImpots d'avril du run N+1 ⇒ TTP(N) + unsettled(N) == TTP(N+1)
+        // (le seul flux d'impôt des mois N*12..N*12+11 est cet avril).
+        const solvable11 = { ...solvable, projection: { ...solvable.projection, years: 11 } } as SimulationParams;
+        expect((rs.totalTaxesPaid ?? 0) + (rs.unsettledTaxAtHorizon ?? 0))
+            .toBeCloseTo(run(solvable11, 'AUTO_MARGINAL').totalTaxesPaid, 0); // mesuré : 170 822,16 des deux côtés
+
+        // SIGNE : année finale en REMBOURSEMENT net (salarié PRIO_REER, grosses déductions) →
+        // négatif porté honnêtement, aucun clamp (mesuré −15 892,45).
+        const salarie = base({
+            liveCSVBalances: { CELI: 0, CELIAPP: 0, REER: 100_000, NON_ENREG: 0, CRYPTO: 0, REEE: 0 },
+            projection: { ...projection, years: 10, returnRate: 4, returnRates: { celi: 4, reer: 4, nonReg: 4, crypto: 5, cash: 1 } },
+            calculatedStartingCash: 10_000,
+            retirementGoal: { targetAge: 75, targetMonthlyIncome: 8000, governmentPension: 800, lifeExpectancy: 95 } as RetirementGoal,
+            config: { ...config, users: config.users.map(u => ({ ...u, grossSalary: 10_000, netSalary: 7_000, age: 45, birthYear: 1981 })) as typeof config.users },
+            baseGrossAnnual: 240_000, baseNetAnnual: 168_000, baseMonthlyExpenses: 9_000,
+        });
+        expect(run(salarie, 'PRIO_REER').unsettledTaxAtHorizon).toBeCloseTo(-15_892.45, 0);
     });
 
     it('ratio MELT/AUTO borné (~4,4 mesuré) — PAS un pin d\'ordre du ranking complet', () => {

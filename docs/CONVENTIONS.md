@@ -417,8 +417,11 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   en sommant les buckets AccruedTax* BRUTS de fin d'horizon — or la réconciliation de décembre y
   loge aussi le REMBOURSEMENT (bucket .revenu négatif) qui compense la retenue : le débit d'avril
   manquant, NET, était 171,89 $ (pas 5 815,50 $) sur la fixture citée, et 8,6 % (pas 49 %) sur le
-  scénario solvable. La classe de bug était réelle, la recette d'implémentation de l'audit fausse
-  (lire taxPreviousYear rate le transfert de janvier). Règle : re-mesurer le CORRECTIF de l'agent
+  scénario solvable. La classe de bug était réelle ; l'erreur de l'audit était de sommer les séries
+  AccruedTax* (= année réconciliée 171,89 $ NET + stub de l'année en cours NON réconciliée
+  5 643,61 $ de retenues brutes — décomposé au dollar par la contre-vérification #555 ; ma propre
+  première explication « le transfert est en janvier » était AUSSI fausse : il est dans le bloc
+  décembre, lire taxPreviousYear aurait donné les mêmes chiffres). Règle : re-mesurer le CORRECTIF de l'agent
   (pas seulement son diagnostic) avant de l'implémenter, et exprimer toute dette/flux fiscal en
   NET SIGNÉ — c'est le seul chiffre qu'un règlement débiterait vraiment.
   ⚠️ **Un compteur qui somme un ACOMPTE et le RÈGLEMENT qui le contient compte deux fois**

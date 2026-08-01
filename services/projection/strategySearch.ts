@@ -132,7 +132,7 @@ export function runStrategySearch(
             finalNWp50: lastFinalNW(mc.p50Data),
             finalNWp90: lastFinalNW(mc.p90Data),
             // [ENG-TTP-UNSETTLED-HORIZON] + la dette fiscale réconciliée non réglée à l'horizon —
-            // sans elle, un horizon court sous-affichait jusqu'à 49 % (mesuré panel #554).
+            // sans elle, un horizon court sous-affichait (mesuré NET : 8,6 % à 10 ans, 100 % à 1 an).
             lifetimeTax: (baseline?.totalTaxesPaid ?? 0) + (baseline?.unsettledTaxAtHorizon ?? 0),
             fireAge: findFireAge(baseline?.chartData ?? []),
             sequenceRiskPct: mc.expertMetrics.sequenceRiskPct,

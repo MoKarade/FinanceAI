@@ -82,12 +82,19 @@
   (−8 192 $/an/personne ; couple ~−16 k$/an ; cumul ~250-300 k$/30 ans, sens NON conservateur —
   patrimoine/FIRE optimistes). Gonfle aussi RAMQ/FSS/ligne 361. Correctif juste :
   `palier_réel = palier_2026 × (1,02/(1+i))^Δ`. ⚠️ Déplace TOUS les goldens (~12 sites).
-- [x] **`[ENG-TTP-UNSETTLED-HORIZON]`** ✅ 2026-08-01 (PR V5b) — champ `unsettledTaxAtHorizon`
-  photographié à la réconciliation de DÉCEMBRE (pas via taxPreviousYear : le transfert est en
-  janvier), remis à 0 au règlement d'avril ; `strategySearch.lifetimeTax` l'additionne.
-  ⚠️ Magnitude re-mesurée en NET (= le débit d'avril manquant, buckets SIGNÉS) : 13 542 $ (8,6 %)
-  sur retraité solvable 10 ans, 171,89 $ sur la fixture FERR (le −49 % de l'audit sommait le BRUT
-  sans netter le remboursement), 0 sur portefeuille épuisé. 3 pins + leçon CONVENTIONS.
+- [x] **`[ENG-TTP-UNSETTLED-HORIZON]`** ✅ 2026-08-01 (PR #555) — champ `unsettledTaxAtHorizon`
+  photographié à la réconciliation de DÉCEMBRE (≡ taxPreviousYear, transfert dans le même bloc —
+  contre-vérifié #555), remis à 0 au règlement d'avril (garde `m > 0`) ;
+  `strategySearch.lifetimeTax` l'additionne. Magnitudes NET vérifiées : 8,6 % à 10 ans, 51,5 % à
+  2 ans, 100 % à 1 an ; ADDITIVITÉ prouvée au cent (unsettled(N) == FluxImpots d'avril du run
+  N+1) ; signe négatif honnête (−9 558 $ mesuré). L'audit #554 sommait AccruedTax* (réconcilié +
+  stub brut). Pins : 3 valeurs + additivité + signe.
+- [ ] **`[ENG-TTP-UNSETTLED-PROPAGATE]`** (S-M — contre-vérif #555) — 4 surfaces lisent encore
+  `totalTaxesPaid` NU : `monteCarlo.ts:108,145` (taxLeakage), `getProjection.spec.ts:99` +
+  `simulateWhatIf.spec.ts:131` (netTaxSettlements servi à l'IA), `drawdownOptimizer.ts:61`
+  (GoalSeekerCard). Le terme dépend de la STRATÉGIE (AUTO 13 542 vs MELT 15 933 sur le même
+  scénario) → l'IA et l'optimiseur peuvent annoncer deux « impôts » divergents de 8,6 % (100 % à
+  1 an). Propager `+ unsettledTaxAtHorizon` OU documenter la divergence par surface.
 - [ ] **`[ENG-RANKING-ORDER-PIN]`** (S — panel #554) — `rankStrategies` normalise min-max sur le
   compteur (poids 0,25) : pinner l'ORDRE complet (objectifs `tax` et `balanced`) sur une fixture de
   référence, pas seulement la paire MELT/AUTO. Le validator a MESURÉ le nouvel ordre post-fix

@@ -151,7 +151,8 @@ export interface ProjectionResult {
     reerByUserFinal?: number[];
     /** [ENG-TTP-UNSETTLED-HORIZON] Dette fiscale RÉCONCILIÉE (dernier décembre) jamais réglée par un
      *  avril dans l'horizon — à ADDITIONNER à totalTaxesPaid pour un « impôt de l'horizon » complet
-     *  (jusqu'à 49 % du compteur sur 10 ans, mesuré). Signé ; disjoint de totalEstateTax. */
+     *  (mesuré NET : 8,6 % du compteur à 10 ans, 51,5 % à 2 ans, 100 % à 1 an). Signé (négatif =
+     *  remboursement dû) ; disjoint de totalEstateTax. */
     unsettledTaxAtHorizon?: number;
     totalTaxesPaid?: number;
     totalGrowth?: number;

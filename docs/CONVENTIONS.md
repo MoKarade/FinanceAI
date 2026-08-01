@@ -412,6 +412,17 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   (avril débite le bucket .reer entier — [PROJ-TTP-DOUBLECOUNT]) et que la FERR a le même trou d'affichage
   ([ENG-FERR-FLOW-INVISIBLE]) : deux passes antérieures avaient corrigé CE bloc sans voir les registres voisins —
   vérifier TOUTES les sources ET tous les consommateurs du registre, pas le seul producteur qu'on corrige.
+  ⚠️ **Un compteur qui somme un ACOMPTE et le RÈGLEMENT qui le contient compte deux fois**
+  (leçon PROJ-TTP-DOUBLECOUNT 2026-08-01, mesuré +144 %) : `totalTaxesPaid` additionnait les
+  retenues à la source (cascade/meltdown/FERR) ET `fluxImpots` d'avril — or avril débite le bucket
+  `.reer` ENTIER (ces mêmes retenues provisionnées) + le complément de décembre. Le raisonnement
+  qui « prouvait » l'absence de double-comptage protégeait l'ASSIETTE (décembre n'ajoute que le
+  complément), pas le COMPTEUR (le complément ET les acomptes passent tous deux par avril). Règle :
+  pour un compteur de FLUX, sommer les DÉBITS RÉELS d'un seul point de passage (ici Σ FluxImpots),
+  jamais un mélange acomptes+règlements ; l'identité compteur == Σ(flux du chart) se verrouille
+  par test. Corollaire : un discriminant bâti sur l'ancienne sémantique meurt avec elle — le test
+  tiered-vs-flat a dû être repointé sur le flux d'affichage (le taux de retenue n'influence plus
+  le compteur, décembre réconcilie au vrai impôt).
   ⚠️ **Des fixtures de test à dates ABSOLUES vieillissent contre un NOW fixe** (leçon HIST-STORE-SIZE
   2026-08-01) : les tests de fusion d'historique utilisaient des closes datés « 2026-01-10 » avec un
   NOW figé à 2027-01-15 — l'ajout de la politique d'âge (downsample > 365 j) les a fait basculer du

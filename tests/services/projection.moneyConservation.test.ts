@@ -492,12 +492,18 @@ describe('[FISC-WHT-HARDCODE] retenue REER affichée = tiered (19/24/29 %), pas 
         baseGrossAnnual: 0, baseNetAnnual: 0, currentRentExpense: 0, baseMonthlyExpenses: 8000,
     });
 
-    it('un gros décaissement REER mensuel (> bracket 1) → totalTaxesPaid reflète la retenue tiered', () => {
+    it('un gros décaissement REER mensuel (> bracket 1) → le FLUX affiché reflète la retenue tiered', () => {
         const r = run(bigReerRetiree());
-        // Discriminant MESURÉ (git-stash) : ancien `* 0.15` → totalTaxesPaid ≈ 211 562 $ ; retenue tiered
-        // sur le brut agrégé → ≈ 270 087 $ ; [WHT-DISPLAY-EXACT] retenue tiered EXACTE par tirage → ≈ 269 132 $
-        // (−955 $ : le recalcul sur l'agrégat sur-estimait, barème non additif). Le seuil 250 000 reste
-        // INATTEIGNABLE sous l'ancien 0,15 — les deux raffinements tiered le franchissent largement.
-        expect(r.totalTaxesPaid).toBeGreaterThan(250_000);
+        // [PROJ-TTP-DOUBLECOUNT 2026-08-01] `totalTaxesPaid` ne porte PLUS la retenue en direct
+        // (compteur = Σ FluxImpots ; décembre réconcilie au vrai impôt, donc le TAUX de retenue
+        // n'influence plus sa valeur — l'ancien seuil 250 000 sur le compteur est mort par design).
+        // Le discriminant tiered-vs-0,15 vit désormais sur le FLUX affiché `ImpotRetraitREER`
+        // (retenue exacte PAR TIRAGE) : mesuré 155 114 $ tiered ; un 0,15 plat donnerait ~97 k$
+        // (Σbrut ≈ 650 k × 0,15) → le seuil 130 000 reste inatteignable en flat.
+        const sumWht = r.chartData.reduce((s, d) => s + (Number.isFinite(Number(d.ImpotRetraitREER)) ? Number(d.ImpotRetraitREER) : 0), 0);
+        expect(sumWht).toBeGreaterThan(130_000);
+        // Et le compteur suit la nouvelle identité : Σ FluxImpots exactement (± 1 $).
+        const sumFlux = r.chartData.reduce((s, d) => s + (Number.isFinite(Number(d.FluxImpots)) ? Number(d.FluxImpots) : 0), 0);
+        expect(Math.abs(r.totalTaxesPaid - sumFlux)).toBeLessThan(1);
     });
 });

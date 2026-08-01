@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — « Impôt à vie » honnête] — 2026-08-01
+
+### Corrections money-critical
+- **`[PROJ-TTP-DOUBLECOUNT]` — « Impôt à vie » n'est plus gonflé de +144 %.** Le compteur
+  additionnait les retenues à la source (cascade REER, meltdown, FERR) PUIS le règlement d'avril
+  qui débite ces mêmes retenues — les mêmes dollars comptés deux fois (mesuré : stratégie meltdown
+  affichée 321 122 $ pour 131 871 $ réellement payés ; cascade 229 338 $ pour 29 806 $). Désormais
+  le compteur = la somme exacte des flux d'impôt débités du compte (identité vérifiée au cent sur
+  3 scénarios). Aucun patrimoine ne bouge (prouvé au cent) ; le classement de stratégies garde le
+  même ordre — le meltdown paie réellement ~4,4× l'impôt de la cascade sur le scénario de référence.
+
 ## [unreleased — vie privée V4] — 2026-08-01
 
 ### Vie privée / Loi 25

@@ -129,15 +129,12 @@
   (`projection.fuzzConservation.test.ts:21-23`) : vente/gain locatif, équité négative, véhicule,
   héritage, REEE. Les couvrir (mesurer la couverture, pas la supposer).
 
-- [ ] **`[PROJ-TTP-DOUBLECOUNT]`** (M, ÉLEVÉ [Certain, MESURÉ au cent — panel #551, 2 agents]) —
-  `totalTaxesPaid` DOUBLE-COMPTE la retenue REER pour TOUTES les stratégies : `projection.ts:1457`
-  ajoute `rrspWithholdingMois` alors qu'avril débite le bucket `.reer` ENTIER (`taxApril.ts:55` :
-  `fluxImpots = … + taxPaidREER`) — décembre ne consomme pas `.reer`, il calcule la réconciliation
-  versée dans `.revenu`. « Impôt à vie » (StrategyOptimizerPanel:353,480) affiché +144 % (MELTDOWN :
-  321 122 $ vs 131 871 $ réels ; AUTO : 229 338 $ vs 29 806 $). Dérivés : efficacité fiscale MC 0 %
-  au lieu de ~53 % (−10 pts FVI), taxLeakage 115 % au lieu de 47 %. Fix : `+= fluxImpots + taxOnRrif`
-  seulement (⚠️ re-mesurer taxOnRrif, même risque) + re-baseliner MC/strategySearch SCIEMMENT.
-  Classement ordre-préservant (vérifié) → pas de flip attendu.
+- [x] **`[PROJ-TTP-DOUBLECOUNT]`** ✅ 2026-08-01 (PR V5a — compteur = Σ FluxImpots SEUL, identité
+  vérifiée au cent sur 3 scénarios, NW bit-identique, discriminant git-stash 2/3, goldens ITEM-2C
+  + WHT re-basés SCIEMMENT ; le discriminant tiered-vs-0,15 repointé sur le flux ImpotRetraitREER
+  — le taux de retenue n'influence plus le compteur, décembre réconcilie au vrai impôt).
+  Mesures : MELTDOWN 321 122 → 131 871 $ ; AUTO 229 338 → 29 806 $ ; ratio MELT/AUTO honnête 4,42
+  (l'ordre du classement « impôt » est préservé).
 - [ ] **`[MELTDOWN-THRESHOLDS-DOC]`** (S, doc) — `meltdownReer.ts:9-13` : seuils
   MELTDOWN_NW_HIGH/MID (2 M/1 M) + cibles 220 k/140 k/90 k × adultes = heuristiques de CONCEPTION
   non documentées (pas des constantes fiscales) — les documenter (module + FISCAL_REFERENCE §9).

@@ -66,6 +66,13 @@ interface ProjectionResult {
 ### Impôts
 
 Mensuels ($/mois) : `ImpotLatent`, `FluxImpots`, `ImpotRetraitREER`, `ImpotSalaireMois`, `ImpotGainsCap`, `ImpotDivers`, `WithheldTaxRrif`.
+
+> `totalTaxesPaid` (résultat scalaire, « Impôt à vie ») **= Σ FluxImpots exactement**
+> ([PROJ-TTP-DOUBLECOUNT] 2026-08-01) : avril débite le bucket `.reer` entier (retenues cascade +
+> meltdown + FERR provisionnées) + le complément de décembre — les retenues ne sont débitées
+> qu'une fois. `ImpotRetraitREER`/`WithheldTaxRrif` restent des flux d'AFFICHAGE (acomptes),
+> ils n'entrent plus dans le compteur. Borne assumée : les acomptes de la dernière année
+> (sans avril suivant) ne sont pas comptés ; la succession a `totalEstateTax`.
 Payés (cumul YTD) : `TaxPaidRevenu`, `TaxPaidGains`, `TaxPaidDivers`, `TaxPaidREER`.
 Provisionnés (current + previous year) : `AccruedTaxRevenu`, `AccruedTaxGains`, `AccruedTaxDivers`, `AccruedTaxREER`.
 

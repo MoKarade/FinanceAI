@@ -1,0 +1,78 @@
+// tests/services/projection.totalTaxesPaid.test.ts
+//
+// [PROJ-TTP-DOUBLECOUNT] (panel #551 MESURÉ, corrigé 2026-08-01) — « Impôt à vie » = les flux
+// d'impôt réellement DÉBITÉS du liquide, c.-à-d. Σ FluxImpots : avril débite le bucket `.reer`
+// ENTIER (retenues cascade + meltdown + FERR, provisionnées) + le complément `.revenu` de
+// décembre — la retenue « n'est débitée qu'UNE fois, en avril » (contrat FISC-REER-WHT-DOUBLE).
+// L'ancien compteur ajoutait EN PLUS `rrspWithholdingMois` et `taxOnRrif` → les mêmes dollars
+// comptés deux fois : MELTDOWN affichait 321 122 $ pour 131 871 $ réels (+144 %), AUTO
+// 229 338 $ pour 29 806 $. DISCRIMINANT : sur l'ancien code, l'identité du 1er test casse de
+// +189 251 $ (meltdown), +199 532 $ (auto) et +59 131 $ (FERR).
+
+import { describe, it, expect } from 'vitest';
+import { __runScenarioForTests, type SimulationParams } from '../../services/projection';
+import type { ProjectionConfig, BudgetConfig, RetirementGoal } from '../../types';
+import type { AllocationStrategy } from '../../services/projection/types';
+
+const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+const projection: ProjectionConfig = {
+    years: 25, returnRate: 5, inflationRate: 2, savingsMode: 'manual', manualContribution: 0,
+    usePortfolioRate: false, returnRates: { celi: 5, reer: 5, nonReg: 5, crypto: 6, cash: 1 },
+    emergencyFundMonths: 6, salaryGrowth: 2, propertyGrowthRate: 3,
+};
+const config: BudgetConfig = {
+    users: [
+        { name: 'M', grossSalary: 0, netSalary: 0, color: '#fff', age: 62, birthYear: 1964, canadaArrivalYear: 1964, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 },
+        { name: 'A', grossSalary: 0, netSalary: 0, color: '#fff', age: 62, birthYear: 1964, canadaArrivalYear: 1964, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 },
+    ], splitMode: '50/50',
+};
+const base = (over: Partial<SimulationParams> = {}): SimulationParams => ({
+    projection, calculatedStartingCash: 20_000,
+    liveCSVBalances: { CELI: 0, CELIAPP: 0, REER: 700_000, NON_ENREG: 0, CRYPTO: 0, REEE: 0 },
+    realEstateGoals: [], debts: [], childGoals: [], travelGoals: [], lifeEvents: [],
+    retirementGoal: { targetAge: 60, targetMonthlyIncome: 4500, governmentPension: 1500, lifeExpectancy: 95 } as RetirementGoal,
+    config, baseGrossAnnual: 0, baseNetAnnual: 0, currentRentExpense: 0, baseMonthlyExpenses: 3_800,
+    startYear: 2026, startMonth: 0, ...over,
+} as SimulationParams);
+
+// Fixture FERR (couple 73 ans, pension couvre les dépenses — les retenues RRIF dominent).
+const ferrParams = base({
+    projection: { ...projection, years: 10, returnRates: { celi: 3, reer: 3, nonReg: 3, crypto: 4, cash: 1 } },
+    liveCSVBalances: { CELI: 0, CELIAPP: 0, REER: 400_000, NON_ENREG: 0, CRYPTO: 0, REEE: 0 },
+    retirementGoal: { targetAge: 60, targetMonthlyIncome: 3000, governmentPension: 4500, lifeExpectancy: 95 } as RetirementGoal,
+    baseMonthlyExpenses: 2_800,
+    config: { ...config, users: config.users.map(u => ({ ...u, age: 73, birthYear: 1953 })) as typeof config.users },
+});
+
+const run = (p: SimulationParams, s: string) => __runScenarioForTests(p, s as AllocationStrategy, false, false);
+const sumFlux = (r: ReturnType<typeof run>): number =>
+    (r.chartData as Array<Record<string, unknown>>).reduce((s, d) => s + num(d.FluxImpots), 0);
+
+describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne comptent qu\'une fois)', () => {
+    it('IDENTITÉ sur 3 scénarios : meltdown, cascade, FERR — ± 1 $ (échoue de +59 k à +199 k avant)', () => {
+        for (const [p, s, minTax] of [
+            [base(), 'MELTDOWN_REER', 100_000],
+            [base(), 'AUTO_MARGINAL', 20_000],
+            [ferrParams, 'AUTO_MARGINAL', 4_000],
+        ] as const) {
+            const r = run(p, s);
+            expect(r.totalTaxesPaid).toBeGreaterThan(minTax); // non-vacuité : de l'impôt coule vraiment
+            expect(Math.abs(r.totalTaxesPaid - sumFlux(r))).toBeLessThan(1);
+        }
+    });
+
+    it('NEUTRALITÉ NW : le fix du compteur ne touche AUCUN patrimoine (goldens mesurés avant/après)', () => {
+        // Mesuré identique avant/après le fix (compteur d'affichage pur).
+        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(3627.79, 0);
+        expect(run(ferrParams, 'AUTO_MARGINAL').finalNetWorth).toBeCloseTo(375783.25, 0);
+    });
+
+    it('le classement « impôt » reste ordre-préservé : MELTDOWN paie PLUS que AUTO (ratio ~4,4 mesuré)', () => {
+        const melt = run(base(), 'MELTDOWN_REER');
+        const auto = run(base(), 'AUTO_MARGINAL');
+        const ratio = melt.totalTaxesPaid / auto.totalTaxesPaid;
+        expect(ratio).toBeGreaterThan(2);   // l'ordre (AUTO gagne sous l'objectif impôt) est net
+        expect(ratio).toBeLessThan(8);      // et borné (un ×20 signalerait une régression d'assiette)
+    });
+});

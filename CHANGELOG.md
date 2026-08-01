@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — vie privée V4] — 2026-08-01
+
+### Vie privée / Loi 25
+- **`[SEC-GA-DEFER-CONSENT]` — plus AUCUNE requête vers Google avant ton consentement.** Le script
+  Google Analytics n'est plus chargé au démarrage : il n'est injecté qu'après un « Accepter »
+  (ou si tu avais déjà accepté). Avant, le script partait chez Google dès l'ouverture (IP exposée),
+  même si aucun cookie n'était posé (Consent Mode).
+- **`[D6-PRIV-MONTANTS]` — les sliders ne fuient plus de montants en mode discret.** Cotisation
+  REER/CELIAPP (Impôts), cotisation REEE (Enfants) et paiement supplémentaire (Dettes) : montant
+  masqué « ••• » au repos, révélé pendant que tu ajustes le slider (focus), annonce lecteur d'écran.
+
+### Performance / stockage
+- **`[HIST-STORE-SIZE]` — l'historique de prix stocké ne grossit plus sans borne.** Au-delà d'un an,
+  1 point par semaine (mesuré : ~116 Ko aujourd'hui, ÷5 sur le stock ancien) — la dernière année
+  reste quotidienne (courbes 1M→1A intactes) et les points crypto anciens non re-téléchargeables
+  sont réduits, jamais supprimés.
+
 ## [unreleased — héritage = rentrée + findings panel #552] — 2026-07-31
 
 ### Corrections money-critical

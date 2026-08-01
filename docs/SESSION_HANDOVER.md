@@ -4,6 +4,16 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-01 (suite 11) — #552 MERGÉE + V4 vie privée (3/4)
+> **#552 mergée** (squash `32a112f`, merge direct — l'API auto-merge refusait sur le statut Vercel
+> non-requis « unstable » ; CI 6/6 verte). Branche réconciliée, items #551/#552 ARCHIVÉS dans
+> BACKLOG_ARCHIVE. **V4 livrée aux 3/4** : [SEC-GA-DEFER-CONSENT] (script gtag injecté seulement
+> au consentement — ensureGtagLoaded + ga-init gaté), [D6-PRIV-MONTANTS] (PrivateSliderValue :
+> masqué au repos, révélé au focus — TaxCenter ×2, ChildPlanning, DebtManager), [HIST-STORE-SIZE]
+> (downsamplePriceHistory > 365 j → 1 pt/sem, idempotent, appliqué après mergePriceHistories).
+> [PROFIL-SWITCH] GATÉ sur 4 questions posées à Marc (persistance des vraies données — voir 🧭
+> du BACKLOG). Suite : V5 fiscal (TTP-DOUBLECOUNT → BRACKET-REALINDEX GO → WHT-92PCT → SOLO-SPLIT).
+
 > ## 🟢 Session 2026-07-31 (suite 10) — PR #552 : V2'+V2''+V3 + findings panel + héritage
 > **PR #552** (draft → ready) porte : V2' (bien passé détenu), V2'' (FERR/goals visibles dans
 > RetraitREER), V3 complète (DEFAULTS-DRIFT 4 champs + garde bidirectionnelle, TEST-GAP ×3, PV-11e,

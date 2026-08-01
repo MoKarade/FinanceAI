@@ -37,12 +37,10 @@
   `[DEFAULTS-DRIFT-FINTABLE-FIELDS]` (4 champs + garde bidirectionnel) + `[TEST-GAP-TAXESTIMATE]` +
   `[TEST-GAP-SUBSCRIPTIONS]` + `[TEST-GAP-ROLESCONFIG]` + `[PV-11e]` + `[NW-PARITY-SURFACES-TEST]`
   (+ fix PDF `equity: 0` en dur → `presentEquityOfGoal`). Archive au merge de #552.
-- [x] **`[ENG-HERITAGE-INFLOW]`** ✅ 2026-07-31 (PR #552, rapporté par Marc « héritage marche pas ») —
-  `applyLifeEvents` n'avait AUCUNE branche de rentrée d'argent : un HERITAGE était DÉBITÉ comme
-  dépense one-shot (impact net −2× le montant). Branche +liquide non imposable + 4 tests (delta
-  ±50 k$, saut au mois de l'événement, piège « vente » dans le nom, NaN).
-- [ ] **V4 — Vie privée / profils** (1 PR) : `[PROFIL-SWITCH]` + `[D6-PRIV-MONTANTS]` (décision
-  déjà prise) + `[SEC-GA-DEFER-CONSENT]` + `[HIST-STORE-SIZE]` (downsample >365 j, mesure faite).
+- [x] **V4 — Vie privée (3/4)** ✅ 2026-08-01 (PR V4) : `[D6-PRIV-MONTANTS]` (PrivateSliderValue,
+  4 sliders + montants voisins) + `[SEC-GA-DEFER-CONSENT]` (le SCRIPT gtag ne part chez Google
+  qu'au consentement) + `[HIST-STORE-SIZE]` (downsample stocké > 365 j → 1 pt/semaine, idempotent,
+  compose avec mergePriceHistories). `[PROFIL-SWITCH]` reste (questions posées à Marc — voir 🧭).
 - [ ] **V5 — Fiscal débloqué (Marc : Q1 ok, Q2 fix, Q3 go)** : `[FISC-BRACKET-REALINDEX]`/ITEM-2A (CRITIQUE) +
   `[FISC-WHT-92PCT]` fix 1.0 (Q2) + `[FISC-SOLO-INVEST-SPLIT]` (Q3) + `[FISC-GIS-COUPLE-RATE]`
   (table Service Canada requise) + `[FISC-LINE361-PERCONJOINT-REDUC]` (Annexe B d'abord) +
@@ -90,16 +88,6 @@
   conservateur). Le `netSalary` saisi incorpore déjà ~100 % de la retenue (vérifié : 5 604 vs
   5 620 $/mois) ; `0.92` n'est sourcé NULLE PART et échappe au garde FISC-CONST-LINT (constante
   nouvelle). Minimal (V1) : documenter au FISCAL_REFERENCE ; juste : `1.0` + discriminant.
-- [x] **`[WHT-DISPLAY-MELTDOWN]`** ✅ 2026-07-31 (V2 — `rrspWithholdingMois += meltResult.withholding`,
-  discriminant prouvé, NW bit-identique prouvé + pinné par golden). ⚠️ Précision du panel #551 (2 agents,
-  mesuré au cent) : la retenue ENTRAIT déjà dans le crédit décembre (`taxCurrentYear.reer +=`, pré-existant) ;
-  le vrai gain = COHÉRENCE de convention entre stratégies (ratio MELTDOWN/AUTO 0,601 → 1,400) — la reco
-  « objectif impôt » recommandait MELTDOWN à tort sur main (corrigé). La valeur ABSOLUE du compteur reste
-  sur-évaluée pour toutes les stratégies → `[PROJ-TTP-DOUBLECOUNT]`.
-- [x] **`[ENG-MELTDOWN-FLOW-INVISIBLE]`** ✅ 2026-07-31 (V2 — `retraitReerMois += meltResult.reerDrawn`, Σ RetraitREER ≥ 90 % du REER drainé prouvé) — le meltdown n'alimente
-  jamais `retraitReerMois` → Σ `RetraitREER` affiché 22 547 $ pour ~796 k$ de sorties réelles :
-  tooltip/modal/milestoneIcons (« 1er retrait REER » jamais déclenché)/MCP aveugles. Aucun impact NW
-  (angle mort de la conservation).
 - [ ] **`[FISC-GIS-COUPLE-RATE]`** (M, ÉLEVÉ hors profil Marc [Probable — table Service Canada NON
   confirmable du conteneur]) — `utils/tax.ts:497-498` : clawback SRG 0,50 PAR ADULTE sur le revenu
   COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la
@@ -150,11 +138,6 @@
   au lieu de ~53 % (−10 pts FVI), taxLeakage 115 % au lieu de 47 %. Fix : `+= fluxImpots + taxOnRrif`
   seulement (⚠️ re-mesurer taxOnRrif, même risque) + re-baseliner MC/strategySearch SCIEMMENT.
   Classement ordre-préservant (vérifié) → pas de flip attendu.
-- [x] **`[ENG-FERR-FLOW-INVISIBLE]`** ✅ 2026-07-31 (V2'' — FERR + goals alimentent retraitReerMois, test de parité discriminant : Σ RetraitREER ≈ 0 sur l'ancien code pour un REER drainé par la FERR) — même classe que le fix V2, 4ᵉ
-  source : la FERR obligatoire (`projection.ts:999-1002`) et les retraits REER d'objectifs
-  (`:1219-1226`) n'alimentent pas `retraitReerMois` → 113 418 $ (11,6 %) de sorties invisibles sur
-  AUTO_MARGINAL ; « 1er retrait REER » jamais déclenché pour un retraité 71+ dont la 1re sortie est
-  une FERR. Fix : 2 `+=` + étendre le test meltdownDisplay (parité Σ RetraitREER ≈ Σ accRetraitsReerYear).
 - [ ] **`[MELTDOWN-THRESHOLDS-DOC]`** (S, doc) — `meltdownReer.ts:9-13` : seuils
   MELTDOWN_NW_HIGH/MID (2 M/1 M) + cibles 220 k/140 k/90 k × adultes = heuristiques de CONCEPTION
   non documentées (pas des constantes fiscales) — les documenter (module + FISCAL_REFERENCE §9).
@@ -228,9 +211,14 @@
   importWithRetry. ⚠️ Partagé par tous les lazy — dimensionner pour recharts sur connexion lente.
 - [ ] **`[P0-IDB]`** (L, ⏳) — migrer la persistance localStorage → IndexedDB (quota ~5 Mo + parsing
   synchrone au boot). ⚠️ Migration schéma persist v7 — vigilance corruption.
-- [ ] **`[PROFIL-SWITCH]`** (M, reste) — (a)+(d) couverts par PERSONA-PURGE ; restent : sélecteur de
-  profil explicite (nom + type réel/test visibles) + persistance ISOLÉE par profil (clé storage
-  dédiée, pas d'écrasement croisé).
+- [ ] **`[PROFIL-SWITCH]`** (M, 🧭 gaté questions 2026-08-01) — (a)+(d) couverts par PERSONA-PURGE ;
+  restent : sélecteur de profil explicite (nom + type réel/test visibles) + persistance ISOLÉE par
+  profil (clé storage dédiée, pas d'écrasement croisé). ⚠️ Touche la persistance des VRAIES données
+  → questions posées à Marc AVANT de coder (batch en chat 2026-08-01) : (1) combien de profils
+  RÉELS (juste « Marc » + personas de test, ou plusieurs réels genre « couple » vs « perso ») ?
+  (2) lequel pousse vers Drive (un seul ? chacun son fichier ?) ; (3) que devient le profil actuel
+  au premier lancement (migration de la clé existante = profil « Marc » par défaut ?) ;
+  (4) le switch doit-il exiger une confirmation (anti-fausse-manip devant témoin) ?
 - [ ] **`[ASSET-CURRENCY-BACKFILL]`** (S, attente signal) — backfill devise legacy SEULEMENT si le
   log `services/portfolio.ts:60-62` apparaît chez Marc. Ne rien coder avant.
 - [ ] **`[PURGE-TOAST-UX]`** (S, 🧭 si Marc le veut) — le pull Drive qui purge des artefacts persona
@@ -253,20 +241,6 @@
 
 ## 📈 Investissements & historique
 
-- [x] **`[DASH-IMMO-EQUITY-WRITERS]`** ✅ 2026-07-31 (V2' — racine trouvée et corrigée : **le MOTEUR
-  traitait un bien à purchaseDate PASSÉE comme un achat À FAIRE** — re-débit de la mise de fonds au
-  m0 si le cash suffisait, « Achat reporté » à l'INFINI sinon → Immobilier = 0 sur tout l'horizon
-  (mesuré). Fix : helper partagé `services/projection/pastPurchaseInit.ts` (init DÉTENU aux
-  conventions du moteur : prime SCHL, PMT d'origine, solde amorti forme fermée, valeur appréciée)
-  consommé par l'init `propertiesState` du moteur ET par le KPI Accueil (`presentEquityOfGoal` —
-  champs explicites prioritaires, F4 : filtre isActive + gate équité ≠ 0 + garde non-fini tracée).
-  11 tests dont discriminant (Immobilier = 0 sur l'ancien code) + INV-9 + conservation/fuzz/personas
-  verts.) — ancien texte : le terme équité immo du KPI Accueil
-  est INERTE (`RealEstateGoal.currentValue`/`mortgageBalance` sans AUCUN écrivain UI) → un
-  propriétaire modélisé par price/downPayment a un KPI sans sa maison pendant que le Futur l'inclut
-  (mesuré : 81 609 $ moteur vs 0 KPI). Trancher : brancher sur ce que l'UI possède OU retirer le
-  terme. En même temps (F4) : gate `equity !== 0`, filtre `isActive`, gardes `Number.isFinite` +
-  logErrorThrottled (3 sites).
 - [ ] **`[SUBS-TAB]`** (M, reste) — détection/alertes abonnements livrées (TX-SUBSCRIPTIONS) ;
   restent : surface dédiée (onglet ou sous-onglet) + flux « confirmer/ignorer » les nouveaux détectés.
 - [ ] **`[GOAL-DEADLINE-UI]`** (S) — la carte d'un objectif existant (`Planning.tsx`) n'affiche ni

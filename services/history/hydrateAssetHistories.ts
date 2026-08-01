@@ -20,7 +20,7 @@ import type { Asset } from '../../types';
 import type { HistoryPoint } from '../marketData';
 import { coinGeckoQuoteCurrencyFor, coinGeckoIdFor } from '../marketData/providers/coingecko';
 import { getEffectivePurchases } from '../../utils/assetPurchases';
-import { logError } from '../errorLogger';
+import { logError, logErrorThrottled } from '../errorLogger';
 
 export interface HydrateHistoryDeps {
     /** Contrat façade : `[]` = vide VALIDE, `null` = ERREUR (chaîne entière en échec). */
@@ -83,6 +83,46 @@ export function mergePriceHistories(
     return [...byDate.entries()]
         .map(([date, price]) => ({ date, price }))
         .sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+/** [HIST-STORE-SIZE] Au-delà de cet âge, le stocké passe à 1 point/semaine. */
+export const DOWNSAMPLE_AFTER_DAYS = 365;
+const DAY_MS = 86_400_000;
+
+/**
+ * [HIST-STORE-SIZE] (mesuré 2026-07-31 : ~116 Ko persistés, +6 Ko/mois, ~384 Ko à 5 ans — dans
+ * CHAQUE push Drive + localStorage) Downsample du STOCKÉ : les points plus vieux que 365 j sont
+ * réduits à 1 point/semaine (le DERNIER de chaque semaine — ÷5 le stock ancien) ; la dernière
+ * année reste quotidienne (courbes 1M/3M/6M/YTD/1A intactes). Appliqué au moment d'écrire le
+ * patch d'hydratation (après mergePriceHistories) : les points crypto > 365 j (fenêtre CoinGecko,
+ * non re-téléchargeables) sont CONSERVÉS en hebdomadaire, jamais supprimés — c'est la raison
+ * d'être de mergePriceHistories, le downsample ne la trahit pas. Pur, `nowMs` injectable.
+ */
+export function downsamplePriceHistory(
+    history: Array<{ date: string; price: number }>,
+    nowMs: number,
+): Array<{ date: string; price: number }> {
+    const cutoffMs = nowMs - DOWNSAMPLE_AFTER_DAYS * DAY_MS;
+    const recent: Array<{ date: string; price: number }> = [];
+    // Semaine → DERNIER point (l'entrée est triée ascendante : les suivants écrasent).
+    const oldByWeek = new Map<number, { date: string; price: number }>();
+    for (const p of history) {
+        const t = Date.parse(`${p.date}T00:00:00Z`);
+        // [Panel #553, silent-failure] point corrompu (date illisible OU prix non fini/≤ 0 — même
+        // garde que mergePriceHistories, qui ne filtre PAS les points `fresh`) : retiré mais
+        // JAMAIS en silence — un point qui disparaît du stocké sans trace est indiagnosticable.
+        if (!Number.isFinite(t) || !Number.isFinite(p.price) || p.price <= 0) {
+            logErrorThrottled(`downsample-point-corrompu:${p.date}`, {
+                source: 'storage', severity: 'warning',
+                message: 'downsamplePriceHistory : point corrompu retiré (date ou prix invalide)',
+                context: { date: String(p.date).slice(0, 10) },
+            });
+            continue;
+        }
+        if (t >= cutoffMs) recent.push(p);
+        else oldByWeek.set(Math.floor(t / (7 * DAY_MS)), p);
+    }
+    return [...oldByWeek.values(), ...recent];
 }
 
 /**
@@ -308,7 +348,10 @@ async function runHydrate(
                 continue;
             }
             patches.set(a.symbol, {
-                priceHistory: mergePriceHistories(a.priceHistory, fresh),
+                // [HIST-STORE-SIZE] fusion (aucune perte de fenêtre provider) PUIS downsample du
+                // stocké (> 365 j → hebdomadaire) — l'ordre compte : on ne downsample jamais AVANT
+                // d'avoir réinjecté les points anciens que le provider ne re-fournit pas.
+                priceHistory: downsamplePriceHistory(mergePriceHistories(a.priceHistory, fresh), now()),
                 lastHistorySync: now(),
                 ...(resolvedSymbol ? { historySymbol: resolvedSymbol } : {}),
             });

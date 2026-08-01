@@ -38,9 +38,11 @@ describe('needsHistorySync', () => {
 
 describe('hydrateAssetHistories', () => {
     it('fenêtre = DEPUIS LE PREMIER ACHAT ; patch = clôtures natives + lastHistorySync', async () => {
+        // Closes RÉCENTS vs NOW (2027-01-15) : à < 365 j, le downsample [HIST-STORE-SIZE] ne
+        // touche rien — ce test verrouille la fenêtre/le patch, pas la densité du stocké.
         const getHistory = vi.fn(async () => [
-            { date: '2026-01-10', close: 28 },
-            { date: '2026-01-11', close: 28.5 },
+            { date: '2027-01-10', close: 28 },
+            { date: '2027-01-11', close: 28.5 },
         ]);
         const res = await hydrateAssetHistories([mk({})], { getHistory, now: () => NOW, sleep: async () => {} });
         expect(getHistory).toHaveBeenCalledTimes(1);
@@ -49,8 +51,8 @@ describe('hydrateAssetHistories', () => {
         expect(from.toISOString().slice(0, 10)).toBe('2026-01-10'); // 1er achat
         const patch = res.patches.get('XEQT.TO')!;
         expect(patch.priceHistory).toEqual([
-            { date: '2026-01-10', price: 28 },
-            { date: '2026-01-11', price: 28.5 },
+            { date: '2027-01-10', price: 28 },
+            { date: '2027-01-11', price: 28.5 },
         ]);
         expect(patch.lastHistorySync).toBe(NOW);
     });
@@ -131,24 +133,26 @@ describe('hydrateAssetHistories', () => {
     it('re-sync : le nouvel historique FUSIONNE avec l\'ancien (fenêtre provider bornée ne mange pas le passé)', async () => {
         const existing = [
             { date: '2025-01-10', price: 20 },  // hors de la nouvelle fenêtre (provider cappé)
-            { date: '2026-01-10', price: 27 },  // sera écrasé par le nouveau close du même jour
+            { date: '2027-01-10', price: 27 },  // sera écrasé par le nouveau close du même jour
         ];
         const res = await hydrateAssetHistories(
             [mk({ priceHistory: existing, lastHistorySync: NOW - 25 * 3600_000 })],
             {
                 getHistory: async () => [
-                    { date: '2026-01-10', close: 28 },
-                    { date: '2026-01-11', close: 28.5 },
+                    { date: '2027-01-10', close: 28 },
+                    { date: '2027-01-11', close: 28.5 },
                 ],
                 now: () => NOW, sleep: async () => {},
             },
         );
         // Avant fix : patch = REMPLACEMENT → un crypto > 1 an (CoinGecko cap 365 j) perdait chaque
-        // jour son point le plus ancien.
+        // jour son point le plus ancien. Le survivant 2025 est > 365 j : le downsample
+        // [HIST-STORE-SIZE] le RÉDUIT (hebdomadaire) mais ne le SUPPRIME jamais — il reste seul
+        // dans sa semaine, donc intact ici.
         expect(res.patches.get('XEQT.TO')!.priceHistory).toEqual([
-            { date: '2025-01-10', price: 20 },   // survivant
-            { date: '2026-01-10', price: 28 },   // nouveau close gagne à date égale
-            { date: '2026-01-11', price: 28.5 },
+            { date: '2025-01-10', price: 20 },   // survivant (downsample = réduction, pas perte)
+            { date: '2027-01-10', price: 28 },   // nouveau close gagne à date égale
+            { date: '2027-01-11', price: 28.5 },
         ]);
     });
 

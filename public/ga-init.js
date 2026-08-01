@@ -3,16 +3,16 @@
 // Externalisé depuis index.html pour respecter la CSP stricte
 // (script-src 'self' sans unsafe-inline dans la CSP (index.html / vercel.json)).
 //
-// Le tag gtag.js (googletagmanager.com) est chargé async depuis index.html ;
-// ce fichier configure dataLayer + gtag puis envoie la première page view.
-//
-// S-B (Loi 25 QC) — Google Consent Mode v2. On REFUSE par défaut le stockage
-// (analytics_storage + signaux pub) : tant que l'utilisateur n'a pas accepté via
-// la bannière, GA ne dépose aucun cookie ni identifiant. Le choix est géré côté
-// app (services/consent.ts) qui écrit la clé localStorage ci-dessous ; on la
-// relit ici pour rétablir un consentement accordé lors d'une session précédente.
-// IMPORTANT : la clé doit rester synchronisée avec services/consent.ts.
+// [SEC-GA-DEFER-CONSENT] (Loi 25 QC) — le SCRIPT gtag.js n'est chargé qu'APRÈS un
+// consentement accordé : ce fichier pose le stub dataLayer/gtag + Consent Mode v2
+// (refus par défaut), puis n'injecte googletagmanager.com QUE si un consentement
+// 'granted' a été persisté lors d'une session précédente. Le premier accord de la
+// session courante injecte le tag depuis services/consent.ts (ensureGtagLoaded).
+// Les appels gtag() émis avant chargement s'accumulent dans dataLayer et sont
+// rejoués par le tag à son arrivée (comportement standard gtag).
+// IMPORTANT : la clé ET l'URL doivent rester synchronisées avec services/consent.ts.
 var ANALYTICS_CONSENT_KEY = 'financeai:analyticsConsent:v1';
+var GTAG_SRC = 'https://www.googletagmanager.com/gtag/js?id=G-5WLQGBF1VL';
 
 window.dataLayer = window.dataLayer || [];
 function gtag() { dataLayer.push(arguments); }
@@ -25,13 +25,17 @@ gtag('consent', 'default', {
   analytics_storage: 'denied',
 });
 
-// Si l'utilisateur avait déjà accepté, on rétablit immédiatement la mesure.
+// Si l'utilisateur avait déjà accepté : rétablir la mesure ET charger le tag.
 try {
   if (window.localStorage && localStorage.getItem(ANALYTICS_CONSENT_KEY) === 'granted') {
     gtag('consent', 'update', { analytics_storage: 'granted' });
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = GTAG_SRC;
+    document.head.appendChild(s);
   }
 } catch (e) {
-  // localStorage indisponible → on reste en refus (état le plus protecteur).
+  // localStorage indisponible → on reste en refus (état le plus protecteur), tag non chargé.
 }
 
 gtag('js', new Date());

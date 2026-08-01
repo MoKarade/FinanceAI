@@ -412,6 +412,12 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   (avril débite le bucket .reer entier — [PROJ-TTP-DOUBLECOUNT]) et que la FERR a le même trou d'affichage
   ([ENG-FERR-FLOW-INVISIBLE]) : deux passes antérieures avaient corrigé CE bloc sans voir les registres voisins —
   vérifier TOUTES les sources ET tous les consommateurs du registre, pas le seul producteur qu'on corrige.
+  ⚠️ **Des fixtures de test à dates ABSOLUES vieillissent contre un NOW fixe** (leçon HIST-STORE-SIZE
+  2026-08-01) : les tests de fusion d'historique utilisaient des closes datés « 2026-01-10 » avec un
+  NOW figé à 2027-01-15 — l'ajout de la politique d'âge (downsample > 365 j) les a fait basculer du
+  côté « vieux » et a changé le SENS du test (2 échecs qui ressemblaient à une régression de fusion).
+  Pour un test qui ne teste PAS l'âge : générer les dates RELATIVES au NOW injecté (daysAgo(n)), pas
+  en littéraux — sinon chaque nouvelle politique temporelle réinterprète les fixtures.
   ⚠️ **Un chemin par défaut TYPÉ « dépense » avale tout nouveau type de flux** (leçon ENG-HERITAGE-INFLOW
   2026-07-31, rapporté par Marc) : `applyLifeEvents` routait TOUT type hors KRACH/perte-de-revenu/vente vers
   `addExpense` — le type `HERITAGE` (offert par l'UI avec tips « investissez-le ») était DÉBITÉ comme une dépense

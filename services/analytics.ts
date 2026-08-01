@@ -1,9 +1,10 @@
 // services/analytics.ts
 // Wrapper minimaliste autour de gtag (Google Analytics 4).
 //
-// Le tag gtag.js est chargé dans index.html. Ce module expose une API
-// typée pour tracker les vues d'écran SPA (changements d'onglet) sans
-// jamais envoyer de PII.
+// [SEC-GA-DEFER-CONSENT] Le tag gtag.js n'est chargé qu'APRÈS consentement (services/consent.ts —
+// avant, seul le stub dataLayer de public/ga-init.js existe et les événements s'y accumulent sans
+// requête réseau). Ce module expose une API typée pour tracker les vues d'écran SPA (changements
+// d'onglet) sans jamais envoyer de PII.
 //
 // No-op silencieux si gtag n'est pas disponible (env de test, blocker
 // d'ads, CSP qui rejette googletagmanager, etc.) — l'app continue de

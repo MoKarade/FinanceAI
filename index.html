@@ -40,13 +40,14 @@
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
 
     <!-- Google Analytics 4 — Measurement ID G-5WLQGBF1VL -->
-    <!-- Tag chargé async (non-bloquant). Code d'init externalisé dans /ga-init.js pour respecter la CSP stricte (pas d'unsafe-inline dans vercel.json script-src). -->
-    <!-- S-E : pas de SRI (integrity=) sur gtag.js — Google fait tourner ce fichier ;
-         un hash figé casserait GA à chaque rotation (Google ne supporte pas SRI ici).
-         La protection d'un script tiers non-épinglable est l'allow-list d'origine via
-         CSP (script-src googletagmanager.com), déjà en place dans vercel.json.
-         + Consent Mode v2 (ga-init.js) : aucun stockage analytics avant consentement. -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-5WLQGBF1VL"></script>
+    <!-- [SEC-GA-DEFER-CONSENT] (Loi 25) Le SCRIPT gtag.js n'est PLUS chargé ici : avant tout
+         consentement, aucune requête ne part vers Google (même l'IP n'est pas exposée).
+         /ga-init.js pose le stub dataLayer + Consent Mode v2 (refus par défaut) et n'injecte
+         gtag.js QUE si un consentement 'granted' est déjà persisté ; sinon l'injection se fait
+         au clic « Accepter » (services/consent.ts — ensureGtagLoaded). Les événements émis avant
+         chargement s'accumulent dans dataLayer et partent au chargement du tag.
+         S-E : pas de SRI (integrity=) sur gtag.js — Google fait tourner ce fichier ; la
+         protection d'un script tiers non-épinglable est l'allow-list CSP (googletagmanager.com). -->
     <script src="/ga-init.js"></script>
   </head>
   <body>

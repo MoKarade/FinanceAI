@@ -12,6 +12,9 @@ type FiscalFn = (
     fhsaContrib: number,
     year: number,
     skipBreakdown: boolean,
+    ageOpts?: undefined,
+    employmentIncome?: number,
+    realDeflator?: number,
 ) => FiscalReport;
 
 export interface LatentTaxCtx {
@@ -56,8 +59,11 @@ export function computeLatentTax(
         ? (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed)
         : (accRentesYear + incomeRetirement * 12);
 
+    // [FISC-BRACKET-REALINDEX] revenu déflaté en $ RÉELS → le barème doit suivre (realDeflator),
+    // sinon paliers ×1,02^Δ nominaux sur revenu réel = double indexation (latent sous-évalué ~35 % à 30 ans).
     const currentGrossPerUser = (currentGrossBase / activeUsersCount) / inflationFactor;
-    const baseTaxAmount = calculateFiscalReport(currentGrossPerUser, 0, 0, loopYear, enableMonteCarlo).totalTax
+    const baseTaxAmount = calculateFiscalReport(currentGrossPerUser, 0, 0, loopYear, enableMonteCarlo,
+        undefined, undefined, inflationFactor).totalTax
         * activeUsersCount * inflationFactor;
 
     const latentCapitalGain = Math.max(0, nonReg - nonRegACB);
@@ -69,7 +75,8 @@ export function computeLatentTax(
     const taxableRealEstateLatent = Math.max(0, realEstateLatentGain) * CAPITAL_GAINS_INCLUSION_STANDARD;
     const totalTaxableLatent = reer + taxableCryptoLatent + taxableLatentGain + taxableRealEstateLatent;
     const totalLatentPerUser = ((currentGrossBase + totalTaxableLatent) / activeUsersCount) / inflationFactor;
-    const fullLiquidationTax = calculateFiscalReport(totalLatentPerUser, 0, 0, loopYear, enableMonteCarlo).totalTax
+    const fullLiquidationTax = calculateFiscalReport(totalLatentPerUser, 0, 0, loopYear, enableMonteCarlo,
+        undefined, undefined, inflationFactor).totalTax
         * activeUsersCount * inflationFactor;
 
     return -(fullLiquidationTax - baseTaxAmount);

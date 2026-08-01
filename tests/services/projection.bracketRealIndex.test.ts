@@ -16,6 +16,7 @@
 import { describe, it, expect } from 'vitest';
 import { __runScenarioForTests, type SimulationParams } from '../../services/projection';
 import { calculateFiscalReport, calculateRamqPremium, calculateFSSPremium, getMarginalRate } from '../../utils/tax';
+import { computeLatentTax, type LatentTaxCtx } from '../../services/projection/latentTax';
 import type { ProjectionConfig, BudgetConfig, RetirementGoal } from '../../types';
 import type { AllocationStrategy } from '../../services/projection/types';
 
@@ -113,5 +114,35 @@ describe('[FISC-BRACKET-REALINDEX] moteur — un revenu réel constant paie un i
         // tardives (paliers élargis en réel) → le fix REHAUSSE l'impôt à vie de +62 %.
         expect(r.totalTaxesPaid).toBeCloseTo(48_314.04, 0);
         expect(r.finalNetWorth).toBeCloseTo(-196_188.58, 0);
+    });
+});
+
+// ---- Impôt latent : même fix d'espace (site oublié de la passe initiale, panel 2026-08-01) ----
+describe('[FISC-BRACKET-REALINDEX] impôt latent — le barème suit le revenu déflaté', () => {
+    // computeLatentTax déflate le revenu en $ RÉELS (÷ inflationFactor) : sans realDeflator, les
+    // paliers 1,02^Δ nominaux s'élargissent en réel → obligation latente sous-évaluée (~35 % à 30 ans).
+    const D = Math.pow(1.02, 30);
+    const at30: LatentTaxCtx = {
+        m: 360, loopYear: 2056, simInflation: 2, simSalaryGrowth: 2, isRetired: true,
+        activeUsersCount: 2, grossMarcBaseAnnual: 0, grossAnnaBaseAnnual: 0,
+        accRentesYear: 36_000 * D, incomeRetirement: 2_000 * D,
+        reer: 500_000, nonReg: 400_000, nonRegACB: 200_000, crypto: 0, cryptoACB: 0,
+        realEstateLatentGain: 0, enableMonteCarlo: false,
+    };
+    // Mêmes montants exprimés en $ de 2026 (tout ÷ D), évalués au barème 2026.
+    const at2026: LatentTaxCtx = {
+        ...at30, m: 0, loopYear: 2026,
+        accRentesYear: 36_000, incomeRetirement: 2_000,
+        reer: 500_000 / D, nonReg: 400_000 / D, nonRegACB: 200_000 / D,
+    };
+
+    it('homogénéité : latent(Δ=30, i=2 %) == latent(2026, mêmes montants réels) × 1,02^30', () => {
+        // À i == indexation légale (2 %), le facteur effectif vaut 1 → le calcul de l'an 30 doit être
+        // EXACTEMENT l'homothétie ×D du calcul 2026. DISCRIMINANT : sans realDeflator (ancien code),
+        // l'an 30 est évalué au barème 2056 élargi en réel → |latent| nettement plus petit (−35 %).
+        const latent30 = computeLatentTax(at30, calculateFiscalReport);
+        const latent2026 = computeLatentTax(at2026, calculateFiscalReport);
+        expect(latent30).toBeLessThan(0);                    // non-vacuité : une obligation existe
+        expect(latent30 / D).toBeCloseTo(latent2026, 2);
     });
 });

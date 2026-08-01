@@ -82,8 +82,33 @@
   Discriminant prouvé (5/5 échouent sur l'ancien code) : impôt réel CONSTANT 2 702 $/an à revenu
   réel constant (dérivait à 3 235 $) ; retraité 62 : ttp +62 % (29 806 → 48 314), direction
   conservatrice. 10 goldens re-basés SCIEMMENT (item2c, meltdownDisplay, returnProfile,
-  totalTaxesPaid). Nuance MESURÉE : chez le SALARIÉ le NW monte (~+0,8 %) — la retenue employeur
-  (sans déductions) était SUR-évaluée par les paliers doublement indexés.
+  totalTaxesPaid). Nuance salarié (mécanisme RE-MESURÉ par le panel 2026-08-01, 1re explication
+  réfutée) : le NW monte (~+0,8 %) parce que la prime RAMQ/FSS doublement indexée redescend à son
+  niveau légal (terme dominant), amplifié par l'heuristique 92 % — PAS parce que la retenue
+  baissait (elle monte). Panel #556 : site oublié `latentTax.ts` corrigé dans la même PR
+  (impôt latent affiché sous-évalué ~53 k$/−35 % à 30 ans, discriminant unitaire prouvé).
+- [ ] **`[FISC-PENSION-CREDIT-REAL]`** (S, MOYEN [Certain, mesuré — panel #556], GO Marc requis :
+  re-base de goldens retraités) — le crédit pension fédéral 2 000 $ est GELÉ nominalement
+  (FISCAL_REFERENCE:178) mais traité à plat en espace RÉEL (`utils/tax.ts` l.249) → il vaut de
+  facto 2 000 $ réels constants au lieu de `2 000/(1+i)^Δ`. Unique terme non homogène du barème
+  réel (sweep 1 920 cas : zéro autre écart). Sous-imposition ≤ 250,50 $ réels/pers/an (couple 65+
+  avec pension admissible : ~12 k$ réels sur 30 ans, sens NON conservateur). Fix connu :
+  `Math.min(PENSION_INCOME_AMOUNT_FED / realDeflator, pension)` + note FISCAL_REFERENCE.
+- [ ] **`[FISC-BRACKET-CPI-STRESS]`** (M, décision de MODÈLE [À vérifier avec Marc] — panel #556) —
+  post-fix, à `i ≠ 2 %` le barème érode en réel à `(1,02/(1+i))^Δ` alors que l'ARC/RQ indexent au
+  CPI réel, et que PSV (seuil clawback ×(1+i)^Δ) et SRG (gelé en $ réels) sont indexés pleinement →
+  les scénarios de STRESS surestiment l'impôt (mesuré : ttp +106 % à i = 8 %, +76 % à 5,5 %).
+  À i = 2 % (défaut) : aucun effet. Options : indexer les paliers à `simInflation` (fidèle CPI,
+  contredit ADR 009 « ~2 %/an ») vs statu quo documenté (conservateur en stress). Trancher avec
+  Marc avant de coder.
+- [ ] **`[FISC-MARGINAL-SPACE]`** (M — panel #556, PRÉ-EXISTANTS, non chiffrés en $) — sites qui
+  confrontent un revenu et un barème d'espaces différents via `.marginalRate`/`getMarginalRate`
+  (barème 2026 figé : `utils/tax.ts:824` ne passe ni `year` ni `realDeflator`) :
+  `cashflowAllocation.ts:350` (revenu NOMINAL croissant vs barème 2026 → AUTO_MARGINAL bascule
+  REER-first trop tôt), `realEstateMonth.ts:250` (retrait REER d'achat sur-imposé, conservateur),
+  `projection.ts:1616-1618` (taux affichés sous-évalués : salaire de base sans croissance vs
+  barème indexé). Chiffrer en $ avant tout fix ; propager `year`+`realDeflator` au
+  `.marginalRate` du report changerait TOUS les lecteurs → mesurer d'abord.
 - [ ] **`[ENG-TTP-UNSETTLED-PROPAGATE]`** (S-M — contre-vérif #555) — 4 surfaces lisent encore
   `totalTaxesPaid` NU : `monteCarlo.ts:108,145` (taxLeakage), `getProjection.spec.ts:99` +
   `simulateWhatIf.spec.ts:131` (netTaxSettlements servi à l'IA), `drawdownOptimizer.ts:61`

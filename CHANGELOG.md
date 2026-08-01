@@ -18,10 +18,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   sur 29 ans, écart < 1 $ — dérivait à +20 % avant). **Effet visible : les projections longues
   deviennent plus prudentes.** Retraité type (62 ans, 700 k$ REER) : impôt à vie +62 %
   (29 806 → 48 314 $), patrimoine final en baisse — l'ancien chiffre était OPTIMISTE, pas ta
-  situation. Nuance salarié : le patrimoine MONTE légèrement (~+0,8 %) — la retenue employeur
-  était sur-évaluée par le même bug, la régularisation d'avril baisse. 10 goldens re-basés
-  sciemment ; les blocs déjà cohérents en nominal (gains, dividendes, impôt successoral, FERR de
-  janvier) sont intacts.
+  situation. Nuance salarié : le patrimoine MONTE légèrement (~+0,8 %) — PAS parce que la retenue
+  baissait (mesuré : elle MONTE, comme tout l'impôt corrigé) mais parce que **la prime RAMQ et la
+  FSS étaient DOUBLEMENT indexées** (766 $ × 1,02^Δ appliqué en $ réels PUIS re-nominalisé —
+  sur-facturation jusqu'à ×2,2 à 40 ans) : leur retour au niveau légal domine la hausse d'impôt
+  sur un salarié sans déductions, effet amplifié par l'heuristique de retenue 92 %
+  (`[FISC-WHT-92PCT]`). 10 goldens re-basés sciemment ; les blocs déjà cohérents en nominal
+  (gains, dividendes, impôt successoral) sont intacts.
+- **`[FISC-BRACKET-REALINDEX]` (suite, panel du 2026-08-01)** — l'impôt LATENT (tuile « Impôt
+  latent » du graphique Futur) suit maintenant le même fix : le site déflatait le revenu sans
+  déflater le barème → l'obligation fiscale dormante affichée était sous-évaluée (~53 k$ / −35 %
+  à 30 ans sur un retraité type). Affichage seul (n'entre pas dans le patrimoine net).
 - **`[PROJ-TTP-DOUBLECOUNT]` — « Impôt à vie » n'est plus gonflé de +144 %.** Le compteur
   additionnait les retenues à la source (cascade REER, meltdown, FERR) PUIS le règlement d'avril
   qui débite ces mêmes retenues — les mêmes dollars comptés deux fois (mesuré : stratégie meltdown

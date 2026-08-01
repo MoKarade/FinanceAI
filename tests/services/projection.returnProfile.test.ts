@@ -98,8 +98,10 @@ describe('PH4-FUT-B — profil de rendement dans le moteur (déterministe, 30 an
         // à écart d'âge (35/33) → à l'horizon, user1 (63) voit SA PSV/RRQ retardée à SES 65 ans (avant : versée
         // dès les 65 de user0) → −476 $ sur les 3 profils (dérive VOULUE, prouvée par git-stash, pas une régression).
         // RE-CALIBRÉ 2026-08-01 ([FISC-BRACKET-REALINDEX]) : paliers/crédits en $ RÉELS. Fixture SALARIÉE →
-        // la retenue employeur (calculée SANS déductions, revenu plus haut) était SUR-évaluée par les paliers
-        // doublement indexés → régularisation d'avril en baisse → NW ↑ ~0,8 % (+13 158/+14 282/+17 166 $).
+        // NW ↑ ~0,8 % (+13 158/+14 282/+17 166 $). Cause MESURÉE (panel 2026-08-01) — PAS la retenue (elle
+        // MONTE comme tout l'impôt post-fix, 20 495 → 32 879 $ à Δ=29) : la prime RAMQ/FSS doublement
+        // indexée redescend à son niveau légal (−2 050 $/an, terme dominant vs impôt +1 077 $/an), amplifié
+        // par l'heuristique 92 % ([FISC-WHT-92PCT] : en mode T1213 la direction est conservatrice, NW −1,9 %).
         expect(finalNetWorth('conservative')).toBeCloseTo(1_559_230.44, 1);
         expect(finalNetWorth('balanced')).toBeCloseTo(1_897_602.38, 1);
         expect(finalNetWorth('aggressive')).toBeCloseTo(2_983_538.23, 1);

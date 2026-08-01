@@ -911,10 +911,10 @@ fichier:ligne). Verdicts appliqués à la refonte :
   est STRUCTURELLEMENT morte en données réelles (buildMarketData n'émet que les symboles détenus — pas de
   benchmark) → « — » permanent + momentum « bat le marché » comparé à 0. Soit hydrater un benchmark (ex.
   XWD.TO) via la même chaîne, soit retirer la carte et la branche momentum-vs-marché.
-- [ ] **`[HIST-STORE-SIZE]`** 🟡 (M, à MESURER) — `priceHistory` quotidien depuis le 1er achat vit dans le
-  store PERSISTÉ (localStorage + chaque push Drive) : ~25-30 Ko/symbole/3 ans, croît sans cap (surtout avec
-  la fusion crypto > 365 j). Mesurer la taille réelle du payload sync ; si notable → downsample du stocké
-  (quotidien 1 an, hebdo au-delà) ou sortir l'historique vers IDB device-local (pattern PROJECTION-PERSIST).
+- [x] **`[HIST-STORE-SIZE]`** ✅ 2026-08-01 (PR #553 — mesuré ~116 Ko, downsample > 365 j → 1 pt/semaine
+  livré ; IDB device-local REJETÉ : un nouvel appareil perdrait les points crypto > 365 j, fenêtre
+  CoinGecko). Ancien texte (pré-mesure) : `priceHistory` quotidien depuis le 1er achat vit dans le
+  store PERSISTÉ (localStorage + chaque push Drive), croît sans cap — mesurer puis downsampler.
 - [x] **`[HIST-PREVIEW-PROXY]`** ✅ 2026-07-29 (PR #518) — const yahooProxy partagée server/preview. (XS) — `vite preview` n'a pas de proxy `/api/history/yahoo` (seul `server.proxy`
   dev est configuré) → repli Yahoo → fallback SPA → HTML → null honnête, graphes vides en preview local.
   Ajouter `preview.proxy` miroir si on se met à utiliser vite preview.

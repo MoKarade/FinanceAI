@@ -6,8 +6,9 @@
 // masquage aux lecteurs d'écran.
 // ⚠️ (panel #553) L'<input type="range"> associé garde son aria-valuenow RÉEL en tout temps — un
 // lecteur d'écran en mode PARCOURS l'annonce même hors focus : chaque slider consommateur DOIT
-// aussi porter `{...maskedSliderAria(isPrivacyMode)}` (utils/privacyAria), sinon ce composant ne
-// masque que la moitié de la fuite.
+// aussi porter `{...maskedSliderAria(isPrivacyMode && !<focus>)}` (utils/privacyAria), sinon ce
+// composant ne masque que la moitié de la fuite. Le `&& !<focus>` donne à l'utilisateur SR la
+// MÊME symétrie qu'au visuel : valeur audible PENDANT l'ajustement, masquée au parcours.
 //
 // Usage : l'appelant fournit `revealed` (focus du slider associé, via onFocus/onBlur) :
 //   const [sliderFocus, setSliderFocus] = useState(false);

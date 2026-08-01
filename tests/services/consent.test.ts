@@ -85,6 +85,17 @@ describe('[SEC-GA-DEFER-CONSENT] le SCRIPT gtag.js ne part chez Google qu\'au co
         expect(html).toMatch(/ga-init\.js/); // le stub Consent Mode reste au boot
     });
 
+    it('GTAG_SRC : la MÊME URL (measurement ID inclus) dans consent.ts ET ga-init.js', async () => {
+        // [Panel #553] les deux commentaires disent « DOIT rester synchronisée » — ceci le PROUVE :
+        // une rotation du Measurement ID dans un seul fichier casserait soit le rétablissement au
+        // boot (ga-init), soit l'injection au clic (consent.ts), sans autre test pour le voir.
+        const fs = await import('node:fs');
+        const { GTAG_SRC } = await import('../../services/consent');
+        const js = fs.readFileSync('public/ga-init.js', 'utf8');
+        const m = js.match(/GTAG_SRC = '([^']+)'/);
+        expect(m?.[1]).toBe(GTAG_SRC);
+    });
+
     it('ga-init.js n\'injecte le tag QUE sous consentement persisté granted (clé synchronisée)', async () => {
         const fs = await import('node:fs');
         const js = fs.readFileSync('public/ga-init.js', 'utf8');

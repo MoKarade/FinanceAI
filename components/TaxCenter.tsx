@@ -419,14 +419,14 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                         <span>Cotisation REER</span>
                                         <PrivateSliderValue revealed={rrspSliderFocus}>{formatCAD(rrspContribution)}</PrivateSliderValue>
                                     </label>
-                                    <input type="range" aria-label="Cotisation REER" min="0" max={RRSP_SLIDER_MAX} step="100" value={rrspContribution} {...maskedSliderAria(isPrivacyMode)} onChange={e => setRrspContribution(parseFloat(e.target.value))} onFocus={() => setRrspSliderFocus(true)} onBlur={() => setRrspSliderFocus(false)} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
+                                    <input type="range" aria-label="Cotisation REER" min="0" max={RRSP_SLIDER_MAX} step="100" value={rrspContribution} {...maskedSliderAria(isPrivacyMode && !rrspSliderFocus)} onChange={e => setRrspContribution(parseFloat(e.target.value))} onFocus={() => setRrspSliderFocus(true)} onBlur={() => setRrspSliderFocus(false)} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
                                 </div>
                                 <div>
                                     <label className="flex justify-between text-meta text-ink-200 mb-1">
                                         <span>CELIAPP</span>
                                         <PrivateSliderValue revealed={fhsaSliderFocus}>{formatCAD(fhsaContribution)}</PrivateSliderValue>
                                     </label>
-                                    <input type="range" aria-label="CELIAPP" min="0" max={FHSA_ANNUAL_LIMIT_PER_USER} step="100" value={fhsaContribution} {...maskedSliderAria(isPrivacyMode)} onChange={e => setFhsaContribution(parseFloat(e.target.value))} onFocus={() => setFhsaSliderFocus(true)} onBlur={() => setFhsaSliderFocus(false)} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
+                                    <input type="range" aria-label="CELIAPP" min="0" max={FHSA_ANNUAL_LIMIT_PER_USER} step="100" value={fhsaContribution} {...maskedSliderAria(isPrivacyMode && !fhsaSliderFocus)} onChange={e => setFhsaContribution(parseFloat(e.target.value))} onFocus={() => setFhsaSliderFocus(true)} onBlur={() => setFhsaSliderFocus(false)} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
                                 </div>
                             </div>
                         </div>

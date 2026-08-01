@@ -6,6 +6,42 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased — héritage = rentrée + findings panel #552] — 2026-07-31
+
+### Corrections money-critical
+- **`[ENG-HERITAGE-INFLOW]` — l'événement de vie « Héritage / Gain » est enfin de l'argent qui
+  RENTRE** (rapporté par Marc). Le moteur n'avait aucun chemin de rentrée : le montant était débité
+  comme une dépense (impact net −2× le montant). Désormais : +liquide, non imposable (aucun impôt
+  successoral pour le bénéficiaire au Canada), investi ensuite par la cascade — et un héritage nommé
+  « après vente… » ne déclenche jamais une vente immobilière.
+- **Findings du panel #552 (4 agents, tout MESURÉ)** sur le lot « bien passé » :
+  la graine de patrimoine initial inclut maintenant l'équité du bien détenu (avant : « variation »
+  fantôme de +156 629 $ au 1er mois et plancher de sécurité sous-évalué de 158 731 $ → biais
+  pessimiste dans Monte-Carlo/goalSeek/classement de stratégies) ; pour une résidence principale
+  déjà détenue, la substitution loyer↔hypothèque est neutre au départ (avant : sur-charge jusqu'à
+  20 084 $/an si aucune ligne « logement » au budget) ; les champs explicites valeur/hypothèque
+  saisis sont honorés par le MOTEUR aussi (avant : écart Accueil↔Futur de 291 676 $ mesuré) ; les
+  champs immo non numériques sont assainis et JOURNALISÉS (avant : 968 valeurs non finies dans le
+  graphe, rabattues en « 0 $ crédible ») ; le graphe historique de l'Accueil peint l'équité PAR
+  ANNÉE (avant : la valeur présente constante faussait 2022 de +77 097 $) ; l'hypothèse « bien
+  passé = détenu » est tracée dans le journal d'événements du 1er mois.
+
+## [unreleased — ta maison existe dans le Futur] — 2026-07-31
+
+### Corrections money-critical
+- **`[DASH-IMMO-EQUITY-WRITERS]` / `[ENG-PAST-PURCHASE]` — un bien immobilier acheté dans le PASSÉ
+  est désormais DÉTENU dès le départ.** Avant, le moteur le traitait comme un achat à venir : la mise
+  de fonds était re-débitée de ton cash d'aujourd'hui (dépensée deux fois) ou, si le cash ne couvrait
+  pas, l'« achat » était reporté à l'infini — la projection perdait la maison (équité 0 sur tout
+  l'horizon, mesuré). Le moteur démarre maintenant avec la valeur appréciée et l'hypothèque restante
+  amortie (mêmes conventions que l'achat simulé : prime SCHL, paiement d'origine), sans débit de
+  cash ; le loyer n'est plus facturé si la résidence principale est déjà détenue. Le KPI patrimoine
+  de l'Accueil lit la MÊME source (helper partagé) — le terme « équité immo » n'est plus inerte.
+- **`[ENG-FERR-FLOW-INVISIBLE]` — les conversions FERR obligatoires (71+) et les retraits REER
+  d'objectifs sont désormais VISIBLES dans le flux « Retrait REER »** du graphe/tooltip/jalons/MCP
+  (mesuré : 11,6 % des sorties REER étaient invisibles ; un retraité 71+ dont la première sortie
+  est une FERR ne voyait jamais son jalon « 1er retrait REER »).
+
 ## [unreleased — meltdown REER honnête] — 2026-07-31
 
 ### Corrections money-critical

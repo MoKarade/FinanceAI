@@ -4,6 +4,35 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-07-31 (suite 10) — PR #552 : V2'+V2''+V3 + findings panel + héritage
+> **PR #552** (draft → ready) porte : V2' (bien passé détenu), V2'' (FERR/goals visibles dans
+> RetraitREER), V3 complète (DEFAULTS-DRIFT 4 champs + garde bidirectionnelle, TEST-GAP ×3, PV-11e,
+> NW-PARITY-SURFACES, PDF equity réelle), **[ENG-HERITAGE-INFLOW]** (bug rapporté par Marc : un
+> héritage était DÉBITÉ comme dépense — branche +liquide non imposable, 4 tests discriminants
+> prouvés par stash), et le **commit findings du panel 4 agents** (tout MESURÉ) : graine
+> prevNW/minNetWorth ensemencée de l'équité passée (flux fantôme +156 629 $ et plancher −158 731 $
+> corrigés), substitution loyer↔PMT neutre au boot (sur-charge 20 084 $/an), champs explicites
+> honorés par le MOTEUR (écart Accueil↔Futur 291 676 $), sanitisation immo à la frontière (968
+> non-finis), garde non-fini DANS presentEquityOfGoal (3 consommateurs couverts), équité historique
+> PAR ANNÉE au graphe Accueil (+77 097 $ sur 2022), log « supposée DÉTENUE » au m0, docs
+> PROJECTION/OUTPUT_SCHEMA. Nouveaux tickets : [ENG-RENEWAL-RATE-MISMATCH] (ÉLEVÉ pré-existant),
+> [ENG-PAST-OWNED-VS-PLANNED] + [UX-ISACTIVE-SEMANTIQUE] (décisions Marc), [IMMO-3-FORMULES],
+> [ENG-PROPGROWTH-ZERO], [ENG-NETTRANSFER-REER-INCOMPLET], [ENG-RENEWAL-M0], [ENG-CELIAPP-RESIDUAL].
+> ⚠️ Vercel rate-limité (100 deploys/jour, plan gratuit) — le deploy PROD au merge échouera ~24 h,
+> la prod reste sur le dernier déploiement réussi ; le statut Vercel n'est PAS un check requis.
+> Suite : merge #552 → archiver les items livrés → V4 (PROFIL-SWITCH, D6-PRIV, GA-CONSENT,
+> HIST-STORE-SIZE) → V5 fiscal (TTP-DOUBLECOUNT, BRACKET-REALINDEX GO, 0.92→1.0, SOLO-SPLIT).
+
+> ## 🟢 Session 2026-07-31 (suite 9) — V2' : un bien PASSÉ est DÉTENU (moteur + KPI)
+> Racine du ticket DASH-IMMO-EQUITY-WRITERS (décision Marc « brancher ») : le moteur traitait un
+> `purchaseDate` passé comme un achat À FAIRE (re-débit de la mise de fonds au m0, ou « Achat
+> reporté » à l'infini → le Futur perdait la maison, Immobilier = 0 mesuré). Nouveau
+> `services/projection/pastPurchaseInit.ts` (pur, conventions moteur : SCHL + PMT origine + solde
+> amorti + valeur appréciée) branché sur l'init moteur ET le KPI Accueil (F4 : isActive, gate
+> équité ≠ 0, non-fini tracé). 11 tests + discriminant + conservation 20/20 + fuzz + personas verts.
+> ⚠️ Sémantique : les personas/fixtures à bien passé voient leur NW BOUGER (voulu — avant ils
+> perdaient ou re-payaient la maison).
+
 > ## 🟢 Session 2026-07-31 (suite 8) — V1 (PR #549) + V2 meltdown honnête
 > **V1 mergée (#549)** : clamp CELIAPP signalé, étiquettes « dernier close » Accueil, clamps MC
 > (bug FVI « 103/100 » réel corrigé — mesuré), note CAGR, esbuild épinglé, 8 shades hors palette,

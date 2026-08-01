@@ -770,6 +770,10 @@ export const App: React.FC = () => {
                             buildFiscalSummary,
                             buildScenariosRows,
                         } = await import('./services/pdfReport');
+                        // [NW-PARITY-SURFACES] Équité immo RÉELLE par propriété (était `equity: 0`
+                        // en dur → la ligne « Équité bâtie » du PDF ne s'affichait jamais). Import
+                        // dynamique : même frontière lazy que le PDF lui-même (rien au boot).
+                        const { presentEquityOfGoal, monthsSince } = await import('./services/projection/pastPurchaseInit');
                         // Snapshot store hors React pour éviter la dépendance sur state
                         // (lastProjection est délibérément exclu du selector App.tsx).
                         const { lastProjection } = useFinanceStore.getState();
@@ -787,7 +791,7 @@ export const App: React.FC = () => {
                             realEstateGoals: state.realEstateGoals.filter(g => g.isActive).map(g => ({
                                 name: g.name || 'Propriete',
                                 price: g.price || 0,
-                                equity: 0,
+                                equity: presentEquityOfGoal(g, monthsSince(g.purchaseDate)),
                             })),
                             retirementTargetAge: state.retirementGoal.targetAge,
                             retirementTargetIncome: state.retirementGoal.targetMonthlyIncome,

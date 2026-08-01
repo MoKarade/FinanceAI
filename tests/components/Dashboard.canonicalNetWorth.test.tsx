@@ -79,7 +79,7 @@ describe('Dashboard — [DASH-NETWORTH-CANONICAL] le KPI patrimoine dit le PRÉS
                 assets={[asset]}
                 initialBalances={{ Compte: 1000 }}
                 budgetItems={[]}
-                realEstateGoals={[{ id: 'reg_1', name: 'Maison', currentValue: 100_000, mortgageBalance: 60_000 } as never]}
+                realEstateGoals={[{ id: 'reg_1', name: 'Maison', isActive: true, currentValue: 100_000, mortgageBalance: 60_000 } as never]}
                 travelGoals={[]}
                 lifeEvents={[]}
                 retirementGoal={goal}

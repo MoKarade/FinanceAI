@@ -57,6 +57,15 @@ export function buildDefaultAppState(): AppState {
         majorRenovations: [],
         charitableGoals: [],
         documents: [],
+        // [DEFAULTS-DRIFT-FINTABLE-FIELDS] Champs ADDITIFS optionnels présents EXPLICITEMENT
+        // (`: undefined`) : `snapshotAppState` (chat in-app) itère sur les clés de CE littéral —
+        // un champ absent ici est structurellement INVISIBLE au chat, même s'il existe au store.
+        // Miroir exact du littéral DEFAULT_APP_STATE du store ; parité verrouillée par le test
+        // BIDIRECTIONNEL de registryParity.test.ts.
+        categoryReview: undefined,
+        fintableSyncReport: undefined,
+        fintableBrokerBalances: undefined,
+        fintableRoles: undefined,
     };
 }
 

@@ -26,8 +26,10 @@ import { HistoryCoverageNote } from './dashboard/HistoryCoverageNote';
 import { Tab as TabEnum } from '../types';
 import { formatCAD, formatPercent, formatSigned } from '../utils/format';
 import { ProjectionRequired } from './ui/ProjectionRequired';
-import { logError } from '../services/errorLogger';
+import { logError, logErrorThrottled } from '../services/errorLogger';
 import { toCurrencyFactor, computePresentNetWorth, computeTotalDebt } from '../services/portfolio';
+import { presentEquityOfGoal, monthsSince } from '../services/projection/pastPurchaseInit';
+import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { PrivateBlock } from './ui/PrivateBlock';
 
@@ -269,7 +271,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
         // permanence (mesuré : « Desjardins » → 0,00 % ; « Compte » → 18,18 % sur mêmes fixtures).
         cashAccountsList.forEach(acc => { if (rc[acc] === undefined) rc[acc] = 0; });
 
-        const currentRealEstateEquity = realEstateGoals.reduce((sum, g) => sum + (g.currentValue || 0) - (g.mortgageBalance || 0), 0);
+        // [DASH-IMMO-EQUITY-WRITERS] (décision Marc : BRANCHER) Équité par le helper PARTAGÉ avec
+        // le moteur (mêmes conventions que chartData[0].Immobilier) : les champs explicites
+        // currentValue/mortgageBalance priment s'ils existent, sinon reconstruction depuis
+        // price/downPayment/amortissement — avant, le terme était INERTE (aucun écrivain UI).
+        const currentRealEstateEquity = realEstateGoals.reduce(
+            (sum, g) => sum + presentEquityOfGoal(g, monthsSince(g.purchaseDate)), 0);
+        // [DASH-HIST-IMMO-FLAT] (finding financial-integrity #552, MESURÉ) : peindre l'équité
+        // PRÉSENTE constante sur tout l'historique faussait le niveau passé (+77 097 $ mesurés sur
+        // 2022) et diluait les % de variation. Équité PAR ANNÉE via le helper existant
+        // (reconstructRealEstateEquityByYear) ; l'année COURANTE reste la valeur présente (source
+        // unique KPI) pour ne pas créer de marche au raccord avec le point d'aujourd'hui.
+        const equityByYear = reconstructRealEstateEquityByYear(realEstateGoals);
+        const nowYearImmo = new Date().getFullYear();
         // [DASH-NW-DUP] source unique gardée NaN/Infinity (l'ancienne somme inline propageait un solde corrompu).
         const currentDebts = computeTotalDebt(debts);
 
@@ -300,10 +314,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 Crypto: Number(row['TOTAL_CRYPTO']) || 0,
             };
             point.CELI = invMap.CELI; point.REER = invMap.REER; point.NonReg = invMap.NonReg; point.Crypto = invMap.Crypto;
-            point.Immobilier = currentRealEstateEquity;
+            const rowYear = rowDate.getFullYear();
+            const immoAtRow = rowYear >= nowYearImmo
+                ? currentRealEstateEquity
+                : (equityByYear.get(rowYear) ?? 0);
+            point.Immobilier = immoAtRow;
             point.Dettes = -currentDebts;
 
-            total += invMap.CELI + invMap.REER + invMap.NonReg + invMap.Crypto + currentRealEstateEquity - currentDebts;
+            total += invMap.CELI + invMap.REER + invMap.NonReg + invMap.Crypto + immoAtRow - currentDebts;
             point.Total = total;
             return point;
         });
@@ -343,7 +361,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     // [DASH-NW-DUP] pilote l'étiquette de périmètre du KPI patrimoine (la série historique inclut
     // l'équité immo — convention moteur — contrairement au NW « hors immo » des surfaces IA).
-    const hasRealEstate = realEstateGoals.some(g => (g.currentValue || 0) > 0);
+    // [DASH-IMMO-EQUITY-WRITERS F4] gate sur l'ÉQUITÉ réelle (≠ 0), pas sur un champ sans écrivain.
+    const hasRealEstate = realEstateGoals.some(g => presentEquityOfGoal(g, monthsSince(g.purchaseDate)) !== 0);
 
     // [DASH-NETWORTH-CANONICAL] Le KPI « patrimoine global » = le PRÉSENT par la SOURCE UNIQUE
     // (`computePresentNetWorth` + équité immo — même expression que le repli sans CSV ci-dessus),
@@ -353,8 +372,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
     // base du GRAPHE et de la variation — le présent et l'histoire sont deux choses ; le KPI dit le
     // présent, comme toutes les autres surfaces (App/TabRouter, PDF, snapshot IA, Investissements).
     const presentNetWorth = useMemo(() => {
-        const realEstateEquity = realEstateGoals.reduce(
-            (sum, g) => sum + (g.currentValue || 0) - (g.mortgageBalance || 0), 0);
+        // [DASH-IMMO-EQUITY-WRITERS] même helper que le moteur — plus jamais un terme inerte.
+        // Garde F4 : une valeur explicite NON FINIE est tracée (throttlé), jamais avalée en silence.
+        const realEstateEquity = realEstateGoals.reduce((sum, g) => {
+            if ((g.currentValue !== undefined && !Number.isFinite(g.currentValue))
+                || (g.mortgageBalance !== undefined && !Number.isFinite(g.mortgageBalance))) {
+                logErrorThrottled(`dash-immo-nonfinite-${g.id}`, {
+                    source: 'ui', severity: 'warning',
+                    message: 'Bien immobilier à valeur/hypothèque non numérique — ignoré du KPI',
+                    context: { id: g.id, name: g.name },
+                });
+                return sum;
+            }
+            return sum + presentEquityOfGoal(g, monthsSince(g.purchaseDate));
+        }, 0);
         return computePresentNetWorth(initialBalances, transactions, assets, fxRates, debts)
             + realEstateEquity;
     }, [initialBalances, transactions, assets, fxRates, debts, realEstateGoals]);

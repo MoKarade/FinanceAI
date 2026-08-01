@@ -3,7 +3,7 @@ import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Deb
 import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, CAPITAL_GAINS_INCLUSION_STANDARD, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
 import { RRIF_RATES, welcomeTax, NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './projection/helpers';
 import { salaryShares, splitByShares, stepReerByUser, addByWeights } from './projection/perUserBalances';
-import { logError } from './errorLogger';
+import { logError, logErrorThrottled } from './errorLogger';
 import { runMonteCarlo, type MonteCarloResult } from './projection/monteCarlo';
 import type { EngineOverrides, StrategyConfig } from './projection/strategyConfig';
 import { returnRatesForProfile } from './projection/strategyConfig';
@@ -21,6 +21,8 @@ import { computeRetirementIncome } from './projection/retirementIncome';
 import { processOneChild } from './projection/childrenReee';
 import { computeActiveIncome } from './projection/activeIncome';
 import { processReerMeltdown } from './projection/meltdownReer';
+import { initPastPurchase } from './projection/pastPurchaseInit';
+import { SCHL_AMORT_MAX_INSURED_STANDARD } from './realEstate';
 import { applyTravelExpenses, applyLifeEvents, computeStressTest, applySavingsGoalDeadlines, applyFinancialGoalDeadlines, computeIncomeLossFactor } from './projection/monthlyEvents';
 import { computeLatentTax } from './projection/latentTax';
 import { computeGlidepathRates } from './projection/glidepathRates';
@@ -116,7 +118,16 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         if (!dateStr || typeof dateStr !== 'string' || dateStr.length < 7) return 0;
         const year = parseInt(dateStr.slice(0, 4), 10);
         const month = parseInt(dateStr.slice(5, 7), 10) - 1;
-        if (isNaN(year) || isNaN(month)) return 0;
+        if (isNaN(year) || isNaN(month)) {
+            // [Panel #552, silent-failure] une date corrompue (offset 0 silencieux) rend un bien
+            // DÉTENU indiscernable d'un achat « ce mois-ci » — tracer, jamais avaler.
+            logErrorThrottled(`monthOffset-invalide:${dateStr}`, {
+                source: 'projection', severity: 'warning',
+                message: 'Date illisible dans la simulation — offset 0 appliqué',
+                context: { date: dateStr.slice(0, 10) },
+            });
+            return 0;
+        }
         return (year - startYear) * 12 + (month - startMonth);
     };
 
@@ -136,23 +147,74 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let crypto = Number(effProj.useManualBalances ? (effProj.manualCrypto ?? liveCSVBalances.CRYPTO) : liveCSVBalances.CRYPTO) || 0;
     let reee = Number(liveCSVBalances.REEE) || 0;
 
-    const activeRE = (realEstateGoals || []).filter(g => !!g);
+    // Sanitisation à la frontière (panel #552, même patron que activeDebts plus bas) : un champ
+    // immo vidé dans l'UI (`parseFloat('')` = NaN) empoisonnait `goal.mortgageRate / 100` → PMT
+    // NaN → 968 valeurs non finies mesurées dans chartData, rabattues en « 0 $ crédible » par la
+    // garde de computeRawNetWorth. Normalisé + JOURNALISÉ (jamais avalé). NB : `activeRE` ne
+    // filtre PAS isActive (seulement les entrées nullish) — le gate isActive vit dans le moteur.
+    const activeRE = (realEstateGoals || []).filter(g => !!g).map(g => {
+        const price = Number.isFinite(g.price) ? g.price : 0;
+        const downPayment = Number.isFinite(g.downPayment) ? g.downPayment : 0;
+        const mortgageRate = Number.isFinite(g.mortgageRate) ? g.mortgageRate : 0;
+        const amortization = Number.isFinite(g.amortization) && (g.amortization as number) > 0
+            ? g.amortization : SCHL_AMORT_MAX_INSURED_STANDARD;
+        const hadCorruption = [g.price, g.downPayment, g.mortgageRate, g.amortization]
+            .some(v => v != null && !Number.isFinite(Number(v)));
+        if (hadCorruption) {
+            logError({
+                source: 'projection', severity: 'warning',
+                message: 'RealEstateGoal à champ non numérique normalisé (projection)',
+                context: { id: g.id, name: g.name },
+            });
+        }
+        return { ...g, price, downPayment, mortgageRate, amortization };
+    });
     const activeChild = (childGoals || []).filter(g => !!g);
 
     let realEstateEquity = 0;
     let mortgageBalance = 0;
-    let propertiesState = activeRE.map(g => ({
-        id: g.id || 'anon',
-        isBought: false,
-        mortgage: (g.price || 0) - (g.downPayment || 0),
-        currentValue: g.price || 0,
-        calculatedPmt: 0,
-        isSold: false,
-        // RE-GAIN — coût d'achat (ACB approx) + nature RP/locatif, pour imposer le gain en capital
-        // à la disposition d'un immeuble locatif (vente via LifeEvent ou disposition réputée au décès).
-        cost: g.price || 0,
-        isPrimaryResidence: g.isPrimaryResidence ?? false,
-    }));
+    let propertiesState = activeRE.map(g => {
+        // [ENG-PAST-PURCHASE] (décision Marc 2026-07-31) Un bien acheté dans le PASSÉ démarre
+        // DÉJÀ DÉTENU : équité présente dès le mois 0, hypothèque restante amortie, AUCUN débit
+        // de mise de fonds du cash d'aujourd'hui. Avant : re-achat au m0 si le cash suffisait
+        // (mise de fonds dépensée DEUX fois) ou « Achat reporté » à l'infini sinon (le Futur
+        // perdait la maison — mesuré Immobilier = 0 sur tout l'horizon).
+        const purchaseOffset = getMonthOffset(g.purchaseDate);
+        const past = g.isActive && purchaseOffset < 0 ? initPastPurchase(g, -purchaseOffset) : null;
+        return {
+            id: g.id || 'anon',
+            isBought: !!past,
+            mortgage: past ? past.mortgage : (g.price || 0) - (g.downPayment || 0),
+            currentValue: past ? past.currentValue : (g.price || 0),
+            calculatedPmt: past ? past.calculatedPmt : 0,
+            isPaidOff: past ? past.isPaidOff : false,
+            isSold: false,
+            // RE-GAIN — coût d'achat (ACB approx) + nature RP/locatif, pour imposer le gain en capital
+            // à la disposition d'un immeuble locatif (vente via LifeEvent ou disposition réputée au décès).
+            cost: g.price || 0,
+            isPrimaryResidence: g.isPrimaryResidence ?? false,
+        };
+    });
+    // [Panel #552, ÉLEVÉ projection-validator] SEMER l'équité/dette immo des biens DÉJÀ détenus
+    // AVANT les graines prevNW/minNetWorth (plus bas) : sans ça, le bien passé existe au m0 mais
+    // pas dans la graine → diffNW[0] portait un « flux fantôme » de toute l'équité (mesuré
+    // +156 629 $) et minNetWorth démarrait SOUS le vrai plancher de 158 731 $ → biais pessimiste
+    // dans safetyScore (Monte-Carlo), goalSeek et strategyRanking pour tout propriétaire.
+    for (const p of propertiesState) {
+        if (p.isBought) {
+            realEstateEquity += p.currentValue - p.mortgage;
+            mortgageBalance += p.mortgage;
+        }
+    }
+    // [Panel #552, ÉLEVÉ financial-integrity] Pour une RP déjà détenue au boot, la substitution
+    // « loyer retiré ↔ PMT ajouté » doit être NULLE au départ : le budget de base d'un propriétaire
+    // contient DÉJÀ son versement hypothécaire réel. L'offset = PMT reconstruit + charges (constant,
+    // comme les ajouts du moteur), au lieu du proxy loyer (défaut 1 600 $ → sur-charge mesurée
+    // jusqu'à 20 084 $/an quand aucune ligne « logement » n'existe au budget).
+    const bootPrimaryHousingOffset = propertiesState.reduce((s, p, i) =>
+        s + (p.isBought && p.isPrimaryResidence
+            ? p.calculatedPmt + (activeRE[i]?.unrecoverableMonthly || 0)
+            : 0), 0);
 
     // Sanitisation à la frontière : un champ vidé dans l'UI (`parseFloat('')` = NaN, DebtManager)
     // contaminerait sinon `d.balance` (NaN persistant via l'amortissement) → `rawNetWorth` = NaN →
@@ -206,7 +268,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let fhsaLifetimeContrib = Math.min(celiapp, FHSA_LIFETIME_LIMIT_PER_USER * fhsaEligibleUsersCount);
     let accFhsaYear = 0;
     
-    let hasPurchasedPrimary = false;
+    // [ENG-PAST-PURCHASE] Une résidence principale DÉJÀ détenue au boot (achat passé) → le loyer
+    // n'est pas facturé dès le mois 0. (`isBought` exige déjà `isActive` en amont — pas de garde
+    // redondante ici, finding panel #552.)
+    let hasPurchasedPrimary = propertiesState.some(p => p.isBought && p.isPrimaryResidence);
     const hasFuturePurchase = realEstateGoals.some(g => g.isActive && g.isPrimaryResidence);
     let hasLoggedRetirement = false;
 
@@ -519,6 +584,17 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         let immoPrincipal = 0;
 
         let lifeEventsLog: string[] = [];
+        // [Panel #552, ÉLEVÉ financial-integrity] Rendre VISIBLE l'hypothèse « bien passé =
+        // détenu » : un objectif d'achat à date passée jamais réalisé serait sinon promu bien
+        // détenu EN SILENCE (équité + dette fantômes). Le vrai discriminant (champ isOwned) est
+        // au BACKLOG [ENG-PAST-OWNED-VS-PLANNED] — décision UX Marc requise.
+        if (m === 0) {
+            propertiesState.forEach((p, i) => {
+                if (p.isBought) {
+                    lifeEventsLog.push(`🏠 ${activeRE[i]?.name || 'Propriété'} : supposée DÉTENUE depuis ${activeRE[i]?.purchaseDate || '?'} (équité de départ ${Math.round(p.currentValue - p.mortgage).toLocaleString('fr-CA')}$)`);
+                }
+            });
+        }
         let flowEventsLog: string[] = [];
         // FIX silent-failure: les événements stochastiques de vie (divorce, LTC,
         // LTD, CI, héritage, perte emploi, décès conjoint, mortalité) ne se
@@ -1000,6 +1076,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 taxCurrentYear.reer += janResult.ferrTaxOnRrif;
                 impotReerMois += janResult.ferrTaxOnRrif;
                 accRetraitsReerYear += janResult.ferrMandatoryGross;
+                // [ENG-FERR-FLOW-INVISIBLE] (panel #551, MESURÉ : 113 418 $ = 11,6 % des sorties
+                // REER invisibles sur AUTO_MARGINAL) — la FERR est un retrait REER : elle alimente
+                // le flux AFFICHÉ comme les autres sources, sinon « 1er retrait REER » ne se
+                // déclenche jamais pour un retraité 71+ et le tooltip/MCP sous-affichent.
+                // (taxOnRrif est déjà compté à part dans totalTaxesPaid — rien d'autre à toucher.)
+                retraitReerMois += janResult.ferrMandatoryGross;
                 // [ITEM-2C] La FERR de chaque conjoint sort de SA part REER (registre per-conjoint), pas au
                 // pro-rata du pool → le solde REER de chaque conjoint reflète SES conversions obligatoires
                 // (et conditionne SON FERR de l'an suivant). La réconciliation de fin de mois préserve l'attribution.
@@ -1063,6 +1145,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             { m, loopYear, isRetired, activeUsersCount, simInflation, simSalaryGrowth,
               grossMarcBaseAnnual, grossAnnaBaseAnnual, incomeRetirement,
               useSmithManoeuvre: effProj.useSmithManoeuvre === true, currentRentExpense,
+              bootPrimaryHousingOffset,
               skipRapForPurchase: overrides.skipRapForPurchase ?? (strategy === 'PRIO_CELI_NO_RAP'),
               // PH4-FUT-B-4 — downsizing déclenché au mois EXACT de la retraite (une seule fois).
               // Revue : clamp à max(0,…) pour ne PAS perdre le levier si l'utilisateur est DÉJÀ
@@ -1219,6 +1302,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     reer -= drawn; accRetraitsReerYear += drawn; remaining -= drawn;
                     accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, drawn, reerByUser);
                     withdrawalREER += drawn;
+                    // [ENG-FERR-FLOW-INVISIBLE] même parité pour les retraits de GOALS (3ᵉ source).
+                    retraitReerMois += drawn;
                 } else if (account === 'CRYPTO') {
                     // [PV-7] gain proportionnel + banque de pertes via le helper partagé.
                     const drawn = handleCryptoSaleLocal(remaining);

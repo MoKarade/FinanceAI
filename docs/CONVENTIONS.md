@@ -510,6 +510,19 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   pour tout secret/donnée saisie, énumérer les SORTIES possibles du champ (blur, démontage, onglet
   caché, fermeture, autofill) avant de se déclarer couvert. Corollaire d'humilité : la leçon
   fraîchement écrite ne protège pas le commit qui l'écrit — c'est le panel qui l'a attrapée.
+  ⚠️ **Un champ AGRÉGÉ sans étiquette fabrique de faux diagnostics — y compris chez Claude**
+  (leçon MCP-NETINCOME-MISLEADING, 2026-08-05, erreur COMMISE puis corrigée) : le `netIncome` de
+  `get_tax_situation` porte l'assiette IMPOSABLE, donc il inclut le rendement de placement ESTIMÉ
+  (12 970 $ chez Marc) — un montant qui n'est JAMAIS encaissé. En le comparant aux dépôts de paie
+  réels, j'ai annoncé à Marc un écart de revenu de 12 800 $/an **inexistant** (le vrai écart est
+  4 491 $, entièrement expliqué par la progression de ses paies dans l'année ; son salaire saisi
+  est bon à 2,4 % près au rythme actuel). C'est Marc qui a demandé la contre-vérification.
+  Règles qui en sortent : (1) ne JAMAIS comparer un agrégat fiscal à des transactions bancaires
+  sans vérifier ce qu'il agrège — un chiffre encaissable et un chiffre théorique ne se soustraient
+  pas ; (2) tout champ de tool MCP qui mélange encaissé et estimé doit l'annoncer DANS la note ET
+  offrir la variante encaissable (`netSalaryIncome` : brut − impôt − cotisations, vérifiable au
+  relevé — validé à 0,5 % contre 12 mois de dépôts réels) ; (3) le no-fake-data ne s'arrête pas à
+  l'UI : un tool qui nourrit une IA est une surface de vérité au même titre qu'un écran.
   ⚠️ **Des fixtures de test à dates ABSOLUES vieillissent contre un NOW fixe** (leçon HIST-STORE-SIZE
   2026-08-01) : les tests de fusion d'historique utilisaient des closes datés « 2026-01-10 » avec un
   NOW figé à 2027-01-15 — l'ajout de la politique d'âge (downsample > 365 j) les a fait basculer du

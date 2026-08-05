@@ -103,6 +103,12 @@ export const getTaxSituationSpec = {
 
         // Espace de cotisation : droits historiques cumulés − soldes actuels.
         // Aligne la sémantique du moteur (rrspRoom = totalHistoriqueREER − REER).
+        // [MCP-NETINCOME-MISLEADING] Net SALARIAL encaissable = brut − impôt total − cotisations.
+        // L'impôt dû au revenu de placement est retiré ici À DESSEIN : il se paie depuis la paie,
+        // le portefeuille n'étant pas liquidé. C'est donc bien la trésorerie qui arrive au compte.
+        const netSalaryAnnual = Math.max(0, grossAnnual - totalTax
+            - sum((r) => r.report.rrq) - sum((r) => r.report.rqap) - sum((r) => r.report.ae));
+
         const room = computeHistoricalContributionRoom(activeUsers, grossAnnual, year);
         const breakdown = computeAssetBreakdown(state.assets ?? [], state.fxRates ?? {});
         const celiRoomRemaining = Math.max(0, room.totalHistoricalCeliRoom - breakdown.celi);
@@ -121,7 +127,21 @@ export const getTaxSituationSpec = {
             marginalRatePct: Number((topMarginal * 100).toFixed(1)),
             // Taux MOYEN sur l'assiette imposable RÉELLE (salaire + placement), cohérent avec totalTax.
             averageRatePct: totalTaxableIncome > 0 ? Number(((totalTax / totalTaxableIncome) * 100).toFixed(1)) : 0,
+            // ⚠️ [MCP-NETINCOME-MISLEADING] `netIncome` porte l'assiette IMPOSABLE (salaire +
+            // rendement de placement ESTIMÉ) : il inclut donc un montant qui n'est JAMAIS encaissé
+            // (le rendement n'est ni versé ni liquidé). Incident 2026-08-05 : ce champ m'a fait
+            // annoncer à Marc un écart de revenu INEXISTANT — j'ai comparé `netIncome` (52 625 $,
+            // dont 12 970 $ de rendement théorique) à ses dépôts de paie réels (39 848 $) et conclu
+            // à tort que son salaire saisi était faux. Un agrégat crédible mais non étiqueté
+            // fabrique de faux diagnostics : c'est le principe no-fake-data appliqué aux tools.
             netIncome: Math.round(sum((r) => r.report.netIncome)),
+            // Ce qui tombe RÉELLEMENT au compte : le salaire brut moins TOUT ce qui est prélevé
+            // (impôt du ménage — y compris la part due au placement, payée depuis le salaire
+            // puisque le portefeuille n'est pas liquidé — et cotisations). Vérifiable contre le
+            // relevé bancaire : sur le profil réel de Marc, 39 654 $ prédits vs 39 848 $ de dépôts
+            // de paie mesurés sur 12 mois (écart 0,5 %).
+            netSalaryIncome: Math.round(netSalaryAnnual),
+            netSalaryMonthly: Math.round(netSalaryAnnual / 12),
             payrollDeductions: {
                 rrq: Math.round(sum((r) => r.report.rrq)),
                 rqap: Math.round(sum((r) => r.report.rqap)),
@@ -181,7 +201,13 @@ export const getTaxSituationSpec = {
                 "cotisations RRQ/RQAP/AE portent sur le SALAIRE seul. N'inclut pas : revenu locatif, tous les crédits. " +
                 'perUser.withholdings = retenues détaillées ; perUser.salarySource = provenance du salaire ' +
                 '(fiche de paie = source unique — null = saisie manuelle) ; realMonthlyAverages = réel des ' +
-                'transactions (mois pleins, hors transferts), mêmes chiffres que l\'onglet Budget.',
+                'transactions (mois pleins, hors transferts), mêmes chiffres que l\'onglet Budget. ' +
+                // [MCP-NETINCOME-MISLEADING] Avertissement EXPLICITE : sans lui, un lecteur (humain ou
+                // IA) compare netIncome aux dépôts de paie réels et conclut à un faux écart de revenu.
+                '⚠️ netIncome porte l\'assiette IMPOSABLE : il INCLUT le rendement de placement estimé, ' +
+                'qui n\'est PAS encaissé. Pour ce qui tombe vraiment au compte (comparable aux dépôts de ' +
+                'paie du relevé), utiliser netSalaryIncome / netSalaryMonthly — brut moins impôt total et ' +
+                'cotisations. Ne JAMAIS comparer netIncome à des transactions bancaires.',
         });
     }),
 } satisfies ReadToolSpec<Args>;

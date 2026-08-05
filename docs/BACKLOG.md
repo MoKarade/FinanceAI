@@ -223,6 +223,17 @@
   `normalizeAppState`. Cause racine : `registryParity.test.ts:104-113` UNIDIRECTIONNEL (n'itère que
   sur mcpDefaults). Fix : +4 champs (`: undefined`) + test bidirectionnel.
 
+- [ ] **`[FINTABLE-STALE-ALERT]`** (S-M, découvert 2026-08-05 — incident réel : Marc a constaté
+  LUI-MÊME « aucune update depuis 5 jours », dernière transaction 2026-07-31 = veille de la fin
+  d'essai Fintable, aucun canal ne l'a alerté) — la staleness d'import est INVISIBLE : (a) si
+  Fintable gèle son feed bancaire (`can_sync: false` au palier gratuit) mais sert encore l'API,
+  la sync rapporte « succès, 0 transaction » — vert trompeur, classe PERF-STALE-TAIL-ZERO ;
+  (b) `fintableSyncReport` n'est exposé par AUCUN tool MCP (seulement Réglages/SystemView) →
+  indiagnosticable à distance. Fix : ① alerte visible (Accueil/Assistant, pas juste Réglages)
+  quand `max(date de transaction importée)` > N jours OU `report.at` > 48 h, avec la CAUSE
+  (erreur vs 0-transaction) ; ② exposer le rapport + la date de dernière transaction par compte
+  dans `get_financial_overview` (ou un tool `get_sync_health`) pour que Claude puisse
+  diagnostiquer sans les yeux de Marc.
 - [ ] **`[FINTABLE-SYNC-STALE-BASE]`** (M, résiduel #545 ASSUMÉ) — une passe de sync calcule son
   `nextState` sur un snapshot capturé AVANT le fetch réseau (`browserSync.ts:181`,
   `runFintableSync.ts:118`) : une édition manuelle pendant la fenêtre peut être écrasée. Vrai fix =

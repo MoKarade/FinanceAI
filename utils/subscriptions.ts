@@ -15,17 +15,60 @@ export function isPinned(pinned: readonly RecurringItem[], sub: Pick<RecurringIt
     return pinned.some((p) => subscriptionKey(p) === key);
 }
 
+// ── [SUBS-TAB] Marchands ÉCARTÉS (« ce n'est pas un abonnement ») ────────────────────────────
+//
+// Choix Marc 2026-08-05 : « ne plus jamais le proposer ». Sans ça, un faux positif revenait à
+// CHAQUE actualisation, indéfiniment — épingler confirmait, mais rien ne permettait de refuser.
+//
+// ⚠️ On persiste des CLÉS (marchands normalisés), pas des objets : le refus porte sur le marchand,
+// pas sur une occurrence datée dont les montants bougent. Un `RecurringItem` complet stocké ici
+// serait périmé dès le prochain débit.
+//
+// ⚠️ « Ne plus jamais » reste RÉVERSIBLE (`restoreSubscription`) : un refus définitif ET invisible
+// serait un piège — un mauvais clic effacerait un vrai abonnement sans recours, et Marc chercherait
+// pourquoi Netflix a disparu de sa liste. Le compte des écartés doit rester visible à l'écran.
+
+/** Le marchand a-t-il été écarté explicitement ? */
+export function isDismissed(dismissedKeys: readonly string[], sub: Pick<RecurringItem, 'payee'>): boolean {
+    return dismissedKeys.includes(subscriptionKey(sub));
+}
+
+/** Écarte un marchand (idempotent). Renvoie une nouvelle liste de clés. */
+export function dismissSubscription(dismissedKeys: readonly string[], sub: Pick<RecurringItem, 'payee'>): string[] {
+    const key = subscriptionKey(sub);
+    return dismissedKeys.includes(key) ? [...dismissedKeys] : [...dismissedKeys, key];
+}
+
+/** Ré-autorise un marchand écarté (le rend de nouveau détectable). */
+export function restoreSubscription(dismissedKeys: readonly string[], key: string): string[] {
+    return dismissedKeys.filter((k) => k !== key);
+}
+
 /**
- * Liste à AFFICHER = abos ÉPINGLÉS (persistés) + abos DÉTECTÉS non déjà épinglés (dédup par marchand).
- * Les épinglés gagnent (montant/jour confirmés par l'utilisateur priment sur une re-détection). Pur.
+ * Liste à AFFICHER = abos ÉPINGLÉS (persistés) + abos DÉTECTÉS non déjà épinglés (dédup par marchand),
+ * moins les marchands ÉCARTÉS. Les épinglés gagnent (montant/jour confirmés par l'utilisateur priment
+ * sur une re-détection). Pur.
+ *
+ * ⚠️ Le filtre des écartés s'applique AUSSI aux épinglés : écarter puis ré-actualiser ne doit pas
+ * ressusciter l'abo par la porte de derrière. Le handler d'UI désépingle en même temps, mais le
+ * module ne s'y FIE pas — un état incohérent venant du Drive ou d'un backup se corrige ici.
+ *
+ * ⚠️ `dismissedKeys` est OPTIONNEL et vaut `[]` par défaut : champ additif, aucun bump de schéma,
+ * et tout appelant existant garde un comportement bit-identique.
  */
 export function mergeSubscriptions(
     pinned: readonly RecurringItem[],
     detected: readonly RecurringItem[],
+    dismissedKeys: readonly string[] = [],
 ): RecurringItem[] {
-    const seen = new Set(pinned.map(subscriptionKey));
-    const extra = detected.filter((d) => !seen.has(subscriptionKey(d)));
-    return [...pinned, ...extra];
+    const dismissed = new Set(dismissedKeys);
+    const keptPinned = pinned.filter((p) => !dismissed.has(subscriptionKey(p)));
+    const seen = new Set(keptPinned.map(subscriptionKey));
+    const extra = detected.filter((d) => {
+        const k = subscriptionKey(d);
+        return !seen.has(k) && !dismissed.has(k);
+    });
+    return [...keptPinned, ...extra];
 }
 
 /** Épingle un abo (idempotent : aucun doublon par marchand). Renvoie une nouvelle liste. */

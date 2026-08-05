@@ -767,6 +767,9 @@ export interface AppState {
    *  (IA/heuristique) et reperdus au reload. L'utilisateur en épingle un détecté → il rejoint cette liste persistée.
    *  Optionnel (additif, PAS de bump v7→v8 : rien à migrer, le store l'initialise à `[]`). Réutilise `RecurringItem`. */
   subscriptions?: RecurringItem[];
+  /** [SUBS-TAB] Marchands normalisés explicitement écartés (« pas un abonnement »).
+   *  Champ ADDITIF optionnel → aucun bump de schéma, aucun code de migration. */
+  dismissedSubscriptions?: string[];
   debts: Debt[];
   travelGoals: TravelGoal[];
   lifeEvents: LifeEvent[];

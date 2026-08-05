@@ -171,6 +171,28 @@ fichier:ligne). Verdicts appliqués à la refonte :
   (39 654 prédits vs 39 848 mesurés) + mise en garde dans la note du tool + test discriminant.
   Leçon CONVENTIONS : un agrégat non étiqueté fabrique de faux diagnostics, y compris chez Claude.
 
+## ✅ Session 2026-08-05 (suite) — abonnements : pouvoir dire NON (PR #570)
+
+- [x] **`[SUBS-TAB]` — volet « confirmer / ignorer »** ✅ 2026-08-05 (PR #570) — la détection et la
+  surface existaient déjà (`Planning.tsx`, section `fixed`), avec les alertes de hausse/arrêt, les
+  totaux et l'ÉPINGLAGE. Mais **rien ne permettait de REFUSER** : épingler confirmait, alors qu'un
+  faux positif revenait à CHAQUE actualisation, indéfiniment.
+  - Choix Marc (2026-08-05) : « ne plus JAMAIS le proposer ». Liste d'exclusion persistée
+    (`dismissedSubscriptions`), **par CLÉ de marchand normalisée** et non par objet : le refus porte
+    sur le marchand, pas sur une occurrence datée dont les montants bougent.
+  - Champ ADDITIF optionnel + 3ᵉ paramètre de `mergeSubscriptions` à défaut `[]` → **aucun bump de
+    schéma, aucun code de migration**, rétrocompatibilité bit-identique (verrouillée par un test).
+  - Le filtre s'applique AUSSI aux épinglés : le handler désépingle en même temps, mais le module
+    pur ne s'y FIE pas — un état incohérent venant du Drive ou d'un backup se corrige au calcul
+    plutôt que de ressusciter l'abo par la porte de derrière.
+  - ⚠️ **« Ne plus jamais » reste RÉVERSIBLE et VISIBLE** : un `<details>` compte les marchands
+    écartés et permet de les réafficher. Un refus définitif ET invisible aurait été un piège — un
+    mauvais clic ferait disparaître un vrai abonnement sans recours, et Marc chercherait pourquoi
+    son total a baissé.
+  - ⚠️ **Le ticket décrivait mal l'existant** : il demandait « une surface dédiée » comme s'il n'y
+    en avait aucune. Vérifié par grep AVANT de coder (règle CLAUDE.md) → le vrai manque était le
+    refus, pas l'affichage. Le volet EMPLACEMENT reste ouvert, gaté sur l'arbitrage de Marc.
+
 ## ✅ Session 2026-08-05 (suite) — V8 : deux UI qui promettaient ce qu'elles ne pouvaient tenir (PR #569)
 
 Même famille : une interface qui propose quelque chose qu'elle ne peut pas honorer. L'une CACHE une

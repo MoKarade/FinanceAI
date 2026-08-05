@@ -1493,6 +1493,24 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   le symptôme dont Marc s'est plaint. Une re-tentative UNIQUE qui ré-applique les mêmes payloads sur
   l'état frais coûte un aller-retour et sauve la journée ; rejouer le réseau serait disproportionné,
   et une boucle pilonnerait le Drive.
+- ⚠️ **Un ticket peut décrire l'existant à l'envers** (leçon SUBS-TAB, 2026-08-05) : il réclamait
+  « une surface dédiée » pour les abonnements comme s'il n'y en avait aucune — alors qu'elle vit
+  dans `Planning.tsx` depuis TX-SUBSCRIPTIONS, avec alertes, totaux et épinglage. Le grep AVANT de
+  coder (règle CLAUDE.md) a évité de reconstruire ce qui existait ET a révélé le vrai manque :
+  aucun moyen de REFUSER un faux positif. Le libellé d'un ticket est une hypothèse sur le code,
+  pas un constat.
+- ⚠️ **Confirmer et refuser ne sont pas symétriques — implémenter l'un ne donne pas l'autre**
+  (même leçon) : « épingler » gardait un abo détecté, mais rien ne permettait de dire « ce n'est
+  pas un abonnement » — donc un faux positif revenait à chaque actualisation, indéfiniment. Quand
+  une UI propose une confirmation, vérifier que le REFUS existe aussi, sinon le bruit est éternel.
+- ⚠️ **Un refus « définitif » doit rester VISIBLE et réversible** (même leçon) : une exclusion
+  persistée mais invisible est un piège — un mauvais clic ferait disparaître un vrai abonnement
+  sans recours, et l'utilisateur chercherait pourquoi son total a baissé. Durable ≠ irréversible :
+  compter les écartés à l'écran et offrir le retour arrière.
+- ⚠️ **Un refus se persiste par CLÉ, pas par objet** (même leçon) : stocker le `RecurringItem`
+  complet aurait figé des montants et une date qui bougent au débit suivant. Ce qu'on refuse, c'est
+  le MARCHAND. Corollaire appliqué : le filtre vit dans le module PUR (qui ne se fie pas au handler
+  d'UI pour maintenir la cohérence), pas seulement dans le composant.
 - ⚠️ **Retirer une option d'un menu peut escamoter une donnée DÉJÀ posée** (leçon
   PH4C-SAVINGS-NATURE, 2026-08-05) : filtrer les postes d'épargne du menu de liaison a rendu
   invisible un lien existant vers l'un d'eux — et le moindre changement du `<select>` l'aurait

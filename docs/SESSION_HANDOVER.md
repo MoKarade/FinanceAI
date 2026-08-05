@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-05 (suite 25) — #568 MERGÉE (V7 4/4) + V8 démarrée (PR #569)
+> **V7 TERMINÉE.** Deux items V8 livrés, même famille : une UI qui promet ce qu'elle ne peut tenir.
+> - `[GOAL-DEADLINE-UI]` — l'échéance pilote un décaissement réel et le MCP peut l'écrire, mais
+>   rien ne l'affichait → écriture IA invisible et irréversible. Champ date affiché + éditable.
+>   S'aligne sur la CHAÎNE VIDE (encodage déjà en place), pas `undefined`.
+> - `[PH4C-SAVINGS-NATURE]` — le menu offrait des postes de nature Épargne, qui ne peuvent afficher
+>   que « Versé ce mois : 0 » (les virements sont hors `actualsMap`). Retirés de l'offre.
+>   ⚠️ **Régression attrapée par son propre test** : le filtre rendait invisible une liaison DÉJÀ
+>   posée. Corrigé en distinguant « catégorie disparue » de « nature épargne », les deux restant
+>   visibles pour être défaites.
+>
+> **Reste V8** : `[SUBS-TAB]` (⚠️ **POSER LA QUESTION à Marc** sur l'emplacement de la surface avant
+> de coder : onglet propre / sous-onglet Transactions / carte Accueil) · `[CHAT-PAGE-CONTEXT-V2]` ·
+> `[ASSET-CURRENCY-BACKFILL]` (gaté sur l'apparition d'un log chez Marc).
+
 > ## 🟢 Session 2026-08-05 (suite 24) — **V7 TERMINÉE (4/4)** : ratchet des constantes fiscales (#568)
 > `[FISC-CONST-GUARD-V2]` livré → **V7 est complète**. Le garde ferme le trou par lequel `0.92`
 > était passé : une constante fiscale NOUVELLE née dans le moteur, que rien ne comparait à rien.

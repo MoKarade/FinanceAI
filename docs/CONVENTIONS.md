@@ -1493,6 +1493,21 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   le symptôme dont Marc s'est plaint. Une re-tentative UNIQUE qui ré-applique les mêmes payloads sur
   l'état frais coûte un aller-retour et sauve la journée ; rejouer le réseau serait disproportionné,
   et une boucle pilonnerait le Drive.
+- ⚠️ **Retirer une option d'un menu peut escamoter une donnée DÉJÀ posée** (leçon
+  PH4C-SAVINGS-NATURE, 2026-08-05) : filtrer les postes d'épargne du menu de liaison a rendu
+  invisible un lien existant vers l'un d'eux — et le moindre changement du `<select>` l'aurait
+  effacé en silence. Quand on restreint un choix, traiter séparément « ce qu'on PROPOSE » et
+  « ce qui est DÉJÀ sélectionné » : la valeur courante doit rester visible et défaisable, même
+  quand elle n'est plus offerte. Attrapé par le test du lot lui-même, pas par le typecheck.
+- ⚠️ **Une UI qui CACHE une valeur qui agit est aussi trompeuse qu'une UI qui MENT** (leçon
+  GOAL-DEADLINE-UI, même lot) : l'échéance d'un objectif pilotait un décaissement réel et
+  l'assistant pouvait l'écrire, mais rien ne l'affichait — donc une écriture IA était invisible ET
+  irréversible. Quand un tool MCP peut écrire un champ, vérifier que l'UI le MONTRE et permet de le
+  défaire ; sinon l'automatisation devient opaque au moment précis où elle agit.
+- ⚠️ **Ne pas introduire un 2ᵉ encodage pour un sens qui en a déjà un** (même lot) : `deadline` est
+  un `string` REQUIS et le formulaire de création utilisait déjà `''` pour « pas d'échéance ».
+  Écrire `undefined` depuis le nouveau chemin aurait donné deux représentations du même état, qui
+  divergent toujours à terme. Le typecheck l'a attrapé ici — il ne le fera PAS sur un champ optionnel.
 - ⚠️ **Un garde sur un terrain déjà peuplé doit être un RATCHET, jamais un échec dur** (leçon
   FISC-CONST-GUARD-V2, 2026-08-05) : 38 littéraux existaient déjà dans les modules fiscaux. Un
   échec dur aurait cassé sur 38 lignes le jour de sa naissance — donc aurait été relâché jusqu'à ne

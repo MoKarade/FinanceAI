@@ -171,6 +171,32 @@ fichier:ligne). Verdicts appliqués à la refonte :
   (39 654 prédits vs 39 848 mesurés) + mise en garde dans la note du tool + test discriminant.
   Leçon CONVENTIONS : un agrégat non étiqueté fabrique de faux diagnostics, y compris chez Claude.
 
+## ✅ Session 2026-08-05 (suite) — V8 : deux UI qui promettaient ce qu'elles ne pouvaient tenir (PR #569)
+
+Même famille : une interface qui propose quelque chose qu'elle ne peut pas honorer. L'une CACHE une
+valeur qui agit, l'autre OFFRE un choix qui ne produit que du faux.
+
+- [x] **`[GOAL-DEADLINE-UI]`** ✅ 2026-08-05 (PR #569) — la carte d'un objectif existant
+  (`Planning.tsx`) n'affichait ni n'éditait `deadline`, alors que l'échéance pilote un DÉCAISSEMENT
+  réel dans la projection ET que le tool MCP `upsert_savings_goal` peut la poser. Une écriture de
+  l'assistant restait donc INVISIBLE et IRRÉVERSIBLE à l'écran — même classe que
+  [MCP-NETINCOME-MISLEADING] : une donnée qui AGIT sans que Marc puisse la voir ni la corriger.
+  Champ date affiché + éditable, patron calqué sur `updateGoalLink`.
+  ⚠️ `deadline` est un `string` REQUIS et le formulaire de création utilise déjà la CHAÎNE VIDE pour
+  « pas d'échéance » : on s'aligne dessus plutôt que d'introduire un 2ᵉ encodage (`undefined`) qui
+  ferait diverger deux chemins d'écriture pour le même sens. Absence d'échéance DITE (« aucune »)
+  plutôt qu'un champ vide ambigu.
+- [x] **`[PH4C-SAVINGS-NATURE]`** ✅ 2026-08-05 (PR #569) — le menu de liaison listait TOUTES les
+  catégories, y compris celles de nature `Epargne`. Or le « Versé ce mois » vient de `actualsMap`,
+  qui EXCLUT les virements — précisément le moyen d'alimenter un poste d'épargne. Lier un tel poste
+  condamnait donc l'objectif à « Versé ce mois : 0 $ » À PERPÉTUITÉ. Le choix est retiré de l'offre
+  plutôt que d'afficher un zéro crédible (no-fake-data).
+  ⚠️ **Régression attrapée par son propre test** : filtrer l'option rendait INVISIBLE une liaison
+  DÉJÀ posée sur un poste épargne — et le moindre changement du menu l'aurait effacée en silence.
+  Correctif : distinguer deux raisons de ne pas être dans le menu (catégorie disparue → « introuvable »
+  vs nature épargne → « ne peut rien afficher »), et garder l'option visible dans les deux cas pour
+  que Marc puisse défaire la liaison au lieu de la subir.
+
 ## ✅ Session 2026-08-05 (suite) — V7 TERMINÉE : ratchet des constantes fiscales (PR #568)
 
 - [x] **`[FISC-CONST-GUARD-V2]`** ✅ 2026-08-05 (PR #568 ; annoncé S, livré **M** — la mesure a

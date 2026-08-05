@@ -41,6 +41,7 @@ import { readFintableSnapshot } from './readSnapshot';
 import type { FintableSnapshot } from './types';
 import { mapFintableSnapshot, FINTABLE_TAX_REGIMES, type FintableAccountRole, type FintableTaxRegime } from './mapSnapshot';
 import { decideCutoverDate, applyPayloadsIsolated } from './syncCore';
+import { referenceDeltaPatch } from './applyStatePatch';
 import { toPersistableBrokerBalances } from './brokerBalances';
 import { FintableError } from './types';
 import { logError } from '../errorLogger';
@@ -54,8 +55,18 @@ const LOOKBACK_DAYS = 90;
 export interface BrowserSyncResult {
     /** Rapport identique à celui du cron serveur (même type, même carte de diagnostic). */
     report: FintableSyncReport;
-    /** État à persister. `null` si la passe a échoué (rien ne doit être écrit à moitié). */
-    nextState: AppState | null;
+    /**
+     * Patch MINIMAL à écrire — déjà réduit aux clés réellement touchées, et calculé contre la base
+     * sur laquelle les payloads ont été appliqués. `null` si la passe a échoué (rien ne doit être
+     * écrit à moitié).
+     *
+     * ⚠️ [FINTABLE-SYNC-STALE-BASE] Ce champ a REMPLACÉ un `nextState: AppState | null` que
+     * l'appelant devait lui-même diffuser via `referenceDeltaPatch(base, nextState)`. Le diff n'a de
+     * sens que contre la base EXACTE de l'application ; l'exposer laissait à l'appelant le choix de
+     * la base — et les deux appelants prenaient celle capturée AVANT le réseau. Le patch est donc
+     * calculé ICI, où la base est connue sans ambiguïté : la faute n'est plus exprimable.
+     */
+    statePatch: Partial<AppState> | null;
 }
 
 export interface BrowserSyncOptions {
@@ -63,6 +74,27 @@ export interface BrowserSyncOptions {
     client?: FintableClient;
     /** Injectable pour les tests (défaut : `Date.now()`). */
     now?: () => number;
+    /**
+     * [FINTABLE-SYNC-STALE-BASE] Relit l'état JUSTE AVANT d'appliquer les payloads.
+     *
+     * ⚠️ Le `state` reçu en argument est capturé AVANT le fetch réseau (plusieurs secondes). Une
+     * saisie manuelle pendant cette fenêtre — une transaction ajoutée à la main, un solde corrigé —
+     * atterrit dans le store mais PAS dans ce snapshot : les payloads bâtissaient alors leurs
+     * tableaux à partir d'une base amputée, et le patch (qui touche justement `transactions` /
+     * `initialBalances`) écrasait la saisie. Le verrou de sync (`acquireFintableSyncLock`) ne
+     * protège QUE contre une autre passe, jamais contre l'utilisateur.
+     *
+     * Appliquer sur l'état FRAIS suffit à tout réconcilier : `applyDocument` déduplique les
+     * transactions par clé CONTRE `state.transactions` au moment de l'application, et
+     * `applyCashBalance` recalcule sa cible via `computeStartingCash(state)` — les deux voient donc
+     * la saisie manuelle. La bascule anti-doublon (`cutoverDateUsed`), elle, reste dérivée de l'état
+     * PRÉ-fetch à dessein : elle a déjà servi à borner la requête, et la déduplication à
+     * l'application est la vraie protection (la re-dériver ne ferait que FILTRER des transactions
+     * légitimes en plus, sans rien gagner).
+     *
+     * Défaut : `() => state` (comportement d'avant, pour les tests et tout appelant sans store).
+     */
+    getFreshState?: () => AppState;
 }
 
 function describeError(err: unknown): string {
@@ -147,7 +179,7 @@ export async function runFintableBrowserSync(
     });
 
     if (typeof token !== 'string' || token.trim() === '') {
-        return { report: emptyReport(null, 'Jeton Fintable absent — ajoute-le dans Réglages.'), nextState: null };
+        return { report: emptyReport(null, 'Jeton Fintable absent — ajoute-le dans Réglages.'), statePatch: null };
     }
 
     let cutoverDateUsed: string | null = null;
@@ -177,8 +209,10 @@ export async function runFintableBrowserSync(
             transactionsAfter: cutoverDateUsed,
         });
 
+        // [FINTABLE-SYNC-STALE-BASE] Base RELUE ici, après le réseau — voir `getFreshState`.
+        const baseState = opts.getFreshState?.() ?? state;
         // Isolation PAR PAYLOAD : PARTAGÉE avec le cron (`syncCore`), voir son en-tête.
-        const applied = applyPayloadsIsolated(state, payloads);
+        const applied = applyPayloadsIsolated(baseState, payloads);
         const { nextState, transactionsAdded, cashUpdated, debtsUpdated, warnings: applyWarnings } = applied;
 
         const report: FintableSyncReport = {
@@ -195,13 +229,16 @@ export async function runFintableBrowserSync(
             error: null,
         };
 
+        // Delta par IDENTITÉ DE RÉFÉRENCE contre `baseState` — la base RÉELLE de l'application.
+        // Le helper porte le pourquoi du delta (`applyStatePatch.ts`) ; ce qui se joue ici est le
+        // choix de la BASE, et c'est précisément ce que [FINTABLE-SYNC-STALE-BASE] corrige.
         return {
             report,
-            nextState: {
+            statePatch: referenceDeltaPatch(baseState, {
                 ...nextState,
                 fintableSyncReport: report,
                 fintableBrokerBalances: toPersistableBrokerBalances(mapReport.investmentBalances, report.at),
-            },
+            }),
         };
     } catch (err) {
         logError({
@@ -210,7 +247,7 @@ export async function runFintableBrowserSync(
             error: err instanceof Error ? err : new Error(String(err)),
         });
         // Rapport d'échec RENDU (pas persisté ici) : c'est l'appelant qui décide d'écrire, pour ne
-        // jamais laisser un état à moitié appliqué. `nextState: null` = « n'écris rien du contenu ».
-        return { report: emptyReport(cutoverDateUsed, describeError(err)), nextState: null };
+        // jamais laisser un état à moitié appliqué. `statePatch: null` = « n'écris rien du contenu ».
+        return { report: emptyReport(cutoverDateUsed, describeError(err)), statePatch: null };
     }
 }

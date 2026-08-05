@@ -53,8 +53,14 @@
   `childrenReee.ts:327` verse 100 % du solde, les trackers SCEE/IQEE existent mais ne sont jamais
   décrémentés → modélisation en 3 poches nécessaire, plan-first) + `[FISC-TAXDEC-INCR]`
   (⚠️ reste À CONFIRMER avec Marc, cf A_FAIRE_MOI — ne pas coder sans go).
-- [ ] **V7 — Sécurité serveur + sync** (1 PR) : `[MCP-CLOUDRUN-AUTH-HARDENING]` +
-  `[MCP-CHARTDATA-SUM-GUARD]` + `[FINTABLE-SYNC-STALE-BASE]` + `[FISC-CONST-GUARD-V2]`.
+- [ ] **V7 — Sécurité serveur + sync** — **2/4 livrés** (PR #566) :
+  ✅ `[FINTABLE-SYNC-STALE-BASE]` + ✅ `[MCP-CLOUDRUN-AUTH-HARDENING]` (archivés).
+  RESTE les deux GARDES, déprioritisés après la réorientation de Marc (2026-08-05, « vague suivante
+  pour régime épargne-étude ») : `[FISC-CONST-GUARD-V2]` (périmètre MESURÉ, voir sa fiche) +
+  `[MCP-CHARTDATA-SUM-GUARD]` (0 offender aujourd'hui → prévention pure, la moins urgente).
+- [ ] **V7bis — RÉEE (demande explicite Marc 2026-08-05)** : `[FISC-REEE-GRANT-CLAWBACK]`, plan-first.
+  ⚠️ Marc a tranché CONTRE la reco « différer » : des enfants sont donc au programme. Ne pas
+  re-proposer de reporter.
 - [ ] **V8 — Features demandées** (2-3 PR) : `[SUBS-TAB]` · `[GOAL-DEADLINE-UI]` +
   `[PH4C-SAVINGS-NATURE]` · `[ASSET-CURRENCY-BACKFILL]` (si log) · `[CHAT-PAGE-CONTEXT-V2]`
   (file explicite Marc — maintenu malgré le « différer » PM).
@@ -178,9 +184,17 @@
   Plafonné ~986 $/an, couple retraité 65+ seulement (0 $ Marc aujourd'hui). Lire l'Annexe B d'abord.
 - [ ] **`[PV-11e]`** (S, test — V3) — PAS un bug (invariant Σ reerByUser == reer préservé par
   construction, re-vérifié) : écrire le test de pin couple-inégal + goal REER + cotisation même mois.
-- [ ] **`[FISC-CONST-GUARD-V2]`** (S, garde — V7) — le garde FISC-CONST-LINT ne détecte pas une
+- [ ] **`[FISC-CONST-GUARD-V2]`** (S→M, garde — V7) — le garde FISC-CONST-LINT ne détecte pas une
   constante fiscale NOUVELLE non sourcée (c'est le trou par lequel 0.92 est passé) → garde
   complémentaire : constante $ de `services/projection/` participant à l'impôt ⇒ ancre FISCAL_REFERENCE.
+  ⚠️ **Périmètre MESURÉ le 2026-08-05** (scan des littéraux inline en position arithmétique sur
+  `taxDecember/taxApril/taxJanuary/latentTax`, hors bénins 0/1/2/12/100…) : **25 offenders**, dont
+  de VRAIS chiffres fiscaux en dur (`0.18` = plafond REER 18 % du revenu gagné, `taxJanuary.ts:164` ;
+  âges `65`/`71`/`72` = crédit d'âge, conversion FERR, retrait minimum ; `2026` en index d'année) et
+  des heuristiques de CONCEPTION à ne PAS traiter comme fiscales (`0.95` Guyton-Klinger, `0.50` de
+  la vente fictive de récolte de pertes). ⇒ le fix n'est PAS « ajouter un test » : c'est un
+  RATCHET (inventaire justifié des 25 + échec sur tout NOUVEAU), et un tri qui alimentera
+  FISCAL_REFERENCE. La taille réelle est M, pas S — ne pas le prendre pour un quick win.
 - [ ] **`[NW-PARITY-SURFACES-TEST]`** (S-M, garde-fou keystone audit 2026-06-17) — étendre
   `tests/services/nwParity.test.ts` (aujourd'hui moteur↔computePresentNetWorth) aux surfaces
   UI/IA/PDF (KPI Accueil, useDerivedFinancials, financialSnapshot, pdfReport) sur persona endetté +
@@ -188,6 +202,12 @@
 - [ ] **`[MCP-CHARTDATA-SUM-GUARD]`** (S, garde) — aucun test/lint de convention sur les sommes de
   flux chartData dans `mcp/tools/*` (le décaissement non-enregistré/liquide n'a AUCUN champ
   `Retrait*` — leçon MCP-RETIREMENT-VERDICT) → scan-garde qui interdit une somme de flux comme revenu.
+  ⚠️ **Vérifié le 2026-08-05 : 0 offender aujourd'hui** (grep `Retrait|RentalIncome|pension*` dans
+  `mcp/` hors specs = aucun résultat ; la correction MCP-RETIREMENT-VERDICT a bien tenu). C'est donc
+  de la PRÉVENTION pure — utile, mais l'item le moins urgent du lot. Conception retenue : liste
+  EXPLICITE des champs-flux + assertion anti-désarmement que chaque nom existe encore dans
+  `ProjectionChartPoint` (`services/projection/types.ts`), sinon un renommage moteur désarmerait
+  le garde en silence.
 - [ ] **`[FUZZ-ONETIME-FLOWS]`** (M, reste) — flux non exercés par le fuzz de conservation
   (`projection.fuzzConservation.test.ts:21-23`) : vente/gain locatif, équité négative, véhicule,
   héritage, REEE. Les couvrir (mesurer la couverture, pas la supposer).
@@ -273,11 +293,10 @@
   fausse le budget réel ET la moyenne 12 mois. Ne JAMAIS écrire sans dédoublonnage.
   Prérequis : confirmer avec Marc la profondeur réellement offerte par son plan (mesurer, ne pas
   supposer — 90 j demandés / 30 rendus au dernier test).
-- [ ] **`[FINTABLE-SYNC-STALE-BASE]`** (M, résiduel #545 ASSUMÉ) — une passe de sync calcule son
-  `nextState` sur un snapshot capturé AVANT le fetch réseau (`browserSync.ts:181`,
-  `runFintableSync.ts:118`) : une édition manuelle pendant la fenêtre peut être écrasée. Vrai fix =
-  ré-appliquer `applyPayloadsIsolated` sur l'état FRAIS au moment de l'écriture. Sœur : cooldown
-  localStorage ≠ mutex cross-onglet (fenêtre étroite, intégrité seulement).
+- [ ] **`[FINTABLE-SYNC-XTAB-MUTEX]`** (S, sœur de STALE-BASE, restée ouverte) — le cooldown
+  localStorage n'est PAS un mutex cross-onglet : deux onglets ouverts peuvent lancer une passe
+  simultanée (fenêtre étroite, intégrité seulement — la déduplication de `applyDocument` empêche
+  les doublons, mais les deux passes se battent sur le dernier écrivain du solde).
 - [ ] **`[ENG-T1213-NET-MONTHLY]`** (M, MOYEN, pré-existant — mesuré panel #558, −183 598 $/30 ans) —
   activer `optimizeSourceDeductions` (T1213) ANNULE le bénéfice fiscal du REER dans la simulation :
   la retenue modélisée baisse mais le net MENSUEL encaissé (`activeIncome.ts`) ne monte jamais →
@@ -308,9 +327,6 @@
   log `services/portfolio.ts:60-62` apparaît chez Marc. Ne rien coder avant.
 - [ ] **`[PURGE-TOAST-UX]`** (S, 🧭 si Marc le veut) — le pull Drive qui purge des artefacts persona
   ne fait que logError (`syncPull.ts:78`) ; le toast n'existe qu'au boot. Abonnement générique → toast.
-- [ ] **`[MCP-CLOUDRUN-AUTH-HARDENING]`** (M, 2/4 faits, pré-exposition) — restent : rate-limit sur
-  `POST /oauth/authorize` (grep 429 oauthProvider.ts = 0) + runbook rotation
-  `FINANCEAI_OAUTH_SIGNING_KEY` (kill-switch d'incident).
 ## 💬 Chat / IA
 
 - [ ] **`[CHAT-PAGE-CONTEXT-V2]`** (M, file Marc « chat conscient de la page ») — instrumenter les

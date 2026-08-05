@@ -4,6 +4,33 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-05 (suite 21) — #565 MERGÉE + V7 (PR #566) + Marc tranche : RÉEE ensuite
+> **#565 mergée** (`3d666b0`, archivage). **V7 livrée à 2/4 (PR #566)** :
+> - `[FINTABLE-SYNC-STALE-BASE]` — la sync appliquait ses payloads sur un snapshot d'AVANT le
+>   fetch réseau : une saisie manuelle pendant la fenêtre était réécrite et **perdue en silence**.
+>   `runFintableBrowserSync` relit l'état (`getFreshState`) juste avant d'appliquer et rend un
+>   `statePatch` DÉJÀ calculé — l'appelant ne choisit plus la base, donc ne peut plus se tromper.
+>   Côté cron : re-tentative UNIQUE sur conflit OCC au lieu de jeter la passe (= une journée de
+>   fraîcheur récupérée). Test discriminant prouvé (échoue sur le code d'avant).
+> - `[MCP-CLOUDRUN-AUTH-HARDENING]` — `POST /oauth/authorize` plafonné à 8 ÉCHECS / 15 min
+>   (429 + `Retry-After`), compteur GLOBAL et non par IP (`X-Forwarded-For` est spoofable derrière
+>   le LB → une clé par IP serait une illusion). Un succès remet à zéro → Marc n'est jamais gêné.
+>   Runbook de rotation `FINANCEAI_OAUTH_SIGNING_KEY` écrit dans `mcp/README.md`.
+>
+> **⚠️ MARC A TRANCHÉ (2026-08-05) : « vague suivante pour régime épargne-étude »** →
+> `[FISC-REEE-GRANT-CLAWBACK]` est la PROCHAINE vague, **contre** la reco de différer. Des enfants
+> sont donc au programme : ne PAS re-proposer de reporter, ne pas ré-argumenter le 0 $ mesuré.
+> Plan-first (modélisation en 3 poches : capital / SCEE+IQEE / revenus accumulés ;
+> `childrenReee.ts:327` verse aujourd'hui 100 % du solde à la fermeture, les trackers de
+> subventions ne sont jamais décrémentés).
+>
+> **Restent de V7, déprioritisés avec leur périmètre MESURÉ** (fiches BACKLOG à jour) :
+> `[FISC-CONST-GUARD-V2]` — **25 offenders mesurés**, mêlant vrais chiffres fiscaux en dur
+> (`0.18` plafond REER, âges 65/71/72) et heuristiques de CONCEPTION (`0.95` Guyton-Klinger) à ne
+> PAS traiter comme fiscales ⇒ c'est un RATCHET + un tri, taille réelle **M et non S** ;
+> `[MCP-CHARTDATA-SUM-GUARD]` — **0 offender aujourd'hui** (vérifié), prévention pure, le moins
+> urgent du lot.
+
 > ## 🟢 Session 2026-08-05 (suite 20) — #564 MERGÉE + rattrapage d'archivage
 > **#564 mergée** (`191d5c0`). **6 items ARCHIVÉS** (retard rattrapé — ils étaient mergés sans
 > avoir été déplacés, exactement la dérive PM-STALE-BACKLOG que la règle interdit) :

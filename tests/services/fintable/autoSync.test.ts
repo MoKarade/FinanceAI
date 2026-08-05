@@ -81,10 +81,10 @@ describe('maybeRunDailyFintableSync — gardes', () => {
     });
 
     it('deux déclenchements rapprochés : le 2e est bloqué par le COOLDOWN de tentative', async () => {
-        runMock.mockResolvedValue({ report: mkReport({ error: 'panne réseau' }), nextState: null });
+        runMock.mockResolvedValue({ report: mkReport({ error: 'panne réseau' }), statePatch: null });
         await maybeRunDailyFintableSync();
         expect(runMock).toHaveBeenCalledTimes(1);
-        // La 1re tentative a échoué (nextState null) → « dû » encore, mais le cooldown 1 h bloque
+        // La 1re tentative a échoué (statePatch null) → « dû » encore, mais le cooldown 1 h bloque
         // le F5 anti-boucle. (Sans lui, chaque reload pendant une panne re-taperait Fintable.)
         const out = await maybeRunDailyFintableSync();
         expect(out).toEqual({ ran: false, reason: 'cooldown' });
@@ -135,8 +135,7 @@ describe('maybeRunDailyFintableSync — TOCTOU mode démo (finding security-priv
             useFinanceStore.setState({ isTestMode: true });
             return {
                 report,
-                nextState: {
-                    ...(current as Record<string, unknown>),
+                statePatch: {
                     transactions: [...current.transactions, { id: 42, payee: 'REAL-TXN', amount: -99, date: '2026-07-30', category: 'Autre', status: 'processed' }],
                     fintableSyncReport: report,
                 },
@@ -155,7 +154,7 @@ describe('maybeRunDailyFintableSync — TOCTOU mode démo (finding security-priv
 describe('maybeRunDailyFintableSync — application', () => {
     it('échec : SEUL le rapport est écrit (aucun contenu à moitié)', async () => {
         const failed = mkReport({ error: 'jeton refusé' });
-        runMock.mockResolvedValue({ report: failed, nextState: null });
+        runMock.mockResolvedValue({ report: failed, statePatch: null });
         const before = useFinanceStore.getState().transactions;
 
         const out = await maybeRunDailyFintableSync();
@@ -169,8 +168,10 @@ describe('maybeRunDailyFintableSync — application', () => {
         const report = mkReport({ transactionsAdded: 3 });
         runMock.mockImplementation(async (current: { transactions: unknown[] }) => ({
             report,
-            nextState: {
-                ...(current as Record<string, unknown>),
+            // [FINTABLE-SYNC-STALE-BASE] La passe rend désormais un PATCH déjà réduit (le delta par
+            // référence est calculé dans `browserSync`, contre la base réelle de l'application) —
+            // l'appelant l'écrit tel quel, sans avoir à choisir une base.
+            statePatch: {
                 transactions: [...current.transactions, { id: 99, date: '2026-07-30', payee: 'X', amount: -5, category: 'Autre', status: 'processed' }],
                 fintableSyncReport: report,
             },

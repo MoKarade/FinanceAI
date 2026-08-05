@@ -98,15 +98,17 @@ describe('FintableSyncCard — écriture de l\'état après une passe', () => {
         // (`assets`) : il échoue sur l'ancien code, passe avec le delta par référence.
         useFinanceStore.setState({ transactions: [], assets: [], lastUpdate: 1 });
         const before = useFinanceStore.getState() as unknown as Record<string, unknown>;
-        syncMock.mockImplementation(async (state: Record<string, unknown>) => ({
+        // [FINTABLE-SYNC-STALE-BASE] La passe rend un PATCH (clés touchées seulement). Ce que ce
+        // test verrouille reste le même : la carte écrit TOUT ce que la passe lui donne, sans
+        // liste de clés à la main — `assets` et `lastUpdate` étaient perdus par l'ancienne liste.
+        syncMock.mockResolvedValue({
             report: { at: 42, error: null, transactionsAdded: 3, accountsSeen: 1, warnings: [] },
-            nextState: {
-                ...state,
+            statePatch: {
                 transactions: [{ id: 9, date: '2026-07-30', payee: 'X', amount: -5, category: 'Autre', status: 'processed' }],
                 assets: [{ symbol: 'ZZZ', quantity: 1, currency: 'CAD', currentPrice: 1, name: 'Z', performance: 0, dateBought: '2026-01-01' }],
                 lastUpdate: 999,
             },
-        }));
+        });
 
         render(<FintableSyncCard />);
         fireEvent.click(screen.getByRole('button', { name: /Synchroniser maintenant/i }));
@@ -126,7 +128,7 @@ describe('FintableSyncCard — écriture de l\'état après une passe', () => {
         useFinanceStore.setState({ transactions: [] });
         syncMock.mockResolvedValue({
             report: { at: 7, error: '[NETWORK] panne', transactionsAdded: 0, accountsSeen: 0, warnings: [] },
-            nextState: null,
+            statePatch: null,
         });
 
         render(<FintableSyncCard />);
@@ -266,7 +268,7 @@ describe('FintableSyncCard — trajet complet du jeton (findings panel #559)', (
         // le chemin qui écrit de vraies transactions.
         syncMock.mockResolvedValue({
             report: { at: 1, error: null, transactionsAdded: 0, accountsSeen: 1, warnings: [] },
-            nextState: null,
+            statePatch: null,
         });
         render(<FintableSyncCard />);
         fireEvent.click(screen.getByRole('button', { name: /Synchroniser maintenant/i }));

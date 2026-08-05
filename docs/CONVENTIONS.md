@@ -1473,6 +1473,38 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
 - ⚠️ **Les dettes du moteur n'ont PAS de date de début** (elles sont servies dès le mois 0, `projection.ts` §dettes) :
   injecter une dette pour un événement FUTUR fausse le patrimoine AVANT l'événement (mesuré −28 k$ quatre ans trop tôt)
   → rejeter/borner le cas (cf what-if financement différé) tant que `[MCP-WHATIF-DATED-DEBT]` n'est pas fait.
+- ⚠️ **Un helper qui laisse l'APPELANT choisir la BASE d'un diff finit avec la mauvaise base**
+  (leçon FINTABLE-SYNC-STALE-BASE, 2026-08-05). `referenceDeltaPatch(base, next)` était exposé aux
+  appelants ; les DEUX (carte Réglages et sync auto) passaient l'état capturé AVANT le fetch réseau,
+  donc une saisie manuelle faite pendant les quelques secondes de réseau était réécrite et perdue en
+  silence. Le commentaire du helper affirmait pourtant qu'« une modification concurrente n'est pas
+  écrasée » — vrai pour les clés NON touchées, faux pour celles que la passe réécrit justement
+  (`transactions`). **Correctif structurel, pas vigilant** : rendre le patch DÉJÀ calculé, depuis le
+  seul endroit où la base est connue sans ambiguïté (juste après l'application). La faute cesse
+  d'être exprimable dans le type. Généralisation : quand un contrat offre deux façons de faire dont
+  une est fausse, en retirer une vaut mieux que documenter laquelle choisir.
+- ⚠️ **Un verrou « une seule passe à la fois » ne protège PAS de l'UTILISATEUR** (même leçon). Le
+  mutex de sync empêchait deux passes concurrentes et avait été validé comme tel par un panel — il
+  laissait entièrement ouverte la course passe ↔ édition manuelle. Nommer ce contre quoi un verrou
+  protège, et ce contre quoi il ne protège pas, fait partie du verrou.
+- ⚠️ **Un abandon sur conflit OCC n'est « sûr » que côté intégrité — il a un COÛT de fraîcheur**
+  (même leçon). Le cron Fintable jetait toute la passe sur collision : rien de corrompu (l'OCC fait
+  son travail), mais sur une cadence quotidienne, une collision = une journée de retard, exactement
+  le symptôme dont Marc s'est plaint. Une re-tentative UNIQUE qui ré-applique les mêmes payloads sur
+  l'état frais coûte un aller-retour et sauve la journée ; rejouer le réseau serait disproportionné,
+  et une boucle pilonnerait le Drive.
+- ⚠️ **Un rate-limit PAR IP derrière un load balancer est une illusion de protection** (leçon
+  MCP-CLOUDRUN-AUTH-HARDENING, 2026-08-05) : `X-Forwarded-For` est en partie sous contrôle du
+  client, donc la clé se fait varier. Sur un service MONO-UTILISATEUR, un compteur GLOBAL est à la
+  fois plus strict et plus honnête. Et compter les **ÉCHECS** plutôt que les tentatives supprime le
+  compromis apparent « sécurité vs confort » : l'usage légitime ne consomme jamais de quota.
+- ⚠️ **Mesurer le périmètre d'un garde AVANT de l'écrire change sa taille estimée** (leçon
+  FISC-CONST-GUARD-V2, 2026-08-05) : le ticket disait « S, ajouter un scan ». Le scan des littéraux
+  inline en position arithmétique sur les 4 modules fiscaux rend **25 offenders**, mêlant de vrais
+  chiffres fiscaux en dur (`0.18` = plafond REER, âges 65/71/72) et des heuristiques de CONCEPTION
+  (`0.95` Guyton-Klinger) qu'il ne faut surtout PAS traiter comme fiscales. Le vrai travail est un
+  RATCHET + un tri qui alimente FISCAL_REFERENCE — donc M, pas S. Un garde écrit sans mesurer aurait
+  soit échoué d'emblée sur 25 lignes, soit été relâché jusqu'à ne plus rien attraper.
 - ⚠️ **Le décaissement NON-ENREGISTRÉ/liquide n'a AUCUN champ `Retrait*` dans chartData** (leçon MCP-RETIREMENT-VERDICT
   2026-07-14) : le moteur émet `RetraitREER`/`RetraitCELI`/`RentalIncome`, mais les ventes non-enregistrées et le liquide
   qui financent la retraite sont INVISIBLES en flux → toute « somme des revenus de retraite » depuis chartData SOUS-estime

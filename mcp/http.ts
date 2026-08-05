@@ -29,6 +29,7 @@ import { HUB_TOKEN_HEADER } from '@mokarade/hub-contract';
 import { createServer as createMcpServer } from './server';
 import { MCP_SERVER_VERSION, resolveState, type ResolvedState } from './bootstrap';
 import { makeOAuthProvider, OAuthError, type OAuthProvider } from './auth/oauthProvider';
+import { makeAttemptLimiter } from './auth/rateLimit';
 import { buildHubSummary, errorHubSummary } from './hubSummary';
 import { runPriceRefresh } from './refreshPrices';
 import { runFintableSync } from './runFintableSync';
@@ -280,6 +281,10 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
     };
 
     // ── [MCP-CLOUDRUN-B] endpoints OAuth 2.1 (si auth configurée) ────────────
+    // [MCP-CLOUDRUN-AUTH-HARDENING] UN limiteur par serveur (pas par requête) : sa mémoire EST la
+    // protection. En construire un à chaque appel remettrait le compteur à zéro à chaque tentative.
+    const authorizeLimiter = makeAttemptLimiter();
+
     const escapeHtml = (s: string): string =>
         s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 
@@ -327,6 +332,21 @@ ${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_metho
         if (url === '/oauth/authorize' && req.method === 'POST') {
             const form = Object.fromEntries(new URLSearchParams(await readBody(req)));
             auth.validateAuthorizeRequest(form);
+            // ⚠️ [MCP-CLOUDRUN-AUTH-HARDENING] Plafond AVANT toute comparaison de clé : c'est la
+            // seule porte devinable du serveur (voir `mcp/auth/rateLimit.ts` pour le pourquoi du
+            // compteur global et de la limite assumée en mémoire).
+            if (authorizeLimiter.isBlocked()) {
+                const retryAfter = authorizeLimiter.retryAfterSeconds();
+                res.writeHead(429, {
+                    'Content-Type': 'text/html; charset=utf-8',
+                    'Retry-After': String(retryAfter),
+                });
+                res.end(authorizeFormHtml(
+                    form,
+                    `Trop de tentatives échouées. Réessaie dans ${Math.ceil(retryAfter / 60)} minute(s).`,
+                ));
+                return true;
+            }
             let code: string;
             try {
                 code = auth.authorize({
@@ -335,12 +355,15 @@ ${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_metho
                 });
             } catch (err) {
                 if (err instanceof OAuthError && err.code === 'access_denied') {
+                    authorizeLimiter.recordFailure();
                     res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
                     res.end(authorizeFormHtml(form, 'Clé d’accès invalide — réessaie.'));
                     return true;
                 }
                 throw err;
             }
+            // Succès : l'historique est effacé — l'usage légitime de Marc ne consomme aucun quota.
+            authorizeLimiter.reset();
             const target = new URL(form.redirect_uri);
             target.searchParams.set('code', code);
             if (form.state) target.searchParams.set('state', form.state);

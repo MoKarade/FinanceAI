@@ -22,7 +22,6 @@ import type { AppState, FintableSyncReport } from '../../types';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { importWithRetry } from '../../utils/lazyWithRetry';
 import { logError } from '../errorLogger';
-import { referenceDeltaPatch } from './applyStatePatch';
 
 /** Une passe réussie par 24 h — la cadence demandée. */
 const DAILY_MS = 24 * 3600_000;
@@ -112,7 +111,12 @@ export async function maybeRunDailyFintableSync(
         if (typeof freshToken !== 'string' || freshToken.trim() === '') return { ran: false, reason: 'no-token' };
         if (isTestModeNow()) return { ran: false, reason: 'test-mode' };
 
-        const { report, nextState } = await runFintableBrowserSync(current, freshToken);
+        // ⚠️ [FINTABLE-SYNC-STALE-BASE] `current` est la base PRÉ-fetch ; `getFreshState` relit le
+        // store juste avant l'application pour qu'une saisie manuelle faite pendant le réseau ne
+        // soit pas écrasée (le verrou de sync ne protège que contre une autre PASSE).
+        const { report, statePatch } = await runFintableBrowserSync(current, freshToken, {
+            getFreshState: () => useFinanceStore.getState() as unknown as AppState,
+        });
 
         // ⚠️ [Finding security-privacy #545, ÉLEVÉ, PROUVÉ par sonde] Re-vérifier le mode démo
         // APRÈS le réseau, AVANT toute écriture : basculer en persona PENDANT le fetch (plusieurs
@@ -125,12 +129,12 @@ export async function maybeRunDailyFintableSync(
         const setAppState = (useFinanceStore.getState() as unknown as {
             setAppState: (p: Partial<AppState>) => void;
         }).setAppState;
-        if (nextState === null) {
+        if (statePatch === null) {
             // Échec : SEUL le rapport est écrit (diagnostics honnêtes), aucun contenu.
             setAppState({ fintableSyncReport: report });
             return { ran: true, report };
         }
-        setAppState(referenceDeltaPatch(current, nextState));
+        setAppState(statePatch);
         return { ran: true, report };
     } catch (err) {
         logError({

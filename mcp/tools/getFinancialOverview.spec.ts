@@ -4,6 +4,7 @@
 
 import type { AppState } from '../../types';
 import { buildFinancialOverview } from '../../services/financialSnapshot';
+import { syncHealthFromState } from '../../services/fintable/syncHealth';
 import { jsonContent, withState } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
 
@@ -15,7 +16,10 @@ export const getFinancialOverviewSpec = {
         "Vue d'ensemble des finances RÉELLES de l'utilisateur (lue depuis son état FinanceAI) : " +
         'patrimoine net, liquidités, valeur des placements, ventilation par compte (CELI/REER/CELIAPP/' +
         'REEE/non-enregistré/crypto), revenu et dépenses mensuels, cashflow (épargne) mensuel, dette ' +
-        "totale, dettes principales et objectifs actifs. Aucun paramètre : répond sur l'état chargé.",
+        "totale, dettes principales et objectifs actifs. Aucun paramètre : répond sur l'état chargé. " +
+        "Inclut syncHealth : FRAÎCHEUR de l'import bancaire (ok / stale / error / never). Si le statut " +
+        "n'est pas « ok », le DIRE avant de commenter des montants — ils peuvent être figés depuis des " +
+        'jours ; `reason` nomme déjà la cause probable.',
     inputSchema: {},
     handler: async (_args, getState) => withState(getState, (state: AppState) => {
         const o = buildFinancialOverview(state);
@@ -60,6 +64,22 @@ export const getFinancialOverviewSpec = {
                 currentAmount: Math.round(g.currentAmount),
                 deadline: g.deadline,
             })),
+            // [FINTABLE-STALE-ALERT] Santé de l'import bancaire — exposée ICI parce que son absence
+            // a coûté 5 jours : le 2026-08-05, l'import de Marc était gelé et AUCUN tool ne
+            // permettait de s'en apercevoir à distance ; il a fallu qu'il le remarque lui-même.
+            // Toute réponse portant des montants doit dire si ces montants sont encore FRAIS.
+            syncHealth: (() => {
+                const h = syncHealthFromState(state, Date.now());
+                return {
+                    status: h.status,
+                    lastTransactionDate: h.lastTransactionDate,
+                    daysSinceLastTransaction: h.daysSinceLastTransaction,
+                    hoursSinceLastSync: h.hoursSinceLastSync,
+                    staleThresholdDays: h.staleThresholdDays,
+                    lastError: h.lastError,
+                    reason: h.reason,
+                };
+            })(),
         });
     }),
 } satisfies ReadToolSpec<Record<string, never>>;

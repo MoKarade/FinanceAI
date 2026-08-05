@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-05 (suite 19) — #560 MERGÉE (`2f05622`) + FINTABLE-STALE-ALERT (PR en cours)
+> **#560 mergée** (netSalaryIncome ; archivée). **En cours : `[FINTABLE-STALE-ALERT]`** — l'import
+> gelé devient VISIBLE. Module PUR `services/fintable/syncHealth.ts` (ok/stale/error/never) partagé
+> UI + MCP (source unique — la divergence est exactement ce qui a produit #560 le même jour).
+> ⚠️ **Seuil ADAPTATIF, pas fixe** : un seuil de 7 j n'aurait alerté Marc qu'à J+8 alors qu'il a
+> vu le gel à J+5 (mesuré → l'alerte serait arrivée APRÈS lui, donc inutile). Dérivé de la cadence
+> réelle (médiane des écarts entre jours d'activité × 3, borné 3–14 j) : son profil quotidien
+> donne 3 j → alerte à J+4. Livré : `SyncStaleBanner` (Accueil ; muette en démo et si l'import
+> n'a JAMAIS été configuré) + `syncHealth` dans `get_financial_overview` (ce qui manquait pour
+> diagnostiquer à distance) + deep-link Réglages (la section `fintable-` n'existait pas dans
+> `subTabForSection` → bouton qui n'aurait mené nulle part, corrigé). 14 tests.
+> Pièges attrapés au passage : `Tab.Settings` n'existe pas (c'est `SETTINGS`) et `min-h-touch`
+> n'est pas dans tailwind.config.js (no-op silencieux) — les deux pris par typecheck/grep.
+>
 > ## 🟢 Session 2026-08-05 (suite 18) — #559 MERGÉE (`bbd6bda`) + MCP-NETINCOME-MISLEADING (PR en cours)
 > **#559 mergée** (jeton Fintable persisté ; archivée). **En cours : `[MCP-NETINCOME-MISLEADING]`**
 > — né d'une ERREUR que j'ai commise et que MARC m'a fait re-vérifier : j'avais comparé le

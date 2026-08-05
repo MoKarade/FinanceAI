@@ -8,6 +8,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — « Impôt à vie » honnête] — 2026-08-01
 
+### Ajouts
+- **`[FINTABLE-STALE-ALERT]` — tu seras prévenu si l'import bancaire se fige, au lieu de t'en
+  apercevoir cinq jours plus tard.** Une bannière apparaît sur l'Accueil quand plus aucune
+  transaction n'arrive, ou quand la synchronisation échoue — avec la cause probable nommée
+  (abonnement expiré, lien bancaire à ré-autoriser) et un lien direct vers les réglages.
+  Le seuil s'adapte à TES habitudes plutôt qu'à un chiffre fixe : ton compte bouge presque tous
+  les jours, donc trois jours de silence suffisent à déclencher l'alerte (tu aurais été prévenu à
+  J+4 au lieu de le remarquer toi-même à J+5 ; un seuil fixe de 7 jours n'aurait rien dit avant
+  J+8). Pour un compte qui ne bouge qu'aux deux semaines, le seuil s'élargit tout seul.
+  L'assistant voit désormais cette fraîcheur lui aussi et le signalera avant de commenter des
+  montants potentiellement figés. Silencieux en mode démo et si l'import n'a jamais été configuré.
+
 ### Corrections
 - **`[MCP-NETINCOME-MISLEADING]` — l'assistant ne confondra plus « revenu net » et « argent qui
   rentre ».** Le champ `netIncome` de l'outil fiscal additionnait ton salaire net ET le rendement

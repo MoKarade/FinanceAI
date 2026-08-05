@@ -76,6 +76,10 @@ const SUB_TABS: ReadonlyArray<{ id: SubTab; label: string; icon: IconName }> = [
 function subTabForSection(section: string | null | undefined): SubTab | null {
   if (!section) return null;
   if (section.startsWith('apiKeys-')) return 'integrations';
+  // [FINTABLE-STALE-ALERT] La bannière « import figé » de l'Accueil pointe ici. Sans cette
+  // entrée, le deep-link ouvrait Réglages sur le sous-onglet courant sans rien focaliser :
+  // un bouton d'apparence fonctionnelle qui ne mène nulle part (panne silencieuse).
+  if (section.startsWith('fintable-')) return 'integrations';
   if (section.startsWith('profile-')) return 'profile';
   return null;
 }

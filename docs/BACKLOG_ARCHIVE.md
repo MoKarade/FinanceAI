@@ -160,6 +160,17 @@ fichier:ligne). Verdicts appliqués à la refonte :
   Tickets dérivés au vivant : [FISC-PENSION-CREDIT-REAL], [FISC-BRACKET-CPI-STRESS],
   [FISC-MARGINAL-SPACE].
 
+## ✅ Champ MCP trompeur (PR #560 `2f05622`, mergée 2026-08-05)
+
+- [x] **`[MCP-NETINCOME-MISLEADING]`** ✅ (PR #560) — `netIncome` de `get_tax_situation` porte
+  l'assiette IMPOSABLE, donc il inclut le rendement de placement ESTIMÉ (12 970 $) jamais encaissé.
+  En le comparant aux dépôts de paie réels, j'ai annoncé à Marc un écart de salaire de 12 800 $/an
+  INEXISTANT (vrai écart 4 491 $, expliqué par la progression de ses paies ; son 60 000 $ saisi est
+  bon à 2,4 % près). C'est MARC qui a demandé la contre-vérification. Fix : `netSalaryIncome` /
+  `netSalaryMonthly` (brut − impôt − cotisations), validés à 0,5 % contre 12 mois de dépôts réels
+  (39 654 prédits vs 39 848 mesurés) + mise en garde dans la note du tool + test discriminant.
+  Leçon CONVENTIONS : un agrégat non étiqueté fabrique de faux diagnostics, y compris chez Claude.
+
 ## ✅ Incident jeton Fintable (PR #559 `bbd6bda`, mergée 2026-08-05)
 
 - [x] **`[FINTABLE-TOKEN-PERSIST]`** ✅ (PR #559, cause racine trouvée par MARC) — le jeton Fintable

@@ -227,20 +227,17 @@
   `normalizeAppState`. Cause racine : `registryParity.test.ts:104-113` UNIDIRECTIONNEL (n'itère que
   sur mcpDefaults). Fix : +4 champs (`: undefined`) + test bidirectionnel.
 
-- [ ] **`[FINTABLE-STALE-ALERT]`** (S-M, ⭐ **PROCHAIN** — priorité re-jugée 2026-08-05 : né d'un
-  incident RÉEL vécu par Marc, donc devant les items fiscaux dormants comme FISC-SOLO-INVEST-SPLIT
-  ; la cause racine du jeton est corrigée (#559) mais RIEN n'alerte encore si l'import regèle pour
-  une autre raison — plan Fintable, ré-auth Plaid…) — incident réel : Marc a constaté
-  LUI-MÊME « aucune update depuis 5 jours », dernière transaction 2026-07-31 = veille de la fin
-  d'essai Fintable, aucun canal ne l'a alerté) — la staleness d'import est INVISIBLE : (a) si
-  Fintable gèle son feed bancaire (`can_sync: false` au palier gratuit) mais sert encore l'API,
-  la sync rapporte « succès, 0 transaction » — vert trompeur, classe PERF-STALE-TAIL-ZERO ;
-  (b) `fintableSyncReport` n'est exposé par AUCUN tool MCP (seulement Réglages/SystemView) →
-  indiagnosticable à distance. Fix : ① alerte visible (Accueil/Assistant, pas juste Réglages)
-  quand `max(date de transaction importée)` > N jours OU `report.at` > 48 h, avec la CAUSE
-  (erreur vs 0-transaction) ; ② exposer le rapport + la date de dernière transaction par compte
-  dans `get_financial_overview` (ou un tool `get_sync_health`) pour que Claude puisse
-  diagnostiquer sans les yeux de Marc.
+- [x] **`[FINTABLE-STALE-ALERT]`** ✅ 2026-08-05 (PR en cours) — l'import gelé est désormais VISIBLE.
+  Module PUR partagé `services/fintable/syncHealth.ts` (`computeSyncHealth` : ok/stale/error/never),
+  consommé par l'UI **et** le MCP (source unique — la divergence app/MCP est précisément ce qui a
+  produit [MCP-NETINCOME-MISLEADING] le même jour). Seuil de gel **ADAPTATIF** dérivé de la cadence
+  réelle (médiane des écarts entre jours d'activité × 3, borné 3–14 j) : ⚠️ un seuil FIXE de 7 j
+  n'aurait alerté Marc qu'à J+8 alors qu'il a constaté le gel à J+5 — mesuré, l'alerte serait
+  arrivée APRÈS lui. Sur son profil (activité quotidienne) le seuil tombe à 3 j → alerte à J+4.
+  Livré : bannière Accueil `SyncStaleBanner` (silencieuse en mode démo et si l'import n'a JAMAIS
+  été configuré — on alerte sur une CHUTE, pas sur une absence) + `syncHealth` exposé dans
+  `get_financial_overview` (ce qui manquait pour diagnostiquer à distance le 2026-08-05).
+  14 tests dont le REJEU de l'incident (passe « réussie » + 0 transaction = le vert trompeur).
 - [ ] **`[FINTABLE-SYNC-STALE-BASE]`** (M, résiduel #545 ASSUMÉ) — une passe de sync calcule son
   `nextState` sur un snapshot capturé AVANT le fetch réseau (`browserSync.ts:181`,
   `runFintableSync.ts:118`) : une édition manuelle pendant la fenêtre peut être écrasée. Vrai fix =

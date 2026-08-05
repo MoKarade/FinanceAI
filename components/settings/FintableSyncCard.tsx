@@ -225,7 +225,8 @@ export const FintableSyncCard: React.FC = () => {
                     </div>
                 )}
 
-                <div>
+                {/* [FINTABLE-STALE-ALERT] Cible du deep-link de la bannière d'Accueil. */}
+                <div data-focus-section="fintable-sync">
                     <label htmlFor="fintable-token" className="block text-body text-ink-300 mb-1">
                         Jeton Fintable (lecture seule)
                     </label>

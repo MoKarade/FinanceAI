@@ -171,6 +171,49 @@ fichier:ligne). Verdicts appliqués à la refonte :
   (39 654 prédits vs 39 848 mesurés) + mise en garde dans la note du tool + test discriminant.
   Leçon CONVENTIONS : un agrégat non étiqueté fabrique de faux diagnostics, y compris chez Claude.
 
+## ✅ Session 2026-08-05 — observabilité de l'import + V6 fiscal (PR #560 → #564)
+
+> Six items livrés dans la journée, chacun mergé avec gate vert et panel adversarial.
+> Deux d'entre eux sont nés d'une ERREUR de Claude ou d'un incident vécu par Marc, pas d'un audit.
+
+- [x] **`[MCP-NETINCOME-MISLEADING]`** ✅ (PR #560) — le `netIncome` de `get_tax_situation` additionnait
+  le salaire net ET le rendement de placement ESTIMÉ (12 970 $ chez Marc), jamais encaissé. En le
+  comparant à ses dépôts de paie réels, Claude a annoncé à Marc un écart de salaire de 12 800 $/an
+  **INEXISTANT** (vrai écart : 4 491 $, expliqué par la progression de ses paies 368 → 839 $/sem ;
+  son 60 000 $ saisi est bon à 2,4 % près). C'est MARC qui a demandé la contre-vérification.
+  Ajout de `netSalaryIncome`/`netSalaryMonthly` (brut − impôt − cotisations) = la trésorerie réelle,
+  validée à 0,5 % contre 12 mois de dépôts (39 654 prédits vs 39 848 mesurés) + mise en garde
+  explicite dans la note du tool. Leçon CONVENTIONS : un agrégat non étiqueté fabrique de faux
+  diagnostics, y compris chez Claude ; le no-fake-data vaut aussi pour les tools qui nourrissent une IA.
+- [x] **`[FINTABLE-STALE-ALERT]`** ✅ 2026-08-05 (PR #561) — l'import gelé est désormais VISIBLE.
+  Module PUR partagé `services/fintable/syncHealth.ts` (`computeSyncHealth` : ok/stale/error/never),
+  consommé par l'UI **et** le MCP (source unique — la divergence app/MCP est précisément ce qui a
+  produit [MCP-NETINCOME-MISLEADING] le même jour). Seuil de gel **ADAPTATIF** dérivé de la cadence
+  réelle (médiane des écarts entre jours d'activité × 3, borné 3–14 j) : ⚠️ un seuil FIXE de 7 j
+  n'aurait alerté Marc qu'à J+8 alors qu'il a constaté le gel à J+5 — mesuré, l'alerte serait
+  arrivée APRÈS lui. Sur son profil (activité quotidienne) le seuil tombe à 3 j → alerte à J+4.
+  Livré : bannière Accueil `SyncStaleBanner` (silencieuse en mode démo et si l'import n'a JAMAIS
+  été configuré — on alerte sur une CHUTE, pas sur une absence) + `syncHealth` exposé dans
+  `get_financial_overview` (ce qui manquait pour diagnostiquer à distance le 2026-08-05).
+  14 tests dont le REJEU de l'incident (passe « réussie » + 0 transaction = le vert trompeur).
+- [x] **`[ENG-TAXDEC-NAN-GUARD]`** ✅ 2026-08-05 (PR #563 ; S, résiduel panel #558, pré-existant) — `taxDecember.ts` : le
+  clamp `Math.max(-100000, x)` du solde d'avril ACTIF ne protège pas contre NaN
+  (`Math.max(-100000, NaN) === NaN`, prouvé par exécution avec `inflationFactor = 0`) → un NaN
+  amont traverse jusqu'à FluxImpots/totalTaxesPaid sans trace, malgré l'apparence de garde-fou.
+  La branche RETRAITÉE a déjà `Number.isFinite(reconciliation)` — appliquer le même pattern
+  (`gisMonthlySafe` l.365) au site actif + log. Non introduit par #558 (structure préexistante).
+- [x] **`[ENG-TAXDEC-FLOOR-INDEX]`** ✅ 2026-08-05 (PR #563 ; S, MOYEN, pré-existant — panel #558) — le plancher
+  `-100 000 $` du solde d'avril est NOMINAL et jamais indexé alors que le flux l'est → à 30 ans
+  (facteur 1,81) le seuil réel effectif tombe à ~−55 k$ ; la retenue 100 % fait mordre le clamp
+  dès ~600 k$ de brut + grosses déductions (mesuré). La troncature est maintenant JOURNALISÉE
+  (#558) ; reste à indexer le plancher sur `ctx.inflationFactor` (les 2 sites, actif + retraité).
+- [x] **`[FISC-STACK-GAINS-DIV]`** ✅ 2026-08-05 (PR #564 ; S, MOYEN [CONFIRMÉ par lecture + mesure] — V6) — gains (`taxDecember.ts:703`)
+  et dividendes (`:737`) empilés CHACUN sur la même base → bande commune facturée 2× au taux bas
+  (mesuré : −1 346 $/an sur base 100k/gains 30k/div 15k). Mord un retraité à gros non-enregistré.
+- [x] **`[FISC-DTC-ABATEMENT-ORDER]`** ✅ 2026-08-05 (PR #564 ; S, MOYEN [CONFIRMÉ par lecture + mesure] — V6) — le CID fédéral est
+  soustrait APRÈS l'abattement QC 16,5 % (`taxDecember.ts:734-739` + `tax.ts:906-907`) alors que
+  BPA/âge sont avant → sur-crédit de 16,5 % du CID (+49 $/an profil Marc, +308 $ à 9 k$ div).
+
 ## ✅ Incident jeton Fintable (PR #559 `bbd6bda`, mergée 2026-08-05)
 
 - [x] **`[FINTABLE-TOKEN-PERSIST]`** ✅ (PR #559, cause racine trouvée par MARC) — le jeton Fintable

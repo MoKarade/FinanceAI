@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-05 (suite 20) — #564 MERGÉE + rattrapage d'archivage
+> **#564 mergée** (`191d5c0`). **6 items ARCHIVÉS** (retard rattrapé — ils étaient mergés sans
+> avoir été déplacés, exactement la dérive PM-STALE-BACKLOG que la règle interdit) :
+> [MCP-NETINCOME-MISLEADING] #560, [FINTABLE-STALE-ALERT] #561, [ENG-TAXDEC-NAN-GUARD] +
+> [ENG-TAXDEC-FLOOR-INDEX] #563, [FISC-STACK-GAINS-DIV] + [FISC-DTC-ABATEMENT-ORDER] #564.
+> **V6 : 2/4 livrés.** Restent `[FISC-REEE-GRANT-CLAWBACK]` — CONFIRMÉ contre le code
+> (`childrenReee.ts:327` verse 100 % du solde à 25 ans ; les trackers SCEE/IQEE existent mais ne
+> sont jamais décrémentés par les retraits d'études → modélisation en 3 poches à faire) mais
+> **mesuré 0 $ sur le profil de Marc** (`reee: 0`, aucun objectif d'études) → question posée à
+> Marc : le coder maintenant ou passer à V7 ? Reco donnée : V7 — et `[FISC-TAXDEC-INCR]` reste
+> gaté sur son go (A_FAIRE_MOI).
+> **Suite proposée si Marc ne tranche pas : V7 — sécurité serveur + sync** (
+> [MCP-CLOUDRUN-AUTH-HARDENING] + [MCP-CHARTDATA-SUM-GUARD] + [FINTABLE-SYNC-STALE-BASE] +
+> [FISC-CONST-GUARD-V2]) : ça touche ce que Marc utilise tous les jours.
+>
 > ## 🟢 Session 2026-08-05 (suite 19) — #560 MERGÉE (`2f05622`) + FINTABLE-STALE-ALERT (PR en cours)
 > **#560 mergée** (netSalaryIncome ; archivée). **En cours : `[FINTABLE-STALE-ALERT]`** — l'import
 > gelé devient VISIBLE. Module PUR `services/fintable/syncHealth.ts` (ok/stale/error/never) partagé

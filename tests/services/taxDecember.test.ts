@@ -637,6 +637,41 @@ describe('processDecemberTaxFiling — actif : régularisation salariale (T1213)
         expect(high).toBeLessThan(low);              // remboursement plus GROS (plus négatif) à 200 k$
     });
 
+    it('[ENG-TAXDEC-NAN-GUARD] un solde d\'avril NON FINI ne devient jamais un chiffre silencieux', () => {
+        // ⚠️ `Math.max(-100000, NaN) === NaN` : le clamp AVAIT L'AIR d'un garde-fou et laissait
+        // passer un NaN amont jusqu'à FluxImpots/totalTaxesPaid sans trace. DISCRIMINANT : sur le
+        // code d'avant, `revenu` sortait NaN ; ici il vaut 0 ET la corruption est DITE.
+        const nanHelpers = makeHelpers({
+            calculateFiscalReport: () => ({ totalTax: Number.NaN } as unknown as FiscalReport),
+        });
+        const r = processDecemberTaxFiling(
+            DECEMBER,
+            baseCtx({ grossMarcBaseAnnual: 120000, optimizeSourceDeductions: false }),
+            nanHelpers,
+            ZERO_TAX,
+        );
+        expect(Number.isFinite(r.newTaxCurrentYear.revenu)).toBe(true);
+        expect(r.newTaxCurrentYear.revenu).toBe(0);
+        expect(r.logs.some((l) => l.includes('NON FINI'))).toBe(true);
+    });
+
+    it('[ENG-TAXDEC-FLOOR-INDEX] le plancher SUIT l\'inflation (sinon il fond de 45 % sur 30 ans)', () => {
+        // Le flux borné est NOMINAL : un plancher figé tronquerait des remboursements légitimes
+        // de plus en plus tôt à mesure que la projection avance. À inflationFactor = 2, le
+        // plancher doit valoir -200 000, pas -100 000. DISCRIMINANT : sur le code d'avant, le
+        // même scénario était tronqué à -100 000 exactement.
+        const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+        const ctx = baseCtx({
+            grossMarcBaseAnnual: 1_000_000, accRrspYear: 250_000,
+            optimizeSourceDeductions: false, inflationFactor: 2,
+        });
+        const r = processDecemberTaxFiling(DECEMBER, ctx, realHelpers, ZERO_TAX);
+        // Le remboursement (déjà ×2 par l'inflation) reste SOUS le plancher indexé → non tronqué,
+        // donc strictement inférieur à l'ancien plancher figé.
+        expect(r.newTaxCurrentYear.revenu).toBeLessThan(-100_000);
+        expect(r.newTaxCurrentYear.revenu).toBeGreaterThanOrEqual(-200_000);
+    });
+
     it('régularisation plancher : tronque à -100 000 EXACTEMENT et le JOURNALISE (panel #558)', () => {
         // L'ancien test stubait l'impôt à 0 → revenu = max(-100000, 0) = 0 : le clamp n'était
         // JAMAIS exercé (vacueux — prouvé par ablation du Math.max, il passait quand même).

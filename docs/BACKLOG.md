@@ -238,6 +238,30 @@
   été configuré — on alerte sur une CHUTE, pas sur une absence) + `syncHealth` exposé dans
   `get_financial_overview` (ce qui manquait pour diagnostiquer à distance le 2026-08-05).
   14 tests dont le REJEU de l'incident (passe « réussie » + 0 transaction = le vert trompeur).
+- [ ] **`[FINTABLE-SOURCE-TAG]`** (M, ÉLEVÉ — finding #1 panel #561, LIMITE CONNUE de
+  `[FINTABLE-STALE-ALERT]`) — `computeSyncHealth` compte TOUTES les transactions sans distinguer
+  leur provenance (`Transaction.status` ne dit pas « Fintable » vs « CSV »). Chemin réel et
+  plausible : l'import Fintable regèle → l'utilisateur, inquiet, importe un relevé CSV à la main →
+  `daysSinceLastTransaction` retombe à 0 → statut `ok`, bannière éteinte, connecteur mort qui
+  repasse pour vivant. C'est le MÊME vert trompeur que l'incident du 2026-08-05, par une autre
+  porte. Fix : taguer l'origine (champ additif optionnel `source: 'fintable' | 'csv' | 'manual'`,
+  donc zéro migration) OU persister `lastProductiveAt` (dernière passe avec `transactionsAdded > 0`)
+  et fonder la fraîcheur Fintable là-dessus. ⚠️ Tant que ce ticket est ouvert, ne PAS considérer que
+  « le connecteur ne peut plus geler en silence ».
+- [ ] **`[FINTABLE-BACKFILL-HISTORY]`** (M, ⭐ demandé par Marc 2026-08-05 : « avec la version
+  payante je devrai pouvoir importer beaucoup plus de transactions de fintable ») — ⚠️ **En l'état,
+  il n'en importera AUCUNE de plus** : `deriveCutoverDate` (`services/fintable/deriveCutoverDate.ts`)
+  fixe la bascule à la date de la transaction la PLUS RÉCENTE, et le mapper ne prend que ce qui est
+  APRÈS (`transactionsAfter`). C'est la garde anti-doublon voulue (Marc a ~2 019 transactions dont
+  18 mois saisis à la main), mais elle interdit aussi tout RATTRAPAGE d'historique : un plan payant
+  qui exposerait 12-24 mois au lieu des 30 jours mesurés le 2026-07-29 ne changerait rien.
+  Fix : passe de backfill SÉPARÉE de la sync courante — fenêtre explicite (ex. « importer depuis
+  telle date »), application via `applyPayloadsIsolated`, puis dédoublonnage contre l'existant avec
+  `findDuplicateGroups` (`services/transactions/duplicateDetection.ts`, DÉJÀ écrit et testé) et
+  revue humaine des groupes douteux avant écriture. ⚠️ Money-critical : un doublon de transaction
+  fausse le budget réel ET la moyenne 12 mois. Ne JAMAIS écrire sans dédoublonnage.
+  Prérequis : confirmer avec Marc la profondeur réellement offerte par son plan (mesurer, ne pas
+  supposer — 90 j demandés / 30 rendus au dernier test).
 - [ ] **`[FINTABLE-SYNC-STALE-BASE]`** (M, résiduel #545 ASSUMÉ) — une passe de sync calcule son
   `nextState` sur un snapshot capturé AVANT le fetch réseau (`browserSync.ts:181`,
   `runFintableSync.ts:118`) : une édition manuelle pendant la fenêtre peut être écrasée. Vrai fix =
@@ -255,12 +279,12 @@
   mesuré −3 088 $/an (fixture 98,4 k$, le moteur « perd » du net) à +7 338 $/an (fixture 240 k$,
   il en « crée »). Documenté FISCAL_REFERENCE §9 (biais a). Piste : afficher l'écart net saisi vs
   net modélisé dans TaxCenter (diagnostic), ou réconcilier via un facteur calibré au boot.
-- [ ] **`[ENG-TAXDEC-FLOOR-INDEX]`** (S, MOYEN, pré-existant — panel #558) — le plancher
+- [x] **`[ENG-TAXDEC-FLOOR-INDEX]`** ✅ 2026-08-05 (PR en cours ; S, MOYEN, pré-existant — panel #558) — le plancher
   `-100 000 $` du solde d'avril est NOMINAL et jamais indexé alors que le flux l'est → à 30 ans
   (facteur 1,81) le seuil réel effectif tombe à ~−55 k$ ; la retenue 100 % fait mordre le clamp
   dès ~600 k$ de brut + grosses déductions (mesuré). La troncature est maintenant JOURNALISÉE
   (#558) ; reste à indexer le plancher sur `ctx.inflationFactor` (les 2 sites, actif + retraité).
-- [ ] **`[ENG-TAXDEC-NAN-GUARD]`** (S, résiduel panel #558, pré-existant) — `taxDecember.ts` : le
+- [x] **`[ENG-TAXDEC-NAN-GUARD]`** ✅ 2026-08-05 (PR en cours ; S, résiduel panel #558, pré-existant) — `taxDecember.ts` : le
   clamp `Math.max(-100000, x)` du solde d'avril ACTIF ne protège pas contre NaN
   (`Math.max(-100000, NaN) === NaN`, prouvé par exécution avec `inflationFactor = 0`) → un NaN
   amont traverse jusqu'à FluxImpots/totalTaxesPaid sans trace, malgré l'apparence de garde-fou.

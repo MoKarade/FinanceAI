@@ -94,10 +94,13 @@ describe('[FISC-BRACKET-REALINDEX] moteur — un revenu réel constant paie un i
         expect(reals.length).toBe(29);
         const min = Math.min(...reals);
         const max = Math.max(...reals);
-        expect(min).toBeGreaterThan(2_000);                  // non-vacuité : de l'impôt coule
+        expect(min).toBeGreaterThan(1_000);                  // non-vacuité : de l'impôt coule
         // DISCRIMINANT : sur l'ancien code, l'écart max−min mesuré est 533 $ (2 702 → 3 235).
         expect(max - min).toBeLessThan(1);
-        expect(reals[0]).toBeCloseTo(2_702.33, 0);           // pin de niveau (mesuré)
+        // Pin de niveau re-basé [FISC-WHT-92PCT] 2026-08-01 (était 2 702,33) : retenue 100 % →
+        // le solde salarial d'avril tombe à ~0 sans déductions, reste RAMQ & co (1 243,23 $/an
+        // réel de double facturation supprimée). La CONSTANCE (l'invariant de ce test) est intacte.
+        expect(reals[0]).toBeCloseTo(1_458.82, 0);
     });
 
     it('retraité : direction CONSERVATRICE restaurée (ttp ↑, NW ↓ vs ancien code — pins mesurés)', () => {

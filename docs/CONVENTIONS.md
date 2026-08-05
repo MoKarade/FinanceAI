@@ -460,6 +460,17 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   direction ET son mécanisme PAR PHASE avant d'écrire les commentaires de re-base. Bonus
   rétrocompat : parce que le barème est homogène de degré 1, l'ancien monde == `realDeflator = 1`
   exactement (paramètre optionnel à défaut neutre, zéro migration).
+  ⚠️ **Un fix peut TUER l'observable de gardes voisines — réancrer, pas supprimer** (leçon
+  FISC-WHT-92PCT 2026-08-01) : passer la retenue employeur à 100 % a rendu STRUCTURELLEMENT nul
+  le complément salarial d'avril sans déductions — et 4 tests qui utilisaient ce complément comme
+  OBSERVABLE (monotonie brut↑, crédit d'âge actif B-AUDIT-3, ménage fantôme survivant, pins
+  unitaires ±8 %) sont devenus vacueux (`0 > 0`). L'invariant qu'ils gardaient n'était pas mort,
+  seulement son canal de lecture : chaque garde a été réancrée sur le canal SURVIVANT (le
+  remboursement des déductions pour la monotonie et le T1213, la prime RAMQ familiale pour le
+  ménage fantôme, l'asymétrie crédit-tronqué-par-déductions pour B-AUDIT-3), avec garde de
+  non-vacuité (`< 0` avant le `<`). Réflexe : après un fix qui annule un flux, grep les tests qui
+  LISENT ce flux — un test qui passe encore peut être devenu vide, et un test cassé se réancre sur
+  ce que l'invariant regarde VRAIMENT, pas sur le chiffre le plus proche.
   ⚠️ **Des fixtures de test à dates ABSOLUES vieillissent contre un NOW fixe** (leçon HIST-STORE-SIZE
   2026-08-01) : les tests de fusion d'historique utilisaient des closes datés « 2026-01-10 » avec un
   NOW figé à 2027-01-15 — l'ajout de la politique d'âge (downsample > 365 j) les a fait basculer du

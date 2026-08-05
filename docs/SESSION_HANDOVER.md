@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-01 (suite 16) — #556 MERGÉE (`16e9e9d`, Vercel prod READY) + V5d : FISC-WHT-92PCT
+> **#556 mergée** (squash `16e9e9d`, prod déployée). **V5d livrée (PR en cours)** : retenue
+> employeur 100 % (`[FISC-WHT-92PCT]`, GO Marc Q2) — l'ancien ×0,92 non sourcé facturait ~8 % de
+> l'impôt salarial en double chaque avril. Mesuré avant/après : salarié référence ttp
+> 106 915 → 57 723 (−1 243,23 $/an réel = exactement les 8 %), NW +13,7 % ; retraités
+> BIT-IDENTIQUES (branche phase active seulement). Discriminant dédié
+> `projection.whtSettlement.test.ts` ; goldens re-basés : returnProfile (+7 %), bracketRealIndex
+> (pin niveau 2 702→1 459, constance intacte), totalTaxesPaid (pin salarié −17 160→−23 553).
+> ⚠️ Leçon (CONVENTIONS) : le fix a TUÉ l'observable de 4 gardes (complément 8 % ≡ 0) →
+> réancrées sur le canal survivant (remboursement des déductions, RAMQ familiale, asymétrie
+> crédit d'âge), jamais supprimées. [FISC-BRACKET-REALINDEX] archivé (BACKLOG_ARCHIVE).
+> Suite V5 : [FISC-SOLO-INVEST-SPLIT] (Q3, GO) puis GIS/LINE361/CREDITRATE (gatés sources).
+>
 > ## 🟢 Session 2026-08-01 (suite 15) — PR #556 : panel traité, latentTax corrigé, ready+auto-merge
 > Panel #556 rendu (projection-validator + financial-integrity, tous deux MESURÉS) : cœur du fix
 > confirmé (homogénéité exacte à 1e-9, conservation 0,02 $, rétrocompat bit-identique). 3 findings

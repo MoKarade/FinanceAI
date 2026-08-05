@@ -9,6 +9,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased — « Impôt à vie » honnête] — 2026-08-01
 
 ### Corrections money-critical
+- **`[FISC-WHT-92PCT]` — la retenue employeur passe de 92 % à 100 % de l'impôt modélisé (GO
+  Marc).** L'ancien ×0,92 (hypothèse jamais sourcée) facturait les ~8 % « restants » chaque
+  avril, alors que ton salaire NET saisi incorpore déjà ~100 % de la vraie retenue → ces 8 %
+  étaient payés EN DOUBLE (mesuré : ~1 243 $/an réel sur le couple de référence, jusqu'à
+  6 393 $/an à hauts revenus). **Effet visible : le patrimoine long-terme des scénarios
+  SALARIÉS monte (~+7 % à 30 ans sur la fixture de référence)** — l'ancien chiffre était
+  pessimiste par un impôt fantôme, pas par prudence assumée. Le solde d'avril ne règle plus
+  que l'écart dû aux déductions (REER…) : nul sans déductions, remboursement sinon. Les
+  retraités sont strictement inchangés. Discriminant mesuré avant/après + 4 gardes de tests
+  réancrées sur le canal survivant (remboursement des déductions, prime RAMQ familiale).
 - **`[FISC-BRACKET-REALINDEX]` — les paliers d'impôt ne s'élargissent plus de 2 %/an en dollars
   réels (CRITIQUE, GO Marc).** Le calcul de décembre déflate les revenus en dollars d'aujourd'hui
   mais appliquait un barème indexé en dollars NOMINAUX (1,02^Δ) → double indexation : à revenu réel

@@ -41,10 +41,10 @@
   4 sliders + montants voisins) + `[SEC-GA-DEFER-CONSENT]` (le SCRIPT gtag ne part chez Google
   qu'au consentement) + `[HIST-STORE-SIZE]` (downsample stocké > 365 j → 1 pt/semaine, idempotent,
   compose avec mergePriceHistories). `[PROFIL-SWITCH]` reste (questions posées à Marc — voir 🧭).
-- [ ] **V5 — Fiscal débloqué (Marc : Q1 ok, Q2 fix, Q3 go)** : `[FISC-BRACKET-REALINDEX]`/ITEM-2A (CRITIQUE) +
-  `[FISC-WHT-92PCT]` fix 1.0 (Q2) + `[FISC-SOLO-INVEST-SPLIT]` (Q3) + `[FISC-GIS-COUPLE-RATE]`
-  (table Service Canada requise) + `[FISC-LINE361-PERCONJOINT-REDUC]` (Annexe B d'abord) +
-  `[FISC-FED-CREDITRATE-15]` (source ARC).
+- [ ] **V5 — Fiscal débloqué (Marc : Q1 ok, Q2 fix, Q3 go)** : ~~`[FISC-BRACKET-REALINDEX]`~~ ✅ #556 +
+  ~~`[FISC-WHT-92PCT]`~~ ✅ (PR en cours) + `[FISC-SOLO-INVEST-SPLIT]` (Q3, SUIVANT) +
+  `[FISC-GIS-COUPLE-RATE]` (table Service Canada requise) + `[FISC-LINE361-PERCONJOINT-REDUC]`
+  (Annexe B d'abord) + `[FISC-FED-CREDITRATE-15]` (source ARC).
 - [ ] **V6 — Fiscal non gaté** (1 PR) : `[FISC-DTC-ABATEMENT-ORDER]` + `[FISC-STACK-GAINS-DIV]`
   (même bloc taxDecember) + `[FISC-REEE-GRANT-CLAWBACK]` + `[FISC-TAXDEC-INCR]` (Marc : « fix »).
 - [ ] **V7 — Sécurité serveur + sync** (1 PR) : `[MCP-CLOUDRUN-AUTH-HARDENING]` +
@@ -74,19 +74,6 @@
 > Analyse fiscale 2026-07-31 (financial-integrity, findings MESURÉS via npx tsx sur le vrai moteur).
 > ⚠️ Un finding = une hypothèse : chaque fix passe par discriminant git-stash + panel adversarial.
 
-- [x] **`[FISC-BRACKET-REALINDEX]`** ✅ 2026-08-01 (PR en cours, fusionne ITEM-2A) — param
-  `realDeflator` (défaut 1 = rétrocompat bit-identique) sur `getIndexedBracketsForYear` + dérivés
-  (paliers, BPA, crédits d'âge/ligne 361, RAMQ, FSS, `getMarginalRate`, `calculateFiscalReport`) ;
-  seuls les sites RÉELS de `taxDecember` le passent (salarial, combinedTaxFor retraité, RAMQ, FSS) —
-  les blocs gains/dividendes sont NOMINAUX-cohérents et n'y touchent pas (documenté en code).
-  Discriminant prouvé (5/5 échouent sur l'ancien code) : impôt réel CONSTANT 2 702 $/an à revenu
-  réel constant (dérivait à 3 235 $) ; retraité 62 : ttp +62 % (29 806 → 48 314), direction
-  conservatrice. 10 goldens re-basés SCIEMMENT (item2c, meltdownDisplay, returnProfile,
-  totalTaxesPaid). Nuance salarié (mécanisme RE-MESURÉ par le panel 2026-08-01, 1re explication
-  réfutée) : le NW monte (~+0,8 %) parce que la prime RAMQ/FSS doublement indexée redescend à son
-  niveau légal (terme dominant), amplifié par l'heuristique 92 % — PAS parce que la retenue
-  baissait (elle monte). Panel #556 : site oublié `latentTax.ts` corrigé dans la même PR
-  (impôt latent affiché sous-évalué ~53 k$/−35 % à 30 ans, discriminant unitaire prouvé).
 - [ ] **`[FISC-PENSION-CREDIT-REAL]`** (S, MOYEN [Certain, mesuré — panel #556], GO Marc requis :
   re-base de goldens retraités) — le crédit pension fédéral 2 000 $ est GELÉ nominalement
   (FISCAL_REFERENCE:178) mais traité à plat en espace RÉEL (`utils/tax.ts` l.249) → il vaut de
@@ -132,12 +119,12 @@
 - [ ] **`[UI-FMTM-FORMATCAD]`** (S — panel #554, PRÉ-EXISTANT) — `fmtM` maison
   (`StrategyOptimizerPanel.tsx:57`, `(v/1e6).toFixed(2)M$`) viole « formatCAD UNIQUEMENT » et
   écrase la granularité (6 157 $ → « 0.01M$ »).
-- [ ] **`[FISC-WHT-92PCT]`** (S-M, ÉLEVÉ [Certain algèbre], 🧭 Q2 pour le fix) —
-  `taxDecember.ts:407-410` : `estimatedWithholding = totalEmployerTax * 0.92` → ~8 % de l'impôt
-  salarial facturé EN DOUBLE chaque avril (mesuré : ~1 995 $/an solo, ~3 608 $/an couple, sens
-  conservateur). Le `netSalary` saisi incorpore déjà ~100 % de la retenue (vérifié : 5 604 vs
-  5 620 $/mois) ; `0.92` n'est sourcé NULLE PART et échappe au garde FISC-CONST-LINT (constante
-  nouvelle). Minimal (V1) : documenter au FISCAL_REFERENCE ; juste : `1.0` + discriminant.
+- [x] **`[FISC-WHT-92PCT]`** ✅ 2026-08-01 (PR en cours, GO Marc Q2) — retenue employeur = 100 %
+  de l'impôt sans déductions (`taxDecember.ts`, l'ancien ×0,92 non sourcé facturait ~8 % en
+  double chaque avril). Mesuré avant/après : salarié référence ttp 106 915 → 57 723
+  (−1 243,23 $/an réel, exactement les 8 %), NW +13,7 % ; hauts revenus jusqu'à −6 393 $/an ;
+  retraités bit-identiques. Discriminant `projection.whtSettlement.test.ts` + 4 gardes réancrées
+  sur le canal survivant (leçon CONVENTIONS « observable tué »). FISCAL_REFERENCE §9 mis à jour.
 - [ ] **`[FISC-GIS-COUPLE-RATE]`** (M, ÉLEVÉ hors profil Marc [Probable — table Service Canada NON
   confirmable du conteneur]) — `utils/tax.ts:497-498` : clawback SRG 0,50 PAR ADULTE sur le revenu
   COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la

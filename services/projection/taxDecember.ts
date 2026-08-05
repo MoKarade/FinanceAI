@@ -411,7 +411,11 @@ export function processDecemberTaxFiling(
             taxAnnaEmployer = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna, undefined, ctx.inflationFactor).totalTax : 0;
         }
         const totalEmployerTax = (taxMarcEmployer + taxAnnaEmployer) * ctx.inflationFactor;
-        const estimatedWithholding = totalEmployerTax * 0.92;
+        // [FISC-WHT-92PCT] retenue = 100 % de l'impôt sans déductions (GO Marc 2026-08-01). L'ancien
+        // ×0,92 n'était sourcé nulle part et facturait ~8 % de l'impôt salarial EN DOUBLE chaque avril :
+        // le netSalary saisi incorpore déjà ~100 % de la retenue réelle (vérifié numériquement,
+        // FISCAL_REFERENCE §9). Le solde d'avril ne règle plus que l'écart dû aux déductions (REER…).
+        const estimatedWithholding = totalEmployerTax;
 
         // V30: Override 12-month approximation
         taxCurrent.revenu = Math.max(-100000, totalAnnualTax - estimatedWithholding);

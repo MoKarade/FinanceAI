@@ -608,11 +608,16 @@ choisir). Calcul cumulatif par tranche (style impôt).
   eux. Discriminant : impôt réel CONSTANT (2 702 $/an sur 29 ans, écart < 1 $) sur salarié à revenu
   réel constant ; goldens re-basés SCIEMMENT (retraités : impôt à vie +62 % sur le scénario de
   référence, direction conservatrice restaurée). Cf `tests/services/projection.bracketRealIndex.test.ts`.
-- **Retenue salariale employeur = 92 % de l'impôt modélisé** (`taxDecember.ts:407`,
-  `[FISC-WHT-92PCT]`, hypothèse NON SOURCÉE documentée 2026-07-31) : le solde d'avril facture les
-  ~8 % restants ALORS QUE le `netSalary` saisi incorpore déjà ~100 % de la retenue réelle (vérifié
-  numériquement) → ~2 000 $/an/salarié d'impôt compté en double (sens conservateur).
-  ✅ **Décision Marc 2026-07-31 : fix `1.0`** (avec discriminant) — cf BACKLOG V5.
+- **Retenue salariale employeur** : ✅ **CORRIGÉ 2026-08-01 (`[FISC-WHT-92PCT]`, GO Marc)** —
+  retenue = **100 %** de l'impôt sans déductions (`taxDecember.ts`). L'ancien ×0,92 (hypothèse
+  NON SOURCÉE) facturait les ~8 % restants en avril ALORS QUE le `netSalary` saisi incorpore
+  déjà ~100 % de la retenue réelle (vérifié numériquement) → impôt compté en double (mesuré :
+  1 243,23 $/an réel sur le couple de référence à 98,4 k$ ; jusqu'à 6 393 $/an à 240 k$).
+  Depuis le fix, le solde salarial d'avril ne règle plus que l'écart dû aux déductions (REER…) :
+  nul sans déductions, remboursement sinon. Discriminant :
+  `tests/services/projection.whtSettlement.test.ts` (avant : ttp 106 915,04 / NW 720 557,13 ;
+  après : 57 722,84 / 819 490,94 sur la fixture de référence 30 ans). Les retraités sont
+  bit-identiques (la branche retenue est phase active seulement).
 - **Assiette placement estimée** (`services/taxEstimate.ts:13-15`) : `EST_DIVIDEND_YIELD = 0,02` et
   `EST_CAPITAL_GAINS_YIELD = 0,07` (gains réalisés à 50 % inclus) — HYPOTHÈSES de modèle (pas des
   valeurs fiscales), consommées par l'onglet Impôt ET `get_tax_situation` (MCP).

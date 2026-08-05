@@ -41,10 +41,10 @@
   4 sliders + montants voisins) + `[SEC-GA-DEFER-CONSENT]` (le SCRIPT gtag ne part chez Google
   qu'au consentement) + `[HIST-STORE-SIZE]` (downsample stocké > 365 j → 1 pt/semaine, idempotent,
   compose avec mergePriceHistories). `[PROFIL-SWITCH]` reste (questions posées à Marc — voir 🧭).
-- [ ] **V5 — Fiscal débloqué (Marc : Q1 ok, Q2 fix, Q3 go)** : `[FISC-BRACKET-REALINDEX]`/ITEM-2A (CRITIQUE) +
-  `[FISC-WHT-92PCT]` fix 1.0 (Q2) + `[FISC-SOLO-INVEST-SPLIT]` (Q3) + `[FISC-GIS-COUPLE-RATE]`
-  (table Service Canada requise) + `[FISC-LINE361-PERCONJOINT-REDUC]` (Annexe B d'abord) +
-  `[FISC-FED-CREDITRATE-15]` (source ARC).
+- [ ] **V5 — Fiscal débloqué (Marc : Q1 ok, Q2 fix, Q3 go)** : ~~`[FISC-BRACKET-REALINDEX]`~~ ✅ #556 +
+  ~~`[FISC-WHT-92PCT]`~~ ✅ (PR en cours) + `[FISC-SOLO-INVEST-SPLIT]` (Q3, SUIVANT) +
+  `[FISC-GIS-COUPLE-RATE]` (table Service Canada requise) + `[FISC-LINE361-PERCONJOINT-REDUC]`
+  (Annexe B d'abord) + `[FISC-FED-CREDITRATE-15]` (source ARC).
 - [ ] **V6 — Fiscal non gaté** (1 PR) : `[FISC-DTC-ABATEMENT-ORDER]` + `[FISC-STACK-GAINS-DIV]`
   (même bloc taxDecember) + `[FISC-REEE-GRANT-CLAWBACK]` + `[FISC-TAXDEC-INCR]` (Marc : « fix »).
 - [ ] **V7 — Sécurité serveur + sync** (1 PR) : `[MCP-CLOUDRUN-AUTH-HARDENING]` +
@@ -74,19 +74,6 @@
 > Analyse fiscale 2026-07-31 (financial-integrity, findings MESURÉS via npx tsx sur le vrai moteur).
 > ⚠️ Un finding = une hypothèse : chaque fix passe par discriminant git-stash + panel adversarial.
 
-- [x] **`[FISC-BRACKET-REALINDEX]`** ✅ 2026-08-01 (PR en cours, fusionne ITEM-2A) — param
-  `realDeflator` (défaut 1 = rétrocompat bit-identique) sur `getIndexedBracketsForYear` + dérivés
-  (paliers, BPA, crédits d'âge/ligne 361, RAMQ, FSS, `getMarginalRate`, `calculateFiscalReport`) ;
-  seuls les sites RÉELS de `taxDecember` le passent (salarial, combinedTaxFor retraité, RAMQ, FSS) —
-  les blocs gains/dividendes sont NOMINAUX-cohérents et n'y touchent pas (documenté en code).
-  Discriminant prouvé (5/5 échouent sur l'ancien code) : impôt réel CONSTANT 2 702 $/an à revenu
-  réel constant (dérivait à 3 235 $) ; retraité 62 : ttp +62 % (29 806 → 48 314), direction
-  conservatrice. 10 goldens re-basés SCIEMMENT (item2c, meltdownDisplay, returnProfile,
-  totalTaxesPaid). Nuance salarié (mécanisme RE-MESURÉ par le panel 2026-08-01, 1re explication
-  réfutée) : le NW monte (~+0,8 %) parce que la prime RAMQ/FSS doublement indexée redescend à son
-  niveau légal (terme dominant), amplifié par l'heuristique 92 % — PAS parce que la retenue
-  baissait (elle monte). Panel #556 : site oublié `latentTax.ts` corrigé dans la même PR
-  (impôt latent affiché sous-évalué ~53 k$/−35 % à 30 ans, discriminant unitaire prouvé).
 - [ ] **`[FISC-PENSION-CREDIT-REAL]`** (S, MOYEN [Certain, mesuré — panel #556], GO Marc requis :
   re-base de goldens retraités) — le crédit pension fédéral 2 000 $ est GELÉ nominalement
   (FISCAL_REFERENCE:178) mais traité à plat en espace RÉEL (`utils/tax.ts` l.249) → il vaut de
@@ -132,12 +119,12 @@
 - [ ] **`[UI-FMTM-FORMATCAD]`** (S — panel #554, PRÉ-EXISTANT) — `fmtM` maison
   (`StrategyOptimizerPanel.tsx:57`, `(v/1e6).toFixed(2)M$`) viole « formatCAD UNIQUEMENT » et
   écrase la granularité (6 157 $ → « 0.01M$ »).
-- [ ] **`[FISC-WHT-92PCT]`** (S-M, ÉLEVÉ [Certain algèbre], 🧭 Q2 pour le fix) —
-  `taxDecember.ts:407-410` : `estimatedWithholding = totalEmployerTax * 0.92` → ~8 % de l'impôt
-  salarial facturé EN DOUBLE chaque avril (mesuré : ~1 995 $/an solo, ~3 608 $/an couple, sens
-  conservateur). Le `netSalary` saisi incorpore déjà ~100 % de la retenue (vérifié : 5 604 vs
-  5 620 $/mois) ; `0.92` n'est sourcé NULLE PART et échappe au garde FISC-CONST-LINT (constante
-  nouvelle). Minimal (V1) : documenter au FISCAL_REFERENCE ; juste : `1.0` + discriminant.
+- [x] **`[FISC-WHT-92PCT]`** ✅ 2026-08-01 (PR en cours, GO Marc Q2) — retenue employeur = 100 %
+  de l'impôt sans déductions (`taxDecember.ts`, l'ancien ×0,92 non sourcé facturait ~8 % en
+  double chaque avril). Mesuré avant/après : salarié référence ttp 106 915 → 57 723
+  (−1 243,23 $/an réel, exactement les 8 %), NW +13,7 % ; hauts revenus jusqu'à −6 393 $/an ;
+  retraités bit-identiques. Discriminant `projection.whtSettlement.test.ts` + 4 gardes réancrées
+  sur le canal survivant (leçon CONVENTIONS « observable tué »). FISCAL_REFERENCE §9 mis à jour.
 - [ ] **`[FISC-GIS-COUPLE-RATE]`** (M, ÉLEVÉ hors profil Marc [Probable — table Service Canada NON
   confirmable du conteneur]) — `utils/tax.ts:497-498` : clawback SRG 0,50 PAR ADULTE sur le revenu
   COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la
@@ -236,11 +223,45 @@
   `normalizeAppState`. Cause racine : `registryParity.test.ts:104-113` UNIDIRECTIONNEL (n'itère que
   sur mcpDefaults). Fix : +4 champs (`: undefined`) + test bidirectionnel.
 
+- [ ] **`[FINTABLE-STALE-ALERT]`** (S-M, découvert 2026-08-05 — incident réel : Marc a constaté
+  LUI-MÊME « aucune update depuis 5 jours », dernière transaction 2026-07-31 = veille de la fin
+  d'essai Fintable, aucun canal ne l'a alerté) — la staleness d'import est INVISIBLE : (a) si
+  Fintable gèle son feed bancaire (`can_sync: false` au palier gratuit) mais sert encore l'API,
+  la sync rapporte « succès, 0 transaction » — vert trompeur, classe PERF-STALE-TAIL-ZERO ;
+  (b) `fintableSyncReport` n'est exposé par AUCUN tool MCP (seulement Réglages/SystemView) →
+  indiagnosticable à distance. Fix : ① alerte visible (Accueil/Assistant, pas juste Réglages)
+  quand `max(date de transaction importée)` > N jours OU `report.at` > 48 h, avec la CAUSE
+  (erreur vs 0-transaction) ; ② exposer le rapport + la date de dernière transaction par compte
+  dans `get_financial_overview` (ou un tool `get_sync_health`) pour que Claude puisse
+  diagnostiquer sans les yeux de Marc.
 - [ ] **`[FINTABLE-SYNC-STALE-BASE]`** (M, résiduel #545 ASSUMÉ) — une passe de sync calcule son
   `nextState` sur un snapshot capturé AVANT le fetch réseau (`browserSync.ts:181`,
   `runFintableSync.ts:118`) : une édition manuelle pendant la fenêtre peut être écrasée. Vrai fix =
   ré-appliquer `applyPayloadsIsolated` sur l'état FRAIS au moment de l'écriture. Sœur : cooldown
   localStorage ≠ mutex cross-onglet (fenêtre étroite, intégrité seulement).
+- [ ] **`[ENG-T1213-NET-MONTHLY]`** (M, MOYEN, pré-existant — mesuré panel #558, −183 598 $/30 ans) —
+  activer `optimizeSourceDeductions` (T1213) ANNULE le bénéfice fiscal du REER dans la simulation :
+  la retenue modélisée baisse mais le net MENSUEL encaissé (`activeIncome.ts`) ne monte jamais →
+  le ménage supporte `tax(g,0)` au lieu de `tax(g,d)`, à l'ENVERS de la réalité (T1213 est
+  neutre-à-positif). Pré-existant (−180 136 $ avant WHT-92PCT, amplifié +1,9 %). Fix : majorer le
+  net mensuel de `[tax(g,0)−tax(g,d)]/12` quand T1213 actif — sinon RETIRER le toggle de l'UI
+  (`AdvancedProjectionParams.tsx`), il ne peut que nuire.
+- [ ] **`[ENG-NET-MODEL-RESIDUAL]`** (M, FAIBLE-MOYEN, pré-existant — mesuré panel #558) — le net
+  MENSUEL encaissé est le `netSalary` SAISI, jamais réconcilié avec l'impôt du MODÈLE : résidu
+  mesuré −3 088 $/an (fixture 98,4 k$, le moteur « perd » du net) à +7 338 $/an (fixture 240 k$,
+  il en « crée »). Documenté FISCAL_REFERENCE §9 (biais a). Piste : afficher l'écart net saisi vs
+  net modélisé dans TaxCenter (diagnostic), ou réconcilier via un facteur calibré au boot.
+- [ ] **`[ENG-TAXDEC-FLOOR-INDEX]`** (S, MOYEN, pré-existant — panel #558) — le plancher
+  `-100 000 $` du solde d'avril est NOMINAL et jamais indexé alors que le flux l'est → à 30 ans
+  (facteur 1,81) le seuil réel effectif tombe à ~−55 k$ ; la retenue 100 % fait mordre le clamp
+  dès ~600 k$ de brut + grosses déductions (mesuré). La troncature est maintenant JOURNALISÉE
+  (#558) ; reste à indexer le plancher sur `ctx.inflationFactor` (les 2 sites, actif + retraité).
+- [ ] **`[ENG-TAXDEC-NAN-GUARD]`** (S, résiduel panel #558, pré-existant) — `taxDecember.ts` : le
+  clamp `Math.max(-100000, x)` du solde d'avril ACTIF ne protège pas contre NaN
+  (`Math.max(-100000, NaN) === NaN`, prouvé par exécution avec `inflationFactor = 0`) → un NaN
+  amont traverse jusqu'à FluxImpots/totalTaxesPaid sans trace, malgré l'apparence de garde-fou.
+  La branche RETRAITÉE a déjà `Number.isFinite(reconciliation)` — appliquer le même pattern
+  (`gisMonthlySafe` l.365) au site actif + log. Non introduit par #558 (structure préexistante).
 - [ ] **`[SDK-IMPORT-TIMEOUT]`** (S, résiduel panel #547, non bloquant) — le chargement du chunk SDK
   (`services/claude.ts:157`) n'est couvert par aucun timeout : un `import()` qui stalle sans rejeter
   pend indéfiniment (borné : 1er usage par session). Fix : course import() vs timer 8-10 s dans

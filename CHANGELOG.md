@@ -9,12 +9,28 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased — « Impôt à vie » honnête] — 2026-08-01
 
 ### Corrections money-critical
+- **`[FISC-WHT-92PCT]` — la retenue employeur passe de 92 % à 100 % de l'impôt modélisé (GO
+  Marc).** L'ancien ×0,92 (hypothèse jamais sourcée) facturait les ~8 % « restants » chaque
+  avril, alors que ton salaire NET saisi incorpore déjà ~100 % de la vraie retenue → ces 8 %
+  étaient payés EN DOUBLE (mesuré : ~1 243 $/an réel sur le couple de référence, jusqu'à
+  6 393 $/an à hauts revenus). **Effet visible : le patrimoine long-terme des scénarios
+  SALARIÉS monte de +7 % à +14 % à 30 ans selon le profil et la stratégie (mesuré : +13,6 %
+  PRIO_CELI et +10,0 % AUTO_MARGINAL sur un couple à 183,6 k$ ; +7 à +8 % sur les fixtures
+  de référence)** — l'ancien chiffre était
+  pessimiste par un impôt fantôme, pas par prudence assumée. Le solde d'avril ne règle plus
+  que l'écart dû aux déductions (REER…) : nul sans déductions, remboursement sinon. La branche
+  décembre RETRAITÉ est inchangée (scénario démarrant retraité = bit-identique) ; un scénario
+  actif→retraite monte quand même via le patrimoine accumulé en phase active (+21,5 % NW
+  mesuré sur une fixture 40 ans). Discriminant mesuré avant/après + 4 gardes de tests
+  réancrées sur le canal survivant (remboursement des déductions, prime RAMQ familiale) ; la
+  troncature du plancher de remboursement −100 000 $ est désormais JOURNALISÉE.
 - **`[FISC-BRACKET-REALINDEX]` — les paliers d'impôt ne s'élargissent plus de 2 %/an en dollars
   réels (CRITIQUE, GO Marc).** Le calcul de décembre déflate les revenus en dollars d'aujourd'hui
   mais appliquait un barème indexé en dollars NOMINAUX (1,02^Δ) → double indexation : à revenu réel
   constant, l'impôt réel fondait d'année en année (paliers, BPA, crédits d'âge/ligne 361, RAMQ et
   FSS étaient tous touchés). Corrigé par un déflateur propagé du moteur au barème : à inflation
-  2 % (ton réglage), un revenu réel constant paie maintenant un impôt réel CONSTANT (2 702 $/an
+  2 % (ton réglage), un revenu réel constant paie maintenant un impôt réel CONSTANT (niveau
+  re-basé à 1 458,82 $/an par `[FISC-WHT-92PCT]` ci-dessus — la constance est l'invariant ;
   sur 29 ans, écart < 1 $ — dérivait à +20 % avant). **Effet visible : les projections longues
   deviennent plus prudentes.** Retraité type (62 ans, 700 k$ REER) : impôt à vie +62 %
   (29 806 → 48 314 $), patrimoine final en baisse — l'ancien chiffre était OPTIMISTE, pas ta

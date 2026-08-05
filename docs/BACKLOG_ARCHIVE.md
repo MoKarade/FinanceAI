@@ -147,6 +147,19 @@ fichier:ligne). Verdicts appliqués à la refonte :
   `strategySearch.lifetimeTax`. Additivité prouvée au cent ; magnitudes 8,6 %/51,5 %/100 % à
   10/2/1 ans ; signe négatif honnête. Reste : [ENG-TTP-UNSETTLED-PROPAGATE] (4 surfaces au compteur nu).
 
+## ✅ V5c — paliers en dollars réels (PR #556 `16e9e9d`, mergée 2026-08-01)
+
+- [x] **`[FISC-BRACKET-REALINDEX]`** (fusionne ITEM-2A, CRITIQUE, GO Marc) ✅ (PR #556) — param
+  `realDeflator` (défaut 1 = rétrocompat bit-identique) sur `getIndexedBracketsForYear` + dérivés
+  (paliers, BPA, crédits d'âge/361, RAMQ, FSS, getMarginalRate, calculateFiscalReport) ; passé
+  par les sites RÉELS de taxDecember + latentTax (site oublié rattrapé au panel #556, latent
+  affiché sous-évalué ~53 k$/−35 % à 30 ans). Discriminants 5/5 + unitaire d'homogénéité ;
+  homogénéité exacte au bit (panel) ; conservation ≤ 0,02 $. Retraité ttp +62 % (conservateur) ;
+  salarié NW +0,8 % — cause MESURÉE : RAMQ/FSS doublement indexées redescendent (le claim
+  « retenue sur-évaluée » a été réfuté et réécrit dans 3 docs). 10 goldens re-basés sciemment.
+  Tickets dérivés au vivant : [FISC-PENSION-CREDIT-REAL], [FISC-BRACKET-CPI-STRESS],
+  [FISC-MARGINAL-SPACE].
+
 
 # (Contenu intégral du BACKLOG au 2026-07-31, avant refonte)
 

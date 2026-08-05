@@ -411,10 +411,21 @@ export function processDecemberTaxFiling(
             taxAnnaEmployer = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna, undefined, ctx.inflationFactor).totalTax : 0;
         }
         const totalEmployerTax = (taxMarcEmployer + taxAnnaEmployer) * ctx.inflationFactor;
-        const estimatedWithholding = totalEmployerTax * 0.92;
+        // [FISC-WHT-92PCT] retenue = 100 % de l'impôt sans déductions (GO Marc 2026-08-01). L'ancien
+        // ×0,92 n'était sourcé nulle part et facturait ~8 % de l'impôt salarial EN DOUBLE chaque avril :
+        // le netSalary saisi incorpore déjà ~100 % de la retenue réelle (vérifié numériquement,
+        // FISCAL_REFERENCE §9). Le solde d'avril ne règle plus que l'écart dû aux déductions (REER…).
+        const estimatedWithholding = totalEmployerTax;
 
         // V30: Override 12-month approximation
-        taxCurrent.revenu = Math.max(-100000, totalAnnualTax - estimatedWithholding);
+        // Panel #558 : le plancher -100 000 $ tronquait EN SILENCE — et la retenue 100 % rend les
+        // gros remboursements (hauts revenus + REER/Smith) bien plus proches du plancher qu'avant.
+        // On journalise la troncature pour qu'un remboursement sous-évalué soit VISIBLE.
+        const aprilSettlementRaw = totalAnnualTax - estimatedWithholding;
+        taxCurrent.revenu = Math.max(-100000, aprilSettlementRaw);
+        if (aprilSettlementRaw < -100000) {
+            logs.push(`⚠️ Remboursement d'avril tronqué au plancher -100 000$ (calculé: ${Math.round(aprilSettlementRaw).toLocaleString('fr-CA')}$)`);
+        }
     } else {
         // ---- Retraité : régularisation au taux marginal réel (MIROIR de la phase active) ----
         //
@@ -607,6 +618,10 @@ export function processDecemberTaxFiling(
             // la borne de la phase active.
             if (Number.isFinite(reconciliation) && Math.abs(reconciliation) > 1) {
                 taxCurrent.revenu += Math.max(-100000, reconciliation);
+                // Panel #558 : troncature journalisée (miroir du plancher de la phase active).
+                if (reconciliation < -100000) {
+                    logs.push(`⚠️ Régularisation retraité tronquée au plancher -100 000$ (calculée: ${Math.round(reconciliation).toLocaleString('fr-CA')}$)`);
+                }
             }
         }
     }

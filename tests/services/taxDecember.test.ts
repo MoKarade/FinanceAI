@@ -577,56 +577,82 @@ describe('processDecemberTaxFiling — [FA-6-CREDIT-CAP] crédit-don plafonné �
 });
 
 describe('processDecemberTaxFiling — actif : régularisation salariale (T1213)', () => {
-    it('sans optimisation (retenue employeur sans déductions) : régularisation ≈ -8% de l\'impôt', () => {
-        // Sans déductions : impôt réel = retenue brute = 120000×0.25 = 30000.
-        // estimatedWithholding = 30000 × 0.92 = 27600 → revenu = 30000 - 27600 = 2400.
-        const r = processDecemberTaxFiling(
+    it('sans optimisation : régularisation NULLE sans déductions, REMBOURSEMENT avec ([FISC-WHT-92PCT])', () => {
+        // Retenue = 100 % de l'impôt sans déductions (GO Marc 2026-08-01 — l'ancien ×0,92
+        // facturait 8 % en double : revenu valait +2 400 ici). Sans déductions : impôt réel =
+        // retenue = 120000×0.25 = 30000 → revenu = 0.
+        const sansDeduc = processDecemberTaxFiling(
             DECEMBER,
             baseCtx({ grossMarcBaseAnnual: 120000, optimizeSourceDeductions: false }),
             makeHelpers(),
             ZERO_TAX,
         );
-        expect(r.newTaxCurrentYear.revenu).toBeCloseTo(2400, 5);
+        expect(sansDeduc.newTaxCurrentYear.revenu).toBeCloseTo(0, 5);
+        // Avec déductions 20000 : impôt réel = 25000 < retenue 30000 → avril REMBOURSE 5000
+        // (c'est le seul rôle restant du solde salarial d'avril : rendre l'impôt des déductions).
+        const avecDeduc = processDecemberTaxFiling(
+            DECEMBER,
+            baseCtx({ grossMarcBaseAnnual: 120000, accRrspYear: 20000, optimizeSourceDeductions: false }),
+            makeHelpers(),
+            ZERO_TAX,
+        );
+        expect(avecDeduc.newTaxCurrentYear.revenu).toBeCloseTo(-5000, 5);
     });
 
-    it('avec optimisation T1213 : la retenue suit l\'impôt réel (avec déductions)', () => {
-        // optimizeSourceDeductions=true → taxEmployer = taxReal.
-        // Déductions 20000 au plus haut salaire. impôt réel = (120000-20000)×0.25 = 25000.
-        // withholding = 25000 × 0.92 = 23000 → revenu = 25000 - 23000 = 2000.
+    it('avec optimisation T1213 : la retenue suit l\'impôt réel → régularisation nulle même avec déductions', () => {
+        // optimizeSourceDeductions=true → taxEmployer = taxReal = (120000-20000)×0.25 = 25000.
+        // Retenue 100 % ([FISC-WHT-92PCT]) → revenu = 25000 - 25000 = 0 (l'ancien ×0,92 donnait +2 000).
+        // Discriminant vs non-T1213 : mêmes déductions, aucun remboursement d'avril — la retenue
+        // MODÉLISÉE les intègre ; le netSalary saisi, lui, ne bouge pas (finding #558 : ce flag
+        // signifie « mon net saisi tient déjà compte de mes déductions », ce n'est PAS un levier
+        // de cash — cf [ENG-T1213-NET-MONTHLY]). Contre −5000 dans le test précédent.
         const r = processDecemberTaxFiling(
             DECEMBER,
             baseCtx({ grossMarcBaseAnnual: 120000, accRrspYear: 20000, optimizeSourceDeductions: true }),
             makeHelpers(),
             ZERO_TAX,
         );
-        expect(r.newTaxCurrentYear.revenu).toBeCloseTo(2000, 5);
+        expect(r.newTaxCurrentYear.revenu).toBeCloseTo(0, 5);
     });
 
-    it('monotone : brut salarial ↑ → impôt de régularisation ↑', () => {
+    it('monotone ([FISC-WHT-92PCT]) : à déductions égales, le remboursement d\'avril grossit avec le salaire', () => {
+        // L'ancien invariant (« brut ↑ → complément ↑ ») portait sur les 8 % non retenus — il est
+        // mort avec la retenue 100 % (complément nul sans déductions, quel que soit le brut).
+        // Le nouvel invariant équivalent : le remboursement des déductions suit le taux MARGINAL,
+        // donc grossit (en valeur absolue) avec le salaire — barème RÉEL requis (le stub est linéaire).
+        const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
         const low = processDecemberTaxFiling(
             DECEMBER,
-            baseCtx({ grossMarcBaseAnnual: 60000, optimizeSourceDeductions: false }),
-            makeHelpers(),
+            baseCtx({ grossMarcBaseAnnual: 60000, accRrspYear: 20000, optimizeSourceDeductions: false }),
+            realHelpers,
             ZERO_TAX,
         ).newTaxCurrentYear.revenu;
         const high = processDecemberTaxFiling(
             DECEMBER,
-            baseCtx({ grossMarcBaseAnnual: 200000, optimizeSourceDeductions: false }),
-            makeHelpers(),
+            baseCtx({ grossMarcBaseAnnual: 200000, accRrspYear: 20000, optimizeSourceDeductions: false }),
+            realHelpers,
             ZERO_TAX,
         ).newTaxCurrentYear.revenu;
-        expect(high).toBeGreaterThan(low);
+        expect(low).toBeLessThan(0);                 // non-vacuité : un remboursement existe
+        expect(high).toBeLessThan(low);              // remboursement plus GROS (plus négatif) à 200 k$
     });
 
-    it('régularisation plancher : jamais sous -100 000 (remboursement borné)', () => {
-        // calculateFiscalReport stubé à 0 → totalAnnualTax=0, withholding=0 → revenu=max(-100000, 0)=0.
+    it('régularisation plancher : tronque à -100 000 EXACTEMENT et le JOURNALISE (panel #558)', () => {
+        // L'ancien test stubait l'impôt à 0 → revenu = max(-100000, 0) = 0 : le clamp n'était
+        // JAMAIS exercé (vacueux — prouvé par ablation du Math.max, il passait quand même).
+        // Barème RÉEL requis : brut 1 M$, déductions 250 k$ → remboursement calculé ≈ -133 k$
+        // (taux marginal ~53 %), SOUS le plancher. Égalité STRICTE (pas >=) : sans le clamp,
+        // la valeur ≈ -133 k$ échoue ici. Et la troncature doit être VISIBLE dans les logs
+        // (finding silent-failure #558 : un remboursement sous-évalué en silence).
+        const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
         const r = processDecemberTaxFiling(
             DECEMBER,
-            baseCtx({ grossMarcBaseAnnual: 0, optimizeSourceDeductions: false }),
-            makeHelpers({ calculateFiscalReport: () => ({ totalTax: 0 } as unknown as FiscalReport) }),
+            baseCtx({ grossMarcBaseAnnual: 1_000_000, accRrspYear: 250_000, optimizeSourceDeductions: false }),
+            realHelpers,
             ZERO_TAX,
         );
-        expect(r.newTaxCurrentYear.revenu).toBeGreaterThanOrEqual(-100000);
+        expect(r.newTaxCurrentYear.revenu).toBe(-100000);
+        expect(r.logs.some((l) => l.includes('plancher'))).toBe(true);
     });
 });
 
@@ -923,14 +949,24 @@ describe('processDecemberTaxFiling — crédits d\'âge PAR conjoint (B-AUDIT-3)
         expect(gap.newTaxCurrentYear.revenu).toBeGreaterThan(equal.newTaxCurrentYear.revenu);
     });
 
-    it('actif 65+ avec conjoint <65 : seul le 65+ reçoit le crédit d\'âge', () => {
+    it('actif 65+ avec conjoint <65 : l\'âge du CONJOINT atteint le chemin employeur (B-AUDIT-3)', () => {
+        // [FISC-WHT-92PCT] : retenue 100 % → sans déductions, le crédit d'âge s'annule entre
+        // l'impôt réel et la retenue (les DEUX reçoivent ageOpts) et le solde est nul — l'ancien
+        // observable (complément 8 %) est mort. On garde le garde-fou B-AUDIT-3 (chacun selon SON
+        // âge, pas celui de Marc) via l'asymétrie : de grosses déductions écrasent le revenu
+        // imposable RÉEL d'Anna (impôt ≈ 0, crédit tronqué) mais pas sa retenue employeur (sans
+        // déductions) → le crédit d'âge d'Anna ne survit QUE côté employeur. Conjoint 67 ans →
+        // retenue d'Anna plus basse → remboursement d'avril PLUS PETIT (moins négatif) que
+        // conjoint 60 ans. Si l'âge d'Anna cessait d'atteindre ageOptsAnna, les deux seraient égaux.
         const mk = (ageSpouse: number) => baseCtx({
             isRetired: false, age: 67, ageSpouse, activeUsersCount: 2,
-            grossMarcBaseAnnual: 40000, grossAnnaBaseAnnual: 40000, optimizeSourceDeductions: true,
+            grossMarcBaseAnnual: 40000, grossAnnaBaseAnnual: 40000,
+            accRrspYear: 30000, optimizeSourceDeductions: false,
         });
         const gap = processDecemberTaxFiling(DECEMBER, mk(60), realHelpers, ZERO_TAX);
         const both = processDecemberTaxFiling(DECEMBER, mk(67), realHelpers, ZERO_TAX);
-        expect(gap.newTaxCurrentYear.revenu).toBeGreaterThan(both.newTaxCurrentYear.revenu);
+        expect(gap.newTaxCurrentYear.revenu).toBeLessThan(0);   // non-vacuité : remboursement présent
+        expect(both.newTaxCurrentYear.revenu).toBeGreaterThan(gap.newTaxCurrentYear.revenu);
     });
 });
 
@@ -1604,22 +1640,35 @@ describe('processDecemberTaxFiling — FA-10 : contrat survivorMode (1 contribua
     it('branche ACTIVE : salaire du défunt à 0 → impôt du seul survivant', () => {
         // projection.ts passe grossAnnaBaseAnnual=0 en survivorMode : l'impôt actif de
         // décembre ne doit plus imposer le salaire fantôme du défunt.
+        // [FISC-WHT-92PCT] : le complément 8 % n'existe plus (retenue = 100 % → le solde salarial
+        // d'avril d'un ménage SANS déductions est nul, fantôme ou pas — l'impôt d'Anna se retient
+        // et se règle tout seul). La sensibilité au salaire fantôme se lit désormais sur la prime
+        // RAMQ FAMILIALE (bucket divers) — MAIS il faut rester SOUS la saturation de la prime
+        // (finding projection-validator #558 : à 100 k$ la prime est au MAX par adulte, et comparer
+        // n=1 vs n=2 ne mesurait que le nombre d'adultes, pas le salaire — gA=80 000 ou 0 donnaient
+        // le même divers). Ici n=2 CONSTANT et revenus bas : seul gA varie → mesuré 0 $ (gA=0,
+        // famille sous l'exemption couple) vs ~1 349 $ (gA=20 000). Si le salaire du défunt cessait
+        // d'atteindre l'assiette RAMQ familiale, les deux seraient égaux.
         const survivantActif = processDecemberTaxFiling(DECEMBER, baseCtx({
-            isRetired: false, age: 45,
-            activeUsersCount: 1,
-            grossMarcBaseAnnual: 100000,
+            isRetired: false, age: 45, ageSpouse: 45,
+            activeUsersCount: 2,
+            grossMarcBaseAnnual: 25000,
             grossAnnaBaseAnnual: 0,
+            ramqExempt: false,
             optimizeSourceDeductions: false,
         }), realHelpers, ZERO_TAX);
         const fantome = processDecemberTaxFiling(DECEMBER, baseCtx({
             isRetired: false, age: 45, ageSpouse: 45,
             activeUsersCount: 2,
-            grossMarcBaseAnnual: 100000,
-            grossAnnaBaseAnnual: 80000,
+            grossMarcBaseAnnual: 25000,
+            grossAnnaBaseAnnual: 20000,
+            ramqExempt: false,
             optimizeSourceDeductions: false,
         }), realHelpers, ZERO_TAX);
-        // Le complément de décembre (impôt − retenue ~92 %) du ménage fantôme dépasse
-        // celui du survivant seul (l'impôt d'Anna n'existe plus).
-        expect(fantome.newTaxCurrentYear.revenu).toBeGreaterThan(survivantActif.newTaxCurrentYear.revenu);
+        expect(survivantActif.newTaxCurrentYear.divers).toBeCloseTo(0, 5);   // sous l'exemption couple
+        expect(fantome.newTaxCurrentYear.divers).toBeGreaterThan(1000);      // le salaire fantôme gonfle la prime
+        // Et le solde salarial, lui, est identiquement nul des deux côtés (pin de la nouvelle sémantique).
+        expect(fantome.newTaxCurrentYear.revenu).toBeCloseTo(0, 5);
+        expect(survivantActif.newTaxCurrentYear.revenu).toBeCloseTo(0, 5);
     });
 });

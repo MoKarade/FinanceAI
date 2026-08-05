@@ -7,6 +7,24 @@
 
 ---
 
+## FINTABLE — import GELÉ depuis le 2026-07-31 (remonté par Marc 2026-08-05, diagnostiqué par Claude)
+
+Constat mesuré côté serveur : **dernière transaction importée = 2026-07-31**, la veille de la fin
+de ton essai Fintable (2026-08-01) ; la sync Drive de l'app fonctionne, elle. Le cron serveur n'a
+jamais été monté (secrets GCP à poser par toi) → le SEUL canal actif est la sync à l'ouverture de
+l'app. Je ne peux pas voir le `fintableSyncReport` d'ici (aucun tool MCP ne l'expose — ticket
+`[FINTABLE-STALE-ALERT]` créé) ni joindre `fintable.io` (403 tunnel).
+
+- [ ] **Vérifier ton PLAN sur fintable.io** (cause la plus probable [Probable] — timing exact) :
+  Settings → Billing. L'essai expirait le 2026-08-01 et le palier gratuit a `can_sync: false`
+  (arrêt TOTAL). Tu avais décidé de payer (2026-07-29) — l'abonnement a-t-il vraiment été activé /
+  le paiement est-il passé ?
+- [ ] **Vérifier la connexion Desjardins (Plaid)** dans Fintable : dernière sync réussie ? Un lien
+  bancaire peut aussi demander une ré-authentification périodique.
+- [ ] **Me coller le contenu de la carte « Sync Fintable » (Réglages)** : date du dernier rapport +
+  erreur éventuelle. Ça départage : rapport récent « 0 transaction, sans erreur » = feed Fintable
+  gelé (plan/banque) ; rapport en erreur `[AUTH]`/`[HTTP …]` = jeton/API → je corrige de mon côté.
+
 ## FINTABLE — pourquoi aucune position ? (remonté par Claude 2026-07-29)
 - [x] **Forme de l'API fournie, jeton en place, dry-run RÉUSSI** — 6 comptes, 121 transactions lues.
   Le fix `pending=1/0` (PR #524) est confirmé **par mesure**. (Je ne peux toujours PAS appeler

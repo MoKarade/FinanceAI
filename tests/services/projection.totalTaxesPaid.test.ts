@@ -102,7 +102,8 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
             .toBeCloseTo(run(solvable11, 'AUTO_MARGINAL').totalTaxesPaid, 0); // mesuré : 184 686,88 des deux côtés
 
         // SIGNE : année finale en REMBOURSEMENT net (salarié PRIO_REER, grosses déductions) →
-        // négatif porté honnêtement, aucun clamp (mesuré −17 159,55, re-basé [FISC-BRACKET-REALINDEX]).
+        // négatif porté honnêtement, aucun clamp (re-basé [FISC-WHT-92PCT] 2026-08-01, était
+        // −17 159,55 : retenue 100 % → remboursement d'avril plus gros de 8 % de l'impôt employeur).
         const salarie = base({
             liveCSVBalances: { CELI: 0, CELIAPP: 0, REER: 100_000, NON_ENREG: 0, CRYPTO: 0, REEE: 0 },
             projection: { ...projection, years: 10, returnRate: 4, returnRates: { celi: 4, reer: 4, nonReg: 4, crypto: 5, cash: 1 } },
@@ -111,7 +112,7 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
             config: { ...config, users: config.users.map(u => ({ ...u, grossSalary: 10_000, netSalary: 7_000, age: 45, birthYear: 1981 })) as typeof config.users },
             baseGrossAnnual: 240_000, baseNetAnnual: 168_000, baseMonthlyExpenses: 9_000,
         });
-        expect(run(salarie, 'PRIO_REER').unsettledTaxAtHorizon).toBeCloseTo(-17_159.55, 0);
+        expect(run(salarie, 'PRIO_REER').unsettledTaxAtHorizon).toBeCloseTo(-23_552.86, 0);
     });
 
     it('ratio MELT/AUTO borné (~2,8 mesuré post-REALINDEX, était ~4,4) — PAS un pin d\'ordre du ranking complet', () => {

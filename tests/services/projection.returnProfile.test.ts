@@ -100,13 +100,17 @@ describe('PH4-FUT-B — profil de rendement dans le moteur (déterministe, 30 an
         // RE-CALIBRÉ 2026-08-01 ([FISC-BRACKET-REALINDEX]) : paliers/crédits en $ RÉELS. Fixture SALARIÉE →
         // NW ↑ ~0,8 % (+13 158/+14 282/+17 166 $). Cause MESURÉE (panel 2026-08-01) — PAS la retenue (elle
         // MONTE comme tout l'impôt post-fix, 20 495 → 32 879 $ à Δ=29) : la prime RAMQ/FSS doublement
-        // indexée redescend à son niveau légal (−2 050 $/an, terme dominant vs impôt +1 077 $/an), amplifié
-        // par l'heuristique 92 % ([FISC-WHT-92PCT] : en mode T1213 la direction est conservatrice, NW −1,9 %).
-        expect(finalNetWorth('conservative')).toBeCloseTo(1_559_230.44, 1);
-        expect(finalNetWorth('balanced')).toBeCloseTo(1_897_602.38, 1);
-        expect(finalNetWorth('aggressive')).toBeCloseTo(2_983_538.23, 1);
+        // indexée redescend à son niveau légal (−2 050 $/an, terme dominant vs impôt +1 077 $/an). L'effet
+        // était amplifié par l'heuristique de retenue 92 %, SUPPRIMÉE depuis (voir re-calibrage ci-dessous).
+        // RE-CALIBRÉ 2026-08-01 ([FISC-WHT-92PCT], GO Marc) : retenue 100 % — les 8 % de l'impôt
+        // employeur ne sont plus facturés en double chaque avril → NW ↑ ~7 % (+118 115/+133 461/+197 374 $ ;
+        // étaient 1 559 230,44 / 1 897 602,38 / 2 983 538,23). Fixture salariée sans T1213 : tout
+        // l'écart est la fin du double-comptage, discriminant dédié dans projection.whtSettlement.test.ts.
+        expect(finalNetWorth('conservative')).toBeCloseTo(1_677_345.75, 1);
+        expect(finalNetWorth('balanced')).toBeCloseTo(2_031_063.15, 1);
+        expect(finalNetWorth('aggressive')).toBeCloseTo(3_180_912.56, 1);
         // Le run historique (champ absent) est pinné sur la valeur 'balanced'.
-        expect(finalNetWorth(undefined)).toBeCloseTo(1_897_602.38, 1);
+        expect(finalNetWorth(undefined)).toBeCloseTo(2_031_063.15, 1);
     });
 
     it("'aggressive' + asset location > 'aggressive' seul (le bonus 0.4pp s'empile sur le preset)", () => {

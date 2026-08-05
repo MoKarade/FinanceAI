@@ -605,14 +605,35 @@ choisir). Calcul cumulatif par tranche (style impôt).
   cohérent avec décembre seulement à i = 2 % ; effet de timing pur, réconcilié en décembre via
   `withholdingAlreadyTaken`). Les blocs NOMINAUX (empilement gains, dividendes, estate,
   `firstCombinedBracketTopForYear`) restent en `1,02^Δ` nominal — c'est le bon espace pour
-  eux. Discriminant : impôt réel CONSTANT (2 702 $/an sur 29 ans, écart < 1 $) sur salarié à revenu
-  réel constant ; goldens re-basés SCIEMMENT (retraités : impôt à vie +62 % sur le scénario de
-  référence, direction conservatrice restaurée). Cf `tests/services/projection.bracketRealIndex.test.ts`.
-- **Retenue salariale employeur = 92 % de l'impôt modélisé** (`taxDecember.ts:407`,
-  `[FISC-WHT-92PCT]`, hypothèse NON SOURCÉE documentée 2026-07-31) : le solde d'avril facture les
-  ~8 % restants ALORS QUE le `netSalary` saisi incorpore déjà ~100 % de la retenue réelle (vérifié
-  numériquement) → ~2 000 $/an/salarié d'impôt compté en double (sens conservateur).
-  ✅ **Décision Marc 2026-07-31 : fix `1.0`** (avec discriminant) — cf BACKLOG V5.
+  eux. Discriminant : impôt réel CONSTANT sur salarié à revenu réel constant (écart < 1 $ sur
+  29 ans — niveau re-basé 2 702 → **1 458,82 $/an** par `[FISC-WHT-92PCT]`, le reste étant la prime
+  RAMQ ; la CONSTANCE reste l'invariant) ; goldens re-basés SCIEMMENT (retraités : impôt à vie
+  +62 % sur le scénario de référence, direction conservatrice restaurée).
+  Cf `tests/services/projection.bracketRealIndex.test.ts`.
+- **Retenue salariale employeur** : ✅ **CORRIGÉ 2026-08-01 (`[FISC-WHT-92PCT]`, GO Marc)** —
+  retenue = **100 %** de l'impôt sans déductions (`taxDecember.ts`). Fondement : les tables de
+  retenue **TP-1015.F (RQ) / T4032-QC (ARC)** sont construites pour que la retenue de l'année
+  ÉGALE l'impôt annuel d'un salarié régulier (crédits TD1/TP-1015.3 intégrés) — solde ≈ 0 à la
+  déclaration. L'ancien ×0,92 (hypothèse NON SOURCÉE) facturait ~8 % « restants » en avril ALORS
+  QUE le `netSalary` saisi est net de TOUTES les retenues → impôt compté en double (mesuré :
+  1 243,23 $/an réel sur le couple de référence à 98,4 k$ ; jusqu'à 6 393 $/an à 240 k$).
+  Depuis le fix, le solde salarial d'avril ne règle plus que l'écart dû aux déductions (REER…) :
+  nul sans déductions, remboursement sinon. **Preuve d'auto-cohérence** (panel #558, mesurée) :
+  `calculateNetFromGross` (`utils/tax.ts`) retient exactement `totalTax(brut, 0 déduction)` dans
+  le net mensuel que le moteur encaisse — impôt total supporté = `tax(g,0)` (dans le net) +
+  solde d'avril. Avec retenue 100 % : `tax(g,0) + [tax(g,d) − tax(g,0)] = tax(g,d)` — EXACT.
+  Avec 0,92 : `tax(g,d) + 0,08·tax(g,0)` — sur-imposition structurelle. `1.0` est la seule valeur
+  cohérente avec la source unique de conversion brut→net du dépôt. Discriminant :
+  `tests/services/projection.whtSettlement.test.ts` (avant : ttp 106 915,04 / NW 720 557,13 ;
+  après : 57 722,84 / 819 490,94 sur la fixture de référence 30 ans). La **branche décembre
+  retraité est inchangée** : un scénario qui DÉMARRE retraité est bit-identique ; un scénario
+  actif→retraite change quand même via le patrimoine accumulé en phase active (mesuré : +21,5 %
+  NW sur une fixture 40 ans avec retraite à 62). **Biais assumés** (panel #558) : (a) le net
+  MENSUEL encaissé reste le `netSalary` saisi — jamais réconcilié avec l'impôt du MODÈLE (résidu
+  mesuré ±3 à 7 k$/an selon la fixture, cf `[ENG-NET-MODEL-RESIDUAL]`) ; (b) un REER cotisé PAR
+  RETENUE SALARIALE (l'employeur réduit la rémunération assujettie sans T1213) équivaut à
+  `optimizeSourceDeductions=true` — sinon le modèle rembourse en avril un bénéfice déjà dans le
+  net saisi (double-comptage côté utilisateur, remède : activer le flag).
 - **Assiette placement estimée** (`services/taxEstimate.ts:13-15`) : `EST_DIVIDEND_YIELD = 0,02` et
   `EST_CAPITAL_GAINS_YIELD = 0,07` (gains réalisés à 50 % inclus) — HYPOTHÈSES de modèle (pas des
   valeurs fiscales), consommées par l'onglet Impôt ET `get_tax_situation` (MCP).

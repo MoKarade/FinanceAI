@@ -1493,6 +1493,26 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   le symptôme dont Marc s'est plaint. Une re-tentative UNIQUE qui ré-applique les mêmes payloads sur
   l'état frais coûte un aller-retour et sauve la journée ; rejouer le réseau serait disproportionné,
   et une boucle pilonnerait le Drive.
+- ⚠️ **Un garde sur un terrain déjà peuplé doit être un RATCHET, jamais un échec dur** (leçon
+  FISC-CONST-GUARD-V2, 2026-08-05) : 38 littéraux existaient déjà dans les modules fiscaux. Un
+  échec dur aurait cassé sur 38 lignes le jour de sa naissance — donc aurait été relâché jusqu'à ne
+  plus rien attraper. Inventorier l'existant AVEC SA RAISON et n'échouer que sur le NOUVEAU garde
+  la valeur ET reste vivable. L'inventaire n'est pas une liste d'exemptions : c'est un CONSTAT daté
+  qui rend la dette visible (ici 14 entrées fiscales non ancrées, ticketées).
+- ⚠️ **Le TRI est la valeur d'un garde de constantes, pas le scan** (même leçon) : les 38 littéraux
+  se répartissent en vrais paramètres fiscaux (le `0.18` du plafond REER, en dur), heuristiques de
+  CONCEPTION (`0.95` Guyton-Klinger, seuils de meltdown) et structurels (index de mois). Les
+  confondre polluerait `FISCAL_REFERENCE` avec des choix d'algorithme — une erreur de CATÉGORIE
+  plus coûteuse que le trou d'origine.
+- ⚠️ **Élargir un scan-garde révèle ce que l'œil a manqué** (même leçon) : le tri MANUEL avait
+  raté `RRIF_RATES[age] || 0.20` — un vrai facteur FERR — parce que `||` ne ressemble pas à un
+  opérateur de calcul. C'est le garde qui a trouvé les 4 derniers, pas moi. Corollaire : ne pas
+  figer un inventaire avant d'avoir fait tourner le scan élargi.
+- ⚠️ **Ne jamais inventorier une valeur qu'on ne sait pas expliquer** (même leçon) :
+  `taxCurrentYearGains / 0.25` restait obscur ; l'élucider AVANT (c'est un proxy d'inversion
+  impôt→gain à taux effectif supposé, pas un taux statutaire) évite de figer une ignorance dans un
+  garde, ce qui lui donnerait l'air de protéger quelque chose. D'où l'assertion « chaque entrée
+  porte une raison lisible » — qui a attrapé trois de mes propres entrées bâclées en « idem ».
 - ⚠️ **Un garde qui strippe les commentaires ne peut plus y lire son échappatoire** (leçon
   MCP-CHARTDATA-SUM-GUARD, 2026-08-05) : le marqueur d'exemption vit par nature dans un commentaire,
   et le scan le supprimait AVANT de le chercher → toutes les exemptions ignorées, en silence. Chercher

@@ -481,8 +481,36 @@ exactes par `fiscal-accuracy`) :
 > ✅ **REEE-LITERALS résolu (2026-06-26)** : ces valeurs sont désormais des **constantes nommées** en tête de
 > `childrenReee.ts` (`SCEE_GRANT_RATE`, `SCEE_ANNUAL_GRANT_BASIC/CATCHUP`, `SCEE_LIFETIME_GRANT_LIMIT`, idem `IQEE_*`,
 > `REEE_LIFETIME_LIMIT_PER_BENEFICIARY`, `REEE_TARGET_ANNUAL_CONTRIB_BASIC/CATCHUP`), qui pointent vers cette section.
-> Refactor pur (valeurs inchangées). NB : l'impôt sur le PRA à la fermeture (`REEE_AIP_TAX_RATE` ~20 %) est une
-> **approximation de modèle**, PAS un taux combiné officiel — à raffiner séparément.
+> Refactor pur (valeurs inchangées).
+
+#### Fermeture du REEE — TROIS poches (FISC-REEE-GRANT-CLAWBACK, 2026-08-05)
+À la fermeture (25 ans du bénéficiaire), le solde résiduel se décompose et chaque poche a un sort FISCAL distinct :
+
+| Poche | Sort | Impôt |
+|---|---|---|
+| **Cotisations** (capital du souscripteur) | rendues au souscripteur | **aucun** (argent déjà imposé) |
+| **Subventions SCEE + IQEE non utilisées** | **REMBOURSÉES au gouvernement** | s.o. — n'entrent JAMAIS dans le patrimoine |
+| **Revenu accumulé (PRA)** | versé au souscripteur | **taux marginal réel** + **surtaxe 20 %** (`REEE_AIP_PENALTY_RATE`) |
+
+> ⚠️ **Le modèle d'avant versait 100 % du solde en prélevant un forfait de 20 % sur le TOUT** — deux erreurs de
+> sens opposé qui ne se compensaient pas : les subventions (jusqu'à **10 800 $/enfant** : 7 200 SCEE + 3 600 IQEE)
+> devenaient du patrimoine, et les cotisations étaient imposées alors qu'elles ne doivent pas l'être.
+> **MESURÉ** sur une fermeture pleine (solde 120 000 $, dont 50 000 cotisés et 10 800 de subventions, souscripteur
+> à 96 000 $ de revenu) : patrimoine net **−20 021 $** vs l'ancien modèle (10 800 $ de subventions remboursées
+> + 9 221 $ d'impôt supplémentaire, le PRA de 59 200 $ étant imposé au marginal + surtaxe plutôt qu'à 20 % à plat).
+> Le taux marginal est obtenu par **empilement incrémental** (`tax(revenu + PRA) − tax(revenu)`, convention
+> B-AUDIT-2) : un PRA de plusieurs dizaines de milliers de dollars traverse des paliers, un taux moyen mentirait.
+>
+> ⚠️ **Les poches sont DÉRIVÉES, pas suivies séparément** : le moteur ne compte que les subventions et les
+> cotisations encore DANS le régime ; le revenu accumulé est le reste (`solde − subventions − cotisations`).
+> Les trois somment donc au solde par construction, et la croissance du marché atterrit d'office dans la bonne
+> poche. ⚠️ Ces compteurs sont DISTINCTS de `trackerScee`/`trackerIqee`, qui restent des cumuls À VIE pilotant
+> les plafonds et ne décroissent jamais (les décrémenter rouvrirait les plafonds de subvention).
+>
+> ⚠️ **Retrait d'études (PAE)** : imposable dans les mains de l'**ÉTUDIANT**, pas du souscripteur. Le moteur le
+> laisse à **~0 $ d'impôt** — un étudiant sans autre revenu est généralement couvert par le montant personnel de
+> base et les crédits de scolarité. C'est une **HYPOTHÈSE ASSUMÉE** (choix Marc 2026-08-05), pas un calcul : aucun
+> troisième contribuable n'est modélisé. Ticket de raffinement : `[FISC-REEE-EAP-STUDENT-TAX]`.
 > Le **clawback d'allocation** (`householdGross > 150 000 $` → dégressif sur 100 000 $) est une heuristique
 > de modèle (PAS un barème ARC/RQ officiel d'allocation), à raffiner si besoin.
 

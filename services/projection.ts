@@ -361,7 +361,14 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let goalShortfallCount = 0;
     let goalShortfallTotal = 0;
 
-    let reeeTracker: Record<string, { scee: number; iqee: number; contribLifetime: number }> = {};
+    // [FISC-REEE-GRANT-CLAWBACK] `grantsInPlan`/`contribInPlan` = ce qui reste DANS le régime
+    // (≠ `scee`/`iqee`/`contribLifetime`, compteurs À VIE qui pilotent les plafonds et ne
+    // décroissent jamais). Les deux jeux coexistent parce qu'ils répondent à deux questions
+    // différentes : « ai-je encore droit à de la subvention ? » vs « que dois-je rembourser ? ».
+    let reeeTracker: Record<string, {
+        scee: number; iqee: number; contribLifetime: number;
+        grantsInPlan: number; contribInPlan: number;
+    }> = {};
 
     // Cycle 22 split: revenus net/brut baseline → ./projection/setupSimulation
     const { incomeMarcNetMonthly, incomeAnnaNetMonthly, grossMarcBaseAnnual, grossAnnaBaseAnnual } =
@@ -1220,7 +1227,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             const childAgeMonths = m - birthOffset;
             const isFirstMonth = m === birthOffset;
             const childId = child.id || `enfant_${idx}`;
-            const tracker = reeeTracker[childId] ?? { scee: 0, iqee: 0, contribLifetime: 0 };
+            const tracker = reeeTracker[childId] ?? { scee: 0, iqee: 0, contribLifetime: 0, grantsInPlan: 0, contribInPlan: 0 };
             const result = processOneChild(
                 child, idx, isFirstMonth, childAgeMonths,
                 {
@@ -1232,6 +1239,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     householdGross: grossMarcBaseAnnual + grossAnnaBaseAnnual,
                     trackerScee: tracker.scee, trackerIqee: tracker.iqee,
                     trackerReeeContribLifetime: tracker.contribLifetime ?? 0,
+                    // [FISC-REEE-GRANT-CLAWBACK] Champs ADDITIFS optionnels : `?? 0` suffit, aucune
+                    // migration de schéma (le tracker vit dans la boucle, pas dans le store persisté).
+                    trackerReeeGrantsInPlan: tracker.grantsInPlan ?? 0,
+                    trackerReeeContribInPlan: tracker.contribInPlan ?? 0,
                     enableMonteCarlo,
                 },
                 calculateFiscalReport,
@@ -1246,6 +1257,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 scee: result.newTrackerScee,
                 iqee: result.newTrackerIqee,
                 contribLifetime: result.newTrackerReeeContribLifetime,
+                grantsInPlan: result.newTrackerReeeGrantsInPlan,
+                contribInPlan: result.newTrackerReeeContribInPlan,
             };
             childGrossCost += result.childGrossCostAdd;
             childBenefits += result.childBenefitsAdd;

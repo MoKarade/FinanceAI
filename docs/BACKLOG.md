@@ -48,19 +48,21 @@
   (Annexe B d'abord) + `[FISC-FED-CREDITRATE-15]` (source ARC).
 - [ ] **V6 — Fiscal non gaté** : ~~`[FISC-DTC-ABATEMENT-ORDER]`~~ + ~~`[FISC-STACK-GAINS-DIV]`~~
   ✅ #564 (archivés — CID validé contre les tables RQ/ARC : 40,11 % / 48,70 %). RESTE :
-  `[FISC-REEE-GRANT-CLAWBACK]` (⚠️ **mesuré 0 $ sur le profil de Marc** : `reee: 0`, aucun objectif
-  d'études → dormant, actif seulement s'il ajoute un enfant ; confirmé contre le code —
-  `childrenReee.ts:327` verse 100 % du solde, les trackers SCEE/IQEE existent mais ne sont jamais
-  décrémentés → modélisation en 3 poches nécessaire, plan-first) + `[FISC-TAXDEC-INCR]`
+  ✅ `[FISC-REEE-GRANT-CLAWBACK]` (livré PR #566, modélisation en 3 poches) + `[FISC-TAXDEC-INCR]`
   (⚠️ reste À CONFIRMER avec Marc, cf A_FAIRE_MOI — ne pas coder sans go).
 - [ ] **V7 — Sécurité serveur + sync** — **2/4 livrés** (PR #566) :
   ✅ `[FINTABLE-SYNC-STALE-BASE]` + ✅ `[MCP-CLOUDRUN-AUTH-HARDENING]` (archivés).
   RESTE les deux GARDES, déprioritisés après la réorientation de Marc (2026-08-05, « vague suivante
   pour régime épargne-étude ») : `[FISC-CONST-GUARD-V2]` (périmètre MESURÉ, voir sa fiche) +
   `[MCP-CHARTDATA-SUM-GUARD]` (0 offender aujourd'hui → prévention pure, la moins urgente).
-- [ ] **V7bis — RÉEE (demande explicite Marc 2026-08-05)** : `[FISC-REEE-GRANT-CLAWBACK]`, plan-first.
-  ⚠️ Marc a tranché CONTRE la reco « différer » : des enfants sont donc au programme. Ne pas
-  re-proposer de reporter.
+- [x] **V7bis — RÉEE (demande explicite Marc 2026-08-05)** : `[FISC-REEE-GRANT-CLAWBACK]` ✅ livré
+  (PR #566, mesuré −20 021 $ sur une fermeture pleine — voir l'archive).
+- [ ] **`[FISC-REEE-EAP-STUDENT-TAX]`** (M, découvert 2026-08-05, hypothèse ASSUMÉE) — le retrait
+  d'études (PAE) est imposable dans les mains de l'ÉTUDIANT, pas du souscripteur. Le moteur le laisse
+  à ~0 $ d'impôt, ce qui est réaliste (montant personnel de base + crédits de scolarité couvrent
+  généralement un étudiant sans autre revenu) mais reste une hypothèse, PAS un calcul — choix Marc
+  2026-08-05 « laisser ~0 mais l'écrire ». Le coder exigerait un TROISIÈME contribuable dans le
+  moteur (aujourd'hui : Marc + conjoint) : évaluer si le gain de justesse le vaut avant de se lancer.
 - [ ] **V8 — Features demandées** (2-3 PR) : `[SUBS-TAB]` · `[GOAL-DEADLINE-UI]` +
   `[PH4C-SAVINGS-NATURE]` · `[ASSET-CURRENCY-BACKFILL]` (si log) · `[CHAT-PAGE-CONTEXT-V2]`
   (file explicite Marc — maintenu malgré le « différer » PM).

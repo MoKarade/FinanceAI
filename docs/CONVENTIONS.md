@@ -1493,6 +1493,23 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   le symptôme dont Marc s'est plaint. Une re-tentative UNIQUE qui ré-applique les mêmes payloads sur
   l'état frais coûte un aller-retour et sauve la journée ; rejouer le réseau serait disproportionné,
   et une boucle pilonnerait le Drive.
+- ⚠️ **Deux erreurs de sens OPPOSÉ ne se compensent pas — elles se cachent l'une l'autre** (leçon
+  FISC-REEE-GRANT-CLAWBACK, 2026-08-05). La fermeture du REEE versait les subventions (patrimoine
+  SUR-évalué) ET imposait les cotisations (SOUS-évalué). Le forfait de 20 % avait l'air « à peu près
+  raisonnable » précisément parce que les deux biais tiraient en sens contraire — mais leur solde
+  dépend entièrement de la composition du régime, donc il n'est juste pour AUCUN profil. Un
+  agrégat plausible n'est pas une preuve : décomposer et vérifier poche par poche.
+- ⚠️ **Une poche DÉRIVÉE ne peut pas dériver ; un 4ᵉ compteur, si** (même leçon). Les trois poches du
+  REEE se réconcilient par construction parce que le revenu accumulé est calculé comme
+  `solde − subventions − cotisations` au lieu d'être suivi à part. Bonus non planifié : la croissance
+  du marché, appliquée au solde global par un AUTRE module, atterrit d'office dans la bonne poche —
+  aucun câblage à ne pas oublier. Quand N quantités doivent sommer à un total connu, n'en suivre
+  que N−1.
+- ⚠️ **Un compteur À VIE et un compteur RÉSIDUEL répondent à deux questions et ne se remplacent pas**
+  (même leçon) : `trackerScee`/`trackerIqee` pilotent les PLAFONDS de subvention (« ai-je encore
+  droit ? ») ; les décrémenter au retrait aurait rouvert des droits épuisés. Il fallait des
+  compteurs SÉPARÉS pour « que dois-je rembourser ? ». Réutiliser un compteur existant parce qu'il
+  « ressemble » à ce dont on a besoin est le raccourci qui fabrique ce bug.
 - ⚠️ **Écrire un runbook qui s'appuie sur un signal que le code ne produit PAS** (leçon
   MCP-CLOUDRUN-AUTH-HARDENING, panel PR #566) : le runbook de rotation de clé désignait « une
   tentative suspecte dans les logs Cloud Run » comme déclencheur, alors que ni le blocage 429 ni le

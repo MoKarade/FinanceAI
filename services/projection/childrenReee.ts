@@ -34,11 +34,35 @@ const IQEE_LIFETIME_GRANT_LIMIT = 3600;
 const REEE_LIFETIME_LIMIT_PER_BENEFICIARY = 50000;
 const REEE_TARGET_ANNUAL_CONTRIB_BASIC = 2500;
 const REEE_TARGET_ANNUAL_CONTRIB_CATCHUP = 5000;
-// Impôt sur le Paiement de Revenu Accumulé (PRA) à la fermeture du REEE : APPROXIMATION
-// de modèle (~20 %), PAS un taux combiné officiel ARC/RQ — à raffiner (BACKLOG FISC-REEE-AIP-MODEL).
-// Biais : frappe le solde TOTAL (cotisations + gains) → SUR-impose les cotisations remboursées
-// sans impôt, et SOUS-impose si le taux marginal + la surtaxe PRA de 20 % dépasse 20 %.
-const REEE_AIP_TAX_RATE = 0.20;
+// ── [FISC-REEE-GRANT-CLAWBACK] Fermeture du REEE : TROIS poches, pas un solde unique ─────────
+//
+// Le modèle d'avant versait 100 % du solde résiduel dans les liquidités en prélevant un forfait
+// de 20 % sur le TOUT. Deux erreurs de sens opposé, qui ne se compensaient pas :
+//   1. les subventions SCEE/IQEE non utilisées (jusqu'à 10 800 $/enfant) étaient VERSÉES au
+//      souscripteur alors qu'elles doivent être REMBOURSÉES au gouvernement → patrimoine surévalué ;
+//   2. les COTISATIONS, qui reviennent au souscripteur SANS impôt (c'est son argent après impôt),
+//      étaient imposées à 20 % → patrimoine sous-évalué sur cette poche.
+//
+// Modèle retenu (choix Marc 2026-08-05, « les 3 poches complètes ») :
+//   - COTISATIONS  → rendues au souscripteur, aucun impôt ;
+//   - SUBVENTIONS  → remboursées, elles ne deviennent JAMAIS du patrimoine ;
+//   - REVENU ACCUMULÉ (PRA) → versé au souscripteur, imposé à son taux marginal RÉEL (calculé par
+//     empilement incrémental, convention B-AUDIT-2 : tax(revenu + PRA) − tax(revenu), donc juste
+//     même quand le PRA traverse plusieurs paliers) + la surtaxe PRA.
+//
+// ⚠️ La poche de revenu est DÉRIVÉE (`solde − subventions − cotisations`), jamais suivie à part :
+// les trois poches somment donc au solde PAR CONSTRUCTION, et la croissance du marché (appliquée au
+// solde global par `growthApplication`) atterrit automatiquement dans la bonne poche. Un 4ᵉ compteur
+// indépendant aurait dérivé en silence à la première divergence d'arrondi.
+//
+// ⚠️ Le PRA n'entre PAS dans `accGrossDelta` : `taxJanuary.ts:164` dérive les droits REER de
+// `accGrossIncomeYear × 18 %`, or un PRA n'est PAS un revenu GAGNÉ — l'y ajouter fabriquerait des
+// droits de cotisation inexistants. C'est exactement le piège « élargir l'assiette d'un calcul sans
+// auditer ses dérivés » (CLAUDE.md). L'impôt est donc porté par `taxDiversAdd`, déjà prévu pour ça.
+//
+// Source : docs/FISCAL_REFERENCE.md § « REEE — SCEE / IQEE ».
+/** Surtaxe sur le Paiement de Revenu Accumulé, EN PLUS de l'impôt au taux marginal. */
+const REEE_AIP_PENALTY_RATE = 0.20;
 
 type FiscalReportFn = (
     grossIncome: number,
@@ -67,6 +91,12 @@ export interface ChildProcessCtx {
      *  Le plafond ARC est 50 000$/enfant à vie — au-delà, plus de cotisations
      *  permises (mais la croissance continue). */
     trackerReeeContribLifetime: number;
+    /** [FISC-REEE-GRANT-CLAWBACK] Subventions SCEE+IQEE encore DANS le régime (≠ versées à vie).
+     *  Distinct de `trackerScee`/`trackerIqee`, qui restent des compteurs À VIE pour les plafonds
+     *  et ne doivent JAMAIS être décrémentés (sinon les plafonds se rouvriraient tout seuls). */
+    trackerReeeGrantsInPlan: number;
+    /** [FISC-REEE-GRANT-CLAWBACK] Cotisations encore DANS le régime (≠ cotisées à vie). */
+    trackerReeeContribInPlan: number;
     enableMonteCarlo: boolean;
 }
 
@@ -84,6 +114,9 @@ export interface ChildTickResult {
     /** Contributions REEE cumulées à vie après application du mois courant
      *  (clamped à 50 000$ par bénéficiaire). */
     newTrackerReeeContribLifetime: number;
+    /** [FISC-REEE-GRANT-CLAWBACK] Poches restant dans le régime après le mois courant. */
+    newTrackerReeeGrantsInPlan: number;
+    newTrackerReeeContribInPlan: number;
     childId: string;
 
     childGrossCostAdd: number;
@@ -117,7 +150,8 @@ export function processOneChild(
         m, loopYear, simSalaryGrowth, expenseMultiplier, isRetired,
         grossAnnaBaseAnnual, incomeAnna, liquid, reee,
         householdGross, trackerScee, trackerIqee,
-        trackerReeeContribLifetime, enableMonteCarlo,
+        trackerReeeContribLifetime, trackerReeeGrantsInPlan, trackerReeeContribInPlan,
+        enableMonteCarlo,
     } = ctx;
 
     const childId = child.id || `enfant_${childIdx}`;
@@ -132,6 +166,8 @@ export function processOneChild(
     let newTrackerScee = trackerScee;
     let newTrackerIqee = trackerIqee;
     let newTrackerReeeContribLifetime = trackerReeeContribLifetime;
+    let grantsInPlan = trackerReeeGrantsInPlan;
+    let contribInPlan = trackerReeeContribInPlan;
     let childGrossCostAdd = 0;
     let childBenefitsAdd = 0;
     let childMonthlyCostAdd = 0;
@@ -285,6 +321,11 @@ export function processOneChild(
             const totalGrant = Math.max(0, sceeGrant) + Math.max(0, iqeeGrant);
             reeeNewBalance = reee + optimalReeeMonthly + totalGrant;
             contribREEEAdd += optimalReeeMonthly + totalGrant;
+            // [FISC-REEE-GRANT-CLAWBACK] Les poches suivent l'argent qui ENTRE. La croissance du
+            // marché n'est volontairement suivie nulle part : elle gonfle le solde, donc la poche
+            // de revenu (dérivée) l'absorbe — ce qui est exactement sa définition fiscale.
+            contribInPlan += optimalReeeMonthly;
+            grantsInPlan += totalGrant;
         }
     }
 
@@ -308,27 +349,90 @@ export function processOneChild(
         childGrossCostAdd += studiesMonthly;
         childMonthlyCostAdd += studiesMonthly;
 
-        if (reeeNewBalance >= studiesMonthly) {
-            reeeNewBalance -= studiesMonthly;
-            withdrawalREEEAdd += studiesMonthly;
-            monthlyIncomeDelta += studiesMonthly;
-            reeePayoutAdd += studiesMonthly;
-            contribLiquidAdd += studiesMonthly;
-        } else if (reeeNewBalance > 0) {
-            const remaining = reeeNewBalance;
-            monthlyIncomeDelta += remaining;
-            reeePayoutAdd += remaining;
-            withdrawalREEEAdd += remaining;
-            contribLiquidAdd += remaining;
-            reeeNewBalance = 0;
+        const withdrawn = Math.min(reeeNewBalance, studiesMonthly);
+        if (withdrawn > 0) {
+            reeeNewBalance -= withdrawn;
+            withdrawalREEEAdd += withdrawn;
+            monthlyIncomeDelta += withdrawn;
+            reeePayoutAdd += withdrawn;
+            contribLiquidAdd += withdrawn;
+
+            // [FISC-REEE-GRANT-CLAWBACK] ORDRE DE PUISAGE : subventions → revenu → cotisations.
+            // Ce n'est pas arbitraire : une subvention non utilisée doit être REMBOURSÉE, donc la
+            // dépenser en premier est le seul ordre qui ne détruit pas de valeur (c'est aussi la
+            // recommandation standard). Les cotisations passent en dernier — elles reviennent au
+            // souscripteur sans impôt de toute façon, rien ne presse de les sortir.
+            // ⚠️ Le revenu n'est PAS décrémenté ici : il est DÉRIVÉ du solde, qui vient de baisser.
+            const fromGrants = Math.min(withdrawn, grantsInPlan);
+            grantsInPlan -= fromGrants;
+            const incomePocketBefore = Math.max(0, (reeeNewBalance + withdrawn) - grantsInPlan - fromGrants - contribInPlan);
+            const fromIncome = Math.min(withdrawn - fromGrants, incomePocketBefore);
+            const fromContrib = Math.min(withdrawn - fromGrants - fromIncome, contribInPlan);
+            contribInPlan -= fromContrib;
+
+            // ⚠️ [choix Marc 2026-08-05] Le retrait d'études (PAE) est imposable dans les mains de
+            // l'ÉTUDIANT, pas du souscripteur. On le laisse à ~0 $ d'impôt — un étudiant sans autre
+            // revenu est généralement couvert par le montant personnel de base et les crédits de
+            // scolarité — mais c'est une HYPOTHÈSE ASSUMÉE, pas un calcul : le moteur ne modélise
+            // aucun troisième contribuable. Écrit ici pour que le résultat juste ne passe pas pour
+            // un calcul qu'on n'a pas fait. Ticket de raffinement : [FISC-REEE-EAP-STUDENT-TAX].
         }
     }
 
+    // [FISC-REEE-GRANT-CLAWBACK] Fermeture à 25 ans — TROIS poches (voir l'en-tête du module).
     if (childAgeMonths === 25 * 12 && reeeNewBalance > 0) {
-        liquidDelta += reeeNewBalance;
-        taxDiversAdd += reeeNewBalance * REEE_AIP_TAX_RATE;
-        flowEventLogs.push(`🎓 Fermeture du REEE (régime d'épargne-études) de ${child.name || 'l\'enfant'} : +${Math.round(reeeNewBalance).toLocaleString('fr-CA')} $ versés dans tes liquidités`);
+        const grantsRepaid = Math.min(grantsInPlan, reeeNewBalance);
+        const capitalReturned = Math.min(contribInPlan, reeeNewBalance - grantsRepaid);
+        // Poche DÉRIVÉE : le reste après subventions et cotisations. Le clamp à 0 n'est pas
+        // décoratif — un marché baissier peut laisser un solde INFÉRIEUR aux cotisations versées
+        // (perte en capital), auquel cas il n'y a simplement aucun revenu accumulé à imposer.
+        const accumulatedIncome = Math.max(0, reeeNewBalance - grantsRepaid - capitalReturned);
+
+        // Impôt au taux marginal RÉEL par empilement incrémental (B-AUDIT-2) : un PRA de plusieurs
+        // milliers de dollars traverse souvent un palier, donc un taux moyen mentirait.
+        let aipTax = 0;
+        if (accumulatedIncome > 0) {
+            const baseIncome = Math.max(0, householdGross);
+            const taxBefore = calculateFiscalReport(baseIncome, 0, 0, loopYear, true).totalTax;
+            const taxAfter = calculateFiscalReport(baseIncome + accumulatedIncome, 0, 0, loopYear, true).totalTax;
+            const marginalTax = taxAfter - taxBefore;
+            if (!Number.isFinite(marginalTax)) {
+                // Donnée amont corrompue : on n'invente PAS un taux crédible (no-fake-data). On
+                // applique la seule part certaine — la surtaxe — et on le DIT, plutôt que de laisser
+                // un NaN se propager dans le patrimoine ou un 0 $ passer pour un calcul.
+                aipTax = accumulatedIncome * REEE_AIP_PENALTY_RATE;
+                flowEventLogs.push(
+                    `⚠️ Impôt du revenu accumulé du REEE NON CALCULABLE (revenu du ménage non fini) : `
+                    + `seule la surtaxe de ${Math.round(REEE_AIP_PENALTY_RATE * 100)} % est appliquée.`,
+                );
+            } else {
+                aipTax = Math.max(0, marginalTax) + accumulatedIncome * REEE_AIP_PENALTY_RATE;
+            }
+            // Un impôt ne peut pas dépasser le versement : sans ce plafond, une surtaxe cumulée à
+            // un taux marginal élevé pourrait créer un décaissement net NÉGATIF (de l'argent qui
+            // sort du patrimoine sans exister), ce que la conservation n'attraperait pas ici.
+            aipTax = Math.min(aipTax, accumulatedIncome);
+        }
+
+        // SEULS le capital et le revenu accumulé rejoignent les liquidités. Les subventions sont
+        // REMBOURSÉES : elles quittent le patrimoine sans jamais y entrer — c'est LE correctif.
+        liquidDelta += capitalReturned + accumulatedIncome;
+        taxDiversAdd += aipTax;
+
+        const paidOut = Math.round(capitalReturned + accumulatedIncome);
+        flowEventLogs.push(
+            `🎓 Fermeture du REEE (régime d'épargne-études) de ${child.name || 'l\'enfant'} : `
+            + `+${paidOut.toLocaleString('fr-CA')} $ versés dans tes liquidités`
+            + (grantsRepaid > 0
+                ? ` — ${Math.round(grantsRepaid).toLocaleString('fr-CA')} $ de subventions non utilisées REMBOURSÉES au gouvernement`
+                : '')
+            + (accumulatedIncome > 0
+                ? ` ; ${Math.round(aipTax).toLocaleString('fr-CA')} $ d'impôt sur le revenu accumulé`
+                : ''),
+        );
         reeeNewBalance = 0;
+        grantsInPlan = 0;
+        contribInPlan = 0;
     }
 
     return {
@@ -342,6 +446,8 @@ export function processOneChild(
         newTrackerScee,
         newTrackerIqee,
         newTrackerReeeContribLifetime,
+        newTrackerReeeGrantsInPlan: grantsInPlan,
+        newTrackerReeeContribInPlan: contribInPlan,
         childId,
         childGrossCostAdd,
         childBenefitsAdd,

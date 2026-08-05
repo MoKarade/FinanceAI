@@ -29,6 +29,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   cas d'incident) a été ajouté à `mcp/README.md`.
 
 ### Corrections money-critical
+- **`[FISC-REEE-GRANT-CLAWBACK]` — la fermeture d'un REEE ne t'enrichit plus de subventions que tu
+  dois rembourser.** À la fermeture, le moteur versait 100 % du solde dans tes liquidités avec un
+  impôt forfaitaire de 20 % sur le tout. Dans la réalité le solde se découpe en trois : tes
+  cotisations te reviennent **sans impôt** (c'est ton argent déjà imposé), les subventions
+  gouvernementales non utilisées — jusqu'à **10 800 $ par enfant** — sont **remboursées** et
+  n'atterrissent jamais chez toi, et seul le revenu accumulé est imposé, à ton vrai taux marginal
+  plus la surtaxe prévue. Mesuré sur une fermeture pleine (solde de 120 000 $) : le patrimoine
+  projeté était surévalué de **20 021 $**. Les retraits pendant les études restent à ~0 $ d'impôt —
+  ils sont imposables au nom de l'étudiant, qui n'en paie généralement pas — mais c'est maintenant
+  écrit comme une hypothèse assumée plutôt que laissé passer pour un calcul.
 - **`[FINTABLE-SYNC-STALE-BASE]` — une transaction saisie à la main pendant une synchronisation
   n'est plus effacée.** La synchronisation bancaire met plusieurs secondes à interroger Fintable.
   Jusqu'ici elle repartait de l'état du moment où tu as cliqué : si tu ajoutais une transaction ou

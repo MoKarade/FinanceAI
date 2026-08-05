@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-05 (suite 22) — RÉEE en 3 poches (dans PR #566)
+> **`[FISC-REEE-GRANT-CLAWBACK]` livré**, à la demande explicite de Marc. La fermeture du REEE versait
+> 100 % du solde avec un forfait de 20 % ; désormais : cotisations rendues SANS impôt, subventions
+> non utilisées REMBOURSÉES (jusqu'à 10 800 $/enfant — c'était le bug), revenu accumulé imposé au
+> marginal réel (empilement incrémental) + surtaxe 20 %. **Mesuré −20 021 $** sur une fermeture pleine.
+> 4 tests dont 3 discriminants prouvés. Gate vert, 3 574 tests.
+>
+> ⚠️ **Le RÉEE a été committé sur la MÊME branche que V7** : un rate limit GitHub (persistant depuis
+> ~18:05 UTC) empêchait de merger #566, et laisser un lot money-critical non commité est le scénario
+> exact de l'incident de revert de conteneur. #566 porte donc V7 **et** le RÉEE — corps de PR à
+> mettre à jour, et panel à passer sur la partie RÉEE avant merge.
+>
+> **Découvert et ticketé** : `[FISC-REEE-EAP-STUDENT-TAX]` — le retrait d'études est imposable au nom
+> de l'ÉTUDIANT ; laissé à ~0 $ (réaliste : BPA + crédits de scolarité) mais c'est une HYPOTHÈSE
+> assumée, pas un calcul. Le coder exigerait un 3ᵉ contribuable dans le moteur.
+
 > ## 🟢 Session 2026-08-05 (suite 21) — #565 MERGÉE + V7 (PR #566) + Marc tranche : RÉEE ensuite
 > **#565 mergée** (`3d666b0`, archivage). **V7 livrée à 2/4 (PR #566)** :
 > - `[FINTABLE-SYNC-STALE-BASE]` — la sync appliquait ses payloads sur un snapshot d'AVANT le

@@ -55,8 +55,7 @@
   (⚠️ reste À CONFIRMER avec Marc, cf A_FAIRE_MOI — ne pas coder sans go).
 - [ ] **V7 — Sécurité serveur + sync** — **2/4 livrés** (PR #566) :
   ✅ `[FINTABLE-SYNC-STALE-BASE]` + ✅ `[MCP-CLOUDRUN-AUTH-HARDENING]` (archivés).
-  ✅ `[MCP-CHARTDATA-SUM-GUARD]` (PR #567). RESTE `[FISC-CONST-GUARD-V2]` (périmètre MESURÉ : 25
-  offenders, taille réelle M et non S — voir sa fiche).
+  ✅ `[MCP-CHARTDATA-SUM-GUARD]` (#567) + ✅ `[FISC-CONST-GUARD-V2]` (#568). **V7 TERMINÉE (4/4).**
 - [ ] **V7bis — RÉEE (demande explicite Marc 2026-08-05)** : `[FISC-REEE-GRANT-CLAWBACK]`, plan-first.
   ⚠️ Marc a tranché CONTRE la reco « différer » : des enfants sont donc au programme. Ne pas
   re-proposer de reporter.
@@ -123,6 +122,21 @@
   d'études est imposable dans les mains de l'ÉTUDIANT, pas du souscripteur. Le moteur le laisse à
   ~0 $ (réaliste : BPA + crédits de scolarité couvrent un étudiant sans autre revenu) mais c'est une
   hypothèse, PAS un calcul. Le coder exigerait un TROISIÈME contribuable dans le moteur.
+- [ ] **`[FISC-CONST-ANCHOR-DEBT]`** (M, DETTE révélée par le tri de `[FISC-CONST-GUARD-V2]`) —
+  l'inventaire du ratchet (`utils/fiscalConstGuardV2.ts`) classe **14 entrées en famille `fiscal`**
+  qui vivent en DUR dans le moteur sans ancre `FISCAL_REFERENCE`. Les ancrer une par une, et les
+  remplacer par un import depuis la source unique. Par ordre de gravité :
+  - ⛔ `taxJanuary.ts` `0.18` — **plafond REER = 18 % du revenu gagné** : le vrai chiffre fiscal en
+    dur le plus net du dépôt, exactement la classe du `0.92`.
+  - ⛔ `taxJanuary.ts` `0.20` — facteur de retrait minimum FERR par défaut (plateau 95+), en repli
+    `RRIF_RATES[age] || 0.20`. ⚠️ Échappait au scan v1 : `||` ne ressemble pas à un calcul.
+  - `taxJanuary.ts` `500` (arrondi CELI au 500 $ ARC) · `2026` (année d'ancrage RRSP_ANNUAL_LIMITS).
+  - Âges-seuils : `18` (CELI/CELIAPP) · `71` (conversion REER→FERR) · `72` (1er retrait min) ·
+    `15` (durée de vie CELIAPP) · `65` (crédit d'âge, pivot RRQ/PSV) · `70` (report PSV max) ·
+    `75` (bonification PSV) · `39`/`40` (déjà nommés : RRQ_DENOMINATOR_YEARS, PSV_FULL_RESIDENCY_YEARS).
+  ⚠️ NE PAS toucher aux entrées `design` (`0.95` Guyton-Klinger, `0.50` vente fictive, seuils de
+  meltdown, `0.25` proxy d'inversion impôt→gain) : les « sourcer » serait une erreur de CATÉGORIE
+  qui polluerait FISCAL_REFERENCE avec des choix de conception.
 - [ ] **V8 — Features demandées** (2-3 PR) : `[SUBS-TAB]` · `[GOAL-DEADLINE-UI]` +
   `[PH4C-SAVINGS-NATURE]` · `[ASSET-CURRENCY-BACKFILL]` (si log) · `[CHAT-PAGE-CONTEXT-V2]`
   (file explicite Marc — maintenu malgré le « différer » PM).
@@ -246,17 +260,7 @@
   Plafonné ~986 $/an, couple retraité 65+ seulement (0 $ Marc aujourd'hui). Lire l'Annexe B d'abord.
 - [ ] **`[PV-11e]`** (S, test — V3) — PAS un bug (invariant Σ reerByUser == reer préservé par
   construction, re-vérifié) : écrire le test de pin couple-inégal + goal REER + cotisation même mois.
-- [ ] **`[FISC-CONST-GUARD-V2]`** (S→M, garde — V7) — le garde FISC-CONST-LINT ne détecte pas une
-  constante fiscale NOUVELLE non sourcée (c'est le trou par lequel 0.92 est passé) → garde
-  complémentaire : constante $ de `services/projection/` participant à l'impôt ⇒ ancre FISCAL_REFERENCE.
-  ⚠️ **Périmètre MESURÉ le 2026-08-05** (scan des littéraux inline en position arithmétique sur
-  `taxDecember/taxApril/taxJanuary/latentTax`, hors bénins 0/1/2/12/100…) : **25 offenders**, dont
-  de VRAIS chiffres fiscaux en dur (`0.18` = plafond REER 18 % du revenu gagné, `taxJanuary.ts:164` ;
-  âges `65`/`71`/`72` = crédit d'âge, conversion FERR, retrait minimum ; `2026` en index d'année) et
-  des heuristiques de CONCEPTION à ne PAS traiter comme fiscales (`0.95` Guyton-Klinger, `0.50` de
-  la vente fictive de récolte de pertes). ⇒ le fix n'est PAS « ajouter un test » : c'est un
-  RATCHET (inventaire justifié des 25 + échec sur tout NOUVEAU), et un tri qui alimentera
-  FISCAL_REFERENCE. La taille réelle est M, pas S — ne pas le prendre pour un quick win.
+
 - [ ] **`[NW-PARITY-SURFACES-TEST]`** (S-M, garde-fou keystone audit 2026-06-17) — étendre
   `tests/services/nwParity.test.ts` (aujourd'hui moteur↔computePresentNetWorth) aux surfaces
   UI/IA/PDF (KPI Accueil, useDerivedFinancials, financialSnapshot, pdfReport) sur persona endetté +

@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-05 (suite 24) — **V7 TERMINÉE (4/4)** : ratchet des constantes fiscales (#568)
+> `[FISC-CONST-GUARD-V2]` livré → **V7 est complète**. Le garde ferme le trou par lequel `0.92`
+> était passé : une constante fiscale NOUVELLE née dans le moteur, que rien ne comparait à rien.
+> - **RATCHET** et non échec dur : 38 littéraux existaient déjà — un échec dur aurait cassé sur 38
+>   lignes et aurait été relâché. L'existant est inventorié AVEC SA RAISON, le NOUVEAU échoue.
+> - **Le TRI est la valeur** : 3 familles (`fiscal` / `design` / `structural`). Il a révélé `0.18`
+>   (plafond REER 18 % du revenu gagné) en dur, à côté d'heuristiques de conception qu'il ne faut
+>   surtout PAS « sourcer ».
+> - **Le garde a trouvé ce que le tri manuel avait manqué** : `RRIF_RATES[age] || 0.20`, un vrai
+>   taux FERR invisible parce que `||` ne ressemble pas à un calcul.
+> - Discriminant PROUVÉ par injection de `x * 0.92` dans `taxApril.ts`.
+>
+> **Dette ouverte : `[FISC-CONST-ANCHOR-DEBT]`** — 14 entrées `fiscal` à ancrer dans
+> FISCAL_REFERENCE, par ordre de gravité (`0.18` en tête). ⚠️ NE PAS toucher aux entrées `design`.
+>
+> **Prochaine vague : V8 — features demandées** (`[SUBS-TAB]`, `[GOAL-DEADLINE-UI]`,
+> `[CHAT-PAGE-CONTEXT-V2]`…). ⚠️ Le RÉEE reste REVERTÉ et ne se reprend PAS sans go de Marc.
+
 > ## 🟢 Session 2026-08-05 (suite 23) — #566 MERGÉE + garde chartData (PR #567)
 > **#566 mergée** (`d851504`, V7 seul). **`[MCP-CHARTDATA-SUM-GUARD]` livré** : garde de convention
 > interdisant de fabriquer un « revenu » en additionnant des flux `chartData` (0 offender aujourd'hui

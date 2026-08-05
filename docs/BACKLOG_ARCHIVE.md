@@ -171,6 +171,36 @@ fichier:ligne). Verdicts appliqués à la refonte :
   (39 654 prédits vs 39 848 mesurés) + mise en garde dans la note du tool + test discriminant.
   Leçon CONVENTIONS : un agrégat non étiqueté fabrique de faux diagnostics, y compris chez Claude.
 
+## ✅ Session 2026-08-05 (suite) — V7 TERMINÉE : ratchet des constantes fiscales (PR #568)
+
+- [x] **`[FISC-CONST-GUARD-V2]`** ✅ 2026-08-05 (PR #568 ; annoncé S, livré **M** — la mesure a
+  corrigé l'estimation) — le garde existant `FISC-CONST-LINT` interdit de RECOPIER un littéral de
+  `utils/tax.ts`, mais est aveugle au cas INVERSE : une constante fiscale **nouvelle**, née dans le
+  moteur, que rien ne compare à rien. C'est par ce trou que `totalEmployerTax * 0.92` a vécu sans
+  source pendant des mois.
+  - **RATCHET, pas échec dur** : le périmètre a été MESURÉ avant d'écrire une ligne (leçon
+    « resserrer le scan AVANT de coder le fix ») → **38 littéraux** existants sur 6 modules
+    fiscaux. Un échec dur aurait cassé d'emblée sur 38 lignes, donc aurait été relâché jusqu'à ne
+    plus rien attraper. L'existant est inventorié AVEC SA RAISON ; tout NOUVEAU fait échouer.
+  - **Le TRI est la valeur**, pas le scan. Trois familles : `fiscal` (vrai paramètre ARC/RQ, à
+    ancrer), `design` (heuristique de conception, à ne JAMAIS « sourcer ») et `structural`.
+    Il a révélé `0.18` — le plafond REER de 18 % du revenu gagné — en dur, noyé au milieu du
+    `0.95` de Guyton-Klinger et des seuils de meltdown. Les confondre aurait pollué FISCAL_REFERENCE.
+  - **Le ratchet a trouvé ce que le tri manuel avait manqué** : en élargissant le scan aux replis
+    (`||`), 4 littéraux de plus, dont un VRAI taux FERR (`RRIF_RATES[age] || 0.20`) invisible à
+    l'œil parce que `||` ne ressemble pas à un opérateur de calcul.
+  - **Élucidation avant inventaire** : `taxCurrentYearGains / 0.25` restait obscur. Vérifié — c'est
+    un PROXY qui inverse l'impôt vers le gain brut en supposant un taux effectif de 25 %
+    (inclusion 50 % × marginal 50 %) : une approximation de modèle, PAS un taux statutaire. Figer
+    une ignorance dans un garde lui donne l'air de protéger quelque chose.
+  - Clé d'inventaire **(fichier, valeur)** et non (fichier, ligne) : un numéro de ligne dérive au
+    premier refactor et rendrait le garde bruyant. Prix assumé et écrit : une 2ᵉ occurrence de la
+    même valeur dans le même fichier passe.
+  - Test d'intégrité de l'inventaire (raison ≥ 30 caractères, pas de doublon, pas d'orphelin) — il
+    a d'ailleurs attrapé trois de mes propres entrées bâclées en « — idem. ».
+  - **Discriminant PROUVÉ** par injection de `x * 0.92` dans `taxApril.ts` : le garde le signale
+    nommément. Dette de suivi ouverte : `[FISC-CONST-ANCHOR-DEBT]` (14 entrées `fiscal` à ancrer).
+
 ## ✅ Session 2026-08-05 (suite) — garde de convention chartData (PR #567)
 
 - [x] **`[MCP-CHARTDATA-SUM-GUARD]`** ✅ 2026-08-05 (PR #567 ; S, garde PRÉVENTIF) — aucun test ni

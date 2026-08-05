@@ -4,6 +4,17 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-05 (suite 17) — #558 MERGÉE (`14e079a`) + FINTABLE-TOKEN-PERSIST (PR en cours)
+> **#558 mergée** (squash `14e079a`, auto-merge après panel 4 agents + findings traités).
+> **[FINTABLE-TOKEN-PERSIST] (PR en cours, priorité Marc)** : cause racine de l'import gelé
+> trouvée par MARC — le jeton Fintable n'était jamais persisté (setAppState mémoire, jamais
+> saveApiKeys). Fix : persistance dans le coffre chiffré (blur + avant Tester/Sync), échec
+> affiché ; 3 tests (blur / ceinture bouton / échec visible — discriminants par construction).
+> La piste « fin d'essai Fintable » était un leurre de timing (leçon CONVENTIONS : trajet
+> complet d'un secret + corrélation ≠ cause). Marc devra RE-COLLER son jeton une fois après
+> déploiement + vérifier son abonnement Fintable (A_FAIRE_MOI). [FISC-WHT-92PCT] archivé.
+> Suite : [FISC-SOLO-INVEST-SPLIT] (Q3, GO) puis V5 gatés sources.
+>
 > ## 🟢 Session 2026-08-01 (suite 16) — #556 MERGÉE (`16e9e9d`, Vercel prod READY) + V5d : FISC-WHT-92PCT
 > **#556 mergée** (squash `16e9e9d`, prod déployée). **V5d livrée (PR en cours)** : retenue
 > employeur 100 % (`[FISC-WHT-92PCT]`, GO Marc Q2) — l'ancien ×0,92 non sourcé facturait ~8 % de

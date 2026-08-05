@@ -22,6 +22,7 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 import { importWithRetry, isChunkLoadError } from '../../utils/lazyWithRetry';
 import { referenceDeltaPatch } from '../../services/fintable/applyStatePatch';
 import { acquireFintableSyncLock, releaseFintableSyncLock } from '../../services/fintable/autoSync';
+import { saveApiKeys } from '../../services/secureKeyStore';
 import { logError } from '../../services/errorLogger';
 import type { AppState, FintableAccountRoleConfig } from '../../types';
 
@@ -67,6 +68,25 @@ export const FintableSyncCard: React.FC = () => {
         setAppState({ apiKeys: { ...apiKeys, fintable: value } });
     };
 
+    // [FINTABLE-TOKEN-PERSIST] Le jeton doit SURVIVRE au rechargement, comme les autres clés :
+    // même coffre chiffré (secureKeyStore). Incident réel 2026-08-05 : saveToken n'écrivait que le
+    // store MÉMOIRE (le champ `fintable` du coffre existait depuis #535, l'hydratation le lisait
+    // depuis #545, mais AUCUNE écriture n'y était branchée) → au reload, jeton disparu → sync
+    // « jeton absent » en boucle, import bancaire gelé 5 jours sans alerte. Persistance au BLUR
+    // (pas à chaque frappe — un chiffrement AES par touche) + avant Tester/Synchroniser (le clic
+    // blur déjà l'input, ceinture). Échec de coffre AFFICHÉ, jamais avalé (pattern App.tsx
+    // handleUpdateApiKeys).
+    const persistToken = async (): Promise<void> => {
+        try {
+            await saveApiKeys(useFinanceStore.getState().apiKeys);
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : '';
+            setError(msg
+                ? `Jeton non sauvegardé (${msg}) — il restera valide jusqu'au rechargement.`
+                : 'Jeton non sauvegardé : coffre chiffré indisponible — il restera valide jusqu\'au rechargement.');
+        }
+    };
+
     const setRole = (id: string, next: FintableAccountRoleConfig | undefined) => {
         const roles = { ...(fintableRoles ?? {}) };
         if (next === undefined) delete roles[id];
@@ -76,6 +96,7 @@ export const FintableSyncCard: React.FC = () => {
 
     const handleTest = async () => {
         setBusy('testing'); setError(null); setNotice(null);
+        await persistToken(); // ceinture : un jeton testé est un jeton qu'on veut garder
         try {
             const { listFintableAccountsForSetup } = await importWithRetry(
                 () => import('../../services/fintable/browserSync'), 'fintable-sync',
@@ -103,6 +124,7 @@ export const FintableSyncCard: React.FC = () => {
             return;
         }
         setBusy('syncing'); setError(null); setNotice(null);
+        await persistToken(); // ceinture : idem handleTest
         try {
             const { runFintableBrowserSync } = await importWithRetry(
                 () => import('../../services/fintable/browserSync'), 'fintable-sync',
@@ -163,6 +185,7 @@ export const FintableSyncCard: React.FC = () => {
                         type="password"
                         value={token}
                         onChange={(e) => saveToken(e.target.value)}
+                        onBlur={() => { void persistToken(); }}
                         className="w-full bg-dark border border-border rounded px-3 py-2 text-white focus:border-primary outline-none"
                         placeholder="ft_..."
                         aria-describedby="fintable-token-help"

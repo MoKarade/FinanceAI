@@ -22,6 +22,13 @@ vi.mock('../../services/fintable/browserSync', () => ({
 }));
 vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
 
+// [FINTABLE-TOKEN-PERSIST] Coffre chiffré mocké : ces tests verrouillent que le jeton est bien
+// ÉCRIT dans secureKeyStore (incident 2026-08-05 : il ne l'était jamais → perdu à chaque reload).
+const saveKeysMock = vi.fn();
+vi.mock('../../services/secureKeyStore', () => ({
+    saveApiKeys: (...a: unknown[]) => saveKeysMock(...a),
+}));
+
 const ACCOUNTS = [
     { id: 'acc_1', label: 'Compte chèque', rawType: 'depository', currency: 'CAD', balance: 1500 },
     { id: 'acc_2', label: 'Disnat L7B1', rawType: 'brokerage', currency: 'CAD', balance: 136863.18 },
@@ -30,6 +37,8 @@ const ACCOUNTS = [
 beforeEach(() => {
     listMock.mockReset();
     syncMock.mockReset();
+    saveKeysMock.mockReset();
+    saveKeysMock.mockResolvedValue(undefined);
     useFinanceStore.setState({
         apiKeys: { anthropic: '', finnhub: '', fintable: 'ft_test' },
         fintableRoles: undefined,
@@ -156,5 +165,38 @@ describe('FintableSyncCard — assignation des rôles', () => {
         expect(useFinanceStore.getState().fintableRoles?.acc_1).toEqual({
             kind: 'debt', debtName: 'Desjardins Cash Back Mastercard',
         });
+    });
+});
+
+describe('FintableSyncCard — persistance du jeton dans le coffre chiffré ([FINTABLE-TOKEN-PERSIST])', () => {
+    // DISCRIMINANT par construction : sur le code d'avant (incident 2026-08-05), saveApiKeys
+    // n'était JAMAIS appelé depuis cette carte → ces deux tests échouent (mock jamais invoqué).
+    it('au blur de l\'input, le jeton est écrit dans secureKeyStore avec les AUTRES clés', async () => {
+        render(<FintableSyncCard />);
+        const input = screen.getByLabelText(/Jeton Fintable/i);
+        fireEvent.change(input, { target: { value: 'ft_nouveau' } });
+        fireEvent.blur(input);
+        await waitFor(() => expect(saveKeysMock).toHaveBeenCalled());
+        // Le blob écrit contient le jeton FRAIS et n'écrase pas les autres clés.
+        const written = saveKeysMock.mock.calls.at(-1)?.[0] as Record<string, string>;
+        expect(written.fintable).toBe('ft_nouveau');
+        expect(written).toHaveProperty('anthropic');
+        expect(written).toHaveProperty('finnhub');
+    });
+
+    it('« Tester la connexion » persiste aussi le jeton (ceinture au clic direct)', async () => {
+        listMock.mockResolvedValue({ accounts: [], error: null });
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Tester la connexion/i }));
+        await waitFor(() => expect(saveKeysMock).toHaveBeenCalled());
+    });
+
+    it('un échec du coffre est AFFICHÉ, jamais silencieux (le jeton reste valide en session)', async () => {
+        saveKeysMock.mockRejectedValue(new Error('IndexedDB indisponible'));
+        render(<FintableSyncCard />);
+        const input = screen.getByLabelText(/Jeton Fintable/i);
+        fireEvent.change(input, { target: { value: 'ft_nouveau' } });
+        fireEvent.blur(input);
+        await waitFor(() => expect(screen.getByText(/Jeton non sauvegardé/i)).toBeInTheDocument());
     });
 });

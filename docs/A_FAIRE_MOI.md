@@ -15,15 +15,19 @@ jamais été monté (secrets GCP à poser par toi) → le SEUL canal actif est l
 l'app. Je ne peux pas voir le `fintableSyncReport` d'ici (aucun tool MCP ne l'expose — ticket
 `[FINTABLE-STALE-ALERT]` créé) ni joindre `fintable.io` (403 tunnel).
 
-- [ ] **Vérifier ton PLAN sur fintable.io** (cause la plus probable [Probable] — timing exact) :
-  Settings → Billing. L'essai expirait le 2026-08-01 et le palier gratuit a `can_sync: false`
-  (arrêt TOTAL). Tu avais décidé de payer (2026-07-29) — l'abonnement a-t-il vraiment été activé /
-  le paiement est-il passé ?
-- [ ] **Vérifier la connexion Desjardins (Plaid)** dans Fintable : dernière sync réussie ? Un lien
-  bancaire peut aussi demander une ré-authentification périodique.
-- [ ] **Me coller le contenu de la carte « Sync Fintable » (Réglages)** : date du dernier rapport +
-  erreur éventuelle. Ça départage : rapport récent « 0 transaction, sans erreur » = feed Fintable
-  gelé (plan/banque) ; rapport en erreur `[AUTH]`/`[HTTP …]` = jeton/API → je corrige de mon côté.
+**RÉSOLU 2026-08-05 — cause racine trouvée par MARC, corrigée par PR `[FINTABLE-TOKEN-PERSIST]`** :
+le jeton Fintable n'était PAS persisté (écrit dans le store mémoire seulement, jamais dans le
+coffre chiffré) → perdu au premier rechargement → sync « jeton absent » en boucle. La corrélation
+avec la fin d'essai (2026-08-01) était un LEURRE de timing. Depuis le fix, le jeton est sauvegardé
+comme les autres clés (coffre chiffré, au blur + avant Tester/Synchroniser, échec affiché).
+
+- [ ] **Après le déploiement : RE-COLLER ton jeton une fois** dans Réglages → carte Fintable
+  (l'ancien n'a jamais été sauvegardé, il n'existe plus nulle part), puis « Synchroniser
+  maintenant » — les 5 jours manquants seront rattrapés. Recharge la page pour vérifier que le
+  jeton est toujours là.
+- [ ] **Vérifier quand même ton PLAN sur fintable.io** (Settings → Billing) : l'essai expirait le
+  2026-08-01 et le palier gratuit a `can_sync: false` — si l'abonnement décidé le 2026-07-29 n'est
+  pas actif, l'import re-gèlera même avec le jeton sauvegardé.
 
 ## FINTABLE — pourquoi aucune position ? (remonté par Claude 2026-07-29)
 - [x] **Forme de l'API fournie, jeton en place, dry-run RÉUSSI** — 6 comptes, 121 transactions lues.

@@ -160,6 +160,19 @@ fichier:ligne). Verdicts appliqués à la refonte :
   Tickets dérivés au vivant : [FISC-PENSION-CREDIT-REAL], [FISC-BRACKET-CPI-STRESS],
   [FISC-MARGINAL-SPACE].
 
+## ✅ V5d — retenue employeur 100 % (PR #558 `14e079a`, mergée 2026-08-05)
+
+- [x] **`[FISC-WHT-92PCT]`** (GO Marc Q2) ✅ (PR #558) — retenue employeur = 100 % de l'impôt sans
+  déductions (`taxDecember.ts`, l'ancien ×0,92 non sourcé facturait ~8 % en double chaque avril).
+  Fondement TP-1015.F/T4032-QC + preuve d'auto-cohérence avec `calculateNetFromGross`
+  (FISCAL_REFERENCE §9). Mesuré : salarié référence ttp 106 915 → 57 723 (−1 243,23 $/an réel),
+  NW +7 à +14 % selon profil ; retraités-au-départ bit-identiques ; actif→retraite +21,5 % NW.
+  Panel 4 agents (GO ×3, NO-GO silent-failure résolu en PR : plancher −100 000 $ journalisé + test
+  qui l'exerce, ablation prouvée). 4 gardes réancrées (dont FA-10 re-réancrée SOUS la saturation
+  RAMQ — leçon 2e ordre) + invariant T1213 ON ≡ OFF sans déductions. Tickets dérivés au vivant :
+  [ENG-T1213-NET-MONTHLY], [ENG-TAXDEC-FLOOR-INDEX], [ENG-TAXDEC-NAN-GUARD],
+  [ENG-NET-MODEL-RESIDUAL].
+
 
 # (Contenu intégral du BACKLOG au 2026-07-31, avant refonte)
 

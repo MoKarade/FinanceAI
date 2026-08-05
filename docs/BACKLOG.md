@@ -42,7 +42,7 @@
   qu'au consentement) + `[HIST-STORE-SIZE]` (downsample stocké > 365 j → 1 pt/semaine, idempotent,
   compose avec mergePriceHistories). `[PROFIL-SWITCH]` reste (questions posées à Marc — voir 🧭).
 - [ ] **V5 — Fiscal débloqué (Marc : Q1 ok, Q2 fix, Q3 go)** : ~~`[FISC-BRACKET-REALINDEX]`~~ ✅ #556 +
-  ~~`[FISC-WHT-92PCT]`~~ ✅ (PR en cours) + `[FISC-SOLO-INVEST-SPLIT]` (Q3, SUIVANT) +
+  ~~`[FISC-WHT-92PCT]`~~ ✅ #558 (archivé) + `[FISC-SOLO-INVEST-SPLIT]` (Q3, SUIVANT) +
   `[FISC-GIS-COUPLE-RATE]` (table Service Canada requise) + `[FISC-LINE361-PERCONJOINT-REDUC]`
   (Annexe B d'abord) + `[FISC-FED-CREDITRATE-15]` (source ARC).
 - [ ] **V6 — Fiscal non gaté** (1 PR) : `[FISC-DTC-ABATEMENT-ORDER]` + `[FISC-STACK-GAINS-DIV]`
@@ -119,12 +119,6 @@
 - [ ] **`[UI-FMTM-FORMATCAD]`** (S — panel #554, PRÉ-EXISTANT) — `fmtM` maison
   (`StrategyOptimizerPanel.tsx:57`, `(v/1e6).toFixed(2)M$`) viole « formatCAD UNIQUEMENT » et
   écrase la granularité (6 157 $ → « 0.01M$ »).
-- [x] **`[FISC-WHT-92PCT]`** ✅ 2026-08-01 (PR en cours, GO Marc Q2) — retenue employeur = 100 %
-  de l'impôt sans déductions (`taxDecember.ts`, l'ancien ×0,92 non sourcé facturait ~8 % en
-  double chaque avril). Mesuré avant/après : salarié référence ttp 106 915 → 57 723
-  (−1 243,23 $/an réel, exactement les 8 %), NW +13,7 % ; hauts revenus jusqu'à −6 393 $/an ;
-  retraités bit-identiques. Discriminant `projection.whtSettlement.test.ts` + 4 gardes réancrées
-  sur le canal survivant (leçon CONVENTIONS « observable tué »). FISCAL_REFERENCE §9 mis à jour.
 - [ ] **`[FISC-GIS-COUPLE-RATE]`** (M, ÉLEVÉ hors profil Marc [Probable — table Service Canada NON
   confirmable du conteneur]) — `utils/tax.ts:497-498` : clawback SRG 0,50 PAR ADULTE sur le revenu
   COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la

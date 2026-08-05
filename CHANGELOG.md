@@ -8,6 +8,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased — « Impôt à vie » honnête] — 2026-08-01
 
+### Corrections
+- **`[FINTABLE-TOKEN-PERSIST]` — ton jeton Fintable est maintenant SAUVEGARDÉ (incident réel
+  2026-08-05).** Le jeton collé dans Réglages n'était écrit qu'en mémoire : au premier
+  rechargement il disparaissait et l'import bancaire tournait « jeton absent » en silence —
+  5 jours sans transaction avant que tu le remarques toi-même. Il est désormais persisté dans le
+  MÊME coffre chiffré que tes autres clés (AES-256-GCM, clé d'appareil non extractible), au blur
+  du champ et avant Tester/Synchroniser ; un échec du coffre est affiché, jamais avalé. NB : la
+  corrélation avec la fin d'essai Fintable (2026-08-01) était un leurre — pense quand même à
+  vérifier ton abonnement. Il faudra re-coller le jeton UNE dernière fois.
+
 ### Corrections money-critical
 - **`[FISC-WHT-92PCT]` — la retenue employeur passe de 92 % à 100 % de l'impôt modélisé (GO
   Marc).** L'ancien ×0,92 (hypothèse jamais sourcée) facturait les ~8 % « restants » chaque

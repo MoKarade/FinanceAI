@@ -145,7 +145,14 @@
   > en dividendes admissibles chaque année (`taxDecember` §3). **FA-8 (2026-06-11)** — assiette
   > de BASE de l'empilement ALIGNÉE sur celle des gains : revenu retraite (hors SRG) + rentes
   > + **retraits REER/FERR de l'année** (avant, les retraits manquaient côté dividendes → taux
-  > d'entrée sous-évalué pour un retraité en meltdown REER, non conservateur). Limite restante
+  > d'entrée sous-évalué pour un retraité en meltdown REER, non conservateur).
+  > ⚠️ **[FISC-STACK-GAINS-DIV] (2026-08-05)** — l'assiette inclut AUSSI les **gains en capital
+  > imposables de l'année** : l'empilement est SÉQUENTIEL (gains sur le revenu, puis dividendes
+  > majorés sur revenu+gains). Avant, les deux blocs empilaient chacun depuis le revenu nu → la
+  > bande commune était facturée DEUX FOIS au taux bas. Propriété désormais garantie et testée :
+  > somme des deux bandes = bande totale `[revenu, revenu+gains+majoré]`, sans trou ni
+  > recouvrement (exact au cent). Effet mesuré : +815 $/an (retraité 100 k$ / gains 30 k$ /
+  > non-enreg 500 k$). Limite restante
   > (OUVERTE, hors lot FA-8 — cf BACKLOG) : dividendes/intérêts non-reg toujours exclus du test
   > SRG et du revenu de clawback PSV.
 - **Retenue à la source US sur dividendes** (`US_DIVIDEND_WITHHOLDING_RATE` = **15 %**, FA-8

@@ -124,8 +124,14 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // en $ RÉELS relèvent l'impôt des années tardives → NW final plus bas (vrai changement
         // fiscal, PAS une fuite de compteur — la neutralité des compteurs reste garantie par
         // l'identité ttp == Σ FluxImpots de projection.totalTaxesPaid.test.ts).
+        // Re-basé SCIEMMENT 2026-08-05 (était -7169,52 / 144 260). ⚠️ ATTRIBUTION MESURÉE par
+        // arbres isolés (panel #564) : les −40,30 $ viennent à 100 % de [FISC-DTC-ABATEMENT-ORDER].
+        // [FISC-STACK-GAINS-DIV] est NEUTRE sur cette fixture — `NON_ENREG: 0` donc
+        // accCapitalGainsYear reste nul, et le run est bit-identique à origin/main avec ce seul
+        // fix. Ne pas croire que cette fixture couvre l'empilement : c'est le test d'additivité
+        // de taxDecember.test.ts qui le fait.
         const melt = runWith('MELTDOWN_REER' as AllocationStrategy);
-        expect(melt.finalNetWorth).toBeCloseTo(-7169.52, 0);
-        expect(melt.estateNetWorth).toBeCloseTo(144260, 0);
+        expect(melt.finalNetWorth).toBeCloseTo(-7209.82, 0);
+        expect(melt.estateNetWorth).toBeCloseTo(144219.86, 0);
     });
 });

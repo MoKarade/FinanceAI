@@ -39,6 +39,24 @@
 > `[FINTABLE-BACKFILL-HISTORY]` créé (passe de backfill séparée + dédoublonnage via
 > `findDuplicateGroups`, déjà écrit et testé). Money-critical : jamais d'écriture sans dédoublonnage.
 >
+> ## 🟢 Session 2026-08-05 (suite 19) — V6 fiscal : deux sous-impositions du placement (PR #564)
+> **#563 mergée** (`b3477df` : tickets Fintable + [ENG-TAXDEC-NAN-GUARD] + [ENG-TAXDEC-FLOOR-INDEX]).
+> **V6 en cours (PR #564)** : [FISC-STACK-GAINS-DIV] (gains et dividendes empilaient chacun leur
+> bande depuis le revenu NU → bande commune facturée 2× au taux bas ; empilement SÉQUENTIEL
+> désormais, additivité exacte au cent : +815,41 $/an) + [FISC-DTC-ABATEMENT-ORDER] (le CID
+> FÉDÉRAL est soustrait AVANT l'abattement QC 16,5 %, comme le BPA → valeur effective 12,5415 %
+> du majoré, pas 15,0198 % : +256,50 $/an). **Effet combiné ~1 072 $/an** sur un profil à gros
+> non-enregistré, sens conservateur.
+> ⚠️ **Panel #564 — financial-integrity a VALIDÉ le fix CID contre les tables publiées** : taux
+> marginal max dividende admissible **40,11 %** et non admissible **48,70 %**, identiques à RQ/ARC
+> 2026 (avant : 36,69 % / 46,98 %, soit −3,42 pp et −1,71 pp). C'était le point que je lui avais
+> demandé de RÉFUTER — il est confirmé, chiffres à l'appui. Ses findings F1-F6 traités dans la PR
+> (FISCAL_REFERENCE §3 mis à jour — il revendiquait « 0 écart code↔doc » ; attribution du golden
+> meltdown corrigée : les −40,30 $ viennent à 100 % du CID, [FISC-STACK-GAINS-DIV] est NEUTRE sur
+> cette fixture ; commentaires à valeurs périmées ; `QC_FEDERAL_ABATEMENT_RATE` EXPORTÉ et importé
+> par les tests au lieu d'être re-codé en dur). F7 → ticket `[FISC-BAND-AGE-CREDITS]`
+> (préexistant, −648 à −675 $/an : les bandes incrémentales ignorent les crédits 65+/pension).
+>
 > ## 🟢 Session 2026-08-05 (suite 18) — #559 MERGÉE (`bbd6bda`) + MCP-NETINCOME-MISLEADING (PR en cours)
 > **#559 mergée** (jeton Fintable persisté ; archivée). **En cours : `[MCP-NETINCOME-MISLEADING]`**
 > — né d'une ERREUR que j'ai commise et que MARC m'a fait re-vérifier : j'avais comparé le

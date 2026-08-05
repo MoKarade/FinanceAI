@@ -75,6 +75,29 @@
 > Analyse fiscale 2026-07-31 (financial-integrity, findings MESURÉS via npx tsx sur le vrai moteur).
 > ⚠️ Un finding = une hypothèse : chaque fix passe par discriminant git-stash + panel adversarial.
 
+- [ ] **`[ENG-GK-THRESHOLD-KNIFE]`** (M, MOYEN [MESURÉ — panel #564], PRÉ-EXISTANT) — le garde-fou
+  Guyton-Klinger (`taxJanuary.ts` §5 : `currentPortfolio < prevPortfolioNW * 0.95`) est un seuil
+  COUTEAU : un écart d'impôt de quelques centaines de dollars suffit à déclencher un gel de
+  dépenses supplémentaire, qui vaut ensuite **−174,36 $/mois À VIE**. Mesuré au panel #564 : le
+  CID (256 $/an) fait basculer le classement des stratégies d'un couple à 800 k$ non-enregistré
+  (MELTDOWN 1re → 3e ; AUTO +28 % de patrimoine final EN PAYANT 2 225 $ d'impôt de PLUS).
+  Le moteur est cohérent, mais la recommandation de stratégie devient instable pour un écart
+  négligeable. Piste : hystérésis ou lissage du seuil plutôt qu'une comparaison sèche.
+- [ ] **`[FISC-DIV-DERIVED-BASES]`** (S-M, FAIBLE [panel #564], PRÉ-EXISTANT) — deux assiettes
+  dérivées ignorent le dividende majoré alors qu'elles incluent les gains : la prime **FSS**
+  (`taxDecember.ts:719`, prend `accCapitalGainsYear × 0,5`) et le revenu de récupération **PSV**
+  (`computeOasClawback`). Asymétrie rendue plus saillante par [FISC-STACK-GAINS-DIV] sans être
+  corrigée. Chiffrer avant de coder. Voisin : le **clamp du CID** (`Math.max(0, grossTax − cid)`)
+  perd l'excédent annuel au lieu de réduire l'impôt des autres revenus (mesuré : 0 $ d'impôt
+  dividendes sur un couple à 1,5 M$ non-enreg à faible autre revenu, avant comme après).
+- [ ] **`[FISC-BAND-AGE-CREDITS]`** (M, MOYEN [MESURÉ — panel #564], PRÉ-EXISTANT) — les bandes
+  incrémentales de gains et de dividendes (`taxDecember.ts` §2 et §3) appellent
+  `calculateFiscalReport(income, 0, 0, year, true)` **sans `ageOpts`** : les crédits 65+/pension
+  sont donc absents des DEUX bornes, ce qui efface leur **récupération** (income-tested) sur le
+  revenu de placement → sous-imposition d'un retraité. Mesuré sur une bande de +15 k$ à 70 ans :
+  **−648,66 $/an** à 45 k$ de revenu de base, **−675,56 $/an** à 60 k$, −146,89 $ à 100 k$.
+  ⚠️ Non introduit par #564 (identique sur origin/main). Fix : passer `ageOpts` aux deux bornes —
+  attention, ça re-basera des goldens retraités (mesurer avant).
 - [ ] **`[FISC-PENSION-CREDIT-REAL]`** (S, MOYEN [Certain, mesuré — panel #556], GO Marc requis :
   re-base de goldens retraités) — le crédit pension fédéral 2 000 $ est GELÉ nominalement
   (FISCAL_REFERENCE:178) mais traité à plat en espace RÉEL (`utils/tax.ts` l.249) → il vaut de
@@ -125,10 +148,10 @@
   COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la
   formule s'annule dès 15 888 $) ; test `tax.test.ts:968` VACUEUX. Mesuré : 0 $ vs 7 944 $/an à
   15 888 $ combiné. ⚠️ Exiger la table SC + corriger FISCAL_REFERENCE §6 + remplacer le test, même PR.
-- [ ] **`[FISC-DTC-ABATEMENT-ORDER]`** (S, MOYEN [Certain mécanisme] — V6) — le CID fédéral est
+- [x] **`[FISC-DTC-ABATEMENT-ORDER]`** ✅ 2026-08-05 (PR en cours ; S, MOYEN [CONFIRMÉ par lecture + mesure] — V6) — le CID fédéral est
   soustrait APRÈS l'abattement QC 16,5 % (`taxDecember.ts:734-739` + `tax.ts:906-907`) alors que
   BPA/âge sont avant → sur-crédit de 16,5 % du CID (+49 $/an profil Marc, +308 $ à 9 k$ div).
-- [ ] **`[FISC-STACK-GAINS-DIV]`** (S, MOYEN [MESURÉ] — V6, même PR) — gains (`taxDecember.ts:703`)
+- [x] **`[FISC-STACK-GAINS-DIV]`** ✅ 2026-08-05 (PR en cours ; S, MOYEN [CONFIRMÉ par lecture + mesure] — V6) — gains (`taxDecember.ts:703`)
   et dividendes (`:737`) empilés CHACUN sur la même base → bande commune facturée 2× au taux bas
   (mesuré : −1 346 $/an sur base 100k/gains 30k/div 15k). Mord un retraité à gros non-enregistré.
 - [ ] **`[FISC-REEE-GRANT-CLAWBACK]`** (S, [Probable] — V6) — à la fermeture du REEE,

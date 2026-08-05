@@ -7,6 +7,15 @@ import { OAS_CLAWBACK_THRESHOLD_2026, OAS_CLAWBACK_RATE, CAPITAL_GAINS_INCLUSION
 import { NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './helpers';
 
 /**
+ * [ENG-TAXDEC-FLOOR-INDEX] Borne du solde d'impôt d'avril, en dollars d'AUJOURD'HUI (2026).
+ * Ce n'est pas une valeur fiscale (rien dans la loi ne plafonne un remboursement) mais un
+ * garde-fou de modèle contre un remboursement aberrant issu d'une donnée corrompue. Il est
+ * INDEXÉ à l'usage : un plancher nominal figé perdrait 45 % de sa valeur réelle sur 30 ans et
+ * se mettrait à tronquer des remboursements légitimes de plus en plus tôt.
+ */
+const APRIL_SETTLEMENT_FLOOR_REAL = 100_000;
+
+/**
  * V31 — OAS Clawback prévu (calcul annuel en décembre).
  * S'applique uniquement aux retraités 65+ avec revenu de pension > seuil.
  * Retourne le clawback annuel prévu (à diviser par 12 par le caller).
@@ -418,13 +427,28 @@ export function processDecemberTaxFiling(
         const estimatedWithholding = totalEmployerTax;
 
         // V30: Override 12-month approximation
-        // Panel #558 : le plancher -100 000 $ tronquait EN SILENCE — et la retenue 100 % rend les
-        // gros remboursements (hauts revenus + REER/Smith) bien plus proches du plancher qu'avant.
+        // Panel #558 : le plancher tronquait EN SILENCE — et la retenue 100 % rend les gros
+        // remboursements (hauts revenus + REER/Smith) bien plus proches du plancher qu'avant.
         // On journalise la troncature pour qu'un remboursement sous-évalué soit VISIBLE.
         const aprilSettlementRaw = totalAnnualTax - estimatedWithholding;
-        taxCurrent.revenu = Math.max(-100000, aprilSettlementRaw);
-        if (aprilSettlementRaw < -100000) {
-            logs.push(`⚠️ Remboursement d'avril tronqué au plancher -100 000$ (calculé: ${Math.round(aprilSettlementRaw).toLocaleString('fr-CA')}$)`);
+        // [ENG-TAXDEC-NAN-GUARD] ⚠️ `Math.max(-100000, NaN) === NaN` : le clamp AVAIT L'AIR d'un
+        // garde-fou mais laissait passer un NaN amont (prouvé avec inflationFactor = 0) jusqu'à
+        // FluxImpots puis totalTaxesPaid/NetWorth, sans la moindre trace. La branche RETRAITÉE
+        // gardait déjà `Number.isFinite` ; ce site-ci ne le faisait pas. Un impôt non fini ne
+        // devient JAMAIS un défaut numérique silencieux — on le dit et on retombe sur 0.
+        if (!Number.isFinite(aprilSettlementRaw)) {
+            logs.push(`⚠️ Solde d'impôt d'avril NON FINI (impôt=${totalAnnualTax}, retenue=${estimatedWithholding}) → 0 retenu ; donnée amont corrompue.`);
+            taxCurrent.revenu = 0;
+        } else {
+            // [ENG-TAXDEC-FLOOR-INDEX] Le plancher est un montant NOMINAL, comme le flux qu'il
+            // borne : il doit suivre l'inflation, sinon sa valeur RÉELLE fond (à 30 ans, facteur
+            // 1,81 → un plancher de -100 000 $ ne vaut plus que ~-55 000 $ d'aujourd'hui, et
+            // tronque donc de plus en plus tôt à mesure que la projection avance).
+            const floor = -APRIL_SETTLEMENT_FLOOR_REAL * (Number.isFinite(ctx.inflationFactor) ? Math.max(1, ctx.inflationFactor) : 1);
+            taxCurrent.revenu = Math.max(floor, aprilSettlementRaw);
+            if (aprilSettlementRaw < floor) {
+                logs.push(`⚠️ Remboursement d'avril tronqué au plancher ${Math.round(floor).toLocaleString('fr-CA')}$ (calculé: ${Math.round(aprilSettlementRaw).toLocaleString('fr-CA')}$)`);
+            }
         }
     } else {
         // ---- Retraité : régularisation au taux marginal réel (MIROIR de la phase active) ----
@@ -617,10 +641,13 @@ export function processDecemberTaxFiling(
             // 38 % sous un taux marginal faible) → remboursement en avril, cohérent avec
             // la borne de la phase active.
             if (Number.isFinite(reconciliation) && Math.abs(reconciliation) > 1) {
-                taxCurrent.revenu += Math.max(-100000, reconciliation);
+                // [ENG-TAXDEC-FLOOR-INDEX] Plancher indexé — miroir EXACT de la phase active
+                // (sinon les deux branches divergeraient au fil des années de projection).
+                const floor = -APRIL_SETTLEMENT_FLOOR_REAL * (Number.isFinite(ctx.inflationFactor) ? Math.max(1, ctx.inflationFactor) : 1);
+                taxCurrent.revenu += Math.max(floor, reconciliation);
                 // Panel #558 : troncature journalisée (miroir du plancher de la phase active).
-                if (reconciliation < -100000) {
-                    logs.push(`⚠️ Régularisation retraité tronquée au plancher -100 000$ (calculée: ${Math.round(reconciliation).toLocaleString('fr-CA')}$)`);
+                if (reconciliation < floor) {
+                    logs.push(`⚠️ Régularisation retraité tronquée au plancher ${Math.round(floor).toLocaleString('fr-CA')}$ (calculée: ${Math.round(reconciliation).toLocaleString('fr-CA')}$)`);
                 }
             }
         }

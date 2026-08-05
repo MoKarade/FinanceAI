@@ -279,12 +279,12 @@
   mesuré −3 088 $/an (fixture 98,4 k$, le moteur « perd » du net) à +7 338 $/an (fixture 240 k$,
   il en « crée »). Documenté FISCAL_REFERENCE §9 (biais a). Piste : afficher l'écart net saisi vs
   net modélisé dans TaxCenter (diagnostic), ou réconcilier via un facteur calibré au boot.
-- [ ] **`[ENG-TAXDEC-FLOOR-INDEX]`** (S, MOYEN, pré-existant — panel #558) — le plancher
+- [x] **`[ENG-TAXDEC-FLOOR-INDEX]`** ✅ 2026-08-05 (PR en cours ; S, MOYEN, pré-existant — panel #558) — le plancher
   `-100 000 $` du solde d'avril est NOMINAL et jamais indexé alors que le flux l'est → à 30 ans
   (facteur 1,81) le seuil réel effectif tombe à ~−55 k$ ; la retenue 100 % fait mordre le clamp
   dès ~600 k$ de brut + grosses déductions (mesuré). La troncature est maintenant JOURNALISÉE
   (#558) ; reste à indexer le plancher sur `ctx.inflationFactor` (les 2 sites, actif + retraité).
-- [ ] **`[ENG-TAXDEC-NAN-GUARD]`** (S, résiduel panel #558, pré-existant) — `taxDecember.ts` : le
+- [x] **`[ENG-TAXDEC-NAN-GUARD]`** ✅ 2026-08-05 (PR en cours ; S, résiduel panel #558, pré-existant) — `taxDecember.ts` : le
   clamp `Math.max(-100000, x)` du solde d'avril ACTIF ne protège pas contre NaN
   (`Math.max(-100000, NaN) === NaN`, prouvé par exécution avec `inflationFactor = 0`) → un NaN
   amont traverse jusqu'à FluxImpots/totalTaxesPaid sans trace, malgré l'apparence de garde-fou.

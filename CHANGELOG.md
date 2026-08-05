@@ -21,6 +21,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   montants potentiellement figés. Silencieux en mode démo et si l'import n'a jamais été configuré.
 
 ### Corrections
+- **`[ENG-TAXDEC-NAN-GUARD]` + `[ENG-TAXDEC-FLOOR-INDEX]` — deux garde-fous du solde d'impôt
+  d'avril qui n'en étaient pas vraiment.** (1) Le clamp censé borner le solde ressemblait à une
+  protection mais laissait passer une valeur non finie (`Math.max(-100000, NaN)` vaut `NaN`) : une
+  donnée corrompue en amont aurait contaminé ton impôt à vie et ton patrimoine projeté sans le
+  moindre message. Désormais la corruption est DITE et le solde retombe à 0 plutôt que d'empoisonner
+  la projection. (2) Le plancher de −100 000 $ était figé en dollars nominaux alors que le flux
+  qu'il borne suit l'inflation : à 30 ans il ne valait plus que ~55 000 $ d'aujourd'hui et se
+  mettait à tronquer des remboursements légitimes de plus en plus tôt. Il suit maintenant
+  l'inflation, sur les deux branches (actif et retraité). Aucun scénario existant n'est modifié.
 - **`[MCP-NETINCOME-MISLEADING]` — l'assistant ne confondra plus « revenu net » et « argent qui
   rentre ».** Le champ `netIncome` de l'outil fiscal additionnait ton salaire net ET le rendement
   estimé de tes placements (12 970 $/an chez toi) — un montant que tu n'encaisses jamais. Comparé à

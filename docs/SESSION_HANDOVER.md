@@ -11,7 +11,14 @@
 > saveApiKeys). Fix : persistance dans le coffre chiffré (blur + avant Tester/Sync), échec
 > affiché ; 3 tests (blur / ceinture bouton / échec visible — discriminants par construction).
 > La piste « fin d'essai Fintable » était un leurre de timing (leçon CONVENTIONS : trajet
-> complet d'un secret + corrélation ≠ cause). Marc devra RE-COLLER son jeton une fois après
+> complet d'un secret + corrélation ≠ cause).
+> ⚠️ **Panel #559 (2 agents) : NO-GO des DEUX, convergents — le fix violait sa propre leçon.**
+> Le blur seul laissait 3 chemins rouvrant le symptôme (fermeture/navigation/autofill sans blur ;
+> échec de coffre écrasé par l'erreur réseau et jamais logué ; écritures concurrentes non
+> ordonnées) + 1 régression UX (le succès masqué par l'erreur de persistance). TOUT corrigé dans
+> la PR : flush `visibilitychange`/`pagehide`/démontage, canal d'alerte SÉPARÉ (`persistError`,
+> régions ARIA nommées) + `logError`, sérialisation par chaîne de promesses, test `handleSync`.
+> 15 tests (7 nouveaux). Méta-leçon aux CONVENTIONS. Marc devra RE-COLLER son jeton une fois après
 > déploiement + vérifier son abonnement Fintable (A_FAIRE_MOI). [FISC-WHT-92PCT] archivé.
 > Suite : [FISC-SOLO-INVEST-SPLIT] (Q3, GO) puis V5 gatés sources.
 >

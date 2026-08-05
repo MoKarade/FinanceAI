@@ -498,6 +498,18 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   [Probable] et FAUSSE ; c'est l'observation de l'UTILISATEUR (« il ne garde pas mon jeton ») qui
   a donné la cause. Instrumenter d'abord (la raison `no-token` tournait en boucle SANS surface —
   cf [FINTABLE-STALE-ALERT]).
+  ⚠️ **Méta-leçon (panel #559) : le fix qui PORTE cette leçon l'a lui-même violée.** Le premier jet
+  ne persistait qu'au `blur` — et le panel a mesuré 3 chemins qui rouvraient le MÊME symptôme :
+  (a) fermer l'onglet / naviguer dans l'app / un autofill de gestionnaire de mots de passe n'émet
+  AUCUN `blur` sur l'input (un `blur` d'élément ne naît que d'un changement de focus INTRA-document) ;
+  (b) le message d'échec du coffre était écrasé par l'erreur réseau suivante et n'était pas logué →
+  invisible même dans Diagnostics sous double panne ; (c) deux écritures concurrentes non ordonnées
+  → le blob PÉRIMÉ pouvait gagner (dernier écrivain gagne côté `localStorage`). Corrigés dans la
+  même PR : flush `visibilitychange`/`pagehide` + démontage, `logError` + région d'alerte SÉPARÉE,
+  sérialisation par chaîne de promesses. Réflexe : « écrire au blur » ne veut PAS dire « écrit » —
+  pour tout secret/donnée saisie, énumérer les SORTIES possibles du champ (blur, démontage, onglet
+  caché, fermeture, autofill) avant de se déclarer couvert. Corollaire d'humilité : la leçon
+  fraîchement écrite ne protège pas le commit qui l'écrit — c'est le panel qui l'a attrapée.
   ⚠️ **Des fixtures de test à dates ABSOLUES vieillissent contre un NOW fixe** (leçon HIST-STORE-SIZE
   2026-08-01) : les tests de fusion d'historique utilisaient des closes datés « 2026-01-10 » avec un
   NOW figé à 2027-01-15 — l'ajout de la politique d'âge (downsample > 365 j) les a fait basculer du

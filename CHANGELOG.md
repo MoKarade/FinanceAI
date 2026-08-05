@@ -17,6 +17,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   du champ et avant Tester/Synchroniser ; un échec du coffre est affiché, jamais avalé. NB : la
   corrélation avec la fin d'essai Fintable (2026-08-01) était un leurre — pense quand même à
   vérifier ton abonnement. Il faudra re-coller le jeton UNE dernière fois.
+  Le jeton est sauvegardé sur TOUTES les sorties du champ (tu quittes le champ, tu changes
+  d'onglet, tu fermes la page, tu navigues ailleurs dans l'app) — pas seulement au clic à côté ;
+  et si le coffre tombe en panne, le message reste visible même si une erreur réseau survient en
+  même temps, avec une trace dans Réglages → Diagnostics.
 
 ### Corrections money-critical
 - **`[FISC-WHT-92PCT]` — la retenue employeur passe de 92 % à 100 % de l'impôt modélisé (GO

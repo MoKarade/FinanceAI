@@ -20,7 +20,8 @@ vi.mock('../../services/fintable/browserSync', () => ({
     listFintableAccountsForSetup: (...a: unknown[]) => listMock(...a),
     runFintableBrowserSync: (...a: unknown[]) => syncMock(...a),
 }));
-vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+const logErrorMock = vi.fn();
+vi.mock('../../services/errorLogger', () => ({ logError: (...a: unknown[]) => logErrorMock(...a) }));
 
 // [FINTABLE-TOKEN-PERSIST] Coffre chiffré mocké : ces tests verrouillent que le jeton est bien
 // ÉCRIT dans secureKeyStore (incident 2026-08-05 : il ne l'était jamais → perdu à chaque reload).
@@ -38,6 +39,7 @@ beforeEach(() => {
     listMock.mockReset();
     syncMock.mockReset();
     saveKeysMock.mockReset();
+    logErrorMock.mockReset();
     saveKeysMock.mockResolvedValue(undefined);
     useFinanceStore.setState({
         apiKeys: { anthropic: '', finnhub: '', fintable: 'ft_test' },
@@ -84,7 +86,7 @@ describe('FintableSyncCard — garde-fous d\'action', () => {
         listMock.mockResolvedValue({ accounts: [], error: '[AUTH] jeton invalide' });
         render(<FintableSyncCard />);
         fireEvent.click(screen.getByRole('button', { name: /Tester la connexion/i }));
-        await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/AUTH/));
+        await waitFor(() => expect(screen.getByRole('alert', { name: /Erreur de synchronisation/i })).toHaveTextContent(/AUTH/));
         expect(screen.queryByText(/Rôle de chaque compte/i)).toBeNull();
     });
 });
@@ -129,7 +131,7 @@ describe('FintableSyncCard — écriture de l\'état après une passe', () => {
 
         render(<FintableSyncCard />);
         fireEvent.click(screen.getByRole('button', { name: /Synchroniser maintenant/i }));
-        await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/NETWORK/));
+        await waitFor(() => expect(screen.getByRole('alert', { name: /Erreur de synchronisation/i })).toHaveTextContent(/NETWORK/));
 
         expect(useFinanceStore.getState().fintableSyncReport?.error).toContain('NETWORK');
         expect(useFinanceStore.getState().transactions).toEqual([]);
@@ -198,5 +200,54 @@ describe('FintableSyncCard — persistance du jeton dans le coffre chiffré ([FI
         fireEvent.change(input, { target: { value: 'ft_nouveau' } });
         fireEvent.blur(input);
         await waitFor(() => expect(screen.getByText(/Jeton non sauvegardé/i)).toBeInTheDocument());
+    });
+});
+
+describe('FintableSyncCard — trajet complet du jeton (findings panel #559)', () => {
+    // Ces 3 tests couvrent les trous que le PREMIER jet du fix laissait ouverts — chacun rouvrait
+    // le symptôme d'origine (« jeton perdu sans trace ») par un chemin plus étroit.
+    it('finding #1 — au DÉMONTAGE (navigation interne, sans blur) le jeton est flushé', async () => {
+        const { unmount } = render(<FintableSyncCard />);
+        fireEvent.change(screen.getByLabelText(/Jeton Fintable/i), { target: { value: 'ft_sans_blur' } });
+        expect(saveKeysMock).not.toHaveBeenCalled();   // rien tant qu'on édite : pas de chiffrement par frappe
+        unmount();                                      // fermer l'onglet n'émet PAS de blur sur l'input
+        await waitFor(() => expect(saveKeysMock).toHaveBeenCalled());
+    });
+
+    it('finding #1 bis — `visibilitychange: hidden` (changement d\'onglet navigateur) flushe aussi', async () => {
+        render(<FintableSyncCard />);
+        fireEvent.change(screen.getByLabelText(/Jeton Fintable/i), { target: { value: 'ft_onglet' } });
+        Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+        document.dispatchEvent(new Event('visibilitychange'));
+        await waitFor(() => expect(saveKeysMock).toHaveBeenCalled());
+        Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    });
+
+    it('finding #2 — sous DOUBLE panne (coffre + réseau), l\'échec de coffre reste visible ET tracé', async () => {
+        saveKeysMock.mockRejectedValue(new Error('IndexedDB indisponible'));
+        listMock.mockResolvedValue({ accounts: [], error: '[AUTH] jeton invalide' });
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Tester la connexion/i }));
+        // L'erreur réseau s'affiche dans SA région…
+        await waitFor(() => expect(
+            screen.getByRole('alert', { name: /Erreur de synchronisation/i }),
+        ).toHaveTextContent(/AUTH/));
+        // …sans effacer celle du coffre (avant le fix : écrasée, donc totalement invisible).
+        expect(screen.getByRole('alert', { name: /Sauvegarde du jeton/i }))
+            .toHaveTextContent(/Jeton non sauvegardé/i);
+        expect(logErrorMock).toHaveBeenCalled();       // trace durable dans Diagnostics
+    });
+
+    it('finding #3 — « Synchroniser maintenant » persiste AUSSI le jeton (chemin le plus sensible)', async () => {
+        // Le commentaire « ceinture : idem handleTest » n'était prouvé que pour handleTest : un
+        // refactor retirant l'appel dans le SEUL handleSync serait passé inaperçu — alors que c'est
+        // le chemin qui écrit de vraies transactions.
+        syncMock.mockResolvedValue({
+            report: { at: 1, error: null, transactionsAdded: 0, accountsSeen: 1, warnings: [] },
+            nextState: null,
+        });
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Synchroniser maintenant/i }));
+        await waitFor(() => expect(saveKeysMock).toHaveBeenCalled());
     });
 });

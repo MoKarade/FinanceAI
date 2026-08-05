@@ -15,7 +15,7 @@
 // premier clic — via `importWithRetry`, pas un `await import()` nu : après un déploiement, un chunk
 // périmé donnerait sinon un 404 en boucle (leçon AITOOLS-E).
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card } from '../ui/Card';
 import { Icon } from '../ui/Icon';
 import { useFinanceStore } from '../../store/useFinanceStore';
@@ -62,9 +62,19 @@ export const FintableSyncCard: React.FC = () => {
     const [busy, setBusy] = useState<'idle' | 'testing' | 'syncing'>('idle');
     const [error, setError] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
+    // [FINTABLE-TOKEN-PERSIST, finding #2 panel #559] Canal SÉPARÉ de `error` : une panne de coffre
+    // était écrasée par l'erreur réseau suivante (mesuré : double panne → le message « non
+    // sauvegardé » disparaissait totalement de l'UI). Deux causes distinctes = deux messages.
+    const [persistError, setPersistError] = useState<string | null>(null);
+
+    /** Une valeur saisie n'a pas encore atteint le coffre (finding #1 : flush au départ de la page). */
+    const pendingRef = useRef(false);
+    /** Chaîne de sérialisation des écritures (finding #3 : sinon un blob PÉRIMÉ peut gagner la course). */
+    const persistChainRef = useRef<Promise<void>>(Promise.resolve());
 
     const saveToken = (value: string) => {
         setToken(value);
+        pendingRef.current = true;
         setAppState({ apiKeys: { ...apiKeys, fintable: value } });
     };
 
@@ -76,16 +86,55 @@ export const FintableSyncCard: React.FC = () => {
     // (pas à chaque frappe — un chiffrement AES par touche) + avant Tester/Synchroniser (le clic
     // blur déjà l'input, ceinture). Échec de coffre AFFICHÉ, jamais avalé (pattern App.tsx
     // handleUpdateApiKeys).
-    const persistToken = async (): Promise<void> => {
-        try {
-            await saveApiKeys(useFinanceStore.getState().apiKeys);
-        } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : '';
-            setError(msg
-                ? `Jeton non sauvegardé (${msg}) — il restera valide jusqu'au rechargement.`
-                : 'Jeton non sauvegardé : coffre chiffré indisponible — il restera valide jusqu\'au rechargement.');
-        }
-    };
+    // ⚠️ Panel #559 — le premier jet ne couvrait QUE le blur, et rouvrait le MÊME symptôme par 3 trous
+    // (mesurés) : (1) fermer l'onglet ou naviguer n'émet AUCUN blur sur l'input (ni un autofill de
+    // gestionnaire de mots de passe) → jeton perdu comme avant ; (2) une panne de coffre était écrasée
+    // par l'erreur suivante et n'était jamais loguée → invisible même dans Diagnostics ; (3) deux
+    // écritures concurrentes n'étaient pas ordonnées → le blob PÉRIMÉ pouvait gagner. C'est la leçon
+    // « trajet COMPLET d'un secret » (CONVENTIONS) appliquée à elle-même.
+    const persistToken = useCallback((): Promise<void> => {
+        const run = async (): Promise<void> => {
+            try {
+                // getState() lu À L'EXÉCUTION (pas capturé) : sérialisées, deux écritures en attente
+                // convergent sur la MÊME valeur, la plus fraîche.
+                await saveApiKeys(useFinanceStore.getState().apiKeys);
+                pendingRef.current = false;
+                setPersistError(null);
+            } catch (e: unknown) {
+                pendingRef.current = true; // pas dans le coffre : on retentera au prochain flush
+                const msg = e instanceof Error ? e.message : '';
+                // Trace DURABLE (Réglages → Diagnostics) : un message d'UI peut être remplacé, pas ça.
+                logError({
+                    source: 'storage', severity: 'error',
+                    message: '[FINTABLE-TOKEN-PERSIST] Écriture du jeton dans le coffre chiffré échouée.',
+                    error: e instanceof Error ? e : new Error(String(e)),
+                });
+                setPersistError(msg
+                    ? `Jeton non sauvegardé (${msg}) — il restera valide jusqu'au rechargement.`
+                    : 'Jeton non sauvegardé : coffre chiffré indisponible — il restera valide jusqu\'au rechargement.');
+            }
+        };
+        // Sérialisation stricte (finding #3) : l'ordre d'émission est l'ordre d'écriture.
+        persistChainRef.current = persistChainRef.current.then(run, run);
+        return persistChainRef.current;
+    }, []);
+
+    // [finding #1 panel #559] Le blur ne couvre PAS le départ de la page ni la navigation interne.
+    // `visibilitychange:hidden` arrive au changement d'onglet/minimisation (bien avant une fermeture
+    // réelle) et le cleanup couvre le démontage (changement d'onglet DANS l'app, palette de commandes).
+    // ⚠️ Limite honnête : `saveApiKeys` est asynchrone (chiffrement AES + IndexedDB) — sur une
+    // fermeture BRUTALE, rien ne garantit qu'elle aboutisse. On réduit la fenêtre, on ne la ferme pas.
+    useEffect(() => {
+        const flush = (): void => { if (pendingRef.current) void persistToken(); };
+        const onVisibility = (): void => { if (document.visibilityState === 'hidden') flush(); };
+        document.addEventListener('visibilitychange', onVisibility);
+        window.addEventListener('pagehide', flush);
+        return () => {
+            document.removeEventListener('visibilitychange', onVisibility);
+            window.removeEventListener('pagehide', flush);
+            flush();
+        };
+    }, [persistToken]);
 
     const setRole = (id: string, next: FintableAccountRoleConfig | undefined) => {
         const roles = { ...(fintableRoles ?? {}) };
@@ -236,11 +285,26 @@ export const FintableSyncCard: React.FC = () => {
                     par canal (alerte / statut) → aucune double annonce du même message. */}
                 <div
                     role="alert"
+                    aria-label="Erreur de synchronisation"
                     className={error
                         ? 'text-meta text-danger-400 bg-danger-500/10 border border-danger-500/20 rounded-card p-2'
                         : 'sr-only'}
                 >
                     {error ?? ''}
+                </div>
+                {/* [FINTABLE-TOKEN-PERSIST, finding #2 panel #559] Région DISTINCTE de celle ci-dessus :
+                    une panne de coffre et une panne réseau sont deux causes indépendantes qui peuvent
+                    survenir ENSEMBLE — partager une région faisait disparaître la première (mesuré).
+                    Deux messages différents dans deux régions ≠ la double annonce que le finding
+                    a11y #536 interdisait (c'était le MÊME message dupliqué). */}
+                <div
+                    role="alert"
+                    aria-label="Sauvegarde du jeton"
+                    className={persistError
+                        ? 'text-meta text-warning-400 bg-warning-500/10 border border-warning-500/20 rounded-card p-2'
+                        : 'sr-only'}
+                >
+                    {persistError ?? ''}
                 </div>
                 <div
                     role="status"

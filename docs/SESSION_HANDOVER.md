@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-05 (suite 23) — #566 MERGÉE + garde chartData (PR #567)
+> **#566 mergée** (`d851504`, V7 seul). **`[MCP-CHARTDATA-SUM-GUARD]` livré** : garde de convention
+> interdisant de fabriquer un « revenu » en additionnant des flux `chartData` (0 offender aujourd'hui
+> → PRÉVENTIF, pour que la correction MCP-RETIREMENT-VERDICT ne soit pas refaite à l'envers).
+> Assertion anti-désarmement : chaque champ surveillé doit exister dans `ProjectionChartPoint`.
+> **Reste de V7** : `[FISC-CONST-GUARD-V2]` seul — ⚠️ **M et non S** : 25 offenders mesurés, mêlant
+> vrais chiffres fiscaux en dur (`0.18` plafond REER, âges 65/71/72) et heuristiques de CONCEPTION
+> (`0.95` Guyton-Klinger) à NE PAS traiter comme fiscales ⇒ ratchet + tri vers FISCAL_REFERENCE.
+
 > ## 🔴 Session 2026-08-05 (suite 22) — RÉEE implémenté puis REVERTÉ (panel)
 > `[FISC-REEE-GRANT-CLAWBACK]` a été codé (3 poches dérivées), mesuré −20 021 $ sur une fixture de
 > fermeture… puis **RETIRÉ de la PR #566** après que DEUX panels indépendants l'aient mesuré **PIRE

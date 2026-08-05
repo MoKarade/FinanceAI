@@ -171,6 +171,26 @@ fichier:ligne). Verdicts appliqués à la refonte :
   (39 654 prédits vs 39 848 mesurés) + mise en garde dans la note du tool + test discriminant.
   Leçon CONVENTIONS : un agrégat non étiqueté fabrique de faux diagnostics, y compris chez Claude.
 
+## ✅ Session 2026-08-05 (suite) — garde de convention chartData (PR #567)
+
+- [x] **`[MCP-CHARTDATA-SUM-GUARD]`** ✅ 2026-08-05 (PR #567 ; S, garde PRÉVENTIF) — aucun test ni
+  lint n'empêchait un outil MCP de fabriquer un « revenu de retraite » en ADDITIONNANT des champs de
+  flux `chartData`. Or le décaissement NON-ENREGISTRÉ et le LIQUIDE n'ont **aucun** champ de flux
+  (leçon MCP-RETIREMENT-VERDICT, mesuré : 3 923 $/mois identifiables contre une cible de 5 500 $ sur
+  un plan qui TIENT à 98 % en Monte-Carlo) → une telle somme SOUS-ESTIME structurellement.
+  - **0 offender au moment de l'écriture** (vérifié) : le garde existe pour que la correction de
+    MCP-RETIREMENT-VERDICT ne soit pas refaite à l'envers par quelqu'un qui trouvera « logique »
+    d'additionner ce que le moteur expose gentiment.
+  - Deux formes attrapées, choisies parce que ce sont celles par lesquelles l'erreur ARRIVE :
+    addition de deux flux DISTINCTS sur une ligne, et accumulation d'un flux (`reduce` / `+=`).
+    Volontairement PAS attrapé : la simple LECTURE d'un champ, qui est légitime.
+  - **Assertion anti-désarmement** : la liste des champs surveillés est explicite (le type ne
+    distingue pas un flux d'un solde), donc le test EXIGE que chaque nom existe encore dans
+    `ProjectionChartPoint` — un renommage moteur casse le test au lieu de vider le garde en silence.
+  - ⚠️ **Piège rencontré à l'écriture** : la première version cherchait l'échappatoire sur la ligne
+    STRIPPÉE de ses commentaires — donc jamais trouvée, donc toutes les exemptions ignorées en
+    silence. Attrapé par son propre test au premier lancement.
+
 ## ✅ Session 2026-08-05 (suite) — V7 sécurité serveur + sync (PR #566)
 
 - [x] **`[FINTABLE-SYNC-STALE-BASE]`** ✅ 2026-08-05 (PR #566 ; M, résiduel ASSUMÉ de #545) — une

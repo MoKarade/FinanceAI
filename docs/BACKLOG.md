@@ -55,9 +55,8 @@
   (⚠️ reste À CONFIRMER avec Marc, cf A_FAIRE_MOI — ne pas coder sans go).
 - [ ] **V7 — Sécurité serveur + sync** — **2/4 livrés** (PR #566) :
   ✅ `[FINTABLE-SYNC-STALE-BASE]` + ✅ `[MCP-CLOUDRUN-AUTH-HARDENING]` (archivés).
-  RESTE les deux GARDES, déprioritisés après la réorientation de Marc (2026-08-05, « vague suivante
-  pour régime épargne-étude ») : `[FISC-CONST-GUARD-V2]` (périmètre MESURÉ, voir sa fiche) +
-  `[MCP-CHARTDATA-SUM-GUARD]` (0 offender aujourd'hui → prévention pure, la moins urgente).
+  ✅ `[MCP-CHARTDATA-SUM-GUARD]` (PR #567). RESTE `[FISC-CONST-GUARD-V2]` (périmètre MESURÉ : 25
+  offenders, taille réelle M et non S — voir sa fiche).
 - [ ] **V7bis — RÉEE (demande explicite Marc 2026-08-05)** : `[FISC-REEE-GRANT-CLAWBACK]`, plan-first.
   ⚠️ Marc a tranché CONTRE la reco « différer » : des enfants sont donc au programme. Ne pas
   re-proposer de reporter.
@@ -262,15 +261,7 @@
   `tests/services/nwParity.test.ts` (aujourd'hui moteur↔computePresentNetWorth) aux surfaces
   UI/IA/PDF (KPI Accueil, useDerivedFinancials, financialSnapshot, pdfReport) sur persona endetté +
   propriétaire, convention équité immo EXPLICITE par surface.
-- [ ] **`[MCP-CHARTDATA-SUM-GUARD]`** (S, garde) — aucun test/lint de convention sur les sommes de
-  flux chartData dans `mcp/tools/*` (le décaissement non-enregistré/liquide n'a AUCUN champ
-  `Retrait*` — leçon MCP-RETIREMENT-VERDICT) → scan-garde qui interdit une somme de flux comme revenu.
-  ⚠️ **Vérifié le 2026-08-05 : 0 offender aujourd'hui** (grep `Retrait|RentalIncome|pension*` dans
-  `mcp/` hors specs = aucun résultat ; la correction MCP-RETIREMENT-VERDICT a bien tenu). C'est donc
-  de la PRÉVENTION pure — utile, mais l'item le moins urgent du lot. Conception retenue : liste
-  EXPLICITE des champs-flux + assertion anti-désarmement que chaque nom existe encore dans
-  `ProjectionChartPoint` (`services/projection/types.ts`), sinon un renommage moteur désarmerait
-  le garde en silence.
+
 - [ ] **`[FUZZ-ONETIME-FLOWS]`** (M, reste) — flux non exercés par le fuzz de conservation
   (`projection.fuzzConservation.test.ts:21-23`) : vente/gain locatif, équité négative, véhicule,
   héritage, REEE. Les couvrir (mesurer la couverture, pas la supposer).

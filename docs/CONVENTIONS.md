@@ -1493,6 +1493,11 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   le symptôme dont Marc s'est plaint. Une re-tentative UNIQUE qui ré-applique les mêmes payloads sur
   l'état frais coûte un aller-retour et sauve la journée ; rejouer le réseau serait disproportionné,
   et une boucle pilonnerait le Drive.
+- ⚠️ **Un garde qui strippe les commentaires ne peut plus y lire son échappatoire** (leçon
+  MCP-CHARTDATA-SUM-GUARD, 2026-08-05) : le marqueur d'exemption vit par nature dans un commentaire,
+  et le scan le supprimait AVANT de le chercher → toutes les exemptions ignorées, en silence. Chercher
+  l'échappatoire sur la ligne BRUTE, la violation sur la ligne strippée. Attrapé par son propre test
+  au premier lancement — ce qui est l'argument pour tester l'échappatoire, pas seulement la détection.
 - ⚠️ **Une quantité DÉRIVÉE n'est juste que si les quantités suivies sont COMPLÈTES** (leçon
   FISC-REEE-GRANT-CLAWBACK, tentée et REVERTÉE le 2026-08-05). J'ai écrit que les trois poches du
   RÉEE « somment au solde PAR CONSTRUCTION » — vrai de l'arithmétique, faux du système : le solde est

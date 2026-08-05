@@ -767,7 +767,10 @@ export function processDecemberTaxFiling(
     // ---- 3. Dividendes Non-Reg (30% du rendement) ----
     // Hypothèse de MODÈLE (pas une constante fiscale) : 30 % du rendement NonReg est versé en
     // dividendes ADMISSIBLES chaque année (réf FISCAL_REFERENCE §3). Majoration +38 % et CID
-    // (15,0198 % féd + 11,7 % QC du majoré) appliqués dans calculateDividendTax — source unique.
+    // appliqués dans calculateDividendTax — source unique. ⚠️ Le CID FÉDÉRAL y vaut 15,0198 %
+    // × (1 − 16,5 %) = 12,5415 % du majoré ([FISC-DTC-ABATEMENT-ORDER] : un crédit fédéral est
+    // soustrait AVANT l'abattement QC, donc sa valeur effective est réduite d'autant) ; le CID
+    // QC (11,7 %) n'est pas abattu.
     if (ctx.nonReg > 0) {
         const annualDiv = ctx.nonReg * (ctx.baseNonRegRate / 100) * NONREG_DIVIDEND_DISTRIBUTION_SHARE;
         // FA-3a : SRG exclu de l'assiette d'empilement (non imposable).

@@ -34,7 +34,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   La portion fédérale du crédit de dividendes était, elle, retranchée à 100 %. Mesuré :
   **+256 $/an** sur 7 500 $ de dividendes admissibles.
   **Effet combiné : ~1 072 $/an d'impôt en plus sur un profil à gros portefeuille non
-  enregistré** — ton patrimoine projeté baisse légèrement, mais l'ancien chiffre était optimiste.
+  enregistré.** ⚠️ **L'effet sur le patrimoine final n'est PAS uniformément négatif** — mesuré sur
+  un couple retraité à 800 k$ de non-enregistré, la stratégie AUTO paie 2 225 $ d'impôt de plus et
+  finit pourtant **+28 % plus riche**, et le classement des stratégies bascule (MELTDOWN passe de
+  1re à 3e, PRIO_REER prend la tête). La cause n'est pas fiscale : un garde-fou de dépenses
+  pré-existant (Guyton-Klinger) a un seuil « couteau » qu'un écart d'impôt minime suffit à faire
+  basculer, gelant l'indexation des dépenses une année de plus. Si ta recommandation de stratégie
+  change après cette mise à jour, c'est cela — pas une erreur de calcul.
 
 ### Corrections
 - **`[ENG-TAXDEC-NAN-GUARD]` + `[ENG-TAXDEC-FLOOR-INDEX]` — deux garde-fous du solde d'impôt

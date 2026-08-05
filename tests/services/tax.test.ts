@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  QC_FEDERAL_ABATEMENT_RATE,
   calculateFiscalReport,
   calculateGrossFromNet,
   calculateCeliRoom,
@@ -346,7 +347,7 @@ describe('calculateDividendTax', () => {
     // non remboursable fédéral, soustrait AVANT l'abattement (comme BPA et crédits d'âge), donc
     // sa valeur effective est réduite d'autant. Le retrancher à 100 % le sur-créditait.
     // DISCRIMINANT : sur le code d'avant, `cid` valait 3686,33 et cette assertion échoue.
-    const cid = 13800 * (0.150198 * (1 - 0.165) + 0.117);
+    const cid = 13800 * (0.150198 * (1 - QC_FEDERAL_ABATEMENT_RATE) + 0.117);
     const flat = calculateDividendTax(10000, 0.40, 'eligible');
     // Override : impôt brut progressif imposé (6000) → tax = 6000 − CID.
     const prog = calculateDividendTax(10000, 0.40, 'eligible', 6000);

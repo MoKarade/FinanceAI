@@ -733,7 +733,7 @@ export const firstCombinedBracketTopForYear = (year: number): number => {
 // Abattement du Québec : un résident du QC voit son impôt fédéral réduit de
 // 16,5 %. Ottawa « rétrocède » ce pourcentage à Québec (héritage des points
 // d'impôt de 1965). On l'applique partout où on calcule le fédéral net au QC.
-const QC_FEDERAL_ABATEMENT_RATE = 0.165;
+export const QC_FEDERAL_ABATEMENT_RATE = 0.165;
 
 export const getMarginalRate = (income: number, year: number = 2026, realDeflator: number = 1) => {
     // GUARD-NAN — un income NON FINI (NaN/Infinity, bug amont) ne matche aucun palier (`income <= upTo`

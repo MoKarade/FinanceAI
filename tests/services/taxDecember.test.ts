@@ -35,6 +35,7 @@ import {
     getDividendGrossUpRate,
     type FiscalReport,
     type AgeCreditOptions,
+    QC_FEDERAL_ABATEMENT_RATE,
 } from '../../utils/tax';
 
 const DECEMBER = 11; // currentMonthIndex de décembre
@@ -1375,7 +1376,7 @@ describe('processDecemberTaxFiling — FA-8 : assiette dividendes retraité incl
 
     it('EFFET réel PINNÉ — meltdown REER : impôt dividendes 6 351,66 $ (vs 1 750,96 $ sans retraits)', () => {
         // Retraité solo, pension 3 000 $/mois (36 000 $/an), nonReg 2 M$ à 5 % → dividende
-        // admissible 30 000 $ (majoré 41 400 $, CID 11 062 $). Avec 60 000 $ de retraits
+        // admissible 30 000 $ (majoré 41 400 $, CID 10 036 $ depuis [FISC-DTC-ABATEMENT-ORDER] — était 11 062 $). Avec 60 000 $ de retraits
         // REER/FERR, l'empilement démarre à 96 000 $ (marginal 36,12 %) au lieu de 36 000 $
         // (25,69 %) → bande nettement plus chère. accCapitalGainsYear = 0 → `.gains` isole
         // l'impôt de dividendes. Avant FA-8, les DEUX cas donnaient 1 750,96 $.
@@ -1489,7 +1490,7 @@ describe('[FISC-STACK-GAINS-DIV] empilement séquentiel gains → dividendes', (
         const grossedUp = annualDiv * getDividendGrossUpRate('eligible');
         const bandeTotale = t(revenu + taxableGains + grossedUp) - t(revenu);
         // Le bucket `gains` porte l'impôt des gains + l'impôt BRUT des dividendes MOINS le CID.
-        const cid = grossedUp * (0.150198 * (1 - 0.165) + 0.117);
+        const cid = grossedUp * (0.150198 * (1 - QC_FEDERAL_ABATEMENT_RATE) + 0.117);
         expect(r.newTaxCurrentYear.gains).toBeCloseTo(bandeTotale - cid, 0);
     });
 

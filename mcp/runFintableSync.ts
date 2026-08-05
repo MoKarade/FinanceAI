@@ -112,41 +112,83 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
             transactionsAfter: cutoverDateUsed,
         });
 
-        // Isolation PAR PAYLOAD : logique PARTAGÉE (`syncCore`) — voir son en-tête pour les deux
-        // findings de panel qu'elle porte (rejet légitime qui avortait toute la passe ; ordre des
-        // payloads qui EST le contrat de `applyCashBalance`).
-        const applied = applyPayloadsIsolated(state, payloads);
-        let nextState: AppState = applied.nextState;
-        const { transactionsAdded, cashUpdated, debtsUpdated, warnings: applyWarnings } = applied;
+        /**
+         * Applique les payloads sur une base DONNÉE puis écrit sous son jeton de version.
+         *
+         * ⚠️ [FINTABLE-SYNC-STALE-BASE] Le rapport est reconstruit à CHAQUE tentative, jamais
+         * réutilisé : ses compteurs (`transactionsAdded`, `warnings`) décrivent ce qui a réellement
+         * été appliqué SUR CETTE BASE. Les recycler après une relecture les rendrait faux — la
+         * déduplication de `applyDocument` ne compte pas les mêmes doublons face à un état différent.
+         */
+        const applyAndSave = async (base: AppState, baseVersion: typeof version): Promise<FintableSyncReport> => {
+            // Isolation PAR PAYLOAD : logique PARTAGÉE (`syncCore`) — voir son en-tête pour les deux
+            // findings de panel qu'elle porte (rejet légitime qui avortait toute la passe ; ordre des
+            // payloads qui EST le contrat de `applyCashBalance`).
+            const applied = applyPayloadsIsolated(base, payloads);
+            const { transactionsAdded, cashUpdated, debtsUpdated, warnings: applyWarnings } = applied;
 
-        const report: FintableSyncReport = {
-            at: Date.now(),
-            cutoverDateUsed,
-            accountsSeen: snapshot.accounts.length,
-            accountsWithoutRole: mapReport.accountsWithoutRole.length,
-            transactionsAdded,
-            transfersDetected: mapReport.transferPairs.length,
-            cashUpdated,
-            debtsUpdated,
-            investmentReferenceCount: mapReport.investmentBalances.length,
-            warnings: [...preflightWarnings, ...mapReport.warnings, ...applyWarnings],
-            error: null,
-        };
-        // [FINTABLE-6] Les soldes courtier étaient CALCULÉS par le mapper puis JETÉS (seul un
-        // compteur survivait dans le rapport) — une donnée produite sans consommateur, exactement la
-        // classe [[TX-DUPLICATES]] « une machinerie sans alimentation », à l'envers. On les persiste
-        // maintenant : ils font autorité sur le total des comptes de placement (choix Marc).
-        // Écrits même si la liste est VIDE : une liste vide signifie « le courtier n'a rien dit
-        // d'exploitable cette passe », ce qui doit EFFACER une valeur d'hier devenue fausse plutôt
-        // que la laisser traîner (une autorité périmée est pire qu'une absence assumée).
-        nextState = {
-            ...nextState,
-            fintableSyncReport: report,
-            fintableBrokerBalances: toPersistableBrokerBalances(mapReport.investmentBalances, report.at),
+            const report: FintableSyncReport = {
+                at: Date.now(),
+                cutoverDateUsed,
+                accountsSeen: snapshot.accounts.length,
+                accountsWithoutRole: mapReport.accountsWithoutRole.length,
+                transactionsAdded,
+                transfersDetected: mapReport.transferPairs.length,
+                cashUpdated,
+                debtsUpdated,
+                investmentReferenceCount: mapReport.investmentBalances.length,
+                warnings: [...preflightWarnings, ...mapReport.warnings, ...applyWarnings],
+                error: null,
+            };
+            // [FINTABLE-6] Les soldes courtier étaient CALCULÉS par le mapper puis JETÉS (seul un
+            // compteur survivait dans le rapport) — une donnée produite sans consommateur, exactement
+            // la classe [[TX-DUPLICATES]] « une machinerie sans alimentation », à l'envers. On les
+            // persiste maintenant : ils font autorité sur le total des comptes de placement (choix
+            // Marc). Écrits même si la liste est VIDE : une liste vide signifie « le courtier n'a
+            // rien dit d'exploitable cette passe », ce qui doit EFFACER une valeur d'hier devenue
+            // fausse plutôt que la laisser traîner (une autorité périmée est pire qu'une absence).
+            await store.save({
+                ...applied.nextState,
+                fintableSyncReport: report,
+                fintableBrokerBalances: toPersistableBrokerBalances(mapReport.investmentBalances, report.at),
+            }, baseVersion);
+            return report;
         };
 
-        await store.save(nextState, version);
-        return report;
+        try {
+            return await applyAndSave(state, version);
+        } catch (saveErr) {
+            if (!isStateConflictError(saveErr)) throw saveErr;
+            // ⚠️ [FINTABLE-SYNC-STALE-BASE] L'app a poussé pendant notre fenêtre réseau. Rien n'a été
+            // écrasé (c'est tout l'intérêt de l'OCC), mais la passe ENTIÈRE était jetée : sur un cron
+            // quotidien, ça coûte une journée de fraîcheur — exactement le symptôme que Marc a vécu
+            // (« aucune update depuis 5 jours »). Une seule re-tentative suffit : on RE-APPLIQUE les
+            // mêmes payloads sur l'état FRAIS (donc en tenant compte de ce que l'app vient d'écrire,
+            // la déduplication et `computeStartingCash` voyant la nouvelle base) au lieu de rejouer
+            // tout le réseau. Une 2ᵉ collision de suite reste transitoire → laissée au prochain tick,
+            // plutôt qu'une boucle qui pourrait pilonner le Drive.
+            const retryBase = await store.getWithVersion();
+            try {
+                return await applyAndSave(retryBase.state, retryBase.version);
+            } catch (retryErr) {
+                // ⚠️ [finding silent-failure-hunter, PR #566] Deux collisions D'AFFILÉE ne se
+                // distinguaient pas d'une collision isolée : dans les deux cas l'erreur remontait
+                // sans une ligne de trace. Or « une collision par jour » (deux crons mal
+                // désynchronisés, un onglet qui écrit en boucle) est un problème SYSTÉMIQUE que
+                // seule la répétition révèle — et que [FINTABLE-STALE-ALERT] ne diagnostiquerait
+                // qu'indirectement, par péremption du vieux rapport. On trace sans changer le
+                // comportement : toujours pas de rapport d'échec écrit (ce n'est pas une panne).
+                if (isStateConflictError(retryErr)) {
+                    logError({
+                        source: 'storage', severity: 'warning',
+                        message: '[FINTABLE-3] DEUX conflits OCC consécutifs — collision récurrente ?'
+                            + ' La passe est abandonnée, le prochain tick réessaiera.',
+                        error: retryErr instanceof Error ? retryErr : new Error(String(retryErr)),
+                    });
+                }
+                throw retryErr;
+            }
+        }
     } catch (err) {
         if (isStateConflictError(err)) {
             // Transitoire (l'app a poussé entre-temps) : rien d'écrasé, le prochain tick réessaie.

@@ -1473,6 +1473,79 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
 - ⚠️ **Les dettes du moteur n'ont PAS de date de début** (elles sont servies dès le mois 0, `projection.ts` §dettes) :
   injecter une dette pour un événement FUTUR fausse le patrimoine AVANT l'événement (mesuré −28 k$ quatre ans trop tôt)
   → rejeter/borner le cas (cf what-if financement différé) tant que `[MCP-WHATIF-DATED-DEBT]` n'est pas fait.
+- ⚠️ **Un helper qui laisse l'APPELANT choisir la BASE d'un diff finit avec la mauvaise base**
+  (leçon FINTABLE-SYNC-STALE-BASE, 2026-08-05). `referenceDeltaPatch(base, next)` était exposé aux
+  appelants ; les DEUX (carte Réglages et sync auto) passaient l'état capturé AVANT le fetch réseau,
+  donc une saisie manuelle faite pendant les quelques secondes de réseau était réécrite et perdue en
+  silence. Le commentaire du helper affirmait pourtant qu'« une modification concurrente n'est pas
+  écrasée » — vrai pour les clés NON touchées, faux pour celles que la passe réécrit justement
+  (`transactions`). **Correctif structurel, pas vigilant** : rendre le patch DÉJÀ calculé, depuis le
+  seul endroit où la base est connue sans ambiguïté (juste après l'application). La faute cesse
+  d'être exprimable dans le type. Généralisation : quand un contrat offre deux façons de faire dont
+  une est fausse, en retirer une vaut mieux que documenter laquelle choisir.
+- ⚠️ **Un verrou « une seule passe à la fois » ne protège PAS de l'UTILISATEUR** (même leçon). Le
+  mutex de sync empêchait deux passes concurrentes et avait été validé comme tel par un panel — il
+  laissait entièrement ouverte la course passe ↔ édition manuelle. Nommer ce contre quoi un verrou
+  protège, et ce contre quoi il ne protège pas, fait partie du verrou.
+- ⚠️ **Un abandon sur conflit OCC n'est « sûr » que côté intégrité — il a un COÛT de fraîcheur**
+  (même leçon). Le cron Fintable jetait toute la passe sur collision : rien de corrompu (l'OCC fait
+  son travail), mais sur une cadence quotidienne, une collision = une journée de retard, exactement
+  le symptôme dont Marc s'est plaint. Une re-tentative UNIQUE qui ré-applique les mêmes payloads sur
+  l'état frais coûte un aller-retour et sauve la journée ; rejouer le réseau serait disproportionné,
+  et une boucle pilonnerait le Drive.
+- ⚠️ **Une quantité DÉRIVÉE n'est juste que si les quantités suivies sont COMPLÈTES** (leçon
+  FISC-REEE-GRANT-CLAWBACK, tentée et REVERTÉE le 2026-08-05). J'ai écrit que les trois poches du
+  RÉEE « somment au solde PAR CONSTRUCTION » — vrai de l'arithmétique, faux du système : le solde est
+  aussi alimenté par des chemins que les compteurs n'observent pas (solde d'OUVERTURE lu depuis les
+  avoirs, `reee *= keep` au divorce, choc de marché). Tout ce qu'ils ne voient pas tombe dans la
+  poche dérivée — ici la poche IMPOSABLE — donc un RÉEE existant se faisait imposer à ~70 %
+  (**mesuré −31 193 $ à −59 025 $** selon la fixture). Avant de dériver, énumérer TOUS les
+  producteurs du total, pas seulement ceux qu'on ajoute soi-même.
+- ⚠️ **Un compteur PAR ENTITÉ posé sur un solde MUTUALISÉ est un bug qui attend** (même leçon) :
+  `_childReee` est un solde MÉNAGE unique, mais les poches étaient par enfant — la fermeture du
+  premier enfant remettait le solde global à zéro, liquidant et imposant l'argent du cadet
+  (**mesuré +7 890 $ d'impôt fantôme**). Vérifier la granularité du SOLDE avant de choisir celle des
+  compteurs.
+- ⚠️ **Reprocher un défaut à l'ancien code ne vaccine pas contre lui** (même leçon, la plus humble) :
+  le message de commit dénonçait « deux erreurs de sens opposé qui se masquent »… et le correctif en
+  introduisait deux nouvelles, mesurées par le panel — assiette MÉNAGE au lieu du souscripteur
+  (**+6 469 $**) contre revenu NON indexé dans un barème indexé (**−2 614 $**). Le net avait l'air
+  raisonnable. Nommer une classe d'erreur, c'est se donner une checklist à s'appliquer à SOI.
+- ⚠️ **Un flux qui n'alimente AUCUN registre casse la conservation en silence** (même leçon) : le
+  remboursement des subventions n'existait que dans une chaîne de log → résiduel **−10 800 $** au
+  mois de fermeture. Corollaire mesuré et instructif : la face ENTRANTE ne l'était pas non plus,
+  dans l'ANCIEN code aussi (+125 $/mois) — l'ancien modèle créait donc 10 800 $ nets sans cause
+  visible, et personne ne l'avait vu parce que `moneyConservation` tourne avec `childGoals: []` et
+  que le fuzz exclut explicitement le RÉEE. **Un invariant qui n'exerce pas un domaine ne le protège
+  pas** : un gate vert sur 3 574 tests est un vert de COUVERTURE, pas de correction.
+- ⚠️ **Écrire un runbook qui s'appuie sur un signal que le code ne produit PAS** (leçon
+  MCP-CLOUDRUN-AUTH-HARDENING, panel PR #566) : le runbook de rotation de clé désignait « une
+  tentative suspecte dans les logs Cloud Run » comme déclencheur, alors que ni le blocage 429 ni le
+  refus 403 n'écrivaient la moindre ligne — la doc décrivait une capacité inexistante, et le seul
+  moment où on s'en serait aperçu est pendant un incident. Quand une doc dit « surveille X »,
+  vérifier dans le code que X est ÉMIS, pas seulement que la condition existe. Classe sœur de
+  « un commentaire qui affirme se vérifie ».
+- ⚠️ **Un plafond « N par fenêtre » devient `N × instances` dès qu'il vit en mémoire** (même panel) :
+  `deploy.sh` fixe `--max-instances 2`, donc les « 8 échecs / 15 min » annoncés valaient en réalité
+  16 sous scale-up. Le chiffre affiché dans une doc de sécurité doit intégrer la topologie de
+  déploiement, sinon il est faux — mesurer la config, pas seulement lire le code du limiteur.
+- ⚠️ **Un test de panne qui échoue TOUJOURS ne teste pas la re-tentative** (finding code-reviewer,
+  même panel, prouvé par INJECTION) : le test de conflit OCC existant faisait échouer `save` à
+  chaque appel, donc il ne distinguait pas « conflit puis succès » de « conflit permanent » — un
+  retry qui repassait la version PÉRIMÉE le laissait 100 % vert. Un chemin de RÉCUPÉRATION exige un
+  mock qui échoue puis RÉUSSIT ; sinon on teste l'abandon, pas la reprise.
+- ⚠️ **Un rate-limit PAR IP derrière un load balancer est une illusion de protection** (leçon
+  MCP-CLOUDRUN-AUTH-HARDENING, 2026-08-05) : `X-Forwarded-For` est en partie sous contrôle du
+  client, donc la clé se fait varier. Sur un service MONO-UTILISATEUR, un compteur GLOBAL est à la
+  fois plus strict et plus honnête. Et compter les **ÉCHECS** plutôt que les tentatives supprime le
+  compromis apparent « sécurité vs confort » : l'usage légitime ne consomme jamais de quota.
+- ⚠️ **Mesurer le périmètre d'un garde AVANT de l'écrire change sa taille estimée** (leçon
+  FISC-CONST-GUARD-V2, 2026-08-05) : le ticket disait « S, ajouter un scan ». Le scan des littéraux
+  inline en position arithmétique sur les 4 modules fiscaux rend **25 offenders**, mêlant de vrais
+  chiffres fiscaux en dur (`0.18` = plafond REER, âges 65/71/72) et des heuristiques de CONCEPTION
+  (`0.95` Guyton-Klinger) qu'il ne faut surtout PAS traiter comme fiscales. Le vrai travail est un
+  RATCHET + un tri qui alimente FISCAL_REFERENCE — donc M, pas S. Un garde écrit sans mesurer aurait
+  soit échoué d'emblée sur 25 lignes, soit été relâché jusqu'à ne plus rien attraper.
 - ⚠️ **Le décaissement NON-ENREGISTRÉ/liquide n'a AUCUN champ `Retrait*` dans chartData** (leçon MCP-RETIREMENT-VERDICT
   2026-07-14) : le moteur émet `RetraitREER`/`RetraitCELI`/`RentalIncome`, mais les ventes non-enregistrées et le liquide
   qui financent la retraite sont INVISIBLES en flux → toute « somme des revenus de retraite » depuis chartData SOUS-estime

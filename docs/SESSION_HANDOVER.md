@@ -4,6 +4,63 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-08-05 (suite 22) — RÉEE implémenté puis REVERTÉ (panel)
+> `[FISC-REEE-GRANT-CLAWBACK]` a été codé (3 poches dérivées), mesuré −20 021 $ sur une fixture de
+> fermeture… puis **RETIRÉ de la PR #566** après que DEUX panels indépendants l'aient mesuré **PIRE
+> que le bug** sur deux cas courants. Le bug d'origine reste RÉEL ; le ticket est rouvert dans
+> `BACKLOG.md` avec le périmètre désormais CHIFFRÉ — **ne pas repartir de zéro**.
+> - ⛔ **Solde d'ouverture** : poches à 0 → 100 % d'un RÉEE existant classé revenu imposable →
+>   **−31 193 $ à −59 025 $** mesurés. C'est l'erreur nº 2 que le commit prétendait corriger,
+>   réintroduite en plus grand.
+> - ⛔ **Multi-enfants** : `_childReee` est un solde MÉNAGE, les poches sont par enfant →
+>   **+7 890 $ d'impôt fantôme** sur le cadet.
+> - ⛔ **Conservation de flux** : `grantsRepaid` n'alimentait aucun registre → résiduel −10 800 $.
+> - ⚠️ Assiette ménage (+6 469 $) vs revenu non indexé (−2 614 $) : deux erreurs de sens opposé qui
+>   se masquent — exactement ce que le commit reprochait à l'ancien forfait.
+>
+> **Leçon centrale, portée dans CONVENTIONS** : un gate vert sur 3 574 tests était un vert de
+> COUVERTURE, pas de correction — `moneyConservation` tourne avec `childGoals: []` et le fuzz exclut
+> le RÉEE. Deux tests discriminants sont déjà identifiés pour la prochaine tentative.
+>
+> **PR #566 ne contient donc plus que V7** (sync + durcissement OAuth), qui avait passé son propre
+> panel (8 findings corrigés).
+
+> ## 🟢 Session 2026-08-05 (suite 21) — #565 MERGÉE + V7 (PR #566) + Marc tranche : RÉEE ensuite
+> **#565 mergée** (`3d666b0`, archivage). **V7 livrée à 2/4 (PR #566)** :
+> - `[FINTABLE-SYNC-STALE-BASE]` — la sync appliquait ses payloads sur un snapshot d'AVANT le
+>   fetch réseau : une saisie manuelle pendant la fenêtre était réécrite et **perdue en silence**.
+>   `runFintableBrowserSync` relit l'état (`getFreshState`) juste avant d'appliquer et rend un
+>   `statePatch` DÉJÀ calculé — l'appelant ne choisit plus la base, donc ne peut plus se tromper.
+>   Côté cron : re-tentative UNIQUE sur conflit OCC au lieu de jeter la passe (= une journée de
+>   fraîcheur récupérée). Test discriminant prouvé (échoue sur le code d'avant).
+> - `[MCP-CLOUDRUN-AUTH-HARDENING]` — `POST /oauth/authorize` plafonné à 8 ÉCHECS / 15 min
+>   (429 + `Retry-After`), compteur GLOBAL et non par IP (`X-Forwarded-For` est spoofable derrière
+>   le LB → une clé par IP serait une illusion). Un succès remet à zéro → Marc n'est jamais gêné.
+>   Runbook de rotation `FINANCEAI_OAUTH_SIGNING_KEY` écrit dans `mcp/README.md`.
+>
+> **Panel (code-reviewer + silent-failure + security-privacy) : 8 findings, TOUS corrigés dans la
+> même PR.** Le plus instructif était auto-infligé : mon runbook disait « surveille les logs » alors
+> que le blocage 429 et le refus 403 n'écrivaient AUCUNE ligne. Aussi : plafond réel `8 × max-instances`
+> (=16, `deploy.sh --max-instances 2`) corrigé dans la doc ; `curl` du runbook sans `--data ''`
+> (→ 411 au lieu de 401, faux négatif) ; test du chemin de SUCCÈS du retry OCC ajouté (l'ancien test
+> faisait échouer `save` à chaque appel, donc un retry à version périmée restait vert — prouvé par
+> injection) ; test de `getFreshState` qui lève ; rôles Fintable toujours lus pré-fetch, nommé en
+> commentaire au lieu de rester un résiduel silencieux.
+>
+> **⚠️ MARC A TRANCHÉ (2026-08-05) : « vague suivante pour régime épargne-étude »** →
+> `[FISC-REEE-GRANT-CLAWBACK]` est la PROCHAINE vague, **contre** la reco de différer. Des enfants
+> sont donc au programme : ne PAS re-proposer de reporter, ne pas ré-argumenter le 0 $ mesuré.
+> Plan-first (modélisation en 3 poches : capital / SCEE+IQEE / revenus accumulés ;
+> `childrenReee.ts:327` verse aujourd'hui 100 % du solde à la fermeture, les trackers de
+> subventions ne sont jamais décrémentés).
+>
+> **Restent de V7, déprioritisés avec leur périmètre MESURÉ** (fiches BACKLOG à jour) :
+> `[FISC-CONST-GUARD-V2]` — **25 offenders mesurés**, mêlant vrais chiffres fiscaux en dur
+> (`0.18` plafond REER, âges 65/71/72) et heuristiques de CONCEPTION (`0.95` Guyton-Klinger) à ne
+> PAS traiter comme fiscales ⇒ c'est un RATCHET + un tri, taille réelle **M et non S** ;
+> `[MCP-CHARTDATA-SUM-GUARD]` — **0 offender aujourd'hui** (vérifié), prévention pure, le moins
+> urgent du lot.
+
 > ## 🟢 Session 2026-08-05 (suite 20) — #564 MERGÉE + rattrapage d'archivage
 > **#564 mergée** (`191d5c0`). **6 items ARCHIVÉS** (retard rattrapé — ils étaient mergés sans
 > avoir été déplacés, exactement la dérive PM-STALE-BACKLOG que la règle interdit) :

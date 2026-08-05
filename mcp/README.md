@@ -189,6 +189,61 @@ node -e "console.log('SIGNING=' + require('crypto').randomBytes(48).toString('ba
 node -e "console.log('ACCESS='  + require('crypto').randomBytes(24).toString('base64url'))"
 ```
 
+### Plafond de tentatives sur `/oauth/authorize` (MCP-CLOUDRUN-AUTH-HARDENING)
+
+`POST /oauth/authorize` est la seule porte **devinable** du serveur : c'est le seul endroit qui
+compare une clé saisie à la main (`/oauth/token` exige un code signé HMAC). Il est donc plafonné
+à **8 échecs par 15 minutes**, après quoi il répond **429** avec un `Retry-After`.
+
+- On compte les **échecs**, jamais les succès → une autorisation réussie remet le compteur à zéro,
+  et ton usage normal ne consomme rien.
+- Le compteur est **global**, pas par IP : derrière le load balancer, `X-Forwarded-For` est en
+  partie sous contrôle du client, donc une clé par IP se contournerait. Sur un serveur
+  mono-utilisateur, un plafond global est plus strict *et* plus honnête.
+- **Limite assumée** : le compteur vit en mémoire, donc un cold-start Cloud Run le remet à zéro
+  (même compromis que le registre anti-rejeu `consumedJti`). Ça ralentit massivement une attaque
+  soutenue sans prétendre à une garantie distribuée.
+- ⚠️ **Le plafond RÉEL est `8 × max-instances`**, pas 8 : le compteur est par INSTANCE, et
+  `deploy.sh` fixe `--max-instances 2` → **jusqu'à 16 échecs / 15 min** si une pression suffisante
+  déclenche un scale-up. Facteur ×2, borné par `max-instances` (donc le brute-force reste
+  infaisable contre une clé de 24 octets aléatoires), mais l'annonce « 8 » serait fausse sans
+  cette note. Pour rendre le chiffre exact, passer ce service à `--max-instances 1` — légitime
+  pour un service mono-utilisateur, au prix d'une file d'attente si deux requêtes se croisent.
+
+### Runbook — rotation de `FINANCEAI_OAUTH_SIGNING_KEY` (kill-switch d'incident)
+
+**Quand** : clé de signature possiblement exposée (fuite de log, poste compromis, secret partagé
+par erreur), ou tentative d'accès suspecte dans les logs Cloud Run. Effet : **tous** les tokens
+d'accès, refresh tokens et codes d'autorisation émis deviennent invalides **immédiatement** —
+c'est le seul levier qui révoque tout d'un coup, puisque le serveur est sans état.
+
+**Impact** : claude.ai perd la connexion au connecteur et redemandera une autorisation (saisie de
+`FINANCEAI_ACCESS_KEY`). Aucune donnée financière n'est touchée — l'état vit dans le Drive.
+
+```bash
+# 1. Nouvelle clé (48 octets)
+NEW_KEY=$(node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))")
+
+# 2. Nouvelle VERSION du secret (ne jamais réutiliser une version : l'historique sert d'audit)
+printf '%s' "$NEW_KEY" | gcloud secrets versions add financeai-oauth-signing-key --data-file=-
+
+# 3. Redéployer pour que l'instance prenne la nouvelle version
+./mcp/deploy.sh
+
+# 4. Vérifier que l'ancienne autorisation est bien morte (401 attendu avec un ancien Bearer)
+# ⚠️ `--data ''` OBLIGATOIRE : le frontal Google refuse un POST sans Content-Length (411) AVANT
+# d'atteindre le serveur — sans lui, tu lirais un 411 et croirais à tort que le test n'a rien prouvé.
+curl -s -o /dev/null -w '%{http_code}\n' -X POST "$FINANCEAI_PUBLIC_URL/mcp" --data '' \
+  -H "Authorization: Bearer <ancien-token>"
+
+# 5. Désactiver l'ancienne version (après avoir confirmé que le nouveau flux marche)
+gcloud secrets versions disable <NUMÉRO_ANCIENNE_VERSION> --secret=financeai-oauth-signing-key
+```
+
+**Ensuite** : re-brancher le connecteur dans claude.ai (Réglages → Connecteurs → autoriser).
+Si l'incident touche aussi la porte elle-même, faire tourner `FINANCEAI_ACCESS_KEY` de la même
+façon — les deux clés sont indépendantes, et la rotation de l'une n'invalide pas l'autre.
+
 ## Hub perso — GET /hub/summary (HUB-01)
 
 Le serveur HTTP expose un résumé pour le dashboard du hub (`hubperso.com`), conforme au

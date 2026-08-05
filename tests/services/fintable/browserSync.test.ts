@@ -41,7 +41,7 @@ const account = (o: Record<string, unknown> = {}) => ({
 describe('runFintableBrowserSync — garanties de la passe', () => {
     it('jeton absent → rapport d\'échec explicite, AUCUN état rendu', async () => {
         const r = await runFintableBrowserSync(stateWith(), '  ', { now });
-        expect(r.nextState).toBeNull();
+        expect(r.statePatch).toBeNull();
         expect(r.report.error).toMatch(/[Jj]eton Fintable absent/);
         // Compteurs à 0 : sur un échec on ne fabrique aucune donnée (no-fake-data).
         expect(r.report.transactionsAdded).toBe(0);
@@ -55,7 +55,7 @@ describe('runFintableBrowserSync — garanties de la passe', () => {
         } as unknown as FintableClient;
 
         const r = await runFintableBrowserSync(stateWith(), 'jeton', { client, now });
-        expect(r.nextState).toBeNull(); // ← rien à écrire : l'appelant ne peut pas corrompre l'état
+        expect(r.statePatch).toBeNull(); // ← rien à écrire : l'appelant ne peut pas corrompre l'état
         expect(r.report.error).toContain('NETWORK');
         expect(r.report.error).toContain('panne réseau');
     });
@@ -73,14 +73,14 @@ describe('runFintableBrowserSync — garanties de la passe', () => {
         const r = await runFintableBrowserSync(stateWith({ fintableRoles: roles }), 'jeton', { client, now });
 
         expect(r.report.error).toBeNull();
-        expect(r.nextState).not.toBeNull();
+        expect(r.statePatch).not.toBeNull();
         expect(r.report.accountsSeen).toBe(2);
         expect(r.report.accountsWithoutRole).toBe(0);
-        expect(r.nextState?.fintableBrokerBalances).toEqual([
+        expect(r.statePatch?.fintableBrokerBalances).toEqual([
             { accountId: 'acc_2', label: 'Disnat', balanceCad: 136863.18, taxRegime: 'NON-ENREG', at: NOW },
         ]);
         // Le rapport voyage dans l'état → la carte de diagnostic affiche la même chose que le cron.
-        expect(r.nextState?.fintableSyncReport?.at).toBe(NOW);
+        expect(r.statePatch?.fintableSyncReport?.at).toBe(NOW);
     });
 
     it('compte SANS rôle → compté et signalé, jamais deviné', async () => {
@@ -91,7 +91,7 @@ describe('runFintableBrowserSync — garanties de la passe', () => {
         expect(r.report.accountsWithoutRole).toBe(1);
         expect(r.report.warnings.some((w) => w.includes('sans rôle'))).toBe(true);
         // Rien n'a été rangé d'office : aucun solde courtier, aucune dette.
-        expect(r.nextState?.fintableBrokerBalances).toEqual([]);
+        expect(r.statePatch?.fintableBrokerBalances).toEqual([]);
         expect(r.report.debtsUpdated).toEqual([]);
     });
 
@@ -105,6 +105,72 @@ describe('runFintableBrowserSync — garanties de la passe', () => {
 
         expect(r.report.cutoverDateUsed).toBe('2026-07-30');
         expect(r.report.warnings.some((w) => w.includes('FUTUR'))).toBe(true);
+    });
+
+    /**
+     * ⚠️ [FINTABLE-SYNC-STALE-BASE] Le résiduel ASSUMÉ de la PR #545, celui-ci fermé.
+     *
+     * La passe recevait son état AVANT le fetch réseau (plusieurs secondes) et bâtissait son patch
+     * dessus. Une saisie manuelle faite pendant cette fenêtre atterrissait dans le store mais pas
+     * dans le snapshot : le patch, qui touche justement `transactions`, réécrivait le tableau
+     * reconstruit à partir de la base amputée — la saisie DISPARAISSAIT. Le verrou de sync ne
+     * protège que contre une autre passe, jamais contre l'utilisateur.
+     *
+     * DISCRIMINANT : `getAllPages` (le fetch) mute l'état « vivant » pendant son await, exactement
+     * comme Marc qui tape une transaction pendant que ça tourne. Sur le code d'AVANT, `written` ne
+     * contient que la transaction Fintable ; ici on exige les DEUX.
+     */
+    it('[FINTABLE-SYNC-STALE-BASE] une saisie manuelle PENDANT le fetch survit à la passe', async () => {
+        const base = stateWith({ fintableRoles: { acc_1: { kind: 'cash' } } });
+        const manual = {
+            id: 999, date: '2026-07-29', payee: 'Saisie manuelle de Marc',
+            amount: -42, category: 'Autre', status: 'processed',
+        } as unknown as NonNullable<AppState['transactions']>[number];
+
+        // L'état « vivant » du store — ce que `getFreshState` relira au moment d'appliquer.
+        let live: AppState = base;
+
+        const client = {
+            get: vi.fn(async (path: string) => {
+                if (path.startsWith('/accounts')) return { data: [account()] };
+                return { data: [] };
+            }),
+            getAllPages: vi.fn(async () => {
+                // PENDANT le réseau : Marc ajoute une transaction à la main dans un autre onglet UI.
+                live = { ...live, transactions: [...(live.transactions ?? []), manual] } as AppState;
+                return [{
+                    id: 'ft_1', account_id: 'acc_1', date: '2026-07-30', amount: '-19.99',
+                    currency: 'CAD', description: 'ABONNEMENT FINTABLE', merchant: null, category: null,
+                }];
+            }),
+        } as unknown as FintableClient;
+
+        const r = await runFintableBrowserSync(base, 'jeton', { client, now, getFreshState: () => live });
+
+        expect(r.report.error).toBeNull();
+        expect(r.report.transactionsAdded).toBe(1);   // la passe a bien fait son travail…
+        const written = r.statePatch?.transactions;
+        expect(written, 'la passe doit réécrire `transactions` — sinon le test ne discrimine rien').toBeDefined();
+        // …ET la saisie manuelle est toujours là (elle était PERDUE sur le code d'avant).
+        expect(written?.some((t) => t.id === 999)).toBe(true);
+        expect(written?.some((t) => t.payee?.includes('ABONNEMENT FINTABLE'))).toBe(true);
+    });
+
+    /**
+     * [finding silent-failure-hunter, PR #566] `getFreshState` est fourni par l'appelant : rien ne
+     * garantit qu'il ne lève pas (store démonté, hydratation en cours). L'appel vit à l'INTÉRIEUR du
+     * grand `try`, donc une exception devient un rapport d'échec honnête plutôt qu'une rejection
+     * non gérée — mais aucun test ne le PROUVAIT, et un futur refactor pouvait le sortir du `try`
+     * sans que rien ne s'allume. Ce test verrouille la position de l'appel, pas seulement son effet.
+     */
+    it('`getFreshState` qui LÈVE → rapport d\'échec, jamais d\'état à moitié écrit', async () => {
+        const r = await runFintableBrowserSync(stateWith(), 'jeton', {
+            client: fakeClient([account()]), now,
+            getFreshState: () => { throw new Error('store indisponible'); },
+        });
+
+        expect(r.statePatch).toBeNull();               // ← l'appelant ne peut rien corrompre
+        expect(r.report.error).toContain('store indisponible');
     });
 
     it('une dette au rôle sans nom est ignorée sans faire échouer la passe', async () => {

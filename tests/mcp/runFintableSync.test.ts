@@ -107,6 +107,53 @@ describe('runFintableSync — gestion des pannes', () => {
         ).rejects.toThrow(StateConflictError);
     });
 
+    /**
+     * ⚠️ [FINTABLE-SYNC-STALE-BASE, finding code-reviewer PR #566] Le test de conflit ci-dessus fait
+     * échouer `save` À CHAQUE appel : il ne distingue donc PAS « conflit puis succès sur base
+     * fraîche » de « conflit permanent » — prouvé par injection, un retry qui repasserait la version
+     * PÉRIMÉE le laissait 100 % vert. Ce test-ci exerce le chemin de SUCCÈS de la re-tentative.
+     *
+     * DISCRIMINANT sur les deux erreurs possibles :
+     *   (a) mauvaise VERSION au retry → le store rejette encore → la passe échoue ;
+     *   (b) mauvaise BASE au retry → la transaction que l'app a poussée entre-temps DISPARAÎT de
+     *       l'état sauvegardé, ce qui est exactement la perte silencieuse que le ticket corrige.
+     */
+    it('conflit OCC puis SUCCÈS : la re-tentative écrit sur la base ET la version FRAÎCHES', async () => {
+        const stale = baseState({ transactions: [tx(1, '2026-07-01')] });
+        // Ce que l'app a poussé pendant notre fenêtre réseau — invisible de la base pré-fetch.
+        const fresh = baseState({ transactions: [tx(1, '2026-07-01'), tx(2, '2026-07-02')] });
+
+        let currentVersion = 1;
+        let reads = 0;
+        const saved: Array<{ state: AppState; version: number }> = [];
+        const store: StateStore = {
+            get: async () => (reads === 0 ? stale : fresh),
+            getWithVersion: async () => {
+                // 1re lecture = état pré-fetch (v1) ; après la collision, l'app a écrit → v2.
+                const out = reads === 0
+                    ? { state: stale, version: 1 }
+                    : { state: fresh, version: currentVersion };
+                reads++;
+                if (reads === 1) currentVersion = 2;
+                return out;
+            },
+            save: async (next, version) => {
+                if (version !== currentVersion) throw new StateConflictError('conflit');
+                saved.push({ state: next, version: version as number });
+                return { backupPath: '/backup' };
+            },
+            canWrite: true,
+        };
+
+        const report = await runFintableSync(store, { token: 't', roles: {}, client: makeFakeClient() });
+
+        expect(report.error).toBeNull();
+        expect(saved).toHaveLength(1);          // (a) une SEULE écriture effective
+        expect(saved[0].version).toBe(2);       // (b) portée par la version FRAÎCHE
+        // (c) la transaction poussée par l'app pendant la fenêtre a SURVÉCU.
+        expect(saved[0].state.transactions?.map((t) => t.id)).toEqual([1, 2]);
+    });
+
     it('une panne Fintable RÉELLE (AUTH) persiste un rapport d\'ÉCHEC puis relance l\'erreur d\'origine', async () => {
         const state = baseState({ transactions: [tx(1, '2026-07-01')] });
         const saved: AppState[] = [];

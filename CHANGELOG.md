@@ -20,7 +20,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   L'assistant voit désormais cette fraîcheur lui aussi et le signalera avant de commenter des
   montants potentiellement figés. Silencieux en mode démo et si l'import n'a jamais été configuré.
 
+### Sécurité
+- **`[MCP-CLOUDRUN-AUTH-HARDENING]` — la page d'autorisation du serveur MCP n'est plus
+  attaquable en boucle.** C'était le seul endroit où une clé se tape à la main, et rien ne limitait
+  le nombre d'essais : huit échecs en quinze minutes suffisent désormais à fermer la porte
+  temporairement. Une autorisation réussie remet le compteur à zéro, donc ton usage normal n'est
+  jamais gêné. Un mode d'emploi de rotation de la clé de signature (pour tout révoquer d'un coup en
+  cas d'incident) a été ajouté à `mcp/README.md`.
+
 ### Corrections money-critical
+- **`[FINTABLE-SYNC-STALE-BASE]` — une transaction saisie à la main pendant une synchronisation
+  n'est plus effacée.** La synchronisation bancaire met plusieurs secondes à interroger Fintable.
+  Jusqu'ici elle repartait de l'état du moment où tu as cliqué : si tu ajoutais une transaction ou
+  corrigeais un solde pendant ce temps, la synchronisation réécrivait la liste **sans** ta saisie,
+  qui disparaissait sans un mot. Elle relit désormais tes données juste avant d'écrire. Côté serveur
+  (la synchronisation automatique de nuit), une collision avec l'app faisait jeter la passe entière —
+  soit une journée de retard sur l'import ; elle réessaie maintenant une fois sur les données
+  fraîches au lieu de tout perdre.
 - **`[FISC-STACK-GAINS-DIV]` — les gains et les dividendes ne sont plus imposés « en parallèle ».**
   Les deux blocs empilaient chacun leur tranche à partir de ton revenu nu, si bien que la tranche
   commune était facturée DEUX FOIS au taux le plus bas — l'impôt de placement était donc

@@ -20,7 +20,6 @@ import { Card } from '../ui/Card';
 import { Icon } from '../ui/Icon';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { importWithRetry, isChunkLoadError } from '../../utils/lazyWithRetry';
-import { referenceDeltaPatch } from '../../services/fintable/applyStatePatch';
 import { acquireFintableSyncLock, releaseFintableSyncLock } from '../../services/fintable/autoSync';
 import { saveApiKeys } from '../../services/secureKeyStore';
 import { logError } from '../../services/errorLogger';
@@ -180,25 +179,30 @@ export const FintableSyncCard: React.FC = () => {
             );
             // L'état courant est relu au moment du clic (pas capturé au rendu) : une passe qui
             // écrirait par-dessus un état périmé perdrait ce qui a changé entre-temps.
+            // ⚠️ [FINTABLE-SYNC-STALE-BASE] Cette relecture-ci ne couvre que la fenêtre RENDU→CLIC.
+            // La fenêtre qui compte est CLIC→ÉCRITURE (le fetch réseau, plusieurs secondes) : c'est
+            // `getFreshState` qui la ferme, en relisant le store juste avant l'application.
             const current = useFinanceStore.getState() as unknown as AppState;
-            const { report: fresh, nextState } = await runFintableBrowserSync(current, token);
+            const { report: fresh, statePatch } = await runFintableBrowserSync(current, token, {
+                getFreshState: () => useFinanceStore.getState() as unknown as AppState,
+            });
             // [Finding security-privacy #545] Mode démo activé PENDANT le fetch → ne RIEN écrire
             // (de vraies données dans une session persona = l'inverse de PERSONA-PURGE).
             if (useFinanceStore.getState().isTestMode === true) {
                 setError('Mode démo activé pendant la synchronisation — rien n\'a été écrit.');
                 return;
             }
-            if (nextState === null) {
+            if (statePatch === null) {
                 // Échec : on écrit LE RAPPORT seul (pour que la carte de diagnostic le montre), et
-                // surtout AUCUN contenu — `nextState: null` signifie « rien d'exploitable ».
+                // surtout AUCUN contenu — `statePatch: null` signifie « rien d'exploitable ».
                 setAppState({ fintableSyncReport: fresh });
                 setError(fresh.error ?? 'La synchronisation a échoué.');
                 return;
             }
-            // Delta par IDENTITÉ DE RÉFÉRENCE — helper PARTAGÉ avec la sync auto quotidienne
-            // ([FINTABLE-7 Lot 3], `services/fintable/applyStatePatch.ts`, qui porte le pourquoi :
+            // Patch déjà réduit aux clés touchées, calculé contre la base RÉELLE de l'application
+            // (`services/fintable/applyStatePatch.ts` porte le pourquoi du delta par référence :
             // finding silent-failure PR #536, jamais de liste de clés à la main).
-            setAppState(referenceDeltaPatch(current, nextState));
+            setAppState(statePatch);
             setNotice(`Synchronisé : ${fresh.transactionsAdded} transaction(s) ajoutée(s).`);
         } catch (err) {
             setError(isChunkLoadError(err)

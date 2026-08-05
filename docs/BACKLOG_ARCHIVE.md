@@ -171,6 +171,44 @@ fichier:ligne). Verdicts appliqués à la refonte :
   (39 654 prédits vs 39 848 mesurés) + mise en garde dans la note du tool + test discriminant.
   Leçon CONVENTIONS : un agrégat non étiqueté fabrique de faux diagnostics, y compris chez Claude.
 
+## ✅ Session 2026-08-05 (suite) — V7 sécurité serveur + sync (PR #566)
+
+- [x] **`[FINTABLE-SYNC-STALE-BASE]`** ✅ 2026-08-05 (PR #566 ; M, résiduel ASSUMÉ de #545) — une
+  passe de sync appliquait ses payloads sur un snapshot capturé AVANT le fetch réseau (plusieurs
+  secondes). Une saisie manuelle faite pendant cette fenêtre atterrissait dans le store mais pas
+  dans le snapshot : le patch touchant `transactions`/`initialBalances` réécrivait un tableau
+  reconstruit sans elle → **saisie perdue en silence**. Le verrou de sync ne protégeait que contre
+  une autre PASSE, jamais contre l'utilisateur.
+  - **Navigateur** : `runFintableBrowserSync` relit l'état via `getFreshState` juste avant
+    `applyPayloadsIsolated`, et rend désormais un `statePatch` DÉJÀ calculé (au lieu d'un
+    `nextState` que l'appelant devait diffuser lui-même — les DEUX appelants prenaient la base
+    d'avant le réseau). La faute n'est plus exprimable dans le type.
+  - **Serveur** (`runFintableSync`) : sur conflit OCC, une re-tentative UNIQUE ré-applique les mêmes
+    payloads sur l'état frais au lieu de jeter toute la passe. Rien n'était corrompu (l'OCC faisait
+    son travail), mais sur un cron quotidien une collision coûtait une journée de fraîcheur —
+    exactement le symptôme vécu par Marc.
+  - **La bascule anti-doublon reste dérivée de l'état PRÉ-fetch, à dessein** : la vraie protection
+    est la déduplication par clé de `applyDocument` à l'application (donc contre la base fraîche) ;
+    re-dériver la bascule n'aurait fait que FILTRER des transactions légitimes en plus.
+  - Test DISCRIMINANT prouvé : le faux client mute l'état pendant son `await` (Marc qui tape pendant
+    que ça tourne) ; le test échoue sur le code d'avant, les 13 autres passent.
+- [x] **`[MCP-CLOUDRUN-AUTH-HARDENING]`** ✅ 2026-08-05 (PR #566 ; les 2 volets restants) —
+  `POST /oauth/authorize` était le seul endroit du serveur comparant une clé SAISIE (donc devinable :
+  `/oauth/token` exige un code signé HMAC), et il était sans plafond : `FINANCEAI_ACCESS_KEY` était
+  attaquable au débit que la machine servait. Livré : `mcp/auth/rateLimit.ts` (module pur, horloge
+  injectable) — **8 échecs / 15 min → 429 + `Retry-After`**.
+  - On compte les **ÉCHECS**, jamais les succès → une autorisation réussie remet le compteur à zéro
+    et l'usage légitime de Marc ne consomme aucun quota.
+  - Compteur **GLOBAL, pas par IP** : derrière le load balancer, `X-Forwarded-For` est en partie
+    sous contrôle du client, donc une clé par IP aurait donné une illusion de protection. Sur un
+    service mono-utilisateur, un plafond global est plus strict ET plus honnête.
+  - Limite ASSUMÉE et documentée : compteur en mémoire → un cold-start Cloud Run le remet à zéro
+    (même compromis que `consumedJti`). Ralentit massivement une attaque soutenue, ne prétend pas
+    à une garantie distribuée.
+  - **Runbook de rotation `FINANCEAI_OAUTH_SIGNING_KEY`** (kill-switch d'incident) écrit dans
+    `mcp/README.md` : nouvelle version de secret → redéploiement → vérification 401 sur l'ancien
+    Bearer → désactivation de l'ancienne version.
+
 ## ✅ Session 2026-08-05 — observabilité de l'import + V6 fiscal (PR #560 → #564)
 
 > Six items livrés dans la journée, chacun mergé avec gate vert et panel adversarial.

@@ -137,11 +137,11 @@
   ⚠️ NE PAS toucher aux entrées `design` (`0.95` Guyton-Klinger, `0.50` vente fictive, seuils de
   meltdown, `0.25` proxy d'inversion impôt→gain) : les « sourcer » serait une erreur de CATÉGORIE
   qui polluerait FISCAL_REFERENCE avec des choix de conception.
-- [ ] **V8 — Features demandées** — ✅ `[GOAL-DEADLINE-UI]` + ✅ `[PH4C-SAVINGS-NATURE]` (#569).
-  RESTENT : `[SUBS-TAB]` (⚠️ POSER LA QUESTION à Marc sur l'emplacement de la surface — onglet
-  propre / sous-onglet Transactions / carte Accueil — AVANT de coder) · `[CHAT-PAGE-CONTEXT-V2]`
-  (file explicite Marc) · `[ASSET-CURRENCY-BACKFILL]` (gaté : rien à coder tant que le log
-  `services/portfolio.ts:60-62` n'apparaît pas chez Marc).
+- [ ] **V8 — Features demandées** — ✅ `[GOAL-DEADLINE-UI]` + ✅ `[PH4C-SAVINGS-NATURE]` (#569) +
+  ✅ `[SUBS-TAB]` volet « ignorer » (#570). RESTENT : `[SUBS-TAB]` volet EMPLACEMENT (gaté sur
+  l'arbitrage de Marc) · `[CHAT-PAGE-CONTEXT-V2]` (file explicite Marc) ·
+  `[ASSET-CURRENCY-BACKFILL]` (gaté : rien à coder tant que le log `services/portfolio.ts:60-62`
+  n'apparaît pas chez Marc).
 - [ ] **V9 — Couverture moteur** (1-2 PR) : `[FUZZ-ONETIME-FLOWS]` + `[HARDEN-SNAPSHOT-RACE]`.
 - [ ] **V10 — A11y** (1-2 PR) : `[A11Y-INK500]` + `[FUT-TOUCH-TARGETS]` + `[D6-KBD]` +
   `[A11Y-BORDER-PROMINENCE-SWEEP]` + `[A11Y-FUTUR-MILESTONES-KEYBOARD]` (Marc : focusables).
@@ -399,8 +399,14 @@
 
 ## 📈 Investissements & historique
 
-- [ ] **`[SUBS-TAB]`** (M, reste) — détection/alertes abonnements livrées (TX-SUBSCRIPTIONS) ;
-  restent : surface dédiée (onglet ou sous-onglet) + flux « confirmer/ignorer » les nouveaux détectés.
+- [ ] **`[SUBS-TAB]` — volet EMPLACEMENT seulement** (S, ⚠️ EN ATTENTE d'une décision de Marc) —
+  le flux « confirmer / ignorer » est LIVRÉ (#570 : « Pas un abo » persistant + réaffichage).
+  ⚠️ **Constat 2026-08-05, à ne pas re-découvrir** : la surface EXISTE DÉJÀ dans `Planning.tsx`
+  (section `fixed`, « Abonnements & Récurrents ») avec alertes, totaux et épinglage — le ticket
+  parlait d'une « surface dédiée » comme s'il n'y en avait aucune. Marc a répondu « sous-onglet de
+  Transactions », mais la liste vit aujourd'hui dans **Budget**. Je lui ai signalé que déménager
+  n'apporte rien au manque réel (l'exclusion, maintenant livrée) → **attendre son arbitrage** avant
+  tout chantier de navigation. Ne PAS coder le déplacement sans go explicite.
 
 
 - [ ] **`[A11Y-INK500]`** (M, par lots — 115 occurrences restantes, ~37 fichiers) — migrer ink-500 →

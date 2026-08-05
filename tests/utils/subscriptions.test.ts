@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { subscriptionKey, isPinned, mergeSubscriptions, addSubscription, removeSubscription, monthlyEquivalent, totalMonthlyCost, totalYearlyCost, isAnnualSubscription, subscriptionDueLabel } from '../../utils/subscriptions';
+import { subscriptionKey, isPinned, mergeSubscriptions, addSubscription, removeSubscription, isDismissed, dismissSubscription, restoreSubscription, monthlyEquivalent, totalMonthlyCost, totalYearlyCost, isAnnualSubscription, subscriptionDueLabel } from '../../utils/subscriptions';
 import type { RecurringItem } from '../../types';
 
 const sub = (payee: string, over: Partial<RecurringItem> = {}): RecurringItem =>
@@ -141,5 +141,52 @@ describe('subscriptionDueLabel — [PLANNING-ANNUAL-CALENDAR] libellé d\'éché
     it('annuel à lastDate invalide → mois omis SANS double-espace (finding code-reviewer)', () => {
         expect(subscriptionDueLabel({ dayOfMonth: 15, averageAmount: 120, yearlyCost: 120, lastDate: 'pas-une-date' }))
             .toBe('Le 15 · annuel');
+    });
+});
+
+/**
+ * [SUBS-TAB] « Ce n'est pas un abonnement » — choix Marc 2026-08-05 : ne plus JAMAIS le proposer.
+ *
+ * Sans cette liste, un faux positif revenait à CHAQUE actualisation : épingler confirmait, mais
+ * rien ne permettait de REFUSER. C'est le manque réel du ticket, la surface d'affichage existant
+ * déjà dans `Planning`.
+ */
+describe('[SUBS-TAB] marchands écartés', () => {
+    it('écarter est idempotent et normalise le marchand', () => {
+        let keys = dismissSubscription([], { payee: '  Amazon ' });
+        expect(keys).toEqual(['amazon']);
+        keys = dismissSubscription(keys, { payee: 'AMAZON' }); // même marchand, autre graphie
+        expect(keys).toEqual(['amazon']);
+    });
+
+    it('un marchand écarté DISPARAÎT des détectés', () => {
+        // DISCRIMINANT : sans le 3ᵉ argument, `mergeSubscriptions` rendait les deux.
+        const merged = mergeSubscriptions([], [sub('Netflix'), sub('Amazon')], ['amazon']);
+        expect(merged.map(s => s.payee)).toEqual(['Netflix']);
+    });
+
+    it('un marchand écarté disparaît AUSSI des ÉPINGLÉS', () => {
+        // Le handler d'UI désépingle en même temps, mais le module ne s'y FIE pas : un état
+        // incohérent venant du Drive ou d'un backup se corrige ici plutôt que de ressusciter l'abo.
+        const merged = mergeSubscriptions([sub('Amazon')], [], ['amazon']);
+        expect(merged).toEqual([]);
+    });
+
+    it('restaurer rend le marchand de nouveau détectable', () => {
+        const keys = restoreSubscription(['amazon', 'netflix'], 'amazon');
+        expect(keys).toEqual(['netflix']);
+        expect(mergeSubscriptions([], [sub('Amazon')], keys).map(s => s.payee)).toEqual(['Amazon']);
+    });
+
+    it('isDismissed compare sur le marchand normalisé', () => {
+        expect(isDismissed(['amazon'], { payee: ' AMAZON ' })).toBe(true);
+        expect(isDismissed(['amazon'], { payee: 'Netflix' })).toBe(false);
+    });
+
+    it('RÉTROCOMPAT : sans liste d’écartés, le comportement est INCHANGÉ', () => {
+        // Champ additif optionnel → aucun bump de schéma, aucun appelant existant impacté.
+        const detected = [sub('Netflix'), sub('Amazon')];
+        expect(mergeSubscriptions([], detected)).toEqual(mergeSubscriptions([], detected, []));
+        expect(mergeSubscriptions([], detected).map(s => s.payee)).toEqual(['Netflix', 'Amazon']);
     });
 });

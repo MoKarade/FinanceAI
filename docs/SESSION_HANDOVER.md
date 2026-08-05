@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-05 (suite 26) — #569 MERGÉE + abonnements : pouvoir dire NON (PR #570)
+> `[SUBS-TAB]` volet « confirmer / ignorer » LIVRÉ. ⚠️ **Le ticket décrivait mal l'existant** : il
+> réclamait « une surface dédiée » alors qu'elle vit DÉJÀ dans `Planning.tsx` (section `fixed`),
+> avec alertes, totaux et épinglage. Le grep avant de coder a révélé le VRAI manque : rien ne
+> permettait de REFUSER un faux positif, qui revenait donc à chaque actualisation.
+> - Liste d'exclusion persistée `dismissedSubscriptions`, par CLÉ de marchand normalisée (pas par
+>   objet : les montants d'une occurrence bougent). Champ additif + 3ᵉ param à défaut `[]` → aucun
+>   bump de schéma, rétrocompat bit-identique (test dédié).
+> - Le filtre s'applique AUSSI aux épinglés, dans le module PUR : le handler désépingle en même
+>   temps, mais on ne s'y fie pas (un état incohérent venant du Drive se corrige au calcul).
+> - « Ne plus jamais » reste VISIBLE et réversible (`<details>` + « Réafficher ») — un refus
+>   invisible serait un piège.
+>
+> ⚠️ **EN ATTENTE de Marc** : il a répondu « sous-onglet de Transactions » pour l'emplacement, mais
+> la liste vit dans **Budget**. Je lui ai dit que déménager n'apporte rien au manque réel (livré) →
+> **ne PAS coder le déplacement sans go explicite**.
+>
+> **Reste V8** : `[CHAT-PAGE-CONTEXT-V2]` (file Marc) · `[ASSET-CURRENCY-BACKFILL]` (gaté sur un log).
+
 > ## 🟢 Session 2026-08-05 (suite 25) — #568 MERGÉE (V7 4/4) + V8 démarrée (PR #569)
 > **V7 TERMINÉE.** Deux items V8 livrés, même famille : une UI qui promet ce qu'elle ne peut tenir.
 > - `[GOAL-DEADLINE-UI]` — l'échéance pilote un décaissement réel et le MCP peut l'écrire, mais

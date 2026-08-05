@@ -15,7 +15,7 @@ import { showToast } from './ui/Toast';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { formatCAD, formatPercent } from '../utils/format';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { mergeSubscriptions, addSubscription, removeSubscription, isPinned, subscriptionKey, monthlyEquivalent, totalMonthlyCost, totalYearlyCost, isAnnualSubscription, subscriptionDueLabel } from '../utils/subscriptions';
+import { mergeSubscriptions, addSubscription, removeSubscription, isPinned, subscriptionKey, dismissSubscription, restoreSubscription, monthlyEquivalent, totalMonthlyCost, totalYearlyCost, isAnnualSubscription, subscriptionDueLabel } from '../utils/subscriptions';
 
 /** Icône ligne d'un abonnement selon le marchand (sobre, remplace les emoji). */
 const subIcon = (payee: string): IconName => {
@@ -30,6 +30,8 @@ const subIcon = (payee: string): IconName => {
 
 // [PH4-F] référence stable pour le fallback (évite une nouvelle [] à chaque render → recompute du useMemo).
 const EMPTY_SUBS: RecurringItem[] = [];
+/** [SUBS-TAB] Référence stable — même raison que EMPTY_SUBS (évite un re-render par tick). */
+const EMPTY_DISMISSED: string[] = [];
 
 interface PlanningProps {
     transactions: Transaction[];
@@ -55,6 +57,9 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
     const [newGoal, setNewGoal] = useState<Partial<SavingsGoal>>({ name: '', targetAmount: 0, currentAmount: 0, deadline: '', icon: '💰' });
     // [PH4-F] abonnements ÉPINGLÉS (persistés dans le store) — survivent au reload sans re-détection IA.
     const pinnedSubs = useFinanceStore(s => s.subscriptions) ?? EMPTY_SUBS;
+    // [SUBS-TAB] Marchands explicitement écartés (« pas un abonnement ») — choix Marc : « ne plus
+    // jamais le proposer ». Sans ça, un faux positif revenait à CHAQUE actualisation.
+    const dismissedSubs = useFinanceStore(s => s.dismissedSubscriptions) ?? EMPTY_DISMISSED;
     const setAppState = useFinanceStore(s => s.setAppState);
 
     const heuristicSubs = useMemo(() => {
@@ -115,7 +120,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
     }, [transactions]);
 
     // [PH4-F] liste affichée = abos ÉPINGLÉS (persistés) + DÉTECTÉS non déjà épinglés (dédup par marchand).
-    const activeSubs = useMemo(() => mergeSubscriptions(pinnedSubs, aiSubs || heuristicSubs), [pinnedSubs, aiSubs, heuristicSubs]);
+    const activeSubs = useMemo(() => mergeSubscriptions(pinnedSubs, aiSubs || heuristicSubs, dismissedSubs), [pinnedSubs, aiSubs, heuristicSubs, dismissedSubs]);
 
     const handlePinSub = useCallback((sub: RecurringItem) => {
         if (isPinned(pinnedSubs, sub)) return;
@@ -125,6 +130,21 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
     const handleUnpinSub = useCallback((sub: RecurringItem) => {
         setAppState({ subscriptions: removeSubscription(pinnedSubs, subscriptionKey(sub)) });
     }, [pinnedSubs, setAppState]);
+
+    // [SUBS-TAB] « Ce n'est pas un abonnement » — définitif, mais RÉVERSIBLE (cf. le compteur
+    // d'écartés plus bas). On désépingle EN MÊME TEMPS : garder un épinglage sur un marchand écarté
+    // laisserait deux vérités contradictoires dans l'état persisté.
+    const handleDismissSub = useCallback((sub: RecurringItem) => {
+        setAppState({
+            dismissedSubscriptions: dismissSubscription(dismissedSubs, sub),
+            subscriptions: removeSubscription(pinnedSubs, subscriptionKey(sub)),
+        });
+        showToast(`« ${sub.payee} » ne sera plus proposé comme abonnement.`, 'success');
+    }, [dismissedSubs, pinnedSubs, setAppState]);
+
+    const handleRestoreSub = useCallback((key: string) => {
+        setAppState({ dismissedSubscriptions: restoreSubscription(dismissedSubs, key) });
+    }, [dismissedSubs, setAppState]);
     // [PLANNING-ANNUAL-SUB-12X] Totaux dérivés de `yearlyCost` (source de vérité annualisée) :
     // un abo ANNUEL ne compte plus ×12 dans le total mensuel.
     const { totalMonthly, totalYearly } = useMemo(() => ({
@@ -209,6 +229,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
         <div className="space-y-6 animate-fade-in pb-20">
             <ConfirmModal isOpen={!!confirmDeleteGoalId} onConfirm={doConfirmDeleteGoal} onCancel={() => setConfirmDeleteGoalId(null)} title="Supprimer l'objectif" message="Supprimer cet objectif d'épargne définitivement ?" confirmLabel="Supprimer" />
             {section !== 'goals' && (
+            <>
             <div className="flex flex-col md:flex-row justify-between items-end gap-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 p-6 rounded-2xl border border-white/10">
                 <div>
                     <h2 className="text-3xl font-bold text-white tracking-tight">{section === 'all' ? 'Planification & Charges Fixes' : 'Charges Fixes & Abonnements'}</h2>
@@ -220,6 +241,30 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                     <div className="text-right"><div className="text-tiny uppercase text-ink-400 font-bold">Coût Annuel</div><PrivateAmount as="div" className="text-2xl font-bold text-white">{formatCAD(totalYearly)}</PrivateAmount></div>
                 </div>
             </div>
+            {/* [SUBS-TAB] Les marchands ÉCARTÉS restent VISIBLES et restaurables.
+                ⚠️ Un « ne plus jamais » définitif ET invisible serait un piège : un mauvais clic
+                ferait disparaître un vrai abonnement sans recours, et Marc chercherait pourquoi
+                son total a baissé. Le refus est durable, pas irréversible. */}
+            {dismissedSubs.length > 0 && (
+                <details className="mb-3 text-tiny text-ink-400">
+                    <summary className="cursor-pointer touch-target focus-ring rounded inline-flex items-center">
+                        {dismissedSubs.length} marchand(s) écarté(s) — « pas un abonnement »
+                    </summary>
+                    <ul className="mt-2 space-y-1">
+                        {dismissedSubs.map((key) => (
+                            <li key={key} className="flex items-center justify-between gap-2">
+                                <span className="text-ink-300 truncate">{key}</span>
+                                <button
+                                    onClick={() => handleRestoreSub(key)}
+                                    aria-label={`Réafficher ${key} dans les abonnements détectés`}
+                                    className="text-tiny text-ink-400 hover:text-primary px-2 py-1.5 rounded focus-ring"
+                                >Réafficher</button>
+                            </li>
+                        ))}
+                    </ul>
+                </details>
+            )}
+            </>
             )}
             <div className={`grid grid-cols-1 gap-6 ${section === 'all' ? 'xl:grid-cols-3' : section === 'fixed' ? 'xl:grid-cols-2' : 'xl:grid-cols-1'}`}>
                 {section !== 'goals' && (
@@ -270,6 +315,10 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                         ) : (
                                             <button onClick={() => handlePinSub(sub)} aria-label={`Épingler ${sub.payee}`} title="Épingler — le garder après actualisation" className="text-tiny text-ink-400 hover:text-primary px-2 py-1.5 rounded transition-all opacity-0 group-hover:opacity-100 focus:opacity-100">Épingler</button>
                                         )}
+                                        {/* [SUBS-TAB] Refuser un faux positif — sinon il revient à CHAQUE actualisation.
+                                            HORS du ternaire épinglé/non : refuser vaut dans les deux états (le handler
+                                            désépingle en même temps, pour ne pas laisser deux vérités contradictoires). */}
+                                        <button onClick={() => handleDismissSub(sub)} aria-label={`${sub.payee} n'est pas un abonnement`} title="Ce n'est pas un abonnement — ne plus le proposer" className="text-tiny text-ink-400 hover:text-danger-400 px-2 py-1.5 rounded transition-all opacity-0 group-hover:opacity-100 focus:opacity-100">Pas un abo</button>
                                         <div className="text-right"><PrivateAmount as="div" className="font-bold text-white">{formatCAD(monthlyEquivalent(sub))}</PrivateAmount><div className="text-tiny text-ink-400">/mois</div></div>
                                     </div>
                                 </div>

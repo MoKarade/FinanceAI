@@ -64,3 +64,11 @@ dist-mcp
 
 # [FINTABLE] Fichier local de rôles de comptes (contient des ids de comptes bancaires) — jamais versionné.
 .fintable-roles.json
+
+# Sondes de MESURE écrites par les agents de panel (financial-integrity, projection-validator…).
+# Elles vivent dans tests/ pour pouvoir importer le moteur et tourner sous vitest, mais ce sont des
+# instruments JETABLES : les committer ajouterait de faux tests permanents au dépôt, et les
+# supprimer pendant qu'un agent mesure casserait sa vérification en vol. Les ignorer résout les
+# deux. Convention de nommage à respecter par les agents : préfixe `__probe` ou `ztmp-`.
+tests/**/__probe*.test.ts
+tests/**/ztmp-*.test.ts

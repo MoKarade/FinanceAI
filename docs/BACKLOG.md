@@ -46,8 +46,13 @@
   mesuré 0 $ sur le profil de Marc**, cf ci-dessous) +
   `[FISC-GIS-COUPLE-RATE]` (table Service Canada requise) + `[FISC-LINE361-PERCONJOINT-REDUC]`
   (Annexe B d'abord) + `[FISC-FED-CREDITRATE-15]` (source ARC).
-- [ ] **V6 — Fiscal non gaté** (1 PR) : `[FISC-DTC-ABATEMENT-ORDER]` + `[FISC-STACK-GAINS-DIV]`
-  (même bloc taxDecember) + `[FISC-REEE-GRANT-CLAWBACK]` + `[FISC-TAXDEC-INCR]` (Marc : « fix »).
+- [ ] **V6 — Fiscal non gaté** : ~~`[FISC-DTC-ABATEMENT-ORDER]`~~ + ~~`[FISC-STACK-GAINS-DIV]`~~
+  ✅ #564 (archivés — CID validé contre les tables RQ/ARC : 40,11 % / 48,70 %). RESTE :
+  `[FISC-REEE-GRANT-CLAWBACK]` (⚠️ **mesuré 0 $ sur le profil de Marc** : `reee: 0`, aucun objectif
+  d'études → dormant, actif seulement s'il ajoute un enfant ; confirmé contre le code —
+  `childrenReee.ts:327` verse 100 % du solde, les trackers SCEE/IQEE existent mais ne sont jamais
+  décrémentés → modélisation en 3 poches nécessaire, plan-first) + `[FISC-TAXDEC-INCR]`
+  (⚠️ reste À CONFIRMER avec Marc, cf A_FAIRE_MOI — ne pas coder sans go).
 - [ ] **V7 — Sécurité serveur + sync** (1 PR) : `[MCP-CLOUDRUN-AUTH-HARDENING]` +
   `[MCP-CHARTDATA-SUM-GUARD]` + `[FINTABLE-SYNC-STALE-BASE]` + `[FISC-CONST-GUARD-V2]`.
 - [ ] **V8 — Features demandées** (2-3 PR) : `[SUBS-TAB]` · `[GOAL-DEADLINE-UI]` +
@@ -148,12 +153,6 @@
   COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la
   formule s'annule dès 15 888 $) ; test `tax.test.ts:968` VACUEUX. Mesuré : 0 $ vs 7 944 $/an à
   15 888 $ combiné. ⚠️ Exiger la table SC + corriger FISCAL_REFERENCE §6 + remplacer le test, même PR.
-- [x] **`[FISC-DTC-ABATEMENT-ORDER]`** ✅ 2026-08-05 (PR en cours ; S, MOYEN [CONFIRMÉ par lecture + mesure] — V6) — le CID fédéral est
-  soustrait APRÈS l'abattement QC 16,5 % (`taxDecember.ts:734-739` + `tax.ts:906-907`) alors que
-  BPA/âge sont avant → sur-crédit de 16,5 % du CID (+49 $/an profil Marc, +308 $ à 9 k$ div).
-- [x] **`[FISC-STACK-GAINS-DIV]`** ✅ 2026-08-05 (PR en cours ; S, MOYEN [CONFIRMÉ par lecture + mesure] — V6) — gains (`taxDecember.ts:703`)
-  et dividendes (`:737`) empilés CHACUN sur la même base → bande commune facturée 2× au taux bas
-  (mesuré : −1 346 $/an sur base 100k/gains 30k/div 15k). Mord un retraité à gros non-enregistré.
 - [ ] **`[FISC-REEE-GRANT-CLAWBACK]`** (S, [Probable] — V6) — à la fermeture du REEE,
   `liquidDelta += reeeNewBalance` verse 100 % du solde aux liquidités : les subventions SCEE/IQEE
   non utilisées (jusqu'à ~10 800 $/enfant) doivent être REMBOURSÉES au gouvernement → patrimoine
@@ -250,17 +249,6 @@
   `normalizeAppState`. Cause racine : `registryParity.test.ts:104-113` UNIDIRECTIONNEL (n'itère que
   sur mcpDefaults). Fix : +4 champs (`: undefined`) + test bidirectionnel.
 
-- [x] **`[FINTABLE-STALE-ALERT]`** ✅ 2026-08-05 (PR en cours) — l'import gelé est désormais VISIBLE.
-  Module PUR partagé `services/fintable/syncHealth.ts` (`computeSyncHealth` : ok/stale/error/never),
-  consommé par l'UI **et** le MCP (source unique — la divergence app/MCP est précisément ce qui a
-  produit [MCP-NETINCOME-MISLEADING] le même jour). Seuil de gel **ADAPTATIF** dérivé de la cadence
-  réelle (médiane des écarts entre jours d'activité × 3, borné 3–14 j) : ⚠️ un seuil FIXE de 7 j
-  n'aurait alerté Marc qu'à J+8 alors qu'il a constaté le gel à J+5 — mesuré, l'alerte serait
-  arrivée APRÈS lui. Sur son profil (activité quotidienne) le seuil tombe à 3 j → alerte à J+4.
-  Livré : bannière Accueil `SyncStaleBanner` (silencieuse en mode démo et si l'import n'a JAMAIS
-  été configuré — on alerte sur une CHUTE, pas sur une absence) + `syncHealth` exposé dans
-  `get_financial_overview` (ce qui manquait pour diagnostiquer à distance le 2026-08-05).
-  14 tests dont le REJEU de l'incident (passe « réussie » + 0 transaction = le vert trompeur).
 - [ ] **`[FINTABLE-SOURCE-TAG]`** (M, ÉLEVÉ — finding #1 panel #561, LIMITE CONNUE de
   `[FINTABLE-STALE-ALERT]`) — `computeSyncHealth` compte TOUTES les transactions sans distinguer
   leur provenance (`Transaction.status` ne dit pas « Fintable » vs « CSV »). Chemin réel et
@@ -302,17 +290,6 @@
   mesuré −3 088 $/an (fixture 98,4 k$, le moteur « perd » du net) à +7 338 $/an (fixture 240 k$,
   il en « crée »). Documenté FISCAL_REFERENCE §9 (biais a). Piste : afficher l'écart net saisi vs
   net modélisé dans TaxCenter (diagnostic), ou réconcilier via un facteur calibré au boot.
-- [x] **`[ENG-TAXDEC-FLOOR-INDEX]`** ✅ 2026-08-05 (PR en cours ; S, MOYEN, pré-existant — panel #558) — le plancher
-  `-100 000 $` du solde d'avril est NOMINAL et jamais indexé alors que le flux l'est → à 30 ans
-  (facteur 1,81) le seuil réel effectif tombe à ~−55 k$ ; la retenue 100 % fait mordre le clamp
-  dès ~600 k$ de brut + grosses déductions (mesuré). La troncature est maintenant JOURNALISÉE
-  (#558) ; reste à indexer le plancher sur `ctx.inflationFactor` (les 2 sites, actif + retraité).
-- [x] **`[ENG-TAXDEC-NAN-GUARD]`** ✅ 2026-08-05 (PR en cours ; S, résiduel panel #558, pré-existant) — `taxDecember.ts` : le
-  clamp `Math.max(-100000, x)` du solde d'avril ACTIF ne protège pas contre NaN
-  (`Math.max(-100000, NaN) === NaN`, prouvé par exécution avec `inflationFactor = 0`) → un NaN
-  amont traverse jusqu'à FluxImpots/totalTaxesPaid sans trace, malgré l'apparence de garde-fou.
-  La branche RETRAITÉE a déjà `Number.isFinite(reconciliation)` — appliquer le même pattern
-  (`gisMonthlySafe` l.365) au site actif + log. Non introduit par #558 (structure préexistante).
 - [ ] **`[SDK-IMPORT-TIMEOUT]`** (S, résiduel panel #547, non bloquant) — le chargement du chunk SDK
   (`services/claude.ts:157`) n'est couvert par aucun timeout : un `import()` qui stalle sans rejeter
   pend indéfiniment (borné : 1er usage par session). Fix : course import() vs timer 8-10 s dans

@@ -23,6 +23,22 @@
 > réfutée (l'import reprend sans toucher à l'abonnement). A_FAIRE_MOI : les 2 actions Fintable de
 > Marc sont cochées, plus rien ne l'attend sur ce sujet.
 >
+> **Panel #561 (2 agents) : NO-GO levé, 6 findings traités.** silent-failure : #2 rapport non écrit
+> sur exception dans handleSync (prérequis de la feature cassé) → CORRIGÉ ; #1 provenance des
+> transactions → ticket `[FINTABLE-SOURCE-TAG]` + LIMITE documentée dans le module (un CSV manuel
+> peut masquer un connecteur mort — même vert trompeur, autre porte). code-reviewer : #1
+> `Math.max(...)` crashait > 125 k transactions et tombait TOUT l'onglet → boucle ; #2 le plancher
+> de 3 j ne protégeait de RIEN (démonstration algébrique : les écarts entre jours sont ≥ 1 donc
+> ceil(médiane×3) ≥ 3 déjà) → **p90 × 2, plancher réel 4 j** ; #3 région live insérée avec son texte
+> = violation d'une convention MAISON (#245, WCAG 4.1.3) que ProjectionStaleBanner respectait sur
+> la même page → montage permanent ; #4 la cadence affichée était re-dérivée du seuil clampé
+> (chiffre inventé, répété par l'assistant via MCP) → `observedGapDays` réel exposé. 18 tests.
+> **Demande Marc 15:33** : « avec la version payante je devrai pouvoir importer beaucoup plus de
+> transactions » → ⚠️ vérifié dans le code : `deriveCutoverDate` fixe la bascule à la transaction la
+> plus RÉCENTE, donc **aucun historique ancien ne rentrerait**, plan payant ou pas. Ticket
+> `[FINTABLE-BACKFILL-HISTORY]` créé (passe de backfill séparée + dédoublonnage via
+> `findDuplicateGroups`, déjà écrit et testé). Money-critical : jamais d'écriture sans dédoublonnage.
+>
 > ## 🟢 Session 2026-08-05 (suite 18) — #559 MERGÉE (`bbd6bda`) + MCP-NETINCOME-MISLEADING (PR en cours)
 > **#559 mergée** (jeton Fintable persisté ; archivée). **En cours : `[MCP-NETINCOME-MISLEADING]`**
 > — né d'une ERREUR que j'ai commise et que MARC m'a fait re-vérifier : j'avais comparé le

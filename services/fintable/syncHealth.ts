@@ -145,8 +145,11 @@ export function computeStaleThresholdDays(
 /**
  * Évalue la santé de l'import à l'instant `nowMs`.
  *
- * @param transactions Transactions connues (toutes sources confondues : une saisie manuelle
- *   récente prouve autant qu'un import que les données ne sont pas figées).
+ * @param transactions Transactions connues, TOUTES SOURCES CONFONDUES.
+ *   ⚠️ **LIMITE CONNUE** (finding #1 panel #561, ticket `[FINTABLE-SOURCE-TAG]`) : faute d'un champ
+ *   de provenance sur `Transaction`, un import CSV manuel récent rend l'import Fintable « frais »
+ *   alors qu'il peut être mort — le même vert trompeur que l'incident, par une autre porte. Ce
+ *   n'est PAS un compromis tranché, c'est un angle mort assumé en attendant le tag de source.
  * @param report Dernier rapport de passe, ou `undefined` si aucune passe n'a jamais tourné.
  */
 export function computeSyncHealth(

@@ -205,6 +205,22 @@ export const FintableSyncCard: React.FC = () => {
                 ? 'Nouvelle version de l\'app disponible — recharge la page puis réessaie.'
                 : 'La synchronisation a échoué. Réessaie dans un moment.');
             logError({ source: 'ui', severity: 'error', message: '[FINTABLE-7] Synchronisation manuelle échouée.' });
+            // [FINTABLE-STALE-ALERT, finding #2 panel #561] « Rapport TOUJOURS écrit » ne valait que
+            // pour la sync AUTO (autoSync.ts, finding #545) — pas ici. Or toute la détection de gel
+            // repose sur `fintableSyncReport` : sans cette écriture, une exception laissait le
+            // rapport figé sur l'ANCIEN succès, donc la bannière et le tool MCP ne voyaient JAMAIS
+            // la tentative ratée (seul un toast éphémère, perdu au rechargement). Gaté mode démo,
+            // comme l'auto : jamais d'écriture pendant un persona, même un simple rapport.
+            if (useFinanceStore.getState().isTestMode !== true) {
+                setAppState({
+                    fintableSyncReport: {
+                        at: Date.now(), cutoverDateUsed: null, accountsSeen: 0, accountsWithoutRole: 0,
+                        transactionsAdded: 0, transfersDetected: 0, cashUpdated: false, debtsUpdated: [],
+                        investmentReferenceCount: 0, warnings: [],
+                        error: err instanceof Error ? err.message : String(err),
+                    },
+                });
+            }
         } finally { releaseFintableSyncLock(); setBusy('idle'); }
     };
 
@@ -225,7 +241,8 @@ export const FintableSyncCard: React.FC = () => {
                     </div>
                 )}
 
-                <div>
+                {/* [FINTABLE-STALE-ALERT] Cible du deep-link de la bannière d'Accueil. */}
+                <div data-focus-section="fintable-sync">
                     <label htmlFor="fintable-token" className="block text-body text-ink-300 mb-1">
                         Jeton Fintable (lecture seule)
                     </label>

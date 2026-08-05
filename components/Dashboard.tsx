@@ -11,6 +11,7 @@ import { Transaction, Asset, BudgetCategory, RealEstateGoal, BudgetConfig, Child
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
+import { SyncStaleBanner } from './dashboard/SyncStaleBanner';
 import { Icon } from './ui/Icon';
 import { KPIStat } from './ui/KPIStat';
 import { StatGrid } from './ui/StatGrid';
@@ -452,6 +453,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             />
             {/* [PH2-c-2] — signal inter-onglets : dernier recalcul de projection échoué. */}
             <ProjectionStaleBanner />
+            {/* [FINTABLE-STALE-ALERT] — import bancaire figé ou en échec. Placé sur l'ACCUEIL et
+                pas seulement dans les Réglages : l'incident du 2026-08-05 a duré 5 jours parce que
+                la seule surface qui portait l'info était un écran qu'on ne visite pas. */}
+            <SyncStaleBanner />
 
             {/* Hero KPI strip — Phase D.8 : 5 KPIs incluant Active Income */}
             <StatGrid cols={5}>

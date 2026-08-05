@@ -238,6 +238,28 @@ describe('FintableSyncCard — trajet complet du jeton (findings panel #559)', (
         expect(logErrorMock).toHaveBeenCalled();       // trace durable dans Diagnostics
     });
 
+    it('finding #2 panel #561 — une EXCEPTION de sync écrit quand même le rapport (sinon le gel devient invisible)', async () => {
+        // Toute la détection [FINTABLE-STALE-ALERT] lit `fintableSyncReport`. Avant ce fix, une
+        // exception laissait le rapport figé sur l'ANCIEN succès : la bannière et le tool MCP ne
+        // voyaient jamais la tentative ratée (seul un toast éphémère, perdu au rechargement).
+        syncMock.mockRejectedValue(new Error('boom réseau'));
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Synchroniser maintenant/i }));
+        await waitFor(() => expect(
+            useFinanceStore.getState().fintableSyncReport?.error,
+        ).toContain('boom réseau'));
+        expect(useFinanceStore.getState().fintableSyncReport?.at).toBeGreaterThan(0);
+    });
+
+    it('finding #2 bis — en MODE DÉMO, l\'exception n\'écrit AUCUN rapport (jamais de trace persona)', async () => {
+        useFinanceStore.setState({ isTestMode: true, fintableSyncReport: undefined });
+        syncMock.mockRejectedValue(new Error('boom'));
+        render(<FintableSyncCard />);
+        // Le bouton est désactivé en démo : on prouve qu'aucun rapport n'apparaît par ce chemin.
+        expect(screen.getByRole('button', { name: /Synchroniser maintenant/i })).toBeDisabled();
+        expect(useFinanceStore.getState().fintableSyncReport).toBeUndefined();
+    });
+
     it('finding #3 — « Synchroniser maintenant » persiste AUSSI le jeton (chemin le plus sensible)', async () => {
         // Le commentaire « ceinture : idem handleTest » n'était prouvé que pour handleTest : un
         // refactor retirant l'appel dans le SEUL handleSync serait passé inaperçu — alors que c'est

@@ -7,7 +7,7 @@
 
 ---
 
-## FINTABLE — import GELÉ depuis le 2026-07-31 (remonté par Marc 2026-08-05, diagnostiqué par Claude)
+## ✅ FINTABLE — import GELÉ depuis le 2026-07-31 : RÉSOLU ET VÉRIFIÉ (2026-08-05)
 
 Constat mesuré côté serveur : **dernière transaction importée = 2026-07-31**, la veille de la fin
 de ton essai Fintable (2026-08-01) ; la sync Drive de l'app fonctionne, elle. Le cron serveur n'a
@@ -21,13 +21,13 @@ coffre chiffré) → perdu au premier rechargement → sync « jeton absent » e
 avec la fin d'essai (2026-08-01) était un LEURRE de timing. Depuis le fix, le jeton est sauvegardé
 comme les autres clés (coffre chiffré, au blur + avant Tester/Synchroniser, échec affiché).
 
-- [ ] **Après le déploiement : RE-COLLER ton jeton une fois** dans Réglages → carte Fintable
-  (l'ancien n'a jamais été sauvegardé, il n'existe plus nulle part), puis « Synchroniser
-  maintenant » — les 5 jours manquants seront rattrapés. Recharge la page pour vérifier que le
-  jeton est toujours là.
-- [ ] **Vérifier quand même ton PLAN sur fintable.io** (Settings → Billing) : l'essai expirait le
-  2026-08-01 et le palier gratuit a `can_sync: false` — si l'abonnement décidé le 2026-07-29 n'est
-  pas actif, l'import re-gèlera même avec le jeton sauvegardé.
+- [x] ✅ **Jeton re-collé — CONFIRMÉ PAR MARC 2026-08-05 15:03 UTC (« jeton marche »).** Vérifié
+  côté serveur dans la foulée : les 5 jours manquants sont RATTRAPÉS (11 transactions du 2026-07-31
+  au 2026-08-05 : loyer 1 600 $, Virgin Plus, épicerie, crédit de solidarité). Le fix
+  `[FINTABLE-TOKEN-PERSIST]` (#559) est donc validé EN CONDITIONS RÉELLES, pas seulement en test.
+- [x] ✅ **Plan fintable.io — implicitement validé** : l'import a repris et rapporte des
+  transactions, ce qui exige `can_sync: true`. L'hypothèse « fin d'essai » était bien un leurre de
+  timing (la vraie cause était le jeton non persisté). Rien à faire côté abonnement.
 
 ## FINTABLE — pourquoi aucune position ? (remonté par Claude 2026-07-29)
 - [x] **Forme de l'API fournie, jeton en place, dry-run RÉUSSI** — 6 comptes, 121 transactions lues.

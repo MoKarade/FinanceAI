@@ -9,6 +9,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased — « Impôt à vie » honnête] — 2026-08-01
 
 ### Corrections
+- **`[MCP-NETINCOME-MISLEADING]` — l'assistant ne confondra plus « revenu net » et « argent qui
+  rentre ».** Le champ `netIncome` de l'outil fiscal additionnait ton salaire net ET le rendement
+  estimé de tes placements (12 970 $/an chez toi) — un montant que tu n'encaisses jamais. Comparé à
+  tes vrais dépôts de paie, il fabriquait un écart de revenu fictif (ça m'a trompé moi-même le
+  2026-08-05 : j'ai signalé à tort un salaire surestimé de 12 800 $). Ajout de **`netSalaryIncome`
+  / `netSalaryMonthly`** = ce qui tombe vraiment au compte (brut − impôt − cotisations), vérifiable
+  contre ton relevé : 39 654 $ prédits vs 39 848 $ de dépôts réels sur 12 mois, soit 0,5 % d'écart.
+  La note de l'outil met désormais explicitement en garde.
 - **`[FINTABLE-TOKEN-PERSIST]` — ton jeton Fintable est maintenant SAUVEGARDÉ (incident réel
   2026-08-05).** Le jeton collé dans Réglages n'était écrit qu'en mémoire : au premier
   rechargement il disparaissait et l'import bancaire tournait « jeton absent » en silence —

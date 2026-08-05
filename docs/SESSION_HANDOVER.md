@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-05 (suite 18) — #559 MERGÉE (`bbd6bda`) + MCP-NETINCOME-MISLEADING (PR en cours)
+> **#559 mergée** (jeton Fintable persisté ; archivée). **En cours : `[MCP-NETINCOME-MISLEADING]`**
+> — né d'une ERREUR que j'ai commise et que MARC m'a fait re-vérifier : j'avais comparé le
+> `netIncome` du tool fiscal (qui inclut 12 970 $ de rendement de placement ESTIMÉ, non encaissé)
+> à ses dépôts de paie réels, et annoncé un salaire surestimé de 12 800 $/an — FAUX. Vrai écart :
+> 4 491 $/an, expliqué par la progression de ses paies (368→839 $/sem sur l'année) ; son 60 000 $
+> saisi est bon à 2,4 % près au rythme actuel (brut impliqué 58 568 $). Fix livré :
+> `netSalaryIncome`/`netSalaryMonthly` (brut − impôt − cotisations) = la trésorerie réelle,
+> validée à 0,5 % contre 12 mois de dépôts ; note du tool avertit explicitement ; test
+> discriminant. Leçon CONVENTIONS (agrégat non étiqueté → faux diagnostic, y compris chez Claude).
+> ⚠️ Mesuré aussi : `[FISC-SOLO-INVEST-SPLIT]` vaut **0 $** pour Marc (mode SOLO — le split 1/2
+> ne mord qu'en couple mono-salarié, 2 342 $/an) → NE PAS le prioriser ; `[FINTABLE-STALE-ALERT]`
+> passe devant (né de l'incident réel).
+>
 > ## 🟢 Session 2026-08-05 (suite 17) — #558 MERGÉE (`14e079a`) + FINTABLE-TOKEN-PERSIST (PR en cours)
 > **#558 mergée** (squash `14e079a`, auto-merge après panel 4 agents + findings traités).
 > **[FINTABLE-TOKEN-PERSIST] (PR en cours, priorité Marc)** : cause racine de l'import gelé

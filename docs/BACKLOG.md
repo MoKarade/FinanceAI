@@ -42,7 +42,8 @@
   qu'au consentement) + `[HIST-STORE-SIZE]` (downsample stocké > 365 j → 1 pt/semaine, idempotent,
   compose avec mergePriceHistories). `[PROFIL-SWITCH]` reste (questions posées à Marc — voir 🧭).
 - [ ] **V5 — Fiscal débloqué (Marc : Q1 ok, Q2 fix, Q3 go)** : ~~`[FISC-BRACKET-REALINDEX]`~~ ✅ #556 +
-  ~~`[FISC-WHT-92PCT]`~~ ✅ #558 (archivé) + `[FISC-SOLO-INVEST-SPLIT]` (Q3, SUIVANT) +
+  ~~`[FISC-WHT-92PCT]`~~ ✅ #558 (archivé) + `[FISC-SOLO-INVEST-SPLIT]` (Q3 — ⚠️ **DÉPRIORISÉ,
+  mesuré 0 $ sur le profil de Marc**, cf ci-dessous) +
   `[FISC-GIS-COUPLE-RATE]` (table Service Canada requise) + `[FISC-LINE361-PERCONJOINT-REDUC]`
   (Annexe B d'abord) + `[FISC-FED-CREDITRATE-15]` (source ARC).
 - [ ] **V6 — Fiscal non gaté** (1 PR) : `[FISC-DTC-ABATEMENT-ORDER]` + `[FISC-STACK-GAINS-DIV]`
@@ -141,6 +142,15 @@
   + MIROIR app `TaxCenter.tsx:173` : split 1/2 du revenu de placement. Ne mord QUE si un seul
   conjoint a un salaire (mesuré : −2 530 $/an) ; 0 $ si les deux. Fix par détention réelle (owner),
   app+MCP au même helper.
+  ⚠️ **RE-MESURÉ 2026-08-05 avant de coder (avec les VRAIES données de Marc) : impact 0,00 $** —
+  il est en mode SOLO (`coupleMode: false`, 1 user) donc `splitRatio = 1/1` et tout le revenu de
+  placement lui est déjà attribué. Le bug est réel mais DORMANT : 2 342 $/an de sous-imposition
+  sur une fixture couple mono-salarié (60 k$ + 0 $, addOn 12 970 $). ⚠️ Hypothèse RÉFUTÉE au
+  passage : je pensais l'app et le MCP divergents (le MCP `filter(g>0)` exclut le conjoint sans
+  salaire, l'app non) — mesuré IDENTIQUES, parce que la moitié du placement tombe sous le BPA et
+  ne produit aucun impôt. La divergence n'apparaîtrait qu'au-delà de ~670 k$ de non-enregistré.
+  → **Condition d'activation : bascule de Marc en mode couple.** Le levier existe déjà
+  (`Asset.owner` + `services/couple/netWorthByOwner.ts` `defaultOwner`), donc rien à préparer.
 - [ ] **`[FISC-LINE361-PERCONJOINT-REDUC]`** (M, [À vérifier] — V5) — réduction 18,75 % ligne 361
   appliquée par conjoint avec le revenu familial TOTAL (`taxDecember.ts:529` → `tax.ts:255`).
   Plafonné ~986 $/an, couple retraité 65+ seulement (0 $ Marc aujourd'hui). Lire l'Annexe B d'abord.
@@ -217,7 +227,10 @@
   `normalizeAppState`. Cause racine : `registryParity.test.ts:104-113` UNIDIRECTIONNEL (n'itère que
   sur mcpDefaults). Fix : +4 champs (`: undefined`) + test bidirectionnel.
 
-- [ ] **`[FINTABLE-STALE-ALERT]`** (S-M, découvert 2026-08-05 — incident réel : Marc a constaté
+- [ ] **`[FINTABLE-STALE-ALERT]`** (S-M, ⭐ **PROCHAIN** — priorité re-jugée 2026-08-05 : né d'un
+  incident RÉEL vécu par Marc, donc devant les items fiscaux dormants comme FISC-SOLO-INVEST-SPLIT
+  ; la cause racine du jeton est corrigée (#559) mais RIEN n'alerte encore si l'import regèle pour
+  une autre raison — plan Fintable, ré-auth Plaid…) — incident réel : Marc a constaté
   LUI-MÊME « aucune update depuis 5 jours », dernière transaction 2026-07-31 = veille de la fin
   d'essai Fintable, aucun canal ne l'a alerté) — la staleness d'import est INVISIBLE : (a) si
   Fintable gèle son feed bancaire (`can_sync: false` au palier gratuit) mais sert encore l'API,

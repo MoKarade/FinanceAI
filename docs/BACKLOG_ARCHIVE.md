@@ -160,6 +160,18 @@ fichier:ligne). Verdicts appliqués à la refonte :
   Tickets dérivés au vivant : [FISC-PENSION-CREDIT-REAL], [FISC-BRACKET-CPI-STRESS],
   [FISC-MARGINAL-SPACE].
 
+## ✅ Incident jeton Fintable (PR #559 `bbd6bda`, mergée 2026-08-05)
+
+- [x] **`[FINTABLE-TOKEN-PERSIST]`** ✅ (PR #559, cause racine trouvée par MARC) — le jeton Fintable
+  n'était écrit que dans le store MÉMOIRE, jamais dans le coffre chiffré → perdu au reload → import
+  bancaire gelé 5 jours, sync « jeton absent » en boucle, zéro alerte. Persistance `saveApiKeys` sur
+  TOUTES les sorties du champ (blur + `visibilitychange:hidden` + `pagehide` + démontage), canal
+  d'alerte SÉPARÉ (`persistError` + régions ARIA nommées) + `logError` durable, écritures
+  SÉRIALISÉES (le blob périmé pouvait gagner). 15 tests (7 nouveaux, discriminants).
+  ⚠️ Panel : NO-GO des 2 agents sur le premier jet (blur seul) — le fix violait la leçon qu'il
+  portait ; tout corrigé dans la PR. Méta-leçon aux CONVENTIONS. La piste « fin d'essai Fintable »
+  était un LEURRE de timing. Reste ouvert (distinct) : `[FINTABLE-STALE-ALERT]`.
+
 ## ✅ V5d — retenue employeur 100 % (PR #558 `14e079a`, mergée 2026-08-05)
 
 - [x] **`[FISC-WHT-92PCT]`** (GO Marc Q2) ✅ (PR #558) — retenue employeur = 100 % de l'impôt sans

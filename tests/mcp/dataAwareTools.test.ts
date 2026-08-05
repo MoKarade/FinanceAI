@@ -349,6 +349,29 @@ describe('Lot 1 — get_tax_situation', () => {
         expect(outWith.averageRatePct as number).toBeLessThan(
             ((outWith.totalTax as number) / (outWith.grossAnnualIncome as number)) * 100,
         );
+
+        // [MCP-NETINCOME-MISLEADING] Le champ qui m'a trompé (incident 2026-08-05) : `netIncome`
+        // porte l'assiette IMPOSABLE, donc il INCLUT le rendement de placement estimé — qui n'est
+        // jamais encaissé. Comparé aux dépôts de paie réels, il fabrique un faux écart de revenu
+        // (annoncé à tort à Marc : 12 800 $/an inexistants). `netSalaryIncome` est la trésorerie
+        // qui tombe VRAIMENT au compte. DISCRIMINANT : sur le code d'avant, netSalaryIncome
+        // n'existe pas — et l'écart ci-dessous est exactement le revenu fantôme.
+        const netTotal = outWith.netIncome as number;
+        const netSalary = outWith.netSalaryIncome as number;
+        expect(netSalary).toBeGreaterThan(0);
+        // Le net SALARIAL est strictement plus bas dès qu'il y a du placement imposé…
+        expect(netSalary).toBeLessThan(netTotal);
+        // …et l'écart vaut EXACTEMENT le rendement de placement imposé (le montant non encaissé).
+        expect(netTotal - netSalary).toBeCloseTo(investI, -1);
+        // Reconstructible depuis le brut : brut − impôt − cotisations (vérifiable au relevé bancaire).
+        expect(netSalary).toBeCloseTo(
+            (outWith.grossAnnualIncome as number) - (outWith.totalTax as number)
+            - wWith.rrq - wWith.rqap - wWith.ae, -1);
+        expect(outWith.netSalaryMonthly as number).toBeCloseTo(netSalary / 12, -1);
+        // Sans placement, les deux notions COÏNCIDENT (aucun revenu fantôme à retrancher).
+        expect(outNo.netSalaryIncome as number).toBeCloseTo(outNo.netIncome as number, -1);
+        // La note met explicitement en garde (c'est elle qui aurait évité le faux diagnostic).
+        expect(outWith.notes as string).toMatch(/netSalaryIncome/);
     });
 
     it('[TAX-DETAIL] retenues détaillées + net mensuel + provenance + réel des transactions exposés', async () => {

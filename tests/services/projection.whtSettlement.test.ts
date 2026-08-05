@@ -46,4 +46,18 @@ describe('[FISC-WHT-92PCT] retenue employeur 100 % — plus de double facturatio
         expect(r.totalTaxesPaid).toBeCloseTo(57_722.84, 0);
         expect(r.finalNetWorth).toBeCloseTo(819_490.94, 0);
     });
+
+    it('invariant sémantique : sans déductions, T1213 ON ≡ OFF au bit près (survit aux re-bases)', () => {
+        // Recommandation financial-integrity #558 : les pins ci-dessus se re-basent ; CETTE
+        // propriété, non. Sans déductions, retenue(100 %) == impôt réel == retenue T1213 →
+        // le flag ne peut RIEN changer. Sous l'ancien ×0,92 les deux mondes divergeaient
+        // (OFF facturait +8 % en avril, ON non) → discriminant structurel du fix.
+        const off = __runScenarioForTests(salarie, 'AUTO_MARGINAL' as AllocationStrategy, false, false);
+        const on = __runScenarioForTests(
+            { ...salarie, projection: { ...salarie.projection, optimizeSourceDeductions: true } } as SimulationParams,
+            'AUTO_MARGINAL' as AllocationStrategy, false, false,
+        );
+        expect(on.totalTaxesPaid).toBe(off.totalTaxesPaid);
+        expect(on.finalNetWorth).toBe(off.finalNetWorth);
+    });
 });

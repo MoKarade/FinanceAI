@@ -127,7 +127,7 @@ Pour **chaque** mois `m`, le moteur exécute ces 9 phases séquentiellement. Com
 | **Avril** (currentMonthIndex = 3) | Règlement des impôts de l'an passé. `taxPreviousYear` payé depuis le liquide. Remboursement éventuel re-déposé dans NonReg (avec ajustement ACB). |
 | **Décembre** (currentMonthIndex = 11) | Calcul de la facture finale annuelle réelle. `taxPreviousYear ← taxCurrentYear` pour le règlement d'avril prochain. |
 | **Janvier** (currentMonthIndex = 0, sauf m=0) | **CELI** : régénération de l'espace (`celiRoom += celiWithdrawalsThisYear`). **FERR** : conversion REER→FERR à 71 ans, retrait minimum obligatoire selon table RRIF (5.4% à 72 → 20% à 94, plafonné). |
-| **Mensuel** | Approximation T1213 : retenue à la source ajustée selon `optimizeSourceDeductions`. Le déficit ou surplus s'accumule dans `taxCurrentYear.revenu`. |
+| **Mensuel** | Aucune retenue mensuelle modélisée (le `netSalary` saisi est déjà net de tout). `taxCurrentYear.revenu` ne porte que le solde de DÉCEMBRE : `impôt(revenu−déductions) − retenue(100 % de l'impôt sans déductions)` — nul sans déductions, remboursement sinon ; `optimizeSourceDeductions` (T1213) fait suivre la retenue aux déductions → solde toujours nul (`[FISC-WHT-92PCT]`). |
 
 ⚠️ **Tu paies tes impôts UNE FOIS PAR AN, en avril, sur le revenu de l'année précédente** — c'est fidèle au cycle ARC/Revenu Québec réel.
 

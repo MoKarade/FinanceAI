@@ -602,8 +602,10 @@ describe('processDecemberTaxFiling — actif : régularisation salariale (T1213)
     it('avec optimisation T1213 : la retenue suit l\'impôt réel → régularisation nulle même avec déductions', () => {
         // optimizeSourceDeductions=true → taxEmployer = taxReal = (120000-20000)×0.25 = 25000.
         // Retenue 100 % ([FISC-WHT-92PCT]) → revenu = 25000 - 25000 = 0 (l'ancien ×0,92 donnait +2 000).
-        // Discriminant vs non-T1213 : mêmes déductions, mais AUCUN remboursement d'avril (la retenue
-        // les a déjà intégrées) — contre −5000 dans le test précédent.
+        // Discriminant vs non-T1213 : mêmes déductions, aucun remboursement d'avril — la retenue
+        // MODÉLISÉE les intègre ; le netSalary saisi, lui, ne bouge pas (finding #558 : ce flag
+        // signifie « mon net saisi tient déjà compte de mes déductions », ce n'est PAS un levier
+        // de cash — cf [ENG-T1213-NET-MONTHLY]). Contre −5000 dans le test précédent.
         const r = processDecemberTaxFiling(
             DECEMBER,
             baseCtx({ grossMarcBaseAnnual: 120000, accRrspYear: 20000, optimizeSourceDeductions: true }),
@@ -635,15 +637,22 @@ describe('processDecemberTaxFiling — actif : régularisation salariale (T1213)
         expect(high).toBeLessThan(low);              // remboursement plus GROS (plus négatif) à 200 k$
     });
 
-    it('régularisation plancher : jamais sous -100 000 (remboursement borné)', () => {
-        // calculateFiscalReport stubé à 0 → totalAnnualTax=0, withholding=0 → revenu=max(-100000, 0)=0.
+    it('régularisation plancher : tronque à -100 000 EXACTEMENT et le JOURNALISE (panel #558)', () => {
+        // L'ancien test stubait l'impôt à 0 → revenu = max(-100000, 0) = 0 : le clamp n'était
+        // JAMAIS exercé (vacueux — prouvé par ablation du Math.max, il passait quand même).
+        // Barème RÉEL requis : brut 1 M$, déductions 250 k$ → remboursement calculé ≈ -133 k$
+        // (taux marginal ~53 %), SOUS le plancher. Égalité STRICTE (pas >=) : sans le clamp,
+        // la valeur ≈ -133 k$ échoue ici. Et la troncature doit être VISIBLE dans les logs
+        // (finding silent-failure #558 : un remboursement sous-évalué en silence).
+        const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
         const r = processDecemberTaxFiling(
             DECEMBER,
-            baseCtx({ grossMarcBaseAnnual: 0, optimizeSourceDeductions: false }),
-            makeHelpers({ calculateFiscalReport: () => ({ totalTax: 0 } as unknown as FiscalReport) }),
+            baseCtx({ grossMarcBaseAnnual: 1_000_000, accRrspYear: 250_000, optimizeSourceDeductions: false }),
+            realHelpers,
             ZERO_TAX,
         );
-        expect(r.newTaxCurrentYear.revenu).toBeGreaterThanOrEqual(-100000);
+        expect(r.newTaxCurrentYear.revenu).toBe(-100000);
+        expect(r.logs.some((l) => l.includes('plancher'))).toBe(true);
     });
 });
 
@@ -1631,10 +1640,19 @@ describe('processDecemberTaxFiling — FA-10 : contrat survivorMode (1 contribua
     it('branche ACTIVE : salaire du défunt à 0 → impôt du seul survivant', () => {
         // projection.ts passe grossAnnaBaseAnnual=0 en survivorMode : l'impôt actif de
         // décembre ne doit plus imposer le salaire fantôme du défunt.
+        // [FISC-WHT-92PCT] : le complément 8 % n'existe plus (retenue = 100 % → le solde salarial
+        // d'avril d'un ménage SANS déductions est nul, fantôme ou pas — l'impôt d'Anna se retient
+        // et se règle tout seul). La sensibilité au salaire fantôme se lit désormais sur la prime
+        // RAMQ FAMILIALE (bucket divers) — MAIS il faut rester SOUS la saturation de la prime
+        // (finding projection-validator #558 : à 100 k$ la prime est au MAX par adulte, et comparer
+        // n=1 vs n=2 ne mesurait que le nombre d'adultes, pas le salaire — gA=80 000 ou 0 donnaient
+        // le même divers). Ici n=2 CONSTANT et revenus bas : seul gA varie → mesuré 0 $ (gA=0,
+        // famille sous l'exemption couple) vs ~1 349 $ (gA=20 000). Si le salaire du défunt cessait
+        // d'atteindre l'assiette RAMQ familiale, les deux seraient égaux.
         const survivantActif = processDecemberTaxFiling(DECEMBER, baseCtx({
-            isRetired: false, age: 45,
-            activeUsersCount: 1,
-            grossMarcBaseAnnual: 100000,
+            isRetired: false, age: 45, ageSpouse: 45,
+            activeUsersCount: 2,
+            grossMarcBaseAnnual: 25000,
             grossAnnaBaseAnnual: 0,
             ramqExempt: false,
             optimizeSourceDeductions: false,
@@ -1642,16 +1660,13 @@ describe('processDecemberTaxFiling — FA-10 : contrat survivorMode (1 contribua
         const fantome = processDecemberTaxFiling(DECEMBER, baseCtx({
             isRetired: false, age: 45, ageSpouse: 45,
             activeUsersCount: 2,
-            grossMarcBaseAnnual: 100000,
-            grossAnnaBaseAnnual: 80000,
+            grossMarcBaseAnnual: 25000,
+            grossAnnaBaseAnnual: 20000,
             ramqExempt: false,
             optimizeSourceDeductions: false,
         }), realHelpers, ZERO_TAX);
-        // [FISC-WHT-92PCT] : le complément 8 % n'existe plus (retenue = 100 % → le solde salarial
-        // d'avril d'un ménage SANS déductions est nul, fantôme ou pas — l'impôt d'Anna se retient
-        // et se règle tout seul). La sensibilité au salaire fantôme se lit désormais sur la prime
-        // RAMQ/FSS FAMILIALE (bucket divers) : le revenu familial du ménage fantôme la gonfle.
-        expect(fantome.newTaxCurrentYear.divers).toBeGreaterThan(survivantActif.newTaxCurrentYear.divers);
+        expect(survivantActif.newTaxCurrentYear.divers).toBeCloseTo(0, 5);   // sous l'exemption couple
+        expect(fantome.newTaxCurrentYear.divers).toBeGreaterThan(1000);      // le salaire fantôme gonfle la prime
         // Et le solde salarial, lui, est identiquement nul des deux côtés (pin de la nouvelle sémantique).
         expect(fantome.newTaxCurrentYear.revenu).toBeCloseTo(0, 5);
         expect(survivantActif.newTaxCurrentYear.revenu).toBeCloseTo(0, 5);

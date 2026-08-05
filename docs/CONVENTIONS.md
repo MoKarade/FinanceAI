@@ -471,6 +471,20 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   non-vacuité (`< 0` avant le `<`). Réflexe : après un fix qui annule un flux, grep les tests qui
   LISENT ce flux — un test qui passe encore peut être devenu vide, et un test cassé se réancre sur
   ce que l'invariant regarde VRAIMENT, pas sur le chiffre le plus proche.
+  ⚠️ **Un réancrage peut être vacueux au 2e ordre — le PROUVER sensible à la variable d'intérêt**
+  (leçon FA-10/#558) : le test « ménage fantôme » réancré sur la prime RAMQ familiale passait…
+  parce que la prime était SATURÉE au max par adulte (100 k$) — `divers` identique avec un salaire
+  fantôme de 80 000 $ ou de 0 $ ; l'assertion ne mesurait que le NOMBRE d'adultes. Le correctif :
+  garder TOUTES les autres variables constantes (n=2 des deux côtés) et se placer SOUS la
+  saturation (revenus bas) pour que SEULE la variable gardée fasse bouger l'observable. Réflexe :
+  après un réancrage, perturber la variable d'intérêt À OBSERVABLE ÉGAL (probe) — pas seulement
+  vérifier que le test passe.
+  ⚠️ **`git stash` en validation concurrente : 3e course vécue (#558)** — un agent de panel a
+  stashé/restauré l'arbre PENDANT que la session principale éditait (2 edits moteur perdus,
+  ré-appliqués). La technique SANS mutation qui donne le même discriminant :
+  `git archive <ref> | tar -x -C <scratch>` + symlink `node_modules` → on exécute l'ancien code
+  dans un dossier jetable, l'arbre de travail n'est JAMAIS touché. À exiger dans tout prompt
+  d'agent qui doit comparer avant/après.
   ⚠️ **Des fixtures de test à dates ABSOLUES vieillissent contre un NOW fixe** (leçon HIST-STORE-SIZE
   2026-08-01) : les tests de fusion d'historique utilisaient des closes datés « 2026-01-10 » avec un
   NOW figé à 2027-01-15 — l'ajout de la politique d'âge (downsample > 365 j) les a fait basculer du

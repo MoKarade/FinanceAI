@@ -418,7 +418,14 @@ export function processDecemberTaxFiling(
         const estimatedWithholding = totalEmployerTax;
 
         // V30: Override 12-month approximation
-        taxCurrent.revenu = Math.max(-100000, totalAnnualTax - estimatedWithholding);
+        // Panel #558 : le plancher -100 000 $ tronquait EN SILENCE — et la retenue 100 % rend les
+        // gros remboursements (hauts revenus + REER/Smith) bien plus proches du plancher qu'avant.
+        // On journalise la troncature pour qu'un remboursement sous-évalué soit VISIBLE.
+        const aprilSettlementRaw = totalAnnualTax - estimatedWithholding;
+        taxCurrent.revenu = Math.max(-100000, aprilSettlementRaw);
+        if (aprilSettlementRaw < -100000) {
+            logs.push(`⚠️ Remboursement d'avril tronqué au plancher -100 000$ (calculé: ${Math.round(aprilSettlementRaw).toLocaleString('fr-CA')}$)`);
+        }
     } else {
         // ---- Retraité : régularisation au taux marginal réel (MIROIR de la phase active) ----
         //
@@ -611,6 +618,10 @@ export function processDecemberTaxFiling(
             // la borne de la phase active.
             if (Number.isFinite(reconciliation) && Math.abs(reconciliation) > 1) {
                 taxCurrent.revenu += Math.max(-100000, reconciliation);
+                // Panel #558 : troncature journalisée (miroir du plancher de la phase active).
+                if (reconciliation < -100000) {
+                    logs.push(`⚠️ Régularisation retraité tronquée au plancher -100 000$ (calculée: ${Math.round(reconciliation).toLocaleString('fr-CA')}$)`);
+                }
             }
         }
     }

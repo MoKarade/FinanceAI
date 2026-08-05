@@ -15,6 +15,18 @@
 > ⚠️ Leçon (CONVENTIONS) : le fix a TUÉ l'observable de 4 gardes (complément 8 % ≡ 0) →
 > réancrées sur le canal survivant (remboursement des déductions, RAMQ familiale, asymétrie
 > crédit d'âge), jamais supprimées. [FISC-BRACKET-REALINDEX] archivé (BACKLOG_ARCHIVE).
+> **Panel #558 (4 agents, tous traités)** : GO ×3 + NO-GO silent-failure RÉSOLU dans la PR —
+> plancher −100 000 $ journalisé (2 sites) + test plancher réancré sur un cas qui l'exerce
+> (ablation prouvée) ; garde FA-10 fantôme re-réancrée SOUS la saturation RAMQ (2e ordre,
+> leçon CONVENTIONS) ; preuve d'auto-cohérence + TP-1015.F/T4032-QC au FISCAL_REFERENCE ;
+> « retraités bit-identiques » restreint (branche inchangée, actif→retraite bouge +21,5 % NW) ;
+> invariant T1213 ON ≡ OFF sans déductions ajouté (survit aux re-bases). Tickets ouverts :
+> [ENG-T1213-NET-MONTHLY] (T1213 annule le REER, −183 k$/30 ans, PRÉ-existant),
+> [ENG-TAXDEC-FLOOR-INDEX], [ENG-TAXDEC-NAN-GUARD], [ENG-NET-MODEL-RESIDUAL].
+> **Incident Fintable (Marc, 2026-08-05)** : import gelé depuis le 2026-07-31 — cause RACINE
+> trouvée par Marc : son jeton Fintable N'ÉTAIT PAS PERSISTÉ (la sync tournait « jeton absent »).
+> Demande explicite : le sauvegarder comme les clés API (IDB chiffré). → PROCHAINE PR après le
+> merge de #558. Tickets [FINTABLE-STALE-ALERT] + actions A_FAIRE_MOI (plan payé ? carte Réglages).
 > Suite V5 : [FISC-SOLO-INVEST-SPLIT] (Q3, GO) puis GIS/LINE361/CREDITRATE (gatés sources).
 >
 > ## 🟢 Session 2026-08-01 (suite 15) — PR #556 : panel traité, latentTax corrigé, ready+auto-merge

@@ -239,6 +239,29 @@
   `runFintableSync.ts:118`) : une édition manuelle pendant la fenêtre peut être écrasée. Vrai fix =
   ré-appliquer `applyPayloadsIsolated` sur l'état FRAIS au moment de l'écriture. Sœur : cooldown
   localStorage ≠ mutex cross-onglet (fenêtre étroite, intégrité seulement).
+- [ ] **`[ENG-T1213-NET-MONTHLY]`** (M, MOYEN, pré-existant — mesuré panel #558, −183 598 $/30 ans) —
+  activer `optimizeSourceDeductions` (T1213) ANNULE le bénéfice fiscal du REER dans la simulation :
+  la retenue modélisée baisse mais le net MENSUEL encaissé (`activeIncome.ts`) ne monte jamais →
+  le ménage supporte `tax(g,0)` au lieu de `tax(g,d)`, à l'ENVERS de la réalité (T1213 est
+  neutre-à-positif). Pré-existant (−180 136 $ avant WHT-92PCT, amplifié +1,9 %). Fix : majorer le
+  net mensuel de `[tax(g,0)−tax(g,d)]/12` quand T1213 actif — sinon RETIRER le toggle de l'UI
+  (`AdvancedProjectionParams.tsx`), il ne peut que nuire.
+- [ ] **`[ENG-NET-MODEL-RESIDUAL]`** (M, FAIBLE-MOYEN, pré-existant — mesuré panel #558) — le net
+  MENSUEL encaissé est le `netSalary` SAISI, jamais réconcilié avec l'impôt du MODÈLE : résidu
+  mesuré −3 088 $/an (fixture 98,4 k$, le moteur « perd » du net) à +7 338 $/an (fixture 240 k$,
+  il en « crée »). Documenté FISCAL_REFERENCE §9 (biais a). Piste : afficher l'écart net saisi vs
+  net modélisé dans TaxCenter (diagnostic), ou réconcilier via un facteur calibré au boot.
+- [ ] **`[ENG-TAXDEC-FLOOR-INDEX]`** (S, MOYEN, pré-existant — panel #558) — le plancher
+  `-100 000 $` du solde d'avril est NOMINAL et jamais indexé alors que le flux l'est → à 30 ans
+  (facteur 1,81) le seuil réel effectif tombe à ~−55 k$ ; la retenue 100 % fait mordre le clamp
+  dès ~600 k$ de brut + grosses déductions (mesuré). La troncature est maintenant JOURNALISÉE
+  (#558) ; reste à indexer le plancher sur `ctx.inflationFactor` (les 2 sites, actif + retraité).
+- [ ] **`[ENG-TAXDEC-NAN-GUARD]`** (S, résiduel panel #558, pré-existant) — `taxDecember.ts` : le
+  clamp `Math.max(-100000, x)` du solde d'avril ACTIF ne protège pas contre NaN
+  (`Math.max(-100000, NaN) === NaN`, prouvé par exécution avec `inflationFactor = 0`) → un NaN
+  amont traverse jusqu'à FluxImpots/totalTaxesPaid sans trace, malgré l'apparence de garde-fou.
+  La branche RETRAITÉE a déjà `Number.isFinite(reconciliation)` — appliquer le même pattern
+  (`gisMonthlySafe` l.365) au site actif + log. Non introduit par #558 (structure préexistante).
 - [ ] **`[SDK-IMPORT-TIMEOUT]`** (S, résiduel panel #547, non bloquant) — le chargement du chunk SDK
   (`services/claude.ts:157`) n'est couvert par aucun timeout : un `import()` qui stalle sans rejeter
   pend indéfiniment (borné : 1er usage par session). Fix : course import() vs timer 8-10 s dans

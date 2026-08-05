@@ -87,6 +87,7 @@ Mensuels ($/mois) : `ImpotLatent`, `FluxImpots`, `ImpotRetraitREER`, `ImpotSalai
 > grandeur DISJOINTE.
 Payés (cumul YTD) : `TaxPaidRevenu`, `TaxPaidGains`, `TaxPaidDivers`, `TaxPaidREER`.
 Provisionnés (current + previous year) : `AccruedTaxRevenu`, `AccruedTaxGains`, `AccruedTaxDivers`, `AccruedTaxREER`.
+Note `[FISC-WHT-92PCT]` : en phase ACTIVE sans déductions, `AccruedTaxRevenu` vaut structurellement **0** (retenue = 100 % de l'impôt) — un 0 ici signifie « rien à régler en avril », pas « aucun impôt payé » (l'impôt est dans le net saisi).
 
 ### Croissance marché
 

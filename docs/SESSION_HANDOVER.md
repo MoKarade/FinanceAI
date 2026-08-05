@@ -17,6 +17,11 @@
 > `subTabForSection` → bouton qui n'aurait mené nulle part, corrigé). 14 tests.
 > Pièges attrapés au passage : `Tab.Settings` n'existe pas (c'est `SETTINGS`) et `min-h-touch`
 > n'est pas dans tailwind.config.js (no-op silencieux) — les deux pris par typecheck/grep.
+> ✅ **BOUCLE FERMÉE 15:03 UTC — Marc : « jeton marche ».** Vérifié côté serveur : les 5 jours
+> manquants sont RATTRAPÉS (11 transactions 2026-07-31 → 2026-08-05). `[FINTABLE-TOKEN-PERSIST]`
+> (#559) est validé EN CONDITIONS RÉELLES ; l'hypothèse « fin d'essai Fintable » est définitivement
+> réfutée (l'import reprend sans toucher à l'abonnement). A_FAIRE_MOI : les 2 actions Fintable de
+> Marc sont cochées, plus rien ne l'attend sur ce sujet.
 >
 > ## 🟢 Session 2026-08-05 (suite 18) — #559 MERGÉE (`bbd6bda`) + MCP-NETINCOME-MISLEADING (PR en cours)
 > **#559 mergée** (jeton Fintable persisté ; archivée). **En cours : `[MCP-NETINCOME-MISLEADING]`**

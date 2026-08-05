@@ -1493,23 +1493,31 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   le symptôme dont Marc s'est plaint. Une re-tentative UNIQUE qui ré-applique les mêmes payloads sur
   l'état frais coûte un aller-retour et sauve la journée ; rejouer le réseau serait disproportionné,
   et une boucle pilonnerait le Drive.
-- ⚠️ **Deux erreurs de sens OPPOSÉ ne se compensent pas — elles se cachent l'une l'autre** (leçon
-  FISC-REEE-GRANT-CLAWBACK, 2026-08-05). La fermeture du REEE versait les subventions (patrimoine
-  SUR-évalué) ET imposait les cotisations (SOUS-évalué). Le forfait de 20 % avait l'air « à peu près
-  raisonnable » précisément parce que les deux biais tiraient en sens contraire — mais leur solde
-  dépend entièrement de la composition du régime, donc il n'est juste pour AUCUN profil. Un
-  agrégat plausible n'est pas une preuve : décomposer et vérifier poche par poche.
-- ⚠️ **Une poche DÉRIVÉE ne peut pas dériver ; un 4ᵉ compteur, si** (même leçon). Les trois poches du
-  REEE se réconcilient par construction parce que le revenu accumulé est calculé comme
-  `solde − subventions − cotisations` au lieu d'être suivi à part. Bonus non planifié : la croissance
-  du marché, appliquée au solde global par un AUTRE module, atterrit d'office dans la bonne poche —
-  aucun câblage à ne pas oublier. Quand N quantités doivent sommer à un total connu, n'en suivre
-  que N−1.
-- ⚠️ **Un compteur À VIE et un compteur RÉSIDUEL répondent à deux questions et ne se remplacent pas**
-  (même leçon) : `trackerScee`/`trackerIqee` pilotent les PLAFONDS de subvention (« ai-je encore
-  droit ? ») ; les décrémenter au retrait aurait rouvert des droits épuisés. Il fallait des
-  compteurs SÉPARÉS pour « que dois-je rembourser ? ». Réutiliser un compteur existant parce qu'il
-  « ressemble » à ce dont on a besoin est le raccourci qui fabrique ce bug.
+- ⚠️ **Une quantité DÉRIVÉE n'est juste que si les quantités suivies sont COMPLÈTES** (leçon
+  FISC-REEE-GRANT-CLAWBACK, tentée et REVERTÉE le 2026-08-05). J'ai écrit que les trois poches du
+  RÉEE « somment au solde PAR CONSTRUCTION » — vrai de l'arithmétique, faux du système : le solde est
+  aussi alimenté par des chemins que les compteurs n'observent pas (solde d'OUVERTURE lu depuis les
+  avoirs, `reee *= keep` au divorce, choc de marché). Tout ce qu'ils ne voient pas tombe dans la
+  poche dérivée — ici la poche IMPOSABLE — donc un RÉEE existant se faisait imposer à ~70 %
+  (**mesuré −31 193 $ à −59 025 $** selon la fixture). Avant de dériver, énumérer TOUS les
+  producteurs du total, pas seulement ceux qu'on ajoute soi-même.
+- ⚠️ **Un compteur PAR ENTITÉ posé sur un solde MUTUALISÉ est un bug qui attend** (même leçon) :
+  `_childReee` est un solde MÉNAGE unique, mais les poches étaient par enfant — la fermeture du
+  premier enfant remettait le solde global à zéro, liquidant et imposant l'argent du cadet
+  (**mesuré +7 890 $ d'impôt fantôme**). Vérifier la granularité du SOLDE avant de choisir celle des
+  compteurs.
+- ⚠️ **Reprocher un défaut à l'ancien code ne vaccine pas contre lui** (même leçon, la plus humble) :
+  le message de commit dénonçait « deux erreurs de sens opposé qui se masquent »… et le correctif en
+  introduisait deux nouvelles, mesurées par le panel — assiette MÉNAGE au lieu du souscripteur
+  (**+6 469 $**) contre revenu NON indexé dans un barème indexé (**−2 614 $**). Le net avait l'air
+  raisonnable. Nommer une classe d'erreur, c'est se donner une checklist à s'appliquer à SOI.
+- ⚠️ **Un flux qui n'alimente AUCUN registre casse la conservation en silence** (même leçon) : le
+  remboursement des subventions n'existait que dans une chaîne de log → résiduel **−10 800 $** au
+  mois de fermeture. Corollaire mesuré et instructif : la face ENTRANTE ne l'était pas non plus,
+  dans l'ANCIEN code aussi (+125 $/mois) — l'ancien modèle créait donc 10 800 $ nets sans cause
+  visible, et personne ne l'avait vu parce que `moneyConservation` tourne avec `childGoals: []` et
+  que le fuzz exclut explicitement le RÉEE. **Un invariant qui n'exerce pas un domaine ne le protège
+  pas** : un gate vert sur 3 574 tests est un vert de COUVERTURE, pas de correction.
 - ⚠️ **Écrire un runbook qui s'appuie sur un signal que le code ne produit PAS** (leçon
   MCP-CLOUDRUN-AUTH-HARDENING, panel PR #566) : le runbook de rotation de clé désignait « une
   tentative suspecte dans les logs Cloud Run » comme déclencheur, alors que ni le blocage 429 ni le

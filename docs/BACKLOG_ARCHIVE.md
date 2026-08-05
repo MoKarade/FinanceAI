@@ -171,33 +171,6 @@ fichier:ligne). Verdicts appliqués à la refonte :
   (39 654 prédits vs 39 848 mesurés) + mise en garde dans la note du tool + test discriminant.
   Leçon CONVENTIONS : un agrégat non étiqueté fabrique de faux diagnostics, y compris chez Claude.
 
-## ✅ Session 2026-08-05 (suite) — RÉEE : fermeture en 3 poches (PR #566)
-
-- [x] **`[FISC-REEE-GRANT-CLAWBACK]`** ✅ 2026-08-05 (PR #566 ; demande EXPLICITE de Marc, « vague
-  suivante pour régime épargne-étude », tranchée CONTRE ma reco de différer — des enfants sont au
-  programme). À la fermeture (25 ans), `childrenReee.ts` versait 100 % du solde résiduel dans les
-  liquidités avec un forfait de 20 % sur le TOUT. Deux erreurs de sens OPPOSÉ qui ne se compensaient
-  pas : les subventions SCEE/IQEE non utilisées (jusqu'à **10 800 $/enfant**) devenaient du
-  patrimoine alors qu'elles doivent être REMBOURSÉES, et les cotisations — argent déjà imposé —
-  étaient taxées.
-  - **Trois poches, DÉRIVÉES** : seuls les subventions et les cotisations encore DANS le régime sont
-    comptées ; le revenu accumulé est le reste (`solde − subventions − cotisations`). Les trois
-    somment au solde PAR CONSTRUCTION, et la croissance du marché atterrit d'office dans la bonne
-    poche — un 4ᵉ compteur indépendant aurait dérivé au premier arrondi.
-  - Compteurs **distincts** de `trackerScee`/`trackerIqee`, qui restent des cumuls À VIE pilotant les
-    plafonds : les décrémenter aurait rouvert les plafonds de subvention.
-  - Impôt du PRA au **taux marginal réel** par empilement incrémental (B-AUDIT-2) + surtaxe 20 %,
-    plafonné au versement (sinon un décaissement net NÉGATIF était possible). Le PRA n'entre
-    volontairement PAS dans `accGrossIncomeYear` : `taxJanuary.ts:164` en dérive les droits REER à
-    18 %, or un PRA n'est pas un revenu GAGNÉ — l'y mettre aurait fabriqué des droits inexistants.
-  - Retraits d'études : puisage subventions → revenu → cotisations (seul ordre qui ne détruit pas de
-    valeur, une subvention non dépensée devant être remboursée).
-  - **MESURÉ** (fermeture pleine : solde 120 000 $, dont 50 000 cotisés et 10 800 de subventions,
-    souscripteur à 96 000 $) : patrimoine net **−20 021 $** vs l'ancien modèle.
-  - 4 tests ajoutés, dont 3 DISCRIMINANTS prouvés (échouent sur l'ancien modèle réintroduit
-    chirurgicalement) : subventions remboursées, cotisations non imposées, et pas de revenu fantôme
-    après une perte de marché.
-
 ## ✅ Session 2026-08-05 (suite) — V7 sécurité serveur + sync (PR #566)
 
 - [x] **`[FINTABLE-SYNC-STALE-BASE]`** ✅ 2026-08-05 (PR #566 ; M, résiduel ASSUMÉ de #545) — une

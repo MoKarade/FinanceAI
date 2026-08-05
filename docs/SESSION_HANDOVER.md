@@ -4,21 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟢 Session 2026-08-05 (suite 22) — RÉEE en 3 poches (dans PR #566)
-> **`[FISC-REEE-GRANT-CLAWBACK]` livré**, à la demande explicite de Marc. La fermeture du REEE versait
-> 100 % du solde avec un forfait de 20 % ; désormais : cotisations rendues SANS impôt, subventions
-> non utilisées REMBOURSÉES (jusqu'à 10 800 $/enfant — c'était le bug), revenu accumulé imposé au
-> marginal réel (empilement incrémental) + surtaxe 20 %. **Mesuré −20 021 $** sur une fermeture pleine.
-> 4 tests dont 3 discriminants prouvés. Gate vert, 3 574 tests.
+> ## 🔴 Session 2026-08-05 (suite 22) — RÉEE implémenté puis REVERTÉ (panel)
+> `[FISC-REEE-GRANT-CLAWBACK]` a été codé (3 poches dérivées), mesuré −20 021 $ sur une fixture de
+> fermeture… puis **RETIRÉ de la PR #566** après que DEUX panels indépendants l'aient mesuré **PIRE
+> que le bug** sur deux cas courants. Le bug d'origine reste RÉEL ; le ticket est rouvert dans
+> `BACKLOG.md` avec le périmètre désormais CHIFFRÉ — **ne pas repartir de zéro**.
+> - ⛔ **Solde d'ouverture** : poches à 0 → 100 % d'un RÉEE existant classé revenu imposable →
+>   **−31 193 $ à −59 025 $** mesurés. C'est l'erreur nº 2 que le commit prétendait corriger,
+>   réintroduite en plus grand.
+> - ⛔ **Multi-enfants** : `_childReee` est un solde MÉNAGE, les poches sont par enfant →
+>   **+7 890 $ d'impôt fantôme** sur le cadet.
+> - ⛔ **Conservation de flux** : `grantsRepaid` n'alimentait aucun registre → résiduel −10 800 $.
+> - ⚠️ Assiette ménage (+6 469 $) vs revenu non indexé (−2 614 $) : deux erreurs de sens opposé qui
+>   se masquent — exactement ce que le commit reprochait à l'ancien forfait.
 >
-> ⚠️ **Le RÉEE a été committé sur la MÊME branche que V7** : un rate limit GitHub (persistant depuis
-> ~18:05 UTC) empêchait de merger #566, et laisser un lot money-critical non commité est le scénario
-> exact de l'incident de revert de conteneur. #566 porte donc V7 **et** le RÉEE — corps de PR à
-> mettre à jour, et panel à passer sur la partie RÉEE avant merge.
+> **Leçon centrale, portée dans CONVENTIONS** : un gate vert sur 3 574 tests était un vert de
+> COUVERTURE, pas de correction — `moneyConservation` tourne avec `childGoals: []` et le fuzz exclut
+> le RÉEE. Deux tests discriminants sont déjà identifiés pour la prochaine tentative.
 >
-> **Découvert et ticketé** : `[FISC-REEE-EAP-STUDENT-TAX]` — le retrait d'études est imposable au nom
-> de l'ÉTUDIANT ; laissé à ~0 $ (réaliste : BPA + crédits de scolarité) mais c'est une HYPOTHÈSE
-> assumée, pas un calcul. Le coder exigerait un 3ᵉ contribuable dans le moteur.
+> **PR #566 ne contient donc plus que V7** (sync + durcissement OAuth), qui avait passé son propre
+> panel (8 findings corrigés).
 
 > ## 🟢 Session 2026-08-05 (suite 21) — #565 MERGÉE + V7 (PR #566) + Marc tranche : RÉEE ensuite
 > **#565 mergée** (`3d666b0`, archivage). **V7 livrée à 2/4 (PR #566)** :

@@ -48,21 +48,82 @@
   (Annexe B d'abord) + `[FISC-FED-CREDITRATE-15]` (source ARC).
 - [ ] **V6 — Fiscal non gaté** : ~~`[FISC-DTC-ABATEMENT-ORDER]`~~ + ~~`[FISC-STACK-GAINS-DIV]`~~
   ✅ #564 (archivés — CID validé contre les tables RQ/ARC : 40,11 % / 48,70 %). RESTE :
-  ✅ `[FISC-REEE-GRANT-CLAWBACK]` (livré PR #566, modélisation en 3 poches) + `[FISC-TAXDEC-INCR]`
+  `[FISC-REEE-GRANT-CLAWBACK]` (⚠️ **mesuré 0 $ sur le profil de Marc** : `reee: 0`, aucun objectif
+  d'études → dormant, actif seulement s'il ajoute un enfant ; confirmé contre le code —
+  `childrenReee.ts:327` verse 100 % du solde, les trackers SCEE/IQEE existent mais ne sont jamais
+  décrémentés → modélisation en 3 poches nécessaire, plan-first) + `[FISC-TAXDEC-INCR]`
   (⚠️ reste À CONFIRMER avec Marc, cf A_FAIRE_MOI — ne pas coder sans go).
 - [ ] **V7 — Sécurité serveur + sync** — **2/4 livrés** (PR #566) :
   ✅ `[FINTABLE-SYNC-STALE-BASE]` + ✅ `[MCP-CLOUDRUN-AUTH-HARDENING]` (archivés).
   RESTE les deux GARDES, déprioritisés après la réorientation de Marc (2026-08-05, « vague suivante
   pour régime épargne-étude ») : `[FISC-CONST-GUARD-V2]` (périmètre MESURÉ, voir sa fiche) +
   `[MCP-CHARTDATA-SUM-GUARD]` (0 offender aujourd'hui → prévention pure, la moins urgente).
-- [x] **V7bis — RÉEE (demande explicite Marc 2026-08-05)** : `[FISC-REEE-GRANT-CLAWBACK]` ✅ livré
-  (PR #566, mesuré −20 021 $ sur une fermeture pleine — voir l'archive).
-- [ ] **`[FISC-REEE-EAP-STUDENT-TAX]`** (M, découvert 2026-08-05, hypothèse ASSUMÉE) — le retrait
-  d'études (PAE) est imposable dans les mains de l'ÉTUDIANT, pas du souscripteur. Le moteur le laisse
-  à ~0 $ d'impôt, ce qui est réaliste (montant personnel de base + crédits de scolarité couvrent
-  généralement un étudiant sans autre revenu) mais reste une hypothèse, PAS un calcul — choix Marc
-  2026-08-05 « laisser ~0 mais l'écrire ». Le coder exigerait un TROISIÈME contribuable dans le
-  moteur (aujourd'hui : Marc + conjoint) : évaluer si le gain de justesse le vaut avant de se lancer.
+- [ ] **V7bis — RÉEE (demande explicite Marc 2026-08-05)** : `[FISC-REEE-GRANT-CLAWBACK]`, plan-first.
+  ⚠️ Marc a tranché CONTRE la reco « différer » : des enfants sont donc au programme. Ne pas
+  re-proposer de reporter.
+- [ ] **`[FISC-REEE-GRANT-CLAWBACK]`** (L — ⚠️ **TENTÉ ET REVERTÉ le 2026-08-05**, PR #566) — le bug
+  d'ORIGINE est réel et confirmé : à la fermeture (25 ans), `childrenReee.ts` verse 100 % du solde
+  résiduel avec un forfait de 20 % sur le TOUT → les subventions SCEE/IQEE non utilisées (jusqu'à
+  10 800 $/enfant) deviennent du patrimoine au lieu d'être REMBOURSÉES, et les cotisations (argent
+  déjà imposé) sont taxées. Deux erreurs de sens OPPOSÉ.
+  ⚠️ **Une modélisation en 3 poches DÉRIVÉES a été implémentée puis RETIRÉE** : le panel
+  financial-integrity l'a mesurée PIRE que le bug sur deux cas courants. À refaire avec ce périmètre,
+  qui est maintenant CONNU et CHIFFRÉ — ne pas repartir de zéro :
+  - ⛔ **Solde d'ouverture** (`projection.ts:148`, `reee` depuis `liveCSVBalances.REEE`) : les poches
+    démarraient à 0, donc 100 % d'un RÉEE EXISTANT était classé « revenu accumulé » et imposé à ~70 %.
+    **Mesuré −31 193 $** (couple 183 600 $, enfant de 23 ans, RÉEE d'ouverture 60 000 $). Correctif :
+    amorcer les poches (champ « dont cotisations / dont subventions », ou défaut conservateur = tout
+    en cotisations plafonné à 50 000 $ — imposer du capital est la pire des deux erreurs).
+  - ⛔ **Multi-enfants** : `_childReee` (`projection.ts:1214`) est un solde MÉNAGE unique alors que les
+    poches sont PAR enfant, et la fermeture fait `reeeNewBalance = 0`. **Mesuré +7 890 $ d'impôt
+    fantôme** (aînée 23 ans + cadette 6 ans) : le solde de la CADETTE est liquidé et imposé à la
+    fermeture de l'aînée, ses subventions versées au lieu d'être remboursées, et ses poches survivent
+    à un solde 0 → sous-imposition symétrique plus tard. Correctif : solde par enfant, OU poches
+    ménage avec proratisation à la fermeture (+ transfert entre frères/sœurs, qui dans la vraie vie
+    évite tout remboursement de SCEE).
+  - ⚠️ **Base du taux marginal** : le PRA est imposable au SEUL SOUSCRIPTEUR. Le code utilisait
+    `householdGross` (2 salaires), NON indexé (dollars an-0 dans un barème indexé) et aveugle à
+    `isRetired`. **Mesuré sur un PRA de 50 000 $ en 2051** : code 32 759 $ (65,5 %) · souscripteur
+    indexé 30 607 $ (61,2 %) · retraité à 60 k$ 24 646 $ (49,3 %). La référence existe déjà dans le
+    dépôt : `latentTax.ts:58-64` (leçon `[FISC-BRACKET-REALINDEX]`), idem `projection.ts:902-904`.
+  - ⚠️ **Dérivés à auditer** : `latentTax.ts` ne couvre PAS le RÉEE, et `netWorth.ts:59` /
+    `estateCalculation.ts:135` le comptent à 100 %. Passer le prélèvement effectif de 20 % à ~70 %
+    multiplie par ~3,5 l'écart entre le patrimoine affiché et l'impôt que le moteur percevra.
+  - ⚠️ **Invariant manquant** : `subventions + cotisations ≤ solde` n'est pas tenu quand le solde
+    baisse hors des flux suivis (`projection.ts:793` `reee *= keep` au divorce, marché baissier).
+  - ⛔ **CONSERVATION DE FLUX cassée** (projection-validator, mesuré) : `grantsRepaid` n'alimentait
+    AUCUN registre — il n'existait que dans une chaîne de log. Résiduel `unexplained` de
+    **−10 799,99 $** sur le mois de fermeture (0,00 $ avant), soit exactement SCEE 7 200 + IQEE 3 600.
+    ⚠️ Nuance MESURÉE : la face ENTRANTE n'était déjà pas enregistrée (+125 $/mois en rattrapage puis
+    +62,50 $/mois, dans l'ANCIEN code aussi) — l'ancien modèle créait donc 10 800 $ nets sans cause
+    visible. Le nouveau est plus juste EN CUMUL mais concentre tout sur un mois. Correctif : router
+    `grantsRepaid` par un registre visible (`taxDiversAdd`, ou une série `ReeeGrantClawback`), et par
+    SYMÉTRIE enregistrer les subventions ENTRANTES.
+  - ⚠️ **Espaces mixtes** (projection-validator, mesuré) : `householdGross` n'est jamais indexé par
+    `simSalaryGrowth` alors que le barème l'est → **−2 613,69 $** d'impôt sous-évalué en 2051.
+    ⚠️ Cette erreur est de sens OPPOSÉ à celle de l'assiette ménage (+6 469 $) : elles se masquent
+    partiellement — exactement le piège que le correctif reprochait à l'ancien forfait.
+  - ⚠️ **Registres d'affichage** : la branche fermeture n'incrémente ni `withdrawalREEEAdd`, ni
+    `reeePayoutAdd`, ni `contribLiquidAdd` (mesuré `ReeePayout = 0` pour 68 547,88 $ versés), alors
+    que la branche études alimente les quatre. Pré-existant, mais aggravé.
+  - ⚠️ **Croissance du RÉEE au `activeCashRate`** (`growthApplication.ts:51`), pas à un taux de
+    placement. Pré-existant et anodin avant — mais la poche PRA EST le cumul de cette croissance,
+    donc ce taux porte désormais un montant d'IMPÔT.
+  - 🧪 **Deux tests discriminants déjà identifiés** : (1) conservation avec enfants, `maxResid < 1`
+    (passait avant, échouait après) ; (2) « un RÉEE d'ouverture de 60 000 $ ajoute > 60 000 $ au
+    patrimoine final » (ancien +88 010 $, nouveau +28 984 $).
+  - ⚠️ **Ordre de puisage PAE** : la part SCEE d'un retrait d'études est PRORATISÉE
+    (`PAE × C/(C+I)`, règlement CESP), pas « subventions d'abord » comme implémenté.
+  - ⚠️ **Couverture** : `projection.moneyConservation.test.ts` tourne avec `childGoals: []` → aucun
+    test de conservation n'exerce un remboursement de subventions.
+  - 📄 **À documenter quoi qu'il arrive** : surtaxe PRA de 20 % = 12 % féd (T1172 / LIR 204.94) + 8 %
+    impôt spécial QC — la valeur est JUSTE mais n'était pas sourcée ; roulement PRA → REER
+    (50 000 $ à vie, déductible ET exonéré de la surtaxe) NON modélisé ; fermeture à 25 ans du
+    bénéficiaire ≠ échéance légale du régime (fin de la 35ᵉ année).
+- [ ] **`[FISC-REEE-EAP-STUDENT-TAX]`** (M, hypothèse ASSUMÉE, choix Marc 2026-08-05) — le retrait
+  d'études est imposable dans les mains de l'ÉTUDIANT, pas du souscripteur. Le moteur le laisse à
+  ~0 $ (réaliste : BPA + crédits de scolarité couvrent un étudiant sans autre revenu) mais c'est une
+  hypothèse, PAS un calcul. Le coder exigerait un TROISIÈME contribuable dans le moteur.
 - [ ] **V8 — Features demandées** (2-3 PR) : `[SUBS-TAB]` · `[GOAL-DEADLINE-UI]` +
   `[PH4C-SAVINGS-NATURE]` · `[ASSET-CURRENCY-BACKFILL]` (si log) · `[CHAT-PAGE-CONTEXT-V2]`
   (file explicite Marc — maintenu malgré le « différer » PM).

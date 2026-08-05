@@ -45,8 +45,10 @@ describe('SyncStaleBanner', () => {
 
     it('import à jour → AUCUNE bannière (sinon on apprend à l\'ignorer)', () => {
         useFinanceStore.setState({ transactions: dailyHistory(0, 40), fintableSyncReport: report() });
-        const { container } = render(<SyncStaleBanner />);
-        expect(container).toBeEmptyDOMElement();
+        render(<SyncStaleBanner />);
+        // ⚠️ La région live reste MONTÉE (WCAG 4.1.3, CONVENTIONS #245) — elle est simplement VIDE.
+        const region = screen.getByRole('alert', { name: /Fraîcheur de l'import bancaire/i });
+        expect(region).toBeEmptyDOMElement();
     });
 
     it('passe en ÉCHEC → alerte distincte, avec le code d\'erreur d\'origine', () => {
@@ -64,13 +66,34 @@ describe('SyncStaleBanner', () => {
         useFinanceStore.setState({
             isTestMode: true, transactions: dailyHistory(5, 40), fintableSyncReport: report(),
         });
-        const { container } = render(<SyncStaleBanner />);
-        expect(container).toBeEmptyDOMElement();
+        render(<SyncStaleBanner />);
+        // ⚠️ La région live reste MONTÉE (WCAG 4.1.3, CONVENTIONS #245) — elle est simplement VIDE.
+        const region = screen.getByRole('alert', { name: /Fraîcheur de l'import bancaire/i });
+        expect(region).toBeEmptyDOMElement();
     });
 
     it('import JAMAIS configuré → silence (on alerte sur une chute, pas sur une absence)', () => {
         useFinanceStore.setState({ transactions: dailyHistory(5, 40), fintableSyncReport: undefined });
-        const { container } = render(<SyncStaleBanner />);
-        expect(container).toBeEmptyDOMElement();
+        render(<SyncStaleBanner />);
+        // ⚠️ La région live reste MONTÉE (WCAG 4.1.3, CONVENTIONS #245) — elle est simplement VIDE.
+        const region = screen.getByRole('alert', { name: /Fraîcheur de l'import bancaire/i });
+        expect(region).toBeEmptyDOMElement();
+    });
+});
+
+describe('SyncStaleBanner — a11y (finding #3 panel #561)', () => {
+    it('la région live est montée EN PERMANENCE : elle existe déjà quand tout va bien', () => {
+        useFinanceStore.setState({ transactions: dailyHistory(0, 40), fintableSyncReport: report() });
+        const { rerender } = render(<SyncStaleBanner />);
+        // Présente ET vide au repos — c'est ce qui garantit que le passage à l'alerte est ANNONCÉ
+        // (une région insérée avec son texte n'est pas lue de façon fiable).
+        const region = screen.getByRole('alert', { name: /Fraîcheur de l'import bancaire/i });
+        expect(region).toBeInTheDocument();
+        expect(region).toBeEmptyDOMElement();
+        // Passage à l'état gelé : MÊME région, contenu qui apparaît (pas un nouveau nœud).
+        useFinanceStore.setState({ transactions: dailyHistory(9, 40) });
+        rerender(<SyncStaleBanner />);
+        expect(screen.getByRole('alert', { name: /Fraîcheur de l'import bancaire/i }))
+            .toHaveTextContent(/Import bancaire figé/i);
     });
 });

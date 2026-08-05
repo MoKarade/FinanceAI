@@ -25,6 +25,9 @@ export interface SyncHealth {
     status: SyncHealthStatus;
     /** Seuil de gel RETENU pour ce profil (jours) — adaptatif, exposé pour être auditable. */
     staleThresholdDays: number;
+    /** Écart habituel OBSERVÉ entre deux jours d'activité (p90, NON clampé) ; `null` si inconnu.
+     *  Séparé du seuil : le re-dériver depuis un seuil borné fabriquait un chiffre faux (panel #561). */
+    observedGapDays: number | null;
     /** Jours entiers depuis la transaction la plus récente ; `null` si aucune transaction. */
     daysSinceLastTransaction: number | null;
     /** Date (YYYY-MM-DD) de la transaction la plus récente ; `null` si aucune. */
@@ -46,12 +49,23 @@ export interface SyncHealth {
  * données plutôt que d'un chiffre choisi au jugé.
  */
 export const DEFAULT_STALE_TRANSACTION_DAYS = 7;
-/** Plancher : en dessous, un simple week-end calme déclencherait une fausse alerte. */
-export const MIN_STALE_TRANSACTION_DAYS = 3;
+/**
+ * Plancher EFFECTIF (jours). ⚠️ Panel #561 : la version précédente valait 3 et ne protégeait de
+ * RIEN — les écarts entre JOURS distincts sont ≥ 1 par construction, donc le seuil brut
+ * (`ceil(médiane × 3)`) ne pouvait déjà jamais descendre sous 3. Résultat mesuré : un profil
+ * « actif en semaine seulement » (très courant) obtenait 3 jours, et un long week-end férié
+ * québécois de 4 jours sans dépense déclenchait une FAUSSE alerte « flux gelé côté fournisseur ».
+ * Une alerte qui crie au loup s'apprend à s'ignorer — c'est pire que pas d'alerte.
+ */
+export const MIN_STALE_TRANSACTION_DAYS = 4;
 /** Plafond : au-delà, l'alerte arriverait trop tard quel que soit le profil. */
 export const MAX_STALE_TRANSACTION_DAYS = 14;
-/** Multiple de l'intervalle habituel au-delà duquel le silence devient anormal. */
-const STALE_CADENCE_FACTOR = 3;
+/**
+ * Multiple appliqué au 90e PERCENTILE des écarts (pas à la médiane — panel #561). La médiane
+ * écrase les creux légitimes : sur un profil semaine-seulement elle vaut 1 alors que les coupures
+ * de week-end valent 3. Le p90 capte ces creux normaux et les absorbe au lieu de les signaler.
+ */
+const STALE_CADENCE_FACTOR = 2;
 /** Fenêtre d'observation de la cadence (jours). */
 const CADENCE_WINDOW_DAYS = 90;
 /** En deçà, l'échantillon est trop mince pour en tirer une cadence. */
@@ -81,10 +95,11 @@ function txEpoch(t: Transaction): number | null {
  * 3 jours : il aurait été prévenu à J+4, soit AVANT de le remarquer lui-même à J+5. Un seuil fixe
  * de 7 jours ne l'aurait alerté qu'à J+8 — trop tard pour servir à quelque chose.
  */
-export function computeStaleThresholdDays(
+/** Écart p90 entre jours d'activité sur la fenêtre, ou `null` si l'échantillon est trop mince. */
+export function observedGapDays(
     transactions: readonly Transaction[] | undefined,
     nowMs: number,
-): number {
+): number | null {
     const windowStart = nowMs - CADENCE_WINDOW_DAYS * MS_PER_DAY;
     const activeDays = [...new Set(
         (transactions ?? [])
@@ -93,18 +108,37 @@ export function computeStaleThresholdDays(
             .map((ms) => Math.floor(ms / MS_PER_DAY)),
     )].sort((a, b) => a - b);
 
-    if (activeDays.length < MIN_ACTIVE_DAYS_FOR_CADENCE) return DEFAULT_STALE_TRANSACTION_DAYS;
+    if (activeDays.length < MIN_ACTIVE_DAYS_FOR_CADENCE) return null;
 
     const gaps: number[] = [];
     for (let i = 1; i < activeDays.length; i++) gaps.push(activeDays[i] - activeDays[i - 1]);
     gaps.sort((a, b) => a - b);
-    const median = gaps.length % 2 === 1
-        ? gaps[(gaps.length - 1) / 2]
-        : (gaps[gaps.length / 2 - 1] + gaps[gaps.length / 2]) / 2;
+    // p90 (index plafonné) : absorbe les creux LÉGITIMES récurrents (week-ends, fériés) que la
+    // médiane ignorait — c'est la source des fausses alertes mesurées au panel #561.
+    return gaps[Math.min(gaps.length - 1, Math.ceil(gaps.length * 0.9) - 1)];
+}
 
+/**
+ * Seuil de gel DÉRIVÉ des habitudes réelles, pas d'un chiffre choisi au jugé.
+ *
+ * `p90 des écarts entre jours d'activité × 2`, borné [MIN, MAX]. Le p90 plutôt que la médiane, et
+ * un plancher RÉELLEMENT au-dessus du minimum atteignable : sinon un profil semaine-seulement (ou
+ * un long week-end férié) déclenchait une fausse alerte — mesuré au panel #561.
+ *
+ * Sur le profil réel de Marc (activité quasi quotidienne, quelques coupures) : seuil de 4-6 jours,
+ * soit une alerte à J+5 au plus tard. Il avait constaté le gel à J+5 par lui-même ; on l'égale sans
+ * jamais crier au loup, ce qui vaut mieux qu'un jour gagné payé en fausses alertes. Un seuil FIXE
+ * de 7 jours, lui, n'aurait rien dit avant J+8.
+ */
+export function computeStaleThresholdDays(
+    transactions: readonly Transaction[] | undefined,
+    nowMs: number,
+): number {
+    const gap = observedGapDays(transactions, nowMs);
+    if (gap === null) return DEFAULT_STALE_TRANSACTION_DAYS;
     return Math.min(
         MAX_STALE_TRANSACTION_DAYS,
-        Math.max(MIN_STALE_TRANSACTION_DAYS, Math.ceil(median * STALE_CADENCE_FACTOR)),
+        Math.max(MIN_STALE_TRANSACTION_DAYS, Math.ceil(gap * STALE_CADENCE_FACTOR)),
     );
 }
 
@@ -120,8 +154,16 @@ export function computeSyncHealth(
     report: FintableSyncReport | undefined,
     nowMs: number,
 ): SyncHealth {
-    const epochs = (transactions ?? []).map(txEpoch).filter((v): v is number => v !== null);
-    const lastTxMs = epochs.length > 0 ? Math.max(...epochs) : null;
+    // ⚠️ `Math.max(...epochs)` passe par Function.prototype.apply et JETTE un RangeError au-delà
+    // de ~125 000 arguments (MESURÉ, panel #561) — et comme ce calcul tourne dans le `useMemo` de la
+    // bannière d'Accueil, l'exception ferait tomber TOUT l'onglet via l'ErrorBoundary, pas juste la
+    // bannière. Un `reduce` n'a aucune limite d'arité. L'app vise le long terme (planification
+    // retraite) : 100 k+ transactions n'est pas exotique sur plusieurs années et 6 comptes.
+    let lastTxMs: number | null = null;
+    for (const t of transactions ?? []) {
+        const ms = txEpoch(t);
+        if (ms !== null && (lastTxMs === null || ms > lastTxMs)) lastTxMs = ms;
+    }
     // Une transaction datée dans le FUTUR (saisie erronée) ne doit pas rajeunir l'import :
     // on borne à 0 jour plutôt que de produire un négatif qui masquerait un vrai gel.
     const daysSinceLastTransaction = lastTxMs === null
@@ -138,7 +180,8 @@ export function computeSyncHealth(
     const lastError = report?.error ?? null;
 
     const staleThresholdDays = computeStaleThresholdDays(transactions, nowMs);
-    const base = { staleThresholdDays, daysSinceLastTransaction, lastTransactionDate, hoursSinceLastSync, lastError };
+    const gapDays = observedGapDays(transactions, nowMs);
+    const base = { staleThresholdDays, observedGapDays: gapDays, daysSinceLastTransaction, lastTransactionDate, hoursSinceLastSync, lastError };
 
     if (report === undefined) {
         return { ...base, status: 'never', reason: "L'import bancaire n'a jamais été exécuté." };
@@ -161,9 +204,12 @@ export function computeSyncHealth(
         return {
             ...base,
             status: 'stale',
+            // ⚠️ La cadence citée est la cadence OBSERVÉE, jamais re-dérivée du seuil : quand le
+            // seuil est clampé au plafond, la reconstruction affichait un chiffre FAUX présenté
+            // comme un fait (panel #561, contraire au no-fake-data). Inconnue → on n'invente rien.
             reason: `Aucune transaction importée depuis ${daysSinceLastTransaction} jours `
-                + `(dernière : ${lastTransactionDate} ; ton rythme habituel en produit une tous les `
-                + `${Math.max(1, Math.round(staleThresholdDays / 3))} jour(s)), `
+                + `(dernière : ${lastTransactionDate}${gapDays === null ? ''
+                    : ` ; ton rythme habituel en produit une tous les ${gapDays} jour(s)`}), `
                 + 'alors que la synchronisation dit réussir : le flux est probablement gelé côté fournisseur '
                 + '(abonnement expiré ou lien bancaire à ré-autoriser).',
         };

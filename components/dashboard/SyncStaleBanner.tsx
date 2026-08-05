@@ -32,38 +32,45 @@ export const SyncStaleBanner: React.FC = () => {
         [transactions, report],
     );
 
-    // `never` est SILENCIEUX ici : un utilisateur qui n'a jamais branché l'import n'a pas de
-    // problème à signaler — l'onboarding s'en charge. On alerte sur une CHUTE, pas sur une absence.
-    if (isTestMode || health.status === 'ok' || health.status === 'never') return null;
-
+    // `never` est SILENCIEUX : un utilisateur qui n'a jamais branché l'import n'a pas de problème
+    // à signaler — l'onboarding s'en charge. On alerte sur une CHUTE, pas sur une absence.
+    const silent = isTestMode || health.status === 'ok' || health.status === 'never';
     const isError = health.status === 'error';
+
+    // ⚠️ Région live montée en PERMANENCE, seul le CONTENU change (CONVENTIONS.md, revue #245,
+    // WCAG 4.1.3) : une région insérée AVEC son texte n'est pas annoncée de façon fiable par les
+    // lecteurs d'écran — l'alerte serait muette précisément au moment où elle compte. Le premier
+    // jet faisait `return null` et violait cette règle pourtant maison (panel #561) ;
+    // `ProjectionStaleBanner`, sur la MÊME page, appliquait déjà le bon patron.
     return (
-        <div
-            role="alert"
-            aria-label="Fraîcheur de l'import bancaire"
-            className={`flex items-start gap-3 rounded-card border p-3 ${isError
-                ? 'text-danger-400 bg-danger-500/10 border-danger-500/20'
-                : 'text-warning-400 bg-warning-500/10 border-warning-500/20'}`}
-        >
-            <Icon name="alert" size={18} className="shrink-0 mt-0.5" />
-            <div className="min-w-0 space-y-1">
-                <p className="text-body font-semibold">
-                    {isError ? 'Synchronisation bancaire en échec' : 'Import bancaire figé'}
-                </p>
-                {/* `reason` nomme déjà la cause probable (abonnement, ré-autorisation) : on ne la
-                    reformule pas ici, sinon les deux textes divergeraient au prochain changement. */}
-                <p className="text-meta leading-snug">{health.reason}</p>
-                <button
-                    type="button"
-                    onClick={() => navigateWithFocus(Tab.SETTINGS, 'fintable-sync')}
-                    // `min-h-[44px]` (cible tactile) : c'est la forme utilisée ailleurs dans le
-                    // repo — `min-h-touch` n'existe PAS dans tailwind.config.js et aurait été un
-                    // no-op silencieux (piège documenté « shade/classe hors palette »).
-                    className="inline-flex items-center min-h-[44px] text-meta underline underline-offset-2 hover:no-underline focus-ring"
+        <div role="alert" aria-label="Fraîcheur de l'import bancaire">
+            {!silent && (
+                <div
+                    className={`flex items-start gap-3 rounded-card border p-3 ${isError
+                        ? 'text-danger-400 bg-danger-500/10 border-danger-500/20'
+                        : 'text-warning-400 bg-warning-500/10 border-warning-500/20'}`}
                 >
-                    Ouvrir les réglages de synchronisation →
-                </button>
-            </div>
+                    <Icon name="alert" size={18} className="shrink-0 mt-0.5" aria-hidden="true" />
+                    <div className="min-w-0 space-y-1">
+                        <p className="text-body font-semibold">
+                            {isError ? 'Synchronisation bancaire en échec' : 'Import bancaire figé'}
+                        </p>
+                        {/* `reason` nomme déjà la cause probable (abonnement, ré-autorisation) : on ne
+                            la reformule pas ici, sinon les deux textes divergeraient au prochain
+                            changement. */}
+                        <p className="text-meta leading-snug">{health.reason}</p>
+                        <button
+                            type="button"
+                            onClick={() => navigateWithFocus(Tab.SETTINGS, 'fintable-sync')}
+                            // `min-h-[44px]` (cible tactile) : forme utilisée ailleurs dans le repo —
+                            // `min-h-touch` n'existe PAS dans tailwind.config.js (no-op silencieux).
+                            className="inline-flex items-center min-h-[44px] text-meta underline underline-offset-2 hover:no-underline focus-ring"
+                        >
+                            Ouvrir les réglages de synchronisation →
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

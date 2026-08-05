@@ -15,8 +15,8 @@ import type { FintableSyncReport, Transaction } from '../../types';
 const NOW = Date.parse('2026-08-05T12:00:00Z');
 const dayMs = 86_400_000;
 
-const tx = (date: string): Transaction => ({
-    id: Math.floor(Date.parse(`${date}T00:00:00Z`) / 1000),
+const tx = (date: string, id?: number): Transaction => ({
+    id: id ?? Math.floor(Date.parse(`${date}T00:00:00Z`) / 1000),
     date, payee: 'Payroll /ROBOVIC INC.', amount: 837.31, category: 'Salaire', status: 'processed',
 });
 
@@ -101,6 +101,45 @@ describe('[FINTABLE-STALE-ALERT] computeSyncHealth', () => {
         // …et une saisie datée dans le futur ne doit pas masquer un vrai gel (bornée à 0).
         const future = computeSyncHealth([tx('2027-01-01')], okReport(NOW), NOW);
         expect(future.daysSinceLastTransaction).toBe(0);
+    });
+
+    it('finding #1 panel #561 — ÉCHELLE : 200 000 transactions ne font pas planter (Math.max spread = RangeError)', () => {
+        // Mesuré au panel : `Math.max(...epochs)` jette RangeError au-delà d'~125 k, et comme le
+        // calcul tourne dans le useMemo de l'Accueil, l'exception tombait TOUT l'onglet.
+        const many = Array.from({ length: 200_000 }, (_, i) =>
+            tx(new Date(NOW - (i % 900) * dayMs).toISOString().slice(0, 10), i));
+        expect(() => computeSyncHealth(many, okReport(NOW), NOW)).not.toThrow();
+        expect(computeSyncHealth(many, okReport(NOW), NOW).lastTransactionDate).toBe('2026-08-05');
+    });
+
+    it('finding #2 panel #561 — profil SEMAINE SEULEMENT : un long week-end ne crie PAS au loup', () => {
+        // Profil très courant (aucune dépense le week-end). Avec la médiane, le seuil tombait à 3 j
+        // et un férié de 4 jours déclenchait une FAUSSE alerte « flux gelé côté fournisseur ».
+        const weekdays: Transaction[] = [];
+        for (let i = 1; i <= 90; i++) {
+            const d = new Date(NOW - i * dayMs);
+            if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) weekdays.push(tx(d.toISOString().slice(0, 10), i));
+        }
+        const threshold = computeStaleThresholdDays(weekdays, NOW);
+        expect(threshold).toBeGreaterThanOrEqual(4);   // le p90 absorbe la coupure de week-end
+        // Un creux de 4 jours (long week-end férié) reste SILENCIEUX.
+        const afterLongWeekend = weekdays.filter((t) => Date.parse(`${t.date}T00:00:00Z`) <= NOW - 4 * dayMs);
+        expect(computeSyncHealth(afterLongWeekend, okReport(NOW), NOW).status).toBe('ok');
+    });
+
+    it('finding #4 panel #561 — la cadence citée est la vraie, jamais re-dérivée d\'un seuil clampé', () => {
+        // Profil très clairsemé : le seuil est CLAMPÉ à 14 j. Re-dériver la cadence depuis le seuil
+        // affichait « tous les 5 jours » quel que soit le vrai rythme — un chiffre inventé.
+        // 6 points espacés de 15 j : tous DANS la fenêtre de 90 j (un espacement de 20 j n'en
+        // laissait que 4 → repli sur le défaut, ce que le premier jet de ce test lisait à tort
+        // comme un bug du code alors que c'était le comportement documenté).
+        const sparse = Array.from({ length: 6 }, (_, i) =>
+            tx(new Date(NOW - (i + 1) * 15 * dayMs).toISOString().slice(0, 10), i));
+        const h = computeSyncHealth(sparse, okReport(NOW), NOW);
+        expect(h.staleThresholdDays).toBe(14);          // clampé
+        expect(h.observedGapDays).toBe(15);             // la VRAIE cadence, non clampée
+        // Échantillon trop mince → aucune cadence affirmée (on n'invente pas).
+        expect(computeSyncHealth([tx('2026-08-01', 1)], okReport(NOW), NOW).observedGapDays).toBeNull();
     });
 
     it('aucune transaction du tout → stale explicite (jamais « ok » par défaut)', () => {

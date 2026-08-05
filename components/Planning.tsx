@@ -160,6 +160,26 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
     const updateGoalLink = (id: string, linkedBudgetCategoryName?: string) =>
         setSavingsGoals(savingsGoals.map(g => g.id === id ? { ...g, linkedBudgetCategoryName } : g));
 
+    // [GOAL-DEADLINE-UI] Éditer / effacer l'échéance d'un objectif EXISTANT.
+    // ⚠️ Plus qu'un confort : `deadline` pilote un DÉCAISSEMENT réel dans la projection, et le tool
+    // MCP `upsert_savings_goal` peut la poser. Sans ce champ à l'écran, une écriture de l'assistant
+    // restait INVISIBLE et IRRÉVERSIBLE côté UI — même classe que [MCP-NETINCOME-MISLEADING] :
+    // une donnée qui AGIT sans que Marc puisse la voir ni la corriger.
+    // ⚠️ `deadline` est un `string` REQUIS dans le modèle, et le formulaire de création utilise
+    // déjà la CHAÎNE VIDE pour « pas d'échéance ». On s'aligne dessus au lieu d'introduire un
+    // second encodage (`undefined`) qui ferait diverger deux chemins d'écriture pour le même sens.
+    const updateGoalDeadline = (id: string, deadline: string) =>
+        setSavingsGoals(savingsGoals.map(g => g.id === id ? { ...g, deadline } : g));
+
+    // [PH4C-SAVINGS-NATURE] Catégories RÉELLEMENT liables à un objectif.
+    // ⚠️ Un poste de nature « Epargne » ne peut afficher que « Versé ce mois : 0 » À PERPÉTUITÉ :
+    // le réel d'un objectif vient de `actualsMap`, qui EXCLUT les virements — or c'est précisément
+    // par virement qu'on alimente un poste d'épargne. Le menu offrait donc un choix qui ne peut
+    // produire que du faux. On le retire plutôt que d'afficher un zéro crédible (no-fake-data).
+    // Une liaison DÉJÀ posée sur un poste épargne reste visible via la branche `linkOrphan`,
+    // pour que Marc puisse la défaire au lieu de la subir en silence.
+    const linkableBudgetItems = budgetItems.filter(c => c.nature !== 'Epargne');
+
     const doConfirmDeleteGoal = () => {
         if (confirmDeleteGoalId) {
             setSavingsGoals(savingsGoals.filter(g => g.id !== confirmDeleteGoalId));
@@ -313,7 +333,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                 {/* [PH4-C] lien optionnel vers une catégorie budget → « versé ce mois » */}
                                 <select aria-label="Lier à une catégorie budget (optionnel)" className="col-span-2 bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.linkedBudgetCategoryName ?? ''} onChange={e => setNewGoal({ ...newGoal, linkedBudgetCategoryName: e.target.value || undefined })}>
                                     <option value="">Lier à une catégorie budget… (optionnel)</option>
-                                    {budgetItems.map(c => <option key={c.id ?? c.name} value={c.name}>{c.name}</option>)}
+                                    {linkableBudgetItems.map(c => <option key={c.id ?? c.name} value={c.name}>{c.name}</option>)}
                                 </select>
                                 <button onClick={handleAddGoal} className="col-span-2 bg-primary text-dark text-meta font-bold py-1 rounded">Ajouter</button>
                             </div>
@@ -325,6 +345,12 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                 const isLinked = linked != null && linked !== '';
                                 // [PH4-C] lien orphelin = catégorie renommée/supprimée → ne PAS afficher « 0 » trompeur (panel silent-failure).
                                 const linkOrphan = isLinked && !budgetItems.some(c => c.name === linked);
+                                // ⚠️ [PH4C-SAVINGS-NATURE] Deux raisons DISTINCTES pour qu'un lien ne soit pas dans le
+                                // menu : la catégorie n'existe plus (orpheline) OU elle est de nature Épargne (retirée
+                                // de l'offre). Sans cette distinction, filtrer l'option rendait une liaison EXISTANTE
+                                // invisible — et le moindre changement du menu l'aurait effacée en silence. Attrapé par
+                                // le test de ce même lot : retirer une option ne doit jamais escamoter une donnée posée.
+                                const linkNotOffered = isLinked && !linkableBudgetItems.some(c => c.name === linked);
                                 const paidThisMonth = isLinked && !linkOrphan ? (actualsMap[linked] ?? 0) : null;
                                 return (
                                     <div key={goal.id} className="relative p-3 bg-[#1a1a1a] rounded-xl border border-white/5 group">
@@ -338,8 +364,12 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                         <div className="mt-2 flex items-center justify-between gap-2">
                                             <select aria-label={`Lier l'objectif ${goal.name} à une catégorie budget`} value={linked ?? ''} onChange={e => updateGoalLink(goal.id, e.target.value || undefined)} className="bg-dark border border-white/10 rounded px-1.5 py-1.5 text-tiny text-ink-200 max-w-[55%] focus-ring">
                                                 <option value="">Non lié à une catégorie</option>
-                                                {linkOrphan && <option value={linked}>{linked} (introuvable)</option>}
-                                                {budgetItems.map(c => <option key={c.id ?? c.name} value={c.name}>{c.name}</option>)}
+                                                {linkNotOffered && (
+                                                    <option value={linked}>
+                                                        {linked} {linkOrphan ? '(introuvable)' : '(épargne — ne peut rien afficher)'}
+                                                    </option>
+                                                )}
+                                                {linkableBudgetItems.map(c => <option key={c.id ?? c.name} value={c.name}>{c.name}</option>)}
                                             </select>
                                             {linkOrphan && (
                                                 <span className="text-tiny text-warning-400 whitespace-nowrap" title={`La catégorie « ${linked} » n'existe plus — relie ou délie l'objectif`}>⚠ Lien invalide</span>
@@ -347,6 +377,20 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                             {paidThisMonth != null && (
                                                 <span className="text-tiny text-ink-300 whitespace-nowrap">Versé ce mois&nbsp;: <PrivateAmount as="span" className="font-bold text-info-400">{formatCAD(paidThisMonth)}</PrivateAmount></span>
                                             )}
+                                        </div>
+                                        {/* [GOAL-DEADLINE-UI] Échéance VISIBLE et éditable. */}
+                                        <div className="mt-2 flex items-center gap-2">
+                                            <label htmlFor={`deadline-${goal.id}`} className="text-tiny text-ink-300 whitespace-nowrap">Échéance</label>
+                                            <input
+                                                id={`deadline-${goal.id}`}
+                                                type="date"
+                                                value={goal.deadline || ''}
+                                                onChange={e => updateGoalDeadline(goal.id, e.target.value)}
+                                                className="bg-dark border border-white/10 rounded px-1.5 py-1.5 text-tiny text-ink-200 focus-ring"
+                                            />
+                                            {/* Pas d'échéance est un état LÉGITIME (objectif sans date), pas une donnée
+                                                manquante : on le DIT au lieu de laisser un champ vide ambigu. */}
+                                            {!goal.deadline && <span className="text-tiny text-ink-400">aucune</span>}
                                         </div>
                                     </div>
                                 );

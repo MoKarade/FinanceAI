@@ -137,9 +137,11 @@
   ⚠️ NE PAS toucher aux entrées `design` (`0.95` Guyton-Klinger, `0.50` vente fictive, seuils de
   meltdown, `0.25` proxy d'inversion impôt→gain) : les « sourcer » serait une erreur de CATÉGORIE
   qui polluerait FISCAL_REFERENCE avec des choix de conception.
-- [ ] **V8 — Features demandées** (2-3 PR) : `[SUBS-TAB]` · `[GOAL-DEADLINE-UI]` +
-  `[PH4C-SAVINGS-NATURE]` · `[ASSET-CURRENCY-BACKFILL]` (si log) · `[CHAT-PAGE-CONTEXT-V2]`
-  (file explicite Marc — maintenu malgré le « différer » PM).
+- [ ] **V8 — Features demandées** — ✅ `[GOAL-DEADLINE-UI]` + ✅ `[PH4C-SAVINGS-NATURE]` (#569).
+  RESTENT : `[SUBS-TAB]` (⚠️ POSER LA QUESTION à Marc sur l'emplacement de la surface — onglet
+  propre / sous-onglet Transactions / carte Accueil — AVANT de coder) · `[CHAT-PAGE-CONTEXT-V2]`
+  (file explicite Marc) · `[ASSET-CURRENCY-BACKFILL]` (gaté : rien à coder tant que le log
+  `services/portfolio.ts:60-62` n'apparaît pas chez Marc).
 - [ ] **V9 — Couverture moteur** (1-2 PR) : `[FUZZ-ONETIME-FLOWS]` + `[HARDEN-SNAPSHOT-RACE]`.
 - [ ] **V10 — A11y** (1-2 PR) : `[A11Y-INK500]` + `[FUT-TOUCH-TARGETS]` + `[D6-KBD]` +
   `[A11Y-BORDER-PROMINENCE-SWEEP]` + `[A11Y-FUTUR-MILESTONES-KEYBOARD]` (Marc : focusables).
@@ -399,14 +401,7 @@
 
 - [ ] **`[SUBS-TAB]`** (M, reste) — détection/alertes abonnements livrées (TX-SUBSCRIPTIONS) ;
   restent : surface dédiée (onglet ou sous-onglet) + flux « confirmer/ignorer » les nouveaux détectés.
-- [ ] **`[GOAL-DEADLINE-UI]`** (S) — la carte d'un objectif existant (`Planning.tsx`) n'affiche ni
-  n'édite `deadline`, alors que l'échéance pilote un décaissement RÉEL et que le MCP peut la poser →
-  écriture IA non visible/réversible à l'écran. Afficher + éditer/effacer.
-- [ ] **`[PH4C-SAVINGS-NATURE]`** (S) — objectif lié à un poste nature Épargne → « Versé ce mois : 0 »
-  permanent (virements exclus d'actualsMap). Filtrer le dropdown aux natures non-épargne OU inclure
-  les virements rapprochés pour ces postes.
 
-## 🎨 UI / UX / a11y
 
 - [ ] **`[A11Y-INK500]`** (M, par lots — 115 occurrences restantes, ~37 fichiers) — migrer ink-500 →
   ink-400 sur le contenu actif (échec AA normal), classification par-occurrence (PAS un sed aveugle) :

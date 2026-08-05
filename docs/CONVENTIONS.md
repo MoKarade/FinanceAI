@@ -485,6 +485,31 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   `git archive <ref> | tar -x -C <scratch>` + symlink `node_modules` → on exécute l'ancien code
   dans un dossier jetable, l'arbre de travail n'est JAMAIS touché. À exiger dans tout prompt
   d'agent qui doit comparer avant/après.
+  ⚠️ **Un secret a un TRAJET complet écriture→coffre→hydratation→lecture : chaque finding n'en
+  répare qu'un segment** (leçon FINTABLE-TOKEN-PERSIST, incident réel 2026-08-05) : le champ
+  `fintable` du coffre chiffré était DÉCLARÉ (#535, « pour éviter un chemin non chiffré »),
+  l'HYDRATATION le lisait (#545, « jeton perdu à chaque reload » — même symptôme !), mais AUCUNE
+  écriture n'y a jamais été branchée : la carte faisait `setAppState` (mémoire) sans `saveApiKeys`
+  → jeton perdu au reload, import bancaire gelé 5 jours, découvert par MARC. Deux findings
+  successifs ont chacun « réglé » leur segment sans jamais tester le trajet BOUT-EN-BOUT
+  (écrire → recharger → lire). Réflexe : pour tout secret/clé, un test qui suit le trajet complet,
+  pas des tests par segment. Corollaire diagnostic : une CORRÉLATION DE TIMING (fin d'essai le
+  2026-08-01, gel le 2026-07-31) peut désigner le mauvais coupable — l'hypothèse « billing » était
+  [Probable] et FAUSSE ; c'est l'observation de l'UTILISATEUR (« il ne garde pas mon jeton ») qui
+  a donné la cause. Instrumenter d'abord (la raison `no-token` tournait en boucle SANS surface —
+  cf [FINTABLE-STALE-ALERT]).
+  ⚠️ **Méta-leçon (panel #559) : le fix qui PORTE cette leçon l'a lui-même violée.** Le premier jet
+  ne persistait qu'au `blur` — et le panel a mesuré 3 chemins qui rouvraient le MÊME symptôme :
+  (a) fermer l'onglet / naviguer dans l'app / un autofill de gestionnaire de mots de passe n'émet
+  AUCUN `blur` sur l'input (un `blur` d'élément ne naît que d'un changement de focus INTRA-document) ;
+  (b) le message d'échec du coffre était écrasé par l'erreur réseau suivante et n'était pas logué →
+  invisible même dans Diagnostics sous double panne ; (c) deux écritures concurrentes non ordonnées
+  → le blob PÉRIMÉ pouvait gagner (dernier écrivain gagne côté `localStorage`). Corrigés dans la
+  même PR : flush `visibilitychange`/`pagehide` + démontage, `logError` + région d'alerte SÉPARÉE,
+  sérialisation par chaîne de promesses. Réflexe : « écrire au blur » ne veut PAS dire « écrit » —
+  pour tout secret/donnée saisie, énumérer les SORTIES possibles du champ (blur, démontage, onglet
+  caché, fermeture, autofill) avant de se déclarer couvert. Corollaire d'humilité : la leçon
+  fraîchement écrite ne protège pas le commit qui l'écrit — c'est le panel qui l'a attrapée.
   ⚠️ **Des fixtures de test à dates ABSOLUES vieillissent contre un NOW fixe** (leçon HIST-STORE-SIZE
   2026-08-01) : les tests de fusion d'historique utilisaient des closes datés « 2026-01-10 » avec un
   NOW figé à 2027-01-15 — l'ajout de la politique d'âge (downsample > 365 j) les a fait basculer du

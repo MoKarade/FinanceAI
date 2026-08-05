@@ -124,8 +124,12 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // en $ RÉELS relèvent l'impôt des années tardives → NW final plus bas (vrai changement
         // fiscal, PAS une fuite de compteur — la neutralité des compteurs reste garantie par
         // l'identité ttp == Σ FluxImpots de projection.totalTaxesPaid.test.ts).
+        // Re-basé SCIEMMENT 2026-08-05 ([FISC-STACK-GAINS-DIV] + [FISC-DTC-ABATEMENT-ORDER], était
+        // -7169,52 / 144 260) : l'empilement séquentiel gains→dividendes et le CID fédéral réduit
+        // de l'abattement QC relèvent l'impôt de placement (−40 $ de NW ici, la fixture ayant peu
+        // de non-enregistré ; l'effet mesuré atteint ~1 072 $/an sur un profil à 500 k$).
         const melt = runWith('MELTDOWN_REER' as AllocationStrategy);
-        expect(melt.finalNetWorth).toBeCloseTo(-7169.52, 0);
-        expect(melt.estateNetWorth).toBeCloseTo(144260, 0);
+        expect(melt.finalNetWorth).toBeCloseTo(-7209.82, 0);
+        expect(melt.estateNetWorth).toBeCloseTo(144219.86, 0);
     });
 });

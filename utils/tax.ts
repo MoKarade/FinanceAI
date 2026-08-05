@@ -927,6 +927,13 @@ export const calculateDividendTax = (
     const grossTax = (progressiveGrossTax !== undefined && Number.isFinite(progressiveGrossTax))
         ? Math.max(0, progressiveGrossTax)
         : grossedUpAmount * marginalRate;
-    const cidAmount = grossedUpAmount * (cidFedRate + cidQcRate);
+    // [FISC-DTC-ABATEMENT-ORDER] Le CID FÉDÉRAL est un crédit non remboursable fédéral : au Québec
+    // il est soustrait de l'impôt fédéral AVANT l'abattement de 16,5 %, donc sa valeur effective
+    // est réduite d'autant — exactement comme le BPA et les crédits d'âge (calculateFiscalReport,
+    // `fedTax -= …` PUIS `abatement`). Ici, `grossTax` sort déjà de calculateFiscalReport, donc
+    // net d'abattement : retrancher le CID fédéral à 100 % le sur-créditait de 16,5 % (mesuré :
+    // 256,50 $/an sur 7 500 $ de dividendes admissibles). Le CID QUÉBEC n'est pas concerné —
+    // l'abattement ne touche que le fédéral.
+    const cidAmount = grossedUpAmount * (cidFedRate * (1 - QC_FEDERAL_ABATEMENT_RATE) + cidQcRate);
     return Math.max(0, grossTax - cidAmount);
 };

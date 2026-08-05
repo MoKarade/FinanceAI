@@ -67,7 +67,9 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
         // 2026-08-01 ([FISC-BRACKET-REALINDEX], était 3627,79 / 375783,25) : le fix des paliers
         // réels est un VRAI changement fiscal (impôt tardif ↑ → NW ↓) — la neutralité du COMPTEUR,
         // elle, reste garantie par l'identité ttp == Σ FluxImpots du 1er test.
-        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(-7169.52, 0);
+        // Re-basé SCIEMMENT 2026-08-05 ([FISC-STACK-GAINS-DIV] + [FISC-DTC-ABATEMENT-ORDER], était
+        // -7169,52) : vrai changement fiscal (impôt de placement ↑), pas une fuite de compteur.
+        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(-7209.82, 0);
         expect(run(ferrParams, 'AUTO_MARGINAL').finalNetWorth).toBeCloseTo(372625.14, 0);
     });
 

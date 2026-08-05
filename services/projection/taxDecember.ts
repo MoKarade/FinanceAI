@@ -731,6 +731,11 @@ export function processDecemberTaxFiling(
     }
 
     // ---- 2. Gains en capital accumulés (palier 250k) ----
+    // [FISC-STACK-GAINS-DIV] Hissé hors du bloc : le montant imposable des gains est l'ASSIETTE
+    // sur laquelle les dividendes s'empilent ensuite (§3). Vaut 0 sans gains → §3 inchangé.
+    const taxableCapGainsTotal = ctx.accCapitalGainsYear > 0
+        ? ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD
+        : 0;
     if (ctx.accCapitalGainsYear > 0) {
         // FA-3a : SRG exclu de l'assiette d'empilement (non imposable).
         const incomeForGains = ctx.isRetired
@@ -738,7 +743,7 @@ export function processDecemberTaxFiling(
             : (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual) * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed);
 
         // Inclusion gains capitaux: 50% uniforme (annulation 66.67% > 250k$ mars 2025).
-        const taxableCapGains = ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD;
+        const taxableCapGains = taxableCapGainsTotal;
 
         // B-AUDIT-2 — impôt INCRÉMENTAL empilé (progressif) plutôt qu'un taux marginal
         // plat. Les gains s'empilent SUR le revenu : on impose la BANDE
@@ -771,10 +776,19 @@ export function processDecemberTaxFiling(
         // lequel le dividende majoré s'empile. Avant, ils manquaient ICI mais pas pour les gains :
         // taux d'entrée sous-évalué → impôt sur dividendes SOUS-estimé pour un retraité vivant de
         // retraits REER (non conservateur) + incohérence d'assiette entre les deux blocs.
-        const incomeForDiv = (ctx.isRetired
+        // [FISC-STACK-GAINS-DIV] ⚠️ L'assiette inclut les GAINS IMPOSABLES de l'année. Avant, les
+        // deux blocs empilaient CHACUN leur bande à partir du même revenu nu : la bande commune
+        // [revenu, revenu+min(gains,divMajoré)] était donc facturée DEUX FOIS au taux bas, et
+        // l'impôt total sous-évalué (mesuré : −815 $/an d'impôt brut sur un retraité à 100 k$ de
+        // revenu, 30 k$ de gains et 500 k$ de non-enregistré ; le ticket mesurait −1 346 $ sur une
+        // autre fixture). L'empilement est désormais SÉQUENTIEL — gains sur le revenu, dividendes
+        // sur revenu+gains — ce qui rend la somme des deux bandes exactement égale à la bande
+        // totale [revenu, revenu+gains+divMajoré] : aucun trou, aucun recouvrement (vérifié au
+        // cent, et c'est le test d'additivité qui le verrouille).
+        const incomeForDiv = ((ctx.isRetired
             ? ((ctx.incomeRetirementMonthly - gisMonthlySafe) * 12 + ctx.accRentesYear + ctx.accRetraitsReerYear)
             : (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual) * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed)
-        ) / ctx.activeUsersCount;
+        ) + taxableCapGainsTotal) / ctx.activeUsersCount;
         // [FISC-BRACKET-REALINDEX] bloc NOMINAL-cohérent (comme les gains §2) : incomeForDiv est
         // nominal, l'impôt s'ajoute sans re-nominalisation → PAS de realDeflator.
         const currentMarginal = helpers.getMarginalRate(incomeForDiv, ctx.loopYear);

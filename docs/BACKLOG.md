@@ -125,10 +125,10 @@
   COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la
   formule s'annule dès 15 888 $) ; test `tax.test.ts:968` VACUEUX. Mesuré : 0 $ vs 7 944 $/an à
   15 888 $ combiné. ⚠️ Exiger la table SC + corriger FISCAL_REFERENCE §6 + remplacer le test, même PR.
-- [ ] **`[FISC-DTC-ABATEMENT-ORDER]`** (S, MOYEN [Certain mécanisme] — V6) — le CID fédéral est
+- [x] **`[FISC-DTC-ABATEMENT-ORDER]`** ✅ 2026-08-05 (PR en cours ; S, MOYEN [CONFIRMÉ par lecture + mesure] — V6) — le CID fédéral est
   soustrait APRÈS l'abattement QC 16,5 % (`taxDecember.ts:734-739` + `tax.ts:906-907`) alors que
   BPA/âge sont avant → sur-crédit de 16,5 % du CID (+49 $/an profil Marc, +308 $ à 9 k$ div).
-- [ ] **`[FISC-STACK-GAINS-DIV]`** (S, MOYEN [MESURÉ] — V6, même PR) — gains (`taxDecember.ts:703`)
+- [x] **`[FISC-STACK-GAINS-DIV]`** ✅ 2026-08-05 (PR en cours ; S, MOYEN [CONFIRMÉ par lecture + mesure] — V6) — gains (`taxDecember.ts:703`)
   et dividendes (`:737`) empilés CHACUN sur la même base → bande commune facturée 2× au taux bas
   (mesuré : −1 346 $/an sur base 100k/gains 30k/div 15k). Mord un retraité à gros non-enregistré.
 - [ ] **`[FISC-REEE-GRANT-CLAWBACK]`** (S, [Probable] — V6) — à la fermeture du REEE,

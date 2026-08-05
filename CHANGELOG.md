@@ -20,6 +20,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   L'assistant voit désormais cette fraîcheur lui aussi et le signalera avant de commenter des
   montants potentiellement figés. Silencieux en mode démo et si l'import n'a jamais été configuré.
 
+### Corrections money-critical
+- **`[FISC-STACK-GAINS-DIV]` — les gains et les dividendes ne sont plus imposés « en parallèle ».**
+  Les deux blocs empilaient chacun leur tranche à partir de ton revenu nu, si bien que la tranche
+  commune était facturée DEUX FOIS au taux le plus bas — l'impôt de placement était donc
+  sous-évalué. L'empilement est désormais séquentiel (gains sur le revenu, dividendes par-dessus),
+  ce qui rend la somme des deux exactement égale à la tranche totale : ni trou, ni recouvrement.
+  Mesuré sur un retraité à 100 k$ de revenu, 30 k$ de gains et 500 k$ de non-enregistré :
+  **+815 $/an** d'impôt qui manquait.
+- **`[FISC-DTC-ABATEMENT-ORDER]` — le crédit d'impôt pour dividendes n'est plus sur-crédité.**
+  Au Québec, l'impôt fédéral est réduit de 16,5 % par l'abattement, et tout crédit fédéral perd
+  donc 16,5 % de sa valeur (c'est déjà le cas du montant personnel de base et des crédits d'âge).
+  La portion fédérale du crédit de dividendes était, elle, retranchée à 100 %. Mesuré :
+  **+256 $/an** sur 7 500 $ de dividendes admissibles.
+  **Effet combiné : ~1 072 $/an d'impôt en plus sur un profil à gros portefeuille non
+  enregistré** — ton patrimoine projeté baisse légèrement, mais l'ancien chiffre était optimiste.
+
 ### Corrections
 - **`[ENG-TAXDEC-NAN-GUARD]` + `[ENG-TAXDEC-FLOOR-INDEX]` — deux garde-fous du solde d'impôt
   d'avril qui n'en étaient pas vraiment.** (1) Le clamp censé borner le solde ressemblait à une

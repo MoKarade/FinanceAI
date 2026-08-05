@@ -1379,6 +1379,11 @@ describe('processDecemberTaxFiling — FA-8 : assiette dividendes retraité incl
         // REER/FERR, l'empilement démarre à 96 000 $ (marginal 36,12 %) au lieu de 36 000 $
         // (25,69 %) → bande nettement plus chère. accCapitalGainsYear = 0 → `.gains` isole
         // l'impôt de dividendes. Avant FA-8, les DEUX cas donnaient 1 750,96 $.
+        // Re-basé SCIEMMENT 2026-08-05 ([FISC-DTC-ABATEMENT-ORDER], étaient 1 750,96 / 6 351,66) :
+        // le CID FÉDÉRAL vaut désormais (1 − 16,5 %) comme tout crédit fédéral au Québec, donc
+        // l'impôt net sur dividendes monte de 16,5 % du CID fédéral (ici ~1 026 $ sur 41 400 $ de
+        // dividende majoré). L'INVARIANT du test (avec retraits > sans) est INCHANGÉ et vérifié
+        // avant les pins. [FISC-STACK-GAINS-DIV] n'intervient pas ici : accCapitalGainsYear = 0.
         const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate };
         const mk = (reer: number) => baseCtx({
             isRetired: true, age: 70, activeUsersCount: 1,
@@ -1390,8 +1395,8 @@ describe('processDecemberTaxFiling — FA-8 : assiette dividendes retraité incl
         // Direction du fix : l'empilement démarre plus haut → impôt dividendes PLUS ÉLEVÉ.
         expect(avecRetraits.newTaxCurrentYear.gains).toBeGreaterThan(sansRetraits.newTaxCurrentYear.gains);
         // Valeurs PINNÉES (barème 2026 réel, inflationFactor 1) pour figer le comportement.
-        expect(sansRetraits.newTaxCurrentYear.gains).toBeCloseTo(1750.96, 0);
-        expect(avecRetraits.newTaxCurrentYear.gains).toBeCloseTo(6351.66, 0);
+        expect(sansRetraits.newTaxCurrentYear.gains).toBeCloseTo(2776.96, 0);
+        expect(avecRetraits.newTaxCurrentYear.gains).toBeCloseTo(7377.67, 0);
     });
 });
 
@@ -1457,6 +1462,51 @@ describe('processDecemberTaxFiling — RAMQ (prime médicaments publique)', () =
         const ramqAvec = avecDeduc.logs.some((l) => l.includes('RAMQ'));
         expect(ramqSans).toBe(true);
         expect(ramqAvec).toBe(false);
+    });
+});
+
+describe('[FISC-STACK-GAINS-DIV] empilement séquentiel gains → dividendes', () => {
+    const realHelpers: DecemberHelpers = {
+        calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate,
+    };
+
+    it('ADDITIVITÉ : gains + dividendes couvrent la bande TOTALE, sans recouvrement ni trou', () => {
+        // C'est LA propriété que le fix installe, et elle survit aux re-bases de goldens : les deux
+        // blocs empilaient CHACUN leur bande depuis le revenu nu, donc la bande commune était
+        // facturée DEUX FOIS au taux bas. Empilés séquentiellement, l'impôt de placement doit
+        // valoir EXACTEMENT impôt(revenu + gains + divMajoré) − impôt(revenu).
+        const revenu = 100_000, gainsBruts = 30_000, nonReg = 500_000, taux = 5;
+        const r = processDecemberTaxFiling(DECEMBER, baseCtx({
+            isRetired: true, age: 70, ageSpouse: 70, activeUsersCount: 1,
+            incomeRetirementMonthly: revenu / 12,
+            accCapitalGainsYear: gainsBruts, nonReg, baseNonRegRate: taux,
+            ramqExempt: true,
+        }), realHelpers, ZERO_TAX);
+
+        const t = (x: number): number => calculateFiscalReport(x, 0, 0, undefined, true).totalTax;
+        const taxableGains = gainsBruts * 0.5;
+        const annualDiv = nonReg * (taux / 100) * 0.30;
+        const grossedUp = annualDiv * getDividendGrossUpRate('eligible');
+        const bandeTotale = t(revenu + taxableGains + grossedUp) - t(revenu);
+        // Le bucket `gains` porte l'impôt des gains + l'impôt BRUT des dividendes MOINS le CID.
+        const cid = grossedUp * (0.150198 * (1 - 0.165) + 0.117);
+        expect(r.newTaxCurrentYear.gains).toBeCloseTo(bandeTotale - cid, 0);
+    });
+
+    it('les dividendes s\'empilent PLUS HAUT quand il y a des gains (progressivité respectée)', () => {
+        // DISCRIMINANT : sur le code d'avant, l'assiette des dividendes ignorait les gains, donc
+        // ces deux scénarios donnaient le MÊME impôt sur dividendes.
+        const mk = (gains: number) => processDecemberTaxFiling(DECEMBER, baseCtx({
+            isRetired: true, age: 70, ageSpouse: 70, activeUsersCount: 1,
+            incomeRetirementMonthly: 100_000 / 12,
+            accCapitalGainsYear: gains, nonReg: 500_000, baseNonRegRate: 5, ramqExempt: true,
+        }), realHelpers, ZERO_TAX).newTaxCurrentYear.gains;
+        const sansGains = mk(0);
+        const avecGains = mk(30_000);
+        // L'écart dépasse le seul impôt des gains : les dividendes sont eux aussi poussés plus haut.
+        const t = (x: number): number => calculateFiscalReport(x, 0, 0, undefined, true).totalTax;
+        const impotDesGainsSeuls = t(100_000 + 15_000) - t(100_000);
+        expect(avecGains - sansGains).toBeGreaterThan(impotDesGainsSeuls);
     });
 });
 

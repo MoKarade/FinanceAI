@@ -204,6 +204,12 @@ export async function runFintableBrowserSync(
             ?? new Date(now() - LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 10);
         const snapshot = await readFintableSnapshot(client, { dateFrom, dateTo: todayStr });
 
+        // ⚠️ [finding code-reviewer, PR #566] Les RÔLES viennent de `state` (pré-fetch), pas de
+        // l'état frais — écart ASSUMÉ et borné, nommé plutôt que laissé en résiduel silencieux :
+        // réassigner un rôle de compte pendant les quelques secondes de réseau ferait classer ce
+        // compte selon l'ANCIENNE config pour cette passe seulement, et la suivante le corrige.
+        // Rien n'est écrasé (c'est une lecture de CONFIG, pas la base d'application), donc ça ne
+        // relève pas de [FINTABLE-SYNC-STALE-BASE], qui visait la base d'ÉCRITURE.
         const { payloads, report: mapReport } = mapFintableSnapshot(snapshot, {
             roles: toMapperRoles(state.fintableRoles),
             transactionsAfter: cutoverDateUsed,

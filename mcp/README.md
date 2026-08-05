@@ -203,6 +203,12 @@ compare une clé saisie à la main (`/oauth/token` exige un code signé HMAC). I
 - **Limite assumée** : le compteur vit en mémoire, donc un cold-start Cloud Run le remet à zéro
   (même compromis que le registre anti-rejeu `consumedJti`). Ça ralentit massivement une attaque
   soutenue sans prétendre à une garantie distribuée.
+- ⚠️ **Le plafond RÉEL est `8 × max-instances`**, pas 8 : le compteur est par INSTANCE, et
+  `deploy.sh` fixe `--max-instances 2` → **jusqu'à 16 échecs / 15 min** si une pression suffisante
+  déclenche un scale-up. Facteur ×2, borné par `max-instances` (donc le brute-force reste
+  infaisable contre une clé de 24 octets aléatoires), mais l'annonce « 8 » serait fausse sans
+  cette note. Pour rendre le chiffre exact, passer ce service à `--max-instances 1` — légitime
+  pour un service mono-utilisateur, au prix d'une file d'attente si deux requêtes se croisent.
 
 ### Runbook — rotation de `FINANCEAI_OAUTH_SIGNING_KEY` (kill-switch d'incident)
 
@@ -225,7 +231,9 @@ printf '%s' "$NEW_KEY" | gcloud secrets versions add financeai-oauth-signing-key
 ./mcp/deploy.sh
 
 # 4. Vérifier que l'ancienne autorisation est bien morte (401 attendu avec un ancien Bearer)
-curl -s -o /dev/null -w '%{http_code}\n' -X POST "$FINANCEAI_PUBLIC_URL/mcp" \
+# ⚠️ `--data ''` OBLIGATOIRE : le frontal Google refuse un POST sans Content-Length (411) AVANT
+# d'atteindre le serveur — sans lui, tu lirais un 411 et croirais à tort que le test n'a rien prouvé.
+curl -s -o /dev/null -w '%{http_code}\n' -X POST "$FINANCEAI_PUBLIC_URL/mcp" --data '' \
   -H "Authorization: Bearer <ancien-token>"
 
 # 5. Désactiver l'ancienne version (après avoir confirmé que le nouveau flux marche)

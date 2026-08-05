@@ -1493,6 +1493,22 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   le symptôme dont Marc s'est plaint. Une re-tentative UNIQUE qui ré-applique les mêmes payloads sur
   l'état frais coûte un aller-retour et sauve la journée ; rejouer le réseau serait disproportionné,
   et une boucle pilonnerait le Drive.
+- ⚠️ **Écrire un runbook qui s'appuie sur un signal que le code ne produit PAS** (leçon
+  MCP-CLOUDRUN-AUTH-HARDENING, panel PR #566) : le runbook de rotation de clé désignait « une
+  tentative suspecte dans les logs Cloud Run » comme déclencheur, alors que ni le blocage 429 ni le
+  refus 403 n'écrivaient la moindre ligne — la doc décrivait une capacité inexistante, et le seul
+  moment où on s'en serait aperçu est pendant un incident. Quand une doc dit « surveille X »,
+  vérifier dans le code que X est ÉMIS, pas seulement que la condition existe. Classe sœur de
+  « un commentaire qui affirme se vérifie ».
+- ⚠️ **Un plafond « N par fenêtre » devient `N × instances` dès qu'il vit en mémoire** (même panel) :
+  `deploy.sh` fixe `--max-instances 2`, donc les « 8 échecs / 15 min » annoncés valaient en réalité
+  16 sous scale-up. Le chiffre affiché dans une doc de sécurité doit intégrer la topologie de
+  déploiement, sinon il est faux — mesurer la config, pas seulement lire le code du limiteur.
+- ⚠️ **Un test de panne qui échoue TOUJOURS ne teste pas la re-tentative** (finding code-reviewer,
+  même panel, prouvé par INJECTION) : le test de conflit OCC existant faisait échouer `save` à
+  chaque appel, donc il ne distinguait pas « conflit puis succès » de « conflit permanent » — un
+  retry qui repassait la version PÉRIMÉE le laissait 100 % vert. Un chemin de RÉCUPÉRATION exige un
+  mock qui échoue puis RÉUSSIT ; sinon on teste l'abandon, pas la reprise.
 - ⚠️ **Un rate-limit PAR IP derrière un load balancer est une illusion de protection** (leçon
   MCP-CLOUDRUN-AUTH-HARDENING, 2026-08-05) : `X-Forwarded-For` est en partie sous contrôle du
   client, donc la clé se fait varier. Sur un service MONO-UTILISATEUR, un compteur GLOBAL est à la

@@ -168,7 +168,26 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
             // tout le réseau. Une 2ᵉ collision de suite reste transitoire → laissée au prochain tick,
             // plutôt qu'une boucle qui pourrait pilonner le Drive.
             const retryBase = await store.getWithVersion();
-            return await applyAndSave(retryBase.state, retryBase.version);
+            try {
+                return await applyAndSave(retryBase.state, retryBase.version);
+            } catch (retryErr) {
+                // ⚠️ [finding silent-failure-hunter, PR #566] Deux collisions D'AFFILÉE ne se
+                // distinguaient pas d'une collision isolée : dans les deux cas l'erreur remontait
+                // sans une ligne de trace. Or « une collision par jour » (deux crons mal
+                // désynchronisés, un onglet qui écrit en boucle) est un problème SYSTÉMIQUE que
+                // seule la répétition révèle — et que [FINTABLE-STALE-ALERT] ne diagnostiquerait
+                // qu'indirectement, par péremption du vieux rapport. On trace sans changer le
+                // comportement : toujours pas de rapport d'échec écrit (ce n'est pas une panne).
+                if (isStateConflictError(retryErr)) {
+                    logError({
+                        source: 'storage', severity: 'warning',
+                        message: '[FINTABLE-3] DEUX conflits OCC consécutifs — collision récurrente ?'
+                            + ' La passe est abandonnée, le prochain tick réessaiera.',
+                        error: retryErr instanceof Error ? retryErr : new Error(String(retryErr)),
+                    });
+                }
+                throw retryErr;
+            }
         }
     } catch (err) {
         if (isStateConflictError(err)) {

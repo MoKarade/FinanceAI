@@ -37,8 +37,6 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   (la synchronisation automatique de nuit), une collision avec l'app faisait jeter la passe entière —
   soit une journée de retard sur l'import ; elle réessaie maintenant une fois sur les données
   fraîches au lieu de tout perdre.
-
-### Corrections money-critical
 - **`[FISC-STACK-GAINS-DIV]` — les gains et les dividendes ne sont plus imposés « en parallèle ».**
   Les deux blocs empilaient chacun leur tranche à partir de ton revenu nu, si bien que la tranche
   commune était facturée DEUX FOIS au taux le plus bas — l'impôt de placement était donc

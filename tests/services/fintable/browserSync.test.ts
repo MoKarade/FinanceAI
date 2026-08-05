@@ -156,6 +156,23 @@ describe('runFintableBrowserSync — garanties de la passe', () => {
         expect(written?.some((t) => t.payee?.includes('ABONNEMENT FINTABLE'))).toBe(true);
     });
 
+    /**
+     * [finding silent-failure-hunter, PR #566] `getFreshState` est fourni par l'appelant : rien ne
+     * garantit qu'il ne lève pas (store démonté, hydratation en cours). L'appel vit à l'INTÉRIEUR du
+     * grand `try`, donc une exception devient un rapport d'échec honnête plutôt qu'une rejection
+     * non gérée — mais aucun test ne le PROUVAIT, et un futur refactor pouvait le sortir du `try`
+     * sans que rien ne s'allume. Ce test verrouille la position de l'appel, pas seulement son effet.
+     */
+    it('`getFreshState` qui LÈVE → rapport d\'échec, jamais d\'état à moitié écrit', async () => {
+        const r = await runFintableBrowserSync(stateWith(), 'jeton', {
+            client: fakeClient([account()]), now,
+            getFreshState: () => { throw new Error('store indisponible'); },
+        });
+
+        expect(r.statePatch).toBeNull();               // ← l'appelant ne peut rien corrompre
+        expect(r.report.error).toContain('store indisponible');
+    });
+
     it('une dette au rôle sans nom est ignorée sans faire échouer la passe', async () => {
         const roles = { acc_1: { kind: 'debt', debtName: '   ' } } as unknown as Record<string, FintableAccountRoleConfig>;
         const r = await runFintableBrowserSync(stateWith({ fintableRoles: roles }), 'jeton', {

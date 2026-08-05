@@ -17,6 +17,15 @@
 >   le LB → une clé par IP serait une illusion). Un succès remet à zéro → Marc n'est jamais gêné.
 >   Runbook de rotation `FINANCEAI_OAUTH_SIGNING_KEY` écrit dans `mcp/README.md`.
 >
+> **Panel (code-reviewer + silent-failure + security-privacy) : 8 findings, TOUS corrigés dans la
+> même PR.** Le plus instructif était auto-infligé : mon runbook disait « surveille les logs » alors
+> que le blocage 429 et le refus 403 n'écrivaient AUCUNE ligne. Aussi : plafond réel `8 × max-instances`
+> (=16, `deploy.sh --max-instances 2`) corrigé dans la doc ; `curl` du runbook sans `--data ''`
+> (→ 411 au lieu de 401, faux négatif) ; test du chemin de SUCCÈS du retry OCC ajouté (l'ancien test
+> faisait échouer `save` à chaque appel, donc un retry à version périmée restait vert — prouvé par
+> injection) ; test de `getFreshState` qui lève ; rôles Fintable toujours lus pré-fetch, nommé en
+> commentaire au lieu de rester un résiduel silencieux.
+>
 > **⚠️ MARC A TRANCHÉ (2026-08-05) : « vague suivante pour régime épargne-étude »** →
 > `[FISC-REEE-GRANT-CLAWBACK]` est la PROCHAINE vague, **contre** la reco de différer. Des enfants
 > sont donc au programme : ne PAS re-proposer de reporter, ne pas ré-argumenter le 0 $ mesuré.

@@ -337,6 +337,14 @@ ${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_metho
             // compteur global et de la limite assumée en mémoire).
             if (authorizeLimiter.isBlocked()) {
                 const retryAfter = authorizeLimiter.retryAfterSeconds();
+                // ⚠️ [finding silent-failure-hunter, PR #566] Un blocage NON TRACÉ rend une attaque
+                // invisible — et le runbook de rotation de clé (mcp/README.md) désigne justement
+                // « une tentative suspecte dans les logs Cloud Run » comme son déclencheur. Sans
+                // cette ligne, la doc décrivait un signal que le code ne produisait pas.
+                console.error(
+                    `[FinanceAI MCP http] /oauth/authorize BLOQUÉ : quota d'échecs épuisé, `
+                    + `réessai dans ${retryAfter} s. Si ce n'est pas toi → runbook de rotation (mcp/README.md).`,
+                );
                 res.writeHead(429, {
                     'Content-Type': 'text/html; charset=utf-8',
                     'Retry-After': String(retryAfter),
@@ -356,6 +364,9 @@ ${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_metho
             } catch (err) {
                 if (err instanceof OAuthError && err.code === 'access_denied') {
                     authorizeLimiter.recordFailure();
+                    // Tracé aussi : un pilonnage se voit à la RÉPÉTITION de cette ligne, pas
+                    // seulement au blocage final (qui n'arrive qu'au 8ᵉ échec).
+                    console.error('[FinanceAI MCP http] /oauth/authorize : clé d\'accès REFUSÉE.');
                     res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
                     res.end(authorizeFormHtml(form, 'Clé d’accès invalide — réessaie.'));
                     return true;

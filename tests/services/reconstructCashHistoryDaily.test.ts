@@ -101,6 +101,42 @@ describe('[FUTUR-DAILY] reconstructCashHistoryDaily', () => {
         expect(res.points.every((p) => Number.isFinite(p.cash))).toBe(true);
     });
 
+    it('DÉCLARE de combien le niveau est décalé par les flux non datables (finding audit)', () => {
+        // ⚠️ L'ANCRE (`computeStartingCash`) COMPTE la transaction datée au mois seul ; cette
+        // fonction ne peut pas la placer. Le niveau passé est donc décalé d'autant — mesuré
+        // −2 000 $ sur TOUS les points par l'audit. Ignorer en silence serait un faux niveau ;
+        // l'exposer permet à l'écran de le DIRE.
+        const res = reconstructCashHistoryDaily([tx('2026-01', -2_000), tx('2026-01-06', -100)], 1_000, '2026-01-08');
+        expect(res.undatedTotal).toBe(-2_000);
+    });
+
+    it('un doublon/virement non datable ne compte PAS dans le décalage déclaré', () => {
+        // Il n'est pas dans l'ancre non plus (même exclusion) → il ne décale rien.
+        const res = reconstructCashHistoryDaily(
+            [tx('2026-01', -2_000, { isTransfer: true }), tx('2026-01-06', -100)],
+            1_000, '2026-01-08',
+        );
+        expect(res.undatedTotal).toBe(0);
+    });
+
+    it('DÉCLARE les flux postérieurs à nowDate — la vraie limite de l’invariant (finding audit)', () => {
+        // Mon test d'invariant plus haut plaçait `nowDate` un mois sans aucun flux : il
+        // n'EXERÇAIT donc pas le cas où l'invariant casse. L'audit l'a relevé.
+        // La mensuelle ancre sur la FIN du mois et absorbe un flux du 28 ; la quotidienne ancre sur
+        // `nowDate` et ne l'a pas encore vu. L'invariant ne tient que si ce total est nul.
+        const res = reconstructCashHistoryDaily(
+            [tx('2026-01-06', -100), tx('2026-01-28', -4_000)],
+            1_000, '2026-01-08',
+        );
+        expect(res.flowsAfterNowDate).toBe(-4_000);
+    });
+
+    it('DISCRIMINANT — quand aucun flux ne suit nowDate, l’invariant tient et le total est nul', () => {
+        const res = reconstructCashHistoryDaily([tx('2026-01-06', -100)], 1_000, '2026-01-08');
+        expect(res.flowsAfterNowDate).toBe(0);
+        expect(res.undatedTotal).toBe(0);
+    });
+
     it('traverse un changement de mois ET d’année sans décalage', () => {
         const res = reconstructCashHistoryDaily(
             [tx('2025-12-30', -100), tx('2026-01-01', -200)],
@@ -113,7 +149,9 @@ describe('[FUTUR-DAILY] reconstructCashHistoryDaily', () => {
     });
 
     it('aucune transaction → série vide, pas une ligne à zéro', () => {
-        expect(reconstructCashHistoryDaily([], 1_000, '2026-01-08')).toEqual({ points: [], firstDate: null });
+        expect(reconstructCashHistoryDaily([], 1_000, '2026-01-08')).toEqual({
+            points: [], firstDate: null, undatedTotal: 0, flowsAfterNowDate: 0,
+        });
     });
 
     it('un montant non fini est ignoré sans corrompre le reste de la série', () => {

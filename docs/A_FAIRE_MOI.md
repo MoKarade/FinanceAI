@@ -35,6 +35,7 @@ Ce sont les moins chères et les plus débloquantes. Une phrase suffit pour chac
 | A10 | As-tu une assurance médicaments **PRIVÉE** ou es-tu à la **RAMQ** ? Je ne peux pas le deviner et ça change la prime. | `[ENG-RAMQ-FIELDS]` | Prime RAMQ vs 0 |
 | A11 | Le pull Drive qui purge des artefacts persona ne fait qu'un log. **Veux-tu un toast visible ?** | `[PURGE-TOAST-UX]` | Confort |
 | A12 | Sur la courbe du Futur, **qu'est-ce que tu veux voir annoté** ? (âge de retraite ? épuisement d'un compte ? bascule de stratégie ? début RRQ/PSV ?) — question de ton brief de 2026-06-10, jamais répondue. | `[PH4-FUT]` | Feature entière en attente |
+| A13 | 🆕 **Quel jour tombe ta paie ?** Et quel jour sont prélevés tes paiements de dette / d'hypothèque ? Le modèle n'a **aucun** champ de date pour ça (`grossSalary`/`netSalary` sont des montants MENSUELS, `Debt` n'a que `termEndDate`). | `[FUTUR-DAILY]` | ⚠️ **Sans ces dates, le futur zoomé au jour ne montrera de vraies marches que pour tes charges récurrentes.** Ta paie et ton hypothèque seront lissées — c'est-à-dire interpolées. C'est le seul écart entre ce que tu as demandé et ce que je peux livrer honnêtement. |
 
 **`[PROFIL-SWITCH]`** (4 questions d'un coup, posées le 2026-08-01, sans réponse) — ⚠️ touche la
 persistance de tes VRAIES données, je ne code rien avant :

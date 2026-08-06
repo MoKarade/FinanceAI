@@ -196,8 +196,15 @@
         au-delà (quota localStorage) → au-delà, `priceAgeMaxDays` grimpe et l'écran DOIT le dire :
         un plateau de 6 jours n'est plus un week-end, c'est de la donnée absente qui ressemble à une
         valeur stable.
-  - [ ] Mouvements DATÉS du futur à collecter : `RecurringItem.dayOfMonth`, paie, loyer, versement
-        hypothécaire → alimentent `deltasFor` (le module reste pur, l'appelant sait où chercher).
+  - [x] Mouvements DATÉS du futur — `services/projection/datedMonthEvents.ts` (9 tests) ✅ 2026-08-06.
+        ⚠️ **MESURE QUI RÉDUIT LA PROMESSE** : `RecurringItem.dayOfMonth` est la SEULE date que l'app
+        connaisse pour le futur. La PAIE n'a aucun champ de jour (`grossSalary`/`netSalary` sont des
+        montants MENSUELS), les DETTES non plus (`Debt` n'a que `termEndDate`), l'hypothèque non plus.
+        Donc dans un futur zoomé, seules les charges récurrentes font de vraies marches ; le salaire
+        et l'hypothèque sont lissés dans le résidu. → question **A13** routée à Marc (`A_FAIRE_MOI`) :
+        c'est une donnée que lui seul connaît, je ne peux pas la déduire.
+        Deux pièges qu'un graphe rend INVISIBLES, tous deux testés : le SIGNE (un coût positif doit
+        faire DESCENDRE un solde) et l'ANNUEL compté douze fois.
   - [ ] UI : zoom + tableau détaillé + rendu du drapeau `isDated` (distinguer mesuré et interpolé).
   - [ ] Liquidités par COMPTE bancaire — ⚠️ BLOQUÉ par une absence de donnée : on reconstruit à
         rebours depuis le solde connu d'AUJOURD'HUI, or il n'est connu que GLOBALEMENT.

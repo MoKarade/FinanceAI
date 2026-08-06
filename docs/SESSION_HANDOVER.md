@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟠 Session 2026-08-06 (suite 29) — audit de l'ancrage : 2 findings à impact ROUTÉS vers Marc
+> L'audit `financial-integrity` de #572 CONFIRME la bit-identité (hash SHA-256 identique sur 481
+> mois, sonde prouvée discriminante par perturbation) **et prend en défaut mon CHANGELOG** : le
+> 18 % vivait AUSSI dans `setupSimulation.ts`, l'arrondi CELI à 2 endroits d'`utils/tax.ts`.
+> **Corrigé dans la même PR** : les 2 jumeaux · la contradiction interne de FISCAL_REFERENCE
+> (« 18 % du brut » vs « du GAGNÉ ») · un commentaire disant `??` là où le code fait `||` ·
+> et le **trou de garde que j'avais créé** en déplaçant `RRIF_RATE_PLATEAU` vers `helpers.ts`,
+> absent de `FISCAL_MODULES` (ajouté, avec `setupSimulation.ts`, + exclusion des opérateurs
+> BINAIRES pour ne pas noyer le signal sous le générateur pseudo-aléatoire).
+>
+> ⚠️ **DEUX findings à impact $ NON corrigés, routés vers `A_FAIRE_MOI`** — je ne peux pas les
+> confirmer seul (le proxy BLOQUE `canada.ca`, 403) et un faux fix dans un moteur d'impôt est pire
+> que le bug laissé en place :
+> - `[FISC-RRIF-94-FACTOR]` — `helpers.ts:95` code `94: 0.2000` ; le prescrit serait 18,79 %
+>   (plateau 20 % à 95+). **Mesuré +13 726 $** de patrimoine final. Il faut le règlement 7308(4).
+> - `[FISC-RRSP-ROOM-PER-USER]` — droits REER sur le revenu du MÉNAGE au lieu de PAR PERSONNE.
+>   **Mesuré 45 000 $ accordés vs 34 480 $ dus** (+10 520 $/an de droits fantômes). Changement de
+>   MODÈLE → décision de Marc requise.
+> Aussi ticketés : `[FISC-RRSP-RENTAL-EARNED]`, `[FISC-RRIF-FRACTIONAL-AGE]`, `[FISC-REF-DEDUP]`.
+
 > ## 🟢 Session 2026-08-06 (suite 28) — dette fiscale : 3 constantes ancrées (PR #572)
 > `[FISC-CONST-ANCHOR-DEBT]` entamé — **3 des 14 entrées `fiscal` résolues**, à commencer par la
 > plus nette : `0.18`, le plafond REER de 18 % du revenu GAGNÉ, en dur dans `taxJanuary.ts` sans

@@ -38,6 +38,7 @@ import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { DailyDetailPanel } from './projection/DailyDetailPanel';
+import { calendarFromMonthIndex, isoDate, todayIsoLocal, daysInMonth } from '../services/projection/dailyRefine';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCompactCAD } from '../utils/format';
 
@@ -519,32 +520,40 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // entier pour les jalons). Le mensuel pilote donc la FENÊTRE, et le quotidien n'est calculé que
     // pour la remplir — c'est exactement ce que « si je zoom » autorise.
     const dailyWindow = useMemo(() => {
+        // Garde de zoom EN TÊTE (finding revue #574) : le panneau ne s'affiche qu'en zoom, or ce memo
+        // mappait TOUTE `visibleData` — des centaines de mois en vue dézoomée, l'état par défaut —
+        // pour un résultat jamais rendu.
+        if (!zoom.isZoomed) return null;
         const vis = zoom.visibleData;
         if (vis.length < 2) return null;
-        const cal = (monthIndex: number) => {
-            const abs = startMonth + monthIndex;
-            return { year: startYear + Math.floor(abs / 12), month: ((abs % 12) + 12) % 12 };
-        };
+        const cal = (monthIndex: number) => calendarFromMonthIndex(startYear, startMonth, monthIndex);
         const anchors = vis.map((p) => {
             const { year, month } = cal(p.monthIndex);
             return { monthIndex: p.monthIndex, year, month, value: Number(p.NetWorth) || 0 };
         });
         const first = cal(vis[0].monthIndex);
         const last = cal(vis[vis.length - 1].monthIndex);
-        const iso = (y: number, m: number, d: number) =>
-            `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const now = cal(todayMonthIndex);
         return {
-            from: iso(first.year, first.month, 1),
-            to: iso(last.year, last.month, new Date(Date.UTC(last.year, last.month + 1, 0)).getUTCDate()),
+            from: isoDate(first.year, first.month, 1),
+            to: isoDate(last.year, last.month, daysInMonth(last.year, last.month)),
             anchors,
-            today: iso(now.year, now.month, new Date().getUTCDate()),
+            // ⚠️ `todayIsoLocal` et NON une recomposition maison : le premier jet mélangeait une
+            // année/un mois LOCAUX avec un jour lu en UTC → 30 jours d'écart tous les soirs au Québec
+            // (finding CRITIQUE de la revue, reproduit). La fonction est pure et testée.
+            today: todayIsoLocal(),
         };
-    }, [zoom.visibleData, startYear, startMonth, todayMonthIndex]);
+    }, [zoom.isZoomed, zoom.visibleData, startYear, startMonth]);
 
-    const dailyAssets = useFinanceStore(s => s.assets) ?? [];
+    const storeAssets = useFinanceStore(s => s.assets) ?? [];
     const fxRates = useFinanceStore(s => s.fxRates) ?? {};
-    const dailyRecurring = useFinanceStore(s => s.subscriptions) ?? [];
+    const storeRecurring = useFinanceStore(s => s.subscriptions) ?? [];
+    // ⚠️ `netSalary` du store est MENSUEL (règle « unités argent » de CLAUDE.md). Marc est payé
+    // CHAQUE SEMAINE le jeudi (réponse A13, 2026-08-06) : c'est `weeklyDeltasForMonth` qui fait la
+    // conversion (×12/52 par versement), pas ce site — ici on ne fait que sommer le ménage.
+    const dailyMonthlyNet = (config?.users ?? []).reduce((s, u) => s + (Number(u?.netSalary) || 0), 0);
+    const dailyMonthlyDebt = useFinanceStore(
+        s => (s.debts ?? []).reduce((acc, d) => acc + (Number(d?.minimumPayment) || 0), 0),
+    );
 
     // [A11Y-CHARTS] — colonnes de la table de données sr-only (alternative texte à la courbe Recharts,
     // opaque aux lecteurs d'écran). Date (axe X) + chaque montant affiché (comptes empilés + Valeur Nette).
@@ -1121,9 +1130,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         today={dailyWindow.today}
                         transactions={transactions}
                         currentCash={calculatedStartingCash || 0}
-                        assets={dailyAssets}
+                        assets={storeAssets}
                         fx={fxRates}
-                        recurring={dailyRecurring}
+                        recurring={storeRecurring}
+                        monthlyNetSalary={dailyMonthlyNet}
+                        monthlyDebtPayment={dailyMonthlyDebt}
                         isPrivacyMode={isPrivacyMode}
                     />
                 )}

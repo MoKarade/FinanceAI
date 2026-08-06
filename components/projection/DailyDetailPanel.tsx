@@ -21,11 +21,11 @@
 
 import React, { useMemo } from 'react';
 import { formatCAD } from '../../utils/format';
-import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
+import { PrivateAmount } from '../ui/PrivateAmount';
 import { reconstructCashHistoryDaily } from '../../services/history/reconstructCashHistory';
 import { reconstructPortfolioHistoryDaily, type MinimalAsset } from '../../services/history/reconstructPortfolioHistory';
 import { refineWindowToDaily, daySpan, type MonthlyAnchor } from '../../services/projection/dailyRefine';
-import { datedDeltasForMonth, type MinimalRecurring } from '../../services/projection/datedMonthEvents';
+import { datedDeltasForMonth, weeklyDeltasForMonth, type MinimalRecurring } from '../../services/projection/datedMonthEvents';
 
 /** Au-delà de ce nombre de jours dans la fenêtre, le tableau quotidien n'a plus de sens à lire
  *  (et le rendre coûterait pour rien) : on invite à zoomer davantage plutôt que d'afficher 3 ans
@@ -45,6 +45,10 @@ export interface DailyDetailPanelProps {
     assets: MinimalAsset[];
     fx: Record<string, number>;
     recurring: ReadonlyArray<MinimalRecurring>;
+    /** Net MENSUEL du ménage — versé chaque semaine (réponse de Marc : « chaque semaine jeudi »). */
+    monthlyNetSalary?: number;
+    /** Somme des paiements minimums MENSUELS des dettes — même cadence hebdomadaire. */
+    monthlyDebtPayment?: number;
     isPrivacyMode?: boolean;
 }
 
@@ -67,23 +71,39 @@ interface Row {
 }
 
 export const DailyDetailPanel: React.FC<DailyDetailPanelProps> = ({
-    from, to, anchors, today, transactions, currentCash, assets, fx, recurring, isPrivacyMode = false,
+    from, to, anchors, today, transactions, currentCash, assets, fx, recurring,
+    monthlyNetSalary = 0, monthlyDebtPayment = 0, isPrivacyMode = false,
 }) => {
     const span = daySpan(from, to);
     const tooWide = span > DAILY_DETAIL_MAX_DAYS;
+
+    // ⚠️ MEMO SÉPARÉ (finding ÉLEVÉ de la revue) : `reconstructCashHistoryDaily` n'est PAS bornée par
+    // la fenêtre — elle remonte jusqu'à la toute PREMIÈRE transaction de l'historique. Son coût est
+    // donc indépendant du zoom. Laissée dans le memo principal, elle se rejouait ENTIÈREMENT à chaque
+    // frame de zoom/pan (les `anchors` sont recréés à chaque `requestAnimationFrame`), alors que ses
+    // seules vraies dépendances — transactions, solde, aujourd'hui — ne bougent pas pendant un geste.
+    const cashDaily = useMemo(
+        () => reconstructCashHistoryDaily(transactions, currentCash, today),
+        [transactions, currentCash, today],
+    );
 
     const { rows, caveat } = useMemo<{ rows: Row[]; caveat: Caveat }>(() => {
         const none: Caveat = { undatedTotal: 0, flowsAfterNowDate: 0 };
         if (tooWide || span <= 0) return { rows: [], caveat: none };
 
         // ── PASSÉ : reconstruit depuis de vraies données ────────────────────────────────────
-        const cashDaily = reconstructCashHistoryDaily(transactions, currentCash, today);
         const cashByDate = new Map(cashDaily.points.map((p) => [p.date, p]));
         const invDaily = reconstructPortfolioHistoryDaily(assets, fx, from, to, { maxDays: DAILY_DETAIL_MAX_DAYS });
         const invByDate = new Map(invDaily.map((p) => [p.date, p]));
 
         // ── FUTUR : raffinement des ancrages mensuels du moteur ─────────────────────────────
-        const refined = refineWindowToDaily(anchors, (a) => datedDeltasForMonth(recurring, a.month));
+        // Mouvements à DATE connue du mois : charges récurrentes (leur `dayOfMonth`) + paie et
+        // dettes, hebdomadaires depuis la réponse de Marc à la question A13.
+        const refined = refineWindowToDaily(anchors, (a) => [
+            ...datedDeltasForMonth(recurring, a.month),
+            ...weeklyDeltasForMonth(a.year, a.month, monthlyNetSalary, 'Paie', 1),
+            ...weeklyDeltasForMonth(a.year, a.month, monthlyDebtPayment, 'Paiement de dette', -1),
+        ]);
         const projByDate = new Map(refined.map((p) => [p.date, p]));
 
         const out: Row[] = [];
@@ -108,10 +128,18 @@ export const DailyDetailPanel: React.FC<DailyDetailPanelProps> = ({
             rows: out,
             caveat: { undatedTotal: cashDaily.undatedTotal, flowsAfterNowDate: cashDaily.flowsAfterNowDate },
         };
-    }, [tooWide, span, from, to, today, transactions, currentCash, assets, fx, anchors, recurring]);
+    }, [tooWide, span, from, to, today, cashDaily, assets, fx, anchors, recurring,
+        monthlyNetSalary, monthlyDebtPayment]);
 
-    const money = (v: number | null): string =>
-        v === null ? '—' : isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(v);
+    // ⚠️ `PrivateAmount` et NON `MASKED_AMOUNT_LABEL` en texte (finding a11y ÉLEVÉ) : le libellé
+    // littéral est la convention des tableaux `sr-only` (INVISIBLES), où du texte en clair ne gêne
+    // personne. Ici les cellules sont VISIBLES : l'écrire aurait affiché « Montant masqué » jusqu'à
+    // 120 fois dans des colonnes numériques alignées à droite, au lieu des puces compactes que
+    // `PrivateAmount` rend partout ailleurs (cf. `FutureDetailModal`, le sibling le plus proche).
+    const money = (v: number | null): React.ReactNode =>
+        v === null ? '—' : <PrivateAmount>{formatCAD(v)}</PrivateAmount>;
+    /** Version TEXTE, pour les avertissements en prose (où une puce n'aurait aucun sens). */
+    const moneyText = (v: number): string => (isPrivacyMode ? '•••' : formatCAD(v));
 
     if (tooWide) {
         return (
@@ -133,6 +161,20 @@ export const DailyDetailPanel: React.FC<DailyDetailPanelProps> = ({
 
     return (
         <div className="mt-3 rounded-card border border-white/10 bg-white/[0.02] overflow-x-auto">
+            {/* [a11y] Un TITRE, parce que le panneau APPARAÎT au zoom — y compris au clavier, via les
+                boutons de période. Sans heading, un utilisateur qui navigue par titres (touche H) ne
+                tomberait JAMAIS sur cette section : la `<caption>` sr-only n'est atteignable qu'en
+                entrant dans le tableau. */}
+            <h3 className="px-2 pt-2 pb-1 text-tiny font-semibold text-ink-200">
+                Détail jour par jour
+            </h3>
+            {/* Annonce BRÈVE de l'apparition. ⚠️ Volontairement HORS du tableau : mettre `aria-live`
+                sur 120 lignes × 5 colonnes ferait relire l'intégralité du tableau à chaque zoom —
+                l'anti-pattern que les WAI-ARIA Authoring Practices déconseillent. `role="status"`
+                est la convention déjà utilisée partout dans le dépôt. */}
+            <p role="status" aria-live="polite" className="sr-only">
+                Détail quotidien affiché : {span} jours, du {from} au {to}.
+            </p>
             <table className="w-full text-tiny">
                 <caption className="sr-only">
                     Détail jour par jour de la fenêtre affichée. Les lignes passées sont reconstruites
@@ -176,23 +218,25 @@ export const DailyDetailPanel: React.FC<DailyDetailPanelProps> = ({
                 </tbody>
             </table>
             <p className="px-2 py-1.5 text-tiny text-ink-400">
-                Les lignes surlignées portent un mouvement à date connue. Ailleurs, le futur est
-                <strong className="text-ink-300"> interpolé</strong> : ta paie et ton hypothèque n’ont
-                pas de jour dans le modèle, elles sont lissées sur le mois.
+                Les lignes surlignées portent un mouvement à date connue : paie et paiements de dette
+                chaque <strong className="text-ink-300">jeudi</strong>, charges récurrentes à leur jour.
+                Ailleurs, le futur est <strong className="text-ink-300">interpolé</strong> — la croissance
+                d’un portefeuille n’a pas de date. Un mois à 5 jeudis reçoit bien 5 paies (c’est la
+                réalité) ; le total du mois, lui, reste celui du moteur, qui raisonne au mois.
             </p>
             {/* [Audit 2026-08-06] Deux écarts CONNUS entre le niveau de liquidités affiché ici et
                 l'ancre d'où il est reconstruit. Les taire donnerait un niveau faux sans le moindre
                 signe ; les dire coûte deux lignes. */}
             {caveat.undatedTotal !== 0 && (
                 <p role="note" className="px-2 py-1.5 text-tiny text-amber-300 border-t border-white/10">
-                    ⚠ Des mouvements totalisant {money(caveat.undatedTotal)} n’ont qu’une date au mois,
+                    ⚠ Des mouvements totalisant {moneyText(caveat.undatedTotal)} n’ont qu’une date au mois,
                     sans jour : impossible de les placer. La colonne Liquidités est décalée d’autant
                     sur toute la période — le total, lui, reste juste.
                 </p>
             )}
             {caveat.flowsAfterNowDate !== 0 && (
                 <p role="note" className="px-2 py-1.5 text-tiny text-amber-300 border-t border-white/10">
-                    ⚠ Des mouvements totalisant {money(caveat.flowsAfterNowDate)} sont datés APRÈS
+                    ⚠ Des mouvements totalisant {moneyText(caveat.flowsAfterNowDate)} sont datés APRÈS
                     aujourd’hui. Ils comptent déjà dans ton solde de référence sans avoir encore eu
                     lieu, donc le niveau passé en tient compte à tort.
                 </p>

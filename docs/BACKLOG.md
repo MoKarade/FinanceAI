@@ -218,8 +218,15 @@
         connaisse pour le futur. La PAIE n'a aucun champ de jour (`grossSalary`/`netSalary` sont des
         montants MENSUELS), les DETTES non plus (`Debt` n'a que `termEndDate`), l'hypothèque non plus.
         Donc dans un futur zoomé, seules les charges récurrentes font de vraies marches ; le salaire
-        et l'hypothèque sont lissés dans le résidu. → question **A13** routée à Marc (`A_FAIRE_MOI`) :
-        c'est une donnée que lui seul connaît, je ne peux pas la déduire.
+        et l'hypothèque sont lissés dans le résidu. → question **A13** routée à Marc — ✅ **RÉPONDUE
+        le 2026-08-06 : « chaque semaine jeudi, pareil pour dette »**. `weeklyDeltasForMonth` livré :
+        conversion du MENSUEL du store en versements hebdomadaires (×12/52), posés à chaque jeudi,
+        jour de la semaine PARAMÉTRABLE (pas un `if` en dur). Un mois à 5 jeudis reçoit 5 paies —
+        c'est la réalité, et `dailyRefine` l'absorbe dans son résidu (fin de mois inchangée).
+        ⚠️ Limite ASSUMÉE : le MOTEUR raisonne au mois et ignore les mois à 5 paies. Le RYTHME
+        affiché est juste, le TOTAL du mois reste celui du moteur.
+        ⚠️ Reste à faire : rendre le jour/la cadence ÉDITABLES (aujourd'hui c'est un défaut de code
+        aligné sur la réponse de Marc, pas un champ de profil).
         Deux pièges qu'un graphe rend INVISIBLES, tous deux testés : le SIGNE (un coût positif doit
         faire DESCENDRE un solde) et l'ANNUEL compté douze fois.
   - [x] **UI lot A** — `components/projection/DailyDetailPanel.tsx` : le détail jour par jour de la

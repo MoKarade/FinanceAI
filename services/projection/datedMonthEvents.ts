@@ -66,6 +66,60 @@ export function datedDeltasForMonth(
     return out;
 }
 
+// ── Cadence HEBDOMADAIRE (paie et dettes) ────────────────────────────────────────────────────
+//
+// Réponse de Marc 2026-08-06 à la question A13 : « chaque semaine jeudi, pareil pour dette ».
+// C'est l'information qui manquait — sans elle, la paie et les dettes n'avaient AUCUN jour dans le
+// modèle et restaient lissées sur le mois.
+
+/** Jeudi (0 = dimanche), réponse de Marc. Paramétrable : c'est un argument, pas un `if` en dur. */
+export const DEFAULT_PAY_DAY_OF_WEEK = 4;
+
+/** Semaines par an, pour convertir un montant MENSUEL du store en montant par versement. */
+const WEEKS_PER_YEAR = 52;
+const MONTHS_PER_YEAR = 12;
+
+/** Jours du mois (1-based) tombant sur `dayOfWeek`. Un mois en compte 4 ou 5. */
+export function weeklyOccurrencesInMonth(year: number, month: number, dayOfWeek: number): number[] {
+    const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const out: number[] = [];
+    for (let d = 1; d <= days; d++) {
+        if (new Date(Date.UTC(year, month, d)).getUTCDay() === dayOfWeek) out.push(d);
+    }
+    return out;
+}
+
+/**
+ * Versements HEBDOMADAIRES d'un montant connu au MOIS, posés à leur vrai jour.
+ *
+ * @param monthlyAmount Montant mensuel tel que le store le porte (`netSalary`, `minimumPayment`).
+ * @param sign `+1` pour une entrée (paie), `-1` pour une sortie (dette).
+ *
+ * ⚠️ **Les mois à 5 jeudis reçoivent bien 5 versements — c'est la RÉALITÉ, pas un bug.** Un salaire
+ * hebdomadaire donne des « mois à 5 paies », et c'est précisément ce que Marc veut voir en zoomant.
+ * La somme du mois dépasse alors le montant mensuel du store ; le raffinement l'absorbe dans son
+ * résidu et la fin de mois retombe EXACTEMENT sur la valeur du moteur (invariant de `dailyRefine`).
+ * ⚠️ Limite ASSUMÉE, à ne pas laisser croire résolue : le moteur, lui, reste mensuel — il ignore les
+ * mois à 5 paies. Le RYTHME affiché est juste, le TOTAL du mois reste celui du moteur.
+ */
+export function weeklyDeltasForMonth(
+    year: number,
+    month: number,
+    monthlyAmount: number,
+    label: string,
+    sign: 1 | -1,
+    dayOfWeek: number = DEFAULT_PAY_DAY_OF_WEEK,
+): DatedDelta[] {
+    const m = Number(monthlyAmount);
+    if (!Number.isFinite(m) || m === 0) return [];
+    const perOccurrence = (m * MONTHS_PER_YEAR) / WEEKS_PER_YEAR;
+    return weeklyOccurrencesInMonth(year, month, dayOfWeek).map((day) => ({
+        day,
+        amount: sign * Math.abs(perOccurrence),
+        label,
+    }));
+}
+
 /**
  * Les postes récurrents que l'app peut réellement DATER, vs ceux qu'elle ne peut pas.
  * Sert à l'écran pour dire honnêtement ce qui est mesuré — et pour ne pas laisser croire que la

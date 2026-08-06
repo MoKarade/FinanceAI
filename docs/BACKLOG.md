@@ -392,8 +392,20 @@
 - [ ] **`[CHAT-PAGE-CONTEXT-V2]`** (M, file Marc « chat conscient de la page ») — instrumenter les
   autres onglets (Investissements : filtres/compte ; Futur : scénario + année survolée ; Impôts :
   année ; Dettes ; Transactions : recherche/filtres). L'union `ViewContextDetail`
-  (`services/aiChat/viewContext.ts:49`) n'a qu'UN membre (Budget) — un petit detail typé + publisher
-  par onglet, pipeline en place.
+  (`services/aiChat/viewContext.ts:49`) n'a qu'UN membre (Budget).
+  ⚠️ **CADRAGE MESURÉ 2026-08-05 — le ticket sous-estime le prérequis.** « Un petit detail typé +
+  publisher par onglet » suppose que le pipeline accepte un 2ᵉ membre tel quel. Ce n'est PAS le cas :
+  `describeViewContextForPrompt` (`viewContext.ts:~134`) déréférence DIRECTEMENT les champs de
+  `BudgetViewDetail` (`d.totalSpent`, `d.totalBudgetTarget`, `d.totalRealIncome`, `d.topCategories`,
+  `d.personFilterLabel`, `d.cards`) sans jamais tester `d.kind`. Ajouter un membre à l'union CASSE
+  le typecheck sur ce bloc — et le « corriger » à la va-vite sur une surface qui alimente un PROMPT
+  serait dangereux : ce code porte 3 findings de sécurité (assainissement du texte utilisateur,
+  encadrement `<DONNEES>`, troncature JAMAIS muette).
+  ⇒ **Lot 1 = généraliser le constructeur AVANT tout onglet** : dispatch sur `kind`, chaque membre
+  rendant ses propres lignes, en conservant les 3 garanties ci-dessus PAR MEMBRE (un nouveau membre
+  ne doit pas pouvoir oublier l'assainissement). Puis 1 onglet pour valider la forme, puis les autres
+  au fil de l'eau. ⚠️ Ne PAS enregistrer le scope sans l'ajouter à `SCOPE_TO_TAB` (`viewContext.ts:~110`) :
+  sans ça, `viewContextMatchesTab` renvoie faux et la page publie dans le vide, en silence.
 - [ ] **`[CHAT-PAGE-CONTEXT-V3]`** (M, évaluer AVANT) — état fin volatile (modal ouvert, tooltip figé
   du Futur, ligne sélectionnée) — fragile ; juger la valeur réelle avant de coder.
 

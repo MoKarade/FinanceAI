@@ -438,7 +438,11 @@ pour minimiser l'impôt combiné (élection optionnelle).
 
 ### REER — plafonds annuels (`RRSP_ANNUAL_LIMITS`)
 2024 : 31 560 · 2025 : 32 490 · **2026 : 33 810** · 2027 : 34 480 · 2028 : 35 170 ·
-2029 : 35 870 · 2030 : 36 590 (2027+ estimés, à confirmer au Budget). Espace gagné = 18 % du brut.
+2029 : 35 870 · 2030 : 36 590 (2027+ estimés, à confirmer au Budget).
+Espace gagné = **18 % du revenu GAGNÉ** (`RRSP_ROOM_RATE`, cf. la section d'ancrage plus bas).
+⚠️ Corrigé le 2026-08-06 : cette ligne disait « 18 % du **brut** », ce qui contredisait la règle
+ARC 146(1) ET le code (`activeIncome.ts:113-120` neutralise le salaire pendant AE/LTD). Une source
+de vérité qui se contredit fabrique un faux finding à la session suivante.
 
 ### FERR / RRIF — conversion et retrait minimum (`services/projection/helpers.ts:RRIF_RATES`)
 **Règle ARC.** La conversion REER→FERR est obligatoire **au plus tard à la fin de l'année des

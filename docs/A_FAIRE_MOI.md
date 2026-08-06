@@ -7,6 +7,33 @@
 
 ---
 
+## 🔴 Vérifier deux règles ARC — je ne peux PAS les confirmer (2026-08-06)
+
+L'audit de `[FISC-CONST-ANCHOR-DEBT]` a trouvé deux écarts à impact $ MESURÉ. Je ne les corrige
+pas : le proxy sortant **bloque `canada.ca`** (403), donc je ne peux pas produire la source
+officielle — et un faux fix dans un moteur d'impôt est pire que le bug laissé en place.
+
+### 1. Facteur de retrait minimum FERR à 94 ans — **13 726 $** d'écart mesuré
+`services/projection/helpers.ts:95` code `94: 0.2000`. Le facteur prescrit serait **18,79 %**, le
+plateau de 20 % ne commençant qu'à **95 ans**. Faisceau d'indices INTERNE : la progression du
+tableau est régulière (+0,0185 de 92 à 93) puis fait un saut anormal (+0,0366 de 93 à 94) avant de
+plafonner ; et la ligne suivante du même tableau écrit « 95 ans et + : plafond 20 % » — si 94 valait
+déjà 20 %, le plateau commencerait à 94.
+👉 **Ce qu'il me faut** : la valeur du règlement **7308(4)** de la Loi de l'impôt sur le revenu pour
+l'âge 94 (ou une capture de la table ARC des facteurs FERR prescrits post-2015).
+Impact si confirmé : retrait forcé de 1,21 % de trop sur le solde FERR à 94 ans, sorti de l'abri
+fiscal et imposé au marginal — **+13 726 $** de patrimoine final sur une fixture REER 6 M$.
+
+### 2. Droits REER mis en commun au niveau du MÉNAGE — **+10 520 $/an** de droits fantômes
+`services/projection/taxJanuary.ts:165` calcule `min(plafond × nb_conjoints, revenu_MÉNAGE × 18 %)`.
+La règle ARC est **par personne** : un conjoint sans revenu gagné n'ouvre AUCUN droit.
+**Mesuré** (ménage 250 k$ brut avec un seul gagnant, 2027) : le moteur donne **45 000 $** de droits,
+la règle en donne **34 480 $**.
+👉 **Ce n'est pas un bug à corriger au fil de l'eau** : c'est un changement de modèle (droits par
+tête, sur le revenu gagné par tête) qui touche la déduction REER, donc l'impôt, donc la projection
+entière. **Dis-moi si tu veux que je le fasse** — avec un plan et une mesure avant/après.
+En attendant, la doc doit dire « approximation MÉNAGE » plutôt que de laisser croire à la règle ARC.
+
 ## ✅ FINTABLE — import GELÉ depuis le 2026-07-31 : RÉSOLU ET VÉRIFIÉ (2026-08-05)
 
 Constat mesuré côté serveur : **dernière transaction importée = 2026-07-31**, la veille de la fin

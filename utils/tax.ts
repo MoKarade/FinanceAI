@@ -638,7 +638,7 @@ export const calculateCeliRoom = (birthYear: number, arrivalYear: number, curren
     for (let y = startYear; y <= currentYear; y++) {
         if (y > LAST_KNOWN_CELI_YEAR) {
             const rawLimit = lastKnownLimit * Math.pow(1.02, y - LAST_KNOWN_CELI_YEAR);
-            room += Math.round(rawLimit / 500) * 500;
+            room += Math.round(rawLimit / CELI_LIMIT_ROUNDING) * CELI_LIMIT_ROUNDING;
         } else {
             room += CELI_ANNUAL_LIMITS[y] ?? lastKnownLimit;
         }

@@ -137,6 +137,28 @@
   ⚠️ NE PAS toucher aux entrées `design` (`0.95` Guyton-Klinger, `0.50` vente fictive, seuils de
   meltdown, `0.25` proxy d'inversion impôt→gain) : les « sourcer » serait une erreur de CATÉGORIE
   qui polluerait FISCAL_REFERENCE avec des choix de conception.
+- [ ] **`[FISC-RRIF-94-FACTOR]`** (S si confirmé, ⚠️ GATÉ source humaine — `A_FAIRE_MOI`) —
+  `helpers.ts:95` code `94: 0.2000` ; le facteur prescrit serait 18,79 % (plateau 20 % à 95+).
+  **Mesuré +13 726 $** de patrimoine final si corrigé. Le proxy bloque `canada.ca` → NE PAS
+  modifier sans avoir vu le règlement 7308(4). Corriger aussi `FISCAL_REFERENCE.md:467` et
+  `tests/services/projection.helpers.test.ts:80` dans le même lot.
+- [ ] **`[FISC-RRSP-ROOM-PER-USER]`** (M, ⚠️ GATÉ décision Marc — `A_FAIRE_MOI`) — les droits REER
+  sont calculés sur le revenu du MÉNAGE (`taxJanuary.ts:165`) alors que la règle ARC est PAR
+  PERSONNE. **Mesuré : 45 000 $ accordés vs 34 480 $ dus** sur un ménage à 250 k$ avec un seul
+  gagnant (+10 520 $/an de droits fantômes) → déduction REER surestimée, REER surdimensionné en
+  projection. Changement de MODÈLE, pas correctif au fil de l'eau : plan + mesure avant/après.
+- [ ] **`[FISC-RRSP-RENTAL-EARNED]`** (S-M, [Supposition] non chiffrée — audit 2026-08-06) — le
+  revenu NET de location est du revenu GAGNÉ au sens de 146(1), mais il alimente `accRentesYear`
+  et jamais `accGrossIncomeYear` (`realEstateMonth.ts:397`) → droits REER sous-estimés pour un
+  propriétaire-bailleur (~4 320 $/an de droits non créés sur 24 k$ de loyer net). À confirmer.
+- [ ] **`[FISC-RRIF-FRACTIONAL-AGE]`** (S, risque THÉORIQUE — audit 2026-08-06) — le repli FERR
+  couvre TOUT âge absent de la table, pas seulement 95+ : un âge fractionnaire (72,5) recevrait
+  20 % au lieu de 5,4 %. Aucun producteur d'âge fractionnaire trouvé aujourd'hui. Vrai correctif :
+  `ageI >= 95 ? RRIF_RATE_PLATEAU : RRIF_RATES[ageI]` plutôt qu'un repli attrape-tout.
+- [ ] **`[FISC-REF-DEDUP]`** (S, doc) — `FISCAL_REFERENCE.md` décrit désormais l'arrondi CELI, le
+  18 % REER et le plateau FERR à DEUX endroits (§CELI/§REER/§FERR + la section d'ancrage). Dans une
+  source de vérité, deux endroits par sujet = la divergence de demain — elle a déjà produit deux
+  contradictions internes corrigées le 2026-08-06. Fusionner en un seul endroit par sujet.
 - [ ] **V8 — Features demandées** — ✅ `[GOAL-DEADLINE-UI]` + ✅ `[PH4C-SAVINGS-NATURE]` (#569) +
   ✅ `[SUBS-TAB]` volet « ignorer » (#570). RESTENT : `[SUBS-TAB]` volet EMPLACEMENT (gaté sur
   l'arbitrage de Marc) · `[CHAT-PAGE-CONTEXT-V2]` (file explicite Marc) ·

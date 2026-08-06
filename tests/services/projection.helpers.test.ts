@@ -4,6 +4,10 @@ import {
     gaussianRandom,
     applyShock,
     RRIF_RATES,
+    RRIF_RATE_PLATEAU,
+    RRIF_PLATEAU_AGE,
+    RRIF_FIRST_WITHDRAWAL_AGE,
+    rrifRateForAge,
     welcomeTax,
     MER,
     ASSET_VOLATILITY,
@@ -84,6 +88,64 @@ describe('projection/helpers', () => {
             for (let age = 73; age <= 94; age++) {
                 expect(RRIF_RATES[age]).toBeGreaterThan(RRIF_RATES[age - 1]);
             }
+        });
+
+        // Ce test est la CONDITION DE VALIDITÉ du dernier repli de `rrifRateForAge` : celui-ci rend
+        // le plateau (20 %) quand l'âge manque à la table. C'est acceptable UNIQUEMENT parce que la
+        // table réelle n'a aucun trou entre le 1er retrait obligatoire et le plateau — sinon un âge
+        // ordinaire recevrait le facteur le plus punitif du barème. Le jour où quelqu'un retire une
+        // ligne, c'est ici que ça casse, pas dans une projection à 30 ans.
+        it('n’a AUCUN trou de 72 à 94 — ce qui rend le repli au plateau inatteignable', () => {
+            const holes: number[] = [];
+            for (let age = RRIF_FIRST_WITHDRAWAL_AGE; age < RRIF_PLATEAU_AGE; age++) {
+                if (typeof RRIF_RATES[age] !== 'number') holes.push(age);
+            }
+            expect(holes).toEqual([]);
+        });
+    });
+
+    /**
+     * [FISC-RRIF-FRACTIONAL-AGE] Le repli attrape-tout `RRIF_RATES[age] || RRIF_RATE_PLATEAU`
+     * distribuait le facteur le PLUS PUNITIF du barème sur toute entrée inattendue.
+     *
+     * DISCRIMINANTS (échouent sur le code d'avant) : l'âge fractionnaire et l'âge NaN.
+     * Les autres cas pinnent la non-régression — la sortie doit rester bit-identique pour tout
+     * âge entier, sans quoi ce durcissement changerait des chiffres.
+     */
+    describe('rrifRateForAge', () => {
+        it('DISCRIMINANT — un âge fractionnaire prend le facteur de son âge entier, pas le plateau', () => {
+            // Avant : RRIF_RATES[72.5] est `undefined` → repli 20 %, soit 3,7× le facteur réel.
+            // Le retrait forcé sort de l'abri fiscal et devient imposable : l'écart coûte de l'argent.
+            expect(rrifRateForAge(72.5)).toBe(0.0540);
+            expect(rrifRateForAge(93.9)).toBe(0.1634);
+        });
+
+        it('DISCRIMINANT — un âge NaN ne déclenche AUCUN retrait forcé (0), pas 20 %', () => {
+            // `NaN < 72` est FAUX : le garde d'âge de l'appelant laisse passer NaN jusqu'ici.
+            // Inventer un retrait de 20 % sur un âge inconnu, c'est fabriquer de la donnée.
+            expect(rrifRateForAge(Number.NaN)).toBe(0);
+            expect(rrifRateForAge(Number.POSITIVE_INFINITY)).toBe(0);
+        });
+
+        it('rend le plateau à partir de 95 ans, explicitement', () => {
+            expect(rrifRateForAge(RRIF_PLATEAU_AGE)).toBe(RRIF_RATE_PLATEAU);
+            expect(rrifRateForAge(120)).toBe(RRIF_RATE_PLATEAU);
+        });
+
+        it('NON-RÉGRESSION — tout âge entier de 71 à 94 rend exactement la table', () => {
+            for (let age = 71; age < RRIF_PLATEAU_AGE; age++) {
+                expect(rrifRateForAge(age), `âge ${age}`).toBe(RRIF_RATES[age]);
+            }
+        });
+
+        it('une table PARTIELLE injectée garde le repli au plateau (contrat des fixtures de test)', () => {
+            // taxJanuary.test.ts injecte `{ 72: 0.054, 80: 0.0682 }` : le comportement d'avant est
+            // préservé pour ces fixtures, sinon ce durcissement les ferait passer pour une autre raison.
+            expect(rrifRateForAge(75, { 72: 0.054, 80: 0.0682 })).toBe(RRIF_RATE_PLATEAU);
+        });
+
+        it('-Infinity (conjoint sans âge ni année de naissance) ne déclenche aucun retrait', () => {
+            expect(rrifRateForAge(Number.NEGATIVE_INFINITY)).toBe(0);
         });
     });
 

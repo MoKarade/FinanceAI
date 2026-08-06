@@ -129,11 +129,21 @@
   ✅ **3 ancrées le 2026-08-06 (PR #572)** — `0.18` (droits REER → `RRSP_ROOM_RATE`), `500` (arrondi
   CELI → `CELI_LIMIT_ROUNDING`), `0.20` (plateau FERR → `RRIF_RATE_PLATEAU`) : sorties du moteur,
   ancrées dans FISCAL_REFERENCE, importées depuis la source unique. Leurs entrées d'inventaire ont
-  été RETIRÉES (résolues, pas exemptées). **RESTENT 11 :**
-  - `taxJanuary.ts` `2026` (année d'ancrage RRSP_ANNUAL_LIMITS).
-  - Âges-seuils : `18` (CELI/CELIAPP) · `71` (conversion REER→FERR) · `72` (1er retrait min) ·
-    `15` (durée de vie CELIAPP) · `65` (crédit d'âge, pivot RRQ/PSV) · `70` (report PSV max) ·
-    `75` (bonification PSV) · `39`/`40` (déjà nommés : RRQ_DENOMINATOR_YEARS, PSV_FULL_RESIDENCY_YEARS).
+  été RETIRÉES (résolues, pas exemptées).
+  ✅ **+2 le 2026-08-06 (PR #573)** — `72` → `RRIF_FIRST_WITHDRAWAL_AGE` (il vivait en dur sur
+  taxJanuary ET taxDecember : la configuration JUMELLE exacte qui avait laissé survivre le `0.18`)
+  et `95` → `RRIF_PLATEAU_AGE` (seuil qui n'était porté par AUCUN littéral, seulement par l'absence
+  d'entrée dans la table). **RESTENT 9 :**
+  - `taxJanuary.ts` `2026` (année d'ancrage RRSP_ANNUAL_LIMITS) — ⚠️ à REQUALIFIER : c'est un index
+    d'extrapolation, pas un paramètre ARC. Probablement `structural`, à trancher en le codant.
+  - Âges-seuils : `18` (CELI/CELIAPP) · `71` (conversion REER→FERR) · `15` (durée de vie CELIAPP) ·
+    `65` (crédit d'âge, pivot RRQ/PSV — **2 modules**, donc le plus payant) · `70` (report PSV max) ·
+    `75` (bonification PSV) · `39`/`40` (déjà nommés : RRQ_DENOMINATOR_YEARS, PSV_FULL_RESIDENCY_YEARS
+    → doc seulement, aucun code à toucher).
+  ⚠️ **Rendement décroissant assumé** : les 3 premières valeurs pilotaient un CALCUL. Ce qui reste
+  est surtout des âges-seuils déjà commentés et sourcés sur place. Le seul vrai gain restant est le
+  `65` (deux modules → risque de divergence). Le reste est de l'hygiène, à prendre au fil de l'eau,
+  pas un chantier à prioriser.
   ⚠️ NE PAS toucher aux entrées `design` (`0.95` Guyton-Klinger, `0.50` vente fictive, seuils de
   meltdown, `0.25` proxy d'inversion impôt→gain) : les « sourcer » serait une erreur de CATÉGORIE
   qui polluerait FISCAL_REFERENCE avec des choix de conception.
@@ -151,14 +161,15 @@
   revenu NET de location est du revenu GAGNÉ au sens de 146(1), mais il alimente `accRentesYear`
   et jamais `accGrossIncomeYear` (`realEstateMonth.ts:397`) → droits REER sous-estimés pour un
   propriétaire-bailleur (~4 320 $/an de droits non créés sur 24 k$ de loyer net). À confirmer.
-- [ ] **`[FISC-RRIF-FRACTIONAL-AGE]`** (S, risque THÉORIQUE — audit 2026-08-06) — le repli FERR
-  couvre TOUT âge absent de la table, pas seulement 95+ : un âge fractionnaire (72,5) recevrait
-  20 % au lieu de 5,4 %. Aucun producteur d'âge fractionnaire trouvé aujourd'hui. Vrai correctif :
-  `ageI >= 95 ? RRIF_RATE_PLATEAU : RRIF_RATES[ageI]` plutôt qu'un repli attrape-tout.
-- [ ] **`[FISC-REF-DEDUP]`** (S, doc) — `FISCAL_REFERENCE.md` décrit désormais l'arrondi CELI, le
-  18 % REER et le plateau FERR à DEUX endroits (§CELI/§REER/§FERR + la section d'ancrage). Dans une
-  source de vérité, deux endroits par sujet = la divergence de demain — elle a déjà produit deux
-  contradictions internes corrigées le 2026-08-06. Fusionner en un seul endroit par sujet.
+- [x] **`[FISC-RRIF-FRACTIONAL-AGE]`** ✅ 2026-08-06 (PR #573) — `rrifRateForAge()` remplace le repli
+  attrape-tout : plateau EXPLICITE à 95+ (`RRIF_PLATEAU_AGE`, seuil qui n'était porté que par
+  l'absence d'entrée dans la table), âge entier pour un fractionnaire, **0** pour un âge non fini.
+  Discriminant prouvé contre `git archive` : l'ancien code rendait 20 % — le facteur le plus
+  punitif — sur 72,5 · 93,9 · NaN · +Infinity. Identité bit-à-bit du moteur vérifiée par SHA-256
+  sur 361 mois × 102 champs (sonde prouvée discriminante : 1 point de base déplace le hash).
+  Au passage : `RRIF_FIRST_WITHDRAWAL_AGE` nommé (il vivait en dur sur taxJanuary ET taxDecember).
+- [x] **`[FISC-REF-DEDUP]`** ✅ 2026-08-06 (PR #573) — un sujet, un endroit : les valeurs vivent dans
+  §CELI / §REER / §FERR, et la section d'ancrage ne garde que la PROVENANCE et la leçon.
 - [ ] **V8 — Features demandées** — ✅ `[GOAL-DEADLINE-UI]` + ✅ `[PH4C-SAVINGS-NATURE]` (#569) +
   ✅ `[SUBS-TAB]` volet « ignorer » (#570). RESTENT : `[SUBS-TAB]` volet EMPLACEMENT (gaté sur
   l'arbitrage de Marc) · `[CHAT-PAGE-CONTEXT-V2]` (file explicite Marc) ·

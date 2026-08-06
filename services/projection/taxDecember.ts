@@ -4,7 +4,7 @@
 // Cycle 11 (processDecemberTaxFiling): régularisation annuelle d'impôt.
 
 import { OAS_CLAWBACK_THRESHOLD_2026, OAS_CLAWBACK_RATE, CAPITAL_GAINS_INCLUSION_STANDARD, firstCombinedBracketTopForYear, calculateRamqPremium, calculateFSSPremium, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
-import { NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './helpers';
+import { NONREG_DIVIDEND_DISTRIBUTION_SHARE, RRIF_FIRST_WITHDRAWAL_AGE } from './helpers';
 
 /**
  * [ENG-TAXDEC-FLOOR-INDEX] Borne du solde d'impôt d'avril, en dollars d'AUJOURD'HUI (2026).
@@ -543,7 +543,8 @@ export function processDecemberTaxFiling(
             const eligiblePensionFor = (i: number): number => {
                 const a = ages[i];
                 if (a === undefined) return 0;
-                return (a >= 65 ? Math.max(0, dbRealUser(i)) : 0) + (a >= 72 ? Math.max(0, reerRealUser(i)) : 0);
+                return (a >= 65 ? Math.max(0, dbRealUser(i)) : 0)
+                    + (a >= RRIF_FIRST_WITHDRAWAL_AGE ? Math.max(0, reerRealUser(i)) : 0);
             };
 
             const taxableRealByUser: number[] = [];

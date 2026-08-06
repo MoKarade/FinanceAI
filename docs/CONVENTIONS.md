@@ -1547,6 +1547,26 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   `setupSimulation.ts`. Le test d'intégrité ne l'a pas vu — il ne vérifie que l'appartenance aux
   modules scannés, pas que l'entrée corresponde à un littéral RÉEL. Faire cracher la liste PAR
   FICHIER au scan lui-même plutôt que la reconstituer à la lecture.
+- ⚠️ **Un seuil PORTÉ PAR UNE ABSENCE est indétectable — et donc incorrigible** (leçon
+  FISC-RRIF-FRACTIONAL-AGE, 2026-08-06) : le plateau FERR commençait à 95 ans sans qu'aucune ligne
+  n'écrive `95`. La règle vivait dans le fait que la table `RRIF_RATES` s'arrêtait à 94 et qu'un
+  repli `|| 0.20` ramassait tout le reste. Aucun garde de constantes ne peut relever un littéral
+  qui n'existe pas ; aucune relecture ne peut vérifier une règle que personne n'a écrite. Quand un
+  comportement dépend de « ce qui n'est PAS dans la table », le NOMMER (`RRIF_PLATEAU_AGE`) est le
+  correctif — pas un commentaire.
+- ⚠️ **Un repli attrape-tout choisit une valeur pour des entrées qu'on n'a pas imaginées** (même
+  leçon) : `RRIF_RATES[age] || RRIF_RATE_PLATEAU` distribuait le facteur le PLUS PUNITIF du barème
+  à tout âge absent de la table. Âge fractionnaire 72,5 → 20 % au lieu de 5,40 %. Âge `NaN` → il
+  traversait le filtre `age < 72` (toute comparaison avec NaN est fausse) et ressortait aussi à
+  20 %. Un repli doit couvrir le cas qu'il DÉCLARE couvrir (`age >= 95 ? plateau : …`) ; l'écrire
+  comme un `||` en fait un attrape-tout dont la couverture réelle est inconnue de son auteur.
+- ⚠️ **Une clé d'inventaire `(fichier, valeur)` finit par coûter — prévoir la collision de SENS**
+  (même leçon) : le compromis était documenté en tête de `fiscalConstGuardV2.ts` (« une deuxième
+  occurrence de la même valeur dans le même fichier passe »), mais il a été VÉCU dès l'ajout
+  suivant : `95` désigne à la fois le plateau FERR (fiscal) et le palier terminal de la courbe de
+  mortalité (design) dans `helpers.ts`. Le test de doublon a bien cassé — bonne nouvelle. Résolu
+  en fusionnant les deux sens dans UNE entrée qui les nomme tous les deux, avec la famille la plus
+  EXIGEANTE (`fiscal`). Taire une des deux natures aurait fait mentir l'inventaire.
 - ⚠️ **Un garde sur un terrain déjà peuplé doit être un RATCHET, jamais un échec dur** (leçon
   FISC-CONST-GUARD-V2, 2026-08-05) : 38 littéraux existaient déjà dans les modules fiscaux. Un
   échec dur aurait cassé sur 38 lignes le jour de sa naissance — donc aurait été relâché jusqu'à ne

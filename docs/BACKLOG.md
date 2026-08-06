@@ -175,6 +175,33 @@
   l'arbitrage de Marc) · `[CHAT-PAGE-CONTEXT-V2]` (file explicite Marc) ·
   `[ASSET-CURRENCY-BACKFILL]` (gaté : rien à coder tant que le log `services/portfolio.ts:60-62`
   n'apparaît pas chez Marc).
+- [ ] **V8bis — `[FUTUR-DAILY]` granularité QUOTIDIENNE (demande explicite Marc 2026-08-06)** —
+  « quotidien sur tout, je veux voir le détail si je zoom beaucoup », futur ET passé, avec le détail
+  par compte. ⚠️ Marc a tranché CONTRE ma reco (je proposais le quotidien seulement là où l'app a de
+  vraies dates). Décision prise, **ne pas re-proposer de restreindre**.
+  **Conception retenue** : le moteur RESTE mensuel (source de vérité, `projection.ts` intouché — le
+  passer au jour = ~11 000 itérations × chaque tirage MC, et rejouer au jour une fiscalité qui n'a
+  que des événements ANNUELS). Un module RAFFINE la fenêtre zoomée à la demande.
+  **Invariant money-critical** : la série quotidienne passe EXACTEMENT par les points mensuels, par
+  construction. Deux granularités qui divergeraient = deux soldes pour la même date selon le zoom.
+  - [x] Cœur du raffinement — `services/projection/dailyRefine.ts` (17 tests) ✅ 2026-08-06
+  - [x] Passé quotidien, cash — `reconstructCashHistoryDaily` (10 tests, dont la réconciliation avec
+        la version mensuelle) ✅ 2026-08-06. ⚠️ Fonction SÉPARÉE : `buildPastPrefix` consomme la
+        mensuelle sur une chaîne money-critical, on ne change pas sa forme pour un besoin d'affichage.
+  - [ ] Passé quotidien, PLACEMENTS — `reconstructPortfolioHistory` est DÉJÀ par date (`valueAt(t)`),
+        seul l'échantillonnage de sortie est mensuel. ⚠️ Butoir DUR à ~12 mois :
+        `DOWNSAMPLE_AFTER_DAYS = 365` compresse le stocké à 1 pt/semaine au-delà (quota localStorage).
+  - [ ] Mouvements DATÉS du futur à collecter : `RecurringItem.dayOfMonth`, paie, loyer, versement
+        hypothécaire → alimentent `deltasFor` (le module reste pur, l'appelant sait où chercher).
+  - [ ] UI : zoom + tableau détaillé + rendu du drapeau `isDated` (distinguer mesuré et interpolé).
+  - [ ] Liquidités par COMPTE bancaire — ⚠️ BLOQUÉ par une absence de donnée : on reconstruit à
+        rebours depuis le solde connu d'AUJOURD'HUI, or il n'est connu que GLOBALEMENT.
+        `FintableBrokerBalance` ne couvre que les comptes `kind: 'investment'`. Prérequis : persister
+        les soldes des comptes `kind: 'cash'` (la sync les LIT déjà, elle les agrège).
+  - [ ] ⚠️ NE JAMAIS mettre de décimales dans `monthIndex` : c'est la clé d'axe du graphe, du tableau
+        ET des icônes-jalons — les jalons se désaligneraient en SILENCE. La granularité vit dans `date`.
+  - [ ] ⚠️ Vérifier le POIDS stocké avant de livrer : `[HIST-STORE-SIZE]` a été fait POUR tenir le
+        quota. Densifier le rouvre.
 - [ ] **V9 — Couverture moteur** (1-2 PR) : `[FUZZ-ONETIME-FLOWS]` + `[HARDEN-SNAPSHOT-RACE]`.
 - [ ] **V10 — A11y** (1-2 PR) : `[A11Y-INK500]` + `[FUT-TOUCH-TARGETS]` + `[D6-KBD]` +
   `[A11Y-BORDER-PROMINENCE-SWEEP]` + `[A11Y-FUTUR-MILESTONES-KEYBOARD]` (Marc : focusables).

@@ -47,14 +47,13 @@ export interface InventoryEntry {
  * DETTE — chacune doit finir ancrée dans `docs/FISCAL_REFERENCE.md`, et disparaître d'ici en étant
  * remplacée par un import depuis la source unique.
  */
+// ⚠️ 2026-08-06 — TROIS entrées ONT ÉTÉ RETIRÉES parce qu'elles sont RÉSOLUES, pas exemptées :
+// `0.18` (droits REER), `500` (arrondi CELI) et `0.20` (plateau FERR) vivent désormais dans la
+// source unique (`utils/tax.ts` / `helpers.ts`), sont ancrées dans FISCAL_REFERENCE et importées.
+// Le littéral ayant disparu du module scanné, l'entrée n'a plus d'objet — c'est la façon dont
+// cet inventaire est censé DÉCROÎTRE. [FISC-CONST-ANCHOR-DEBT]
 export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     // ── services/projection/taxJanuary.ts ────────────────────────────────────────────────────
-    { file: 'services/projection/taxJanuary.ts', value: '0.18', family: 'fiscal',
-      reason: 'Plafond REER = 18 % du revenu gagné (ARC). ⚠️ VRAI chiffre fiscal EN DUR, non sourcé — la dette la plus nette de cet inventaire.' },
-    { file: 'services/projection/taxJanuary.ts', value: '0.20', family: 'fiscal',
-      reason: 'Facteur de retrait minimum FERR par défaut (20 %, plateau 95+ ARC), repli quand l’âge sort de RRIF_RATES.' },
-    { file: 'services/projection/taxJanuary.ts', value: '500', family: 'fiscal',
-      reason: 'Le plafond CELI est arrondi au 500 $ le plus proche (ARC).' },
     { file: 'services/projection/taxJanuary.ts', value: '2026', family: 'fiscal',
       reason: 'Année d’ancrage dans RRSP_ANNUAL_LIMITS pour l’extrapolation au-delà du barème connu.' },
     { file: 'services/projection/taxJanuary.ts', value: '18', family: 'fiscal',

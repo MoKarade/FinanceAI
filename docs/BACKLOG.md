@@ -126,11 +126,11 @@
   l'inventaire du ratchet (`utils/fiscalConstGuardV2.ts`) classe **14 entrées en famille `fiscal`**
   qui vivent en DUR dans le moteur sans ancre `FISCAL_REFERENCE`. Les ancrer une par une, et les
   remplacer par un import depuis la source unique. Par ordre de gravité :
-  - ⛔ `taxJanuary.ts` `0.18` — **plafond REER = 18 % du revenu gagné** : le vrai chiffre fiscal en
-    dur le plus net du dépôt, exactement la classe du `0.92`.
-  - ⛔ `taxJanuary.ts` `0.20` — facteur de retrait minimum FERR par défaut (plateau 95+), en repli
-    `RRIF_RATES[age] || 0.20`. ⚠️ Échappait au scan v1 : `||` ne ressemble pas à un calcul.
-  - `taxJanuary.ts` `500` (arrondi CELI au 500 $ ARC) · `2026` (année d'ancrage RRSP_ANNUAL_LIMITS).
+  ✅ **3 ancrées le 2026-08-06 (PR #572)** — `0.18` (droits REER → `RRSP_ROOM_RATE`), `500` (arrondi
+  CELI → `CELI_LIMIT_ROUNDING`), `0.20` (plateau FERR → `RRIF_RATE_PLATEAU`) : sorties du moteur,
+  ancrées dans FISCAL_REFERENCE, importées depuis la source unique. Leurs entrées d'inventaire ont
+  été RETIRÉES (résolues, pas exemptées). **RESTENT 11 :**
+  - `taxJanuary.ts` `2026` (année d'ancrage RRSP_ANNUAL_LIMITS).
   - Âges-seuils : `18` (CELI/CELIAPP) · `71` (conversion REER→FERR) · `72` (1er retrait min) ·
     `15` (durée de vie CELIAPP) · `65` (crédit d'âge, pivot RRQ/PSV) · `70` (report PSV max) ·
     `75` (bonification PSV) · `39`/`40` (déjà nommés : RRQ_DENOMINATOR_YEARS, PSV_FULL_RESIDENCY_YEARS).

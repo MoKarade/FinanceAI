@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-06 (suite 28) — dette fiscale : 3 constantes ancrées (PR #572)
+> `[FISC-CONST-ANCHOR-DEBT]` entamé — **3 des 14 entrées `fiscal` résolues**, à commencer par la
+> plus nette : `0.18`, le plafond REER de 18 % du revenu GAGNÉ, en dur dans `taxJanuary.ts` sans
+> source. Aussi : `500` (arrondi CELI) et `0.20` (plateau FERR 95+, qui échappait au premier scan
+> parce qu'écrit en repli `|| 0.20`).
+> - Ancrées dans `FISCAL_REFERENCE` (tableau daté + sourcé), exportées depuis la SOURCE UNIQUE
+>   (`RRSP_ROOM_RATE`, `CELI_LIMIT_ROUNDING` dans `utils/tax.ts` ; `RRIF_RATE_PLATEAU` dans
+>   `helpers.ts`), importées par le moteur.
+> - **Refactor à valeurs IDENTIQUES** : gate vert, 3 602 tests, aucun écart numérique.
+> - Les 3 entrées d'inventaire du ratchet ont été RETIRÉES — résolues, pas exemptées. C'est ainsi
+>   que cet inventaire est censé DÉCROÎTRE.
+> **RESTENT 11 entrées `fiscal`** (âges-seuils 65/70/71/72/75/18/15, `2026`, `39`, `40`).
+> ⚠️ NE PAS toucher aux entrées `family: 'design'` — les « sourcer » serait une erreur de CATÉGORIE.
+
 > ## 🟢 Session 2026-08-05 (suite 27) — #570 MERGÉE + PROD DÉPLOYÉE + cadrage CHAT-PAGE-CONTEXT-V2
 > **#570 mergée** (`3eef577`) et **production Vercel READY dessus** (vérifié) — tout le travail de la
 > journée est EN LIGNE. Le quota Vercel s'est débloqué plus tôt que les 24 h annoncées.

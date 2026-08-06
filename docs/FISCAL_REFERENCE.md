@@ -469,6 +469,23 @@ Le facteur 71 ans (5,28 %) ne s'applique qu'à une conversion **volontaire préc
 | 78 | 6,36 % | 86 | 8,99 % | 94 | 20,00 % |
 > 95 ans et + : plafond **20 %** (fallback). Source : ARC, facteurs FERR prescrits (post-2015).
 
+### Droits REER, arrondi CELI, plateau FERR — FISC-CONST-ANCHOR-DEBT (2026-08-06)
+Trois valeurs qui vivaient **EN DUR** dans `services/projection/`, sans source — exactement la
+classe du `0.92` (repérées par l'inventaire de `[FISC-CONST-GUARD-V2]`). Ramenées dans la source
+unique et importées depuis elle.
+
+| Élément | Valeur | Où | Source |
+|---|---|---|---|
+| **Droits REER annuels** (`RRSP_ROOM_RATE`) | **18 %** du revenu **GAGNÉ** de l'année précédente, moins le facteur d'équivalence, plafonné par `RRSP_ANNUAL_LIMITS` | `utils/tax.ts` | ARC |
+| **Arrondi du plafond CELI** (`CELI_LIMIT_ROUNDING`) | indexé puis arrondi au **500 $** le plus proche | `utils/tax.ts` | ARC (mécanisme légal d'indexation) |
+| **Plateau du retrait minimum FERR** (`RRIF_RATE_PLATEAU`) | **20 %** à **95 ans et plus** — repli quand l'âge sort de `RRIF_RATES` | `services/projection/helpers.ts` | ARC |
+
+> ⚠️ **« Revenu GAGNÉ » ≠ revenu total** : ni les gains en capital, ni un paiement de revenu accumulé
+> de REEE n'ouvrent de droits REER. C'est précisément le piège évité lors de la tentative
+> `[FISC-REEE-GRANT-CLAWBACK]` — y ajouter le PRA aurait fabriqué des droits inexistants.
+> ⚠️ Le plateau FERR **échappait au premier scan** du garde : écrit en repli (`RRIF_RATES[age] || 0.20`),
+> il ne ressemblait pas à un opérateur de calcul. C'est le scan élargi qui l'a trouvé, pas l'œil.
+
 ### REEE — SCEE / IQEE (`services/projection/childrenReee.ts`) — FISC-REEE-CONST (2026-06-16)
 Le moteur cotise au REEE pour maximiser les subventions et applique le plafond à vie. Valeurs (vérifiées
 exactes par `fiscal-accuracy`) :

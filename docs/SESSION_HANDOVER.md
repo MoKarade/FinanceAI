@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-05 (suite 27) — #570 MERGÉE + PROD DÉPLOYÉE + cadrage CHAT-PAGE-CONTEXT-V2
+> **#570 mergée** (`3eef577`) et **production Vercel READY dessus** (vérifié) — tout le travail de la
+> journée est EN LIGNE. Le quota Vercel s'est débloqué plus tôt que les 24 h annoncées.
+> **Bilan : V6 ✅, V7 ✅ (4/4), V8 3/4.**
+>
+> **Cadrage de `[CHAT-PAGE-CONTEXT-V2]` fait, code NON commencé** — le ticket sous-estime le
+> prérequis : `describeViewContextForPrompt` déréférence directement les champs de `BudgetViewDetail`
+> sans tester `d.kind`, donc ajouter un membre à l'union CASSE le typecheck. Il faut généraliser le
+> constructeur AVANT tout onglet, en préservant PAR MEMBRE les 3 garanties de sécurité du prompt
+> (assainissement, encadrement `<DONNEES>`, troncature non muette). Détail dans la fiche BACKLOG.
+>
+> **EN ATTENTE de Marc** : (1) emplacement de la surface abonnements ; (2) reprise du RÉEE (reverté,
+> 7 volets chiffrés). **Dette ouverte** : `[FISC-CONST-ANCHOR-DEBT]` (14 constantes fiscales en dur).
+
 > ## 🟢 Session 2026-08-05 (suite 26) — #569 MERGÉE + abonnements : pouvoir dire NON (PR #570)
 > `[SUBS-TAB]` volet « confirmer / ignorer » LIVRÉ. ⚠️ **Le ticket décrivait mal l'existant** : il
 > réclamait « une surface dédiée » alors qu'elle vit DÉJÀ dans `Planning.tsx` (section `fixed`),

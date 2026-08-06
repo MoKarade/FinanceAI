@@ -6,11 +6,14 @@
 >
 > ## 🟠 Session 2026-08-06 (suite 32) — #574 mergée, mais PAS déployée
 > `[FUTUR-DAILY]` est **sur `main`** (`ed5a7d1`, #574) — et **Vercel n'a créé aucun déploiement de
-> PRODUCTION** dans la demi-heure suivante. `latestDeployment` du projet reste la PREVIEW de
-> `02ae31a` (`target: null`). Cause probable [Probable] : quota du plan gratuit (100/jour), déjà
-> épuisé plus tôt le même jour. **Marc en a été informé** — ne PAS annoncer une mise en ligne qui
-> n'a pas eu lieu. À re-vérifier : `latestDeployment.target === 'production'` ET le SHA.
-> Action possible de Marc : Vercel → Deployments → `ed5a7d1` → Redeploy.
+> PRODUCTION** dans la demi-heure suivante. `latestDeployment` du projet restait la PREVIEW de
+> `02ae31a` (`target: null`). **Marc en a été informé** — ne PAS annoncer une mise en ligne qui n'a
+> pas eu lieu. À re-vérifier : `latestDeployment.target === 'production'` ET le SHA.
+> ⚠️ **J'ai d'abord accusé le quota du plan gratuit — hypothèse RÉFUTÉE 10 min plus tard** : Vercel a
+> construit sans broncher la preview de #575. Le plus probable est un webhook de déploiement MANQUÉ
+> sur ce push précis (les merges précédents du même jour avaient bien produit leur production).
+> Le merge de #575 devrait donc emporter le contenu de `ed5a7d1` en production au passage — à
+> VÉRIFIER, pas à supposer. Sinon : Vercel → Deployments → `ed5a7d1` → Redeploy (action de Marc).
 >
 > ⚠️ **Et le blocage qui a coûté 40 min** : les checks de #574 sont restés EN FILE 15 min puis ont
 > été **ANNULÉS** (`conclusion: "cancelled"`, PAS `"failure"`). L'auto-merge ne se déclenche jamais

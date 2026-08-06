@@ -114,11 +114,17 @@ Doc détaillée dans `docs/`, qui fait foi.
   **Déblocage** : `mcp__github__actions_run_trigger` / `rerun_workflow_run` sur les runs concernés
   (⚠️ un run CodeQL annulé peut refuser le retry avec un 403 « cannot be retried » — sans gravité
   s'il n'est pas dans les checks REQUIS du ruleset ; vérifier lesquels le sont avant de s'en inquiéter).
-- ⚠️ **« Mergé » ne veut PAS dire « déployé »** (même jour) : #574 a bien atterri sur `main`, et
-  Vercel n'a créé AUCUN déploiement de production pendant la demi-heure suivante — cause probable,
-  le quota du plan gratuit (100/jour), déjà épuisé plus tôt le même jour. Vérifier le déploiement
-  par `latestDeployment.target === 'production'` ET le SHA, jamais en le déduisant du merge. Le dire
-  à Marc plutôt que d'annoncer une mise en ligne qui n'a pas eu lieu.
+- ⚠️ **« Mergé » ne veut PAS dire « déployé »** (leçon 2026-08-06, #574) : la PR a bien atterri sur
+  `main` (`ed5a7d1`) et Vercel n'a créé **AUCUN déploiement de production** dans la demi-heure
+  suivante — `latestDeployment` restait la PREVIEW du commit de branche (`target: null`).
+  **Vérifier `latestDeployment.target === 'production'` ET le SHA. Ne JAMAIS déduire la mise en
+  ligne du merge**, et le dire à Marc plutôt que d'annoncer un déploiement qui n'a pas eu lieu.
+  ⚠️ **Et se méfier de sa PREMIÈRE explication** : j'ai d'abord attribué ça au quota du plan gratuit
+  (100/jour, effectivement épuisé plus tôt le même jour). **Hypothèse RÉFUTÉE dix minutes plus tard**
+  — Vercel a construit sans broncher la preview de la PR suivante. Le quota n'y était pour rien ;
+  le plus probable est un webhook de déploiement MANQUÉ sur ce push précis (les merges précédents du
+  même jour avaient bien produit leur production). Une cause plausible et non vérifiée reste une
+  supposition : l'étiqueter comme telle, et la corriger dès qu'un fait la contredit.
 - **Pourquoi un merge prend ~10 min quand même** : commit-gate local (typecheck+tests+build
   ≈ 5 min si `.ts/.tsx` stagés) PUIS la même suite en CI (≈ 5 min) — redondant mais voulu
   (gate = filet local, CI = vérité partagée). Pour raccourcir, l'option serait un gate allégé

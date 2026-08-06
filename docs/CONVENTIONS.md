@@ -104,6 +104,21 @@ Doc détaillée dans `docs/`, qui fait foi.
   (le rappel `learn-on-push` qui pousse à MAJ le handover « avant ce push » tombe pile dans ce piège). Donc :
   finir TOUS les docs (CLAUDE.md, handover, BACKLOG, CHANGELOG) AVANT le commit final, PUIS armer l'auto-merge.
   Si un commit s'est orpheliné : branche fraîche depuis `origin/main` (à jour) + ré-appliquer l'edit + petite PR.
+- ⚠️ **Une PR bloquée en `blocked` avec du code SAIN, c'est peut-être la FILE, pas le code**
+  (leçon 2026-08-06, PR #574) : les checks sont restés **en file 15 minutes** puis ont été
+  **ANNULÉS** par GitHub Actions — `conclusion: "cancelled"`, pas `"failure"`. Or **l'auto-merge ne
+  se déclenche JAMAIS sur un check annulé** : il attend indéfiniment, sans rien signaler, et le
+  webhook « échec CI » ne part pas non plus puisqu'il n'y a pas eu d'échec. La PR a stagné 40 min.
+  **Diagnostic** : lire `conclusion` de chaque check, pas seulement `status`. `cancelled` et
+  `failure` demandent des réactions OPPOSÉES — l'un se relance tel quel, l'autre exige un correctif.
+  **Déblocage** : `mcp__github__actions_run_trigger` / `rerun_workflow_run` sur les runs concernés
+  (⚠️ un run CodeQL annulé peut refuser le retry avec un 403 « cannot be retried » — sans gravité
+  s'il n'est pas dans les checks REQUIS du ruleset ; vérifier lesquels le sont avant de s'en inquiéter).
+- ⚠️ **« Mergé » ne veut PAS dire « déployé »** (même jour) : #574 a bien atterri sur `main`, et
+  Vercel n'a créé AUCUN déploiement de production pendant la demi-heure suivante — cause probable,
+  le quota du plan gratuit (100/jour), déjà épuisé plus tôt le même jour. Vérifier le déploiement
+  par `latestDeployment.target === 'production'` ET le SHA, jamais en le déduisant du merge. Le dire
+  à Marc plutôt que d'annoncer une mise en ligne qui n'a pas eu lieu.
 - **Pourquoi un merge prend ~10 min quand même** : commit-gate local (typecheck+tests+build
   ≈ 5 min si `.ts/.tsx` stagés) PUIS la même suite en CI (≈ 5 min) — redondant mais voulu
   (gate = filet local, CI = vérité partagée). Pour raccourcir, l'option serait un gate allégé

@@ -157,6 +157,23 @@
   PERSONNE. **Mesuré : 45 000 $ accordés vs 34 480 $ dus** sur un ménage à 250 k$ avec un seul
   gagnant (+10 520 $/an de droits fantômes) → déduction REER surestimée, REER surdimensionné en
   projection. Changement de MODÈLE, pas correctif au fil de l'eau : plan + mesure avant/après.
+- [ ] **`[FISC-RRSP-LIMITS-PRE2024-DOC]`** (S, doc — audit 2026-08-06) — `RRSP_ANNUAL_LIMITS` porte
+  **14 valeurs 2010→2023** (22 000 → 30 780) qui n'apparaissent NULLE PART dans
+  `FISCAL_REFERENCE.md` (§REER ne liste que 2024+). Elles pilotent les droits REER HISTORIQUES via
+  `setupSimulation.ts:70`, donc de l'argent. Valeurs jugées correctes, mais non sourcées = suspectes
+  par la règle du dépôt. Documenter dans le même geste que `[FISC-REF-DEDUP]`.
+- [ ] **`[FISC-RRSP-FALLBACK-PRE2010]`** (M, MOYEN [MESURÉ — audit 2026-08-06], PRÉ-EXISTANT) —
+  `RRSP_ANNUAL_LIMIT_FALLBACK = 32 490 $` (le plafond **2025**) est appliqué à TOUTE année
+  **antérieure à 2010** (`setupSimulation.ts:70`). Pour un résident de longue date, chaque année
+  pré-2010 reçoit donc un plafond de 2025. Le plafond ne mord qu'au-delà de ~180 k$ de salaire
+  projeté en arrière (vs ~122 k$ avec le vrai plafond 2010) → **sur-attribution possible de
+  10-19 k$ de droits REER par année pré-2010** pour un haut revenu, donc des déductions supérieures
+  au légal. ⚠️ Changement de MODÈLE sur les droits historiques → plan + mesure avant/après, pas un
+  fix au fil de l'eau.
+- [ ] **`[FISC-RRSP-EXTRAP-05]`** (S, doc — audit 2026-08-06) — l'extrapolation du plafond REER
+  au-delà du barème connu ajoute **+0,5 %/an** à l'inflation (`taxJanuary.ts:163`). §REER est muette ;
+  le +0,5 % n'est documenté que pour le MGA (§6). Invisible au garde de constantes (`0.5` est classé
+  bénin). Sourcer ou requalifier en hypothèse de modèle assumée.
 - [ ] **`[FISC-RRSP-RENTAL-EARNED]`** (S-M, [Supposition] non chiffrée — audit 2026-08-06) — le
   revenu NET de location est du revenu GAGNÉ au sens de 146(1), mais il alimente `accRentesYear`
   et jamais `accGrossIncomeYear` (`realEstateMonth.ts:397`) → droits REER sous-estimés pour un
@@ -201,11 +218,36 @@
         connaisse pour le futur. La PAIE n'a aucun champ de jour (`grossSalary`/`netSalary` sont des
         montants MENSUELS), les DETTES non plus (`Debt` n'a que `termEndDate`), l'hypothèque non plus.
         Donc dans un futur zoomé, seules les charges récurrentes font de vraies marches ; le salaire
-        et l'hypothèque sont lissés dans le résidu. → question **A13** routée à Marc (`A_FAIRE_MOI`) :
-        c'est une donnée que lui seul connaît, je ne peux pas la déduire.
+        et l'hypothèque sont lissés dans le résidu. → question **A13** routée à Marc — ✅ **RÉPONDUE
+        le 2026-08-06 : « chaque semaine jeudi, pareil pour dette »**. `weeklyDeltasForMonth` livré :
+        conversion du MENSUEL du store en versements hebdomadaires (×12/52), posés à chaque jeudi,
+        jour de la semaine PARAMÉTRABLE (pas un `if` en dur). Un mois à 5 jeudis reçoit 5 paies —
+        c'est la réalité, et `dailyRefine` l'absorbe dans son résidu (fin de mois inchangée).
+        ⚠️ Limite ASSUMÉE : le MOTEUR raisonne au mois et ignore les mois à 5 paies. Le RYTHME
+        affiché est juste, le TOTAL du mois reste celui du moteur.
+        ⚠️ Reste à faire : rendre le jour/la cadence ÉDITABLES (aujourd'hui c'est un défaut de code
+        aligné sur la réponse de Marc, pas un champ de profil).
         Deux pièges qu'un graphe rend INVISIBLES, tous deux testés : le SIGNE (un coût positif doit
         faire DESCENDRE un solde) et l'ANNUEL compté douze fois.
-  - [ ] UI : zoom + tableau détaillé + rendu du drapeau `isDated` (distinguer mesuré et interpolé).
+  - [x] **UI lot A** — `components/projection/DailyDetailPanel.tsx` : le détail jour par jour de la
+        fenêtre regardée, sous la courbe ✅ 2026-08-06.
+  - [ ] **UI lot B** — la COURBE elle-même en quotidien. ⚠️ L'axe X du graphe Futur est **CATÉGORIEL**
+        (aucun `type="number"`) : la ligne « Aujourd'hui », la frontière passé/futur, les événements
+        de vie et les icônes-jalons sont tous ancrés sur un `monthIndex` ENTIER apparié comme une
+        CATÉGORIE (`FutureProjection.tsx` l.1000, 1003, 1014, 1046, 1062). Y injecter du quotidien
+        exige soit de migrer l'axe sur `date` en convertissant chaque ancrage, soit de basculer en
+        axe numérique — ce qui change la sémantique de TOUT l'affichage mensuel existant. Un
+        désalignement y serait SILENCIEUX sur un écran money-critical → changement dédié + e2e.
+  - [ ] ⚠️ **Piège de nommage au branchement** (audit) : la reconstruction MENSUELLE nomme `NetWorth`
+        un champ qui porte la valeur INVESTIE ; la quotidienne le nomme `InvestedValue` (correct).
+        Deux noms pour la même grandeur, sur deux fonctions destinées au même axe.
+  - [ ] ⚠️ **Divergences d'ANCRE du cash quotidien** (audit, latentes — 0 $ tant que non branché sur
+        la courbe) : `computeStartingCash` compte TOUTE transaction, la mensuelle exige `length >= 7`,
+        la quotidienne `length >= 10`. Un flux daté au mois seul est donc dans l'ancre mais pas dans
+        les points → tout le niveau passé décalé (mesuré −2 000 $). Idem pour un flux daté APRÈS
+        aujourd'hui. **Mitigé** : `undatedTotal` et `flowsAfterNowDate` sont désormais exposés et le
+        panneau les AFFICHE. Le vrai correctif — retrancher ces flux de l'ancre — touche
+        `computeStartingCash`, donc le raccord au présent : plan-first.
   - [ ] Liquidités par COMPTE bancaire — ⚠️ BLOQUÉ par une absence de donnée : on reconstruit à
         rebours depuis le solde connu d'AUJOURD'HUI, or il n'est connu que GLOBALEMENT.
         `FintableBrokerBalance` ne couvre que les comptes `kind: 'investment'`. Prérequis : persister

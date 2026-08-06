@@ -123,10 +123,16 @@ export const RRIF_RATES: Record<number, number> = {
  * à 20 %. Le retrait forcé quitte l'abri fiscal et devient imposable : se tromper là coûte de
  * l'argent RÉEL, en silence.
  *
- * ⚠️ Aucun producteur d'âge fractionnaire n'existe aujourd'hui (`Onboarding` passe par `parseInt`,
- * et `currentAge = user1?.age || 30` écarte NaN). C'est donc du DURCISSEMENT, pas la correction
- * d'un bug observable — mais un repli qui distribue le pire taux sur une entrée inattendue est une
- * forme d'échec silencieux, et le corriger ne coûte rien : sortie bit-identique sur tout âge entier.
+ * ⚠️ **Portée corrigée le 2026-08-06 par l'audit — ma première rédaction était trop rassurante.**
+ * J'avais écrit « aucun producteur d'âge fractionnaire n'existe ». C'est vrai des ÉCRANS
+ * (`Onboarding` passe par `parseInt`, `UsersCard` par `Math.round`), FAUX des CHARGEURS :
+ * `mcp/state/appStateSchema.ts:27` accepte `age: z.number().optional()` sans arrondi — un état
+ * restauré, importé ou écrit par le MCP peut donc porter 71,5.
+ * Et l'écart n'a rien de théorique, il a été MESURÉ sur 56 personas : un solo à 71,5 ans finit à
+ * **+386 276 $** de patrimoine avec ce correctif (ancien code : 20 % de retrait forcé au lieu de
+ * 5,28 %, sorti de l'abri fiscal et imposé). Les 53 personas à âge entier rendent un hash identique.
+ * Ce n'est donc pas seulement du durcissement : c'est un vrai correctif sur une forme de donnée que
+ * la validation d'entrée autorise.
  *
  * ⚠️ **L'ORDRE des gardes fait le travail.** Il distingue deux non-finis de nature OPPOSÉE sans
  * jamais coder « −Infinity est spécial » — c'est le domaine qui tranche :

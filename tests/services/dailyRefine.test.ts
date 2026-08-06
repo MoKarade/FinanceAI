@@ -11,6 +11,9 @@ import {
     refineWindowToDaily,
     daysInMonth,
     daySpan,
+    calendarFromMonthIndex,
+    isoDate,
+    todayIsoLocal,
     type MonthlyAnchor,
 } from '../../services/projection/dailyRefine';
 
@@ -140,6 +143,55 @@ describe('[FUTUR-DAILY] refineWindowToDaily', () => {
             (a) => (a.monthIndex === 1 ? [{ day: 3, amount: -100, label: 'Loyer' }] : []),
         );
         expect(pts.filter((p) => p.isDated).map((p) => p.date)).toEqual(['2026-02-03']);
+    });
+});
+
+describe('[FUTUR-DAILY] calendarFromMonthIndex', () => {
+    it('avance correctement dans le futur', () => {
+        expect(calendarFromMonthIndex(2026, 0, 0)).toEqual({ year: 2026, month: 0 });
+        expect(calendarFromMonthIndex(2026, 6, 6)).toEqual({ year: 2027, month: 0 });
+    });
+
+    it('DISCRIMINANT — recule correctement dans le PASSÉ (monthIndex négatif)', () => {
+        // Le `%` de JS garde le signe du dividende : un modulo NU rendrait un mois négatif, en
+        // silence. C'est le double modulo qui corrige — et c'est exactement le genre d'erreur qu'un
+        // graphe n'affiche pas, il déplace juste les points.
+        expect(calendarFromMonthIndex(2026, 2, -5)).toEqual({ year: 2025, month: 9 });   // mars −5 → octobre 2025
+        expect(calendarFromMonthIndex(2026, 11, -11)).toEqual({ year: 2026, month: 0 }); // déc. −11 → janvier MÊME année
+        expect(calendarFromMonthIndex(2026, 0, -1)).toEqual({ year: 2025, month: 11 });  // janvier −1 → décembre 2025
+    });
+
+    it('tout mois rendu est dans [0, 11] — jamais un mois négatif', () => {
+        for (let mi = -40; mi <= 40; mi++) {
+            const { month } = calendarFromMonthIndex(2026, 5, mi);
+            expect(month, `monthIndex ${mi}`).toBeGreaterThanOrEqual(0);
+            expect(month, `monthIndex ${mi}`).toBeLessThanOrEqual(11);
+        }
+    });
+});
+
+describe('[FUTUR-DAILY] todayIsoLocal — le bug de FUSEAU qui a échappé à la CI', () => {
+    it('DISCRIMINANT — rend le jour LOCAL, pas le jour UTC', () => {
+        // ⚠️ Le premier jet combinait une année et un mois LOCAUX avec `getUTCDate()`. À Toronto le
+        // 31 août à 22h30, il est déjà le 1er septembre en UTC : le code construisait donc
+        // `2026-08-01` au lieu de `2026-08-31` — 30 jours d'écart, tous les soirs entre ~20h et
+        // minuit. Conséquence : des jours RÉELS affichés comme « projeté » avec une valeur interpolée.
+        //
+        // ⚠️ Et ce test n'aurait RIEN prouvé en CI : le conteneur tourne en TZ=UTC, où
+        // `getDate() === getUTCDate()` toujours. D'où l'injection d'une date construite à la main
+        // plutôt qu'une dépendance à l'horloge de la machine.
+        const soir = new Date(2026, 7, 31, 22, 30); // 31 août 2026, 22h30 LOCAL (mois 7 = août)
+        expect(todayIsoLocal(soir)).toBe('2026-08-31');
+    });
+
+    it('reste cohérent en début de journée et sur un changement d’année', () => {
+        expect(todayIsoLocal(new Date(2026, 0, 1, 0, 5))).toBe('2026-01-01');
+        expect(todayIsoLocal(new Date(2026, 11, 31, 23, 59))).toBe('2026-12-31');
+    });
+
+    it('isoDate pade correctement mois et jour', () => {
+        expect(isoDate(2026, 0, 5)).toBe('2026-01-05');
+        expect(isoDate(2026, 11, 31)).toBe('2026-12-31');
     });
 });
 

@@ -168,6 +168,43 @@ export function refineWindowToDaily(
 }
 
 /**
+ * [FUTUR-DAILY] Traduit un `monthIndex` (0 = mois de départ de la projection) en année/mois
+ * calendaires. `month` est 0-based, comme `Date`.
+ *
+ * ⚠️ Gère le PASSÉ (`monthIndex` négatif) : le `%` de JS garde le signe du dividende, d'où le
+ * double modulo `((abs % 12) + 12) % 12`. Un `%` nu rendrait un mois négatif en silence.
+ */
+export function calendarFromMonthIndex(
+    startYear: number, startMonth: number, monthIndex: number,
+): { year: number; month: number } {
+    const abs = startMonth + monthIndex;
+    return { year: startYear + Math.floor(abs / 12), month: ((abs % 12) + 12) % 12 };
+}
+
+/** Date ISO `YYYY-MM-DD` à partir d'une année, d'un mois 0-based et d'un jour. */
+export function isoDate(year: number, month: number, day: number): string {
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+/**
+ * Date d'AUJOURD'HUI, cohérente avec le calendrier LOCAL de l'utilisateur.
+ *
+ * ⚠️ **Extraite d'un composant PARCE QU'ELLE Y ÉTAIT FAUSSE ET INTESTABLE** (finding CRITIQUE de la
+ * revue de #574). Le code inline combinait une année et un mois LOCAUX avec un jour lu en **UTC**
+ * (`getUTCDate()`). Reproduit à Toronto le 31 août à 22h30 : il construisait `2026-08-01` au lieu de
+ * `2026-08-31` — **30 jours d'écart**, et ça se produit tous les soirs entre ~20h et minuit dès que
+ * l'heure UTC franchit le jour avant l'heure locale.
+ * Conséquence : la frontière passé/futur se déplaçait, donc des jours RÉELS étaient affichés comme
+ * « projeté » avec une valeur interpolée — exactement la confusion mesure/interpolation que tout ce
+ * chantier cherche à éviter.
+ * ⚠️ Le bug était structurellement INVISIBLE en CI : le conteneur tourne en `TZ=UTC`, où
+ * `getDate() === getUTCDate()` toujours. D'où l'extraction : ici, une date injectable se teste.
+ */
+export function todayIsoLocal(now: Date = new Date()): string {
+    return isoDate(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+/**
  * Nombre de jours calendaires entre deux dates ISO (`YYYY-MM-DD`), bornes incluses.
  * Sert à décider du niveau de détail : au-delà d'un certain nombre de jours à l'écran, un point par
  * jour n'est plus lisible ET plus rendable — c'est l'appelant qui tranche, avec ce compte.

@@ -7,7 +7,13 @@
  *  2. l'ANNUEL compté douze fois — un poste à 200 $/an qui apparaît chaque mois.
  */
 import { describe, it, expect } from 'vitest';
-import { datedDeltasForMonth, datedCoverageForMonth } from '../../services/projection/datedMonthEvents';
+import {
+    datedDeltasForMonth,
+    datedCoverageForMonth,
+    weeklyOccurrencesInMonth,
+    weeklyDeltasForMonth,
+    DEFAULT_PAY_DAY_OF_WEEK,
+} from '../../services/projection/datedMonthEvents';
 
 const mensuel = (payee: string, montant: number, jour: number) =>
     ({ payee, averageAmount: montant, dayOfMonth: jour, lastDate: '2026-01-15', yearlyCost: montant * 12 });
@@ -56,6 +62,57 @@ describe('[FUTUR-DAILY] datedDeltasForMonth', () => {
 
     it('un payee vide reçoit un libellé de repli plutôt qu’une étiquette vide', () => {
         expect(datedDeltasForMonth([mensuel('', 50, 5)], 0)[0].label).toBe('Récurrent');
+    });
+});
+
+describe('[FUTUR-DAILY] cadence HEBDOMADAIRE (paie et dettes, réponse A13 de Marc)', () => {
+    it('trouve TOUS les jeudis du mois — 4 ou 5 selon le calendrier', () => {
+        // Janvier 2026 commence un jeudi → 5 jeudis (1, 8, 15, 22, 29).
+        expect(weeklyOccurrencesInMonth(2026, 0, DEFAULT_PAY_DAY_OF_WEEK)).toEqual([1, 8, 15, 22, 29]);
+        // Février 2026 (28 jours, commence un dimanche) → 4 jeudis.
+        expect(weeklyOccurrencesInMonth(2026, 1, DEFAULT_PAY_DAY_OF_WEEK)).toEqual([5, 12, 19, 26]);
+    });
+
+    it('convertit un montant MENSUEL du store en versement HEBDOMADAIRE (×12/52)', () => {
+        // Le store porte du mensuel (règle « unités argent ») ; se tromper ici donnerait une paie
+        // 4,33× trop grosse — le genre d'erreur d'échelle que le dépôt a déjà vécue.
+        const d = weeklyDeltasForMonth(2026, 1, 4_333, 'Paie', 1);
+        expect(d).toHaveLength(4);
+        expect(d[0].amount).toBeCloseTo((4_333 * 12) / 52, 6);
+        expect(d[0].label).toBe('Paie');
+    });
+
+    it('une PAIE fait monter le solde, un paiement de DETTE le fait descendre', () => {
+        expect(weeklyDeltasForMonth(2026, 1, 4_000, 'Paie', 1)[0].amount).toBeGreaterThan(0);
+        expect(weeklyDeltasForMonth(2026, 1, 400, 'Dette', -1)[0].amount).toBeLessThan(0);
+    });
+
+    it('le signe est imposé même si le montant mensuel arrive NÉGATIF', () => {
+        // Un `minimumPayment` saisi en négatif ne doit pas faire MONTER le solde à chaque échéance.
+        expect(weeklyDeltasForMonth(2026, 1, -400, 'Dette', -1)[0].amount).toBeLessThan(0);
+    });
+
+    it('un mois à 5 jeudis reçoit bien 5 versements — c’est la RÉALITÉ, pas un bug', () => {
+        // Un salaire hebdomadaire donne des « mois à 5 paies ». La somme du mois dépasse alors le
+        // montant mensuel du store ; `dailyRefine` l'absorbe dans son résidu et la fin de mois
+        // retombe EXACTEMENT sur la valeur du moteur.
+        const cinq = weeklyDeltasForMonth(2026, 0, 4_333, 'Paie', 1);
+        const quatre = weeklyDeltasForMonth(2026, 1, 4_333, 'Paie', 1);
+        expect(cinq).toHaveLength(5);
+        expect(quatre).toHaveLength(4);
+        expect(cinq.reduce((s, d) => s + d.amount, 0)).toBeGreaterThan(4_333);
+    });
+
+    it('un montant nul ou non fini ne produit AUCUN versement fantôme', () => {
+        expect(weeklyDeltasForMonth(2026, 1, 0, 'Paie', 1)).toEqual([]);
+        expect(weeklyDeltasForMonth(2026, 1, Number.NaN, 'Paie', 1)).toEqual([]);
+    });
+
+    it('le jour de la semaine est un ARGUMENT, pas un `if` en dur', () => {
+        // Marc est payé le jeudi ; un autre profil ne le serait pas. Le défaut ne doit pas devenir
+        // une règle codée en dur qu'il faudrait défaire plus tard.
+        const lundis = weeklyDeltasForMonth(2026, 1, 1_000, 'Paie', 1, 1);
+        expect(lundis.map((d) => d.day)).toEqual([2, 9, 16, 23]);
     });
 });
 

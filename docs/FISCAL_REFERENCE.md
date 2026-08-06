@@ -459,9 +459,13 @@ moins le facteur d'équivalence, plafonné par `RRSP_ANNUAL_LIMITS`. Source : AR
 71 ans**. Mais **aucun retrait minimum n'est dû l'année d'ouverture** du FERR. Pour le cas standard
 (conversion à l'échéance des 71 ans), le **1er retrait minimum obligatoire tombe l'année des 72 ans**.
 Le facteur 71 ans (5,28 %) ne s'applique qu'à une conversion **volontaire précoce**.
-> **Implémentation** (`taxJanuary.ts` §4) : le moteur force le retrait minimum à partir de **72 ans**
-> (`if (ctx.age >= 72)`). Le facteur 71 reste dans la table pour complétude (conversion précoce non
-> modélisée). Montant = solde FERR (1er janvier) × facteur prescrit selon l'âge.
+> **Implémentation** (`taxJanuary.ts` §4) : le moteur force le retrait minimum à partir de **72 ans**,
+> **PAR CONJOINT** (`if (ageI < RRIF_FIRST_WITHDRAWAL_AGE) continue;`). Le facteur 71 reste dans la
+> table pour complétude (conversion précoce non modélisée). Montant = solde FERR (1er janvier) ×
+> facteur prescrit selon l'âge.
+> ⚠️ Corrigé le 2026-08-06 (audit) : cette ligne décrivait `if (ctx.age >= 72)`, un gate MÉNAGE qui
+> n'existe plus depuis `[ITEM-2C]` — et dont le littéral avait en plus disparu. Une doc qui décrit un
+> moteur ménage-unique alors qu'il est per-conjoint est du carburant à faux findings.
 > **Retenue FERR — assiette du crédit pension (FA-8, 2026-06-11, aligné FA-1)** : le proxy de taux
 > marginal de la retenue passe en `eligiblePensionIncome` les retraits REER/FERR de l'année
 > précédente par tête (≈ FERR à 72+) au lieu du revenu TOTAL (qui incluait RRQ/PSV/SRG — assiette

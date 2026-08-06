@@ -543,6 +543,14 @@ export function processDecemberTaxFiling(
             const eligiblePensionFor = (i: number): number => {
                 const a = ages[i];
                 if (a === undefined) return 0;
+                // ⚠️ [Audit 2026-08-06] `RRIF_FIRST_WITHDRAWAL_AGE` est ici DÉRIVÉ, pas coïncident :
+                // un retrait REER n'entre dans l'assiette du crédit pension qu'à partir du moment où
+                // le moteur le considère comme du FERR — c'est-à-dire exactement le gate de
+                // `taxJanuary`. Découpler les deux constantes accorderait le crédit (et le
+                // fractionnement) un an trop tôt : MESURÉ +6 508 $ sur 22 personas / 56.
+                // La règle stricte serait `max(65 ARC ; âge FERR du modèle)` ; le `max` est lié par
+                // 72 aujourd'hui et ne se dénouerait que si la conversion volontaire 65-71 était
+                // modélisée (limite déjà consignée FISCAL_REFERENCE §4).
                 return (a >= 65 ? Math.max(0, dbRealUser(i)) : 0)
                     + (a >= RRIF_FIRST_WITHDRAWAL_AGE ? Math.max(0, reerRealUser(i)) : 0);
             };

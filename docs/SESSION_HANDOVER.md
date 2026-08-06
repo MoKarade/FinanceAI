@@ -4,6 +4,40 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-06 (suite 31) — `[FUTUR-DAILY]` : granularité QUOTIDIENNE (demande Marc)
+> **Marc a tranché « quotidien sur tout, je veux voir le détail si je zoom beaucoup ».** J'avais
+> objecté que le quotidien long terme est de la fausse précision ; il a maintenu. **Décision prise,
+> ne plus la rediscuter.** Sa formulation permet de la servir sans le coût redouté.
+>
+> **CONCEPTION** : le moteur RESTE mensuel (source de vérité, `projection.ts` INTOUCHÉ — le passer au
+> jour = ~11 000 itérations × chaque tirage MC, et rejouer au jour une fiscalité qui n'a que des
+> événements ANNUELS). Un module RAFFINE la fenêtre regardée.
+> **INVARIANT money-critical** : la série quotidienne passe EXACTEMENT par les points mensuels, par
+> construction. Sinon l'app afficherait deux vérités pour le même mois selon le zoom.
+>
+> Livré et testé (**~110 tests**) : `dailyRefine` · `reconstructCashHistoryDaily` (le `slice(0,7)`
+> jetait le jour) · `reconstructPortfolioHistoryDaily` (fenêtrée, par compte) · `datedMonthEvents` ·
+> `DailyDetailPanel` **BRANCHÉ** dans `FutureProjection` (n'apparaît qu'en zoom).
+>
+> ⚠️ **UI lot B — la COURBE elle-même en quotidien — reste À FAIRE, et ce n'est PAS un branchement.**
+> L'axe X du graphe Futur est **CATÉGORIEL** : « Aujourd'hui », la frontière passé/futur, les
+> événements de vie et les icônes-jalons sont ancrés sur un `monthIndex` ENTIER apparié comme
+> CATÉGORIE. Migrer exige de convertir chaque ancrage ; un désalignement y serait SILENCIEUX sur un
+> écran money-critical → changement dédié + e2e.
+> ⚠️ **Écart ANNONCÉ à Marc** : `RecurringItem.dayOfMonth` est la SEULE date que l'app connaisse pour
+> le futur. La PAIE et les DETTES n'ont aucun champ de jour → seules les charges récurrentes font de
+> vraies marches, le reste est lissé. Question **A13** dans `A_FAIRE_MOI`.
+>
+> **Audit `financial-integrity` (relancé sur main, le 1er était mort au lancement)** — findings
+> traités AVANT le branchement : la fusion des deux `72` est CONFIRMÉE correcte et protectrice
+> (découpler = +6 508 $ sur 22/56 personas) · ma borne basse est INERTE (1 716 appels instrumentés) ·
+> mais mon « aucun producteur d'âge fractionnaire » était FAUX pour les CHARGEURS
+> (`appStateSchema.ts:27` accepte `z.number()` sans arrondi) et l'écart vaut **+386 276 $** sur un
+> solo à 71,5 ans · `FISCAL_REFERENCE` décrivait un gate MÉNAGE qui n'existe plus · deux divergences
+> d'ANCRE du cash quotidien (`undatedTotal`/`flowsAfterNowDate` désormais exposés ET affichés).
+> Trois dettes PRÉ-EXISTANTES ticketées : plafonds REER 2010-2023 non documentés, fallback 2025
+> appliqué aux années pré-2010, extrapolation +0,5 %/an non sourcée.
+
 > ## 🟢 Session 2026-08-06 (suite 30) — repli FERR durci + dédup doc + INDEX des blocages (PR #573)
 > **Demande de Marc : « continue avec tout ce que tu peux faire, et prépare-moi la liste de ce que
 > je dois faire pour te débloquer le backlog au complet ».** Les deux sont livrés.

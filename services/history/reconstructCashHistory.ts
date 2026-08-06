@@ -115,6 +115,23 @@ export interface CashHistoryDailyResult {
     points: CashHistoryDailyPoint[];
     /** Date de la 1re transaction connue, ou null. */
     firstDate: string | null;
+    /**
+     * [Audit 2026-08-06] Somme des flux que cette fonction a dû IGNORER faute de date complète
+     * (`YYYY-MM` sans jour). ⚠️ `computeStartingCash` — l'ANCRE d'où l'on remonte — les COMPTE, lui.
+     * Un montant non nul ici signifie donc que TOUT le niveau passé de la série est décalé d'autant.
+     * Mesuré : une transaction datée `2026-06` de −2 000 $ décale chaque point de −2 000 $.
+     * L'exposer est le minimum : l'écran doit pouvoir le DIRE au lieu d'afficher un niveau faux.
+     */
+    undatedTotal: number;
+    /**
+     * [Audit 2026-08-06] Somme des flux datés APRÈS `nowDate`. L'ancre les contient (ils sont dans
+     * `computeStartingCash`) alors qu'ils n'ont pas encore bougé le solde. C'est la raison pour
+     * laquelle l'invariant « dernier jour du mois == point mensuel » ne tient QUE si `nowDate` est
+     * postérieur à tous les flux du mois courant — la version mensuelle, elle, ancre sur la FIN du
+     * mois et absorbe donc ces flux. Défaut PRÉ-EXISTANT de l'ancre, pas introduit ici, mais la
+     * granularité quotidienne en élargit la fenêtre.
+     */
+    flowsAfterNowDate: number;
 }
 
 const DAY_MS = 86_400_000;
@@ -140,23 +157,34 @@ export function reconstructCashHistoryDaily(
     currentCash: number,
     nowDate: string = new Date().toISOString().slice(0, 10),
 ): CashHistoryDailyResult {
-    if (!transactions || transactions.length === 0) return { points: [], firstDate: null };
+    if (!transactions || transactions.length === 0) {
+        return { points: [], firstDate: null, undatedTotal: 0, flowsAfterNowDate: 0 };
+    }
 
     const flowByDay = new Map<string, number>();
     const movedOn = new Set<string>();
     let firstDate: string | null = null;
+    let undatedTotal = 0;
+    let flowsAfterNowDate = 0;
     for (const t of transactions) {
         // `length < 10` et non `< 7` : ici on exige une date COMPLÈTE. Une transaction datée au mois
         // seul ne peut pas être placée dans la journée — l'inventer la ferait apparaître un jour
         // arbitraire, ce qui est pire qu'honnêtement absente de la série quotidienne.
-        if (!t.date || t.date.length < 10 || !Number.isFinite(t.amount)) continue;
+        if (!t.date || !Number.isFinite(t.amount)) continue;
+        if (t.date.length < 10) {
+            // Datée au MOIS seul : impossible à placer dans la journée sans l'inventer. On la
+            // compte quand même ICI pour que l'appelant sache de combien le niveau est décalé.
+            if (!t.isDuplicate && !t.isTransfer) undatedTotal += t.amount;
+            continue;
+        }
         const d = t.date.slice(0, 10);
         if (firstDate === null || d < firstDate) firstDate = d;
         if (t.isDuplicate || t.isTransfer) continue; // MÊME exclusion que computeStartingCash
+        if (d > nowDate) flowsAfterNowDate += t.amount;
         flowByDay.set(d, (flowByDay.get(d) ?? 0) + t.amount);
         movedOn.add(d);
     }
-    if (firstDate === null) return { points: [], firstDate: null };
+    if (firstDate === null) return { points: [], firstDate: null, undatedTotal, flowsAfterNowDate };
 
     const points: CashHistoryDailyPoint[] = [];
     let cash = currentCash;
@@ -168,5 +196,5 @@ export function reconstructCashHistoryDaily(
         d = prev;
     }
     points.reverse();
-    return { points, firstDate };
+    return { points, firstDate, undatedTotal, flowsAfterNowDate };
 }

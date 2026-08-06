@@ -47,14 +47,13 @@ export interface InventoryEntry {
  * DETTE — chacune doit finir ancrée dans `docs/FISCAL_REFERENCE.md`, et disparaître d'ici en étant
  * remplacée par un import depuis la source unique.
  */
+// ⚠️ 2026-08-06 — TROIS entrées ONT ÉTÉ RETIRÉES parce qu'elles sont RÉSOLUES, pas exemptées :
+// `0.18` (droits REER), `500` (arrondi CELI) et `0.20` (plateau FERR) vivent désormais dans la
+// source unique (`utils/tax.ts` / `helpers.ts`), sont ancrées dans FISCAL_REFERENCE et importées.
+// Le littéral ayant disparu du module scanné, l'entrée n'a plus d'objet — c'est la façon dont
+// cet inventaire est censé DÉCROÎTRE. [FISC-CONST-ANCHOR-DEBT]
 export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     // ── services/projection/taxJanuary.ts ────────────────────────────────────────────────────
-    { file: 'services/projection/taxJanuary.ts', value: '0.18', family: 'fiscal',
-      reason: 'Plafond REER = 18 % du revenu gagné (ARC). ⚠️ VRAI chiffre fiscal EN DUR, non sourcé — la dette la plus nette de cet inventaire.' },
-    { file: 'services/projection/taxJanuary.ts', value: '0.20', family: 'fiscal',
-      reason: 'Facteur de retrait minimum FERR par défaut (20 %, plateau 95+ ARC), repli quand l’âge sort de RRIF_RATES.' },
-    { file: 'services/projection/taxJanuary.ts', value: '500', family: 'fiscal',
-      reason: 'Le plafond CELI est arrondi au 500 $ le plus proche (ARC).' },
     { file: 'services/projection/taxJanuary.ts', value: '2026', family: 'fiscal',
       reason: 'Année d’ancrage dans RRSP_ANNUAL_LIMITS pour l’extrapolation au-delà du barème connu.' },
     { file: 'services/projection/taxJanuary.ts', value: '18', family: 'fiscal',
@@ -105,6 +104,62 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection/retirementIncome.ts', value: '30', family: 'structural',
       reason: 'Même repli d’âge par défaut que taxJanuary — dupliqué, mais structurel et non fiscal.' },
 
+    // ── services/projection/helpers.ts + setupSimulation.ts ─────────────────────────────────
+    // Révélés le 2026-08-06 en ÉLARGISSANT le scan à ces deux modules (finding F5). Aucun n'est
+    // un paramètre ARC/RQ : ce sont des hypothèses de MODÈLE et de la mécanique numérique.
+    { file: 'services/projection/helpers.ts', value: '0.20', family: 'fiscal',
+      reason: 'RRIF_RATE_PLATEAU — facteur de retrait minimum FERR au plateau 95+. ANCRÉ dans FISCAL_REFERENCE et importé ; l’entrée reste pour que le garde couvre sa nouvelle adresse.' },
+    { file: 'services/projection/helpers.ts', value: '0.30', family: 'design',
+      reason: 'NONREG_DIVIDEND_DISTRIBUTION_SHARE — part du rendement non-enregistré supposée distribuée en dividendes. Hypothèse de modélisation, pas un barème.' },
+    { file: 'services/projection/helpers.ts', value: '0.0020', family: 'design',
+      reason: 'MER — frais de gestion annuels supposés du portefeuille. Paramètre de simulation.' },
+    { file: 'services/projection/helpers.ts', value: '4294967296', family: 'structural',
+      reason: '2^32 — normalisation du générateur pseudo-aléatoire (mulberry32). Mécanique numérique.' },
+    { file: 'services/projection/helpers.ts', value: '2.0', family: 'structural',
+      reason: 'Constante de la transformation de Box-Muller (loi normale). Mathématique, pas fiscale.' },
+    { file: 'services/projection/helpers.ts', value: '65', family: 'design',
+      reason: 'Seuil d’âge de la courbe de probabilité LTC (calibrée sur Genworth/StatCan, cf. commentaire D2.8) — hypothèse de RISQUE, pas un âge fiscal.' },
+    { file: 'services/projection/helpers.ts', value: '70', family: 'design',
+      reason: 'Palier d’âge de la courbe LTC. Même nature que 65.' },
+    { file: 'services/projection/helpers.ts', value: '75', family: 'design',
+      reason: 'Palier d’âge de la courbe LTC. Même nature que 65.' },
+    { file: 'services/projection/helpers.ts', value: '80', family: 'design',
+      reason: 'Palier d’âge de la courbe LTC. Même nature que 65.' },
+    { file: 'services/projection/helpers.ts', value: '85', family: 'design',
+      reason: 'Palier d’âge de la courbe LTC. Même nature que 65.' },
+    { file: 'services/projection/helpers.ts', value: '90', family: 'design',
+      reason: 'Palier d’âge de la courbe LTC. Même nature que 65.' },
+    { file: 'services/projection/helpers.ts', value: '95', family: 'design',
+      reason: 'Palier terminal de la courbe LTC / borne de la table FERR. Hypothèse de modèle.' },
+    { file: 'services/projection/helpers.ts', value: '50', family: 'design',
+      reason: 'Palier d’âge bas de la courbe de mortalité/LTC. Hypothèse de risque.' },
+    { file: 'services/projection/setupSimulation.ts', value: '42', family: 'structural',
+      reason: 'Graine par défaut du générateur pseudo-aléatoire (`mulberry32(... || 42)`). Aucun rapport avec la fiscalité.' },
+    { file: 'services/projection/setupSimulation.ts', value: '30', family: 'structural',
+      reason: 'Repli d’âge par défaut quand ni birthYear ni age ne sont saisis. Structurel.' },
+    { file: 'services/projection/setupSimulation.ts', value: '18', family: 'fiscal',
+      reason: 'Âge d’ouverture des droits REER historiques (`birthYear + 18`) — âge fiscal, à ancrer avec les autres âges-seuils.' },
+    { file: 'services/projection/setupSimulation.ts', value: '65', family: 'fiscal',
+      reason: 'Âge pivot RRQ : base du décalage `(pensionStartAge - 65) * 12`. Âge fiscal, à ancrer.' },
+    { file: 'services/projection/setupSimulation.ts', value: '8000', family: 'design',
+      reason: 'Revenu théorique mensuel de repli quand aucun salaire n’est saisi. Hypothèse d’amorçage, pas un barème.' },
+    { file: 'services/projection/setupSimulation.ts', value: '0.55', family: 'design',
+      reason: 'Part du revenu théorique attribuée au 1er conjoint (55/45). Hypothèse de répartition, pas une règle.' },
+    { file: 'services/projection/setupSimulation.ts', value: '0.45', family: 'design',
+      reason: 'Part du revenu théorique attribuée au 2e conjoint. Même nature que 0.55.' },
+    { file: 'services/projection/setupSimulation.ts', value: '1.35', family: 'design',
+      reason: 'Facteur brut/net approximatif pour remonter un revenu théorique. Approximation de modèle.' },
+    { file: 'services/projection/setupSimulation.ts', value: '2.0', family: 'structural',
+      reason: 'Constante mathématique d’une formule de simulation. Pas fiscale.' },
+    { file: 'services/projection/setupSimulation.ts', value: '5.5', family: 'design',
+      reason: 'Paramètre d’amorçage de simulation. Hypothèse de modèle.' },
+    { file: 'services/projection/setupSimulation.ts', value: '5.0', family: 'design',
+      reason: 'Paramètre d’amorçage de simulation. Hypothèse de modèle.' },
+    { file: 'services/projection/setupSimulation.ts', value: '75', family: 'design',
+      reason: 'Palier d’âge d’une courbe d’amorçage. Hypothèse de modèle (≠ la bonification PSV de retirementIncome).' },
+    { file: 'services/projection/setupSimulation.ts', value: '85', family: 'design',
+      reason: 'Palier d’âge d’une courbe d’amorçage. Même nature que 75.' },
+
     // ── services/projection/meltdownReer.ts ──────────────────────────────────────────────────
     { file: 'services/projection/meltdownReer.ts', value: '2000000', family: 'design',
       reason: 'MELTDOWN_NW_HIGH — seuil de CONCEPTION de la stratégie ; cf. [MELTDOWN-THRESHOLDS-DOC].' },
@@ -128,6 +183,12 @@ export const FISCAL_MODULES = [
     'services/projection/latentTax.ts',
     'services/projection/meltdownReer.ts',
     'services/projection/retirementIncome.ts',
+    // ⚠️ AJOUTÉS le 2026-08-06 (finding F5 de l'audit d'ancrage) : déplacer une constante fiscale
+    // vers un fichier NON scanné la fait sortir du garde — la dette change de cachette au lieu de
+    // se résorber. `helpers.ts` héberge désormais RRIF_RATE_PLATEAU, `setupSimulation.ts` calcule
+    // les droits REER historiques. Les deux participent à l'impôt : ils doivent être scannés.
+    'services/projection/helpers.ts',
+    'services/projection/setupSimulation.ts',
 ] as const;
 
 /**
@@ -164,9 +225,16 @@ export function findFiscalConstants(source: string): ConstHit[] {
             if (BENIGN.has(value)) continue;
             const before = line.slice(0, m.index).trimEnd();
             const after = line.slice((m.index ?? 0) + m[1].length).trimStart();
-            const significant =
-                /[*/+\-<>=|?]$/.test(before) // calcul, comparaison, affectation, repli (|| ??)
-                || /^[*/]/.test(after);      // le littéral est à GAUCHE d'un produit
+            // ⚠️ Les opérateurs BINAIRES sont exclus : aucune règle fiscale ne s'écrit avec `>>>`,
+            // `<<`, `&`, `^` ou un `|` simple. Sans cette exclusion, l'élargissement du scan à
+            // `helpers.ts` noyait le signal sous les entrailles du générateur pseudo-aléatoire
+            // (`Math.imul(t ^ (t >>> 15), t | 1)`) — un garde bruyant se fait désarmer.
+            const bitwise = /(>>>?|<<|[&^]|(?<!\|)\|)$/.test(before);
+            const significant = !bitwise && (
+                /[*/+\-<>=]$/.test(before)   // calcul, comparaison, affectation
+                || /(\|\||\?\?)$/.test(before) // repli (`|| 0.20`, `?? 0.20`)
+                || /^[*/]/.test(after)       // le littéral est à GAUCHE d'un produit
+            );
             if (!significant) continue;
             out.push({ line: i + 1, value, text: line.trim() });
         }

@@ -75,10 +75,19 @@ export function applyMidMonthGrowth(startVal: number, endVal: number, rateAnnual
 
 // ---- Table de retrait minimum FERR (RRIF) par âge (Canada) ----
 // Source: ARC, facteurs FERR prescrits (post-2015), cf docs/FISCAL_REFERENCE.md §6.
-// À 95+ on plafonne à 20% (fallback via `RRIF_RATES[age] ?? 0.20`).
+// À 95+ on plafonne à 20% (repli `RRIF_RATES[age] || RRIF_RATE_PLATEAU`).
+// ⚠️ C'est bien `||` et NON `??` — le commentaire disait l'inverse (corrigé 2026-08-06). Sans
+// effet aujourd'hui : la table ne contient aucun 0 et l'appelant filtre `age < 72`, donc le repli
+// ne sert qu'à 95+. Mais un futur facteur à 0 basculerait sur 20 % au lieu de 0 %.
 // NB 71 (5,28%) : présent pour COMPLÉTUDE (cas de conversion REER→FERR volontaire précoce).
 // Le moteur ne FORCE le retrait minimum qu'à partir de 72 ans (cf taxJanuary §4) : pour une
 // conversion standard à l'échéance des 71 ans, aucun minimum n'est dû l'année d'ouverture du FERR.
+/** [FISC-CONST-ANCHOR-DEBT] Facteur de retrait minimum FERR au PLATEAU (95 ans et plus) : 20 %.
+ *  Sert de repli quand l'âge sort de la table. Était en dur (`|| 0.20`) — et invisible au premier
+ *  scan du garde, parce que `||` ne ressemble pas à un opérateur de calcul. Source : ARC, cf.
+ *  docs/FISCAL_REFERENCE.md. */
+export const RRIF_RATE_PLATEAU = 0.20;
+
 export const RRIF_RATES: Record<number, number> = {
     71: 0.0528,
     72: 0.0540, 73: 0.0553, 74: 0.0567, 75: 0.0582, 76: 0.0598,

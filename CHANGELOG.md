@@ -28,6 +28,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   jamais gêné. Un mode d'emploi de rotation de la clé de signature (pour tout révoquer d'un coup en
   cas d'incident) a été ajouté à `mcp/README.md`.
 
+### Fiabilité des chiffres fiscaux
+- **`[FISC-CONST-ANCHOR-DEBT]` — trois paramètres fiscaux ne sont plus écrits en dur dans le
+  moteur.** Le taux qui détermine tes droits REER (18 % du revenu gagné), l'arrondi du plafond CELI
+  et le plancher de retrait minimum d'un FERR vivaient directement dans le code de calcul, sans
+  aucune référence à leur source. Ils sont désormais dans le fichier de référence fiscale, datés et
+  sourcés, et le moteur les importe de là. **Aucun chiffre ne change** — c'est la traçabilité qui
+  change : le jour où l'un de ces taux bouge, il y a un seul endroit à corriger, et il est nommé.
+  ⚠️ Cette dernière phrase était FAUSSE au premier jet — la vérification a trouvé que le 18 % vivait
+  AUSSI dans un second fichier, et l'arrondi CELI à deux endroits du même fichier. Les jumeaux ont
+  été ancrés dans la foulée ; sans ça, la promesse ne tenait pas.
+
 ### Corrections money-critical
 - **`[FINTABLE-SYNC-STALE-BASE]` — une transaction saisie à la main pendant une synchronisation
   n'est plus effacée.** La synchronisation bancaire met plusieurs secondes à interroger Fintable.

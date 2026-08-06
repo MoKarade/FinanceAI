@@ -516,6 +516,17 @@ export const calculateGISBenefit = (
 //   Tranche > 15 000     : 15% féd + 14% QC = 29% combiné
 // Hors QC : 10/20/30% combiné (à modéliser si besoin futur).
 // Refs : ARC IT-528R2 + RQ TP-1015.
+// ── [FISC-CONST-ANCHOR-DEBT] Constantes ramenées dans la SOURCE UNIQUE ───────────────────────
+// Elles vivaient EN DUR dans `services/projection/`, sans source — la classe exacte du `0.92`
+// (cf. [FISC-CONST-GUARD-V2], qui les a inventoriées). Source : docs/FISCAL_REFERENCE.md.
+
+/** Droits REER annuels = **18 % du revenu GAGNÉ** de l'année précédente, plafonnés (ARC).
+ *  ⚠️ Le revenu GAGNÉ ≠ revenu total : ni les gains en capital, ni un PRA de REEE n'en font partie. */
+export const RRSP_ROOM_RATE = 0.18;
+
+/** Le plafond CELI est indexé puis **arrondi au 500 $ le plus proche** (mécanisme légal, ARC). */
+export const CELI_LIMIT_ROUNDING = 500;
+
 export const RRSP_WITHHOLDING_QC = {
     bracket1: { upTo: 5000,  fed: 0.05, qc: 0.14, combined: 0.19 },
     bracket2: { upTo: 15000, fed: 0.10, qc: 0.14, combined: 0.24 },
@@ -627,7 +638,7 @@ export const calculateCeliRoom = (birthYear: number, arrivalYear: number, curren
     for (let y = startYear; y <= currentYear; y++) {
         if (y > LAST_KNOWN_CELI_YEAR) {
             const rawLimit = lastKnownLimit * Math.pow(1.02, y - LAST_KNOWN_CELI_YEAR);
-            room += Math.round(rawLimit / 500) * 500;
+            room += Math.round(rawLimit / CELI_LIMIT_ROUNDING) * CELI_LIMIT_ROUNDING;
         } else {
             room += CELI_ANNUAL_LIMITS[y] ?? lastKnownLimit;
         }

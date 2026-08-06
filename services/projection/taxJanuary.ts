@@ -2,7 +2,8 @@
 // Cycle 23 split (depuis taxCycle.ts): réinitialisation annuelle de janvier.
 // Cycle 12 (origine): exécuté uniquement en janvier (currentMonthIndex === 0 && m > 0).
 
-import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, CELI_ANNUAL_LIMITS, LAST_KNOWN_CELI_YEAR, getResidencyStartYear, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
+import { RRIF_RATE_PLATEAU } from './helpers';
+import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, RRSP_ROOM_RATE, CELI_LIMIT_ROUNDING, CELI_ANNUAL_LIMITS, LAST_KNOWN_CELI_YEAR, getResidencyStartYear, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 
 // FA-4 (audit fiscal 2026-06-09) — dernière année où le plafond CELI est CONNU (annoncé, sourcé
 // dans FISCAL_REFERENCE §7 via CELI_ANNUAL_LIMITS). Au-delà : extrapolation indexée arrondie 500 $.
@@ -102,7 +103,7 @@ export function processJanuaryReset(
     const lastKnownCeliLimit = CELI_ANNUAL_LIMITS[LAST_KNOWN_CELI_YEAR];
     const celiLimitThisYear = nextLoopYear <= LAST_KNOWN_CELI_YEAR
         ? (CELI_ANNUAL_LIMITS[nextLoopYear] ?? lastKnownCeliLimit)
-        : Math.round((lastKnownCeliLimit * Math.pow(1 + ctx.simInflation / 100, nextLoopYear - LAST_KNOWN_CELI_YEAR)) / 500) * 500;
+        : Math.round((lastKnownCeliLimit * Math.pow(1 + ctx.simInflation / 100, nextLoopYear - LAST_KNOWN_CELI_YEAR)) / CELI_LIMIT_ROUNDING) * CELI_LIMIT_ROUNDING;
 
     let totalCeliLimitThisYear = 0;
     ctx.users.filter(u => u).forEach(u => {
@@ -161,7 +162,7 @@ export function processJanuaryReset(
     const rrspYearlyCap = RRSP_ANNUAL_LIMITS[nextLoopYear]
         ?? (RRSP_ANNUAL_LIMITS[2026] * Math.pow(1 + (ctx.simInflation + 0.5) / 100, nextLoopYear - 2026));
     const totalFE = ctx.users.reduce((acc, u) => acc + (u?.facteurEquivalence || 0), 0);
-    const newRrspRoom = Math.max(0, Math.min(rrspYearlyCap * ctx.activeUsersCount, ctx.accGrossIncomeYear * 0.18) - totalFE);
+    const newRrspRoom = Math.max(0, Math.min(rrspYearlyCap * ctx.activeUsersCount, ctx.accGrossIncomeYear * RRSP_ROOM_RATE) - totalFE);
 
     // === 4. FERR — retrait minimum obligatoire (dès 72 ans) ===
     let ferrMandatoryGross = 0;
@@ -192,7 +193,7 @@ export function processJanuaryReset(
     for (let i = 0; i < ctx.reerByUser.length; i++) {
         const ageI = currentAgeOfUser(i);
         if (ageI < 72) continue;
-        const rrifRateI = helpers.RRIF_RATES[ageI] || 0.20;
+        const rrifRateI = helpers.RRIF_RATES[ageI] || RRIF_RATE_PLATEAU;
         ferrGrossByUser[i] = Math.max(0, Number.isFinite(ctx.reerByUser[i]) ? ctx.reerByUser[i] : 0) * rrifRateI;
         ferrMandatoryGross += ferrGrossByUser[i];
     }

@@ -438,7 +438,11 @@ pour minimiser l'impôt combiné (élection optionnelle).
 
 ### REER — plafonds annuels (`RRSP_ANNUAL_LIMITS`)
 2024 : 31 560 · 2025 : 32 490 · **2026 : 33 810** · 2027 : 34 480 · 2028 : 35 170 ·
-2029 : 35 870 · 2030 : 36 590 (2027+ estimés, à confirmer au Budget). Espace gagné = 18 % du brut.
+2029 : 35 870 · 2030 : 36 590 (2027+ estimés, à confirmer au Budget).
+Espace gagné = **18 % du revenu GAGNÉ** (`RRSP_ROOM_RATE`, cf. la section d'ancrage plus bas).
+⚠️ Corrigé le 2026-08-06 : cette ligne disait « 18 % du **brut** », ce qui contredisait la règle
+ARC 146(1) ET le code (`activeIncome.ts:113-120` neutralise le salaire pendant AE/LTD). Une source
+de vérité qui se contredit fabrique un faux finding à la session suivante.
 
 ### FERR / RRIF — conversion et retrait minimum (`services/projection/helpers.ts:RRIF_RATES`)
 **Règle ARC.** La conversion REER→FERR est obligatoire **au plus tard à la fin de l'année des
@@ -468,6 +472,23 @@ Le facteur 71 ans (5,28 %) ne s'applique qu'à une conversion **volontaire préc
 | 77 | 6,17 % | 85 | 8,51 % | 93 | 16,34 % |
 | 78 | 6,36 % | 86 | 8,99 % | 94 | 20,00 % |
 > 95 ans et + : plafond **20 %** (fallback). Source : ARC, facteurs FERR prescrits (post-2015).
+
+### Droits REER, arrondi CELI, plateau FERR — FISC-CONST-ANCHOR-DEBT (2026-08-06)
+Trois valeurs qui vivaient **EN DUR** dans `services/projection/`, sans source — exactement la
+classe du `0.92` (repérées par l'inventaire de `[FISC-CONST-GUARD-V2]`). Ramenées dans la source
+unique et importées depuis elle.
+
+| Élément | Valeur | Où | Source |
+|---|---|---|---|
+| **Droits REER annuels** (`RRSP_ROOM_RATE`) | **18 %** du revenu **GAGNÉ** de l'année précédente, moins le facteur d'équivalence, plafonné par `RRSP_ANNUAL_LIMITS` | `utils/tax.ts` | ARC |
+| **Arrondi du plafond CELI** (`CELI_LIMIT_ROUNDING`) | indexé puis arrondi au **500 $** le plus proche | `utils/tax.ts` | ARC (mécanisme légal d'indexation) |
+| **Plateau du retrait minimum FERR** (`RRIF_RATE_PLATEAU`) | **20 %** à **95 ans et plus** — repli quand l'âge sort de `RRIF_RATES` | `services/projection/helpers.ts` | ARC |
+
+> ⚠️ **« Revenu GAGNÉ » ≠ revenu total** : ni les gains en capital, ni un paiement de revenu accumulé
+> de REEE n'ouvrent de droits REER. C'est précisément le piège évité lors de la tentative
+> `[FISC-REEE-GRANT-CLAWBACK]` — y ajouter le PRA aurait fabriqué des droits inexistants.
+> ⚠️ Le plateau FERR **échappait au premier scan** du garde : écrit en repli (`RRIF_RATES[age] || 0.20`),
+> il ne ressemblait pas à un opérateur de calcul. C'est le scan élargi qui l'a trouvé, pas l'œil.
 
 ### REEE — SCEE / IQEE (`services/projection/childrenReee.ts`) — FISC-REEE-CONST (2026-06-16)
 Le moteur cotise au REEE pour maximiser les subventions et applique le plafond à vie. Valeurs (vérifiées

@@ -1526,6 +1526,27 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   un `string` REQUIS et le formulaire de création utilisait déjà `''` pour « pas d'échéance ».
   Écrire `undefined` depuis le nouveau chemin aurait donné deux représentations du même état, qui
   divergent toujours à terme. Le typecheck l'a attrapé ici — il ne le fera PAS sur un champ optionnel.
+- ⚠️ **Ancrer UNE occurrence d'une constante ne l'ancre pas** (leçon FISC-CONST-ANCHOR-DEBT,
+  2026-08-06) : j'ai sorti `0.18` de `taxJanuary` en écrivant au CHANGELOG « il y a désormais un
+  seul endroit à corriger, et il est nommé ». L'audit a trouvé le MÊME 18 % dans
+  `setupSimulation.ts` et le MÊME arrondi CELI à deux endroits de `utils/tax.ts`. Avant d'annoncer
+  une source unique, GREPPER la valeur dans tout le dépôt — sinon la phrase promet une garantie que
+  le code ne tient pas, ce qui est pire que de ne rien dire.
+- ⚠️ **Déplacer une constante vers un fichier NON scanné la fait sortir du garde** (même leçon) :
+  `RRIF_RATE_PLATEAU` est parti de `taxJanuary` (scanné, inventorié) vers `helpers.ts` (absent de
+  `FISCAL_MODULES`, et invisible au garde v1 car `0.20` n'est pas « distinctif »). La dette avait
+  simplement changé de cachette. Un refactor qui traverse une frontière de scan doit DÉPLACER la
+  frontière avec lui.
+- ⚠️ **Un garde bruyant se fait désarmer — exclure le bruit est un travail de CONCEPTION** (même
+  leçon) : élargir le scan à `helpers.ts` a d'abord noyé le signal sous les entrailles du générateur
+  pseudo-aléatoire (`Math.imul(t ^ (t >>> 15), t | 1)`). Exclure les opérateurs BINAIRES est
+  légitime et sans perte — aucune règle fiscale ne s'écrit avec `>>>`, `<<`, `&`, `^` ou un `|`
+  simple. Restreindre sur un critère SÉMANTIQUE vaut mieux que relâcher un seuil.
+- ⚠️ **Attribuer un offender au mauvais fichier de mémoire** (même leçon, petite mais révélatrice) :
+  j'ai inventorié une dizaine de valeurs sous `helpers.ts` alors qu'elles vivaient dans
+  `setupSimulation.ts`. Le test d'intégrité ne l'a pas vu — il ne vérifie que l'appartenance aux
+  modules scannés, pas que l'entrée corresponde à un littéral RÉEL. Faire cracher la liste PAR
+  FICHIER au scan lui-même plutôt que la reconstituer à la lecture.
 - ⚠️ **Un garde sur un terrain déjà peuplé doit être un RATCHET, jamais un échec dur** (leçon
   FISC-CONST-GUARD-V2, 2026-08-05) : 38 littéraux existaient déjà dans les modules fiscaux. Un
   échec dur aurait cassé sur 38 lignes le jour de sa naissance — donc aurait été relâché jusqu'à ne

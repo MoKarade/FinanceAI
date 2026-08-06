@@ -188,9 +188,14 @@
   - [x] Passé quotidien, cash — `reconstructCashHistoryDaily` (10 tests, dont la réconciliation avec
         la version mensuelle) ✅ 2026-08-06. ⚠️ Fonction SÉPARÉE : `buildPastPrefix` consomme la
         mensuelle sur une chaîne money-critical, on ne change pas sa forme pour un besoin d'affichage.
-  - [ ] Passé quotidien, PLACEMENTS — `reconstructPortfolioHistory` est DÉJÀ par date (`valueAt(t)`),
-        seul l'échantillonnage de sortie est mensuel. ⚠️ Butoir DUR à ~12 mois :
-        `DOWNSAMPLE_AFTER_DAYS = 365` compresse le stocké à 1 pt/semaine au-delà (quota localStorage).
+  - [x] Passé quotidien, PLACEMENTS — `reconstructPortfolioHistoryDaily` (9 tests) ✅ 2026-08-06.
+        FENÊTRÉE (`from`/`to` + `maxDays`), jamais « tout l'historique au jour » : 18 ans feraient
+        ~6 500 points × chaque titre. Ventilation par compte (`accountType`), conversion FX, et
+        chaque point porte `priceAgeMaxDays` + `hasEstimatedPrice`.
+        ⚠️ Butoir DUR à ~12 mois : `DOWNSAMPLE_AFTER_DAYS = 365` compresse le stocké à 1 pt/semaine
+        au-delà (quota localStorage) → au-delà, `priceAgeMaxDays` grimpe et l'écran DOIT le dire :
+        un plateau de 6 jours n'est plus un week-end, c'est de la donnée absente qui ressemble à une
+        valeur stable.
   - [ ] Mouvements DATÉS du futur à collecter : `RecurringItem.dayOfMonth`, paie, loyer, versement
         hypothécaire → alimentent `deltasFor` (le module reste pur, l'appelant sait où chercher).
   - [ ] UI : zoom + tableau détaillé + rendu du drapeau `isDated` (distinguer mesuré et interpolé).

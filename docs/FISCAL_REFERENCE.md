@@ -429,7 +429,8 @@ pour minimiser l'impôt combiné (élection optionnelle).
 > **Implémentation** (`taxJanuary.ts`, FA-4 2026-06-09) : le moteur lit `CELI_ANNUAL_LIMITS` pour
 > les années connues (SOURCE UNIQUE — l'ancien recalcul local 7000×inflation donnait 7 000 $ en
 > 2027 au lieu de 7 500 $) ; au-delà de la dernière année connue, extrapolation indexée par
-> `simInflation` arrondie au 500 $ (mécanisme légal d'indexation).
+> `simInflation` arrondie au **500 $** le plus proche (`CELI_LIMIT_ROUNDING`, `utils/tax.ts` —
+> mécanisme légal d'indexation ARC).
 > **FA-8 (2026-06-11)** : `calculateCeliRoom` (droits HISTORIQUES, hors moteur — UI/MCP/setup)
 > partage la MÊME formule via `LAST_KNOWN_CELI_YEAR` exporté (`utils/tax.ts`) : dernière limite
 > connue × (1+i)^Δ arrondie au 500 $, avec i ≈ 2 %/an hors moteur (ADR 009) vs `simInflation`
@@ -439,10 +440,19 @@ pour minimiser l'impôt combiné (élection optionnelle).
 ### REER — plafonds annuels (`RRSP_ANNUAL_LIMITS`)
 2024 : 31 560 · 2025 : 32 490 · **2026 : 33 810** · 2027 : 34 480 · 2028 : 35 170 ·
 2029 : 35 870 · 2030 : 36 590 (2027+ estimés, à confirmer au Budget).
-Espace gagné = **18 % du revenu GAGNÉ** (`RRSP_ROOM_RATE`, cf. la section d'ancrage plus bas).
-⚠️ Corrigé le 2026-08-06 : cette ligne disait « 18 % du **brut** », ce qui contredisait la règle
-ARC 146(1) ET le code (`activeIncome.ts:113-120` neutralise le salaire pendant AE/LTD). Une source
-de vérité qui se contredit fabrique un faux finding à la session suivante.
+Espace gagné = **18 % du revenu GAGNÉ** de l'année précédente (`RRSP_ROOM_RATE`, `utils/tax.ts`),
+moins le facteur d'équivalence, plafonné par `RRSP_ANNUAL_LIMITS`. Source : ARC.
+
+> ⚠️ **« Revenu GAGNÉ » ≠ revenu total** : ni les gains en capital, ni un paiement de revenu
+> accumulé de REEE n'ouvrent de droits REER. C'est précisément le piège évité lors de la tentative
+> `[FISC-REEE-GRANT-CLAWBACK]` — y ajouter le PRA aurait fabriqué des droits inexistants.
+> ⚠️ Corrigé le 2026-08-06 : cette ligne disait « 18 % du **brut** », ce qui contredisait la règle
+> ARC 146(1) ET le code (`activeIncome.ts:113-120` neutralise le salaire pendant AE/LTD). Une source
+> de vérité qui se contredit fabrique un faux finding à la session suivante.
+> ⚠️ **Approximation MÉNAGE assumée** : `taxJanuary.ts` calcule les droits sur le revenu du MÉNAGE
+> (`min(plafond × nb_conjoints, revenu_ménage × 18 %)`), alors que la règle ARC est **par personne**.
+> Mesuré sur un ménage à 250 k$ avec un seul gagnant : 45 000 $ accordés vs 34 480 $ dus. Corriger
+> serait un changement de MODÈLE → `[FISC-RRSP-ROOM-PER-USER]`, en attente d'arbitrage.
 
 ### FERR / RRIF — conversion et retrait minimum (`services/projection/helpers.ts:RRIF_RATES`)
 **Règle ARC.** La conversion REER→FERR est obligatoire **au plus tard à la fin de l'année des
@@ -471,24 +481,47 @@ Le facteur 71 ans (5,28 %) ne s'applique qu'à une conversion **volontaire préc
 | 76 | 5,98 % | 84 | 8,08 % | 92 | 14,49 % |
 | 77 | 6,17 % | 85 | 8,51 % | 93 | 16,34 % |
 | 78 | 6,36 % | 86 | 8,99 % | 94 | 20,00 % |
-> 95 ans et + : plafond **20 %** (fallback). Source : ARC, facteurs FERR prescrits (post-2015).
+> **95 ans et + : plafond 20 %** (`RRIF_RATE_PLATEAU` / `RRIF_PLATEAU_AGE`, `helpers.ts`).
+> Source : ARC, facteurs FERR prescrits (post-2015).
+> ⚠️ Le plateau **échappait au premier scan** du garde de constantes : écrit en repli
+> (`RRIF_RATES[age] || 0.20`), il ne ressemblait pas à un opérateur de calcul. C'est le scan élargi
+> qui l'a trouvé, pas l'œil.
+> **Le seuil de 72 ans est nommé** (`RRIF_FIRST_WITHDRAWAL_AGE`, `helpers.ts`) : il vivait en dur
+> sur DEUX modules (`taxJanuary` pour la conversion, `taxDecember` pour l'assiette du crédit
+> pension) — la configuration jumelle exacte qui avait laissé le `0.18` survivre à son premier ancrage.
+> **[FISC-RRIF-FRACTIONAL-AGE] Le repli n'est plus attrape-tout.** `rrifRateForAge()` rend le
+> plateau à partir de 95 ans **explicitement**, l'âge entier pour un âge fractionnaire, et **0**
+> pour un âge non fini. Avant, tout âge absent de la table recevait le facteur le plus PUNITIF du
+> barème : 72,5 ans sortait à 20 % au lieu de 5,40 %, et un âge `NaN` traversait le filtre
+> `age < 72` (toute comparaison avec NaN est fausse) pour ressortir à 20 % lui aussi. Durcissement,
+> pas correction d'un bug observable — aucun producteur d'âge fractionnaire n'existe aujourd'hui.
 
-### Droits REER, arrondi CELI, plateau FERR — FISC-CONST-ANCHOR-DEBT (2026-08-06)
-Trois valeurs qui vivaient **EN DUR** dans `services/projection/`, sans source — exactement la
-classe du `0.92` (repérées par l'inventaire de `[FISC-CONST-GUARD-V2]`). Ramenées dans la source
-unique et importées depuis elle.
+> ⚠️ **`94 : 20,00 % est CONTESTÉ`** — le facteur prescrit serait 18,79 %, le plateau ne commençant
+> qu'à 95 ans. Écart MESURÉ : **+13 726 $** de patrimoine final si corrigé. Non modifié : le
+> règlement 7308(4) n'est pas atteignable depuis le conteneur (proxy). Routé dans
+> `docs/A_FAIRE_MOI.md` → `[FISC-RRIF-94-FACTOR]`.
 
-| Élément | Valeur | Où | Source |
-|---|---|---|---|
-| **Droits REER annuels** (`RRSP_ROOM_RATE`) | **18 %** du revenu **GAGNÉ** de l'année précédente, moins le facteur d'équivalence, plafonné par `RRSP_ANNUAL_LIMITS` | `utils/tax.ts` | ARC |
-| **Arrondi du plafond CELI** (`CELI_LIMIT_ROUNDING`) | indexé puis arrondi au **500 $** le plus proche | `utils/tax.ts` | ARC (mécanisme légal d'indexation) |
-| **Plateau du retrait minimum FERR** (`RRIF_RATE_PLATEAU`) | **20 %** à **95 ans et plus** — repli quand l'âge sort de `RRIF_RATES` | `services/projection/helpers.ts` | ARC |
+### Ancrage des constantes du moteur — FISC-CONST-ANCHOR-DEBT (2026-08-06)
 
-> ⚠️ **« Revenu GAGNÉ » ≠ revenu total** : ni les gains en capital, ni un paiement de revenu accumulé
-> de REEE n'ouvrent de droits REER. C'est précisément le piège évité lors de la tentative
-> `[FISC-REEE-GRANT-CLAWBACK]` — y ajouter le PRA aurait fabriqué des droits inexistants.
-> ⚠️ Le plateau FERR **échappait au premier scan** du garde : écrit en repli (`RRIF_RATES[age] || 0.20`),
-> il ne ressemblait pas à un opérateur de calcul. C'est le scan élargi qui l'a trouvé, pas l'œil.
+Ce fichier ne redit **pas** les valeurs ici : chaque sujet n'a qu'un seul endroit, et c'est sa
+propre section. Ce qui suit est la **provenance** — d'où viennent ces constantes et pourquoi elles
+ont été déplacées.
+
+`[FISC-CONST-GUARD-V2]` a inventorié les littéraux en position de calcul dans les modules fiscaux
+et en a sorti des valeurs qui vivaient **EN DUR** dans `services/projection/`, sans source —
+exactement la classe du `0.92`. Sont désormais nommées et importées depuis la source unique :
+
+- `RRSP_ROOM_RATE`, `CELI_LIMIT_ROUNDING` (`utils/tax.ts`) → §REER et §CELI ;
+- `RRIF_RATE_PLATEAU`, `RRIF_PLATEAU_AGE`, `RRIF_FIRST_WITHDRAWAL_AGE` (`helpers.ts`) → §FERR.
+
+> ⚠️ **Leçon de la dédup (2026-08-06, `[FISC-REF-DEDUP]`)** : la première rédaction de cette section
+> RECOPIAIT les trois valeurs dans un tableau, alors que §CELI, §REER et §FERR les portaient déjà.
+> Deux endroits par sujet dans une source de vérité, c'est la divergence de demain — et ça a produit
+> **deux contradictions internes en une seule journée** (« 18 % du brut » vs « du revenu gagné », et
+> un commentaire annonçant `??` là où le code écrivait `||`). Une valeur, un endroit.
+> ⚠️ **Ce que l'ancrage NE fait PAS** : il rend une constante traçable, pas juste. Le `94 : 20,00 %`
+> reste contesté (§FERR) et les droits REER restent calculés au niveau du MÉNAGE (§REER) — ancrer
+> a rendu ces deux écarts VISIBLES, c'est tout le bénéfice, et c'est déjà beaucoup.
 
 ### REEE — SCEE / IQEE (`services/projection/childrenReee.ts`) — FISC-REEE-CONST (2026-06-16)
 Le moteur cotise au REEE pour maximiser les subventions et applique le plafond à vie. Valeurs (vérifiées

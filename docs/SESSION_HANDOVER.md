@@ -4,6 +4,53 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-06 (suite 30) — repli FERR durci + dédup doc + INDEX des blocages (PR #573)
+> **Demande de Marc : « continue avec tout ce que tu peux faire, et prépare-moi la liste de ce que
+> je dois faire pour te débloquer le backlog au complet ».** Les deux sont livrés.
+>
+> 1. **`[FISC-RRIF-FRACTIONAL-AGE]`** — `rrifRateForAge()` remplace le repli attrape-tout
+>    `RRIF_RATES[age] || RRIF_RATE_PLATEAU`, qui distribuait le facteur le PLUS PUNITIF du barème
+>    (20 %) à toute entrée absente de la table. Discriminant PROUVÉ contre `git archive` : l'ancien
+>    code rend 20 % sur 72,5 · 93,9 · NaN · +Infinity ; le nouveau rend 5,40 % · 16,34 % · 0 · 0.
+>    ⚠️ **NaN traversait le filtre `age < 72`** (toute comparaison avec NaN est fausse) — je ne
+>    l'avais pas anticipé, c'est le tracé du code qui l'a montré.
+>    **Bit-identité vérifiée** : SHA-256 sur 361 mois × 102 champs, fixture couple 70/66 ans avec
+>    1,4 M$ de REER (ΣRetraitREER = 2 185 736,69 $, donc le FERR tourne VRAIMENT), sonde prouvée
+>    discriminante (93 → 16,35 % au lieu de 16,34 % déplace le hash).
+> 2. **`[FISC-REF-DEDUP]`** — un sujet, un endroit. Les valeurs vivent dans §CELI/§REER/§FERR ; la
+>    section d'ancrage ne garde que la provenance et la leçon. Deux limites connues sont maintenant
+>    ÉCRITES là où on les lira (94 ans contesté · droits REER au niveau MÉNAGE).
+> 3. **`[FISC-CONST-ANCHOR-DEBT]` +2 (5/14)** — `RRIF_FIRST_WITHDRAWAL_AGE` (72, qui vivait en dur
+>    sur taxJanuary ET taxDecember) et `RRIF_PLATEAU_AGE` (95, qui n'était écrit NULLE PART :
+>    porté par la seule absence d'entrée dans la table).
+>    ⚠️ **Le garde a mordu sur mon propre ajout** : `95` existait DÉJÀ dans `helpers.ts` (palier de
+>    la courbe de mortalité, famille `design`) → collision de la clé `(fichier, valeur)`. Le
+>    compromis était documenté ; il est désormais VÉCU. Résolu par UNE entrée qui nomme les DEUX
+>    sens, famille la plus exigeante (`fiscal`). Taire une des deux aurait fait mentir l'inventaire.
+>    ⚠️ **Rendement décroissant sur les 9 restantes** : ce sont des âges-seuils déjà commentés et
+>    sourcés sur place. Seul le `65` (2 modules) vaut encore le geste. Noté au BACKLOG.
+> 4. **Findings du panel `silent-failure-hunter` CORRIGÉS dans la même PR** — les deux tenaient :
+>    - **MOYEN** — `return 0` sur non-fini confondait deux signaux OPPOSÉS : le sentinelle
+>      `−Infinity` de `taxJanuary` (« conjoint sans âge », absence délibérée) et une donnée
+>      CORROMPUE (`NaN`/`+Infinity`). La convention du dossier (`pastPurchaseInit.ts`, `isCorrupt`)
+>      est explicite : « champ renseigné mais non fini, jamais avalé sans trace ». Corrigé par
+>      `logErrorThrottled` — mais **sans coder « −Infinity est spécial »** : c'est l'ORDRE des
+>      gardes qui sépare (borne basse d'abord, `−Infinity < 71` est vrai). Zéro cycle d'import
+>      vérifié (`errorLogger` n'importe rien ; `pastPurchaseInit` du même dossier l'importe déjà).
+>    - **FAIBLE** — mon commentaire de test sur-affirmait « repli inatteignable ». Vrai seulement
+>      sur [72, 95) avec la vraie table. Reformulé.
+>    - ⚠️ **Et un 3ᵉ, que je me suis infligé en corrigeant le 1er** : j'ai borné par le bas à
+>      `RRIF_FIRST_WITHDRAWAL_AGE` (72), ce qui **écrasait le facteur 71** que la table porte
+>      délibérément (conversion volontaire précoce). Conversion (71) et 1er retrait forcé (72) sont
+>      DEUX règles ARC distinctes. **Attrapé par mon propre test de non-régression**, pas par
+>      relecture → `RRSP_TO_RRIF_CONVERSION_AGE` ajouté, borne corrigée, test dédié.
+>    Bit-identité RE-VÉRIFIÉE après ces corrections : même SHA-256.
+> 5. **`docs/A_FAIRE_MOI.md` — INDEX exhaustif des blocages** (§ « 🔓 INDEX ») : A = 12 questions à
+>    réponse courte + les 4 de `PROFIL-SWITCH` · B = 5 sources fiscales que le proxy bloque ·
+>    C = 7 actions de configuration · D = 5 vérifs à l'écran · E = 3 chantiers qui attendent MON
+>    cadrage, pas une action de Marc · F = ce que je fais sans lui. Chaque ligne porte son impact
+>    MESURÉ et ce qu'elle débloque.
+>
 > ## 🟠 Session 2026-08-06 (suite 29) — audit de l'ancrage : 2 findings à impact ROUTÉS vers Marc
 > L'audit `financial-integrity` de #572 CONFIRME la bit-identité (hash SHA-256 identique sur 481
 > mois, sonde prouvée discriminante par perturbation) **et prend en défaut mon CHANGELOG** : le

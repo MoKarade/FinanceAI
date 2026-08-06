@@ -4,6 +4,7 @@
 // hissées hors de runScenario() pour la lisibilité et la testabilité.
 
 import { calculateWelcomeTax } from '../realEstate';
+import { logErrorThrottled } from '../errorLogger';
 import type { Municipality } from '../../types';
 
 /**
@@ -75,18 +76,33 @@ export function applyMidMonthGrowth(startVal: number, endVal: number, rateAnnual
 
 // ---- Table de retrait minimum FERR (RRIF) par âge (Canada) ----
 // Source: ARC, facteurs FERR prescrits (post-2015), cf docs/FISCAL_REFERENCE.md §6.
-// À 95+ on plafonne à 20% (repli `RRIF_RATES[age] || RRIF_RATE_PLATEAU`).
-// ⚠️ C'est bien `||` et NON `??` — le commentaire disait l'inverse (corrigé 2026-08-06). Sans
-// effet aujourd'hui : la table ne contient aucun 0 et l'appelant filtre `age < 72`, donc le repli
-// ne sert qu'à 95+. Mais un futur facteur à 0 basculerait sur 20 % au lieu de 0 %.
 // NB 71 (5,28%) : présent pour COMPLÉTUDE (cas de conversion REER→FERR volontaire précoce).
 // Le moteur ne FORCE le retrait minimum qu'à partir de 72 ans (cf taxJanuary §4) : pour une
 // conversion standard à l'échéance des 71 ans, aucun minimum n'est dû l'année d'ouverture du FERR.
-/** [FISC-CONST-ANCHOR-DEBT] Facteur de retrait minimum FERR au PLATEAU (95 ans et plus) : 20 %.
- *  Sert de repli quand l'âge sort de la table. Était en dur (`|| 0.20`) — et invisible au premier
- *  scan du garde, parce que `||` ne ressemble pas à un opérateur de calcul. Source : ARC, cf.
- *  docs/FISCAL_REFERENCE.md. */
+/** [FISC-CONST-ANCHOR-DEBT] Facteur de retrait minimum FERR au PLATEAU : 20 %.
+ *  Était en dur (`|| 0.20`) — et invisible au premier scan du garde, parce que `||` ne ressemble
+ *  pas à un opérateur de calcul. Source : ARC, cf. docs/FISCAL_REFERENCE.md §6. */
 export const RRIF_RATE_PLATEAU = 0.20;
+
+/** [FISC-CONST-ANCHOR-DEBT] Âge à partir duquel le facteur FERR est FIGÉ au plateau de 20 %.
+ *  La table prescrite s'arrête à 94 ; au-delà, le facteur ne bouge plus. */
+export const RRIF_PLATEAU_AGE = 95;
+
+/** [FISC-CONST-ANCHOR-DEBT] Âge du PREMIER retrait minimum FERR obligatoire.
+ *  La conversion REER→FERR est due au plus tard à la fin de l'année des 71 ans, mais AUCUN minimum
+ *  n'est exigible l'année d'ouverture du FERR → le premier retrait forcé tombe l'année des 72 ans.
+ *  ⚠️ Nommé parce que la valeur vivait en DUR sur DEUX modules (`taxJanuary` pour la conversion,
+ *  `taxDecember` pour l'assiette du crédit pension) : c'est exactement la configuration jumelle qui
+ *  a permis au `0.18` de survivre à son premier ancrage. Source : ARC, cf. FISCAL_REFERENCE §6. */
+export const RRIF_FIRST_WITHDRAWAL_AGE = 72;
+
+/** [FISC-CONST-ANCHOR-DEBT] Âge de conversion OBLIGATOIRE du REER en FERR (fin de l'année des
+ *  71 ans, ARC) — et par conséquent le plancher de `RRIF_RATES`, qui porte un facteur à 71 pour le
+ *  cas d'une conversion VOLONTAIRE précoce.
+ *  ⚠️ À ne PAS confondre avec `RRIF_FIRST_WITHDRAWAL_AGE` (72) : la conversion et le premier retrait
+ *  forcé sont deux règles DISTINCTES qui se suivent d'un an. Les fusionner sous un seul nom ferait
+ *  disparaître le cas de la conversion précoce. */
+export const RRSP_TO_RRIF_CONVERSION_AGE = 71;
 
 export const RRIF_RATES: Record<number, number> = {
     71: 0.0528,
@@ -96,6 +112,63 @@ export const RRIF_RATES: Record<number, number> = {
     87: 0.0955, 88: 0.1021, 89: 0.1099, 90: 0.1192, 91: 0.1306,
     92: 0.1449, 93: 0.1634, 94: 0.2000,
 };
+
+/**
+ * [FISC-RRIF-FRACTIONAL-AGE] Facteur de retrait minimum FERR pour un âge donné.
+ *
+ * Remplace le repli attrape-tout `RRIF_RATES[age] || RRIF_RATE_PLATEAU`, qui avait une propriété
+ * dangereuse : **tout** âge absent de la table recevait le facteur le plus PUNITIF du barème.
+ * Un âge fractionnaire (72,5) sortait à 20 % au lieu de 5,40 % — 3,7× trop —, et un âge `NaN`
+ * passait le filtre `age < 72` (toute comparaison avec NaN est fausse) pour ressortir lui aussi
+ * à 20 %. Le retrait forcé quitte l'abri fiscal et devient imposable : se tromper là coûte de
+ * l'argent RÉEL, en silence.
+ *
+ * ⚠️ Aucun producteur d'âge fractionnaire n'existe aujourd'hui (`Onboarding` passe par `parseInt`,
+ * et `currentAge = user1?.age || 30` écarte NaN). C'est donc du DURCISSEMENT, pas la correction
+ * d'un bug observable — mais un repli qui distribue le pire taux sur une entrée inattendue est une
+ * forme d'échec silencieux, et le corriger ne coûte rien : sortie bit-identique sur tout âge entier.
+ *
+ * ⚠️ **L'ORDRE des gardes fait le travail.** Il distingue deux non-finis de nature OPPOSÉE sans
+ * jamais coder « −Infinity est spécial » — c'est le domaine qui tranche :
+ *
+ * 1. `age < 71` → **0**, en silence. Sous le plancher de la table, AUCUN facteur n'est prescrit :
+ *    rendre 0 est la règle, pas un repli. Attrape au passage le sentinelle `−Infinity` que
+ *    `taxJanuary` produit pour « conjoint sans âge ni année de naissance » — absence DÉLIBÉRÉE,
+ *    donc rien à signaler.
+ *    ⚠️ Sans cette borne, `rrifRateForAge(50)` retombait sur le plateau et rendait **20 %** pour un
+ *    quinquagénaire : la faute même que cette fonction corrige, reproduite un cran plus haut. Le
+ *    `continue` de l'appelant la masquait — un helper exporté ne doit pas dépendre de la prudence
+ *    de son unique appelant d'aujourd'hui.
+ *    ⚠️ La borne est **71, pas 72** : la table porte délibérément un facteur à 71 ans (conversion
+ *    VOLONTAIRE précoce). Borner à 72 aurait écrasé ce cas — et aurait confondu deux règles ARC
+ *    distinctes, « quand la conversion est due » et « quand le premier retrait est forcé ». Erreur
+ *    attrapée par mon propre test de non-régression, pas par relecture.
+ * 2. `NaN` / `+Infinity` → **0**, mais **JOURNALISÉ**. Ce qui reste ici n'est plus une absence :
+ *    c'est une donnée CORROMPUE. La convention du dossier est explicite (`pastPurchaseInit.ts`,
+ *    `isCorrupt`) — « champ renseigné mais non fini, jamais avalé sans trace ». Sans ce log, le
+ *    retrait minimum obligatoire disparaîtrait en silence sur tout l'horizon, là où l'ancien 20 %
+ *    se voyait au moins dans les flux.
+ * 3. `age ≥ 95` → plateau, **explicitement** plutôt que par l'absence d'entrée dans la table.
+ *    (Doit rester APRÈS la garde de non-finitude : `+Infinity >= 95` est vrai.)
+ * 4. sinon → la table, à l'âge entier.
+ *
+ * Le dernier repli reste le plateau. Il ne sert qu'aux tables PARTIELLES injectées en test : sur la
+ * table réelle, le domaine [72, 95) est COMPLET et `projection.helpers.test.ts` le prouve.
+ */
+export function rrifRateForAge(age: number, table: Record<number, number> = RRIF_RATES): number {
+    if (age < RRSP_TO_RRIF_CONVERSION_AGE) return 0;
+    if (!Number.isFinite(age)) {
+        logErrorThrottled(`rrif-age-nonfini:${String(age)}`, {
+            source: 'projection', severity: 'warning',
+            message: 'Facteur FERR demandé pour un âge NON FINI — aucun retrait minimum appliqué',
+            context: { age: String(age) },
+        });
+        return 0;
+    }
+    if (age >= RRIF_PLATEAU_AGE) return RRIF_RATE_PLATEAU;
+    const rate = table[Math.floor(age)];
+    return typeof rate === 'number' ? rate : RRIF_RATE_PLATEAU;
+}
 
 // ---- Taxe de bienvenue (droits de mutation) — SOURCE UNIQUE : services/realEstate.ts ----
 // FISC-WELCOME-UNIFY : helpers.ts ne duplique PLUS les barèmes (avant : 8 tranches Montréal en dur,

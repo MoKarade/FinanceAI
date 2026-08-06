@@ -60,8 +60,6 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Âge d’ouverture des droits CELI / admissibilité CELIAPP.' },
     { file: 'services/projection/taxJanuary.ts', value: '71', family: 'fiscal',
       reason: 'Conversion obligatoire REER → FERR à la fin de l’année des 71 ans (ARC).' },
-    { file: 'services/projection/taxJanuary.ts', value: '72', family: 'fiscal',
-      reason: 'Premier retrait FERR minimum obligatoire (l’année suivant la conversion).' },
     { file: 'services/projection/taxJanuary.ts', value: '15', family: 'fiscal',
       reason: 'Durée de vie maximale du CELIAPP (15 ans depuis l’ouverture, ARC).' },
     { file: 'services/projection/taxJanuary.ts', value: '0.25', family: 'design',
@@ -72,8 +70,6 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     // ── services/projection/taxDecember.ts ───────────────────────────────────────────────────
     { file: 'services/projection/taxDecember.ts', value: '65', family: 'fiscal',
       reason: 'Âge d’ouverture du crédit en raison de l’âge, et pivot RRQ/PSV.' },
-    { file: 'services/projection/taxDecember.ts', value: '72', family: 'fiscal',
-      reason: 'Âge du retrait FERR minimum, utilisé dans l’assiette du crédit pension.' },
     { file: 'services/projection/taxDecember.ts', value: '0.50', family: 'design',
       reason: 'Fraction de vente FICTIVE servant à estimer la récolte de pertes — pas un taux d’inclusion.' },
     { file: 'services/projection/taxDecember.ts', value: '40', family: 'design',
@@ -109,6 +105,10 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     // un paramètre ARC/RQ : ce sont des hypothèses de MODÈLE et de la mécanique numérique.
     { file: 'services/projection/helpers.ts', value: '0.20', family: 'fiscal',
       reason: 'RRIF_RATE_PLATEAU — facteur de retrait minimum FERR au plateau 95+. ANCRÉ dans FISCAL_REFERENCE et importé ; l’entrée reste pour que le garde couvre sa nouvelle adresse.' },
+    { file: 'services/projection/helpers.ts', value: '71', family: 'fiscal',
+      reason: 'RRSP_TO_RRIF_CONVERSION_AGE — conversion REER→FERR obligatoire à la fin de l’année des 71 ans (ARC), et par conséquent plancher de RRIF_RATES. DISTINCT de RRIF_FIRST_WITHDRAWAL_AGE (72) : conversion et premier retrait forcé sont deux règles séparées d’un an, les fusionner effacerait le cas de la conversion volontaire précoce.' },
+    { file: 'services/projection/helpers.ts', value: '72', family: 'fiscal',
+      reason: 'RRIF_FIRST_WITHDRAWAL_AGE — premier retrait FERR minimum obligatoire. Rapatrié depuis taxJanuary ET taxDecember (leurs entrées sont RETIRÉES) : la valeur vivait en dur sur deux modules, la configuration jumelle exacte qui avait laissé survivre le 0.18.' },
     { file: 'services/projection/helpers.ts', value: '0.30', family: 'design',
       reason: 'NONREG_DIVIDEND_DISTRIBUTION_SHARE — part du rendement non-enregistré supposée distribuée en dividendes. Hypothèse de modélisation, pas un barème.' },
     { file: 'services/projection/helpers.ts', value: '0.0020', family: 'design',
@@ -129,8 +129,14 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Palier d’âge de la courbe LTC. Même nature que 65.' },
     { file: 'services/projection/helpers.ts', value: '90', family: 'design',
       reason: 'Palier d’âge de la courbe LTC. Même nature que 65.' },
-    { file: 'services/projection/helpers.ts', value: '95', family: 'design',
-      reason: 'Palier terminal de la courbe LTC / borne de la table FERR. Hypothèse de modèle.' },
+    // ⚠️ ENTRÉE DOUBLE DE SENS — la première fois que la clé (fichier, valeur) coûte quelque chose.
+    // `95` apparaît DEUX fois dans helpers.ts avec des natures OPPOSÉES, et la clé ne peut pas les
+    // distinguer. Les deux sont décrites ici plutôt que d'en taire une ; `family` prend le sens le
+    // plus EXIGEANT (`fiscal`), parce qu'un littéral qui porte un vrai paramètre ARC mérite la
+    // relecture stricte même s'il porte aussi une heuristique. Le compromis était documenté en tête
+    // de fichier ; il est désormais VÉCU, pas seulement anticipé.
+    { file: 'services/projection/helpers.ts', value: '95', family: 'fiscal',
+      reason: 'DEUX occurrences distinctes. (1) FISCAL — RRIF_PLATEAU_AGE : âge à partir duquel le facteur FERR est figé au plateau de 20 %. Ancré le 2026-08-06 ; il était jusque-là IMPLICITE, porté par la seule ABSENCE d’entrée dans la table au-delà de 94 — un seuil qu’aucune ligne n’écrit ne peut être ni relu ni corrigé. (2) DESIGN — palier terminal de la courbe de mortalité/LTC (`if (age < 95) return 0.140`), hypothèse de risque calibrée, à ne JAMAIS sourcer comme une valeur fiscale.' },
     { file: 'services/projection/helpers.ts', value: '50', family: 'design',
       reason: 'Palier d’âge bas de la courbe de mortalité/LTC. Hypothèse de risque.' },
     { file: 'services/projection/setupSimulation.ts', value: '42', family: 'structural',

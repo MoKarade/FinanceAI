@@ -6,6 +6,41 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-06
+
+### Corrections
+- **`[FISC-RRIF-FRACTIONAL-AGE]` — le retrait FERR forcé ne peut plus partir au taux maximum sur
+  une donnée inattendue.** À partir de 72 ans, une part de ton REER doit sortir chaque année, et
+  le pourcentage dépend de ton âge. Le code allait chercher ce pourcentage dans une table, avec une
+  consigne « si tu ne trouves pas, prends 20 % » — le taux le plus élevé du barème, celui des 95 ans
+  et plus. Cette consigne ne visait que le grand âge, mais elle attrapait **tout** ce que la table
+  ne contenait pas : un âge à virgule sortait à 20 % au lieu de 5,40 %, et un âge illisible aussi.
+  Un retrait forcé quitte l'abri fiscal et devient imposable : se tromper là coûte de l'argent réel.
+  Désormais le plafond ne s'applique qu'à partir de 95 ans, explicitement ; un âge à virgule prend
+  le taux de son année ; un âge illisible ne déclenche **aucun** retrait plutôt que d'en inventer un.
+  ⚠️ **Aucun chiffre de ta projection ne change** : c'est du durcissement, pas la correction d'un bug
+  que tu aurais pu vivre — aucun écran ne permet aujourd'hui de saisir un âge à virgule. Vérifié par
+  empreinte SHA-256 du moteur sur 361 mois et 102 champs, sonde prouvée capable de détecter un écart
+  d'un centième de pourcent.
+
+### Modifications
+- **`[FISC-REF-DEDUP]` — un sujet, un seul endroit dans le fichier des valeurs fiscales.** Le taux
+  des droits REER, l'arrondi du plafond CELI et le plateau FERR étaient décrits à deux endroits
+  chacun. En vingt-quatre heures, ce doublement avait déjà produit deux contradictions internes.
+  Les valeurs vivent maintenant dans leur section, et la section d'ancrage ne garde que la
+  provenance. Deux limites connues y sont désormais écrites noir sur blanc plutôt que sous-entendues :
+  le facteur FERR à 94 ans est **contesté**, et les droits REER sont calculés au niveau du **ménage**
+  alors que la règle est par personne.
+- **Deux seuils d'âge nommés** (`[FISC-CONST-ANCHOR-DEBT]`, 5 valeurs ancrées sur 14) : le premier
+  retrait FERR obligatoire (72 ans) vivait en dur dans **deux** modules — la configuration jumelle
+  exacte qui avait laissé le 18 % des droits REER survivre à son premier ancrage. Le début du
+  plateau (95 ans) n'était écrit **nulle part** : il n'existait que dans le fait que la table
+  s'arrêtait à 94. Un seuil que personne n'écrit ne peut être ni relu ni corrigé.
+- **`docs/A_FAIRE_MOI.md` — index complet de ce qui débloque le backlog** (demande de Marc) :
+  12 questions à réponse courte, 5 sources fiscales officielles inatteignables depuis le conteneur,
+  7 actions de configuration, 5 vérifications à l'écran — chacune avec son impact mesuré et ce
+  qu'elle débloque.
+
 ## [unreleased — « Impôt à vie » honnête] — 2026-08-01
 
 ### Ajouts

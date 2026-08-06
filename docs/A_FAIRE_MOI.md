@@ -7,7 +7,100 @@
 
 ---
 
-## 🔴 Vérifier deux règles ARC — je ne peux PAS les confirmer (2026-08-06)
+# 🔓 INDEX — tout ce qui me débloque (balayage exhaustif du 2026-08-06)
+
+> Demandé par Marc : « prépare-moi la liste de ce que je dois faire pour te débloquer le backlog au
+> complet ». Balayage complet de `BACKLOG.md` + de ce fichier. Chaque entrée dit **ce que ça coûte**
+> et **ce que ça débloque**. Le détail de chacune est plus bas dans ce fichier ou dans le BACKLOG.
+>
+> ⚠️ **Lis d'abord ceci** : rien ici n'est bloqué sur du travail que je pourrais faire à ta place.
+> Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
+> d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
+
+## A. Réponses par oui/non — 2 minutes chacune, aucun compte à ouvrir
+
+Ce sont les moins chères et les plus débloquantes. Une phrase suffit pour chacune.
+
+| # | Question | Ce que ça débloque | Impact mesuré |
+|---|---|---|---|
+| A1 | Les droits REER doivent-ils être calculés **par personne** (règle ARC) plutôt que sur le revenu du ménage ? C'est un changement de modèle, je le ferais avec plan + mesure avant/après. | `[FISC-RRSP-ROOM-PER-USER]` | **45 000 $ vs 34 480 $** de droits/an sur un ménage mono-gagnant à 250 k$ |
+| A2 | Ton « ok » du 2026-07-06 sur `[FISC-TAXDEC-INCR]` voulait dire **« code-le »** ou **« laisse pour plus tard »** ? Je n'ai jamais osé trancher (risque $ élevé, re-base de goldens). | `[FISC-TAXDEC-INCR]` | 3 sous-fixes de `taxDecember` |
+| A3 | Le crédit pension fédéral de 2 000 $ est gelé nominalement mais traité en espace RÉEL. Le corriger **re-base les goldens retraités**. GO ? | `[FISC-PENSION-CREDIT-REAL]` | ≤ **250 $/pers/an**, ~12 k$ sur 30 ans, sens NON conservateur |
+| A4 | « Impôt minimum » dans le classement de stratégies doit-il inclure l'**impôt successoral**, ou rester « impôt payé de ton vivant » ? | `[ENG-RANKTAX-ESTATE]` | PRIO_CELI sort 1er avec **1,3 M$** d'impôt latent ignoré |
+| A5 | Un bien immobilier créé dans l'onglet naît `isActive: false` → il ne compte NI au patrimoine NI au moteur tant que tu ne cliques pas « Activer ». **L'activer par défaut ?** | `[UX-ISACTIVE-SEMANTIQUE]` | Ta maison saisie sans le clic = patrimoine amputé de son équité |
+| A6 | Faut-il un champ explicite **« bien déjà DÉTENU » vs « objectif planifié »** sur les objectifs immobiliers ? | `[ENG-PAST-OWNED-VS-PLANNED]` | Un objectif 2024 jamais mis à jour injecte **+156 628 $** d'équité et **+307 081 $** de dette fantômes |
+| A7 | En scénario de STRESS (i ≠ 2 %), faut-il indexer les paliers d'impôt à `simInflation` (fidèle au CPI, contredit l'ADR 009) ou garder le statu quo documenté (conservateur) ? | `[FISC-BRACKET-CPI-STRESS]` | Impôt total **+106 %** à i = 8 %. **0 effet** à i = 2 % (ton défaut) |
+| A8 | La liste des abonnements vit dans **Budget**. Tu as dit « sous-onglet de Transactions ». Le manque réel (pouvoir refuser un faux positif) est **livré** (#570) — déménager n'apporte plus rien. **Je déménage quand même, ou on laisse ?** | `[SUBS-TAB]` volet emplacement | Aucun — pur confort de navigation |
+| A9 | Tu es en **mode solo**. `[FISC-SOLO-INVEST-SPLIT]` ne mord que si tu passes en mode couple avec un seul salaire. **Prévois-tu d'y passer ?** | `[FISC-SOLO-INVEST-SPLIT]` | **0 $ aujourd'hui**, 2 342 $/an en couple mono-salarié |
+| A10 | As-tu une assurance médicaments **PRIVÉE** ou es-tu à la **RAMQ** ? Je ne peux pas le deviner et ça change la prime. | `[ENG-RAMQ-FIELDS]` | Prime RAMQ vs 0 |
+| A11 | Le pull Drive qui purge des artefacts persona ne fait qu'un log. **Veux-tu un toast visible ?** | `[PURGE-TOAST-UX]` | Confort |
+| A12 | Sur la courbe du Futur, **qu'est-ce que tu veux voir annoté** ? (âge de retraite ? épuisement d'un compte ? bascule de stratégie ? début RRQ/PSV ?) — question de ton brief de 2026-06-10, jamais répondue. | `[PH4-FUT]` | Feature entière en attente |
+| A13 | 🆕 **Quel jour tombe ta paie ?** Et quel jour sont prélevés tes paiements de dette / d'hypothèque ? Le modèle n'a **aucun** champ de date pour ça (`grossSalary`/`netSalary` sont des montants MENSUELS, `Debt` n'a que `termEndDate`). | `[FUTUR-DAILY]` | ⚠️ **Sans ces dates, le futur zoomé au jour ne montrera de vraies marches que pour tes charges récurrentes.** Ta paie et ton hypothèque seront lissées — c'est-à-dire interpolées. C'est le seul écart entre ce que tu as demandé et ce que je peux livrer honnêtement. |
+
+**`[PROFIL-SWITCH]`** (4 questions d'un coup, posées le 2026-08-01, sans réponse) — ⚠️ touche la
+persistance de tes VRAIES données, je ne code rien avant :
+1. Combien de profils **RÉELS** ? (juste « Marc » + des personas de test, ou plusieurs réels ?)
+2. Lequel pousse vers Drive — un seul, ou chacun son fichier ?
+3. Que devient le profil actuel au premier lancement (la clé existante devient « Marc » ?)
+4. Le switch doit-il exiger une confirmation (anti-fausse-manip) ?
+
+## B. Sources fiscales officielles — le proxy sortant me les BLOQUE
+
+Je ne peux joindre ni `canada.ca` ni Service Canada (403). Un faux correctif dans un moteur d'impôt
+est pire que le bug : je ne touche à rien sans la source. **Une capture d'écran suffit.**
+
+| # | Ce qu'il me faut | Ticket | Impact mesuré |
+|---|---|---|---|
+| B1 | **Règlement 7308(4) LIR**, facteur FERR à **94 ans**. Le code dit 20,00 %, le prescrit serait 18,79 % (le plateau ne commençant qu'à 95). | `[FISC-RRIF-94-FACTOR]` | **+13 726 $** de patrimoine final |
+| B2 | **Table SRG couple** (Service Canada) : taux de récupération sur le revenu COMBINÉ. Le code applique 0,50 **par adulte** → récupération 2× trop rapide. | `[FISC-GIS-COUPLE-RATE]` | **0 $ vs 7 944 $/an** à 15 888 $ de revenu combiné |
+| B3 | **Annexe B** de la déclaration QC : la réduction de 18,75 % de la ligne 361 s'applique-t-elle par conjoint sur le revenu FAMILIAL total ? | `[FISC-LINE361-PERCONJOINT-REDUC]` | ≤ 986 $/an, couple 65+ seulement (**0 $ pour toi aujourd'hui**) |
+| B4 | **Taux ARC des crédits non remboursables** : le code dit 15 %, le 1er palier fédéral est à 14 %. Seule affirmation du doc SANS source. | `[FISC-FED-CREDITRATE-15]` | ~**165 $/pers/an** si faux |
+| B5 | **LIR 146(1), définition de « revenu gagné »** : le revenu NET de location en fait-il partie ? Le moteur ne le compte pas. | `[FISC-RRSP-RENTAL-EARNED]` | ~**4 320 $/an** de droits REER non créés sur 24 k$ de loyer net |
+
+## C. Configuration de comptes — je n'ai pas les accès
+
+| # | Action | Où | Ce que ça débloque |
+|---|---|---|---|
+| C1 | 🔴 **Révoquer les 2 jetons Fintable collés en clair dans le chat** (les deux en `read+write`) | Fintable → Dashboard → API | **Sécurité.** À faire même si tout le reste attend |
+| C2 | 3 secrets Secret Manager + redéployer Cloud Run + 2 secrets GitHub Actions | GCP + GitHub | `FINTABLE-3` — la sync quotidienne AUTOMATIQUE (aujourd'hui, seule l'ouverture de l'app synchronise) |
+| C3 | Redéployer le serveur MCP sur Cloud Run | `mcp/deploy.sh` | `MCP-CATEGORY-ALLOWLIST` (#502) — sans ça, claude.ai peut encore écrire des catégories inventées |
+| C4 | Poser `PROXY_ACCESS_TOKEN` + `VITE_PROXY_ACCESS_TOKEN` sur Vercel, redéployer, smoke test | Vercel | `P0-PROXY` — le relais BYOK, livré mais jamais allumé |
+| C5 | Créer la dette **« Desjardins Cash Back Mastercard »** (vrai taux + paiement minimum) et vérifier qu'elle n'existe pas déjà en double | App → Réglages → Dettes | Sync du solde de carte. ⚠️ Un doublon compte la dette 2× dans ton patrimoine |
+| C6 | Me donner ta **date de bascule** (dernière transaction saisie à la main) + construire `.fintable-roles.json` avec le VRAI régime fiscal de chaque compte | Local | Mapping Fintable sans doublons. ⚠️ Un mauvais `taxRegime` fausse l'impôt de toute la projection |
+| C7 | Confirmer la **profondeur d'historique réellement offerte** par ton plan Fintable payant (90 j demandés, **30 rendus** au dernier test) | Fintable | `[FINTABLE-BACKFILL-HISTORY]` — ⚠️ en l'état il n'importera **aucune** transaction de plus |
+
+## D. Vérifications sur ton écran — je ne vois pas l'app tourner
+
+| # | Vérification | Ce que ça débloque |
+|---|---|---|
+| D1 | Ouvre la console : le log `services/portfolio.ts:60-62` apparaît-il ? | `[ASSET-CURRENCY-BACKFILL]` — je ne code **rien** avant ce signal |
+| D2 | Le repli Yahoo en PROD : la courbe « Évolution détaillée » se remplit-elle ? Sinon teste `/api/history/yahoo/XEQT.TO?period1=…&period2=…` — si ça rend du HTML au lieu du JSON, dis-le-moi | Courbes d'historique du portefeuille |
+| D3 | Avec ta clé Finnhub : sélectionner une suggestion d'action fait-il encore quitter la page ? Si oui, **quel geste exact** ? | `[RECH-ACTION-UX]` — je n'ai pas pu reproduire sans clé |
+| D4 | Si Drive redemande une reconnexion → Réglages → Diagnostics → la raison GIS exacte | `AUTH-DRIVE-STILL-RECONNECT` |
+| D5 | Fenêtre privée neuve → login Google → toutes les données ET les clés API reviennent ? | `O3` — preuve de la sync Drive en réel |
+
+## E. Gros chantiers — le GO est donné, c'est MOI qui dois préparer le cadrage
+
+⚠️ **Ne rien faire ici.** Je le note pour que tu ne cherches pas ce qui bloque : ces trois-là
+attendent que je te prépare un GROS batch de questions, pas une action de ta part.
+
+- `[PH4-BUD]` — refonte Budget (ton « faut tout refaire »)
+- `[NAV-IA-CONSOLIDATE]` — 14 destinations de navigation → ~6
+- `[FISC-REEE-GRANT-CLAWBACK]` — reprise du RÉEE, **tenté et reverté** le 2026-08-05 (le correctif
+  mesurait PIRE que le bug). Le périmètre est maintenant connu et chiffré en 7 facettes ; il me
+  faut juste ton go pour repartir, et **une donnée** : sur un RÉEE existant, sais-tu dire **combien
+  est de la cotisation et combien est de la subvention** ? Sans ça je dois supposer.
+
+## F. Ce qui reste et que je fais SANS toi
+
+Pour que tu voies l'équilibre : `[CHAT-PAGE-CONTEXT-V2]`, les 11 constantes fiscales restantes à
+ancrer, `[FISC-RRIF-FRACTIONAL-AGE]` ✅, `[FISC-REF-DEDUP]` ✅, tout le lot a11y (`[A11Y-INK500]`
+et 4 autres), la dette technique (god-files, primitives UI, tokens couleur), les trous de tests,
+`[FUZZ-ONETIME-FLOWS]`, `[HARDEN-SNAPSHOT-RACE]`, `[DEP-ESLINT10]`. **Je continue sur ceux-là.**
+
+---
+
+## 🔴 DÉTAIL de B1 et A1 — les deux écarts que je ne peux pas trancher seul (2026-08-06)
 
 L'audit de `[FISC-CONST-ANCHOR-DEBT]` a trouvé deux écarts à impact $ MESURÉ. Je ne les corrige
 pas : le proxy sortant **bloque `canada.ca`** (403), donc je ne peux pas produire la source

@@ -2,7 +2,7 @@
 // Cycle 23 split (depuis taxCycle.ts): réinitialisation annuelle de janvier.
 // Cycle 12 (origine): exécuté uniquement en janvier (currentMonthIndex === 0 && m > 0).
 
-import { RRIF_RATE_PLATEAU } from './helpers';
+import { RRIF_FIRST_WITHDRAWAL_AGE, rrifRateForAge } from './helpers';
 import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, RRSP_ROOM_RATE, CELI_LIMIT_ROUNDING, CELI_ANNUAL_LIMITS, LAST_KNOWN_CELI_YEAR, getResidencyStartYear, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 
 // FA-4 (audit fiscal 2026-06-09) — dernière année où le plafond CELI est CONNU (annoncé, sourcé
@@ -192,8 +192,8 @@ export function processJanuaryReset(
     };
     for (let i = 0; i < ctx.reerByUser.length; i++) {
         const ageI = currentAgeOfUser(i);
-        if (ageI < 72) continue;
-        const rrifRateI = helpers.RRIF_RATES[ageI] || RRIF_RATE_PLATEAU;
+        if (ageI < RRIF_FIRST_WITHDRAWAL_AGE) continue;
+        const rrifRateI = rrifRateForAge(ageI, helpers.RRIF_RATES);
         ferrGrossByUser[i] = Math.max(0, Number.isFinite(ctx.reerByUser[i]) ? ctx.reerByUser[i] : 0) * rrifRateI;
         ferrMandatoryGross += ferrGrossByUser[i];
     }

@@ -82,3 +82,91 @@ export function reconstructCashHistory(
     points.reverse(); // du plus ancien au plus récent
     return { points, firstMonth };
 }
+
+// ── [FUTUR-DAILY] Variante QUOTIDIENNE ───────────────────────────────────────────────────────
+//
+// Demande Marc 2026-08-06 : « pour l'historique aussi je veux pour chaque jour ».
+//
+// ⚠️ L'information du JOUR était déjà là et on la JETAIT : les transactions entrent datées
+// `YYYY-MM-DD`, et c'est le `monthKey` ci-dessus (`slice(0, 7)`) qui l'écrase. Le quotidien du passé
+// n'est donc pas une reconstruction nouvelle — c'est le même walk-back à un pas plus fin.
+//
+// ⚠️ FONCTION SÉPARÉE, la mensuelle est INTOUCHÉE. `buildPastPrefix` consomme `points[].month` sur
+// une chaîne money-critical (raccord EXACT au présent, Option A) ; changer sa forme pour ajouter une
+// granularité aurait mis en jeu un calcul qui marche, pour un besoin d'AFFICHAGE. Les deux partagent
+// la règle d'exclusion — c'est ELLE qui doit rester unique, pas le pas de temps.
+//
+// ⚠️ MÊME BASE DE FLUX que `computeStartingCash` (dup/transfert exclus). Si les deux bouts de la
+// même courbe ne partagent pas leur base, ils divergent — finding financial-integrity 2026-07-24,
+// classe PH4D « calculs voisins, même base ». C'est la contrainte la plus importante de ce module.
+
+export interface CashHistoryDailyPoint {
+    /** Date 'YYYY-MM-DD' — solde à la FIN de ce jour. */
+    date: string;
+    cash: number;
+    /** `true` si au moins une transaction affectant le solde tombe ce jour-là. Permet à l'écran de
+     *  distinguer un vrai mouvement d'un plateau — sans ça, une série quotidienne plate ressemble à
+     *  une donnée manquante alors que c'est une information (« rien n'a bougé »). */
+    isDated: boolean;
+}
+
+export interface CashHistoryDailyResult {
+    /** Du plus ancien au plus récent jour passé. Vide si aucune transaction. */
+    points: CashHistoryDailyPoint[];
+    /** Date de la 1re transaction connue, ou null. */
+    firstDate: string | null;
+}
+
+const DAY_MS = 86_400_000;
+
+/** Décale une date ISO de n jours (UTC — aucune dérive de fuseau sur une clé de date pure). */
+function addDay(iso: string, n: number): string {
+    return new Date(Date.parse(`${iso}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
+}
+
+/**
+ * Solde de cash passé JOUR PAR JOUR, même modèle que la version mensuelle :
+ * `cash(fin du jour D) = cash(fin du jour D+1) − flux(D+1)`, en remontant depuis le solde actuel.
+ *
+ * @param nowDate  jour courant 'YYYY-MM-DD'. Le dernier point produit est la VEILLE (le présent vient
+ *                 de la projection, exactement comme la version mensuelle rend le mois précédent).
+ *
+ * ⚠️ Le résultat RÉCONCILIE avec `reconstructCashHistory` : le point du dernier jour d'un mois vaut
+ * le point mensuel de ce mois. C'est l'invariant testé — deux granularités qui divergeraient
+ * donneraient deux soldes différents pour la même date selon le niveau de zoom.
+ */
+export function reconstructCashHistoryDaily(
+    transactions: ReadonlyArray<{ date: string; amount: number; isDuplicate?: boolean; isTransfer?: boolean }>,
+    currentCash: number,
+    nowDate: string = new Date().toISOString().slice(0, 10),
+): CashHistoryDailyResult {
+    if (!transactions || transactions.length === 0) return { points: [], firstDate: null };
+
+    const flowByDay = new Map<string, number>();
+    const movedOn = new Set<string>();
+    let firstDate: string | null = null;
+    for (const t of transactions) {
+        // `length < 10` et non `< 7` : ici on exige une date COMPLÈTE. Une transaction datée au mois
+        // seul ne peut pas être placée dans la journée — l'inventer la ferait apparaître un jour
+        // arbitraire, ce qui est pire qu'honnêtement absente de la série quotidienne.
+        if (!t.date || t.date.length < 10 || !Number.isFinite(t.amount)) continue;
+        const d = t.date.slice(0, 10);
+        if (firstDate === null || d < firstDate) firstDate = d;
+        if (t.isDuplicate || t.isTransfer) continue; // MÊME exclusion que computeStartingCash
+        flowByDay.set(d, (flowByDay.get(d) ?? 0) + t.amount);
+        movedOn.add(d);
+    }
+    if (firstDate === null) return { points: [], firstDate: null };
+
+    const points: CashHistoryDailyPoint[] = [];
+    let cash = currentCash;
+    let d = nowDate;
+    while (d >= firstDate) {
+        const prev = addDay(d, -1);
+        cash -= flowByDay.get(d) ?? 0;
+        if (prev >= firstDate) points.push({ date: prev, cash: Math.round(cash), isDated: movedOn.has(prev) });
+        d = prev;
+    }
+    points.reverse();
+    return { points, firstDate };
+}

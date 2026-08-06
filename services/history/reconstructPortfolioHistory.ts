@@ -170,3 +170,104 @@ export function reconstructPortfolioHistory(
     const coverage = valueTotalFinal > 0 ? valueWithRealPrice / valueTotalFinal : 1;
     return { points, coverage: Number(coverage.toFixed(3)), firstDate: first };
 }
+
+// ── [FUTUR-DAILY] Reconstruction QUOTIDIENNE, sur une FENÊTRE ────────────────────────────────
+//
+// Demande Marc 2026-08-06 : voir le détail de chaque compte au jour, en zoomant.
+//
+// ⚠️ Ce n'est pas un calcul nouveau : `holdingsAt(a, t)` et `priceAt(a, t)` sont DÉJÀ paramétrés
+// par date. La reconstruction mensuelle ne fait que choisir `t = dernier jour du mois`. Ici on
+// choisit chaque jour. Le coût est le même par point ; ce qui change, c'est leur NOMBRE.
+//
+// ⚠️ FENÊTRÉE, jamais « tout l'historique au jour ». Sur 18 ans ça ferait ~6 500 points × chaque
+// titre — illisible à l'écran ET inutile, puisqu'on ne regarde qu'une plage à la fois. C'est le
+// « si je zoom » de la demande qui rend la fenêtre légitime.
+//
+// ⚠️ HONNÊTETÉ DU PLATEAU. Un prix de clôture reste la valeur du titre jusqu'à la clôture suivante :
+// répéter un close le samedi est JUSTE. Mais au-delà de 12 mois, le stockage est compressé à
+// 1 point/semaine (`DOWNSAMPLE_AFTER_DAYS`), donc un plateau de 6 jours n'est plus un week-end :
+// c'est de la donnée absente qui RESSEMBLE à une donnée stable. Chaque point porte donc l'âge du
+// prix le plus vieux qui le compose — l'écran peut alors dire « reconstruit » au lieu de laisser
+// croire à une mesure quotidienne.
+
+export interface PortfolioHistoryDailyPoint {
+    /** Date 'YYYY-MM-DD'. */
+    date: string;
+    CELI: number; CELIAPP: number; REER: number; REEE: number; NonReg: number; Crypto: number;
+    /** Somme des comptes de PLACEMENT (ni cash, ni immo, ni dette) — même sémantique que la
+     *  version mensuelle, cf. son commentaire : ce n'est PAS un patrimoine net. */
+    InvestedValue: number;
+    /** Âge, en jours, du prix le plus VIEUX ayant servi à composer ce point. 0 = un close existe
+     *  à cette date. Élevé = plateau de reconstruction, pas une valeur stable observée. */
+    priceAgeMaxDays: number;
+    /** `true` si au moins un titre n'avait AUCUN historique et a été valorisé au prix ACTUEL —
+     *  le point est alors une estimation, et le dire est le minimum (no-fake-data). */
+    hasEstimatedPrice: boolean;
+}
+
+const DAY_MS_H = 86_400_000;
+
+/** Âge en jours du dernier close ≤ t, ou null si aucun historique. */
+function priceAgeDays(asset: MinimalAsset, t: string): number | null {
+    const hist = asset.priceHistory;
+    if (!hist || hist.length === 0) return null;
+    let best: MinimalPricePoint | null = null;
+    for (const p of hist) if (p.date <= t && (!best || p.date > best.date)) best = p;
+    if (!best) return null;
+    return Math.max(0, Math.round((Date.parse(`${t}T00:00:00Z`) - Date.parse(`${best.date}T00:00:00Z`)) / DAY_MS_H));
+}
+
+/**
+ * Valeur marché par compte, JOUR par JOUR, sur `[from, to]` (bornes incluses, 'YYYY-MM-DD').
+ *
+ * `maxDays` borne le résultat pour qu'un appelant distrait ne demande pas 20 ans au jour
+ * (défaut 400 : un peu plus d'un an, ce qui couvre la fenêtre où les prix stockés sont
+ * réellement quotidiens). Au-delà, on rend les `maxDays` PREMIERS jours et l'appelant le voit à
+ * la longueur — plutôt qu'une troncature silencieuse au milieu.
+ */
+export function reconstructPortfolioHistoryDaily(
+    assets: MinimalAsset[],
+    fx: Record<string, number>,
+    from: string,
+    to: string,
+    opts?: { maxDays?: number },
+): PortfolioHistoryDailyPoint[] {
+    const invest = (assets || []).filter((a) => (a.quantity || 0) !== 0 || (a.purchases && a.purchases.length > 0));
+    const start = Date.parse(`${from}T00:00:00Z`);
+    const end = Date.parse(`${to}T00:00:00Z`);
+    if (invest.length === 0 || !Number.isFinite(start) || !Number.isFinite(end) || end < start) return [];
+
+    const maxDays = opts?.maxDays ?? 400;
+    const out: PortfolioHistoryDailyPoint[] = [];
+
+    for (let ms = start; ms <= end && out.length < maxDays; ms += DAY_MS_H) {
+        const t = new Date(ms).toISOString().slice(0, 10);
+        const acc: Record<AccountKey, number> = { CELI: 0, CELIAPP: 0, REER: 0, REEE: 0, NonReg: 0, Crypto: 0 };
+        let ageMax = 0;
+        let estimated = false;
+
+        for (const a of invest) {
+            const qty = holdingsAt(a, t);
+            if (qty === 0) continue;
+            const histPrice = priceAt(a, t);
+            if (histPrice === null) {
+                estimated = true;
+            } else {
+                const age = priceAgeDays(a, t);
+                if (age !== null && age > ageMax) ageMax = age;
+            }
+            const price = histPrice ?? a.currentPrice ?? 0;
+            const key = a.accountType ? TYPE_TO_KEY[a.accountType] : 'NonReg';
+            acc[key] += qty * price * fxToCad(a.currency, fx);
+        }
+
+        out.push({
+            date: t,
+            ...acc,
+            InvestedValue: Number(ACCOUNT_KEYS.reduce((s, k) => s + acc[k], 0).toFixed(2)),
+            priceAgeMaxDays: ageMax,
+            hasEstimatedPrice: estimated,
+        });
+    }
+    return out;
+}

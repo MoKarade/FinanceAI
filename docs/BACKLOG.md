@@ -129,11 +129,21 @@
   ✅ **3 ancrées le 2026-08-06 (PR #572)** — `0.18` (droits REER → `RRSP_ROOM_RATE`), `500` (arrondi
   CELI → `CELI_LIMIT_ROUNDING`), `0.20` (plateau FERR → `RRIF_RATE_PLATEAU`) : sorties du moteur,
   ancrées dans FISCAL_REFERENCE, importées depuis la source unique. Leurs entrées d'inventaire ont
-  été RETIRÉES (résolues, pas exemptées). **RESTENT 11 :**
-  - `taxJanuary.ts` `2026` (année d'ancrage RRSP_ANNUAL_LIMITS).
-  - Âges-seuils : `18` (CELI/CELIAPP) · `71` (conversion REER→FERR) · `72` (1er retrait min) ·
-    `15` (durée de vie CELIAPP) · `65` (crédit d'âge, pivot RRQ/PSV) · `70` (report PSV max) ·
-    `75` (bonification PSV) · `39`/`40` (déjà nommés : RRQ_DENOMINATOR_YEARS, PSV_FULL_RESIDENCY_YEARS).
+  été RETIRÉES (résolues, pas exemptées).
+  ✅ **+2 le 2026-08-06 (PR #573)** — `72` → `RRIF_FIRST_WITHDRAWAL_AGE` (il vivait en dur sur
+  taxJanuary ET taxDecember : la configuration JUMELLE exacte qui avait laissé survivre le `0.18`)
+  et `95` → `RRIF_PLATEAU_AGE` (seuil qui n'était porté par AUCUN littéral, seulement par l'absence
+  d'entrée dans la table). **RESTENT 9 :**
+  - `taxJanuary.ts` `2026` (année d'ancrage RRSP_ANNUAL_LIMITS) — ⚠️ à REQUALIFIER : c'est un index
+    d'extrapolation, pas un paramètre ARC. Probablement `structural`, à trancher en le codant.
+  - Âges-seuils : `18` (CELI/CELIAPP) · `71` (conversion REER→FERR) · `15` (durée de vie CELIAPP) ·
+    `65` (crédit d'âge, pivot RRQ/PSV — **2 modules**, donc le plus payant) · `70` (report PSV max) ·
+    `75` (bonification PSV) · `39`/`40` (déjà nommés : RRQ_DENOMINATOR_YEARS, PSV_FULL_RESIDENCY_YEARS
+    → doc seulement, aucun code à toucher).
+  ⚠️ **Rendement décroissant assumé** : les 3 premières valeurs pilotaient un CALCUL. Ce qui reste
+  est surtout des âges-seuils déjà commentés et sourcés sur place. Le seul vrai gain restant est le
+  `65` (deux modules → risque de divergence). Le reste est de l'hygiène, à prendre au fil de l'eau,
+  pas un chantier à prioriser.
   ⚠️ NE PAS toucher aux entrées `design` (`0.95` Guyton-Klinger, `0.50` vente fictive, seuils de
   meltdown, `0.25` proxy d'inversion impôt→gain) : les « sourcer » serait une erreur de CATÉGORIE
   qui polluerait FISCAL_REFERENCE avec des choix de conception.
@@ -151,19 +161,59 @@
   revenu NET de location est du revenu GAGNÉ au sens de 146(1), mais il alimente `accRentesYear`
   et jamais `accGrossIncomeYear` (`realEstateMonth.ts:397`) → droits REER sous-estimés pour un
   propriétaire-bailleur (~4 320 $/an de droits non créés sur 24 k$ de loyer net). À confirmer.
-- [ ] **`[FISC-RRIF-FRACTIONAL-AGE]`** (S, risque THÉORIQUE — audit 2026-08-06) — le repli FERR
-  couvre TOUT âge absent de la table, pas seulement 95+ : un âge fractionnaire (72,5) recevrait
-  20 % au lieu de 5,4 %. Aucun producteur d'âge fractionnaire trouvé aujourd'hui. Vrai correctif :
-  `ageI >= 95 ? RRIF_RATE_PLATEAU : RRIF_RATES[ageI]` plutôt qu'un repli attrape-tout.
-- [ ] **`[FISC-REF-DEDUP]`** (S, doc) — `FISCAL_REFERENCE.md` décrit désormais l'arrondi CELI, le
-  18 % REER et le plateau FERR à DEUX endroits (§CELI/§REER/§FERR + la section d'ancrage). Dans une
-  source de vérité, deux endroits par sujet = la divergence de demain — elle a déjà produit deux
-  contradictions internes corrigées le 2026-08-06. Fusionner en un seul endroit par sujet.
+- [x] **`[FISC-RRIF-FRACTIONAL-AGE]`** ✅ 2026-08-06 (PR #573) — `rrifRateForAge()` remplace le repli
+  attrape-tout : plateau EXPLICITE à 95+ (`RRIF_PLATEAU_AGE`, seuil qui n'était porté que par
+  l'absence d'entrée dans la table), âge entier pour un fractionnaire, **0** pour un âge non fini.
+  Discriminant prouvé contre `git archive` : l'ancien code rendait 20 % — le facteur le plus
+  punitif — sur 72,5 · 93,9 · NaN · +Infinity. Identité bit-à-bit du moteur vérifiée par SHA-256
+  sur 361 mois × 102 champs (sonde prouvée discriminante : 1 point de base déplace le hash).
+  Au passage : `RRIF_FIRST_WITHDRAWAL_AGE` nommé (il vivait en dur sur taxJanuary ET taxDecember).
+- [x] **`[FISC-REF-DEDUP]`** ✅ 2026-08-06 (PR #573) — un sujet, un endroit : les valeurs vivent dans
+  §CELI / §REER / §FERR, et la section d'ancrage ne garde que la PROVENANCE et la leçon.
 - [ ] **V8 — Features demandées** — ✅ `[GOAL-DEADLINE-UI]` + ✅ `[PH4C-SAVINGS-NATURE]` (#569) +
   ✅ `[SUBS-TAB]` volet « ignorer » (#570). RESTENT : `[SUBS-TAB]` volet EMPLACEMENT (gaté sur
   l'arbitrage de Marc) · `[CHAT-PAGE-CONTEXT-V2]` (file explicite Marc) ·
   `[ASSET-CURRENCY-BACKFILL]` (gaté : rien à coder tant que le log `services/portfolio.ts:60-62`
   n'apparaît pas chez Marc).
+- [ ] **V8bis — `[FUTUR-DAILY]` granularité QUOTIDIENNE (demande explicite Marc 2026-08-06)** —
+  « quotidien sur tout, je veux voir le détail si je zoom beaucoup », futur ET passé, avec le détail
+  par compte. ⚠️ Marc a tranché CONTRE ma reco (je proposais le quotidien seulement là où l'app a de
+  vraies dates). Décision prise, **ne pas re-proposer de restreindre**.
+  **Conception retenue** : le moteur RESTE mensuel (source de vérité, `projection.ts` intouché — le
+  passer au jour = ~11 000 itérations × chaque tirage MC, et rejouer au jour une fiscalité qui n'a
+  que des événements ANNUELS). Un module RAFFINE la fenêtre zoomée à la demande.
+  **Invariant money-critical** : la série quotidienne passe EXACTEMENT par les points mensuels, par
+  construction. Deux granularités qui divergeraient = deux soldes pour la même date selon le zoom.
+  - [x] Cœur du raffinement — `services/projection/dailyRefine.ts` (17 tests) ✅ 2026-08-06
+  - [x] Passé quotidien, cash — `reconstructCashHistoryDaily` (10 tests, dont la réconciliation avec
+        la version mensuelle) ✅ 2026-08-06. ⚠️ Fonction SÉPARÉE : `buildPastPrefix` consomme la
+        mensuelle sur une chaîne money-critical, on ne change pas sa forme pour un besoin d'affichage.
+  - [x] Passé quotidien, PLACEMENTS — `reconstructPortfolioHistoryDaily` (9 tests) ✅ 2026-08-06.
+        FENÊTRÉE (`from`/`to` + `maxDays`), jamais « tout l'historique au jour » : 18 ans feraient
+        ~6 500 points × chaque titre. Ventilation par compte (`accountType`), conversion FX, et
+        chaque point porte `priceAgeMaxDays` + `hasEstimatedPrice`.
+        ⚠️ Butoir DUR à ~12 mois : `DOWNSAMPLE_AFTER_DAYS = 365` compresse le stocké à 1 pt/semaine
+        au-delà (quota localStorage) → au-delà, `priceAgeMaxDays` grimpe et l'écran DOIT le dire :
+        un plateau de 6 jours n'est plus un week-end, c'est de la donnée absente qui ressemble à une
+        valeur stable.
+  - [x] Mouvements DATÉS du futur — `services/projection/datedMonthEvents.ts` (9 tests) ✅ 2026-08-06.
+        ⚠️ **MESURE QUI RÉDUIT LA PROMESSE** : `RecurringItem.dayOfMonth` est la SEULE date que l'app
+        connaisse pour le futur. La PAIE n'a aucun champ de jour (`grossSalary`/`netSalary` sont des
+        montants MENSUELS), les DETTES non plus (`Debt` n'a que `termEndDate`), l'hypothèque non plus.
+        Donc dans un futur zoomé, seules les charges récurrentes font de vraies marches ; le salaire
+        et l'hypothèque sont lissés dans le résidu. → question **A13** routée à Marc (`A_FAIRE_MOI`) :
+        c'est une donnée que lui seul connaît, je ne peux pas la déduire.
+        Deux pièges qu'un graphe rend INVISIBLES, tous deux testés : le SIGNE (un coût positif doit
+        faire DESCENDRE un solde) et l'ANNUEL compté douze fois.
+  - [ ] UI : zoom + tableau détaillé + rendu du drapeau `isDated` (distinguer mesuré et interpolé).
+  - [ ] Liquidités par COMPTE bancaire — ⚠️ BLOQUÉ par une absence de donnée : on reconstruit à
+        rebours depuis le solde connu d'AUJOURD'HUI, or il n'est connu que GLOBALEMENT.
+        `FintableBrokerBalance` ne couvre que les comptes `kind: 'investment'`. Prérequis : persister
+        les soldes des comptes `kind: 'cash'` (la sync les LIT déjà, elle les agrège).
+  - [ ] ⚠️ NE JAMAIS mettre de décimales dans `monthIndex` : c'est la clé d'axe du graphe, du tableau
+        ET des icônes-jalons — les jalons se désaligneraient en SILENCE. La granularité vit dans `date`.
+  - [ ] ⚠️ Vérifier le POIDS stocké avant de livrer : `[HIST-STORE-SIZE]` a été fait POUR tenir le
+        quota. Densifier le rouvre.
 - [ ] **V9 — Couverture moteur** (1-2 PR) : `[FUZZ-ONETIME-FLOWS]` + `[HARDEN-SNAPSHOT-RACE]`.
 - [ ] **V10 — A11y** (1-2 PR) : `[A11Y-INK500]` + `[FUT-TOUCH-TARGETS]` + `[D6-KBD]` +
   `[A11Y-BORDER-PROMINENCE-SWEEP]` + `[A11Y-FUTUR-MILESTONES-KEYBOARD]` (Marc : focusables).

@@ -105,6 +105,8 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     // un paramètre ARC/RQ : ce sont des hypothèses de MODÈLE et de la mécanique numérique.
     { file: 'services/projection/helpers.ts', value: '0.20', family: 'fiscal',
       reason: 'RRIF_RATE_PLATEAU — facteur de retrait minimum FERR au plateau 95+. ANCRÉ dans FISCAL_REFERENCE et importé ; l’entrée reste pour que le garde couvre sa nouvelle adresse.' },
+    { file: 'services/projection/helpers.ts', value: '71', family: 'fiscal',
+      reason: 'RRSP_TO_RRIF_CONVERSION_AGE — conversion REER→FERR obligatoire à la fin de l’année des 71 ans (ARC), et par conséquent plancher de RRIF_RATES. DISTINCT de RRIF_FIRST_WITHDRAWAL_AGE (72) : conversion et premier retrait forcé sont deux règles séparées d’un an, les fusionner effacerait le cas de la conversion volontaire précoce.' },
     { file: 'services/projection/helpers.ts', value: '72', family: 'fiscal',
       reason: 'RRIF_FIRST_WITHDRAWAL_AGE — premier retrait FERR minimum obligatoire. Rapatrié depuis taxJanuary ET taxDecember (leurs entrées sont RETIRÉES) : la valeur vivait en dur sur deux modules, la configuration jumelle exacte qui avait laissé survivre le 0.18.' },
     { file: 'services/projection/helpers.ts', value: '0.30', family: 'design',

@@ -4,6 +4,7 @@
 // hissées hors de runScenario() pour la lisibilité et la testabilité.
 
 import { calculateWelcomeTax } from '../realEstate';
+import { logErrorThrottled } from '../errorLogger';
 import type { Municipality } from '../../types';
 
 /**
@@ -95,6 +96,14 @@ export const RRIF_PLATEAU_AGE = 95;
  *  a permis au `0.18` de survivre à son premier ancrage. Source : ARC, cf. FISCAL_REFERENCE §6. */
 export const RRIF_FIRST_WITHDRAWAL_AGE = 72;
 
+/** [FISC-CONST-ANCHOR-DEBT] Âge de conversion OBLIGATOIRE du REER en FERR (fin de l'année des
+ *  71 ans, ARC) — et par conséquent le plancher de `RRIF_RATES`, qui porte un facteur à 71 pour le
+ *  cas d'une conversion VOLONTAIRE précoce.
+ *  ⚠️ À ne PAS confondre avec `RRIF_FIRST_WITHDRAWAL_AGE` (72) : la conversion et le premier retrait
+ *  forcé sont deux règles DISTINCTES qui se suivent d'un an. Les fusionner sous un seul nom ferait
+ *  disparaître le cas de la conversion précoce. */
+export const RRSP_TO_RRIF_CONVERSION_AGE = 71;
+
 export const RRIF_RATES: Record<number, number> = {
     71: 0.0528,
     72: 0.0540, 73: 0.0553, 74: 0.0567, 75: 0.0582, 76: 0.0598,
@@ -119,16 +128,43 @@ export const RRIF_RATES: Record<number, number> = {
  * d'un bug observable — mais un repli qui distribue le pire taux sur une entrée inattendue est une
  * forme d'échec silencieux, et le corriger ne coûte rien : sortie bit-identique sur tout âge entier.
  *
- * - âge non fini → **0** : « je ne sais pas » ne devient jamais un retrait forcé inventé
- *   (no-fake-data), et ça rejoint la convention du moteur « conjoint sans âge → jamais de FERR ».
- * - âge ≥ 95 → plateau, **explicitement** plutôt que par l'absence d'entrée dans la table.
- * - sinon → la table, à l'âge entier.
+ * ⚠️ **L'ORDRE des gardes fait le travail.** Il distingue deux non-finis de nature OPPOSÉE sans
+ * jamais coder « −Infinity est spécial » — c'est le domaine qui tranche :
  *
- * Le dernier repli reste le plateau : il ne sert qu'aux tables PARTIELLES injectées en test — la
- * table réelle n'a aucun trou de 72 à 94, et `projection.helpers.test.ts` le PROUVE.
+ * 1. `age < 71` → **0**, en silence. Sous le plancher de la table, AUCUN facteur n'est prescrit :
+ *    rendre 0 est la règle, pas un repli. Attrape au passage le sentinelle `−Infinity` que
+ *    `taxJanuary` produit pour « conjoint sans âge ni année de naissance » — absence DÉLIBÉRÉE,
+ *    donc rien à signaler.
+ *    ⚠️ Sans cette borne, `rrifRateForAge(50)` retombait sur le plateau et rendait **20 %** pour un
+ *    quinquagénaire : la faute même que cette fonction corrige, reproduite un cran plus haut. Le
+ *    `continue` de l'appelant la masquait — un helper exporté ne doit pas dépendre de la prudence
+ *    de son unique appelant d'aujourd'hui.
+ *    ⚠️ La borne est **71, pas 72** : la table porte délibérément un facteur à 71 ans (conversion
+ *    VOLONTAIRE précoce). Borner à 72 aurait écrasé ce cas — et aurait confondu deux règles ARC
+ *    distinctes, « quand la conversion est due » et « quand le premier retrait est forcé ». Erreur
+ *    attrapée par mon propre test de non-régression, pas par relecture.
+ * 2. `NaN` / `+Infinity` → **0**, mais **JOURNALISÉ**. Ce qui reste ici n'est plus une absence :
+ *    c'est une donnée CORROMPUE. La convention du dossier est explicite (`pastPurchaseInit.ts`,
+ *    `isCorrupt`) — « champ renseigné mais non fini, jamais avalé sans trace ». Sans ce log, le
+ *    retrait minimum obligatoire disparaîtrait en silence sur tout l'horizon, là où l'ancien 20 %
+ *    se voyait au moins dans les flux.
+ * 3. `age ≥ 95` → plateau, **explicitement** plutôt que par l'absence d'entrée dans la table.
+ *    (Doit rester APRÈS la garde de non-finitude : `+Infinity >= 95` est vrai.)
+ * 4. sinon → la table, à l'âge entier.
+ *
+ * Le dernier repli reste le plateau. Il ne sert qu'aux tables PARTIELLES injectées en test : sur la
+ * table réelle, le domaine [72, 95) est COMPLET et `projection.helpers.test.ts` le prouve.
  */
 export function rrifRateForAge(age: number, table: Record<number, number> = RRIF_RATES): number {
-    if (!Number.isFinite(age)) return 0;
+    if (age < RRSP_TO_RRIF_CONVERSION_AGE) return 0;
+    if (!Number.isFinite(age)) {
+        logErrorThrottled(`rrif-age-nonfini:${String(age)}`, {
+            source: 'projection', severity: 'warning',
+            message: 'Facteur FERR demandé pour un âge NON FINI — aucun retrait minimum appliqué',
+            context: { age: String(age) },
+        });
+        return 0;
+    }
     if (age >= RRIF_PLATEAU_AGE) return RRIF_RATE_PLATEAU;
     const rate = table[Math.floor(age)];
     return typeof rate === 'number' ? rate : RRIF_RATE_PLATEAU;

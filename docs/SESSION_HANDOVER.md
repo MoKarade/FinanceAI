@@ -29,7 +29,23 @@
 >    sens, famille la plus exigeante (`fiscal`). Taire une des deux aurait fait mentir l'inventaire.
 >    ⚠️ **Rendement décroissant sur les 9 restantes** : ce sont des âges-seuils déjà commentés et
 >    sourcés sur place. Seul le `65` (2 modules) vaut encore le geste. Noté au BACKLOG.
-> 4. **`docs/A_FAIRE_MOI.md` — INDEX exhaustif des blocages** (§ « 🔓 INDEX ») : A = 12 questions à
+> 4. **Findings du panel `silent-failure-hunter` CORRIGÉS dans la même PR** — les deux tenaient :
+>    - **MOYEN** — `return 0` sur non-fini confondait deux signaux OPPOSÉS : le sentinelle
+>      `−Infinity` de `taxJanuary` (« conjoint sans âge », absence délibérée) et une donnée
+>      CORROMPUE (`NaN`/`+Infinity`). La convention du dossier (`pastPurchaseInit.ts`, `isCorrupt`)
+>      est explicite : « champ renseigné mais non fini, jamais avalé sans trace ». Corrigé par
+>      `logErrorThrottled` — mais **sans coder « −Infinity est spécial »** : c'est l'ORDRE des
+>      gardes qui sépare (borne basse d'abord, `−Infinity < 71` est vrai). Zéro cycle d'import
+>      vérifié (`errorLogger` n'importe rien ; `pastPurchaseInit` du même dossier l'importe déjà).
+>    - **FAIBLE** — mon commentaire de test sur-affirmait « repli inatteignable ». Vrai seulement
+>      sur [72, 95) avec la vraie table. Reformulé.
+>    - ⚠️ **Et un 3ᵉ, que je me suis infligé en corrigeant le 1er** : j'ai borné par le bas à
+>      `RRIF_FIRST_WITHDRAWAL_AGE` (72), ce qui **écrasait le facteur 71** que la table porte
+>      délibérément (conversion volontaire précoce). Conversion (71) et 1er retrait forcé (72) sont
+>      DEUX règles ARC distinctes. **Attrapé par mon propre test de non-régression**, pas par
+>      relecture → `RRSP_TO_RRIF_CONVERSION_AGE` ajouté, borne corrigée, test dédié.
+>    Bit-identité RE-VÉRIFIÉE après ces corrections : même SHA-256.
+> 5. **`docs/A_FAIRE_MOI.md` — INDEX exhaustif des blocages** (§ « 🔓 INDEX ») : A = 12 questions à
 >    réponse courte + les 4 de `PROFIL-SWITCH` · B = 5 sources fiscales que le proxy bloque ·
 >    C = 7 actions de configuration · D = 5 vérifs à l'écran · E = 3 chantiers qui attendent MON
 >    cadrage, pas une action de Marc · F = ce que je fais sans lui. Chaque ligne porte son impact

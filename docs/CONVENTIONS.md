@@ -1560,6 +1560,27 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   traversait le filtre `age < 72` (toute comparaison avec NaN est fausse) et ressortait aussi à
   20 %. Un repli doit couvrir le cas qu'il DÉCLARE couvrir (`age >= 95 ? plateau : …`) ; l'écrire
   comme un `||` en fait un attrape-tout dont la couverture réelle est inconnue de son auteur.
+- ⚠️ **Deux règles qui COÏNCIDENT ne sont pas la même règle — nommer les fusionne pour toujours**
+  (leçon FISC-RRIF-FRACTIONAL-AGE, 2026-08-06) : en bornant `rrifRateForAge` par le bas, j'ai écrit
+  `age < RRIF_FIRST_WITHDRAWAL_AGE` (72). La table porte pourtant un facteur à **71** ans, mis là
+  DÉLIBÉRÉMENT pour une conversion REER→FERR volontaire précoce. « Quand la conversion est due »
+  (71) et « quand le premier retrait est forcé » (72) sont deux règles ARC distinctes, séparées
+  d'un an — les faire passer par un seul seuil supprimait un cas réel. **C'est mon propre test de
+  non-régression qui l'a attrapé, pas une relecture** : la boucle `71 → 94` a échoué sur 71.
+  Avant de donner UN nom à une valeur qui apparaît à plusieurs endroits, vérifier qu'ils désignent
+  le même CONCEPT, pas seulement le même nombre — sinon le prochain changement de loi qui les
+  sépare devra d'abord défaire la fusion.
+- ⚠️ **Un helper EXPORTÉ ne doit pas dépendre de la prudence de son unique appelant** (même leçon) :
+  `rrifRateForAge` rendait 20 % pour un âge de 50 ans (absent de la table → repli plateau), soit
+  exactement la faute qu'elle venait corriger, reproduite un cran plus haut. Le `continue` de
+  l'appelant la masquait. Une fonction publique doit être correcte sur TOUT son domaine d'entrée,
+  pas seulement sur celui que le call-site d'aujourd'hui lui présente.
+- ⚠️ **L'ORDRE des gardes peut remplacer un cas particulier codé en dur** (même leçon) : deux
+  non-finis avaient des sens OPPOSÉS — `−Infinity` = « conjoint sans âge » (absence délibérée,
+  silence légitime) vs `NaN`/`+Infinity` = donnée corrompue (à journaliser, convention
+  `pastPurchaseInit.ts`). Plutôt que de tester `age === -Infinity`, placer la borne basse EN
+  PREMIER les sépare gratuitement (`−Infinity < 71` est vrai). Un test `if (x === -Infinity)`
+  aurait figé dans le code un savoir qui appartient au domaine.
 - ⚠️ **Une clé d'inventaire `(fichier, valeur)` finit par coûter — prévoir la collision de SENS**
   (même leçon) : le compromis était documenté en tête de `fiscalConstGuardV2.ts` (« une deuxième
   occurrence de la même valeur dans le même fichier passe »), mais il a été VÉCU dès l'ajout

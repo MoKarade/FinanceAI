@@ -37,6 +37,7 @@ import { StressTestPanel } from './projection/StressTestPanel';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { DailyDetailPanel } from './projection/DailyDetailPanel';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCompactCAD } from '../utils/format';
 
@@ -511,6 +512,39 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // G4 — zoom molette / pan / sélecteur de période sur la courbe (remplace <Brush>).
     // A3 — consomme displayData (passé réel préfixé + futur projeté).
     const zoom = useTimeChartZoom<ProjectionChartPoint>(displayData as ProjectionChartPoint[]);
+
+    // [FUTUR-DAILY] Fenêtre à raffiner au jour = la fenêtre ZOOMÉE, traduite en dates calendaires.
+    // ⚠️ Le hook de zoom indexe le tableau MENSUEL et c'est très bien ainsi : lui substituer des
+    // points quotidiens casserait son indexation (et l'axe X est CATÉGORIEL, ancré sur `monthIndex`
+    // entier pour les jalons). Le mensuel pilote donc la FENÊTRE, et le quotidien n'est calculé que
+    // pour la remplir — c'est exactement ce que « si je zoom » autorise.
+    const dailyWindow = useMemo(() => {
+        const vis = zoom.visibleData;
+        if (vis.length < 2) return null;
+        const cal = (monthIndex: number) => {
+            const abs = startMonth + monthIndex;
+            return { year: startYear + Math.floor(abs / 12), month: ((abs % 12) + 12) % 12 };
+        };
+        const anchors = vis.map((p) => {
+            const { year, month } = cal(p.monthIndex);
+            return { monthIndex: p.monthIndex, year, month, value: Number(p.NetWorth) || 0 };
+        });
+        const first = cal(vis[0].monthIndex);
+        const last = cal(vis[vis.length - 1].monthIndex);
+        const iso = (y: number, m: number, d: number) =>
+            `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const now = cal(todayMonthIndex);
+        return {
+            from: iso(first.year, first.month, 1),
+            to: iso(last.year, last.month, new Date(Date.UTC(last.year, last.month + 1, 0)).getUTCDate()),
+            anchors,
+            today: iso(now.year, now.month, new Date().getUTCDate()),
+        };
+    }, [zoom.visibleData, startYear, startMonth, todayMonthIndex]);
+
+    const dailyAssets = useFinanceStore(s => s.assets) ?? [];
+    const fxRates = useFinanceStore(s => s.fxRates) ?? {};
+    const dailyRecurring = useFinanceStore(s => s.subscriptions) ?? [];
 
     // [A11Y-CHARTS] — colonnes de la table de données sr-only (alternative texte à la courbe Recharts,
     // opaque aux lecteurs d'écran). Date (axe X) + chaque montant affiché (comptes empilés + Valeur Nette).
@@ -1075,6 +1109,24 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </ResponsiveContainer>
                      )}
                 </div>
+
+                {/* [FUTUR-DAILY] Détail JOUR PAR JOUR de la fenêtre regardée (demande Marc 2026-08-06).
+                    N'apparaît qu'en ZOOM : dézoomé, la fenêtre couvre des décennies et un tableau
+                    quotidien n'aurait ni sens ni lisibilité. */}
+                {zoom.isZoomed && dailyWindow && (
+                    <DailyDetailPanel
+                        from={dailyWindow.from}
+                        to={dailyWindow.to}
+                        anchors={dailyWindow.anchors}
+                        today={dailyWindow.today}
+                        transactions={transactions}
+                        currentCash={calculatedStartingCash || 0}
+                        assets={dailyAssets}
+                        fx={fxRates}
+                        recurring={dailyRecurring}
+                        isPrivacyMode={isPrivacyMode}
+                    />
+                )}
 
                 {/* [A11Y-CHARTS] — alternative TEXTUELLE (sr-only) à la courbe Recharts : mêmes données
                     en table accessible, masquage privacy aligné sur l'axe/tooltip. */}

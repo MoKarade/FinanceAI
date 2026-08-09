@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟠 Session 2026-08-06 (suite 32) — #574 mergée, mais PAS déployée
+> `[FUTUR-DAILY]` est **sur `main`** (`ed5a7d1`, #574) — et **Vercel n'a créé aucun déploiement de
+> PRODUCTION** dans la demi-heure suivante. `latestDeployment` du projet restait la PREVIEW de
+> `02ae31a` (`target: null`). **Marc en a été informé** — ne PAS annoncer une mise en ligne qui n'a
+> pas eu lieu. À re-vérifier : `latestDeployment.target === 'production'` ET le SHA.
+> ⚠️ **J'ai d'abord accusé le quota du plan gratuit — hypothèse RÉFUTÉE 10 min plus tard** : Vercel a
+> construit sans broncher la preview de #575. Le plus probable est un webhook de déploiement MANQUÉ
+> sur ce push précis (les merges précédents du même jour avaient bien produit leur production).
+> Le merge de #575 devrait donc emporter le contenu de `ed5a7d1` en production au passage — à
+> VÉRIFIER, pas à supposer. Sinon : Vercel → Deployments → `ed5a7d1` → Redeploy (action de Marc).
+>
+> ⚠️ **Et le blocage qui a coûté 40 min** : les checks de #574 sont restés EN FILE 15 min puis ont
+> été **ANNULÉS** (`conclusion: "cancelled"`, PAS `"failure"`). L'auto-merge ne se déclenche jamais
+> là-dessus, et aucun webhook d'échec ne part. Déblocage = `rerun_workflow_run`. Leçon portée dans
+> `CONVENTIONS.md` : lire `conclusion`, pas seulement `status`.
+
 > ## 🟢 Session 2026-08-06 (suite 31) — `[FUTUR-DAILY]` : granularité QUOTIDIENNE (demande Marc)
 > **Marc a tranché « quotidien sur tout, je veux voir le détail si je zoom beaucoup ».** J'avais
 > objecté que le quotidien long terme est de la fausse précision ; il a maintenu. **Décision prise,

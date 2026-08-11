@@ -1,5 +1,12 @@
 // services/projection/dailyRefine.ts
 //
+// ⚠️ [FUTUR-DAILY-INFOBULLE-ONLY 2026-08-11] `refineMonthToDaily`, `refineWindowToDaily`,
+// `DailyPoint` et `daySpan` ont été RETIRÉS d'ici. Ils ne raffinaient que `NetWorth` ; la
+// ventilation COMPLÈTE au jour (tous les champs) vit dans `dailyLedger.ts`, qui les a remplacés.
+// Leur dernier consommateur (le tableau jour-par-jour sous la courbe) a été supprimé à la demande
+// de Marc — le détail du jour vit dans l'infobulle, uniquement. Restent ici : les utilitaires de
+// calendrier, `finiteAnchorRun` (garde no-fake des ancres) et `dailyWindowRange` (bouton « Jour »).
+//
 // [FUTUR-DAILY] Raffinement QUOTIDIEN d'une fenêtre de la courbe (demande Marc 2026-08-06 :
 // « quotidien sur tout, je veux voir le détail si je zoom beaucoup »).
 //
@@ -36,103 +43,11 @@ export interface DatedDelta {
     label?: string;
 }
 
-/** Un point quotidien de la série raffinée. */
-export interface DailyPoint {
-    /** Date calendaire réelle, `YYYY-MM-DD` — la clé de temps CANONIQUE d'un point quotidien.
-     *  ⚠️ MISE À JOUR 2026-08-11 : ce commentaire interdisait un `monthIndex` fractionnaire, parce
-     *  que l'axe du graphe était alors CATÉGORIEL (une décimale n'appariait plus aucun jalon, en
-     *  silence). L'axe est numérique depuis le lot B étape 1 : l'abscisse fractionnaire est
-     *  désormais le mécanisme PRÉVU, via `axisXAtDay` — et le jour 1 y vaut exactement l'entier du
-     *  mois, donc les ancrages entiers restent alignés. */
-    date: string;
-    /** Ancre mensuelle du point (entier, inchangé) — permet de rejoindre les données du moteur. */
-    monthIndex: number;
-    /** Jour du mois, 1-based. */
-    dayOfMonth: number;
-    /** Valeur au SOIR de ce jour. */
-    value: number;
-    /** `true` si un mouvement DATÉ tombe ce jour-là (information réelle), `false` si le point ne
-     *  doit son mouvement qu'à l'étalement du résidu (interpolation). L'écran s'en sert pour ne pas
-     *  faire passer du lissage pour de la mesure. */
-    isDated: boolean;
-    /** Libellés des mouvements datés du jour, pour l'infobulle. Vide si aucun. */
-    labels: string[];
-}
-
-const DAY_MS = 86_400_000;
-
 /** Nombre de jours du mois (0-based `month`, comme `Date`). */
 export function daysInMonth(year: number, month: number): number {
     return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
 }
 
-function iso(year: number, month: number, day: number): string {
-    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-/**
- * Raffine UN mois en points quotidiens.
- *
- * `startValue` = valeur au dernier jour du mois PRÉCÉDENT (donc l'état d'entrée du mois).
- * `endValue`   = valeur du moteur à la fin de CE mois. Le dernier point rendu vaut EXACTEMENT
- *                `endValue` — c'est l'invariant de raccord, garanti par construction.
- *
- * Les `datedDeltas` sont posés à leur jour. Le RÉSIDU (`endValue − startValue − Σdeltas`) est étalé
- * uniformément sur les jours du mois : c'est la croissance, qui n'a pas de date.
- *
- * ⚠️ Si `startValue` ou `endValue` n'est pas fini, on rend `[]` plutôt qu'une série de zéros :
- * une valeur non finie ne devient JAMAIS un défaut numérique crédible (no-fake-data).
- */
-export function refineMonthToDaily(
-    startValue: number,
-    endValue: number,
-    year: number,
-    month: number,
-    monthIndex: number,
-    datedDeltas: ReadonlyArray<DatedDelta> = [],
-): DailyPoint[] {
-    if (!Number.isFinite(startValue) || !Number.isFinite(endValue)) return [];
-
-    const nDays = daysInMonth(year, month);
-
-    // Regroupe les mouvements datés par jour. Un jour hors [1, nDays] est CLAMPÉ plutôt qu'ignoré :
-    // un abonnement au « 31 » doit tomber le 30 en avril, pas disparaître (il est bien débité).
-    const byDay = new Map<number, { sum: number; labels: string[] }>();
-    let datedTotal = 0;
-    for (const d of datedDeltas) {
-        if (!Number.isFinite(d.amount) || !Number.isFinite(d.day)) continue;
-        const day = Math.min(nDays, Math.max(1, Math.round(d.day)));
-        const slot = byDay.get(day) ?? { sum: 0, labels: [] };
-        slot.sum += d.amount;
-        if (d.label) slot.labels.push(d.label);
-        byDay.set(day, slot);
-        datedTotal += d.amount;
-    }
-
-    // Le résidu est ce que les dates n'expliquent PAS : croissance, rendement, indexation.
-    const residual = endValue - startValue - datedTotal;
-    const perDayResidual = residual / nDays;
-
-    const out: DailyPoint[] = [];
-    let running = startValue;
-    for (let day = 1; day <= nDays; day++) {
-        const slot = byDay.get(day);
-        running += (slot?.sum ?? 0) + perDayResidual;
-        out.push({
-            date: iso(year, month, day),
-            monthIndex,
-            dayOfMonth: day,
-            // Dernier jour : on POSE `endValue` au lieu du cumul, pour tuer la dérive flottante.
-            // Sur 30 additions de `residual/30`, l'écart est de l'ordre de 1e-10 $ — invisible, mais
-            // il ferait échouer un test d'égalité stricte, et surtout il autoriserait la série
-            // quotidienne à ne PAS retomber sur le moteur. L'invariant prime sur l'élégance.
-            value: day === nDays ? endValue : running,
-            isDated: slot !== undefined,
-            labels: slot?.labels ?? [],
-        });
-    }
-    return out;
-}
 
 /** Une valeur mensuelle du moteur, réduite à ce dont le raffinement a besoin. */
 export interface MonthlyAnchor {
@@ -183,32 +98,6 @@ export function finiteAnchorRun(
 }
 
 /**
- * Raffine une FENÊTRE de mois consécutifs.
- *
- * `anchors` doit être trié par `monthIndex` croissant et contenir au moins 2 points : le premier
- * sert de valeur d'ENTRÉE et n'est pas rendu au jour (on n'invente pas le mois d'avant la fenêtre).
- *
- * `deltasFor` fournit les mouvements datés d'un mois donné — c'est l'appelant qui sait aller
- * chercher la paie, les abonnements et l'hypothèque, ce module reste PUR.
- */
-export function refineWindowToDaily(
-    anchors: ReadonlyArray<MonthlyAnchor>,
-    deltasFor?: (anchor: MonthlyAnchor) => ReadonlyArray<DatedDelta>,
-): DailyPoint[] {
-    if (anchors.length < 2) return [];
-    const out: DailyPoint[] = [];
-    for (let i = 1; i < anchors.length; i++) {
-        const prev = anchors[i - 1];
-        const cur = anchors[i];
-        out.push(...refineMonthToDaily(
-            prev.value, cur.value, cur.year, cur.month, cur.monthIndex,
-            deltasFor ? deltasFor(cur) : [],
-        ));
-    }
-    return out;
-}
-
-/**
  * [FUTUR-DAILY] Traduit un `monthIndex` (0 = mois de départ de la projection) en année/mois
  * calendaires. `month` est 0-based, comme `Date`.
  *
@@ -243,18 +132,6 @@ export function isoDate(year: number, month: number, day: number): string {
  */
 export function todayIsoLocal(now: Date = new Date()): string {
     return isoDate(now.getFullYear(), now.getMonth(), now.getDate());
-}
-
-/**
- * Nombre de jours calendaires entre deux dates ISO (`YYYY-MM-DD`), bornes incluses.
- * Sert à décider du niveau de détail : au-delà d'un certain nombre de jours à l'écran, un point par
- * jour n'est plus lisible ET plus rendable — c'est l'appelant qui tranche, avec ce compte.
- */
-export function daySpan(fromIso: string, toIso: string): number {
-    const a = Date.parse(`${fromIso}T00:00:00Z`);
-    const b = Date.parse(`${toIso}T00:00:00Z`);
-    if (!Number.isFinite(a) || !Number.isFinite(b)) return 0;
-    return Math.floor((b - a) / DAY_MS) + 1;
 }
 
 /**

@@ -9,6 +9,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased] — 2026-08-11
 
 ### Ajouts
+- **Tu peux zoomer jusqu'à UN mois affiché — chaque jour fait ~30 px et se sélectionne au premier
+  clic.** Avant, le zoom bloquait à ~5 mois (~150 jours écrasés à ~7 px). Et le détail du jour vit
+  dans l'infobulle, uniquement : le tableau jour-par-jour sous la courbe est retiré (c'est toi qui
+  l'as demandé — « juste dans l'infobulle, pas de nouvel onglet »). Passé et futur, même geste.
+
+### Corrections
+- **La molette ne se coince plus en bout de zoom.** À fenêtre étroite, un cran de zoom déplaçait
+  chaque borne de moins d'un demi-index : l'arrondi le ramenait exactement au même endroit, et
+  chaque cran suivant repartait de là — zoom ET dézoom morts au plancher, en silence. Le cran force
+  maintenant un pas entier quand l'arrondi l'annulerait.
 - **Le passé de la courbe est du RÉEL, jour par jour.** Avant aujourd'hui, chaque journée est
   reconstruite depuis tes vraies transactions datées et le prix de tes titres ce jour-là — plus
   aucune moyenne du mois étalée sur des journées dont l'app connaît la vérité. L'infobulle d'un jour

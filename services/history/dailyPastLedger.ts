@@ -40,6 +40,23 @@ export interface MinimalPastTransaction {
     isTransfer?: boolean;
 }
 
+/** Résultat de la reconstruction : les journées, PLUS ce que l'ancre n'a pas su placer.
+ *  ⚠️ `undatedTotal` / `flowsAfterNowDate` viennent de `reconstructCashHistoryDaily` : l'ancre
+ *  (`computeStartingCash`) compte TOUTE transaction, y compris celles datées au MOIS seul ou datées
+ *  APRÈS aujourd'hui — que la série quotidienne, elle, ne peut pas placer sans inventer un jour.
+ *  Un montant non nul décale TOUT le niveau passé d'autant (mesuré −2 000 $ à l'audit). Le panneau
+ *  qui affichait cet avertissement a été retiré (`[FUTUR-DAILY-INFOBULLE-ONLY]`) : c'est désormais
+ *  au BANDEAU de la vue au jour de le dire — le taire transformerait un décalage connu et mesurable
+ *  en niveau « propre » que rien ne conteste. Le correctif de FOND (retrancher ces flux de l'ancre)
+ *  touche `computeStartingCash`, donc le raccord au présent : plan-first, ticket au BACKLOG. */
+export interface DailyPastLedgerResult {
+    rows: DailyPastRow[];
+    /** Σ des flux datés au MOIS seul (comptés par l'ancre, plaçables nulle part). */
+    undatedTotal: number;
+    /** Σ des flux datés APRÈS aujourd'hui (dans l'ancre, pas encore dans le solde). */
+    flowsAfterNowDate: number;
+}
+
 /** Une journée du passé, reconstruite. Les clés reprennent EXACTEMENT celles du point de graphe :
  *  l'appelant n'a qu'à les recouvrir, et l'infobulle existante les affiche sans code spécifique. */
 export interface DailyPastRow {
@@ -148,7 +165,7 @@ export function depositsOnDay(
  * Rend `[]` quand il n'y a pas de matière (aucune transaction, aucun actif, fenêtre entièrement
  * future) — l'appelant garde alors ce qu'il avait, plutôt qu'une ligne inventée.
  */
-export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastRow[] {
+export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedgerResult {
     const { from, to, today, transactions, currentCash, assets, fx, equityByYear, currentDebtNonImmo } = input;
     const maxDays = input.maxDays ?? 400;
 
@@ -156,17 +173,20 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastRow[]
     // produirait pourtant des points (elle reconduit le dernier prix connu) — des placements PLATS
     // présentés comme mesurés, à côté d'une projection qui, elle, croît. Le même défaut avait déjà
     // été corrigé une fois dans le panneau quotidien ; on ne le réintroduit pas ici.
+    const NONE: DailyPastLedgerResult = { rows: [], undatedTotal: 0, flowsAfterNowDate: 0 };
     const end = to < today ? to : today;
-    if (!from || !end || end < from) return [];
+    if (!from || !end || end < from) return NONE;
 
     const cash = reconstructCashHistoryDaily(transactions, currentCash, today);
-    if (cash.points.length === 0) return [];
+    // ⚠️ Même quand AUCUNE ligne n'est produite, les caveats d'ancre sont rendus : un historique
+    // fait UNIQUEMENT de transactions au mois seul a un `undatedTotal` non nul et zéro point.
+    if (cash.points.length === 0) return { rows: [], undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate };
     const cashByDate = new Map(cash.points.map((p) => [p.date, p]));
 
     const invStart = from < (cash.firstDate ?? from) ? (cash.firstDate ?? from) : from;
     const inv = reconstructPortfolioHistoryDaily(assets, fx, invStart, end, { maxDays });
     const invByDate = new Map(inv.map((p) => [p.date, p]));
-    if (invByDate.size === 0) return [];
+    if (invByDate.size === 0) return { rows: [], undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate };
 
     // Mouvements réels du jour : MÊME base d'exclusion que l'ancre `computeStartingCash`
     // (`isDuplicate` = artefact, `isTransfer` = neutre) — sinon les deux bouts de la même courbe
@@ -190,7 +210,7 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastRow[]
     const out: DailyPastRow[] = [];
     const startMs = Date.parse(`${from}T00:00:00Z`);
     const endMs = Date.parse(`${end}T00:00:00Z`);
-    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return [];
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return { rows: [], undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate };
 
     for (let ms = startMs; ms <= endMs && out.length < maxDays; ms += DAY_MS) {
         const date = new Date(ms).toISOString().slice(0, 10);
@@ -238,5 +258,5 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastRow[]
             hasEstimatedPrice: i.hasEstimatedPrice,
         });
     }
-    return out;
+    return { rows: out, undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate };
 }

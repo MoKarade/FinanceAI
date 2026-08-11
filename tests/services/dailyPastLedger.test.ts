@@ -60,7 +60,7 @@ const base = {
 
 describe('dailyPastLedger — reconstruction du passé au jour', () => {
     it('produit une ligne par jour de la fenêtre où les DEUX sources ont de la matière', () => {
-        const rows = buildDailyPastLedger(base);
+        const { rows } = buildDailyPastLedger(base);
         expect(rows.length).toBeGreaterThan(0);
         expect(rows.every((r) => r.date >= '2026-03-01' && r.date <= '2026-03-05')).toBe(true);
         // Trié, sans trou ni doublon.
@@ -71,12 +71,12 @@ describe('dailyPastLedger — reconstruction du passé au jour', () => {
     it('ne déborde JAMAIS sur le futur, même si la fenêtre le demande', () => {
         // ⚠️ `reconstructPortfolioHistoryDaily` produirait des points au-delà d'aujourd'hui en
         // reconduisant le dernier prix : des placements PLATS présentés comme mesurés.
-        const rows = buildDailyPastLedger({ ...base, to: '2026-06-30' });
+        const { rows } = buildDailyPastLedger({ ...base, to: '2026-06-30' });
         expect(rows.every((r) => r.date <= base.today)).toBe(true);
     });
 
     it('le patrimoine net du jour = Σ comptes + cash + équité immo − dette (source unique)', () => {
-        const rows = buildDailyPastLedger(base);
+        const { rows } = buildDailyPastLedger(base);
         for (const r of rows) {
             const somme = PAST_ACCOUNT_KEYS.reduce((s, k) => s + r[k], 0);
             expect(r.NetWorth).toBe(Math.round(somme + r.Liquidites + r.Immobilier - r.DettesNonImmo));
@@ -84,13 +84,13 @@ describe('dailyPastLedger — reconstruction du passé au jour', () => {
     });
 
     it('l’équité immobilière suit l’ANNÉE (elle n’est pas connue au jour) et la dette est figée', () => {
-        const rows = buildDailyPastLedger(base);
+        const { rows } = buildDailyPastLedger(base);
         expect(new Set(rows.map((r) => r.Immobilier))).toEqual(new Set([120_000]));
         expect(new Set(rows.map((r) => r.DettesNonImmo))).toEqual(new Set([8_000]));
     });
 
     it('les revenus et dépenses du jour sont les VRAIES transactions de ce jour-là', () => {
-        const rows = buildDailyPastLedger(base);
+        const { rows } = buildDailyPastLedger(base);
         const byDate = new Map(rows.map((r) => [r.date, r]));
         expect(byDate.get('2026-03-03')?.Expenses).toBe(150);
         expect(byDate.get('2026-03-03')?.Income).toBe(0);
@@ -102,7 +102,7 @@ describe('dailyPastLedger — reconstruction du passé au jour', () => {
     });
 
     it('exclut doublons et virements — MÊME base que l’ancre `computeStartingCash`', () => {
-        const rows = buildDailyPastLedger({
+        const { rows } = buildDailyPastLedger({
             ...base,
             transactions: [
                 ...txns,
@@ -121,20 +121,20 @@ describe('dailyPastLedger — reconstruction du passé au jour', () => {
         // convention que la version mensuelle (le mois courant vient du moteur). Une ligne « réelle »
         // pour aujourd'hui entrerait en concurrence avec l'ancre du présent : deux vérités pour la
         // même date. Le jour même reste donc ventilé depuis le moteur.
-        const rows = buildDailyPastLedger(base);
+        const { rows } = buildDailyPastLedger(base);
         expect(rows.some((r) => r.date === base.today)).toBe(false);
         expect(rows.at(-1)?.date).toBe('2026-03-04');
     });
 
     it('un jour sans mouvement est signalé comme tel (plateau ≠ donnée manquante)', () => {
-        const rows = buildDailyPastLedger({ ...base, transactions: [txns[0], txns[1]] });
+        const { rows } = buildDailyPastLedger({ ...base, transactions: [txns[0], txns[1]] });
         const quiet = rows.find((r) => r.date === '2026-03-04')!;
         expect(quiet.isDated).toBe(false);
         expect(quiet.labels).toEqual([]);
     });
 
     it('sépare DÉPÔT et RENDEMENT : l’achat du jour n’est pas compté comme un gain', () => {
-        const rows = buildDailyPastLedger(base);
+        const { rows } = buildDailyPastLedger(base);
         const d2 = rows.find((r) => r.date === '2026-03-02')!;
         // 10 titres à 90 $ achetés ce jour-là.
         expect(d2.deposits.CELI).toBeCloseTo(900, 6);
@@ -166,16 +166,43 @@ describe('dailyPastLedger — reconstruction du passé au jour', () => {
     });
 
     it('rend [] plutôt qu’une ligne inventée quand il n’y a pas de matière', () => {
-        expect(buildDailyPastLedger({ ...base, transactions: [] })).toEqual([]);
-        expect(buildDailyPastLedger({ ...base, assets: [] })).toEqual([]);
+        expect(buildDailyPastLedger({ ...base, transactions: [] }).rows).toEqual([]);
+        expect(buildDailyPastLedger({ ...base, assets: [] }).rows).toEqual([]);
         // Fenêtre entièrement dans le futur.
-        expect(buildDailyPastLedger({ ...base, from: '2027-01-01', to: '2027-01-10' })).toEqual([]);
+        expect(buildDailyPastLedger({ ...base, from: '2027-01-01', to: '2027-01-10' }).rows).toEqual([]);
+    });
+
+    it('[ANCHOR-CAVEAT] les flux inplaçables sont RENDUS à l’appelant, pas avalés', () => {
+        // ⚠️ L'ancre (`computeStartingCash`) compte ces flux ; la série quotidienne ne peut pas les
+        // placer. Les taire transformerait un niveau passé DÉCALÉ (mesuré −2 000 $ à l'audit) en
+        // niveau « propre » que rien ne conteste — c'est l'affichage de cet avertissement qui a
+        // failli disparaître avec le panneau supprimé par [FUTUR-DAILY-INFOBULLE-ONLY].
+        const res = buildDailyPastLedger({
+            ...base,
+            transactions: [...txns,
+                { date: '2026-03', amount: -2000, payee: 'Au mois seul' },
+                { date: '2026-03-09', amount: 500, payee: 'Après aujourd’hui' },
+            ],
+        });
+        expect(res.undatedTotal).toBe(-2000);
+        expect(res.flowsAfterNowDate).toBe(500);
+    });
+
+    it('[ANCHOR-CAVEAT] même sans AUCUNE ligne produite, les caveats d’ancre sortent', () => {
+        // Un historique fait uniquement de transactions au mois seul : zéro point quotidien, mais
+        // l'ancre est bel et bien décalée — l'écran doit pouvoir le dire quand même.
+        const res = buildDailyPastLedger({
+            ...base,
+            transactions: [{ date: '2026-03', amount: -750, payee: 'Sans jour' }],
+        });
+        expect(res.rows).toEqual([]);
+        expect(res.undatedTotal).toBe(-750);
     });
 
     it('une transaction datée au MOIS seul ne fabrique aucun jour', () => {
         // La reconstruction du cash exige une date COMPLÈTE : placer un montant à un jour arbitraire
         // serait pire que de l'exclure. On vérifie qu'aucune ligne ne lui est attribuée.
-        const rows = buildDailyPastLedger({
+        const { rows } = buildDailyPastLedger({
             ...base,
             transactions: [...txns, { date: '2026-03', amount: -2000, payee: 'Sans jour' }],
         });

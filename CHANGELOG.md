@@ -15,6 +15,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   l'as demandé — « juste dans l'infobulle, pas de nouvel onglet »). Passé et futur, même geste.
 
 ### Corrections
+- **La vue au jour te prévient quand des transactions ne peuvent pas être placées.** Une transaction
+  datée au mois seul (sans jour) ou datée après aujourd'hui est comptée dans ton solde actuel, mais
+  aucune journée ne peut la porter : tout le niveau des jours passés est alors décalé d'autant. Cet
+  avertissement vivait dans le tableau qui vient d'être retiré — il aurait disparu avec lui. Il
+  s'affiche maintenant dans le bandeau de la vue au jour, avec le montant.
 - **La molette ne se coince plus en bout de zoom.** À fenêtre étroite, un cran de zoom déplaçait
   chaque borne de moins d'un demi-index : l'arrondi le ramenait exactement au même endroit, et
   chaque cran suivant repartait de là — zoom ET dézoom morts au plancher, en silence. Le cran force

@@ -4,13 +4,14 @@
 // « quotidien sur tout, je veux voir le détail si je zoom beaucoup »).
 //
 // ⚠️ POURQUOI UN PANNEAU ET PAS LA COURBE ELLE-MÊME (lot A d'un chantier en deux temps).
-// L'axe X du graphe Futur est CATÉGORIEL : la ligne « Aujourd'hui », la frontière passé/futur, les
-// événements de vie et les icônes-jalons sont tous ancrés sur un `monthIndex` ENTIER apparié comme
-// une catégorie. Y injecter des points quotidiens exige de migrer l'axe sur `date` et de convertir
-// chacun de ces ancrages — un désalignement y serait SILENCIEUX, sur un écran money-critical, et
-// n'est pas vérifiable sans regarder l'écran. Ce panneau donne l'INFORMATION quotidienne tout de
-// suite, sans toucher au tracé ; le rendu quotidien de la courbe est le lot B, à faire comme un
-// changement dédié et couvert en e2e.
+// À la conception, l'axe X du graphe Futur était CATÉGORIEL : « Aujourd'hui », la frontière
+// passé/futur, les événements de vie et les icônes-jalons s'appariaient tous à une CATÉGORIE, donc
+// des abscisses quotidiennes les auraient fait disparaître ou glisser EN SILENCE sur un écran
+// money-critical. Ce panneau donnait l'information quotidienne tout de suite, sans toucher au tracé.
+// ⚠️ MISE À JOUR 2026-08-11 (lot B étape 1) : l'axe est désormais NUMÉRIQUE, les ancrages sont des
+// coordonnées et ce blocage-là est levé. Ce qui reste vrai, et qui justifie encore ce panneau :
+// le moteur n'émet la ventilation PAR COMPTE qu'au MOIS — les aires empilées ne peuvent donc pas
+// passer au jour sans inventer une répartition quotidienne.
 //
 // ⚠️ PASSÉ ET FUTUR N'ONT PAS LE MÊME STATUT, et l'écran le DIT.
 //   • Passé  : reconstruit depuis de VRAIES données (transactions datées, prix datés).

@@ -997,6 +997,17 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   mais bloque toujours `rm -rf` sensible / `--no-verify` / `.env` (en ignorant le corps des messages).
 
 ## Notes
+- ⚠️ **[DOC-STALE-SAME-PR] 2026-08-11 — le changement qui périme SES PROPRES commentaires.** La PR
+  qui migre l'axe en numérique a laissé QUATRE endroits affirmant encore « l'axe X est CATÉGORIEL » :
+  un commentaire 550 lignes plus haut dans le même fichier, l'en-tête de `DailyDetailPanel`, une
+  puce BACKLOG contredisant la puce cochée juste au-dessus (classe `PM-STALE-BACKLOG`), et une entrée
+  d'historique. La revue en a trouvé deux, le `grep` du terme les a tous trouvés. Réflexe : quand un
+  changement invalide une AFFIRMATION (pas seulement une API), **grep le terme** dans `components/`
+  et `docs/` avant de committer — le typecheck ne voit rien, la revue en rate la moitié. Nuance utile :
+  une entrée d'historique DATÉE se marque « périmé depuis … », on ne réécrit pas le passé ; un
+  commentaire vivant, lui, se corrige. Et un commentaire périmé peut cacher une VRAIE raison : celui
+  du hook de zoom invoquait le type de l'axe, alors que ce qui rend son indexation valide est
+  l'espacement UNIFORME des données — la correction a clarifié le vrai invariant.
 - ⚠️ **[FUTUR-DAILY lot B] 2026-08-11 — axe recharts CATÉGORIEL vs NUMÉRIQUE, et la sonde qui ne
   prouvait rien.**
   (1) **Un axe catégoriel apparie les `ReferenceLine`/`ReferenceDot` par VALEUR DE CATÉGORIE** : un

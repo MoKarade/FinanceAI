@@ -262,13 +262,15 @@
         ventilation par compte au jour, exactement la fausse précision que le dépôt s'interdit.
         Donc : au zoom fort, courbe de VN quotidienne + aires mensuelles ou masquées, et l'écran doit
         le DIRE. À valider avec Marc avant de coder.
-  - [ ] **UI lot B — reliquat de l'analyse initiale** : la COURBE elle-même en quotidien. ⚠️ L'axe X du graphe Futur est **CATÉGORIEL**
-        (aucun `type="number"`) : la ligne « Aujourd'hui », la frontière passé/futur, les événements
-        de vie et les icônes-jalons sont tous ancrés sur un `monthIndex` ENTIER apparié comme une
-        CATÉGORIE (`FutureProjection.tsx` l.1000, 1003, 1014, 1046, 1062). Y injecter du quotidien
-        exige soit de migrer l'axe sur `date` en convertissant chaque ancrage, soit de basculer en
-        axe numérique — ce qui change la sémantique de TOUT l'affichage mensuel existant. Un
-        désalignement y serait SILENCIEUX sur un écran money-critical → changement dédié + e2e.
+        ⚠️ **2e prérequis de l'étape 2, trouvé en revue** : `resolvePointFromClick`
+        (`utils/chartTooltip.ts`) et `handleWheel` (`hooks/useTimeChartZoom.ts`) résolvent la
+        position par INDEX DE TABLEAU (`frac × (length − 1)`), en supposant un espacement uniforme.
+        C'est vrai aujourd'hui — tous les producteurs de `monthIndex` incrémentent de 1 sans trou
+        (`buildPastPrefix.ts`, `monthlyOutput.ts`) — donc sur un axe numérique à domaine
+        `[dataMin,dataMax]` la relation position ∝ index tient par transformation affine. Dès que
+        `displayData` portera des `monthIndex` FRACTIONNAIRES, les deux divergeront silencieusement
+        de la position réellement rendue (le clic résout le mauvais point, le curseur de zoom dérive).
+        À traiter EN MÊME TEMPS que l'injection des points quotidiens, pas après.
   - [ ] ⚠️ **Piège de nommage au branchement** (audit) : la reconstruction MENSUELLE nomme `NetWorth`
         un champ qui porte la valeur INVESTIE ; la quotidienne le nomme `InvestedValue` (correct).
         Deux noms pour la même grandeur, sur deux fonctions destinées au même axe.

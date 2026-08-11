@@ -72,6 +72,8 @@
 > `DailyDetailPanel` **BRANCHÉ** dans `FutureProjection` (n'apparaît qu'en zoom).
 >
 > ⚠️ **UI lot B — la COURBE elle-même en quotidien — reste À FAIRE, et ce n'est PAS un branchement.**
+> _(⚠️ PÉRIMÉ depuis le 2026-08-11 — l'axe est passé en NUMÉRIQUE, voir suite 34. Conservé tel quel :
+> c'est l'état des lieux qui a motivé le choix du panneau à l'époque.)_
 > L'axe X du graphe Futur est **CATÉGORIEL** : « Aujourd'hui », la frontière passé/futur, les
 > événements de vie et les icônes-jalons sont ancrés sur un `monthIndex` ENTIER apparié comme
 > CATÉGORIE. Migrer exige de convertir chaque ancrage ; un désalignement y serait SILENCIEUX sur un

@@ -27,6 +27,10 @@ type FinanceStoreState = ReturnType<typeof useFinanceStore.getState>;
 const EMPTY_ASSETS: FinanceStoreState['assets'] = [];
 const EMPTY_RECURRING: NonNullable<FinanceStoreState['subscriptions']> = [];
 const EMPTY_FX: Record<string, number> = {};
+/** Domaine de l'axe X, en CONSTANTE de module : un littéral recréé à chaque rendu ferait comparer
+ *  la prop par identité à recharts sur des re-rendus où les données n'ont PAS bougé (bascule d'une
+ *  série via la légende, par exemple). */
+const X_AXIS_DOMAIN: ['dataMin', 'dataMax'] = ['dataMin', 'dataMax'];
 import { Tab as TabEnum } from '../types';
 import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
 import { FutureDetailModal } from './projection/FutureDetailModal';
@@ -524,9 +528,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
     // [FUTUR-DAILY] Fenêtre à raffiner au jour = la fenêtre ZOOMÉE, traduite en dates calendaires.
     // ⚠️ Le hook de zoom indexe le tableau MENSUEL et c'est très bien ainsi : lui substituer des
-    // points quotidiens casserait son indexation (et l'axe X est CATÉGORIEL, ancré sur `monthIndex`
-    // entier pour les jalons). Le mensuel pilote donc la FENÊTRE, et le quotidien n'est calculé que
-    // pour la remplir — c'est exactement ce que « si je zoom » autorise.
+    // points quotidiens casserait son indexation. Ce qui la rend valide n'est PAS le type de l'axe
+    // (numérique depuis le lot B étape 1) mais l'espacement UNIFORME des données — un point par
+    // mois, sans trou : position ∝ index reste alors vrai par simple transformation affine.
+    // Le mensuel pilote donc la FENÊTRE, et le quotidien n'est calculé que pour la remplir —
+    // c'est exactement ce que « si je zoom » autorise.
     const dailyWindow = useMemo(() => {
         // Garde de zoom EN TÊTE (finding revue #574) : le panneau ne s'affiche qu'en zoom, or ce memo
         // mappait TOUTE `visibleData` — des centaines de mois en vue dézoomée, l'état par défaut —
@@ -1081,7 +1087,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             <XAxis
                                 dataKey="monthIndex"
                                 type="number"
-                                domain={['dataMin', 'dataMax']}
+                                domain={X_AXIS_DOMAIN}
                                 stroke="#666"
                                 tick={{fontSize: 10}}
                                 minTickGap={50}

@@ -403,9 +403,13 @@
         `displayData` portera des `monthIndex` FRACTIONNAIRES, les deux divergeront silencieusement
         de la position réellement rendue (le clic résout le mauvais point, le curseur de zoom dérive).
         À traiter EN MÊME TEMPS que l'injection des points quotidiens, pas après.
-  - [ ] ⚠️ **Piège de nommage au branchement** (audit) : la reconstruction MENSUELLE nomme `NetWorth`
-        un champ qui porte la valeur INVESTIE ; la quotidienne le nomme `InvestedValue` (correct).
-        Deux noms pour la même grandeur, sur deux fonctions destinées au même axe.
+  - [x] ⚠️ **Piège de nommage au branchement** ✅ 2026-08-11 (`[NAMING-INVESTED]`) : la reconstruction
+        MENSUELLE nommait `NetWorth` un champ qui porte la valeur INVESTIE ; renommé `InvestedValue`,
+        aligné sur la quotidienne. ⚠️ Le commentaire du code affirmait « renommer casserait d'autres
+        consommateurs » — constat PÉRIMÉ, jamais re-vérifié (classe `DOC-STALE-IMPOSSIBILITY`) :
+        mesuré au grep + typecheck, AUCUN consommateur de prod ne lisait ce champ, seulement 3 tests.
+        Ce nom avait déjà nourri de faux rapprochements d'audit (« un nom trompeur fabrique des faux
+        findings », CLAUDE.md).
   - [ ] ⚠️ **Divergences d'ANCRE du cash quotidien** — ⚠️ **PLUS latentes depuis #582** (le cash
         quotidien est branché sur la courbe) : `computeStartingCash` compte TOUTE transaction, la
         quotidienne exige une date complète. Un flux daté au mois seul est dans l'ancre mais pas dans

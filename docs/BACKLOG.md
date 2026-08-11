@@ -329,16 +329,26 @@
         vue au jour) ; l'e2e ne l'avait jamais vu parce qu'il cliquait dans le vide au-dessus de la
         pile. Corrigé en passant le conteneur à `onPointerUp` (+ garde pour ne pas doubler l'action
         des pastilles d'événement). L'e2e clique désormais DANS les aires, volontairement.
-  - [ ] **`[FUTUR-DAILY-PAST-REAL]` le PASSÉ au jour depuis les VRAIES séries quotidiennes**
-        (demande Marc 2026-08-11 : « je veux aussi que ça marche pour le passé, en fonction de la
-        valeur de mes comptes, de mes dépenses »). Aujourd'hui les jours du PASSÉ sur la courbe sont
-        interpolés entre des ancres MENSUELLES — alors que `reconstructCashHistoryDaily` et
-        `reconstructPortfolioHistoryDaily` produisent déjà du RÉEL au jour (transactions datées, prix
-        datés) et sont déjà consommés par `DailyDetailPanel`. À brancher sur la courbe : soldes par
-        compte + cash + valeur nette réels avant aujourd'hui, interpolés seulement après. Les
-        dépenses/revenus du jour deviennent alors les VRAIES transactions de ce jour-là.
-        ⚠️ Distinguer à l'écran le RECONSTRUIT du PROJETÉ (le panneau le fait déjà, la courbe non).
-        Ampleur : M.
+  - [x] **`[FUTUR-DAILY-PAST-REAL]` le PASSÉ au jour depuis les VRAIES séries quotidiennes** ✅ 2026-08-11
+        (demande Marc : « je veux aussi que ça marche pour le passé, en fonction de la valeur de mes
+        comptes, de mes dépenses »). `services/history/dailyPastLedger.ts` (13 tests) : soldes par
+        compte + cash + équité immo + valeur nette RÉELS avant aujourd'hui, revenus/dépenses = les
+        VRAIES transactions du jour avec leurs libellés, et la variation d'un compte séparée en
+        DÉPÔT (achats datés, à leur prix d'achat) vs RENDEMENT (le reste). Valeur nette via
+        `computeRawNetWorth` (source unique), jamais une copie de la formule.
+        ⚠️ Le point réel est reconstruit **à partir de rien**, pas en écrasant quelques champs du
+        point projeté : un `{...projeté, ...réel}` laisserait filtrer des dizaines de valeurs
+        PROJETÉES (impôt dormant, rentes, solde d'impôt, cotisations) dans une journée présentée
+        comme réelle. Ce qui n'est pas mesuré est ABSENT, donc « — ».
+        ⚠️ Une journée n'est produite que si les DEUX sources ont de la matière ce jour-là : cash
+        seul donnerait un patrimoine amputé de tout le portefeuille — crédible et faux.
+        ⚠️ AUJOURD'HUI n'est pas reconstruit (la reconstruction s'arrête à la veille, par
+        construction) : le présent vient de l'ancre du moteur, sinon deux vérités pour la même date.
+        ⚠️ Bornée à aujourd'hui : `reconstructPortfolioHistoryDaily` produit volontiers des jours
+        FUTURS plats en reconduisant le dernier prix — le même défaut avait déjà été corrigé une
+        fois dans le panneau quotidien.
+        Limites assumées et DITES à l'écran : équité immo connue à l'ANNÉE (palier), dettes figées
+        au niveau actuel (Option A), badge « Réel / Projeté » + âge du prix dans l'infobulle.
   - [ ] **`[FUTUR-DAILY-CADENCE]` cadence de paie dérivée des documents** (demande Marc 2026-08-11 :
         « je veux que ça dépende des PDF que je donne ou ce que j'indique à Claude… je veux pour
         l'instant que ce soit jeudi hebdo »). Aujourd'hui `DEFAULT_PAY_DAY_OF_WEEK` est un défaut de

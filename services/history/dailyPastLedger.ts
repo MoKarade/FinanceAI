@@ -1,0 +1,242 @@
+// services/history/dailyPastLedger.ts
+//
+// [FUTUR-DAILY-PAST-REAL] Le PASSÉ de la courbe Futur, jour par jour, à partir de tes VRAIES données.
+//
+// ⚠️ POURQUOI CE MODULE EXISTE (demande Marc 2026-08-11 : « je veux aussi que ça marche pour le
+// passé, en fonction de la valeur de mes comptes, de mes dépenses »).
+// La ventilation au jour (`services/projection/dailyLedger.ts`) INTERPOLE entre deux points
+// MENSUELS. C'est la seule chose possible pour le futur — mais pas pour le passé, où l'app connaît
+// les dates EXACTES : chaque transaction porte son jour, chaque prix d'actif porte le sien. Étaler
+// une moyenne mensuelle sur des journées dont on connaît la vérité, c'est remplacer une mesure par
+// un lissage. Ce module remet la mesure à sa place.
+//
+// ⚠️ CE QUI EST RÉELLEMENT MESURÉ, ET CE QUI NE L'EST PAS.
+//   ✅ Liquidités        — remontée depuis le solde actuel en défaisant les transactions datées.
+//   ✅ Comptes de placement — Σ détention(t) × prix(t), converti en CAD, par régime.
+//   ✅ Revenus / dépenses du jour — les VRAIES transactions de ce jour-là, avec leurs libellés.
+//   ✅ Dépôts vs rendement — le dépôt du jour vient des ACHATS datés ; le reste de la variation est
+//                            du mouvement de marché. Les deux sont donc de l'information, pas une clé.
+//   ⚠️ Équité immobilière — connue à l'ANNÉE (amortissement), pas au jour : palier annuel.
+//   ⚠️ Dettes             — figées au niveau ACTUEL (décision Marc, Option A, `pastNetWorth.ts`) :
+//                            l'app n'a pas l'historique d'amortissement des dettes génériques.
+//
+// ⚠️ CE MODULE NE FABRIQUE JAMAIS UN JOUR. Une date hors de la période où les DEUX reconstructions
+// (cash ET placements) ont de la matière ne produit AUCUNE ligne — l'appelant garde alors la valeur
+// interpolée, qui est honnête pour ce qu'elle est. Un jour à moitié réel serait pire que les deux.
+
+import { computeRawNetWorth } from '../projection/netWorth';
+import { reconstructCashHistoryDaily } from './reconstructCashHistory';
+import { reconstructPortfolioHistoryDaily, type MinimalAsset } from './reconstructPortfolioHistory';
+
+/** Les six régimes de placement, dans l'ordre d'affichage du graphe. */
+export const PAST_ACCOUNT_KEYS = ['CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto'] as const;
+export type PastAccountKey = (typeof PAST_ACCOUNT_KEYS)[number];
+
+export interface MinimalPastTransaction {
+    date: string;
+    amount: number;
+    payee?: string;
+    isDuplicate?: boolean;
+    isTransfer?: boolean;
+}
+
+/** Une journée du passé, reconstruite. Les clés reprennent EXACTEMENT celles du point de graphe :
+ *  l'appelant n'a qu'à les recouvrir, et l'infobulle existante les affiche sans code spécifique. */
+export interface DailyPastRow {
+    /** Date ISO `YYYY-MM-DD`. */
+    date: string;
+    Liquidites: number;
+    CELI: number; CELIAPP: number; REER: number; REEE: number; NonReg: number; Crypto: number;
+    Immobilier: number;
+    DettesNonImmo: number;
+    NetWorth: number;
+    /** Entrées d'argent du jour (transactions positives). */
+    Income: number;
+    /** Sorties du jour, en valeur POSITIVE (convention du moteur : `Expenses` est un coût). */
+    Expenses: number;
+    Savings: number;
+    /** Flux net de liquidités du jour (= Income − Expenses, signé). */
+    NetTransferLiquid: number;
+    /** Achats de titres datés ce jour-là, par régime (CAD). */
+    deposits: Record<PastAccountKey, number>;
+    /** Variation de valeur non expliquée par les achats = mouvement de marché (CAD). */
+    growth: Record<PastAccountKey, number>;
+    /** Libellés des mouvements réels du jour (payees), pour l'infobulle. */
+    labels: string[];
+    /** Au moins un mouvement réel ce jour-là. */
+    isDated: boolean;
+    /** Âge du prix le plus vieux composant le point — un plateau long n'est pas une valeur stable. */
+    priceAgeMaxDays: number;
+    /** Au moins un titre valorisé au prix ACTUEL faute d'historique : le point est une estimation. */
+    hasEstimatedPrice: boolean;
+}
+
+export interface BuildDailyPastInput {
+    /** Bornes de la fenêtre regardée (ISO). Le résultat est borné à `min(to, today)`. */
+    from: string;
+    to: string;
+    /** Aujourd'hui (ISO local) — sépare le reconstruit du projeté. */
+    today: string;
+    transactions: ReadonlyArray<MinimalPastTransaction>;
+    /** Solde de liquidités AUJOURD'HUI — l'ancre d'où l'on remonte. */
+    currentCash: number;
+    assets: MinimalAsset[];
+    fx: Record<string, number>;
+    /** Équité immobilière par ANNÉE (déjà nette d'hypothèque). */
+    equityByYear: ReadonlyMap<number, number>;
+    /** Dettes hors hypothèque au niveau ACTUEL (Option A). */
+    currentDebtNonImmo: number;
+    /** Garde-fou de volume : au-delà, on ne reconstruit pas (le graphe ne va pas jusque-là). */
+    maxDays?: number;
+}
+
+const DAY_MS = 86_400_000;
+
+const emptyByAccount = (): Record<PastAccountKey, number> => ({
+    CELI: 0, CELIAPP: 0, REER: 0, REEE: 0, NonReg: 0, Crypto: 0,
+});
+
+/** Régime d'un actif, replié sur `NonReg` — MÊME table que `reconstructPortfolioHistoryDaily`
+ *  (marge et « autre » y sont déjà rangés en non-enregistré). */
+function accountKeyOf(a: MinimalAsset): PastAccountKey {
+    switch (a.accountType) {
+        case 'CELI': return 'CELI';
+        case 'CELIAPP': return 'CELIAPP';
+        case 'REER': return 'REER';
+        case 'REEE': return 'REEE';
+        case 'CRYPTO': return 'Crypto';
+        default: return 'NonReg';
+    }
+}
+
+function fxToCad(currency: string, fx: Record<string, number>): number {
+    if (!currency || currency === 'CAD') return 1;
+    const r = fx[currency];
+    return typeof r === 'number' && r > 0 ? r : 1;
+}
+
+/**
+ * Achats datés d'un jour donné, par régime, en CAD.
+ *
+ * ⚠️ On valorise l'achat à SON prix d'achat (`purchase.price`), pas au cours du jour : c'est
+ * l'argent réellement SORTI du compte pour entrer dans le titre. C'est ce qui rend la ligne
+ * « Dépôts » de l'infobulle exacte, et donc la ligne « Rendement » (le reste) exacte aussi.
+ */
+export function depositsOnDay(
+    assets: ReadonlyArray<MinimalAsset>,
+    fx: Record<string, number>,
+    day: string,
+): Record<PastAccountKey, number> {
+    const out = emptyByAccount();
+    for (const a of assets) {
+        const rate = fxToCad(a.currency, fx);
+        const key = accountKeyOf(a);
+        for (const p of a.purchases ?? []) {
+            if (!p?.date || p.date.slice(0, 10) !== day) continue;
+            const qty = Number(p.quantity);
+            const price = Number(p.price);
+            if (!Number.isFinite(qty) || !Number.isFinite(price)) continue;
+            out[key] += qty * price * rate;
+        }
+    }
+    return out;
+}
+
+/**
+ * Reconstruit le passé JOUR PAR JOUR sur la fenêtre demandée.
+ *
+ * Rend `[]` quand il n'y a pas de matière (aucune transaction, aucun actif, fenêtre entièrement
+ * future) — l'appelant garde alors ce qu'il avait, plutôt qu'une ligne inventée.
+ */
+export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastRow[] {
+    const { from, to, today, transactions, currentCash, assets, fx, equityByYear, currentDebtNonImmo } = input;
+    const maxDays = input.maxDays ?? 400;
+
+    // Borne HAUTE à aujourd'hui : au-delà, ce n'est plus du reconstruit. `reconstructPortfolioHistoryDaily`
+    // produirait pourtant des points (elle reconduit le dernier prix connu) — des placements PLATS
+    // présentés comme mesurés, à côté d'une projection qui, elle, croît. Le même défaut avait déjà
+    // été corrigé une fois dans le panneau quotidien ; on ne le réintroduit pas ici.
+    const end = to < today ? to : today;
+    if (!from || !end || end < from) return [];
+
+    const cash = reconstructCashHistoryDaily(transactions, currentCash, today);
+    if (cash.points.length === 0) return [];
+    const cashByDate = new Map(cash.points.map((p) => [p.date, p]));
+
+    const invStart = from < (cash.firstDate ?? from) ? (cash.firstDate ?? from) : from;
+    const inv = reconstructPortfolioHistoryDaily(assets, fx, invStart, end, { maxDays });
+    const invByDate = new Map(inv.map((p) => [p.date, p]));
+    if (invByDate.size === 0) return [];
+
+    // Mouvements réels du jour : MÊME base d'exclusion que l'ancre `computeStartingCash`
+    // (`isDuplicate` = artefact, `isTransfer` = neutre) — sinon les deux bouts de la même courbe
+    // ne partagent pas leur base et divergent (classe PH4D).
+    const incomeByDay = new Map<string, number>();
+    const expenseByDay = new Map<string, number>();
+    const labelsByDay = new Map<string, string[]>();
+    for (const t of transactions) {
+        if (!t?.date || t.date.length < 10 || !Number.isFinite(t.amount)) continue;
+        if (t.isDuplicate || t.isTransfer) continue;
+        const d = t.date.slice(0, 10);
+        if (t.amount >= 0) incomeByDay.set(d, (incomeByDay.get(d) ?? 0) + t.amount);
+        else expenseByDay.set(d, (expenseByDay.get(d) ?? 0) + Math.abs(t.amount));
+        if (t.payee) {
+            const slot = labelsByDay.get(d) ?? [];
+            if (slot.length < 6) slot.push(t.payee); // l'infobulle en liste quelques-uns, pas 40
+            labelsByDay.set(d, slot);
+        }
+    }
+
+    const out: DailyPastRow[] = [];
+    const startMs = Date.parse(`${from}T00:00:00Z`);
+    const endMs = Date.parse(`${end}T00:00:00Z`);
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return [];
+
+    for (let ms = startMs; ms <= endMs && out.length < maxDays; ms += DAY_MS) {
+        const date = new Date(ms).toISOString().slice(0, 10);
+        const c = cashByDate.get(date);
+        const i = invByDate.get(date);
+        // ⚠️ Les DEUX sont exigés. Un jour avec le cash mais sans les placements donnerait un
+        // patrimoine amputé de tout le portefeuille — un chiffre parfaitement crédible et faux.
+        if (!c || !i) continue;
+
+        const prev = invByDate.get(new Date(ms - DAY_MS).toISOString().slice(0, 10));
+        const dep = depositsOnDay(assets, fx, date);
+        const growth = emptyByAccount();
+        if (prev) {
+            for (const k of PAST_ACCOUNT_KEYS) growth[k] = i[k] - prev[k] - dep[k];
+        }
+
+        const immo = equityByYear.get(Number(date.slice(0, 4))) ?? 0;
+        const income = incomeByDay.get(date) ?? 0;
+        const expenses = expenseByDay.get(date) ?? 0;
+
+        out.push({
+            date,
+            Liquidites: c.cash,
+            CELI: i.CELI, CELIAPP: i.CELIAPP, REER: i.REER, REEE: i.REEE, NonReg: i.NonReg, Crypto: i.Crypto,
+            Immobilier: immo,
+            DettesNonImmo: currentDebtNonImmo,
+            // SOURCE UNIQUE : `computeRawNetWorth` via le helper du passé — jamais une copie locale
+            // de la formule. `Immobilier` est DÉJÀ net d'hypothèque (ne jamais re-soustraire).
+            NetWorth: Math.round(computeRawNetWorth({
+                liquid: c.cash,
+                celi: i.CELI, celiapp: i.CELIAPP, reer: i.REER, nonReg: i.NonReg,
+                crypto: i.Crypto, reee: i.REEE,
+                realEstateEquity: immo,
+                liquidDebt: 0, smithManoeuvreDebt: 0, activeDebtsTotal: currentDebtNonImmo,
+            })),
+            Income: income,
+            Expenses: expenses,
+            Savings: income - expenses,
+            NetTransferLiquid: income - expenses,
+            deposits: dep,
+            growth,
+            labels: labelsByDay.get(date) ?? [],
+            isDated: c.isDated || income !== 0 || expenses !== 0,
+            priceAgeMaxDays: i.priceAgeMaxDays,
+            hasEstimatedPrice: i.hasEstimatedPrice,
+        });
+    }
+    return out;
+}

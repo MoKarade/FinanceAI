@@ -9,6 +9,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased] — 2026-08-11
 
 ### Ajouts
+- **Le passé de la courbe est du RÉEL, jour par jour.** Avant aujourd'hui, chaque journée est
+  reconstruite depuis tes vraies transactions datées et le prix de tes titres ce jour-là — plus
+  aucune moyenne du mois étalée sur des journées dont l'app connaît la vérité. L'infobulle d'un jour
+  passé te montre tes vraies dépenses et leurs libellés, tes soldes par compte, et sépare ce que tu
+  as DÉPOSÉ de ce que le marché t'a RAPPORTÉ. Un badge « Réel » ou « Projeté » te dit à chaque jour
+  de quoi tu regardes, et l'infobulle prévient quand un prix utilisé date de plus d'une semaine.
 - **Tout est maintenant calculé au JOUR, pas seulement la valeur nette.** En vue jour, l'infobulle
   affiche exactement les mêmes lignes qu'au mois — soldes par compte, dépôts, rendement, paie,
   dépenses de vie, impôts — mais avec **les montants de CE jour-là**. Les aires par compte

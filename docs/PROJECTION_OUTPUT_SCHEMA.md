@@ -56,6 +56,36 @@ d'autant). Les confondre creusait un faux trou dans le patrimoine net le jour de
 
 ⚠️ Un champ que le mois n'émet pas reste **absent** du jour — jamais un `0` crédible.
 
+### Le PASSÉ au jour : mesure, pas interpolation
+
+> `services/history/dailyPastLedger.ts` — [FUTUR-DAILY-PAST-REAL], demande Marc 2026-08-11.
+
+La ventilation ci-dessus interpole entre deux points mensuels. C'est la seule chose possible pour le
+futur — pas pour le passé, où l'app connaît les dates EXACTES. Pour tout jour **antérieur à
+aujourd'hui**, le point de la courbe est donc RECONSTRUIT et remplace le point ventilé :
+
+| Champ | Source réelle |
+|---|---|
+| `Liquidites` | `reconstructCashHistoryDaily` — remontée depuis le solde actuel en défaisant les transactions datées |
+| `CELI` … `Crypto` | `reconstructPortfolioHistoryDaily` — Σ détention(t) × prix(t), converti en CAD |
+| `Income` / `Expenses` / `Savings` | les VRAIES transactions du jour (mêmes exclusions que `computeStartingCash` : `isDuplicate`, `isTransfer`) |
+| `NetTransfer<Compte>` | achats datés du jour, valorisés à leur **prix d'achat** (l'argent réellement sorti) |
+| `MarketGrowth<Compte>` | Δ solde − dépôts du jour = le mouvement de marché |
+| `NetWorth` | `computeRawNetWorth` (source unique) sur ces composantes − dettes |
+| `Immobilier` | équité par **année** (palier — l'amortissement n'est pas connu au jour) |
+| `DettesNonImmo` | niveau **actuel**, figé (Option A, `pastNetWorth.ts`) |
+
+⚠️ Le point réel est construit **à partir de rien**, jamais par `{...projeté, ...réel}` : sinon des
+dizaines de champs projetés (impôt dormant, rentes, solde d'impôt, cotisations) survivraient dans une
+journée présentée comme réelle. Tout ce qui n'est pas mesuré reste **absent**, donc affiché « — ».
+
+⚠️ Trois bornes, toutes testées : une journée n'est produite que si **cash ET placements** ont de la
+matière ; **aujourd'hui n'est pas reconstruit** (la reconstruction s'arrête à la veille — le présent
+vient de l'ancre du moteur) ; et rien n'est produit **au-delà d'aujourd'hui**.
+
+Le point porte `dayIsReal`, `priceAgeMaxDays` et `hasEstimatedPrice` : l'infobulle affiche un badge
+« Réel / Projeté » et prévient quand le prix utilisé date de plus d'une semaine.
+
 ## Champs d'un point mensuel (mode déterministe)
 
 > En mode Monte Carlo, seuls `{ NetWorth, monthIndex, P10?, P50?, P90? }` sont peuplés.

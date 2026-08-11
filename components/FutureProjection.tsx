@@ -71,6 +71,8 @@ import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { DailyDetailPanel } from './projection/DailyDetailPanel';
 import { isoDate, todayIsoLocal, daysInMonth, finiteAnchorRun, calendarFromMonthIndex, axisXAtDay, dailyWindowRange } from '../services/projection/dailyRefine';
 import { buildDailyLedger, type DailyLedgerPoint } from '../services/projection/dailyLedger';
+import { buildDailyPastLedger, PAST_ACCOUNT_KEYS } from '../services/history/dailyPastLedger';
+import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCompactCAD } from '../utils/format';
 import { NO_DATA_LABEL } from './ui/emptyAware';
@@ -685,6 +687,33 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // ⚠️ Le zoom, lui, reste MENSUEL : `useTimeChartZoom` indexe le tableau mensuel et c'est sa
     // fenêtre qui décide. On ne substitue que la SÉRIE RENDUE. Découpler les deux éviterait de
     // réécrire la logique de zoom/pan pour un gain nul.
+    // [FUTUR-DAILY-PAST-REAL] Les jours du PASSÉ, reconstruits depuis les VRAIES données (demande
+    // Marc 2026-08-11 : « je veux aussi que ça marche pour le passé, en fonction de la valeur de mes
+    // comptes, de mes dépenses »). Sans ça, un jour d'hier était INTERPOLÉ entre deux points mensuels
+    // — un lissage là où l'app connaît la vérité au jour près (transactions datées, prix datés).
+    //
+    // ⚠️ Dépendances PRIMITIVES (`from`/`to`/`today`) et non l'objet `dailyWindow` : celui-ci est
+    // recréé à CHAQUE frame de zoom/pan, ce qui rejouerait la reconstruction complète 60 fois par
+    // seconde. Même précaution que le panneau quotidien, pour la même raison.
+    const dailyWindowFrom = dailyWindow?.from;
+    const dailyWindowTo = dailyWindow?.to;
+    const dailyWindowToday = dailyWindow?.today;
+    const dailyPastByDate = useMemo(() => {
+        if (!dailyWindowFrom || !dailyWindowTo || !dailyWindowToday) return null;
+        const rows = buildDailyPastLedger({
+            from: dailyWindowFrom,
+            to: dailyWindowTo,
+            today: dailyWindowToday,
+            transactions,
+            currentCash: calculatedStartingCash || 0,
+            assets: storeAssets,
+            fx: fxRates,
+            equityByYear: reconstructRealEstateEquityByYear(realEstateGoals, startYear),
+            currentDebtNonImmo,
+        });
+        return rows.length ? new Map(rows.map((r) => [r.date, r])) : null;
+    }, [dailyWindowFrom, dailyWindowTo, dailyWindowToday, transactions, calculatedStartingCash, storeAssets, fxRates, realEstateGoals, startYear, currentDebtNonImmo]);
+
     const dailyChartData = useMemo<ProjectionChartPoint[] | null>(() => {
         if (!zoom.isZoomed) return null;
         const vis = zoom.visibleData as ProjectionChartPoint[];
@@ -715,18 +744,74 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         });
         if (days.length === 0) return null;
 
-        return days.map((d) => {
+        const merged = days.map((d) => {
             const { year, month } = calendarFromMonthIndex(startYear, startMonth, d.hostMonthIndex);
-            return {
-                ...d,
-                // ⚠️ Abscisse FRACTIONNAIRE : c'est ce que l'axe numérique (étape 1) rend possible.
-                // `axisXAtDay` garantit que le jour 1 vaut EXACTEMENT l'entier du mois, donc les
-                // ancrages entiers (« Aujourd'hui », frontière, jalons) restent alignés.
-                // `hostMonthIndex` reste la clé de jointure vers le mois du moteur.
-                monthIndex: axisXAtDay(d.hostMonthIndex, d.dayOfMonth, year, month),
-            } as DailyChartPoint as unknown as ProjectionChartPoint;
+            // ⚠️ Abscisse FRACTIONNAIRE : c'est ce que l'axe numérique (étape 1) rend possible.
+            // `axisXAtDay` garantit que le jour 1 vaut EXACTEMENT l'entier du mois, donc les
+            // ancrages entiers (« Aujourd'hui », frontière, jalons) restent alignés.
+            // `hostMonthIndex` reste la clé de jointure vers le mois du moteur.
+            const x = axisXAtDay(d.hostMonthIndex, d.dayOfMonth, year, month);
+            const real = dailyPastByDate?.get(d.dayIso);
+            if (!real) return { ...d, monthIndex: x } as DailyChartPoint as unknown as ProjectionChartPoint;
+
+            // ⚠️ On RECONSTRUIT le point à partir de rien plutôt que d'écraser quelques champs du
+            // point projeté. Un `{...projeté, ...réel}` laisserait filtrer des dizaines de valeurs
+            // PROJETÉES (impôt dormant, rentes, solde d'impôt, cotisations…) dans une journée
+            // présentée comme RÉELLE — des chiffres crédibles, invérifiables, et faux par nature.
+            // Ce qui n'est pas mesuré doit être ABSENT, donc affiché « — ».
+            const point: Record<string, unknown> = {
+                monthIndex: x,
+                hostMonthIndex: d.hostMonthIndex,
+                dayIso: d.dayIso,
+                dayOfMonth: d.dayOfMonth,
+                dateLabel: d.dateLabel,
+                age: d.age,
+                year: d.year,
+                isDailyPoint: true,
+                dayIsReal: true,
+                dayIsDated: real.isDated,
+                dayLabels: real.labels,
+                priceAgeMaxDays: real.priceAgeMaxDays,
+                hasEstimatedPrice: real.hasEstimatedPrice,
+                Liquidites: real.Liquidites,
+                Immobilier: real.Immobilier,
+                DettesNonImmo: real.DettesNonImmo,
+                NetWorth: real.NetWorth,
+                Income: real.Income,
+                Expenses: real.Expenses,
+                Savings: real.Savings,
+                NetTransferLiquid: real.NetTransferLiquid,
+            };
+            for (const k of PAST_ACCOUNT_KEYS) {
+                point[k] = real[k];
+                point[`NetTransfer${k}`] = real.deposits[k];
+                point[`MarketGrowth${k}`] = real.growth[k];
+            }
+            return point as unknown as ProjectionChartPoint;
         });
-    }, [zoom.isZoomed, zoom.visibleData, startYear, startMonth, storeRecurring, dailyMonthlyNet, dailyMonthlyDebt]);
+
+        // ⚠️ Les écarts jour-à-jour se recalculent APRÈS la fusion : `buildDailyLedger` les avait
+        // posés sur des valeurs projetées, que le passé réel vient de remplacer. Les laisser tels
+        // quels afficherait une variation qui ne correspond à AUCUN des deux points affichés.
+        for (let i = 1; i < merged.length; i++) {
+            const prevP = merged[i - 1] as unknown as Record<string, unknown>;
+            const curP = merged[i] as unknown as Record<string, unknown>;
+            for (const [diffKey, srcKey] of [['diffNW', 'NetWorth'], ['diffCELI', 'CELI'], ['diffREER', 'REER'], ['diffLiquid', 'Liquidites']] as const) {
+                const now = curP[srcKey];
+                const before = prevP[srcKey];
+                if (typeof now === 'number' && typeof before === 'number' && Number.isFinite(now) && Number.isFinite(before)) {
+                    curP[diffKey] = now - before;
+                } else {
+                    delete curP[diffKey];
+                }
+            }
+        }
+        // Le 1er jour de la fenêtre n'a pas de veille connue : aucun `diff*` (jamais « +0 $ » en vert).
+        for (const k of ['diffNW', 'diffCELI', 'diffREER', 'diffLiquid']) {
+            delete (merged[0] as unknown as Record<string, unknown>)[k];
+        }
+        return merged;
+    }, [zoom.isZoomed, zoom.visibleData, startYear, startMonth, storeRecurring, dailyMonthlyNet, dailyMonthlyDebt, dailyPastByDate]);
 
     /**
      * Point à passer à la modale « Détail complet ».
@@ -1331,10 +1416,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     <p role="status" className="mt-2 rounded-card border border-primary/25 bg-primary/5 px-3 py-2 text-tiny text-ink-200">
                         <strong className="text-primary">Vue au jour</strong> — chaque point de la courbe est
                         une journée, et <strong className="text-ink-100">tous les montants sont ceux de ce
-                        jour-là</strong> : soldes par compte, paie, dépenses, impôts. Ce que l'app sait dater
-                        (paie du jeudi, charges récurrentes à leur quantième, solde d'impôt à l'échéance)
-                        tombe au bon jour ; le rendement du marché, lui, n'a pas de date connue et reste
-                        réparti sur le mois — l'infobulle le dit pour chaque jour. Les bandes Monte Carlo
+                        jour-là</strong> : soldes par compte, paie, dépenses, impôts.
+                        <strong className="text-ink-100"> Avant aujourd'hui, c'est du RÉEL</strong> —
+                        reconstruit depuis tes transactions datées et le prix de tes titres ce jour-là, pas
+                        une moyenne du mois. Après, c'est projeté : ce que l'app sait dater (paie du jeudi,
+                        charges récurrentes à leur quantième, solde d'impôt à l'échéance) tombe au bon jour,
+                        et le rendement du marché — qui n'a aucune date connue — reste réparti sur le mois.
+                        L'infobulle indique pour chaque jour s'il est réel ou projeté. Les bandes Monte Carlo
                         restent masquées : ce sont des percentiles mensuels, les afficher au jour serait une
                         précision inventée.
                     </p>

@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-11 (suite 38) — `[FUTUR-DAILY-PAST-REAL]` : le passé au jour devient RÉEL
+> Seconde moitié de la demande de Marc (« je veux aussi que ça marche pour le passé, en fonction de
+> la valeur de mes comptes, de mes dépenses »).
+> - **Avant** : les jours du passé étaient INTERPOLÉS entre deux ancres mensuelles — un lissage là où
+>   l'app connaît la vérité au jour près (transactions datées, prix datés), et où les fonctions de
+>   reconstruction existaient déjà, consommées par `DailyDetailPanel` mais PAS par la courbe.
+> - **Livré** : `services/history/dailyPastLedger.ts` (13 tests). Soldes par compte + cash + immo +
+>   valeur nette réels, revenus/dépenses = vraies transactions du jour (libellés compris), et la
+>   variation d'un compte séparée en DÉPÔT (achats datés à leur prix d'achat) vs RENDEMENT.
+> - ⚠️ **Le point réel est construit À PARTIR DE RIEN**, pas par `{...projeté, ...réel}` : sinon des
+>   dizaines de champs PROJETÉS (impôt dormant, rentes, solde d'impôt) survivraient dans une journée
+>   présentée comme réelle. Ce qui n'est pas mesuré est ABSENT.
+> - ⚠️ Une journée n'existe que si cash ET placements ont de la matière ; aujourd'hui n'est pas
+>   reconstruit (la reconstruction s'arrête à la veille) ; bornée à aujourd'hui pour ne pas afficher
+>   des placements plats « reconstruits » sur le futur.
+> - Badge **Réel / Projeté** dans l'infobulle + avertissement quand le prix utilisé date de > 7 jours.
+> - Gate vert : typecheck, lint, **3 748 tests / 326 fichiers**, build, e2e « sélection d'un jour ».
+> - **Reste** : `[FUTUR-DAILY-CADENCE]` (cadence de paie dérivée des relevés) et
+>   `[FUTUR-DAILY-TOUCH]` (pincement au doigt, à cadrer avec Marc).
+
 > ## 🟢 Session 2026-08-11 (suite 37) — `[FUTUR-DAILY-FULL]` : la vue au jour ne CALCULAIT rien au jour
 > **Retour de Marc, capture à l'appui** : « ça me dit encore septembre 2026 et pas le jour […] je
 > veux que tous les calculs soient faits pour chaque jour, je veux que tout soit ajusté au jour,

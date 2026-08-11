@@ -231,6 +231,17 @@
         faire DESCENDRE un solde) et l'ANNUEL compté douze fois.
   - [x] **UI lot A** — `components/projection/DailyDetailPanel.tsx` : le détail jour par jour de la
         fenêtre regardée, sous la courbe ✅ 2026-08-06.
+  - [x] **UI lot A2 — infobulle + par compte** (demande Marc 2026-08-09 : « avec l'info bulle dans
+        futur je veux voir le détail par jour et le passé je veux voir le détail par jour et par
+        compte aussi ») ✅ 2026-08-11. Infobulle : bloc « Jour par jour » du mois SURVOLÉ (l'appelant
+        raffine un seul mois, l'infobulle reste passive) — jours à mouvement daté surlignés, le pied
+        dit que le reste est interpolé. Passé : 6 colonnes de régime, données déjà calculées par
+        `reconstructPortfolioHistoryDaily` et jusqu'ici JETÉES à l'affichage.
+        ⚠️ **Défaut trouvé en écrivant le test** : la reconstruction n'était pas bornée à aujourd'hui
+        → elle produisait un point pour CHAQUE jour demandé, y compris futur, en reconduisant le
+        dernier prix. Les lignes futures montraient donc des placements PLATS présentés comme
+        reconstruits, à côté d'une colonne « Projeté » qui, elle, croît. Bornée à `min(to, today)` ;
+        test discriminant prouvé (sans la borne : « 1 000 $ » au lieu de « — »).
   - [ ] **UI lot B** — la COURBE elle-même en quotidien. ⚠️ L'axe X du graphe Futur est **CATÉGORIEL**
         (aucun `type="number"`) : la ligne « Aujourd'hui », la frontière passé/futur, les événements
         de vie et les icônes-jalons sont tous ancrés sur un `monthIndex` ENTIER apparié comme une

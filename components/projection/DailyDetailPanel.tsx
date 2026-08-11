@@ -32,6 +32,18 @@ import { datedDeltasForMonth, weeklyDeltasForMonth, type MinimalRecurring } from
  *  de lignes. Choisi pour couvrir confortablement un trimestre de lecture fine. */
 export const DAILY_DETAIL_MAX_DAYS = 120;
 
+/** [Demande Marc 2026-08-09] Colonnes de ventilation par COMPTE, dans l'ordre des régimes.
+ *  Les clés correspondent EXACTEMENT aux buckets de `reconstructPortfolioHistoryDaily`
+ *  (dérivés d'`Asset.accountType`) : pas de mapping parallèle qui pourrait diverger. */
+export const ACCOUNT_COLUMNS = [
+    { key: 'CELI', label: 'CELI' },
+    { key: 'CELIAPP', label: 'CELIAPP' },
+    { key: 'REER', label: 'REER' },
+    { key: 'REEE', label: 'REEE' },
+    { key: 'NonReg', label: 'Non-enr.' },
+    { key: 'Crypto', label: 'Crypto' },
+] as const;
+
 export interface DailyDetailPanelProps {
     /** Bornes de la fenêtre regardée, en dates ISO 'YYYY-MM-DD'. */
     from: string;
@@ -59,8 +71,13 @@ interface Row {
     isPast: boolean;
     /** Liquidités — `null` quand la date sort de l'historique connu (jamais un 0 crédible). */
     cash: number | null;
-    /** Valeur des placements, ventilée. `null` hors période reconstruite. */
+    /** Valeur des placements, TOUS régimes confondus. `null` hors période reconstruite. */
     invested: number | null;
+    /** [Demande Marc] Ventilation par COMPTE — le passé seulement. `reconstructPortfolioHistoryDaily`
+     *  la calculait déjà via `Asset.accountType` ; on la JETAIT à l'affichage.
+     *  `null` sur le futur : le moteur ne projette pas les comptes au jour, et inventer une
+     *  ventilation quotidienne serait de la fausse précision. */
+    byAccount: { CELI: number; CELIAPP: number; REER: number; REEE: number; NonReg: number; Crypto: number } | null;
     /** Valeur projetée (futur seulement). */
     projected: number | null;
     /** Un mouvement à DATE connue tombe ce jour-là. */
@@ -93,7 +110,16 @@ export const DailyDetailPanel: React.FC<DailyDetailPanelProps> = ({
 
         // ── PASSÉ : reconstruit depuis de vraies données ────────────────────────────────────
         const cashByDate = new Map(cashDaily.points.map((p) => [p.date, p]));
-        const invDaily = reconstructPortfolioHistoryDaily(assets, fx, from, to, { maxDays: DAILY_DETAIL_MAX_DAYS });
+        // ⚠️ BORNÉE À AUJOURD'HUI, et pas à `to` (défaut trouvé en écrivant le test des colonnes par
+        // compte) : `reconstructPortfolioHistoryDaily` produit un point pour CHAQUE jour demandé, y
+        // compris après aujourd'hui, en reconduisant le dernier prix connu. Sur une fenêtre à cheval,
+        // les lignes futures affichaient donc des placements PLATS présentés comme reconstruits — le
+        // « chiffre crédible » que le dépôt s'interdit, juste à côté d'une colonne « Projeté » qui,
+        // elle, croît. Le futur n'a pas de ventilation par compte : le moteur ne la projette pas au jour.
+        const invTo = to < today ? to : today;
+        const invDaily = invTo < from
+            ? []
+            : reconstructPortfolioHistoryDaily(assets, fx, from, invTo, { maxDays: DAILY_DETAIL_MAX_DAYS });
         const invByDate = new Map(invDaily.map((p) => [p.date, p]));
 
         // ── FUTUR : raffinement des ancrages mensuels du moteur ─────────────────────────────
@@ -118,6 +144,9 @@ export const DailyDetailPanel: React.FC<DailyDetailPanelProps> = ({
                 isPast,
                 cash: c ? c.cash : null,
                 invested: inv ? inv.InvestedValue : null,
+                byAccount: inv
+                    ? { CELI: inv.CELI, CELIAPP: inv.CELIAPP, REER: inv.REER, REEE: inv.REEE, NonReg: inv.NonReg, Crypto: inv.Crypto }
+                    : null,
                 projected: proj ? proj.value : null,
                 isDated: Boolean(c?.isDated) || Boolean(proj?.isDated),
                 labels: proj?.labels ?? [],
@@ -186,6 +215,10 @@ export const DailyDetailPanel: React.FC<DailyDetailPanelProps> = ({
                         <th scope="col" className="text-left px-2 py-1.5 font-semibold">Date</th>
                         <th scope="col" className="text-right px-2 py-1.5 font-semibold">Liquidités</th>
                         <th scope="col" className="text-right px-2 py-1.5 font-semibold">Placements</th>
+                        {/* [Demande Marc] Ventilation par COMPTE. Passé seulement — voir le `—` du corps. */}
+                        {ACCOUNT_COLUMNS.map((c) => (
+                            <th key={c.key} scope="col" className="text-right px-2 py-1.5 font-semibold whitespace-nowrap">{c.label}</th>
+                        ))}
                         <th scope="col" className="text-right px-2 py-1.5 font-semibold">Projeté</th>
                         <th scope="col" className="text-left px-2 py-1.5 font-semibold">Mouvement</th>
                     </tr>
@@ -198,7 +231,7 @@ export const DailyDetailPanel: React.FC<DailyDetailPanelProps> = ({
                                 {!r.isPast && <span className="sr-only"> (projeté)</span>}
                             </th>
                             <td className="text-right px-2 py-1 font-mono text-ink-100">{money(r.cash)}</td>
-                            <td className="text-right px-2 py-1 font-mono text-ink-100">
+                            <td className="text-right px-2 py-1 font-mono text-ink-100 font-semibold">
                                 {money(r.invested)}
                                 {/* Un plateau de plus d'une semaine n'est plus un week-end : c'est du
                                     stockage compressé. Le dire évite de lire une valeur reconduite
@@ -209,6 +242,14 @@ export const DailyDetailPanel: React.FC<DailyDetailPanelProps> = ({
                                     </span>
                                 )}
                             </td>
+                            {/* Ventilation par COMPTE. `—` sur le futur : le moteur ne projette pas les
+                                comptes au jour, et fabriquer une répartition quotidienne serait de la
+                                fausse précision — un « — » honnête vaut mieux qu'un chiffre crédible. */}
+                            {ACCOUNT_COLUMNS.map((c) => (
+                                <td key={c.key} className="text-right px-2 py-1 font-mono text-ink-300">
+                                    {r.byAccount ? money(r.byAccount[c.key]) : '—'}
+                                </td>
+                            ))}
                             <td className="text-right px-2 py-1 font-mono text-ink-100">{money(r.projected)}</td>
                             <td className="text-left px-2 py-1 text-ink-300">
                                 {r.labels.length > 0 ? r.labels.join(', ') : r.isDated ? 'Mouvement' : ''}

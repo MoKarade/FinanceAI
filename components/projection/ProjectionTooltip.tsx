@@ -62,8 +62,11 @@ const TOOLTIP_ACCOUNTS: Array<{ key: string; label: string; color: string; gainK
 // wrapper Recharts) et est rendu via un PORTAIL positionné par
 // `useChartTooltipPosition`. `frozen` = figé (devient interactif/scrollable et
 // montre le bouton « Détail complet ») ; `onOpenDetail` ouvre la modale exhaustive.
-export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOpenDetail }: {
+export const ExpertTooltip = ({ data, dailyRows, userName1, userName2, frozen = false, onOpenDetail }: {
     data: ProjectionChartPoint;
+    /** [FUTUR-DAILY, demande Marc 2026-08-09] Détail JOUR PAR JOUR du mois survolé.
+     *  Fourni par l'appelant (qui raffine UN seul mois) — l'infobulle reste passive. */
+    dailyRows?: Array<{ date: string; value: number; isDated: boolean; labels: string[] }>;
     userName1?: string;
     userName2?: string;
     frozen?: boolean;
@@ -213,6 +216,38 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* [FUTUR-DAILY, demande Marc 2026-08-09] Détail JOUR PAR JOUR du mois survolé.
+                ⚠️ Ce que ce bloc montre est ADOSSÉ au point mensuel du moteur : le dernier jour vaut
+                EXACTEMENT la valeur nette affichée en haut de cette infobulle (invariant garanti par
+                construction dans `dailyRefine`). Zoomer ou survoler ne peut donc pas donner deux
+                chiffres différents pour la même date.
+                ⚠️ Les jours SURLIGNÉS portent un mouvement à date connue (paie et dettes le jeudi,
+                charges récurrentes à leur jour). Les autres ne bougent que par l'étalement de la
+                croissance, qui n'a AUCUNE date — c'est une interpolation, et le pied du bloc le dit
+                plutôt que de laisser le lissage passer pour de la mesure. */}
+            {dailyRows && dailyRows.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-white/10">
+                    <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">Jour par jour</div>
+                    <ul className="space-y-px max-h-40 overflow-y-auto pr-0.5">
+                        {dailyRows.map((d) => (
+                            <li
+                                key={d.date}
+                                className={`flex items-baseline justify-between gap-2 rounded px-1.5 py-0.5 ${d.isDated ? 'bg-primary/10' : ''}`}
+                            >
+                                <span className="font-mono text-[10px] text-ink-300 shrink-0">{d.date.slice(8)}</span>
+                                {d.labels.length > 0 && (
+                                    <span className="text-[10px] text-primary truncate flex-1">{d.labels.join(', ')}</span>
+                                )}
+                                <PrivateAmount className="font-mono text-tiny text-ink-100 shrink-0">{fmt(d.value)}$</PrivateAmount>
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="text-[10px] text-ink-400 mt-1">
+                        Surligné = mouvement à date connue · sinon la croissance est répartie sur le mois
+                    </div>
                 </div>
             )}
 

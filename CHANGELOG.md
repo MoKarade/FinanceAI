@@ -6,6 +6,26 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-11
+
+### Ajouts
+- **`[FUTUR-DAILY]` — le jour par jour arrive dans l'infobulle, et le passé se ventile par compte**
+  (demande de Marc). Dans **Futur**, survoler un point du graphe affiche désormais, sous les
+  chiffres du mois, la liste **jour par jour** de ce mois : les jours qui portent un vrai mouvement
+  à date connue (paie et paiements de dette le jeudi, charges récurrentes à leur jour) sont
+  surlignés, et le pied du bloc dit explicitement que les autres ne bougent que par l'étalement de
+  la croissance — une interpolation, pas une mesure. Dans le tableau quotidien (visible quand tu
+  zoomes), le **passé** montre maintenant **une colonne par régime** (CELI, CELIAPP, REER, REEE,
+  Non-enr., Crypto) : tu vois ce que tu avais dans chaque compte, chaque jour.
+
+### Corrections
+- **Le tableau quotidien ne montre plus de placements « reconstruits » APRÈS aujourd'hui.** La
+  reconstruction produisait un point pour chaque jour de la fenêtre demandée, futur compris, en
+  reconduisant le dernier prix connu : sur une fenêtre à cheval, les lignes futures affichaient un
+  montant de placements **plat** avec l'apparence d'une valeur mesurée, juste à côté d'une colonne
+  « Projeté » qui, elle, croissait. Elle s'arrête maintenant à aujourd'hui, et le futur affiche un
+  « — » honnête. Défaut trouvé en écrivant le test de la ventilation par compte, pas à l'œil.
+
 ## [unreleased] — 2026-08-06
 
 ### Corrections

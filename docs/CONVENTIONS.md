@@ -997,6 +997,18 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   mais bloque toujours `rm -rf` sensible / `--no-verify` / `.env` (en ignorant le corps des messages).
 
 ## Notes
+- ⚠️ **[FUTUR-DAILY] 2026-08-11 — une fonction de RECONSTRUCTION non bornée par « aujourd'hui »
+  fabrique du futur en reconduisant la dernière valeur connue.** `reconstructPortfolioHistoryDaily`
+  produit un point pour CHAQUE jour de `[from, to]` : son `priceAt` prend le dernier prix ≤ t, donc
+  au-delà d'aujourd'hui elle rend un plateau — pas une valeur absente, un plateau CRÉDIBLE. Branchée
+  sur une fenêtre à cheval passé/futur, elle affichait des placements « reconstruits » à côté d'une
+  colonne « Projeté » qui, elle, croissait : deux chiffres pour la même date, dont un inventé. Règle :
+  toute reconstruction alimentant un écran mixte est bornée à `min(to, today)` **au site d'appel** —
+  la fonction, elle, obéit à ses bornes et n'a aucune raison de connaître le présent.
+  **Et la leçon de méthode** : le défaut n'a pas été vu à l'œil ni en revue — il est tombé en écrivant
+  l'assertion « le futur affiche — » d'une colonne VOISINE. Écrire l'attente d'une colonne oblige à
+  répondre « d'où vient cette cellule ? » pour toute la ligne. Discriminant prouvé par perturbation
+  (sans la borne : « 1 000 $ » là où le test exige « — »).
 - ⚠️ **[PERF-SDK-BOOT-PRELOAD] 2026-07-31 — deux leçons de bundling MESURÉES (boot −54 Ko gzip, −24 %)** :
   (1) **Un manualChunk (Rolldown/Vite) atteint UNIQUEMENT par `import()` devient EAGER** — le chunk manuel
   casse la frontière asynchrone : l'entry importait STATIQUEMENT `ai-vendor` (SDK Anthropic, 126 Ko →

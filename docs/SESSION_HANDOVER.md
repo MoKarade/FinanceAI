@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-11 (suite 33) — `[FUTUR-DAILY]` lot A2 : infobulle quotidienne + par compte
+> **Demande de Marc** : « avec l'info bulle dans futur je veux voir le détail par jour et le passé je
+> veux voir le détail par jour et par compte aussi ». Les deux sont livrés.
+> - **Infobulle Futur** : bloc « Jour par jour » du mois SURVOLÉ. `ExpertTooltip` reste PASSIVE (prop
+>   `dailyRows`) — c'est `FutureProjection` qui raffine UN mois (ancre d'entrée = le mois précédent).
+>   Jours à mouvement daté surlignés ; le pied dit que le reste est de l'interpolation.
+> - **Passé par compte** : 6 colonnes de régime dans `DailyDetailPanel`. La donnée existait déjà dans
+>   `reconstructPortfolioHistoryDaily` — elle était JETÉE au rendu.
+> - ⚠️ **Défaut CORRIGÉ, trouvé en écrivant le test** : la reconstruction n'était pas bornée à
+>   aujourd'hui → plateau de prix reconduit présenté comme mesuré sur les jours FUTURS, à côté d'une
+>   colonne « Projeté » croissante. Bornée à `min(to, today)`. Leçon dans `CONVENTIONS.md`.
+> - Replis de sélecteurs `?? []` inline → **constantes de module** (`react-hooks/exhaustive-deps` les
+>   signalait : nouvelle référence à chaque rendu → memos invalidés à chaque frame de zoom).
+> - Gate vert : typecheck, lint, **3 681 tests / 324 fichiers**, build.
+
 > ## 🟠 Session 2026-08-06 (suite 32) — #574 mergée, mais PAS déployée
 > `[FUTUR-DAILY]` est **sur `main`** (`ed5a7d1`, #574) — et **Vercel n'a créé aucun déploiement de
 > PRODUCTION** dans la demi-heure suivante. `latestDeployment` du projet restait la PREVIEW de

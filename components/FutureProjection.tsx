@@ -27,6 +27,10 @@ type FinanceStoreState = ReturnType<typeof useFinanceStore.getState>;
 const EMPTY_ASSETS: FinanceStoreState['assets'] = [];
 const EMPTY_RECURRING: NonNullable<FinanceStoreState['subscriptions']> = [];
 const EMPTY_FX: Record<string, number> = {};
+/** Domaine de l'axe X, en CONSTANTE de module : un littéral recréé à chaque rendu ferait comparer
+ *  la prop par identité à recharts sur des re-rendus où les données n'ont PAS bougé (bascule d'une
+ *  série via la légende, par exemple). */
+const X_AXIS_DOMAIN: ['dataMin', 'dataMax'] = ['dataMin', 'dataMax'];
 import { Tab as TabEnum } from '../types';
 import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
 import { FutureDetailModal } from './projection/FutureDetailModal';
@@ -45,7 +49,7 @@ import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { DailyDetailPanel } from './projection/DailyDetailPanel';
-import { isoDate, todayIsoLocal, daysInMonth, refineWindowToDaily, finiteAnchorRun } from '../services/projection/dailyRefine';
+import { isoDate, todayIsoLocal, daysInMonth, refineWindowToDaily, finiteAnchorRun, calendarFromMonthIndex } from '../services/projection/dailyRefine';
 import { dailyDeltasFor } from '../services/projection/datedMonthEvents';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCompactCAD } from '../utils/format';
@@ -524,9 +528,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
     // [FUTUR-DAILY] Fenêtre à raffiner au jour = la fenêtre ZOOMÉE, traduite en dates calendaires.
     // ⚠️ Le hook de zoom indexe le tableau MENSUEL et c'est très bien ainsi : lui substituer des
-    // points quotidiens casserait son indexation (et l'axe X est CATÉGORIEL, ancré sur `monthIndex`
-    // entier pour les jalons). Le mensuel pilote donc la FENÊTRE, et le quotidien n'est calculé que
-    // pour la remplir — c'est exactement ce que « si je zoom » autorise.
+    // points quotidiens casserait son indexation. Ce qui la rend valide n'est PAS le type de l'axe
+    // (numérique depuis le lot B étape 1) mais l'espacement UNIFORME des données — un point par
+    // mois, sans trou : position ∝ index reste alors vrai par simple transformation affine.
+    // Le mensuel pilote donc la FENÊTRE, et le quotidien n'est calculé que pour la remplir —
+    // c'est exactement ce que « si je zoom » autorise.
     const dailyWindow = useMemo(() => {
         // Garde de zoom EN TÊTE (finding revue #574) : le panneau ne s'affiche qu'en zoom, or ce memo
         // mappait TOUTE `visibleData` — des centaines de mois en vue dézoomée, l'état par défaut —
@@ -1060,14 +1066,40 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
 
+                            {/* [FUTUR-DAILY lot B] Axe X NUMÉRIQUE (`type="number"`), et non plus catégoriel.
+                                ⚠️ CE QUE ÇA CHANGE, ET POURQUOI C'EST LE PRÉALABLE AU QUOTIDIEN. En catégoriel,
+                                un `ReferenceLine x={…}` s'apparie à une CATÉGORIE : il n'apparaît que si un point
+                                de données porte EXACTEMENT cette valeur. Injecter des points quotidiens ferait
+                                donc disparaître ou glisser « Aujourd'hui », la frontière passé/futur et les
+                                icônes-jalons — en SILENCE, sur un écran money-critical. En numérique, ces mêmes
+                                valeurs sont des COORDONNÉES : elles tombent au bon endroit qu'un point existe ou
+                                non à cette abscisse. C'est la condition pour que le lot suivant puisse ajouter
+                                des abscisses fractionnaires.
+                                ⚠️ Ce n'est PAS un no-op au pixel près, et le premier jet de ce commentaire le
+                                prétendait à tort : un axe catégoriel place les points au CENTRE de leur bande
+                                (une demi-bande de marge à chaque bord), un axe numérique fait coïncider dataMin
+                                et dataMax avec les bords du tracé. Tout se décale donc d'une demi-bande — ~1 px
+                                sur ~450 mois. Ce qui compte est que points ET ancrages subissent la MÊME
+                                échelle : la frontière passé/futur, qui tombait 0,97 px à côté de la bande du
+                                passé en catégoriel, coïncide désormais EXACTEMENT avec elle (mesuré, garde e2e).
+                                `domain` explicite : le défaut d'un axe numérique recharts part de 0, ce qui
+                                COUPERAIT tout le préfixe passé (monthIndex négatifs). */}
                             <XAxis
                                 dataKey="monthIndex"
+                                type="number"
+                                domain={X_AXIS_DOMAIN}
                                 stroke="#666"
                                 tick={{fontSize: 10}}
                                 minTickGap={50}
                                 tickFormatter={(val: number) => {
-                                    const year = monthIndexToYear.get(val);
-                                    return year !== undefined ? `${year}` : `${val}`;
+                                    // Un axe numérique génère ses PROPRES graduations (nombres ronds), qui ne
+                                    // correspondent pas forcément à un point de données : sans le repli
+                                    // arithmétique, l'axe afficherait des numéros de mois bruts au lieu des
+                                    // années. La Map reste consultée d'abord — même étiquette qu'avant, à
+                                    // l'identique, partout où un point existe.
+                                    const year = monthIndexToYear.get(val)
+                                        ?? calendarFromMonthIndex(startYear, startMonth, Math.floor(val)).year;
+                                    return `${year}`;
                                 }}
                             />
 

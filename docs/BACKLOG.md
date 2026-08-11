@@ -242,13 +242,35 @@
         dernier prix. Les lignes futures montraient donc des placements PLATS présentés comme
         reconstruits, à côté d'une colonne « Projeté » qui, elle, croît. Bornée à `min(to, today)` ;
         test discriminant prouvé (sans la borne : « 1 000 $ » au lieu de « — »).
-  - [ ] **UI lot B** — la COURBE elle-même en quotidien. ⚠️ L'axe X du graphe Futur est **CATÉGORIEL**
-        (aucun `type="number"`) : la ligne « Aujourd'hui », la frontière passé/futur, les événements
-        de vie et les icônes-jalons sont tous ancrés sur un `monthIndex` ENTIER apparié comme une
-        CATÉGORIE (`FutureProjection.tsx` l.1000, 1003, 1014, 1046, 1062). Y injecter du quotidien
-        exige soit de migrer l'axe sur `date` en convertissant chaque ancrage, soit de basculer en
-        axe numérique — ce qui change la sémantique de TOUT l'affichage mensuel existant. Un
-        désalignement y serait SILENCIEUX sur un écran money-critical → changement dédié + e2e.
+  - [x] **UI lot B, étape 1 — AXE X NUMÉRIQUE** ✅ 2026-08-11 (choix de Marc parmi 3 options).
+        `type="number"` + `domain={['dataMin','dataMax']}`. C'est le PRÉALABLE : en catégoriel, un
+        `ReferenceLine x={…}` s'apparie à une CATÉGORIE et n'apparaît que si un point porte
+        exactement cette valeur — des abscisses quotidiennes feraient donc disparaître ou glisser
+        « Aujourd'hui », la frontière et les jalons, EN SILENCE. En numérique ce sont des coordonnées.
+        ⚠️ **Pas un no-op au pixel** (mesuré, mon 1er commentaire le prétendait à tort) : le catégoriel
+        centre les points dans leur bande, le numérique colle dataMin/dataMax aux bords → décalage
+        d'une demi-bande (~1 px sur ~450 mois), IDENTIQUE pour les points et les ancrages.
+        ⚠️ **Le `domain` explicite n'est pas cosmétique** : sans lui recharts part de 0 et tout le
+        préfixe PASSÉ est repoussé (frontière mesurée à 316,5 au lieu de 122,5 ; bande du passé à
+        x=283 au lieu de x=70).
+        Garde `e2e/futureAxis.spec.ts`, prouvée discriminante dans les DEUX états fautifs
+        (catégoriel : écart 0,97 ; numérique sans domaine : écart 213,2).
+  - [ ] **UI lot B, étape 2 — la COURBE en quotidien.** ⚠️ Constat de cadrage : seule la **Valeur
+        nette** peut passer au jour. Les 8 aires empilées (Liquidités/CELI/CELIAPP/REER/REEE/NonReg/
+        Crypto/Immo), l'impôt latent, la barre d'impôts et les courbes Monte Carlo lisent des champs
+        que le moteur n'émet **qu'au mois** — les rendre quotidiens exigerait d'inventer une
+        ventilation par compte au jour, exactement la fausse précision que le dépôt s'interdit.
+        Donc : au zoom fort, courbe de VN quotidienne + aires mensuelles ou masquées, et l'écran doit
+        le DIRE. À valider avec Marc avant de coder.
+        ⚠️ **2e prérequis de l'étape 2, trouvé en revue** : `resolvePointFromClick`
+        (`utils/chartTooltip.ts`) et `handleWheel` (`hooks/useTimeChartZoom.ts`) résolvent la
+        position par INDEX DE TABLEAU (`frac × (length − 1)`), en supposant un espacement uniforme.
+        C'est vrai aujourd'hui — tous les producteurs de `monthIndex` incrémentent de 1 sans trou
+        (`buildPastPrefix.ts`, `monthlyOutput.ts`) — donc sur un axe numérique à domaine
+        `[dataMin,dataMax]` la relation position ∝ index tient par transformation affine. Dès que
+        `displayData` portera des `monthIndex` FRACTIONNAIRES, les deux divergeront silencieusement
+        de la position réellement rendue (le clic résout le mauvais point, le curseur de zoom dérive).
+        À traiter EN MÊME TEMPS que l'injection des points quotidiens, pas après.
   - [ ] ⚠️ **Piège de nommage au branchement** (audit) : la reconstruction MENSUELLE nomme `NetWorth`
         un champ qui porte la valeur INVESTIE ; la quotidienne le nomme `InvestedValue` (correct).
         Deux noms pour la même grandeur, sur deux fonctions destinées au même axe.

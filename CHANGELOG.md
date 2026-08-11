@@ -8,6 +8,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-11
 
+### Modifications
+- **L'axe du temps du graphe Futur devient un vrai axe numérique.** Invisible à l'usage — c'est de la
+  plomberie — mais c'est ce qui permettra d'y tracer des points quotidiens sans que la ligne
+  « Aujourd'hui », la frontière passé/futur et les icônes-jalons se décalent en silence. Au passage,
+  la frontière du passé coïncide maintenant **exactement** avec la bande bleutée du passé, au lieu
+  d'être à un pixel à côté.
+
 ### Ajouts
 - **`[FUTUR-DAILY]` — le jour par jour arrive dans l'infobulle, et le passé se ventile par compte**
   (demande de Marc). Dans **Futur**, survoler un point du graphe affiche désormais, sous les

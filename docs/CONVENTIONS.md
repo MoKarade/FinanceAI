@@ -997,6 +997,23 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   mais bloque toujours `rm -rf` sensible / `--no-verify` / `.env` (en ignorant le corps des messages).
 
 ## Notes
+- ⚠️ **[PARTIAL-POINT-FAKE-ZERO] 2026-08-11 — fabriquer un point qui n'implémente qu'une PARTIE d'un
+  contrat rallume tous les `|| 0` en aval.** Les points QUOTIDIENS de la courbe Futur ne portent
+  qu'une poignée des dizaines de champs de `ProjectionChartPoint` (le moteur ne produit le reste
+  qu'au mois). Le double cast `as unknown as` a fait taire TypeScript sur TOUS les champs manquants,
+  et deux faux chiffres crédibles sont passés :
+  (1) l'infobulle affichait « **Variation +0 $** » en vert sur CHAQUE jour — badge rendu sans garde
+  sur `data.diffNW || 0` — y compris le jour où la paie tombe, pendant que le bas de la même
+  infobulle disait correctement « Ce jour : Paie » ;
+  (2) « Détail complet » passait le point à `FutureDetailModal`, qui joint par `monthIndex` — devenu
+  FRACTIONNAIRE — donc ne trouvait rien 30 jours sur 31 et retombait sur ses `|| 0`, dont un
+  `Math.max(0, 0 − NetWorth)` qui FABRIQUAIT une dette égale au patrimoine net dès qu'il était négatif.
+  Règles : typer le point partiel en `Partial<Contrat> & { champs réellement portés }` plutôt qu'un
+  double cast — le compilateur redevient utile ; garder la clé de jointure d'ORIGINE (`hostMonthIndex`)
+  quand on détourne une clé existante ; et distinguer « je ne sais pas » de « ça vaut zéro » AU RENDU
+  (`Number.isFinite`), pas au calcul. Corollaire a11y : la table `sr-only` doit suivre la série
+  RÉELLEMENT tracée, sinon la granularité visible n'existe pas pour un lecteur d'écran — et son texte
+  vide est le LIBELLÉ littéral (`NO_DATA_LABEL`), convention inverse des cellules visibles.
 - ⚠️ **[FEATURE-UNREACHABLE] 2026-08-11 — un seuil qui rend la fonctionnalité INATTEIGNABLE passe
   tous les filtres.** La bascule « courbe au jour » se déclenchait sous 5 points visibles ; or
   `useTimeChartZoom` plafonne le zoom à `DEFAULT_MIN_POINTS = 5` d'ÉCART, ce qui laisse **6** points

@@ -77,13 +77,21 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
     };
     const isDailyPoint = daily.isDailyPoint === true;
     const dayLabels = daily.dayLabels;
+    // ⚠️ `dayIsDated` ET les libellés (finding revue) : un `DatedDelta` sans `label` produit un jour
+    // réellement DATÉ mais sans libellé — n'écouter que `labels.length` aurait alors annoncé
+    // « aucun mouvement à date connue » un jour où un mouvement a bel et bien eu lieu.
+    const dayHasMovement = daily.dayIsDated === true || (dayLabels?.length ?? 0) > 0;
     const fmt = (n: number) => Math.round(n).toLocaleString('fr-CA');
 
     const totalFlow = (data.NetTransferCELI || 0) + (data.NetTransferREER || 0) + (data.NetTransferNonReg || 0)
         + (data.NetTransferCrypto || 0) + (data.NetTransferLiquid || 0) + (data.NetTransferCELIAPP || 0) + (data.NetTransferREEE || 0);
     const totalGain = (data.MarketGrowthCELI || 0) + (data.MarketGrowthREER || 0) + (data.MarketGrowthNonReg || 0)
         + (data.MarketGrowthCrypto || 0) + (data.MarketGrowthLiquid || 0) + (data.MarketGrowthCELIAPP || 0) + (data.MarketGrowthREEE || 0);
-    const diffNW = data.diffNW || 0;
+    // ⚠️ `undefined` ≠ 0 (finding CRITIQUE de la revue). Un point QUOTIDIEN sans veille connue (le
+    // 1er de la fenêtre) n'a pas de variation : afficher « +0 $ » en vert serait un faux chiffre
+    // crédible sur la donnée la plus regardée de l'infobulle. On masque le badge à la place.
+    const hasDiffNW = Number.isFinite(data.diffNW);
+    const diffNW = Number(data.diffNW) || 0;
     const portfolioOutflow = (data.RetraitREER || 0) + (data.RetraitCELI || 0);
     const events: string[] = [...(data.lifeEvents || []), ...(data.flowEvents || [])];
     const accounts = TOOLTIP_ACCOUNTS
@@ -103,9 +111,11 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
             <div className="rounded-xl bg-white/[0.05] border border-white/15 p-2.5 mb-2.5">
                 <div className="flex items-center justify-between gap-2">
                     <span className="text-tiny uppercase tracking-widest text-ink-300 font-bold">Valeur nette</span>
-                    <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${diffNW >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-danger-500/15'}`}>
-                        Variation {diffNW > 0 ? '+' : ''}{fmt(diffNW)}$
-                    </span>
+                    {hasDiffNW && (
+                        <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${diffNW >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-danger-500/15'}`}>
+                            Variation {diffNW > 0 ? '+' : ''}{fmt(diffNW)}$
+                        </span>
+                    )}
                 </div>
                 <PrivateAmount as="div" className="mt-1 text-2xl font-black text-white font-mono leading-none">{fmt(data.NetWorth || 0)}$</PrivateAmount>
             </div>
@@ -234,10 +244,10 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                 faire passer du lissage pour de la mesure. */}
             {isDailyPoint && (
                 <div className="mt-2 pt-2 border-t border-white/10">
-                    {dayLabels && dayLabels.length > 0 ? (
+                    {dayHasMovement ? (
                         <div className="flex items-baseline gap-1.5">
                             <span className="text-tiny uppercase tracking-widest text-primary font-bold shrink-0">Ce jour</span>
-                            <span className="text-tiny text-ink-100">{dayLabels.join(', ')}</span>
+                            <span className="text-tiny text-ink-100">{dayLabels && dayLabels.length > 0 ? dayLabels.join(', ') : 'Mouvement à date connue'}</span>
                         </div>
                     ) : (
                         <div className="text-[10px] text-ink-400">

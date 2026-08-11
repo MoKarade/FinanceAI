@@ -76,6 +76,12 @@ describe('ExpertTooltip — point QUOTIDIEN sélectionné', () => {
         expect(screen.queryByText('Ce jour')).toBeNull();
     });
 
+    it("un jour DATÉ sans libellé le dit quand même (un DatedDelta peut n'avoir aucun label)", () => {
+        render(<ExpertTooltip data={dayPoint({ isDailyPoint: true, dayIsDated: true, dayLabels: [] })} />);
+        expect(screen.getByText('Ce jour')).toBeInTheDocument();
+        expect(screen.getByText('Mouvement à date connue')).toBeInTheDocument();
+    });
+
     it("aucun bloc « jour » sur un point MENSUEL (l'immense majorité des survols)", () => {
         render(<ExpertTooltip data={pt({})} />);
         expect(screen.queryByText('Ce jour')).toBeNull();
@@ -99,5 +105,32 @@ describe('ExpertTooltip — figeage (R3)', () => {
         expect(screen.queryByText(/Clique pour figer/)).toBeNull();
         fireEvent.click(btn);
         expect(onOpenDetail).toHaveBeenCalledTimes(1);
+    });
+});
+
+// [FUTUR-DAILY] Le badge « Variation » ne fabrique plus de zéro.
+//
+// Finding CRITIQUE de la revue #579 : le badge était rendu SANS garde, sur `data.diffNW || 0`. Un
+// point QUOTIDIEN n'ayant pas de `diffNW`, l'infobulle affichait « Variation +0 $ » EN VERT sur
+// chaque jour — y compris celui où la paie tombe, pendant que le bas de la même infobulle disait
+// correctement « Ce jour : Paie ». C'est le faux zéro crédible que tout ce chantier combat, sur la
+// donnée la plus regardée.
+describe('ExpertTooltip — badge « Variation » : une absence n’est pas un zéro', () => {
+    it('MASQUE le badge quand la variation est inconnue', () => {
+        render(<ExpertTooltip data={pt({ diffNW: undefined })} />);
+        expect(screen.queryByText(/Variation/)).toBeNull();
+    });
+
+    it('affiche un vrai zéro quand la variation VAUT zéro', () => {
+        // Distinction essentielle : « je ne sais pas » ≠ « ça n'a pas bougé ».
+        render(<ExpertTooltip data={pt({ diffNW: 0 })} />);
+        expect(screen.getByText(/Variation/)).toBeInTheDocument();
+    });
+
+    it('affiche la variation du JOUR sur un point quotidien qui en porte une', () => {
+        render(<ExpertTooltip data={pt({ diffNW: -1250 })} />);
+        const badge = screen.getByText(/Variation/);
+        expect(badge.textContent).toContain('-1');
+        expect(badge.className).toContain('text-red-300');
     });
 });

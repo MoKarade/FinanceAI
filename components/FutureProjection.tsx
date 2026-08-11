@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
@@ -42,6 +42,27 @@ const X_AXIS_DOMAIN: ['dataMin', 'dataMax'] = ['dataMin', 'dataMax'];
  *  À 6 points = 5 mois raffinés, soit ~150 jours : la courbe reste lisible et chaque jour occupe
  *  encore ~6 px de large, donc reste VISABLE à la souris. */
 const DAILY_CURVE_MAX_POINTS = 6;
+
+/** [FUTUR-DAILY lot B étape 2] Un point QUOTIDIEN de la courbe.
+ *
+ *  ⚠️ Il n'implémente PAS le contrat complet de `ProjectionChartPoint` — le moteur ne produit ses
+ *  dizaines de champs (`Liquidites`, `CELI`, `IncomeMarc`, `lifeEvents`…) qu'au MOIS. D'où
+ *  `Partial<>` : tout consommateur qui lit un champ mensuel sur un point quotidien doit obtenir
+ *  `undefined` et l'afficher honnêtement, jamais un `0` crédible. Le double cast au site de
+ *  construction faisait taire TypeScript sur exactement ce point — et c'est ce trou qui a laissé
+ *  passer le faux « Variation +0 $ » relevé en revue. */
+type DailyChartPoint = Partial<ProjectionChartPoint> & {
+    monthIndex: number;
+    dateLabel: string;
+    NetWorth: number;
+    /** Écart avec la VEILLE. Absent le 1er jour de la fenêtre (aucune veille connue). */
+    diffNW?: number;
+    dayIsDated: boolean;
+    dayLabels: string[];
+    /** Mois du moteur auquel ce jour appartient — clé de jointure, `monthIndex` étant fractionnaire. */
+    hostMonthIndex: number;
+    isDailyPoint: true;
+};
 import { Tab as TabEnum } from '../types';
 import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
 import { FutureDetailModal } from './projection/FutureDetailModal';
@@ -64,6 +85,7 @@ import { isoDate, todayIsoLocal, daysInMonth, refineWindowToDaily, finiteAnchorR
 import { dailyDeltasFor } from '../services/projection/datedMonthEvents';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCompactCAD } from '../utils/format';
+import { NO_DATA_LABEL } from './ui/emptyAware';
 
 // [PROJECTION-PERSIST] Dédup MODULE-LEVEL de l'écriture du blob figé (finding code-reviewer) :
 // survit au démontage/remontage de l'onglet → pas de réécriture IDB (~1-2 Mo chiffrés) à chaque
@@ -589,7 +611,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // opaque aux lecteurs d'écran). Date (axe X) + chaque montant affiché (comptes empilés + Valeur Nette).
     // Le mode privé masque les MONTANTS (parité avec l'axe/tooltip déjà masqués), pas la date.
     const dataColumns = useMemo<ChartDataColumn[]>(() => {
-        const money = (v: unknown) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCompactCAD(Number(v) || 0);
+        // ⚠️ `Number(v) || 0` transformait une valeur ABSENTE en « 0 $ » (finding revue). En vue
+        // quotidienne, les colonnes par compte n'existent pas — le moteur ne ventile qu'au mois — et
+        // la table aurait annoncé « CELI : 0 $ » pour chaque jour.
+        // ⚠️ Et ici le texte est LITTÉRAL (`NO_DATA_LABEL`), pas `emptyAware` : cette table est
+        // `sr-only`, donc invisible — c'est la convention INVERSE de celle des cellules visibles, où
+        // le libellé en clair polluerait l'écran. Le typecheck l'a d'ailleurs imposé : `format`
+        // renvoie une chaîne, pas un nœud React.
+        const money = (v: unknown) => {
+            if (v === undefined || v === null || !Number.isFinite(Number(v))) return NO_DATA_LABEL;
+            return isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCompactCAD(Number(v));
+        };
         return [
             { key: 'dateLabel', label: 'Date', format: (_v, row) => {
                 const r = row as { dateLabel?: string; year?: number };
@@ -675,9 +707,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             dailyDeltasFor(storeRecurring, dailyMonthlyNet, dailyMonthlyDebt),
         );
         if (days.length === 0) return null;
-        return days.map((d) => {
+        return days.map((d, i) => {
             const { year, month } = calendarFromMonthIndex(startYear, startMonth, d.monthIndex);
             const host = byMonth.get(d.monthIndex);
+            const prev = i > 0 ? days[i - 1] : undefined;
             return {
                 // ⚠️ Abscisse FRACTIONNAIRE : c'est ce que l'axe numérique (étape 1) rend possible.
                 // `axisXAtDay` garantit que le jour 1 vaut EXACTEMENT l'entier du mois, donc les
@@ -686,14 +719,44 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 dateLabel: d.date,
                 age: host?.age,
                 NetWorth: d.value,
+                // ⚠️ VARIATION DU JOUR, calculée (finding CRITIQUE de la revue). Sans ce champ,
+                // l'infobulle lisait `data.diffNW || 0` — un point quotidien n'ayant pas de `diffNW`,
+                // elle affichait « Variation +0 $ » EN VERT sur chaque jour, y compris celui où la
+                // paie tombe. Un faux zéro crédible, sur la fonctionnalité vedette. Ici la vraie
+                // grandeur est l'écart avec la VEILLE ; le premier jour de la fenêtre n'en a pas, et
+                // reste donc `undefined` — l'infobulle masque alors le badge plutôt que d'inventer 0.
+                diffNW: prev ? d.value - prev.value : undefined,
                 // Le jour porte-t-il un mouvement à DATE connue, ou n'est-il que de l'étalement ?
                 // L'infobulle le DIT — sinon l'interpolation passerait pour de la mesure.
                 dayIsDated: d.isDated,
                 dayLabels: d.labels,
+                // ⚠️ Le mois HÔTE réel du moteur, conservé tel quel. `monthIndex` est devenu une
+                // abscisse FRACTIONNAIRE : tout consommateur qui cherche le point mensuel par
+                // égalité (`chartData.find(d => d.monthIndex === …)`) ne trouverait plus rien sauf
+                // le 1er du mois. `hostMonthIndex` reste la clé de jointure vers le moteur.
+                hostMonthIndex: d.monthIndex,
                 isDailyPoint: true,
-            } as unknown as ProjectionChartPoint;
+            } as DailyChartPoint as unknown as ProjectionChartPoint;
         });
     }, [zoom.isZoomed, zoom.visibleData, startYear, startMonth, storeRecurring, dailyMonthlyNet, dailyMonthlyDebt]);
+
+    /**
+     * Point à passer à la modale « Détail complet ».
+     *
+     * ⚠️ Finding CRITIQUE de la revue : `FutureDetailModal` joint sur `chartData.findIndex(d =>
+     * d.monthIndex === point.monthIndex)`. Sur un point QUOTIDIEN, `monthIndex` est fractionnaire →
+     * aucune correspondance sauf le 1er du mois, et la modale retombait alors sur ses `|| 0` :
+     * « Variation nette (mois) +0 $ » systématique, et surtout un `Math.max(0, 0 − NetWorth)` qui
+     * FABRIQUAIT un montant de dette égal au patrimoine net dès que celui-ci était négatif.
+     * On rabat donc sur le VRAI mois hôte : la modale est mensuelle, elle montre le mois — ce qui
+     * existe — au lieu d'un mois fantôme reconstitué à partir d'un jour.
+     */
+    const detailPointFor = useCallback((p: ProjectionChartPoint | null): ProjectionChartPoint | null => {
+        if (!p) return null;
+        const host = (p as unknown as DailyChartPoint).hostMonthIndex;
+        if (typeof host !== 'number') return p; // point mensuel : inchangé
+        return (displayData as ProjectionChartPoint[]).find((d) => d.monthIndex === host) ?? null;
+    }, [displayData]);
 
     /** Série réellement tracée : les jours quand la fenêtre le permet, sinon les mois. */
     const chartSeries = (dailyChartData ?? zoom.visibleData) as ProjectionChartPoint[];
@@ -1262,11 +1325,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 )}
 
                 {/* [A11Y-CHARTS] — alternative TEXTUELLE (sr-only) à la courbe Recharts : mêmes données
-                    en table accessible, masquage privacy aligné sur l'axe/tooltip. */}
+                    en table accessible, masquage privacy aligné sur l'axe/tooltip.
+                    ⚠️ `chartSeries` et NON `displayData` (finding revue) : la table doit suivre ce qui
+                    est RÉELLEMENT tracé. En vue au jour, elle restait au mois — un utilisateur de
+                    lecteur d'écran n'avait alors aucun accès à la granularité que la courbe expose.
+                    Les colonnes par compte y sortent « — » (le moteur ne ventile qu'au mois), pas 0 $. */}
                 <ChartDataTable
-                    caption="Projection du patrimoine net et des comptes par date"
+                    caption={isDailyCurve
+                        ? 'Projection du patrimoine net par jour (vue au jour — la répartition par compte n’existe qu’au mois)'
+                        : 'Projection du patrimoine net et des comptes par date'}
                     columns={dataColumns}
-                    rows={displayData}
+                    rows={chartSeries}
                 />
                 {/* [FUTUR-ICONS-RICH, a11y] Liste sr-only des JALONS affichés sur la courbe (RRQ/PSV/retraits/
                     impôts/retraite/FIRE…) : les pastilles SVG ne sont pas atteignables au clavier (dette
@@ -1301,7 +1370,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             userName1={config.users[0]?.name}
                             userName2={config.users[1]?.name}
                             frozen={tooltip.mode === 'frozen'}
-                            onOpenDetail={() => setDetailPoint(tooltip.point)}
+                            onOpenDetail={() => setDetailPoint(detailPointFor(tooltip.point))}
                         />
                     </div>,
                     document.body,

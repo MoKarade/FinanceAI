@@ -37,7 +37,16 @@
 >   jamais déclenchée — attrapé par l'e2e, invisible à la lecture et au typecheck.
 > - Aires par compte masquées au jour + bandeau qui explique pourquoi (moteur mensuel).
 > - Gardes : `e2e/futureDailySelect.spec.ts` (2 abscisses éloignées → 2 jours DIFFÉRENTS) + tests
->   unitaires `axisXAtDay` / `resolvePointByX`. Gate : 3 700 tests.
+>   unitaires `axisXAtDay` / `resolvePointByX`.
+> - ⚠️ **2 findings CRITIQUES de la revue, corrigés** : « Variation +0 $ » en vert sur chaque jour
+>   (badge sans garde sur `diffNW || 0`) → `diffNW` est désormais l'écart avec la VEILLE, et le badge
+>   se masque quand elle est inconnue · « Détail complet » passait un point à abscisse FRACTIONNAIRE
+>   à `FutureDetailModal`, qui joint par `monthIndex` → 30 jours sur 31 sans correspondance, `|| 0`
+>   partout, et une DETTE fabriquée égale au patrimoine net quand il est négatif → on rabat sur le
+>   vrai mois hôte (`hostMonthIndex`). Le double cast `as unknown as` avait masqué les deux :
+>   remplacé par `Partial<ProjectionChartPoint> & {…}`.
+> - Table sr-only : suit désormais `chartSeries` (parité a11y avec la vue au jour), champs absents →
+>   `NO_DATA_LABEL` littéral, jamais « 0 $ ». Gate : **3 704 tests**.
 
 > ## 🟢 Session 2026-08-11 (suite 34) — `[FUTUR-DAILY]` lot B étape 1 : axe X NUMÉRIQUE
 > **Marc a choisi l'axe numérique** parmi 3 options (fraction de mois / axe numérique / 2e graphe).

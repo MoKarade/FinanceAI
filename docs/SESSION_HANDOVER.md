@@ -20,6 +20,7 @@
 >   reconstruit (la reconstruction s'arrête à la veille) ; bornée à aujourd'hui pour ne pas afficher
 >   des placements plats « reconstruits » sur le futur.
 > - Badge **Réel / Projeté** dans l'infobulle + avertissement quand le prix utilisé date de > 7 jours.
+> - Gate vert : typecheck, lint, **3 748 tests / 326 fichiers**, build, e2e « sélection d'un jour ».
 > - **Reste** : `[FUTUR-DAILY-CADENCE]` (cadence de paie dérivée des relevés) et
 >   `[FUTUR-DAILY-TOUCH]` (pincement au doigt, à cadrer avec Marc).
 

@@ -74,8 +74,15 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
     // de `ProjectionChartPoint` (qui est le contrat du MOTEUR, pas celui de l'affichage).
     const daily = data as ProjectionChartPoint & {
         isDailyPoint?: boolean; dayLabels?: string[]; dayIsDated?: boolean;
+        dayIsReal?: boolean; priceAgeMaxDays?: number; hasEstimatedPrice?: boolean;
     };
     const isDailyPoint = daily.isDailyPoint === true;
+    // [FUTUR-DAILY-PAST-REAL] Un jour du PASSÉ est RECONSTRUIT depuis de vraies données (transactions
+    // datées, prix datés) ; un jour du FUTUR est ventilé depuis le mois du moteur. Les présenter à
+    // l'identique reviendrait à faire passer une projection pour une mesure — et l'inverse.
+    const isRealDay = daily.dayIsReal === true;
+    const priceAge = Number(daily.priceAgeMaxDays);
+    const stalePrice = Number.isFinite(priceAge) && priceAge > 7;
     const dayLabels = daily.dayLabels;
     // ⚠️ `dayIsDated` ET les libellés (finding revue) : un `DatedDelta` sans `label` produit un jour
     // réellement DATÉ mais sans libellé — n'écouter que `labels.length` aurait alors annoncé
@@ -246,6 +253,17 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                 faire passer du lissage pour de la mesure. */}
             {isDailyPoint && (
                 <div className="mt-2 pt-2 border-t border-white/10">
+                    <div className={`mb-1.5 inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${isRealDay ? 'border-green-500/30 bg-green-500/10 text-green-300' : 'border-white/15 bg-white/5 text-ink-300'}`}>
+                        {isRealDay ? 'Réel' : 'Projeté'}
+                    </div>
+                    {isRealDay && (
+                        <p className="mb-1.5 text-[10px] text-ink-400">
+                            Reconstruit depuis tes transactions datées et le prix de tes titres ce jour-là
+                            — pas une moyenne du mois.
+                            {daily.hasEstimatedPrice === true && ' Au moins un titre est valorisé à son prix actuel, faute d’historique.'}
+                            {stalePrice && ` Le prix le plus ancien composant ce point a ${Math.round(priceAge)} jours : c’est un plateau de reconstruction, pas une valeur observée ce jour-là.`}
+                        </p>
+                    )}
                     {dayHasMovement ? (
                         <div className="flex items-baseline gap-1.5">
                             <span className="text-tiny uppercase tracking-widest text-primary font-bold shrink-0">Ce jour</span>
@@ -253,8 +271,9 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                         </div>
                     ) : (
                         <div className="text-[10px] text-ink-400">
-                            Aucun mouvement à date connue ce jour-là — la variation vient de la
-                            croissance, répartie sur le mois.
+                            {isRealDay
+                                ? 'Aucun mouvement sur tes comptes ce jour-là — la variation ne vient que du marché.'
+                                : 'Aucun mouvement à date connue ce jour-là — la variation vient de la croissance, répartie sur le mois.'}
                         </div>
                     )}
                 </div>

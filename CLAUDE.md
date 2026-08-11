@@ -137,6 +137,8 @@ scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (41 s
 - **No-fake-data** : zéro donnée simulée en prod. Projection non calculée →
   `<ProjectionRequired>`. Une valeur non finie ne devient JAMAIS un défaut numérique
   (`0 $` crédible est pire qu'un « — » honnête), y compris dans un prompt IA.
+  ⚠️ Vaut aussi pour un OBJET : superposer du réel sur du projeté par `{...projeté, ...réel}` laisse
+  filtrer tous les champs non recouverts. Un point « réel » se construit à partir de RIEN.
 - **Valeurs fiscales** : toute constante fiscale vient de `docs/FISCAL_REFERENCE.md` (datée +
   sourcée). Jamais de chiffre fiscal en dur non sourcé — un chiffre sans source est SUSPECT,
   pas « à re-sourcer un jour ».

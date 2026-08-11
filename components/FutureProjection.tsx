@@ -31,12 +31,23 @@ const EMPTY_FX: Record<string, number> = {};
  *  la prop par identité à recharts sur des re-rendus où les données n'ont PAS bougé (bascule d'une
  *  série via la légende, par exemple). */
 const X_AXIS_DOMAIN: ['dataMin', 'dataMax'] = ['dataMin', 'dataMax'];
+
+/** [FUTUR-DAILY lot B étape 2] Nombre maximal de points MENSUELS visibles pour que la courbe passe
+ *  au JOUR. Exprimé en points — et non en mois — parce qu'il est COUPLÉ au plancher de zoom :
+ *  `useTimeChartZoom` refuse de descendre sous `DEFAULT_MIN_POINTS = 5` d'ÉCART, ce qui laisse
+ *  `5 + 1 = 6` points dans la fenêtre au zoom maximal.
+ *  ⚠️ Un seuil inférieur à 6 rend la vue au jour tout simplement INATTEIGNABLE — bug attrapé par
+ *  l'e2e de sélection, pas à la lecture : le code était « correct », la fonctionnalité juste
+ *  jamais déclenchée. Le premier jet plafonnait à 4 mois.
+ *  À 6 points = 5 mois raffinés, soit ~150 jours : la courbe reste lisible et chaque jour occupe
+ *  encore ~6 px de large, donc reste VISABLE à la souris. */
+const DAILY_CURVE_MAX_POINTS = 6;
 import { Tab as TabEnum } from '../types';
 import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
 import { FutureDetailModal } from './projection/FutureDetailModal';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { useChartTooltipPosition } from '../hooks/useChartTooltipPosition';
-import { resolvePointFromClick } from '../utils/chartTooltip';
+import { resolvePointByX } from '../utils/chartTooltip';
 import { ProjectionControls } from './projection/ProjectionControls';
 import { useSimulationParams } from '../hooks/useSimulationParams';
 import { buildPastPrefix } from '../services/history/buildPastPrefix';
@@ -49,7 +60,7 @@ import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { DailyDetailPanel } from './projection/DailyDetailPanel';
-import { isoDate, todayIsoLocal, daysInMonth, refineWindowToDaily, finiteAnchorRun, calendarFromMonthIndex } from '../services/projection/dailyRefine';
+import { isoDate, todayIsoLocal, daysInMonth, refineWindowToDaily, finiteAnchorRun, calendarFromMonthIndex, axisXAtDay } from '../services/projection/dailyRefine';
 import { dailyDeltasFor } from '../services/projection/datedMonthEvents';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCompactCAD } from '../utils/format';
@@ -642,29 +653,51 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         containerRef: zoom.containerEl,
     });
 
-    // [FUTUR-DAILY] Détail JOUR PAR JOUR du mois survolé, pour l'infobulle (demande Marc 2026-08-09).
-    // ⚠️ On raffine UN SEUL mois — celui sous le curseur — et non toute la fenêtre : l'infobulle se
-    // recalcule à chaque déplacement de souris, et raffiner 30 ans par frame serait absurde.
-    // Le mois PRÉCÉDENT sert de valeur d'ENTRÉE : sans lui on ne sait pas d'où part le mois, et
-    // `refineWindowToDaily` rend `[]` plutôt que d'inventer un point de départ.
-    // ⚠️ Déclaré APRÈS `tooltip` (dont il dépend) et AVANT les early-returns du composant — le
-    // premier jet le plaçait plus haut et le typecheck a attrapé l'usage avant déclaration.
-    const tooltipDailyRows = useMemo(() => {
-        const p = tooltip.point;
-        if (!p) return undefined;
-        const arr = displayData as ProjectionChartPoint[];
-        const i = arr.findIndex((d) => d.monthIndex === p.monthIndex);
-        if (i < 1) return undefined; // 1er point de la série : aucun mois d'entrée connu
-        // ⚠️ `finiteAnchorRun` (finding silent-failure #577) : survoler un mois du passé ANTÉRIEUR
-        // à la première transaction connue donne un `NetWorth` `undefined` VOULU — le coercer en 0
-        // aurait affiché un mois quotidien entier ancré sur un patrimoine inventé.
-        const anchors = finiteAnchorRun([arr[i - 1], p], startYear, startMonth);
-        if (anchors.length < 2) return undefined;
-        return refineWindowToDaily(
+    // [FUTUR-DAILY lot B étape 2] La COURBE elle-même au jour, quand la fenêtre est assez serrée.
+    // ⚠️ CORRECTION DE CAP (Marc, 2026-08-11) : « je veux pas voir dans l'info bulle le détail des
+    // jours de chaque mois, je veux pouvoir sélectionner chaque jour dans le graph ». La version
+    // précédente listait les jours DANS l'infobulle — c'était lire, pas sélectionner. Ici, chaque
+    // jour devient un POINT du graphe : on le survole, on le fige, on l'ouvre, comme un mois.
+    //
+    // ⚠️ Le zoom, lui, reste MENSUEL : `useTimeChartZoom` indexe le tableau mensuel et c'est sa
+    // fenêtre qui décide. On ne substitue que la SÉRIE RENDUE. Découpler les deux éviterait de
+    // réécrire la logique de zoom/pan pour un gain nul.
+    const dailyChartData = useMemo<ProjectionChartPoint[] | null>(() => {
+        if (!zoom.isZoomed) return null;
+        const vis = zoom.visibleData as ProjectionChartPoint[];
+        // Au-delà, le jour n'est plus lisible et le raffinement coûterait pour rien.
+        if (vis.length < 2 || vis.length > DAILY_CURVE_MAX_POINTS) return null;
+        const anchors = finiteAnchorRun(vis, startYear, startMonth);
+        if (anchors.length < 2) return null;
+        const byMonth = new Map(vis.map((p) => [p.monthIndex, p]));
+        const days = refineWindowToDaily(
             anchors,
             dailyDeltasFor(storeRecurring, dailyMonthlyNet, dailyMonthlyDebt),
         );
-    }, [tooltip.point, displayData, startYear, startMonth, storeRecurring, dailyMonthlyNet, dailyMonthlyDebt]);
+        if (days.length === 0) return null;
+        return days.map((d) => {
+            const { year, month } = calendarFromMonthIndex(startYear, startMonth, d.monthIndex);
+            const host = byMonth.get(d.monthIndex);
+            return {
+                // ⚠️ Abscisse FRACTIONNAIRE : c'est ce que l'axe numérique (étape 1) rend possible.
+                // `axisXAtDay` garantit que le jour 1 vaut EXACTEMENT l'entier du mois, donc les
+                // ancrages entiers (« Aujourd'hui », frontière, jalons) restent alignés.
+                monthIndex: axisXAtDay(d.monthIndex, d.dayOfMonth, year, month),
+                dateLabel: d.date,
+                age: host?.age,
+                NetWorth: d.value,
+                // Le jour porte-t-il un mouvement à DATE connue, ou n'est-il que de l'étalement ?
+                // L'infobulle le DIT — sinon l'interpolation passerait pour de la mesure.
+                dayIsDated: d.isDated,
+                dayLabels: d.labels,
+                isDailyPoint: true,
+            } as unknown as ProjectionChartPoint;
+        });
+    }, [zoom.isZoomed, zoom.visibleData, startYear, startMonth, storeRecurring, dailyMonthlyNet, dailyMonthlyDebt]);
+
+    /** Série réellement tracée : les jours quand la fenêtre le permet, sinon les mois. */
+    const chartSeries = (dailyChartData ?? zoom.visibleData) as ProjectionChartPoint[];
+    const isDailyCurve = dailyChartData !== null;
 
     // [R3] Clic sur le graphe = FIGE le tooltip (avant : ouvrait directement la modale).
     // La modale exhaustive s'ouvre désormais via le bouton « Détail complet » du tooltip
@@ -676,10 +709,16 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         if (down && (Math.abs(e.clientX - down.x) > 6 || Math.abs(e.clientY - down.y) > 6)) return; // glisser = pan
         const grid = zoom.containerEl.current?.querySelector('.recharts-cartesian-grid');
         const rect = grid?.getBoundingClientRect();
-        const point = resolvePointFromClick(
+        // ⚠️ `resolvePointByX` et NON `resolvePointFromClick` (par indice) : en mode QUOTIDIEN les
+        // points ne sont PAS régulièrement espacés — un jour de février vaut 1/28 de mois, un jour
+        // de mars 1/31. Résoudre par indice y sélectionnerait un autre jour que celui visé, sans
+        // rien casser d'apparent. On résout donc par valeur d'abscisse, ce qui reste exact pour la
+        // série mensuelle uniforme.
+        const point = resolvePointByX(
             e.clientX,
             rect ? { left: rect.left, width: rect.width } : null,
-            zoom.visibleData,
+            chartSeries,
+            (p) => p.monthIndex,
         ) ?? lastHoverPointRef.current; // repli : dernier point survolé
         if (point) tooltip.freezeOn(point);
     };
@@ -1059,7 +1098,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                      ) : (
                      <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart
-                            data={zoom.visibleData}
+                            data={chartSeries}
                             margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
                             onMouseMove={((s: { activePayload?: Array<{ payload: ProjectionChartPoint }> }) => { const p = s?.activePayload?.[0]?.payload; if (p) { lastHoverPointRef.current = p; tooltip.onHoverPoint(p); } }) as unknown as (nextState: unknown, event: unknown) => void}
                             onMouseLeave={(() => tooltip.onChartLeave()) as unknown as () => void}
@@ -1126,21 +1165,21 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 <ReferenceLine key={`lifemark-${i}`} x={mk.monthIndex} stroke={mk.color} strokeOpacity={0.5} strokeDasharray="2 4" label={<RefLineLabel value={mk.label} color={mk.color} />} />
                             ))}
 
-                            {isVisible('Liquidites') && <Area type="monotone" dataKey="Liquidites" stackId="1" stroke="#4b5563" fill="#4b5563" name="Cash" isAnimationActive={false} />}
-                            {isVisible('CELI') && <Area type="monotone" dataKey="CELI" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="CELI" isAnimationActive={false}/>}
-                            {isVisible('CELIAPP') && <Area type="monotone" dataKey="CELIAPP" stackId="1" stroke="#2dd4bf" fill="#2dd4bf" fillOpacity={0.6} name="CELIAPP (FHSA)" isAnimationActive={false}/>}
-                            {isVisible('REER') && <Area type="monotone" dataKey="REER" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="REER" isAnimationActive={false}/>}
-                            {isVisible('REEE') && <Area type="monotone" dataKey="REEE" stackId="1" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.6} name="REEE" isAnimationActive={false}/>}
-                            {isVisible('NonReg') && <Area type="monotone" dataKey="NonReg" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} name="Non-Enreg" isAnimationActive={false}/>}
-                            {isVisible('Crypto') && <Area type="monotone" dataKey="Crypto" stackId="1" stroke="#a855f7" fill="#a855f7" fillOpacity={0.6} name="Crypto" isAnimationActive={false}/>}
-                            {isVisible('Immobilier') && <Area type="monotone" dataKey="Immobilier" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.3} name="Équité Immo" isAnimationActive={false}/>}
+                            {!isDailyCurve && isVisible('Liquidites') && <Area type="monotone" dataKey="Liquidites" stackId="1" stroke="#4b5563" fill="#4b5563" name="Cash" isAnimationActive={false} />}
+                            {!isDailyCurve && isVisible('CELI') && <Area type="monotone" dataKey="CELI" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="CELI" isAnimationActive={false}/>}
+                            {!isDailyCurve && isVisible('CELIAPP') && <Area type="monotone" dataKey="CELIAPP" stackId="1" stroke="#2dd4bf" fill="#2dd4bf" fillOpacity={0.6} name="CELIAPP (FHSA)" isAnimationActive={false}/>}
+                            {!isDailyCurve && isVisible('REER') && <Area type="monotone" dataKey="REER" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="REER" isAnimationActive={false}/>}
+                            {!isDailyCurve && isVisible('REEE') && <Area type="monotone" dataKey="REEE" stackId="1" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.6} name="REEE" isAnimationActive={false}/>}
+                            {!isDailyCurve && isVisible('NonReg') && <Area type="monotone" dataKey="NonReg" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} name="Non-Enreg" isAnimationActive={false}/>}
+                            {!isDailyCurve && isVisible('Crypto') && <Area type="monotone" dataKey="Crypto" stackId="1" stroke="#a855f7" fill="#a855f7" fillOpacity={0.6} name="Crypto" isAnimationActive={false}/>}
+                            {!isDailyCurve && isVisible('Immobilier') && <Area type="monotone" dataKey="Immobilier" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.3} name="Équité Immo" isAnimationActive={false}/>}
 
-                            {isVisible('ImpotLatent') && <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>}
-                            {isVisible('FluxImpots') && <Bar dataKey="FluxImpots" fill="#ef4444" fillOpacity={0.8} name="Paiement Impôts" barSize={4} isAnimationActive={false} />}
+                            {!isDailyCurve && isVisible('ImpotLatent') && <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>}
+                            {!isDailyCurve && isVisible('FluxImpots') && <Bar dataKey="FluxImpots" fill="#ef4444" fillOpacity={0.8} name="Paiement Impôts" barSize={4} isAnimationActive={false} />}
 
                             {/* G17 — Monte Carlo dessiné PAR-DESSUS la pile (sinon occulté) en
                                 cône d'incertitude : P10/P90 pointillés + médiane pleine. */}
-                            {runMC && isVisible('montecarlo') && (
+                            {!isDailyCurve && runMC && isVisible('montecarlo') && (
                                 <>
                                     <Line type="monotone" dataKey="P90" stroke="#60a5fa" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Optimiste (P90)" isAnimationActive={false} />
                                     <Line type="monotone" dataKey="P10" stroke="#f87171" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Pessimiste (P10)" isAnimationActive={false} />
@@ -1150,7 +1189,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
                             {isVisible('NetWorth') && <Line type="monotone" dataKey="NetWorth" stroke="#fff" strokeWidth={3} dot={false} name="Valeur Nette Totale" isAnimationActive={false}/>}
                             {/* PH2-d — courbe VERROUILLÉE (référence figée), superposée à l'aperçu live. */}
-                            {lockedByMonth && <Line type="monotone" dataKey="lockedNetWorth" stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Courbe verrouillée 🔒" isAnimationActive={false} />}
+                            {!isDailyCurve && lockedByMonth && <Line type="monotone" dataKey="lockedNetWorth" stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Courbe verrouillée 🔒" isAnimationActive={false} />}
 
                             {isVisible('events') && shownLifeEvents.map((evt, i) => (
                                 <ReferenceDot
@@ -1187,6 +1226,20 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </ResponsiveContainer>
                      )}
                 </div>
+
+                {/* [FUTUR-DAILY lot B étape 2] Le graphe est passé au JOUR : il faut le DIRE, et dire
+                    aussi pourquoi les aires par compte ont disparu. Les faire disparaître en silence
+                    laisserait croire à un bug ; les garder au mois sous une courbe quotidienne
+                    afficherait deux granularités superposées sans le signaler. */}
+                {isDailyCurve && (
+                    <p role="status" className="mt-2 rounded-card border border-primary/25 bg-primary/5 px-3 py-2 text-tiny text-ink-200">
+                        <strong className="text-primary">Vue au jour</strong> — chaque point de la courbe est
+                        une journée : survole-la ou clique pour figer le détail d'un jour précis. Les aires
+                        par compte sont masquées ici : le moteur ne calcule la répartition entre tes comptes
+                        qu'au <strong className="text-ink-100">mois</strong>, et l'étaler sur les jours serait
+                        une précision inventée. Dézoome pour les retrouver.
+                    </p>
+                )}
 
                 {/* [FUTUR-DAILY] Détail JOUR PAR JOUR de la fenêtre regardée (demande Marc 2026-08-06).
                     N'apparaît qu'en ZOOM : dézoomé, la fenêtre couvre des décennies et un tableau
@@ -1245,7 +1298,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     >
                         <ExpertTooltip
                             data={tooltip.point}
-                            dailyRows={tooltipDailyRows}
                             userName1={config.users[0]?.name}
                             userName2={config.users[1]?.name}
                             frozen={tooltip.mode === 'frozen'}

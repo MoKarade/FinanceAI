@@ -7,6 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
+    axisXAtDay,
     refineMonthToDaily,
     refineWindowToDaily,
     finiteAnchorRun,
@@ -252,5 +253,37 @@ describe('finiteAnchorRun — une absence ne devient jamais 0 $', () => {
     it('un NaN ou un Infinity est traité comme une absence, pas comme une valeur', () => {
         const run = finiteAnchorRun([pt(0, NaN), pt(1, Infinity), pt(2, 300), pt(3, 400)], 2026, 0);
         expect(run.map((a) => a.monthIndex)).toEqual([2, 3]);
+    });
+});
+
+// [FUTUR-DAILY lot B étape 2] Abscisse d'un point quotidien sur l'axe numérique.
+describe('axisXAtDay — le jour 1 vaut EXACTEMENT l’entier du mois', () => {
+    it('aligne le 1er du mois sur l’ancrage entier (sinon les jalons glissent)', () => {
+        // C'est L'invariant qui rend la migration sûre : « Aujourd'hui », la frontière passé/futur
+        // et les icônes-jalons sont posés sur des ENTIERS.
+        expect(axisXAtDay(7, 1, 2026, 0)).toBe(7);
+        expect(axisXAtDay(-3, 1, 2026, 5)).toBe(-3);
+    });
+
+    it('répartit les jours DANS le mois, sans jamais atteindre le mois suivant', () => {
+        expect(axisXAtDay(0, 16, 2026, 0)).toBeCloseTo(15 / 31, 12); // janvier, 31 jours
+        expect(axisXAtDay(0, 31, 2026, 0)).toBeCloseTo(30 / 31, 12);
+        expect(axisXAtDay(0, 31, 2026, 0)).toBeLessThan(1);
+    });
+
+    it('tient compte de la LONGUEUR réelle du mois (février ≠ mars)', () => {
+        // Le même quantième n'est pas à la même fraction : c'est précisément ce qui rend
+        // l'espacement non uniforme, et donc la résolution par rang fausse.
+        expect(axisXAtDay(0, 15, 2026, 1)).toBeCloseTo(14 / 28, 12); // février 2026, 28 jours
+        expect(axisXAtDay(0, 15, 2026, 2)).toBeCloseTo(14 / 31, 12); // mars, 31 jours
+        expect(axisXAtDay(0, 15, 2026, 1)).not.toBeCloseTo(axisXAtDay(0, 15, 2026, 2), 6);
+    });
+
+    it('gère l’année bissextile', () => {
+        expect(axisXAtDay(0, 29, 2028, 1)).toBeCloseTo(28 / 29, 12); // février 2028, 29 jours
+    });
+
+    it('un monthIndex non fini ressort tel quel plutôt qu’en NaN silencieux', () => {
+        expect(axisXAtDay(NaN, 5, 2026, 0)).toBeNaN();
     });
 });

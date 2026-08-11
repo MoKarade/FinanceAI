@@ -38,10 +38,12 @@ export interface DatedDelta {
 
 /** Un point quotidien de la série raffinée. */
 export interface DailyPoint {
-    /** Date calendaire réelle, `YYYY-MM-DD`.
-     *  ⚠️ C'est la SEULE clé de temps valide au jour. Un `monthIndex` fractionnaire serait un piège :
-     *  `monthIndex` est un ENTIER de mois utilisé comme clé d'axe par le graphe, le tableau et les
-     *  icônes-jalons — y glisser des décimales désaligne les jalons en SILENCE. */
+    /** Date calendaire réelle, `YYYY-MM-DD` — la clé de temps CANONIQUE d'un point quotidien.
+     *  ⚠️ MISE À JOUR 2026-08-11 : ce commentaire interdisait un `monthIndex` fractionnaire, parce
+     *  que l'axe du graphe était alors CATÉGORIEL (une décimale n'appariait plus aucun jalon, en
+     *  silence). L'axe est numérique depuis le lot B étape 1 : l'abscisse fractionnaire est
+     *  désormais le mécanisme PRÉVU, via `axisXAtDay` — et le jour 1 y vaut exactement l'entier du
+     *  mois, donc les ancrages entiers restent alignés. */
     date: string;
     /** Ancre mensuelle du point (entier, inchangé) — permet de rejoindre les données du moteur. */
     monthIndex: number;
@@ -253,4 +255,23 @@ export function daySpan(fromIso: string, toIso: string): number {
     const b = Date.parse(`${toIso}T00:00:00Z`);
     if (!Number.isFinite(a) || !Number.isFinite(b)) return 0;
     return Math.floor((b - a) / DAY_MS) + 1;
+}
+
+/**
+ * Abscisse d'un point QUOTIDIEN sur l'axe X numérique du graphe Futur : le `monthIndex` du mois,
+ * plus la fraction du mois déjà écoulée.
+ *
+ * ⚠️ L'invariant qui rend la migration sûre : le jour 1 rend EXACTEMENT l'entier `monthIndex`.
+ * Les ancrages du graphe (frontière passé/futur, « Aujourd'hui », icônes-jalons) sont posés sur des
+ * entiers ; s'ils ne coïncidaient plus avec le début du mois correspondant, ils glisseraient en
+ * silence sur un écran money-critical.
+ *
+ * ⚠️ Et l'espacement N'EST PAS uniforme d'un mois à l'autre : un jour de février vaut 1/28 de mois,
+ * un jour de mars 1/31. Tout code qui résout une position par INDEX de tableau (plutôt que par
+ * valeur d'abscisse) devient donc faux dès qu'on lui donne cette série — cf. `resolvePointByX`.
+ */
+export function axisXAtDay(monthIndex: number, dayOfMonth: number, year: number, month: number): number {
+    const nDays = daysInMonth(year, month);
+    if (!Number.isFinite(monthIndex) || nDays <= 0) return monthIndex;
+    return monthIndex + (dayOfMonth - 1) / nDays;
 }

@@ -997,6 +997,16 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   mais bloque toujours `rm -rf` sensible / `--no-verify` / `.env` (en ignorant le corps des messages).
 
 ## Notes
+- ⚠️ **[FEATURE-UNREACHABLE] 2026-08-11 — un seuil qui rend la fonctionnalité INATTEIGNABLE passe
+  tous les filtres.** La bascule « courbe au jour » se déclenchait sous 5 points visibles ; or
+  `useTimeChartZoom` plafonne le zoom à `DEFAULT_MIN_POINTS = 5` d'ÉCART, ce qui laisse **6** points
+  dans la fenêtre. Le code était correct, testé, typé — et la fonctionnalité ne s'activait JAMAIS.
+  Ni le typecheck, ni le lint, ni les tests unitaires (qui testent les fonctions, pas leur
+  déclenchement) ne peuvent voir ça : seul l'e2e qui EXERCE le geste réel l'attrape. Règle : tout
+  seuil d'activation couplé à une limite d'un AUTRE module se documente avec la valeur de cette
+  limite, et se couvre par un test qui reproduit le geste de bout en bout — pas par un test de la
+  condition. Corollaire pour la revue : « ce seuil est-il atteignable ? » est une question à poser
+  explicitement, elle ne se déduit pas de la lecture du fichier.
 - ⚠️ **[DOC-STALE-SAME-PR] 2026-08-11 — le changement qui périme SES PROPRES commentaires.** La PR
   qui migre l'axe en numérique a laissé QUATRE endroits affirmant encore « l'axe X est CATÉGORIEL » :
   un commentaire 550 lignes plus haut dans le même fichier, l'en-tête de `DailyDetailPanel`, une

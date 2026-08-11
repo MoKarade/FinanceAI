@@ -120,39 +120,8 @@ export function weeklyDeltasForMonth(
     }));
 }
 
-/**
- * Les postes récurrents que l'app peut réellement DATER, vs ceux qu'elle ne peut pas.
- * Sert à l'écran pour dire honnêtement ce qui est mesuré — et pour ne pas laisser croire que la
- * totalité des flux futurs d'un mois est placée à la bonne date.
- */
-export function datedCoverageForMonth(
-    recurring: ReadonlyArray<MinimalRecurring>,
-    month: number,
-): { datedCount: number; datedAmount: number } {
-    const deltas = datedDeltasForMonth(recurring, month);
-    return {
-        datedCount: deltas.length,
-        datedAmount: deltas.reduce((s, d) => s + Math.abs(d.amount), 0),
-    };
-}
-
-/**
- * La composition COMPLÈTE des mouvements datés d'un mois, telle que les DEUX écrans du quotidien
- * la veulent : charges récurrentes à leur jour + paie et paiements de dette chaque jeudi.
- *
- * ⚠️ SOURCE UNIQUE (finding `code-reviewer` sur #577). Cette fermeture vivait en double —
- * dans le memo du tableau quotidien ET dans celui de l'infobulle. Deux copies de la même liste,
- * pour le MÊME jour : une source de deltas ajoutée, un libellé changé ou un signe corrigé d'un
- * seul côté aurait fait diverger silencieusement les deux affichages du même écran.
- */
-export function dailyDeltasFor(
-    recurring: ReadonlyArray<MinimalRecurring>,
-    monthlyNetSalary: number,
-    monthlyDebtPayment: number,
-): (anchor: { year: number; month: number }) => DatedDelta[] {
-    return (a) => [
-        ...datedDeltasForMonth(recurring, a.month),
-        ...weeklyDeltasForMonth(a.year, a.month, monthlyNetSalary, 'Paie', 1),
-        ...weeklyDeltasForMonth(a.year, a.month, monthlyDebtPayment, 'Paiement de dette', -1),
-    ];
-}
+// ⚠️ [FUTUR-DAILY-INFOBULLE-ONLY 2026-08-11] `dailyDeltasFor` et `datedCoverageForMonth` ont été
+// RETIRÉS d'ici : leur dernier consommateur (le tableau jour-par-jour sous la courbe) a été supprimé
+// à la demande de Marc — le détail du jour vit dans l'infobulle, uniquement. La composition des
+// mouvements datés vit désormais dans `dailyLedger.datedContextFor` (qui les SÉPARE par nature,
+// paie / récurrentes / dettes / impôt, parce qu'ils n'affectent pas les mêmes champs).

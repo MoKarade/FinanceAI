@@ -76,6 +76,34 @@ test.describe('Futur — sélection d’un JOUR sur la courbe', () => {
     // montants sont ceux du jour. L'ancienne assertion cherchait « répartition entre tes comptes »,
     // la phrase du bandeau qui expliquait pourquoi les aires disparaissaient — elle est PÉRIMÉE.
     await expect(page.getByText(/tous les montants sont ceux de ce/)).toBeVisible();
+
+    // [FUTUR-DAILY-INFOBULLE-ONLY] Le tableau jour-par-jour sous la courbe a été RETIRÉ (demande
+    // Marc : « juste dans l'infobulle […] pas de nouvel onglet ou quoi »). Ces textes étaient les
+    // siens — s'ils réapparaissent, quelqu'un a réintroduit une deuxième surface de détail.
+    await expect(page.getByText('Détail jour par jour')).toHaveCount(0);
+    await expect(page.getByText(/Zoome davantage pour voir le détail/)).toHaveCount(0);
+
+    // [FUTUR-DAILY-ZOOM-DEEP] On peut zoomer PLUS que la fenêtre du bouton (demande Marc : « je veux
+    // pouvoir zoommer un peu plus pour pouvoir voir les jours individuels »). Sonde MESURABLE : la
+    // table sr-only échantillonne au-delà de 40 lignes — à ~150 jours sa légende dit « échantillonnés
+    // sur N » ; une fois descendu à ~1 mois (≤ 40 jours), la mention DISPARAÎT. Avant ce lot, le
+    // plancher de zoom bloquait à ~150 jours : cette assertion était INATTEIGNABLE, donc elle
+    // discrimine par construction.
+    await expect(page.getByText(/échantillonnés sur/)).toBeVisible();
+    // ⚠️ RE-SCROLLER puis RE-MESURER après le clic (leçon d'hier, même fichier) : le bandeau
+    // « Vue au jour » décale la page, et le centre du graphe peut sortir du viewport — une molette
+    // hors viewport ne zoome RIEN, silencieusement (mesuré : la fenêtre restait à 153 jours).
+    const zoomChart = page.getByRole('img', { name: /Courbe de vie/ });
+    await zoomChart.scrollIntoViewIfNeeded();
+    const zoomBox = (await zoomChart.boundingBox())!;
+    const wheelY = Math.max(24, Math.min(zoomBox.y + zoomBox.height / 2, (page.viewportSize()?.height ?? 720) - 24));
+    await page.mouse.move(zoomBox.x + zoomBox.width / 2, wheelY);
+    for (let i = 0; i < 30; i++) {
+      await page.mouse.wheel(0, -400);
+      if (i % 5 === 4 && await page.getByText(/échantillonnés sur/).count() === 0) break;
+    }
+    await expect(page.getByText(/Vue au jour/)).toBeVisible();
+    await expect(page.getByText(/échantillonnés sur/)).toHaveCount(0);
   });
 
   test('zoomer fort passe la courbe au jour, et un clic fige UN jour précis', async ({ page }) => {

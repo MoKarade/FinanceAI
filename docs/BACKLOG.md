@@ -364,6 +364,28 @@
         « ça devrait me dire par exemple le // »). « sam. 14 sept. 2026 » ressemblait encore au
         libellé mensuel d'un coup d'œil ; « sam. 14/09/2026 » ne laisse aucun doute. Le jour de la
         SEMAINE est gardé — la paie tombe le jeudi, et le voir rend la marche lisible.
+  - [x] **`[FUTUR-DAILY-INFOBULLE-ONLY]` le détail du jour vit dans l'INFOBULLE, uniquement**
+        ✅ 2026-08-11 (correction de cap Marc : « je veux que juste dans l'infobulle ce soit
+        l'information par jour […] pas de nouvel onglet ou quoi »). Le tableau jour-par-jour sous la
+        courbe (`DailyDetailPanel`, lot A) est RETIRÉ — composant, tests, et le code que lui seul
+        consommait (`refineMonthToDaily`/`refineWindowToDaily`/`daySpan` de `dailyRefine`,
+        `dailyDeltasFor`/`datedCoverageForMonth` de `datedMonthEvents`). Garder du code mort couvert
+        de tests verts aurait fait croire à la prochaine session que c'était vivant.
+        ⚠️ Leçon « Proposer ≠ faire » incarnée : ce tableau était MON ajout de cadrage, jamais
+        demandé tel quel — il a fini perçu comme du bruit et retiré sur demande explicite.
+  - [x] **`[FUTUR-DAILY-ZOOM-DEEP]` zoomer jusqu'à UN mois affiché (~30 px par jour)** ✅ 2026-08-11
+        (demande Marc : « je veux pouvoir zoomer un peu plus pour pouvoir voir les jours
+        individuels »). `minPoints: 1` sur le zoom du graphe Futur (le défaut 5 reste pour les
+        autres graphes) : plancher = 2 points mensuels = 1 mois rendu au jour. Passé compris (même
+        mécanique, mêmes données réelles).
+        ⚠️ **Bug de fond débusqué en route, `[ZOOM-ROUND-FIXPOINT]`** : à petit span, l'arrondi
+        entier ANNULAIT le cran de molette (à span 5, ×0,85 déplace chaque borne de ~0,375 →
+        `Math.round` redonne les mêmes entiers → point fixe silencieux). `minPoints: 1` seul était
+        donc INOPÉRANT — et le DÉZOOM molette était déjà coincé au plancher AVANT ce lot (bug
+        préexistant, symétrique). Correctif : quand l'arrondi annule le cran, forcer un pas ENTIER
+        du côté opposé au curseur. 6 tests unitaires du hook, 4 prouvés discriminants par
+        `git stash` ; garde e2e mesurable (la légende de la table sr-only cesse d'être
+        « échantillonnée » sous 40 jours — inatteignable avant le fix).
   - [ ] **`[FUTUR-DAILY-CADENCE]` cadence de paie dérivée des documents** (demande Marc 2026-08-11 :
         « je veux que ça dépende des PDF que je donne ou ce que j'indique à Claude… je veux pour
         l'instant que ce soit jeudi hebdo »). Aujourd'hui `DEFAULT_PAY_DAY_OF_WEEK` est un défaut de

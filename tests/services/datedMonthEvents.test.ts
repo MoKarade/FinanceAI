@@ -9,7 +9,6 @@
 import { describe, it, expect } from 'vitest';
 import {
     datedDeltasForMonth,
-    datedCoverageForMonth,
     weeklyOccurrencesInMonth,
     weeklyDeltasForMonth,
     DEFAULT_PAY_DAY_OF_WEEK,
@@ -113,19 +112,5 @@ describe('[FUTUR-DAILY] cadence HEBDOMADAIRE (paie et dettes, réponse A13 de Ma
         // une règle codée en dur qu'il faudrait défaire plus tard.
         const lundis = weeklyDeltasForMonth(2026, 1, 1_000, 'Paie', 1, 1);
         expect(lundis.map((d) => d.day)).toEqual([2, 9, 16, 23]);
-    });
-});
-
-describe('[FUTUR-DAILY] datedCoverageForMonth', () => {
-    it('compte ce que l’app sait DATER — pour pouvoir le dire honnêtement à l’écran', () => {
-        // Sans ce compte, l'écran laisserait croire que TOUS les flux du mois sont à la bonne date,
-        // alors que la paie et l'hypothèque n'ont aucun jour dans le modèle (mesuré 2026-08-06).
-        const c = datedCoverageForMonth([mensuel('Loyer', 1_600, 1), mensuel('Netflix', 20, 8)], 0);
-        expect(c.datedCount).toBe(2);
-        expect(c.datedAmount).toBe(1_620);
-    });
-
-    it('rend un compte NUL quand rien n’est datable, pas une couverture implicite', () => {
-        expect(datedCoverageForMonth([], 0)).toEqual({ datedCount: 0, datedAmount: 0 });
     });
 });

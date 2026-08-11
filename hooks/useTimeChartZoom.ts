@@ -155,7 +155,24 @@ export function useTimeChartZoom<T>(
         const newStart = Math.max(0, cursorIdx - cursorRel * newSpan);
         const newEnd = Math.min(dl - 1, newStart + newSpan);
         const adjustedStart = Math.max(0, newEnd - newSpan);
-        scheduleRange(adjustedStart, newEnd);
+        // ⚠️ [ZOOM-ROUND-FIXPOINT 2026-08-11] À PETIT span, l'arrondi entier ANNULE le cran : à
+        // span 5, un cran retire 0,75 index réparti ~0,375 par borne — `Math.round` redonne les
+        // MÊMES entiers, et comme la base du cran suivant est la cible ARRONDIE, chaque cran
+        // repart du même point. Le zoom est coincé sur un point fixe, en SILENCE (mesuré par
+        // sonde : 10 crans, fenêtre inchangée). Le dézoom souffrait du symétrique (5×1,15 = 5,75 :
+        // même annulation) — une fois au plancher, la molette ne savait plus REMONTER non plus.
+        // Quand l'arrondi annule le cran, on force donc un pas ENTIER, du côté le plus éloigné du
+        // curseur (pour garder le point visé sous la souris), dans les bornes [mp, dl-1].
+        let ns = Math.round(adjustedStart);
+        let ne = Math.round(newEnd);
+        if (ns === Math.round(start) && ne === Math.round(end)) {
+            if (factor < 1 && span > mp) {
+                if (cursorRel < 0.5) ne -= 1; else ns += 1;
+            } else if (factor > 1 && span < dl - 1) {
+                if (ne < dl - 1) ne += 1; else ns = Math.max(0, ns - 1);
+            }
+        }
+        scheduleRange(ns, ne);
     }, [scheduleRange]);
 
     // Callback ref : (ré)attache le listener à chaque montage du nœud ; nettoie le frame en

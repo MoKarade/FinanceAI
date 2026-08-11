@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-11 (suite 39) — `[FUTUR-DAILY-INFOBULLE-ONLY]` + `[ZOOM-ROUND-FIXPOINT]`
+> **Correction de cap de Marc** : « je veux que juste dans l'infobulle ce soit l'information par
+> jour […] je veux pouvoir zoomer un peu plus pour voir les jours individuels […] pas de nouvel
+> onglet ou quoi ».
+> - **Retiré** : le tableau jour-par-jour sous la courbe (`DailyDetailPanel`) + tout le code que lui
+>   seul consommait (`refineMonthToDaily`, `refineWindowToDaily`, `daySpan`, `dailyDeltasFor`,
+>   `datedCoverageForMonth`) et leurs tests. Le détail du jour vit dans l'infobulle, uniquement.
+> - **Zoom profond** : `minPoints: 1` sur le graphe Futur → plancher à 2 points mensuels = 1 mois
+>   rendu au jour (~30 px par jour). Les autres graphes gardent le défaut 5.
+> - ⚠️ **Bug de fond `[ZOOM-ROUND-FIXPOINT]`, trouvé par SONDE** (10 crans dispatchés, fenêtre
+>   inchangée — pas à la lecture) : à petit span l'arrondi entier ANNULAIT le cran (à span 5, ×0,85
+>   déplace chaque borne de ~0,375 → mêmes entiers → point fixe, et la base du cran suivant est la
+>   cible arrondie). `minPoints: 1` seul était INOPÉRANT, et le DÉZOOM au plancher était déjà coincé
+>   avant ce lot. Correctif : pas entier forcé quand l'arrondi annule, côté opposé au curseur.
+>   6 tests du hook (4 discriminants prouvés par stash) + garde e2e mesurable (la légende sr-only
+>   cesse d'être « échantillonnée » sous 40 jours).
+> - ⚠️ Piège de test vécu : un stub rAF SYNCHRONE fait croire au hook qu'un frame est éternellement
+>   en attente (le callback tourne avant l'affectation de l'id) — les tests mesuraient le stub.
+>   File de frames flushée manuellement.
+> - Gate vert : typecheck, lint, **3 729 tests / 326 fichiers** (−21 : tests du tableau retiré et du
+>   code mort, +6 du hook de zoom), build, e2e Futur complet (jour, tooltip, axe, icônes).
+
 > ## 🟢 Session 2026-08-11 (suite 38) — `[FUTUR-DAILY-PAST-REAL]` : le passé au jour devient RÉEL
 > Seconde moitié de la demande de Marc (« je veux aussi que ça marche pour le passé, en fonction de
 > la valeur de mes comptes, de mes dépenses »).

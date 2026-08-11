@@ -68,7 +68,6 @@ import { StressTestPanel } from './projection/StressTestPanel';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
-import { DailyDetailPanel } from './projection/DailyDetailPanel';
 import { isoDate, todayIsoLocal, daysInMonth, finiteAnchorRun, calendarFromMonthIndex, axisXAtDay, dailyWindowRange } from '../services/projection/dailyRefine';
 import { buildDailyLedger, type DailyLedgerPoint } from '../services/projection/dailyLedger';
 import { buildDailyPastLedger, PAST_ACCOUNT_KEYS } from '../services/history/dailyPastLedger';
@@ -547,7 +546,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
     // G4 — zoom molette / pan / sélecteur de période sur la courbe (remplace <Brush>).
     // A3 — consomme displayData (passé réel préfixé + futur projeté).
-    const zoom = useTimeChartZoom<ProjectionChartPoint>(displayData as ProjectionChartPoint[]);
+    // [FUTUR-DAILY-ZOOM-DEEP] `minPoints: 1` (écart minimal) ⇒ on peut descendre jusqu'à DEUX points
+    // mensuels visibles = UN seul mois rendu au jour (~30 jours à l'écran, ~30 px par jour — chaque
+    // jour se vise à la souris). Demande Marc 2026-08-11 : « je veux pouvoir zoomer un peu plus pour
+    // pouvoir voir les jours individuels ». Le défaut du hook (5) reste en place pour les AUTRES
+    // graphes de l'app, où descendre à 2 points n'a pas de vue au jour pour le justifier.
+    // ⚠️ Le plancher ne peut pas passer SOUS le mois sans réécrire le zoom : le hook navigue par
+    // indices ENTIERS du tableau mensuel, et la construction des jours exige 2 ancres (la première
+    // sert de valeur d'entrée, non rendue).
+    const zoom = useTimeChartZoom<ProjectionChartPoint>(displayData as ProjectionChartPoint[], { minPoints: 1 });
 
     // [FUTUR-DAILY] Fenêtre à raffiner au jour = la fenêtre ZOOMÉE, traduite en dates calendaires.
     // ⚠️ Le hook de zoom indexe le tableau MENSUEL et c'est très bien ainsi : lui substituer des
@@ -556,13 +563,16 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // mois, sans trou : position ∝ index reste alors vrai par simple transformation affine.
     // Le mensuel pilote donc la FENÊTRE, et le quotidien n'est calculé que pour la remplir —
     // c'est exactement ce que « si je zoom » autorise.
+    // ⚠️ [FUTUR-DAILY-INFOBULLE-ONLY 2026-08-11] Cette fenêtre n'a plus qu'UN consommateur : le
+    // passé réel de la COURBE (`dailyPastByDate`). Le tableau jour-par-jour qui la consommait aussi
+    // a été RETIRÉ à la demande de Marc (« je veux que juste dans l'infobulle ce soit l'information
+    // par jour […] pas de nouvel onglet ou quoi ») — le détail du jour vit dans l'infobulle,
+    // uniquement. D'où la borne `DAILY_CURVE_MAX_POINTS` ajoutée EN TÊTE : hors vue au jour, plus
+    // rien ne lit ce résultat, et le calculer reconstruirait le passé pour rien à chaque cran.
     const dailyWindow = useMemo(() => {
-        // Garde de zoom EN TÊTE (finding revue #574) : le panneau ne s'affiche qu'en zoom, or ce memo
-        // mappait TOUTE `visibleData` — des centaines de mois en vue dézoomée, l'état par défaut —
-        // pour un résultat jamais rendu.
         if (!zoom.isZoomed) return null;
         const vis = zoom.visibleData;
-        if (vis.length < 2) return null;
+        if (vis.length < 2 || vis.length > DAILY_CURVE_MAX_POINTS) return null;
         // ⚠️ `finiteAnchorRun` et NON `Number(p.NetWorth) || 0` (finding silent-failure #577) :
         // `buildPastPrefix` laisse `NetWorth` à `undefined` AVANT la première transaction connue,
         // exprès. Le coercer aurait ancré tout le raffinement sur un patrimoine de 0 $ inventé.
@@ -1426,26 +1436,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         restent masquées : ce sont des percentiles mensuels, les afficher au jour serait une
                         précision inventée.
                     </p>
-                )}
-
-                {/* [FUTUR-DAILY] Détail JOUR PAR JOUR de la fenêtre regardée (demande Marc 2026-08-06).
-                    N'apparaît qu'en ZOOM : dézoomé, la fenêtre couvre des décennies et un tableau
-                    quotidien n'aurait ni sens ni lisibilité. */}
-                {zoom.isZoomed && dailyWindow && (
-                    <DailyDetailPanel
-                        from={dailyWindow.from}
-                        to={dailyWindow.to}
-                        anchors={dailyWindow.anchors}
-                        today={dailyWindow.today}
-                        transactions={transactions}
-                        currentCash={calculatedStartingCash || 0}
-                        assets={storeAssets}
-                        fx={fxRates}
-                        recurring={storeRecurring}
-                        monthlyNetSalary={dailyMonthlyNet}
-                        monthlyDebtPayment={dailyMonthlyDebt}
-                        isPrivacyMode={isPrivacyMode}
-                    />
                 )}
 
                 {/* [A11Y-CHARTS] — alternative TEXTUELLE (sr-only) à la courbe Recharts : mêmes données

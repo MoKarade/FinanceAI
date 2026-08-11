@@ -406,13 +406,18 @@
   - [ ] ⚠️ **Piège de nommage au branchement** (audit) : la reconstruction MENSUELLE nomme `NetWorth`
         un champ qui porte la valeur INVESTIE ; la quotidienne le nomme `InvestedValue` (correct).
         Deux noms pour la même grandeur, sur deux fonctions destinées au même axe.
-  - [ ] ⚠️ **Divergences d'ANCRE du cash quotidien** (audit, latentes — 0 $ tant que non branché sur
-        la courbe) : `computeStartingCash` compte TOUTE transaction, la mensuelle exige `length >= 7`,
-        la quotidienne `length >= 10`. Un flux daté au mois seul est donc dans l'ancre mais pas dans
+  - [ ] ⚠️ **Divergences d'ANCRE du cash quotidien** — ⚠️ **PLUS latentes depuis #582** (le cash
+        quotidien est branché sur la courbe) : `computeStartingCash` compte TOUTE transaction, la
+        quotidienne exige une date complète. Un flux daté au mois seul est dans l'ancre mais pas dans
         les points → tout le niveau passé décalé (mesuré −2 000 $). Idem pour un flux daté APRÈS
-        aujourd'hui. **Mitigé** : `undatedTotal` et `flowsAfterNowDate` sont désormais exposés et le
-        panneau les AFFICHE. Le vrai correctif — retrancher ces flux de l'ancre — touche
-        `computeStartingCash`, donc le raccord au présent : plan-first.
+        aujourd'hui.
+        **Mitigation RÉTABLIE 2026-08-11 (`[FUTUR-DAILY-ANCHOR-CAVEAT]`)** : la suppression du
+        panneau (#584) avait emporté l'avertissement avec elle — régression d'honnêteté attrapée à
+        la relecture du BACKLOG, pas par un test. `buildDailyPastLedger` rend désormais
+        `undatedTotal`/`flowsAfterNowDate` (y compris quand AUCUNE ligne n'est produite) et le
+        BANDEAU de la vue au jour les affiche en avertissement.
+        - [ ] Le vrai correctif — retrancher ces flux de l'ancre — touche `computeStartingCash`,
+              donc le raccord au présent : **plan-first**, inchangé.
   - [ ] Liquidités par COMPTE bancaire — ⚠️ BLOQUÉ par une absence de donnée : on reconstruit à
         rebours depuis le solde connu d'AUJOURD'HUI, or il n'est connu que GLOBALEMENT.
         `FintableBrokerBalance` ne couvre que les comptes `kind: 'investment'`. Prérequis : persister

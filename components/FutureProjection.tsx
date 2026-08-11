@@ -73,7 +73,7 @@ import { buildDailyLedger, type DailyLedgerPoint } from '../services/projection/
 import { buildDailyPastLedger, PAST_ACCOUNT_KEYS } from '../services/history/dailyPastLedger';
 import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
-import { formatCompactCAD } from '../utils/format';
+import { formatCAD, formatCompactCAD } from '../utils/format';
 import { NO_DATA_LABEL } from './ui/emptyAware';
 
 // [PROJECTION-PERSIST] Dédup MODULE-LEVEL de l'écriture du blob figé (finding code-reviewer) :
@@ -708,9 +708,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const dailyWindowFrom = dailyWindow?.from;
     const dailyWindowTo = dailyWindow?.to;
     const dailyWindowToday = dailyWindow?.today;
-    const dailyPastByDate = useMemo(() => {
+    const dailyPast = useMemo(() => {
         if (!dailyWindowFrom || !dailyWindowTo || !dailyWindowToday) return null;
-        const rows = buildDailyPastLedger({
+        const built = buildDailyPastLedger({
             from: dailyWindowFrom,
             to: dailyWindowTo,
             today: dailyWindowToday,
@@ -721,8 +721,18 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             equityByYear: reconstructRealEstateEquityByYear(realEstateGoals, startYear),
             currentDebtNonImmo,
         });
-        return rows.length ? new Map(rows.map((r) => [r.date, r])) : null;
+        return {
+            byDate: built.rows.length ? new Map(built.rows.map((r) => [r.date, r])) : null,
+            // ⚠️ [FUTUR-DAILY-ANCHOR-CAVEAT] Sommes que l'ANCRE compte mais que la série quotidienne
+            // ne peut pas placer (transactions au MOIS seul, ou datées APRÈS aujourd'hui). Non nul ⇒
+            // tout le niveau passé est décalé d'autant — et le bandeau le DIT. L'avertissement vivait
+            // dans le panneau quotidien, supprimé par [FUTUR-DAILY-INFOBULLE-ONLY] : le retrait de la
+            // surface ne devait pas emporter l'honnêteté avec elle.
+            undatedTotal: built.undatedTotal,
+            flowsAfterNowDate: built.flowsAfterNowDate,
+        };
     }, [dailyWindowFrom, dailyWindowTo, dailyWindowToday, transactions, calculatedStartingCash, storeAssets, fxRates, realEstateGoals, startYear, currentDebtNonImmo]);
+    const dailyPastByDate = dailyPast?.byDate ?? null;
 
     const dailyChartData = useMemo<ProjectionChartPoint[] | null>(() => {
         if (!zoom.isZoomed) return null;
@@ -1435,6 +1445,24 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         L'infobulle indique pour chaque jour s'il est réel ou projeté. Les bandes Monte Carlo
                         restent masquées : ce sont des percentiles mensuels, les afficher au jour serait une
                         précision inventée.
+                        {/* [FUTUR-DAILY-ANCHOR-CAVEAT] Un montant que l'ancre compte mais que la série
+                            quotidienne ne peut pas placer décale TOUT le niveau passé. Le dire est le
+                            minimum ; le corriger (retrancher ces flux de l'ancre) touche
+                            `computeStartingCash`, donc le raccord au présent — plan-first, au BACKLOG. */}
+                        {dailyPast !== null && Math.abs(dailyPast.undatedTotal) > 0.5 && (
+                            <span className="mt-1 block text-amber-300/90">
+                                ⚠ {formatCAD(Math.abs(dailyPast.undatedTotal))} de transactions datées au mois
+                                seul (sans jour) ne peuvent pas être placées : le niveau des jours passés peut
+                                être décalé d'autant.
+                            </span>
+                        )}
+                        {dailyPast !== null && Math.abs(dailyPast.flowsAfterNowDate) > 0.5 && (
+                            <span className="mt-1 block text-amber-300/90">
+                                ⚠ {formatCAD(Math.abs(dailyPast.flowsAfterNowDate))} de transactions datées
+                                après aujourd'hui sont déjà dans ton solde actuel mais pas encore dans les
+                                jours passés.
+                            </span>
+                        )}
                     </p>
                 )}
 

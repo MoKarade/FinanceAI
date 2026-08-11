@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-11 (suite 40) — `[FUTUR-DAILY-ANCHOR-CAVEAT]` : le retrait du panneau avait emporté un avertissement money-critical
+> **Attrapé à la relecture du BACKLOG après le merge de #584, pas par un test.** L'item d'audit
+> « Divergences d'ancre du cash quotidien » était noté *latent — 0 $ tant que non branché sur la
+> courbe*. Or #582 l'a branché, et sa mitigation (le PANNEAU affichait `undatedTotal` /
+> `flowsAfterNowDate`) a été supprimée avec le panneau (#584). Résultat : un niveau passé
+> potentiellement décalé (mesuré −2 000 $ à l'audit) sans plus AUCUN avertissement à l'écran.
+> - **Rétabli** : `buildDailyPastLedger` rend `{ rows, undatedTotal, flowsAfterNowDate }` — y compris
+>   quand aucune ligne n'est produite (historique fait uniquement de transactions au mois seul) — et
+>   le BANDEAU de la vue au jour affiche les deux montants en avertissement, `formatCAD`.
+> - Leçon : **supprimer une surface exige l'inventaire de ce qu'elle était SEULE à dire** — le
+>   contenu redondant part avec elle, les avertissements uniques déménagent. Portée dans
+>   CONVENTIONS.md.
+> - Gate vert : typecheck, lint, **3 731 tests / 326 fichiers**, build, e2e « sélection d'un jour ».
+> - Le correctif de FOND (retrancher ces flux de l'ancre `computeStartingCash`) reste plan-first au
+>   BACKLOG — il touche le raccord au présent.
+
 > ## 🟢 Session 2026-08-11 (suite 39) — `[FUTUR-DAILY-INFOBULLE-ONLY]` + `[ZOOM-ROUND-FIXPOINT]`
 > **Correction de cap de Marc** : « je veux que juste dans l'infobulle ce soit l'information par
 > jour […] je veux pouvoir zoomer un peu plus pour voir les jours individuels […] pas de nouvel

@@ -997,6 +997,28 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   mais bloque toujours `rm -rf` sensible / `--no-verify` / `.env` (en ignorant le corps des messages).
 
 ## Notes
+- ⚠️ **[FUTUR-DAILY lot B] 2026-08-11 — axe recharts CATÉGORIEL vs NUMÉRIQUE, et la sonde qui ne
+  prouvait rien.**
+  (1) **Un axe catégoriel apparie les `ReferenceLine`/`ReferenceDot` par VALEUR DE CATÉGORIE** : un
+  ancrage n'apparaît que si un point de données porte exactement cette valeur. En numérique, ce sont
+  des COORDONNÉES — l'ancrage tombe au bon endroit même sans point à cette abscisse. C'est la
+  différence entre « on peut ajouter des abscisses quotidiennes » et « les jalons disparaissent en
+  silence ».
+  (2) **Le `domain` explicite n'est PAS cosmétique** : le défaut d'un axe numérique recharts part de
+  **0**, donc un `monthIndex` négatif (préfixe passé) est écrasé — frontière mesurée à 316,5 au lieu
+  de 122,5, bande du passé à x=283 au lieu de x=70.
+  (3) **La migration n'est pas un no-op au pixel** — j'ai écrit le contraire avant de mesurer :
+  le catégoriel centre les points dans leur bande (demi-bande de marge aux bords), le numérique colle
+  dataMin/dataMax aux bords. Tout se décale d'une demi-bande, points ET ancrages ENSEMBLE, donc
+  l'alignement est préservé — et il s'AMÉLIORE : la frontière tombait 0,97 px à côté de la bande du
+  passé, elle coïncide maintenant exactement.
+  (4) ⚠️ **La sonde à écarter** : un `toHaveScreenshot` pleine page ne prouve RIEN sur un graphe.
+  Les 4 baselines échouaient déjà pour cause de build chromium différent (écrans non touchés
+  compris), et surtout le PNG rendait un conteneur `-1 × -1` — j'ai obtenu le MÊME md5 avec ET sans
+  le `domain`, c'est-à-dire un « vert » qui aurait laissé passer un décalage de 194 px. La sonde qui
+  discrimine mesure les **coordonnées SVG** des ancrages (`.recharts-reference-area-rect`,
+  `line.recharts-reference-line-line`, la ligne de grille horizontale pour la zone de tracé) — et on
+  la valide en la faisant ÉCHOUER dans chaque état fautif, pas seulement passer dans le bon.
 - ⚠️ **[FUTUR-DAILY] 2026-08-11 — trois pièges du SEAM « aujourd'hui » et de l'absence légitime**
   (panel #577, tous CONFIRMÉS contre le vrai code avant correction) :
   (1) **Un `Number(x) || 0` au site d'appel VIDE le garde-fou du module appelé.** `refineMonthToDaily`

@@ -242,7 +242,27 @@
         dernier prix. Les lignes futures montraient donc des placements PLATS présentés comme
         reconstruits, à côté d'une colonne « Projeté » qui, elle, croît. Bornée à `min(to, today)` ;
         test discriminant prouvé (sans la borne : « 1 000 $ » au lieu de « — »).
-  - [ ] **UI lot B** — la COURBE elle-même en quotidien. ⚠️ L'axe X du graphe Futur est **CATÉGORIEL**
+  - [x] **UI lot B, étape 1 — AXE X NUMÉRIQUE** ✅ 2026-08-11 (choix de Marc parmi 3 options).
+        `type="number"` + `domain={['dataMin','dataMax']}`. C'est le PRÉALABLE : en catégoriel, un
+        `ReferenceLine x={…}` s'apparie à une CATÉGORIE et n'apparaît que si un point porte
+        exactement cette valeur — des abscisses quotidiennes feraient donc disparaître ou glisser
+        « Aujourd'hui », la frontière et les jalons, EN SILENCE. En numérique ce sont des coordonnées.
+        ⚠️ **Pas un no-op au pixel** (mesuré, mon 1er commentaire le prétendait à tort) : le catégoriel
+        centre les points dans leur bande, le numérique colle dataMin/dataMax aux bords → décalage
+        d'une demi-bande (~1 px sur ~450 mois), IDENTIQUE pour les points et les ancrages.
+        ⚠️ **Le `domain` explicite n'est pas cosmétique** : sans lui recharts part de 0 et tout le
+        préfixe PASSÉ est repoussé (frontière mesurée à 316,5 au lieu de 122,5 ; bande du passé à
+        x=283 au lieu de x=70).
+        Garde `e2e/futureAxis.spec.ts`, prouvée discriminante dans les DEUX états fautifs
+        (catégoriel : écart 0,97 ; numérique sans domaine : écart 213,2).
+  - [ ] **UI lot B, étape 2 — la COURBE en quotidien.** ⚠️ Constat de cadrage : seule la **Valeur
+        nette** peut passer au jour. Les 8 aires empilées (Liquidités/CELI/CELIAPP/REER/REEE/NonReg/
+        Crypto/Immo), l'impôt latent, la barre d'impôts et les courbes Monte Carlo lisent des champs
+        que le moteur n'émet **qu'au mois** — les rendre quotidiens exigerait d'inventer une
+        ventilation par compte au jour, exactement la fausse précision que le dépôt s'interdit.
+        Donc : au zoom fort, courbe de VN quotidienne + aires mensuelles ou masquées, et l'écran doit
+        le DIRE. À valider avec Marc avant de coder.
+  - [ ] **UI lot B — reliquat de l'analyse initiale** : la COURBE elle-même en quotidien. ⚠️ L'axe X du graphe Futur est **CATÉGORIEL**
         (aucun `type="number"`) : la ligne « Aujourd'hui », la frontière passé/futur, les événements
         de vie et les icônes-jalons sont tous ancrés sur un `monthIndex` ENTIER apparié comme une
         CATÉGORIE (`FutureProjection.tsx` l.1000, 1003, 1014, 1046, 1062). Y injecter du quotidien

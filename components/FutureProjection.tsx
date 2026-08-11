@@ -45,7 +45,7 @@ import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { DailyDetailPanel } from './projection/DailyDetailPanel';
-import { isoDate, todayIsoLocal, daysInMonth, refineWindowToDaily, finiteAnchorRun } from '../services/projection/dailyRefine';
+import { isoDate, todayIsoLocal, daysInMonth, refineWindowToDaily, finiteAnchorRun, calendarFromMonthIndex } from '../services/projection/dailyRefine';
 import { dailyDeltasFor } from '../services/projection/datedMonthEvents';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCompactCAD } from '../utils/format';
@@ -1060,14 +1060,40 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
 
+                            {/* [FUTUR-DAILY lot B] Axe X NUMÉRIQUE (`type="number"`), et non plus catégoriel.
+                                ⚠️ CE QUE ÇA CHANGE, ET POURQUOI C'EST LE PRÉALABLE AU QUOTIDIEN. En catégoriel,
+                                un `ReferenceLine x={…}` s'apparie à une CATÉGORIE : il n'apparaît que si un point
+                                de données porte EXACTEMENT cette valeur. Injecter des points quotidiens ferait
+                                donc disparaître ou glisser « Aujourd'hui », la frontière passé/futur et les
+                                icônes-jalons — en SILENCE, sur un écran money-critical. En numérique, ces mêmes
+                                valeurs sont des COORDONNÉES : elles tombent au bon endroit qu'un point existe ou
+                                non à cette abscisse. C'est la condition pour que le lot suivant puisse ajouter
+                                des abscisses fractionnaires.
+                                ⚠️ Ce n'est PAS un no-op au pixel près, et le premier jet de ce commentaire le
+                                prétendait à tort : un axe catégoriel place les points au CENTRE de leur bande
+                                (une demi-bande de marge à chaque bord), un axe numérique fait coïncider dataMin
+                                et dataMax avec les bords du tracé. Tout se décale donc d'une demi-bande — ~1 px
+                                sur ~450 mois. Ce qui compte est que points ET ancrages subissent la MÊME
+                                échelle : la frontière passé/futur, qui tombait 0,97 px à côté de la bande du
+                                passé en catégoriel, coïncide désormais EXACTEMENT avec elle (mesuré, garde e2e).
+                                `domain` explicite : le défaut d'un axe numérique recharts part de 0, ce qui
+                                COUPERAIT tout le préfixe passé (monthIndex négatifs). */}
                             <XAxis
                                 dataKey="monthIndex"
+                                type="number"
+                                domain={['dataMin', 'dataMax']}
                                 stroke="#666"
                                 tick={{fontSize: 10}}
                                 minTickGap={50}
                                 tickFormatter={(val: number) => {
-                                    const year = monthIndexToYear.get(val);
-                                    return year !== undefined ? `${year}` : `${val}`;
+                                    // Un axe numérique génère ses PROPRES graduations (nombres ronds), qui ne
+                                    // correspondent pas forcément à un point de données : sans le repli
+                                    // arithmétique, l'axe afficherait des numéros de mois bruts au lieu des
+                                    // années. La Map reste consultée d'abord — même étiquette qu'avant, à
+                                    // l'identique, partout où un point existe.
+                                    const year = monthIndexToYear.get(val)
+                                        ?? calendarFromMonthIndex(startYear, startMonth, Math.floor(val)).year;
+                                    return `${year}`;
                                 }}
                             />
 

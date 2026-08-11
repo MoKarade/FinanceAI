@@ -25,6 +25,21 @@
 >   au clavier · les « — » hors convention `emptyAware`.
 > - Gate vert : typecheck, lint, **3 691 tests / 324 fichiers**, build.
 
+> ## 🟢 Session 2026-08-11 (suite 34) — `[FUTUR-DAILY]` lot B étape 1 : axe X NUMÉRIQUE
+> **Marc a choisi l'axe numérique** parmi 3 options (fraction de mois / axe numérique / 2e graphe).
+> `type="number"` + `domain={['dataMin','dataMax']}` — préalable au tracé quotidien : en catégoriel,
+> les ancrages s'apparient par CATÉGORIE et disparaîtraient sur des abscisses fractionnaires.
+> - ⚠️ **Pas un no-op au pixel** (mesuré) : décalage d'une demi-bande, points et ancrages ENSEMBLE.
+> - ⚠️ **`domain` obligatoire** : sans lui recharts part de 0 → tout le passé repoussé (316,5 vs 122,5).
+> - Garde `e2e/futureAxis.spec.ts`, prouvée discriminante dans les DEUX états fautifs.
+> - ⚠️ **Sonde à ne PAS refaire** : `toHaveScreenshot` pleine page — même md5 avec et sans le
+>   `domain` (conteneur rendu −1×−1), soit un « vert » qui masquait 194 px d'écart.
+> - ⚠️ **Constat de cadrage pour l'étape 2** : seule la **Valeur nette** peut passer au quotidien.
+>   Les 8 aires empilées, l'impôt latent, la barre d'impôts et le Monte Carlo lisent des champs que
+>   le moteur n'émet qu'au MOIS. À trancher avec Marc avant de coder.
+> - E2E dans ce conteneur : chromium 1194 vs 1223 attendu → `PW_LOCAL_CHROMIUM=/opt/pw-browsers/chromium`
+>   (les specs Futur lisent déjà cette variable).
+
 > ## 🟠 Session 2026-08-06 (suite 32) — #574 mergée, mais PAS déployée
 > `[FUTUR-DAILY]` est **sur `main`** (`ed5a7d1`, #574) — et **Vercel n'a créé aucun déploiement de
 > PRODUCTION** dans la demi-heure suivante. `latestDeployment` du projet restait la PREVIEW de

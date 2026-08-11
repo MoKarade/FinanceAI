@@ -20,6 +20,42 @@ interface ProjectionResult {
 }
 ```
 
+## Ventilation au JOUR (affichage seulement)
+
+> `services/projection/dailyLedger.ts` — [FUTUR-DAILY-FULL], demande Marc 2026-08-11.
+
+Le moteur reste **mensuel** : c'est la source de vérité, `projection.ts` est intouché (le passer au
+jour = ~11 000 itérations × chaque tirage Monte Carlo, pour rejouer une fiscalité qui n'a que des
+événements ANNUELS). Pour la vue au jour du graphe Futur, `buildDailyLedger` **ventile** une fenêtre
+de mois consécutifs en points quotidiens portant les mêmes clés — l'infobulle et les aires empilées
+les consomment sans code spécifique.
+
+Chaque champ est traité selon sa classe (`FIELD_KIND`, exhaustive et **gardée par un test contre le
+moteur réel** — un champ ajouté à `monthlyOutput.ts` sans classe fait échouer la suite) :
+
+| Classe | Traitement | Exemples |
+|---|---|---|
+| `stock` | Interpolé de la fin du mois précédent à la fin de ce mois. **Le dernier jour vaut EXACTEMENT la valeur du moteur.** | `Liquidites`, `CELI`, `REER`, `Immobilier`, `NetWorth`, `ImpotLatent`, `DettesNonImmo` |
+| `flow` | Réparti sur les jours selon sa cadence. **La somme des jours vaut EXACTEMENT le total du moteur.** | `Expenses`, `IncomeMarc`, `MarketGrowth*`, `NetTransfer*`, `FluxImpots` |
+| `monthly` | Recopié tel quel — un taux ne se divise pas. | `marginalTaxRate`, `MarketGrowthPct*`, `age` |
+| `recomputed` | Reconstruit au jour. | `dateLabel`, `diff*`, `Savings`, `lifeEvents` (posés au 1er) |
+
+Cadences de répartition (`FLOW_CADENCE`, défaut `uniform`) :
+
+| Cadence | Champs | Pourquoi |
+|---|---|---|
+| `weekly` | `IncomeMarc`, `IncomeAnna`, `ImpotSalaireMois` | Paie hebdomadaire du jeudi (réponse Marc A13) ; l'impôt retenu suit la paie |
+| `income` | `Income`, `NetSalary` | Mélange : la part SALAIRE suit les jours de paie, le reste (rentes, décaissements) n'a pas de date |
+| `recurring` | `Expenses` | Les charges détectées ont un `dayOfMonth` réel ; le reste (épicerie, essence) n'en a pas → mélange 50/50 forme-récurrente / uniforme |
+| `monthEnd` | `FluxImpots` | Le solde d'impôt se règle à l'échéance — le 30 avril est le dernier jour de son mois |
+| `uniform` | tout le reste | **Aucune date connue, et on ne l'invente pas** (le rendement du marché en tête) |
+
+⚠️ Les mouvements datés n'appartiennent pas tous aux mêmes champs (`datedDeltasForField`) : un
+**paiement de dette** sort de `Liquidites` mais est **neutre sur `NetWorth`** (la dette baisse
+d'autant). Les confondre creusait un faux trou dans le patrimoine net le jour de paie.
+
+⚠️ Un champ que le mois n'émet pas reste **absent** du jour — jamais un `0` crédible.
+
 ## Champs d'un point mensuel (mode déterministe)
 
 > En mode Monte Carlo, seuls `{ NetWorth, monthIndex, P10?, P50?, P90? }` sont peuplés.

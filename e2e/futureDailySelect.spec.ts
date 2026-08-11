@@ -72,35 +72,59 @@ test.describe('Futur — sélection d’un JOUR sur la courbe', () => {
     await chartBox(page);
     await page.getByRole('button', { name: 'Jour', exact: true }).click();
     await expect(page.getByText(/Vue au jour/)).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/répartition entre tes comptes/)).toBeVisible();
+    // [FUTUR-DAILY-FULL] L'écran ne s'excuse plus de masquer les comptes : il annonce que TOUS les
+    // montants sont ceux du jour. L'ancienne assertion cherchait « répartition entre tes comptes »,
+    // la phrase du bandeau qui expliquait pourquoi les aires disparaissaient — elle est PÉRIMÉE.
+    await expect(page.getByText(/tous les montants sont ceux de ce/)).toBeVisible();
   });
 
   test('zoomer fort passe la courbe au jour, et un clic fige UN jour précis', async ({ page }) => {
     const box = await chartBox(page);
     const notice = await zoomIntoDays(page, box);
 
-    // L'écran DIT ce qu'il montre — y compris pourquoi les aires par compte disparaissent.
+    // L'écran DIT ce qu'il montre : les montants du jour, et ce qui reste réparti faute de date.
     await expect(notice).toBeVisible();
-    await expect(page.getByText(/répartition entre tes comptes/)).toBeVisible();
+    await expect(page.getByText(/tous les montants sont ceux de ce/)).toBeVisible();
+
+    // [FUTUR-DAILY-FULL] LE VRAI LIVRABLE, mesuré et pas déduit : les aires par compte sont RENDUES
+    // en vue jour. C'est ce qui manquait — le moteur ne ventilait qu'au mois, donc la vue au jour ne
+    // portait que la valeur nette et l'écran masquait les comptes. Une assertion sur le seul texte
+    // du bandeau resterait verte si la ventilation ne produisait rien.
+    await expect(page.locator('.recharts-area-area').first()).toBeVisible();
+    expect(await page.locator('.recharts-area').count()).toBeGreaterThan(1);
 
     const frozen = page.locator('[data-frozen-tooltip]');
     const modal = page.getByRole('dialog', { name: 'Détail du mois' });
-    const y = Math.min(box.y + box.height * 0.8, (page.viewportSize()?.height ?? 720) - 24);
+
+    // ⚠️ RE-MESURER le graphe APRÈS le zoom : les 60 crans de molette finissent par défiler la page
+    // une fois le plancher de zoom atteint, donc la boîte d'avant est périmée.
+    //
+    // ⚠️ ET SURTOUT — ce clic à 80 % de la hauteur tombe DANS les aires empilées, volontairement.
+    // C'est la garde de `[FUTUR-CLICK-AREA]` : sur une aire (`path.recharts-area-area`), le
+    // navigateur ne dispatche AUCUN événement `click` (recharts re-rend le path entre le
+    // pointerdown et le pointerup), alors qu'il en dispatche un sur l'espace vide du graphe.
+    // Cliquer sur la partie colorée de la courbe ne figeait donc jamais l'infobulle — un défaut
+    // ANTÉRIEUR à la vue au jour, resté invisible parce que ce test cliquait dans le vide au-dessus
+    // de la pile. Si quelqu'un repasse le conteneur de `pointerup` à `click`, ce test échoue.
+    const zoomedBox = (await page.getByRole('img', { name: /Courbe de vie/ }).boundingBox())!;
+    const y = Math.min(zoomedBox.y + zoomedBox.height * 0.8, (page.viewportSize()?.height ?? 720) - 24);
 
     // Clique à deux abscisses ÉLOIGNÉES et relève la date figée à chaque fois.
     const dates: string[] = [];
     for (const fx of [0.25, 0.75]) {
-      await page.mouse.click(box.x + box.width * fx, y);
+      await page.mouse.click(zoomedBox.x + zoomedBox.width * fx, y);
       if (await modal.isVisible().catch(() => false)) {
         await page.keyboard.press('Escape');
         await modal.waitFor({ state: 'hidden', timeout: 2_000 }).catch(() => {});
-        await page.mouse.click(box.x + box.width * fx, y - 30);
+        await page.mouse.click(zoomedBox.x + zoomedBox.width * fx, y - 30);
       }
       await expect(frozen).toBeVisible({ timeout: 5_000 });
       const txt = (await frozen.textContent()) ?? '';
-      // Un point QUOTIDIEN porte une date complète `AAAA-MM-JJ` — un point mensuel n'a que
-      // « janv. 2030 ». C'est ce quantième qui prouve qu'on a sélectionné un JOUR.
-      const m = txt.match(/\d{4}-\d{2}-\d{2}/);
+      // Un point QUOTIDIEN porte une date COMPLÈTE en français — « lun. 14 sept. 2026 » — alors
+      // qu'un point mensuel n'a que « janv. 2030 ». C'est le QUANTIÈME devant le mois qui prouve
+      // qu'on a sélectionné un JOUR (l'ancien format ISO était illisible pour Marc : c'est
+      // précisément ce libellé qu'il a signalé comme ne montrant « pas le jour »).
+      const m = txt.match(/\b\d{1,2}\s+[a-zéûàA-Zî]+\.?\s+\d{4}\b/);
       expect(m, `aucune date au jour dans l'infobulle figée (fx=${fx}) : ${txt.slice(0, 200)}`).not.toBeNull();
       dates.push(m![0]);
       await page.keyboard.press('Escape');

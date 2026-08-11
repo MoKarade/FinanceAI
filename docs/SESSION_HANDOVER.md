@@ -4,6 +4,39 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-11 (suite 37) — `[FUTUR-DAILY-FULL]` : la vue au jour ne CALCULAIT rien au jour
+> **Retour de Marc, capture à l'appui** : « ça me dit encore septembre 2026 et pas le jour […] je
+> veux que tous les calculs soient faits pour chaque jour, je veux que tout soit ajusté au jour,
+> toutes les sommes. Je veux aussi que ça marche pour le passé. »
+> - **Diagnostic** : l'infobulle de sa capture était un point MENSUEL (elle affiche « Paye »,
+>   « Dépenses de vie », « Impôt dormant », « Par compte » — des champs que le moteur n'émet qu'au
+>   mois). Mais le vrai défaut était en dessous : **la vue au jour ne portait QUE `NetWorth`**. Toutes
+>   les autres lignes de l'infobulle étaient donc vides au jour, et les aires par compte masquées
+>   « en s'en expliquant ». Une courbe au jour SANS calculs au jour.
+> - **Livré** : `services/projection/dailyLedger.ts` (25 tests) ventile **tous** les champs du moteur
+>   au jour, par classe — `stock` (interpolé du mois précédent à ce mois), `flow` (réparti selon sa
+>   cadence), `monthly` (un taux ne se divise pas), `recomputed`. L'infobulle et les aires empilées
+>   fonctionnent au jour **sans une ligne de réécriture** : elles lisent les mêmes clés.
+> - ⚠️ **Un constat de cadrage à moi était FAUX et bloquait la feature** : « seule la Valeur nette
+>   peut passer au jour, ventiler les comptes serait de la fausse précision » (BACKLOG, lot B étape 2).
+>   Le moteur émet DÉJÀ `NetTransfer*` et `MarketGrowth*` par mois ET par compte — de quoi décomposer
+>   sans rien inventer. Classe `DOC-STALE-IMPOSSIBILITY`.
+> - ⚠️ **Bug de fond corrigé** : le raffinement précédent appliquait la même liste de mouvements datés
+>   au COMPTE et au PATRIMOINE NET → un paiement de dette creusait un trou dans la valeur nette le
+>   jour de paie, rebouché ensuite par l'étalement du résidu (juste en fin de mois, faux au jour).
+> - ⚠️ **Les deux tests d'invariant ne suffisaient PAS** : ils lisent `FIELD_KIND` pour choisir quoi
+>   vérifier, donc un solde reclassé en flux leur échappe (mesuré). D'où une 3e garde d'**ordre de
+>   grandeur**, indépendante de la classification.
+> - **Reste ouvert** : `[FUTUR-DAILY-PAST-REAL]` (le passé au jour vient encore de l'interpolation des
+>   ancres mensuelles, alors que les vraies séries quotidiennes existent) et `[FUTUR-DAILY-CADENCE]`
+>   (cadence de paie dérivée des relevés — Marc : « pour l'instant jeudi hebdo »).
+> - ⚠️ **Défaut MAJEUR trouvé en route, antérieur à ce chantier** : cliquer sur une AIRE du graphe
+>   Futur ne figeait pas l'infobulle — le navigateur ne dispatche aucun `click` sur un path recharts
+>   redessiné au survol. La moitié basse de la courbe était morte au clic depuis toujours ; l'e2e
+>   cliquait dans le vide au-dessus de la pile, donc il ne le voyait pas. Corrigé (`onPointerUp`).
+>   Méthode : sonde Playwright + instrumentation par attribut DOM (le `console.log` restait muet).
+> - Gate vert : typecheck, lint, **3 735 tests / 325 fichiers**, build, e2e Futur (jour, infobulle, axe, icônes).
+
 > ## 🟢 Session 2026-08-11 (suite 36) — `[FUTUR-DAILY-REACH]` : la vue au jour était INATTEIGNABLE
 > **Retour de Marc après le déploiement de l'étape 2 : « j'arrive toujours pas à voir jour par
 > jour ».** Rien n'était cassé — et il avait entièrement raison.

@@ -20,7 +20,15 @@
 >   reconstruit (la reconstruction s'arrête à la veille) ; bornée à aujourd'hui pour ne pas afficher
 >   des placements plats « reconstruits » sur le futur.
 > - Badge **Réel / Projeté** dans l'infobulle + avertissement quand le prix utilisé date de > 7 jours.
-> - Gate vert : typecheck, lint, **3 748 tests / 326 fichiers**, build, e2e « sélection d'un jour ».
+> - ⚠️ **Retour immédiat de Marc : « je vois toujours pas au jour pour le passé ».** Vrai, et
+>   arithmétique : `dailyWindowRange` posait `lo = todayIndex − 1`, or la 1re ancre de la fenêtre est
+>   CONSOMMÉE comme valeur d'entrée sans être rendue → le 1er jour affiché était le 1er du mois
+>   COURANT. Le passé au jour était livré, testé, et **strictement invisible**. Fenêtre désormais
+>   CENTRÉE (2 mois passés + courant + 2 futurs), avec un test qui échoue sur l'ancien ancrage.
+>   Classe `UX-UNREACHABLE-FEATURE`, 3e occurrence sur ce chantier — livrer ≠ rendre visible.
+> - Libellé du jour passé en `JJ/MM/AAAA` (« sam. 14/09/2026 ») : le mois abrégé ressemblait encore
+>   au libellé mensuel d'un coup d'œil. Demande de Marc, 2e correction du même symptôme.
+> - Gate vert : typecheck, lint, **3 750 tests / 326 fichiers**, build, e2e « sélection d'un jour ».
 > - **Reste** : `[FUTUR-DAILY-CADENCE]` (cadence de paie dérivée des relevés) et
 >   `[FUTUR-DAILY-TOUCH]` (pincement au doigt, à cadrer avec Marc).
 

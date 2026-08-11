@@ -369,13 +369,20 @@ export interface BuildDailyLedgerInput {
     dated: DatedContextInput;
 }
 
-/** Libellé lisible d'un jour, en français : « sam. 14 sept. 2026 ».
+/** Libellé d'un jour : « lun. 14/09/2026 ».
  *  ⚠️ C'est CE libellé que Marc lisait comme « sept. 2026 » : l'infobulle affiche `dateLabel`, et
- *  un point quotidien qui hérite du libellé MENSUEL est indiscernable d'un mois à l'écran. */
+ *  un point quotidien qui hérite du libellé MENSUEL est indiscernable d'un mois à l'écran.
+ *  ⚠️ Format NUMÉRIQUE `JJ/MM/AAAA` (demande Marc 2026-08-11 : « ça devrait me dire par exemple
+ *  le // ») : un mois abrégé (« 14 sept. 2026 ») ressemble encore au libellé mensuel d'un coup
+ *  d'œil. Les barres obliques, elles, ne laissent aucun doute sur la granularité.
+ *  Le jour de la SEMAINE est gardé : la paie tombe le jeudi, et le voir rend la marche lisible. */
 export function dayLabel(year: number, month: number, day: number): string {
-    return new Date(Date.UTC(year, month, day)).toLocaleDateString('fr-CA', {
-        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC',
+    const weekday = new Date(Date.UTC(year, month, day)).toLocaleDateString('fr-CA', {
+        weekday: 'short', timeZone: 'UTC',
     });
+    const dd = String(day).padStart(2, '0');
+    const mm = String(month + 1).padStart(2, '0');
+    return `${weekday} ${dd}/${mm}/${year}`;
 }
 
 const isPlainNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);

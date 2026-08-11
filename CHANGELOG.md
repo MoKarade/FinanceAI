@@ -29,6 +29,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   détail — exactement comme pour un mois.
 
 ### Corrections
+- **Le bouton « Jour » te montre enfin des jours PASSÉS.** Il posait la fenêtre juste avant
+  aujourd'hui, mais le premier mois d'une fenêtre sert de point de départ et n'est pas dessiné : le
+  premier jour affiché était donc le 1er du mois courant, et tu ne voyais **aucune** journée passée.
+  Toute la reconstruction du passé au jour était livrée et invisible. La fenêtre est maintenant
+  centrée : deux mois avant aujourd'hui, le mois courant, deux mois après.
+- **La date d'un jour s'affiche en clair : « sam. 14/09/2026 ».** L'ancien « sam. 14 sept. 2026 »
+  ressemblait encore trop au libellé d'un mois.
 - **Cliquer sur la partie COLORÉE de la courbe fige enfin l'infobulle.** Jusqu'ici, seuls les clics
   dans le vide au-dessus des aires empilées fonctionnaient : sur une bande de couleur, il ne se
   passait strictement rien. Mesuré : le navigateur ne produit aucun événement de clic à cet endroit,

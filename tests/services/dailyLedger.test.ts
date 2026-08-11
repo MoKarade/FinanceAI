@@ -183,9 +183,11 @@ describe('dailyLedger — invariants de raccord (moteur réel)', () => {
     it('le libellé de date porte le QUANTIÈME (c’est ce que Marc lisait comme « sept. 2026 »)', () => {
         // Un point mensuel affiche « févr. 2026 » ; un point quotidien DOIT porter le jour, sinon
         // rien à l'écran ne distingue les deux granularités.
-        expect(days[0].dateLabel).toMatch(/\b1\b/);
+        // Format NUMÉRIQUE `JJ/MM/AAAA` (demande Marc : « ça devrait me dire par exemple le // ») —
+        // un mois abrégé ressemblait encore au libellé mensuel d'un coup d'œil.
+        expect(days[0].dateLabel).toBe('dim. 01/02/2026');
         expect(days[0].dateLabel).not.toBe(months[1].dateLabel);
-        expect(days[13].dateLabel).toMatch(/\b14\b/);
+        expect(days[13].dateLabel).toBe('sam. 14/02/2026');
     });
 
     it('l’infobulle a de quoi remplir « par compte » : chaque jour porte des soldes non nuls', () => {
@@ -293,9 +295,10 @@ describe('dailyLedger — poids et séries', () => {
         expect(s[0]).toBeGreaterThan(1000);
     });
 
-    it('`dayLabel` rend une date française lisible avec le quantième', () => {
-        expect(dayLabel(2026, 8, 14)).toMatch(/14/);
-        expect(dayLabel(2026, 8, 14)).toMatch(/2026/);
+    it('`dayLabel` rend une date NUMÉRIQUE avec le jour de la semaine', () => {
+        expect(dayLabel(2026, 8, 14)).toBe('lun. 14/09/2026');
+        // Quantièmes et mois sur DEUX chiffres : « 1/9/2026 » se lit mal en colonne.
+        expect(dayLabel(2026, 0, 3)).toBe('sam. 03/01/2026');
     });
 });
 

@@ -1,7 +1,7 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **3 704 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **3 710 tests** Vitest
 (324 fichiers, mesuré le 2026-08-11). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -199,6 +199,9 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Un test `.length > 1` sur un **tuple** de longueur fixe est vacueux.
 
 **Divers**
+- « Livré, testé, déployé » ≠ **ATTEIGNABLE** : pour une feature gatée par une INTERACTION, compter les
+  gestes depuis l'état par défaut et vérifier CHAQUE modalité (souris/doigt/clavier). Un test qui
+  boucle pour atteindre l'état testé mesure le coût du chemin (`UX-UNREACHABLE-FEATURE`).
 - Un **nom trompeur fabrique des faux findings** → renommer est le vrai correctif.
 - Resserrer un scan-garde **AVANT** de coder le fix : les offenders révélés = le vrai périmètre.
 - Un **stub** documenté « retourne toujours `[]` » peut rester branché des mois sans alerte si le

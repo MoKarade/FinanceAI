@@ -258,6 +258,43 @@ export function daySpan(fromIso: string, toIso: string): number {
 }
 
 /**
+ * [FUTUR-DAILY-REACH] Fenêtre de zoom (en INDICES DE TABLEAU) qui fait basculer la courbe au JOUR,
+ * ancrée sur aujourd'hui.
+ *
+ * ⚠️ POURQUOI CETTE FONCTION EXISTE. La vue au jour ne s'active que sous un plafond de points
+ * MENSUELS visibles, et le seul chemin pour y descendre était la molette : **mesuré à 23-31 crans
+ * depuis « Tout »** (facteur 0,85 par cran, plancher de zoom à 5 d'écart) et encore 16 crans depuis
+ * le preset « 5 ans ». Aucun bouton n'y menait, aucun retour ne disait qu'on s'en approchait, et le
+ * hook de zoom n'écoute QUE `wheel` + souris — donc au doigt, sur téléphone ou tablette, la
+ * fonctionnalité était **strictement inatteignable**. Une feature livrée, testée et déployée que
+ * l'utilisateur ne peut pas atteindre n'est pas livrée : c'est le retour de Marc (« j'arrive
+ * toujours pas à voir jour par jour »).
+ *
+ * ⚠️ POURQUOI `todayIndex - 1`. `refineWindowToDaily` CONSOMME la première ancre comme valeur
+ * d'ENTRÉE sans la rendre au jour. Viser directement le mois courant afficherait donc les jours à
+ * partir du mois SUIVANT. On recule d'un cran pour que le premier mois RENDU soit celui d'aujourd'hui.
+ * Quand aucun mois ne précède (`todayIndex <= 0`), on ne peut pas en inventer un : la fenêtre
+ * commence à 0 et le premier jour rendu est celui du mois suivant — une perte honnête, pas un
+ * raccord fabriqué.
+ *
+ * Rend `null` quand la fenêtre n'a pas de sens : moins de points que demandé, ou un jeu si court que
+ * la fenêtre couvrirait TOUT (le hook repasserait alors en « vue complète », donc hors zoom, et la
+ * vue au jour ne s'activerait pas). L'appelant masque le bouton dans ce cas plutôt que d'offrir un
+ * clic sans effet.
+ */
+export function dailyWindowRange(
+    dataLength: number,
+    todayIndex: number,
+    windowPoints: number,
+): [number, number] | null {
+    if (!Number.isFinite(dataLength) || !Number.isFinite(todayIndex) || !Number.isFinite(windowPoints)) return null;
+    if (windowPoints < 2 || dataLength <= windowPoints) return null;
+    const anchored = Math.max(0, Math.min(Math.round(todayIndex), dataLength - 1)) - 1;
+    const lo = Math.max(0, Math.min(anchored, dataLength - windowPoints));
+    return [lo, lo + windowPoints - 1];
+}
+
+/**
  * Abscisse d'un point QUOTIDIEN sur l'axe X numérique du graphe Futur : le `monthIndex` du mois,
  * plus la fraction du mois déjà écoulée.
  *

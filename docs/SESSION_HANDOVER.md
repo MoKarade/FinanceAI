@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-11 (suite 36) — `[FUTUR-DAILY-REACH]` : la vue au jour était INATTEIGNABLE
+> **Retour de Marc après le déploiement de l'étape 2 : « j'arrive toujours pas à voir jour par
+> jour ».** Rien n'était cassé — et il avait entièrement raison.
+> - **Diagnostic mesuré** : la vue au jour ne s'active que sous **6 points mensuels visibles**, et le
+>   seul chemin y menant était la molette — **23 à 31 crans depuis « Tout »** (facteur 0,85/cran,
+>   plancher `DEFAULT_MIN_POINTS = 5`), **16 depuis le preset « 5 ans »** — sans aucun retour disant
+>   qu'on s'en approchait. Et `useTimeChartZoom` n'écoute QUE `wheel` + souris : **au doigt, c'était
+>   impossible**, sur tous les graphes de l'app.
+> - **Livré** : bouton **« Jour »** dans le sélecteur de période. Un clic pose la fenêtre exacte,
+>   ancrée sur aujourd'hui. `dailyWindowRange` (pur, 6 tests) — recule d'un mois parce que
+>   `refineWindowToDaily` CONSOMME la première ancre comme valeur d'entrée sans la rendre, et rend
+>   `null` si la fenêtre couvrirait tout (le hook repasserait en « vue complète » → jamais zoomé →
+>   bouton sans effet). E2E « EN UN CLIC », **prouvée discriminante** (`git stash` : échoue sans).
+> - **Défaut adjacent corrigé** : `idxForYears` cherchait dans `chartData` alors que le zoom indexe
+>   `displayData` (= passé préfixé + `chartData`) → les presets « 5/10/20/30 ans » s'arrêtaient
+>   `pastPrefix.length` mois trop tôt.
+> - **Routé au BACKLOG** : `[FUTUR-DAILY-TOUCH]` (pincement au doigt) — à cadrer avec Marc avant de
+>   coder, la question « utilises-tu l'app au doigt ? » n'est pas tranchée.
+> - Gate vert : typecheck, lint, **3 710 tests / 324 fichiers**, build.
+
 > ## 🟢 Session 2026-08-11 (suite 33) — `[FUTUR-DAILY]` lot A2 : infobulle quotidienne + par compte
 > **Demande de Marc** : « avec l'info bulle dans futur je veux voir le détail par jour et le passé je
 > veux voir le détail par jour et par compte aussi ». Les deux sont livrés.

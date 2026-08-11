@@ -19,6 +19,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   précision inventée.
 
 ### Corrections
+- **Le bouton « Jour » : la vue jour par jour s'atteint maintenant en UN CLIC.** Elle existait, elle
+  était testée, elle était déployée — et elle restait hors de portée : le seul chemin passait par
+  **23 à 31 crans de molette** depuis « Tout » (16 depuis « 5 ans »), sans rien qui dise qu'on s'en
+  approchait. Et au doigt, sur téléphone ou tablette, c'était tout simplement impossible : le zoom
+  n'écoute que la molette et la souris. Un bouton « Jour » à côté de « 5 ans / 10 ans » pose
+  directement la fenêtre qu'il faut, à partir d'aujourd'hui.
+- **Le sélecteur « 5 / 10 / 20 / 30 ans » s'arrêtait trop tôt.** Il cherchait son indice de fin dans
+  la série du moteur alors que le graphe affiche AUSSI ton passé réel : la fenêtre était raccourcie
+  d'autant de mois que le passé en contient. « 5 ans » montre maintenant vraiment 5 ans.
 - **L'infobulle n'affiche plus « Variation +0 $ » quand elle ignore la variation.** Sur un point
   quotidien elle montrait systématiquement un zéro vert — y compris le jour de ta paie, pendant
   qu'elle disait juste en dessous « Ce jour : Paie ». Elle affiche maintenant la vraie variation par

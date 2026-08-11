@@ -64,6 +64,17 @@ test.describe('Futur — sélection d’un JOUR sur la courbe', () => {
     await page.waitForLoadState('domcontentloaded');
   });
 
+  test('[FUTUR-DAILY-REACH] le bouton « Jour » atteint la vue au jour EN UN CLIC', async ({ page }) => {
+    // ⚠️ Ce test existe parce que la fonctionnalité était livrée, testée, déployée — et malgré tout
+    // INATTEIGNABLE pour Marc (« j'arrive toujours pas à voir jour par jour »). Le test de zoom
+    // ci-dessous prouvait que la vue au jour EXISTE ; il ne prouvait pas qu'un humain puisse y
+    // arriver, puisqu'il déclenchait la molette 60 fois de suite. Ici on prouve le CHEMIN : un clic.
+    await chartBox(page);
+    await page.getByRole('button', { name: 'Jour', exact: true }).click();
+    await expect(page.getByText(/Vue au jour/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/répartition entre tes comptes/)).toBeVisible();
+  });
+
   test('zoomer fort passe la courbe au jour, et un clic fige UN jour précis', async ({ page }) => {
     const box = await chartBox(page);
     const notice = await zoomIntoDays(page, box);

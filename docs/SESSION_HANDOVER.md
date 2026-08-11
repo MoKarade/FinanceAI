@@ -30,7 +30,12 @@
 > - **Reste ouvert** : `[FUTUR-DAILY-PAST-REAL]` (le passé au jour vient encore de l'interpolation des
 >   ancres mensuelles, alors que les vraies séries quotidiennes existent) et `[FUTUR-DAILY-CADENCE]`
 >   (cadence de paie dérivée des relevés — Marc : « pour l'instant jeudi hebdo »).
-> - Gate vert : typecheck, lint, **3 735 tests / 325 fichiers**, build.
+> - ⚠️ **Défaut MAJEUR trouvé en route, antérieur à ce chantier** : cliquer sur une AIRE du graphe
+>   Futur ne figeait pas l'infobulle — le navigateur ne dispatche aucun `click` sur un path recharts
+>   redessiné au survol. La moitié basse de la courbe était morte au clic depuis toujours ; l'e2e
+>   cliquait dans le vide au-dessus de la pile, donc il ne le voyait pas. Corrigé (`onPointerUp`).
+>   Méthode : sonde Playwright + instrumentation par attribut DOM (le `console.log` restait muet).
+> - Gate vert : typecheck, lint, **3 735 tests / 325 fichiers**, build, e2e Futur (jour, infobulle, axe, icônes).
 
 > ## 🟢 Session 2026-08-11 (suite 36) — `[FUTUR-DAILY-REACH]` : la vue au jour était INATTEIGNABLE
 > **Retour de Marc après le déploiement de l'étape 2 : « j'arrive toujours pas à voir jour par

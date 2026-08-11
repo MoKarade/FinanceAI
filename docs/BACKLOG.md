@@ -320,6 +320,15 @@
         la VALEUR NETTE le jour de paie, aussitôt rebouché par l'étalement du résidu (donc invisible
         en fin de mois, bien visible au jour). Un remboursement de dette est NEUTRE sur le patrimoine
         net : le compte baisse, la dette baisse d'autant.
+  - [x] **`[FUTUR-CLICK-AREA]` cliquer sur une AIRE ne figeait pas l'infobulle** ✅ 2026-08-11.
+        Trouvé en diagnostiquant un e2e rouge, PAS en lisant le code. Sonde Playwright : sur
+        `path.recharts-area-area`, aucun événement `click` n'est dispatché — même pas au niveau
+        `document` en capture ; sur `svg.recharts-surface` (espace vide), oui. Recharts re-rend le
+        path entre `pointerdown` et `pointerup`, donc le navigateur ne synthétise jamais le `click`.
+        La moitié basse de la courbe était morte au clic **depuis toujours** (défaut antérieur à la
+        vue au jour) ; l'e2e ne l'avait jamais vu parce qu'il cliquait dans le vide au-dessus de la
+        pile. Corrigé en passant le conteneur à `onPointerUp` (+ garde pour ne pas doubler l'action
+        des pastilles d'événement). L'e2e clique désormais DANS les aires, volontairement.
   - [ ] **`[FUTUR-DAILY-PAST-REAL]` le PASSÉ au jour depuis les VRAIES séries quotidiennes**
         (demande Marc 2026-08-11 : « je veux aussi que ça marche pour le passé, en fonction de la
         valeur de mes comptes, de mes dépenses »). Aujourd'hui les jours du PASSÉ sur la courbe sont

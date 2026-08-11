@@ -209,6 +209,9 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   gestes depuis l'état par défaut et vérifier CHAQUE modalité (souris/doigt/clavier). Un test qui
   boucle pour atteindre l'état testé mesure le coût du chemin (`UX-UNREACHABLE-FEATURE`).
 - Un **nom trompeur fabrique des faux findings** → renommer est le vrai correctif.
+- Un test d'interaction doit **cliquer là où l'utilisateur clique** (sur la donnée, pas dans la marge)
+  — un `onClick` React ne capte PAS un clic sur une forme SVG redessinée au survol : la moitié basse
+  de la courbe Futur était morte au clic depuis toujours (`FUTUR-CLICK-AREA`, → `pointerup`).
 - Resserrer un scan-garde **AVANT** de coder le fix : les offenders révélés = le vrai périmètre.
 - Un **stub** documenté « retourne toujours `[]` » peut rester branché des mois sans alerte si le
   mode test nourrit les surfaces en synthétique.

@@ -755,9 +755,28 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // figé, et via les pastilles d'événement (inchangées). On résout le mois cliqué par
     // GÉOMÉTRIE (robuste tactile / sans survol), avec repli sur le dernier point survolé.
     // On ignore les glissers (pan) via la distance depuis le mousedown.
-    const handleChartContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    /**
+     * [FUTUR-CLICK-AREA] ⚠️ `pointerup` et NON `click` — et ce n'est PAS un détail de style.
+     *
+     * MESURÉ (sonde Playwright, 2026-08-11) : quand le pointeur retombe sur une AIRE EMPILÉE
+     * (`path.recharts-curve.recharts-area-area`), le navigateur ne dispatche **aucun** événement
+     * `click` — pas même au niveau `document` en phase de capture. Sur l'espace vide du graphe
+     * (`svg.recharts-surface`), il le dispatche normalement. Cause : recharts re-rend le `<path>`
+     * entre le `pointerdown` et le `pointerup` (le survol change son état), donc les deux cibles ne
+     * sont plus le MÊME nœud DOM et le `click` n'est jamais synthétisé. `pointerup`, lui, arrive
+     * bien jusqu'au conteneur dans les deux cas — vérifié côté à côté.
+     *
+     * CONSÉQUENCE UTILISATEUR, antérieure à la vue au jour : cliquer sur la partie COLORÉE de la
+     * courbe ne figeait jamais l'infobulle. Seuls les clics dans le vide au-dessus de la pile
+     * marchaient. Le défaut est resté invisible parce que l'e2e cliquait justement dans le vide ;
+     * il est devenu criant en vue au jour, où les aires par compte couvrent presque tout le tracé.
+     */
+    const handleChartContainerClick = (e: React.PointerEvent<HTMLDivElement>) => {
         const down = pointerDownPosRef.current;
         if (down && (Math.abs(e.clientX - down.x) > 6 || Math.abs(e.clientY - down.y) > 6)) return; // glisser = pan
+        // Les pastilles d'événement ont DÉJÀ leur action (ouvrir la modale). Sans ce garde, le même
+        // geste ferait les deux — modale ouverte ET infobulle figée dessous.
+        if ((e.target as Element | null)?.closest?.('button, a, [role="button"]')) return;
         const grid = zoom.containerEl.current?.querySelector('.recharts-cartesian-grid');
         const rect = grid?.getBoundingClientRect();
         // ⚠️ `resolvePointByX` et NON `resolvePointFromClick` (par indice) : en mode QUOTIDIEN les
@@ -1154,8 +1173,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 <div
                     ref={zoom.containerRef}
                     {...zoom.handlers}
-                    onMouseDownCapture={(e) => { pointerDownPosRef.current = { x: e.clientX, y: e.clientY }; }}
-                    onClick={handleChartContainerClick}
+                    onPointerDownCapture={(e) => { pointerDownPosRef.current = { x: e.clientX, y: e.clientY }; }}
+                    onPointerUp={handleChartContainerClick}
                     onPointerMove={(e) => tooltip.onPointerMove(e.clientX, e.clientY)}
                     tabIndex={-1}
                     className={`chart-fullscreen relative w-full h-[380px] sm:h-[500px] lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
@@ -1346,10 +1365,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     ⚠️ `chartSeries` et NON `displayData` (finding revue) : la table doit suivre ce qui
                     est RÉELLEMENT tracé. En vue au jour, elle restait au mois — un utilisateur de
                     lecteur d'écran n'avait alors aucun accès à la granularité que la courbe expose.
-                    Les colonnes par compte y sortent « — » (le moteur ne ventile qu'au mois), pas 0 $. */}
+                    ⚠️ La mention « les colonnes par compte y sortent “—” » est PÉRIMÉE depuis
+                    [FUTUR-DAILY-FULL] : `dailyLedger` ventile les soldes par compte au jour, donc la
+                    table les remplit aussi. Le « — » reste réservé aux valeurs réellement absentes
+                    (préfixe passé avant la 1re transaction connue). */}
                 <ChartDataTable
                     caption={isDailyCurve
-                        ? 'Projection du patrimoine net par jour (vue au jour — la répartition par compte n’existe qu’au mois)'
+                        ? 'Projection du patrimoine net et des comptes par jour (vue au jour)'
                         : 'Projection du patrimoine net et des comptes par date'}
                     columns={dataColumns}
                     rows={chartSeries}

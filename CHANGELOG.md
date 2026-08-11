@@ -23,6 +23,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   détail — exactement comme pour un mois.
 
 ### Corrections
+- **Cliquer sur la partie COLORÉE de la courbe fige enfin l'infobulle.** Jusqu'ici, seuls les clics
+  dans le vide au-dessus des aires empilées fonctionnaient : sur une bande de couleur, il ne se
+  passait strictement rien. Mesuré : le navigateur ne produit aucun événement de clic à cet endroit,
+  parce que la bibliothèque de graphes redessine la forme entre l'appui et le relâchement. Défaut
+  antérieur à la vue au jour — il devenait juste impossible à ignorer maintenant que les comptes
+  couvrent tout le tracé.
 - **Un paiement de dette ne fait plus plonger ta valeur nette le jour de paie.** Elle baissait du
   montant du versement, puis remontait sur le reste du mois. C'était faux : ton compte baisse, mais
   ta dette baisse d'autant — ton patrimoine net, lui, ne bouge que de l'intérêt. Invisible en fin de

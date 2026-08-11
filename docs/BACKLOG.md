@@ -266,6 +266,25 @@
         ⚠️ **Résolution du clic par VALEUR d'abscisse** (`resolvePointByX`) et non par rang : les
         jours ne sont PAS régulièrement espacés (1/28 en février, 1/31 en mars) — par rang, le clic
         sélectionnait un autre jour sans que rien ne casse. Preuve chiffrée dans le test.
+  - [x] **UI lot B, étape 3 — `[FUTUR-DAILY-REACH]` rendre la vue au jour ATTEIGNABLE** ✅ 2026-08-11.
+        ⚠️ **Retour de Marc APRÈS le déploiement de l'étape 2 : « j'arrive toujours pas à voir jour
+        par jour ».** Il avait raison, et rien n'était cassé : la vue au jour ne s'active que sous
+        6 points mensuels visibles, et le SEUL chemin pour y descendre était la molette — **23 à 31
+        crans depuis « Tout » (mesuré), 16 depuis le preset « 5 ans »** —, sans aucun retour disant
+        qu'on s'en approchait. Pire : `useTimeChartZoom` n'écoute que `wheel` + souris, donc au
+        doigt (téléphone, tablette) la fonctionnalité était **strictement inatteignable**.
+        Livré : bouton **« Jour »** dans le sélecteur de période → un clic pose la fenêtre exacte,
+        ancrée sur aujourd'hui (`dailyWindowRange`, 6 tests). E2E `futureDailySelect.spec.ts`
+        « EN UN CLIC », **prouvée discriminante** (échoue sans le bouton).
+        ⚠️ Défaut ADJACENT corrigé au passage : `idxForYears` cherchait son indice dans `chartData`
+        alors que le zoom indexe `displayData` (= passé préfixé + `chartData`) → les presets
+        « 5/10/20/30 ans » s'arrêtaient `pastPrefix.length` mois trop tôt, et leur état actif se
+        comparait au même indice faux, donc cohérent avec lui-même et invisible.
+- [ ] **`[FUTUR-DAILY-TOUCH]` zoom au DOIGT sur les graphes (pincement)** — `useTimeChartZoom`
+      n'écoute que `wheel` + souris : sur téléphone et tablette, AUCUN zoom n'est possible sur aucun
+      graphe de l'app (Futur, Dettes, Immobilier, Retraite, Enfants). Le bouton « Jour » ci-dessus
+      débloque le cas d'usage quotidien, mais pas la navigation libre. Ampleur : M — à cadrer avec
+      Marc (utilise-t-il l'app au doigt ?) avant de coder.
         ⚠️ **Seuil COUPLÉ au plancher de zoom** : `useTimeChartZoom` s'arrête à 5 d'écart, soit
         **6** points visibles. Mon premier plafond (4 mois) rendait la vue au jour INATTEIGNABLE —
         code « correct », fonctionnalité jamais déclenchée. Attrapé par l'e2e, pas à la lecture.

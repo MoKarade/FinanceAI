@@ -81,7 +81,7 @@ import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { DailyDetailPanel } from './projection/DailyDetailPanel';
-import { isoDate, todayIsoLocal, daysInMonth, refineWindowToDaily, finiteAnchorRun, calendarFromMonthIndex, axisXAtDay } from '../services/projection/dailyRefine';
+import { isoDate, todayIsoLocal, daysInMonth, refineWindowToDaily, finiteAnchorRun, calendarFromMonthIndex, axisXAtDay, dailyWindowRange } from '../services/projection/dailyRefine';
 import { dailyDeltasFor } from '../services/projection/datedMonthEvents';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCompactCAD } from '../utils/format';
@@ -840,10 +840,22 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     ];
     const shownFlowEvents = thinEvents(visibleFlowEvents, MAX_FLOW_ICONS);
     const lastMonthIndex = chartData.length > 0 ? chartData[chartData.length - 1].monthIndex : 0;
+    // ⚠️ Indices résolus sur `displayData` (= `pastPrefix` + `chartData`) et NON sur `chartData` :
+    // c'est `displayData` que `useTimeChartZoom` indexe. Chercher dans `chartData` rendait un indice
+    // décalé du nombre de mois de PASSÉ préfixés — le bouton « 5 ans » s'arrêtait alors
+    // `pastPrefix.length` mois trop tôt, en silence, et son état actif se comparait au même indice
+    // faux (donc cohérent avec lui-même, donc invisible).
     const idxForYears = (yrs: number) => {
-        const i = chartData.findIndex((d: ProjectionChartPoint) => d.monthIndex >= yrs * 12);
-        return i === -1 ? chartData.length - 1 : i;
+        const i = (displayData as ProjectionChartPoint[]).findIndex((d) => d.monthIndex >= yrs * 12);
+        return i === -1 ? displayData.length - 1 : i;
     };
+    /** Indice TABLEAU du mois courant dans `displayData` (fin du préfixe passé, en pratique). */
+    const todayArrayIndex = (() => {
+        const i = (displayData as ProjectionChartPoint[]).findIndex((d) => d.monthIndex >= todayMonthIndex);
+        return i === -1 ? displayData.length - 1 : i;
+    })();
+    /** [FUTUR-DAILY-REACH] Fenêtre du bouton « Jour » — `null` ⇒ bouton masqué (cf. `dailyWindowRange`). */
+    const dailyPresetRange = dailyWindowRange(displayData.length, todayArrayIndex, DAILY_CURVE_MAX_POINTS);
 
     return (
         <div className="space-y-6 animate-fade-in pb-24">
@@ -1048,6 +1060,20 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 {/* G4 — sélecteur de période façon Google Finance */}
                 <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                     <div className="flex gap-0.5 p-0.5 rounded-card bg-black/30 border border-white/5">
+                        {/* [FUTUR-DAILY-REACH] Chemin d'accès DIRECT à la vue au jour. Sans lui, le seul
+                            moyen d'y descendre était la molette — 23 à 31 crans depuis « Tout » (mesuré),
+                            et rien du tout au doigt, `useTimeChartZoom` n'écoutant que `wheel` + souris.
+                            Un clic pose ici exactement la fenêtre que la vue au jour exige. */}
+                        {dailyPresetRange && (
+                            <button
+                                type="button"
+                                onClick={() => zoom.showRange(dailyPresetRange[0], dailyPresetRange[1])}
+                                title="Voir la courbe jour par jour à partir d'aujourd'hui"
+                                className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${isDailyCurve ? 'bg-primary text-dark' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                            >
+                                Jour
+                            </button>
+                        )}
                         {[5, 10, 20, 30].filter((y) => y * 12 < lastMonthIndex).map((y) => {
                             const active = !!zoom.range && zoom.range[0] === 0 && zoom.range[1] === idxForYears(y);
                             return (
@@ -1071,7 +1097,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-tiny text-ink-500 hidden md:block" aria-hidden="true">
-                            Clic = détail · molette = zoom · glisser = défiler
+                            « Jour » = jour par jour · clic = détail · molette = zoom · glisser = défiler
                         </span>
                         {/* PH4-FUT « leviers-d'abord » — revenir au composeur de leviers (ré-optimiser).
                             [PROJECTION-PERSIST] même chemin que « Rechoisir mes leviers » : efface AUSSI

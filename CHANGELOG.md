@@ -8,6 +8,29 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-11
 
+### Ajouts
+- **Tu peux maintenant sélectionner CHAQUE JOUR directement sur la courbe Futur.** Zoome à fond :
+  la courbe passe au jour, chaque point est une journée. Survole-la, clique pour figer, ouvre le
+  détail — exactement comme pour un mois. L'infobulle te dit ce qui tombe ce jour-là (paie,
+  paiement de dette, charge récurrente) ou, s'il n'y a rien de daté, que la variation n'est que la
+  croissance répartie sur le mois.
+  Les aires par compte sont masquées dans cette vue, et l'écran explique pourquoi : le moteur ne
+  calcule la répartition entre tes comptes qu'au mois, et l'étaler sur les jours serait une
+  précision inventée.
+
+### Corrections
+- **L'infobulle n'affiche plus « Variation +0 $ » quand elle ignore la variation.** Sur un point
+  quotidien elle montrait systématiquement un zéro vert — y compris le jour de ta paie, pendant
+  qu'elle disait juste en dessous « Ce jour : Paie ». Elle affiche maintenant la vraie variation par
+  rapport à la veille, et masque le badge quand il n'y a pas de veille connue.
+- **« Détail complet » depuis un jour ouvre le détail du BON mois.** Le bouton passait le jour à une
+  fiche conçue pour un mois : elle ne retrouvait pas le mois correspondant et remplissait les trous
+  par des zéros — dont un montant de dette inventé quand le patrimoine net était négatif.
+
+### Retraits
+- **La liste jour-par-jour dans l'infobulle est retirée.** Elle donnait à *lire* une liste ; ce que
+  tu voulais, c'est *sélectionner* un jour sur le graphe — c'est ce que fait la nouveauté ci-dessus.
+
 ### Modifications
 - **L'axe du temps du graphe Futur devient un vrai axe numérique.** Invisible à l'usage — c'est de la
   plomberie — mais c'est ce qui permettra d'y tracer des points quotidiens sans que la ligne

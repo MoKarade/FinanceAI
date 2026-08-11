@@ -255,7 +255,26 @@
         x=283 au lieu de x=70).
         Garde `e2e/futureAxis.spec.ts`, prouvée discriminante dans les DEUX états fautifs
         (catégoriel : écart 0,97 ; numérique sans domaine : écart 213,2).
-  - [ ] **UI lot B, étape 2 — la COURBE en quotidien.** ⚠️ Constat de cadrage : seule la **Valeur
+  - [x] **UI lot B, étape 2 — SÉLECTIONNER UN JOUR sur la courbe** ✅ 2026-08-11.
+        ⚠️ **CORRECTION DE CAP de Marc** : « je veux pas voir dans l'info bulle le détail des jours
+        de chaque mois, je veux pouvoir sélectionner chaque jour dans le graph ». Le bloc-liste que
+        j'avais ajouté à l'infobulle (lot A2) donnait à LIRE ; la demande est de SÉLECTIONNER.
+        Bloc-liste RETIRÉ. Au zoom maximal, chaque jour est un POINT du graphe : survol, clic pour
+        figer, ouverture du détail — comme un mois. L'infobulle ne décrit que le jour visé, et dit
+        s'il porte un mouvement daté ou seulement de l'étalement.
+        Abscisse fractionnaire via `axisXAtDay` (jour 1 = l'entier du mois, donc jalons alignés).
+        ⚠️ **Résolution du clic par VALEUR d'abscisse** (`resolvePointByX`) et non par rang : les
+        jours ne sont PAS régulièrement espacés (1/28 en février, 1/31 en mars) — par rang, le clic
+        sélectionnait un autre jour sans que rien ne casse. Preuve chiffrée dans le test.
+        ⚠️ **Seuil COUPLÉ au plancher de zoom** : `useTimeChartZoom` s'arrête à 5 d'écart, soit
+        **6** points visibles. Mon premier plafond (4 mois) rendait la vue au jour INATTEIGNABLE —
+        code « correct », fonctionnalité jamais déclenchée. Attrapé par l'e2e, pas à la lecture.
+        Aires par compte MASQUÉES au jour + bandeau qui explique pourquoi (le moteur ne ventile
+        qu'au mois ; l'étaler serait une précision inventée).
+        Gardes : `e2e/futureDailySelect.spec.ts` (deux abscisses éloignées → deux jours DIFFÉRENTS,
+        sinon « on peut sélectionner un jour » serait vrai en apparence), + tests unitaires
+        `axisXAtDay` et `resolvePointByX`.
+  - [ ] ~~**UI lot B, étape 2 — la COURBE en quotidien.**~~ (remplacé par l'item ci-dessus) ⚠️ Constat de cadrage : seule la **Valeur
         nette** peut passer au jour. Les 8 aires empilées (Liquidités/CELI/CELIAPP/REER/REEE/NonReg/
         Crypto/Immo), l'impôt latent, la barre d'impôts et les courbes Monte Carlo lisent des champs
         que le moteur n'émet **qu'au mois** — les rendre quotidiens exigerait d'inventer une

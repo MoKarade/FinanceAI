@@ -54,50 +54,38 @@ describe('ExpertTooltip — bloc Impôts (impôt dormant + régularisation)', ()
     });
 });
 
-// [FUTUR-DAILY] Bloc « Jour par jour » de l'infobulle (demande Marc 2026-08-09 : « avec l'info
-// bulle dans futur je veux voir le détail par jour »). L'infobulle est PASSIVE : elle affiche les
-// jours qu'on lui donne, c'est l'appelant qui raffine le mois survolé. Ce qui doit tenir ici :
-// un jour à mouvement daté est DISTINGUÉ d'un jour interpolé — sans ça, l'étalement de la
-// croissance passerait pour de la mesure.
-describe('ExpertTooltip — détail jour par jour', () => {
-    const days = [
-        { date: '2030-01-01', value: 500000, isDated: false, labels: [] as string[] },
-        { date: '2030-01-03', value: 501200, isDated: true, labels: ['Paie'] },
-    ];
+// [FUTUR-DAILY lot B étape 2] Quand le point visé est un JOUR de la courbe (et non un mois).
+// ⚠️ CORRECTION DE CAP (Marc, 2026-08-11) : l'infobulle listait tous les jours du mois — c'était
+// donner à LIRE, alors que la demande est de SÉLECTIONNER un jour sur le graphe. C'est le graphe
+// qui porte désormais les jours ; l'infobulle ne décrit que celui qu'on vise. Ce qui doit tenir :
+// un jour à mouvement daté est distingué d'un jour qui ne doit sa variation qu'à l'étalement.
+const dayPoint = (over: Partial<ProjectionChartPoint> & {
+    isDailyPoint?: boolean; dayLabels?: string[]; dayIsDated?: boolean;
+}) => pt(over as Partial<ProjectionChartPoint>);
 
-    it('rend une ligne par jour, avec le numéro du jour et les libellés de mouvement', () => {
-        render(<ExpertTooltip data={pt({})} dailyRows={days} />);
-        expect(screen.getByText('Jour par jour')).toBeInTheDocument();
-        expect(screen.getByText('01')).toBeInTheDocument();
-        expect(screen.getByText('03')).toBeInTheDocument();
-        expect(screen.getByText('Paie')).toBeInTheDocument();
+describe('ExpertTooltip — point QUOTIDIEN sélectionné', () => {
+    it('nomme les mouvements du jour visé', () => {
+        render(<ExpertTooltip data={dayPoint({ isDailyPoint: true, dayIsDated: true, dayLabels: ['Paie', 'Loyer'] })} />);
+        expect(screen.getByText('Ce jour')).toBeInTheDocument();
+        expect(screen.getByText('Paie, Loyer')).toBeInTheDocument();
     });
 
-    it('SURLIGNE le jour à mouvement daté, PAS le jour interpolé', () => {
-        render(<ExpertTooltip data={pt({})} dailyRows={days} />);
-        const dated = screen.getByText('03').closest('li');
-        const interpolated = screen.getByText('01').closest('li');
-        expect(dated?.className).toContain('bg-primary/10');
-        expect(interpolated?.className).not.toContain('bg-primary/10');
+    it("dit explicitement qu'un jour SANS mouvement daté n'est que de l'étalement", () => {
+        render(<ExpertTooltip data={dayPoint({ isDailyPoint: true, dayIsDated: false, dayLabels: [] })} />);
+        expect(screen.getByText(/croissance, répartie sur le mois/)).toBeInTheDocument();
+        expect(screen.queryByText('Ce jour')).toBeNull();
     });
 
-    it("dit explicitement que le reste est de l'interpolation (pas de lissage déguisé en mesure)", () => {
-        render(<ExpertTooltip data={pt({})} dailyRows={days} />);
-        expect(screen.getByText(/croissance est répartie sur le mois/)).toBeInTheDocument();
+    it("un jour DATÉ sans libellé le dit quand même (un DatedDelta peut n'avoir aucun label)", () => {
+        render(<ExpertTooltip data={dayPoint({ isDailyPoint: true, dayIsDated: true, dayLabels: [] })} />);
+        expect(screen.getByText('Ce jour')).toBeInTheDocument();
+        expect(screen.getByText('Mouvement à date connue')).toBeInTheDocument();
     });
 
-    it('la liste est atteignable au CLAVIER (jusqu’à 31 jours, aucun descendant focusable)', () => {
-        render(<ExpertTooltip data={pt({})} dailyRows={days} />);
-        const region = screen.getByRole('region', { name: /Jour par jour, liste défilante/i });
-        expect(region).toHaveAttribute('tabindex', '0');
-        expect(region.className).toContain('overflow-y-auto');
-    });
-
-    it('aucun bloc quotidien quand rien n’est fourni (survol hors fenêtre raffinée)', () => {
+    it("aucun bloc « jour » sur un point MENSUEL (l'immense majorité des survols)", () => {
         render(<ExpertTooltip data={pt({})} />);
-        expect(screen.queryByText('Jour par jour')).toBeNull();
-        render(<ExpertTooltip data={pt({})} dailyRows={[]} />);
-        expect(screen.queryByText('Jour par jour')).toBeNull();
+        expect(screen.queryByText('Ce jour')).toBeNull();
+        expect(screen.queryByText(/croissance, répartie sur le mois/)).toBeNull();
     });
 });
 
@@ -117,5 +105,32 @@ describe('ExpertTooltip — figeage (R3)', () => {
         expect(screen.queryByText(/Clique pour figer/)).toBeNull();
         fireEvent.click(btn);
         expect(onOpenDetail).toHaveBeenCalledTimes(1);
+    });
+});
+
+// [FUTUR-DAILY] Le badge « Variation » ne fabrique plus de zéro.
+//
+// Finding CRITIQUE de la revue #579 : le badge était rendu SANS garde, sur `data.diffNW || 0`. Un
+// point QUOTIDIEN n'ayant pas de `diffNW`, l'infobulle affichait « Variation +0 $ » EN VERT sur
+// chaque jour — y compris celui où la paie tombe, pendant que le bas de la même infobulle disait
+// correctement « Ce jour : Paie ». C'est le faux zéro crédible que tout ce chantier combat, sur la
+// donnée la plus regardée.
+describe('ExpertTooltip — badge « Variation » : une absence n’est pas un zéro', () => {
+    it('MASQUE le badge quand la variation est inconnue', () => {
+        render(<ExpertTooltip data={pt({ diffNW: undefined })} />);
+        expect(screen.queryByText(/Variation/)).toBeNull();
+    });
+
+    it('affiche un vrai zéro quand la variation VAUT zéro', () => {
+        // Distinction essentielle : « je ne sais pas » ≠ « ça n'a pas bougé ».
+        render(<ExpertTooltip data={pt({ diffNW: 0 })} />);
+        expect(screen.getByText(/Variation/)).toBeInTheDocument();
+    });
+
+    it('affiche la variation du JOUR sur un point quotidien qui en porte une', () => {
+        render(<ExpertTooltip data={pt({ diffNW: -1250 })} />);
+        const badge = screen.getByText(/Variation/);
+        expect(badge.textContent).toContain('-1');
+        expect(badge.className).toContain('text-red-300');
     });
 });

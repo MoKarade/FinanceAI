@@ -62,23 +62,36 @@ const TOOLTIP_ACCOUNTS: Array<{ key: string; label: string; color: string; gainK
 // wrapper Recharts) et est rendu via un PORTAIL positionné par
 // `useChartTooltipPosition`. `frozen` = figé (devient interactif/scrollable et
 // montre le bouton « Détail complet ») ; `onOpenDetail` ouvre la modale exhaustive.
-export const ExpertTooltip = ({ data, dailyRows, userName1, userName2, frozen = false, onOpenDetail }: {
+export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOpenDetail }: {
     data: ProjectionChartPoint;
-    /** [FUTUR-DAILY, demande Marc 2026-08-09] Détail JOUR PAR JOUR du mois survolé.
-     *  Fourni par l'appelant (qui raffine UN seul mois) — l'infobulle reste passive. */
-    dailyRows?: Array<{ date: string; value: number; isDated: boolean; labels: string[] }>;
     userName1?: string;
     userName2?: string;
     frozen?: boolean;
     onOpenDetail?: () => void;
 }) => {
+    // [FUTUR-DAILY lot B étape 2] Champs portés par les points QUOTIDIENS de la courbe. Ils sont
+    // absents des points mensuels du moteur, d'où la lecture défensive plutôt qu'un élargissement
+    // de `ProjectionChartPoint` (qui est le contrat du MOTEUR, pas celui de l'affichage).
+    const daily = data as ProjectionChartPoint & {
+        isDailyPoint?: boolean; dayLabels?: string[]; dayIsDated?: boolean;
+    };
+    const isDailyPoint = daily.isDailyPoint === true;
+    const dayLabels = daily.dayLabels;
+    // ⚠️ `dayIsDated` ET les libellés (finding revue) : un `DatedDelta` sans `label` produit un jour
+    // réellement DATÉ mais sans libellé — n'écouter que `labels.length` aurait alors annoncé
+    // « aucun mouvement à date connue » un jour où un mouvement a bel et bien eu lieu.
+    const dayHasMovement = daily.dayIsDated === true || (dayLabels?.length ?? 0) > 0;
     const fmt = (n: number) => Math.round(n).toLocaleString('fr-CA');
 
     const totalFlow = (data.NetTransferCELI || 0) + (data.NetTransferREER || 0) + (data.NetTransferNonReg || 0)
         + (data.NetTransferCrypto || 0) + (data.NetTransferLiquid || 0) + (data.NetTransferCELIAPP || 0) + (data.NetTransferREEE || 0);
     const totalGain = (data.MarketGrowthCELI || 0) + (data.MarketGrowthREER || 0) + (data.MarketGrowthNonReg || 0)
         + (data.MarketGrowthCrypto || 0) + (data.MarketGrowthLiquid || 0) + (data.MarketGrowthCELIAPP || 0) + (data.MarketGrowthREEE || 0);
-    const diffNW = data.diffNW || 0;
+    // ⚠️ `undefined` ≠ 0 (finding CRITIQUE de la revue). Un point QUOTIDIEN sans veille connue (le
+    // 1er de la fenêtre) n'a pas de variation : afficher « +0 $ » en vert serait un faux chiffre
+    // crédible sur la donnée la plus regardée de l'infobulle. On masque le badge à la place.
+    const hasDiffNW = Number.isFinite(data.diffNW);
+    const diffNW = Number(data.diffNW) || 0;
     const portfolioOutflow = (data.RetraitREER || 0) + (data.RetraitCELI || 0);
     const events: string[] = [...(data.lifeEvents || []), ...(data.flowEvents || [])];
     const accounts = TOOLTIP_ACCOUNTS
@@ -98,9 +111,11 @@ export const ExpertTooltip = ({ data, dailyRows, userName1, userName2, frozen = 
             <div className="rounded-xl bg-white/[0.05] border border-white/15 p-2.5 mb-2.5">
                 <div className="flex items-center justify-between gap-2">
                     <span className="text-tiny uppercase tracking-widest text-ink-300 font-bold">Valeur nette</span>
-                    <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${diffNW >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-danger-500/15'}`}>
-                        Variation {diffNW > 0 ? '+' : ''}{fmt(diffNW)}$
-                    </span>
+                    {hasDiffNW && (
+                        <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${diffNW >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-danger-500/15'}`}>
+                            Variation {diffNW > 0 ? '+' : ''}{fmt(diffNW)}$
+                        </span>
+                    )}
                 </div>
                 <PrivateAmount as="div" className="mt-1 text-2xl font-black text-white font-mono leading-none">{fmt(data.NetWorth || 0)}$</PrivateAmount>
             </div>
@@ -219,45 +234,27 @@ export const ExpertTooltip = ({ data, dailyRows, userName1, userName2, frozen = 
                 </div>
             )}
 
-            {/* [FUTUR-DAILY, demande Marc 2026-08-09] Détail JOUR PAR JOUR du mois survolé.
-                ⚠️ Ce que ce bloc montre est ADOSSÉ au point mensuel du moteur : le dernier jour vaut
-                EXACTEMENT la valeur nette affichée en haut de cette infobulle (invariant garanti par
-                construction dans `dailyRefine`). Zoomer ou survoler ne peut donc pas donner deux
-                chiffres différents pour la même date.
-                ⚠️ Les jours SURLIGNÉS portent un mouvement à date connue (paie et dettes le jeudi,
-                charges récurrentes à leur jour). Les autres ne bougent que par l'étalement de la
-                croissance, qui n'a AUCUNE date — c'est une interpolation, et le pied du bloc le dit
-                plutôt que de laisser le lissage passer pour de la mesure. */}
-            {dailyRows && dailyRows.length > 0 && (
+            {/* [FUTUR-DAILY lot B étape 2] Quand le point survolé est un JOUR (et non un mois), on
+                dit ce qui s'y passe. ⚠️ CORRECTION DE CAP (Marc, 2026-08-11) : l'infobulle listait
+                auparavant tous les jours du mois — c'était donner à LIRE une liste, alors que la
+                demande est de SÉLECTIONNER un jour sur la courbe. C'est désormais le graphe qui
+                porte les jours ; l'infobulle ne décrit que celui qu'on vise.
+                Un jour à mouvement daté est de l'INFORMATION (paie, dette, charge récurrente) ; un
+                jour sans date ne bouge que par l'étalement de la croissance, et le dire évite de
+                faire passer du lissage pour de la mesure. */}
+            {isDailyPoint && (
                 <div className="mt-2 pt-2 border-t border-white/10">
-                    <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">Jour par jour</div>
-                    {/* [a11y] Région défilante FOCUSABLE (WCAG 2.1.1) : jusqu'à 31 jours pour ~8 visibles, et
-                        AUCUN descendant focusable. Le conteneur d'infobulle est bien scrollable, mais le
-                        focus posé au gel vit sur un ANCÊTRE non scrollable — un navigateur ne cherche
-                        jamais un descendant à faire défiler. Sans ce `tabIndex`, la fin du mois n'est
-                        atteignable qu'à la molette. */}
-                    <ul
-                        className="space-y-px max-h-40 overflow-y-auto pr-0.5 focus-ring rounded"
-                        tabIndex={0}
-                        role="region"
-                        aria-label="Jour par jour, liste défilante"
-                    >
-                        {dailyRows.map((d) => (
-                            <li
-                                key={d.date}
-                                className={`flex items-baseline justify-between gap-2 rounded px-1.5 py-0.5 ${d.isDated ? 'bg-primary/10' : ''}`}
-                            >
-                                <span className="font-mono text-[10px] text-ink-300 shrink-0">{d.date.slice(8)}</span>
-                                {d.labels.length > 0 && (
-                                    <span className="text-[10px] text-primary truncate flex-1">{d.labels.join(', ')}</span>
-                                )}
-                                <PrivateAmount className="font-mono text-tiny text-ink-100 shrink-0">{fmt(d.value)}$</PrivateAmount>
-                            </li>
-                        ))}
-                    </ul>
-                    <div className="text-[10px] text-ink-400 mt-1">
-                        Surligné = mouvement à date connue · sinon la croissance est répartie sur le mois
-                    </div>
+                    {dayHasMovement ? (
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-tiny uppercase tracking-widest text-primary font-bold shrink-0">Ce jour</span>
+                            <span className="text-tiny text-ink-100">{dayLabels && dayLabels.length > 0 ? dayLabels.join(', ') : 'Mouvement à date connue'}</span>
+                        </div>
+                    ) : (
+                        <div className="text-[10px] text-ink-400">
+                            Aucun mouvement à date connue ce jour-là — la variation vient de la
+                            croissance, répartie sur le mois.
+                        </div>
+                    )}
                 </div>
             )}
 

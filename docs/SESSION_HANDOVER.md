@@ -25,6 +25,29 @@
 >   au clavier · les « — » hors convention `emptyAware`.
 > - Gate vert : typecheck, lint, **3 691 tests / 324 fichiers**, build.
 
+> ## 🟢 Session 2026-08-11 (suite 35) — `[FUTUR-DAILY]` lot B étape 2 : SÉLECTIONNER un jour
+> ⚠️ **CORRECTION DE CAP de Marc** : « je veux pas voir dans l'info bulle le détail des jours de
+> chaque mois, je veux pouvoir sélectionner chaque jour dans le graph ». Le bloc-liste ajouté au
+> lot A2 donnait à LIRE — retiré. Chaque jour est désormais un POINT du graphe au zoom maximal.
+> - Abscisse fractionnaire `axisXAtDay` (jour 1 = entier du mois → jalons alignés).
+> - ⚠️ Clic résolu par VALEUR d'abscisse (`resolvePointByX`), pas par rang : les jours ne sont pas
+>   régulièrement espacés (1/28 vs 1/31) — par rang le clic visait un autre jour, en silence.
+> - ⚠️ **Seuil COUPLÉ au plancher de zoom** : `minPoints = 5` laisse **6** points visibles ; mon
+>   plafond initial (4 mois) rendait la vue au jour INATTEIGNABLE. Code « correct », fonctionnalité
+>   jamais déclenchée — attrapé par l'e2e, invisible à la lecture et au typecheck.
+> - Aires par compte masquées au jour + bandeau qui explique pourquoi (moteur mensuel).
+> - Gardes : `e2e/futureDailySelect.spec.ts` (2 abscisses éloignées → 2 jours DIFFÉRENTS) + tests
+>   unitaires `axisXAtDay` / `resolvePointByX`.
+> - ⚠️ **2 findings CRITIQUES de la revue, corrigés** : « Variation +0 $ » en vert sur chaque jour
+>   (badge sans garde sur `diffNW || 0`) → `diffNW` est désormais l'écart avec la VEILLE, et le badge
+>   se masque quand elle est inconnue · « Détail complet » passait un point à abscisse FRACTIONNAIRE
+>   à `FutureDetailModal`, qui joint par `monthIndex` → 30 jours sur 31 sans correspondance, `|| 0`
+>   partout, et une DETTE fabriquée égale au patrimoine net quand il est négatif → on rabat sur le
+>   vrai mois hôte (`hostMonthIndex`). Le double cast `as unknown as` avait masqué les deux :
+>   remplacé par `Partial<ProjectionChartPoint> & {…}`.
+> - Table sr-only : suit désormais `chartSeries` (parité a11y avec la vue au jour), champs absents →
+>   `NO_DATA_LABEL` littéral, jamais « 0 $ ». Gate : **3 704 tests**.
+
 > ## 🟢 Session 2026-08-11 (suite 34) — `[FUTUR-DAILY]` lot B étape 1 : axe X NUMÉRIQUE
 > **Marc a choisi l'axe numérique** parmi 3 options (fraction de mois / axe numérique / 2e graphe).
 > `type="number"` + `domain={['dataMin','dataMax']}` — préalable au tracé quotidien : en catégoriel,

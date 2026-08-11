@@ -303,11 +303,27 @@ describe('dailyWindowRange — la vue au jour doit être ATTEIGNABLE en un clic'
     it('recule d’un mois sur l’ancre, pour que le premier mois RENDU soit celui d’aujourd’hui', () => {
         // `refineWindowToDaily` CONSOMME la première ancre comme valeur d'entrée sans la rendre :
         // viser `todayIndex` pile afficherait les jours à partir du mois SUIVANT.
-        expect(dailyWindowRange(400, 20, 6)).toEqual([19, 24]);
+        // ⚠️ CENTRÉE sur aujourd'hui, pas ancrée dessus (`[FUTUR-DAILY-PAST-REACH]`, retour de Marc
+        // « je vois toujours pas au jour pour le passé »). L'ancien `[19, 24]` faisait du mois 19
+        // l'ancre d'ENTRÉE, non rendue : le 1er jour affiché était le 1er du mois COURANT, donc
+        // ZÉRO jour passé. Ici la fenêtre part de 20−1−2 = 17 → mois RENDUS 18, 19, 20, 21, 22,
+        // soit 2 mois avant aujourd'hui, le mois courant, et 2 après.
+        expect(dailyWindowRange(400, 20, 6)).toEqual([17, 22]);
+    });
+
+    it('la MOITIÉ des mois rendus tombe AVANT aujourd’hui — sinon le passé au jour est invisible', () => {
+        // Garde de la classe de bug : la reconstruction du passé au jour peut être parfaite et
+        // rester inatteignable si la fenêtre ne descend jamais sous aujourd'hui.
+        for (const today of [10, 50, 200]) {
+            const [lo] = dailyWindowRange(400, today, 6)!;
+            const premierMoisRendu = lo + 1; // la 1re ancre sert de valeur d'entrée, non rendue
+            expect(premierMoisRendu, `today=${today}`).toBeLessThan(today);
+        }
     });
 
     it('ne sort pas du tableau par la gauche quand aucun mois ne précède aujourd’hui', () => {
         expect(dailyWindowRange(400, 0, 6)).toEqual([0, 5]);
+        expect(dailyWindowRange(400, 2, 6)).toEqual([0, 5]);
     });
 
     it('ne sort pas du tableau par la droite quand aujourd’hui est en fin de série', () => {

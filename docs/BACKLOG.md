@@ -349,6 +349,21 @@
         fois dans le panneau quotidien.
         Limites assumées et DITES à l'écran : équité immo connue à l'ANNÉE (palier), dettes figées
         au niveau actuel (Option A), badge « Réel / Projeté » + âge du prix dans l'infobulle.
+  - [x] **`[FUTUR-DAILY-PAST-REACH]` le bouton « Jour » ne montrait AUCUN jour passé** ✅ 2026-08-11.
+        ⚠️ **Retour de Marc : « je vois toujours pas au jour pour le passé ».** Il avait raison, et le
+        défaut est arithmétique : `dailyWindowRange` posait `lo = todayIndex − 1`, or la construction
+        des jours CONSOMME la première ancre comme valeur d'entrée sans la rendre → le premier jour
+        affiché était le 1er du mois COURANT. Toute la reconstruction du passé au jour
+        (`[FUTUR-DAILY-PAST-REAL]`) était donc livrée, testée… et **strictement invisible**.
+        Même classe que `[FUTUR-DAILY-REACH]`, une marche plus loin : la fonctionnalité était
+        atteignable, mais pas la MOITIÉ qu'elle promettait.
+        Corrigé : fenêtre **centrée** sur aujourd'hui (2 mois passés + mois courant + 2 futurs).
+        Garde : test « la moitié des mois rendus tombe AVANT aujourd'hui », qui échoue sur l'ancien
+        ancrage.
+  - [x] **`[FUTUR-DAILY-DATE-FORMAT]` libellé du jour en JJ/MM/AAAA** ✅ 2026-08-11 (demande Marc :
+        « ça devrait me dire par exemple le // »). « sam. 14 sept. 2026 » ressemblait encore au
+        libellé mensuel d'un coup d'œil ; « sam. 14/09/2026 » ne laisse aucun doute. Le jour de la
+        SEMAINE est gardé — la paie tombe le jeudi, et le voir rend la marche lisible.
   - [ ] **`[FUTUR-DAILY-CADENCE]` cadence de paie dérivée des documents** (demande Marc 2026-08-11 :
         « je veux que ça dépende des PDF que je donne ou ce que j'indique à Claude… je veux pour
         l'instant que ce soit jeudi hebdo »). Aujourd'hui `DEFAULT_PAY_DAY_OF_WEEK` est un défaut de

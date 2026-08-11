@@ -270,12 +270,20 @@ export function daySpan(fromIso: string, toIso: string): number {
  * l'utilisateur ne peut pas atteindre n'est pas livrée : c'est le retour de Marc (« j'arrive
  * toujours pas à voir jour par jour »).
  *
- * ⚠️ POURQUOI `todayIndex - 1`. `refineWindowToDaily` CONSOMME la première ancre comme valeur
- * d'ENTRÉE sans la rendre au jour. Viser directement le mois courant afficherait donc les jours à
- * partir du mois SUIVANT. On recule d'un cran pour que le premier mois RENDU soit celui d'aujourd'hui.
- * Quand aucun mois ne précède (`todayIndex <= 0`), on ne peut pas en inventer un : la fenêtre
- * commence à 0 et le premier jour rendu est celui du mois suivant — une perte honnête, pas un
- * raccord fabriqué.
+ * ⚠️ POURQUOI LA FENÊTRE EST CENTRÉE SUR AUJOURD'HUI, et non ancrée dessus (correction
+ * `[FUTUR-DAILY-PAST-REACH]`, retour de Marc 2026-08-11 : « je vois toujours pas au jour pour le
+ * passé »). Le premier jet posait `lo = todayIndex − 1`. Or la construction des jours CONSOMME la
+ * première ancre comme valeur d'ENTRÉE sans la rendre : le premier jour affiché était donc le 1er du
+ * mois COURANT, et **le bouton « Jour » ne montrait STRICTEMENT AUCUN jour passé**. Toute la
+ * reconstruction du passé au jour existait, était testée, et restait invisible — même classe de bug
+ * que `[FUTUR-DAILY-REACH]`, une marche plus loin : la fonctionnalité était atteignable, mais pas
+ * la MOITIÉ qu'elle promettait.
+ * On centre donc : la moitié des mois RENDUS tombe avant aujourd'hui, l'autre après. Avec 6 points,
+ * ça donne 2 mois passés + le mois courant + 2 mois futurs.
+ *
+ * ⚠️ Les bords restent prioritaires sur le centrage : près du début de série (pas d'historique) ou
+ * de la fin, la fenêtre est simplement collée au bord — une fenêtre plus déséquilibrée mais VALIDE
+ * vaut mieux qu'une fenêtre hors tableau.
  *
  * Rend `null` quand la fenêtre n'a pas de sens : moins de points que demandé, ou un jeu si court que
  * la fenêtre couvrirait TOUT (le hook repasserait alors en « vue complète », donc hors zoom, et la
@@ -289,7 +297,11 @@ export function dailyWindowRange(
 ): [number, number] | null {
     if (!Number.isFinite(dataLength) || !Number.isFinite(todayIndex) || !Number.isFinite(windowPoints)) return null;
     if (windowPoints < 2 || dataLength <= windowPoints) return null;
-    const anchored = Math.max(0, Math.min(Math.round(todayIndex), dataLength - 1)) - 1;
+    const today = Math.max(0, Math.min(Math.round(todayIndex), dataLength - 1));
+    // −1 pour l'ancre d'ENTRÉE (non rendue), puis on recule encore de la moitié des mois rendus
+    // pour que le passé occupe la première moitié de la fenêtre.
+    const renderedMonths = windowPoints - 1;
+    const anchored = today - 1 - Math.floor(renderedMonths / 2);
     const lo = Math.max(0, Math.min(anchored, dataLength - windowPoints));
     return [lo, lo + windowPoints - 1];
 }

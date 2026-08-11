@@ -7,7 +7,7 @@ import type { PortfolioHistoryPoint } from '../../services/history/reconstructPo
 // Verrouille contre une substitution accidentelle `DetteTotale` (finding code-reviewer PR #513).
 
 const invPoint = (date: string, o: Partial<PortfolioHistoryPoint> = {}): PortfolioHistoryPoint => ({
-    date, monthIndex: 0, CELI: 0, CELIAPP: 0, REER: 0, REEE: 0, NonReg: 0, Crypto: 0, NetWorth: 0, ...o,
+    date, monthIndex: 0, CELI: 0, CELIAPP: 0, REER: 0, REEE: 0, NonReg: 0, Crypto: 0, InvestedValue: 0, ...o,
 });
 
 describe('[FUTUR-HIST-WIRING-TEST] buildPastPrefix', () => {

@@ -208,7 +208,7 @@ describe('Audit personas — données + calculs', () => {
                 priceHistory: (a.priceHistory || []).map((p) => ({ date: p.date, price: p.price })),
             }));
             const past = reconstructPortfolioHistory(minimal, {});
-            const investedPast = past.points.length ? past.points[past.points.length - 1].NetWorth : 0;
+            const investedPast = past.points.length ? past.points[past.points.length - 1].InvestedValue : 0;
             const cashNow = calcStartingCash(balances, state.transactions);
             // Patrimoine net = placements + cash − DETTES (convention financialSnapshot.ts:84 et,
             // depuis le fix money-critical 2026-06-16, la projection : rawNetWorth soustrait les

@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-11 (suite 41) — `[NAMING-INVESTED]` : le champ « NetWorth » de la reconstruction mensuelle renommé `InvestedValue`
+> Item d'audit du BACKLOG (ordre PM). Le champ ne porte que la somme des comptes de PLACEMENT — le
+> nom promettait un patrimoine net et avait déjà nourri de faux rapprochements d'audit.
+> - ⚠️ Le commentaire du code disait « renommer casserait d'autres consommateurs `.NetWorth` » —
+>   constat PÉRIMÉ jamais re-vérifié (même classe que `DOC-STALE-IMPOSSIBILITY`) : mesuré au grep +
+>   typecheck, AUCUN consommateur de prod ne lisait ce champ. Trois TESTS seulement, alignés.
+> - Push sans leçon NOUVELLE : c'est la 2e occurrence de `DOC-STALE-IMPOSSIBILITY` aujourd'hui — la
+>   leçon existante est confirmée, pas étendue.
+
 > ## 🟢 Session 2026-08-11 (suite 40) — `[FUTUR-DAILY-ANCHOR-CAVEAT]` : le retrait du panneau avait emporté un avertissement money-critical
 > **Attrapé à la relecture du BACKLOG après le merge de #584, pas par un test.** L'item d'audit
 > « Divergences d'ancre du cash quotidien » était noté *latent — 0 $ tant que non branché sur la

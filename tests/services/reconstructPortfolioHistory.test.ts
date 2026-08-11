@@ -25,7 +25,7 @@ describe('reconstructPortfolioHistory', () => {
         // mars (aujourd'hui) : 10 × 130 = 1300, monthIndex 0
         expect(r.points[2].CELI).toBe(1300);
         expect(r.points[2].monthIndex).toBe(0);
-        expect(r.points[2].NetWorth).toBe(1300);
+        expect(r.points[2].InvestedValue).toBe(1300);
         expect(r.coverage).toBe(1); // tout adossé à de vrais prix
         expect(r.firstDate).toBe('2026-01-10');
     });

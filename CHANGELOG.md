@@ -15,6 +15,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   l'as demandé — « juste dans l'infobulle, pas de nouvel onglet »). Passé et futur, même geste.
 
 ### Corrections
+- (interne) La reconstruction mensuelle du portefeuille nommait « NetWorth » un champ qui ne contient
+  que la valeur investie (ni cash, ni immo, ni dette) — renommé `InvestedValue`, comme la version
+  quotidienne. Ce nom avait déjà produit de faux constats d'audit.
 - **La vue au jour te prévient quand des transactions ne peuvent pas être placées.** Une transaction
   datée au mois seul (sans jour) ou datée après aujourd'hui est comptée dans ton solde actuel, mais
   aucune journée ne peut la porter : tout le niveau des jours passés est alors décalé d'autant. Cet

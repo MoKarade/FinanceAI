@@ -40,7 +40,10 @@ export interface PortfolioHistoryPoint {
     date: string; // YYYY-MM-DD (fin de mois)
     monthIndex: number; // ≤ 0, relatif à aujourd'hui (0 = ce mois) — aligne avec la projection
     CELI: number; CELIAPP: number; REER: number; REEE: number; NonReg: number; Crypto: number;
-    NetWorth: number;
+    /** Somme des comptes de PLACEMENT seulement (ni cash, ni immo, ni dette) — même sémantique que
+     *  la version quotidienne. ⚠️ RENOMMÉ depuis `NetWorth` ([NAMING-INVESTED] 2026-08-11) : ce nom
+     *  promettait un patrimoine net et a déjà fabriqué de faux findings d'audit. */
+    InvestedValue: number;
 }
 export interface PortfolioHistoryResult {
     points: PortfolioHistoryPoint[];
@@ -151,19 +154,19 @@ export function reconstructPortfolioHistory(
                 if (histPrice !== null) valueWithRealPrice += valueCad;
             }
         }
-        // ⚠️ Ce `NetWorth` du point d'historique = SOMME DES COMPTES DE PLACEMENT SEULEMENT (pas de cash,
-        // pas d'immo, pas de dette). C'est une « valeur de placements reconstruite », pas un patrimoine net
-        // au sens du moteur. NB : ce champ N'EST PAS consommé pour la courbe VN passée — `FutureProjection`
-        // (prefixe passé) ne lit que les buckets `CELI/CELIAPP/REER/REEE/NonReg/Crypto` d'ici et recompose
-        // le patrimoine net via `pastNetWorthAt` → `computeRawNetWorth`, qui SOUSTRAIT désormais la dette
-        // courante `chartData[0].DettesNonImmo` (cf [FUTUR-REAL-HISTORY], Option A 2026-07-24). Renommer
-        // `InvestedValue` casserait d'autres consommateurs `.NetWorth` → conservé tel quel.
-        const netWorth = ACCOUNT_KEYS.reduce((s, k) => s + acc[k], 0);
+        // ⚠️ [NAMING-INVESTED 2026-08-11] Renommé `NetWorth` → `InvestedValue`, aligné sur la version
+        // quotidienne. L'ancien commentaire affirmait « renommer casserait d'autres consommateurs
+        // `.NetWorth` » — constat PÉRIMÉ, jamais re-vérifié : mesuré au grep, AUCUN consommateur de
+        // prod ne lisait ce champ (`buildPastPrefix` recompose le patrimoine via `pastNetWorthAt` à
+        // partir des buckets par compte). Le nom, lui, avait un coût réel : somme des comptes de
+        // PLACEMENT seulement (ni cash, ni immo, ni dette), il promettait un patrimoine net et a
+        // déjà nourri de faux rapprochements d'audit.
+        const invested = ACCOUNT_KEYS.reduce((s, k) => s + acc[k], 0);
         return {
             date: t,
             monthIndex: i - (totalMonths - 1), // dernier point = 0 (aujourd'hui), passé < 0
             ...acc,
-            NetWorth: Number(netWorth.toFixed(2)),
+            InvestedValue: Number(invested.toFixed(2)),
         };
     });
 

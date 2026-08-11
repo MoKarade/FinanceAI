@@ -20,6 +20,13 @@ import { sampleEvenly } from '../utils/sampleEvenly';
 // Sprint 2 PH2 — constante stable pour éviter de créer un nouveau [] à chaque
 // render (qui invaliderait les useMemo deps en aval).
 const EMPTY_ARRAY: never[] = [];
+
+// [FUTUR-DAILY] Mêmes replis stables pour les sélecteurs du panneau quotidien. Les types
+// viennent du store lui-même (pas de re-déclaration locale qui pourrait diverger).
+type FinanceStoreState = ReturnType<typeof useFinanceStore.getState>;
+const EMPTY_ASSETS: FinanceStoreState['assets'] = [];
+const EMPTY_RECURRING: NonNullable<FinanceStoreState['subscriptions']> = [];
+const EMPTY_FX: Record<string, number> = {};
 import { Tab as TabEnum } from '../types';
 import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
 import { FutureDetailModal } from './projection/FutureDetailModal';
@@ -38,7 +45,8 @@ import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { DailyDetailPanel } from './projection/DailyDetailPanel';
-import { calendarFromMonthIndex, isoDate, todayIsoLocal, daysInMonth } from '../services/projection/dailyRefine';
+import { isoDate, todayIsoLocal, daysInMonth, refineWindowToDaily, finiteAnchorRun } from '../services/projection/dailyRefine';
+import { dailyDeltasFor } from '../services/projection/datedMonthEvents';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCompactCAD } from '../utils/format';
 
@@ -526,13 +534,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         if (!zoom.isZoomed) return null;
         const vis = zoom.visibleData;
         if (vis.length < 2) return null;
-        const cal = (monthIndex: number) => calendarFromMonthIndex(startYear, startMonth, monthIndex);
-        const anchors = vis.map((p) => {
-            const { year, month } = cal(p.monthIndex);
-            return { monthIndex: p.monthIndex, year, month, value: Number(p.NetWorth) || 0 };
-        });
-        const first = cal(vis[0].monthIndex);
-        const last = cal(vis[vis.length - 1].monthIndex);
+        // ⚠️ `finiteAnchorRun` et NON `Number(p.NetWorth) || 0` (finding silent-failure #577) :
+        // `buildPastPrefix` laisse `NetWorth` à `undefined` AVANT la première transaction connue,
+        // exprès. Le coercer aurait ancré tout le raffinement sur un patrimoine de 0 $ inventé.
+        const anchors = finiteAnchorRun(vis, startYear, startMonth);
+        if (anchors.length < 2) return null;
+        const first = anchors[0];
+        const last = anchors[anchors.length - 1];
         return {
             from: isoDate(first.year, first.month, 1),
             to: isoDate(last.year, last.month, daysInMonth(last.year, last.month)),
@@ -544,9 +552,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         };
     }, [zoom.isZoomed, zoom.visibleData, startYear, startMonth]);
 
-    const storeAssets = useFinanceStore(s => s.assets) ?? [];
-    const fxRates = useFinanceStore(s => s.fxRates) ?? {};
-    const storeRecurring = useFinanceStore(s => s.subscriptions) ?? [];
+    // ⚠️ Replis STABLES (constantes de module) et non `?? []` inline : un littéral crée une NOUVELLE
+    // référence à chaque rendu, ce qui ferait recalculer les `useMemo` qui en dépendent à chaque
+    // frame de zoom/pan — exactement la classe de fuite de perf déjà relevée en revue sur ce
+    // chantier. Attrapé ici par `react-hooks/exhaustive-deps`, pas par mon jugement.
+    const storeAssets = useFinanceStore(s => s.assets) ?? EMPTY_ASSETS;
+    const fxRates = useFinanceStore(s => s.fxRates) ?? EMPTY_FX;
+    const storeRecurring = useFinanceStore(s => s.subscriptions) ?? EMPTY_RECURRING;
     // ⚠️ `netSalary` du store est MENSUEL (règle « unités argent » de CLAUDE.md). Marc est payé
     // CHAQUE SEMAINE le jeudi (réponse A13, 2026-08-06) : c'est `weeklyDeltasForMonth` qui fait la
     // conversion (×12/52 par versement), pas ce site — ici on ne fait que sommer le ménage.
@@ -554,6 +566,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const dailyMonthlyDebt = useFinanceStore(
         s => (s.debts ?? []).reduce((acc, d) => acc + (Number(d?.minimumPayment) || 0), 0),
     );
+
 
     // [A11Y-CHARTS] — colonnes de la table de données sr-only (alternative texte à la courbe Recharts,
     // opaque aux lecteurs d'écran). Date (axe X) + chaque montant affiché (comptes empilés + Valeur Nette).
@@ -622,6 +635,30 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         getKey: (p) => p.monthIndex,
         containerRef: zoom.containerEl,
     });
+
+    // [FUTUR-DAILY] Détail JOUR PAR JOUR du mois survolé, pour l'infobulle (demande Marc 2026-08-09).
+    // ⚠️ On raffine UN SEUL mois — celui sous le curseur — et non toute la fenêtre : l'infobulle se
+    // recalcule à chaque déplacement de souris, et raffiner 30 ans par frame serait absurde.
+    // Le mois PRÉCÉDENT sert de valeur d'ENTRÉE : sans lui on ne sait pas d'où part le mois, et
+    // `refineWindowToDaily` rend `[]` plutôt que d'inventer un point de départ.
+    // ⚠️ Déclaré APRÈS `tooltip` (dont il dépend) et AVANT les early-returns du composant — le
+    // premier jet le plaçait plus haut et le typecheck a attrapé l'usage avant déclaration.
+    const tooltipDailyRows = useMemo(() => {
+        const p = tooltip.point;
+        if (!p) return undefined;
+        const arr = displayData as ProjectionChartPoint[];
+        const i = arr.findIndex((d) => d.monthIndex === p.monthIndex);
+        if (i < 1) return undefined; // 1er point de la série : aucun mois d'entrée connu
+        // ⚠️ `finiteAnchorRun` (finding silent-failure #577) : survoler un mois du passé ANTÉRIEUR
+        // à la première transaction connue donne un `NetWorth` `undefined` VOULU — le coercer en 0
+        // aurait affiché un mois quotidien entier ancré sur un patrimoine inventé.
+        const anchors = finiteAnchorRun([arr[i - 1], p], startYear, startMonth);
+        if (anchors.length < 2) return undefined;
+        return refineWindowToDaily(
+            anchors,
+            dailyDeltasFor(storeRecurring, dailyMonthlyNet, dailyMonthlyDebt),
+        );
+    }, [tooltip.point, displayData, startYear, startMonth, storeRecurring, dailyMonthlyNet, dailyMonthlyDebt]);
 
     // [R3] Clic sur le graphe = FIGE le tooltip (avant : ouvrait directement la modale).
     // La modale exhaustive s'ouvre désormais via le bouton « Détail complet » du tooltip
@@ -1176,6 +1213,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     >
                         <ExpertTooltip
                             data={tooltip.point}
+                            dailyRows={tooltipDailyRows}
                             userName1={config.users[0]?.name}
                             userName2={config.users[1]?.name}
                             frozen={tooltip.mode === 'frozen'}

@@ -6,6 +6,40 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-11
+
+### Ajouts
+- **`[FUTUR-DAILY]` — le jour par jour arrive dans l'infobulle, et le passé se ventile par compte**
+  (demande de Marc). Dans **Futur**, survoler un point du graphe affiche désormais, sous les
+  chiffres du mois, la liste **jour par jour** de ce mois : les jours qui portent un vrai mouvement
+  à date connue (paie et paiements de dette le jeudi, charges récurrentes à leur jour) sont
+  surlignés, et le pied du bloc dit explicitement que les autres ne bougent que par l'étalement de
+  la croissance — une interpolation, pas une mesure. Dans le tableau quotidien (visible quand tu
+  zoomes), le **passé** montre maintenant **une colonne par régime** (CELI, CELIAPP, REER, REEE,
+  Non-enr., Crypto) : tu vois ce que tu avais dans chaque compte, chaque jour.
+
+### Corrections
+- **La ligne d'aujourd'hui n'est plus annoncée « projetée » alors qu'elle est mesurée.** Les prix du
+  jour sont réels : la ligne du jour même porte de vraies valeurs, mais un lecteur d'écran
+  l'annonçait comme une projection — et la légende du tableau promettait l'inverse. C'est la ligne
+  qu'on regarde le plus.
+- **Le tableau quotidien et la liste de l'infobulle sont atteignables au clavier.** À 11 colonnes,
+  le tableau déborde presque toujours ; aucune de ses cellules n'étant cliquable, il n'existait
+  aucun moyen de le faire défiler sans souris. Même chose pour la liste jour par jour de
+  l'infobulle. Les cellules vides disent maintenant « Pas de donnée » au lecteur d'écran plutôt
+  qu'un tiret muet — et jamais « montant masqué », qui laisserait croire à un chiffre caché là où
+  il n'y a rien.
+- **Un patrimoine inconnu ne devient plus 0 $ dans le détail quotidien.** Avant ta première
+  transaction connue, l'app ne sait pas ce que tu valais — et le dit. Le détail jour par jour
+  convertissait cette absence en un patrimoine de zéro, puis étalait une croissance à partir de là.
+  Il s'appuie désormais sur la plus longue période réellement connue.
+- **Le tableau quotidien ne montre plus de placements « reconstruits » APRÈS aujourd'hui.** La
+  reconstruction produisait un point pour chaque jour de la fenêtre demandée, futur compris, en
+  reconduisant le dernier prix connu : sur une fenêtre à cheval, les lignes futures affichaient un
+  montant de placements **plat** avec l'apparence d'une valeur mesurée, juste à côté d'une colonne
+  « Projeté » qui, elle, croissait. Elle s'arrête maintenant à aujourd'hui, et le futur affiche un
+  « — » honnête. Défaut trouvé en écrivant le test de la ventilation par compte, pas à l'œil.
+
 ## [unreleased] — 2026-08-06
 
 ### Corrections

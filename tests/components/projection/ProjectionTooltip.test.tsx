@@ -54,6 +54,53 @@ describe('ExpertTooltip — bloc Impôts (impôt dormant + régularisation)', ()
     });
 });
 
+// [FUTUR-DAILY] Bloc « Jour par jour » de l'infobulle (demande Marc 2026-08-09 : « avec l'info
+// bulle dans futur je veux voir le détail par jour »). L'infobulle est PASSIVE : elle affiche les
+// jours qu'on lui donne, c'est l'appelant qui raffine le mois survolé. Ce qui doit tenir ici :
+// un jour à mouvement daté est DISTINGUÉ d'un jour interpolé — sans ça, l'étalement de la
+// croissance passerait pour de la mesure.
+describe('ExpertTooltip — détail jour par jour', () => {
+    const days = [
+        { date: '2030-01-01', value: 500000, isDated: false, labels: [] as string[] },
+        { date: '2030-01-03', value: 501200, isDated: true, labels: ['Paie'] },
+    ];
+
+    it('rend une ligne par jour, avec le numéro du jour et les libellés de mouvement', () => {
+        render(<ExpertTooltip data={pt({})} dailyRows={days} />);
+        expect(screen.getByText('Jour par jour')).toBeInTheDocument();
+        expect(screen.getByText('01')).toBeInTheDocument();
+        expect(screen.getByText('03')).toBeInTheDocument();
+        expect(screen.getByText('Paie')).toBeInTheDocument();
+    });
+
+    it('SURLIGNE le jour à mouvement daté, PAS le jour interpolé', () => {
+        render(<ExpertTooltip data={pt({})} dailyRows={days} />);
+        const dated = screen.getByText('03').closest('li');
+        const interpolated = screen.getByText('01').closest('li');
+        expect(dated?.className).toContain('bg-primary/10');
+        expect(interpolated?.className).not.toContain('bg-primary/10');
+    });
+
+    it("dit explicitement que le reste est de l'interpolation (pas de lissage déguisé en mesure)", () => {
+        render(<ExpertTooltip data={pt({})} dailyRows={days} />);
+        expect(screen.getByText(/croissance est répartie sur le mois/)).toBeInTheDocument();
+    });
+
+    it('la liste est atteignable au CLAVIER (jusqu’à 31 jours, aucun descendant focusable)', () => {
+        render(<ExpertTooltip data={pt({})} dailyRows={days} />);
+        const region = screen.getByRole('region', { name: /Jour par jour, liste défilante/i });
+        expect(region).toHaveAttribute('tabindex', '0');
+        expect(region.className).toContain('overflow-y-auto');
+    });
+
+    it('aucun bloc quotidien quand rien n’est fourni (survol hors fenêtre raffinée)', () => {
+        render(<ExpertTooltip data={pt({})} />);
+        expect(screen.queryByText('Jour par jour')).toBeNull();
+        render(<ExpertTooltip data={pt({})} dailyRows={[]} />);
+        expect(screen.queryByText('Jour par jour')).toBeNull();
+    });
+});
+
 // [R3] Pied de page selon l'état figé/survol + bouton « Détail complet ».
 describe('ExpertTooltip — figeage (R3)', () => {
     it('au SURVOL (non figé) : invite à figer, aucun bouton « Détail complet »', () => {

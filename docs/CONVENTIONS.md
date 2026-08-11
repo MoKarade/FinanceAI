@@ -997,6 +997,37 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   mais bloque toujours `rm -rf` sensible / `--no-verify` / `.env` (en ignorant le corps des messages).
 
 ## Notes
+- ⚠️ **[FUTUR-DAILY] 2026-08-11 — trois pièges du SEAM « aujourd'hui » et de l'absence légitime**
+  (panel #577, tous CONFIRMÉS contre le vrai code avant correction) :
+  (1) **Un `Number(x) || 0` au site d'appel VIDE le garde-fou du module appelé.** `refineMonthToDaily`
+  rend `[]` sur une valeur non finie, exprès ; les deux appelants écrivaient `Number(p.NetWorth) || 0`,
+  donc le garde ne se déclenchait JAMAIS — et un `NetWorth` laissé `undefined` À DESSEIN par
+  `buildPastPrefix` (avant la première transaction connue) devenait un patrimoine de **0 $**. Un garde
+  no-fake-data ne protège que si l'appelant lui transmet l'absence TELLE QUELLE. Correctif = source
+  unique `finiteAnchorRun`, qui garde la plus longue plage **CONTIGUË** : filtrer au trou appairerait
+  deux mois non voisins et étalerait un écart de deux mois sur un seul.
+  (2) **Une borne INCLUSIVE et un prédicat STRICT sur la même frontière se contredisent.**
+  `invTo = min(to, today)` inclut aujourd'hui (les prix du jour sont réels) mais `isPast = d < today`
+  l'excluait : la ligne d'aujourd'hui portait des données MESURÉES et s'annonçait « (projeté) » au
+  lecteur d'écran, sur la ligne la plus regardée du tableau. Deux tests jumeaux (aujourd'hui / demain)
+  valent mieux qu'un test de chaque côté d'un seam jamais testé AU seam.
+  (3) **`emptyAware` sur l'absence, `PrivateAmount` sur un montant — jamais l'inverse.** En mode privé,
+  `PrivateAmount` sur un `null` afficherait « ••• » + « Montant masqué » : un montant CACHÉ là où il
+  n'y a aucune donnée. Et un conteneur `overflow-*` sans descendant focusable a besoin de
+  `tabIndex={0} role="region" aria-label` (motif `Budget.tsx`) — un navigateur fait défiler un ANCÊTRE
+  du focus, jamais un descendant.
+- ⚠️ **[FUTUR-DAILY] 2026-08-11 — une fonction de RECONSTRUCTION non bornée par « aujourd'hui »
+  fabrique du futur en reconduisant la dernière valeur connue.** `reconstructPortfolioHistoryDaily`
+  produit un point pour CHAQUE jour de `[from, to]` : son `priceAt` prend le dernier prix ≤ t, donc
+  au-delà d'aujourd'hui elle rend un plateau — pas une valeur absente, un plateau CRÉDIBLE. Branchée
+  sur une fenêtre à cheval passé/futur, elle affichait des placements « reconstruits » à côté d'une
+  colonne « Projeté » qui, elle, croissait : deux chiffres pour la même date, dont un inventé. Règle :
+  toute reconstruction alimentant un écran mixte est bornée à `min(to, today)` **au site d'appel** —
+  la fonction, elle, obéit à ses bornes et n'a aucune raison de connaître le présent.
+  **Et la leçon de méthode** : le défaut n'a pas été vu à l'œil ni en revue — il est tombé en écrivant
+  l'assertion « le futur affiche — » d'une colonne VOISINE. Écrire l'attente d'une colonne oblige à
+  répondre « d'où vient cette cellule ? » pour toute la ligne. Discriminant prouvé par perturbation
+  (sans la borne : « 1 000 $ » là où le test exige « — »).
 - ⚠️ **[PERF-SDK-BOOT-PRELOAD] 2026-07-31 — deux leçons de bundling MESURÉES (boot −54 Ko gzip, −24 %)** :
   (1) **Un manualChunk (Rolldown/Vite) atteint UNIQUEMENT par `import()` devient EAGER** — le chunk manuel
   casse la frontière asynchrone : l'entry importait STATIQUEMENT `ai-vendor` (SDK Anthropic, 126 Ko →

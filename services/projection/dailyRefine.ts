@@ -142,6 +142,45 @@ export interface MonthlyAnchor {
 }
 
 /**
+ * Traduit des points mensuels du moteur en ancres, en NE GARDANT que la plus longue plage
+ * CONTIGUË dont la valeur est finie.
+ *
+ * ⚠️ POURQUOI CE FILTRE EXISTE (finding `silent-failure-hunter` sur #577). `NetWorth` est
+ * LÉGITIMEMENT `undefined` avant la première transaction connue : `buildPastPrefix` l'écrit
+ * exprès (« no-fake : pas de fausse ligne à 0 »). Un `Number(p.NetWorth) || 0` au site d'appel
+ * transformait cette absence en un patrimoine de **0 $** — et VIDAIT du même coup le garde-fou
+ * de `refineMonthToDaily`, qui rend `[]` sur une valeur non finie : le garde ne se déclenchait
+ * jamais puisque l'appelant avait déjà rendu la valeur finie.
+ *
+ * ⚠️ ET POURQUOI « CONTIGUË » plutôt qu'un simple `filter`. `refineWindowToDaily` traite les
+ * ancres par PAIRES adjacentes : retirer une ancre au MILIEU appairerait deux mois non voisins
+ * et étalerait un écart de deux mois sur un seul — une distorsion silencieuse. On préfère une
+ * fenêtre plus courte mais juste.
+ */
+export function finiteAnchorRun(
+    points: ReadonlyArray<{ monthIndex: number; NetWorth?: unknown }>,
+    startYear: number,
+    startMonth: number,
+): MonthlyAnchor[] {
+    let best: MonthlyAnchor[] = [];
+    let cur: MonthlyAnchor[] = [];
+    for (const p of points) {
+        const value = Number(p.NetWorth);
+        if (!Number.isFinite(value)) {
+            if (cur.length > best.length) best = cur;
+            cur = [];
+            continue;
+        }
+        cur.push({
+            monthIndex: p.monthIndex,
+            ...calendarFromMonthIndex(startYear, startMonth, p.monthIndex),
+            value,
+        });
+    }
+    return cur.length > best.length ? cur : best;
+}
+
+/**
  * Raffine une FENÊTRE de mois consécutifs.
  *
  * `anchors` doit être trié par `monthIndex` croissant et contenir au moins 2 points : le premier

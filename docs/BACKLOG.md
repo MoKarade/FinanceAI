@@ -293,11 +293,49 @@
         Gardes : `e2e/futureDailySelect.spec.ts` (deux abscisses éloignées → deux jours DIFFÉRENTS,
         sinon « on peut sélectionner un jour » serait vrai en apparence), + tests unitaires
         `axisXAtDay` et `resolvePointByX`.
-  - [ ] ~~**UI lot B, étape 2 — la COURBE en quotidien.**~~ (remplacé par l'item ci-dessus) ⚠️ Constat de cadrage : seule la **Valeur
-        nette** peut passer au jour. Les 8 aires empilées (Liquidités/CELI/CELIAPP/REER/REEE/NonReg/
-        Crypto/Immo), l'impôt latent, la barre d'impôts et les courbes Monte Carlo lisent des champs
-        que le moteur n'émet **qu'au mois** — les rendre quotidiens exigerait d'inventer une
-        ventilation par compte au jour, exactement la fausse précision que le dépôt s'interdit.
+  - [x] **UI lot B, étape 4 — `[FUTUR-DAILY-FULL]` TOUS les calculs au jour** ✅ 2026-08-11.
+        ⚠️ **Retour de Marc APRÈS le déploiement de l'étape 3, capture à l'appui** : « ça me dit
+        encore septembre 2026 et pas le jour […] je veux que tous les calculs soient faits pour
+        chaque jour, je veux que tout soit ajusté au jour, toutes les sommes ». Il avait raison et
+        le diagnostic était plus profond que l'étiquette : la vue au jour ne portait QUE `NetWorth`,
+        donc l'infobulle (soldes par compte, dépôts, rendement, paie, dépenses, impôts) était vide
+        au jour et les aires empilées étaient masquées. Une courbe au jour SANS calculs au jour.
+        Livré : `services/projection/dailyLedger.ts` (25 tests) ventile **tous** les champs du
+        moteur au jour. L'infobulle et les aires empilées fonctionnent au jour **sans être
+        réécrites** — elles lisent les mêmes clés, avec les montants du jour ; donc zéro risque de
+        divergence entre les deux granularités.
+        ⚠️ **RÉFUTATION EXPLICITE de mon propre constat de cadrage** (« seule la Valeur nette peut
+        passer au jour, ventiler les comptes serait de la fausse précision »). C'était faux : le
+        moteur émet DÉJÀ, par mois et par compte, `NetTransfer*` et `MarketGrowth*` — de quoi
+        décomposer sans rien inventer. La seule vraie inconnue est la DATE du rendement du marché,
+        qui reste répartie et annoncée comme telle. Classe `DOC-STALE-IMPOSSIBILITY` : un constat
+        d'impossibilité non re-vérifié bloque une feature atteignable.
+        Trois gardes indépendantes : classification exhaustive **contre le moteur réel** (un champ
+        ajouté au moteur sans classe fait échouer la suite), invariants de raccord (dernier jour =
+        valeur du moteur ; Σ des jours = total du moteur), et un test d'**ordre de grandeur** —
+        ajouté après avoir mesuré que les deux premiers, qui lisent la classification pour choisir
+        quoi vérifier, ne détectaient PAS un solde reclassé en flux.
+        ⚠️ **Bug de fond corrigé au passage** : le raffinement précédent appliquait la même liste de
+        mouvements datés au compte ET au patrimoine net → un paiement de dette creusait un trou dans
+        la VALEUR NETTE le jour de paie, aussitôt rebouché par l'étalement du résidu (donc invisible
+        en fin de mois, bien visible au jour). Un remboursement de dette est NEUTRE sur le patrimoine
+        net : le compte baisse, la dette baisse d'autant.
+  - [ ] **`[FUTUR-DAILY-PAST-REAL]` le PASSÉ au jour depuis les VRAIES séries quotidiennes**
+        (demande Marc 2026-08-11 : « je veux aussi que ça marche pour le passé, en fonction de la
+        valeur de mes comptes, de mes dépenses »). Aujourd'hui les jours du PASSÉ sur la courbe sont
+        interpolés entre des ancres MENSUELLES — alors que `reconstructCashHistoryDaily` et
+        `reconstructPortfolioHistoryDaily` produisent déjà du RÉEL au jour (transactions datées, prix
+        datés) et sont déjà consommés par `DailyDetailPanel`. À brancher sur la courbe : soldes par
+        compte + cash + valeur nette réels avant aujourd'hui, interpolés seulement après. Les
+        dépenses/revenus du jour deviennent alors les VRAIES transactions de ce jour-là.
+        ⚠️ Distinguer à l'écran le RECONSTRUIT du PROJETÉ (le panneau le fait déjà, la courbe non).
+        Ampleur : M.
+  - [ ] **`[FUTUR-DAILY-CADENCE]` cadence de paie dérivée des documents** (demande Marc 2026-08-11 :
+        « je veux que ça dépende des PDF que je donne ou ce que j'indique à Claude… je veux pour
+        l'instant que ce soit jeudi hebdo »). Aujourd'hui `DEFAULT_PAY_DAY_OF_WEEK` est un défaut de
+        CODE : tous les montants quotidiens du futur en dépendent (un mauvais rythme décale chaque
+        solde de plusieurs jours). À dériver des relevés/paies importés, avec repli sur le défaut
+        actuel. Ampleur : M.
         Donc : au zoom fort, courbe de VN quotidienne + aires mensuelles ou masquées, et l'écran doit
         le DIRE. À valider avec Marc avant de coder.
         ⚠️ **2e prérequis de l'étape 2, trouvé en revue** : `resolvePointFromClick`

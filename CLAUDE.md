@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **3 710 tests** Vitest
-(324 fichiers, mesuré le 2026-08-11). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **3 735 tests** Vitest
+(325 fichiers, mesuré le 2026-08-11). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -164,12 +164,18 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - **Prouver qu'un test DISCRIMINE** : il doit ÉCHOUER sur le code d'avant (`git stash`).
   Pour un invariant d'ORDRE, la preuve s'inverse (introduire l'inversion chirurgicalement).
 - Un bug confirmé peut viser du code **dont la sortie est jetée** → test de perturbation avant fix.
+- Une garde qui **lit la table de config** pour choisir quoi vérifier est CIRCULAIRE : elle ne peut
+  pas détecter une erreur DANS la table. Il faut une assertion qui ne la consulte pas (mesuré sur
+  `dailyLedger` : un solde reclassé en flux laissait les deux invariants verts).
 - Élargir l'assiette d'un calcul → auditer TOUS les dérivés qui partagent cette base.
 - Un registre per-conjoint qui devient pilote doit gérer **décès/divorce** (la conservation ne l'attrape pas).
 - Vérifs money-critical **en ISOLATION, séquentielles** (course `git stash` concurrente vue 2×).
 
 **Avant de coder**
 - Vérifier qu'une feature n'est pas **DÉJÀ faite** (grep le moteur).
+- Un **constat d'IMPOSSIBILITÉ que j'ai écrit** (ticket, bandeau, réponse à Marc) se re-prouve avant
+  d'être cité : « seule la valeur nette peut passer au jour » était faux, le moteur émettait déjà de
+  quoi ventiler — deux livraisons perdues (`DOC-STALE-IMPOSSIBILITY`).
 - Un item BACKLOG peut être **périmé** ou **contredire une décision verrouillée**
   (`docs/decisions.md`) → confirmer avant de coder, cocher « caduque » sinon.
 - Un ticket peut **sur-prescrire** son périmètre : prouver que chaque volet est atteignable.

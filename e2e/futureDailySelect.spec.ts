@@ -98,9 +98,11 @@ test.describe('Futur — sélection d’un JOUR sur la courbe', () => {
       }
       await expect(frozen).toBeVisible({ timeout: 5_000 });
       const txt = (await frozen.textContent()) ?? '';
-      // Un point QUOTIDIEN porte une date complète `AAAA-MM-JJ` — un point mensuel n'a que
-      // « janv. 2030 ». C'est ce quantième qui prouve qu'on a sélectionné un JOUR.
-      const m = txt.match(/\d{4}-\d{2}-\d{2}/);
+      // Un point QUOTIDIEN porte une date COMPLÈTE en français — « lun. 14 sept. 2026 » — alors
+      // qu'un point mensuel n'a que « janv. 2030 ». C'est le QUANTIÈME devant le mois qui prouve
+      // qu'on a sélectionné un JOUR (l'ancien format ISO était illisible pour Marc : c'est
+      // précisément ce libellé qu'il a signalé comme ne montrant « pas le jour »).
+      const m = txt.match(/\b\d{1,2}\s+[a-zéûàA-Zî]+\.?\s+\d{4}\b/);
       expect(m, `aucune date au jour dans l'infobulle figée (fx=${fx}) : ${txt.slice(0, 200)}`).not.toBeNull();
       dates.push(m![0]);
       await page.keyboard.press('Escape');

@@ -9,16 +9,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased] — 2026-08-11
 
 ### Ajouts
-- **Tu peux maintenant sélectionner CHAQUE JOUR directement sur la courbe Futur.** Zoome à fond :
+- **Tout est maintenant calculé au JOUR, pas seulement la valeur nette.** En vue jour, l'infobulle
+  affiche exactement les mêmes lignes qu'au mois — soldes par compte, dépôts, rendement, paie,
+  dépenses de vie, impôts — mais avec **les montants de CE jour-là**. Les aires par compte
+  réapparaissent : elles sont ventilées au jour elles aussi.
+  Ce que l'app sait dater tombe au bon jour : la paie du jeudi, les charges récurrentes à leur
+  quantième, le solde d'impôt à son échéance du 30 avril. Le rendement du marché, lui, n'a pas de
+  date connue — il reste réparti sur le mois, et l'infobulle le dit pour chaque jour plutôt que de
+  faire passer un lissage pour une prévision quotidienne.
+  Les bandes Monte Carlo restent masquées au jour : ce sont des percentiles mensuels.
+- **Tu peux sélectionner CHAQUE JOUR directement sur la courbe Futur.** Zoome à fond :
   la courbe passe au jour, chaque point est une journée. Survole-la, clique pour figer, ouvre le
-  détail — exactement comme pour un mois. L'infobulle te dit ce qui tombe ce jour-là (paie,
-  paiement de dette, charge récurrente) ou, s'il n'y a rien de daté, que la variation n'est que la
-  croissance répartie sur le mois.
-  Les aires par compte sont masquées dans cette vue, et l'écran explique pourquoi : le moteur ne
-  calcule la répartition entre tes comptes qu'au mois, et l'étaler sur les jours serait une
-  précision inventée.
+  détail — exactement comme pour un mois.
 
 ### Corrections
+- **Un paiement de dette ne fait plus plonger ta valeur nette le jour de paie.** Elle baissait du
+  montant du versement, puis remontait sur le reste du mois. C'était faux : ton compte baisse, mais
+  ta dette baisse d'autant — ton patrimoine net, lui, ne bouge que de l'intérêt. Invisible en fin de
+  mois (le total était juste), bien visible dès qu'on regardait au jour.
 - **Le bouton « Jour » : la vue jour par jour s'atteint maintenant en UN CLIC.** Elle existait, elle
   était testée, elle était déployée — et elle restait hors de portée : le seul chemin passait par
   **23 à 31 crans de molette** depuis « Tout » (16 depuis « 5 ans »), sans rien qui dise qu'on s'en

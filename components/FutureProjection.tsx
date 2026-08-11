@@ -43,26 +43,14 @@ const X_AXIS_DOMAIN: ['dataMin', 'dataMax'] = ['dataMin', 'dataMax'];
  *  encore ~6 px de large, donc reste VISABLE à la souris. */
 const DAILY_CURVE_MAX_POINTS = 6;
 
-/** [FUTUR-DAILY lot B étape 2] Un point QUOTIDIEN de la courbe.
+/** [FUTUR-DAILY-FULL] Un point QUOTIDIEN de la courbe.
  *
- *  ⚠️ Il n'implémente PAS le contrat complet de `ProjectionChartPoint` — le moteur ne produit ses
- *  dizaines de champs (`Liquidites`, `CELI`, `IncomeMarc`, `lifeEvents`…) qu'au MOIS. D'où
- *  `Partial<>` : tout consommateur qui lit un champ mensuel sur un point quotidien doit obtenir
- *  `undefined` et l'afficher honnêtement, jamais un `0` crédible. Le double cast au site de
- *  construction faisait taire TypeScript sur exactement ce point — et c'est ce trou qui a laissé
- *  passer le faux « Variation +0 $ » relevé en revue. */
-type DailyChartPoint = Partial<ProjectionChartPoint> & {
-    monthIndex: number;
-    dateLabel: string;
-    NetWorth: number;
-    /** Écart avec la VEILLE. Absent le 1er jour de la fenêtre (aucune veille connue). */
-    diffNW?: number;
-    dayIsDated: boolean;
-    dayLabels: string[];
-    /** Mois du moteur auquel ce jour appartient — clé de jointure, `monthIndex` étant fractionnaire. */
-    hostMonthIndex: number;
-    isDailyPoint: true;
-};
+ *  ⚠️ Le type vit désormais dans `services/projection/dailyLedger.ts`, avec le code qui le
+ *  PRODUIT. La version locale décrivait un point qui ne portait que `NetWorth` ; depuis que la
+ *  ventilation au jour couvre tous les champs du moteur, le contrat et sa construction ne peuvent
+ *  plus diverger sans casser le typecheck. `Partial<>` reste la clé : un champ que le mois n'émet
+ *  pas doit s'afficher « — », jamais « 0 $ ». */
+type DailyChartPoint = DailyLedgerPoint;
 import { Tab as TabEnum } from '../types';
 import { ExpertTooltip, ClickableEventIcon, RefLineLabel } from './projection/ProjectionTooltip';
 import { FutureDetailModal } from './projection/FutureDetailModal';
@@ -81,8 +69,8 @@ import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { DailyDetailPanel } from './projection/DailyDetailPanel';
-import { isoDate, todayIsoLocal, daysInMonth, refineWindowToDaily, finiteAnchorRun, calendarFromMonthIndex, axisXAtDay, dailyWindowRange } from '../services/projection/dailyRefine';
-import { dailyDeltasFor } from '../services/projection/datedMonthEvents';
+import { isoDate, todayIsoLocal, daysInMonth, finiteAnchorRun, calendarFromMonthIndex, axisXAtDay, dailyWindowRange } from '../services/projection/dailyRefine';
+import { buildDailyLedger, type DailyLedgerPoint } from '../services/projection/dailyLedger';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCompactCAD } from '../utils/format';
 import { NO_DATA_LABEL } from './ui/emptyAware';
@@ -611,9 +599,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // opaque aux lecteurs d'écran). Date (axe X) + chaque montant affiché (comptes empilés + Valeur Nette).
     // Le mode privé masque les MONTANTS (parité avec l'axe/tooltip déjà masqués), pas la date.
     const dataColumns = useMemo<ChartDataColumn[]>(() => {
-        // ⚠️ `Number(v) || 0` transformait une valeur ABSENTE en « 0 $ » (finding revue). En vue
-        // quotidienne, les colonnes par compte n'existent pas — le moteur ne ventile qu'au mois — et
-        // la table aurait annoncé « CELI : 0 $ » pour chaque jour.
+        // ⚠️ `Number(v) || 0` transformait une valeur ABSENTE en « 0 $ » (finding revue) : la table
+        // aurait annoncé « CELI : 0 $ » là où la valeur est simplement inconnue.
+        // ⚠️ Le motif d'origine (« en vue quotidienne les colonnes par compte n'existent pas ») est
+        // PÉRIMÉ depuis [FUTUR-DAILY-FULL] : `dailyLedger` ventile les soldes par compte au jour, et
+        // ces colonnes se remplissent donc aussi en vue jour. Le garde reste nécessaire pour le
+        // PRÉFIXE PASSÉ, où `NetWorth` est légitimement absent avant la 1re transaction connue.
         // ⚠️ Et ici le texte est LITTÉRAL (`NO_DATA_LABEL`), pas `emptyAware` : cette table est
         // `sr-only`, donc invisible — c'est la convention INVERSE de celle des cellules visibles, où
         // le libellé en clair polluerait l'écran. Le typecheck l'a d'ailleurs imposé : `format`
@@ -697,45 +688,42 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const dailyChartData = useMemo<ProjectionChartPoint[] | null>(() => {
         if (!zoom.isZoomed) return null;
         const vis = zoom.visibleData as ProjectionChartPoint[];
-        // Au-delà, le jour n'est plus lisible et le raffinement coûterait pour rien.
+        // Au-delà, le jour n'est plus lisible et la ventilation coûterait pour rien.
         if (vis.length < 2 || vis.length > DAILY_CURVE_MAX_POINTS) return null;
+        // ⚠️ `finiteAnchorRun` et NON un `filter` : il rend la plus longue plage CONTIGUË à valeur
+        // nette finie. `buildPastPrefix` laisse `NetWorth` à `undefined` avant la 1re transaction
+        // connue, exprès — et ventiler par PAIRES de mois non voisins étalerait l'écart de deux
+        // mois sur un seul, en silence.
         const anchors = finiteAnchorRun(vis, startYear, startMonth);
         if (anchors.length < 2) return null;
-        const byMonth = new Map(vis.map((p) => [p.monthIndex, p]));
-        const days = refineWindowToDaily(
-            anchors,
-            dailyDeltasFor(storeRecurring, dailyMonthlyNet, dailyMonthlyDebt),
-        );
+        const keep = new Set(anchors.map((a) => a.monthIndex));
+        const months = vis.filter((p) => keep.has(p.monthIndex));
+        if (months.length < 2) return null;
+
+        // [FUTUR-DAILY-FULL] TOUS les champs du moteur ventilés au jour — plus seulement `NetWorth`.
+        // C'est ce qui permet à l'infobulle et aux aires empilées de fonctionner au JOUR sans être
+        // réécrites : elles lisent les mêmes clés qu'au mois, avec les montants du jour.
+        const days = buildDailyLedger({
+            months,
+            startYear,
+            startMonth,
+            dated: {
+                recurring: storeRecurring,
+                monthlyNetSalary: dailyMonthlyNet,
+                monthlyDebtPayment: dailyMonthlyDebt,
+            },
+        });
         if (days.length === 0) return null;
-        return days.map((d, i) => {
-            const { year, month } = calendarFromMonthIndex(startYear, startMonth, d.monthIndex);
-            const host = byMonth.get(d.monthIndex);
-            const prev = i > 0 ? days[i - 1] : undefined;
+
+        return days.map((d) => {
+            const { year, month } = calendarFromMonthIndex(startYear, startMonth, d.hostMonthIndex);
             return {
+                ...d,
                 // ⚠️ Abscisse FRACTIONNAIRE : c'est ce que l'axe numérique (étape 1) rend possible.
                 // `axisXAtDay` garantit que le jour 1 vaut EXACTEMENT l'entier du mois, donc les
                 // ancrages entiers (« Aujourd'hui », frontière, jalons) restent alignés.
-                monthIndex: axisXAtDay(d.monthIndex, d.dayOfMonth, year, month),
-                dateLabel: d.date,
-                age: host?.age,
-                NetWorth: d.value,
-                // ⚠️ VARIATION DU JOUR, calculée (finding CRITIQUE de la revue). Sans ce champ,
-                // l'infobulle lisait `data.diffNW || 0` — un point quotidien n'ayant pas de `diffNW`,
-                // elle affichait « Variation +0 $ » EN VERT sur chaque jour, y compris celui où la
-                // paie tombe. Un faux zéro crédible, sur la fonctionnalité vedette. Ici la vraie
-                // grandeur est l'écart avec la VEILLE ; le premier jour de la fenêtre n'en a pas, et
-                // reste donc `undefined` — l'infobulle masque alors le badge plutôt que d'inventer 0.
-                diffNW: prev ? d.value - prev.value : undefined,
-                // Le jour porte-t-il un mouvement à DATE connue, ou n'est-il que de l'étalement ?
-                // L'infobulle le DIT — sinon l'interpolation passerait pour de la mesure.
-                dayIsDated: d.isDated,
-                dayLabels: d.labels,
-                // ⚠️ Le mois HÔTE réel du moteur, conservé tel quel. `monthIndex` est devenu une
-                // abscisse FRACTIONNAIRE : tout consommateur qui cherche le point mensuel par
-                // égalité (`chartData.find(d => d.monthIndex === …)`) ne trouverait plus rien sauf
-                // le 1er du mois. `hostMonthIndex` reste la clé de jointure vers le moteur.
-                hostMonthIndex: d.monthIndex,
-                isDailyPoint: true,
+                // `hostMonthIndex` reste la clé de jointure vers le mois du moteur.
+                monthIndex: axisXAtDay(d.hostMonthIndex, d.dayOfMonth, year, month),
             } as DailyChartPoint as unknown as ProjectionChartPoint;
         });
     }, [zoom.isZoomed, zoom.visibleData, startYear, startMonth, storeRecurring, dailyMonthlyNet, dailyMonthlyDebt]);
@@ -1254,17 +1242,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 <ReferenceLine key={`lifemark-${i}`} x={mk.monthIndex} stroke={mk.color} strokeOpacity={0.5} strokeDasharray="2 4" label={<RefLineLabel value={mk.label} color={mk.color} />} />
                             ))}
 
-                            {!isDailyCurve && isVisible('Liquidites') && <Area type="monotone" dataKey="Liquidites" stackId="1" stroke="#4b5563" fill="#4b5563" name="Cash" isAnimationActive={false} />}
-                            {!isDailyCurve && isVisible('CELI') && <Area type="monotone" dataKey="CELI" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="CELI" isAnimationActive={false}/>}
-                            {!isDailyCurve && isVisible('CELIAPP') && <Area type="monotone" dataKey="CELIAPP" stackId="1" stroke="#2dd4bf" fill="#2dd4bf" fillOpacity={0.6} name="CELIAPP (FHSA)" isAnimationActive={false}/>}
-                            {!isDailyCurve && isVisible('REER') && <Area type="monotone" dataKey="REER" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="REER" isAnimationActive={false}/>}
-                            {!isDailyCurve && isVisible('REEE') && <Area type="monotone" dataKey="REEE" stackId="1" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.6} name="REEE" isAnimationActive={false}/>}
-                            {!isDailyCurve && isVisible('NonReg') && <Area type="monotone" dataKey="NonReg" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} name="Non-Enreg" isAnimationActive={false}/>}
-                            {!isDailyCurve && isVisible('Crypto') && <Area type="monotone" dataKey="Crypto" stackId="1" stroke="#a855f7" fill="#a855f7" fillOpacity={0.6} name="Crypto" isAnimationActive={false}/>}
-                            {!isDailyCurve && isVisible('Immobilier') && <Area type="monotone" dataKey="Immobilier" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.3} name="Équité Immo" isAnimationActive={false}/>}
+                            {isVisible('Liquidites') && <Area type="monotone" dataKey="Liquidites" stackId="1" stroke="#4b5563" fill="#4b5563" name="Cash" isAnimationActive={false} />}
+                            {isVisible('CELI') && <Area type="monotone" dataKey="CELI" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="CELI" isAnimationActive={false}/>}
+                            {isVisible('CELIAPP') && <Area type="monotone" dataKey="CELIAPP" stackId="1" stroke="#2dd4bf" fill="#2dd4bf" fillOpacity={0.6} name="CELIAPP (FHSA)" isAnimationActive={false}/>}
+                            {isVisible('REER') && <Area type="monotone" dataKey="REER" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="REER" isAnimationActive={false}/>}
+                            {isVisible('REEE') && <Area type="monotone" dataKey="REEE" stackId="1" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.6} name="REEE" isAnimationActive={false}/>}
+                            {isVisible('NonReg') && <Area type="monotone" dataKey="NonReg" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} name="Non-Enreg" isAnimationActive={false}/>}
+                            {isVisible('Crypto') && <Area type="monotone" dataKey="Crypto" stackId="1" stroke="#a855f7" fill="#a855f7" fillOpacity={0.6} name="Crypto" isAnimationActive={false}/>}
+                            {isVisible('Immobilier') && <Area type="monotone" dataKey="Immobilier" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.3} name="Équité Immo" isAnimationActive={false}/>}
 
-                            {!isDailyCurve && isVisible('ImpotLatent') && <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>}
-                            {!isDailyCurve && isVisible('FluxImpots') && <Bar dataKey="FluxImpots" fill="#ef4444" fillOpacity={0.8} name="Paiement Impôts" barSize={4} isAnimationActive={false} />}
+                            {isVisible('ImpotLatent') && <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>}
+                            {isVisible('FluxImpots') && <Bar dataKey="FluxImpots" fill="#ef4444" fillOpacity={0.8} name="Paiement Impôts" barSize={4} isAnimationActive={false} />}
 
                             {/* G17 — Monte Carlo dessiné PAR-DESSUS la pile (sinon occulté) en
                                 cône d'incertitude : P10/P90 pointillés + médiane pleine. */}
@@ -1323,10 +1311,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 {isDailyCurve && (
                     <p role="status" className="mt-2 rounded-card border border-primary/25 bg-primary/5 px-3 py-2 text-tiny text-ink-200">
                         <strong className="text-primary">Vue au jour</strong> — chaque point de la courbe est
-                        une journée : survole-la ou clique pour figer le détail d'un jour précis. Les aires
-                        par compte sont masquées ici : le moteur ne calcule la répartition entre tes comptes
-                        qu'au <strong className="text-ink-100">mois</strong>, et l'étaler sur les jours serait
-                        une précision inventée. Dézoome pour les retrouver.
+                        une journée, et <strong className="text-ink-100">tous les montants sont ceux de ce
+                        jour-là</strong> : soldes par compte, paie, dépenses, impôts. Ce que l'app sait dater
+                        (paie du jeudi, charges récurrentes à leur quantième, solde d'impôt à l'échéance)
+                        tombe au bon jour ; le rendement du marché, lui, n'a pas de date connue et reste
+                        réparti sur le mois — l'infobulle le dit pour chaque jour. Les bandes Monte Carlo
+                        restent masquées : ce sont des percentiles mensuels, les afficher au jour serait une
+                        précision inventée.
                     </p>
                 )}
 

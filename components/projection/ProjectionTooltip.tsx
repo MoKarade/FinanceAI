@@ -113,7 +113,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                     <span className="text-tiny uppercase tracking-widest text-ink-300 font-bold">Valeur nette</span>
                     {hasDiffNW && (
                         <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${diffNW >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-danger-500/15'}`}>
-                            Variation {diffNW > 0 ? '+' : ''}{fmt(diffNW)}$
+                            Variation {isDailyPoint ? 'du jour ' : ''}{diffNW > 0 ? '+' : ''}{fmt(diffNW)}$
                         </span>
                     )}
                 </div>
@@ -155,7 +155,9 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                 </div>
             )}
 
-            {/* Revenus / dépenses du mois */}
+            {/* Revenus / dépenses — du MOIS sur un point mensuel, du JOUR sur un point quotidien.
+                [FUTUR-DAILY-FULL] `dailyLedger` ventile ces mêmes champs au jour : rien à changer ici
+                hormis les libellés, ce qui élimine tout risque de divergence entre les deux vues. */}
             <div className="space-y-1 mb-2.5 text-meta">
                 {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Paye {userName1 || 'Util. 1'}</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.IncomeMarc || 0)}$</PrivateAmount></div>}
                 {(data.IncomeAnna || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Paye {userName2 || 'Util. 2'}</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.IncomeAnna || 0)}$</PrivateAmount></div>}
@@ -192,7 +194,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
             {/* Répartition par compte : valeur + rendement du mois (G14) */}
             {accounts.length > 0 && (
                 <div className="bg-black/30 p-2.5 rounded-xl space-y-1 text-meta border border-white/10 mb-2.5">
-                    <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">Par compte (valeur · rendement)</div>
+                    <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">Par compte (valeur · rendement {isDailyPoint ? 'du jour' : 'du mois'})</div>
                     {accounts.map((a) => (
                         <div key={a.key} className="flex items-center justify-between gap-2">
                             <span className="flex items-center gap-1.5 text-ink-200 min-w-0">

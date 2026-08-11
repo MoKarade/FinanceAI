@@ -17,7 +17,13 @@
 >   colonne « Projeté » croissante. Bornée à `min(to, today)`. Leçon dans `CONVENTIONS.md`.
 > - Replis de sélecteurs `?? []` inline → **constantes de module** (`react-hooks/exhaustive-deps` les
 >   signalait : nouvelle référence à chaque rendu → memos invalidés à chaque frame de zoom).
-> - Gate vert : typecheck, lint, **3 681 tests / 324 fichiers**, build.
+> - **Panel (code-reviewer, a11y-auditor, silent-failure-hunter) — 5 findings, tous CONFIRMÉS et
+>   corrigés dans la même PR** : `Number(NetWorth) || 0` qui vidait le garde no-fake de
+>   `refineMonthToDaily` (→ `finiteAnchorRun`, plage contiguë) · la ligne d'AUJOURD'HUI mesurée mais
+>   annoncée « (projeté) » (`isPast` en `<` face à une borne inclusive) · la fermeture `deltasFor`
+>   dupliquée entre les deux écrans (→ `dailyDeltasFor`) · deux conteneurs défilants inatteignables
+>   au clavier · les « — » hors convention `emptyAware`.
+> - Gate vert : typecheck, lint, **3 691 tests / 324 fichiers**, build.
 
 > ## 🟠 Session 2026-08-06 (suite 32) — #574 mergée, mais PAS déployée
 > `[FUTUR-DAILY]` est **sur `main`** (`ed5a7d1`, #574) — et **Vercel n'a créé aucun déploiement de

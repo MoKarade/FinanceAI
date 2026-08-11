@@ -86,6 +86,13 @@ describe('ExpertTooltip — détail jour par jour', () => {
         expect(screen.getByText(/croissance est répartie sur le mois/)).toBeInTheDocument();
     });
 
+    it('la liste est atteignable au CLAVIER (jusqu’à 31 jours, aucun descendant focusable)', () => {
+        render(<ExpertTooltip data={pt({})} dailyRows={days} />);
+        const region = screen.getByRole('region', { name: /Jour par jour, liste défilante/i });
+        expect(region).toHaveAttribute('tabindex', '0');
+        expect(region.className).toContain('overflow-y-auto');
+    });
+
     it('aucun bloc quotidien quand rien n’est fourni (survol hors fenêtre raffinée)', () => {
         render(<ExpertTooltip data={pt({})} />);
         expect(screen.queryByText('Jour par jour')).toBeNull();

@@ -9,6 +9,7 @@ import { describe, it, expect } from 'vitest';
 import {
     refineMonthToDaily,
     refineWindowToDaily,
+    finiteAnchorRun,
     daysInMonth,
     daySpan,
     calendarFromMonthIndex,
@@ -207,5 +208,49 @@ describe('[FUTUR-DAILY] daySpan', () => {
 
     it('une date illisible rend 0 plutôt qu’un NaN qui se propagerait dans un seuil de zoom', () => {
         expect(daySpan('pas-une-date', '2026-01-01')).toBe(0);
+    });
+});
+
+// [FUTUR-DAILY] `finiteAnchorRun` — le filtre qui empêche un `NetWorth` LÉGITIMEMENT absent de
+// devenir un patrimoine de 0 $.
+//
+// Pourquoi ce test existe : `buildPastPrefix` pose `NetWorth: undefined` avant la première
+// transaction connue (« no-fake : pas de fausse ligne à 0 »). Les deux appelants du raffinement
+// écrivaient `Number(p.NetWorth) || 0`, ce qui rendait la valeur finie AVANT le garde-fou de
+// `refineMonthToDaily` — le garde ne se déclenchait donc jamais.
+describe('finiteAnchorRun — une absence ne devient jamais 0 $', () => {
+    const pt = (monthIndex: number, NetWorth?: number) => ({ monthIndex, NetWorth });
+
+    it('traduit les points finis en ancres calendaires', () => {
+        const run = finiteAnchorRun([pt(0, 100), pt(1, 110)], 2026, 0);
+        expect(run).toEqual([
+            { monthIndex: 0, year: 2026, month: 0, value: 100 },
+            { monthIndex: 1, year: 2026, month: 1, value: 110 },
+        ]);
+    });
+
+    it('ÉCARTE les points sans patrimoine connu au lieu de les ancrer sur 0', () => {
+        const run = finiteAnchorRun([pt(-2), pt(-1), pt(0, 100), pt(1, 110)], 2026, 0);
+        expect(run.map((a) => a.monthIndex)).toEqual([0, 1]);
+        // Le point clé : AUCUNE ancre à 0 $ — c'est exactement ce que `Number(x) || 0` produisait.
+        expect(run.some((a) => a.value === 0)).toBe(false);
+    });
+
+    it('garde la plus longue plage CONTIGUË, jamais un filtre à trous', () => {
+        // Un trou au MILIEU : filtrer sans exiger la contiguïté appairerait deux mois NON voisins
+        // et étalerait un écart de deux mois sur un seul — une distorsion silencieuse.
+        const run = finiteAnchorRun([pt(0, 10), pt(1), pt(2, 30), pt(3, 40), pt(4, 50)], 2026, 0);
+        expect(run.map((a) => a.monthIndex)).toEqual([2, 3, 4]);
+    });
+
+    it('rend une plage trop courte pour raffiner plutôt que d’inventer une entrée', () => {
+        // Un seul point fini => `refineWindowToDaily` rendra `[]` : pas de mois d’entrée connu.
+        expect(finiteAnchorRun([pt(0), pt(1, 100)], 2026, 0)).toHaveLength(1);
+        expect(refineWindowToDaily(finiteAnchorRun([pt(0), pt(1, 100)], 2026, 0))).toEqual([]);
+    });
+
+    it('un NaN ou un Infinity est traité comme une absence, pas comme une valeur', () => {
+        const run = finiteAnchorRun([pt(0, NaN), pt(1, Infinity), pt(2, 300), pt(3, 400)], 2026, 0);
+        expect(run.map((a) => a.monthIndex)).toEqual([2, 3]);
     });
 });

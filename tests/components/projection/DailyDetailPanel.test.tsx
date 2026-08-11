@@ -47,6 +47,43 @@ const BASE = {
 
 const rowFor = (date: string) => screen.getByText(date).closest('tr') as HTMLElement;
 
+describe('DailyDetailPanel — le jour MÊME est mesuré, pas projeté', () => {
+    // La borne de reconstruction est `min(to, today)`, INCLUSIVE : le jour même porte de vrais prix.
+    // Le marquer « (projeté) » contredirait la <caption> sur la ligne la plus regardée du tableau
+    // (toute fenêtre zoomée réaliste contient aujourd'hui).
+    it('porte une ventilation RÉELLE et n’est PAS annoncé « (projeté) »', () => {
+        render(<DailyDetailPanel {...BASE} />);
+        const row = rowFor(TODAY);
+        expect(row.textContent).not.toContain('(projeté)');
+        const cells = within(row).getAllByRole('cell').map((c) => c.textContent ?? '');
+        const headers = screen.getAllByRole('columnheader').map((h) => h.textContent ?? '');
+        expect(cells[headers.indexOf('CELI') - 1]).toMatch(/1[\s ]?000/);
+    });
+
+    it('le LENDEMAIN, lui, est bien annoncé « (projeté) »', () => {
+        render(<DailyDetailPanel {...BASE} />);
+        expect(rowFor('2026-01-04').textContent).toContain('(projeté)');
+    });
+});
+
+describe('DailyDetailPanel — accessibilité du tableau élargi', () => {
+    it('le conteneur défilant est atteignable au CLAVIER (11 colonnes, aucun descendant focusable)', () => {
+        render(<DailyDetailPanel {...BASE} />);
+        const region = screen.getByRole('region', { name: /tableau défilant horizontalement/i });
+        expect(region).toHaveAttribute('tabindex', '0');
+        expect(region.className).toContain('overflow-x-auto');
+    });
+
+    it('une cellule vide dit « Pas de donnée » au lecteur d’écran, pas un tiret muet', () => {
+        render(<DailyDetailPanel {...BASE} />);
+        const futureRow = rowFor('2026-01-04');
+        expect(within(futureRow).getAllByText('Pas de donnée').length).toBeGreaterThan(0);
+        // ⚠️ Et surtout PAS « Montant masqué » : ce serait laisser croire à un montant caché
+        // là où il n'y a aucune donnée.
+        expect(within(futureRow).queryByText('Montant masqué')).toBeNull();
+    });
+});
+
 describe('DailyDetailPanel — ventilation par compte (passé)', () => {
     it("affiche une colonne par régime, dans l'ordre canonique", () => {
         render(<DailyDetailPanel {...BASE} />);
@@ -80,7 +117,11 @@ describe('DailyDetailPanel — ventilation par compte (passé)', () => {
         const cells = within(rowFor('2026-01-04')).getAllByRole('cell').map((c) => c.textContent ?? '');
         const headers = screen.getAllByRole('columnheader').map((h) => h.textContent ?? '');
         for (const c of ACCOUNT_COLUMNS) {
-            expect(cells[headers.indexOf(c.label) - 1]).toBe('—');
+            const cell = cells[headers.indexOf(c.label) - 1];
+            // Le tiret VISIBLE + son doublon `sr-only` « Pas de donnée » (convention A11Y-DASH-SRONLY).
+            // Ce qui compte ici : AUCUN chiffre — c'est la fausse précision qu'on refuse.
+            expect(cell).toContain('—');
+            expect(cell).not.toMatch(/\d/);
         }
     });
 });

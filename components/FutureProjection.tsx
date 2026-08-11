@@ -45,8 +45,8 @@ import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { DailyDetailPanel } from './projection/DailyDetailPanel';
-import { calendarFromMonthIndex, isoDate, todayIsoLocal, daysInMonth, refineWindowToDaily } from '../services/projection/dailyRefine';
-import { datedDeltasForMonth, weeklyDeltasForMonth } from '../services/projection/datedMonthEvents';
+import { isoDate, todayIsoLocal, daysInMonth, refineWindowToDaily, finiteAnchorRun } from '../services/projection/dailyRefine';
+import { dailyDeltasFor } from '../services/projection/datedMonthEvents';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCompactCAD } from '../utils/format';
 
@@ -534,13 +534,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         if (!zoom.isZoomed) return null;
         const vis = zoom.visibleData;
         if (vis.length < 2) return null;
-        const cal = (monthIndex: number) => calendarFromMonthIndex(startYear, startMonth, monthIndex);
-        const anchors = vis.map((p) => {
-            const { year, month } = cal(p.monthIndex);
-            return { monthIndex: p.monthIndex, year, month, value: Number(p.NetWorth) || 0 };
-        });
-        const first = cal(vis[0].monthIndex);
-        const last = cal(vis[vis.length - 1].monthIndex);
+        // ⚠️ `finiteAnchorRun` et NON `Number(p.NetWorth) || 0` (finding silent-failure #577) :
+        // `buildPastPrefix` laisse `NetWorth` à `undefined` AVANT la première transaction connue,
+        // exprès. Le coercer aurait ancré tout le raffinement sur un patrimoine de 0 $ inventé.
+        const anchors = finiteAnchorRun(vis, startYear, startMonth);
+        if (anchors.length < 2) return null;
+        const first = anchors[0];
+        const last = anchors[anchors.length - 1];
         return {
             from: isoDate(first.year, first.month, 1),
             to: isoDate(last.year, last.month, daysInMonth(last.year, last.month)),
@@ -649,16 +649,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const arr = displayData as ProjectionChartPoint[];
         const i = arr.findIndex((d) => d.monthIndex === p.monthIndex);
         if (i < 1) return undefined; // 1er point de la série : aucun mois d'entrée connu
-        const anchorOf = (pt: ProjectionChartPoint) => ({
-            monthIndex: pt.monthIndex,
-            ...calendarFromMonthIndex(startYear, startMonth, pt.monthIndex),
-            value: Number(pt.NetWorth) || 0,
-        });
-        return refineWindowToDaily([anchorOf(arr[i - 1]), anchorOf(p)], (a) => [
-            ...datedDeltasForMonth(storeRecurring, a.month),
-            ...weeklyDeltasForMonth(a.year, a.month, dailyMonthlyNet, 'Paie', 1),
-            ...weeklyDeltasForMonth(a.year, a.month, dailyMonthlyDebt, 'Paiement de dette', -1),
-        ]);
+        // ⚠️ `finiteAnchorRun` (finding silent-failure #577) : survoler un mois du passé ANTÉRIEUR
+        // à la première transaction connue donne un `NetWorth` `undefined` VOULU — le coercer en 0
+        // aurait affiché un mois quotidien entier ancré sur un patrimoine inventé.
+        const anchors = finiteAnchorRun([arr[i - 1], p], startYear, startMonth);
+        if (anchors.length < 2) return undefined;
+        return refineWindowToDaily(
+            anchors,
+            dailyDeltasFor(storeRecurring, dailyMonthlyNet, dailyMonthlyDebt),
+        );
     }, [tooltip.point, displayData, startYear, startMonth, storeRecurring, dailyMonthlyNet, dailyMonthlyDebt]);
 
     // [R3] Clic sur le graphe = FIGE le tooltip (avant : ouvrait directement la modale).

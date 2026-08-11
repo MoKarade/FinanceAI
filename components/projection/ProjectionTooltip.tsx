@@ -231,7 +231,17 @@ export const ExpertTooltip = ({ data, dailyRows, userName1, userName2, frozen = 
             {dailyRows && dailyRows.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-white/10">
                     <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">Jour par jour</div>
-                    <ul className="space-y-px max-h-40 overflow-y-auto pr-0.5">
+                    {/* [a11y] Région défilante FOCUSABLE (WCAG 2.1.1) : jusqu'à 31 jours pour ~8 visibles, et
+                        AUCUN descendant focusable. Le conteneur d'infobulle est bien scrollable, mais le
+                        focus posé au gel vit sur un ANCÊTRE non scrollable — un navigateur ne cherche
+                        jamais un descendant à faire défiler. Sans ce `tabIndex`, la fin du mois n'est
+                        atteignable qu'à la molette. */}
+                    <ul
+                        className="space-y-px max-h-40 overflow-y-auto pr-0.5 focus-ring rounded"
+                        tabIndex={0}
+                        role="region"
+                        aria-label="Jour par jour, liste défilante"
+                    >
                         {dailyRows.map((d) => (
                             <li
                                 key={d.date}

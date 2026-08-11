@@ -135,3 +135,24 @@ export function datedCoverageForMonth(
         datedAmount: deltas.reduce((s, d) => s + Math.abs(d.amount), 0),
     };
 }
+
+/**
+ * La composition COMPLÈTE des mouvements datés d'un mois, telle que les DEUX écrans du quotidien
+ * la veulent : charges récurrentes à leur jour + paie et paiements de dette chaque jeudi.
+ *
+ * ⚠️ SOURCE UNIQUE (finding `code-reviewer` sur #577). Cette fermeture vivait en double —
+ * dans le memo du tableau quotidien ET dans celui de l'infobulle. Deux copies de la même liste,
+ * pour le MÊME jour : une source de deltas ajoutée, un libellé changé ou un signe corrigé d'un
+ * seul côté aurait fait diverger silencieusement les deux affichages du même écran.
+ */
+export function dailyDeltasFor(
+    recurring: ReadonlyArray<MinimalRecurring>,
+    monthlyNetSalary: number,
+    monthlyDebtPayment: number,
+): (anchor: { year: number; month: number }) => DatedDelta[] {
+    return (a) => [
+        ...datedDeltasForMonth(recurring, a.month),
+        ...weeklyDeltasForMonth(a.year, a.month, monthlyNetSalary, 'Paie', 1),
+        ...weeklyDeltasForMonth(a.year, a.month, monthlyDebtPayment, 'Paiement de dette', -1),
+    ];
+}

@@ -184,6 +184,29 @@ export function dailyWindowRange(
 }
 
 /**
+ * [FUTUR-DAILY-SELECT-PATH] Fenêtre de `windowPoints` points CENTRÉE sur `centerIndex`, clampée aux
+ * bornes du tableau (près d'un bord, la fenêtre glisse au lieu de rétrécir). Sert au bouton « Voir
+ * ce mois jour par jour » de l'infobulle figée — même largeur que `dailyWindowRange` (le bouton
+ * « Jour »), mais centrée sur le mois CLIQUÉ au lieu d'être ancrée sur aujourd'hui.
+ *
+ * ⚠️ Fonction PURE et testée séparément (finding revue #589) : la première version vivait en ligne
+ * dans le composant, sans test de bord — la classe « clamp re-codé en dur qui dérive en silence ».
+ * Rend `null` dans les mêmes cas dégénérés que `dailyWindowRange` (fenêtre ≥ tableau, entrées
+ * non finies) : l'appelant ne zoome pas plutôt que de poser une fenêtre absurde.
+ */
+export function centeredWindowRange(
+    dataLength: number,
+    centerIndex: number,
+    windowPoints: number,
+): [number, number] | null {
+    if (!Number.isFinite(dataLength) || !Number.isFinite(centerIndex) || !Number.isFinite(windowPoints)) return null;
+    if (windowPoints < 2 || dataLength <= windowPoints) return null;
+    const center = Math.max(0, Math.min(Math.round(centerIndex), dataLength - 1));
+    const lo = Math.max(0, Math.min(center - Math.floor((windowPoints - 1) / 2), dataLength - windowPoints));
+    return [lo, lo + windowPoints - 1];
+}
+
+/**
  * Abscisse d'un point QUOTIDIEN sur l'axe X numérique du graphe Futur : le `monthIndex` du mois,
  * plus la fraction du mois déjà écoulée.
  *

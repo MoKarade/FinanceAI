@@ -9,6 +9,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased] — 2026-08-12
 
 ### Ajouts
+- **Sélectionner un jour ne demande plus de connaître le zoom.** Tu cliques un mois (n'importe où,
+  même en vue large) → l'infobulle figée offre « Voir ce mois jour par jour » : un clic et la
+  courbe passe au jour, centrée sur CE mois. Une fois un jour figé, « Veille / Lendemain » avance
+  au jour près — plus besoin de viser un point de 6 pixels, et ça marche aussi au doigt.
+- **Un clic un peu vif compte comme un clic.** Avant, un clic qui glissait de 8 pixels pendant le
+  geste ne faisait rien du tout (mesuré) ; en vue au jour la tolérance est maintenant adaptée.
+- **Si la vue au jour est impossible sur une fenêtre (données passées incomplètes), l'écran le DIT**
+  au lieu de laisser croire que le clic est cassé.
 - (interne) Le fuzz de conservation du moteur exerce maintenant TOUS les flux one-time : vente
   immobilière (y compris d'un bien locatif), revenu locatif, équité négative (immeuble sous l'eau),
   remplacement de véhicule, héritage et REEE — avec un test qui MESURE que chaque flux est réellement

@@ -4,6 +4,30 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 44) — `[FUTUR-DAILY-SELECT-PATH]` : le chemin vers le jour offert au moment du clic
+> **Retour Marc en direct (capture « mai 2027 ») : « je peux pas selectionner de jour juste un
+> mois ».** 4e occurrence UX-UNREACHABLE sur ce chantier — le bouton « Jour » existait, mais
+> AILLEURS que là où le geste exprimait l'intention (il cliquait un mois en vue large).
+> - **Livré** : infobulle figée d'un MOIS → « Voir ce mois jour par jour » (zoom centré sur le mois
+>   cliqué) ; infobulle figée d'un JOUR → « Veille / Lendemain » (sélection au jour près, sans
+>   viser un point de ~6 px — utilisable au doigt) ; tolérance de dérive du clic ADAPTATIVE
+>   (mesuré : dérive de 8 px = clic avalé par le garde anti-pan à 6 px → 14 px en vue jour) ;
+>   bandeau honnête quand la fenêtre est serrée mais les ancres mensuelles manquent.
+> - **Diagnostic MESURÉ avant de coder** (sonde Playwright jetable) : clics parfaits 19/19 OK
+>   partout, tap tactile OK, dérive 8-10 px → RIEN, ~6 px par jour au preset « Jour ». C'est la
+>   capture de Marc qui a tranché le symptôme (infobulle mensuelle en vue large).
+> - Leçon portée dans CONVENTIONS (règle raffinée : le raccourci doit être offert AU MOMENT DE
+>   L'INTENTION, pas ailleurs sur l'écran).
+> - **Findings du panel (3 agents), tous corrigés dans la même PR** : no-op MUET de `zoomToDaysAt`
+>   quand le mois figé a disparu de la fenêtre (→ logError + libération) ; label-in-name WCAG 2.5.3
+>   (aria-label qui REMPLAÇAIT « Veille »/« Lendemain » → contient maintenant le texte visible,
+>   tests verrouillés par /Veille|Lendemain/) ; `focus-ring` manquant sur les 4 boutons du pied
+>   (dont « Détail complet », lacune préexistante) ; fenêtrage extrait en helper PUR testé
+>   (`centeredWindowRange`, 5 tests de bord — la version inline re-codait le clamp sans test).
+> - Resté OUVERT : `[FUTUR-DAILY-TOUCH]` (pincement) — Marc n'a toujours pas dit s'il est au doigt ;
+>   si oui, le zoom libre reste impossible sur téléphone (les nouveaux boutons couvrent le cas
+>   sélection, pas la navigation libre).
+
 > ## 🟢 Session 2026-08-12 (suite 43) — `[FUZZ-ONETIME-FLOWS]` : V9 TERMINÉE + grand ménage BACKLOG→ARCHIVE
 > Dernier item V9 (ordre PM). Le fuzz de conservation (`projection.fuzzConservation.test.ts`) exerce
 > désormais TOUS les flux one-time : vente immo (`eventKind: 'VENTE_IMMO'` daté après l'achat),

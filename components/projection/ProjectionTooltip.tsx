@@ -62,12 +62,21 @@ const TOOLTIP_ACCOUNTS: Array<{ key: string; label: string; color: string; gainK
 // wrapper Recharts) et est rendu via un PORTAIL positionné par
 // `useChartTooltipPosition`. `frozen` = figé (devient interactif/scrollable et
 // montre le bouton « Détail complet ») ; `onOpenDetail` ouvre la modale exhaustive.
-export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOpenDetail }: {
+export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOpenDetail, onZoomToDays, onStepDay, canStepPrev = false, canStepNext = false }: {
     data: ProjectionChartPoint;
     userName1?: string;
     userName2?: string;
     frozen?: boolean;
     onOpenDetail?: () => void;
+    /** [FUTUR-DAILY-SELECT-PATH] Point MENSUEL figé : zoome la fenêtre sur CE mois → vue au jour.
+     *  Offert au moment de l'intention (Marc cliquait un mois en voulant un jour — capture
+     *  « mai 2027 », 2026-08-12) au lieu d'exiger de connaître le seuil de zoom. */
+    onZoomToDays?: () => void;
+    /** Point QUOTIDIEN figé : sélectionner le jour voisin (−1 = veille, +1 = lendemain) sans
+     *  re-viser au pixel — à ~150 jours affichés, un jour fait ~6 px (mesuré). */
+    onStepDay?: (dir: -1 | 1) => void;
+    canStepPrev?: boolean;
+    canStepNext?: boolean;
 }) => {
     // [FUTUR-DAILY lot B étape 2] Champs portés par les points QUOTIDIENS de la courbe. Ils sont
     // absents des points mensuels du moteur, d'où la lecture défensive plutôt qu'un élargissement
@@ -283,16 +292,60 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                 « Détail complet » (ouvre la modale) + rappel Échap. Le bouton n'est
                 cliquable que figé (le tooltip de survol est `pointer-events:none`). */}
             {frozen ? (
-                <div className="pt-2 mt-0.5 border-t border-white/10 flex items-center justify-between gap-2">
-                    <button
-                        type="button"
-                        onClick={onOpenDetail}
-                        className="flex-1 inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-primary bg-primary/15 hover:bg-primary/25 border border-primary/30 rounded-lg px-2 py-2.5 transition-colors"
-                    >
-                        Détail complet →
-                    </button>
-                    {/* ink-400 (#8896a8, AA normal) — ink-600 n'existe pas dans la palette (héritait la couleur parente). */}
-                    <span className="text-[10px] text-ink-400 whitespace-nowrap">Échap pour fermer</span>
+                <div className="pt-2 mt-0.5 border-t border-white/10 space-y-2">
+                    {/* [FUTUR-DAILY-SELECT-PATH] Mois figé → le chemin vers le jour est OFFERT ICI,
+                        au moment où l'utilisateur vient de cliquer en cherchant un jour — pas caché
+                        derrière un seuil de zoom qu'il faudrait connaître (3e occurrence de la
+                        classe UX-UNREACHABLE sur cette feature : REACH, PAST-REACH, et ce clic-ci). */}
+                    {!isDailyPoint && onZoomToDays && (
+                        <button
+                            type="button"
+                            onClick={onZoomToDays}
+                            className="focus-ring w-full inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-2 py-2.5 transition-colors"
+                        >
+                            Voir ce mois jour par jour →
+                        </button>
+                    )}
+                    {/* Jour figé → sélection FINE au jour près, sans re-viser au pixel (un jour ≈ 6 px
+                        à ~150 jours affichés, mesuré) — et utilisable au DOIGT, où le zoom molette
+                        n'existe pas. */}
+                    {isDailyPoint && onStepDay && (
+                        <div className="flex items-center gap-2">
+                            {/* ⚠️ [a11y, WCAG 2.5.3 label-in-name — finding panel #589] L'aria-label
+                                CONTIENT le texte visible (« Veille », « Lendemain ») : un aria-label
+                                de remplacement (« Jour précédent » seul) casserait la commande vocale
+                                — « clique Veille » ne trouverait aucun bouton de ce nom. */}
+                            <button
+                                type="button"
+                                onClick={() => onStepDay(-1)}
+                                disabled={!canStepPrev}
+                                aria-label="Veille (jour précédent)"
+                                className="focus-ring flex-1 inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 disabled:opacity-35 disabled:pointer-events-none border border-white/20 rounded-lg px-2 py-2.5 transition-colors"
+                            >
+                                ← Veille
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onStepDay(1)}
+                                disabled={!canStepNext}
+                                aria-label="Lendemain (jour suivant)"
+                                className="focus-ring flex-1 inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 disabled:opacity-35 disabled:pointer-events-none border border-white/20 rounded-lg px-2 py-2.5 transition-colors"
+                            >
+                                Lendemain →
+                            </button>
+                        </div>
+                    )}
+                    <div className="flex items-center justify-between gap-2">
+                        <button
+                            type="button"
+                            onClick={onOpenDetail}
+                            className="focus-ring flex-1 inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-primary bg-primary/15 hover:bg-primary/25 border border-primary/30 rounded-lg px-2 py-2.5 transition-colors"
+                        >
+                            Détail complet →
+                        </button>
+                        {/* ink-400 (#8896a8, AA normal) — ink-600 n'existe pas dans la palette (héritait la couleur parente). */}
+                        <span className="text-[10px] text-ink-400 whitespace-nowrap">Échap pour fermer</span>
+                    </div>
                 </div>
             ) : (
                 <div className="text-tiny text-ink-400 text-center pt-1.5 border-t border-white/10">

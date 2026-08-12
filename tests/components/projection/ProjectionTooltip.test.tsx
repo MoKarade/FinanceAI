@@ -134,3 +134,47 @@ describe('ExpertTooltip — badge « Variation » : une absence n’est pas un z
         expect(badge.className).toContain('text-red-300');
     });
 });
+
+// [FUTUR-DAILY-SELECT-PATH / -STEP] Les deux chemins de sélection offerts DANS l'infobulle figée.
+//
+// Contexte (capture Marc 2026-08-12, « je peux pas selectionner de jour juste un mois ») : la vue
+// au jour exigeait de zoomer sous 6 mois AVANT de cliquer — un seuil que rien n'annonçait au moment
+// du clic (3e occurrence de la classe UX-UNREACHABLE sur ce chantier). Désormais :
+//   • un MOIS figé offre « Voir ce mois jour par jour » (zoom centré sur le mois cliqué) ;
+//   • un JOUR figé offre « Veille / Lendemain » (sélection au jour près sans re-viser au pixel —
+//     un jour ≈ 6 px à ~150 jours affichés, mesuré ; et utilisable au doigt, sans molette).
+describe('ExpertTooltip — chemins de sélection du jour (pied figé)', () => {
+    it('mois FIGÉ : « Voir ce mois jour par jour » est offert et déclenche le zoom', () => {
+        const onZoomToDays = vi.fn();
+        render(<ExpertTooltip data={pt({})} frozen onZoomToDays={onZoomToDays} />);
+        const btn = screen.getByRole('button', { name: /Voir ce mois jour par jour/ });
+        fireEvent.click(btn);
+        expect(onZoomToDays).toHaveBeenCalledTimes(1);
+    });
+
+    it('mois NON figé (survol) : aucun bouton — le tooltip de survol est passif', () => {
+        render(<ExpertTooltip data={pt({})} onZoomToDays={vi.fn()} />);
+        expect(screen.queryByRole('button', { name: /Voir ce mois jour par jour/ })).toBeNull();
+    });
+
+    it('jour FIGÉ : « Veille » et « Lendemain » sélectionnent le jour voisin (−1 / +1)', () => {
+        const onStepDay = vi.fn();
+        render(<ExpertTooltip data={dayPoint({ isDailyPoint: true })} frozen onStepDay={onStepDay} canStepPrev canStepNext />);
+        // ⚠️ [WCAG 2.5.3 label-in-name — finding a11y #589] Le nom accessible DOIT contenir le texte
+        // visible : ces requêtes par /Veille|Lendemain/ verrouillent qu'un futur aria-label de
+        // REMPLACEMENT (« Jour précédent » seul) casserait le test comme il casserait Dragon.
+        fireEvent.click(screen.getByRole('button', { name: /Veille/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Lendemain/ }));
+        expect(onStepDay).toHaveBeenNthCalledWith(1, -1);
+        expect(onStepDay).toHaveBeenNthCalledWith(2, 1);
+    });
+
+    it('jour FIGÉ : pas de « Voir ce mois jour par jour » (on y est déjà) et bornes désactivées', () => {
+        render(<ExpertTooltip data={dayPoint({ isDailyPoint: true })} frozen onZoomToDays={vi.fn()} onStepDay={vi.fn()} canStepPrev={false} canStepNext />);
+        expect(screen.queryByRole('button', { name: /Voir ce mois jour par jour/ })).toBeNull();
+        // ⚠️ Un bouton de borne DÉSACTIVÉ (pas absent) : le pied garde sa géométrie, et le lecteur
+        // d'écran comprend qu'il n'y a simplement pas de veille dans la fenêtre.
+        expect(screen.getByRole('button', { name: /Veille/ })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /Lendemain/ })).toBeEnabled();
+    });
+});

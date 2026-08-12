@@ -570,14 +570,44 @@
   tout fonctionne bien et plus de fonctionnalités » : passe complète sur les tools MCP (fiabilité,
   erreurs honnêtes, couverture) + nouvelles capacités à cadrer avec Marc (écritures étendues,
   transactions, dettes-contrats, simulations). Plan-first.
+- [ ] **`[AUTH-REMEMBER-DEVICE]`** (M, retour Marc 2026-08-12) — « je veux pas qu'à chaque fois
+  je doive me reconnecter, ça me le demande trop souvent pour rien : me connecter UNE fois avec
+  option de se souvenir de l'appareil… à part pour changer des paramètres » : session Drive
+  persistante par appareil (option « se souvenir de cet appareil »), ré-auth exigée SEULEMENT
+  pour les zones sensibles (Réglages/paramètres). ⚠️ Inverse en partie la décision
+  `[AUTH-DRIVE-INACTIVITY]` (déco auto 8 h, demande Marc 2026-07-22) — nouvelle préférence
+  prévaut (à confirmer : garder ou retirer la déco 8 h en plus du « se souvenir »). Cadrer
+  d'abord le POURQUOI des reconnexions actuelles (instrumentation `[AUTH-DRIVE-STILL-RECONNECT]`
+  déjà en place — lire le journal Diagnostics avant de coder).
+- [ ] **`[TOUR-ANCHOR-INVISIBLE]`** (S, a11y — audit #600, pré-existant) — `anchorRect.ts` ne
+  teste que width/height > 0, or `visibility:hidden` CONSERVE le layout : un accordéon replié
+  manuellement + visite guidée relancée → le tour spotlighte un bouton invisible. Fix : le
+  tour force l'ouverture du groupe du step actif, OU `anchorRect` vérifie
+  `getComputedStyle(el).visibility`. Surface élargie par la nav 6 destinations (Configurations
+  = 5 onglets).
 - [ ] **`[A11Y-SIDEBAR-ESC]`** (XS, a11y — audit #598, pré-existant) — la sidebar dépliée au
   survol/focus n'est pas fermable au clavier (Échap) → gap WCAG 1.4.13 (Dismissable). Ajouter
   un keydown Échap qui replie (blur/retour du focus au déclencheur).
 - [ ] **`[IA-NAV-LABELS]`** (S) — sidebar w-16 par défaut, libellés opacity-0, icônes cryptiques →
   libellés visibles par défaut (ou rail plus large).
-- [ ] **`[NAV-IA-CONSOLIDATE]`** (L, ⏳, 🧭 OK Marc requis) — 14 destinations → ~6 (Accueil · Budget ·
-  Patrimoine · Futur · Impôts&Docs · Réglages). Gros chantier nav (routes, deep-links, tests) →
-  plan-first + OK Marc.
+- [x] **`[NAV-IA-CONSOLIDATE]`** — **caduque 2026-08-12** : supersedé par `[REFONTE-NAV]`
+  (vision différente de Marc : plus d'Accueil du tout, la courbe Future au centre — voir
+  `docs/REFONTE_NAV_PLAN.md`). Ne pas implémenter l'ancien découpage.
+- [ ] **`[REFONTE-NAV]`** (L, ⏳, GO Marc 2026-08-12) — chantier « tout tourne autour de la courbe
+  Future », plan détaillé + décisions dans `docs/REFONTE_NAV_PLAN.md`. Lots :
+  - [x] `[REFONTE-NAV-L1]` **Lot 1 — la nav** ✅ 2026-08-12 (PR #600) : 6 destinations
+    (Futur · Configurations · Vie · Transactions · Assistant · Réglages), app s'ouvre sur Futur,
+    Accueil retiré (#DASHBOARD→#FUTURE, chiffres de tête → FutureKpiStrip), barre mobile
+    Futur·Transactions·Assistant·Plus. Critère : rien de perdu.
+  - [ ] `[REFONTE-NAV-L2]` Lot 2 — Futur enrichi : bandeau KPI complet (variation, santé) +
+    rapatriement des paramètres de projection + reste des tuiles de l'ex-Accueil (le composant
+    `Dashboard.tsx` reste sur disque comme carrière à ce lot, puis sera supprimé).
+  - [ ] `[REFONTE-NAV-L3]` Lot 3 — Configurations fusionnées (split immo/invest actuel vs projets,
+    inclut `[DEBT-FROM-CONTRACT]`).
+  - [ ] `[REFONTE-NAV-L4]` Lot 4 — Vie fusionnée (retraite, enfants, projets, voyages, événements).
+  - [ ] `[REFONTE-NAV-L5]` Lot 5 — Transactions fusionnées (tx, budget, abonnements, imports).
+  - [ ] `[REFONTE-NAV-L6]` Lot 6 — Assistant pleine page + outils (sous-lots par outil, voir plan).
+  - [ ] `[REFONTE-NAV-L7]` Lot 7 — Réglages retravaillés en sections.
 - [ ] **`[UI-TABS-RICH]`** (M) — généraliser le pattern sous-onglets à Retraite (4 outils empilés) et
   Profil (long scroll). Plan-first.
 - [ ] **`[DETTE-CHART-THEME-DUP]`** (S) — tooltip/thème Recharts partagé (`CHART_TOOLTIP_STYLE`

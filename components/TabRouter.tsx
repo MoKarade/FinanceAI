@@ -6,8 +6,10 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 // (cf hubperso.com regression : "Failed to fetch dynamically imported module")
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { PageSetupGate } from './setup/PageSetupGate';
+import { FutureKpiStrip } from './FutureKpiStrip';
 
-const Dashboard = lazyWithRetry(() => import('./Dashboard').then(m => ({ default: m.Dashboard })), 'Dashboard');
+// [REFONTE-NAV Lot 1] Dashboard (Accueil) retiré de la nav — ses chiffres de tête vivent dans
+// FutureKpiStrip (le composant Dashboard.tsx reste sur disque : le Lot 2 y puisera le reste).
 const Transactions = lazyWithRetry(() => import('./Transactions').then(m => ({ default: m.Transactions })), 'Transactions');
 // G22-N3 — Budget + Planif/Abos fusionnés en sous-onglets via BudgetWorkspace.
 const BudgetWorkspace = lazyWithRetry(() => import('./budget/BudgetWorkspace').then(m => ({ default: m.BudgetWorkspace })), 'BudgetWorkspace');
@@ -55,7 +57,9 @@ export interface TabRouterProps {
  * pour chaque page.
  */
 export const TabRouter: React.FC<TabRouterProps> = ({
-    activeTab, state, setAppState, setActiveTab, isPrivacyMode, isLoading: _isLoading,
+    // [REFONTE-NAV Lot 1] setActiveTab n'a plus de consommateur ici (seul l'ex-Accueil
+    // naviguait) — gardé dans l'interface pour App, préfixé le temps du Lot 2.
+    activeTab, state, setAppState, setActiveTab: _setActiveTab, isPrivacyMode, isLoading: _isLoading,
     globalNetWorth, calculatedMonthlySavings, assetBreakdown, currentLiquidity,
     onUpdateApiKeys, onManualImport,
 }) => {
@@ -64,27 +68,6 @@ export const TabRouter: React.FC<TabRouterProps> = ({
             <ErrorBoundary resetKey={activeTab} label={TAB_LABELS[activeTab]}>
                 {/* ANIM — fondu d'entrée à chaque changement d'onglet (opacité pure, key=tab). */}
                 <div key={activeTab} className="animate-tab-in motion-reduce:animate-none">
-                {activeTab === Tab.DASHBOARD && (
-                    <PageSetupGate tab={Tab.DASHBOARD}>
-                        <Dashboard
-                            transactions={state.transactions}
-                            assets={state.assets}
-                            initialBalances={state.initialBalances}
-                            budgetItems={state.budgetItems}
-                            realEstateGoals={state.realEstateGoals}
-                            childGoals={state.childGoals || []}
-                            travelGoals={state.travelGoals}
-                            lifeEvents={state.lifeEvents}
-                            retirementGoal={state.retirementGoal}
-                            debts={state.debts}
-                            config={state.config}
-                            apiKey={state.apiKeys.anthropic}
-                            onNavigate={setActiveTab}
-                            isPrivacyMode={isPrivacyMode}
-                        />
-                    </PageSetupGate>
-                )}
-
                 {activeTab === Tab.TRANSACTIONS && (
                     <PageSetupGate tab={Tab.TRANSACTIONS}>
                         <Transactions
@@ -161,6 +144,13 @@ export const TabRouter: React.FC<TabRouterProps> = ({
 
                 {activeTab === Tab.FUTURE && (
                     <PageSetupGate tab={Tab.FUTURE}>
+                        {/* [REFONTE-NAV Lot 1] Chiffres de tête de l'ex-Accueil, compacts au-dessus
+                            de la courbe (import statique : trois tuiles, aucune dépendance lourde). */}
+                        <FutureKpiStrip
+                            netWorth={globalNetWorth}
+                            liquidity={currentLiquidity}
+                            monthlySavings={calculatedMonthlySavings}
+                        />
                         <FutureProjection
                             initialBalances={state.initialBalances}
                             transactions={state.transactions}

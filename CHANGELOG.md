@@ -8,6 +8,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Changements majeurs — la courbe Future devient le cœur de l'app (refonte nav, Lot 1)
+- **L'app s'ouvre sur la courbe Future** et l'onglet Accueil disparaît : ses chiffres de tête
+  (patrimoine net, liquidités, épargne du mois) s'affichent maintenant dans un bandeau compact
+  au-dessus de la courbe. Un vieux favori vers l'Accueil atterrit sur le Futur, jamais sur une
+  page vide.
+- **La navigation passe à 6 destinations** : Futur · Configurations (ce que tu AS : profil,
+  investissements, immobilier, dettes, impôts) · Vie (ce que tu PRÉVOIS : retraite, enfants,
+  projets) · Transactions (avec Budget) · Assistant · Réglages. Sur téléphone, la barre du bas
+  épingle Futur, Transactions et Assistant ; tout le reste est sous « Plus ». Aucune page n'a
+  été retirée : elles sont regroupées. La visite guidée suit le nouvel ordre.
+
 ### Corrections (audit a11y des pastilles au clavier)
 - La fenêtre de détail d'un jour ne **vole plus le focus** à chaque interaction (cliquer un
   compte gardait la main), elle **rend le focus** à la pastille qui l'a ouverte quand tu la

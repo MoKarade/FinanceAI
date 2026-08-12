@@ -51,15 +51,15 @@ Tests manuels : ~195 cas couvrant les onglets actifs — voir
 
 | Touche | Action |
 |---|---|
-| `Alt+1` | Dashboard |
+| `Alt+1` | Futur (page d'ouverture) |
 | `Alt+2` | Transactions |
 | `Alt+3` | Budget (inclut Planification et Abonnements) |
-| `Alt+4` | Dettes |
-| `Alt+5` | Investments |
-| `Alt+6` | Future |
+| `Alt+4` | Assistant |
+| `Alt+5` | Profil |
+| `Alt+6` | Investissements |
 | `Alt+7` | Retraite |
 | `Alt+8` | Impôts |
-| `Alt+9` | Assistant |
+| `Alt+9` | Réglages |
 
 ## 📚 Documentation
 

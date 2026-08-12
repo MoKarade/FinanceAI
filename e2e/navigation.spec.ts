@@ -10,9 +10,12 @@
 import { test, expect } from '@playwright/test';
 import { scriptBypassOnboarding, activateTestMode } from './helpers/setup';
 
-/** Onglets à valider avec le texte attendu dans le titre de page */
+/** Onglets à valider avec le texte attendu dans le titre de page.
+ *  [REFONTE-NAV Lot 1] #DASHBOARD reste dans la liste VOLONTAIREMENT : l'Accueil est retiré
+ *  et ce hash legacy doit atterrir sur le Futur (redirect App.tsx) — le smoke vérifie donc
+ *  le titre du Futur, pas « Vue d'ensemble ». */
 const ONGLETS: Array<{ hash: string; nomAttendu: string }> = [
-  { hash: 'DASHBOARD',     nomAttendu: "Vue d'ensemble" },
+  { hash: 'DASHBOARD',     nomAttendu: 'Projection Future' }, // redirigé → Futur
   { hash: 'TRANSACTIONS',  nomAttendu: 'Transactions' },
   { hash: 'BUDGET',        nomAttendu: 'Budget' },
   { hash: 'DEBT',          nomAttendu: 'Dette' },

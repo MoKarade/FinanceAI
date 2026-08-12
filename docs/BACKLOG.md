@@ -579,6 +579,12 @@
   prévaut (à confirmer : garder ou retirer la déco 8 h en plus du « se souvenir »). Cadrer
   d'abord le POURQUOI des reconnexions actuelles (instrumentation `[AUTH-DRIVE-STILL-RECONNECT]`
   déjà en place — lire le journal Diagnostics avant de coder).
+- [ ] **`[TOUR-ANCHOR-INVISIBLE]`** (S, a11y — audit #600, pré-existant) — `anchorRect.ts` ne
+  teste que width/height > 0, or `visibility:hidden` CONSERVE le layout : un accordéon replié
+  manuellement + visite guidée relancée → le tour spotlighte un bouton invisible. Fix : le
+  tour force l'ouverture du groupe du step actif, OU `anchorRect` vérifie
+  `getComputedStyle(el).visibility`. Surface élargie par la nav 6 destinations (Configurations
+  = 5 onglets).
 - [ ] **`[A11Y-SIDEBAR-ESC]`** (XS, a11y — audit #598, pré-existant) — la sidebar dépliée au
   survol/focus n'est pas fermable au clavier (Échap) → gap WCAG 1.4.13 (Dismissable). Ajouter
   un keydown Échap qui replie (blur/retour du focus au déclencheur).

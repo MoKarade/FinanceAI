@@ -1,6 +1,7 @@
 import React from 'react';
 import { formatCAD } from '../utils/format';
 import { PrivateAmount } from './ui/PrivateAmount';
+import { NO_DATA_LABEL } from './ui/emptyAware';
 
 /**
  * [REFONTE-NAV Lot 1] Bandeau KPI compact AU-DESSUS de la courbe Future (choix Marc :
@@ -21,8 +22,10 @@ const KpiTile: React.FC<{ label: string; value: number; signed?: boolean }> = ({
             </PrivateAmount>
         ) : (
             <div className="text-lg font-bold text-ink-300">
+                {/* [Audit a11y #600, LOW] NO_DATA_LABEL importé (source unique) — une chaîne
+                    re-codée en dur dérive en silence si le libellé canonique change. */}
                 <span aria-hidden="true">—</span>
-                <span className="sr-only">Pas de donnée</span>
+                <span className="sr-only">{NO_DATA_LABEL}</span>
             </div>
         )}
     </div>

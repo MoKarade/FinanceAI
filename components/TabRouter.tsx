@@ -24,6 +24,9 @@ const Transactions = lazyWithRetry(() => import('./Transactions').then(m => ({ d
 const BudgetWorkspace = lazyWithRetry(() => import('./budget/BudgetWorkspace').then(m => ({ default: m.BudgetWorkspace })), 'BudgetWorkspace');
 const Investments = lazyWithRetry(() => import('./Investments').then(m => ({ default: m.Investments })), 'Investments');
 const RealEstate = lazyWithRetry(() => import('./RealEstate').then(m => ({ default: m.RealEstate })), 'RealEstate');
+// [REFONTE-NAV-L3] Projets d'achat FUTURS (destination Vie) — même tranche realEstateGoals,
+// partitionnée côté UI (l'ACTUEL reste sous Tab.REAL_ESTATE, destination Config).
+const RealEstateProjects = lazyWithRetry(() => import('./life/RealEstateProjects').then(m => ({ default: m.RealEstateProjects })), 'RealEstateProjects');
 const ChildPlanning = lazyWithRetry(() => import('./ChildPlanning').then(m => ({ default: m.ChildPlanning })), 'ChildPlanning');
 const LifeProjects = lazyWithRetry(() => import('./LifeProjects').then(m => ({ default: m.LifeProjects })), 'LifeProjects');
 const Retirement = lazyWithRetry(() => import('./Retirement').then(m => ({ default: m.Retirement })), 'Retirement');
@@ -144,6 +147,16 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                             /* [NW-UI-DEBT] mise de fonds = LIQUIDITÉ (pas NW − placements : depuis que
                                globalNetWorth soustrait les dettes, cette dérivation donnait cash − dettes).
                                currentLiquidity est la valeur juste, déjà dérivée. */
+                            availableCash={currentLiquidity}
+                            goals={state.realEstateGoals}
+                            setGoals={(g) => setAppState({ realEstateGoals: g })}
+                        />
+                    </PageSetupGate>
+                )}
+
+                {activeTab === Tab.REAL_ESTATE_PROJECTS && (
+                    <PageSetupGate tab={Tab.REAL_ESTATE_PROJECTS}>
+                        <RealEstateProjects
                             availableCash={currentLiquidity}
                             goals={state.realEstateGoals}
                             setGoals={(g) => setAppState({ realEstateGoals: g })}

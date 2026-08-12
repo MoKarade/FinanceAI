@@ -599,7 +599,8 @@
     (Futur · Configurations · Vie · Transactions · Assistant · Réglages), app s'ouvre sur Futur,
     Accueil retiré (#DASHBOARD→#FUTURE, chiffres de tête → FutureKpiStrip), barre mobile
     Futur·Transactions·Assistant·Plus. Critère : rien de perdu.
-  - [ ] `[REFONTE-NAV-L2]` Lot 2 — Futur enrichi, SCINDÉ 2a/2b (2026-08-12). ⚠️ Hypothèse du
+  - [x] `[REFONTE-NAV-L2]` Lot 2 — Futur enrichi, SCINDÉ 2a/2b (2026-08-12) — **les deux moitiés
+    livrées** (PR #601 et #602). ⚠️ Hypothèse du
     plan périmée : les paramètres de projection étaient DÉJÀ dans le sous-onglet « Hypothèses »
     du Futur (PH4-FUT) — rien à rapatrier. Les DEUX moitiés livrées → fermer (et archiver) au
     merge de la PR 2b.
@@ -610,15 +611,24 @@
       « sur N j de données » si couverture < 30 j, tx sans compte incluses via bucket
       synthétique) · équité immo incluse ET étiquetée au patrimoine du bandeau · libellé
       « Monte Carlo (N itér.) » au nombre RÉEL (source unique `effectiveMcIterations`).
-    - [x] `[REFONTE-NAV-L2b]` ✅ 2026-08-12 (PR à venir) : 4e sous-onglet « Historique » du
+    - [x] `[REFONTE-NAV-L2b]` ✅ 2026-08-12 (PR #602) : 4e sous-onglet « Historique » du
       Futur (`components/future/FutureHistorySection.tsx`, lazy — graphe d'évolution par
       compte + sélecteur de fenêtre complet, clés localStorage `dashboard:*` conservées) ·
       comparaison d'actions déménagée dans Investissements (mode « Comparer »,
       `StockComparisonModal` → `components/investments/`) · `Dashboard.tsx` SUPPRIMÉ
       (gate PAGE_SETUP retiré ; enum + TAB_LABELS + redirect #DASHBOARD→#FUTURE conservés
       pour la compat deep-link).
-  - [ ] `[REFONTE-NAV-L3]` Lot 3 — Configurations fusionnées (split immo/invest actuel vs projets,
-    inclut `[DEBT-FROM-CONTRACT]`).
+  - [x] `[REFONTE-NAV-L3]` Lot 3 — **split immo actuel / projets** ✅ 2026-08-12 (PR à venir) :
+    `services/realEstatePartition.ts` (pur, `partitionRealEstateGoals`/`isOwnedToday` — un but est
+    « actuel » s'il est déjà acheté à la date du jour) · `components/realestate/RealEstateWorkspace.tsx`
+    (ex-corps de `RealEstate.tsx`, variante `'actuel' | 'projet'`) · `RealEstate.tsx` réduit à un
+    wrapper mince (Config = biens DÉTENUS) · nouveau `Tab.REAL_ESTATE_PROJECTS` →
+    `components/life/RealEstateProjects.tsx` dans la destination **Vie** (après Projets de vie),
+    gate `PAGE_SETUP` dédié partageant la MÊME clé d'opt-out `realEstate` (une seule notion
+    « pas concerné par l'immobilier », zéro double comptage dans SetupHub) · entrée palette de
+    commandes · libellés de page alignés sur `TAB_LABELS` (« Dettes », « Impôts & Docs »).
+    ⚠️ Le split invest actuel/projets et `[DEBT-FROM-CONTRACT]` ne sont **PAS** dans ce lot —
+    `[DEBT-FROM-CONTRACT]` reste un ticket séparé, toujours ouvert (voir plus haut, ligne ~563).
   - [ ] `[REFONTE-NAV-L4]` Lot 4 — Vie fusionnée (retraite, enfants, projets, voyages, événements).
   - [ ] `[REFONTE-NAV-L5]` Lot 5 — Transactions fusionnées (tx, budget, abonnements, imports).
   - [ ] `[REFONTE-NAV-L6]` Lot 6 — Assistant pleine page + outils (sous-lots par outil, voir plan).

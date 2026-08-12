@@ -26,6 +26,7 @@
    - Retraite (décision Marc) · Enfants · Projets immobiliers FUTURS · Voyages ·
      Événements de vie.
    - ⚙️ Split immo/invest : l'ACTUEL en Config, les PROJETS en Vie.
+     **Volet immo FAIT au Lot 3** (`Tab.REAL_ESTATE_PROJECTS`) ; le volet invest reste à faire.
 4. **TRANSACTIONS** — le réel au quotidien
    - Transactions · Budget · Abonnements · Imports (relevés/paies).
 5. **ASSISTANT** — page entière (historique multi-conversations déjà là)
@@ -62,8 +63,18 @@
   - **2b (à faire)** : sous-onglet historique (graphe d'évolution + sélecteur de fenêtre
     complet, réutilise la fonction pure du hook), déménagement de la comparaison d'actions,
     puis SUPPRESSION de `Dashboard.tsx` (fin de la carrière).
-- **Lot 3 — CONFIG fusionnée** : sous-onglets cohérents, split immo/invest actuel,
-  `[DEBT-FROM-CONTRACT]`.
+- **Lot 3 — SPLIT IMMO actuel / projets (fait, 2026-08-12)** : `Tab.REAL_ESTATE` (Config) ne
+  montre plus que les biens DÉTENUS ; nouveau `Tab.REAL_ESTATE_PROJECTS` dans **Vie** (après
+  Projets de vie) pour les achats FUTURS. Même tranche de store `realEstateGoals`, partition
+  UI **pure** (`services/realEstatePartition.ts`) — zéro migration, zéro champ ajouté. Le corps
+  de la page est extrait en `components/realestate/RealEstateWorkspace.tsx` (variante
+  `'actuel' | 'projet'`), `RealEstate.tsx` devient un wrapper mince. Gate `PAGE_SETUP` dédié
+  partageant la MÊME clé d'opt-out `realEstate` (une seule notion « pas concerné par
+  l'immobilier »), et `SetupHub` ne liste QUE `REAL_ESTATE` pour ne pas compter deux fois le
+  même prérequis. Passe de cohérence des libellés : « Dettes », « Impôts & Docs ».
+  ⚠️ **Reste hors périmètre de ce lot** : le split invest actuel/projets et
+  `[DEBT-FROM-CONTRACT]` (la dette = le contrat PDF) — ce dernier demeure un **ticket séparé,
+  ouvert**, à planifier pour lui-même et non comme un sous-produit de la refonte nav.
 - **Lot 4 — VIE fusionnée** : retraite/enfants/projets/voyages/événements harmonisés.
 - **Lot 5 — TRANSACTIONS fusionnées** : budget/tx/abonnements/imports en un flux cohérent.
 - **Lot 6 — ASSISTANT pleine page** : le plus gros — sous-lots PAR OUTIL (6a écritures NL,

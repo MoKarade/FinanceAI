@@ -433,11 +433,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             // basse, quasi invisibles — une des causes du « je ne vois presque aucune icône »).
             const meta = { monthIndex: d.monthIndex, year: d.year, age: d.age, dateLabel: d.dateLabel, val: d.NetWorth, netWorth: d.NetWorth };
             // [FUTUR-DAILY-EVENTS] Jour connu (saisie datée, échéance fiscale) → abscisse du JOUR.
+            // Calendrier hissé hors de la closure : constant pour tout le mois (finding revue #594).
+            const cal = calendarFromMonthIndex(startYear, startMonth, d.monthIndex);
             const dayXOf = (label: string): number | undefined => {
                 const day = (d.eventDays ?? {})[label];
                 if (!Number.isFinite(day)) return undefined;
-                const { year, month } = calendarFromMonthIndex(startYear, startMonth, d.monthIndex);
-                return axisXAtDay(d.monthIndex, day, year, month);
+                return axisXAtDay(d.monthIndex, day, cal.year, cal.month);
             };
             (d.lifeEvents || []).forEach((label: string) => {
                 if (lastLife[label] != null && d.monthIndex - lastLife[label] <= DEDUP_GAP) return;
@@ -477,7 +478,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             });
         };
         return { lifeChartEvents: finalize(lifes), flowChartEvents: finalize(flows) };
-    }, [chartData]);
+    // ⚠️ startYear/startMonth dans les deps (finding ÉLEVÉ revue #594) : l'horloge calendaire
+    // avance TOUTE SEULE (rollover) — sans ces deps, les abscisses des pastilles restaient
+    // calculées sur un ancrage périmé jusqu'au prochain recalcul de chartData.
+    }, [chartData, startYear, startMonth]);
 
     // PH4-FUT — ANNOTATIONS sur la courbe (choix Marc : âge de retraite, épuisement d'un compte, bascule
     // de phase). Calculées une fois depuis chartData ; rendues en lignes verticales discrètes (masquables

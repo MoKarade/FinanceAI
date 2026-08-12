@@ -436,7 +436,7 @@ export function buildDailyLedger(input: BuildDailyLedgerInput): DailyLedgerPoint
         const { year, month } = calendarFromMonthIndex(startYear, startMonth, hostMonthIndex);
         const ctx = datedContextFor(year, month, cur, dated);
         // [FUTUR-DAILY-EVENTS] Jour connu par message d'événement (saisie datée, échéance fiscale).
-        const eventDaysOfMonth: Record<string, number> = (cur as { eventDays?: Record<string, number> }).eventDays ?? {};
+        const eventDaysOfMonth: Record<string, number> = cur.eventDays ?? {};
         const { nDays } = ctx;
         if (nDays <= 0) continue;
 

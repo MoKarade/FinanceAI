@@ -180,6 +180,9 @@ d'événement qui en a un : événement/voyage SAISI avec date complète (le jou
 régularisation d'avril (échéance du 30, date limite ARC/RQ). Absent = aucun événement daté ce
 mois. Un événement sans entrée ici n'a PAS de jour connu — l'affichage le pose au mois (1er),
 jamais sur un jour inventé. Champ ADDITIF (aucun bump de schéma).
+⚠️ Limite ASSUMÉE (revue #594) : la clé est le MESSAGE — deux événements homonymes le même mois à
+des jours DIFFÉRENTS sont ambigus, et l'ambiguïté RETIRE l'entrée (les deux s'affichent au mois)
+plutôt que de poser un jour FAUX pour l'un des deux. Même jour → une seule entrée, correcte.
 
 ### Monte Carlo (overlay)
 

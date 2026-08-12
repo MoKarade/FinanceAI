@@ -68,6 +68,14 @@
 
 ---
 
+### Échéances de la déclaration des particuliers
+- **Date limite de PAIEMENT du solde : 30 avril** (ARC — « payez votre solde au plus tard le
+  30 avril » ; Revenu Québec — même échéance). C'est la constante `TAX_DUE_DAY = 30` de
+  `services/projection/taxApril.ts` (`[FUTUR-DAILY-EVENTS]` 2026-08-12) : la régularisation
+  annuelle du moteur est POSÉE au 30 avril dans la ventilation quotidienne et l'icône du graphe.
+  Production/travailleur autonome (15 juin pour PRODUIRE, paiement 30 avril quand même) : non
+  modélisé — le moteur ne simule pas la date de production, seulement le flux de paiement.
+
 ## 2. Cotisations sociales (2026)
 
 ### RRQ — Régime de rentes du Québec (`utils/tax.ts`)

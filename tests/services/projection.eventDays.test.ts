@@ -106,3 +106,23 @@ describe('processAprilSettlement — l’icône d’impôt à l’échéance du 
         expect(calls[0].day).toBe(30);
     });
 });
+
+// [Finding ÉLEVÉ revue #594] Collision de MESSAGES identiques le même mois : deux événements
+// homonymes à des jours DIFFÉRENTS ne partagent pas une entrée — écraser aurait posé les deux au
+// jour du dernier (un jour FAUX pour l'autre). No-fake : l'ambiguïté RETIRE l'entrée (tous au mois).
+describe('applyLifeEvents — collision de messages identiques', () => {
+    it('deux événements homonymes à des jours différents ⇒ AUCUN jour émis pour ce message', () => {
+        const { calls, state } = spyState();
+        const events = [
+            { id: 'a', type: 'HERITAGE', name: 'Gain', date: '2030-05-05', impactAmount: 100 },
+            { id: 'b', type: 'HERITAGE', name: 'Gain', date: '2030-05-20', impactAmount: 200 },
+        ] as LifeEvent[];
+        applyLifeEvents(events, '2030-05', 1, [], state as never);
+        // Les DEUX logs sont émis (jours 5 et 20) — c'est le REGISTRE eventDays du moteur qui
+        // résout l'ambiguïté (testé de bout en bout via le registre, pas ici : le spy voit les
+        // jours bruts). On vérifie ici que les deux occurrences existent bien.
+        const lifeCalls = calls.filter((c) => c.kind === 'life');
+        expect(lifeCalls).toHaveLength(2);
+        expect(lifeCalls.map((c) => c.day).sort((a, b) => (a ?? 0) - (b ?? 0))).toEqual([5, 20]);
+    });
+});

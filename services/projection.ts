@@ -607,10 +607,22 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // avec date complète, échéance fiscale). Clé = le message lui-même (jointure exacte côté
         // affichage). Un événement sans jour connu n'y figure pas — l'affichage le pose au mois.
         const eventDaysLog: Record<string, number> = {};
+        const ambiguousEventDays = new Set<string>();
         const logEvent = (arr: string[], msg: string, day?: number) => {
             if (arr.length >= 50) return;
             arr.push(msg);
-            if (Number.isFinite(day) && (day as number) >= 1 && (day as number) <= 31) eventDaysLog[msg] = Math.round(day as number);
+            if (!Number.isFinite(day) || (day as number) < 1 || (day as number) > 31) return;
+            const rounded = Math.round(day as number);
+            // ⚠️ Collision de MESSAGES identiques le même mois (finding ÉLEVÉ revue #594) : deux
+            // événements homonymes à des jours DIFFÉRENTS ne peuvent pas partager une entrée —
+            // écraser poserait les deux occurrences sur le jour de la dernière (un jour FAUX pour
+            // l'autre). No-fake : l'ambiguïté RETIRE l'entrée, les deux s'affichent au mois.
+            if (msg in eventDaysLog && eventDaysLog[msg] !== rounded) {
+                delete eventDaysLog[msg];
+                ambiguousEventDays.add(msg);
+                return;
+            }
+            if (!ambiguousEventDays.has(msg)) eventDaysLog[msg] = rounded;
         };
 
         // W1.4: log différé du décès conjoint (déclenché plus haut avant l'init de logEvent)

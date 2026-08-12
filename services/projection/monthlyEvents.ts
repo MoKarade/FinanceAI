@@ -197,9 +197,9 @@ export function applyLifeEvents(
                         const rawGain = soldProp.currentValue * 0.95 - (soldProp.cost ?? 0);
                         const { bankedLoss, taxableGain } = state.realizeCapitalDisposition(rawGain);
                         if (taxableGain > 0) {
-                            state.logFlow(`🏠 Gain en capital (locatif) réalisé : ${Math.round(taxableGain).toLocaleString('fr-CA')}$ — 50 % imposable`);
+                            state.logFlow(`🏠 Gain en capital (locatif) réalisé : ${Math.round(taxableGain).toLocaleString('fr-CA')}$ — 50 % imposable`, dayOfIsoDate(e.date));
                         } else if (bankedLoss > 0) {
-                            state.logFlow(`🏠 Perte en capital (locatif) : ${Math.round(bankedLoss).toLocaleString('fr-CA')}$ portée en banque de pertes (déductible des gains futurs)`);
+                            state.logFlow(`🏠 Perte en capital (locatif) : ${Math.round(bankedLoss).toLocaleString('fr-CA')}$ portée en banque de pertes (déductible des gains futurs)`, dayOfIsoDate(e.date));
                         }
                     }
                     soldProp.isBought = false;
@@ -220,7 +220,7 @@ export function applyLifeEvents(
                         message: `Vente "${e.name}" ignorée : bien ciblé introuvable ou non vendable`,
                         context: { id: e.id, propertyId: e.propertyId },
                     });
-                    state.logFlow(`🏠 Vente "${e.name}" ignorée : bien ciblé introuvable ou déjà vendu`);
+                    state.logFlow(`🏠 Vente "${e.name}" ignorée : bien ciblé introuvable ou déjà vendu`, dayOfIsoDate(e.date));
                 }
             } else {
                 // [NAN-INPUT-HARDENING] `?? 0` ne rattrape pas NaN → garde l'agrégat (impactAmount d'un
@@ -240,7 +240,7 @@ export function applyLifeEvents(
                 const effectiveImpact = Number.isFinite(rawImpact) ? rawImpact : 0;
                 state.addExpense(effectiveImpact);
                 state.logLife(`${e.name} 💸`, dayOfIsoDate(e.date));
-                state.logFlow(`🔔 Événement (${e.name}): -${Math.round(effectiveImpact).toLocaleString('fr-CA')}$`);
+                state.logFlow(`🔔 Événement (${e.name}): -${Math.round(effectiveImpact).toLocaleString('fr-CA')}$`, dayOfIsoDate(e.date));
             }
         }
     }

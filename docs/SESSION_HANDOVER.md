@@ -4,6 +4,49 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 62) — `[REFONTE-NAV-L5]` : l'argent du quotidien d'un seul tenant
+> Lot 5 intégré sur `main` post-#605 (PR à venir), **sans toucher un seul fichier de nav**
+> (`navDestinations` / `TabRouter` / `Layout` inchangés — comme aux lots 3-4). Mêmes règles que
+> le Lot 4, appliquées à la destination **Transactions** :
+> - **Titre de page issu de `TAB_LABELS`** : `BudgetWorkspace` porte maintenant le `PageHeader`
+>   (h1 « Budget »), **stable sur les 4 sous-onglets** ; `Transactions` prend
+>   `TAB_LABELS[Tab.TRANSACTIONS]` au lieu d'un libellé en dur.
+> - **Un seul h1 par destination** : l'ancien h1 « Pilotage Budget » de `Budget.tsx` est
+>   rétrogradé en **barre de pilotage** (badge excédent/déficit + vision de période + actions).
+>   Il y avait 2 h1 empilés sur la page — même classe de défaut qu'au Lot 4 (`LifeProjects`, 3 h1).
+> - **Cross-links entre pairs, dans les DEUX sens** : « Voir les transactions → » sur un poste
+>   déplié (`BudgetGroupTable`) et « Voir au budget → » sur la catégorie filtrée
+>   (`Transactions`), via `navigateWithFocus` + ancres `data-focus-section`
+>   (`poste:<nom>` / `category:<nom>`, patron `Settings`). `BudgetWorkspace` route aussi les
+>   sections `objectifs` / `abonnements` / `sante` vers le bon sous-onglet AVANT le scroll.
+>
+> ⚠️ **Décision de cohérence avec le Lot 4** : `VieCurveLink` (« Voir l'effet sur ma courbe »)
+> n'est **PAS** réutilisé ici, et c'est délibéré. Les deux affordances ont des intentions
+> différentes : `VieCurveLink` est **page-level** (actions du `PageHeader`), `Button`
+> `variant="ghost"` + icône `future`, et parle d'**impact sur la courbe**. Les liens du Lot 5
+> sont **contextuels** (ligne dépliée, barre de filtre) et font de la **navigation entre pairs**
+> sur la même donnée. La forme suit déjà un idiome maison (suffixe « → », cf.
+> `EmptyDataPrompt` inline et `SyncStaleBanner`), et le verbe est aligné (« Voir … »). La
+> distinction est donc LISIBLE : *lien fléché inline = aller voir la même donnée ailleurs* ;
+> *bouton ghost en tête de page = voir l'effet sur la courbe*. Ne pas « unifier » les deux.
+>
+> **Trois corrections d'honnêteté au passage** :
+> - **Empty state UNIQUE** (desktop + mobile) pour la liste : le desktop rendait un `<table>`
+>   réduit à ses en-têtes, sans un mot. CTA qui distingue « aucune transaction » (→ importer) de
+>   « les filtres masquent tout » (→ réinitialiser).
+> - **Les 2 exports CSV consolidés** sur `utils/csvExport` : celui de la vue filtrée re-dérivait
+>   le format à la main avec un **jeu de colonnes divergent** de celui du header (2 formats pour
+>   le même objet).
+> - **Compte « groupe(s) à classer » dégaté** : `uncategorizedGroups` retournait `[]` tant que
+>   `showWizard` était faux → le sous-titre affichait « 0 groupe(s) à classer » **avant** toute
+>   ouverture de l'assistant. Un `0` crédible et faux = `no-fake-data`.
+>
+> **Vérifs** : `npm run typecheck` vert ; `Budget` + `BudgetGroupTable` + `BudgetWorkspace` (nouveau)
+> + `Transactions.lot5` (nouveau) + `navDestinations` = **34/34 verts** ; non-régression sur
+> `Transactions.selection|import|owner`, `Budget.viewContext`, `EmptyState` et `tests/a11y/pages.axe`
+> = **24/24 verts**. Aucun conflit à l'intégration (les lots 3/4 et l'audit n'ont touché ni
+> `Transactions.tsx` ni `Budget*`).
+>
 > ## 🟡 Session 2026-08-12 (suite 61) — Audit complet panel 9 agents : 62 findings consolidés
 > **Pas de code touché.** Tous les findings sont **MESURÉS** (pas de supposition). Panel spécialisé : 
 > dette technique (12), moteur & fiscal (19), sécurité (4), silence (4), a11y (9), perf (6), IA (9), 

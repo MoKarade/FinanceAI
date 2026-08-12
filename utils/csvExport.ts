@@ -72,6 +72,12 @@ export function exportTransactionsCSV(transactions: Transaction[]): string {
         { header: 'Is Transfer', accessor: t => t.isTransfer ? 'true' : 'false' },
         { header: 'Is Duplicate', accessor: t => t.isDuplicate ? 'true' : 'false' },
         { header: 'Status', accessor: t => t.status || '' },
+        // [REFONTE-NAV-L5, revue #606] Colonne CONSERVÉE lors de la consolidation des deux exports :
+        // l'export « vue filtrée » la portait (`Confiance IA`) et sert justement à relire les
+        // catégorisations douteuses. Unifier les formats ne doit RIEN retirer — on ajoute au format
+        // commun plutôt que de laisser tomber une capacité en silence. Vide (pas 0) si absente :
+        // une confiance inconnue n'est pas une confiance nulle.
+        { header: 'Confiance IA', accessor: t => (typeof t.confidence === 'number' ? t.confidence : '') },
     ]);
 }
 

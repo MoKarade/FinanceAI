@@ -67,8 +67,26 @@ describe('exportTransactionsCSV', () => {
         ];
         const csv = exportTransactionsCSV(txs);
         const lines = csv.split('\r\n');
-        expect(lines[0]).toBe('Date,Payee,Amount,Category,Account,Is Transfer,Is Duplicate,Status');
-        expect(lines[1]).toBe('2026-01-15,Maxi,-50,Épicerie,Courant,false,false,processed');
+        expect(lines[0]).toBe('Date,Payee,Amount,Category,Account,Is Transfer,Is Duplicate,Status,Confiance IA');
+        // Confiance absente → champ VIDE, jamais 0 (une confiance inconnue n'est pas une confiance nulle).
+        expect(lines[1]).toBe('2026-01-15,Maxi,-50,Épicerie,Courant,false,false,processed,');
+    });
+
+    // [REFONTE-NAV-L5, revue #606] La consolidation des deux exports ne doit RIEN retirer :
+    // l'export « vue filtrée » portait `Confiance IA` et sert à relire les catégorisations
+    // douteuses. Ce test échoue si quelqu'un « simplifie » la colonne hors du format commun.
+    it('conserve la confiance IA quand elle existe (capacité de l\'ex-export « vue filtrée »)', () => {
+        const txs: Transaction[] = [
+            {
+                id: 2, date: '2026-02-01', payee: 'Inconnu', amount: -12,
+                category: 'Divers', accountName: 'Courant', isTransfer: false,
+                isDuplicate: false, status: 'processed', originalCategory: 'Divers',
+                confidence: 0.42,
+            },
+        ];
+        const lines = exportTransactionsCSV(txs).split('\r\n');
+        expect(lines[0].endsWith('Confiance IA')).toBe(true);
+        expect(lines[1].endsWith(',0.42')).toBe(true);
     });
 
     it('handles transactions with commas in payee (escaping)', () => {

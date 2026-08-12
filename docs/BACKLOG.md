@@ -589,7 +589,14 @@
 - [ ] **`[REFONTE-NAV]`** (L, ⏳, GO Marc 2026-08-12) — chantier « tout tourne autour de la courbe
   Future », plan détaillé + décisions dans `docs/REFONTE_NAV_PLAN.md`. ⚠️ L1-L4 ARCHIVÉS
   (2026-08-12, PR #600-#604). Lots restants :
-  - [ ] `[REFONTE-NAV-L5]` Lot 5 — Transactions fusionnées (tx, budget, abonnements, imports).
+  - [x] `[REFONTE-NAV-L5]` Lot 5 — Transactions fusionnées (tx, budget, abonnements, imports).
+    **FAIT 2026-08-12 (PR à venir)** : `BudgetWorkspace` porte le h1 de page (`TAB_LABELS`,
+    stable sur les 4 sous-onglets + deep-links `objectifs`/`abonnements`/`sante`), `Budget`
+    rétrogradé en barre de pilotage (fin du 2e h1), cross-links poste ⇄ transactions
+    (`poste:<nom>` / `category:<nom>` via `navigateWithFocus`), empty state UNIQUE desktop+mobile
+    (le desktop rendait un `<table>` d'en-têtes vide), les 2 exports CSV consolidés sur
+    `utils/csvExport`, et le compte « groupe(s) à classer » n'est plus gaté sur l'ouverture de
+    l'assistant (il était figé à 0 = faux chiffre). → à ARCHIVER avec L1-L4 au merge.
   - [ ] `[REFONTE-NAV-L6]` Lot 6 — Assistant pleine page + outils (sous-lots par outil, voir plan).
   - [ ] `[REFONTE-NAV-L7]` Lot 7 — Réglages retravaillés en sections.
 - [ ] **`[UI-TABS-RICH]`** (S, **RÉDUIT à Profil**) — généraliser le pattern sous-onglets.

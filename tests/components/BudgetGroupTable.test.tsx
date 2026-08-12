@@ -108,3 +108,58 @@ describe('BudgetGroupTable — colonne moyenne 12 mois', () => {
         expect(screen.getByText('Moyenne du groupe indisponible (aucun mois plein d\'historique)')).toBeInTheDocument();
     });
 });
+
+// [REFONTE-NAV-L5] — cross-link « Voir les transactions » (poste → Transactions filtrées).
+describe('BudgetGroupTable — cross-link Voir les transactions', () => {
+    const item: BudgetCategory = {
+        id: 'c1', name: 'Épicerie', target: 400, frequency: 'Monthly', type: 'Commun', nature: 'Besoin',
+    };
+
+    it('la ligne dépliée offre « Voir les transactions » et remonte le NOM du poste', () => {
+        const onViewTransactions = vi.fn();
+        render(
+            <BudgetGroupTable
+                {...baseProps}
+                nature="Besoin"
+                items={[item]}
+                allItems={[item]}
+                expandedId="c1"
+                getDisplayTarget={() => 400}
+                onAddItem={vi.fn()}
+                onViewTransactions={onViewTransactions}
+            />
+        );
+        const btn = screen.getByRole('button', { name: /Voir les transactions de la catégorie Épicerie/i });
+        fireEvent.click(btn);
+        expect(onViewTransactions).toHaveBeenCalledWith('Épicerie');
+    });
+
+    it('sans callback (rétro-compat) : aucun lien rendu', () => {
+        render(
+            <BudgetGroupTable
+                {...baseProps}
+                nature="Besoin"
+                items={[item]}
+                allItems={[item]}
+                expandedId="c1"
+                getDisplayTarget={() => 400}
+                onAddItem={vi.fn()}
+            />
+        );
+        expect(screen.queryByText(/Voir les transactions/i)).toBeNull();
+    });
+
+    it('chaque ligne porte l\'ancre de deep-link data-focus-section="poste:<nom>"', () => {
+        const { container } = render(
+            <BudgetGroupTable
+                {...baseProps}
+                nature="Besoin"
+                items={[item]}
+                allItems={[item]}
+                getDisplayTarget={() => 400}
+                onAddItem={vi.fn()}
+            />
+        );
+        expect(container.querySelector('[data-focus-section="poste:Épicerie"]')).toBeTruthy();
+    });
+});

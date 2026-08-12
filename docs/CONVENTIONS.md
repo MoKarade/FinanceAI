@@ -2431,3 +2431,15 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   propre classification est VRAIE** : le bouton « ajouter » de la vue « biens détenus » semait `purchaseDate =
   aujourd'hui`, c'est-à-dire pile dans l'angle mort — chaque création naissait cassée. Règle : après avoir défini une
   frontière, instancier le cas que le formulaire produit PAR DÉFAUT et vérifier de quel côté il tombe.
+- ⚠️ **[REFONTE-NAV-L5] revue 2026-08-12** : (1) **un sélecteur CSS construit par interpolation
+  devient une bombe le jour où sa valeur vient de l'UTILISATEUR** — `usePendingFocus` ciblait
+  `[data-focus-section="${section}"]` avec des sections statiques depuis toujours ; ce lot y a
+  injecté `poste:<nom>` / `category:<nom>` (texte libre, souvent collé d'un relevé). Un guillemet
+  double → `SyntaxError` levée DANS un `requestAnimationFrame`, donc avalée sans ErrorBoundary ni
+  log : deep-link mort en silence. Comparer la VALEUR (`dataset`), ne pas construire de sélecteur.
+  Règle générale : quand une entrée passe de « constantes du code » à « texte de l'utilisateur »,
+  re-auditer TOUS ses consommateurs, même inchangés.
+  (2) **Consolider deux formats ne doit RIEN retirer** : unifier les deux exports CSV de
+  Transactions a fait disparaître la colonne `Confiance IA` (celle qui sert justement à relire les
+  catégorisations douteuses). Une consolidation est ADDITIVE — on élargit le format commun, on ne
+  rabote pas au plus petit dénominateur ; et un test verrouille la colonne conservée.

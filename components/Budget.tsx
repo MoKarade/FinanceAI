@@ -10,7 +10,6 @@ import { logError } from '../services/errorLogger';
 import { BudgetGroupTable } from './budget/BudgetGroupTable';
 import { BudgetAiModal } from './budget/BudgetAiModal';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { PageHeader } from './ui/PageHeader';
 import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
 import { StatementReminder } from './StatementReminder';
 import { Icon } from './ui/Icon';
@@ -735,23 +734,23 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             />
             {/* [PH2-c-2] — signal inter-onglets : dernier recalcul de projection échoué. */}
             <ProjectionStaleBanner />
-            <PageHeader
-                icon={<Icon name="budget" size={28} />}
-                title="Pilotage Budget"
-                subtitle={
-                    timeView === 'MONTH' ? 'Vision tactique (Mois en cours)' :
-                    timeView === 'QUARTER' ? 'Vision trimestrielle (Objectifs ×3)' :
-                    timeView === 'YEAR' ? 'Vision stratégique (Objectifs ×12)' :
-                    'Période personnalisée'
-                }
-                badge={
+            {/* [REFONTE-NAV-L5] L'en-tête de PAGE (h1 « Budget » = TAB_LABELS) vit dans
+                BudgetWorkspace, commun aux quatre sous-onglets — un seul h1 par destination.
+                Ici : la barre de pilotage (badge + vision + période + filtres), sans titre. */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-section">
+                <div className="flex flex-wrap items-center gap-3 min-w-0">
                     <Badge variant={avgRealIncomeDisplay >= totalBudgetDisplay ? 'success' : 'danger'} size="md">
                         {avgRealIncomeDisplay >= totalBudgetDisplay ? 'Excédentaire' : 'Déficitaire'}
                         <span className="ml-1 tabular-nums">{formatCAD(avgRealIncomeDisplay - totalBudgetDisplay)}</span>
                     </Badge>
-                }
-                actions={
-                    <>
+                    <p className="text-body text-ink-300">
+                        {timeView === 'MONTH' ? 'Vision tactique (Mois en cours)' :
+                            timeView === 'QUARTER' ? 'Vision trimestrielle (Objectifs ×3)' :
+                                timeView === 'YEAR' ? 'Vision stratégique (Objectifs ×12)' :
+                                    'Période personnalisée'}
+                    </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 flex-shrink-0 w-full md:w-auto">
                         <Button onClick={handleAiDiagnosis} variant="primary" size="sm">
                             Diagnostic
                         </Button>
@@ -833,9 +832,8 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                 ]}
                             />
                         )}
-                    </>
-                }
-            />
+                </div>
+            </div>
 
             {/* [UX-STATEMENT-REMINDER] rappel proactif « relevé du mois manquant » (le filet d'import
                 mensuel qui a manqué quand la fuite persona est restée invisible des semaines). */}
@@ -1240,6 +1238,8 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             onUpdateItem={handleUpdateItem}
                             onDeleteItem={handleDeleteItem}
                             onAddItem={handleAddItem}
+                            // [REFONTE-NAV-L5] Cross-link poste → Transactions filtrées sur la catégorie.
+                            onViewTransactions={(name) => navigateWithFocus(TabEnum.TRANSACTIONS, `category:${name}`)}
                         />
                     ))}
 

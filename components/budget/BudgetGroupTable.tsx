@@ -55,13 +55,15 @@ interface BudgetGroupTableProps {
     onUpdateItem: (index: number, field: keyof BudgetCategory, value: unknown) => void;
     onDeleteItem: (id: string | undefined) => void;
     onAddItem: (nature: 'Besoin' | 'Envie' | 'Epargne') => void;
+    /** [REFONTE-NAV-L5] Cross-link « Voir les transactions » d'un poste (catégorie du même nom). */
+    onViewTransactions?: (categoryName: string) => void;
 }
 
 export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
     nature, items, allItems, actualsMap, trendMap, monthlyDataMap,
     totalBudgetDisplay, monthProgress, expandedId, onExpandToggle,
     getDisplayTarget, getDisplayAvg, isSolo, splitRatio1, userNames, timeView,
-    onUpdateItem, onDeleteItem, onAddItem,
+    onUpdateItem, onDeleteItem, onAddItem, onViewTransactions,
 }) => {
     // NB : on ne masque PLUS les groupes vides. Sinon le bouton « + Ajouter »
     // (ci-dessous) disparaissait avec eux → impossible de créer la 1re catégorie
@@ -164,6 +166,9 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                             return (
                                 <React.Fragment key={item.id}>
                                     <tr
+                                        // [REFONTE-NAV-L5] Ancre du deep-link Transactions → Budget (« Voir au budget »
+                                        // sur une catégorie) : usePendingFocus scrolle vers `poste:<nom>`.
+                                        data-focus-section={`poste:${item.name}`}
                                         className={`hover:bg-white/5 transition-colors group cursor-pointer ${isExpanded ? 'bg-white/5' : ''}`}
                                         onClick={() => onExpandToggle(isExpanded ? null : (item.id ?? null))}
                                     >
@@ -280,7 +285,23 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                         <tr className="bg-black/30 border-b border-white/5 animate-fade-in">
                                             <td colSpan={9} className="p-4">
                                                 <div className="flex flex-col gap-2">
-                                                    <div className="text-meta font-bold text-ink-300 uppercase">Historique (6 derniers mois)</div>
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <div className="text-meta font-bold text-ink-300 uppercase">Historique (6 derniers mois)</div>
+                                                        {/* [REFONTE-NAV-L5] Cross-link sobre vers les transactions de la catégorie. */}
+                                                        {onViewTransactions && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => { e.stopPropagation(); onViewTransactions(item.name); }}
+                                                                // `touch-target` (index.css) : 44×44 min au doigt sans changer le
+                                                                // rendu visuel — l'audit 2026-08-12 a compté ces écarts, on n'en
+                                                                // rajoute pas un neuf. `-my-3` neutralise la hauteur ajoutée.
+                                                                className="touch-target inline-flex items-center text-tiny text-info-400 hover:underline focus-ring rounded px-1 -my-3 whitespace-nowrap"
+                                                                aria-label={`Voir les transactions de la catégorie ${item.name}`}
+                                                            >
+                                                                Voir les transactions →
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                     <div style={{ width: '100%', height: '150px' }}>
                                                         <ResponsiveContainer width="100%" height="100%">
                                                             <BarChart data={monthlyDataMap[item.name] || []}>

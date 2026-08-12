@@ -237,6 +237,14 @@ export const Investments: React.FC<InvestmentsProps> = ({
         setIsCompareMode(false);
         setSelectedCompareSymbols(new Set());
     };
+    // [INV-COMPARE-SUBTAB] Le mode comparaison est une UI du sous-onglet Détail : en sortir le
+    // désarme. Sinon l'état survivrait en SILENCE (cases cochées invisibles depuis Overview/
+    // Allocation) et « Détail » rouvrirait un mode que l'utilisateur croyait quitté.
+    useEffect(() => {
+        if (subTab === 'detail') return;
+        setIsCompareMode(false);
+        setSelectedCompareSymbols(new Set());
+    }, [subTab]);
 
     // --- INSTANT DATA LOAD ---
     // Sprint 3B M3 + test-mode-complet : utilise usePortfolioHistory hook qui
@@ -1181,39 +1189,32 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     >
                         {isRefreshingPrices ? 'Actualisation…' : 'Actualiser les cours'}
                     </button>
-                    {/* [REFONTE-NAV-L2b] Comparaison multi-titres (ex-Accueil) */}
-                    {!isCompareMode ? (
-                        <button
-                            type="button"
-                            onClick={() => setIsCompareMode(true)}
-                            className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/40 text-ink-200 text-tiny font-bold rounded-card transition-colors focus-ring"
-                        >
-                            Comparer
-                        </button>
-                    ) : (
-                        <div className="flex items-center gap-2">
-                            {selectedCompareSymbols.size > 0 ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setShowComparisonModal(true)}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary text-tiny font-bold rounded-card transition-colors focus-ring"
-                                >
-                                    <Icon name="chart" size={14} />{selectedCompareSymbols.size === 1 ? 'Voir courbe' : `Comparer (${selectedCompareSymbols.size})`}
-                                </button>
-                            ) : (
-                                <span className="text-tiny text-ink-400 italic">Coche pour comparer</span>
-                            )}
+                    {/* [REFONTE-NAV-L2b] Comparaison multi-titres (ex-Accueil).
+                        [A11Y-COMPARE-FOCUS] UN SEUL bouton bascule PERSISTANT (libellé/action
+                        changent, aria-pressed) : l'ancien ternaire démontait le bouton au toggle
+                        → focus clavier perdu vers <body> (mesuré). Un élément qui persiste garde
+                        le focus PAR CONSTRUCTION — pas de restauration manuelle à maintenir. */}
+                    {isCompareMode && (
+                        selectedCompareSymbols.size > 0 ? (
                             <button
                                 type="button"
-                                onClick={exitCompareMode}
-                                className="inline-flex px-2 py-1 text-ink-400 hover:text-ink-200 transition-colors focus-ring rounded"
-                                title="Quitter la comparaison"
-                                aria-label="Quitter la comparaison"
+                                onClick={() => setShowComparisonModal(true)}
+                                className="touch-target inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary text-tiny font-bold rounded-card transition-colors focus-ring"
                             >
-                                <Icon name="close" size={14} />
+                                <Icon name="chart" size={14} />{selectedCompareSymbols.size === 1 ? 'Voir courbe' : `Comparer (${selectedCompareSymbols.size})`}
                             </button>
-                        </div>
+                        ) : (
+                            <span className="text-tiny text-ink-400 italic">Coche pour comparer</span>
+                        )
                     )}
+                    <button
+                        type="button"
+                        onClick={() => (isCompareMode ? exitCompareMode() : setIsCompareMode(true))}
+                        aria-pressed={isCompareMode}
+                        className="touch-target px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/40 text-ink-200 text-tiny font-bold rounded-card transition-colors focus-ring"
+                    >
+                        {isCompareMode ? 'Quitter la comparaison' : 'Comparer'}
+                    </button>
                     <button
                         type="button"
                         onClick={() => setShowImportBroker(true)}
@@ -1262,16 +1263,25 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             même visuel que l'ex-Accueil, mais bouton DÉDIÉ : la carte porte
                                             déjà selects/suppression, un clic-carte serait ambigu. */}
                                         {isCompareMode && (
+                                            // [A11Y-TOUCH] Surface tactile 44px (patron Planning.tsx :
+                                            // .touch-target sur le bouton, visuel 16px DANS un span).
+                                            // Marge négative : la zone cliquable déborde sans pousser
+                                            // la mise en page de la carte.
                                             <button
                                                 type="button"
                                                 onClick={() => toggleCompareSymbol(asset.id)}
                                                 aria-pressed={isCompareSelected}
                                                 aria-label={`Comparer ${asset.name}`}
-                                                className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors shrink-0 focus-ring ${
-                                                    isCompareSelected ? 'bg-primary border-primary' : 'border-white/20 hover:border-white/40'
-                                                }`}
+                                                className="touch-target -m-3 flex items-center justify-center shrink-0 focus-ring rounded"
                                             >
-                                                {isCompareSelected && <Icon name="check" size={11} className="text-dark" />}
+                                                <span
+                                                    aria-hidden="true"
+                                                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                                                        isCompareSelected ? 'bg-primary border-primary' : 'border-white/20 hover:border-white/40'
+                                                    }`}
+                                                >
+                                                    {isCompareSelected && <Icon name="check" size={11} className="text-dark" />}
+                                                </span>
                                             </button>
                                         )}
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-meta font-bold text-white shadow-lg border border-white/10" style={{ backgroundColor: COLORS_SECTOR[asset.sector] || '#333' }}>

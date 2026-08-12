@@ -113,4 +113,45 @@ describe('Investments — comparaison multi-titres (REFONTE-NAV-L2b)', () => {
         expect(screen.getByText(/Coche pour comparer/i)).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Voir courbe' })).toBeNull();
     });
+
+    // [A11Y-COMPARE-FOCUS] Test DISCRIMINANT vs l'ancienne structure : le ternaire d'avant
+    // démontait le bouton au toggle → l'élément focalisé disparaissait du DOM et le focus
+    // clavier retombait sur <body>. Avec le bouton bascule PERSISTANT, le MÊME nœud DOM reste
+    // monté (seul son libellé change) et garde le focus par construction.
+    it('a11y : le focus clavier reste sur le bouton bascule au toggle (jamais perdu vers <body>)', () => {
+        renderInvestments();
+        fireEvent.click(screen.getByText('Détail'));
+        const toggle = screen.getByRole('button', { name: 'Comparer' });
+        toggle.focus();
+        expect(document.activeElement).toBe(toggle);
+        // Armer : même élément, libellé/état basculés, focus conservé.
+        fireEvent.click(toggle);
+        expect(toggle).toHaveTextContent('Quitter la comparaison');
+        expect(toggle).toHaveAttribute('aria-pressed', 'true');
+        expect(document.activeElement).not.toBe(document.body);
+        expect(document.activeElement).toBe(toggle);
+        // Quitter : retour au libellé « Comparer », focus toujours sur le même bouton.
+        fireEvent.click(toggle);
+        expect(toggle).toHaveTextContent('Comparer');
+        expect(toggle).toHaveAttribute('aria-pressed', 'false');
+        expect(document.activeElement).toBe(toggle);
+    });
+
+    // [INV-COMPARE-SUBTAB] Le mode comparaison ne survit pas à un changement de sous-onglet :
+    // revenir sur Détail ne doit PAS rouvrir un mode (ni une sélection) que l'utilisateur
+    // croyait quitté en naviguant ailleurs.
+    it('changer de sous-onglet désarme le mode comparaison et purge la sélection', () => {
+        renderInvestments();
+        fireEvent.click(screen.getByText('Détail'));
+        fireEvent.click(screen.getByRole('button', { name: 'Comparer' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Comparer VFV.TO' }));
+        expect(screen.getByRole('button', { name: 'Voir courbe' })).toBeInTheDocument();
+        // Aller-retour par un autre sous-onglet.
+        fireEvent.click(screen.getByText("Vue d'ensemble"));
+        fireEvent.click(screen.getByText('Détail'));
+        // Mode désarmé : plus de cases, bouton bascule revenu à « Comparer » (non pressé).
+        expect(screen.queryByRole('button', { name: 'Comparer VFV.TO' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Voir courbe' })).toBeNull();
+        expect(screen.getByRole('button', { name: 'Comparer' })).toHaveAttribute('aria-pressed', 'false');
+    });
 });

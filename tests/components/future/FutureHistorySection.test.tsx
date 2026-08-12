@@ -95,6 +95,23 @@ describe('FutureHistorySection (sous-onglet Historique du Futur)', () => {
         expect(chartAll.getAttribute('data-points')).toBe('3');
     });
 
+    // [A11Y] Sélecteur de période : la période active est annoncée (aria-pressed), et les
+    // entrées de dates du mode CUSTOM portent un nom accessible (aria-label) — un input date
+    // sans étiquette est muet au lecteur d'écran.
+    it('a11y : aria-pressed sur les boutons de période, entrées de dates CUSTOM étiquetées', async () => {
+        render(<FutureHistorySection />);
+        // Défaut 1M : seul bouton pressé.
+        expect(screen.getByRole('button', { name: '1M' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'ALL' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: 'CUSTOM' })).toHaveAttribute('aria-pressed', 'false');
+        // CUSTOM : l'état bascule et les deux dates deviennent atteignables par leur nom.
+        fireEvent.click(screen.getByRole('button', { name: 'CUSTOM' }));
+        expect(screen.getByRole('button', { name: 'CUSTOM' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: '1M' })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByLabelText('Date de début')).toBeInTheDocument();
+        expect(screen.getByLabelText('Date de fin')).toBeInTheDocument();
+    });
+
     it('persistance des comptes masqués : relit ET réécrit la clé localStorage de l\'ex-Accueil', async () => {
         // Préférence existante (posée par l'ex-Accueil) : CELI masqué. Le déménagement DOIT la relire.
         localStorage.setItem('dashboard:hiddenAccounts:v1', JSON.stringify(['CELI']));

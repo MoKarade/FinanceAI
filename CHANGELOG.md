@@ -6,9 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased] — 2026-08-11
+## [unreleased] — 2026-08-12
 
 ### Ajouts
+- (interne) Le fuzz de conservation du moteur exerce maintenant TOUS les flux one-time : vente
+  immobilière (y compris d'un bien locatif), revenu locatif, équité négative (immeuble sous l'eau),
+  remplacement de véhicule, héritage et REEE — avec un test qui MESURE que chaque flux est réellement
+  exercé (plancher par flux). En l'écrivant, il a attrapé un réglage fantôme :
+  `ProjectionConfig.propertyGrowthRate` n'est lu par aucun code — seul le taux PAR BIEN compte
+  (ticket `[ENG-PROPGROWTH-CONFIG-DEAD]` ouvert).
 - **Tu peux zoomer jusqu'à UN mois affiché — chaque jour fait ~30 px et se sélectionne au premier
   clic.** Avant, le zoom bloquait à ~5 mois (~150 jours écrasés à ~7 px). Et le détail du jour vit
   dans l'infobulle, uniquement : le tableau jour-par-jour sous la courbe est retiré (c'est toi qui

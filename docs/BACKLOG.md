@@ -201,191 +201,14 @@
   que des événements ANNUELS). Un module RAFFINE la fenêtre zoomée à la demande.
   **Invariant money-critical** : la série quotidienne passe EXACTEMENT par les points mensuels, par
   construction. Deux granularités qui divergeraient = deux soldes pour la même date selon le zoom.
-  - [x] Cœur du raffinement — `services/projection/dailyRefine.ts` (17 tests) ✅ 2026-08-06
-  - [x] Passé quotidien, cash — `reconstructCashHistoryDaily` (10 tests, dont la réconciliation avec
-        la version mensuelle) ✅ 2026-08-06. ⚠️ Fonction SÉPARÉE : `buildPastPrefix` consomme la
-        mensuelle sur une chaîne money-critical, on ne change pas sa forme pour un besoin d'affichage.
-  - [x] Passé quotidien, PLACEMENTS — `reconstructPortfolioHistoryDaily` (9 tests) ✅ 2026-08-06.
-        FENÊTRÉE (`from`/`to` + `maxDays`), jamais « tout l'historique au jour » : 18 ans feraient
-        ~6 500 points × chaque titre. Ventilation par compte (`accountType`), conversion FX, et
-        chaque point porte `priceAgeMaxDays` + `hasEstimatedPrice`.
-        ⚠️ Butoir DUR à ~12 mois : `DOWNSAMPLE_AFTER_DAYS = 365` compresse le stocké à 1 pt/semaine
-        au-delà (quota localStorage) → au-delà, `priceAgeMaxDays` grimpe et l'écran DOIT le dire :
-        un plateau de 6 jours n'est plus un week-end, c'est de la donnée absente qui ressemble à une
-        valeur stable.
-  - [x] Mouvements DATÉS du futur — `services/projection/datedMonthEvents.ts` (9 tests) ✅ 2026-08-06.
-        ⚠️ **MESURE QUI RÉDUIT LA PROMESSE** : `RecurringItem.dayOfMonth` est la SEULE date que l'app
-        connaisse pour le futur. La PAIE n'a aucun champ de jour (`grossSalary`/`netSalary` sont des
-        montants MENSUELS), les DETTES non plus (`Debt` n'a que `termEndDate`), l'hypothèque non plus.
-        Donc dans un futur zoomé, seules les charges récurrentes font de vraies marches ; le salaire
-        et l'hypothèque sont lissés dans le résidu. → question **A13** routée à Marc — ✅ **RÉPONDUE
-        le 2026-08-06 : « chaque semaine jeudi, pareil pour dette »**. `weeklyDeltasForMonth` livré :
-        conversion du MENSUEL du store en versements hebdomadaires (×12/52), posés à chaque jeudi,
-        jour de la semaine PARAMÉTRABLE (pas un `if` en dur). Un mois à 5 jeudis reçoit 5 paies —
-        c'est la réalité, et `dailyRefine` l'absorbe dans son résidu (fin de mois inchangée).
-        ⚠️ Limite ASSUMÉE : le MOTEUR raisonne au mois et ignore les mois à 5 paies. Le RYTHME
-        affiché est juste, le TOTAL du mois reste celui du moteur.
-        ⚠️ Reste à faire : rendre le jour/la cadence ÉDITABLES (aujourd'hui c'est un défaut de code
-        aligné sur la réponse de Marc, pas un champ de profil).
-        Deux pièges qu'un graphe rend INVISIBLES, tous deux testés : le SIGNE (un coût positif doit
-        faire DESCENDRE un solde) et l'ANNUEL compté douze fois.
-  - [x] **UI lot A** — `components/projection/DailyDetailPanel.tsx` : le détail jour par jour de la
-        fenêtre regardée, sous la courbe ✅ 2026-08-06.
-  - [x] **UI lot A2 — infobulle + par compte** (demande Marc 2026-08-09 : « avec l'info bulle dans
-        futur je veux voir le détail par jour et le passé je veux voir le détail par jour et par
-        compte aussi ») ✅ 2026-08-11. Infobulle : bloc « Jour par jour » du mois SURVOLÉ (l'appelant
-        raffine un seul mois, l'infobulle reste passive) — jours à mouvement daté surlignés, le pied
-        dit que le reste est interpolé. Passé : 6 colonnes de régime, données déjà calculées par
-        `reconstructPortfolioHistoryDaily` et jusqu'ici JETÉES à l'affichage.
-        ⚠️ **Défaut trouvé en écrivant le test** : la reconstruction n'était pas bornée à aujourd'hui
-        → elle produisait un point pour CHAQUE jour demandé, y compris futur, en reconduisant le
-        dernier prix. Les lignes futures montraient donc des placements PLATS présentés comme
-        reconstruits, à côté d'une colonne « Projeté » qui, elle, croît. Bornée à `min(to, today)` ;
-        test discriminant prouvé (sans la borne : « 1 000 $ » au lieu de « — »).
-  - [x] **UI lot B, étape 1 — AXE X NUMÉRIQUE** ✅ 2026-08-11 (choix de Marc parmi 3 options).
-        `type="number"` + `domain={['dataMin','dataMax']}`. C'est le PRÉALABLE : en catégoriel, un
-        `ReferenceLine x={…}` s'apparie à une CATÉGORIE et n'apparaît que si un point porte
-        exactement cette valeur — des abscisses quotidiennes feraient donc disparaître ou glisser
-        « Aujourd'hui », la frontière et les jalons, EN SILENCE. En numérique ce sont des coordonnées.
-        ⚠️ **Pas un no-op au pixel** (mesuré, mon 1er commentaire le prétendait à tort) : le catégoriel
-        centre les points dans leur bande, le numérique colle dataMin/dataMax aux bords → décalage
-        d'une demi-bande (~1 px sur ~450 mois), IDENTIQUE pour les points et les ancrages.
-        ⚠️ **Le `domain` explicite n'est pas cosmétique** : sans lui recharts part de 0 et tout le
-        préfixe PASSÉ est repoussé (frontière mesurée à 316,5 au lieu de 122,5 ; bande du passé à
-        x=283 au lieu de x=70).
-        Garde `e2e/futureAxis.spec.ts`, prouvée discriminante dans les DEUX états fautifs
-        (catégoriel : écart 0,97 ; numérique sans domaine : écart 213,2).
-  - [x] **UI lot B, étape 2 — SÉLECTIONNER UN JOUR sur la courbe** ✅ 2026-08-11.
-        ⚠️ **CORRECTION DE CAP de Marc** : « je veux pas voir dans l'info bulle le détail des jours
-        de chaque mois, je veux pouvoir sélectionner chaque jour dans le graph ». Le bloc-liste que
-        j'avais ajouté à l'infobulle (lot A2) donnait à LIRE ; la demande est de SÉLECTIONNER.
-        Bloc-liste RETIRÉ. Au zoom maximal, chaque jour est un POINT du graphe : survol, clic pour
-        figer, ouverture du détail — comme un mois. L'infobulle ne décrit que le jour visé, et dit
-        s'il porte un mouvement daté ou seulement de l'étalement.
-        Abscisse fractionnaire via `axisXAtDay` (jour 1 = l'entier du mois, donc jalons alignés).
-        ⚠️ **Résolution du clic par VALEUR d'abscisse** (`resolvePointByX`) et non par rang : les
-        jours ne sont PAS régulièrement espacés (1/28 en février, 1/31 en mars) — par rang, le clic
-        sélectionnait un autre jour sans que rien ne casse. Preuve chiffrée dans le test.
-  - [x] **UI lot B, étape 3 — `[FUTUR-DAILY-REACH]` rendre la vue au jour ATTEIGNABLE** ✅ 2026-08-11.
-        ⚠️ **Retour de Marc APRÈS le déploiement de l'étape 2 : « j'arrive toujours pas à voir jour
-        par jour ».** Il avait raison, et rien n'était cassé : la vue au jour ne s'active que sous
-        6 points mensuels visibles, et le SEUL chemin pour y descendre était la molette — **23 à 31
-        crans depuis « Tout » (mesuré), 16 depuis le preset « 5 ans »** —, sans aucun retour disant
-        qu'on s'en approchait. Pire : `useTimeChartZoom` n'écoute que `wheel` + souris, donc au
-        doigt (téléphone, tablette) la fonctionnalité était **strictement inatteignable**.
-        Livré : bouton **« Jour »** dans le sélecteur de période → un clic pose la fenêtre exacte,
-        ancrée sur aujourd'hui (`dailyWindowRange`, 6 tests). E2E `futureDailySelect.spec.ts`
-        « EN UN CLIC », **prouvée discriminante** (échoue sans le bouton).
-        ⚠️ Défaut ADJACENT corrigé au passage : `idxForYears` cherchait son indice dans `chartData`
-        alors que le zoom indexe `displayData` (= passé préfixé + `chartData`) → les presets
-        « 5/10/20/30 ans » s'arrêtaient `pastPrefix.length` mois trop tôt, et leur état actif se
-        comparait au même indice faux, donc cohérent avec lui-même et invisible.
+  **LIVRÉ pour l'essentiel (PR #581→#587, mergées 2026-08-11/12)** — les étapes cochées sont
+  ARCHIVÉES avec leur contexte dans `docs/BACKLOG_ARCHIVE.md` (section 2026-08-12). Ci-dessous :
+  le RESTE VIVANT du chantier, uniquement.
 - [ ] **`[FUTUR-DAILY-TOUCH]` zoom au DOIGT sur les graphes (pincement)** — `useTimeChartZoom`
       n'écoute que `wheel` + souris : sur téléphone et tablette, AUCUN zoom n'est possible sur aucun
       graphe de l'app (Futur, Dettes, Immobilier, Retraite, Enfants). Le bouton « Jour » ci-dessus
       débloque le cas d'usage quotidien, mais pas la navigation libre. Ampleur : M — à cadrer avec
       Marc (utilise-t-il l'app au doigt ?) avant de coder.
-        ⚠️ **Seuil COUPLÉ au plancher de zoom** : `useTimeChartZoom` s'arrête à 5 d'écart, soit
-        **6** points visibles. Mon premier plafond (4 mois) rendait la vue au jour INATTEIGNABLE —
-        code « correct », fonctionnalité jamais déclenchée. Attrapé par l'e2e, pas à la lecture.
-        Aires par compte MASQUÉES au jour + bandeau qui explique pourquoi (le moteur ne ventile
-        qu'au mois ; l'étaler serait une précision inventée).
-        Gardes : `e2e/futureDailySelect.spec.ts` (deux abscisses éloignées → deux jours DIFFÉRENTS,
-        sinon « on peut sélectionner un jour » serait vrai en apparence), + tests unitaires
-        `axisXAtDay` et `resolvePointByX`.
-  - [x] **UI lot B, étape 4 — `[FUTUR-DAILY-FULL]` TOUS les calculs au jour** ✅ 2026-08-11.
-        ⚠️ **Retour de Marc APRÈS le déploiement de l'étape 3, capture à l'appui** : « ça me dit
-        encore septembre 2026 et pas le jour […] je veux que tous les calculs soient faits pour
-        chaque jour, je veux que tout soit ajusté au jour, toutes les sommes ». Il avait raison et
-        le diagnostic était plus profond que l'étiquette : la vue au jour ne portait QUE `NetWorth`,
-        donc l'infobulle (soldes par compte, dépôts, rendement, paie, dépenses, impôts) était vide
-        au jour et les aires empilées étaient masquées. Une courbe au jour SANS calculs au jour.
-        Livré : `services/projection/dailyLedger.ts` (25 tests) ventile **tous** les champs du
-        moteur au jour. L'infobulle et les aires empilées fonctionnent au jour **sans être
-        réécrites** — elles lisent les mêmes clés, avec les montants du jour ; donc zéro risque de
-        divergence entre les deux granularités.
-        ⚠️ **RÉFUTATION EXPLICITE de mon propre constat de cadrage** (« seule la Valeur nette peut
-        passer au jour, ventiler les comptes serait de la fausse précision »). C'était faux : le
-        moteur émet DÉJÀ, par mois et par compte, `NetTransfer*` et `MarketGrowth*` — de quoi
-        décomposer sans rien inventer. La seule vraie inconnue est la DATE du rendement du marché,
-        qui reste répartie et annoncée comme telle. Classe `DOC-STALE-IMPOSSIBILITY` : un constat
-        d'impossibilité non re-vérifié bloque une feature atteignable.
-        Trois gardes indépendantes : classification exhaustive **contre le moteur réel** (un champ
-        ajouté au moteur sans classe fait échouer la suite), invariants de raccord (dernier jour =
-        valeur du moteur ; Σ des jours = total du moteur), et un test d'**ordre de grandeur** —
-        ajouté après avoir mesuré que les deux premiers, qui lisent la classification pour choisir
-        quoi vérifier, ne détectaient PAS un solde reclassé en flux.
-        ⚠️ **Bug de fond corrigé au passage** : le raffinement précédent appliquait la même liste de
-        mouvements datés au compte ET au patrimoine net → un paiement de dette creusait un trou dans
-        la VALEUR NETTE le jour de paie, aussitôt rebouché par l'étalement du résidu (donc invisible
-        en fin de mois, bien visible au jour). Un remboursement de dette est NEUTRE sur le patrimoine
-        net : le compte baisse, la dette baisse d'autant.
-  - [x] **`[FUTUR-CLICK-AREA]` cliquer sur une AIRE ne figeait pas l'infobulle** ✅ 2026-08-11.
-        Trouvé en diagnostiquant un e2e rouge, PAS en lisant le code. Sonde Playwright : sur
-        `path.recharts-area-area`, aucun événement `click` n'est dispatché — même pas au niveau
-        `document` en capture ; sur `svg.recharts-surface` (espace vide), oui. Recharts re-rend le
-        path entre `pointerdown` et `pointerup`, donc le navigateur ne synthétise jamais le `click`.
-        La moitié basse de la courbe était morte au clic **depuis toujours** (défaut antérieur à la
-        vue au jour) ; l'e2e ne l'avait jamais vu parce qu'il cliquait dans le vide au-dessus de la
-        pile. Corrigé en passant le conteneur à `onPointerUp` (+ garde pour ne pas doubler l'action
-        des pastilles d'événement). L'e2e clique désormais DANS les aires, volontairement.
-  - [x] **`[FUTUR-DAILY-PAST-REAL]` le PASSÉ au jour depuis les VRAIES séries quotidiennes** ✅ 2026-08-11
-        (demande Marc : « je veux aussi que ça marche pour le passé, en fonction de la valeur de mes
-        comptes, de mes dépenses »). `services/history/dailyPastLedger.ts` (13 tests) : soldes par
-        compte + cash + équité immo + valeur nette RÉELS avant aujourd'hui, revenus/dépenses = les
-        VRAIES transactions du jour avec leurs libellés, et la variation d'un compte séparée en
-        DÉPÔT (achats datés, à leur prix d'achat) vs RENDEMENT (le reste). Valeur nette via
-        `computeRawNetWorth` (source unique), jamais une copie de la formule.
-        ⚠️ Le point réel est reconstruit **à partir de rien**, pas en écrasant quelques champs du
-        point projeté : un `{...projeté, ...réel}` laisserait filtrer des dizaines de valeurs
-        PROJETÉES (impôt dormant, rentes, solde d'impôt, cotisations) dans une journée présentée
-        comme réelle. Ce qui n'est pas mesuré est ABSENT, donc « — ».
-        ⚠️ Une journée n'est produite que si les DEUX sources ont de la matière ce jour-là : cash
-        seul donnerait un patrimoine amputé de tout le portefeuille — crédible et faux.
-        ⚠️ AUJOURD'HUI n'est pas reconstruit (la reconstruction s'arrête à la veille, par
-        construction) : le présent vient de l'ancre du moteur, sinon deux vérités pour la même date.
-        ⚠️ Bornée à aujourd'hui : `reconstructPortfolioHistoryDaily` produit volontiers des jours
-        FUTURS plats en reconduisant le dernier prix — le même défaut avait déjà été corrigé une
-        fois dans le panneau quotidien.
-        Limites assumées et DITES à l'écran : équité immo connue à l'ANNÉE (palier), dettes figées
-        au niveau actuel (Option A), badge « Réel / Projeté » + âge du prix dans l'infobulle.
-  - [x] **`[FUTUR-DAILY-PAST-REACH]` le bouton « Jour » ne montrait AUCUN jour passé** ✅ 2026-08-11.
-        ⚠️ **Retour de Marc : « je vois toujours pas au jour pour le passé ».** Il avait raison, et le
-        défaut est arithmétique : `dailyWindowRange` posait `lo = todayIndex − 1`, or la construction
-        des jours CONSOMME la première ancre comme valeur d'entrée sans la rendre → le premier jour
-        affiché était le 1er du mois COURANT. Toute la reconstruction du passé au jour
-        (`[FUTUR-DAILY-PAST-REAL]`) était donc livrée, testée… et **strictement invisible**.
-        Même classe que `[FUTUR-DAILY-REACH]`, une marche plus loin : la fonctionnalité était
-        atteignable, mais pas la MOITIÉ qu'elle promettait.
-        Corrigé : fenêtre **centrée** sur aujourd'hui (2 mois passés + mois courant + 2 futurs).
-        Garde : test « la moitié des mois rendus tombe AVANT aujourd'hui », qui échoue sur l'ancien
-        ancrage.
-  - [x] **`[FUTUR-DAILY-DATE-FORMAT]` libellé du jour en JJ/MM/AAAA** ✅ 2026-08-11 (demande Marc :
-        « ça devrait me dire par exemple le // »). « sam. 14 sept. 2026 » ressemblait encore au
-        libellé mensuel d'un coup d'œil ; « sam. 14/09/2026 » ne laisse aucun doute. Le jour de la
-        SEMAINE est gardé — la paie tombe le jeudi, et le voir rend la marche lisible.
-  - [x] **`[FUTUR-DAILY-INFOBULLE-ONLY]` le détail du jour vit dans l'INFOBULLE, uniquement**
-        ✅ 2026-08-11 (correction de cap Marc : « je veux que juste dans l'infobulle ce soit
-        l'information par jour […] pas de nouvel onglet ou quoi »). Le tableau jour-par-jour sous la
-        courbe (`DailyDetailPanel`, lot A) est RETIRÉ — composant, tests, et le code que lui seul
-        consommait (`refineMonthToDaily`/`refineWindowToDaily`/`daySpan` de `dailyRefine`,
-        `dailyDeltasFor`/`datedCoverageForMonth` de `datedMonthEvents`). Garder du code mort couvert
-        de tests verts aurait fait croire à la prochaine session que c'était vivant.
-        ⚠️ Leçon « Proposer ≠ faire » incarnée : ce tableau était MON ajout de cadrage, jamais
-        demandé tel quel — il a fini perçu comme du bruit et retiré sur demande explicite.
-  - [x] **`[FUTUR-DAILY-ZOOM-DEEP]` zoomer jusqu'à UN mois affiché (~30 px par jour)** ✅ 2026-08-11
-        (demande Marc : « je veux pouvoir zoomer un peu plus pour pouvoir voir les jours
-        individuels »). `minPoints: 1` sur le zoom du graphe Futur (le défaut 5 reste pour les
-        autres graphes) : plancher = 2 points mensuels = 1 mois rendu au jour. Passé compris (même
-        mécanique, mêmes données réelles).
-        ⚠️ **Bug de fond débusqué en route, `[ZOOM-ROUND-FIXPOINT]`** : à petit span, l'arrondi
-        entier ANNULAIT le cran de molette (à span 5, ×0,85 déplace chaque borne de ~0,375 →
-        `Math.round` redonne les mêmes entiers → point fixe silencieux). `minPoints: 1` seul était
-        donc INOPÉRANT — et le DÉZOOM molette était déjà coincé au plancher AVANT ce lot (bug
-        préexistant, symétrique). Correctif : quand l'arrondi annule le cran, forcer un pas ENTIER
-        du côté opposé au curseur. 6 tests unitaires du hook, 4 prouvés discriminants par
-        `git stash` ; garde e2e mesurable (la légende de la table sr-only cesse d'être
-        « échantillonnée » sous 40 jours — inatteignable avant le fix).
   - [ ] **`[FUTUR-DAILY-CADENCE]` cadence de paie dérivée des documents** (demande Marc 2026-08-11 :
         « je veux que ça dépende des PDF que je donne ou ce que j'indique à Claude… je veux pour
         l'instant que ce soit jeudi hebdo »). Aujourd'hui `DEFAULT_PAY_DAY_OF_WEEK` est un défaut de
@@ -403,13 +226,6 @@
         `displayData` portera des `monthIndex` FRACTIONNAIRES, les deux divergeront silencieusement
         de la position réellement rendue (le clic résout le mauvais point, le curseur de zoom dérive).
         À traiter EN MÊME TEMPS que l'injection des points quotidiens, pas après.
-  - [x] ⚠️ **Piège de nommage au branchement** ✅ 2026-08-11 (`[NAMING-INVESTED]`) : la reconstruction
-        MENSUELLE nommait `NetWorth` un champ qui porte la valeur INVESTIE ; renommé `InvestedValue`,
-        aligné sur la quotidienne. ⚠️ Le commentaire du code affirmait « renommer casserait d'autres
-        consommateurs » — constat PÉRIMÉ, jamais re-vérifié (classe `DOC-STALE-IMPOSSIBILITY`) :
-        mesuré au grep + typecheck, AUCUN consommateur de prod ne lisait ce champ, seulement 3 tests.
-        Ce nom avait déjà nourri de faux rapprochements d'audit (« un nom trompeur fabrique des faux
-        findings », CLAUDE.md).
   - [ ] ⚠️ **Divergences d'ANCRE du cash quotidien** — ⚠️ **PLUS latentes depuis #582** (le cash
         quotidien est branché sur la courbe) : `computeStartingCash` compte TOUTE transaction, la
         quotidienne exige une date complète. Un flux daté au mois seul est dans l'ancre mais pas dans
@@ -426,11 +242,10 @@
         rebours depuis le solde connu d'AUJOURD'HUI, or il n'est connu que GLOBALEMENT.
         `FintableBrokerBalance` ne couvre que les comptes `kind: 'investment'`. Prérequis : persister
         les soldes des comptes `kind: 'cash'` (la sync les LIT déjà, elle les agrège).
-  - [ ] ⚠️ NE JAMAIS mettre de décimales dans `monthIndex` : c'est la clé d'axe du graphe, du tableau
-        ET des icônes-jalons — les jalons se désaligneraient en SILENCE. La granularité vit dans `date`.
-  - [ ] ⚠️ Vérifier le POIDS stocké avant de livrer : `[HIST-STORE-SIZE]` a été fait POUR tenir le
-        quota. Densifier le rouvre.
-- [ ] **V9 — Couverture moteur** (1-2 PR) : `[FUZZ-ONETIME-FLOWS]` + `[HARDEN-SNAPSHOT-RACE]`.
+  ⚠️ Contraintes de garde pour la suite du chantier (pas des tâches) : NE JAMAIS mettre de
+  décimales dans `monthIndex` (clé d'axe du graphe, du tableau ET des icônes-jalons — les jalons
+  se désaligneraient en SILENCE ; la granularité vit dans `date`) · vérifier le POIDS stocké
+  avant de livrer une densification (`[HIST-STORE-SIZE]` a été fait POUR tenir le quota).
 - [ ] **V10 — A11y** (1-2 PR) : `[A11Y-INK500]` + `[FUT-TOUCH-TARGETS]` + `[D6-KBD]` +
   `[A11Y-BORDER-PROMINENCE-SWEEP]` + `[A11Y-FUTUR-MILESTONES-KEYBOARD]` (Marc : focusables).
 - [ ] **V11 — Dette structurée** (fond, par lots) : `[GODFILE-APPLYDOCUMENT]` → `[GODFILE-MCPHTTP]` →
@@ -556,10 +371,6 @@
   UI/IA/PDF (KPI Accueil, useDerivedFinancials, financialSnapshot, pdfReport) sur persona endetté +
   propriétaire, convention équité immo EXPLICITE par surface.
 
-- [ ] **`[FUZZ-ONETIME-FLOWS]`** (M, reste) — flux non exercés par le fuzz de conservation
-  (`projection.fuzzConservation.test.ts:21-23`) : vente/gain locatif, équité négative, véhicule,
-  héritage, REEE. Les couvrir (mesurer la couverture, pas la supposer).
-
 - [ ] **`[MELTDOWN-THRESHOLDS-DOC]`** (S, doc) — `meltdownReer.ts:9-13` : seuils
   MELTDOWN_NW_HIGH/MID (2 M/1 M) + cibles 220 k/140 k/90 k × adultes = heuristiques de CONCEPTION
   non documentées (pas des constantes fiscales) — les documenter (module + FISCAL_REFERENCE §9).
@@ -583,6 +394,14 @@
   `(propertyGrowthRate || 3)` rend une croissance immobilière NULLE inexprimable (0 → 3 %/an).
   #552 aligne `initPastPurchase` sur cette convention (parité) ; le vrai fix (accepter 0, défaut 3
   seulement si absent) touche tous les scénarios existants → re-baseliner SCIEMMENT.
+- [ ] **`[ENG-PROPGROWTH-CONFIG-DEAD]`** (S — découverte `[FUZZ-ONETIME-FLOWS]` 2026-08-12,
+  [Certain, mesuré au grep]) — `ProjectionConfig.propertyGrowthRate` (types.ts:219) n'est lu par
+  AUCUN code de prod : le moteur ne lit que `goal.propertyGrowthRate` (realEstateMonth.ts:354,
+  pastPurchaseInit.ts:98), l'UI aussi (RealEstate.tsx:82, PropertyConfigurator.tsx:40). Le champ
+  config est un réglage FANTÔME : le remplir ne change RIEN (prouvé : équité négative 0/120 dans
+  le fuzz tant que le taux était câblé côté config). Fix à trancher : le retirer de
+  `ProjectionConfig` (+ des `makeProjection` de tests), OU le brancher comme défaut d'un bien
+  sans taux propre — puis nettoyer.
 - [ ] **`[ENG-RENEWAL-M0]`** (S, FAIBLE — panel #552) — un bien passé détenu depuis un multiple
   exact de 60 mois subit le RENOUVELLEMENT (choc déterministe `charCodeAt % 3`) dès le mois 0
   (PMT −240 $ mesuré au 1er point affiché). Préexistant, atteignable au m0 depuis V2'. Option :
@@ -738,17 +557,6 @@
 - [ ] **`[PERF-BOOT]`** (M-L, différé SCIEMMENT — provider-aware) — paralléliser
   `hydrateAssets`/priceRefresh SANS dépasser CoinGecko free ~30/min (le sleep 2500 protège le
   provider le PLUS strict). Fix provider-aware planifié, pas un Promise.all aveugle. (≡ D7.)
-- [x] **`[HARDEN-SNAPSHOT-RACE]`** ✅ 2026-08-12 — `runProjectionAsync` accepte `{ signal }`
-  (sentinelle `PROJECTION_CANCELLED`), branché dans `ProjectionEngine` (abort au changement de
-  params/démontage, annulation filtrée AVANT le log « CRITICAL »).
-  ⚠️ Design imposé par la dédup PH2-b : l'abort ne rejette qu'une promesse DÉRIVÉE par appelant —
-  rejeter la promesse PARTAGÉE annulerait le calcul de l'appelant raccroché qui n'a rien demandé.
-  Le worker n'est PAS interrompu (canal singleton partagé) : annuler = se détacher, message tardif
-  filtré par requestId.
-  ⚠️ Leçon de test : la 1re preuve de discrimination par stash était VACUEUSE — l'import de la
-  sentinelle devenait `undefined` sous l'ancien code, et `toThrow(undefined)` accepte n'importe
-  quelle erreur. Sentinelle EN DUR dans les assertions ; discrimination re-prouvée (2 rouges sans
-  le fix).
 
 ## 🧱 Dette technique
 

@@ -4,6 +4,14 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 53) — `[D6-KBD]` : la sidebar au clavier
+> Deux pièges : l'accordéon `disabled={!isSidebarOpen}` était INATTEIGNABLE au Tab en marche
+> avant (Tab saute un bouton désactivé, et au moment où Tab le considère le focus n'est pas
+> encore dans l'aside) → jamais disabled, atteint = opérable (le focus ouvre la sidebar) ;
+> et les items d'un groupe replié restaient TABBABLES en étant invisibles (max-h-0 +
+> overflow-hidden ne retire PAS du tab-order) → `invisible` quand replié. Leçon CONVENTIONS.
+> L'ancien test §B.2 verrouillait le comportement inverse — réécrit avec le POURQUOI.
+>
 > ## 🟢 Session 2026-08-12 (suite 52) — `[FUTUR-MOBILE-LAYOUT]` : le Futur vivable au téléphone
 > Les 3 douleurs restantes du cadrage Marc : courbe mobile 55dvh (`min-h 380`), infobulle FIGÉE
 > en BOTTOM SHEET pleine largeur sous `sm` (`useViewportBelowSm` matchMedia réactif + garde

@@ -280,14 +280,15 @@ export const Layout: React.FC<LayoutProps> = ({
               <div key={group.label} className="mb-1.5">
                 <button
                   type="button"
-                  onClick={() => isSidebarOpen && toggleGroup(group.label)}
-                  aria-expanded={isSidebarOpen ? isGroupExpanded : undefined}
+                  // [D6-KBD] JAMAIS disabled : un bouton désactivé est SAUTÉ par Tab — au moment où
+                  // Tab le considérait, la sidebar était encore repliée (le focus n'y était pas
+                  // entré), donc l'accordéon était inatteignable au clavier en marche avant. Le
+                  // focus OUVRE la sidebar (onFocus de l'aside) : atteint = opérable, toujours.
+                  onClick={() => toggleGroup(group.label)}
+                  aria-expanded={isGroupExpanded}
                   aria-label={!isSidebarOpen ? `${group.label} — ${count} onglets${tidied ? ' (rangé)' : ''}` : undefined}
-                  disabled={!isSidebarOpen}
                   title={!isSidebarOpen ? `${group.label} (${count})` : undefined}
-                  className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-card transition-colors ${
-                    isSidebarOpen ? 'hover:bg-white/5 cursor-pointer' : 'cursor-default'
-                  }`}
+                  className="w-full flex items-center gap-3 px-3 py-1.5 rounded-card transition-colors hover:bg-white/5 cursor-pointer focus-ring"
                 >
                   <span className="relative shrink-0 flex items-center justify-center">
                     <Icon
@@ -328,7 +329,10 @@ export const Layout: React.FC<LayoutProps> = ({
                     ›
                   </span>
                 </button>
-                <div className={`overflow-hidden transition-[max-height] duration-200 motion-reduce:transition-none ${showItems ? 'max-h-[600px]' : 'max-h-0'}`}>
+                {/* [D6-KBD] `invisible` quand replié : max-h-0 + overflow-hidden CACHE visuellement
+                    mais laisse les boutons DANS l'ordre de tabulation — Tab posait le focus sur un
+                    élément invisible (focus perdu à l'écran). visibility:hidden les en retire. */}
+                <div className={`overflow-hidden transition-[max-height] duration-200 motion-reduce:transition-none ${showItems ? 'max-h-[600px] visible' : 'max-h-0 invisible'}`}>
                   {/* Filet + léger retrait pour matérialiser l'appartenance au groupe (panneau ouvert). */}
                   <div className={`space-y-0.5 pt-0.5 ${isSidebarOpen ? 'ml-[1.35rem] pl-1 border-l border-white/10' : ''}`}>
                     {group.items.map((item) => {

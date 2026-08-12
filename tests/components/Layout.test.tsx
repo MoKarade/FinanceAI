@@ -120,15 +120,58 @@ describe('Layout', () => {
         expect(argentHeader!.getAttribute('aria-expanded')).toBe('true');
     });
 
-    it('§B.2 — header de groupe disabled quand sidebar collapsed', () => {
+    it('§B.2 (inversé par D6-KBD) — header de groupe JAMAIS disabled, même sidebar collapsée', () => {
+        // L'ancien contrat (« disabled quand collapsed ») rendait l'accordéon inatteignable au
+        // clavier en marche avant : Tab SAUTE un bouton désactivé, et au moment où Tab le
+        // considère la sidebar est encore repliée. Nouveau contrat : atteint = opérable (le
+        // focus ouvre la sidebar via l'onFocus de l'aside).
         const { container } = render(<Layout {...baseProps} />);
         const sidebar = container.querySelector('aside')!;
-        // sidebar collapsed par défaut → headers disabled
         const headers = within(sidebar).getAllByRole('button').filter(
             b => b.textContent?.includes('Argent') && !b.hasAttribute('aria-current')
         );
         expect(headers.length).toBeGreaterThan(0);
-        // au moins un header doit être disabled quand sidebar est collapsée
-        expect(headers.some(h => (h as HTMLButtonElement).disabled)).toBe(true);
+        expect(headers.every(h => !(h as HTMLButtonElement).disabled)).toBe(true);
+    });
+});
+
+// [D6-KBD] Sidebar pilotable au CLAVIER (V10 a11y, 2026-08-12). Deux pièges verrouillés :
+// 1. `disabled={!isSidebarOpen}` sautait l'accordéon au Tab (au moment où Tab le considère, le
+//    focus n'est pas encore DANS l'aside, donc la sidebar est repliée et le bouton désactivé) ;
+// 2. les items d'un groupe REPLIÉ restaient dans l'ordre de tabulation (max-h-0 + overflow-hidden
+//    cache visuellement mais ne retire PAS du tab-order) → focus posé sur un élément invisible.
+describe('Layout — sidebar au clavier (D6-KBD)', () => {
+    it('les boutons d’accordéon ne sont JAMAIS disabled et exposent toujours aria-expanded', () => {
+        const { container } = render(<Layout {...baseProps} />);
+        const accordions = Array.from(container.querySelectorAll('aside button[aria-expanded]'))
+            // exclut l'aside lui-même (aria-expanded aussi) et tout bouton hors groupes
+            .filter((b) => b.tagName === 'BUTTON');
+        expect(accordions.length).toBeGreaterThan(0);
+        for (const b of accordions) {
+            expect(b).not.toBeDisabled();
+            expect(['true', 'false']).toContain(b.getAttribute('aria-expanded'));
+        }
+    });
+
+    it('un groupe REPLIÉ est visibility:hidden (hors tab-order), un groupe déplié est visible', () => {
+        const { container } = render(<Layout {...baseProps} />);
+        const collapsed = container.querySelectorAll('aside .max-h-0');
+        const expanded = container.querySelectorAll('aside .max-h-\\[600px\\]');
+        expect(collapsed.length + expanded.length).toBeGreaterThan(0);
+        for (const c of Array.from(collapsed)) expect(c.className).toContain('invisible');
+        for (const e of Array.from(expanded)) expect(e.className).toContain('visible');
+    });
+
+    it('cliquer un accordéon bascule son état, sidebar repliée ou non (plus de garde isSidebarOpen)', () => {
+        // Groupes dépliés par défaut → on replie PUIS on redéplie, sidebar restée « repliée »
+        // (aucun focus/hover simulé) : l'ancien onClick gardé par isSidebarOpen ne faisait RIEN ici.
+        const { container } = render(<Layout {...baseProps} />);
+        const btn = Array.from(container.querySelectorAll('aside button[aria-expanded]'))[0] as HTMLButtonElement;
+        expect(btn).toBeTruthy();
+        const before = btn.getAttribute('aria-expanded');
+        fireEvent.click(btn);
+        expect(btn.getAttribute('aria-expanded')).not.toBe(before);
+        fireEvent.click(btn);
+        expect(btn.getAttribute('aria-expanded')).toBe(before);
     });
 });

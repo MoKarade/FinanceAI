@@ -32,6 +32,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   entre fins de mois.
 
 ### Corrections
+- **La barre latérale se pilote enfin au clavier** : les en-têtes de groupe (Argent, Patrimoine…)
+  ne sont plus « morts » quand la barre est repliée — Tab les atteint, Entrée les déplie. Et les
+  onglets d'un groupe replié ne capturent plus le focus clavier en étant invisibles.
 - **Textes secondaires plus lisibles partout** : 85 textes d'aide, libellés et états vides qui
   utilisaient le gris le plus sombre de la palette (réservé aux éléments désactivés — contraste
   insuffisant pour du texte normal, mesuré 3,9-4,3:1) passent au gris standard (5,2-6,4:1, conforme

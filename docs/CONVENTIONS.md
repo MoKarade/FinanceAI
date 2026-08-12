@@ -702,6 +702,15 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   changement de mode. Au basculement flottant ↔ bottom-sheet du tooltip, la solution est un
   REMOUNT par `key` différente (style vierge garanti) + un débrayage explicite de l'écriture
   impérative (`dockedRef`) — jamais « les deux écrivent et on espère l'ordre ».
+  ⚠️ **Cacher VISUELLEMENT ne retire pas du TAB-ORDER** (leçon D6-KBD 2026-08-12) : `max-h-0` +
+  `overflow-hidden` (accordéon animé) et `opacity-0` laissent les contrôles focusables — Tab pose le
+  focus sur un élément invisible, perdu à l'écran. Seuls `visibility: hidden` (classe `invisible`),
+  `display: none` ou `inert` retirent du tab-order. Et l'inverse du même terrain : un contrôle
+  `disabled` est SAUTÉ par Tab — un état « désactivé tant que le conteneur est replié » rend le
+  contrôle inatteignable au clavier en marche avant quand c'est précisément le FOCUS qui déplie le
+  conteneur (l'ordre Tab → focus → dépliage arrive trop tard). Règle : dans un conteneur
+  repliable-au-focus, les contrôles restent TOUJOURS actifs (atteint = opérable) et le contenu
+  replié passe `invisible`.
   ⚠️ **Un fix de hover-contraste ne se COPIE pas d'une couleur à l'autre** (leçon A11Y-BANNER-HOVER-CONTRAST 2026-07-16) :
   `hover:brightness-110` passe sur info-600 (4,81:1) mais échoue de justesse sur danger-600 (4,48:1) → là, le hover doit
   FONCER (`brightness-90` = 5,23:1). `brightness()` CSS opère en RGB LINÉAIRE (la luminance scale exactement du facteur —

@@ -32,6 +32,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   entre fins de mois.
 
 ### Corrections
+- **Les pastilles d'événement de la courbe s'atteignent au clavier** : Tab passe de pastille en
+  pastille (dans l'ordre du temps), un anneau bleu montre où tu es, Entrée ouvre le détail du
+  mois — et Échap ferme maintenant cette fenêtre (avant, seul le bouton Fermer marchait). Chaque
+  pastille annonce sa date au lecteur d'écran.
 - **La barre latérale se pilote enfin au clavier** : les en-têtes de groupe (Argent, Patrimoine…)
   ne sont plus « morts » quand la barre est repliée — Tab les atteint, Entrée les déplie. Et les
   onglets d'un groupe replié ne capturent plus le focus clavier en étant invisibles.

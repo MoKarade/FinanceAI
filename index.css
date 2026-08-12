@@ -413,3 +413,13 @@ select {
     transform: none !important;
   }
 }
+
+/* [A11Y-FUTUR-MILESTONES-KEYBOARD] Anneau de focus des pastilles d'événement du graphe Futur.
+   Dessiné en SVG (cercle .event-focus-ring) : l'outline CSS sur un <g> SVG est invisible dans
+   certains moteurs — l'anneau, lui, se rend partout où la pastille se rend. */
+.chart-event-icon:focus {
+  outline: none; /* remplacé par l'anneau SVG, jamais supprimé sans remplacement */
+}
+.chart-event-icon:focus-visible .event-focus-ring {
+  opacity: 1;
+}

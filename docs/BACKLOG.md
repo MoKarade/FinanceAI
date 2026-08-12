@@ -527,10 +527,12 @@
   migrés → `ink-400` (AA normal 5.21-6.42 mesuré) et 22 GARDÉS en `ink-500` légitime (glyphes
   décoratifs aria-hidden, icônes-boutons ≥3:1 WCAG 1.4.11, numérotation présentationnelle,
   grandes icônes d'états vides).
-- [ ] **`[A11Y-FUTUR-MILESTONES-KEYBOARD]`** (M, 🧭 décision Marc) — pastilles du graphe Futur non
-  atteignables au clavier (`ProjectionTooltip.tsx:270-271` tabIndex=-1, WCAG 2.1.1). Options :
-  focusabiliser ~29 pastilles (impact pattern « clic n'importe où ») OU contrôle clavier alternatif
-  ouvrant FutureDetailModal. Aria-labels datés si focusables. (≡ A11Y-CHART-KEYBOARD.)
+- [x] **`[A11Y-FUTUR-MILESTONES-KEYBOARD]`** ✅ 2026-08-12 (décision Marc : focusables) — pastilles
+  tabIndex 0 + Entrée/Espace = modale (même action que le clic), aria-labels DATÉS (dateLabel du
+  meta), anneau de focus DESSINÉ en SVG (.event-focus-ring — l'outline CSS sur un <g> est
+  invisible dans certains moteurs), ordre de Tab = ordre chronologique (ordre des données).
+  Découverte : Échap ne fermait la modale de détail NULLE PART (le bouton Fermer seul) — ajouté
+  (listener document + autofocus du dialog). E2E clavier réel + 4 unitaires discriminants.
 - [x] **`[FUT-TOUCH-TARGETS]`** ✅ 2026-08-12 (absorbé par [FUTUR-MOBILE-LAYOUT], retour Marc
   « trop petit trop cramped ») — mobile : présets de fenêtre (« 5 ans »… « Tout », « Aujourd'hui »)
   à min-h 44px, bascules de légende à 36px (18 bascules : 44px chacune gonflait le bloc), boutons

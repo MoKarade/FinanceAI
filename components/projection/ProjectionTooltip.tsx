@@ -385,7 +385,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
 // propre icône (plus de labels texte fusionnés « A | B | C »). Les événements
 // d'un même mois s'empilent verticalement via `subIdx` : vie au-dessus du
 // point, flux en dessous. Le clic remonte le payload via `onSelect`.
-export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?: number; color?: string }; onSelect?: (p: { label?: string; subIdx?: number; color?: string }) => void; kind?: string; selected?: boolean; cx?: number; cy?: number; x?: number; y?: number; viewBox?: { x?: number; y?: number } }) => {
+export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?: number; color?: string; dateLabel?: string }; onSelect?: (p: { label?: string; subIdx?: number; color?: string }) => void; kind?: string; selected?: boolean; cx?: number; cy?: number; x?: number; y?: number; viewBox?: { x?: number; y?: number } }) => {
     const { payload, onSelect, kind = 'life', selected = false } = props;
     // Recharts v3 : utilisé via le prop `shape` du ReferenceDot → coords en cx/cy.
     // Fallbacks (x/y, viewBox) au cas où l'API change.
@@ -407,12 +407,27 @@ export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?:
             style={{ cursor: 'pointer' }}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onSelect?.(payload); }}
+            // [A11Y-FUTUR-MILESTONES-KEYBOARD] Décision Marc : les pastilles sont FOCUSABLES
+            // (WCAG 2.1.1 — tabIndex -1 les rendait inatteignables au clavier). Entrée/Espace =
+            // même action que le clic (modale de détail). Label DATÉ : sans lui, un lecteur
+            // d'écran entendait 29 « Événement : … » sans aucun repère temporel. Anneau de
+            // focus dessiné en SVG (classe .chart-event-icon, index.css) — l'outline CSS sur
+            // un <g> est invisible dans certains moteurs.
             role="button"
-            tabIndex={-1}
-            aria-label={`Événement : ${payload.label}`}
+            tabIndex={0}
+            className="chart-event-icon"
+            onKeyDown={(e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                e.stopPropagation();
+                onSelect?.(payload);
+            }}
+            aria-label={`Événement : ${payload.label}${payload.dateLabel ? ` — ${payload.dateLabel}` : ''}`}
         >
             {/* [a11y] cible de clic transparente élargie (≈44 px, WCAG 2.5.5 AAA) sans changer le rendu visuel. */}
             <circle cy={dy} r={22} fill="transparent" />
+            {/* Anneau de focus clavier (opacité pilotée par .chart-event-icon:focus-visible, index.css). */}
+            <circle className="event-focus-ring" cy={dy} r={r + 7} fill="none" stroke="#60a5fa" strokeWidth={2} opacity={0} />
             {/* ancre sur la courbe + tige vers la pastille */}
             <circle r={3} fill={color} stroke="#0B0E14" strokeWidth={1} />
             <line x1={0} y1={0} x2={0} y2={dy} stroke={color} strokeWidth={1} strokeOpacity={0.45} />

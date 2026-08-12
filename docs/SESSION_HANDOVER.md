@@ -4,6 +4,14 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 54) — `[A11Y-FUTUR-MILESTONES-KEYBOARD]` : pastilles au clavier
+> Décision Marc appliquée : ~29 pastilles focusables (tabIndex 0, Entrée/Espace = modale, labels
+> DATÉS via meta.dateLabel, Tab = ordre chronologique). Anneau de focus DESSINÉ en SVG
+> (.event-focus-ring + index.css) — l'outline CSS sur un <g> SVG est invisible dans certains
+> moteurs. Découverte : Échap ne fermait la modale de détail NULLE PART (l'e2e mobile croyait
+> le contraire — sa boucle avalait l'échec) → listener document + autofocus. E2E clavier réel
+> vert, 4 unitaires prouvés discriminants par stash.
+>
 > ## 🟢 Session 2026-08-12 (suite 53) — `[D6-KBD]` : la sidebar au clavier
 > Deux pièges : l'accordéon `disabled={!isSidebarOpen}` était INATTEIGNABLE au Tab en marche
 > avant (Tab saute un bouton désactivé, et au moment où Tab le considère le focus n'est pas

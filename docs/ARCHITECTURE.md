@@ -1,4 +1,4 @@
-# FinanceAI — Architecture (màj 2026-06)
+# FinanceAI — Architecture (audit & métriques 2026-08-12)
 
 > Vue d'ensemble destinée aux nouveaux contributeurs (humains ou agents).
 > Pour le détail du moteur de projection, voir [PROJECTION.md](PROJECTION.md).
@@ -22,7 +22,7 @@
 | Import données | CSV universel + Finnhub + CoinGecko | parseBankCsv.ts (100% local) |
 | Crypto pricing | CoinGecko REST | Gratuit, sans clé, CORS-friendly |
 | Stock/ETF pricing | Finnhub REST | Clé gratuite optionnelle |
-| Tests | Vitest + React Testing Library | ~1440 tests, 123 fichiers |
+| Tests | Vitest + React Testing Library | 3 887 tests, 339 fichiers (mesuré 2026-08-12) |
 | Auth | Cloudflare Access | Google OAuth, session 24h |
 | Hébergement | Vercel (auto) + GitHub Pages (workflow) | Preview par PR |
 
@@ -49,7 +49,7 @@ FinanceAI/
 │   └── retirement/          AssetLocationCard, GoalSeekerCard
 ├── services/                Logique métier pure (testable, sans React)
 │   ├── projection.ts        Orchestrateur (~1310 lignes)
-│   ├── projection/          31 sous-modules (split Phase 3)
+│   ├── projection/          48 sous-modules (split Phase 3, mesuré 2026-08-12)
 │   ├── projection.worker.ts Worker MC
 │   ├── claude.ts            Wrapper Anthropic SDK
 │   ├── secureKeyStore.ts    AES-256-GCM + IndexedDB (clé device)
@@ -186,12 +186,12 @@ Transactions bancaires
 Crypto prices (BTC, ETH, SOL, …)
   ├─ CoinGecko (services/marketData/providers/coingecko.ts)
   ├─ Gratuit, sans clé, CORS-friendly
-  └─► Portfolio + Dashboard
+  └─► Portfolio + Investissements
 
 Stock/ETF prices (AAPL, VOO, XGRO, …)
   ├─ Finnhub (services/marketData/providers/finnhub.ts)
   ├─ Clé gratuite optionnelle
-  └─► Portfolio + Dashboard
+  └─► Portfolio + Investissements
 
 API keys (Anthropic, Finnhub)
   ├─ Chiffrées AES-256-GCM (services/secureKeyStore.ts)
@@ -214,9 +214,9 @@ Historique de portefeuille / Courbes de cours
   │    Bouton « Actualiser les cours » = purge cache history + hydratation forcée
   │    + quotes en temps réel via `priceRefresh` (Finnhub brut ou Yahoo chart `meta.regularMarketPrice`)
   ├─ Repli no-fake-data : titres sans historique → valeur actuelle signalée
-  │    (`noHistorySymbols` + HistoryCoverageNote sur Dashboard/Investissements)
+  │    (`noHistorySymbols` + HistoryCoverageNote sur Investissements / Futur)
   ├─ Persistance : Asset.historySymbol (additif, par titre) pour resolver variantes durables
-  └─► Dashboard (piles), Investissements (chips TOTAL), Futur (poids/gains)
+  └─► Investissements (piles, chips TOTAL), Futur (poids/gains + historique)
 
 Classification des actifs — Répartitions géo/secteur
   ├─ **Champs additifs optionnels** : Asset.sector, Asset.region (zéro migration)
@@ -281,7 +281,7 @@ parité mesurée par capture d'enregistrement (worktree HEAD vs courant : 16 too
 tests/
 ├── components/
 │   ├── ui/                Tests des primitives (Button, Modal, KPIStat, …)
-│   ├── Dashboard.test.tsx
+│   ├── future/            Tests du Futur (FutureHistorySection remplace Dashboard)
 │   ├── Budget.test.tsx
 │   ├── GuideModal.test.tsx
 │   └── Settings.test.tsx
@@ -302,7 +302,7 @@ tests/
 
 - **ADR-001** : Migration Gemini → Claude Anthropic
 - **ADR-002** : ~~Era Context comme moteur de qualité~~ — SUPERSEDED (era est MCP-only, REST API inexistante)
-- **ADR-003** : Projection.ts split en 31 sous-modules
+- **ADR-003** : Projection.ts split en 48 sous-modules (mesuré 2026-08-12)
 - **ADR-004** : Design system primitives custom (vs shadcn/Radix)
 - **ADR-005** : Future = source unique pour les calculs projetés
 - **ADR-006** : Convention « valeurs réelles ou rien » (no-fake-data)

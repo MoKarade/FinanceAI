@@ -4,6 +4,35 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟡 Session 2026-08-12 (suite 61) — Audit complet panel 9 agents : 62 findings consolidés
+> **Pas de code touché.** Tous les findings sont **MESURÉS** (pas de supposition). Panel spécialisé : 
+> dette technique (12), moteur & fiscal (19), sécurité (4), silence (4), a11y (9), perf (6), IA (9), 
+> moteur systémique (9). Rapport complet dans [`docs/AUDIT_2026-08-12.md`](AUDIT_2026-08-12.md) 
+> (en création). **Aucune baseline cassée** (3833/3833 tests verts avant/après).
+>
+> **🔴 Priority P0 findings** (user-facing money risk) : 
+> - `FISC-DIVORCE-INCOME-PHANTOM` : 85 k$/an revenu fantôme du conjoint parti (mesure exact).
+> - `ENG-STRESSTEST-GROWTH-UNREGISTERED` : 371 782 $ créés silencieusement (mesure exact).
+> - `ENG-W5-RENTAL-OFFBALANCE` : immeuble locatif 300 k$ équité hors bilan (mesure exact).
+> - `A11Y-PRIVACY-*` (5 findings) : Mode Discret ne masque pas les montants à 4 endroits.
+> - `AI-VISION-PAYSLIP-NOGATE` : hallucination OCR écrase profil salarial sans confirmation.
+> - `PERF-ENG-LATENT-MC-WASTE` : 5-10 % MC gaspillé (301 ms sur 6532 ms mesuré).
+>
+> **Backlog** : 62 tickets injectés dans `docs/BACKLOG.md` section « Audit complet 2026-08-12 »,
+> groupés par domaine (Moteur & fiscal · Sécurité · Silence · A11y · Perf · IA · Dette) et 
+> sévérité. Chaque ticket porte 🔴 si argent/données privées, mesure exécutée, effort S/M/L.
+> **Doublons** : 0 (aucun ID d'audit ne préexistait au BACKLOG).
+>
+> **Doc freîcheur** :
+> - CLAUDE.md : 3 734 → **3 887 tests** (339 fichiers, mesuré 2026-08-12).
+> - README.md : 2 872 → **3 887 tests**, 251 → **339 fichiers**.
+> - ARCHITECTURE.md : ~1440 → **3 887 tests**, 123 → **339 fichiers**, 31 → **48 sous-modules**.
+> - Dead references (Dashboard.tsx supprimé en Lot 2b) : corrigées.
+>
+> **Cycle de cette session** : pas de commits à pousser (audit seul, docs consolidées), 
+> pas de code applicatif modifié. Prochaine session appliquera les corrections selon la 
+> priorisation (P0 d'abord, puis chantiers fiscal/moteur cohérents).
+>
 > ## 🟢 Session 2026-08-12 (suite 60) — `[REFONTE-NAV-L4]` : les 4 pages de Vie parlent d'une seule voix
 > Lot 4 intégré sur `main` post-#603 (PR à venir), **sans toucher un seul fichier de nav** :
 > `navDestinations` / `TabRouter` / `Layout` sont inchangés — la structure vient du Lot 1, ce lot

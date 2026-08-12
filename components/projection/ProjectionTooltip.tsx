@@ -62,16 +62,12 @@ const TOOLTIP_ACCOUNTS: Array<{ key: string; label: string; color: string; gainK
 // wrapper Recharts) et est rendu via un PORTAIL positionné par
 // `useChartTooltipPosition`. `frozen` = figé (devient interactif/scrollable et
 // montre le bouton « Détail complet ») ; `onOpenDetail` ouvre la modale exhaustive.
-export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOpenDetail, onZoomToDays, onStepDay, canStepPrev = false, canStepNext = false }: {
+export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOpenDetail, onStepDay, canStepPrev = false, canStepNext = false }: {
     data: ProjectionChartPoint;
     userName1?: string;
     userName2?: string;
     frozen?: boolean;
     onOpenDetail?: () => void;
-    /** [FUTUR-DAILY-SELECT-PATH] Point MENSUEL figé : zoome la fenêtre sur CE mois → vue au jour.
-     *  Offert au moment de l'intention (Marc cliquait un mois en voulant un jour — capture
-     *  « mai 2027 », 2026-08-12) au lieu d'exiger de connaître le seuil de zoom. */
-    onZoomToDays?: () => void;
     /** Point QUOTIDIEN figé : sélectionner le jour voisin (−1 = veille, +1 = lendemain) sans
      *  re-viser au pixel — à ~150 jours affichés, un jour fait ~6 px (mesuré). */
     onStepDay?: (dir: -1 | 1) => void;
@@ -301,19 +297,9 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                    ne voit pas. Marges négatives = bleed sur le padding p-3.5 du parent ; fond
                    opaque pour que le contenu scrollé ne transparaisse pas sous les boutons. */
                 <div className="sticky bottom-0 -mx-3.5 -mb-3.5 px-3.5 pb-3.5 pt-2 mt-0.5 border-t border-white/10 space-y-2 bg-[#0d1118]/95 backdrop-blur-sm rounded-b-2xl">
-                    {/* [FUTUR-DAILY-SELECT-PATH] Mois figé → le chemin vers le jour est OFFERT ICI,
-                        au moment où l'utilisateur vient de cliquer en cherchant un jour — pas caché
-                        derrière un seuil de zoom qu'il faudrait connaître (3e occurrence de la
-                        classe UX-UNREACHABLE sur cette feature : REACH, PAST-REACH, et ce clic-ci). */}
-                    {!isDailyPoint && onZoomToDays && (
-                        <button
-                            type="button"
-                            onClick={onZoomToDays}
-                            className="focus-ring w-full inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-2 py-2.5 transition-colors"
-                        >
-                            Voir ce mois jour par jour →
-                        </button>
-                    )}
+                    {/* [FUTUR-DAILY-NATIVE] Le bouton « Voir ce mois jour par jour » a disparu : la
+                        courbe est au jour PARTOUT, le clic sélectionne directement le jour — il n'y a
+                        plus de chemin à offrir. */}
                     {/* Jour figé → sélection FINE au jour près, sans re-viser au pixel (un jour ≈ 6 px
                         à ~150 jours affichés, mesuré) — et utilisable au DOIGT, où le zoom molette
                         n'existe pas. */}

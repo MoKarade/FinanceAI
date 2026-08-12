@@ -8,7 +8,6 @@
 import { describe, it, expect } from 'vitest';
 import {
     axisXAtDay,
-    dailyWindowRange,
     centeredWindowRange,
     finiteAnchorRun,
     daysInMonth,
@@ -154,69 +153,8 @@ describe('axisXAtDay — le jour 1 vaut EXACTEMENT l’entier du mois', () => {
     });
 });
 
-describe('dailyWindowRange — la vue au jour doit être ATTEIGNABLE en un clic', () => {
-    // Le contrat testé ici n'est pas cosmétique : la vue au jour ne s'active que sous un plafond de
-    // points mensuels visibles, et le seul chemin y menait par 23-31 crans de molette (aucun au
-    // doigt, le hook de zoom n'écoutant que `wheel`). Cette fonction est ce chemin direct.
-
-    it('rend une fenêtre de la LONGUEUR demandée (c’est elle qui déclenche la vue au jour)', () => {
-        const r = dailyWindowRange(400, 20, 6);
-        expect(r).not.toBeNull();
-        expect(r![1] - r![0] + 1).toBe(6);
-    });
-
-    it('recule d’un mois sur l’ancre, pour que le premier mois RENDU soit celui d’aujourd’hui', () => {
-        // `refineWindowToDaily` CONSOMME la première ancre comme valeur d'entrée sans la rendre :
-        // viser `todayIndex` pile afficherait les jours à partir du mois SUIVANT.
-        // ⚠️ CENTRÉE sur aujourd'hui, pas ancrée dessus (`[FUTUR-DAILY-PAST-REACH]`, retour de Marc
-        // « je vois toujours pas au jour pour le passé »). L'ancien `[19, 24]` faisait du mois 19
-        // l'ancre d'ENTRÉE, non rendue : le 1er jour affiché était le 1er du mois COURANT, donc
-        // ZÉRO jour passé. Ici la fenêtre part de 20−1−2 = 17 → mois RENDUS 18, 19, 20, 21, 22,
-        // soit 2 mois avant aujourd'hui, le mois courant, et 2 après.
-        expect(dailyWindowRange(400, 20, 6)).toEqual([17, 22]);
-    });
-
-    it('la MOITIÉ des mois rendus tombe AVANT aujourd’hui — sinon le passé au jour est invisible', () => {
-        // Garde de la classe de bug : la reconstruction du passé au jour peut être parfaite et
-        // rester inatteignable si la fenêtre ne descend jamais sous aujourd'hui.
-        for (const today of [10, 50, 200]) {
-            const [lo] = dailyWindowRange(400, today, 6)!;
-            const premierMoisRendu = lo + 1; // la 1re ancre sert de valeur d'entrée, non rendue
-            expect(premierMoisRendu, `today=${today}`).toBeLessThan(today);
-        }
-    });
-
-    it('ne sort pas du tableau par la gauche quand aucun mois ne précède aujourd’hui', () => {
-        expect(dailyWindowRange(400, 0, 6)).toEqual([0, 5]);
-        expect(dailyWindowRange(400, 2, 6)).toEqual([0, 5]);
-    });
-
-    it('ne sort pas du tableau par la droite quand aujourd’hui est en fin de série', () => {
-        const r = dailyWindowRange(400, 399, 6);
-        expect(r).toEqual([394, 399]);
-        expect(r![1]).toBeLessThan(400);
-    });
-
-    it('refuse une fenêtre qui couvrirait TOUT le jeu — le hook repasserait en vue complète', () => {
-        // Cas piégeux : `showRange(0, len-1)` est normalisé en `null` par `useTimeChartZoom`, donc
-        // `isZoomed` reste faux et la vue au jour ne s'active JAMAIS. Un bouton qui ne fait rien est
-        // pire que pas de bouton : on rend `null` et l'appelant le masque.
-        expect(dailyWindowRange(6, 3, 6)).toBeNull();
-        expect(dailyWindowRange(4, 2, 6)).toBeNull();
-        expect(dailyWindowRange(7, 3, 6)).not.toBeNull();
-    });
-
-    it('refuse les entrées non finies plutôt que de rendre une plage NaN', () => {
-        expect(dailyWindowRange(NaN, 10, 6)).toBeNull();
-        expect(dailyWindowRange(400, NaN, 6)).toBeNull();
-        expect(dailyWindowRange(400, 10, NaN)).toBeNull();
-        expect(dailyWindowRange(400, 10, 1)).toBeNull();
-    });
-});
-
-// [FUTUR-DAILY-SELECT-PATH] Fenêtre CENTRÉE sur le mois CLIQUÉ (bouton « Voir ce mois jour par
-// jour » de l'infobulle figée). Finding revue #589 : la première version vivait en ligne dans le
-// composant, clamp re-codé sans test de bord — l'e2e ne cliquait jamais près des bornes réelles.
+// [FUTUR-DAILY-NATIVE] Les tests de `dailyWindowRange` sont partis avec la fonction (bouton
+// « Jour » retiré — la courbe est au jour partout).
 describe('centeredWindowRange — le zoom « Voir ce mois jour par jour » près des bords', () => {
     it('centre la fenêtre sur l’index demandé (2 mois avant, 3 après pour 6 points)', () => {
         expect(centeredWindowRange(400, 20, 6)).toEqual([18, 23]);

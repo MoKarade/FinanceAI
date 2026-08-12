@@ -134,54 +134,10 @@ export function todayIsoLocal(now: Date = new Date()): string {
     return isoDate(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-/**
- * [FUTUR-DAILY-REACH] Fenêtre de zoom (en INDICES DE TABLEAU) qui fait basculer la courbe au JOUR,
- * ancrée sur aujourd'hui.
- *
- * ⚠️ POURQUOI CETTE FONCTION EXISTE. La vue au jour ne s'active que sous un plafond de points
- * MENSUELS visibles, et le seul chemin pour y descendre était la molette : **mesuré à 23-31 crans
- * depuis « Tout »** (facteur 0,85 par cran, plancher de zoom à 5 d'écart) et encore 16 crans depuis
- * le preset « 5 ans ». Aucun bouton n'y menait, aucun retour ne disait qu'on s'en approchait, et le
- * hook de zoom n'écoute QUE `wheel` + souris — donc au doigt, sur téléphone ou tablette, la
- * fonctionnalité était **strictement inatteignable**. Une feature livrée, testée et déployée que
- * l'utilisateur ne peut pas atteindre n'est pas livrée : c'est le retour de Marc (« j'arrive
- * toujours pas à voir jour par jour »).
- *
- * ⚠️ POURQUOI LA FENÊTRE EST CENTRÉE SUR AUJOURD'HUI, et non ancrée dessus (correction
- * `[FUTUR-DAILY-PAST-REACH]`, retour de Marc 2026-08-11 : « je vois toujours pas au jour pour le
- * passé »). Le premier jet posait `lo = todayIndex − 1`. Or la construction des jours CONSOMME la
- * première ancre comme valeur d'ENTRÉE sans la rendre : le premier jour affiché était donc le 1er du
- * mois COURANT, et **le bouton « Jour » ne montrait STRICTEMENT AUCUN jour passé**. Toute la
- * reconstruction du passé au jour existait, était testée, et restait invisible — même classe de bug
- * que `[FUTUR-DAILY-REACH]`, une marche plus loin : la fonctionnalité était atteignable, mais pas
- * la MOITIÉ qu'elle promettait.
- * On centre donc : la moitié des mois RENDUS tombe avant aujourd'hui, l'autre après. Avec 6 points,
- * ça donne 2 mois passés + le mois courant + 2 mois futurs.
- *
- * ⚠️ Les bords restent prioritaires sur le centrage : près du début de série (pas d'historique) ou
- * de la fin, la fenêtre est simplement collée au bord — une fenêtre plus déséquilibrée mais VALIDE
- * vaut mieux qu'une fenêtre hors tableau.
- *
- * Rend `null` quand la fenêtre n'a pas de sens : moins de points que demandé, ou un jeu si court que
- * la fenêtre couvrirait TOUT (le hook repasserait alors en « vue complète », donc hors zoom, et la
- * vue au jour ne s'activerait pas). L'appelant masque le bouton dans ce cas plutôt que d'offrir un
- * clic sans effet.
- */
-export function dailyWindowRange(
-    dataLength: number,
-    todayIndex: number,
-    windowPoints: number,
-): [number, number] | null {
-    if (!Number.isFinite(dataLength) || !Number.isFinite(todayIndex) || !Number.isFinite(windowPoints)) return null;
-    if (windowPoints < 2 || dataLength <= windowPoints) return null;
-    const today = Math.max(0, Math.min(Math.round(todayIndex), dataLength - 1));
-    // −1 pour l'ancre d'ENTRÉE (non rendue), puis on recule encore de la moitié des mois rendus
-    // pour que le passé occupe la première moitié de la fenêtre.
-    const renderedMonths = windowPoints - 1;
-    const anchored = today - 1 - Math.floor(renderedMonths / 2);
-    const lo = Math.max(0, Math.min(anchored, dataLength - windowPoints));
-    return [lo, lo + windowPoints - 1];
-}
+// [FUTUR-DAILY-NATIVE] `dailyWindowRange` (fenêtre du bouton « Jour ») a été RETIRÉE avec le
+// bouton : la courbe est au jour à toute fenêtre — plus de « vue au jour » à atteindre. Son rôle
+// clavier (fenêtre centrée sur le présent) est repris par le preset « Aujourd'hui »
+// (`centeredWindowRange` ci-dessous). Historique complet : git + docs/CONVENTIONS.md.
 
 /**
  * [FUTUR-DAILY-SELECT-PATH] Fenêtre de `windowPoints` points CENTRÉE sur `centerIndex`, clampée aux

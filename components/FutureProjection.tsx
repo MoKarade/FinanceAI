@@ -41,7 +41,26 @@ const X_AXIS_DOMAIN: ['dataMin', 'dataMax'] = ['dataMin', 'dataMax'];
  *  jamais déclenchée. Le premier jet plafonnait à 4 mois.
  *  À 6 points = 5 mois raffinés, soit ~150 jours : la courbe reste lisible et chaque jour occupe
  *  encore ~6 px de large, donc reste VISABLE à la souris. */
-const DAILY_CURVE_MAX_POINTS = 6;
+/**
+ * [FUTUR-DAILY-NATIVE] Champs ventilés pour la COURBE (série quotidienne GLOBALE). Ce sont les
+ * `dataKey` réellement tracés + l'identité du jour — rien d'autre. La restriction est une contrainte
+ * MESURÉE : la ventilation complète (99 champs) de 30 ans coûte ~500 ms et ~180 Mo ; celle-ci
+ * ~100 ms (bench 2026-08-12). L'infobulle, elle, reçoit un point COMPLET ventilé à la demande sur
+ * le mois survolé (`enrichDailyPoint`) — même fonction moteur, mêmes entrées, donc aucune
+ * divergence possible entre ce que la courbe trace et ce que l'infobulle détaille.
+ * ⚠️ Ajouter une série au graphe = l'ajouter ICI, sinon elle ne se trace pas (garde-test
+ * `tests/components/futureProjection.curveFields.test.ts` : chaque dataKey du render ∈ CURVE_FIELDS).
+ */
+/** [FUTUR-DAILY-NATIVE] Plafond de points TRACÉS (≈ densité de l'ancienne courbe mensuelle sur
+ *  30 ans). Au-delà, `decimateForRender` échantillonne le tracé — la sélection reste au jour exact
+ *  sur la tranche complète. Mesuré : sans plafond, ~11 000 pts × 8 aires gèlent le main thread. */
+const RENDER_MAX_POINTS = 700;
+
+const CURVE_FIELDS: ReadonlySet<string> = new Set([
+    'Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto', 'Immobilier',
+    'ImpotLatent', 'FluxImpots', 'P10', 'P50', 'P90', 'NetWorth', 'lockedNetWorth',
+    'year', 'age', 'isPast',
+]);
 
 /** [FUTUR-DAILY-FULL] Un point QUOTIDIEN de la courbe.
  *
@@ -68,9 +87,11 @@ import { StressTestPanel } from './projection/StressTestPanel';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
-import { isoDate, todayIsoLocal, daysInMonth, finiteAnchorRun, calendarFromMonthIndex, axisXAtDay, dailyWindowRange, centeredWindowRange } from '../services/projection/dailyRefine';
+import { isoDate, todayIsoLocal, finiteAnchorRun, calendarFromMonthIndex } from '../services/projection/dailyRefine';
+import { mergeDailyRealPoint, sliceDailyRangeByX, decimateForRender, realOnlyMonthPoints, buildEnrichedMonth } from '../services/projection/dailyCurve';
+import { centeredWindowRange } from '../services/projection/dailyRefine';
 import { buildDailyLedger, type DailyLedgerPoint } from '../services/projection/dailyLedger';
-import { buildDailyPastLedger, PAST_ACCOUNT_KEYS } from '../services/history/dailyPastLedger';
+import { buildDailyPastLedger } from '../services/history/dailyPastLedger';
 import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCAD, formatCompactCAD } from '../utils/format';
@@ -556,40 +577,21 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // sert de valeur d'entrée, non rendue).
     const zoom = useTimeChartZoom<ProjectionChartPoint>(displayData as ProjectionChartPoint[], { minPoints: 1 });
 
-    // [FUTUR-DAILY] Fenêtre à raffiner au jour = la fenêtre ZOOMÉE, traduite en dates calendaires.
-    // ⚠️ Le hook de zoom indexe le tableau MENSUEL et c'est très bien ainsi : lui substituer des
-    // points quotidiens casserait son indexation. Ce qui la rend valide n'est PAS le type de l'axe
-    // (numérique depuis le lot B étape 1) mais l'espacement UNIFORME des données — un point par
-    // mois, sans trou : position ∝ index reste alors vrai par simple transformation affine.
-    // Le mensuel pilote donc la FENÊTRE, et le quotidien n'est calculé que pour la remplir —
-    // c'est exactement ce que « si je zoom » autorise.
-    // ⚠️ [FUTUR-DAILY-INFOBULLE-ONLY 2026-08-11] Cette fenêtre n'a plus qu'UN consommateur : le
-    // passé réel de la COURBE (`dailyPastByDate`). Le tableau jour-par-jour qui la consommait aussi
-    // a été RETIRÉ à la demande de Marc (« je veux que juste dans l'infobulle ce soit l'information
-    // par jour […] pas de nouvel onglet ou quoi ») — le détail du jour vit dans l'infobulle,
-    // uniquement. D'où la borne `DAILY_CURVE_MAX_POINTS` ajoutée EN TÊTE : hors vue au jour, plus
-    // rien ne lit ce résultat, et le calculer reconstruirait le passé pour rien à chaque cran.
-    const dailyWindow = useMemo(() => {
-        if (!zoom.isZoomed) return null;
-        const vis = zoom.visibleData;
-        if (vis.length < 2 || vis.length > DAILY_CURVE_MAX_POINTS) return null;
-        // ⚠️ `finiteAnchorRun` et NON `Number(p.NetWorth) || 0` (finding silent-failure #577) :
-        // `buildPastPrefix` laisse `NetWorth` à `undefined` AVANT la première transaction connue,
-        // exprès. Le coercer aurait ancré tout le raffinement sur un patrimoine de 0 $ inventé.
-        const anchors = finiteAnchorRun(vis, startYear, startMonth);
-        if (anchors.length < 2) return null;
-        const first = anchors[0];
-        const last = anchors[anchors.length - 1];
-        return {
-            from: isoDate(first.year, first.month, 1),
-            to: isoDate(last.year, last.month, daysInMonth(last.year, last.month)),
-            anchors,
-            // ⚠️ `todayIsoLocal` et NON une recomposition maison : le premier jet mélangeait une
-            // année/un mois LOCAUX avec un jour lu en UTC → 30 jours d'écart tous les soirs au Québec
-            // (finding CRITIQUE de la revue, reproduit). La fonction est pure et testée.
-            today: todayIsoLocal(),
-        };
-    }, [zoom.isZoomed, zoom.visibleData, startYear, startMonth]);
+    // [FUTUR-DAILY-NATIVE] La plage MENSUELLE ventilable : la plus longue plage contiguë de
+    // `displayData` à valeur nette FINIE. C'est la base de TOUTE la série quotidienne (courbe ET
+    // infobulle) — plus aucune dépendance au zoom : le jour est la résolution de BASE de la courbe
+    // (demande Marc 2026-08-12 : « je veux pas un bouton je veux pouvoir selectionner sur la
+    // courbe direct », cadrage 3/3 : clic = jour partout, survol = jour, courbe tracée au jour).
+    // ⚠️ `finiteAnchorRun` et NON `Number(p.NetWorth) || 0` (finding silent-failure #577) :
+    // `buildPastPrefix` laisse `NetWorth` à `undefined` AVANT la première transaction connue,
+    // exprès. Le coercer aurait ancré toute la ventilation sur un patrimoine de 0 $ inventé.
+    const dailyAnchors = useMemo(
+        () => finiteAnchorRun(displayData as ProjectionChartPoint[], startYear, startMonth),
+        [displayData, startYear, startMonth],
+    );
+    // Aujourd'hui, calculé UNE fois par montage (`todayIsoLocal` : locale-sûr, finding #574). La
+    // frontière réel/projeté ne bouge pas pendant une session d'écran.
+    const [todayIso] = useState(() => todayIsoLocal());
 
     // ⚠️ Replis STABLES (constantes de module) et non `?? []` inline : un littéral crée une NOUVELLE
     // référence à chaque rendu, ce qui ferait recalculer les `useMemo` qui en dépendent à chaque
@@ -702,18 +704,22 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // comptes, de mes dépenses »). Sans ça, un jour d'hier était INTERPOLÉ entre deux points mensuels
     // — un lissage là où l'app connaît la vérité au jour près (transactions datées, prix datés).
     //
-    // ⚠️ Dépendances PRIMITIVES (`from`/`to`/`today`) et non l'objet `dailyWindow` : celui-ci est
-    // recréé à CHAQUE frame de zoom/pan, ce qui rejouerait la reconstruction complète 60 fois par
-    // seconde. Même précaution que le panneau quotidien, pour la même raison.
-    const dailyWindowFrom = dailyWindow?.from;
-    const dailyWindowTo = dailyWindow?.to;
-    const dailyWindowToday = dailyWindow?.today;
+    // [FUTUR-DAILY-NATIVE] Le passé RÉEL au jour, reconstruit UNE fois pour TOUTE la plage passée
+    // (plus seulement la fenêtre zoomée) : from = 1er mois ventilable du préfixe, to = aujourd'hui.
+    // ⚠️ Dépendances PRIMITIVES (`from`/`to`) : un objet intermédiaire recréé à chaque rendu
+    // rejouerait la reconstruction à chaque frame de zoom/pan (classe de fuite déjà vue ici).
+    const dailyPastFrom = useMemo(() => {
+        const first = dailyAnchors[0];
+        if (!first) return null;
+        const firstIso = isoDate(first.year, first.month, 1);
+        return firstIso < todayIso ? firstIso : null; // aucun passé ventilable → pas de reconstruction
+    }, [dailyAnchors, todayIso]);
     const dailyPast = useMemo(() => {
-        if (!dailyWindowFrom || !dailyWindowTo || !dailyWindowToday) return null;
+        if (!dailyPastFrom) return null;
         const built = buildDailyPastLedger({
-            from: dailyWindowFrom,
-            to: dailyWindowTo,
-            today: dailyWindowToday,
+            from: dailyPastFrom,
+            to: todayIso,
+            today: todayIso,
             transactions,
             currentCash: calculatedStartingCash || 0,
             assets: storeAssets,
@@ -731,107 +737,111 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             undatedTotal: built.undatedTotal,
             flowsAfterNowDate: built.flowsAfterNowDate,
         };
-    }, [dailyWindowFrom, dailyWindowTo, dailyWindowToday, transactions, calculatedStartingCash, storeAssets, fxRates, realEstateGoals, startYear, currentDebtNonImmo]);
+    }, [dailyPastFrom, todayIso, transactions, calculatedStartingCash, storeAssets, fxRates, realEstateGoals, startYear, currentDebtNonImmo]);
     const dailyPastByDate = dailyPast?.byDate ?? null;
 
-    const dailyChartData = useMemo<ProjectionChartPoint[] | null>(() => {
-        if (!zoom.isZoomed) return null;
-        const vis = zoom.visibleData as ProjectionChartPoint[];
-        // Au-delà, le jour n'est plus lisible et la ventilation coûterait pour rien.
-        if (vis.length < 2 || vis.length > DAILY_CURVE_MAX_POINTS) return null;
-        // ⚠️ `finiteAnchorRun` et NON un `filter` : il rend la plus longue plage CONTIGUË à valeur
-        // nette finie. `buildPastPrefix` laisse `NetWorth` à `undefined` avant la 1re transaction
-        // connue, exprès — et ventiler par PAIRES de mois non voisins étalerait l'écart de deux
-        // mois sur un seul, en silence.
-        const anchors = finiteAnchorRun(vis, startYear, startMonth);
-        if (anchors.length < 2) return null;
-        const keep = new Set(anchors.map((a) => a.monthIndex));
-        const months = vis.filter((p) => keep.has(p.monthIndex));
-        if (months.length < 2) return null;
+    // Contexte daté (paie/charges/dettes) — un objet STABLE pour la ventilation courbe + infobulle.
+    const dailyDated = useMemo(() => ({
+        recurring: storeRecurring,
+        monthlyNetSalary: dailyMonthlyNet,
+        monthlyDebtPayment: dailyMonthlyDebt,
+    }), [storeRecurring, dailyMonthlyNet, dailyMonthlyDebt]);
 
-        // [FUTUR-DAILY-FULL] TOUS les champs du moteur ventilés au jour — plus seulement `NetWorth`.
-        // C'est ce qui permet à l'infobulle et aux aires empilées de fonctionner au JOUR sans être
-        // réécrites : elles lisent les mêmes clés qu'au mois, avec les montants du jour.
+    /**
+     * [FUTUR-DAILY-NATIVE] LA série de la courbe : toute la projection ventilée au JOUR, une fois
+     * par changement de projection (~100 ms et ~15 champs/point pour 30 ans — mesuré ; la
+     * ventilation COMPLÈTE à 99 champs coûterait ~500 ms et ~180 Mo, elle est réservée à
+     * l'infobulle via `enrichDailyPoint`). Le zoom, lui, continue d'indexer le tableau MENSUEL :
+     * sa fenêtre découpe cette série par VALEUR d'abscisse (`sliceDailyByX`), jamais par indice.
+     */
+    const dailyAll = useMemo<ProjectionChartPoint[]>(() => {
+        if (dailyAnchors.length < 2) return EMPTY_ARRAY as unknown as ProjectionChartPoint[];
+        const keep = new Set(dailyAnchors.map((a) => a.monthIndex));
+        const months = (displayData as ProjectionChartPoint[]).filter((p) => keep.has(p.monthIndex));
+        if (months.length < 2) return EMPTY_ARRAY as unknown as ProjectionChartPoint[];
+
         const days = buildDailyLedger({
             months,
             startYear,
             startMonth,
-            dated: {
-                recurring: storeRecurring,
-                monthlyNetSalary: dailyMonthlyNet,
-                monthlyDebtPayment: dailyMonthlyDebt,
-            },
+            dated: dailyDated,
+            fields: CURVE_FIELDS,
         });
-        if (days.length === 0) return null;
+        if (days.length === 0) return EMPTY_ARRAY as unknown as ProjectionChartPoint[];
 
-        const merged = days.map((d) => {
-            const { year, month } = calendarFromMonthIndex(startYear, startMonth, d.hostMonthIndex);
-            // ⚠️ Abscisse FRACTIONNAIRE : c'est ce que l'axe numérique (étape 1) rend possible.
-            // `axisXAtDay` garantit que le jour 1 vaut EXACTEMENT l'entier du mois, donc les
-            // ancrages entiers (« Aujourd'hui », frontière, jalons) restent alignés.
-            // `hostMonthIndex` reste la clé de jointure vers le mois du moteur.
-            const x = axisXAtDay(d.hostMonthIndex, d.dayOfMonth, year, month);
-            const real = dailyPastByDate?.get(d.dayIso);
-            if (!real) return { ...d, monthIndex: x } as DailyChartPoint as unknown as ProjectionChartPoint;
-
-            // ⚠️ On RECONSTRUIT le point à partir de rien plutôt que d'écraser quelques champs du
-            // point projeté. Un `{...projeté, ...réel}` laisserait filtrer des dizaines de valeurs
-            // PROJETÉES (impôt dormant, rentes, solde d'impôt, cotisations…) dans une journée
-            // présentée comme RÉELLE — des chiffres crédibles, invérifiables, et faux par nature.
-            // Ce qui n'est pas mesuré doit être ABSENT, donc affiché « — ».
-            const point: Record<string, unknown> = {
-                monthIndex: x,
-                hostMonthIndex: d.hostMonthIndex,
-                dayIso: d.dayIso,
-                dayOfMonth: d.dayOfMonth,
-                dateLabel: d.dateLabel,
-                age: d.age,
-                year: d.year,
-                isDailyPoint: true,
-                dayIsReal: true,
-                dayIsDated: real.isDated,
-                dayLabels: real.labels,
-                priceAgeMaxDays: real.priceAgeMaxDays,
-                hasEstimatedPrice: real.hasEstimatedPrice,
-                Liquidites: real.Liquidites,
-                Immobilier: real.Immobilier,
-                DettesNonImmo: real.DettesNonImmo,
-                NetWorth: real.NetWorth,
-                Income: real.Income,
-                Expenses: real.Expenses,
-                Savings: real.Savings,
-                NetTransferLiquid: real.NetTransferLiquid,
-            };
-            for (const k of PAST_ACCOUNT_KEYS) {
-                point[k] = real[k];
-                point[`NetTransfer${k}`] = real.deposits[k];
-                point[`MarketGrowth${k}`] = real.growth[k];
-            }
-            return point as unknown as ProjectionChartPoint;
-        });
-
-        // ⚠️ Les écarts jour-à-jour se recalculent APRÈS la fusion : `buildDailyLedger` les avait
-        // posés sur des valeurs projetées, que le passé réel vient de remplacer. Les laisser tels
-        // quels afficherait une variation qui ne correspond à AUCUN des deux points affichés.
-        for (let i = 1; i < merged.length; i++) {
-            const prevP = merged[i - 1] as unknown as Record<string, unknown>;
-            const curP = merged[i] as unknown as Record<string, unknown>;
-            for (const [diffKey, srcKey] of [['diffNW', 'NetWorth'], ['diffCELI', 'CELI'], ['diffREER', 'REER'], ['diffLiquid', 'Liquidites']] as const) {
-                const now = curP[srcKey];
-                const before = prevP[srcKey];
-                if (typeof now === 'number' && typeof before === 'number' && Number.isFinite(now) && Number.isFinite(before)) {
-                    curP[diffKey] = now - before;
-                } else {
-                    delete curP[diffKey];
-                }
-            }
+        const points = days.map((d) => mergeDailyRealPoint(d, startYear, startMonth, dailyPastByDate, CURVE_FIELDS));
+        // ⚠️ `FluxImpots` ≈ 0 (tous les jours SAUF l'échéance, cadence monthEnd) devient ABSENT :
+        // recharts ne rend pas de rect pour une valeur absente — sinon la Bar créerait ~11 000
+        // rects DOM à hauteur nulle. Vérifié par la sonde perf (comptage des rects rendus).
+        for (const p of points) {
+            const v = (p as Record<string, unknown>).FluxImpots;
+            if (typeof v === 'number' && Math.abs(v) < 0.005) delete (p as Record<string, unknown>).FluxImpots;
         }
-        // Le 1er jour de la fenêtre n'a pas de veille connue : aucun `diff*` (jamais « +0 $ » en vert).
-        for (const k of ['diffNW', 'diffCELI', 'diffREER', 'diffLiquid']) {
-            delete (merged[0] as unknown as Record<string, unknown>)[k];
+        // [FUTUR-DAILY-NATIVE] Le mois ANCRE (1er de la série, non ventilable — pas de mois d'avant)
+        // n'est pas perdu pour autant : ses jours PASSÉS RÉELS sont construits depuis les données
+        // seules (no-fake), et à défaut le point MENSUEL d'origine tient la position — sinon la
+        // courbe ET la bande « Passé réel » commençaient un mois trop tard (e2e d'axe, bande 4 px).
+        const anchorHost = months[0].monthIndex;
+        const anchorDays = realOnlyMonthPoints(anchorHost, startYear, startMonth, dailyPastByDate, CURVE_FIELDS);
+        if (anchorDays.length > 0) return [...anchorDays, ...points];
+        // ⚠️ `FluxImpots` RETIRÉ du point mensuel de repli (finding projection-validator #592) : ce
+        // point porte le TOTAL du mois à l'abscisse du 1er — au milieu de barres quotidiennes, une
+        // barre mensuelle pleine au mauvais jour est un faux visuel. Son échéance vit dans le mois
+        // suivant ventilé ; ici l'honnête est l'absence.
+        const { FluxImpots: _anchorFlux, ...anchorRest } = months[0] as ProjectionChartPoint & { FluxImpots?: number };
+        return [anchorRest as ProjectionChartPoint, ...points];
+    }, [dailyAnchors, displayData, startYear, startMonth, dailyDated, dailyPastByDate]);
+
+    /**
+     * [FUTUR-DAILY-NATIVE] Infobulle : le point COMPLET (99 champs) du jour visé, ventilé À LA
+     * DEMANDE sur 3 mois autour du mois hôte (~10 ms la première fois, caché ensuite par mois).
+     * 3 mois et non 2 : les `diff*` du 1er jour du mois hôte exigent la veille, donc le mois
+     * précédent rendu — qui exige lui-même SON prédécesseur comme ancre d'entrée.
+     * Même moteur (`buildDailyLedger`), mêmes entrées que la courbe → aucune divergence possible
+     * (garde-test de parité). Le merge passé réel passe par la MÊME fonction que la courbe.
+     */
+    // ⚠️ `useMemo` et NON `useRef`+`useEffect` de purge (finding revue #592) : un effet s'exécute
+    // APRÈS la peinture — entre le rendu sur de nouvelles données et l'effet, un mousemove pouvait
+    // servir une entrée calculée sur les ANCIENNES données. Le useMemo se recrée PENDANT le rendu :
+    // la fenêtre de staleness n'existe pas, par construction.
+    const enrichCache = useMemo(() => ({
+        byHost: new Map<number, Map<string, ProjectionChartPoint>>(),
+        failLogged: new Set<number>(),
+        // Les deps SONT les entrées de l'enrichissement — un cache qui survivrait à l'une d'elles
+        // servirait des montants périmés. La règle les voit « inutiles » (la fabrique ne les lit
+        // pas) : c'est exact, et c'est le but — elles pilotent l'INVALIDATION, pas la valeur.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), [displayData, dailyDated, dailyPastByDate, startYear, startMonth]);
+    const enrichDailyPoint = useCallback((p: ProjectionChartPoint | null): ProjectionChartPoint | null => {
+        if (!p) return null;
+        const dp = p as unknown as DailyChartPoint;
+        const host = dp.hostMonthIndex;
+        const iso = dp.dayIso;
+        if (typeof host !== 'number' || typeof iso !== 'string') return p; // pas un jour de la courbe
+        const cached = enrichCache.byHost.get(host);
+        if (cached) return cached.get(iso) ?? p;
+
+        // ⚠️ Toute la construction (y compris le cas ANCRE hostIdx=0, ventilé du réel seul) vit
+        // dans `buildEnrichedMonth` — PUR et testé. Finding CRITIQUE silent-failure #592 : la
+        // version précédente mettait en cache une Map VIDE pour le mois ancre (`buildDailyLedger`
+        // rend [] sur 1 seul mois) → l'infobulle de ce mois restait LÉGÈRE pour toujours, une
+        // paie réelle devenant invisible comme si elle était nulle. Règles : un échec ne se met
+        // JAMAIS en cache (le prochain survol retente), et il se JOURNALISE (une fois par mois
+        // hôte — pas au rythme du mousemove).
+        const byIso = buildEnrichedMonth(
+            displayData as ProjectionChartPoint[], host, startYear, startMonth,
+            dailyPastByDate, dailyDated, buildDailyLedger as never,
+        );
+        if (byIso === null) {
+            if (!enrichCache.failLogged.has(host)) {
+                enrichCache.failLogged.add(host);
+                logError({ source: 'ui', severity: 'warning', message: 'FUTUR-DAILY-NATIVE : enrichissement du mois impossible, infobulle en champs réduits', context: { host } });
+            }
+            return p;
         }
-        return merged;
-    }, [zoom.isZoomed, zoom.visibleData, startYear, startMonth, storeRecurring, dailyMonthlyNet, dailyMonthlyDebt, dailyPastByDate]);
+        enrichCache.byHost.set(host, byIso);
+        return byIso.get(iso) ?? p;
+    }, [displayData, startYear, startMonth, dailyDated, dailyPastByDate, enrichCache]);
 
     /**
      * Point à passer à la modale « Détail complet ».
@@ -851,52 +861,58 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         return (displayData as ProjectionChartPoint[]).find((d) => d.monthIndex === host) ?? null;
     }, [displayData]);
 
-    /** Série réellement tracée : les jours quand la fenêtre le permet, sinon les mois. */
-    const chartSeries = (dailyChartData ?? zoom.visibleData) as ProjectionChartPoint[];
-    const isDailyCurve = dailyChartData !== null;
+    /**
+     * [FUTUR-DAILY-NATIVE] Deux séries, deux rôles :
+     *  • `daysInWindow` — la tranche quotidienne COMPLÈTE de la fenêtre de zoom (bornes mensuelles,
+     *    découpe par valeur d'abscisse). C'est LA vérité de sélection : clic, Veille/Lendemain et
+     *    résolution géométrique y travaillent — le jour exact est sélectionnable à toute fenêtre.
+     *  • `chartSeries` — ce que recharts TRACE : la même tranche, DÉCIMÉE au-delà de
+     *    RENDER_MAX_POINTS (mesuré : ~11 000 pts × 8 aires gèlent le main thread au point que
+     *    `mouse.wheel` expire — clause annoncée à Marc au cadrage GO).
+     * Repli mensuel uniquement quand la ventilation est impossible (< 2 mois à valeur nette finie).
+     */
+    const visLoMonth = zoom.visibleData[0]?.monthIndex;
+    const visHiMonth = zoom.visibleData[zoom.visibleData.length - 1]?.monthIndex;
+    const dailyWindowRange = useMemo<[number, number]>(() => {
+        if (dailyAll.length === 0 || visLoMonth === undefined || visHiMonth === undefined) return [0, 0];
+        return sliceDailyRangeByX(dailyAll, visLoMonth, visHiMonth);
+    }, [dailyAll, visLoMonth, visHiMonth]);
+    const daysInWindow = useMemo<ProjectionChartPoint[]>(
+        () => dailyAll.slice(dailyWindowRange[0], dailyWindowRange[1]),
+        [dailyAll, dailyWindowRange],
+    );
+    const isDailyCurve = daysInWindow.length >= 2;
+    const chartSeries = useMemo<ProjectionChartPoint[]>(() => {
+        if (!isDailyCurve) return zoom.visibleData as ProjectionChartPoint[];
+        return decimateForRender(daysInWindow, dailyWindowRange[0], RENDER_MAX_POINTS);
+    }, [isDailyCurve, daysInWindow, dailyWindowRange, zoom.visibleData]);
+    /** Série de RÉSOLUTION des interactions : les jours complets, ou le mensuel en repli. */
+    const selectSeries = isDailyCurve ? daysInWindow : (zoom.visibleData as ProjectionChartPoint[]);
+
 
     // [FUTUR-DAILY-SELECT-PATH] Depuis un point MENSUEL figé : zoomer la fenêtre sur CE mois → vue
-    // au jour, centrée là où l'utilisateur vient de cliquer. C'est le chemin OFFERT au moment de
-    // l'intention — Marc cliquait « mai 2027 » en voulant un jour (capture 2026-08-12), et rien ne
-    // lui disait que la vue au jour exigeait de zoomer sous 6 mois d'abord (3e occurrence de la
-    // classe UX-UNREACHABLE sur ce chantier : REACH, PAST-REACH, puis ce clic-ci).
-    const zoomToDaysAt = useCallback((p: ProjectionChartPoint | null) => {
-        if (!p) return;
-        const host = (p as unknown as DailyChartPoint).hostMonthIndex ?? p.monthIndex;
-        const idx = (displayData as ProjectionChartPoint[]).findIndex((d) => d.monthIndex === host);
-        // ⚠️ Pas de no-op MUET (finding silent-failure #589) : si le mois figé n'existe plus dans
-        // `displayData` (course étroite — un intrant du préfixe passé a changé pendant que
-        // l'infobulle restait figée), un retour silencieux recréerait exactement la classe
-        // « je clique et rien ne se passe » que ce bouton corrige. On journalise et on LIBÈRE
-        // l'infobulle : l'écran répond, même quand il ne peut pas zoomer.
-        if (idx === -1) {
-            logError({ source: 'ui', severity: 'warning', message: 'FUTUR-DAILY-SELECT-PATH : mois figé absent de la fenêtre courante', context: { host } });
-            tooltip.release();
-            return;
-        }
-        // Fenêtrage par le helper PUR testé (`centeredWindowRange`, finding revue #589 : la version
-        // inline re-codait le clamp sans test de bord) — même largeur que le bouton « Jour »,
-        // centrée sur le mois CLIQUÉ.
-        const range = centeredWindowRange(displayData.length, idx, DAILY_CURVE_MAX_POINTS);
-        if (range === null) return; // jeu trop court pour une fenêtre : la vue au jour n'existe pas ici
-        tooltip.release(); // le point figé est mensuel — le garder figé au-dessus d'une courbe au jour mentirait
-        zoom.showRange(range[0], range[1]);
-    }, [displayData, tooltip, zoom]);
+    // au jour, centrée là où l'utilisateur venait de cliquer, N'EXISTE PLUS : la courbe est au jour
+    // PARTOUT ([FUTUR-DAILY-NATIVE]) — le clic sélectionne directement le jour, sans étape.
 
     // [FUTUR-DAILY-SELECT-STEP] Depuis un point QUOTIDIEN figé : figer la veille / le lendemain sans
-    // re-viser au pixel (à ~150 jours affichés, un jour ≈ 6 px — mesuré). Fonctionne aussi au DOIGT,
-    // où le zoom molette n'existe pas. La recherche se fait par VALEUR d'abscisse dans la série
-    // rendue (les jours ne sont pas régulièrement espacés — même raison que resolvePointByX).
+    // re-viser au pixel (à ~150 jours affichés, un jour ≈ 6 px — mesuré ; en vue 30 ans, ~0,3 px).
+    // Fonctionne aussi au DOIGT, où le zoom molette n'existe pas. La recherche se fait par VALEUR
+    // d'abscisse dans la série rendue (les jours ne sont pas régulièrement espacés — même raison
+    // que resolvePointByX).
+    // ⚠️ `selectSeries` (tranche COMPLÈTE) et non `chartSeries` (décimée) : les flèches avancent
+    // d'exactement UN jour, y compris ceux que le tracé décimé ne rend pas.
     const frozenSeriesIdx = useMemo(() => {
         if (tooltip.mode !== 'frozen' || !tooltip.point) return -1;
         const x = tooltip.point.monthIndex;
-        return chartSeries.findIndex((d) => d.monthIndex === x);
-    }, [tooltip.mode, tooltip.point, chartSeries]);
+        return selectSeries.findIndex((d) => d.monthIndex === x);
+    }, [tooltip.mode, tooltip.point, selectSeries]);
     const stepDay = useCallback((dir: -1 | 1) => {
         if (frozenSeriesIdx === -1) return;
-        const next = chartSeries[frozenSeriesIdx + dir];
-        if (next) tooltip.freezeOn(next);
-    }, [frozenSeriesIdx, chartSeries, tooltip]);
+        const next = selectSeries[frozenSeriesIdx + dir];
+        // ⚠️ `enrichDailyPoint` : la série de la courbe est LÉGÈRE (champs tracés) — l'infobulle
+        // fige toujours le point COMPLET du jour.
+        if (next) tooltip.freezeOn(enrichDailyPoint(next) ?? next);
+    }, [frozenSeriesIdx, selectSeries, tooltip, enrichDailyPoint]);
 
     // [R3] Clic sur le graphe = FIGE le tooltip (avant : ouvrait directement la modale).
     // La modale exhaustive s'ouvre désormais via le bouton « Détail complet » du tooltip
@@ -923,9 +939,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const down = pointerDownPosRef.current;
         // ⚠️ Tolérance de dérive ADAPTATIVE (sonde 2026-08-12 : avec le seuil fixe à 6 px, un clic
         // qui dérive de 8 px pendant le geste ne faisait RIEN — mesuré drift 8/10 px → aucun jour
-        // figé). En vue au jour, un « pan » de 14 px déplace la fenêtre de ~0,08 mois : imperceptible,
-        // donc le geste est un CLIC. En vue large, 14 px de pan = plusieurs mois : on garde 6 px.
-        const driftTol = isDailyCurve ? 14 : 6;
+        // figé). Le critère est la DENSITÉ de la fenêtre, pas le mode (la courbe est toujours au
+        // jour) : fenêtre serrée (≤ ~6 mois rendus) → 14 px de pan ≈ 0,08 mois, imperceptible,
+        // donc le geste est un CLIC ; vue large → 14 px = plusieurs mois de pan réel, on garde 6 px.
+        const driftTol = selectSeries.length <= 190 ? 14 : 6;
         if (down && (Math.abs(e.clientX - down.x) > driftTol || Math.abs(e.clientY - down.y) > driftTol)) return; // glisser = pan
         // Les pastilles d'événement ont DÉJÀ leur action (ouvrir la modale). Sans ce garde, le même
         // geste ferait les deux — modale ouverte ET infobulle figée dessous.
@@ -937,13 +954,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         // de mars 1/31. Résoudre par indice y sélectionnerait un autre jour que celui visé, sans
         // rien casser d'apparent. On résout donc par valeur d'abscisse, ce qui reste exact pour la
         // série mensuelle uniforme.
+        // ⚠️ `selectSeries` (tranche quotidienne COMPLÈTE) et non `chartSeries` (tracé décimé en
+        // vue large) : le clic sélectionne le jour EXACT sous le curseur, y compris un jour que le
+        // tracé ne rend pas — c'est le contrat « sélectionner sur la courbe direct ».
         const point = resolvePointByX(
             e.clientX,
             rect ? { left: rect.left, width: rect.width } : null,
-            chartSeries,
+            selectSeries,
             (p) => p.monthIndex,
         ) ?? lastHoverPointRef.current; // repli : dernier point survolé
-        if (point) tooltip.freezeOn(point);
+        // ⚠️ Le point de la série est LÉGER (champs de la courbe) : on fige sa version COMPLÈTE.
+        if (point) tooltip.freezeOn(enrichDailyPoint(point) ?? point);
     };
 
     // C6 fix (Sprint 1B) — Garde déplacée ICI (après tous les hooks) pour
@@ -1009,13 +1030,16 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const i = (displayData as ProjectionChartPoint[]).findIndex((d) => d.monthIndex >= yrs * 12);
         return i === -1 ? displayData.length - 1 : i;
     };
-    /** Indice TABLEAU du mois courant dans `displayData` (fin du préfixe passé, en pratique). */
+    // [FUTUR-DAILY-NATIVE + finding a11y #592] Le bouton « Jour » (chemin vers la vue au jour) est
+    // retiré — mais il était aussi le SEUL contrôle FOCUSABLE menant à une fenêtre centrée sur
+    // AUJOURD'HUI : les presets « 5 ans… Tout » partent tous de l'origine. « Aujourd'hui » reprend
+    // ce rôle-là (preset de FENÊTRE temporelle, ~6 mois autour du présent — pas un mode) : au
+    // clavier, Tab + Entrée suffisent à regarder le présent de près. WCAG 2.1.1.
     const todayArrayIndex = (() => {
         const i = (displayData as ProjectionChartPoint[]).findIndex((d) => d.monthIndex >= todayMonthIndex);
         return i === -1 ? displayData.length - 1 : i;
     })();
-    /** [FUTUR-DAILY-REACH] Fenêtre du bouton « Jour » — `null` ⇒ bouton masqué (cf. `dailyWindowRange`). */
-    const dailyPresetRange = dailyWindowRange(displayData.length, todayArrayIndex, DAILY_CURVE_MAX_POINTS);
+    const todayPresetRange = centeredWindowRange(displayData.length, todayArrayIndex, 7);
 
     return (
         <div className="space-y-6 animate-fade-in pb-24">
@@ -1220,18 +1244,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 {/* G4 — sélecteur de période façon Google Finance */}
                 <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                     <div className="flex gap-0.5 p-0.5 rounded-card bg-black/30 border border-white/5">
-                        {/* [FUTUR-DAILY-REACH] Chemin d'accès DIRECT à la vue au jour. Sans lui, le seul
-                            moyen d'y descendre était la molette — 23 à 31 crans depuis « Tout » (mesuré),
-                            et rien du tout au doigt, `useTimeChartZoom` n'écoutant que `wheel` + souris.
-                            Un clic pose ici exactement la fenêtre que la vue au jour exige. */}
-                        {dailyPresetRange && (
+                        {/* [FUTUR-DAILY-NATIVE] Le bouton « Jour » a disparu (la courbe est au jour à
+                            toute fenêtre) ; « Aujourd'hui » = preset de FENÊTRE autour du présent —
+                            seul chemin FOCUSABLE vers cette fenêtre (finding a11y #592). */}
+                        {todayPresetRange && (
                             <button
                                 type="button"
-                                onClick={() => zoom.showRange(dailyPresetRange[0], dailyPresetRange[1])}
-                                title="Voir la courbe jour par jour à partir d'aujourd'hui"
-                                className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${isDailyCurve ? 'bg-primary text-dark' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                                onClick={() => zoom.showRange(todayPresetRange[0], todayPresetRange[1])}
+                                title="Fenêtre d'environ 6 mois centrée sur aujourd'hui"
+                                className="px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring text-ink-300 hover:text-white hover:bg-white/10"
                             >
-                                Jour
+                                Aujourd'hui
                             </button>
                         )}
                         {[5, 10, 20, 30].filter((y) => y * 12 < lastMonthIndex).map((y) => {
@@ -1257,7 +1280,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-tiny text-ink-500 hidden md:block" aria-hidden="true">
-                            « Jour » = jour par jour · clic = détail · molette = zoom · glisser = défiler
+                            survol = jour · clic = fige le jour · molette = zoom · glisser = défiler
                         </span>
                         {/* PH4-FUT « leviers-d'abord » — revenir au composeur de leviers (ré-optimiser).
                             [PROJECTION-PERSIST] même chemin que « Rechoisir mes leviers » : efface AUSSI
@@ -1349,7 +1372,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         <ComposedChart
                             data={chartSeries}
                             margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
-                            onMouseMove={((s: { activePayload?: Array<{ payload: ProjectionChartPoint }> }) => { const p = s?.activePayload?.[0]?.payload; if (p) { lastHoverPointRef.current = p; tooltip.onHoverPoint(p); } }) as unknown as (nextState: unknown, event: unknown) => void}
+                            onMouseMove={((s: { activePayload?: Array<{ payload: ProjectionChartPoint }> }) => {
+                                // [FUTUR-DAILY-NATIVE] Le point recharts est LÉGER (champs de la courbe) :
+                                // l'infobulle reçoit sa version COMPLÈTE, ventilée à la demande et cachée
+                                // par mois (~10 ms la 1re entrée dans un mois, 0 ensuite).
+                                const p = s?.activePayload?.[0]?.payload;
+                                if (p) { const full = enrichDailyPoint(p) ?? p; lastHoverPointRef.current = full; tooltip.onHoverPoint(full); }
+                            }) as unknown as (nextState: unknown, event: unknown) => void}
                             onMouseLeave={(() => tooltip.onChartLeave()) as unknown as () => void}
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
@@ -1394,7 +1423,19 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             <YAxis stroke="#666" tick={{fontSize: 10}} domain={['auto', 'auto']} tickFormatter={(val) => isPrivacyMode ? '***' : `${(val/1000000).toFixed(1)}M`} />
 
                             {pastPrefix.length > 0 && (
-                                <ReferenceArea x1={pastStartIndex} x2={0} fill="#22d3ee" fillOpacity={0.05} stroke="none" />
+                                <ReferenceArea
+                                    // ⚠️ [FUTUR-DAILY-NATIVE] x1 clampé au 1er point RENDU : le 1er mois
+                                    // de `displayData` sert d'ANCRE de ventilation (non rendu), donc
+                                    // `pastStartIndex` est HORS domaine — et `ifOverflow` par défaut
+                                    // (« discard ») JETTE alors toute la ReferenceArea : la bande du
+                                    // passé disparaissait ENTIÈREMENT, en silence (attrapé par l'e2e
+                                    // d'axe, timeout sur `.recharts-reference-area-rect`).
+                                    x1={isDailyCurve && dailyAll.length > 0 ? Math.max(pastStartIndex, dailyAll[0].monthIndex) : pastStartIndex}
+                                    x2={0}
+                                    fill="#22d3ee"
+                                    fillOpacity={0.05}
+                                    stroke="none"
+                                />
                             )}
                             {pastPrefix.length > 0 && (
                                 <ReferenceLine x={0} stroke="#22d3ee" strokeOpacity={0.5} strokeDasharray="3 3" label={<RefLineLabel value="Passé réel ⟵" color="#22d3ee" />} />
@@ -1424,11 +1465,18 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             {isVisible('Immobilier') && <Area type="monotone" dataKey="Immobilier" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.3} name="Équité Immo" isAnimationActive={false}/>}
 
                             {isVisible('ImpotLatent') && <Area type="monotone" dataKey="ImpotLatent" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} strokeDasharray="3 3" name="Impôt Latent" isAnimationActive={false}/>}
+                            {/* [FUTUR-DAILY-NATIVE] `FluxImpots` n'existe sur les points quotidiens
+                                QU'AUX jours d'échéance (retiré ailleurs dans `dailyAll`) : la Bar ne
+                                rend donc ~qu'un rect par an, pas 11 000 rects à hauteur nulle. */}
                             {isVisible('FluxImpots') && <Bar dataKey="FluxImpots" fill="#ef4444" fillOpacity={0.8} name="Paiement Impôts" barSize={4} isAnimationActive={false} />}
 
                             {/* G17 — Monte Carlo dessiné PAR-DESSUS la pile (sinon occulté) en
-                                cône d'incertitude : P10/P90 pointillés + médiane pleine. */}
-                            {!isDailyCurve && runMC && isVisible('montecarlo') && (
+                                cône d'incertitude : P10/P90 pointillés + médiane pleine.
+                                [FUTUR-DAILY-NATIVE] Les bandes restent tracées au jour : ce sont des
+                                percentiles MENSUELS reliés linéairement entre fins de mois (même
+                                statut assumé que la croissance étalée sur le mois) — les masquer les
+                                ferait disparaître PARTOUT maintenant que tout est au jour. */}
+                            {runMC && isVisible('montecarlo') && (
                                 <>
                                     <Line type="monotone" dataKey="P90" stroke="#60a5fa" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Optimiste (P90)" isAnimationActive={false} />
                                     <Line type="monotone" dataKey="P10" stroke="#f87171" strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Pessimiste (P10)" isAnimationActive={false} />
@@ -1438,7 +1486,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
                             {isVisible('NetWorth') && <Line type="monotone" dataKey="NetWorth" stroke="#fff" strokeWidth={3} dot={false} name="Valeur Nette Totale" isAnimationActive={false}/>}
                             {/* PH2-d — courbe VERROUILLÉE (référence figée), superposée à l'aperçu live. */}
-                            {!isDailyCurve && lockedByMonth && <Line type="monotone" dataKey="lockedNetWorth" stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Courbe verrouillée 🔒" isAnimationActive={false} />}
+                            {lockedByMonth && <Line type="monotone" dataKey="lockedNetWorth" stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Courbe verrouillée 🔒" isAnimationActive={false} />}
 
                             {isVisible('events') && shownLifeEvents.map((evt, i) => (
                                 <ReferenceDot
@@ -1476,35 +1524,29 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                      )}
                 </div>
 
-                {/* [FUTUR-DAILY lot B étape 2] Le graphe est passé au JOUR : il faut le DIRE, et dire
-                    aussi pourquoi les aires par compte ont disparu. Les faire disparaître en silence
-                    laisserait croire à un bug ; les garder au mois sous une courbe quotidienne
-                    afficherait deux granularités superposées sans le signaler. */}
-                {/* [FUTUR-DAILY-SELECT-PATH] Fenêtre assez serrée mais vue au jour IMPOSSIBLE (ancres
-                    mensuelles à valeur nette inconnue sur la fenêtre — cas atteignable avec de vraies
-                    données dont le préfixe passé est troué). Rester muet ici ferait passer un refus
-                    honnête pour un bug : « je clique et rien n'est au jour ». */}
-                {!isDailyCurve && zoom.isZoomed && zoom.visibleData.length >= 2 && zoom.visibleData.length <= DAILY_CURVE_MAX_POINTS && (
+                {/* [FUTUR-DAILY-NATIVE] La courbe est au jour PARTOUT — la bannière est devenue une
+                    note de méthodologie compacte + les avertissements d'honnêteté conditionnels.
+                    Le repli mensuel (ventilation impossible : < 2 mois à valeur nette finie) est
+                    signalé, jamais silencieux. */}
+                {!isDailyCurve && (
                     <p role="status" className="mt-2 rounded-card border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-tiny text-ink-200">
-                        <strong className="text-amber-300">Vue au jour indisponible sur cette fenêtre</strong> —
-                        la valeur nette mensuelle est inconnue sur une partie des mois affichés (données
-                        passées incomplètes), donc les jours ne peuvent pas être reconstruits honnêtement.
-                        Déplace la fenêtre vers des mois où la courbe est tracée.
+                        <strong className="text-amber-300">Courbe au mois (repli)</strong> — la valeur nette
+                        mensuelle est inconnue sur presque toute la période (données passées incomplètes),
+                        donc les jours ne peuvent pas être reconstruits honnêtement.
                     </p>
                 )}
                 {isDailyCurve && (
                     <p role="status" className="mt-2 rounded-card border border-primary/25 bg-primary/5 px-3 py-2 text-tiny text-ink-200">
-                        <strong className="text-primary">Vue au jour</strong> — chaque point de la courbe est
-                        une journée, et <strong className="text-ink-100">tous les montants sont ceux de ce
-                        jour-là</strong> : soldes par compte, paie, dépenses, impôts.
-                        <strong className="text-ink-100"> Avant aujourd'hui, c'est du RÉEL</strong> —
-                        reconstruit depuis tes transactions datées et le prix de tes titres ce jour-là, pas
-                        une moyenne du mois. Après, c'est projeté : ce que l'app sait dater (paie du jeudi,
-                        charges récurrentes à leur quantième, solde d'impôt à l'échéance) tombe au bon jour,
-                        et le rendement du marché — qui n'a aucune date connue — reste réparti sur le mois.
-                        L'infobulle indique pour chaque jour s'il est réel ou projeté. Les bandes Monte Carlo
-                        restent masquées : ce sont des percentiles mensuels, les afficher au jour serait une
-                        précision inventée.
+                        <strong className="text-primary">Courbe au jour</strong> — chaque point est une
+                        journée : survole pour la lire, clique pour la figer.
+                        <strong className="text-ink-100"> Avant aujourd'hui, c'est du RÉEL</strong> (tes
+                        transactions datées, le prix de tes titres ce jour-là). Après, c'est projeté : ce
+                        que l'app sait dater (paie du jeudi, charges à leur quantième, solde d'impôt à
+                        l'échéance) tombe au bon jour ; le rendement du marché — sans date connue — est
+                        réparti sur le mois, et les bandes Monte Carlo sont des percentiles mensuels
+                        reliés entre fins de mois. L'infobulle dit pour chaque jour s'il est réel,
+                        daté ou réparti. En vue très large, le TRACÉ est échantillonné pour rester
+                        fluide — le survol et le clic, eux, visent toujours le jour exact.
                         {/* [FUTUR-DAILY-ANCHOR-CAVEAT] Un montant que l'ancre compte mais que la série
                             quotidienne ne peut pas placer décale TOUT le niveau passé. Le dire est le
                             minimum ; le corriger (retrancher ces flux de l'ancre) touche
@@ -1535,12 +1577,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     [FUTUR-DAILY-FULL] : `dailyLedger` ventile les soldes par compte au jour, donc la
                     table les remplit aussi. Le « — » reste réservé aux valeurs réellement absentes
                     (préfixe passé avant la 1re transaction connue). */}
+                {/* ⚠️ `selectSeries` (tranche quotidienne COMPLÈTE) et non `chartSeries` (tracé
+                    décimé) — finding a11y #592 : la table annonçait « 40 échantillonnés sur 700 »
+                    alors que la base réelle est ~11 000 jours. La table échantillonne elle-même à
+                    ~40 lignes : lui donner la série complète ne coûte rien et rend le dénominateur
+                    honnête. */}
                 <ChartDataTable
                     caption={isDailyCurve
-                        ? 'Projection du patrimoine net et des comptes par jour (vue au jour)'
-                        : 'Projection du patrimoine net et des comptes par date'}
+                        ? 'Projection du patrimoine net et des comptes, jour par jour'
+                        : 'Projection du patrimoine net et des comptes par mois (repli)'}
                     columns={dataColumns}
-                    rows={chartSeries}
+                    rows={selectSeries}
                 />
                 {/* [FUTUR-ICONS-RICH, a11y] Liste sr-only des JALONS affichés sur la courbe (RRQ/PSV/retraits/
                     impôts/retraite/FIRE…) : les pastilles SVG ne sont pas atteignables au clavier (dette
@@ -1576,10 +1623,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             userName2={config.users[1]?.name}
                             frozen={tooltip.mode === 'frozen'}
                             onOpenDetail={() => setDetailPoint(detailPointFor(tooltip.point))}
-                            onZoomToDays={() => zoomToDaysAt(tooltip.point)}
                             onStepDay={stepDay}
                             canStepPrev={frozenSeriesIdx > 0}
-                            canStepNext={frozenSeriesIdx !== -1 && frozenSeriesIdx < chartSeries.length - 1}
+                            canStepNext={frozenSeriesIdx !== -1 && frozenSeriesIdx < selectSeries.length - 1}
                         />
                     </div>,
                     document.body,

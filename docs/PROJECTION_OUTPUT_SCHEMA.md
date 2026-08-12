@@ -38,7 +38,7 @@ moteur réel** — un champ ajouté à `monthlyOutput.ts` sans classe fait écho
 | `stock` | Interpolé de la fin du mois précédent à la fin de ce mois. **Le dernier jour vaut EXACTEMENT la valeur du moteur.** | `Liquidites`, `CELI`, `REER`, `Immobilier`, `NetWorth`, `ImpotLatent`, `DettesNonImmo` |
 | `flow` | Réparti sur les jours selon sa cadence. **La somme des jours vaut EXACTEMENT le total du moteur.** | `Expenses`, `IncomeMarc`, `MarketGrowth*`, `NetTransfer*`, `FluxImpots` |
 | `monthly` | Recopié tel quel — un taux ne se divise pas. | `marginalTaxRate`, `MarketGrowthPct*`, `age` |
-| `recomputed` | Reconstruit au jour. | `dateLabel`, `diff*`, `Savings`, `lifeEvents` (posés au 1er) |
+| `recomputed` | Reconstruit au jour. | `dateLabel`, `diff*`, `Savings`, `lifeEvents`/`flowEvents` (posés à LEUR jour via `eventDays`, sinon au 1er) |
 
 Cadences de répartition (`FLOW_CADENCE`, défaut `uniform`) :
 
@@ -175,6 +175,11 @@ Note `[FISC-WHT-92PCT]` : en phase ACTIVE sans déductions, `AccruedTaxRevenu` v
 
 `lifeEvents: string[]` — événements majeurs (RAP, REER→FERR, naissance, vente immo…)
 `flowEvents: string[]` — cashflows ponctuels (voyage, achat véhicule, …)
+`eventDays?: Record<string, number>` — **[FUTUR-DAILY-EVENTS]** jour du mois (1-31) par MESSAGE
+d'événement qui en a un : événement/voyage SAISI avec date complète (le jour vient de la saisie),
+régularisation d'avril (échéance du 30, date limite ARC/RQ). Absent = aucun événement daté ce
+mois. Un événement sans entrée ici n'a PAS de jour connu — l'affichage le pose au mois (1er),
+jamais sur un jour inventé. Champ ADDITIF (aucun bump de schéma).
 
 ### Monte Carlo (overlay)
 

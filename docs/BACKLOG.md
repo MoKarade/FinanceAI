@@ -591,15 +591,15 @@
 
 ## 🧱 Dette technique
 
-- [ ] **`[FUTUR-DAILY-EVENTS]`** (M, EN COURS — retour Marc 2026-08-12 04:37 : « j'ai mis un
+- [x] **`[FUTUR-DAILY-EVENTS]`** ✅ 2026-08-12 (retour Marc 04:37 : « j'ai mis un
   événement de vie et ça m'a mis au mois et pas au bon jour, tout doit être au bon jour les impôts
   aussi ») — la DONNÉE existe (`LifeEvent.date`/`TravelGoal.date` = date complète, input type=date)
   mais le moteur la TRONQUE (`monthlyEvents.ts` split('-') an/mois) et pastilles/ventilation posent
   tout au 1er. Plan cadré : `logLife/logFlow(msg, day?)` → registre `eventDays` par point (champ
-  additif), pastilles à l'abscisse `axisXAtDay`, régularisation d'avril à l'échéance (fin de mois),
-  jalons SANS date réelle (FIRE, RRQ/PSV dérivés) restent au mois (no-fake). Corollaire revue #593 :
-  `lifeMarkers` (ReferenceLine entières) aussi — un événement du mois courant après aujourd'hui
-  s'affiche à GAUCHE de la ligne « Aujourd'hui ».
+  additif), pastilles à l'abscisse `axisXAtDay`, régularisation d'avril à l'échéance du 30
+  (date limite ARC/RQ), ventilation quotidienne : chaque label posé à SON jour. Jalons SANS date
+  réelle (FIRE, RRQ/PSV dérivés, lifeMarkers) restent au mois (no-fake). 6 tests (saisie datée,
+  YYYY-MM sans jour → au mois, clamp 31→28 fév, échéance 30).
 - [ ] **`[ENG-MC-BANDS-ORDER]`** (M, moteur, 🧭 financial-integrity d'abord) — les bandes Monte
   Carlo sortent DÉSORDONNÉES du moteur : sur 361 mois, 171 violations d'ordre et 8 mois où
   P10 > P90 (jusqu'à 36 952 $, 17,25 % du P50), toutes dans les ~60 premiers mois (mesuré

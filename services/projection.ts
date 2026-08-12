@@ -603,7 +603,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // LTD, CI, héritage, perte emploi, décès conjoint, mortalité) ne se
         // déclenchent QUE quand enableMonteCarlo. Si on gate ici par !MC, on
         // perd tous les logs d'événements. lifeEventsLog est cappé à 50 entrées.
-        const logEvent = (arr: string[], msg: string) => { if (arr.length < 50) arr.push(msg); };
+        // [FUTUR-DAILY-EVENTS] Jour du mois (1-based) des événements qui en ONT un (événement saisi
+        // avec date complète, échéance fiscale). Clé = le message lui-même (jointure exacte côté
+        // affichage). Un événement sans jour connu n'y figure pas — l'affichage le pose au mois.
+        const eventDaysLog: Record<string, number> = {};
+        const logEvent = (arr: string[], msg: string, day?: number) => {
+            if (arr.length >= 50) return;
+            arr.push(msg);
+            if (Number.isFinite(day) && (day as number) >= 1 && (day as number) <= 31) eventDaysLog[msg] = Math.round(day as number);
+        };
 
         // W1.4: log différé du décès conjoint (déclenché plus haut avant l'init de logEvent)
         if (survivorMode && !survivorTriggerLogged) {
@@ -809,7 +817,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         const stochMutator = {
             addLiquid: (amt: number) => { liquid += amt; },
             addExpense: (amt: number) => { monthlyExpenses += amt; },
-            logLife: (msg: string) => logEvent(lifeEventsLog, msg),
+            logLife: (msg: string, day?: number) => logEvent(lifeEventsLog, msg, day),
         };
         if (tryCriticalIllness(stochCtx, effProj, ciTriggered, stochMutator)) ciTriggered = true;
         if (tryInheritance(stochCtx, effProj, inheritanceReceived, stochMutator)) inheritanceReceived = true;
@@ -836,8 +844,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 addTaxGains: (amt) => { taxCurrentYear.gains += amt; },
                 addTaxDivers: (amt) => { taxCurrentYear.divers += amt; },
                 addDonationCredit: (amt) => { taxCurrentYear.donCredit += amt; },
-                logFlow: (msg) => logEvent(flowEventsLog, msg),
-                logLife: (msg) => logEvent(lifeEventsLog, msg),
+                logFlow: (msg, day?: number) => logEvent(flowEventsLog, msg, day),
+                logLife: (msg, day?: number) => logEvent(lifeEventsLog, msg, day),
             }
         );
 
@@ -847,7 +855,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             subtractLiquid: (amt) => { liquid -= amt; },
             addNonReg: (amt) => { nonReg += amt; },
             addNonRegACB: (amt) => { nonRegACB += amt; },
-            logFlow: (msg) => logEvent(flowEventsLog, msg),
+            logFlow: (msg, day?: number) => logEvent(flowEventsLog, msg, day),
         });
         const taxPaidRevenu = aprilResult.taxPaidRevenu;
         const taxPaidGains = aprilResult.taxPaidGains;
@@ -1269,7 +1277,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // Cycle 16 split: voyages + événements de vie + stress test → ./projection/monthlyEvents
         applyTravelExpenses(travelGoals, currentIsoMonth, expenseMultiplier, {
             addExpense: (n) => { monthlyExpenses += n; },
-            logFlow: (s) => logEvent(flowEventsLog, s),
+            logFlow: (s, day?: number) => logEvent(flowEventsLog, s, day),
         });
         applyLifeEvents(lifeEvents, currentIsoMonth, expenseMultiplier, propertiesState, {
             shockPortfolio: (f) => { celi *= f; reer *= f; nonReg *= f; crypto *= f; },
@@ -1285,8 +1293,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 accCapitalGainsYear = ms.accCapitalGainsYear;
                 return result;
             },
-            logLife: (s) => logEvent(lifeEventsLog, s),
-            logFlow: (s) => logEvent(flowEventsLog, s),
+            logLife: (s, day?: number) => logEvent(lifeEventsLog, s, day),
+            logFlow: (s, day?: number) => logEvent(flowEventsLog, s, day),
         });
 
         // Wiring 2026-05: SavingsGoal et FinancialGoal aux deadlines.
@@ -1332,7 +1340,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 return amount - remaining;
             },
             addExpense: (_n: number) => { /* déjà soustrait du compte ciblé */ },
-            logFlow: (s: string) => logEvent(flowEventsLog, s),
+            logFlow: (s: string, day?: number) => logEvent(flowEventsLog, s, day),
             // [PV-11a] — remontée STRUCTURÉE du shortfall d'objectif (le log texte reste).
             onGoalShortfall: (_goalName: string, asked: number, drawn: number) => {
                 goalShortfallCount++;
@@ -1647,7 +1655,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             growthCELI, growthREER, growthNonReg, growthCrypto, growthLiquid, growthCELIAPP, growthREEE,
             growthPctCELI, growthPctREER, growthPctNonReg, growthPctCrypto, growthPctLiquid, growthPctCELIAPP, growthPctREEE,
             taxCurrentYear, taxPreviousYear,
-            lifeEventsLog, flowEventsLog,
+            lifeEventsLog, flowEventsLog, eventDaysLog,
         }));
     }
 

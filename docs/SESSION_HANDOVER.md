@@ -4,6 +4,14 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 49) — `[FUTUR-DAILY-EVENTS]` : les événements à LEUR jour
+> Chaîne livrée : `logLife/logFlow(msg, day?)` → registre `eventDays` par point (champ ADDITIF,
+> schéma documenté) → ventilation quotidienne pose chaque label à SON jour → pastilles à
+> l'abscisse fractionnaire (`evt.x ?? monthIndex`). Datés : événements/voyages saisis (jour de
+> la date saisie ; `YYYY-MM` legacy → au mois), régularisation d'avril (échéance 30, ARC/RQ).
+> NON datés (no-fake) : jalons dérivés (FIRE, RRQ/PSV), stochastiques, lifeMarkers. 6 tests.
+> Rien appris de NOUVEAU (application de la leçon « granularité d'axe » de la suite 48).
+
 > ## 🟢 Session 2026-08-12 (suite 48) — `[FUTUR-DAILY-ROLLOVER]` livré · `[FUTUR-DAILY-EVENTS]` EN COURS
 > Marc (04:29) : « ça doit se mettre à jour à chaque jour pour le passé » → ROLLOVER livré
 > (useTodayIsoLocal réactif sur l'horloge partagée, ancrages au jour via axisXForIso, e2e

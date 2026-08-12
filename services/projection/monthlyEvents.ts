@@ -12,7 +12,7 @@ export function applyTravelExpenses(
     travelGoals: TravelGoal[],
     currentIsoMonth: string,
     expenseMultiplier: number,
-    state: { addExpense: (n: number) => void; logFlow: (s: string) => void },
+    state: { addExpense: (n: number) => void; logFlow: (s: string, day?: number) => void },
 ): void {
     for (const t of travelGoals) {
         // Defensive 2026-05-21 : skip si date manquante/invalide (crash Worker observé)
@@ -20,7 +20,7 @@ export function applyTravelExpenses(
         if (t.date.startsWith(currentIsoMonth)) {
             const effectiveCost = (t.totalCost ?? 0) * expenseMultiplier;
             state.addExpense(effectiveCost);
-            state.logFlow(`✈️ Voyage (${t.destination}): -${Math.round(effectiveCost).toLocaleString('fr-CA')}$`);
+            state.logFlow(`✈️ Voyage (${t.destination}): -${Math.round(effectiveCost).toLocaleString('fr-CA')}$`, dayOfIsoDate(t.date));
         }
     }
 }
@@ -54,8 +54,8 @@ export interface LifeEventMutator {
      *  (déductible des gains futurs, LIR 111(1)b) au lieu d'être silencieusement ignorée. Retourne le
      *  détail pour le logging. */
     realizeCapitalDisposition: (rawGain: number) => { bankedLoss: number; taxableGain: number };
-    logLife: (msg: string) => void;
-    logFlow: (msg: string) => void;
+    logLife: (msg: string, day?: number) => void;
+    logFlow: (msg: string, day?: number) => void;
 }
 
 /** [FISC-EVENT-INCOMELOSS] Types d'événements de vie qui réduisent le REVENU (pas une dépense) :
@@ -98,6 +98,17 @@ export function computeIncomeLossFactor(lifeEvents: LifeEvent[], currentLoopDate
     return Math.max(0, Math.min(1, factor));
 }
 
+
+/** [FUTUR-DAILY-EVENTS] Jour du mois (1-31) d'une date saisie `YYYY-MM-DD` — `undefined` si la
+ *  date n'a pas de composante jour valide (saisie `YYYY-MM`, corruption) : l'affichage posera
+ *  alors l'événement au mois, jamais sur un jour inventé. */
+function dayOfIsoDate(date: string): number | undefined {
+    const m = /^\d{4}-\d{2}-(\d{2})/.exec(date);
+    if (!m) return undefined;
+    const day = Number(m[1]);
+    return day >= 1 && day <= 31 ? day : undefined;
+}
+
 export function applyLifeEvents(
     lifeEvents: LifeEvent[],
     currentIsoMonth: string,
@@ -117,7 +128,7 @@ export function applyLifeEvents(
         if (e.type === 'KRACH') {
             const drop = 1 - ((e.impactPercent || 30) / 100);
             state.shockPortfolio(drop);
-            state.logLife(`Krach (-${e.impactPercent}%) 📉`);
+            state.logLife(`Krach (-${e.impactPercent}%) 📉`, dayOfIsoDate(e.date));
         } else if (e.type === 'HERITAGE') {
             // [ENG-HERITAGE-INFLOW] Un héritage/gain est une RENTRÉE d'argent, pas une dépense
             // (bug rapporté par Marc 2026-07-31 : le montant était débité par le chemin one-shot
@@ -139,8 +150,8 @@ export function applyLifeEvents(
             // par les types de dépense, pas par un signe caché.
             const gain = Number.isFinite(rawGain) ? Math.max(0, rawGain) : 0;
             state.addLiquid(gain);
-            state.logLife(`${e.name} 💰`);
-            state.logFlow(`💰 Héritage/Gain (${e.name}): +${Math.round(gain).toLocaleString('fr-CA')}$`);
+            state.logLife(`${e.name} 💰`, dayOfIsoDate(e.date));
+            state.logFlow(`💰 Héritage/Gain (${e.name}): +${Math.round(gain).toLocaleString('fr-CA')}$`, dayOfIsoDate(e.date));
         } else {
             // [ENG-LIFEEVENT-VENTE-SUBSTRING] Sémantique explicite d'abord (`eventKind`) : 'VENTE_IMMO'
             // force la vente, 'NONE' la désarme ; absent → détection historique par sous-chaîne (« vente »
@@ -198,7 +209,7 @@ export function applyLifeEvents(
                         ? `🏠 Vente (net 95%): +${Math.round(saleNet).toLocaleString('fr-CA')}$`
                         // saleNet < 0 : les frais de 5 % dépassent l'équité → net négatif DÉDUIT du patrimoine
                         // (ponctionné du liquide, ou porté en dette si le liquide est épuisé — PV-6).
-                        : `🏠 Vente (net 95%): −${Math.round(-saleNet).toLocaleString('fr-CA')}$ (frais > équité)`);
+                        : `🏠 Vente (net 95%): −${Math.round(-saleNet).toLocaleString('fr-CA')}$ (frais > équité)`, dayOfIsoDate(e.date));
                 } else if (e.propertyId) {
                     // DETTE-RE-SALE / observabilité (panel silent-failure) : `propertyId` visait un bien
                     // introuvable / non vendable (supprimé du store, underwater, déjà vendu) → la vente
@@ -228,7 +239,7 @@ export function applyLifeEvents(
                 }
                 const effectiveImpact = Number.isFinite(rawImpact) ? rawImpact : 0;
                 state.addExpense(effectiveImpact);
-                state.logLife(`${e.name} 💸`);
+                state.logLife(`${e.name} 💸`, dayOfIsoDate(e.date));
                 state.logFlow(`🔔 Événement (${e.name}): -${Math.round(effectiveImpact).toLocaleString('fr-CA')}$`);
             }
         }

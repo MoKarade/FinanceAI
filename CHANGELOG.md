@@ -8,6 +8,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Corrections
+- **Les boutons de l'infobulle figée sont maintenant TOUJOURS visibles** — « Voir ce mois jour par
+  jour », « Veille / Lendemain », « Détail complet ». Avant, quand l'infobulle était bien remplie
+  (impôts, détail par compte), ces boutons existaient mais se retrouvaient sous le pli : il fallait
+  faire défiler À L'INTÉRIEUR de l'infobulle pour les découvrir, et rien ne le disait. Ils sont
+  désormais épinglés en bas, quel que soit le contenu.
+
 ### Ajouts
 - (interne) Les seuils de la stratégie « Meltdown REER » (90 k/140 k/220 k$ par adulte, paliers de
   patrimoine 2 M/1 M$) sont maintenant documentés pour ce qu'ils sont : des heuristiques de

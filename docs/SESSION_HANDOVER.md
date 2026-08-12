@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 46) — `[FUTUR-TOOLTIP-STICKY-ACTIONS]` : le bouton existait, Marc ne le VOYAIT pas
+> **Retour Marc après le déploiement de SELECT-PATH : « figée mais sans le nouveau bouton »,
+> rechargement forcé fait.** Vérifié côté Vercel : la prod servait BIEN le nouveau code (deploy
+> production 01:36). Cause réelle : le tooltip défile en interne (`max-h-[480px]`) et ses vraies
+> données (impôts + par-compte, visibles sur sa capture coupée) poussaient le pied d'actions SOUS
+> le pli. **L'e2e ne pouvait pas l'attraper : Playwright scrolle l'élément en vue avant de
+> cliquer** — 5e occurrence UX-UNREACHABLE, leçon étendue dans CONVENTIONS (une action dans un
+> conteneur scrollable se prouve par GÉOMÉTRIE sans scroll, ou s'épingle).
+> - Fix : pied d'actions `sticky bottom-0` + fond opaque + bleed sur le padding. Verrou unitaire
+>   (classes, 20/20) + assertion e2e de géométrie avant tout scroll (3/3).
+> - GATÉS toujours : `[FUTUR-DAILY-TOUCH]` (doigt ? sans réponse), cadence paie, ancre plan-first.
+
 > ## 🟢 Session 2026-08-12 (suite 45) — `[MELTDOWN-THRESHOLDS-DOC]` + 4 items PM-STALE archivés
 > Ordre PM (tâche #62), suite. **Avant de coder les 3 `TEST-GAP` : vérification → TOUS déjà livrés
 > en #552** (fichiers de test portant les IDs, re-vérifiés VERTS 25/25), ainsi que `[PV-11e]`

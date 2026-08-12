@@ -277,7 +277,7 @@ export interface ProjectionConfig {
   // ────────────────────────────────────────────────────────────────────
   // W1.1 — Perf: déléguer Monte Carlo au Web Worker
   useWebWorker?: boolean;
-  monteCarloIterations?: number;      // défaut 100, max 2000
+  monteCarloIterations?: number;      // défaut 100, borné 50-1000 (MC_ITERATIONS_MIN/MAX — source unique services/projection/monteCarlo.ts)
 
   // W1.2 — Bootstrap historique (rendements réels 1928-2024 S&P 500)
   // Au lieu de tirages gaussiens, on rééchantillonne des blocs de l'historique.

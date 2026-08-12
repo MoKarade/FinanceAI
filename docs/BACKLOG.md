@@ -599,9 +599,19 @@
     (Futur · Configurations · Vie · Transactions · Assistant · Réglages), app s'ouvre sur Futur,
     Accueil retiré (#DASHBOARD→#FUTURE, chiffres de tête → FutureKpiStrip), barre mobile
     Futur·Transactions·Assistant·Plus. Critère : rien de perdu.
-  - [ ] `[REFONTE-NAV-L2]` Lot 2 — Futur enrichi : bandeau KPI complet (variation, santé) +
-    rapatriement des paramètres de projection + reste des tuiles de l'ex-Accueil (le composant
-    `Dashboard.tsx` reste sur disque comme carrière à ce lot, puis sera supprimé).
+  - [ ] `[REFONTE-NAV-L2]` Lot 2 — Futur enrichi, SCINDÉ 2a/2b (2026-08-12). ⚠️ Hypothèse du
+    plan périmée : les paramètres de projection étaient DÉJÀ dans le sous-onglet « Hypothèses »
+    du Futur (PH4-FUT) — rien à rapatrier.
+    - [x] `[REFONTE-NAV-L2a]` bannière import gelé → Futur · tuile « Variation 30 j »
+      (`hooks/useNetWorthVariation`, fenêtre fixe 30 j, « — » si < 2 points ; itération panel
+      #601 : périmètre « liquide + placements » PAR CONSTRUCTION — les termes immo/dettes
+      annuels/constants fabriquaient des sauts fictifs au 31 décembre — étiqueté sur la tuile,
+      « sur N j de données » si couverture < 30 j, tx sans compte incluses via bucket
+      synthétique) · équité immo incluse ET étiquetée au patrimoine du bandeau · libellé
+      « Monte Carlo (N itér.) » au nombre RÉEL (source unique `effectiveMcIterations`).
+    - [ ] `[REFONTE-NAV-L2b]` sous-onglet historique (graphe d'évolution + sélecteur de
+      fenêtre complet — la fonction pure du hook est déjà paramétrée en jours) + déménagement
+      de la comparaison d'actions + SUPPRESSION de `Dashboard.tsx`.
   - [ ] `[REFONTE-NAV-L3]` Lot 3 — Configurations fusionnées (split immo/invest actuel vs projets,
     inclut `[DEBT-FROM-CONTRACT]`).
   - [ ] `[REFONTE-NAV-L4]` Lot 4 — Vie fusionnée (retraite, enfants, projets, voyages, événements).
@@ -623,6 +633,12 @@
 
 ## 🧱 Dette technique
 
+- [ ] **`[MC-LABEL-FROZEN]`** (S, finding financial-integrity #601) — le libellé « Monte Carlo
+  (N itér.) » lit la config LIVE (`effectiveMcIterations(config.monteCarloIterations)`) alors
+  que `results` peut être GELÉ (calculé avec l'ancienne valeur) : changer les itérations sans
+  relancer fait mentir le libellé sur le calcul affiché. Fix propre = porter le nombre
+  d'itérations réellement exécuté DANS `MonteCarloResult` (le libellé lit le résultat, pas la
+  config). Atténué en attendant par le bandeau « Paramètres modifiés ».
 - [ ] **`[A11Y-CHART-HINT-HIDDEN]`** (S, a11y — audit #595) — la phrase d'aide du graphe Futur
   (« survol = jour · clic = fige · molette = zoom », `FutureProjection.tsx` ~1311) est en
   `aria-hidden="true"` : du contenu INSTRUCTIONNEL entièrement soustrait aux lecteurs d'écran,

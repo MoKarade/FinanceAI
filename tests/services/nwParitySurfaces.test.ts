@@ -8,8 +8,9 @@
 //  - `buildFinancialSnapshot` (IA/MCP)      → computePresentNetWorth, HORS immobilier.
 //  - `useDerivedFinancials.globalNetWorth`  → computePresentNetWorth, HORS immobilier
 //    (testé dans tests/utils/useDerivedFinancials.test.tsx — même helper, même convention).
-//  - KPI Accueil (Dashboard)                → computePresentNetWorth + Σ presentEquityOfGoal(actifs)
-//    (AVEC immobilier — testé end-to-end dans tests/components/Dashboard.canonicalNetWorth.test.tsx).
+//  - KPI « Patrimoine net » (FutureKpiStrip) → computePresentNetWorth + Σ presentEquityOfGoal
+//    (AVEC immobilier, étiqueté « équité immo incluse » — l'Accueil est DÉROUTÉ depuis
+//    [REFONTE-NAV-L1] ; testé dans tests/components/FutureKpiStrip.test.tsx).
 //  - PDF (`generateFinancialReport`)        → netWorth = globalNetWorth (HORS immo) ; l'équité immo
 //    est une LIGNE SÉPARÉE par propriété (presentEquityOfGoal — fix V3 : était `equity: 0` en dur,
 //    la ligne « Équité bâtie » ne s'affichait jamais).

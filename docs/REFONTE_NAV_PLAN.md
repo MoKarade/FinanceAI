@@ -53,7 +53,15 @@
   QUELLES ; l'app s'ouvre sur Futur ; Accueil retiré (tuiles → bandeau KPI / Assistant) ;
   barre mobile refaite. Critère de fini ⚙️ : RIEN de perdu (chaque écran actuel accessible),
   deep-links/`#hash` redirigés, e2e de non-perte.
-- **Lot 2 — FUTUR enrichi** : bandeau KPI + rapatriement des paramètres de projection.
+- **Lot 2 — FUTUR enrichi** — scindé 2a/2b (2026-08-12) :
+  - **2a (fait)** : bannière d'import gelé déplacée sur le Futur, tuile « Variation 30 j »
+    (hook `useNetWorthVariation`, série de l'ex-Accueil, fenêtre fixe 30 j), équité immo
+    incluse + étiquetée au patrimoine du bandeau, libellé MC au nombre réel d'itérations.
+    ⚠️ Hypothèse du plan PÉRIMÉE : les paramètres de projection étaient DÉJÀ consolidés
+    dans le sous-onglet « Hypothèses » du Futur (PH4-FUT) — rien à rapatrier.
+  - **2b (à faire)** : sous-onglet historique (graphe d'évolution + sélecteur de fenêtre
+    complet, réutilise la fonction pure du hook), déménagement de la comparaison d'actions,
+    puis SUPPRESSION de `Dashboard.tsx` (fin de la carrière).
 - **Lot 3 — CONFIG fusionnée** : sous-onglets cohérents, split immo/invest actuel,
   `[DEBT-FROM-CONTRACT]`.
 - **Lot 4 — VIE fusionnée** : retraite/enfants/projets/voyages/événements harmonisés.

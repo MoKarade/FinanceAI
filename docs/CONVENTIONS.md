@@ -2405,3 +2405,19 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   le document entier est satisfait par la SIDEBAR DESKTOP — vacueux. Scoper au conteneur
   (role+aria-label posés sur le panneau, utiles aussi à l'a11y) ET vérifier l'ACTION du bouton
   (clic → bon Tab), pas seulement la présence du texte.
+- ⚠️ **[REFONTE-NAV-L2a] itération panel 2026-08-12** : (1) **une série à granularité ANNUELLE
+  promue dans une fenêtre GLISSANTE de 30 j fabrique un « événement » à chaque 31 décembre**
+  (mesuré : +14 396 $ de variation fictive au jour de l'An — l'équité immo par-année changeait
+  de valeur au passage d'année, et le total « dettes présentes constant » affichait chaque
+  remboursement de capital en perte sèche). Soit on ALIGNE la granularité du terme sur la
+  fenêtre, soit on l'EXCLUT PAR CONSTRUCTION de la série, avec une étiquette de périmètre sur
+  la tuile (« liquide + placements ») — jamais un terme annuel/constant « promu » tel quel
+  dans un calcul quotidien. (2) **La classe « deux patrimoines à l'écran sans étiquette »
+  (DASH-NETWORTH-CANONICAL) revient dès qu'on promeut un chiffre d'une page à une autre** :
+  l'étiquette de périmètre fait partie du CHIFFRE, pas de la page — elle déménage (et
+  s'adapte) avec lui, sinon l'assiette du % diverge en silence de la tuile voisine.
+  (3) **Leçon agent 2b : un MOCK de hook qui retourne un objet/tableau RECRÉÉ à chaque appel
+  alimente tout `useEffect`/`useMemo` qui en dépend → boucle de rendu infinie** (vitest gelé
+  15 min, worker à 99 % CPU, aucun échec — juste un gel). Le retour d'un mock de hook se
+  déclare STABLE au niveau module (constante ou `mockReturnValue` d'un objet unique), jamais
+  un littéral dans la factory.

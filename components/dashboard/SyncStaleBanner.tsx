@@ -46,7 +46,9 @@ export const SyncStaleBanner: React.FC = () => {
         <div role="alert" aria-label="Fraîcheur de l'import bancaire">
             {!silent && (
                 <div
-                    className={`flex items-start gap-3 rounded-card border p-3 ${isError
+                    // `mb-4` sur le CONTENU (pas la région live, toujours montée) : l'espace
+                    // n'existe que quand l'alerte parle — l'hôte (Futur) n'a pas de `space-y`.
+                    className={`flex items-start gap-3 rounded-card border p-3 mb-4 ${isError
                         ? 'text-danger-400 bg-danger-500/10 border-danger-500/20'
                         : 'text-warning-400 bg-warning-500/10 border-warning-500/20'}`}
                 >

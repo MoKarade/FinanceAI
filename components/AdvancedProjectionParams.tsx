@@ -11,6 +11,8 @@ import React from 'react';
 import { Card } from './ui/Card';
 import type { ProjectionConfig } from '../types';
 import { Icon } from './ui/Icon';
+// [REFONTE-NAV-L2a] Bornes MC = source unique moteur (des littéraux re-codés dérivent en silence).
+import { MC_ITERATIONS_MIN, MC_ITERATIONS_MAX, MC_ITERATIONS_DEFAULT } from '../services/projection/monteCarlo';
 
 interface AdvancedProjectionParamsProps {
     projection: ProjectionConfig;
@@ -90,7 +92,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="text-tiny text-ink-300">Itérations Monte Carlo</label>
-                            <input type="number" min={50} max={1000} step={50} value={projection.monteCarloIterations ?? 100} onChange={e => updateProj('monteCarloIterations', Number(e.target.value))} className="w-full bg-dark border border-violet-500/20 rounded px-2 py-1 text-meta text-white" />
+                            <input type="number" min={MC_ITERATIONS_MIN} max={MC_ITERATIONS_MAX} step={50} value={projection.monteCarloIterations ?? MC_ITERATIONS_DEFAULT} onChange={e => updateProj('monteCarloIterations', Number(e.target.value))} className="w-full bg-dark border border-violet-500/20 rounded px-2 py-1 text-meta text-white" />
                             <p className="text-tiny text-ink-400 mt-1">100 = défaut, 500+ pour précision queues</p>
                         </div>
                         <div>

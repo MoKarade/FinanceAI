@@ -94,7 +94,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                     </div>
                 </div>
                 <div className="text-right hidden sm:block">
-                    <div className="text-tiny uppercase font-bold text-ink-500 tracking-widest mb-1">Moyenne mensuelle</div>
+                    <div className="text-tiny uppercase font-bold text-ink-400 tracking-widest mb-1">Moyenne mensuelle</div>
                     <div className="text-xl font-bold text-ink-200">{formatCAD(totalAnnualDividends / 12)} / mois</div>
                 </div>
             </div>
@@ -120,16 +120,16 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                                     </div>
                                     <div>
                                         <div className="font-bold text-white text-body tracking-tight">{item.name}</div>
-                                        <div className="text-tiny text-ink-500">{item.id.split(':')[0]}</div>
+                                        <div className="text-tiny text-ink-400">{item.id.split(':')[0]}</div>
                                     </div>
                                 </div>
                                 <div className="text-right">
                                     <div className="text-success-400 font-bold text-body">{formatSigned(item.amountPerPayout, { withCurrency: true })}</div>
-                                    <div className="text-tiny text-ink-500 font-medium">{item.freq === 4 ? 'Trimestriel' : 'Annuel'}</div>
+                                    <div className="text-tiny text-ink-400 font-medium">{item.freq === 4 ? 'Trimestriel' : 'Annuel'}</div>
                                 </div>
                             </div>
                             <div className="mt-3 pt-2 border-t border-white/5 flex justify-between items-center relative z-10">
-                                <span className="text-tiny text-ink-500 font-medium">Prochain paiement</span>
+                                <span className="text-tiny text-ink-400 font-medium">Prochain paiement</span>
                                 <span className="text-tiny font-bold text-white bg-success-500/20 px-2.5 py-1 rounded-lg border border-success-500/10 text-emerald-300">
                                     {item.nextPayout}
                                 </span>
@@ -138,7 +138,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                     ))
                 )}
                 {!isLoading && dividendCalendar.length === 0 && (
-                    <div className="col-span-full text-center text-ink-500 py-10 italic">
+                    <div className="col-span-full text-center text-ink-400 py-10 italic">
                         Aucune action à dividende détectée.
                     </div>
                 )}

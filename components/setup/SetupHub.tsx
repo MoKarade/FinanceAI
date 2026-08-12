@@ -65,7 +65,7 @@ export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) =
                                         {ready ? <Icon name="check" size={13} /> : `${met}/${total}`}
                                     </span>
                                     <span className="text-body font-semibold text-ink-100 truncate">{cfg.title}</span>
-                                    {optedOut && <span className="text-tiny text-ink-500 shrink-0">(pas concerné)</span>}
+                                    {optedOut && <span className="text-tiny text-ink-400 shrink-0">(pas concerné)</span>}
                                     <span className={`ml-auto shrink-0 text-ink-500 transition-transform ${isOpen ? 'rotate-90' : ''}`} aria-hidden="true">›</span>
                                 </button>
                                 <button
@@ -80,7 +80,7 @@ export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) =
                                 <div className="p-3 pt-1 space-y-3 border-t border-white/5">
                                     {reqs.map((req) => <RequirementCard key={req.id} req={req} currentTab={Tab.SETTINGS} />)}
                                     {cfg.optOut && (
-                                        <p className="text-tiny text-ink-500 italic">
+                                        <p className="text-tiny text-ink-400 italic">
                                             Optionnel : « {cfg.optOut.label} » est proposé sur l'onglet (réversible).
                                         </p>
                                     )}
@@ -126,7 +126,7 @@ export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) =
                 </div>
                 <div className="shrink-0 text-right">
                     <div className="text-body font-black text-ink-50 font-mono">{pct}%</div>
-                    <div className="text-tiny text-ink-500 font-mono">{readyCount}/{tabs.length} onglets prêts</div>
+                    <div className="text-tiny text-ink-400 font-mono">{readyCount}/{tabs.length} onglets prêts</div>
                 </div>
             </div>
             <div

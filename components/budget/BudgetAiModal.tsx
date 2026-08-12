@@ -115,7 +115,7 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
                     </div>
                     {streamingText && (
                         <div className="bg-white/5 border border-white/10 rounded-lg p-3 max-h-48 overflow-y-auto">
-                            <p className="text-tiny text-ink-500 font-mono whitespace-pre-wrap leading-relaxed">
+                            <p className="text-tiny text-ink-400 font-mono whitespace-pre-wrap leading-relaxed">
                                 {streamingText}
                                 <span className="inline-block w-1 h-3 bg-indigo-400 ml-1 animate-pulse" aria-hidden="true" />
                             </p>

@@ -64,13 +64,13 @@ export const DualKPIStat: React.FC<DualKPIStatProps> = ({
                 <PrivateAmount className="text-kpi text-ink-50 tabular-nums">
                     {formatCAD(reel)}
                 </PrivateAmount>
-                <span className="text-meta text-ink-500">/</span>
+                <span className="text-meta text-ink-500" aria-hidden="true">/</span>
                 <PrivateAmount className="text-meta text-ink-400 tabular-nums">
                     {formatCAD(prevu)}
                 </PrivateAmount>
             </div>
             <div className="flex items-center justify-between text-tiny">
-                <span className="text-ink-500">Réel / Prévu</span>
+                <span className="text-ink-400">Réel / Prévu</span>
                 {sublabel && <span className="text-ink-400 italic text-right truncate ml-2">{sublabel}</span>}
             </div>
         </div>

@@ -677,6 +677,12 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   `ink-500` AA large seulement (3,4-4,2). ↻ **RÉCIDIVE PH4-C 2026-06-22** : `text-info-300` (palette `info` = **400/500/600**
   seulement) → corrigé `info-400`. Le bug REVIENT malgré la leçon (l'a11y-auditor l'attrape, mais c'est tard) → AUTO-CHECK
   systématique : tout `text-/bg-/border-<couleur>-<N>` ajouté → confirmer `<N>` dans `tailwind.config.js` AVANT de committer.
+  ⚠️ **Un compte d'occurrences par grep NAÏF peut être gonflé par des homonymes-substrings** (leçon
+  A11Y-INK500 2026-08-12) : `grep ink-500` matche AUSSI `pink-500` — le ticket disait « 115 occurrences »,
+  la réalité était 107 (6 `pink-500` + 2 commentaires). Un sed aveugle sur ce compte aurait CASSÉ la couleur
+  rose (`accent-pink-500` → `accent-pink-400` inexistant = no-op silencieux, cf. leçon shade hors palette).
+  Mesurer avec une frontière (`(?<!p)ink-500`) et classifier par-occurrence : ici 85 textes actifs migrés
+  `ink-400`, 22 gardés légitimes (glyphes aria-hidden, icônes-boutons ≥3:1 WCAG 1.4.11, présentationnel).
   ⚠️ **Un fix de hover-contraste ne se COPIE pas d'une couleur à l'autre** (leçon A11Y-BANNER-HOVER-CONTRAST 2026-07-16) :
   `hover:brightness-110` passe sur info-600 (4,81:1) mais échoue de justesse sur danger-600 (4,48:1) → là, le hover doit
   FONCER (`brightness-90` = 5,23:1). `brightness()` CSS opère en RGB LINÉAIRE (la luminance scale exactement du facteur —

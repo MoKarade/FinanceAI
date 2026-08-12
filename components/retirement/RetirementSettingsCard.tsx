@@ -41,7 +41,7 @@ export const RetirementSettingsCard: React.FC = () => {
                     <div data-focus-section="profile-lifeExpectancy">
                         <label htmlFor="rsc-lifeExp" className="block text-meta text-ink-300 mb-1">
                             Espérance de vie
-                            <span className="ml-1 text-tiny text-ink-500">(80–100 ans)</span>
+                            <span className="ml-1 text-tiny text-ink-400">(80–100 ans)</span>
                         </label>
                         <input id="rsc-lifeExp"
                             type="number"
@@ -71,7 +71,7 @@ export const RetirementSettingsCard: React.FC = () => {
                     <div>
                         <label htmlFor="rsc-rrqStart" className="block text-meta text-ink-300 mb-1">
                             Début rente RRQ
-                            <span className="ml-1 text-tiny text-ink-500">(60–72 ans)</span>
+                            <span className="ml-1 text-tiny text-ink-400">(60–72 ans)</span>
                         </label>
                         <input id="rsc-rrqStart"
                             type="number"
@@ -85,7 +85,7 @@ export const RetirementSettingsCard: React.FC = () => {
                     <div>
                         <label htmlFor="rsc-psvStart" className="block text-meta text-ink-300 mb-1">
                             Début pension PSV
-                            <span className="ml-1 text-tiny text-ink-500">(65–70 ans)</span>
+                            <span className="ml-1 text-tiny text-ink-400">(65–70 ans)</span>
                         </label>
                         <input id="rsc-psvStart"
                             type="number"
@@ -97,7 +97,7 @@ export const RetirementSettingsCard: React.FC = () => {
                         />
                     </div>
                 </div>
-                <p className="text-tiny text-ink-500 leading-snug">
+                <p className="text-tiny text-ink-400 leading-snug">
                     Le début des rentes est <strong>indépendant de ton âge d'arrêt de travail</strong> :
                     tu peux arrêter tôt et toucher le RRQ/PSV plus tard (ou l'inverse). Reporter
                     <strong> bonifie</strong> la rente — RRQ jusqu'à 72 ans (+58,8 %), PSV jusqu'à 70 ans

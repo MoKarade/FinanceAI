@@ -91,12 +91,12 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                         <div>
                             <label className="text-tiny text-ink-300">Itérations Monte Carlo</label>
                             <input type="number" min={50} max={1000} step={50} value={projection.monteCarloIterations ?? 100} onChange={e => updateProj('monteCarloIterations', Number(e.target.value))} className="w-full bg-dark border border-violet-500/20 rounded px-2 py-1 text-meta text-white" />
-                            <p className="text-tiny text-ink-500 mt-1">100 = défaut, 500+ pour précision queues</p>
+                            <p className="text-tiny text-ink-400 mt-1">100 = défaut, 500+ pour précision queues</p>
                         </div>
                         <div>
                             <label className="text-tiny text-ink-300">Taille bloc bootstrap (mois)</label>
                             <input type="number" min={12} max={120} step={12} value={projection.bootstrapBlockSize ?? 24} onChange={e => updateProj('bootstrapBlockSize', Number(e.target.value))} className="w-full bg-dark border border-violet-500/20 rounded px-2 py-1 text-meta text-white" />
-                            <p className="text-tiny text-ink-500 mt-1">24 = défaut (préserve corrélation 2 ans)</p>
+                            <p className="text-tiny text-ink-400 mt-1">24 = défaut (préserve corrélation 2 ans)</p>
                         </div>
                     </div>
                 </div>
@@ -206,14 +206,14 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                         </div>
                     )}
                     {!projection.snowbirdEnabled && (
-                        <p className="text-tiny text-ink-500 italic">Active d'abord le toggle Snowbird dans la grille principale.</p>
+                        <p className="text-tiny text-ink-400 italic">Active d'abord le toggle Snowbird dans la grille principale.</p>
                     )}
                 </div>
 
                 {/* ─────────────────────────────────────────────────────────── */}
                 <div className="pt-3 border-t border-white/5">
                     <h4 className="text-meta font-bold uppercase tracking-widest text-success-400 mb-2">Sandwich Generation</h4>
-                    <p className="text-tiny text-ink-500 mb-2 italic">Aide aux enfants adultes (boomerang) et/ou parents âgés (caregiving).</p>
+                    <p className="text-tiny text-ink-400 mb-2 italic">Aide aux enfants adultes (boomerang) et/ou parents âgés (caregiving).</p>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         <div>
                             <label className="text-tiny text-emerald-300">Boomerang $/mois</label>
@@ -288,7 +288,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                 {/* ─────────────────────────────────────────────────────────── */}
                 <div className="pt-3 border-t border-white/5">
                     <h4 className="text-meta font-bold uppercase tracking-widest text-ink-200 mb-2">Rendements affinés</h4>
-                    <p className="text-tiny text-ink-500 mb-2 italic">Override des taux par défaut (crypto/cash absents de la grille principale).</p>
+                    <p className="text-tiny text-ink-400 mb-2 italic">Override des taux par défaut (crypto/cash absents de la grille principale).</p>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="text-tiny text-ink-300">Rendement crypto annuel (%)</label>

@@ -172,7 +172,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                 type="text"
                                                 value={item.name}
                                                 onChange={(e) => onUpdateItem(idx, 'name', e.target.value)}
-                                                className="bg-transparent text-white font-medium focus:border-primary outline-none w-full text-body placeholder-ink-500"
+                                                className="bg-transparent text-white font-medium focus:border-primary outline-none w-full text-body placeholder-ink-400"
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                             <div className="flex gap-2 mt-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -209,7 +209,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                         type="number"
                                                         value={item.target}
                                                         onChange={(e) => onUpdateItem(idx, 'target', parseFloat(e.target.value) || 0)}
-                                                        className={`bg-transparent text-right w-20 outline-none font-mono ${timeView !== 'MONTH' ? 'text-ink-500 text-meta' : 'text-white'}`}
+                                                        className={`bg-transparent text-right w-20 outline-none font-mono ${timeView !== 'MONTH' ? 'text-ink-400 text-meta' : 'text-white'}`}
                                                         title="Modifier le montant de base"
                                                         onClick={(e) => e.stopPropagation()}
                                                     />

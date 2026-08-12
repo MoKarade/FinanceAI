@@ -3331,3 +3331,70 @@ valeur qui agit, l'autre OFFRE un choix qui ne produit que du faux.
 2. **Cocher au merge** : Claude coche l'`[ID]` quand la PR qui le livre est mergée (+ réf PR).
 3. Blocage humain → `A_FAIRE_MOI.md`. Audit large → `code-analyzer` (ajoute des items ici).
 4. Priorité : **P0** → 🧭 décisions → grand nettoyage AAA → CIX → P2/P3 en rotation.
+
+## 2026-08-12 — cycle FUTUR-DAILY (suite) : PR #589 → #594
+
+Retours Marc en rafale sur la courbe Futur, tous livrés + mergés + déployés le jour même :
+sélection directe au jour (#589/#591/#592), passé qui suit le calendrier (#593), événements et
+impôts à leur jour exact (#594, validator PASS complet + 3 durcissements). ⚠️ Hiérarchie : dans
+le BACKLOG, les 4 blocs `SELECT-PATH`/`ROLLOVER`/`NATIVE`/`STICKY-ACTIONS` étaient des SOUS-ITEMS
+du chantier parent `[FUTUR-DAILY-TOUCH]` (toujours ouvert), PAS de `[FUTUR-DAILY-EVENTS]` (qui
+vivait, lui, en section « Dette technique ») — l'indentation ci-dessous est conservée telle
+quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
+
+- [x] **`[FUTUR-DAILY-EVENTS]`** ✅ 2026-08-12 (retour Marc 04:37 : « j'ai mis un
+  événement de vie et ça m'a mis au mois et pas au bon jour, tout doit être au bon jour les impôts
+  aussi ») — la DONNÉE existe (`LifeEvent.date`/`TravelGoal.date` = date complète, input type=date)
+  mais le moteur la TRONQUE (`monthlyEvents.ts` split('-') an/mois) et pastilles/ventilation posent
+  tout au 1er. Plan cadré : `logLife/logFlow(msg, day?)` → registre `eventDays` par point (champ
+  additif), pastilles à l'abscisse `axisXAtDay`, régularisation d'avril à l'échéance du 30
+  (date limite ARC/RQ), ventilation quotidienne : chaque label posé à SON jour. Jalons SANS date
+  réelle (FIRE, RRQ/PSV dérivés, lifeMarkers) restent au mois (no-fake). 6 tests (saisie datée,
+  YYYY-MM sans jour → au mois, clamp 31→28 fév, échéance 30). Validator : PASS complet (rétrocompat
+  bit-identique 0 diff/421 points, registre par mois étanche, partition ledger 0 cassée) ; ses
+  3 findings FAIBLE durcis dans la même PR : jour fractionnaire arrondi (label plus jamais perdu du
+  ledger), clamp `axisXAtDay` identique au ledger (date impossible restaurée ne pose plus la
+  pastille sur le tick du mois suivant), ambiguïté daté/non-daté retirée du registre (no-fake,
+  ordre indifférent) — 5 tests discriminants (échec prouvé sur le code d'avant via stash).
+  - [x] **`[FUTUR-DAILY-SELECT-PATH]` + `[FUTUR-DAILY-SELECT-STEP]` le chemin vers le jour offert AU
+        MOMENT DU CLIC** ✅ 2026-08-12 (retour Marc, capture « mai 2027 » : « je peux pas selectionner
+        de jour juste un mois » — 4e occurrence UX-UNREACHABLE : le bouton « Jour » existait mais
+        AILLEURS que là où le geste exprimait l'intention). Livré : infobulle figée d'un MOIS →
+        bouton « Voir ce mois jour par jour » (zoom centré sur le mois cliqué, même largeur que le
+        bouton « Jour ») ; infobulle figée d'un JOUR → « Veille / Lendemain » (sélection au jour
+        près sans re-viser au pixel — un jour ≈ 6 px à ~150 jours, mesuré ; utilisable au doigt) ;
+        tolérance de dérive du clic ADAPTATIVE (sonde : une dérive de 8 px pendant le geste était
+        avalée par le garde anti-pan à 6 px → 14 px en vue jour, 6 px conservés en vue large) ;
+        bandeau honnête quand la fenêtre est assez serrée mais que les ancres mensuelles manquent
+        (vue au jour impossible avec des données passées trouées — dit à l'écran au lieu de rester
+        muet). E2E « depuis la vue LARGE » rejouant le scénario exact de la capture.
+  - [x] **`[FUTUR-DAILY-ROLLOVER]` le passé suit le calendrier** ✅ 2026-08-12 (Marc : « ça doit
+        se mettre à jour à chaque jour pour le passé »). `useTodayIsoLocal()` : jour local RÉACTIF
+        sur l'horloge module partagée du mois (tick horaire + visibilitychange) — `todayIso` était
+        figé au montage, app ouverte = frontière réel/projeté gelée. Ancrages « Aujourd'hui » +
+        fin de bande « Passé réel » à l'abscisse FRACTIONNAIRE du jour (`axisXForIso` — posés à
+        l'entier du mois : jusqu'à 30 j d'écart) ; ligne « Passé réel ⟵ » retirée en courbe
+        quotidienne (la frontière est AUJOURD'HUI, pas le 1er du mois). E2E horloge Playwright :
+        minuit passe app OUVERTE → la frontière avance (mesuré au pixel, fenêtre zoomée).
+  - [x] **`[FUTUR-DAILY-NATIVE]` la courbe est au JOUR partout — sélection directe** ✅ 2026-08-12
+        (Marc : « je veux pas un bouton je veux pouvoir selectionner sur la courbe direct », cadrage
+        3/3 : clic = jour partout · survol = jour · tracé au jour, GO). Architecture : série
+        quotidienne GLOBALE construite une fois (`buildDailyLedger` + option `fields` — ventilation
+        LÉGÈRE ~100 ms/30 ans, mesurée ; la complète à 99 champs = ~500 ms/180 Mo, réservée à
+        l'infobulle ventilée À LA DEMANDE par mois, cache) ; le zoom reste mensuel et TRANCHE la
+        série par abscisse (`sliceDailyRangeByX`, binaire) ; tracé DÉCIMÉ au-delà de ~700 pts
+        (mesuré : 11 k pts × 8 aires gèlent le main thread — `mouse.wheel` Playwright expirait) avec
+        sélection sur la tranche COMPLÈTE ; mois-ANCRE reconstruit du réel seul
+        (`realOnlyMonthPoints`, sinon bande « Passé réel » amputée — e2e d'axe). RETIRÉS : bouton
+        « Jour », bouton « Voir ce mois jour par jour » (livré 24 h plus tôt), seuil
+        DAILY_CURVE_MAX_POINTS. Bandes MC : percentiles mensuels reliés (sinon perdues partout —
+        étiqueté). E2E 8/8 dont vue LARGE sans zoom + garde de poids DOM.
+  - [x] **`[FUTUR-TOOLTIP-STICKY-ACTIONS]` le pied d'actions de l'infobulle figée est ÉPINGLÉ**
+        ✅ 2026-08-12 (retour Marc APRÈS le déploiement de SELECT-PATH : « figée mais sans le
+        nouveau bouton », rechargement forcé fait, prod vérifiée à jour côté Vercel). Cause : le
+        tooltip défile en interne (`max-h-[480px]`) et avec ses vraies données (impôts + par-compte)
+        le pied d'actions passait SOUS LE PLI — rendu mais jamais VU. L'e2e n'a rien attrapé :
+        **Playwright scrolle l'élément en vue avant de cliquer** — le robot paie le chemin que
+        l'humain ne voit pas (5e occurrence UX-UNREACHABLE du chantier, leçon CONVENTIONS étendue).
+        Fix : pied `sticky bottom-0` + fond opaque ; verrou unitaire (classes) + assertion e2e de
+        GÉOMÉTRIE avant tout scroll (bas du bouton ≤ boîte visible du tooltip).

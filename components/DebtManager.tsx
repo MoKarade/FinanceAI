@@ -124,8 +124,8 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                         <div className="space-y-3">
                             {debts.map(d => (
                                 <div key={d.id} className="p-3 bg-[#1a1a1a] rounded-xl border border-white/5 flex justify-between items-center group">
-                                    <div><div className="font-bold text-white text-body">{d.name}</div><div className="text-meta text-ink-500">{d.interestRate}% • Min: {formatCAD(d.minimumPayment)}</div></div>
-                                    <div className="text-right"><div className="font-mono text-danger-400 font-bold">{formatCAD(d.balance)}</div><button onClick={() => handleDelete(d.id)} className="text-tiny text-ink-500 hover:text-danger-500 opacity-0 group-hover:opacity-100 transition-opacity">Supprimer</button></div>
+                                    <div><div className="font-bold text-white text-body">{d.name}</div><div className="text-meta text-ink-400">{d.interestRate}% • Min: {formatCAD(d.minimumPayment)}</div></div>
+                                    <div className="text-right"><div className="font-mono text-danger-400 font-bold">{formatCAD(d.balance)}</div><button onClick={() => handleDelete(d.id)} className="text-tiny text-ink-400 hover:text-danger-500 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-ring transition-opacity">Supprimer</button></div>
                                 </div>
                             ))}
                             {debts.length === 0 && (
@@ -143,7 +143,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                             <div>
                                 <label className="flex justify-between text-meta text-ink-200 mb-1"><span>Paiement Mensuel Supplémentaire</span><PrivateSliderValue revealed={extraSliderFocus} className="font-bold text-green-400">{formatCAD(extraPayment)}</PrivateSliderValue></label>
                                 <input type="range" aria-label="Paiement Mensuel Supplémentaire" min="0" max="2000" step="50" value={extraPayment} {...maskedSliderAria(isPrivacyMode && !extraSliderFocus)} onChange={e => setExtraPayment(Number(e.target.value))} onFocus={() => setExtraSliderFocus(true)} onBlur={() => setExtraSliderFocus(false)} className="w-full h-2 bg-dark rounded-lg appearance-none cursor-pointer accent-green-500" />
-                                <div className="text-tiny text-ink-500 mt-1">En plus des minimums (<PrivateAmount>{formatCAD(totalMinPayment)}</PrivateAmount>). Total payé: <strong className="text-white"><PrivateAmount>{formatCAD(totalMinPayment + extraPayment)}</PrivateAmount>/mois</strong>.</div>
+                                <div className="text-tiny text-ink-400 mt-1">En plus des minimums (<PrivateAmount>{formatCAD(totalMinPayment)}</PrivateAmount>). Total payé: <strong className="text-white"><PrivateAmount>{formatCAD(totalMinPayment + extraPayment)}</PrivateAmount>/mois</strong>.</div>
                             </div>
                             <div className="p-3 bg-white/5 rounded border border-white/10">
                                 <div className="flex justify-between items-center mb-1"><span className="text-meta text-ink-300">Liberté dans</span><span className="text-body font-bold text-white">{(simulation.months / 12).toFixed(1)} ans</span></div>

@@ -36,7 +36,7 @@ export const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ apiKey
               }
             </div>
           )}
-          <p className="text-meta text-ink-500 mt-1">Pour Claude Sonnet/Haiku — analyse, catégorisation, vision. Obtenez votre clé sur <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">console.anthropic.com</a></p>
+          <p className="text-meta text-ink-400 mt-1">Pour Claude Sonnet/Haiku — analyse, catégorisation, vision. Obtenez votre clé sur <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">console.anthropic.com</a></p>
         </div>
         <div>
           <label htmlFor="apikey-finnhub" className="block text-body text-ink-300 mb-1">Finnhub API Key (Données boursières)</label>
@@ -57,7 +57,7 @@ export const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ apiKey
               }
             </div>
           )}
-          <p className="text-meta text-ink-500 mt-1">
+          <p className="text-meta text-ink-400 mt-1">
             §7.F : remplace l'ancien Google Sheet hardcodé. Quotes + historique + profils
             d'actifs à jour quotidiennement via <a href="https://finnhub.io/register" target="_blank" rel="noopener noreferrer" className="text-info-400 underline">finnhub.io</a> (gratuit, 60 req/min).
             Optionnel : sans clé, fallback sur le Google Sheet legacy.

@@ -66,7 +66,7 @@ export const StockComparisonModal: React.FC<StockComparisonModalProps> = ({
                     {isLoading ? (
                         <Skeleton variant="chart" />
                     ) : data.length === 0 || visibleKeys.size === 0 ? (
-                        <div className="flex items-center justify-center h-full text-meta text-ink-500">
+                        <div className="flex items-center justify-center h-full text-meta text-ink-400">
                             Aucune donnée disponible pour cette sélection.
                         </div>
                     ) : (

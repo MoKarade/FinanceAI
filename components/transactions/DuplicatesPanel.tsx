@@ -208,8 +208,8 @@ const GroupRow: React.FC<{
                         <label htmlFor={`dup-${m.id}`} className="flex-1 text-meta text-ink-300 cursor-pointer">
                             <span className="text-ink-400">{m.date}</span>{' '}
                             <span className="text-ink-200">{m.payee || '(sans libellé)'}</span>
-                            {m.accountName && <span className="text-ink-500"> · {m.accountName}</span>}
-                            <span className="text-ink-500"> · {m.category}</span>
+                            {m.accountName && <span className="text-ink-400"> · {m.accountName}</span>}
+                            <span className="text-ink-400"> · {m.category}</span>
                             {isKeeper && !checked && (
                                 <span className="ml-1 text-success-400">à conserver</span>
                             )}

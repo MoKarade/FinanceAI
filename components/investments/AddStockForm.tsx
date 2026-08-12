@@ -296,7 +296,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                     >
                                         <span className="font-mono font-bold text-white shrink-0">{r.displaySymbol || r.symbol}</span>
                                         <span className="text-meta text-ink-300 truncate flex-1">{r.description}</span>
-                                        {r.type && <span className="text-tiny text-ink-500 shrink-0 hidden sm:inline">{r.type}</span>}
+                                        {r.type && <span className="text-tiny text-ink-400 shrink-0 hidden sm:inline">{r.type}</span>}
                                     </button>
                                 </li>
                             ))}
@@ -318,7 +318,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                 placeholder="ex: 152.30"
                                 className="w-full bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none font-mono"
                             />
-                            <p className="text-tiny text-ink-500 mt-1">Sans Finnhub : entre le prix actuel toi-même (modifiable plus tard).</p>
+                            <p className="text-tiny text-ink-400 mt-1">Sans Finnhub : entre le prix actuel toi-même (modifiable plus tard).</p>
                         </div>
                     )}
                     {validatedSymbol && currentPrice !== null && (
@@ -379,7 +379,7 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                 placeholder="150.00"
                                 className="w-full bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none font-mono"
                             />
-                            <p className="text-tiny text-ink-500 mt-1">Override possible si le prix suggéré ne correspond pas à ta transaction réelle.</p>
+                            <p className="text-tiny text-ink-400 mt-1">Override possible si le prix suggéré ne correspond pas à ta transaction réelle.</p>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>

@@ -92,7 +92,7 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
                         </div>
                         <div className="rounded-lg border border-white/5 max-h-48 overflow-y-auto">
                             <table className="w-full text-tiny">
-                                <thead className="bg-black/30 text-ink-500 sticky top-0">
+                                <thead className="bg-black/30 text-ink-400 sticky top-0">
                                     <tr>
                                         <th className="text-left p-2">Symbole</th>
                                         <th className="text-right p-2">Qté</th>
@@ -113,9 +113,9 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
                             </table>
                         </div>
                         {preview.holdings.length > 8 && (
-                            <p className="text-tiny text-ink-500">… et {preview.holdings.length - 8} autre(s).</p>
+                            <p className="text-tiny text-ink-400">… et {preview.holdings.length - 8} autre(s).</p>
                         )}
-                        <p className="text-tiny text-ink-500">
+                        <p className="text-tiny text-ink-400">
                             Le prix actuel se met à jour via Finnhub si ta clé est configurée ; sinon le coût moyen
                             sert de base (performance 0 % jusqu'au prochain rafraîchissement). Les symboles déjà
                             présents ne sont pas dupliqués.

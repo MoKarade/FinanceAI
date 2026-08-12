@@ -239,7 +239,7 @@ export const RequirementCard: React.FC<{ req: Requirement; currentTab?: Tab }> =
                                         aria-label={f.label}
                                         className="flex-1 min-w-0 bg-transparent py-2 text-body text-ink-50 outline-none font-mono"
                                     />
-                                    {f.unit && <span className="text-meta text-ink-500 shrink-0">{f.unit}</span>}
+                                    {f.unit && <span className="text-meta text-ink-400 shrink-0">{f.unit}</span>}
                                 </div>
                             </label>
                         ))}
@@ -314,7 +314,7 @@ const FullSetupScreen: React.FC<{
                 </div>
                 <h1 id="page-setup-title" className="text-display font-bold text-ink-50">{config.title}</h1>
                 <p className="text-body text-ink-300 mt-2 max-w-xl">{config.intro}</p>
-                <p className="text-meta text-ink-500 mt-1.5 max-w-xl">
+                <p className="text-meta text-ink-400 mt-1.5 max-w-xl">
                     Rien ne s'affiche tant que les prérequis ci-dessous ne sont pas remplis.
                 </p>
                 <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-3">

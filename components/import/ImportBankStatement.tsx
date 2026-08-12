@@ -119,7 +119,7 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
                 />
                 <span className="mb-2 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-0.5" aria-hidden="true"><Icon name={analyzing ? 'clock' : 'import'} size={28} className="text-ink-300" /></span>
                 <span className="text-meta font-medium text-ink-200">{analyzing ? 'Analyse du document en cours…' : (fileName || 'Cliquer ou glisser un fichier')}</span>
-                <span className="text-tiny text-ink-500 mt-1">CSV · TSV · PDF · image</span>
+                <span className="text-tiny text-ink-400 mt-1">CSV · TSV · PDF · image</span>
             </label>
 
             {/* a11y (WCAG 4.1.3) : l'extraction IA est longue → annonce polie aux lecteurs d'écran. */}
@@ -142,7 +142,7 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
 
                     <div className="overflow-hidden rounded-lg border border-white/5">
                         <table className="w-full text-tiny">
-                            <thead className="bg-black/30 text-ink-500">
+                            <thead className="bg-black/30 text-ink-400">
                                 <tr><th className="text-left p-2">Date</th><th className="text-left p-2">Description</th><th className="text-right p-2">Montant</th></tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">

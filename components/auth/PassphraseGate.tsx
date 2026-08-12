@@ -72,7 +72,7 @@ export const PassphraseGate: React.FC<{ status: SyncStatus }> = ({ status }) => 
                     placeholder="Ta passphrase"
                     autoComplete="off"
                     autoFocus
-                    className="w-full rounded-card border border-white/10 bg-black/40 px-3 py-2 text-ink-100 placeholder:text-ink-500 focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded-card border border-white/10 bg-black/40 px-3 py-2 text-ink-100 placeholder:text-ink-400 focus:border-primary/50 focus:outline-none"
                 />
                 {(localError || status.error) && (
                     <p className="text-tiny italic text-rose-400">{localError || status.error}</p>
@@ -88,7 +88,7 @@ export const PassphraseGate: React.FC<{ status: SyncStatus }> = ({ status }) => 
                     type="button"
                     onClick={onSkip}
                     disabled={busy || status.busy}
-                    className="block w-full text-tiny text-ink-500 underline underline-offset-2 hover:text-ink-300 disabled:opacity-50"
+                    className="block w-full text-tiny text-ink-400 underline underline-offset-2 hover:text-ink-300 disabled:opacity-50"
                 >
                     Continuer sans déverrouiller (se déconnecter de Drive)
                 </button>

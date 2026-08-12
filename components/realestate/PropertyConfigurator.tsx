@@ -56,7 +56,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                         />
                         <div className="flex-1">
                             <div className="text-body font-bold text-white">Résidence Principale</div>
-                            <div className="text-tiny text-ink-500">Si coché, le loyer actuel sera supprimé.</div>
+                            <div className="text-tiny text-ink-400">Si coché, le loyer actuel sera supprimé.</div>
                         </div>
                     </label>
 
@@ -76,7 +76,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                             />
                             <div className="flex-1">
                                 <div className="text-body font-bold text-white">Propriété Locative</div>
-                                <div className="text-tiny text-ink-500">Génère des revenus de location.</div>
+                                <div className="text-tiny text-ink-400">Génère des revenus de location.</div>
                             </div>
                         </label>
                     )}
@@ -141,7 +141,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                     </div>
                     <div>
                         <label htmlFor="municipality-select" className="block text-meta text-ink-300 mb-1">
-                            Municipalité <span className="text-tiny text-ink-500">(taxe de bienvenue)</span>
+                            Municipalité <span className="text-tiny text-ink-400">(taxe de bienvenue)</span>
                         </label>
                         <select
                             id="municipality-select"
@@ -191,7 +191,7 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                             <span>{maxValue > 0 ? fmt(maxValue) : 'Aucun plafond'}</span>
                         </label>
                         <input type="range" aria-label="Plafond Valeur Max" min="0" max={price * 4} step={price * 0.1} value={maxValue} onChange={e => updateActiveGoal({ maxValue: Number(e.target.value) })} className="w-full h-1.5 bg-black/50 rounded-lg appearance-none cursor-pointer accent-purple-500" />
-                        <p className="text-tiny text-ink-500 mt-1">Limite l'appréciation projetée de la propriété à un maximum réaliste.</p>
+                        <p className="text-tiny text-ink-400 mt-1">Limite l'appréciation projetée de la propriété à un maximum réaliste.</p>
                     </div>
                 </div>
             </Card>

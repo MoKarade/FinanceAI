@@ -206,7 +206,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                             onDragLeave={() => setDragOverYear(null)}
                                             onDrop={(e) => { handleDrop(e, year); setDragOverYear(null); }}
                                         >
-                                            <div className={`text-tiny font-black text-center pb-1 border-b ${isNow ? 'text-green-400 border-green-500/30' : 'text-ink-500 border-white/5'}`}>
+                                            <div className={`text-tiny font-black text-center pb-1 border-b ${isNow ? 'text-green-400 border-green-500/30' : 'text-ink-400 border-white/5'}`}>
                                                 {year}{isNow && <span className="ml-1 text-green-400">●</span>}
                                             </div>
                                             {eventsByYear[year]?.map((item) => (
@@ -230,8 +230,8 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
             {isAdding && (
                 <Card className="border-2 border-dashed border-white/20 bg-white/5 animate-slide-up">
                     <div className="mb-4 flex gap-4 border-b border-white/10 pb-2">
-                        <button onClick={() => setEventTypeCategory('TRAVEL')} className={`text-body font-bold pb-1 px-2 transition-colors ${eventTypeCategory === 'TRAVEL' ? 'text-white border-b-2 border-info-500' : 'text-ink-500'}`}>Voyage</button>
-                        <button onClick={() => setEventTypeCategory('EVENT')} className={`text-body font-bold pb-1 px-2 transition-colors ${eventTypeCategory === 'EVENT' ? 'text-white border-b-2 border-purple-500' : 'text-ink-500'}`}>Aléas & Projets</button>
+                        <button onClick={() => setEventTypeCategory('TRAVEL')} className={`text-body font-bold pb-1 px-2 transition-colors ${eventTypeCategory === 'TRAVEL' ? 'text-white border-b-2 border-info-500' : 'text-ink-400'}`}>Voyage</button>
+                        <button onClick={() => setEventTypeCategory('EVENT')} className={`text-body font-bold pb-1 px-2 transition-colors ${eventTypeCategory === 'EVENT' ? 'text-white border-b-2 border-purple-500' : 'text-ink-400'}`}>Aléas & Projets</button>
                     </div>
                     {eventTypeCategory === 'TRAVEL' ? (
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -302,7 +302,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                             </div>
                                             {item.cost > 0 && <div className="font-bold text-danger-400 text-lg">{formatSigned(-item.cost, { withCurrency: true })}</div>}
                                         </div>
-                                        <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteKey(item.uniqueKey); }} className="absolute top-3 right-3 text-ink-500 hover:text-danger-500 p-2 transition-colors z-10 hover:bg-white/5 rounded-full" title="Supprimer cet événement"><Icon name="trash" size={16} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteKey(item.uniqueKey); }} className="absolute top-3 right-3 text-ink-500 hover:text-danger-500 p-2 transition-colors z-10 hover:bg-white/5 rounded-full" title="Supprimer cet événement" aria-label="Supprimer cet événement"><Icon name="trash" size={16} /></button>
                                     </div>
                                 </div>
                             );
@@ -327,7 +327,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                         <h3 className="text-2xl font-black text-white">{selectedItem.name}</h3>
                                         <div className="text-body text-ink-300 mt-1">{new Date(selectedItem.date).toLocaleDateString()}</div>
                                     </div>
-                                    <button onClick={() => setConfirmDeleteKey(selectedItem.uniqueKey)} className="text-ink-500 hover:text-danger-500 p-2 transition-colors hover:bg-white/5 rounded-full" title="Supprimer"><Icon name="trash" size={16} /></button>
+                                    <button onClick={() => setConfirmDeleteKey(selectedItem.uniqueKey)} className="text-ink-500 hover:text-danger-500 p-2 transition-colors hover:bg-white/5 rounded-full" title="Supprimer" aria-label="Supprimer l'événement sélectionné"><Icon name="trash" size={16} /></button>
                                 </div>
                                 <div className="p-6 space-y-6">
                                     <div>
@@ -376,7 +376,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                             )}
                         </div>
                     ) : (
-                        <div className="sticky top-6 h-[400px] flex flex-col items-center justify-center text-ink-500 bg-white/5 rounded-2xl border border-white/5 border-dashed">
+                        <div className="sticky top-6 h-[400px] flex flex-col items-center justify-center text-ink-400 bg-white/5 rounded-2xl border border-white/5 border-dashed">
                             <Icon name="life-projects" size={40} className="mb-4 opacity-30" />
                             <p className="text-body text-ink-400">Sélectionne un événement</p>
                         </div>

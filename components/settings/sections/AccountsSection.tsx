@@ -70,7 +70,7 @@ export const AccountsSection: React.FC<AccountsSectionProps> = ({
               ))}
             </div>
           ) : (
-            <div className="text-ink-500 text-meta italic">Aucun compte détecté — importe d'abord des transactions.</div>
+            <div className="text-ink-400 text-meta italic">Aucun compte détecté — importe d'abord des transactions.</div>
           )}
         </div>
       </Card>

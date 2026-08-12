@@ -95,7 +95,7 @@ export const ClaudeConnectorCard: React.FC = () => {
                     </li>
                 </ol>
 
-                <p className="text-tiny text-ink-500 leading-snug">
+                <p className="text-tiny text-ink-400 leading-snug">
                     Aucune installation technique (Node est inclus dans Claude Desktop), aucun compte développeur.
                     Tes données restent dans <strong>ton</strong> Google Drive.
                 </p>

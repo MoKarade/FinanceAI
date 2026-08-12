@@ -119,12 +119,12 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                                 </div>
 
                                 <div className="bg-black/30 rounded-lg p-3 flex justify-between items-center border border-white/5">
-                                    <span className="text-meta text-ink-500 uppercase font-bold">Budget</span>
+                                    <span className="text-meta text-ink-400 uppercase font-bold">Budget</span>
                                     <span className="text-lg font-bold text-ink-100">{formatCAD(trip.totalCost)}</span>
                                 </div>
 
                                 {!isPast && (
-                                    <div className="mt-4 text-tiny text-ink-500 text-center">
+                                    <div className="mt-4 text-tiny text-ink-400 text-center">
                                         Déduit des liquidités dans la simulation.
                                     </div>
                                 )}

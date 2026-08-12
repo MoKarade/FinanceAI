@@ -162,7 +162,7 @@ export const AutoBackupPanel: React.FC = () => {
                                 <Icon name={entry.source === 'auto' ? 'settings' : 'users'} size={14} className="shrink-0 text-ink-400" />
                                 <div className="flex-1 min-w-0">
                                     <div className="text-ink-100 font-mono">{formatDate(entry.timestamp)} {new Date(entry.timestamp).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}</div>
-                                    <div className="text-tiny text-ink-500">{(entry.sizeBytes / 1024).toFixed(1)} KB · {entry.source === 'auto' ? 'auto' : 'manuel'}</div>
+                                    <div className="text-tiny text-ink-400">{(entry.sizeBytes / 1024).toFixed(1)} KB · {entry.source === 'auto' ? 'auto' : 'manuel'}</div>
                                 </div>
                                 <button
                                     type="button"

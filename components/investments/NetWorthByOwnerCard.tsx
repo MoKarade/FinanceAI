@@ -63,21 +63,21 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
                             <span className="text-meta text-ink-200 truncate">{b.label}</span>
                         </div>
                         <PrivateAmount as="div" className="font-mono font-bold text-white">{fmt(b.value)}</PrivateAmount>
-                        <div className="text-tiny text-ink-500">{pct(b.value, bd.total)}</div>
+                        <div className="text-tiny text-ink-400">{pct(b.value, bd.total)}</div>
                     </div>
                 ))}
             </div>
 
             {assets.length > 0 && (
                 <div className="space-y-1.5">
-                    <div className="text-tiny text-ink-500 font-black uppercase tracking-widest mb-1">Attribuer par actif</div>
+                    <div className="text-tiny text-ink-400 font-black uppercase tracking-widest mb-1">Attribuer par actif</div>
                     {assets.map((a) => {
                         const value = assetValueCad(a, fxRates); // CAD (prix natif × FX)
                         return (
                             <div key={a.symbol} className="flex items-center justify-between gap-2 text-body bg-white/5 rounded px-2 py-1.5">
                                 <span className="text-ink-100 truncate">
                                     <span className="font-bold">{a.symbol}</span>
-                                    <span className="text-ink-500"> · {a.accountType || 'NON-ENREG'} · </span>
+                                    <span className="text-ink-400"> · {a.accountType || 'NON-ENREG'} · </span>
                                     <PrivateAmount className="font-mono">{fmt(value)}</PrivateAmount>
                                 </span>
                                 <select

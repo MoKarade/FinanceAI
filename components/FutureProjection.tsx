@@ -965,6 +965,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
      * il est devenu criant en vue au jour, où les aires par compte couvrent presque tout le tracé.
      */
     const handleChartContainerClick = (e: React.PointerEvent<HTMLDivElement>) => {
+        // [FUTUR-DAILY-TOUCH] Le lever du 2e doigt en fin de PINCEMENT émet un pointerup à faible
+        // dérive qui passerait le garde anti-pan ci-dessous → jour figé que personne ne visait.
+        if (zoom.isPinchActive()) return;
         const down = pointerDownPosRef.current;
         // ⚠️ Tolérance de dérive ADAPTATIVE (sonde 2026-08-12 : avec le seuil fixe à 6 px, un clic
         // qui dérive de 8 px pendant le geste ne faisait RIEN — mesuré drift 8/10 px → aucun jour

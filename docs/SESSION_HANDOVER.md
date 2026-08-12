@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 51) — `[FUTUR-DAILY-TOUCH]` : pincement 2 doigts sur TOUS les graphes
+> Cadrage Marc : tous les graphes d'un coup · 2 doigts = zoom, 1 doigt = la page · les 4 douleurs
+> mobiles cochées (courbe trop petite / viser un jour / infobulle déborde / contrôles → le layout
+> reste à faire, `[FUTUR-MOBILE-LAYOUT]`). Implémenté DANS `useTimeChartZoom` (9 graphes hérités
+> via `containerRef`) : pincement = zoom+pan combinés par RATIO depuis la base figée au départ du
+> geste (pas de point-fixe d'arrondi possible), `touch-action: pan-y` posé par le hook, garde
+> `isPinchActive` sur la sélection au tap du Futur. Pièges MESURÉS (leçon CONVENTIONS) :
+> (1) `synthesizePinchGesture` sans `gestureSourceType: 'touch'` émet de la MOLETTE en desktop
+> headless — le premier e2e « vert » validait la mauvaise modalité ; (2) un pincement d'écartement
+> réel démarre doigts COLLÉS → l'armement doit pouvoir se faire au touchmove, pas seulement au
+> touchstart (le graphe restait inerte au doigt) ; (3) le geste CDP est VERTICAL — un dézoom fort
+> démarre les doigts HORS de la boîte du graphe (gestes modérés dans l'e2e) ; (4) le scroll
+> tactile 1 doigt est inerte dans l'émulation headless MÊME hors graphe (aucun scroller) → le
+> contrat du hook se teste par defaultPrevented, pas par le scroll. Marc a aussi signalé puis
+> retiré (« ah si c'est bon ») un doute sur la position du voyage Brésil.
+> Panel #596 : HIGH silent-failure corrigé (démontage MI-GESTE → `twoFingersRef` coincé →
+> `isPinchActive()` vrai pour toujours → tap du Futur MORT en silence ; purge complète au
+> `containerRef(null)` + test discriminant), NaN largeur-0 gardé (range [NaN,NaN] → slice(0,0)
+> = graphe vidé), re-armement si dataLength change mi-geste, docstring `isPinchActive` élargie
+> (couvre le contact 2 doigts non armé — voulu). Reste HUMAIN : smoke test iPhone/WebKit réel
+> (mes e2e = Chromium seulement) → routé `A_FAIRE_MOI.md` §A0.
+>
 > ## 🟢 Session 2026-08-12 (suite 50) — `[A11Y-INK500]` livré · retour Marc TACTILE reçu
 > Reprise de l'ordre PM (tâche #62, V10 a11y). `[A11Y-INK500]` : classification par-occurrence
 > des 115 matchs — 6 étaient des `pink-500` (substring du grep !) + 2 commentaires ; 85 textes

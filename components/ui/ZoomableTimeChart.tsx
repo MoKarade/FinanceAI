@@ -171,7 +171,7 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
             {...handlers}
             style={{ height: isFullscreen ? '100vh' : height }}
             role="img"
-            aria-label="Graphique temporel — molette pour zoomer, glisser pour déplacer, double-clic pour réinitialiser"
+            aria-label="Graphique temporel — molette ou pincement pour zoomer, glisser pour déplacer, double-clic pour réinitialiser"
         >
             {/* Barre de contrôles : périodes (gauche) + plein écran (droite). */}
             {showControls && (
@@ -283,7 +283,7 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
             )}
             {!isZoomed && data.length > 1 && (
                 <div className="absolute bottom-2 right-2 text-tiny text-ink-400 pointer-events-none bg-black/30 px-1.5 py-0.5 rounded">
-                    Molette = zoom · double-clic = reset
+                    Molette ou pincement = zoom · double-clic = reset
                 </div>
             )}
         </div>

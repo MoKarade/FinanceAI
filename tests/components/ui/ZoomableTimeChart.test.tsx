@@ -26,13 +26,13 @@ describe('ZoomableTimeChart', () => {
         expect(chart?.getAttribute('aria-label')).toMatch(/molette/i);
     });
 
-    it('affiche le hint "Molette = zoom" en vue complète', () => {
+    it('affiche le hint « Molette ou pincement = zoom » en vue complète', () => {
         render(
             <div style={{ width: 600, height: 400 }}>
                 <ZoomableTimeChart data={mockData} xKey="date" series={mockSeries} />
             </div>,
         );
-        expect(screen.getByText(/Molette = zoom/i)).toBeInTheDocument();
+        expect(screen.getByText(/Molette ou pincement = zoom/i)).toBeInTheDocument();
     });
 
     it("ne montre PAS le bouton reset par défaut (pas zoomé)", () => {

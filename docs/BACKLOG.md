@@ -600,6 +600,12 @@
   (date limite ARC/RQ), ventilation quotidienne : chaque label posé à SON jour. Jalons SANS date
   réelle (FIRE, RRQ/PSV dérivés, lifeMarkers) restent au mois (no-fake). 6 tests (saisie datée,
   YYYY-MM sans jour → au mois, clamp 31→28 fév, échéance 30).
+- [ ] **`[GATE-RELATED-RELIABILITY]`** (S, outillage — mesuré 2026-08-12) — `vitest related` de la
+  gate ciblée n'a PAS sélectionné `tests/services/monthlyEvents.test.ts` alors que
+  `services/projection/monthlyEvents.ts` était stagé (échec attrapé par la CI seule, 2×
+  dans la même PR #594 avec la garde fiscale). Diagnostiquer pourquoi (chemins quotés ? CWD du
+  hook ? suivi du graphe ?) et soit corriger, soit élargir la gate. En attendant : la CI
+  complète reste l'arbitre (design assumé), les gardes-scan sont déjà forcées.
 - [ ] **`[ENG-MC-BANDS-ORDER]`** (M, moteur, 🧭 financial-integrity d'abord) — les bandes Monte
   Carlo sortent DÉSORDONNÉES du moteur : sur 361 mois, 171 violations d'ordre et 8 mois où
   P10 > P90 (jusqu'à 36 952 $, 17,25 % du P50), toutes dans les ~60 premiers mois (mesuré

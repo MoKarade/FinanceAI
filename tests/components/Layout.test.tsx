@@ -89,20 +89,22 @@ describe('Layout', () => {
         expect(screen.getByRole('navigation', { name: 'Navigation mobile' })).toBeInTheDocument();
     });
 
-    it('§B.1 — sidebar desktop a aria-expanded=false par défaut (collapsed)', () => {
+    it('§B.1 (révisé audit #598) — l’aside n’a PLUS aria-expanded (non conforme au rôle complementary)', () => {
+        // aria-expanded n'est pas une propriété supportée du rôle implicite complementary
+        // (axe aria-allowed-attr) — l'état est purement visuel, chaque groupe expose le sien.
         const { container } = render(<Layout {...baseProps} />);
         const sidebar = container.querySelector('aside');
-        expect(sidebar?.getAttribute('aria-expanded')).toBe('false');
+        expect(sidebar?.hasAttribute('aria-expanded')).toBe(false);
     });
 
-    it('§B.1 — sidebar expands au mouseEnter, collapses au mouseLeave', () => {
+    it('§B.1 — sidebar expands au mouseEnter, collapses au mouseLeave (observable = largeur)', () => {
         const { container } = render(<Layout {...baseProps} />);
         const sidebar = container.querySelector('aside')!;
-        expect(sidebar.getAttribute('aria-expanded')).toBe('false');
+        expect(sidebar.className).toContain('w-16');
         fireEvent.mouseEnter(sidebar);
-        expect(sidebar.getAttribute('aria-expanded')).toBe('true');
+        expect(sidebar.className).toContain('w-72');
         fireEvent.mouseLeave(sidebar);
-        expect(sidebar.getAttribute('aria-expanded')).toBe('false');
+        expect(sidebar.className).toContain('w-16');
     });
 
     it('§B.2 — clic sur header de groupe (sidebar ouverte) toggle aria-expanded', () => {
@@ -154,11 +156,18 @@ describe('Layout — sidebar au clavier (D6-KBD)', () => {
     });
 
     it('un groupe REPLIÉ est visibility:hidden (hors tab-order), un groupe déplié est visible', () => {
+        // ⚠️ Version corrigée (audit #598) : la première mouture assertait sur les groupes repliés
+        // DU RENDU PAR DÉFAUT — or tous les groupes sont OUVERTS par défaut, la boucle ne
+        // s'exécutait jamais (test vacueux, classe CONVENTIONS). On REPLIE d'abord.
         const { container } = render(<Layout {...baseProps} />);
+        expect(container.querySelectorAll('aside .max-h-0').length).toBe(0); // tout ouvert par défaut
+        const btn = container.querySelector('aside button[aria-expanded="true"]') as HTMLButtonElement;
+        fireEvent.click(btn); // replie le premier groupe
         const collapsed = container.querySelectorAll('aside .max-h-0');
+        expect(collapsed.length).toBe(1);
+        expect(collapsed[0].className).toContain('invisible');
         const expanded = container.querySelectorAll('aside .max-h-\\[600px\\]');
-        expect(collapsed.length + expanded.length).toBeGreaterThan(0);
-        for (const c of Array.from(collapsed)) expect(c.className).toContain('invisible');
+        expect(expanded.length).toBeGreaterThan(0);
         for (const e of Array.from(expanded)) expect(e.className).toContain('visible');
     });
 

@@ -218,6 +218,8 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* Phase B.1 — sidebar fixe-positionnée, collapsed-by-default (w-16),
           expand au survol/focus (w-72). Le main a `md:ml-16` pour préserver la
           place du rail collapsé ; l'expansion overlay le contenu (pas de shift). */}
+      {/* aria-expanded retiré de l'aside (audit #598) : non supporté par le rôle implicite
+          complementary (axe aria-allowed-attr) — chaque groupe expose le sien via son bouton. */}
       <aside
         className={`hidden md:flex fixed top-0 left-0 bottom-0 z-40 flex-col bg-dark border-r border-white/10 overflow-hidden shadow-2xl transition-[width] duration-200 motion-reduce:transition-none ${
           isSidebarOpen ? 'w-72' : 'w-16'
@@ -229,7 +231,6 @@ export const Layout: React.FC<LayoutProps> = ({
           // Ne déclenche le collapse que si le focus quitte tout l'aside.
           if (!e.currentTarget.contains(e.relatedTarget as Node)) setSidebarFocused(false);
         }}
-        aria-expanded={isSidebarOpen}
       >
         {/* Brand + privacy toggle */}
         <div className="p-3 pb-2 shrink-0 space-y-2">
@@ -286,6 +287,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   // focus OUVRE la sidebar (onFocus de l'aside) : atteint = opérable, toujours.
                   onClick={() => toggleGroup(group.label)}
                   aria-expanded={isGroupExpanded}
+                  aria-controls={`nav-group-${group.label}`}
                   aria-label={!isSidebarOpen ? `${group.label} — ${count} onglets${tidied ? ' (rangé)' : ''}` : undefined}
                   title={!isSidebarOpen ? `${group.label} (${count})` : undefined}
                   className="w-full flex items-center gap-3 px-3 py-1.5 rounded-card transition-colors hover:bg-white/5 cursor-pointer focus-ring"
@@ -332,7 +334,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 {/* [D6-KBD] `invisible` quand replié : max-h-0 + overflow-hidden CACHE visuellement
                     mais laisse les boutons DANS l'ordre de tabulation — Tab posait le focus sur un
                     élément invisible (focus perdu à l'écran). visibility:hidden les en retire. */}
-                <div className={`overflow-hidden transition-[max-height] duration-200 motion-reduce:transition-none ${showItems ? 'max-h-[600px] visible' : 'max-h-0 invisible'}`}>
+                <div id={`nav-group-${group.label}`} className={`overflow-hidden transition-[max-height] duration-200 motion-reduce:transition-none ${showItems ? 'max-h-[600px] visible' : 'max-h-0 invisible'}`}>
                   {/* Filet + léger retrait pour matérialiser l'appartenance au groupe (panneau ouvert). */}
                   <div className={`space-y-0.5 pt-0.5 ${isSidebarOpen ? 'ml-[1.35rem] pl-1 border-l border-white/10' : ''}`}>
                     {group.items.map((item) => {

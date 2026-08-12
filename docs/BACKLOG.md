@@ -547,6 +547,9 @@
   overflow-hidden cache visuellement sans retirer du tab-order) → `invisible` (visibility:hidden)
   quand replié. 3 tests discriminants (4 rouges sur l'avant, dont l'ancien §B.2 qui verrouillait
   le comportement inverse).
+- [ ] **`[A11Y-SIDEBAR-ESC]`** (XS, a11y — audit #598, pré-existant) — la sidebar dépliée au
+  survol/focus n'est pas fermable au clavier (Échap) → gap WCAG 1.4.13 (Dismissable). Ajouter
+  un keydown Échap qui replie (blur/retour du focus au déclencheur).
 - [ ] **`[IA-NAV-LABELS]`** (S) — sidebar w-16 par défaut, libellés opacity-0, icônes cryptiques →
   libellés visibles par défaut (ou rail plus large).
 - [ ] **`[NAV-IA-CONSOLIDATE]`** (L, ⏳, 🧭 OK Marc requis) — 14 destinations → ~6 (Accueil · Budget ·

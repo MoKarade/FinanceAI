@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 54) — `[A11Y-FUTUR-MILESTONES-KEYBOARD]` : pastilles au clavier
+> Décision Marc appliquée : ~29 pastilles focusables (tabIndex 0, Entrée/Espace = modale, labels
+> DATÉS via meta.dateLabel, Tab = ordre chronologique). Anneau de focus DESSINÉ en SVG
+> (.event-focus-ring + index.css) — l'outline CSS sur un <g> SVG est invisible dans certains
+> moteurs. Découverte : Échap ne fermait la modale de détail NULLE PART (l'e2e mobile croyait
+> le contraire — sa boucle avalait l'échec) → listener document + autofocus. E2E clavier réel
+> vert, 4 unitaires prouvés discriminants par stash.
+> **Itération audit a11y (NO-GO → corrigé, même PR)** : (1) HIGH — l'autofocus par callback-ref
+> INLINE re-volait le focus à CHAQUE re-render (identité du ref change → React ré-exécute
+> `.focus()` ; cliquer « un compte » arrachait le focus) → `useRef` + effet au montage seul ;
+> (2) le focus est RESTAURÉ à la pastille déclencheuse à la fermeture ; (3) anneau de focus :
+> fond opaque + couleur `primary` (avant : anneau bleu peint à même les aires colorées,
+> contraste < 3:1 possible sur la bande REER) ; (4) vie et flux fusionnés en UNE séquence
+> triée — « Tab = ordre chronologique » est maintenant vrai GLOBALEMENT (avant : deux passes,
+> bond de décennies en arrière à la jonction). 2 tests discriminants (stash) en plus.
+>
 > ## 🟢 Session 2026-08-12 (suite 53) — `[D6-KBD]` : la sidebar au clavier
 > Deux pièges : l'accordéon `disabled={!isSidebarOpen}` était INATTEIGNABLE au Tab en marche
 > avant (Tab saute un bouton désactivé, et au moment où Tab le considère le focus n'est pas

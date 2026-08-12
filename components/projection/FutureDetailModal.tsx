@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { formatCAD } from '../../utils/format';
 import { createPortal } from 'react-dom';
 import { ComposedChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceDot } from 'recharts';
@@ -173,6 +173,32 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
 }) => {
     const [selected, setSelected] = useState<AccountDef | null>(null);
 
+    // [A11Y-FUTUR-MILESTONES-KEYBOARD] Une modale ouvrable au CLAVIER (pastilles focusables,
+    // Entrée) doit se fermer au clavier : Échap n'était géré NULLE PART — seul le bouton
+    // « Fermer » et le clic-dehors fermaient (mesuré : l'e2e croyait Échap fonctionnel parce
+    // qu'une boucle avalait son échec). Listener document : ferme quel que soit l'endroit où
+    // le focus se trouve.
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [onClose]);
+
+    // [Audit a11y #599, HIGH] Focus au MONTAGE UNIQUEMENT (deps []) : le callback-ref inline
+    // d'avant changeait d'identité à chaque rendu → React ré-exécutait `.focus()` à CHAQUE
+    // re-render (cliquer un compte → setSelected → le dialog ARRACHAIT le focus au bouton).
+    // Même effet : on capture l'élément déclencheur (la pastille du graphe) pour lui RENDRE
+    // le focus à la fermeture — sans ça, Tab repartait du haut de page après Échap/Fermer
+    // (même mécanique que components/ui/Modal.tsx).
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        dialogRef.current?.focus();
+        return () => { trigger?.focus(); };
+    }, []);
+
     const idx = useMemo(
         () => chartData.findIndex((d) => d.monthIndex === point.monthIndex),
         [chartData, point.monthIndex],
@@ -278,6 +304,8 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
             role="dialog"
             aria-modal="true"
             aria-label="Détail du mois"
+            ref={dialogRef}
+            tabIndex={-1}
         >
             <div
                 className="bg-dark border border-white/15 rounded-2xl shadow-[0_20px_70px_rgba(0,0,0,0.85)] w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5"

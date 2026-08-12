@@ -527,10 +527,12 @@
   migrés → `ink-400` (AA normal 5.21-6.42 mesuré) et 22 GARDÉS en `ink-500` légitime (glyphes
   décoratifs aria-hidden, icônes-boutons ≥3:1 WCAG 1.4.11, numérotation présentationnelle,
   grandes icônes d'états vides).
-- [ ] **`[A11Y-FUTUR-MILESTONES-KEYBOARD]`** (M, 🧭 décision Marc) — pastilles du graphe Futur non
-  atteignables au clavier (`ProjectionTooltip.tsx:270-271` tabIndex=-1, WCAG 2.1.1). Options :
-  focusabiliser ~29 pastilles (impact pattern « clic n'importe où ») OU contrôle clavier alternatif
-  ouvrant FutureDetailModal. Aria-labels datés si focusables. (≡ A11Y-CHART-KEYBOARD.)
+- [x] **`[A11Y-FUTUR-MILESTONES-KEYBOARD]`** ✅ 2026-08-12 (décision Marc : focusables) — pastilles
+  tabIndex 0 + Entrée/Espace = modale (même action que le clic), aria-labels DATÉS (dateLabel du
+  meta), anneau de focus DESSINÉ en SVG (.event-focus-ring — l'outline CSS sur un <g> est
+  invisible dans certains moteurs), ordre de Tab = ordre chronologique (ordre des données).
+  Découverte : Échap ne fermait la modale de détail NULLE PART (le bouton Fermer seul) — ajouté
+  (listener document + autofocus du dialog). E2E clavier réel + 4 unitaires discriminants.
 - [x] **`[FUT-TOUCH-TARGETS]`** ✅ 2026-08-12 (absorbé par [FUTUR-MOBILE-LAYOUT], retour Marc
   « trop petit trop cramped ») — mobile : présets de fenêtre (« 5 ans »… « Tout », « Aujourd'hui »)
   à min-h 44px, bascules de légende à 36px (18 bascules : 44px chacune gonflait le bloc), boutons
@@ -547,6 +549,27 @@
   overflow-hidden cache visuellement sans retirer du tab-order) → `invisible` (visibility:hidden)
   quand replié. 3 tests discriminants (4 rouges sur l'avant, dont l'ancien §B.2 qui verrouillait
   le comportement inverse).
+- [ ] **`[FUTUR-PAST-EXACT]`** (M, 🧭 retour Marc 2026-08-12 17:20) — « le passé doit représenter
+  EXACTEMENT le passé et je veux pouvoir voir les transactions aussi » : la partie passée de la
+  courbe doit coller aux données réelles sans approximation, et l'infobulle/le détail d'un jour
+  PASSÉ doit montrer les TRANSACTIONS de ce jour (elles existent dans le store — les brancher au
+  point réel). Cadrer : quelles approximations restantes le gênent (ancre, flux non datés — cf.
+  FUTUR-DAILY-ANCHOR-CAVEAT) ?
+- [ ] **`[FUTUR-CLICK-ANYWHERE]`** (S, retour Marc 2026-08-12) — « quand je clique sur la courbe
+  pour avoir l'infobulle je dois cliquer exactement sur la courbe, je veux pouvoir cliquer
+  n'importe où » : le clic doit résoudre le jour par l'ABSCISSE seule (x), partout dans la zone
+  du graphe (aires, vide au-dessus/en-dessous), pas seulement sur le tracé. Vérifier ce qui
+  bloque aujourd'hui (zones mortes ? garde ?) et l'e2e clique-partout.
+- [ ] **`[DEBT-FROM-CONTRACT]`** (M, 🧭 retour Marc 2026-08-12) — « ma dette doit être exactement
+  ce que j'ai — là ça me dit que j'ai la dette depuis des années mais c'est faux, je t'ai donné
+  le PDF du contrat, ça devrait être automatique » : extraire du contrat (PDF déjà fourni) la
+  date de début, le principal, le taux, l'échéancier → la dette du store reflète le contrat
+  RÉEL (import automatique côté app/MCP, pas de saisie manuelle approximative). Retrouver le
+  PDF en question et cadrer le pipeline d'extraction.
+- [ ] **`[MCP-V2-OVERHAUL]`** (L, 🧭 retour Marc 2026-08-12) — « grosse MAJ du MCP : je veux que
+  tout fonctionne bien et plus de fonctionnalités » : passe complète sur les tools MCP (fiabilité,
+  erreurs honnêtes, couverture) + nouvelles capacités à cadrer avec Marc (écritures étendues,
+  transactions, dettes-contrats, simulations). Plan-first.
 - [ ] **`[A11Y-SIDEBAR-ESC]`** (XS, a11y — audit #598, pré-existant) — la sidebar dépliée au
   survol/focus n'est pas fermable au clavier (Échap) → gap WCAG 1.4.13 (Dismissable). Ajouter
   un keydown Échap qui replie (blur/retour du focus au déclencheur).

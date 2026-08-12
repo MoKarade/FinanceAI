@@ -1,0 +1,73 @@
+# REFONTE NAV — « tout tourne autour de la courbe Future »
+
+> Demande Marc 2026-08-12 17:20 : « je veux que la partie principale de l'app soit la courbe
+> future, tout doit tourner autour. enlever la partie accueil. toutes les configurations à un
+> endroit, tout ce qui touche à la vie à un même endroit, tout ce qui touche aux transactions à
+> un même endroit, tous les paramètres retravaillés à un même endroit. et une partie dédiée et
+> plus détaillée pour un assistant, une page entière avec historique et plus d'outils. »
+>
+> Cadrage batch 1 RÉPONDU (2026-08-12) : bandeau KPI compact au-dessus de la courbe ·
+> Retraite→Vie, Impôts→Config · Assistant maximal (toutes les options + les siennes) ·
+> livraison INCRÉMENTALE (nav d'abord).
+> Batch 2 sans réponse → DÉFAUTS recommandés ci-dessous, marqués ⚙️ — renversables d'un mot.
+
+## Les 6 destinations
+
+1. **FUTUR** (= page d'ouverture, l'Accueil disparaît)
+   - La courbe domine, bandeau KPI compact au-dessus (patrimoine net actuel, variation,
+     santé financière). La « Prochaine action » migre vers l'Assistant.
+   - ⚙️ Les paramètres de PROJECTION (rendements, inflation, Monte Carlo, stratégies…)
+     quittent leurs panneaux dispersés et vivent ICI, avec la courbe qu'ils pilotent.
+2. **CONFIGURATIONS** — « ce que j'AI » (la photo d'aujourd'hui, les entrées du moteur)
+   - Profil & salaires · Comptes & liquidités · Portefeuille (actions/crypto actuels) ·
+     Immobilier ACTUEL · Dettes (avec `[DEBT-FROM-CONTRACT]` : la dette = le contrat PDF) ·
+     Impôts (centre fiscal complet — décision Marc).
+3. **VIE** — « ce que je PRÉVOIS » (les plans qui déforment la courbe)
+   - Retraite (décision Marc) · Enfants · Projets immobiliers FUTURS · Voyages ·
+     Événements de vie.
+   - ⚙️ Split immo/invest : l'ACTUEL en Config, les PROJETS en Vie.
+4. **TRANSACTIONS** — le réel au quotidien
+   - Transactions · Budget · Abonnements · Imports (relevés/paies).
+5. **ASSISTANT** — page entière (historique multi-conversations déjà là)
+   - Outils validés par Marc : écritures complètes en langage naturel · what-if guidés ET
+     plus poussés (comparaison de courbes côte à côte) · analyse ANCRÉE sur la courbe future ·
+     détail/explication des calculs du moteur (« pourquoi ce chiffre ») · précision améliorée
+     (l'assistant APPELLE le moteur de l'app, ne recalcule jamais à la main — règle source
+     unique) · analyse de documents dans le chat (PDF contrat/relevé/paie → extraction +
+     application proposée) · suivis proactifs & alertes.
+   - Propositions supplémentaires (« trouve-en d'autres ») : revue mensuelle automatique
+     (résumé du mois réel vs plan) · détection d'anomalies dans les transactions ·
+     scénarios SAUVEGARDÉS et nommés (comparer « plan A / plan B » dans le temps) ·
+     mode pédagogique (expliquer REER/CELI/FERR sur TES chiffres) · rappels fiscaux
+     saisonniers (échéances ARC/RQ).
+6. **RÉGLAGES** — retravaillés
+   - ⚙️ Sections claires (Comptes & sync · Clés API · Données & sauvegardes · Profil &
+     couple · Avancé) ; Système/Diagnostics fusionné ici ; les paramètres de PROJECTION
+     partent vers Futur (cf. 1).
+
+⚙️ Nav mobile (bas d'écran) : Futur · Transactions · Assistant · Plus (Config/Vie/Réglages).
+
+## Lots de livraison (incrémental — décision Marc)
+
+- **Lot 1 — LA NAV** : 6 destinations + sous-onglets = pages actuelles déplacées TELLES
+  QUELLES ; l'app s'ouvre sur Futur ; Accueil retiré (tuiles → bandeau KPI / Assistant) ;
+  barre mobile refaite. Critère de fini ⚙️ : RIEN de perdu (chaque écran actuel accessible),
+  deep-links/`#hash` redirigés, e2e de non-perte.
+- **Lot 2 — FUTUR enrichi** : bandeau KPI + rapatriement des paramètres de projection.
+- **Lot 3 — CONFIG fusionnée** : sous-onglets cohérents, split immo/invest actuel,
+  `[DEBT-FROM-CONTRACT]`.
+- **Lot 4 — VIE fusionnée** : retraite/enfants/projets/voyages/événements harmonisés.
+- **Lot 5 — TRANSACTIONS fusionnées** : budget/tx/abonnements/imports en un flux cohérent.
+- **Lot 6 — ASSISTANT pleine page** : le plus gros — sous-lots PAR OUTIL (6a écritures NL,
+  6b what-if comparés, 6c explication moteur, 6d analyse de docs, 6e proactif…), chaque
+  sous-lot une PR.
+- **Lot 7 — RÉGLAGES retravaillés**.
+
+Chaque lot : PR + panel d'agents + merge + déploiement — Marc peut corriger le tir entre
+chaque lot. Lien avec `[NAV-IA-CONSOLIDATE]` (ancien ticket 14→6 destinations) : ce plan le
+REMPLACE (vision différente : plus d'Accueil, courbe au centre) — ticket à clore comme
+supersedé au Lot 1.
+
+## Ce qui ne change PAS
+Le moteur de projection, le store, les invariants money-critical, la source unique
+(`lastProjection.chartData`), le MCP (sa grosse MAJ = `[MCP-V2-OVERHAUL]`, chantier séparé).

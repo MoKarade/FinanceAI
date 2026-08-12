@@ -188,3 +188,60 @@ describe('ExpertTooltip — pied d’actions épinglé (visible sans défiler)',
         expect(screen.queryByRole('button', { name: /Détail complet/ })).toBeNull();
     });
 });
+
+// [A11Y-FUTUR-MILESTONES-KEYBOARD] Décision Marc : les pastilles d'événement sont FOCUSABLES
+// (tabIndex -1 les rendait inatteignables au clavier — WCAG 2.1.1). Entrée/Espace = même action
+// que le clic, aria-label DATÉ, anneau de focus SVG (l'outline CSS sur un <g> est invisible
+// dans certains moteurs).
+import { ClickableEventIcon } from '../../../components/projection/ProjectionTooltip';
+import { fireEvent as fe } from '@testing-library/react';
+
+describe('ClickableEventIcon — clavier (A11Y-FUTUR-MILESTONES-KEYBOARD)', () => {
+    const renderIcon = (onSelect = vi.fn()) => {
+        const { container } = render(
+            <svg>
+                <ClickableEventIcon
+                    cx={100} cy={50}
+                    payload={{ label: '✈️ Voyage (Rome): -4 000$', subIdx: 0, dateLabel: 'sept. 2031' }}
+                    onSelect={onSelect}
+                    kind="life"
+                />
+            </svg>,
+        );
+        const g = container.querySelector('g[role="button"]')!;
+        return { g, onSelect };
+    };
+
+    it('est FOCUSABLE (tabIndex 0) avec un aria-label DATÉ', () => {
+        const { g } = renderIcon();
+        expect(g.getAttribute('tabindex')).toBe('0');
+        expect(g.getAttribute('aria-label')).toBe('Événement : ✈️ Voyage (Rome): -4 000$ — sept. 2031');
+    });
+
+    it('Entrée et Espace déclenchent onSelect (même action que le clic), pas les autres touches', () => {
+        const { g, onSelect } = renderIcon();
+        fe.keyDown(g, { key: 'Enter' });
+        expect(onSelect).toHaveBeenCalledTimes(1);
+        fe.keyDown(g, { key: ' ' });
+        expect(onSelect).toHaveBeenCalledTimes(2);
+        fe.keyDown(g, { key: 'Tab' });
+        fe.keyDown(g, { key: 'Escape' });
+        expect(onSelect).toHaveBeenCalledTimes(2);
+    });
+
+    it('porte l’anneau de focus SVG (cercle .event-focus-ring, opacité 0 au repos)', () => {
+        const { g } = renderIcon();
+        const ring = g.querySelector('.event-focus-ring')!;
+        expect(ring).toBeTruthy();
+        expect(ring.getAttribute('opacity')).toBe('0');
+    });
+
+    it('sans dateLabel (payload restauré/ancien) : label honnête sans tiret pendouillant', () => {
+        const { container } = render(
+            <svg>
+                <ClickableEventIcon cx={10} cy={10} payload={{ label: 'Jalon' }} onSelect={vi.fn()} />
+            </svg>,
+        );
+        expect(container.querySelector('g[role="button"]')!.getAttribute('aria-label')).toBe('Événement : Jalon');
+    });
+});

@@ -8,6 +8,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Corrections (audit a11y des pastilles au clavier)
+- La fenêtre de détail d'un jour ne **vole plus le focus** à chaque interaction (cliquer un
+  compte gardait la main), elle **rend le focus** à la pastille qui l'a ouverte quand tu la
+  fermes, et l'anneau de focus des pastilles est désormais lisible même par-dessus les zones
+  colorées du graphe. L'ordre de tabulation des ~29 pastilles est maintenant strictement
+  chronologique (avant : tous les jalons de vie, PUIS retour en arrière pour les flux).
+
 ### Changements majeurs
 - **L'onglet Futur est enfin vivable sur téléphone** : la courbe prend 55 % de la hauteur de
   l'écran (au lieu d'une hauteur fixe pensée pour le bureau), l'infobulle d'un jour figé s'ouvre
@@ -32,6 +39,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   entre fins de mois.
 
 ### Corrections
+- **Les pastilles d'événement de la courbe s'atteignent au clavier** : Tab passe de pastille en
+  pastille (dans l'ordre du temps), un anneau bleu montre où tu es, Entrée ouvre le détail du
+  mois — et Échap ferme maintenant cette fenêtre (avant, seul le bouton Fermer marchait). Chaque
+  pastille annonce sa date au lecteur d'écran.
 - **La barre latérale se pilote enfin au clavier** : les en-têtes de groupe (Argent, Patrimoine…)
   ne sont plus « morts » quand la barre est repliée — Tab les atteint, Entrée les déplie. Et les
   onglets d'un groupe replié ne capturent plus le focus clavier en étant invisibles.

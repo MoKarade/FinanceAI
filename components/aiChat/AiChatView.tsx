@@ -28,6 +28,9 @@ import { formatCostCad } from '../../utils/format';
 // [CHAT-PAGE-CONTEXT] Badge du contexte d'écran perçu (contestable par l'utilisateur — confiance).
 import { useViewContextSnapshot } from '../../hooks/useViewContextSnapshot';
 import { viewContextMatchesTab } from '../../services/aiChat/viewContext';
+// [REFONTE-NAV-L6a] Chips « ancrées sur la courbe » : bâties sur le contexte Futur publié (panneau
+// ouvert sur Futur) ou, sur la page Assistant, directement sur la source unique lastProjection.
+import { buildFutureViewDetail, buildFutureChips } from '../../services/aiChat/futureViewContext';
 import { TAB_LABELS } from '../../constants';
 
 export type AiChatVariant = 'panel' | 'tab';
@@ -96,9 +99,26 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
     // publisher est différé après paint → sans ce filtre, le badge afficherait « Accueil —
     // juillet 2026 » (période de Budget) pendant la fenêtre de transition d'onglet.
     const viewCtx = viewContextMatchesTab(viewCtxRaw, activeTab) ? viewCtxRaw : null;
+    // [REFONTE-NAV-L6a] Le badge se décline par `kind` : Budget garde sa période ; Futur dit ce que
+    // le chat voit (courbe affichée ou aveu « aucune projection » — jamais un badge qui prétend).
+    const contextDetailLabel = viewCtx
+        ? (viewCtx.detail.kind === 'budget'
+            ? viewCtx.detail.periodLabel
+            : (viewCtx.detail.hasProjection ? 'courbe de projection' : 'aucune projection calculée'))
+        : null;
     const contextBadge = viewCtx
-        ? `${TAB_LABELS[activeTab] ?? ''} — ${viewCtx.detail.periodLabel}`
+        ? `${TAB_LABELS[activeTab] ?? ''} — ${contextDetailLabel}`
         : (variant === 'panel' && activeTab !== Tab.ASSISTANT ? (TAB_LABELS[activeTab] ?? null) : null);
+    // [REFONTE-NAV-L6a] Chips ancrées sur la courbe : panneau → seulement quand le contexte publié
+    // est « future » (ouvert par-dessus Futur) ; page Assistant (variant tab) → bâties directement
+    // sur store.lastProjection (source unique — l'assistant est ANCRÉ sur la courbe, c'est sa page).
+    // Aucune projection → buildFutureChips rend [] (pas de fausse affordance). Libellés sans montant.
+    const lastProjection = useFinanceStore(s => s.lastProjection);
+    const futureChips = React.useMemo(() => {
+        if (viewCtx?.detail.kind === 'future') return buildFutureChips(viewCtx.detail);
+        if (variant === 'tab') return buildFutureChips(buildFutureViewDetail(lastProjection));
+        return [];
+    }, [viewCtx, variant, lastProjection]);
 
     const [input, setInput] = useState('');
     const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -385,6 +405,25 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                             <p className={`text-tiny text-ink-400 mb-1.5 ${isPanel ? '' : 'max-w-3xl mx-auto'}`}>
                                 Contexte : {contextBadge}
                             </p>
+                        )}
+                        {/* [REFONTE-NAV-L6a] Chips ancrées sur la courbe : PRÉ-REMPLISSENT la saisie
+                            (l'envoi reste un geste explicite — contrairement aux suggestions d'amorçage
+                            qui envoient direct, une question sur la courbe se relit/ajuste avant envoi).
+                            Libellés sans montant $ (seulement des années) — même sobriété que le badge. */}
+                        {futureChips.length > 0 && (
+                            <div className={`flex flex-wrap gap-1.5 mb-2 ${isPanel ? '' : 'max-w-3xl mx-auto'}`}>
+                                {futureChips.map(({ label, prompt }) => (
+                                    <button
+                                        key={label}
+                                        type="button"
+                                        disabled={isLoading}
+                                        onClick={() => { setInput(prompt); inputRef.current?.focus(); }}
+                                        className="text-tiny px-2.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-ink-200 border border-white/15 transition-colors focus-ring disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
                         )}
                         {/* [AITOOLS-B1] Puces des fichiers EN ATTENTE d'envoi (retirables).
                             role=status + aria-live (finding panel a11y) : l'AJOUT d'une puce est

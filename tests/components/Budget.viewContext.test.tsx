@@ -9,7 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, screen } from '@testing-library/react';
 import { Budget } from '../../components/Budget';
-import { getViewContext, _resetViewContextForTests } from '../../services/aiChat/viewContext';
+import { getViewContext, _resetViewContextForTests, type BudgetViewDetail } from '../../services/aiChat/viewContext';
 import { computeBudgetParity } from '../../utils/budget';
 import { computeIncomeBreakdown } from '../../utils/budgetSync';
 import { useFinanceStore } from '../../store/useFinanceStore';
@@ -65,7 +65,7 @@ beforeEach(() => {
 describe('Budget — publication du contexte d\'écran', () => {
     it('PARITÉ CANONIQUE : totalSpent/totalRealIncome publiés == helpers de l\'écran (jamais un 3e chiffre)', () => {
         render(<Budget {...props} />);
-        const detail = getViewContext()?.detail;
+        const detail = getViewContext()?.detail as BudgetViewDetail | undefined; // union élargie [REFONTE-NAV-L6a]
         expect(detail?.kind).toBe('budget');
 
         // Valeurs attendues calculées DIRECTEMENT par les helpers canoniques sur le mois courant
@@ -83,9 +83,9 @@ describe('Budget — publication du contexte d\'écran', () => {
 
     it('NAVIGATION : « Période précédente » republie le contexte du mois navigué (pas figé)', () => {
         render(<Budget {...props} />);
-        const before = getViewContext()?.detail;
+        const before = getViewContext()?.detail as BudgetViewDetail | undefined;
         fireEvent.click(screen.getByLabelText('Période précédente'));
-        const after = getViewContext()?.detail;
+        const after = getViewContext()?.detail as BudgetViewDetail | undefined;
         expect(after?.periodLabel).not.toBe(before?.periodLabel);
         // Le mois précédent n'a qu'une dépense de 250 $ (Épicerie) — le contexte suit l'écran.
         expect(after?.totalSpent).toBe(250);
@@ -94,12 +94,12 @@ describe('Budget — publication du contexte d\'écran', () => {
 
     it('la cible publiée == somme des cibles affichées (600 + 200 en vue mois)', () => {
         render(<Budget {...props} />);
-        expect(getViewContext()?.detail.totalBudgetTarget).toBe(800);
+        expect((getViewContext()?.detail as BudgetViewDetail | undefined)?.totalBudgetTarget).toBe(800);
     });
 
     it('[Vague 1.5] les CARTES de la page sont publiées avec leur provenance (ventilation revenus, statut)', () => {
         render(<Budget {...props} />);
-        const cards = getViewContext()?.detail.cards ?? [];
+        const cards = (getViewContext()?.detail as BudgetViewDetail | undefined)?.cards ?? [];
         const labels = cards.map((c) => c.label);
         expect(labels).toContain('Revenus (ventilation)');
         expect(labels).toContain('Statut du budget');

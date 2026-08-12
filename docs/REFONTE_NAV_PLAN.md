@@ -121,9 +121,27 @@
   colonnes divergent) ; le compte « **groupe(s) à classer** » du sous-titre n'est plus calculé
   seulement quand l'assistant est ouvert — il affichait `0` tant qu'on ne l'avait pas ouvert,
   soit un faux chiffre crédible (no-fake-data).
-- **Lot 6 — ASSISTANT pleine page** : le plus gros — sous-lots PAR OUTIL (6a écritures NL,
-  6b what-if comparés, 6c explication moteur, 6d analyse de docs, 6e proactif…), chaque
-  sous-lot une PR.
+- **Lot 6 — ASSISTANT pleine page** : le plus gros — sous-lots PAR OUTIL, chaque sous-lot une PR.
+  ⚠️ **Renumérotation 2026-08-12** : ce plan étiquetait « 6a » comme **« écritures NL »**, mais le
+  premier sous-lot réellement livré est **« Assistant ancré sur la courbe »** (contexte d'écran
+  Futur + questions suggérées). Le périmètre livré prime sur l'étiquette du plan — les sous-lots
+  restants sont donc renumérotés ci-dessous, et « écritures NL » devient **6b** (elle n'est PAS
+  faite).
+  - [x] **6a — Assistant ancré sur la courbe** (FAIT, PR à venir) : `FutureProjection` publie son
+    contexte d'écran (patron `CHAT-PAGE-CONTEXT`, `useViewContextPublisher('future', …)`) à partir
+    de la courbe AFFICHÉE (`lastProjection.chartData` ou son gel `PROJECTION-PERSIST` — aucun
+    recalcul côté UI) : patrimoine au départ et à l'horizon, marqueur retraite, objectif FIRE, plus
+    gros creux détecté, point sélectionné (modal détail ou infobulle figée). Builder pur
+    `services/aiChat/futureViewContext.ts`. **No-fake-data** : chaque champ est gardé par
+    `Number.isFinite`, un montant manquant est OMIS **et NOMMÉ** dans le prompt (« ne les invente
+    JAMAIS ») ; aucune projection → aveu honnête SANS aucun chiffre. Le chat gagne aussi des
+    **chips** de questions suggérées ancrées sur la courbe, qui **PRÉ-REMPLISSENT** la saisie
+    (l'envoi reste un geste explicite) et n'apparaissent que si une projection existe.
+  - [ ] **6b — écritures en langage naturel** (ex-6a du plan initial).
+  - [ ] **6c — what-if comparés** (ex-6b).
+  - [ ] **6d — explication du moteur** (ex-6c).
+  - [ ] **6e — analyse de documents** (ex-6d).
+  - [ ] **6f — assistant proactif** (ex-6e).
 - **Lot 7 — RÉGLAGES retravaillés**.
 
 Chaque lot : PR + panel d'agents + merge + déploiement — Marc peut corriger le tir entre

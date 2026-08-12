@@ -4,6 +4,55 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 63) — `[REFONTE-NAV-L6a]` : l'assistant ancré sur la courbe
+> Lot 6a intégré sur `main` post-#606 (PR à venir). L'assistant **voit** la courbe du Futur.
+> - **Nouveau builder PUR** `services/aiChat/futureViewContext.ts` :
+>   `buildFutureViewDetail(results, selectedPoint)` + `buildFutureChips(detail)`. Il **LIT** la
+>   projection émise par le moteur (source unique `lastProjection.chartData`, ou son gel
+>   `PROJECTION-PERSIST` = ce que la courbe AFFICHE) et ne **recalcule RIEN** : premier point
+>   projeté (`monthIndex >= 0`), dernier point, `isRetired`, `fireNumber` + lifeEvent FIRE,
+>   drawdown pic→creux (seuil 5 %), point sélectionné.
+> - **`FutureProjection`** publie via `useViewContextPublisher('future', …)` (patron
+>   `CHAT-PAGE-CONTEXT`), avec `selectedCurvePoint = detailPoint ?? infobulle FIGÉE`, et
+>   `curveVisible ? results : null` → courbe non révélée = détail « sans projection ».
+> - **`services/aiChat/viewContext.ts`** : `ViewContextDetail` devient une **union discriminée**
+>   `BudgetViewDetail | FutureViewDetail` (champ `kind`), `SCOPE_TO_TAB.future = Tab.FUTURE`,
+>   nouvelle branche `describeFutureDetail` dans `describeViewContextForPrompt`. Le bloc Budget
+>   est INCHANGÉ (seul `promptAmount` accepte désormais `number | undefined`).
+> - **`AiChatView`** : badge décliné par `kind` (« courbe de projection » / « aucune projection
+>   calculée ») + rangée de **chips** au-dessus de la saisie. ⚠️ Les chips **PRÉ-REMPLISSENT** la
+>   saisie (`setInput` + focus), elles n'envoient JAMAIS — contrairement aux suggestions
+>   d'amorçage. Sur la page Assistant (`variant === 'tab'`), elles sont bâties directement sur
+>   `store.lastProjection` ; en panneau, seulement si le contexte publié est `kind === 'future'`.
+>
+> **No-fake-data, le cœur du lot** : chaque champ numérique n'est posé que s'il est
+> `Number.isFinite` ; un montant manquant est **OMIS ET NOMMÉ** dans le prompt (« Valeurs
+> INDISPONIBLES … ne les invente JAMAIS ») — le modèle ne doit pas deviner ce qu'il « devrait »
+> y avoir. Aucune projection → ligne d'aveu honnête **sans le moindre chiffre** (asserté par un
+> `not.toMatch(/\d/)`). Pas de projection → **aucune chip** (une suggestion sur une courbe
+> inexistante serait une fausse affordance). `fireNumber === 0` (non configuré) est OMIS, pas
+> affiché comme « 0 $ ».
+>
+> **Intégration / conflits** : la branche de travail était basée sur `main` AVANT les lots 3/4/5
+> et l'audit. `git apply --3way` a repris les 6 fichiers **proprement, zéro conflit**. Vérifié à
+> la main sur `FutureProjection.tsx` (le seul fichier ayant dérivé, via L2a/L2b) : les **4
+> sous-onglets** (Projection / Paramètres / Plan / **Historique** avec `FutureHistorySection`
+> lazy) sont intacts ET le publisher est câblé (l. 754-766, après les déclarations de `results`
+> l. 322, `curveVisible` l. 328, `detailPoint` l. 689, `tooltip` l. 735). Aucun des lots 3/4/5 ni
+> l'audit n'avait touché `services/aiChat/` ni `components/aiChat/` → **aucun conflit avec le
+> Lot 5** côté contexte Budget.
+>
+> **Vérifs** : `npm run typecheck` vert ; `npm run lint` vert (2 warnings PRÉ-EXISTANTS, sans
+> rapport : `useChartTooltipPosition`, `useTimeChartZoom`) ; ciblé **57/57 verts** sur
+> `aiChatFutureViewContext` (14) + `AiChatView.futureChips` (6) + `aiChatViewContext` +
+> `Budget.viewContext` + `navDestinations` + `AiChatView.viewContext` + `useAiChat.viewContext` +
+> `useViewContextPublisher` ; **14/14 verts** sur les 5 fichiers `FutureProjection*`.
+>
+> ⚠️ **Renumérotation des sous-lots** : `docs/REFONTE_NAV_PLAN.md` étiquetait « 6a » comme
+> « écritures NL ». Le périmètre RÉELLEMENT livré est « Assistant ancré sur la courbe » → le plan
+> et le BACKLOG sont corrigés : écritures NL = **6b**, puis 6c what-if, 6d explication moteur,
+> 6e analyse de docs, 6f proactif. `[REFONTE-NAV-L6]` reste OUVERT.
+>
 > ## 🟢 Session 2026-08-12 (suite 62) — `[REFONTE-NAV-L5]` : l'argent du quotidien d'un seul tenant
 > Lot 5 intégré sur `main` post-#605 (PR à venir), **sans toucher un seul fichier de nav**
 > (`navDestinations` / `TabRouter` / `Layout` inchangés — comme aux lots 3-4). Mêmes règles que

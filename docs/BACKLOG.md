@@ -598,6 +598,28 @@
     `utils/csvExport`, et le compte « groupe(s) à classer » n'est plus gaté sur l'ouverture de
     l'assistant (il était figé à 0 = faux chiffre). → à ARCHIVER avec L1-L4 au merge.
   - [ ] `[REFONTE-NAV-L6]` Lot 6 — Assistant pleine page + outils (sous-lots par outil, voir plan).
+    ⚠️ Le plan étiquetait « 6a » comme « écritures NL » ; le sous-lot réellement livré est
+    « Assistant ancré sur la courbe » → sous-lots restants RENUMÉROTÉS dans
+    `docs/REFONTE_NAV_PLAN.md` (écritures NL = 6b). Le parent `[REFONTE-NAV-L6]` reste OUVERT
+    tant que 6b..6f ne sont pas faits.
+    - [x] `[REFONTE-NAV-L6a]` 6a — Assistant ancré sur la courbe. **FAIT 2026-08-12 (PR à venir)** :
+      `FutureProjection` publie son contexte d'écran (`useViewContextPublisher('future', …)`,
+      patron `CHAT-PAGE-CONTEXT`) bâti par le builder pur `services/aiChat/futureViewContext.ts`
+      sur la courbe AFFICHÉE (source unique `lastProjection.chartData` / gel `PROJECTION-PERSIST`,
+      zéro recalcul UI) : patrimoine départ + horizon, retraite, FIRE, plus gros creux, point
+      sélectionné (modal détail ou infobulle figée). `ViewContextDetail` devient une union
+      discriminée par `kind` (`budget` | `future`), `SCOPE_TO_TAB.future = Tab.FUTURE`, badge du
+      chat décliné par `kind`. **No-fake-data** : tout champ gardé par `Number.isFinite`, un montant
+      manquant est OMIS **et NOMMÉ** dans le prompt ; aucune projection → aveu honnête sans AUCUN
+      chiffre. + rangée de **chips** de questions suggérées qui PRÉ-REMPLISSENT la saisie (jamais
+      d'envoi automatique), présentes seulement si une projection existe, et
+      « Pourquoi ça baisse en [année] ? » seulement sur un vrai creux détecté (≥ 5 % pic→creux).
+      20 tests neufs (14 builder + 6 chips). → à ARCHIVER au merge.
+    - [ ] `[REFONTE-NAV-L6b]` 6b — écritures en langage naturel (ex-« 6a » du plan initial).
+    - [ ] `[REFONTE-NAV-L6c]` 6c — what-if comparés.
+    - [ ] `[REFONTE-NAV-L6d]` 6d — explication du moteur.
+    - [ ] `[REFONTE-NAV-L6e]` 6e — analyse de documents.
+    - [ ] `[REFONTE-NAV-L6f]` 6f — assistant proactif.
   - [ ] `[REFONTE-NAV-L7]` Lot 7 — Réglages retravaillés en sections.
 - [ ] **`[UI-TABS-RICH]`** (S, **RÉDUIT à Profil**) — généraliser le pattern sous-onglets.
   ~~Retraite (4 outils empilés)~~ **FAIT** par `[REFONTE-NAV-L4]` 2026-08-12 : « Projection » /

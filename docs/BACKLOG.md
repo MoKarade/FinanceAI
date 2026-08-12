@@ -549,6 +549,27 @@
   overflow-hidden cache visuellement sans retirer du tab-order) → `invisible` (visibility:hidden)
   quand replié. 3 tests discriminants (4 rouges sur l'avant, dont l'ancien §B.2 qui verrouillait
   le comportement inverse).
+- [ ] **`[FUTUR-PAST-EXACT]`** (M, 🧭 retour Marc 2026-08-12 17:20) — « le passé doit représenter
+  EXACTEMENT le passé et je veux pouvoir voir les transactions aussi » : la partie passée de la
+  courbe doit coller aux données réelles sans approximation, et l'infobulle/le détail d'un jour
+  PASSÉ doit montrer les TRANSACTIONS de ce jour (elles existent dans le store — les brancher au
+  point réel). Cadrer : quelles approximations restantes le gênent (ancre, flux non datés — cf.
+  FUTUR-DAILY-ANCHOR-CAVEAT) ?
+- [ ] **`[FUTUR-CLICK-ANYWHERE]`** (S, retour Marc 2026-08-12) — « quand je clique sur la courbe
+  pour avoir l'infobulle je dois cliquer exactement sur la courbe, je veux pouvoir cliquer
+  n'importe où » : le clic doit résoudre le jour par l'ABSCISSE seule (x), partout dans la zone
+  du graphe (aires, vide au-dessus/en-dessous), pas seulement sur le tracé. Vérifier ce qui
+  bloque aujourd'hui (zones mortes ? garde ?) et l'e2e clique-partout.
+- [ ] **`[DEBT-FROM-CONTRACT]`** (M, 🧭 retour Marc 2026-08-12) — « ma dette doit être exactement
+  ce que j'ai — là ça me dit que j'ai la dette depuis des années mais c'est faux, je t'ai donné
+  le PDF du contrat, ça devrait être automatique » : extraire du contrat (PDF déjà fourni) la
+  date de début, le principal, le taux, l'échéancier → la dette du store reflète le contrat
+  RÉEL (import automatique côté app/MCP, pas de saisie manuelle approximative). Retrouver le
+  PDF en question et cadrer le pipeline d'extraction.
+- [ ] **`[MCP-V2-OVERHAUL]`** (L, 🧭 retour Marc 2026-08-12) — « grosse MAJ du MCP : je veux que
+  tout fonctionne bien et plus de fonctionnalités » : passe complète sur les tools MCP (fiabilité,
+  erreurs honnêtes, couverture) + nouvelles capacités à cadrer avec Marc (écritures étendues,
+  transactions, dettes-contrats, simulations). Plan-first.
 - [ ] **`[A11Y-SIDEBAR-ESC]`** (XS, a11y — audit #598, pré-existant) — la sidebar dépliée au
   survol/focus n'est pas fermable au clavier (Échap) → gap WCAG 1.4.13 (Dismissable). Ajouter
   un keydown Échap qui replie (blur/retour du focus au déclencheur).

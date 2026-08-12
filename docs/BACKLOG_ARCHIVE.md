@@ -52,9 +52,15 @@ fichier:ligne). Verdicts appliqués à la refonte :
   portent les IDs dans leurs describe et couvrent exactement les surfaces signalées (seuils/médiane,
   chemins d'erreur parseRolesJson, assiette placement, pin couple-inégal). Re-vérifié suites VERTES
   (25/25 + PV-11e) avant d'archiver. Les bullets « Dette technique » dataient de l'analyse
-  code-analyzer du 2026-07-31, antérieure à #552 — classe PM-STALE-BACKLOG, dans les DEUX sens :
-  la ligne V3 cochée sur-déclarait AUSSI `[NW-PARITY-SURFACES-TEST]` (nwParity.test.ts inchangé
-  depuis #384) → cet item-là reste OUVERT au BACKLOG.
+  code-analyzer du 2026-07-31, antérieure à #552 — classe PM-STALE-BACKLOG.
+- [x] **`[NW-PARITY-SURFACES-TEST]`** — CADUQUE 2026-08-12, lui aussi livré en #552
+  (`tests/services/nwParitySurfaces.test.ts`, 4/4 verts re-vérifiés : les 4 surfaces du ticket,
+  persona endetté+propriétaire, conventions équité immo explicites — les surfaces UI déléguées à
+  leurs fichiers dédiés, référencés en tête). ⚠️ Ma première re-vérification l'avait déclaré
+  NON-livré en constatant que `nwParity.test.ts` n'avait pas bougé depuis #384 — j'ai vérifié le
+  FICHIER PRESSENTI au lieu de chercher l'ID dans tout le dépôt ; le livrable vivait dans un
+  fichier NOUVEAU. Attrapé par documentation-manager AVANT merge. Leçon portée dans CONVENTIONS :
+  prouver une ABSENCE = grep l'ID partout, jamais l'immobilité d'un fichier candidat.
 - [x] **`[MELTDOWN-THRESHOLDS-DOC]`** ✅ 2026-08-12 — les 5 seuils de `meltdownReer.ts` (cibles
   90 k/140 k/220 k$ par adulte, paliers NW 2 M/1 M$) documentés comme HEURISTIQUES DE CONCEPTION
   (bloc module + FISCAL_REFERENCE §9 « Limites connues ») : rationale (saturer les paliers bas de

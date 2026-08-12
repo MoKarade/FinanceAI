@@ -9,6 +9,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased] — 2026-08-12
 
 ### Changements majeurs
+- **Le zoom au DOIGT, sur tous les graphes** : sur téléphone et tablette, pince à deux doigts
+  n'importe quel graphe (Futur, Dettes, Immobilier, Retraite, Enfants) pour zoomer ET te déplacer
+  en un seul geste — le point que tu saisis entre les doigts reste sous tes doigts, comme sur une
+  carte. Un doigt continue de faire défiler la page normalement, et taper un jour le sélectionne
+  comme avant (la fin d'un pincement ne sélectionne jamais rien par accident). Avant, aucun zoom
+  n'était possible au doigt : seule la molette de souris marchait.
 - **La courbe Futur est au JOUR, partout** — plus de bouton, plus de seuil de zoom : tu survoles
   n'importe où (même la vue 30 ans) et l'infobulle montre le jour précis (« jeu. 14/05/2027 ») ;
   tu cliques et ce jour se fige, avec « Veille / Lendemain » pour ajuster. Avant aujourd'hui, les

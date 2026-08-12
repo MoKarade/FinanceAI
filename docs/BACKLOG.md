@@ -204,11 +204,16 @@
   **LIVRÉ pour l'essentiel (PR #581→#587, mergées 2026-08-11/12)** — les étapes cochées sont
   ARCHIVÉES avec leur contexte dans `docs/BACKLOG_ARCHIVE.md` (section 2026-08-12). Ci-dessous :
   le RESTE VIVANT du chantier, uniquement.
-- [ ] **`[FUTUR-DAILY-TOUCH]` zoom au DOIGT sur les graphes (pincement)** — `useTimeChartZoom`
-      n'écoute que `wheel` + souris : sur téléphone et tablette, AUCUN zoom n'est possible sur aucun
-      graphe de l'app (Futur, Dettes, Immobilier, Retraite, Enfants). Le bouton « Jour » ci-dessus
-      débloque le cas d'usage quotidien, mais pas la navigation libre. Ampleur : M — à cadrer avec
-      Marc (utilise-t-il l'app au doigt ?) avant de coder.
+- [x] **`[FUTUR-DAILY-TOUCH]` zoom au DOIGT sur les graphes (pincement)** ✅ 2026-08-12 (retour
+      Marc 14:50 : « je veux pouvoir zoomer parce que pour l'instant sur le tel c'est inutilisable
+      trop petit trop cramped impossible » ; cadrage : TOUS les graphes d'un coup, 2 doigts = zoom,
+      1 doigt = la page). Implémenté DANS `useTimeChartZoom` (les 9 consommateurs héritent via
+      `containerRef`/`ZoomContainer`) : pincement = zoom + pan combinés (base figée au départ du
+      geste — ratio, donc pas de point-fixe d'arrondi), `touch-action: pan-y` posé par le hook,
+      armement au touchMOVE (un écartement réel démarre doigts collés — mesuré par sonde CDP),
+      garde `isPinchActive` contre la sélection au lever du 2e doigt. 8 unitaires (discriminants,
+      8/8 rouges sur l'avant) + 2 e2e tactiles réels (CDP `gestureSourceType: 'touch'` — le
+      « default » est la MOLETTE en desktop headless, leçon CONVENTIONS).
   - [ ] **`[FUTUR-DAILY-CADENCE]` cadence de paie dérivée des documents** (demande Marc 2026-08-11 :
         « je veux que ça dépende des PDF que je donne ou ce que j'indique à Claude… je veux pour
         l'instant que ce soit jeudi hebdo »). Aujourd'hui `DEFAULT_PAY_DAY_OF_WEEK` est un défaut de

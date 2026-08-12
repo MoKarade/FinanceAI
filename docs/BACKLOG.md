@@ -238,6 +238,18 @@
         BANDEAU de la vue au jour les affiche en avertissement.
         - [ ] Le vrai correctif — retrancher ces flux de l'ancre — touche `computeStartingCash`,
               donc le raccord au présent : **plan-first**, inchangé.
+  - [x] **`[FUTUR-DAILY-SELECT-PATH]` + `[FUTUR-DAILY-SELECT-STEP]` le chemin vers le jour offert AU
+        MOMENT DU CLIC** ✅ 2026-08-12 (retour Marc, capture « mai 2027 » : « je peux pas selectionner
+        de jour juste un mois » — 4e occurrence UX-UNREACHABLE : le bouton « Jour » existait mais
+        AILLEURS que là où le geste exprimait l'intention). Livré : infobulle figée d'un MOIS →
+        bouton « Voir ce mois jour par jour » (zoom centré sur le mois cliqué, même largeur que le
+        bouton « Jour ») ; infobulle figée d'un JOUR → « Veille / Lendemain » (sélection au jour
+        près sans re-viser au pixel — un jour ≈ 6 px à ~150 jours, mesuré ; utilisable au doigt) ;
+        tolérance de dérive du clic ADAPTATIVE (sonde : une dérive de 8 px pendant le geste était
+        avalée par le garde anti-pan à 6 px → 14 px en vue jour, 6 px conservés en vue large) ;
+        bandeau honnête quand la fenêtre est assez serrée mais que les ancres mensuelles manquent
+        (vue au jour impossible avec des données passées trouées — dit à l'écran au lieu de rester
+        muet). E2E « depuis la vue LARGE » rejouant le scénario exact de la capture.
   - [ ] Liquidités par COMPTE bancaire — ⚠️ BLOQUÉ par une absence de donnée : on reconstruit à
         rebours depuis le solde connu d'AUJOURD'HUI, or il n'est connu que GLOBALEMENT.
         `FintableBrokerBalance` ne couvre que les comptes `kind: 'investment'`. Prérequis : persister

@@ -163,4 +163,52 @@ test.describe('Futur — sélection d’un JOUR sur la courbe', () => {
     // renverrait toujours le même jour passerait le test précédent.
     expect(dates[0]).not.toBe(dates[1]);
   });
+
+  test('[FUTUR-DAILY-SELECT-PATH] depuis la vue LARGE : clic sur un mois → « Voir ce mois jour par jour » → vue au jour → « Lendemain » avance d’un jour exactement', async ({ page }) => {
+    // ⚠️ Ce test rejoue le scénario EXACT de Marc (capture 2026-08-12 : infobulle « mai 2027 »,
+    // « je peux pas selectionner de jour juste un mois ») : il est en vue large, il clique, il veut
+    // un jour. Avant ce lot, RIEN au moment du clic n'offrait le chemin — la vue au jour exigeait
+    // de zoomer sous 6 mois d'abord, un seuil invisible (3e occurrence de UX-UNREACHABLE).
+    const box = await chartBox(page);
+    const frozen = page.locator('[data-frozen-tooltip]');
+    const modal = page.getByRole('dialog', { name: 'Détail du mois' });
+
+    // 1. Vue LARGE (aucun zoom) : clic dans les aires → infobulle MENSUELLE figée.
+    const y = Math.min(box.y + box.height * 0.8, (page.viewportSize()?.height ?? 720) - 24);
+    await page.mouse.click(box.x + box.width * 0.35, y);
+    if (await modal.isVisible().catch(() => false)) {
+      await page.keyboard.press('Escape');
+      await modal.waitFor({ state: 'hidden', timeout: 2_000 }).catch(() => {});
+      await page.mouse.click(box.x + box.width * 0.35, y - 30);
+    }
+    await expect(frozen).toBeVisible({ timeout: 5_000 });
+
+    // 2. Le chemin est OFFERT dans l'infobulle : un clic → vue au jour, centrée sur CE mois.
+    await frozen.getByRole('button', { name: /Voir ce mois jour par jour/ }).click();
+    await expect(page.getByText(/Vue au jour/)).toBeVisible({ timeout: 10_000 });
+    // L'infobulle mensuelle est RELÂCHÉE (la garder figée au-dessus d'une courbe au jour mentirait).
+    await expect(frozen).toBeHidden();
+
+    // 3. Clic sur la courbe au jour → un JOUR figé, daté au quantième.
+    const zoomedBox = (await page.getByRole('img', { name: /Courbe de vie/ }).boundingBox())!;
+    const y2 = Math.min(zoomedBox.y + zoomedBox.height * 0.8, (page.viewportSize()?.height ?? 720) - 24);
+    await page.mouse.click(zoomedBox.x + zoomedBox.width * 0.5, y2);
+    if (await modal.isVisible().catch(() => false)) {
+      await page.keyboard.press('Escape');
+      await modal.waitFor({ state: 'hidden', timeout: 2_000 }).catch(() => {});
+      await page.mouse.click(zoomedBox.x + zoomedBox.width * 0.5, y2 - 30);
+    }
+    await expect(frozen).toBeVisible({ timeout: 5_000 });
+    const d1 = ((await frozen.textContent()) ?? '').match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
+    expect(d1, 'aucune date au jour après « Voir ce mois jour par jour »').not.toBeNull();
+
+    // 4. « Lendemain » avance d'EXACTEMENT un jour — la sélection fine ne demande plus de viser
+    //    au pixel (un jour ≈ 6 px à ~150 jours affichés, mesuré à la sonde).
+    await frozen.getByRole('button', { name: 'Jour suivant' }).click();
+    await expect(frozen).toBeVisible();
+    const d2 = ((await frozen.textContent()) ?? '').match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
+    expect(d2).not.toBeNull();
+    const toUtc = (m: RegExpMatchArray) => Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    expect(toUtc(d2!) - toUtc(d1!)).toBe(24 * 3600 * 1000);
+  });
 });

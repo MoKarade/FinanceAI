@@ -855,6 +855,41 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const chartSeries = (dailyChartData ?? zoom.visibleData) as ProjectionChartPoint[];
     const isDailyCurve = dailyChartData !== null;
 
+    // [FUTUR-DAILY-SELECT-PATH] Depuis un point MENSUEL figé : zoomer la fenêtre sur CE mois → vue
+    // au jour, centrée là où l'utilisateur vient de cliquer. C'est le chemin OFFERT au moment de
+    // l'intention — Marc cliquait « mai 2027 » en voulant un jour (capture 2026-08-12), et rien ne
+    // lui disait que la vue au jour exigeait de zoomer sous 6 mois d'abord (3e occurrence de la
+    // classe UX-UNREACHABLE sur ce chantier : REACH, PAST-REACH, puis ce clic-ci).
+    const zoomToDaysAt = useCallback((p: ProjectionChartPoint | null) => {
+        if (!p) return;
+        const host = (p as unknown as DailyChartPoint).hostMonthIndex ?? p.monthIndex;
+        const idx = (displayData as ProjectionChartPoint[]).findIndex((d) => d.monthIndex === host);
+        if (idx === -1) return;
+        const len = displayData.length;
+        // Même largeur que le bouton « Jour » (DAILY_CURVE_MAX_POINTS points visibles), mais centrée
+        // sur le mois CLIQUÉ. Clamp aux bornes du tableau — près des bords la fenêtre glisse au lieu
+        // de rétrécir (une fenêtre plus étroite resterait au jour, mais surprendrait).
+        const lo = Math.max(0, Math.min(idx - Math.floor((DAILY_CURVE_MAX_POINTS - 1) / 2), len - DAILY_CURVE_MAX_POINTS));
+        const hi = Math.min(len - 1, lo + DAILY_CURVE_MAX_POINTS - 1);
+        tooltip.release(); // le point figé est mensuel — le garder figé au-dessus d'une courbe au jour mentirait
+        zoom.showRange(lo, hi);
+    }, [displayData, tooltip, zoom]);
+
+    // [FUTUR-DAILY-SELECT-STEP] Depuis un point QUOTIDIEN figé : figer la veille / le lendemain sans
+    // re-viser au pixel (à ~150 jours affichés, un jour ≈ 6 px — mesuré). Fonctionne aussi au DOIGT,
+    // où le zoom molette n'existe pas. La recherche se fait par VALEUR d'abscisse dans la série
+    // rendue (les jours ne sont pas régulièrement espacés — même raison que resolvePointByX).
+    const frozenSeriesIdx = useMemo(() => {
+        if (tooltip.mode !== 'frozen' || !tooltip.point) return -1;
+        const x = tooltip.point.monthIndex;
+        return chartSeries.findIndex((d) => d.monthIndex === x);
+    }, [tooltip.mode, tooltip.point, chartSeries]);
+    const stepDay = useCallback((dir: -1 | 1) => {
+        if (frozenSeriesIdx === -1) return;
+        const next = chartSeries[frozenSeriesIdx + dir];
+        if (next) tooltip.freezeOn(next);
+    }, [frozenSeriesIdx, chartSeries, tooltip]);
+
     // [R3] Clic sur le graphe = FIGE le tooltip (avant : ouvrait directement la modale).
     // La modale exhaustive s'ouvre désormais via le bouton « Détail complet » du tooltip
     // figé, et via les pastilles d'événement (inchangées). On résout le mois cliqué par
@@ -878,7 +913,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
      */
     const handleChartContainerClick = (e: React.PointerEvent<HTMLDivElement>) => {
         const down = pointerDownPosRef.current;
-        if (down && (Math.abs(e.clientX - down.x) > 6 || Math.abs(e.clientY - down.y) > 6)) return; // glisser = pan
+        // ⚠️ Tolérance de dérive ADAPTATIVE (sonde 2026-08-12 : avec le seuil fixe à 6 px, un clic
+        // qui dérive de 8 px pendant le geste ne faisait RIEN — mesuré drift 8/10 px → aucun jour
+        // figé). En vue au jour, un « pan » de 14 px déplace la fenêtre de ~0,08 mois : imperceptible,
+        // donc le geste est un CLIC. En vue large, 14 px de pan = plusieurs mois : on garde 6 px.
+        const driftTol = isDailyCurve ? 14 : 6;
+        if (down && (Math.abs(e.clientX - down.x) > driftTol || Math.abs(e.clientY - down.y) > driftTol)) return; // glisser = pan
         // Les pastilles d'événement ont DÉJÀ leur action (ouvrir la modale). Sans ce garde, le même
         // geste ferait les deux — modale ouverte ET infobulle figée dessous.
         if ((e.target as Element | null)?.closest?.('button, a, [role="button"]')) return;
@@ -1432,6 +1472,18 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     aussi pourquoi les aires par compte ont disparu. Les faire disparaître en silence
                     laisserait croire à un bug ; les garder au mois sous une courbe quotidienne
                     afficherait deux granularités superposées sans le signaler. */}
+                {/* [FUTUR-DAILY-SELECT-PATH] Fenêtre assez serrée mais vue au jour IMPOSSIBLE (ancres
+                    mensuelles à valeur nette inconnue sur la fenêtre — cas atteignable avec de vraies
+                    données dont le préfixe passé est troué). Rester muet ici ferait passer un refus
+                    honnête pour un bug : « je clique et rien n'est au jour ». */}
+                {!isDailyCurve && zoom.isZoomed && zoom.visibleData.length >= 2 && zoom.visibleData.length <= DAILY_CURVE_MAX_POINTS && (
+                    <p role="status" className="mt-2 rounded-card border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-tiny text-ink-200">
+                        <strong className="text-amber-300">Vue au jour indisponible sur cette fenêtre</strong> —
+                        la valeur nette mensuelle est inconnue sur une partie des mois affichés (données
+                        passées incomplètes), donc les jours ne peuvent pas être reconstruits honnêtement.
+                        Déplace la fenêtre vers des mois où la courbe est tracée.
+                    </p>
+                )}
                 {isDailyCurve && (
                     <p role="status" className="mt-2 rounded-card border border-primary/25 bg-primary/5 px-3 py-2 text-tiny text-ink-200">
                         <strong className="text-primary">Vue au jour</strong> — chaque point de la courbe est
@@ -1516,6 +1568,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             userName2={config.users[1]?.name}
                             frozen={tooltip.mode === 'frozen'}
                             onOpenDetail={() => setDetailPoint(detailPointFor(tooltip.point))}
+                            onZoomToDays={() => zoomToDaysAt(tooltip.point)}
+                            onStepDay={stepDay}
+                            canStepPrev={frozenSeriesIdx > 0}
+                            canStepNext={frozenSeriesIdx !== -1 && frozenSeriesIdx < chartSeries.length - 1}
                         />
                     </div>,
                     document.body,

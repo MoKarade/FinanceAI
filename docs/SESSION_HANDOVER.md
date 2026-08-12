@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 48) — `[FUTUR-DAILY-ROLLOVER]` livré · `[FUTUR-DAILY-EVENTS]` EN COURS
+> Marc (04:29) : « ça doit se mettre à jour à chaque jour pour le passé » → ROLLOVER livré
+> (useTodayIsoLocal réactif sur l'horloge partagée, ancrages au jour via axisXForIso, e2e
+> horloge Playwright minuit→frontière avance). Marc (04:37) : « j'ai mis un événement de vie et
+> ça m'a mis au mois et pas au bon jour, tout doit être au bon jour les impôts aussi » →
+> `[FUTUR-DAILY-EVENTS]` : la DONNÉE existe (LifeEvent.date = input type=date complet), le moteur
+> la TRONQUE (`monthlyEvents.ts` split('-') an/mois seulement) et la ventilation pose les
+> pastilles au 1er. À faire : pastilles à l'abscisse du jour saisi, icône d'impôt à l'échéance
+> (fin avril), jalons SANS date réelle (FIRE…) restent au mois en le disant (no-fake).
+> Leçon : changer la granularité d'un AXE = auditer TOUS ses ancrages (Aujourd'hui/bande/pastilles
+> posés au mois sur une courbe au jour — 3 trouvés en 2 retours Marc).
+
 > ## 🟢 Session 2026-08-12 (suite 47) — `[FUTUR-DAILY-NATIVE]` : la courbe au JOUR partout, sélection directe
 > **Marc (02:15) : « je veux pas un bouton je veux pouvoir selectionner sur la courbe direct. »**
 > Après 4 itérations d'affordances, le vrai besoin était un changement de RÉSOLUTION — cadrage

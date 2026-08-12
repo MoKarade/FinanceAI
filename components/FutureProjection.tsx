@@ -77,7 +77,7 @@ import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { useChartTooltipPosition } from '../hooks/useChartTooltipPosition';
 import { resolvePointByX } from '../utils/chartTooltip';
 import { ProjectionControls } from './projection/ProjectionControls';
-import { useSimulationParams } from '../hooks/useSimulationParams';
+import { useSimulationParams, useTodayIsoLocal } from '../hooks/useSimulationParams';
 import { buildPastPrefix } from '../services/history/buildPastPrefix';
 import { deriveMilestoneIcons } from '../services/projection/milestoneIcons';
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
@@ -87,7 +87,7 @@ import { StressTestPanel } from './projection/StressTestPanel';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
-import { isoDate, todayIsoLocal, finiteAnchorRun, calendarFromMonthIndex } from '../services/projection/dailyRefine';
+import { isoDate, finiteAnchorRun, calendarFromMonthIndex, axisXForIso } from '../services/projection/dailyRefine';
 import { mergeDailyRealPoint, sliceDailyRangeByX, decimateForRender, realOnlyMonthPoints, buildEnrichedMonth } from '../services/projection/dailyCurve';
 import { centeredWindowRange } from '../services/projection/dailyRefine';
 import { buildDailyLedger, type DailyLedgerPoint } from '../services/projection/dailyLedger';
@@ -589,15 +589,33 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         () => finiteAnchorRun(displayData as ProjectionChartPoint[], startYear, startMonth),
         [displayData, startYear, startMonth],
     );
-    // Aujourd'hui, calculé UNE fois par montage (`todayIsoLocal` : locale-sûr, finding #574). La
-    // frontière réel/projeté ne bouge pas pendant une session d'écran.
-    const [todayIso] = useState(() => todayIsoLocal());
+    // [FUTUR-DAILY-ROLLOVER] Aujourd'hui, RÉACTIF au passage de jour (demande Marc 2026-08-12 :
+    // « ça doit se mettre à jour à chaque jour pour le passé »). Figé au montage, une app laissée
+    // ouverte gardait la frontière réel/projeté au jour de l'ouverture — les jours écoulés
+    // restaient « projetés ». Toute la chaîne aval (passé réel, série quotidienne, ancrages) dépend
+    // de cette valeur : quand le jour change, elle se reconstruit d'elle-même.
+    const todayIso = useTodayIsoLocal();
+    // [FUTUR-DAILY-ROLLOVER] Abscisse FRACTIONNAIRE d'aujourd'hui : sur une courbe au jour, poser
+    // « Aujourd'hui » et la fin de la bande « Passé réel » à l'ENTIER du mois les décalait de
+    // jusqu'à 30 jours du vrai jour courant. `null` (date imparsable) ⇒ repli sur l'ancrage mensuel.
+    const todayAxisX = useMemo(() => axisXForIso(startYear, startMonth, todayIso), [startYear, startMonth, todayIso]);
 
     // ⚠️ Replis STABLES (constantes de module) et non `?? []` inline : un littéral crée une NOUVELLE
     // référence à chaque rendu, ce qui ferait recalculer les `useMemo` qui en dépendent à chaque
     // frame de zoom/pan — exactement la classe de fuite de perf déjà relevée en revue sur ce
     // chantier. Attrapé ici par `react-hooks/exhaustive-deps`, pas par mon jugement.
     const storeAssets = useFinanceStore(s => s.assets) ?? EMPTY_ASSETS;
+    // [FUTUR-DAILY-ROLLOVER, finding silent-failure #593] Dernier jour COUVERT par la sync bancaire
+    // (date LOCALE de la dernière passe). Un jour réel postérieur porte `daySyncUnconfirmed` : après
+    // minuit app ouverte, un « 0 $ dépensé hier » peut n'être qu'une sync pas encore passée — le
+    // dire est le symétrique de `hasEstimatedPrice` côté prix. Jamais de sync ⇒ null ⇒ aucun flag
+    // (usage manuel : marquer tout le passé serait du bruit permanent).
+    const fintableSyncAt = useFinanceStore(s => s.fintableSyncReport?.at);
+    const syncConfirmedUntilIso = useMemo(() => {
+        if (!Number.isFinite(fintableSyncAt)) return null;
+        const d = new Date(fintableSyncAt as number);
+        return isoDate(d.getFullYear(), d.getMonth(), d.getDate());
+    }, [fintableSyncAt]);
     const fxRates = useFinanceStore(s => s.fxRates) ?? EMPTY_FX;
     const storeRecurring = useFinanceStore(s => s.subscriptions) ?? EMPTY_RECURRING;
     // ⚠️ `netSalary` du store est MENSUEL (règle « unités argent » de CLAUDE.md). Marc est payé
@@ -769,7 +787,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         });
         if (days.length === 0) return EMPTY_ARRAY as unknown as ProjectionChartPoint[];
 
-        const points = days.map((d) => mergeDailyRealPoint(d, startYear, startMonth, dailyPastByDate, CURVE_FIELDS));
+        const points = days.map((d) => mergeDailyRealPoint(d, startYear, startMonth, dailyPastByDate, CURVE_FIELDS, syncConfirmedUntilIso));
         // ⚠️ `FluxImpots` ≈ 0 (tous les jours SAUF l'échéance, cadence monthEnd) devient ABSENT :
         // recharts ne rend pas de rect pour une valeur absente — sinon la Bar créerait ~11 000
         // rects DOM à hauteur nulle. Vérifié par la sonde perf (comptage des rects rendus).
@@ -782,7 +800,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         // seules (no-fake), et à défaut le point MENSUEL d'origine tient la position — sinon la
         // courbe ET la bande « Passé réel » commençaient un mois trop tard (e2e d'axe, bande 4 px).
         const anchorHost = months[0].monthIndex;
-        const anchorDays = realOnlyMonthPoints(anchorHost, startYear, startMonth, dailyPastByDate, CURVE_FIELDS);
+        const anchorDays = realOnlyMonthPoints(anchorHost, startYear, startMonth, dailyPastByDate, CURVE_FIELDS, syncConfirmedUntilIso);
         if (anchorDays.length > 0) return [...anchorDays, ...points];
         // ⚠️ `FluxImpots` RETIRÉ du point mensuel de repli (finding projection-validator #592) : ce
         // point porte le TOTAL du mois à l'abscisse du 1er — au milieu de barres quotidiennes, une
@@ -790,7 +808,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         // suivant ventilé ; ici l'honnête est l'absence.
         const { FluxImpots: _anchorFlux, ...anchorRest } = months[0] as ProjectionChartPoint & { FluxImpots?: number };
         return [anchorRest as ProjectionChartPoint, ...points];
-    }, [dailyAnchors, displayData, startYear, startMonth, dailyDated, dailyPastByDate]);
+    }, [dailyAnchors, displayData, startYear, startMonth, dailyDated, dailyPastByDate, syncConfirmedUntilIso]);
 
     /**
      * [FUTUR-DAILY-NATIVE] Infobulle : le point COMPLET (99 champs) du jour visé, ventilé À LA
@@ -811,7 +829,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         // servirait des montants périmés. La règle les voit « inutiles » (la fabrique ne les lit
         // pas) : c'est exact, et c'est le but — elles pilotent l'INVALIDATION, pas la valeur.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), [displayData, dailyDated, dailyPastByDate, startYear, startMonth]);
+    }), [displayData, dailyDated, dailyPastByDate, startYear, startMonth, syncConfirmedUntilIso]);
     const enrichDailyPoint = useCallback((p: ProjectionChartPoint | null): ProjectionChartPoint | null => {
         if (!p) return null;
         const dp = p as unknown as DailyChartPoint;
@@ -830,7 +848,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         // hôte — pas au rythme du mousemove).
         const byIso = buildEnrichedMonth(
             displayData as ProjectionChartPoint[], host, startYear, startMonth,
-            dailyPastByDate, dailyDated, buildDailyLedger as never,
+            dailyPastByDate, dailyDated, buildDailyLedger as never, syncConfirmedUntilIso,
         );
         if (byIso === null) {
             if (!enrichCache.failLogged.has(host)) {
@@ -841,7 +859,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         }
         enrichCache.byHost.set(host, byIso);
         return byIso.get(iso) ?? p;
-    }, [displayData, startYear, startMonth, dailyDated, dailyPastByDate, enrichCache]);
+    }, [displayData, startYear, startMonth, dailyDated, dailyPastByDate, enrichCache, syncConfirmedUntilIso]);
 
     /**
      * Point à passer à la modale « Détail complet ».
@@ -1431,17 +1449,25 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                     // passé disparaissait ENTIÈREMENT, en silence (attrapé par l'e2e
                                     // d'axe, timeout sur `.recharts-reference-area-rect`).
                                     x1={isDailyCurve && dailyAll.length > 0 ? Math.max(pastStartIndex, dailyAll[0].monthIndex) : pastStartIndex}
-                                    x2={0}
+                                    // [FUTUR-DAILY-ROLLOVER] La bande du passé va jusqu'à AUJOURD'HUI
+                                    // (abscisse du JOUR) : les jours réels du mois COURANT (avant
+                                    // aujourd'hui) sont du passé reconstruit, les laisser hors bande
+                                    // les faisait paraître projetés. Repli mensuel : frontière au mois.
+                                    x2={isDailyCurve && todayAxisX !== null ? todayAxisX : 0}
                                     fill="#22d3ee"
                                     fillOpacity={0.05}
                                     stroke="none"
                                 />
                             )}
-                            {pastPrefix.length > 0 && (
+                            {/* [FUTUR-DAILY-ROLLOVER] La ligne « Passé réel ⟵ » à x=0 (frontière du
+                                PRÉFIXE mensuel) disparaît en courbe quotidienne : la vraie frontière
+                                réel/projeté est AUJOURD'HUI — la bande + la ligne « Aujourd'hui »
+                                la racontent, une 2e ligne au 1er du mois serait un faux repère. */}
+                            {pastPrefix.length > 0 && !isDailyCurve && (
                                 <ReferenceLine x={0} stroke="#22d3ee" strokeOpacity={0.5} strokeDasharray="3 3" label={<RefLineLabel value="Passé réel ⟵" color="#22d3ee" />} />
                             )}
                             <ReferenceLine y={0} stroke="#444" strokeWidth={2} />
-                            {isVisible('aujourdhui') && <ReferenceLine x={todayMonthIndex} stroke="rgba(255,255,255,0.6)" strokeDasharray="5 5" label={<RefLineLabel value="Aujourd'hui" color="#ffffff" />} />}
+                            {isVisible('aujourdhui') && <ReferenceLine x={isDailyCurve && todayAxisX !== null ? todayAxisX : todayMonthIndex} stroke="rgba(255,255,255,0.6)" strokeDasharray="5 5" label={<RefLineLabel value="Aujourd'hui" color="#ffffff" />} />}
 
                             {/* [R3] Recharts ne rend RIEN (content=()=>null) : il reste actif pour
                                 alimenter onMouseMove (point survolé) + le curseur (ligne verticale).

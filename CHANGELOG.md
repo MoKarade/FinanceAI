@@ -21,6 +21,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   entre fins de mois.
 
 ### Corrections
+- **Le passé de la courbe Futur suit maintenant le calendrier** : chaque jour écoulé bascule de
+  « projeté » à « réel » et la frontière « Aujourd'hui » avance toute seule — y compris si l'app
+  reste ouverte plusieurs jours (rattrapage à minuit ou au retour sur l'onglet). Avant, la
+  frontière restait figée au jour d'ouverture. Au passage : « Aujourd'hui » et la fin de la bande
+  « Passé réel » sont posés au JOUR exact sur la courbe (ils étaient posés au 1er du mois — jusqu'à
+  30 jours d'écart), et les jours réels du mois courant sont maintenant DANS la bande du passé.
 - **Les boutons de l'infobulle figée sont maintenant TOUJOURS visibles** — « Voir ce mois jour par
   jour », « Veille / Lendemain », « Détail complet ». Avant, quand l'infobulle était bien remplie
   (impôts, détail par compte), ces boutons existaient mais se retrouvaient sous le pli : il fallait

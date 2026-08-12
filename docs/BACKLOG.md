@@ -250,6 +250,14 @@
         bandeau honnête quand la fenêtre est assez serrée mais que les ancres mensuelles manquent
         (vue au jour impossible avec des données passées trouées — dit à l'écran au lieu de rester
         muet). E2E « depuis la vue LARGE » rejouant le scénario exact de la capture.
+  - [x] **`[FUTUR-DAILY-ROLLOVER]` le passé suit le calendrier** ✅ 2026-08-12 (Marc : « ça doit
+        se mettre à jour à chaque jour pour le passé »). `useTodayIsoLocal()` : jour local RÉACTIF
+        sur l'horloge module partagée du mois (tick horaire + visibilitychange) — `todayIso` était
+        figé au montage, app ouverte = frontière réel/projeté gelée. Ancrages « Aujourd'hui » +
+        fin de bande « Passé réel » à l'abscisse FRACTIONNAIRE du jour (`axisXForIso` — posés à
+        l'entier du mois : jusqu'à 30 j d'écart) ; ligne « Passé réel ⟵ » retirée en courbe
+        quotidienne (la frontière est AUJOURD'HUI, pas le 1er du mois). E2E horloge Playwright :
+        minuit passe app OUVERTE → la frontière avance (mesuré au pixel, fenêtre zoomée).
   - [x] **`[FUTUR-DAILY-NATIVE]` la courbe est au JOUR partout — sélection directe** ✅ 2026-08-12
         (Marc : « je veux pas un bouton je veux pouvoir selectionner sur la courbe direct », cadrage
         3/3 : clic = jour partout · survol = jour · tracé au jour, GO). Architecture : série
@@ -583,6 +591,15 @@
 
 ## 🧱 Dette technique
 
+- [ ] **`[FUTUR-DAILY-EVENTS]`** (M, EN COURS — retour Marc 2026-08-12 04:37 : « j'ai mis un
+  événement de vie et ça m'a mis au mois et pas au bon jour, tout doit être au bon jour les impôts
+  aussi ») — la DONNÉE existe (`LifeEvent.date`/`TravelGoal.date` = date complète, input type=date)
+  mais le moteur la TRONQUE (`monthlyEvents.ts` split('-') an/mois) et pastilles/ventilation posent
+  tout au 1er. Plan cadré : `logLife/logFlow(msg, day?)` → registre `eventDays` par point (champ
+  additif), pastilles à l'abscisse `axisXAtDay`, régularisation d'avril à l'échéance (fin de mois),
+  jalons SANS date réelle (FIRE, RRQ/PSV dérivés) restent au mois (no-fake). Corollaire revue #593 :
+  `lifeMarkers` (ReferenceLine entières) aussi — un événement du mois courant après aujourd'hui
+  s'affiche à GAUCHE de la ligne « Aujourd'hui ».
 - [ ] **`[ENG-MC-BANDS-ORDER]`** (M, moteur, 🧭 financial-integrity d'abord) — les bandes Monte
   Carlo sortent DÉSORDONNÉES du moteur : sur 361 mois, 171 violations d'ordre et 8 mois où
   P10 > P90 (jusqu'à 36 952 $, 17,25 % du P50), toutes dans les ~60 premiers mois (mesuré

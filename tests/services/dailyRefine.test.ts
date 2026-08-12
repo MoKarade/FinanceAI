@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     axisXAtDay,
+    axisXForIso,
     centeredWindowRange,
     finiteAnchorRun,
     daysInMonth,
@@ -183,5 +184,30 @@ describe('centeredWindowRange — le zoom « Voir ce mois jour par jour » près
         expect(centeredWindowRange(NaN, 3, 6)).toBeNull();
         expect(centeredWindowRange(400, NaN, 6)).toBeNull();
         expect(centeredWindowRange(400, 3, 1)).toBeNull();
+    });
+});
+
+// [FUTUR-DAILY-ROLLOVER] Abscisse fractionnaire d'une date ISO — les ancrages « Aujourd'hui » /
+// fin de bande passé se posent au JOUR (posés à l'entier du mois, ils dérivaient de ~30 jours).
+describe('axisXForIso — abscisse du jour courant sur l’axe du graphe', () => {
+    it('jour 1 du mois de départ = 0 exact (alignement des ancrages entiers)', () => {
+        expect(axisXForIso(2026, 7, '2026-08-01')).toBe(0);
+    });
+
+    it('mi-mois : fraction stricte entre les deux entiers (12 août 2026 → 11/31 de mois)', () => {
+        expect(axisXForIso(2026, 7, '2026-08-12')).toBeCloseTo(11 / 31, 10);
+    });
+
+    it('mois PASSÉ : abscisse négative cohérente avec le préfixe', () => {
+        const x = axisXForIso(2026, 7, '2026-07-15');
+        expect(x).not.toBeNull();
+        expect(x!).toBeGreaterThan(-1);
+        expect(x!).toBeLessThan(0);
+    });
+
+    it('date imparsable ou invalide ⇒ null (l’appelant retombe sur l’ancrage mensuel, pas sur NaN)', () => {
+        expect(axisXForIso(2026, 7, 'pas-une-date')).toBeNull();
+        expect(axisXForIso(2026, 7, '2026-13-01')).toBeNull();
+        expect(axisXForIso(2026, 7, '2026-02-30')).toBeNull();
     });
 });

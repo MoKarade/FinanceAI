@@ -240,3 +240,38 @@ describe('decimateForRender — garanties de la décimation du tracé', () => {
         expect(dec[7]).toBe(daily[7]);
     });
 });
+
+// [FUTUR-DAILY-ROLLOVER, finding silent-failure #593] Un jour réel POSTÉRIEUR à la dernière sync
+// bancaire porte `daySyncUnconfirmed` — sinon, après minuit app ouverte, un « 0 $ dépensé hier »
+// (transactions pas encore synchronisées) est indiscernable d'une journée réellement sans mouvement.
+describe('mergeDailyRealPoint — flag daySyncUnconfirmed (fraîcheur de la sync)', () => {
+    const days = build([month(0), month(1)]);
+    const firstDay = days[0];
+    const realRow = {
+        date: firstDay.dayIso, isDated: false, labels: [],
+        Liquidites: 500, NetWorth: 10_000, deposits: {}, growth: {},
+    } as unknown as DailyPastRow;
+    const byDate = new Map([[firstDay.dayIso, realRow]]);
+
+    it('jour APRÈS la borne de sync ⇒ flag posé', () => {
+        const p = mergeDailyRealPoint(firstDay, START.startYear, START.startMonth, byDate, null, '2020-01-01') as unknown as Record<string, unknown>;
+        expect(p.daySyncUnconfirmed).toBe(true);
+    });
+
+    it('jour COUVERT par la sync ⇒ pas de flag', () => {
+        const p = mergeDailyRealPoint(firstDay, START.startYear, START.startMonth, byDate, null, '2099-01-01') as unknown as Record<string, unknown>;
+        expect(p.daySyncUnconfirmed).toBeUndefined();
+    });
+
+    it('jamais de sync (null/absent) ⇒ pas de flag (usage manuel, pas de bruit permanent)', () => {
+        const p1 = mergeDailyRealPoint(firstDay, START.startYear, START.startMonth, byDate, null, null) as unknown as Record<string, unknown>;
+        const p2 = mergeDailyRealPoint(firstDay, START.startYear, START.startMonth, byDate, null) as unknown as Record<string, unknown>;
+        expect(p1.daySyncUnconfirmed).toBeUndefined();
+        expect(p2.daySyncUnconfirmed).toBeUndefined();
+    });
+
+    it('jour PROJETÉ (pas de réel) : jamais de flag, même après la borne', () => {
+        const p = mergeDailyRealPoint(days[3], START.startYear, START.startMonth, byDate, null, '2020-01-01') as unknown as Record<string, unknown>;
+        expect(p.daySyncUnconfirmed).toBeUndefined();
+    });
+});

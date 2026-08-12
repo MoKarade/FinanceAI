@@ -2396,3 +2396,12 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   avant les agents » sous-couvrait). Règle élargie : committer (et POUSSER dès que la branche
   est libre) avant TOUTE attente longue, suite de tests comprise ; le stash ne survit PAS au
   revert.
+- ⚠️ **[REFONTE-NAV-L1] itération panel 2026-08-12** : (1) **un flag STRUCTUREL (« destination
+  mono-onglet ») se calcule sur la SOURCE, jamais sur la vue FILTRÉE** — après retrait des tabs
+  épinglés, Transactions [TX, BUDGET] devenait [BUDGET] (length 1) et le bouton Budget du drawer
+  s'étiquetait « Transactions ». Le même piège se ré-arme à chaque changement de la liste
+  d'épinglés → flag `isSingleTab` posé AVANT le filter. (2) **jsdom ne cache PAS les éléments
+  masqués par media query** (`hidden md:flex` reste dans le DOM) : un test mobile qui interroge
+  le document entier est satisfait par la SIDEBAR DESKTOP — vacueux. Scoper au conteneur
+  (role+aria-label posés sur le panneau, utiles aussi à l'a11y) ET vérifier l'ACTION du bouton
+  (clic → bon Tab), pas seulement la présence du texte.

@@ -95,8 +95,15 @@ export const Layout: React.FC<LayoutProps> = ({
     label: destinationOfTab(tab)?.tabs.length === 1 ? destinationOfTab(tab)!.label : TAB_LABELS[tab],
     icon: TAB_ICONS[tab],
   }));
+  // ⚠️ `isSingleTab` se calcule AVANT le filtrage des tabs épinglés : après filtrage,
+  // Transactions [TRANSACTIONS, BUDGET] devient [BUDGET] (length 1) et le bouton Budget
+  // s'étiquetait « Transactions » (finding code-reviewer #600, prouvé par rendu).
   const drawerDestinations = NAV_DESTINATIONS
-    .map((d) => ({ ...d, tabs: d.tabs.filter((tab) => !MOBILE_BAR_TABS.includes(tab)) }))
+    .map((d) => ({
+      ...d,
+      isSingleTab: d.tabs.length === 1,
+      tabs: d.tabs.filter((tab) => !MOBILE_BAR_TABS.includes(tab)),
+    }))
     .filter((d) => d.tabs.length > 0);
 
   // Phase B.3 — `getSmartMilestone` (palier statique) retiré. Remplacé par le
@@ -475,7 +482,10 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {showMobileDrawer && (
         <div className="md:hidden fixed inset-0 z-40" onClick={() => setShowMobileDrawer(false)}>
-          <div className="absolute bottom-[72px] left-0 right-0 bg-[#0F1116]/98 backdrop-blur-xl border-t border-white/10 p-4 shadow-2xl animate-slide-up max-h-[70vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          {/* role+label : sémantique du panneau ET ancrage des tests (le test « non-perte mobile »
+              doit interroger CE conteneur — interroger le document entier laissait la sidebar
+              desktop satisfaire l'assertion, test vacueux — finding code-reviewer #600). */}
+          <div role="navigation" aria-label="Autres destinations" className="absolute bottom-[72px] left-0 right-0 bg-[#0F1116]/98 backdrop-blur-xl border-t border-white/10 p-4 shadow-2xl animate-slide-up max-h-[70vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             {/* [REFONTE-NAV Lot 1] Drawer « Plus » = les destinations, moins les onglets déjà
                 épinglés dans la barre (dérivé de NAV_DESTINATIONS — source unique). */}
             {drawerDestinations.map((dest) => (
@@ -498,7 +508,7 @@ export const Layout: React.FC<LayoutProps> = ({
                     >
                       <Icon name={TAB_ICONS[tab]} size={20} className="mb-1" />
                       <span className="text-tiny font-medium text-center leading-tight">
-                        {dest.tabs.length === 1 ? dest.label : TAB_LABELS[tab]}
+                        {dest.isSingleTab ? dest.label : TAB_LABELS[tab]}
                       </span>
                     </button>
                   ))}

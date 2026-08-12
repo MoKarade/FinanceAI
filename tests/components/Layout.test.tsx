@@ -217,19 +217,34 @@ describe('Layout — nav 6 destinations (REFONTE-NAV Lot 1)', () => {
         }
     });
 
-    it('non-perte mobile : chaque onglet couvert est atteignable via la barre OU le drawer « Plus »', () => {
-        render(<Layout {...baseProps} />);
+    it('non-perte mobile : chaque onglet couvert est atteignable via la barre OU le drawer « Plus » — scoped AU drawer', () => {
+        // ⚠️ Version corrigée (finding code-reviewer #600) : la 1re mouture interrogeait le
+        // DOCUMENT entier — la sidebar desktop (présente dans jsdom malgré `hidden md:flex`)
+        // satisfaisait l'assertion et masquait un bouton du drawer mal étiqueté (« Budget »
+        // affiché « Transactions »). On interroge LE conteneur du drawer, rien d'autre.
+        const setActiveTab = vi.fn();
+        render(<Layout {...baseProps} setActiveTab={setActiveTab} />);
         // Barre mobile : Futur, Transactions, Assistant épinglés.
         const mobileNav = screen.getByRole('navigation', { name: 'Navigation mobile' });
         for (const label of ['Futur', 'Transactions', 'Assistant']) {
             expect(within(mobileNav).getByText(label)).toBeInTheDocument();
         }
-        // Drawer : le reste (Configurations ×5, Vie ×3, Budget, Réglages).
+        // Drawer : le reste (Configurations ×5, Vie ×3, Budget, Réglages) — CHAQUE libellé
+        // doit exister DANS le drawer, exactement une fois.
         fireEvent.click(within(mobileNav).getByRole('button', { name: "Plus d'options" }));
+        const drawer = screen.getByRole('navigation', { name: 'Autres destinations' });
         for (const label of ['Profil', 'Investissements', 'Immobilier', 'Dettes', 'Impôts & Docs',
             'Retraite', 'Enfant', 'Projets de vie', 'Budget', 'Réglages']) {
-            expect(screen.getAllByText(label).length, `« ${label} » atteignable sur mobile`).toBeGreaterThanOrEqual(1);
+            // Sur les BOUTONS uniquement : un en-tête de section peut légitimement porter le
+            // même texte qu'un bouton (« Réglages »), mais chaque libellé doit correspondre à
+            // EXACTEMENT un bouton de navigation.
+            const btns = within(drawer).getAllByRole('button').filter(b => b.textContent?.trim() === label);
+            expect(btns.length, `« ${label} » = un bouton du drawer`).toBe(1);
         }
+        // Le libellé fait ce qu'il dit : cliquer « Budget » navigue vers Tab.BUDGET
+        // (le bug corrigé étiquetait ce bouton « Transactions »).
+        fireEvent.click(within(drawer).getByText('Budget'));
+        expect(setActiveTab).toHaveBeenCalledWith(Tab.BUDGET);
     });
 
     it('l\'Accueil n\'apparaît NULLE PART dans la nav (retiré, pas caché)', () => {

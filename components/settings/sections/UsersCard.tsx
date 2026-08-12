@@ -135,7 +135,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
       <div className="mb-6 bg-black/30 p-4 rounded-xl border border-white/5 shadow-inner">
         <h3 className="text-body font-bold text-white mb-3">Profils Enregistres</h3>
         <div className="flex flex-wrap gap-2 mb-3">
-          {savedProfiles.length === 0 && <span className="text-meta text-ink-500 italic">Aucun profil enregistre.</span>}
+          {savedProfiles.length === 0 && <span className="text-meta text-ink-400 italic">Aucun profil enregistre.</span>}
           {savedProfiles.map(p => (
             <div key={p} className="flex items-center bg-primary/15 text-info-400 text-meta px-3 py-1.5 rounded-full border border-primary/25">
               <button type="button" className="font-bold cursor-pointer hover:underline rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" onClick={() => loadProfile(p)} aria-label={`Charger le profil ${p}`}>{p}</button>
@@ -327,7 +327,7 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
           ))}
         </div>
 
-        <p className="text-meta text-ink-500 italic">
+        <p className="text-meta text-ink-400 italic">
           {/* PH3/PH3-c — libellé re-véridifié : tout le setup vit désormais dans CET onglet Profil. */}
           Salaires &amp; options fiscales, carrière &amp; rémunération variable, retraite, enfants (REEE) et
           mode de répartition : sections suivantes de cet onglet <strong className="text-ink-300">Profil</strong>.

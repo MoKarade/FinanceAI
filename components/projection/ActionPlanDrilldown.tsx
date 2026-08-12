@@ -85,7 +85,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                 <span className="text-meta font-black text-white flex items-center gap-1.5">
                     <Icon name="clipboard" size={14} className="text-ink-300" /> Plan d'action
                 </span>
-                {strategyName && <span className="text-tiny text-ink-500">selon {strategyName}</span>}
+                {strategyName && <span className="text-tiny text-ink-400">selon {strategyName}</span>}
             </div>
 
             {/* Fil d'Ariane : clique pour remonter d'un niveau. */}
@@ -129,7 +129,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                     </PrivateAmount>
                 </div>
                 <FlowChips flows={current.flows} />
-                <PrivateAmount as="div" className="text-tiny text-ink-500 mt-2">
+                <PrivateAmount as="div" className="text-tiny text-ink-400 mt-2">
                     Patrimoine en fin de période : <span className="text-ink-300 font-mono">{cad(current.netWorthEnd)}</span>
                 </PrivateAmount>
             </div>

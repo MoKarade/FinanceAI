@@ -70,7 +70,7 @@ export const DualKPIStat: React.FC<DualKPIStatProps> = ({
                 </PrivateAmount>
             </div>
             <div className="flex items-center justify-between text-tiny">
-                <span className="text-ink-500">Réel / Prévu</span>
+                <span className="text-ink-400">Réel / Prévu</span>
                 {sublabel && <span className="text-ink-400 italic text-right truncate ml-2">{sublabel}</span>}
             </div>
         </div>

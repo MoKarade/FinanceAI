@@ -149,7 +149,7 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
                         {isAnalyzing ? status : 'Cliquer ou glisser un fichier'}
                     </span>
                     {!isAnalyzing && (
-                        <span className="text-tiny text-ink-500 mt-1">JPG · PNG · WebP · PDF</span>
+                        <span className="text-tiny text-ink-400 mt-1">JPG · PNG · WebP · PDF</span>
                     )}
                 </label>
 

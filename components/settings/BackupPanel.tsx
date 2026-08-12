@@ -315,7 +315,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               <Icon name="unlock" size={22} className="mt-0.5 text-ink-300 shrink-0" />
               <div className="flex-1">
                 <h3 className="text-white font-bold text-base mb-1">Déchiffrer la Sauvegarde</h3>
-                <p className="text-ink-500 text-meta font-mono break-all">{encryptedFile.name}</p>
+                <p className="text-ink-400 text-meta font-mono break-all">{encryptedFile.name}</p>
               </div>
             </div>
             <div className="mb-5">

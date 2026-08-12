@@ -198,7 +198,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                     {/* SYS-WEB — « Toile d'araignée » (doc figée, périmée) retirée. */}
                     <Card icon={<Icon name="health" size={18} />} title="Diagnostic système" className="bg-dark border border-white/10 font-mono">
                         <div className="flex justify-between items-center mb-2 px-2">
-                            <span className="text-tiny text-ink-500 uppercase tracking-widest">État runtime</span>
+                            <span className="text-tiny text-ink-400 uppercase tracking-widest">État runtime</span>
                             <button
                                 onClick={() => setRefreshKey(k => k + 1)}
                                 className="text-tiny text-success-400 hover:text-emerald-300 px-2 py-0.5 rounded bg-success-500/10 hover:bg-success-500/20 transition-colors"
@@ -224,11 +224,11 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                 <div className="lg:col-span-1 space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                         <Card className="!p-4 bg-white/5 border-white/10">
-                            <div className="text-tiny text-ink-500 uppercase font-bold">Base de Données</div>
+                            <div className="text-tiny text-ink-400 uppercase font-bold">Base de Données</div>
                             <div className="text-xl font-bold text-white">{dbSize.toFixed(0)} KB</div>
                         </Card>
                         <Card className="!p-4 bg-white/5 border-white/10">
-                            <div className="text-tiny text-ink-500 uppercase font-bold">Objectifs</div>
+                            <div className="text-tiny text-ink-400 uppercase font-bold">Objectifs</div>
                             <div className="text-xl font-bold text-white">{state.financialGoals.length}</div>
                         </Card>
                     </div>

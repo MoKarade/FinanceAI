@@ -21,6 +21,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   entre fins de mois.
 
 ### Corrections
+- **Textes secondaires plus lisibles partout** : 85 textes d'aide, libellés et états vides qui
+  utilisaient le gris le plus sombre de la palette (réservé aux éléments désactivés — contraste
+  insuffisant pour du texte normal, mesuré 3,9-4,3:1) passent au gris standard (5,2-6,4:1, conforme
+  WCAG AA). Les glyphes décoratifs et icônes d'action gardent leur teinte atténuée, légitime pour eux.
 - **Tes événements tombent à LEUR jour sur la courbe** : un voyage saisi au 22 septembre a sa
   pastille au 22, plus au 1er du mois — pareil pour les événements de vie datés (héritage, vente,
   krach planifié) et le paiement d'impôt d'avril, posé à son échéance du 30. Les jalons sans date

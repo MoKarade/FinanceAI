@@ -1684,7 +1684,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 {/* G10 — légende interactive : clic = afficher/masquer la série. */}
                 <div className="mt-6 bg-black/20 p-4 rounded-xl border border-white/5">
                     <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                        <span className="text-tiny text-ink-500 font-semibold uppercase tracking-wide">
+                        <span className="text-tiny text-ink-400 font-semibold uppercase tracking-wide">
                             Légende — clique pour afficher / masquer
                         </span>
                         {hiddenSeries.size > 0 && (
@@ -1707,7 +1707,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                     onClick={() => toggleSeries(it.key)}
                                     aria-pressed={on}
                                     title={on ? `Masquer ${it.label}` : `Afficher ${it.label}`}
-                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-card text-tiny font-semibold border transition-colors focus-ring ${on ? 'bg-white/10 border-white/15 text-ink-100 hover:bg-white/15' : 'bg-transparent border-white/5 text-ink-500 line-through hover:text-ink-300'}`}
+                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-card text-tiny font-semibold border transition-colors focus-ring ${on ? 'bg-white/10 border-white/15 text-ink-100 hover:bg-white/15' : 'bg-transparent border-white/5 text-ink-400 line-through hover:text-ink-300'}`}
                                 >
                                     <LegendSwatch shape={it.shape} color={it.color} dimmed={!on} />
                                     {it.label}

@@ -159,7 +159,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                             {section === 'detailed' && (
                                 <div className="space-y-2">
                                     {/* PH3-c (+ industry purgé 2026-06-19) — champs profil détaillé morts retirés (aucun consommateur). */}
-                                    <div className="text-tiny text-ink-500 uppercase tracking-widest mt-1">Rémunération variable</div>
+                                    <div className="text-tiny text-ink-400 uppercase tracking-widest mt-1">Rémunération variable</div>
                                     <div className="grid grid-cols-3 gap-1">
                                         <input aria-label="Bonus en % du brut" type="number" placeholder="Bonus % brut" value={user.bonusPctOfGross ?? ''}
                                             onChange={e => patch(idx, { bonusPctOfGross: Number(e.target.value) || undefined })}

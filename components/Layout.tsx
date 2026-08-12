@@ -239,7 +239,7 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
             <div className={`min-w-0 whitespace-nowrap transition-opacity duration-150 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
               <p className="text-lg font-bold text-white tracking-tight">FinanceAI</p>
-              <div className="text-tiny text-ink-500 font-mono" title={`Build ${__BUILD_DATE__}`}>
+              <div className="text-tiny text-ink-400 font-mono" title={`Build ${__BUILD_DATE__}`}>
                 v{__APP_VERSION__} • {__GIT_SHA__}
               </div>
             </div>
@@ -251,7 +251,7 @@ export const Layout: React.FC<LayoutProps> = ({
             aria-pressed={isPrivacyMode}
             title="Mode Discret"
             className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors ${
-              isPrivacyMode ? 'bg-white/10 text-white' : 'text-ink-500 hover:bg-white/5 hover:text-white'
+              isPrivacyMode ? 'bg-white/10 text-white' : 'text-ink-400 hover:bg-white/5 hover:text-white'
             }`}
           >
             <Icon name={isPrivacyMode ? 'eye-off' : 'eye'} size={16} className="shrink-0" />

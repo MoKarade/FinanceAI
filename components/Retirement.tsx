@@ -336,19 +336,19 @@ export const Retirement: React.FC<RetirementProps> = ({
 
                                 <div className="grid grid-cols-3 gap-4 mt-6">
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
-                                        <div className="text-tiny text-ink-500 uppercase tracking-widest font-bold">Capital a la Retraite</div>
+                                        <div className="text-tiny text-ink-400 uppercase tracking-widest font-bold">Capital a la Retraite</div>
                                         <PrivateAmount as="div" className="text-2xl font-black text-info-400 mt-1 drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">
                                             {formatCompactCAD(retirementNetWorth)}
                                         </PrivateAmount>
                                     </div>
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
-                                        <div className="text-tiny text-ink-500 uppercase tracking-widest font-bold">Pic du Patrimoine</div>
+                                        <div className="text-tiny text-ink-400 uppercase tracking-widest font-bold">Pic du Patrimoine</div>
                                         <PrivateAmount as="div" className="text-2xl font-black text-success-400 mt-1 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">
                                             {formatCompactCAD(peakNetWorth)}
                                         </PrivateAmount>
                                     </div>
                                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-center shadow-inner">
-                                        <div className="text-tiny text-ink-500 uppercase tracking-widest font-bold">Heritage ({lifeExpectancy} ans)</div>
+                                        <div className="text-tiny text-ink-400 uppercase tracking-widest font-bold">Heritage ({lifeExpectancy} ans)</div>
                                         <PrivateAmount as="div" className={`text-2xl font-black mt-1 ${finalNetWorth > 0 ? 'text-white' : 'text-danger-400'}`}>
                                             {finalNetWorth > 0 ? formatCompactCAD(finalNetWorth) : 'Épuisé'}
                                         </PrivateAmount>

@@ -268,7 +268,7 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => 
                     <div className="h-2 rounded-full bg-white/10 overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
                         <div className="h-full bg-indigo-400 transition-[width] duration-300" style={{ width: `${pct}%` }} />
                     </div>
-                    <p className="text-tiny text-ink-500 mt-1.5">
+                    <p className="text-tiny text-ink-400 mt-1.5">
                         {Math.round(progress.done)}/{progress.total} configurations · ça peut prendre une minute, tu peux changer d'onglet.
                     </p>
                     <button
@@ -395,7 +395,7 @@ const WinnerCard: React.FC<{
                 </button>
             )}
             {onApply && (
-                <p className="mt-1.5 text-tiny text-ink-500">
+                <p className="mt-1.5 text-tiny text-ink-400">
                     Écrit les leviers dans tes paramètres du Futur (âge/dépenses retraite, coussin,
                     Smith, RAP, cotisation, dettes, placement) et sélectionne le scénario de retrait correspondant.
                 </p>
@@ -480,7 +480,7 @@ const ResultsTable: React.FC<{
                     <tbody>
                         {rows.map((row) => (
                             <tr key={row.rank} className={`border-t border-white/5 ${row.rank === 1 ? 'bg-green-500/10' : ''} ${!row.survived ? 'opacity-50' : ''}`}>
-                                <td className="px-2 py-1.5 font-mono text-ink-500">{row.rank}</td>
+                                <td className="px-2 py-1.5 font-mono text-ink-400">{row.rank}</td>
                                 <td className="px-2 py-1.5 text-right">
                                     <span className={`inline-block h-1.5 w-1.5 rounded-full ${successColor(row.result.successRate)} mr-1`} aria-hidden="true" />
                                     <span className="tabular-nums text-white">{row.result.successRate}%</span>
@@ -494,7 +494,7 @@ const ResultsTable: React.FC<{
                     </tbody>
                 </table>
             </div>
-            <p className="text-tiny text-ink-500 mt-1">
+            <p className="text-tiny text-ink-400 mt-1">
                 Patrimoine médian = trajectoire P50. Lignes estompées = sous le seuil de survie.
             </p>
         </div>

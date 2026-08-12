@@ -259,7 +259,7 @@ export const ProjectionExplains: React.FC<ProjectionExplainsProps> = ({ chartDat
                       )}
 
                       {events.length === 0 && moved.length === 0 && (
-                        <p className="text-tiny text-ink-500 italic">Mois sans mouvement notable.</p>
+                        <p className="text-tiny text-ink-400 italic">Mois sans mouvement notable.</p>
                       )}
                     </div>
                   );

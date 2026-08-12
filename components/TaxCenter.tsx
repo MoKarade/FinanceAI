@@ -383,7 +383,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                     <span className="text-ink-300">Total Synchronisé</span>
                                     <span className="text-xl font-bold text-white font-mono">{formatCAD(grossIncome)}</span>
                                 </div>
-                                <p className="text-tiny text-ink-500 mt-2 flex items-center gap-1.5">
+                                <p className="text-tiny text-ink-400 mt-2 flex items-center gap-1.5">
                                     <Icon name="lock" size={12} /> Lié à la Configuration (× 12 mois).
                                 </p>
                             </div>
@@ -394,7 +394,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                         <span className="text-meta text-green-400 font-bold">Impôt déjà prélevé (Source)</span>
                                         <span className="text-body font-mono text-white">{formatCAD(alreadyPaidTax)}</span>
                                     </div>
-                                    <div className="text-tiny text-ink-500 mt-1">Détecté automatiquement via vos documents</div>
+                                    <div className="text-tiny text-ink-400 mt-1">Détecté automatiquement via vos documents</div>
                                 </div>
                             )}
 
@@ -404,7 +404,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                                         <span className="text-meta text-yellow-400 font-bold">Invest. Non-Enregistrés</span>
                                         <span className="text-meta text-white">{formatCAD(investmentTaxData.totalNonReg)}</span>
                                     </div>
-                                    <div className="text-tiny text-ink-500">
+                                    <div className="text-tiny text-ink-400">
                                         Impact estimé sur revenu imposable: <span className="text-red-300">{formatSigned(investmentTaxData.taxableAddOn, { withCurrency: true })}</span>
                                     </div>
                                 </div>
@@ -571,7 +571,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {isGlobal ? (
-                            <div className="md:col-span-2 text-center py-6 text-ink-500 bg-white/5 rounded-xl">
+                            <div className="md:col-span-2 text-center py-6 text-ink-400 bg-white/5 rounded-xl">
                                 ℹ️ Les paliers d'imposition sont individuels. Veuillez sélectionner un profil pour voir les paliers détaillés.
                             </div>
                         ) : (

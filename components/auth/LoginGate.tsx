@@ -132,7 +132,7 @@ export function LoginGate({ children }: LoginGateProps): React.ReactElement {
                         Problème de connexion ? Continuer sans me connecter (données non sauvegardées)
                     </button>
                 ) : (
-                    <p className="text-tiny text-ink-500 leading-snug">
+                    <p className="text-tiny text-ink-400 leading-snug">
                         Connexion requise pour sauvegarder tes données automatiquement.
                     </p>
                 )}

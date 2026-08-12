@@ -4,6 +4,17 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 50) — `[A11Y-INK500]` livré · retour Marc TACTILE reçu
+> Reprise de l'ordre PM (tâche #62, V10 a11y). `[A11Y-INK500]` : classification par-occurrence
+> des 115 matchs — 6 étaient des `pink-500` (substring du grep !) + 2 commentaires ; 85 textes
+> actifs migrés `ink-400` (AA normal mesuré), 22 `ink-500` gardés légitimes (glyphes aria-hidden,
+> icônes-boutons ≥3:1, présentationnel). Leçon CONVENTIONS : compte de ticket par grep naïf gonflé
+> par homonymes-substrings — mesurer avec frontière avant tout sweep. Archivage BACKLOG : blocs
+> SELECT-PATH/ROLLOVER/NATIVE/STICKY/EVENTS → BACKLOG_ARCHIVE (section PR #589→#594).
+> **Marc (14:50) : « je veux pouvoir zoomer parce que pour l'instant sur le tel c'est
+> inutilisable trop petit trop cramped impossible » → `[FUTUR-DAILY-TOUCH]` DÉGATÉ, priorité
+> au-dessus du reste de V10 (cadrage en cours : pincement courbe seule ou onglet entier ?).**
+>
 > ## 🟢 Session 2026-08-12 (suite 49) — `[FUTUR-DAILY-EVENTS]` : les événements à LEUR jour
 > Chaîne livrée : `logLife/logFlow(msg, day?)` → registre `eventDays` par point (champ ADDITIF,
 > schéma documenté) → ventilation quotidienne pose chaque label à SON jour → pastilles à

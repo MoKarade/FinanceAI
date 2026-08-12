@@ -87,7 +87,7 @@ interface Scenario {
     celiStart: number; reerStart: number; nonRegStart: number; cryptoStart: number;
     debts: Array<{ balance: number; rate: number; minPay: number; category: Debt['category'] }>;
     retireOffset: number;
-    // Flux ONE-TIME (FUZZ-ONETIME-FLOWS) — optionnels (null ≈ moitié des runs) :
+    // Flux ONE-TIME (FUZZ-ONETIME-FLOWS) — optionnels (null ≈ 17 % des runs, cf. note sur fc.option) :
     //  • achat immobilier → HYPOTHÈQUE (la mise < prix garantit un prêt) : exerce la reconstructabilité
     //    SOUS hypothèque (raison d'être de la forme-bilan ; `Immobilier` = équité nette, jamais re-soustraite).
     //    `rentalIncome` (bien non-RP seulement) et `saleYearOffset` (vente APRÈS l'achat) s'y greffent.
@@ -130,7 +130,11 @@ const scenarioArb: fc.Arbitrary<Scenario> = fc.record({
         category: fc.constantFrom<Debt['category']>('CreditCard', 'Car', 'Student', 'Personal', 'Other'),
     }), { maxLength: 2 }),
     retireOffset: fc.integer({ min: 1, max: 35 }),
-    // null par défaut (`fc.option`) → ~moitié des runs SANS, ~moitié AVEC le flux one-time.
+    // `fc.option(..., { nil: null })` : freq par défaut = 6 → ~83 % AVEC le flux, ~17 % SANS
+    // (mesuré sur l'échantillon seedé : realEstate 98/120, vehicle 100/120, heritage 102/120,
+    // child 98/120 — finding review : l'ancien commentaire disait « ~moitié », faux d'un facteur ~5×
+    // sur les runs SANS). Assumé : pour un fuzz de COUVERTURE, sur-représenter les flux est un bien ;
+    // ~85 des 500 runs principaux restent sans chaque flux.
     realEstate: fc.option(fc.record({
         price: fc.integer({ min: 150000, max: 900000 }),
         downPct: fc.integer({ min: 5, max: 50 }),     // % du prix → mise < prix ⇒ hypothèque garantie
@@ -377,16 +381,25 @@ describe('[HARDEN-FUZZING] conservation du patrimoine sur scénarios aléatoires
             const events = (p: ProjectionChartPoint): string =>
                 [...(p.lifeEvents ?? []), ...(p.flowEvents ?? [])].join(' | ');
             if (cd.some(p => strictNum(p, 'DetteTotale') > strictNum(p, 'DettesNonImmo') + 1000)) counts.mortgage++;
-            if (cd.some(p => events(p).includes('🏠 Vente'))) counts.sale++;
+            // ⚠️ « 🏠 Vente » SEUL est vacueux : le moteur émet la même sous-chaîne pour une vente
+            // IGNORÉE (`🏠 Vente "…" ignorée`, monthlyEvents.ts:212) — mesuré par le panel : 27/82
+            // scénarios comptés n'avaient QUE l'échec. Le marqueur « (net 95%) » n'existe que sur la
+            // branche RÉUSSIE (:198-201) : c'est l'EFFET, pas la tentative. Même classe que
+            // ENG-LIFEEVENT-VENTE-SUBSTRING, réintroduite côté sonde et attrapée en review.
+            if (cd.some(p => events(p).includes('🏠 Vente (net 95%)'))) counts.sale++;
             if (cd.some(p => strictNum(p, 'RentalIncome') > 0)) counts.rental++;
             if (cd.some(p => strictNum(p, 'Immobilier') < -EPS)) counts.negEquity++;
-            if (cd.some(p => events(p).includes('🚗'))) counts.vehicle++;
+            // Libellé complet, pas l'emoji seul : « 🚗 Cadeau voiture » (childrenReee.ts:295) partage
+            // l'emoji. Le libellé reste ambigu avec vehicleCycle.ts:22 (chaîne IDENTIQUE) — inerte ici
+            // par construction : le générateur ne pose jamais `vehicleReplacementEnabled`. Si un futur
+            // enrichissement du fuzz l'active, cette sonde devra discriminer autrement.
+            if (cd.some(p => events(p).includes('🚗 Remplacement véhicule'))) counts.vehicle++;
             if (cd.some(p => events(p).includes('Héritage (fuzz)'))) counts.heritage++;
             if (cd.some(p => strictNum(p, 'REEE') > 0 || strictNum(p, 'ReeeContrib') > 0)) counts.reee++;
         }
         // Mesuré à l'écriture (seed 0x0f1ce, 120 samples) — voir le commit pour les valeurs exactes.
         expect(counts.mortgage, `hypothèque: ${counts.mortgage}/${SAMPLE}`).toBeGreaterThanOrEqual(25);
-        expect(counts.sale, `vente immo: ${counts.sale}/${SAMPLE}`).toBeGreaterThanOrEqual(8);
+        expect(counts.sale, `vente immo RÉUSSIE: ${counts.sale}/${SAMPLE}`).toBeGreaterThanOrEqual(25);
         expect(counts.rental, `revenu locatif: ${counts.rental}/${SAMPLE}`).toBeGreaterThanOrEqual(5);
         // Équité négative : événement RARE par nature (il faut l'intersection achat réussi × croissance
         // bien négative × mise faible × assez d'années sous l'eau) — mesuré 4/120. Le plancher 2 suit

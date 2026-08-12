@@ -41,7 +41,7 @@ fichier:ligne). Verdicts appliqués à la refonte :
 
 ---
 
-## ✅ Chantier FUTUR-DAILY au jour + V9 couverture moteur (PR #581→#587 + PR courante, mergées 2026-08-11/12)
+## ✅ Chantier FUTUR-DAILY au jour + V9 couverture moteur (PR #581→#587 + #588, mergées 2026-08-11/12)
 
 > Chantier V8bis (demande Marc 2026-08-06 : « quotidien sur tout ») livré sur 7 PR + la PR de
 > clôture V9. Le RESTE VIVANT (cadence de paie, zoom au doigt, ancre, liquidités par compte)

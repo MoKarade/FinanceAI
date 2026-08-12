@@ -16,11 +16,15 @@
 // immobilier) négatif (INV-6 : un découvert va en LiquidDebt) + hypothèque non double-comptée
 // (`DetteTotale ≥ DettesNonImmo`). FUZZ-ONETIME-FLOWS : le générateur inclut désormais l'ACHAT IMMOBILIER
 // (→ hypothèque : exerce la reconstructabilité SOUS prêt, la raison d'être de la forme-bilan ; mesuré
-// 257/500 runs sous hypothèque) et la RÉNOVATION majeure (dépense one-time). Reste hors fuzz (couvert par
-// les tests fixes `moneyConservation`, à ajouter au besoin — suivi BACKLOG) : la VENTE immobilière / GAIN
-// EN CAPITAL locatif (déclenché par un lifeEvent « vente » — le fuzz ACHÈTE et DÉTIENT, ne vend pas), le
-// REVENU LOCATIF (`rentalIncomeMonthly` non fourni), l'ÉQUITÉ NÉGATIVE (immeuble sous l'eau, non généré),
-// le véhicule, l'héritage, les soldes REEE/childGoals.
+// 257/500 runs sous hypothèque) et la RÉNOVATION majeure (dépense one-time).
+// [FUZZ-ONETIME-FLOWS, lot final 2026-08-12] Le générateur couvre désormais AUSSI : la VENTE
+// immobilière (lifeEvent `eventKind: 'VENTE_IMMO'` daté APRÈS l'achat — dont la vente d'un bien
+// LOCATIF, gain en capital imposable), le REVENU LOCATIF (`rentalIncomeMonthly` sur bien non-RP),
+// l'ÉQUITÉ NÉGATIVE (propertyGrowthRate généré jusqu'à −10 %/an + mise faible → immeuble sous
+// l'eau), le VÉHICULE cyclique (`vehicleReplacements`, W5), l'HÉRITAGE (lifeEvent HERITAGE) et le
+// REEE (childGoal + solde de départ). La couverture est MESURÉE par un test dédié (échantillon
+// seedé, planchers assertés) — pas supposée : un flux dont le compte tombe sous le plancher fait
+// ÉCHOUER la suite au lieu de disparaître du fuzz en silence.
 //
 // Seed FIXE → CI DÉTERMINISTE (zéro flake) ; fast-check explore quand même NUM_RUNS scénarios variés
 // depuis cette seed et, à l'échec, AFFICHE le contre-exemple minimal + la seed (reproductible).
@@ -29,7 +33,7 @@ import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
 import type { ProjectionChartPoint } from '../../services/projection';
-import type { ProjectionConfig, BudgetConfig, RetirementGoal, Debt, RealEstateGoal, MajorRenovation } from '../../types';
+import type { ProjectionConfig, BudgetConfig, RetirementGoal, Debt, RealEstateGoal, MajorRenovation, LifeEvent, ChildGoal } from '../../types';
 
 // Tolérance : chartData est arrondi au cent (`toFixed(2)`) sur ~9 champs → résiduel d'arrondi cumulé
 // ~0,05 $. EPS=1 $ reste BIEN sous une vraie fuite (qui casse de centaines/milliers de $) tout en
@@ -83,12 +87,22 @@ interface Scenario {
     celiStart: number; reerStart: number; nonRegStart: number; cryptoStart: number;
     debts: Array<{ balance: number; rate: number; minPay: number; category: Debt['category'] }>;
     retireOffset: number;
-    // Flux ONE-TIME (FUZZ-ONETIME-FLOWS) — optionnels (null ≈ moitié des runs) :
+    // Flux ONE-TIME (FUZZ-ONETIME-FLOWS) — optionnels (null ≈ 17 % des runs, cf. note sur fc.option) :
     //  • achat immobilier → HYPOTHÈQUE (la mise < prix garantit un prêt) : exerce la reconstructabilité
     //    SOUS hypothèque (raison d'être de la forme-bilan ; `Immobilier` = équité nette, jamais re-soustraite).
+    //    `rentalIncome` (bien non-RP seulement) et `saleYearOffset` (vente APRÈS l'achat) s'y greffent.
     //  • rénovation majeure → dépense one-time (sortie de liquidités/dette, hors Income/Expenses).
-    realEstate: { price: number; downPct: number; rate: number; amortYears: number; buyYearOffset: number; isPrimary: boolean } | null;
+    realEstate: {
+        price: number; downPct: number; rate: number; amortYears: number; buyYearOffset: number;
+        isPrimary: boolean; rentalIncome: number | null; saleYearOffset: number | null;
+    } | null;
     renovation: { cost: number; yearOffset: number } | null;
+    /** Croissance immobilière ANNUELLE (%) — NÉGATIVE dans une partie des runs : c'est elle qui rend
+     *  l'équité négative ATTEIGNABLE (immeuble sous l'eau : valeur qui fond sous le solde du prêt). */
+    propertyGrowth: number;
+    vehicle: { cyclYears: number; cost: number } | null;
+    heritage: { amount: number; yearOffset: number } | null;
+    child: { birthYearOffset: number; reeeStart: number } | null;
 }
 
 const scenarioArb: fc.Arbitrary<Scenario> = fc.record({
@@ -116,7 +130,11 @@ const scenarioArb: fc.Arbitrary<Scenario> = fc.record({
         category: fc.constantFrom<Debt['category']>('CreditCard', 'Car', 'Student', 'Personal', 'Other'),
     }), { maxLength: 2 }),
     retireOffset: fc.integer({ min: 1, max: 35 }),
-    // null par défaut (`fc.option`) → ~moitié des runs SANS, ~moitié AVEC le flux one-time.
+    // `fc.option(..., { nil: null })` : freq par défaut = 6 → ~83 % AVEC le flux, ~17 % SANS
+    // (mesuré sur l'échantillon seedé : realEstate 98/120, vehicle 100/120, heritage 102/120,
+    // child 98/120 — finding review : l'ancien commentaire disait « ~moitié », faux d'un facteur ~5×
+    // sur les runs SANS). Assumé : pour un fuzz de COUVERTURE, sur-représenter les flux est un bien ;
+    // ~85 des 500 runs principaux restent sans chaque flux.
     realEstate: fc.option(fc.record({
         price: fc.integer({ min: 150000, max: 900000 }),
         downPct: fc.integer({ min: 5, max: 50 }),     // % du prix → mise < prix ⇒ hypothèque garantie
@@ -124,10 +142,30 @@ const scenarioArb: fc.Arbitrary<Scenario> = fc.record({
         amortYears: fc.integer({ min: 15, max: 30 }),
         buyYearOffset: fc.integer({ min: 1, max: 29 }), // clampé à l'horizon dans buildRealEstate
         isPrimary: fc.boolean(),
+        // Revenu locatif : n'a de sens que sur un bien NON-RP — appliqué conditionnellement dans
+        // buildRealEstate (le générer ici sans condition garde l'arbitrary plat et shrinkable).
+        rentalIncome: fc.option(fc.integer({ min: 300, max: 2800 }), { nil: null }),
+        // Vente N années APRÈS l'achat (clampée sous l'horizon dans buildLifeEvents).
+        saleYearOffset: fc.option(fc.integer({ min: 1, max: 12 }), { nil: null }),
     }), { nil: null }),
     renovation: fc.option(fc.record({
         cost: fc.integer({ min: 5000, max: 150000 }),
         yearOffset: fc.integer({ min: 1, max: 29 }),
+    }), { nil: null }),
+    // −10..+8 %/an : la moitié basse fait FONDRE la valeur du bien sous le solde du prêt (mise 5-50 %)
+    // → équité NÉGATIVE légitime, le cas que le checker EXEMPTE de l'invariant non-négatif.
+    propertyGrowth: fc.integer({ min: -10, max: 8 }),
+    vehicle: fc.option(fc.record({
+        cyclYears: fc.integer({ min: 3, max: 12 }),
+        cost: fc.integer({ min: 8000, max: 90000 }),
+    }), { nil: null }),
+    heritage: fc.option(fc.record({
+        amount: fc.integer({ min: 5000, max: 500000 }),
+        yearOffset: fc.integer({ min: 1, max: 25 }),
+    }), { nil: null }),
+    child: fc.option(fc.record({
+        birthYearOffset: fc.integer({ min: 0, max: 8 }),
+        reeeStart: fc.integer({ min: 0, max: 40000 }),
     }), { nil: null }),
 });
 
@@ -168,14 +206,22 @@ const mortgagePayment = (principal: number, annualRatePct: number, amortYears: n
 
 // Construit 0 ou 1 objectif immobilier valide. La mise (5-50 % du prix) < prix ⇒ hypothèque garantie.
 // Date d'achat clampée dans l'horizon (`min(buyYearOffset, years-1)`, ≥1) pour que l'achat ait lieu.
+/** Année d'achat effective (partagée entre le bien et le lifeEvent de VENTE — deux copies du clamp
+ *  divergeraient en silence et dateraient la vente AVANT l'achat, un no-op invisible). */
+const effectiveBuyYear = (s: Scenario): number | null => {
+    const re = s.realEstate;
+    if (re === null) return null;
+    return 2026 + Math.min(re.buyYearOffset, Math.max(1, s.years - 2));
+};
+
 const buildRealEstate = (s: Scenario): RealEstateGoal[] => {
     const re = s.realEstate;
-    if (re === null) return [];
+    const buyYear = effectiveBuyYear(s);
+    if (re === null || buyYear === null) return [];
     const downPayment = Math.round(re.price * (re.downPct / 100));
     const principal = re.price - downPayment;
     // Achat ≥ 2 ans avant la fin de l'horizon (clamp `years-2`) → garantit plusieurs mois SOUS hypothèque
     // dans le chartData, même pour un horizon court (sinon un achat en dernière année n'exerce ~rien).
-    const buyYear = 2026 + Math.min(re.buyYearOffset, Math.max(1, s.years - 2));
     return [{
         id: 're0', name: 'Propriété', isActive: true, purchaseDate: `${buyYear}-06-01`,
         price: re.price, downPayment, mortgageRate: re.rate, amortization: re.amortYears,
@@ -183,6 +229,51 @@ const buildRealEstate = (s: Scenario): RealEstateGoal[] => {
         monthlyPayment: mortgagePayment(principal, re.rate, re.amortYears),
         unrecoverableMonthly: Math.round(re.price * 0.005 / 12) + 200, // ~0,5 %/an taxes+assurance + forfait (fuzz, pas fiscal)
         isPrimaryResidence: re.isPrimary,
+        // ⚠️ Le taux de croissance se porte sur le BIEN, pas sur la config projection :
+        // `ProjectionConfig.propertyGrowthRate` n'est lu NULLE PART par le moteur mensuel — c'est
+        // `goal.propertyGrowthRate || 3` (realEstateMonth.ts) qui décide. Le câbler côté config était
+        // un no-op silencieux (mesuré : équité négative 0/120) — attrapé par le test de COUVERTURE.
+        // NB : `|| 3` → un 0 généré redevient 3 %/an (convention moteur, ticket
+        // ENG-PROPGROWTH-ZERO-INEXPRIMABLE) ; les taux NÉGATIFS, eux, passent tels quels.
+        propertyGrowthRate: s.propertyGrowth,
+        // Revenu LOCATIF : bien non-RP seulement (un loyer sur sa propre résidence n'existe pas).
+        ...(re.isPrimary || re.rentalIncome === null ? {} : { rentalIncomeMonthly: re.rentalIncome }),
+    }];
+};
+
+/** Événements de vie générés : VENTE immobilière (APRÈS l'achat, `eventKind` explicite — jamais la
+ *  détection par sous-chaîne) + HÉRITAGE (rentrée non imposable, chemin ENG-HERITAGE-INFLOW). */
+const buildLifeEvents = (s: Scenario): LifeEvent[] => {
+    const out: LifeEvent[] = [];
+    const buyYear = effectiveBuyYear(s);
+    if (s.realEstate?.saleYearOffset != null && buyYear !== null) {
+        // Vente entre 1 an après l'achat et la DERNIÈRE année de l'horizon (une vente hors horizon
+        // serait un no-op silencieux — le compteur de couverture l'attraperait, autant la caler juste).
+        const saleYear = Math.min(buyYear + s.realEstate.saleYearOffset, 2026 + s.years - 1);
+        if (saleYear > buyYear) {
+            out.push({
+                id: 'sale0', type: 'GROS_ACHAT', name: 'Cession propriété (fuzz)',
+                date: `${saleYear}-09-01`, eventKind: 'VENTE_IMMO', propertyId: 're0',
+            });
+        }
+    }
+    if (s.heritage !== null) {
+        const year = 2026 + Math.min(s.heritage.yearOffset, Math.max(1, s.years - 1));
+        out.push({
+            id: 'her0', type: 'HERITAGE', name: 'Héritage (fuzz)',
+            date: `${year}-04-15`, impactAmount: s.heritage.amount, eventKind: 'NONE',
+        });
+    }
+    return out;
+};
+
+const buildChildren = (s: Scenario): ChildGoal[] => {
+    if (s.child === null) return [];
+    return [{
+        id: 'c0', name: 'Enfant (fuzz)', isActive: true,
+        birthDate: `${2026 + s.child.birthYearOffset}-03-01`,
+        initialCost: 3000, monthlyDiapers: 80, monthlyFood: 150, monthlyClothing: 60,
+        monthlyDaycare: 300, governmentBenefits: 400, parentalLeaveIncomeDrop: 20,
     }];
 };
 
@@ -202,8 +293,10 @@ const buildParams = (s: Scenario): SimulationParams => {
             returnRates: { celi: s.rateCeli, reer: s.rateReer, nonReg: s.rateNonReg, crypto: s.rateCrypto, cash: s.rateCash },
         }),
         calculatedStartingCash: s.startCash,
-        liveCSVBalances: { CELI: s.celiStart, CELIAPP: 0, REER: s.reerStart, NON_ENREG: s.nonRegStart, CRYPTO: s.cryptoStart, REEE: 0 },
-        realEstateGoals: buildRealEstate(s), debts: buildDebts(s), childGoals: [], travelGoals: [], lifeEvents: [],
+        liveCSVBalances: { CELI: s.celiStart, CELIAPP: 0, REER: s.reerStart, NON_ENREG: s.nonRegStart, CRYPTO: s.cryptoStart, REEE: s.child?.reeeStart ?? 0 },
+        realEstateGoals: buildRealEstate(s), debts: buildDebts(s), childGoals: buildChildren(s), travelGoals: [],
+        lifeEvents: buildLifeEvents(s),
+        vehicleReplacements: s.vehicle === null ? [] : [{ id: 'v0', cyclYears: s.vehicle.cyclYears, costEstimate: s.vehicle.cost }],
         majorRenovations: buildRenovations(s),
         retirementGoal: buildRetirement(s), config: buildConfig(s),
         baseGrossAnnual: (s.grossMarc + s.grossAnna) * 12,
@@ -272,6 +365,51 @@ describe('[HARDEN-FUZZING] conservation du patrimoine sur scénarios aléatoires
         expect(() => checkPointConserves({ ...good, NetWorth: 900, DettesNonImmo: 100, DetteTotale: 50 } as ProjectionChartPoint, 0)).toThrow(/hypothèque mal comptée/);
     });
 
+    it('[FUZZ-ONETIME-FLOWS] COUVERTURE MESURÉE : chaque flux est réellement exercé par le générateur', () => {
+        // « Mesurer la couverture, pas la supposer » (ticket). Échantillon SEEDÉ (déterministe en CI)
+        // du MÊME arbitrary que le fuzz principal ; pour chaque scénario on lance le moteur et on
+        // sonde le chartData — la sonde vérifie l'EFFET (le flux s'est produit), jamais le paramètre
+        // (un paramètre généré mais avalé par un clamp compterait pour rien).
+        // ⚠️ Un plancher raté = le générateur a dérivé (clamp trop agressif, date hors horizon,
+        // champ renommé) : le flux disparaîtrait du fuzz EN SILENCE — c'est exactement la classe
+        // que ce test ferme. Planchers = ~50 % des comptes MESURÉS à l'écriture (marge de seed).
+        const SAMPLE = 120;
+        const samples = fc.sample(scenarioArb, { numRuns: SAMPLE, seed: SEED });
+        const counts = { mortgage: 0, sale: 0, rental: 0, negEquity: 0, vehicle: 0, heritage: 0, reee: 0 };
+        for (const s of samples) {
+            const cd = calculateFutureProjection(buildParams(s)).chartData;
+            const events = (p: ProjectionChartPoint): string =>
+                [...(p.lifeEvents ?? []), ...(p.flowEvents ?? [])].join(' | ');
+            if (cd.some(p => strictNum(p, 'DetteTotale') > strictNum(p, 'DettesNonImmo') + 1000)) counts.mortgage++;
+            // ⚠️ « 🏠 Vente » SEUL est vacueux : le moteur émet la même sous-chaîne pour une vente
+            // IGNORÉE (`🏠 Vente "…" ignorée`, monthlyEvents.ts:212) — mesuré par le panel : 27/82
+            // scénarios comptés n'avaient QUE l'échec. Le marqueur « (net 95%) » n'existe que sur la
+            // branche RÉUSSIE (:198-201) : c'est l'EFFET, pas la tentative. Même classe que
+            // ENG-LIFEEVENT-VENTE-SUBSTRING, réintroduite côté sonde et attrapée en review.
+            if (cd.some(p => events(p).includes('🏠 Vente (net 95%)'))) counts.sale++;
+            if (cd.some(p => strictNum(p, 'RentalIncome') > 0)) counts.rental++;
+            if (cd.some(p => strictNum(p, 'Immobilier') < -EPS)) counts.negEquity++;
+            // Libellé complet, pas l'emoji seul : « 🚗 Cadeau voiture » (childrenReee.ts:295) partage
+            // l'emoji. Le libellé reste ambigu avec vehicleCycle.ts:22 (chaîne IDENTIQUE) — inerte ici
+            // par construction : le générateur ne pose jamais `vehicleReplacementEnabled`. Si un futur
+            // enrichissement du fuzz l'active, cette sonde devra discriminer autrement.
+            if (cd.some(p => events(p).includes('🚗 Remplacement véhicule'))) counts.vehicle++;
+            if (cd.some(p => events(p).includes('Héritage (fuzz)'))) counts.heritage++;
+            if (cd.some(p => strictNum(p, 'REEE') > 0 || strictNum(p, 'ReeeContrib') > 0)) counts.reee++;
+        }
+        // Mesuré à l'écriture (seed 0x0f1ce, 120 samples) — voir le commit pour les valeurs exactes.
+        expect(counts.mortgage, `hypothèque: ${counts.mortgage}/${SAMPLE}`).toBeGreaterThanOrEqual(25);
+        expect(counts.sale, `vente immo RÉUSSIE: ${counts.sale}/${SAMPLE}`).toBeGreaterThanOrEqual(25);
+        expect(counts.rental, `revenu locatif: ${counts.rental}/${SAMPLE}`).toBeGreaterThanOrEqual(5);
+        // Équité négative : événement RARE par nature (il faut l'intersection achat réussi × croissance
+        // bien négative × mise faible × assez d'années sous l'eau) — mesuré 4/120. Le plancher 2 suit
+        // la règle ~50 % ; sur les 500 runs du fuzz principal ça extrapole à ~15 scénarios sous l'eau.
+        expect(counts.negEquity, `équité négative: ${counts.negEquity}/${SAMPLE}`).toBeGreaterThanOrEqual(2);
+        expect(counts.vehicle, `véhicule: ${counts.vehicle}/${SAMPLE}`).toBeGreaterThanOrEqual(15);
+        expect(counts.heritage, `héritage: ${counts.heritage}/${SAMPLE}`).toBeGreaterThanOrEqual(15);
+        expect(counts.reee, `REEE: ${counts.reee}/${SAMPLE}`).toBeGreaterThanOrEqual(15);
+    }, FUZZ_TIMEOUT_MS);
+
     it('[FUZZ-ONETIME-FLOWS] un achat immo SOUS hypothèque est exercé ET reste reconstructible', () => {
         // Scénario déterministe FORÇANT l'achat (cash suffisant) → garantit qu'au moins un run exerce
         // l'hypothèque (le fuzz aléatoire, lui, en couvre ~la moitié). Prouve que : (1) la reconstructabilité
@@ -282,8 +420,9 @@ describe('[HARDEN-FUZZING] conservation du patrimoine sur scénarios aléatoires
             rateCeli: 6, rateReer: 6, rateNonReg: 6, rateCrypto: 8, rateCash: 2,
             inflation: 2, age: 32, years: 20, efMonths: 3, monthlyExpenses: 5000,
             celiStart: 0, reerStart: 0, nonRegStart: 0, cryptoStart: 0, debts: [], retireOffset: 30,
-            realEstate: { price: 500000, downPct: 20, rate: 5, amortYears: 25, buyYearOffset: 3, isPrimary: true },
+            realEstate: { price: 500000, downPct: 20, rate: 5, amortYears: 25, buyYearOffset: 3, isPrimary: true, rentalIncome: null, saleYearOffset: null },
             renovation: { cost: 40000, yearOffset: 8 },
+            propertyGrowth: 3, vehicle: null, heritage: null, child: null,
         };
         const cd = calculateFutureProjection(buildParams(s)).chartData;
         for (let i = 0; i < cd.length; i++) checkPointConserves(cd[i], i); // reconstructible sur TOUS les mois, sous hypo

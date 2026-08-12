@@ -175,6 +175,8 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 
 **Avant de coder**
 - Vérifier qu'une feature n'est pas **DÉJÀ faite** (grep le moteur).
+- Un paramètre **HOMONYME à deux niveaux** (config globale vs entité) : grep le consommateur RÉEL avant
+  de câbler — l'autre niveau peut être un no-op typé vert (`propertyGrowthRate`, mesuré 0/120 au fuzz).
 - Un **constat d'IMPOSSIBILITÉ que j'ai écrit** (ticket, bandeau, réponse à Marc) se re-prouve avant
   d'être cité : « seule la valeur nette peut passer au jour » était faux, le moteur émettait déjà de
   quoi ventiler — deux livraisons perdues (`DOC-STALE-IMPOSSIBILITY`).

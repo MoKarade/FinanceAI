@@ -782,6 +782,15 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   log « Achat reporté ») → un test qui VEND une propriété doit donner ASSEZ de `calculatedStartingCash` pour que l'achat ait lieu À TEMPS,
   sinon la vente ne trouve aucun bien acheté (`saleIdx = −1`, test vacant). MESURER que le flux s'exerce vraiment (ex. assert le log
   « Perte en capital » apparaît) — calque la leçon [[FUZZ-ONETIME-FLOWS]] « générer un flux ≠ l'exercer ».
+- **Un paramètre HOMONYME à deux niveaux (config globale vs entité) : vérifier lequel le code LIT avant de le câbler**
+  (leçon FUZZ-ONETIME-FLOWS lot final, 2026-08-12) : `propertyGrowthRate` existe sur `ProjectionConfig` ET sur
+  `RealEstateGoal` — le moteur ne lit QUE le champ par-bien (`goal.propertyGrowthRate || 3`, realEstateMonth.ts:354) ;
+  le champ config n'est lu par AUCUN code de prod (réglage fantôme, → `[ENG-PROPGROWTH-CONFIG-DEAD]`). L'avoir câblé
+  côté config était un no-op parfaitement typé, vert au typecheck, et INVISIBLE sans mesure : c'est le test de
+  COUVERTURE MESURÉE (sonde d'EFFET sur le chartData, plancher asserté par flux) qui l'a attrapé — équité négative
+  0/120 — dès sa première exécution. Deux règles concrètes : (1) avant de câbler un paramètre (test OU prod), grep le
+  CONSOMMATEUR réel, pas le type ; (2) la sonde de couverture vérifie l'EFFET produit, jamais le paramètre généré —
+  un paramètre avalé par le mauvais niveau compte alors pour zéro au lieu de compter pour couvert.
 
 ## Stack
 React 19.2 + Vite 8 (Rolldown) + TS 5.8 strict + Tailwind 3 · Zustand 5 (persist+partialize, schema v7,

@@ -4,6 +4,27 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 43) — `[FUZZ-ONETIME-FLOWS]` : V9 TERMINÉE + grand ménage BACKLOG→ARCHIVE
+> Dernier item V9 (ordre PM). Le fuzz de conservation (`projection.fuzzConservation.test.ts`) exerce
+> désormais TOUS les flux one-time : vente immo (`eventKind: 'VENTE_IMMO'` daté après l'achat),
+> revenu locatif (bien non-RP), équité négative, véhicule cyclique (W5), héritage, REEE — couverture
+> MESURÉE par un test dédié (échantillon seedé 120 scénarios, sondes d'EFFET, planchers assertés).
+> - ⚠️ **Le test de couverture a payé dès l'écriture** : `propertyGrowthRate` câblé sur la CONFIG
+>   projection = no-op silencieux (équité négative 0/120) — le moteur ne lit que
+>   `goal.propertyGrowthRate` (realEstateMonth.ts:354). Champ config FANTÔME en prod →
+>   découverte `[ENG-PROPGROWTH-CONFIG-DEAD]` au BACKLOG ; leçon « paramètre homonyme à deux
+>   niveaux » portée dans CONVENTIONS.md + index CLAUDE.md.
+> - Re-mesuré après correction (taux porté sur le GOAL) : 4/120, plancher 2 (événement rare par
+>   nature). INV-9 vert sur les 500 runs avec les nouveaux flux.
+> - **Ménage BACKLOG (règle « l'archive au plus tard à la PR suivante »)** : toutes les étapes
+>   cochées de V8bis/FUTUR-DAILY + `[NAMING-INVESTED]` + `[HARDEN-SNAPSHOT-RACE]` + V9 déménagées
+>   vers `BACKLOG_ARCHIVE.md` (section 2026-08-12). Le BACKLOG ne garde que le reste VIVANT du
+>   chantier (cadence de paie, zoom au doigt, ancre plan-first, liquidités par compte).
+> - **Suite PM (non bloqué)** : `[TEST-GAP-TAXESTIMATE]` + `[TEST-GAP-SUBSCRIPTIONS]` +
+>   `[TEST-GAP-ROLESCONFIG]` (V3, S) · `[MELTDOWN-THRESHOLDS-DOC]` (S doc) · V10 a11y · V11 dette.
+>   GATÉS Marc : `[FUTUR-DAILY-CADENCE]`, `[FUTUR-DAILY-TOUCH]`, ancre `computeStartingCash`
+>   (plan-first), `[ENG-PAST-OWNED-VS-PLANNED]`, items FISC.
+
 > ## 🟢 Session 2026-08-12 (suite 42) — `[HARDEN-SNAPSHOT-RACE]` : abort sur la projection simple (V9, ordre PM)
 > `runProjectionAsync` accepte `{ signal: AbortSignal }` + sentinelle `PROJECTION_CANCELLED` ;
 > branché dans `ProjectionEngine` (abort au changement de params / démontage ; annulation filtrée

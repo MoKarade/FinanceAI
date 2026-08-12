@@ -180,3 +180,21 @@ export function axisXAtDay(monthIndex: number, dayOfMonth: number, year: number,
     if (!Number.isFinite(monthIndex) || nDays <= 0) return monthIndex;
     return monthIndex + (dayOfMonth - 1) / nDays;
 }
+
+/**
+ * [FUTUR-DAILY-ROLLOVER] Abscisse fractionnaire d'une date ISO `YYYY-MM-DD` sur l'axe du graphe
+ * Futur. Sert aux ancrages posés sur AUJOURD'HUI (ligne « Aujourd'hui », fin de la bande
+ * « Passé réel ») : sur une courbe au jour, les poser à l'ENTIER du mois les décalait de
+ * jusqu'à 30 jours du vrai jour courant. `null` si la date ne se parse pas — l'appelant
+ * retombe alors sur l'ancrage mensuel plutôt que de poser une ligne à NaN (invisible en silence).
+ */
+export function axisXForIso(startYear: number, startMonth: number, iso: string): number | null {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if (!m) return null;
+    const year = Number(m[1]);
+    const month = Number(m[2]) - 1;
+    const day = Number(m[3]);
+    if (month < 0 || month > 11 || day < 1 || day > daysInMonth(year, month)) return null;
+    const monthIndex = (year - startYear) * 12 + (month - startMonth);
+    return axisXAtDay(monthIndex, day, year, month);
+}

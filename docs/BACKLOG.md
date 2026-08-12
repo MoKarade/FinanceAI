@@ -250,6 +250,14 @@
         bandeau honnête quand la fenêtre est assez serrée mais que les ancres mensuelles manquent
         (vue au jour impossible avec des données passées trouées — dit à l'écran au lieu de rester
         muet). E2E « depuis la vue LARGE » rejouant le scénario exact de la capture.
+  - [x] **`[FUTUR-DAILY-ROLLOVER]` le passé suit le calendrier** ✅ 2026-08-12 (Marc : « ça doit
+        se mettre à jour à chaque jour pour le passé »). `useTodayIsoLocal()` : jour local RÉACTIF
+        sur l'horloge module partagée du mois (tick horaire + visibilitychange) — `todayIso` était
+        figé au montage, app ouverte = frontière réel/projeté gelée. Ancrages « Aujourd'hui » +
+        fin de bande « Passé réel » à l'abscisse FRACTIONNAIRE du jour (`axisXForIso` — posés à
+        l'entier du mois : jusqu'à 30 j d'écart) ; ligne « Passé réel ⟵ » retirée en courbe
+        quotidienne (la frontière est AUJOURD'HUI, pas le 1er du mois). E2E horloge Playwright :
+        minuit passe app OUVERTE → la frontière avance (mesuré au pixel, fenêtre zoomée).
   - [x] **`[FUTUR-DAILY-NATIVE]` la courbe est au JOUR partout — sélection directe** ✅ 2026-08-12
         (Marc : « je veux pas un bouton je veux pouvoir selectionner sur la courbe direct », cadrage
         3/3 : clic = jour partout · survol = jour · tracé au jour, GO). Architecture : série

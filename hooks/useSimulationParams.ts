@@ -15,6 +15,7 @@ import type { SimulationParams } from '../services/projection';
 import type { Transaction } from '../types';
 import { usePastPortfolioHistory } from './usePastPortfolioHistory';
 import { deriveStartingBalancesFromHistory } from '../services/history/startingBalancesFromHistory';
+import { todayIsoLocal } from '../services/projection/dailyRefine';
 
 const EMPTY_ARRAY: never[] = [];
 
@@ -47,6 +48,21 @@ const _subscribeMonthEpoch = (cb: () => void): (() => void) => {
 // `getSnapshot` recalcule le mois courant à CHAQUE lecture (primitif → stable par valeur : bail-out React si inchangé).
 // Le timer/visibility ne fait que NOTIFIER (re-lecture) ; au vrai passage de mois, la valeur change → re-render.
 const _getMonthEpoch = (): number => monthEpochOf();
+const _getTodayIso = (): string => todayIsoLocal();
+
+/**
+ * [FUTUR-DAILY-ROLLOVER] Aujourd'hui (JOUR calendaire LOCAL, `YYYY-MM-DD`) RÉACTIF — demande Marc
+ * 2026-08-12 : « ça doit se mettre à jour à chaque jour pour le passé ». La courbe au jour borne
+ * son passé RÉEL sur cette valeur : figée au montage, une app laissée ouverte gardait la frontière
+ * réel/projeté au jour de l'ouverture, et les jours écoulés restaient affichés comme « projetés ».
+ * Même horloge PARTAGÉE que le mois (un seul timer, mêmes notifications : tick horaire + retour
+ * d'onglet — string stable par valeur → bail-out React tant que le jour n'a pas changé).
+ * Latence assumée : au plus ~1 h après minuit onglet resté visible, immédiat au retour d'onglet —
+ * même arbitrage que le mois, documenté ci-dessus.
+ */
+export function useTodayIsoLocal(): string {
+    return useSyncExternalStore(_subscribeMonthEpoch, _getTodayIso, _getTodayIso);
+}
 
 export interface SimulationParamsBundle {
     /** Entrée du moteur : `calculateFutureProjection(params, …)`. */

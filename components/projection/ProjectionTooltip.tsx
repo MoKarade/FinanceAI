@@ -292,7 +292,15 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                 « Détail complet » (ouvre la modale) + rappel Échap. Le bouton n'est
                 cliquable que figé (le tooltip de survol est `pointer-events:none`). */}
             {frozen ? (
-                <div className="pt-2 mt-0.5 border-t border-white/10 space-y-2">
+                /* ⚠️ [FUTUR-TOOLTIP-STICKY-ACTIONS 2026-08-12] Pied COLLANT, et ce n'est pas du
+                   style : l'infobulle défile en interne (`max-h-[480px] overflow-y-auto`) et avec
+                   des données réelles (bloc impôts + par-compte + événements) le pied dépassait le
+                   pli — Marc ne VOYAIT pas « Voir ce mois jour par jour » alors qu'il était rendu
+                   (capture 2026-08-12, infobulle coupée). L'e2e ne l'a jamais attrapé : Playwright
+                   SCROLLE l'élément en vue avant de cliquer — le robot paie le chemin que l'humain
+                   ne voit pas. Marges négatives = bleed sur le padding p-3.5 du parent ; fond
+                   opaque pour que le contenu scrollé ne transparaisse pas sous les boutons. */
+                <div className="sticky bottom-0 -mx-3.5 -mb-3.5 px-3.5 pb-3.5 pt-2 mt-0.5 border-t border-white/10 space-y-2 bg-[#0d1118]/95 backdrop-blur-sm rounded-b-2xl">
                     {/* [FUTUR-DAILY-SELECT-PATH] Mois figé → le chemin vers le jour est OFFERT ICI,
                         au moment où l'utilisateur vient de cliquer en cherchant un jour — pas caché
                         derrière un seuil de zoom qu'il faudrait connaître (3e occurrence de la

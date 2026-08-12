@@ -250,6 +250,15 @@
         bandeau honnête quand la fenêtre est assez serrée mais que les ancres mensuelles manquent
         (vue au jour impossible avec des données passées trouées — dit à l'écran au lieu de rester
         muet). E2E « depuis la vue LARGE » rejouant le scénario exact de la capture.
+  - [x] **`[FUTUR-TOOLTIP-STICKY-ACTIONS]` le pied d'actions de l'infobulle figée est ÉPINGLÉ**
+        ✅ 2026-08-12 (retour Marc APRÈS le déploiement de SELECT-PATH : « figée mais sans le
+        nouveau bouton », rechargement forcé fait, prod vérifiée à jour côté Vercel). Cause : le
+        tooltip défile en interne (`max-h-[480px]`) et avec ses vraies données (impôts + par-compte)
+        le pied d'actions passait SOUS LE PLI — rendu mais jamais VU. L'e2e n'a rien attrapé :
+        **Playwright scrolle l'élément en vue avant de cliquer** — le robot paie le chemin que
+        l'humain ne voit pas (5e occurrence UX-UNREACHABLE du chantier, leçon CONVENTIONS étendue).
+        Fix : pied `sticky bottom-0` + fond opaque ; verrou unitaire (classes) + assertion e2e de
+        GÉOMÉTRIE avant tout scroll (bas du bouton ≤ boîte visible du tooltip).
   - [ ] Liquidités par COMPTE bancaire — ⚠️ BLOQUÉ par une absence de donnée : on reconstruit à
         rebours depuis le solde connu d'AUJOURD'HUI, or il n'est connu que GLOBALEMENT.
         `FintableBrokerBalance` ne couvre que les comptes `kind: 'investment'`. Prérequis : persister

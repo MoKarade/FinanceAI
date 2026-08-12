@@ -178,3 +178,26 @@ describe('ExpertTooltip — chemins de sélection du jour (pied figé)', () => {
         expect(screen.getByRole('button', { name: /Lendemain/ })).toBeEnabled();
     });
 });
+
+// [FUTUR-TOOLTIP-STICKY-ACTIONS] Le pied d'actions du tooltip FIGÉ est ÉPINGLÉ en bas.
+//
+// Pas du style : le tooltip défile en interne (`max-h-[480px] overflow-y-auto`) et avec des
+// données réelles le pied passait SOUS LE PLI — Marc ne voyait pas « Voir ce mois jour par jour »
+// alors qu'il était rendu (capture 2026-08-12). L'e2e n'a rien vu : Playwright scrolle l'élément
+// en vue AVANT de cliquer. jsdom ne rend pas de layout → on verrouille l'INTENTION (les classes
+// sticky/bottom-0 + fond opaque), ce qui échoue sur le code d'avant (pied dans le flux).
+describe('ExpertTooltip — pied d’actions épinglé (visible sans défiler)', () => {
+    it('FIGÉ : le conteneur des boutons est sticky bottom-0 avec un fond opaque', () => {
+        render(<ExpertTooltip data={pt({})} frozen onZoomToDays={vi.fn()} onOpenDetail={vi.fn()} />);
+        const footer = screen.getByRole('button', { name: /Détail complet/ }).closest('div.sticky');
+        expect(footer).not.toBeNull();
+        expect(footer!.className).toContain('bottom-0');
+        // Fond opaque : sans lui, le contenu scrollé transparaîtrait sous les boutons.
+        expect(footer!.className).toMatch(/bg-\[#0d1118\]/);
+    });
+
+    it('SURVOL : pas de pied d’actions du tout (rien à épingler)', () => {
+        render(<ExpertTooltip data={pt({})} onZoomToDays={vi.fn()} />);
+        expect(screen.queryByRole('button', { name: /Détail complet/ })).toBeNull();
+    });
+});

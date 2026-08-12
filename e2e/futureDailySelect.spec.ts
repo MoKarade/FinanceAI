@@ -183,8 +183,21 @@ test.describe('Futur — sélection d’un JOUR sur la courbe', () => {
     }
     await expect(frozen).toBeVisible({ timeout: 5_000 });
 
+    // 1bis. [FUTUR-TOOLTIP-STICKY-ACTIONS] Le bouton est VISIBLE SANS DÉFILER dans l'infobulle.
+    // ⚠️ `getByRole().click()` seul ne prouve RIEN ici : Playwright SCROLLE l'élément en vue avant
+    // de cliquer — c'est exactement comme ça que le pied sous le pli est resté invisible pour Marc
+    // (capture 2026-08-12 : contenu réel > 480 px, boutons jamais vus) pendant que l'e2e passait.
+    // On mesure donc la GÉOMÉTRIE avant tout scroll : le bas du bouton doit tenir dans la boîte
+    // visible du tooltip. NB : ne discrimine que si le contenu déborde `max-h-[480px]` — le verrou
+    // permanent est le test unitaire des classes sticky ; ceci est la vérification d'effet.
+    const zoomBtn = frozen.getByRole('button', { name: /Voir ce mois jour par jour/ });
+    const btnBox = (await zoomBtn.boundingBox())!;
+    const tipBox = (await frozen.boundingBox())!;
+    expect(btnBox.y + btnBox.height, 'le pied d’actions dépasse la zone visible du tooltip figé')
+      .toBeLessThanOrEqual(tipBox.y + tipBox.height + 2);
+
     // 2. Le chemin est OFFERT dans l'infobulle : un clic → vue au jour, centrée sur CE mois.
-    await frozen.getByRole('button', { name: /Voir ce mois jour par jour/ }).click();
+    await zoomBtn.click();
     await expect(page.getByText(/Vue au jour/)).toBeVisible({ timeout: 10_000 });
     // L'infobulle mensuelle est RELÂCHÉE (la garder figée au-dessus d'une courbe au jour mentirait).
     await expect(frozen).toBeHidden();

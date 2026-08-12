@@ -1,9 +1,13 @@
 // [REFONTE-NAV-L3] La page « Projets immo » (Vie) ne montre QUE les projets d'achat FUTURS —
 // les biens détenus vivent dans Configurations → Immobilier. Test discriminant : sur l'ancienne
 // page unique, les deux noms se rendaient côte à côte.
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { RealEstateProjects } from '../../../components/life/RealEstateProjects';
+import { RealEstate } from '../../../components/RealEstate';
+import { useFinanceStore } from '../../../store/useFinanceStore';
+import { TAB_LABELS } from '../../../constants';
+import { Tab } from '../../../types';
 import type { RealEstateGoal } from '../../../types';
 
 vi.mock('recharts', async () => {
@@ -49,5 +53,43 @@ describe('RealEstateProjects — vue Vie (projets FUTURS seulement)', () => {
         // Le bien détenu n'est pas rendu ici, mais le lien croisé vers Config le signale.
         expect(screen.queryByText(/Maison Détenue 2019/)).toBeNull();
         expect(screen.getByText(/1 bien détenu → Configurations · Immobilier/)).toBeInTheDocument();
+    });
+});
+
+// [REFONTE-NAV-L4] « Projets immo » est la 4e page de la destination Vie — elle doit parler la
+// MÊME langue que Retraite / Enfant / Projets de vie : titre issu de TAB_LABELS, idiome de
+// sous-titre « déforme ta courbe Future », et l'affordance commune <VieCurveLink>.
+const navSpy = vi.fn();
+
+describe('RealEstateProjects — harmonisation famille Vie (REFONTE-NAV-L4)', () => {
+    beforeEach(() => {
+        navSpy.mockClear();
+        useFinanceStore.setState({ navigateWithFocus: navSpy as never });
+    });
+
+    it('avec projets : titre = TAB_LABELS + idiome « déforme ta courbe Future »', () => {
+        render(<RealEstateProjects availableCash={50_000} goals={[owned, project]} setGoals={vi.fn()} />);
+        expect(screen.getByRole('heading', { level: 1, name: TAB_LABELS[Tab.REAL_ESTATE_PROJECTS] })).toBeInTheDocument();
+        expect(screen.getByText(/déforme ta courbe Future/)).toBeInTheDocument();
+    });
+
+    it('vue vide : le MÊME header harmonisé (titre + idiome + lien courbe)', () => {
+        render(<RealEstateProjects availableCash={50_000} goals={[owned]} setGoals={vi.fn()} />);
+        expect(screen.getByRole('heading', { level: 1, name: TAB_LABELS[Tab.REAL_ESTATE_PROJECTS] })).toBeInTheDocument();
+        expect(screen.getByText(/déforme ta courbe Future/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Voir l'effet sur ma courbe/ })).toBeInTheDocument();
+    });
+
+    it('le lien « Voir l\'effet sur ma courbe » navigue vers Futur', () => {
+        render(<RealEstateProjects availableCash={50_000} goals={[owned, project]} setGoals={vi.fn()} />);
+        fireEvent.click(screen.getByRole('button', { name: /Voir l'effet sur ma courbe/ }));
+        expect(navSpy).toHaveBeenCalledWith(Tab.FUTURE);
+    });
+
+    it('la page Immobilier (Configurations) n\'est PAS une page Vie : ni idiome, ni lien courbe', () => {
+        render(<RealEstate availableCash={50_000} goals={[owned, project]} setGoals={vi.fn()} />);
+        expect(screen.getByRole('heading', { level: 1, name: TAB_LABELS[Tab.REAL_ESTATE] })).toBeInTheDocument();
+        expect(screen.queryByText(/déforme ta courbe Future/)).toBeNull();
+        expect(screen.queryByRole('button', { name: /Voir l'effet sur ma courbe/ })).toBeNull();
     });
 });

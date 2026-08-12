@@ -8,7 +8,8 @@ import { ZoomContainer } from '../ui/ZoomContainer';
 import { ChartDataTable, type ChartDataColumn } from '../ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
 import { RealEstateGoal, Tab as TabEnum } from '../../types';
-import { INITIAL_REAL_ESTATE_GOAL } from '../../constants';
+import { INITIAL_REAL_ESTATE_GOAL, TAB_LABELS } from '../../constants';
+import { VieCurveLink } from '../vie/VieCurveLink';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { PropertyConfigurator } from './PropertyConfigurator';
 import { MultiPropertyComparison } from './MultiPropertyComparison';
@@ -34,6 +35,11 @@ import { PrivateAmount } from '../ui/PrivateAmount';
  * SOUS-ENSEMBLE à afficher (`visibleGoals`) mais toute écriture repasse par la
  * liste COMPLÈTE (`allGoals`) pour ne jamais perdre l'autre moitié.
  */
+// [REFONTE-NAV-L4] Idiome de sous-titre de la famille « Vie » (ce que je PRÉVOIS) : chaque page
+// annonce son rôle vis-à-vis de la courbe Future. UNIQUEMENT la variante « projet » — la variante
+// « actuel » vit dans Configurations (ce que je POSSÈDE) et garde son sous-titre de photo.
+const PROJET_VIE_IDIOM = "Chaque projet d'achat déforme ta courbe Future";
+
 export interface RealEstateWorkspaceProps {
     variant: 'actuel' | 'projet';
     availableCash: number;
@@ -344,7 +350,9 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
     ];
 
     // [REFONTE-NAV-L3] Vocabulaire et en-tête par variante.
-    const pageTitle = isActuel ? 'Immobilier' : 'Projets immo';
+    // [REFONTE-NAV-L4] Titre = TAB_LABELS (source unique des libellés d'onglets), comme les
+    // trois autres pages « Vie ». Les deux libellés en dur ici les répliquaient à la main.
+    const pageTitle = isActuel ? TAB_LABELS[TabEnum.REAL_ESTATE] : TAB_LABELS[TabEnum.REAL_ESTATE_PROJECTS];
     const pageIcon = isActuel ? 'real-estate' as const : 'building' as const;
     const entityWord = isActuel ? 'bien' : 'projet';
     const countVisible = visibleGoals.length;
@@ -360,7 +368,7 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
             : `Équité présente ${formatCurrency(presentEquityTotal)}`;
     const pageSubtitle = isActuel
         ? `${countVisible} ${entityWord}${plural} détenu${plural} · ${equityPart}`
-        : `${countVisible} ${entityWord}${plural} d'achat · Mensualité nette ${formatCurrency(netMonthlyCost)}`;
+        : `${PROJET_VIE_IDIOM} · ${countVisible} ${entityWord}${plural} d'achat · Mensualité nette ${formatCurrency(netMonthlyCost)}`;
     const otherCount = allGoals.length - visibleGoals.length;
     const crossLink = otherCount > 0 && (
         <button
@@ -383,7 +391,10 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                 <PageHeader
                     icon={<Icon name={pageIcon} size={28} />}
                     title={pageTitle}
-                    subtitle={isActuel ? 'Aucun bien détenu pour l\'instant' : 'Aucun projet d\'achat pour l\'instant'}
+                    subtitle={isActuel
+                        ? 'Aucun bien détenu pour l\'instant'
+                        : `${PROJET_VIE_IDIOM} · aucun projet d'achat pour l'instant`}
+                    actions={isActuel ? undefined : <VieCurveLink />}
                 />
                 <Card>
                     <div className="py-8 text-center space-y-4">
@@ -418,13 +429,18 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                 subtitle={pageSubtitle}
                 badge={activeGoal.isActive ? <Badge variant="success" size="md">Active dans simulation</Badge> : <Badge variant="neutral" size="md">Inactive</Badge>}
                 actions={
-                    <Button
-                        onClick={() => updateActiveGoal({ isActive: !activeGoal.isActive })}
-                        variant={activeGoal.isActive ? 'danger' : 'primary'}
-                        size="md"
-                    >
-                        {activeGoal.isActive ? 'Désactiver' : 'Activer dans Simulation'}
-                    </Button>
+                    <>
+                        {/* [REFONTE-NAV-L4] affordance commune des pages « Vie » — variante « projet »
+                            seulement (la page Immobilier de Configurations n'est pas une page Vie). */}
+                        {!isActuel && <VieCurveLink />}
+                        <Button
+                            onClick={() => updateActiveGoal({ isActive: !activeGoal.isActive })}
+                            variant={activeGoal.isActive ? 'danger' : 'primary'}
+                            size="md"
+                        >
+                            {activeGoal.isActive ? 'Désactiver' : 'Activer dans Simulation'}
+                        </Button>
+                    </>
                 }
             />
 

@@ -10,8 +10,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ZoomContainer } from './ui/ZoomContainer';
 import { ChildGoal, ProjectionConfig, Tab as TabEnum } from '../types';
-import { INITIAL_CHILD_GOAL } from '../constants';
+import { INITIAL_CHILD_GOAL, TAB_LABELS } from '../constants';
 import { ConfirmModal } from './ui/ConfirmModal';
+import { EmptyState } from './ui/EmptyState';
+import { VieCurveLink } from './vie/VieCurveLink';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { PrivateAmount } from './ui/PrivateAmount';
@@ -39,6 +41,9 @@ interface ChildPlanningProps {
 // (source unique partagée avec le moteur de projection).
 
 const fmt = (n: number) => formatCAD(n);
+
+// [REFONTE-NAV-L4] Sous-titre harmonisé de la famille « Vie » (ce que je PRÉVOIS).
+const CHILD_SUBTITLE = 'Chaque enfant planifié déforme ta courbe Future — coûts, allocations et REEE entrent dans la simulation.';
 
 export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoals, projection, currentRESP = 0 }) => {
     const [activeTabIndex, setActiveTabIndex] = useState(0);
@@ -244,7 +249,26 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
     ];
 
     // C8 fix : garde déplacée APRÈS tous les hooks ci-dessus.
-    if (!goal) return null;
+    // [REFONTE-NAV-L4] avant : `return null` → page BLANCHE quand aucun enfant.
+    // Empty state honnête + CTA, cohérent avec les autres pages « Vie ».
+    if (!goal) {
+        return (
+            <div className="space-y-6 stagger-in pb-10">
+                <PageHeader
+                    icon={<Icon name="child" size={28} />}
+                    title={TAB_LABELS[TabEnum.CHILD]}
+                    subtitle={CHILD_SUBTITLE}
+                    actions={<VieCurveLink />}
+                />
+                <EmptyState
+                    icon={<Icon name="child" size={30} />}
+                    title="Aucun enfant planifié"
+                    description="Ajoute un enfant (réel ou prévu) pour chiffrer son coût, ses allocations et son REEE dans ta courbe Future."
+                    cta={<Button onClick={handleAddChild} variant="primary" size="md">+ Ajouter un enfant</Button>}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 stagger-in pb-10">
@@ -256,9 +280,12 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                 message={`Supprimer "${confirmRemove?.name}" définitivement ?`}
                 confirmLabel="Supprimer"
             />
+            {/* [REFONTE-NAV-L4] header harmonisé famille « Vie » : titre = TAB_LABELS,
+                sous-titre = rôle vis-à-vis de la courbe, lien courbe en tête des actions. */}
             <PageHeader
                 icon={<Icon name="child" size={28} />}
-                title="Planification Enfant"
+                title={TAB_LABELS[TabEnum.CHILD]}
+                subtitle={CHILD_SUBTITLE}
                 badge={
                     <div className="flex items-center gap-2">
                         {/* Phase F.9 — indicateur d'activation FUTUR uniformisé avec Immobilier */}
@@ -271,6 +298,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                 }
                 actions={
                     <>
+                        <VieCurveLink />
                         <Button
                             onClick={() => update('isActive', !goal.isActive)}
                             variant={goal.isActive ? 'danger' : 'primary'}
@@ -287,9 +315,6 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
 
             {/* PH3 — infos enfants (REEE) déplacées dans l'onglet Profil unifié. */}
             <ProfileFieldsMoved what="Les infos enfants (REEE)" />
-
-            <div className="hidden">{/* spacing preserve */}
-            </div>
 
             {/* Phase F.11 — onglets enfants alignés sur le style Pill (cohérence app) */}
             <div className="flex flex-wrap items-center gap-2 pt-2 border-b border-white/10 pb-4">

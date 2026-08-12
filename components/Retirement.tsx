@@ -1,12 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
 import { ProfileFieldsMoved } from './settings/ProfileFieldsMoved';
-import { Icon } from './ui/Icon';
+import { Icon, type IconName } from './ui/Icon';
 import { Badge } from './ui/Badge';
 import { PrivateAmount } from './ui/PrivateAmount';
-import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory } from '../types';
+import { VieCurveLink } from './vie/VieCurveLink';
+import { TAB_LABELS } from '../constants';
+import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Tab } from '../types';
 import { ProjectionChartPoint } from '../services/projection/types';
 import { Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ComposedChart, Line, Legend } from 'recharts';
 import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
@@ -27,6 +29,19 @@ import { ProjectionRequired } from './ui/ProjectionRequired';
 // Sprint 2 PH3 — constante stable pour éviter de créer un nouveau [] à chaque
 // render (qui invaliderait les useMemo deps de la projection).
 const EMPTY_ARRAY: never[] = [];
+
+// [REFONTE-NAV-L4] Sous-titre harmonisé de la famille « Vie » (ce que je PRÉVOIS) :
+// chaque page annonce son rôle vis-à-vis de la courbe Future.
+const RETIREMENT_SUBTITLE = "Ton plan de retraite déforme ta courbe Future — mêmes chiffres que l'onglet Futur.";
+
+// [REFONTE-NAV-L4] + [UI-TABS-RICH] — la page empilait 4 outils dans une colonne :
+// sous-onglets légers (idiome BudgetWorkspace) SANS déplacer de logique. « Projection »
+// = résultats de la courbe (capital + graphes), « Outils » = optimiseurs interactifs.
+type RetirementSubTab = 'projection' | 'outils';
+const RETIREMENT_SUB_TABS: ReadonlyArray<{ id: RetirementSubTab; label: string; icon: IconName }> = [
+    { id: 'projection', label: 'Projection', icon: 'chart' },
+    { id: 'outils', label: "Outils d'optimisation", icon: 'goal' },
+];
 
 interface RetirementProps {
     goal: RetirementGoal;
@@ -201,13 +216,18 @@ export const Retirement: React.FC<RetirementProps> = ({
     const zoomCashflow = useTimeChartZoom<YearlyPoint>(retirementData as YearlyPoint[]);
     const bankruptcyAge = bankruptcyPoint?.age;
 
+    // [REFONTE-NAV-L4] sous-onglet actif (idiome BudgetWorkspace, aucun état persisté).
+    const [subTab, setSubTab] = useState<RetirementSubTab>('projection');
+
     // Mode strict : pas de projection = pas de données. Aucune invention.
     if (!hasProjection) {
         return (
             <div className="space-y-6 stagger-in pb-20">
                 <PageHeader
                     icon={<Icon name="retirement" size={28} />}
-                    title="Planification Retraite"
+                    title={TAB_LABELS[Tab.RETIREMENT]}
+                    subtitle={RETIREMENT_SUBTITLE}
+                    actions={<VieCurveLink />}
                 />
                 <ProjectionRequired feature="La simulation de retraite" />
             </div>
@@ -218,40 +238,49 @@ export const Retirement: React.FC<RetirementProps> = ({
         <div className="space-y-6 stagger-in pb-20">
             {/* [PH2-c-2] — signal inter-onglets : dernier recalcul de projection échoué. */}
             <ProjectionStaleBanner />
+            {/* [REFONTE-NAV-L4] header harmonisé famille « Vie » : titre = TAB_LABELS, sous-titre
+                = rôle vis-à-vis de la courbe, lien courbe en action. Le scénario actif (ex-sous-titre)
+                devient un badge — même registre que l'indicateur succès/épuisement. */}
             <PageHeader
                 icon={<Icon name="retirement" size={28} />}
-                title="Planification Retraite"
-                subtitle={activeScenarioName
-                    ? `Scénario actif : ${activeScenarioName} — synchronisé avec Future`
-                    : "Simulation complète basée sur le moteur FIRE — mêmes données que l'onglet Future."}
+                title={TAB_LABELS[Tab.RETIREMENT]}
+                subtitle={RETIREMENT_SUBTITLE}
                 badge={
-                    <Badge variant={bankruptcyAge ? 'danger' : 'success'} size="md">
-                        {bankruptcyAge ? `Capital épuisé à ${bankruptcyAge} ans` : `Succès jusqu'à ${lifeExpectancy} ans`}
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {activeScenarioName && (
+                            <Badge variant="info" size="md">Scénario : {activeScenarioName}</Badge>
+                        )}
+                        <Badge variant={bankruptcyAge ? 'danger' : 'success'} size="md">
+                            {bankruptcyAge ? `Capital épuisé à ${bankruptcyAge} ans` : `Succès jusqu'à ${lifeExpectancy} ans`}
+                        </Badge>
+                    </div>
                 }
+                actions={<VieCurveLink />}
             />
 
             {/* PH3 — TOUS les éditeurs de profil/retraite (paramètres, revenu-retraite, profil détaillé)
                 ont migré dans l'onglet Profil unifié. Retraite = résultats & analyses uniquement. */}
             <ProfileFieldsMoved what="Tes paramètres de retraite, ton revenu-retraite et ton profil détaillé" />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1 space-y-6">
+            {/* [REFONTE-NAV-L4] + [UI-TABS-RICH] — sous-onglets légers : la colonne de 4 outils
+                empilés devient « Outils d'optimisation », la courbe garde toute la place. */}
+            <div className="flex gap-1 p-0.5 rounded-card bg-black/30 border border-white/5 w-fit overflow-x-auto" role="tablist" aria-label="Sections Retraite">
+                {RETIREMENT_SUB_TABS.map((s) => (
+                    <button
+                        key={s.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={subTab === s.id}
+                        onClick={() => setSubTab(s.id)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-meta font-bold rounded whitespace-nowrap transition-colors focus-ring ${subTab === s.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-50 hover:bg-white/10'}`}
+                    >
+                        <Icon name={s.icon} size={14} />{s.label}
+                    </button>
+                ))}
+            </div>
 
-                    {/* Phase F.5 — extraction Card "Capitaux Actuels" en sous-composant */}
-                    <CurrentCapitalCard
-                        balances={{ REER: liveCSVBalances.REER, CELI: liveCSVBalances.CELI, NON_ENREG: liveCSVBalances.NON_ENREG }}
-                        targetAge={goal.targetAge}
-                        lifeExpectancy={lifeExpectancy}
-                        retirementNetWorth={retirementNetWorth}
-                        peakNetWorth={peakNetWorth}
-                        finalNetWorth={finalNetWorth}
-                    />
-
-
-                    {/* W4.1 — Tax bracket viz */}
-                    <TaxBracketViz annualGrossIncome={baseGrossAnnual} label="revenu actuel" />
-
+            {subTab === 'outils' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     {/* W1.5 — Goal Seeking + W2.6 Drawdown (extrait dans GoalSeekerCard) */}
                     <GoalSeekerCard
                         paramsBuilder={() => ({
@@ -266,17 +295,31 @@ export const Retirement: React.FC<RetirementProps> = ({
 
                     {/* Asset Location Optimizer (extrait dans AssetLocationCard) */}
                     <AssetLocationCard annualGrossIncome={baseGrossAnnual} />
+
+                    {/* W4.1 — Tax bracket viz */}
+                    <TaxBracketViz annualGrossIncome={baseGrossAnnual} label="revenu actuel" />
+                </div>
+            )}
+
+            {subTab === 'projection' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1 space-y-6">
+
+                    {/* Phase F.5 — extraction Card "Capitaux Actuels" en sous-composant */}
+                    <CurrentCapitalCard
+                        balances={{ REER: liveCSVBalances.REER, CELI: liveCSVBalances.CELI, NON_ENREG: liveCSVBalances.NON_ENREG }}
+                        targetAge={goal.targetAge}
+                        lifeExpectancy={lifeExpectancy}
+                        retirementNetWorth={retirementNetWorth}
+                        peakNetWorth={peakNetWorth}
+                        finalNetWorth={finalNetWorth}
+                    />
                 </div>
 
                 <div className="lg:col-span-2 space-y-6">
-                    {chartData.length === 0 ? (
-                        // PH4-RET — projection non calculée (prérequis manquants) → invite standard, cohérente
-                        // avec Dashboard/Investissement et la règle no-fake-data. L'ancien message « importez
-                        // un CSV de portefeuille » était trompeur (le CSV Google Sheet est déprécié ; la
-                        // courbe vient désormais de la source unique lastProjection, comme l'onglet Futur).
-                        <ProjectionRequired feature="ta planification de retraite" />
-                    ) : (
-                        <>
+                    {/* [REFONTE-NAV-L4] l'ancien ternaire chartData.length === 0 ici était MORT :
+                        la garde hasProjection plus haut retourne déjà <ProjectionRequired>. */}
+                    <>
                             <Card icon={<Icon name="investments" size={18} />} title="Accumulation & épuisement">
                                 <div
                                     role="img"
@@ -389,9 +432,9 @@ export const Retirement: React.FC<RetirementProps> = ({
                                 </div>
                             </Card>
                         </>
-                    )}
                 </div>
             </div>
+            )}
         </div>
     );
 };

@@ -37,8 +37,9 @@ test.describe('Screenshots baselines (mode test) @visual', () => {
     await activateTestMode(page);
   });
 
-  test('Dashboard — baseline screenshot', async ({ page }) => {
-    await page.goto('/#DASHBOARD');
+  // [REFONTE-NAV Lot 1] L'Accueil est retiré — la baseline est la page d'ouverture : le Futur.
+  test('Futur (page d\'ouverture) — baseline screenshot', async ({ page }) => {
+    await page.goto('/#FUTURE');
     // Attendre le rendu du titre de page principal
     await expect(page.locator('#main h1').first()).toBeVisible({ timeout: 10_000 });
     // Laisser les transitions CSS se terminer (reducedMotion activé mais layout peut bouger)

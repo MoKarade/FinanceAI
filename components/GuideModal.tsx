@@ -23,17 +23,8 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
 
     const getContent = () => {
         switch (activeTab) {
-            case Tab.DASHBOARD:
-                return {
-                    title: "Accueil : Le Hub",
-                    desc: "Vue unifiee de votre sante financiere.",
-                    features: [
-                        "**Graphique Multi-Comptes** : Visualisez l'evolution separee de vos liquidites et de votre portefeuille boursier.",
-                        "**Selecteur Temporel** : Zoomez dynamiquement. L'axe Y s'ajuste automatiquement (Auto-Scale).",
-                        "**Revenus Passifs** : L'accueil calcule les dividendes et interets percus sur le mois selectionne."
-                    ],
-                    tip: "Les donnees boursieres proviennent directement de votre Google Sheet en lecture seule. Les dettes ont ete integrees dans la section Credit."
-                };
+            // [REFONTE-NAV Lot 1] Cas Tab.DASHBOARD retiré : l'Accueil n'est plus routé
+            // (deep-link #DASHBOARD → #FUTURE dans App.tsx).
             case Tab.FUTURE:
                  return {
                     title: "Machine a Voyager dans le Temps",

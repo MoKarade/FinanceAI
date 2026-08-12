@@ -17,10 +17,12 @@ import { REQUIREMENTS } from './requirements';
  * Source unique : `PAGE_SETUP` + `REQUIREMENTS` (le même registre que les gates).
  */
 
+// [REFONTE-NAV Lot 1] Accueil retiré ; ordre aligné sur les 6 destinations
+// (Futur, puis Configurations, Vie, Transactions, Assistant).
 const TAB_ORDER: Tab[] = [
-    Tab.DASHBOARD, Tab.TRANSACTIONS, Tab.BUDGET, Tab.TAX, Tab.INVESTMENTS,
-    Tab.FUTURE, Tab.RETIREMENT, Tab.REAL_ESTATE, Tab.CHILD, Tab.LIFE_PROJECTS,
-    Tab.DEBT, Tab.ASSISTANT,
+    Tab.FUTURE, Tab.INVESTMENTS, Tab.REAL_ESTATE, Tab.DEBT, Tab.TAX,
+    Tab.RETIREMENT, Tab.CHILD, Tab.LIFE_PROJECTS,
+    Tab.TRANSACTIONS, Tab.BUDGET, Tab.ASSISTANT,
 ];
 
 export const SetupHub: React.FC<{ className?: string }> = ({ className = '' }) => {

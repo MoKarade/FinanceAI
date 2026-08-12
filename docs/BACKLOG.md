@@ -575,9 +575,24 @@
   un keydown Échap qui replie (blur/retour du focus au déclencheur).
 - [ ] **`[IA-NAV-LABELS]`** (S) — sidebar w-16 par défaut, libellés opacity-0, icônes cryptiques →
   libellés visibles par défaut (ou rail plus large).
-- [ ] **`[NAV-IA-CONSOLIDATE]`** (L, ⏳, 🧭 OK Marc requis) — 14 destinations → ~6 (Accueil · Budget ·
-  Patrimoine · Futur · Impôts&Docs · Réglages). Gros chantier nav (routes, deep-links, tests) →
-  plan-first + OK Marc.
+- [x] **`[NAV-IA-CONSOLIDATE]`** — **caduque 2026-08-12** : supersedé par `[REFONTE-NAV]`
+  (vision différente de Marc : plus d'Accueil du tout, la courbe Future au centre — voir
+  `docs/REFONTE_NAV_PLAN.md`). Ne pas implémenter l'ancien découpage.
+- [ ] **`[REFONTE-NAV]`** (L, ⏳, GO Marc 2026-08-12) — chantier « tout tourne autour de la courbe
+  Future », plan détaillé + décisions dans `docs/REFONTE_NAV_PLAN.md`. Lots :
+  - [ ] `[REFONTE-NAV-L1]` **Lot 1 — la nav** (EN COURS, PR de cette session) : 6 destinations
+    (Futur · Configurations · Vie · Transactions · Assistant · Réglages), app s'ouvre sur Futur,
+    Accueil retiré (#DASHBOARD→#FUTURE, chiffres de tête → FutureKpiStrip), barre mobile
+    Futur·Transactions·Assistant·Plus. Critère : rien de perdu.
+  - [ ] `[REFONTE-NAV-L2]` Lot 2 — Futur enrichi : bandeau KPI complet (variation, santé) +
+    rapatriement des paramètres de projection + reste des tuiles de l'ex-Accueil (le composant
+    `Dashboard.tsx` reste sur disque comme carrière à ce lot, puis sera supprimé).
+  - [ ] `[REFONTE-NAV-L3]` Lot 3 — Configurations fusionnées (split immo/invest actuel vs projets,
+    inclut `[DEBT-FROM-CONTRACT]`).
+  - [ ] `[REFONTE-NAV-L4]` Lot 4 — Vie fusionnée (retraite, enfants, projets, voyages, événements).
+  - [ ] `[REFONTE-NAV-L5]` Lot 5 — Transactions fusionnées (tx, budget, abonnements, imports).
+  - [ ] `[REFONTE-NAV-L6]` Lot 6 — Assistant pleine page + outils (sous-lots par outil, voir plan).
+  - [ ] `[REFONTE-NAV-L7]` Lot 7 — Réglages retravaillés en sections.
 - [ ] **`[UI-TABS-RICH]`** (M) — généraliser le pattern sous-onglets à Retraite (4 outils empilés) et
   Profil (long scroll). Plan-first.
 - [ ] **`[DETTE-CHART-THEME-DUP]`** (S) — tooltip/thème Recharts partagé (`CHART_TOOLTIP_STYLE`

@@ -39,9 +39,9 @@ describe('GuidedTour', () => {
     it('Suivant avance et ouvre l\'onglet de l\'étape', () => {
         render(<GuidedTour />);
         startTour();
-        // Étape 2 = Accueil (Tab.DASHBOARD) → setActiveTab appelé.
+        // [REFONTE-NAV Lot 1] Étape 2 = Futur (le cœur — l'Accueil est retiré) → setActiveTab appelé.
         fireEvent.click(screen.getByText(/Suivant/));
-        expect(mockSetActiveTab).toHaveBeenCalledWith(Tab.DASHBOARD);
+        expect(mockSetActiveTab).toHaveBeenCalledWith(Tab.FUTURE);
         expect(screen.getByText(/Étape 2 \/ 15/)).toBeTruthy();
     });
 

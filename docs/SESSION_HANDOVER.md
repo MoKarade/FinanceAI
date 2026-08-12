@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 55) — `[REFONTE-NAV-L1]` : nav 6 destinations, la courbe au centre
+> GO Marc sur `docs/REFONTE_NAV_PLAN.md` (à lire AVANT tout travail nav). Lot 1 : la nav passe
+> de 4 groupes thématiques à **6 destinations** (Futur · Configurations · Vie · Transactions ·
+> Assistant · Réglages), **source unique `components/navDestinations.ts`** (sidebar + barre
+> mobile + drawer en dérivent tous). L'app **s'ouvre sur la courbe Future** (défaut du store,
+> activeTab non persisté), l'**Accueil est retiré** : #DASHBOARD → #FUTURE (redirect AVANT le
+> check générique — DASHBOARD est encore dans l'enum, le check générique l'aurait accepté vers
+> un écran vide), route Dashboard dé-routée (composant conservé sur disque = carrière du
+> Lot 2), chiffres de tête repris par `FutureKpiStrip` (patrimoine net, liquidités,
+> épargne/mois — dérivés réels, « — » si non fini). Barre mobile : Futur·Transactions·
+> Assistant·Plus. Tour guidé réordonné (Futur d'abord), palette Cmd+K (mots-clés « accueil »
+> → Futur), SetupHub, GuideModal, e2e kpi/screenshots alignés. Tests : non-perte
+> (`navDestinations.test.ts` — les destinations couvrent EXACTEMENT les onglets routés),
+> redirect scanné, Layout destinations directes vs accordéons.
+> ⚠️ Incident : un redémarrage de conteneur a effacé le Lot 1 NON COMMITÉ pendant la suite de
+> tests (2e occurrence de la classe) — tout ré-appliqué depuis le contexte, leçon renforcée.
+>
 > ## 🟢 Session 2026-08-12 (suite 54) — `[A11Y-FUTUR-MILESTONES-KEYBOARD]` : pastilles au clavier
 > Décision Marc appliquée : ~29 pastilles focusables (tabIndex 0, Entrée/Espace = modale, labels
 > DATÉS via meta.dateLabel, Tab = ordre chronologique). Anneau de focus DESSINÉ en SVG

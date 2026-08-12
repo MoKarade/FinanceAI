@@ -228,5 +228,6 @@ Agents et hooks : voir `.claude/` et la section correspondante de `docs/CONVENTI
 Les agents ECC sont en anglais → **répondre à Marc en français** quoi qu'il arrive.
 En conflit entre une règle ECC et les règles ci-dessus, **celles-ci prévalent**.
 
-⚠️ **Committer AVANT de lancer un panel/des agents** : un revert de conteneur pendant l'attente
-peut effacer un lot entier non commité (incident vécu).
+⚠️ **Committer (et POUSSER dès que la branche est libre) avant TOUTE attente longue** — panel
+d'agents, suite de tests, CI : un revert de conteneur pendant l'attente efface un lot entier
+non commité, stash compris (vécu 2×, dont le Lot 1 REFONTE-NAV pendant `npm run test`).

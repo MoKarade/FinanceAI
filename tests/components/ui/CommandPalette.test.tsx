@@ -76,19 +76,20 @@ describe('makeNavigationActions', () => {
     it('génère les actions de navigation principales (Phase F.12 — TRAVEL+LIFE_EVENTS fusionnés en LIFE_PROJECTS)', () => {
         const set = vi.fn();
         const actions = makeNavigationActions(set);
-        // 18 tabs total dans l'enum, mais TRAVEL et LIFE_EVENTS sont
-        // forwardés vers LIFE_PROJECTS — donc 18 - 2 + 1 = 17 entrées dans la palette
-        // Tab enum a 18 entries mais TRAVEL et LIFE_EVENTS forwardent vers
-        // LIFE_PROJECTS — donc 18 - 2 = 16 entrées exposées dans la palette
-        expect(actions.length).toBe(Object.keys(Tab).length - 2);
+        // Hors palette : TRAVEL et LIFE_EVENTS (forwardés vers LIFE_PROJECTS) et, depuis
+        // [REFONTE-NAV Lot 1], DASHBOARD (Accueil retiré — ses mots-clés mènent au Futur).
+        expect(actions.length).toBe(Object.keys(Tab).length - 3);
         actions.forEach(a => expect(a.group).toBe('Navigation'));
     });
 
     it('chaque action appelle setActiveTab avec le bon Tab', () => {
         const set = vi.fn();
         const actions = makeNavigationActions(set);
-        const dashAction = actions.find(a => a.id === `nav:${Tab.DASHBOARD}`);
-        dashAction?.onSelect();
-        expect(set).toHaveBeenCalledWith(Tab.DASHBOARD);
+        // [REFONTE-NAV Lot 1] L'Accueil n'est plus une action de nav — on vérifie sur Futur
+        // (qui a hérité de ses mots-clés « accueil »/« home »).
+        const futureAction = actions.find(a => a.id === `nav:${Tab.FUTURE}`);
+        futureAction?.onSelect();
+        expect(set).toHaveBeenCalledWith(Tab.FUTURE);
+        expect(actions.some(a => a.id === `nav:${Tab.DASHBOARD}`)).toBe(false);
     });
 });

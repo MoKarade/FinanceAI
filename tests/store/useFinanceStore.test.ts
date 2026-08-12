@@ -11,9 +11,10 @@ describe('useFinanceStore', () => {
         localStorage.clear();
     });
 
-    it('expose un activeTab initial = DASHBOARD', () => {
+    it('expose un activeTab initial = FUTURE (la courbe est la page d\'ouverture)', () => {
+        // [REFONTE-NAV Lot 1] L'Accueil est retiré : l'app s'ouvre sur la courbe Future.
         const { activeTab } = useFinanceStore.getState();
-        expect(activeTab).toBe(Tab.DASHBOARD);
+        expect(activeTab).toBe(Tab.FUTURE);
     });
 
     it('setActiveTab change l\'onglet courant', () => {

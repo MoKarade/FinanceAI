@@ -34,3 +34,26 @@ describe('deep-link #ACTIONS → ASSISTANT (App.tsx, scan du source)', () => {
         expect(Object.values(Tab)).toContain('ASSISTANT');
     });
 });
+
+// [REFONTE-NAV Lot 1] Même verrou pour #DASHBOARD → #FUTURE. Différence CRITIQUE avec ACTIONS :
+// DASHBOARD est ENCORE dans l'enum Tab (TAB_LABELS est un Record<Tab, …>, alias conservé) — si le
+// redirect passait APRÈS le check générique, `Object.values(Tab).includes('DASHBOARD')` accepterait
+// le hash et afficherait un onglet sans route (écran vide silencieux).
+describe('deep-link #DASHBOARD → FUTURE (App.tsx, scan du source)', () => {
+    it('le redirect explicite existe AVANT le check générique (hash DASHBOARD → Tab.FUTURE + URL réécrite)', () => {
+        const redirectIdx = src.indexOf("hash === 'DASHBOARD'");
+        const genericIdx = src.indexOf('Object.values(Tab).includes(hash');
+        expect(redirectIdx).toBeGreaterThan(-1);
+        expect(genericIdx).toBeGreaterThan(-1);
+        expect(redirectIdx).toBeLessThan(genericIdx);
+        const redirectBlock = src.slice(redirectIdx, redirectIdx + 400);
+        expect(redirectBlock).toContain('setActiveTab(Tab.FUTURE)');
+        expect(redirectBlock).toContain("replaceState(null, '', '#FUTURE')");
+    });
+
+    it('aucune route DASHBOARD ne survit dans TabRouter (la page est dé-routée, pas cachée)', () => {
+        const router = readFileSync(resolve(process.cwd(), 'components/TabRouter.tsx'), 'utf8');
+        expect(router.length).toBeGreaterThan(3000); // volume prouvé
+        expect(router).not.toContain('activeTab === Tab.DASHBOARD');
+    });
+});

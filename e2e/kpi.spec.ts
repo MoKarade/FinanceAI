@@ -11,24 +11,29 @@
 import { test, expect } from '@playwright/test';
 import { scriptBypassOnboarding, activateTestMode } from './helpers/setup';
 
-test.describe('KPI Dashboard — mode test (fixtures Alex/Sam)', () => {
+// [REFONTE-NAV Lot 1] L'Accueil est retiré : #DASHBOARD redirige vers la courbe Future,
+// qui porte désormais les chiffres de tête (FutureKpiStrip). Le beforeEach passe VOLONTAIREMENT
+// par #DASHBOARD : il vérifie la redirection legacy en plus des KPI.
+test.describe('KPI Futur — mode test (fixtures Alex/Sam)', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(scriptBypassOnboarding());
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
     await activateTestMode(page);
-    // Revenir sur le Dashboard
+    // Deep-link legacy → doit atterrir sur le Futur (URL réécrite).
     await page.goto('/#DASHBOARD');
     await page.waitForLoadState('domcontentloaded');
   });
 
-  test('patrimoine total > 0 affiché sur le Dashboard', async ({ page }) => {
+  test('patrimoine net > 0 affiché sur le Futur (via redirection #DASHBOARD)', async ({ page }) => {
     // Attendre que le contenu principal soit rendu
     await expect(page.locator('#main h1').first()).toBeVisible({ timeout: 10_000 });
 
-    // La KPI patrimoine est dans une carte StatGrid. Le libellé de la
-    // traduction est dashboard.global_net_worth = « Valeur Nette Globale ».
-    const patrimoineStat = page.locator('#main').getByText(/valeur nette/i).first();
+    // La redirection legacy a réécrit l'URL.
+    await expect(page).toHaveURL(/#FUTURE/);
+
+    // Bandeau KPI compact au-dessus de la courbe (FutureKpiStrip).
+    const patrimoineStat = page.locator('#main').getByText(/patrimoine net/i).first();
     await expect(patrimoineStat).toBeVisible({ timeout: 8_000 });
 
     // La valeur est dans le même bloc KPIStat — chercher un montant en $

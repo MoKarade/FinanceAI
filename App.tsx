@@ -256,6 +256,15 @@ export const App: React.FC = () => {
                 window.history.replaceState(null, '', '#ASSISTANT');
                 return;
             }
+            // [REFONTE-NAV Lot 1] L'Accueil est retiré : un deep-link/bookmark #DASHBOARD
+            // redirige vers la courbe Future (jamais un écran vide), URL réécrite. DOIT rester
+            // AVANT le check générique : DASHBOARD est encore dans l'enum, le check générique
+            // l'accepterait vers un onglet sans route.
+            if (hash === 'DASHBOARD') {
+                setActiveTab(Tab.FUTURE);
+                window.history.replaceState(null, '', '#FUTURE');
+                return;
+            }
             if (Object.values(Tab).includes(hash as Tab) && hash !== activeTab) {
                 setActiveTab(hash as Tab);
             }
@@ -279,9 +288,9 @@ export const App: React.FC = () => {
     // Q3 — Keyboard shortcuts Alt+1..9 pour switcher d'onglet rapidement
     useEffect(() => {
         const SHORTCUTS: Array<Tab> = [
-            // G22-N3 : Planif fusionné dans Budget → raccourci 4 = Dettes.
-            Tab.DASHBOARD, Tab.TRANSACTIONS, Tab.BUDGET, Tab.DEBT,
-            Tab.INVESTMENTS, Tab.FUTURE, Tab.RETIREMENT, Tab.TAX, Tab.ASSISTANT,
+            // [REFONTE-NAV Lot 1] Ordre = destinations (Futur d'abord, Accueil retiré).
+            Tab.FUTURE, Tab.TRANSACTIONS, Tab.BUDGET, Tab.ASSISTANT,
+            Tab.PROFILE, Tab.INVESTMENTS, Tab.RETIREMENT, Tab.TAX, Tab.SETTINGS,
         ];
         const onKeyDown = (e: KeyboardEvent) => {
             // Ignore si l'utilisateur tape dans un input/textarea/contenteditable

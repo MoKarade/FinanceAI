@@ -15,31 +15,24 @@ export interface TourStep {
   body: string;
 }
 
+// [REFONTE-NAV Lot 1] Visite dans l'ordre des 6 destinations : Futur d'abord (le cœur),
+// puis Configurations (ce que j'ai), Vie (ce que je prévois), Transactions, Assistant,
+// Réglages. L'étape Accueil est retirée (l'onglet n'existe plus).
 export const TOUR_STEPS: ReadonlyArray<TourStep> = [
   {
     tab: null,
     title: '👋 Bienvenue dans la visite guidée',
-    body: "En 1 minute, je te montre à quoi sert chaque onglet. Tu peux passer à tout moment et la relancer plus tard depuis Configuration.",
+    body: "En 1 minute, je te montre les 6 sections de l'app. Tout tourne autour de la courbe Future. Tu peux passer à tout moment et relancer la visite depuis Réglages.",
   },
   {
-    tab: Tab.DASHBOARD,
-    title: '🏠 Accueil',
-    body: "Ta vue d'ensemble : valeur nette, liquidités, épargne du mois et santé financière. C'est ton point de départ chaque jour.",
+    tab: Tab.FUTURE,
+    title: '🔮 Futur — le cœur de l\'app',
+    body: "C'est ta page d'accueil : la courbe projette ton patrimoine sur des décennies, avec tes chiffres du jour juste au-dessus. L'optimiseur teste des stratégies et te recommande la meilleure. Zoome, clique, explore chaque jour.",
   },
   {
-    tab: Tab.TRANSACTIONS,
-    title: '🧾 Transactions',
-    body: "Importe tes relevés (ou connecte ta banque) et catégorise tes dépenses. L'IA peut le faire pour toi si tu actives Claude.",
-  },
-  {
-    tab: Tab.BUDGET,
-    title: '📊 Budget',
-    body: "Fixe tes enveloppes de dépenses, suis tes charges fixes et abonnements, et garde le cap sur tes objectifs d'épargne.",
-  },
-  {
-    tab: Tab.DEBT,
-    title: '💳 Dettes',
-    body: "Liste tes dettes (carte, prêt auto, marge) et vois en combien de temps tu les rembourses selon ta stratégie.",
+    tab: Tab.PROFILE,
+    title: '👤 Profil',
+    body: "Dans Configurations : ton identité, tes salaires et ta situation (seul ou en couple). Tout le reste de l'app lit ces données.",
   },
   {
     tab: Tab.INVESTMENTS,
@@ -47,14 +40,24 @@ export const TOUR_STEPS: ReadonlyArray<TourStep> = [
     body: "Tes comptes CELI, REER, non-enregistré et crypto au même endroit, avec l'évolution de ton portefeuille.",
   },
   {
-    tab: Tab.FUTURE,
-    title: '🔮 Futur — le cœur de l\'app',
-    body: "Le simulateur projette ton patrimoine sur des décennies. L'optimiseur teste des stratégies et te recommande la meilleure. Tu peux tout zoomer et cliquer pour comprendre chaque mois.",
-  },
-  {
     tab: Tab.REAL_ESTATE,
     title: '🏡 Immobilier',
-    body: "Planifie un achat de maison : mise de fonds, hypothèque, RAP/CELIAPP. Le futur en tient compte automatiquement.",
+    body: "Ta propriété et tes achats : mise de fonds, hypothèque, RAP/CELIAPP. Le futur en tient compte automatiquement.",
+  },
+  {
+    tab: Tab.DEBT,
+    title: '💳 Dettes',
+    body: "Liste tes dettes (carte, prêt auto, marge) et vois en combien de temps tu les rembourses selon ta stratégie.",
+  },
+  {
+    tab: Tab.TAX,
+    title: '🧮 Impôts & Docs',
+    body: "Estimation de tes impôts (fédéral + Québec) à partir de ton profil.",
+  },
+  {
+    tab: Tab.RETIREMENT,
+    title: '🏖️ Retraite',
+    body: "Dans Vie : capital nécessaire, indépendance financière (FIRE), RRQ/PSV — vérifie si tu es sur la bonne voie.",
   },
   {
     tab: Tab.CHILD,
@@ -67,19 +70,14 @@ export const TOUR_STEPS: ReadonlyArray<TourStep> = [
     body: "Voyages, mariage, gros achats… ajoute tes projets ponctuels pour les voir dans ta trajectoire financière.",
   },
   {
-    tab: Tab.RETIREMENT,
-    title: '🏖️ Retraite',
-    body: "Capital nécessaire, indépendance financière (FIRE), RRQ/PSV : vérifie si tu es sur la bonne voie.",
+    tab: Tab.TRANSACTIONS,
+    title: '🧾 Transactions',
+    body: "Importe tes relevés (ou connecte ta banque) et catégorise tes dépenses. L'IA peut le faire pour toi si tu actives Claude.",
   },
   {
-    tab: Tab.TAX,
-    title: '🧮 Impôts & Docs',
-    body: "Estimation de tes impôts (fédéral + Québec) à partir de ton profil. Lit tes données de Configuration.",
-  },
-  {
-    tab: Tab.SETTINGS,
-    title: '⚙️ Configuration',
-    body: "Ton profil, tes comptes, tes clés API, ta sauvegarde et les diagnostics — tout est ici, en sous-onglets. C'est aussi d'ici que tu relances cette visite.",
+    tab: Tab.BUDGET,
+    title: '📊 Budget',
+    body: "Fixe tes enveloppes de dépenses, suis tes charges fixes et abonnements, et garde le cap sur tes objectifs d'épargne.",
   },
   {
     tab: Tab.ASSISTANT,
@@ -87,8 +85,13 @@ export const TOUR_STEPS: ReadonlyArray<TourStep> = [
     body: "Pose tes questions financières en langage naturel. Il connaît ton contexte (si tu as activé Claude).",
   },
   {
+    tab: Tab.SETTINGS,
+    title: '⚙️ Réglages',
+    body: "Tes clés API, ta sauvegarde, la sync et les diagnostics — tout est ici, en sous-onglets. C'est aussi d'ici que tu relances cette visite.",
+  },
+  {
     tab: null,
     title: '🎉 C\'est tout !',
-    body: "Tu connais maintenant les grandes lignes. Commence par Transactions ou saute direct dans Futur. Bonne route !",
+    body: "Tu connais maintenant les grandes lignes. Commence par Transactions ou reste sur la courbe Future. Bonne route !",
   },
 ];

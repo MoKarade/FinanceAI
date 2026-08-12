@@ -2382,3 +2382,17 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   Ces 4 bugs venaient d'une MÊME PR déjà « prouvée par stash » : les tests discriminants
   prouvent ce qu'ils testent, pas l'absence des classes de bugs qu'on n'a pas testées —
   l'audit par agent APRÈS l'implémentation garde sa valeur même quand la PR semble blindée.
+- ⚠️ **[REFONTE-NAV-L1] 2026-08-12** : (1) **retirer un onglet qui RESTE dans l'enum est plus
+  piégeux que d'en supprimer un** : le check générique de deep-link (`Object.values(Tab)
+  .includes(hash)`) continue d'ACCEPTER son hash → onglet activé SANS route = écran vide
+  silencieux. Le redirect explicite doit passer AVANT le check générique, et un test-scan
+  verrouille l'ordre (jumeau du verrou #ACTIONS, mais la raison est inversée : ACTIONS était
+  HORS enum, DASHBOARD y est encore). (2) Une refonte de nav se fait par SOURCE UNIQUE
+  (`components/navDestinations.ts`) consommée par toutes les surfaces (sidebar, barre mobile,
+  drawer) + un test de NON-PERTE qui compare la couverture de la nav à l'ensemble exact des
+  onglets routés — c'est lui qui transforme « rien de perdu » (critère de Marc) en assertion.
+  (3) **2e occurrence de la classe « revert de conteneur »** : le Lot 1 complet, non commité,
+  a été effacé par un redémarrage pendant `npm run test` (pas un panel — la règle « committer
+  avant les agents » sous-couvrait). Règle élargie : committer (et POUSSER dès que la branche
+  est libre) avant TOUTE attente longue, suite de tests comprise ; le stash ne survit PAS au
+  revert.

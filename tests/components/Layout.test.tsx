@@ -9,7 +9,7 @@ vi.mock('react-i18next', () => ({
 vi.mock('../../i18n', () => ({ default: {} }));
 
 const baseProps = {
-    activeTab: Tab.DASHBOARD,
+    activeTab: Tab.FUTURE,
     setActiveTab: vi.fn(),
     lastUpdate: Date.now(),
     isLoading: false,
@@ -77,10 +77,10 @@ describe('Layout', () => {
     });
 
     it('sidebar items utilisent aria-current="page" pour le tab actif', () => {
-        render(<Layout {...baseProps} activeTab={Tab.DASHBOARD} />);
+        render(<Layout {...baseProps} activeTab={Tab.FUTURE} />);
         const buttons = screen.getAllByRole('button');
         const activeButtons = buttons.filter(b => b.getAttribute('aria-current') === 'page');
-        // Au moins 1 bouton actif (le Dashboard tab)
+        // Au moins 1 bouton actif (Futur : sidebar + barre mobile)
         expect(activeButtons.length).toBeGreaterThanOrEqual(1);
     });
 
@@ -111,15 +111,15 @@ describe('Layout', () => {
         const { container } = render(<Layout {...baseProps} />);
         const sidebar = container.querySelector('aside')!;
         fireEvent.mouseEnter(sidebar); // ouvre la sidebar
-        const argentHeader = within(sidebar).getAllByRole('button').find(
-            b => b.textContent?.includes('Argent') && !b.hasAttribute('aria-current')
+        const configHeader = within(sidebar).getAllByRole('button').find(
+            b => b.textContent?.includes('Configurations') && !b.hasAttribute('aria-current')
         );
-        expect(argentHeader).toBeDefined();
-        expect(argentHeader!.getAttribute('aria-expanded')).toBe('true'); // default open
-        fireEvent.click(argentHeader!);
-        expect(argentHeader!.getAttribute('aria-expanded')).toBe('false');
-        fireEvent.click(argentHeader!);
-        expect(argentHeader!.getAttribute('aria-expanded')).toBe('true');
+        expect(configHeader).toBeDefined();
+        expect(configHeader!.getAttribute('aria-expanded')).toBe('true'); // default open
+        fireEvent.click(configHeader!);
+        expect(configHeader!.getAttribute('aria-expanded')).toBe('false');
+        fireEvent.click(configHeader!);
+        expect(configHeader!.getAttribute('aria-expanded')).toBe('true');
     });
 
     it('§B.2 (inversé par D6-KBD) — header de groupe JAMAIS disabled, même sidebar collapsée', () => {
@@ -130,7 +130,7 @@ describe('Layout', () => {
         const { container } = render(<Layout {...baseProps} />);
         const sidebar = container.querySelector('aside')!;
         const headers = within(sidebar).getAllByRole('button').filter(
-            b => b.textContent?.includes('Argent') && !b.hasAttribute('aria-current')
+            b => b.textContent?.includes('Configurations') && !b.hasAttribute('aria-current')
         );
         expect(headers.length).toBeGreaterThan(0);
         expect(headers.every(h => !(h as HTMLButtonElement).disabled)).toBe(true);
@@ -182,5 +182,59 @@ describe('Layout — sidebar au clavier (D6-KBD)', () => {
         expect(btn.getAttribute('aria-expanded')).not.toBe(before);
         fireEvent.click(btn);
         expect(btn.getAttribute('aria-expanded')).toBe(before);
+    });
+});
+
+// [REFONTE-NAV Lot 1] La nav = 6 destinations (source unique components/navDestinations.ts).
+describe('Layout — nav 6 destinations (REFONTE-NAV Lot 1)', () => {
+    it('les destinations à onglet unique (Futur, Assistant, Réglages) sont des boutons DIRECTS, pas des accordéons', () => {
+        const { container } = render(<Layout {...baseProps} />);
+        const sidebar = container.querySelector('aside')!;
+        for (const label of ['Futur', 'Assistant', 'Réglages']) {
+            const btn = within(sidebar).getAllByRole('button').find(b => b.textContent?.trim() === label);
+            expect(btn, `bouton direct « ${label} »`).toBeDefined();
+            expect(btn!.hasAttribute('aria-expanded')).toBe(false); // navigue, ne se déplie pas
+        }
+    });
+
+    it('un clic sur « Futur » navigue vers Tab.FUTURE', () => {
+        const setActiveTab = vi.fn();
+        const { container } = render(<Layout {...baseProps} setActiveTab={setActiveTab} />);
+        const sidebar = container.querySelector('aside')!;
+        const futur = within(sidebar).getAllByRole('button').find(b => b.textContent?.trim() === 'Futur')!;
+        fireEvent.click(futur);
+        expect(setActiveTab).toHaveBeenCalledWith(Tab.FUTURE);
+    });
+
+    it('les 3 groupes multi-onglets (Configurations, Vie, Transactions) exposent un accordéon', () => {
+        const { container } = render(<Layout {...baseProps} />);
+        const sidebar = container.querySelector('aside')!;
+        for (const label of ['Configurations', 'Vie', 'Transactions']) {
+            const header = within(sidebar).getAllByRole('button').find(
+                b => b.textContent?.includes(label) && b.hasAttribute('aria-expanded'),
+            );
+            expect(header, `accordéon « ${label} »`).toBeDefined();
+        }
+    });
+
+    it('non-perte mobile : chaque onglet couvert est atteignable via la barre OU le drawer « Plus »', () => {
+        render(<Layout {...baseProps} />);
+        // Barre mobile : Futur, Transactions, Assistant épinglés.
+        const mobileNav = screen.getByRole('navigation', { name: 'Navigation mobile' });
+        for (const label of ['Futur', 'Transactions', 'Assistant']) {
+            expect(within(mobileNav).getByText(label)).toBeInTheDocument();
+        }
+        // Drawer : le reste (Configurations ×5, Vie ×3, Budget, Réglages).
+        fireEvent.click(within(mobileNav).getByRole('button', { name: "Plus d'options" }));
+        for (const label of ['Profil', 'Investissements', 'Immobilier', 'Dettes', 'Impôts & Docs',
+            'Retraite', 'Enfant', 'Projets de vie', 'Budget', 'Réglages']) {
+            expect(screen.getAllByText(label).length, `« ${label} » atteignable sur mobile`).toBeGreaterThanOrEqual(1);
+        }
+    });
+
+    it('l\'Accueil n\'apparaît NULLE PART dans la nav (retiré, pas caché)', () => {
+        const { container } = render(<Layout {...baseProps} />);
+        expect(container.querySelector(`[data-tour-id="nav-${Tab.DASHBOARD}"]`)).toBeNull();
+        expect(screen.queryByText('Accueil')).toBeNull();
     });
 });

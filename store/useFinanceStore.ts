@@ -496,7 +496,9 @@ export const useFinanceStore = create<FinanceState>()(
     persist(
         (set, get) => ({
             ...initialState,
-            activeTab: Tab.DASHBOARD,
+            // [REFONTE-NAV Lot 1] L'app s'ouvre sur la courbe Future (l'Accueil est retiré —
+            // GO Marc 2026-08-12). activeTab n'est pas persisté : ce défaut vaut à chaque boot.
+            activeTab: Tab.FUTURE,
             isPrivacyMode: false,
             lastProjection: null,
             projectionRunMC: true,

@@ -8,6 +8,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Corrections (panel du split immobilier)
+- **Un bien ajouté depuis « Immobilier » est désormais vraiment pris en compte par la courbe.** Avant ce correctif,
+  la page affichait l'équité d'un bien que le simulateur, lui, considérait comme non encore acheté — deux écrans,
+  deux vérités. La frontière « bien détenu » suit maintenant exactement celle du moteur, et le formulaire crée le
+  bien du bon côté de cette frontière. Au passage : l'en-tête ne compte plus l'équité des biens désactivés (il
+  affichait « 0 $ » sans le dire), et une liste de biens corrompue n'affiche plus une page blanche.
+
 ### Améliorations — l'immobilier séparé en « ce que j'ai » et « ce que je prévois » (refonte nav, Lot 3)
 - **« Immobilier » (Configurations) ne montre plus que tes biens ACTUELS** : la maison que tu
   possèdes déjà, son équité du jour, son hypothèque et son amortissement. Plus de projets d'achat

@@ -2421,3 +2421,13 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   15 min, worker à 99 % CPU, aucun échec — juste un gel). Le retour d'un mock de hook se
   déclare STABLE au niveau module (constante ou `mockReturnValue` d'un objet unique), jamais
   un littéral dans la factory.
+- ⚠️ **[REFONTE-NAV-L3] panel 2026-08-12** : (1) **une partition UI qui prétend suivre une convention du MOTEUR se
+  prouve contre le CODE du moteur, jamais contre un commentaire** — `isOwnedToday` retenait `monthsSince >= 0` (mois
+  courant = détenu) alors que le moteur exige `purchaseOffset < 0` STRICT et `presentEquityOfGoal` `> 0`. Le docstring
+  ET le test affirmaient l'alignement : les deux étaient faux (classe `DOC-STALE-IMPOSSIBILITY` appliquée à un
+  rationnel de partition). Mesuré par deux agents indépendants : la page affichait « Équité présente 200 000 $ » sur
+  un bien que le moteur n'achetait jamais → **539 487 $ d'écart de patrimoine final**, ou (variante cash suffisant)
+  un KPI à 0 $ là où le moteur portait 81 565 $. (2) **Le SEED d'un formulaire doit atterrir dans la zone où sa
+  propre classification est VRAIE** : le bouton « ajouter » de la vue « biens détenus » semait `purchaseDate =
+  aujourd'hui`, c'est-à-dire pile dans l'angle mort — chaque création naissait cassée. Règle : après avoir défini une
+  frontière, instancier le cas que le formulaire produit PAR DÉFAUT et vérifier de quel côté il tombe.

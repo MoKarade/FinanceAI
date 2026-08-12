@@ -4,6 +4,16 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 59) — `[REFONTE-NAV-L3]` panel : la frontière « bien détenu » était FAUSSE
+> Deux agents indépendants (code-reviewer + financial-integrity) ont MESURÉ la même divergence : `isOwnedToday`
+> utilisait `monthsSince >= 0` alors que le moteur exige `purchaseOffset < 0` STRICT (et `presentEquityOfGoal`
+> `> 0`). Un bien daté du mois courant était « détenu » à l'écran mais jamais acheté par le moteur →
+> **539 487 $ d'écart de patrimoine final**. Aggravant : le bouton « ajouter » de la vue « détenus » semait
+> `purchaseDate = aujourd'hui`, donc pile dans l'angle mort — chaque création naissait cassée. Corrigé : frontière
+> stricte, seed au mois PRÉCÉDENT, agrégation d'équité limitée aux biens actifs, garde sur élément null, tests
+> discriminants. Leçon portée dans CONVENTIONS (une partition qui invoque le moteur se prouve CONTRE le moteur ;
+> le seed d'un formulaire doit tomber du bon côté de sa propre frontière).
+>
 > ## 🟢 Session 2026-08-12 (suite 58) — `[REFONTE-NAV-L3]` : l'immo scindé actuel / projets
 > Lot 3 (intégré sur main post-#602, PR à venir). **`Tab.REAL_ESTATE` (Config) = les biens
 > DÉTENUS**, nouveau **`Tab.REAL_ESTATE_PROJECTS` (destination Vie, après `LIFE_PROJECTS`) =

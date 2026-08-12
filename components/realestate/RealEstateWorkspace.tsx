@@ -71,10 +71,23 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
     const addNewGoal = () => {
         const newId = `prop_${Date.now()}`;
         // La nouvelle entrée DOIT atterrir dans la vue courante (sinon elle « disparaît »
-        // instantanément vers l'autre page) : bien actuel = acheté aujourd'hui, projet = dans 1 an.
+        // instantanément vers l'autre page) — et surtout dans la zone où sa propre
+        // classification est VRAIE pour le MOTEUR, pas seulement pour l'UI :
+        //  - « actuel » = 1er jour du mois PRÉCÉDENT. Le mois COURANT est l'angle mort :
+        //    `getMonthOffset === 0` ⇒ `purchaseOffset < 0` faux ⇒ le moteur n'achète PAS le bien
+        //    (ou pire, re-débite mise de fonds + taxe de bienvenue au mois 0 si le cash suffit),
+        //    alors que la page affichait déjà son équité. Le mois précédent satisfait à la fois
+        //    `isOwnedToday` et la convention STRICTE du moteur.
+        //  - « projet » = dans 1 an (inchangé, franchement futur).
+        // `new Date(y, m - 1, 1)` : construction par composants (jamais `setMonth(-1)` sur le
+        // jour courant — un 31 déborderait sur le mois suivant) et date LOCALE formatée à la main
+        // (`toISOString` bascule en UTC → peut reculer d'un jour, donc d'un mois le 1er).
+        const now = new Date();
+        const iso = (d: Date) =>
+            `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const purchaseDate = isActuel
-            ? new Date().toISOString().split('T')[0]
-            : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0];
+            ? iso(new Date(now.getFullYear(), now.getMonth() - 1, 1))
+            : iso(new Date(now.getFullYear() + 1, now.getMonth(), now.getDate()));
         const newGoal: RealEstateGoal = {
             ...INITIAL_REAL_ESTATE_GOAL,
             id: newId,
@@ -246,11 +259,18 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
 
     // [REFONTE-NAV-L3] Équité PRÉSENTE (vue « actuel ») — source unique presentEquityOfGoal,
     // MÊME convention que le moteur et le KPI patrimoine (jamais de formule locale).
+    //
+    // ⚠️ No-fake-data : `presentEquityOfGoal` retourne 0 pour un bien INACTIF (il est exclu du
+    // patrimoine simulé). Sommer sur TOUS les biens visibles faisait donc afficher
+    // « 1 bien détenu · Équité présente 0 $ » sur une maison payée mise en inactif — un 0 $
+    // crédible qui sous-déclare en silence. On n'agrège plus que les biens ACTIFS, et on le DIT.
+    const activeVisibleGoals = useMemo(
+        () => (isActuel ? visibleGoals.filter(g => g.isActive) : []),
+        [isActuel, visibleGoals],
+    );
     const presentEquityTotal = useMemo(() => (
-        isActuel
-            ? visibleGoals.reduce((sum, g) => sum + presentEquityOfGoal(g, monthsSince(g.purchaseDate)), 0)
-            : 0
-    ), [isActuel, visibleGoals]);
+        activeVisibleGoals.reduce((sum, g) => sum + presentEquityOfGoal(g, monthsSince(g.purchaseDate)), 0)
+    ), [activeVisibleGoals]);
     const activePresentEquity = isActuel
         ? presentEquityOfGoal(activeGoal, monthsSince(activeGoal.purchaseDate))
         : 0;
@@ -329,8 +349,17 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
     const entityWord = isActuel ? 'bien' : 'projet';
     const countVisible = visibleGoals.length;
     const plural = countVisible > 1 ? 's' : '';
+    // Équité affichée = somme des biens ACTIFS uniquement (cf. bloc `activeVisibleGoals`).
+    // Aucun bien actif → « — » honnête plutôt qu'un « 0 $ » qui se lit comme un patrimoine nul.
+    // Mélange actif/inactif → on annonce le dénominateur réel de la somme.
+    const activeCount = activeVisibleGoals.length;
+    const equityPart = activeCount === 0
+        ? 'Équité présente — (aucun bien actif dans la simulation)'
+        : activeCount < countVisible
+            ? `Équité présente ${formatCurrency(presentEquityTotal)} (${activeCount} bien${activeCount > 1 ? 's' : ''} actif${activeCount > 1 ? 's' : ''} sur ${countVisible})`
+            : `Équité présente ${formatCurrency(presentEquityTotal)}`;
     const pageSubtitle = isActuel
-        ? `${countVisible} ${entityWord}${plural} détenu${plural} · Équité présente ${formatCurrency(presentEquityTotal)}`
+        ? `${countVisible} ${entityWord}${plural} détenu${plural} · ${equityPart}`
         : `${countVisible} ${entityWord}${plural} d'achat · Mensualité nette ${formatCurrency(netMonthlyCost)}`;
     const otherCount = allGoals.length - visibleGoals.length;
     const crossLink = otherCount > 0 && (
@@ -473,10 +502,12 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                             <KPIStat
                                 label="Équité présente"
                                 icon={<Icon name="cash" size={16} />}
-                                value={formatCurrency(activePresentEquity)}
+                                /* No-fake-data : `presentEquityOfGoal` rend 0 pour un bien inactif — afficher
+                                   « 0 $ » ferait croire à une équité nulle. « — » est la valeur honnête. */
+                                value={activeGoal.isActive ? formatCurrency(activePresentEquity) : '—'}
                                 sublabel={activeGoal.isActive ? 'Valeur actuelle − hypothèque' : 'Bien inactif — exclu du patrimoine'}
                                 privacy
-                                variant={activePresentEquity >= 0 ? 'success' : 'danger'}
+                                variant={!activeGoal.isActive ? 'info' : activePresentEquity >= 0 ? 'success' : 'danger'}
                             />
                         ) : (
                             <KPIStat

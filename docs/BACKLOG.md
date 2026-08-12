@@ -251,8 +251,9 @@
   décimales dans `monthIndex` (clé d'axe du graphe, du tableau ET des icônes-jalons — les jalons
   se désaligneraient en SILENCE ; la granularité vit dans `date`) · vérifier le POIDS stocké
   avant de livrer une densification (`[HIST-STORE-SIZE]` a été fait POUR tenir le quota).
-- [ ] **V10 — A11y** (1-2 PR) : `[A11Y-INK500]` + `[FUT-TOUCH-TARGETS]` + `[D6-KBD]` +
-  `[A11Y-BORDER-PROMINENCE-SWEEP]` + `[A11Y-FUTUR-MILESTONES-KEYBOARD]` (Marc : focusables).
+- [ ] **V10 — A11y** (1-2 PR) : `[A11Y-INK500]` + `[FUT-TOUCH-TARGETS]` +
+  `[A11Y-BORDER-PROMINENCE-SWEEP]`. ⚠️ `[D6-KBD]` + `[A11Y-FUTUR-MILESTONES-KEYBOARD]` archivés
+  (2026-08-12, PR #598, #599).
 - [ ] **V11 — Dette structurée** (fond, par lots) : `[GODFILE-APPLYDOCUMENT]` → `[GODFILE-MCPHTTP]` →
   `[DETTE-GODFILES]` (Budget/FutureProjection/…) + `[DETTE-UI-PRIMITIVES]` + `[CA-07]` + `[T4]`.
 - [ ] **V12 — Gros chantiers (tous GO Marc 2026-07-31, plan-first chacun)** :
@@ -527,12 +528,6 @@
   migrés → `ink-400` (AA normal 5.21-6.42 mesuré) et 22 GARDÉS en `ink-500` légitime (glyphes
   décoratifs aria-hidden, icônes-boutons ≥3:1 WCAG 1.4.11, numérotation présentationnelle,
   grandes icônes d'états vides).
-- [x] **`[A11Y-FUTUR-MILESTONES-KEYBOARD]`** ✅ 2026-08-12 (décision Marc : focusables) — pastilles
-  tabIndex 0 + Entrée/Espace = modale (même action que le clic), aria-labels DATÉS (dateLabel du
-  meta), anneau de focus DESSINÉ en SVG (.event-focus-ring — l'outline CSS sur un <g> est
-  invisible dans certains moteurs), ordre de Tab = ordre chronologique (ordre des données).
-  Découverte : Échap ne fermait la modale de détail NULLE PART (le bouton Fermer seul) — ajouté
-  (listener document + autofocus du dialog). E2E clavier réel + 4 unitaires discriminants.
 - [x] **`[FUT-TOUCH-TARGETS]`** ✅ 2026-08-12 (absorbé par [FUTUR-MOBILE-LAYOUT], retour Marc
   « trop petit trop cramped ») — mobile : présets de fenêtre (« 5 ans »… « Tout », « Aujourd'hui »)
   à min-h 44px, bascules de légende à 36px (18 bascules : 44px chacune gonflait le bloc), boutons
@@ -542,13 +537,11 @@
   390×844.
 - [ ] **`[A11Y-BORDER-PROMINENCE-SWEEP]`** (S, reste) — passe dédiée inputs/selects (focus:border-*),
   toggles, dropzones (border-white/10 : Transactions ×16, Investments ×8, Dashboard ×4).
-- [x] **`[D6-KBD]`** ✅ 2026-08-12 — sidebar pilotable au clavier : (1) accordéon JAMAIS disabled
-  (Tab SAUTE un bouton désactivé, et au moment où Tab le considère le focus n'est pas encore dans
-  l'aside → sidebar repliée → bouton mort ; atteint = opérable, le focus ouvre la sidebar) ;
-  (2) découverte au passage : les items d'un groupe REPLIÉ restaient TABBABLES (max-h-0 +
-  overflow-hidden cache visuellement sans retirer du tab-order) → `invisible` (visibility:hidden)
-  quand replié. 3 tests discriminants (4 rouges sur l'avant, dont l'ancien §B.2 qui verrouillait
-  le comportement inverse).
+- [ ] **`[UI-RETIREMENT-DEAD-FRAGMENT]`** (XS, cosmétique — retour revue #604) — fragment JSX `<>…</>`
+  inutile dans `components/Retirement.tsx` (lignes ~322-434) après le retrait d'un ternaire mort ;
+  suppression imposte re-indenter ~110 lignes. Aucun impact fonctionnel ; `eslint` le rate
+  (règle `react/jsx-no-useless-fragment` non activée). Reporté en attente d'une PR plus large
+  de refactoring `Retirement.tsx` (où il se perdrait dans le bruit).
 - [ ] **`[FUTUR-PAST-EXACT]`** (M, 🧭 retour Marc 2026-08-12 17:20) — « le passé doit représenter
   EXACTEMENT le passé et je veux pouvoir voir les transactions aussi » : la partie passée de la
   courbe doit coller aux données réelles sans approximation, et l'infobulle/le détail d'un jour
@@ -594,54 +587,8 @@
   (vision différente de Marc : plus d'Accueil du tout, la courbe Future au centre — voir
   `docs/REFONTE_NAV_PLAN.md`). Ne pas implémenter l'ancien découpage.
 - [ ] **`[REFONTE-NAV]`** (L, ⏳, GO Marc 2026-08-12) — chantier « tout tourne autour de la courbe
-  Future », plan détaillé + décisions dans `docs/REFONTE_NAV_PLAN.md`. Lots :
-  - [x] `[REFONTE-NAV-L1]` **Lot 1 — la nav** ✅ 2026-08-12 (PR #600) : 6 destinations
-    (Futur · Configurations · Vie · Transactions · Assistant · Réglages), app s'ouvre sur Futur,
-    Accueil retiré (#DASHBOARD→#FUTURE, chiffres de tête → FutureKpiStrip), barre mobile
-    Futur·Transactions·Assistant·Plus. Critère : rien de perdu.
-  - [x] `[REFONTE-NAV-L2]` Lot 2 — Futur enrichi, SCINDÉ 2a/2b (2026-08-12) — **les deux moitiés
-    livrées** (PR #601 et #602). ⚠️ Hypothèse du
-    plan périmée : les paramètres de projection étaient DÉJÀ dans le sous-onglet « Hypothèses »
-    du Futur (PH4-FUT) — rien à rapatrier. Les DEUX moitiés livrées → fermer (et archiver) au
-    merge de la PR 2b.
-    - [x] `[REFONTE-NAV-L2a]` bannière import gelé → Futur · tuile « Variation 30 j »
-      (`hooks/useNetWorthVariation`, fenêtre fixe 30 j, « — » si < 2 points ; itération panel
-      #601 : périmètre « liquide + placements » PAR CONSTRUCTION — les termes immo/dettes
-      annuels/constants fabriquaient des sauts fictifs au 31 décembre — étiqueté sur la tuile,
-      « sur N j de données » si couverture < 30 j, tx sans compte incluses via bucket
-      synthétique) · équité immo incluse ET étiquetée au patrimoine du bandeau · libellé
-      « Monte Carlo (N itér.) » au nombre RÉEL (source unique `effectiveMcIterations`).
-    - [x] `[REFONTE-NAV-L2b]` ✅ 2026-08-12 (PR #602) : 4e sous-onglet « Historique » du
-      Futur (`components/future/FutureHistorySection.tsx`, lazy — graphe d'évolution par
-      compte + sélecteur de fenêtre complet, clés localStorage `dashboard:*` conservées) ·
-      comparaison d'actions déménagée dans Investissements (mode « Comparer »,
-      `StockComparisonModal` → `components/investments/`) · `Dashboard.tsx` SUPPRIMÉ
-      (gate PAGE_SETUP retiré ; enum + TAB_LABELS + redirect #DASHBOARD→#FUTURE conservés
-      pour la compat deep-link).
-  - [x] `[REFONTE-NAV-L3]` Lot 3 — **split immo actuel / projets** ✅ 2026-08-12 (PR à venir) :
-    `services/realEstatePartition.ts` (pur, `partitionRealEstateGoals`/`isOwnedToday` — un but est
-    « actuel » s'il est déjà acheté à la date du jour) · `components/realestate/RealEstateWorkspace.tsx`
-    (ex-corps de `RealEstate.tsx`, variante `'actuel' | 'projet'`) · `RealEstate.tsx` réduit à un
-    wrapper mince (Config = biens DÉTENUS) · nouveau `Tab.REAL_ESTATE_PROJECTS` →
-    `components/life/RealEstateProjects.tsx` dans la destination **Vie** (après Projets de vie),
-    gate `PAGE_SETUP` dédié partageant la MÊME clé d'opt-out `realEstate` (une seule notion
-    « pas concerné par l'immobilier », zéro double comptage dans SetupHub) · entrée palette de
-    commandes · libellés de page alignés sur `TAB_LABELS` (« Dettes », « Impôts & Docs »).
-    ⚠️ Le split invest actuel/projets et `[DEBT-FROM-CONTRACT]` ne sont **PAS** dans ce lot —
-    `[DEBT-FROM-CONTRACT]` reste un ticket séparé, toujours ouvert (voir plus haut, ligne ~563).
-  - [x] `[REFONTE-NAV-L4]` Lot 4 — **la destination Vie parle d'une seule voix** ✅ 2026-08-12
-    (PR à venir) : `components/vie/VieCurveLink.tsx` (affordance COMMUNE « Voir l'effet sur ma
-    courbe » → `navigateWithFocus(Tab.FUTURE)`, source unique du libellé et du placement) câblée
-    sur les **4** pages Vie · titres pris de `TAB_LABELS` (plus de libellé en dur divergeant de
-    l'onglet) · idiome de sous-titre « ce que je PRÉVOIS » : chaque page annonce comment son plan
-    déforme la courbe Future · `ChildPlanning` sans enfant ne retourne plus `null` (= **page
-    BLANCHE**) mais un empty state honnête avec CTA · empty states Voyages/Événements dotés d'un
-    CTA · `Travel`/`LifeEvents` rendus DANS `LifeProjects` : leurs `PageHeader` (h1) rétrogradés
-    en `<section>` + h2 — il y avait **3 h1** sur une seule page · `Retirement` rangée en
-    sous-onglets « Projection » / « Outils d'optimisation » (voir `[UI-TABS-RICH]`) + ternaire
-    MORT retiré (`chartData.length === 0` inatteignable derrière la garde `hasProjection`).
-    Harmonisation étendue à la 4e page issue du Lot 3 (`RealEstateWorkspace` variante `'projet'`
-    UNIQUEMENT — la variante `'actuel'` reste une page Configurations, non-Vie).
+  Future », plan détaillé + décisions dans `docs/REFONTE_NAV_PLAN.md`. ⚠️ L1-L4 ARCHIVÉS
+  (2026-08-12, PR #600-#604). Lots restants :
   - [ ] `[REFONTE-NAV-L5]` Lot 5 — Transactions fusionnées (tx, budget, abonnements, imports).
   - [ ] `[REFONTE-NAV-L6]` Lot 6 — Assistant pleine page + outils (sous-lots par outil, voir plan).
   - [ ] `[REFONTE-NAV-L7]` Lot 7 — Réglages retravaillés en sections.

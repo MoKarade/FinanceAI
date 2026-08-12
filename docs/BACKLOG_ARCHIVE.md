@@ -3336,7 +3336,11 @@ valeur qui agit, l'autre OFFRE un choix qui ne produit que du faux.
 
 Retours Marc en rafale sur la courbe Futur, tous livrés + mergés + déployés le jour même :
 sélection directe au jour (#589/#591/#592), passé qui suit le calendrier (#593), événements et
-impôts à leur jour exact (#594, validator PASS complet + 3 durcissements). Contexte intégral :
+impôts à leur jour exact (#594, validator PASS complet + 3 durcissements). ⚠️ Hiérarchie : dans
+le BACKLOG, les 4 blocs `SELECT-PATH`/`ROLLOVER`/`NATIVE`/`STICKY-ACTIONS` étaient des SOUS-ITEMS
+du chantier parent `[FUTUR-DAILY-TOUCH]` (toujours ouvert), PAS de `[FUTUR-DAILY-EVENTS]` (qui
+vivait, lui, en section « Dette technique ») — l'indentation ci-dessous est conservée telle
+quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
 
 - [x] **`[FUTUR-DAILY-EVENTS]`** ✅ 2026-08-12 (retour Marc 04:37 : « j'ai mis un
   événement de vie et ça m'a mis au mois et pas au bon jour, tout doit être au bon jour les impôts

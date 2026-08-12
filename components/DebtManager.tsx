@@ -125,7 +125,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                             {debts.map(d => (
                                 <div key={d.id} className="p-3 bg-[#1a1a1a] rounded-xl border border-white/5 flex justify-between items-center group">
                                     <div><div className="font-bold text-white text-body">{d.name}</div><div className="text-meta text-ink-400">{d.interestRate}% • Min: {formatCAD(d.minimumPayment)}</div></div>
-                                    <div className="text-right"><div className="font-mono text-danger-400 font-bold">{formatCAD(d.balance)}</div><button onClick={() => handleDelete(d.id)} className="text-tiny text-ink-400 hover:text-danger-500 opacity-0 group-hover:opacity-100 transition-opacity">Supprimer</button></div>
+                                    <div className="text-right"><div className="font-mono text-danger-400 font-bold">{formatCAD(d.balance)}</div><button onClick={() => handleDelete(d.id)} className="text-tiny text-ink-400 hover:text-danger-500 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-ring transition-opacity">Supprimer</button></div>
                                 </div>
                             ))}
                             {debts.length === 0 && (

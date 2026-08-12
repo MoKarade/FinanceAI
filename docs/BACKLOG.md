@@ -551,6 +551,12 @@
 
 ## 🧱 Dette technique
 
+- [ ] **`[A11Y-CHART-HINT-HIDDEN]`** (S, a11y — audit #595) — la phrase d'aide du graphe Futur
+  (« survol = jour · clic = fige · molette = zoom », `FutureProjection.tsx` ~1311) est en
+  `aria-hidden="true"` : du contenu INSTRUCTIONNEL entièrement soustrait aux lecteurs d'écran,
+  pas un glyphe décoratif. Idem, en plus faible, le séparateur « ou importer » de
+  `PageSetupGate.tsx` ~271. Fournir l'équivalent `sr-only` (interactions clavier disponibles :
+  table de données, preset « Aujourd'hui ») au lieu de tout masquer. Préexistant au sweep #595.
 - [ ] **`[FUTUR-DAILY-STACK-X]`** (XS, cosmétique — FAIBLE-4 validator #594) — l'empilement
   vertical des pastilles (`subIdx` de `finalize()` dans `FutureProjection.tsx`) groupe encore par
   `monthIndex` : deux événements du même mois à des jours DIFFÉRENTS sont décalés verticalement

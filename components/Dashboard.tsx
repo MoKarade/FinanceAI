@@ -545,7 +545,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         {timeRange === 'CUSTOM' && (
                             <div className="flex items-center gap-1.5">
                                 <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-black/40 border border-white/10 rounded px-2 py-1 text-tiny text-white focus:border-white/30 outline-none" />
-                                <span className="text-ink-500 text-tiny">→</span>
+                                <span className="text-ink-500 text-tiny" aria-hidden="true">→</span>
                                 <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-black/40 border border-white/10 rounded px-2 py-1 text-tiny text-white focus:border-white/30 outline-none" />
                             </div>
                         )}

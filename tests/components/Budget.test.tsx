@@ -58,9 +58,14 @@ describe('Budget — refonte UI (Phase C3)', () => {
         expect(container.firstChild).toBeTruthy();
     });
 
-    it('affiche le PageHeader "Pilotage Budget"', () => {
+    it('[REFONTE-NAV-L5] pas de second h1 : l\'en-tête de page vit dans BudgetWorkspace, Budget garde la barre de pilotage', () => {
         const { container } = render(<Budget {...baseProps} />);
-        expect(container.textContent).toContain('Pilotage Budget');
+        // L'ancien h1 « Pilotage Budget » est demoté (un seul h1 par destination, porté par le workspace).
+        expect(container.querySelector('h1')).toBeNull();
+        expect(container.textContent).not.toContain('Pilotage Budget');
+        // La barre de pilotage reste : vision de la période + bouton Diagnostic.
+        expect(container.textContent).toContain('Vision tactique (Mois en cours)');
+        expect(container.textContent).toContain('Diagnostic');
     });
 
     it('Phase D\'.5 — affiche les 4 tuiles dual prévu/réel (Budget / Revenus / Dépenses / Restant)', () => {

@@ -93,7 +93,34 @@
   La 4e page (Lot 3) est harmonisée via la variante `'projet'` de `RealEstateWorkspace`
   UNIQUEMENT : la variante `'actuel'` est une page **Configurations** (ce que je POSSÈDE), pas
   une page Vie — elle garde son titre, son sous-titre de photo et n'a pas de lien courbe.
-- **Lot 5 — TRANSACTIONS fusionnées** : budget/tx/abonnements/imports en un flux cohérent.
+- **Lot 5 — TRANSACTIONS fusionnées (fait, 2026-08-12)** : budget/tx/abonnements/imports en un
+  flux cohérent, **sans toucher aux fichiers de nav** (`navDestinations` / `TabRouter` /
+  `Layout` inchangés, comme aux lots 3-4). Mêmes règles qu'au Lot 4, appliquées à la
+  destination Transactions : (1) le titre de page vient de `TAB_LABELS` — `BudgetWorkspace`
+  porte désormais le `PageHeader` (h1 « Budget »), **stable quel que soit le sous-onglet**, et
+  `Transactions` prend son titre de `TAB_LABELS[Tab.TRANSACTIONS]` ; (2) **un seul h1 par
+  destination** — l'ancien h1 « Pilotage Budget » de `Budget.tsx` est rétrogradé en simple
+  barre de pilotage (badge excédent/déficit + vision de période + actions), il y avait 2 h1 sur
+  la page ; (3) une affordance de navigation entre pairs, dans les DEUX sens :
+  « Voir les transactions → » sur un poste déplié (`BudgetGroupTable`) et « Voir au budget → »
+  sur la catégorie filtrée (`Transactions`), toutes deux via `navigateWithFocus` +
+  `data-focus-section` (`poste:<nom>` / `category:<nom>`, patron `Settings`). `BudgetWorkspace`
+  consomme aussi les sections `objectifs` / `abonnements` / `sante` pour ouvrir le bon
+  sous-onglet AVANT le scroll.
+  ⚠️ **Ne pas confondre avec `VieCurveLink` (Lot 4)** : ce lien-là est page-level, dans les
+  actions du `PageHeader`, et dit l'**impact sur la courbe** (« Voir l'effet sur ma courbe »).
+  Les liens du Lot 5 sont **contextuels** (ligne dépliée / barre de filtre) et font de la
+  **navigation entre pairs** sur la même donnée — intentions différentes, formes différentes
+  (suffixe « → », idiome déjà en place dans `EmptyDataPrompt` / `SyncStaleBanner`). Ne PAS
+  imposer `VieCurveLink` aux pages Transactions.
+  Au passage, trois corrections d'honnêteté : l'**empty state** de la liste devient UNIQUE
+  (desktop + mobile) — le desktop rendait un `<table>` d'en-têtes vide — avec un CTA qui
+  distingue « aucune transaction » (→ importer) de « les filtres masquent tout » (→
+  réinitialiser) ; les **deux exports CSV** (tout l'historique / la vue filtrée-triée) passent
+  par la source unique `utils/csvExport` (le second re-dérivait le format avec un jeu de
+  colonnes divergent) ; le compte « **groupe(s) à classer** » du sous-titre n'est plus calculé
+  seulement quand l'assistant est ouvert — il affichait `0` tant qu'on ne l'avait pas ouvert,
+  soit un faux chiffre crédible (no-fake-data).
 - **Lot 6 — ASSISTANT pleine page** : le plus gros — sous-lots PAR OUTIL (6a écritures NL,
   6b what-if comparés, 6c explication moteur, 6d analyse de docs, 6e proactif…), chaque
   sous-lot une PR.

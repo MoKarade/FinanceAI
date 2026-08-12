@@ -8,6 +8,27 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Améliorations — l'argent du quotidien d'un seul tenant (refonte nav, Lot 5)
+- **Le Budget garde son titre sur tous ses sous-onglets.** Que tu sois dans « Budget »,
+  « Charges fixes & Abos », « Objectifs » ou « Santé », la page s'appelle toujours **Budget** —
+  le même mot que l'onglet qui t'y a mené. Avant, le titre changeait sous tes pieds et deux
+  titres se disputaient le haut de la page.
+- **Une liste de transactions vide te dit quoi faire au lieu de te montrer un tableau vide.**
+  Sur ordinateur, quand rien ne correspondait, tu voyais un tableau réduit à sa ligne d'en-têtes,
+  sans un mot. Maintenant : si tu n'as aucune transaction, on te propose d'importer un relevé ;
+  si ce sont tes filtres qui masquent tout, on te propose de les réinitialiser d'un clic.
+- **Aller d'un poste de budget à ses transactions, et l'inverse, en un clic.** Déplie un poste
+  (« Épicerie », « Restos »…) → « Voir les transactions » t'ouvre la liste **déjà filtrée** sur
+  cette catégorie. Et depuis la liste filtrée sur une catégorie qui a un poste au budget →
+  « Voir au budget » te ramène directement sur ce poste. Fini l'aller-retour à la main où tu
+  dois re-poser le filtre toi-même.
+- **Les exports CSV sont enfin cohérents.** Le bouton « Export CSV » (tout l'historique) et le
+  bouton « CSV » (la vue filtrée et triée) produisaient deux formats différents, avec des
+  colonnes qui ne se correspondaient pas. Ils partagent maintenant exactement le même format.
+- **Le compte de « groupes à classer » dit la vérité tout de suite.** Il affichait « 0 groupe(s)
+  à classer » tant que tu n'avais pas ouvert l'assistant de classement — un zéro rassurant et
+  faux. Il affiche désormais le vrai nombre dès l'ouverture de la page.
+
 ### Améliorations — les pages de Vie parlent d'une seule voix (refonte nav, Lot 4)
 - **Tes quatre pages de Vie (Retraite, Enfant, Projets de vie, Projets immo) se ressemblent
   enfin.** Chacune porte le même titre que l'onglet qui y mène — plus de « Planification

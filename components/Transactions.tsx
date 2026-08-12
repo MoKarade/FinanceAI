@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { logError } from '../services/errorLogger';
-import { Transaction, BudgetCategory, CategorizationRule } from '../types';
+import { Tab, Transaction, BudgetCategory, CategorizationRule } from '../types';
+import { TAB_LABELS } from '../constants';
 import { showToast } from './ui/Toast';
 // Phase 4 A3: bascule sur services/claude.ts (Haiku 4.5 pour vitesse)
 import { categorizeBatch } from '../services/claude';
@@ -18,6 +19,7 @@ import { Icon } from './ui/Icon';
 import { ImportBankStatement } from './import/ImportBankStatement';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { useFinanceStore } from '../store/useFinanceStore';
+import { usePendingFocus } from '../utils/usePendingFocus';
 import { formatCAD } from '../utils/format';
 import { DuplicatesPanel } from './transactions/DuplicatesPanel';
 import { TransfersPanel } from './transactions/TransfersPanel';
@@ -51,6 +53,9 @@ export const Transactions: React.FC<TransactionsProps> = ({
     // changer entre deux ouvertures, sinon le dénominateur du taux ne veut plus rien dire.
     const categoryReview = useFinanceStore(s => s.categoryReview);
     const setAppState = useFinanceStore(s => s.setAppState);
+    // [REFONTE-NAV-L5] Cross-link vers le Budget (« Voir au budget » sur la catégorie filtrée).
+    const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
+    const pendingFocus = useFinanceStore(s => s.pendingFocus);
     const coupleUsers = config?.users ?? [];
     const isCouple = !!coupleUsers[1]?.name?.trim();
     const ownerFirstName = (i: 0 | 1): string => coupleUsers[i]?.name?.trim().split(' ')[0] || `Conjoint ${i + 1}`;
@@ -70,7 +75,17 @@ export const Transactions: React.FC<TransactionsProps> = ({
     // [DEADCODE-TX-TYPEFILTER] `dateStart`/`typeFilter` étaient des états dont les setters
     // (`_`-préfixés) n'étaient JAMAIS appelés : filtres morts structurels (aucune UI ne pouvait
     // les changer). Retirés — les rebrancher = re-créer l'état AVEC son contrôle UI.
-    const [selectedCategory, setSelectedCategory] = useState('All');
+    // [REFONTE-NAV-L5] Deep-link Budget → Transactions (« Voir les transactions » d'un poste) :
+    // on arrive DÉJÀ filtré sur la catégorie ciblée (section `category:<nom>`, patron Settings).
+    const [selectedCategory, setSelectedCategory] = useState<string>(() => {
+        if (pendingFocus && pendingFocus.tab === Tab.TRANSACTIONS && Date.now() <= pendingFocus.expiresAt
+            && pendingFocus.section?.startsWith('category:')) {
+            return pendingFocus.section.slice('category:'.length);
+        }
+        return 'All';
+    });
+    // Consomme pendingFocus + scroll vers l'historique filtré (one-shot).
+    usePendingFocus(Tab.TRANSACTIONS);
     const [quickFilter, setQuickFilter] = useState<'NONE' | 'BIG_SPEND' | 'RECENT' | 'TO_REVIEW'>('NONE');
     // PH4-TX — tri par colonne (date / marchand / montant / catégorie). Défaut : date décroissante.
     const [sortKey, setSortKey] = useState<'date' | 'payee' | 'amount' | 'category'>('date');
@@ -227,9 +242,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
         });
     }, [filteredTransactions, sortKey, sortDir]);
 
+    // [REFONTE-NAV-L5] Calculé en PERMANENCE (plus gaté sur showWizard) : le sous-titre du header
+    // et le bouton « Assistant (N) » affichaient « 0 groupe à classer » tant que l'assistant
+    // n'avait pas été OUVERT — un compte réel figé à 0 est un faux chiffre (no-fake-data).
     const uncategorizedGroups = useMemo(() => {
-        if (!showWizard) return [];
-
         const groups: Record<string, { payee: string, count: number, total: number, ids: number[] }> = {};
 
         transactions.forEach(t => {
@@ -245,7 +261,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
         });
 
         return Object.values(groups).sort((a, b) => b.count - a.count);
-    }, [transactions, showWizard]);
+    }, [transactions]);
 
     const handleWizardApply = (ids: number[], newCat: string) => {
         const idSet = new Set(ids);
@@ -422,25 +438,12 @@ export const Transactions: React.FC<TransactionsProps> = ({
 
     const filteredSum = filteredTransactions.reduce((acc, t) => !t.isTransfer ? acc + t.amount : acc, 0);
 
-    const handleExportCSV = () => {
-        const headers = ['Date', 'Marchand', 'Montant CAD', 'Categorie', 'Compte', 'Transfert', 'Confiance IA'];
-        const rows = filteredTransactions.map(t => [
-            t.date,
-            `"${(t.payee || '').replace(/"/g, '""')}"`,
-            t.amount.toFixed(2),
-            `"${t.category || ''}"`,
-            `"${t.accountName || ''}"`,
-            t.isTransfer ? 'Oui' : 'Non',
-            t.confidence !== undefined ? `${t.confidence}%` : ''
-        ]);
-        const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-        const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
+    // [REFONTE-NAV-L5] Une SEULE dérivation CSV (utils/csvExport, RFC 4180) pour les DEUX exports
+    // (tout l'historique depuis le header / la vue filtrée-triée ici) — l'ancien builder local
+    // dupliquait le format avec un jeu de colonnes divergent (consolidation, pas de 2e dérivation).
+    const handleExportFilteredCSV = async () => {
+        const { exportTransactionsCSV, downloadCSV, dateForFilename } = await import('../utils/csvExport');
+        downloadCSV(`transactions-filtrees-${dateForFilename()}`, exportTransactionsCSV(sortedTransactions));
     };
 
     const getConfidenceColor = (score?: number) => {
@@ -455,7 +458,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
 
             <PageHeader
                 icon={<Icon name="transactions" size={28} />}
-                title="Transactions"
+                // [REFONTE-NAV-L5] Titre = TAB_LABELS (cohérence des en-têtes de la destination).
+                title={TAB_LABELS[Tab.TRANSACTIONS]}
                 subtitle={`${transactions.length} transactions au total · ${uncategorizedGroups.length} groupe(s) à classer`}
                 actions={
                     <div className="flex items-center gap-2">
@@ -642,6 +646,9 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 </div>
             )}
 
+            {/* [REFONTE-NAV-L5] Ancre du deep-link Budget → Transactions : usePendingFocus scrolle
+                vers `category:<nom>` — l'attribut suit la catégorie filtrée (posée à l'arrivée). */}
+            <div data-focus-section={`category:${selectedCategory}`}>
             <Card
                 title={`Historique (${filteredTransactions.length})`}
                 action={
@@ -650,9 +657,9 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             Σ {formatCAD(filteredSum, { decimals: 2 })}
                         </div>
                         <button
-                            onClick={handleExportCSV}
-                            title="Exporter en CSV (compatible Excel)"
-                            aria-label="Exporter en CSV"
+                            onClick={() => { void handleExportFilteredCSV(); }}
+                            title="Exporter la vue filtrée en CSV (compatible Excel)"
+                            aria-label="Exporter la vue filtrée en CSV"
                             className="text-tiny sm:text-meta flex items-center gap-1 text-green-300 hover:text-white border border-green-500/30 bg-green-500/10 px-2 sm:px-3 py-1.5 rounded-lg transition-colors font-bold"
                         >
                             CSV
@@ -736,9 +743,47 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             <option value="Transfert">Transferts</option>
                             {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
+                        {/* [REFONTE-NAV-L5] Cross-link sobre : la catégorie filtrée a un poste budget
+                            du même nom → ouvrir le Budget scrollé sur ce poste (navigateWithFocus).
+                            Affiché SEULEMENT si le poste existe (pas de lien vers un poste absent). */}
+                        {selectedCategory !== 'All' && budgetItems.some(b => b.name === selectedCategory) && (
+                            <button
+                                type="button"
+                                onClick={() => navigateWithFocus(Tab.BUDGET, `poste:${selectedCategory}`)}
+                                title={`Ouvrir le poste « ${selectedCategory} » dans le Budget`}
+                                className="touch-target inline-flex items-center px-3 py-1.5 rounded-full text-meta font-medium border border-info-500/30 bg-info-500/10 text-info-400 hover:text-white transition-colors whitespace-nowrap focus-ring"
+                            >
+                                Voir au budget →
+                            </button>
+                        )}
                     </div>
                 </div>
 
+                {/* [REFONTE-NAV-L5] Empty state UNIQUE (desktop + mobile) : avant, seul le mobile
+                    en avait un (le desktop montrait un tableau d'en-têtes vide). CTA honnête :
+                    importer s'il n'y a AUCUNE transaction, réinitialiser si ce sont les filtres. */}
+                {filteredTransactions.length === 0 ? (
+                    <EmptyState
+                        variant="subtle"
+                        icon={<Icon name="search" size={30} />}
+                        title="Aucune transaction"
+                        description={transactions.length === 0
+                            ? (onImport
+                                ? 'Aucune transaction pour l’instant — importe un relevé bancaire (CSV/PDF) via « Import manuel » en haut de page.'
+                                : 'Aucune transaction enregistrée pour l’instant.')
+                            : 'Aucune transaction ne correspond aux filtres actuels.'}
+                        cta={transactions.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => { setFilterText(''); setSelectedCategory('All'); setQuickFilter('NONE'); setCurrentPage(1); }}
+                                className="px-3 py-1.5 rounded-full text-meta font-bold bg-white/5 border border-white/10 text-ink-200 hover:text-ink-50 transition-colors focus-ring"
+                            >
+                                Réinitialiser les filtres
+                            </button>
+                        )}
+                    />
+                ) : (
+                <>
                 {/* Desktop: tableau complet (≥ md) */}
                 <div className="hidden md:block overflow-x-auto pb-4">
                     <table className="w-full text-left border-collapse">
@@ -876,16 +921,6 @@ export const Transactions: React.FC<TransactionsProps> = ({
 
                 {/* Mobile: vue cartes (< md) */}
                 <ul role="list" aria-label={`${filteredTransactions.length} transactions`} className="md:hidden space-y-2 pb-4 -mx-1">
-                    {paginatedTransactions.length === 0 && (
-                        <li>
-                            <EmptyState
-                                variant="subtle"
-                                icon={<Icon name="search" size={30} />}
-                                title="Aucune transaction"
-                                description="Importez un CSV ou ajustez les filtres pour voir vos transactions."
-                            />
-                        </li>
-                    )}
                     {paginatedTransactions.map((t) => {
                         const isSelected = selectedIds.has(t.id);
                         const isUncat = t.category === 'Uncategorized' || t.category === 'Inconnu';
@@ -965,6 +1000,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
                         );
                     })}
                 </ul>
+                </>
+                )}
 
                 {totalPages > 1 && (
                     <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/5">
@@ -974,6 +1011,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                     </div>
                 )}
             </Card>
+            </div>
         </div>
     );
 };

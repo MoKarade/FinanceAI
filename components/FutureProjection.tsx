@@ -784,7 +784,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const anchorHost = months[0].monthIndex;
         const anchorDays = realOnlyMonthPoints(anchorHost, startYear, startMonth, dailyPastByDate, CURVE_FIELDS);
         if (anchorDays.length > 0) return [...anchorDays, ...points];
-        return [months[0], ...points];
+        // ⚠️ `FluxImpots` RETIRÉ du point mensuel de repli (finding projection-validator #592) : ce
+        // point porte le TOTAL du mois à l'abscisse du 1er — au milieu de barres quotidiennes, une
+        // barre mensuelle pleine au mauvais jour est un faux visuel. Son échéance vit dans le mois
+        // suivant ventilé ; ici l'honnête est l'absence.
+        const { FluxImpots: _anchorFlux, ...anchorRest } = months[0] as ProjectionChartPoint & { FluxImpots?: number };
+        return [anchorRest as ProjectionChartPoint, ...points];
     }, [dailyAnchors, displayData, startYear, startMonth, dailyDated, dailyPastByDate]);
 
     /**
@@ -803,7 +808,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         byHost: new Map<number, Map<string, ProjectionChartPoint>>(),
         failLogged: new Set<number>(),
         // Les deps SONT les entrées de l'enrichissement — un cache qui survivrait à l'une d'elles
-        // servirait des montants périmés.
+        // servirait des montants périmés. La règle les voit « inutiles » (la fabrique ne les lit
+        // pas) : c'est exact, et c'est le but — elles pilotent l'INVALIDATION, pas la valeur.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [displayData, dailyDated, dailyPastByDate, startYear, startMonth]);
     const enrichDailyPoint = useCallback((p: ProjectionChartPoint | null): ProjectionChartPoint | null => {
         if (!p) return null;

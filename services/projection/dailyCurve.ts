@@ -177,6 +177,14 @@ export function recomputeDailyDiffs(merged: ProjectionChartPoint[]): void {
     for (let i = 1; i < merged.length; i++) {
         const prevP = merged[i - 1] as unknown as Record<string, unknown>;
         const curP = merged[i] as unknown as Record<string, unknown>;
+        // ⚠️ Contiguïté CALENDAIRE exigée (finding projection-validator #592) : le mois ANCRE
+        // n'émet que les jours à ligne réelle — deux jours réels NON voisins (05/01 puis 20/01)
+        // produisaient une « Variation » de 15 jours présentée comme celle d'UN jour (mesuré :
+        // 9 995 $). Sans veille calendaire connue, le diff est ABSENT — « — », pas un faux chiffre.
+        if (!isCalendarYesterday(prevP.dayIso, curP.dayIso)) {
+            for (const [diffKey] of DIFFS) delete curP[diffKey];
+            continue;
+        }
         for (const [diffKey, srcKey] of DIFFS) {
             const now = curP[srcKey];
             const before = prevP[srcKey];
@@ -192,6 +200,14 @@ export function recomputeDailyDiffs(merged: ProjectionChartPoint[]): void {
             delete (merged[0] as unknown as Record<string, unknown>)[k];
         }
     }
+}
+
+/** `prevIso` est-il la veille calendaire de `curIso` ? Tout non-ISO (point mensuel, absent) ⇒ false. */
+function isCalendarYesterday(prevIso: unknown, curIso: unknown): boolean {
+    if (typeof prevIso !== 'string' || typeof curIso !== 'string') return false;
+    const p = Date.parse(`${prevIso}T00:00:00Z`);
+    const c = Date.parse(`${curIso}T00:00:00Z`);
+    return Number.isFinite(p) && Number.isFinite(c) && c - p === 86_400_000;
 }
 
 /**

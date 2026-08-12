@@ -583,6 +583,14 @@
 
 ## 🧱 Dette technique
 
+- [ ] **`[ENG-MC-BANDS-ORDER]`** (M, moteur, 🧭 financial-integrity d'abord) — les bandes Monte
+  Carlo sortent DÉSORDONNÉES du moteur : sur 361 mois, 171 violations d'ordre et 8 mois où
+  P10 > P90 (jusqu'à 36 952 $, 17,25 % du P50), toutes dans les ~60 premiers mois (mesuré
+  projection-validator 2026-08-12, `probe7_mc.ts` — la ventilation quotidienne n'en crée AUCUNE :
+  47,3 % au jour vs 47,4 % au mois, l'interpolation hérite). PRÉEXISTANT à #592, rendu plus
+  visible depuis que les bandes se tracent partout. Diagnostiquer dans le moteur MC (tri des
+  percentiles par mois ? graine ? fenêtre courte ?) — passe financial-integrity avant tout fix.
+
 > Findings code-analyzer 2026-07-31 (preuve fichier:ligne, chacun vérifié par grep) :
 
 - [ ] **`[GODFILE-APPLYDOCUMENT]`** (M — V11, 1er par impact) — `mcp/ingest/applyDocument.ts` 873 l.,

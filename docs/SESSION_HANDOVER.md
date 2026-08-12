@@ -17,6 +17,15 @@
 >   mensuels reliés, étiquetés. E2E 8/8 (vue LARGE sans zoom, Lendemain +1 jour, garde poids DOM).
 > - Leçon CONVENTIONS (6e occurrence UX-UNREACHABLE) : à la 3e affordance vers un état, l'état
 >   doit devenir le DÉFAUT. + 3 corollaires mesurés (décimation, ifOverflow discard, toLocale/pt).
+> - Panel 4 agents sur #592 : CRITIQUE corrigé (cache d'enrichissement empoisonné sur le mois
+>   ancre — extraction `buildEnrichedMonth` pur + testé), a11y (preset « Aujourd'hui » clavier,
+>   table sr-only sur la tranche complète), revue (cache useMemo sans fenêtre de staleness,
+>   nettoyages), validator : TOUS invariants PASS (raccord Δ=0 / 4 680 vérifs, parité 295 835
+>   comparaisons, dayLabel 4 907 dates) + test ÉLEVÉ `decimateForRender` ajouté (prouvé
+>   discriminant par mutation : sans lui, 484 tests verts pendant que 28/29 barres d'impôt
+>   disparaissaient). Découverte MOTEUR préexistante → `[ENG-MC-BANDS-ORDER]` au BACKLOG.
+> - ⚠️ Incident : un agent du panel a muté `dailyCurve.ts` pendant mes correctifs (3e occurrence
+>   course concurrente — leçon CONVENTIONS renforcée : diff avant debug, stage explicite).
 > - GATÉS toujours : `[FUTUR-DAILY-TOUCH]` (doigt ? sans réponse), cadence paie, ancre plan-first.
 
 > ## 🟢 Session 2026-08-12 (suite 46) — `[FUTUR-TOOLTIP-STICKY-ACTIONS]` : le bouton existait, Marc ne le VOYAIT pas

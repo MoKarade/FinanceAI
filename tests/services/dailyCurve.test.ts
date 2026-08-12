@@ -2,7 +2,7 @@
 // passé réel, diffs post-fusion — et la PARITÉ courbe légère / infobulle complète (le même jour
 // doit porter les MÊMES valeurs par les deux chemins, sinon l'écran affiche deux vérités).
 import { describe, it, expect } from 'vitest';
-import { mergeDailyRealPoint, recomputeDailyDiffs, sliceDailyByX, realOnlyMonthPoints, buildEnrichedMonth } from '../../services/projection/dailyCurve';
+import { mergeDailyRealPoint, recomputeDailyDiffs, sliceDailyByX, realOnlyMonthPoints, buildEnrichedMonth, decimateForRender } from '../../services/projection/dailyCurve';
 import { buildDailyLedger, type DailyLedgerPoint } from '../../services/projection/dailyLedger';
 import type { ProjectionChartPoint } from '../../services/projection/types';
 import type { DailyPastRow } from '../../services/history/dailyPastLedger';
@@ -193,5 +193,50 @@ describe('buildEnrichedMonth — enrichissement complet, y compris le mois ANCRE
 
     it('mois introuvable ⇒ null', () => {
         expect(buildEnrichedMonth(data, 99, 2026, 0, null, DATED, buildFn)).toBeNull();
+    });
+});
+
+// [Finding ÉLEVÉ projection-validator #592] decimateForRender N'AVAIT AUCUN test unitaire : la
+// mutation M3 (clause « jours porteurs de FluxImpots » retirée) laissait 484 tests VERTS pendant
+// que 28 barres d'impôt sur 29 disparaissaient du graphe en vue 30 ans (321 432 $ de paiements
+// invisibles, le total affiché passait de −319 884 $ à +1 548 $ — le SIGNE s'inversait à l'écran).
+describe('decimateForRender — garanties de la décimation du tracé', () => {
+    // ⚠️ Reproduire le pipeline du composant : les FluxImpots ≈ 0 sont STRIPPÉS de la série de la
+    // courbe (sinon chaque jour serait « porteur » et le test serait vacueux — mesuré : 181/181
+    // gardés). Puis poser des échéances éparses, comme la cadence monthEnd en réel.
+    const daily = build([month(0), month(1), month(2), month(3), month(4), month(5), month(6)])
+        .map((d) => {
+            const p = mergeDailyRealPoint(d, START.startYear, START.startMonth, null, null) as unknown as Record<string, unknown>;
+            const v = p.FluxImpots;
+            if (typeof v === 'number' && Math.abs(v) < 0.005) delete p.FluxImpots;
+            return p as unknown as ProjectionChartPoint;
+        });
+    const withTax = daily.map((p, i) => (i % 47 === 3 ? { ...p, FluxImpots: -1000 - i } as ProjectionChartPoint : p));
+
+    it('TOUS les jours porteurs de FluxImpots survivent à la décimation (prouvé discriminant par mutation M3)', () => {
+        const dec = decimateForRender(withTax, 0, 40);
+        const carriersIn = withTax.filter((p) => (p as Record<string, unknown>).FluxImpots !== undefined).length;
+        const carriersOut = dec.filter((p) => (p as Record<string, unknown>).FluxImpots !== undefined).length;
+        expect(carriersIn).toBeGreaterThan(2); // non-vacuité
+        expect(carriersOut).toBe(carriersIn);
+    });
+
+    it('omission SEULE : chaque point rendu est la MÊME référence qu’un point de la tranche', () => {
+        const dec = decimateForRender(withTax, 0, 40);
+        const inSet = new Set(withTax);
+        for (const p of dec) expect(inSet.has(p)).toBe(true);
+        expect(dec.length).toBeLessThanOrEqual(40 + Math.ceil(withTax.length / 47) + 2);
+    });
+
+    it('les BORDS sont conservés (premier et dernier points, mêmes références)', () => {
+        const dec = decimateForRender(withTax, 5, 40);
+        expect(dec[0]).toBe(withTax[0]);
+        expect(dec[dec.length - 1]).toBe(withTax[withTax.length - 1]);
+    });
+
+    it('sous le plafond : la tranche est rendue telle quelle (copie, mêmes références)', () => {
+        const dec = decimateForRender(daily.slice(0, 30), 0, 700);
+        expect(dec.length).toBe(30);
+        expect(dec[7]).toBe(daily[7]);
     });
 });

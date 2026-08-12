@@ -371,10 +371,12 @@ export interface BuildDailyLedgerInput {
      * [FUTUR-DAILY-NATIVE] Restriction OPTIONNELLE aux champs listés (stocks/flux/monthly). Absent =
      * tout le contrat, comme avant.
      *
-     * ⚠️ POURQUOI CETTE OPTION EXISTE — c'est une contrainte MESURÉE, pas une préférence : la
-     * ventilation COMPLÈTE (99 champs) de 30 ans coûte ~1,3 s et ~180 Mo de tas (bench 2026-08-12,
-     * 10 988 points). La COURBE ne trace qu'une quinzaine de champs ; l'infobulle, elle, se ventile
-     * à la demande sur le mois survolé via cette MÊME fonction sans `fields`. Un champ donné passe
+     * ⚠️ POURQUOI CETTE OPTION EXISTE — c'est une contrainte MESURÉE, pas une préférence
+     * (benchs Node 2026-08-12, 30 ans ≈ 11 000 points ; ordres de grandeur, pas des absolus) :
+     * ventilation complète ~300-500 ms et ~80-180 Mo de tas selon le nombre de champs du jeu,
+     * légère ~100-180 ms et ~25 Mo. La COURBE ne trace qu'une quinzaine de champs ; l'infobulle,
+     * elle, se ventile à la demande sur le mois survolé via cette MÊME fonction sans `fields`
+     * (≤ 3 mois par appel). Un champ donné passe
      * donc par le même code et les mêmes entrées dans les deux chemins — c'est ce qui interdit
      * toute divergence courbe/infobulle (test de parité : `tests/services/dailyCurve.test.ts`,
      * describe « PARITÉ courbe légère ↔ infobulle complète »).

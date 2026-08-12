@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 45) — `[MELTDOWN-THRESHOLDS-DOC]` + 4 items PM-STALE archivés
+> Ordre PM (tâche #62), suite. **Avant de coder les 3 `TEST-GAP` : vérification → TOUS déjà livrés
+> en #552** (fichiers de test portant les IDs, re-vérifiés VERTS 25/25), ainsi que `[PV-11e]`
+> (`projection.reerByUserParity.test.ts`). Les bullets « Dette technique » dataient de l'analyse
+> du 2026-07-31, antérieure à #552 — PM-STALE-BACKLOG dans les DEUX sens : la ligne V3 cochée
+> sur-déclarait `[NW-PARITY-SURFACES-TEST]` (nwParity.test.ts inchangé depuis #384) → celui-là
+> reste OUVERT. BACKLOG corrigé, archivés avec preuve.
+> - `[MELTDOWN-THRESHOLDS-DOC]` livré : les 5 seuils de `meltdownReer.ts` documentés comme
+>   heuristiques de CONCEPTION (module + FISCAL_REFERENCE §9) — en l'écrivant, mon « 90 k ≈ haut
+>   du 2e palier » s'est révélé FAUX à la vérification (plafonds 117 045 $ féd / 108 680 $ QC) ;
+>   corrigé avant commit (règle : vérifier avant d'affirmer, surtout en doc fiscale).
+> - **Suite PM (non bloqué)** : `[NW-PARITY-SURFACES-TEST]` (S-M) · V10 a11y · V11 dette.
+>   Marc n'a pas encore réagi au correctif SELECT-PATH déployé, ni répondu « doigt ou souris ».
+
 > ## 🟢 Session 2026-08-12 (suite 44) — `[FUTUR-DAILY-SELECT-PATH]` : le chemin vers le jour offert au moment du clic
 > **Retour Marc en direct (capture « mai 2027 ») : « je peux pas selectionner de jour juste un
 > mois ».** 4e occurrence UX-UNREACHABLE sur ce chantier — le bouton « Jour » existait, mais

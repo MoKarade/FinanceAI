@@ -43,6 +43,25 @@ fichier:ligne). Verdicts appliqués à la refonte :
 
 ## ✅ Chantier FUTUR-DAILY au jour + V9 couverture moteur (PR #581→#587 + #588, mergées 2026-08-11/12)
 
+### Tenue 2026-08-12 (suite) — doublons PM-STALE re-vérifiés contre le code + doc meltdown
+
+- [x] **`[TEST-GAP-TAXESTIMATE]` + `[TEST-GAP-SUBSCRIPTIONS]` + `[TEST-GAP-ROLESCONFIG]` +
+  `[PV-11e]`** — CADUQUES 2026-08-12 : déjà LIVRÉS en PR #552 (2026-08-01) — les fichiers
+  `tests/services/taxEstimate.test.ts`, `tests/services/transactions/subscriptionAlerts.test.ts`,
+  `tests/services/fintable/rolesConfig.test.ts`, `tests/services/projection.reerByUserParity.test.ts`
+  portent les IDs dans leurs describe et couvrent exactement les surfaces signalées (seuils/médiane,
+  chemins d'erreur parseRolesJson, assiette placement, pin couple-inégal). Re-vérifié suites VERTES
+  (25/25 + PV-11e) avant d'archiver. Les bullets « Dette technique » dataient de l'analyse
+  code-analyzer du 2026-07-31, antérieure à #552 — classe PM-STALE-BACKLOG, dans les DEUX sens :
+  la ligne V3 cochée sur-déclarait AUSSI `[NW-PARITY-SURFACES-TEST]` (nwParity.test.ts inchangé
+  depuis #384) → cet item-là reste OUVERT au BACKLOG.
+- [x] **`[MELTDOWN-THRESHOLDS-DOC]`** ✅ 2026-08-12 — les 5 seuils de `meltdownReer.ts` (cibles
+  90 k/140 k/220 k$ par adulte, paliers NW 2 M/1 M$) documentés comme HEURISTIQUES DE CONCEPTION
+  (bloc module + FISCAL_REFERENCE §9 « Limites connues ») : rationale (saturer les paliers bas de
+  son vivant vs bombe fiscale successorale), pourquoi rien à sourcer, et l'avertissement re-base
+  des goldens si on les ajuste. Affirmation « 90 k ≈ haut du 2e palier » RÉFUTÉE en l'écrivant
+  (plafonds réels 117 045 $ féd / 108 680 $ QC) — corrigée avant commit.
+
 > Chantier V8bis (demande Marc 2026-08-06 : « quotidien sur tout ») livré sur 7 PR + la PR de
 > clôture V9. Le RESTE VIVANT (cadence de paie, zoom au doigt, ancre, liquidités par compte)
 > demeure dans `BACKLOG.md`. Contexte d'origine conservé tel quel ci-dessous.

@@ -35,7 +35,7 @@
   ×2,6, MESURÉ) + `[ENG-MELTDOWN-FLOW-INVISIBLE]` (774 k$ de retraits invisibles des flux).
 - [x] **V3 — Parité état + tests money-critical** ✅ 2026-07-31 (PR #552, 40 tests) :
   `[DEFAULTS-DRIFT-FINTABLE-FIELDS]` (4 champs + garde bidirectionnel) + `[TEST-GAP-TAXESTIMATE]` +
-  `[TEST-GAP-SUBSCRIPTIONS]` + `[TEST-GAP-ROLESCONFIG]` + `[PV-11e]` + `[NW-PARITY-SURFACES-TEST]`
+  `[TEST-GAP-SUBSCRIPTIONS]` + `[TEST-GAP-ROLESCONFIG]` + `[PV-11e]` (⚠️ correction 2026-08-12 : `[NW-PARITY-SURFACES-TEST]` figurait ici À TORT — `nwParity.test.ts` inchangé depuis #384, l'item reste OUVERT plus bas)
   (+ fix PDF `equity: 0` en dur → `presentEquityOfGoal`). Archive au merge de #552.
 - [x] **V4 — Vie privée (3/4)** ✅ 2026-08-01 (PR V4) : `[D6-PRIV-MONTANTS]` (PrivateSliderValue,
   4 sliders + montants voisins) + `[SEC-GA-DEFER-CONSENT]` (le SCRIPT gtag ne part chez Google
@@ -375,17 +375,11 @@
 - [ ] **`[FISC-LINE361-PERCONJOINT-REDUC]`** (M, [À vérifier] — V5) — réduction 18,75 % ligne 361
   appliquée par conjoint avec le revenu familial TOTAL (`taxDecember.ts:529` → `tax.ts:255`).
   Plafonné ~986 $/an, couple retraité 65+ seulement (0 $ Marc aujourd'hui). Lire l'Annexe B d'abord.
-- [ ] **`[PV-11e]`** (S, test — V3) — PAS un bug (invariant Σ reerByUser == reer préservé par
-  construction, re-vérifié) : écrire le test de pin couple-inégal + goal REER + cotisation même mois.
-
 - [ ] **`[NW-PARITY-SURFACES-TEST]`** (S-M, garde-fou keystone audit 2026-06-17) — étendre
   `tests/services/nwParity.test.ts` (aujourd'hui moteur↔computePresentNetWorth) aux surfaces
   UI/IA/PDF (KPI Accueil, useDerivedFinancials, financialSnapshot, pdfReport) sur persona endetté +
   propriétaire, convention équité immo EXPLICITE par surface.
 
-- [ ] **`[MELTDOWN-THRESHOLDS-DOC]`** (S, doc) — `meltdownReer.ts:9-13` : seuils
-  MELTDOWN_NW_HIGH/MID (2 M/1 M) + cibles 220 k/140 k/90 k × adultes = heuristiques de CONCEPTION
-  non documentées (pas des constantes fiscales) — les documenter (module + FISCAL_REFERENCE §9).
 
 > Findings panel #552 (financial-integrity MESURÉ + silent-failure + code-reviewer, 2026-07-31) —
 > les corrigés dans #552 même sont dans l'archive au merge ; ici le RESTE à faire :
@@ -574,12 +568,6 @@
 
 > Findings code-analyzer 2026-07-31 (preuve fichier:ligne, chacun vérifié par grep) :
 
-- [ ] **`[TEST-GAP-TAXESTIMATE]`** (S — V3) — `services/taxEstimate.ts:22-35` (assiette fiscale
-  placement, app+MCP, money-critical depuis TAX-AVGRATE-BASE) : AUCUN test unitaire direct.
-- [ ] **`[TEST-GAP-SUBSCRIPTIONS]`** (S — V3) — `subscriptionAlerts.ts` (152 l., $ visibles
-  utilisateur, seuils/médiane) : aucun test dédié.
-- [ ] **`[TEST-GAP-ROLESCONFIG]`** (S — V3) — `parseRolesJson` (`rolesConfig.ts:14-47`) : aucun test
-  (une faute de parse route un compte dans le mauvais panier fiscal).
 - [ ] **`[GODFILE-APPLYDOCUMENT]`** (M — V11, 1er par impact) — `mcp/ingest/applyDocument.ts` 873 l.,
   5 handlers indépendants (:531,597,655,719,792) → split `applyDocument/<type>.ts` + orchestrateur mince.
 - [ ] **`[GODFILE-MCPHTTP]`** (M — V11) — `mcp/http.ts` 710 l. (OAuth+CORS+DNS-guard+dispatch) →

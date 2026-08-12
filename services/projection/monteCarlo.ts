@@ -5,6 +5,7 @@
 
 import type { SimulationParams, AllocationStrategy, FutureScenarioType } from '../projection';
 import type { EngineOverrides } from './strategyConfig';
+import { logErrorThrottled } from '../errorLogger';
 
 type RunScenarioFn = (
     params: SimulationParams,
@@ -34,12 +35,21 @@ export const MC_ITERATIONS_MAX = 1000;
 export const MC_ITERATIONS_DEFAULT = 100;
 
 /** Nombre d'itérations réellement EXÉCUTÉES par le moteur pour une valeur demandée : défaut 100,
- *  borné 50–1000. Une valeur non finie retombe sur le défaut (l'ancien clamp inline propageait
- *  NaN). Afficher autre chose que CE nombre, c'est mentir sur le calcul fait. */
+ *  borné 50–1000. Afficher autre chose que CE nombre, c'est mentir sur le calcul fait.
+ *  [Panel #601, silent-failure] Distingue ABSENT (config jamais saisie : repli silencieux
+ *  légitime) de PRÉSENT mais non fini (NaN/Infinity : donnée corrompue → logguée AVANT le
+ *  repli, jamais avalée) — pattern `parseRate` de services/finance.ts. */
 export function effectiveMcIterations(requested?: number): number {
-    const r = typeof requested === 'number' && Number.isFinite(requested)
-        ? requested : MC_ITERATIONS_DEFAULT;
-    return Math.max(MC_ITERATIONS_MIN, Math.min(MC_ITERATIONS_MAX, r));
+    if (requested === undefined) return MC_ITERATIONS_DEFAULT; // absent : défaut légitime, silencieux
+    if (typeof requested !== 'number' || !Number.isFinite(requested)) {
+        logErrorThrottled('effectiveMcIterations:non-finite', {
+            source: 'projection', severity: 'warning',
+            message: `Itérations Monte Carlo non finies — repli sur le défaut (${MC_ITERATIONS_DEFAULT})`,
+            context: { requested: String(requested) },
+        });
+        return MC_ITERATIONS_DEFAULT;
+    }
+    return Math.max(MC_ITERATIONS_MIN, Math.min(MC_ITERATIONS_MAX, requested));
 }
 
 export interface MonteCarloResult {

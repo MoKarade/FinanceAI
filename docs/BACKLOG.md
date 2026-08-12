@@ -603,8 +603,11 @@
     plan périmée : les paramètres de projection étaient DÉJÀ dans le sous-onglet « Hypothèses »
     du Futur (PH4-FUT) — rien à rapatrier.
     - [x] `[REFONTE-NAV-L2a]` bannière import gelé → Futur · tuile « Variation 30 j »
-      (`hooks/useNetWorthVariation`, série de l'ex-Accueil, fenêtre fixe 30 j, « — » si < 2
-      points) · équité immo incluse ET étiquetée au patrimoine du bandeau · libellé
+      (`hooks/useNetWorthVariation`, fenêtre fixe 30 j, « — » si < 2 points ; itération panel
+      #601 : périmètre « liquide + placements » PAR CONSTRUCTION — les termes immo/dettes
+      annuels/constants fabriquaient des sauts fictifs au 31 décembre — étiqueté sur la tuile,
+      « sur N j de données » si couverture < 30 j, tx sans compte incluses via bucket
+      synthétique) · équité immo incluse ET étiquetée au patrimoine du bandeau · libellé
       « Monte Carlo (N itér.) » au nombre RÉEL (source unique `effectiveMcIterations`).
     - [ ] `[REFONTE-NAV-L2b]` sous-onglet historique (graphe d'évolution + sélecteur de
       fenêtre complet — la fonction pure du hook est déjà paramétrée en jours) + déménagement
@@ -630,6 +633,12 @@
 
 ## 🧱 Dette technique
 
+- [ ] **`[MC-LABEL-FROZEN]`** (S, finding financial-integrity #601) — le libellé « Monte Carlo
+  (N itér.) » lit la config LIVE (`effectiveMcIterations(config.monteCarloIterations)`) alors
+  que `results` peut être GELÉ (calculé avec l'ancienne valeur) : changer les itérations sans
+  relancer fait mentir le libellé sur le calcul affiché. Fix propre = porter le nombre
+  d'itérations réellement exécuté DANS `MonteCarloResult` (le libellé lit le résultat, pas la
+  config). Atténué en attendant par le bandeau « Paramètres modifiés ».
 - [ ] **`[A11Y-CHART-HINT-HIDDEN]`** (S, a11y — audit #595) — la phrase d'aide du graphe Futur
   (« survol = jour · clic = fige · molette = zoom », `FutureProjection.tsx` ~1311) est en
   `aria-hidden="true"` : du contenu INSTRUCTIONNEL entièrement soustrait aux lecteurs d'écran,

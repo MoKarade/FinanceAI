@@ -8,18 +8,31 @@
 > Lot 2 SCINDÉ 2a/2b (hypothèse du plan périmée : les paramètres de projection sont DÉJÀ dans le
 > sous-onglet « Hypothèses » du Futur — rien à rapatrier). 2a livré : `SyncStaleBanner` déplacée
 > sur le Futur (au-dessus des KPI, auto-silencieuse), tuile « Variation 30 j » via
-> `hooks/useNetWorthVariation` (extraction MINIMALE de la série `Total` de l'ex-Accueil — mêmes
-> sources/conventions, fenêtre fixe 30 j, fonction PURE paramétrée en jours pour le 2b ; < 2
-> points ou borne non finie → `null` → tuile « — », jamais 0 $ ; départ ≤ 0 → `pct: null`, plus
-> de « 0 % » trompeur), équité immo AJOUTÉE au « Patrimoine net » du bandeau ET étiquetée
-> « équité immo incluse » (parité DASH-NW-DUP : l'étiquette seule aurait menti — la prop
-> `netWorth` de `useDerivedFinancials` est HORS immo), libellé « Monte Carlo (100 itér.) »
-> codé en dur remplacé par le nombre RÉEL (`effectiveMcIterations`, source unique
-> `services/projection/monteCarlo.ts`, consommée par moteur + libellé + input avancé).
-> Tests : hook (11, discriminance de la classe #544 PROUVÉE par retrait chirurgical de
-> l'amorçage), bandeau (8, montants via `textContent` — le normaliseur testing-library casse
-> les insécables `fr-CA` dans `getByText`). Reste 2b : sous-onglet historique + comparaison
-> d'actions + suppression `Dashboard.tsx`.
+> `hooks/useNetWorthVariation` (fonction PURE paramétrée en jours pour le 2b ; < 2 points →
+> `null` → tuile « — », jamais 0 $ ; départ ≤ 0 → `pct: null`, plus de « 0 % » trompeur),
+> équité immo AJOUTÉE au « Patrimoine net » du bandeau ET étiquetée « équité immo incluse »
+> (parité DASH-NW-DUP — porte `.some(équité ≠ 0)`, parité exacte du gate ex-Accueil), libellé
+> « Monte Carlo (100 itér.) » codé en dur remplacé par le nombre RÉEL (`effectiveMcIterations`,
+> source unique `services/projection/monteCarlo.ts`, consommée par moteur + libellé + input
+> avancé ; résiduel `[MC-LABEL-FROZEN]` au BACKLOG : le libellé lit la config LIVE, pas le
+> résultat gelé).
+> **Itération panel #601 (consolidée, appliquée)** : la variation est RE-SCOPÉE « liquide +
+> placements » PAR CONSTRUCTION — les termes immo (granularité ANNUELLE) et dettes (constant)
+> fabriquaient +14 396 $ fictifs à chaque 31 décembre et affichaient les remboursements de
+> capital en pertes sèches ; la tuile porte l'étiquette de périmètre (son assiette de % diffère
+> de la tuile Patrimoine — leçon DASH-NETWORTH-CANONICAL), dit « sur N j de données » quand la
+> couverture réelle (`spanDays`) < 30 j, et INCLUT les transactions sans compte (bucket
+> « (compte inconnu) » — l'exclusion créait 1 000 $ d'écart mesuré avec la tuile voisine).
+> Silent-failures : `effectiveMcIterations` et le calcul de variation logguent les données
+> CORROMPUES (présent-mais-non-fini) via `logErrorThrottled` avant repli/null — pattern
+> `parseRate` ; couverture courte reste silencieuse (état normal). Perf mesurée : import
+> statique de `FutureKpiStrip` dans TabRouter tirait `buildMarketData` au boot (+17,3 KB) →
+> lazyWithRetry + Suspense(null), boot chunk revenu à ~283 KB.
+> Tests : hook (13 — périmètre par construction via fenêtre chevauchant le 31 décembre, bucket
+> inconnu, spanDays, logs corrompu-vs-couverture), bandeau (10 — étiquettes de périmètre, « + »
+> sur le %, porte `.some` avec équités qui se compensent), `effectiveMcIterations` (4, spy
+> logger). Reste 2b : sous-onglet historique + comparaison d'actions + suppression
+> `Dashboard.tsx`.
 >
 > ## 🟢 Session 2026-08-12 (suite 55) — `[REFONTE-NAV-L1]` : nav 6 destinations, la courbe au centre
 > GO Marc sur `docs/REFONTE_NAV_PLAN.md` (à lire AVANT tout travail nav). Lot 1 : la nav passe

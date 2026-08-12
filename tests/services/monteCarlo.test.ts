@@ -4,9 +4,22 @@
  * est INJECTÉ → on le stub avec des résultats déterministes (finalNW = index)
  * pour rendre l'agrégation entièrement vérifiable, sans aléa ni vrai moteur.
  */
-import { describe, it, expect, vi } from 'vitest';
-import { runMonteCarlo } from '../../services/projection/monteCarlo';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+    runMonteCarlo, effectiveMcIterations,
+    MC_ITERATIONS_MIN, MC_ITERATIONS_MAX, MC_ITERATIONS_DEFAULT,
+} from '../../services/projection/monteCarlo';
+import { logErrorThrottled } from '../../services/errorLogger';
 import type { SimulationParams, AllocationStrategy } from '../../services/projection';
+
+// [Panel #601, silent-failure] Spy PARTIEL sur logErrorThrottled : effectiveMcIterations doit
+// logguer une valeur PRÉSENTE mais non finie (donnée corrompue) et se taire sur `undefined`
+// (repli légitime). Mock partiel : le reste du logger réel est conservé.
+vi.mock('../../services/errorLogger', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../services/errorLogger')>();
+    return { ...actual, logErrorThrottled: vi.fn() };
+});
+const logSpy = vi.mocked(logErrorThrottled);
 
 const STRAT = 'BASE' as AllocationStrategy;
 
@@ -119,5 +132,35 @@ describe('runMonteCarlo — agrégation', () => {
         for (const v of [m.swr, m.taxLeakage, m.shortfallRisk, m.sequenceRiskPct, m.worstDecadeDrawdown]) {
             expect(Number.isFinite(v)).toBe(true);
         }
+    });
+});
+
+describe('effectiveMcIterations — bornes et silent-failure (#601)', () => {
+    beforeEach(() => {
+        logSpy.mockClear();
+    });
+
+    it('undefined (config jamais saisie) → défaut, SANS log : repli silencieux légitime', () => {
+        expect(effectiveMcIterations(undefined)).toBe(MC_ITERATIONS_DEFAULT);
+        expect(effectiveMcIterations()).toBe(MC_ITERATIONS_DEFAULT);
+        expect(logSpy).not.toHaveBeenCalled();
+    });
+
+    it('valeur finie : bornée MIN-MAX, passe-plat dans les bornes, jamais de log', () => {
+        expect(effectiveMcIterations(300)).toBe(300);
+        expect(effectiveMcIterations(10)).toBe(MC_ITERATIONS_MIN);
+        expect(effectiveMcIterations(5000)).toBe(MC_ITERATIONS_MAX);
+        expect(logSpy).not.toHaveBeenCalled();
+    });
+
+    it('PRÉSENT mais non fini (NaN) → logErrorThrottled (projection/warning) PUIS défaut — pattern parseRate', () => {
+        expect(effectiveMcIterations(Number.NaN)).toBe(MC_ITERATIONS_DEFAULT);
+        expect(logSpy).toHaveBeenCalledTimes(1);
+        expect(logSpy.mock.calls[0][1]).toMatchObject({ source: 'projection', severity: 'warning' });
+    });
+
+    it('Infinity : même traitement que NaN (corrompu ≠ absent)', () => {
+        expect(effectiveMcIterations(Number.POSITIVE_INFINITY)).toBe(MC_ITERATIONS_DEFAULT);
+        expect(logSpy).toHaveBeenCalledTimes(1);
     });
 });

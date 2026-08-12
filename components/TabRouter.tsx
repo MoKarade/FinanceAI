@@ -6,12 +6,16 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 // (cf hubperso.com regression : "Failed to fetch dynamically imported module")
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { PageSetupGate } from './setup/PageSetupGate';
-import { FutureKpiStrip } from './FutureKpiStrip';
 // [REFONTE-NAV-L2a] Bannière « import bancaire figé » : vivait sur l'ex-Accueil (leçon incident
 // 2026-08-05 : une alerte doit être là où l'utilisateur regarde PAR DÉFAUT = désormais le Futur).
 // Import statique : store + syncHealth + Icon, rien de lourd ; elle se tait d'elle-même (région
 // live vide) quand tout va bien.
 import { SyncStaleBanner } from './dashboard/SyncStaleBanner';
+// [PERF panel #601, mesuré +17,3 KB] FutureKpiStrip importe useNetWorthVariation →
+// usePortfolioHistory → buildMarketData : son import STATIQUE ici tirait tout ça dans le chunk
+// de BOOT (leçon CLAUDE.md « hoister un import au niveau App »). Lazy comme les pages ;
+// fallback `null` (bandeau léger, un skeleton flasherait plus qu'il n'aiderait).
+const FutureKpiStrip = lazyWithRetry(() => import('./FutureKpiStrip').then(m => ({ default: m.FutureKpiStrip })), 'FutureKpiStrip');
 
 // [REFONTE-NAV Lot 1] Dashboard (Accueil) retiré de la nav — ses chiffres de tête vivent dans
 // FutureKpiStrip (le composant Dashboard.tsx reste sur disque : le Lot 2 y puisera le reste).
@@ -153,12 +157,15 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                             des chiffres calculés sur un flux gelé se lisent AVEC l'avertissement. */}
                         <SyncStaleBanner />
                         {/* [REFONTE-NAV Lot 1] Chiffres de tête de l'ex-Accueil, compacts au-dessus
-                            de la courbe (import statique : quatre tuiles, aucune dépendance lourde). */}
-                        <FutureKpiStrip
-                            netWorth={globalNetWorth}
-                            liquidity={currentLiquidity}
-                            monthlySavings={calculatedMonthlySavings}
-                        />
+                            de la courbe. Suspense DÉDIÉ (fallback null) : le bandeau qui charge ne
+                            doit pas remplacer toute la page par le spinner du Suspense parent. */}
+                        <Suspense fallback={null}>
+                            <FutureKpiStrip
+                                netWorth={globalNetWorth}
+                                liquidity={currentLiquidity}
+                                monthlySavings={calculatedMonthlySavings}
+                            />
+                        </Suspense>
                         <FutureProjection
                             initialBalances={state.initialBalances}
                             transactions={state.transactions}

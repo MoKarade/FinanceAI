@@ -9,9 +9,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased] — 2026-08-12
 
 ### Améliorations — le Futur reprend les repères de l'ex-Accueil (refonte nav, Lot 2a)
-- **Nouvelle tuile « Variation 30 j »** au-dessus de la courbe : combien ton patrimoine a bougé
-  sur les 30 derniers jours, en $ et en % — le même calcul que l'ex-Accueil. Pas assez
-  d'historique pour le dire honnêtement ? La tuile affiche « — », jamais un faux 0 $.
+- **Nouvelle tuile « Variation 30 j »** au-dessus de la courbe : combien ton **liquide +
+  placements** a bougé sur les 30 derniers jours, en $ et en % — et la tuile le dit en toutes
+  lettres (son assiette n'est pas celle de la tuile Patrimoine). La variation est volontairement
+  limitée à ce qui bouge VRAIMENT au jour le jour : inclure l'équité immobilière (recalculée une
+  fois PAR ANNÉE) fabriquait un faux gain de plusieurs milliers de dollars chaque 1er janvier,
+  et le total de dettes figé affichait chaque remboursement de capital comme une perte sèche —
+  plus jamais de faux gain au jour de l'An. Les transactions sans compte identifiable comptent
+  désormais aussi (bucket « (compte inconnu) »). Moins de 30 jours de données ? La tuile précise
+  « sur N j de données ». Pas assez d'historique pour dire quoi que ce soit ? Elle affiche
+  « — », jamais un faux 0 $.
 - **Le « Patrimoine net » du bandeau inclut maintenant ton équité immobilière** (valeur de la
   maison moins l'hypothèque), comme le faisait l'ex-Accueil — et le dit en toutes lettres
   (« équité immo incluse ») pour ne plus avoir deux patrimoines différents à l'écran.
@@ -23,6 +30,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - La carte « Taux de succès » disait toujours « Monte Carlo (100 itér.) » même quand tu avais
   changé le nombre d'itérations dans les paramètres avancés : elle affiche maintenant le nombre
   réellement exécuté par le moteur (bornes 50-1000 partagées, plus de chiffre en dur).
+- **Une donnée corrompue ne se tait plus** : un nombre d'itérations Monte Carlo non fini, un
+  solde initial ou un montant de transaction corrompu sont maintenant journalisés dans
+  Diagnostics (une fois, sans spam) au lieu d'être remplacés en silence par un défaut — un
+  repli muet masquait le vrai bug.
+- Le bandeau KPI du Futur se charge maintenant en différé : il tirait tout le calcul
+  d'historique de portefeuille dans le code de démarrage de l'app (+17 Ko au boot, mesuré).
 
 ### Changements majeurs — la courbe Future devient le cœur de l'app (refonte nav, Lot 1)
 - **L'app s'ouvre sur la courbe Future** et l'onglet Accueil disparaît : ses chiffres de tête

@@ -738,8 +738,17 @@
 - [ ] **`[PERF-BOOT]`** (M-L, différé SCIEMMENT — provider-aware) — paralléliser
   `hydrateAssets`/priceRefresh SANS dépasser CoinGecko free ~30/min (le sleep 2500 protège le
   provider le PLUS strict). Fix provider-aware planifié, pas un Promise.all aveugle. (≡ D7.)
-- [ ] **`[HARDEN-SNAPSHOT-RACE]`** (S, reste) — abort sur le chemin run projection simple
-  (la recherche de stratégies a déjà son AbortSignal, `runAsync.ts:222,235`).
+- [x] **`[HARDEN-SNAPSHOT-RACE]`** ✅ 2026-08-12 — `runProjectionAsync` accepte `{ signal }`
+  (sentinelle `PROJECTION_CANCELLED`), branché dans `ProjectionEngine` (abort au changement de
+  params/démontage, annulation filtrée AVANT le log « CRITICAL »).
+  ⚠️ Design imposé par la dédup PH2-b : l'abort ne rejette qu'une promesse DÉRIVÉE par appelant —
+  rejeter la promesse PARTAGÉE annulerait le calcul de l'appelant raccroché qui n'a rien demandé.
+  Le worker n'est PAS interrompu (canal singleton partagé) : annuler = se détacher, message tardif
+  filtré par requestId.
+  ⚠️ Leçon de test : la 1re preuve de discrimination par stash était VACUEUSE — l'import de la
+  sentinelle devenait `undefined` sous l'ancien code, et `toThrow(undefined)` accepte n'importe
+  quelle erreur. Sentinelle EN DUR dans les assertions ; discrimination re-prouvée (2 rouges sans
+  le fix).
 
 ## 🧱 Dette technique
 

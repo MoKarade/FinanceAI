@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 42) — `[HARDEN-SNAPSHOT-RACE]` : abort sur la projection simple (V9, ordre PM)
+> `runProjectionAsync` accepte `{ signal: AbortSignal }` + sentinelle `PROJECTION_CANCELLED` ;
+> branché dans `ProjectionEngine` (abort au changement de params / démontage ; annulation filtrée
+> avant le log « CRITICAL SIMULATION ERROR » — sinon une entrée de journal par frappe).
+> - ⚠️ **Design imposé par la dédup PH2-b** : l'abort rejette une promesse DÉRIVÉE par appelant,
+>   jamais la promesse PARTAGÉE de `_inflight` — sinon l'appelant raccroché au même calcul recevait
+>   l'annulation de l'autre. Test DISCRIMINANT dédié (2 appelants, un annule, l'autre reçoit).
+> - ⚠️ **Leçon de test (2e vacuité attrapée aujourd'hui)** : la preuve par stash était elle-même
+>   vacueuse — sous l'ancien code, l'import de la sentinelle devient `undefined` et
+>   `toThrow(undefined)` accepte N'IMPORTE quelle erreur : 14/14 verts sur du code SANS la feature.
+>   Sentinelle EN DUR dans les assertions ; re-prouvé : 2 rouges sans le fix, 14 verts avec.
+> - Le worker n'est pas interrompu (canal singleton partagé) — annuler = se détacher, message tardif
+>   filtré par `requestId`. Reste V9 : `[FUZZ-ONETIME-FLOWS]` (M).
+> - Gate vert : typecheck, lint, **3 734 tests / 326 fichiers**, build.
+
 > ## 🟢 Session 2026-08-11 (suite 41) — `[NAMING-INVESTED]` : le champ « NetWorth » de la reconstruction mensuelle renommé `InvestedValue`
 > Item d'audit du BACKLOG (ordre PM). Le champ ne porte que la somme des comptes de PLACEMENT — le
 > nom promettait un patrimoine net et avait déjà nourri de faux rapprochements d'audit.

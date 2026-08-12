@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { reconstructWorkerError, shardContiguous, runProjectionAsync } from '../../services/projection/runAsync';
+import { reconstructWorkerError, shardContiguous, runProjectionAsync, PROJECTION_CANCELLED } from '../../services/projection/runAsync';
 import type { SimulationParams } from '../../services/projection';
 
 /**
@@ -111,5 +111,58 @@ describe('runProjectionAsync — dédup des requêtes en vol (PH2-b)', () => {
         const b = runProjectionAsync(dummy, false, 0);
         expect(b).not.toBe(a);
         await Promise.all([settle(a), settle(b)]);
+    });
+});
+
+/**
+ * [HARDEN-SNAPSHOT-RACE] — abort sur le chemin « projection simple ».
+ *
+ * ⚠️ Le piège que ces tests verrouillent : avec la dédup PH2-b, DEUX appelants peuvent être
+ * raccrochés à la MÊME promesse. Un abort naïf qui rejetterait la promesse PARTAGÉE annulerait
+ * aussi le calcul de l'appelant qui n'a rien demandé — et le bug serait invisible tant qu'un seul
+ * écran calcule à la fois. L'abort ne rejette donc qu'une promesse DÉRIVÉE par appelant.
+ * En env Node (pas de Worker), le fallback synchrone rend le calcul quasi instantané : on teste la
+ * SÉMANTIQUE des promesses (rejet immédiat, isolation entre appelants), pas l'interruption du
+ * worker — qui, par design, n'est pas interrompu (canal partagé, message tardif filtré par
+ * requestId).
+ */
+describe('runProjectionAsync — abort (HARDEN-SNAPSHOT-RACE)', () => {
+    const params = { projection: null } as never; // le fallback sync jettera — peu importe ici
+
+    it('signal DÉJÀ annulé → rejet immédiat PROJECTION_CANCELLED, rien n’est lancé', async () => {
+        // ⚠️ Sentinelle EN DUR, pas la constante importée : sous un code sans la feature, l'import
+        // devient `undefined` et `toThrow(undefined)` accepte N'IMPORTE quelle erreur — le test
+        // passait sur l'ancien code (vérifié par stash : vacuité mesurée, pas supposée). La
+        // sentinelle est un CONTRAT ; la renommer doit casser ce test.
+        expect(PROJECTION_CANCELLED).toBe('__PROJECTION_CANCELLED__');
+        const controller = new AbortController();
+        controller.abort();
+        await expect(runProjectionAsync(params, false, 0, undefined, undefined, { signal: controller.signal }))
+            .rejects.toThrow('__PROJECTION_CANCELLED__');
+    });
+
+    it('DISCRIMINANT : un appelant annule, l’AUTRE (même clé, dédup) reçoit quand même son résultat', async () => {
+        // Sans l'isolation par promesse dérivée, l'abort du premier rejetterait la promesse
+        // partagée : le second recevrait PROJECTION_CANCELLED au lieu de son résultat.
+        const controller = new AbortController();
+        const key = `abort-isolation-${Math.random()}`;
+        const pAborted = runProjectionAsync(params, false, 0, undefined, key, { signal: controller.signal });
+        const pInnocent = runProjectionAsync(params, false, 0, undefined, key);
+        controller.abort();
+        await expect(pAborted).rejects.toThrow('__PROJECTION_CANCELLED__');
+        // L'innocent règle selon le CALCUL (ici : rejet du moteur sur params invalides), jamais
+        // sur l'annulation de l'autre. S'il recevait PROJECTION_CANCELLED, l'isolation est cassée.
+        await pInnocent.then(
+            () => { /* résultat : très bien */ },
+            (e: Error) => { expect(e.message).not.toBe('__PROJECTION_CANCELLED__'); },
+        );
+    });
+
+    it('sans signal, la promesse retournée EST la promesse partagée (identité de dédup intacte)', () => {
+        const key = `abort-identity-${Math.random()}`;
+        const a = runProjectionAsync(params, false, 0, undefined, key);
+        const b = runProjectionAsync(params, false, 0, undefined, key);
+        expect(a).toBe(b);
+        return a.catch(() => { /* rejet moteur attendu, absorbé */ });
     });
 });

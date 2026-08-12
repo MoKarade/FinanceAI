@@ -134,10 +134,15 @@ export interface ProjectionChartPoint {
     AccruedTaxDivers?: number;
     AccruedTaxREER?: number;
     lifeEvents?: string[];
+    /** [FUTUR-DAILY-EVENTS] Jour du mois (1-31) par message d'événement DATÉ (saisie avec date,
+     *  échéance fiscale). Absent = aucun événement daté ce mois. */
+    eventDays?: Record<string, number>;
     flowEvents?: string[];
     // Audit 2026-05: index signature narrow (unknown au lieu de any) pour
     // forcer narrowing côté consommateur sans casser l'accès aux champs ad-hoc.
-    [extra: string]: number | string | boolean | string[] | null | undefined;
+    // [FUTUR-DAILY-EVENTS] + Record<string, number> : le membre `eventDays` doit être admis par
+    // la signature d'index (TS2411 sinon).
+    [extra: string]: number | string | boolean | string[] | Record<string, number> | null | undefined;
 }
 
 // FIX cycle 2 TS reviewer (ROI massif): typer le retour de calculateFutureProjection

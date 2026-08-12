@@ -123,7 +123,7 @@ export const FIELD_KIND: Readonly<Record<string, FieldKind>> = {
     // tombe le jeudi, les charges à leur quantième) — une ligne « épargne du jour » qui ne serait
     // égale ni à la différence affichée juste au-dessus, ni à rien.
     Savings: 'recomputed',
-    lifeEvents: 'recomputed', flowEvents: 'recomputed',
+    lifeEvents: 'recomputed', flowEvents: 'recomputed', eventDays: 'recomputed',
 };
 
 // ── Cadences de répartition des flux ─────────────────────────────────────────────────────────
@@ -435,6 +435,8 @@ export function buildDailyLedger(input: BuildDailyLedgerInput): DailyLedgerPoint
         if (!Number.isFinite(hostMonthIndex)) continue;
         const { year, month } = calendarFromMonthIndex(startYear, startMonth, hostMonthIndex);
         const ctx = datedContextFor(year, month, cur, dated);
+        // [FUTUR-DAILY-EVENTS] Jour connu par message d'événement (saisie datée, échéance fiscale).
+        const eventDaysOfMonth: Record<string, number> = cur.eventDays ?? {};
         const { nDays } = ctx;
         if (nDays <= 0) continue;
 
@@ -503,12 +505,22 @@ export function buildDailyLedger(input: BuildDailyLedgerInput): DailyLedgerPoint
             const labels = labelsByDay.get(day) ?? [];
             const isDated = labelsByDay.has(day);
 
-            // Événements de vie : ils décrivent le MOIS, pas un jour. On les pose au 1er, là où le
-            // graphe ancre déjà ses icônes-jalons (abscisse entière = jour 1). Les répéter 30 fois
-            // laisserait croire à 30 voyages.
-            if (day === 1) {
-                if (Array.isArray(cur.lifeEvents) && cur.lifeEvents.length > 0) point.lifeEvents = cur.lifeEvents;
-                if (Array.isArray(cur.flowEvents) && cur.flowEvents.length > 0) point.flowEvents = cur.flowEvents;
+            // [FUTUR-DAILY-EVENTS] Chaque événement se pose à SON jour quand le moteur le connaît
+            // (`eventDays` : saisie datée, échéance fiscale) ; sans jour connu, au 1er comme avant
+            // (un jour inventé serait de la fausse précision). Les répéter 30 fois laisserait
+            // croire à 30 voyages.
+            {
+                const dayOf = (label: string): number => {
+                    const dd = eventDaysOfMonth[label];
+                    // Math.round : un jour FRACTIONNAIRE (12.7, possible via point restauré/MCP —
+                    // le moteur, lui, arrondit dans logEvent) ne matcherait JAMAIS `=== day`
+                    // ci-dessous → label silencieusement PERDU du ledger.
+                    return Number.isFinite(dd) ? Math.min(nDays, Math.max(1, Math.round(dd))) : 1;
+                };
+                const lifeToday = Array.isArray(cur.lifeEvents) ? cur.lifeEvents.filter((l) => dayOf(l) === day) : [];
+                const flowToday = Array.isArray(cur.flowEvents) ? cur.flowEvents.filter((l) => dayOf(l) === day) : [];
+                if (lifeToday.length > 0) point.lifeEvents = lifeToday;
+                if (flowToday.length > 0) point.flowEvents = flowToday;
             }
 
             const income = point.Income;

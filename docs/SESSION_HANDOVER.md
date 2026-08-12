@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 49) — `[FUTUR-DAILY-EVENTS]` : les événements à LEUR jour
+> Chaîne livrée : `logLife/logFlow(msg, day?)` → registre `eventDays` par point (champ ADDITIF,
+> schéma documenté) → ventilation quotidienne pose chaque label à SON jour → pastilles à
+> l'abscisse fractionnaire (`evt.x ?? monthIndex`). Datés : événements/voyages saisis (jour de
+> la date saisie ; `YYYY-MM` legacy → au mois), régularisation d'avril (échéance 30, ARC/RQ).
+> NON datés (no-fake) : jalons dérivés (FIRE, RRQ/PSV), stochastiques, lifeMarkers. 6 tests.
+> Validator : PASS complet (rétrocompat bit-identique 0 diff / 421 points, `eventDaysLog` étanche
+> par mois, partition ledger 0 cassée sur 420 mois, `TAX_DUE_DAY` prouvé purement d'affichage).
+> Ses 3 FAIBLE durcis dans la même PR : jour fractionnaire ARRONDI (label plus jamais perdu du
+> ledger), clamp `axisXAtDay` identique au ledger (date impossible restaurée ne glisse plus sur
+> le tick du mois suivant), ambiguïté daté/non-daté RETIRÉE du registre (ordre indifférent) —
+> 5 tests prouvés discriminants par stash. FAIBLE-4 cosmétique → `[FUTUR-DAILY-STACK-X]`.
+> Leçon CONVENTIONS : deux consommateurs qui NORMALISENT chacun la même donnée divergent sur le
+> hors-domaine — clamp identique des deux côtés ou extrait (variante ENTRÉE de « plusieurs
+> registres »).
+
 > ## 🟢 Session 2026-08-12 (suite 48) — `[FUTUR-DAILY-ROLLOVER]` livré · `[FUTUR-DAILY-EVENTS]` EN COURS
 > Marc (04:29) : « ça doit se mettre à jour à chaque jour pour le passé » → ROLLOVER livré
 > (useTodayIsoLocal réactif sur l'horloge partagée, ancrages au jour via axisXForIso, e2e

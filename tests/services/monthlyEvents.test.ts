@@ -168,7 +168,9 @@ describe('applyLifeEvents', () => {
         // produit net 200000×0.95 = 190000 ; perte = 190000 − 250000 = −60000 → banque += 60000.
         expect(s.capitalGain).toBe(0);     // aucun gain imposable réalisé
         expect(s.lossBank).toBeCloseTo(60000, 0); // perte banquée (ancien code : restait 0)
-        expect(mutator.logFlow).toHaveBeenCalledWith(expect.stringContaining('Perte en capital'));
+        // [FUTUR-DAILY-EVENTS] 2e arg = jour de l'événement — ici la fixture date '2035-06' n'a pas
+        // de jour → undefined explicite (l'affichage posera l'icône au mois, jamais un jour inventé).
+        expect(mutator.logFlow).toHaveBeenCalledWith(expect.stringContaining('Perte en capital'), undefined);
     });
 
     // [FISC-RE-CAPITAL-LOSS] Symétrie : un GAIN locatif nette d'abord la banque de pertes existante avant
@@ -227,7 +229,7 @@ describe('applyLifeEvents', () => {
         expect(props[0].isSold).toBeFalsy();  // rien vendu
         expect(s.capitalGain).toBe(0);
         // Observabilité (panel silent-failure) : la vente ignorée est SIGNALÉE, pas avalée en silence.
-        expect(mutator.logFlow).toHaveBeenCalledWith(expect.stringContaining('ignorée'));
+        expect(mutator.logFlow).toHaveBeenCalledWith(expect.stringContaining('ignorée'), undefined);
     });
 
     // Rétrocompat : SANS propertyId, comportement historique inchangé (premier bien à équité positive).

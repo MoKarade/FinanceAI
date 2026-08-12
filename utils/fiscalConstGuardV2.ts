@@ -67,6 +67,10 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection/taxJanuary.ts', value: '0.95', family: 'design',
       reason: 'Seuil de gel Guyton-Klinger (−5 % du portefeuille). Heuristique de stratégie ; cf. [ENG-GK-THRESHOLD-KNIFE].' },
 
+    // ── services/projection/taxApril.ts ─────────────────────────────────────────────────────
+    { file: 'services/projection/taxApril.ts', value: '30', family: 'fiscal',
+      reason: 'TAX_DUE_DAY : date limite de PAIEMENT du solde d’impôt des particuliers — le 30 avril (ARC et Revenu Québec). Ancrée dans FISCAL_REFERENCE §1 (échéances).' },
+
     // ── services/projection/taxDecember.ts ───────────────────────────────────────────────────
     { file: 'services/projection/taxDecember.ts', value: '65', family: 'fiscal',
       reason: 'Âge d’ouverture du crédit en raison de l’âge, et pivot RRQ/PSV.' },

@@ -453,6 +453,15 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   (avril débite le bucket .reer entier — [PROJ-TTP-DOUBLECOUNT]) et que la FERR a le même trou d'affichage
   ([ENG-FERR-FLOW-INVISIBLE]) : deux passes antérieures avaient corrigé CE bloc sans voir les registres voisins —
   vérifier TOUTES les sources ET tous les consommateurs du registre, pas le seul producteur qu'on corrige.
+  ⚠️ **Variante ENTRÉE de la même classe : deux consommateurs d'une MÊME donnée qui la normalisent chacun
+  de leur côté DIVERGENT sur les entrées hors-domaine** (mesuré validator #594, 2026-08-12) : le jour d'un
+  `eventDays` était clampé par le ledger (`Math.min(nDays, …)`) mais PAS par `axisXAtDay` (courbe) → une
+  date impossible restaurée d'un JSON (« 2027-02-29 ») posait la pastille EXACTEMENT sur le tick du mois
+  SUIVANT pendant que le ledger l'affichait au 28 — deux vérités à l'écran. Et un clamp SANS arrondi rend
+  l'égalité stricte `dayOf(l) === day` insatisfiable sur un jour fractionnaire → label silencieusement
+  PERDU. Règle : toute normalisation d'une donnée consommée par PLUSIEURS registres est IDENTIQUE des deux
+  côtés (même formule, commentaire croisé) ou extraite en un seul endroit ; « le moteur ne produit jamais
+  ça » ne suffit pas quand la surface accepte aussi du restauré/MCP.
   ⚠️ **La magnitude d'un finding d'agent peut être en BRUT là où le flux réel est NET** (leçon
   ENG-TTP-UNSETTLED-HORIZON 2026-08-01) : l'audit #554 annonçait « −49 % du compteur sur 10 ans »
   en sommant les buckets AccruedTax* BRUTS de fin d'horizon — or la réconciliation de décembre y

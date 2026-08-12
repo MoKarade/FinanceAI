@@ -178,7 +178,11 @@ export function centeredWindowRange(
 export function axisXAtDay(monthIndex: number, dayOfMonth: number, year: number, month: number): number {
     const nDays = daysInMonth(year, month);
     if (!Number.isFinite(monthIndex) || nDays <= 0) return monthIndex;
-    return monthIndex + (dayOfMonth - 1) / nDays;
+    // ⚠️ Clamp IDENTIQUE au ledger (`dayOf` de dailyLedger) : une date impossible (« 2027-02-29 »
+    // restaurée d'un JSON) posait la pastille à `monthIndex + 1` — EXACTEMENT sur le tick du mois
+    // SUIVANT, pendant que le ledger, lui, clampait au 28. Deux clamps divergents = deux vérités.
+    const day = Number.isFinite(dayOfMonth) ? Math.min(nDays, Math.max(1, Math.round(dayOfMonth))) : 1;
+    return monthIndex + (day - 1) / nDays;
 }
 
 /**

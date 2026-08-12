@@ -87,7 +87,7 @@ import { StressTestPanel } from './projection/StressTestPanel';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
-import { isoDate, finiteAnchorRun, calendarFromMonthIndex, axisXForIso } from '../services/projection/dailyRefine';
+import { isoDate, finiteAnchorRun, calendarFromMonthIndex, axisXForIso, axisXAtDay } from '../services/projection/dailyRefine';
 import { mergeDailyRealPoint, sliceDailyRangeByX, decimateForRender, realOnlyMonthPoints, buildEnrichedMonth } from '../services/projection/dailyCurve';
 import { centeredWindowRange } from '../services/projection/dailyRefine';
 import { buildDailyLedger, type DailyLedgerPoint } from '../services/projection/dailyLedger';
@@ -414,7 +414,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // year/age/dateLabel par événement pour la fiche au clic, et `subIdx` pour
     // empiler verticalement les événements d'un même mois.
     const { lifeChartEvents, flowChartEvents } = useMemo(() => {
-        type ChartEvent = { monthIndex: number; year: number | undefined; age: number | undefined; dateLabel: string | undefined; val: number | undefined; netWorth: number | undefined; label: string; subIdx: number; index: number; kind: 'life' | 'flow'; color?: string; pinned?: boolean };
+        type ChartEvent = { monthIndex: number; year: number | undefined; age: number | undefined; dateLabel: string | undefined; val: number | undefined; netWorth: number | undefined; label: string; subIdx: number; index: number; kind: 'life' | 'flow'; color?: string; pinned?: boolean; /** [FUTUR-DAILY-EVENTS] Abscisse FRACTIONNAIRE du jour saisi/échéance — absente = pastille au mois. */ x?: number };
         const lifes: ChartEvent[] = [];
         const flows: ChartEvent[] = [];
         // Anti-spam : le moteur ré-émet certains labels (renouvellements, stress
@@ -432,11 +432,19 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             // SUR la courbe (visibles). [FUTUR-ICONS-RICH] avant, les flux étaient à `val=ImpotLatent` (position
             // basse, quasi invisibles — une des causes du « je ne vois presque aucune icône »).
             const meta = { monthIndex: d.monthIndex, year: d.year, age: d.age, dateLabel: d.dateLabel, val: d.NetWorth, netWorth: d.NetWorth };
+            // [FUTUR-DAILY-EVENTS] Jour connu (saisie datée, échéance fiscale) → abscisse du JOUR.
+            // Calendrier hissé hors de la closure : constant pour tout le mois (finding revue #594).
+            const cal = calendarFromMonthIndex(startYear, startMonth, d.monthIndex);
+            const dayXOf = (label: string): number | undefined => {
+                const day = (d.eventDays ?? {})[label];
+                if (!Number.isFinite(day)) return undefined;
+                return axisXAtDay(d.monthIndex, day, cal.year, cal.month);
+            };
             (d.lifeEvents || []).forEach((label: string) => {
                 if (lastLife[label] != null && d.monthIndex - lastLife[label] <= DEDUP_GAP) return;
                 lastLife[label] = d.monthIndex;
                 const isFire = FIRE_RE.test(label);
-                lifes.push({ ...meta, label, subIdx: 0, index: 0, kind: 'life', ...(isFire ? { color: '#f97316', pinned: true } : null) });
+                lifes.push({ ...meta, label, subIdx: 0, index: 0, kind: 'life', x: dayXOf(label), ...(isFire ? { color: '#f97316', pinned: true } : null) });
             });
             // [FUTUR-ICONS-RICH, ADR-2] Gate RETIRÉ : il filtrait la quasi-totalité des flowEvents
             // (`.includes('-')` cherchait un tiret ASCII alors que les messages portent un tiret cadratin « — »
@@ -448,7 +456,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 const dedupKey = label.replace(/\d[\d\s.,]*/g, '#');
                 if (lastFlow[dedupKey] != null && d.monthIndex - lastFlow[dedupKey] <= DEDUP_GAP) return;
                 lastFlow[dedupKey] = d.monthIndex;
-                flows.push({ ...meta, label, subIdx: 0, index: 0, kind: 'flow' });
+                flows.push({ ...meta, label, subIdx: 0, index: 0, kind: 'flow', x: dayXOf(label) });
             });
         });
         // [FUTUR-ICONS-RICH] Jalons DÉRIVÉS des champs chartData (RRQ/PSV/1er retrait REER-CELI/locatif) —
@@ -470,7 +478,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             });
         };
         return { lifeChartEvents: finalize(lifes), flowChartEvents: finalize(flows) };
-    }, [chartData]);
+    // ⚠️ startYear/startMonth dans les deps (finding ÉLEVÉ revue #594) : l'horloge calendaire
+    // avance TOUTE SEULE (rollover) — sans ces deps, les abscisses des pastilles restaient
+    // calculées sur un ancrage périmé jusqu'au prochain recalcul de chartData.
+    }, [chartData, startYear, startMonth]);
 
     // PH4-FUT — ANNOTATIONS sur la courbe (choix Marc : âge de retraite, épuisement d'un compte, bascule
     // de phase). Calculées une fois depuis chartData ; rendues en lignes verticales discrètes (masquables
@@ -1517,7 +1528,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             {isVisible('events') && shownLifeEvents.map((evt, i) => (
                                 <ReferenceDot
                                     key={`life-${i}`}
-                                    x={evt.monthIndex}
+                                    // [FUTUR-DAILY-EVENTS] Jour saisi → pastille à SON jour ; sans
+                                    // jour connu, au mois (jamais un jour inventé).
+                                    x={evt.x ?? evt.monthIndex}
                                     y={evt.val}
                                     r={3}
                                     shape={
@@ -1533,7 +1546,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             {isVisible('events') && shownFlowEvents.map((evt, i) => (
                                 <ReferenceDot
                                     key={`flow-${i}`}
-                                    x={evt.monthIndex}
+                                    x={evt.x ?? evt.monthIndex}
                                     y={evt.val}
                                     r={2}
                                     shape={

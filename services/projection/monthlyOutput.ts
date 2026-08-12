@@ -131,6 +131,8 @@ export interface MonthlyOutputCtx {
     // Événements
     lifeEventsLog: string[];
     flowEventsLog: string[];
+    /** [FUTUR-DAILY-EVENTS] Jour (1-31) par message d'événement daté. */
+    eventDaysLog?: Record<string, number>;
 }
 
 /**
@@ -178,12 +180,16 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         growthCELI, growthREER, growthNonReg, growthCrypto, growthLiquid, growthCELIAPP, growthREEE,
         growthPctCELI, growthPctREER, growthPctNonReg, growthPctCrypto, growthPctLiquid, growthPctCELIAPP, growthPctREEE,
         taxCurrentYear, taxPreviousYear,
-        lifeEventsLog, flowEventsLog,
+        lifeEventsLog, flowEventsLog, eventDaysLog,
     } = ctx;
 
     return {
         lifeEvents: lifeEventsLog,
         flowEvents: flowEventsLog,
+        // [FUTUR-DAILY-EVENTS] Jour du mois des événements qui en ONT un (saisie datée, échéance
+        // fiscale) — clé = le message. ABSENT si aucun événement daté ce mois-ci (champ additif :
+        // aucun consommateur existant n'est affecté).
+        ...(eventDaysLog && Object.keys(eventDaysLog).length > 0 ? { eventDays: { ...eventDaysLog } } : {}),
         monthIndex: m,
         dateLabel: `${currentLoopDate.toLocaleString('fr-CA', { month: 'short' })} ${loopYear}`,
         year: loopYear,

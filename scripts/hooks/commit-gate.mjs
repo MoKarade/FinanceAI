@@ -23,8 +23,24 @@ if (!touchesSource) process.exit(0);
 // (push/PR). Fallback sûr = suite complète si la liste des fichiers stagés est
 // indisponible (touchesSource via stagedFiles vide).
 const sourceFiles = stagedFiles.filter(f => /\.(ts|tsx)$/.test(f) && existsSync(f));
+// ⚠️ [GATE-SCAN-GUARDS 2026-08-12] Les tests-GARDES qui lisent le SOURCE par readFileSync (scan)
+// n'IMPORTENT pas les modules qu'ils surveillent → `vitest related` ne les sélectionne JAMAIS,
+// pour aucune modification. Mesuré : TAX_DUE_DAY a passé la gate locale et a été attrapé par la
+// CI seule (fiscalConstantsGuardV2). Ils sont donc TOUJOURS ajoutés dès que du source est stagé.
+// La liste est DÉRIVÉE (grep readFileSync dans tests/) — la re-dériver si un nouveau garde-scan
+// apparaît ; un garde absent d'ici reste couvert par la CI (suite complète).
+const SCAN_GUARD_TESTS = [
+  'tests/fiscalConstantsGuardV2.test.ts',
+  'tests/fiscalConstants.guard.test.ts',
+  'tests/components/futureProjection.curveFields.test.ts',
+  'tests/services/assetFxGuard.test.ts',
+  'tests/services/visionInjectionGuard.test.ts',
+  'tests/aiTools/noMcpSdkInSpecs.test.ts',
+  'tests/aiTools/specFiniteGuard.test.ts',
+  'tests/mcp/chartDataSumGuard.test.ts',
+].filter(existsSync);
 const testCmd = sourceFiles.length > 0
-  ? `npx vitest related --run ${sourceFiles.map(f => `'${f}'`).join(' ')}`
+  ? `npx vitest related --run ${sourceFiles.map(f => `'${f}'`).join(' ')} && npx vitest run ${SCAN_GUARD_TESTS.join(' ')}`
   : 'npm run test';
 
 for (const [name, c] of [['typecheck','npm run typecheck'],['tests (affectés)', testCmd],['build','npm run build']]) {

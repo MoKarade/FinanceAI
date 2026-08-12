@@ -21,6 +21,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   entre fins de mois.
 
 ### Corrections
+- **Tes événements tombent à LEUR jour sur la courbe** : un voyage saisi au 22 septembre a sa
+  pastille au 22, plus au 1er du mois — pareil pour les événements de vie datés (héritage, vente,
+  krach planifié) et le paiement d'impôt d'avril, posé à son échéance du 30. Les jalons sans date
+  réelle (« FIRE atteint », premiers versements RRQ/PSV) restent au mois : leur inventer un jour
+  serait de la fausse précision. Même règle si tu saisis DEUX événements du même nom le même mois
+  dont un seul est daté : aucun des deux n'hérite du jour de l'autre, les deux s'affichent au mois.
+  Durci aussi contre les données restaurées d'une sauvegarde : une date impossible (« 29 février »
+  d'une année non bissextile) est ramenée au dernier jour réel du mois, des deux côtés (pastille et
+  détail jour par jour), au lieu de glisser sur le mois suivant.
 - **Le passé de la courbe Futur suit maintenant le calendrier** : chaque jour écoulé bascule de
   « projeté » à « réel » et la frontière « Aujourd'hui » avance toute seule — y compris si l'app
   reste ouverte plusieurs jours (rattrapage à minuit ou au retour sur l'onglet). Avant, la

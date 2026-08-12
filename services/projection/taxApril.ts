@@ -5,6 +5,11 @@
 
 import { formatCAD } from '../../utils/format';
 
+// [FUTUR-DAILY-EVENTS] Échéance de la régularisation annuelle : 30 avril (date limite de
+// paiement ARC/Revenu Québec — cf. FISCAL_REFERENCE et la cadence `monthEnd` du ledger
+// quotidien, documentée « le 30 avril pour la régularisation annuelle »).
+const TAX_DUE_DAY = 30;
+
 export interface AprilSettlementResult {
     /** Total payé (positif) ou remboursé (négatif). 0 si rien à régler. */
     fluxImpots: number;
@@ -20,7 +25,7 @@ export interface AprilSettlementMutator {
     subtractLiquid: (amount: number) => void;     // liquid -= fluxImpots
     addNonReg: (amount: number) => void;          // nonReg += refund
     addNonRegACB: (amount: number) => void;       // nonRegACB += refund
-    logFlow: (msg: string) => void;
+    logFlow: (msg: string, day?: number) => void;
 }
 
 /**
@@ -57,7 +62,7 @@ export function processAprilSettlement(
     if (fluxImpots !== 0) {
         state.subtractLiquid(fluxImpots);
         if (fluxImpots < 0) {
-            state.logFlow(`💸 Remboursement d'impôt: +${formatCAD(Math.abs(fluxImpots))}`);
+            state.logFlow(`💸 Remboursement d'impôt: +${formatCAD(Math.abs(fluxImpots))}`, TAX_DUE_DAY);
             // Le remboursement de salaire (excédent retenu) est réinvesti dans nonReg.
             // M-8 (2026-06) : subtractLiquid(fluxImpots) ci-dessus a déjà crédité TOUT le
             // remboursement au liquide ; on retire donc la part réinvestie du liquide, sinon
@@ -69,7 +74,7 @@ export function processAprilSettlement(
                 state.subtractLiquid(reinvest); // réinvesti → sort du liquide
             }
         } else {
-            state.logFlow(`🏛️ Fisc: Régularisation de ${formatCAD(fluxImpots)} payée.`);
+            state.logFlow(`🏛️ Fisc: Régularisation de ${formatCAD(fluxImpots)} payée.`, TAX_DUE_DAY);
         }
     }
 

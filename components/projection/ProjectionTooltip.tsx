@@ -62,7 +62,7 @@ const TOOLTIP_ACCOUNTS: Array<{ key: string; label: string; color: string; gainK
 // wrapper Recharts) et est rendu via un PORTAIL positionné par
 // `useChartTooltipPosition`. `frozen` = figé (devient interactif/scrollable et
 // montre le bouton « Détail complet ») ; `onOpenDetail` ouvre la modale exhaustive.
-export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOpenDetail, onStepDay, canStepPrev = false, canStepNext = false }: {
+export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOpenDetail, onStepDay, canStepPrev = false, canStepNext = false, sheet = false, onClose }: {
     data: ProjectionChartPoint;
     userName1?: string;
     userName2?: string;
@@ -73,6 +73,10 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
     onStepDay?: (dir: -1 | 1) => void;
     canStepPrev?: boolean;
     canStepNext?: boolean;
+    /** [FUTUR-MOBILE-LAYOUT] Rendu BOTTOM SHEET (téléphone, figé) : pleine largeur, coins hauts
+     *  arrondis seulement, bouton Fermer VISIBLE — « Échap pour fermer » n'existe pas au doigt. */
+    sheet?: boolean;
+    onClose?: () => void;
 }) => {
     // [FUTUR-DAILY lot B étape 2] Champs portés par les points QUOTIDIENS de la courbe. Ils sont
     // absents des points mensuels du moteur, d'où la lecture défensive plutôt qu'un élargissement
@@ -112,7 +116,11 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
         .filter((a) => a.value !== 0);
 
     return (
-        <div className="relative bg-gradient-to-b from-[#11161f]/95 to-dark/95 backdrop-blur-md border border-white/15 ring-1 ring-white/5 p-3.5 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.85)] w-72 max-h-[480px] overflow-y-auto z-50 animate-fade-in">
+        <div className={`relative bg-gradient-to-b from-[#11161f]/95 to-dark/95 backdrop-blur-md border border-white/15 ring-1 ring-white/5 p-3.5 shadow-[0_20px_60px_rgba(0,0,0,0.85)] overflow-y-auto z-50 animate-fade-in ${
+            sheet
+                ? 'w-full max-h-[70dvh] rounded-t-2xl rounded-b-none border-b-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]'
+                : 'w-72 max-h-[480px] rounded-2xl'
+        }`}>
             <div className="absolute inset-x-0 top-0 h-px rounded-t-2xl bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
 
             <div className="flex justify-between items-center gap-2 mb-2.5">
@@ -306,7 +314,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                    SCROLLE l'élément en vue avant de cliquer — le robot paie le chemin que l'humain
                    ne voit pas. Marges négatives = bleed sur le padding p-3.5 du parent ; fond
                    opaque pour que le contenu scrollé ne transparaisse pas sous les boutons. */
-                <div className="sticky bottom-0 -mx-3.5 -mb-3.5 px-3.5 pb-3.5 pt-2 mt-0.5 border-t border-white/10 space-y-2 bg-[#0d1118]/95 backdrop-blur-sm rounded-b-2xl">
+                <div className={`sticky bottom-0 -mx-3.5 -mb-3.5 px-3.5 pb-3.5 pt-2 mt-0.5 border-t border-white/10 space-y-2 bg-[#0d1118]/95 backdrop-blur-sm ${sheet ? 'rounded-b-none' : 'rounded-b-2xl'}`}>
                     {/* [FUTUR-DAILY-NATIVE] Le bouton « Voir ce mois jour par jour » a disparu : la
                         courbe est au jour PARTOUT, le clic sélectionne directement le jour — il n'y a
                         plus de chemin à offrir. */}
@@ -347,8 +355,20 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                         >
                             Détail complet →
                         </button>
-                        {/* ink-400 (#8896a8, AA normal) — ink-600 n'existe pas dans la palette (héritait la couleur parente). */}
-                        <span className="text-[10px] text-ink-400 whitespace-nowrap">Échap pour fermer</span>
+                        {/* Au doigt, « Échap » n'existe pas : le sheet a un vrai bouton Fermer. */}
+                        {sheet && onClose ? (
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                aria-label="Fermer l'infobulle"
+                                className="focus-ring inline-flex items-center justify-center min-h-[44px] min-w-[44px] text-tiny font-bold text-ink-200 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-3 py-2.5 transition-colors"
+                            >
+                                Fermer <span aria-hidden="true">✕</span>
+                            </button>
+                        ) : (
+                            /* ink-400 (#8896a8, AA normal) — ink-600 n'existe pas dans la palette (héritait la couleur parente). */
+                            <span className="text-[10px] text-ink-400 whitespace-nowrap">Échap pour fermer</span>
+                        )}
                     </div>
                 </div>
             ) : (

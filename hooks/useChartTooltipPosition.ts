@@ -28,6 +28,13 @@ export interface UseChartTooltipOptions<P> {
     getKey: (point: P) => string | number;
     /** Conteneur du graphe : clic-dedans = re-fige (pas release) + cible de la restitution du focus. */
     containerRef: React.RefObject<HTMLElement | null>;
+    /**
+     * [FUTUR-MOBILE-LAYOUT] Vrai quand le portail est ANCRÉ par CSS (bottom sheet mobile) : le
+     * hook ne doit alors PLUS écrire left/top en impératif — il écraserait l'ancrage du sheet à
+     * chaque changement de point (Veille/Lendemain re-déclenche l'effet de repositionnement).
+     * Ref (pas une valeur) : lue au moment de l'écriture, sans recréer les callbacks.
+     */
+    dockedRef?: React.RefObject<boolean>;
 }
 
 export interface ChartTooltip<P> {
@@ -45,9 +52,17 @@ export interface ChartTooltip<P> {
     freezeOn: (point: P | null) => void;
     /** Libère (retour idle). */
     release: () => void;
+    /**
+     * [FUTUR-MOBILE-LAYOUT] Repositionne le tooltip MAINTENANT (no-op si docké). Nécessaire au
+     * basculement sheet ↔ flottant pendant un point FIGÉ (rotation d'écran) : le portail est
+     * REMONTÉ par `key`, le nouveau nœud flottant naît au style JSX initial (0,0) et l'effet
+     * interne ne se redéclenche pas (`point`/`mode` inchangés) — sans cet appel, l'infobulle
+     * restait plantée au coin de l'écran en silence.
+     */
+    reposition: () => void;
 }
 
-export function useChartTooltipPosition<P>({ getKey, containerRef }: UseChartTooltipOptions<P>): ChartTooltip<P> {
+export function useChartTooltipPosition<P>({ getKey, containerRef, dockedRef }: UseChartTooltipOptions<P>): ChartTooltip<P> {
     const [mode, setMode] = useState<ChartTooltipMode>('idle');
     const [point, setPoint] = useState<P | null>(null);
 
@@ -64,6 +79,7 @@ export function useChartTooltipPosition<P>({ getKey, containerRef }: UseChartToo
     const applyPosition = useCallback(() => {
         const el = tooltipRef.current;
         if (!el) return;
+        if (dockedRef?.current) return; // ancré par CSS (bottom sheet) : le style JSX fait foi
         const { left, top } = clampTooltipPosition({
             cursorX: posRef.current.x,
             cursorY: posRef.current.y,
@@ -151,5 +167,5 @@ export function useChartTooltipPosition<P>({ getKey, containerRef }: UseChartToo
         };
     }, [mode, release, containerRef]);
 
-    return { mode, point, tooltipRef, onPointerMove, onHoverPoint, onChartLeave, freezeOn, release };
+    return { mode, point, tooltipRef, onPointerMove, onHoverPoint, onChartLeave, freezeOn, release, reposition: applyPosition };
 }

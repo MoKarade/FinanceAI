@@ -9,6 +9,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ## [unreleased] — 2026-08-12
 
 ### Changements majeurs
+- **L'onglet Futur est enfin vivable sur téléphone** : la courbe prend 55 % de la hauteur de
+  l'écran (au lieu d'une hauteur fixe pensée pour le bureau), l'infobulle d'un jour figé s'ouvre
+  en PANNEAU pleine largeur ancré en bas (au lieu d'une boîte de 288 px qui recouvrait la moitié
+  de l'écran) avec un vrai bouton « Fermer », et les boutons de fenêtre temporelle (« 5 ans »,
+  « Aujourd'hui »…) ont une taille de doigt (44 px). Sur ordinateur, rien ne change.
 - **Le zoom au DOIGT, sur tous les graphes** : sur téléphone et tablette, pince à deux doigts
   n'importe quel graphe (Futur, Dettes, Immobilier, Retraite, Enfants) pour zoomer ET te déplacer
   en un seul geste — le point que tu saisis entre les doigts reste sous tes doigts, comme sur une

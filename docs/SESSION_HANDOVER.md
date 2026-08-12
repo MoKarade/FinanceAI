@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 52) — `[FUTUR-MOBILE-LAYOUT]` : le Futur vivable au téléphone
+> Les 3 douleurs restantes du cadrage Marc : courbe mobile 55dvh (`min-h 380`), infobulle FIGÉE
+> en BOTTOM SHEET pleine largeur sous `sm` (`useViewportBelowSm` matchMedia réactif + garde
+> jsdom sans polyfill ; `dockedRef` débraye le positionnement impératif du hook ; `key`
+> sheet/float force le REMOUNT du portail — React ne réécrit PAS un style que l'impératif a
+> changé si SA valeur à lui n'a pas bougé), bouton « Fermer » 44px (Échap n'existe pas au
+> doigt), présets 44px / légende 36px (18 bascules, 44 gonflait le bloc), desktop intact
+> (`sm:min-h-0`). Couvre `[FUT-TOUCH-TARGETS]`. E2E géométrie réelle 390×844 (sheet pleine
+> largeur ancré en bas, Fermer visible SANS scroll, tap d'évitement des pastilles). 418 tests
+> composants verts.
+> Panel #597 (3 agents) : ÉLEVÉ convergent corrigé (rotation pendant un FIGÉ → portail remonté
+> par key naissait à (0,0) + focus tombé sur body, invisible à tout test existant → `reposition()`
+> exposé du hook + effet reposition/refocus sur [tooltipIsSheet] + e2e de rotation réelle
+> 390→900px) ; aria-label sheet sans « Échap » ; aria-modal + piège de focus minimal (Tab boucle
+> dans le dialog figé — le sheet plein écran recouvrait les contrôles vers lesquels Tab sortait) ;
+> min-w sur les cibles (cohérence .touch-target) ; hook viewport durci (singleton mql +
+> garde addEventListener vieux WebKit + reset de test). Dette AAA assumée : légende 36px
+> (AA 2.5.8 passe ; 44px ×18 bascules gonflait le bloc).
+>
 > ## 🟢 Session 2026-08-12 (suite 51) — `[FUTUR-DAILY-TOUCH]` : pincement 2 doigts sur TOUS les graphes
 > Cadrage Marc : tous les graphes d'un coup · 2 doigts = zoom, 1 doigt = la page · les 4 douleurs
 > mobiles cochées (courbe trop petite / viser un jour / infobulle déborde / contrôles → le layout

@@ -88,6 +88,7 @@ import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { isoDate, finiteAnchorRun, calendarFromMonthIndex, axisXForIso, axisXAtDay } from '../services/projection/dailyRefine';
+import { useViewportBelowSm } from '../hooks/useViewportBelowSm';
 import { mergeDailyRealPoint, sliceDailyRangeByX, decimateForRender, realOnlyMonthPoints, buildEnrichedMonth } from '../services/projection/dailyCurve';
 import { centeredWindowRange } from '../services/projection/dailyRefine';
 import { buildDailyLedger, type DailyLedgerPoint } from '../services/projection/dailyLedger';
@@ -714,10 +715,30 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // clic = FIGE (devient ancré, scrollable, interactif) ; Échap / clic-dehors libère.
     // Le moteur d'état + le positionnement vivent dans le hook ; ici on ne fait que
     // l'alimenter (point survolé via Recharts, position via mousemove) et router le clic.
+    // [FUTUR-MOBILE-LAYOUT] Sur téléphone, l'infobulle FIGÉE devient un BOTTOM SHEET pleine
+    // largeur : la boîte flottante de 288 px recouvrait la moitié de l'écran en la laissant
+    // illisible (retour Marc « trop cramped »). `dockedRef` débraye le positionnement impératif
+    // du hook (le sheet est ancré par CSS) — assigné après coup car il dépend de tooltip.mode.
+    const isNarrowViewport = useViewportBelowSm();
+    const tooltipDockedRef = useRef(false);
     const tooltip = useChartTooltipPosition<ProjectionChartPoint>({
         getKey: (p) => p.monthIndex,
         containerRef: zoom.containerEl,
+        dockedRef: tooltipDockedRef,
     });
+    const tooltipIsSheet = isNarrowViewport && tooltip.mode === 'frozen';
+    tooltipDockedRef.current = tooltipIsSheet;
+
+    // Rotation/redimensionnement traversant 640px pendant un point FIGÉ : le portail est REMONTÉ
+    // (key sheet/float) — le nouveau nœud flottant naît au style JSX (0,0) et l'effet interne du
+    // hook ne se redéclenche pas (point/mode inchangés). Repositionner (no-op côté sheet, ancré
+    // CSS) et refocus (le nœud qui portait le focus a été détruit → focus tombé sur body).
+    const { mode: tooltipMode, reposition: tooltipReposition, tooltipRef: tooltipNodeRef } = tooltip;
+    useEffect(() => {
+        if (tooltipMode !== 'frozen') return;
+        tooltipReposition();
+        tooltipNodeRef.current?.focus();
+    }, [tooltipIsSheet, tooltipMode, tooltipReposition, tooltipNodeRef]);
 
     // [FUTUR-DAILY lot B étape 2] La COURBE elle-même au jour, quand la fenêtre est assez serrée.
     // ⚠️ CORRECTION DE CAP (Marc, 2026-08-11) : « je veux pas voir dans l'info bulle le détail des
@@ -1284,7 +1305,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 type="button"
                                 onClick={() => zoom.showRange(todayPresetRange[0], todayPresetRange[1])}
                                 title="Fenêtre d'environ 6 mois centrée sur aujourd'hui"
-                                className="px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring text-ink-300 hover:text-white hover:bg-white/10"
+                                className="px-2.5 py-1 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-tiny font-bold rounded transition-colors focus-ring text-ink-300 hover:text-white hover:bg-white/10"
                             >
                                 Aujourd'hui
                             </button>
@@ -1296,7 +1317,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                     key={y}
                                     type="button"
                                     onClick={() => zoom.showRange(0, idxForYears(y))}
-                                    className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-dark' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                                    className={`px-2.5 py-1 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-tiny font-bold rounded transition-colors focus-ring ${active ? 'bg-primary text-dark' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
                                 >
                                     {y} ans
                                 </button>
@@ -1305,7 +1326,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         <button
                             type="button"
                             onClick={zoom.reset}
-                            className={`px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-dark' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
+                            className={`px-2.5 py-1 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-tiny font-bold rounded transition-colors focus-ring ${!zoom.isZoomed ? 'bg-primary text-dark' : 'text-ink-300 hover:text-white hover:bg-white/10'}`}
                         >
                             Tout
                         </button>
@@ -1385,7 +1406,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     onPointerUp={handleChartContainerClick}
                     onPointerMove={(e) => tooltip.onPointerMove(e.clientX, e.clientY)}
                     tabIndex={-1}
-                    className={`chart-fullscreen relative w-full h-[380px] sm:h-[500px] lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
+                    className={`chart-fullscreen relative w-full h-[55dvh] min-h-[380px] sm:h-[500px] sm:min-h-0 lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
                     role="img"
                     aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Clic = figer l'infobulle (puis détail complet), molette = zoom, glisser = défiler."
                 >
@@ -1652,12 +1673,44 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     le hook (left/top mutés directement). z-290 < modale z-300. */}
                 {tooltip.point && tooltip.mode !== 'idle' && createPortal(
                     <div
+                        // ⚠️ key : flottant et sheet écrivent des left/top DIFFÉRENTS (impératif vs
+                        // JSX) sur le même nœud — le remount garantit un style vierge au basculement.
+                        key={tooltipIsSheet ? 'sheet' : 'float'}
                         ref={tooltip.tooltipRef}
-                        style={{ position: 'fixed', top: 0, left: 0, zIndex: 290, pointerEvents: tooltip.mode === 'frozen' ? 'auto' : 'none' }}
+                        style={tooltipIsSheet
+                            ? { position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 290, pointerEvents: 'auto' }
+                            : { position: 'fixed', top: 0, left: 0, zIndex: 290, pointerEvents: tooltip.mode === 'frozen' ? 'auto' : 'none' }}
                         tabIndex={tooltip.mode === 'frozen' ? -1 : undefined}
                         data-frozen-tooltip={tooltip.mode === 'frozen' ? '' : undefined}
                         role={tooltip.mode === 'frozen' ? 'dialog' : undefined}
-                        aria-label={tooltip.mode === 'frozen' ? "Infobulle figée du point projeté — Échap pour fermer" : undefined}
+                        aria-modal={tooltip.mode === 'frozen' ? true : undefined}
+                        // Piège de focus minimal (panel #597) : figé = modal (Échap/clic-dehors/
+                        // Fermer libèrent) — sans piège, Tab sortait vers des contrôles recouverts
+                        // par le sheet plein écran, sans indication. aria-modal l'ANNONCE, le
+                        // piège le GARANTIT — l'un sans l'autre mentirait au lecteur d'écran.
+                        onKeyDown={tooltip.mode === 'frozen' ? (e) => {
+                            if (e.key !== 'Tab') return;
+                            const root = tooltip.tooltipRef.current;
+                            if (!root) return;
+                            const focusables = root.querySelectorAll<HTMLElement>(
+                                'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+                            );
+                            if (focusables.length === 0) return;
+                            const first = focusables[0];
+                            const last = focusables[focusables.length - 1];
+                            if (e.shiftKey && (document.activeElement === first || document.activeElement === root)) {
+                                e.preventDefault();
+                                last.focus();
+                            } else if (!e.shiftKey && document.activeElement === last) {
+                                e.preventDefault();
+                                first.focus();
+                            }
+                        } : undefined}
+                        aria-label={tooltip.mode === 'frozen'
+                            ? (tooltipIsSheet
+                                ? "Infobulle figée du point projeté — bouton Fermer en bas"
+                                : "Infobulle figée du point projeté — Échap pour fermer")
+                            : undefined}
                     >
                         <ExpertTooltip
                             data={tooltip.point}
@@ -1668,6 +1721,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             onStepDay={stepDay}
                             canStepPrev={frozenSeriesIdx > 0}
                             canStepNext={frozenSeriesIdx !== -1 && frozenSeriesIdx < selectSeries.length - 1}
+                            sheet={tooltipIsSheet}
+                            onClose={tooltip.release}
                         />
                     </div>,
                     document.body,
@@ -1710,7 +1765,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                     onClick={() => toggleSeries(it.key)}
                                     aria-pressed={on}
                                     title={on ? `Masquer ${it.label}` : `Afficher ${it.label}`}
-                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-card text-tiny font-semibold border transition-colors focus-ring ${on ? 'bg-white/10 border-white/15 text-ink-100 hover:bg-white/15' : 'bg-transparent border-white/5 text-ink-400 line-through hover:text-ink-300'}`}
+                                    className={`flex items-center gap-1.5 px-2.5 py-1 min-h-[36px] min-w-[36px] sm:min-h-0 sm:min-w-0 rounded-card text-tiny font-semibold border transition-colors focus-ring ${on ? 'bg-white/10 border-white/15 text-ink-100 hover:bg-white/15' : 'bg-transparent border-white/5 text-ink-400 line-through hover:text-ink-300'}`}
                                 >
                                     <LegendSwatch shape={it.shape} color={it.color} dimmed={!on} />
                                     {it.label}

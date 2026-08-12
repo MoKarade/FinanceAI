@@ -56,10 +56,11 @@ export interface TimeChartZoom<T> {
     /** Affiche la sous-plage [from, to] (indices tableau, bornés). */
     showRange: (from: number, to: number) => void;
     /**
-     * Vrai pendant un pincement ET brièvement après (500 ms) : le consommateur qui sélectionne
-     * au TAP (`pointerup` du Futur) doit s'abstenir — le lever du 2e doigt en fin de pincement
-     * produit un `pointerup` à faible dérive qui passerait le garde anti-pan et sélectionnerait
-     * un jour que l'utilisateur ne visait pas.
+     * Vrai pendant un contact à DEUX DOIGTS (pincement armé OU simple pose de 2 doigts sans
+     * écartement mesurable — c'est VOULU, un contact accidentel à 2 doigts n'est pas une visée)
+     * ET brièvement après (500 ms) : le consommateur qui sélectionne au TAP (`pointerup` du
+     * Futur) doit s'abstenir — le lever du 2e doigt produit un `pointerup` à faible dérive qui
+     * passerait le garde anti-pan et sélectionnerait un jour que l'utilisateur ne visait pas.
      */
     isPinchActive: () => boolean;
 }
@@ -190,7 +191,7 @@ export function useTimeChartZoom<T>(
     // depuis cette base — jamais d'incrément sur la cible arrondie précédente, donc le piège
     // [ZOOM-ROUND-FIXPOINT] de la molette (l'arrondi annule le cran et la base repart du même
     // point) est impossible par construction ici.
-    const pinchRef = useRef<{ dist0: number; idx0: number; span0: number } | null>(null);
+    const pinchRef = useRef<{ dist0: number; idx0: number; span0: number; dl0: number } | null>(null);
     const twoFingersRef = useRef(false);
     const pinchEndedAtRef = useRef(0);
 
@@ -210,13 +211,17 @@ export function useTimeChartZoom<T>(
     const armPinch = useCallback((e: TouchEvent) => {
         const el = elRef.current;
         if (!el || dataLengthRef.current < 2) return;
-        const { dist, midRel } = readPinch(e, el.getBoundingClientRect());
+        const rect = el.getBoundingClientRect();
+        // Conteneur sans largeur (caché, en transition) : midRel serait 0/0 = NaN, que les clamps
+        // ne rattrapent PAS → range [NaN, NaN] → slice(0,0) = graphe VIDÉ en silence. No-op.
+        if (rect.width <= 0) return;
+        const { dist, midRel } = readPinch(e, rect);
         if (dist < 12) return;
         const prev = rangeRef.current;
         const start = prev?.[0] ?? 0;
         const end = prev?.[1] ?? dataLengthRef.current - 1;
         const span0 = end - start;
-        pinchRef.current = { dist0: dist, idx0: start + midRel * span0, span0 };
+        pinchRef.current = { dist0: dist, idx0: start + midRel * span0, span0, dl0: dataLengthRef.current };
     }, []);
 
     const handleTouchStart = useCallback((e: TouchEvent) => {
@@ -232,9 +237,13 @@ export function useTimeChartZoom<T>(
         const el = elRef.current;
         if (!el || dataLengthRef.current < 2) return;
         e.preventDefault();
-        if (!pinchRef.current) { armPinch(e); return; } // doigts partis collés → base posée ICI
+        // Base absente (doigts partis collés) OU périmée (dataLength changé mi-geste — la fenêtre
+        // dériverait d'un idx0/span0 d'un autre dataset, décentrée sans trace) → (ré)armer ICI.
+        if (!pinchRef.current || pinchRef.current.dl0 !== dataLengthRef.current) { armPinch(e); return; }
         const pinch = pinchRef.current;
-        const { dist, midRel } = readPinch(e, el.getBoundingClientRect());
+        const rect = el.getBoundingClientRect();
+        if (rect.width <= 0) return; // cf. armPinch : NaN silencieux sinon
+        const { dist, midRel } = readPinch(e, rect);
         if (dist < 12) return;
         const dl = dataLengthRef.current;
         const newSpan = Math.max(minPointsRef.current, Math.min(dl - 1, pinch.span0 * (pinch.dist0 / dist)));
@@ -283,7 +292,13 @@ export function useTimeChartZoom<T>(
             // 9 graphes consommateurs l'héritent sans se modifier.
             node.style.touchAction = 'pan-y';
         } else {
+            // ⚠️ Démontage : TOUT l'état de geste se purge, y compris `twoFingersRef` (finding
+            // HIGH silent-failure #596) — un nœud démonté MI-GESTE (recalcul → skeleton, Suspense)
+            // ne recevra jamais son touchend, et `twoFingersRef` coincé à true rendait
+            // `isPinchActive()` vrai POUR TOUJOURS → tous les taps du Futur avalés en silence.
             pinchRef.current = null;
+            twoFingersRef.current = false;
+            pinchEndedAtRef.current = 0;
             cancelPending();
         }
     }, [handleWheel, handleTouchStart, handleTouchMove, handleTouchEnd, cancelPending]);

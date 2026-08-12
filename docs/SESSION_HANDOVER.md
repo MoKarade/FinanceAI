@@ -19,6 +19,12 @@
 > tactile 1 doigt est inerte dans l'émulation headless MÊME hors graphe (aucun scroller) → le
 > contrat du hook se teste par defaultPrevented, pas par le scroll. Marc a aussi signalé puis
 > retiré (« ah si c'est bon ») un doute sur la position du voyage Brésil.
+> Panel #596 : HIGH silent-failure corrigé (démontage MI-GESTE → `twoFingersRef` coincé →
+> `isPinchActive()` vrai pour toujours → tap du Futur MORT en silence ; purge complète au
+> `containerRef(null)` + test discriminant), NaN largeur-0 gardé (range [NaN,NaN] → slice(0,0)
+> = graphe vidé), re-armement si dataLength change mi-geste, docstring `isPinchActive` élargie
+> (couvre le contact 2 doigts non armé — voulu). Reste HUMAIN : smoke test iPhone/WebKit réel
+> (mes e2e = Chromium seulement) → routé `A_FAIRE_MOI.md` §A0.
 >
 > ## 🟢 Session 2026-08-12 (suite 50) — `[A11Y-INK500]` livré · retour Marc TACTILE reçu
 > Reprise de l'ordre PM (tâche #62, V10 a11y). `[A11Y-INK500]` : classification par-occurrence

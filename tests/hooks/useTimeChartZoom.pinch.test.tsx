@@ -23,12 +23,16 @@ function Probe({ minPoints }: { minPoints?: number }) {
     return <div data-testid="host" ref={zoom.containerRef} />;
 }
 
+let unmountProbe: () => void = () => {};
+
 function mount(minPoints?: number): HTMLElement {
     zoomApi = null;
-    const { getByTestId } = render(<Probe minPoints={minPoints} />);
+    const { getByTestId, unmount } = render(<Probe minPoints={minPoints} />);
+    unmountProbe = unmount;
     const host = getByTestId('host');
     // jsdom rend une boîte 0×0 → (clientX − left) / width = NaN silencieux. Géométrie réelle.
     Object.defineProperty(host, 'getBoundingClientRect', {
+        configurable: true, // certains tests re-définissent la géométrie (ex. largeur 0)
         value: () => ({ left: 0, top: 0, right: 1000, bottom: 400, width: 1000, height: 400, x: 0, y: 0, toJSON: () => ({}) }),
     });
     return host;
@@ -149,6 +153,31 @@ describe('useTimeChartZoom — pincement 2 doigts', () => {
         touch(host, 'touchend', [[300, 200]]);
         const solo = touch(host, 'touchmove', [[310, 200]]);
         expect(solo.defaultPrevented).toBe(false);
+    });
+
+    it('démontage MI-GESTE ⇒ tout l’état se purge, isPinchActive redevient faux (finding HIGH #596)', () => {
+        // Un nœud démonté pendant un contact 2 doigts (recalcul → skeleton, Suspense) ne recevra
+        // JAMAIS son touchend : sans purge au containerRef(null), twoFingersRef restait true et la
+        // garde avalait TOUS les taps du Futur, en silence, jusqu'au rechargement.
+        const host = mount();
+        touch(host, 'touchstart', [[400, 200], [600, 200]]);
+        expect(zoomApi!.isPinchActive()).toBe(true);
+        const api = zoomApi!;
+        act(() => { unmountProbe(); }); // containerRef(null) — aucun touchend n'arrivera jamais
+        expect(api.isPinchActive()).toBe(false);
+    });
+
+    it('conteneur sans LARGEUR (caché) ⇒ no-op, jamais un range NaN qui vide le graphe', () => {
+        const host = mount();
+        Object.defineProperty(host, 'getBoundingClientRect', {
+            value: () => ({ left: 0, top: 0, right: 0, bottom: 400, width: 0, height: 400, x: 0, y: 0, toJSON: () => ({}) }),
+        });
+        // Point médian exactement sur rect.left : midRel = 0/0 = NaN, que les clamps ne
+        // rattrapent pas → range [NaN, NaN] → visibleData slice(0,0) = graphe VIDE en silence.
+        touch(host, 'touchstart', [[-100, 200], [100, 200]]);
+        touch(host, 'touchmove', [[-200, 200], [200, 200]]);
+        expect(zoomApi!.range).toBeNull();
+        expect(zoomApi!.visibleData.length).toBe(200); // la vue complète reste servie
     });
 
     it('isPinchActive : vrai pendant le geste et < 500 ms après, faux ensuite (garde du tap)', () => {

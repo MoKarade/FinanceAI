@@ -17,6 +17,16 @@
 > Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
 > d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
 
+## A0. Smoke test 2 minutes — pincement sur TON téléphone (ajouté 2026-08-12, PR #596)
+
+- [ ] **Tester le zoom au pincement sur ton vrai téléphone** dès le déploiement : ouvre la courbe
+  Futur, pince à 2 doigts (écarte = zoom, resserre = dézoom, translate = déplace), vérifie que
+  1 doigt fait toujours défiler la page et qu'un tap sélectionne un jour. **Pourquoi toi** : mes
+  e2e tactiles ne couvrent que Chromium — si ton téléphone est un iPhone (Safari/WebKit), le
+  moteur est différent et seul un vrai appareil le prouve (finding MOYEN code-reviewer #596).
+  Si le pincement zoome la PAGE au lieu du graphe, dis-le : le correctif est connu
+  (`gesturestart` WebKit à bloquer en plus).
+
 ## A. Réponses par oui/non — 2 minutes chacune, aucun compte à ouvrir
 
 Ce sont les moins chères et les plus débloquantes. Une phrase suffit pour chacune.

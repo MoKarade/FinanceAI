@@ -88,7 +88,8 @@ import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { isoDate, todayIsoLocal, finiteAnchorRun, calendarFromMonthIndex } from '../services/projection/dailyRefine';
-import { mergeDailyRealPoint, recomputeDailyDiffs, sliceDailyRangeByX, decimateForRender, realOnlyMonthPoints } from '../services/projection/dailyCurve';
+import { mergeDailyRealPoint, recomputeDailyDiffs, sliceDailyRangeByX, decimateForRender, realOnlyMonthPoints, buildEnrichedMonth } from '../services/projection/dailyCurve';
+import { centeredWindowRange } from '../services/projection/dailyRefine';
 import { buildDailyLedger, type DailyLedgerPoint } from '../services/projection/dailyLedger';
 import { buildDailyPastLedger, PAST_ACCOUNT_KEYS } from '../services/history/dailyPastLedger';
 import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
@@ -795,7 +796,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
      * (garde-test de parité). Le merge passé réel passe par la MÊME fonction que la courbe.
      */
     const enrichCacheRef = useRef<Map<number, Map<string, ProjectionChartPoint>>>(new Map());
-    useEffect(() => { enrichCacheRef.current = new Map(); }, [displayData, dailyDated, dailyPastByDate, startYear, startMonth]);
+    const enrichFailLoggedRef = useRef<Set<number>>(new Set());
+    useEffect(() => {
+        enrichCacheRef.current = new Map();
+        enrichFailLoggedRef.current = new Set();
+    }, [displayData, dailyDated, dailyPastByDate, startYear, startMonth]);
     const enrichDailyPoint = useCallback((p: ProjectionChartPoint | null): ProjectionChartPoint | null => {
         if (!p) return null;
         const dp = p as unknown as DailyChartPoint;
@@ -805,17 +810,23 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const cached = enrichCacheRef.current.get(host);
         if (cached) return cached.get(iso) ?? p;
 
-        const data = displayData as ProjectionChartPoint[];
-        const hostIdx = data.findIndex((m) => m.monthIndex === host);
-        if (hostIdx === -1) return p;
-        const months = data.slice(Math.max(0, hostIdx - 2), hostIdx + 1);
-        const days = buildDailyLedger({ months, startYear, startMonth, dated: dailyDated });
-        const merged = days.map((d) => mergeDailyRealPoint(d, startYear, startMonth, dailyPastByDate, null));
-        recomputeDailyDiffs(merged);
-        const byIso = new Map<string, ProjectionChartPoint>();
-        for (const d of merged) {
-            const di = (d as unknown as DailyChartPoint).dayIso;
-            if ((d as unknown as DailyChartPoint).hostMonthIndex === host && typeof di === 'string') byIso.set(di, d);
+        // ⚠️ Toute la construction (y compris le cas ANCRE hostIdx=0, ventilé du réel seul) vit
+        // dans `buildEnrichedMonth` — PUR et testé. Finding CRITIQUE silent-failure #592 : la
+        // version précédente mettait en cache une Map VIDE pour le mois ancre (`buildDailyLedger`
+        // rend [] sur 1 seul mois) → l'infobulle de ce mois restait LÉGÈRE pour toujours, une
+        // paie réelle devenant invisible comme si elle était nulle. Règles : un échec ne se met
+        // JAMAIS en cache (le prochain survol retente), et il se JOURNALISE (une fois par mois
+        // hôte — pas au rythme du mousemove).
+        const byIso = buildEnrichedMonth(
+            displayData as ProjectionChartPoint[], host, startYear, startMonth,
+            dailyPastByDate, dailyDated, buildDailyLedger as never,
+        );
+        if (byIso === null) {
+            if (!enrichFailLoggedRef.current.has(host)) {
+                enrichFailLoggedRef.current.add(host);
+                logError({ source: 'ui', severity: 'warning', message: 'FUTUR-DAILY-NATIVE : enrichissement du mois impossible, infobulle en champs réduits', context: { host } });
+            }
+            return p;
         }
         enrichCacheRef.current.set(host, byIso);
         return byIso.get(iso) ?? p;
@@ -1008,9 +1019,16 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const i = (displayData as ProjectionChartPoint[]).findIndex((d) => d.monthIndex >= yrs * 12);
         return i === -1 ? displayData.length - 1 : i;
     };
-    // [FUTUR-DAILY-NATIVE] Le bouton « Jour » (fenêtre pré-réglée pour ATTEINDRE la vue au jour)
-    // n'a plus de raison d'être : la courbe est au jour à TOUTE fenêtre. Un preset « ce mois-ci »
-    // reste offert par le sélecteur de période existant.
+    // [FUTUR-DAILY-NATIVE + finding a11y #592] Le bouton « Jour » (chemin vers la vue au jour) est
+    // retiré — mais il était aussi le SEUL contrôle FOCUSABLE menant à une fenêtre centrée sur
+    // AUJOURD'HUI : les presets « 5 ans… Tout » partent tous de l'origine. « Aujourd'hui » reprend
+    // ce rôle-là (preset de FENÊTRE temporelle, ~6 mois autour du présent — pas un mode) : au
+    // clavier, Tab + Entrée suffisent à regarder le présent de près. WCAG 2.1.1.
+    const todayArrayIndex = (() => {
+        const i = (displayData as ProjectionChartPoint[]).findIndex((d) => d.monthIndex >= todayMonthIndex);
+        return i === -1 ? displayData.length - 1 : i;
+    })();
+    const todayPresetRange = centeredWindowRange(displayData.length, todayArrayIndex, 7);
 
     return (
         <div className="space-y-6 animate-fade-in pb-24">
@@ -1215,8 +1233,19 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                 {/* G4 — sélecteur de période façon Google Finance */}
                 <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                     <div className="flex gap-0.5 p-0.5 rounded-card bg-black/30 border border-white/5">
-                        {/* [FUTUR-DAILY-NATIVE] Le bouton « Jour » a disparu : la courbe est au jour à
-                            TOUTE fenêtre — il n'y a plus de « vue au jour » à atteindre. */}
+                        {/* [FUTUR-DAILY-NATIVE] Le bouton « Jour » a disparu (la courbe est au jour à
+                            toute fenêtre) ; « Aujourd'hui » = preset de FENÊTRE autour du présent —
+                            seul chemin FOCUSABLE vers cette fenêtre (finding a11y #592). */}
+                        {todayPresetRange && (
+                            <button
+                                type="button"
+                                onClick={() => zoom.showRange(todayPresetRange[0], todayPresetRange[1])}
+                                title="Fenêtre d'environ 6 mois centrée sur aujourd'hui"
+                                className="px-2.5 py-1 text-tiny font-bold rounded transition-colors focus-ring text-ink-300 hover:text-white hover:bg-white/10"
+                            >
+                                Aujourd'hui
+                            </button>
+                        )}
                         {[5, 10, 20, 30].filter((y) => y * 12 < lastMonthIndex).map((y) => {
                             const active = !!zoom.range && zoom.range[0] === 0 && zoom.range[1] === idxForYears(y);
                             return (
@@ -1505,7 +1534,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         l'échéance) tombe au bon jour ; le rendement du marché — sans date connue — est
                         réparti sur le mois, et les bandes Monte Carlo sont des percentiles mensuels
                         reliés entre fins de mois. L'infobulle dit pour chaque jour s'il est réel,
-                        daté ou réparti.
+                        daté ou réparti. En vue très large, le TRACÉ est échantillonné pour rester
+                        fluide — le survol et le clic, eux, visent toujours le jour exact.
                         {/* [FUTUR-DAILY-ANCHOR-CAVEAT] Un montant que l'ancre compte mais que la série
                             quotidienne ne peut pas placer décale TOUT le niveau passé. Le dire est le
                             minimum ; le corriger (retrancher ces flux de l'ancre) touche
@@ -1536,12 +1566,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     [FUTUR-DAILY-FULL] : `dailyLedger` ventile les soldes par compte au jour, donc la
                     table les remplit aussi. Le « — » reste réservé aux valeurs réellement absentes
                     (préfixe passé avant la 1re transaction connue). */}
+                {/* ⚠️ `selectSeries` (tranche quotidienne COMPLÈTE) et non `chartSeries` (tracé
+                    décimé) — finding a11y #592 : la table annonçait « 40 échantillonnés sur 700 »
+                    alors que la base réelle est ~11 000 jours. La table échantillonne elle-même à
+                    ~40 lignes : lui donner la série complète ne coûte rien et rend le dénominateur
+                    honnête. */}
                 <ChartDataTable
                     caption={isDailyCurve
                         ? 'Projection du patrimoine net et des comptes, jour par jour'
                         : 'Projection du patrimoine net et des comptes par mois (repli)'}
                     columns={dataColumns}
-                    rows={chartSeries}
+                    rows={selectSeries}
                 />
                 {/* [FUTUR-ICONS-RICH, a11y] Liste sr-only des JALONS affichés sur la courbe (RRQ/PSV/retraits/
                     impôts/retraite/FIRE…) : les pastilles SVG ne sont pas atteignables au clavier (dette

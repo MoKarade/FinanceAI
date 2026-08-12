@@ -2,7 +2,7 @@
 // passé réel, diffs post-fusion — et la PARITÉ courbe légère / infobulle complète (le même jour
 // doit porter les MÊMES valeurs par les deux chemins, sinon l'écran affiche deux vérités).
 import { describe, it, expect } from 'vitest';
-import { mergeDailyRealPoint, recomputeDailyDiffs, sliceDailyByX, realOnlyMonthPoints } from '../../services/projection/dailyCurve';
+import { mergeDailyRealPoint, recomputeDailyDiffs, sliceDailyByX, realOnlyMonthPoints, buildEnrichedMonth } from '../../services/projection/dailyCurve';
 import { buildDailyLedger, type DailyLedgerPoint } from '../../services/projection/dailyLedger';
 import type { ProjectionChartPoint } from '../../services/projection/types';
 import type { DailyPastRow } from '../../services/history/dailyPastLedger';
@@ -148,5 +148,50 @@ describe('realOnlyMonthPoints — le mois ANCRE reconstruit depuis le réel seul
 
     it('sans carte réelle ⇒ [] (le mois ancre retombe sur son point mensuel, à l’appelant)', () => {
         expect(realOnlyMonthPoints(0, 2026, 0, null, null)).toEqual([]);
+    });
+});
+
+// [Finding CRITIQUE silent-failure #592] buildEnrichedMonth : le mois ANCRE ne produit JAMAIS une
+// Map vide « accidentelle » mise en cache — c'est ce chemin qui rendait l'infobulle du mois le plus
+// consulté définitivement LÉGÈRE (paie réelle invisible comme si elle était nulle).
+describe('buildEnrichedMonth — enrichissement complet, y compris le mois ANCRE', () => {
+    const data = [month(0), month(1), month(2)];
+    const buildFn = (input: { months: readonly ProjectionChartPoint[]; startYear: number; startMonth: number; dated: unknown }) =>
+        buildDailyLedger({ months: input.months as ProjectionChartPoint[], startYear: input.startYear, startMonth: input.startMonth, dated: DATED });
+
+    it('mois ordinaire : Map complète par dayIso, diffs posés (sauf 1er jour rendu)', () => {
+        const byIso = buildEnrichedMonth(data, 2, 2026, 0, null, DATED, buildFn);
+        expect(byIso).not.toBeNull();
+        expect(byIso!.size).toBe(daysCount(2026, 2));
+        const d2 = byIso!.get('2026-03-02') as unknown as Record<string, unknown>;
+        expect(d2.Income).toBeDefined(); // champs COMPLETS, pas la restriction courbe
+        expect(d2.diffNW).toBeDefined();
+    });
+
+    it('mois ANCRE (hostIdx=0) AVEC réel : jours réels complets — jamais une Map vide', () => {
+        const realByDate = new Map<string, DailyPastRow>();
+        for (const day of [1, 2, 3]) {
+            const iso = `2026-01-${String(day).padStart(2, '0')}`;
+            realByDate.set(iso, {
+                date: iso, isDated: day === 2, labels: day === 2 ? ['Paie'] : [],
+                Liquidites: 100 + day, NetWorth: 9_000 + day, Income: day === 2 ? 2_000 : 0,
+                deposits: {}, growth: {},
+            } as unknown as DailyPastRow);
+        }
+        const byIso = buildEnrichedMonth(data, 0, 2026, 0, realByDate, DATED, buildFn);
+        expect(byIso).not.toBeNull();
+        expect(byIso!.size).toBe(3);
+        const p = byIso!.get('2026-01-02') as unknown as Record<string, unknown>;
+        expect(p.dayIsReal).toBe(true);
+        expect(p.Income).toBe(2_000); // la paie réelle N'EST PAS avalée
+        expect(p.diffNW).toBeDefined(); // veille = 2026-01-01, présente
+    });
+
+    it('mois ANCRE SANS réel ⇒ null (l’appelant journalise et NE CACHE PAS — pas de Map vide)', () => {
+        expect(buildEnrichedMonth(data, 0, 2026, 0, null, DATED, buildFn)).toBeNull();
+    });
+
+    it('mois introuvable ⇒ null', () => {
+        expect(buildEnrichedMonth(data, 99, 2026, 0, null, DATED, buildFn)).toBeNull();
     });
 });

@@ -119,6 +119,54 @@ export function realOnlyMonthPoints(
 }
 
 /**
+ * [FUTUR-DAILY-NATIVE] Le mois `hostMonthIndex` ventilé COMPLET (99 champs) pour l'infobulle,
+ * indexé par `dayIso`. Fonction PURE — extraite du composant après le finding CRITIQUE
+ * silent-failure #592 : pour le mois d'indice tableau 0 (l'ANCRE, pas de mois d'avant),
+ * `buildDailyLedger` rendait `[]` et le composant mettait cette Map VIDE en cache — l'infobulle
+ * du mois le plus consulté restait LÉGÈRE pour toujours, une paie réelle devenant invisible
+ * comme si elle était nulle (`(data.IncomeMarc || 0) > 0` masque la ligne).
+ *
+ * Contrat :
+ *  • mois ordinaire (≥ 1 mois de recul) → ventilation moteur sur [host-2 .. host] + merge réel
+ *    + diffs recalculés ;
+ *  • mois ANCRE (hostIdx = 0) → jours construits du PASSÉ RÉEL SEUL (`realOnlyMonthPoints`,
+ *    champs complets) + diffs — même source que la courbe, jamais une Map vide « accidentelle » ;
+ *  • introuvable ou vraiment rien à ventiler → `null` (l'appelant journalise et NE CACHE PAS —
+ *    un échec structurel ne doit pas devenir une politique permanente).
+ */
+export function buildEnrichedMonth(
+    data: ReadonlyArray<ProjectionChartPoint>,
+    hostMonthIndex: number,
+    startYear: number,
+    startMonth: number,
+    realByDate: ReadonlyMap<string, DailyPastRow> | null,
+    dated: { recurring: ReadonlyArray<unknown>; monthlyNetSalary: number; monthlyDebtPayment: number },
+    build: (input: { months: ReadonlyArray<ProjectionChartPoint>; startYear: number; startMonth: number; dated: unknown }) => DailyLedgerPoint[],
+): Map<string, ProjectionChartPoint> | null {
+    const hostIdx = data.findIndex((m) => m.monthIndex === hostMonthIndex);
+    if (hostIdx === -1) return null;
+
+    let merged: ProjectionChartPoint[];
+    if (hostIdx === 0) {
+        merged = realOnlyMonthPoints(hostMonthIndex, startYear, startMonth, realByDate, null);
+        if (merged.length === 0) return null; // ancre sans réel : rien d'honnête à enrichir
+    } else {
+        const months = data.slice(Math.max(0, hostIdx - 2), hostIdx + 1);
+        const days = build({ months, startYear, startMonth, dated });
+        merged = days.map((d) => mergeDailyRealPoint(d, startYear, startMonth, realByDate, null));
+        if (merged.length === 0) return null;
+    }
+    recomputeDailyDiffs(merged);
+
+    const byIso = new Map<string, ProjectionChartPoint>();
+    for (const d of merged) {
+        const dd = d as unknown as { hostMonthIndex?: number; dayIso?: string };
+        if (dd.hostMonthIndex === hostMonthIndex && typeof dd.dayIso === 'string') byIso.set(dd.dayIso, d);
+    }
+    return byIso.size > 0 ? byIso : null;
+}
+
+/**
  * Recalcule les écarts jour-à-jour SUR LA SÉRIE FUSIONNÉE, en place. À appeler après le merge
  * réel : les `diff*` posés par `buildDailyLedger` comparaient des valeurs projetées.
  * Le 1er point n'a pas de veille connue : ses `diff*` sont RETIRÉS (jamais « +0 $ » en vert —

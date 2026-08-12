@@ -38,7 +38,13 @@ export function usePendingFocus(matchedTab: Tab): string | null {
         if (section && typeof document !== 'undefined') {
             // Laisser le temps au DOM de monter avant de scroller.
             requestAnimationFrame(() => {
-                const el = document.querySelector<HTMLElement>(`[data-focus-section="${section}"]`);
+                // [REFONTE-NAV-L5, revue #606] Comparaison de VALEUR, pas de sélecteur littéral :
+                // depuis ce lot, `section` porte du texte LIBRE de l'utilisateur (`poste:<nom>`,
+                // `category:<nom>` — parfois collé d'un relevé bancaire). Un guillemet double dans
+                // un nom rendait le sélecteur invalide → `SyntaxError` levée DANS le rAF, donc
+                // avalée sans ErrorBoundary ni log : le deep-link échouait en silence.
+                const el = Array.from(document.querySelectorAll<HTMLElement>('[data-focus-section]'))
+                    .find((node) => node.dataset.focusSection === section);
                 if (el) {
                     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     el.classList.add('animate-pulse-once');

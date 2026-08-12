@@ -4,7 +4,8 @@
  * 1er run : crée les images de référence dans e2e/__snapshots__/.
  * Runs suivants : compare les captures actuelles aux baselines.
  *
- * Onglets couverts : Dashboard, Futur, Retraite, Enfant (ChildPlanning).
+ * Onglets couverts : Futur, Retraite, Enfant (ChildPlanning).
+ * [REFONTE-NAV Lot 1] La baseline Dashboard est SUPPRIMÉE (page retirée, #DASHBOARD → Futur).
  *
  * --- Pourquoi le tag `@visual` et pourquoi CI les saute ---
  * La comparaison pixel-à-pixel de `toHaveScreenshot` est sensible au rendu de
@@ -37,19 +38,8 @@ test.describe('Screenshots baselines (mode test) @visual', () => {
     await activateTestMode(page);
   });
 
-  // [REFONTE-NAV Lot 1] L'Accueil est retiré — la baseline est la page d'ouverture : le Futur.
-  test('Futur (page d\'ouverture) — baseline screenshot', async ({ page }) => {
-    await page.goto('/#FUTURE');
-    // Attendre le rendu du titre de page principal
-    await expect(page.locator('#main h1').first()).toBeVisible({ timeout: 10_000 });
-    // Laisser les transitions CSS se terminer (reducedMotion activé mais layout peut bouger)
-    await page.waitForTimeout(500);
-    await expect(page).toHaveScreenshot('dashboard.png', {
-      fullPage: false,
-      maxDiffPixelRatio: 0.02,
-    });
-  });
-
+  // [REFONTE-NAV Lot 1] Le test « Dashboard » est supprimé avec sa baseline (page retirée) —
+  // le Futur, désormais page d'ouverture, était DÉJÀ couvert par le test ci-dessous.
   test('Futur — baseline screenshot', async ({ page }) => {
     await page.goto('/#FUTURE');
     await expect(page.locator('#main h1').first()).toBeVisible({ timeout: 10_000 });

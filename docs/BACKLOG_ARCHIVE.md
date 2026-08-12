@@ -41,6 +41,21 @@ fichier:ligne). Verdicts appliqués à la refonte :
 
 ---
 
+## ✅ Chantier REFONTE-NAV Lot 1 — la nav (PR #600, merged 2026-08-12)
+
+- [x] **`[REFONTE-NAV-L1]`** ✅ 2026-08-12 (PR #600) — 6 destinations (Futur · Configurations · Vie · 
+  Transactions · Assistant · Réglages) avec source unique `navDestinations.ts`. L'app s'ouvre sur 
+  Futur (défaut store `Tab.FUTURE`, non persisté) ; Accueil retiré (deep-link `#DASHBOARD→#FUTURE` 
+  redirigé, composant conservé sur disque pour Lot 2). Chiffres de tête reprises par `FutureKpiStrip` 
+  (patrimoine net, liquidités, épargne/mois — dérivés réels, « — » si non fini). Barre mobile : 
+  Futur·Transactions·Assistant·Plus. Tests : `navDestinations.test.ts` verrouille la non-perte 
+  (destinations couvrent EXACTEMENT les onglets routés), redirect scanné, Layout destinations 
+  directes vs accordéons. Leçon : un redémarrage de conteneur a effacé le Lot 1 NON COMMITÉ pendant 
+  la suite de tests (2e occurrence, vécu 2026-08-12) — tout ré-appliqué depuis le contexte. Renforcé 
+  dans CLAUDE.md : committer (et POUSSER) AVANT toute attente longue.
+
+---
+
 ## ✅ Chantier FUTUR-DAILY au jour + V9 couverture moteur (PR #581→#587 + #588, mergées 2026-08-11/12)
 
 ### Tenue 2026-08-12 (suite) — doublons PM-STALE re-vérifiés contre le code + doc meltdown

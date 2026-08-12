@@ -570,6 +570,15 @@
   tout fonctionne bien et plus de fonctionnalités » : passe complète sur les tools MCP (fiabilité,
   erreurs honnêtes, couverture) + nouvelles capacités à cadrer avec Marc (écritures étendues,
   transactions, dettes-contrats, simulations). Plan-first.
+- [ ] **`[AUTH-REMEMBER-DEVICE]`** (M, retour Marc 2026-08-12) — « je veux pas qu'à chaque fois
+  je doive me reconnecter, ça me le demande trop souvent pour rien : me connecter UNE fois avec
+  option de se souvenir de l'appareil… à part pour changer des paramètres » : session Drive
+  persistante par appareil (option « se souvenir de cet appareil »), ré-auth exigée SEULEMENT
+  pour les zones sensibles (Réglages/paramètres). ⚠️ Inverse en partie la décision
+  `[AUTH-DRIVE-INACTIVITY]` (déco auto 8 h, demande Marc 2026-07-22) — nouvelle préférence
+  prévaut (à confirmer : garder ou retirer la déco 8 h en plus du « se souvenir »). Cadrer
+  d'abord le POURQUOI des reconnexions actuelles (instrumentation `[AUTH-DRIVE-STILL-RECONNECT]`
+  déjà en place — lire le journal Diagnostics avant de coder).
 - [ ] **`[A11Y-SIDEBAR-ESC]`** (XS, a11y — audit #598, pré-existant) — la sidebar dépliée au
   survol/focus n'est pas fermable au clavier (Échap) → gap WCAG 1.4.13 (Dismissable). Ajouter
   un keydown Échap qui replie (blur/retour du focus au déclencheur).
@@ -580,7 +589,7 @@
   `docs/REFONTE_NAV_PLAN.md`). Ne pas implémenter l'ancien découpage.
 - [ ] **`[REFONTE-NAV]`** (L, ⏳, GO Marc 2026-08-12) — chantier « tout tourne autour de la courbe
   Future », plan détaillé + décisions dans `docs/REFONTE_NAV_PLAN.md`. Lots :
-  - [ ] `[REFONTE-NAV-L1]` **Lot 1 — la nav** (EN COURS, PR de cette session) : 6 destinations
+  - [x] `[REFONTE-NAV-L1]` **Lot 1 — la nav** ✅ 2026-08-12 (PR #600) : 6 destinations
     (Futur · Configurations · Vie · Transactions · Assistant · Réglages), app s'ouvre sur Futur,
     Accueil retiré (#DASHBOARD→#FUTURE, chiffres de tête → FutureKpiStrip), barre mobile
     Futur·Transactions·Assistant·Plus. Critère : rien de perdu.

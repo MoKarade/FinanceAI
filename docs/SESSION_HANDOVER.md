@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 53) — `[D6-KBD]` : la sidebar au clavier
+> Deux pièges : l'accordéon `disabled={!isSidebarOpen}` était INATTEIGNABLE au Tab en marche
+> avant (Tab saute un bouton désactivé, et au moment où Tab le considère le focus n'est pas
+> encore dans l'aside) → jamais disabled, atteint = opérable (le focus ouvre la sidebar) ;
+> et les items d'un groupe replié restaient TABBABLES en étant invisibles (max-h-0 +
+> overflow-hidden ne retire PAS du tab-order) → `invisible` quand replié. Leçon CONVENTIONS.
+> L'ancien test §B.2 verrouillait le comportement inverse — réécrit avec le POURQUOI.
+> Audit #598 (rien de HIGH) : mon test « groupe replié » était VACUEUX (tous les groupes ouverts
+> par défaut → boucle jamais exécutée — la classe CONVENTIONS que je documente moi-même) →
+> corrigé (replier PUIS asserter) ; preuve du tab-order déplacée en E2E réel (jsdom ne calcule
+> pas visibility — getComputedStyle y ment) ; aria-expanded retiré de l'aside (non conforme au
+> rôle complementary, axe aria-allowed-attr) ; aria-controls/id ajoutés (disclosure APG complet).
+> Restes assumés : repli visuellement instantané (cosmétique), Échap-dismiss →
+> `[A11Y-SIDEBAR-ESC]` (pré-existant, XS).
+>
 > ## 🟢 Session 2026-08-12 (suite 52) — `[FUTUR-MOBILE-LAYOUT]` : le Futur vivable au téléphone
 > Les 3 douleurs restantes du cadrage Marc : courbe mobile 55dvh (`min-h 380`), infobulle FIGÉE
 > en BOTTOM SHEET pleine largeur sous `sm` (`useViewportBelowSm` matchMedia réactif + garde

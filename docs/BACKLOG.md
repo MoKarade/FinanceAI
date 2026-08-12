@@ -540,8 +540,16 @@
   390×844.
 - [ ] **`[A11Y-BORDER-PROMINENCE-SWEEP]`** (S, reste) — passe dédiée inputs/selects (focus:border-*),
   toggles, dropzones (border-white/10 : Transactions ×16, Investments ×8, Dashboard ×4).
-- [ ] **`[D6-KBD]`** (S) — sidebar pilotable au clavier : labels opacity-0 focusables +
-  `disabled={!isSidebarOpen}` bloque l'accordéon (`Layout.tsx:286`).
+- [x] **`[D6-KBD]`** ✅ 2026-08-12 — sidebar pilotable au clavier : (1) accordéon JAMAIS disabled
+  (Tab SAUTE un bouton désactivé, et au moment où Tab le considère le focus n'est pas encore dans
+  l'aside → sidebar repliée → bouton mort ; atteint = opérable, le focus ouvre la sidebar) ;
+  (2) découverte au passage : les items d'un groupe REPLIÉ restaient TABBABLES (max-h-0 +
+  overflow-hidden cache visuellement sans retirer du tab-order) → `invisible` (visibility:hidden)
+  quand replié. 3 tests discriminants (4 rouges sur l'avant, dont l'ancien §B.2 qui verrouillait
+  le comportement inverse).
+- [ ] **`[A11Y-SIDEBAR-ESC]`** (XS, a11y — audit #598, pré-existant) — la sidebar dépliée au
+  survol/focus n'est pas fermable au clavier (Échap) → gap WCAG 1.4.13 (Dismissable). Ajouter
+  un keydown Échap qui replie (blur/retour du focus au déclencheur).
 - [ ] **`[IA-NAV-LABELS]`** (S) — sidebar w-16 par défaut, libellés opacity-0, icônes cryptiques →
   libellés visibles par défaut (ou rail plus large).
 - [ ] **`[NAV-IA-CONSOLIDATE]`** (L, ⏳, 🧭 OK Marc requis) — 14 destinations → ~6 (Accueil · Budget ·

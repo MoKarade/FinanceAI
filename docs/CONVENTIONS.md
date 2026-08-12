@@ -783,6 +783,15 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   log « Achat reporté ») → un test qui VEND une propriété doit donner ASSEZ de `calculatedStartingCash` pour que l'achat ait lieu À TEMPS,
   sinon la vente ne trouve aucun bien acheté (`saleIdx = −1`, test vacant). MESURER que le flux s'exerce vraiment (ex. assert le log
   « Perte en capital » apparaît) — calque la leçon [[FUZZ-ONETIME-FLOWS]] « générer un flux ≠ l'exercer ».
+- **Prouver une ABSENCE = chercher l'ID/le symbole dans TOUT le dépôt, jamais constater l'immobilité du fichier PRESSENTI**
+  (leçon tenue BACKLOG 2026-08-12, attrapée par documentation-manager AVANT merge) : pour re-vérifier si
+  `[NW-PARITY-SURFACES-TEST]` était livré, j'ai constaté que `nwParity.test.ts` (le fichier que le ticket disait
+  « à étendre ») n'avait pas bougé depuis #384 → déclaré NON-livré, ligne V3 « corrigée »… à tort. Le livrable
+  vivait dans un fichier NOUVEAU (`nwParitySurfaces.test.ts`, describe à l'ID, livré #552). Un ticket qui dit
+  « étendre X » peut être livré en créant Y : la preuve d'absence est un `grep -r` de l'ID sur tout le dépôt
+  (comme la preuve de présence), pas un `git log` du fichier candidat. Double ironie mesurée : l'erreur est née
+  DANS une passe anti-PM-STALE, et c'est la relecture d'agent qui l'a interceptée — même une vérification peut
+  vérifier la mauvaise chose.
 - **Un paramètre HOMONYME à deux niveaux (config globale vs entité) : vérifier lequel le code LIT avant de le câbler**
   (leçon FUZZ-ONETIME-FLOWS lot final, 2026-08-12) : `propertyGrowthRate` existe sur `ProjectionConfig` ET sur
   `RealEstateGoal` — le moteur ne lit QUE le champ par-bien (`goal.propertyGrowthRate || 3`, realEstateMonth.ts:354) ;

@@ -643,6 +643,16 @@ choisir). Calcul cumulatif par tranche (style impôt).
 ---
 
 ## 9. Limites connues (assumées, non-bugs)
+- **Seuils de la stratégie Meltdown REER = heuristiques de CONCEPTION, pas des valeurs fiscales**
+  (`services/projection/meltdownReer.ts:9-13`, documenté `[MELTDOWN-THRESHOLDS-DOC]` 2026-08-12) :
+  cibles de revenu brut à saturer par adulte (90 k / 140 k / 220 k$ selon le patrimoine, paliers
+  2 M / 1 M$ sur actifs financiers + équité immo). Aucun de ces cinq chiffres n'existe dans une loi —
+  ce sont des ordres de grandeur raisonnés (90 k$ reste dans le 2e palier des deux barèmes 2026 —
+  plafonds 117 045 $ féd / 108 680 $ QC, marginal combiné ≈ 39,5 %) qui règlent
+  l'AGRESSIVITÉ du décaissement anticipé face à la bombe fiscale successorale. Ils ne s'indexent
+  pas, ne se « re-sourcent » pas ; les ajuster re-base les scénarios MELTDOWN_REER (à faire
+  sciemment). La retenue appliquée aux retraits, elle, EST fiscale et sourcée
+  (`RRSP_WITHHOLDING_QC`, §3).
 - **ACB initial NonReg/crypto = valeur de départ** (`nonRegACB = nonReg`, `cryptoACB = crypto`) :
   le gain latent ACCUMULÉ avant la simulation n'est pas modélisé (coût d'acquisition historique
   inconnu — no-fake-data). Seule la croissance future simulée devient imposable → impôt à la

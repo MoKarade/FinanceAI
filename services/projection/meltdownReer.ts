@@ -6,6 +6,28 @@
 import type { AllocationStrategy } from './types';
 import { withholdingForGrossRRSP } from '../../utils/tax';
 
+// [MELTDOWN-THRESHOLDS-DOC 2026-08-12] ⚠️ Ces cinq seuils sont des HEURISTIQUES DE CONCEPTION,
+// PAS des constantes fiscales — aucun d'eux n'existe dans une loi ou un barème (rien à sourcer
+// dans FISCAL_REFERENCE §1-8 ; ils sont déclarés dans « Limites connues », §9). Logique :
+//
+//   • MELTDOWN_TARGET_* = revenu BRUT annuel PAR ADULTE que la stratégie cherche à atteindre en
+//     complétant avec des retraits REER. L'idée du meltdown : vider le REER pendant les années à
+//     faible revenu en « remplissant » les paliers d'imposition bas/moyens, plutôt que de laisser
+//     le solde entier devenir imposable d'un coup au décès (revenu réputé — la « bombe fiscale »).
+//     90 k$ reste DANS le 2e palier des deux barèmes 2026 (plafonds 117 045 $ féd / 108 680 $ QC,
+//     marginal combiné ≈ 39,5 % — vérifié contre FED_BRACKETS/QC_BRACKETS) ; 140 k$ et 220 k$
+//     étendent le remplissage aux paliers suivants quand le patrimoine justifie de payer plus
+//     d'impôt MAINTENANT pour en éviter davantage à la succession.
+//   • MELTDOWN_NW_HIGH/MID = paliers de PATRIMOINE (actifs financiers + équité immo) qui modulent
+//     cette agressivité : plus le patrimoine est gros, plus la bombe fiscale terminale l'est
+//     aussi, plus il est rentable de saturer des paliers élevés de son vivant.
+//
+// Les chiffres sont des ordres de grandeur raisonnés (arrondis volontaires), pas des optima
+// calculés — un vrai optimum dépendrait de l'espérance de vie, du rendement et des taux futurs.
+// Les ajuster ne demande AUCUNE source fiscale, mais re-basera les scénarios qui utilisent la
+// stratégie MELTDOWN_REER (chartData.RetraitREER) : le faire SCIEMMENT, avec goldens re-basés.
+// La partie FISCALE du module, elle, EST sourcée : la retenue suit RRSP_WITHHOLDING_QC
+// (FISCAL_REFERENCE §3, tables ARC/RQ).
 const MELTDOWN_NW_HIGH = 2_000_000;
 const MELTDOWN_NW_MID  = 1_000_000;
 const MELTDOWN_TARGET_HIGH = 220_000;

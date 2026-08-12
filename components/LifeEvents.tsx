@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Card } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
-import { PageHeader } from './ui/PageHeader';
 import { Icon, type IconName } from './ui/Icon';
 import { Button } from './ui/Button';
 import { LifeEvent, LifeEventType, TravelGoal } from '../types';
@@ -145,7 +144,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
     ];
 
     return (
-        <div className="space-y-6 animate-fade-in pb-24">
+        <section className="space-y-6 animate-fade-in" aria-label="Événements de vie">
             <ConfirmModal
                 isOpen={!!confirmDeleteKey}
                 onConfirm={doDeleteConfirmed}
@@ -155,15 +154,18 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                 confirmLabel="Supprimer"
             />
 
-            <PageHeader
-                icon={<Icon name="life-projects" size={28} />}
-                title="Parcours de Vie"
-                actions={
-                    <Button onClick={() => { setIsAdding(!isAdding); setEventError(null); }} variant={isAdding ? 'ghost' : 'secondary'} size="md">
-                        {isAdding ? 'Fermer' : 'Ajouter un Événement'}
-                    </Button>
-                }
-            />
+            {/* [REFONTE-NAV-L4] LifeEvents ne se rend QUE dans « Projets de vie » (TabRouter
+                redirige Tab.LIFE_EVENTS vers LIFE_PROJECTS) : son ex-PageHeader (h1 « Parcours
+                de Vie ») doublait le header de page → rétrogradé en header de SECTION (h2). */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-h1 text-ink-50 flex items-center gap-2">
+                    <span className="text-primary" aria-hidden="true"><Icon name="life-projects" size={20} /></span>
+                    Événements de vie
+                </h2>
+                <Button onClick={() => { setIsAdding(!isAdding); setEventError(null); }} variant={isAdding ? 'ghost' : 'secondary'} size="md">
+                    {isAdding ? 'Fermer' : 'Ajouter un Événement'}
+                </Button>
+            </div>
 
             {/* INTERACTIVE TIMELINE */}
             {(() => {
@@ -308,10 +310,12 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                             );
                         })}
                         {filteredItems.length === 0 && (
+                            // [REFONTE-NAV-L4] empty state harmonisé famille « Vie » : honnête + CTA.
                             <EmptyState
                                 variant="subtle"
                                 title="Aucun événement"
-                                description="Aucun événement dans cette catégorie pour le moment."
+                                description="Aucun événement dans cette catégorie — planifie-en un pour voir son impact sur ta courbe Future."
+                                cta={<Button onClick={() => { setIsAdding(true); setEventError(null); }} variant="secondary" size="md">Ajouter un Événement</Button>}
                             />
                         )}
                     </div>
@@ -383,6 +387,6 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                     )}
                 </div>
             </div>
-        </div>
+        </section>
     );
 };

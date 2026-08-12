@@ -4,7 +4,9 @@ import { Icon } from './ui/Icon';
 import { Pill } from './ui/Pill';
 import { Travel } from './Travel';
 import { LifeEvents } from './LifeEvents';
-import type { TravelGoal, LifeEvent } from '../types';
+import { VieCurveLink } from './vie/VieCurveLink';
+import { TAB_LABELS } from '../constants';
+import { Tab, type TravelGoal, type LifeEvent } from '../types';
 
 /**
  * Phase F.12 — onglet unifié "Projets de vie" qui fusionne Voyages et
@@ -45,9 +47,13 @@ export const LifeProjects: React.FC<LifeProjectsProps> = ({
 
     return (
         <div className="space-y-6 stagger-in pb-20">
+            {/* [REFONTE-NAV-L4] header harmonisé famille « Vie » : titre = TAB_LABELS,
+                sous-titre = rôle vis-à-vis de la courbe, lien courbe en action. */}
             <PageHeader
                 icon={<Icon name="life-projects" size={28} />}
-                title="Projets de vie"
+                title={TAB_LABELS[Tab.LIFE_PROJECTS]}
+                subtitle="Voyages et événements planifiés déforment ta courbe Future — chaque projet est déduit de la simulation."
+                actions={<VieCurveLink />}
             />
 
             {/* Recap rapide + sous-onglet selector */}

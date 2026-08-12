@@ -629,12 +629,26 @@
     commandes · libellés de page alignés sur `TAB_LABELS` (« Dettes », « Impôts & Docs »).
     ⚠️ Le split invest actuel/projets et `[DEBT-FROM-CONTRACT]` ne sont **PAS** dans ce lot —
     `[DEBT-FROM-CONTRACT]` reste un ticket séparé, toujours ouvert (voir plus haut, ligne ~563).
-  - [ ] `[REFONTE-NAV-L4]` Lot 4 — Vie fusionnée (retraite, enfants, projets, voyages, événements).
+  - [x] `[REFONTE-NAV-L4]` Lot 4 — **la destination Vie parle d'une seule voix** ✅ 2026-08-12
+    (PR à venir) : `components/vie/VieCurveLink.tsx` (affordance COMMUNE « Voir l'effet sur ma
+    courbe » → `navigateWithFocus(Tab.FUTURE)`, source unique du libellé et du placement) câblée
+    sur les **4** pages Vie · titres pris de `TAB_LABELS` (plus de libellé en dur divergeant de
+    l'onglet) · idiome de sous-titre « ce que je PRÉVOIS » : chaque page annonce comment son plan
+    déforme la courbe Future · `ChildPlanning` sans enfant ne retourne plus `null` (= **page
+    BLANCHE**) mais un empty state honnête avec CTA · empty states Voyages/Événements dotés d'un
+    CTA · `Travel`/`LifeEvents` rendus DANS `LifeProjects` : leurs `PageHeader` (h1) rétrogradés
+    en `<section>` + h2 — il y avait **3 h1** sur une seule page · `Retirement` rangée en
+    sous-onglets « Projection » / « Outils d'optimisation » (voir `[UI-TABS-RICH]`) + ternaire
+    MORT retiré (`chartData.length === 0` inatteignable derrière la garde `hasProjection`).
+    Harmonisation étendue à la 4e page issue du Lot 3 (`RealEstateWorkspace` variante `'projet'`
+    UNIQUEMENT — la variante `'actuel'` reste une page Configurations, non-Vie).
   - [ ] `[REFONTE-NAV-L5]` Lot 5 — Transactions fusionnées (tx, budget, abonnements, imports).
   - [ ] `[REFONTE-NAV-L6]` Lot 6 — Assistant pleine page + outils (sous-lots par outil, voir plan).
   - [ ] `[REFONTE-NAV-L7]` Lot 7 — Réglages retravaillés en sections.
-- [ ] **`[UI-TABS-RICH]`** (M) — généraliser le pattern sous-onglets à Retraite (4 outils empilés) et
-  Profil (long scroll). Plan-first.
+- [ ] **`[UI-TABS-RICH]`** (S, **RÉDUIT à Profil**) — généraliser le pattern sous-onglets.
+  ~~Retraite (4 outils empilés)~~ **FAIT** par `[REFONTE-NAV-L4]` 2026-08-12 : « Projection » /
+  « Outils d'optimisation » (idiome `BudgetWorkspace`, aucune logique déplacée). Reste **Profil**
+  (long scroll) — seul volet vivant de ce ticket. Plan-first.
 - [ ] **`[DETTE-CHART-THEME-DUP]`** (S) — tooltip/thème Recharts partagé (`CHART_TOOLTIP_STYLE`
   inexistant) — dédupliquer les styles inline des graphes.
 - [ ] **`[D6-GRAPH]`** (M, résiduel) — accès clavier aux graphes restants (projections,

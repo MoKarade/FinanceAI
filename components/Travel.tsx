@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Card } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { ConfirmModal } from './ui/ConfirmModal';
-import { PageHeader } from './ui/PageHeader';
 import { Icon } from './ui/Icon';
 import { Button } from './ui/Button';
 import { TravelGoal } from '../types';
@@ -38,7 +37,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
     const sortedTrips = [...travelGoals].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     return (
-        <div className="space-y-6 animate-fade-in pb-20">
+        <section className="space-y-6 animate-fade-in" aria-label="Voyages">
             <ConfirmModal
                 isOpen={!!confirmDeleteId}
                 onConfirm={() => { if (confirmDeleteId) { setTravelGoals(travelGoals.filter(t => t.id !== confirmDeleteId)); setConfirmDeleteId(null); } }}
@@ -46,15 +45,18 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                 message="Supprimer ce voyage définitivement ?"
                 confirmLabel="Supprimer"
             />
-            <PageHeader
-                icon={<Icon name="plane" size={28} />}
-                title="Mes Voyages"
-                actions={
-                    <Button onClick={() => setIsAdding(!isAdding)} variant={isAdding ? 'ghost' : 'primary'} size="md">
-                        {isAdding ? 'Annuler' : '+ Nouveau Voyage'}
-                    </Button>
-                }
-            />
+            {/* [REFONTE-NAV-L4] Travel ne se rend QUE dans « Projets de vie » (TabRouter redirige
+                Tab.TRAVEL vers LIFE_PROJECTS) : son ex-PageHeader (h1 « Mes Voyages ») doublait le
+                header de page → rétrogradé en header de SECTION (h2). */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-h1 text-ink-50 flex items-center gap-2">
+                    <span className="text-primary" aria-hidden="true"><Icon name="plane" size={20} /></span>
+                    Voyages
+                </h2>
+                <Button onClick={() => setIsAdding(!isAdding)} variant={isAdding ? 'ghost' : 'primary'} size="md">
+                    {isAdding ? 'Annuler' : '+ Nouveau Voyage'}
+                </Button>
+            </div>
 
             {isAdding && (
                 <Card className="border-2 border-dashed border-white/20 bg-white/5">
@@ -135,12 +137,14 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
             </div>
 
             {sortedTrips.length === 0 && !isAdding && (
+                // [REFONTE-NAV-L4] empty state harmonisé famille « Vie » : honnête + CTA.
                 <EmptyState
                     icon={<Icon name="globe" size={30} />}
                     title="Aucun voyage prévu"
-                    description="Visualise son impact sur ta projection."
+                    description="Planifie un voyage pour voir son coût déduit de ta courbe Future."
+                    cta={<Button onClick={() => setIsAdding(true)} variant="primary" size="md">+ Nouveau Voyage</Button>}
                 />
             )}
-        </div>
+        </section>
     );
 };

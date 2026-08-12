@@ -8,6 +8,28 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Améliorations — les pages de Vie parlent d'une seule voix (refonte nav, Lot 4)
+- **Tes quatre pages de Vie (Retraite, Enfant, Projets de vie, Projets immo) se ressemblent
+  enfin.** Chacune porte le même titre que l'onglet qui y mène — plus de « Planification
+  Retraite » dans la page quand la navigation dit « Retraite » — et chacune annonce en une
+  phrase ce qu'elle fait à ta courbe : ce sont les pages de **ce que tu prévois**.
+- **Chaque page de Vie a maintenant un lien direct vers l'effet sur ta courbe** :
+  « Voir l'effet sur ma courbe » t'emmène au Futur depuis la Retraite, l'Enfant, les Projets de
+  vie ou les Projets immo. Tu n'as plus à retrouver l'onglet toi-même pour vérifier ce que ton
+  plan change.
+- **La page Enfant n'est plus blanche quand elle est vide.** Sans enfant enregistré, elle
+  n'affichait littéralement RIEN : une page vierge, sans un mot, sans un bouton. Elle explique
+  désormais à quoi elle sert et propose d'ajouter un premier enfant. Même traitement pour les
+  Voyages et les Événements de vie : l'état vide propose maintenant le bouton d'ajout au lieu
+  de te laisser chercher.
+- **La Retraite est rangée en deux sous-onglets** : « Projection » (ta courbe d'accumulation et
+  d'épuisement, affichée d'entrée) et « Outils d'optimisation » (projection inverse, Asset
+  Location, tranches d'imposition). Les quatre outils s'empilaient dans une colonne étroite à
+  côté des graphes ; ils ont maintenant toute la largeur, et la courbe aussi. Le scénario actif
+  passe en pastille à côté du titre.
+- **La page « Projets de vie » n'a plus trois titres empilés** : Voyages et Événements de vie
+  y sont désormais des sections de la page, pas trois pages qui se disputent l'en-tête.
+
 ### Corrections (panel du split immobilier)
 - **Un bien ajouté depuis « Immobilier » est désormais vraiment pris en compte par la courbe.** Avant ce correctif,
   la page affichait l'équité d'un bien que le simulateur, lui, considérait comme non encore acheté — deux écrans,

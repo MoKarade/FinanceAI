@@ -75,7 +75,24 @@
   ⚠️ **Reste hors périmètre de ce lot** : le split invest actuel/projets et
   `[DEBT-FROM-CONTRACT]` (la dette = le contrat PDF) — ce dernier demeure un **ticket séparé,
   ouvert**, à planifier pour lui-même et non comme un sous-produit de la refonte nav.
-- **Lot 4 — VIE fusionnée** : retraite/enfants/projets/voyages/événements harmonisés.
+- **Lot 4 — VIE harmonisée (fait, 2026-08-12)** : les **4** pages de la destination Vie
+  (Retraite, Enfant, Projets de vie, Projets immo) parlent désormais d'une seule voix, SANS
+  fusionner les onglets ni toucher aux fichiers de nav (`navDestinations` / `TabRouter` /
+  `Layout` inchangés — la structure vient du Lot 1, ce lot ne fait que l'habiller).
+  Trois règles, appliquées partout : (1) le titre de page vient de `TAB_LABELS` — un libellé en
+  dur finit toujours par diverger de l'onglet qui y mène ; (2) le sous-titre dit **ce que je
+  PRÉVOIS**, c'est-à-dire comment ce plan déforme la courbe Future ; (3) une affordance COMMUNE
+  `components/vie/VieCurveLink.tsx` (« Voir l'effet sur ma courbe » →
+  `navigateWithFocus(Tab.FUTURE)`) en tête de chaque page — source unique du libellé et du
+  placement, à ne pas re-coder à la main.
+  Au passage : `ChildPlanning` sans enfant retournait `null` = **page BLANCHE** → empty state
+  honnête avec CTA ; `Travel` et `LifeEvents` ne se rendent QUE dans `LifeProjects`, leurs
+  `PageHeader` (h1) sont rétrogradés en `<section>` + h2 (il y avait **3 h1** sur une page) ;
+  `Retirement` est rangée en sous-onglets « Projection » / « Outils d'optimisation »
+  (réduit `[UI-TABS-RICH]` à Profil) et son ternaire MORT `chartData.length === 0` est retiré.
+  La 4e page (Lot 3) est harmonisée via la variante `'projet'` de `RealEstateWorkspace`
+  UNIQUEMENT : la variante `'actuel'` est une page **Configurations** (ce que je POSSÈDE), pas
+  une page Vie — elle garde son titre, son sous-titre de photo et n'a pas de lien courbe.
 - **Lot 5 — TRANSACTIONS fusionnées** : budget/tx/abonnements/imports en un flux cohérent.
 - **Lot 6 — ASSISTANT pleine page** : le plus gros — sous-lots PAR OUTIL (6a écritures NL,
   6b what-if comparés, 6c explication moteur, 6d analyse de docs, 6e proactif…), chaque

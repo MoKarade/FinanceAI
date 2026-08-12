@@ -4,6 +4,30 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 60) — `[REFONTE-NAV-L4]` : les 4 pages de Vie parlent d'une seule voix
+> Lot 4 intégré sur `main` post-#603 (PR à venir), **sans toucher un seul fichier de nav** :
+> `navDestinations` / `TabRouter` / `Layout` sont inchangés — la structure vient du Lot 1, ce lot
+> ne fait que l'habiller. Trois règles appliquées aux **4** pages Vie : titre issu de `TAB_LABELS`
+> (un libellé en dur finit toujours par diverger de l'onglet qui y mène), sous-titre qui dit **ce
+> que je PRÉVOIS** (comment ce plan déforme la courbe Future), et l'affordance COMMUNE
+> `components/vie/VieCurveLink.tsx` (« Voir l'effet sur ma courbe » → `navigateWithFocus(Tab.FUTURE)`)
+> — **source unique du libellé et du placement, ne PAS la re-coder à la main dans une page Vie**.
+> Trois bugs d'affichage tombés au passage : `ChildPlanning` sans enfant faisait `return null`, soit
+> une **page littéralement BLANCHE** (→ empty state honnête + CTA) ; `Travel` et `LifeEvents` ne se
+> rendent QUE dans `LifeProjects` mais gardaient chacun un `PageHeader` (h1), soit **3 h1 sur une
+> page** (→ `<section>` + h2) ; et le ternaire `chartData.length === 0` de `Retirement` était MORT
+> (la garde `hasProjection` plus haut retourne déjà `<ProjectionRequired>`).
+> `Retirement` gagne des sous-onglets « Projection » / « Outils d'optimisation » (idiome
+> `BudgetWorkspace`, **aucune logique déplacée**) → `[UI-TABS-RICH]` **réduit à Profil**.
+> ⚠️ **Point d'intégration à connaître** : le Lot 4 a été écrit AVANT le Lot 3, donc sans la 4e page
+> Vie (« Projets immo »). L'harmonisation y a été portée à la main dans
+> `components/realestate/RealEstateWorkspace.tsx`, **variante `'projet'` UNIQUEMENT** — ce fichier
+> est PARTAGÉ avec la page Immobilier de Configurations (variante `'actuel'`), qui n'est PAS une
+> page Vie : elle garde son titre, son sous-titre de photo, et n'a **pas** de lien courbe. Toute
+> retouche de header dans ce fichier doit rester derrière `isActuel`. Garde-test :
+> `tests/components/life/RealEstateProjects.test.tsx` (dernier `it` : la page Config n'a ni idiome
+> ni lien courbe).
+>
 > ## 🟢 Session 2026-08-12 (suite 59) — `[REFONTE-NAV-L3]` panel : la frontière « bien détenu » était FAUSSE
 > Deux agents indépendants (code-reviewer + financial-integrity) ont MESURÉ la même divergence : `isOwnedToday`
 > utilisait `monthsSince >= 0` alors que le moteur exige `purchaseOffset < 0` STRICT (et `presentEquityOfGoal`

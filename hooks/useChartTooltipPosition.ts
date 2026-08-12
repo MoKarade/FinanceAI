@@ -28,6 +28,13 @@ export interface UseChartTooltipOptions<P> {
     getKey: (point: P) => string | number;
     /** Conteneur du graphe : clic-dedans = re-fige (pas release) + cible de la restitution du focus. */
     containerRef: React.RefObject<HTMLElement | null>;
+    /**
+     * [FUTUR-MOBILE-LAYOUT] Vrai quand le portail est ANCRÉ par CSS (bottom sheet mobile) : le
+     * hook ne doit alors PLUS écrire left/top en impératif — il écraserait l'ancrage du sheet à
+     * chaque changement de point (Veille/Lendemain re-déclenche l'effet de repositionnement).
+     * Ref (pas une valeur) : lue au moment de l'écriture, sans recréer les callbacks.
+     */
+    dockedRef?: React.RefObject<boolean>;
 }
 
 export interface ChartTooltip<P> {
@@ -47,7 +54,7 @@ export interface ChartTooltip<P> {
     release: () => void;
 }
 
-export function useChartTooltipPosition<P>({ getKey, containerRef }: UseChartTooltipOptions<P>): ChartTooltip<P> {
+export function useChartTooltipPosition<P>({ getKey, containerRef, dockedRef }: UseChartTooltipOptions<P>): ChartTooltip<P> {
     const [mode, setMode] = useState<ChartTooltipMode>('idle');
     const [point, setPoint] = useState<P | null>(null);
 
@@ -64,6 +71,7 @@ export function useChartTooltipPosition<P>({ getKey, containerRef }: UseChartToo
     const applyPosition = useCallback(() => {
         const el = tooltipRef.current;
         if (!el) return;
+        if (dockedRef?.current) return; // ancré par CSS (bottom sheet) : le style JSX fait foi
         const { left, top } = clampTooltipPosition({
             cursorX: posRef.current.x,
             cursorY: posRef.current.y,

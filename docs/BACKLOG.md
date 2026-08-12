@@ -531,7 +531,13 @@
   atteignables au clavier (`ProjectionTooltip.tsx:270-271` tabIndex=-1, WCAG 2.1.1). Options :
   focusabiliser ~29 pastilles (impact pattern « clic n'importe où ») OU contrôle clavier alternatif
   ouvrant FutureDetailModal. Aria-labels datés si focusables. (≡ A11Y-CHART-KEYBOARD.)
-- [ ] **`[FUT-TOUCH-TARGETS]`** (S) — cibles tactiles de l'onglet Futur (couplé au sweep a11y).
+- [x] **`[FUT-TOUCH-TARGETS]`** ✅ 2026-08-12 (absorbé par [FUTUR-MOBILE-LAYOUT], retour Marc
+  « trop petit trop cramped ») — mobile : présets de fenêtre (« 5 ans »… « Tout », « Aujourd'hui »)
+  à min-h 44px, bascules de légende à 36px (18 bascules : 44px chacune gonflait le bloc), boutons
+  du pied d'infobulle déjà à 44px (sticky-footer). Desktop inchangé (sm:min-h-0). Livré avec :
+  courbe mobile 55dvh (≈464px sur 844 vs 380 fixes), infobulle figée en BOTTOM SHEET pleine
+  largeur avec bouton « Fermer » 44px (« Échap » n'existe pas au doigt), e2e géométrie réelle
+  390×844.
 - [ ] **`[A11Y-BORDER-PROMINENCE-SWEEP]`** (S, reste) — passe dédiée inputs/selects (focus:border-*),
   toggles, dropzones (border-white/10 : Transactions ×16, Investments ×8, Dashboard ×4).
 - [ ] **`[D6-KBD]`** (S) — sidebar pilotable au clavier : labels opacity-0 focusables +

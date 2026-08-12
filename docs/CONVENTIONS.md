@@ -695,6 +695,13 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   rose (`accent-pink-500` → `accent-pink-400` inexistant = no-op silencieux, cf. leçon shade hors palette).
   Mesurer avec une frontière (`(?<!p)ink-500`) et classifier par-occurrence : ici 85 textes actifs migrés
   `ink-400`, 22 gardés légitimes (glyphes aria-hidden, icônes-boutons ≥3:1 WCAG 1.4.11, présentationnel).
+  ⚠️ **Un style écrit en IMPÉRATIF (el.style.x) sur un nœud que React style AUSSI ne sera pas
+  « corrigé » par React** (leçon FUTUR-MOBILE-LAYOUT 2026-08-12) : React ne diffe que contre SES
+  valeurs précédentes, pas contre le DOM — si un hook a posé `left: 412px` en impératif et que le
+  JSX repasse de `left: 0` à `left: 0`, React ne réécrit RIEN et le 412px impératif survit au
+  changement de mode. Au basculement flottant ↔ bottom-sheet du tooltip, la solution est un
+  REMOUNT par `key` différente (style vierge garanti) + un débrayage explicite de l'écriture
+  impérative (`dockedRef`) — jamais « les deux écrivent et on espère l'ordre ».
   ⚠️ **Un fix de hover-contraste ne se COPIE pas d'une couleur à l'autre** (leçon A11Y-BANNER-HOVER-CONTRAST 2026-07-16) :
   `hover:brightness-110` passe sur info-600 (4,81:1) mais échoue de justesse sur danger-600 (4,48:1) → là, le hover doit
   FONCER (`brightness-90` = 5,23:1). `brightness()` CSS opère en RGB LINÉAIRE (la luminance scale exactement du facteur —

@@ -422,12 +422,18 @@ export const ClickableEventIcon = (props: { payload?: { label?: string; subIdx?:
                 e.stopPropagation();
                 onSelect?.(payload);
             }}
-            aria-label={`Événement : ${payload.label}${payload.dateLabel ? ` — ${payload.dateLabel}` : ''}`}
+            // [Audit a11y #599, LOW] Suffixe positionnel quand plusieurs événements partagent le
+            // même jour : deux libellés identiques empilés restaient indistinguables à l'oreille.
+            aria-label={`Événement : ${payload.label}${payload.dateLabel ? ` — ${payload.dateLabel}` : ''}${sub > 0 ? ` (${sub + 1})` : ''}`}
         >
             {/* [a11y] cible de clic transparente élargie (≈44 px, WCAG 2.5.5 AAA) sans changer le rendu visuel. */}
             <circle cy={dy} r={22} fill="transparent" />
-            {/* Anneau de focus clavier (opacité pilotée par .chart-event-icon:focus-visible, index.css). */}
-            <circle className="event-focus-ring" cy={dy} r={r + 7} fill="none" stroke="#60a5fa" strokeWidth={2} opacity={0} />
+            {/* Anneau de focus clavier (opacité pilotée par .chart-event-icon:focus-visible, index.css).
+                [Audit a11y #599, MED] fill OPAQUE (fond du graphe) : avec fill="none", l'anneau se
+                peignait directement sur les aires colorées (bande REER bleue ≈ teinte de l'ancien
+                anneau → contraste < 3:1 possible, WCAG 1.4.11). Couleur = primary (#e6eaf2,
+                tailwind.config.js) — même repère visuel que tous les focus-ring de l'app. */}
+            <circle className="event-focus-ring" cy={dy} r={r + 7} fill="#0B0E14" stroke="#e6eaf2" strokeWidth={2} opacity={0} />
             {/* ancre sur la courbe + tige vers la pastille */}
             <circle r={3} fill={color} stroke="#0B0E14" strokeWidth={1} />
             <line x1={0} y1={0} x2={0} y2={dy} stroke={color} strokeWidth={1} strokeOpacity={0.45} />

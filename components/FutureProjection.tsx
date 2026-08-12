@@ -1549,39 +1549,34 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             {/* PH2-d — courbe VERROUILLÉE (référence figée), superposée à l'aperçu live. */}
                             {lockedByMonth && <Line type="monotone" dataKey="lockedNetWorth" stroke="#fbbf24" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Courbe verrouillée 🔒" isAnimationActive={false} />}
 
-                            {isVisible('events') && shownLifeEvents.map((evt, i) => (
-                                <ReferenceDot
-                                    key={`life-${i}`}
-                                    // [FUTUR-DAILY-EVENTS] Jour saisi → pastille à SON jour ; sans
-                                    // jour connu, au mois (jamais un jour inventé).
-                                    x={evt.x ?? evt.monthIndex}
-                                    y={evt.val}
-                                    r={3}
-                                    shape={
-                                        <ClickableEventIcon
-                                            kind="life"
-                                            payload={evt}
-                                            onSelect={() => { const found = chartData.find((d: ProjectionChartPoint) => d.monthIndex === evt.monthIndex); if (found) setDetailPoint(found); }}
-                                        />
-                                    }
-                                />
-                            ))}
-
-                            {isVisible('events') && shownFlowEvents.map((evt, i) => (
-                                <ReferenceDot
-                                    key={`flow-${i}`}
-                                    x={evt.x ?? evt.monthIndex}
-                                    y={evt.val}
-                                    r={2}
-                                    shape={
-                                        <ClickableEventIcon
-                                            kind="flow"
-                                            payload={evt}
-                                            onSelect={() => { const found = chartData.find((d: ProjectionChartPoint) => d.monthIndex === evt.monthIndex); if (found) setDetailPoint(found); }}
-                                        />
-                                    }
-                                />
-                            ))}
+                            {/* [Audit a11y #599, MED] UNE seule séquence triée par date : vie et flux
+                                étaient rendus en DEUX passes (tous les « vie » chronologiques, puis
+                                retour au début de la timeline pour les « flux ») — Tab et lecteur
+                                d'écran faisaient un bond de plusieurs décennies en arrière à la
+                                jonction. L'ordre DOM = l'ordre de tabulation : on fusionne AVANT de
+                                mapper. */}
+                            {isVisible('events') && [
+                                ...shownLifeEvents.map((evt, i) => ({ evt, kind: 'life' as const, key: `life-${i}` })),
+                                ...shownFlowEvents.map((evt, i) => ({ evt, kind: 'flow' as const, key: `flow-${i}` })),
+                            ]
+                                .sort((a, b) => (a.evt.x ?? a.evt.monthIndex) - (b.evt.x ?? b.evt.monthIndex))
+                                .map(({ evt, kind, key }) => (
+                                    <ReferenceDot
+                                        key={key}
+                                        // [FUTUR-DAILY-EVENTS] Jour saisi → pastille à SON jour ; sans
+                                        // jour connu, au mois (jamais un jour inventé).
+                                        x={evt.x ?? evt.monthIndex}
+                                        y={evt.val}
+                                        r={kind === 'life' ? 3 : 2}
+                                        shape={
+                                            <ClickableEventIcon
+                                                kind={kind}
+                                                payload={evt}
+                                                onSelect={() => { const found = chartData.find((d: ProjectionChartPoint) => d.monthIndex === evt.monthIndex); if (found) setDetailPoint(found); }}
+                                            />
+                                        }
+                                    />
+                                ))}
                         </ComposedChart>
                     </ResponsiveContainer>
                      )}

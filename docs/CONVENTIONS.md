@@ -2366,3 +2366,19 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   (5) ⚠️ **`formatPercent` (utils/format) prend DÉJÀ un pourcentage (×100), pas un ratio** — j'ai
   écrit `formatPercent(x / 100)` par réflexe, ce qui divise deux fois et affiche « 0,01 % » pour 1 %.
   Piège d'unité silencieux (aucune erreur de type, le résultat est juste faux) : lire la signature.
+- ⚠️ **[A11Y-FUTUR-MILESTONES-KEYBOARD] itération audit 2026-08-12** : (1) **un callback-ref
+  INLINE (`ref={(n) => n?.focus()}`) se ré-exécute à CHAQUE re-render** — l'identité de la
+  fonction change, React détache (null) puis rattache le ref → tout effet de bord dedans
+  (focus, mesure, abonnement) se REJOUE au moindre setState du composant. Ici : la modale
+  re-volait le focus au bouton que l'utilisateur venait d'activer (piège clavier). Un effet
+  « au montage » vit dans `useRef` + `useEffect(..., [])`, jamais dans le ref lui-même.
+  (2) Une modale qui prend le focus au montage doit le **RENDRE au déclencheur** au démontage
+  (capturer `document.activeElement` avant `.focus()`, le restaurer au cleanup) — sinon Tab
+  repart de <body> après Échap. (3) Un anneau de focus SVG `fill="none"` se peint SUR LES
+  AIRES COLORÉES du graphe (pas sur le disque de la pastille, plus petit) : contraste non
+  garanti (WCAG 1.4.11) → fond opaque sous l'anneau, couleur = token `primary` commun.
+  (4) Deux `.map()` successifs de séries datées = **deux passes dans l'ordre DOM** (donc l'ordre
+  Tab/lecteur d'écran) : fusionner + trier AVANT de mapper pour un ordre chronologique global.
+  Ces 4 bugs venaient d'une MÊME PR déjà « prouvée par stash » : les tests discriminants
+  prouvent ce qu'ils testent, pas l'absence des classes de bugs qu'on n'a pas testées —
+  l'audit par agent APRÈS l'implémentation garde sa valeur même quand la PR semble blindée.

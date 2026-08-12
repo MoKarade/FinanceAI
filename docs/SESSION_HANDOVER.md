@@ -14,6 +14,14 @@
 > (`sm:min-h-0`). Couvre `[FUT-TOUCH-TARGETS]`. E2E géométrie réelle 390×844 (sheet pleine
 > largeur ancré en bas, Fermer visible SANS scroll, tap d'évitement des pastilles). 418 tests
 > composants verts.
+> Panel #597 (3 agents) : ÉLEVÉ convergent corrigé (rotation pendant un FIGÉ → portail remonté
+> par key naissait à (0,0) + focus tombé sur body, invisible à tout test existant → `reposition()`
+> exposé du hook + effet reposition/refocus sur [tooltipIsSheet] + e2e de rotation réelle
+> 390→900px) ; aria-label sheet sans « Échap » ; aria-modal + piège de focus minimal (Tab boucle
+> dans le dialog figé — le sheet plein écran recouvrait les contrôles vers lesquels Tab sortait) ;
+> min-w sur les cibles (cohérence .touch-target) ; hook viewport durci (singleton mql +
+> garde addEventListener vieux WebKit + reset de test). Dette AAA assumée : légende 36px
+> (AA 2.5.8 passe ; 44px ×18 bascules gonflait le bloc).
 >
 > ## 🟢 Session 2026-08-12 (suite 51) — `[FUTUR-DAILY-TOUCH]` : pincement 2 doigts sur TOUS les graphes
 > Cadrage Marc : tous les graphes d'un coup · 2 doigts = zoom, 1 doigt = la page · les 4 douleurs

@@ -5,14 +5,14 @@
 import React from 'react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, act, screen } from '@testing-library/react';
-import { useViewportBelowSm } from '../../hooks/useViewportBelowSm';
+import { useViewportBelowSm, _resetViewportMqlForTests } from '../../hooks/useViewportBelowSm';
 
 function Probe() {
     const below = useViewportBelowSm();
     return <div data-testid="v">{String(below)}</div>;
 }
 
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => { vi.unstubAllGlobals(); _resetViewportMqlForTests(); });
 
 describe('useViewportBelowSm', () => {
     it('sans matchMedia (jsdom nu) ⇒ false, sans crasher — comportement desktop des tests existants', () => {

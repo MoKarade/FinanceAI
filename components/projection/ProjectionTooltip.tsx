@@ -363,7 +363,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                                 aria-label="Fermer l'infobulle"
                                 className="focus-ring inline-flex items-center justify-center min-h-[44px] min-w-[44px] text-tiny font-bold text-ink-200 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-3 py-2.5 transition-colors"
                             >
-                                Fermer ✕
+                                Fermer <span aria-hidden="true">✕</span>
                             </button>
                         ) : (
                             /* ink-400 (#8896a8, AA normal) — ink-600 n'existe pas dans la palette (héritait la couleur parente). */

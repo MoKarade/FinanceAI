@@ -52,6 +52,14 @@ export interface ChartTooltip<P> {
     freezeOn: (point: P | null) => void;
     /** Libère (retour idle). */
     release: () => void;
+    /**
+     * [FUTUR-MOBILE-LAYOUT] Repositionne le tooltip MAINTENANT (no-op si docké). Nécessaire au
+     * basculement sheet ↔ flottant pendant un point FIGÉ (rotation d'écran) : le portail est
+     * REMONTÉ par `key`, le nouveau nœud flottant naît au style JSX initial (0,0) et l'effet
+     * interne ne se redéclenche pas (`point`/`mode` inchangés) — sans cet appel, l'infobulle
+     * restait plantée au coin de l'écran en silence.
+     */
+    reposition: () => void;
 }
 
 export function useChartTooltipPosition<P>({ getKey, containerRef, dockedRef }: UseChartTooltipOptions<P>): ChartTooltip<P> {
@@ -159,5 +167,5 @@ export function useChartTooltipPosition<P>({ getKey, containerRef, dockedRef }: 
         };
     }, [mode, release, containerRef]);
 
-    return { mode, point, tooltipRef, onPointerMove, onHoverPoint, onChartLeave, freezeOn, release };
+    return { mode, point, tooltipRef, onPointerMove, onHoverPoint, onChartLeave, freezeOn, release, reposition: applyPosition };
 }

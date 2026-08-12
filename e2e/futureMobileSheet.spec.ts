@@ -94,4 +94,34 @@ test.describe('Futur mobile — infobulle figée en bottom sheet', () => {
     await fermer.tap();
     await expect(sheet).toHaveCount(0);
   });
+
+  test('[FUTUR-MOBILE-LAYOUT] rotation pendant un point FIGÉ : le flottant est REPOSITIONNÉ, pas planté à (0,0)', async ({ page }) => {
+    // Finding ÉLEVÉ silent-failure #597 : au basculement sheet → flottant (rotation/agrandissement
+    // traversant 640px), le portail est REMONTÉ et le nouveau nœud naissait au style JSX initial
+    // (0,0) — l'effet interne du hook ne se redéclenchait pas (point/mode inchangés). Infobulle
+    // plantée au coin en silence. Aucun autre test ne peut l'attraper (jsdom = repli desktop).
+    const box = await chartBox(page);
+    const sheet = page.locator('[data-frozen-tooltip]');
+    const modal = page.getByRole('dialog', { name: 'Détail du mois' });
+    for (const [dx, dy] of [[box.width * 0.5, box.height * 0.78], [box.width * 0.3, box.height * 0.82], [box.width * 0.65, box.height * 0.75]] as Array<[number, number]>) {
+      await page.touchscreen.tap(box.x + dx, box.y + dy);
+      await page.waitForTimeout(500);
+      if (await modal.isVisible().catch(() => false)) {
+        await page.keyboard.press('Escape');
+        await modal.waitFor({ state: 'hidden', timeout: 2_000 }).catch(() => {});
+        continue;
+      }
+      if (await sheet.isVisible().catch(() => false)) break;
+    }
+    await expect(sheet).toBeVisible({ timeout: 5_000 });
+
+    // « Rotation » : le viewport passe en paysage large (> 640px) → mode flottant.
+    await page.setViewportSize({ width: 900, height: 700 });
+    await page.waitForTimeout(400);
+    await expect(sheet).toBeVisible(); // toujours figé
+    const fb = (await sheet.boundingBox())!;
+    // Repositionné par reposition() : ni collé au coin (0,0), ni pleine largeur.
+    expect(fb.x + fb.y).toBeGreaterThan(20);
+    expect(fb.width).toBeLessThan(400); // redevenu la boîte w-72, plus un sheet pleine largeur
+  });
 });

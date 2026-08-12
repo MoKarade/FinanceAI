@@ -68,7 +68,7 @@ import { StressTestPanel } from './projection/StressTestPanel';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
-import { isoDate, todayIsoLocal, daysInMonth, finiteAnchorRun, calendarFromMonthIndex, axisXAtDay, dailyWindowRange } from '../services/projection/dailyRefine';
+import { isoDate, todayIsoLocal, daysInMonth, finiteAnchorRun, calendarFromMonthIndex, axisXAtDay, dailyWindowRange, centeredWindowRange } from '../services/projection/dailyRefine';
 import { buildDailyLedger, type DailyLedgerPoint } from '../services/projection/dailyLedger';
 import { buildDailyPastLedger, PAST_ACCOUNT_KEYS } from '../services/history/dailyPastLedger';
 import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
@@ -864,15 +864,23 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         if (!p) return;
         const host = (p as unknown as DailyChartPoint).hostMonthIndex ?? p.monthIndex;
         const idx = (displayData as ProjectionChartPoint[]).findIndex((d) => d.monthIndex === host);
-        if (idx === -1) return;
-        const len = displayData.length;
-        // Même largeur que le bouton « Jour » (DAILY_CURVE_MAX_POINTS points visibles), mais centrée
-        // sur le mois CLIQUÉ. Clamp aux bornes du tableau — près des bords la fenêtre glisse au lieu
-        // de rétrécir (une fenêtre plus étroite resterait au jour, mais surprendrait).
-        const lo = Math.max(0, Math.min(idx - Math.floor((DAILY_CURVE_MAX_POINTS - 1) / 2), len - DAILY_CURVE_MAX_POINTS));
-        const hi = Math.min(len - 1, lo + DAILY_CURVE_MAX_POINTS - 1);
+        // ⚠️ Pas de no-op MUET (finding silent-failure #589) : si le mois figé n'existe plus dans
+        // `displayData` (course étroite — un intrant du préfixe passé a changé pendant que
+        // l'infobulle restait figée), un retour silencieux recréerait exactement la classe
+        // « je clique et rien ne se passe » que ce bouton corrige. On journalise et on LIBÈRE
+        // l'infobulle : l'écran répond, même quand il ne peut pas zoomer.
+        if (idx === -1) {
+            logError({ source: 'ui', severity: 'warning', message: 'FUTUR-DAILY-SELECT-PATH : mois figé absent de la fenêtre courante', context: { host } });
+            tooltip.release();
+            return;
+        }
+        // Fenêtrage par le helper PUR testé (`centeredWindowRange`, finding revue #589 : la version
+        // inline re-codait le clamp sans test de bord) — même largeur que le bouton « Jour »,
+        // centrée sur le mois CLIQUÉ.
+        const range = centeredWindowRange(displayData.length, idx, DAILY_CURVE_MAX_POINTS);
+        if (range === null) return; // jeu trop court pour une fenêtre : la vue au jour n'existe pas ici
         tooltip.release(); // le point figé est mensuel — le garder figé au-dessus d'une courbe au jour mentirait
-        zoom.showRange(lo, hi);
+        zoom.showRange(range[0], range[1]);
     }, [displayData, tooltip, zoom]);
 
     // [FUTUR-DAILY-SELECT-STEP] Depuis un point QUOTIDIEN figé : figer la veille / le lendemain sans

@@ -18,6 +18,12 @@
 >   capture de Marc qui a tranché le symptôme (infobulle mensuelle en vue large).
 > - Leçon portée dans CONVENTIONS (règle raffinée : le raccourci doit être offert AU MOMENT DE
 >   L'INTENTION, pas ailleurs sur l'écran).
+> - **Findings du panel (3 agents), tous corrigés dans la même PR** : no-op MUET de `zoomToDaysAt`
+>   quand le mois figé a disparu de la fenêtre (→ logError + libération) ; label-in-name WCAG 2.5.3
+>   (aria-label qui REMPLAÇAIT « Veille »/« Lendemain » → contient maintenant le texte visible,
+>   tests verrouillés par /Veille|Lendemain/) ; `focus-ring` manquant sur les 4 boutons du pied
+>   (dont « Détail complet », lacune préexistante) ; fenêtrage extrait en helper PUR testé
+>   (`centeredWindowRange`, 5 tests de bord — la version inline re-codait le clamp sans test).
 > - Resté OUVERT : `[FUTUR-DAILY-TOUCH]` (pincement) — Marc n'a toujours pas dit s'il est au doigt ;
 >   si oui, le zoom libre reste impossible sur téléphone (les nouveaux boutons couvrent le cas
 >   sélection, pas la navigation libre).

@@ -301,7 +301,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                         <button
                             type="button"
                             onClick={onZoomToDays}
-                            className="w-full inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-2 py-2.5 transition-colors"
+                            className="focus-ring w-full inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-2 py-2.5 transition-colors"
                         >
                             Voir ce mois jour par jour →
                         </button>
@@ -311,12 +311,16 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                         n'existe pas. */}
                     {isDailyPoint && onStepDay && (
                         <div className="flex items-center gap-2">
+                            {/* ⚠️ [a11y, WCAG 2.5.3 label-in-name — finding panel #589] L'aria-label
+                                CONTIENT le texte visible (« Veille », « Lendemain ») : un aria-label
+                                de remplacement (« Jour précédent » seul) casserait la commande vocale
+                                — « clique Veille » ne trouverait aucun bouton de ce nom. */}
                             <button
                                 type="button"
                                 onClick={() => onStepDay(-1)}
                                 disabled={!canStepPrev}
-                                aria-label="Jour précédent"
-                                className="flex-1 inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 disabled:opacity-35 disabled:pointer-events-none border border-white/20 rounded-lg px-2 py-2.5 transition-colors"
+                                aria-label="Veille (jour précédent)"
+                                className="focus-ring flex-1 inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 disabled:opacity-35 disabled:pointer-events-none border border-white/20 rounded-lg px-2 py-2.5 transition-colors"
                             >
                                 ← Veille
                             </button>
@@ -324,8 +328,8 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                                 type="button"
                                 onClick={() => onStepDay(1)}
                                 disabled={!canStepNext}
-                                aria-label="Jour suivant"
-                                className="flex-1 inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 disabled:opacity-35 disabled:pointer-events-none border border-white/20 rounded-lg px-2 py-2.5 transition-colors"
+                                aria-label="Lendemain (jour suivant)"
+                                className="focus-ring flex-1 inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 disabled:opacity-35 disabled:pointer-events-none border border-white/20 rounded-lg px-2 py-2.5 transition-colors"
                             >
                                 Lendemain →
                             </button>
@@ -335,7 +339,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                         <button
                             type="button"
                             onClick={onOpenDetail}
-                            className="flex-1 inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-primary bg-primary/15 hover:bg-primary/25 border border-primary/30 rounded-lg px-2 py-2.5 transition-colors"
+                            className="focus-ring flex-1 inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-primary bg-primary/15 hover:bg-primary/25 border border-primary/30 rounded-lg px-2 py-2.5 transition-colors"
                         >
                             Détail complet →
                         </button>

@@ -204,7 +204,7 @@ test.describe('Futur — sélection d’un JOUR sur la courbe', () => {
 
     // 4. « Lendemain » avance d'EXACTEMENT un jour — la sélection fine ne demande plus de viser
     //    au pixel (un jour ≈ 6 px à ~150 jours affichés, mesuré à la sonde).
-    await frozen.getByRole('button', { name: 'Jour suivant' }).click();
+    await frozen.getByRole('button', { name: /Lendemain/ }).click();
     await expect(frozen).toBeVisible();
     const d2 = ((await frozen.textContent()) ?? '').match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
     expect(d2).not.toBeNull();

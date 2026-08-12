@@ -9,6 +9,7 @@ import { describe, it, expect } from 'vitest';
 import {
     axisXAtDay,
     dailyWindowRange,
+    centeredWindowRange,
     finiteAnchorRun,
     daysInMonth,
     calendarFromMonthIndex,
@@ -210,5 +211,39 @@ describe('dailyWindowRange — la vue au jour doit être ATTEIGNABLE en un clic'
         expect(dailyWindowRange(400, NaN, 6)).toBeNull();
         expect(dailyWindowRange(400, 10, NaN)).toBeNull();
         expect(dailyWindowRange(400, 10, 1)).toBeNull();
+    });
+});
+
+// [FUTUR-DAILY-SELECT-PATH] Fenêtre CENTRÉE sur le mois CLIQUÉ (bouton « Voir ce mois jour par
+// jour » de l'infobulle figée). Finding revue #589 : la première version vivait en ligne dans le
+// composant, clamp re-codé sans test de bord — l'e2e ne cliquait jamais près des bornes réelles.
+describe('centeredWindowRange — le zoom « Voir ce mois jour par jour » près des bords', () => {
+    it('centre la fenêtre sur l’index demandé (2 mois avant, 3 après pour 6 points)', () => {
+        expect(centeredWindowRange(400, 20, 6)).toEqual([18, 23]);
+    });
+
+    it('bord GAUCHE : cliquer le premier mois colle la fenêtre au début sans sortir du tableau', () => {
+        expect(centeredWindowRange(400, 0, 6)).toEqual([0, 5]);
+        expect(centeredWindowRange(400, 1, 6)).toEqual([0, 5]);
+    });
+
+    it('bord DROIT : cliquer le dernier mois colle la fenêtre à la fin sans sortir du tableau', () => {
+        expect(centeredWindowRange(400, 399, 6)).toEqual([394, 399]);
+    });
+
+    it('rend toujours une fenêtre de la longueur demandée (c’est elle qui active la vue au jour)', () => {
+        for (const center of [0, 3, 200, 396, 399]) {
+            const r = centeredWindowRange(400, center, 6)!;
+            expect(r[1] - r[0] + 1, `center=${center}`).toBe(6);
+        }
+    });
+
+    it('refuse les cas dégénérés (fenêtre ≥ tableau, entrées non finies) — comme dailyWindowRange', () => {
+        // `showRange(0, len-1)` serait normalisé en vue COMPLÈTE par le hook → vue au jour jamais
+        // activée : un clic sans effet. On rend null, l'appelant ne zoome pas.
+        expect(centeredWindowRange(6, 3, 6)).toBeNull();
+        expect(centeredWindowRange(NaN, 3, 6)).toBeNull();
+        expect(centeredWindowRange(400, NaN, 6)).toBeNull();
+        expect(centeredWindowRange(400, 3, 1)).toBeNull();
     });
 });

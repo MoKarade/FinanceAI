@@ -160,8 +160,11 @@ describe('ExpertTooltip — chemins de sélection du jour (pied figé)', () => {
     it('jour FIGÉ : « Veille » et « Lendemain » sélectionnent le jour voisin (−1 / +1)', () => {
         const onStepDay = vi.fn();
         render(<ExpertTooltip data={dayPoint({ isDailyPoint: true })} frozen onStepDay={onStepDay} canStepPrev canStepNext />);
-        fireEvent.click(screen.getByRole('button', { name: 'Jour précédent' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Jour suivant' }));
+        // ⚠️ [WCAG 2.5.3 label-in-name — finding a11y #589] Le nom accessible DOIT contenir le texte
+        // visible : ces requêtes par /Veille|Lendemain/ verrouillent qu'un futur aria-label de
+        // REMPLACEMENT (« Jour précédent » seul) casserait le test comme il casserait Dragon.
+        fireEvent.click(screen.getByRole('button', { name: /Veille/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Lendemain/ }));
         expect(onStepDay).toHaveBeenNthCalledWith(1, -1);
         expect(onStepDay).toHaveBeenNthCalledWith(2, 1);
     });
@@ -171,7 +174,7 @@ describe('ExpertTooltip — chemins de sélection du jour (pied figé)', () => {
         expect(screen.queryByRole('button', { name: /Voir ce mois jour par jour/ })).toBeNull();
         // ⚠️ Un bouton de borne DÉSACTIVÉ (pas absent) : le pied garde sa géométrie, et le lecteur
         // d'écran comprend qu'il n'y a simplement pas de veille dans la fenêtre.
-        expect(screen.getByRole('button', { name: 'Jour précédent' })).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'Jour suivant' })).toBeEnabled();
+        expect(screen.getByRole('button', { name: /Veille/ })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /Lendemain/ })).toBeEnabled();
     });
 });

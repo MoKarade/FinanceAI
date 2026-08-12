@@ -132,14 +132,8 @@ export const PAGE_SETUP: Partial<Record<Tab, PageSetup>> = {
         optOut: { key: 'lifeProjects', label: "Aucun projet pour l'instant" },
         allowCreateInPage: true,
     },
-    [Tab.DASHBOARD]: {
-        mode: 'hard',
-        title: "Vue d'ensemble",
-        intro:
-            "Pour un aperçu utile (et non un tableau de bord vide), il me faut au moins ton salaire. " +
-            'Saisis-le, importe un talon, ou explore avec des données de test.',
-        requirementIds: ['salary'],
-    },
+    // [REFONTE-NAV-L2b] Tab.DASHBOARD retiré : l'Accueil est supprimé (deep-link #DASHBOARD → #FUTURE),
+    // plus aucune page à gater ni carte SetupHub à afficher pour cet onglet.
     [Tab.ASSISTANT]: {
         mode: 'hard',
         title: 'Assistant IA',

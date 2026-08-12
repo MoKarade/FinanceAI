@@ -14,7 +14,7 @@
 // Couverture P2.1 :
 //   - Onboarding (entrée, props-driven)
 //   - SystemView (admin, props-driven)
-//   - Dashboard avec empty state (rend EmptyDataPrompt)
+//   - FutureHistorySection avec empty state (ex-Accueil, [REFONTE-NAV-L2b])
 //   - TaxBracketViz (display)
 //   - PageHeader / EmptyState / Modal (déjà via primitives, redondant)
 
@@ -114,24 +114,16 @@ describe('a11y pages (vitest-axe)', () => {
         await expectNoSeriousViolations(container);
     });
 
-    it('Dashboard (empty state) — aucune violation serious/critical', async () => {
-        const { Dashboard } = await import('../../components/Dashboard');
-        const { container } = render(
-            <Dashboard
-                transactions={[]}
-                assets={[]}
-                initialBalances={{}}
-                budgetItems={[]}
-                realEstateGoals={[]}
-                childGoals={[]}
-                travelGoals={[]}
-                lifeEvents={[]}
-                retirementGoal={emptyState.retirementGoal}
-                debts={[]}
-                config={emptyConfig}
-                isPrivacyMode={false}
-            />
-        );
+    // [REFONTE-NAV-L2b] Dashboard supprimé — remplacé par le sous-onglet « Historique » du Futur.
+    // Même pattern : store vide → empty state honnête (« Aucun placement à tracer »).
+    it('FutureHistorySection (empty state) — aucune violation serious/critical', async () => {
+        const { useFinanceStore } = await import('../../store/useFinanceStore');
+        useFinanceStore.setState({
+            transactions: [], assets: [], initialBalances: {}, debts: [],
+            realEstateGoals: [], isPrivacyMode: false, isTestMode: false,
+        } as never);
+        const { default: FutureHistorySection } = await import('../../components/future/FutureHistorySection');
+        const { container } = render(<FutureHistorySection />);
         await expectNoSeriousViolations(container);
     });
 });

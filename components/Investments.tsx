@@ -41,6 +41,10 @@ import { ImportBrokerPositions } from './investments/ImportBrokerPositions';
 import { computePurchaseStats } from '../utils/assetPurchases';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { NetWorthByOwnerCard } from './investments/NetWorthByOwnerCard';
+// [REFONTE-NAV-L2b] Comparaison multi-titres (ex-Accueil Phase D.4) — la modale vit
+// désormais dans components/investments/, son seul consommateur restant est ici (+ l'ex-
+// Dashboard jusqu'à sa suppression à l'intégration).
+import { StockComparisonModal } from './investments/StockComparisonModal';
 import { BrokerReconciliationCard } from './investments/BrokerReconciliationCard';
 import { CeliAssetNudge } from './CeliAssetNudge';
 import { PrivateAmount } from './ui/PrivateAmount';
@@ -214,6 +218,33 @@ export const Investments: React.FC<InvestmentsProps> = ({
     const [showAddStockForm, setShowAddStockForm] = useState(false);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // suppression de position (2 clics)
     const [showImportBroker, setShowImportBroker] = useState(false);
+    // [REFONTE-NAV-L2b] Comparaison multi-titres (ex-Accueil Phase D.4) : mode sélection dans le
+    // sous-onglet Détail. « Comparer » arme le mode → cases à cocher sur les cartes → « Voir
+    // courbe » (1 titre) / « Comparer (N) » (2+) ouvre la modale superposée (base 100).
+    // Mode EXPLICITE (≠ Accueil où les cases étaient permanentes) : les cartes Détail portent déjà
+    // selects/suppression — des cases permanentes ajouteraient une cible cliquable de plus partout.
+    const [isCompareMode, setIsCompareMode] = useState(false);
+    const [selectedCompareSymbols, setSelectedCompareSymbols] = useState<Set<string>>(new Set());
+    const [showComparisonModal, setShowComparisonModal] = useState(false);
+    const toggleCompareSymbol = (symbol: string) => {
+        setSelectedCompareSymbols(prev => {
+            const next = new Set(prev);
+            if (next.has(symbol)) next.delete(symbol); else next.add(symbol);
+            return next;
+        });
+    };
+    const exitCompareMode = () => {
+        setIsCompareMode(false);
+        setSelectedCompareSymbols(new Set());
+    };
+    // [INV-COMPARE-SUBTAB] Le mode comparaison est une UI du sous-onglet Détail : en sortir le
+    // désarme. Sinon l'état survivrait en SILENCE (cases cochées invisibles depuis Overview/
+    // Allocation) et « Détail » rouvrirait un mode que l'utilisateur croyait quitté.
+    useEffect(() => {
+        if (subTab === 'detail') return;
+        setIsCompareMode(false);
+        setSelectedCompareSymbols(new Set());
+    }, [subTab]);
 
     // --- INSTANT DATA LOAD ---
     // Sprint 3B M3 + test-mode-complet : utilise usePortfolioHistory hook qui
@@ -1158,6 +1189,32 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     >
                         {isRefreshingPrices ? 'Actualisation…' : 'Actualiser les cours'}
                     </button>
+                    {/* [REFONTE-NAV-L2b] Comparaison multi-titres (ex-Accueil).
+                        [A11Y-COMPARE-FOCUS] UN SEUL bouton bascule PERSISTANT (libellé/action
+                        changent, aria-pressed) : l'ancien ternaire démontait le bouton au toggle
+                        → focus clavier perdu vers <body> (mesuré). Un élément qui persiste garde
+                        le focus PAR CONSTRUCTION — pas de restauration manuelle à maintenir. */}
+                    {isCompareMode && (
+                        selectedCompareSymbols.size > 0 ? (
+                            <button
+                                type="button"
+                                onClick={() => setShowComparisonModal(true)}
+                                className="touch-target inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary text-tiny font-bold rounded-card transition-colors focus-ring"
+                            >
+                                <Icon name="chart" size={14} />{selectedCompareSymbols.size === 1 ? 'Voir courbe' : `Comparer (${selectedCompareSymbols.size})`}
+                            </button>
+                        ) : (
+                            <span className="text-tiny text-ink-400 italic">Coche pour comparer</span>
+                        )
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => (isCompareMode ? exitCompareMode() : setIsCompareMode(true))}
+                        aria-pressed={isCompareMode}
+                        className="touch-target px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/40 text-ink-200 text-tiny font-bold rounded-card transition-colors focus-ring"
+                    >
+                        {isCompareMode ? 'Quitter la comparaison' : 'Comparer'}
+                    </button>
                     <button
                         type="button"
                         onClick={() => setShowImportBroker(true)}
@@ -1189,15 +1246,44 @@ export const Investments: React.FC<InvestmentsProps> = ({
                     // désormais en CAD ([ASSET-FX-DISPLAY]) : mélanger CAD et natif fausserait le gain.
                     // (L'ancien `asset.value / quantity` était une identité du prix natif — plus maintenant.)
                     const purchaseStats = savedAsset ? computePurchaseStats(savedAsset) : null;
+                    // [REFONTE-NAV-L2b] Sélection pour la comparaison superposée (mode « Comparer »).
+                    const isCompareSelected = selectedCompareSymbols.has(asset.id);
 
                     return (
-                        <div key={asset.id} className="premium-card border border-white/5 hover:border-white/20 p-5 rounded-2xl transition-all group relative overflow-hidden flex flex-col justify-between animate-premium-in shadow-xl">
+                        <div key={asset.id} className={`premium-card border p-5 rounded-2xl transition-all group relative overflow-hidden flex flex-col justify-between animate-premium-in shadow-xl ${
+                            isCompareMode && isCompareSelected ? 'border-primary/40 bg-primary/10' : 'border-white/5 hover:border-white/20'
+                        }`}>
                             {/* Background Gradient based on sector */}
                             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/10 to-transparent -mr-8 -mt-8 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
 
                             <div>
                                 <div className="flex justify-between items-start mb-4 relative z-10">
                                     <div className="flex items-center gap-3">
+                                        {/* [REFONTE-NAV-L2b] Case de sélection (mode Comparer uniquement) —
+                                            même visuel que l'ex-Accueil, mais bouton DÉDIÉ : la carte porte
+                                            déjà selects/suppression, un clic-carte serait ambigu. */}
+                                        {isCompareMode && (
+                                            // [A11Y-TOUCH] Surface tactile 44px (patron Planning.tsx :
+                                            // .touch-target sur le bouton, visuel 16px DANS un span).
+                                            // Marge négative : la zone cliquable déborde sans pousser
+                                            // la mise en page de la carte.
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleCompareSymbol(asset.id)}
+                                                aria-pressed={isCompareSelected}
+                                                aria-label={`Comparer ${asset.name}`}
+                                                className="touch-target -m-3 flex items-center justify-center shrink-0 focus-ring rounded"
+                                            >
+                                                <span
+                                                    aria-hidden="true"
+                                                    className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                                                        isCompareSelected ? 'bg-primary border-primary' : 'border-white/20 hover:border-white/40'
+                                                    }`}
+                                                >
+                                                    {isCompareSelected && <Icon name="check" size={11} className="text-dark" />}
+                                                </span>
+                                            </button>
+                                        )}
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-meta font-bold text-white shadow-lg border border-white/10" style={{ backgroundColor: COLORS_SECTOR[asset.sector] || '#333' }}>
                                             {asset.name.substring(0, 2).toUpperCase()}
                                         </div>
@@ -1314,6 +1400,15 @@ export const Investments: React.FC<InvestmentsProps> = ({
             </div>
             </CollapsibleSection>
             </>}
+
+            {/* [REFONTE-NAV-L2b] Modale de comparaison superposée (ex-Accueil Phase D.4) :
+                1 titre → mode PRIX ; 2+ → base 100 (%) par défaut (toggle interne à StockChart). */}
+            <StockComparisonModal
+                symbols={Array.from(selectedCompareSymbols)}
+                isOpen={showComparisonModal}
+                onClose={() => setShowComparisonModal(false)}
+                isPrivacyMode={isPrivacyMode}
+            />
 
             {/* Phase E.9 — Modal d'ajout manuel */}
             <AddStockForm

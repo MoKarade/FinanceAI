@@ -601,7 +601,8 @@
     Futur·Transactions·Assistant·Plus. Critère : rien de perdu.
   - [ ] `[REFONTE-NAV-L2]` Lot 2 — Futur enrichi, SCINDÉ 2a/2b (2026-08-12). ⚠️ Hypothèse du
     plan périmée : les paramètres de projection étaient DÉJÀ dans le sous-onglet « Hypothèses »
-    du Futur (PH4-FUT) — rien à rapatrier.
+    du Futur (PH4-FUT) — rien à rapatrier. Les DEUX moitiés livrées → fermer (et archiver) au
+    merge de la PR 2b.
     - [x] `[REFONTE-NAV-L2a]` bannière import gelé → Futur · tuile « Variation 30 j »
       (`hooks/useNetWorthVariation`, fenêtre fixe 30 j, « — » si < 2 points ; itération panel
       #601 : périmètre « liquide + placements » PAR CONSTRUCTION — les termes immo/dettes
@@ -609,9 +610,13 @@
       « sur N j de données » si couverture < 30 j, tx sans compte incluses via bucket
       synthétique) · équité immo incluse ET étiquetée au patrimoine du bandeau · libellé
       « Monte Carlo (N itér.) » au nombre RÉEL (source unique `effectiveMcIterations`).
-    - [ ] `[REFONTE-NAV-L2b]` sous-onglet historique (graphe d'évolution + sélecteur de
-      fenêtre complet — la fonction pure du hook est déjà paramétrée en jours) + déménagement
-      de la comparaison d'actions + SUPPRESSION de `Dashboard.tsx`.
+    - [x] `[REFONTE-NAV-L2b]` ✅ 2026-08-12 (PR à venir) : 4e sous-onglet « Historique » du
+      Futur (`components/future/FutureHistorySection.tsx`, lazy — graphe d'évolution par
+      compte + sélecteur de fenêtre complet, clés localStorage `dashboard:*` conservées) ·
+      comparaison d'actions déménagée dans Investissements (mode « Comparer »,
+      `StockComparisonModal` → `components/investments/`) · `Dashboard.tsx` SUPPRIMÉ
+      (gate PAGE_SETUP retiré ; enum + TAB_LABELS + redirect #DASHBOARD→#FUTURE conservés
+      pour la compat deep-link).
   - [ ] `[REFONTE-NAV-L3]` Lot 3 — Configurations fusionnées (split immo/invest actuel vs projets,
     inclut `[DEBT-FROM-CONTRACT]`).
   - [ ] `[REFONTE-NAV-L4]` Lot 4 — Vie fusionnée (retraite, enfants, projets, voyages, événements).

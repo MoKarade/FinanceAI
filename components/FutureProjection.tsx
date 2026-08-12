@@ -88,10 +88,10 @@ import { CollapsibleSection } from './ui/CollapsibleSection';
 import { applyConfigToSettings, type StrategyConfig } from '../services/projection/strategyConfig';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { isoDate, todayIsoLocal, finiteAnchorRun, calendarFromMonthIndex } from '../services/projection/dailyRefine';
-import { mergeDailyRealPoint, recomputeDailyDiffs, sliceDailyRangeByX, decimateForRender, realOnlyMonthPoints, buildEnrichedMonth } from '../services/projection/dailyCurve';
+import { mergeDailyRealPoint, sliceDailyRangeByX, decimateForRender, realOnlyMonthPoints, buildEnrichedMonth } from '../services/projection/dailyCurve';
 import { centeredWindowRange } from '../services/projection/dailyRefine';
 import { buildDailyLedger, type DailyLedgerPoint } from '../services/projection/dailyLedger';
-import { buildDailyPastLedger, PAST_ACCOUNT_KEYS } from '../services/history/dailyPastLedger';
+import { buildDailyPastLedger } from '../services/history/dailyPastLedger';
 import { reconstructRealEstateEquityByYear } from '../services/history/reconstructRealEstateEquity';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 import { formatCAD, formatCompactCAD } from '../utils/format';
@@ -795,19 +795,23 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
      * Même moteur (`buildDailyLedger`), mêmes entrées que la courbe → aucune divergence possible
      * (garde-test de parité). Le merge passé réel passe par la MÊME fonction que la courbe.
      */
-    const enrichCacheRef = useRef<Map<number, Map<string, ProjectionChartPoint>>>(new Map());
-    const enrichFailLoggedRef = useRef<Set<number>>(new Set());
-    useEffect(() => {
-        enrichCacheRef.current = new Map();
-        enrichFailLoggedRef.current = new Set();
-    }, [displayData, dailyDated, dailyPastByDate, startYear, startMonth]);
+    // ⚠️ `useMemo` et NON `useRef`+`useEffect` de purge (finding revue #592) : un effet s'exécute
+    // APRÈS la peinture — entre le rendu sur de nouvelles données et l'effet, un mousemove pouvait
+    // servir une entrée calculée sur les ANCIENNES données. Le useMemo se recrée PENDANT le rendu :
+    // la fenêtre de staleness n'existe pas, par construction.
+    const enrichCache = useMemo(() => ({
+        byHost: new Map<number, Map<string, ProjectionChartPoint>>(),
+        failLogged: new Set<number>(),
+        // Les deps SONT les entrées de l'enrichissement — un cache qui survivrait à l'une d'elles
+        // servirait des montants périmés.
+    }), [displayData, dailyDated, dailyPastByDate, startYear, startMonth]);
     const enrichDailyPoint = useCallback((p: ProjectionChartPoint | null): ProjectionChartPoint | null => {
         if (!p) return null;
         const dp = p as unknown as DailyChartPoint;
         const host = dp.hostMonthIndex;
         const iso = dp.dayIso;
         if (typeof host !== 'number' || typeof iso !== 'string') return p; // pas un jour de la courbe
-        const cached = enrichCacheRef.current.get(host);
+        const cached = enrichCache.byHost.get(host);
         if (cached) return cached.get(iso) ?? p;
 
         // ⚠️ Toute la construction (y compris le cas ANCRE hostIdx=0, ventilé du réel seul) vit
@@ -822,15 +826,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             dailyPastByDate, dailyDated, buildDailyLedger as never,
         );
         if (byIso === null) {
-            if (!enrichFailLoggedRef.current.has(host)) {
-                enrichFailLoggedRef.current.add(host);
+            if (!enrichCache.failLogged.has(host)) {
+                enrichCache.failLogged.add(host);
                 logError({ source: 'ui', severity: 'warning', message: 'FUTUR-DAILY-NATIVE : enrichissement du mois impossible, infobulle en champs réduits', context: { host } });
             }
             return p;
         }
-        enrichCacheRef.current.set(host, byIso);
+        enrichCache.byHost.set(host, byIso);
         return byIso.get(iso) ?? p;
-    }, [displayData, startYear, startMonth, dailyDated, dailyPastByDate]);
+    }, [displayData, startYear, startMonth, dailyDated, dailyPastByDate, enrichCache]);
 
     /**
      * Point à passer à la modale « Détail complet ».

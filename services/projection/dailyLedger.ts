@@ -376,7 +376,8 @@ export interface BuildDailyLedgerInput {
      * 10 988 points). La COURBE ne trace qu'une quinzaine de champs ; l'infobulle, elle, se ventile
      * à la demande sur le mois survolé via cette MÊME fonction sans `fields`. Un champ donné passe
      * donc par le même code et les mêmes entrées dans les deux chemins — c'est ce qui interdit
-     * toute divergence courbe/infobulle (test de parité `dailyLedger.fields.test.ts`).
+     * toute divergence courbe/infobulle (test de parité : `tests/services/dailyCurve.test.ts`,
+     * describe « PARITÉ courbe légère ↔ infobulle complète »).
      * Les champs d'IDENTITÉ du jour (dayIso, dateLabel, dayIsDated…) et les recalculés demandés
      * sont toujours émis ; les `diff*` ne le sont que si leur champ source est retenu.
      */

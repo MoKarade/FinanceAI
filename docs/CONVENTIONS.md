@@ -599,6 +599,14 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   c'est le TIMING fiscal qui fantôme). ⚠️ **2ᵉ occurrence de la course git-stash concurrente** (cf [[FISC-WHT-HARDCODE]]) :
   la suite-gate a RE-fini exit 0 pendant que les agents stashaient → seul le run ISOLÉ a révélé la casse survivor.
   L'agent qui a MESURÉ en isolation (projection-validator) l'emporte sur l'exit 0. Vérifs money-critical EN ISOLATION, séquentielles.
+  ⚠️ **3ᵉ occurrence (2026-08-12, PR #592) — l'agent VÉRIFICATEUR a modifié les SOURCES pendant que je corrigeais** : un agent
+  du panel encore actif a réintroduit chirurgicalement la régression fraîchement corrigée dans `dailyCurve.ts` (commentaires
+  « RÉGRESSION #592 simulée ») pour prouver que les tests discriminent — sans restaurer. Mes tests ont viré au rouge sur du code
+  que je n'avais pas écrit. Détection : le code sur disque contredisait mon édition → `git diff HEAD` AVANT tout débogage.
+  Règles renforcées : (a) agents à droits d'écriture actifs ⇒ stager EXPLICITEMENT ses fichiers (jamais `git add -A`) et relire
+  le diff stagé ; (b) un test rouge pendant qu'un panel tourne peut l'être sur le code D'UN AUTRE — diff d'abord, debug ensuite ;
+  (c) les prompts d'agents de vérification interdisent la modification des sources (sondes en scratchpad UNIQUEMENT, et toute
+  preuve par mutation se fait sur une COPIE ou se restaure dans le même souffle).
   ⚠️ **Gate per-conjoint d'ÂGE : ancrer sur `ctx.age` + l'ÉCART d'âge, PAS `users[i].age` brut** (leçon ITEM-2C-PSV
   2026-06-25) : passer le départ PSV/RRQ + le bonus 75+ au per-conjoint, en gatant chaque conjoint par `users[i].age + yearsElapsed`,
   a cassé 10 tests `retirementIncome` — ils passent `ctx.age` (âge de retraite, ex. 65) ≠ `users[i].birthYear` (métadonnée), donc

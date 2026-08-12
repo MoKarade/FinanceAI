@@ -68,9 +68,6 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
     userName2?: string;
     frozen?: boolean;
     onOpenDetail?: () => void;
-    /** [FUTUR-DAILY-SELECT-PATH] Point MENSUEL figé : zoome la fenêtre sur CE mois → vue au jour.
-     *  Offert au moment de l'intention (Marc cliquait un mois en voulant un jour — capture
-     *  « mai 2027 », 2026-08-12) au lieu d'exiger de connaître le seuil de zoom. */
     /** Point QUOTIDIEN figé : sélectionner le jour voisin (−1 = veille, +1 = lendemain) sans
      *  re-viser au pixel — à ~150 jours affichés, un jour fait ~6 px (mesuré). */
     onStepDay?: (dir: -1 | 1) => void;

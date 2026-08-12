@@ -367,6 +367,20 @@ export interface BuildDailyLedgerInput {
     startYear: number;
     startMonth: number;
     dated: DatedContextInput;
+    /**
+     * [FUTUR-DAILY-NATIVE] Restriction OPTIONNELLE aux champs listés (stocks/flux/monthly). Absent =
+     * tout le contrat, comme avant.
+     *
+     * ⚠️ POURQUOI CETTE OPTION EXISTE — c'est une contrainte MESURÉE, pas une préférence : la
+     * ventilation COMPLÈTE (99 champs) de 30 ans coûte ~1,3 s et ~180 Mo de tas (bench 2026-08-12,
+     * 10 988 points). La COURBE ne trace qu'une quinzaine de champs ; l'infobulle, elle, se ventile
+     * à la demande sur le mois survolé via cette MÊME fonction sans `fields`. Un champ donné passe
+     * donc par le même code et les mêmes entrées dans les deux chemins — c'est ce qui interdit
+     * toute divergence courbe/infobulle (test de parité `dailyLedger.fields.test.ts`).
+     * Les champs d'IDENTITÉ du jour (dayIso, dateLabel, dayIsDated…) et les recalculés demandés
+     * sont toujours émis ; les `diff*` ne le sont que si leur champ source est retenu.
+     */
+    fields?: ReadonlySet<string>;
 }
 
 /** Libellé d'un jour : « lun. 14/09/2026 ».
@@ -376,10 +390,15 @@ export interface BuildDailyLedgerInput {
  *  le // ») : un mois abrégé (« 14 sept. 2026 ») ressemble encore au libellé mensuel d'un coup
  *  d'œil. Les barres obliques, elles, ne laissent aucun doute sur la granularité.
  *  Le jour de la SEMAINE est gardé : la paie tombe le jeudi, et le voir rend la marche lisible. */
+// [FUTUR-DAILY-NATIVE] Table des 7 noms de jours, construite UNE fois PAR `toLocaleDateString`
+// (même source qu'avant — pas de liste re-codée à la main qui dériverait du locale). Mesuré : l'appel
+// `toLocaleDateString` par jour dominait la ventilation de 30 ans (~800 ms pour 11 000 jours) ; la
+// table le remplace par un accès indexé sur `getUTCDay()`. 2026-01-04 est un dimanche (index 0).
+const WEEKDAY_SHORT_FR: ReadonlyArray<string> = Array.from({ length: 7 }, (_, i) =>
+    new Date(Date.UTC(2026, 0, 4 + i)).toLocaleDateString('fr-CA', { weekday: 'short', timeZone: 'UTC' }));
+
 export function dayLabel(year: number, month: number, day: number): string {
-    const weekday = new Date(Date.UTC(year, month, day)).toLocaleDateString('fr-CA', {
-        weekday: 'short', timeZone: 'UTC',
-    });
+    const weekday = WEEKDAY_SHORT_FR[new Date(Date.UTC(year, month, day)).getUTCDay()];
     const dd = String(day).padStart(2, '0');
     const mm = String(month + 1).padStart(2, '0');
     return `${weekday} ${dd}/${mm}/${year}`;
@@ -400,8 +419,9 @@ const isPlainNumber = (v: unknown): v is number => typeof v === 'number' && Numb
  * Un champ absent du mois reste ABSENT du jour : l'infobulle affiche alors « — », jamais un 0.
  */
 export function buildDailyLedger(input: BuildDailyLedgerInput): DailyLedgerPoint[] {
-    const { months, startYear, startMonth, dated } = input;
+    const { months, startYear, startMonth, dated, fields } = input;
     if (months.length < 2) return [];
+    const wants = (key: string): boolean => !fields || fields.has(key);
 
     const out: DailyLedgerPoint[] = [];
 
@@ -446,7 +466,7 @@ export function buildDailyLedger(input: BuildDailyLedgerInput): DailyLedgerPoint
         const stocks = new Map<string, number[] | null>();
         for (const key of Object.keys(FIELD_KIND)) {
             if (FIELD_KIND[key] !== 'stock') continue;
-            if (!(key in cur)) continue;
+            if (!wants(key) || !(key in cur)) continue;
             stocks.set(key, stockSeries(
                 prev[key], cur[key], nDays,
                 datedDeltasForField(key, ctx),
@@ -457,7 +477,7 @@ export function buildDailyLedger(input: BuildDailyLedgerInput): DailyLedgerPoint
         // Séries de flux, champ par champ.
         const flows = new Map<string, number[]>();
         for (const key of Object.keys(cur)) {
-            if (FIELD_KIND[key] !== 'flow') continue;
+            if (FIELD_KIND[key] !== 'flow' || !wants(key)) continue;
             const total = Number(cur[key]);
             if (!Number.isFinite(total)) continue;
             const w = weightsFor(FLOW_CADENCE[key] ?? 'uniform');
@@ -470,7 +490,7 @@ export function buildDailyLedger(input: BuildDailyLedgerInput): DailyLedgerPoint
 
             // Caractéristiques du mois : recopiées telles quelles.
             for (const key of Object.keys(cur)) {
-                if (FIELD_KIND[key] === 'monthly') point[key] = cur[key];
+                if (FIELD_KIND[key] === 'monthly' && wants(key)) point[key] = cur[key];
             }
             for (const [key, series] of stocks) {
                 if (series) point[key] = series[i];

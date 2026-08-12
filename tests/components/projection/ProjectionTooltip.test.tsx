@@ -135,25 +135,13 @@ describe('ExpertTooltip — badge « Variation » : une absence n’est pas un z
     });
 });
 
-// [FUTUR-DAILY-SELECT-PATH / -STEP] Les deux chemins de sélection offerts DANS l'infobulle figée.
-//
-// Contexte (capture Marc 2026-08-12, « je peux pas selectionner de jour juste un mois ») : la vue
-// au jour exigeait de zoomer sous 6 mois AVANT de cliquer — un seuil que rien n'annonçait au moment
-// du clic (3e occurrence de la classe UX-UNREACHABLE sur ce chantier). Désormais :
-//   • un MOIS figé offre « Voir ce mois jour par jour » (zoom centré sur le mois cliqué) ;
-//   • un JOUR figé offre « Veille / Lendemain » (sélection au jour près sans re-viser au pixel —
-//     un jour ≈ 6 px à ~150 jours affichés, mesuré ; et utilisable au doigt, sans molette).
-describe('ExpertTooltip — chemins de sélection du jour (pied figé)', () => {
-    it('mois FIGÉ : « Voir ce mois jour par jour » est offert et déclenche le zoom', () => {
-        const onZoomToDays = vi.fn();
-        render(<ExpertTooltip data={pt({})} frozen onZoomToDays={onZoomToDays} />);
-        const btn = screen.getByRole('button', { name: /Voir ce mois jour par jour/ });
-        fireEvent.click(btn);
-        expect(onZoomToDays).toHaveBeenCalledTimes(1);
-    });
-
-    it('mois NON figé (survol) : aucun bouton — le tooltip de survol est passif', () => {
-        render(<ExpertTooltip data={pt({})} onZoomToDays={vi.fn()} />);
+// [FUTUR-DAILY-NATIVE] Sélection du jour DANS l'infobulle figée. Le bouton « Voir ce mois jour
+// par jour » ([FUTUR-DAILY-SELECT-PATH]) a été RETIRÉ : la courbe est au jour partout, le clic
+// sélectionne directement le jour. Restent les flèches « Veille / Lendemain » (sélection au jour
+// près sans re-viser au pixel — utilisables au doigt, sans molette).
+describe('ExpertTooltip — sélection du jour (pied figé)', () => {
+    it('le bouton « Voir ce mois jour par jour » n\'existe PLUS (courbe au jour native)', () => {
+        render(<ExpertTooltip data={pt({})} frozen />);
         expect(screen.queryByRole('button', { name: /Voir ce mois jour par jour/ })).toBeNull();
     });
 
@@ -169,9 +157,8 @@ describe('ExpertTooltip — chemins de sélection du jour (pied figé)', () => {
         expect(onStepDay).toHaveBeenNthCalledWith(2, 1);
     });
 
-    it('jour FIGÉ : pas de « Voir ce mois jour par jour » (on y est déjà) et bornes désactivées', () => {
-        render(<ExpertTooltip data={dayPoint({ isDailyPoint: true })} frozen onZoomToDays={vi.fn()} onStepDay={vi.fn()} canStepPrev={false} canStepNext />);
-        expect(screen.queryByRole('button', { name: /Voir ce mois jour par jour/ })).toBeNull();
+    it('jour FIGÉ : borne atteinte = bouton DÉSACTIVÉ (pas absent)', () => {
+        render(<ExpertTooltip data={dayPoint({ isDailyPoint: true })} frozen onStepDay={vi.fn()} canStepPrev={false} canStepNext />);
         // ⚠️ Un bouton de borne DÉSACTIVÉ (pas absent) : le pied garde sa géométrie, et le lecteur
         // d'écran comprend qu'il n'y a simplement pas de veille dans la fenêtre.
         expect(screen.getByRole('button', { name: /Veille/ })).toBeDisabled();
@@ -182,13 +169,13 @@ describe('ExpertTooltip — chemins de sélection du jour (pied figé)', () => {
 // [FUTUR-TOOLTIP-STICKY-ACTIONS] Le pied d'actions du tooltip FIGÉ est ÉPINGLÉ en bas.
 //
 // Pas du style : le tooltip défile en interne (`max-h-[480px] overflow-y-auto`) et avec des
-// données réelles le pied passait SOUS LE PLI — Marc ne voyait pas « Voir ce mois jour par jour »
-// alors qu'il était rendu (capture 2026-08-12). L'e2e n'a rien vu : Playwright scrolle l'élément
+// données réelles le pied passait SOUS LE PLI — Marc ne voyait pas les actions du pied
+// alors qu'elles étaient rendues (capture 2026-08-12, bouton d'époque depuis retiré par DAILY-NATIVE). L'e2e n'a rien vu : Playwright scrolle l'élément
 // en vue AVANT de cliquer. jsdom ne rend pas de layout → on verrouille l'INTENTION (les classes
 // sticky/bottom-0 + fond opaque), ce qui échoue sur le code d'avant (pied dans le flux).
 describe('ExpertTooltip — pied d’actions épinglé (visible sans défiler)', () => {
     it('FIGÉ : le conteneur des boutons est sticky bottom-0 avec un fond opaque', () => {
-        render(<ExpertTooltip data={pt({})} frozen onZoomToDays={vi.fn()} onOpenDetail={vi.fn()} />);
+        render(<ExpertTooltip data={pt({})} frozen onOpenDetail={vi.fn()} />);
         const footer = screen.getByRole('button', { name: /Détail complet/ }).closest('div.sticky');
         expect(footer).not.toBeNull();
         expect(footer!.className).toContain('bottom-0');
@@ -197,7 +184,7 @@ describe('ExpertTooltip — pied d’actions épinglé (visible sans défiler)',
     });
 
     it('SURVOL : pas de pied d’actions du tout (rien à épingler)', () => {
-        render(<ExpertTooltip data={pt({})} onZoomToDays={vi.fn()} />);
+        render(<ExpertTooltip data={pt({})} />);
         expect(screen.queryByRole('button', { name: /Détail complet/ })).toBeNull();
     });
 });

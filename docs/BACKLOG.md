@@ -250,6 +250,19 @@
         bandeau honnête quand la fenêtre est assez serrée mais que les ancres mensuelles manquent
         (vue au jour impossible avec des données passées trouées — dit à l'écran au lieu de rester
         muet). E2E « depuis la vue LARGE » rejouant le scénario exact de la capture.
+  - [x] **`[FUTUR-DAILY-NATIVE]` la courbe est au JOUR partout — sélection directe** ✅ 2026-08-12
+        (Marc : « je veux pas un bouton je veux pouvoir selectionner sur la courbe direct », cadrage
+        3/3 : clic = jour partout · survol = jour · tracé au jour, GO). Architecture : série
+        quotidienne GLOBALE construite une fois (`buildDailyLedger` + option `fields` — ventilation
+        LÉGÈRE ~100 ms/30 ans, mesurée ; la complète à 99 champs = ~500 ms/180 Mo, réservée à
+        l'infobulle ventilée À LA DEMANDE par mois, cache) ; le zoom reste mensuel et TRANCHE la
+        série par abscisse (`sliceDailyRangeByX`, binaire) ; tracé DÉCIMÉ au-delà de ~700 pts
+        (mesuré : 11 k pts × 8 aires gèlent le main thread — `mouse.wheel` Playwright expirait) avec
+        sélection sur la tranche COMPLÈTE ; mois-ANCRE reconstruit du réel seul
+        (`realOnlyMonthPoints`, sinon bande « Passé réel » amputée — e2e d'axe). RETIRÉS : bouton
+        « Jour », bouton « Voir ce mois jour par jour » (livré 24 h plus tôt), seuil
+        DAILY_CURVE_MAX_POINTS. Bandes MC : percentiles mensuels reliés (sinon perdues partout —
+        étiqueté). E2E 8/8 dont vue LARGE sans zoom + garde de poids DOM.
   - [x] **`[FUTUR-TOOLTIP-STICKY-ACTIONS]` le pied d'actions de l'infobulle figée est ÉPINGLÉ**
         ✅ 2026-08-12 (retour Marc APRÈS le déploiement de SELECT-PATH : « figée mais sans le
         nouveau bouton », rechargement forcé fait, prod vérifiée à jour côté Vercel). Cause : le

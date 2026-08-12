@@ -8,6 +8,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Changements majeurs
+- **La courbe Futur est au JOUR, partout** — plus de bouton, plus de seuil de zoom : tu survoles
+  n'importe où (même la vue 30 ans) et l'infobulle montre le jour précis (« jeu. 14/05/2027 ») ;
+  tu cliques et ce jour se fige, avec « Veille / Lendemain » pour ajuster. Avant aujourd'hui, les
+  jours sont reconstruits depuis tes vraies transactions ; après, ce que l'app sait dater (paie,
+  charges, échéance d'impôt) tombe au bon jour et le reste est réparti sur le mois — l'infobulle
+  le dit pour chaque jour. Disparus car devenus inutiles : le bouton « Jour », le bouton « Voir ce
+  mois jour par jour », la limite de 6 mois de la vue au jour. En vue très large, le tracé est
+  échantillonné pour rester fluide (~700 points dessinés) mais le clic sélectionne toujours le
+  jour exact sous le curseur. Les bandes Monte Carlo restent des percentiles mensuels, reliés
+  entre fins de mois.
+
 ### Corrections
 - **Les boutons de l'infobulle figée sont maintenant TOUJOURS visibles** — « Voir ce mois jour par
   jour », « Veille / Lendemain », « Détail complet ». Avant, quand l'infobulle était bien remplie

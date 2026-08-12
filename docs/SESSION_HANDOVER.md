@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 47) — `[FUTUR-DAILY-NATIVE]` : la courbe au JOUR partout, sélection directe
+> **Marc (02:15) : « je veux pas un bouton je veux pouvoir selectionner sur la courbe direct. »**
+> Après 4 itérations d'affordances, le vrai besoin était un changement de RÉSOLUTION — cadrage
+> 3 questions (clic = jour partout · survol = jour · tracé au jour), plan court, GO explicite.
+> - Livré : série quotidienne GLOBALE (option `fields` de `buildDailyLedger` : courbe légère
+>   ~100 ms/30 ans mesurée, infobulle complète ventilée à la demande par mois + cache — même
+>   moteur, parité testée) ; zoom mensuel qui TRANCHE par abscisse ; tracé décimé > 700 pts
+>   (11 k × 8 aires gelaient le main thread, `mouse.wheel` expirait) avec sélection au jour EXACT
+>   sur la tranche complète ; mois-ancre reconstruit du réel seul ; retraits : boutons « Jour » et
+>   « Voir ce mois jour par jour » (livré 24 h avant), seuil 6 mois. Bandes MC = percentiles
+>   mensuels reliés, étiquetés. E2E 8/8 (vue LARGE sans zoom, Lendemain +1 jour, garde poids DOM).
+> - Leçon CONVENTIONS (6e occurrence UX-UNREACHABLE) : à la 3e affordance vers un état, l'état
+>   doit devenir le DÉFAUT. + 3 corollaires mesurés (décimation, ifOverflow discard, toLocale/pt).
+> - GATÉS toujours : `[FUTUR-DAILY-TOUCH]` (doigt ? sans réponse), cadence paie, ancre plan-first.
+
 > ## 🟢 Session 2026-08-12 (suite 46) — `[FUTUR-TOOLTIP-STICKY-ACTIONS]` : le bouton existait, Marc ne le VOYAIT pas
 > **Retour Marc après le déploiement de SELECT-PATH : « figée mais sans le nouveau bouton »,
 > rechargement forcé fait.** Vérifié côté Vercel : la prod servait BIEN le nouveau code (deploy

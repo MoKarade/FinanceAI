@@ -1,6 +1,11 @@
-import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { Card } from './ui/Card';
+import { Skeleton } from './ui/Skeleton';
+// [REFONTE-NAV-L2b] Sous-onglet « Historique » (évolution passée par compte, ex-Accueil) —
+// lazy : son pipeline (usePortfolioHistory + helpers immo/dettes) ne se paie qu'à l'affichage.
+import { lazyWithRetry } from '../utils/lazyWithRetry';
+const FutureHistorySection = lazyWithRetry(() => import('./future/FutureHistorySection'), 'FutureHistorySection');
 import { PageHeader } from './ui/PageHeader';
 import { Badge } from './ui/Badge';
 import { KPIStat } from './ui/KPIStat';
@@ -516,7 +521,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // « Optimisation » : le composeur de leviers est remonté dans l'écran d'amorçage du sous-onglet Projection.
     // PH4-FUT « leviers-d'abord » — sous-onglet « Optimisation » RETIRÉ : le composeur de leviers est
     // remonté dans l'écran d'amorçage du Graphique (en amont du calcul).
-    const [futureSubTab, setFutureSubTab] = useState<'graph' | 'params' | 'plan'>('graph');
+    // [REFONTE-NAV-L2b] + 4e sous-onglet « Historique » (l'évolution PASSÉE, ex-Accueil).
+    const [futureSubTab, setFutureSubTab] = useState<'graph' | 'params' | 'plan' | 'historique'>('graph');
     // PH4 (refonte Futur « leviers-d'abord », demande Marc) — la courbe ET les KPIs ne s'affichent
     // QUE sur un calcul EXPLICITE : la révélation est liée à une SIGNATURE de ce qui PILOTE la courbe.
     // Revue PH4 (MAJEUR) — on signe `params` ENTIER (la source UNIQUE, ~20 entrées du store) et NON un
@@ -1179,6 +1185,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     { id: 'graph', emoji: '🎯', label: 'Projection' },
                     { id: 'params', emoji: '⚙️', label: 'Hypothèses' },
                     { id: 'plan', emoji: '🗂️', label: 'Plan d\'action' },
+                    { id: 'historique', emoji: '📊', label: 'Historique' },
                 ] as const).map(t => (
                     <button
                         key={t.id}
@@ -1798,6 +1805,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     {/* C2 — Plan d'action HIÉRARCHIQUE (global → mois, drill-down au clic). */}
                     <ActionPlanDrilldown chartData={chartData} strategyName={allResults[0]?.strategyName} />
                 </div>
+            )}
+
+            {/* [REFONTE-NAV-L2b] Historique : évolution PASSÉE du patrimoine par compte (ex-Accueil).
+                Indépendant de la projection (pas gated par curveVisible : l'historique existe même
+                sans courbe calculée). Lazy → le pipeline ne se paie qu'à l'affichage. */}
+            {futureSubTab === 'historique' && (
+                <Suspense fallback={<Skeleton variant="chart" />}>
+                    <FutureHistorySection />
+                </Suspense>
             )}
         </div>
     );

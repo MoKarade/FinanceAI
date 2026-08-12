@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 57) — `[REFONTE-NAV-L2b]` : l'ex-Accueil définitivement supprimé
+> Lot 2b (intégré sur main post-#601, PR à venir) : **4e sous-onglet « Historique »** du Futur
+> (`components/future/FutureHistorySection.tsx`, lazy via `lazyWithRetry`) — le pipeline
+> `unifiedHistory` de l'ex-Accueil copié FIDÈLEMENT (usePortfolioHistory, buckets TOTAL_*,
+> équité immo par année, dettes), chips masquables + ligne Total avec les MÊMES clés
+> localStorage `dashboard:*` (les préférences de Marc survivent au déménagement).
+> **Comparaison de titres → Investissements** (mode « Comparer », `StockComparisonModal`
+> git-mv vers `components/investments/`). **`Dashboard.tsx` SUPPRIMÉ** avec son gate
+> `PAGE_SETUP[Tab.DASHBOARD]` ; conservés pour la compat deep-link : `Tab.DASHBOARD` dans
+> l'enum, `TAB_LABELS`, le redirect `#DASHBOARD→#FUTURE` + son test-scan. Restent dans
+> `components/dashboard/` (consommés ailleurs) : `DashboardEvolutionChart` (par
+> FutureHistorySection), `HistoryCoverageNote` (3 pages), `SyncStaleBanner` (TabRouter),
+> `HealthIndicator` (Budget). Tests : `Dashboard*.test.tsx` supprimés — capacités re-couvertes
+> par FutureHistorySection/FutureKpiStrip/nwParitySurfaces ; l'assertion UNIQUE de
+> `duplicateKeys` (collision compte cash nommé CELI/REER) PORTÉE dans
+> `FutureHistorySection.test.tsx` ; entrée axe Dashboard → FutureHistorySection (empty state).
+> Suite : merger la PR 2b puis fermer/archiver `[REFONTE-NAV-L2]` ; prochain lot `L3`
+> (Configurations fusionnées).
+>
 > ## 🟢 Session 2026-08-12 (suite 56) — `[REFONTE-NAV-L2a]` : le Futur reprend les repères de l'ex-Accueil
 > Lot 2 SCINDÉ 2a/2b (hypothèse du plan périmée : les paramètres de projection sont DÉJÀ dans le
 > sous-onglet « Hypothèses » du Futur — rien à rapatrier). 2a livré : `SyncStaleBanner` déplacée

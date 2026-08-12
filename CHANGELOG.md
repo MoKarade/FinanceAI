@@ -8,6 +8,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Améliorations — l'ex-Accueil rejoint définitivement ses pages (refonte nav, Lot 2b)
+- **L'évolution passée de ton patrimoine par compte vit maintenant dans Futur → onglet
+  « Historique »** : le grand graphe « Évolution détaillée » de l'ex-Accueil (comptes cash,
+  CELI/REER, immobilier, dettes, fenêtres 1M → tout, comptes masquables, ligne Total) est
+  repris tel quel — tes préférences d'affichage existantes (comptes masqués, ligne Total)
+  sont conservées.
+- **La comparaison de titres vit maintenant dans Investissements** : un bouton « Comparer »
+  ouvre la même comparaison côte à côte qu'avant, depuis la page où tu regardes déjà tes
+  placements.
+- **L'Accueil est définitivement supprimé** : tout ce qu'il montrait a été relogé (chiffres de
+  tête et alerte d'import → bandeau du Futur au Lot 2a, historique → Futur/Historique,
+  comparaison → Investissements). Un ancien signet `#DASHBOARD` continue d'ouvrir le Futur.
+
 ### Améliorations — le Futur reprend les repères de l'ex-Accueil (refonte nav, Lot 2a)
 - **Nouvelle tuile « Variation 30 j »** au-dessus de la courbe : combien ton **liquide +
   placements** a bougé sur les 30 derniers jours, en $ et en % — et la tuile le dit en toutes

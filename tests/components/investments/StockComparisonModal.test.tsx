@@ -2,7 +2,7 @@
 // l'ancien fetchPortfolioHistory était un stub mort → « Aucune donnée » à chaque ouverture).
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { StockComparisonModal } from '../../../components/dashboard/StockComparisonModal';
+import { StockComparisonModal } from '../../../components/investments/StockComparisonModal';
 import { useFinanceStore } from '../../../store/useFinanceStore';
 import type { Asset } from '../../../types';
 

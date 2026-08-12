@@ -610,14 +610,21 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         const ambiguousEventDays = new Set<string>();
         const logEvent = (arr: string[], msg: string, day?: number) => {
             if (arr.length >= 50) return;
+            // ⚠️ Collision de MESSAGES identiques le même mois (finding ÉLEVÉ revue #594, élargi au
+            // mix daté/non-daté par le validator) : deux homonymes ne peuvent pas partager une
+            // entrée — écraser poserait les deux sur le jour du dernier, et une occurrence SANS
+            // jour hériterait du jour de l'autre (fausse précision dans les deux sens). No-fake :
+            // toute ambiguïté RETIRE l'entrée et la verrouille, tous s'affichent au mois.
+            const seenBefore = arr.includes(msg);
             arr.push(msg);
-            if (!Number.isFinite(day) || (day as number) < 1 || (day as number) > 31) return;
+            const hasDay = Number.isFinite(day) && (day as number) >= 1 && (day as number) <= 31;
+            if (!hasDay) {
+                if (msg in eventDaysLog) delete eventDaysLog[msg];
+                if (seenBefore) ambiguousEventDays.add(msg);
+                return;
+            }
             const rounded = Math.round(day as number);
-            // ⚠️ Collision de MESSAGES identiques le même mois (finding ÉLEVÉ revue #594) : deux
-            // événements homonymes à des jours DIFFÉRENTS ne peuvent pas partager une entrée —
-            // écraser poserait les deux occurrences sur le jour de la dernière (un jour FAUX pour
-            // l'autre). No-fake : l'ambiguïté RETIRE l'entrée, les deux s'affichent au mois.
-            if (msg in eventDaysLog && eventDaysLog[msg] !== rounded) {
+            if (seenBefore && (!(msg in eventDaysLog) || eventDaysLog[msg] !== rounded)) {
                 delete eventDaysLog[msg];
                 ambiguousEventDays.add(msg);
                 return;

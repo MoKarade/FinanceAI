@@ -84,6 +84,20 @@ describe('buildDailyLedger — chaque événement posé à SON jour', () => {
         expect(last.dayOfMonth).toBe(28);
         expect(last.flowEvents).toEqual(['Échéance']);
     });
+
+    // [FAIBLE-1 validator #594] Un jour FRACTIONNAIRE (12.7 — impossible depuis le moteur qui
+    // arrondit dans logEvent, mais possible via un point restauré d'un JSON ou produit par MCP)
+    // ne matchait JAMAIS `dayOf(l) === day` → label silencieusement PERDU du ledger.
+    it('jour fractionnaire (12.7, point restauré) ⇒ arrondi au 13, jamais perdu', () => {
+        const days = buildDailyLedger({
+            months: [month(0), month(1, { flowEvents: ['Frac'], eventDays: { Frac: 12.7 } })],
+            startYear: 2026, startMonth: 0, dated: DATED,
+        });
+        const carriers = days.filter((d) => (d.flowEvents ?? []).length > 0);
+        expect(carriers).toHaveLength(1);
+        expect(carriers[0].dayOfMonth).toBe(13);
+        expect(carriers[0].flowEvents).toEqual(['Frac']);
+    });
 });
 
 // L'échéance de la régularisation annuelle : 30 avril (date limite de paiement ARC/RQ) — l'icône
@@ -124,5 +138,63 @@ describe('applyLifeEvents — collision de messages identiques', () => {
         const lifeCalls = calls.filter((c) => c.kind === 'life');
         expect(lifeCalls).toHaveLength(2);
         expect(lifeCalls.map((c) => c.day).sort((a, b) => (a ?? 0) - (b ?? 0))).toEqual([5, 20]);
+    });
+});
+
+// [FAIBLE-3 validator #594] Le registre `eventDays` du MOTEUR, de bout en bout : l'ambiguïté
+// « daté + non-daté » doit AUSSI retirer l'entrée. Avant : « Mix » saisi une fois en 2028-05
+// (sans jour) et une fois le 2028-05-20 → eventDays={Mix:20} → le ledger posait LES DEUX
+// occurrences au 20 (fausse précision pour celle qui n'a pas de jour).
+import { calculateFutureProjection } from '../../services/projection';
+import type { BudgetConfig, ProjectionConfig, RetirementGoal } from '../../types';
+
+const engineBase = () => ({
+    projection: {
+        years: 4, returnRate: 6, inflationRate: 2, savingsMode: 'manual', manualContribution: 0,
+        usePortfolioRate: false, returnRates: { celi: 6, reer: 6, nonReg: 6, crypto: 8, cash: 2 },
+        emergencyFundMonths: 6, salaryGrowth: 2, propertyGrowthRate: 3,
+    } as ProjectionConfig,
+    calculatedStartingCash: 100_000,
+    liveCSVBalances: { CELI: 50_000, CELIAPP: 0, REER: 50_000, NON_ENREG: 20_000, CRYPTO: 0, REEE: 0 },
+    realEstateGoals: [], debts: [], childGoals: [], travelGoals: [],
+    retirementGoal: { targetAge: 62, targetMonthlyIncome: 5000, governmentPension: 1500, lifeExpectancy: 90 } as RetirementGoal,
+    config: {
+        users: [
+            { name: 'Marc', grossSalary: 8200, netSalary: 5620, color: '#10b981', age: 40, birthYear: 1986, canadaArrivalYear: 1986, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 },
+            { name: 'Anna', grossSalary: 7100, netSalary: 4995, color: '#3b82f6', age: 40, birthYear: 1986, canadaArrivalYear: 1986, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 },
+        ],
+        splitMode: '50/50',
+    } as BudgetConfig,
+    baseGrossAnnual: 183_600, baseNetAnnual: 127_380, currentRentExpense: 1_500, baseMonthlyExpenses: 6_000,
+    startYear: 2026, startMonth: 0,
+});
+
+const eventDaysOf = (name: string, events: Array<{ date: string }>) => {
+    const res = calculateFutureProjection({
+        ...engineBase(),
+        lifeEvents: events.map((e, i) => ({ id: `e${i}`, type: 'HERITAGE', name, date: e.date, impactAmount: 100 })),
+    } as never);
+    const p = res.chartData.find((q) => (q.lifeEvents ?? []).some((s) => s.includes(name)));
+    expect(p, `aucun point ne porte « ${name} »`).toBeTruthy();
+    const entries = Object.keys(p?.eventDays ?? {}).filter((k) => k.includes(name));
+    return { entries, eventDays: p?.eventDays };
+};
+
+describe('registre eventDays du moteur — ambiguïté daté/non-daté (bout en bout)', () => {
+    it('« Mix » sans jour PUIS daté au 20 ⇒ AUCUNE entrée (les deux au mois)', () => {
+        const { entries } = eventDaysOf('Mix', [{ date: '2028-05' }, { date: '2028-05-20' }]);
+        expect(entries).toEqual([]);
+    });
+
+    it('« Rev » daté au 20 PUIS sans jour ⇒ AUCUNE entrée (ordre indifférent)', () => {
+        const { entries } = eventDaysOf('Rev', [{ date: '2028-08-20' }, { date: '2028-08' }]);
+        expect(entries).toEqual([]);
+    });
+
+    it('non-régression : jour unique conservé, et deux homonymes au MÊME jour conservés', () => {
+        const solo = eventDaysOf('Solo', [{ date: '2028-05-14' }]);
+        expect(solo.eventDays?.['Solo 💰']).toBe(14);
+        const twin = eventDaysOf('Twin', [{ date: '2028-06-05' }, { date: '2028-06-05' }]);
+        expect(twin.eventDays?.['Twin 💰']).toBe(5);
     });
 });

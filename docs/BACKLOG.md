@@ -599,7 +599,17 @@
   additif), pastilles à l'abscisse `axisXAtDay`, régularisation d'avril à l'échéance du 30
   (date limite ARC/RQ), ventilation quotidienne : chaque label posé à SON jour. Jalons SANS date
   réelle (FIRE, RRQ/PSV dérivés, lifeMarkers) restent au mois (no-fake). 6 tests (saisie datée,
-  YYYY-MM sans jour → au mois, clamp 31→28 fév, échéance 30).
+  YYYY-MM sans jour → au mois, clamp 31→28 fév, échéance 30). Validator : PASS complet (rétrocompat
+  bit-identique 0 diff/421 points, registre par mois étanche, partition ledger 0 cassée) ; ses
+  3 findings FAIBLE durcis dans la même PR : jour fractionnaire arrondi (label plus jamais perdu du
+  ledger), clamp `axisXAtDay` identique au ledger (date impossible restaurée ne pose plus la
+  pastille sur le tick du mois suivant), ambiguïté daté/non-daté retirée du registre (no-fake,
+  ordre indifférent) — 5 tests discriminants (échec prouvé sur le code d'avant via stash).
+- [ ] **`[FUTUR-DAILY-STACK-X]`** (XS, cosmétique — FAIBLE-4 validator #594) — l'empilement
+  vertical des pastilles (`subIdx` de `finalize()` dans `FutureProjection.tsx`) groupe encore par
+  `monthIndex` : deux événements du même mois à des jours DIFFÉRENTS sont décalés verticalement
+  alors qu'ils ne se chevauchent plus horizontalement. Empiler par abscisse arrondie (ou par
+  proximité de x) plutôt que par mois. Zéro impact $, clic correct — purement visuel.
 - [ ] **`[GATE-RELATED-RELIABILITY]`** (S, outillage — mesuré 2026-08-12) — `vitest related` de la
   gate ciblée n'a PAS sélectionné `tests/services/monthlyEvents.test.ts` alors que
   `services/projection/monthlyEvents.ts` était stagé (échec attrapé par la CI seule, 2×

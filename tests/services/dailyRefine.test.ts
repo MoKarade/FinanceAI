@@ -152,6 +152,22 @@ describe('axisXAtDay — le jour 1 vaut EXACTEMENT l’entier du mois', () => {
     it('un monthIndex non fini ressort tel quel plutôt qu’en NaN silencieux', () => {
         expect(axisXAtDay(NaN, 5, 2026, 0)).toBeNaN();
     });
+
+    // [FAIBLE-2 validator #594] Une date IMPOSSIBLE (« 2027-02-29 » restaurée d'un JSON) rendait
+    // `monthIndex + 1` — la pastille EXACTEMENT sur le tick du mois SUIVANT, pendant que le
+    // ledger, lui, clampait au 28. Le clamp doit être IDENTIQUE des deux côtés.
+    it('clampe un jour impossible au dernier jour réel du mois (même règle que le ledger)', () => {
+        expect(axisXAtDay(13, 29, 2027, 1)).toBeCloseTo(13 + 27 / 28, 12); // 29 fév 2027 → 28
+        expect(axisXAtDay(13, 29, 2027, 1)).toBeLessThan(14);
+        expect(axisXAtDay(27, 31, 2028, 3)).toBeCloseTo(27 + 29 / 30, 12); // 31 avril → 30
+        expect(axisXAtDay(0, 0, 2026, 0)).toBe(0);   // jour 0 → 1er
+        expect(axisXAtDay(0, -5, 2026, 0)).toBe(0);  // négatif → 1er
+    });
+
+    it('arrondit un jour fractionnaire (12.7 → 13), cohérent avec `dayOf` du ledger', () => {
+        expect(axisXAtDay(0, 12.7, 2026, 0)).toBeCloseTo(12 / 31, 12);
+        expect(axisXAtDay(0, Number.NaN, 2026, 0)).toBe(0); // jour non fini → 1er, jamais NaN
+    });
 });
 
 // [FUTUR-DAILY-NATIVE] Les tests de `dailyWindowRange` sont partis avec la fonction (bouton

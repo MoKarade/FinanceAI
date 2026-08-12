@@ -512,7 +512,10 @@ export function buildDailyLedger(input: BuildDailyLedgerInput): DailyLedgerPoint
             {
                 const dayOf = (label: string): number => {
                     const dd = eventDaysOfMonth[label];
-                    return Number.isFinite(dd) ? Math.min(nDays, Math.max(1, dd)) : 1;
+                    // Math.round : un jour FRACTIONNAIRE (12.7, possible via point restauré/MCP —
+                    // le moteur, lui, arrondit dans logEvent) ne matcherait JAMAIS `=== day`
+                    // ci-dessous → label silencieusement PERDU du ledger.
+                    return Number.isFinite(dd) ? Math.min(nDays, Math.max(1, Math.round(dd))) : 1;
                 };
                 const lifeToday = Array.isArray(cur.lifeEvents) ? cur.lifeEvents.filter((l) => dayOf(l) === day) : [];
                 const flowToday = Array.isArray(cur.flowEvents) ? cur.flowEvents.filter((l) => dayOf(l) === day) : [];

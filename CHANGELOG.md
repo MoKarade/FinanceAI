@@ -15,6 +15,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   l'as demandé — « juste dans l'infobulle, pas de nouvel onglet »). Passé et futur, même geste.
 
 ### Corrections
+- (interne) Changer de paramètres pendant un calcul de projection détache proprement la requête
+  précédente au lieu de la laisser pendre jusqu'à 30 s — et une annulation n'est plus journalisée
+  comme une « erreur critique de simulation ».
 - (interne) La reconstruction mensuelle du portefeuille nommait « NetWorth » un champ qui ne contient
   que la valeur investie (ni cash, ni immo, ni dette) — renommé `InvestedValue`, comme la version
   quotidienne. Ce nom avait déjà produit de faux constats d'audit.

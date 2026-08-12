@@ -1,7 +1,7 @@
 // components/ProjectionEngine.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
-import { runProjectionAsync } from '../services/projection/runAsync';
+import { runProjectionAsync, PROJECTION_CANCELLED } from '../services/projection/runAsync';
 import type { ProjectionResult } from '../services/projection/types';
 import { useSimulationParams } from '../hooks/useSimulationParams';
 import { REQUIREMENTS, type RequirementId } from './setup/requirements';
@@ -57,12 +57,21 @@ const ProjectionEngineInner: React.FC<ProjectionEngineProps> = ({ calculatedMont
     // PH2-c-3 — calcul (déterministe OU Monte-Carlo selon runMC) dans un Web Worker, debounce 300 ms.
     useEffect(() => {
         if (!reqsMet) return;
+        // [HARDEN-SNAPSHOT-RACE] AbortController en plus du flag `cancelled` : le flag protège les
+        // `setState` tardifs, l'abort DÉTACHE la requête elle-même (params changés, démontage).
+        // ⚠️ La dédup PH2-b est préservée par construction : l'abort ne rejette qu'une promesse
+        // DÉRIVÉE — si les mêmes params reviennent (remount), on se re-raccroche au calcul partagé
+        // toujours en vol, exactement le scénario « reprend où il en était ».
         let cancelled = false;
+        const controller = new AbortController();
         const timer = setTimeout(() => {
             setProjectionStatus('computing');
-            runProjectionAsync(params, runMC, 0, undefined, mcDedupKey)
+            runProjectionAsync(params, runMC, 0, undefined, mcDedupKey, { signal: controller.signal })
                 .then((r) => { if (!cancelled) setAsyncResults(r); })
                 .catch((e) => {
+                    // Une annulation N'EST PAS un crash : la router en « CRITICAL SIMULATION ERROR »
+                    // remplirait le journal d'erreurs à chaque changement de params (une par frappe).
+                    if (e instanceof Error && e.message === PROJECTION_CANCELLED) return;
                     if (!cancelled) {
                         console.error('CRITICAL SIMULATION ERROR (worker, engine):', e);
                         import('../services/errorLogger').then(({ logError }) => {
@@ -72,7 +81,7 @@ const ProjectionEngineInner: React.FC<ProjectionEngineProps> = ({ calculatedMont
                     }
                 });
         }, 300);
-        return () => { cancelled = true; clearTimeout(timer); };
+        return () => { cancelled = true; controller.abort(); clearTimeout(timer); };
     }, [params, runMC, reqsMet, mcDedupKey, setProjectionStatus]);
 
     const results = asyncResults;

@@ -90,13 +90,23 @@ const _inflight = new Map<string, Promise<ProjectionResult>>();
 // (un `async function` envelopperait `return existing` dans une nouvelle promesse → identité
 // perdue → re-raccrochage cassé). Le corps n'a aucun `await`, il relaie la promesse de
 // computeProjectionAsync.
+/** Erreur sentinelle : la projection a été annulée par l'appelant (pas un échec). */
+export const PROJECTION_CANCELLED = '__PROJECTION_CANCELLED__';
+
 export function runProjectionAsync(
     params: SimulationParams,
     runMC: boolean = false,
     selectedIdx: number = 0,
     onlyStratTypes?: string[],
     dedupKey?: string,
+    opts?: { signal?: AbortSignal },
 ): Promise<ProjectionResult> {
+    // [HARDEN-SNAPSHOT-RACE] Abort sur le chemin « projection simple », parité avec la recherche de
+    // stratégies (qui a son AbortSignal depuis toujours). Déjà annulé à l'entrée ⇒ on ne lance RIEN
+    // et on ne touche pas à la dédup : une requête identique déjà en vol pour d'autres appelants vit
+    // sa vie, et un appel légitime suivant recréera la sienne.
+    const signal = opts?.signal;
+    if (signal?.aborted) return Promise.reject(new Error(PROJECTION_CANCELLED));
     // Clé EFFECTIVE = dedupKey (signature de contenu de l'appelant) + TOUT ce qui distingue le
     // calcul. Sans ça, un futur appelant réutilisant la même dedupKey avec un runMC/selectedIdx
     // différent recevrait SILENCIEUSEMENT la projection de l'autre mode (re-raccrochage à la
@@ -117,7 +127,27 @@ export function runProjectionAsync(
         const clearInflight = () => { if (_inflight.get(key) === promise) _inflight.delete(key); };
         promise.then(clearInflight, clearInflight);
     }
-    return promise;
+    if (!signal) return promise;
+
+    // ⚠️ L'abort s'applique à une promesse DÉRIVÉE, jamais à la promesse PARTAGÉE de `_inflight` :
+    // deux appelants peuvent être raccrochés au même calcul (dédup PH2-b) — celui qui annule ne doit
+    // pas rejeter la promesse de l'autre. Le calcul lui-même n'est PAS interrompu : le worker
+    // singleton est un canal partagé (le terminer tuerait les requêtes des autres) ; son message
+    // tardif est simplement ignoré (filtre par requestId). Annuler = se DÉTACHER, comme un
+    // `removeEventListener` — pas tirer sur le canal.
+    return new Promise<ProjectionResult>((resolve, reject) => {
+        const onAbort = () => reject(new Error(PROJECTION_CANCELLED));
+        signal.addEventListener('abort', onAbort, { once: true });
+        // `then(resolve, reject)` garde la promesse sous-jacente HANDLED même après un abort : un
+        // rejet tardif (timeout worker) atterrit dans un `reject` déjà réglé — no-op, pas
+        // d'« unhandled rejection ». Le listener est retiré au règlement (signal potentiellement
+        // long-vécu côté appelant : ne pas y accumuler un listener par requête).
+        const settle = () => signal.removeEventListener('abort', onAbort);
+        promise.then(
+            (v) => { settle(); resolve(v); },
+            (e) => { settle(); reject(e); },
+        );
+    });
 }
 
 async function computeProjectionAsync(

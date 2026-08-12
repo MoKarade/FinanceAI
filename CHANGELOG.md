@@ -8,6 +8,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Améliorations — le Futur reprend les repères de l'ex-Accueil (refonte nav, Lot 2a)
+- **Nouvelle tuile « Variation 30 j »** au-dessus de la courbe : combien ton patrimoine a bougé
+  sur les 30 derniers jours, en $ et en % — le même calcul que l'ex-Accueil. Pas assez
+  d'historique pour le dire honnêtement ? La tuile affiche « — », jamais un faux 0 $.
+- **Le « Patrimoine net » du bandeau inclut maintenant ton équité immobilière** (valeur de la
+  maison moins l'hypothèque), comme le faisait l'ex-Accueil — et le dit en toutes lettres
+  (« équité immo incluse ») pour ne plus avoir deux patrimoines différents à l'écran.
+- **L'alerte « import bancaire figé » s'affiche désormais sur le Futur** (elle vivait sur
+  l'ex-Accueil, retiré au Lot 1) : une alerte doit être là où tu regardes par défaut, sinon
+  elle n'existe pas.
+
+### Corrections
+- La carte « Taux de succès » disait toujours « Monte Carlo (100 itér.) » même quand tu avais
+  changé le nombre d'itérations dans les paramètres avancés : elle affiche maintenant le nombre
+  réellement exécuté par le moteur (bornes 50-1000 partagées, plus de chiffre en dur).
+
 ### Changements majeurs — la courbe Future devient le cœur de l'app (refonte nav, Lot 1)
 - **L'app s'ouvre sur la courbe Future** et l'onglet Accueil disparaît : ses chiffres de tête
   (patrimoine net, liquidités, épargne du mois) s'affichent maintenant dans un bandeau compact

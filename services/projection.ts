@@ -4,7 +4,7 @@ import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDivide
 import { RRIF_RATES, welcomeTax, NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './projection/helpers';
 import { salaryShares, splitByShares, stepReerByUser, addByWeights } from './projection/perUserBalances';
 import { logError, logErrorThrottled } from './errorLogger';
-import { runMonteCarlo, type MonteCarloResult } from './projection/monteCarlo';
+import { runMonteCarlo, effectiveMcIterations, type MonteCarloResult } from './projection/monteCarlo';
 import type { EngineOverrides, StrategyConfig } from './projection/strategyConfig';
 import { returnRatesForProfile } from './projection/strategyConfig';
 import { runStrategySearch, type StrategySearchResult, type RunStrategySearchOptions } from './projection/strategySearch';
@@ -1845,9 +1845,10 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
 
     if (runMC) {
         // Cycle 5 audit UI: monteCarloIterations désormais lu depuis ProjectionConfig
-        // (panneau Paramètres Avancés). Bornes: 50-1000.
-        const requested = params.projection.monteCarloIterations ?? 100;
-        const MC_ITERATIONS = Math.max(50, Math.min(1000, requested));
+        // (panneau Paramètres Avancés). [REFONTE-NAV-L2a] Clamp délégué à la source unique
+        // (mêmes bornes 50-1000, défaut 100) — l'UI affiche via le MÊME helper, donc le
+        // libellé « Monte Carlo (N itér.) » ne peut plus diverger du calcul réellement fait.
+        const MC_ITERATIONS = effectiveMcIterations(params.projection.monteCarloIterations);
         // Cycle 7 split: runScenario injecté pour éviter dépendance circulaire.
         // G21 C4 fix : utilise la stratégie réelle du scénario ciblé (avant,
         // 'AUTO_MARGINAL' était hardcodé → le MC ignorait le scénario sélectionné).

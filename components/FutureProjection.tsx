@@ -80,6 +80,8 @@ import { ProjectionControls } from './projection/ProjectionControls';
 import { useSimulationParams, useTodayIsoLocal } from '../hooks/useSimulationParams';
 import { buildPastPrefix } from '../services/history/buildPastPrefix';
 import { deriveMilestoneIcons } from '../services/projection/milestoneIcons';
+// [REFONTE-NAV-L2a] Itérations MC réellement exécutées (source unique moteur) pour le libellé.
+import { effectiveMcIterations } from '../services/projection/monteCarlo';
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
 import { ProjectionExplains } from './projection/ProjectionExplains';
 import { StrategyOptimizerPanel } from './projection/StrategyOptimizerPanel';
@@ -1157,7 +1159,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     label="Taux de succès"
                     icon="✓"
                     value={results?.successRate != null ? `${results.successRate}%` : '—'}
-                    sublabel={runMC ? 'Monte Carlo (100 itér.)' : 'Active MC pour calculer'}
+                    // [REFONTE-NAV-L2a] Le nombre RÉEL d'itérations (source unique moteur, clamp
+                    // inclus) — « (100 itér.) » codé en dur mentait dès que le paramètre changeait.
+                    sublabel={runMC ? `Monte Carlo (${effectiveMcIterations(projection.monteCarloIterations)} itér.)` : 'Active MC pour calculer'}
                     variant={results?.successRate != null && results.successRate >= 80 ? 'success' : results?.successRate != null && results.successRate >= 50 ? 'warning' : 'danger'}
                 />
                 <KPIStat

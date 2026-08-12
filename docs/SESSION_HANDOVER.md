@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 56) — `[REFONTE-NAV-L2a]` : le Futur reprend les repères de l'ex-Accueil
+> Lot 2 SCINDÉ 2a/2b (hypothèse du plan périmée : les paramètres de projection sont DÉJÀ dans le
+> sous-onglet « Hypothèses » du Futur — rien à rapatrier). 2a livré : `SyncStaleBanner` déplacée
+> sur le Futur (au-dessus des KPI, auto-silencieuse), tuile « Variation 30 j » via
+> `hooks/useNetWorthVariation` (extraction MINIMALE de la série `Total` de l'ex-Accueil — mêmes
+> sources/conventions, fenêtre fixe 30 j, fonction PURE paramétrée en jours pour le 2b ; < 2
+> points ou borne non finie → `null` → tuile « — », jamais 0 $ ; départ ≤ 0 → `pct: null`, plus
+> de « 0 % » trompeur), équité immo AJOUTÉE au « Patrimoine net » du bandeau ET étiquetée
+> « équité immo incluse » (parité DASH-NW-DUP : l'étiquette seule aurait menti — la prop
+> `netWorth` de `useDerivedFinancials` est HORS immo), libellé « Monte Carlo (100 itér.) »
+> codé en dur remplacé par le nombre RÉEL (`effectiveMcIterations`, source unique
+> `services/projection/monteCarlo.ts`, consommée par moteur + libellé + input avancé).
+> Tests : hook (11, discriminance de la classe #544 PROUVÉE par retrait chirurgical de
+> l'amorçage), bandeau (8, montants via `textContent` — le normaliseur testing-library casse
+> les insécables `fr-CA` dans `getByText`). Reste 2b : sous-onglet historique + comparaison
+> d'actions + suppression `Dashboard.tsx`.
+>
 > ## 🟢 Session 2026-08-12 (suite 55) — `[REFONTE-NAV-L1]` : nav 6 destinations, la courbe au centre
 > GO Marc sur `docs/REFONTE_NAV_PLAN.md` (à lire AVANT tout travail nav). Lot 1 : la nav passe
 > de 4 groupes thématiques à **6 destinations** (Futur · Configurations · Vie · Transactions ·

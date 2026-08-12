@@ -25,6 +25,23 @@ type RunScenarioFn = (
     shortfallRate: number;
 };
 
+/** Bornes moteur des itérations Monte Carlo — SOURCE UNIQUE consommée par le calcul
+ *  (projection.ts) ET par l'UI (libellé « Monte Carlo (N itér.) », input des paramètres
+ *  avancés). [REFONTE-NAV-L2a] Avant : « 100 » re-codé en dur dans FutureProjection alors que
+ *  `monteCarloIterations` est configurable → libellé mensonger dès qu'on changeait la valeur. */
+export const MC_ITERATIONS_MIN = 50;
+export const MC_ITERATIONS_MAX = 1000;
+export const MC_ITERATIONS_DEFAULT = 100;
+
+/** Nombre d'itérations réellement EXÉCUTÉES par le moteur pour une valeur demandée : défaut 100,
+ *  borné 50–1000. Une valeur non finie retombe sur le défaut (l'ancien clamp inline propageait
+ *  NaN). Afficher autre chose que CE nombre, c'est mentir sur le calcul fait. */
+export function effectiveMcIterations(requested?: number): number {
+    const r = typeof requested === 'number' && Number.isFinite(requested)
+        ? requested : MC_ITERATIONS_DEFAULT;
+    return Math.max(MC_ITERATIONS_MIN, Math.min(MC_ITERATIONS_MAX, r));
+}
+
 export interface MonteCarloResult {
     successRate: number;
     p10Data: number[];

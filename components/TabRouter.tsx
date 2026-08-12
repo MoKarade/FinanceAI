@@ -7,6 +7,11 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { PageSetupGate } from './setup/PageSetupGate';
 import { FutureKpiStrip } from './FutureKpiStrip';
+// [REFONTE-NAV-L2a] Bannière « import bancaire figé » : vivait sur l'ex-Accueil (leçon incident
+// 2026-08-05 : une alerte doit être là où l'utilisateur regarde PAR DÉFAUT = désormais le Futur).
+// Import statique : store + syncHealth + Icon, rien de lourd ; elle se tait d'elle-même (région
+// live vide) quand tout va bien.
+import { SyncStaleBanner } from './dashboard/SyncStaleBanner';
 
 // [REFONTE-NAV Lot 1] Dashboard (Accueil) retiré de la nav — ses chiffres de tête vivent dans
 // FutureKpiStrip (le composant Dashboard.tsx reste sur disque : le Lot 2 y puisera le reste).
@@ -144,8 +149,11 @@ export const TabRouter: React.FC<TabRouterProps> = ({
 
                 {activeTab === Tab.FUTURE && (
                     <PageSetupGate tab={Tab.FUTURE}>
+                        {/* [REFONTE-NAV-L2a] L'alerte de fraîcheur d'import AU-DESSUS des KPI :
+                            des chiffres calculés sur un flux gelé se lisent AVEC l'avertissement. */}
+                        <SyncStaleBanner />
                         {/* [REFONTE-NAV Lot 1] Chiffres de tête de l'ex-Accueil, compacts au-dessus
-                            de la courbe (import statique : trois tuiles, aucune dépendance lourde). */}
+                            de la courbe (import statique : quatre tuiles, aucune dépendance lourde). */}
                         <FutureKpiStrip
                             netWorth={globalNetWorth}
                             liquidity={currentLiquidity}

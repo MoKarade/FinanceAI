@@ -1,19 +1,32 @@
-import React from 'react';
-import { formatCAD } from '../utils/format';
+import React, { useMemo } from 'react';
+import { formatCAD, formatPercent } from '../utils/format';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { NO_DATA_LABEL } from './ui/emptyAware';
+import { useFinanceStore } from '../store/useFinanceStore';
+import { useNetWorthVariation } from '../hooks/useNetWorthVariation';
+import { presentEquityOfGoal, monthsSince } from '../services/projection/pastPurchaseInit';
 
 /**
  * [REFONTE-NAV Lot 1] Bandeau KPI compact AU-DESSUS de la courbe Future (choix Marc :
  * « bandeau compact au-dessus »). Reprend les chiffres de tête de l'ex-Accueil pour que
- * son retrait ne perde rien : patrimoine net, liquidités, épargne du mois.
+ * son retrait ne perde rien : patrimoine net, variation 30 j, liquidités, épargne du mois.
  *
- * Valeurs = dérivées RÉELLES du store (useDerivedFinancials via TabRouter), jamais de la
- * projection — le bandeau reste juste même quand la courbe recalcule. No-fake-data : une
- * valeur non finie s'affiche « — » (jamais un 0 $ crédible). Enrichissement (variation,
- * santé financière) : Lot 2.
+ * Valeurs = dérivées RÉELLES du store (useDerivedFinancials via TabRouter + hooks internes),
+ * jamais de la projection — le bandeau reste juste même quand la courbe recalcule.
+ * No-fake-data : une valeur non finie s'affiche « — » (jamais un 0 $ crédible).
+ * [REFONTE-NAV-L2a] Variation 30 j (useNetWorthVariation — série de l'ex-Accueil) + équité
+ * immo dans le patrimoine (mêmes conventions que le KPI de l'ex-Accueil, étiquetée).
+ * Reste (santé financière…) : Lot 2b.
  */
-const KpiTile: React.FC<{ label: string; value: number; signed?: boolean }> = ({ label, value, signed = false }) => (
+const KpiTile: React.FC<{
+    label: string;
+    value: number;
+    signed?: boolean;
+    /** Précision de périmètre ou variation relative, sous la valeur. Masquée avec la valeur en
+     *  mode discret quand `privateSublabel` (un % de variation reste une donnée financière). */
+    sublabel?: string;
+    privateSublabel?: boolean;
+}> = ({ label, value, signed = false, sublabel, privateSublabel = false }) => (
     <div className="flex-1 min-w-[140px] rounded-card bg-white/5 border border-white/5 px-4 py-3">
         <p className="text-tiny uppercase tracking-widest text-ink-400 font-bold">{label}</p>
         {Number.isFinite(value) ? (
@@ -28,6 +41,11 @@ const KpiTile: React.FC<{ label: string; value: number; signed?: boolean }> = ({
                 <span className="sr-only">{NO_DATA_LABEL}</span>
             </div>
         )}
+        {sublabel && (privateSublabel ? (
+            <PrivateAmount as="div" className="text-tiny text-ink-400">{sublabel}</PrivateAmount>
+        ) : (
+            <p className="text-tiny text-ink-400">{sublabel}</p>
+        ))}
     </div>
 );
 
@@ -35,10 +53,42 @@ export const FutureKpiStrip: React.FC<{
     netWorth: number;
     liquidity: number;
     monthlySavings: number;
-}> = ({ netWorth, liquidity, monthlySavings }) => (
-    <section aria-label="Indicateurs clés" className="flex flex-wrap gap-2 md:gap-3 mb-4">
-        <KpiTile label="Patrimoine net" value={netWorth} />
-        <KpiTile label="Liquidités" value={liquidity} />
-        <KpiTile label="Épargne / mois" value={monthlySavings} signed />
-    </section>
-);
+}> = ({ netWorth, liquidity, monthlySavings }) => {
+    // [REFONTE-NAV-L2a] Variation 30 j — série `Total` de l'ex-Accueil (hook, pas de prop-drilling).
+    // `null` (couverture < 2 points) → tuile « — » : jamais un 0 $ crédible.
+    const variation = useNetWorthVariation();
+
+    // [REFONTE-NAV-L2a] Parité avec le KPI patrimoine de l'ex-Accueil (DASH-NW-DUP) : la prop
+    // `netWorth` (useDerivedFinancials → computePresentNetWorth) est HORS immo — l'ex-Accueil y
+    // AJOUTAIT l'équité immobilière et l'étiquetait. On reprend les deux ENSEMBLE : ajouter
+    // l'étiquette sans la valeur (ou l'inverse) referait la classe « deux patrimoines à l'écran ».
+    // `presentEquityOfGoal` porte sa propre garde non-fini (bien exclu + log throttlé).
+    const realEstateGoals = useFinanceStore(s => s.realEstateGoals);
+    const realEstateEquity = useMemo(
+        () => realEstateGoals.reduce(
+            (sum, g) => sum + presentEquityOfGoal(g, monthsSince(g.purchaseDate)), 0),
+        [realEstateGoals],
+    );
+    const hasRealEstate = realEstateEquity !== 0;
+
+    return (
+        <section aria-label="Indicateurs clés" className="flex flex-wrap gap-2 md:gap-3 mb-4">
+            <KpiTile
+                label="Patrimoine net"
+                value={netWorth + realEstateEquity}
+                sublabel={hasRealEstate ? 'équité immo incluse' : undefined}
+            />
+            <KpiTile
+                label="Variation 30 j"
+                // `NaN` volontaire quand la couverture est insuffisante → la tuile rend « — »
+                // + sr-only NO_DATA_LABEL (no-fake-data), jamais 0 $.
+                value={variation ? variation.diff : Number.NaN}
+                signed
+                sublabel={variation && variation.pct != null ? formatPercent(variation.pct) : undefined}
+                privateSublabel
+            />
+            <KpiTile label="Liquidités" value={liquidity} />
+            <KpiTile label="Épargne / mois" value={monthlySavings} signed />
+        </section>
+    );
+};

@@ -599,9 +599,16 @@
     (Futur · Configurations · Vie · Transactions · Assistant · Réglages), app s'ouvre sur Futur,
     Accueil retiré (#DASHBOARD→#FUTURE, chiffres de tête → FutureKpiStrip), barre mobile
     Futur·Transactions·Assistant·Plus. Critère : rien de perdu.
-  - [ ] `[REFONTE-NAV-L2]` Lot 2 — Futur enrichi : bandeau KPI complet (variation, santé) +
-    rapatriement des paramètres de projection + reste des tuiles de l'ex-Accueil (le composant
-    `Dashboard.tsx` reste sur disque comme carrière à ce lot, puis sera supprimé).
+  - [ ] `[REFONTE-NAV-L2]` Lot 2 — Futur enrichi, SCINDÉ 2a/2b (2026-08-12). ⚠️ Hypothèse du
+    plan périmée : les paramètres de projection étaient DÉJÀ dans le sous-onglet « Hypothèses »
+    du Futur (PH4-FUT) — rien à rapatrier.
+    - [x] `[REFONTE-NAV-L2a]` bannière import gelé → Futur · tuile « Variation 30 j »
+      (`hooks/useNetWorthVariation`, série de l'ex-Accueil, fenêtre fixe 30 j, « — » si < 2
+      points) · équité immo incluse ET étiquetée au patrimoine du bandeau · libellé
+      « Monte Carlo (N itér.) » au nombre RÉEL (source unique `effectiveMcIterations`).
+    - [ ] `[REFONTE-NAV-L2b]` sous-onglet historique (graphe d'évolution + sélecteur de
+      fenêtre complet — la fonction pure du hook est déjà paramétrée en jours) + déménagement
+      de la comparaison d'actions + SUPPRESSION de `Dashboard.tsx`.
   - [ ] `[REFONTE-NAV-L3]` Lot 3 — Configurations fusionnées (split immo/invest actuel vs projets,
     inclut `[DEBT-FROM-CONTRACT]`).
   - [ ] `[REFONTE-NAV-L4]` Lot 4 — Vie fusionnée (retraite, enfants, projets, voyages, événements).

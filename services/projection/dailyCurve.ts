@@ -40,6 +40,16 @@ export function mergeDailyRealPoint(
     startMonth: number,
     realByDate: ReadonlyMap<string, DailyPastRow> | null,
     fields: ReadonlySet<string> | null,
+    /**
+     * [FUTUR-DAILY-ROLLOVER, finding silent-failure #593] Dernier jour COUVERT par une sync
+     * bancaire réussie (`YYYY-MM-DD`, date locale de `fintableSyncReport.at`). Un jour réel
+     * STRICTEMENT postérieur reçoit `daySyncUnconfirmed: true` : après un rollover de minuit app
+     * ouverte, la journée fraîchement « passée » peut afficher un plat 0 $/0 $ crédible alors que
+     * ses transactions n'ont simplement pas encore été synchronisées — même classe d'honnêteté
+     * que `hasEstimatedPrice` côté prix. `null`/absent = jamais de sync (usage manuel) : aucun
+     * flag, marquer tout le passé serait du bruit permanent.
+     */
+    syncConfirmedUntilIso?: string | null,
 ): ProjectionChartPoint {
     const { year, month } = calendarFromMonthIndex(startYear, startMonth, d.hostMonthIndex);
     // ⚠️ Abscisse FRACTIONNAIRE : `axisXAtDay` garantit que le jour 1 vaut EXACTEMENT l'entier du
@@ -67,6 +77,9 @@ export function mergeDailyRealPoint(
         priceAgeMaxDays: real.priceAgeMaxDays,
         hasEstimatedPrice: real.hasEstimatedPrice,
     };
+    if (typeof syncConfirmedUntilIso === 'string' && d.dayIso > syncConfirmedUntilIso) {
+        point.daySyncUnconfirmed = true;
+    }
     put(point, 'Liquidites', real.Liquidites);
     put(point, 'Immobilier', real.Immobilier);
     put(point, 'DettesNonImmo', real.DettesNonImmo);
@@ -99,6 +112,7 @@ export function realOnlyMonthPoints(
     startMonth: number,
     realByDate: ReadonlyMap<string, DailyPastRow> | null,
     fields: ReadonlySet<string> | null,
+    syncConfirmedUntilIso?: string | null,
 ): ProjectionChartPoint[] {
     if (!realByDate || !Number.isFinite(hostMonthIndex)) return [];
     const { year, month } = calendarFromMonthIndex(startYear, startMonth, hostMonthIndex);
@@ -113,7 +127,7 @@ export function realOnlyMonthPoints(
             dateLabel: dayLabel(year, month, day), isDailyPoint: true,
             dayIsDated: real.isDated, dayLabels: real.labels,
         } as unknown as DailyLedgerPoint;
-        out.push(mergeDailyRealPoint(d, startYear, startMonth, realByDate, fields));
+        out.push(mergeDailyRealPoint(d, startYear, startMonth, realByDate, fields, syncConfirmedUntilIso));
     }
     return out;
 }
@@ -142,18 +156,19 @@ export function buildEnrichedMonth(
     realByDate: ReadonlyMap<string, DailyPastRow> | null,
     dated: { recurring: ReadonlyArray<unknown>; monthlyNetSalary: number; monthlyDebtPayment: number },
     build: (input: { months: ReadonlyArray<ProjectionChartPoint>; startYear: number; startMonth: number; dated: unknown }) => DailyLedgerPoint[],
+    syncConfirmedUntilIso?: string | null,
 ): Map<string, ProjectionChartPoint> | null {
     const hostIdx = data.findIndex((m) => m.monthIndex === hostMonthIndex);
     if (hostIdx === -1) return null;
 
     let merged: ProjectionChartPoint[];
     if (hostIdx === 0) {
-        merged = realOnlyMonthPoints(hostMonthIndex, startYear, startMonth, realByDate, null);
+        merged = realOnlyMonthPoints(hostMonthIndex, startYear, startMonth, realByDate, null, syncConfirmedUntilIso);
         if (merged.length === 0) return null; // ancre sans réel : rien d'honnête à enrichir
     } else {
         const months = data.slice(Math.max(0, hostIdx - 2), hostIdx + 1);
         const days = build({ months, startYear, startMonth, dated });
-        merged = days.map((d) => mergeDailyRealPoint(d, startYear, startMonth, realByDate, null));
+        merged = days.map((d) => mergeDailyRealPoint(d, startYear, startMonth, realByDate, null, syncConfirmedUntilIso));
         if (merged.length === 0) return null;
     }
     recomputeDailyDiffs(merged);

@@ -80,6 +80,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
     const daily = data as ProjectionChartPoint & {
         isDailyPoint?: boolean; dayLabels?: string[]; dayIsDated?: boolean;
         dayIsReal?: boolean; priceAgeMaxDays?: number; hasEstimatedPrice?: boolean;
+        daySyncUnconfirmed?: boolean;
     };
     const isDailyPoint = daily.isDailyPoint === true;
     // [FUTUR-DAILY-PAST-REAL] Un jour du PASSÉ est RECONSTRUIT depuis de vraies données (transactions
@@ -267,6 +268,15 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                             — pas une moyenne du mois.
                             {daily.hasEstimatedPrice === true && ' Au moins un titre est valorisé à son prix actuel, faute d’historique.'}
                             {stalePrice && ` Le prix le plus ancien composant ce point a ${Math.round(priceAge)} jours : c’est un plateau de reconstruction, pas une valeur observée ce jour-là.`}
+                        </p>
+                    )}
+                    {/* [FUTUR-DAILY-ROLLOVER, finding silent-failure #593] Jour réel POSTÉRIEUR à la
+                        dernière sync bancaire : ses « 0 $ » peuvent n'être qu'une sync pas encore
+                        passée — le dire, sinon un plat crédible passe pour une journée mesurée. */}
+                    {isRealDay && daily.daySyncUnconfirmed === true && (
+                        <p className="mb-1.5 text-[10px] leading-snug text-amber-300/90">
+                            ⚠ Jour pas encore couvert par la sync bancaire — des transactions de ce
+                            jour peuvent manquer.
                         </p>
                     )}
                     {dayHasMovement ? (

@@ -270,9 +270,11 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
     return (
         <div className="space-y-6 stagger-in pb-20">
 
+            {/* [REFONTE-NAV-L3] Titre aligné sur TAB_LABELS (« Impôts & Docs ») — la page et la
+                nav doivent dire la même chose (passe de cohérence Config). */}
             <PageHeader
                 icon={<Icon name="tax" size={28} />}
-                title="Simulateur d'impôts"
+                title="Impôts & Docs"
             />
 
             {/* PH3 — salaire + options fiscales déplacés dans l'onglet Profil unifié. */}

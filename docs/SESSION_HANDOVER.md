@@ -4,6 +4,47 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-12 (suite 59) — `[REFONTE-NAV-L3]` panel : la frontière « bien détenu » était FAUSSE
+> Deux agents indépendants (code-reviewer + financial-integrity) ont MESURÉ la même divergence : `isOwnedToday`
+> utilisait `monthsSince >= 0` alors que le moteur exige `purchaseOffset < 0` STRICT (et `presentEquityOfGoal`
+> `> 0`). Un bien daté du mois courant était « détenu » à l'écran mais jamais acheté par le moteur →
+> **539 487 $ d'écart de patrimoine final**. Aggravant : le bouton « ajouter » de la vue « détenus » semait
+> `purchaseDate = aujourd'hui`, donc pile dans l'angle mort — chaque création naissait cassée. Corrigé : frontière
+> stricte, seed au mois PRÉCÉDENT, agrégation d'équité limitée aux biens actifs, garde sur élément null, tests
+> discriminants. Leçon portée dans CONVENTIONS (une partition qui invoque le moteur se prouve CONTRE le moteur ;
+> le seed d'un formulaire doit tomber du bon côté de sa propre frontière).
+>
+> ## 🟢 Session 2026-08-12 (suite 58) — `[REFONTE-NAV-L3]` : l'immo scindé actuel / projets
+> Lot 3 (intégré sur main post-#602, PR à venir). **`Tab.REAL_ESTATE` (Config) = les biens
+> DÉTENUS**, nouveau **`Tab.REAL_ESTATE_PROJECTS` (destination Vie, après `LIFE_PROJECTS`) =
+> les achats FUTURS**. La partition est **PURE et côté UI** — `services/realEstatePartition.ts`
+> (`partitionRealEstateGoals` / `isOwnedToday`, appuyé sur `monthsSince` de
+> `services/projection/pastPurchaseInit`) : **même tranche de store `realEstateGoals`, aucun
+> champ ajouté, aucune migration, aucun bump de schéma** (le moteur ne voit strictement rien
+> changer — la partition n'existe qu'à l'affichage).
+> Le corps de `RealEstate.tsx` (633 lignes) est extrait en
+> `components/realestate/RealEstateWorkspace.tsx` avec une variante `'actuel' | 'projet'` ;
+> `RealEstate.tsx` et `components/life/RealEstateProjects.tsx` sont deux wrappers minces qui
+> ne diffèrent que par la moitié de la partition qu'ils passent. Câblage : `types.ts` (enum),
+> `constants.ts` (`TAB_LABELS` « Projets immo »), `Layout.tsx` (`TAB_ICONS` → `building`),
+> `navDestinations.ts` (VIE), `TabRouter.tsx` (route lazy), `CommandPalette.tsx`.
+> ⚠️ **Opt-out PARTAGÉ** : les deux gates `PAGE_SETUP` utilisent la MÊME clé `realEstate`
+> (une seule notion « pas concerné par l'immobilier » — deux clés auraient obligé Marc à le
+> redire deux fois), et `SetupHub` ne liste QUE `REAL_ESTATE` : lister les deux aurait compté
+> DEUX FOIS le même prérequis dans le % de complétion. L'intro de `REAL_ESTATE` est reformulée
+> (biens possédés) pour ne plus promettre la planification d'un achat.
+> Passe de cohérence des libellés de page vs `TAB_LABELS` : « Gestion de la Dette » → **« Dettes »**,
+> « Simulateur d'impôts » → **« Impôts & Docs »**.
+> Tests : `tests/services/realEstatePartition.test.ts`, `tests/components/life/RealEstateProjects.test.tsx`,
+> `RealEstate.smoke.test.tsx` adapté, et le test de non-perte `navDestinations.test.ts` (dont
+> l'assertion exhaustive `Object.values(Tab)` moins `UNROUTED` couvre le nouvel onglet
+> automatiquement + un cas explicite « ACTUEL en Config / PROJETS en Vie, après Projets de vie »).
+> ⚠️ **`[DEBT-FROM-CONTRACT]` n'est PAS dans ce lot** — le plan le rangeait sous « Lot 3 » mais
+> c'est un chantier à part entière (parser un contrat PDF), toujours **ouvert** au BACKLOG :
+> ne pas le croire livré en lisant l'ancienne ligne du plan. Le split **invest** actuel/projets
+> reste lui aussi à faire.
+> Suite : PR + panel `/review-all` + merge ; prochain lot `L4` (Vie fusionnée).
+>
 > ## 🟢 Session 2026-08-12 (suite 57) — `[REFONTE-NAV-L2b]` : l'ex-Accueil définitivement supprimé
 > Lot 2b (intégré sur main post-#601, PR à venir) : **4e sous-onglet « Historique »** du Futur
 > (`components/future/FutureHistorySection.tsx`, lazy via `lazyWithRetry`) — le pipeline

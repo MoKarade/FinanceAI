@@ -8,6 +8,27 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Corrections (panel du split immobilier)
+- **Un bien ajouté depuis « Immobilier » est désormais vraiment pris en compte par la courbe.** Avant ce correctif,
+  la page affichait l'équité d'un bien que le simulateur, lui, considérait comme non encore acheté — deux écrans,
+  deux vérités. La frontière « bien détenu » suit maintenant exactement celle du moteur, et le formulaire crée le
+  bien du bon côté de cette frontière. Au passage : l'en-tête ne compte plus l'équité des biens désactivés (il
+  affichait « 0 $ » sans le dire), et une liste de biens corrompue n'affiche plus une page blanche.
+
+### Améliorations — l'immobilier séparé en « ce que j'ai » et « ce que je prévois » (refonte nav, Lot 3)
+- **« Immobilier » (Configurations) ne montre plus que tes biens ACTUELS** : la maison que tu
+  possèdes déjà, son équité du jour, son hypothèque et son amortissement. Plus de projets d'achat
+  futurs mélangés à ta situation réelle sur la même page.
+- **Tes projets d'achat futurs ont leur propre page, « Projets immo », dans la destination Vie**
+  (juste après « Projets de vie ») : c'est là que tu planifies un achat, un louer-vs-acheter ou un
+  refinancement — avec les plans qui déforment ta courbe, pas avec la photo d'aujourd'hui.
+  Rien à ressaisir : tes projets existants apparaissent d'eux-mêmes du bon côté selon leur date
+  d'achat, et chaque page s'ouvre sur un état vide honnête si tu n'as rien de ce côté-là.
+  Si tu as déjà dit « je ne suis pas concerné par l'immobilier », ça vaut pour les deux pages.
+- **Libellés alignés** : la page « Gestion de la Dette » s'appelle maintenant **« Dettes »** et
+  « Simulateur d'impôts » devient **« Impôts & Docs »** — le titre de la page dit enfin la même
+  chose que l'onglet dans la navigation.
+
 ### Améliorations — l'ex-Accueil rejoint définitivement ses pages (refonte nav, Lot 2b)
 - **L'évolution passée de ton patrimoine par compte vit maintenant dans Futur → onglet
   « Historique »** : le grand graphe « Évolution détaillée » de l'ex-Accueil (comptes cash,

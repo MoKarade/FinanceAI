@@ -26,8 +26,8 @@ export const NAV_DESTINATIONS: NavDestination[] = [
         id: 'CONFIG',
         label: 'Configurations',
         icon: 'group-money',
-        // « Ce que j'AI » : les entrées du moteur. L'immobilier ACTUEL vit ici (les PROJETS
-        // immo futurs migreront vers Vie au split du Lot 3).
+        // « Ce que j'AI » : les entrées du moteur. L'immobilier ACTUEL vit ici — les PROJETS
+        // immo futurs vivent dans Vie (Tab.REAL_ESTATE_PROJECTS, split [REFONTE-NAV-L3]).
         tabs: [Tab.PROFILE, Tab.INVESTMENTS, Tab.REAL_ESTATE, Tab.DEBT, Tab.TAX],
     },
     {
@@ -35,7 +35,7 @@ export const NAV_DESTINATIONS: NavDestination[] = [
         label: 'Vie',
         icon: 'group-goals',
         // « Ce que je PRÉVOIS » : les plans qui déforment la courbe.
-        tabs: [Tab.RETIREMENT, Tab.CHILD, Tab.LIFE_PROJECTS],
+        tabs: [Tab.RETIREMENT, Tab.CHILD, Tab.LIFE_PROJECTS, Tab.REAL_ESTATE_PROJECTS],
     },
     { id: 'TRANSACTIONS', label: 'Transactions', icon: 'transactions', tabs: [Tab.TRANSACTIONS, Tab.BUDGET] },
     { id: 'ASSISTANT', label: 'Assistant', icon: 'bot', tabs: [Tab.ASSISTANT] },

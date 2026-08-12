@@ -430,3 +430,13 @@ Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiff
 - [ ] ~~**[FISC-TAXDEC-INCR]**~~ — **À CONFIRMER** : interprétation de la réponse Marc « ok » 2026-07-06. Signifie-t-il
   (a) COD ER le fix risqué (re-baser golden + tests), ou (b) statu quo/différé ? En attente d'un « go » ou « wait »
   explicite avant de coder (risque $ élevé).
+
+## A0 — Quota Vercel (2026-08-12)
+
+- [ ] **[INFRA-VERCEL-QUOTA]** — Le plan Vercel GRATUIT plafonne à **100 déploiements/jour** ; plafond atteint le
+  2026-08-12 ~20:18 UTC (6 PR + pushes de la refonte nav dans la journée). Effet : previews ET **déploiement PROD
+  bloqués** jusqu'au reset — le code merge sur `main` mais hubperso.com garde la version d'avant.
+  **Décision Marc (2026-08-12) : attendre le reset**, pas d'abonnement Pro (règle « tout gratuit »).
+  Claude relance le déploiement lui-même au reset (rappels programmés : minuit heure Québec + 20:45 UTC en secours).
+  Mitigation appliquée côté Claude : **pushes groupés** (un push par PR au lieu d'un par correctif).
+  👤 Rien à faire pour Marc, sauf s'il veut changer d'avis sur le plan payant.

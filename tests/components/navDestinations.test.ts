@@ -29,6 +29,15 @@ describe('navDestinations — non-perte (source unique de la nav)', () => {
         }
     });
 
+    it('[REFONTE-NAV-L3] split immo : l\'ACTUEL en Config, les PROJETS en Vie (après Projets de vie)', () => {
+        expect(destinationOfTab(Tab.REAL_ESTATE)?.id).toBe('CONFIG');
+        expect(destinationOfTab(Tab.REAL_ESTATE_PROJECTS)?.id).toBe('VIE');
+        const vie = NAV_DESTINATIONS.find((d) => d.id === 'VIE');
+        const iLife = vie!.tabs.indexOf(Tab.LIFE_PROJECTS);
+        expect(iLife).toBeGreaterThanOrEqual(0);
+        expect(vie!.tabs.indexOf(Tab.REAL_ESTATE_PROJECTS)).toBe(iLife + 1);
+    });
+
     it('destinationOfTab retrouve la destination de chaque onglet couvert', () => {
         for (const dest of NAV_DESTINATIONS) {
             for (const tab of dest.tabs) {

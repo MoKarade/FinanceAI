@@ -685,6 +685,9 @@ export enum Tab {
   // NBA-PAGE — « Prochaine action » (ex-widget sidebar) devient un onglet à part.
   // [ASSISTANT-HUB 2026-07-23] ACTIONS retiré : fusionné dans ASSISTANT (deep-link #ACTIONS redirigé, App.tsx).
   REAL_ESTATE = 'REAL_ESTATE',
+  // [REFONTE-NAV-L3] Split immo : REAL_ESTATE = biens ACTUELS (Config), REAL_ESTATE_PROJECTS =
+  // projets d'achat FUTURS (Vie). Même tranche de store `realEstateGoals`, partition UI pure.
+  REAL_ESTATE_PROJECTS = 'REAL_ESTATE_PROJECTS',
   CHILD = 'CHILD',
   TRAVEL = 'TRAVEL',
   LIFE_EVENTS = 'LIFE_EVENTS',

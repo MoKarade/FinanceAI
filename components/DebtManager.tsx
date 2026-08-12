@@ -99,9 +99,11 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     return (
         <div className="space-y-6 stagger-in pb-20">
             <ConfirmModal isOpen={!!confirmDeleteId} onConfirm={doConfirmDelete} onCancel={() => setConfirmDeleteId(null)} title="Supprimer la dette" message="Supprimer cette dette définitivement ?" confirmLabel="Supprimer" />
+            {/* [REFONTE-NAV-L3] Titre aligné sur TAB_LABELS (« Dettes ») — la page et la nav
+                doivent dire la même chose (passe de cohérence Config). */}
             <PageHeader
                 icon={<Icon name="debt" size={28} />}
-                title="Gestion de la Dette"
+                title="Dettes"
                 badge={<Badge variant={totalDebt > 0 ? 'danger' : 'success'} size="md">Total Dû: {formatCAD(totalDebt)}</Badge>}
             />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -60,6 +60,8 @@ export function makeNavigationActions(setActiveTab: (t: Tab) => void): CommandAc
         { tab: Tab.INVESTMENTS, label: 'Investissements', icon: <Icon name="investments" size={sz} />, keywords: ['invest', 'bourse', 'actions'] },
         { tab: Tab.FUTURE, label: 'Projection Future', icon: <Icon name="future" size={sz} />, keywords: ['future', 'projection', 'simulation', 'mc', 'dashboard', 'home', 'accueil'] },
         { tab: Tab.REAL_ESTATE, label: 'Immobilier', icon: <Icon name="real-estate" size={sz} />, keywords: ['immo', 'maison', 'hypotheque'] },
+        // [REFONTE-NAV-L3] Projets d'achat futurs (Vie) — l'actuel reste sous « Immobilier ».
+        { tab: Tab.REAL_ESTATE_PROJECTS, label: 'Projets immo', icon: <Icon name="building" size={sz} />, keywords: ['projet immo', 'achat', 'futur', 'maison', 'hypotheque'] },
         { tab: Tab.CHILD, label: 'Enfants', icon: <Icon name="child" size={sz} />, keywords: ['enfant', 'reee', 'famille'] },
         // Phase F.12 — Tab.TRAVEL et Tab.LIFE_EVENTS fusionnés en LIFE_PROJECTS
         { tab: Tab.LIFE_PROJECTS, label: 'Projets de vie', icon: <Icon name="life-projects" size={sz} />, keywords: ['voyage', 'travel', 'mariage', 'event', 'parcours', 'projet'] },

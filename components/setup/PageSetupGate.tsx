@@ -58,11 +58,24 @@ export const PAGE_SETUP: Partial<Record<Tab, PageSetup>> = {
             "Saisis-les, importe un talon, ou explore avec des données de test.",
         requirementIds: ['salary', 'retirementProfile'],
     },
+    // [REFONTE-NAV-L3] Split immo : REAL_ESTATE (Config) = biens détenus, REAL_ESTATE_PROJECTS
+    // (Vie) = achats futurs. MÊME prérequis et MÊME clé d'opt-out (une seule notion « pas
+    // concerné par l'immobilier ») — les deux pages s'ouvrent sur des états vides honnêtes.
     [Tab.REAL_ESTATE]: {
         mode: 'hard',
         title: 'Immobilier',
         intro:
-            "Cette page planifie un projet immobilier (achat, louer vs acheter, refinancement). " +
+            "Cette page suit les biens que tu possèdes déjà (équité présente, hypothèque, amortissement). " +
+            "Ajoute un bien ou un projet, ou indique que tu n'es pas concerné — tu pourras changer d'avis plus tard.",
+        requirementIds: ['realEstate'],
+        optOut: { key: 'realEstate', label: "Je ne suis pas propriétaire et n'ai pas de projet immobilier" },
+        allowCreateInPage: true,
+    },
+    [Tab.REAL_ESTATE_PROJECTS]: {
+        mode: 'hard',
+        title: 'Projets immo',
+        intro:
+            "Cette page planifie un projet immobilier futur (achat, louer vs acheter, refinancement). " +
             "Crée ton premier projet, ou indique que tu n'es pas concerné — tu pourras changer d'avis plus tard.",
         requirementIds: ['realEstate'],
         optOut: { key: 'realEstate', label: "Je n'ai pas de projet immobilier" },

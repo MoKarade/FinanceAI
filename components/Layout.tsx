@@ -78,6 +78,7 @@ export const Layout: React.FC<LayoutProps> = ({
     [Tab.INVESTMENTS]: 'investments',
     [Tab.FUTURE]: 'future',
     [Tab.REAL_ESTATE]: 'real-estate',
+    [Tab.REAL_ESTATE_PROJECTS]: 'building',
     [Tab.CHILD]: 'child',
     [Tab.TRAVEL]: 'life-projects',
     [Tab.LIFE_EVENTS]: 'life-projects',

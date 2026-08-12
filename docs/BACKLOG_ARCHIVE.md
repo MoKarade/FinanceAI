@@ -56,6 +56,42 @@ fichier:ligne). Verdicts appliqués à la refonte :
 
 ---
 
+## ✅ Chantier REFONTE-NAV Lots 2-4 (PR #601, #602, #603, #604, merged 2026-08-12)
+
+- [x] **`[REFONTE-NAV-L2]`** ✅ 2026-08-12 (PR #601, #602) — Futur enrichi, SCINDÉ 2a/2b. Hypothèse du
+  plan périmée : les paramètres de projection étaient DÉJÀ dans le sous-onglet « Hypothèses » du Futur
+  (PH4-FUT) — rien à rapatrier. Les DEUX moitiés livrées et archivées au merge de la PR 2b.
+  - [x] **`[REFONTE-NAV-L2a]`** ✅ 2026-08-12 (PR #601) — bannière import gelé → Futur · tuile
+    « Variation 30 j » (`hooks/useNetWorthVariation`, fenêtre fixe 30 j, « — » si < 2 points) · périmètre
+    « liquide + placements » PAR CONSTRUCTION — étiquetage sur la tuile, couverture < 30 j signalée ·
+    équité immo incluse ET étiquetée au patrimoine · libellé « Monte Carlo (N itér.) » au nombre RÉEL.
+  - [x] **`[REFONTE-NAV-L2b]`** ✅ 2026-08-12 (PR #602) — 4e sous-onglet « Historique » du Futur
+    (`components/future/FutureHistorySection.tsx`, lazy — graphe d'évolution par compte + sélecteur de
+    fenêtre complet, clés localStorage `dashboard:*` conservées) · comparaison d'actions déménagée dans
+    Investissements (mode « Comparer ») · `Dashboard.tsx` SUPPRIMÉ (gate PAGE_SETUP retiré).
+- [x] **`[REFONTE-NAV-L3]`** ✅ 2026-08-12 (PR #603) — split immo actuel / projets.
+  `services/realEstatePartition.ts` (pur, `partitionRealEstateGoals`/`isOwnedToday`) ·
+  `components/realestate/RealEstateWorkspace.tsx` (ex-corps RealEstate.tsx, variante `'actuel'|'projet'`) ·
+  `Tab.REAL_ESTATE_PROJECTS` → `components/life/RealEstateProjects.tsx` dans destination Vie · gate
+  `PAGE_SETUP` partagée clé `realEstate` (zéro double comptage) · libellés alignés `TAB_LABELS`.
+- [x] **`[REFONTE-NAV-L4]`** ✅ 2026-08-12 (PR #604) — destination Vie parle d'une seule voix.
+  `components/vie/VieCurveLink.tsx` (affordance COMMUNE « Voir l'effet ») câblée sur 4 pages Vie · titres
+  depuis `TAB_LABELS` · empty states honnêtes avec CTA · `Retirement` en sous-onglets « Projection »/« Outils
+  d'optimisation » · ternaire MORT retiré · harmonisation étendue aux 4 pages.
+
+---
+
+## ✅ Chantier A11Y — Keyboard & Privacy (PR #598, #599, merged 2026-08-12)
+
+- [x] **`[D6-KBD]`** ✅ 2026-08-12 (PR #598) — sidebar pilotable au clavier. Accordéon JAMAIS disabled
+  (Tab SAUTE un bouton désactivé : focus atteindrait outside sidebar) · Tab ouvre sidebar si repliée ·
+  focus roving-tabindex optionnel sur boutons d'un accordéon ouvert.
+- [x] **`[A11Y-FUTUR-MILESTONES-KEYBOARD]`** ✅ 2026-08-12 (PR #599) — pastilles d'événement focusables
+  (`tabIndex: 0` + Entrée/Espace = modale) · aria-labels DATÉS (dateLabel du meta) · anneau de focus
+  DESSINÉ en SVG (outline CSS sur `<g>` silencieusement ignoré).
+
+---
+
 ## ✅ Chantier FUTUR-DAILY au jour + V9 couverture moteur (PR #581→#587 + #588, mergées 2026-08-11/12)
 
 ### Tenue 2026-08-12 (suite) — doublons PM-STALE re-vérifiés contre le code + doc meltdown

@@ -26,7 +26,7 @@ npm run preview
 ## Lancer les tests
 
 ```bash
-npm run test          # Vitest (2872 tests, 251 fichiers)
+npm run test          # Vitest (3 887 tests, 339 fichiers, mesuré 2026-08-12)
 npm run typecheck     # TypeScript strict mode (clean)
 npm run build         # Vite 8 (--mode production)
 ```
@@ -80,7 +80,7 @@ Tests manuels : ~195 cas couvrant les onglets actifs — voir
 L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Résumé :
 
 - Pas de backend. L'app vit côté navigateur, persiste localement (localStorage + IndexedDB chiffré), et appelle Anthropic, Finnhub et CoinGecko directement depuis le client.
-- Le moteur de projection (`services/projection.ts` + `services/projection/` — 31 sous-modules) est le coeur de l'app. Voir [`docs/PROJECTION.md`](docs/PROJECTION.md) pour les détails.
+- Le moteur de projection (`services/projection.ts` + `services/projection/` — 48 sous-modules, mesuré 2026-08-12) est le coeur de l'app. Voir [`docs/PROJECTION.md`](docs/PROJECTION.md) pour les détails.
 - Le state global est Zustand v5 + persist (schema v7 avec migrations v1→v7).
 - `services/eraContext.ts` est dormant (MCP-only) — l'UI Era a été retirée.
 

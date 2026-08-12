@@ -251,8 +251,9 @@
   décimales dans `monthIndex` (clé d'axe du graphe, du tableau ET des icônes-jalons — les jalons
   se désaligneraient en SILENCE ; la granularité vit dans `date`) · vérifier le POIDS stocké
   avant de livrer une densification (`[HIST-STORE-SIZE]` a été fait POUR tenir le quota).
-- [ ] **V10 — A11y** (1-2 PR) : `[A11Y-INK500]` + `[FUT-TOUCH-TARGETS]` + `[D6-KBD]` +
-  `[A11Y-BORDER-PROMINENCE-SWEEP]` + `[A11Y-FUTUR-MILESTONES-KEYBOARD]` (Marc : focusables).
+- [ ] **V10 — A11y** (1-2 PR) : `[A11Y-INK500]` + `[FUT-TOUCH-TARGETS]` +
+  `[A11Y-BORDER-PROMINENCE-SWEEP]`. ⚠️ `[D6-KBD]` + `[A11Y-FUTUR-MILESTONES-KEYBOARD]` archivés
+  (2026-08-12, PR #598, #599).
 - [ ] **V11 — Dette structurée** (fond, par lots) : `[GODFILE-APPLYDOCUMENT]` → `[GODFILE-MCPHTTP]` →
   `[DETTE-GODFILES]` (Budget/FutureProjection/…) + `[DETTE-UI-PRIMITIVES]` + `[CA-07]` + `[T4]`.
 - [ ] **V12 — Gros chantiers (tous GO Marc 2026-07-31, plan-first chacun)** :
@@ -527,12 +528,6 @@
   migrés → `ink-400` (AA normal 5.21-6.42 mesuré) et 22 GARDÉS en `ink-500` légitime (glyphes
   décoratifs aria-hidden, icônes-boutons ≥3:1 WCAG 1.4.11, numérotation présentationnelle,
   grandes icônes d'états vides).
-- [x] **`[A11Y-FUTUR-MILESTONES-KEYBOARD]`** ✅ 2026-08-12 (décision Marc : focusables) — pastilles
-  tabIndex 0 + Entrée/Espace = modale (même action que le clic), aria-labels DATÉS (dateLabel du
-  meta), anneau de focus DESSINÉ en SVG (.event-focus-ring — l'outline CSS sur un <g> est
-  invisible dans certains moteurs), ordre de Tab = ordre chronologique (ordre des données).
-  Découverte : Échap ne fermait la modale de détail NULLE PART (le bouton Fermer seul) — ajouté
-  (listener document + autofocus du dialog). E2E clavier réel + 4 unitaires discriminants.
 - [x] **`[FUT-TOUCH-TARGETS]`** ✅ 2026-08-12 (absorbé par [FUTUR-MOBILE-LAYOUT], retour Marc
   « trop petit trop cramped ») — mobile : présets de fenêtre (« 5 ans »… « Tout », « Aujourd'hui »)
   à min-h 44px, bascules de légende à 36px (18 bascules : 44px chacune gonflait le bloc), boutons
@@ -542,13 +537,11 @@
   390×844.
 - [ ] **`[A11Y-BORDER-PROMINENCE-SWEEP]`** (S, reste) — passe dédiée inputs/selects (focus:border-*),
   toggles, dropzones (border-white/10 : Transactions ×16, Investments ×8, Dashboard ×4).
-- [x] **`[D6-KBD]`** ✅ 2026-08-12 — sidebar pilotable au clavier : (1) accordéon JAMAIS disabled
-  (Tab SAUTE un bouton désactivé, et au moment où Tab le considère le focus n'est pas encore dans
-  l'aside → sidebar repliée → bouton mort ; atteint = opérable, le focus ouvre la sidebar) ;
-  (2) découverte au passage : les items d'un groupe REPLIÉ restaient TABBABLES (max-h-0 +
-  overflow-hidden cache visuellement sans retirer du tab-order) → `invisible` (visibility:hidden)
-  quand replié. 3 tests discriminants (4 rouges sur l'avant, dont l'ancien §B.2 qui verrouillait
-  le comportement inverse).
+- [ ] **`[UI-RETIREMENT-DEAD-FRAGMENT]`** (XS, cosmétique — retour revue #604) — fragment JSX `<>…</>`
+  inutile dans `components/Retirement.tsx` (lignes ~322-434) après le retrait d'un ternaire mort ;
+  suppression imposte re-indenter ~110 lignes. Aucun impact fonctionnel ; `eslint` le rate
+  (règle `react/jsx-no-useless-fragment` non activée). Reporté en attente d'une PR plus large
+  de refactoring `Retirement.tsx` (où il se perdrait dans le bruit).
 - [ ] **`[FUTUR-PAST-EXACT]`** (M, 🧭 retour Marc 2026-08-12 17:20) — « le passé doit représenter
   EXACTEMENT le passé et je veux pouvoir voir les transactions aussi » : la partie passée de la
   courbe doit coller aux données réelles sans approximation, et l'infobulle/le détail d'un jour
@@ -594,54 +587,8 @@
   (vision différente de Marc : plus d'Accueil du tout, la courbe Future au centre — voir
   `docs/REFONTE_NAV_PLAN.md`). Ne pas implémenter l'ancien découpage.
 - [ ] **`[REFONTE-NAV]`** (L, ⏳, GO Marc 2026-08-12) — chantier « tout tourne autour de la courbe
-  Future », plan détaillé + décisions dans `docs/REFONTE_NAV_PLAN.md`. Lots :
-  - [x] `[REFONTE-NAV-L1]` **Lot 1 — la nav** ✅ 2026-08-12 (PR #600) : 6 destinations
-    (Futur · Configurations · Vie · Transactions · Assistant · Réglages), app s'ouvre sur Futur,
-    Accueil retiré (#DASHBOARD→#FUTURE, chiffres de tête → FutureKpiStrip), barre mobile
-    Futur·Transactions·Assistant·Plus. Critère : rien de perdu.
-  - [x] `[REFONTE-NAV-L2]` Lot 2 — Futur enrichi, SCINDÉ 2a/2b (2026-08-12) — **les deux moitiés
-    livrées** (PR #601 et #602). ⚠️ Hypothèse du
-    plan périmée : les paramètres de projection étaient DÉJÀ dans le sous-onglet « Hypothèses »
-    du Futur (PH4-FUT) — rien à rapatrier. Les DEUX moitiés livrées → fermer (et archiver) au
-    merge de la PR 2b.
-    - [x] `[REFONTE-NAV-L2a]` bannière import gelé → Futur · tuile « Variation 30 j »
-      (`hooks/useNetWorthVariation`, fenêtre fixe 30 j, « — » si < 2 points ; itération panel
-      #601 : périmètre « liquide + placements » PAR CONSTRUCTION — les termes immo/dettes
-      annuels/constants fabriquaient des sauts fictifs au 31 décembre — étiqueté sur la tuile,
-      « sur N j de données » si couverture < 30 j, tx sans compte incluses via bucket
-      synthétique) · équité immo incluse ET étiquetée au patrimoine du bandeau · libellé
-      « Monte Carlo (N itér.) » au nombre RÉEL (source unique `effectiveMcIterations`).
-    - [x] `[REFONTE-NAV-L2b]` ✅ 2026-08-12 (PR #602) : 4e sous-onglet « Historique » du
-      Futur (`components/future/FutureHistorySection.tsx`, lazy — graphe d'évolution par
-      compte + sélecteur de fenêtre complet, clés localStorage `dashboard:*` conservées) ·
-      comparaison d'actions déménagée dans Investissements (mode « Comparer »,
-      `StockComparisonModal` → `components/investments/`) · `Dashboard.tsx` SUPPRIMÉ
-      (gate PAGE_SETUP retiré ; enum + TAB_LABELS + redirect #DASHBOARD→#FUTURE conservés
-      pour la compat deep-link).
-  - [x] `[REFONTE-NAV-L3]` Lot 3 — **split immo actuel / projets** ✅ 2026-08-12 (PR à venir) :
-    `services/realEstatePartition.ts` (pur, `partitionRealEstateGoals`/`isOwnedToday` — un but est
-    « actuel » s'il est déjà acheté à la date du jour) · `components/realestate/RealEstateWorkspace.tsx`
-    (ex-corps de `RealEstate.tsx`, variante `'actuel' | 'projet'`) · `RealEstate.tsx` réduit à un
-    wrapper mince (Config = biens DÉTENUS) · nouveau `Tab.REAL_ESTATE_PROJECTS` →
-    `components/life/RealEstateProjects.tsx` dans la destination **Vie** (après Projets de vie),
-    gate `PAGE_SETUP` dédié partageant la MÊME clé d'opt-out `realEstate` (une seule notion
-    « pas concerné par l'immobilier », zéro double comptage dans SetupHub) · entrée palette de
-    commandes · libellés de page alignés sur `TAB_LABELS` (« Dettes », « Impôts & Docs »).
-    ⚠️ Le split invest actuel/projets et `[DEBT-FROM-CONTRACT]` ne sont **PAS** dans ce lot —
-    `[DEBT-FROM-CONTRACT]` reste un ticket séparé, toujours ouvert (voir plus haut, ligne ~563).
-  - [x] `[REFONTE-NAV-L4]` Lot 4 — **la destination Vie parle d'une seule voix** ✅ 2026-08-12
-    (PR à venir) : `components/vie/VieCurveLink.tsx` (affordance COMMUNE « Voir l'effet sur ma
-    courbe » → `navigateWithFocus(Tab.FUTURE)`, source unique du libellé et du placement) câblée
-    sur les **4** pages Vie · titres pris de `TAB_LABELS` (plus de libellé en dur divergeant de
-    l'onglet) · idiome de sous-titre « ce que je PRÉVOIS » : chaque page annonce comment son plan
-    déforme la courbe Future · `ChildPlanning` sans enfant ne retourne plus `null` (= **page
-    BLANCHE**) mais un empty state honnête avec CTA · empty states Voyages/Événements dotés d'un
-    CTA · `Travel`/`LifeEvents` rendus DANS `LifeProjects` : leurs `PageHeader` (h1) rétrogradés
-    en `<section>` + h2 — il y avait **3 h1** sur une seule page · `Retirement` rangée en
-    sous-onglets « Projection » / « Outils d'optimisation » (voir `[UI-TABS-RICH]`) + ternaire
-    MORT retiré (`chartData.length === 0` inatteignable derrière la garde `hasProjection`).
-    Harmonisation étendue à la 4e page issue du Lot 3 (`RealEstateWorkspace` variante `'projet'`
-    UNIQUEMENT — la variante `'actuel'` reste une page Configurations, non-Vie).
+  Future », plan détaillé + décisions dans `docs/REFONTE_NAV_PLAN.md`. ⚠️ L1-L4 ARCHIVÉS
+  (2026-08-12, PR #600-#604). Lots restants :
   - [ ] `[REFONTE-NAV-L5]` Lot 5 — Transactions fusionnées (tx, budget, abonnements, imports).
   - [ ] `[REFONTE-NAV-L6]` Lot 6 — Assistant pleine page + outils (sous-lots par outil, voir plan).
   - [ ] `[REFONTE-NAV-L7]` Lot 7 — Réglages retravaillés en sections.
@@ -748,6 +695,401 @@
   transferts/hypothèque/RAP/REEE + clustering LOD complet (le gros est livré par FUTUR-ICONS-RICH).
 - [ ] **`[PH4-BUD]`** (🧭 cadrage Marc requis) — refonte Budget design (Budget techniquement sain ;
   a gagné les vues MONTH/QUARTER/YEAR/CUSTOM depuis).
+
+---
+
+## Audit complet 2026-08-12 (panel de 9 agents)
+
+> Consolidation de 8 rapports spécialisés : dette technique, fiscal, sécurité, silence, a11y,
+> perf, IA, moteur. 🔴 = fuite de données / argent / problème utilisateur réel mesurable.
+> Tous les findings ont une MESURE exécutée. Chaque ticket porte un lien vers le rapport audit.
+> Les 5 derniers captions du moteur détaillent CHAQUE hypothèse testée et RÉFUTÉE (ne pas
+> re-lever). Aucune baseline testée n'est cassée (3833/3833 verts post-audit).
+
+### 🔴 Moteur & fiscal — altère les calculs d'argent (12 HIGH/ÉLEVÉ · 7 MED · 7 LOW/FAIBLE)
+
+> Périmètre : projection.ts + projection/* + utils/tax.ts + services/realEstate.ts
+> + services/claude.ts (Vision payslip). Tous les findings sont MESURÉS sur le vrai moteur
+> (tvite run, sondes adverses). Tests discriminants posés à chaque correction.
+
+#### HIGH — Bloque la fiabilité des chiffres
+
+- [ ] 🔴 **`[ENG-MC-CONSERVATION-BLIND]`** (M) — toute la branche stochastique du moteur
+  (divorce/décès/LTC/maladie grave/héritage/bootstrap) est **hors de portée de TOUS les invariants
+  de conservation**. `calculateFutureProjection` appelle toujours `runScenario(..., false, ...)` →
+  le `chartData` est toujours déterministe, et sous MC seul `{NetWorth, monthIndex}` est retourné
+  (aucune ventilation d'actifs/dettes pour reconstruire le bilan). Résidu NaN potentiel NON mesuré.
+  **Correctif** : assertion interne au moteur dans `runScenario`, et étendre
+  `projection.fuzzConservation` à `enableMonteCarlo=true` avec tous les flags stochastiques armés.
+
+- [ ] 🔴 **`[ENG-STRESSTEST-GROWTH-UNREGISTERED]`** (S) — le krach et la reprise du stress-test
+  mutent soldes sans **jamais alimenter `growthCELI/REER/NonReg/Crypto`** → **371 782 $ de
+  patrimoine créés silencieusement en 20 mois** (mesure exact : couple 45 ans, stress -40 % / +24 m
+  reprise). L'invariant du fuzz reste vert (bilan indifférent). Test discriminant : une assertion
+  en forme-FLUX ferait ÉCHOUER le code actuel. **Correctif** : accumuler `growthCELI +=
+  celi*(crashFactor−1)` au moment du crash, ou émettre un champ `MarketShock` dédié + test
+  stressTestEnabled en forme-flux.
+
+- [ ] 🔴 **`[ENG-DIVORCE-DEBT-ASYMMETRY]`** (S) — le divorce partage ACTIFS et l'hypothèque,
+  mais garde **100 % des dettes non immobilières** (activeDebts[], liquidDebt, smithManoeuvreDebt).
+  **Mesuré : après avoir cédé 100 % des actifs, le NW reste −81 827 $ (100 k$ de dettes intactes).**
+  Impact = solde total dettes × divorceSplitPct, cumulé sur tous les MC où le divorce se déclenche.
+  **Correctif** : appliquer `keep` à `activeDebts[i].balance`, `liquidDebt`, `smithManoeuvreDebt`.
+  Décision produit requise si dettes ne se partagent pas (documenté dans decisions.md).
+
+- [ ] 🔴 **`[ENG-DIVORCE-REGISTRE-PERCONJOINT]`** (M) — le divorce est **fiscalement INERTE** :
+  `reerByUser`, `activeUsersCount`, `liveFilers`, espaces CELI/REER/CELIAPP, revenus, tous
+  survivent intacts (contrairement au décès qui les traite). **Mesuré isolant : Δ impôt = 0 $ exact
+  sur 30 ans.** Ordre de grandeur : différence 1 vs 2 contribuables = 187 k$ de différence d'impôt
+  cumulé. **Correctif** : au divorce, appliquer le pendant du merge décès — scinder
+  `reerByUser`/`accRetraitsReerYearByUser`, ramener `activeUsersCount` à 1, zéroïser
+  `grossAnnaBaseAnnual`, recalculer reerShares. Charge fiscale à valider par financial-integrity.
+
+- [ ] 🔴 **`[ENG-LIQUIDDEBT-NEVER-REPAID]`** (M) — `liquidDebt` ne fait que croître : jamais
+  remboursé (même avec millions en liquide), **jamais porteur d'intérêt**. **Mesuré : retraité
+  insolvable, héritage de 1,5 M$, liquidDebt gelé 559 k$ pendant 180 mois à côté de 1,65 M$ de
+  liquidités oisives.** À taux découvert 10-20 %, omission 56-112 k$/an ≈ 0,8-1,7 M$ sur 15 ans.
+  **Correctif** : traiter comme vraie dette — (a) intérêt mensuel paramétrable, (b) remboursement
+  prioritaire dès qu'un surplus existe, (c) exposer dans le plan d'action.
+
+- [ ] 🔴 **`[ENG-W5-RENTAL-OFFBALANCE]`** (M) — un immeuble locatif n'existe **PAS au bilan** :
+  ni sa valeur, ni hypothèque, ni service de dette. Seul le NOI n'afflue revenus. **Mesure exacte :
+  300 k$ d'équité + 500 k$ de prêt introuvables.** L'invariant du fuzz reste vert (tout absent du
+  chartData). Pire : le service non modélisé vaut ≈2,9 k$/mois sur le prêt → ≈700 k$ de coût omis
+  sur l'horizon. **Correctif** : brancher `currentValue` dans `realEstateEquity` et `mortgageBalance`
+  dans soldes de dette, servir hypothèque mensuellement (le module `realEstateMonth` le fait déjà
+  pour les buts immo).
+
+- [ ] 🔴 **`[FISC-DIVORCE-INCOME-PHANTOM]`** (M) — le divorce coupe ACTIFS mais garde le **revenu et
+  la fiscalité de COUPLE**. Aucune réduction de `grossAnnaBaseAnnual`, `incomeAnnaNetMonthly`,
+  `taxFilers` ni RAMQ au barème couple. **Mesure : couple 183 k$ brut, conjoint parti = 85 k$ de
+  revenu fantôme encaissé à vie + fiscalité couple indue.** Cette erreur DOMINE la coupe de 50 % du
+  patrimoine. La garde argent ne l'attrape pas (l'argent reste conservé, juste inventé au bon
+  endroit). **Correctif** : basculer sur mode « ménage à 1 » symétrique du `survivorMode` : `taxFilers
+  = 1`, `grossAnnaBaseAnnual = 0`, `incomeAnnaNetMonthly = 0`, `activeUsersCount` fiscal = 1. **À
+  minima** : documenter comme limite assumée dans FISCAL_REFERENCE §9 (aujourd'hui absent).
+
+- [ ] 🔴 **`[FISC-DON-ABATEMENT]`** (S) — crédit-don fédéral n'est **pas réduit de l'abattement QC**.
+  `computeDonationCredit` renvoie `fed + qc` au taux fédéral PLEIN (15 %/29 %), appliqué à un impôt
+  déjà net d'abattement 16,5 %. Pour un résident QC, la valeur effective du crédit féd est **83,5 %,
+  pas 100 %** (cf. CID déjà corrigé). **Mesure exact : don 5 k$ → 234,63 $/an surévalué ; don 20 k$
+  → 952,38 $/an.** **Correctif** : `fed × (1 − QC_FEDERAL_ABATEMENT_RATE) + qc` dans
+  `computeDonationCredit`, réécrire §10 FISCAL_REFERENCE dans la MÊME PR (doc encode modèle faux :
+  « 35 %/53 % » → devient ≈32,5 %/48,8 % QC). Test discriminant exigé : git stash doit faire
+  ÉCHOUER le nouveau test.
+
+- [ ] 🔴 **`[AI-VISION-PAYSLIP-NOGATE]`** (S) — `PayslipUploadCard.analyzePayslip()` écrit
+  `grossSalary`/`netSalary` **DIRECTEMENT dans config.users** via `setAppState` : **aucune
+  confirmation, aucun backup préalable, aucune garde > 0**. Une hallucination OCR écrase le profil
+  salarial qui alimente TOUT (fiscalité + projection). Contraste : même flux via chat impose diff +
+  modal + backup. **Correctif** : écran de revue avant `setAppState` + `createBackupNow` + refus si
+  `grossPeriod <= 0`.
+
+- [ ] 🔴 **`[AI-PAYSLIP-SCHEMA-UNBOUNDED]`** (S) — `PayslipSchema` utilise `z.number()` nu sur les
+  montants, ni `.positive()` ni `.finite()`, alors que tous les schémas d'écriture du repo l'imposent.
+  `Infinity`/négatifs passent Zod et sont **multipliés par la fréquence**. **Correctif** :
+  `z.number().positive().finite()` sur les 4 champs.
+
+- [ ] 🔴 **`[AI-CATEGORIZE-NO-BACKOFF]`** (M) — `categorizeBatch` chunke 50 tx sans retry/backoff/pacing.
+  Un 429 sur chunk N → catch + chunk N+1 repart aussitôt → rate-limit atteint tôt **dégrade tout
+  le reste en « non catégorisé », sans réessai ni signal**. **Correctif** : backoff exponentiel borné
+  ou pause inter-chunk 1 s.
+
+#### MOYEN
+
+- [ ] **`[ENG-W5-BUSINESS-OFFBALANCE]`** (M) — `PrivateBusiness.estimatedValue` et `retainedEarnings`
+  n'entrent ni patrimoine mensuel ni succession ; seul `annualDividend` circule. **Mesure : 2 M$
+  d'entreprise + 400 k$ RBN absents du NW** (300 k$ d'écart mesuré = uniquement dividendes
+  capitalisés). **Correctif** : ajouter `privateBusinessValue` à `NetWorthParts` (le Record
+  exhaustif force le compilateur, la garde existe déjà) et traiter dans `computeLatentTax`.
+
+- [ ] **`[ENG-INV-FLUXFORM-COVERAGE]`** (S) — forme-FLUX n'est assertée que sur socle salarié nu ;
+  c'est le SEUL invariant capable d'attraper #2 (stress-test silencieux) et il ne tourne jamais sur
+  scénarios qui en ont besoin. `fuzzConservation` documente explicitement l'abandon de la
+  forme-flux. **Correctif** : porter le détecteur résiduel dans la suite (seuil 1 k$, exclusion
+  événement journalisé) sur scénarios one-time. Test discriminant garanti : échoue aujourd'hui sur
+  `stressTestEnabled`.
+
+- [ ] **`[FISC-UI-MARGINAL-ABATEMENT]`** (S) — « Combiné marginal » de l'UI ≠ taux marginal du moteur.
+  `TaxBracketViz.tsx` somme brute (fedRate + qcRate) ignore abattement 16,5 %, alors que
+  `getMarginalRate` le fait. Re-code aussi ses propres paliers au lieu de consommer
+  `calculateDetailedTax`. **Mesuré : 100 k$ brut → moteur 36,12 % vs affichage 39,50 % (3,38 pts,
+  survend le REER).** **Correctif** : `combinedMarginal = getMarginalRate(...) * 100` + consommer
+  `calculateDetailedTax` pour les barres.
+
+- [ ] **`[FISC-RAMQ-COUPLE-CAP]`** (S) — couple ne peut jamais atteindre prime RAMQ max 766 $ (tranche
+  2 bornée 9 600 $ → 744 $ max possible). **Mesuré : célibataire 766 $, couple 744 $ constant.**
+  Impact −22 $/adulte/an = ~1 300 $ / 30 ans retraite. Incohérence interne doc (prime max vs tranche
+  2 qui s'excluent). **Correctif** : re-sourcer Annexe K 2026 réelle (Revenu Québec / RAMQ / CFFP) et
+  corriger la valeur fautive EN CODE ET EN DOC. Ne rien ajuster sans source.
+
+- [ ] **`[SCHL-1500K-BOUNDARY]`** (S) — au prix EXACT 1,5 M$, mise de fonds minimale celle du palier
+  assuré (non celle non-assuré). **Mesuré : 1,5 M$ → 125 k$ (8,33 %) ; 1,6 M$ → 320 k$ (20 %)** ;
+  écart au point bascule −175 k$ mise de fonds exigée. Le code écrit `<=` au lieu de `<`. **Correctif** :
+  `price < SCHL_PRICE_THRESHOLD_TIER2` (3 sites) + test de bornes 1 499 999 / 1 500 000 / 1 500 001.
+
+#### LOW / FAIBLE
+
+- [ ] **`[FISC-PAYROLL-NEG-GROSS]`** (S) — cotisations RQAP/AE non-clamped sur brut négatif (RRQ l'est).
+  **Mesuré : brut −5 000 $ → deductionsSource −86,50 $ (net > brut : argent créé).** Impact nul
+  aujourd'hui (filtres en amont), mais garde ASYMÉTRIQUE. **Correctif** : `Math.max(0, ...)` sur
+  RQAP/AE aussi (rétrocompat bit-identique pour brut ≥ 0).
+
+- [ ] **`[FISC-GUARD-SCOPE]`** (S) — le ratchet de constantes scanne 8 modules, MANQUENT
+  `donationCredit.ts` (où vivent les findings #2), `realEstate.ts` (SCHL/mutations/TPS-TVQ),
+  `childrenReee.ts` (SCEE/IQEE), et 3 autres. **Correctif** : étendre `FISCAL_MODULES` AVANT de
+  corriger quoi que ce soit (leçon « resserrer le scan AVANT le fix »).
+
+- [ ] **`[FMT-MONEY-BYPASS]`** (S) — montants rendus sans `formatCAD` (9 sites en grep).
+  Aucun n'est faux au cent près — dérive de présentation. Classe comptabilisée dans
+  `[FMT-TOLOCALESTRING-MONEY]` (HIGH, part d'un seul ticket).
+
+- [ ] **`[DEAD-PROP-GROSSINCOME]`** (S) — `Retirement.tsx` reçoit prop `grossIncome` = somme des
+  salaires MENSUELS (sans ×12). Jamais consommée, donc aucun bug visible. Premier consommateur
+  héritera d'un facteur ×12 dormant. **Correctif** : supprimer la prop.
+
+- [ ] **`[ENG-TTP-NEGATIF]`** (S) — `totalTaxesPaid` ressort NÉGATIF pour salarié (compte seulement
+  débits du liquide, retenues à la source n'y transitent pas → seuls remboursements nets). Cohérent
+  avec contrat documenté, mais libellé à risque si l'UI affiche « Impôt à vie ». Jugement quantitatif
+  à financial-integrity.
+
+- [ ] **`[ENG-DIVORCE-ROOM-DOUBLE]`** (S) — [HYPOTHÈSE non isolée] divorce ne modifie pas
+  `activeUsersCount` → espaces CELI/REER restent ceux d'un couple. À traiter avec #4
+  (`ENG-DIVORCE-REGISTRE-PERCONJOINT`).
+
+### 🔴 Sécurité (1 MED · 2 LOW — aucune CRITIQUE)
+
+> Aucune faille CRITIQUE ni ÉLEVÉE nouvelle. Les points relevés sont des durcissements MOYEN/FAIBLE.
+> **Verdict global : codebase exceptionnellement mature sur ce périmètre.**
+
+- [ ] **`[SEC-AUDIT-DEP-FASTURI]`** (S) — GHSA-7p8r-x3mc-p8w7 (confusion d'hôte) dans `fast-uri`
+  (transitif ajv → @modelcontextprotocol/sdk), CVSS 7.5. Exploitabilité non confirmée dans le code
+  actuel (aucun champ `format: uri` exposé dans MCP tools). **Correctif** : `npm audit fix`
+  (bump vers `fast-uri >=3.1.5`), re-vérifier tests + MCP dev après.
+
+- [ ] **`[SEC-AUDIT-SYNC-LEGACY-CLEARTEXT]`** (S) — chemin rétrocompatibilité pour blobs Drive
+  pré-chiffrement (2026-05-29) : clés API peuvent rester en clair jusqu'au prochain push (qui les
+  rechiffre). Fenêtre résiduelle théorique pour comptes abandonnés. **Correctif optionnel (low
+  priority)** : au pull, si `drive.apiKeys` détecté, forcer `pushNow()` immédiat pour rechiffrer.
+
+### 🔴 Échecs silencieux — 1 HIGH, 3 MED/LOW
+
+> Pattern : traiter un champ présent-mais-non-fini comme absent, SANS log ni signal à l'utilisateur.
+> Référence : `services/finance.ts` (parseRate, patron parfait), `services/marketData/*` (appliqué),
+> `services/claude.ts` (safeJsonValidate loggue sys, rejets massifs tracés).
+
+- [ ] 🔴 **`[SILENT-ACTIONPLAN-NAN]`** (S) — `actionPlanHierarchy.ts` coerce NaN/Infinity à 0 sans
+  aucun log : `num() := typeof v === 'number' && isFinite ? v : 0`. Le module alimente « Plan
+  d'action » (conseils en $). Le MÊME fichier moteur a **DÉJÀ eu ce bug 2 fois** (netWorth.ts,
+  pastPurchaseInit.ts), documenté + corrigé avec garde. **Correctif** : répliquer patron
+  `pastPurchaseInit` — helper `isCorrupt(v)` séparé de `num()`, `logErrorThrottled` par
+  (niveau, id de bucket) pour éviter thrash, détecteur par (champ, signature).
+
+- [ ] **`[SILENT-STOCKFORM-PRICEHINT]`** (S) — `AddStockForm.suggestHistoryPrice()` échoue en silence
+  (réseau/provider) : catch sans `logError` ni `setNotice` (contrairement à `validateSymbol` du même
+  fichier). L'utilisateur voit spinner s'arrêter, prix vide, aucune explication. **Correctif** :
+  `logError + setNotice` sur le modèle de validateSymbol.
+
+- [ ] **`[SILENT-PWA-PROMPT]`** (S) — `usePwaInstallPrompt` échoue de `deferredEvent.prompt()`
+  sans `logError`. Impact faible (perte invite installation PWA seulement, pas donnée financière).
+  Signalé pour cohérence règle projet. **Correctif** : `logError(..., severity: 'info', ...)`.
+
+- [ ] **`[SILENT-HEALTHWEIGHTS-FIELD]`** (S) — `healthWeights` parse un JSON et coerce champ invalide
+  (présent-mais-non-fini) à son défaut sans trace. Impact faible (pondération UI, pas argent).
+  **Correctif optionnel** : détection `présent && !fini` avec `logError` agrégé par champ.
+
+### 🔴 A11y — 5 HIGH (fuites de données privées), 3 MED, 1 LOW
+
+> HIGH = **Mode Discret** : montants censés MASQUÉS en restent visibles à 4 endroits majeurs (dettes, impôts, retraite, totaux txn).
+> Ces leçons sont CLASSÉES en A11Y mais ce sont DES FUITES DE DONNÉES vérifiées, d'où le 🔴.
+
+- [ ] 🔴 **`[A11Y-PRIVACY-DEBT]`** (S) — page Dettes : soldes individuels + total NON masqués en mode
+  Discret, bien qu'autres montants (graphe, slider) le soient. **Correctif** : envelopper
+  `formatCAD(d.balance)`, `totalDebt` et `totalMinPayment + extraPayment` dans `<PrivateAmount>` (pattern
+  déjà présent dans le fichier).
+
+- [ ] 🔴 **`[A11Y-PRIVACY-TAXCENTER]`** (M) — Centre fiscal : 4 zones d'impôts/salaires non masquées
+  en mode Discret. **Fuite JUMELLE** : `PayslipUploadCard.tsx` (partagé entre Réglages et gate setup)
+  affiche aussi Brut/Net/Impôt sans `isPrivacyMode`. **Correctif** : ajouter `isPrivacyMode` +
+  wrapping `<PrivateAmount>` à 4 sites du TaxCenter + 1 PayslipUploadCard (ou factorise pour un seul
+  correctif).
+
+- [ ] 🔴 **`[A11Y-PRIVACY-RETIREMENT-ASSETLOC]`** (S) — Asset Location Optimizer : **zéro référence** à
+  `isPrivacyMode` → CELI/REER/NonReg totalement non protégés en mode Discret (contrairement au reste
+  de l'onglet Retraite). **Correctif** : importer `useFinanceStore`, lire `isPrivacyMode`, envelopper
+  5 valeurs dans `<PrivateAmount>`.
+
+- [ ] 🔴 **`[A11Y-PRIVACY-TXN-TOTALS]`** (S) — Transactions : montants par ligne masqués, mais agrégats
+  (total groupe, somme filtrée) ne le sont pas — aussi révélateur qu'une ligne individuelle. **Correctif** :
+  `<PrivateAmount>` sur 2 agrégats.
+
+- [ ] 🔴 **`[A11Y-MODAL-GUIDE-NODIALOG]`** (S) — `GuideModal` : aucune sémantique de dialogue
+  (`role="dialog"` absente), pas de focus initial/piège Tab/restauration focus/Escape. Atteignable au
+  clavier (palette Cmd+K). **Correctif** : migrer vers primitive `<Modal>` existante (doc affirme
+  faussement que c'est déjà fait — leçon `DOC-STALE-IMPOSSIBILITY`).
+
+- [ ] **`[A11Y-ROUTE-FOCUS]`** (M) — changement onglet/route : aucun focus déplacé, aucune annonce SR.
+  Un utilisateur SR qui clique nav n'a aucune indication que le contenu a changé. **Correctif** :
+  appeler `document.getElementById('main')?.focus()` au changement `activeTab` ; pour deep-link
+  `usePendingFocus`, ajouter `el.focus({preventScroll})` après `scrollIntoView`.
+
+- [ ] **`[A11Y-TOUCH-DELETE-ICONS]`** (S) — 3 boutons suppression icône-seule < 44×44 px (Travel,
+  Investments, BudgetGroupTable). Projet a `.touch-target` utilisée ailleurs. **Correctif** : ajouter
+  `touch-target` (ou `min-h-[44px] min-w-[44px]`) aux 3 boutons.
+
+- [ ] **`[A11Y-TABSTATE-TAXCENTER]`** (S) — TaxCenter bascule Global/Conjoint sans `aria-pressed`/`aria-current`.
+  SR ne sait pas quelle vue est active. **Correctif** : `aria-pressed={viewUser === 'all'}` (ou pattern
+  `tablist` déjà présent ailleurs).
+
+- [ ] **`[A11Y-TABLIST-NO-PANEL]`** (S) — Futur : sous-onglets ont `role="tablist"` (bon) mais pas
+  `aria-controls`/tabpanel ni flèches gauche-droite (pattern APG complet). Impact limité : chaque tab
+  reste normal `<button>` donc atteignable/activable. **Correctif** : ajouter `id`/`aria-controls`
+  + `role="tabpanel"` + `aria-labelledby` sur panneau.
+
+### 🔴 Performance (1 HIGH, 2 MED, 1 LOW)
+
+> Mesures réelles (Node profiling CPU V8 + micro-bench isolés). NO O(n²) trouvé.
+> Le coût dominant = volume itérations (mois × MC × configs), pas un algorithme mal choisi.
+
+- [ ] 🔴 **`[PERF-ENG-LATENT-MC-WASTE]`** (S) — `computeLatentTax` + bloc fiscal Tier-3 calculés PUIS
+  JETÉS en mode Monte Carlo (**5–10 % du temps MC mesuré**). `buildMonthlyDataPoint` garde déjà `if
+  (enableMonteCarlo) return {NetWorth, monthIndex}` → sous MC tout `impotLatent`, `dividendIncome`,
+  etc. est ignoré, mais le calcul (3× `calculateFiscalReport`) reste d'abord. **Mesuré : 301 ms
+  gaspillés sur 6532 ms total MC (4,6 %),** ≈ 2.5-4 s sur `calculateStrategySearch` (52 s total).
+  **Correctif** : entourer bloc `1614-1648` d'un `if (!enableMonteCarlo) {...}` avec valeurs neutres
+  en branche MC. Test : force `runMC=true` et vérifie `chartData` contient uniquement
+  `{NetWorth, monthIndex}`.
+
+- [ ] **`[PERF-ENG-INCOMELOSS-DATESTR]`** (S) — `computeIncomeLossFactor` reforme date en chaîne à
+  CHAQUE mois actif, sans vérifier événements. `toISOString() + substring() + split()` répété 4M fois
+  sur 30×MC(100). **Mesure : 530 ticks CPU (2,6 % du profil),** comparable à `computeRetirementIncome`.
+  **Correctif** : retour anticipé si `lifeEvents.length === 0` (majorité des ménages sans perte de
+  revenu), remplacer `toISOString().substring(0,7)` par arithmétique entière `getUTC*()` (pas
+  d'allocation chaîne), parser événement date via slice + Number.
+
+- [ ] **`[PERF-BOOT-HYDRATE-CHAIN]`** (M/L) — hydratation historique/prix/profil chaînées en SÉRIE :
+  chaque passe a sa PROPRE boucle pacée 2500 ms → 3 passes totales = 3×N×2500 ms pour N titres.
+  Pour 20 titres : **jusqu'à ~150 s** avant dernier titre complet vs ~50 s si entrelaçé. **⚠️ NE PAS
+  paralléliser naïvement** (rate-limit provider écrasé) — piste sûre = entrelacer par titre (historique
+  +prix+profil consécutifs). **Correctif** : valider budget provider RÉEL avant de coder (cf. leçon
+  `docs/CONVENTIONS.md` « vraie contrainte »).
+
+- [ ] **`[PERF-RENDER-SETUPHUB-FULLSTORE]`** (S) — `SetupHub.tsx` sélectionne store complet (`s => s`)
+  au lieu d'atomique → re-render sur TOUTE écriture store. Composant peu coûteux (11 onglets ×
+  2-4 reqs), gain modeste. **Correctif** : remplacer par sélecteur atomique
+  `useShallow` restreint aux champs RÉELLEMENT lus.
+
+### 🔴 IA / Anthropic (3 HIGH, 4 MED, 2 LOW)
+
+> Périmètre : services/claude.ts, Vision payslip, chat in-app, budget recommandations.
+
+- [ ] 🔴 **`[AI-CATEGORIZE-NO-BACKOFF]`** (M) — [dupliqué en fiscal section, voir là-haut]
+
+- [ ] **`[AI-BUDGETMODAL-MODEL-COST]`** (S) — `BudgetAiModal.tsx` `chatStream` sans `model` →
+  défaut Sonnet pour 3 recos courtes (toutes les tâches comparables épinglent Haiku). `MODEL_HAIKU`
+  n'est pas exporté (piège futur). **Correctif** : `model: MODEL_IDS.haiku`.
+
+- [ ] **`[AI-BUDGETMODAL-ERROR-COLLAPSE]`** (S) — catch générique rend « Vérifie ta clé Anthropic »
+  même quand clé valide (réseau, 429, JSON tronqué). Contraste avec `agentLoop.ts` qui distingue
+  `truncated`/`refused`/`error`. **Correctif** : détecter troncature + message honnête.
+
+- [ ] **`[AI-COUPLE-SELFRATED-CONFIDENCE]`** (S) — `confidence` et `estimated_savings_cad` sont
+  AUTO-évalués par le modèle ; code valide que la FORME (enum Zod) et affiche « Haute confiance »
+  verbatim. Chiffre halluciné s'affiche avec autorité d'un calcul vérifié. **Correctif** : libellé
+  « estimation IA, non vérifiée » quel que soit `confidence`.
+
+- [ ] **`[AI-MODELID-PINNING-DRIFT]`** (S) — Haiku épinglé sur snapshot daté, Sonnet/Opus sur alias
+  non datés → Anthropic peut faire évoluer modèle/tarif sans que `pricing.ts` (daté 2026-06-24) ne
+  suive → coût affiché faux en silence. **Correctif** : épingler des snapshots datés partout, ou
+  dater la vérification.
+
+- [ ] **`[AI-ONESHOT-NO-CACHE]`** (M) — `system` typé `string` nu → **aucun** appel one-shot ne peut
+  utiliser cache prompt (contrairement à `agentLoop.ts`). Impact faible (~190 tokens), mais boutons
+  « Régénérer » repaient plein tarif. **Correctif** : union `string | Array<block>` pour permettre
+  `cache_control`.
+
+- [ ] **`[AI-BUDGETMODAL-RAW-FALLBACK]`** (S) — sans JSON détecté, texte BRUT non validé est affiché
+  comme recommandation légitime (hors `RecosSchema`). **Correctif** : échec honnête plutôt qu'affichage
+  de secours.
+
+### 🔴 Dette technique (2 HIGH, 4 MED, 6 LOW/S)
+
+> Périmètre : bundling, UI, sync, linting, code mort, god files.
+
+- [ ] 🔴 **`[FMT-TOLOCALESTRING-MONEY]`** (L) — **45 sites** `Math.round(x).toLocaleString('fr-CA') + '$'`
+  sur des MONTANTS (hors dates, exclues). **17 fichiers**, services/projection/* surtout (80 % volume).
+  Classe de bug déjà vécue (couleurs/contraste divergence par site). **Correctif** : helper
+  `formatCADSigned`/`formatCADRound` dans `utils/format.ts` (réutilise `formatCAD`), remplacer les
+  45 sites (script grep-replace + relecture, aucun changement visuel attendu). Par dossier
+  `services/projection/*` d'abord (plein d'impact).
+
+- [ ] **`[UI-NO-INPUT-PRIMITIVE]`** (L) — `components/ui/` n'a **aucun** composant `Input`/`Select`/`Field`
+  (seul `PrivateNumberInput` existe). **132 occurrences** `<input>` brut dans **16 fichiers**. Chaque
+  site réécrit sa propre chaîne Tailwind → dérive de style (focus ring, contraste, cible tactile) doit
+  être corrigée site par site. **Correctif** : créer `components/ui/Input.tsx` + `Select.tsx` +
+  `Field.tsx` (label+erreur+aria) + migrer sliders d'abord (fort impact partagé), puis texte/date. Par
+  fichier, aucun changement comportement.
+
+- [ ] **`[SYNC-PUSH-PULL-NO-UNIT-TEST]`** (M) — `syncPush.ts` / `syncPull.ts` (logique push/pull Drive,
+  write direct `localStorage.setItem`) + 4 autres modules sync (`syncPassphrase`, `syncSnapshot`,
+  `syncMeta`, `syncPolling`, cumulé 886 lignes) **zéro test direct**. `syncOrchestrator` a des tests
+  EN INTÉGRATION. Un bug de merge/payload tronqué en sync conservation peut passer inaperçu.
+  **Correctif** : auditer d'abord ce que `syncOrchestrator*.test.ts` couvre réellement (mock vs
+  réel) ; ajouter tests directs `syncPush`/`syncPull` priorité (paths de conflit, payload
+  partiel/corrompu).
+
+- [ ] **`[CHART-COLOR-DUP]`** (S) — Aucun module central de tokens couleurs graphiques. **212 hex
+  littéraux** dans 6+ fichiers (FutureProjection, Retirement, Investments…), mêmes valeurs répétées
+  (ex. `#ef4444` rouge alerte dans 6 fichiers). Un changement de teinte design system = grep-replace
+  manuel 6 fichiers sans garantie exhaustivité. **Correctif** : `utils/chartColors.ts` exportant
+  teintes de séries (mappées aux tokens Tailwind existants), importé par les 6 fichiers.
+
+- [ ] **`[STORAGE-KEYS-NO-REGISTRY]`** (S) — **40 clés localStorage** en chaînes littérales à travers
+  **~20 fichiers**. 3 composants définissent chacun leur propre `DISMISS_KEY` (exportés mais unused).
+  Aucune table documentant qui possède quoi → futur renommage/purge risqué (collision silencieuse).
+  **Correctif** : `utils/storageKeys.ts` avec `const STORAGE_KEYS = {...} as const` documentant owner
+  + but, centraliser les 3 `DISMISS_KEY` dupliqués.
+
+- [ ] **`[DEAD-CALCNETFROMGROSS]`** (S) — `calculateNetFromGross` (`utils/tax.ts:852`) mort (grep :
+  zéro appelant). Fonction jumelle `calculateGrossFromNet` active. Commentaire voisin y fait référence
+  comme si active → lecture trompeuse. **Correctif** : supprimer, ou ajouter test dédié si futur UI
+  l'utilisera.
+
+- [ ] **`[KNIP-EDGE-FALSE-POSITIVE]`** (S) — `api/claude/[...path].ts` listé « unused » par knip (faux
+  positif : route Vercel par convention, jamais importée statiquement). **Correctif** : ajouter
+  `"api/**/*.ts"` aux `entry` de `knip.json`.
+
+- [ ] **`[GODFILE-FUTUREPROJECTION]`** (L) — `FutureProjection.tsx` **1 820 lignes**, 91 fonctions
+  locales, 15 `useMemo`, 6 `useEffect`. Combine : config séries + zoom/tooltip + marqueurs événements
+  + persistance localStorage. **Correctif (découpe sans changement comportement)** : (1) extraire config
+  statique vers `components/future/seriesConfig.ts` ; (2) logique marqueurs vers
+  `hooks/useFutureEventMarkers.ts` ; (3) persistance vers `hooks/useHiddenSeries.ts` (pattern dupliqué
+  ailleurs).
+
+- [ ] **`[GODFILE-INVESTMENTS]`** (L) — `Investments.tsx` **1 440 lignes**, 9 `useState`, 20 définitions
+  locales. Combine probablement liste positions + comparaison + formulaires. Certains partiellement
+  extraits (AddStockForm 475 l.). **Correctif** : identifier sous-sections quasi-autonomes (return
+  imbriqués / commentaires section), extraire vers `components/investments/` style AddStockForm. Nécessite
+  lecture préalable COMPLÈTE avant découpe.
+
+- [ ] **`[GODFILE-BUDGET]`** (L) — `Budget.tsx` **1 413 lignes**, 12 `useMemo`, 46 const/fonctions locales.
+  Contient sélection dates inline (violant `[UI-NO-INPUT-PRIMITIVE]`). **Correctif** : même méthode que
+  FutureProjection — extraire blocs purement calculatoires (agrégats budget, vérifier non-re-dérivés
+  localement vs moteur), puis sous-vues JSX. Mesurer handlers (0 `useCallback` → risque re-création).
+
+- [ ] **`[KNIP-UNUSED-EXPORTS-73]`** (S triage) — **73 exports non-utilisés** + **209 types** exportés
+  inutilisés. Types bénins (aucun coût réel). Valeurs notables : `utils/tax.ts` **19 constantes RRQ/
+  RQAP/AE/RAMQ/FSS** non-ré-exportées (probablement usage interne au fichier seulement). **Correctif** :
+  triage item-par-item : retirer `export` si usage interne, supprimer si vraiment mort (cf.
+  `calculateNetFromGross`). Deux exports dupliqués détectés aussi (`resetAttachmentDriveMemos|_reset...`
+  + `compareLifeScenarios|optimizeDrawdownOrder`).
+
+- [ ] **`[HOOKS-EXHAUSTIVE-DEPS-WARN]`** (S) — `react-hooks/exhaustive-deps` en `warn` (pas `error`) →
+  **2 violations actives** ne bloquent pas le gate : `useChartTooltipPosition.ts:96` et
+  `useTimeChartZoom.ts:255` (dépendances manquantes sur refs stables). **Correctif (a)** : corriger les
+  2 warnings ; **(b)** discuter passage à `'error'` avec Marc (impact sur autres fichiers à mesurer).
+
+---
 
 ## 🧊 Différés SCIEMMENT (ne pas prendre sans le déclencheur noté)
 

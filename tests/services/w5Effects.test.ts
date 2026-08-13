@@ -181,12 +181,15 @@ describe('applyW5Effects — dons charitables', () => {
         // Act — mois 12, currentMonthIndex=0 (janvier)
         applyW5Effects(makeCtx({ m: 12, currentMonthIndex: 0 }), containers, mutator);
 
-        // Assert — dépense mensuelle = 1000 ; crédit par PALIERS (féd+QC) = 6324 $
-        // (= 0,15·200 + 0,29·11800 + 0,20·200 + 0,24·11800), PAS l'ancien 33 % plat (3960).
+        // Assert — dépense mensuelle = 1000 ; crédit par PALIERS (féd ABATTU + QC) = 5754,42 $
+        // [FISC-DON-ABATEMENT] féd (0,15·200 + 0,29·11800) × 0,835 = 2882,42 ; QC (0,20·200 +
+        // 0,24·11800) = 2872 → 5754,42. La part fédérale ne vaut que 83,5 % au Québec : le moteur
+        // déduit ce crédit d'un impôt DÉJÀ net d'abattement. Reste supérieur à l'ancien 33 % plat (3960).
         // Le crédit (POSITIF) va dans donCredit ; décembre le plafonne à l'impôt dû puis l'applique à divers.
         expect(s.expense).toBeCloseTo(1000, 2);
-        expect(computeDonationCredit(12000)).toBeCloseTo(6324, 2);
-        expect(s.donCredit).toBeCloseTo(6324, 2);    // crédit accumulé (positif)
+        expect(computeDonationCredit(12000)).toBeCloseTo(5754.42, 2);
+        expect(s.donCredit).toBeCloseTo(5754.42, 2);    // crédit accumulé (positif)
+        expect(s.donCredit).toBeGreaterThan(12000 * 0.33); // toujours mieux que l'ancien taux plat
         expect(s.taxDivers).toBe(0);                  // PAS encore dans divers (appliqué/plafonné en décembre)
         expect(s.taxRevenu).toBe(0);                  // jamais dans revenu (écrasé en décembre)
     });
@@ -204,7 +207,7 @@ describe('applyW5Effects — dons charitables', () => {
         applyW5Effects(makeCtx({ m: 12, currentMonthIndex: 0 }), containers, mutator);
 
         // Assert — crédit identique (dans donCredit), et taxGains INCHANGÉ (0)
-        expect(s.donCredit).toBeCloseTo(6324, 2);
+        expect(s.donCredit).toBeCloseTo(5754.42, 2);
         expect(s.taxGains).toBe(0);
     });
 

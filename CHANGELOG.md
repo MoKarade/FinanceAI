@@ -8,6 +8,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Corrections de calcul (lot moteur, suite de l'audit)
+- **Ton crédit d'impôt pour dons était surévalué.** La part fédérale du crédit était comptée en
+  entier, alors qu'au Québec elle ne vaut que 83,5 % : l'abattement québécois de 16,5 % s'applique
+  après. Concrètement, l'app t'annonçait **234 $/an de trop** sur un don de 5 000 $, et **952 $/an**
+  sur un don de 20 000 $. Corrigé — le crédit reste plus généreux que l'ancien modèle à taux plat,
+  c'est une surévaluation qui disparaît, pas un avantage qu'on t'enlève.
+
 ### Sécurité de tes données (lot « filets de sécurité », suite de l'audit)
 - **Le mode discret couvre enfin tes écrans de lecture.** Cinq écrans laissaient des montants
   lisibles alors que le mode était actif : Dettes (dont l'infobulle du graphe), Impôts (KPI, paliers,

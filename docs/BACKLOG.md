@@ -754,7 +754,7 @@
 > Les 5 derniers captions du moteur détaillent CHAQUE hypothèse testée et RÉFUTÉE (ne pas
 > re-lever). Aucune baseline testée n'est cassée (3833/3833 verts post-audit).
 
-### 🔴 Moteur & fiscal — altère les calculs d'argent (12 HIGH/ÉLEVÉ · 7 MED · 7 LOW/FAIBLE)
+### 🔴 Moteur & fiscal — altère les calculs d'argent (11 HIGH/ÉLEVÉ · 7 MED · 7 LOW/FAIBLE)  *(1 HIGH livré : `[FISC-DON-ABATEMENT]`, PR #611)*
 
 > Périmètre : projection.ts + projection/* + utils/tax.ts + services/realEstate.ts
 > + services/claude.ts (Vision payslip). Tous les findings sont MESURÉS sur le vrai moteur
@@ -817,15 +817,6 @@
   = 1`, `grossAnnaBaseAnnual = 0`, `incomeAnnaNetMonthly = 0`, `activeUsersCount` fiscal = 1. **À
   minima** : documenter comme limite assumée dans FISCAL_REFERENCE §9 (aujourd'hui absent).
 
-- [ ] 🔴 **`[FISC-DON-ABATEMENT]`** (S) — crédit-don fédéral n'est **pas réduit de l'abattement QC**.
-  `computeDonationCredit` renvoie `fed + qc` au taux fédéral PLEIN (15 %/29 %), appliqué à un impôt
-  déjà net d'abattement 16,5 %. Pour un résident QC, la valeur effective du crédit féd est **83,5 %,
-  pas 100 %** (cf. CID déjà corrigé). **Mesure exact : don 5 k$ → 234,63 $/an surévalué ; don 20 k$
-  → 952,38 $/an.** **Correctif** : `fed × (1 − QC_FEDERAL_ABATEMENT_RATE) + qc` dans
-  `computeDonationCredit`, réécrire §10 FISCAL_REFERENCE dans la MÊME PR (doc encode modèle faux :
-  « 35 %/53 % » → devient ≈32,5 %/48,8 % QC). Test discriminant exigé : git stash doit faire
-  ÉCHOUER le nouveau test.
-
 - [ ] 🔴 **`[AI-CATEGORIZE-NO-BACKOFF]`** (M) — `categorizeBatch` chunke 50 tx sans retry/backoff/pacing.
   Un 429 sur chunk N → catch + chunk N+1 repart aussitôt → rate-limit atteint tôt **dégrade tout
   le reste en « non catégorisé », sans réessai ni signal**. **Correctif** : backoff exponentiel borné
@@ -870,6 +861,16 @@
   **Mesuré : brut −5 000 $ → deductionsSource −86,50 $ (net > brut : argent créé).** Impact nul
   aujourd'hui (filtres en amont), mais garde ASYMÉTRIQUE. **Correctif** : `Math.max(0, ...)` sur
   RQAP/AE aussi (rétrocompat bit-identique pour brut ≥ 0).
+
+- [ ] **`[FISC-DON-FEDRATE-DUP]`** (XS, relevé par le panel de la PR #611) — le taux du 1er palier des
+  dons (`DONATION_CREDIT_RATES.fed.first = 0.15`, `utils/donationCredit.ts`) et
+  `FED_NONREFUNDABLE_RATE = 0.15` (`utils/tax.ts`) sont **juridiquement la MÊME valeur** (le
+  « pourcentage approprié » = taux du palier le plus bas) mais vivent en DEUX copies. Or ce 0,15 est
+  déjà signalé en tête de FISCAL_REFERENCE comme **la seule valeur du doc sans source primaire**, dans
+  un contexte C-4 où le plus bas palier descend à 14,5 %/14 %. Impact borné (~1,67 $/an par point de
+  taux, le palier étant plafonné à 200 $) mais les deux copies dériveront à la prochaine MAJ.
+  **Correctif** : re-sourcer ARC d'abord, PUIS importer la constante unique — ou documenter en §10
+  pourquoi elles sont volontairement découplées. Ne rien changer sans la source.
 
 - [ ] **`[FISC-GUARD-SCOPE]`** (S) — le ratchet de constantes scanne 8 modules, MANQUENT
   `donationCredit.ts` (où vivent les findings #2), `realEstate.ts` (SCHL/mutations/TPS-TVQ),

@@ -4,6 +4,32 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-13 (suite 65) — lot MOTEUR de l'audit, 1/5 : `[FISC-DON-ABATEMENT]`
+> Marc a cadré le lot moteur (« tout le HIGH ») et tranché la question produit du divorce.
+> **Découpage retenu, une PR par thème** (panel + merge entre chaque) :
+> 1. ✅ `[FISC-DON-ABATEMENT]` — crédit-don fédéral non réduit de l'abattement QC (PR #611).
+> 2. ⏳ **Divorce cohérent** — `[ENG-DIVORCE-DEBT-ASYMMETRY]` + `[ENG-DIVORCE-REGISTRE-PERCONJOINT]`
+>    + `[FISC-DIVORCE-INCOME-PHANTOM]`. Les 3 forment UN seul changement sémantique (le ménage
+>    passe à 1 personne) — ne pas les livrer séparément.
+>    ⚠️ **DÉCISION MARC 2026-08-13** : au divorce, les dettes NON immobilières se partagent au
+>    MÊME pourcentage que les actifs (esprit du patrimoine familial QC : on partage le NET).
+>    À porter dans `docs/decisions.md` au moment de coder.
+> 3. ⏳ **Stress-test + invariants** — `[ENG-STRESSTEST-GROWTH-UNREGISTERED]`,
+>    `[ENG-MC-CONSERVATION-BLIND]`, `[ENG-INV-FLUXFORM-COVERAGE]`.
+> 4. ⏳ **Bilan complet** — `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`,
+>    `[ENG-LIQUIDDEBT-NEVER-REPAID]`. ⚠️ Le patrimoine AFFICHÉ va sauter — Marc l'a accepté
+>    explicitement en choisissant « tout le HIGH ».
+> 5. ⏳ `[AI-CATEGORIZE-NO-BACKOFF]`.
+>
+> **Puis, fusionnés (décision Marc)** : Lot 7 « Réglages retravaillés » + `[A11Y-PRIVACY-LOT2]`.
+> Périmètre Lot 7 choisi : **regroupement + refonte des formulaires** (validation, unités
+> mensuel/annuel explicites) ET masquage — une seule passe sur ces fichiers, ils sont les mêmes.
+>
+> **Proposés, NON pris** (Marc a dit « tout le HIGH », ceux-ci sont MOYENS) :
+> `[FISC-UI-MARGINAL-ABATEMENT]` (l'UI affiche 39,50 % vs 36,12 % au moteur — survend le REER) et
+> `[SCHL-1500K-BOUNDARY]` (`<=` au lieu de `<`, 175 k$ d'écart de mise de fonds). En attente de son
+> feu vert.
+
 > ## 🟢 Session 2026-08-13 (suite 64) — `[AUDIT-SAFETY]` : filets de sécurité (PR #608)
 > Premier lot de correctifs de l'audit 2026-08-12 (les 🔴 d'effort S). **Gate vert : typecheck,
 > lint, 3 965 tests (348 fichiers), build.**

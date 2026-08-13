@@ -838,6 +838,15 @@
   aujourd'hui (filtres en amont), mais garde ASYMÉTRIQUE. **Correctif** : `Math.max(0, ...)` sur
   RQAP/AE aussi (rétrocompat bit-identique pour brut ≥ 0).
 
+- [ ] **`[STORAGE-PERSIST-REQUEST]`** (XS, découvert en diagnostiquant `[FINTABLE-TOKEN-WIPE]`) —
+  l'app ne demande **JAMAIS** `navigator.storage.persist()` (0 occurrence dans le dépôt). Le coffre
+  chiffré repose sur IndexedDB (clé AES) + localStorage (blob) : sans persistance accordée, le
+  navigateur classe le stockage « best-effort » et peut l'évincer sous pression disque — perte des
+  clés API ET de la courbe verrouillée. Ce n'était PAS la cause du bug de Marc (c'était la synchro
+  Drive), donc non corrigé au passage. **Correctif** : demander la persistance au boot, une fois,
+  et exposer l'état dans SystemView (`navigator.storage.persisted()`) pour que ce soit
+  diagnosticable. Chrome l'accorde selon l'engagement / l'installation PWA.
+
 - [ ] **`[FISC-DON-FEDRATE-DUP]`** (XS, relevé par le panel de la PR #611) — le taux du 1er palier des
   dons (`DONATION_CREDIT_RATES.fed.first = 0.15`, `utils/donationCredit.ts`) et
   `FED_NONREFUNDABLE_RATE = 0.15` (`utils/tax.ts`) sont **juridiquement la MÊME valeur** (le
@@ -968,26 +977,24 @@
   appeler `document.getElementById('main')?.focus()` au changement `activeTab` ; pour deep-link
   `usePendingFocus`, ajouter `el.focus({preventScroll})` après `scrollIntoView`.
 
-### 🔴 `[PASSE-REEL]` — le passé affiche la PROJECTION, pas le réel (signalé par Marc 2026-08-13)
+### 🔴 `[PASSE-REEL]` — le passé affichait la PROJECTION (signalé par Marc 2026-08-13)
 
 > Marc : « mon passé ne semble pas correspondre à mon passé réel mais au futur qui était estimé.
 > Je n'ai pas de compte CELI et pourtant mon passé me dit que j'ai de l'argent dedans. »
-> **Cause trouvée** : `services/projection/dailyCurve.ts:59` —
-> `if (!real) return { ...d, monthIndex: x };` où `d` est le point PROJETÉ. Toute journée passée
-> sans donnée réelle affiche donc l'estimation, présentée comme du passé.
-> ⚠️ L'en-tête du MÊME fichier énonce pourtant la règle : « Ce qui n'est pas mesuré doit être
-> ABSENT, donc affiché — ». Et `CLAUDE.md` indexe la classe : « un point réel se construit à
-> partir de RIEN ». La règle était écrite, le code faisait l'inverse.
+> Cause : `services/projection/dailyCurve.ts` — `if (!real) return { ...d }` où `d` est le point
+> PROJETÉ. ⚠️ L'en-tête du MÊME fichier énonçait pourtant la règle inverse.
 
-- [ ] 🔴 **`[PASSE-REEL-1]`** (M) — le passé ne montre QUE du mesuré. **DÉCISION MARC 2026-08-13** :
-  pas de repli, pas de trait plat — **la courbe commence où les données commencent**. Avant le
-  premier jour réellement couvert : rien. **Correctif** : supprimer le repli sur le point projeté ;
-  une journée sans donnée réelle n'est pas rendue du tout.
-- [ ] 🔴 **`[PASSE-REEL-2]`** (M) — indicateur « mon passé colle-t-il à ce qui était prévu ».
-  **DÉCISION MARC** : comparer à une prévision **FIGÉE que Marc verrouille** (l'app a déjà
-  `lockedProjectionStore` / `PROJECTION-PERSIST`). ⚠️ Surtout PAS à une prévision recalculée
-  aujourd'hui : elle intègre déjà le passé, l'écart serait nul par construction et l'indicateur
-  dirait toujours « tout va bien ».
+- [x] 🔴 **`[PASSE-REEL-1]`** (M, LIVRÉ PR #614) — le passé ne montre QUE du mesuré.
+  **DÉCISION MARC** : pas de repli, pas de trait plat — la courbe commence où les données
+  commencent. Livré : paramètre `todayIso`, retour `ProjectionChartPoint | null`, borne stricte
+  (aujourd'hui reste projeté). Le changement de type a fait trouver l'infobulle par le compilateur.
+- [x] 🔴 **`[PASSE-REEL-2]`** (M, LIVRÉ PR #617) — indicateur « mon passé colle-t-il à ce qui était prévu ».
+  **DÉCISION MARC** : comparer à une prévision **FIGÉE que Marc verrouille** (`lockedProjectionStore`
+  / `PROJECTION-PERSIST` existent déjà). ⚠️ Surtout PAS à une prévision recalculée aujourd'hui :
+  elle intègre déjà le passé, l'écart serait nul par construction et l'indicateur dirait toujours
+  « tout va bien ». Revue Vercel avant merge : la garde « point réel » filtrait sur `dayIso` (que le
+  spread `{ ...d }` charrie sur les jours FUTURS) au lieu du marqueur `dayIsReal` → corrigé + 2 tests
+  discriminants (leçon `MARKER-PROXY-GUARD`, `docs/CONVENTIONS.md`).
 - [ ] 🔴 **`[PASSE-REEL-3]`** (L) — la projection se **réancre chaque jour sur les soldes RÉELS**
   du jour, au lieu des soldes saisis une fois à la main. **DÉCISION MARC** : automatiquement, pas
   sur bouton. Le plus gros des trois.

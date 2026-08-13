@@ -75,6 +75,49 @@
 > Ses 3 décisions sont consignées dans le BACKLOG (`[PASSE-REEL-1/2/3]`) : la courbe commence où
 > les données commencent (pas de repli), l'écart se mesure contre une prévision FIGÉE verrouillée,
 > et la projection se réancre chaque jour sur les soldes réels. À faire après le lot moteur.
+> ## 🟢 Session 2026-08-13 (suite 70) — `[PASSE-REEL-2]` : l'écart réel vs prévision figée (PR #617)
+> `services/projection/forecastAccuracy.ts` (pur) + `ForecastAccuracyBadge`, affiché SOUS la légende
+> de la courbe verrouillée — un écart loin de sa référence n'est pas interprétable.
+> ⚠️ La référence est la courbe VERROUILLÉE, jamais une projection recalculée : celle-ci part des
+> soldes réels, l'écart serait nul par construction. 13 tests, dont 5 sur les cas `null`.
+> ⚠️ **Corrigé sur revue Vercel avant merge (`MARKER-PROXY-GUARD`)** : la garde « point réel »
+> testait `typeof dayIso === 'string'`. Mais `dailyCurve.ts` bâtit la journée FUTURE par
+> `{ ...d, monthIndex }` — le spread charrie `dayIso`. Les 30 ans de projection entraient donc
+> comme du « passé mesuré » : l'indicateur comparait deux prévisions. Garde → `dayIsReal === true`
+> (le marqueur existait déjà, lu par `ProjectionTooltip`). Les 11 tests d'origine étaient verts
+> parce que leur helper de fixture omettait `dayIsReal` : une fixture qui ment sur la forme de la
+> donnée rend toute la suite aveugle. 2 tests discriminants ajoutés (échouent sur la garde d'avant).
+> Reste du lot : `[PASSE-REEL-3]` (réancrage quotidien automatique sur les soldes réels).
+
+> ## 🟢 Session 2026-08-13 (suite 68) — `[PASSE-REEL-1]` : le passé ne ment plus (PR #614)
+> Marc a demandé de REMONTER ce lot avant le reste du moteur — sa courbe lui mentait tous les jours.
+> `dailyCurve.ts` : `if (!real) return { ...d }` renvoyait le point PROJETÉ pour une journée passée
+> sans mesure. D'où un CELI garni chez quelqu'un qui n'a pas de CELI.
+> - `todayIso` ⇒ journée STRICTEMENT antérieure à aujourd'hui et sans donnée réelle ⇒ `null`, non
+>   tracée. Borne STRICTE : aujourd'hui reste projeté (c'est l'ancre de la projection).
+> - Retour `ProjectionChartPoint | null` : c'est le COMPILATEUR qui a trouvé le 4e appelant,
+>   `buildEnrichedMonth` (l'infobulle) — je l'aurais oublié en ne corrigeant que la courbe.
+> - `todayIso` ajouté aux deux `useMemo` (sinon la frontière reste celle de la veille après minuit).
+> **Reste** : `[PASSE-REEL-2]` (écart contre prévision FIGÉE) et `[PASSE-REEL-3]` (réancrage
+> quotidien), puis le lot moteur 3/5, 4/5, 5/5.
+
+> ## 🟢 Session 2026-08-13 (suite 66) — `[FINTABLE-TOKEN-WIPE]` : la synchro Drive effaçait le jeton
+> Bug signalé par Marc (« mon jeton Fintable se perd tout le temps »), diagnostiqué et corrigé.
+> **Ce n'était PAS une éviction de navigateur** — première hypothèse (ITP Safari 7 jours), écartée
+> dès que Marc a dit « PC et Android, pas d'iPhone ». Mécanisme réel, lu dans le code :
+> `syncSnapshot.ts` exclut délibérément `fintable` du push Drive → le payload Drive ne contient que
+> `{anthropic, finnhub}` → `syncPull` appelle `saveApiKeys(payload)` → `saveApiKeys` écrasait le
+> coffre EN BLOC. Chaque synchro effaçait le jeton.
+> ⚠️ **Symptôme trompeur à connaître** : le store mémoire FUSIONNE, le coffre ÉCRASE. Le jeton
+> survivait donc dans l'onglet ouvert et ne mourait qu'au RECHARGEMENT — d'où « ça se perd tout le
+> temps » plutôt que « ça se perd quand je synchronise ».
+> **Correctif** : `DEVICE_LOCAL_KEY_FIELDS` + préservation DANS `saveApiKeys` (pas chez les 4
+> appelants — le coffre est la seule voie d'écriture, donc le seul endroit qu'on ne peut pas
+> oublier). Contrat : `undefined` → préserve, `''` → efface. Test prouvé discriminant.
+> **Récidive** de la classe du finding #545, corrigé alors sur UN registre (`App.tsx`) et pas sur la
+> couche sync — leçon élargie dans CONVENTIONS.
+> **Proposé, NON fait** (scope non demandé) : `[STORAGE-PERSIST-REQUEST]` — l'app ne demande jamais
+> `navigator.storage.persist()`, donc le coffre reste évincible sous pression disque.
 
 > ## 🟢 Session 2026-08-13 (suite 65) — lot MOTEUR de l'audit, 1/5 : `[FISC-DON-ABATEMENT]`
 > Marc a cadré le lot moteur (« tout le HIGH ») et tranché la question produit du divorce.

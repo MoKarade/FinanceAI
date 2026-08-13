@@ -31,6 +31,36 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   désormais lui aussi une seule déclaration. Sur un scénario mesuré, cela représente **75 756 $
   d'impôt à vie en moins** et 92 921 $ de patrimoine en plus. C'est une correction, pas un cadeau :
   un veuf est bien un seul contribuable.
+### Tu vois maintenant si tu tiens ton plan
+- Sous la courbe verrouillée, une ligne te dit **de combien ton réel est en avance ou en retard**
+  sur ce que tu avais figé — en dollars et en pourcentage — plus l'**écart moyen** sur tous les mois
+  comparés et combien d'entre eux sont au-dessus.
+- La comparaison se fait toujours contre la courbe que **tu as verrouillée**, jamais contre une
+  prévision recalculée aujourd'hui : celle-là part de tes soldes réels, elle collerait toujours, et
+  l'indicateur te dirait éternellement que tout va bien.
+- S'il n'y a rien de comparable (pas de courbe verrouillée, pas encore de passé mesuré), **rien ne
+  s'affiche** — plutôt qu'un « 0 % d'écart » qui se lirait « ta prévision était parfaite ».
+- Corrigé avant sa mise en ligne : l'indicateur retenait aussi les **journées futures projetées**
+  comme si elles étaient mesurées. Il comparait donc deux prévisions entre elles en te présentant le
+  résultat comme « ton réel ». Il ne regarde plus que les journées réellement mesurées.
+
+### Ton passé ne te ment plus
+- **La partie passée de ta courbe affichait la PRÉVISION quand elle n'avait pas de donnée réelle.**
+  C'est pour ça que ton CELI paraissait garni alors que tu n'en as pas : ce n'était pas ton passé,
+  c'était le futur qui avait été estimé pour ce jour-là.
+- Désormais, **une journée passée sans mesure n'est tout simplement pas tracée**. Ta courbe
+  commence où tes données commencent. Elle sera peut-être plus courte qu'avant — elle sera vraie.
+- L'infobulle suit la même règle : elle ne peut plus détailler une journée que la courbe ne trace
+  pas.
+
+### Correction — ton jeton Fintable ne se perdra plus
+- **La synchro Google Drive effaçait ton jeton Fintable à chaque passage.** Le jeton est
+  volontairement gardé sur ton appareil et n'est jamais envoyé au Drive — mais du coup il n'était
+  pas non plus dans ce qui en revenait, et la synchro réécrivait ton coffre sans lui.
+  Le symptôme était trompeur : le jeton continuait de marcher dans l'onglet ouvert et ne
+  disparaissait qu'**au rechargement suivant**, donc sans lien visible avec la synchro.
+  Désormais, écrire dans le coffre ne peut plus faire disparaître un champ dont on ne parle pas.
+  Vider le champ à la main efface toujours le jeton, comme avant.
 
 ### Corrections de calcul (lot moteur, suite de l'audit)
 - **Ton crédit d'impôt pour dons était surévalué.** La part fédérale du crédit était comptée en

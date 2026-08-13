@@ -2621,3 +2621,92 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   patrimoine. C'est un correctif (un veuf est UN déclarant), pas une régression : épinglé par un
   test et écrit au CHANGELOG. Annoncer « aucune baseline touchée » sans rejouer la batterie aurait
   été faux — et c'est le genre d'affirmation que personne ne revérifie ensuite.
+- ⚠️ **[FINTABLE-TOKEN-WIPE] 2026-08-13 — un champ EXCLU d'une synchro est le plus fragile, pas le
+  mieux protégé.** Le jeton Fintable est délibérément retiré du push Drive (« un jeton bancaire ne
+  voyage pas », `syncSnapshot.ts`). Conséquence contre-intuitive : puisqu'il ne PART jamais, il n'est
+  jamais dans ce qui REVIENT — et `syncPull` réécrivait le coffre EN BLOC avec le payload Drive, donc
+  sans lui. **Chaque synchro effaçait le jeton.** Généralisation : dès qu'un champ est exclu d'un
+  aller-retour, vérifier le RETOUR, pas seulement l'aller ; une exclusion défensive côté écriture
+  crée une suppression côté lecture.
+  Trois corollaires vérifiés sur ce bug :
+  (1) **`undefined` ≠ `''`.** « Je ne parle pas de ce champ » n'est pas « efface ce champ ». Le
+  correctif préserve sur `undefined` et obéit sur `''` — sans cette distinction, on ne pourrait plus
+  vider un jeton volontairement.
+  (2) **La garde va dans l'ÉCRITURE, pas chez les appelants.** Le coffre est la seule voie d'écriture :
+  c'est le seul endroit qu'un appelant futur ne peut pas oublier. Quatre sites appelaient déjà
+  `saveApiKeys` ; en corriger un seul aurait rejoué le bug.
+  (3) **RÉCIDIVE de la classe déjà indexée.** Le finding #545 avait corrigé exactement ça — la garde
+  d'hydratation d'`App.tsx` oubliait `fintable` — mais sur UN registre seulement ; les deux gardes de
+  la couche sync sont restées. « Un producteur corrigé doit alimenter TOUS les registres » vaut aussi
+  pour un CONSOMMATEUR corrigé.
+  ⚠️ Symptôme à reconnaître : le store mémoire FUSIONNE (`{...prev, ...keys}`) alors que le coffre
+  ÉCRASE. La donnée survit donc dans l'onglet ouvert et ne meurt qu'au rechargement — l'utilisateur
+  décrit « ça se perd tout le temps », jamais « ça se perd quand je synchronise ».
+- ⚠️ **[STORAGE-KEY-WRITE-RACE, panel #612] 2026-08-13 — passer d'un ÉCRASEMENT à une FUSION, c'est
+  troquer l'atomicité contre une course.** Le correctif du jeton Fintable a remplacé un `setItem`
+  atomique (aucune lecture) par un lire-puis-écrire. Le bug déterministe disparaissait, une course
+  non déterministe le remplaçait — mesurée par le panel sur le scénario réel : le polling Drive tire
+  au retour de focus d'onglet, or coller un jeton implique justement un alt-tab. Trois issues
+  observées, dont la pire : **un secret effacé volontairement RESSUSCITÉ**.
+  Réflexe à avoir : dès qu'on ajoute une LECTURE devant une écriture jusque-là atomique, se demander
+  qui d'autre écrit — et sérialiser. Ici c'était facile *parce que* le correctif avait fait du coffre
+  le point d'écriture unique : la même propriété qui rend la fusion sûre rend la file d'attente
+  possible. Détail qui compte : la chaîne de promesses ne doit pas propager le rejet au suivant
+  (un échec bloquerait le coffre à vie) tout en rendant bien SON erreur à l'appelant courant.
+  Corollaire de revue : un correctif de bug mérite la même question qu'une feature — « qu'est-ce que
+  ce changement rend possible qui ne l'était pas ? ». Ici, la concurrence.
+- ⚠️ **[PASSE-REEL-1] 2026-08-13 — une règle ÉCRITE dans l'en-tête n'est pas une règle TENUE par le
+  code.** `services/projection/dailyCurve.ts` s'ouvre sur « ce qui n'est pas mesuré doit être
+  ABSENT, donc affiché — », et `CLAUDE.md` indexe « un point réel se construit à partir de RIEN ».
+  Vingt lignes plus bas, `if (!real) return { ...d }` renvoyait le point PROJETÉ pour une journée
+  présentée comme passée. Marc l'a vu avant nous : « je n'ai pas de CELI et pourtant mon passé me
+  dit que j'en ai ». La doc d'intention rassure la revue et masque l'écart — quand un fichier
+  ÉNONCE un invariant, chercher la ligne qui le viole plutôt que de créditer l'énoncé.
+- ⚠️ **[Même jour] Un repli (`fallback`) est une DÉCISION DE PRODUIT déguisée en détail technique.**
+  Ici, `if (!real) return projeté` est une ligne anodine qui répond en réalité à « que montre-t-on
+  quand on ne sait pas ? ». Trois réponses défendables existaient (rien / trait plat à la dernière
+  valeur connue / trait distinct), avec des conséquences très différentes sur ce que l'utilisateur
+  CROIT lire. Marc a tranché « rien, la courbe commence où les données commencent ». Réflexe :
+  devant un repli sur de la donnée AFFICHÉE, ne pas choisir seul — c'est du produit, pas de la
+  technique.
+- ⚠️ **[Même jour] Faire rendre `null` à une fonction pure est le meilleur outil de propagation.**
+  Passer `ProjectionChartPoint` à `ProjectionChartPoint | null` a fait remonter au compilateur les
+  QUATRE appelants d'un coup — dont l'infobulle (`buildEnrichedMonth`), que j'aurais oubliée en
+  corrigeant seulement la courbe. Or l'en-tête du fichier promet justement que les deux partagent
+  la même source « pour interdire toute divergence ». Un `filter(Boolean)` silencieux n'aurait rien
+  révélé : c'est le TYPE qui a trouvé le second site.
+- ⚠️ **[panel #614] 2026-08-13 — une dépendance qui ne « sert » que par RICOCHET n'est pas une
+  dépendance.** J'avais oublié `todayIso` dans le 3e `useMemo` (`enrichCache`) — au point d'écrire
+  dans le handover « ajouté aux DEUX useMemo » alors qu'il y en a TROIS. Le bug ne se voyait pas :
+  `dailyPastByDate` est une NOUVELLE Map à chaque changement de `todayIso`, ce qui invalidait le
+  cache par ricochet. Une protection ACCIDENTELLE — mémoïser `dailyPast` plus finement un jour
+  (optimisation parfaitement raisonnable) aurait réintroduit le bug en silence, sans qu'aucun test
+  ne le voie. Règle : une dépendance ne doit jamais reposer sur l'INSTABILITÉ DE RÉFÉRENCE d'une
+  autre. Et quand on écrit « ajouté à tous les X », les COMPTER.
+- ⚠️ **[PASSE-REEL-2] 2026-08-13 — un indicateur qui ne peut pas être MAUVAIS ne vaut rien.** La
+  tentation naturelle était de comparer le passé réel à « la projection ». Mais la projection est
+  recalculée en PARTANT des soldes réels du jour : elle colle au passé PAR CONSTRUCTION, l'écart
+  serait nul, et l'indicateur afficherait éternellement « tout va bien ». La seule référence qui a
+  du sens est une prévision FIGÉE, antérieure. Test à s'appliquer à tout indicateur d'écart, de
+  score ou de santé : « existe-t-il une situation réelle où ce chiffre serait mauvais ? » Si non,
+  il ne mesure rien.
+- ⚠️ **[Même jour] Distinguer la POSITION de la FIDÉLITÉ.** L'écart du dernier mois répond à « où
+  j'en suis » ; la moyenne des écarts ABSOLUS répond à « ma prévision est-elle fiable ». Une moyenne
+  SIGNÉE confondrait les deux et masquerait un plan qui se trompe de +50 k$ puis −50 k$ sous un
+  « écart moyen : 0 ». Les deux chiffres sont affichés, ils ne disent pas la même chose.
+- ⚠️ **[PASSE-REEL-2] revue Vercel #617 — `MARKER-PROXY-GUARD` : filtrer sur un champ VOISIN au lieu
+  du marqueur dédié.** `computeForecastAccuracy` retenait « un point réel » sur `typeof dayIso ===
+  'string'`. Or `dailyCurve.ts` fabrique le point d'une journée FUTURE par `{ ...d, monthIndex }` :
+  le spread **charrie `dayIso`**, et seul un point adossé à une mesure reçoit `dayIsReal: true`. La
+  garde laissait donc entrer les 30 ans de projection quotidienne — l'indicateur comparait la
+  prévision COURANTE à la prévision VERROUILLÉE et l'annonçait à Marc comme « ton réel ».
+  Le marqueur structurel EXISTAIT (`dayIsReal`, déjà lu par `ProjectionTooltip`) : c'est la même
+  classe que `TEXT-HEURISTIC-OVER-USER-TEXT` — dériver le fait d'un marqueur, jamais d'un proxy.
+  Règle : avant de filtrer sur la PRÉSENCE d'un champ, vérifier comment l'objet du cas NÉGATIF est
+  construit. Un `{ ...source }` en amont fait entrer tout ce qu'on croyait discriminant.
+- ⚠️ **[Même revue] Une FIXTURE qui omet le marqueur rend toute la suite aveugle.** Les 11 tests de
+  `forecastAccuracy` étaient verts parce que leur helper `jour()` ne posait pas `dayIsReal` : ils
+  décrivaient un « point réel » que le moteur ne produit jamais. Aucun n'a vu le bug, et 5 d'entre
+  eux portaient pourtant sur les cas `null`. Le nombre de tests ne prouve rien si la fixture ment
+  sur la forme de la donnée — un helper de fixture doit être calqué sur le PRODUCTEUR réel (ici
+  `dailyCurve.ts`), champ par champ, pas sur l'idée qu'on se fait de l'objet.

@@ -35,6 +35,21 @@ export interface RetirementIncomeCtx {
     psvResidencyYears: number[];
     startYear: number;  // pour calcul arrivalAge depuis canadaArrivalYear
     /**
+     * [ENG-DIVORCE, panel #613 — ÉLEVÉ-1] Part du ménage qui reste au déclarant, pour les rentes
+     * exprimées comme un montant MÉNAGE non ventilé — aujourd'hui la seule concernée est la DB
+     * (`dbPensionMonthly`, documentée « cumulée pour le couple », cf. l. ~108). Défaut `1`.
+     *
+     * ⚠️ Pourquoi ce champ EXISTE alors qu'on pourrait croire qu'il suffit de réduire
+     * `activeUsersCount` : RRQ et PSV se réduisent, eux, en passant simplement une liste d'users
+     * plus courte, parce qu'ils sont calculés en `(base_ménage / activeUsersCount) × poids_i`
+     * sommé sur les users. Toucher AUSSI `activeUsersCount` ANNULE la réduction — le `/N` est un
+     * diviseur de l'agrégat ménage, pas un compteur de bénéficiaires. C'est l'erreur exacte du
+     * premier correctif : `activeUsersCount: 1` + 1 seul user ⇒ Δ rentes mesuré = 0,00 $/mois, et
+     * même +398 $/mois avec des salaires inégaux (le divorce ENRICHISSAIT).
+     * La DB, elle, n'est divisée par RIEN dans `dbMonthly` : il lui faut ce facteur explicite.
+     */
+    householdPensionShare?: number;
+    /**
      * FA-3b (audit fiscal 2026-06-09) — revenu imposable AUTRE de l'ANNÉE PRÉCÉDENTE
      * (retraits REER/FERR + revenus locatifs), en dollars NOMINAUX. Le vrai SRG est calculé
      * sur le revenu de l'année d'imposition précédente : l'ignorer affichait un SRG fictif
@@ -274,7 +289,12 @@ export function computeRetirementIncome(
     const dbIndexationFraction = Math.min(1, Math.max(0, (retirementGoal.dbPensionIndexationPct ?? 100) / 100));
     const dbInflFactor = 1 + (inflFactor - 1) * dbIndexationFraction;
     const dbSurvivorFactor = survivorMode ? dbSurvivorPct : 1;
-    const dbMonthly = age >= dbStartAge ? dbBaseMonthly * dbInflFactor * dbSurvivorFactor : 0;
+    // [ENG-DIVORCE — ÉLEVÉ-1] `householdPensionShare` : la DB est un montant MÉNAGE que rien ne
+    // divise ici. Sans ce facteur, un divorcé conservait 100 % de la DB du couple.
+    const dbHouseholdShare = Number.isFinite(ctx.householdPensionShare) && (ctx.householdPensionShare as number) > 0
+        ? (ctx.householdPensionShare as number)
+        : 1;
+    const dbMonthly = age >= dbStartAge ? dbBaseMonthly * dbInflFactor * dbSurvivorFactor * dbHouseholdShare : 0;
 
     // §6.3 — SRG (Supplément de revenu garanti) pour retraités 65+ recevant la PSV.
     // FA-3b (audit fiscal 2026-06-09) : le « revenu autre que PSV » du test SRG inclut

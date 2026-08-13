@@ -376,7 +376,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // [ITEM-2C] Depuis le fix FERR per-conjoint, ce registre PILOTE la fiscalité : chaque conjoint de 72+
     // convertit SA part au facteur RRIF de SON âge (taxJanuary). Au décès, la part du défunt roule vers le
     // survivant (cf bloc survivorMode). Plus un shadow.
-    const reerShares = salaryShares(
+    // ⚠️ [panel #613 — ÉLEVÉ-2] `let`, PAS `const`. Ces parts pilotent l'attribution des COTISATIONS
+    // dans `stepReerByUser` : tant qu'elles restent celles du couple, le slot du conjoint parti se
+    // REPEUPLE dès la première cotisation, et la consolidation `reerByUser = [reer, 0]` faite au
+    // divorce ne tient qu'UN MOIS. Mesuré : 342 658 $ réattribués à l'ex, et 16 janviers de FERR
+    // OBLIGATOIRE sur ce slot fantôme (257 627 $ de retraits bruts imposés au ménage) — parce que
+    // `taxJanuary` convertit `reerByUser[1]` au facteur RRIF de l'ÂGE de `config.users[1]`, un
+    // contribuable qui n'est plus dans le ménage. C'est la régression FISC-SURVIVOR-DRAWDOWN, que
+    // le bloc décès avait corrigée pour lui-même sans corriger les PARTS (défaut latent identique).
+    let reerShares = salaryShares(
         activeUsersCount > 1 ? [grossMarcBaseAnnual, grossAnnaBaseAnnual] : [grossMarcBaseAnnual + grossAnnaBaseAnnual],
     );
     let reerByUser = splitByShares(reer, reerShares);
@@ -544,7 +552,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             isDead = true;
         }
         const spouseAge = (config.users[1]?.age || 30) + Math.floor(m / 12);
-        if (trySpouseMortality({ m, currentMonthIndex, enableMonteCarlo, rng }, effProj, spouseAge, spouseAlive, survivorMode)) {
+        // [ENG-DIVORCE, panel #613 — ÉLEVÉ-3] `!divorced` : un DIVORCÉ ne devient pas VEUF de son
+        // ex. Sans cette garde, la mort de l'ex basculait le ménage en `survivorMode` et lui
+        // ouvrait les prestations de survivant — mesuré dans 96 itérations MC sur 101, pour
+        // −2 555,20 $/mois (PSV ×0,5, DB ×0,6, RRQ ×0,8). Direction conservatrice, mais c'est la
+        // contradiction LITTÉRALE de la justification du correctif (« un divorcé ne touche AUCUNE
+        // prestation de survivant ») : le code disait l'inverse de son commentaire.
+        if (!divorced && trySpouseMortality({ m, currentMonthIndex, enableMonteCarlo, rng }, effProj, spouseAge, spouseAlive, survivorMode)) {
             spouseAlive = false;
             survivorMode = true;
             survivorTriggerLogged = false;
@@ -646,6 +660,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // modèle « tout le revenu de retraite est celui du survivant » (1 contribuable).
             const mergedReer = reerByUser.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);
             reerByUser = reerByUser.map((_, i) => (i === 0 ? mergedReer : 0));
+            // [panel #613 — ÉLEVÉ-2] Les PARTS aussi : le défaut était identique ici, simplement
+            // moins visible (un défunt ne cotise plus, mais le SURVIVANT si — et sa cotisation était
+            // répartie vers le slot du mort, qui repartait en FERR obligatoire à son âge).
+            reerShares = reerShares.map((_, i) => (i === 0 ? 1 : 0));
             survivorTriggerLogged = true;
         }
 
@@ -713,6 +731,58 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             }
         });
 
+        // Cycle 10 split: divorce → ./projection/stochasticEvents (tryDivorce)
+        // Le splitter callback mute toutes les locales en un point.
+        // [panel #613 — MOYEN-8] `spouseAlive` : on ne divorce pas d'un conjoint DÉCÉDÉ. La
+        // mortalité est évaluée plus haut dans le MÊME mois, donc le cas est atteignable — mesuré
+        // 14 itérations sur 101 avec une conjointe âgée. Le défaut préexistait pour les actifs ;
+        // le partage des dettes l'aurait AGGRAVÉ (le veuf voyait aussi ses dettes divisées par 2).
+        if (spouseAlive && tryDivorce({ m, currentMonthIndex, enableMonteCarlo, rng }, effProj, divorced, (keep) => {
+            liquid *= keep;
+            celi *= keep;
+            celiapp *= keep;
+            reer *= keep;
+            nonReg *= keep;
+            nonRegACB *= keep;
+            crypto *= keep;
+            reee *= keep;
+            realEstateEquity *= keep;
+            mortgageBalance *= keep;
+            propertiesState = propertiesState.map(p => ({
+                ...p,
+                currentValue: p.currentValue * keep,
+                mortgage: p.mortgage * keep,
+            }));
+            // [ENG-DIVORCE-DEBT-ASYMMETRY] Les dettes NON immobilières se partagent au MÊME taux que
+            // les actifs — DÉCISION MARC 2026-08-13 (esprit du patrimoine familial québécois : on
+            // partage la valeur NETTE, pas les actifs bruts ; cf. docs/decisions.md).
+            // Avant : seule l'hypothèque suivait `keep`. Mesuré : après avoir cédé 100 % des ACTIFS,
+            // le patrimoine restait à −81 827 $ — 100 k$ de dettes intactes en face de rien.
+            activeDebts = activeDebts.map(d => ({
+                ...d,
+                balance: Number.isFinite(d.balance) ? d.balance * keep : d.balance,
+            }));
+            liquidDebt *= keep;
+            smithManoeuvreDebt *= keep;
+            // [ENG-DIVORCE-REGISTRE-PERCONJOINT] Le registre REER per-conjoint doit suivre le split,
+            // sinon l'invariant Σ(reerByUser) == reer casse (le total vient d'être multiplié par
+            // `keep`). Le ménage passe à UNE tête : tout ce qui reste est au déclarant restant, même
+            // consolidation que le décès — la différence étant qu'ici le total a d'abord été réduit.
+            reerByUser = reerByUser.map((_, i) => (i === 0 ? reer : 0));
+            // ⚠️ …ET LES PARTS AVEC (panel #613 — ÉLEVÉ-2). Sans cette ligne, la consolidation
+            // ci-dessus est annulée dès la première cotisation : `stepReerByUser` répartit par
+            // `shares[i]` et repeuple le slot de l'ex. L'invariant Σ restait numériquement vert
+            // (0 violation sur 36 461 observations) alors que la SÉMANTIQUE était fausse — un
+            // invariant de somme ne dit rien de l'ATTRIBUTION.
+            reerShares = reerShares.map((_, i) => (i === 0 ? 1 : 0));
+        })) {
+            divorced = true;
+        }
+        if (divorced && !divorceLogged) {
+            logEvent(lifeEventsLog, `💔 Divorce (-${(effProj.divorceSplitPct ?? 50)}% patrimoine)`);
+            divorceLogged = true;
+        }
+
         // [FISC-DIVORCE-INCOME-PHANTOM] Le divorce coupait les ACTIFS mais gardait le revenu ET la
         // fiscalité de COUPLE : le conjoint parti continuait d'encaisser son salaire à vie (mesuré :
         // 85 k$/an de revenu fantôme sur un couple à 183 k$ brut) et le ménage restait imposé à deux
@@ -725,9 +795,14 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // ⚠️ Ne remplace PAS `survivorMode` partout : les PRESTATIONS DE SURVIVANT (RRQ réversible,
         // PSV, DB du conjoint décédé) n'existent pas pour un divorcé — `computeRetirementIncome`
         // continue donc de recevoir `survivorMode`, pas ce drapeau.
-        // Position : AVANT la phase revenus, donc `divorced` y porte l'état du mois PRÉCÉDENT. Sans
-        // effet de bord — `tryDivorce` n'arme qu'en JANVIER (`currentMonthIndex === 0`), le dépôt
-        // fiscal est en décembre.
+        // ⚠️ POSITION — corrigée après mesure (panel #613). J'avais d'abord posé ce drapeau AVANT
+        // le bloc `tryDivorce`, en affirmant que le décalage d'un mois était sans effet puisque le
+        // divorce n'arme qu'en janvier et que le dépôt fiscal est en décembre. C'était FAUX : le
+        // dépôt de décembre était bien épargné, mais pas la PHASE REVENUS — mesuré 5 094,90 $ de
+        // salaire du conjoint encaissé pendant l'année du divorce, et intégralement conservé
+        // (le split précède la trésorerie du mois). Ce revenu gonflait aussi `accGrossIncomeYear`,
+        // donc l'espace REER de l'année suivante, alors que décembre déclarait `grossAnna = 0`.
+        // `tryDivorce` est donc désormais évalué JUSTE AU-DESSUS, avant les revenus.
         const soloHousehold = survivorMode || divorced;
 
         // ---- PHASE RETRAITE ----
@@ -739,12 +814,18 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // Cycle 13 split: calcul RRQ/PSV/DB → ./projection/retirementIncome
             const retirementBreakdown = computeRetirementIncome(
                 { m, age, simInflation,
-                  // [FISC-DIVORCE-INCOME-PHANTOM] Après un divorce, les rentes du conjoint partent
-                  // avec lui : le ménage compte UNE tête. `survivorMode` reste INCHANGÉ ici — un
-                  // divorcé ne touche aucune prestation de survivant (RRQ réversible, PSV, DB).
-                  // Modèle assumé : chacun garde SES rentes (le partage des gains RRQ au divorce,
-                  // possible au Québec, n'est pas modélisé — direction conservatrice pour Marc).
-                  activeUsersCount: divorced ? 1 : activeUsersCount,
+                  // [FISC-DIVORCE-INCOME-PHANTOM + panel #613 ÉLEVÉ-1] Après un divorce, les rentes
+                  // du conjoint partent avec lui.
+                  // ⚠️ `activeUsersCount` reste INCHANGÉ, et c'est CONTRE-INTUITIF : ici ce n'est pas
+                  // un compteur de bénéficiaires mais le DIVISEUR de l'agrégat ménage
+                  // (`(base/activeUsersCount) × poids_i`, sommé sur `users`). La réduction vient de
+                  // la liste d'users RACCOURCIE, plus bas. Le premier correctif passait AUSSI
+                  // `activeUsersCount: 1` : le `/N` annulait alors le retrait du conjoint — Δ rentes
+                  // MESURÉ = 0,00 $/mois, et +398 $/mois à salaires inégaux (le divorce enrichissait).
+                  activeUsersCount,
+                  // La DB (`dbPensionMonthly`) est un montant MÉNAGE que rien ne divise : elle exige
+                  // un facteur EXPLICITE, sinon un divorcé gardait 100 % de la pension du couple.
+                  householdPensionShare: divorced ? 1 / Math.max(1, activeUsersCount) : 1,
                   baseGrossAnnual, delayPensions,
                   survivorMode, monthlyOasReduction, dbSurvivorPct, rrqSurvivorPct, psvResidencyYears,
                   startYear,
@@ -753,6 +834,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                   // PV-9 — + gains en capital RÉALISÉS de l'année précédente (BRUT ; ×0,5 appliqué dans computeRetirementIncome).
                   prevYearCapitalGainsForGisNominal },
                 retirementGoal,
+                // C'EST ICI que la réduction opère : un seul user ⇒ la somme
+                // `(base/activeUsersCount) × poids_i` ne porte plus que sur le déclarant restant.
                 divorced ? config.users.slice(0, 1) : config.users,
             );
             incomeRetirement = retirementBreakdown.total;
@@ -829,47 +912,6 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             monthlyExpenses += ltcMonthlyCost(effProj, expenseMultiplier);
         }
 
-        // Cycle 10 split: divorce → ./projection/stochasticEvents (tryDivorce)
-        // Le splitter callback mute toutes les locales en un point.
-        if (tryDivorce({ m, currentMonthIndex, enableMonteCarlo, rng }, effProj, divorced, (keep) => {
-            liquid *= keep;
-            celi *= keep;
-            celiapp *= keep;
-            reer *= keep;
-            nonReg *= keep;
-            nonRegACB *= keep;
-            crypto *= keep;
-            reee *= keep;
-            realEstateEquity *= keep;
-            mortgageBalance *= keep;
-            propertiesState = propertiesState.map(p => ({
-                ...p,
-                currentValue: p.currentValue * keep,
-                mortgage: p.mortgage * keep,
-            }));
-            // [ENG-DIVORCE-DEBT-ASYMMETRY] Les dettes NON immobilières se partagent au MÊME taux que
-            // les actifs — DÉCISION MARC 2026-08-13 (esprit du patrimoine familial québécois : on
-            // partage la valeur NETTE, pas les actifs bruts ; cf. docs/decisions.md).
-            // Avant : seule l'hypothèque suivait `keep`. Mesuré : après avoir cédé 100 % des ACTIFS,
-            // le patrimoine restait à −81 827 $ — 100 k$ de dettes intactes en face de rien.
-            activeDebts = activeDebts.map(d => ({
-                ...d,
-                balance: Number.isFinite(d.balance) ? d.balance * keep : d.balance,
-            }));
-            liquidDebt *= keep;
-            smithManoeuvreDebt *= keep;
-            // [ENG-DIVORCE-REGISTRE-PERCONJOINT] Le registre REER per-conjoint doit suivre le split,
-            // sinon l'invariant Σ(reerByUser) == reer casse (le total vient d'être multiplié par
-            // `keep`). Le ménage passe à UNE tête : tout ce qui reste est au déclarant restant, même
-            // consolidation que le décès — la différence étant qu'ici le total a d'abord été réduit.
-            reerByUser = reerByUser.map((_, i) => (i === 0 ? reer : 0));
-        })) {
-            divorced = true;
-        }
-        if (divorced && !divorceLogged) {
-            logEvent(lifeEventsLog, `💔 Divorce (-${(effProj.divorceSplitPct ?? 50)}% patrimoine)`);
-            divorceLogged = true;
-        }
         if (divorced) {
             const alimony = effProj.divorceAlimonyMonthly || 0;
             monthlyExpenses += alimony * expenseMultiplier;

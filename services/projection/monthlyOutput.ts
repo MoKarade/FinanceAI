@@ -18,6 +18,21 @@ export interface MonthlyOutputCtx {
     expenseMultiplier: number;
     effectiveBaseExpenses: number;
     enableMonteCarlo: boolean;
+    /**
+     * [ENG-MC-OBSERVABILITY] Force le point COMPLET même sous Monte-Carlo. Défaut : absent (donc
+     * le point allégé, comportement de production inchangé).
+     *
+     * ⚠️ Pourquoi ce drapeau existe : sous MC, ce module ne rend que `{ NetWorth, monthIndex }`
+     * — un choix de PERFORMANCE assumé (jusqu'à ~600 k objets retenus sinon). Mais le divorce,
+     * la mortalité du conjoint, le LTC et la perte d'emploi n'existent QUE sous MC : leurs flux
+     * mensuels étaient donc INOBSERVABLES, et trois lots ont dû se rabattre sur des agrégats ou
+     * des tests de fonction pure (`RetraitREER` pendant un divorce, `ImpotLatent`, et l'absence de
+     * garde de conservation sur le splitter).
+     *
+     * Réservé aux TESTS et aux diagnostics : ne jamais l'activer sur un chemin utilisateur, la
+     * boucle MC retiendrait tous les points complets de toutes les itérations.
+     */
+    verboseMonthlyPoints?: boolean;
     rawNetWorth: number;
     // Labels
     currentLoopDate: Date;
@@ -144,9 +159,9 @@ export interface MonthlyOutputCtx {
 export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoint {
     const { m, retirementMonthIndex, fireTargetNetWorth, futureFireTarget,
         simInflation, expenseMultiplier, effectiveBaseExpenses,
-        enableMonteCarlo, rawNetWorth } = ctx;
+        enableMonteCarlo, rawNetWorth, verboseMonthlyPoints } = ctx;
 
-    if (enableMonteCarlo) {
+    if (enableMonteCarlo && verboseMonthlyPoints !== true) {
         return { NetWorth: Number(rawNetWorth.toFixed(2)), monthIndex: m };
     }
 

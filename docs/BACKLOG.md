@@ -959,14 +959,22 @@
   (3 échouent sans le clamp). Revue Vercel : le LIBELLÉ du divorce interpolait encore la valeur
   BRUTE (« partage de 150 % » pendant que le moteur en appliquait 100) — corrigé + garde de source.
 
-- [ ] 🔴 **`[ENG-DIVORCE-NO-CONSERVATION-GUARD]`** (M) — le splitter n'est couvert par AUCUNE garde
-  de conservation : `projection.moneyConservation` et `projection.fuzzConservation` appellent
-  `calculateFutureProjection(p)` **sans `runMC=true`**, or `tryDivorce` exige `enableMonteCarlo` →
-  zéro mois de divorce n'est vu par le harnais d'invariants. La conservation TIENT (mesurée à
-  0,000000 $ sur ~90 000 observations), mais une régression future dans un splitter qui mute 15+
-  locales dont les dettes et deux registres per-conjoint serait **silencieuse**.
-  ⚠️ Même racine que l'impossibilité d'observer `RetraitREER` pendant un divorce : sous MC,
-  `buildMonthlyDataPoint` ne rend qu'un point ALLÉGÉ `{ NetWorth, monthIndex }`.
+- [x] 🔴 **`[ENG-MC-OBSERVABILITY]`** (M, LIVRÉ) — sous MC, `buildMonthlyDataPoint` ne rendait que
+  `{ NetWorth, monthIndex }` (choix de PERF), alors que divorce/mortalité/LTC/perte d'emploi
+  n'existent QUE sous MC : leurs flux mensuels étaient INVÉRIFIABLES, et trois lots ont dû
+  contourner (agrégat `totalTaxesPaid` au lieu de `RetraitREER`, test de fonction pure sur
+  `computeLatentTax`, absence de garde sur le splitter). Livré :
+  `ScenarioDiagnostics.verboseMonthlyPoints`, 8e paramètre de `runScenario`, DÉLIBÉRÉMENT séparé
+  d'`EngineOverrides` (exploré par `strategySpace` : un drapeau de diagnostic y serait balayé comme
+  un levier financier). Défaut absent ⇒ production inchangée, épinglé par un test qui vérifie que
+  le point MC reste ALLÉGÉ sans le drapeau.
+- [x] 🔴 **`[ENG-DIVORCE-NO-CONSERVATION-GUARD]`** (M, LIVRÉ) — premier bénéficiaire du ticket
+  ci-dessus : `tests/services/projection.divorceConservation.test.ts` fait tourner un divorce AVEC
+  dettes sous invariants (6 tests).
+  ⚠️ Leçon en chemin : « Σ actifs − dettes == NetWorth » est en partie CIRCULAIRE — `NetWorth` est
+  recalculé depuis ces mêmes soldes, donc retirer le partage des dettes la laisse VERTE (vérifié par
+  régression chirurgicale). L'invariant qui MORD porte sur une grandeur INDÉPENDANTE : le **ratio de
+  partage mesuré sur la DETTE totale** — 0,4926 attendu, 0,9949 avec la régression.
 - [ ] **`[ENG-DIVORCE-DISPLAY-RATES]`** (S) — `grossPerUserAnnual` (`projection.ts` ~l. 1760) somme
   encore `grossMarc + grossAnna` puis divise par `activeUsersCount` après divorce. Sortie
   d'AFFICHAGE uniquement (taux marginal/effectif), inerte en MC — d'où la sévérité basse.

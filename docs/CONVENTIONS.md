@@ -2827,3 +2827,22 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   les grandeurs habituelles. Quand on corrige une fonction, se demander qui est sa MIROIR — ici le
   commentaire de `estateCalculation` citait lui-même « retirementIncome.ts:207-212 », c'est-à-dire
   la ligne exacte que le lot venait de corriger.
+
+- ⚠️ **[ENG-MC-OBSERVABILITY] 2026-08-13 — quand trois tests d'affilée doivent CONTOURNER la même
+  limite, c'est la limite qu'il faut lever.** Le point MC allégé (`{ NetWorth, monthIndex }`) a
+  imposé successivement : un test de câblage sur un agrégat (`totalTaxesPaid` au lieu de
+  `RetraitREER`), un test de fonction pure (`computeLatentTax`), et l'absence pure et simple de
+  garde de conservation sur le splitter du divorce. Un `verboseMonthlyPoints` réservé aux tests
+  coûte 1 booléen et rend les trois vérifiables. Signal à reconnaître : le deuxième contournement.
+- ⚠️ **[Même lot] Un drapeau de DIAGNOSTIC n'a rien à faire dans un objet de LEVIERS.**
+  `EngineOverrides` est exploré par `strategySpace` : y glisser `verboseMonthlyPoints` l'aurait fait
+  balayer comme s'il changeait le plan financier. D'où `ScenarioDiagnostics`, séparé — deux natures,
+  deux objets.
+- ⚠️ **[ENG-DIVORCE-NO-CONSERVATION-GUARD] Une identité dont les DEUX membres sortent de la même
+  source est CIRCULAIRE.** « Σ actifs − dettes == NetWorth » ne peut pas détecter grand-chose quand
+  `NetWorth` est justement recalculé depuis ces soldes : retirer le partage des dettes au divorce
+  la laisse VERTE (vérifié par régression chirurgicale). Ce qu'elle attrape vraiment : un solde muté
+  mais non exposé. L'invariant qui MORD porte sur une grandeur INDÉPENDANTE — ici le ratio de
+  partage mesuré sur la dette totale (0,4926 attendu, 0,9949 avec la régression).
+  Règle : après avoir écrit une garde, INTRODUIRE la régression qu'elle prétend couvrir. Si elle
+  reste verte, elle ne garde rien — et il faut chercher la grandeur qui n'est pas dérivée.

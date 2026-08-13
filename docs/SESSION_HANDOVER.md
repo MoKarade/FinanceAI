@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-13 (suite 74) — forme-flux : 3 producteurs muets, 2 corrigés
+> Nouvelle classe de garde : `Δsolde == MarketGrowth<k> + NetTransfer<k>`, mois par mois
+> (`tests/services/projection.fluxForm.test.ts`). Les gardes de conservation existantes comparent
+> des SOLDES et ne demandent jamais d'où vient l'argent — elles restaient vertes.
+> - **Stress-test** (`[ENG-STRESSTEST-GROWTH-UNREGISTERED]`) : krach/reprise mutaient les soldes
+>   sans alimenter `MarketGrowth*`. **162 835 $** non expliqués au mois du krach. ⚠️ Les deltas se
+>   versent APRÈS `applyMonthlyGrowth`, qui ASSIGNE (`=`) : les poser avant les écrasait.
+> - **Transfert NonReg → CELI/REER** (`[ENG-NONREG-TRANSFER-UNPUBLISHED]`, trouvé PAR la garde) :
+>   **51 197 $** sur un scénario ORDINAIRE. `accRrspYear` était déjà bon → l'impôt était juste,
+>   seul l'affichage mentait, d'où l'invisibilité. Effet `contribREER` sur le per-conjoint :
+>   **MESURÉ NUL** (j'avais écrit l'inverse en commentaire — corrigé).
+> - **Reste ticketé** : `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`, 29 796 $ au mois 123. Non corrigé
+>   ici (touche `cashflowAllocation` en amont). Quand il tombera → ajouter `'NonReg'` à `ACCOUNTS`.
+> Garde livrée sur CELI/REER/Crypto : résiduel mesuré **0,01 $** (l'arrondi au cent).
+
 > ## 🟢 Session 2026-08-13 (suite 73) — `[PASSE-REEL-3]` : CADUC, vérifié dans le code
 > Le réancrage quotidien sur les soldes réels **existe déjà**. Chaîne vérifiée :
 > `useSimulationParams.ts:123` → `deriveStartingBalancesFromHistory` →

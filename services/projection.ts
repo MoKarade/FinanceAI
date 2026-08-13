@@ -1204,10 +1204,31 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         const janResult = processJanuaryReset(
             currentMonthIndex,
             {
-                m, startYear, simInflation, age, isRetired, activeUsersCount,
+                // [ENG-DIVORCE-ROOM-COUPLE] Les droits enregistrés restaient ceux d'un COUPLE après
+                // un divorce (ou un décès). Mesuré : +15 000 $/an de droits CELI (2 × 7 500) pour un
+                // ménage à UNE tête → CELI final 2 268 641 $ contre 1 405 271 $, soit +58 573 $ de
+                // patrimoine et −27 456 $ d'impôt sur 30 ans. Décembre disait déjà « 1 déclarant » —
+                // janvier, lui, redonnait les droits des deux : les deux voies se contredisaient.
+                //
+                // ⚠️ Les QUATRE usages de `activeUsersCount` dans `taxJanuary` ont été relus un par
+                // un avant de passer `taxFilers` — c'est un homonyme, comme dans `retirementIncome` :
+                //   · plafond REER `rrspYearlyCap × N`  → un COMPTE de déclarants  → 1 ✔
+                //   · `revenu / N` (taux marginal FERR) → revenu PAR TÊTE ; après divorce le revenu
+                //     est déjà celui d'une seule personne, diviser par 2 le sous-estimerait → 1 ✔
+                //   · `hasSpouse: N > 1`                → faux pour un divorcé      → 1 ✔
+                //   · `familyIncome: parTête × N`       → reconstitue le familial    → 1 ✔
+                m, startYear, simInflation, age, isRetired, activeUsersCount: taxFilers,
                 oasClawbackNextPeriod, hasPurchasedPrimary,
-                celiappOpeningYear, fhsaEligibleUsersCount,
+                celiappOpeningYear,
+                // Plafond FHSA À VIE : `FHSA_LIFETIME_LIMIT_PER_USER × N`. Un ménage à une tête ne
+                // conserve pas les 80 000 $ d'un couple.
+                fhsaEligibleUsersCount: soloHousehold ? Math.min(1, fhsaEligibleUsersCount) : fhsaEligibleUsersCount,
                 users: config.users,
+                // ⚠️ Liste DÉDIÉE aux droits — `users` reste ENTIER : la boucle FERR itère sur
+                // `reerByUser.length` et lit `users[i]` pour l'âge du conjoint. La raccourcir ferait
+                // rendre `-Infinity` à `currentAgeOfUser(1)`, et la part REER de l'index 1 ne se
+                // convertirait jamais en FERR — silencieusement. Deux questions, deux listes.
+                roomUsers: soloHousehold ? config.users.slice(0, 1) : config.users,
                 celiapp, reer, reerByUser, liquid, nonReg, crypto, celi,
                 accGrossIncomeYear, accRetraitsReerYearOld: accRetraitsReerYear,
                 incomeRetirementMonthly: incomeRetirement,

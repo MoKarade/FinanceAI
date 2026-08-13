@@ -15,6 +15,9 @@
 // porte la même règle IMPORTÉE (source unique) pour que l'utilisateur voie la borne.
 
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { clampSplitPct, DIVORCE_SPLIT_PCT_DEFAULT, tryDivorce } from '../../services/projection/stochasticEvents';
 import type { ProjectionConfig } from '../../types';
 
@@ -82,5 +85,24 @@ describe('[ENG-DIVORCE-SPLITPCT-UNBOUNDED] `keep` reste dans [0, 1], quoi qu\'on
 
     it('`undefined` (champ absent d\'une vieille sauvegarde) donne le défaut', () => {
         expect(keepFor(undefined)).toBeCloseTo(1 - DIVORCE_SPLIT_PCT_DEFAULT / 100, 10);
+    });
+});
+
+// ── Le LIBELLÉ doit dire ce que le moteur a fait (revue Vercel #621) ──────────
+// Avant le clamp, le libellé et le calcul étaient faux ENSEMBLE, donc cohérents. Le clamp seul
+// aurait rendu le calcul juste en laissant le libellé annoncer « partage de 150 % » — la classe
+// « règle dupliquée corrigée à moitié », qui est PIRE que l'erreur d'origine parce qu'elle fait
+// mentir une trace que l'utilisateur lit.
+describe('le libellé du divorce annonce le pourcentage RÉELLEMENT appliqué', () => {
+    it('une saisie hors bornes est annoncée bornée, pas verbatim', () => {
+        // La garde est un scan de SOURCE : le libellé est construit dans `projection.ts`, hors de
+        // portée d'un test unitaire sans faire tourner un scénario MC complet. On vérifie donc que
+        // le site d'interpolation passe par `clampSplitPct` — c'est CE couplage qui doit tenir.
+        const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+        const src = readFileSync(path.join(root, 'services/projection.ts'), 'utf8');
+        const ligne = src.split('\n').find((l) => l.includes('Divorce — partage de'));
+        expect(ligne, 'le libellé du divorce a disparu — mettre cette garde à jour').toBeDefined();
+        expect(ligne, 'le libellé interpole la valeur BRUTE : il peut mentir sur ce qui a été appliqué')
+            .toMatch(/clampSplitPct\(/);
     });
 });

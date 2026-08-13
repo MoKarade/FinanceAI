@@ -911,8 +911,9 @@
   `1e9` → **−7 782 605 996 $** (dettes × keep négatif = actif fantôme) ; `NaN` → actifs zéroïsés
   sans trace. Livré : `clampSplitPct` (source unique, `[0,100]`, non-fini → DÉFAUT et non 0) posé
   au MOTEUR — une borne seulement à l'UI laisserait passer un import de sauvegarde ou un futur
-  appelant — plus `min`/`max` + le même clamp à l'input. 8 tests, `keep` observé À LA SOURCE
-  (3 échouent sans le clamp).
+  appelant — plus `min`/`max` + le même clamp à l'input. 9 tests, `keep` observé À LA SOURCE
+  (3 échouent sans le clamp). Revue Vercel : le LIBELLÉ du divorce interpolait encore la valeur
+  BRUTE (« partage de 150 % » pendant que le moteur en appliquait 100) — corrigé + garde de source.
 
 - [ ] 🔴 **`[ENG-DIVORCE-NO-CONSERVATION-GUARD]`** (M) — le splitter n'est couvert par AUCUNE garde
   de conservation : `projection.moneyConservation` et `projection.fuzzConservation` appellent

@@ -2758,3 +2758,11 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   sur le patrimoine final (« ne doit pas dépasser X »), fragile et indirect. Le test capture le
   `keep` RÉELLEMENT remis au splitter via le callback : trois lignes, aucun scénario complet, et
   l'assertion porte exactement sur la grandeur corrigée.
+
+- ⚠️ **[ENG-DIVORCE-SPLITPCT-UNBOUNDED] revue Vercel #621 — poser un clamp SANS corriger le libellé
+  qui affiche la valeur brute AGGRAVE le défaut.** Avant le clamp, le libellé (« partage de 150 % »)
+  et le calcul étaient faux ENSEMBLE : incohérents avec la réalité, mais cohérents entre eux. Le
+  clamp seul rend le calcul juste et laisse la TRACE mentir — et c'est la trace que l'utilisateur
+  lit. Même famille que « corriger une règle dupliquée à moitié ». Règle : en posant une
+  normalisation (clamp, arrondi, défaut), GREPPER tous les sites qui affichent ou journalisent la
+  valeur d'origine, et les faire passer par la même fonction.

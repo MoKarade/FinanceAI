@@ -8,6 +8,36 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Améliorations — l'assistant regarde enfin ta courbe (refonte nav, Lot 6a)
+- **L'assistant voit ta courbe.** Quand tu lui parles depuis le Futur (ou depuis sa page), il
+  sait maintenant ce que la courbe affiche : ton **patrimoine actuel** et celui **à l'horizon**,
+  l'année de ta **retraite**, ton objectif **FIRE**, **le plus gros creux** de la courbe, et le
+  **jour que tu as sélectionné** dessus. Tu peux donc lui demander « pourquoi ça baisse là ? »
+  sans lui réexpliquer ta situation.
+- **Et il le dit honnêtement quand il ne voit rien.** Si la projection n'est pas calculée, il te
+  répond qu'il n'a **aucun chiffre** à te donner et t'invite à lancer le calcul — au lieu
+  d'inventer un montant plausible. Même règle chiffre par chiffre : une valeur qu'il n'a pas, il
+  te dit qu'il ne l'a pas.
+- **Des questions suggérées en un clic.** Au-dessus de la zone de saisie, quelques questions
+  ancrées sur TA courbe (« Explique ma courbe », « Pourquoi ça baisse en 2041 ? », « Ma retraite
+  (2038) », « Détaille ce point »). Un clic **remplit la question** dans la saisie — il
+  n'envoie rien tout seul : tu la relis et tu l'ajustes avant d'envoyer. Elles n'apparaissent que
+  si une projection existe, et « pourquoi ça baisse » seulement s'il y a vraiment une baisse.
+- **Le bandeau « Contexte » du chat dit ce qu'il voit vraiment** : « Futur — courbe de
+  projection », ou « Futur — aucune projection calculée ». Jamais un bandeau qui prétend.
+
+### Corrections (revue du Lot 6a)
+- **Les questions suggérées respectent maintenant ton geste « Calculer ».** Sur la page
+  Assistant, elles apparaissaient dès qu'une projection existait en mémoire — même si tu
+  n'avais **jamais affiché ta courbe**. Tu pouvais donc lire « Ma retraite (2043) » sans
+  l'avoir demandé. Elles suivent désormais la **même règle que le Futur** : rien tant que tu
+  n'as pas révélé ta courbe.
+- **Plus de faux « objectif FIRE atteint » à cause d'un nom que tu as choisi.** L'assistant
+  repérait le moment où tu atteins l'indépendance financière en **cherchant le mot « fire »**
+  dans les événements de la courbe — or ces événements contiennent **tes** noms d'immeubles et
+  d'enfants. Un immeuble appelé « Fire pit reno » lui faisait affirmer une **année FIRE qui
+  n'existe pas**. Il compare maintenant les vrais chiffres du moteur (patrimoine vs cible).
+
 ### Améliorations — l'argent du quotidien d'un seul tenant (refonte nav, Lot 5)
 - **Le Budget garde son titre sur tous ses sous-onglets.** Que tu sois dans « Budget »,
   « Charges fixes & Abos », « Objectifs » ou « Santé », la page s'appelle toujours **Budget** —

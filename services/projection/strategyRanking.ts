@@ -4,6 +4,8 @@
 // scénarios déjà calculés et retourne le meilleur selon l'objectif, avec un score
 // normalisé et de quoi expliquer « pourquoi ». Aucune relance de simulation.
 
+import { isFireReached, findFireReachedPoint } from './fireMilestone';
+
 export type OptimizeObjective = 'balanced' | 'wealth' | 'tax' | 'fire';
 
 export const OBJECTIVE_LABELS: Record<OptimizeObjective, string> = {
@@ -51,13 +53,15 @@ export interface RankingResult {
 // Normalise v dans [0,1] selon [min,max] ; 0.5 si plat (évite division par 0).
 const norm = (v: number, min: number, max: number): number => (max <= min ? 0.5 : (v - min) / (max - min));
 
-// 1er mois où la valeur nette atteint la cible FIRE (sinon +∞ / null).
+// 1er mois où la valeur nette atteint la cible FIRE (sinon +∞ / null). Prédicat = source unique
+// `isFireReached` (services/projection/fireMilestone.ts), partagée avec le contexte IA : deux copies
+// locales de la même condition divergent en silence.
 function fireMonthIndex(s: RankableScenario): number {
-    const i = s.chartData.findIndex((d) => (d.FireTarget || 0) > 0 && (d.NetWorth || 0) >= (d.FireTarget || 0));
+    const i = s.chartData.findIndex(isFireReached);
     return i === -1 ? Number.POSITIVE_INFINITY : (s.chartData[i].monthIndex ?? i);
 }
 function fireAgeOf(s: RankableScenario): number | null {
-    const d = s.chartData.find((p) => (p.FireTarget || 0) > 0 && (p.NetWorth || 0) >= (p.FireTarget || 0));
+    const d = findFireReachedPoint(s.chartData);
     return d ? (d.age ?? null) : null;
 }
 

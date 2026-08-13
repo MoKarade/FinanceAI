@@ -45,8 +45,40 @@ export interface BudgetViewDetail {
     cards?: Array<{ label: string; value: string; note?: string }>;
 }
 
+/** [REFONTE-NAV-L6a] Détail publié par l'onglet Futur : résumé RÉEL de la courbe AFFICHÉE,
+ *  dérivé de la source unique `lastProjection.chartData` (jamais recalculé côté UI — le builder
+ *  `services/aiChat/futureViewContext.ts` ne fait que LIRE les champs émis par le moteur).
+ *  ⚠️ No-fake-data : chaque champ numérique est OMIS s'il n'est pas fini (le prompt le DIT au
+ *  lieu d'inventer) ; `hasProjection: false` = aucune courbe affichée → aveu honnête, zéro chiffre. */
+export interface FutureViewDetail {
+    kind: 'future';
+    /** false = aucune projection calculée/affichée (le prompt le dit, AUCUN chiffre). */
+    hasProjection: boolean;
+    /** Nom de la stratégie affichée (code-auteur, émis par le moteur — assaini par ceinture). */
+    strategyName?: string;
+    /** Patrimoine net au 1er point PROJETÉ (monthIndex ≥ 0), $ CAD. Omis si non fini. */
+    currentNetWorth?: number;
+    /** Patrimoine net au dernier point de l'horizon. Omis si non fini. */
+    horizonNetWorth?: number;
+    horizonYear?: number;
+    horizonAge?: number;
+    /** Marqueur retraite = 1er point `isRetired` émis par le moteur (jamais déduit côté UI). */
+    retirementYear?: number;
+    retirementAge?: number;
+    /** Objectif FIRE ($) émis par le moteur (`fireNumber`) + année du jalon FIRE STRUCTUREL
+     *  (`FireTarget` atteint par `NetWorth` — jamais une regex sur un libellé, cf fireMilestone.ts). */
+    fireNumber?: number;
+    fireYear?: number;
+    /** Plus forte baisse pic→creux détectée sur NetWorth : année du PIC (début de baisse) + ampleur %. */
+    dipYear?: number;
+    dipDropPct?: number;
+    /** Dernier point sélectionné par l'utilisateur (modal détail / infobulle figée). */
+    selectedLabel?: string;
+    selectedNetWorth?: number;
+}
+
 /** Union à étendre page par page (vague 2+). */
-export type ViewContextDetail = BudgetViewDetail;
+export type ViewContextDetail = BudgetViewDetail | FutureViewDetail;
 
 export interface ViewContextEntry {
     scope: string;
@@ -111,6 +143,9 @@ export function _resetViewContextForTests(): void {
  *  Toute page instrumentée (vague 2+) DOIT s'enregistrer ici. */
 const SCOPE_TO_TAB: Record<string, Tab> = {
     budget: Tab.BUDGET,
+    // [REFONTE-NAV-L6a] Publié par FutureProjection — couvre l'onglet Futur ET le panneau de chat
+    // ouvert PAR-DESSUS Futur (activeTab reste FUTURE dans les deux cas).
+    future: Tab.FUTURE,
 };
 
 /** L'entrée du registre correspond-elle à l'onglet ACTIF ? (mismatch = absence honnête). */
@@ -121,8 +156,55 @@ export function viewContextMatchesTab(entry: ViewContextEntry | null, activeTab:
 
 /** Montant pour le prompt : arrondi au dollar, JAMAIS un défaut plausible sur non-fini
  *  (classe AI-PROMPT-FAKE-ZERO — un « 0 $ » crédible est pire qu'une omission honnête). */
-function promptAmount(v: number): string | null {
-    return Number.isFinite(v) ? `${Math.round(v)} $` : null;
+function promptAmount(v: number | undefined): string | null {
+    return v !== undefined && Number.isFinite(v) ? `${Math.round(v)} $` : null;
+}
+
+/** [REFONTE-NAV-L6a] Ligne de contexte de l'onglet Futur. Les chiffres viennent TOUS du moteur
+ *  (source unique) ; un champ absent/non fini est OMIS et NOMMÉ comme indisponible — jamais
+ *  remplacé par un défaut plausible (no-fake-data, y compris dans un prompt IA). */
+function describeFutureDetail(d: FutureViewDetail, tabLabel: string): string {
+    if (!d.hasProjection) {
+        return `CONTEXTE ÉCRAN : l'utilisateur est sur l'onglet « ${tabLabel} », mais AUCUNE courbe de projection n'est affichée (projection pas encore calculée ou pas révélée). Si on t'interroge sur la courbe ou le patrimoine projeté, dis-le honnêtement : ne cite AUCUN chiffre de projection, n'en invente jamais, et invite à lancer le calcul depuis l'onglet Futur. Ne mentionne JAMAIS spontanément cette absence dans une réponse qui ne porte pas sur la projection.`;
+    }
+    const parts: string[] = [];
+    const missing: string[] = [];
+    const cur = promptAmount(d.currentNetWorth);
+    if (cur) parts.push(`patrimoine net actuel (départ de la courbe) ${cur}`);
+    else missing.push('patrimoine net actuel');
+    const hor = promptAmount(d.horizonNetWorth);
+    const horWhen = [
+        d.horizonYear !== undefined ? String(d.horizonYear) : null,
+        d.horizonAge !== undefined ? `${d.horizonAge} ans` : null,
+    ].filter((x): x is string => x !== null).join(', ');
+    if (hor) parts.push(`patrimoine net à l'horizon${horWhen ? ` (${horWhen})` : ''} ${hor}`);
+    else missing.push(`patrimoine net à l'horizon${horWhen ? ` (${horWhen})` : ''}`);
+    if (d.retirementYear !== undefined || d.retirementAge !== undefined) {
+        const when = [
+            d.retirementYear !== undefined ? `en ${d.retirementYear}` : null,
+            d.retirementAge !== undefined ? `à ${d.retirementAge} ans` : null,
+        ].filter((x): x is string => x !== null).join(' ');
+        parts.push(`retraite marquée sur la courbe ${when}`);
+    }
+    const fire = promptAmount(d.fireNumber);
+    if (fire) parts.push(`objectif FIRE ${fire}${d.fireYear !== undefined ? ` (atteint vers ${d.fireYear})` : ''}`);
+    if (d.dipYear !== undefined) {
+        parts.push(`la courbe marque une BAISSE${d.dipDropPct !== undefined ? ` d'environ ${d.dipDropPct} %` : ''} à partir de ${d.dipYear}`);
+    }
+    if (d.selectedLabel) {
+        const selNw = promptAmount(d.selectedNetWorth);
+        parts.push(`point SÉLECTIONNÉ par l'utilisateur : ${sanitizePromptText(d.selectedLabel)}${selNw ? ` (patrimoine net ${selNw})` : ' (patrimoine net indisponible — ne pas l\'inventer)'}`);
+    }
+    // [Finding panel #491 par analogie] Une valeur manquante est DITE, jamais devinée : le modèle
+    // saurait sinon qu'il « devrait » y avoir un chiffre et serait tenté d'en fabriquer un.
+    const missingNote = missing.length > 0
+        ? ` Valeurs INDISPONIBLES (non calculées/non finies) — dis-le si on te les demande, ne les invente JAMAIS : ${missing.join(', ')}.`
+        : '';
+    const strat = d.strategyName ? ` (stratégie « ${sanitizePromptText(d.strategyName)} »)` : '';
+    // Énumération VIDE possible (tous les champs non finis) : sans repli, la phrase se terminait par
+    // « … est affichée : . » — une invitation à combler le blanc. Repli NOMMÉ (no-fake-data).
+    const chiffres = parts.length > 0 ? parts.join(' ; ') : 'aucun chiffre disponible';
+    return `CONTEXTE ÉCRAN : l'utilisateur est sur l'onglet « ${tabLabel} » — la courbe de projection du patrimoine est affichée${strat}. Chiffres AFFICHÉS, émis par le moteur de projection (source unique) : ${chiffres}.${missingNote} Cite CES chiffres pour toute question sur la courbe affichée ; ne recalcule JAMAIS une projection toi-même — pour le détail d'un calcul (flux d'un mois, impôts, retraits), consulte tes outils en le disant.`;
 }
 
 /**
@@ -138,6 +220,8 @@ export function describeViewContextForPrompt(activeTab: Tab): string {
         return `CONTEXTE ÉCRAN : l'utilisateur est sur l'onglet « ${tabLabel} ». Tu ne vois PAS le détail de cette page — si on te demande d'expliquer « ce qui est affiché », dis-le honnêtement et consulte tes outils pour répondre sur les données (sans prétendre voir l'écran). Ne mentionne JAMAIS spontanément que tu ne vois pas la page dans une réponse qui ne porte pas sur l'écran.`;
     }
     const d = entry.detail;
+    // [REFONTE-NAV-L6a] Discrimination par `kind` — le bloc Budget ci-dessous reste inchangé.
+    if (d.kind === 'future') return describeFutureDetail(d, tabLabel);
     const parts: string[] = [];
     const spent = promptAmount(d.totalSpent);
     const target = promptAmount(d.totalBudgetTarget);

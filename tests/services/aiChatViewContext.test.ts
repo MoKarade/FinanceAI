@@ -44,7 +44,7 @@ describe('registre viewContext', () => {
         publishViewContext('budget', detail());
         clearViewContext('budget');
         publishViewContext('budget', detail({ periodLabel: 'août 2026' }));
-        expect(getViewContext()?.detail.periodLabel).toBe('août 2026');
+        expect((getViewContext()?.detail as BudgetViewDetail | undefined)?.periodLabel).toBe('août 2026'); // union élargie [REFONTE-NAV-L6a]
     });
 });
 

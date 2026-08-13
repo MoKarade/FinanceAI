@@ -19,6 +19,9 @@ import { processAutoVehicleReplacement } from './projection/vehicleCycle';
 import { buildHistoricalSequence, buildReplaySequence, type YearReturn } from './projection/historicalReturns';
 import { computeRetirementIncome } from './projection/retirementIncome';
 import { processOneChild } from './projection/childrenReee';
+// [FUTUR-FIRE-STRUCT] Libellé du jalon FIRE partagé avec ses consommateurs (le texte n'est plus
+// dupliqué en dur : un lecteur qui doit matcher le libellé compare à la MÊME constante).
+import { FIRE_LIFE_EVENT } from './projection/fireMilestone';
 import { computeActiveIncome } from './projection/activeIncome';
 import { processReerMeltdown } from './projection/meltdownReer';
 import { initPastPurchase } from './projection/pastPurchaseInit';
@@ -1607,7 +1610,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // V23 Fix 1: FIRE comparaison en dollars futurs (inflation-ajustée)
         const futureFireTarget = fireTargetNetWorth * Math.pow(1 + simInflation / 100, m / 12);
         if (!hasHitFire && rawNetWorth >= futureFireTarget) {
-            logEvent(lifeEventsLog, 'Objectif FIRE Atteint 🔥');
+            logEvent(lifeEventsLog, FIRE_LIFE_EVENT);
             hasHitFire = true;
         }
 

@@ -1,8 +1,10 @@
 // CA-04 — smoke test : FutureProjection (money-critical, ~1000 l, aucun test direct jusqu'ici).
 // Sans projection révélée → écran d'amorçage « Calculer » (pas de crash).
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { FutureProjection } from '../../components/FutureProjection';
+// [REFONTE-NAV-L6a] La page Futur PUBLIE son contexte d'écran pour l'assistant.
+import { getViewContext, _resetViewContextForTests } from '../../services/aiChat/viewContext';
 import type { ProjectionConfig, BudgetConfig, RetirementGoal, User } from '../../types';
 
 vi.mock('recharts', async () => {
@@ -31,6 +33,8 @@ const config: BudgetConfig = {
 const retirementGoal = { targetAge: 65, targetMonthlyIncome: 5000, governmentPension: 1500 } as unknown as RetirementGoal;
 
 describe('FutureProjection — smoke (CA-04)', () => {
+    beforeEach(() => _resetViewContextForTests());
+
     it('rend l\'écran d\'amorçage sans crash', () => {
         const { container } = render(
             <FutureProjection
@@ -40,5 +44,19 @@ describe('FutureProjection — smoke (CA-04)', () => {
             />,
         );
         expect(container).toBeTruthy();
+    });
+
+    it('[REFONTE-NAV-L6a] sans courbe visible → publie le contexte « future » SANS projection (aveu honnête)', () => {
+        const { unmount } = render(
+            <FutureProjection
+                initialBalances={{}} transactions={[]} budgetItems={[]} config={config}
+                realEstateGoals={[]} retirementGoal={retirementGoal} calculatedMonthlySavings={1000}
+                projection={proj} setProjection={vi.fn()}
+            />,
+        );
+        expect(getViewContext()?.scope).toBe('future');
+        expect(getViewContext()?.detail).toEqual({ kind: 'future', hasProjection: false });
+        unmount(); // cleanup scope-guardé : la page démontée n'abandonne pas un contexte périmé
+        expect(getViewContext()).toBeNull();
     });
 });

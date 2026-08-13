@@ -2584,3 +2584,16 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   ⚠️ Symptôme à reconnaître : le store mémoire FUSIONNE (`{...prev, ...keys}`) alors que le coffre
   ÉCRASE. La donnée survit donc dans l'onglet ouvert et ne meurt qu'au rechargement — l'utilisateur
   décrit « ça se perd tout le temps », jamais « ça se perd quand je synchronise ».
+- ⚠️ **[STORAGE-KEY-WRITE-RACE, panel #612] 2026-08-13 — passer d'un ÉCRASEMENT à une FUSION, c'est
+  troquer l'atomicité contre une course.** Le correctif du jeton Fintable a remplacé un `setItem`
+  atomique (aucune lecture) par un lire-puis-écrire. Le bug déterministe disparaissait, une course
+  non déterministe le remplaçait — mesurée par le panel sur le scénario réel : le polling Drive tire
+  au retour de focus d'onglet, or coller un jeton implique justement un alt-tab. Trois issues
+  observées, dont la pire : **un secret effacé volontairement RESSUSCITÉ**.
+  Réflexe à avoir : dès qu'on ajoute une LECTURE devant une écriture jusque-là atomique, se demander
+  qui d'autre écrit — et sérialiser. Ici c'était facile *parce que* le correctif avait fait du coffre
+  le point d'écriture unique : la même propriété qui rend la fusion sûre rend la file d'attente
+  possible. Détail qui compte : la chaîne de promesses ne doit pas propager le rejet au suivant
+  (un échec bloquerait le coffre à vie) tout en rendant bien SON erreur à l'appelant courant.
+  Corollaire de revue : un correctif de bug mérite la même question qu'une feature — « qu'est-ce que
+  ce changement rend possible qui ne l'était pas ? ». Ici, la concurrence.

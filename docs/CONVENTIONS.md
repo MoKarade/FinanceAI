@@ -2814,3 +2814,16 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
 =======
 >>>>>>> origin/main
 >>>>>>> origin/main
+
+- ⚠️ **[ENG-DIVORCE-ESTATE-PENSION] 2026-08-13 — le MÊME NOM peut désigner un MULTIPLICATEUR ici et
+  un DIVISEUR là.** `activeUsersCount` divise un agrégat ménage dans `retirementIncome` (le réduire
+  ANNULE la réduction) mais MULTIPLIE un estimé per-personne dans `estateCalculation` (le réduire
+  est exactement ce qu'il faut). Sémantiques inverses, nom identique, deux fichiers voisins. La
+  seule méthode fiable reste la lecture ligne à ligne de CHAQUE usage avant de câbler — le raccourci
+  « j'ai déjà corrigé ce paramètre ailleurs » est précisément ce qui a coûté un NO-GO.
+- ⚠️ **[Même lot] Un défaut CONFINÉ à un écran survit à tous les lots qui ne le regardent pas.**
+  Le patrimoine mensuel, les invariants de conservation et le patrimoine final étaient tous JUSTES ;
+  seule `estateNetWorth` portait les rentes de l'ex (322 865 $). Rien ne pouvait l'attraper depuis
+  les grandeurs habituelles. Quand on corrige une fonction, se demander qui est sa MIROIR — ici le
+  commentaire de `estateCalculation` citait lui-même « retirementIncome.ts:207-212 », c'est-à-dire
+  la ligne exacte que le lot venait de corriger.

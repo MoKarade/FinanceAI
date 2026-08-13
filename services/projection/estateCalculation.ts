@@ -56,6 +56,19 @@ export interface EstateCalcInputs {
     rrqEstimateMonthly?: number;
     psvEstimateMonthly?: number;
     activeUsersCount: number;
+    /**
+     * [ENG-DIVORCE-ESTATE-PENSION] Part du ménage qui reste au déclarant, pour les rentes exprimées
+     * en AGRÉGAT FAMILIAL non ventilé — ici le repli sur `governmentPension`. Défaut `1`.
+     *
+     * ⚠️ Deux réductions DISTINCTES, à ne surtout pas cumuler sur le même terme :
+     *   · branche « estimés précis » : la valeur est PER-PERSONNE, elle se réduit en multipliant
+     *     par MOINS DE TÊTES (`activeUsersCount` que l'appelant passe à 1 en ménage solo) ;
+     *   · branche « repli agrégé »   : `governmentPension` est DÉJÀ familial, aucun `× N` ne s'y
+     *     applique — il lui faut donc ce facteur EXPLICITE, exactement comme
+     *     `householdPensionShare` dans `retirementIncome.ts` pour la pension DB.
+     * Appliquer le compteur de têtes au repli (ou la part aux estimés) réduirait deux fois.
+     */
+    householdPensionShare?: number;
     simInflation: number;
     enableMonteCarlo: boolean;
     // Soldes initiaux (pour startNW)
@@ -186,8 +199,16 @@ export function computeEstateNetWorth(
     // donnait `Math.max(0, NaN)` = NaN → propagé jusqu'à `estateNetWorth`, que le `fin()` de SORTIE zérotait
     // ENTIÈREMENT (même un finalRawNetWorth positif → 0). Avec `fin()` ici, un estimé NaN ne contribue que 0 à
     // SA rente ; l'autre rente et le reste du patrimoine successoral restent calculés (dégradation gracieuse).
-    const rrqMonthlyFamily = (rrqEstimateMonthly !== undefined) ? (Math.max(0, fin(rrqEstimateMonthly)) * activeUsersCount) : (governmentPension * GOV_PENSION_RRQ_SHARE);
-    const psvMonthlyFamily = (psvEstimateMonthly !== undefined) ? (Math.max(0, fin(psvEstimateMonthly)) * activeUsersCount) : (governmentPension * GOV_PENSION_PSV_SHARE);
+    // [ENG-DIVORCE-ESTATE-PENSION] Sans ce facteur, un divorcé héritait à l'écran Succession de la
+    // valeur actualisée des rentes de son EX : `computeEstateNetWorth` est la fonction MIROIR de
+    // `computeRetirementIncome` — corrigée, elle, dans le lot divorce — et son propre commentaire
+    // renvoie à « retirementIncome.ts:207-212 ». Le même défaut est resté dans la fonction sœur :
+    // c'est le motif d'échec récurrent de ce lot.
+    const householdPensionShare = Number.isFinite(inputs.householdPensionShare) && (inputs.householdPensionShare as number) > 0
+        ? (inputs.householdPensionShare as number)
+        : 1;
+    const rrqMonthlyFamily = (rrqEstimateMonthly !== undefined) ? (Math.max(0, fin(rrqEstimateMonthly)) * activeUsersCount) : (governmentPension * GOV_PENSION_RRQ_SHARE * householdPensionShare);
+    const psvMonthlyFamily = (psvEstimateMonthly !== undefined) ? (Math.max(0, fin(psvEstimateMonthly)) * activeUsersCount) : (governmentPension * GOV_PENSION_PSV_SHARE * householdPensionShare);
     // [FISC-ESTATE-PENSION-NPV] ANNUALISATION (×12) — le facteur d'annuité `npvFactor` plus bas
     // valorise des versements ANNUELS (r=2 %/an, n exprimé en ANNÉES) ; la pension doit donc être
     // convertie mensuel→annuel AVANT de l'y appliquer. Avant : montant MENSUEL × facteur annuel

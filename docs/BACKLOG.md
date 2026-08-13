@@ -904,6 +904,7 @@
 > le mécanisme du divorce lui-même. ⚠️ Leur point commun est le motif d'échec de #613 — « le même
 > défaut, laissé dans la fonction sœur ». Traiter `ROOM-COUPLE` et `ESTATE-PENSION` en priorité.
 
+<<<<<<< HEAD
 - [x] 🔴 **`[ENG-DIVORCE-ROOM-COUPLE]`** (M, LIVRÉ) — les droits enregistrés restaient ceux d'un
   COUPLE : `processJanuaryReset` recevait `config.users` entier et `activeUsersCount` inchangé.
   Décembre disait déjà « 1 déclarant », janvier redonnait les droits des deux — les deux voies se
@@ -920,6 +921,27 @@
   et la pension MÉNAGE entière, sans équivalent de `householdPensionShare` : le divorcé hérite à
   l'écran Succession de la valeur actualisée des rentes de son ex. C'est la fonction MIROIR de celle
   que #616 corrige — son propre commentaire dit « exactement comme retirementIncome.ts:207-212 ».
+=======
+- [ ] 🔴 **`[ENG-DIVORCE-ROOM-COUPLE]`** (M) — droits enregistrés restés de COUPLE après divorce :
+  `processJanuaryReset` reçoit `config.users` et `activeUsersCount` inchangés. **Mesuré** : CELI
+  +15 000 $/an de droits (2 × 7 500) pour un ménage à 1 tête → CELI final 2 268 641 $ vs
+  1 405 271 $, soit +58 573 $ de patrimoine et −27 456 $ d'impôt sur 30 ans. FHSA : le correctif de
+  DÉCEMBRE est ÉCRASÉ par janvier → 32 000 $ (avant) → 24 000 $ (#616) → 16 000 $ (légal
+  célibataire) : la moitié de l'écart seulement, plafond à vie encore 80 000 $ pour une personne.
+  RAP encore ×2 (`realEstateMonth.ts:201`). **Correctif** : `taxJanuary.ts` doit lire le nombre de
+  déclarants, comme décembre.
+- [x] 🔴 **`[ENG-DIVORCE-ESTATE-PENSION]`** (M, LIVRÉ) — `computeEstateNetWorth` recevait
+  `activeUsersCount` inchangé et la pension MÉNAGE entière : le divorcé héritait à l'écran
+  Succession de la valeur actualisée des rentes de son ex. **Mesuré : 322 865 $ de valeur
+  successorale INDUE** (1 068 947 $ → 746 082 $). Livré : compteur de TÊTES à 1 pour la branche
+  « estimés précis » (per-personne × N) **et** `householdPensionShare` pour la branche « repli
+  agrégé » (`governmentPension` est déjà familial) — deux réductions DISTINCTES, jamais cumulées
+  sur le même terme. ⚠️ `activeUsersCount` MULTIPLIE ici, alors qu'il DIVISE dans
+  `retirementIncome` : sémantiques inverses sous le même nom. Rétrocompat mesurée (déterministe et
+  MC bit-identiques) ; le patrimoine mensuel ne bouge pas — le défaut ne vivait QUE dans la
+  succession, ce qui l'a fait survivre au premier lot.
+
+>>>>>>> origin/main
 - [ ] **`[ENG-DIVORCE-LATENTTAX]`** (S) — `latentTax` ignore le divorce : impôt latent −337 063 $
   (N=2) vs −390 189 $ (N=1) → **53 126 $ de sous-estimation**, patrimoine net d'impôt affiché trop
   haut. (Ex-MOYEN-10, moitié déjà traitée : le meltdown est corrigé, `latentTax` ne l'est pas.)

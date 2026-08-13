@@ -760,11 +760,26 @@ choisir). Calcul cumulatif par tranche (style impôt).
 > [CFFP — Crédit d'impôt pour dons (guide mesures fiscales 2025)](https://cffp.recherche.usherbrooke.ca/outils-ressources/guide-mesures-fiscales/credit-impot-dons/).
 
 ### Taux par paliers (`utils/donationCredit.ts`)
-| Tranche du don | Fédéral | Québec | Combiné |
-|---|---|---|---|
-| Premiers 200 $ | **15 %** | **20 %** | **35 %** |
-| Excédent (> 200 $) | **29 %** | **24 %** | **53 %** |
-| Portion appariée au revenu en tranche d'imposition MAX | 33 % (féd) | 25,75 % (QC) | — |
+| Tranche du don | Fédéral (légal) | Québec | Somme légale | **Effectif pour un résident QC** |
+|---|---|---|---|---|
+| Premiers 200 $ | **15 %** | **20 %** | 35 % | **32,5 %** |
+| Excédent (> 200 $) | **29 %** | **24 %** | 53 % | **48,2 %** |
+| Portion appariée au revenu en tranche d'imposition MAX | 33 % (féd) | 25,75 % (QC) | — | — |
+
+> ⚠️ **[FISC-DON-ABATEMENT] Lire la DERNIÈRE colonne, pas la « somme légale ».** Un crédit non
+> remboursable FÉDÉRAL réduit l'impôt fédéral **de base** ; l'**abattement du Québec de 16,5 %**
+> (`QC_FEDERAL_ABATEMENT_RATE`, §6) se calcule ENSUITE sur cet impôt déjà réduit. Économiser 1 $
+> d'impôt fédéral de base ne réduit donc la facture réelle que de **0,835 $**. La part québécoise,
+> elle, vaut 100 %.
+> Effectif = `féd × (1 − 16,5 %) + QC` → `0,15×0,835 + 0,20 = 32,525 %` et `0,29×0,835 + 0,24 = 48,215 %`.
+> Même traitement que le **CID** (`[FISC-DTC-ABATEMENT-ORDER]`, §7) : c'est le patron du dépôt pour
+> TOUT crédit non remboursable fédéral.
+> Corrigé le **2026-08-13** (audit 2026-08-12). Avant : la part fédérale était comptée au taux plein
+> alors que le moteur la déduit d'un impôt DÉJÀ net d'abattement (`taxDecember` → `grossIncomeTax`,
+> issu de `calculateFiscalReport` où `fedTax -= abatement`). Surévaluation mesurée :
+> **234,63 $/an** pour un don de 5 000 $, **952,38 $/an** pour un don de 20 000 $ — soit exactement
+> 16,5 % de la part fédérale. ⚠️ Le ticket d'audit annonçait « ≈48,8 % » d'effectif au-delà de 200 $ :
+> **c'est faux, c'est 48,2 %** (recalculé ici). Garde : `tests/utils/donationCredit.test.ts`.
 
 - **Seuil de la tranche max** (déclenche 33 % féd / 25,75 % QC sur la portion de don appariée à ce revenu) :
   QC **129 590 $** (2025, harmonisé au seuil fédéral le 2025-02-03). Le seuil fédéral du 33 % est plus élevé
@@ -772,8 +787,11 @@ choisir). Calcul cumulatif par tranche (style impôt).
 - **Plafond annuel** : fédéral = **75 % du revenu net** ; Québec = **aucun plafond**. Report prospectif 5 ans.
 
 ### Implémentation — modèle FA-6 (option B, validée Marc 2026-06-23)
-- Crédit (par adulte) = `0,15·min(don,200) + 0,29·max(0, don−200)` **(féd)** `+ 0,20·min(don,200) + 0,24·max(0, don−200)` **(QC)**.
-  → effectif **35 %** sur les 1ers 200 $, **53 %** au-delà (vs l'ancien **33 % plat** = sous-crédit, surtout > 200 $).
+- Crédit (par adulte) = `[0,15·min(don,200) + 0,29·max(0, don−200)] × (1 − 16,5 %)` **(féd, abattu)**
+  `+ 0,20·min(don,200) + 0,24·max(0, don−200)` **(QC, plein)**.
+  → effectif **32,5 %** sur les 1ers 200 $, **48,2 %** au-delà. Reste plus généreux que l'ancien
+  **33 % plat** au-delà de 200 $ : l'abattement corrige une SURévaluation, il ne repasse pas sous
+  le modèle d'avant FA-6.
 - **Limites assumées (DOCUMENTÉES, no-fake-data)** :
   - **Majoration top-bracket** (33 % féd / 25,75 % QC) NON modélisée — requiert le statut marginal par conjoint →
     crédit légèrement SOUS-estimé pour un donateur à très haut revenu (direction conservatrice).

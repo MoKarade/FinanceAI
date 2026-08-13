@@ -754,7 +754,7 @@
 > Les 5 derniers captions du moteur détaillent CHAQUE hypothèse testée et RÉFUTÉE (ne pas
 > re-lever). Aucune baseline testée n'est cassée (3833/3833 verts post-audit).
 
-### 🔴 Moteur & fiscal — altère les calculs d'argent (12 HIGH/ÉLEVÉ · 7 MED · 7 LOW/FAIBLE)
+### 🔴 Moteur & fiscal — altère les calculs d'argent (11 HIGH/ÉLEVÉ · 7 MED · 7 LOW/FAIBLE)  *(1 HIGH livré : `[FISC-DON-ABATEMENT]`, PR #611)*
 
 > Périmètre : projection.ts + projection/* + utils/tax.ts + services/realEstate.ts
 > + services/claude.ts (Vision payslip). Tous les findings sont MESURÉS sur le vrai moteur
@@ -816,15 +816,6 @@
   endroit). **Correctif** : basculer sur mode « ménage à 1 » symétrique du `survivorMode` : `taxFilers
   = 1`, `grossAnnaBaseAnnual = 0`, `incomeAnnaNetMonthly = 0`, `activeUsersCount` fiscal = 1. **À
   minima** : documenter comme limite assumée dans FISCAL_REFERENCE §9 (aujourd'hui absent).
-
-- [ ] 🔴 **`[FISC-DON-ABATEMENT]`** (S) — crédit-don fédéral n'est **pas réduit de l'abattement QC**.
-  `computeDonationCredit` renvoie `fed + qc` au taux fédéral PLEIN (15 %/29 %), appliqué à un impôt
-  déjà net d'abattement 16,5 %. Pour un résident QC, la valeur effective du crédit féd est **83,5 %,
-  pas 100 %** (cf. CID déjà corrigé). **Mesure exact : don 5 k$ → 234,63 $/an surévalué ; don 20 k$
-  → 952,38 $/an.** **Correctif** : `fed × (1 − QC_FEDERAL_ABATEMENT_RATE) + qc` dans
-  `computeDonationCredit`, réécrire §10 FISCAL_REFERENCE dans la MÊME PR (doc encode modèle faux :
-  « 35 %/53 % » → devient ≈32,5 %/48,8 % QC). Test discriminant exigé : git stash doit faire
-  ÉCHOUER le nouveau test.
 
 - [ ] 🔴 **`[AI-CATEGORIZE-NO-BACKOFF]`** (M) — `categorizeBatch` chunke 50 tx sans retry/backoff/pacing.
   Un 429 sur chunk N → catch + chunk N+1 repart aussitôt → rate-limit atteint tôt **dégrade tout

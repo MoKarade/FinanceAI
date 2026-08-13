@@ -2540,3 +2540,17 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   Et quand la réponse HTTP servie n'est pas atteignable (le proxy d'egress de l'environnement bloque
   le domaine), le DIRE : l'enregistrement d'alias de la plateforme est une preuve forte, ce n'est pas
   la même chose que la réponse réelle.
+- ⚠️ **[2026-08-13] Vérifier les CHIFFRES d'un ticket, pas seulement sa thèse.** Le ticket
+  `[FISC-DON-ABATEMENT]` avait raison sur le fond (la part fédérale du crédit-don n'était pas
+  réduite de l'abattement QC) et ses montants étaient exacts au cent près (234,63 $ et 952,38 $/an).
+  Mais le taux effectif qu'il annonçait — « ≈48,8 % » au-delà de 200 $ — est FAUX : `0,29 × 0,835 +
+  0,24 = 48,2 %`. Recopié tel quel, ce chiffre serait entré dans `FISCAL_REFERENCE`, qui est la
+  SOURCE DE VÉRITÉ du dépôt — un faux sourcé est pire qu'un faux anonyme. Règle : **re-dériver soi-même
+  chaque valeur qu'on s'apprête à écrire dans la doc fiscale**, même quand le reste du ticket est
+  irréprochable. Un ticket juste sur le diagnostic peut être faux sur la mesure, et inversement.
+- ⚠️ **[Même jour] Un taux LÉGAL et un taux EFFECTIF ne se remplacent pas l'un l'autre.** La tentation
+  était de corriger « 35 % / 53 % » en « 32,5 % / 48,2 % » dans le tableau de `FISCAL_REFERENCE`. Les
+  deux sont vrais : 15 % + 20 % EST le taux légal, et 32,5 % est ce que ça vaut pour un résident du
+  Québec. Écraser le premier aurait rendu la doc irréconciliable avec les sources officielles citées
+  juste au-dessus (ARC P113, Revenu Québec). La table porte donc les DEUX colonnes, avec la règle de
+  passage explicite. Vaut pour tout crédit non remboursable fédéral au Québec.

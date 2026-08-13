@@ -4,6 +4,30 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-08-13 (suite 69) — DIVORCE v2 : le panel avait recalé la v1 (PR #615)
+> **#613 a été recalée (NO-GO, 12 findings dont 5 ÉLEVÉ mesurés).** À lire avant de retoucher :
+> - `activeUsersCount` de `computeRetirementIncome` n'est PAS un compteur de têtes, c'est le
+>   DIVISEUR d'un agrégat ménage. Le réduire ANNULE la réduction des rentes (Δ mesuré 0,00 $/mois,
+>   et +398 $/mois à salaires inégaux : le divorce enrichissait). La réduction vient de la LISTE
+>   d'users raccourcie. La DB, elle, exige un facteur explicite (`householdPensionShare`).
+> - `reerShares` était `const` : la consolidation du registre REER ne tenait qu'UN mois. Corrigé au
+>   divorce ET au décès. ⚠️ L'invariant Σ(reerByUser) == reer restait VERT — un invariant de SOMME
+>   ne dit rien de l'ATTRIBUTION.
+> - Cohérence à 3 voies DOCUMENTÉE dans `cashflowAllocation.ts` (taxFilers / oasBeneficiaries /
+>   liveFilers) : n'en basculer qu'une donnait un divorcé imposé en célibataire avec un seuil de
+>   récupération PSV de COUPLE (0 $ au lieu de 7 016 $/an).
+> - Un divorcé devenait VEUF de son ex (96/101 itérations MC) ; on divorçait d'un conjoint décédé.
+> - Le décalage d'un mois n'était PAS anodin : 5 094,90 $ de salaire fantôme l'année du divorce.
+>
+> ⚠️ **LEÇON DE MÉTHODE, la plus importante du lot** : mes tests d'origine étaient GLOBAUX
+> (patrimoine médian, survie). Discriminants, et pourtant aveugles aux 5 ÉLEVÉ — parce que dominés
+> par la phase SALAIRE. Après correction des 5, le P50 global ne bouge que de **0,2 %**. Il faut un
+> test PAR MÉCANISME, visant la grandeur que le mécanisme produit
+> (`projection.divorceMechanisms.test.ts`).
+> ⚠️ Le test du registre REER a exigé TROIS fixtures avant de discriminer (les deux premières
+> passaient sur le code cassé) : il faut espace CELI épuisé + REER de départ faible + horizon
+> s'arrêtant AVANT la retraite, sinon aucune cotisation REER n'a lieu ou le REER est décaissé.
+
 > ## 🟢 Session 2026-08-13 (suite 67) — lot MOTEUR 2/5 : le bloc DIVORCE (PR #613)
 > Les 3 tickets divorce livrés ENSEMBLE (un seul changement sémantique : le ménage passe à une
 > tête). Décisions produit dans `docs/decisions.md` — ADR « Modèle du DIVORCE ».

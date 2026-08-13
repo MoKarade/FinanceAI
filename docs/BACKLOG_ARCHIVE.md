@@ -41,7 +41,16 @@ fichier:ligne). Verdicts appliqués à la refonte :
 
 ---
 
-## Livré 2026-08-13 — PR #613, bloc DIVORCE (lot moteur 2/5)
+## ⚠️ 2026-08-13 — PR #613 RECALÉE par le panel moteur, reprise en #615
+
+> **Cette entrée a été écrite trop tôt.** Le panel moteur a rendu **NO-GO** sur #613 avec 12
+> findings, dont 5 ÉLEVÉ mesurés. `[ENG-DIVORCE-REGISTRE-PERCONJOINT]` était notamment archivé
+> « fait » à tort : la consolidation `reerByUser = [reer, 0]` ne tenait qu'UN MOIS, les PARTS
+> (`reerShares`, un `const`) repeuplant le slot de l'ex dès la cotisation suivante.
+> Le lot est repris et complété dans la PR #615 ; l'entrée de livraison réelle est plus bas.
+> Conservé ici pour que la trace de l'erreur ne disparaisse pas.
+
+## Livré 2026-08-13 — PR #613 (contenu initial, INCOMPLET — voir l'avertissement ci-dessus)
 
 > Gate vert. Les 3 tickets forment UN seul changement sémantique (le ménage passe à une tête) :
 > les livrer séparément aurait produit des états incohérents. Décisions produit dans

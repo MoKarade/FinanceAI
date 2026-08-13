@@ -761,6 +761,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             activeDebts = activeDebts.map(d => ({
                 ...d,
                 balance: Number.isFinite(d.balance) ? d.balance * keep : d.balance,
+                // [panel #613 — MOYEN-9] Le paiement MINIMUM suit le solde. Sans ça, une dette
+                // divisée par deux continuait d'être remboursée au rythme calibré pour la dette
+                // ENTIÈRE : extinction ~2× trop rapide et, surtout, AUCUNE détente de trésorerie
+                // pour quelqu'un qui vient de perdre la moitié de ses revenus. Incohérence
+                // INTRODUITE par le partage des dettes — elle n'existait pas avant.
+                minimumPayment: Number.isFinite(d.minimumPayment) ? d.minimumPayment * keep : d.minimumPayment,
             }));
             liquidDebt *= keep;
             smithManoeuvreDebt *= keep;
@@ -779,7 +785,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             divorced = true;
         }
         if (divorced && !divorceLogged) {
-            logEvent(lifeEventsLog, `💔 Divorce (-${(effProj.divorceSplitPct ?? 50)}% patrimoine)`);
+            // [panel #613 — FAIBLE-12] Libellé neutre en SIGNE : « -X% patrimoine » était faux pour
+            // un ménage à valeur nette négative, où le partage des dettes lui REND X % de son
+            // déficit. On décrit le geste (un partage), pas sa direction.
+            logEvent(lifeEventsLog, `💔 Divorce — partage de ${(effProj.divorceSplitPct ?? 50)}% du patrimoine NET (actifs et dettes)`);
             divorceLogged = true;
         }
 
@@ -1110,8 +1119,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
             // V28: FHSA Room reset
             const yearsSinceOpening = loopYear - celiappOpeningYear;
-            if (yearsSinceOpening < 15 && fhsaLifetimeContrib < FHSA_LIFETIME_LIMIT_PER_USER * activeUsersCount) {
-                fhsaRoom = FHSA_ANNUAL_LIMIT_PER_USER * activeUsersCount;
+            // [panel #613 — MOYEN-6] Les droits sont PERSONNELS : ceux du conjoint partent avec lui.
+            // `taxFilers` porte déjà « nombre de contribuables du ménage » (1 après divorce ou
+            // décès) — sans lui, un divorcé accumulait le DOUBLE de l'espace légal.
+            if (yearsSinceOpening < 15 && fhsaLifetimeContrib < FHSA_LIFETIME_LIMIT_PER_USER * taxFilers) {
+                fhsaRoom = FHSA_ANNUAL_LIMIT_PER_USER * taxFilers;
             }
 
             // Cycle 10 split: TLH → ./projection/taxCycle (processTaxLossHarvesting)

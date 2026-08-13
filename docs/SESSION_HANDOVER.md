@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-13 (suite 68) — `[PASSE-REEL-1]` : le passé ne ment plus (PR #614)
+> Marc a demandé de REMONTER ce lot avant le reste du moteur — sa courbe lui mentait tous les jours.
+> `dailyCurve.ts` : `if (!real) return { ...d }` renvoyait le point PROJETÉ pour une journée passée
+> sans mesure. D'où un CELI garni chez quelqu'un qui n'a pas de CELI.
+> - `todayIso` ⇒ journée STRICTEMENT antérieure à aujourd'hui et sans donnée réelle ⇒ `null`, non
+>   tracée. Borne STRICTE : aujourd'hui reste projeté (c'est l'ancre de la projection).
+> - Retour `ProjectionChartPoint | null` : c'est le COMPILATEUR qui a trouvé le 4e appelant,
+>   `buildEnrichedMonth` (l'infobulle) — je l'aurais oublié en ne corrigeant que la courbe.
+> - `todayIso` ajouté aux deux `useMemo` (sinon la frontière reste celle de la veille après minuit).
+> **Reste** : `[PASSE-REEL-2]` (écart contre prévision FIGÉE) et `[PASSE-REEL-3]` (réancrage
+> quotidien), puis le lot moteur 3/5, 4/5, 5/5.
+
 > ## 🟢 Session 2026-08-13 (suite 66) — `[FINTABLE-TOKEN-WIPE]` : la synchro Drive effaçait le jeton
 > Bug signalé par Marc (« mon jeton Fintable se perd tout le temps »), diagnostiqué et corrigé.
 > **Ce n'était PAS une éviction de navigateur** — première hypothèse (ITP Safari 7 jours), écartée

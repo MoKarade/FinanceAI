@@ -953,6 +953,26 @@
   appeler `document.getElementById('main')?.focus()` au changement `activeTab` ; pour deep-link
   `usePendingFocus`, ajouter `el.focus({preventScroll})` après `scrollIntoView`.
 
+### 🔴 `[PASSE-REEL]` — le passé affichait la PROJECTION (signalé par Marc 2026-08-13)
+
+> Marc : « mon passé ne semble pas correspondre à mon passé réel mais au futur qui était estimé.
+> Je n'ai pas de compte CELI et pourtant mon passé me dit que j'ai de l'argent dedans. »
+> Cause : `services/projection/dailyCurve.ts` — `if (!real) return { ...d }` où `d` est le point
+> PROJETÉ. ⚠️ L'en-tête du MÊME fichier énonçait pourtant la règle inverse.
+
+- [x] 🔴 **`[PASSE-REEL-1]`** (M, LIVRÉ PR #614) — le passé ne montre QUE du mesuré.
+  **DÉCISION MARC** : pas de repli, pas de trait plat — la courbe commence où les données
+  commencent. Livré : paramètre `todayIso`, retour `ProjectionChartPoint | null`, borne stricte
+  (aujourd'hui reste projeté). Le changement de type a fait trouver l'infobulle par le compilateur.
+- [ ] 🔴 **`[PASSE-REEL-2]`** (M) — indicateur « mon passé colle-t-il à ce qui était prévu ».
+  **DÉCISION MARC** : comparer à une prévision **FIGÉE que Marc verrouille** (`lockedProjectionStore`
+  / `PROJECTION-PERSIST` existent déjà). ⚠️ Surtout PAS à une prévision recalculée aujourd'hui :
+  elle intègre déjà le passé, l'écart serait nul par construction et l'indicateur dirait toujours
+  « tout va bien ».
+- [ ] 🔴 **`[PASSE-REEL-3]`** (L) — la projection se **réancre chaque jour sur les soldes RÉELS**
+  du jour, au lieu des soldes saisis une fois à la main. **DÉCISION MARC** : automatiquement, pas
+  sur bouton. Le plus gros des trois.
+
 ### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
 
 > Balayage complet des 133 composants après la PR #608 (3 tours de revue). Les écrans de LECTURE

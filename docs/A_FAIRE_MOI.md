@@ -431,7 +431,12 @@ Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiff
   (a) COD ER le fix risqué (re-baser golden + tests), ou (b) statu quo/différé ? En attente d'un « go » ou « wait »
   explicite avant de coder (risque $ élevé).
 
-## A0 — Quota Vercel (2026-08-12)
+## A0 — Quota Vercel (2026-08-12) — ✅ CLOS le 2026-08-13 : Marc est passé à Vercel PRO
+
+> Le plafond de 100 déploiements/jour du plan gratuit ne s'applique plus. Tout ce qui suit est
+> conservé comme HISTORIQUE (et pour les leçons `INFRA-QUOTA-FALSE-RESET`, qui restent valables :
+> ne pas conclure sur un quota depuis un déploiement isolé, et ne pas inférer l'état d'une CLASSE
+> de déploiement depuis un événement d'une AUTRE).
 
 - [x] **[INFRA-VERCEL-QUOTA]** — ✅ **La PROD est à jour. Deuxième correction de mon propre constat**
   (vérifié le 2026-08-13 04:0x UTC via l'API Vercel, `list_deployments` + `get_deployment`).

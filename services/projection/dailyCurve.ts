@@ -50,13 +50,36 @@ export function mergeDailyRealPoint(
      * flag, marquer tout le passé serait du bruit permanent.
      */
     syncConfirmedUntilIso?: string | null,
-): ProjectionChartPoint {
+    /**
+     * [PASSE-REEL-1] Date du jour (`YYYY-MM-DD`, locale). Quand elle est fournie, une journée
+     * STRICTEMENT ANTÉRIEURE à aujourd'hui et SANS donnée réelle rend `null` : elle n'est pas
+     * tracée du tout. Omise ⇒ comportement inchangé (repli sur le projeté), pour que les appelants
+     * qui ne raisonnent pas en passé/futur restent bit-identiques.
+     */
+    todayIso?: string | null,
+): ProjectionChartPoint | null {
     const { year, month } = calendarFromMonthIndex(startYear, startMonth, d.hostMonthIndex);
     // ⚠️ Abscisse FRACTIONNAIRE : `axisXAtDay` garantit que le jour 1 vaut EXACTEMENT l'entier du
     // mois — les ancrages entiers (« Aujourd'hui », frontière passé/futur, jalons) restent alignés.
     const x = axisXAtDay(d.hostMonthIndex, d.dayOfMonth, year, month);
     const real = realByDate?.get(d.dayIso);
-    if (!real) return { ...d, monthIndex: x } as unknown as ProjectionChartPoint;
+    if (!real) {
+        // [PASSE-REEL-1] ⚠️ CŒUR DU CORRECTIF — signalé par Marc 2026-08-13 : « mon passé ne
+        // correspond pas à mon passé réel mais au futur qui était estimé. Je n'ai pas de compte
+        // CELI et pourtant mon passé me dit que j'ai de l'argent dedans. »
+        //
+        // Ce repli rendait le point PROJETÉ (`d`) pour une journée présentée comme PASSÉE. Un
+        // CELI jamais ouvert y affichait donc le solde que le moteur PRÉVOYAIT — un chiffre
+        // crédible, invérifiable, et faux par nature. La règle était pourtant écrite en tête de ce
+        // fichier (« ce qui n'est pas mesuré doit être ABSENT ») et indexée dans CLAUDE.md (« un
+        // point réel se construit à partir de RIEN ») : le code faisait l'inverse.
+        //
+        // DÉCISION MARC : pas de repli, pas de trait plat — la courbe COMMENCE où les données
+        // commencent. Une journée passée sans mesure n'est pas tracée.
+        // Le FUTUR, lui, est légitimement projeté : d'où la borne stricte sur `todayIso`.
+        if (todayIso && d.dayIso < todayIso) return null;
+        return { ...d, monthIndex: x } as unknown as ProjectionChartPoint;
+    }
 
     const wants = (key: string): boolean => !fields || fields.has(key);
     const put = (target: Record<string, unknown>, key: string, value: unknown): void => {
@@ -127,7 +150,10 @@ export function realOnlyMonthPoints(
             dateLabel: dayLabel(year, month, day), isDailyPoint: true,
             dayIsDated: real.isDated, dayLabels: real.labels,
         } as unknown as DailyLedgerPoint;
-        out.push(mergeDailyRealPoint(d, startYear, startMonth, realByDate, fields, syncConfirmedUntilIso));
+        // `real` vient d'être trouvé juste au-dessus → `mergeDailyRealPoint` ne peut pas rendre
+        // `null` ici. La garde est là parce que le compilateur l'exige, pas parce que le cas existe.
+        const point = mergeDailyRealPoint(d, startYear, startMonth, realByDate, fields, syncConfirmedUntilIso);
+        if (point) out.push(point);
     }
     return out;
 }
@@ -157,6 +183,9 @@ export function buildEnrichedMonth(
     dated: { recurring: ReadonlyArray<unknown>; monthlyNetSalary: number; monthlyDebtPayment: number },
     build: (input: { months: ReadonlyArray<ProjectionChartPoint>; startYear: number; startMonth: number; dated: unknown }) => DailyLedgerPoint[],
     syncConfirmedUntilIso?: string | null,
+    /** [PASSE-REEL-1] Même borne passé/futur que la courbe — cf. l'invariant de partage en tête
+     *  de fichier : l'infobulle ne doit JAMAIS détailler une journée que la courbe ne trace pas. */
+    todayIso?: string | null,
 ): Map<string, ProjectionChartPoint> | null {
     const hostIdx = data.findIndex((m) => m.monthIndex === hostMonthIndex);
     if (hostIdx === -1) return null;
@@ -168,7 +197,9 @@ export function buildEnrichedMonth(
     } else {
         const months = data.slice(Math.max(0, hostIdx - 2), hostIdx + 1);
         const days = build({ months, startYear, startMonth, dated });
-        merged = days.map((d) => mergeDailyRealPoint(d, startYear, startMonth, realByDate, null, syncConfirmedUntilIso));
+        merged = days
+            .map((d) => mergeDailyRealPoint(d, startYear, startMonth, realByDate, null, syncConfirmedUntilIso, todayIso))
+            .filter((d): d is ProjectionChartPoint => d !== null);
         if (merged.length === 0) return null;
     }
     recomputeDailyDiffs(merged);

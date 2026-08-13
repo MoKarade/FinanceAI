@@ -2597,3 +2597,31 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   (un échec bloquerait le coffre à vie) tout en rendant bien SON erreur à l'appelant courant.
   Corollaire de revue : un correctif de bug mérite la même question qu'une feature — « qu'est-ce que
   ce changement rend possible qui ne l'était pas ? ». Ici, la concurrence.
+- ⚠️ **[PASSE-REEL-1] 2026-08-13 — une règle ÉCRITE dans l'en-tête n'est pas une règle TENUE par le
+  code.** `services/projection/dailyCurve.ts` s'ouvre sur « ce qui n'est pas mesuré doit être
+  ABSENT, donc affiché — », et `CLAUDE.md` indexe « un point réel se construit à partir de RIEN ».
+  Vingt lignes plus bas, `if (!real) return { ...d }` renvoyait le point PROJETÉ pour une journée
+  présentée comme passée. Marc l'a vu avant nous : « je n'ai pas de CELI et pourtant mon passé me
+  dit que j'en ai ». La doc d'intention rassure la revue et masque l'écart — quand un fichier
+  ÉNONCE un invariant, chercher la ligne qui le viole plutôt que de créditer l'énoncé.
+- ⚠️ **[Même jour] Un repli (`fallback`) est une DÉCISION DE PRODUIT déguisée en détail technique.**
+  Ici, `if (!real) return projeté` est une ligne anodine qui répond en réalité à « que montre-t-on
+  quand on ne sait pas ? ». Trois réponses défendables existaient (rien / trait plat à la dernière
+  valeur connue / trait distinct), avec des conséquences très différentes sur ce que l'utilisateur
+  CROIT lire. Marc a tranché « rien, la courbe commence où les données commencent ». Réflexe :
+  devant un repli sur de la donnée AFFICHÉE, ne pas choisir seul — c'est du produit, pas de la
+  technique.
+- ⚠️ **[Même jour] Faire rendre `null` à une fonction pure est le meilleur outil de propagation.**
+  Passer `ProjectionChartPoint` à `ProjectionChartPoint | null` a fait remonter au compilateur les
+  QUATRE appelants d'un coup — dont l'infobulle (`buildEnrichedMonth`), que j'aurais oubliée en
+  corrigeant seulement la courbe. Or l'en-tête du fichier promet justement que les deux partagent
+  la même source « pour interdire toute divergence ». Un `filter(Boolean)` silencieux n'aurait rien
+  révélé : c'est le TYPE qui a trouvé le second site.
+- ⚠️ **[panel #614] 2026-08-13 — une dépendance qui ne « sert » que par RICOCHET n'est pas une
+  dépendance.** J'avais oublié `todayIso` dans le 3e `useMemo` (`enrichCache`) — au point d'écrire
+  dans le handover « ajouté aux DEUX useMemo » alors qu'il y en a TROIS. Le bug ne se voyait pas :
+  `dailyPastByDate` est une NOUVELLE Map à chaque changement de `todayIso`, ce qui invalidait le
+  cache par ricochet. Une protection ACCIDENTELLE — mémoïser `dailyPast` plus finement un jour
+  (optimisation parfaitement raisonnable) aurait réintroduit le bug en silence, sans qu'aucun test
+  ne le voie. Règle : une dépendance ne doit jamais reposer sur l'INSTABILITÉ DE RÉFÉRENCE d'une
+  autre. Et quand on écrit « ajouté à tous les X », les COMPTER.

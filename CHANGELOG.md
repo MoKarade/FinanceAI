@@ -8,6 +8,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Ton passé ne te ment plus
+- **La partie passée de ta courbe affichait la PRÉVISION quand elle n'avait pas de donnée réelle.**
+  C'est pour ça que ton CELI paraissait garni alors que tu n'en as pas : ce n'était pas ton passé,
+  c'était le futur qui avait été estimé pour ce jour-là.
+- Désormais, **une journée passée sans mesure n'est tout simplement pas tracée**. Ta courbe
+  commence où tes données commencent. Elle sera peut-être plus courte qu'avant — elle sera vraie.
+- L'infobulle suit la même règle : elle ne peut plus détailler une journée que la courbe ne trace
+  pas.
+
 ### Correction — ton jeton Fintable ne se perdra plus
 - **La synchro Google Drive effaçait ton jeton Fintable à chaque passage.** Le jeton est
   volontairement gardé sur ton appareil et n'est jamais envoyé au Drive — mais du coup il n'était

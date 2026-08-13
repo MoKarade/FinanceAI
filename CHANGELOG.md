@@ -26,6 +26,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   dividendes, projets de vie).
 - Le récapitulatif de confirmation d'une écriture proposée par l'assistant ne peut plus **apparaître
   une fraction de seconde** avec les vrais montants quand le mode discret est déjà actif.
+- **Les paliers d'imposition ne se taisaient pas non plus** (écran « Tranches d'imposition » de la
+  Retraite) : revenu brut, impôt, décomposition par palier et taux étaient lisibles en mode discret.
+  Désormais masqués — y compris le repère jaune du revenu, dont la POSITION disait le montant. Les
+  tranches et taux officiels, eux, restent affichés : c'est de l'information publique.
+- Le bouton « C'est un virement » (détection de virements internes) annonçait le montant au lecteur
+  d'écran même en mode discret, alors que le montant affiché était bien masqué.
 
 ### Améliorations — l'assistant regarde enfin ta courbe (refonte nav, Lot 6a)
 - **L'assistant voit ta courbe.** Quand tu lui parles depuis le Futur (ou depuis sa page), il

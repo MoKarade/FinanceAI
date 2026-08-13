@@ -16,6 +16,9 @@ import { DebtManager } from '../../components/DebtManager';
 import { TaxCenter } from '../../components/TaxCenter';
 import { AssetLocationCard } from '../../components/retirement/AssetLocationCard';
 import { Transactions } from '../../components/Transactions';
+import { TaxBracketViz } from '../../components/TaxBracketViz';
+import { FED_BRACKETS } from '../../utils/tax';
+import { TransfersPanel } from '../../components/transactions/TransfersPanel';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import type { BudgetConfig, Debt, Transaction, User } from '../../types';
 
@@ -156,5 +159,71 @@ describe('[A11Y-PRIVACY-TXN-TOTALS] Transactions — agrégats', () => {
         fireEvent.click(screen.getByLabelText(/Ouvrir l'assistant de classement/));
         expect(flat(container), 'le total par marchand est aussi révélateur qu\'une ligne').not.toContain(SUM);
         expect(screen.getAllByText('Montant masqué').length).toBeGreaterThan(0);
+    });
+});
+
+// ── [A11Y-PRIVACY-TAXBRACKET] (revue #608) ───────────────────────────────────
+// Écran RENDU depuis l'onglet Retraite, dont ce même lot avait masqué l'axe Y quelques lignes plus
+// haut : il n'avait AUCUNE notion de mode discret. Revenu brut, impôt net et détail $ par palier
+// s'affichaient en clair, `aria-label` et `title` compris.
+describe('[A11Y-PRIVACY-TAXBRACKET] paliers d\'imposition', () => {
+    const INCOME = 91337; // chiffre « unique » : aucun autre nombre de l'écran ne peut l'imiter.
+
+    it('mode discret INACTIF : le revenu brut est LISIBLE (le test discrimine)', () => {
+        const { container } = render(<TaxBracketViz annualGrossIncome={INCOME} />);
+        expect(flat(container)).toContain(String(INCOME));
+    });
+
+    it('mode discret ACTIF : revenu, impôt et détail par palier SORTENT du DOM (attributs compris)', () => {
+        setPrivacy(true);
+        const { container } = render(<TaxBracketViz annualGrossIncome={INCOME} />);
+        expect(flat(container), 'le revenu brut fuyait').not.toContain(String(INCOME));
+        // Les BORNES de palier sont du droit fiscal PUBLIC : elles doivent RESTER (sinon l'écran
+        // perd son intérêt pédagogique et le test ne prouverait qu'un écran vide). La borne est LUE
+        // depuis la source unique — jamais un chiffre fiscal recopié dans un test.
+        const firstBound = String(Math.round(FED_BRACKETS[0].upTo));
+        expect(flat(container), 'les bornes de palier publiques ont disparu').toContain(firstBound);
+        // Une valeur sensible peut sortir par un ATTRIBUT sans jamais toucher textContent.
+        const attrs = [...container.querySelectorAll('[aria-label], [title], caption')]
+            .map((el) => `${el.getAttribute('aria-label') ?? ''} ${el.getAttribute('title') ?? ''} ${el.textContent ?? ''}`)
+            .join(' ')
+            .replace(/[\s  ]/g, '');
+        expect(attrs, 'un aria-label / title / caption fuyait le revenu').not.toContain(String(INCOME));
+    });
+});
+
+// ── [A11Y-PRIVACY-TRANSFERS-ARIA] (revue #608) ───────────────────────────────
+// Le montant VISIBLE passait par PrivateAmount, mais l'aria-label du bouton juste en dessous le
+// reconstruisait avec formatCAD nu : annoncé en clair au lecteur d'écran, lisible dans le DOM.
+describe('[A11Y-PRIVACY-TRANSFERS-ARIA] virements internes', () => {
+    // Paire PLAUSIBLE (un compte inconnu) → suggestion affichée, jamais marquée d'office.
+    const txns: Transaction[] = [
+        { id: 1, date: '2026-03-02', payee: 'Retrait', amount: -7431, category: 'Divers', status: 'processed', accountName: 'Courant' },
+        { id: 2, date: '2026-03-03', payee: 'Dépôt', amount: 7431, category: 'Divers', status: 'processed' },
+    ];
+    const AMOUNT = '7431';
+
+    const openPanel = () => {
+        const view = render(<TransfersPanel transactions={txns} onMarkTransfers={vi.fn()} />);
+        fireEvent.click(screen.getByRole('button', { name: /virement/i }));
+        return view;
+    };
+
+    const ariaText = (container: HTMLElement) =>
+        [...container.querySelectorAll('[aria-label]')]
+            .map((el) => el.getAttribute('aria-label') ?? '')
+            .join(' ')
+            .replace(/[\s  ]/g, '');
+
+    it('mode discret INACTIF : l\'aria-label du bouton porte le montant (le test discrimine)', () => {
+        const { container } = openPanel();
+        expect(ariaText(container)).toContain(AMOUNT);
+    });
+
+    it('mode discret ACTIF : l\'aria-label ne porte plus le montant', () => {
+        setPrivacy(true);
+        const { container } = openPanel();
+        expect(ariaText(container), 'l\'aria-label du bouton de confirmation fuyait le montant').not.toContain(AMOUNT);
+        expect(flat(container), 'le montant visible fuyait').not.toContain(AMOUNT);
     });
 });

@@ -97,6 +97,28 @@ fichier:ligne). Verdicts appliqués à la refonte :
   discriminants en réintroduisant la fuite). Bonus : le modal de confirmation d'écriture IA ne
   peut plus « flasher » les montants une frame avant son annulation en mode discret.
 
+- [x] **`[A11Y-PRIVACY-TAXBRACKET]`** (S, 🔴 trouvé par la 2e revue de #608) —
+  `components/TaxBracketViz.tsx` (rendu depuis l'onglet Retraite, `Retirement.tsx:301`) n'avait
+  **aucune** notion de mode discret : revenu brut, impôt net, détail $ par palier, taux effectif et
+  marginal, plus les `aria-label`/`title`/caption, tout en clair. **Livré** : frontière explicite —
+  les BORNES et TAUX de palier sont du droit fiscal PUBLIC et restent visibles ; tout ce qui dérive
+  du revenu est masqué, y compris le marqueur de revenu (sa POSITION est un montant) et l'échelle de
+  l'axe (figée à 300 000 $ en mode discret, sinon `revenu × 1,2` fuit par la géométrie).
+
+- [x] **`[A11Y-PRIVACY-TRANSFERS-ARIA]`** (XS, trouvé par la même revue) —
+  `components/transactions/TransfersPanel.tsx` : le montant VISIBLE passait par `PrivateAmount`,
+  mais l'`aria-label` du bouton juste en dessous le reconstruisait avec `formatCAD` nu — annoncé en
+  clair au lecteur d'écran, lisible dans le DOM. Même classe (valeur sensible qui sort par une
+  PROP), hors Recharts.
+
+- [x] **`[A11Y-PRIVACY-SCAN-SELFSAT]`** (XS, trou DANS la garde livrée plus haut) — le jeton
+  `money(` figurait à la fois dans le motif « c'est de l'argent » et dans le motif « c'est masqué » :
+  un helper local `const money = v => formatCAD(v)` SANS `isPrivacyMode` passait au vert tout en
+  fuyant (PoC exécuté). **Livré** : `PRIVACY` n'accepte plus que des marques qui PROUVENT la lecture
+  du mode discret ; les points d'appel écrivent le ternaire en clair ; le scan lit désormais le CORPS
+  complet d'un formateur (multi-lignes) et refuse bruyamment un `<YAxis>` à JSX imbriqué, au lieu de
+  cesser de voir en silence.
+
 ## ✅ Chantier REFONTE-NAV Lot 1 — la nav (PR #600, merged 2026-08-12)
 
 - [x] **`[REFONTE-NAV-L1]`** ✅ 2026-08-12 (PR #600) — 6 destinations (Futur · Configurations · Vie · 

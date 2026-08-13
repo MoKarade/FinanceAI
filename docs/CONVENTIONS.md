@@ -2488,3 +2488,16 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   a montré qu'un garde-fou logé dans un `useEffect` (annuler une confirmation en mode discret)
   s'exécute APRÈS la peinture — un garde de RENDU (`if (isPrivacyMode) return null`) ferme le trou
   pour toutes les surfaces d'un coup.
+- ⚠️ **[Revue #608, 2e passe] 2026-08-13 — une garde peut être AUTO-SATISFAITE.** Le scan qui
+  vérifie « tout formateur $ tient compte du mode discret » listait `money(` DANS LES DEUX motifs :
+  celui qui prouve « c'est de l'argent » et celui qui prouve « c'est masqué ». Un helper local
+  `const money = v => formatCAD(v)` sans `isPrivacyMode` passait donc au vert **en fuyant** (PoC
+  exécuté par la revue). Généralisation : **le jeton qui détecte le problème ne peut jamais être le
+  jeton qui atteste du correctif** — c'est la cousine de la garde CIRCULAIRE qui lit la table de
+  config qu'elle est censée vérifier. Corollaires appliqués : (1) n'accepter comme preuve de gating
+  que des marques qui PROUVENT la lecture de l'état (`isPrivacyMode`, `maskedTick(`), quitte à écrire
+  le ternaire en clair au point d'appel ; (2) une garde qui LIT DU TEXTE doit refuser BRUYAMMENT ce
+  qu'elle ne sait pas lire (formateur multi-lignes, JSX imbriqué dans une prop) — cesser de voir en
+  silence est pire que pas de garde ; (3) une revue de correctif doit se demander « reste-t-il des
+  sites de la même classe ? » ET « la garde que je viens d'écrire est-elle contournable ? » : les deux
+  questions ont rendu ici, la seconde sur la garde livrée trente minutes plus tôt.

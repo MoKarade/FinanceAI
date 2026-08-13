@@ -171,6 +171,7 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Une garde qui **lit la table de config** pour choisir quoi vérifier est CIRCULAIRE : elle ne peut
   pas détecter une erreur DANS la table. Il faut une assertion qui ne la consulte pas (mesuré sur
   `dailyLedger` : un solde reclassé en flux laissait les deux invariants verts).
+  Même famille : un jeton qui prouve À LA FOIS le problème et le correctif rend la garde AUTO-SATISFAITE.
 - Élargir l'assiette d'un calcul → auditer TOUS les dérivés qui partagent cette base.
 - Un registre per-conjoint qui devient pilote doit gérer **décès/divorce** (la conservation ne l'attrape pas).
 - Vérifs money-critical **en ISOLATION, séquentielles** (course `git stash` concurrente vue 2×).

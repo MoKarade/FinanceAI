@@ -22,9 +22,22 @@ const START = { startYear: 2026, startMonth: 0 };
 const build = (months: ProjectionChartPoint[], fields?: ReadonlySet<string>): DailyLedgerPoint[] =>
     buildDailyLedger({ months, ...START, dated: DATED, fields });
 
+/**
+ * [PASSE-REEL-1] `mergeDailyRealPoint` peut désormais rendre `null` — mais UNIQUEMENT pour une
+ * journée passée sans donnée réelle, ce qui exige `todayIso`. Ces tests-ci ne le passent pas :
+ * le repli projeté s'applique donc et le résultat est toujours non-null. Ce helper porte cette
+ * garantie en un seul endroit plutôt que de semer des `!` dans le fichier.
+ */
+const merged = (d: DailyLedgerPoint, byDate: Parameters<typeof mergeDailyRealPoint>[3] = null,
+                fields: Parameters<typeof mergeDailyRealPoint>[4] = null): ProjectionChartPoint => {
+    const p = mergeDailyRealPoint(d, START.startYear, START.startMonth, byDate, fields);
+    if (!p) throw new Error('sans todayIso, mergeDailyRealPoint ne peut pas rendre null');
+    return p;
+};
+
 describe('sliceDailyByX — la fenêtre mensuelle découpe la série quotidienne par ABSCISSE', () => {
     const daily = build([month(0), month(1), month(2), month(3)])
-        .map((d) => mergeDailyRealPoint(d, START.startYear, START.startMonth, null, null));
+        .map((d) => merged(d));
 
     it('couvre le mois de la borne HAUTE en entier (x < hi + 1), pas seulement son 1er jour', () => {
         const slice = sliceDailyByX(daily, 1, 2);
@@ -61,7 +74,7 @@ describe('mergeDailyRealPoint — fusion passé réel, no-fake par construction'
     const byDate = new Map([[firstDay.dayIso, realRow]]);
 
     it('jour RÉEL : reconstruit à partir de rien — un champ projeté non mesuré est ABSENT', () => {
-        const p = mergeDailyRealPoint(firstDay, START.startYear, START.startMonth, byDate, null) as unknown as Record<string, unknown>;
+        const p = merged(firstDay, byDate) as unknown as Record<string, unknown>;
         expect(p.dayIsReal).toBe(true);
         expect(p.NetWorth).toBe(222_222);
         // Le mois projeté portait Income/Expenses ventilés — le point réel ne garde QUE le mesuré :
@@ -71,7 +84,7 @@ describe('mergeDailyRealPoint — fusion passé réel, no-fake par construction'
 
     it('restriction `fields` : les MONTANTS hors liste sont absents, l’identité du jour reste', () => {
         const only = new Set(['NetWorth']);
-        const p = mergeDailyRealPoint(firstDay, START.startYear, START.startMonth, byDate, only) as unknown as Record<string, unknown>;
+        const p = merged(firstDay, byDate, only) as unknown as Record<string, unknown>;
         expect(p.NetWorth).toBe(222_222);
         expect(p.Liquidites).toBeUndefined();
         expect(p.dayIso).toBe(firstDay.dayIso);
@@ -82,8 +95,8 @@ describe('mergeDailyRealPoint — fusion passé réel, no-fake par construction'
         // ⚠️ Le 1er mois passé à buildDailyLedger est l'ANCRE (non rendue) : days couvre le mois 1.
         // days[0] = 1er du mois → abscisse ENTIÈRE exacte (invariant d'alignement des ancrages) ;
         // days[1] = 2 du mois → strictement entre 1 et 2.
-        expect(mergeDailyRealPoint(days[0], START.startYear, START.startMonth, null, null).monthIndex).toBe(1);
-        const p = mergeDailyRealPoint(days[1], START.startYear, START.startMonth, null, null);
+        expect(merged(days[0]).monthIndex).toBe(1);
+        const p = merged(days[1]);
         expect(p.monthIndex).toBeGreaterThan(1);
         expect(p.monthIndex).toBeLessThan(2);
         expect((p as unknown as Record<string, unknown>).dayIsReal).toBeUndefined();
@@ -109,7 +122,7 @@ describe('PARITÉ courbe légère ↔ infobulle complète — même moteur, mêm
 describe('recomputeDailyDiffs — après fusion, à travers la frontière des mois', () => {
     it('recalcule diffNW sur la série fusionnée et RETIRE ceux du 1er point', () => {
         const days = build([month(0), month(1), month(2)])
-            .map((d) => mergeDailyRealPoint(d, START.startYear, START.startMonth, null, null));
+            .map((d) => merged(d));
         recomputeDailyDiffs(days);
         expect((days[0] as unknown as Record<string, unknown>).diffNW).toBeUndefined();
         const i = daysCount(2026, 1); // 1er jour du 2e mois rendu — veille = dernier jour du mois précédent
@@ -273,5 +286,60 @@ describe('mergeDailyRealPoint — flag daySyncUnconfirmed (fraîcheur de la sync
     it('jour PROJETÉ (pas de réel) : jamais de flag, même après la borne', () => {
         const p = mergeDailyRealPoint(days[3], START.startYear, START.startMonth, byDate, null, '2020-01-01') as unknown as Record<string, unknown>;
         expect(p.daySyncUnconfirmed).toBeUndefined();
+    });
+});
+
+// ── [PASSE-REEL-1] ──────────────────────────────────────────────────────────
+// Signalé par Marc le 2026-08-13 : « mon passé ne semble pas correspondre à mon passé réel mais au
+// futur qui était estimé. Je n'ai pas de compte CELI et pourtant quand je regarde mon passé ça me
+// dit que j'ai de l'argent dans un CELI, dans un REER. »
+//
+// Le repli rendait le point PROJETÉ pour une journée présentée comme PASSÉE. La règle contraire est
+// pourtant écrite en tête de ce fichier ET indexée dans CLAUDE.md — le code faisait l'inverse.
+// DÉCISION MARC : pas de repli, pas de trait plat ; la courbe COMMENCE où les données commencent.
+describe('[PASSE-REEL-1] une journée PASSÉE sans donnée réelle n\'est pas tracée', () => {
+    const days = build([month(0), month(1)]);
+    const jour = days[0];
+
+    it('reproduit le symptôme : sans la borne, le passé rend les montants PROJETÉS', () => {
+        // `todayIso` absent ⇒ ancien comportement. Le point existe et porte les valeurs du moteur.
+        const p = mergeDailyRealPoint(jour, START.startYear, START.startMonth, null, null);
+        expect(p, 'le repli projeté doit rester le comportement sans borne').not.toBeNull();
+        // C'est bien un CELI PROJETÉ qui sort, alors qu'aucune donnée réelle n'existe.
+        expect((p as unknown as Record<string, unknown>).CELI).toBeDefined();
+    });
+
+    it('journée passée SANS donnée réelle → null (rien à tracer)', () => {
+        const demain = '2999-01-01'; // tout est « passé » face à cette date
+        expect(mergeDailyRealPoint(jour, START.startYear, START.startMonth, null, null, null, demain))
+            .toBeNull();
+    });
+
+    it('journée FUTURE sans donnée réelle → toujours projetée (c\'est son rôle)', () => {
+        const jadis = '1999-01-01'; // tout est « futur » face à cette date
+        const p = mergeDailyRealPoint(jour, START.startYear, START.startMonth, null, null, null, jadis);
+        expect(p, 'le futur DOIT rester projeté — sinon il n\'y a plus de courbe').not.toBeNull();
+    });
+
+    it('journée passée AVEC donnée réelle → tracée, avec les valeurs mesurées', () => {
+        const byDate = new Map([[jour.dayIso, {
+            date: jour.dayIso, Liquidites: 4242, CELI: 0, CELIAPP: 0, REER: 0, REEE: 0, NonReg: 0,
+            Crypto: 0, Immobilier: 0, DettesNonImmo: 0, NetWorth: 4242, Income: 0, Expenses: 0,
+            Savings: 0, NetTransferLiquid: 0, deposits: {}, growth: {}, labels: [], isDated: true,
+            priceAgeMaxDays: 0, hasEstimatedPrice: false,
+        } as unknown as Parameters<typeof mergeDailyRealPoint>[3] extends ReadonlyMap<string, infer R> | null ? R : never]]);
+        const p = mergeDailyRealPoint(jour, START.startYear, START.startMonth, byDate, null, null, '2999-01-01');
+        expect(p).not.toBeNull();
+        const rec = p as unknown as Record<string, unknown>;
+        expect(rec.Liquidites).toBe(4242);
+        // Le CELI mesuré vaut 0 — et 0 MESURÉ n'est pas 0 par défaut : il doit sortir tel quel.
+        expect(rec.CELI).toBe(0);
+    });
+
+    it('la borne est STRICTE : aujourd\'hui n\'est pas du passé', () => {
+        // Un jour ÉGAL à `todayIso` reste projeté — c'est le point d'ancrage de la projection,
+        // pas une journée révolue dont on attendrait une mesure complète.
+        const p = mergeDailyRealPoint(jour, START.startYear, START.startMonth, null, null, null, jour.dayIso);
+        expect(p).not.toBeNull();
     });
 });

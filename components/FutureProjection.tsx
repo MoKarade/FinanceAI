@@ -844,7 +844,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         });
         if (days.length === 0) return EMPTY_ARRAY as unknown as ProjectionChartPoint[];
 
-        const points = days.map((d) => mergeDailyRealPoint(d, startYear, startMonth, dailyPastByDate, CURVE_FIELDS, syncConfirmedUntilIso));
+        // [PASSE-REEL-1] `todayIso` transmis ⇒ une journée PASSÉE sans donnée réelle rend `null` et
+        // n'est PAS tracée (avant : elle affichait le point PROJETÉ, présenté comme du passé).
+        // La courbe commence donc où les données commencent — décision Marc 2026-08-13.
+        const points = days
+            .map((d) => mergeDailyRealPoint(d, startYear, startMonth, dailyPastByDate, CURVE_FIELDS, syncConfirmedUntilIso, todayIso))
+            .filter((p): p is ProjectionChartPoint => p !== null);
+        if (points.length === 0) return EMPTY_ARRAY as unknown as ProjectionChartPoint[];
         // ⚠️ `FluxImpots` ≈ 0 (tous les jours SAUF l'échéance, cadence monthEnd) devient ABSENT :
         // recharts ne rend pas de rect pour une valeur absente — sinon la Bar créerait ~11 000
         // rects DOM à hauteur nulle. Vérifié par la sonde perf (comptage des rects rendus).
@@ -865,7 +871,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         // suivant ventilé ; ici l'honnête est l'absence.
         const { FluxImpots: _anchorFlux, ...anchorRest } = months[0] as ProjectionChartPoint & { FluxImpots?: number };
         return [anchorRest as ProjectionChartPoint, ...points];
-    }, [dailyAnchors, displayData, startYear, startMonth, dailyDated, dailyPastByDate, syncConfirmedUntilIso]);
+    }, [dailyAnchors, displayData, startYear, startMonth, dailyDated, dailyPastByDate, syncConfirmedUntilIso, todayIso]);
 
     /**
      * [FUTUR-DAILY-NATIVE] Infobulle : le point COMPLET (99 champs) du jour visé, ventilé À LA
@@ -905,7 +911,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         // hôte — pas au rythme du mousemove).
         const byIso = buildEnrichedMonth(
             displayData as ProjectionChartPoint[], host, startYear, startMonth,
-            dailyPastByDate, dailyDated, buildDailyLedger as never, syncConfirmedUntilIso,
+            dailyPastByDate, dailyDated, buildDailyLedger as never, syncConfirmedUntilIso, todayIso,
         );
         if (byIso === null) {
             if (!enrichCache.failLogged.has(host)) {
@@ -916,7 +922,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         }
         enrichCache.byHost.set(host, byIso);
         return byIso.get(iso) ?? p;
-    }, [displayData, startYear, startMonth, dailyDated, dailyPastByDate, enrichCache, syncConfirmedUntilIso]);
+    }, [displayData, startYear, startMonth, dailyDated, dailyPastByDate, enrichCache, syncConfirmedUntilIso, todayIso]);
 
     /**
      * Point à passer à la modale « Détail complet ».

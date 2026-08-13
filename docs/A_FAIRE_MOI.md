@@ -433,7 +433,10 @@ Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiff
 
 ## A0 — Quota Vercel (2026-08-12)
 
-- [ ] **[INFRA-VERCEL-QUOTA]** — Le plan Vercel GRATUIT plafonne à **100 déploiements/jour** ; plafond atteint le
+- [x] **[INFRA-VERCEL-QUOTA]** — ✅ **RÉSOLU 2026-08-13 ~01:03 UTC** : le quota s'est réinitialisé,
+  le preview de la PR #608 a bâti et déployé (statut `Ready`). Le déploiement PROD repart au prochain
+  merge sur `main`. Rappels programmés devenus sans objet. Historique ci-dessous.
+- [x] **Historique** — Le plan Vercel GRATUIT plafonne à **100 déploiements/jour** ; plafond atteint le
   2026-08-12 ~20:18 UTC (6 PR + pushes de la refonte nav dans la journée). Effet : previews ET **déploiement PROD
   bloqués** jusqu'au reset — le code merge sur `main` mais hubperso.com garde la version d'avant.
   **Décision Marc (2026-08-12) : attendre le reset**, pas d'abonnement Pro (règle « tout gratuit »).

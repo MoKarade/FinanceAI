@@ -32,6 +32,20 @@ export interface JanuaryContext {
     celiappOpeningYear: number;
     fhsaEligibleUsersCount: number;
     users: Array<{ birthYear?: number; age?: number; canadaArrivalYear?: number; isImmigrant?: boolean; hasOwnedPropertyLast4Years?: boolean; facteurEquivalence?: number } | undefined>;
+    /**
+     * [ENG-DIVORCE-ROOM-COUPLE] Titulaires dont les DROITS (CELI, FHSA, facteur d'équivalence)
+     * comptent cette année. Défaut : `users` — rétrocompat bit-identique pour tout appelant qui
+     * ne le passe pas.
+     *
+     * ⚠️ Pourquoi un champ SÉPARÉ plutôt que de raccourcir `users` : la boucle FERR itère sur
+     * `reerByUser.length` et lit `ctx.users[i]` pour l'âge du conjoint i. Une liste `users`
+     * raccourcie y rendrait `undefined` → `currentAgeOfUser` renvoie `-Infinity` → la part REER
+     * de l'index 1 ne se convertirait JAMAIS en FERR, en silence. C'est le piège exact d'un
+     * précédent correctif (`slice(0,1)` cassant une garde de longueur sans une trace).
+     * Les droits sont PERSONNELS, la conversion FERR est adossée au registre per-conjoint :
+     * deux questions différentes, deux listes.
+     */
+    roomUsers?: Array<{ birthYear?: number; age?: number; canadaArrivalYear?: number; isImmigrant?: boolean; hasOwnedPropertyLast4Years?: boolean; facteurEquivalence?: number } | undefined>;
     // Soldes courants (read-only)
     celiapp: number;
     reer: number;
@@ -105,8 +119,12 @@ export function processJanuaryReset(
         ? (CELI_ANNUAL_LIMITS[nextLoopYear] ?? lastKnownCeliLimit)
         : Math.round((lastKnownCeliLimit * Math.pow(1 + ctx.simInflation / 100, nextLoopYear - LAST_KNOWN_CELI_YEAR)) / CELI_LIMIT_ROUNDING) * CELI_LIMIT_ROUNDING;
 
+    // [ENG-DIVORCE-ROOM-COUPLE] Les droits sont PERSONNELS : ceux d'un conjoint parti (divorce)
+    // ou décédé ne s'ajoutent plus aux miens. `users` reste INTACT pour la boucle FERR.
+    const roomUsers = ctx.roomUsers ?? ctx.users;
+
     let totalCeliLimitThisYear = 0;
-    ctx.users.filter(u => u).forEach(u => {
+    roomUsers.filter(u => u).forEach(u => {
         const birthYear = u!.birthYear || (ctx.startYear - (u!.age || 30));
         const residencyStart = getResidencyStartYear(birthYear, u!.isImmigrant, u!.canadaArrivalYear);
         const ageThisYear = nextLoopYear - birthYear;
@@ -119,7 +137,7 @@ export function processJanuaryReset(
     // Audit §6.10: ARC exige la fermeture du CELIAPP au 31 décembre de l'année
     // où le titulaire atteint 71 ans (ou après 15 ans, ou 1 an après le premier
     // retrait admissible — premier événement applicable). On ajoute le check 71 ans.
-    const anyUserEligibleFhsa = !ctx.hasPurchasedPrimary && ctx.users.some(u => {
+    const anyUserEligibleFhsa = !ctx.hasPurchasedPrimary && roomUsers.some(u => {
         if (!u) return false;
         const birthYear = u.birthYear || (ctx.startYear - (u.age || 30));
         const residencyStart = getResidencyStartYear(birthYear, u.isImmigrant, u.canadaArrivalYear);
@@ -128,7 +146,7 @@ export function processJanuaryReset(
         return ageThisYear >= 18 && ageThisYear < 71 && nextLoopYear >= residencyStart && isFirstBuyer;
     });
 
-    const allUsersExceeded71 = ctx.users.every(u => {
+    const allUsersExceeded71 = roomUsers.every(u => {
         if (!u) return true;
         const birthYear = u.birthYear || (ctx.startYear - (u.age || 30));
         const ageThisYear = nextLoopYear - birthYear;
@@ -161,7 +179,7 @@ export function processJanuaryReset(
     // inflation + 0.5%/yr from the 2026 official cap (§7.G RRSP desync fix).
     const rrspYearlyCap = RRSP_ANNUAL_LIMITS[nextLoopYear]
         ?? (RRSP_ANNUAL_LIMITS[2026] * Math.pow(1 + (ctx.simInflation + 0.5) / 100, nextLoopYear - 2026));
-    const totalFE = ctx.users.reduce((acc, u) => acc + (u?.facteurEquivalence || 0), 0);
+    const totalFE = roomUsers.reduce((acc, u) => acc + (u?.facteurEquivalence || 0), 0);
     const newRrspRoom = Math.max(0, Math.min(rrspYearlyCap * ctx.activeUsersCount, ctx.accGrossIncomeYear * RRSP_ROOM_RATE) - totalFE);
 
     // === 4. FERR — retrait minimum obligatoire (dès 72 ans) ===

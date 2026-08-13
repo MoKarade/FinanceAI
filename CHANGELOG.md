@@ -89,6 +89,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - Une nouvelle vérification automatique exige désormais que **toute variation d'un compte soit
   expliquée par un flux publié**. C'est elle qui a trouvé les deux derniers cas.
 
+### Après un divorce, tes droits CELI et REER étaient encore ceux d'un couple
+- Chaque 1er janvier, l'app te rouvrait **le double des droits** (CELI, REER, et le plafond CELIAPP
+  à vie d'un couple) alors que ton ménage n'a plus qu'une personne. Ta déclaration de décembre, elle,
+  comptait déjà un seul contribuable : les deux moitiés du calcul se contredisaient.
+- Mesuré sur un scénario à 25 ans : **716 717 $ de patrimoine que tu n'aurais jamais pu accumuler.**
+- Corrigé. Rien ne change si tu n'es ni divorcé ni veuf — vérifié chiffre pour chiffre.
+
 ### Corrections de calcul (lot moteur, suite de l'audit)
 - **Ton crédit d'impôt pour dons était surévalué.** La part fédérale du crédit était comptée en
   entier, alors qu'au Québec elle ne vaut que 83,5 % : l'abattement québécois de 16,5 % s'applique

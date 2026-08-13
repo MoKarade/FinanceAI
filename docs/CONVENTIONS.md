@@ -2770,3 +2770,18 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   réconcilie déjà sur `poolEnd` avec les mêmes parts. Le commentaire a été corrigé. Une affirmation
   plausible écrite dans le code a la même autorité qu'une affirmation vérifiée : elle doit être
   vérifiée.
+
+- ⚠️ **[ENG-DIVORCE-ROOM-COUPLE] 2026-08-13 — deux QUESTIONS différentes veulent deux LISTES
+  différentes, pas une liste raccourcie.** Réduire `users` pour retirer les droits d'un ex-conjoint
+  aurait cassé la boucle FERR, qui itère sur `reerByUser.length` et lit `users[i]` pour l'âge :
+  `undefined` → `currentAgeOfUser` rend `-Infinity` → la part REER de l'index 1 ne se convertit
+  JAMAIS, sans une trace. C'est le piège exact d'un `slice(0,1)` précédent. Le correctif est un
+  champ SÉPARÉ (`roomUsers`, défaut = `users`) : « qui a des droits » et « qui a un âge de
+  conversion » sont deux questions, elles méritent deux entrées.
+- ⚠️ **[Même lot] Une fixture doit rendre le défaut OBSERVABLE, pas seulement l'exercer.** Deux
+  premières fixtures ont donné des sorties bit-identiques avec ET sans correctif — non parce que le
+  code était bon, mais parce que les DROITS n'y étaient jamais le facteur limitant : recevoir
+  15 000 $ de droits au lieu de 7 500 $ ne change rien à qui n'en utilise que 5 000 $. Il fallait
+  une épargne SUPÉRIEURE aux droits annuels et un horizon s'arrêtant AVANT le décaissement. Même
+  leçon que le registre REER (3 fixtures). Règle : quand une mesure avec/sans correctif rend un
+  écart NUL, suspecter la fixture avant de conclure que le correctif est inutile.

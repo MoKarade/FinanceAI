@@ -904,14 +904,18 @@
 > le mécanisme du divorce lui-même. ⚠️ Leur point commun est le motif d'échec de #613 — « le même
 > défaut, laissé dans la fonction sœur ». Traiter `ROOM-COUPLE` et `ESTATE-PENSION` en priorité.
 
-- [ ] 🔴 **`[ENG-DIVORCE-ROOM-COUPLE]`** (M) — droits enregistrés restés de COUPLE après divorce :
-  `processJanuaryReset` reçoit `config.users` et `activeUsersCount` inchangés. **Mesuré** : CELI
-  +15 000 $/an de droits (2 × 7 500) pour un ménage à 1 tête → CELI final 2 268 641 $ vs
-  1 405 271 $, soit +58 573 $ de patrimoine et −27 456 $ d'impôt sur 30 ans. FHSA : le correctif de
-  DÉCEMBRE est ÉCRASÉ par janvier → 32 000 $ (avant) → 24 000 $ (#616) → 16 000 $ (légal
-  célibataire) : la moitié de l'écart seulement, plafond à vie encore 80 000 $ pour une personne.
-  RAP encore ×2 (`realEstateMonth.ts:201`). **Correctif** : `taxJanuary.ts` doit lire le nombre de
-  déclarants, comme décembre.
+- [x] 🔴 **`[ENG-DIVORCE-ROOM-COUPLE]`** (M, LIVRÉ) — les droits enregistrés restaient ceux d'un
+  COUPLE : `processJanuaryReset` recevait `config.users` entier et `activeUsersCount` inchangé.
+  Décembre disait déjà « 1 déclarant », janvier redonnait les droits des deux — les deux voies se
+  contredisaient. **Mesuré : 716 717 $ de patrimoine INDU** sur un divorcé à 25 ans d'horizon
+  (12 745 146 $ → 12 028 429 $). Livré : `activeUsersCount: taxFilers` (les 4 usages du fichier
+  relus un par un — homonyme, comme dans `retirementIncome`), `fhsaEligibleUsersCount` borné à 1,
+  et une liste **`roomUsers` DÉDIÉE** aux droits.
+  ⚠️ `users` reste ENTIER : la boucle FERR itère sur `reerByUser.length` et lit `users[i]` pour
+  l'âge du conjoint — la raccourcir aurait rendu `-Infinity` et la part REER de l'index 1 ne se
+  serait JAMAIS convertie en FERR, en silence (le piège exact d'un précédent `slice(0,1)`).
+  Rétrocompat MESURÉE : déterministe et décès bit-identiques.
+
 - [ ] 🔴 **`[ENG-DIVORCE-ESTATE-PENSION]`** (M) — `computeEstateNetWorth` reçoit `activeUsersCount`
   et la pension MÉNAGE entière, sans équivalent de `householdPensionShare` : le divorcé hérite à
   l'écran Succession de la valeur actualisée des rentes de son ex. C'est la fonction MIROIR de celle

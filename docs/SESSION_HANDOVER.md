@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-13 (suite 76) — `[ENG-DIVORCE-ROOM-COUPLE]` : les droits d'un seul titulaire
+> `processJanuaryReset` recevait `config.users` ENTIER et `activeUsersCount` inchangé : chaque
+> janvier rouvrait les droits de DEUX têtes à un ménage qui n'en a plus qu'une, pendant que
+> décembre disait déjà « 1 déclarant ». **Mesuré : 716 717 $ de patrimoine indu** (12 745 146 $ →
+> 12 028 429 $).
+> - `activeUsersCount: taxFilers` — les 4 usages du fichier relus UN PAR UN (homonyme : compteur de
+>   déclarants l. 165, mais DIVISEUR de revenu par tête l. 204/220/225 ; `taxFilers` est correct
+>   pour les quatre).
+> - Liste **`roomUsers` DÉDIÉE** (défaut = `users`). ⚠️ NE PAS raccourcir `users` : la boucle FERR
+>   itère sur `reerByUser.length` et lit `users[i]` → `-Infinity` → part REER de l'index 1 jamais
+>   convertie, en silence. Deux questions, deux listes.
+> - Fixture : DEUX essais donnaient un écart NUL — les droits n'étaient pas le facteur limitant.
+>   Il faut une épargne supérieure aux droits annuels ET un horizon avant décaissement.
+> Rétrocompat MESURÉE : déterministe (22 894 519 $) et décès (44 499 602 $) bit-identiques.
+
 > ## 🟢 Session 2026-08-13 (suite 74) — forme-flux : 3 producteurs muets, 2 corrigés
 > Nouvelle classe de garde : `Δsolde == MarketGrowth<k> + NetTransfer<k>`, mois par mois
 > (`tests/services/projection.fluxForm.test.ts`). Les gardes de conservation existantes comparent

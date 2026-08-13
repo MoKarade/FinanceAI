@@ -14,6 +14,7 @@ import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ZoomContainer } from './ui/ZoomContainer';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL, maskedSliderAria } from '../utils/privacyAria';
+import { maskedTick } from '../utils/chartPrivacy';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { formatCAD } from '../utils/format';
 
@@ -170,7 +171,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                     <defs><linearGradient id="colorDebt" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/><stop offset="95%" stopColor="#ef4444" stopOpacity={0}/></linearGradient></defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                     <XAxis dataKey="month" stroke="#666" tick={{fontSize: 10}} tickFormatter={(m) => `M${m}`} />
-                                    <YAxis stroke="#666" tick={{fontSize: 10}} width={40} tickFormatter={(val) => `${(val/1000).toFixed(0)}k`} />
+                                    <YAxis stroke="#666" tick={{fontSize: 10}} width={40} tickFormatter={maskedTick(isPrivacyMode, (val: number) => `${(val/1000).toFixed(0)}k`)} />
                                     <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => (isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val))} />
                                     <Area type="monotone" dataKey="balance" stroke="#ef4444" fill="url(#colorDebt)" name="Solde Restant" strokeWidth={3} />
                                 </AreaChart>

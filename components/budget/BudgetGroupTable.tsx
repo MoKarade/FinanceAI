@@ -6,6 +6,9 @@ import { PrivateNumberInput } from '../ui/PrivateNumberInput';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip } from 'recharts';
 import { LineChart, Line, YAxis as LYAxis } from 'recharts';
 import { formatCAD, formatSigned } from '../../utils/format';
+import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
+import { maskedTick } from '../../utils/chartPrivacy';
+import { useFinanceStore } from '../../store/useFinanceStore';
 
 type TimeView = 'MONTH' | 'QUARTER' | 'YEAR' | 'CUSTOM';
 
@@ -69,6 +72,10 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
     // (ci-dessous) disparaissait avec eux → impossible de créer la 1re catégorie
     // d'un groupe (bloquant total pour un nouvel utilisateur, INITIAL_BUDGET=[]).
     const isEmpty = items.length === 0;
+
+    // [AUDIT-SAFETY] Mode discret : le composant masquait ses cellules $ (`PrivateAmount`) mais pas
+    // l'axe Y ni l'infobulle du mini-graphique par poste — les $ dépensés y restaient lisibles.
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
 
     const groupTotalTarget = items.reduce((sum, i) => sum + getDisplayTarget(i), 0);
     const groupTotalSpent = items.reduce((sum, i) => sum + (actualsMap[i.name] || 0), 0);
@@ -307,11 +314,11 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                             <BarChart data={monthlyDataMap[item.name] || []}>
                                                                 <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                                                 <XAxis dataKey="name" stroke="#666" tick={{ fontSize: 10 }} />
-                                                                <YAxis stroke="#666" tick={{ fontSize: 10 }} width={30} />
+                                                                <YAxis stroke="#666" tick={{ fontSize: 10 }} width={30} tickFormatter={maskedTick(isPrivacyMode, (v: number) => String(v))} />
                                                                 <Tooltip
                                                                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                                                                     contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }}
-                                                                    formatter={(val: number) => formatCAD(val)}
+                                                                    formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)}
                                                                 />
                                                                 <ReferenceLine
                                                                     y={displayTarget}

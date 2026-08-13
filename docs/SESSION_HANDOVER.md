@@ -4,6 +4,32 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-13 (suite 64) — `[AUDIT-SAFETY]` : filets de sécurité (PR #608)
+> Premier lot de correctifs de l'audit 2026-08-12 (les 🔴 d'effort S). **Gate vert : typecheck,
+> lint, 3 965 tests (348 fichiers), build.**
+> - **Mode discret** : les 4 fuites de l'audit (Dettes, Centre fiscal, Asset Location, agrégats
+>   Transactions) + la 5e jumelle (`PayslipUploadCard`) passent par `PrivateAmount` /
+>   `PrivateNumberInput` — les montants **sortent du DOM**, ils ne sont pas floutés.
+> - **Trouvé PAR LA REVUE, pas par l'audit** : le masquage s'arrêtait aux **graphiques**. 8 axes Y
+>   et 11 formateurs d'infobulle affichaient des $ en clair (mesuré : « 41k » sur l'axe de la
+>   courbe d'extinction de dette, à côté d'une infobulle correctement masquée ; `DividendPanel`
+>   affichait des `formatCAD` PLEINS). Nouveaux helpers `utils/chartPrivacy.ts` (`maskedTick`,
+>   `maskedTooltipValue`), 10 fichiers corrigés.
+> - **Deux gardes, toutes deux prouvées discriminantes** (fuite réintroduite → rouge) :
+>   `tests/components/chartPrivacyScan.test.ts` (scan de SOURCE — le seul outil qui voit une prop
+>   de graphique) et le mock Recharts de `privacyLeaks.test.tsx`, qui rend désormais la SORTIE des
+>   formateurs au lieu de `() => null`.
+> - **Écriture IA** : l'import de talon de paie (Réglages) passe par le MÊME `writeExecutor` que le
+>   chat (diff → confirmation → `createBackupNow` → recalcul sur état frais) ; `PayslipSchema`
+>   borné (`.positive().finite()`). Le modal de confirmation refuse désormais de RENDRE en mode
+>   discret (le refus vivait dans un `useEffect` → une frame de montants réels affichés).
+> - **`actionPlanHierarchy`** journalise les valeurs non finies au lieu de les coercer en 0 muet.
+> - BACKLOG : 7 items déplacés vers `BACKLOG_ARCHIVE.md` (+ le 8e trouvé en revue). Reste ouvert de
+>   l'audit : le lot 🔴 moteur (divorce, stress-test), `[FISC-DON-ABATEMENT]`,
+>   `[AI-TAXCENTER-APPLY-NOGATE]`.
+> - ⚠️ **Déploiement Vercel toujours contraint** (quota gratuit 100/jour) — voir
+>   `docs/A_FAIRE_MOI.md`.
+
 > ## 🟢 Session 2026-08-12 (suite 63) — `[REFONTE-NAV-L6a]` : l'assistant ancré sur la courbe
 > Lot 6a intégré sur `main` post-#606 (PR à venir). L'assistant **voit** la courbe du Futur.
 > - **Nouveau builder PUR** `services/aiChat/futureViewContext.ts` :

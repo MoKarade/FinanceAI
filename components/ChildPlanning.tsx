@@ -17,6 +17,7 @@ import { VieCurveLink } from './vie/VieCurveLink';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { PrivateAmount } from './ui/PrivateAmount';
+import { maskedTick } from '../utils/chartPrivacy';
 import { PrivateSliderValue } from './ui/PrivateSliderValue';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL, maskedSliderAria } from '../utils/privacyAria';
@@ -468,8 +469,8 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                 <BarChart data={zoomCost.visibleData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                     <XAxis dataKey="age" stroke="#666" tick={{ fontSize: 10 }} label={{ value: 'Âge enfant', position: 'insideBottom', offset: -5, fill: '#666' }} />
-                                    <YAxis stroke="#666" tick={{ fontSize: 10 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#151922', borderColor: '#333', borderRadius: 8 }} formatter={(v: number, name: string) => [fmt(Math.abs(v)), name === 'Bénéfices' ? '↩ Allocations' : name]} labelFormatter={l => `Âge ${l} ans`} />
+                                    <YAxis stroke="#666" tick={{ fontSize: 10 }} tickFormatter={maskedTick(isPrivacyMode, (v: number) => `${(v / 1000).toFixed(0)}k`)} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#151922', borderColor: '#333', borderRadius: 8 }} formatter={(v: number, name: string) => [money(Math.abs(v)), name === 'Bénéfices' ? '↩ Allocations' : name]} labelFormatter={l => `Âge ${l} ans`} />
                                     <Legend />
                                     <ReferenceLine y={0} stroke="#555" />
                                     <Bar dataKey="Essentiel" stackId="a" fill="#6f72c4" name="Essentiel" />
@@ -552,8 +553,8 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                     <XAxis dataKey="age" stroke="#666" tick={{ fontSize: 10 }} />
-                                    <YAxis stroke="#666" tick={{ fontSize: 10 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#151922', borderColor: '#333', borderRadius: 8 }} formatter={(v: number) => fmt(v)} labelFormatter={l => `Âge ${l} ans`} />
+                                    <YAxis stroke="#666" tick={{ fontSize: 10 }} tickFormatter={maskedTick(isPrivacyMode, (v: number) => `${(v / 1000).toFixed(0)}k`)} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#151922', borderColor: '#333', borderRadius: 8 }} formatter={(v: number) => money(v)} labelFormatter={l => `Âge ${l} ans`} />
                                     <Legend />
                                     <Area type="monotone" dataKey="Solde" stroke="#5b82bf" fill="url(#respGrad)" strokeWidth={2} name="Solde Total" />
                                     <Bar dataKey="Subvention" fill="#4f9d86" name="Subventions reçues" />

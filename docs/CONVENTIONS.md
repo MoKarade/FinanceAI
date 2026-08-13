@@ -2472,3 +2472,19 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   faire consommer le MÊME exécuteur, pas de ré-implémenter un mini-filet. Corollaire : après avoir
   corrigé une surface, chercher les AUTRES appelants de la même donnée (une 3e surface a été trouvée
   ainsi, `[AI-TAXCENTER-APPLY-NOGATE]`).
+- ⚠️ **[Revue #608] 2026-08-13 — une PROP de composant tiers est un angle mort DOUBLE.** Le mode
+  discret était respecté partout SAUF dans les graphiques : un montant y est produit par un
+  `tickFormatter` / `formatter` passé en prop à Recharts. Ni le grep `formatCAD(` ne le voit (l'axe
+  construisait `${(val/1000).toFixed(0)}k` à la main), ni les tests de rendu (ils mockent
+  `YAxis`/`Tooltip` en `() => null`, faute de dimensions jsdom pour `ResponsiveContainer`). Résultat
+  mesuré : l'axe annonçait « 41k » à 4 pixels d'une infobulle correctement masquée, dans un fichier
+  déjà « corrigé » — 19 sites du même défaut sur 10 fichiers. Trois règles qui en sortent :
+  (1) quand une valeur sensible sort par une **prop de rendu**, la garde qui la voit est un **scan de
+  SOURCE** (`tests/components/chartPrivacyScan.test.ts`), pas un test de rendu ; (2) un mock qui rend
+  `() => null` **désarme silencieusement** l'assertion — mieux vaut rendre la SORTIE du formateur pour
+  une valeur témoin, le mock devient alors la surface d'affichage réelle ; (3) une politique
+  transversale (masquer, formater, arrondir) veut un **helper nommé** (`maskedTick`) et non un
+  ternaire recopié : le helper est ce que la garde peut chercher. Corollaire vérifié : la même revue
+  a montré qu'un garde-fou logé dans un `useEffect` (annuler une confirmation en mode discret)
+  s'exécute APRÈS la peinture — un garde de RENDU (`if (isPrivacyMode) return null`) ferme le trou
+  pour toutes les surfaces d'un coup.

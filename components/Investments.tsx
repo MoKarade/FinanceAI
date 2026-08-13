@@ -831,7 +831,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                 />
                                             ))}
                                         </Pie>
-                                        <ReTooltip contentStyle={{ backgroundColor: '#fff', color: '#000', borderRadius: '8px', border: 'none' }} itemStyle={{ color: '#000' }} formatter={(val: number) => formatCAD(val)} />
+                                        <ReTooltip contentStyle={{ backgroundColor: '#fff', color: '#000', borderRadius: '8px', border: 'none' }} itemStyle={{ color: '#000' }} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
@@ -893,7 +893,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                 />
                                             ))}
                                         </Pie>
-                                        <ReTooltip contentStyle={{ backgroundColor: '#fff', color: '#000', borderRadius: '8px', border: 'none' }} itemStyle={{ color: '#000' }} formatter={(val: number) => formatCAD(val)} />
+                                        <ReTooltip contentStyle={{ backgroundColor: '#fff', color: '#000', borderRadius: '8px', border: 'none' }} itemStyle={{ color: '#000' }} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>

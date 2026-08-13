@@ -19,6 +19,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   C'est le même garde-fou que l'import via le chat — les deux chemins sont enfin alignés.
 - Le « Plan d'action » ne transforme plus une valeur de calcul invalide en **0 $** silencieux : c'est
   journalisé, donc diagnosticable.
+- **Les graphiques aussi se taisent en mode discret.** L'axe et l'infobulle d'un graphique ne
+  passaient pas par le masquage habituel : la courbe d'extinction de dette continuait d'afficher
+  « 41k » sur son axe, et le graphe des dividendes affichait carrément les montants complets.
+  Corrigé sur 19 axes et infobulles (dettes, enfant, retraite, immobilier, budget, placements,
+  dividendes, projets de vie).
+- Le récapitulatif de confirmation d'une écriture proposée par l'assistant ne peut plus **apparaître
+  une fraction de seconde** avec les vrais montants quand le mode discret est déjà actif.
 
 ### Améliorations — l'assistant regarde enfin ta courbe (refonte nav, Lot 6a)
 - **L'assistant voit ta courbe.** Quand tu lui parles depuis le Futur (ou depuis sa page), il

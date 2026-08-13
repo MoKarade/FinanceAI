@@ -1138,7 +1138,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                                     ))}
                                                 </Pie>
                                                 <Legend verticalAlign="bottom" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                                                <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => formatCAD(val)} />
+                                                <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
                                             </PieChart>
                                         </ResponsiveContainer>
                                     </div>
@@ -1166,7 +1166,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                                             ))}
                                                         </Pie>
                                                         <Legend verticalAlign="bottom" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                                                        <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => formatCAD(val)} />
+                                                        <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
                                                     </PieChart>
                                                 </ResponsiveContainer>
                                             </div>

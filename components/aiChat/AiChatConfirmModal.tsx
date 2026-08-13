@@ -10,6 +10,7 @@
 import React from 'react';
 import { Modal } from '../ui/Modal';
 import { formatNumber } from '../../utils/format';
+import { useFinanceStore } from '../../store/useFinanceStore';
 import type { WritePreview, WriteDecision } from '../../services/aiTools/writeExecutor';
 
 /** Libellés FR des tools d'écriture (les specs portent des noms techniques apply_*). */
@@ -44,6 +45,14 @@ interface AiChatConfirmModalProps {
 }
 
 export const AiChatConfirmModal: React.FC<AiChatConfirmModalProps> = ({ preview, onDecision }) => {
+    // [revue #608, FAIBLE] Le refus automatique en mode discret vit dans un `useEffect` (useAiChat,
+    // PayslipUploadCard) : un effet s'exécute APRÈS la peinture. Si le mode discret est DÉJÀ actif
+    // quand une confirmation s'ouvre, le diff — avec ses montants réels — s'affiche une frame avant
+    // d'être annulé. Le garde de RENDU ferme ce trou pour les DEUX surfaces d'un coup : on ne rend
+    // rien, l'effet annule juste après (« fermer = refus », aucune promesse orpheline).
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
+    if (isPrivacyMode) return null;
+
     return (
         <Modal
             isOpen

@@ -6,6 +6,7 @@ import { ProfileFieldsMoved } from './settings/ProfileFieldsMoved';
 import { Icon, type IconName } from './ui/Icon';
 import { Badge } from './ui/Badge';
 import { PrivateAmount } from './ui/PrivateAmount';
+import { maskedTick } from '../utils/chartPrivacy';
 import { VieCurveLink } from './vie/VieCurveLink';
 import { TAB_LABELS } from '../constants';
 import { ProjectionConfig, RetirementGoal, BudgetConfig, ChildGoal, TravelGoal, LifeEvent, Debt, RealEstateGoal, BudgetCategory, Tab } from '../types';
@@ -352,7 +353,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
                                             <XAxis dataKey="age" stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickMargin={10} tickFormatter={(val) => `${val} ans`} />
-                                            <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => formatCompactCAD(val)} width={55} />
+                                            <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={maskedTick(isPrivacyMode, (val: number) => formatCompactCAD(val))} width={55} />
                                             <Tooltip content={<RetirementTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.07)', strokeWidth: 2 }} />
                                             <Legend verticalAlign="top" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '12px' }} />
                                             <ReferenceLine x={goal.targetAge} stroke="#f97316" strokeDasharray="5 3" label={{ position: 'insideTopRight', value: `Retraite (${goal.targetAge}a)`, fill: '#f97316', fontSize: 11, fontWeight: 'bold', dy: -8 }} />
@@ -409,8 +410,8 @@ export const Retirement: React.FC<RetirementProps> = ({
                                         <ComposedChart data={zoomCashflow.visibleData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
                                             <XAxis dataKey="age" stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `${val}a`} />
-                                            <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} width={50} tickFormatter={(val) => formatCompactCAD(val)} />
-                                            <Tooltip contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#1e293b', borderRadius: '10px', color: '#fff' }} formatter={(val: number | string, name: string) => [formatCAD(Number(val)), name]} />
+                                            <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} width={50} tickFormatter={maskedTick(isPrivacyMode, (val: number) => formatCompactCAD(val))} />
+                                            <Tooltip contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#1e293b', borderRadius: '10px', color: '#fff' }} formatter={(val: number | string, name: string) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(val)), name]} />
                                             <Legend iconType="circle" />
                                             <Area type="monotone" dataKey="IncomeRetirement" fill="#5b82bf20" stroke="#5b82bf" strokeWidth={2} name="Rente Gouv. + PSV" />
                                             <Area type="monotone" dataKey="Income" fill="#4f9d8615" stroke="#4f9d86" strokeWidth={2} name="Revenu Total" />

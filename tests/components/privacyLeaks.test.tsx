@@ -19,6 +19,9 @@ import { Transactions } from '../../components/Transactions';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import type { BudgetConfig, Debt, Transaction, User } from '../../types';
 
+/** Valeur témoin injectée dans les formateurs de graphique mockés (= solde de la fixture Dettes). */
+const SAMPLE_TICK = 41337;
+
 vi.mock('recharts', async () => {
     const React = await import('react');
     const P = ({ children }: { children?: React.ReactNode }) => React.createElement('div', null, children);
@@ -26,7 +29,15 @@ vi.mock('recharts', async () => {
         ResponsiveContainer: P, AreaChart: P, BarChart: P, ComposedChart: P, PieChart: P, LineChart: P,
         Area: () => null, Bar: () => null, Line: () => null, Pie: () => null, Cell: () => null,
         Legend: () => null, ReferenceLine: () => null,
-        XAxis: () => null, YAxis: () => null, Tooltip: () => null, CartesianGrid: () => null,
+        XAxis: () => null, CartesianGrid: () => null,
+        // [revue #608] Mocker `YAxis`/`Tooltip` en `() => null` rendait ces tests AVEUGLES à la
+        // fuite la plus visible de l'écran : les graduations de l'axe Y. On rend donc la SORTIE des
+        // formateurs pour une valeur témoin — la vraie surface d'affichage, celle que Recharts
+        // peindrait. `SAMPLE_TICK` est le solde de la fixture : ce que l'axe dirait pour de vrai.
+        YAxis: ({ tickFormatter }: { tickFormatter?: (v: number) => string }) =>
+            tickFormatter ? React.createElement('div', null, tickFormatter(SAMPLE_TICK)) : null,
+        Tooltip: ({ formatter }: { formatter?: (v: number, n: string) => unknown }) =>
+            formatter ? React.createElement('div', null, String(formatter(SAMPLE_TICK, 'Série'))) : null,
     };
 });
 vi.mock('../../services/claude', () => ({ categorizeBatch: vi.fn(), analyzePayslip: vi.fn() }));
@@ -54,6 +65,7 @@ describe('[A11Y-PRIVACY-DEBT] page Dettes', () => {
         const text = flat(container);
         expect(text).toContain('41337');  // solde de la dette
         expect(text).toContain('613');    // paiement minimum
+        expect(text, "graduation de l'axe Y de la courbe d'extinction").toContain('41k');
     });
 
     it('mode discret ACTIF : solde, minimum, total dû et total payé SORTENT du DOM', () => {
@@ -62,6 +74,8 @@ describe('[A11Y-PRIVACY-DEBT] page Dettes', () => {
         const text = flat(container);
         expect(text, 'le solde de la dette fuyait (badge de liste)').not.toContain('41337');
         expect(text, 'le paiement minimum fuyait').not.toContain('613');
+        // [revue #608] L'axe Y annonçait « 41k » à côté d'une infobulle correctement masquée.
+        expect(text, "l'axe Y de la courbe d'extinction fuyait l'ordre de grandeur").not.toContain('41k');
         expect(container.querySelectorAll('.sr-only').length).toBeGreaterThan(0);
         expect(screen.getAllByText('Montant masqué').length).toBeGreaterThan(0);
     });

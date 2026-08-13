@@ -573,6 +573,15 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // [A11Y-CHARTS] table de données sr-only pour le donut 50/30/20 (Recharts opaque aux lecteurs d'écran).
     // Colonne Catégorie visible ; colonne Montant $ masquée en mode privé (parité avec PrivateAmount/blur).
     const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
+    // [AUDIT-SAFETY / revue #608, 3e tour] La carte « Santé Financière du Couple » ne consultait
+    // JAMAIS le mode discret : décomposition fiscale complète (fédéral, QC, RRQ, AE+RQAP, net
+    // disponible) et partage du revenu des DEUX conjoints, en texte ET en `title=`. Un attribut est
+    // la même classe d'angle mort qu'une prop de graphique : invisible au rendu, lisible au DOM et
+    // annoncé par certains lecteurs d'écran. `maskedAttr` sert aux ATTRIBUTS (pas de nœud à
+    // envelopper) ; le texte visible passe par `PrivateAmount`.
+    // Frontière : les $ sont masqués, ainsi que le TAUX MOYEN d'imposition (il désigne la tranche de
+    // revenu). Les ratios de comportement (effort, clé de partage) restent : ils ne disent pas le revenu.
+    const maskedAttr = (v: number) => (isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(v));
     const goldenTotal = goldenRuleData.reduce((s, d) => s + d.value, 0) || 1;
     const goldenRuleColumns: ChartDataColumn[] = [
         { key: 'name', label: 'Catégorie' },
@@ -966,7 +975,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             <div className="bg-black/30 rounded-lg p-3 border border-white/5 space-y-2">
                                 <div className="flex justify-between items-center text-tiny text-ink-300">
                                     <span>Revenus Bruts Totaux <span className="text-ink-400">(salaire déclaré)</span></span>
-                                    <span className="font-mono">{formatCAD(fiscalBreakdown.grossDisplay)}</span>
+                                    <PrivateAmount className="font-mono">{formatCAD(fiscalBreakdown.grossDisplay)}</PrivateAmount>
                                 </div>
                                 {/* Barre stackée multi-couleurs des déductions */}
                                 {/* Garde /0 : sans salaire brut déclaré, `x/0` rendrait width:NaN%/Infinity% (finding audit). */}
@@ -974,22 +983,22 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     <div
                                         className="h-full bg-danger-500/80"
                                         style={{ width: `${fiscalBreakdown.grossDisplay > 0 ? (fiscalBreakdown.fedTaxDisplay / fiscalBreakdown.grossDisplay) * 100 : 0}%` }}
-                                        title={`Fédéral : ${formatCAD(fiscalBreakdown.fedTaxDisplay)}`}
+                                        title={`Fédéral : ${maskedAttr(fiscalBreakdown.fedTaxDisplay)}`}
                                     />
                                     <div
                                         className="h-full bg-rose-600/80"
                                         style={{ width: `${fiscalBreakdown.grossDisplay > 0 ? (fiscalBreakdown.qcTaxDisplay / fiscalBreakdown.grossDisplay) * 100 : 0}%` }}
-                                        title={`Québec : ${formatCAD(fiscalBreakdown.qcTaxDisplay)}`}
+                                        title={`Québec : ${maskedAttr(fiscalBreakdown.qcTaxDisplay)}`}
                                     />
                                     <div
                                         className="h-full bg-warning-500/80"
                                         style={{ width: `${fiscalBreakdown.grossDisplay > 0 ? (fiscalBreakdown.rrqDisplay / fiscalBreakdown.grossDisplay) * 100 : 0}%` }}
-                                        title={`RRQ : ${formatCAD(fiscalBreakdown.rrqDisplay)}`}
+                                        title={`RRQ : ${maskedAttr(fiscalBreakdown.rrqDisplay)}`}
                                     />
                                     <div
                                         className="h-full bg-yellow-400/80"
                                         style={{ width: `${fiscalBreakdown.grossDisplay > 0 ? (fiscalBreakdown.aeRqapDisplay / fiscalBreakdown.grossDisplay) * 100 : 0}%` }}
-                                        title={`AE + RQAP : ${formatCAD(fiscalBreakdown.aeRqapDisplay)}`}
+                                        title={`AE + RQAP : ${maskedAttr(fiscalBreakdown.aeRqapDisplay)}`}
                                     />
                                 </div>
                                 {/* Legend détaillé */}
@@ -999,37 +1008,37 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                             <span aria-hidden="true" className="w-2 h-2 bg-danger-500/80 rounded-sm" />
                                             Impôt fédéral
                                         </span>
-                                        <span className="font-mono">{formatCAD(fiscalBreakdown.fedTaxDisplay)}</span>
+                                        <PrivateAmount className="font-mono">{formatCAD(fiscalBreakdown.fedTaxDisplay)}</PrivateAmount>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1 text-rose-300">
                                             <span aria-hidden="true" className="w-2 h-2 bg-rose-600/80 rounded-sm" />
                                             Impôt QC
                                         </span>
-                                        <span className="font-mono">{formatCAD(fiscalBreakdown.qcTaxDisplay)}</span>
+                                        <PrivateAmount className="font-mono">{formatCAD(fiscalBreakdown.qcTaxDisplay)}</PrivateAmount>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1 text-amber-300">
                                             <span aria-hidden="true" className="w-2 h-2 bg-warning-500/80 rounded-sm" />
                                             RRQ
                                         </span>
-                                        <span className="font-mono">{formatCAD(fiscalBreakdown.rrqDisplay)}</span>
+                                        <PrivateAmount className="font-mono">{formatCAD(fiscalBreakdown.rrqDisplay)}</PrivateAmount>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1 text-yellow-300">
                                             <span aria-hidden="true" className="w-2 h-2 bg-yellow-400/80 rounded-sm" />
                                             AE + RQAP
                                         </span>
-                                        <span className="font-mono">{formatCAD(fiscalBreakdown.aeRqapDisplay)}</span>
+                                        <PrivateAmount className="font-mono">{formatCAD(fiscalBreakdown.aeRqapDisplay)}</PrivateAmount>
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center text-tiny text-ink-400 pt-1 border-t border-white/5">
-                                    <span>Total déductions ({fiscalBreakdown.averageRate.toFixed(1)}% moyen)</span>
-                                    <span className="font-mono text-danger-400">−{formatCAD(fiscalBreakdown.totalTaxDisplay)}</span>
+                                    <span>Total déductions (<PrivateAmount>{`${fiscalBreakdown.averageRate.toFixed(1)}%`}</PrivateAmount> moyen)</span>
+                                    <PrivateAmount className="font-mono text-danger-400">{`−${formatCAD(fiscalBreakdown.totalTaxDisplay)}`}</PrivateAmount>
                                 </div>
                                 <div className="flex justify-between items-center font-bold text-white mt-1 pt-1 border-t border-white/5">
                                     <span>Revenu Net Disponible</span>
-                                    <span className="text-success-400 font-mono">{formatCAD(fiscalBreakdown.netDisplay)}</span>
+                                    <PrivateAmount className="text-success-400 font-mono">{formatCAD(fiscalBreakdown.netDisplay)}</PrivateAmount>
                                 </div>
                             </div>
 
@@ -1048,21 +1057,21 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                 </div>
 
                                 <div className="relative h-4 w-full bg-black/50 rounded-full overflow-hidden flex">
-                                    <div className="h-full bg-indigo-600" style={{ width: `${(coupleAnalysis.user1ShareCommon / coupleAnalysis.user1Income) * 100}%` }} title={`Commun: ${formatCAD(coupleAnalysis.user1ShareCommon)}`}></div>
-                                    <div className="h-full bg-indigo-400" style={{ width: `${(coupleAnalysis.user1Personal / coupleAnalysis.user1Income) * 100}%` }} title={`Perso: ${formatCAD(coupleAnalysis.user1Personal)}`}></div>
-                                    <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${formatCAD(coupleAnalysis.user1Savings)}`}></div>
+                                    <div className="h-full bg-indigo-600" style={{ width: `${(coupleAnalysis.user1ShareCommon / coupleAnalysis.user1Income) * 100}%` }} title={`Commun: ${maskedAttr(coupleAnalysis.user1ShareCommon)}`}></div>
+                                    <div className="h-full bg-indigo-400" style={{ width: `${(coupleAnalysis.user1Personal / coupleAnalysis.user1Income) * 100}%` }} title={`Perso: ${maskedAttr(coupleAnalysis.user1Personal)}`}></div>
+                                    <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${maskedAttr(coupleAnalysis.user1Savings)}`}></div>
                                 </div>
 
                                 <div className="flex justify-between text-tiny text-ink-300 px-1">
                                     <div className="flex flex-col">
-                                        <span>Sorties: <span className="text-white font-bold">{formatCAD(coupleAnalysis.user1Contribution)}</span></span>
+                                        <span>Sorties: <PrivateAmount className="text-white font-bold">{formatCAD(coupleAnalysis.user1Contribution)}</PrivateAmount></span>
                                         {/* [PH4-E] dépense RÉELLE perso attribuée (vs « Sorties » = part PLANIFIÉE). Masqué en solo (toujours 0). */}
                                         {!coupleAnalysis.isSolo && (
-                                            <span className="text-ink-400" title="Dépenses réelles attribuées à ce conjoint (postes Perso, override possible)">Perso réel: <span className="text-white font-semibold">{formatCAD(coupleAnalysis.user1Actual)}</span></span>
+                                            <span className="text-ink-400" title="Dépenses réelles attribuées à ce conjoint (postes Perso, override possible)">Perso réel: <PrivateAmount className="text-white font-semibold">{formatCAD(coupleAnalysis.user1Actual)}</PrivateAmount></span>
                                         )}
                                     </div>
                                     <div className="flex flex-col items-end">
-                                        <span>Épargne: <span className="text-green-400 font-bold">{formatCAD(coupleAnalysis.user1Savings)}</span></span>
+                                        <span>Épargne: <PrivateAmount className="text-green-400 font-bold">{formatCAD(coupleAnalysis.user1Savings)}</PrivateAmount></span>
                                     </div>
                                 </div>
                             </div>
@@ -1083,19 +1092,19 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     </div>
 
                                     <div className="relative h-4 w-full bg-black/50 rounded-full overflow-hidden flex">
-                                        <div className="h-full bg-pink-600" style={{ width: `${(coupleAnalysis.user2ShareCommon / coupleAnalysis.user2Income) * 100}%` }} title={`Commun: ${formatCAD(coupleAnalysis.user2ShareCommon)}`}></div>
-                                        <div className="h-full bg-pink-400" style={{ width: `${(coupleAnalysis.user2Personal / coupleAnalysis.user2Income) * 100}%` }} title={`Perso: ${formatCAD(coupleAnalysis.user2Personal)}`}></div>
-                                        <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${formatCAD(coupleAnalysis.user2Savings)}`}></div>
+                                        <div className="h-full bg-pink-600" style={{ width: `${(coupleAnalysis.user2ShareCommon / coupleAnalysis.user2Income) * 100}%` }} title={`Commun: ${maskedAttr(coupleAnalysis.user2ShareCommon)}`}></div>
+                                        <div className="h-full bg-pink-400" style={{ width: `${(coupleAnalysis.user2Personal / coupleAnalysis.user2Income) * 100}%` }} title={`Perso: ${maskedAttr(coupleAnalysis.user2Personal)}`}></div>
+                                        <div className="h-full bg-green-500/50" style={{ flex: 1 }} title={`Épargne: ${maskedAttr(coupleAnalysis.user2Savings)}`}></div>
                                     </div>
 
                                     <div className="flex justify-between text-tiny text-ink-300 px-1">
                                         <div className="flex flex-col">
-                                            <span>Sorties: <span className="text-white font-bold">{formatCAD(coupleAnalysis.user2Contribution)}</span></span>
+                                            <span>Sorties: <PrivateAmount className="text-white font-bold">{formatCAD(coupleAnalysis.user2Contribution)}</PrivateAmount></span>
                                             {/* [PH4-E] dépense RÉELLE perso attribuée (vs « Sorties » = part PLANIFIÉE) */}
-                                            <span className="text-ink-400" title="Dépenses réelles attribuées à ce conjoint (postes Perso, override possible)">Perso réel: <span className="text-white font-semibold">{formatCAD(coupleAnalysis.user2Actual)}</span></span>
+                                            <span className="text-ink-400" title="Dépenses réelles attribuées à ce conjoint (postes Perso, override possible)">Perso réel: <PrivateAmount className="text-white font-semibold">{formatCAD(coupleAnalysis.user2Actual)}</PrivateAmount></span>
                                         </div>
                                         <div className="flex flex-col items-end">
-                                            <span>Épargne: <span className="text-green-400 font-bold">{formatCAD(coupleAnalysis.user2Savings)}</span></span>
+                                            <span>Épargne: <PrivateAmount className="text-green-400 font-bold">{formatCAD(coupleAnalysis.user2Savings)}</PrivateAmount></span>
                                         </div>
                                     </div>
                                 </div>

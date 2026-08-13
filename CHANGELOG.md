@@ -32,6 +32,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   tranches et taux officiels, eux, restent affichés : c'est de l'information publique.
 - Le bouton « C'est un virement » (détection de virements internes) annonçait le montant au lecteur
   d'écran même en mode discret, alors que le montant affiché était bien masqué.
+- **La carte « Santé Financière du Couple » du Budget ne se masquait pas du tout** : décomposition
+  d'impôt complète et partage du revenu des deux conjoints, visibles et présents dans les infobulles
+  natives. C'était l'écran le plus sensible resté à découvert.
+- Frise des projets de vie : le coût de chaque événement apparaissait au survol, et la carte
+  « Analyse d'Impact » restait en clair.
+- Détail de l'impôt par tranche : même avec tous les montants masqués, le **nombre de lignes**
+  affichées disait dans quelle tranche tu te situes. Le bloc est maintenant retiré en mode discret.
 
 ### Améliorations — l'assistant regarde enfin ta courbe (refonte nav, Lot 6a)
 - **L'assistant voit ta courbe.** Quand tu lui parles depuis le Futur (ou depuis sa page), il

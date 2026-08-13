@@ -119,6 +119,32 @@ fichier:ligne). Verdicts appliqués à la refonte :
   complet d'un formateur (multi-lignes) et refuse bruyamment un `<YAxis>` à JSX imbriqué, au lieu de
   cesser de voir en silence.
 
+- [x] **`[A11Y-PRIVACY-BUDGET-COUPLE]`** (M, 🔴 trouvé au 3e tour de revue de #608) — la carte
+  « Santé Financière du Couple » (`components/Budget.tsx`) ne consultait JAMAIS `isPrivacyMode`,
+  alors que le fichier le lisait déjà ailleurs : décomposition fiscale complète (fédéral, QC, RRQ,
+  AE+RQAP, total, net disponible) ET partage du revenu des DEUX conjoints, en texte comme en
+  attribut `title`. Seul le total combiné final était masqué. **Livré** : `PrivateAmount` sur le
+  texte, helper `maskedAttr` sur les `title`, taux moyen d'imposition masqué aussi (il désigne la
+  tranche de revenu) ; les ratios de comportement (effort, clé de partage) restent visibles.
+
+- [x] **`[A11Y-PRIVACY-LIFEEVENTS]`** (S, même tour) — `components/LifeEvents.tsx` : le `title` de
+  chaque pastille de la frise portait le coût de l'événement, et la carte « Analyse d'Impact »
+  (coût immédiat, effet papillon, coût d'opportunité, manque à gagner 20 ans) n'était pas masquée —
+  alors que `isPrivacyMode` alimentait déjà la table sr-only et l'infobulle du donut juste en dessous.
+
+- [x] **`[A11Y-PRIVACY-STRUCTURAL-LEAK]`** (S, même tour, le plus intéressant) — dans
+  `TaxBracketViz`, le détail « $ par tranche » ne rendait que les paliers ATTEINTS (`b.income > 0`) :
+  chaque montant était bien en « ••• », mais le NOMBRE de lignes encodait la tranche marginale
+  (mesuré : 2 lignes à 30 k$, 8 à 250 k$). **Masquer les valeurs sans masquer leur EXISTENCE ne
+  suffit pas.** Le test qui garde ce point est STRUCTUREL : deux revenus très différents doivent
+  produire un DOM indiscernable en mode discret.
+
+- [x] **`[A11Y-PRIVACY-SCAN-CUSTOMTOOLTIP]`** (XS, même tour) — 2e trou de la garde : un
+  `<Tooltip content={<MonTooltip/>}>` échappait au scan (le formatage $ vit dans le corps d'un
+  composant nommé, pas dans une prop). Les 2 usages réels du dépôt étaient corrects par CONVENTION,
+  pas par vérification. La garde résout désormais le composant désigné et exige `PrivateAmount` ou
+  `isPrivacyMode` dans son corps (PoC vérifié rouge).
+
 ## ✅ Chantier REFONTE-NAV Lot 1 — la nav (PR #600, merged 2026-08-12)
 
 - [x] **`[REFONTE-NAV-L1]`** ✅ 2026-08-12 (PR #600) — 6 destinations (Futur · Configurations · Vie · 

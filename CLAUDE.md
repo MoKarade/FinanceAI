@@ -155,6 +155,8 @@ scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (41 s
 
 - Une valeur sensible qui sort par une **prop de composant tiers** (`tickFormatter`/`formatter` Recharts)
   échappe AU grep ET aux tests qui mockent ce composant : la garde est un scan de SOURCE (revue #608).
+  Elle sort aussi par un **attribut** (`title`/`aria-label`) et par la **STRUCTURE** (nombre de lignes,
+  position d'un marqueur) : masquer les valeurs ne masque pas leur existence.
 - Un flux moteur alimente PLUSIEURS registres (solde/fiscal/per-conjoint/affichage) : un producteur
   nouveau ou corrigé doit alimenter TOUS les registres (meltdown REER, 2026-07-31).
 

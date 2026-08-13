@@ -24,7 +24,12 @@
 >   borné (`.positive().finite()`). Le modal de confirmation refuse désormais de RENDRE en mode
 >   discret (le refus vivait dans un `useEffect` → une frame de montants réels affichés).
 > - **`actionPlanHierarchy`** journalise les valeurs non finies au lieu de les coercer en 0 muet.
-> - BACKLOG : 7 items déplacés vers `BACKLOG_ARCHIVE.md` (+ le 8e trouvé en revue). Reste ouvert de
+> - **Trois tours de revue, trois vagues de trouvailles** — chacun a trouvé ce que le précédent avait
+>   laissé : (1) les graphiques, (2) `TaxBracketViz` + un `aria-label` de virement + un trou DANS la
+>   garde (jeton `money(` présent des DEUX côtés → auto-satisfaite), (3) la carte couple du Budget,
+>   la frise des projets de vie, et une fuite **STRUCTURELLE** (le nombre de lignes du détail par
+>   palier encodait la tranche de revenu, tous montants masqués). Leçon portée dans CONVENTIONS.
+> - BACKLOG : 12 items déplacés vers `BACKLOG_ARCHIVE.md`. Reste ouvert de
 >   l'audit : le lot 🔴 moteur (divorce, stress-test), `[FISC-DON-ABATEMENT]`,
 >   `[AI-TAXCENTER-APPLY-NOGATE]`.
 > - ⚠️ **Déploiement Vercel toujours contraint** (quota gratuit 100/jour) — voir

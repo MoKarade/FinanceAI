@@ -19,6 +19,8 @@ import { Transactions } from '../../components/Transactions';
 import { TaxBracketViz } from '../../components/TaxBracketViz';
 import { FED_BRACKETS } from '../../utils/tax';
 import { TransfersPanel } from '../../components/transactions/TransfersPanel';
+import { Budget } from '../../components/Budget';
+import { LifeEvents } from '../../components/LifeEvents';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import type { BudgetConfig, Debt, Transaction, User } from '../../types';
 
@@ -174,6 +176,22 @@ describe('[A11Y-PRIVACY-TAXBRACKET] paliers d\'imposition', () => {
         expect(flat(container)).toContain(String(INCOME));
     });
 
+    // [revue #608, 3e tour] Masquer les VALEURS ne suffit pas : le détail « $ par tranche » ne rendait
+    // que les paliers ATTEINTS (`b.income > 0`), donc le NOMBRE de lignes encodait la tranche
+    // marginale même avec chaque montant en « ••• » (mesuré : 2 lignes à 30 k$, 8 à 250 k$).
+    // L'invariant à tenir est STRUCTUREL : deux revenus très différents doivent produire un DOM
+    // indiscernable en mode discret.
+    it('mode discret ACTIF : deux revenus très différents rendent un DOM indiscernable', () => {
+        setPrivacy(true);
+        const low = render(<TaxBracketViz annualGrossIncome={30000} />);
+        const lowRows = low.container.querySelectorAll('.font-mono').length;
+        cleanup();
+        const high = render(<TaxBracketViz annualGrossIncome={250000} />);
+        const highRows = high.container.querySelectorAll('.font-mono').length;
+        expect(highRows, "le nombre de lignes du détail par palier trahissait la tranche de revenu")
+            .toBe(lowRows);
+    });
+
     it('mode discret ACTIF : revenu, impôt et détail par palier SORTENT du DOM (attributs compris)', () => {
         setPrivacy(true);
         const { container } = render(<TaxBracketViz annualGrossIncome={INCOME} />);
@@ -225,5 +243,100 @@ describe('[A11Y-PRIVACY-TRANSFERS-ARIA] virements internes', () => {
         const { container } = openPanel();
         expect(ariaText(container), 'l\'aria-label du bouton de confirmation fuyait le montant').not.toContain(AMOUNT);
         expect(flat(container), 'le montant visible fuyait').not.toContain(AMOUNT);
+    });
+});
+
+// ── [A11Y-PRIVACY-BUDGET-COUPLE] (revue #608, 3e tour) ───────────────────────
+// La carte « Santé Financière du Couple » ne consultait JAMAIS `isPrivacyMode`, alors que le fichier
+// le lisait déjà ailleurs : décomposition fiscale complète et partage du revenu des DEUX conjoints,
+// en TEXTE et en attribut `title`. Un `title` est la même classe d'angle mort qu'une prop de
+// graphique — invisible au rendu, lisible au DOM.
+describe('[A11Y-PRIVACY-BUDGET-COUPLE] Santé financière du couple', () => {
+    // Salaires MENSUELS (convention du store) → brut annuel = (6113 + 3887) × 12 = 120 000.
+    const config: BudgetConfig = {
+        users: [
+            { name: 'Marc', grossSalary: 6113, netSalary: 4500, color: '#10b981', age: 35, birthYear: 1991, canadaArrivalYear: 1991, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 } as unknown as User,
+            { name: 'Anna', grossSalary: 3887, netSalary: 3100, color: '#3b82f6', age: 33, birthYear: 1993, canadaArrivalYear: 1993, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 } as unknown as User,
+        ],
+        splitMode: '50/50',
+    };
+    // Vue par défaut = MOIS : la carte affiche le brut MENSUEL du couple (6 113 + 3 887).
+    const MONTHLY_GROSS = '10000';
+
+    const renderBudget = () => render(
+        <Budget transactions={[]} config={config} budgetItems={[]} setBudgetItems={vi.fn()} apiKey="" />,
+    );
+    /** Texte de TOUS les attributs `title` de l'écran, espaces retirées. */
+    const titles = (container: HTMLElement) =>
+        [...container.querySelectorAll('[title]')]
+            .map((el) => el.getAttribute('title') ?? '')
+            .join(' ')
+            .replace(/[\s  ]/g, '');
+
+    it('mode discret INACTIF : le revenu brut du couple est LISIBLE (le test discrimine)', () => {
+        const { container } = renderBudget();
+        expect(flat(container)).toContain(MONTHLY_GROSS);
+    });
+
+    it('mode discret ACTIF : la décomposition fiscale SORT du DOM', () => {
+        setPrivacy(true);
+        const { container } = renderBudget();
+        expect(flat(container), 'le revenu brut du couple fuyait').not.toContain(MONTHLY_GROSS);
+    });
+
+    // Comparaison AUTO-CALIBRÉE : on relève les nombres réellement présents dans les `title` hors
+    // mode discret, puis on exige qu'AUCUN ne subsiste une fois le mode actif. Aucun seuil de
+    // grandeur codé en dur — une fixture aux montants plus petits garderait le test discriminant
+    // (un `.toMatch(/\d{4,}/)` naïf passait au vert alors que l'impôt mensuel faisait 3 chiffres).
+    it('mode discret ACTIF : aucun montant des attributs title ne survit', () => {
+        const clear = titles(renderBudget().container);
+        const numbers = [...clear.matchAll(/\d[\d.,]*/g)].map((m) => m[0]).filter((n) => n.length >= 3);
+        expect(numbers.length, 'hors mode discret, les title DOIVENT porter des montants').toBeGreaterThan(0);
+
+        cleanup();
+        setPrivacy(true);
+        const masked = titles(renderBudget().container);
+        expect(masked.length, 'les title ont disparu : le test ne prouverait rien').toBeGreaterThan(0);
+        for (const n of numbers) {
+            expect(masked, `un attribut title fuyait encore ${n}`).not.toContain(n);
+        }
+    });
+});
+
+// ── [A11Y-PRIVACY-LIFEEVENTS] (revue #608, 3e tour) ──────────────────────────
+// `isPrivacyMode` n'alimentait que la table sr-only et l'infobulle du donut : le coût de chaque
+// pastille de la frise (attribut `title`) restait en clair.
+describe('[A11Y-PRIVACY-LIFEEVENTS] frise des projets de vie', () => {
+    const events = [
+        { id: 'e1', name: 'Van aménagé', type: 'ACHAT_IMPORTANT', date: '2027-06-01', impactAmount: 63241, icon: 'car' },
+    ] as never;
+    const COST = '63241';
+
+    const titles = (container: HTMLElement) =>
+        [...container.querySelectorAll('[title]')]
+            .map((el) => el.getAttribute('title') ?? '')
+            .join(' ')
+            .replace(/[\s  ]/g, '');
+
+    const renderLife = () => render(
+        <LifeEvents
+            events={events}
+            setEvents={vi.fn()}
+            travelGoals={[]}
+            setTravelGoals={vi.fn()}
+            netWorth={250000}
+            returnRate={6}
+        />,
+    );
+
+    it('mode discret INACTIF : le coût est dans le title de la pastille (le test discrimine)', () => {
+        const { container } = renderLife();
+        expect(titles(container)).toContain(COST);
+    });
+
+    it('mode discret ACTIF : le title de la pastille ne porte plus le coût', () => {
+        setPrivacy(true);
+        const { container } = renderLife();
+        expect(titles(container), 'le title de la pastille de frise fuyait le coût').not.toContain(COST);
     });
 });

@@ -142,7 +142,12 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                     rows={ladderRows}
                 />
 
-                {/* Phase G.3 — Détail $ par palier consommé */}
+                {/* Phase G.3 — Détail $ par palier consommé.
+                    [revue #608, 3e tour] NON rendu en mode discret : le filtre `b.income > 0` ne
+                    garde que les paliers ATTEINTS, donc le simple NOMBRE de lignes encode la tranche
+                    marginale (mesuré : 2 lignes à 30 k$, 8 à 250 k$) — même avec chaque montant
+                    masqué. Masquer les valeurs sans masquer leur EXISTENCE ne suffit pas. */}
+                {!isPrivacyMode && (
                 <details className="text-tiny">
                     <summary className="cursor-pointer text-ink-400 hover:text-ink-200 italic py-1.5">
                         Voir décomposition $ par tranche
@@ -161,6 +166,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                         ))}
                     </div>
                 </details>
+                )}
             </div>
         );
     };

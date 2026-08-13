@@ -9,6 +9,7 @@ import { ConfirmModal } from './ui/ConfirmModal';
 import { formatCAD, formatSigned } from '../utils/format';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
+import { PrivateAmount } from './ui/PrivateAmount';
 import { useFinanceStore } from '../store/useFinanceStore';
 
 interface LifeEventsProps {
@@ -59,6 +60,10 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
     // [A11Y-CHARTS] (LOT 3) — mode discret : masque les montants ($) de la table de données sr-only
     // (alternative texte au PieChart de répartition estimée).
     const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
+    // [AUDIT-SAFETY / revue #608, 3e tour] `isPrivacyMode` n'alimentait que la table sr-only et
+    // l'infobulle du donut : le coût de chaque pastille de la frise (attribut `title`) et les 4
+    // valeurs de la carte « Analyse d'Impact » restaient en clair. `maskedAttr` sert aux ATTRIBUTS.
+    const maskedAttr = (v: number) => (isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(v));
     // DETTE-RE-SALE : biens immobiliers pour désigner LEQUEL vendre sur un événement « vente » (le
     // sélecteur n'apparaît qu'avec ≥2 biens actifs — sinon le fallback moteur suffit). Lu du store
     // directement (LifeEvents y accède déjà) → aucun threading de prop à travers LifeProjects/TabRouter.
@@ -214,7 +219,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                             {eventsByYear[year]?.map((item) => (
                                                 <div key={item.uniqueKey} draggable onDragStart={(e) => handleDragStart(e, item.uniqueKey)}
                                                     className={`px-1.5 py-1 rounded text-tiny font-bold cursor-grab active:cursor-grabbing flex items-center gap-1 select-none transition-opacity hover:opacity-80 ${item.type === 'KRACH' || item.type === 'ACCIDENT' || item.type === 'PERTE_EMPLOI' ? 'bg-red-900/60 text-red-300 border border-danger-500/30' : item.uniqueKey.startsWith('travel') ? 'bg-blue-900/60 text-blue-300 border border-info-500/30' : 'bg-purple-900/60 text-purple-300 border border-purple-500/30'}`}
-                                                    title={`${item.name} — ${formatCAD(item.cost)}`}>
+                                                    title={`${item.name} — ${maskedAttr(item.cost)}`}>
                                                     <Icon name={item.icon} size={14} />
                                                     <span className="truncate max-w-[55px]">{item.name}</span>
                                                 </div>
@@ -335,16 +340,16 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                 </div>
                                 <div className="p-6 space-y-6">
                                     <div>
-                                        <div className="flex justify-between text-body mb-2"><span className="text-ink-200">Coût Immédiat</span><span className="text-white font-bold">{formatCAD(impactAnalysis.immediateCost)}</span></div>
+                                        <div className="flex justify-between text-body mb-2"><span className="text-ink-200">Coût Immédiat</span><PrivateAmount className="text-white font-bold">{formatCAD(impactAnalysis.immediateCost)}</PrivateAmount></div>
                                         <div className="w-full bg-surfaceHighlight rounded-full h-2"><div className="h-full bg-danger-500 rounded-full" style={{ width: `${Math.min(100, impactAnalysis.liquidityRatio)}%` }}></div></div>
                                         <div className="text-tiny text-right text-danger-400 mt-1">{impactAnalysis.liquidityRatio.toFixed(1)}% de votre patrimoine actuel</div>
                                     </div>
                                     <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
                                         <div className="flex items-center gap-2 mb-2"><Icon name="sprout" size={18} className="text-ink-300" /><h4 className="font-bold text-ink-100 text-body">Effet papillon (20 ans)</h4></div>
-                                        <p className="text-meta text-ink-300 mb-3">Si cet argent ({formatCAD(impactAnalysis.immediateCost)}) avait été investi à {returnRate}% au lieu d'être dépensé...</p>
+                                        <p className="text-meta text-ink-300 mb-3">Si cet argent (<PrivateAmount>{formatCAD(impactAnalysis.immediateCost)}</PrivateAmount>) avait été investi à {returnRate}% au lieu d'être dépensé...</p>
                                         <div className="flex justify-between items-end">
-                                            <div><div className="text-meta text-ink-400">Coût d'Opportunité</div><div className="text-lg font-bold text-orange-400">{formatSigned(-Math.round(impactAnalysis.opportunityCost), { withCurrency: true })}</div></div>
-                                            <div className="text-right"><div className="text-meta text-ink-400">Manque à gagner total</div><div className="text-2xl font-black text-white">{formatSigned(-Math.round(impactAnalysis.totalWealthImpact20y), { withCurrency: true })}</div></div>
+                                            <div><div className="text-meta text-ink-400">Coût d'Opportunité</div><PrivateAmount as="div" className="text-lg font-bold text-orange-400">{formatSigned(-Math.round(impactAnalysis.opportunityCost), { withCurrency: true })}</PrivateAmount></div>
+                                            <div className="text-right"><div className="text-meta text-ink-400">Manque à gagner total</div><PrivateAmount as="div" className="text-2xl font-black text-white">{formatSigned(-Math.round(impactAnalysis.totalWealthImpact20y), { withCurrency: true })}</PrivateAmount></div>
                                         </div>
                                     </div>
                                 </div>

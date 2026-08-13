@@ -2501,3 +2501,17 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   silence est pire que pas de garde ; (3) une revue de correctif doit se demander « reste-t-il des
   sites de la même classe ? » ET « la garde que je viens d'écrire est-elle contournable ? » : les deux
   questions ont rendu ici, la seconde sur la garde livrée trente minutes plus tôt.
+- ⚠️ **[Revue #608, 3e passe] 2026-08-13 — masquer les VALEURS ne masque pas leur EXISTENCE.** Dans
+  `TaxBracketViz`, le détail « $ par tranche » ne rendait que les paliers ATTEINTS (`b.income > 0`).
+  Chaque montant était bien en « ••• » — et pourtant le NOMBRE de lignes encodait la tranche
+  marginale (mesuré : 2 lignes à 30 k$, 8 à 250 k$). Une donnée privée fuit aussi par la STRUCTURE
+  du DOM : nombre d'éléments, présence/absence d'un bloc, position d'un marqueur (`style={{ left }}`),
+  largeur d'une barre, échelle d'un axe. Corollaire de test : la garde correspondante doit être
+  STRUCTURELLE — « deux entrées très différentes rendent un DOM indiscernable en mode discret » —
+  et non « tel montant est absent ».
+- ⚠️ **[Même passe] Un seuil de grandeur codé en dur rend un test de fuite VACUEUX.** La première
+  version du test des attributs `title` du Budget cherchait `/\d{4,}/` ; l'impôt mensuel de la
+  fixture faisait 3 chiffres (893 $) → le test passait au vert AVEC la fuite réintroduite. Le test
+  s'AUTO-CALIBRE désormais : il relève les nombres réellement présents hors mode discret, puis exige
+  qu'aucun ne subsiste. Règle générale : quand une assertion dépend d'une magnitude, la DÉRIVER de
+  l'exécution de référence plutôt que de la deviner — et toujours vérifier qu'elle ROUGIT.

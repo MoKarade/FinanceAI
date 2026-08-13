@@ -131,6 +131,37 @@ describe('[AUDIT-SAFETY] graphiques : aucun montant ne survit au mode discret', 
         ).toEqual([]);
     });
 
+    // [revue #608, 3e tour] Un `<Tooltip content={<MonTooltip/>}>` sort du champ des deux tests
+    // précédents : le formatage $ vit dans le CORPS d'un composant nommé, pas dans une prop. Les
+    // deux usages réels du dépôt (`RetirementTooltip`, `AccountDrillTooltip`) sont corrects — mais
+    // par CONVENTION, pas par vérification. On vérifie donc le composant désigné.
+    it('chaque tooltip/légende personnalisé tient compte du mode discret', () => {
+        const offenders: string[] = [];
+        for (const file of files) {
+            const src = readFileSync(file, 'utf8');
+            for (const m of src.matchAll(/content=\{\s*<([A-Z][\w]*)/g)) {
+                const name = m[1];
+                const line = src.slice(0, m.index).split('\n').length;
+                // Le composant doit être DÉCLARÉ dans le même fichier — sinon la garde ne peut pas
+                // le lire, et le dit au lieu de laisser passer.
+                const decl = new RegExp(`(const|function)\\s+${name}\\b`).exec(src);
+                if (!decl) {
+                    offenders.push(`${path.relative(ROOT, file)}:${line} (${name} déclaré ailleurs)`);
+                    continue;
+                }
+                const body = src.slice(decl.index);
+                if (!MONEY.test(body.slice(0, 4000))) continue;
+                if (/PrivateAmount|PrivateBlock|isPrivacyMode|privacyMode/.test(body.slice(0, 4000))) continue;
+                offenders.push(`${path.relative(ROOT, file)}:${line} (${name})`);
+            }
+        }
+        expect(
+            offenders,
+            'tooltip/légende personnalisé qui affiche des $ sans passer par PrivateAmount ni lire '
+            + 'isPrivacyMode (ou déclaré hors du fichier, donc invérifiable par la garde)',
+        ).toEqual([]);
+    });
+
     it('chaque formateur de graphique manipulant des $ tient compte du mode discret', () => {
         const offenders: string[] = [];
         for (const file of files) {

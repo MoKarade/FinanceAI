@@ -2742,3 +2742,31 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   décrit ce qu'on CROIT cassé ; avant de coder, greper la chaîne réelle et re-prouver chaque
   prémisse — surtout celles formulées en « au lieu de ». Le livrable honnête est alors le constat
   DOCUMENTÉ, pas du code qui réimplémente l'existant.
+
+- ⚠️ **[ENG-INV-FLUXFORM-COVERAGE] 2026-08-13 — la conservation de SOLDES ne demande jamais « d'où
+  vient cet argent ».** `moneyConservation` et `fuzzConservation` vérifient « Σ actifs − dettes ==
+  NetWorth » : ils sont indifférents à la CAUSE d'une variation. Un producteur qui mute un solde
+  sans publier son flux les laisse parfaitement VERTS. La question complémentaire — la **forme-flux**,
+  `Δsolde(m) == MarketGrowth<k>(m) + NetTransfer<k>(m)` — a trouvé **trois** producteurs muets en une
+  seule écriture : le stress-test (162 835 $ au mois du krach), le transfert NonReg → CELI/REER
+  (51 197 $ sur un scénario ORDINAIRE), et le remboursement d'impôt d'avril (29 796 $). Aucun
+  n'était détectable autrement.
+- ⚠️ **[Même lot] Ordre d'écriture : `applyMonthlyGrowth` ASSIGNE, il n'accumule pas.** Poser
+  `growthCELI += delta` AVANT lui le fait écraser sans un bruit (`growthCELI = g.celi.growth`).
+  Tout flux produit plus tôt dans l'itération doit être MÉMORISÉ et versé APRÈS. Vérifier
+  `=` vs `+=` chez le consommateur avant de choisir où écrire.
+- ⚠️ **[Même lot] Un défaut d'AFFICHAGE de flux peut coexister avec un suivi fiscal JUSTE — et c'est
+  ce qui le rend invisible.** Le transfert NonReg → REER alimentait déjà `accRrspYear` : l'impôt
+  était correct, seuls les flux publiés mentaient. Aucune garde fiscale ne pouvait l'attraper.
+- ⚠️ **[Même lot] Une garde qui découvre PLUS que son ticket ne doit être ni élargie en douce, ni
+  affaiblie en douce.** La forme-flux a révélé trois offenders ; deux sont corrigés (mesurés), le
+  troisième touche `cashflowAllocation` EN AMONT de sa propre entrée — donc ticketé, pas bricolé.
+  La garde est livrée sur les comptes PROUVÉS (`ACCOUNTS = CELI, REER, Crypto`, résiduel 0,01 $)
+  avec, écrit dans le test, le montant exact du compte exclu et le geste à faire quand il tombera.
+  Restreindre en le DISANT vaut mieux qu'un seuil de tolérance gonflé qui masque le défaut.
+- ⚠️ **[Même lot] Mesurer même quand on est sûr.** J'avais écrit en commentaire que publier
+  `contribREER` rendait « l'attribution per-conjoint juste ». Mesure : effet **NUL**,
+  `reerByUserFinal` bit-identique sur 3 stratégies à salaires très inégaux — `stepReerByUser`
+  réconcilie déjà sur `poolEnd` avec les mêmes parts. Le commentaire a été corrigé. Une affirmation
+  plausible écrite dans le code a la même autorité qu'une affirmation vérifiée : elle doit être
+  vérifiée.

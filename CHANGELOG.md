@@ -75,6 +75,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - Si ta clé API est refusée, l'import s'arrête net avec un message clair, au lieu d'enchaîner des
   dizaines d'appels voués à l'échec.
 
+### Trois mouvements d'argent qui n'étaient expliqués nulle part
+- **Le test de krach faisait fondre puis regonfler tes placements sans que rien ne le justifie.**
+  Les montants bougeaient bel et bien, mais aucune ligne « croissance du marché » ne les portait :
+  **162 835 $ de chute inexpliquée** au mois du krach dans le scénario mesuré. Corrigé — un krach
+  est un rendement négatif, il apparaît maintenant comme tel.
+- **Quand l'app vend du non-enregistré pour remplir ton CELI ou ton REER**, l'opération n'était
+  inscrite dans aucun flux : **51 197 $** de variation sans explication, sur un scénario tout à fait
+  ordinaire. Ton impôt, lui, était juste — c'est pour ça que personne ne l'avait vu.
+- Il reste un troisième cas, **identifié et chiffré** (29 796 $ : le remboursement d'impôt d'avril
+  versé au non-enregistré) : il touche une zone plus sensible et sera traité séparément plutôt que
+  bricolé au passage.
+- Une nouvelle vérification automatique exige désormais que **toute variation d'un compte soit
+  expliquée par un flux publié**. C'est elle qui a trouvé les deux derniers cas.
+
 ### Corrections de calcul (lot moteur, suite de l'audit)
 - **Ton crédit d'impôt pour dons était surévalué.** La part fédérale du crédit était comptée en
   entier, alors qu'au Québec elle ne vaut que 83,5 % : l'abattement québécois de 16,5 % s'applique

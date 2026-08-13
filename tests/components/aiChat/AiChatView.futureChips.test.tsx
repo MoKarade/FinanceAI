@@ -1,9 +1,10 @@
 // tests/components/aiChat/AiChatView.futureChips.test.tsx
 //
 // [REFONTE-NAV-L6a] Chips « ancrées sur la courbe » du chat : rendues quand le contexte est Futur
-// (panneau ouvert par-dessus l'onglet Futur, ou page Assistant avec une projection dans le store),
-// PRÉ-REMPLISSENT la saisie (jamais d'envoi automatique), et ABSENTES sans projection (pas de
-// fausse affordance) ou quand le contexte publié est un autre onglet (Budget).
+// (panneau ouvert par-dessus l'onglet Futur, ou page Assistant avec une projection RÉVÉLÉE dans le
+// store), PRÉ-REMPLISSENT la saisie (jamais d'envoi automatique), et ABSENTES sans projection (pas
+// de fausse affordance), sans révélation explicite (gate PH4) ou quand le contexte publié est un
+// autre onglet (Budget).
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -66,15 +67,26 @@ describe('AiChatView — chips ancrées sur la courbe (contexte Futur)', () => {
         expect(sendMessage).not.toHaveBeenCalled(); // l'envoi reste un geste de l'utilisateur
     });
 
-    it('page ASSISTANT (variant tab) → chips bâties sur store.lastProjection (source unique)', () => {
-        useFinanceStore.setState({ activeTab: Tab.ASSISTANT, lastProjection: projection } as never);
+    // Gate PH4 : sur Futur, les chiffres projetés n'apparaissent qu'après un geste EXPLICITE de
+    // révélation (`revealedProjectionSig`). Le moteur publiant `lastProjection` en continu, la page
+    // Assistant doit appliquer le MÊME gate — sinon une année de retraite projetée entrait par la
+    // porte des chips chez un utilisateur qui n'a jamais révélé sa courbe.
+    it('page ASSISTANT, courbe RÉVÉLÉE → chips bâties sur store.lastProjection (source unique)', () => {
+        useFinanceStore.setState({ activeTab: Tab.ASSISTANT, lastProjection: projection, revealedProjectionSig: 'v1:sig' } as never);
         render(<AiChatView variant="tab" />);
         expect(screen.getByRole('button', { name: 'Explique ma courbe' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Ma retraite (2043)' })).toBeInTheDocument();
     });
 
+    it('page ASSISTANT, projection calculée mais JAMAIS révélée → AUCUNE chip (même gate que Futur)', () => {
+        useFinanceStore.setState({ activeTab: Tab.ASSISTANT, lastProjection: projection, revealedProjectionSig: null } as never);
+        render(<AiChatView variant="tab" />);
+        expect(screen.queryByRole('button', { name: 'Explique ma courbe' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Ma retraite (2043)' })).toBeNull();
+    });
+
     it('page ASSISTANT sans projection → AUCUNE chip (empty state honnête, pas de fausse affordance)', () => {
-        useFinanceStore.setState({ activeTab: Tab.ASSISTANT, lastProjection: null } as never);
+        useFinanceStore.setState({ activeTab: Tab.ASSISTANT, lastProjection: null, revealedProjectionSig: 'v1:sig' } as never);
         render(<AiChatView variant="tab" />);
         expect(screen.queryByRole('button', { name: 'Explique ma courbe' })).toBeNull();
         expect(screen.queryByText(/Pourquoi ça baisse/)).toBeNull();

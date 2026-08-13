@@ -213,6 +213,11 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   gestes depuis l'état par défaut et vérifier CHAQUE modalité (souris/doigt/clavier). Un test qui
   boucle pour atteindre l'état testé mesure le coût du chemin (`UX-UNREACHABLE-FEATURE`).
 - Un **nom trompeur fabrique des faux findings** → renommer est le vrai correctif.
+- Une **heuristique de TEXTE** (regex sur un libellé) qui coexiste avec du texte UTILISATEUR interpolé
+  dans les mêmes libellés produit des faux positifs : toléré sur une pastille visible à l'œil,
+  INACCEPTABLE dans un prompt LLM (l'affirmation fausse hérite de l'autorité de la source unique).
+  Dériver le fait d'un marqueur STRUCTUREL — il existait déjà (`FireTarget`), la regex était en plus
+  redondante (`TEXT-HEURISTIC-OVER-USER-TEXT`, 2026-08-12).
 - Un test d'interaction doit **cliquer là où l'utilisateur clique** (sur la donnée, pas dans la marge)
   — un `onClick` React ne capte PAS un clic sur une forme SVG redessinée au survol : la moitié basse
   de la courbe Futur était morte au clic depuis toujours (`FUTUR-CLICK-AREA`, → `pointerup`).

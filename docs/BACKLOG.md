@@ -615,6 +615,20 @@
       d'envoi automatique), présentes seulement si une projection existe, et
       « Pourquoi ça baisse en [année] ? » seulement sur un vrai creux détecté (≥ 5 % pic→creux).
       20 tests neufs (14 builder + 6 chips). → à ARCHIVER au merge.
+      **Revue 2026-08-12** (3 correctifs, même branche) : jalon FIRE du prompt rendu STRUCTUREL
+      (`services/projection/fireMilestone.ts` — `FireTarget`/`NetWorth`, plus de regex sur des
+      libellés qui portent du texte utilisateur) ; chips de la page Assistant gatées sur
+      `revealedProjectionSig` (même geste explicite que le Futur) ; énumération vide du prompt
+      remplacée par « aucun chiffre disponible ». +10 tests (5 prouvés discriminants).
+    - [ ] `[FUTUR-FIRE-REGEX-SHARED]` (S) — **duplication restante du jalon FIRE**. Le prompt IA
+      lit désormais le jalon STRUCTUREL (`isFireReached`, `services/projection/fireMilestone.ts`),
+      mais la **pastille de la courbe** (`components/FutureProjection.tsx` ~l.440) et l'infobulle
+      (`components/projection/ProjectionTooltip.tsx` l.11) choisissent encore l'icône 🔥 par
+      `/\bfire\b/i` sur le libellé. Toléré (l'utilisateur VOIT la pastille et son libellé, il peut
+      la démentir) mais faux positif possible sur un nom d'immeuble/d'enfant contenant « fire ».
+      → faire consommer `FIRE_LIFE_EVENT` (comparaison EXACTE) ou le prédicat structurel, avec un
+      test « immeuble nommé Fire pit reno → aucune pastille FIRE ». ⚠️ Vérifier l'impact bundle :
+      `FutureProjection` importerait un module de `services/projection/` (leaf, types only).
     - [ ] `[REFONTE-NAV-L6b]` 6b — écritures en langage naturel (ex-« 6a » du plan initial).
     - [ ] `[REFONTE-NAV-L6c]` 6c — what-if comparés.
     - [ ] `[REFONTE-NAV-L6d]` 6d — explication du moteur.

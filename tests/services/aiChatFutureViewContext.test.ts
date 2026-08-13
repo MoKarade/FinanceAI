@@ -9,26 +9,36 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { buildFutureViewDetail, buildFutureChips } from '../../services/aiChat/futureViewContext';
 import {
     publishViewContext, describeViewContextForPrompt, viewContextMatchesTab, getViewContext,
-    _resetViewContextForTests,
+    _resetViewContextForTests, type FutureViewDetail,
 } from '../../services/aiChat/viewContext';
 import type { ProjectionChartPoint } from '../../services/projection/types';
+import { FIRE_LIFE_EVENT } from '../../services/projection/fireMilestone';
 import { Tab } from '../../types';
 
 const pt = (monthIndex: number, NetWorth: number, year: number, over: Partial<ProjectionChartPoint> = {}): ProjectionChartPoint =>
     ({ monthIndex, NetWorth, year, ...over } as ProjectionChartPoint);
 
+/** Ligne de prompt effectivement envoyée au modèle pour un détail Futur donné. */
+const describeFutureLine = (d: FutureViewDetail): string => {
+    publishViewContext('future', d);
+    return describeViewContextForPrompt(Tab.FUTURE);
+};
+
 /** Courbe type : départ 100 k$ (2026), pic 500 k$ (2040, FIRE), retraite 2043 avec baisse à 420 k$,
- *  horizon 450 k$ (2065, 74 ans). Préfixe PASSÉ (monthIndex < 0) présent pour prouver l'exclusion. */
+ *  horizon 450 k$ (2065, 74 ans). Préfixe PASSÉ (monthIndex < 0) présent pour prouver l'exclusion.
+ *  `FireTarget` = cible du mois émise par le moteur : c'est ELLE (croisée par NetWorth) qui porte le
+ *  jalon FIRE, pas le libellé `lifeEvents` (gardé ici tel que le moteur l'émet, pour prouver qu'il
+ *  n'est PLUS ce qui déclenche l'année). */
 const results = () => ({
     strategyName: 'Équilibrée',
     fireNumber: 480_000,
     chartData: [
-        pt(-12, 50_000, 2025),
-        pt(0, 100_000, 2026, { age: 35 }),
-        pt(12, 200_000, 2027, { age: 36 }),
-        pt(168, 500_000, 2040, { age: 49, lifeEvents: ['Objectif FIRE Atteint 🔥'] }),
-        pt(204, 420_000, 2043, { age: 52, isRetired: true }),
-        pt(468, 450_000, 2065, { age: 74, isRetired: true }),
+        pt(-12, 50_000, 2025, { FireTarget: 480_000 }),
+        pt(0, 100_000, 2026, { age: 35, FireTarget: 480_000 }),
+        pt(12, 200_000, 2027, { age: 36, FireTarget: 480_000 }),
+        pt(168, 500_000, 2040, { age: 49, FireTarget: 480_000, lifeEvents: [FIRE_LIFE_EVENT] }),
+        pt(204, 420_000, 2043, { age: 52, FireTarget: 480_000, isRetired: true }),
+        pt(468, 450_000, 2065, { age: 74, FireTarget: 480_000, isRetired: true }),
     ],
 });
 
@@ -51,7 +61,7 @@ describe('buildFutureViewDetail', () => {
         expect(d.retirementYear).toBe(2043); // PREMIER point isRetired, émis par le moteur
         expect(d.retirementAge).toBe(52);
         expect(d.fireNumber).toBe(480_000);
-        expect(d.fireYear).toBe(2040); // lifeEvent FIRE du moteur — jamais recalculé côté UI
+        expect(d.fireYear).toBe(2040); // 1er mois où NetWorth croise FireTarget (champs du moteur)
         expect(d.strategyName).toBe('Équilibrée');
     });
 
@@ -73,6 +83,46 @@ describe('buildFutureViewDetail', () => {
         const d = buildFutureViewDetail(r);
         expect(d.currentNetWorth).toBeUndefined();
         expect(d.horizonNetWorth).toBe(450_000); // les champs valides restent
+    });
+
+    // [FUTUR-FIRE-STRUCT] Le jalon FIRE vient de champs NUMÉRIQUES (FireTarget/NetWorth), jamais
+    // d'une regex sur `lifeEvents` : ces libellés contiennent du TEXTE UTILISATEUR interpolé (nom
+    // d'immeuble via realEstateMonth.ts, nom d'enfant via childrenReee.ts). Avant le fix, /\bfire\b/i
+    // matchait « Fire pit reno » et le prompt affirmait « objectif FIRE atteint vers 2027 ».
+    it('lifeEvent portant un NOM D\'UTILISATEUR contenant « fire » → AUCUNE année FIRE fabriquée', () => {
+        const r = results();
+        r.chartData = [
+            pt(0, 100_000, 2026, { age: 35, FireTarget: 480_000 }),
+            pt(12, 200_000, 2027, { age: 36, FireTarget: 480_000, lifeEvents: ['🏠 Achat immobilier : Fire pit reno'] }),
+            pt(24, 300_000, 2028, { age: 37, FireTarget: 480_000 }),
+        ];
+        const d = buildFutureViewDetail(r);
+        expect(d.fireYear).toBeUndefined(); // la cible n'est JAMAIS croisée sur cette courbe
+        expect(describeFutureLine(d)).not.toContain('atteint vers');
+    });
+
+    it('libellé FIRE du moteur SANS croisement de la cible → pas d\'année (le fait vient des chiffres)', () => {
+        const r = results();
+        r.chartData = [
+            pt(0, 100_000, 2026, { age: 35, FireTarget: 480_000 }),
+            pt(12, 200_000, 2027, { age: 36, FireTarget: 480_000, lifeEvents: [FIRE_LIFE_EVENT] }),
+        ];
+        expect(buildFutureViewDetail(r).fireYear).toBeUndefined();
+    });
+
+    it('cible FIRE croisée SANS lifeEvent (blob figé, libellés absents) → année quand même émise', () => {
+        const r = results();
+        r.chartData = [
+            pt(0, 100_000, 2026, { age: 35, FireTarget: 480_000 }),
+            pt(12, 500_000, 2031, { age: 40, FireTarget: 480_000 }),
+        ];
+        expect(buildFutureViewDetail(r).fireYear).toBe(2031);
+    });
+
+    it('cible FIRE à 0 (objectif non configuré) → aucun jalon, même si NetWorth ≥ 0', () => {
+        const r = results();
+        r.chartData = [pt(0, 100_000, 2026, { age: 35, FireTarget: 0 }), pt(12, 200_000, 2027, { age: 36, FireTarget: 0 })];
+        expect(buildFutureViewDetail(r).fireYear).toBeUndefined();
     });
 
     it('fireNumber 0 (non configuré) → omis (pas un faux « objectif 0 $ »)', () => {
@@ -123,6 +173,15 @@ describe('describeViewContextForPrompt — scope future', () => {
         expect(line).toContain('Valeurs INDISPONIBLES');
         expect(line).toContain('ne les invente JAMAIS');
         expect(line).toContain("patrimoine net à l'horizon (2065, 74 ans) 450000 $"); // le valide reste
+    });
+
+    it('AUCUN champ fini (courbe présente mais valeurs non calculées) → repli NOMMÉ, pas une énumération vide', () => {
+        // Avant le fix, la phrase se terminait par « … source unique) : . » — un blanc que le modèle
+        // est tenté de combler. Le repli le DIT, et la note « valeurs indisponibles » reste.
+        const line = describeFutureLine(buildFutureViewDetail({ chartData: [pt(0, NaN, NaN)] }));
+        expect(line).toContain('aucun chiffre disponible');
+        expect(line).not.toContain('source unique) : .');
+        expect(line).toContain('Valeurs INDISPONIBLES');
     });
 
     it('[Finding #490 par analogie] scope future ≠ onglet actif → détail IGNORÉ (repli honnête)', () => {

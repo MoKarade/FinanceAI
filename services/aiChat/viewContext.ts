@@ -65,7 +65,8 @@ export interface FutureViewDetail {
     /** Marqueur retraite = 1er point `isRetired` émis par le moteur (jamais déduit côté UI). */
     retirementYear?: number;
     retirementAge?: number;
-    /** Objectif FIRE ($) émis par le moteur (`fireNumber`) + année du lifeEvent FIRE s'il existe. */
+    /** Objectif FIRE ($) émis par le moteur (`fireNumber`) + année du jalon FIRE STRUCTUREL
+     *  (`FireTarget` atteint par `NetWorth` — jamais une regex sur un libellé, cf fireMilestone.ts). */
     fireNumber?: number;
     fireYear?: number;
     /** Plus forte baisse pic→creux détectée sur NetWorth : année du PIC (début de baisse) + ampleur %. */
@@ -200,7 +201,10 @@ function describeFutureDetail(d: FutureViewDetail, tabLabel: string): string {
         ? ` Valeurs INDISPONIBLES (non calculées/non finies) — dis-le si on te les demande, ne les invente JAMAIS : ${missing.join(', ')}.`
         : '';
     const strat = d.strategyName ? ` (stratégie « ${sanitizePromptText(d.strategyName)} »)` : '';
-    return `CONTEXTE ÉCRAN : l'utilisateur est sur l'onglet « ${tabLabel} » — la courbe de projection du patrimoine est affichée${strat}. Chiffres AFFICHÉS, émis par le moteur de projection (source unique) : ${parts.join(' ; ')}.${missingNote} Cite CES chiffres pour toute question sur la courbe affichée ; ne recalcule JAMAIS une projection toi-même — pour le détail d'un calcul (flux d'un mois, impôts, retraits), consulte tes outils en le disant.`;
+    // Énumération VIDE possible (tous les champs non finis) : sans repli, la phrase se terminait par
+    // « … est affichée : . » — une invitation à combler le blanc. Repli NOMMÉ (no-fake-data).
+    const chiffres = parts.length > 0 ? parts.join(' ; ') : 'aucun chiffre disponible';
+    return `CONTEXTE ÉCRAN : l'utilisateur est sur l'onglet « ${tabLabel} » — la courbe de projection du patrimoine est affichée${strat}. Chiffres AFFICHÉS, émis par le moteur de projection (source unique) : ${chiffres}.${missingNote} Cite CES chiffres pour toute question sur la courbe affichée ; ne recalcule JAMAIS une projection toi-même — pour le détail d'un calcul (flux d'un mois, impôts, retraits), consulte tes outils en le disant.`;
 }
 
 /**

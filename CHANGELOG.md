@@ -26,6 +26,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Le bandeau « Contexte » du chat dit ce qu'il voit vraiment** : « Futur — courbe de
   projection », ou « Futur — aucune projection calculée ». Jamais un bandeau qui prétend.
 
+### Corrections (revue du Lot 6a)
+- **Les questions suggérées respectent maintenant ton geste « Calculer ».** Sur la page
+  Assistant, elles apparaissaient dès qu'une projection existait en mémoire — même si tu
+  n'avais **jamais affiché ta courbe**. Tu pouvais donc lire « Ma retraite (2043) » sans
+  l'avoir demandé. Elles suivent désormais la **même règle que le Futur** : rien tant que tu
+  n'as pas révélé ta courbe.
+- **Plus de faux « objectif FIRE atteint » à cause d'un nom que tu as choisi.** L'assistant
+  repérait le moment où tu atteins l'indépendance financière en **cherchant le mot « fire »**
+  dans les événements de la courbe — or ces événements contiennent **tes** noms d'immeubles et
+  d'enfants. Un immeuble appelé « Fire pit reno » lui faisait affirmer une **année FIRE qui
+  n'existe pas**. Il compare maintenant les vrais chiffres du moteur (patrimoine vs cible).
+
 ### Améliorations — l'argent du quotidien d'un seul tenant (refonte nav, Lot 5)
 - **Le Budget garde son titre sur tous ses sous-onglets.** Que tu sois dans « Budget »,
   « Charges fixes & Abos », « Objectifs » ou « Santé », la page s'appelle toujours **Budget** —

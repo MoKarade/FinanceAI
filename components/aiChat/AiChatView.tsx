@@ -113,12 +113,24 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
     // est « future » (ouvert par-dessus Futur) ; page Assistant (variant tab) → bâties directement
     // sur store.lastProjection (source unique — l'assistant est ANCRÉ sur la courbe, c'est sa page).
     // Aucune projection → buildFutureChips rend [] (pas de fausse affordance). Libellés sans montant.
+    //
+    // ⚠️ Gate PH4 (révélation explicite) : sur l'onglet Futur, les chiffres projetés ne s'affichent
+    // JAMAIS sans geste de l'utilisateur (FutureProjection.tsx — `curveVisible`, dérivé de
+    // `revealedProjectionSig`). Le moteur, lui, publie `lastProjection` en continu : sans le même
+    // gate ici, un utilisateur qui n'a jamais révélé sa courbe lisait quand même « Ma retraite
+    // (2043) » / « Pourquoi ça baisse en 2040 ? » dans les chips — la même donnée projetée, par une
+    // autre porte. `revealedProjectionSig !== null` est la part du gate LISIBLE DU STORE (persistée,
+    // remise à null par « masquer » / reset / mode test) ; la fraîcheur de la signature reste locale
+    // à FutureProjection (hash des params) — non reproduite ici, on ne réinvente pas un état.
     const lastProjection = useFinanceStore(s => s.lastProjection);
+    const revealedProjectionSig = useFinanceStore(s => s.revealedProjectionSig);
     const futureChips = React.useMemo(() => {
         if (viewCtx?.detail.kind === 'future') return buildFutureChips(viewCtx.detail);
-        if (variant === 'tab') return buildFutureChips(buildFutureViewDetail(lastProjection));
+        if (variant === 'tab' && revealedProjectionSig !== null) {
+            return buildFutureChips(buildFutureViewDetail(lastProjection));
+        }
         return [];
-    }, [viewCtx, variant, lastProjection]);
+    }, [viewCtx, variant, lastProjection, revealedProjectionSig]);
 
     const [input, setInput] = useState('');
     const [pendingFiles, setPendingFiles] = useState<File[]>([]);

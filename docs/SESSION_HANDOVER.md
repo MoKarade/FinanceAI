@@ -53,6 +53,36 @@
 > et le BACKLOG sont corrigés : écritures NL = **6b**, puis 6c what-if, 6d explication moteur,
 > 6e analyse de docs, 6f proactif. `[REFONTE-NAV-L6]` reste OUVERT.
 >
+> ### Revue du Lot 6a (même session) — 3 correctifs appliqués sur `claude/progress-check-yua8yy`
+> - **`[FUTUR-FIRE-STRUCT]` — MOYEN, déclenchable par l'utilisateur.** L'année FIRE du prompt
+>   venait d'une **heuristique de texte** (`/\bfire\b/i` sur `p.lifeEvents`). Or `lifeEvents`
+>   mêle messages moteur et **texte UTILISATEUR interpolé** (nom d'enfant `childrenReee.ts`, nom
+>   d'immeuble `realEstateMonth.ts`) : un immeuble « Fire pit reno » faisait affirmer « objectif
+>   FIRE atteint vers <année fausse> » avec l'autorité d'un chiffre du moteur. **Un signal
+>   STRUCTUREL existait déjà** : le moteur émet `FireTarget` (cible du mois, inflation-ajustée)
+>   à CHAQUE point, et `strategyRanking.ts` s'en servait déjà (`FireTarget > 0 && NetWorth >=
+>   FireTarget`). Nouveau module **`services/projection/fireMilestone.ts`** (`FIRE_LIFE_EVENT`,
+>   `isFireReached`, `findFireReachedPoint`) : `projection.ts` journalise via la constante,
+>   `strategyRanking.ts` et `futureViewContext.ts` partagent le prédicat. Effet de bord voulu :
+>   cible à 0 (objectif non configuré) → **aucun jalon** (le moteur, lui, journalise le lifeEvent
+>   dès le mois 0 dans ce cas — `NetWorth >= 0`).
+>   ⚠️ La **pastille** de la courbe (`FutureProjection.tsx` ~l.440) garde sa regex souple →
+>   ticket `[FUTUR-FIRE-REGEX-SHARED]` (S) au BACKLOG pour l'unifier (toléré : visible à l'œil).
+> - **Gate PH4 manquant sur la page Assistant.** `AiChatView.tsx` bâtissait les chips depuis
+>   `store.lastProjection` **sans** la révélation explicite qu'applique `FutureProjection.tsx`
+>   (`curveVisible`) → un utilisateur n'ayant jamais révélé sa courbe lisait « Ma retraite
+>   (2043) ». Gate ajouté sur **`revealedProjectionSig !== null`** (la part du gate LISIBLE DU
+>   STORE, persistée, remise à `null` par masquer/reset/mode test). La **fraîcheur** de la
+>   signature (hash des params) reste locale à `FutureProjection` : **non reproduite** — on ne
+>   réinvente pas un état de store.
+> - **Énumération vide dans le prompt.** `describeFutureDetail` finissait par « … est
+>   affichée : . » quand aucun champ n'était fini (blanc que le modèle est tenté de combler) →
+>   repli nommé « aucun chiffre disponible » (la note « Valeurs INDISPONIBLES » reste).
+> - **Preuve de discrimination** : les 5 nouveaux tests ont été rejoués contre le code d'AVANT
+>   (logique restaurée temporairement) → **5 échecs**, puis verts après restauration du fix.
+>   Ciblé : `fireMilestone` + `aiChatFutureViewContext` + `AiChatView.futureChips` +
+>   `strategyRanking` → **39/39 verts** ; `npm run typecheck` vert.
+>
 > ## 🟢 Session 2026-08-12 (suite 62) — `[REFONTE-NAV-L5]` : l'argent du quotidien d'un seul tenant
 > Lot 5 intégré sur `main` post-#605 (PR à venir), **sans toucher un seul fichier de nav**
 > (`navDestinations` / `TabRouter` / `Layout` inchangés — comme aux lots 3-4). Mêmes règles que

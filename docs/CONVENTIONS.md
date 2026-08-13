@@ -2443,3 +2443,22 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   Transactions a fait disparaître la colonne `Confiance IA` (celle qui sert justement à relire les
   catégorisations douteuses). Une consolidation est ADDITIVE — on élargit le format commun, on ne
   rabote pas au plus petit dénominateur ; et un test verrouille la colonne conservée.
+- ⚠️ **[REFONTE-NAV-L6a] revue 2026-08-12 — `TEXT-HEURISTIC-OVER-USER-TEXT`** : une **HEURISTIQUE
+  DE TEXTE** (regex sur un libellé) qui coexiste avec du **texte UTILISATEUR interpolé dans les
+  mêmes libellés** produit des faux positifs ; toléré sur une pastille visible à l'œil (l'utilisateur
+  lit le libellé et peut la démentir), **INACCEPTABLE dans un prompt LLM** où l'affirmation fausse
+  hérite de l'autorité de la source unique. Dériver le fait d'un marqueur **STRUCTUREL**, ou au
+  minimum d'une **constante partagée avec l'émetteur**. Mesuré : `/\bfire\b/i` sur `p.lifeEvents`
+  faisait dire au prompt « objectif FIRE atteint vers <année fausse> » dès qu'un immeuble s'appelait
+  « Fire pit reno » (`lifeEvents` mêle messages moteur et noms saisis par l'utilisateur —
+  `childrenReee.ts`, `realEstateMonth.ts`). Le signal structurel EXISTAIT déjà (`FireTarget` émis à
+  chaque point, prédicat déjà écrit dans `strategyRanking.ts`) : **grepper les champs numériques du
+  moteur avant d'écrire une regex sur ses libellés**.
+  (2) Corollaire de gate : **un gate d'affichage vit sur la PAGE, la donnée vit dans le STORE** —
+  toute AUTRE surface qui lit la même donnée du store doit re-appliquer le gate, sinon elle est la
+  porte de service (chips de l'onglet Assistant bâties sur `lastProjection` sans la révélation
+  `revealedProjectionSig` de PH4 : la retraite projetée s'affichait sans le geste explicite). Quand
+  la condition complète est locale au composant, gater sur la **part lisible du store** et le DIRE —
+  ne pas inventer un nouveau champ de store pour reproduire un état local.
+  (3) Une **énumération vide** dans un prompt (`… : .`) est un blanc que le modèle comble : tout
+  `join()` qui peut rendre `''` a besoin d'un repli NOMMÉ (« aucun chiffre disponible »).

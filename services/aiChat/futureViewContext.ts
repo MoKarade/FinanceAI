@@ -4,18 +4,16 @@
 // projection émise par le moteur (source unique `lastProjection.chartData` — ou son gel
 // PROJECTION-PERSIST, ce que la courbe AFFICHE) et n'effectue AUCUN recalcul financier.
 // Ne dérive que de la présentation : premier/dernier point, marqueurs déjà émis par le moteur
-// (isRetired, fireNumber, lifeEvent FIRE) et détection d'un creux (comparaisons, pas de $ inventé).
+// (isRetired, fireNumber, jalon FIRE structurel `FireTarget`/`NetWorth`) et détection d'un creux
+// (comparaisons, pas de $ inventé).
 //
 // ⚠️ No-fake-data : chaque champ numérique n'est posé QUE s'il est fini — jamais un défaut
 // plausible (classe AI-PROMPT-FAKE-ZERO). Aucune projection → `hasProjection: false` (aveu
 // honnête rendu par describeFutureDetail, zéro chiffre).
 
 import type { ProjectionChartPoint, ProjectionResult } from '../projection/types';
+import { findFireReachedPoint } from '../projection/fireMilestone';
 import type { FutureViewDetail } from './viewContext';
-
-/** Même motif que la pastille moteur [R2] (FutureProjection) : le jalon FIRE est un lifeEvent
- *  émis par projection.ts (« Objectif FIRE Atteint 🔥 ») — on le DÉTECTE, on ne le recalcule pas. */
-const FIRE_RE = /\bfire\b/i;
 
 /** Seuil de « creux détectable » : baisse pic→creux d'au moins 5 % du pic. En dessous, le bruit
  *  d'une courbe normale déclencherait la mention (et la chip « Pourquoi ça baisse ? ») à tort. */
@@ -58,7 +56,14 @@ export function buildFutureViewDetail(
 
     // Objectif FIRE : fireNumber émis par le moteur (0 = non configuré → omis, pas un faux « 0 $ »).
     if (finite(results?.fireNumber) && results!.fireNumber! > 0) d.fireNumber = results!.fireNumber;
-    const firePoint = future.find((p) => (p.lifeEvents ?? []).some((l) => FIRE_RE.test(l)));
+    // Année FIRE : jalon STRUCTUREL (`FireTarget` vs `NetWorth`, champs numériques du moteur —
+    // cf services/projection/fireMilestone.ts), JAMAIS une regex sur `lifeEvents`. Ces libellés
+    // mêlent messages moteur et TEXTE UTILISATEUR interpolé (nom d'enfant, nom d'immeuble) : un
+    // immeuble « Fire pit reno » faisait affirmer au prompt « objectif FIRE atteint vers <année
+    // fausse> » avec l'autorité d'un chiffre du moteur. La pastille de la courbe
+    // (components/FutureProjection.tsx ~l.440) garde pour l'instant sa regex souple (visible à
+    // l'œil, démentable) → ticket [FUTUR-FIRE-REGEX-SHARED] pour l'unifier.
+    const firePoint = findFireReachedPoint(future);
     if (firePoint && finite(firePoint.year)) d.fireYear = firePoint.year;
 
     // Creux : plus grand drawdown pic→creux sur les NetWorth FINIS. dipYear = année du PIC (début

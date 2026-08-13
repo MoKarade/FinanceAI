@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-13 (suite 76) — `[ENG-DIVORCE-ROOM-COUPLE]` : les droits d'un seul titulaire
+> `processJanuaryReset` recevait `config.users` ENTIER et `activeUsersCount` inchangé : chaque
+> janvier rouvrait les droits de DEUX têtes à un ménage qui n'en a plus qu'une, pendant que
+> décembre disait déjà « 1 déclarant ». **Mesuré : 716 717 $ de patrimoine indu** (12 745 146 $ →
+> 12 028 429 $).
+> - `activeUsersCount: taxFilers` — les 4 usages du fichier relus UN PAR UN (homonyme : compteur de
+>   déclarants l. 165, mais DIVISEUR de revenu par tête l. 204/220/225 ; `taxFilers` est correct
+>   pour les quatre).
+> - Liste **`roomUsers` DÉDIÉE** (défaut = `users`). ⚠️ NE PAS raccourcir `users` : la boucle FERR
+>   itère sur `reerByUser.length` et lit `users[i]` → `-Infinity` → part REER de l'index 1 jamais
+>   convertie, en silence. Deux questions, deux listes.
+> - Fixture : DEUX essais donnaient un écart NUL — les droits n'étaient pas le facteur limitant.
+>   Il faut une épargne supérieure aux droits annuels ET un horizon avant décaissement.
+> Rétrocompat MESURÉE : déterministe (22 894 519 $) et décès (44 499 602 $) bit-identiques.
 > ## 🟢 Session 2026-08-13 (suite 77) — `[ENG-DIVORCE-ESTATE-PENSION]` : la fonction MIROIR
 > `computeEstateNetWorth` gardait `activeUsersCount` entier et la pension MÉNAGE complète → le
 > divorcé héritait de la valeur des rentes de son ex à l'écran Succession. **322 865 $ indus**
@@ -16,12 +30,14 @@
 > ⚠️ Le défaut ne vivait QUE dans `estateNetWorth` : patrimoine mensuel, conservation et patrimoine
 > final étaient tous justes. C'est ce qui l'a fait survivre au premier lot.
 
+
 > ## 🟢 Session 2026-08-13 (suite 75) — `[ENG-DIVORCE-SPLITPCT-UNBOUNDED]` : la borne manquante
 > `divorceSplitPct` n'était borné NULLE PART (ni moteur, ni input). Mesuré : `−100` → le divorce
 > ENRICHIT (2 210 335 $ vs 755 482 $) ; `1e9` → patrimoine **−7,8 G$** (dettes × keep négatif) ;
 > `NaN` → actifs zéroïsés sans trace. Livré : `clampSplitPct` au MOTEUR (source unique, non-fini →
 > DÉFAUT métier et non 0) + `min`/`max` + même clamp à l'input. 8 tests, `keep` capturé À LA SOURCE
 > par le callback du splitter (3 échouent sans le clamp).
+
 > ## 🟢 Session 2026-08-13 (suite 74) — forme-flux : 3 producteurs muets, 2 corrigés
 > Nouvelle classe de garde : `Δsolde == MarketGrowth<k> + NetTransfer<k>`, mois par mois
 > (`tests/services/projection.fluxForm.test.ts`). Les gardes de conservation existantes comparent

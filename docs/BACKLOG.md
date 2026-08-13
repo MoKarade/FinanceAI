@@ -904,6 +904,24 @@
 > le mécanisme du divorce lui-même. ⚠️ Leur point commun est le motif d'échec de #613 — « le même
 > défaut, laissé dans la fonction sœur ». Traiter `ROOM-COUPLE` et `ESTATE-PENSION` en priorité.
 
+<<<<<<< HEAD
+- [x] 🔴 **`[ENG-DIVORCE-ROOM-COUPLE]`** (M, LIVRÉ) — les droits enregistrés restaient ceux d'un
+  COUPLE : `processJanuaryReset` recevait `config.users` entier et `activeUsersCount` inchangé.
+  Décembre disait déjà « 1 déclarant », janvier redonnait les droits des deux — les deux voies se
+  contredisaient. **Mesuré : 716 717 $ de patrimoine INDU** sur un divorcé à 25 ans d'horizon
+  (12 745 146 $ → 12 028 429 $). Livré : `activeUsersCount: taxFilers` (les 4 usages du fichier
+  relus un par un — homonyme, comme dans `retirementIncome`), `fhsaEligibleUsersCount` borné à 1,
+  et une liste **`roomUsers` DÉDIÉE** aux droits.
+  ⚠️ `users` reste ENTIER : la boucle FERR itère sur `reerByUser.length` et lit `users[i]` pour
+  l'âge du conjoint — la raccourcir aurait rendu `-Infinity` et la part REER de l'index 1 ne se
+  serait JAMAIS convertie en FERR, en silence (le piège exact d'un précédent `slice(0,1)`).
+  Rétrocompat MESURÉE : déterministe et décès bit-identiques.
+
+- [ ] 🔴 **`[ENG-DIVORCE-ESTATE-PENSION]`** (M) — `computeEstateNetWorth` reçoit `activeUsersCount`
+  et la pension MÉNAGE entière, sans équivalent de `householdPensionShare` : le divorcé hérite à
+  l'écran Succession de la valeur actualisée des rentes de son ex. C'est la fonction MIROIR de celle
+  que #616 corrige — son propre commentaire dit « exactement comme retirementIncome.ts:207-212 ».
+=======
 - [ ] 🔴 **`[ENG-DIVORCE-ROOM-COUPLE]`** (M) — droits enregistrés restés de COUPLE après divorce :
   `processJanuaryReset` reçoit `config.users` et `activeUsersCount` inchangés. **Mesuré** : CELI
   +15 000 $/an de droits (2 × 7 500) pour un ménage à 1 tête → CELI final 2 268 641 $ vs
@@ -923,6 +941,7 @@
   MC bit-identiques) ; le patrimoine mensuel ne bouge pas — le défaut ne vivait QUE dans la
   succession, ce qui l'a fait survivre au premier lot.
 
+>>>>>>> origin/main
 - [ ] **`[ENG-DIVORCE-LATENTTAX]`** (S) — `latentTax` ignore le divorce : impôt latent −337 063 $
   (N=2) vs −390 189 $ (N=1) → **53 126 $ de sous-estimation**, patrimoine net d'impôt affiché trop
   haut. (Ex-MOYEN-10, moitié déjà traitée : le meltdown est corrigé, `latentTax` ne l'est pas.)

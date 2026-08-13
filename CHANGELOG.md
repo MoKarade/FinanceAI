@@ -8,6 +8,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Tu vois maintenant si tu tiens ton plan
+- Sous la courbe verrouillée, une ligne te dit **de combien ton réel est en avance ou en retard**
+  sur ce que tu avais figé — en dollars et en pourcentage — plus l'**écart moyen** sur tous les mois
+  comparés et combien d'entre eux sont au-dessus.
+- La comparaison se fait toujours contre la courbe que **tu as verrouillée**, jamais contre une
+  prévision recalculée aujourd'hui : celle-là part de tes soldes réels, elle collerait toujours, et
+  l'indicateur te dirait éternellement que tout va bien.
+- S'il n'y a rien de comparable (pas de courbe verrouillée, pas encore de passé mesuré), **rien ne
+  s'affiche** — plutôt qu'un « 0 % d'écart » qui se lirait « ta prévision était parfaite ».
+- Corrigé avant sa mise en ligne : l'indicateur retenait aussi les **journées futures projetées**
+  comme si elles étaient mesurées. Il comparait donc deux prévisions entre elles en te présentant le
+  résultat comme « ton réel ». Il ne regarde plus que les journées réellement mesurées.
+
 ### Ton passé ne te ment plus
 - **La partie passée de ta courbe affichait la PRÉVISION quand elle n'avait pas de donnée réelle.**
   C'est pour ça que ton CELI paraissait garni alors que tu n'en as pas : ce n'était pas ton passé,

@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-13 (suite 77) — `[ENG-DIVORCE-ESTATE-PENSION]` : la fonction MIROIR
+> `computeEstateNetWorth` gardait `activeUsersCount` entier et la pension MÉNAGE complète → le
+> divorcé héritait de la valeur des rentes de son ex à l'écran Succession. **322 865 $ indus**
+> (1 068 947 $ → 746 082 $).
+> - Branche « estimés précis » : valeurs PER-PERSONNE → compteur de TÊTES à 1.
+> - Branche « repli agrégé » : `governmentPension` est DÉJÀ familial → `householdPensionShare`.
+>   ⚠️ Deux réductions distinctes, jamais cumulées sur le même terme (sinon on réduit deux fois).
+> ⚠️ `activeUsersCount` MULTIPLIE ici et DIVISE dans `retirementIncome` — même nom, sémantiques
+> INVERSES, fichiers voisins.
+> ⚠️ Le défaut ne vivait QUE dans `estateNetWorth` : patrimoine mensuel, conservation et patrimoine
+> final étaient tous justes. C'est ce qui l'a fait survivre au premier lot.
+
 > ## 🟢 Session 2026-08-13 (suite 75) — `[ENG-DIVORCE-SPLITPCT-UNBOUNDED]` : la borne manquante
 > `divorceSplitPct` n'était borné NULLE PART (ni moteur, ni input). Mesuré : `−100` → le divorce
 > ENRICHIT (2 210 335 $ vs 755 482 $) ; `1e9` → patrimoine **−7,8 G$** (dettes × keep négatif) ;

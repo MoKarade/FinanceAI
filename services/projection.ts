@@ -1894,7 +1894,18 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // comme dans le revenu de retraite (plus de divergence silencieuse).
         rrqEstimateMonthly: retirementGoal.rrqEstimateMonthly,
         psvEstimateMonthly: retirementGoal.psvEstimateMonthly,
-        activeUsersCount, simInflation, enableMonteCarlo,
+        // [ENG-DIVORCE-ESTATE-PENSION] Le compteur de TÊTES : il MULTIPLIE ici un estimé
+        // per-personne pour reconstituer le familial — sémantique INVERSE de `retirementIncome`,
+        // où le même nom désigne un DIVISEUR d'agrégat. D'où une lecture ligne à ligne avant de
+        // câbler (le piège homonyme a déjà coûté un NO-GO sur ce lot).
+        // ⚠️ `survivorMode || divorced` et non `soloHousehold` : ce dernier est déclaré DANS la
+        // boucle mensuelle et n'existe plus ici. Les deux drapeaux, eux, vivent au niveau du
+        // scénario et portent l'état FINAL du ménage — ce qui est exactement la bonne question
+        // pour un bilan successoral.
+        activeUsersCount: (survivorMode || divorced) ? 1 : activeUsersCount,
+        // Et la PART, pour le repli sur l'agrégat familial `governmentPension`, que rien ne divise.
+        householdPensionShare: (survivorMode || divorced) ? 1 / Math.max(1, activeUsersCount) : 1,
+        simInflation, enableMonteCarlo,
         startingCash: calculatedStartingCash,
         startingCELI: liveCSVBalances.CELI || 0,
         startingCELIAPP: liveCSVBalances.CELIAPP || 0,

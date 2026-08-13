@@ -100,6 +100,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   expliquée par un flux publié**. C'est elle qui a trouvé les deux derniers cas.
 >>>>>>> origin/main
 
+### À l'écran Succession, un divorcé héritait encore des rentes de son ex
+- La valeur actualisée du RRQ et de la PSV de ton ex-conjoint restait dans ton bilan successoral :
+  **322 865 $ de trop** sur le scénario mesuré.
+- Le reste était juste — ton patrimoine mensuel, ta courbe, tes totaux. Le défaut ne vivait que sur
+  cet écran-là, et c'est pour ça qu'il avait survécu à la correction du divorce.
+
 ### Corrections de calcul (lot moteur, suite de l'audit)
 - **Ton crédit d'impôt pour dons était surévalué.** La part fédérale du crédit était comptée en
   entier, alors qu'au Québec elle ne vaut que 83,5 % : l'abattement québécois de 16,5 % s'applique

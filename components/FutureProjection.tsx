@@ -19,6 +19,8 @@ import { logError } from '../services/errorLogger';
 import { loadRevealedProjection, saveRevealedProjection, clearRevealedProjection } from '../services/lockedProjectionStore';
 import { usePendingFocus } from '../utils/usePendingFocus';
 import { buildLockedByMonth } from '../utils/lockedCurveOverlay';
+import { computeForecastAccuracy } from '../services/projection/forecastAccuracy';
+import { ForecastAccuracyBadge } from './projection/ForecastAccuracyBadge';
 import { findInsolvencyPoint } from '../utils/insolvency';
 import { sampleEvenly } from '../utils/sampleEvenly';
 
@@ -873,6 +875,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         return [anchorRest as ProjectionChartPoint, ...points];
     }, [dailyAnchors, displayData, startYear, startMonth, dailyDated, dailyPastByDate, syncConfirmedUntilIso, todayIso]);
 
+    // [PASSE-REEL-2] Écart entre le passé MESURÉ et la prévision VERROUILLÉE. Calculé sur la série
+    // quotidienne — c'est elle qui porte les points réels (depuis `[PASSE-REEL-1]`, une journée
+    // passée non mesurée n'y est même plus présente, donc rien de projeté ne peut s'y glisser).
+    const forecastAccuracy = useMemo(
+        () => computeForecastAccuracy(dailyAll, lockedByMonth),
+        [dailyAll, lockedByMonth],
+    );
+
+
     /**
      * [FUTUR-DAILY-NATIVE] Infobulle : le point COMPLET (99 champs) du jour visé, ventilé À LA
      * DEMANDE sur 3 mois autour du mois hôte (~10 ms la première fois, caché ensuite par mois).
@@ -1444,6 +1455,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         <span>Courbe verrouillée — référence figée (l'aperçu live continue de se recalculer).</span>
                     </div>
                 )}
+                {/* [PASSE-REEL-2] L'écart se lit JUSTE SOUS sa référence : affiché ailleurs, il ne
+                    serait pas interprétable. Rend `null` si la comparaison n'a pas de sens. */}
+                <ForecastAccuracyBadge accuracy={forecastAccuracy} />
                 {/* Hauteur responsive : 380px mobile, 500px tablet, 650px desktop */}
                 <div
                     ref={zoom.containerRef}

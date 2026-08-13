@@ -11,6 +11,90 @@
 > `Retry-After` honoré (secondes ET date HTTP), pacing 1 s ENTRE les appels (pas les itérations),
 > court-circuit 401/403, logs AGRÉGÉS portant l'erreur brute. `sleep` injectable → 15 tests, 17 ms,
 > aucun ne dort. Discrimination prouvée (2 échecs quand on retire la boucle de réessai).
+> ## 🟢 Session 2026-08-13 (suite 71) — DIVORCE v3 : les 2 blocages de la RE-revue (PR #616)
+> Le panel a recalé la v2 aussi (NO-GO, 2 ÉLEVÉ mesurés). Corrigés ici, chacun prouvé par un test
+> qui ÉCHOUE sur le code d'avant :
+> - **SRG** : `gisHeads` / `hasSpouseWithOAS` lisaient `activeUsersCount` (le DIVISEUR, resté à 2 à
+>   raison) et ne bouclent pas sur `users` — un divorcé gardait le barème COUPLE puis touchait ×2 :
+>   1 226,50 $/mois, AU-DESSUS du maximum légal célibataire (1 105 $). → `householdAdults`,
+>   3e compteur du fichier, défaut `activeUsersCount` (rétrocompat bit-identique).
+> - **Meltdown REER** : `taxFilers` était passé à 1 au dépôt fiscal mais `processReerMeltdown`
+>   recevait toujours `activeUsersCount` = 2 → 140 000 $/an de retraits imposables en trop, empilés
+>   sur UNE déclaration. Le nom du champ ÉTAIT le bug : renommé `taxFilers`, `taxFilers` hissé en
+>   tête d'itération (une seule source), salaire de l'ex sorti de l'assiette.
+> ⚠️ **La baseline n'est PAS intacte, et c'est assumé** : 8 combinaisons sur 9 bit-identiques, une
+> bouge — décès + MELTDOWN_REER (−75 756 $ d'impôt à vie). Un veuf est UN déclarant : correctif,
+> pas régression. Épinglé par un test.
+> ⚠️ **Le divorce n'est observable QUE sous MC**, où `buildMonthlyDataPoint` rend un point ALLÉGÉ
+> `{ NetWorth, monthIndex }` : aucun flux mensuel mesurable, seuls les agrégats du retour. C'est
+> aussi pourquoi aucune garde de conservation ne voit le splitter (`[ENG-DIVORCE-NO-CONSERVATION-GUARD]`).
+> **Reliquat ticketé** (mesuré par le panel, hors lot) : `[ENG-DIVORCE-ROOM-COUPLE]`,
+> `[ENG-DIVORCE-ESTATE-PENSION]`, `[ENG-DIVORCE-SPLITPCT-UNBOUNDED]` + 5 autres dans `BACKLOG.md`.
+
+> ## 🔴 Session 2026-08-13 (suite 69) — DIVORCE v2 : le panel avait recalé la v1 (PR #615)
+> **#613 a été recalée (NO-GO, 12 findings dont 5 ÉLEVÉ mesurés).** À lire avant de retoucher :
+> - `activeUsersCount` de `computeRetirementIncome` n'est PAS un compteur de têtes, c'est le
+>   DIVISEUR d'un agrégat ménage. Le réduire ANNULE la réduction des rentes (Δ mesuré 0,00 $/mois,
+>   et +398 $/mois à salaires inégaux : le divorce enrichissait). La réduction vient de la LISTE
+>   d'users raccourcie. La DB, elle, exige un facteur explicite (`householdPensionShare`).
+> - `reerShares` était `const` : la consolidation du registre REER ne tenait qu'UN mois. Corrigé au
+>   divorce ET au décès. ⚠️ L'invariant Σ(reerByUser) == reer restait VERT — un invariant de SOMME
+>   ne dit rien de l'ATTRIBUTION.
+> - Cohérence à 3 voies DOCUMENTÉE dans `cashflowAllocation.ts` (taxFilers / oasBeneficiaries /
+>   liveFilers) : n'en basculer qu'une donnait un divorcé imposé en célibataire avec un seuil de
+>   récupération PSV de COUPLE (0 $ au lieu de 7 016 $/an).
+> - Un divorcé devenait VEUF de son ex (96/101 itérations MC) ; on divorçait d'un conjoint décédé.
+> - Le décalage d'un mois n'était PAS anodin : 5 094,90 $ de salaire fantôme l'année du divorce.
+>
+> ⚠️ **LEÇON DE MÉTHODE, la plus importante du lot** : mes tests d'origine étaient GLOBAUX
+> (patrimoine médian, survie). Discriminants, et pourtant aveugles aux 5 ÉLEVÉ — parce que dominés
+> par la phase SALAIRE. Après correction des 5, le P50 global ne bouge que de **0,2 %**. Il faut un
+> test PAR MÉCANISME, visant la grandeur que le mécanisme produit
+> (`projection.divorceMechanisms.test.ts`).
+> ⚠️ Le test du registre REER a exigé TROIS fixtures avant de discriminer (les deux premières
+> passaient sur le code cassé) : il faut espace CELI épuisé + REER de départ faible + horizon
+> s'arrêtant AVANT la retraite, sinon aucune cotisation REER n'a lieu ou le REER est décaissé.
+
+> ## 🟢 Session 2026-08-13 (suite 67) — lot MOTEUR 2/5 : le bloc DIVORCE (PR #613)
+> Les 3 tickets divorce livrés ENSEMBLE (un seul changement sémantique : le ménage passe à une
+> tête). Décisions produit dans `docs/decisions.md` — ADR « Modèle du DIVORCE ».
+> - Dettes non immobilières partagées comme les actifs (décision Marc).
+> - `soloHousehold = survivorMode || divorced` sur les 7 sites fiscaux ; `computeRetirementIncome`
+>   garde `survivorMode` (un divorcé n'a AUCUNE prestation de survivant) et reçoit à part un
+>   compte de têtes réduit.
+> - **Dépenses du ménage laissées à 100 % — décision ASSUMÉE de Marc**, en connaissance de
+>   l'effet : le patrimoine médian passe de 4,89 M$ à −621 625 $ et la survie de 100 % à 0 %.
+>   ⚠️ Le DÉCÈS a le même comportement (bloc dépenses sans `survivorMode`) : cohérent, désormais
+>   explicite. Si un facteur « dépenses solo » est ajouté un jour, c'est le test « la survie
+>   chute » qui bougera, pas les deux autres.
+>
+> ⚠️ **PIÈGE À CONNAÎTRE AVANT DE TOUCHER AU DIVORCE** : il n'existe QUE dans la branche
+> Monte-Carlo, et `chartData` est TOUJOURS déterministe. Mesurer sur `chartData` donne un résultat
+> IDENTIQUE avec et sans divorce — j'y suis tombé. Mesurer sur les cônes `P10/P50/P90` et
+> `survivalRatePct`, seules sorties MC réellement consommées.
+>
+> **Reste du lot moteur** : 3/5 stress-test + invariants · 4/5 bilan complet (locatif, entreprise,
+> liquidDebt) · 5/5 backoff catégorisation.
+>
+> ## 🔴 NOUVEAU, signalé par Marc — `[PASSE-REEL]`, sa courbe passée lui MENT
+> Cause trouvée : `services/projection/dailyCurve.ts:59` renvoie le point PROJETÉ quand aucune
+> donnée réelle n'existe pour la journée. Marc voit un CELI garni alors qu'il n'a pas de CELI.
+> Ses 3 décisions sont consignées dans le BACKLOG (`[PASSE-REEL-1/2/3]`) : la courbe commence où
+> les données commencent (pas de repli), l'écart se mesure contre une prévision FIGÉE verrouillée,
+> et la projection se réancre chaque jour sur les soldes réels. À faire après le lot moteur.
+> ## 🟢 Session 2026-08-13 (suite 70) — `[PASSE-REEL-2]` : l'écart réel vs prévision figée (PR #617)
+> `services/projection/forecastAccuracy.ts` (pur) + `ForecastAccuracyBadge`, affiché SOUS la légende
+> de la courbe verrouillée — un écart loin de sa référence n'est pas interprétable.
+> ⚠️ La référence est la courbe VERROUILLÉE, jamais une projection recalculée : celle-ci part des
+> soldes réels, l'écart serait nul par construction. 13 tests, dont 5 sur les cas `null`.
+> ⚠️ **Corrigé sur revue Vercel avant merge (`MARKER-PROXY-GUARD`)** : la garde « point réel »
+> testait `typeof dayIso === 'string'`. Mais `dailyCurve.ts` bâtit la journée FUTURE par
+> `{ ...d, monthIndex }` — le spread charrie `dayIso`. Les 30 ans de projection entraient donc
+> comme du « passé mesuré » : l'indicateur comparait deux prévisions. Garde → `dayIsReal === true`
+> (le marqueur existait déjà, lu par `ProjectionTooltip`). Les 11 tests d'origine étaient verts
+> parce que leur helper de fixture omettait `dayIsReal` : une fixture qui ment sur la forme de la
+> donnée rend toute la suite aveugle. 2 tests discriminants ajoutés (échouent sur la garde d'avant).
+> Reste du lot : `[PASSE-REEL-3]` (réancrage quotidien automatique sur les soldes réels).
 
 > ## 🟢 Session 2026-08-13 (suite 68) — `[PASSE-REEL-1]` : le passé ne ment plus (PR #614)
 > Marc a demandé de REMONTER ce lot avant le reste du moteur — sa courbe lui mentait tous les jours.

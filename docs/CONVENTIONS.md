@@ -2563,6 +2563,64 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   d'avant dans tout le dépôt, pas seulement le nom de la fonction. Et remplacer par une valeur
   DÉRIVÉE de la source unique — c'est la même classe que « un outil-garde à valeurs re-codées en dur
   dérive en silence », appliquée aux tests.
+- ⚠️ **[ENG-DIVORCE-*] 2026-08-13 — mesurer un correctif là où sa sortie est JETÉE ne prouve rien.**
+  Le divorce n'existe QUE dans la branche Monte-Carlo (`tryDivorce` exige `enableMonteCarlo`), or
+  `chartData` est TOUJOURS déterministe (`[ENG-MC-CONSERVATION-BLIND]`). Mes premières sondes
+  comparaient donc `chartData` avec et sans divorce et rendaient un résultat **strictement
+  identique** — j'aurais pu en conclure « le correctif ne change rien » ou pire, « il n'y avait pas
+  de bug ». La sortie réellement consommée était ailleurs : les cônes `P10/P50/P90` et
+  `survivalRatePct`. Réflexe à avoir AVANT d'écrire la moindre assertion : **remonter la chaîne
+  jusqu'à ce que l'utilisateur voit**, et vérifier que la grandeur mesurée en fait partie. C'est la
+  version constructive du piège déjà indexé « un bug confirmé peut viser du code dont la sortie est
+  jetée ».
+- ⚠️ **[Même jour] Trois bugs qui se COMPENSENT se lisent comme une absence de bug.** Avant
+  correction, céder 50 % du patrimoine coûtait 4,2 % du résultat final : chiffre absurde, mais
+  personne ne l'avait relevé parce qu'il n'était ni nul ni aberrant. Les trois erreurs tiraient dans
+  des sens opposés (dettes gardées = pessimiste ; revenu fantôme + fiscalité de couple =
+  optimistes). Corollaire opérationnel : les livrer SÉPARÉMENT aurait produit des états plus faux
+  que l'état initial (corriger les dettes seules aurait aggravé le pessimisme). Quand des findings
+  partagent un même invariant sémantique — ici « le ménage passe à une tête » — ils forment UN lot,
+  pas trois.
+- ⚠️ **[Même jour] Corriger un modèle révèle l'hypothèse tacite d'à côté.** Une fois le revenu
+  fantôme retiré, le divorce est passé à « survie 0 % » — parce que le moteur ne réduit JAMAIS les
+  dépenses du ménage quand il perd une tête (le décès a le même défaut). Ce n'était dans aucun
+  ticket. Un correctif qui déplace un résultat d'un extrême à l'autre doit faire chercher ce qui
+  compensait : ici, une hypothèse que personne n'avait jamais écrite. Elle est désormais une
+  DÉCISION explicite (`docs/decisions.md`), pas un oubli — et c'est Marc qui l'a tranchée, parce
+  que le choix change le résultat d'un facteur 8.
+
+- ⚠️ **[ENG-DIVORCE] re-revue #616 — corriger une règle DUPLIQUÉE à moitié est PIRE que l'erreur
+  d'origine.** Avant le lot, `taxFilers` (dépôt fiscal) et le multiplicateur du meltdown REER
+  disaient tous les deux « couple » après un divorce : faux, mais COHÉRENT. Le premier correctif
+  n'a basculé que `taxFilers` — le moteur retirait alors un revenu de DEUX têtes pour l'empiler sur
+  UNE déclaration : mesuré 140 000 $/an de retraits REER imposables en trop, et une stratégie
+  MELTDOWN_REER recommandée sur une fiscalité qui se contredisait elle-même. Règle : quand on
+  corrige une grandeur, GREPPER toutes ses copies AVANT de committer ; si le nom diffère
+  (`activeUsersCount` ici), c'est le NOM qu'il faut corriger — et hisser la valeur à un seul
+  endroit vaut mieux que synchroniser deux copies.
+- ⚠️ **[Même revue] Un compteur peut avoir TROIS sémantiques dans le même fichier.**
+  `retirementIncome.ts` porte désormais `activeUsersCount` (DIVISEUR d'agrégat ménage),
+  `householdPensionShare` (PART d'un montant ménage) et `householdAdults` (NOMBRE DE TÊTES). Les
+  confondre coûte cher dans les deux sens : réduire le diviseur ANNULE la réduction des rentes
+  (mesuré Δ = 0,00 $) ; lire le diviseur là où il faut des têtes donnait au divorcé le barème SRG de
+  COUPLE **puis** sa prestation ×2 — 1 226,50 $/mois rendus, une valeur que la loi ne permet à
+  PERSONNE (maximum célibataire : 1 105 $). Corollaire de test : l'assertion juste n'est pas « moins
+  que le couple » (un célibataire pauvre peut légitimement toucher plus, son maximum est bien plus
+  élevé), c'est **le plafond légal**. J'ai écrit la mauvaise version d'abord, et c'est la mesure qui
+  l'a réfutée.
+- ⚠️ **[Même revue] Un test sur la FONCTION ne prouve jamais le CÂBLAGE.** `processReerMeltdown`
+  distinguait parfaitement 1 déclarant de 2 — pendant que l'appelant continuait de lui passer
+  `activeUsersCount`. C'est le motif exact du NO-GO précédent. Il faut une assertion sur une
+  grandeur que le MOTEUR produit. Piège rencontré ici : sous `enableMonteCarlo` — le seul mode où le
+  divorce existe — `buildMonthlyDataPoint` ne rend qu'un point ALLÉGÉ `{ NetWorth, monthIndex }`,
+  par performance ; aucun flux mensuel n'est observable pendant un divorce. La seule prise restante
+  est un AGRÉGAT du retour de scénario (`totalTaxesPaid`), avec un seuil re-mesuré des deux côtés.
+- ⚠️ **[Même revue] « Baseline intacte » se MESURE, et le contraire s'ASSUME.** Le drapeau solo
+  couvre décès ET divorce : sur 9 combinaisons (3 stratégies × déterministe / MC / décès), 8 sont
+  bit-identiques et UNE bouge — décès + MELTDOWN_REER, −75 756 $ d'impôt à vie, +92 921 $ de
+  patrimoine. C'est un correctif (un veuf est UN déclarant), pas une régression : épinglé par un
+  test et écrit au CHANGELOG. Annoncer « aucune baseline touchée » sans rejouer la batterie aurait
+  été faux — et c'est le genre d'affirmation que personne ne revérifie ensuite.
 - ⚠️ **[FINTABLE-TOKEN-WIPE] 2026-08-13 — un champ EXCLU d'une synchro est le plus fragile, pas le
   mieux protégé.** Le jeton Fintable est délibérément retiré du push Drive (« un jeton bancaire ne
   voyage pas », `syncSnapshot.ts`). Conséquence contre-intuitive : puisqu'il ne PART jamais, il n'est
@@ -2644,3 +2702,30 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   s'applique ni avant le premier appel, ni après un chunk 100 % « transferts évidents » (filtré
   avant l'API, donc sans appel). Compter les tours de boucle plutôt que les appels ajoute de
   l'attente gratuite à un import qui n'a rien demandé.
+- ⚠️ **[PASSE-REEL-2] 2026-08-13 — un indicateur qui ne peut pas être MAUVAIS ne vaut rien.** La
+  tentation naturelle était de comparer le passé réel à « la projection ». Mais la projection est
+  recalculée en PARTANT des soldes réels du jour : elle colle au passé PAR CONSTRUCTION, l'écart
+  serait nul, et l'indicateur afficherait éternellement « tout va bien ». La seule référence qui a
+  du sens est une prévision FIGÉE, antérieure. Test à s'appliquer à tout indicateur d'écart, de
+  score ou de santé : « existe-t-il une situation réelle où ce chiffre serait mauvais ? » Si non,
+  il ne mesure rien.
+- ⚠️ **[Même jour] Distinguer la POSITION de la FIDÉLITÉ.** L'écart du dernier mois répond à « où
+  j'en suis » ; la moyenne des écarts ABSOLUS répond à « ma prévision est-elle fiable ». Une moyenne
+  SIGNÉE confondrait les deux et masquerait un plan qui se trompe de +50 k$ puis −50 k$ sous un
+  « écart moyen : 0 ». Les deux chiffres sont affichés, ils ne disent pas la même chose.
+- ⚠️ **[PASSE-REEL-2] revue Vercel #617 — `MARKER-PROXY-GUARD` : filtrer sur un champ VOISIN au lieu
+  du marqueur dédié.** `computeForecastAccuracy` retenait « un point réel » sur `typeof dayIso ===
+  'string'`. Or `dailyCurve.ts` fabrique le point d'une journée FUTURE par `{ ...d, monthIndex }` :
+  le spread **charrie `dayIso`**, et seul un point adossé à une mesure reçoit `dayIsReal: true`. La
+  garde laissait donc entrer les 30 ans de projection quotidienne — l'indicateur comparait la
+  prévision COURANTE à la prévision VERROUILLÉE et l'annonçait à Marc comme « ton réel ».
+  Le marqueur structurel EXISTAIT (`dayIsReal`, déjà lu par `ProjectionTooltip`) : c'est la même
+  classe que `TEXT-HEURISTIC-OVER-USER-TEXT` — dériver le fait d'un marqueur, jamais d'un proxy.
+  Règle : avant de filtrer sur la PRÉSENCE d'un champ, vérifier comment l'objet du cas NÉGATIF est
+  construit. Un `{ ...source }` en amont fait entrer tout ce qu'on croyait discriminant.
+- ⚠️ **[Même revue] Une FIXTURE qui omet le marqueur rend toute la suite aveugle.** Les 11 tests de
+  `forecastAccuracy` étaient verts parce que leur helper `jour()` ne posait pas `dayIsReal` : ils
+  décrivaient un « point réel » que le moteur ne produit jamais. Aucun n'a vu le bug, et 5 d'entre
+  eux portaient pourtant sur les cas `null`. Le nombre de tests ne prouve rien si la fixture ment
+  sur la forme de la donnée — un helper de fixture doit être calqué sur le PRODUCTEUR réel (ici
+  `dailyCurve.ts`), champ par champ, pas sur l'idée qu'on se fait de l'objet.

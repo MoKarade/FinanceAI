@@ -285,12 +285,107 @@ export const isDefiniteTransfer = (payee: string, amount: number): boolean => {
     return isInternalTransferLabel(p) || (Math.abs(amount) > 5000 && /paiement carte/.test(p));
 };
 
+// ─── [AI-CATEGORIZE-NO-BACKOFF] Réessai borné des chunks ─────────────────────────────────────
+// Avant : un 429 sur le chunk N était avalé (catch → tx non catégorisées) et le chunk N+1 repartait
+// AUSSITÔT. Une limite d'API atteinte au début d'un gros import dégradait donc TOUT le reste en
+// « non catégorisé », sans réessai ni signal — et le martèlement prolongeait le rate-limit.
+// Politique alignée sur `services/fintable/client.ts` (le patron du dépôt) : backoff exponentiel
+// borné, `Retry-After` honoré quand le serveur le donne, `sleep` injectable pour tester sans
+// horloge réelle.
+
+/** Essais TOTAUX par chunk (1 initial + 3 réessais). */
+export const CATEGORIZE_MAX_ATTEMPTS = 4;
+/** Base du backoff exponentiel : 1 s, 2 s, 4 s. */
+export const CATEGORIZE_BASE_BACKOFF_MS = 1_000;
+/** Cap d'une attente unique — parité `services/fintable/client.ts` (`MAX_RETRY_WAIT_MS`). */
+export const CATEGORIZE_MAX_BACKOFF_MS = 60_000;
+/** Pause ENTRE deux chunks qui appellent l'API : évite de déclencher le 429 en rafale. */
+export const CATEGORIZE_CHUNK_PACING_MS = 1_000;
+
+const defaultSleep = (ms: number): Promise<void> => new Promise<void>((r) => { setTimeout(r, ms); });
+
+/** Statut HTTP porté par une erreur du SDK Anthropic (`APIError.status`), sinon `undefined`. */
+const httpStatusOf = (err: unknown): number | undefined => {
+    const s = (err as { status?: unknown } | null)?.status;
+    return typeof s === 'number' ? s : undefined;
+};
+
+/**
+ * Nature d'un échec de chunk — ce qui décide de réessayer, d'abandonner le chunk, ou d'arrêter
+ * TOUT le batch :
+ *  - `retryable` : 429 / 408 / 5xx / erreur réseau (pas de statut) → transitoire, on réessaie ;
+ *  - `auth`      : 401 / 403 → la clé ne deviendra pas valide au chunk suivant. Réessayer serait
+ *                  du bruit ; enchaîner les 200 chunks restants aussi. On coupe court, tracé.
+ *  - `fatal`     : 4xx de requête (400/404/413/422…) → rejouer le MÊME prompt redonnerait la même
+ *                  erreur. Le chunk est abandonné, le batch continue (les suivants peuvent passer).
+ */
+export type CategorizeErrorKind = 'retryable' | 'auth' | 'fatal';
+
+export const classifyCategorizeError = (err: unknown): CategorizeErrorKind => {
+    const status = httpStatusOf(err);
+    if (status === undefined) return 'retryable';           // réseau / timeout : transitoire
+    if (status === 401 || status === 403) return 'auth';
+    if (status === 429 || status === 408) return 'retryable';
+    if (status >= 500 && status < 600) return 'retryable';
+    return 'fatal';
+};
+
+/**
+ * `Retry-After` de la réponse, en ms — la seule valeur qui vient du SERVEUR, donc toujours
+ * préférée à notre estimation. Accepte les deux formes de la spec HTTP (delta-seconds et date
+ * HTTP) et les deux formes de `headers` selon la version du SDK (objet `Headers` ou plain object).
+ * Valeur absente, non finie, négative ou déjà passée → `undefined` (on retombe sur le backoff).
+ */
+export const retryAfterMsOf = (err: unknown, now: number = Date.now()): number | undefined => {
+    const h = (err as { headers?: unknown } | null)?.headers;
+    let raw: string | null | undefined;
+    if (h && typeof (h as Headers).get === 'function') raw = (h as Headers).get('retry-after');
+    else if (h && typeof h === 'object') {
+        const rec = h as Record<string, unknown>;
+        const v = rec['retry-after'] ?? rec['Retry-After'];
+        raw = typeof v === 'string' ? v : undefined;
+    }
+    if (raw === null || raw === undefined || raw.trim() === '') return undefined;
+    const seconds = Number(raw);
+    if (Number.isFinite(seconds)) return seconds >= 0 ? seconds * 1000 : undefined;
+    const at = Date.parse(raw);
+    if (!Number.isFinite(at)) return undefined;
+    const deltaMs = at - now;
+    return deltaMs > 0 ? deltaMs : undefined;
+};
+
+/**
+ * Attente avant le réessai n° `attempt` (1 = après le 1er échec). `Retry-After` gagne quand il est
+ * là ; sinon backoff exponentiel `base × 2^(attempt−1)`. TOUJOURS borné par `maxMs` — un serveur
+ * qui répond « Retry-After: 86400 » ne doit pas geler l'import une journée.
+ */
+export const categorizeBackoffMs = (
+    attempt: number,
+    err: unknown,
+    baseMs: number = CATEGORIZE_BASE_BACKOFF_MS,
+    maxMs: number = CATEGORIZE_MAX_BACKOFF_MS,
+): number => {
+    const serverHint = retryAfterMsOf(err);
+    const wait = serverHint ?? baseMs * 2 ** Math.max(0, attempt - 1);
+    return Math.min(wait, maxMs);
+};
+
+/** Réglages injectables (tests : `sleep` synchrone → aucune attente réelle). */
+export interface CategorizeBatchDeps {
+    sleep?: (ms: number) => Promise<void>;
+    maxAttempts?: number;
+    baseBackoffMs?: number;
+    /** 0 désactive le pacing inter-chunk. */
+    chunkPacingMs?: number;
+}
+
 export const categorizeBatch = async (
     transactions: Transaction[],
     apiKey: string,
     _history: Transaction[] = [],
     allowedCategories: string[] = [],
     onProgress?: (current: number, total: number, msg: string, processedChunk: Transaction[]) => void,
+    deps: CategorizeBatchDeps = {},
 ): Promise<Transaction[]> => {
     if (!apiKey || transactions.length === 0) return transactions;
 
@@ -317,6 +412,21 @@ export const categorizeBatch = async (
     // id halluciné (aucune tx du chunk) ou dupliqué (écrasé par la Map) — signal diagnostique
     // « le modèle a décalé/inventé sa numérotation », distinct d'un simple item manquant.
     let unknownIdCount = 0;
+
+    // [AI-CATEGORIZE-NO-BACKOFF] Traces AGRÉGÉES, même convention que les compteurs ci-dessus : un
+    // rate-limit sur un gros import produirait sinon un `logError` PAR chunk et noierait le journal
+    // (100 entrées) — le diagnostic disparaîtrait dans son propre bruit.
+    let failedChunks = 0;
+    let retryWaits = 0;
+    let totalWaitMs = 0;
+    let firstChunkError: unknown = null;
+    let authAborted = false;
+    const sleep = deps.sleep ?? defaultSleep;
+    const maxAttempts = Math.max(1, deps.maxAttempts ?? CATEGORIZE_MAX_ATTEMPTS);
+    const baseBackoffMs = deps.baseBackoffMs ?? CATEGORIZE_BASE_BACKOFF_MS;
+    const chunkPacingMs = deps.chunkPacingMs ?? CATEGORIZE_CHUNK_PACING_MS;
+    /** Chunks ayant réellement APPELÉ l'API — le pacing ne s'applique qu'entre ceux-là. */
+    let apiChunksDone = 0;
 
     for (let i = 0; i < transactions.length; i += CHUNK_SIZE) {
         const chunk = transactions.slice(i, i + CHUNK_SIZE);
@@ -348,12 +458,29 @@ La catégorie DOIT être un élément exact de la liste autorisée — toute aut
 RÉPONDS UNIQUEMENT avec un JSON Array strict, sans markdown, sans commentaire:
 [{ "id": number, "category": string, "isTransfer": boolean, "confidence": number }]`;
 
+        // [AI-CATEGORIZE-NO-BACKOFF] Une clé refusée ne redeviendra pas valide au chunk suivant :
+        // on rend le reste inchangé sans enchaîner N appels voués à l'échec (le comportement
+        // d'avant était le même résultat, en beaucoup plus long et sans trace lisible).
+        if (authAborted) {
+            out.push(...toAnalyze);
+            processed += chunk.length;
+            continue;
+        }
+
+        // Pacing INTER-chunks : évite de déclencher le 429 en rafale. Jamais avant le premier
+        // appel, ni après un chunk 100 % transferts évidents (aucun appel n'a eu lieu).
+        if (apiChunksDone > 0 && chunkPacingMs > 0) await sleep(chunkPacingMs);
+        apiChunksDone++;
+
+        let done = false;
+        for (let attempt = 1; attempt <= maxAttempts && !done; attempt++) {
         try {
             const text = await chat(
                 [{ role: 'user', content: userPrompt }],
                 apiKey,
                 { model: MODEL_HAIKU, system: QUEBEC_FISCAL_CONTEXT, maxTokens: 4096, temperature: 0 },
             );
+            done = true;
             const validated = safeJsonValidate(text, CategorizeArraySchema);
             if (validated) {
                 const byId = new Map(validated.map(v => [v.id, v]));
@@ -400,14 +527,62 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict, sans markdown, sans commentaire:
                 out.push(...toAnalyze);
             }
         } catch (e) {
-            logError({ source: 'ai', message: 'categorizeBatch: échec du chunk (transactions non catégorisées)', error: e });
+            // Une réponse JSON invalide N'ARRIVE PAS ici (`safeJsonValidate` rend `null`, pas
+            // d'exception) et n'est délibérément pas réessayée : à `temperature: 0`, rejouer le
+            // même prompt redonnerait la même sortie — ce serait de l'attente pure.
+            const kind = classifyCategorizeError(e);
+            if (firstChunkError === null) firstChunkError = e;
+
+            if (kind === 'auth') {
+                authAborted = true;
+            } else if (kind === 'retryable' && attempt < maxAttempts) {
+                const waitMs = categorizeBackoffMs(attempt, e, baseBackoffMs);
+                retryWaits++;
+                totalWaitMs += waitMs;
+                // Signal HONNÊTE pendant l'attente : sans lui, l'import paraît figé. `[]` en 4e
+                // argument — c'est un message, aucune transaction n'a changé d'état.
+                onProgress?.(
+                    processed, transactions.length,
+                    `Limite d'API atteinte — nouvelle tentative dans ${Math.round(waitMs / 1000)} s (essai ${attempt + 1}/${maxAttempts}).`,
+                    [],
+                );
+                await sleep(waitMs);
+                continue;   // ⚠️ SANS `done` : c'est ce qui relance l'appel.
+            }
+
+            // Échec définitif pour ce chunk (non rejouable, ou essais épuisés).
+            failedChunks++;
             out.push(...toAnalyze);
+            done = true;
+        }
         }
 
         processed += chunk.length;
         onProgress?.(processed, transactions.length, `Traité ${processed}/${transactions.length}`, out);
     }
 
+    // [AI-CATEGORIZE-NO-BACKOFF] UN log par cause, jamais un par chunk. L'erreur BRUTE du premier
+    // échec est conservée : c'est elle qui porte le statut (429 / 500 / réseau) et oriente le
+    // diagnostic — un compteur seul dirait « ça a raté » sans dire pourquoi.
+    if (authAborted) {
+        logError({
+            source: 'ai',
+            message: 'categorizeBatch : clé API refusée (401/403) — batch interrompu, transactions restantes laissées non catégorisées.',
+            error: firstChunkError,
+        });
+    } else if (failedChunks > 0) {
+        logError({
+            source: 'ai',
+            message: `categorizeBatch : ${failedChunks} chunk(s) en échec après réessais (transactions laissées non catégorisées).`,
+            error: firstChunkError,
+        });
+    }
+    if (retryWaits > 0) {
+        logError({
+            source: 'ai', severity: 'warning',
+            message: `categorizeBatch : ${retryWaits} réessai(s) après limite d'API, ${Math.round(totalWaitMs / 1000)} s d'attente cumulée.`,
+        });
+    }
     if (offListCount > 0) {
         logError({
             source: 'ai', severity: 'warning',

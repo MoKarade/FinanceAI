@@ -62,6 +62,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   Désormais, écrire dans le coffre ne peut plus faire disparaître un champ dont on ne parle pas.
   Vider le champ à la main efface toujours le jeton, comme avant.
 
+### La catégorisation par l'IA ne lâche plus au premier ralentissement
+- **Quand l'API Anthropic te limitait le débit, tout le reste de l'import restait « non
+  catégorisé »** — sans réessai, sans message, et le programme continuait de marteler l'API, ce qui
+  prolongeait le blocage.
+- Désormais : nouvelle tentative après 1 s, 2 s puis 4 s ; si le serveur indique lui-même combien de
+  temps attendre, c'est SA consigne qui est suivie (plafonnée à 60 s pour qu'un import ne se fige
+  jamais une journée). Une seconde de pause est aussi laissée entre deux lots pour ne pas déclencher
+  la limite en rafale.
+- Tu vois maintenant l'attente à l'écran (« nouvelle tentative dans 3 s ») au lieu d'un import qui
+  a l'air figé.
+- Si ta clé API est refusée, l'import s'arrête net avec un message clair, au lieu d'enchaîner des
+  dizaines d'appels voués à l'échec.
+
 ### Corrections de calcul (lot moteur, suite de l'audit)
 - **Ton crédit d'impôt pour dons était surévalué.** La part fédérale du crédit était comptée en
   entier, alors qu'au Québec elle ne vaut que 83,5 % : l'abattement québécois de 16,5 % s'applique

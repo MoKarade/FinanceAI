@@ -793,10 +793,11 @@
   dans soldes de dette, servir hypothèque mensuellement (le module `realEstateMonth` le fait déjà
   pour les buts immo).
 
-- [ ] 🔴 **`[AI-CATEGORIZE-NO-BACKOFF]`** (M) — `categorizeBatch` chunke 50 tx sans retry/backoff/pacing.
-  Un 429 sur chunk N → catch + chunk N+1 repart aussitôt → rate-limit atteint tôt **dégrade tout
-  le reste en « non catégorisé », sans réessai ni signal**. **Correctif** : backoff exponentiel borné
-  ou pause inter-chunk 1 s.
+- [x] 🔴 **`[AI-CATEGORIZE-NO-BACKOFF]`** (M, LIVRÉ) — `categorizeBatch` chunkait 50 tx sans
+  retry/backoff/pacing. Livré : backoff exponentiel borné (1/2/4 s, cap 60 s) **+** `Retry-After`
+  honoré (secondes ET date HTTP) **+** pacing 1 s inter-chunks **+** court-circuit sur 401/403 (une
+  clé refusée ne redevient pas valide au chunk suivant) **+** logs AGRÉGÉS portant l'erreur brute.
+  `sleep` injectable → 15 tests qui ne dorment jamais.
 
 #### MOYEN
 
@@ -1106,7 +1107,7 @@
 
 > Périmètre : services/claude.ts, Vision payslip, chat in-app, budget recommandations.
 
-- [ ] 🔴 **`[AI-CATEGORIZE-NO-BACKOFF]`** (M) — [dupliqué en fiscal section, voir là-haut]
+- [x] 🔴 **`[AI-CATEGORIZE-NO-BACKOFF]`** (M, LIVRÉ) — [dupliqué en fiscal section, voir là-haut]
 
 - [ ] **`[AI-BUDGETMODAL-MODEL-COST]`** (S) — `BudgetAiModal.tsx` `chatStream` sans `model` →
   défaut Sonnet pour 3 recos courtes (toutes les tâches comparables épinglent Haiku). `MODEL_HAIKU`

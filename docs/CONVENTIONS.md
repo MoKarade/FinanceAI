@@ -2683,6 +2683,25 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   (optimisation parfaitement raisonnable) aurait réintroduit le bug en silence, sans qu'aucun test
   ne le voie. Règle : une dépendance ne doit jamais reposer sur l'INSTABILITÉ DE RÉFÉRENCE d'une
   autre. Et quand on écrit « ajouté à tous les X », les COMPTER.
+
+- ⚠️ **[AI-CATEGORIZE-NO-BACKOFF] 2026-08-13 — un `catch` qui « continue » transforme une panne
+  TRANSITOIRE en dégradation TOTALE.** `categorizeBatch` avalait le 429 du chunk N et lançait le
+  chunk N+1 aussitôt : la limite atteinte au début d'un gros import laissait tout le reste « non
+  catégorisé », sans réessai ni signal — et le martèlement prolongeait le rate-limit. Signature de
+  ce défaut : un `catch` qui rend une valeur par défaut à l'intérieur d'une BOUCLE. Se demander
+  systématiquement « cette erreur est-elle transitoire ? » et, si oui, réessayer avec un backoff
+  BORNÉ (le patron du dépôt existait déjà : `services/fintable/client.ts`, `priceRefresh.ts`).
+  Trois natures d'erreur, trois conduites : transitoire → réessayer ; AUTH → couper le batch (la
+  clé ne redeviendra pas valide au chunk suivant) ; requête invalide → abandonner CE chunk mais
+  continuer (un défaut de requête n'est pas un défaut de compte).
+- ⚠️ **[Même lot] Un test de backoff ne doit JAMAIS dormir.** `sleep` injectable (défaut =
+  `setTimeout`) : les 15 tests s'exécutent en 17 ms et vérifient les délais EXACTS, y compris le cap
+  et la priorité de `Retry-After` sur l'estimation locale. Un test de temporisation qui attend
+  vraiment devient un test lent, donc un test que quelqu'un finit par désactiver.
+- ⚠️ **[Même lot] Le pacing se compte en APPELS, pas en itérations.** La pause inter-chunks ne
+  s'applique ni avant le premier appel, ni après un chunk 100 % « transferts évidents » (filtré
+  avant l'API, donc sans appel). Compter les tours de boucle plutôt que les appels ajoute de
+  l'attente gratuite à un import qui n'a rien demandé.
 - ⚠️ **[PASSE-REEL-2] 2026-08-13 — un indicateur qui ne peut pas être MAUVAIS ne vaut rien.** La
   tentation naturelle était de comparer le passé réel à « la projection ». Mais la projection est
   recalculée en PARTANT des soldes réels du jour : elle colle au passé PAR CONSTRUCTION, l'écart

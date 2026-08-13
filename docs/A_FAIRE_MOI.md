@@ -433,9 +433,17 @@ Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiff
 
 ## A0 — Quota Vercel (2026-08-12)
 
-- [x] **[INFRA-VERCEL-QUOTA]** — ✅ **RÉSOLU 2026-08-13 ~01:03 UTC** : le quota s'est réinitialisé,
-  le preview de la PR #608 a bâti et déployé (statut `Ready`). Le déploiement PROD repart au prochain
-  merge sur `main`. Rappels programmés devenus sans objet. Historique ci-dessous.
+- [ ] **[INFRA-VERCEL-QUOTA]** — ⚠️ **TOUJOURS ACTIF. Correction de mon propre constat** : j'ai noté
+  « résolu » à 01:03 UTC parce que 3 previews avaient bâti (`Ready`) après minuit UTC. C'était FAUX —
+  le plafond n'est pas un compteur remis à zéro à minuit mais une **fenêtre glissante** : à 01:56 UTC
+  Vercel a de nouveau refusé, avec un message explicite « Deployment rate limited — retry in **24
+  hours** ». Prochaine fenêtre utilisable : ~2026-08-14 02:00 UTC.
+  Conséquence : la PR #608 merge sur `main` (le code atterrit, rien n'est perdu) mais **hubperso.com
+  garde la version d'avant** jusqu'à ce que je relance le déploiement PROD. C'est à MOI de le
+  relancer, pas à Marc.
+  Leçon : ne PAS conclure « quota résolu » sur la foi d'un déploiement qui passe — seul un message
+  d'erreur qui cesse sur une PÉRIODE fait preuve (`INFRA-QUOTA-FALSE-RESET`).
+  Historique ci-dessous.
 - [x] **Historique** — Le plan Vercel GRATUIT plafonne à **100 déploiements/jour** ; plafond atteint le
   2026-08-12 ~20:18 UTC (6 PR + pushes de la refonte nav dans la journée). Effet : previews ET **déploiement PROD
   bloqués** jusqu'au reset — le code merge sur `main` mais hubperso.com garde la version d'avant.

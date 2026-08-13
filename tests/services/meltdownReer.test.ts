@@ -12,7 +12,7 @@ import type { AllocationStrategy } from '../../services/projection/types';
 const MELT = 'MELTDOWN_REER' as AllocationStrategy;
 
 const baseCtx = (o: Partial<MeltdownCtx> = {}): MeltdownCtx => ({
-    m: 0, isRetired: true, simSalaryGrowth: 2, activeUsersCount: 1,
+    m: 0, isRetired: true, simSalaryGrowth: 2, taxFilers: 1,
     incomeRetirement: 2000, accRetraitsReerYear: 0, accRentesYear: 0,
     grossMarcBaseAnnual: 0, grossAnnaBaseAnnual: 0,
     reer: 500000, nonReg: 100000, celi: 50000, realEstateEquity: 0, ...o,

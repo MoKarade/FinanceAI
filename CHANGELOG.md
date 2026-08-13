@@ -8,6 +8,29 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Le scénario « divorce » disait presque n'importe quoi
+- **Céder la moitié de ton patrimoine ne te coûtait que 4 %** dans la simulation, et ton plan
+  restait « viable à 100 % ». Trois erreurs se compensaient : tes dettes n'étaient pas partagées
+  (tu cédais tous tes actifs et gardais 100 % des dettes), le ménage restait imposé à deux
+  personnes, et surtout ton ex continuait d'encaisser son salaire **à vie** dans le calcul.
+- Corrigé : les dettes se partagent comme les actifs, le ménage passe vraiment à une tête, et le
+  revenu du conjoint parti disparaît.
+- ⚠️ **Le résultat est maintenant beaucoup plus sombre, et c'est voulu** : le moteur ne réduit
+  PAS tes dépenses quand tu te retrouves seul (tu gardes 100 % du budget du couple, plus la
+  pension). Hypothèse volontairement pessimiste, discutée et retenue — le détail est dans
+  `docs/decisions.md`.
+- Deux erreurs de plus, trouvées par une seconde revue avant la mise en ligne :
+  - **Le Supplément de revenu garanti te ENRICHISSAIT en divorçant.** Une fois seul, tu restais
+    évalué au barème d'un COUPLE, puis la prestation t'était versée en double : 1 226 $/mois, une
+    somme que la loi ne verse à personne (le maximum d'une personne seule est 1 105 $). Sur 25 ans,
+    le ménage seul encaissait 50 346 $ de plus que le couple resté ensemble.
+  - **La stratégie « meltdown REER » visait encore un revenu de deux personnes**, mais l'empilait
+    sur ta seule déclaration : 140 000 $/an de retraits imposables de trop, et une stratégie
+    recommandée sur cette base.
+- Effet de bord assumé, **au-delà du divorce** : si tu perds ton conjoint, le meltdown REER vise
+  désormais lui aussi une seule déclaration. Sur un scénario mesuré, cela représente **75 756 $
+  d'impôt à vie en moins** et 92 921 $ de patrimoine en plus. C'est une correction, pas un cadeau :
+  un veuf est bien un seul contribuable.
 ### Tu vois maintenant si tu tiens ton plan
 - Sous la courbe verrouillée, une ligne te dit **de combien ton réel est en avance ou en retard**
   sur ce que tu avais figé — en dollars et en pourcentage — plus l'**écart moyen** sur tous les mois

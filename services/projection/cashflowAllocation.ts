@@ -139,6 +139,10 @@ export function processCashflowAllocation(
     // FA-10 — survivant = 1 contribuable : seuils fiscaux individuels (pas ×2 du ménage),
     // cohérent avec taxFilers (taxDecember) et oasBeneficiaries (clawback PSV). Le salaire du
     // défunt (grossAnna par convention du moteur) est exclu des revenus de la cascade.
+    // ⚠️ [panel #613] Le paramètre s'appelle `survivorMode` pour raisons historiques, mais
+    // l'appelant y passe désormais `soloHousehold` (= décès OU DIVORCE) : sa sémantique ici a
+    // toujours été « il ne reste qu'UN contribuable », jamais « prestations de survivant ».
+    // Ne pas le lire comme spécifique au décès — c'est ce qui a produit l'oubli du divorce.
     const liveFilers = survivorMode ? 1 : activeUsersCount;
 
     if (monthlyCashflow < 0) {

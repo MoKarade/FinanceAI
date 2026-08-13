@@ -35,6 +35,44 @@ export interface RetirementIncomeCtx {
     psvResidencyYears: number[];
     startYear: number;  // pour calcul arrivalAge depuis canadaArrivalYear
     /**
+     * [ENG-DIVORCE, panel #613 — ÉLEVÉ-1] Part du ménage qui reste au déclarant, pour les rentes
+     * exprimées comme un montant MÉNAGE non ventilé — aujourd'hui la seule concernée est la DB
+     * (`dbPensionMonthly`, documentée « cumulée pour le couple », cf. l. ~108). Défaut `1`.
+     *
+     * ⚠️ Pourquoi ce champ EXISTE alors qu'on pourrait croire qu'il suffit de réduire
+     * `activeUsersCount` : RRQ et PSV se réduisent, eux, en passant simplement une liste d'users
+     * plus courte, parce qu'ils sont calculés en `(base_ménage / activeUsersCount) × poids_i`
+     * sommé sur les users. Toucher AUSSI `activeUsersCount` ANNULE la réduction — le `/N` est un
+     * diviseur de l'agrégat ménage, pas un compteur de bénéficiaires. C'est l'erreur exacte du
+     * premier correctif : `activeUsersCount: 1` + 1 seul user ⇒ Δ rentes mesuré = 0,00 $/mois, et
+     * même +398 $/mois avec des salaires inégaux (le divorce ENRICHISSAIT).
+     * La DB, elle, n'est divisée par RIEN dans `dbMonthly` : il lui faut ce facteur explicite.
+     */
+    householdPensionShare?: number;
+    /**
+     * [ENG-DIVORCE, panel re-revue] Nombre d'ADULTES vivant dans le ménage — pour le SRG
+     * UNIQUEMENT. Défaut : `activeUsersCount` (donc aucun changement pour tous les appelants
+     * existants ; la rétrocompat est bit-identique).
+     *
+     * ⚠️ Troisième compteur du fichier, et c'est VOULU : `activeUsersCount` est un DIVISEUR
+     * d'agrégat, `householdPensionShare` une part de montant ménage, et celui-ci un vrai NOMBRE DE
+     * TÊTES. Le SRG est la seule prestation dont le barème dépend de la composition du ménage
+     * (célibataire vs couple), et il la lit deux fois : le barème appliqué, et le nombre de
+     * prestations versées. Le divorce n'y arrivait par aucune des deux autres voies — la liste
+     * d'users raccourcie ne l'atteint pas non plus, puisque ces lignes ne bouclent pas sur `users`.
+     *
+     * ⚠️ Distinct de `survivorMode`, qui reste réservé au DÉCÈS : un divorcé n'a droit à aucune
+     * prestation de survivant (RRQ réversible, PSV, DB du conjoint). Ce champ ne touche QUE les
+     * têtes du SRG.
+     *
+     * Mesuré avant correctif : un divorcé était testé au barème COUPLE sur le revenu FAMILIAL puis
+     * la prestation était versée ×2 têtes → 1 219,28 $/mois rendus contre 1 052,64 $ corrects, une
+     * valeur qui DÉPASSE le maximum légal célibataire. Sur 25 ans, le ménage à UNE tête encaissait
+     * 50 346 $ de SRG de plus que le couple intact : le divorce enrichissait, dans la fonction même
+     * que le lot prétendait corriger.
+     */
+    householdAdults?: number;
+    /**
      * FA-3b (audit fiscal 2026-06-09) — revenu imposable AUTRE de l'ANNÉE PRÉCÉDENTE
      * (retraits REER/FERR + revenus locatifs), en dollars NOMINAUX. Le vrai SRG est calculé
      * sur le revenu de l'année d'imposition précédente : l'ignorer affichait un SRG fictif
@@ -274,7 +312,12 @@ export function computeRetirementIncome(
     const dbIndexationFraction = Math.min(1, Math.max(0, (retirementGoal.dbPensionIndexationPct ?? 100) / 100));
     const dbInflFactor = 1 + (inflFactor - 1) * dbIndexationFraction;
     const dbSurvivorFactor = survivorMode ? dbSurvivorPct : 1;
-    const dbMonthly = age >= dbStartAge ? dbBaseMonthly * dbInflFactor * dbSurvivorFactor : 0;
+    // [ENG-DIVORCE — ÉLEVÉ-1] `householdPensionShare` : la DB est un montant MÉNAGE que rien ne
+    // divise ici. Sans ce facteur, un divorcé conservait 100 % de la DB du couple.
+    const dbHouseholdShare = Number.isFinite(ctx.householdPensionShare) && (ctx.householdPensionShare as number) > 0
+        ? (ctx.householdPensionShare as number)
+        : 1;
+    const dbMonthly = age >= dbStartAge ? dbBaseMonthly * dbInflFactor * dbSurvivorFactor * dbHouseholdShare : 0;
 
     // §6.3 — SRG (Supplément de revenu garanti) pour retraités 65+ recevant la PSV.
     // FA-3b (audit fiscal 2026-06-09) : le « revenu autre que PSV » du test SRG inclut
@@ -304,12 +347,21 @@ export function computeRetirementIncome(
     // survivant gardait le barème COUPLE (max 662 $ ×2 = 1 324 $/mois, seuil combiné 29 760 $)
     // au lieu du barème célibataire (1 105 $, seuil 22 512 $) ET son revenu test était divisé
     // par 2 → jusqu'à ~2,6 k$/an de SRG fictif NON imposable (sens non conservateur).
-    const gisHeads = survivorMode ? 1 : Math.max(1, activeUsersCount);
+    // [ENG-DIVORCE] `householdAdults` (défaut `activeUsersCount`) et NON `activeUsersCount` : après
+    // un divorce le diviseur d'agrégat reste 2 (cf. `householdPensionShare`) alors que le ménage
+    // n'a plus qu'une tête. Lire le diviseur ici donnait le barème COUPLE à un célibataire, puis
+    // versait sa prestation en double.
+    const householdAdults = Number.isFinite(ctx.householdAdults) && (ctx.householdAdults as number) > 0
+        ? (ctx.householdAdults as number)
+        : activeUsersCount;
+    const gisHeads = survivorMode ? 1 : Math.max(1, householdAdults);
     const otherIncomeAnnualPerAdult = otherIncomeAnnualFamily / gisHeads;
     // [ITEM-2C] `psvMonthly > 0` (PSV per-conjoint) au lieu de `age >= psvStartAge` (âge user1 seul) : pour un
     // couple à écart d'âge où l'aîné touche la PSV mais user0 < psvStartAge, le SRG était à tort 0. Couple
     // d'âge égal : `age >= psvStartAge` ⟺ `psvMonthly > 0` → inchangé.
-    const hasSpouseWithOAS = !survivorMode && activeUsersCount > 1 && psvMonthly > 0;
+    // [ENG-DIVORCE] Même correctif : « ai-je un conjoint qui touche la PSV » est une question de
+    // TÊTES, pas de diviseur. Un divorcé n'en a plus — il passe au barème célibataire.
+    const hasSpouseWithOAS = !survivorMode && householdAdults > 1 && psvMonthly > 0;
     // FA-9 (audit 2026-06-09, fix 2026-06-10) — TOUT en base RÉELLE ici, comme RRQ/PSV : appel
     // SANS `year` (seuils/max 2026 de base) contre le revenu test déjà en base réelle, puis la
     // nominalisation UNIQUE ×inflFactor ci-dessous (gisTotal). Avant : `year=currentYear`

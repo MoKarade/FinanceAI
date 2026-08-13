@@ -32,13 +32,23 @@ const MELTDOWN_NW_HIGH = 2_000_000;
 const MELTDOWN_NW_MID  = 1_000_000;
 const MELTDOWN_TARGET_HIGH = 220_000;
 const MELTDOWN_TARGET_MID  = 140_000;
-const MELTDOWN_TARGET_BASE =  90_000;
+/** Exporté pour les gardes : un test qui recopie ce chiffre dérive en silence quand il change. */
+export const MELTDOWN_TARGET_BASE =  90_000;
 
 export interface MeltdownCtx {
     m: number;
     isRetired: boolean;
     simSalaryGrowth: number;
-    activeUsersCount: number;
+    /**
+     * Nombre de CONTRIBUABLES du ménage — pas sa taille nominale. Le meltdown vise un revenu
+     * imposable par DÉCLARATION (`MELTDOWN_TARGET_* × N`) : ce qui compte est le nombre de
+     * déclarations sur lesquelles étaler les retraits, jamais le nombre de personnes.
+     * ⚠️ Ce champ s'appelait `activeUsersCount`, et le nom était le bug : après un divorce
+     * l'appelant y passait 2 pendant que son `taxFilers` valait 1 — le meltdown visait donc
+     * 21 333 $/mois brut (deux têtes) empilés sur UNE seule déclaration, soit 140 000 $/an de
+     * retraits REER imposables en trop, avec la stratégie MELTDOWN_REER recommandée sur cette base.
+     */
+    taxFilers: number;
     incomeRetirement: number;
     accRetraitsReerYear: number;
     accRentesYear: number;
@@ -69,7 +79,7 @@ export function processReerMeltdown(
     if (strategy !== 'MELTDOWN_REER' || ctx.reer <= 0) return null;
 
     const {
-        m, isRetired, simSalaryGrowth, activeUsersCount,
+        m, isRetired, simSalaryGrowth, taxFilers,
         incomeRetirement, accRetraitsReerYear, accRentesYear,
         grossMarcBaseAnnual, grossAnnaBaseAnnual,
         reer, nonReg, celi, realEstateEquity,
@@ -84,7 +94,7 @@ export function processReerMeltdown(
     const isVeryHighNW = totalAssets > MELTDOWN_NW_HIGH;
     const isHighNW = totalAssets > MELTDOWN_NW_MID;
 
-    const targetMeltGross = (isVeryHighNW ? MELTDOWN_TARGET_HIGH : isHighNW ? MELTDOWN_TARGET_MID : MELTDOWN_TARGET_BASE) * (activeUsersCount || 1);
+    const targetMeltGross = (isVeryHighNW ? MELTDOWN_TARGET_HIGH : isHighNW ? MELTDOWN_TARGET_MID : MELTDOWN_TARGET_BASE) * (taxFilers || 1);
 
     if (currentTotalGross >= targetMeltGross) return null;
 

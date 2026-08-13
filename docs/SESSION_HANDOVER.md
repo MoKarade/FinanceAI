@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟡 Session 2026-08-13 (suite 78) — `[ENG-DIVORCE-LATENTTAX]` : juste, mais INERTE
+> `computeLatentTax` recevait `activeUsersCount` inchangé (NOMBRE DE DÉCLARANTS : divise le revenu,
+> remultiplie l'impôt) + le salaire de l'ex dans l'assiette. Corrigé (`taxFilers`, `grossAnna: 0`).
+> ⚠️ **Effet NUL sur toute sortie observable, vérifié par perturbation.** `impotLatent` n'alimente
+> que `ImpotLatent` du point mensuel ; sous MC (seul mode où le divorce existe) le point est ALLÉGÉ.
+> Tests sur la FONCTION PURE — un test de scénario aurait été vacueux.
+> **Cause commune identifiée** → `[ENG-MC-OBSERVABILITY]` : le point MC allégé explique À LUI SEUL
+> trois angles morts (`RetraitREER` et `ImpotLatent` inobservables pendant un divorce, aucune garde
+> de conservation sur le splitter). À traiter par un mode « MC verbeux » réservé aux tests.
 > ## 🟢 Session 2026-08-13 (suite 79) — `[ENG-MC-OBSERVABILITY]` : le mur enfin levé
 > Sous MC, le point mensuel était réduit à `{ NetWorth, monthIndex }` (perf) — or divorce, décès du
 > conjoint, LTC et perte d'emploi n'existent QUE sous MC. Trois lots avaient dû contourner.
@@ -16,6 +25,7 @@
 > depuis ces soldes) — retirer le partage des dettes la laisse VERTE. L'invariant qui MORD est le
 > RATIO de partage sur la DETTE (grandeur indépendante) : 0,4926 attendu, 0,9949 en régression.
 > Après avoir écrit une garde, INTRODUIRE la régression qu'elle prétend couvrir.
+
 
 > ## 🟢 Session 2026-08-13 (suite 76) — `[ENG-DIVORCE-ROOM-COUPLE]` : les droits d'un seul titulaire
 > `processJanuaryReset` recevait `config.users` ENTIER et `activeUsersCount` inchangé : chaque
@@ -31,6 +41,7 @@
 > - Fixture : DEUX essais donnaient un écart NUL — les droits n'étaient pas le facteur limitant.
 >   Il faut une épargne supérieure aux droits annuels ET un horizon avant décaissement.
 > Rétrocompat MESURÉE : déterministe (22 894 519 $) et décès (44 499 602 $) bit-identiques.
+
 > ## 🟢 Session 2026-08-13 (suite 77) — `[ENG-DIVORCE-ESTATE-PENSION]` : la fonction MIROIR
 > `computeEstateNetWorth` gardait `activeUsersCount` entier et la pension MÉNAGE complète → le
 > divorcé héritait de la valeur des rentes de son ex à l'écran Succession. **322 865 $ indus**

@@ -1850,8 +1850,20 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             .filter(p => p.isBought && !p.isSold && !p.isPrimaryResidence)
             .reduce((s, p) => s + Math.max(0, p.currentValue - (p.cost ?? 0)), 0);
         const impotLatent = computeLatentTax(
-            { m, loopYear, simInflation, simSalaryGrowth, isRetired, activeUsersCount,
-              grossMarcBaseAnnual, grossAnnaBaseAnnual, accRentesYear, incomeRetirement,
+            // [ENG-DIVORCE-LATENTTAX] `activeUsersCount` est ici un NOMBRE DE DÉCLARANTS : il
+            // divise le revenu pour calculer l'impôt d'UNE déclaration, puis le remultiplie. Après
+            // un divorce, tout le patrimoine latent pèse sur UNE seule déclaration, donc sur des
+            // paliers plus élevés. Passer 2 lissait la facture sur deux têtes fictives — mesuré :
+            // impôt latent −337 063 $ au lieu de −390 189 $, soit **53 126 $ sous-estimés**, et un
+            // patrimoine net d'impôt affiché d'autant trop haut.
+            // Même famille que `taxFilers` (dépôt fiscal) et `taxJanuary` : ces trois-là doivent
+            // dire la même chose, sinon la prochaine correction n'en bougera qu'une.
+            { m, loopYear, simInflation, simSalaryGrowth, isRetired, activeUsersCount: taxFilers,
+              grossMarcBaseAnnual,
+              // Le salaire d'un ex-conjoint parti ne fait plus partie de l'assiette — même motif
+              // qu'au dépôt de décembre et au meltdown REER.
+              grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual,
+              accRentesYear, incomeRetirement,
               reer, nonReg, nonRegACB, crypto, cryptoACB, realEstateLatentGain: realEstateLatentGainNow, enableMonteCarlo },
             calculateFiscalReport,
         );

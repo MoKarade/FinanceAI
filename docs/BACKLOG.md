@@ -941,10 +941,19 @@
   MC bit-identiques) ; le patrimoine mensuel ne bouge pas — le défaut ne vivait QUE dans la
   succession, ce qui l'a fait survivre au premier lot.
 
->>>>>>> origin/main
+<<<<<<< HEAD
+- [x] **`[ENG-DIVORCE-LATENTTAX]`** (S, LIVRÉ — mais INERTE aujourd'hui, voir ci-dessous) —
+  `computeLatentTax` recevait `activeUsersCount` inchangé (c'est un NOMBRE DE DÉCLARANTS : il divise
+  le revenu puis remultiplie l'impôt) et le salaire de l'ex dans l'assiette. Corrigé en `taxFilers`
+  + `grossAnnaBaseAnnual: 0` en ménage solo, avec 3 tests sur la fonction PURE.
+  ⚠️ **VÉRIFIÉ PAR PERTURBATION : effet NUL sur toute sortie observable.** `impotLatent` n'alimente
+  QUE `ImpotLatent` du point mensuel, et sous MC — le seul mode où le divorce existe — le point est
+  ALLÉGÉ à `{ NetWorth, monthIndex }`. Patrimoine final, succession et `ImpotLatent` sont
+  bit-identiques avec/sans correctif. Le calcul est désormais juste ; il n'est simplement pas LU.
 - [ ] **`[ENG-DIVORCE-LATENTTAX]`** (S) — `latentTax` ignore le divorce : impôt latent −337 063 $
   (N=2) vs −390 189 $ (N=1) → **53 126 $ de sous-estimation**, patrimoine net d'impôt affiché trop
   haut. (Ex-MOYEN-10, moitié déjà traitée : le meltdown est corrigé, `latentTax` ne l'est pas.)
+>>>>>>> origin/main
 - [ ] **`[ENG-DIVORCE-TAXDEBT-UNSPLIT]`** (S) — la créance/dette fiscale n'est pas partagée. Split à
   100 % : patrimoine 135 $ au mois du divorce, puis avril crédite **26 948,77 $** — le remboursement
   INTÉGRAL du couple (identique au témoin sans divorce). Contredit la décision « on partage la

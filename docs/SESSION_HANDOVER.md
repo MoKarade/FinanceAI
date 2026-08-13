@@ -4,6 +4,34 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-13 (suite 67) — lot MOTEUR 2/5 : le bloc DIVORCE (PR #613)
+> Les 3 tickets divorce livrés ENSEMBLE (un seul changement sémantique : le ménage passe à une
+> tête). Décisions produit dans `docs/decisions.md` — ADR « Modèle du DIVORCE ».
+> - Dettes non immobilières partagées comme les actifs (décision Marc).
+> - `soloHousehold = survivorMode || divorced` sur les 7 sites fiscaux ; `computeRetirementIncome`
+>   garde `survivorMode` (un divorcé n'a AUCUNE prestation de survivant) et reçoit à part un
+>   compte de têtes réduit.
+> - **Dépenses du ménage laissées à 100 % — décision ASSUMÉE de Marc**, en connaissance de
+>   l'effet : le patrimoine médian passe de 4,89 M$ à −621 625 $ et la survie de 100 % à 0 %.
+>   ⚠️ Le DÉCÈS a le même comportement (bloc dépenses sans `survivorMode`) : cohérent, désormais
+>   explicite. Si un facteur « dépenses solo » est ajouté un jour, c'est le test « la survie
+>   chute » qui bougera, pas les deux autres.
+>
+> ⚠️ **PIÈGE À CONNAÎTRE AVANT DE TOUCHER AU DIVORCE** : il n'existe QUE dans la branche
+> Monte-Carlo, et `chartData` est TOUJOURS déterministe. Mesurer sur `chartData` donne un résultat
+> IDENTIQUE avec et sans divorce — j'y suis tombé. Mesurer sur les cônes `P10/P50/P90` et
+> `survivalRatePct`, seules sorties MC réellement consommées.
+>
+> **Reste du lot moteur** : 3/5 stress-test + invariants · 4/5 bilan complet (locatif, entreprise,
+> liquidDebt) · 5/5 backoff catégorisation.
+>
+> ## 🔴 NOUVEAU, signalé par Marc — `[PASSE-REEL]`, sa courbe passée lui MENT
+> Cause trouvée : `services/projection/dailyCurve.ts:59` renvoie le point PROJETÉ quand aucune
+> donnée réelle n'existe pour la journée. Marc voit un CELI garni alors qu'il n'a pas de CELI.
+> Ses 3 décisions sont consignées dans le BACKLOG (`[PASSE-REEL-1/2/3]`) : la courbe commence où
+> les données commencent (pas de repli), l'écart se mesure contre une prévision FIGÉE verrouillée,
+> et la projection se réancre chaque jour sur les soldes réels. À faire après le lot moteur.
+
 > ## 🟢 Session 2026-08-13 (suite 65) — lot MOTEUR de l'audit, 1/5 : `[FISC-DON-ABATEMENT]`
 > Marc a cadré le lot moteur (« tout le HIGH ») et tranché la question produit du divorce.
 > **Découpage retenu, une PR par thème** (panel + merge entre chaque) :

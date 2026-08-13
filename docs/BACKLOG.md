@@ -754,7 +754,7 @@
 > Les 5 derniers captions du moteur détaillent CHAQUE hypothèse testée et RÉFUTÉE (ne pas
 > re-lever). Aucune baseline testée n'est cassée (3833/3833 verts post-audit).
 
-### 🔴 Moteur & fiscal — altère les calculs d'argent (11 HIGH/ÉLEVÉ · 7 MED · 7 LOW/FAIBLE)  *(1 HIGH livré : `[FISC-DON-ABATEMENT]`, PR #611)*
+### 🔴 Moteur & fiscal — altère les calculs d'argent (8 HIGH/ÉLEVÉ · 7 MED · 7 LOW/FAIBLE)  *(4 HIGH livrés : `[FISC-DON-ABATEMENT]` #611 · bloc DIVORCE #613)*
 
 > Périmètre : projection.ts + projection/* + utils/tax.ts + services/realEstate.ts
 > + services/claude.ts (Vision payslip). Tous les findings sont MESURÉS sur le vrai moteur
@@ -778,21 +778,6 @@
   celi*(crashFactor−1)` au moment du crash, ou émettre un champ `MarketShock` dédié + test
   stressTestEnabled en forme-flux.
 
-- [ ] 🔴 **`[ENG-DIVORCE-DEBT-ASYMMETRY]`** (S) — le divorce partage ACTIFS et l'hypothèque,
-  mais garde **100 % des dettes non immobilières** (activeDebts[], liquidDebt, smithManoeuvreDebt).
-  **Mesuré : après avoir cédé 100 % des actifs, le NW reste −81 827 $ (100 k$ de dettes intactes).**
-  Impact = solde total dettes × divorceSplitPct, cumulé sur tous les MC où le divorce se déclenche.
-  **Correctif** : appliquer `keep` à `activeDebts[i].balance`, `liquidDebt`, `smithManoeuvreDebt`.
-  Décision produit requise si dettes ne se partagent pas (documenté dans decisions.md).
-
-- [ ] 🔴 **`[ENG-DIVORCE-REGISTRE-PERCONJOINT]`** (M) — le divorce est **fiscalement INERTE** :
-  `reerByUser`, `activeUsersCount`, `liveFilers`, espaces CELI/REER/CELIAPP, revenus, tous
-  survivent intacts (contrairement au décès qui les traite). **Mesuré isolant : Δ impôt = 0 $ exact
-  sur 30 ans.** Ordre de grandeur : différence 1 vs 2 contribuables = 187 k$ de différence d'impôt
-  cumulé. **Correctif** : au divorce, appliquer le pendant du merge décès — scinder
-  `reerByUser`/`accRetraitsReerYearByUser`, ramener `activeUsersCount` à 1, zéroïser
-  `grossAnnaBaseAnnual`, recalculer reerShares. Charge fiscale à valider par financial-integrity.
-
 - [ ] 🔴 **`[ENG-LIQUIDDEBT-NEVER-REPAID]`** (M) — `liquidDebt` ne fait que croître : jamais
   remboursé (même avec millions en liquide), **jamais porteur d'intérêt**. **Mesuré : retraité
   insolvable, héritage de 1,5 M$, liquidDebt gelé 559 k$ pendant 180 mois à côté de 1,65 M$ de
@@ -807,15 +792,6 @@
   sur l'horizon. **Correctif** : brancher `currentValue` dans `realEstateEquity` et `mortgageBalance`
   dans soldes de dette, servir hypothèque mensuellement (le module `realEstateMonth` le fait déjà
   pour les buts immo).
-
-- [ ] 🔴 **`[FISC-DIVORCE-INCOME-PHANTOM]`** (M) — le divorce coupe ACTIFS mais garde le **revenu et
-  la fiscalité de COUPLE**. Aucune réduction de `grossAnnaBaseAnnual`, `incomeAnnaNetMonthly`,
-  `taxFilers` ni RAMQ au barème couple. **Mesure : couple 183 k$ brut, conjoint parti = 85 k$ de
-  revenu fantôme encaissé à vie + fiscalité couple indue.** Cette erreur DOMINE la coupe de 50 % du
-  patrimoine. La garde argent ne l'attrape pas (l'argent reste conservé, juste inventé au bon
-  endroit). **Correctif** : basculer sur mode « ménage à 1 » symétrique du `survivorMode` : `taxFilers
-  = 1`, `grossAnnaBaseAnnual = 0`, `incomeAnnaNetMonthly = 0`, `activeUsersCount` fiscal = 1. **À
-  minima** : documenter comme limite assumée dans FISCAL_REFERENCE §9 (aujourd'hui absent).
 
 - [ ] 🔴 **`[AI-CATEGORIZE-NO-BACKOFF]`** (M) — `categorizeBatch` chunke 50 tx sans retry/backoff/pacing.
   Un 429 sur chunk N → catch + chunk N+1 repart aussitôt → rate-limit atteint tôt **dégrade tout
@@ -943,6 +919,30 @@
   Un utilisateur SR qui clique nav n'a aucune indication que le contenu a changé. **Correctif** :
   appeler `document.getElementById('main')?.focus()` au changement `activeTab` ; pour deep-link
   `usePendingFocus`, ajouter `el.focus({preventScroll})` après `scrollIntoView`.
+
+### 🔴 `[PASSE-REEL]` — le passé affiche la PROJECTION, pas le réel (signalé par Marc 2026-08-13)
+
+> Marc : « mon passé ne semble pas correspondre à mon passé réel mais au futur qui était estimé.
+> Je n'ai pas de compte CELI et pourtant mon passé me dit que j'ai de l'argent dedans. »
+> **Cause trouvée** : `services/projection/dailyCurve.ts:59` —
+> `if (!real) return { ...d, monthIndex: x };` où `d` est le point PROJETÉ. Toute journée passée
+> sans donnée réelle affiche donc l'estimation, présentée comme du passé.
+> ⚠️ L'en-tête du MÊME fichier énonce pourtant la règle : « Ce qui n'est pas mesuré doit être
+> ABSENT, donc affiché — ». Et `CLAUDE.md` indexe la classe : « un point réel se construit à
+> partir de RIEN ». La règle était écrite, le code faisait l'inverse.
+
+- [ ] 🔴 **`[PASSE-REEL-1]`** (M) — le passé ne montre QUE du mesuré. **DÉCISION MARC 2026-08-13** :
+  pas de repli, pas de trait plat — **la courbe commence où les données commencent**. Avant le
+  premier jour réellement couvert : rien. **Correctif** : supprimer le repli sur le point projeté ;
+  une journée sans donnée réelle n'est pas rendue du tout.
+- [ ] 🔴 **`[PASSE-REEL-2]`** (M) — indicateur « mon passé colle-t-il à ce qui était prévu ».
+  **DÉCISION MARC** : comparer à une prévision **FIGÉE que Marc verrouille** (l'app a déjà
+  `lockedProjectionStore` / `PROJECTION-PERSIST`). ⚠️ Surtout PAS à une prévision recalculée
+  aujourd'hui : elle intègre déjà le passé, l'écart serait nul par construction et l'indicateur
+  dirait toujours « tout va bien ».
+- [ ] 🔴 **`[PASSE-REEL-3]`** (L) — la projection se **réancre chaque jour sur les soldes RÉELS**
+  du jour, au lieu des soldes saisis une fois à la main. **DÉCISION MARC** : automatiquement, pas
+  sur bouton. Le plus gros des trois.
 
 ### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
 

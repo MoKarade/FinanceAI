@@ -41,6 +41,45 @@ fichier:ligne). Verdicts appliqués à la refonte :
 
 ---
 
+## Livré 2026-08-13 — PR #613, bloc DIVORCE (lot moteur 2/5)
+
+> Gate vert. Les 3 tickets forment UN seul changement sémantique (le ménage passe à une tête) :
+> les livrer séparément aurait produit des états incohérents. Décisions produit dans
+> `docs/decisions.md` (ADR « Modèle du DIVORCE »).
+
+- [x] 🔴 **`[ENG-DIVORCE-DEBT-ASYMMETRY]`** (S) — le divorce partage ACTIFS et l'hypothèque,
+  mais garde **100 % des dettes non immobilières** (activeDebts[], liquidDebt, smithManoeuvreDebt).
+  **Mesuré : après avoir cédé 100 % des actifs, le NW reste −81 827 $ (100 k$ de dettes intactes).**
+  Impact = solde total dettes × divorceSplitPct, cumulé sur tous les MC où le divorce se déclenche.
+  **Correctif** : appliquer `keep` à `activeDebts[i].balance`, `liquidDebt`, `smithManoeuvreDebt`.
+  Décision produit requise si dettes ne se partagent pas (documenté dans decisions.md).
+
+- [x] 🔴 **`[ENG-DIVORCE-REGISTRE-PERCONJOINT]`** (M) — le divorce est **fiscalement INERTE** :
+  `reerByUser`, `activeUsersCount`, `liveFilers`, espaces CELI/REER/CELIAPP, revenus, tous
+  survivent intacts (contrairement au décès qui les traite). **Mesuré isolant : Δ impôt = 0 $ exact
+  sur 30 ans.** Ordre de grandeur : différence 1 vs 2 contribuables = 187 k$ de différence d'impôt
+  cumulé. **Correctif** : au divorce, appliquer le pendant du merge décès — scinder
+  `reerByUser`/`accRetraitsReerYearByUser`, ramener `activeUsersCount` à 1, zéroïser
+  `grossAnnaBaseAnnual`, recalculer reerShares. Charge fiscale à valider par financial-integrity.
+
+- [x] 🔴 **`[FISC-DIVORCE-INCOME-PHANTOM]`** (M) — le divorce coupe ACTIFS mais garde le **revenu et
+  la fiscalité de COUPLE**. Aucune réduction de `grossAnnaBaseAnnual`, `incomeAnnaNetMonthly`,
+  `taxFilers` ni RAMQ au barème couple. **Mesure : couple 183 k$ brut, conjoint parti = 85 k$ de
+  revenu fantôme encaissé à vie + fiscalité couple indue.** Cette erreur DOMINE la coupe de 50 % du
+  patrimoine. La garde argent ne l'attrape pas (l'argent reste conservé, juste inventé au bon
+  endroit). **Correctif** : basculer sur mode « ménage à 1 » symétrique du `survivorMode` : `taxFilers
+  = 1`, `grossAnnaBaseAnnual = 0`, `incomeAnnaNetMonthly = 0`, `activeUsersCount` fiscal = 1. **À
+  minima** : documenter comme limite assumée dans FISCAL_REFERENCE §9 (aujourd'hui absent).
+
+  **Effet combiné mesuré** (couple 183 k$, dette 100 k$, 30 ans, partage 50 %) : avant, un
+  divorce coûtait **4,2 %** du patrimoine médian final et laissait la survie à 100 %. Après :
+  −621 625 $ et 0 % de survie — la part sombre venant de la décision ASSUMÉE de Marc de garder
+  les dépenses du ménage à 100 % (ADR, décision 3).
+  ⚠️ **Piège d'observabilité rencontré** : le divorce n'existe QUE dans la branche Monte-Carlo, et
+  `chartData` est toujours déterministe. Mes premières mesures donnaient un résultat IDENTIQUE
+  avec et sans divorce. La sortie réellement consommée est celle du MC (cônes P10/P50/P90 +
+  `survivalRatePct`). 3/3 tests prouvés discriminants sur le code d'avant.
+
 ## Livré 2026-08-13 — PR #611 `[FISC-DON-ABATEMENT]` (lot moteur 1/5)
 
 > Gate vert. Premier des 5 lots du batch 🔴 « moteur & fiscal » de l'audit 2026-08-12.

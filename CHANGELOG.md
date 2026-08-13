@@ -8,6 +8,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Le scénario « divorce » disait presque n'importe quoi
+- **Céder la moitié de ton patrimoine ne te coûtait que 4 %** dans la simulation, et ton plan
+  restait « viable à 100 % ». Trois erreurs se compensaient : tes dettes n'étaient pas partagées
+  (tu cédais tous tes actifs et gardais 100 % des dettes), le ménage restait imposé à deux
+  personnes, et surtout ton ex continuait d'encaisser son salaire **à vie** dans le calcul.
+- Corrigé : les dettes se partagent comme les actifs, le ménage passe vraiment à une tête, et le
+  revenu du conjoint parti disparaît.
+- ⚠️ **Le résultat est maintenant beaucoup plus sombre, et c'est voulu** : le moteur ne réduit
+  PAS tes dépenses quand tu te retrouves seul (tu gardes 100 % du budget du couple, plus la
+  pension). Hypothèse volontairement pessimiste, discutée et retenue — le détail est dans
+  `docs/decisions.md`.
+
 ### Corrections de calcul (lot moteur, suite de l'audit)
 - **Ton crédit d'impôt pour dons était surévalué.** La part fédérale du crédit était comptée en
   entier, alors qu'au Québec elle ne vaut que 83,5 % : l'abattement québécois de 16,5 % s'applique

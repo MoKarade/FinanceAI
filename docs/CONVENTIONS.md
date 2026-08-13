@@ -2563,3 +2563,28 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   d'avant dans tout le dépôt, pas seulement le nom de la fonction. Et remplacer par une valeur
   DÉRIVÉE de la source unique — c'est la même classe que « un outil-garde à valeurs re-codées en dur
   dérive en silence », appliquée aux tests.
+- ⚠️ **[ENG-DIVORCE-*] 2026-08-13 — mesurer un correctif là où sa sortie est JETÉE ne prouve rien.**
+  Le divorce n'existe QUE dans la branche Monte-Carlo (`tryDivorce` exige `enableMonteCarlo`), or
+  `chartData` est TOUJOURS déterministe (`[ENG-MC-CONSERVATION-BLIND]`). Mes premières sondes
+  comparaient donc `chartData` avec et sans divorce et rendaient un résultat **strictement
+  identique** — j'aurais pu en conclure « le correctif ne change rien » ou pire, « il n'y avait pas
+  de bug ». La sortie réellement consommée était ailleurs : les cônes `P10/P50/P90` et
+  `survivalRatePct`. Réflexe à avoir AVANT d'écrire la moindre assertion : **remonter la chaîne
+  jusqu'à ce que l'utilisateur voit**, et vérifier que la grandeur mesurée en fait partie. C'est la
+  version constructive du piège déjà indexé « un bug confirmé peut viser du code dont la sortie est
+  jetée ».
+- ⚠️ **[Même jour] Trois bugs qui se COMPENSENT se lisent comme une absence de bug.** Avant
+  correction, céder 50 % du patrimoine coûtait 4,2 % du résultat final : chiffre absurde, mais
+  personne ne l'avait relevé parce qu'il n'était ni nul ni aberrant. Les trois erreurs tiraient dans
+  des sens opposés (dettes gardées = pessimiste ; revenu fantôme + fiscalité de couple =
+  optimistes). Corollaire opérationnel : les livrer SÉPARÉMENT aurait produit des états plus faux
+  que l'état initial (corriger les dettes seules aurait aggravé le pessimisme). Quand des findings
+  partagent un même invariant sémantique — ici « le ménage passe à une tête » — ils forment UN lot,
+  pas trois.
+- ⚠️ **[Même jour] Corriger un modèle révèle l'hypothèse tacite d'à côté.** Une fois le revenu
+  fantôme retiré, le divorce est passé à « survie 0 % » — parce que le moteur ne réduit JAMAIS les
+  dépenses du ménage quand il perd une tête (le décès a le même défaut). Ce n'était dans aucun
+  ticket. Un correctif qui déplace un résultat d'un extrême à l'autre doit faire chercher ce qui
+  compensait : ici, une hypothèse que personne n'avait jamais écrite. Elle est désormais une
+  DÉCISION explicite (`docs/decisions.md`), pas un oubli — et c'est Marc qui l'a tranchée, parce
+  que le choix change le résultat d'un facteur 8.

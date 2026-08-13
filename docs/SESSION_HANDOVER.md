@@ -4,6 +4,16 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟡 Session 2026-08-13 (suite 78) — `[ENG-DIVORCE-LATENTTAX]` : juste, mais INERTE
+> `computeLatentTax` recevait `activeUsersCount` inchangé (NOMBRE DE DÉCLARANTS : divise le revenu,
+> remultiplie l'impôt) + le salaire de l'ex dans l'assiette. Corrigé (`taxFilers`, `grossAnna: 0`).
+> ⚠️ **Effet NUL sur toute sortie observable, vérifié par perturbation.** `impotLatent` n'alimente
+> que `ImpotLatent` du point mensuel ; sous MC (seul mode où le divorce existe) le point est ALLÉGÉ.
+> Tests sur la FONCTION PURE — un test de scénario aurait été vacueux.
+> **Cause commune identifiée** → `[ENG-MC-OBSERVABILITY]` : le point MC allégé explique À LUI SEUL
+> trois angles morts (`RetraitREER` et `ImpotLatent` inobservables pendant un divorce, aucune garde
+> de conservation sur le splitter). À traiter par un mode « MC verbeux » réservé aux tests.
+
 > ## 🟢 Session 2026-08-13 (suite 77) — `[ENG-DIVORCE-ESTATE-PENSION]` : la fonction MIROIR
 > `computeEstateNetWorth` gardait `activeUsersCount` entier et la pension MÉNAGE complète → le
 > divorcé héritait de la valeur des rentes de son ex à l'écran Succession. **322 865 $ indus**

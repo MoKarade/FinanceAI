@@ -2809,3 +2809,18 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   les grandeurs habituelles. Quand on corrige une fonction, se demander qui est sa MIROIR — ici le
   commentaire de `estateCalculation` citait lui-même « retirementIncome.ts:207-212 », c'est-à-dire
   la ligne exacte que le lot venait de corriger.
+
+- ⚠️ **[ENG-DIVORCE-LATENTTAX] 2026-08-13 — un correctif JUSTE peut être totalement INERTE, et il
+  faut le DIRE.** `computeLatentTax` était bel et bien faux après un divorce (paliers progressifs
+  lissés sur deux têtes fictives, 53 126 $ mesurés par le panel en instrumentant le moteur). Mais
+  `impotLatent` n'alimente QUE le point mensuel, et sous MC — le seul mode où le divorce existe — ce
+  point est ALLÉGÉ à `{ NetWorth, monthIndex }`. Test de perturbation : patrimoine final, succession
+  et `ImpotLatent` bit-identiques avec et sans le correctif.
+  Conduite : corriger quand même (un calcul faux non lu aujourd'hui sera lu demain), mais tester la
+  FONCTION PURE et écrire l'inertie noir sur blanc — un test de scénario aurait été VACUEUX, et
+  annoncer « 53 126 $ corrigés » aurait été faux pour l'utilisateur.
+- ⚠️ **[Même lot] Une même cause technique produit plusieurs angles morts — la nommer une fois vaut
+  mieux que la contourner trois fois.** Le point MC allégé explique À LUI SEUL : `RetraitREER`
+  inobservable pendant un divorce, `ImpotLatent` idem, et l'absence de garde de conservation sur le
+  splitter. Trois contournements ont été écrits avant de voir qu'il s'agissait du même mur
+  (`[ENG-MC-OBSERVABILITY]`).

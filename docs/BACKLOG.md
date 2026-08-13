@@ -995,9 +995,24 @@
   « tout va bien ». Revue Vercel avant merge : la garde « point réel » filtrait sur `dayIso` (que le
   spread `{ ...d }` charrie sur les jours FUTURS) au lieu du marqueur `dayIsReal` → corrigé + 2 tests
   discriminants (leçon `MARKER-PROXY-GUARD`, `docs/CONVENTIONS.md`).
-- [ ] 🔴 **`[PASSE-REEL-3]`** (L) — la projection se **réancre chaque jour sur les soldes RÉELS**
-  du jour, au lieu des soldes saisis une fois à la main. **DÉCISION MARC** : automatiquement, pas
-  sur bouton. Le plus gros des trois.
+- [x] 🔴 **`[PASSE-REEL-3]`** (L) — **CADUC : déjà en place, VÉRIFIÉ dans le code le 2026-08-13.**
+  La prémisse du ticket (« les soldes sont saisis une fois à la main ») est FAUSSE. Preuves, dans
+  l'ordre de la chaîne :
+  1. `hooks/useSimulationParams.ts:123` — `liveCSVBalances = deriveStartingBalancesFromHistory(pastHistory.points)` ;
+  2. `services/history/startingBalancesFromHistory.ts:45` — `const last = points[points.length - 1]` :
+     le futur démarre sur le **dernier point réel**, donc les soldes d'aujourd'hui ;
+  3. `components/ProjectionEngine.tsx:58-85` — `useEffect([params, …])` : dès que ces soldes
+     changent, la projection est **recalculée automatiquement** (debounce 300 ms) et republiée dans
+     `lastProjection`. Aucun bouton, conformément à la décision de Marc ;
+  4. `[FUTUR-DAILY-ROLLOVER]` (livré 2026-08-12, `useSimulationParams.ts:52-64`) — la frontière du
+     JOUR avance toute seule (tick horaire + retour d'onglet), app laissée ouverte comprise ;
+  5. Garde déjà en place : `tests/services/futureSeedContinuity.test.ts` (branchée sur la VRAIE
+     reconstruction, pas sur une réplique) + `tests/hooks/useSimulationParams.dailyRefresh.test.tsx`.
+  Seul résidu, et il est **correct par construction** : l'ancre `startYear/startMonth` a une
+  granularité MOIS, parce que le moteur est mensuel. Les SOLDES, eux, sont ceux du jour.
+  ⚠️ Classe `BACKLOG-STALE-TICKET` : ce ticket a été rédigé le même jour, à partir du symptôme
+  signalé par Marc, sans greper le moteur — le vrai défaut était `[PASSE-REEL-1]` (le passé
+  affichait la prévision), et il masquait le fait que l'amorçage du futur, lui, était déjà bon.
 
 ### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
 

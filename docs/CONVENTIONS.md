@@ -2515,3 +2515,17 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   s'AUTO-CALIBRE désormais : il relève les nombres réellement présents hors mode discret, puis exige
   qu'aucun ne subsiste. Règle générale : quand une assertion dépend d'une magnitude, la DÉRIVER de
   l'exécution de référence plutôt que de la deviner — et toujours vérifier qu'elle ROUGIT.
+- ⚠️ **[2026-08-13] Après un squash-merge, `git remote prune origin` FAIT PARTIE de la réconciliation.**
+  GitHub supprime la branche au merge, mais la référence locale `origin/<branche>` SURVIT et pointe
+  encore sur l'ancienne tête. Effets vus DEUX FOIS dans la même session : (1) un hook a annoncé
+  « 1 commit non poussé » alors que ce commit était le squash DÉJÀ sur `main` ; (2) un
+  `push --force-with-lease` a été refusé pour « stale info » — c'est le filet qui FONCTIONNE, il
+  détecte qu'on raisonne sur une info périmée, PAS un cas où insister avec `--force` serait correct.
+  Séquence complète : `git status --porcelain` vide → `git fetch origin main` → `git remote prune
+  origin` → `git checkout -B <branche> origin/main`. Et avant de conclure « il reste du travail non
+  poussé », comparer le CONTENU (`git diff origin/<branche> origin/main`), pas les hashs : après un
+  squash les commits diffèrent toujours alors que le contenu est identique.
+- ⚠️ **[Même jour] Un compte de tests dans la doc se PÉRIME en cours de PR.** `CLAUDE.md`/`README`
+  annonçaient 3 965 tests, mesurés après le 1er tour de revue ; les 2e et 3e tours en ont ajouté 13
+  (réel : 3 978). Le chiffre à écrire est celui mesuré sur le DERNIER état, pas celui noté en cours
+  de route — et il se re-mesure APRÈS le merge quand la PR a duré plusieurs tours.

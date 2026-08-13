@@ -1,7 +1,7 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **3 965 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **3 978 tests** Vitest
 (348 fichiers de test, mesuré le 2026-08-13). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**

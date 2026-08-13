@@ -2846,3 +2846,15 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   partage mesuré sur la dette totale (0,4926 attendu, 0,9949 avec la régression).
   Règle : après avoir écrit une garde, INTRODUIRE la régression qu'elle prétend couvrir. Si elle
   reste verte, elle ne garde rien — et il faut chercher la grandeur qui n'est pas dérivée.
+
+- ⚠️ **[ENG-DIVORCE-TAXDEBT-UNSPLIT] 2026-08-13 — une DETTE FISCALE est du patrimoine, dans les deux
+  sens.** Le splitter partageait actifs et dettes mais pas les buckets d'impôt : un divorcé ayant
+  cédé 100 % de tout réglait quand même l'impôt du couple (1 488 $ mesurés), et symétriquement
+  encaissait seul un remboursement du ménage (26 948,77 $ sur un patrimoine de 135 $ — d'où un
+  « impôt à vie » NÉGATIF). Réflexe à garder : après avoir partagé les soldes, chercher les
+  CRÉANCES ET DETTES DIFFÉRÉES (impôt à payer/recevoir, acomptes, crédits reportés) — elles ne
+  ressemblent pas à un solde et se font oublier.
+- ⚠️ **[Même lot] Un test de partage a besoin de sa garde ANTI-SUR-CORRECTIF.** « À 100 % de cession,
+  plus rien à payer » passerait aussi si on avait purement ANNULÉ la dette. D'où la deuxième
+  assertion : à 50 %, le règlement d'avril doit être RÉDUIT mais NON NUL. Partager n'est pas annuler
+  — et seul le second test distingue les deux implémentations.

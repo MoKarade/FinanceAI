@@ -945,11 +945,18 @@
 - [ ] **`[ENG-DIVORCE-LATENTTAX]`** (S) — `latentTax` ignore le divorce : impôt latent −337 063 $
   (N=2) vs −390 189 $ (N=1) → **53 126 $ de sous-estimation**, patrimoine net d'impôt affiché trop
   haut. (Ex-MOYEN-10, moitié déjà traitée : le meltdown est corrigé, `latentTax` ne l'est pas.)
-- [ ] **`[ENG-DIVORCE-TAXDEBT-UNSPLIT]`** (S) — la créance/dette fiscale n'est pas partagée. Split à
-  100 % : patrimoine 135 $ au mois du divorce, puis avril crédite **26 948,77 $** — le remboursement
-  INTÉGRAL du couple (identique au témoin sans divorce). Contredit la décision « on partage la
-  valeur NETTE » qui a justifié d'ajouter les dettes au split. Effet de bord : `totalTaxesPaid`
-  ressort à **−12 992,70 $** (« impôt à vie » négatif).
+- [x] **`[ENG-DIVORCE-TAXDEBT-UNSPLIT]`** (S, LIVRÉ) — la créance/dette fiscale ne suivait pas le
+  partage. `taxPreviousYear` porte l'impôt de l'année du COUPLE, réglé en avril : sans partage, un
+  divorcé ayant cédé **100 %** de son patrimoine réglait quand même **1 488 $** d'impôt du ménage
+  (mesuré), et dans l'autre sens encaissait le remboursement INTÉGRAL (26 948,77 $ mesurés par le
+  panel sur un patrimoine de 135 $ — d'où un `totalTaxesPaid` NÉGATIF). Livré : `keep` appliqué aux
+  DEUX buckets (`taxPreviousYear` ET `taxCurrentYear`, ce dernier par symétrie — il vaut ~0 en
+  janvier, mais n'en corriger qu'un est le motif « règle dupliquée corrigée à moitié »).
+  Conforme à la décision VERROUILLÉE « on partage la valeur NETTE » (`docs/decisions.md`), celle-là
+  même qui avait justifié d'ajouter les dettes au split.
+  ⚠️ Test impossible à écrire avant `[ENG-MC-OBSERVABILITY]` : `FluxImpots` n'existe que dans le
+  point COMPLET, et le divorce n'existe que sous MC. Garde anti-sur-correctif incluse (à 50 %, la
+  moitié de la dette reste DUE — partager n'est pas annuler).
 - [x] 🔴 **`[ENG-DIVORCE-SPLITPCT-UNBOUNDED]`** (S, LIVRÉ) — `divorceSplitPct` n'était borné nulle
   part. Mesuré : `−100` → patrimoine 2 210 335 $ contre 755 482 $ à 50 % (le divorce ENRICHIT) ;
   `1e9` → **−7 782 605 996 $** (dettes × keep négatif = actif fantôme) ; `NaN` → actifs zéroïsés

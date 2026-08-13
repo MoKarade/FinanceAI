@@ -115,6 +115,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   cet écran-là, et c'est pour ça qu'il avait survécu à la correction du divorce.
 >>>>>>> origin/main
 
+### En divorçant, tu payais encore l'impôt du couple
+- La dette (ou le remboursement) d'impôt de l'année du couple ne se partageait pas. Concrètement :
+  même après avoir cédé **100 %** de ton patrimoine, tu réglais seul la facture fiscale du ménage
+  au mois d'avril suivant. Dans l'autre sens, tu encaissais seul un remboursement de couple — ce qui
+  rendait ton « impôt à vie » affiché **négatif**.
+- Corrigé : l'impôt à payer ou à recevoir se partage comme le reste, dans les deux sens. À 50 %, la
+  moitié reste due — partager n'est pas effacer.
+
 ### Corrections de calcul (lot moteur, suite de l'audit)
 - **Ton crédit d'impôt pour dons était surévalué.** La part fédérale du crédit était comptée en
   entier, alors qu'au Québec elle ne vaut que 83,5 % : l'abattement québécois de 16,5 % s'applique

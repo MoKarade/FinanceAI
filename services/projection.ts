@@ -1136,15 +1136,27 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // survivorMode (retour code-reviewer FA-2) : un seul bénéficiaire VIVANT — diviser le
             // revenu du survivant par activeUsersCount=2 sous-estimerait son clawback. n=1 et pas
             // de décomposition (repli = revenu complet vs seuil individuel, exact pour 1 personne).
-            const oasBeneficiaries = survivorMode ? 1 : activeUsersCount;
+            // [panel #613 — ÉLEVÉ-4] `soloHousehold`, PAS `survivorMode`. Le commentaire de
+            // `cashflowAllocation.ts` DOCUMENTE une cohérence à 3 voies — `taxFilers` (taxDecember),
+            // `oasBeneficiaries` (clawback PSV) et `liveFilers` (cascade) doivent dire le MÊME
+            // nombre de contribuables. Le premier correctif ne basculait que `taxFilers` : le
+            // divorcé était imposé comme célibataire mais gardait un seuil de récupération PSV de
+            // COUPLE. Mesuré : clawback 0 $ au lieu de 7 016 $/an sur un retraité à 144 k$.
+            // Casser en silence une cohérence écrite dans le code est le pire des deux mondes.
+            const oasBeneficiaries = soloHousehold ? 1 : activeUsersCount;
             const gisShare = incomeRetirementGis / Math.max(1, oasBeneficiaries);
             const oasResult = computeOasClawback(
                 currentMonthIndex, m, isRetired, age, expenseMultiplier,
                 incomeRetirement - incomeRetirementGis, accRetraitsReerYear, accRentesYear,
                 psvBasePension, simInflation,
                 oasBeneficiaries,
-                survivorMode ? undefined : incomeRetirementPerUser.map((v) => v - gisShare),
-                survivorMode ? undefined : accRetraitsReerYearByUser,
+                // [panel #613 — ÉLEVÉ-5] Même drapeau que `oasBeneficiaries` ci-dessus, et c'est
+                // ce qui referme un échec SILENCIEUX : après un divorce, `incomeRetirementPerUser`
+                // est de longueur 1 (liste d'users raccourcie) ; avec `n = 2`, la garde
+                // `perUser.length === n` de `computeOasClawback` échouait sans aucune trace et
+                // retombait sur le split égal. Mesuré : 2 696 $/an de clawback → 0 $.
+                soloHousehold ? undefined : incomeRetirementPerUser.map((v) => v - gisShare),
+                soloHousehold ? undefined : accRetraitsReerYearByUser,
                 // PV-9 : gains imposables de l'année (50 % d'inclusion appliqué dans la fonction)
                 // entrent dans le revenu net de récupération PSV (ligne 23400 ARC).
                 capitalGainsRealizedThisYear,
@@ -1519,7 +1531,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // touche que reer/nonReg/taxCurrentYear/accRetraitsReerYear — hors ctx, vérifié).
         const cashflowCtxBase = {
             targetEF, criticalThreshold, isRetired, strategy,
-            m, loopYear, enableMonteCarlo, activeUsersCount, survivorMode,
+            // [panel #613 — ÉLEVÉ-4] 3e voie de la cohérence : `cashflowAllocation` dérive
+            // `liveFilers` de ce drapeau pour les seuils PBMA / palier 1 / plafond PSV, et zéroïse
+            // le salaire du conjoint. Sémantique « un seul contribuable » ⇒ `soloHousehold`.
+            // Sans ça, un divorcé cotisait au REER sur des seuils DOUBLÉS de célibataire.
+            m, loopYear, enableMonteCarlo, activeUsersCount, survivorMode: soloHousehold,
             grossMarcBaseAnnual, grossAnnaBaseAnnual, simSalaryGrowth,
             incomeRetirement, accRentesYear, hasFuturePurchase, hasPurchasedPrimary,
             contributionOrder: overrides.contributionOrder, debtFirst: overrides.debtFirst,

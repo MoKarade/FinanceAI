@@ -433,16 +433,26 @@ Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiff
 
 ## A0 — Quota Vercel (2026-08-12)
 
-- [ ] **[INFRA-VERCEL-QUOTA]** — ⚠️ **TOUJOURS ACTIF. Correction de mon propre constat** : j'ai noté
-  « résolu » à 01:03 UTC parce que 3 previews avaient bâti (`Ready`) après minuit UTC. C'était FAUX —
-  le plafond n'est pas un compteur remis à zéro à minuit mais une **fenêtre glissante** : à 01:56 UTC
-  Vercel a de nouveau refusé, avec un message explicite « Deployment rate limited — retry in **24
-  hours** ». Prochaine fenêtre utilisable : ~2026-08-14 02:00 UTC.
-  Conséquence : la PR #608 merge sur `main` (le code atterrit, rien n'est perdu) mais **hubperso.com
-  garde la version d'avant** jusqu'à ce que je relance le déploiement PROD. C'est à MOI de le
-  relancer, pas à Marc.
-  Leçon : ne PAS conclure « quota résolu » sur la foi d'un déploiement qui passe — seul un message
-  d'erreur qui cesse sur une PÉRIODE fait preuve (`INFRA-QUOTA-FALSE-RESET`).
+- [x] **[INFRA-VERCEL-QUOTA]** — ✅ **La PROD est à jour. Deuxième correction de mon propre constat**
+  (vérifié le 2026-08-13 04:0x UTC via l'API Vercel, `list_deployments` + `get_deployment`).
+  **Le plafond ne frappe pas les deux classes de déploiement de la même façon** : les *previews* de
+  branche ont été refusées (« Deployment rate limited — retry in 24 hours », 01:56 et 02:18 UTC),
+  mais les deux déploiements de **PRODUCTION** sont passés :
+  - `dpl_AL8BmXD4bJKiU9eygHaZ3mG1wWQ1` → `e7267da` (#608), READY, 02:04 UTC ;
+  - `dpl_6UFUPhXoz5tD1hwbhzenszWLpuSi` → `d864239` (#609), READY, 02:27 UTC, alias
+    **`finance.hubperso.com`**, `aliasError: null`.
+  `d864239` est la tête actuelle de `main` → **la prod sert le dernier code**, refonte nav et lot
+  « filets de sécurité » compris. Aucun redéploiement à relancer.
+  ⚠️ Vérification HTTP réelle NON faite : `finance.hubperso.com` est bloqué par le proxy d'egress de
+  l'environnement d'exécution (curl → `CONNECT tunnel failed 403`, WebFetch → `EGRESS_BLOCKED`).
+  La preuve ci-dessus est l'enregistrement d'alias de Vercel, pas la réponse servie. 👤 Marc peut le
+  confirmer d'un coup d'œil.
+  **Deux leçons, symétriques, apprises à 50 minutes d'intervalle** (`INFRA-QUOTA-FALSE-RESET`) :
+  (1) ne pas conclure « quota résolu » parce qu'un déploiement passe — j'ai eu tort à 01:03 UTC ;
+  (2) ne pas conclure « prod bloquée » parce qu'un déploiement échoue — j'ai eu tort à 01:56 UTC, en
+  généralisant un échec de PREVIEW à la PRODUCTION sans vérifier cette dernière. Dans les deux cas
+  l'erreur est la même : **inférer l'état d'une classe d'objets depuis un événement d'une autre**.
+  La bonne question est toujours « quel déploiement, quelle cible, quel alias ? ».
   Historique ci-dessous.
 - [x] **Historique** — Le plan Vercel GRATUIT plafonne à **100 déploiements/jour** ; plafond atteint le
   2026-08-12 ~20:18 UTC (6 PR + pushes de la refonte nav dans la journée). Effet : previews ET **déploiement PROD

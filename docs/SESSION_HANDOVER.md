@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-08-13 (suite 82) — `[PASSE-REEL-DETTE]` : constat VÉRIFIÉ, 3 volets ticketés
+> Demande Marc (signalée 2×) : « ma dette n'est pas exactement ce que j'ai — l'app me la met depuis
+> des années, c'est faux ; le PDF du contrat devrait suffire ». **Le symptôme est réel**, avec
+> DEUX causes indépendantes trouvées dans le code (rien codé, ordre imposé par les données) :
+> 1. `FutureProjection.tsx:395` → `buildPastPrefix` applique `chartData[0].DettesNonImmo` (la dette
+>    d'AUJOURD'HUI) à TOUS les points passés. Le code le documente : « dette supposée constante dans
+>    le passé, faute d'historique d'amortissement ».
+> 2. `Debt` (`types.ts:570`) n'a NI date de début NI solde d'origine → le correctif ci-dessus est
+>    INAPPLICABLE tel quel.
+> 3. `DebtPayload` (`mcp/ingest/applyDocument.ts:80`) ne capte pas la date du contrat → c'est ce qui
+>    rend « automatique » impossible en l'état : le PDF a l'info, le schéma la jette.
+> **Ordre imposé : `-2` (donnée) → `-1` (passé) → `-3` (ingestion).** Commencer par l'affichage
+> produirait un stub sans date à lire.
+> ⚠️ Ne remet PAS en cause l'« Option A » (raccord exact au présent) : la dette existe aujourd'hui.
+
 > ## 🟡 Session 2026-08-13 (suite 78) — `[ENG-DIVORCE-LATENTTAX]` : juste, mais INERTE
 > `computeLatentTax` recevait `activeUsersCount` inchangé (NOMBRE DE DÉCLARANTS : divise le revenu,
 > remultiplie l'impôt) + le salaire de l'ex dans l'assiette. Corrigé (`taxFilers`, `grossAnna: 0`).

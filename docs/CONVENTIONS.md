@@ -2863,3 +2863,16 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   Règle : après avoir écrit une garde, INTRODUIRE la régression qu'elle prétend couvrir. Si elle
   reste verte, elle ne garde rien — et il faut chercher la grandeur qui n'est pas dérivée.
 >>>>>>> origin/main
+
+- ⚠️ **[PASSE-REEL-DETTE] 2026-08-13 — une APPROXIMATION documentée dans le code reste un MENSONGE
+  à l'écran.** Le segment passé soustrait la dette d'aujourd'hui à tous les mois, avec ce commentaire
+  en toutes lettres : « dette supposée constante dans le passé, faute d'historique d'amortissement ».
+  L'approximation était assumée côté développeur, et Marc l'a signalée DEUX FOIS comme un bug — parce
+  que du point de vue de l'utilisateur, c'en est un : son patrimoine d'il y a cinq ans est amputé
+  d'une dette contractée il y a six mois. Règle : une approximation qui déforme une donnée PASSÉE
+  (donc vérifiable par l'utilisateur) n'a pas le même statut qu'une approximation sur du projeté.
+  La signaler dans un bandeau ne suffit pas ; il faut soit la donnée, soit ne rien afficher.
+- ⚠️ **[Même constat] Avant de corriger un affichage, vérifier que la DONNÉE existe.** Ici la chaîne
+  casse trois fois : `Debt` n'a pas de date de début, le payload d'ingestion PDF ne la capte pas, et
+  le passé ne pourrait donc rien en faire. Coder le volet « affichage » en premier aurait produit un
+  stub sans rien à lire. L'ordre est imposé par les données, pas par la visibilité du symptôme.

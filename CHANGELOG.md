@@ -17,6 +17,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   l'indicateur te dirait éternellement que tout va bien.
 - S'il n'y a rien de comparable (pas de courbe verrouillée, pas encore de passé mesuré), **rien ne
   s'affiche** — plutôt qu'un « 0 % d'écart » qui se lirait « ta prévision était parfaite ».
+- Corrigé avant sa mise en ligne : l'indicateur retenait aussi les **journées futures projetées**
+  comme si elles étaient mesurées. Il comparait donc deux prévisions entre elles en te présentant le
+  résultat comme « ton réel ». Il ne regarde plus que les journées réellement mesurées.
 
 ### Ton passé ne te ment plus
 - **La partie passée de ta courbe affichait la PRÉVISION quand elle n'avait pas de donnée réelle.**

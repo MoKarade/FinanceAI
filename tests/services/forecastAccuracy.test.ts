@@ -12,8 +12,19 @@ import { describe, it, expect } from 'vitest';
 import { computeForecastAccuracy } from '../../services/projection/forecastAccuracy';
 import type { ProjectionChartPoint } from '../../services/projection/types';
 
-/** Un point de passé RÉEL : il porte un `dayIso` (les points purement mensuels n'en ont pas). */
+/**
+ * Un point de passé RÉEL, tel que `dailyCurve.ts` le construit quand une MESURE existe : il porte
+ * le marqueur `dayIsReal: true`. C'est le seul champ qui distingue une mesure d'une prévision.
+ */
 const jour = (dayIso: string, hostMonthIndex: number, NetWorth: number) =>
+    ({ dayIso, hostMonthIndex, NetWorth, monthIndex: hostMonthIndex, dayIsReal: true } as unknown as ProjectionChartPoint);
+
+/**
+ * Un jour FUTUR projeté, tel que `dailyCurve.ts` le construit quand aucune mesure n'existe :
+ * `{ ...d, monthIndex }` — il charrie `dayIso`, `hostMonthIndex` et un `NetWorth` parfaitement
+ * fini, et n'a PAS `dayIsReal`. Indiscernable d'une mesure pour qui garde sur `dayIso`.
+ */
+const jourProjete = (dayIso: string, hostMonthIndex: number, NetWorth: number) =>
     ({ dayIso, hostMonthIndex, NetWorth, monthIndex: hostMonthIndex } as unknown as ProjectionChartPoint);
 
 describe('[PASSE-REEL-2] computeForecastAccuracy — quand il n\'y a RIEN à dire, il ne dit rien', () => {
@@ -34,9 +45,19 @@ describe('[PASSE-REEL-2] computeForecastAccuracy — quand il n\'y a RIEN à dir
         expect(computeForecastAccuracy([jour('2026-01-31', 0, 100)], new Map([[5, 100]]))).toBeNull();
     });
 
-    it('un point mensuel SANS dayIso est ignoré : rien ne prouve qu\'il vient d\'une mesure', () => {
+    it('un point mensuel SANS marqueur de mesure est ignoré : rien ne prouve qu\'il vient d\'une mesure', () => {
         const pointMensuel = { hostMonthIndex: 0, NetWorth: 999, monthIndex: 0 } as unknown as ProjectionChartPoint;
         expect(computeForecastAccuracy([pointMensuel], new Map([[0, 100]]))).toBeNull();
+    });
+
+    // ── LE test discriminant : il ÉCHOUE sur la garde d'avant (`typeof dayIso === 'string'`). ──
+    it('une série de jours FUTURS projetés ne produit AUCUN écart — ce n\'est pas du passé mesuré', () => {
+        // `dailyAll` (le vrai argument d'appel) contient les 30 ans de projection quotidienne. Ces
+        // points portent `dayIso` : une garde sur `dayIso` les prenait pour des mesures et
+        // comparait la prévision COURANTE à la prévision VERROUILLÉE — un écart entre deux
+        // prévisions, présenté à Marc comme « ton réel ». Sans mesure, il n'y a rien à dire.
+        const futur = [jourProjete('2030-01-31', 48, 500_000), jourProjete('2030-02-28', 49, 510_000)];
+        expect(computeForecastAccuracy(futur, new Map([[48, 400_000], [49, 405_000]]))).toBeNull();
     });
 });
 
@@ -87,6 +108,24 @@ describe('[PASSE-REEL-2] computeForecastAccuracy — l\'écart', () => {
         );
         expect(r!.months, 'le mois au NetWorth NaN a été compté').toHaveLength(1);
         expect(r!.latest.monthIndex).toBe(1);
+    });
+
+    // Le cas d'appel RÉEL : `dailyAll` = passé mesuré PUIS futur projeté, dans la même série.
+    it('série MIXTE : « le plus récent » est le dernier mois MESURÉ, pas le dernier de la projection', () => {
+        const r = computeForecastAccuracy(
+            [
+                jour('2026-01-31', 0, 120),          // mesuré
+                jour('2026-02-28', 1, 140),          // mesuré — c'est LUI, le plus récent réel
+                jourProjete('2026-03-31', 2, 900),   // projeté : à ne PAS compter
+                jourProjete('2030-12-31', 59, 9_000),
+            ],
+            new Map([[0, 100], [1, 100], [2, 100], [59, 100]]),
+        );
+        expect(r!.months.map((mo) => mo.monthIndex), 'un mois projeté a été compté').toEqual([0, 1]);
+        expect(r!.latest.real).toBe(140);
+        expect(r!.latest.gap).toBe(40);
+        // Avec la garde d'avant, meanAbsGap intégrait des écarts à 4 chiffres venus de la projection.
+        expect(r!.meanAbsGap).toBe(30);
     });
 
     it('les mois sont rendus du plus ANCIEN au plus récent, quel que soit l\'ordre d\'entrée', () => {

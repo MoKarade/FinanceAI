@@ -8,7 +8,14 @@
 > `services/projection/forecastAccuracy.ts` (pur) + `ForecastAccuracyBadge`, affiché SOUS la légende
 > de la courbe verrouillée — un écart loin de sa référence n'est pas interprétable.
 > ⚠️ La référence est la courbe VERROUILLÉE, jamais une projection recalculée : celle-ci part des
-> soldes réels, l'écart serait nul par construction. 11 tests, dont 5 sur les cas `null`.
+> soldes réels, l'écart serait nul par construction. 13 tests, dont 5 sur les cas `null`.
+> ⚠️ **Corrigé sur revue Vercel avant merge (`MARKER-PROXY-GUARD`)** : la garde « point réel »
+> testait `typeof dayIso === 'string'`. Mais `dailyCurve.ts` bâtit la journée FUTURE par
+> `{ ...d, monthIndex }` — le spread charrie `dayIso`. Les 30 ans de projection entraient donc
+> comme du « passé mesuré » : l'indicateur comparait deux prévisions. Garde → `dayIsReal === true`
+> (le marqueur existait déjà, lu par `ProjectionTooltip`). Les 11 tests d'origine étaient verts
+> parce que leur helper de fixture omettait `dayIsReal` : une fixture qui ment sur la forme de la
+> donnée rend toute la suite aveugle. 2 tests discriminants ajoutés (échouent sur la garde d'avant).
 > Reste du lot : `[PASSE-REEL-3]` (réancrage quotidien automatique sur les soldes réels).
 
 > ## 🟢 Session 2026-08-13 (suite 68) — `[PASSE-REEL-1]` : le passé ne ment plus (PR #614)

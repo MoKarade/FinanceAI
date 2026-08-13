@@ -2636,3 +2636,19 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   j'en suis » ; la moyenne des écarts ABSOLUS répond à « ma prévision est-elle fiable ». Une moyenne
   SIGNÉE confondrait les deux et masquerait un plan qui se trompe de +50 k$ puis −50 k$ sous un
   « écart moyen : 0 ». Les deux chiffres sont affichés, ils ne disent pas la même chose.
+- ⚠️ **[PASSE-REEL-2] revue Vercel #617 — `MARKER-PROXY-GUARD` : filtrer sur un champ VOISIN au lieu
+  du marqueur dédié.** `computeForecastAccuracy` retenait « un point réel » sur `typeof dayIso ===
+  'string'`. Or `dailyCurve.ts` fabrique le point d'une journée FUTURE par `{ ...d, monthIndex }` :
+  le spread **charrie `dayIso`**, et seul un point adossé à une mesure reçoit `dayIsReal: true`. La
+  garde laissait donc entrer les 30 ans de projection quotidienne — l'indicateur comparait la
+  prévision COURANTE à la prévision VERROUILLÉE et l'annonçait à Marc comme « ton réel ».
+  Le marqueur structurel EXISTAIT (`dayIsReal`, déjà lu par `ProjectionTooltip`) : c'est la même
+  classe que `TEXT-HEURISTIC-OVER-USER-TEXT` — dériver le fait d'un marqueur, jamais d'un proxy.
+  Règle : avant de filtrer sur la PRÉSENCE d'un champ, vérifier comment l'objet du cas NÉGATIF est
+  construit. Un `{ ...source }` en amont fait entrer tout ce qu'on croyait discriminant.
+- ⚠️ **[Même revue] Une FIXTURE qui omet le marqueur rend toute la suite aveugle.** Les 11 tests de
+  `forecastAccuracy` étaient verts parce que leur helper `jour()` ne posait pas `dayIsReal` : ils
+  décrivaient un « point réel » que le moteur ne produit jamais. Aucun n'a vu le bug, et 5 d'entre
+  eux portaient pourtant sur les cas `null`. Le nombre de tests ne prouve rien si la fixture ment
+  sur la forme de la donnée — un helper de fixture doit être calqué sur le PRODUCTEUR réel (ici
+  `dailyCurve.ts`), champ par champ, pas sur l'idée qu'on se fait de l'objet.

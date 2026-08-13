@@ -53,10 +53,9 @@ const finite = (v: unknown): number | null =>
 /**
  * Compare le passé MESURÉ à la prévision VERROUILLÉE.
  *
- * @param pastPoints  Points du passé porteurs de valeurs RÉELLES. Seuls ceux marqués `dayIsReal`
- *                    (ou, à défaut de marqueur, porteurs d'un `NetWorth` fini ET d'un `dayIso`)
- *                    sont retenus : après `[PASSE-REEL-1]`, une journée passée non mesurée n'existe
- *                    plus dans la série, mais on ne s'appuie pas sur cette invariant à distance.
+ * @param pastPoints  Série quotidienne COMPLÈTE (passé mesuré ET futur projeté) : le tri se fait
+ *                    ici, sur le seul marqueur de mesure `dayIsReal === true`. Passer la série
+ *                    entière est donc sûr — c'est même le cas d'appel réel (`dailyAll`).
  * @param lockedByMonth  Map `monthIndex → patrimoine net prévu`, telle que produite par
  *                    `utils/lockedCurveOverlay.buildLockedByMonth`. `null` = pas de verrou.
  * @returns `null` si la comparaison n'a AUCUN sens (voir en-tête) — jamais un objet à zéros.
@@ -73,9 +72,13 @@ export function computeForecastAccuracy(
     const lastRealByMonth = new Map<number, number>();
     for (const p of pastPoints) {
         const rec = p as unknown as Record<string, unknown>;
-        // Un point RÉEL porte un `dayIso`. Les points purement mensuels n'en ont pas et sont
-        // ignorés : rien ne prouve qu'ils viennent d'une mesure.
-        if (typeof rec.dayIso !== 'string') continue;
+        // ⚠️ Le marqueur de MESURE est `dayIsReal`, PAS `dayIso`. Garder sur `dayIso` était faux et
+        // silencieux : `dailyCurve.ts` construit le point d'une journée FUTURE par `{ ...d }`, qui
+        // charrie `dayIso` — seul un point adossé à une mesure reçoit `dayIsReal: true`. La garde
+        // laissait donc entrer les 30 ans de projection, et l'indicateur comparait la prévision
+        // COURANTE à la prévision VERROUILLÉE au lieu du réel (revue Vercel #617).
+        // Le marqueur structurel existait déjà — il fallait le lire, pas déduire d'un champ voisin.
+        if (rec.dayIsReal !== true) continue;
         const nw = finite(rec.NetWorth);
         if (nw === null) continue;
         const host = finite(rec.hostMonthIndex);

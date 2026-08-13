@@ -968,7 +968,9 @@
   **DÉCISION MARC** : comparer à une prévision **FIGÉE que Marc verrouille** (`lockedProjectionStore`
   / `PROJECTION-PERSIST` existent déjà). ⚠️ Surtout PAS à une prévision recalculée aujourd'hui :
   elle intègre déjà le passé, l'écart serait nul par construction et l'indicateur dirait toujours
-  « tout va bien ».
+  « tout va bien ». Revue Vercel avant merge : la garde « point réel » filtrait sur `dayIso` (que le
+  spread `{ ...d }` charrie sur les jours FUTURS) au lieu du marqueur `dayIsReal` → corrigé + 2 tests
+  discriminants (leçon `MARKER-PROXY-GUARD`, `docs/CONVENTIONS.md`).
 - [ ] 🔴 **`[PASSE-REEL-3]`** (L) — la projection se **réancre chaque jour sur les soldes RÉELS**
   du jour, au lieu des soldes saisis une fois à la main. **DÉCISION MARC** : automatiquement, pas
   sur bouton. Le plus gros des trois.

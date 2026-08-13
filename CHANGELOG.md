@@ -75,6 +75,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - Si ta clé API est refusée, l'import s'arrête net avec un message clair, au lieu d'enchaîner des
   dizaines d'appels voués à l'échec.
 
+<<<<<<< HEAD
+### Le curseur « part du patrimoine cédée » n'avait aucune limite
+- Rien n'empêchait d'y mettre **−100** (le divorce te rendait alors plus riche : 2,2 M$ au lieu de
+  755 k$), **un milliard** (patrimoine affiché à **−7,8 milliards**, parce que tes dettes se
+  transformaient en actif), ou une valeur vide qui **effaçait tous tes comptes sans un message**.
+- Le champ est maintenant borné entre 0 et 100 %, et surtout la limite est appliquée **dans le
+  calcul lui-même** — pas seulement dans le formulaire, qu'une sauvegarde importée contournerait.
+- Une valeur illisible retombe sur **50 %** (la règle du patrimoine familial), jamais sur 0 : un
+  « 0 % » serait tout aussi inventé, mais crédible.
+=======
 ### Trois mouvements d'argent qui n'étaient expliqués nulle part
 - **Le test de krach faisait fondre puis regonfler tes placements sans que rien ne le justifie.**
   Les montants bougeaient bel et bien, mais aucune ligne « croissance du marché » ne les portait :
@@ -88,6 +98,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   bricolé au passage.
 - Une nouvelle vérification automatique exige désormais que **toute variation d'un compte soit
   expliquée par un flux publié**. C'est elle qui a trouvé les deux derniers cas.
+>>>>>>> origin/main
 
 ### Après un divorce, tes droits CELI et REER étaient encore ceux d'un couple
 - Chaque 1er janvier, l'app te rouvrait **le double des droits** (CELI, REER, et le plafond CELIAPP

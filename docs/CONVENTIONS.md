@@ -2743,6 +2743,31 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   prémisse — surtout celles formulées en « au lieu de ». Le livrable honnête est alors le constat
   DOCUMENTÉ, pas du code qui réimplémente l'existant.
 
+<<<<<<< HEAD
+- ⚠️ **[ENG-DIVORCE-SPLITPCT-UNBOUNDED] 2026-08-13 — un `<input type="number">` SANS `min`/`max`
+  n'est pas une validation, et avec eux non plus.** Les attributs bornent les steppers ; ils
+  n'empêchent ni la frappe, ni le collage, ni un import de sauvegarde, ni un futur appelant du
+  moteur. Le clamp doit vivre au SEUL point de passage côté calcul, l'UI important la même règle
+  (source unique). Mesuré ici : `divorceSplitPct = −100` faisait ENRICHIR le divorce
+  (2 210 335 $ contre 755 482 $ à 50 %), `1e9` rendait un patrimoine de **−7,8 milliards** (les
+  dettes multipliées par un `keep` négatif deviennent un actif), `NaN` zéroïsait tout en silence.
+- ⚠️ **[Même lot] Le repli d'une valeur non finie n'est pas 0 — c'est le DÉFAUT MÉTIER.** Clamper
+  `NaN` à 0 aurait donné « 0 % de partage », une réponse aussi inventée que le NaN d'origine, mais
+  crédible : exactement le no-fake-data appliqué à un paramètre. Le seul repli défendable était la
+  règle du patrimoine familial (50 %).
+- ⚠️ **[Même lot] Tester la VALEUR PASSÉE, pas son effet lointain.** La tentation était d'asserter
+  sur le patrimoine final (« ne doit pas dépasser X »), fragile et indirect. Le test capture le
+  `keep` RÉELLEMENT remis au splitter via le callback : trois lignes, aucun scénario complet, et
+  l'assertion porte exactement sur la grandeur corrigée.
+
+- ⚠️ **[ENG-DIVORCE-SPLITPCT-UNBOUNDED] revue Vercel #621 — poser un clamp SANS corriger le libellé
+  qui affiche la valeur brute AGGRAVE le défaut.** Avant le clamp, le libellé (« partage de 150 % »)
+  et le calcul étaient faux ENSEMBLE : incohérents avec la réalité, mais cohérents entre eux. Le
+  clamp seul rend le calcul juste et laisse la TRACE mentir — et c'est la trace que l'utilisateur
+  lit. Même famille que « corriger une règle dupliquée à moitié ». Règle : en posant une
+  normalisation (clamp, arrondi, défaut), GREPPER tous les sites qui affichent ou journalisent la
+  valeur d'origine, et les faire passer par la même fonction.
+=======
 - ⚠️ **[ENG-INV-FLUXFORM-COVERAGE] 2026-08-13 — la conservation de SOLDES ne demande jamais « d'où
   vient cet argent ».** `moneyConservation` et `fuzzConservation` vérifient « Σ actifs − dettes ==
   NetWorth » : ils sont indifférents à la CAUSE d'une variation. Un producteur qui mute un solde
@@ -2770,6 +2795,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   réconcilie déjà sur `poolEnd` avec les mêmes parts. Le commentaire a été corrigé. Une affirmation
   plausible écrite dans le code a la même autorité qu'une affirmation vérifiée : elle doit être
   vérifiée.
+<<<<<<< HEAD
 
 - ⚠️ **[ENG-DIVORCE-ROOM-COUPLE] 2026-08-13 — deux QUESTIONS différentes veulent deux LISTES
   différentes, pas une liste raccourcie.** Réduire `users` pour retirer les droits d'un ex-conjoint
@@ -2785,3 +2811,6 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   une épargne SUPÉRIEURE aux droits annuels et un horizon s'arrêtant AVANT le décaissement. Même
   leçon que le registre REER (3 fixtures). Règle : quand une mesure avec/sans correctif rend un
   écart NUL, suspecter la fixture avant de conclure que le correctif est inutile.
+=======
+>>>>>>> origin/main
+>>>>>>> origin/main

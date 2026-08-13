@@ -18,6 +18,14 @@
 > **Ordre imposé : `-2` (donnée) → `-1` (passé) → `-3` (ingestion).** Commencer par l'affichage
 > produirait un stub sans date à lire.
 > ⚠️ Ne remet PAS en cause l'« Option A » (raccord exact au présent) : la dette existe aujourd'hui.
+> ## 🟢 Session 2026-08-13 (suite 81) — `[ENG-DIVORCE-DISPLAY-RATES]` : le lot divorce est CLOS
+> Le taux affiché (marginal/effectif) additionnait les DEUX salaires puis divisait par 2 après un
+> divorce. Corrigé (`taxFilers` + salaire de l'ex retiré). Sortie d'affichage seule.
+> ⚠️ Fixture à salaires TRÈS inégaux (14 000 vs 2 000 $/mois) : à salaires égaux `(a+a)/2 === a`,
+> le défaut est INVISIBLE — toute fixture symétrique était aveugle par construction.
+> **Lot divorce : 10 tickets traités.** Reste `[ENG-DIVORCE-CHILDREN-REEE]` — NON MESURÉ, à CADRER
+> avant de coder (allocations familiales, coûts d'enfants, REEE : le REEE est divisé, les coûts
+> restent entiers ; signalé comme angle mort par le panel, pas comme défaut établi).
 
 > ## 🟡 Session 2026-08-13 (suite 78) — `[ENG-DIVORCE-LATENTTAX]` : juste, mais INERTE
 > `computeLatentTax` recevait `activeUsersCount` inchangé (NOMBRE DE DÉCLARANTS : divise le revenu,

@@ -2743,7 +2743,6 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   prémisse — surtout celles formulées en « au lieu de ». Le livrable honnête est alors le constat
   DOCUMENTÉ, pas du code qui réimplémente l'existant.
 
-<<<<<<< HEAD
 - ⚠️ **[ENG-DIVORCE-SPLITPCT-UNBOUNDED] 2026-08-13 — un `<input type="number">` SANS `min`/`max`
   n'est pas une validation, et avec eux non plus.** Les attributs bornent les steppers ; ils
   n'empêchent ni la frappe, ni le collage, ni un import de sauvegarde, ni un futur appelant du
@@ -2767,7 +2766,6 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   lit. Même famille que « corriger une règle dupliquée à moitié ». Règle : en posant une
   normalisation (clamp, arrondi, défaut), GREPPER tous les sites qui affichent ou journalisent la
   valeur d'origine, et les faire passer par la même fonction.
-=======
 - ⚠️ **[ENG-INV-FLUXFORM-COVERAGE] 2026-08-13 — la conservation de SOLDES ne demande jamais « d'où
   vient cet argent ».** `moneyConservation` et `fuzzConservation` vérifient « Σ actifs − dettes ==
   NetWorth » : ils sont indifférents à la CAUSE d'une variation. Un producteur qui mute un solde
@@ -2795,7 +2793,6 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   réconcilie déjà sur `poolEnd` avec les mêmes parts. Le commentaire a été corrigé. Une affirmation
   plausible écrite dans le code a la même autorité qu'une affirmation vérifiée : elle doit être
   vérifiée.
-<<<<<<< HEAD
 
 - ⚠️ **[ENG-DIVORCE-ROOM-COUPLE] 2026-08-13 — deux QUESTIONS différentes veulent deux LISTES
   différentes, pas une liste raccourcie.** Réduire `users` pour retirer les droits d'un ex-conjoint
@@ -2811,9 +2808,6 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   une épargne SUPÉRIEURE aux droits annuels et un horizon s'arrêtant AVANT le décaissement. Même
   leçon que le registre REER (3 fixtures). Règle : quand une mesure avec/sans correctif rend un
   écart NUL, suspecter la fixture avant de conclure que le correctif est inutile.
-=======
->>>>>>> origin/main
->>>>>>> origin/main
 
 - ⚠️ **[ENG-DIVORCE-ESTATE-PENSION] 2026-08-13 — le MÊME NOM peut désigner un MULTIPLICATEUR ici et
   un DIVISEUR là.** `activeUsersCount` divise un agrégat ménage dans `retirementIncome` (le réduire
@@ -2828,7 +2822,6 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   commentaire de `estateCalculation` citait lui-même « retirementIncome.ts:207-212 », c'est-à-dire
   la ligne exacte que le lot venait de corriger.
 
-<<<<<<< HEAD
 - ⚠️ **[ENG-DIVORCE-LATENTTAX] 2026-08-13 — un correctif JUSTE peut être totalement INERTE, et il
   faut le DIRE.** `computeLatentTax` était bel et bien faux après un divorce (paliers progressifs
   lissés sur deux têtes fictives, 53 126 $ mesurés par le panel en instrumentant le moteur). Mais
@@ -2843,7 +2836,6 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   inobservable pendant un divorce, `ImpotLatent` idem, et l'absence de garde de conservation sur le
   splitter. Trois contournements ont été écrits avant de voir qu'il s'agissait du même mur
   (`[ENG-MC-OBSERVABILITY]`).
-=======
 - ⚠️ **[ENG-MC-OBSERVABILITY] 2026-08-13 — quand trois tests d'affilée doivent CONTOURNER la même
   limite, c'est la limite qu'il faut lever.** Le point MC allégé (`{ NetWorth, monthIndex }`) a
   imposé successivement : un test de câblage sur un agrégat (`totalTaxesPaid` au lieu de
@@ -2862,7 +2854,6 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   partage mesuré sur la dette totale (0,4926 attendu, 0,9949 avec la régression).
   Règle : après avoir écrit une garde, INTRODUIRE la régression qu'elle prétend couvrir. Si elle
   reste verte, elle ne garde rien — et il faut chercher la grandeur qui n'est pas dérivée.
->>>>>>> origin/main
 
 - ⚠️ **[PASSE-REEL-DETTE] 2026-08-13 — une APPROXIMATION documentée dans le code reste un MENSONGE
   à l'écran.** Le segment passé soustrait la dette d'aujourd'hui à tous les mois, avec ce commentaire
@@ -2884,3 +2875,9 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   FORMULATION, pas par le nom que je donne au correctif. Correction : RELIER les deux (le ticket
   d'origine porte la demande et sa date, les sous-tickets portent le plan) plutôt que d'en supprimer
   un — supprimer l'original effacerait la trace de la demande.
+- ⚠️ **[ENG-DIVORCE-DISPLAY-RATES] 2026-08-13 — deux erreurs qui se COMPENSENT à salaires égaux
+  rendent la fixture décisive.** Le taux affiché faisait `(salaireA + salaireB) / 2` après un
+  divorce. À salaires égaux, `(a + a) / 2 === a` : le défaut est rigoureusement INVISIBLE, et
+  n'importe quelle fixture « symétrique » l'aurait laissé passer. Il a fallu 14 000 $ contre
+  2 000 $/mois pour le faire apparaître. Règle : quand un calcul MOYENNE deux entités, toute
+  fixture où ces entités sont égales est aveugle par construction.

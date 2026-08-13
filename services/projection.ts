@@ -1503,13 +1503,29 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         };
         applySavingsGoalDeadlines(savingsGoals, currentIsoMonth, expenseMultiplier, goalMutator);
         applyFinancialGoalDeadlines(financialGoals, currentIsoMonth, expenseMultiplier, goalMutator);
+        // [ENG-STRESSTEST-GROWTH-UNREGISTERED] Le krach et la reprise MUTENT les soldes — c'est bien
+        // un mouvement de MARCHÉ, exactement comme le rendement mensuel. Ils n'alimentaient pourtant
+        // AUCUN registre de flux : mesuré 371 782 $ de patrimoine apparus (puis disparus) sans
+        // qu'aucun `MarketGrowth*` ne l'explique. La conservation du bilan restait verte — elle
+        // compare des SOLDES entre eux et se moque de savoir si un flux justifie l'écart.
+        //
+        // ⚠️ Les deltas sont MÉMORISÉS ici et versés APRÈS `applyMonthlyGrowth` : ce dernier
+        // ASSIGNE (`growthCELI = g.celi.growth`), il n'accumule pas. Les ajouter maintenant les
+        // ferait écraser quelques centaines de lignes plus bas — silencieusement.
+        let shockCELI = 0, shockREER = 0, shockNonReg = 0, shockCrypto = 0;
         const stressResult = computeStressTest(effProj, m);
         if (stressResult.crashFactor !== 1) {
+            const f = stressResult.crashFactor - 1;
+            shockCELI += celi * f; shockREER += reer * f;
+            shockNonReg += nonReg * f; shockCrypto += crypto * f;
             celi *= stressResult.crashFactor; reer *= stressResult.crashFactor;
             nonReg *= stressResult.crashFactor; crypto *= stressResult.crashFactor;
             if (stressResult.log) logEvent(lifeEventsLog, stressResult.log);
         }
         if (stressResult.recoveryFactor !== 1) {
+            // La reprise ne touche PAS le crypto (choix d'origine conservé) : ne rien inventer ici.
+            const f = stressResult.recoveryFactor - 1;
+            shockCELI += celi * f; shockREER += reer * f; shockNonReg += nonReg * f;
             celi *= stressResult.recoveryFactor; reer *= stressResult.recoveryFactor; nonReg *= stressResult.recoveryFactor;
         }
 
@@ -1642,9 +1658,36 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         }
 
         // Transfert NonReg → CELI/REER si espace
+        // [ENG-INV-FLUXFORM-COVERAGE] Ce bloc VEND du non-enregistré pour remplir les droits
+        // disponibles — un vrai mouvement d'argent entre deux comptes de l'utilisateur — et ne
+        // publiait AUCUN flux : ni `withdrawalNonReg`, ni `contribCELI`, ni `contribREER`. Mesuré
+        // sur un scénario ordinaire (stress-test désactivé) : 51 197 $ de variation de NonReg
+        // inexpliquée en un mois, et 26 458 $ côté REER. Les gardes de conservation restaient
+        // VERTES — elles comparent des soldes entre eux et ne demandent jamais « quel flux
+        // justifie cet écart ». D'où la garde de forme-flux qui accompagne ce correctif.
+        // ⚠️ `accRrspYear` était DÉJÀ alimenté (le suivi fiscal était juste) : seul l'AFFICHAGE des
+        // flux mentait. C'est précisément ce qui rendait le défaut indétectable côté impôt.
         if (nonReg > 0) {
-            if (celiRoom > 0) { const a = Math.min(nonReg, celiRoom); const s = handleNonRegSale(a); celi += s; celiRoom -= s; }
-            if (rrspRoom > 0 && nonReg > 0 && !isRetired) { const a = Math.min(nonReg, rrspRoom); const s = handleNonRegSale(a); reer += s; rrspRoom -= s; accRrspYear += s; }
+            if (celiRoom > 0) {
+                const a = Math.min(nonReg, celiRoom); const s = handleNonRegSale(a);
+                celi += s; celiRoom -= s;
+                withdrawalNonReg += s; contribCELI += s;
+            }
+            if (rrspRoom > 0 && nonReg > 0 && !isRetired) {
+                const a = Math.min(nonReg, rrspRoom); const s = handleNonRegSale(a);
+                reer += s; rrspRoom -= s; accRrspYear += s;
+                withdrawalNonReg += s;
+                // ⚠️ `contribREER` alimente AUSSI `stepReerByUser` (registre REER per-conjoint,
+                // celui qui a produit deux NO-GO de panel) — d'où une MESURE avant de le toucher.
+                // Résultat : effet NUL. Patrimoine final ET `reerByUserFinal` bit-identiques sur
+                // 3 stratégies avec salaires très inégaux (8 200 $ vs 3 100 $/mois) :
+                // `[714314, 270046]` des deux côtés. La raison est structurelle — `stepReerByUser`
+                // réconcilie sur `poolEnd: reer`, donc la cotisation était DÉJÀ absorbée, avec
+                // exactement les mêmes parts salariales. Ce `+=` ne change que la PUBLICATION du
+                // flux, pas l'attribution. (J'avais d'abord écrit ici que l'attribution « devenait
+                // juste » : la mesure a réfuté cette affirmation.)
+                contribREER += s;
+            }
         }
 
         // [PV-1] Sauvetage du liquide négatif (choix Marc 2026-06-10 : cascade de vente).
@@ -1719,6 +1762,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         liquid = g.liquid.newVal; growthLiquid = g.liquid.growth; growthPctLiquid = g.liquid.pct;
         reee = g.reee.newVal; growthREEE = g.reee.growth; growthPctREEE = g.reee.pct;
         totalGrowth += g.totalGrowth;
+        // [ENG-STRESSTEST-GROWTH-UNREGISTERED] Versement des deltas de choc/reprise APRÈS les
+        // assignations ci-dessus (qui écrasent). `+=` et non `=` : un mois peut porter les deux.
+        // Le choc entre dans `MarketGrowth*` parce que c'en EST un — un krach est un rendement
+        // négatif, pas une catégorie à part. Hors stress-test, tous ces deltas valent 0 : la
+        // rétrocompat est bit-identique.
+        if (shockCELI !== 0) { growthCELI += shockCELI; totalGrowth += shockCELI; }
+        if (shockREER !== 0) { growthREER += shockREER; totalGrowth += shockREER; }
+        if (shockNonReg !== 0) { growthNonReg += shockNonReg; totalGrowth += shockNonReg; }
+        if (shockCrypto !== 0) { growthCrypto += shockCrypto; totalGrowth += shockCrypto; }
         // [PROJ-TTP-DOUBLECOUNT] (panel #551, MESURÉ au cent — corrigé 2026-08-01) « Impôt à vie »
         // = Σ des flux d'impôt réellement DÉBITÉS du liquide, c'est-à-dire `fluxImpots` SEUL :
         // avril débite le bucket `.reer` ENTIER (taxApril.ts — retenues cascade + meltdown + FERR,

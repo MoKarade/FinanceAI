@@ -770,13 +770,31 @@
   **Correctif** : assertion interne au moteur dans `runScenario`, et étendre
   `projection.fuzzConservation` à `enableMonteCarlo=true` avec tous les flags stochastiques armés.
 
-- [ ] 🔴 **`[ENG-STRESSTEST-GROWTH-UNREGISTERED]`** (S) — le krach et la reprise du stress-test
-  mutent soldes sans **jamais alimenter `growthCELI/REER/NonReg/Crypto`** → **371 782 $ de
-  patrimoine créés silencieusement en 20 mois** (mesure exact : couple 45 ans, stress -40 % / +24 m
-  reprise). L'invariant du fuzz reste vert (bilan indifférent). Test discriminant : une assertion
-  en forme-FLUX ferait ÉCHOUER le code actuel. **Correctif** : accumuler `growthCELI +=
-  celi*(crashFactor−1)` au moment du crash, ou émettre un champ `MarketShock` dédié + test
-  stressTestEnabled en forme-flux.
+- [x] 🔴 **`[ENG-STRESSTEST-GROWTH-UNREGISTERED]`** (S, LIVRÉ) — le krach et la reprise mutaient
+  les soldes sans alimenter `growthCELI/REER/NonReg/Crypto`. Livré : deltas mémorisés au moment du
+  choc puis versés APRÈS `applyMonthlyGrowth` (qui ASSIGNE — les ajouter avant les écrasait
+  silencieusement). Discrimination mesurée : **162 835 $** de chute non expliquée au mois du krach
+  sans le correctif.
+- [x] 🔴 **`[ENG-INV-FLUXFORM-COVERAGE]`** (M, LIVRÉ partiellement — périmètre MESURÉ) —
+  `tests/services/projection.fluxForm.test.ts` : `Δsolde == MarketGrowth<k> + NetTransfer<k>`, mois
+  par mois. Couvre **CELI, REER, Crypto** (résiduel mesuré 0,01 $ = l'arrondi au cent, avec ET sans
+  stress-test). La garde a révélé DEUX producteurs muets de plus, dont un corrigé dans le même lot
+  (transfert NonReg → CELI/REER, ci-dessous) ; le dernier est ticketé juste après.
+- [x] **`[ENG-NONREG-TRANSFER-UNPUBLISHED]`** (S, LIVRÉ — découvert PAR la garde) — le bloc
+  « Transfert NonReg → CELI/REER si espace » vendait du non-enregistré pour remplir les droits sans
+  publier `withdrawalNonReg` / `contribCELI` / `contribREER`. **Mesuré : 51 197 $ de variation de
+  NonReg inexpliquée en un mois**, sur un scénario ORDINAIRE (stress-test désactivé).
+  ⚠️ `accRrspYear` était DÉJÀ alimenté : le suivi FISCAL était juste, seul l'affichage des flux
+  mentait — c'est ce qui rendait le défaut invisible côté impôt. Effet de `contribREER` sur le
+  registre per-conjoint : **MESURÉ NUL** (`reerByUserFinal` bit-identique sur 3 stratégies à
+  salaires très inégaux — `stepReerByUser` réconcilie déjà sur `poolEnd`).
+- [ ] 🔴 **`[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`** (S) — dernier producteur muet trouvé par la
+  garde de forme-flux : `processAprilSettlement` verse le remboursement d'impôt au non-enregistré
+  (`addNonReg`, `projection.ts:987`) sans publier `contribNonReg`. **Mesuré : 29 796,22 $ au mois
+  123 (un AVRIL), stress-test désactivé.** Non corrigé dans le lot : ce mutateur s'exécute AVANT
+  `cashflowAllocation`, qui reçoit `contribNonReg` en ENTRÉE — y toucher peut déplacer une décision
+  d'allocation dans le même mois et demande sa propre mesure. **Correctif** : publier le flux, puis
+  AJOUTER `'NonReg'` à `ACCOUNTS` dans `projection.fluxForm.test.ts` (la garde est prête).
 
 - [ ] 🔴 **`[ENG-LIQUIDDEBT-NEVER-REPAID]`** (M) — `liquidDebt` ne fait que croître : jamais
   remboursé (même avec millions en liquide), **jamais porteur d'intérêt**. **Mesuré : retraité

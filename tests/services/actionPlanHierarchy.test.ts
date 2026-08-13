@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { buildRootBucket, getChildBuckets, ADVICE_WHY, type PlanBucket } from '../../services/projection/actionPlanHierarchy';
+import { getErrors, clearErrors, __resetErrorThrottle } from '../../services/errorLogger';
 
 // chartData synthétique : N mois, flux net CELI +500/mois, REER -100/mois (retrait).
 // year = 2026 + floor(monthIndex/12). NetWorth croissant.
@@ -266,5 +267,82 @@ describe('actionPlanHierarchy', () => {
             expect(sens.deposit.length).toBeGreaterThan(0);
             expect(sens.withdraw.length).toBeGreaterThan(0);
         }
+    });
+});
+
+// [SILENT-ACTIONPLAN-NAN] Le module alimente le « Plan d'action » en montants CONCRETS. Avant ce
+// durcissement, `num()` rabattait toute valeur non finie sur 0 SANS trace : le plan affichait
+// « Rien de notable à faire » (ou un montant amputé) sur une donnée moteur corrompue. Même contrat
+// que `netWorth.ts` (HARDEN-NETWORTH-NAN) et `pastPurchaseInit.ts` : présent-mais-invalide →
+// journalisé ; réellement absent → silencieux.
+describe('[SILENT-ACTIONPLAN-NAN] valeur moteur non finie', () => {
+    const planLogs = () => getErrors().filter((e) => e.message.includes('Plan d\'action'));
+
+    const point = (extra: Record<string, unknown>) => [{
+        monthIndex: 0,
+        year: 2026,
+        age: 40,
+        isRetired: false,
+        dateLabel: 'm0 2026',
+        NetWorth: 100_000,
+        NetTransferCELI: 500,
+        ...extra,
+    }];
+
+    beforeEach(() => { clearErrors(); __resetErrorThrottle(); });
+    afterEach(() => { clearErrors(); __resetErrorThrottle(); });
+
+    it('un flux NaN est neutralisé à 0 ET JOURNALISÉ (jamais avalé)', () => {
+        const root = buildRootBucket(point({ NetTransferREER: Number.NaN }))!;
+        expect(root.flows.REER, 'la neutralisation à 0 reste le comportement').toBe(0);
+        const logs = planLogs();
+        expect(logs.length, 'une donnée corrompue ne doit PAS être avalée').toBeGreaterThan(0);
+        expect(logs[0].source).toBe('projection');
+        expect(logs[0].severity).toBe('warning');
+        expect(String(logs[0].context?.fields)).toContain('NetTransferREER');
+    });
+
+    it('un Infinity et une valeur non numérique sont aussi journalisés', () => {
+        buildRootBucket(point({ NetTransferCrypto: Number.POSITIVE_INFINITY }));
+        expect(planLogs().length).toBeGreaterThan(0);
+
+        clearErrors(); __resetErrorThrottle();
+        buildRootBucket(point({ NetTransferNonReg: 'beaucoup' }));
+        expect(planLogs().length, 'un champ non numérique est présent-mais-invalide, pas absent').toBeGreaterThan(0);
+    });
+
+    it('un NetWorth de fin non fini est journalisé (le montant affiché en bout de période)', () => {
+        const root = buildRootBucket(point({ NetWorth: Number.NaN }))!;
+        expect(root.netWorthEnd).toBe(0);
+        expect(String(planLogs()[0].context?.fields)).toContain('NetWorth');
+    });
+
+    it('DISCRIMINANT INVERSE — un champ réellement ABSENT reste SILENCIEUX', () => {
+        // La fixture n'émet AUCUN NetTransferREEE/CELIAPP/… : c'est un cas NORMAL (un scénario
+        // n'émet pas tous les comptes). Logguer ici transformerait la garde en bruit permanent.
+        const root = buildRootBucket(point({}))!;
+        expect(root.flows.REEE).toBe(0);
+        expect(planLogs(), 'un champ absent n\'est pas une corruption').toHaveLength(0);
+    });
+
+    it('le journal est THROTTLÉ : un même champ fautif sur 24 mois ne loggue qu\'une fois', () => {
+        const pts = Array.from({ length: 24 }, (_, i) => ({
+            monthIndex: i, year: 2026 + Math.floor(i / 12), age: 40, isRetired: false,
+            dateLabel: `m${i}`, NetWorth: 100_000, NetTransferCELI: Number.NaN,
+        }));
+        buildRootBucket(pts);
+        expect(planLogs()).toHaveLength(1);
+    });
+
+    it('le drill enfant journalise aussi (les conseils chiffrés vivent surtout aux niveaux fins)', () => {
+        const pts = Array.from({ length: 24 }, (_, i) => ({
+            monthIndex: i, year: 2026 + Math.floor(i / 12), age: 40, isRetired: false,
+            dateLabel: `m${i}`, NetWorth: 100_000, NetTransferCELI: Number.NaN,
+        }));
+        const root = buildRootBucket(pts)!;
+        clearErrors(); // on ne garde que ce que produit le niveau enfant
+        const kids = getChildBuckets(pts, root);
+        expect(kids.length).toBeGreaterThan(0);
+        expect(planLogs().length, 'le niveau « décennie » a sa propre signature de throttle').toBeGreaterThan(0);
     });
 });

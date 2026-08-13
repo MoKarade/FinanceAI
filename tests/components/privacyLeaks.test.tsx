@@ -1,0 +1,146 @@
+/**
+ * [A11Y-PRIVACY-*] — MODE DISCRET : les 5 fuites mesurées par l'audit 2026-08-12.
+ *
+ * Dans CHACUN de ces écrans, `isPrivacyMode` était DÉJÀ câblé pour d'autres champs (slider, table
+ * sr-only, détail fiscal) : c'était une omission PAR CHAMP, pas une plomberie manquante. Le contrat
+ * du dépôt (ADR-5 / `PrivateAmount`) est « masquer = NE PAS RENDRE » : la vraie valeur doit SORTIR
+ * du DOM — un flou CSS la laisserait au copier-coller, à l'inspecteur et au lecteur d'écran.
+ *
+ * Chaque test compare donc le texte APLATI du DOM (espaces retirés : formatCAD insère une espace
+ * fine insécable) au montant attendu, dans les DEUX sens : visible hors mode discret (sinon le test
+ * ne prouverait rien), absent en mode discret.
+ */
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, cleanup, act, fireEvent } from '@testing-library/react';
+import { DebtManager } from '../../components/DebtManager';
+import { TaxCenter } from '../../components/TaxCenter';
+import { AssetLocationCard } from '../../components/retirement/AssetLocationCard';
+import { Transactions } from '../../components/Transactions';
+import { useFinanceStore } from '../../store/useFinanceStore';
+import type { BudgetConfig, Debt, Transaction, User } from '../../types';
+
+vi.mock('recharts', async () => {
+    const React = await import('react');
+    const P = ({ children }: { children?: React.ReactNode }) => React.createElement('div', null, children);
+    return {
+        ResponsiveContainer: P, AreaChart: P, BarChart: P, ComposedChart: P, PieChart: P, LineChart: P,
+        Area: () => null, Bar: () => null, Line: () => null, Pie: () => null, Cell: () => null,
+        Legend: () => null, ReferenceLine: () => null,
+        XAxis: () => null, YAxis: () => null, Tooltip: () => null, CartesianGrid: () => null,
+    };
+});
+vi.mock('../../services/claude', () => ({ categorizeBatch: vi.fn(), analyzePayslip: vi.fn() }));
+vi.mock('../../components/ui/Toast', () => ({ showToast: vi.fn() }));
+
+/** Texte du DOM sans aucune espace (formatCAD sépare les milliers par une espace fine insécable). */
+const flat = (el: HTMLElement) => (el.textContent ?? '').replace(/[\s  ]/g, '');
+
+const setPrivacy = (on: boolean) => act(() => { useFinanceStore.setState({ isPrivacyMode: on }); });
+
+afterEach(() => {
+    cleanup();
+    setPrivacy(false);
+});
+
+// ── [A11Y-PRIVACY-DEBT] ──────────────────────────────────────────────────────
+describe('[A11Y-PRIVACY-DEBT] page Dettes', () => {
+    // Montants volontairement « uniques » : aucun autre chiffre de l'écran ne peut les imiter.
+    const debts: Debt[] = [
+        { id: 'd1', name: 'Carte Visa', balance: 41337, interestRate: 19.99, minimumPayment: 613, category: 'CreditCard' },
+    ];
+
+    it('mode discret INACTIF : solde, minimum et total dû sont LISIBLES (le test discrimine)', () => {
+        const { container } = render(<DebtManager debts={debts} setDebts={vi.fn()} />);
+        const text = flat(container);
+        expect(text).toContain('41337');  // solde de la dette
+        expect(text).toContain('613');    // paiement minimum
+    });
+
+    it('mode discret ACTIF : solde, minimum, total dû et total payé SORTENT du DOM', () => {
+        setPrivacy(true);
+        const { container } = render(<DebtManager debts={debts} setDebts={vi.fn()} />);
+        const text = flat(container);
+        expect(text, 'le solde de la dette fuyait (badge de liste)').not.toContain('41337');
+        expect(text, 'le paiement minimum fuyait').not.toContain('613');
+        expect(container.querySelectorAll('.sr-only').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Montant masqué').length).toBeGreaterThan(0);
+    });
+});
+
+// ── [A11Y-PRIVACY-TAXCENTER] ─────────────────────────────────────────────────
+describe('[A11Y-PRIVACY-TAXCENTER] Centre fiscal', () => {
+    // Salaires MENSUELS dans le store (convention canonique) → brut annuel = (7013 + 4987) × 12.
+    const config: BudgetConfig = {
+        users: [
+            { name: 'Marc', grossSalary: 7013, netSalary: 5000, color: '#10b981', age: 35, birthYear: 1991, canadaArrivalYear: 1991, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 } as unknown as User,
+            { name: 'Anna', grossSalary: 4987, netSalary: 4000, color: '#3b82f6', age: 33, birthYear: 1993, canadaArrivalYear: 1993, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 } as unknown as User,
+        ],
+        splitMode: '50/50',
+    };
+    const ANNUAL_GROSS = String((7013 + 4987) * 12); // 144000
+
+    it('mode discret INACTIF : le revenu brut annuel est LISIBLE (le test discrimine)', () => {
+        const { container } = render(<TaxCenter config={config} assets={[]} />);
+        expect(flat(container)).toContain(ANNUAL_GROSS);
+    });
+
+    it('mode discret ACTIF : le revenu brut synchronisé et les KPI $ SORTENT du DOM', () => {
+        setPrivacy(true);
+        const { container } = render(<TaxCenter config={config} assets={[]} />);
+        expect(flat(container), 'le « Total Synchronisé » fuyait le revenu brut du couple').not.toContain(ANNUAL_GROSS);
+        expect(screen.getAllByText('Montant masqué').length).toBeGreaterThan(0);
+    });
+});
+
+// ── [A11Y-PRIVACY-RETIREMENT-ASSETLOC] ───────────────────────────────────────
+describe('[A11Y-PRIVACY-RETIREMENT-ASSETLOC] Asset Location Optimizer', () => {
+    // Le composant n'avait AUCUNE référence à isPrivacyMode : ses répartitions CELI/REER/NonReg
+    // (et le champ éditable pré-rempli avec le VRAI portefeuille) étaient à nu.
+    it('mode discret INACTIF : les totaux par compte sont LISIBLES (le test discrimine)', () => {
+        const { container } = render(<AssetLocationCard annualGrossIncome={120000} />);
+        // Fixture par défaut du composant : 50 000 obligations + 100 000 US en CELI = 150 000 CELI.
+        expect(flat(container)).toContain('150000');
+    });
+
+    it('mode discret ACTIF : totaux par compte masqués ET champ éditable non rendu en clair', () => {
+        setPrivacy(true);
+        const { container } = render(<AssetLocationCard annualGrossIncome={120000} />);
+        const text = flat(container);
+        expect(text, 'le total CELI fuyait').not.toContain('150000');
+        expect(text, 'le total NonReg fuyait').not.toContain('50000');
+        // La valeur d'un champ ÉDITABLE ne vit pas dans textContent : elle vit dans `.value` du DOM.
+        // En mode discret, PrivateNumberInput ne rend PAS d'input du tout (bouton « ••• »).
+        const values = [...container.querySelectorAll('input[type="number"]')].map((i) => (i as HTMLInputElement).value);
+        expect(values, 'les montants du bac-à-sable venaient du VRAI portefeuille').toHaveLength(0);
+        expect(screen.getAllByText('Montant masqué').length).toBeGreaterThan(0);
+    });
+});
+
+// ── [A11Y-PRIVACY-TXN-TOTALS] ────────────────────────────────────────────────
+describe('[A11Y-PRIVACY-TXN-TOTALS] Transactions — agrégats', () => {
+    const txns: Transaction[] = [
+        { id: 1, date: '2026-01-05', payee: 'IGA', amount: -4321, category: 'Uncategorized', status: 'processed' },
+        { id: 2, date: '2026-01-06', payee: 'IGA', amount: -1000, category: 'Uncategorized', status: 'processed' },
+    ];
+    const SUM = '5321'; // Σ de la vue filtrée = −5 321,00 $ ; total du groupe « IGA » = idem.
+
+    const renderTxn = () => render(
+        <Transactions transactions={txns} setTransactions={vi.fn()} apiKey="" budgetItems={[]} />,
+    );
+
+    it('mode discret INACTIF : Σ filtré et total de groupe sont LISIBLES (le test discrimine)', () => {
+        const { container } = renderTxn();
+        expect(flat(container)).toContain(SUM);
+        fireEvent.click(screen.getByLabelText(/Ouvrir l'assistant de classement/));
+        expect(flat(container), 'total du groupe « IGA » dans l\'assistant').toContain(SUM);
+    });
+
+    it('mode discret ACTIF : Σ filtré et total de groupe SORTENT du DOM (les lignes l\'étaient déjà)', () => {
+        setPrivacy(true);
+        const { container } = renderTxn();
+        expect(flat(container), 'le Σ de la vue filtrée fuyait').not.toContain(SUM);
+        fireEvent.click(screen.getByLabelText(/Ouvrir l'assistant de classement/));
+        expect(flat(container), 'le total par marchand est aussi révélateur qu\'une ligne').not.toContain(SUM);
+        expect(screen.getAllByText('Montant masqué').length).toBeGreaterThan(0);
+    });
+});

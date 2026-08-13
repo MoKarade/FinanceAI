@@ -8,6 +8,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Sécurité de tes données (lot « filets de sécurité », suite de l'audit)
+- **Le mode discret masque enfin TOUT.** Cinq écrans laissaient des montants lisibles alors que le
+  mode était actif : Dettes (dont l'infobulle du graphe), Impôts (KPI, paliers, fiche de paie
+  détectée), l'import de talon, Retraite (répartition des actifs, y compris un champ pré-rempli avec
+  ton vrai portefeuille) et les totaux de Transactions. Les montants sortent du DOM — ils ne sont pas
+  simplement floutés.
+- **L'import de talon de paie ne peut plus écrire ton salaire à ton insu** : il te montre d'abord ce
+  qu'il a lu, prend une sauvegarde avant d'écrire, et refuse un montant absurde au lieu de l'appliquer.
+  C'est le même garde-fou que l'import via le chat — les deux chemins sont enfin alignés.
+- Le « Plan d'action » ne transforme plus une valeur de calcul invalide en **0 $** silencieux : c'est
+  journalisé, donc diagnosticable.
+
 ### Améliorations — l'assistant regarde enfin ta courbe (refonte nav, Lot 6a)
 - **L'assistant voit ta courbe.** Quand tu lui parles depuis le Futur (ou depuis sa page), il
   sait maintenant ce que la courbe affiche : ton **patrimoine actuel** et celui **à l'horizon**,

@@ -578,6 +578,11 @@
   tour force l'ouverture du groupe du step actif, OU `anchorRect` vérifie
   `getComputedStyle(el).visibility`. Surface élargie par la nav 6 destinations (Configurations
   = 5 onglets).
+- [ ] **`[AI-TAXCENTER-APPLY-NOGATE]`** (S, 🔴 découvert en corrigeant `[AI-VISION-PAYSLIP-NOGATE]`) —
+  la MÊME faille subsiste sur une 2e surface : `TaxCenter.applyToProfile` (l. ~59-75) écrit le profil
+  via `setConfig` direct, sans diff ni backup ni garde de vraisemblance. Le bouton « Appliquer au
+  Profil Principal » donne un geste de confirmation, mais pas le filet. Aligner sur `writeExecutor`
+  comme l'a été `PayslipUploadCard`.
 - [ ] **`[A11Y-SIDEBAR-ESC]`** (XS, a11y — audit #598, pré-existant) — la sidebar dépliée au
   survol/focus n'est pas fermable au clavier (Échap) → gap WCAG 1.4.13 (Dismissable). Ajouter
   un keydown Échap qui replie (blur/retour du focus au déclencheur).

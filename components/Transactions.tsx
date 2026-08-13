@@ -619,7 +619,9 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                                 </div>
                                             </div>
                                             <div className="text-meta text-ink-300">
-                                                Total: <span className="text-white font-mono">{formatCAD(group.total, { decimals: 2 })}</span>
+                                                {/* [A11Y-PRIVACY-TXN-TOTALS] Les montants par LIGNE étaient masqués, pas les agrégats — or le
+                                                    total d'un marchand est aussi révélateur qu'une ligne. */}
+                                                Total: <PrivateAmount className="text-white font-mono">{formatCAD(group.total, { decimals: 2 })}</PrivateAmount>
                                             </div>
                                         </div>
 
@@ -653,9 +655,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
                 title={`Historique (${filteredTransactions.length})`}
                 action={
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                        <div className={`text-tiny sm:text-meta font-bold px-2 py-1 rounded border border-white/10 whitespace-nowrap ${filteredSum > 0 ? 'text-green-400 bg-green-500/10' : 'text-danger-400 bg-danger-500/10'}`}>
+                        {/* [A11Y-PRIVACY-TXN-TOTALS] Σ de la vue filtrée : agrégat = donnée privée. */}
+                        <PrivateAmount as="div" className={`text-tiny sm:text-meta font-bold px-2 py-1 rounded border border-white/10 whitespace-nowrap ${filteredSum > 0 ? 'text-green-400 bg-green-500/10' : 'text-danger-400 bg-danger-500/10'}`}>
                             Σ {formatCAD(filteredSum, { decimals: 2 })}
-                        </div>
+                        </PrivateAmount>
                         <button
                             onClick={() => { void handleExportFilteredCSV(); }}
                             title="Exporter la vue filtrée en CSV (compatible Excel)"

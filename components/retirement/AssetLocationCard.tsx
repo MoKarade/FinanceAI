@@ -14,6 +14,12 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 import { assetValueCad } from '../../services/portfolio';
 import { formatCAD } from '../../utils/format';
 import { Icon } from '../ui/Icon';
+// [A11Y-PRIVACY-RETIREMENT-ASSETLOC] Cette carte n'avait AUCUNE référence au mode discret : les soldes
+// CELI/REER/NonReg, le manque à gagner et les montants des recommandations restaient lisibles, seuls du
+// reste de l'onglet Retraite. Primitives existantes du dépôt (jamais de flou CSS : la valeur doit SORTIR
+// du DOM, sinon elle reste au lecteur d'écran / au copier-coller).
+import { PrivateAmount } from '../ui/PrivateAmount';
+import { PrivateNumberInput } from '../ui/PrivateNumberInput';
 
 interface AssetLocationCardProps {
     annualGrossIncome: number;
@@ -112,17 +118,17 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                     </div>
                     <div className="bg-success-500/10 rounded p-3 border border-success-500/20">
                         <div className="text-tiny text-success-400 uppercase tracking-wide mb-1">CELI</div>
-                        <div className="text-base font-bold text-emerald-200 font-mono">{formatCAD(accountTotals.totals.CELI)}</div>
+                        <PrivateAmount as="div" className="text-base font-bold text-emerald-200 font-mono">{formatCAD(accountTotals.totals.CELI)}</PrivateAmount>
                         <div className="text-tiny text-ink-400">{accountTotals.total > 0 ? ((accountTotals.totals.CELI / accountTotals.total) * 100).toFixed(0) : 0}%</div>
                     </div>
                     <div className="bg-info-500/10 rounded p-3 border border-info-500/20">
                         <div className="text-tiny text-info-400 uppercase tracking-wide mb-1">REER</div>
-                        <div className="text-base font-bold text-info-400 font-mono">{formatCAD(accountTotals.totals.REER)}</div>
+                        <PrivateAmount as="div" className="text-base font-bold text-info-400 font-mono">{formatCAD(accountTotals.totals.REER)}</PrivateAmount>
                         <div className="text-tiny text-ink-400">{accountTotals.total > 0 ? ((accountTotals.totals.REER / accountTotals.total) * 100).toFixed(0) : 0}%</div>
                     </div>
                     <div className="bg-warning-500/10 rounded p-3 border border-warning-500/20">
                         <div className="text-tiny text-warning-400 uppercase tracking-wide mb-1">Non-Enreg.</div>
-                        <div className="text-base font-bold text-amber-200 font-mono">{formatCAD(accountTotals.totals.NonReg)}</div>
+                        <PrivateAmount as="div" className="text-base font-bold text-amber-200 font-mono">{formatCAD(accountTotals.totals.NonReg)}</PrivateAmount>
                         <div className="text-tiny text-ink-400">{accountTotals.total > 0 ? ((accountTotals.totals.NonReg / accountTotals.total) * 100).toFixed(0) : 0}%</div>
                     </div>
                 </div>
@@ -132,9 +138,9 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                     <div className="p-3 bg-danger-500/10 border border-danger-500/30 rounded">
                         <div className="flex items-center justify-between">
                             <span className="text-tiny text-red-300 font-bold uppercase">Manque à gagner annuel si inchangé</span>
-                            <span className="text-base font-bold text-danger-400 font-mono">{formatCAD(analysis.totalAnnualLoss)}/an</span>
+                            <PrivateAmount className="text-base font-bold text-danger-400 font-mono">{formatCAD(analysis.totalAnnualLoss)}/an</PrivateAmount>
                         </div>
-                        <p className="text-tiny text-ink-400 mt-1">Sur 20 ans capitalisé à 5% : ~{formatCAD(analysis.totalAnnualLoss * 33)} de patrimoine perdu.</p>
+                        <p className="text-tiny text-ink-400 mt-1">Sur 20 ans capitalisé à 5% : ~<PrivateAmount>{formatCAD(analysis.totalAnnualLoss * 33)}</PrivateAmount> de patrimoine perdu.</p>
                     </div>
                 )}
 
@@ -178,8 +184,9 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                                     <option key={ac} value={ac}>{ASSET_CLASS_LABELS[ac]}</option>
                                 ))}
                             </select>
-                            <input
+                            <PrivateNumberInput
                                 type="number" value={h.amount}
+                                aria-label={`Montant ${ASSET_CLASS_LABELS[h.assetClass]}`}
                                 onChange={e => { const next = [...holdings]; next[i] = { ...h, amount: Number(e.target.value) || 0 }; setHoldings(next); }}
                                 className="col-span-4 bg-dark border border-border rounded px-2 py-1 text-meta text-white font-mono"
                             />
@@ -213,12 +220,12 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                                 <div className="flex justify-between gap-2">
                                     <span className="flex-1 min-w-0">
                                         <strong className="text-white">{ASSET_CLASS_LABELS[r.assetClass]}</strong>
-                                        <span className="text-ink-400"> {formatCAD(r.amount)}</span>
+                                        <PrivateAmount className="text-ink-400"> {formatCAD(r.amount)}</PrivateAmount>
                                         <span className="text-orange-400 mx-1">{r.currentAccount}</span>
                                         <span className="text-ink-500" aria-hidden="true">→</span>
                                         <span className="text-success-400 mx-1">{r.recommendedAccount}</span>
                                     </span>
-                                    <span className="text-red-300 font-mono shrink-0">−{formatCAD(r.annualLossIfUnchanged)}/an</span>
+                                    <PrivateAmount className="text-red-300 font-mono shrink-0">−{formatCAD(r.annualLossIfUnchanged)}/an</PrivateAmount>
                                 </div>
                                 <p className="text-ink-400 leading-snug">{r.rationale}</p>
                             </div>

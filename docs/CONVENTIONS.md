@@ -2462,3 +2462,13 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   ne pas inventer un nouveau champ de store pour reproduire un état local.
   (3) Une **énumération vide** dans un prompt (`… : .`) est un blanc que le modèle comble : tout
   `join()` qui peut rendre `''` a besoin d'un repli NOMMÉ (« aucun chiffre disponible »).
+- ⚠️ **[Lot filets de sécurité] 2026-08-12** : (1) **une fuite de mode discret se compte PAR CHAMP,
+  pas par composant** — les 5 écrans fautifs câblaient DÉJÀ `isPrivacyMode` pour d'autres montants ;
+  c'est l'oubli ponctuel qui fuit, donc l'audit doit grepper `formatCAD(` NON enveloppé, pas chercher
+  des composants « non câblés ». Points aveugles récurrents : formatters de Tooltip Recharts et
+  `<input type=number>` PRÉ-REMPLIS avec une vraie valeur. (2) **Deux chemins d'écriture pour la même
+  donnée finissent toujours par diverger en garanties** : l'import de talon par le chat exigeait diff +
+  modal + backup, celui des Réglages n'avait rien — l'incohérence EST le bug, et le correctif est de
+  faire consommer le MÊME exécuteur, pas de ré-implémenter un mini-filet. Corollaire : après avoir
+  corrigé une surface, chercher les AUTRES appelants de la même donnée (une 3e surface a été trouvée
+  ainsi, `[AI-TAXCENTER-APPLY-NOGATE]`).

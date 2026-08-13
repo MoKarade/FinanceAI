@@ -38,6 +38,9 @@ const SCAN_GUARD_TESTS = [
   'tests/aiTools/noMcpSdkInSpecs.test.ts',
   'tests/aiTools/specFiniteGuard.test.ts',
   'tests/mcp/chartDataSumGuard.test.ts',
+  // [revue #608] Garde du mode discret dans les graphiques : elle scanne `components/**/*.tsx` par
+  // readFileSync → invisible à `vitest related`, exactement le cas que ce bloc existe pour couvrir.
+  'tests/components/chartPrivacyScan.test.ts',
 ].filter(existsSync);
 const testCmd = sourceFiles.length > 0
   ? `npx vitest related --run ${sourceFiles.map(f => `'${f}'`).join(' ')} && npx vitest run ${SCAN_GUARD_TESTS.join(' ')}`

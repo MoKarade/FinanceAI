@@ -984,9 +984,14 @@
   recalculé depuis ces mêmes soldes, donc retirer le partage des dettes la laisse VERTE (vérifié par
   régression chirurgicale). L'invariant qui MORD porte sur une grandeur INDÉPENDANTE : le **ratio de
   partage mesuré sur la DETTE totale** — 0,4926 attendu, 0,9949 avec la régression.
-- [ ] **`[ENG-DIVORCE-DISPLAY-RATES]`** (S) — `grossPerUserAnnual` (`projection.ts` ~l. 1760) somme
-  encore `grossMarc + grossAnna` puis divise par `activeUsersCount` après divorce. Sortie
-  d'AFFICHAGE uniquement (taux marginal/effectif), inerte en MC — d'où la sévérité basse.
+- [x] **`[ENG-DIVORCE-DISPLAY-RATES]`** (S, LIVRÉ) — le taux d'imposition AFFICHÉ (marginal et
+  effectif du point mensuel) additionnait encore les DEUX salaires puis divisait par 2 après un
+  divorce : il montrait le taux d'un ménage qui n'existe plus. Deux erreurs qui se compensent
+  partiellement — taux trop BAS pour un divorcé à haut salaire, trop HAUT pour l'autre. Livré :
+  `taxFilers` au dénominateur + salaire de l'ex retiré du numérateur (les deux gestes du lot).
+  Sortie d'AFFICHAGE : rien d'autre n'en dépend, mais c'est un chiffre que l'utilisateur LIT.
+  ⚠️ Fixture à salaires TRÈS inégaux (14 000 vs 2 000 $/mois) : à salaires égaux `(a+b)/2 === a`
+  et le défaut est INVISIBLE. Test rendu possible par `[ENG-MC-OBSERVABILITY]`.
 - [ ] **`[ENG-DIVORCE-CHILDREN-REEE]`** (S) — [NON MESURÉ, zone non couverte] allocations familiales,
   coûts d'enfants et REEE après divorce : le REEE est divisé, les coûts restent entiers. À cadrer
   avant de coder — signalé comme angle mort, pas comme défaut établi.

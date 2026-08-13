@@ -1882,9 +1882,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // Phase 3 Tier 3 — taux d'imposition marginal et effectif (PAR ADULTE)
         // Source : calculateFiscalReport sur le revenu brut annuel courant.
         // En retraite : on combine pensions + retraits REER pour le calcul.
+        // [ENG-DIVORCE-DISPLAY-RATES] Après un divorce, ce taux AFFICHÉ additionnait encore les deux
+        // salaires puis divisait par 2 : il montrait le taux d'un ménage qui n'existe plus. Les deux
+        // gestes du lot s'appliquent ici comme partout — `taxFilers` au dénominateur, salaire de
+        // l'ex retiré du numérateur. C'est une sortie d'AFFICHAGE (taux marginal/effectif du point
+        // mensuel), pas une assiette de calcul : rien d'autre n'en dépend.
+        const grossHouseholdAnnual = grossMarcBaseAnnual + (soloHousehold ? 0 : grossAnnaBaseAnnual);
         const grossPerUserAnnual = isRetired
-            ? (incomeRetirement * 12 + accRetraitsReerYear) / Math.max(1, activeUsersCount)
-            : (grossMarcBaseAnnual + grossAnnaBaseAnnual) / Math.max(1, activeUsersCount);
+            ? (incomeRetirement * 12 + accRetraitsReerYear) / Math.max(1, taxFilers)
+            : grossHouseholdAnnual / Math.max(1, taxFilers);
         const fiscalReportTier3 = grossPerUserAnnual > 0
             ? calculateFiscalReport(grossPerUserAnnual, 0, 0, loopYear, true /* skip breakdown pour perf */)
             : null;

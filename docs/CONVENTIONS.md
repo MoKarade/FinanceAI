@@ -2863,3 +2863,10 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   Règle : après avoir écrit une garde, INTRODUIRE la régression qu'elle prétend couvrir. Si elle
   reste verte, elle ne garde rien — et il faut chercher la grandeur qui n'est pas dérivée.
 >>>>>>> origin/main
+
+- ⚠️ **[ENG-DIVORCE-DISPLAY-RATES] 2026-08-13 — deux erreurs qui se COMPENSENT à salaires égaux
+  rendent la fixture décisive.** Le taux affiché faisait `(salaireA + salaireB) / 2` après un
+  divorce. À salaires égaux, `(a + a) / 2 === a` : le défaut est rigoureusement INVISIBLE, et
+  n'importe quelle fixture « symétrique » l'aurait laissé passer. Il a fallu 14 000 $ contre
+  2 000 $/mois pour le faire apparaître. Règle : quand un calcul MOYENNE deux entités, toute
+  fixture où ces entités sont égales est aveugle par construction.

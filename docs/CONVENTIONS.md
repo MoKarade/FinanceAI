@@ -2876,3 +2876,11 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   casse trois fois : `Debt` n'a pas de date de début, le payload d'ingestion PDF ne la capte pas, et
   le passé ne pourrait donc rien en faire. Coder le volet « affichage » en premier aurait produit un
   stub sans rien à lire. L'ordre est imposé par les données, pas par la visibilité du symptôme.
+
+- ⚠️ **[PM-DUPLICATE-TICKET] 2026-08-13 — greper le BACKLOG par les MOTS DE MARC avant d'y écrire.**
+  J'ai diagnostiqué « ma dette apparaît depuis des années » et créé trois sous-tickets… alors que
+  `[DEBT-FROM-CONTRACT]` portait DÉJÀ la demande, dans le même fichier, avec une citation quasi
+  identique. Un ID technique ne suffit pas à chercher : les demandes de Marc sont indexées par leur
+  FORMULATION, pas par le nom que je donne au correctif. Correction : RELIER les deux (le ticket
+  d'origine porte la demande et sa date, les sous-tickets portent le plan) plutôt que d'en supprimer
+  un — supprimer l'original effacerait la trace de la demande.

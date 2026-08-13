@@ -555,10 +555,15 @@
   bloque aujourd'hui (zones mortes ? garde ?) et l'e2e clique-partout.
 - [ ] **`[DEBT-FROM-CONTRACT]`** (M, 🧭 retour Marc 2026-08-12) — « ma dette doit être exactement
   ce que j'ai — là ça me dit que j'ai la dette depuis des années mais c'est faux, je t'ai donné
-  le PDF du contrat, ça devrait être automatique » : extraire du contrat (PDF déjà fourni) la
-  date de début, le principal, le taux, l'échéancier → la dette du store reflète le contrat
-  RÉEL (import automatique côté app/MCP, pas de saisie manuelle approximative). Retrouver le
-  PDF en question et cadrer le pipeline d'extraction.
+  le PDF du contrat, ça devrait être automatique » : extraire du contrat la date de début, le
+  principal, le taux, l'échéancier → la dette du store reflète le contrat RÉEL.
+  ✅ **DIAGNOSTIQUÉ le 2026-08-13** : les trois maillons cassés sont identifiés, avec emplacements
+  exacts et ordre imposé — voir `[PASSE-REEL-DETTE-1/2/3]`. Ce ticket-ci reste le point d'entrée
+  « demande de Marc » ; les trois sous-tickets sont le PLAN.
+  ⚠️ Question de CADRAGE ouverte (posée à Marc, sans réponse à ce jour) : le passé doit-il montrer
+  la dette qui S'AMORTIT (courbe décroissante depuis le solde d'origine — exige `originalBalance`
+  dans le PDF) ou FIGÉE à son niveau actuel depuis sa date de début (plus simple, peut-être
+  suffisant) ? La réponse change le périmètre de `-2` et `-3`.
 - [ ] **`[MCP-V2-OVERHAUL]`** (L, 🧭 retour Marc 2026-08-12) — « grosse MAJ du MCP : je veux que
   tout fonctionne bien et plus de fonctionnalités » : passe complète sur les tools MCP (fiabilité,
   erreurs honnêtes, couverture) + nouvelles capacités à cadrer avec Marc (écritures étendues,
@@ -1043,6 +1048,11 @@
 
 ### 🔴 `[PASSE-REEL-DETTE]` — le passé montre la dette actuelle depuis TOUJOURS (Marc, signalé 2×)
 
+> ⚠️ **Ces trois sous-tickets SONT le plan de `[DEBT-FROM-CONTRACT]`** (retour Marc 2026-08-12,
+> plus haut dans ce fichier) — pas un doublon. Je les avais d'abord écrits sans voir que le ticket
+> d'origine existait : classe `PM-DUPLICATE-TICKET`, corrigée en les RELIANT plutôt qu'en supprimant
+> l'un des deux (le ticket d'origine porte la DEMANDE et sa date, ceux-ci portent le PLAN).
+>
 > Marc : « je veux que ma dette soit exactement ce que j'ai — là ça me dit que j'ai la dette depuis
 > des années mais c'est faux ; je t'ai donné le pdf du contrat, ça devrait être automatique ».
 > **Constat VÉRIFIÉ dans le code le 2026-08-13** — le symptôme est réel, et il a DEUX causes
@@ -1072,7 +1082,7 @@
 **Ordre imposé** : `-2` (donnée) → `-1` (passé) → `-3` (ingestion). Faire `-1` d'abord serait un
 stub : il n'aurait aucune date à lire.
 
-### 🔴 `[PASSE-REEL]`### 🔴 `[PASSE-REEL]` — le passé affichait la PROJECTION (signalé par Marc 2026-08-13)
+### 🔴 `[PASSE-REEL]` — le passé affichait la PROJECTION (signalé par Marc 2026-08-13)
 
 > Marc : « mon passé ne semble pas correspondre à mon passé réel mais au futur qui était estimé.
 > Je n'ai pas de compte CELI et pourtant mon passé me dit que j'ai de l'argent dedans. »

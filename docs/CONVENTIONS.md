@@ -2625,3 +2625,14 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   (optimisation parfaitement raisonnable) aurait réintroduit le bug en silence, sans qu'aucun test
   ne le voie. Règle : une dépendance ne doit jamais reposer sur l'INSTABILITÉ DE RÉFÉRENCE d'une
   autre. Et quand on écrit « ajouté à tous les X », les COMPTER.
+- ⚠️ **[PASSE-REEL-2] 2026-08-13 — un indicateur qui ne peut pas être MAUVAIS ne vaut rien.** La
+  tentation naturelle était de comparer le passé réel à « la projection ». Mais la projection est
+  recalculée en PARTANT des soldes réels du jour : elle colle au passé PAR CONSTRUCTION, l'écart
+  serait nul, et l'indicateur afficherait éternellement « tout va bien ». La seule référence qui a
+  du sens est une prévision FIGÉE, antérieure. Test à s'appliquer à tout indicateur d'écart, de
+  score ou de santé : « existe-t-il une situation réelle où ce chiffre serait mauvais ? » Si non,
+  il ne mesure rien.
+- ⚠️ **[Même jour] Distinguer la POSITION de la FIDÉLITÉ.** L'écart du dernier mois répond à « où
+  j'en suis » ; la moyenne des écarts ABSOLUS répond à « ma prévision est-elle fiable ». Une moyenne
+  SIGNÉE confondrait les deux et masquerait un plan qui se trompe de +50 k$ puis −50 k$ sous un
+  « écart moyen : 0 ». Les deux chiffres sont affichés, ils ne disent pas la même chose.

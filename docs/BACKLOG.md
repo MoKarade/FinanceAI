@@ -964,7 +964,7 @@
   **DÉCISION MARC** : pas de repli, pas de trait plat — la courbe commence où les données
   commencent. Livré : paramètre `todayIso`, retour `ProjectionChartPoint | null`, borne stricte
   (aujourd'hui reste projeté). Le changement de type a fait trouver l'infobulle par le compilateur.
-- [ ] 🔴 **`[PASSE-REEL-2]`** (M) — indicateur « mon passé colle-t-il à ce qui était prévu ».
+- [x] 🔴 **`[PASSE-REEL-2]`** (M, LIVRÉ PR #617) — indicateur « mon passé colle-t-il à ce qui était prévu ».
   **DÉCISION MARC** : comparer à une prévision **FIGÉE que Marc verrouille** (`lockedProjectionStore`
   / `PROJECTION-PERSIST` existent déjà). ⚠️ Surtout PAS à une prévision recalculée aujourd'hui :
   elle intègre déjà le passé, l'écart serait nul par construction et l'indicateur dirait toujours

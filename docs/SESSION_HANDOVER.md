@@ -4,6 +4,13 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-13 (suite 70) — `[PASSE-REEL-2]` : l'écart réel vs prévision figée (PR #617)
+> `services/projection/forecastAccuracy.ts` (pur) + `ForecastAccuracyBadge`, affiché SOUS la légende
+> de la courbe verrouillée — un écart loin de sa référence n'est pas interprétable.
+> ⚠️ La référence est la courbe VERROUILLÉE, jamais une projection recalculée : celle-ci part des
+> soldes réels, l'écart serait nul par construction. 11 tests, dont 5 sur les cas `null`.
+> Reste du lot : `[PASSE-REEL-3]` (réancrage quotidien automatique sur les soldes réels).
+
 > ## 🟢 Session 2026-08-13 (suite 68) — `[PASSE-REEL-1]` : le passé ne ment plus (PR #614)
 > Marc a demandé de REMONTER ce lot avant le reste du moteur — sa courbe lui mentait tous les jours.
 > `dailyCurve.ts` : `if (!real) return { ...d }` renvoyait le point PROJETÉ pour une journée passée

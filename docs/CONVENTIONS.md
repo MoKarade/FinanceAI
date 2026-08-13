@@ -2588,3 +2588,36 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   compensait : ici, une hypothèse que personne n'avait jamais écrite. Elle est désormais une
   DÉCISION explicite (`docs/decisions.md`), pas un oubli — et c'est Marc qui l'a tranchée, parce
   que le choix change le résultat d'un facteur 8.
+
+- ⚠️ **[ENG-DIVORCE] re-revue #616 — corriger une règle DUPLIQUÉE à moitié est PIRE que l'erreur
+  d'origine.** Avant le lot, `taxFilers` (dépôt fiscal) et le multiplicateur du meltdown REER
+  disaient tous les deux « couple » après un divorce : faux, mais COHÉRENT. Le premier correctif
+  n'a basculé que `taxFilers` — le moteur retirait alors un revenu de DEUX têtes pour l'empiler sur
+  UNE déclaration : mesuré 140 000 $/an de retraits REER imposables en trop, et une stratégie
+  MELTDOWN_REER recommandée sur une fiscalité qui se contredisait elle-même. Règle : quand on
+  corrige une grandeur, GREPPER toutes ses copies AVANT de committer ; si le nom diffère
+  (`activeUsersCount` ici), c'est le NOM qu'il faut corriger — et hisser la valeur à un seul
+  endroit vaut mieux que synchroniser deux copies.
+- ⚠️ **[Même revue] Un compteur peut avoir TROIS sémantiques dans le même fichier.**
+  `retirementIncome.ts` porte désormais `activeUsersCount` (DIVISEUR d'agrégat ménage),
+  `householdPensionShare` (PART d'un montant ménage) et `householdAdults` (NOMBRE DE TÊTES). Les
+  confondre coûte cher dans les deux sens : réduire le diviseur ANNULE la réduction des rentes
+  (mesuré Δ = 0,00 $) ; lire le diviseur là où il faut des têtes donnait au divorcé le barème SRG de
+  COUPLE **puis** sa prestation ×2 — 1 226,50 $/mois rendus, une valeur que la loi ne permet à
+  PERSONNE (maximum célibataire : 1 105 $). Corollaire de test : l'assertion juste n'est pas « moins
+  que le couple » (un célibataire pauvre peut légitimement toucher plus, son maximum est bien plus
+  élevé), c'est **le plafond légal**. J'ai écrit la mauvaise version d'abord, et c'est la mesure qui
+  l'a réfutée.
+- ⚠️ **[Même revue] Un test sur la FONCTION ne prouve jamais le CÂBLAGE.** `processReerMeltdown`
+  distinguait parfaitement 1 déclarant de 2 — pendant que l'appelant continuait de lui passer
+  `activeUsersCount`. C'est le motif exact du NO-GO précédent. Il faut une assertion sur une
+  grandeur que le MOTEUR produit. Piège rencontré ici : sous `enableMonteCarlo` — le seul mode où le
+  divorce existe — `buildMonthlyDataPoint` ne rend qu'un point ALLÉGÉ `{ NetWorth, monthIndex }`,
+  par performance ; aucun flux mensuel n'est observable pendant un divorce. La seule prise restante
+  est un AGRÉGAT du retour de scénario (`totalTaxesPaid`), avec un seuil re-mesuré des deux côtés.
+- ⚠️ **[Même revue] « Baseline intacte » se MESURE, et le contraire s'ASSUME.** Le drapeau solo
+  couvre décès ET divorce : sur 9 combinaisons (3 stratégies × déterministe / MC / décès), 8 sont
+  bit-identiques et UNE bouge — décès + MELTDOWN_REER, −75 756 $ d'impôt à vie, +92 921 $ de
+  patrimoine. C'est un correctif (un veuf est UN déclarant), pas une régression : épinglé par un
+  test et écrit au CHANGELOG. Annoncer « aucune baseline touchée » sans rejouer la batterie aurait
+  été faux — et c'est le genre d'affirmation que personne ne revérifie ensuite.

@@ -814,6 +814,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // `tryDivorce` est donc désormais évalué JUSTE AU-DESSUS, avant les revenus.
         const soloHousehold = survivorMode || divorced;
 
+        // Nombre de CONTRIBUABLES du ménage — ≠ `activeUsersCount`, qui reste la taille NOMINALE et
+        // sert de diviseur d'agrégats. Hissé ici (il vivait dans le seul bloc de décembre) parce
+        // qu'il pilote désormais aussi le meltdown REER : deux copies de la même règle finissent
+        // toujours par diverger, et c'est exactement ce qui s'est produit (`taxFilers` = 1 au dépôt
+        // fiscal pendant que le meltdown visait encore un revenu de DEUX déclarants).
+        const taxFilers = soloHousehold ? 1 : activeUsersCount;
+
         // ---- PHASE RETRAITE ----
         if (isRetired) {
             if (!hasLoggedRetirement) {
@@ -835,6 +842,14 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                   // La DB (`dbPensionMonthly`) est un montant MÉNAGE que rien ne divise : elle exige
                   // un facteur EXPLICITE, sinon un divorcé gardait 100 % de la pension du couple.
                   householdPensionShare: divorced ? 1 / Math.max(1, activeUsersCount) : 1,
+                  // Le SRG est la seule prestation dont le barème dépend de la COMPOSITION du
+                  // ménage : ni le diviseur ci-dessus ni la liste d'users raccourcie ne
+                  // l'atteignent (ces lignes-là ne bouclent pas sur `users`). D'où ce compteur de
+                  // TÊTES explicite. `soloHousehold` et non `divorced` : le veuf y arrive aussi,
+                  // même si `survivorMode` le couvre déjà — les deux voies doivent dire la même
+                  // chose, sinon la prochaine correction n'en bougera qu'une (c'est exactement ce
+                  // qui a produit la contradiction `taxFilers` / meltdown).
+                  householdAdults: soloHousehold ? 1 : activeUsersCount,
                   baseGrossAnnual, delayPensions,
                   survivorMode, monthlyOasReduction, dbSurvivorPct, rrqSurvivorPct, psvResidencyYears,
                   startYear,
@@ -1006,12 +1021,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         if (currentMonthIndex === 11 && m > 0) {
             const yearsElapsed = Math.floor(m / 12);
             const inflationFactor = Math.pow(1 + simInflation / 100, yearsElapsed);
-            // FA-10 — nombre de CONTRIBUABLES du ménage (≠ activeUsersCount qui reste la taille
-            // nominale) : sert à la récolte de gains (palier ×1) ET au dépôt fiscal ci-dessous.
+            // FA-10 — `taxFilers` (déclaré en tête d'itération) : nombre de CONTRIBUABLES du ménage.
+            // Sert ici à la récolte de gains (palier ×1) ET au dépôt fiscal ci-dessous.
             // [ENG-DIVORCE-REGISTRE-PERCONJOINT] DEUX portes y mènent : le décès et le DIVORCE. Le
             // divorce était fiscalement INERTE — mesuré : Δ impôt = 0 $ EXACT sur 30 ans, alors que
             // la différence entre 1 et 2 contribuables vaut ~187 k$ d'impôt cumulé.
-            const taxFilers = soloHousehold ? 1 : activeUsersCount;
 
             // Levier « récolte de gains » (timing) : réalise des gains non-enreg latents dans une
             // année à faible revenu pour remplir le 1er palier (ACB relevé). À FAIRE AVANT le dépôt
@@ -1579,8 +1593,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
         // Cycle 15 split: REER Meltdown → ./projection/meltdownReer
         const meltResult = processReerMeltdown(
-            { m, isRetired, simSalaryGrowth, activeUsersCount, incomeRetirement,
-              accRetraitsReerYear, accRentesYear, grossMarcBaseAnnual, grossAnnaBaseAnnual,
+            // [ENG-DIVORCE — panel re-revue] `taxFilers`, PAS `activeUsersCount` : la cible du
+            // meltdown est un revenu imposable PAR DÉCLARATION. Et `grossAnnaBaseAnnual` mis à 0 en
+            // solo — même motif qu'au dépôt fiscal de décembre : le salaire d'un ex-conjoint parti
+            // ne fait plus partie de l'assiette qu'on cherche à « remplir ».
+            { m, isRetired, simSalaryGrowth, taxFilers, incomeRetirement,
+              accRetraitsReerYear, accRentesYear, grossMarcBaseAnnual,
+              grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual,
               reer, nonReg, celi, realEstateEquity },
             strategy,
         );

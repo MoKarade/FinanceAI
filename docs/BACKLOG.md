@@ -866,9 +866,57 @@
   avec contrat documenté, mais libellé à risque si l'UI affiche « Impôt à vie ». Jugement quantitatif
   à financial-integrity.
 
-- [ ] **`[ENG-DIVORCE-ROOM-DOUBLE]`** (S) — [HYPOTHÈSE non isolée] divorce ne modifie pas
-  `activeUsersCount` → espaces CELI/REER restent ceux d'un couple. À traiter avec #4
-  (`ENG-DIVORCE-REGISTRE-PERCONJOINT`).
+- [x] **`[ENG-DIVORCE-ROOM-DOUBLE]`** (S) — REMPLACÉ par `[ENG-DIVORCE-ROOM-COUPLE]` ci-dessous :
+  l'hypothèse est désormais MESURÉE, avec les montants. Ne pas traiter deux fois.
+
+#### Divorce — reliquat MESURÉ par le panel de re-revue (PR #616)
+
+> Les deux blocages ÉLEVÉ (SRG et cible du meltdown) sont CORRIGÉS dans #616. Ce qui suit a été
+> mesuré par le même panel et laissé DÉLIBÉRÉMENT hors du lot : ce sont des surfaces voisines, pas
+> le mécanisme du divorce lui-même. ⚠️ Leur point commun est le motif d'échec de #613 — « le même
+> défaut, laissé dans la fonction sœur ». Traiter `ROOM-COUPLE` et `ESTATE-PENSION` en priorité.
+
+- [ ] 🔴 **`[ENG-DIVORCE-ROOM-COUPLE]`** (M) — droits enregistrés restés de COUPLE après divorce :
+  `processJanuaryReset` reçoit `config.users` et `activeUsersCount` inchangés. **Mesuré** : CELI
+  +15 000 $/an de droits (2 × 7 500) pour un ménage à 1 tête → CELI final 2 268 641 $ vs
+  1 405 271 $, soit +58 573 $ de patrimoine et −27 456 $ d'impôt sur 30 ans. FHSA : le correctif de
+  DÉCEMBRE est ÉCRASÉ par janvier → 32 000 $ (avant) → 24 000 $ (#616) → 16 000 $ (légal
+  célibataire) : la moitié de l'écart seulement, plafond à vie encore 80 000 $ pour une personne.
+  RAP encore ×2 (`realEstateMonth.ts:201`). **Correctif** : `taxJanuary.ts` doit lire le nombre de
+  déclarants, comme décembre.
+- [ ] 🔴 **`[ENG-DIVORCE-ESTATE-PENSION]`** (M) — `computeEstateNetWorth` reçoit `activeUsersCount`
+  et la pension MÉNAGE entière, sans équivalent de `householdPensionShare` : le divorcé hérite à
+  l'écran Succession de la valeur actualisée des rentes de son ex. C'est la fonction MIROIR de celle
+  que #616 corrige — son propre commentaire dit « exactement comme retirementIncome.ts:207-212 ».
+- [ ] **`[ENG-DIVORCE-LATENTTAX]`** (S) — `latentTax` ignore le divorce : impôt latent −337 063 $
+  (N=2) vs −390 189 $ (N=1) → **53 126 $ de sous-estimation**, patrimoine net d'impôt affiché trop
+  haut. (Ex-MOYEN-10, moitié déjà traitée : le meltdown est corrigé, `latentTax` ne l'est pas.)
+- [ ] **`[ENG-DIVORCE-TAXDEBT-UNSPLIT]`** (S) — la créance/dette fiscale n'est pas partagée. Split à
+  100 % : patrimoine 135 $ au mois du divorce, puis avril crédite **26 948,77 $** — le remboursement
+  INTÉGRAL du couple (identique au témoin sans divorce). Contredit la décision « on partage la
+  valeur NETTE » qui a justifié d'ajouter les dettes au split. Effet de bord : `totalTaxesPaid`
+  ressort à **−12 992,70 $** (« impôt à vie » négatif).
+- [ ] 🔴 **`[ENG-DIVORCE-SPLITPCT-UNBOUNDED]`** (S) — `divorceSplitPct` n'est borné NULLE PART :
+  `AdvancedProjectionParams.tsx:118` est un `<input type="number">` sans `min`/`max`, et
+  `stochasticEvents.ts:198` fait `keep = 1 − splitPct` sans clamp. **Mesuré** : `−100` → patrimoine
+  final 2 210 335 $ contre 755 482 $ à 50 % (le divorce ENRICHIT) ; `1e9` → **−7 782 605 996 $**
+  (dettes × keep négatif = actif fantôme) ; `NaN` → actifs zéroïsés en silence, **aucun `logError`**.
+  #616 aggrave la portée : les dettes suivent désormais `keep`. **Correctif** : clamp [0, 100] au
+  moteur ET bornes à l'input.
+- [ ] 🔴 **`[ENG-DIVORCE-NO-CONSERVATION-GUARD]`** (M) — le splitter n'est couvert par AUCUNE garde
+  de conservation : `projection.moneyConservation` et `projection.fuzzConservation` appellent
+  `calculateFutureProjection(p)` **sans `runMC=true`**, or `tryDivorce` exige `enableMonteCarlo` →
+  zéro mois de divorce n'est vu par le harnais d'invariants. La conservation TIENT (mesurée à
+  0,000000 $ sur ~90 000 observations), mais une régression future dans un splitter qui mute 15+
+  locales dont les dettes et deux registres per-conjoint serait **silencieuse**.
+  ⚠️ Même racine que l'impossibilité d'observer `RetraitREER` pendant un divorce : sous MC,
+  `buildMonthlyDataPoint` ne rend qu'un point ALLÉGÉ `{ NetWorth, monthIndex }`.
+- [ ] **`[ENG-DIVORCE-DISPLAY-RATES]`** (S) — `grossPerUserAnnual` (`projection.ts` ~l. 1760) somme
+  encore `grossMarc + grossAnna` puis divise par `activeUsersCount` après divorce. Sortie
+  d'AFFICHAGE uniquement (taux marginal/effectif), inerte en MC — d'où la sévérité basse.
+- [ ] **`[ENG-DIVORCE-CHILDREN-REEE]`** (S) — [NON MESURÉ, zone non couverte] allocations familiales,
+  coûts d'enfants et REEE après divorce : le REEE est divisé, les coûts restent entiers. À cadrer
+  avant de coder — signalé comme angle mort, pas comme défaut établi.
 
 ### 🔴 Sécurité (1 MED · 2 LOW — aucune CRITIQUE)
 

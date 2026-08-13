@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-13 (suite 71) — DIVORCE v3 : les 2 blocages de la RE-revue (PR #616)
+> Le panel a recalé la v2 aussi (NO-GO, 2 ÉLEVÉ mesurés). Corrigés ici, chacun prouvé par un test
+> qui ÉCHOUE sur le code d'avant :
+> - **SRG** : `gisHeads` / `hasSpouseWithOAS` lisaient `activeUsersCount` (le DIVISEUR, resté à 2 à
+>   raison) et ne bouclent pas sur `users` — un divorcé gardait le barème COUPLE puis touchait ×2 :
+>   1 226,50 $/mois, AU-DESSUS du maximum légal célibataire (1 105 $). → `householdAdults`,
+>   3e compteur du fichier, défaut `activeUsersCount` (rétrocompat bit-identique).
+> - **Meltdown REER** : `taxFilers` était passé à 1 au dépôt fiscal mais `processReerMeltdown`
+>   recevait toujours `activeUsersCount` = 2 → 140 000 $/an de retraits imposables en trop, empilés
+>   sur UNE déclaration. Le nom du champ ÉTAIT le bug : renommé `taxFilers`, `taxFilers` hissé en
+>   tête d'itération (une seule source), salaire de l'ex sorti de l'assiette.
+> ⚠️ **La baseline n'est PAS intacte, et c'est assumé** : 8 combinaisons sur 9 bit-identiques, une
+> bouge — décès + MELTDOWN_REER (−75 756 $ d'impôt à vie). Un veuf est UN déclarant : correctif,
+> pas régression. Épinglé par un test.
+> ⚠️ **Le divorce n'est observable QUE sous MC**, où `buildMonthlyDataPoint` rend un point ALLÉGÉ
+> `{ NetWorth, monthIndex }` : aucun flux mensuel mesurable, seuls les agrégats du retour. C'est
+> aussi pourquoi aucune garde de conservation ne voit le splitter (`[ENG-DIVORCE-NO-CONSERVATION-GUARD]`).
+> **Reliquat ticketé** (mesuré par le panel, hors lot) : `[ENG-DIVORCE-ROOM-COUPLE]`,
+> `[ENG-DIVORCE-ESTATE-PENSION]`, `[ENG-DIVORCE-SPLITPCT-UNBOUNDED]` + 5 autres dans `BACKLOG.md`.
+
 > ## 🔴 Session 2026-08-13 (suite 69) — DIVORCE v2 : le panel avait recalé la v1 (PR #615)
 > **#613 a été recalée (NO-GO, 12 findings dont 5 ÉLEVÉ mesurés).** À lire avant de retoucher :
 > - `activeUsersCount` de `computeRetirementIncome` n'est PAS un compteur de têtes, c'est le

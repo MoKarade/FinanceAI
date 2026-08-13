@@ -105,7 +105,23 @@ export interface SimulationParams {
 // puis agrégation de la valeur nette du mois. En mode Monte Carlo, runScenario
 // est rappelée N fois avec un RNG seedé déterministe (reproductible).
 // Retourne la série temporelle (chartData) + les agrégats de fin (estate, FIRE).
-const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE', overrides: EngineOverrides = {}) => {
+/**
+ * [ENG-MC-OBSERVABILITY] Options de DIAGNOSTIC — délibérément séparées d'`EngineOverrides`, qui
+ * porte des LEVIERS de stratégie explorés par la recherche (`strategySpace`). Un drapeau de
+ * diagnostic glissé là-dedans serait balayé comme s'il changeait le plan financier.
+ */
+export interface ScenarioDiagnostics {
+    /**
+     * Émettre le point mensuel COMPLET même sous Monte-Carlo. **Tests uniquement.**
+     * Sous MC, `buildMonthlyDataPoint` ne rend normalement que `{ NetWorth, monthIndex }` (perf).
+     * Or le divorce, la mortalité du conjoint, le LTC et la perte d'emploi n'existent QUE sous MC :
+     * leurs flux mensuels étaient donc INVÉRIFIABLES. Trois lots ont dû se rabattre sur des
+     * agrégats ou des tests de fonction pure faute de pouvoir les observer.
+     */
+    verboseMonthlyPoints?: boolean;
+}
+
+const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE', overrides: EngineOverrides = {}, diagnostics: ScenarioDiagnostics = {}) => {
     const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [], savingsGoals = [], financialGoals = [] } = params;
     
     // Cycle 22 split: RNG seedé déterministique → ./projection/setupSimulation
@@ -1879,6 +1895,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         data.push(buildMonthlyDataPoint({
             m, retirementMonthIndex, fireTargetNetWorth, futureFireTarget,
             simInflation, expenseMultiplier, effectiveBaseExpenses, enableMonteCarlo,
+            verboseMonthlyPoints: diagnostics.verboseMonthlyPoints,
             rawNetWorth, currentLoopDate, loopYear, age, isRetired,
             incomeMarc, incomeAnna, incomeRetirement, monthlyIncome, monthlyExpenses,
             childMonthlyCost, childGrossCost, childBenefits,

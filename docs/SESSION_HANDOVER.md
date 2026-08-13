@@ -13,6 +13,19 @@
 > **Cause commune identifiée** → `[ENG-MC-OBSERVABILITY]` : le point MC allégé explique À LUI SEUL
 > trois angles morts (`RetraitREER` et `ImpotLatent` inobservables pendant un divorce, aucune garde
 > de conservation sur le splitter). À traiter par un mode « MC verbeux » réservé aux tests.
+> ## 🟢 Session 2026-08-13 (suite 79) — `[ENG-MC-OBSERVABILITY]` : le mur enfin levé
+> Sous MC, le point mensuel était réduit à `{ NetWorth, monthIndex }` (perf) — or divorce, décès du
+> conjoint, LTC et perte d'emploi n'existent QUE sous MC. Trois lots avaient dû contourner.
+> Livré : `ScenarioDiagnostics.verboseMonthlyPoints` (8e param de `runScenario`), SÉPARÉ
+> d'`EngineOverrides` — celui-ci est exploré par `strategySpace`, un drapeau de diagnostic y serait
+> balayé comme un levier financier. Défaut absent ⇒ prod inchangée (épinglé par test).
+> **Premier bénéficiaire** : `[ENG-DIVORCE-NO-CONSERVATION-GUARD]` — un divorce AVEC dettes tourne
+> enfin sous invariants (6 tests).
+> ⚠️ **Leçon forte** : « Σ actifs − dettes == NetWorth » est CIRCULAIRE (NetWorth est recalculé
+> depuis ces soldes) — retirer le partage des dettes la laisse VERTE. L'invariant qui MORD est le
+> RATIO de partage sur la DETTE (grandeur indépendante) : 0,4926 attendu, 0,9949 en régression.
+> Après avoir écrit une garde, INTRODUIRE la régression qu'elle prétend couvrir.
+
 
 > ## 🟢 Session 2026-08-13 (suite 76) — `[ENG-DIVORCE-ROOM-COUPLE]` : les droits d'un seul titulaire
 > `processJanuaryReset` recevait `config.users` ENTIER et `activeUsersCount` inchangé : chaque

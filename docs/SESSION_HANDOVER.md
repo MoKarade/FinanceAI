@@ -4,6 +4,45 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-13 (suite 64) — `[AUDIT-SAFETY]` : filets de sécurité (PR #608)
+> Premier lot de correctifs de l'audit 2026-08-12 (les 🔴 d'effort S). **Gate vert : typecheck,
+> lint, 3 965 tests (348 fichiers), build.**
+> - **Mode discret** : les 4 fuites de l'audit (Dettes, Centre fiscal, Asset Location, agrégats
+>   Transactions) + la 5e jumelle (`PayslipUploadCard`) passent par `PrivateAmount` /
+>   `PrivateNumberInput` — les montants **sortent du DOM**, ils ne sont pas floutés.
+> - **Trouvé PAR LA REVUE, pas par l'audit** : le masquage s'arrêtait aux **graphiques**. 8 axes Y
+>   et 11 formateurs d'infobulle affichaient des $ en clair (mesuré : « 41k » sur l'axe de la
+>   courbe d'extinction de dette, à côté d'une infobulle correctement masquée ; `DividendPanel`
+>   affichait des `formatCAD` PLEINS). Nouveaux helpers `utils/chartPrivacy.ts` (`maskedTick`,
+>   `maskedTooltipValue`), 10 fichiers corrigés.
+> - **Deux gardes, toutes deux prouvées discriminantes** (fuite réintroduite → rouge) :
+>   `tests/components/chartPrivacyScan.test.ts` (scan de SOURCE — le seul outil qui voit une prop
+>   de graphique) et le mock Recharts de `privacyLeaks.test.tsx`, qui rend désormais la SORTIE des
+>   formateurs au lieu de `() => null`.
+> - **Écriture IA** : l'import de talon de paie (Réglages) passe par le MÊME `writeExecutor` que le
+>   chat (diff → confirmation → `createBackupNow` → recalcul sur état frais) ; `PayslipSchema`
+>   borné (`.positive().finite()`). Le modal de confirmation refuse désormais de RENDRE en mode
+>   discret (le refus vivait dans un `useEffect` → une frame de montants réels affichés).
+> - **`actionPlanHierarchy`** journalise les valeurs non finies au lieu de les coercer en 0 muet.
+> - **Trois tours de revue, trois vagues de trouvailles** — chacun a trouvé ce que le précédent avait
+>   laissé : (1) les graphiques, (2) `TaxBracketViz` + un `aria-label` de virement + un trou DANS la
+>   garde (jeton `money(` présent des DEUX côtés → auto-satisfaite), (3) la carte couple du Budget,
+>   la frise des projets de vie, et une fuite **STRUCTURELLE** (le nombre de lignes du détail par
+>   palier encodait la tranche de revenu, tous montants masqués). Leçon portée dans CONVENTIONS.
+> - BACKLOG : 12 items déplacés vers `BACKLOG_ARCHIVE.md`. Reste ouvert de
+>   l'audit : le lot 🔴 moteur (divorce, stress-test), `[FISC-DON-ABATEMENT]`,
+>   `[AI-TAXCENTER-APPLY-NOGATE]`.
+> - ⚠️ **LE SUJET « MODE DISCRET » N'EST PAS CLOS.** Un 4e balayage, exhaustif (133 composants), a
+>   trouvé 17 fuites restantes — toutes sur des écrans que #608 ne touche pas. Une CLASSE entière n'a
+>   jamais été abordée : #608 a traité l'AFFICHAGE, jamais la **SAISIE**. Les formulaires natifs de
+>   Réglages/Profil (salaire des deux conjoints, soldes réels par compte, paramètres avancés,
+>   patrimoine étendu) sont en clair quel que soit le mode. Tout est ticketé en un lot priorisé :
+>   `[A11Y-PRIVACY-LOT2]` dans `docs/BACKLOG.md`. La primitive existe déjà (`PrivateNumberInput`).
+>   ⚠️ Le CHANGELOG a été CORRIGÉ pour ne plus dire « le mode discret masque TOUT » — c'était faux.
+> - ⚠️ Une question de contrat attend Marc : l'export PDF doit-il tenir compte du mode discret ?
+>   (`[A11Y-PRIVACY-PDF-CONTRAT]`, reco : refuser de générer plutôt que produire un PDF de « ••• »).
+> - ✅ **Quota Vercel réinitialisé** (2026-08-13 01:03 UTC) : les déploiements repartent.
+
 > ## 🟢 Session 2026-08-12 (suite 63) — `[REFONTE-NAV-L6a]` : l'assistant ancré sur la courbe
 > Lot 6a intégré sur `main` post-#606 (PR à venir). L'assistant **voit** la courbe du Futur.
 > - **Nouveau builder PUR** `services/aiChat/futureViewContext.ts` :

@@ -715,11 +715,21 @@ export const getRebalanceJustifications = async (
 
 // ─── Vision: analyse fiche de paie (compat TaxCenter) ───────────────────────
 
+// [AI-PAYSLIP-SCHEMA-UNBOUNDED] Bornes ALIGNÉES sur le schéma d'écriture du dépôt
+// (`mcp/tools/applyPayslip.spec.ts` : `.positive().finite()` sur brut/net, `.min(0).finite()` sur
+// le REER) — « .finite() OBLIGATOIRE sur tout montant ». Sans elles, `Infinity` et les négatifs
+// hallucinés par la Vision passaient Zod puis étaient MULTIPLIÉS par la fréquence (×12 à ×52) avant
+// d'atterrir dans le profil salarial qui alimente fiscalité ET projection.
+//   - brut/net → `.positive()` : une paie à 0 $ n'existe pas, et TaxCenter jetait DÉJÀ le résultat
+//     (`if (res.grossPeriod > 0)`) — le rejet remonte simplement au bon endroit (message d'erreur
+//     honnête plutôt qu'un « analyse terminée » qui n'écrit rien).
+//   - impôt/REER → `.nonnegative()` : 0 est LÉGITIME (paie sans retenue d'impôt, employé sans REER
+//     collectif) ; les exiger positifs REJETTERAIT des talons parfaitement valides.
 const PayslipSchema = z.object({
-    grossPeriod: z.number(),
-    netPeriod: z.number(),
-    taxPeriod: z.number(),
-    rrspPeriod: z.number(),
+    grossPeriod: z.number().positive().finite(),
+    netPeriod: z.number().positive().finite(),
+    taxPeriod: z.number().nonnegative().finite(),
+    rrspPeriod: z.number().nonnegative().finite(),
     frequency: z.enum(['Weekly', 'Bi-Weekly', 'Semi-Monthly', 'Monthly']),
 });
 export type PayslipData = z.infer<typeof PayslipSchema>;

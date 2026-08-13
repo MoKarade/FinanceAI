@@ -1,19 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Icon } from '../ui/Icon';
 import { analyzePayslip } from '../../services/claude';
 import { showToast } from '../ui/Toast';
 import { Card } from '../ui/Card';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { formatCAD } from '../../utils/format';
-import { annualSalaryToMonthly } from '../../utils/salary';
 import { logError } from '../../services/errorLogger';
+import { importWithRetry } from '../../utils/lazyWithRetry';
+import { PrivateAmount } from '../ui/PrivateAmount';
+import { AiChatConfirmModal } from '../aiChat/AiChatConfirmModal';
+import type { WritePreview, WriteDecision } from '../../services/aiTools/writeExecutor';
 
 /**
  * Phase C.2 — upload IA de relevé de salaire dans le Hub Configuration.
  *
  * Réutilise `analyzePayslip` (Claude Sonnet Vision) déjà utilisé dans TaxCenter.
- * Différence ici : auto-fill direct dans `config.users[N]` (grossSalary,
- * netSalary, taxDeduction) au lieu d'alimenter le calculateur fiscal.
+ *
+ * [AI-VISION-PAYSLIP-NOGATE] L'écriture passe par le MÊME chemin que le chat in-app
+ * (`executeWriteTool` + `apply_payslip` + `AiChatConfirmModal`) : diff avant → après MONTRÉ,
+ * on attend le clic, recalcul sur état FRAIS, sauvegarde IndexedDB AVANT d'écrire (échec du
+ * backup = pas d'écriture). Avant : `setAppState` direct sur `config.users[N]` — aucune
+ * confirmation, aucun backup, aucune garde > 0, alors qu'une hallucination OCR écrase le profil
+ * salarial qui alimente TOUTE l'app (fiscalité + projection). C'était l'INCOHÉRENCE entre les deux
+ * surfaces qui était le bug.
  *
  * Le composant choisit l'utilisateur cible via un radio (user1 / user2 si couple).
  */
@@ -27,12 +36,38 @@ interface PayslipUploadCardProps {
 export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUserIndex: initialTarget = 0, className = '' }) => {
     const apiKey = useFinanceStore(s => s.apiKeys.anthropic);
     const config = useFinanceStore(s => s.config);
-    const setAppState = useFinanceStore(s => s.setAppState);
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
 
     const [target, setTarget] = useState<0 | 1>(initialTarget);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [status, setStatus] = useState<string>('');
     const [result, setResult] = useState<{ gross: number; net: number; tax: number; freq: string } | null>(null);
+
+    // [AI-VISION-PAYSLIP-NOGATE] Même mécanique que le chat in-app : le diff attend le clic, la
+    // promesse est résolue par le modal (fermer = refuser, jamais de promesse pendante orpheline).
+    const [pendingWrite, setPendingWrite] = useState<WritePreview | null>(null);
+    const writeResolverRef = useRef<((d: WriteDecision) => void) | null>(null);
+
+    const resolvePendingWrite = useCallback((decision: WriteDecision) => {
+        const resolve = writeResolverRef.current;
+        writeResolverRef.current = null;
+        setPendingWrite(null);
+        resolve?.(decision);
+    }, []);
+
+    const requestConfirmation = useCallback((preview: WritePreview): Promise<WriteDecision> => {
+        return new Promise((resolve) => {
+            writeResolverRef.current = resolve;
+            setPendingWrite(preview);
+        });
+    }, []);
+
+    // [A11Y-PRIVACY-TAXCENTER — fuite jumelle] Le modal de confirmation AFFICHE des montants : si le
+    // mode discret s'active pendant l'attente, l'écriture en attente est REFUSÉE (même règle que
+    // `useAiChat` : « fermer = refus »). L'utilisateur redemande hors mode discret.
+    useEffect(() => {
+        if (isPrivacyMode && writeResolverRef.current) resolvePendingWrite('cancel');
+    }, [isPrivacyMode, pendingWrite, resolvePendingWrite]);
 
     const isCouple = Boolean(config?.users?.[1]?.name?.trim());
 
@@ -66,22 +101,80 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
             const annualNet = res.netPeriod * multiplier;
             const annualTax = res.taxPeriod * multiplier;
 
-            // Auto-fill le profil de l'utilisateur ciblé (taxDeduction est dérivé
-            // de grossSalary - netSalary partout dans l'app, pas besoin de le stocker).
-            const newUsers = [...config.users] as [typeof config.users[0], typeof config.users[1]];
-            const targetUser = newUsers[target];
-            newUsers[target] = {
-                ...targetUser,
-                // Le scan donne de l'ANNUEL → on STOCKE en MENSUEL (convention canonique du store ;
-                // le moteur ré-annualise ×12). Avant : annuel stocké → revenu ~12× trop haut.
-                grossSalary: annualSalaryToMonthly(annualGross),
-                netSalary: annualSalaryToMonthly(annualNet),
-            };
-            setAppState({ config: { ...config, users: newUsers } });
+            // [AI-VISION-PAYSLIP-NOGATE] GARDE de dernier recours avant toute proposition d'écriture :
+            // le schéma Zod borne déjà la réponse Vision (AI-PAYSLIP-SCHEMA-UNBOUNDED), mais c'est ICI
+            // que les montants sont MULTIPLIÉS par la fréquence — un produit non fini ou ≤ 0 ne doit
+            // jamais atteindre le profil salarial. Rejet HONNÊTE (message), pas de valeur de repli.
+            const usable = [annualGross, annualNet].every(v => Number.isFinite(v) && v > 0);
+            if (!usable) {
+                logError({
+                    source: 'ai', severity: 'warning',
+                    message: 'Talon de paie : montants annualisés non exploitables (≤ 0 ou non finis) — écriture REFUSÉE',
+                    context: { frequency: res.frequency, grossFinite: Number.isFinite(annualGross), netFinite: Number.isFinite(annualNet) },
+                });
+                setStatus('');
+                showToast('Montants illisibles sur ce relevé (brut/net ≤ 0). Rien n\'a été modifié.', 'error');
+                return;
+            }
 
-            setResult({ gross: annualGross, net: annualNet, tax: annualTax, freq: res.frequency });
+            // Écriture par le chemin STANDARD du dépôt : diff pur → modal de confirmation → recalcul
+            // sur état frais → backup → setAppState. Chargé à la demande (le spec + l'exécuteur
+            // n'entrent dans aucun chunk de boot ; même protection anti-chunk-périmé que le chat).
+            const [{ executeWriteTool }, { applyPayslipSpec }] = await importWithRetry(
+                () => Promise.all([
+                    import('../../services/aiTools/writeExecutor'),
+                    import('../../mcp/tools/applyPayslip.spec'),
+                ]),
+                'payslipWrite',
+            );
             setStatus('');
-            showToast(`Profil ${target === 0 ? 'principal' : 'conjoint'} mis à jour.`, 'success');
+            // Spec du dépôt, ré-estampillée pour CETTE surface : provenance 'payslip' (dépôt in-app)
+            // au lieu du défaut 'mcp' (connecteur). Explicite, pour ne pas dépendre du spread interne
+            // de `toDocument` — la parité du reste du payload reste garantie par le spec partagé.
+            const inAppSpec = {
+                ...applyPayslipSpec,
+                toDocument: (a: Parameters<typeof applyPayslipSpec.toDocument>[0]) => ({
+                    ...applyPayslipSpec.toDocument(a),
+                    sourceKind: 'payslip' as const,
+                }),
+            };
+            const toolResult = await executeWriteTool(
+                inAppSpec,
+                {
+                    userIndex: target,
+                    // Le spec attend de l'ANNUEL et STOCKE en mensuel (annualSalaryToMonthly côté
+                    // applyDocument) — la conversion vit à UN seul endroit, plus de copie locale.
+                    grossAnnual: annualGross,
+                    netAnnual: annualNet,
+                    // [INCOME-PROVENANCE] nom du fichier = étiquette de la source du revenu
+                    // (même troncature que le chemin MCP).
+                    employer: file.name.slice(0, 120),
+                },
+                requestConfirmation,
+            );
+
+            // Contrat de `executeWriteTool` : un bloc texte JSON ({ applied, refusedByUser, … }).
+            // Illisible → on n'affirme RIEN (jamais un « mis à jour » fabriqué).
+            let applied = false;
+            let refused = false;
+            try {
+                const payload = JSON.parse(toolResult.content[0]?.text ?? '{}') as {
+                    applied?: boolean; refusedByUser?: boolean; backupFailed?: boolean;
+                };
+                applied = payload.applied === true;
+                refused = payload.refusedByUser === true || payload.backupFailed === true;
+            } catch (parseErr) {
+                logError({ source: 'ai', severity: 'warning', message: 'Talon de paie : résultat d\'écriture illisible', error: parseErr });
+            }
+
+            if (applied) {
+                setResult({ gross: annualGross, net: annualNet, tax: annualTax, freq: res.frequency });
+                showToast(`Profil ${target === 0 ? 'principal' : 'conjoint'} mis à jour.`, 'success');
+            } else if (refused) {
+                showToast('Modification annulée — ton profil est inchangé.', 'info');
+            } else {
+                showToast('Aucune modification à appliquer (valeurs déjà à jour).', 'info');
+            }
         } catch (err) {
             logError({ source: 'ai', severity: 'error', message: 'Analyse talon de paie (Vision) échouée', error: err });
             setStatus('');
@@ -153,19 +246,22 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
                     )}
                 </label>
 
+                {/* [A11Y-PRIVACY-TAXCENTER — fuite JUMELLE mesurée] Ce récapitulatif (partagé entre
+                    Réglages et le gate de setup) affichait Brut/Net/Impôt en clair, sans aucune
+                    référence au mode discret. Primitive du dépôt : la valeur SORT du DOM. */}
                 {result && (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 rounded-card bg-success-500/10 border border-success-500/30">
                         <div>
                             <div className="text-tiny text-ink-400 uppercase tracking-wider">Brut/an</div>
-                            <div className="text-meta font-bold text-emerald-300 font-mono">{formatCAD(result.gross)}</div>
+                            <PrivateAmount as="div" className="text-meta font-bold text-emerald-300 font-mono">{formatCAD(result.gross)}</PrivateAmount>
                         </div>
                         <div>
                             <div className="text-tiny text-ink-400 uppercase tracking-wider">Net/an</div>
-                            <div className="text-meta font-bold text-info-400 font-mono">{formatCAD(result.net)}</div>
+                            <PrivateAmount as="div" className="text-meta font-bold text-info-400 font-mono">{formatCAD(result.net)}</PrivateAmount>
                         </div>
                         <div>
                             <div className="text-tiny text-ink-400 uppercase tracking-wider">Impôt/an</div>
-                            <div className="text-meta font-bold text-amber-300 font-mono">{formatCAD(result.tax)}</div>
+                            <PrivateAmount as="div" className="text-meta font-bold text-amber-300 font-mono">{formatCAD(result.tax)}</PrivateAmount>
                         </div>
                         <div>
                             <div className="text-tiny text-ink-400 uppercase tracking-wider">Fréquence</div>
@@ -174,6 +270,12 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
                     </div>
                 )}
             </div>
+            {/* [AI-VISION-PAYSLIP-NOGATE] Point de contrôle humain : MÊME modal que le chat in-app
+                (diff avant → après). Toute fermeture = refus ; l'écriture et sa sauvegarde ne
+                partent qu'après « Appliquer ». */}
+            {pendingWrite && (
+                <AiChatConfirmModal preview={pendingWrite} onDecision={resolvePendingWrite} />
+            )}
         </Card>
     );
 };

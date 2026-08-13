@@ -6,6 +6,7 @@ import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
 import { ZoomContainer } from '../ui/ZoomContainer';
 import { ChartDataTable, type ChartDataColumn } from '../ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
+import { maskedTick } from '../../utils/chartPrivacy';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { formatCAD } from '../../utils/format';
 
@@ -101,10 +102,10 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
                     <AreaChart data={zoom.visibleData} margin={{ top: 5, right: 10, left: 5, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
                         <XAxis dataKey="year" stroke="#555" tick={{ fontSize: 10 }} tickFormatter={v => `An ${v}`} />
-                        <YAxis stroke="#555" tick={{ fontSize: 10 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} width={50} />
+                        <YAxis stroke="#555" tick={{ fontSize: 10 }} tickFormatter={maskedTick(isPrivacyMode, (v: number) => `${(v / 1000).toFixed(0)}k`)} width={50} />
                         <Tooltip
                             contentStyle={{ backgroundColor: '#1a1e29', borderColor: '#333', borderRadius: '8px', fontSize: '11px' }}
-                            formatter={(val: number, name: string) => [`${val.toLocaleString('fr-CA')} $`, name]}
+                            formatter={(val: number, name: string) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val), name]}
                             labelFormatter={v => `Année ${v}`}
                         />
                         <Legend iconSize={8} wrapperStyle={{ fontSize: '10px' }} />

@@ -14,6 +14,7 @@ import { useTimeChartZoom } from '../hooks/useTimeChartZoom';
 import { ZoomContainer } from './ui/ZoomContainer';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL, maskedSliderAria } from '../utils/privacyAria';
+import { maskedTick } from '../utils/chartPrivacy';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { formatCAD } from '../utils/format';
 
@@ -83,6 +84,10 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     const zoom = useTimeChartZoom(simulation.chart);
 
     // [A11Y-CHARTS] — mode discret : masque les montants de la table de données sr-only.
+    // [A11Y-PRIVACY-DEBT] Le mode discret ne couvrait que la table sr-only et le slider : le total dû
+    // (badge d'en-tête), chaque solde/minimum de la liste, le rappel « paiements mensuels » et
+    // l'infobulle de la courbe restaient LISIBLES. Tout passe désormais par la primitive PrivateAmount
+    // (la valeur SORT du DOM — jamais un flou CSS qui la laisse au lecteur d'écran).
     const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
     // [A11Y-CHARTS] — colonnes de la table sr-only (alternative texte à l'AreaChart d'extinction,
     // opaque aux lecteurs d'écran). Mois (axe X) + solde restant + intérêts cumulés. Mode privé
@@ -104,7 +109,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
             <PageHeader
                 icon={<Icon name="debt" size={28} />}
                 title="Dettes"
-                badge={<Badge variant={totalDebt > 0 ? 'danger' : 'success'} size="md">Total Dû: {formatCAD(totalDebt)}</Badge>}
+                badge={<Badge variant={totalDebt > 0 ? 'danger' : 'success'} size="md">Total Dû: <PrivateAmount>{formatCAD(totalDebt)}</PrivateAmount></Badge>}
             />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-1 space-y-6">
@@ -126,8 +131,8 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                         <div className="space-y-3">
                             {debts.map(d => (
                                 <div key={d.id} className="p-3 bg-[#1a1a1a] rounded-xl border border-white/5 flex justify-between items-center group">
-                                    <div><div className="font-bold text-white text-body">{d.name}</div><div className="text-meta text-ink-400">{d.interestRate}% • Min: {formatCAD(d.minimumPayment)}</div></div>
-                                    <div className="text-right"><div className="font-mono text-danger-400 font-bold">{formatCAD(d.balance)}</div><button onClick={() => handleDelete(d.id)} className="text-tiny text-ink-400 hover:text-danger-500 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-ring transition-opacity">Supprimer</button></div>
+                                    <div><div className="font-bold text-white text-body">{d.name}</div><div className="text-meta text-ink-400">{d.interestRate}% • Min: <PrivateAmount>{formatCAD(d.minimumPayment)}</PrivateAmount></div></div>
+                                    <div className="text-right"><PrivateAmount as="div" className="font-mono text-danger-400 font-bold">{formatCAD(d.balance)}</PrivateAmount><button onClick={() => handleDelete(d.id)} className="text-tiny text-ink-400 hover:text-danger-500 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-ring transition-opacity">Supprimer</button></div>
                                 </div>
                             ))}
                             {debts.length === 0 && (
@@ -166,8 +171,8 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                     <defs><linearGradient id="colorDebt" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/><stop offset="95%" stopColor="#ef4444" stopOpacity={0}/></linearGradient></defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                     <XAxis dataKey="month" stroke="#666" tick={{fontSize: 10}} tickFormatter={(m) => `M${m}`} />
-                                    <YAxis stroke="#666" tick={{fontSize: 10}} width={40} tickFormatter={(val) => `${(val/1000).toFixed(0)}k`} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => formatCAD(val)} />
+                                    <YAxis stroke="#666" tick={{fontSize: 10}} width={40} tickFormatter={maskedTick(isPrivacyMode, (val: number) => `${(val/1000).toFixed(0)}k`)} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => (isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val))} />
                                     <Area type="monotone" dataKey="balance" stroke="#ef4444" fill="url(#colorDebt)" name="Solde Restant" strokeWidth={3} />
                                 </AreaChart>
                             </ResponsiveContainer>
@@ -185,7 +190,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                         <span className="text-2xl">ℹ️</span>
                         <div>
                             <h4 className="font-bold text-blue-300 text-body">Impact sur le Futur</h4>
-                            <p className="text-meta text-ink-200 mt-1">Ces dettes sont automatiquement prises en compte dans l'onglet <strong>Futur</strong>. Le simulateur déduit les paiements mensuels ({formatCAD(totalMinPayment + extraPayment)}) de vos liquidités jusqu'à ce que chaque dette soit remboursée.</p>
+                            <p className="text-meta text-ink-200 mt-1">Ces dettes sont automatiquement prises en compte dans l'onglet <strong>Futur</strong>. Le simulateur déduit les paiements mensuels (<PrivateAmount>{formatCAD(totalMinPayment + extraPayment)}</PrivateAmount>) de vos liquidités jusqu'à ce que chaque dette soit remboursée.</p>
                         </div>
                     </div>
                 </div>

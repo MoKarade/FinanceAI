@@ -8,6 +8,10 @@ import { Card } from './ui/Card';
 import { FED_BRACKETS, QC_BRACKETS, calculateFiscalReport } from '../utils/tax';
 import { formatCAD, formatPercent } from '../utils/format';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
+import { PrivateAmount } from './ui/PrivateAmount';
+import { PrivateBlock } from './ui/PrivateBlock';
+import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
+import { useFinanceStore } from '../store/useFinanceStore';
 
 interface TaxBracketVizProps {
     annualGrossIncome: number;
@@ -33,7 +37,18 @@ function computeTaxBreakdown(income: number, brackets: typeof FED_BRACKETS): { p
 }
 
 export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome, label }) => {
-    const maxIncome = Math.max(annualGrossIncome * 1.2, 300000);
+    // [AUDIT-SAFETY / revue #608] Ce composant n'avait AUCUNE notion de mode discret : revenu brut,
+    // impôt net, détail $ par palier et taux dérivés s'affichaient en clair — y compris dans les
+    // `aria-label` et `title`. Frontière retenue : les BORNES et TAUX de palier sont du DROIT FISCAL
+    // PUBLIC (ils restent visibles, c'est ce qui rend l'écran pédagogique) ; tout ce qui se DÉRIVE du
+    // revenu de Marc est masqué — montants, taux effectif/marginal (ils désignent sa tranche), le
+    // marqueur de revenu (sa POSITION est un montant) et l'échelle de l'axe.
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
+    /** Montant destiné à un attribut (aria-label, title, caption) — pas de nœud DOM à envelopper. */
+    const money = (v: number) => (isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(v));
+    // En mode discret, l'échelle est FIGÉE au palier public : sinon `annualGrossIncome * 1.2`
+    // ferait varier la largeur des barres avec le revenu — une fuite par la géométrie.
+    const maxIncome = isPrivacyMode ? 300000 : Math.max(annualGrossIncome * 1.2, 300000);
 
     const fedBreakdown = computeTaxBreakdown(annualGrossIncome, FED_BRACKETS as never);
     const qcBreakdown = computeTaxBreakdown(annualGrossIncome, QC_BRACKETS as never);
@@ -62,18 +77,20 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
             <div className="space-y-2">
                 <div className="flex items-baseline justify-between">
                     <h3 className="text-meta font-bold text-white">{jurisdiction}</h3>
-                    <div className="text-tiny font-mono">
-                        <span className="text-danger-400" title="Impôt net (crédits inclus)">{formatCAD(netTax)}</span>
+                    <PrivateBlock as="span" className="text-tiny font-mono" title="Impôt net (crédits inclus)">
+                        <span className="text-danger-400">{formatCAD(netTax)}</span>
                         <span className="text-ink-400 mx-1">·</span>
                         <span className="text-warning-400">{formatPercent(netRate(netTax) * 100, 2)} effectif</span>
                         <span className="text-ink-400 mx-1">·</span>
                         <span className="text-info-400">{formatPercent(breakdown.marginalRate * 100, 0)} marginal</span>
-                    </div>
+                    </PrivateBlock>
                 </div>
                 <div
                     className="relative h-8 bg-black/40 rounded overflow-hidden border border-white/10"
                     role="img"
-                    aria-label={`Graphique des tranches d'imposition ${jurisdiction}. Revenu brut ${formatCAD(annualGrossIncome)}, taux marginal ${(breakdown.marginalRate * 100).toFixed(0)} %. Détail dans le tableau suivant.`}
+                    aria-label={isPrivacyMode
+                        ? `Graphique des tranches d'imposition ${jurisdiction}. Revenu et taux masqués (mode discret). Détail dans le tableau suivant.`
+                        : `Graphique des tranches d'imposition ${jurisdiction}. Revenu brut ${formatCAD(annualGrossIncome)}, taux marginal ${(breakdown.marginalRate * 100).toFixed(0)} %. Détail dans le tableau suivant.`}
                 >
                     {/* Contenu purement visuel : masqué au SR (décrit par aria-label + ChartDataTable sr-only).
                         role="img" rend déjà les enfants présentationnels, mais aria-hidden lève toute ambiguïté inter-AT. */}
@@ -99,7 +116,8 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                             </div>
                         );
                     })}
-                    {/* Marqueur du revenu */}
+                    {/* Marqueur du revenu — NON rendu en mode discret : sa position EST le montant. */}
+                    {!isPrivacyMode && (
                     <div
                         className="absolute top-0 bottom-0 w-0.5 bg-yellow-400"
                         style={{ left: `${(annualGrossIncome / maxIncome) * 100}%` }}
@@ -107,21 +125,29 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                     >
                         <div className="absolute -top-1 -translate-x-1/2 w-2 h-2 bg-yellow-400 rounded-full" />
                     </div>
+                    )}
                     </div>
                 </div>
                 <div className="flex justify-between text-tiny text-ink-400">
                     <span>0 $</span>
-                    <span className="text-yellow-400 font-bold">{formatCAD(annualGrossIncome)}</span>
+                    <PrivateAmount className="text-yellow-400 font-bold">{formatCAD(annualGrossIncome)}</PrivateAmount>
                     <span>{formatCAD(maxIncome)}</span>
                 </div>
 
                 <ChartDataTable
-                    caption={`${jurisdiction} — paliers d'imposition ; revenu brut ${formatCAD(annualGrossIncome)}, taux marginal ${(breakdown.marginalRate * 100).toFixed(0)} %, impôt net ${formatCAD(netTax)}.`}
+                    caption={isPrivacyMode
+                        ? `${jurisdiction} — paliers d'imposition ; revenu, taux et impôt masqués (mode discret).`
+                        : `${jurisdiction} — paliers d'imposition ; revenu brut ${money(annualGrossIncome)}, taux marginal ${(breakdown.marginalRate * 100).toFixed(0)} %, impôt net ${money(netTax)}.`}
                     columns={ladderColumns}
                     rows={ladderRows}
                 />
 
-                {/* Phase G.3 — Détail $ par palier consommé */}
+                {/* Phase G.3 — Détail $ par palier consommé.
+                    [revue #608, 3e tour] NON rendu en mode discret : le filtre `b.income > 0` ne
+                    garde que les paliers ATTEINTS, donc le simple NOMBRE de lignes encode la tranche
+                    marginale (mesuré : 2 lignes à 30 k$, 8 à 250 k$) — même avec chaque montant
+                    masqué. Masquer les valeurs sans masquer leur EXISTENCE ne suffit pas. */}
+                {!isPrivacyMode && (
                 <details className="text-tiny">
                     <summary className="cursor-pointer text-ink-400 hover:text-ink-200 italic py-1.5">
                         Voir décomposition $ par tranche
@@ -133,13 +159,14 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                                     {formatCAD(b.from)} → {b.to === Number.MAX_SAFE_INTEGER ? '∞' : formatCAD(b.to)}
                                 </span>
                                 <span>
-                                    <span className="text-ink-300">{formatCAD(b.income)} × {(b.rate * 100).toFixed(1)}% = </span>
-                                    <span className="text-red-300">{formatCAD(b.tax)}</span>
+                                    <span className="text-ink-300"><PrivateAmount>{formatCAD(b.income)}</PrivateAmount> × {(b.rate * 100).toFixed(1)}% = </span>
+                                    <PrivateAmount className="text-red-300">{formatCAD(b.tax)}</PrivateAmount>
                                 </span>
                             </div>
                         ))}
                     </div>
                 </details>
+                )}
             </div>
         );
     };
@@ -152,7 +179,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
         <Card title={`Tranches d'imposition${label ? ` (${label})` : ''}`}>
             <div className="space-y-4">
                 <p className="text-tiny text-ink-300 leading-snug">
-                    Marqueur jaune = revenu brut annuel ({formatCAD(annualGrossIncome)}). Barres = répartition par
+                    Marqueur jaune = revenu brut annuel (<PrivateAmount>{formatCAD(annualGrossIncome)}</PrivateAmount>). Barres = répartition par
                     palier (AVANT crédits). Total/effectif = impôt NET (crédits inclus : BPA, abattement QC).
                     Marginal = taux du prochain dollar gagné.
                 </p>
@@ -161,11 +188,11 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                 <div className="grid grid-cols-2 gap-3 p-3 bg-white/5 rounded border border-white/10">
                     <div>
                         <div className="text-tiny text-ink-400 uppercase tracking-wide">Combiné effectif</div>
-                        <div className="text-base font-bold text-warning-400 font-mono">{combinedEffective.toFixed(2)}%</div>
+                        <PrivateAmount as="div" className="text-base font-bold text-warning-400 font-mono">{combinedEffective.toFixed(2)}%</PrivateAmount>
                     </div>
                     <div>
                         <div className="text-tiny text-ink-400 uppercase tracking-wide">Combiné marginal</div>
-                        <div className="text-base font-bold text-info-400 font-mono">{combinedMarginal.toFixed(1)}%</div>
+                        <PrivateAmount as="div" className="text-base font-bold text-info-400 font-mono">{combinedMarginal.toFixed(1)}%</PrivateAmount>
                     </div>
                 </div>
                 <p className="text-tiny text-ink-400 italic">

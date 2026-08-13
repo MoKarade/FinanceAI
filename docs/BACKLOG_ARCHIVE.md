@@ -41,6 +41,110 @@ fichier:ligne). Verdicts appliqués à la refonte :
 
 ---
 
+## Livré 2026-08-13 — PR #608 « filets de sécurité » (suite de l'audit 2026-08-12)
+
+> Gate vert (typecheck + lint + 3 965 tests + build). Les 7 items ci-dessous étaient les 🔴
+> d'effort S de l'audit : fuites du mode discret, écriture IA sans filet, NaN silencieux.
+> La revue du panel a ajouté un 8e correctif, décrit après les items.
+
+- [x] 🔴 **`[AI-VISION-PAYSLIP-NOGATE]`** (S) — `PayslipUploadCard.analyzePayslip()` écrit
+  `grossSalary`/`netSalary` **DIRECTEMENT dans config.users** via `setAppState` : **aucune
+  confirmation, aucun backup préalable, aucune garde > 0**. Une hallucination OCR écrase le profil
+  salarial qui alimente TOUT (fiscalité + projection). Contraste : même flux via chat impose diff +
+  modal + backup. **Correctif** : écran de revue avant `setAppState` + `createBackupNow` + refus si
+  `grossPeriod <= 0`.
+
+- [x] 🔴 **`[AI-PAYSLIP-SCHEMA-UNBOUNDED]`** (S) — `PayslipSchema` utilise `z.number()` nu sur les
+  montants, ni `.positive()` ni `.finite()`, alors que tous les schémas d'écriture du repo l'imposent.
+  `Infinity`/négatifs passent Zod et sont **multipliés par la fréquence**. **Correctif** :
+  `z.number().positive().finite()` sur les 4 champs.
+
+- [x] 🔴 **`[SILENT-ACTIONPLAN-NAN]`** (S) — `actionPlanHierarchy.ts` coerce NaN/Infinity à 0 sans
+  aucun log : `num() := typeof v === 'number' && isFinite ? v : 0`. Le module alimente « Plan
+  d'action » (conseils en $). Le MÊME fichier moteur a **DÉJÀ eu ce bug 2 fois** (netWorth.ts,
+  pastPurchaseInit.ts), documenté + corrigé avec garde. **Correctif** : répliquer patron
+  `pastPurchaseInit` — helper `isCorrupt(v)` séparé de `num()`, `logErrorThrottled` par
+  (niveau, id de bucket) pour éviter thrash, détecteur par (champ, signature).
+
+- [x] 🔴 **`[A11Y-PRIVACY-DEBT]`** (S) — page Dettes : soldes individuels + total NON masqués en mode
+  Discret, bien qu'autres montants (graphe, slider) le soient. **Correctif** : envelopper
+  `formatCAD(d.balance)`, `totalDebt` et `totalMinPayment + extraPayment` dans `<PrivateAmount>` (pattern
+  déjà présent dans le fichier).
+
+- [x] 🔴 **`[A11Y-PRIVACY-TAXCENTER]`** (M) — Centre fiscal : 4 zones d'impôts/salaires non masquées
+  en mode Discret. **Fuite JUMELLE** : `PayslipUploadCard.tsx` (partagé entre Réglages et gate setup)
+  affiche aussi Brut/Net/Impôt sans `isPrivacyMode`. **Correctif** : ajouter `isPrivacyMode` +
+  wrapping `<PrivateAmount>` à 4 sites du TaxCenter + 1 PayslipUploadCard (ou factorise pour un seul
+  correctif).
+
+- [x] 🔴 **`[A11Y-PRIVACY-RETIREMENT-ASSETLOC]`** (S) — Asset Location Optimizer : **zéro référence** à
+  `isPrivacyMode` → CELI/REER/NonReg totalement non protégés en mode Discret (contrairement au reste
+  de l'onglet Retraite). **Correctif** : importer `useFinanceStore`, lire `isPrivacyMode`, envelopper
+  5 valeurs dans `<PrivateAmount>`.
+
+- [x] 🔴 **`[A11Y-PRIVACY-TXN-TOTALS]`** (S) — Transactions : montants par ligne masqués, mais agrégats
+  (total groupe, somme filtrée) ne le sont pas — aussi révélateur qu'une ligne individuelle. **Correctif** :
+  `<PrivateAmount>` sur 2 agrégats.
+
+- [x] **`[A11Y-PRIVACY-CHART-FORMATTER]`** (S, 🔴 trouvé PAR LA REVUE de #608, absent de
+  l'audit) — le mode discret s'arrêtait aux GRAPHIQUES : 8 axes Y et 11 formateurs d'infobulle
+  annonçaient des $ en clair (`components/DebtManager.tsx:173` mesuré : « 41k » juste à côté
+  d'une infobulle correctement masquée ; `DividendPanel` affichait même des `formatCAD` PLEINS
+  sur l'axe). Invisible au grep `formatCAD(` (montants construits à la main) ET aux tests de
+  rendu (`YAxis`/`Tooltip` mockés en `() => null`). **Livré** : helpers `utils/chartPrivacy.ts`
+  (`maskedTick` / `maskedTooltipValue`), 10 fichiers corrigés, garde de source
+  `tests/components/chartPrivacyScan.test.ts` + mock Recharts renforcé (les deux prouvés
+  discriminants en réintroduisant la fuite). Bonus : le modal de confirmation d'écriture IA ne
+  peut plus « flasher » les montants une frame avant son annulation en mode discret.
+
+- [x] **`[A11Y-PRIVACY-TAXBRACKET]`** (S, 🔴 trouvé par la 2e revue de #608) —
+  `components/TaxBracketViz.tsx` (rendu depuis l'onglet Retraite, `Retirement.tsx:301`) n'avait
+  **aucune** notion de mode discret : revenu brut, impôt net, détail $ par palier, taux effectif et
+  marginal, plus les `aria-label`/`title`/caption, tout en clair. **Livré** : frontière explicite —
+  les BORNES et TAUX de palier sont du droit fiscal PUBLIC et restent visibles ; tout ce qui dérive
+  du revenu est masqué, y compris le marqueur de revenu (sa POSITION est un montant) et l'échelle de
+  l'axe (figée à 300 000 $ en mode discret, sinon `revenu × 1,2` fuit par la géométrie).
+
+- [x] **`[A11Y-PRIVACY-TRANSFERS-ARIA]`** (XS, trouvé par la même revue) —
+  `components/transactions/TransfersPanel.tsx` : le montant VISIBLE passait par `PrivateAmount`,
+  mais l'`aria-label` du bouton juste en dessous le reconstruisait avec `formatCAD` nu — annoncé en
+  clair au lecteur d'écran, lisible dans le DOM. Même classe (valeur sensible qui sort par une
+  PROP), hors Recharts.
+
+- [x] **`[A11Y-PRIVACY-SCAN-SELFSAT]`** (XS, trou DANS la garde livrée plus haut) — le jeton
+  `money(` figurait à la fois dans le motif « c'est de l'argent » et dans le motif « c'est masqué » :
+  un helper local `const money = v => formatCAD(v)` SANS `isPrivacyMode` passait au vert tout en
+  fuyant (PoC exécuté). **Livré** : `PRIVACY` n'accepte plus que des marques qui PROUVENT la lecture
+  du mode discret ; les points d'appel écrivent le ternaire en clair ; le scan lit désormais le CORPS
+  complet d'un formateur (multi-lignes) et refuse bruyamment un `<YAxis>` à JSX imbriqué, au lieu de
+  cesser de voir en silence.
+
+- [x] **`[A11Y-PRIVACY-BUDGET-COUPLE]`** (M, 🔴 trouvé au 3e tour de revue de #608) — la carte
+  « Santé Financière du Couple » (`components/Budget.tsx`) ne consultait JAMAIS `isPrivacyMode`,
+  alors que le fichier le lisait déjà ailleurs : décomposition fiscale complète (fédéral, QC, RRQ,
+  AE+RQAP, total, net disponible) ET partage du revenu des DEUX conjoints, en texte comme en
+  attribut `title`. Seul le total combiné final était masqué. **Livré** : `PrivateAmount` sur le
+  texte, helper `maskedAttr` sur les `title`, taux moyen d'imposition masqué aussi (il désigne la
+  tranche de revenu) ; les ratios de comportement (effort, clé de partage) restent visibles.
+
+- [x] **`[A11Y-PRIVACY-LIFEEVENTS]`** (S, même tour) — `components/LifeEvents.tsx` : le `title` de
+  chaque pastille de la frise portait le coût de l'événement, et la carte « Analyse d'Impact »
+  (coût immédiat, effet papillon, coût d'opportunité, manque à gagner 20 ans) n'était pas masquée —
+  alors que `isPrivacyMode` alimentait déjà la table sr-only et l'infobulle du donut juste en dessous.
+
+- [x] **`[A11Y-PRIVACY-STRUCTURAL-LEAK]`** (S, même tour, le plus intéressant) — dans
+  `TaxBracketViz`, le détail « $ par tranche » ne rendait que les paliers ATTEINTS (`b.income > 0`) :
+  chaque montant était bien en « ••• », mais le NOMBRE de lignes encodait la tranche marginale
+  (mesuré : 2 lignes à 30 k$, 8 à 250 k$). **Masquer les valeurs sans masquer leur EXISTENCE ne
+  suffit pas.** Le test qui garde ce point est STRUCTUREL : deux revenus très différents doivent
+  produire un DOM indiscernable en mode discret.
+
+- [x] **`[A11Y-PRIVACY-SCAN-CUSTOMTOOLTIP]`** (XS, même tour) — 2e trou de la garde : un
+  `<Tooltip content={<MonTooltip/>}>` échappait au scan (le formatage $ vit dans le corps d'un
+  composant nommé, pas dans une prop). Les 2 usages réels du dépôt étaient corrects par CONVENTION,
+  pas par vérification. La garde résout désormais le composant désigné et exige `PrivateAmount` ou
+  `isPrivacyMode` dans son corps (PoC vérifié rouge).
+
 ## ✅ Chantier REFONTE-NAV Lot 1 — la nav (PR #600, merged 2026-08-12)
 
 - [x] **`[REFONTE-NAV-L1]`** ✅ 2026-08-12 (PR #600) — 6 destinations (Futur · Configurations · Vie · 

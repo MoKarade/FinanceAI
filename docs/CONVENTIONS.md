@@ -2462,3 +2462,56 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   ne pas inventer un nouveau champ de store pour reproduire un état local.
   (3) Une **énumération vide** dans un prompt (`… : .`) est un blanc que le modèle comble : tout
   `join()` qui peut rendre `''` a besoin d'un repli NOMMÉ (« aucun chiffre disponible »).
+- ⚠️ **[Lot filets de sécurité] 2026-08-12** : (1) **une fuite de mode discret se compte PAR CHAMP,
+  pas par composant** — les 5 écrans fautifs câblaient DÉJÀ `isPrivacyMode` pour d'autres montants ;
+  c'est l'oubli ponctuel qui fuit, donc l'audit doit grepper `formatCAD(` NON enveloppé, pas chercher
+  des composants « non câblés ». Points aveugles récurrents : formatters de Tooltip Recharts et
+  `<input type=number>` PRÉ-REMPLIS avec une vraie valeur. (2) **Deux chemins d'écriture pour la même
+  donnée finissent toujours par diverger en garanties** : l'import de talon par le chat exigeait diff +
+  modal + backup, celui des Réglages n'avait rien — l'incohérence EST le bug, et le correctif est de
+  faire consommer le MÊME exécuteur, pas de ré-implémenter un mini-filet. Corollaire : après avoir
+  corrigé une surface, chercher les AUTRES appelants de la même donnée (une 3e surface a été trouvée
+  ainsi, `[AI-TAXCENTER-APPLY-NOGATE]`).
+- ⚠️ **[Revue #608] 2026-08-13 — une PROP de composant tiers est un angle mort DOUBLE.** Le mode
+  discret était respecté partout SAUF dans les graphiques : un montant y est produit par un
+  `tickFormatter` / `formatter` passé en prop à Recharts. Ni le grep `formatCAD(` ne le voit (l'axe
+  construisait `${(val/1000).toFixed(0)}k` à la main), ni les tests de rendu (ils mockent
+  `YAxis`/`Tooltip` en `() => null`, faute de dimensions jsdom pour `ResponsiveContainer`). Résultat
+  mesuré : l'axe annonçait « 41k » à 4 pixels d'une infobulle correctement masquée, dans un fichier
+  déjà « corrigé » — 19 sites du même défaut sur 10 fichiers. Trois règles qui en sortent :
+  (1) quand une valeur sensible sort par une **prop de rendu**, la garde qui la voit est un **scan de
+  SOURCE** (`tests/components/chartPrivacyScan.test.ts`), pas un test de rendu ; (2) un mock qui rend
+  `() => null` **désarme silencieusement** l'assertion — mieux vaut rendre la SORTIE du formateur pour
+  une valeur témoin, le mock devient alors la surface d'affichage réelle ; (3) une politique
+  transversale (masquer, formater, arrondir) veut un **helper nommé** (`maskedTick`) et non un
+  ternaire recopié : le helper est ce que la garde peut chercher. Corollaire vérifié : la même revue
+  a montré qu'un garde-fou logé dans un `useEffect` (annuler une confirmation en mode discret)
+  s'exécute APRÈS la peinture — un garde de RENDU (`if (isPrivacyMode) return null`) ferme le trou
+  pour toutes les surfaces d'un coup.
+- ⚠️ **[Revue #608, 2e passe] 2026-08-13 — une garde peut être AUTO-SATISFAITE.** Le scan qui
+  vérifie « tout formateur $ tient compte du mode discret » listait `money(` DANS LES DEUX motifs :
+  celui qui prouve « c'est de l'argent » et celui qui prouve « c'est masqué ». Un helper local
+  `const money = v => formatCAD(v)` sans `isPrivacyMode` passait donc au vert **en fuyant** (PoC
+  exécuté par la revue). Généralisation : **le jeton qui détecte le problème ne peut jamais être le
+  jeton qui atteste du correctif** — c'est la cousine de la garde CIRCULAIRE qui lit la table de
+  config qu'elle est censée vérifier. Corollaires appliqués : (1) n'accepter comme preuve de gating
+  que des marques qui PROUVENT la lecture de l'état (`isPrivacyMode`, `maskedTick(`), quitte à écrire
+  le ternaire en clair au point d'appel ; (2) une garde qui LIT DU TEXTE doit refuser BRUYAMMENT ce
+  qu'elle ne sait pas lire (formateur multi-lignes, JSX imbriqué dans une prop) — cesser de voir en
+  silence est pire que pas de garde ; (3) une revue de correctif doit se demander « reste-t-il des
+  sites de la même classe ? » ET « la garde que je viens d'écrire est-elle contournable ? » : les deux
+  questions ont rendu ici, la seconde sur la garde livrée trente minutes plus tôt.
+- ⚠️ **[Revue #608, 3e passe] 2026-08-13 — masquer les VALEURS ne masque pas leur EXISTENCE.** Dans
+  `TaxBracketViz`, le détail « $ par tranche » ne rendait que les paliers ATTEINTS (`b.income > 0`).
+  Chaque montant était bien en « ••• » — et pourtant le NOMBRE de lignes encodait la tranche
+  marginale (mesuré : 2 lignes à 30 k$, 8 à 250 k$). Une donnée privée fuit aussi par la STRUCTURE
+  du DOM : nombre d'éléments, présence/absence d'un bloc, position d'un marqueur (`style={{ left }}`),
+  largeur d'une barre, échelle d'un axe. Corollaire de test : la garde correspondante doit être
+  STRUCTURELLE — « deux entrées très différentes rendent un DOM indiscernable en mode discret » —
+  et non « tel montant est absent ».
+- ⚠️ **[Même passe] Un seuil de grandeur codé en dur rend un test de fuite VACUEUX.** La première
+  version du test des attributs `title` du Budget cherchait `/\d{4,}/` ; l'impôt mensuel de la
+  fixture faisait 3 chiffres (893 $) → le test passait au vert AVEC la fuite réintroduite. Le test
+  s'AUTO-CALIBRE désormais : il relève les nombres réellement présents hors mode discret, puis exige
+  qu'aucun ne subsiste. Règle générale : quand une assertion dépend d'une magnitude, la DÉRIVER de
+  l'exécution de référence plutôt que de la deviner — et toujours vérifier qu'elle ROUGIT.

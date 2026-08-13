@@ -662,7 +662,7 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                                             <AreaChart data={zoom.visibleData}>
                                                 <XAxis dataKey="year" tick={{ fontSize: 10 }} tickFormatter={v => `An ${v}`} />
                                                 <YAxis hide />
-                                                <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#333' }} />
+                                                <Tooltip formatter={(v: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCurrency(v)} contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#333' }} />
                                                 <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 11, fontWeight: 'bold' }} />
 
                                                 {(activeGoal.isPrimaryResidence || !activeGoal.isRented) && (

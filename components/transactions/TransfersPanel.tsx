@@ -22,6 +22,8 @@ import {
 } from '../../services/transactions/applyTransferDetection';
 import { formatCAD } from '../../utils/format';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
+import { useFinanceStore } from '../../store/useFinanceStore';
 import { Icon } from '../ui/Icon';
 
 interface Props {
@@ -145,7 +147,13 @@ export const TransfersPanel: React.FC<Props> = ({ transactions, onMarkTransfers 
 const SuggestionRow: React.FC<{
     suggestion: TransferSuggestion;
     onConfirm: () => void;
-}> = ({ suggestion, onConfirm }) => (
+}> = ({ suggestion, onConfirm }) => {
+    // [AUDIT-SAFETY / revue #608] Le montant visible passait par `PrivateAmount`, mais l'`aria-label`
+    // du bouton juste en dessous le reconstruisait avec `formatCAD` NU : un lecteur d'écran l'annonçait
+    // en clair en mode discret, et l'attribut restait lisible dans le DOM. Même classe que la fuite des
+    // graphiques (une valeur sensible qui sort par une PROP), hors Recharts.
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
+    return (
     <li className="rounded-lg border border-white/10 bg-black/20 p-2 flex items-center justify-between gap-2">
         <div className="min-w-0">
             <PrivateAmount className="text-meta font-bold text-ink-100">
@@ -162,10 +170,11 @@ const SuggestionRow: React.FC<{
         </div>
         <button
             onClick={onConfirm}
-            aria-label={`Confirmer le virement de ${formatCAD(suggestion.amount)} du ${suggestion.out.date}`}
+            aria-label={`Confirmer le virement de ${isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(suggestion.amount)} du ${suggestion.out.date}`}
             className="px-3 py-2 rounded-lg text-meta font-bold bg-white/5 text-ink-200 border border-white/10 focus-ring min-h-[24px] whitespace-nowrap"
         >
             C&apos;est un virement
         </button>
     </li>
-);
+    );
+};

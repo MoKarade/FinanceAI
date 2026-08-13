@@ -11,6 +11,7 @@
 // flux et conseils affichés sont EXACTEMENT ce que la stratégie optimale exécute.
 
 import { ACTION_ACCOUNTS, type ActionAccountKey } from './yearlyActions';
+import { logErrorThrottled } from '../errorLogger';
 
 export type PlanLevel = 'global' | 'decade' | 'triennium' | 'year' | 'semester' | 'quarter' | 'month';
 
@@ -84,6 +85,16 @@ export interface PlanBucket {
 type Point = Record<string, unknown>;
 
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+
+/**
+ * [SILENT-ACTIONPLAN-NAN] Champ RENSEIGNÉ mais non fini (NaN, Infinity, valeur non numérique) —
+ * `num()` le rabat sur 0, ce qui fabrique un conseil chiffré FAUX (« Cotise 0 $ », « Rien de
+ * notable ») à partir d'une donnée moteur corrompue. Convention du dossier (`pastPurchaseInit.ts`
+ * `isCorrupt`, `netWorth.ts` HARDEN-NETWORTH-NAN) : présent-mais-invalide → JOURNALISÉ ;
+ * réellement absent (`null`/`undefined`, ex. un scénario qui n'émet pas `NetTransferREEE`) →
+ * silencieux, c'est un cas normal.
+ */
+const isCorrupt = (v: unknown): boolean => v != null && !(typeof v === 'number' && Number.isFinite(v));
 
 /** Points futurs (monthIndex >= 0), triés. Le passé réel n'a pas d'action. */
 const futurePoints = (chartData: Point[]): Point[] =>
@@ -201,10 +212,18 @@ const makeBucket = (points: Point[], level: PlanLevel): PlanBucket => {
 
     const flows = { Liquidites: 0, CELI: 0, CELIAPP: 0, REER: 0, REEE: 0, NonReg: 0, Crypto: 0 } as Record<ActionAccountKey, number>;
     let isRetired = false;
+    // [SILENT-ACTIONPLAN-NAN] champs $ présents-mais-non-finis rencontrés dans la période (noms
+    // seulement : la valeur fautive est NaN/Infinity par définition, aucun montant réel n'est journalisé).
+    const corruptFields = new Set<string>();
     for (const d of points) {
         if (d.isRetired) isRetired = true;
-        for (const a of ACTION_ACCOUNTS) flows[a.key] += num(d[a.field]);
+        for (const a of ACTION_ACCOUNTS) {
+            const v = d[a.field];
+            if (isCorrupt(v)) corruptFields.add(a.field);
+            flows[a.key] += num(v);
+        }
     }
+    if (isCorrupt(last.NetWorth)) corruptFields.add('NetWorth');
     let deposited = 0;
     let withdrawn = 0;
     for (const a of ACTION_ACCOUNTS) {
@@ -212,6 +231,21 @@ const makeBucket = (points: Point[], level: PlanLevel): PlanBucket => {
         flows[a.key] = v;
         if (v > 0) deposited += v;
         else if (v < 0) withdrawn += -v;
+    }
+
+    // [SILENT-ACTIONPLAN-NAN] Le module alimente le « Plan d'action » en montants CONCRETS : une
+    // valeur moteur non finie neutralisée à 0 sans trace produisait un conseil crédible et faux.
+    // Throttlé par (niveau, ensemble de champs fautifs) : `makeBucket` est rejoué à chaque drill et
+    // à chaque run de projection → logguer à chaque appel thrasherait le journal (même raison que
+    // le throttle de `computeRawNetWorth`).
+    if (corruptFields.size > 0) {
+        const fields = [...corruptFields].sort().join(',');
+        logErrorThrottled(`actionPlan-nonfini:${level}:${fields}`, {
+            source: 'projection',
+            severity: 'warning',
+            message: 'Plan d\'action : champ moteur non fini neutralisé à 0 $ (conseil chiffré potentiellement faux)',
+            context: { level, fields, startMonthIndex: num(first.monthIndex), monthCount: points.length },
+        });
     }
 
     const childLevel = CHILD_LEVEL[level];

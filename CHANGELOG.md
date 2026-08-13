@@ -8,6 +8,41 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Sécurité de tes données (lot « filets de sécurité », suite de l'audit)
+- **Le mode discret couvre enfin tes écrans de lecture.** Cinq écrans laissaient des montants
+  lisibles alors que le mode était actif : Dettes (dont l'infobulle du graphe), Impôts (KPI, paliers,
+  fiche de paie détectée), l'import de talon, Retraite (répartition des actifs, y compris un champ
+  pré-rempli avec ton vrai portefeuille) et les totaux de Transactions. Les montants sortent du DOM —
+  ils ne sont pas simplement floutés.
+  ⚠️ **Ce n'est pas encore TOUTE l'app** : un balayage exhaustif a trouvé 17 endroits qui restent à
+  couvrir, dont les FORMULAIRES de Réglages/Profil (salaire, soldes de comptes, paramètres avancés) —
+  une classe entière que ce lot n'a pas touchée. C'est le prochain lot (`[A11Y-PRIVACY-LOT2]`).
+- **L'import de talon de paie ne peut plus écrire ton salaire à ton insu** : il te montre d'abord ce
+  qu'il a lu, prend une sauvegarde avant d'écrire, et refuse un montant absurde au lieu de l'appliquer.
+  C'est le même garde-fou que l'import via le chat — les deux chemins sont enfin alignés.
+- Le « Plan d'action » ne transforme plus une valeur de calcul invalide en **0 $** silencieux : c'est
+  journalisé, donc diagnosticable.
+- **Les graphiques aussi se taisent en mode discret.** L'axe et l'infobulle d'un graphique ne
+  passaient pas par le masquage habituel : la courbe d'extinction de dette continuait d'afficher
+  « 41k » sur son axe, et le graphe des dividendes affichait carrément les montants complets.
+  Corrigé sur 19 axes et infobulles (dettes, enfant, retraite, immobilier, budget, placements,
+  dividendes, projets de vie).
+- Le récapitulatif de confirmation d'une écriture proposée par l'assistant ne peut plus **apparaître
+  une fraction de seconde** avec les vrais montants quand le mode discret est déjà actif.
+- **Les paliers d'imposition ne se taisaient pas non plus** (écran « Tranches d'imposition » de la
+  Retraite) : revenu brut, impôt, décomposition par palier et taux étaient lisibles en mode discret.
+  Désormais masqués — y compris le repère jaune du revenu, dont la POSITION disait le montant. Les
+  tranches et taux officiels, eux, restent affichés : c'est de l'information publique.
+- Le bouton « C'est un virement » (détection de virements internes) annonçait le montant au lecteur
+  d'écran même en mode discret, alors que le montant affiché était bien masqué.
+- **La carte « Santé Financière du Couple » du Budget ne se masquait pas du tout** : décomposition
+  d'impôt complète et partage du revenu des deux conjoints, visibles et présents dans les infobulles
+  natives. C'était l'écran le plus sensible resté à découvert.
+- Frise des projets de vie : le coût de chaque événement apparaissait au survol, et la carte
+  « Analyse d'Impact » restait en clair.
+- Détail de l'impôt par tranche : même avec tous les montants masqués, le **nombre de lignes**
+  affichées disait dans quelle tranche tu te situes. Le bloc est maintenant retiré en mode discret.
+
 ### Améliorations — l'assistant regarde enfin ta courbe (refonte nav, Lot 6a)
 - **L'assistant voit ta courbe.** Quand tu lui parles depuis le Futur (ou depuis sa page), il
   sait maintenant ce que la courbe affiche : ton **patrimoine actuel** et celui **à l'horizon**,

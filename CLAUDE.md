@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **3 887 tests** Vitest
-(339 fichiers de test, mesuré le 2026-08-12 post-audit). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **3 965 tests** Vitest
+(348 fichiers de test, mesuré le 2026-08-13). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -153,6 +153,10 @@ scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (41 s
 
 ## Index des pièges — détail dans `docs/CONVENTIONS.md`
 
+- Une valeur sensible qui sort par une **prop de composant tiers** (`tickFormatter`/`formatter` Recharts)
+  échappe AU grep ET aux tests qui mockent ce composant : la garde est un scan de SOURCE (revue #608).
+  Elle sort aussi par un **attribut** (`title`/`aria-label`) et par la **STRUCTURE** (nombre de lignes,
+  position d'un marqueur) : masquer les valeurs ne masque pas leur existence.
 - Un flux moteur alimente PLUSIEURS registres (solde/fiscal/per-conjoint/affichage) : un producteur
   nouveau ou corrigé doit alimenter TOUS les registres (meltdown REER, 2026-07-31).
 
@@ -169,6 +173,7 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Une garde qui **lit la table de config** pour choisir quoi vérifier est CIRCULAIRE : elle ne peut
   pas détecter une erreur DANS la table. Il faut une assertion qui ne la consulte pas (mesuré sur
   `dailyLedger` : un solde reclassé en flux laissait les deux invariants verts).
+  Même famille : un jeton qui prouve À LA FOIS le problème et le correctif rend la garde AUTO-SATISFAITE.
 - Élargir l'assiette d'un calcul → auditer TOUS les dérivés qui partagent cette base.
 - Un registre per-conjoint qui devient pilote doit gérer **décès/divorce** (la conservation ne l'attrape pas).
 - Vérifs money-critical **en ISOLATION, séquentielles** (course `git stash` concurrente vue 2×).

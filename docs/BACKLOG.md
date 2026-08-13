@@ -578,6 +578,11 @@
   tour force l'ouverture du groupe du step actif, OU `anchorRect` vérifie
   `getComputedStyle(el).visibility`. Surface élargie par la nav 6 destinations (Configurations
   = 5 onglets).
+- [ ] **`[AI-TAXCENTER-APPLY-NOGATE]`** (S, 🔴 découvert en corrigeant `[AI-VISION-PAYSLIP-NOGATE]`) —
+  la MÊME faille subsiste sur une 2e surface : `TaxCenter.applyToProfile` (l. ~59-75) écrit le profil
+  via `setConfig` direct, sans diff ni backup ni garde de vraisemblance. Le bouton « Appliquer au
+  Profil Principal » donne un geste de confirmation, mais pas le filet. Aligner sur `writeExecutor`
+  comme l'a été `PayslipUploadCard`.
 - [ ] **`[A11Y-SIDEBAR-ESC]`** (XS, a11y — audit #598, pré-existant) — la sidebar dépliée au
   survol/focus n'est pas fermable au clavier (Échap) → gap WCAG 1.4.13 (Dismissable). Ajouter
   un keydown Échap qui replie (blur/retour du focus au déclencheur).
@@ -821,18 +826,6 @@
   « 35 %/53 % » → devient ≈32,5 %/48,8 % QC). Test discriminant exigé : git stash doit faire
   ÉCHOUER le nouveau test.
 
-- [ ] 🔴 **`[AI-VISION-PAYSLIP-NOGATE]`** (S) — `PayslipUploadCard.analyzePayslip()` écrit
-  `grossSalary`/`netSalary` **DIRECTEMENT dans config.users** via `setAppState` : **aucune
-  confirmation, aucun backup préalable, aucune garde > 0**. Une hallucination OCR écrase le profil
-  salarial qui alimente TOUT (fiscalité + projection). Contraste : même flux via chat impose diff +
-  modal + backup. **Correctif** : écran de revue avant `setAppState` + `createBackupNow` + refus si
-  `grossPeriod <= 0`.
-
-- [ ] 🔴 **`[AI-PAYSLIP-SCHEMA-UNBOUNDED]`** (S) — `PayslipSchema` utilise `z.number()` nu sur les
-  montants, ni `.positive()` ni `.finite()`, alors que tous les schémas d'écriture du repo l'imposent.
-  `Infinity`/négatifs passent Zod et sont **multipliés par la fréquence**. **Correctif** :
-  `z.number().positive().finite()` sur les 4 champs.
-
 - [ ] 🔴 **`[AI-CATEGORIZE-NO-BACKOFF]`** (M) — `categorizeBatch` chunke 50 tx sans retry/backoff/pacing.
   Un 429 sur chunk N → catch + chunk N+1 repart aussitôt → rate-limit atteint tôt **dégrade tout
   le reste en « non catégorisé », sans réessai ni signal**. **Correctif** : backoff exponentiel borné
@@ -915,18 +908,11 @@
   rechiffre). Fenêtre résiduelle théorique pour comptes abandonnés. **Correctif optionnel (low
   priority)** : au pull, si `drive.apiKeys` détecté, forcer `pushNow()` immédiat pour rechiffrer.
 
-### 🔴 Échecs silencieux — 1 HIGH, 3 MED/LOW
+### 🔴 Échecs silencieux — 3 MED/LOW  *(le HIGH `[SILENT-ACTIONPLAN-NAN]` est livré par #608)*
 
 > Pattern : traiter un champ présent-mais-non-fini comme absent, SANS log ni signal à l'utilisateur.
 > Référence : `services/finance.ts` (parseRate, patron parfait), `services/marketData/*` (appliqué),
 > `services/claude.ts` (safeJsonValidate loggue sys, rejets massifs tracés).
-
-- [ ] 🔴 **`[SILENT-ACTIONPLAN-NAN]`** (S) — `actionPlanHierarchy.ts` coerce NaN/Infinity à 0 sans
-  aucun log : `num() := typeof v === 'number' && isFinite ? v : 0`. Le module alimente « Plan
-  d'action » (conseils en $). Le MÊME fichier moteur a **DÉJÀ eu ce bug 2 fois** (netWorth.ts,
-  pastPurchaseInit.ts), documenté + corrigé avec garde. **Correctif** : répliquer patron
-  `pastPurchaseInit` — helper `isCorrupt(v)` séparé de `num()`, `logErrorThrottled` par
-  (niveau, id de bucket) pour éviter thrash, détecteur par (champ, signature).
 
 - [ ] **`[SILENT-STOCKFORM-PRICEHINT]`** (S) — `AddStockForm.suggestHistoryPrice()` échoue en silence
   (réseau/provider) : catch sans `logError` ni `setNotice` (contrairement à `validateSymbol` du même
@@ -941,30 +927,11 @@
   (présent-mais-non-fini) à son défaut sans trace. Impact faible (pondération UI, pas argent).
   **Correctif optionnel** : détection `présent && !fini` avec `logError` agrégé par champ.
 
-### 🔴 A11y — 5 HIGH (fuites de données privées), 3 MED, 1 LOW
+### 🔴 A11y — 1 HIGH restant, 3 MED, 1 LOW  *(4 HIGH « Mode Discret » livrés par #608 → archive)*
 
-> HIGH = **Mode Discret** : montants censés MASQUÉS en restent visibles à 4 endroits majeurs (dettes, impôts, retraite, totaux txn).
-> Ces leçons sont CLASSÉES en A11Y mais ce sont DES FUITES DE DONNÉES vérifiées, d'où le 🔴.
-
-- [ ] 🔴 **`[A11Y-PRIVACY-DEBT]`** (S) — page Dettes : soldes individuels + total NON masqués en mode
-  Discret, bien qu'autres montants (graphe, slider) le soient. **Correctif** : envelopper
-  `formatCAD(d.balance)`, `totalDebt` et `totalMinPayment + extraPayment` dans `<PrivateAmount>` (pattern
-  déjà présent dans le fichier).
-
-- [ ] 🔴 **`[A11Y-PRIVACY-TAXCENTER]`** (M) — Centre fiscal : 4 zones d'impôts/salaires non masquées
-  en mode Discret. **Fuite JUMELLE** : `PayslipUploadCard.tsx` (partagé entre Réglages et gate setup)
-  affiche aussi Brut/Net/Impôt sans `isPrivacyMode`. **Correctif** : ajouter `isPrivacyMode` +
-  wrapping `<PrivateAmount>` à 4 sites du TaxCenter + 1 PayslipUploadCard (ou factorise pour un seul
-  correctif).
-
-- [ ] 🔴 **`[A11Y-PRIVACY-RETIREMENT-ASSETLOC]`** (S) — Asset Location Optimizer : **zéro référence** à
-  `isPrivacyMode` → CELI/REER/NonReg totalement non protégés en mode Discret (contrairement au reste
-  de l'onglet Retraite). **Correctif** : importer `useFinanceStore`, lire `isPrivacyMode`, envelopper
-  5 valeurs dans `<PrivateAmount>`.
-
-- [ ] 🔴 **`[A11Y-PRIVACY-TXN-TOTALS]`** (S) — Transactions : montants par ligne masqués, mais agrégats
-  (total groupe, somme filtrée) ne le sont pas — aussi révélateur qu'une ligne individuelle. **Correctif** :
-  `<PrivateAmount>` sur 2 agrégats.
+> Les 4 fuites de Mode Discret de l'audit sont CORRIGÉES (#608), ainsi qu'une 5e trouvée à la revue
+> (axes et infobulles de graphiques, `[A11Y-PRIVACY-CHART-FORMATTER]`). Garde de non-régression :
+> `tests/components/chartPrivacyScan.test.ts`.
 
 - [ ] 🔴 **`[A11Y-MODAL-GUIDE-NODIALOG]`** (S) — `GuideModal` : aucune sémantique de dialogue
   (`role="dialog"` absente), pas de focus initial/piège Tab/restauration focus/Escape. Atteignable au
@@ -975,6 +942,63 @@
   Un utilisateur SR qui clique nav n'a aucune indication que le contenu a changé. **Correctif** :
   appeler `document.getElementById('main')?.focus()` au changement `activeTab` ; pour deep-link
   `usePendingFocus`, ajouter `el.focus({preventScroll})` après `scrollIntoView`.
+
+### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
+
+> Balayage complet des 133 composants après la PR #608 (3 tours de revue). Les écrans de LECTURE
+> visés par #608 sont couverts et gardés par test. Le trou restant est d'une autre nature : **#608 a
+> traité l'affichage, jamais la SAISIE**. Les formulaires natifs de Réglages/Profil affichent les
+> données les plus sensibles de l'app — salaire des deux conjoints, soldes réels par compte,
+> assurances, immeubles locatifs, société — en `<input type="number" value={…}>` non masqué, quel que
+> soit le mode. La primitive existe déjà (`PrivateNumberInput`, utilisée par `AssetLocationCard`).
+> ⚠️ Rappel de méthode (leçon #608) : un test de fuite doit être prouvé DISCRIMINANT, et un canal de
+> fuite peut être un ATTRIBUT (`title`, `aria-label`) ou la STRUCTURE (nombre de lignes rendues).
+
+- [ ] 🔴 **`[A11Y-PRIVACY-SALAIRE]`** (S) — `components/settings/UserConfigFields.tsx:84-106` : salaire
+  brut ET net des DEUX conjoints en input natif, zéro référence au mode discret dans le fichier.
+  Le champ le plus sensible de l'app. **À traiter EN PREMIER.**
+- [ ] 🔴 **`[A11Y-PRIVACY-PARAMS-AVANCES]`** (M) — `components/AdvancedProjectionParams.tsx` : zéro
+  `isPrivacyMode`. Soldes manuels CELI/REER/Non-Enreg/Cash/Crypto + droits restants (l. 259-284),
+  pension alimentaire (122), capital maladie grave (146), dépenses additionnelles (150), héritage
+  attendu (156), surcoût snowbird (206), soutien boomerang/proche aidant (222-234). Le plus gros bloc
+  de données réelles jamais masqué du dépôt.
+- [ ] 🔴 **`[A11Y-PRIVACY-SOLDES-COMPTES]`** (S) — `components/settings/sections/AccountsSection.tsx:63-68`
+  : soldes de départ chèque/épargne réels en input natif.
+- [ ] 🔴 **`[A11Y-PRIVACY-PATRIMOINE-ETENDU]`** (M) — `components/PatrimoineExtended.tsx` : 4 panneaux
+  (assurance, immeuble locatif, société, objectifs cycliques) entièrement à nu, plus un résumé
+  NOI/Cap Rate en `toLocaleString` nu (l. 119 — viole aussi la règle `formatCAD`).
+- [ ] 🔴 **`[A11Y-PRIVACY-INVESTMENTS-DETAIL]`** (S) — `components/Investments.tsx` : `isPrivacyMode`
+  est déjà lu dans ce fichier, mais oublié sur les légendes des donuts (861, 923), les suggestions de
+  rééquilibrage (1107, 1112, 1154, 1160) et la carte par titre — Valeur (1303), Coût moyen et Gain
+  total DCA (1386, 1391). Écran principal du sous-onglet « detail ».
+- [ ] 🔴 **`[A11Y-PRIVACY-PROJECTION-EXPLAINS]`** (S) — `components/projection/ProjectionExplains.tsx` :
+  zéro `isPrivacyMode`. Vue année-par-année ET mois-par-mois complète de la projection (soldes,
+  cotisations, croissance, retraits, transferts) en clair.
+- [ ] **`[A11Y-PRIVACY-DIVERS]`** (M, 8 sites MOYENS regroupés) — `Travel.tsx:125` (budget de voyage) ·
+  `dashboard/HealthIndicator.tsx:196,220` (cible FIRE $ et coût des abonnements $ sous les métriques,
+  widget permanent) · `retirement/GoalSeekerCard.tsx:61-66,100,111` · `tax/CoupleOptimizationCard.tsx:129` ·
+  `investments/AddStockForm.tsx:418-419` · `FutureProjection.tsx:1642,1649` (bandeau « courbe au jour »,
+  omission ponctuelle dans un fichier par ailleurs gardé) · `settings/sections/UsersCard.tsx:230` ·
+  `retirement/RetirementSettingsCard.tsx:56-64`.
+- [ ] **`[A11Y-PRIVACY-PROPERTY-CONFIG]`** (S) — `components/realestate/PropertyConfigurator.tsx` : les
+  2 sliders prix/mise de fonds SONT masqués (test dédié), mais pas les champs voisins du même
+  formulaire — revenu locatif (96-103), rénos annuelles (185), taxes/chauffage/condo (216-245).
+  Même patron « omission par champ » que #608.
+- [ ] **`[A11Y-PRIVACY-ONBOARDING]`** (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
+  masqués, mais NON exploitable (overlay `fixed inset-0 z-[9999]` qui recouvre le bouton du mode
+  discret → impossible de l'activer pendant l'onboarding). À aligner par cohérence, pas en urgence.
+- [ ] ❓ **`[A11Y-PRIVACY-PDF-CONTRAT]`** (XS, DÉCISION Marc) — `services/pdfReport.ts` ne consulte pas
+  le mode discret. Est-ce un bug ? Un export PDF est une action EXPLICITE de l'utilisateur, qui veut
+  précisément un document avec les vrais chiffres — menace différente du « regard par-dessus
+  l'épaule ». **Reco [Probable]** : laisser l'export en clair, mais REFUSER de générer tant que le
+  mode discret est actif (cohérent avec `AiChatConfirmModal`, qui refuse de rendre) plutôt que de
+  produire un PDF de « ••• » inutile. À trancher avant de coder.
+
+- [ ] **`[A11Y-BUDGETGROUP-CHART-NOALT]`** (S, relevé par le panel a11y de #608) — le mini-graphique
+  « Historique » par catégorie (`components/budget/BudgetGroupTable.tsx:312-330`) est le SEUL des 10
+  graphiques du dépôt sans `role="img"` + `aria-label` ni `ChartDataTable` sr-only : aucun nom
+  accessible, aucune alternative textuelle (WCAG 1.1.1 A). Pré-existant, pas une régression.
+  **Correctif** : appliquer le patron des 9 autres.
 
 - [ ] **`[A11Y-TOUCH-DELETE-ICONS]`** (S) — 3 boutons suppression icône-seule < 44×44 px (Travel,
   Investments, BudgetGroupTable). Projet a `.touch-target` utilisée ailleurs. **Correctif** : ajouter
@@ -1022,7 +1046,7 @@
   2-4 reqs), gain modeste. **Correctif** : remplacer par sélecteur atomique
   `useShallow` restreint aux champs RÉELLEMENT lus.
 
-### 🔴 IA / Anthropic (3 HIGH, 4 MED, 2 LOW)
+### 🔴 IA / Anthropic (1 HIGH, 4 MED, 2 LOW)  *(2 HIGH talon de paie livrés par #608)*
 
 > Périmètre : services/claude.ts, Vision payslip, chat in-app, budget recommandations.
 

@@ -22,6 +22,14 @@ export interface PayslipPayload {
     rrspContributedAnnual?: number;
     /** [INCOME-PROVENANCE] Employeur/étiquette de la paie (affiché comme source du revenu). */
     employer?: string;
+    /**
+     * [AI-VISION-PAYSLIP-NOGATE] Provenance à estamper. Défaut `'mcp'` = comportement historique
+     * (connecteur) → rétrocompat BIT-IDENTIQUE pour le serveur MCP. L'upload in-app (Réglages)
+     * passe `'payslip'` pour que le bandeau de l'onglet Impôt ne dise pas « via le connecteur
+     * Claude » sur un fichier déposé à la main. Champ NON exposé dans l'inputSchema du tool :
+     * le modèle ne peut pas le choisir, seule l'app le fixe.
+     */
+    sourceKind?: 'payslip' | 'mcp';
 }
 
 /** Relevé bancaire — transactions à ajouter (dédup automatique). */
@@ -577,7 +585,12 @@ function applyPayslip(state: AppState, doc: PayslipPayload): ApplyResult {
         && (!u.salarySource || (typeof doc.employer === 'string' && doc.employer.trim() !== '' && doc.employer !== u.salarySource.label));
     if (changes.length > 0 || provenanceStale) {
         const before = u.salarySource?.label ?? null;
-        u.salarySource = { kind: 'mcp', label: doc.employer || u.salarySource?.label || 'fiche de paie (connecteur)', appliedAt: Date.now() };
+        const sourceKind = doc.sourceKind ?? 'mcp';
+        u.salarySource = {
+            kind: sourceKind,
+            label: doc.employer || u.salarySource?.label || (sourceKind === 'mcp' ? 'fiche de paie (connecteur)' : 'fiche de paie'),
+            appliedAt: Date.now(),
+        };
         if (changes.length === 0) {
             changes.push({ field: `users[${idx}].salarySource`, before, after: u.salarySource.label, note: 'provenance de la paie mise à jour (montants inchangés)' });
         }

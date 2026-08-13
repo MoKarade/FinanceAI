@@ -713,6 +713,23 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             }
         });
 
+        // [FISC-DIVORCE-INCOME-PHANTOM] Le divorce coupait les ACTIFS mais gardait le revenu ET la
+        // fiscalité de COUPLE : le conjoint parti continuait d'encaisser son salaire à vie (mesuré :
+        // 85 k$/an de revenu fantôme sur un couple à 183 k$ brut) et le ménage restait imposé à deux
+        // têtes. Cette erreur DOMINE la coupe de patrimoine — et la garde de conservation ne peut pas
+        // l'attraper : l'argent reste conservé, il est simplement INVENTÉ au bon endroit.
+        //
+        // `soloHousehold` = « il ne reste qu'UN déclarant dans ce ménage ». Décès et divorce y mènent
+        // tous les deux, et la plomberie fiscale existait déjà pour le décès (`survivorMode`) : on la
+        // RÉUTILISE au lieu d'ouvrir un second chemin qui divergerait.
+        // ⚠️ Ne remplace PAS `survivorMode` partout : les PRESTATIONS DE SURVIVANT (RRQ réversible,
+        // PSV, DB du conjoint décédé) n'existent pas pour un divorcé — `computeRetirementIncome`
+        // continue donc de recevoir `survivorMode`, pas ce drapeau.
+        // Position : AVANT la phase revenus, donc `divorced` y porte l'état du mois PRÉCÉDENT. Sans
+        // effet de bord — `tryDivorce` n'arme qu'en JANVIER (`currentMonthIndex === 0`), le dépôt
+        // fiscal est en décembre.
+        const soloHousehold = survivorMode || divorced;
+
         // ---- PHASE RETRAITE ----
         if (isRetired) {
             if (!hasLoggedRetirement) {
@@ -721,7 +738,14 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             }
             // Cycle 13 split: calcul RRQ/PSV/DB → ./projection/retirementIncome
             const retirementBreakdown = computeRetirementIncome(
-                { m, age, simInflation, activeUsersCount, baseGrossAnnual, delayPensions,
+                { m, age, simInflation,
+                  // [FISC-DIVORCE-INCOME-PHANTOM] Après un divorce, les rentes du conjoint partent
+                  // avec lui : le ménage compte UNE tête. `survivorMode` reste INCHANGÉ ici — un
+                  // divorcé ne touche aucune prestation de survivant (RRQ réversible, PSV, DB).
+                  // Modèle assumé : chacun garde SES rentes (le partage des gains RRQ au divorce,
+                  // possible au Québec, n'est pas modélisé — direction conservatrice pour Marc).
+                  activeUsersCount: divorced ? 1 : activeUsersCount,
+                  baseGrossAnnual, delayPensions,
                   survivorMode, monthlyOasReduction, dbSurvivorPct, rrqSurvivorPct, psvResidencyYears,
                   startYear,
                   // FA-3b — le test SRG regarde le revenu de l'ANNÉE PRÉCÉDENTE (retraits REER + loyers).
@@ -729,7 +753,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                   // PV-9 — + gains en capital RÉALISÉS de l'année précédente (BRUT ; ×0,5 appliqué dans computeRetirementIncome).
                   prevYearCapitalGainsForGisNominal },
                 retirementGoal,
-                config.users,
+                divorced ? config.users.slice(0, 1) : config.users,
             );
             incomeRetirement = retirementBreakdown.total;
             incomeRetirementPerUser = retirementBreakdown.perUser.map(p => p.total);
@@ -747,7 +771,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // Cycle 15 split: salaire + job loss/LTD + bonus/RSU → ./projection/activeIncome
             const aiResult = computeActiveIncome(
                 { m, currentMonthIndex, simSalaryGrowth, enableMonteCarlo, rng,
-                  incomeMarcNetMonthly, incomeAnnaNetMonthly, survivorMode,
+                  // `survivorMode` est le nom du PARAMÈTRE ; sa sémantique côté activeIncome est
+                  // « pas de revenu de conjoint » — vrai au décès comme au divorce.
+                  incomeMarcNetMonthly, incomeAnnaNetMonthly, survivorMode: soloHousehold,
                   grossMarcBaseAnnual, grossAnnaBaseAnnual,
                   unemployedMonthsRemaining, ltdMonthsRemaining, ltdLogged },
                 effProj,
@@ -821,6 +847,22 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 currentValue: p.currentValue * keep,
                 mortgage: p.mortgage * keep,
             }));
+            // [ENG-DIVORCE-DEBT-ASYMMETRY] Les dettes NON immobilières se partagent au MÊME taux que
+            // les actifs — DÉCISION MARC 2026-08-13 (esprit du patrimoine familial québécois : on
+            // partage la valeur NETTE, pas les actifs bruts ; cf. docs/decisions.md).
+            // Avant : seule l'hypothèque suivait `keep`. Mesuré : après avoir cédé 100 % des ACTIFS,
+            // le patrimoine restait à −81 827 $ — 100 k$ de dettes intactes en face de rien.
+            activeDebts = activeDebts.map(d => ({
+                ...d,
+                balance: Number.isFinite(d.balance) ? d.balance * keep : d.balance,
+            }));
+            liquidDebt *= keep;
+            smithManoeuvreDebt *= keep;
+            // [ENG-DIVORCE-REGISTRE-PERCONJOINT] Le registre REER per-conjoint doit suivre le split,
+            // sinon l'invariant Σ(reerByUser) == reer casse (le total vient d'être multiplié par
+            // `keep`). Le ménage passe à UNE tête : tout ce qui reste est au déclarant restant, même
+            // consolidation que le décès — la différence étant qu'ici le total a d'abord été réduit.
+            reerByUser = reerByUser.map((_, i) => (i === 0 ? reer : 0));
         })) {
             divorced = true;
         }
@@ -832,6 +874,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             const alimony = effProj.divorceAlimonyMonthly || 0;
             monthlyExpenses += alimony * expenseMultiplier;
         }
+
 
         // Cycle 8 split: événements stochastiques one-shot (CI + héritage)
         // extraits dans ./projection/stochasticEvents.
@@ -912,9 +955,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         if (currentMonthIndex === 11 && m > 0) {
             const yearsElapsed = Math.floor(m / 12);
             const inflationFactor = Math.pow(1 + simInflation / 100, yearsElapsed);
-            // FA-10 — nombre de CONTRIBUABLES vivants (≠ activeUsersCount qui reste la taille du
-            // ménage) : sert à la récolte de gains (palier ×1) ET au dépôt fiscal ci-dessous.
-            const taxFilers = survivorMode ? 1 : activeUsersCount;
+            // FA-10 — nombre de CONTRIBUABLES du ménage (≠ activeUsersCount qui reste la taille
+            // nominale) : sert à la récolte de gains (palier ×1) ET au dépôt fiscal ci-dessous.
+            // [ENG-DIVORCE-REGISTRE-PERCONJOINT] DEUX portes y mènent : le décès et le DIVORCE. Le
+            // divorce était fiscalement INERTE — mesuré : Δ impôt = 0 $ EXACT sur 30 ans, alors que
+            // la différence entre 1 et 2 contribuables vaut ~187 k$ d'impôt cumulé.
+            const taxFilers = soloHousehold ? 1 : activeUsersCount;
 
             // Levier « récolte de gains » (timing) : réalise des gains non-enreg latents dans une
             // année à faible revenu pour remplir le 1er palier (ACB relevé). À FAIRE AVANT le dépôt
@@ -924,7 +970,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // levier récoltait avec une marge de palier doublée par un contribuable mort.
             const ghOtherNominal = isRetired
                 ? (incomeRetirement * 12 + accRentesYear + accRetraitsReerYear)
-                : (grossMarcBaseAnnual + (survivorMode ? 0 : grossAnnaBaseAnnual)) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
+                : (grossMarcBaseAnnual + (soloHousehold ? 0 : grossAnnaBaseAnnual)) * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
             const gh = processGainHarvesting({
                 enabled: !!overrides.gainHarvesting,
                 nonReg, nonRegACB, otherTaxableNominal: ghOtherNominal,
@@ -956,7 +1002,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     yearsElapsed, inflationFactor,
                     activeUsersCount: taxFilers,
                     grossMarcBaseAnnual,
-                    grossAnnaBaseAnnual: survivorMode ? 0 : grossAnnaBaseAnnual,
+                    grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual,
                     simSalaryGrowth,
                     optimizeSourceDeductions: effProj.optimizeSourceDeductions,
                     incomeRetirementMonthly: incomeRetirement,
@@ -965,20 +1011,20 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     incomeRetirementGisMonthly: incomeRetirementGis,
                     // A1 — décomposition par conjoint pour imposer chacun sur SON revenu de
                     // retraite réel (split égal sinon, cf. taxDecember). Vide hors retraite.
-                    incomeRetirementPerUserMonthly: survivorMode ? undefined : incomeRetirementPerUser,
+                    incomeRetirementPerUserMonthly: soloHousehold ? undefined : incomeRetirementPerUser,
                     // Phase 3 — composante DB mensuelle par conjoint (fractionnement 65+).
-                    incomeRetirementDbPerUserMonthly: survivorMode
+                    incomeRetirementDbPerUserMonthly: soloHousehold
                         ? [incomeRetirementDbPerUser.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0)]
                         : incomeRetirementDbPerUser,
                     nonReg, baseNonRegRate: baseRates.nonReg,
                     accRrspYear, accFhsaYear, smithInterestDeductibleYear,
                     accRentesYear, accRetraitsReerYear, accCapitalGainsYear,
-                    accRetraitsReerYearByUser: survivorMode ? undefined : accRetraitsReerYearByUser,
+                    accRetraitsReerYearByUser: soloHousehold ? undefined : accRetraitsReerYearByUser,
                     age,
                     // B-AUDIT-3 — âge courant du conjoint (user[1]) pour les crédits d'âge/
                     // pension PAR conjoint dans l'impôt de décembre. undefined si pas de conjoint
                     // (ou conjoint décédé — FA-10).
-                    ageSpouse: (!survivorMode && config.users[1]) ? (config.users[1].age || 30) + yearsElapsed : undefined,
+                    ageSpouse: (!soloHousehold && config.users[1]) ? (config.users[1].age || 30) + yearsElapsed : undefined,
                     // §6.4 RAMQ: nombre d'enfants à charge (relève le seuil d'exemption).
                     // Approximé via childGoals.length faute de champ dédié dans User.
                     // TODO: ajouter `User.dependentChildrenCount` pour précision.

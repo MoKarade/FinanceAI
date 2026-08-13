@@ -38,7 +38,10 @@ export const DONATION_CREDIT_RATES = {
 export const FED_CREDIT_QC_EFFECTIVENESS = 1 - QC_FEDERAL_ABATEMENT_RATE;
 
 /**
- * Crédit d'impôt total (fédéral + québécois, en dollars) pour un don annuel, PAR contribuable.
+ * Crédit d'impôt total (fédéral + québécois, en dollars) pour un don annuel, PAR DÉCLARATION —
+ * `w5Effects` l'appelle UNE fois sur le don du MÉNAGE, donc un seul seuil de 200 $ au taux
+ * réduit. C'est le traitement OPTIMAL et permis (regroupement des dons sur un seul conjoint) :
+ * ne pas y voir un « ×N contribuables » manquant.
  * Effectif **32,5 %** sur les 1ers 200 $ et **48,2 %** au-delà pour un résident du Québec — la part
  * fédérale étant ramenée à 83,5 % par l'abattement (cf. en-tête). Entrées non finies (NaN,
  * Infinity), négatives ou `undefined` → 0 (jamais de NaN propagé dans le bucket d'impôt).

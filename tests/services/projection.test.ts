@@ -365,7 +365,8 @@ const ALL_TYPES = ['BASE', 'LIBERTE_55', 'HYPER_INFLATION', 'WINDFALL', 'ECONOMI
             const noBase = noCharity.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE')!;
             const chBase = withCharity.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE')!;
             // Impôt « divers » TOTAL payé sur l'horizon. RAMQ/FSS sont identiques pour les deux → leur
-            // différence ≈ −crédit. Crédit(10 000) ≈ 5 264 $/an → le donateur paie NETTEMENT moins de divers.
+            // différence ≈ −crédit. La magnitude est DÉRIVÉE de computeDonationCredit (jamais un montant
+            // figé : il change à chaque correction fiscale) → le donateur paie NETTEMENT moins de divers.
             const sumDivers = (r: ProjectionResult): number =>
                 (r.chartData ?? []).reduce((acc: number, p: ProjectionChartPoint) => acc + (p.TaxPaidDivers ?? 0), 0);
             // Tous les mois exercés sont en phase active (aucun isRetired) — garde la prémisse du test.

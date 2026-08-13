@@ -2554,3 +2554,12 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   Québec. Écraser le premier aurait rendu la doc irréconciliable avec les sources officielles citées
   juste au-dessus (ARC P113, Revenu Québec). La table porte donc les DEUX colonnes, avec la règle de
   passage explicite. Vaut pour tout crédit non remboursable fédéral au Québec.
+- ⚠️ **[2026-08-13, panel #611] Corriger une valeur fiscale, c'est chasser ses COPIES figées dans les
+  tests.** Le correctif du crédit-don a été propagé à `w5Effects.test.ts`… mais pas au `const CREDIT =
+  5264` de `taxDecember.test.ts` ni au commentaire « ≈ 5 264 $/an » de `projection.test.ts` — deux
+  fichiers money-critical qui affirmaient donc une valeur périmée de 473,88 $. Impact utilisateur nul
+  (c'était une entrée-stub), impact sur la PROCHAINE revue non nul : un chiffre faux dans un test est
+  lu comme une référence. Réflexe : après toute correction d'une constante fiscale, `grep` le MONTANT
+  d'avant dans tout le dépôt, pas seulement le nom de la fonction. Et remplacer par une valeur
+  DÉRIVÉE de la source unique — c'est la même classe que « un outil-garde à valeurs re-codées en dur
+  dérive en silence », appliquée aux tests.

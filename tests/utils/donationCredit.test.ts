@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeDonationCredit, DONATION_FIRST_TIER_CEILING, DONATION_CREDIT_RATES } from '../../utils/donationCredit';
+import { computeDonationCredit, DONATION_FIRST_TIER_CEILING, DONATION_CREDIT_RATES, FED_CREDIT_QC_EFFECTIVENESS } from '../../utils/donationCredit';
 import { QC_FEDERAL_ABATEMENT_RATE } from '../../utils/tax';
 
 // [FA-6] Crédit d'impôt non remboursable pour dons (féd + QC, par paliers).
@@ -9,8 +9,14 @@ import { QC_FEDERAL_ABATEMENT_RATE } from '../../utils/tax';
 // calculé ENSUITE. Effectif QC : 32,5 % sur les 1ers 200 $, 48,2 % au-delà.
 
 /** Taux effectifs QC, DÉRIVÉS des constantes — jamais recopiés (une garde à valeurs en dur dérive). */
-const EFF_FIRST = DONATION_CREDIT_RATES.fed.first * (1 - QC_FEDERAL_ABATEMENT_RATE) + DONATION_CREDIT_RATES.qc.first;
-const EFF_EXCESS = DONATION_CREDIT_RATES.fed.excess * (1 - QC_FEDERAL_ABATEMENT_RATE) + DONATION_CREDIT_RATES.qc.excess;
+const EFF_FIRST = DONATION_CREDIT_RATES.fed.first * FED_CREDIT_QC_EFFECTIVENESS + DONATION_CREDIT_RATES.qc.first;
+const EFF_EXCESS = DONATION_CREDIT_RATES.fed.excess * FED_CREDIT_QC_EFFECTIVENESS + DONATION_CREDIT_RATES.qc.excess;
+
+// La constante exportée DOIT valoir le complément de l'abattement — sinon le nom ment.
+it('FED_CREDIT_QC_EFFECTIVENESS = 1 − abattement QC', () => {
+    expect(FED_CREDIT_QC_EFFECTIVENESS).toBeCloseTo(1 - QC_FEDERAL_ABATEMENT_RATE, 10);
+    expect(FED_CREDIT_QC_EFFECTIVENESS).toBeCloseTo(0.835, 10);
+});
 
 describe('computeDonationCredit — crédit dons par paliers (FA-6)', () => {
     it('don ≤ 200 $ : 32,5 % combiné effectif (15 féd × 83,5 % + 20 QC)', () => {

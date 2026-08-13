@@ -764,7 +764,7 @@ choisir). Calcul cumulatif par tranche (style impôt).
 |---|---|---|---|---|
 | Premiers 200 $ | **15 %** | **20 %** | 35 % | **32,5 %** |
 | Excédent (> 200 $) | **29 %** | **24 %** | 53 % | **48,2 %** |
-| Portion appariée au revenu en tranche d'imposition MAX | 33 % (féd) | 25,75 % (QC) | — | — |
+| Portion appariée au revenu en tranche d'imposition MAX | 33 % (féd) | 25,75 % (QC) | 58,75 % | **53,3 %** *(non modélisé)* |
 
 > ⚠️ **[FISC-DON-ABATEMENT] Lire la DERNIÈRE colonne, pas la « somme légale ».** Un crédit non
 > remboursable FÉDÉRAL réduit l'impôt fédéral **de base** ; l'**abattement du Québec de 16,5 %**

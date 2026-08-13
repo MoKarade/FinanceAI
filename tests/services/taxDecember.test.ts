@@ -14,6 +14,7 @@
 // calculateFSSPremium, non injectées). En 2026 l'inflationFactor = 1, donc les
 // seuils valent leur valeur de base — les bornes choisies sont donc fiables.
 
+import { computeDonationCredit } from '../../utils/donationCredit';
 import { describe, it, expect } from 'vitest';
 import {
     computeOasClawback,
@@ -547,7 +548,10 @@ describe('processDecemberTaxFiling — gate « décembre, m>0 »', () => {
 });
 
 describe('processDecemberTaxFiling — [FA-6-CREDIT-CAP] crédit-don plafonné à l\'impôt dû', () => {
-    const CREDIT = 5264; // computeDonationCredit(10000)
+    // [FISC-DON-ABATEMENT] Valeur DÉRIVÉE, jamais recopiée : elle valait 5 264 $ tant que la part
+    // fédérale était comptée au taux plein, elle vaut 4 790,12 $ depuis l'abattement QC. Un nombre
+    // en dur ici dérive en silence à chaque correction fiscale (classe documentée CLAUDE.md).
+    const CREDIT = computeDonationCredit(10000);
     // STUB_RATE = 0,25 → impôt salarial brut = grossMarcBaseAnnual × 0,25 (sans déductions, inflation 1).
     // `applied` = réduction de `divers` due au crédit, isolée de RAMQ/FSS (différence avec/sans crédit).
     const applied = (gross: number): number => {
@@ -557,12 +561,12 @@ describe('processDecemberTaxFiling — [FA-6-CREDIT-CAP] crédit-don plafonné �
     };
 
     it('revenu ÉLEVÉ (impôt ≫ crédit) → crédit PLEINEMENT appliqué', () => {
-        // impôt brut = 100 000 × 0,25 = 25 000 ≫ 5 264 → applied = 5 264 (complet)
+        // impôt brut = 100 000 × 0,25 = 25 000, très au-dessus du crédit → appliqué en entier
         expect(applied(100000)).toBeCloseTo(CREDIT, 2);
     });
 
     it('revenu BAS (impôt < crédit) → crédit PLAFONNÉ à l\'impôt (non remboursable, pas de remboursement net)', () => {
-        // impôt brut = 12 000 × 0,25 = 3 000 < 5 264 → applied = 3 000 (PLAFONNÉ, ≠ crédit complet)
+        // impôt brut = 12 000 × 0,25 = 3 000, SOUS le crédit → applied = 3 000 (PLAFONNÉ)
         expect(applied(12000)).toBeCloseTo(3000, 2);
         expect(applied(12000)).toBeLessThan(CREDIT);
     });

@@ -32,8 +32,16 @@
 > - BACKLOG : 12 items déplacés vers `BACKLOG_ARCHIVE.md`. Reste ouvert de
 >   l'audit : le lot 🔴 moteur (divorce, stress-test), `[FISC-DON-ABATEMENT]`,
 >   `[AI-TAXCENTER-APPLY-NOGATE]`.
-> - ⚠️ **Déploiement Vercel toujours contraint** (quota gratuit 100/jour) — voir
->   `docs/A_FAIRE_MOI.md`.
+> - ⚠️ **LE SUJET « MODE DISCRET » N'EST PAS CLOS.** Un 4e balayage, exhaustif (133 composants), a
+>   trouvé 17 fuites restantes — toutes sur des écrans que #608 ne touche pas. Une CLASSE entière n'a
+>   jamais été abordée : #608 a traité l'AFFICHAGE, jamais la **SAISIE**. Les formulaires natifs de
+>   Réglages/Profil (salaire des deux conjoints, soldes réels par compte, paramètres avancés,
+>   patrimoine étendu) sont en clair quel que soit le mode. Tout est ticketé en un lot priorisé :
+>   `[A11Y-PRIVACY-LOT2]` dans `docs/BACKLOG.md`. La primitive existe déjà (`PrivateNumberInput`).
+>   ⚠️ Le CHANGELOG a été CORRIGÉ pour ne plus dire « le mode discret masque TOUT » — c'était faux.
+> - ⚠️ Une question de contrat attend Marc : l'export PDF doit-il tenir compte du mode discret ?
+>   (`[A11Y-PRIVACY-PDF-CONTRAT]`, reco : refuser de générer plutôt que produire un PDF de « ••• »).
+> - ✅ **Quota Vercel réinitialisé** (2026-08-13 01:03 UTC) : les déploiements repartent.
 
 > ## 🟢 Session 2026-08-12 (suite 63) — `[REFONTE-NAV-L6a]` : l'assistant ancré sur la courbe
 > Lot 6a intégré sur `main` post-#606 (PR à venir). L'assistant **voit** la courbe du Futur.

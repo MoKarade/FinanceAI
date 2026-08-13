@@ -943,6 +943,57 @@
   appeler `document.getElementById('main')?.focus()` au changement `activeTab` ; pour deep-link
   `usePendingFocus`, ajouter `el.focus({preventScroll})` après `scrollIntoView`.
 
+### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
+
+> Balayage complet des 133 composants après la PR #608 (3 tours de revue). Les écrans de LECTURE
+> visés par #608 sont couverts et gardés par test. Le trou restant est d'une autre nature : **#608 a
+> traité l'affichage, jamais la SAISIE**. Les formulaires natifs de Réglages/Profil affichent les
+> données les plus sensibles de l'app — salaire des deux conjoints, soldes réels par compte,
+> assurances, immeubles locatifs, société — en `<input type="number" value={…}>` non masqué, quel que
+> soit le mode. La primitive existe déjà (`PrivateNumberInput`, utilisée par `AssetLocationCard`).
+> ⚠️ Rappel de méthode (leçon #608) : un test de fuite doit être prouvé DISCRIMINANT, et un canal de
+> fuite peut être un ATTRIBUT (`title`, `aria-label`) ou la STRUCTURE (nombre de lignes rendues).
+
+- [ ] 🔴 **`[A11Y-PRIVACY-SALAIRE]`** (S) — `components/settings/UserConfigFields.tsx:84-106` : salaire
+  brut ET net des DEUX conjoints en input natif, zéro référence au mode discret dans le fichier.
+  Le champ le plus sensible de l'app. **À traiter EN PREMIER.**
+- [ ] 🔴 **`[A11Y-PRIVACY-PARAMS-AVANCES]`** (M) — `components/AdvancedProjectionParams.tsx` : zéro
+  `isPrivacyMode`. Soldes manuels CELI/REER/Non-Enreg/Cash/Crypto + droits restants (l. 259-284),
+  pension alimentaire (122), capital maladie grave (146), dépenses additionnelles (150), héritage
+  attendu (156), surcoût snowbird (206), soutien boomerang/proche aidant (222-234). Le plus gros bloc
+  de données réelles jamais masqué du dépôt.
+- [ ] 🔴 **`[A11Y-PRIVACY-SOLDES-COMPTES]`** (S) — `components/settings/sections/AccountsSection.tsx:63-68`
+  : soldes de départ chèque/épargne réels en input natif.
+- [ ] 🔴 **`[A11Y-PRIVACY-PATRIMOINE-ETENDU]`** (M) — `components/PatrimoineExtended.tsx` : 4 panneaux
+  (assurance, immeuble locatif, société, objectifs cycliques) entièrement à nu, plus un résumé
+  NOI/Cap Rate en `toLocaleString` nu (l. 119 — viole aussi la règle `formatCAD`).
+- [ ] 🔴 **`[A11Y-PRIVACY-INVESTMENTS-DETAIL]`** (S) — `components/Investments.tsx` : `isPrivacyMode`
+  est déjà lu dans ce fichier, mais oublié sur les légendes des donuts (861, 923), les suggestions de
+  rééquilibrage (1107, 1112, 1154, 1160) et la carte par titre — Valeur (1303), Coût moyen et Gain
+  total DCA (1386, 1391). Écran principal du sous-onglet « detail ».
+- [ ] 🔴 **`[A11Y-PRIVACY-PROJECTION-EXPLAINS]`** (S) — `components/projection/ProjectionExplains.tsx` :
+  zéro `isPrivacyMode`. Vue année-par-année ET mois-par-mois complète de la projection (soldes,
+  cotisations, croissance, retraits, transferts) en clair.
+- [ ] **`[A11Y-PRIVACY-DIVERS]`** (M, 8 sites MOYENS regroupés) — `Travel.tsx:125` (budget de voyage) ·
+  `dashboard/HealthIndicator.tsx:196,220` (cible FIRE $ et coût des abonnements $ sous les métriques,
+  widget permanent) · `retirement/GoalSeekerCard.tsx:61-66,100,111` · `tax/CoupleOptimizationCard.tsx:129` ·
+  `investments/AddStockForm.tsx:418-419` · `FutureProjection.tsx:1642,1649` (bandeau « courbe au jour »,
+  omission ponctuelle dans un fichier par ailleurs gardé) · `settings/sections/UsersCard.tsx:230` ·
+  `retirement/RetirementSettingsCard.tsx:56-64`.
+- [ ] **`[A11Y-PRIVACY-PROPERTY-CONFIG]`** (S) — `components/realestate/PropertyConfigurator.tsx` : les
+  2 sliders prix/mise de fonds SONT masqués (test dédié), mais pas les champs voisins du même
+  formulaire — revenu locatif (96-103), rénos annuelles (185), taxes/chauffage/condo (216-245).
+  Même patron « omission par champ » que #608.
+- [ ] **`[A11Y-PRIVACY-ONBOARDING]`** (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
+  masqués, mais NON exploitable (overlay `fixed inset-0 z-[9999]` qui recouvre le bouton du mode
+  discret → impossible de l'activer pendant l'onboarding). À aligner par cohérence, pas en urgence.
+- [ ] ❓ **`[A11Y-PRIVACY-PDF-CONTRAT]`** (XS, DÉCISION Marc) — `services/pdfReport.ts` ne consulte pas
+  le mode discret. Est-ce un bug ? Un export PDF est une action EXPLICITE de l'utilisateur, qui veut
+  précisément un document avec les vrais chiffres — menace différente du « regard par-dessus
+  l'épaule ». **Reco [Probable]** : laisser l'export en clair, mais REFUSER de générer tant que le
+  mode discret est actif (cohérent avec `AiChatConfirmModal`, qui refuse de rendre) plutôt que de
+  produire un PDF de « ••• » inutile. À trancher avant de coder.
+
 - [ ] **`[A11Y-BUDGETGROUP-CHART-NOALT]`** (S, relevé par le panel a11y de #608) — le mini-graphique
   « Historique » par catégorie (`components/budget/BudgetGroupTable.tsx:312-330`) est le SEUL des 10
   graphiques du dépôt sans `role="img"` + `aria-label` ni `ChartDataTable` sr-only : aucun nom

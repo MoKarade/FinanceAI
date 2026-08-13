@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-13 (suite 66) — `[FINTABLE-TOKEN-WIPE]` : la synchro Drive effaçait le jeton
+> Bug signalé par Marc (« mon jeton Fintable se perd tout le temps »), diagnostiqué et corrigé.
+> **Ce n'était PAS une éviction de navigateur** — première hypothèse (ITP Safari 7 jours), écartée
+> dès que Marc a dit « PC et Android, pas d'iPhone ». Mécanisme réel, lu dans le code :
+> `syncSnapshot.ts` exclut délibérément `fintable` du push Drive → le payload Drive ne contient que
+> `{anthropic, finnhub}` → `syncPull` appelle `saveApiKeys(payload)` → `saveApiKeys` écrasait le
+> coffre EN BLOC. Chaque synchro effaçait le jeton.
+> ⚠️ **Symptôme trompeur à connaître** : le store mémoire FUSIONNE, le coffre ÉCRASE. Le jeton
+> survivait donc dans l'onglet ouvert et ne mourait qu'au RECHARGEMENT — d'où « ça se perd tout le
+> temps » plutôt que « ça se perd quand je synchronise ».
+> **Correctif** : `DEVICE_LOCAL_KEY_FIELDS` + préservation DANS `saveApiKeys` (pas chez les 4
+> appelants — le coffre est la seule voie d'écriture, donc le seul endroit qu'on ne peut pas
+> oublier). Contrat : `undefined` → préserve, `''` → efface. Test prouvé discriminant.
+> **Récidive** de la classe du finding #545, corrigé alors sur UN registre (`App.tsx`) et pas sur la
+> couche sync — leçon élargie dans CONVENTIONS.
+> **Proposé, NON fait** (scope non demandé) : `[STORAGE-PERSIST-REQUEST]` — l'app ne demande jamais
+> `navigator.storage.persist()`, donc le coffre reste évincible sous pression disque.
+
 > ## 🟢 Session 2026-08-13 (suite 65) — lot MOTEUR de l'audit, 1/5 : `[FISC-DON-ABATEMENT]`
 > Marc a cadré le lot moteur (« tout le HIGH ») et tranché la question produit du divorce.
 > **Découpage retenu, une PR par thème** (panel + merge entre chaque) :

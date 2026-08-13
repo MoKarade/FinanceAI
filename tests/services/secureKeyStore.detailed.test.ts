@@ -180,3 +180,119 @@ describe('getOrCreateDeviceKey — idempotence (une seule clé par profil)', () 
         expect(b).toBe(a);
     });
 });
+
+// ── [FINTABLE-TOKEN-WIPE] ───────────────────────────────────────────────────
+// Bug signalé par Marc (« mon jeton Fintable se perd tout le temps »), diagnostiqué le 2026-08-13.
+//
+// Le jeton Fintable est DEVICE-LOCAL : `services/sync/syncSnapshot.ts` l'exclut DÉLIBÉRÉMENT de ce
+// qui part vers Drive (un jeton bancaire ne doit pas voyager). Conséquence contre-intuitive : il
+// n'est jamais non plus dans ce qui en REVIENT. Or `syncPull` réécrivait le coffre avec le payload
+// Drive — donc `{anthropic, finnhub}` seuls — et `saveApiKeys` écrasait EN BLOC.
+//
+// Le symptôme était trompeur : le store en mémoire fusionne (`{...prev, ...keys}`), donc le jeton
+// continuait de marcher dans l'onglet ouvert et ne disparaissait qu'au RECHARGEMENT suivant.
+//
+// Ces tests exercent le vrai coffre (IndexedDB en mémoire, AES réel), pas un mock.
+describe('[FINTABLE-TOKEN-WIPE] saveApiKeys préserve les champs device-local', () => {
+    it('une écriture SANS `fintable` (payload Drive) ne l\'efface PAS du coffre', async () => {
+        // 1. Marc colle son jeton sur cet appareil.
+        await saveApiKeys({ anthropic: 'sk-ant-xyz', finnhub: 'fh-123', fintable: 'ft-secret-789' });
+
+        // 2. Une synchro Drive arrive. Par construction elle ne porte QUE ces deux clés.
+        await saveApiKeys({ anthropic: 'sk-ant-NOUVEAU', finnhub: 'fh-NOUVEAU' });
+
+        // 3. Rechargement de l'app → c'est ici que le jeton disparaissait.
+        const after = await loadApiKeysDetailed();
+        expect(after.status).toBe('ok');
+        if (after.status !== 'ok') return;
+        expect(after.keys.fintable, 'le jeton Fintable a été effacé par la synchro Drive').toBe('ft-secret-789');
+        // Les clés qui VOYAGENT, elles, doivent bien avoir été mises à jour — sinon le correctif
+        // aurait simplement figé le coffre.
+        expect(after.keys.anthropic).toBe('sk-ant-NOUVEAU');
+        expect(after.keys.finnhub).toBe('fh-NOUVEAU');
+    });
+
+    it('un `fintable` explicitement VIDE efface bien le jeton (absent ≠ effacé)', async () => {
+        await saveApiKeys({ anthropic: 'a', finnhub: 'f', fintable: 'ft-a-effacer' });
+        // L'utilisateur vide le champ dans l'UI : la valeur est PRÉSENTE, juste vide.
+        await saveApiKeys({ anthropic: 'a', finnhub: 'f', fintable: '' });
+
+        const after = await loadApiKeysDetailed();
+        expect(after.status).toBe('ok');
+        if (after.status !== 'ok') return;
+        expect(after.keys.fintable, 'un effacement explicite doit passer').toBe('');
+    });
+
+    it('premier enregistrement sur un coffre VIDE : rien à préserver, rien ne casse', async () => {
+        const after0 = await loadApiKeysDetailed();
+        expect(after0.status).toBe('empty');
+
+        await saveApiKeys({ anthropic: 'a', finnhub: 'f' });
+        const after = await loadApiKeysDetailed();
+        expect(after.status).toBe('ok');
+        if (after.status !== 'ok') return;
+        expect(after.keys.fintable).toBeUndefined();
+    });
+
+    it('coffre ILLISIBLE : l\'écriture passe quand même (on ne bloque pas sur la préservation)', async () => {
+        // Blob corrompu → `loadApiKeysDetailed` rend 'decrypt_failed'. Les NOUVELLES clés doivent
+        // malgré tout être persistées : préserver est un bonus, jamais une condition d'écriture.
+        localStorage.setItem(LS_BLOB_KEY, 'blob-corrompu-!!');
+        await expect(saveApiKeys({ anthropic: 'a', finnhub: 'f', fintable: 'ft-neuf' })).resolves.toBeUndefined();
+
+        const after = await loadApiKeysDetailed();
+        expect(after.status).toBe('ok');
+        if (after.status !== 'ok') return;
+        expect(after.keys.fintable).toBe('ft-neuf');
+    });
+});
+
+// ── [STORAGE-KEY-WRITE-RACE] ────────────────────────────────────────────────
+// Finding du panel sécurité sur la PR #612 : préserver les champs device-local impose de LIRE avant
+// d'ÉCRIRE, là où l'écrasement en bloc d'avant était atomique. Sans sérialisation, le correctif
+// échangeait un bug déterministe contre une course — mesurée sur le scénario réel : Marc colle son
+// jeton pendant qu'un pull Drive est en vol (le polling tire au retour de focus d'onglet, or coller
+// un jeton implique justement un alt-tab).
+describe('[STORAGE-KEY-WRITE-RACE] les écritures concurrentes du coffre sont sérialisées', () => {
+    it('un pull Drive concurrent n\'efface pas un jeton qu\'on vient d\'enregistrer', async () => {
+        // Les deux écritures partent SANS s'attendre — c'est tout l'intérêt du test.
+        const saisieDuJeton = saveApiKeys({ anthropic: 'a', finnhub: 'f', fintable: 'ft-que-je-viens-de-coller' });
+        const pullDrive = saveApiKeys({ anthropic: 'a-drive', finnhub: 'f-drive' });
+        await Promise.all([saisieDuJeton, pullDrive]);
+
+        const after = await loadApiKeysDetailed();
+        expect(after.status).toBe('ok');
+        if (after.status !== 'ok') return;
+        expect(after.keys.fintable, 'le jeton a été perdu dans la course avec le pull Drive')
+            .toBe('ft-que-je-viens-de-coller');
+    });
+
+    it('un effacement volontaire ne peut pas être RESSUSCITÉ par un pull concurrent', async () => {
+        await saveApiKeys({ anthropic: 'a', finnhub: 'f', fintable: 'ft-a-supprimer' });
+
+        // L'utilisateur vide le champ ; un pull Drive part au même instant.
+        const effacement = saveApiKeys({ anthropic: 'a', finnhub: 'f', fintable: '' });
+        const pullDrive = saveApiKeys({ anthropic: 'a-drive', finnhub: 'f-drive' });
+        await Promise.all([effacement, pullDrive]);
+
+        const after = await loadApiKeysDetailed();
+        expect(after.status).toBe('ok');
+        if (after.status !== 'ok') return;
+        expect(after.keys.fintable, 'un secret effacé volontairement est réapparu').toBe('');
+    });
+
+    it('un échec d\'écriture n\'empoisonne pas les écritures suivantes', async () => {
+        // Coffre indisponible le temps d'un appel → il DOIT rejeter…
+        const realCrypto = globalThis.crypto;
+        vi.stubGlobal('crypto', {} as Crypto);
+        await expect(saveApiKeys({ anthropic: 'x', finnhub: 'y' })).rejects.toThrow();
+        vi.stubGlobal('crypto', realCrypto);
+
+        // …sans laisser la file d'attente cassée pour la suite.
+        await expect(saveApiKeys({ anthropic: 'ok', finnhub: 'ok2', fintable: 'ft' })).resolves.toBeUndefined();
+        const after = await loadApiKeysDetailed();
+        expect(after.status).toBe('ok');
+        if (after.status !== 'ok') return;
+        expect(after.keys.anthropic).toBe('ok');
+    });
+});

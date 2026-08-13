@@ -2563,3 +2563,37 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   d'avant dans tout le dépôt, pas seulement le nom de la fonction. Et remplacer par une valeur
   DÉRIVÉE de la source unique — c'est la même classe que « un outil-garde à valeurs re-codées en dur
   dérive en silence », appliquée aux tests.
+- ⚠️ **[FINTABLE-TOKEN-WIPE] 2026-08-13 — un champ EXCLU d'une synchro est le plus fragile, pas le
+  mieux protégé.** Le jeton Fintable est délibérément retiré du push Drive (« un jeton bancaire ne
+  voyage pas », `syncSnapshot.ts`). Conséquence contre-intuitive : puisqu'il ne PART jamais, il n'est
+  jamais dans ce qui REVIENT — et `syncPull` réécrivait le coffre EN BLOC avec le payload Drive, donc
+  sans lui. **Chaque synchro effaçait le jeton.** Généralisation : dès qu'un champ est exclu d'un
+  aller-retour, vérifier le RETOUR, pas seulement l'aller ; une exclusion défensive côté écriture
+  crée une suppression côté lecture.
+  Trois corollaires vérifiés sur ce bug :
+  (1) **`undefined` ≠ `''`.** « Je ne parle pas de ce champ » n'est pas « efface ce champ ». Le
+  correctif préserve sur `undefined` et obéit sur `''` — sans cette distinction, on ne pourrait plus
+  vider un jeton volontairement.
+  (2) **La garde va dans l'ÉCRITURE, pas chez les appelants.** Le coffre est la seule voie d'écriture :
+  c'est le seul endroit qu'un appelant futur ne peut pas oublier. Quatre sites appelaient déjà
+  `saveApiKeys` ; en corriger un seul aurait rejoué le bug.
+  (3) **RÉCIDIVE de la classe déjà indexée.** Le finding #545 avait corrigé exactement ça — la garde
+  d'hydratation d'`App.tsx` oubliait `fintable` — mais sur UN registre seulement ; les deux gardes de
+  la couche sync sont restées. « Un producteur corrigé doit alimenter TOUS les registres » vaut aussi
+  pour un CONSOMMATEUR corrigé.
+  ⚠️ Symptôme à reconnaître : le store mémoire FUSIONNE (`{...prev, ...keys}`) alors que le coffre
+  ÉCRASE. La donnée survit donc dans l'onglet ouvert et ne meurt qu'au rechargement — l'utilisateur
+  décrit « ça se perd tout le temps », jamais « ça se perd quand je synchronise ».
+- ⚠️ **[STORAGE-KEY-WRITE-RACE, panel #612] 2026-08-13 — passer d'un ÉCRASEMENT à une FUSION, c'est
+  troquer l'atomicité contre une course.** Le correctif du jeton Fintable a remplacé un `setItem`
+  atomique (aucune lecture) par un lire-puis-écrire. Le bug déterministe disparaissait, une course
+  non déterministe le remplaçait — mesurée par le panel sur le scénario réel : le polling Drive tire
+  au retour de focus d'onglet, or coller un jeton implique justement un alt-tab. Trois issues
+  observées, dont la pire : **un secret effacé volontairement RESSUSCITÉ**.
+  Réflexe à avoir : dès qu'on ajoute une LECTURE devant une écriture jusque-là atomique, se demander
+  qui d'autre écrit — et sérialiser. Ici c'était facile *parce que* le correctif avait fait du coffre
+  le point d'écriture unique : la même propriété qui rend la fusion sûre rend la file d'attente
+  possible. Détail qui compte : la chaîne de promesses ne doit pas propager le rejet au suivant
+  (un échec bloquerait le coffre à vie) tout en rendant bien SON erreur à l'appelant courant.
+  Corollaire de revue : un correctif de bug mérite la même question qu'une feature — « qu'est-ce que
+  ce changement rend possible qui ne l'était pas ? ». Ici, la concurrence.

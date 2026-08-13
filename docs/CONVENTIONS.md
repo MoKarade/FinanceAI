@@ -2529,3 +2529,14 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   annonçaient 3 965 tests, mesurés après le 1er tour de revue ; les 2e et 3e tours en ont ajouté 13
   (réel : 3 978). Le chiffre à écrire est celui mesuré sur le DERNIER état, pas celui noté en cours
   de route — et il se re-mesure APRÈS le merge quand la PR a duré plusieurs tours.
+- ⚠️ **[2026-08-13] Ne jamais inférer l'état d'une CLASSE de déploiement depuis un événement d'une
+  AUTRE.** Deux conclusions fausses en 50 minutes, symétriques : « le quota Vercel est résolu » parce
+  que 3 *previews* passaient (01:03 UTC), puis « la prod est bloquée » parce qu'un *preview* était
+  refusé (01:56 UTC). En réalité le plafond gratuit refusait les previews de branche **pendant que
+  les déploiements de PRODUCTION passaient** : `finance.hubperso.com` a servi le dernier `main` tout
+  du long. Un statut GitHub « Vercel: failure » sur une PR parle du PREVIEW de cette PR, jamais de la
+  prod. La vérification qui tranche est toujours ciblée : `list_deployments` → filtrer
+  `target: "production"` → `get_deployment` → lire `readyState`, `meta.githubCommitSha` et `alias`.
+  Et quand la réponse HTTP servie n'est pas atteignable (le proxy d'egress de l'environnement bloque
+  le domaine), le DIRE : l'enregistrement d'alias de la plateforme est une preuve forte, ce n'est pas
+  la même chose que la réponse réelle.

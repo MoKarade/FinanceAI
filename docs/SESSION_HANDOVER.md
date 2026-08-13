@@ -41,7 +41,15 @@
 >   ⚠️ Le CHANGELOG a été CORRIGÉ pour ne plus dire « le mode discret masque TOUT » — c'était faux.
 > - ⚠️ Une question de contrat attend Marc : l'export PDF doit-il tenir compte du mode discret ?
 >   (`[A11Y-PRIVACY-PDF-CONTRAT]`, reco : refuser de générer plutôt que produire un PDF de « ••• »).
-> - ✅ **Quota Vercel réinitialisé** (2026-08-13 01:03 UTC) : les déploiements repartent.
+> - ✅ **PROD À JOUR** — `finance.hubperso.com` sert `d864239` (tête de `main`), déploiement
+>   `dpl_6UFUPhXoz5tD1hwbhzenszWLpuSi` READY à 02:27 UTC. Le rate-limit Vercel n'a frappé que les
+>   PREVIEWS de branche ; les deux déploiements de PRODUCTION (#608 et #609) sont passés. Rien à
+>   relancer. ⚠️ Vérif HTTP réelle impossible depuis l'environnement d'exécution (domaine bloqué par
+>   le proxy d'egress) — la preuve est l'enregistrement d'alias Vercel, pas la réponse servie.
+> - ⚠️ **Piège d'inférence à retenir** : j'ai conclu DEUX fois de travers en 50 minutes — « quota
+>   résolu » depuis un preview qui passe, puis « prod bloquée » depuis un preview qui échoue. Même
+>   erreur : inférer l'état d'une CLASSE de déploiement depuis un événement d'une AUTRE. Toujours
+>   demander « quel déploiement, quelle cible, quel alias ? ».
 
 > ## 🟢 Session 2026-08-12 (suite 63) — `[REFONTE-NAV-L6a]` : l'assistant ancré sur la courbe
 > Lot 6a intégré sur `main` post-#606 (PR à venir). L'assistant **voit** la courbe du Futur.

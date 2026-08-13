@@ -9,6 +9,23 @@
 import type { ProjectionConfig } from '../../types';
 import { ltcAnnualProbability, mortalityAnnualProbability } from './helpers';
 
+/** Part du patrimoine cédée par défaut au divorce, en POURCENTAGE (patrimoine familial QC). */
+export const DIVORCE_SPLIT_PCT_DEFAULT = 50;
+
+/**
+ * Borne un pourcentage de partage dans [0, 100]. **Source unique** : le moteur ET l'UI en
+ * dépendent, une seconde copie dériverait.
+ *
+ * Une valeur NON FINIE (`NaN`, `Infinity`) retombe sur le DÉFAUT et non sur 0 : un `NaN` propagé
+ * multipliait tous les soldes et zéroïsait le bilan sans une trace, et « 0 % de partage » serait
+ * une réponse tout aussi inventée. Le défaut, lui, est la seule valeur défendable — c'est la règle
+ * du patrimoine familial.
+ */
+export const clampSplitPct = (pct: number): number => {
+    if (!Number.isFinite(pct)) return DIVORCE_SPLIT_PCT_DEFAULT;
+    return Math.min(100, Math.max(0, pct));
+};
+
 export interface StochasticContext {
     m: number;
     currentMonthIndex: number;
@@ -194,7 +211,17 @@ export function tryDivorce(
     const pAnnual = proj.divorceAnnualProbability ?? 0.015;
     if (ctx.rng() >= pAnnual) return false;
 
-    const splitPct = (proj.divorceSplitPct ?? 50) / 100;
+    // [ENG-DIVORCE-SPLITPCT-UNBOUNDED] `divorceSplitPct` n'était borné NULLE PART — ni ici, ni à
+    // l'`<input type="number">` qui l'alimente. Trois conséquences MESURÉES, toutes silencieuses :
+    //   • −100  → `keep = 2` : patrimoine final 2 210 335 $ contre 755 482 $ à 50 %. Le divorce
+    //             ENRICHIT — l'inverse exact de ce que la fonction modélise ;
+    //   • 1e9   → `keep` très négatif : les DETTES × un facteur négatif deviennent un actif
+    //             fantôme, patrimoine final **−7 782 605 996 $** ;
+    //   • NaN   → tous les soldes multipliés par NaN, actifs zéroïsés, AUCUNE trace.
+    // Le clamp est ici, au SEUL point de passage : une borne posée uniquement à l'UI laisserait
+    // entrer un import de sauvegarde, un scénario de test ou un futur appelant.
+    const raw = proj.divorceSplitPct ?? DIVORCE_SPLIT_PCT_DEFAULT;
+    const splitPct = clampSplitPct(raw) / 100;
     const keep = 1 - splitPct;
     applySplit(keep);
     return true;

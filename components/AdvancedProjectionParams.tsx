@@ -10,6 +10,7 @@
 import React from 'react';
 import { Card } from './ui/Card';
 import type { ProjectionConfig } from '../types';
+import { clampSplitPct, DIVORCE_SPLIT_PCT_DEFAULT } from '../services/projection/stochasticEvents';
 import { Icon } from './ui/Icon';
 // [REFONTE-NAV-L2a] Bornes MC = source unique moteur (des littéraux re-codés dérivent en silence).
 import { MC_ITERATIONS_MIN, MC_ITERATIONS_MAX, MC_ITERATIONS_DEFAULT } from '../services/projection/monteCarlo';
@@ -115,7 +116,12 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                                 </div>
                                 <div>
                                     <label className="text-tiny text-ink-300">Split patrimoine %</label>
-                                    <input type="number" value={projection.divorceSplitPct ?? 50} onChange={e => updateProj('divorceSplitPct', Number(e.target.value))} className="w-full bg-dark border border-rose-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    {/* [ENG-DIVORCE-SPLITPCT-UNBOUNDED] `min`/`max` posent la borne
+                                        NATIVE (steppers, validation), et `clampSplitPct` la garantit
+                                        pour de vrai : un `<input type="number">` accepte parfaitement
+                                        une valeur hors bornes tapée au clavier ou collée. La source
+                                        unique est celle du moteur — pas de seconde règle ici. */}
+                                    <input type="number" min={0} max={100} value={projection.divorceSplitPct ?? DIVORCE_SPLIT_PCT_DEFAULT} onChange={e => updateProj('divorceSplitPct', clampSplitPct(Number(e.target.value)))} className="w-full bg-dark border border-rose-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
                                     <label className="text-tiny text-ink-300">Pension alimentaire $/mois</label>

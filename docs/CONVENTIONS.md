@@ -2742,3 +2742,19 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   décrit ce qu'on CROIT cassé ; avant de coder, greper la chaîne réelle et re-prouver chaque
   prémisse — surtout celles formulées en « au lieu de ». Le livrable honnête est alors le constat
   DOCUMENTÉ, pas du code qui réimplémente l'existant.
+
+- ⚠️ **[ENG-DIVORCE-SPLITPCT-UNBOUNDED] 2026-08-13 — un `<input type="number">` SANS `min`/`max`
+  n'est pas une validation, et avec eux non plus.** Les attributs bornent les steppers ; ils
+  n'empêchent ni la frappe, ni le collage, ni un import de sauvegarde, ni un futur appelant du
+  moteur. Le clamp doit vivre au SEUL point de passage côté calcul, l'UI important la même règle
+  (source unique). Mesuré ici : `divorceSplitPct = −100` faisait ENRICHIR le divorce
+  (2 210 335 $ contre 755 482 $ à 50 %), `1e9` rendait un patrimoine de **−7,8 milliards** (les
+  dettes multipliées par un `keep` négatif deviennent un actif), `NaN` zéroïsait tout en silence.
+- ⚠️ **[Même lot] Le repli d'une valeur non finie n'est pas 0 — c'est le DÉFAUT MÉTIER.** Clamper
+  `NaN` à 0 aurait donné « 0 % de partage », une réponse aussi inventée que le NaN d'origine, mais
+  crédible : exactement le no-fake-data appliqué à un paramètre. Le seul repli défendable était la
+  règle du patrimoine familial (50 %).
+- ⚠️ **[Même lot] Tester la VALEUR PASSÉE, pas son effet lointain.** La tentation était d'asserter
+  sur le patrimoine final (« ne doit pas dépasser X »), fragile et indirect. Le test capture le
+  `keep` RÉELLEMENT remis au splitter via le callback : trois lignes, aucun scénario complet, et
+  l'assertion porte exactement sur la grandeur corrigée.

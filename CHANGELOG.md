@@ -75,6 +75,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - Si ta clé API est refusée, l'import s'arrête net avec un message clair, au lieu d'enchaîner des
   dizaines d'appels voués à l'échec.
 
+### Le curseur « part du patrimoine cédée » n'avait aucune limite
+- Rien n'empêchait d'y mettre **−100** (le divorce te rendait alors plus riche : 2,2 M$ au lieu de
+  755 k$), **un milliard** (patrimoine affiché à **−7,8 milliards**, parce que tes dettes se
+  transformaient en actif), ou une valeur vide qui **effaçait tous tes comptes sans un message**.
+- Le champ est maintenant borné entre 0 et 100 %, et surtout la limite est appliquée **dans le
+  calcul lui-même** — pas seulement dans le formulaire, qu'une sauvegarde importée contournerait.
+- Une valeur illisible retombe sur **50 %** (la règle du patrimoine familial), jamais sur 0 : un
+  « 0 % » serait tout aussi inventé, mais crédible.
+
 ### Corrections de calcul (lot moteur, suite de l'audit)
 - **Ton crédit d'impôt pour dons était surévalué.** La part fédérale du crédit était comptée en
   entier, alors qu'au Québec elle ne vaut que 83,5 % : l'abattement québécois de 16,5 % s'applique

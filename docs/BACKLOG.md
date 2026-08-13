@@ -906,13 +906,14 @@
   INTÉGRAL du couple (identique au témoin sans divorce). Contredit la décision « on partage la
   valeur NETTE » qui a justifié d'ajouter les dettes au split. Effet de bord : `totalTaxesPaid`
   ressort à **−12 992,70 $** (« impôt à vie » négatif).
-- [ ] 🔴 **`[ENG-DIVORCE-SPLITPCT-UNBOUNDED]`** (S) — `divorceSplitPct` n'est borné NULLE PART :
-  `AdvancedProjectionParams.tsx:118` est un `<input type="number">` sans `min`/`max`, et
-  `stochasticEvents.ts:198` fait `keep = 1 − splitPct` sans clamp. **Mesuré** : `−100` → patrimoine
-  final 2 210 335 $ contre 755 482 $ à 50 % (le divorce ENRICHIT) ; `1e9` → **−7 782 605 996 $**
-  (dettes × keep négatif = actif fantôme) ; `NaN` → actifs zéroïsés en silence, **aucun `logError`**.
-  #616 aggrave la portée : les dettes suivent désormais `keep`. **Correctif** : clamp [0, 100] au
-  moteur ET bornes à l'input.
+- [x] 🔴 **`[ENG-DIVORCE-SPLITPCT-UNBOUNDED]`** (S, LIVRÉ) — `divorceSplitPct` n'était borné nulle
+  part. Mesuré : `−100` → patrimoine 2 210 335 $ contre 755 482 $ à 50 % (le divorce ENRICHIT) ;
+  `1e9` → **−7 782 605 996 $** (dettes × keep négatif = actif fantôme) ; `NaN` → actifs zéroïsés
+  sans trace. Livré : `clampSplitPct` (source unique, `[0,100]`, non-fini → DÉFAUT et non 0) posé
+  au MOTEUR — une borne seulement à l'UI laisserait passer un import de sauvegarde ou un futur
+  appelant — plus `min`/`max` + le même clamp à l'input. 8 tests, `keep` observé À LA SOURCE
+  (3 échouent sans le clamp).
+
 - [ ] 🔴 **`[ENG-DIVORCE-NO-CONSERVATION-GUARD]`** (M) — le splitter n'est couvert par AUCUNE garde
   de conservation : `projection.moneyConservation` et `projection.fuzzConservation` appellent
   `calculateFutureProjection(p)` **sans `runMC=true`**, or `tryDivorce` exige `enableMonteCarlo` →

@@ -26,7 +26,7 @@ npm run preview
 ## Lancer les tests
 
 ```bash
-npm run test          # Vitest (3 965 tests, 348 fichiers, mesuré 2026-08-13)
+npm run test          # Vitest (3 978 tests, 348 fichiers, mesuré 2026-08-13)
 npm run typecheck     # TypeScript strict mode (clean)
 npm run build         # Vite 8 (--mode production)
 ```

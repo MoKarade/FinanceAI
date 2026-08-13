@@ -4,6 +4,12 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-13 (suite 75) — `[ENG-DIVORCE-SPLITPCT-UNBOUNDED]` : la borne manquante
+> `divorceSplitPct` n'était borné NULLE PART (ni moteur, ni input). Mesuré : `−100` → le divorce
+> ENRICHIT (2 210 335 $ vs 755 482 $) ; `1e9` → patrimoine **−7,8 G$** (dettes × keep négatif) ;
+> `NaN` → actifs zéroïsés sans trace. Livré : `clampSplitPct` au MOTEUR (source unique, non-fini →
+> DÉFAUT métier et non 0) + `min`/`max` + même clamp à l'input. 8 tests, `keep` capturé À LA SOURCE
+> par le callback du splitter (3 échouent sans le clamp).
 > ## 🟢 Session 2026-08-13 (suite 74) — forme-flux : 3 producteurs muets, 2 corrigés
 > Nouvelle classe de garde : `Δsolde == MarketGrowth<k> + NetTransfer<k>`, mois par mois
 > (`tests/services/projection.fluxForm.test.ts`). Les gardes de conservation existantes comparent
@@ -18,6 +24,7 @@
 > - **Reste ticketé** : `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`, 29 796 $ au mois 123. Non corrigé
 >   ici (touche `cashflowAllocation` en amont). Quand il tombera → ajouter `'NonReg'` à `ACCOUNTS`.
 > Garde livrée sur CELI/REER/Crypto : résiduel mesuré **0,01 $** (l'arrondi au cent).
+
 
 > ## 🟢 Session 2026-08-13 (suite 73) — `[PASSE-REEL-3]` : CADUC, vérifié dans le code
 > Le réancrage quotidien sur les soldes réels **existe déjà**. Chaîne vérifiée :

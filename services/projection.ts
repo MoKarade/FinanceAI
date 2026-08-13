@@ -11,7 +11,7 @@ import { runStrategySearch, type StrategySearchResult, type RunStrategySearchOpt
 import { ASSET_LOCATION_BONUS_PP } from './projection/strategySpace';
 import { SCENARIO_DEFINITIONS, strategyDefFor } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
-import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tryDivorce } from './projection/stochasticEvents';
+import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tryDivorce, clampSplitPct, DIVORCE_SPLIT_PCT_DEFAULT } from './projection/stochasticEvents';
 import { processAprilSettlement } from './projection/taxApril';
 import { computeOasClawback, processTaxLossHarvesting, processGainHarvesting, processDecemberTaxFiling } from './projection/taxDecember';
 import { processJanuaryReset } from './projection/taxJanuary';
@@ -788,7 +788,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // [panel #613 — FAIBLE-12] Libellé neutre en SIGNE : « -X% patrimoine » était faux pour
             // un ménage à valeur nette négative, où le partage des dettes lui REND X % de son
             // déficit. On décrit le geste (un partage), pas sa direction.
-            logEvent(lifeEventsLog, `💔 Divorce — partage de ${(effProj.divorceSplitPct ?? 50)}% du patrimoine NET (actifs et dettes)`);
+            // ⚠️ [ENG-DIVORCE-SPLITPCT-UNBOUNDED, revue Vercel] Le libellé DOIT passer par le même
+            // `clampSplitPct` que le calcul. Avec la valeur brute, une saisie hors bornes (150) ou
+            // non finie annonçait « partage de 150 % » pendant que le moteur en appliquait 100 —
+            // et le clamp AGGRAVAIT le mensonge : avant lui, le libellé et le calcul étaient faux
+            // ENSEMBLE, donc cohérents. C'est le motif « règle dupliquée corrigée à moitié ».
+            logEvent(lifeEventsLog, `💔 Divorce — partage de ${clampSplitPct(effProj.divorceSplitPct ?? DIVORCE_SPLIT_PCT_DEFAULT)}% du patrimoine NET (actifs et dettes)`);
             divorceLogged = true;
         }
 

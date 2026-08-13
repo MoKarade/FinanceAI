@@ -2729,3 +2729,16 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   eux portaient pourtant sur les cas `null`. Le nombre de tests ne prouve rien si la fixture ment
   sur la forme de la donnée — un helper de fixture doit être calqué sur le PRODUCTEUR réel (ici
   `dailyCurve.ts`), champ par champ, pas sur l'idée qu'on se fait de l'objet.
+
+- ⚠️ **[PASSE-REEL-3] 2026-08-13 — un ticket écrit à partir d'un SYMPTÔME sur-prescrit son
+  périmètre (`BACKLOG-STALE-TICKET`).** Marc signale « mon passé ne correspond pas au réel » ;
+  j'écris trois tickets dans la foulée, dont un (L) « la projection se réancre chaque jour sur les
+  soldes réels **au lieu des soldes saisis à la main** ». En allant coder, la prémisse s'est révélée
+  FAUSSE : `deriveStartingBalancesFromHistory` prend déjà `points[points.length - 1]`, le
+  `useEffect` de `ProjectionEngine` recalcule déjà sur changement de params, et
+  `[FUTUR-DAILY-ROLLOVER]` faisait déjà avancer le jour — livré la veille, par moi. Le vrai défaut
+  était `[PASSE-REEL-1]`, et il MASQUAIT le reste : un passé qui affiche la prévision donne
+  l'impression que tout l'amorçage est faux. Règle : un ticket rédigé sous le coup d'un symptôme
+  décrit ce qu'on CROIT cassé ; avant de coder, greper la chaîne réelle et re-prouver chaque
+  prémisse — surtout celles formulées en « au lieu de ». Le livrable honnête est alors le constat
+  DOCUMENTÉ, pas du code qui réimplémente l'existant.

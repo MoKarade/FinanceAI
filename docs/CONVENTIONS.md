@@ -2617,3 +2617,11 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   corrigeant seulement la courbe. Or l'en-tête du fichier promet justement que les deux partagent
   la même source « pour interdire toute divergence ». Un `filter(Boolean)` silencieux n'aurait rien
   révélé : c'est le TYPE qui a trouvé le second site.
+- ⚠️ **[panel #614] 2026-08-13 — une dépendance qui ne « sert » que par RICOCHET n'est pas une
+  dépendance.** J'avais oublié `todayIso` dans le 3e `useMemo` (`enrichCache`) — au point d'écrire
+  dans le handover « ajouté aux DEUX useMemo » alors qu'il y en a TROIS. Le bug ne se voyait pas :
+  `dailyPastByDate` est une NOUVELLE Map à chaque changement de `todayIso`, ce qui invalidait le
+  cache par ricochet. Une protection ACCIDENTELLE — mémoïser `dailyPast` plus finement un jour
+  (optimisation parfaitement raisonnable) aurait réintroduit le bug en silence, sans qu'aucun test
+  ne le voie. Règle : une dépendance ne doit jamais reposer sur l'INSTABILITÉ DE RÉFÉRENCE d'une
+  autre. Et quand on écrit « ajouté à tous les X », les COMPTER.

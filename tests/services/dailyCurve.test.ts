@@ -301,8 +301,10 @@ describe('[PASSE-REEL-1] une journée PASSÉE sans donnée réelle n\'est pas tr
     const days = build([month(0), month(1)]);
     const jour = days[0];
 
-    it('reproduit le symptôme : sans la borne, le passé rend les montants PROJETÉS', () => {
-        // `todayIso` absent ⇒ ancien comportement. Le point existe et porte les valeurs du moteur.
+    it('confirme le repli LEGACY (= le bug) : sans la borne, le passé rend les montants PROJETÉS', () => {
+        // `todayIso` absent ⇒ ancien comportement. Ce test documente la RÉTROCOMPATIBILITÉ du
+        // chemin sans borne ; il n'exerce plus aucun chemin de production (les 3 appelants passent
+        // désormais `todayIso`). Ce sont les tests SUIVANTS qui sont discriminants.
         const p = mergeDailyRealPoint(jour, START.startYear, START.startMonth, null, null);
         expect(p, 'le repli projeté doit rester le comportement sans borne').not.toBeNull();
         // C'est bien un CELI PROJETÉ qui sort, alors qu'aucune donnée réelle n'existe.
@@ -341,5 +343,43 @@ describe('[PASSE-REEL-1] une journée PASSÉE sans donnée réelle n\'est pas tr
         // pas une journée révolue dont on attendrait une mesure complète.
         const p = mergeDailyRealPoint(jour, START.startYear, START.startMonth, null, null, null, jour.dayIso);
         expect(p).not.toBeNull();
+    });
+});
+
+// ── [PASSE-REEL-1, panel #614 — MOYEN-1] ────────────────────────────────────
+// `buildEnrichedMonth` (l'infobulle) n'était testée QUE sur le chemin legacy, sans `todayIso` : le
+// filtrage `null` + `recomputeDailyDiffs` qui le suit n'était vérifié que par lecture. Or c'est le
+// chemin où un trou pourrait fabriquer un faux écart jour-à-jour.
+describe('[PASSE-REEL-1] buildEnrichedMonth avec todayIso — trou dans le passé', () => {
+    it('le jour non mesuré est ABSENT de la Map, et le jour suivant ne porte pas de faux écart', () => {
+        const data = [month(0), month(1), month(2)];
+        const host = 2;
+        // Un seul jour réel dans le mois hôte : tous les autres jours passés sont des trous.
+        const cal = { year: 2026, month: 2 };
+        const jourReel = `${cal.year}-03-15`;
+        const byDate = new Map([[jourReel, {
+            date: jourReel, Liquidites: 1234, CELI: 0, CELIAPP: 0, REER: 0, REEE: 0, NonReg: 0,
+            Crypto: 0, Immobilier: 0, DettesNonImmo: 0, NetWorth: 1234, Income: 0, Expenses: 0,
+            Savings: 0, NetTransferLiquid: 0, deposits: {}, growth: {}, labels: [], isDated: true,
+            priceAgeMaxDays: 0, hasEstimatedPrice: false,
+        }]]) as never;
+
+        const map = buildEnrichedMonth(
+            data, host, START.startYear, START.startMonth, byDate, DATED,
+            buildDailyLedger as never, null, '2999-01-01',
+        );
+        expect(map, 'la Map ne doit pas être nulle : il y a un jour réel').not.toBeNull();
+        if (!map) return;
+
+        // Le jour mesuré est là…
+        expect(map.get(jourReel)).toBeDefined();
+        // …et les jours NON mesurés du même mois n'y sont pas.
+        expect(map.get(`${cal.year}-03-14`), 'un jour passé non mesuré est apparu dans l\'infobulle').toBeUndefined();
+        expect(map.get(`${cal.year}-03-16`)).toBeUndefined();
+
+        // Et surtout : aucun faux écart jour-à-jour. Le seul point restant n'a pas de veille
+        // calendaire dans la série, donc pas de `diffNW`.
+        const p = map.get(jourReel) as unknown as Record<string, unknown>;
+        expect(p.diffNW, 'un écart a été calculé par-dessus un trou de plusieurs jours').toBeUndefined();
     });
 });

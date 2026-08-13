@@ -891,8 +891,20 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         // Les deps SONT les entrées de l'enrichissement — un cache qui survivrait à l'une d'elles
         // servirait des montants périmés. La règle les voit « inutiles » (la fabrique ne les lit
         // pas) : c'est exact, et c'est le but — elles pilotent l'INVALIDATION, pas la valeur.
+        //
+        // ⚠️ [PASSE-REEL-1, panel #614] `todayIso` EN FAIT PARTIE, et je l'avais oublié — au point
+        // d'écrire dans le handover « ajouté aux DEUX useMemo » alors qu'il y en a TROIS. Sans lui :
+        // l'app reste ouverte, minuit passe, et la Map en cache pour ce mois a été construite avec
+        // l'ANCIEN `todayIso` — le jour qui vient de basculer au passé y porte encore sa valeur
+        // PROJETÉE. C'est le bug même que cette PR corrige, réapparu côté infobulle. Et comme
+        // l'infobulle FIGÉE alimente le contexte envoyé à l'assistant, la fausse valeur héritait de
+        // l'autorité d'une « source unique ».
+        // ⚠️ Ça ne se voyait pas en pratique : `dailyPastByDate` est une NOUVELLE Map à chaque
+        // changement de `todayIso`, ce qui invalidait ce cache par ricochet. Une protection
+        // ACCIDENTELLE — mémoïser `dailyPast` plus finement un jour aurait réintroduit le bug en
+        // silence. Une dépendance ne doit pas reposer sur l'instabilité de référence d'une autre.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), [displayData, dailyDated, dailyPastByDate, startYear, startMonth, syncConfirmedUntilIso]);
+    }), [displayData, dailyDated, dailyPastByDate, startYear, startMonth, syncConfirmedUntilIso, todayIso]);
     const enrichDailyPoint = useCallback((p: ProjectionChartPoint | null): ProjectionChartPoint | null => {
         if (!p) return null;
         const dp = p as unknown as DailyChartPoint;

@@ -862,6 +862,15 @@
   aujourd'hui (filtres en amont), mais garde ASYMÉTRIQUE. **Correctif** : `Math.max(0, ...)` sur
   RQAP/AE aussi (rétrocompat bit-identique pour brut ≥ 0).
 
+- [ ] **`[STORAGE-PERSIST-REQUEST]`** (XS, découvert en diagnostiquant `[FINTABLE-TOKEN-WIPE]`) —
+  l'app ne demande **JAMAIS** `navigator.storage.persist()` (0 occurrence dans le dépôt). Le coffre
+  chiffré repose sur IndexedDB (clé AES) + localStorage (blob) : sans persistance accordée, le
+  navigateur classe le stockage « best-effort » et peut l'évincer sous pression disque — perte des
+  clés API ET de la courbe verrouillée. Ce n'était PAS la cause du bug de Marc (c'était la synchro
+  Drive), donc non corrigé au passage. **Correctif** : demander la persistance au boot, une fois,
+  et exposer l'état dans SystemView (`navigator.storage.persisted()`) pour que ce soit
+  diagnosticable. Chrome l'accorde selon l'engagement / l'installation PWA.
+
 - [ ] **`[FISC-DON-FEDRATE-DUP]`** (XS, relevé par le panel de la PR #611) — le taux du 1er palier des
   dons (`DONATION_CREDIT_RATES.fed.first = 0.15`, `utils/donationCredit.ts`) et
   `FED_NONREFUNDABLE_RATE = 0.15` (`utils/tax.ts`) sont **juridiquement la MÊME valeur** (le

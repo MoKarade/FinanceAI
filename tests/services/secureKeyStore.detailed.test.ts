@@ -180,3 +180,69 @@ describe('getOrCreateDeviceKey — idempotence (une seule clé par profil)', () 
         expect(b).toBe(a);
     });
 });
+
+// ── [FINTABLE-TOKEN-WIPE] ───────────────────────────────────────────────────
+// Bug signalé par Marc (« mon jeton Fintable se perd tout le temps »), diagnostiqué le 2026-08-13.
+//
+// Le jeton Fintable est DEVICE-LOCAL : `services/sync/syncSnapshot.ts` l'exclut DÉLIBÉRÉMENT de ce
+// qui part vers Drive (un jeton bancaire ne doit pas voyager). Conséquence contre-intuitive : il
+// n'est jamais non plus dans ce qui en REVIENT. Or `syncPull` réécrivait le coffre avec le payload
+// Drive — donc `{anthropic, finnhub}` seuls — et `saveApiKeys` écrasait EN BLOC.
+//
+// Le symptôme était trompeur : le store en mémoire fusionne (`{...prev, ...keys}`), donc le jeton
+// continuait de marcher dans l'onglet ouvert et ne disparaissait qu'au RECHARGEMENT suivant.
+//
+// Ces tests exercent le vrai coffre (IndexedDB en mémoire, AES réel), pas un mock.
+describe('[FINTABLE-TOKEN-WIPE] saveApiKeys préserve les champs device-local', () => {
+    it('une écriture SANS `fintable` (payload Drive) ne l\'efface PAS du coffre', async () => {
+        // 1. Marc colle son jeton sur cet appareil.
+        await saveApiKeys({ anthropic: 'sk-ant-xyz', finnhub: 'fh-123', fintable: 'ft-secret-789' });
+
+        // 2. Une synchro Drive arrive. Par construction elle ne porte QUE ces deux clés.
+        await saveApiKeys({ anthropic: 'sk-ant-NOUVEAU', finnhub: 'fh-NOUVEAU' });
+
+        // 3. Rechargement de l'app → c'est ici que le jeton disparaissait.
+        const after = await loadApiKeysDetailed();
+        expect(after.status).toBe('ok');
+        if (after.status !== 'ok') return;
+        expect(after.keys.fintable, 'le jeton Fintable a été effacé par la synchro Drive').toBe('ft-secret-789');
+        // Les clés qui VOYAGENT, elles, doivent bien avoir été mises à jour — sinon le correctif
+        // aurait simplement figé le coffre.
+        expect(after.keys.anthropic).toBe('sk-ant-NOUVEAU');
+        expect(after.keys.finnhub).toBe('fh-NOUVEAU');
+    });
+
+    it('un `fintable` explicitement VIDE efface bien le jeton (absent ≠ effacé)', async () => {
+        await saveApiKeys({ anthropic: 'a', finnhub: 'f', fintable: 'ft-a-effacer' });
+        // L'utilisateur vide le champ dans l'UI : la valeur est PRÉSENTE, juste vide.
+        await saveApiKeys({ anthropic: 'a', finnhub: 'f', fintable: '' });
+
+        const after = await loadApiKeysDetailed();
+        expect(after.status).toBe('ok');
+        if (after.status !== 'ok') return;
+        expect(after.keys.fintable, 'un effacement explicite doit passer').toBe('');
+    });
+
+    it('premier enregistrement sur un coffre VIDE : rien à préserver, rien ne casse', async () => {
+        const after0 = await loadApiKeysDetailed();
+        expect(after0.status).toBe('empty');
+
+        await saveApiKeys({ anthropic: 'a', finnhub: 'f' });
+        const after = await loadApiKeysDetailed();
+        expect(after.status).toBe('ok');
+        if (after.status !== 'ok') return;
+        expect(after.keys.fintable).toBeUndefined();
+    });
+
+    it('coffre ILLISIBLE : l\'écriture passe quand même (on ne bloque pas sur la préservation)', async () => {
+        // Blob corrompu → `loadApiKeysDetailed` rend 'decrypt_failed'. Les NOUVELLES clés doivent
+        // malgré tout être persistées : préserver est un bonus, jamais une condition d'écriture.
+        localStorage.setItem(LS_BLOB_KEY, 'blob-corrompu-!!');
+        await expect(saveApiKeys({ anthropic: 'a', finnhub: 'f', fintable: 'ft-neuf' })).resolves.toBeUndefined();
+
+        const after = await loadApiKeysDetailed();
+        expect(after.status).toBe('ok');
+        if (after.status !== 'ok') return;
+        expect(after.keys.fintable).toBe('ft-neuf');
+    });
+});

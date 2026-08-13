@@ -183,15 +183,49 @@ export const getOrCreateDeviceKey = async (): Promise<CryptoKey> => {
 // --- API publique (orchestration) ---
 
 /**
+ * Champs du coffre qui sont **DEVICE-LOCAL** : ils n'existent que sur cet appareil et ne voyagent
+ * JAMAIS par le Drive (décision `[FINTABLE-7]`, cf. `services/sync/syncSnapshot.ts`).
+ *
+ * ⚠️ [FINTABLE-TOKEN-WIPE] C'est le champ le plus fragile du coffre, et pour une raison
+ * contre-intuitive : puisqu'il ne PART jamais vers Drive, il n'est jamais dans ce qui en REVIENT.
+ * Or `syncPull` réécrivait le coffre avec le payload Drive — qui, par construction, ne contient
+ * que `{anthropic, finnhub}`. Chaque synchro effaçait donc le jeton Fintable. Symptôme trompeur :
+ * le store en MÉMOIRE fusionne (`{...prev, ...keys}`), donc le jeton continuait de fonctionner
+ * dans l'onglet ouvert et ne « disparaissait » qu'au rechargement suivant — aucun lien de cause
+ * à effet visible pour l'utilisateur.
+ *
+ * La préservation vit ICI, dans l'écriture elle-même, et non chez les appelants : le coffre est la
+ * seule voie d'écriture, c'est donc le seul endroit qu'aucun appelant futur ne peut oublier.
+ */
+export const DEVICE_LOCAL_KEY_FIELDS = ['fintable'] as const;
+
+/**
  * Chiffre et persiste les clés API. Génère la clé de device au premier appel.
  * Lève si le coffre est indisponible (l'appelant décide quoi afficher).
+ *
+ * **Contrat des champs device-local** (`DEVICE_LOCAL_KEY_FIELDS`) :
+ *  - champ ABSENT de `keys` (`undefined`) → la valeur déjà au coffre est PRÉSERVÉE ;
+ *  - champ PRÉSENT, même vide (`''`) → la valeur passée gagne (permet un effacement explicite).
+ * La distinction `undefined` vs `''` est le cœur du correctif : « je ne parle pas de ce champ »
+ * n'est pas « efface ce champ ». Un `Object.assign` naïf confond les deux.
  */
 export const saveApiKeys = async (keys: PersistedApiKeys): Promise<void> => {
     if (!isSecureKeyStoreSupported()) {
         throw new Error('Coffre chiffré indisponible (Web Crypto / IndexedDB absent)');
     }
     const key = await getOrCreateDeviceKey();
-    const blob = await encryptJson(key, keys);
+    const merged: PersistedApiKeys = { ...keys };
+    // Lecture best-effort de l'existant : un coffre illisible (clé tournée, blob altéré) ne doit
+    // PAS empêcher d'écrire les nouvelles clés — on écrit alors `keys` tel quel.
+    const existing = await loadApiKeysDetailed().catch(() => null);
+    if (existing?.status === 'ok') {
+        for (const field of DEVICE_LOCAL_KEY_FIELDS) {
+            if (merged[field] === undefined && existing.keys[field] !== undefined) {
+                merged[field] = existing.keys[field];
+            }
+        }
+    }
+    const blob = await encryptJson(key, merged);
     localStorage.setItem(LS_BLOB_KEY, blob);
 };
 

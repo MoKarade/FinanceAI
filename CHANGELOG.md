@@ -8,6 +8,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-12
 
+### Correction — ton jeton Fintable ne se perdra plus
+- **La synchro Google Drive effaçait ton jeton Fintable à chaque passage.** Le jeton est
+  volontairement gardé sur ton appareil et n'est jamais envoyé au Drive — mais du coup il n'était
+  pas non plus dans ce qui en revenait, et la synchro réécrivait ton coffre sans lui.
+  Le symptôme était trompeur : le jeton continuait de marcher dans l'onglet ouvert et ne
+  disparaissait qu'**au rechargement suivant**, donc sans lien visible avec la synchro.
+  Désormais, écrire dans le coffre ne peut plus faire disparaître un champ dont on ne parle pas.
+  Vider le champ à la main efface toujours le jeton, comme avant.
+
 ### Corrections de calcul (lot moteur, suite de l'audit)
 - **Ton crédit d'impôt pour dons était surévalué.** La part fédérale du crédit était comptée en
   entier, alors qu'au Québec elle ne vaut que 83,5 % : l'abattement québécois de 16,5 % s'applique

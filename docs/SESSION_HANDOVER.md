@@ -4,6 +4,14 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-13 (suite 72) — `[AI-CATEGORIZE-NO-BACKOFF]` : l'IA ne lâche plus au 429
+> `categorizeBatch` avalait le 429 d'un chunk et relançait le suivant AUSSITÔT → tout le reste d'un
+> gros import restait « non catégorisé », sans réessai ni signal, et le martèlement prolongeait le
+> rate-limit. Livré : backoff exponentiel borné (1/2/4 s, cap 60 s, patron `fintable/client.ts`),
+> `Retry-After` honoré (secondes ET date HTTP), pacing 1 s ENTRE les appels (pas les itérations),
+> court-circuit 401/403, logs AGRÉGÉS portant l'erreur brute. `sleep` injectable → 15 tests, 17 ms,
+> aucun ne dort. Discrimination prouvée (2 échecs quand on retire la boucle de réessai).
+
 > ## 🟢 Session 2026-08-13 (suite 68) — `[PASSE-REEL-1]` : le passé ne ment plus (PR #614)
 > Marc a demandé de REMONTER ce lot avant le reste du moteur — sa courbe lui mentait tous les jours.
 > `dailyCurve.ts` : `if (!real) return { ...d }` renvoyait le point PROJETÉ pour une journée passée

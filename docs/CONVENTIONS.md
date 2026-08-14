@@ -2910,8 +2910,14 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   aucune somme). Sans test d'intention, un futur « masquons tout » passe sans que le choix soit
   rediscuté — et un test qui échoue force la discussion au bon moment.
 - ⚠️ **[Même lot] Un agent de revue qui a `Bash` PERTURBE l'arbre de travail — ne jamais committer
-  pendant qu'un panel tourne.** L'agent a11y lancé sur ce diff mesurait en remettant la version
-  d'AVANT du fichier, puis en la restaurant. Mon `git add` est tombé pile dans cette fenêtre :
+  pendant qu'un panel tourne.** L'agent `silent-failure-hunter` lancé sur ce diff mesurait en
+  remettant la version d'AVANT du fichier, puis en la restaurant.
+  ⚠️ **Attribution corrigée** : j'avais d'abord accusé l'agent `a11y-auditor` (le commit 9b76782 le
+  dit encore, il est poussé). Faux : son rapport détaille qu'il n'a créé que des tests jetables, et
+  c'est `silent-failure-hunter` qui a confessé le swap `origin/main` ↔ HEAD. Leçon dans la leçon :
+  **quand plusieurs agents partagent un arbre, on ne DÉDUIT pas le coupable de celui dont on voit
+  les fichiers** — les fichiers de sondage visibles étaient ceux de l'INNOCENT. Le rapport de chaque
+  agent dit ce qu'il a fait ; le lire avant d'écrire une accusation dans une doc permanente. Mon `git add` est tombé pile dans cette fenêtre :
   l'index contenait l'ANCIENNE primitive alors que le fichier de travail était bon. Plus tard, une
   de ses restaurations a écrasé un incrément non commité (`aria-labelledby` + son test).
   Détecté parce que j'ai relu `git show :<fichier>` au lieu de faire confiance à `git add` — c'est

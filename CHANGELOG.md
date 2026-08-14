@@ -20,6 +20,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   lecteur d'écran, quatre champs de salaire annonçaient tous « Montant masqué » — impossible de
   savoir lequel on éditait. Chaque champ garde désormais son libellé, l'état masqué étant annoncé
   en complément. Ça vaut pour TOUS les écrans qui masquent des champs, pas seulement Profil.
+- Dans la foulée, le champ « montant » de chaque ligne du **Budget** annonce enfin de quel poste il
+  s'agit (« Montant de base — Épicerie »). Avant, les dix lignes d'un tableau disaient toutes la
+  même chose : « Modifier le montant de base ».
 
 ---
 

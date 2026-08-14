@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, act } from '@testing-library/react';
+import { useFinanceStore } from '../../store/useFinanceStore';
 import { BudgetGroupTable } from '../../components/budget/BudgetGroupTable';
 import type { BudgetCategory } from '../../types';
 
@@ -161,5 +162,43 @@ describe('BudgetGroupTable — cross-link Voir les transactions', () => {
             />
         );
         expect(container.querySelector('[data-focus-section="poste:Épicerie"]')).toBeTruthy();
+    });
+});
+
+// [A11Y-PRIVACY-SALAIRE] Le champ « montant de base » n'avait AUCUN nommeur : ni `id` + `<label>`,
+// ni `aria-label`. Son nom accessible venait du `title`, IDENTIQUE sur chaque ligne — « Modifier le
+// montant de base », sans jamais dire de quel poste. Un tableau de 10 postes annonçait donc 10 fois
+// le même nom. En mode discret c'est pire : `PrivateNumberInput` remplace ce `title` par le libellé
+// masqué, et les lignes deviennent rigoureusement indistinguables.
+describe('BudgetGroupTable — nom accessible du montant par poste', () => {
+    const items: BudgetCategory[] = [
+        { id: 'c1', name: 'Épicerie', target: 400, frequency: 'Monthly', type: 'Commun', nature: 'Besoin' },
+        { id: 'c2', name: 'Restaurants', target: 150, frequency: 'Monthly', type: 'Commun', nature: 'Besoin' },
+    ] as BudgetCategory[];
+
+    const renderTable = () =>
+        render(<BudgetGroupTable {...baseProps} nature="Besoin" items={items} onAddItem={vi.fn()} />);
+
+    it('chaque ligne nomme son montant par le POSTE (deux lignes ≠ deux noms)', () => {
+        const { container } = renderTable();
+        const champs = [...container.querySelectorAll('input[type="number"]')];
+        expect(champs.length, 'une ligne = un champ montant').toBeGreaterThanOrEqual(2);
+        expect(champs[0]).toHaveAccessibleName('Montant de base — Épicerie');
+        expect(champs[1]).toHaveAccessibleName('Montant de base — Restaurants');
+    });
+
+    // Le nom porte le POSTE, jamais le MONTANT : il doit survivre au masquage sans rien divulguer.
+    it('en mode discret, le nom survit ET ne porte aucun montant', () => {
+        act(() => { useFinanceStore.setState({ isPrivacyMode: true }); });
+        const { container } = renderTable();
+        const boutons = [...container.querySelectorAll('button')]
+            .filter((b) => (b.textContent ?? '').includes('•••'));
+        expect(boutons.length, 'les montants doivent être masqués').toBeGreaterThanOrEqual(2);
+        expect(boutons[0]).toHaveAccessibleName('Montant de base — Épicerie');
+        expect(boutons[1]).toHaveAccessibleName('Montant de base — Restaurants');
+        const noms = boutons.map((b) => b.getAttribute('aria-label') ?? '').join(' ');
+        expect(noms, 'le nom ne doit JAMAIS porter le montant').not.toContain('400');
+        expect(noms).not.toContain('150');
+        act(() => { useFinanceStore.setState({ isPrivacyMode: false }); });
     });
 });

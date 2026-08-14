@@ -15,8 +15,12 @@
 > l'`aria-label` du champ. MESURÉ : « Salaire Brut annuel ($) » et « RSU vesting annuel » devenaient
 > tous deux « Montant masqué — cliquer pour modifier ». Tous les champs masqués d'un formulaire
 > annonçaient le même nom. Corrigé DANS la primitive (nom laissé au nommeur existant, état masqué
-> porté par `title` + `sr-only`) → **les tickets suivants du lot n'ont rien à refaire là-dessus**,
-> mais `AssetLocationCard` / `RetirementIncomeCard` / `BudgetGroupTable` en bénéficient déjà.
+> porté par `title` + `sr-only`) → **les tickets suivants du lot n'ont rien à refaire là-dessus**.
+> `AssetLocationCard` et `RetirementIncomeCard` en bénéficient déjà (ils câblent un nommeur).
+> ⚠️ `BudgetGroupTable` NON : la revue a montré que son champ montant n'avait AUCUN nommeur — son
+> nom venait du `title`, identique sur chaque ligne. Corrigé dans la même PR (`aria-label` portant
+> le POSTE, jamais le montant). Leçon : « la primitive est corrigée » ne veut PAS dire « tous ses
+> appelants sont nommés » — un appelant sans nommeur reste anonyme, avant comme après.
 > ⚠️ `getByLabelText` de Testing Library trouvait le bouton par son `<label>` alors que son nom réel
 > était le libellé masqué : la requête TL N'EST PAS l'algorithme de nommage. Mesurer avec
 > `toHaveAccessibleName`. Leçon `A11Y-MASK-STEALS-NAME` dans `docs/CONVENTIONS.md`.

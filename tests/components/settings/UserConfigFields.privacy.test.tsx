@@ -108,6 +108,12 @@ describe('[A11Y-PRIVACY-SALAIRE] Profil — salaires des deux conjoints', () => 
 
     // ⚠️ Fuite par la STRUCTURE, pas par la valeur (leçon #608) : masquer les montants ne doit pas
     // faire disparaître le champ ni changer le nombre de contrôles selon le contenu.
+    // ⚠️ HONNÊTETÉ SUR CE QUE CE TEST PROUVE (revue de #629) : il ne prouve RIEN sur le correctif de
+    // nom accessible de ce lot, et il passait déjà avant que ce fichier utilise `PrivateNumberInput`.
+    // Le rendu masqué est un `<button>` inconditionnel : sa structure ne peut pas dépendre du montant.
+    // C'est une garde de NON-RÉGRESSION FUTURE (le jour où quelqu'un rendra la structure dépendante
+    // de la valeur, comme l'avait fait `TaxBracketViz` avec ses lignes par palier atteint) — pas une
+    // preuve du fix. Le ne pas dire laisserait croire que cette classe de fuite est couverte ici.
     it('mode discret ACTIF : deux ménages très différents rendent un DOM indiscernable', () => {
         setPrivacy(true);
         const shape = () => {

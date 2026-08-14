@@ -1145,6 +1145,15 @@ stub : il n'aurait aucune date à lire.
   facteur d'équivalence, RSU et revenus secondaires passés en `PrivateNumberInput` ; bonus en %
   laissé en clair à dessein (le brut auquel il s'applique est masqué). Correctif de nom accessible
   dans la primitive. Gardes : `tests/components/settings/UserConfigFields.privacy.test.tsx`.
+- [ ] **`[A11Y-PRIVACY-TITLE-CLOBBER]`** (XS, relevé par le panel a11y de #629) —
+  `components/ui/PrivateNumberInput.tsx` écrase en dur le `title` de l'appelant par
+  « Montant masqué » en mode discret. Aucun appelant n'en dépend aujourd'hui pour son NOM (vérifié
+  call site par call site), donc non bloquant — mais un appelant qui compterait sur son `title`
+  pour porter une info la perdrait SANS avertissement. Deux pistes : composer les deux `title`, ou
+  passer l'état masqué en `aria-describedby` vers un `sr-only` dédié. ⚠️ La seconde piste corrige
+  AUSSI une faiblesse mesurée par le panel : le tooltip `title` ne s'affiche qu'au SURVOL souris
+  dans Chrome/Edge — un utilisateur voyant naviguant au CLAVIER n'a aucun indice visuel de
+  « cliquer pour modifier ». Traiter les deux ensemble, pas séparément.
 - [ ] 🔴 **`[A11Y-PRIVACY-PARAMS-AVANCES]`** (M) — `components/AdvancedProjectionParams.tsx` : zéro
   `isPrivacyMode`. Soldes manuels CELI/REER/Non-Enreg/Cash/Crypto + droits restants (l. 259-284),
   pension alimentaire (122), capital maladie grave (146), dépenses additionnelles (150), héritage

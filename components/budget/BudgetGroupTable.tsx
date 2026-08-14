@@ -217,11 +217,18 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                         <td className="p-3 text-right">
                                             <div className="flex flex-col items-end">
                                                 <div className="flex items-center justify-end">
+                                                    {/* [A11Y-PRIVACY-SALAIRE] Ce champ n'avait AUCUN nommeur : ni `id`+`<label>`,
+                                                        ni `aria-label`. Son nom venait du `title`, IDENTIQUE sur toutes les
+                                                        lignes — « Modifier le montant de base » ×N, sans dire de quel poste.
+                                                        En mode discret c'était pire : le `title` est remplacé par le libellé
+                                                        masqué. Le nom porte donc le POSTE (déjà visible dans la ligne, aucune
+                                                        fuite de montant), ce qui le rend distinguable dans les deux modes. */}
                                                     <PrivateNumberInput
                                                         type="number"
                                                         value={item.target}
                                                         onChange={(e) => onUpdateItem(idx, 'target', parseFloat(e.target.value) || 0)}
                                                         className={`bg-transparent text-right w-20 outline-none font-mono ${timeView !== 'MONTH' ? 'text-ink-400 text-meta' : 'text-white'}`}
+                                                        aria-label={`Montant de base — ${item.name}`}
                                                         title="Modifier le montant de base"
                                                         onClick={(e) => e.stopPropagation()}
                                                     />

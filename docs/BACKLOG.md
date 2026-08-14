@@ -1057,6 +1057,36 @@ stub : il n'aurait aucune date à lire.
   conjoint attribué, origine de la catégorie (IA + confiance, ou vérifiée), catégorie d'avant si
   changée. Rien de déduit — un champ absent ne produit aucune pastille.
   Gardes : `tests/services/dayTransactions.test.ts` + `tests/components/FutureDetailModal.transactions.test.tsx`.
+- [x] 🔴 **`[PASSE-REEL-TXN-JOUR-VIDE]`** — livré 2026-08-14. **Signalé par Marc (« marche toujours
+  pas »), en mode « courbe au jour », sur des points du PASSÉ.** Une journée identifiée SANS
+  transaction ne rendait RIEN : « aucun mouvement ce jour-là » et « c'est cassé » étaient
+  indistinguables à l'écran, et c'est la seconde lecture qui s'impose. J'avais appliqué la règle
+  no-fake-data au mauvais cas — elle interdit d'INVENTER une donnée absente, pas d'ÉNONCER un zéro
+  MESURÉ. Le silence n'est honnête que là où la question n'a pas de sens (point mensuel ou futur,
+  toujours sans section). Garde discriminante : 2 tests ÉCHOUENT sur le code d'avant, plus une
+  assertion anti-sur-correctif (l'état vide ne doit pas s'afficher quand il y a des mouvements —
+  sans elle, on pourrait rendre le message en permanence et rester vert).
+- [ ] **`[PASSE-REEL-IMPOT-LATENT-DEBUT]`** (S, **signalé par Marc 2026-08-14** : « je vois impôt
+  latent commencer le 1/09 mais jsp pourquoi ») — **cause CONFIRMÉE par mesure** : `ImpotLatent`
+  n'est émis NULLE PART dans le passé reconstruit (0 occurrence dans `services/history/
+  dailyPastLedger.ts` et `buildPastPrefix.ts` — le passé ne porte que soldes, flux et patrimoine
+  net). La série ne peut donc démarrer qu'au premier mois PROJETÉ. Le comportement est correct ; ce
+  qui manque, c'est de le DIRE — une courbe qui surgit à une date arbitraire se lit comme un bug.
+  ⚠️ Même classe que le ticket ci-dessus : une absence non énoncée se lit comme un défaut.
+  Pistes : ne pas tracer la série tant qu'elle n'a pas de sens, ou marquer visuellement son point de
+  départ avec la raison. À cadrer avec Marc — ne PAS fabriquer un impôt latent passé (il faudrait
+  l'historique des prix de revient, que l'app n'a pas).
+- [ ] 🔴 **`[PASSE-REEL-RACCORD-CHUTE]`** (M, **signalé par Marc 2026-08-14** : « je vois une chute
+  de 10k aujourd'hui jsp pourquoi ») — [À VÉRIFIER, non reproduit : données locales de Marc]
+  Décrochement au RACCORD entre le passé reconstruit et le départ de la projection. Hypothèse
+  première, déjà documentée dans le code : l'ancre `computeStartingCash` compte des transactions que
+  la série quotidienne ne peut PAS placer (datées au mois seul, ou datées APRÈS aujourd'hui), ce qui
+  décale tout le niveau passé d'autant — `DailyPastLedgerResult.undatedTotal` et `flowsAfterNowDate`
+  existent précisément pour ça et sont déjà affichés dans le bandeau.
+  ⚠️ **Première étape = MESURER chez Marc, pas coder** : lui faire lire les deux montants du bandeau
+  « Courbe au jour ». S'ils valent ~10 k, la cause est établie et le correctif de fond est connu
+  (retrancher ces flux de l'ancre) — il touche `computeStartingCash`, donc le raccord au présent :
+  plan-first obligatoire. S'ils sont nuls, l'hypothèse est RÉFUTÉE et il faut chercher ailleurs.
 - [ ] 🔴 **`[PASSE-REEL-VARIATION-DU-JOUR]`** (M, **demande de Marc 2026-08-14**, en direct : « je veux
   voir la variabilité d'argent pour la journée (tout compris mais détaillé) ») — le panneau du jour
   affiche aujourd'hui le **net encaissé/décaissé** (Σ des transactions). Ce n'est PAS la variation

@@ -8,6 +8,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ## [unreleased] — 2026-08-14 (transactions du jour)
 
+### Une journée sans mouvement te le dit maintenant
+- Tu cliquais sur une journée passée sans transaction et **rien** ne s'affichait. Impossible de
+  distinguer « il ne s'est rien passé ce jour-là » de « la fonctionnalité est cassée » — et c'est
+  la seconde lecture qui s'impose naturellement. C'est ce que tu as signalé.
+- Corrigé : dès que la journée est identifiée, l'app **écrit** qu'aucun mouvement n'a eu lieu, et
+  rappelle que ta courbe peut quand même bouger ce jour-là (rendement des placements, équité
+  immobilière — ni l'un ni l'autre n'a de transaction associée).
+- Le silence reste la bonne réponse là où la question n'a pas de sens : sur un point **mensuel** ou
+  dans le **futur**, il n'y a pas de journée à interroger, donc toujours aucune section.
+
 ### Tes transactions, jour par jour
 - En cliquant sur **Détail** pour une journée passée, tu vois maintenant **toutes** les transactions
   de ce jour-là : marchand, compte, catégorie, montant — plus le net de la journée.

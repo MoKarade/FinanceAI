@@ -116,19 +116,35 @@ describe('[PASSE-REEL-TXN-DU-JOUR] la section est ATTEIGNABLE et rendue', () => 
         expect(texte(), 'pas de journée identifiée → pas de section').not.toContain('Transactionsdu');
     });
 
-    it('une journée SANS transaction n’affiche pas de section vide', () => {
+    // ⚠️ [PASSE-REEL-TXN-JOUR-VIDE 2026-08-14] Ce test affirmait EXACTEMENT L'INVERSE, et c'est ce
+    // qui a fait échouer la livraison en vrai. Marc, en mode « courbe au jour », a cliqué des jours
+    // du passé et n'a RIEN vu — parce qu'un jour sans mouvement ne rendait rien du tout. À l'écran,
+    // « aucun mouvement ce jour-là » et « la fonctionnalité est cassée » étaient indistinguables ;
+    // il a conclu la seconde et me l'a signalé deux fois.
+    // La règle no-fake-data interdit d'INVENTER une donnée absente — elle n'interdit pas d'ÉNONCER
+    // un zéro MESURÉ. Le silence n'est honnête que là où la question n'a pas de sens (point mensuel
+    // ou futur, testé juste au-dessus) ; sur une journée identifiée, elle en a une.
+    it('une journée identifiée SANS transaction le DIT explicitement', () => {
         ouvrir(pointDuJour, [txn({ id: 9, date: '2020-01-01', amount: -5 })]);
-        expect(texte()).not.toContain('Transactionsdu');
+        expect(texte(), 'le jour doit être nommé').toContain(`Transactionsdu${JOUR}`);
+        expect(texte(), "l'absence doit être énoncée").toContain('aucunmouvementcejour-là');
+    });
+
+    // Le pendant : la même journée AVEC un mouvement ne doit évidemment pas afficher l'état vide.
+    // Sans cette assertion, on pourrait rendre le message d'absence EN PERMANENCE et rester vert.
+    it("l'état vide ne s'affiche PAS quand la journée a des mouvements", () => {
+        ouvrir(pointDuJour, TRANSACTIONS);
+        expect(texte()).not.toContain('aucunmouvementcejour-là');
     });
 
     // ⚠️ Rendu DIRECT, pas via `ouvrir` : passer `undefined` à un paramètre À VALEUR PAR DÉFAUT
     // déclenche ce défaut (sémantique JS). Mon premier essai passait donc la liste COMPLÈTE en
     // croyant tester son absence — le test échouait en accusant le composant, à tort.
-    it('sans la prop `transactions`, la modale rend sans erreur et sans section', () => {
+    it('sans la prop `transactions`, la modale rend sans erreur et énonce l’absence', () => {
         expect(() => render(
             <FutureDetailModal point={pointDuJour} chartData={[pointDuJour]} dayIso={JOUR} onClose={vi.fn()} />,
         )).not.toThrow();
-        expect(texte()).not.toContain('Transactionsdu');
+        expect(texte()).toContain('aucunmouvementcejour-là');
     });
 });
 

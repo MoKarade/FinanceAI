@@ -1141,6 +1141,32 @@ stub : il n'aurait aucune date à lire.
   conjoint attribué, origine de la catégorie (IA + confiance, ou vérifiée), catégorie d'avant si
   changée. Rien de déduit — un champ absent ne produit aucune pastille.
   Gardes : `tests/services/dayTransactions.test.ts` + `tests/components/FutureDetailModal.transactions.test.tsx`.
+- [ ] 🔴 **`[PASSE-REEL-VARIATION-DU-JOUR]`** (M, **demande de Marc 2026-08-14**, en direct : « je veux
+  voir la variabilité d'argent pour la journée (tout compris mais détaillé) ») — le panneau du jour
+  affiche aujourd'hui le **net encaissé/décaissé** (Σ des transactions). Ce n'est PAS la variation
+  du patrimoine : un jour de forte hausse boursière affiche 0 $ pendant que la courbe monte. Le
+  CHANGELOG de `[PASSE-REEL-TXN-DU-JOUR]` le dit en toutes lettres — c'est exactement ce manque que
+  Marc demande de combler. Livrer la variation **complète** de la journée, **ventilée par source**.
+  ⚠️ **Le moteur ÉMET DÉJÀ la ventilation — la CONSOMMER, ne rien recalculer côté UI**
+  (`DailyPastRow`, `services/history/dailyPastLedger.ts`, vérifié en écrivant ce ticket) :
+  `NetTransferLiquid` (flux de liquidités), `deposits` **et** `growth` par régime (les achats datés
+  vs le mouvement de marché sont séparés à la source), `Immobilier`, `DettesNonImmo`, `NetWorth`.
+  La ΔNetWorth jour-à-jour se ventile donc sans nouveau calcul financier.
+  ⚠️ **Deux pièges à traiter EXPLICITEMENT, sinon le total ne fermera pas** :
+  1. Un **dépôt** (achat de titre) sort des liquidités et entre dans un régime : il doit
+     s'**annuler** dans le total « tout compris », sinon il est compté deux fois. Il reste une
+     information utile à afficher (« tu as déplacé X »), mais à somme nulle sur le patrimoine.
+  2. `Immobilier` bouge par **palier ANNUEL** et `DettesNonImmo` est **figée** (décision Marc,
+     Option A, `pastNetWorth.ts`). Un jour de palier affichera donc un saut immobilier qui n'a rien
+     de journalier : le dire, ne pas le lisser. Lisser une donnée annuelle sur 365 jours fabriquerait
+     de la donnée — interdit.
+  **Critère de « fini » : le résiduel est affiché, jamais absorbé.** Σ des sources − ΔNetWorth du jour
+  doit être calculé et montré s'il n'est pas nul ; un « autre » fourre-tout qui ferme le total par
+  construction est une garde CIRCULAIRE (classe déjà consignée dans `CLAUDE.md`) et ne prouverait rien.
+  Garde attendue : sur des données réelles, ventilation vs `NetWorth[j] − NetWorth[j−1]`, résiduel
+  borné, et le test doit ÉCHOUER si un poste est retiré de la somme.
+  ⚠️ Cadrage à confirmer avec Marc AVANT de coder : dans le panneau existant (comme les transactions)
+  ou dans une section repliable ? Et le mode discret masque les montants dès la naissance de la surface.
 
 ### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
 

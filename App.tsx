@@ -43,6 +43,7 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 // [AITOOLS-E] Provider = 1 instance de chat pour toute l'app (boot-safe : le SDK Anthropic est en
 // import dynamique dans useAiChat). Le panneau latéral global est lazy (hors bundle de boot).
 import { AiChatProvider } from './components/aiChat/AiChatContext';
+import { Analytics } from '@vercel/analytics/react';
 const AiChatLauncher = lazyWithRetry(() => import('./components/aiChat/AiChatLauncher').then(m => ({ default: m.AiChatLauncher })), 'AiChatLauncher');
 
 const GuideModal = lazyWithRetry(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })), 'GuideModal');
@@ -874,6 +875,7 @@ export const App: React.FC = () => {
             )}
         </div>
         </AiChatProvider>
+        <Analytics />
         </ErrorBoundary>
     );
 };

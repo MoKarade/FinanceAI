@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { Card } from '../../ui/Card';
+import { PrivateNumberInput } from '../../ui/PrivateNumberInput';
 import { PayslipUploadCard } from '../PayslipUploadCard';
 import { ImportBankStatement } from '../../import/ImportBankStatement';
 import type { Transaction } from '../../../types';
@@ -57,10 +58,17 @@ export const AccountsSection: React.FC<AccountsSectionProps> = ({
 
           {hasAccounts ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.keys(knownAccounts).map(acc => (
+              {/* [A11Y-PRIVACY-SOLDES-COMPTES] Ces soldes sont les VRAIS soldes de tes comptes :
+                  masqués en mode discret. L'`id` est INDEXÉ, pas dérivé du nom de compte — celui-ci
+                  est saisi par l'utilisateur et peut contenir espaces ou accents ; deux noms
+                  distincts pourraient de plus se nettoyer en un même identifiant, ce qui casserait
+                  l'association `<label htmlFor>` en SILENCE. Le nom reste le LIBELLÉ (il nomme le
+                  champ, y compris masqué — sinon N boutons « ••• » indistinguables). */}
+              {Object.keys(knownAccounts).map((acc, idx) => (
                 <div key={acc}>
-                  <label className="block text-meta text-ink-300 mb-1">{acc}</label>
-                  <input
+                  <label htmlFor={`acc-balance-${idx}`} className="block text-meta text-ink-300 mb-1">{acc}</label>
+                  <PrivateNumberInput
+                    id={`acc-balance-${idx}`}
                     type="number"
                     value={initialBalances[acc] || 0}
                     onChange={(e) => setInitialBalances({ ...initialBalances, [acc]: parseFloat(e.target.value) || 0 })}

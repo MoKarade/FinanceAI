@@ -157,6 +157,24 @@ Doc détaillée dans `docs/`, qui fait foi.
   FAITS sans case cochée et ~128 puces n'avaient pas de case — un backlog qui mélange fait/à-faire
   trompe le PM et la reprise de session (classe PM-STALE-BACKLOG) ; c'est la tenue À CHAQUE push qui
   empêche la dérive, pas les grandes passes de nettoyage.
+  ⚠️ **`MERGE-MARKERS-IN-MAIN` (2026-08-14) — le gate NE LIT PAS les `.md`, donc il ne les protège
+  pas.** La PR #622 a livré sur `main` des marqueurs de conflit NON RÉSOLUS, committés en clair dans
+  `CHANGELOG.md` (2 blocs) et `docs/BACKLOG.md` (1 bloc DÉSÉQUILIBRÉ : deux `<<<<<<<` pour un seul
+  `>>>>>>>`). Ils y ont vécu plus d'une journée. Le gate était VERT tout du long — et c'est logique :
+  `typecheck`, `lint`, `test` et `build` ne lisent aucun `.md`. Aucune barrière ne regardait.
+  **Ce que ça produisait** : `[ENG-DIVORCE-ROOM-COUPLE]`, `[ENG-DIVORCE-ESTATE-PENSION]` et
+  `[ENG-DIVORCE-LATENTTAX]` figuraient chacun DEUX FOIS — une version `[x] LIVRÉ` et une version
+  `[ ]` périmée d'avant livraison. Une session qui lit la mauvaise moitié re-livre du déjà-fait, ou
+  croit fait ce qui ne l'est pas. C'est `PM-STALE-BACKLOG` porté à son maximum, et l'incident n'a été
+  découvert que parce qu'une PR suivante a dû fusionner ces fichiers et a produit un conflit imbriqué
+  illisible. **Garde** : `tests/noConflictMarkers.test.ts` scanne les fichiers SUIVIS par git.
+  ⚠️ Deux finesses dans cette garde, qui valent au-delà d'elle : (1) `=======` seul est AMBIGU —
+  c'est aussi un titre setext Markdown — donc on ne le signale que dans un fichier portant déjà un
+  chevron, sinon la garde crie sur de la doc légitime ; (2) le test de discrimination appelle le
+  VRAI scanner sur de vrais fichiers, il ne re-code pas la détection — une copie qui marche ne prouve
+  rien sur l'original.
+  ⚠️ Leçon générale : quand une classe de défaut ne peut casser AUCUNE des quatre commandes du gate,
+  ne pas conclure « ça se verra à la relecture ». Ça ne s'est pas vu.
 - **Garde-fou (non négociable)** : avant CHAQUE commit, `typecheck` clean + `build`
   qui passe + `test` vert (hook `commit-gate`). Jamais `--no-verify`.
 - **Vigilance** (à signaler dans le plan, pas interdit) : migrations schema Zustand
@@ -1084,6 +1102,17 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   est committé. `commit-gate` relance la suite complète **uniquement si des `.ts/.tsx` sont stagés**
   (~5 min — voulu) ; un commit de docs/config/hooks est instantané. `guard` laisse passer le push
   mais bloque toujours `rm -rf` sensible / `--no-verify` / `.env` (en ignorant le corps des messages).
+- ⚠️ **`HOOK-WRONG-MECHANISM` (2026-08-14)** — j'ai conclu « le hook `commit-gate` n'est pas installé
+  dans ce conteneur » parce que `.git/hooks/` ne contenait que des `.sample`, et je l'ai **annoncé à
+  Marc**. C'était FAUX sur les deux points : `commit-gate` n'a jamais été un hook **git**, c'est un
+  hook **Claude Code** (`PreToolUse` sur Bash → `scripts/hooks/commit-gate.mjs`), donc `.git/hooks/`
+  vide est l'état NORMAL ; et il tournait bien. Ce que j'ai pris pour son absence était en réalité
+  son comportement documenté : `touchesSource` est faux quand aucun `.ts/.tsx` n'est stagé, donc un
+  commit de docs pur sort en `exit 0` immédiatement — voulu, et écrit juste au-dessus dans ce
+  fichier. **La leçon générale** : constater qu'un mécanisme est absent de l'emplacement où l'on
+  SUPPOSE qu'il vit ne prouve rien sur son existence. Localiser l'implémentation (`grep` du nom dans
+  la config) AVANT de conclure — a fortiori avant de l'annoncer. Même famille que
+  `DOC-STALE-IMPOSSIBILITY` : un constat d'absence est une hypothèse, pas une mesure.
 
 ## Notes
 - ⚠️ **[PARTIAL-POINT-FAKE-ZERO] 2026-08-11 — fabriquer un point qui n'implémente qu'une PARTIE d'un
@@ -2743,7 +2772,6 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   prémisse — surtout celles formulées en « au lieu de ». Le livrable honnête est alors le constat
   DOCUMENTÉ, pas du code qui réimplémente l'existant.
 
-<<<<<<< HEAD
 - ⚠️ **[ENG-DIVORCE-SPLITPCT-UNBOUNDED] 2026-08-13 — un `<input type="number">` SANS `min`/`max`
   n'est pas une validation, et avec eux non plus.** Les attributs bornent les steppers ; ils
   n'empêchent ni la frappe, ni le collage, ni un import de sauvegarde, ni un futur appelant du
@@ -2767,7 +2795,6 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   lit. Même famille que « corriger une règle dupliquée à moitié ». Règle : en posant une
   normalisation (clamp, arrondi, défaut), GREPPER tous les sites qui affichent ou journalisent la
   valeur d'origine, et les faire passer par la même fonction.
-=======
 - ⚠️ **[ENG-INV-FLUXFORM-COVERAGE] 2026-08-13 — la conservation de SOLDES ne demande jamais « d'où
   vient cet argent ».** `moneyConservation` et `fuzzConservation` vérifient « Σ actifs − dettes ==
   NetWorth » : ils sont indifférents à la CAUSE d'une variation. Un producteur qui mute un solde
@@ -2795,7 +2822,6 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   réconcilie déjà sur `poolEnd` avec les mêmes parts. Le commentaire a été corrigé. Une affirmation
   plausible écrite dans le code a la même autorité qu'une affirmation vérifiée : elle doit être
   vérifiée.
-<<<<<<< HEAD
 
 - ⚠️ **[ENG-DIVORCE-ROOM-COUPLE] 2026-08-13 — deux QUESTIONS différentes veulent deux LISTES
   différentes, pas une liste raccourcie.** Réduire `users` pour retirer les droits d'un ex-conjoint
@@ -2811,9 +2837,6 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   une épargne SUPÉRIEURE aux droits annuels et un horizon s'arrêtant AVANT le décaissement. Même
   leçon que le registre REER (3 fixtures). Règle : quand une mesure avec/sans correctif rend un
   écart NUL, suspecter la fixture avant de conclure que le correctif est inutile.
-=======
->>>>>>> origin/main
->>>>>>> origin/main
 
 - ⚠️ **[ENG-DIVORCE-ESTATE-PENSION] 2026-08-13 — le MÊME NOM peut désigner un MULTIPLICATEUR ici et
   un DIVISEUR là.** `activeUsersCount` divise un agrégat ménage dans `retirementIncome` (le réduire
@@ -2828,6 +2851,20 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   commentaire de `estateCalculation` citait lui-même « retirementIncome.ts:207-212 », c'est-à-dire
   la ligne exacte que le lot venait de corriger.
 
+- ⚠️ **[ENG-DIVORCE-LATENTTAX] 2026-08-13 — un correctif JUSTE peut être totalement INERTE, et il
+  faut le DIRE.** `computeLatentTax` était bel et bien faux après un divorce (paliers progressifs
+  lissés sur deux têtes fictives, 53 126 $ mesurés par le panel en instrumentant le moteur). Mais
+  `impotLatent` n'alimente QUE le point mensuel, et sous MC — le seul mode où le divorce existe — ce
+  point est ALLÉGÉ à `{ NetWorth, monthIndex }`. Test de perturbation : patrimoine final, succession
+  et `ImpotLatent` bit-identiques avec et sans le correctif.
+  Conduite : corriger quand même (un calcul faux non lu aujourd'hui sera lu demain), mais tester la
+  FONCTION PURE et écrire l'inertie noir sur blanc — un test de scénario aurait été VACUEUX, et
+  annoncer « 53 126 $ corrigés » aurait été faux pour l'utilisateur.
+- ⚠️ **[Même lot] Une même cause technique produit plusieurs angles morts — la nommer une fois vaut
+  mieux que la contourner trois fois.** Le point MC allégé explique À LUI SEUL : `RetraitREER`
+  inobservable pendant un divorce, `ImpotLatent` idem, et l'absence de garde de conservation sur le
+  splitter. Trois contournements ont été écrits avant de voir qu'il s'agissait du même mur
+  (`[ENG-MC-OBSERVABILITY]`).
 - ⚠️ **[ENG-MC-OBSERVABILITY] 2026-08-13 — quand trois tests d'affilée doivent CONTOURNER la même
   limite, c'est la limite qu'il faut lever.** Le point MC allégé (`{ NetWorth, monthIndex }`) a
   imposé successivement : un test de câblage sur un agrégat (`totalTaxesPaid` au lieu de
@@ -2858,3 +2895,338 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   plus rien à payer » passerait aussi si on avait purement ANNULÉ la dette. D'où la deuxième
   assertion : à 50 %, le règlement d'avril doit être RÉDUIT mais NON NUL. Partager n'est pas annuler
   — et seul le second test distingue les deux implémentations.
+- ⚠️ **[PASSE-REEL-DETTE] 2026-08-13 — une APPROXIMATION documentée dans le code reste un MENSONGE
+  à l'écran.** Le segment passé soustrait la dette d'aujourd'hui à tous les mois, avec ce commentaire
+  en toutes lettres : « dette supposée constante dans le passé, faute d'historique d'amortissement ».
+  L'approximation était assumée côté développeur, et Marc l'a signalée DEUX FOIS comme un bug — parce
+  que du point de vue de l'utilisateur, c'en est un : son patrimoine d'il y a cinq ans est amputé
+  d'une dette contractée il y a six mois. Règle : une approximation qui déforme une donnée PASSÉE
+  (donc vérifiable par l'utilisateur) n'a pas le même statut qu'une approximation sur du projeté.
+  La signaler dans un bandeau ne suffit pas ; il faut soit la donnée, soit ne rien afficher.
+- ⚠️ **[Même constat] Avant de corriger un affichage, vérifier que la DONNÉE existe.** Ici la chaîne
+  casse trois fois : `Debt` n'a pas de date de début, le payload d'ingestion PDF ne la capte pas, et
+  le passé ne pourrait donc rien en faire. Coder le volet « affichage » en premier aurait produit un
+  stub sans rien à lire. L'ordre est imposé par les données, pas par la visibilité du symptôme.
+
+- ⚠️ **[PM-DUPLICATE-TICKET] 2026-08-13 — greper le BACKLOG par les MOTS DE MARC avant d'y écrire.**
+  J'ai diagnostiqué « ma dette apparaît depuis des années » et créé trois sous-tickets… alors que
+  `[DEBT-FROM-CONTRACT]` portait DÉJÀ la demande, dans le même fichier, avec une citation quasi
+  identique. Un ID technique ne suffit pas à chercher : les demandes de Marc sont indexées par leur
+  FORMULATION, pas par le nom que je donne au correctif. Correction : RELIER les deux (le ticket
+  d'origine porte la demande et sa date, les sous-tickets portent le plan) plutôt que d'en supprimer
+  un — supprimer l'original effacerait la trace de la demande.
+- ⚠️ **[ENG-DIVORCE-DISPLAY-RATES] 2026-08-13 — deux erreurs qui se COMPENSENT à salaires égaux
+  rendent la fixture décisive.** Le taux affiché faisait `(salaireA + salaireB) / 2` après un
+  divorce. À salaires égaux, `(a + a) / 2 === a` : le défaut est rigoureusement INVISIBLE, et
+  n'importe quelle fixture « symétrique » l'aurait laissé passer. Il a fallu 14 000 $ contre
+  2 000 $/mois pour le faire apparaître. Règle : quand un calcul MOYENNE deux entités, toute
+  fixture où ces entités sont égales est aveugle par construction.
+
+- ⚠️ **[A11Y-MASK-STEALS-NAME] 2026-08-14 — masquer un champ ne doit pas lui voler son NOM.**
+  `PrivateNumberInput` remplace l'`<input>` par un `<button>` « ••• » portant
+  `aria-label="Montant masqué — cliquer pour modifier"` EN DUR. Or `aria-label` est PRIORITAIRE sur
+  les deux seules façons dont un champ est nommé dans le dépôt : le `<label htmlFor>` (salaires de
+  Profil) et l'`aria-label` du champ lui-même (facteur d'équivalence, RSU, Asset Location). MESURÉ
+  avec l'algorithme réel de nom accessible : « Salaire Brut annuel ($) » et « RSU vesting annuel »
+  devenaient l'un comme l'autre « Montant masqué — cliquer pour modifier ». En mode discret, TOUS
+  les champs d'un formulaire annonçaient donc le même nom — impossible de savoir lequel on édite.
+  Le masquage protégeait la valeur en rendant le formulaire inutilisable au lecteur d'écran.
+  Correctif : laisser le nom au NOMMEUR EXISTANT (aucun `aria-label` en dur ; ceux du champ —
+  `aria-label` ET `aria-labelledby`, les deux, même si le second n'a aucun appelant aujourd'hui —
+  sont simplement transmis) et porter l'état masqué là où il n'écrase personne — le `title` devient une
+  DESCRIPTION (annoncée EN PLUS du nom) et un texte `sr-only` ne devient le nom que si rien d'autre
+  ne nomme le bouton (le contenu est le dernier recours de l'algorithme).
+  Règle générale : **un remplacement de contrôle doit préserver le nom accessible du contrôle
+  remplacé**, et ça se MESURE (`toHaveAccessibleName`), ça ne se raisonne pas — `getByLabelText` de
+  Testing Library trouvait bien le bouton par son `<label>` alors que son nom réel était le libellé
+  masqué. La requête TL n'est PAS l'algorithme de nommage : elle a validé un écran inutilisable.
+- ⚠️ **[Même lot] La valeur d'un champ ÉDITABLE ne vit pas dans `textContent`.** Elle vit dans
+  `.value`. Les tests de fuite de #608 comparaient le texte APLATI du DOM : ils étaient structurellement
+  aveugles aux formulaires, ce qui explique que la SAISIE ait survécu à trois tours de revue sur
+  l'AFFICHAGE. Un test de mode discret doit inspecter les DEUX canaux (texte + `.value`), plus les
+  attributs (`title`, `aria-label`, `placeholder`).
+- ⚠️ **[Même lot] Masquer ≠ tout masquer : la décision « laissé en clair » mérite son test.** Le bonus
+  en POURCENTAGE reste éditable (le brut auquel il s'applique est masqué, le % seul ne reconstitue
+  aucune somme). Sans test d'intention, un futur « masquons tout » passe sans que le choix soit
+  rediscuté — et un test qui échoue force la discussion au bon moment.
+- ⚠️ **[Même lot] Un agent de revue qui a `Bash` PERTURBE l'arbre de travail — ne jamais committer
+  pendant qu'un panel tourne.** L'agent `silent-failure-hunter` lancé sur ce diff mesurait en
+  remettant la version d'AVANT du fichier, puis en la restaurant.
+  ⚠️ **Attribution corrigée** : j'avais d'abord accusé l'agent `a11y-auditor` (le commit 9b76782 le
+  dit encore, il est poussé). Faux : son rapport détaille qu'il n'a créé que des tests jetables, et
+  c'est `silent-failure-hunter` qui a confessé le swap `origin/main` ↔ HEAD. Leçon dans la leçon :
+  **quand plusieurs agents partagent un arbre, on ne DÉDUIT pas le coupable de celui dont on voit
+  les fichiers** — les fichiers de sondage visibles étaient ceux de l'INNOCENT. Le rapport de chaque
+  agent dit ce qu'il a fait ; le lire avant d'écrire une accusation dans une doc permanente. Mon `git add` est tombé pile dans cette fenêtre :
+  l'index contenait l'ANCIENNE primitive alors que le fichier de travail était bon. Plus tard, une
+  de ses restaurations a écrasé un incrément non commité (`aria-labelledby` + son test).
+  Détecté parce que j'ai relu `git show :<fichier>` au lieu de faire confiance à `git add` — c'est
+  ce contrôle qui a évité de pousser une régression silencieuse portant le message du correctif.
+  Règle : la course concurrente documentée pour les vérifs money-critical (`git stash`) NE SE LIMITE
+  PAS au moteur — elle vaut dès qu'un agent a `Bash` sur l'arbre partagé. Donc : (1) snapshoter les
+  fichiers modifiés HORS du dépôt avant de lancer un panel, (2) ne committer qu'une fois le panel
+  rendu, (3) RELIRE le contenu réellement commité (`git show HEAD:<fichier>`), jamais supposer que
+  `git add` a capturé ce qu'on venait d'écrire.
+
+- ⚠️ **[A11Y-PRIVACY-PARAMS-AVANCES] 2026-08-14 — une garde de scan doit être SYMÉTRIQUE quand la
+  règle a deux sens.** Le critère « on masque les champs dont le libellé porte un `$` » se garde
+  naturellement dans un sens (un libellé en `$` sur un `<input>` nu = fuite). Mais il a un
+  SECOND sens tout aussi important : un champ SANS `$` masqué par mégarde coûte de la lisibilité
+  sans rien protéger, et signale que quelqu'un a masqué au jugé plutôt qu'au critère. Les deux
+  assertions sont écrites, et les DEUX prouvées discriminantes par perturbation. Sans la seconde,
+  « masquons tout » passait au vert — et c'est exactement la simplification tentante.
+  Corollaire : un test de RENDU ne voit que les champs MONTÉS (ici la moitié du panneau est derrière
+  des `projection.xxxEnabled`) ; un scan de SOURCE voit tout le fichier, y compris un champ ajouté
+  demain dans une section que la fixture n'active pas. Les deux sont nécessaires, pas au choix.
+- ⚠️ **[Même lot] Une transformation EN MASSE se vérifie attribut par attribut, pas au typecheck.**
+  Ma substitution regex `<input type="number" …>` → `<PrivateNumberInput …>` a absorbé le
+  `type="number"` dans le motif et l'a PERDU sur les 14 champs. `npm run typecheck` est resté VERT :
+  `type` est optionnel sur `InputHTMLAttributes`. Le champ révélé redevenait un champ TEXTE —
+  steppers et clavier numérique mobile en moins, sans la moindre erreur. Attrapé par un comptage
+  AVANT/APRÈS sur le fichier (`grep -c 'type="number"'` : 41 des deux côtés, et idem pour
+  `min|max|step`), pas par le compilateur. Règle : après un remplacement en masse, COMPTER les
+  attributs de part et d'autre — un typage optionnel ne signale jamais une perte.
+- ⚠️ **[Même lot] Un montant « unique » de fixture se vérifie contre le TEXTE RENDU, pas au flair.**
+  J'ai choisi `1213` comme montant témoin « improbable » : il apparaît dans le libellé STATIQUE
+  « T1213 retenue source ». Le test de fuite a donc échoué alors que le masquage était correct —
+  faux positif fabriqué par ma propre fixture, sur un fichier que je venais de lire en entier.
+  Un nombre de 3-4 chiffres a toutes les chances de croiser un numéro de formulaire fiscal, une
+  année, un seuil ou un pourcentage. Préférer 5+ chiffres, ou vérifier le nombre contre le rendu.
+- ⚠️ **[Même lot] Un dénominateur compté sur la source BRUTE compte les fantômes des commentaires.**
+  Ma garde de couverture comparait « paires libellé↔champ vues par le scan » à
+  `source.match(/type="number"/g).length`. Elle échouait à 40 contre 41 — et j'ai d'abord accusé le
+  scan d'un angle mort. Le vrai coupable : le commentaire de `divorceSplitPct` contient le TEXTE
+  `<input type="number">`, cité en exemple. Le fichier a 40 champs RÉELS, pas 41.
+  Deux conséquences, l'une technique et l'autre pire :
+  1. tout compte sur une source non nettoyée est faux dès qu'un commentaire cite du code — il faut
+     retirer les commentaires AVANT de compter ;
+  2. j'avais propagé « 41 champs » dans le message de commit, le corps de PR, le handover, le
+     BACKLOG et l'en-tête du test, sans jamais recouper la somme. `14 + 26 = 40` sautait aux yeux
+     et personne (moi compris) ne l'avait fait. Règle : **un décompte cité dans une doc se recoupe
+     par une addition**, pas par une seule mesure répétée en boucle.
+  Bénéfice net : cette garde de couverture n'existait pas au départ. Une garde qui ne prouve pas
+  qu'elle voit TOUT ce qu'elle prétend surveiller est de la même famille que la garde circulaire —
+  elle rend un vert qui ne veut rien dire.
+- ⚠️ **[Même lot] NORMALISER puis matcher, plutôt que tout tolérer DANS la regex.** Pour que le scan
+  voie un champ séparé de son libellé par un commentaire JSX, mon premier réflexe a été d'absorber
+  le commentaire dans le motif : `<\/label>\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)*(<[A-Za-z]+)`. CodeQL l'a
+  refusé, à raison : deux quantificateurs imbriqués sur un motif ambigu = backtracking exponentiel
+  (ReDoS). L'entrée est un fichier du dépôt, donc le risque réel est nul — mais le correctif de
+  forme s'est révélé MEILLEUR sur le fond : retirer les commentaires UNE fois
+  (`source.replace(/\{\/\*[\s\S]*?\*\/\}/g, '')`) donne une source normalisée que le scan ET le
+  décompte partagent, chaque motif reste linéaire, et les deux défauts que ces commentaires
+  causaient (paire invisible, champ fantôme compté) tombent du même geste.
+  Règle : quand une regex doit « tolérer » une construction, se demander d'abord si cette
+  construction peut être ÉLIMINÉE de l'entrée. La garde a été revérifiée sur ses trois
+  perturbations après le correctif — un correctif de forme ne doit jamais être supposé neutre.
+
+- ⚠️ **[A11Y-PRIVACY-SOLDES-COMPTES] 2026-08-14 — un `id` DÉRIVÉ d'un texte utilisateur casse
+  l'association `<label htmlFor>` en silence.** Les soldes de comptes sont rendus en boucle sur des
+  noms SAISIS par l'utilisateur (« Compte chèque », « Épargne d'urgence »). Fabriquer l'`id` à partir
+  de ce nom paraît naturel et lisible — mais deux noms distincts peuvent se nettoyer en un MÊME
+  identifiant (`Épargne d'urgence #1` et `Épargne d urgence 1`), et deux éléments partageant un `id`
+  font pointer les DEUX `<label>` sur le premier : le second champ perd son nom accessible, sans
+  aucune erreur ni avertissement. L'index de boucle est sans collision par construction.
+  Généralisation : **une donnée utilisateur ne doit jamais servir de CLÉ technique** (id DOM, clé de
+  cache, nom de fichier) sans une garantie d'unicité qui ne dépende pas de son contenu.
+- ⚠️ **[Même lot] Le contrat du mode discret porte sur les MONTANTS, pas sur « tout ce qui
+  identifie ».** Le lot a tranché trois fois dans le même sens, et chaque fois sous test d'INTENTION :
+  le bonus en % (#629), les %/durées/âges/probabilités des paramètres avancés (#630), et ici les NOMS
+  de comptes. La règle qui unifie les trois : masquer une valeur qui n'est pas une somme ne protège
+  rien de plus et coûte la lisibilité — pire, masquer ce qui NOMME un champ rend les contrôles
+  masqués indistinguables, soit exactement le défaut que le lot corrige. Écrire le test d'intention
+  À CHAQUE FOIS : sans lui, un futur « masquons tout » passe au vert sans que le choix soit rediscuté.
+- ⚠️ **[Même lot] Un setter NO-OP dans une fixture rend le test structurellement AVEUGLE au
+  re-render.** Tous mes tests d'`AccountsSection` passaient `setInitialBalances={vi.fn()}` : la prop
+  ne changeait donc JAMAIS, et aucun d'eux ne pouvait voir ce qui arrive quand le parent se re-rend
+  en cours de saisie — le scénario le plus à risque du lot, puisqu'en prod l'objet est reconstruit à
+  CHAQUE frappe. Le comportement se trouvait correct, mais par accident heureux : il ne tient qu'au
+  `key={acc}` du `<div>` parent, qui empêche React de démonter `PrivateNumberInput` et préserve son
+  `useState` interne. Perturbation : rendre la clé instable (`key={acc + valeur}`) → le champ
+  **se re-masque au PREMIER caractère**, saisie impossible, aucune erreur.
+  Deux règles : (1) quand un composant remonte son état, la fixture doit REMONTER l'état pour de
+  vrai (`useState` dans un wrapper), pas le simuler par un `vi.fn()` ; (2) une feature qui dépend
+  d'une propriété INVISIBLE — ici l'identité d'un composant à travers les re-renders — mérite sa
+  garde explicite : rien dans le code ne signale que changer cette clé casse la saisie.
+
+- ⚠️ **[A11Y-PRIVACY-PATRIMOINE-ETENDU] 2026-08-14 — chercher l'ABSENCE d'un MÉCANISME ne prouve pas
+  l'absence du RÉSULTAT.** J'ai grepé `<label>` dans `PatrimoineExtended.tsx`, trouvé zéro, et écrit
+  dans le BACKLOG « aucun nommage, il faudra tout nommer par `aria-label` ». Faux en pratique : 15
+  des 17 champs portaient DÉJÀ un `aria-label`, que mon grep ne cherchait pas. Le nom accessible a
+  plusieurs sources (`<label htmlFor>`, `aria-label`, `aria-labelledby`, contenu, `title`) — n'en
+  interroger qu'une et conclure sur le RÉSULTAT est un raisonnement invalide. La mesure juste est
+  `toHaveAccessibleName`, pas un grep sur une seule des voies. Le cadrage faux a été RECTIFIÉ dans
+  le BACKLOG plutôt que laissé : un cadrage erroné coûte du temps à la session suivante, qui le lit
+  comme un acquis (famille `DOC-STALE-IMPOSSIBILITY`).
+- ⚠️ **[Même lot] Le meilleur critère de masquage est celui que le fichier s'est DÉJÀ donné.**
+  Ici les `aria-label` distinguaient nativement `(dollars)`, `(pourcentage)` et `(années)`. S'appuyer
+  dessus plutôt qu'inventer une règle donne trois choses gratuitement : le classement est déjà fait
+  par l'auteur du fichier, la garde de source est triviale à écrire, et un futur champ nommé selon
+  la même convention est couvert sans qu'on y pense. Avant de définir un critère, chercher celui qui
+  existe déjà.
+- ⚠️ **[Même lot] Une garde d'exhaustivité doit comparer des ENSEMBLES, pas des CARDINALITÉS.**
+  Ma garde vérifiait que le nombre de contrôles vus par le scan égalait le nombre d'occurrences de
+  `aria-label="`. Ça attrape bien un champ oublié — mais deux erreurs qui se COMPENSENT
+  numériquement (un contrôle raté par la regex, et ailleurs un `aria-label="` cité dans un
+  commentaire de ligne que le nettoyage ne retirait pas) rendaient le test vert à tort. Comparer les
+  LIBELLÉS eux-mêmes coûte une ligne, supprime la classe d'erreur, et le message d'échec NOMME le
+  champ fautif au lieu d'annoncer « 12 attendus, 11 trouvés » — ce qui change tout pour celui qui
+  débogue. Règle : dès qu'une assertion porte sur « tout est couvert », comparer les éléments.
+- ⚠️ **[Même lot] Un changement de FORMATAGE peut être un changement de VALEUR AFFICHÉE.** Passer le
+  NOI d'un `toLocaleString` nu à `formatCAD` était obligatoire (source unique), mais `formatCAD`
+  impose `maximumFractionDigits: 0` alors que `toLocaleString` en laissait jusqu'à trois. MESURÉ sur
+  la fixture : `230 528,436$` → `230 528 $`. L'utilisateur perd des décimales — c'est une
+  amélioration (un NOI au millième de dollar est du bruit), mais elle se DÉCLARE au CHANGELOG au
+  lieu de se déduire d'un diff. Règle : avant de conclure « c'est cosmétique », instancier le
+  format avant et après sur une valeur NON RONDE — sur un entier, les deux sont identiques et la
+  différence reste invisible.
+
+- ⚠️ **[A11Y-PRIVACY-INVESTMENTS-DETAIL] 2026-08-14 — un test de RENDU qui n'atteint pas un site ne
+  prouve rien SUR ce site, et le fait croire couvert.** Les 9 fuites de cet écran vivent dans 9
+  états distincts (sous-onglet, cibles d'allocation configurées, transactions d'achat pour les
+  stats DCA…). Un test qui rend l'écran et vérifie « aucun montant ne fuit » serait passé au vert en
+  n'ayant affiché que deux d'entre eux. Le scan de SOURCE, lui, les voit tous — même famille que
+  `chartPrivacyScan.test.ts`. Règle : quand les sites à couvrir sont conditionnés par des ÉTATS
+  nombreux, la garde de source n'est pas un pis-aller, c'est le bon outil ; le rendu ne couvre que
+  ce qu'il monte, et il ne le dit pas.
+- ⚠️ **[Même lot] Appliquer « resserrer le scan AVANT de coder » au niveau du DÉPÔT change le
+  périmètre d'un lot entier.** Avant de traiter l'écran suivant, j'ai passé le scan `formatCAD` sur
+  tout `components/` : 38 sites dans 19 fichiers, là où l'audit fait à la main en listait une
+  fraction. MAIS le chiffre brut est un MAJORANT — sur 4 sites inspectés, 3 étaient des faux
+  positifs de 3 classes différentes (valeur PUBLIQUE qu'il FAUT garder visible ; primitive de
+  masquage non reconnue par le motif ; chaîne construite plutôt que JSX rendu). Deux enseignements :
+  (1) un scan large se TRIE avant de conclure — publier « 38 fuites » aurait été faux ;
+  (2) une liste d'audit faite à la main se corrobore, mais ne prouve JAMAIS l'exhaustivité — seul un
+  scan peut dire « il n'y en a pas d'autres », et seulement une fois ses faux positifs classés.
+- ⚠️ **[PASSE-REEL-CAP-400J] 2026-08-14 — un GARDE-FOU de volume devient une COUPURE de données, et
+  le commentaire qui le rassure peut n'avoir jamais été implémenté.** `reconstructPortfolioHistoryDaily`
+  plafonnait à 400 jours « pour qu'un appelant distrait ne demande pas 20 ans au jour », en rendant
+  les 400 PREMIERS. Pour un utilisateur réel dont l'historique démarre 20 mois plus tôt, ça coupe la
+  courbe EN PLEIN MILIEU de la fenêtre visible : les jours au-delà n'ont pas de valeur de placements,
+  et l'appelant les SAUTE — ni tracés, ni cliquables. Marc l'a signalé avec une date, et
+  `début + 399 jours` tombait dessus au jour près.
+  Deux leçons distinctes :
+  1. **Un plafond doit couvrir le cas d'usage RÉEL, pas un ordre de grandeur imaginé.** « Un peu plus
+     d'un an » sonne raisonnable et ne l'est pas pour un historique personnel.
+  2. **Le commentaire affirmait « l'appelant le voit à la longueur — plutôt qu'une troncature
+     silencieuse au milieu ». Aucun appelant ne comparait quoi que ce soit.** Une garantie écrite en
+     prose et jamais codée est pire que rien : elle rassure les relectures suivantes. Une troncature
+     se rend CONSTATABLE par une valeur de retour (`truncatedFrom`), pas par une phrase.
+- ⚠️ **[Même lot] Rendre RAPIDE avant de rendre PLUS GRAND.** Le réflexe était de monter le plafond.
+  MESURÉ d'abord : 1 993 ms pour 1 687 jours — le correctif « évident » aurait troqué un trou muet
+  contre un gel de 2 s à chaque zoom. La cause : `priceAt` et `priceAgeDays` re-balayaient TOUT
+  l'historique de prix, par actif ET par jour (deux scans complets par couple, ≈ 63 M d'opérations).
+  La boucle des jours étant strictement croissante, un curseur par actif suffit : **37 ms, 54×**.
+  Le plafond n'a été relevé qu'APRÈS. Règle : quand un plafond existe « pour la perf », mesurer ce
+  qu'il protège avant de le déplacer — souvent il masque un algorithme à corriger.
+  ⚠️ Corollaire de méthode : une optimisation ne vaut RIEN si elle déplace un chiffre. Les helpers
+  d'origine ont été laissés INCHANGÉS (ils servent aussi la reconstruction mensuelle), et le test
+  d'équivalence compare la boucle optimisée À EUX, jour par jour — pas à une valeur recopiée.
+- ⚠️ **[PASSE-REEL-CAP-400J, revue d'intégrité] Remplacer un SCAN par un CURSEUR ajoute une
+  HYPOTHÈSE que l'original n'avait pas.** Un scan complet (`priceAt`) tolère n'importe quel ordre,
+  n'importe quel doublon, n'importe quel point corrompu : il regarde tout, à chaque fois. Un curseur
+  suppose que le tri est TOTALEMENT cohérent avec le prédicat qu'il avance. Trois divergences
+  MESURÉES par le panel sur mon curseur, aucune visible en lisant le diff :
+  · **doublon de date** → le curseur s'arrête sur la DERNIÈRE occurrence, `priceAt` garde la
+    PREMIÈRE (son `>` est strict). 700 $ contre 500 $ — et surtout la courbe QUOTIDIENNE et la
+    courbe MENSUELLE affichaient deux prix DIFFÉRENTS pour la même date et le même titre ;
+  · **`price` null ou absent** → `best.price` « existe » techniquement, donc le repli
+    `?? currentPrice` ne se déclenche plus : 0 $ (le « 0 $ crédible » interdit par no-fake-data),
+    ou `qty * undefined` = **NaN propagé jusqu'au patrimoine net** ;
+  · **`date` absente sur un point EN TÊTE** → `undefined <= t` est faux, le curseur ne franchit
+    jamais ce point et reste GELÉ sur toute la fenêtre.
+  Correctif : NORMALISER une fois à la construction (filtrer les points invalides, trier,
+  dédoublonner en gardant la PREMIÈRE occurrence — le choix de `priceAt`), pour que le module reste
+  INDISCERNABLE de l'implémentation qu'il remplace. Coût mesuré : nul (109 ms à 4 000 jours).
+  Règle : après une réécriture d'algorithme, la question n'est pas « est-ce plus rapide » mais
+  « quelles hypothèses NOUVELLES ai-je introduites, et qu'arrive-t-il quand elles sont fausses ».
+  ⚠️ Indice qui aurait dû m'alerter : `buildMarketData` et `periodReturn` filtraient DÉJÀ
+  `p.date && Number.isFinite(p.price)`. Ce module était le seul consommateur à ne pas suivre la
+  convention — une convention appliquée partout SAUF ici est un signal, pas un détail.
+- ⚠️ **[Même revue] Une mise en garde qui se trompe d'un jour perd sa raison d'être.** Mon bandeau
+  disait « l'historique s'arrête au {truncatedFrom} », alors que `truncatedFrom` est le PREMIER jour
+  NON reconstruit : la courbe s'arrête la VEILLE. Sur un texte dont tout l'intérêt est d'être exact —
+  il existe précisément parce qu'une coupure silencieuse a coûté sept mois d'historique — un décalage
+  d'un jour renvoie l'utilisateur chercher au mauvais endroit. Reformulé en « le premier jour non
+  reconstruit est le … », qui dit ce que la variable CONTIENT.
+
+- ⚠️ **[PASSE-REEL-TXN-DU-JOUR] 2026-08-14 — « montrer tout » et « compter juste » sont DEUX
+  promesses, et masquer une ligne en trahit une.** Marc voulait voir TOUTES ses transactions d'une
+  journée. Or le registre exclut du calcul les doublons d'import et les virements internes. Trois
+  options, une seule honnête : les masquer donne une liste qui ne correspond pas au relevé bancaire ;
+  les compter donne un total qui ne correspond pas à la courbe ; les AFFICHER BARRÉS, avec la raison,
+  tient les deux. D'où `counted` / `excluded` séparés dans le retour du helper, plutôt qu'une liste
+  unique filtrée. Règle : quand un filtre métier existe en amont, l'affichage ne doit ni le copier en
+  silence ni l'ignorer — il doit le RENDRE VISIBLE.
+- ⚠️ **[Même lot] Filtrer À LA DEMANDE plutôt que pré-indexer, quand la dimension est grande et
+  l'usage ponctuel.** La tentation était d'enrichir `dailyPastLedger` (qui construit déjà une Map par
+  jour) avec les transactions. Il couvre jusqu'à ~4 000 jours : on aurait gardé TOUTES les
+  transactions en mémoire, en permanence, pour n'en afficher qu'une journée à la fois. Un balayage
+  O(n) au clic, sur une liste déjà chargée, coûte moins et ne pèse rien le reste du temps.
+- ⚠️ **[Même lot] Un paramètre à VALEUR PAR DÉFAUT rend son cas `undefined` intestable par cette
+  voie.** Mon helper de test était `(point, transactions = TOUTES)`. Le test « sans la prop » passait
+  `undefined` explicitement — ce qui DÉCLENCHE le défaut en JS. Le test échouait donc en accusant le
+  composant d'afficher une section qu'il n'aurait pas dû, alors que c'était mon harnais qui lui
+  passait la liste complète. Pour tester une absence, rendre DIRECTEMENT sans la prop.
+- 🔴 **[PASSE-REEL-TXN-DU-JOUR, revue] 2026-08-14 — j'ai livré une feature INATTEIGNABLE en citant,
+  dans son propre fichier de test, la leçon qui l'interdit.** La section « transactions du jour » lit
+  `dayIso`. Or `FutureProjection.detailPointFor` REBASE volontairement tout point quotidien sur son
+  mois hôte avant de le transmettre à la modale — et `dayIso` est posé au MÊME endroit que
+  `hostMonthIndex` (`dailyLedger.ts`), donc effacé par ce rebasage. En clic réel, la section ne
+  pouvait JAMAIS s'afficher. **Huit tests au vert**, CHANGELOG annonçant la feature, BACKLOG coché.
+  Pourquoi les tests n'ont rien vu : ils rendaient `FutureDetailModal` DIRECTEMENT avec une fixture
+  portant `dayIso` écrit à la main, court-circuitant tout le chemin de production. **Un test qui
+  FABRIQUE lui-même la condition qu'il devrait prouver atteignable ne prouve rien** — il aurait été
+  identique avec ou sans le bug. C'est la forme « composant isolé » de `UX-UNREACHABLE-FEATURE`, et
+  elle est plus insidieuse que la version « trop de gestes » : ici il n'y avait AUCUN chemin.
+  Règle : pour une surface conditionnée par une donnée que l'APPELANT fournit, la garde doit tester
+  la SEAM — au minimum « la donnée absente ⇒ rien ne s'affiche » ET « le porteur naturel de la donnée
+  ne fait pas foi », plus un scan de source sur le câblage. Les trois ont été ajoutés, et prouvés en
+  RÉINTRODUISANT le bug dans les deux sens (lecture depuis le point, et dérivation depuis le point
+  rebasé).
+  ⚠️ Correctif choisi : faire voyager le jour dans une PROP SÉPARÉE, pas fusionner
+  `{ ...pointMensuel, dayIso }` — un point hybride aux montants mensuels et à la date quotidienne
+  serait exactement le faux que no-fake-data interdit pour un objet.
+- ⚠️ **[Même revue] `opacity-*` sur du texte déjà atténué passe sous le seuil AA, et
+  `check-contrast` ne le voit pas.** Mes lignes « exclues » cumulaient `opacity-60` avec
+  `text-ink-300`/`text-ink-400`, des shades calibrés pour être tout juste AA à PLEINE opacité :
+  ~3,0-3,4:1 après composition, sur la ligne qui porte justement l'explication. Le script du dépôt
+  est un scan statique token-vs-token : il ignore les classes d'opacité appliquées au runtime, donc
+  il rend un vert trompeur. Règle : l'atténuation visuelle porte sur le FOND (`bg-white/[0.02]`) ou
+  sur un décor, jamais sur un conteneur de texte ; et une garde qui ne rend pas le DOM ne peut pas
+  arbitrer un contraste effectif.
+- ⚠️ **[Même revue] Nommer un total par ce qu'il EXPLIQUE, pas par ce qu'on aimerait qu'il explique.**
+  J'avais documenté `netCounted` comme « le montant qui explique le mouvement du jour sur la courbe »,
+  et le CHANGELOG le répétait à l'utilisateur. Faux : c'est le FLUX DE TRÉSORERIE (`Income −
+  Expenses`). La courbe bouge aussi par le rendement de marché et l'équité immobilière — sans aucune
+  transaction. Un jour de forte hausse boursière affiche donc 0 $ pendant que la courbe monte.
+  `dailyPastLedger` distingue d'ailleurs explicitement « dépôts » et « rendement » pour cette raison.
+  Un nom trop généreux envoie la session suivante chercher une réconciliation qui n'existe pas.
+- ⚠️ **[PASSE-REEL-TXN-DU-JOUR] Un jeton de test se choisit contre le VOCABULAIRE de l'écran, pas
+  contre ce qui semble improbable.** Mon assertion « le prénom de l'autre conjoint n'apparaît pas »
+  échouait sur… l'en-tête de colonne **MARCHAND**, dont « Marc » est un sous-mot. Deuxième fois dans
+  la même session après le montant témoin `1213`, qui vivait dans « T1213 retenue source ».
+  Corollaire du même incident : une assertion NÉGATIVE doit viser la ZONE qu'elle juge, pas tout le
+  document — la modale affiche les prénoms ailleurs (ventilation par conjoint), et chercher dans
+  `document.body` accusait le détail d'une ligne pour un texte venu d'une autre section.
+- 🔴 **[PASSE-REEL-TXN-DU-JOUR, revue v2] Une FIXTURE qui reproduit l'hypothèse fausse du code ne
+  discrimine RIEN — et c'est la deuxième fois de la même session.** J'ai traité `Transaction.confidence`
+  comme une fraction 0-1 (`Math.round(c * 100)`). Elle est en **0-100** chez TOUS ses producteurs
+  (`claude.ts` : 100, `applyTransferDetection` : 100, personas : 95), et le consommateur existant
+  `Transactions.tsx` l'affiche déjà `${t.confidence}%` SANS multiplier. Ma pastille aurait donc
+  affiché « 9 500 % ».
+  **Le plus grave n'est pas l'affichage** : mon seuil d'alerte `pct < 70` devenait INATTEIGNABLE —
+  une vraie confiance de 42 devenait 4 200, donc « neutre », donc jamais en ambre. La pastille
+  perdait sa seule raison d'être (signaler les catégorisations douteuses) sur TOUTE donnée réelle.
+  Mes deux tests utilisaient `0.93` et `0.42` : ils reproduisaient MON hypothèse, donc passaient au
+  vert des deux côtés du bug.
+  Règle : **une fixture se calibre sur les PRODUCTEURS réels du champ, pas sur l'idée qu'on s'en
+  fait.** Un grep de `confidence:` dans `services/` coûtait dix secondes et donnait la réponse.
+  Corollaire fort : pour une unité (%, fraction, cents, mensuel/annuel), chercher d'abord si un
+  autre écran l'AFFICHE DÉJÀ — son code est la spécification la plus fiable du dépôt.
+- ⚠️ **[Même revue] Une divergence assumée entre deux écrans se DOCUMENTE dans le code.**
+  `resolveTransactionOwner` (vue Budget) DÉDUIT un conjoint quand `ownerId` est absent, en lisant le
+  type de poste. Mon panneau n'affiche que l'attribution EXPLICITE — afficher une déduction comme un
+  nom se lirait comme une certitude. Le choix est défendable, mais la conséquence ne l'est que si
+  elle est écrite : une transaction imputée à un conjoint dans Budget peut n'avoir aucune pastille
+  ici. Sans cette note, la prochaine session lira l'écart comme un bug et « corrigera ».

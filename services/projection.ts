@@ -1871,8 +1871,20 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             .filter(p => p.isBought && !p.isSold && !p.isPrimaryResidence)
             .reduce((s, p) => s + Math.max(0, p.currentValue - (p.cost ?? 0)), 0);
         const impotLatent = computeLatentTax(
-            { m, loopYear, simInflation, simSalaryGrowth, isRetired, activeUsersCount,
-              grossMarcBaseAnnual, grossAnnaBaseAnnual, accRentesYear, incomeRetirement,
+            // [ENG-DIVORCE-LATENTTAX] `activeUsersCount` est ici un NOMBRE DE DÉCLARANTS : il
+            // divise le revenu pour calculer l'impôt d'UNE déclaration, puis le remultiplie. Après
+            // un divorce, tout le patrimoine latent pèse sur UNE seule déclaration, donc sur des
+            // paliers plus élevés. Passer 2 lissait la facture sur deux têtes fictives — mesuré :
+            // impôt latent −337 063 $ au lieu de −390 189 $, soit **53 126 $ sous-estimés**, et un
+            // patrimoine net d'impôt affiché d'autant trop haut.
+            // Même famille que `taxFilers` (dépôt fiscal) et `taxJanuary` : ces trois-là doivent
+            // dire la même chose, sinon la prochaine correction n'en bougera qu'une.
+            { m, loopYear, simInflation, simSalaryGrowth, isRetired, activeUsersCount: taxFilers,
+              grossMarcBaseAnnual,
+              // Le salaire d'un ex-conjoint parti ne fait plus partie de l'assiette — même motif
+              // qu'au dépôt de décembre et au meltdown REER.
+              grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual,
+              accRentesYear, incomeRetirement,
               reer, nonReg, nonRegACB, crypto, cryptoACB, realEstateLatentGain: realEstateLatentGainNow, enableMonteCarlo },
             calculateFiscalReport,
         );
@@ -1891,9 +1903,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // Phase 3 Tier 3 — taux d'imposition marginal et effectif (PAR ADULTE)
         // Source : calculateFiscalReport sur le revenu brut annuel courant.
         // En retraite : on combine pensions + retraits REER pour le calcul.
+        // [ENG-DIVORCE-DISPLAY-RATES] Après un divorce, ce taux AFFICHÉ additionnait encore les deux
+        // salaires puis divisait par 2 : il montrait le taux d'un ménage qui n'existe plus. Les deux
+        // gestes du lot s'appliquent ici comme partout — `taxFilers` au dénominateur, salaire de
+        // l'ex retiré du numérateur. C'est une sortie d'AFFICHAGE (taux marginal/effectif du point
+        // mensuel), pas une assiette de calcul : rien d'autre n'en dépend.
+        const grossHouseholdAnnual = grossMarcBaseAnnual + (soloHousehold ? 0 : grossAnnaBaseAnnual);
         const grossPerUserAnnual = isRetired
-            ? (incomeRetirement * 12 + accRetraitsReerYear) / Math.max(1, activeUsersCount)
-            : (grossMarcBaseAnnual + grossAnnaBaseAnnual) / Math.max(1, activeUsersCount);
+            ? (incomeRetirement * 12 + accRetraitsReerYear) / Math.max(1, taxFilers)
+            : grossHouseholdAnnual / Math.max(1, taxFilers);
         const fiscalReportTier3 = grossPerUserAnnual > 0
             ? calculateFiscalReport(grossPerUserAnnual, 0, 0, loopYear, true /* skip breakdown pour perf */)
             : null;

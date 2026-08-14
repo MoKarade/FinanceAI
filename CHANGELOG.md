@@ -6,6 +6,120 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-14 (transactions du jour)
+
+### Tes transactions, jour par jour
+- En cliquant sur **Détail** pour une journée passée, tu vois maintenant **toutes** les transactions
+  de ce jour-là : marchand, compte, catégorie, montant — plus le net de la journée.
+- Les **doublons d'import** et les **virements internes** sont affichés eux aussi, mais **barrés**,
+  avec la raison. Les cacher t'aurait donné une liste qui ne correspond pas à ton relevé bancaire ;
+  les compter t'aurait donné un total qui ne correspond pas à la courbe.
+- Le total affiché est le **net encaissé/décaissé** de la journée. ⚠️ Ce n'est pas la variation de
+  ton patrimoine : celui-ci bouge aussi avec le rendement de tes placements, sans qu'aucune
+  transaction n'apparaisse. Un jour de forte hausse boursière affichera donc un total à 0 $ alors
+  que ta courbe monte — c'est normal.
+- **Chaque ligne porte son détail** : le compte, et selon le cas — « en attente » ou « erreur
+  d'import » quand la transaction n'est pas définitive, le conjoint à qui elle est attribuée, si la
+  catégorie a été **classée par l'IA** (avec sa confiance, mise en évidence quand elle est faible)
+  ou **vérifiée** par toi, et la catégorie d'**avant** quand l'IA l'a changée.
+- Une transaction normale et sans particularité n'affiche aucune pastille : elles ne servent qu'à
+  signaler ce qui mérite ton œil.
+- En mode discret, les montants sont masqués mais les marchands restent : c'est ce qui te permet de
+  reconnaître tes lignes.
+
+---
+
+## [unreleased] — 2026-08-14 (correctif courbe)
+
+### 🔴 Ton historique réapparaît (bug que tu as signalé)
+- **Tu ne pouvais plus rien sélectionner dans ta courbe passée à partir du 10 janvier 2026.** Ce
+  n'était pas un problème d'affichage : ces journées n'étaient tout simplement **pas reconstruites**,
+  donc ni tracées ni cliquables.
+- La cause : la reconstruction du passé au jour était plafonnée à **400 jours** à partir du début de
+  ton historique. Le tien commence le 6 décembre 2024 — et 6 décembre 2024 + 399 jours tombe le
+  9 janvier 2026. Le plafond coupait donc **exactement** là où tu l'as constaté.
+- Le plafond passe à ~11 ans. Il n'a été possible de le relever que parce que la reconstruction est
+  devenue **54× plus rapide** au passage (2 secondes → 37 ms sur 4 ans et demi) : elle re-parcourait
+  tout l'historique de prix de chaque titre, pour chaque journée.
+- ⚠️ Et si ce plafond mordait quand même un jour, **ça se verra** : un avertissement l'annonce
+  désormais. Avant, la coupure était totalement silencieuse — c'est pour ça qu'elle a duré.
+
+---
+
+## [unreleased] — 2026-08-14
+
+### Le mode discret couvre enfin les FORMULAIRES
+- Jusqu'ici le mode discret masquait ce que tu **lis**, jamais ce que tu **saisis**. Ton salaire
+  brut et net — les tiens et ceux de ta conjointe — restaient affichés en clair dans Profil, quel
+  que soit le mode. Idem pour le facteur d'équivalence, les RSU et tes revenus secondaires.
+- Ces champs se masquent maintenant en « ••• » et se rouvrent d'un clic (ou au Tab) pour être
+  modifiés, exactement comme les montants déjà couverts ailleurs.
+- Le bonus en **pourcentage** reste visible : c'est un %, pas un montant, et le brut auquel il
+  s'applique est masqué — il ne permet de reconstituer aucune somme.
+- ⚠️ **Correctif d'accessibilité au passage** : jusqu'ici, un champ masqué perdait son nom. Au
+  lecteur d'écran, quatre champs de salaire annonçaient tous « Montant masqué » — impossible de
+  savoir lequel on éditait. Chaque champ garde désormais son libellé, l'état masqué étant annoncé
+  en complément. Ça vaut pour TOUS les écrans qui masquent des champs, pas seulement Profil.
+### Les paramètres avancés aussi
+- Le panneau **Paramètres avancés** de la projection était le plus gros bloc de tes vraies données
+  jamais laissé en clair : tes soldes manuels CELI / REER / Non-Enreg / Cash / Crypto et tes droits
+  restants, ton héritage attendu, ta pension alimentaire, ton capital maladie grave, ton surcoût
+  snowbird, ton aide aux enfants et à tes parents. Tout ça se masque désormais en mode discret.
+- **Ce qui reste visible, à dessein** : les pourcentages, les durées en mois, les âges, les
+  probabilités et le nombre d'itérations Monte Carlo. Ce ne sont pas des sommes, et tout masquer
+  aurait rendu le panneau illisible sans rien protéger de plus.
+
+---
+
+## [unreleased] — 2026-08-14 (suite 4)
+
+### Investissements : les derniers montants en clair
+- Sur l'onglet Investissements, le mode discret masquait déjà les infobulles des graphiques et le
+  total du portefeuille, mais **pas** : les montants des légendes de répartition (par région et par
+  secteur), les suggestions de rééquilibrage (« Vendre 12 000 $ de… »), ni la valeur, le coût moyen
+  et le gain de chaque titre. C'est corrigé.
+- Restent visibles, à dessein : les **pourcentages** (part du portefeuille, écart de rééquilibrage,
+  gain en %) et le **signe** du gain. Ce sont des ratios et une direction, pas des sommes — et sans
+  eux un écran de répartition ne sert plus à rien.
+
+---
+
+## [unreleased] — 2026-08-14 (suite 3)
+
+### Assurances, immeubles locatifs, sociétés, objectifs
+- Les quatre panneaux du **patrimoine étendu** se masquent maintenant en mode discret : capital et
+  prime de tes assurances, prix / valeur / hypothèque / loyer / charges / DPA de tes immeubles
+  locatifs, valeur et dividende de ta société, coûts de véhicule, de rénovation et tes dons.
+- Le **résumé d'un immeuble** affichait son NOI en clair même en mode discret. Corrigé — et il était
+  au passage le dernier montant de l'app formaté à la main plutôt que par la fonction commune, ce
+  qui lui donnait un « $ » collé au nombre au lieu du format québécois normal.
+- ⚠️ **Conséquence visible du même correctif** : ce NOI est maintenant **arrondi au dollar**, comme
+  tous les autres montants de l'app. Avant, il pouvait s'afficher au millième près dès que ton taux
+  de vacance n'était pas un nombre rond — par exemple `230 528,436$` au lieu de `230 528 $`. Tu perds
+  donc des décimales à l'affichage ; le calcul, lui, est inchangé.
+- Restent visibles, à dessein : les **taux** (hypothécaire, vacance, % détenu) et les **durées**.
+  Ce ne sont pas des sommes.
+
+---
+
+## [unreleased] — 2026-08-14 (suite 2)
+
+### Tes soldes de comptes aussi
+- Les **soldes de départ** de chaque compte (chèque, épargne) — ceux que la projection prend comme
+  point de départ — se masquent maintenant en mode discret. Ils étaient en clair jusqu'ici.
+- Le **nom** de tes comptes reste visible : ce n'est pas un montant, et c'est lui qui te dit quel
+  champ tu es en train de modifier. Sans lui, tu aurais eu une colonne de « ••• » identiques.
+
+---
+
+## [unreleased] — 2026-08-14 (suite)
+
+- Dans la foulée, le champ « montant » de chaque ligne du **Budget** annonce enfin de quel poste il
+  s'agit (« Montant de base — Épicerie »). Avant, les dix lignes d'un tableau disaient toutes la
+  même chose : « Modifier le montant de base ».
+
+---
+
 ## [unreleased] — 2026-08-12
 
 ### Le scénario « divorce » disait presque n'importe quoi
@@ -75,7 +189,6 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - Si ta clé API est refusée, l'import s'arrête net avec un message clair, au lieu d'enchaîner des
   dizaines d'appels voués à l'échec.
 
-<<<<<<< HEAD
 ### Le curseur « part du patrimoine cédée » n'avait aucune limite
 - Rien n'empêchait d'y mettre **−100** (le divorce te rendait alors plus riche : 2,2 M$ au lieu de
   755 k$), **un milliard** (patrimoine affiché à **−7,8 milliards**, parce que tes dettes se
@@ -84,7 +197,6 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   calcul lui-même** — pas seulement dans le formulaire, qu'une sauvegarde importée contournerait.
 - Une valeur illisible retombe sur **50 %** (la règle du patrimoine familial), jamais sur 0 : un
   « 0 % » serait tout aussi inventé, mais crédible.
-=======
 ### Trois mouvements d'argent qui n'étaient expliqués nulle part
 - **Le test de krach faisait fondre puis regonfler tes placements sans que rien ne le justifie.**
   Les montants bougeaient bel et bien, mais aucune ligne « croissance du marché » ne les portait :
@@ -98,22 +210,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   bricolé au passage.
 - Une nouvelle vérification automatique exige désormais que **toute variation d'un compte soit
   expliquée par un flux publié**. C'est elle qui a trouvé les deux derniers cas.
->>>>>>> origin/main
 
-<<<<<<< HEAD
 ### Après un divorce, tes droits CELI et REER étaient encore ceux d'un couple
 - Chaque 1er janvier, l'app te rouvrait **le double des droits** (CELI, REER, et le plafond CELIAPP
   à vie d'un couple) alors que ton ménage n'a plus qu'une personne. Ta déclaration de décembre, elle,
   comptait déjà un seul contribuable : les deux moitiés du calcul se contredisaient.
 - Mesuré sur un scénario à 25 ans : **716 717 $ de patrimoine que tu n'aurais jamais pu accumuler.**
 - Corrigé. Rien ne change si tu n'es ni divorcé ni veuf — vérifié chiffre pour chiffre.
-=======
 ### À l'écran Succession, un divorcé héritait encore des rentes de son ex
 - La valeur actualisée du RRQ et de la PSV de ton ex-conjoint restait dans ton bilan successoral :
   **322 865 $ de trop** sur le scénario mesuré.
 - Le reste était juste — ton patrimoine mensuel, ta courbe, tes totaux. Le défaut ne vivait que sur
   cet écran-là, et c'est pour ça qu'il avait survécu à la correction du divorce.
->>>>>>> origin/main
 
 ### En divorçant, tu payais encore l'impôt du couple
 - La dette (ou le remboursement) d'impôt de l'année du couple ne se partageait pas. Concrètement :
@@ -3810,8 +3918,6 @@ Lot de 13 items axés sur la clarté pour un utilisateur non expert.
   stratégie réelle (`target.strategy`).
 - Tests : 5 unitaires (faux `runScenario`, tri/bornage/progression/déterminisme) + 2
   d'intégration moteur réel (reproductibilité RNG seedée). 669 tests verts.
-
-
 
 ### G21 C3 suite — Décision RAP-vs-FHSA + placement par compte
 

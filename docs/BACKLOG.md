@@ -522,7 +522,6 @@
   n'apporte rien au manque réel (l'exclusion, maintenant livrée) → **attendre son arbitrage** avant
   tout chantier de navigation. Ne PAS coder le déplacement sans go explicite.
 
-
 - [x] **`[A11Y-INK500]`** ✅ 2026-08-12 — classification par-occurrence des 115 matchs du grep :
   6 étaient des `pink-500` (substring !) + 2 commentaires ; sur les 107 réels, 85 TEXTES actifs
   migrés → `ink-400` (AA normal 5.21-6.42 mesuré) et 22 GARDÉS en `ink-500` légitime (glyphes
@@ -555,10 +554,15 @@
   bloque aujourd'hui (zones mortes ? garde ?) et l'e2e clique-partout.
 - [ ] **`[DEBT-FROM-CONTRACT]`** (M, 🧭 retour Marc 2026-08-12) — « ma dette doit être exactement
   ce que j'ai — là ça me dit que j'ai la dette depuis des années mais c'est faux, je t'ai donné
-  le PDF du contrat, ça devrait être automatique » : extraire du contrat (PDF déjà fourni) la
-  date de début, le principal, le taux, l'échéancier → la dette du store reflète le contrat
-  RÉEL (import automatique côté app/MCP, pas de saisie manuelle approximative). Retrouver le
-  PDF en question et cadrer le pipeline d'extraction.
+  le PDF du contrat, ça devrait être automatique » : extraire du contrat la date de début, le
+  principal, le taux, l'échéancier → la dette du store reflète le contrat RÉEL.
+  ✅ **DIAGNOSTIQUÉ le 2026-08-13** : les trois maillons cassés sont identifiés, avec emplacements
+  exacts et ordre imposé — voir `[PASSE-REEL-DETTE-1/2/3]`. Ce ticket-ci reste le point d'entrée
+  « demande de Marc » ; les trois sous-tickets sont le PLAN.
+  ⚠️ Question de CADRAGE ouverte (posée à Marc, sans réponse à ce jour) : le passé doit-il montrer
+  la dette qui S'AMORTIT (courbe décroissante depuis le solde d'origine — exige `originalBalance`
+  dans le PDF) ou FIGÉE à son niveau actuel depuis sa date de début (plus simple, peut-être
+  suffisant) ? La réponse change le périmètre de `-2` et `-3`.
 - [ ] **`[MCP-V2-OVERHAUL]`** (L, 🧭 retour Marc 2026-08-12) — « grosse MAJ du MCP : je veux que
   tout fonctionne bien et plus de fonctionnalités » : passe complète sur les tools MCP (fiabilité,
   erreurs honnêtes, couverture) + nouvelles capacités à cadrer avec Marc (écritures étendues,
@@ -902,89 +906,13 @@
 > Les deux blocages ÉLEVÉ (SRG et cible du meltdown) sont CORRIGÉS dans #616. Ce qui suit a été
 > mesuré par le même panel et laissé DÉLIBÉRÉMENT hors du lot : ce sont des surfaces voisines, pas
 > le mécanisme du divorce lui-même. ⚠️ Leur point commun est le motif d'échec de #613 — « le même
-> défaut, laissé dans la fonction sœur ». Traiter `ROOM-COUPLE` et `ESTATE-PENSION` en priorité.
+> défaut, laissé dans la fonction sœur ».
+>
+> ⚠️ **Les 8 items LIVRÉS de cette sous-section sont partis dans `docs/BACKLOG_ARCHIVE.md`**
+> (2026-08-14, PR #626) — `ROOM-COUPLE`, `ESTATE-PENSION`, `LATENTTAX`, `TAXDEBT-UNSPLIT`,
+> `SPLITPCT-UNBOUNDED`, `MC-OBSERVABILITY`, `NO-CONSERVATION-GUARD`, `DISPLAY-RATES`.
+> Ne reste ici que ce qui est encore à faire.
 
-<<<<<<< HEAD
-- [x] 🔴 **`[ENG-DIVORCE-ROOM-COUPLE]`** (M, LIVRÉ) — les droits enregistrés restaient ceux d'un
-  COUPLE : `processJanuaryReset` recevait `config.users` entier et `activeUsersCount` inchangé.
-  Décembre disait déjà « 1 déclarant », janvier redonnait les droits des deux — les deux voies se
-  contredisaient. **Mesuré : 716 717 $ de patrimoine INDU** sur un divorcé à 25 ans d'horizon
-  (12 745 146 $ → 12 028 429 $). Livré : `activeUsersCount: taxFilers` (les 4 usages du fichier
-  relus un par un — homonyme, comme dans `retirementIncome`), `fhsaEligibleUsersCount` borné à 1,
-  et une liste **`roomUsers` DÉDIÉE** aux droits.
-  ⚠️ `users` reste ENTIER : la boucle FERR itère sur `reerByUser.length` et lit `users[i]` pour
-  l'âge du conjoint — la raccourcir aurait rendu `-Infinity` et la part REER de l'index 1 ne se
-  serait JAMAIS convertie en FERR, en silence (le piège exact d'un précédent `slice(0,1)`).
-  Rétrocompat MESURÉE : déterministe et décès bit-identiques.
-
-- [ ] 🔴 **`[ENG-DIVORCE-ESTATE-PENSION]`** (M) — `computeEstateNetWorth` reçoit `activeUsersCount`
-  et la pension MÉNAGE entière, sans équivalent de `householdPensionShare` : le divorcé hérite à
-  l'écran Succession de la valeur actualisée des rentes de son ex. C'est la fonction MIROIR de celle
-  que #616 corrige — son propre commentaire dit « exactement comme retirementIncome.ts:207-212 ».
-=======
-- [ ] 🔴 **`[ENG-DIVORCE-ROOM-COUPLE]`** (M) — droits enregistrés restés de COUPLE après divorce :
-  `processJanuaryReset` reçoit `config.users` et `activeUsersCount` inchangés. **Mesuré** : CELI
-  +15 000 $/an de droits (2 × 7 500) pour un ménage à 1 tête → CELI final 2 268 641 $ vs
-  1 405 271 $, soit +58 573 $ de patrimoine et −27 456 $ d'impôt sur 30 ans. FHSA : le correctif de
-  DÉCEMBRE est ÉCRASÉ par janvier → 32 000 $ (avant) → 24 000 $ (#616) → 16 000 $ (légal
-  célibataire) : la moitié de l'écart seulement, plafond à vie encore 80 000 $ pour une personne.
-  RAP encore ×2 (`realEstateMonth.ts:201`). **Correctif** : `taxJanuary.ts` doit lire le nombre de
-  déclarants, comme décembre.
-- [x] 🔴 **`[ENG-DIVORCE-ESTATE-PENSION]`** (M, LIVRÉ) — `computeEstateNetWorth` recevait
-  `activeUsersCount` inchangé et la pension MÉNAGE entière : le divorcé héritait à l'écran
-  Succession de la valeur actualisée des rentes de son ex. **Mesuré : 322 865 $ de valeur
-  successorale INDUE** (1 068 947 $ → 746 082 $). Livré : compteur de TÊTES à 1 pour la branche
-  « estimés précis » (per-personne × N) **et** `householdPensionShare` pour la branche « repli
-  agrégé » (`governmentPension` est déjà familial) — deux réductions DISTINCTES, jamais cumulées
-  sur le même terme. ⚠️ `activeUsersCount` MULTIPLIE ici, alors qu'il DIVISE dans
-  `retirementIncome` : sémantiques inverses sous le même nom. Rétrocompat mesurée (déterministe et
-  MC bit-identiques) ; le patrimoine mensuel ne bouge pas — le défaut ne vivait QUE dans la
-  succession, ce qui l'a fait survivre au premier lot.
-
->>>>>>> origin/main
-- [ ] **`[ENG-DIVORCE-LATENTTAX]`** (S) — `latentTax` ignore le divorce : impôt latent −337 063 $
-  (N=2) vs −390 189 $ (N=1) → **53 126 $ de sous-estimation**, patrimoine net d'impôt affiché trop
-  haut. (Ex-MOYEN-10, moitié déjà traitée : le meltdown est corrigé, `latentTax` ne l'est pas.)
-- [x] **`[ENG-DIVORCE-TAXDEBT-UNSPLIT]`** (S, LIVRÉ) — la créance/dette fiscale ne suivait pas le
-  partage. `taxPreviousYear` porte l'impôt de l'année du COUPLE, réglé en avril : sans partage, un
-  divorcé ayant cédé **100 %** de son patrimoine réglait quand même **1 488 $** d'impôt du ménage
-  (mesuré), et dans l'autre sens encaissait le remboursement INTÉGRAL (26 948,77 $ mesurés par le
-  panel sur un patrimoine de 135 $ — d'où un `totalTaxesPaid` NÉGATIF). Livré : `keep` appliqué aux
-  DEUX buckets (`taxPreviousYear` ET `taxCurrentYear`, ce dernier par symétrie — il vaut ~0 en
-  janvier, mais n'en corriger qu'un est le motif « règle dupliquée corrigée à moitié »).
-  Conforme à la décision VERROUILLÉE « on partage la valeur NETTE » (`docs/decisions.md`), celle-là
-  même qui avait justifié d'ajouter les dettes au split.
-  ⚠️ Test impossible à écrire avant `[ENG-MC-OBSERVABILITY]` : `FluxImpots` n'existe que dans le
-  point COMPLET, et le divorce n'existe que sous MC. Garde anti-sur-correctif incluse (à 50 %, la
-  moitié de la dette reste DUE — partager n'est pas annuler).
-- [x] 🔴 **`[ENG-DIVORCE-SPLITPCT-UNBOUNDED]`** (S, LIVRÉ) — `divorceSplitPct` n'était borné nulle
-  part. Mesuré : `−100` → patrimoine 2 210 335 $ contre 755 482 $ à 50 % (le divorce ENRICHIT) ;
-  `1e9` → **−7 782 605 996 $** (dettes × keep négatif = actif fantôme) ; `NaN` → actifs zéroïsés
-  sans trace. Livré : `clampSplitPct` (source unique, `[0,100]`, non-fini → DÉFAUT et non 0) posé
-  au MOTEUR — une borne seulement à l'UI laisserait passer un import de sauvegarde ou un futur
-  appelant — plus `min`/`max` + le même clamp à l'input. 9 tests, `keep` observé À LA SOURCE
-  (3 échouent sans le clamp). Revue Vercel : le LIBELLÉ du divorce interpolait encore la valeur
-  BRUTE (« partage de 150 % » pendant que le moteur en appliquait 100) — corrigé + garde de source.
-
-- [x] 🔴 **`[ENG-MC-OBSERVABILITY]`** (M, LIVRÉ) — sous MC, `buildMonthlyDataPoint` ne rendait que
-  `{ NetWorth, monthIndex }` (choix de PERF), alors que divorce/mortalité/LTC/perte d'emploi
-  n'existent QUE sous MC : leurs flux mensuels étaient INVÉRIFIABLES, et trois lots ont dû
-  contourner (agrégat `totalTaxesPaid` au lieu de `RetraitREER`, test de fonction pure sur
-  `computeLatentTax`, absence de garde sur le splitter). Livré :
-  `ScenarioDiagnostics.verboseMonthlyPoints`, 8e paramètre de `runScenario`, DÉLIBÉRÉMENT séparé
-  d'`EngineOverrides` (exploré par `strategySpace` : un drapeau de diagnostic y serait balayé comme
-  un levier financier). Défaut absent ⇒ production inchangée, épinglé par un test qui vérifie que
-  le point MC reste ALLÉGÉ sans le drapeau.
-- [x] 🔴 **`[ENG-DIVORCE-NO-CONSERVATION-GUARD]`** (M, LIVRÉ) — premier bénéficiaire du ticket
-  ci-dessus : `tests/services/projection.divorceConservation.test.ts` fait tourner un divorce AVEC
-  dettes sous invariants (6 tests).
-  ⚠️ Leçon en chemin : « Σ actifs − dettes == NetWorth » est en partie CIRCULAIRE — `NetWorth` est
-  recalculé depuis ces mêmes soldes, donc retirer le partage des dettes la laisse VERTE (vérifié par
-  régression chirurgicale). L'invariant qui MORD porte sur une grandeur INDÉPENDANTE : le **ratio de
-  partage mesuré sur la DETTE totale** — 0,4926 attendu, 0,9949 avec la régression.
-- [ ] **`[ENG-DIVORCE-DISPLAY-RATES]`** (S) — `grossPerUserAnnual` (`projection.ts` ~l. 1760) somme
-  encore `grossMarc + grossAnna` puis divise par `activeUsersCount` après divorce. Sortie
-  d'AFFICHAGE uniquement (taux marginal/effectif), inerte en MC — d'où la sévérité basse.
 - [ ] **`[ENG-DIVORCE-CHILDREN-REEE]`** (S) — [NON MESURÉ, zone non couverte] allocations familiales,
   coûts d'enfants et REEE après divorce : le REEE est divisé, les coûts restent entiers. À cadrer
   avant de coder — signalé comme angle mort, pas comme défaut établi.
@@ -1039,6 +967,42 @@
   appeler `document.getElementById('main')?.focus()` au changement `activeTab` ; pour deep-link
   `usePendingFocus`, ajouter `el.focus({preventScroll})` après `scrollIntoView`.
 
+### 🔴 `[PASSE-REEL-DETTE]` — le passé montre la dette actuelle depuis TOUJOURS (Marc, signalé 2×)
+
+> ⚠️ **Ces trois sous-tickets SONT le plan de `[DEBT-FROM-CONTRACT]`** (retour Marc 2026-08-12,
+> plus haut dans ce fichier) — pas un doublon. Je les avais d'abord écrits sans voir que le ticket
+> d'origine existait : classe `PM-DUPLICATE-TICKET`, corrigée en les RELIANT plutôt qu'en supprimant
+> l'un des deux (le ticket d'origine porte la DEMANDE et sa date, ceux-ci portent le PLAN).
+>
+> Marc : « je veux que ma dette soit exactement ce que j'ai — là ça me dit que j'ai la dette depuis
+> des années mais c'est faux ; je t'ai donné le pdf du contrat, ça devrait être automatique ».
+> **Constat VÉRIFIÉ dans le code le 2026-08-13** — le symptôme est réel, et il a DEUX causes
+> indépendantes. Même famille que `[PASSE-REEL-1]` : le passé affiche quelque chose de faux.
+
+- [ ] 🔴 **`[PASSE-REEL-DETTE-1]`** (M) — **le passé soustrait la dette d'AUJOURD'HUI à CHAQUE point
+  passé.** `FutureProjection.tsx` (~l. 395) lit `chartData[0].DettesNonImmo` et le passe à
+  `buildPastPrefix`, qui l'applique à TOUS les mois (`pastNetWorthAt(..., currentDebtNonImmo)`).
+  Le code le DOCUMENTE comme une approximation : « dette supposée constante dans le passé, faute
+  d'historique d'amortissement ». Conséquence exacte : une dette contractée il y a 6 mois ampute le
+  patrimoine d'il y a 5 ans. **Correctif** : ne soustraire une dette qu'à partir de sa date de
+  début — donc `buildPastPrefix` doit recevoir les DETTES DATÉES, pas un total agrégé.
+  ⚠️ Ne remet PAS en cause la décision « Option A » (raccord exact au présent, `docs/decisions.md`) :
+  la dette existe AUJOURD'HUI, le raccord au présent reste exact ; seul le passé change.
+- [ ] 🔴 **`[PASSE-REEL-DETTE-2]`** (S) — **la donnée nécessaire N'EXISTE PAS.** `Debt` (`types.ts`
+  l. 570) n'a NI date de début NI solde d'origine — seulement `amortizationYears` et `termEndDate`.
+  Sans date de début, `[PASSE-REEL-DETTE-1]` est INAPPLICABLE. **Correctif** : `startDate?: string`
+  (champ ADDITIF optionnel ⇒ aucun bump de version, aucune migration — cf. `CLAUDE.md`), plus
+  `originalBalance?: number` pour amortir le passé au lieu de le figer.
+- [ ] 🔴 **`[PASSE-REEL-DETTE-3]`** (S) — **l'import du PDF ne capte pas ces champs non plus.**
+  `DebtPayload` (`mcp/ingest/applyDocument.ts` l. 80) porte `balance`, `interestRate`,
+  `minimumPayment`, `category`, `amortizationYears`, `rateProvider` — **pas la date du contrat**.
+  C'est ce qui rend le « ça devrait être automatique » de Marc impossible EN L'ÉTAT : le PDF a
+  l'information, le schéma d'ingestion la jette. **Correctif** : ajouter les deux champs au payload
+  et au prompt d'extraction, une fois `-2` livré.
+
+**Ordre imposé** : `-2` (donnée) → `-1` (passé) → `-3` (ingestion). Faire `-1` d'abord serait un
+stub : il n'aurait aucune date à lire.
+
 ### 🔴 `[PASSE-REEL]` — le passé affichait la PROJECTION (signalé par Marc 2026-08-13)
 
 > Marc : « mon passé ne semble pas correspondre à mon passé réel mais au futur qui était estimé.
@@ -1076,6 +1040,50 @@
   signalé par Marc, sans greper le moteur — le vrai défaut était `[PASSE-REEL-1]` (le passé
   affichait la prévision), et il masquait le fait que l'amorçage du futur, lui, était déjà bon.
 
+### 🔴 `[PASSE-REEL-JOUR]` — la courbe passée au jour (bug + demande de Marc, 2026-08-14)
+
+- [x] 🔴 **`[PASSE-REEL-CAP-400J]`** — livré 2026-08-14. Plafond de 400 j qui coupait la courbe de
+  Marc au 2026-01-10 (sa date, au jour près). Boucle passée en curseur (1 993 ms → 37 ms, 54×) AVANT
+  de relever le plafond à 4 000 j — relever seul aurait échangé un trou muet contre un gel de 2 s.
+  `truncatedFrom` rend la troncature constatable. Garde : `tests/services/pastCap400Days.test.ts`.
+- [x] 🔴 **`[PASSE-REEL-TXN-DU-JOUR]`** — livré 2026-08-14. Toutes les transactions du jour dans
+  `FutureDetailModal` (le panneau existant, cadrage de Marc) : marchand, compte, catégorie, montant,
+  + le net du jour. **Doublons et virements internes AFFICHÉS mais barrés**, avec leur raison — les
+  masquer donnerait une liste qui ne colle pas au relevé bancaire, les compter donnerait un total
+  qui ne colle pas à la courbe. Filtrage **à la demande** (`services/history/dayTransactions.ts`),
+  PAS de Map pré-construite : le registre couvre ~4 000 jours, les pré-indexer garderait tout en
+  mémoire pour n'en afficher qu'un. Mode discret conforme dès la naissance de la surface.
+  **Détail par ligne** (demande de suivi de Marc, « et plus de détail ») : compte, statut anormal,
+  conjoint attribué, origine de la catégorie (IA + confiance, ou vérifiée), catégorie d'avant si
+  changée. Rien de déduit — un champ absent ne produit aucune pastille.
+  Gardes : `tests/services/dayTransactions.test.ts` + `tests/components/FutureDetailModal.transactions.test.tsx`.
+- [ ] 🔴 **`[PASSE-REEL-VARIATION-DU-JOUR]`** (M, **demande de Marc 2026-08-14**, en direct : « je veux
+  voir la variabilité d'argent pour la journée (tout compris mais détaillé) ») — le panneau du jour
+  affiche aujourd'hui le **net encaissé/décaissé** (Σ des transactions). Ce n'est PAS la variation
+  du patrimoine : un jour de forte hausse boursière affiche 0 $ pendant que la courbe monte. Le
+  CHANGELOG de `[PASSE-REEL-TXN-DU-JOUR]` le dit en toutes lettres — c'est exactement ce manque que
+  Marc demande de combler. Livrer la variation **complète** de la journée, **ventilée par source**.
+  ⚠️ **Le moteur ÉMET DÉJÀ la ventilation — la CONSOMMER, ne rien recalculer côté UI**
+  (`DailyPastRow`, `services/history/dailyPastLedger.ts`, vérifié en écrivant ce ticket) :
+  `NetTransferLiquid` (flux de liquidités), `deposits` **et** `growth` par régime (les achats datés
+  vs le mouvement de marché sont séparés à la source), `Immobilier`, `DettesNonImmo`, `NetWorth`.
+  La ΔNetWorth jour-à-jour se ventile donc sans nouveau calcul financier.
+  ⚠️ **Deux pièges à traiter EXPLICITEMENT, sinon le total ne fermera pas** :
+  1. Un **dépôt** (achat de titre) sort des liquidités et entre dans un régime : il doit
+     s'**annuler** dans le total « tout compris », sinon il est compté deux fois. Il reste une
+     information utile à afficher (« tu as déplacé X »), mais à somme nulle sur le patrimoine.
+  2. `Immobilier` bouge par **palier ANNUEL** et `DettesNonImmo` est **figée** (décision Marc,
+     Option A, `pastNetWorth.ts`). Un jour de palier affichera donc un saut immobilier qui n'a rien
+     de journalier : le dire, ne pas le lisser. Lisser une donnée annuelle sur 365 jours fabriquerait
+     de la donnée — interdit.
+  **Critère de « fini » : le résiduel est affiché, jamais absorbé.** Σ des sources − ΔNetWorth du jour
+  doit être calculé et montré s'il n'est pas nul ; un « autre » fourre-tout qui ferme le total par
+  construction est une garde CIRCULAIRE (classe déjà consignée dans `CLAUDE.md`) et ne prouverait rien.
+  Garde attendue : sur des données réelles, ventilation vs `NetWorth[j] − NetWorth[j−1]`, résiduel
+  borné, et le test doit ÉCHOUER si un poste est retiré de la somme.
+  ⚠️ Cadrage à confirmer avec Marc AVANT de coder : dans le panneau existant (comme les transactions)
+  ou dans une section repliable ? Et le mode discret masque les montants dès la naissance de la surface.
+
 ### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
 
 > Balayage complet des 133 composants après la PR #608 (3 tours de revue). Les écrans de LECTURE
@@ -1086,24 +1094,51 @@
 > soit le mode. La primitive existe déjà (`PrivateNumberInput`, utilisée par `AssetLocationCard`).
 > ⚠️ Rappel de méthode (leçon #608) : un test de fuite doit être prouvé DISCRIMINANT, et un canal de
 > fuite peut être un ATTRIBUT (`title`, `aria-label`) ou la STRUCTURE (nombre de lignes rendues).
+>
+> ⚠️ **Prérequis LEVÉ par `[A11Y-PRIVACY-SALAIRE]`** (2026-08-14) : la primitive volait le NOM
+> ACCESSIBLE du champ qu'elle masquait (`aria-label` en dur, prioritaire sur `<label htmlFor>` ET
+> sur l'`aria-label` du champ). Tous les champs masqués d'un formulaire annonçaient donc le même
+> nom. Corrigé DANS la primitive : les tickets suivants de ce lot en héritent, il n'y a rien à
+> refaire par écran. Voir `A11Y-MASK-STEALS-NAME` dans `docs/CONVENTIONS.md`.
 
-- [ ] 🔴 **`[A11Y-PRIVACY-SALAIRE]`** (S) — `components/settings/UserConfigFields.tsx:84-106` : salaire
-  brut ET net des DEUX conjoints en input natif, zéro référence au mode discret dans le fichier.
-  Le champ le plus sensible de l'app. **À traiter EN PREMIER.**
-- [ ] 🔴 **`[A11Y-PRIVACY-PARAMS-AVANCES]`** (M) — `components/AdvancedProjectionParams.tsx` : zéro
-  `isPrivacyMode`. Soldes manuels CELI/REER/Non-Enreg/Cash/Crypto + droits restants (l. 259-284),
-  pension alimentaire (122), capital maladie grave (146), dépenses additionnelles (150), héritage
-  attendu (156), surcoût snowbird (206), soutien boomerang/proche aidant (222-234). Le plus gros bloc
-  de données réelles jamais masqué du dépôt.
-- [ ] 🔴 **`[A11Y-PRIVACY-SOLDES-COMPTES]`** (S) — `components/settings/sections/AccountsSection.tsx:63-68`
-  : soldes de départ chèque/épargne réels en input natif.
-- [ ] 🔴 **`[A11Y-PRIVACY-PATRIMOINE-ETENDU]`** (M) — `components/PatrimoineExtended.tsx` : 4 panneaux
-  (assurance, immeuble locatif, société, objectifs cycliques) entièrement à nu, plus un résumé
-  NOI/Cap Rate en `toLocaleString` nu (l. 119 — viole aussi la règle `formatCAD`).
-- [ ] 🔴 **`[A11Y-PRIVACY-INVESTMENTS-DETAIL]`** (S) — `components/Investments.tsx` : `isPrivacyMode`
-  est déjà lu dans ce fichier, mais oublié sur les légendes des donuts (861, 923), les suggestions de
-  rééquilibrage (1107, 1112, 1154, 1160) et la carte par titre — Valeur (1303), Coût moyen et Gain
-  total DCA (1386, 1391). Écran principal du sous-onglet « detail ».
+- [ ] **`[A11Y-PRIVACY-TITLE-CLOBBER]`** (XS, relevé par le panel a11y de #629) —
+  `components/ui/PrivateNumberInput.tsx` écrase en dur le `title` de l'appelant par
+  « Montant masqué » en mode discret. Aucun appelant n'en dépend aujourd'hui pour son NOM (vérifié
+  call site par call site), donc non bloquant — mais un appelant qui compterait sur son `title`
+  pour porter une info la perdrait SANS avertissement. Deux pistes : composer les deux `title`, ou
+  passer l'état masqué en `aria-describedby` vers un `sr-only` dédié. ⚠️ La seconde piste corrige
+  AUSSI une faiblesse mesurée par le panel : le tooltip `title` ne s'affiche qu'au SURVOL souris
+  dans Chrome/Edge — un utilisateur voyant naviguant au CLAVIER n'a aucun indice visuel de
+  « cliquer pour modifier ». Traiter les deux ensemble, pas séparément.
+- [ ] **`[A11Y-LABELS-PARAMS-AVANCES]`** (S, découvert en livrant le ticket ci-dessus) — les **26
+  champs NON monétaires** de `components/AdvancedProjectionParams.tsx` n'ont toujours AUCUNE
+  association `<label>`↔champ : ni `htmlFor`/`id`, ni enveloppement. Leur nom accessible est donc
+  VIDE (WCAG 4.1.2). Défaut PRÉEXISTANT, sans rapport avec le mode discret — les 14 champs
+  monétaires ont été câblés parce que le masquage l'exigeait, pas les autres. Le geste est
+  mécanique (un `id` + un `htmlFor` par champ) ; c'est le volume qui l'a sorti du périmètre.
+  ⚠️ Le même trou existe probablement dans les autres panneaux de Réglages : greper
+  `<label className=` non suivi de `htmlFor` AVANT de chiffrer.
+
+- [x] 🔴 **`[A11Y-PRIVACY-INVESTMENTS-DETAIL]`** (S) — livré 2026-08-14. Les **9 sites** listés par
+  l'audit corrigés (légendes des 2 donuts, rééquilibrage en carte ET en liste, carte par titre :
+  Valeur, Coût moyen DCA, Gain total DCA). Pourcentages et signe du gain laissés visibles, sous test
+  d'intention. Garde de SOURCE sur tout le fichier :
+  `tests/components/Investments.privacy.test.tsx`.
+
+- [ ] 🔴 **`[A11Y-PRIVACY-SCAN-GLOBAL]`** (M, **DÉCOUVERT PAR MESURE** 2026-08-14) — construire la
+  garde de source `formatCAD` au niveau du DÉPÔT, comme `chartPrivacyScan.test.ts` le fait déjà pour
+  les graphiques. **Un scan brut remonte 38 sites dans 19 fichiers** — mais c'est un MAJORANT, pas un
+  compte : le tri est le vrai travail. Trois classes de faux positifs déjà identifiées sur un
+  échantillon de 4 :
+  · **valeur PUBLIQUE** (`TaxBracketViz.tsx:73` — bornes de paliers fiscaux, que #608 exige
+    explicitement de GARDER visibles) ;
+  · **primitive non reconnue** (`DebtManager.tsx:151` — déjà dans `PrivateSliderValue`) ;
+  · **chaîne, pas JSX** (`Budget.tsx:460` — construit un libellé d'alerte ; à tracer jusqu'à son
+    consommateur, qui peut être un prompt IA — cas money-critical, cf. la règle no-fake-data).
+  ⚠️ **Cette garde REMPLACERAIT la liste faite à la main par l'audit** : elle mesure au lieu
+  d'énumérer, et elle ne peut pas oublier un écran. Les tickets `-DIVERS`, `-PROJECTION-EXPLAINS`,
+  `-PROPERTY-CONFIG` et `-ONBOARDING` devraient être RE-CADRÉS depuis son résultat plutôt que depuis
+  l'audit — leurs sites sont corroborés par le scan, mais rien ne dit que l'audit soit exhaustif.
 - [ ] 🔴 **`[A11Y-PRIVACY-PROJECTION-EXPLAINS]`** (S) — `components/projection/ProjectionExplains.tsx` :
   zéro `isPrivacyMode`. Vue année-par-année ET mois-par-mois complète de la projection (soldes,
   cotisations, croissance, retraits, transferts) en clair.

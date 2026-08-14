@@ -527,11 +527,31 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                         )}
 
                         {/* [PASSE-REEL-TXN-DU-JOUR] Les transactions de la journée — demande de Marc.
-                            ⚠️ Rendu SEULEMENT si la journée est identifiée (`dayIso`) : un point
-                            mensuel ou futur n'a pas de mouvements réels, et une section vide y
-                            laisserait croire « aucune transaction ce jour-là » — un faux. */}
-                        {dayIso && (txnsDuJour.counted.length > 0 || txnsDuJour.excluded.length > 0) && (
+                            ⚠️ Rendu SEULEMENT si la journée est IDENTIFIÉE (`dayIso`) : un point
+                            mensuel ou futur n'a pas de mouvements réels, et une section y serait un
+                            faux.
+                            ⚠️ [PASSE-REEL-TXN-JOUR-VIDE 2026-08-14, signalé par Marc « marche
+                            toujours pas »] Mais une fois le jour identifié, l'absence de mouvement
+                            est un FAIT MESURÉ, pas une invention — il faut le DIRE. La version
+                            précédente ne rendait rien du tout dans ce cas : à l'écran, « aucun
+                            mouvement ce jour-là » et « la fonctionnalité est cassée » étaient
+                            RIGOUREUSEMENT indistinguables, et Marc a conclu la seconde. C'est la
+                            règle no-fake-data appliquée au mauvais cas : elle interdit d'INVENTER
+                            une donnée absente, pas d'ÉNONCER un zéro qu'on a mesuré.
+                            Le silence n'est donc admissible que là où la question n'a pas de sens
+                            (point mensuel/futur) — jamais là où elle en a une. */}
+                        {/* ⚠️ `transactions` DOIT être fourni pour que la section existe — pas
+                            seulement `dayIso`. La prop est optionnelle par son TYPE : sans cette
+                            garde, un appelant qui oublie de la passer déclenche « aucun mouvement
+                            ce jour-là », c'est-à-dire une affirmation de MESURE produite par une
+                            ABSENCE de données. C'est pire que le silence qu'on vient de corriger,
+                            parce que le message a l'autorité d'un fait constaté (finding
+                            silent-failure-hunter sur cette PR). Une liste `[]` EXPLICITE reste
+                            légitime : c'est une liste fournie et vide, donc une vraie mesure. */}
+                        {dayIso && transactions && (
                             <div className="border-t border-white/10 pt-3">
+                        {(txnsDuJour.counted.length > 0 || txnsDuJour.excluded.length > 0) ? (
+                            <>
                                 <div className="flex items-baseline justify-between gap-2 mb-2">
                                     <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold">
                                         Transactions du {dayIso}
@@ -637,6 +657,19 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                         le faire entrer ni sortir de ton patrimoine.
                                     </p>
                                 )}
+                            </>
+                        ) : (
+                            /* Le jour est identifié et RIEN n'y a bougé : on le DIT. Sans cette
+                               branche, l'écran était muet — et un écran muet se lit « c'est
+                               cassé », pas « il n'y a rien ». */
+                            <p className="text-tiny text-ink-400 leading-snug">
+                                <span className="uppercase tracking-widest text-ink-400 font-bold">
+                                    Transactions du {dayIso}
+                                </span>
+                                {' — '}aucun mouvement ce jour-là. La courbe peut malgré tout bouger : le rendement
+                                de tes placements et l'équité immobilière n'ont pas de transaction associée.
+                            </p>
+                        )}
                             </div>
                         )}
                     </>

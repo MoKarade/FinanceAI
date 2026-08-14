@@ -4,6 +4,50 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-08-14 (suite 90) — `[PASSE-REEL-TXN-JOUR-VIDE]` : Marc a dit « marche toujours pas »
+> **Livré la veille, CI verte, et pourtant inutilisable pour lui.** Il était bien en « courbe au
+> jour » et cliquait bien dans le PASSÉ. Le code était juste de bout en bout — j'ai vérifié chaque
+> maillon (prop `transactions` passée depuis `TabRouter`, `dayIso` capté AVANT le rebasage de
+> `detailPointFor`, comparaison de dates identique à celle de la reconstruction qui, elle, marche).
+> **Le défaut** : une journée identifiée SANS mouvement ne rendait RIEN. À l'écran, « aucune
+> transaction ce jour-là » et « c'est cassé » sont le MÊME pixel — il a conclu la seconde, deux fois.
+> ⚠️ **Ma faute de raisonnement, à retenir** : j'avais invoqué no-fake-data pour justifier le
+> silence. Cette règle interdit d'INVENTER une donnée absente ; elle n'interdit PAS d'ÉNONCER un zéro
+> MESURÉ. Silence correct là où la question n'a pas de sens (point mensuel/futur) ; là où elle en a
+> une, le silence PRODUIT une information fausse par omission. Classe `SILENCE-READS-AS-BROKEN`.
+> ⚠️ **Réflexe de diagnostic** : « ça marche pas » + code vérifié correct → chercher L'ÉTAT OÙ L'UI
+> NE DIT RIEN. C'est le seul état qui ressemble à une panne sans en être une. Atteint ≠ visible.
+> Garde discriminante (2 tests échouent sur le code d'avant) + assertion ANTI-SUR-CORRECTIF :
+> l'état vide ne doit pas s'afficher quand il y a des mouvements — sinon on l'affiche toujours et
+> le test reste vert.
+>
+> 🔴 **Le panel a trouvé DEUX défauts DANS mon correctif** — remplacer un silence par une PHRASE
+> change la nature du risque : une phrase a l'autorité d'un fait constaté.
+> · **jour FUTUR** : ⚠️ **`dayIso` est posé sur TOUT point quotidien, pas seulement le passé** (la
+>   branche projetée de `mergeDailyRealPoint` fait `{ ...d }`). Gater sur `dayIso` seul aurait
+>   annoncé « aucun mouvement ce jour-là » sur du PROJETÉ. **Le marqueur de MESURE est `dayIsReal`**
+>   — unique occurrence dans `dailyCurve.ts`, et le mois ANCRE y passe via `realOnlyMonthPoints`,
+>   donc couverture complète. Documenté dans `PROJECTION_OUTPUT_SCHEMA.md`, où ces champs
+>   n'étaient pas décrits du tout.
+> · **prop `transactions` absente** : optionnelle par son TYPE → sans donnée reçue, on n'affirme
+>   rien. Une liste `[]` EXPLICITE reste une mesure et garde le message.
+> Les deux gardes prouvées discriminantes en réintroduisant chaque défaut SÉPARÉMENT.
+>
+> ⚠️ **Incident de session** : le conteneur a redémarré PENDANT `npm run test`, effaçant ce lot
+> non commité (il a fallu le refaire en entier). Le premier commit, lui, était poussé et intact.
+> C'est le piège déjà écrit en bas de `CLAUDE.md` — commiter et POUSSER avant toute attente
+> longue. Vécu une 3e fois.
+>
+> **Deux autres symptômes signalés par Marc dans le même message, TICKETÉS, non codés** :
+> · `[PASSE-REEL-IMPOT-LATENT-DEBUT]` — « impôt latent commence le 1/09 ». **Cause confirmée par
+>   mesure** : `ImpotLatent` n'est émis NULLE PART dans le passé reconstruit (0 occurrence dans
+>   `dailyPastLedger.ts` / `buildPastPrefix.ts`) → la série ne peut démarrer qu'au 1er mois projeté.
+>   Comportement correct, mais NON DIT — même classe que ci-dessus.
+> · `[PASSE-REEL-RACCORD-CHUTE]` — « chute de 10k aujourd'hui ». Hypothèse : `undatedTotal` /
+>   `flowsAfterNowDate` (l'ancre compte des flux que la série quotidienne ne peut pas placer).
+>   ⚠️ **MESURER d'abord** : faire lire à Marc les deux montants du bandeau. Non reproduit ici — ses
+>   données sont locales. Si les montants sont nuls, l'hypothèse est RÉFUTÉE.
+>
 > ## 🟢 Session 2026-08-14 (suite 89) — `[PASSE-REEL-TXN-DU-JOUR]` : demande 2 de Marc, LIVRÉE
 > Toutes les transactions du jour dans `FutureDetailModal` (le panneau EXISTANT — son cadrage).
 >

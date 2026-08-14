@@ -1137,6 +1137,9 @@ stub : il n'aurait aucune date à lire.
   qui ne colle pas à la courbe. Filtrage **à la demande** (`services/history/dayTransactions.ts`),
   PAS de Map pré-construite : le registre couvre ~4 000 jours, les pré-indexer garderait tout en
   mémoire pour n'en afficher qu'un. Mode discret conforme dès la naissance de la surface.
+  **Détail par ligne** (demande de suivi de Marc, « et plus de détail ») : compte, statut anormal,
+  conjoint attribué, origine de la catégorie (IA + confiance, ou vérifiée), catégorie d'avant si
+  changée. Rien de déduit — un champ absent ne produit aucune pastille.
   Gardes : `tests/services/dayTransactions.test.ts` + `tests/components/FutureDetailModal.transactions.test.tsx`.
 
 ### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)

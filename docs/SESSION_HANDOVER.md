@@ -18,6 +18,18 @@
 > ⚠️ Mode discret conforme DÈS LA NAISSANCE de la surface (montants masqués, marchands gardés) —
 > plutôt que d'être rattrapé par un ticket du lot A11Y plus tard.
 >
+> 🔴 **LA REVUE A TROUVÉ QUE MA FEATURE ÉTAIT INATTEIGNABLE** — 8 tests au vert, CHANGELOG et BACKLOG
+> l'annonçant livrée, et zéro chemin de clic réel. `detailPointFor` REBASE tout point quotidien sur
+> son mois hôte avant de le passer à la modale ; `dayIso` est posé au MÊME endroit que
+> `hostMonthIndex`, donc effacé. Mes tests rendaient la modale DIRECTEMENT avec une fixture portant
+> `dayIso` écrit à la main — ils auraient été identiques avec ou sans le bug.
+> Corrigé : le jour voyage en PROP SÉPARÉE (pas de point hybride, qui serait un faux). Trois gardes
+> ajoutées, prouvées en RÉINTRODUISANT le bug dans les deux sens.
+> Deux autres findings corrigés : `opacity-60` sur du texte déjà atténué (sous AA, invisible à
+> `check-contrast` qui est un scan statique), et `netCounted` documenté comme « le mouvement de la
+> courbe » alors que c'est le FLUX DE TRÉSORERIE (le rendement de marché bouge la courbe sans
+> transaction).
+>
 > **Les DEUX demandes de Marc du 2026-08-14 sont donc livrées** (courbe coupée + transactions).
 > Restent ses décisions en attente : PDF en mode discret, dette passée AMORTIE ou FIGÉE, GO Lot 7.
 

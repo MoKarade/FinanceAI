@@ -3128,3 +3128,44 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   `undefined` explicitement — ce qui DÉCLENCHE le défaut en JS. Le test échouait donc en accusant le
   composant d'afficher une section qu'il n'aurait pas dû, alors que c'était mon harnais qui lui
   passait la liste complète. Pour tester une absence, rendre DIRECTEMENT sans la prop.
+- 🔴 **[PASSE-REEL-TXN-DU-JOUR, revue] 2026-08-14 — j'ai livré une feature INATTEIGNABLE en citant,
+  dans son propre fichier de test, la leçon qui l'interdit.** La section « transactions du jour » lit
+  `dayIso`. Or `FutureProjection.detailPointFor` REBASE volontairement tout point quotidien sur son
+  mois hôte avant de le transmettre à la modale — et `dayIso` est posé au MÊME endroit que
+  `hostMonthIndex` (`dailyLedger.ts`), donc effacé par ce rebasage. En clic réel, la section ne
+  pouvait JAMAIS s'afficher. **Huit tests au vert**, CHANGELOG annonçant la feature, BACKLOG coché.
+  Pourquoi les tests n'ont rien vu : ils rendaient `FutureDetailModal` DIRECTEMENT avec une fixture
+  portant `dayIso` écrit à la main, court-circuitant tout le chemin de production. **Un test qui
+  FABRIQUE lui-même la condition qu'il devrait prouver atteignable ne prouve rien** — il aurait été
+  identique avec ou sans le bug. C'est la forme « composant isolé » de `UX-UNREACHABLE-FEATURE`, et
+  elle est plus insidieuse que la version « trop de gestes » : ici il n'y avait AUCUN chemin.
+  Règle : pour une surface conditionnée par une donnée que l'APPELANT fournit, la garde doit tester
+  la SEAM — au minimum « la donnée absente ⇒ rien ne s'affiche » ET « le porteur naturel de la donnée
+  ne fait pas foi », plus un scan de source sur le câblage. Les trois ont été ajoutés, et prouvés en
+  RÉINTRODUISANT le bug dans les deux sens (lecture depuis le point, et dérivation depuis le point
+  rebasé).
+  ⚠️ Correctif choisi : faire voyager le jour dans une PROP SÉPARÉE, pas fusionner
+  `{ ...pointMensuel, dayIso }` — un point hybride aux montants mensuels et à la date quotidienne
+  serait exactement le faux que no-fake-data interdit pour un objet.
+- ⚠️ **[Même revue] `opacity-*` sur du texte déjà atténué passe sous le seuil AA, et
+  `check-contrast` ne le voit pas.** Mes lignes « exclues » cumulaient `opacity-60` avec
+  `text-ink-300`/`text-ink-400`, des shades calibrés pour être tout juste AA à PLEINE opacité :
+  ~3,0-3,4:1 après composition, sur la ligne qui porte justement l'explication. Le script du dépôt
+  est un scan statique token-vs-token : il ignore les classes d'opacité appliquées au runtime, donc
+  il rend un vert trompeur. Règle : l'atténuation visuelle porte sur le FOND (`bg-white/[0.02]`) ou
+  sur un décor, jamais sur un conteneur de texte ; et une garde qui ne rend pas le DOM ne peut pas
+  arbitrer un contraste effectif.
+- ⚠️ **[Même revue] Nommer un total par ce qu'il EXPLIQUE, pas par ce qu'on aimerait qu'il explique.**
+  J'avais documenté `netCounted` comme « le montant qui explique le mouvement du jour sur la courbe »,
+  et le CHANGELOG le répétait à l'utilisateur. Faux : c'est le FLUX DE TRÉSORERIE (`Income −
+  Expenses`). La courbe bouge aussi par le rendement de marché et l'équité immobilière — sans aucune
+  transaction. Un jour de forte hausse boursière affiche donc 0 $ pendant que la courbe monte.
+  `dailyPastLedger` distingue d'ailleurs explicitement « dépôts » et « rendement » pour cette raison.
+  Un nom trop généreux envoie la session suivante chercher une réconciliation qui n'existe pas.
+- ⚠️ **[PASSE-REEL-TXN-DU-JOUR] Un jeton de test se choisit contre le VOCABULAIRE de l'écran, pas
+  contre ce qui semble improbable.** Mon assertion « le prénom de l'autre conjoint n'apparaît pas »
+  échouait sur… l'en-tête de colonne **MARCHAND**, dont « Marc » est un sous-mot. Deuxième fois dans
+  la même session après le montant témoin `1213`, qui vivait dans « T1213 retenue source ».
+  Corollaire du même incident : une assertion NÉGATIVE doit viser la ZONE qu'elle juge, pas tout le
+  document — la modale affiche les prénoms ailleurs (ventilation par conjoint), et chercher dans
+  `document.body` accusait le détail d'une ligne pour un texte venu d'une autre section.

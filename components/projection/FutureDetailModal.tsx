@@ -162,6 +162,45 @@ const AccountDrillTooltip: React.FC<AccountDrillTooltipProps> = ({ active, paylo
 };
 
 /**
+ * [PASSE-REEL-TXN-DU-JOUR] Détail d'une transaction, au-delà du montant — demande de Marc
+ * (« je veux voir les transactions et leur montant et plus de détail »).
+ *
+ * ⚠️ UNIQUEMENT des faits présents sur la donnée. Rien n'est déduit, rien n'est comblé : un champ
+ * absent ne produit AUCUNE pastille plutôt qu'un « inconnu » qui aurait l'air d'une information.
+ * Le statut « traité » n'est pas affiché non plus — c'est le cas NORMAL, et une pastille sur chaque
+ * ligne ne dirait rien tout en noyant celles qui, elles, méritent l'œil.
+ */
+const detailsTransaction = (
+    t: Transaction,
+    userName1?: string,
+    userName2?: string,
+): Array<{ texte: string; ton: 'neutre' | 'attention' }> => {
+    const out: Array<{ texte: string; ton: 'neutre' | 'attention' }> = [];
+
+    // Statut : seuls les cas ANORMAUX parlent.
+    if (t.status === 'pending') out.push({ texte: 'en attente', ton: 'attention' });
+    else if (t.status === 'error') out.push({ texte: 'erreur d\u2019import', ton: 'attention' });
+    else if (t.status === 'manual') out.push({ texte: 'saisie manuelle', ton: 'neutre' });
+
+    // Conjoint : seulement s'il y a une ATTRIBUTION EXPLICITE et un nom à afficher.
+    if (t.ownerId === 0 && userName1) out.push({ texte: userName1, ton: 'neutre' });
+    if (t.ownerId === 1 && userName2) out.push({ texte: userName2, ton: 'neutre' });
+
+    // Origine de la catégorie : ce qui dit s'il faut lui faire confiance.
+    if (t.isVerified) out.push({ texte: 'v\u00e9rifi\u00e9e', ton: 'neutre' });
+    else if (t.isAiProcessed) {
+        const pct = Number.isFinite(t.confidence) ? Math.round((t.confidence as number) * 100) : null;
+        out.push({ texte: pct === null ? 'class\u00e9e par IA' : `class\u00e9e par IA \u00b7 ${pct}\u202f%`, ton: pct !== null && pct < 70 ? 'attention' : 'neutre' });
+    }
+
+    // Catégorie d'origine, seulement si elle DIFFÈRE — sinon c'est du bruit.
+    if (t.originalCategory && t.originalCategory !== t.category) {
+        out.push({ texte: `avant : ${t.originalCategory}`, ton: 'neutre' });
+    }
+    return out;
+};
+
+/**
  * [PASSE-REEL-TXN-DU-JOUR] Les transactions de la journée cliquée, dans le PANNEAU EXISTANT
  * (cadrage confirmé par Marc : toutes les transactions, ici plutôt que dans une modale de plus).
  *
@@ -172,6 +211,13 @@ interface FutureDetailModalProps {
     point: ProjectionChartPoint;
     /** Liste COMPLÈTE des transactions ; filtrée au clic, jamais pré-indexée par jour. */
     transactions?: ReadonlyArray<Transaction>;
+    /**
+     * Journée cliquée ('YYYY-MM-DD'), ou `null` pour un point mensuel.
+     * ⚠️ Passée EN PROP et surtout PAS lue sur `point` : l'appelant rebase un point quotidien sur
+     * son mois hôte avant de le transmettre, ce qui efface `dayIso`. Voir le commentaire de
+     * `detailDayIso` dans `FutureProjection.tsx`.
+     */
+    dayIso?: string | null;
     chartData: ProjectionChartPoint[];
     userName1?: string;
     userName2?: string;
@@ -180,14 +226,13 @@ interface FutureDetailModalProps {
 }
 
 export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
-    point, chartData, transactions, userName1, userName2, isPrivacyMode = false, onClose,
+    point, chartData, transactions, dayIso = null, userName1, userName2, isPrivacyMode = false, onClose,
 }) => {
     const [selected, setSelected] = useState<AccountDef | null>(null);
 
     // [PASSE-REEL-TXN-DU-JOUR] Filtrage À LA DEMANDE. Le registre journalier couvre jusqu'à ~4 000
     // jours : y pré-indexer les transactions les garderait toutes en mémoire en permanence pour
     // n'en montrer qu'une journée. Ici, un balayage ponctuel sur une liste déjà chargée.
-    const dayIso = (point as ProjectionChartPoint & { dayIso?: string }).dayIso ?? null;
     const txnsDuJour = useMemo(() => transactionsOnDay(transactions, dayIso), [transactions, dayIso]);
 
     // [A11Y-FUTUR-MILESTONES-KEYBOARD] Une modale ouvrable au CLAVIER (pastilles focusables,
@@ -476,6 +521,9 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                 <div className="flex items-baseline justify-between gap-2 mb-2">
                                     <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold">
                                         Transactions du {dayIso}
+                                        <span className="ml-1.5 normal-case tracking-normal text-ink-400/80 font-normal">
+                                            — net encaissé/décaissé
+                                        </span>
                                     </div>
                                     <PrivateAmount className={`font-mono text-meta ${txnsDuJour.netCounted >= 0 ? 'text-green-400' : 'text-danger-400'}`}>
                                         {txnsDuJour.netCounted > 0 ? '+' : ''}{fmt(txnsDuJour.netCounted)}
@@ -496,9 +544,27 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                         <tbody>
                                             {txnsDuJour.counted.map((t) => (
                                                 <tr key={`c-${t.id}`} className="border-t border-white/5">
-                                                    <td className="px-2.5 py-1.5 text-ink-100">
+                                                    <td className="px-2.5 py-1.5 text-ink-100 align-top">
                                                         {t.payee}
                                                         {t.accountName && <span className="text-tiny text-ink-400"> · {t.accountName}</span>}
+                                                        {(() => {
+                                                            const d = detailsTransaction(t, userName1, userName2);
+                                                            if (d.length === 0) return null;
+                                                            return (
+                                                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                                                    {d.map((x, i) => (
+                                                                        <span
+                                                                            key={i}
+                                                                            className={`text-tiny px-1.5 py-px rounded border ${x.ton === 'attention'
+                                                                                ? 'text-amber-300 border-amber-400/30 bg-amber-400/10'
+                                                                                : 'text-ink-300 border-white/10 bg-white/5'}`}
+                                                                        >
+                                                                            {x.texte}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </td>
                                                     <td className="px-2.5 py-1.5 text-ink-400">{t.category}</td>
                                                     <td className={`px-2.5 py-1.5 text-right font-mono ${t.amount >= 0 ? 'text-green-300' : 'text-ink-200'}`}>
@@ -507,13 +573,39 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                                 </tr>
                                             ))}
                                             {/* Montrées mais BARRÉES : la liste doit correspondre au relevé bancaire,
-                                                pendant que le total correspond au mouvement de la courbe. Masquer ces
-                                                lignes trahirait la première promesse, les compter trahirait la seconde. */}
+                                                pendant que le total reste celui des seules transactions comptées.
+                                                Masquer ces lignes trahirait la première promesse, les compter la seconde.
+                                                ⚠️ PAS d'`opacity-60` sur ces lignes : `text-ink-300`/`text-ink-400` sont
+                                                DÉJÀ des shades atténués, tout juste AA à pleine opacité — les composer
+                                                avec une opacité tombait sous le seuil (~3,0-3,4:1, mesuré par la revue),
+                                                précisément sur la ligne qui EXPLIQUE pourquoi elle ne compte pas.
+                                                ⚠️ `npm run check-contrast` ne l'aurait PAS vu : scan statique
+                                                token-vs-token, aveugle aux classes `opacity-*`. Le `line-through` suffit
+                                                à dire « exclu » ; l'atténuation porte sur le FOND, qui n'a pas de texte. */}
                                             {txnsDuJour.excluded.map(({ txn, reason }) => (
-                                                <tr key={`e-${txn.id}`} className="border-t border-white/5 opacity-60">
-                                                    <td className="px-2.5 py-1.5 text-ink-300">
+                                                <tr key={`e-${txn.id}`} className="border-t border-white/5 bg-white/[0.02]">
+                                                    <td className="px-2.5 py-1.5 text-ink-300 align-top">
                                                         <span className="line-through">{txn.payee}</span>
-                                                        <span className="text-tiny text-amber-300/90"> · {reason}</span>
+                                                        {txn.accountName && <span className="text-tiny text-ink-400"> · {txn.accountName}</span>}
+                                                        <span className="text-tiny text-amber-300"> · {reason}</span>
+                                                        {(() => {
+                                                            const d = detailsTransaction(txn, userName1, userName2);
+                                                            if (d.length === 0) return null;
+                                                            return (
+                                                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                                                    {d.map((x, i) => (
+                                                                        <span
+                                                                            key={i}
+                                                                            className={`text-tiny px-1.5 py-px rounded border ${x.ton === 'attention'
+                                                                                ? 'text-amber-300 border-amber-400/30 bg-amber-400/10'
+                                                                                : 'text-ink-300 border-white/10 bg-white/5'}`}
+                                                                        >
+                                                                            {x.texte}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </td>
                                                     <td className="px-2.5 py-1.5 text-ink-400">{txn.category}</td>
                                                     <td className="px-2.5 py-1.5 text-right font-mono text-ink-400 line-through">

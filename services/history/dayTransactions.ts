@@ -22,7 +22,17 @@ export interface DayTransactionsResult {
     counted: Transaction[];
     /** Doublons et virements internes : affichés, mais hors du calcul — chacun avec sa raison. */
     excluded: Array<{ txn: Transaction; reason: 'doublon' | 'virement interne' }>;
-    /** Σ des `counted` — le montant qui explique le mouvement du jour sur la courbe. */
+    /**
+     * Σ des `counted` : le FLUX DE TRÉSORERIE net du jour (= `Income − Expenses` du registre).
+     *
+     * ⚠️ CE N'EST PAS la variation du patrimoine net du jour, et le commentaire d'origine le
+     * prétendait. La courbe bouge AUSSI par le rendement de marché des placements et par l'équité
+     * immobilière — deux sources sans aucune transaction correspondante. Une journée de forte
+     * hausse boursière sans mouvement bancaire donne `netCounted = 0` pendant que la courbe monte.
+     * `dailyPastLedger` distingue d'ailleurs explicitement « dépôts » et « rendement » pour cette
+     * raison exacte. Promettre « le mouvement de la courbe » aurait envoyé la prochaine session
+     * chercher une réconciliation avec `NetWorth[j] − NetWorth[j−1]` qui n'existe pas.
+     */
     netCounted: number;
 }
 

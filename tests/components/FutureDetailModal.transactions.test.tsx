@@ -38,21 +38,39 @@ const TRANSACTIONS: Transaction[] = [
     txn({ id: 5, date: '2026-03-05', payee: 'Autre jour', amount: -99991, category: 'Divers' }),
 ];
 
+// ⚠️ Prénoms VOLONTAIREMENT distinctifs. Avec « Marc », l'assertion négative échouait sur l'en-tête
+// de colonne « MARCHAND » — « Marc » en est un sous-mot. Même classe de faux positif que le montant
+// témoin 1213 qui vivait dans « T1213 retenue source » : un jeton de test se choisit contre le
+// VOCABULAIRE RÉEL de l'écran, pas contre ce qui semble improbable.
+const NOM_1 = 'Zephyrin';
+const NOM_2 = 'Ondine';
+
 const pointDuJour = { monthIndex: 2, dayIso: JOUR, NetWorth: 1000, diffNW: 0 } as unknown as ProjectionChartPoint;
 const pointMensuel = { monthIndex: 2, NetWorth: 1000, diffNW: 0 } as unknown as ProjectionChartPoint;
 
-const ouvrir = (point: ProjectionChartPoint, transactions: Transaction[] | undefined = TRANSACTIONS) =>
+const ouvrir = (point: ProjectionChartPoint, transactions: Transaction[] | undefined = TRANSACTIONS, dayIso: string | null = JOUR) =>
     render(
         <FutureDetailModal
             point={point}
             chartData={[point]}
             transactions={transactions}
+            dayIso={dayIso}
             onClose={vi.fn()}
         />,
     );
 
 /** Texte du document ENTIER : la modale se rend dans un portail (`document.body`). */
 const texte = () => (document.body.textContent ?? '').replace(/[\s  ]/g, '');
+
+/** Texte de la SEULE table des transactions.
+ *  ⚠️ Indispensable pour les assertions NÉGATIVES : la modale affiche les noms des conjoints
+ *  ailleurs (ventilation par personne). Chercher « Marc » dans tout le document accusait donc le
+ *  détail d'une ligne pour un texte qui vient d'une autre section — mes deux premiers tests
+ *  échouaient à tort. Une assertion « ne contient pas » doit viser la zone qu'elle juge. */
+const texteTable = () => {
+    const cap = [...document.querySelectorAll('caption')].find((c) => (c.textContent ?? '').includes('Transactions du'));
+    return ((cap?.closest('table')?.textContent) ?? '').replace(/[\s  ]/g, '');
+};
 
 beforeEach(() => { act(() => { useFinanceStore.setState({ isPrivacyMode: false }); }); });
 afterEach(() => { cleanup(); act(() => { useFinanceStore.setState({ isPrivacyMode: false }); }); });
@@ -93,8 +111,8 @@ describe('[PASSE-REEL-TXN-DU-JOUR] la section est ATTEIGNABLE et rendue', () => 
 
     // ⚠️ Sur un point MENSUEL ou FUTUR, il n'y a pas de mouvements réels. Une section vide y
     // laisserait croire « aucune transaction ce jour-là » — un faux (no-fake-data).
-    it('un point SANS `dayIso` n’affiche aucune section transactions', () => {
-        ouvrir(pointMensuel);
+    it('sans jour transmis, aucune section transactions', () => {
+        ouvrir(pointMensuel, TRANSACTIONS, null);
         expect(texte(), 'pas de journée identifiée → pas de section').not.toContain('Transactionsdu');
     });
 
@@ -108,9 +126,144 @@ describe('[PASSE-REEL-TXN-DU-JOUR] la section est ATTEIGNABLE et rendue', () => 
     // croyant tester son absence — le test échouait en accusant le composant, à tort.
     it('sans la prop `transactions`, la modale rend sans erreur et sans section', () => {
         expect(() => render(
-            <FutureDetailModal point={pointDuJour} chartData={[pointDuJour]} onClose={vi.fn()} />,
+            <FutureDetailModal point={pointDuJour} chartData={[pointDuJour]} dayIso={JOUR} onClose={vi.fn()} />,
         )).not.toThrow();
         expect(texte()).not.toContain('Transactionsdu');
+    });
+});
+
+// ── Le DÉTAIL par transaction (demande de Marc : « et plus de détail ») ──────────────────────
+// ⚠️ Uniquement des FAITS présents sur la donnée. Un champ absent ne doit produire AUCUNE pastille
+// — un « inconnu » affiché aurait l'air d'une information (no-fake-data).
+describe('[PASSE-REEL-TXN-DU-JOUR] détail par transaction', () => {
+    const avecDetail = (p: Partial<Transaction>) =>
+        ouvrir({ ...pointDuJour } as ProjectionChartPoint, [txn({ id: 1, payee: 'Cible', amount: -11113, ...p })], JOUR);
+
+    it('le statut ANORMAL est signalé (en attente, erreur, saisie manuelle)', () => {
+        avecDetail({ status: 'pending' });
+        expect(texte()).toContain('enattente');
+        cleanup();
+        avecDetail({ status: 'error' });
+        expect(texte()).toContain('erreurd’import');
+        cleanup();
+        avecDetail({ status: 'manual' });
+        expect(texte()).toContain('saisiemanuelle');
+    });
+
+    // ⚠️ « traité » est le cas NORMAL : une pastille sur chaque ligne ne dirait rien et noierait
+    // celles qui méritent l'œil. Test d'INTENTION.
+    it('le statut NORMAL n’affiche aucune pastille', () => {
+        avecDetail({ status: 'processed' });
+        expect(texte()).not.toContain('trait\u00e9');
+    });
+
+    it('le conjoint est nommé quand l’attribution est EXPLICITE', () => {
+        render(
+            <FutureDetailModal
+                point={pointDuJour} chartData={[pointDuJour]} dayIso={JOUR}
+                transactions={[txn({ id: 1, ownerId: 1, amount: -222 })]}
+                userName1={NOM_1} userName2={NOM_2} onClose={vi.fn()}
+            />,
+        );
+        expect(texteTable()).toContain(NOM_2);
+        expect(texteTable(), 'l’autre conjoint n’a rien à faire sur cette ligne').not.toContain(NOM_1);
+    });
+
+    it('sans attribution explicite, aucun conjoint n’est affiché', () => {
+        render(
+            <FutureDetailModal
+                point={pointDuJour} chartData={[pointDuJour]} dayIso={JOUR}
+                transactions={[txn({ id: 1, amount: -222 })]}
+                userName1={NOM_1} userName2={NOM_2} onClose={vi.fn()}
+            />,
+        );
+        const t = texteTable();
+        expect(t, 'deviner le propriétaire serait une invention').not.toContain(NOM_1);
+        expect(t).not.toContain(NOM_2);
+    });
+
+    it('l’origine de la catégorie est dite : vérifiée, ou classée par IA avec sa confiance', () => {
+        avecDetail({ isVerified: true });
+        expect(texte()).toContain('v\u00e9rifi\u00e9e');
+        cleanup();
+        avecDetail({ isAiProcessed: true, confidence: 0.93 });
+        expect(texte()).toContain('class\u00e9eparIA');
+        expect(texte(), 'la confiance chiffrée aide à juger').toContain('93');
+    });
+
+    it('une confiance IA FAIBLE est mise en évidence', () => {
+        avecDetail({ isAiProcessed: true, confidence: 0.42 });
+        expect(texte()).toContain('42');
+        expect(document.querySelector('.text-amber-300'), 'une catégorie peu sûre doit sauter aux yeux').not.toBeNull();
+    });
+
+    it('la catégorie d’ORIGINE n’apparaît que si l’IA l’a changée', () => {
+        avecDetail({ category: 'Restaurants', originalCategory: 'Divers' });
+        expect(texte()).toContain('avant:Divers');
+        cleanup();
+        avecDetail({ category: 'Divers', originalCategory: 'Divers' });
+        expect(texte(), 'identique = du bruit').not.toContain('avant:');
+    });
+
+    it('une transaction sans aucun détail n’affiche aucune pastille', () => {
+        avecDetail({ status: 'processed' });
+        const t = texte();
+        for (const mot of ['enattente', 'saisiemanuelle', 'v\u00e9rifi\u00e9e', 'class\u00e9eparIA', 'avant:']) {
+            expect(t, `« ${mot} » ne doit pas apparaître`).not.toContain(mot);
+        }
+    });
+
+    it('les lignes EXCLUES portent le même détail', () => {
+        avecDetail({ isTransfer: true, status: 'pending' });
+        const t = texte();
+        expect(t, 'la ligne exclue reste une transaction : son détail compte autant').toContain('enattente');
+        expect(t).toContain('virementinterne');
+    });
+});
+
+// ── ⚠️ LA GARDE QUI MANQUAIT — le chemin RÉEL, pas la fixture ────────────────────────────────
+// Ma première version lisait `dayIso` sur `point`. Ces tests passaient quand même, parce qu'ils
+// fabriquaient un point portant `dayIso` à la main. En vrai, `FutureProjection` REBASE tout point
+// quotidien sur son mois hôte avant de le transmettre (`detailPointFor` : « un mois qui existe
+// plutôt qu'un mois fantôme »), et `dayIso` est posé au MÊME endroit que `hostMonthIndex` — donc
+// effacé. La section était rigoureusement INATTEIGNABLE au clic, avec 8 tests au vert.
+// Classe `UX-UNREACHABLE-FEATURE` : un test qui fabrique lui-même la condition qu'il devrait
+// prouver atteignable ne prouve rien.
+describe('[PASSE-REEL-TXN-DU-JOUR] le jour vient de la PROP, jamais du point', () => {
+    it('un point PORTANT `dayIso` mais SANS la prop n’affiche rien', () => {
+        // Exactement ce que la modale reçoit en vrai après rebasage : le point ne fait pas foi.
+        ouvrir(pointDuJour, TRANSACTIONS, null);
+        expect(texte(), 'lire `point.dayIso` rendrait ce test vert alors que le clic réel ne montre rien')
+            .not.toContain('Transactionsdu');
+    });
+
+    it('la prop SEULE suffit, même sur un point mensuel rebasé', () => {
+        ouvrir(pointMensuel, TRANSACTIONS, JOUR);
+        expect(texte(), 'c’est le cas RÉEL : point mensuel + jour transmis à part').toContain(`Transactionsdu${JOUR}`);
+        expect(texte()).toContain('ÉpicerieMetro');
+    });
+});
+
+// ⚠️ Garde de SOURCE sur le câblage : le rendu ne peut pas voir d'où vient la prop.
+describe('[PASSE-REEL-TXN-DU-JOUR] câblage : le jour est capté AVANT le rebasage', () => {
+    it('`FutureProjection` lit le jour sur le point d’ORIGINE, pas sur le point rebasé', async () => {
+        const { readFileSync } = await import('node:fs');
+        const { resolve } = await import('node:path');
+        const src = readFileSync(resolve(__dirname, '../../components/FutureProjection.tsx'), 'utf8');
+        expect(src, 'le jour doit être capté sur `tooltip.point`, avant `detailPointFor`')
+            .toMatch(/setDetailDayIso\(\(tooltip\.point[\s\S]{0,120}dayIso/);
+        expect(src, 'et transmis en prop dédiée').toContain('dayIso={detailDayIso}');
+        // Si quelqu'un « simplifie » en dérivant le jour du point de détail, la section redevient
+        // inatteignable en silence : `detailPoint` est TOUJOURS le point mensuel rebasé.
+        expect(src, 'le jour ne doit JAMAIS être dérivé de `detailPoint`').not.toMatch(/detailPoint[^\n]*\.dayIso/);
+    });
+
+    it('`FutureDetailModal` ne lit plus `dayIso` sur son `point`', async () => {
+        const { readFileSync } = await import('node:fs');
+        const { resolve } = await import('node:path');
+        const src = readFileSync(resolve(__dirname, '../../components/projection/FutureDetailModal.tsx'), 'utf8');
+        expect(src.replace(/\/\*[\s\S]*?\*\//g, ''), 'lire le point ramènerait le bug d’origine')
+            .not.toMatch(/point[^\n]*\)\.dayIso/);
     });
 });
 

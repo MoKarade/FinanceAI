@@ -522,7 +522,6 @@
   n'apporte rien au manque réel (l'exclusion, maintenant livrée) → **attendre son arbitrage** avant
   tout chantier de navigation. Ne PAS coder le déplacement sans go explicite.
 
-
 - [x] **`[A11Y-INK500]`** ✅ 2026-08-12 — classification par-occurrence des 115 matchs du grep :
   6 étaient des `pink-500` (substring !) + 2 commentaires ; sur les 107 réels, 85 TEXTES actifs
   migrés → `ink-400` (AA normal 5.21-6.42 mesuré) et 22 GARDÉS en `ink-500` légitime (glyphes
@@ -907,96 +906,13 @@
 > Les deux blocages ÉLEVÉ (SRG et cible du meltdown) sont CORRIGÉS dans #616. Ce qui suit a été
 > mesuré par le même panel et laissé DÉLIBÉRÉMENT hors du lot : ce sont des surfaces voisines, pas
 > le mécanisme du divorce lui-même. ⚠️ Leur point commun est le motif d'échec de #613 — « le même
-> défaut, laissé dans la fonction sœur ». Traiter `ROOM-COUPLE` et `ESTATE-PENSION` en priorité.
+> défaut, laissé dans la fonction sœur ».
+>
+> ⚠️ **Les 8 items LIVRÉS de cette sous-section sont partis dans `docs/BACKLOG_ARCHIVE.md`**
+> (2026-08-14, PR #626) — `ROOM-COUPLE`, `ESTATE-PENSION`, `LATENTTAX`, `TAXDEBT-UNSPLIT`,
+> `SPLITPCT-UNBOUNDED`, `MC-OBSERVABILITY`, `NO-CONSERVATION-GUARD`, `DISPLAY-RATES`.
+> Ne reste ici que ce qui est encore à faire.
 
-<<<<<<< HEAD
-- [x] 🔴 **`[ENG-DIVORCE-ROOM-COUPLE]`** (M, LIVRÉ) — les droits enregistrés restaient ceux d'un
-  COUPLE : `processJanuaryReset` recevait `config.users` entier et `activeUsersCount` inchangé.
-  Décembre disait déjà « 1 déclarant », janvier redonnait les droits des deux — les deux voies se
-  contredisaient. **Mesuré : 716 717 $ de patrimoine INDU** sur un divorcé à 25 ans d'horizon
-  (12 745 146 $ → 12 028 429 $). Livré : `activeUsersCount: taxFilers` (les 4 usages du fichier
-  relus un par un — homonyme, comme dans `retirementIncome`), `fhsaEligibleUsersCount` borné à 1,
-  et une liste **`roomUsers` DÉDIÉE** aux droits.
-  ⚠️ `users` reste ENTIER : la boucle FERR itère sur `reerByUser.length` et lit `users[i]` pour
-  l'âge du conjoint — la raccourcir aurait rendu `-Infinity` et la part REER de l'index 1 ne se
-  serait JAMAIS convertie en FERR, en silence (le piège exact d'un précédent `slice(0,1)`).
-  Rétrocompat MESURÉE : déterministe et décès bit-identiques.
-
-- [ ] 🔴 **`[ENG-DIVORCE-ESTATE-PENSION]`** (M) — `computeEstateNetWorth` reçoit `activeUsersCount`
-  et la pension MÉNAGE entière, sans équivalent de `householdPensionShare` : le divorcé hérite à
-  l'écran Succession de la valeur actualisée des rentes de son ex. C'est la fonction MIROIR de celle
-  que #616 corrige — son propre commentaire dit « exactement comme retirementIncome.ts:207-212 ».
-=======
-- [ ] 🔴 **`[ENG-DIVORCE-ROOM-COUPLE]`** (M) — droits enregistrés restés de COUPLE après divorce :
-  `processJanuaryReset` reçoit `config.users` et `activeUsersCount` inchangés. **Mesuré** : CELI
-  +15 000 $/an de droits (2 × 7 500) pour un ménage à 1 tête → CELI final 2 268 641 $ vs
-  1 405 271 $, soit +58 573 $ de patrimoine et −27 456 $ d'impôt sur 30 ans. FHSA : le correctif de
-  DÉCEMBRE est ÉCRASÉ par janvier → 32 000 $ (avant) → 24 000 $ (#616) → 16 000 $ (légal
-  célibataire) : la moitié de l'écart seulement, plafond à vie encore 80 000 $ pour une personne.
-  RAP encore ×2 (`realEstateMonth.ts:201`). **Correctif** : `taxJanuary.ts` doit lire le nombre de
-  déclarants, comme décembre.
-- [x] 🔴 **`[ENG-DIVORCE-ESTATE-PENSION]`** (M, LIVRÉ) — `computeEstateNetWorth` recevait
-  `activeUsersCount` inchangé et la pension MÉNAGE entière : le divorcé héritait à l'écran
-  Succession de la valeur actualisée des rentes de son ex. **Mesuré : 322 865 $ de valeur
-  successorale INDUE** (1 068 947 $ → 746 082 $). Livré : compteur de TÊTES à 1 pour la branche
-  « estimés précis » (per-personne × N) **et** `householdPensionShare` pour la branche « repli
-  agrégé » (`governmentPension` est déjà familial) — deux réductions DISTINCTES, jamais cumulées
-  sur le même terme. ⚠️ `activeUsersCount` MULTIPLIE ici, alors qu'il DIVISE dans
-  `retirementIncome` : sémantiques inverses sous le même nom. Rétrocompat mesurée (déterministe et
-  MC bit-identiques) ; le patrimoine mensuel ne bouge pas — le défaut ne vivait QUE dans la
-  succession, ce qui l'a fait survivre au premier lot.
-
-<<<<<<< HEAD
-- [x] **`[ENG-DIVORCE-LATENTTAX]`** (S, LIVRÉ — mais INERTE aujourd'hui, voir ci-dessous) —
-  `computeLatentTax` recevait `activeUsersCount` inchangé (c'est un NOMBRE DE DÉCLARANTS : il divise
-  le revenu puis remultiplie l'impôt) et le salaire de l'ex dans l'assiette. Corrigé en `taxFilers`
-  + `grossAnnaBaseAnnual: 0` en ménage solo, avec 3 tests sur la fonction PURE.
-  ⚠️ **VÉRIFIÉ PAR PERTURBATION : effet NUL sur toute sortie observable.** `impotLatent` n'alimente
-  QUE `ImpotLatent` du point mensuel, et sous MC — le seul mode où le divorce existe — le point est
-  ALLÉGÉ à `{ NetWorth, monthIndex }`. Patrimoine final, succession et `ImpotLatent` sont
-  bit-identiques avec/sans correctif. Le calcul est désormais juste ; il n'est simplement pas LU.
-- [ ] **`[ENG-DIVORCE-LATENTTAX]`** (S) — `latentTax` ignore le divorce : impôt latent −337 063 $
-  (N=2) vs −390 189 $ (N=1) → **53 126 $ de sous-estimation**, patrimoine net d'impôt affiché trop
-  haut. (Ex-MOYEN-10, moitié déjà traitée : le meltdown est corrigé, `latentTax` ne l'est pas.)
->>>>>>> origin/main
-- [ ] **`[ENG-DIVORCE-TAXDEBT-UNSPLIT]`** (S) — la créance/dette fiscale n'est pas partagée. Split à
-  100 % : patrimoine 135 $ au mois du divorce, puis avril crédite **26 948,77 $** — le remboursement
-  INTÉGRAL du couple (identique au témoin sans divorce). Contredit la décision « on partage la
-  valeur NETTE » qui a justifié d'ajouter les dettes au split. Effet de bord : `totalTaxesPaid`
-  ressort à **−12 992,70 $** (« impôt à vie » négatif).
-- [x] 🔴 **`[ENG-DIVORCE-SPLITPCT-UNBOUNDED]`** (S, LIVRÉ) — `divorceSplitPct` n'était borné nulle
-  part. Mesuré : `−100` → patrimoine 2 210 335 $ contre 755 482 $ à 50 % (le divorce ENRICHIT) ;
-  `1e9` → **−7 782 605 996 $** (dettes × keep négatif = actif fantôme) ; `NaN` → actifs zéroïsés
-  sans trace. Livré : `clampSplitPct` (source unique, `[0,100]`, non-fini → DÉFAUT et non 0) posé
-  au MOTEUR — une borne seulement à l'UI laisserait passer un import de sauvegarde ou un futur
-  appelant — plus `min`/`max` + le même clamp à l'input. 9 tests, `keep` observé À LA SOURCE
-  (3 échouent sans le clamp). Revue Vercel : le LIBELLÉ du divorce interpolait encore la valeur
-  BRUTE (« partage de 150 % » pendant que le moteur en appliquait 100) — corrigé + garde de source.
-
-- [x] 🔴 **`[ENG-MC-OBSERVABILITY]`** (M, LIVRÉ) — sous MC, `buildMonthlyDataPoint` ne rendait que
-  `{ NetWorth, monthIndex }` (choix de PERF), alors que divorce/mortalité/LTC/perte d'emploi
-  n'existent QUE sous MC : leurs flux mensuels étaient INVÉRIFIABLES, et trois lots ont dû
-  contourner (agrégat `totalTaxesPaid` au lieu de `RetraitREER`, test de fonction pure sur
-  `computeLatentTax`, absence de garde sur le splitter). Livré :
-  `ScenarioDiagnostics.verboseMonthlyPoints`, 8e paramètre de `runScenario`, DÉLIBÉRÉMENT séparé
-  d'`EngineOverrides` (exploré par `strategySpace` : un drapeau de diagnostic y serait balayé comme
-  un levier financier). Défaut absent ⇒ production inchangée, épinglé par un test qui vérifie que
-  le point MC reste ALLÉGÉ sans le drapeau.
-- [x] 🔴 **`[ENG-DIVORCE-NO-CONSERVATION-GUARD]`** (M, LIVRÉ) — premier bénéficiaire du ticket
-  ci-dessus : `tests/services/projection.divorceConservation.test.ts` fait tourner un divorce AVEC
-  dettes sous invariants (6 tests).
-  ⚠️ Leçon en chemin : « Σ actifs − dettes == NetWorth » est en partie CIRCULAIRE — `NetWorth` est
-  recalculé depuis ces mêmes soldes, donc retirer le partage des dettes la laisse VERTE (vérifié par
-  régression chirurgicale). L'invariant qui MORD porte sur une grandeur INDÉPENDANTE : le **ratio de
-  partage mesuré sur la DETTE totale** — 0,4926 attendu, 0,9949 avec la régression.
-- [x] **`[ENG-DIVORCE-DISPLAY-RATES]`** (S, LIVRÉ) — le taux d'imposition AFFICHÉ (marginal et
-  effectif du point mensuel) additionnait encore les DEUX salaires puis divisait par 2 après un
-  divorce : il montrait le taux d'un ménage qui n'existe plus. Deux erreurs qui se compensent
-  partiellement — taux trop BAS pour un divorcé à haut salaire, trop HAUT pour l'autre. Livré :
-  `taxFilers` au dénominateur + salaire de l'ex retiré du numérateur (les deux gestes du lot).
-  Sortie d'AFFICHAGE : rien d'autre n'en dépend, mais c'est un chiffre que l'utilisateur LIT.
-  ⚠️ Fixture à salaires TRÈS inégaux (14 000 vs 2 000 $/mois) : à salaires égaux `(a+b)/2 === a`
-  et le défaut est INVISIBLE. Test rendu possible par `[ENG-MC-OBSERVABILITY]`.
 - [ ] **`[ENG-DIVORCE-CHILDREN-REEE]`** (S) — [NON MESURÉ, zone non couverte] allocations familiales,
   coûts d'enfants et REEE après divorce : le REEE est divisé, les coûts restent entiers. À cadrer
   avant de coder — signalé comme angle mort, pas comme défaut établi.

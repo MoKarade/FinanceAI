@@ -41,6 +41,100 @@ fichier:ligne). Verdicts appliqués à la refonte :
 
 ---
 
+## Livré 2026-08-13/14 — lot DIVORCE (PR #616, #622, #623, #624, #625, #626)
+
+> Sous-section « Divorce — reliquat MESURÉ par le panel de re-revue (PR #616) » de `BACKLOG.md`,
+> déménagée ici à la livraison de `[ENG-DIVORCE-TAXDEBT-UNSPLIT]` (le dernier des huit).
+> ⚠️ Trois de ces items (`ROOM-COUPLE`, `ESTATE-PENSION`, `LATENTTAX`) figuraient sur `main` en
+> DOUBLE — une version livrée et une version périmée d’avant livraison — à cause de marqueurs de
+> conflit committés par la PR #622 et restés invisibles au gate (aucune de ses quatre commandes
+> ne lit un `.md`). Les textes conservés ci-dessous sont les versions LIVRÉES, vérifiées commit
+> par commit. Garde posée dans la même PR : `tests/noConflictMarkers.test.ts`.
+
+- [x] 🔴 **`[ENG-DIVORCE-ROOM-COUPLE]`** (M, LIVRÉ) — les droits enregistrés restaient ceux d'un
+  COUPLE : `processJanuaryReset` recevait `config.users` entier et `activeUsersCount` inchangé.
+  Décembre disait déjà « 1 déclarant », janvier redonnait les droits des deux — les deux voies se
+  contredisaient. **Mesuré : 716 717 $ de patrimoine INDU** sur un divorcé à 25 ans d'horizon
+  (12 745 146 $ → 12 028 429 $). Livré : `activeUsersCount: taxFilers` (les 4 usages du fichier
+  relus un par un — homonyme, comme dans `retirementIncome`), `fhsaEligibleUsersCount` borné à 1,
+  et une liste **`roomUsers` DÉDIÉE** aux droits.
+  ⚠️ `users` reste ENTIER : la boucle FERR itère sur `reerByUser.length` et lit `users[i]` pour
+  l'âge du conjoint — la raccourcir aurait rendu `-Infinity` et la part REER de l'index 1 ne se
+  serait JAMAIS convertie en FERR, en silence (le piège exact d'un précédent `slice(0,1)`).
+  Rétrocompat MESURÉE : déterministe et décès bit-identiques.
+
+- [x] 🔴 **`[ENG-DIVORCE-ESTATE-PENSION]`** (M, LIVRÉ) — `computeEstateNetWorth` recevait
+  `activeUsersCount` inchangé et la pension MÉNAGE entière : le divorcé héritait à l'écran
+  Succession de la valeur actualisée des rentes de son ex. **Mesuré : 322 865 $ de valeur
+  successorale INDUE** (1 068 947 $ → 746 082 $). Livré : compteur de TÊTES à 1 pour la branche
+  « estimés précis » (per-personne × N) **et** `householdPensionShare` pour la branche « repli
+  agrégé » (`governmentPension` est déjà familial) — deux réductions DISTINCTES, jamais cumulées
+  sur le même terme. ⚠️ `activeUsersCount` MULTIPLIE ici, alors qu'il DIVISE dans
+  `retirementIncome` : sémantiques inverses sous le même nom. Rétrocompat mesurée (déterministe et
+  MC bit-identiques) ; le patrimoine mensuel ne bouge pas — le défaut ne vivait QUE dans la
+  succession, ce qui l'a fait survivre au premier lot.
+
+- [x] **`[ENG-DIVORCE-LATENTTAX]`** (S, LIVRÉ — mais INERTE aujourd'hui, voir ci-dessous) —
+  `computeLatentTax` recevait `activeUsersCount` inchangé (c'est un NOMBRE DE DÉCLARANTS : il divise
+  le revenu puis remultiplie l'impôt) et le salaire de l'ex dans l'assiette. Corrigé en `taxFilers`
+  + `grossAnnaBaseAnnual: 0` en ménage solo, avec 3 tests sur la fonction PURE.
+  ⚠️ **VÉRIFIÉ PAR PERTURBATION : effet NUL sur toute sortie observable.** `impotLatent` n'alimente
+  QUE `ImpotLatent` du point mensuel, et sous MC — le seul mode où le divorce existe — le point est
+  ALLÉGÉ à `{ NetWorth, monthIndex }`. Patrimoine final, succession et `ImpotLatent` sont
+  bit-identiques avec/sans correctif. Le calcul est désormais juste ; il n'est simplement pas LU.
+
+- [x] **`[ENG-DIVORCE-TAXDEBT-UNSPLIT]`** (S, LIVRÉ) — la créance/dette fiscale ne suivait pas le
+  partage. `taxPreviousYear` porte l'impôt de l'année du COUPLE, réglé en avril : sans partage, un
+  divorcé ayant cédé **100 %** de son patrimoine réglait quand même **1 488 $** d'impôt du ménage
+  (mesuré), et dans l'autre sens encaissait le remboursement INTÉGRAL (26 948,77 $ mesurés par le
+  panel sur un patrimoine de 135 $ — d'où un `totalTaxesPaid` NÉGATIF). Livré : `keep` appliqué aux
+  DEUX buckets (`taxPreviousYear` ET `taxCurrentYear`, ce dernier par symétrie — il vaut ~0 en
+  janvier, mais n'en corriger qu'un est le motif « règle dupliquée corrigée à moitié »).
+  Conforme à la décision VERROUILLÉE « on partage la valeur NETTE » (`docs/decisions.md`), celle-là
+  même qui avait justifié d'ajouter les dettes au split.
+  ⚠️ Test impossible à écrire avant `[ENG-MC-OBSERVABILITY]` : `FluxImpots` n'existe que dans le
+  point COMPLET, et le divorce n'existe que sous MC. Garde anti-sur-correctif incluse (à 50 %, la
+  moitié de la dette reste DUE — partager n'est pas annuler).
+
+- [x] 🔴 **`[ENG-DIVORCE-SPLITPCT-UNBOUNDED]`** (S, LIVRÉ) — `divorceSplitPct` n'était borné nulle
+  part. Mesuré : `−100` → patrimoine 2 210 335 $ contre 755 482 $ à 50 % (le divorce ENRICHIT) ;
+  `1e9` → **−7 782 605 996 $** (dettes × keep négatif = actif fantôme) ; `NaN` → actifs zéroïsés
+  sans trace. Livré : `clampSplitPct` (source unique, `[0,100]`, non-fini → DÉFAUT et non 0) posé
+  au MOTEUR — une borne seulement à l'UI laisserait passer un import de sauvegarde ou un futur
+  appelant — plus `min`/`max` + le même clamp à l'input. 9 tests, `keep` observé À LA SOURCE
+  (3 échouent sans le clamp). Revue Vercel : le LIBELLÉ du divorce interpolait encore la valeur
+  BRUTE (« partage de 150 % » pendant que le moteur en appliquait 100) — corrigé + garde de source.
+
+- [x] 🔴 **`[ENG-MC-OBSERVABILITY]`** (M, LIVRÉ) — sous MC, `buildMonthlyDataPoint` ne rendait que
+  `{ NetWorth, monthIndex }` (choix de PERF), alors que divorce/mortalité/LTC/perte d'emploi
+  n'existent QUE sous MC : leurs flux mensuels étaient INVÉRIFIABLES, et trois lots ont dû
+  contourner (agrégat `totalTaxesPaid` au lieu de `RetraitREER`, test de fonction pure sur
+  `computeLatentTax`, absence de garde sur le splitter). Livré :
+  `ScenarioDiagnostics.verboseMonthlyPoints`, 8e paramètre de `runScenario`, DÉLIBÉRÉMENT séparé
+  d'`EngineOverrides` (exploré par `strategySpace` : un drapeau de diagnostic y serait balayé comme
+  un levier financier). Défaut absent ⇒ production inchangée, épinglé par un test qui vérifie que
+  le point MC reste ALLÉGÉ sans le drapeau.
+
+- [x] 🔴 **`[ENG-DIVORCE-NO-CONSERVATION-GUARD]`** (M, LIVRÉ) — premier bénéficiaire du ticket
+  ci-dessus : `tests/services/projection.divorceConservation.test.ts` fait tourner un divorce AVEC
+  dettes sous invariants (6 tests).
+  ⚠️ Leçon en chemin : « Σ actifs − dettes == NetWorth » est en partie CIRCULAIRE — `NetWorth` est
+  recalculé depuis ces mêmes soldes, donc retirer le partage des dettes la laisse VERTE (vérifié par
+  régression chirurgicale). L'invariant qui MORD porte sur une grandeur INDÉPENDANTE : le **ratio de
+  partage mesuré sur la DETTE totale** — 0,4926 attendu, 0,9949 avec la régression.
+
+- [x] **`[ENG-DIVORCE-DISPLAY-RATES]`** (S, LIVRÉ) — le taux d'imposition AFFICHÉ (marginal et
+  effectif du point mensuel) additionnait encore les DEUX salaires puis divisait par 2 après un
+  divorce : il montrait le taux d'un ménage qui n'existe plus. Deux erreurs qui se compensent
+  partiellement — taux trop BAS pour un divorcé à haut salaire, trop HAUT pour l'autre. Livré :
+  `taxFilers` au dénominateur + salaire de l'ex retiré du numérateur (les deux gestes du lot).
+  Sortie d'AFFICHAGE : rien d'autre n'en dépend, mais c'est un chiffre que l'utilisateur LIT.
+  ⚠️ Fixture à salaires TRÈS inégaux (14 000 vs 2 000 $/mois) : à salaires égaux `(a+b)/2 === a`
+  et le défaut est INVISIBLE. Test rendu possible par `[ENG-MC-OBSERVABILITY]`.
+
+- [ ] **`[ENG-DIVORCE-CHILDREN-REEE]`** reste OUVERT et est resté dans `docs/BACKLOG.md` —
+  ne pas le reprendre depuis ce fichier.
+
 ## Livré 2026-08-14 — PR #632 `[A11Y-PRIVACY-PATRIMOINE-ETENDU]` (lot `[A11Y-PRIVACY-LOT2]` 4/9)
 
 - [x] **`[A11Y-PRIVACY-PATRIMOINE-ETENDU]`** — **13 montants sur 17 champs** masqués dans les 4

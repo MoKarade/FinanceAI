@@ -797,6 +797,27 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // (0 violation sur 36 461 observations) alors que la SÉMANTIQUE était fausse — un
             // invariant de somme ne dit rien de l'ATTRIBUTION.
             reerShares = reerShares.map((_, i) => (i === 0 ? 1 : 0));
+            // [ENG-DIVORCE-TAXDEBT-UNSPLIT] La CRÉANCE (ou la DETTE) fiscale se partage comme le
+            // reste. `taxPreviousYear` porte l'impôt de l'année du COUPLE, réglé en avril : sans
+            // ce partage, un divorcé ayant cédé 100 % de son patrimoine voyait quand même arriver
+            // le remboursement INTÉGRAL du couple — mesuré 26 948,77 $ crédités sur un patrimoine
+            // de 135 $, montant identique au témoin sans divorce. Symétrique et plus grave dans
+            // l'autre sens : il aurait porté SEUL une dette d'impôt du ménage.
+            // C'est la DÉCISION VERROUILLÉE de Marc (`docs/decisions.md`) : on partage la valeur
+            // NETTE — c'est elle qui a justifié d'ajouter les dettes au split, et une créance
+            // fiscale née pendant l'union est de la valeur nette comme une autre.
+            // Effet de bord corrigé au passage : ce remboursement non partagé rendait
+            // `totalTaxesPaid` NÉGATIF (« impôt à vie : −12 992,70 $ »).
+            // `taxCurrentYear` est partagé aussi, par SYMÉTRIE : il vaut ~0 en janvier (remis à
+            // zéro en décembre), donc l'effet est nul aujourd'hui — mais laisser un seul des deux
+            // registres suivre le split est exactement le motif « règle dupliquée corrigée à
+            // moitié » qui a déjà coûté deux NO-GO sur ce lot.
+            const splitTaxBucket = (b: typeof taxPreviousYear): typeof taxPreviousYear => ({
+                revenu: b.revenu * keep, gains: b.gains * keep, reer: b.reer * keep,
+                divers: b.divers * keep, donCredit: b.donCredit * keep,
+            });
+            taxPreviousYear = splitTaxBucket(taxPreviousYear);
+            taxCurrentYear = splitTaxBucket(taxCurrentYear);
         })) {
             divorced = true;
         }

@@ -157,6 +157,24 @@ Doc détaillée dans `docs/`, qui fait foi.
   FAITS sans case cochée et ~128 puces n'avaient pas de case — un backlog qui mélange fait/à-faire
   trompe le PM et la reprise de session (classe PM-STALE-BACKLOG) ; c'est la tenue À CHAQUE push qui
   empêche la dérive, pas les grandes passes de nettoyage.
+  ⚠️ **`MERGE-MARKERS-IN-MAIN` (2026-08-14) — le gate NE LIT PAS les `.md`, donc il ne les protège
+  pas.** La PR #622 a livré sur `main` des marqueurs de conflit NON RÉSOLUS, committés en clair dans
+  `CHANGELOG.md` (2 blocs) et `docs/BACKLOG.md` (1 bloc DÉSÉQUILIBRÉ : deux `<<<<<<<` pour un seul
+  `>>>>>>>`). Ils y ont vécu plus d'une journée. Le gate était VERT tout du long — et c'est logique :
+  `typecheck`, `lint`, `test` et `build` ne lisent aucun `.md`. Aucune barrière ne regardait.
+  **Ce que ça produisait** : `[ENG-DIVORCE-ROOM-COUPLE]`, `[ENG-DIVORCE-ESTATE-PENSION]` et
+  `[ENG-DIVORCE-LATENTTAX]` figuraient chacun DEUX FOIS — une version `[x] LIVRÉ` et une version
+  `[ ]` périmée d'avant livraison. Une session qui lit la mauvaise moitié re-livre du déjà-fait, ou
+  croit fait ce qui ne l'est pas. C'est `PM-STALE-BACKLOG` porté à son maximum, et l'incident n'a été
+  découvert que parce qu'une PR suivante a dû fusionner ces fichiers et a produit un conflit imbriqué
+  illisible. **Garde** : `tests/noConflictMarkers.test.ts` scanne les fichiers SUIVIS par git.
+  ⚠️ Deux finesses dans cette garde, qui valent au-delà d'elle : (1) `=======` seul est AMBIGU —
+  c'est aussi un titre setext Markdown — donc on ne le signale que dans un fichier portant déjà un
+  chevron, sinon la garde crie sur de la doc légitime ; (2) le test de discrimination appelle le
+  VRAI scanner sur de vrais fichiers, il ne re-code pas la détection — une copie qui marche ne prouve
+  rien sur l'original.
+  ⚠️ Leçon générale : quand une classe de défaut ne peut casser AUCUNE des quatre commandes du gate,
+  ne pas conclure « ça se verra à la relecture ». Ça ne s'est pas vu.
 - **Garde-fou (non négociable)** : avant CHAQUE commit, `typecheck` clean + `build`
   qui passe + `test` vert (hook `commit-gate`). Jamais `--no-verify`.
 - **Vigilance** (à signaler dans le plan, pas interdit) : migrations schema Zustand
@@ -2866,6 +2884,17 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   Règle : après avoir écrit une garde, INTRODUIRE la régression qu'elle prétend couvrir. Si elle
   reste verte, elle ne garde rien — et il faut chercher la grandeur qui n'est pas dérivée.
 
+- ⚠️ **[ENG-DIVORCE-TAXDEBT-UNSPLIT] 2026-08-13 — une DETTE FISCALE est du patrimoine, dans les deux
+  sens.** Le splitter partageait actifs et dettes mais pas les buckets d'impôt : un divorcé ayant
+  cédé 100 % de tout réglait quand même l'impôt du couple (1 488 $ mesurés), et symétriquement
+  encaissait seul un remboursement du ménage (26 948,77 $ sur un patrimoine de 135 $ — d'où un
+  « impôt à vie » NÉGATIF). Réflexe à garder : après avoir partagé les soldes, chercher les
+  CRÉANCES ET DETTES DIFFÉRÉES (impôt à payer/recevoir, acomptes, crédits reportés) — elles ne
+  ressemblent pas à un solde et se font oublier.
+- ⚠️ **[Même lot] Un test de partage a besoin de sa garde ANTI-SUR-CORRECTIF.** « À 100 % de cession,
+  plus rien à payer » passerait aussi si on avait purement ANNULÉ la dette. D'où la deuxième
+  assertion : à 50 %, le règlement d'avril doit être RÉDUIT mais NON NUL. Partager n'est pas annuler
+  — et seul le second test distingue les deux implémentations.
 - ⚠️ **[PASSE-REEL-DETTE] 2026-08-13 — une APPROXIMATION documentée dans le code reste un MENSONGE
   à l'écran.** Le segment passé soustrait la dette d'aujourd'hui à tous les mois, avec ce commentaire
   en toutes lettres : « dette supposée constante dans le passé, faute d'historique d'amortissement ».

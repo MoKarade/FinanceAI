@@ -69,7 +69,13 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
     // ailleurs : c'est précisément ce qui l'a fait survivre au premier lot.
     it('le patrimoine MENSUEL n\'est pas touché (le défaut ne vivait que dans la succession)', () => {
         const r = scenario({ divorceEnabled: true, divorceAnnualProbability: 1, divorceSplitPct: 50 }, true);
-        expect(Math.round(r.finalNetWorth)).toBe(480_108);
+        // ⚠️ ANCRAGE RE-BASÉ le 2026-08-13, et l'écart est EXPLIQUÉ — pas élargi pour faire passer.
+        // Valeur d'origine : 480 108 $. `[ENG-DIVORCE-TAXDEBT-UNSPLIT]` fait désormais suivre au
+        // partage la dette fiscale de l'année du couple : le divorcé ne règle plus SEUL l'impôt du
+        // ménage, d'où +2 402 $ de patrimoine. C'est l'effet VOULU de ce correctif-là, pas une
+        // régression de celui-ci — ce que ce test vérifie (le lot SUCCESSION ne touche pas au
+        // patrimoine mensuel) reste vrai.
+        expect(Math.round(r.finalNetWorth)).toBe(482_510);
     });
 
     it('sans divorce, la succession est INCHANGÉE (rétrocompat mesurée)', () => {

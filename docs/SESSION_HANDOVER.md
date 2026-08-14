@@ -205,6 +205,17 @@
 > avant de coder (allocations familiales, coûts d'enfants, REEE : le REEE est divisé, les coûts
 > restent entiers ; signalé comme angle mort par le panel, pas comme défaut établi).
 
+> ## 🟢 Session 2026-08-13 (suite 80) — `[ENG-DIVORCE-TAXDEBT-UNSPLIT]` : l'impôt du couple aussi
+> `taxPreviousYear` (impôt de l'année du COUPLE, réglé en avril) ne suivait pas le split. Mesuré :
+> après avoir cédé **100 %** de son patrimoine, le divorcé réglait quand même **1 488 $** d'impôt du
+> ménage ; dans l'autre sens il encaissait le remboursement INTÉGRAL (26 948,77 $ sur 135 $ de
+> patrimoine → `totalTaxesPaid` négatif). `keep` appliqué aux DEUX buckets (`taxCurrentYear` par
+> symétrie : ~0 en janvier, mais n'en corriger qu'un = « règle dupliquée corrigée à moitié »).
+> Conforme à la décision verrouillée « on partage la valeur NETTE ».
+> ⚠️ Premier test rendu POSSIBLE par `[ENG-MC-OBSERVABILITY]` (`FluxImpots` n'existe que dans le
+> point complet). Garde anti-sur-correctif : à 50 %, la moitié reste DUE — partager ≠ annuler.
+> **Reliquat divorce** : `DISPLAY-RATES` (affichage seul), `CHILDREN-REEE` (non mesuré, à cadrer).
+
 > ## 🟡 Session 2026-08-13 (suite 78) — `[ENG-DIVORCE-LATENTTAX]` : juste, mais INERTE
 > `computeLatentTax` recevait `activeUsersCount` inchangé (NOMBRE DE DÉCLARANTS : divise le revenu,
 > remultiplie l'impôt) + le salaire de l'ex dans l'assiette. Corrigé (`taxFilers`, `grossAnna: 0`).

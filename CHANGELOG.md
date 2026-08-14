@@ -189,7 +189,6 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - Si ta clé API est refusée, l'import s'arrête net avec un message clair, au lieu d'enchaîner des
   dizaines d'appels voués à l'échec.
 
-<<<<<<< HEAD
 ### Le curseur « part du patrimoine cédée » n'avait aucune limite
 - Rien n'empêchait d'y mettre **−100** (le divorce te rendait alors plus riche : 2,2 M$ au lieu de
   755 k$), **un milliard** (patrimoine affiché à **−7,8 milliards**, parce que tes dettes se
@@ -198,7 +197,6 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   calcul lui-même** — pas seulement dans le formulaire, qu'une sauvegarde importée contournerait.
 - Une valeur illisible retombe sur **50 %** (la règle du patrimoine familial), jamais sur 0 : un
   « 0 % » serait tout aussi inventé, mais crédible.
-=======
 ### Trois mouvements d'argent qui n'étaient expliqués nulle part
 - **Le test de krach faisait fondre puis regonfler tes placements sans que rien ne le justifie.**
   Les montants bougeaient bel et bien, mais aucune ligne « croissance du marché » ne les portait :
@@ -212,22 +210,26 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   bricolé au passage.
 - Une nouvelle vérification automatique exige désormais que **toute variation d'un compte soit
   expliquée par un flux publié**. C'est elle qui a trouvé les deux derniers cas.
->>>>>>> origin/main
 
-<<<<<<< HEAD
 ### Après un divorce, tes droits CELI et REER étaient encore ceux d'un couple
 - Chaque 1er janvier, l'app te rouvrait **le double des droits** (CELI, REER, et le plafond CELIAPP
   à vie d'un couple) alors que ton ménage n'a plus qu'une personne. Ta déclaration de décembre, elle,
   comptait déjà un seul contribuable : les deux moitiés du calcul se contredisaient.
 - Mesuré sur un scénario à 25 ans : **716 717 $ de patrimoine que tu n'aurais jamais pu accumuler.**
 - Corrigé. Rien ne change si tu n'es ni divorcé ni veuf — vérifié chiffre pour chiffre.
-=======
 ### À l'écran Succession, un divorcé héritait encore des rentes de son ex
 - La valeur actualisée du RRQ et de la PSV de ton ex-conjoint restait dans ton bilan successoral :
   **322 865 $ de trop** sur le scénario mesuré.
 - Le reste était juste — ton patrimoine mensuel, ta courbe, tes totaux. Le défaut ne vivait que sur
   cet écran-là, et c'est pour ça qu'il avait survécu à la correction du divorce.
->>>>>>> origin/main
+
+### En divorçant, tu payais encore l'impôt du couple
+- La dette (ou le remboursement) d'impôt de l'année du couple ne se partageait pas. Concrètement :
+  même après avoir cédé **100 %** de ton patrimoine, tu réglais seul la facture fiscale du ménage
+  au mois d'avril suivant. Dans l'autre sens, tu encaissais seul un remboursement de couple — ce qui
+  rendait ton « impôt à vie » affiché **négatif**.
+- Corrigé : l'impôt à payer ou à recevoir se partage comme le reste, dans les deux sens. À 50 %, la
+  moitié reste due — partager n'est pas effacer.
 
 ### Corrections de calcul (lot moteur, suite de l'audit)
 - **Ton crédit d'impôt pour dons était surévalué.** La part fédérale du crédit était comptée en
@@ -3916,8 +3918,6 @@ Lot de 13 items axés sur la clarté pour un utilisateur non expert.
   stratégie réelle (`target.strategy`).
 - Tests : 5 unitaires (faux `runScenario`, tri/bornage/progression/déterminisme) + 2
   d'intégration moteur réel (reproductibilité RNG seedée). 669 tests verts.
-
-
 
 ### G21 C3 suite — Décision RAP-vs-FHSA + placement par compte
 

@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-14 (suite 89) — `[PASSE-REEL-TXN-DU-JOUR]` : demande 2 de Marc, LIVRÉE
+> Toutes les transactions du jour dans `FutureDetailModal` (le panneau EXISTANT — son cadrage).
+>
+> ⚠️ **Décision de fond** : doublons et virements internes sont AFFICHÉS mais BARRÉS, avec leur
+> raison. Les masquer → liste qui ne colle pas au relevé bancaire. Les compter → total qui ne colle
+> pas à la courbe. Les deux promesses sont tenues par `counted` / `excluded` séparés.
+> ⚠️ **Filtrage À LA DEMANDE** (`services/history/dayTransactions.ts`), jamais une Map pré-indexée :
+> le registre couvre ~4 000 jours ; pré-indexer garderait TOUTES les transactions en mémoire en
+> permanence pour n'en montrer qu'une journée. Un balayage O(n) au clic sur une liste déjà chargée.
+> ⚠️ La base d'exclusion est la MÊME que `dailyPastLedger` (`isDuplicate` / `isTransfer`) — sinon la
+> liste et la courbe racontent deux histoires. Une garde de SOURCE le verrouille dans les deux sens.
+> ⚠️ Mode discret conforme DÈS LA NAISSANCE de la surface (montants masqués, marchands gardés) —
+> plutôt que d'être rattrapé par un ticket du lot A11Y plus tard.
+>
+> **Les DEUX demandes de Marc du 2026-08-14 sont donc livrées** (courbe coupée + transactions).
+> Restent ses décisions en attente : PDF en mode discret, dette passée AMORTIE ou FIGÉE, GO Lot 7.
+
 > ## 🔴 Session 2026-08-14 (suite 88) — `[PASSE-REEL-CAP-400J]` : BUG UTILISATEUR signalé par Marc
 > « je vois plus mon historique entre 2026-01-10 et 2026-08, je peux pas sélectionner dans la courbe ».
 > **Cause confirmée AU JOUR PRÈS** : `reconstructPortfolioHistoryDaily` plafonnait à 400 jours et

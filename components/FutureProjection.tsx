@@ -1803,6 +1803,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     <FutureDetailModal
                         point={detailPoint}
                         chartData={chartData}
+                        transactions={transactions}
                         userName1={config.users[0]?.name}
                         userName2={config.users[1]?.name}
                         isPrivacyMode={isPrivacyMode}

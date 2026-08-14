@@ -3109,3 +3109,22 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   il existe précisément parce qu'une coupure silencieuse a coûté sept mois d'historique — un décalage
   d'un jour renvoie l'utilisateur chercher au mauvais endroit. Reformulé en « le premier jour non
   reconstruit est le … », qui dit ce que la variable CONTIENT.
+
+- ⚠️ **[PASSE-REEL-TXN-DU-JOUR] 2026-08-14 — « montrer tout » et « compter juste » sont DEUX
+  promesses, et masquer une ligne en trahit une.** Marc voulait voir TOUTES ses transactions d'une
+  journée. Or le registre exclut du calcul les doublons d'import et les virements internes. Trois
+  options, une seule honnête : les masquer donne une liste qui ne correspond pas au relevé bancaire ;
+  les compter donne un total qui ne correspond pas à la courbe ; les AFFICHER BARRÉS, avec la raison,
+  tient les deux. D'où `counted` / `excluded` séparés dans le retour du helper, plutôt qu'une liste
+  unique filtrée. Règle : quand un filtre métier existe en amont, l'affichage ne doit ni le copier en
+  silence ni l'ignorer — il doit le RENDRE VISIBLE.
+- ⚠️ **[Même lot] Filtrer À LA DEMANDE plutôt que pré-indexer, quand la dimension est grande et
+  l'usage ponctuel.** La tentation était d'enrichir `dailyPastLedger` (qui construit déjà une Map par
+  jour) avec les transactions. Il couvre jusqu'à ~4 000 jours : on aurait gardé TOUTES les
+  transactions en mémoire, en permanence, pour n'en afficher qu'une journée à la fois. Un balayage
+  O(n) au clic, sur une liste déjà chargée, coûte moins et ne pèse rien le reste du temps.
+- ⚠️ **[Même lot] Un paramètre à VALEUR PAR DÉFAUT rend son cas `undefined` intestable par cette
+  voie.** Mon helper de test était `(point, transactions = TOUTES)`. Le test « sans la prop » passait
+  `undefined` explicitement — ce qui DÉCLENCHE le défaut en JS. Le test échouait donc en accusant le
+  composant d'afficher une section qu'il n'aurait pas dû, alors que c'était mon harnais qui lui
+  passait la liste complète. Pour tester une absence, rendre DIRECTEMENT sans la prop.

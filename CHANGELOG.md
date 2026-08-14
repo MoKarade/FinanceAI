@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-14 (transactions du jour)
+
+### Tes transactions, jour par jour
+- En cliquant sur **Détail** pour une journée passée, tu vois maintenant **toutes** les transactions
+  de ce jour-là : marchand, compte, catégorie, montant — plus le net de la journée.
+- Les **doublons d'import** et les **virements internes** sont affichés eux aussi, mais **barrés**,
+  avec la raison. Les cacher t'aurait donné une liste qui ne correspond pas à ton relevé bancaire ;
+  les compter t'aurait donné un total qui ne correspond pas à la courbe.
+- Le total affiché est celui qui **explique le mouvement de la courbe** ce jour-là.
+- En mode discret, les montants sont masqués mais les marchands restent : c'est ce qui te permet de
+  reconnaître tes lignes.
+
+---
+
 ## [unreleased] — 2026-08-14 (correctif courbe)
 
 ### 🔴 Ton historique réapparaît (bug que tu as signalé)

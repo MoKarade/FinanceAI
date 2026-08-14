@@ -1130,12 +1130,14 @@ stub : il n'aurait aucune date à lire.
   Marc au 2026-01-10 (sa date, au jour près). Boucle passée en curseur (1 993 ms → 37 ms, 54×) AVANT
   de relever le plafond à 4 000 j — relever seul aurait échangé un trou muet contre un gel de 2 s.
   `truncatedFrom` rend la troncature constatable. Garde : `tests/services/pastCap400Days.test.ts`.
-- [ ] 🔴 **`[PASSE-REEL-TXN-DU-JOUR]`** (M) — **DEMANDE DE MARC**, cadrage CONFIRMÉ par lui :
-  voir **toutes** les transactions d'une journée au clic, **dans le panneau existant** (pas une
-  modale). État actuel : `services/history/dailyPastLedger.ts` collecte `labels` (payees) mais
-  **plafonnés à 6 par jour** (l. 205) et rendus en infobulle seulement. Il faut porter la liste
-  COMPLÈTE (montant, marchand, catégorie, compte) jusqu'au panneau — pas un simple branchement.
-  ⚠️ Vérifier l'impact mémoire : jusqu'à ~4 000 jours × N transactions retenues en Map.
+- [x] 🔴 **`[PASSE-REEL-TXN-DU-JOUR]`** — livré 2026-08-14. Toutes les transactions du jour dans
+  `FutureDetailModal` (le panneau existant, cadrage de Marc) : marchand, compte, catégorie, montant,
+  + le net du jour. **Doublons et virements internes AFFICHÉS mais barrés**, avec leur raison — les
+  masquer donnerait une liste qui ne colle pas au relevé bancaire, les compter donnerait un total
+  qui ne colle pas à la courbe. Filtrage **à la demande** (`services/history/dayTransactions.ts`),
+  PAS de Map pré-construite : le registre couvre ~4 000 jours, les pré-indexer garderait tout en
+  mémoire pour n'en afficher qu'un. Mode discret conforme dès la naissance de la surface.
+  Gardes : `tests/services/dayTransactions.test.ts` + `tests/components/FutureDetailModal.transactions.test.tsx`.
 
 ### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
 

@@ -3058,3 +3058,54 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   (1) un scan large se TRIE avant de conclure — publier « 38 fuites » aurait été faux ;
   (2) une liste d'audit faite à la main se corrobore, mais ne prouve JAMAIS l'exhaustivité — seul un
   scan peut dire « il n'y en a pas d'autres », et seulement une fois ses faux positifs classés.
+- ⚠️ **[PASSE-REEL-CAP-400J] 2026-08-14 — un GARDE-FOU de volume devient une COUPURE de données, et
+  le commentaire qui le rassure peut n'avoir jamais été implémenté.** `reconstructPortfolioHistoryDaily`
+  plafonnait à 400 jours « pour qu'un appelant distrait ne demande pas 20 ans au jour », en rendant
+  les 400 PREMIERS. Pour un utilisateur réel dont l'historique démarre 20 mois plus tôt, ça coupe la
+  courbe EN PLEIN MILIEU de la fenêtre visible : les jours au-delà n'ont pas de valeur de placements,
+  et l'appelant les SAUTE — ni tracés, ni cliquables. Marc l'a signalé avec une date, et
+  `début + 399 jours` tombait dessus au jour près.
+  Deux leçons distinctes :
+  1. **Un plafond doit couvrir le cas d'usage RÉEL, pas un ordre de grandeur imaginé.** « Un peu plus
+     d'un an » sonne raisonnable et ne l'est pas pour un historique personnel.
+  2. **Le commentaire affirmait « l'appelant le voit à la longueur — plutôt qu'une troncature
+     silencieuse au milieu ». Aucun appelant ne comparait quoi que ce soit.** Une garantie écrite en
+     prose et jamais codée est pire que rien : elle rassure les relectures suivantes. Une troncature
+     se rend CONSTATABLE par une valeur de retour (`truncatedFrom`), pas par une phrase.
+- ⚠️ **[Même lot] Rendre RAPIDE avant de rendre PLUS GRAND.** Le réflexe était de monter le plafond.
+  MESURÉ d'abord : 1 993 ms pour 1 687 jours — le correctif « évident » aurait troqué un trou muet
+  contre un gel de 2 s à chaque zoom. La cause : `priceAt` et `priceAgeDays` re-balayaient TOUT
+  l'historique de prix, par actif ET par jour (deux scans complets par couple, ≈ 63 M d'opérations).
+  La boucle des jours étant strictement croissante, un curseur par actif suffit : **37 ms, 54×**.
+  Le plafond n'a été relevé qu'APRÈS. Règle : quand un plafond existe « pour la perf », mesurer ce
+  qu'il protège avant de le déplacer — souvent il masque un algorithme à corriger.
+  ⚠️ Corollaire de méthode : une optimisation ne vaut RIEN si elle déplace un chiffre. Les helpers
+  d'origine ont été laissés INCHANGÉS (ils servent aussi la reconstruction mensuelle), et le test
+  d'équivalence compare la boucle optimisée À EUX, jour par jour — pas à une valeur recopiée.
+- ⚠️ **[PASSE-REEL-CAP-400J, revue d'intégrité] Remplacer un SCAN par un CURSEUR ajoute une
+  HYPOTHÈSE que l'original n'avait pas.** Un scan complet (`priceAt`) tolère n'importe quel ordre,
+  n'importe quel doublon, n'importe quel point corrompu : il regarde tout, à chaque fois. Un curseur
+  suppose que le tri est TOTALEMENT cohérent avec le prédicat qu'il avance. Trois divergences
+  MESURÉES par le panel sur mon curseur, aucune visible en lisant le diff :
+  · **doublon de date** → le curseur s'arrête sur la DERNIÈRE occurrence, `priceAt` garde la
+    PREMIÈRE (son `>` est strict). 700 $ contre 500 $ — et surtout la courbe QUOTIDIENNE et la
+    courbe MENSUELLE affichaient deux prix DIFFÉRENTS pour la même date et le même titre ;
+  · **`price` null ou absent** → `best.price` « existe » techniquement, donc le repli
+    `?? currentPrice` ne se déclenche plus : 0 $ (le « 0 $ crédible » interdit par no-fake-data),
+    ou `qty * undefined` = **NaN propagé jusqu'au patrimoine net** ;
+  · **`date` absente sur un point EN TÊTE** → `undefined <= t` est faux, le curseur ne franchit
+    jamais ce point et reste GELÉ sur toute la fenêtre.
+  Correctif : NORMALISER une fois à la construction (filtrer les points invalides, trier,
+  dédoublonner en gardant la PREMIÈRE occurrence — le choix de `priceAt`), pour que le module reste
+  INDISCERNABLE de l'implémentation qu'il remplace. Coût mesuré : nul (109 ms à 4 000 jours).
+  Règle : après une réécriture d'algorithme, la question n'est pas « est-ce plus rapide » mais
+  « quelles hypothèses NOUVELLES ai-je introduites, et qu'arrive-t-il quand elles sont fausses ».
+  ⚠️ Indice qui aurait dû m'alerter : `buildMarketData` et `periodReturn` filtraient DÉJÀ
+  `p.date && Number.isFinite(p.price)`. Ce module était le seul consommateur à ne pas suivre la
+  convention — une convention appliquée partout SAUF ici est un signal, pas un détail.
+- ⚠️ **[Même revue] Une mise en garde qui se trompe d'un jour perd sa raison d'être.** Mon bandeau
+  disait « l'historique s'arrête au {truncatedFrom} », alors que `truncatedFrom` est le PREMIER jour
+  NON reconstruit : la courbe s'arrête la VEILLE. Sur un texte dont tout l'intérêt est d'être exact —
+  il existe précisément parce qu'une coupure silencieuse a coûté sept mois d'historique — un décalage
+  d'un jour renvoie l'utilisateur chercher au mauvais endroit. Reformulé en « le premier jour non
+  reconstruit est le … », qui dit ce que la variable CONTIENT.

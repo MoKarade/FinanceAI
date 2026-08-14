@@ -1124,6 +1124,19 @@ stub : il n'aurait aucune date à lire.
   signalé par Marc, sans greper le moteur — le vrai défaut était `[PASSE-REEL-1]` (le passé
   affichait la prévision), et il masquait le fait que l'amorçage du futur, lui, était déjà bon.
 
+### 🔴 `[PASSE-REEL-JOUR]` — la courbe passée au jour (bug + demande de Marc, 2026-08-14)
+
+- [x] 🔴 **`[PASSE-REEL-CAP-400J]`** — livré 2026-08-14. Plafond de 400 j qui coupait la courbe de
+  Marc au 2026-01-10 (sa date, au jour près). Boucle passée en curseur (1 993 ms → 37 ms, 54×) AVANT
+  de relever le plafond à 4 000 j — relever seul aurait échangé un trou muet contre un gel de 2 s.
+  `truncatedFrom` rend la troncature constatable. Garde : `tests/services/pastCap400Days.test.ts`.
+- [ ] 🔴 **`[PASSE-REEL-TXN-DU-JOUR]`** (M) — **DEMANDE DE MARC**, cadrage CONFIRMÉ par lui :
+  voir **toutes** les transactions d'une journée au clic, **dans le panneau existant** (pas une
+  modale). État actuel : `services/history/dailyPastLedger.ts` collecte `labels` (payees) mais
+  **plafonnés à 6 par jour** (l. 205) et rendus en infobulle seulement. Il faut porter la liste
+  COMPLÈTE (montant, marchand, catégorie, compte) jusqu'au panneau — pas un simple branchement.
+  ⚠️ Vérifier l'impact mémoire : jusqu'à ~4 000 jours × N transactions retenues en Map.
+
 ### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
 
 > Balayage complet des 133 composants après la PR #608 (3 tours de revue). Les écrans de LECTURE

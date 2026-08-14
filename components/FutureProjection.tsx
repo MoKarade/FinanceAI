@@ -813,6 +813,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             // surface ne devait pas emporter l'honnêteté avec elle.
             undatedTotal: built.undatedTotal,
             flowsAfterNowDate: built.flowsAfterNowDate,
+            // [PASSE-REEL-CAP-400J] Le plafond de reconstruction a mordu : la courbe s'arrête
+            // AVANT la fin de la fenêtre demandée. Muet jusqu'ici — c'est précisément ce qui a
+            // fait qu'un trou de 7 mois est passé inaperçu jusqu'à ce que Marc le signale.
+            truncatedFrom: built.truncatedFrom,
         };
     }, [dailyPastFrom, todayIso, transactions, calculatedStartingCash, storeAssets, fxRates, realEstateGoals, startYear, currentDebtNonImmo]);
     const dailyPastByDate = dailyPast?.byDate ?? null;
@@ -1674,6 +1678,18 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 ⚠ {formatCAD(Math.abs(dailyPast.undatedTotal))} de transactions datées au mois
                                 seul (sans jour) ne peuvent pas être placées : le niveau des jours passés peut
                                 être décalé d'autant.
+                            </span>
+                        )}
+                        {dailyPast?.truncatedFrom && (
+                            <span className="mt-1 block text-amber-300/90">
+                                {/* ⚠️ `truncatedFrom` est le PREMIER jour NON reconstruit, pas le dernier
+                                    tracé. Mon premier libellé disait « s'arrête au {date} », ce qui
+                                    laissait croire que ce jour-là existait encore — décalage d'un jour
+                                    relevé par la revue, sur une mise en garde dont tout l'intérêt est
+                                    d'être exacte. */}
+                                ⚠ Le premier jour non reconstruit est le {dailyPast.truncatedFrom} : à
+                                partir de là, la courbe passée s'interrompt (limite de volume) et les
+                                journées ne sont ni tracées ni sélectionnables.
                             </span>
                         )}
                         {dailyPast !== null && Math.abs(dailyPast.flowsAfterNowDate) > 0.5 && (

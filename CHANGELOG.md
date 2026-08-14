@@ -6,6 +6,26 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-14
+
+### Le mode discret couvre enfin les FORMULAIRES
+- Jusqu'ici le mode discret masquait ce que tu **lis**, jamais ce que tu **saisis**. Ton salaire
+  brut et net — les tiens et ceux de ta conjointe — restaient affichés en clair dans Profil, quel
+  que soit le mode. Idem pour le facteur d'équivalence, les RSU et tes revenus secondaires.
+- Ces champs se masquent maintenant en « ••• » et se rouvrent d'un clic (ou au Tab) pour être
+  modifiés, exactement comme les montants déjà couverts ailleurs.
+- Le bonus en **pourcentage** reste visible : c'est un %, pas un montant, et le brut auquel il
+  s'applique est masqué — il ne permet de reconstituer aucune somme.
+- ⚠️ **Correctif d'accessibilité au passage** : jusqu'ici, un champ masqué perdait son nom. Au
+  lecteur d'écran, quatre champs de salaire annonçaient tous « Montant masqué » — impossible de
+  savoir lequel on éditait. Chaque champ garde désormais son libellé, l'état masqué étant annoncé
+  en complément. Ça vaut pour TOUS les écrans qui masquent des champs, pas seulement Profil.
+- Dans la foulée, le champ « montant » de chaque ligne du **Budget** annonce enfin de quel poste il
+  s'agit (« Montant de base — Épicerie »). Avant, les dix lignes d'un tableau disaient toutes la
+  même chose : « Modifier le montant de base ».
+
+---
+
 ## [unreleased] — 2026-08-12
 
 ### Le scénario « divorce » disait presque n'importe quoi

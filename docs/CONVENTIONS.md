@@ -2881,3 +2881,49 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   n'importe quelle fixture « symétrique » l'aurait laissé passer. Il a fallu 14 000 $ contre
   2 000 $/mois pour le faire apparaître. Règle : quand un calcul MOYENNE deux entités, toute
   fixture où ces entités sont égales est aveugle par construction.
+
+- ⚠️ **[A11Y-MASK-STEALS-NAME] 2026-08-14 — masquer un champ ne doit pas lui voler son NOM.**
+  `PrivateNumberInput` remplace l'`<input>` par un `<button>` « ••• » portant
+  `aria-label="Montant masqué — cliquer pour modifier"` EN DUR. Or `aria-label` est PRIORITAIRE sur
+  les deux seules façons dont un champ est nommé dans le dépôt : le `<label htmlFor>` (salaires de
+  Profil) et l'`aria-label` du champ lui-même (facteur d'équivalence, RSU, Asset Location). MESURÉ
+  avec l'algorithme réel de nom accessible : « Salaire Brut annuel ($) » et « RSU vesting annuel »
+  devenaient l'un comme l'autre « Montant masqué — cliquer pour modifier ». En mode discret, TOUS
+  les champs d'un formulaire annonçaient donc le même nom — impossible de savoir lequel on édite.
+  Le masquage protégeait la valeur en rendant le formulaire inutilisable au lecteur d'écran.
+  Correctif : laisser le nom au NOMMEUR EXISTANT (aucun `aria-label` en dur ; ceux du champ —
+  `aria-label` ET `aria-labelledby`, les deux, même si le second n'a aucun appelant aujourd'hui —
+  sont simplement transmis) et porter l'état masqué là où il n'écrase personne — le `title` devient une
+  DESCRIPTION (annoncée EN PLUS du nom) et un texte `sr-only` ne devient le nom que si rien d'autre
+  ne nomme le bouton (le contenu est le dernier recours de l'algorithme).
+  Règle générale : **un remplacement de contrôle doit préserver le nom accessible du contrôle
+  remplacé**, et ça se MESURE (`toHaveAccessibleName`), ça ne se raisonne pas — `getByLabelText` de
+  Testing Library trouvait bien le bouton par son `<label>` alors que son nom réel était le libellé
+  masqué. La requête TL n'est PAS l'algorithme de nommage : elle a validé un écran inutilisable.
+- ⚠️ **[Même lot] La valeur d'un champ ÉDITABLE ne vit pas dans `textContent`.** Elle vit dans
+  `.value`. Les tests de fuite de #608 comparaient le texte APLATI du DOM : ils étaient structurellement
+  aveugles aux formulaires, ce qui explique que la SAISIE ait survécu à trois tours de revue sur
+  l'AFFICHAGE. Un test de mode discret doit inspecter les DEUX canaux (texte + `.value`), plus les
+  attributs (`title`, `aria-label`, `placeholder`).
+- ⚠️ **[Même lot] Masquer ≠ tout masquer : la décision « laissé en clair » mérite son test.** Le bonus
+  en POURCENTAGE reste éditable (le brut auquel il s'applique est masqué, le % seul ne reconstitue
+  aucune somme). Sans test d'intention, un futur « masquons tout » passe sans que le choix soit
+  rediscuté — et un test qui échoue force la discussion au bon moment.
+- ⚠️ **[Même lot] Un agent de revue qui a `Bash` PERTURBE l'arbre de travail — ne jamais committer
+  pendant qu'un panel tourne.** L'agent `silent-failure-hunter` lancé sur ce diff mesurait en
+  remettant la version d'AVANT du fichier, puis en la restaurant.
+  ⚠️ **Attribution corrigée** : j'avais d'abord accusé l'agent `a11y-auditor` (le commit 9b76782 le
+  dit encore, il est poussé). Faux : son rapport détaille qu'il n'a créé que des tests jetables, et
+  c'est `silent-failure-hunter` qui a confessé le swap `origin/main` ↔ HEAD. Leçon dans la leçon :
+  **quand plusieurs agents partagent un arbre, on ne DÉDUIT pas le coupable de celui dont on voit
+  les fichiers** — les fichiers de sondage visibles étaient ceux de l'INNOCENT. Le rapport de chaque
+  agent dit ce qu'il a fait ; le lire avant d'écrire une accusation dans une doc permanente. Mon `git add` est tombé pile dans cette fenêtre :
+  l'index contenait l'ANCIENNE primitive alors que le fichier de travail était bon. Plus tard, une
+  de ses restaurations a écrasé un incrément non commité (`aria-labelledby` + son test).
+  Détecté parce que j'ai relu `git show :<fichier>` au lieu de faire confiance à `git add` — c'est
+  ce contrôle qui a évité de pousser une régression silencieuse portant le message du correctif.
+  Règle : la course concurrente documentée pour les vérifs money-critical (`git stash`) NE SE LIMITE
+  PAS au moteur — elle vaut dès qu'un agent a `Bash` sur l'arbre partagé. Donc : (1) snapshoter les
+  fichiers modifiés HORS du dépôt avant de lancer un panel, (2) ne committer qu'une fois le panel
+  rendu, (3) RELIRE le contenu réellement commité (`git show HEAD:<fichier>`), jamais supposer que
+  `git add` a capturé ce qu'on venait d'écrire.

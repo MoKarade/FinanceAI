@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card } from '../ui/Card';
 import { Icon } from '../ui/Icon';
+import { PrivateNumberInput } from '../ui/PrivateNumberInput';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { annualSalaryToMonthly } from '../../utils/salary';
 import type { User } from '../../types';
@@ -82,7 +83,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                 <div className="grid grid-cols-2 gap-2">
                                     <div data-focus-section={`profile-user${idx + 1}-grossSalary`}>
                                         <label htmlFor={`ucf-gross-${idx}`} className="text-meta font-bold text-success-400">Salaire Brut annuel ($)</label>
-                                        <input
+                                        <PrivateNumberInput
                                             id={`ucf-gross-${idx}`}
                                             type="number"
                                             value={grossAnnualDraft[idx] ?? String((user.grossSalary || 0) * 12)}
@@ -96,7 +97,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                     </div>
                                     <div data-focus-section={`profile-user${idx + 1}-netSalary`}>
                                         <label htmlFor={`ucf-net-${idx}`} className="text-meta font-bold text-info-400">Salaire Net mensuel ($)</label>
-                                        <input
+                                        <PrivateNumberInput
                                             id={`ucf-net-${idx}`}
                                             type="number"
                                             value={user.netSalary || user.salary || 0}
@@ -120,7 +121,9 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                     </label>
                                     <div className="flex items-center gap-2 bg-black/20 p-1.5 rounded border border-white/5">
                                         <span className="text-tiny text-ink-300 uppercase font-black shrink-0 inline-flex items-center gap-1">FE <Icon name="budget" size={11} /></span>
-                                        <input
+                                        {/* Le FE est un MONTANT ($ de la case 52 du T4) : il chiffre la valeur du régime de
+                                            retraite de l'employeur. Masqué au même titre que le salaire. */}
+                                        <PrivateNumberInput
                                             type="number"
                                             placeholder="Facteur Equiv. (ex: 0)"
                                             aria-label="Facteur d'équivalence"
@@ -161,13 +164,17 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                     {/* PH3-c (+ industry purgé 2026-06-19) — champs profil détaillé morts retirés (aucun consommateur). */}
                                     <div className="text-tiny text-ink-400 uppercase tracking-widest mt-1">Rémunération variable</div>
                                     <div className="grid grid-cols-3 gap-1">
+                                        {/* Bonus en POURCENTAGE : laissé en clair à dessein. Le contrat du mode discret
+                                            porte sur les MONTANTS ($) — et le brut auquel ce % s'applique est masqué,
+                                            donc le % seul ne reconstitue aucune somme. RSU et revenus secondaires,
+                                            eux, sont des $/an : masqués. */}
                                         <input aria-label="Bonus en % du brut" type="number" placeholder="Bonus % brut" value={user.bonusPctOfGross ?? ''}
                                             onChange={e => patch(idx, { bonusPctOfGross: Number(e.target.value) || undefined })}
                                             className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                                        <input aria-label="RSU vesting annuel" type="number" placeholder="RSU $/an" value={user.rsuVestingPerYear ?? ''}
+                                        <PrivateNumberInput aria-label="RSU vesting annuel" type="number" placeholder="RSU $/an" value={user.rsuVestingPerYear ?? ''}
                                             onChange={e => patch(idx, { rsuVestingPerYear: Number(e.target.value) || undefined })}
                                             className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                                        <input aria-label="Revenus secondaires annuels" type="number" placeholder="Side income $/an" value={user.sideIncomeAnnual ?? ''}
+                                        <PrivateNumberInput aria-label="Revenus secondaires annuels" type="number" placeholder="Side income $/an" value={user.sideIncomeAnnual ?? ''}
                                             onChange={e => patch(idx, { sideIncomeAnnual: Number(e.target.value) || undefined })}
                                             className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                                     </div>

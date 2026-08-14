@@ -53,7 +53,11 @@ export const PrivateNumberInput: React.FC<Props> = ({ className = '', onBlur, on
                 // écraser personne : le `title` sert de DESCRIPTION (annoncée en plus du nom), et le
                 // texte sr-only ne devient le nom que si rien d'autre ne nomme le bouton (le contenu est
                 // le dernier recours de l'algorithme de nom accessible).
+                // Les DEUX attributs de nommage sont transmis, pas seulement `aria-label` :
+                // `aria-labelledby` n'a aucun appelant aujourd'hui, mais l'oublier recréerait
+                // exactement le défaut corrigé ici pour le prochain qui s'en sert.
                 aria-label={rest['aria-label']}
+                aria-labelledby={rest['aria-labelledby']}
                 title={MASKED_AMOUNT_LABEL}
                 onClick={(e) => { e.stopPropagation(); setRevealed(true); }}
                 onFocus={(e) => { e.stopPropagation(); setRevealed(true); }}

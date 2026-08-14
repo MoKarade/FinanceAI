@@ -2891,8 +2891,9 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   devenaient l'un comme l'autre « Montant masqué — cliquer pour modifier ». En mode discret, TOUS
   les champs d'un formulaire annonçaient donc le même nom — impossible de savoir lequel on édite.
   Le masquage protégeait la valeur en rendant le formulaire inutilisable au lecteur d'écran.
-  Correctif : laisser le nom au NOMMEUR EXISTANT (aucun `aria-label` en dur, celui du champ est
-  simplement transmis) et porter l'état masqué là où il n'écrase personne — le `title` devient une
+  Correctif : laisser le nom au NOMMEUR EXISTANT (aucun `aria-label` en dur ; ceux du champ —
+  `aria-label` ET `aria-labelledby`, les deux, même si le second n'a aucun appelant aujourd'hui —
+  sont simplement transmis) et porter l'état masqué là où il n'écrase personne — le `title` devient une
   DESCRIPTION (annoncée EN PLUS du nom) et un texte `sr-only` ne devient le nom que si rien d'autre
   ne nomme le bouton (le contenu est le dernier recours de l'algorithme).
   Règle générale : **un remplacement de contrôle doit préserver le nom accessible du contrôle
@@ -2908,3 +2909,15 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   en POURCENTAGE reste éditable (le brut auquel il s'applique est masqué, le % seul ne reconstitue
   aucune somme). Sans test d'intention, un futur « masquons tout » passe sans que le choix soit
   rediscuté — et un test qui échoue force la discussion au bon moment.
+- ⚠️ **[Même lot] Un agent de revue qui a `Bash` PERTURBE l'arbre de travail — ne jamais committer
+  pendant qu'un panel tourne.** L'agent a11y lancé sur ce diff mesurait en remettant la version
+  d'AVANT du fichier, puis en la restaurant. Mon `git add` est tombé pile dans cette fenêtre :
+  l'index contenait l'ANCIENNE primitive alors que le fichier de travail était bon. Plus tard, une
+  de ses restaurations a écrasé un incrément non commité (`aria-labelledby` + son test).
+  Détecté parce que j'ai relu `git show :<fichier>` au lieu de faire confiance à `git add` — c'est
+  ce contrôle qui a évité de pousser une régression silencieuse portant le message du correctif.
+  Règle : la course concurrente documentée pour les vérifs money-critical (`git stash`) NE SE LIMITE
+  PAS au moteur — elle vaut dès qu'un agent a `Bash` sur l'arbre partagé. Donc : (1) snapshoter les
+  fichiers modifiés HORS du dépôt avant de lancer un panel, (2) ne committer qu'une fois le panel
+  rendu, (3) RELIRE le contenu réellement commité (`git show HEAD:<fichier>`), jamais supposer que
+  `git add` a capturé ce qu'on venait d'écrire.

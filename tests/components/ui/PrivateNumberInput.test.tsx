@@ -116,6 +116,18 @@ describe('[SEC-PRIVACY-BLUR-INPUTS] PrivateNumberInput', () => {
             expect(container.querySelector('button')).toHaveAccessibleName('RSU vesting annuel');
         });
 
+        // Aucun appelant n'utilise `aria-labelledby` aujourd'hui : ce test verrouille un trou LATENT.
+        // Ne transmettre que `aria-label` recréerait le défaut corrigé ici pour le prochain appelant.
+        it('nommé par aria-labelledby : le libellé du champ SURVIT au masquage', () => {
+            const { container } = render(
+                <div>
+                    <span id="lbl-ext">Salaire externe</span>
+                    <PrivateNumberInput aria-labelledby="lbl-ext" type="number" value={1} onChange={() => {}} />
+                </div>,
+            );
+            expect(container.querySelector('button')).toHaveAccessibleName('Salaire externe');
+        });
+
         it("l'état masqué est annoncé en DESCRIPTION, donc sans écraser aucun nom", () => {
             const { container } = render(
                 <PrivateNumberInput aria-label="RSU vesting annuel" type="number" value={1} onChange={() => {}} />,

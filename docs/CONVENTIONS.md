@@ -3008,3 +3008,19 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   vrai (`useState` dans un wrapper), pas le simuler par un `vi.fn()` ; (2) une feature qui dépend
   d'une propriété INVISIBLE — ici l'identité d'un composant à travers les re-renders — mérite sa
   garde explicite : rien dans le code ne signale que changer cette clé casse la saisie.
+
+- ⚠️ **[A11Y-PRIVACY-PATRIMOINE-ETENDU] 2026-08-14 — chercher l'ABSENCE d'un MÉCANISME ne prouve pas
+  l'absence du RÉSULTAT.** J'ai grepé `<label>` dans `PatrimoineExtended.tsx`, trouvé zéro, et écrit
+  dans le BACKLOG « aucun nommage, il faudra tout nommer par `aria-label` ». Faux en pratique : 15
+  des 17 champs portaient DÉJÀ un `aria-label`, que mon grep ne cherchait pas. Le nom accessible a
+  plusieurs sources (`<label htmlFor>`, `aria-label`, `aria-labelledby`, contenu, `title`) — n'en
+  interroger qu'une et conclure sur le RÉSULTAT est un raisonnement invalide. La mesure juste est
+  `toHaveAccessibleName`, pas un grep sur une seule des voies. Le cadrage faux a été RECTIFIÉ dans
+  le BACKLOG plutôt que laissé : un cadrage erroné coûte du temps à la session suivante, qui le lit
+  comme un acquis (famille `DOC-STALE-IMPOSSIBILITY`).
+- ⚠️ **[Même lot] Le meilleur critère de masquage est celui que le fichier s'est DÉJÀ donné.**
+  Ici les `aria-label` distinguaient nativement `(dollars)`, `(pourcentage)` et `(années)`. S'appuyer
+  dessus plutôt qu'inventer une règle donne trois choses gratuitement : le classement est déjà fait
+  par l'auteur du fichier, la garde de source est triviale à écrire, et un futur champ nommé selon
+  la même convention est couvert sans qu'on y pense. Avant de définir un critère, chercher celui qui
+  existe déjà.

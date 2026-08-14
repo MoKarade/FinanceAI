@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-14 (suite 86) — `[A11Y-PRIVACY-PATRIMOINE-ETENDU]` : 4/9 du lot
+> 4 panneaux, 17 champs, **13 montants masqués**. **Critère : l'`aria-label` porte `(dollars)`** —
+> c'était DÉJÀ la convention du fichier (les autres portent `(pourcentage)` / `(années)`), donc rien
+> d'inventé. Garde de source SYMÉTRIQUE + garde de couverture, les deux prouvées par perturbation.
+> NOI du résumé d'immeuble masqué ET passé à `formatCAD` (il violait la règle de formatage).
+>
+> ⚠️ **J'avais écrit un cadrage FAUX dans le BACKLOG** : « zéro `<label>` dans tout le fichier → le
+> nommage devra passer par `aria-label` ». Le constat était vrai mais TROMPEUR : j'avais grepé
+> `<label>` sans regarder les `aria-label`, qui existaient déjà sur 15 des 17 champs. Il n'y avait
+> quasi rien à nommer (2 champs d'assurance). **Chercher l'ABSENCE d'un mécanisme ne prouve pas
+> l'absence DU RÉSULTAT qu'il produit** — le nom accessible avait une autre source. Rectifié dans le
+> BACKLOG plutôt que laissé tel quel : un cadrage faux fait perdre du temps à la session suivante.
+>
+> **Reste du lot** : `-INVESTMENTS-DETAIL`, `-PROJECTION-EXPLAINS`, `-DIVERS`, `-PROPERTY-CONFIG`,
+> `-ONBOARDING`, `-TITLE-CLOBBER`, plus `[A11Y-LABELS-PARAMS-AVANCES]`.
+
 > ## 🟢 Session 2026-08-14 (suite 85) — `[A11Y-PRIVACY-SOLDES-COMPTES]` : 3/9 du lot
 > `AccountsSection.tsx` rendait le solde RÉEL de chaque compte en `<input>` nu. Masqué.
 >

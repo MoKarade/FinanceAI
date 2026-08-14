@@ -1158,18 +1158,20 @@ stub : il n'aurait aucune date à lire.
   mécanique (un `id` + un `htmlFor` par champ) ; c'est le volume qui l'a sorti du périmètre.
   ⚠️ Le même trou existe probablement dans les autres panneaux de Réglages : greper
   `<label className=` non suivi de `htmlFor` AVANT de chiffrer.
-- [x] 🔴 **`[A11Y-PRIVACY-SOLDES-COMPTES]`** (S) — livré 2026-08-14 (PR #631). Solde réel de CHAQUE
-  compte masqué. Association `<label htmlFor>` câblée (elle n'existait pas), avec un `id` **INDEXÉ**
-  et non dérivé du nom de compte — un nom saisi par l'utilisateur peut se nettoyer en un identifiant
-  DÉJÀ pris, ce qui casse l'association en silence. Nom et nombre de comptes laissés en clair, à
-  dessein et sous test. Garde : `tests/components/settings/AccountsSection.privacy.test.tsx`.
-- [ ] 🔴 **`[A11Y-PRIVACY-PATRIMOINE-ETENDU]`** (M) — ⚠️ **CADRAGE MESURÉ 2026-08-14, à lire avant de
-  coder** : 17 champs numériques, **ZÉRO `<label>` dans TOUT le fichier** (≠ des autres écrans du lot,
-  où le libellé existait mais n'était pas associé). Le nommage devra donc passer par `aria-label`,
-  pas par `htmlFor`. `toLocaleString` nu confirmé l. 119 (viole la règle `formatCAD`).
-  `components/PatrimoineExtended.tsx` : 4 panneaux
-  (assurance, immeuble locatif, société, objectifs cycliques) entièrement à nu, plus un résumé
-  NOI/Cap Rate en `toLocaleString` nu (l. 119 — viole aussi la règle `formatCAD`).
+- [x] 🔴 **`[A11Y-PRIVACY-PATRIMOINE-ETENDU]`** (M) — livré 2026-08-14. **13 montants sur 17 champs**
+  masqués dans les 4 panneaux (assurances, immeubles locatifs, sociétés, objectifs cycliques).
+  **Critère** : l'`aria-label` porte `(dollars)` — c'était DÉJÀ la convention du fichier, pas une
+  règle inventée. Les 4 non-montants (taux hypothécaire, vacance, % détenu, fréquence véhicule)
+  restent lisibles. NOI du résumé d'immeuble masqué ET passé à `formatCAD` (il violait la règle de
+  formatage via un `toLocaleString` nu). Deux champs d'assurance nommés au passage — ils n'avaient
+  QUE leur `placeholder`, qui disparaît avec le champ masqué. Garde de SOURCE symétrique + garde de
+  couverture : `tests/components/PatrimoineExtended.privacy.test.tsx`.
+  ⚠️ **Rectification d'un cadrage FAUX que j'avais écrit ici** : « zéro `<label>` dans tout le
+  fichier, le nommage devra passer par `aria-label` ». Le constat était vrai mais TROMPEUR — j'avais
+  grepé `<label>` sans regarder les `aria-label`, qui existaient déjà sur 15 des 17 champs. Il n'y
+  avait donc quasi rien à nommer. Leçon : chercher l'ABSENCE d'un mécanisme ne prouve pas l'absence
+  DU RÉSULTAT qu'il produit — ici le nom accessible avait une autre source.
+
 - [ ] 🔴 **`[A11Y-PRIVACY-INVESTMENTS-DETAIL]`** (S) — `components/Investments.tsx` : `isPrivacyMode`
   est déjà lu dans ce fichier, mais oublié sur les légendes des donuts (861, 923), les suggestions de
   rééquilibrage (1107, 1112, 1154, 1160) et la carte par titre — Valeur (1303), Coût moyen et Gain

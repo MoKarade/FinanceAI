@@ -31,6 +31,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-14 (suite 3)
+
+### Assurances, immeubles locatifs, sociétés, objectifs
+- Les quatre panneaux du **patrimoine étendu** se masquent maintenant en mode discret : capital et
+  prime de tes assurances, prix / valeur / hypothèque / loyer / charges / DPA de tes immeubles
+  locatifs, valeur et dividende de ta société, coûts de véhicule, de rénovation et tes dons.
+- Le **résumé d'un immeuble** affichait son NOI en clair même en mode discret. Corrigé — et il était
+  au passage le dernier montant de l'app formaté à la main plutôt que par la fonction commune, ce
+  qui lui donnait un « $ » collé au nombre au lieu du format québécois normal.
+- Restent visibles, à dessein : les **taux** (hypothécaire, vacance, % détenu) et les **durées**.
+  Ce ne sont pas des sommes.
+
+---
+
 ## [unreleased] — 2026-08-14 (suite 2)
 
 ### Tes soldes de comptes aussi

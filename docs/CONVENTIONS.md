@@ -3024,3 +3024,19 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   par l'auteur du fichier, la garde de source est triviale à écrire, et un futur champ nommé selon
   la même convention est couvert sans qu'on y pense. Avant de définir un critère, chercher celui qui
   existe déjà.
+- ⚠️ **[Même lot] Une garde d'exhaustivité doit comparer des ENSEMBLES, pas des CARDINALITÉS.**
+  Ma garde vérifiait que le nombre de contrôles vus par le scan égalait le nombre d'occurrences de
+  `aria-label="`. Ça attrape bien un champ oublié — mais deux erreurs qui se COMPENSENT
+  numériquement (un contrôle raté par la regex, et ailleurs un `aria-label="` cité dans un
+  commentaire de ligne que le nettoyage ne retirait pas) rendaient le test vert à tort. Comparer les
+  LIBELLÉS eux-mêmes coûte une ligne, supprime la classe d'erreur, et le message d'échec NOMME le
+  champ fautif au lieu d'annoncer « 12 attendus, 11 trouvés » — ce qui change tout pour celui qui
+  débogue. Règle : dès qu'une assertion porte sur « tout est couvert », comparer les éléments.
+- ⚠️ **[Même lot] Un changement de FORMATAGE peut être un changement de VALEUR AFFICHÉE.** Passer le
+  NOI d'un `toLocaleString` nu à `formatCAD` était obligatoire (source unique), mais `formatCAD`
+  impose `maximumFractionDigits: 0` alors que `toLocaleString` en laissait jusqu'à trois. MESURÉ sur
+  la fixture : `230 528,436$` → `230 528 $`. L'utilisateur perd des décimales — c'est une
+  amélioration (un NOI au millième de dollar est du bruit), mais elle se DÉCLARE au CHANGELOG au
+  lieu de se déduire d'un diff. Règle : avant de conclure « c'est cosmétique », instancier le
+  format avant et après sur une valeur NON RONDE — sur un entier, les deux sont identiques et la
+  différence reste invisible.

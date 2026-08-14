@@ -177,9 +177,13 @@ describe('[A11Y-PRIVACY-PATRIMOINE-ETENDU] nom accessible des champs masqués', 
 // le fichier, y compris un champ ajouté demain dans un panneau que la fixture n'utilise pas.
 describe('[A11Y-PRIVACY-PATRIMOINE-ETENDU] garde de source : tout champ « (dollars) » est masqué', () => {
     const source = readFileSync(resolve(__dirname, '../../components/PatrimoineExtended.tsx'), 'utf8');
-    // Source décommentée : ce fichier CITE des noms de champs dans ses commentaires, et un
-    // décompte sur la source brute compterait ces mentions comme de vrais champs (leçon #630).
-    const propre = source.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+    // Source décommentée : ce fichier CITE des noms de champs dans ses commentaires, et un scan sur
+    // la source brute prendrait ces mentions pour de vrais champs (leçon #630). On retire les
+    // commentaires JSX en bloc ET les lignes `//` — une ligne entière, donc aucun risque de couper
+    // une URL au milieu d'une instruction.
+    const propre = source
+        .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+        .replace(/^\s*\/\/.*$/gm, '');
 
     /** Chaque contrôle, avec l'`aria-label` qu'il porte. */
     const controles = () => {
@@ -189,11 +193,20 @@ describe('[A11Y-PRIVACY-PATRIMOINE-ETENDU] garde de source : tout champ « (doll
         return out;
     };
 
+    /** Tous les `aria-label` du fichier, sans hypothèse sur la balise ni l'ordre des attributs. */
+    const tousLesLibelles = () =>
+        [...propre.matchAll(/aria-label="([^"]*)"/g)].map((m) => m[1]);
+
+    // ⚠️ LA garde de la garde — comparaison d'ENSEMBLES, pas de CARDINALITÉS.
+    // La regex de `controles()` exige que `aria-label` soit le PREMIER attribut de la balise. Un
+    // futur champ écrit `<PrivateNumberInput type="number" aria-label="X (dollars)" …>` lui
+    // échapperait entièrement. Comparer deux LONGUEURS le détecterait, mais serait aveugle à deux
+    // erreurs qui se COMPENSENT numériquement. On compare donc les libellés eux-mêmes : le message
+    // d'échec nomme alors le champ manquant au lieu d'annoncer un écart de compte.
     it('le scan voit TOUS les champs nommés du fichier (aucun angle mort)', () => {
-        // Tous les contrôles nommés du fichier, quelle que soit la mise en forme du JSX.
-        const nommes = (propre.match(/aria-label="/g) ?? []).length;
-        expect(controles(), `le scan ne voit que ${controles().length} contrôles nommés sur ${nommes}`)
-            .toHaveLength(nommes);
+        const vus = new Set(controles().map((c) => c.libelle));
+        const manquants = tousLesLibelles().filter((l) => !vus.has(l));
+        expect(manquants, 'ces champs nommés échappent au scan : la garde ne les protège pas').toEqual([]);
     });
 
     it('la garde voit bien des libellés « (dollars) » (sinon elle ne prouverait rien)', () => {

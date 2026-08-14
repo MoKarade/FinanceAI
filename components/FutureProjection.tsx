@@ -689,6 +689,23 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
 
     // G5 — événement sélectionné (clic sur une pastille) → fiche détail.
     const [detailPoint, setDetailPoint] = useState<ProjectionChartPoint | null>(null);
+    /**
+     * [PASSE-REEL-TXN-DU-JOUR] Le JOUR cliqué, porté À PART du point de détail — et c'est
+     * indispensable, pas une préférence de style.
+     *
+     * ⚠️ `detailPointFor` REMPLACE volontairement un point quotidien par son point MENSUEL hôte
+     * (« un mois qui existe plutôt qu'un mois fantôme reconstitué depuis un jour »). Or `dayIso` et
+     * `hostMonthIndex` sont posés ENSEMBLE (`dailyLedger.ts`) : lire `dayIso` sur le point rebasé
+     * donne donc TOUJOURS `undefined`. Ma première version le faisait — la section « Transactions
+     * du jour » était rigoureusement INATTEIGNABLE en clic réel, alors que ses tests passaient
+     * (ils rendaient la modale avec une fixture portant `dayIso` à la main, court-circuitant tout
+     * le chemin). Classe `UX-UNREACHABLE-FEATURE`, trouvée par la revue.
+     *
+     * ⚠️ Le correctif n'est PAS de fusionner `{ ...pointMensuel, dayIso }` : ça fabriquerait un
+     * point hybride dont les montants sont mensuels et la date quotidienne — un faux, exactement ce
+     * que la règle no-fake-data interdit pour un objet. Le jour voyage donc SÉPARÉMENT.
+     */
+    const [detailDayIso, setDetailDayIso] = useState<string | null>(null);
 
     // G10 — légende interactive : on stocke les séries MASQUÉES (le delta vs
     // défaut « tout visible »), persistées en localStorage. Même convention que
@@ -1636,7 +1653,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                             <ClickableEventIcon
                                                 kind={kind}
                                                 payload={evt}
-                                                onSelect={() => { const found = chartData.find((d: ProjectionChartPoint) => d.monthIndex === evt.monthIndex); if (found) setDetailPoint(found); }}
+                                                onSelect={() => { const found = chartData.find((d: ProjectionChartPoint) => d.monthIndex === evt.monthIndex); if (found) { setDetailDayIso(null); setDetailPoint(found); } }}
                                             />
                                         }
                                     />
@@ -1788,7 +1805,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             userName1={config.users[0]?.name}
                             userName2={config.users[1]?.name}
                             frozen={tooltip.mode === 'frozen'}
-                            onOpenDetail={() => setDetailPoint(detailPointFor(tooltip.point))}
+                            onOpenDetail={() => {
+                                // Le jour se lit sur le point D'ORIGINE, avant que `detailPointFor`
+                                // ne le rebase sur son mois hôte.
+                                setDetailDayIso((tooltip.point as ProjectionChartPoint & { dayIso?: string })?.dayIso ?? null);
+                                setDetailPoint(detailPointFor(tooltip.point));
+                            }}
                             onStepDay={stepDay}
                             canStepPrev={frozenSeriesIdx > 0}
                             canStepNext={frozenSeriesIdx !== -1 && frozenSeriesIdx < selectSeries.length - 1}
@@ -1803,10 +1825,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     <FutureDetailModal
                         point={detailPoint}
                         chartData={chartData}
+                        transactions={transactions}
+                        dayIso={detailDayIso}
                         userName1={config.users[0]?.name}
                         userName2={config.users[1]?.name}
                         isPrivacyMode={isPrivacyMode}
-                        onClose={() => setDetailPoint(null)}
+                        onClose={() => { setDetailPoint(null); setDetailDayIso(null); }}
                     />
                 )}
 

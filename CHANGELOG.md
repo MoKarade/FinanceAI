@@ -6,6 +6,29 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-14 (transactions du jour)
+
+### Tes transactions, jour par jour
+- En cliquant sur **Détail** pour une journée passée, tu vois maintenant **toutes** les transactions
+  de ce jour-là : marchand, compte, catégorie, montant — plus le net de la journée.
+- Les **doublons d'import** et les **virements internes** sont affichés eux aussi, mais **barrés**,
+  avec la raison. Les cacher t'aurait donné une liste qui ne correspond pas à ton relevé bancaire ;
+  les compter t'aurait donné un total qui ne correspond pas à la courbe.
+- Le total affiché est le **net encaissé/décaissé** de la journée. ⚠️ Ce n'est pas la variation de
+  ton patrimoine : celui-ci bouge aussi avec le rendement de tes placements, sans qu'aucune
+  transaction n'apparaisse. Un jour de forte hausse boursière affichera donc un total à 0 $ alors
+  que ta courbe monte — c'est normal.
+- **Chaque ligne porte son détail** : le compte, et selon le cas — « en attente » ou « erreur
+  d'import » quand la transaction n'est pas définitive, le conjoint à qui elle est attribuée, si la
+  catégorie a été **classée par l'IA** (avec sa confiance, mise en évidence quand elle est faible)
+  ou **vérifiée** par toi, et la catégorie d'**avant** quand l'IA l'a changée.
+- Une transaction normale et sans particularité n'affiche aucune pastille : elles ne servent qu'à
+  signaler ce qui mérite ton œil.
+- En mode discret, les montants sont masqués mais les marchands restent : c'est ce qui te permet de
+  reconnaître tes lignes.
+
+---
+
 ## [unreleased] — 2026-08-14 (correctif courbe)
 
 ### 🔴 Ton historique réapparaît (bug que tu as signalé)

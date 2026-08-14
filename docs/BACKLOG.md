@@ -1130,12 +1130,43 @@ stub : il n'aurait aucune date à lire.
   Marc au 2026-01-10 (sa date, au jour près). Boucle passée en curseur (1 993 ms → 37 ms, 54×) AVANT
   de relever le plafond à 4 000 j — relever seul aurait échangé un trou muet contre un gel de 2 s.
   `truncatedFrom` rend la troncature constatable. Garde : `tests/services/pastCap400Days.test.ts`.
-- [ ] 🔴 **`[PASSE-REEL-TXN-DU-JOUR]`** (M) — **DEMANDE DE MARC**, cadrage CONFIRMÉ par lui :
-  voir **toutes** les transactions d'une journée au clic, **dans le panneau existant** (pas une
-  modale). État actuel : `services/history/dailyPastLedger.ts` collecte `labels` (payees) mais
-  **plafonnés à 6 par jour** (l. 205) et rendus en infobulle seulement. Il faut porter la liste
-  COMPLÈTE (montant, marchand, catégorie, compte) jusqu'au panneau — pas un simple branchement.
-  ⚠️ Vérifier l'impact mémoire : jusqu'à ~4 000 jours × N transactions retenues en Map.
+- [x] 🔴 **`[PASSE-REEL-TXN-DU-JOUR]`** — livré 2026-08-14. Toutes les transactions du jour dans
+  `FutureDetailModal` (le panneau existant, cadrage de Marc) : marchand, compte, catégorie, montant,
+  + le net du jour. **Doublons et virements internes AFFICHÉS mais barrés**, avec leur raison — les
+  masquer donnerait une liste qui ne colle pas au relevé bancaire, les compter donnerait un total
+  qui ne colle pas à la courbe. Filtrage **à la demande** (`services/history/dayTransactions.ts`),
+  PAS de Map pré-construite : le registre couvre ~4 000 jours, les pré-indexer garderait tout en
+  mémoire pour n'en afficher qu'un. Mode discret conforme dès la naissance de la surface.
+  **Détail par ligne** (demande de suivi de Marc, « et plus de détail ») : compte, statut anormal,
+  conjoint attribué, origine de la catégorie (IA + confiance, ou vérifiée), catégorie d'avant si
+  changée. Rien de déduit — un champ absent ne produit aucune pastille.
+  Gardes : `tests/services/dayTransactions.test.ts` + `tests/components/FutureDetailModal.transactions.test.tsx`.
+- [ ] 🔴 **`[PASSE-REEL-VARIATION-DU-JOUR]`** (M, **demande de Marc 2026-08-14**, en direct : « je veux
+  voir la variabilité d'argent pour la journée (tout compris mais détaillé) ») — le panneau du jour
+  affiche aujourd'hui le **net encaissé/décaissé** (Σ des transactions). Ce n'est PAS la variation
+  du patrimoine : un jour de forte hausse boursière affiche 0 $ pendant que la courbe monte. Le
+  CHANGELOG de `[PASSE-REEL-TXN-DU-JOUR]` le dit en toutes lettres — c'est exactement ce manque que
+  Marc demande de combler. Livrer la variation **complète** de la journée, **ventilée par source**.
+  ⚠️ **Le moteur ÉMET DÉJÀ la ventilation — la CONSOMMER, ne rien recalculer côté UI**
+  (`DailyPastRow`, `services/history/dailyPastLedger.ts`, vérifié en écrivant ce ticket) :
+  `NetTransferLiquid` (flux de liquidités), `deposits` **et** `growth` par régime (les achats datés
+  vs le mouvement de marché sont séparés à la source), `Immobilier`, `DettesNonImmo`, `NetWorth`.
+  La ΔNetWorth jour-à-jour se ventile donc sans nouveau calcul financier.
+  ⚠️ **Deux pièges à traiter EXPLICITEMENT, sinon le total ne fermera pas** :
+  1. Un **dépôt** (achat de titre) sort des liquidités et entre dans un régime : il doit
+     s'**annuler** dans le total « tout compris », sinon il est compté deux fois. Il reste une
+     information utile à afficher (« tu as déplacé X »), mais à somme nulle sur le patrimoine.
+  2. `Immobilier` bouge par **palier ANNUEL** et `DettesNonImmo` est **figée** (décision Marc,
+     Option A, `pastNetWorth.ts`). Un jour de palier affichera donc un saut immobilier qui n'a rien
+     de journalier : le dire, ne pas le lisser. Lisser une donnée annuelle sur 365 jours fabriquerait
+     de la donnée — interdit.
+  **Critère de « fini » : le résiduel est affiché, jamais absorbé.** Σ des sources − ΔNetWorth du jour
+  doit être calculé et montré s'il n'est pas nul ; un « autre » fourre-tout qui ferme le total par
+  construction est une garde CIRCULAIRE (classe déjà consignée dans `CLAUDE.md`) et ne prouverait rien.
+  Garde attendue : sur des données réelles, ventilation vs `NetWorth[j] − NetWorth[j−1]`, résiduel
+  borné, et le test doit ÉCHOUER si un poste est retiré de la somme.
+  ⚠️ Cadrage à confirmer avec Marc AVANT de coder : dans le panneau existant (comme les transactions)
+  ou dans une section repliable ? Et le mode discret masque les montants dès la naissance de la surface.
 
 ### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
 

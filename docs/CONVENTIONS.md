@@ -1084,6 +1084,17 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   est committé. `commit-gate` relance la suite complète **uniquement si des `.ts/.tsx` sont stagés**
   (~5 min — voulu) ; un commit de docs/config/hooks est instantané. `guard` laisse passer le push
   mais bloque toujours `rm -rf` sensible / `--no-verify` / `.env` (en ignorant le corps des messages).
+- ⚠️ **`HOOK-WRONG-MECHANISM` (2026-08-14)** — j'ai conclu « le hook `commit-gate` n'est pas installé
+  dans ce conteneur » parce que `.git/hooks/` ne contenait que des `.sample`, et je l'ai **annoncé à
+  Marc**. C'était FAUX sur les deux points : `commit-gate` n'a jamais été un hook **git**, c'est un
+  hook **Claude Code** (`PreToolUse` sur Bash → `scripts/hooks/commit-gate.mjs`), donc `.git/hooks/`
+  vide est l'état NORMAL ; et il tournait bien. Ce que j'ai pris pour son absence était en réalité
+  son comportement documenté : `touchesSource` est faux quand aucun `.ts/.tsx` n'est stagé, donc un
+  commit de docs pur sort en `exit 0` immédiatement — voulu, et écrit juste au-dessus dans ce
+  fichier. **La leçon générale** : constater qu'un mécanisme est absent de l'emplacement où l'on
+  SUPPOSE qu'il vit ne prouve rien sur son existence. Localiser l'implémentation (`grep` du nom dans
+  la config) AVANT de conclure — a fortiori avant de l'annoncer. Même famille que
+  `DOC-STALE-IMPOSSIBILITY` : un constat d'absence est une hypothèse, pas une mesure.
 
 ## Notes
 - ⚠️ **[PARTIAL-POINT-FAKE-ZERO] 2026-08-11 — fabriquer un point qui n'implémente qu'une PARTIE d'un
@@ -3109,3 +3120,84 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   il existe précisément parce qu'une coupure silencieuse a coûté sept mois d'historique — un décalage
   d'un jour renvoie l'utilisateur chercher au mauvais endroit. Reformulé en « le premier jour non
   reconstruit est le … », qui dit ce que la variable CONTIENT.
+
+- ⚠️ **[PASSE-REEL-TXN-DU-JOUR] 2026-08-14 — « montrer tout » et « compter juste » sont DEUX
+  promesses, et masquer une ligne en trahit une.** Marc voulait voir TOUTES ses transactions d'une
+  journée. Or le registre exclut du calcul les doublons d'import et les virements internes. Trois
+  options, une seule honnête : les masquer donne une liste qui ne correspond pas au relevé bancaire ;
+  les compter donne un total qui ne correspond pas à la courbe ; les AFFICHER BARRÉS, avec la raison,
+  tient les deux. D'où `counted` / `excluded` séparés dans le retour du helper, plutôt qu'une liste
+  unique filtrée. Règle : quand un filtre métier existe en amont, l'affichage ne doit ni le copier en
+  silence ni l'ignorer — il doit le RENDRE VISIBLE.
+- ⚠️ **[Même lot] Filtrer À LA DEMANDE plutôt que pré-indexer, quand la dimension est grande et
+  l'usage ponctuel.** La tentation était d'enrichir `dailyPastLedger` (qui construit déjà une Map par
+  jour) avec les transactions. Il couvre jusqu'à ~4 000 jours : on aurait gardé TOUTES les
+  transactions en mémoire, en permanence, pour n'en afficher qu'une journée à la fois. Un balayage
+  O(n) au clic, sur une liste déjà chargée, coûte moins et ne pèse rien le reste du temps.
+- ⚠️ **[Même lot] Un paramètre à VALEUR PAR DÉFAUT rend son cas `undefined` intestable par cette
+  voie.** Mon helper de test était `(point, transactions = TOUTES)`. Le test « sans la prop » passait
+  `undefined` explicitement — ce qui DÉCLENCHE le défaut en JS. Le test échouait donc en accusant le
+  composant d'afficher une section qu'il n'aurait pas dû, alors que c'était mon harnais qui lui
+  passait la liste complète. Pour tester une absence, rendre DIRECTEMENT sans la prop.
+- 🔴 **[PASSE-REEL-TXN-DU-JOUR, revue] 2026-08-14 — j'ai livré une feature INATTEIGNABLE en citant,
+  dans son propre fichier de test, la leçon qui l'interdit.** La section « transactions du jour » lit
+  `dayIso`. Or `FutureProjection.detailPointFor` REBASE volontairement tout point quotidien sur son
+  mois hôte avant de le transmettre à la modale — et `dayIso` est posé au MÊME endroit que
+  `hostMonthIndex` (`dailyLedger.ts`), donc effacé par ce rebasage. En clic réel, la section ne
+  pouvait JAMAIS s'afficher. **Huit tests au vert**, CHANGELOG annonçant la feature, BACKLOG coché.
+  Pourquoi les tests n'ont rien vu : ils rendaient `FutureDetailModal` DIRECTEMENT avec une fixture
+  portant `dayIso` écrit à la main, court-circuitant tout le chemin de production. **Un test qui
+  FABRIQUE lui-même la condition qu'il devrait prouver atteignable ne prouve rien** — il aurait été
+  identique avec ou sans le bug. C'est la forme « composant isolé » de `UX-UNREACHABLE-FEATURE`, et
+  elle est plus insidieuse que la version « trop de gestes » : ici il n'y avait AUCUN chemin.
+  Règle : pour une surface conditionnée par une donnée que l'APPELANT fournit, la garde doit tester
+  la SEAM — au minimum « la donnée absente ⇒ rien ne s'affiche » ET « le porteur naturel de la donnée
+  ne fait pas foi », plus un scan de source sur le câblage. Les trois ont été ajoutés, et prouvés en
+  RÉINTRODUISANT le bug dans les deux sens (lecture depuis le point, et dérivation depuis le point
+  rebasé).
+  ⚠️ Correctif choisi : faire voyager le jour dans une PROP SÉPARÉE, pas fusionner
+  `{ ...pointMensuel, dayIso }` — un point hybride aux montants mensuels et à la date quotidienne
+  serait exactement le faux que no-fake-data interdit pour un objet.
+- ⚠️ **[Même revue] `opacity-*` sur du texte déjà atténué passe sous le seuil AA, et
+  `check-contrast` ne le voit pas.** Mes lignes « exclues » cumulaient `opacity-60` avec
+  `text-ink-300`/`text-ink-400`, des shades calibrés pour être tout juste AA à PLEINE opacité :
+  ~3,0-3,4:1 après composition, sur la ligne qui porte justement l'explication. Le script du dépôt
+  est un scan statique token-vs-token : il ignore les classes d'opacité appliquées au runtime, donc
+  il rend un vert trompeur. Règle : l'atténuation visuelle porte sur le FOND (`bg-white/[0.02]`) ou
+  sur un décor, jamais sur un conteneur de texte ; et une garde qui ne rend pas le DOM ne peut pas
+  arbitrer un contraste effectif.
+- ⚠️ **[Même revue] Nommer un total par ce qu'il EXPLIQUE, pas par ce qu'on aimerait qu'il explique.**
+  J'avais documenté `netCounted` comme « le montant qui explique le mouvement du jour sur la courbe »,
+  et le CHANGELOG le répétait à l'utilisateur. Faux : c'est le FLUX DE TRÉSORERIE (`Income −
+  Expenses`). La courbe bouge aussi par le rendement de marché et l'équité immobilière — sans aucune
+  transaction. Un jour de forte hausse boursière affiche donc 0 $ pendant que la courbe monte.
+  `dailyPastLedger` distingue d'ailleurs explicitement « dépôts » et « rendement » pour cette raison.
+  Un nom trop généreux envoie la session suivante chercher une réconciliation qui n'existe pas.
+- ⚠️ **[PASSE-REEL-TXN-DU-JOUR] Un jeton de test se choisit contre le VOCABULAIRE de l'écran, pas
+  contre ce qui semble improbable.** Mon assertion « le prénom de l'autre conjoint n'apparaît pas »
+  échouait sur… l'en-tête de colonne **MARCHAND**, dont « Marc » est un sous-mot. Deuxième fois dans
+  la même session après le montant témoin `1213`, qui vivait dans « T1213 retenue source ».
+  Corollaire du même incident : une assertion NÉGATIVE doit viser la ZONE qu'elle juge, pas tout le
+  document — la modale affiche les prénoms ailleurs (ventilation par conjoint), et chercher dans
+  `document.body` accusait le détail d'une ligne pour un texte venu d'une autre section.
+- 🔴 **[PASSE-REEL-TXN-DU-JOUR, revue v2] Une FIXTURE qui reproduit l'hypothèse fausse du code ne
+  discrimine RIEN — et c'est la deuxième fois de la même session.** J'ai traité `Transaction.confidence`
+  comme une fraction 0-1 (`Math.round(c * 100)`). Elle est en **0-100** chez TOUS ses producteurs
+  (`claude.ts` : 100, `applyTransferDetection` : 100, personas : 95), et le consommateur existant
+  `Transactions.tsx` l'affiche déjà `${t.confidence}%` SANS multiplier. Ma pastille aurait donc
+  affiché « 9 500 % ».
+  **Le plus grave n'est pas l'affichage** : mon seuil d'alerte `pct < 70` devenait INATTEIGNABLE —
+  une vraie confiance de 42 devenait 4 200, donc « neutre », donc jamais en ambre. La pastille
+  perdait sa seule raison d'être (signaler les catégorisations douteuses) sur TOUTE donnée réelle.
+  Mes deux tests utilisaient `0.93` et `0.42` : ils reproduisaient MON hypothèse, donc passaient au
+  vert des deux côtés du bug.
+  Règle : **une fixture se calibre sur les PRODUCTEURS réels du champ, pas sur l'idée qu'on s'en
+  fait.** Un grep de `confidence:` dans `services/` coûtait dix secondes et donnait la réponse.
+  Corollaire fort : pour une unité (%, fraction, cents, mensuel/annuel), chercher d'abord si un
+  autre écran l'AFFICHE DÉJÀ — son code est la spécification la plus fiable du dépôt.
+- ⚠️ **[Même revue] Une divergence assumée entre deux écrans se DOCUMENTE dans le code.**
+  `resolveTransactionOwner` (vue Budget) DÉDUIT un conjoint quand `ownerId` est absent, en lisant le
+  type de poste. Mon panneau n'affiche que l'attribution EXPLICITE — afficher une déduction comme un
+  nom se lirait comme une certitude. Le choix est défendable, mais la conséquence ne l'est que si
+  elle est écrite : une transaction imputée à un conjoint dans Budget peut n'avoir aucune pastille
+  ici. Sans cette note, la prochaine session lira l'écart comme un bug et « corrigera ».

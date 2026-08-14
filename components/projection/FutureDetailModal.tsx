@@ -540,7 +540,15 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                             une donnée absente, pas d'ÉNONCER un zéro qu'on a mesuré.
                             Le silence n'est donc admissible que là où la question n'a pas de sens
                             (point mensuel/futur) — jamais là où elle en a une. */}
-                        {dayIso && (
+                        {/* ⚠️ `transactions` DOIT être fourni pour que la section existe — pas
+                            seulement `dayIso`. La prop est optionnelle par son TYPE : sans cette
+                            garde, un appelant qui oublie de la passer déclenche « aucun mouvement
+                            ce jour-là », c'est-à-dire une affirmation de MESURE produite par une
+                            ABSENCE de données. C'est pire que le silence qu'on vient de corriger,
+                            parce que le message a l'autorité d'un fait constaté (finding
+                            silent-failure-hunter sur cette PR). Une liste `[]` EXPLICITE reste
+                            légitime : c'est une liste fournie et vide, donc une vraie mesure. */}
+                        {dayIso && transactions && (
                             <div className="border-t border-white/10 pt-3">
                         {(txnsDuJour.counted.length > 0 || txnsDuJour.excluded.length > 0) ? (
                             <>

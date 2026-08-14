@@ -86,6 +86,29 @@ vient de l'ancre du moteur) ; et rien n'est produit **au-delà d'aujourd'hui**.
 Le point porte `dayIsReal`, `priceAgeMaxDays` et `hasEstimatedPrice` : l'infobulle affiche un badge
 « Réel / Projeté » et prévient quand le prix utilisé date de plus d'une semaine.
 
+### Champs d'identité d'un point QUOTIDIEN
+
+| Champ | Type | Sémantique |
+|---|---|---|
+| `dayIso` | `string` | Date `YYYY-MM-DD`. ⚠️ **Présent sur TOUT point quotidien, FUTUR COMPRIS** — voir l'avertissement ci-dessous. |
+| `dayOfMonth` | `number` | Quantième (1–31). |
+| `dayIsReal` | `true` (ou absent) | **LE marqueur de MESURE.** Posé uniquement par la branche réelle de `mergeDailyRealPoint` (`services/projection/dailyCurve.ts`) — donc vrai ssi la journée a été reconstruite depuis les vraies données. Le mois ANCRE y passe aussi (`realOnlyMonthPoints`). |
+| `dayIsDated` | `boolean` | Un mouvement à date connue tombe ce jour-là, plutôt qu'un étalement. |
+| `dayLabels` | `string[]` | Libellés des mouvements du jour. |
+| `hostMonthIndex` | `number` | Mois hôte (entier) — jointure vers le point mensuel. |
+| `isDailyPoint` | `true` | Marqueur de type. |
+
+> ⚠️ **`dayIso` n'est PAS un marqueur de passé — c'est `dayIsReal` qui l'est.**
+> La branche projetée de `mergeDailyRealPoint` rend `{ ...d, monthIndex: x }`, et `d` porte déjà
+> `dayIso` (posé inconditionnellement par `buildDailyLedger`). Un jour du FUTUR a donc une date ISO
+> exactement comme un jour du passé.
+> Confondre les deux a coûté un bug livré (`[PASSE-REEL-TXN-JOUR-VIDE]`, 2026-08-14) : la section
+> « transactions du jour » se gatait sur `dayIso` seul et aurait annoncé « aucun mouvement ce
+> jour-là » sur des journées **futures** — une affirmation de mesure sur du projeté. Le défaut était
+> resté invisible tant que la section exigeait une liste non vide.
+> **Pour consommer du RÉEL (transactions, soldes mesurés), gater sur `dayIsReal`, jamais sur la
+> seule présence de `dayIso`.**
+
 ## Champs d'un point mensuel (mode déterministe)
 
 > En mode Monte Carlo, seuls `{ NetWorth, monthIndex, P10?, P50?, P90? }` sont peuplés.

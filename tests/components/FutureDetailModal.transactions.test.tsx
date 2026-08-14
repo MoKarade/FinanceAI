@@ -140,10 +140,21 @@ describe('[PASSE-REEL-TXN-DU-JOUR] la section est ATTEIGNABLE et rendue', () => 
     // ⚠️ Rendu DIRECT, pas via `ouvrir` : passer `undefined` à un paramètre À VALEUR PAR DÉFAUT
     // déclenche ce défaut (sémantique JS). Mon premier essai passait donc la liste COMPLÈTE en
     // croyant tester son absence — le test échouait en accusant le composant, à tort.
-    it('sans la prop `transactions`, la modale rend sans erreur et énonce l’absence', () => {
+    // ⚠️ Sans la prop, on ne SAIT rien — donc on n'affirme rien. Dire « aucun mouvement ce
+    // jour-là » ici serait une affirmation de MESURE produite par une ABSENCE de données : pire
+    // que le silence corrigé par cette PR, car le message a l'autorité d'un fait constaté.
+    // (Finding du silent-failure-hunter sur cette PR.) Une liste `[]` EXPLICITE, elle, est une
+    // vraie mesure — testée juste en dessous.
+    it('sans la prop `transactions`, la modale rend sans erreur et n’affirme RIEN', () => {
         expect(() => render(
             <FutureDetailModal point={pointDuJour} chartData={[pointDuJour]} dayIso={JOUR} onClose={vi.fn()} />,
         )).not.toThrow();
+        expect(texte()).not.toContain('aucunmouvementcejour-là');
+        expect(texte()).not.toContain('Transactionsdu');
+    });
+
+    it('avec une liste VIDE explicite, l’absence est bien énoncée (c’est une mesure)', () => {
+        render(<FutureDetailModal point={pointDuJour} chartData={[pointDuJour]} transactions={[]} dayIso={JOUR} onClose={vi.fn()} />);
         expect(texte()).toContain('aucunmouvementcejour-là');
     });
 });
@@ -271,9 +282,20 @@ describe('[PASSE-REEL-TXN-DU-JOUR] câblage : le jour est capté AVANT le rebasa
         const { readFileSync } = await import('node:fs');
         const { resolve } = await import('node:path');
         const src = readFileSync(resolve(__dirname, '../../components/FutureProjection.tsx'), 'utf8');
+        // ⚠️ La garde porte sur l'INTENTION (le jour vient du point d'ORIGINE), pas sur une forme
+        // d'écriture : elle accepte la lecture directe comme le passage par une variable locale
+        // liée à `tooltip.point`. Ce qu'elle interdit — dériver le jour de `detailPoint`, TOUJOURS
+        // rebasé sur le mois — est vérifié séparément juste en dessous.
         expect(src, 'le jour doit être capté sur `tooltip.point`, avant `detailPointFor`')
-            .toMatch(/setDetailDayIso\(\(tooltip\.point[\s\S]{0,120}dayIso/);
+            .toMatch(/(setDetailDayIso\(\(tooltip\.point[\s\S]{0,120}dayIso|const\s+pt\s*=\s*tooltip\.point[\s\S]{0,600}setDetailDayIso\(pt)/);
         expect(src, 'et transmis en prop dédiée').toContain('dayIso={detailDayIso}');
+        // ⚠️ [PASSE-REEL-TXN-JOUR-VIDE] Le jour ne part QUE s'il est MESURÉ. `dayIso` est posé sur
+        // tout point quotidien, FUTUR COMPRIS (`mergeDailyRealPoint` fait `{ ...d }` sur la branche
+        // projetée) : sans ce filtre, cliquer un jour futur affiche « aucun mouvement ce jour-là »,
+        // une affirmation de mesure sur du projeté. Le défaut était INVISIBLE avant l'état vide —
+        // la liste étant toujours vide dans le futur, la section ne se rendait pas du tout.
+        expect(src, '`dayIsReal` doit conditionner l’envoi du jour, sinon le futur ment')
+            .toMatch(/dayIsReal\s*\?\s*\(?\s*pt\.dayIso/);
         // Si quelqu'un « simplifie » en dérivant le jour du point de détail, la section redevient
         // inatteignable en silence : `detailPoint` est TOUJOURS le point mensuel rebasé.
         expect(src, 'le jour ne doit JAMAIS être dérivé de `detailPoint`').not.toMatch(/detailPoint[^\n]*\.dayIso/);

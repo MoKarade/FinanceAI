@@ -17,6 +17,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   immobilière — ni l'un ni l'autre n'a de transaction associée).
 - Le silence reste la bonne réponse là où la question n'a pas de sens : sur un point **mensuel** ou
   dans le **futur**, il n'y a pas de journée à interroger, donc toujours aucune section.
+- ⚠️ Deux pièges attrapés par la revue de ce correctif, avant qu'ils ne t'atteignent : le message
+  serait apparu sur des journées **futures** (« aucun mouvement » sur du projeté, alors que rien
+  n'y est mesurable), et il serait apparu aussi quand l'app n'a **reçu aucune donnée** — dans les
+  deux cas une phrase affirmative là où il n'y a pas eu de mesure. L'absence n'est désormais
+  énoncée que pour une journée **réellement reconstruite**.
 
 ### Tes transactions, jour par jour
 - En cliquant sur **Détail** pour une journée passée, tu vois maintenant **toutes** les transactions

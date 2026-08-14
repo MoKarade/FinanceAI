@@ -21,6 +21,23 @@
 > l'état vide ne doit pas s'afficher quand il y a des mouvements — sinon on l'affiche toujours et
 > le test reste vert.
 >
+> 🔴 **Le panel a trouvé DEUX défauts DANS mon correctif** — remplacer un silence par une PHRASE
+> change la nature du risque : une phrase a l'autorité d'un fait constaté.
+> · **jour FUTUR** : ⚠️ **`dayIso` est posé sur TOUT point quotidien, pas seulement le passé** (la
+>   branche projetée de `mergeDailyRealPoint` fait `{ ...d }`). Gater sur `dayIso` seul aurait
+>   annoncé « aucun mouvement ce jour-là » sur du PROJETÉ. **Le marqueur de MESURE est `dayIsReal`**
+>   — unique occurrence dans `dailyCurve.ts`, et le mois ANCRE y passe via `realOnlyMonthPoints`,
+>   donc couverture complète. Documenté dans `PROJECTION_OUTPUT_SCHEMA.md`, où ces champs
+>   n'étaient pas décrits du tout.
+> · **prop `transactions` absente** : optionnelle par son TYPE → sans donnée reçue, on n'affirme
+>   rien. Une liste `[]` EXPLICITE reste une mesure et garde le message.
+> Les deux gardes prouvées discriminantes en réintroduisant chaque défaut SÉPARÉMENT.
+>
+> ⚠️ **Incident de session** : le conteneur a redémarré PENDANT `npm run test`, effaçant ce lot
+> non commité (il a fallu le refaire en entier). Le premier commit, lui, était poussé et intact.
+> C'est le piège déjà écrit en bas de `CLAUDE.md` — commiter et POUSSER avant toute attente
+> longue. Vécu une 3e fois.
+>
 > **Deux autres symptômes signalés par Marc dans le même message, TICKETÉS, non codés** :
 > · `[PASSE-REEL-IMPOT-LATENT-DEBUT]` — « impôt latent commence le 1/09 ». **Cause confirmée par
 >   mesure** : `ImpotLatent` n'est émis NULLE PART dans le passé reconstruit (0 occurrence dans

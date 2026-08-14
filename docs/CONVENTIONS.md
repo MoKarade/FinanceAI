@@ -195,6 +195,20 @@ Doc détaillée dans `docs/`, qui fait foi.
   ⚠️ Garde anti-sur-correctif obligatoire dans ce cas : un test qui exige le message d'absence
   resterait VERT si on l'affichait EN PERMANENCE. Il faut l'assertion inverse — l'état vide ne
   s'affiche PAS quand il y a des mouvements.
+  ⚠️ **Et surtout : remplacer un silence par une PHRASE change la nature du risque.** Le panel de
+  revue de cette même PR a trouvé DEUX cas où le nouveau message affirmait une MESURE qui n'avait
+  pas eu lieu — pire que le silence, parce qu'une phrase a l'autorité d'un fait constaté :
+  · **jour FUTUR** — `dayIso` est posé sur TOUT point quotidien, pas seulement le passé (la branche
+    projetée de `mergeDailyRealPoint` fait `{ ...d }`, et `d` le porte). Gater sur `dayIso` seul
+    annonçait « aucun mouvement ce jour-là » sur du PROJETÉ. Le marqueur de mesure est
+    **`dayIsReal`**, jamais la seule présence d'une date. Invisible avant l'état vide : la liste
+    étant toujours vide dans le futur, la section ne se rendait pas.
+  · **prop absente** — `transactions` est optionnelle par son TYPE ; sans donnée reçue on ne SAIT
+    rien, donc on n'affirme rien. Une liste `[]` EXPLICITE reste une vraie mesure et garde, elle,
+    le message. Distinguer « pas de données » de « données vides » est le cœur du correctif.
+  **Règle à retenir** : avant d'écrire un état vide, énumérer TOUTES les entrées qui y mènent et
+  vérifier que chacune justifie l'affirmation. Un état vide atteint par plusieurs chemins dont un
+  seul est une mesure est un mensonge sur les autres.
 - **Garde-fou (non négociable)** : avant CHAQUE commit, `typecheck` clean + `build`
   qui passe + `test` vert (hook `commit-gate`). Jamais `--no-verify`.
 - **Vigilance** (à signaler dans le plan, pas interdit) : migrations schema Zustand

@@ -1808,7 +1808,21 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             onOpenDetail={() => {
                                 // Le jour se lit sur le point D'ORIGINE, avant que `detailPointFor`
                                 // ne le rebase sur son mois hôte.
-                                setDetailDayIso((tooltip.point as ProjectionChartPoint & { dayIso?: string })?.dayIso ?? null);
+                                // ⚠️ [PASSE-REEL-TXN-JOUR-VIDE] `dayIsReal` est OBLIGATOIRE ici, et ce
+                                // n'est pas une ceinture-bretelles : `dayIso` est posé sur TOUT point
+                                // quotidien, futur compris (`mergeDailyRealPoint` fait `{ ...d }` sur
+                                // la branche projetée, et `d` le porte déjà). Sans ce filtre, cliquer
+                                // un jour FUTUR affichait « aucun mouvement ce jour-là » — une
+                                // affirmation de MESURE sur du projeté, exactement le faux que la
+                                // section évite déjà pour un point mensuel.
+                                // Ça ne se voyait pas avant l'état vide : la liste étant toujours
+                                // vide dans le futur, la section ne se rendait simplement pas.
+                                // `dayIsReal` n'est posé que par la branche RÉELLE de
+                                // `mergeDailyRealPoint` (unique occurrence du dépôt), et le mois
+                                // ANCRE y passe aussi via `realOnlyMonthPoints` : couverture
+                                // complète, sans exclure les jours réels du premier mois.
+                                const pt = tooltip.point as ProjectionChartPoint & { dayIso?: string; dayIsReal?: boolean };
+                                setDetailDayIso(pt?.dayIsReal ? (pt.dayIso ?? null) : null);
                                 setDetailPoint(detailPointFor(tooltip.point));
                             }}
                             onStepDay={stepDay}

@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-14 (correctif courbe)
+
+### 🔴 Ton historique réapparaît (bug que tu as signalé)
+- **Tu ne pouvais plus rien sélectionner dans ta courbe passée à partir du 10 janvier 2026.** Ce
+  n'était pas un problème d'affichage : ces journées n'étaient tout simplement **pas reconstruites**,
+  donc ni tracées ni cliquables.
+- La cause : la reconstruction du passé au jour était plafonnée à **400 jours** à partir du début de
+  ton historique. Le tien commence le 6 décembre 2024 — et 6 décembre 2024 + 399 jours tombe le
+  9 janvier 2026. Le plafond coupait donc **exactement** là où tu l'as constaté.
+- Le plafond passe à ~11 ans. Il n'a été possible de le relever que parce que la reconstruction est
+  devenue **54× plus rapide** au passage (2 secondes → 37 ms sur 4 ans et demi) : elle re-parcourait
+  tout l'historique de prix de chaque titre, pour chaque journée.
+- ⚠️ Et si ce plafond mordait quand même un jour, **ça se verra** : un avertissement l'annonce
+  désormais. Avant, la coupure était totalement silencieuse — c'est pour ça qu'elle a duré.
+
+---
+
 ## [unreleased] — 2026-08-14
 
 ### Le mode discret couvre enfin les FORMULAIRES

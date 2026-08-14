@@ -26,7 +26,7 @@
 
 import { computeRawNetWorth } from '../projection/netWorth';
 import { reconstructCashHistoryDaily } from './reconstructCashHistory';
-import { reconstructPortfolioHistoryDaily, type MinimalAsset } from './reconstructPortfolioHistory';
+import { reconstructPortfolioHistoryDaily, MAX_DAILY_DAYS_DEFAULT, type MinimalAsset } from './reconstructPortfolioHistory';
 
 /** Les six régimes de placement, dans l'ordre d'affichage du graphe. */
 export const PAST_ACCOUNT_KEYS = ['CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto'] as const;
@@ -55,6 +55,16 @@ export interface DailyPastLedgerResult {
     undatedTotal: number;
     /** Σ des flux datés APRÈS aujourd'hui (dans l'ancre, pas encore dans le solde). */
     flowsAfterNowDate: number;
+    /**
+     * Première date de la fenêtre demandée que le plafond a EMPÊCHÉ de reconstruire, ou `null`.
+     *
+     * ⚠️ [PASSE-REEL-CAP-400J 2026-08-14] Ce champ existe parce que son absence a coûté cher.
+     * L'ancien code affirmait en commentaire que « l'appelant voit la troncature à la longueur » —
+     * or aucun appelant ne comparait quoi que ce soit, et une coupure au milieu de la fenêtre
+     * visible restait totalement muette : les jours sautés ne sont ni tracés ni cliquables.
+     * Un trou silencieux dans une courbe est pire qu'une plage plus courte annoncée.
+     */
+    truncatedFrom: string | null;
 }
 
 /** Une journée du passé, reconstruite. Les clés reprennent EXACTEMENT celles du point de graphe :
@@ -167,26 +177,28 @@ export function depositsOnDay(
  */
 export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedgerResult {
     const { from, to, today, transactions, currentCash, assets, fx, equityByYear, currentDebtNonImmo } = input;
-    const maxDays = input.maxDays ?? 400;
+    // ⚠️ [PASSE-REEL-CAP-400J] Défaut PARTAGÉ avec la reconstruction des placements. Deux `?? 400`
+    // indépendants, c'était deux plafonds à faire évoluer ensemble — et donc un jour à désynchroniser.
+    const maxDays = input.maxDays ?? MAX_DAILY_DAYS_DEFAULT;
 
     // Borne HAUTE à aujourd'hui : au-delà, ce n'est plus du reconstruit. `reconstructPortfolioHistoryDaily`
     // produirait pourtant des points (elle reconduit le dernier prix connu) — des placements PLATS
     // présentés comme mesurés, à côté d'une projection qui, elle, croît. Le même défaut avait déjà
     // été corrigé une fois dans le panneau quotidien ; on ne le réintroduit pas ici.
-    const NONE: DailyPastLedgerResult = { rows: [], undatedTotal: 0, flowsAfterNowDate: 0 };
+    const NONE: DailyPastLedgerResult = { rows: [], undatedTotal: 0, flowsAfterNowDate: 0, truncatedFrom: null };
     const end = to < today ? to : today;
     if (!from || !end || end < from) return NONE;
 
     const cash = reconstructCashHistoryDaily(transactions, currentCash, today);
     // ⚠️ Même quand AUCUNE ligne n'est produite, les caveats d'ancre sont rendus : un historique
     // fait UNIQUEMENT de transactions au mois seul a un `undatedTotal` non nul et zéro point.
-    if (cash.points.length === 0) return { rows: [], undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate };
+    if (cash.points.length === 0) return { rows: [], undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate, truncatedFrom: null };
     const cashByDate = new Map(cash.points.map((p) => [p.date, p]));
 
     const invStart = from < (cash.firstDate ?? from) ? (cash.firstDate ?? from) : from;
     const inv = reconstructPortfolioHistoryDaily(assets, fx, invStart, end, { maxDays });
     const invByDate = new Map(inv.map((p) => [p.date, p]));
-    if (invByDate.size === 0) return { rows: [], undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate };
+    if (invByDate.size === 0) return { rows: [], undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate, truncatedFrom: null };
 
     // Mouvements réels du jour : MÊME base d'exclusion que l'ancre `computeStartingCash`
     // (`isDuplicate` = artefact, `isTransfer` = neutre) — sinon les deux bouts de la même courbe
@@ -210,9 +222,11 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
     const out: DailyPastRow[] = [];
     const startMs = Date.parse(`${from}T00:00:00Z`);
     const endMs = Date.parse(`${end}T00:00:00Z`);
-    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return { rows: [], undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate };
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return { rows: [], undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate, truncatedFrom: null };
 
+    let lastMs: number | null = null;
     for (let ms = startMs; ms <= endMs && out.length < maxDays; ms += DAY_MS) {
+        lastMs = ms;
         const date = new Date(ms).toISOString().slice(0, 10);
         const c = cashByDate.get(date);
         const i = invByDate.get(date);
@@ -258,5 +272,13 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
             hasEstimatedPrice: i.hasEstimatedPrice,
         });
     }
-    return { rows: out, undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate };
+    // ⚠️ La boucle s'arrête soit à `endMs` (fenêtre couverte), soit sur `out.length < maxDays`
+    //   (plafond atteint). Dans le SECOND cas seulement, il reste de la fenêtre non reconstruite —
+    //   et c'est ce jour-là que l'utilisateur voit sa courbe s'interrompre sans explication.
+    //   `lastMs` est le dernier jour EXAMINÉ, pas le dernier jour ÉMIS : un jour peut être sauté
+    //   faute de données (`!c || !i`) sans que le plafond y soit pour quoi que ce soit.
+    const truncatedFrom = lastMs !== null && lastMs < endMs
+        ? new Date(lastMs + DAY_MS).toISOString().slice(0, 10)
+        : null;
+    return { rows: out, undatedTotal: cash.undatedTotal, flowsAfterNowDate: cash.flowsAfterNowDate, truncatedFrom };
 }

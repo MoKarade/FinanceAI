@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-08-14 (suite 88) — `[PASSE-REEL-CAP-400J]` : BUG UTILISATEUR signalé par Marc
+> « je vois plus mon historique entre 2026-01-10 et 2026-08, je peux pas sélectionner dans la courbe ».
+> **Cause confirmée AU JOUR PRÈS** : `reconstructPortfolioHistoryDaily` plafonnait à 400 jours et
+> rendait les 400 PREMIERS. Historique de Marc : 2024-12-06. +399 j = 2026-01-09 → premier jour
+> manquant 2026-01-10, SA date. Sans valeur de placements, `buildDailyPastLedger` SAUTE la journée
+> (`if (!c || !i) continue`) : ni tracée, ni cliquable.
+>
+> ⚠️ **Le code se croyait protégé** : son commentaire disait « l'appelant le voit à la longueur,
+> plutôt qu'une troncature silencieuse au milieu ». Cette garantie n'avait JAMAIS été implémentée —
+> aucun appelant ne comparait quoi que ce soit. D'où `truncatedFrom`, rendu dans le bandeau.
+>
+> ⚠️ **Relever le plafond seul aurait été un MAUVAIS correctif** : MESURÉ à 1 993 ms pour 1 687 jours.
+> `priceAt` et `priceAgeDays` re-balayaient TOUT l'historique de prix par actif ET par jour (deux
+> scans complets par couple, ≈63 M d'opérations). Passé en curseur (la boucle est strictement
+> croissante) : **37 ms, 54×**, `InvestedValue` bit-identique. Plafond monté à 4 000 j APRÈS.
+> Les helpers `priceAt`/`holdingsAt` restent INCHANGÉS (partagés avec la reconstruction mensuelle et
+> `buildMarketData`) — le test d'équivalence compare le curseur À EUX, jour par jour.
+>
+> 🔴 **DEMANDE 2 DE MARC, PAS ENCORE FAITE** — cadrage CONFIRMÉ par lui : voir **toutes** les
+> transactions du jour au clic, **dans le panneau existant** (pas une modale). Aujourd'hui
+> `dailyPastLedger` collecte `labels` (payees) mais **plafonnés à 6** (l. 205) et rendus en infobulle
+> seulement. Ticket `[PASSE-REEL-TXN-DU-JOUR]`.
 > ## 🟢 Session 2026-08-14 (suite 87) — `[A11Y-PRIVACY-INVESTMENTS-DETAIL]` : 5/9, + une DÉCOUVERTE
 > Cas différent des 4 précédents : `isPrivacyMode` était DÉJÀ câblé, c'était une omission PAR SITE
 > (patron de #608). Les 9 sites de l'audit corrigés. % et signe du gain laissés visibles, sous test.

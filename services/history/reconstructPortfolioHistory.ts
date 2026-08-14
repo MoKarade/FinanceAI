@@ -210,24 +210,39 @@ export interface PortfolioHistoryDailyPoint {
 
 const DAY_MS_H = 86_400_000;
 
-/** Âge en jours du dernier close ≤ t, ou null si aucun historique. */
-function priceAgeDays(asset: MinimalAsset, t: string): number | null {
-    const hist = asset.priceHistory;
-    if (!hist || hist.length === 0) return null;
-    let best: MinimalPricePoint | null = null;
-    for (const p of hist) if (p.date <= t && (!best || p.date > best.date)) best = p;
-    if (!best) return null;
-    return Math.max(0, Math.round((Date.parse(`${t}T00:00:00Z`) - Date.parse(`${best.date}T00:00:00Z`)) / DAY_MS_H));
-}
+// [PASSE-REEL-CAP-400J 2026-08-14] `priceAgeDays` SUPPRIMÉ : son unique appelant était la boucle
+// quotidienne, qui calcule désormais l'âge depuis le curseur (le close retenu est déjà en main —
+// le re-chercher était le second des deux scans complets par couple actif/jour). Il n'était pas
+// exporté : personne d'autre ne le lisait. Laisser une fonction morte, c'est laisser quelqu'un la
+// rebrancher un jour et réintroduire le coût.
 
 /**
  * Valeur marché par compte, JOUR par JOUR, sur `[from, to]` (bornes incluses, 'YYYY-MM-DD').
  *
- * `maxDays` borne le résultat pour qu'un appelant distrait ne demande pas 20 ans au jour
- * (défaut 400 : un peu plus d'un an, ce qui couvre la fenêtre où les prix stockés sont
- * réellement quotidiens). Au-delà, on rend les `maxDays` PREMIERS jours et l'appelant le voit à
- * la longueur — plutôt qu'une troncature silencieuse au milieu.
+ * `maxDays` borne le résultat pour qu'un appelant distrait ne demande pas 20 ans au jour.
+ * Au-delà, on rend les `maxDays` PREMIERS jours.
+ *
+ * ⚠️ [PASSE-REEL-CAP-400J 2026-08-14] Le défaut était 400 (« un peu plus d'un an »). C'était une
+ * VRAIE COUPURE pour un utilisateur réel : Marc, dont l'historique démarre le 2024-12-06, ne
+ * pouvait plus rien sélectionner dans sa courbe à partir du 2026-01-10 — soit 2024-12-06 + 399
+ * jours, au jour près. Les jours au-delà n'avaient pas de valeur de placements, et
+ * `buildDailyPastLedger` les SAUTE (`if (!c || !i) continue`) : ni tracés, ni cliquables.
+ *
+ * ⚠️ Le commentaire d'origine affirmait « l'appelant le voit à la longueur — plutôt qu'une
+ * troncature silencieuse au milieu ». Cette garantie n'a JAMAIS été implémentée : aucun appelant
+ * ne comparait la longueur rendue à la fenêtre demandée. La troncature était donc exactement ce
+ * que l'auteur voulait éviter. `truncated` (ci-dessous) la rend enfin CONSTATABLE.
  */
+/**
+ * Plafond par défaut de la reconstruction QUOTIDIENNE.
+ *
+ * 4 000 jours ≈ 11 ans : couvre tout historique personnel plausible, tout en gardant un garde-fou
+ * contre un appelant qui demanderait « 20 ans au jour ». Ce relèvement n'est devenu acceptable
+ * qu'APRÈS le passage de la boucle en O(jours × actifs) — à l'ancien coût quadratique, 4 000 jours
+ * auraient gelé l'écran plusieurs secondes.
+ */
+export const MAX_DAILY_DAYS_DEFAULT = 4000;
+
 export function reconstructPortfolioHistoryDaily(
     assets: MinimalAsset[],
     fx: Record<string, number>,
@@ -240,8 +255,28 @@ export function reconstructPortfolioHistoryDaily(
     const end = Date.parse(`${to}T00:00:00Z`);
     if (invest.length === 0 || !Number.isFinite(start) || !Number.isFinite(end) || end < start) return [];
 
-    const maxDays = opts?.maxDays ?? 400;
+    const maxDays = opts?.maxDays ?? MAX_DAILY_DAYS_DEFAULT;
     const out: PortfolioHistoryDailyPoint[] = [];
+
+    // ⚠️ [PASSE-REEL-CAP-400J 2026-08-14] CURSEUR par actif, au lieu de `priceAt` / `priceAgeDays`
+    // appelés dans la boucle. Ces deux helpers RE-BALAIENT tout l'historique de prix à chaque appel,
+    // et ils étaient appelés par actif ET par jour → deux scans complets par couple (actif, jour),
+    // soit O(jours × actifs × historique). MESURÉ avant : 25 titres × 1 500 prix × 1 687 jours
+    // ≈ 63 M d'opérations, ~1,7 s — ce qui rendait tout relèvement du plafond inacceptable.
+    // La boucle des jours étant STRICTEMENT CROISSANTE, un index qui n'avance jamais en arrière
+    // suffit : le coût passe à O(jours × actifs + historique).
+    // Les helpers restent exportés et INCHANGÉS — la reconstruction MENSUELLE et `buildMarketData`
+    // les partagent (source unique de la définition prix/détention).
+    const curseurs = invest.map((a) => ({
+        actif: a,
+        hist: [...(a.priceHistory ?? [])].sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0)),
+        i: -1,
+        achats: [...(a.purchases ?? [])].sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0)),
+        j: 0,
+        qteCumul: 0,
+        cle: (a.accountType ? TYPE_TO_KEY[a.accountType] : 'NonReg') as AccountKey,
+        taux: fxToCad(a.currency, fx),
+    }));
 
     for (let ms = start; ms <= end && out.length < maxDays; ms += DAY_MS_H) {
         const t = new Date(ms).toISOString().slice(0, 10);
@@ -249,19 +284,29 @@ export function reconstructPortfolioHistoryDaily(
         let ageMax = 0;
         let estimated = false;
 
-        for (const a of invest) {
-            const qty = holdingsAt(a, t);
+        for (const c of curseurs) {
+            const a = c.actif;
+            // Détention : même définition que `holdingsAt`, mais cumulée par avancée du curseur.
+            // Sans `purchases`, on retombe sur `dateBought`/`quantity` — comportement identique.
+            let qty: number;
+            if (c.achats.length > 0) {
+                while (c.j < c.achats.length && c.achats[c.j].date <= t) { c.qteCumul += c.achats[c.j].quantity; c.j++; }
+                qty = c.qteCumul;
+            } else {
+                qty = a.dateBought ? (a.dateBought <= t ? a.quantity : 0) : a.quantity;
+            }
             if (qty === 0) continue;
-            const histPrice = priceAt(a, t);
-            if (histPrice === null) {
+
+            while (c.i + 1 < c.hist.length && c.hist[c.i + 1].date <= t) c.i++;
+            const best = c.i >= 0 ? c.hist[c.i] : null;
+            if (best === null) {
                 estimated = true;
             } else {
-                const age = priceAgeDays(a, t);
-                if (age !== null && age > ageMax) ageMax = age;
+                const age = Math.max(0, Math.round((ms - Date.parse(`${best.date}T00:00:00Z`)) / DAY_MS_H));
+                if (age > ageMax) ageMax = age;
             }
-            const price = histPrice ?? a.currentPrice ?? 0;
-            const key = a.accountType ? TYPE_TO_KEY[a.accountType] : 'NonReg';
-            acc[key] += qty * price * fxToCad(a.currency, fx);
+            const price = best ? best.price : (a.currentPrice ?? 0);
+            acc[c.cle] += qty * price * c.taux;
         }
 
         out.push({

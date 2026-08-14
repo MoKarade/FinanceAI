@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-14 (suite 87) — `[A11Y-PRIVACY-INVESTMENTS-DETAIL]` : 5/9, + une DÉCOUVERTE
+> Cas différent des 4 précédents : `isPrivacyMode` était DÉJÀ câblé, c'était une omission PAR SITE
+> (patron de #608). Les 9 sites de l'audit corrigés. % et signe du gain laissés visibles, sous test.
+> Garde de SOURCE sur tout le fichier (atteindre les 9 sites par le rendu demanderait 9 états
+> distincts — un rendu qui n'atteint pas un site ne prouve rien SUR ce site).
+>
+> 🔴 **DÉCOUVERTE, à lire avant de reprendre le lot** — j'ai appliqué la règle « resserrer le scan
+> AVANT de coder » au niveau du DÉPÔT : un scan `formatCAD` non protégé remonte **38 sites dans 19
+> fichiers**. C'est un MAJORANT — sur 4 sites inspectés, 3 étaient des faux positifs de 3 classes
+> distinctes (valeur PUBLIQUE à garder visible ; primitive `PrivateSliderValue` non reconnue ;
+> chaîne construite, pas du JSX). Ticket `[A11Y-PRIVACY-SCAN-GLOBAL]` créé.
+> ⚠️ **Conséquence sur la suite du lot** : cette garde MESURE au lieu d'énumérer et ne peut pas
+> oublier un écran. Les sites de l'audit sont corroborés par le scan, mais rien ne prouve que
+> l'audit soit EXHAUSTIF. Re-cadrer `-DIVERS`, `-PROJECTION-EXPLAINS`, `-PROPERTY-CONFIG` et
+> `-ONBOARDING` depuis le scan plutôt que depuis la liste faite à la main.
+> ⚠️ Un cas mérite attention immédiate dans le tri : `Budget.tsx:460` construit une CHAÎNE
+> (`${formatCAD(...)} dépassé`) — il faut la tracer jusqu'à son consommateur. Si elle finit dans un
+> prompt IA, c'est du money-critical, pas de l'affichage.
+
 > ## 🟢 Session 2026-08-14 (suite 86) — `[A11Y-PRIVACY-PATRIMOINE-ETENDU]` : 4/9 du lot
 > 4 panneaux, 17 champs, **13 montants masqués**. **Critère : l'`aria-label` porte `(dollars)`** —
 > c'était DÉJÀ la convention du fichier (les autres portent `(pourcentage)` / `(années)`), donc rien

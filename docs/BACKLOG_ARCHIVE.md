@@ -41,6 +41,19 @@ fichier:ligne). Verdicts appliqués à la refonte :
 
 ---
 
+## Livré 2026-08-14 — PR #632 `[A11Y-PRIVACY-PATRIMOINE-ETENDU]` (lot `[A11Y-PRIVACY-LOT2]` 4/9)
+
+- [x] **`[A11Y-PRIVACY-PATRIMOINE-ETENDU]`** — **13 montants sur 17 champs** masqués dans les 4
+  panneaux (assurances, immeubles locatifs, sociétés, objectifs cycliques). Critère : l'`aria-label`
+  porte `(dollars)` — convention DÉJÀ en place dans le fichier, pas une règle inventée.
+- [x] NOI du résumé d'immeuble masqué ET passé à `formatCAD` (il violait la règle de formatage via
+  un `toLocaleString` nu). ⚠️ Conséquence ASSUMÉE et documentée : le NOI est désormais arrondi au
+  dollar (`230 528,436$` → `230 528 $`).
+- [x] Deux champs d'assurance nommés — ils n'avaient que leur `placeholder`, qui disparaît avec le
+  champ masqué.
+- [x] Garde de source symétrique + garde de couverture comparant des ENSEMBLES (pas des comptes :
+  deux erreurs qui se compensent numériquement rendaient la version précédente verte à tort).
+
 ## Livré 2026-08-14 — PR #631 `[A11Y-PRIVACY-SOLDES-COMPTES]` (lot `[A11Y-PRIVACY-LOT2]` 3/9)
 
 - [x] **`[A11Y-PRIVACY-SOLDES-COMPTES]`** — solde réel de CHAQUE compte masqué

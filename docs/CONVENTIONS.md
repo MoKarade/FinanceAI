@@ -3040,3 +3040,21 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   lieu de se déduire d'un diff. Règle : avant de conclure « c'est cosmétique », instancier le
   format avant et après sur une valeur NON RONDE — sur un entier, les deux sont identiques et la
   différence reste invisible.
+
+- ⚠️ **[A11Y-PRIVACY-INVESTMENTS-DETAIL] 2026-08-14 — un test de RENDU qui n'atteint pas un site ne
+  prouve rien SUR ce site, et le fait croire couvert.** Les 9 fuites de cet écran vivent dans 9
+  états distincts (sous-onglet, cibles d'allocation configurées, transactions d'achat pour les
+  stats DCA…). Un test qui rend l'écran et vérifie « aucun montant ne fuit » serait passé au vert en
+  n'ayant affiché que deux d'entre eux. Le scan de SOURCE, lui, les voit tous — même famille que
+  `chartPrivacyScan.test.ts`. Règle : quand les sites à couvrir sont conditionnés par des ÉTATS
+  nombreux, la garde de source n'est pas un pis-aller, c'est le bon outil ; le rendu ne couvre que
+  ce qu'il monte, et il ne le dit pas.
+- ⚠️ **[Même lot] Appliquer « resserrer le scan AVANT de coder » au niveau du DÉPÔT change le
+  périmètre d'un lot entier.** Avant de traiter l'écran suivant, j'ai passé le scan `formatCAD` sur
+  tout `components/` : 38 sites dans 19 fichiers, là où l'audit fait à la main en listait une
+  fraction. MAIS le chiffre brut est un MAJORANT — sur 4 sites inspectés, 3 étaient des faux
+  positifs de 3 classes différentes (valeur PUBLIQUE qu'il FAUT garder visible ; primitive de
+  masquage non reconnue par le motif ; chaîne construite plutôt que JSX rendu). Deux enseignements :
+  (1) un scan large se TRIE avant de conclure — publier « 38 fuites » aurait été faux ;
+  (2) une liste d'audit faite à la main se corrobore, mais ne prouve JAMAIS l'exhaustivité — seul un
+  scan peut dire « il n'y en a pas d'autres », et seulement une fois ses faux positifs classés.

@@ -31,6 +31,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-14 (suite 4)
+
+### Investissements : les derniers montants en clair
+- Sur l'onglet Investissements, le mode discret masquait déjà les infobulles des graphiques et le
+  total du portefeuille, mais **pas** : les montants des légendes de répartition (par région et par
+  secteur), les suggestions de rééquilibrage (« Vendre 12 000 $ de… »), ni la valeur, le coût moyen
+  et le gain de chaque titre. C'est corrigé.
+- Restent visibles, à dessein : les **pourcentages** (part du portefeuille, écart de rééquilibrage,
+  gain en %) et le **signe** du gain. Ce sont des ratios et une direction, pas des sommes — et sans
+  eux un écran de répartition ne sert plus à rien.
+
+---
+
 ## [unreleased] — 2026-08-14 (suite 3)
 
 ### Assurances, immeubles locatifs, sociétés, objectifs

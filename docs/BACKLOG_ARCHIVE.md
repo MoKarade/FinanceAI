@@ -41,6 +41,20 @@ fichier:ligne). Verdicts appliqués à la refonte :
 
 ---
 
+## Livré 2026-08-14 — PR #631 `[A11Y-PRIVACY-SOLDES-COMPTES]` (lot `[A11Y-PRIVACY-LOT2]` 3/9)
+
+- [x] **`[A11Y-PRIVACY-SOLDES-COMPTES]`** — solde réel de CHAQUE compte masqué
+  (`components/settings/sections/AccountsSection.tsx`).
+- [x] Association `<label htmlFor>` câblée (elle n'existait pas), avec un `id` **INDEXÉ** et non
+  dérivé du nom de compte : un nom saisi par l'utilisateur peut se nettoyer en un identifiant DÉJÀ
+  pris, et deux éléments partageant un `id` font pointer les DEUX `<label>` sur le premier — le
+  second champ perd son nom accessible sans erreur ni avertissement.
+- [x] Nom et nombre de comptes laissés en clair, à dessein et sous test d'INTENTION.
+- [x] **Garde de saisie continue** (finding de revue) : taper dans un champ révélé provoque un
+  re-render du parent à chaque frappe. Le comportement ne tient qu'au `key={acc}` ; avec une clé
+  instable, le champ se re-masque au PREMIER caractère. Les tests précédents étaient aveugles à ce
+  scénario (`setInitialBalances` no-op → la prop ne changeait jamais).
+
 ## Livré 2026-08-14 — PR #630 `[A11Y-PRIVACY-PARAMS-AVANCES]` (lot `[A11Y-PRIVACY-LOT2]` 2/9)
 
 - [x] **`[A11Y-PRIVACY-PARAMS-AVANCES]`** — **14 champs sur 40** masqués dans

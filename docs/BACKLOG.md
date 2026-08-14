@@ -1158,24 +1158,27 @@ stub : il n'aurait aucune date à lire.
   mécanique (un `id` + un `htmlFor` par champ) ; c'est le volume qui l'a sorti du périmètre.
   ⚠️ Le même trou existe probablement dans les autres panneaux de Réglages : greper
   `<label className=` non suivi de `htmlFor` AVANT de chiffrer.
-- [x] 🔴 **`[A11Y-PRIVACY-PATRIMOINE-ETENDU]`** (M) — livré 2026-08-14. **13 montants sur 17 champs**
-  masqués dans les 4 panneaux (assurances, immeubles locatifs, sociétés, objectifs cycliques).
-  **Critère** : l'`aria-label` porte `(dollars)` — c'était DÉJÀ la convention du fichier, pas une
-  règle inventée. Les 4 non-montants (taux hypothécaire, vacance, % détenu, fréquence véhicule)
-  restent lisibles. NOI du résumé d'immeuble masqué ET passé à `formatCAD` (il violait la règle de
-  formatage via un `toLocaleString` nu). Deux champs d'assurance nommés au passage — ils n'avaient
-  QUE leur `placeholder`, qui disparaît avec le champ masqué. Garde de SOURCE symétrique + garde de
-  couverture : `tests/components/PatrimoineExtended.privacy.test.tsx`.
-  ⚠️ **Rectification d'un cadrage FAUX que j'avais écrit ici** : « zéro `<label>` dans tout le
-  fichier, le nommage devra passer par `aria-label` ». Le constat était vrai mais TROMPEUR — j'avais
-  grepé `<label>` sans regarder les `aria-label`, qui existaient déjà sur 15 des 17 champs. Il n'y
-  avait donc quasi rien à nommer. Leçon : chercher l'ABSENCE d'un mécanisme ne prouve pas l'absence
-  DU RÉSULTAT qu'il produit — ici le nom accessible avait une autre source.
 
-- [ ] 🔴 **`[A11Y-PRIVACY-INVESTMENTS-DETAIL]`** (S) — `components/Investments.tsx` : `isPrivacyMode`
-  est déjà lu dans ce fichier, mais oublié sur les légendes des donuts (861, 923), les suggestions de
-  rééquilibrage (1107, 1112, 1154, 1160) et la carte par titre — Valeur (1303), Coût moyen et Gain
-  total DCA (1386, 1391). Écran principal du sous-onglet « detail ».
+- [x] 🔴 **`[A11Y-PRIVACY-INVESTMENTS-DETAIL]`** (S) — livré 2026-08-14. Les **9 sites** listés par
+  l'audit corrigés (légendes des 2 donuts, rééquilibrage en carte ET en liste, carte par titre :
+  Valeur, Coût moyen DCA, Gain total DCA). Pourcentages et signe du gain laissés visibles, sous test
+  d'intention. Garde de SOURCE sur tout le fichier :
+  `tests/components/Investments.privacy.test.tsx`.
+
+- [ ] 🔴 **`[A11Y-PRIVACY-SCAN-GLOBAL]`** (M, **DÉCOUVERT PAR MESURE** 2026-08-14) — construire la
+  garde de source `formatCAD` au niveau du DÉPÔT, comme `chartPrivacyScan.test.ts` le fait déjà pour
+  les graphiques. **Un scan brut remonte 38 sites dans 19 fichiers** — mais c'est un MAJORANT, pas un
+  compte : le tri est le vrai travail. Trois classes de faux positifs déjà identifiées sur un
+  échantillon de 4 :
+  · **valeur PUBLIQUE** (`TaxBracketViz.tsx:73` — bornes de paliers fiscaux, que #608 exige
+    explicitement de GARDER visibles) ;
+  · **primitive non reconnue** (`DebtManager.tsx:151` — déjà dans `PrivateSliderValue`) ;
+  · **chaîne, pas JSX** (`Budget.tsx:460` — construit un libellé d'alerte ; à tracer jusqu'à son
+    consommateur, qui peut être un prompt IA — cas money-critical, cf. la règle no-fake-data).
+  ⚠️ **Cette garde REMPLACERAIT la liste faite à la main par l'audit** : elle mesure au lieu
+  d'énumérer, et elle ne peut pas oublier un écran. Les tickets `-DIVERS`, `-PROJECTION-EXPLAINS`,
+  `-PROPERTY-CONFIG` et `-ONBOARDING` devraient être RE-CADRÉS depuis son résultat plutôt que depuis
+  l'audit — leurs sites sont corroborés par le scan, mais rien ne dit que l'audit soit exhaustif.
 - [ ] 🔴 **`[A11Y-PRIVACY-PROJECTION-EXPLAINS]`** (S) — `components/projection/ProjectionExplains.tsx` :
   zéro `isPrivacyMode`. Vue année-par-année ET mois-par-mois complète de la projection (soldes,
   cotisations, croissance, retraits, transferts) en clair.

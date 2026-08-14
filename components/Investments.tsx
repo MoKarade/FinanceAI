@@ -858,7 +858,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                 <span className="text-ink-100 font-medium">{item.name}</span>
                                             </div>
                                             <div className="text-right">
-                                                <div className="text-white font-bold">{formatCAD(item.value)}</div>
+                                                <PrivateAmount as="div" className="text-white font-bold">{formatCAD(item.value)}</PrivateAmount>
                                                 <div className="text-tiny text-ink-400">{item.percent.toFixed(1)}%</div>
                                             </div>
                                         </button>
@@ -920,7 +920,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                 <span className="text-ink-100 font-medium">{item.name}</span>
                                             </div>
                                             <div className="text-right">
-                                                <div className="text-white font-bold">{formatCAD(item.value)}</div>
+                                                <PrivateAmount as="div" className="text-white font-bold">{formatCAD(item.value)}</PrivateAmount>
                                                 <div className="text-tiny text-ink-400">{item.percent.toFixed(1)}%</div>
                                             </div>
                                         </button>
@@ -1104,12 +1104,12 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         <div className="text-right">
                                             {!isRebalanceEdit && item.action === 'SELL' && (
                                                 <div className="text-danger-400 font-bold text-body">
-                                                    → Vendre {formatCAD(Math.round(Math.abs(item.diffAmount)))}
+                                                    → Vendre <PrivateAmount>{formatCAD(Math.round(Math.abs(item.diffAmount)))}</PrivateAmount>
                                                 </div>
                                             )}
                                             {!isRebalanceEdit && item.action === 'BUY' && (
                                                 <div className="text-green-400 font-bold text-body">
-                                                    → Acheter {formatCAD(Math.round(Math.abs(item.diffAmount)))}
+                                                    → Acheter <PrivateAmount>{formatCAD(Math.round(Math.abs(item.diffAmount)))}</PrivateAmount>
                                                 </div>
                                             )}
                                             {!isRebalanceEdit && item.action === 'OK' && (
@@ -1151,13 +1151,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     {rebalancingActions.filter(a => a.action === 'SELL').map((a, i) => (
                                         <div key={i} className="text-meta text-red-300 flex items-start gap-2">
                                             <span className="w-2 h-2 rounded-full bg-danger-500 mt-1.5 shrink-0" aria-hidden="true" />
-                                            <span><b>Vendre</b> {formatCAD(Math.round(Math.abs(a.diffAmount)))} de <b>{a.label}</b> (surplus {a.diffPct.toFixed(1)}%) — Utilisez votre compte Non-Enregistré en priorité pour optimiser la fiscalité.</span>
+                                            <span><b>Vendre</b> <PrivateAmount>{formatCAD(Math.round(Math.abs(a.diffAmount)))}</PrivateAmount> de <b>{a.label}</b> (surplus {a.diffPct.toFixed(1)}%) — Utilisez votre compte Non-Enregistré en priorité pour optimiser la fiscalité.</span>
                                         </div>
                                     ))}
                                     {rebalancingActions.filter(a => a.action === 'BUY').map((a, i) => (
                                         <div key={i} className="text-meta text-green-300 flex items-start gap-2">
                                             <span className="w-2 h-2 rounded-full bg-success-500 mt-1.5 shrink-0" aria-hidden="true" />
-                                            <span><b>Acheter</b> {formatCAD(Math.round(Math.abs(a.diffAmount)))} de <b>{a.label}</b> (déficit {Math.abs(a.diffPct).toFixed(1)}%) — Priorisez votre CELI si vous avez de l'espace disponible.</span>
+                                            <span><b>Acheter</b> <PrivateAmount>{formatCAD(Math.round(Math.abs(a.diffAmount)))}</PrivateAmount> de <b>{a.label}</b> (déficit {Math.abs(a.diffPct).toFixed(1)}%) — Priorisez votre CELI si vous avez de l'espace disponible.</span>
                                         </div>
                                     ))}
                                     <div className="text-meta text-ink-400 mt-3 pt-3 border-t border-white/5 italic">
@@ -1300,7 +1300,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                 <div className="grid grid-cols-2 gap-3 text-tiny mb-4 relative z-10">
                                     <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
                                         <div className="text-ink-400 mb-1 font-bold">Valeur</div>
-                                        <div className="text-white font-mono font-bold text-meta">{formatCAD(asset.value)}</div>
+                                        <PrivateAmount as="div" className="text-white font-mono font-bold text-meta">{formatCAD(asset.value)}</PrivateAmount>
                                     </div>
                                     <div className="bg-white/[0.03] p-2.5 rounded-xl border border-white/5 backdrop-blur-sm">
                                         <div className="text-ink-400 mb-1 font-bold">Variation {PERF_PERIOD_LABELS[perfPeriod]}</div>
@@ -1383,12 +1383,12 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             un ratio natif, exact tel quel. */}
                                         <div className="flex justify-between">
                                             <span className="text-ink-400">Coût moyen</span>
-                                            <span className="font-mono text-ink-200">{formatCAD(purchaseStats.averageCost * toCurrencyFactor(fxRates, savedAsset?.currency || 'CAD'))}</span>
+                                            <PrivateAmount className="font-mono text-ink-200">{formatCAD(purchaseStats.averageCost * toCurrencyFactor(fxRates, savedAsset?.currency || 'CAD'))}</PrivateAmount>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-ink-400">Gain total</span>
                                             <span className={`font-mono ${purchaseStats.totalGain >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                                {purchaseStats.totalGain >= 0 ? '+' : ''}{formatCAD(purchaseStats.totalGain * toCurrencyFactor(fxRates, savedAsset?.currency || 'CAD'))} ({purchaseStats.gainPct.toFixed(1)}%)
+                                                {purchaseStats.totalGain >= 0 ? '+' : ''}<PrivateAmount>{formatCAD(purchaseStats.totalGain * toCurrencyFactor(fxRates, savedAsset?.currency || 'CAD'))}</PrivateAmount> ({purchaseStats.gainPct.toFixed(1)}%)
                                             </span>
                                         </div>
                                     </div>

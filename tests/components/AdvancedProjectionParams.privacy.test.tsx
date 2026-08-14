@@ -1,10 +1,11 @@
 // tests/components/AdvancedProjectionParams.privacy.test.tsx
 //
 // [A11Y-PRIVACY-PARAMS-AVANCES] — le plus gros bloc de données réelles jamais masqué du dépôt.
-// 41 champs numériques, ZÉRO référence au mode discret avant ce lot.
+// 40 champs numériques, ZÉRO référence au mode discret avant ce lot.
+// (⚠️ 40, pas 41 : un `<input type="number">` du fichier vit dans le TEXTE d'un commentaire.)
 //
 // CRITÈRE RETENU, mécanique et vérifiable : on masque les MONTANTS, c'est-à-dire les champs dont le
-// libellé porte un `$` (14 sur 41). On laisse en clair les %, durées en mois, âges, probabilités et
+// libellé porte un `$` (14 sur 40). On laisse en clair les %, durées en mois, âges, probabilités et
 // itérations Monte Carlo — ce ne sont pas des sommes, et le contrat du mode discret porte sur les
 // montants (même décision que le bonus en % de #629).
 //
@@ -132,19 +133,30 @@ describe('[A11Y-PRIVACY-PARAMS-AVANCES] les 14 montants', () => {
 
 // ── Nommage : sans ça, 14 boutons « ••• » anonymes et indistinguables ────────────────────────
 describe('[A11Y-PRIVACY-PARAMS-AVANCES] nom accessible des champs masqués', () => {
-    it('mode discret ACTIF : chaque montant masqué garde le libellé qu’il affiche', () => {
+    // Les libellés sont écrits EN DUR ici, jamais dérivés du composant : un test qui relit la
+    // source pour fabriquer son attendu ne peut pas détecter un libellé faux, il le recopie.
+    // Les 14 sont listés — pas un échantillon : c'est le seul moyen de garantir qu'un champ ne
+    // reçoit pas le libellé de son VOISIN (« CELI $ » vs « CELI room restant $ » sont à un mot).
+    it('mode discret ACTIF : les 14 montants gardent CHACUN le libellé qu’ils affichent', () => {
         setPrivacy(true);
         const { container } = renderPanel();
         const attendus: Record<string, string> = {
-            'app-manualCELI': 'CELI $',
-            'app-manualREER': 'REER $',
-            'app-manualCELIRoom': 'CELI room restant $',
-            'app-manualREERRoom': 'REER room restant $',
             'app-divorceAlimonyMonthly': 'Pension alimentaire $/mois',
+            'app-ciPayoutAmount': 'Capital forfaitaire reçu $',
+            'app-ciExtraMonthlyExpense': 'Dépenses additionnelles $/mois',
             'app-inheritanceExpectedAmount': 'Héritage attendu $',
+            'app-snowbirdExtraMonthlyCost': 'Surcoût mensuel ($)',
             'app-boomerangSupportMonthly': 'Boomerang $/mois',
             'app-caregivingMonthly': 'Caregiving $/mois',
+            'app-manualCELI': 'CELI $',
+            'app-manualREER': 'REER $',
+            'app-manualNonReg': 'Non-Enreg $',
+            'app-manualCash': 'Cash $',
+            'app-manualCrypto': 'Crypto $',
+            'app-manualCELIRoom': 'CELI room restant $',
+            'app-manualREERRoom': 'REER room restant $',
         };
+        expect(Object.keys(attendus), 'les 14 champs masqués doivent TOUS être listés').toHaveLength(14);
         for (const [id, nom] of Object.entries(attendus)) {
             expect(container.querySelector(`#${id}`), `${id} doit garder son nom`).toHaveAccessibleName(nom);
         }
@@ -173,13 +185,32 @@ describe('[A11Y-PRIVACY-PARAMS-AVANCES] nom accessible des champs masqués', () 
 describe('[A11Y-PRIVACY-PARAMS-AVANCES] garde de source : tout libellé en $ pilote un champ masqué', () => {
     const source = readFileSync(resolve(__dirname, '../../components/AdvancedProjectionParams.tsx'), 'utf8');
 
-    /** Chaque `<label>…</label>` du fichier, avec le contrôle qui le suit immédiatement. */
+    /** Chaque `<label>…</label>` du fichier, avec le contrôle qui le suit immédiatement.
+     *  ⚠️ Le `(?:\{\/\*…\*\/\}\s*)*` n'est PAS cosmétique : `divorceSplitPct` porte un commentaire
+     *  JSX de 5 lignes entre son `</label>` et son champ. Sans lui, ce champ ÉCHAPPAIT au scan —
+     *  la garde avait un angle mort d'exactement un champ, et ne le disait pas. */
     const paires = () => {
         const out: Array<{ libelle: string; controle: string }> = [];
-        const re = /<label[^>]*>([^<]*)<\/label>\s*(<[A-Za-z]+)/g;
+        const re = /<label[^>]*>([^<]*)<\/label>\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)*(<[A-Za-z]+)/g;
         for (const m of source.matchAll(re)) out.push({ libelle: m[1], controle: m[2] });
         return out;
     };
+
+    // ⚠️ LA garde de la garde. Un scan qui rate silencieusement des champs donne un vert qui ne
+    // veut rien dire — et c'est arrivé : le commentaire JSX de `divorceSplitPct` faisait tomber
+    // le compte à 40 sans qu'aucune assertion ne s'en aperçoive. On exige donc que le scan couvre
+    // TOUS les champs numériques du fichier. Le jour où quelqu'un ajoute un champ dans une forme
+    // que la regex ne reconnaît pas, c'est CE test qui parle, pas un faux vert.
+    it('le scan couvre TOUS les champs numériques du fichier (aucun angle mort)', () => {
+        // ⚠️ Le dénominateur se compte sur la source SANS ses commentaires. Celui de
+        // `divorceSplitPct` contient le TEXTE `<input type="number">` — un compte naïf voyait donc
+        // 41 champs pour 40 réels et accusait le scan d'un angle mort qu'il n'avait pas.
+        const sansCommentaires = source.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+        const champs = sansCommentaires.match(/type="number"/g) ?? [];
+        expect(champs.length, 'le fichier compte 40 champs numériques réels').toBe(40);
+        expect(paires(), `le scan ne voit que ${paires().length} champs sur ${champs.length}`)
+            .toHaveLength(champs.length);
+    });
 
     it('la garde voit bien des libellés en $ (sinon elle ne prouverait rien)', () => {
         const enDollars = paires().filter((p) => p.libelle.includes('$'));

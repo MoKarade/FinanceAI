@@ -4,8 +4,8 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟢 Session 2026-08-14 (suite 84) — `[A11Y-PRIVACY-PARAMS-AVANCES]` : 14 champs sur 41
-> Deuxième ticket du lot. `AdvancedProjectionParams.tsx`, 41 champs numériques, ZÉRO `isPrivacyMode`.
+> ## 🟢 Session 2026-08-14 (suite 84) — `[A11Y-PRIVACY-PARAMS-AVANCES]` : 14 champs sur 40
+> Deuxième ticket du lot. `AdvancedProjectionParams.tsx`, 40 champs numériques, ZÉRO `isPrivacyMode`.
 > **Critère mécanique retenu : le libellé porte un `$`.** 14 champs masqués (soldes manuels, droits
 > restants, héritage, pension alimentaire, capital CI, dépenses CI, snowbird, boomerang, caregiving).
 > Les %, durées, âges, probabilités et itérations MC restent LISIBLES — masquer tout aurait coûté la
@@ -20,7 +20,7 @@
 >
 > ⚠️ **AUCUN `<label>` de ce fichier n'était associé à son champ** (ni `htmlFor`/`id`, ni
 > enveloppement) : les 14 boutons masqués auraient été anonymes. Association câblée pour ces 14.
-> Les **27 autres** restent sans nom accessible → ticket `[A11Y-LABELS-PARAMS-AVANCES]`, et le même
+> Les **26 autres** restent sans nom accessible → ticket `[A11Y-LABELS-PARAMS-AVANCES]`, et le même
 > trou est à greper dans les autres panneaux de Réglages avant de le chiffrer.
 > **Suite du lot** : `-SOLDES-COMPTES`, `-PATRIMOINE-ETENDU`, `-INVESTMENTS-DETAIL`,
 > `-PROJECTION-EXPLAINS`, `-DIVERS`, `-PROPERTY-CONFIG`, `-ONBOARDING`, `-TITLE-CLOBBER`.

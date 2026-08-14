@@ -1150,7 +1150,7 @@ stub : il n'aurait aucune date à lire.
   AUSSI une faiblesse mesurée par le panel : le tooltip `title` ne s'affiche qu'au SURVOL souris
   dans Chrome/Edge — un utilisateur voyant naviguant au CLAVIER n'a aucun indice visuel de
   « cliquer pour modifier ». Traiter les deux ensemble, pas séparément.
-- [x] 🔴 **`[A11Y-PRIVACY-PARAMS-AVANCES]`** (M) — livré 2026-08-14. **14 champs sur 41** masqués :
+- [x] 🔴 **`[A11Y-PRIVACY-PARAMS-AVANCES]`** (M) — livré 2026-08-14. **14 champs sur 40** masqués :
   soldes manuels CELI/REER/Non-Enreg/Cash/Crypto + droits restants, pension alimentaire, capital
   maladie grave, dépenses additionnelles, héritage attendu, surcoût snowbird, boomerang, proche
   aidant. **Critère** : le libellé porte un `$`. Les %, durées, âges, probabilités et itérations MC
@@ -1158,7 +1158,7 @@ stub : il n'aurait aucune date à lire.
   Association `<label htmlFor>` câblée au passage pour ces 14 champs (elle n'existait POUR AUCUN
   champ du fichier). Garde de SOURCE **symétrique** :
   `tests/components/AdvancedProjectionParams.privacy.test.tsx`.
-- [ ] **`[A11Y-LABELS-PARAMS-AVANCES]`** (S, découvert en livrant le ticket ci-dessus) — les **27
+- [ ] **`[A11Y-LABELS-PARAMS-AVANCES]`** (S, découvert en livrant le ticket ci-dessus) — les **26
   champs NON monétaires** de `components/AdvancedProjectionParams.tsx` n'ont toujours AUCUNE
   association `<label>`↔champ : ni `htmlFor`/`id`, ni enveloppement. Leur nom accessible est donc
   VIDE (WCAG 4.1.2). Défaut PRÉEXISTANT, sans rapport avec le mode discret — les 14 champs

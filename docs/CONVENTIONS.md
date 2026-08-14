@@ -2952,3 +2952,18 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   faux positif fabriqué par ma propre fixture, sur un fichier que je venais de lire en entier.
   Un nombre de 3-4 chiffres a toutes les chances de croiser un numéro de formulaire fiscal, une
   année, un seuil ou un pourcentage. Préférer 5+ chiffres, ou vérifier le nombre contre le rendu.
+- ⚠️ **[Même lot] Un dénominateur compté sur la source BRUTE compte les fantômes des commentaires.**
+  Ma garde de couverture comparait « paires libellé↔champ vues par le scan » à
+  `source.match(/type="number"/g).length`. Elle échouait à 40 contre 41 — et j'ai d'abord accusé le
+  scan d'un angle mort. Le vrai coupable : le commentaire de `divorceSplitPct` contient le TEXTE
+  `<input type="number">`, cité en exemple. Le fichier a 40 champs RÉELS, pas 41.
+  Deux conséquences, l'une technique et l'autre pire :
+  1. tout compte sur une source non nettoyée est faux dès qu'un commentaire cite du code — il faut
+     retirer les commentaires AVANT de compter ;
+  2. j'avais propagé « 41 champs » dans le message de commit, le corps de PR, le handover, le
+     BACKLOG et l'en-tête du test, sans jamais recouper la somme. `14 + 26 = 40` sautait aux yeux
+     et personne (moi compris) ne l'avait fait. Règle : **un décompte cité dans une doc se recoupe
+     par une addition**, pas par une seule mesure répétée en boucle.
+  Bénéfice net : cette garde de couverture n'existait pas au départ. Une garde qui ne prouve pas
+  qu'elle voit TOUT ce qu'elle prétend surveiller est de la même famille que la garde circulaire —
+  elle rend un vert qui ne veut rien dire.

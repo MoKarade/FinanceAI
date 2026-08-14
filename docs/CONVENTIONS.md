@@ -2967,3 +2967,15 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   Bénéfice net : cette garde de couverture n'existait pas au départ. Une garde qui ne prouve pas
   qu'elle voit TOUT ce qu'elle prétend surveiller est de la même famille que la garde circulaire —
   elle rend un vert qui ne veut rien dire.
+- ⚠️ **[Même lot] NORMALISER puis matcher, plutôt que tout tolérer DANS la regex.** Pour que le scan
+  voie un champ séparé de son libellé par un commentaire JSX, mon premier réflexe a été d'absorber
+  le commentaire dans le motif : `<\/label>\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)*(<[A-Za-z]+)`. CodeQL l'a
+  refusé, à raison : deux quantificateurs imbriqués sur un motif ambigu = backtracking exponentiel
+  (ReDoS). L'entrée est un fichier du dépôt, donc le risque réel est nul — mais le correctif de
+  forme s'est révélé MEILLEUR sur le fond : retirer les commentaires UNE fois
+  (`source.replace(/\{\/\*[\s\S]*?\*\/\}/g, '')`) donne une source normalisée que le scan ET le
+  décompte partagent, chaque motif reste linéaire, et les deux défauts que ces commentaires
+  causaient (paire invisible, champ fantôme compté) tombent du même geste.
+  Règle : quand une regex doit « tolérer » une construction, se demander d'abord si cette
+  construction peut être ÉLIMINÉE de l'entrée. La garde a été revérifiée sur ses trois
+  perturbations après le correctif — un correctif de forme ne doit jamais être supposé neutre.

@@ -185,14 +185,24 @@ describe('[A11Y-PRIVACY-PARAMS-AVANCES] nom accessible des champs masqués', () 
 describe('[A11Y-PRIVACY-PARAMS-AVANCES] garde de source : tout libellé en $ pilote un champ masqué', () => {
     const source = readFileSync(resolve(__dirname, '../../components/AdvancedProjectionParams.tsx'), 'utf8');
 
-    /** Chaque `<label>…</label>` du fichier, avec le contrôle qui le suit immédiatement.
-     *  ⚠️ Le `(?:\{\/\*…\*\/\}\s*)*` n'est PAS cosmétique : `divorceSplitPct` porte un commentaire
-     *  JSX de 5 lignes entre son `</label>` et son champ. Sans lui, ce champ ÉCHAPPAIT au scan —
-     *  la garde avait un angle mort d'exactement un champ, et ne le disait pas. */
+    /**
+     * Source DÉCOMMENTÉE, base unique de tout ce bloc. Les commentaires JSX sont retirés UNE fois,
+     * pour deux raisons distinctes qui se règlent du même geste :
+     *  1. `divorceSplitPct` porte un commentaire de 5 lignes entre son `</label>` et son champ —
+     *     sans ce nettoyage, sa paire échappe au scan (angle mort silencieux, vécu) ;
+     *  2. ce même commentaire contient le TEXTE `<input type="number">`, cité en exemple — un
+     *     décompte sur la source brute voit donc un champ FANTÔME de plus qu'il n'en existe.
+     * ⚠️ Nettoyer d'abord, scanner ensuite — plutôt que de tolérer les commentaires DANS la regex
+     * de paires. Un `(?:\{\/\*[\s\S]*?\*\/\}\s*)*` y imbrique deux quantificateurs et ouvre un
+     * backtracking exponentiel (signalé par CodeQL). Ici chaque motif reste linéaire.
+     */
+    const propre = source.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+
+    /** Chaque `<label>…</label>`, avec le contrôle qui le suit. */
     const paires = () => {
         const out: Array<{ libelle: string; controle: string }> = [];
-        const re = /<label[^>]*>([^<]*)<\/label>\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)*(<[A-Za-z]+)/g;
-        for (const m of source.matchAll(re)) out.push({ libelle: m[1], controle: m[2] });
+        const re = /<label[^>]*>([^<]*)<\/label>\s*(<[A-Za-z]+)/g;
+        for (const m of propre.matchAll(re)) out.push({ libelle: m[1], controle: m[2] });
         return out;
     };
 
@@ -202,11 +212,9 @@ describe('[A11Y-PRIVACY-PARAMS-AVANCES] garde de source : tout libellé en $ pil
     // TOUS les champs numériques du fichier. Le jour où quelqu'un ajoute un champ dans une forme
     // que la regex ne reconnaît pas, c'est CE test qui parle, pas un faux vert.
     it('le scan couvre TOUS les champs numériques du fichier (aucun angle mort)', () => {
-        // ⚠️ Le dénominateur se compte sur la source SANS ses commentaires. Celui de
-        // `divorceSplitPct` contient le TEXTE `<input type="number">` — un compte naïf voyait donc
-        // 41 champs pour 40 réels et accusait le scan d'un angle mort qu'il n'avait pas.
-        const sansCommentaires = source.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
-        const champs = sansCommentaires.match(/type="number"/g) ?? [];
+        // Numérateur et dénominateur lisent la MÊME source décommentée : un compte naïf sur la
+        // source brute voyait 41 champs pour 40 réels et accusait le scan d'un angle mort inexistant.
+        const champs = propre.match(/type="number"/g) ?? [];
         expect(champs.length, 'le fichier compte 40 champs numériques réels').toBe(40);
         expect(paires(), `le scan ne voit que ${paires().length} champs sur ${champs.length}`)
             .toHaveLength(champs.length);

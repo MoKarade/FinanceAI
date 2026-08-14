@@ -186,13 +186,18 @@ describe('[PASSE-REEL-TXN-DU-JOUR] détail par transaction', () => {
         avecDetail({ isVerified: true });
         expect(texte()).toContain('v\u00e9rifi\u00e9e');
         cleanup();
-        avecDetail({ isAiProcessed: true, confidence: 0.93 });
+        // ⚠️ 93, PAS 0.93 : `confidence` est en 0-100 dans tout le dépôt — `Transactions.tsx` affiche
+        // déjà `${t.confidence}%` SANS multiplier. Ma première fixture reproduisait l'hypothèse
+        // FAUSSE du code, donc ne discriminait rien. Deuxième fois de la session qu'un de mes tests
+        // fabrique la condition qu'il devrait prouver.
+        avecDetail({ isAiProcessed: true, confidence: 93 });
         expect(texte()).toContain('class\u00e9eparIA');
         expect(texte(), 'la confiance chiffrée aide à juger').toContain('93');
+        expect(texte(), 'un « 9300 » trahirait une confusion d’échelle').not.toContain('9300');
     });
 
     it('une confiance IA FAIBLE est mise en évidence', () => {
-        avecDetail({ isAiProcessed: true, confidence: 0.42 });
+        avecDetail({ isAiProcessed: true, confidence: 42 });
         expect(texte()).toContain('42');
         expect(document.querySelector('.text-amber-300'), 'une catégorie peu sûre doit sauter aux yeux').not.toBeNull();
     });

@@ -3169,3 +3169,24 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   Corollaire du même incident : une assertion NÉGATIVE doit viser la ZONE qu'elle juge, pas tout le
   document — la modale affiche les prénoms ailleurs (ventilation par conjoint), et chercher dans
   `document.body` accusait le détail d'une ligne pour un texte venu d'une autre section.
+- 🔴 **[PASSE-REEL-TXN-DU-JOUR, revue v2] Une FIXTURE qui reproduit l'hypothèse fausse du code ne
+  discrimine RIEN — et c'est la deuxième fois de la même session.** J'ai traité `Transaction.confidence`
+  comme une fraction 0-1 (`Math.round(c * 100)`). Elle est en **0-100** chez TOUS ses producteurs
+  (`claude.ts` : 100, `applyTransferDetection` : 100, personas : 95), et le consommateur existant
+  `Transactions.tsx` l'affiche déjà `${t.confidence}%` SANS multiplier. Ma pastille aurait donc
+  affiché « 9 500 % ».
+  **Le plus grave n'est pas l'affichage** : mon seuil d'alerte `pct < 70` devenait INATTEIGNABLE —
+  une vraie confiance de 42 devenait 4 200, donc « neutre », donc jamais en ambre. La pastille
+  perdait sa seule raison d'être (signaler les catégorisations douteuses) sur TOUTE donnée réelle.
+  Mes deux tests utilisaient `0.93` et `0.42` : ils reproduisaient MON hypothèse, donc passaient au
+  vert des deux côtés du bug.
+  Règle : **une fixture se calibre sur les PRODUCTEURS réels du champ, pas sur l'idée qu'on s'en
+  fait.** Un grep de `confidence:` dans `services/` coûtait dix secondes et donnait la réponse.
+  Corollaire fort : pour une unité (%, fraction, cents, mensuel/annuel), chercher d'abord si un
+  autre écran l'AFFICHE DÉJÀ — son code est la spécification la plus fiable du dépôt.
+- ⚠️ **[Même revue] Une divergence assumée entre deux écrans se DOCUMENTE dans le code.**
+  `resolveTransactionOwner` (vue Budget) DÉDUIT un conjoint quand `ownerId` est absent, en lisant le
+  type de poste. Mon panneau n'affiche que l'attribution EXPLICITE — afficher une déduction comme un
+  nom se lirait comme une certitude. Le choix est défendable, mais la conséquence ne l'est que si
+  elle est écrite : une transaction imputée à un conjoint dans Budget peut n'avoir aucune pastille
+  ici. Sans cette note, la prochaine session lira l'écart comme un bug et « corrigera ».

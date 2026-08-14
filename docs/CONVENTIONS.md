@@ -2979,3 +2979,32 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   Règle : quand une regex doit « tolérer » une construction, se demander d'abord si cette
   construction peut être ÉLIMINÉE de l'entrée. La garde a été revérifiée sur ses trois
   perturbations après le correctif — un correctif de forme ne doit jamais être supposé neutre.
+
+- ⚠️ **[A11Y-PRIVACY-SOLDES-COMPTES] 2026-08-14 — un `id` DÉRIVÉ d'un texte utilisateur casse
+  l'association `<label htmlFor>` en silence.** Les soldes de comptes sont rendus en boucle sur des
+  noms SAISIS par l'utilisateur (« Compte chèque », « Épargne d'urgence »). Fabriquer l'`id` à partir
+  de ce nom paraît naturel et lisible — mais deux noms distincts peuvent se nettoyer en un MÊME
+  identifiant (`Épargne d'urgence #1` et `Épargne d urgence 1`), et deux éléments partageant un `id`
+  font pointer les DEUX `<label>` sur le premier : le second champ perd son nom accessible, sans
+  aucune erreur ni avertissement. L'index de boucle est sans collision par construction.
+  Généralisation : **une donnée utilisateur ne doit jamais servir de CLÉ technique** (id DOM, clé de
+  cache, nom de fichier) sans une garantie d'unicité qui ne dépende pas de son contenu.
+- ⚠️ **[Même lot] Le contrat du mode discret porte sur les MONTANTS, pas sur « tout ce qui
+  identifie ».** Le lot a tranché trois fois dans le même sens, et chaque fois sous test d'INTENTION :
+  le bonus en % (#629), les %/durées/âges/probabilités des paramètres avancés (#630), et ici les NOMS
+  de comptes. La règle qui unifie les trois : masquer une valeur qui n'est pas une somme ne protège
+  rien de plus et coûte la lisibilité — pire, masquer ce qui NOMME un champ rend les contrôles
+  masqués indistinguables, soit exactement le défaut que le lot corrige. Écrire le test d'intention
+  À CHAQUE FOIS : sans lui, un futur « masquons tout » passe au vert sans que le choix soit rediscuté.
+- ⚠️ **[Même lot] Un setter NO-OP dans une fixture rend le test structurellement AVEUGLE au
+  re-render.** Tous mes tests d'`AccountsSection` passaient `setInitialBalances={vi.fn()}` : la prop
+  ne changeait donc JAMAIS, et aucun d'eux ne pouvait voir ce qui arrive quand le parent se re-rend
+  en cours de saisie — le scénario le plus à risque du lot, puisqu'en prod l'objet est reconstruit à
+  CHAQUE frappe. Le comportement se trouvait correct, mais par accident heureux : il ne tient qu'au
+  `key={acc}` du `<div>` parent, qui empêche React de démonter `PrivateNumberInput` et préserve son
+  `useState` interne. Perturbation : rendre la clé instable (`key={acc + valeur}`) → le champ
+  **se re-masque au PREMIER caractère**, saisie impossible, aucune erreur.
+  Deux règles : (1) quand un composant remonte son état, la fixture doit REMONTER l'état pour de
+  vrai (`useState` dans un wrapper), pas le simuler par un `vi.fn()` ; (2) une feature qui dépend
+  d'une propriété INVISIBLE — ici l'identité d'un composant à travers les re-renders — mérite sa
+  garde explicite : rien dans le code ne signale que changer cette clé casse la saisie.

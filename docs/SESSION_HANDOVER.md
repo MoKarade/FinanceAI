@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-14 (suite 85) — `[A11Y-PRIVACY-SOLDES-COMPTES]` : 3/9 du lot
+> `AccountsSection.tsx` rendait le solde RÉEL de chaque compte en `<input>` nu. Masqué.
+>
+> ⚠️ **`id` INDEXÉ, jamais dérivé du nom de compte.** Le nom est saisi par l'utilisateur : deux noms
+> distincts peuvent se nettoyer en un MÊME identifiant, et deux champs partageant un `id` cassent
+> l'association `<label htmlFor>` en SILENCE. Test dédié avec deux noms qui se confondent.
+> ⚠️ **Décision testée** : nom et nombre de comptes restent en clair. Ce ne sont pas des montants, et
+> le nom EST le libellé du champ — le masquer rendrait les boutons indistinguables, soit le défaut
+> que ce lot corrige. Troisième fois que le lot tranche ainsi (bonus %, %/durées/âges, ici les noms) :
+> **le contrat du mode discret porte sur les MONTANTS, pas sur « tout ce qui identifie »**.
+>
+> **Suivant : `[A11Y-PRIVACY-PATRIMOINE-ETENDU]`, cadrage déjà MESURÉ** — 17 champs numériques,
+> **ZÉRO `<label>` dans tout le fichier** (les écrans précédents avaient un libellé non associé ;
+> ici il n'y en a pas du tout) → le nommage passera par `aria-label`, pas par `htmlFor`. Et un
+> `toLocaleString` nu l. 119 à corriger en `formatCAD` au passage.
+> Reste ensuite : `-INVESTMENTS-DETAIL`, `-PROJECTION-EXPLAINS`, `-DIVERS`, `-PROPERTY-CONFIG`,
+> `-ONBOARDING`, `-TITLE-CLOBBER`, plus `[A11Y-LABELS-PARAMS-AVANCES]`.
+
 > ## 🟢 Session 2026-08-14 (suite 84) — `[A11Y-PRIVACY-PARAMS-AVANCES]` : 14 champs sur 40
 > Deuxième ticket du lot. `AdvancedProjectionParams.tsx`, 40 champs numériques, ZÉRO `isPrivacyMode`.
 > **Critère mécanique retenu : le libellé porte un `$`.** 14 champs masqués (soldes manuels, droits

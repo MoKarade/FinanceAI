@@ -30,8 +30,33 @@
 > courbe » alors que c'est le FLUX DE TRÉSORERIE (le rendement de marché bouge la courbe sans
 > transaction).
 >
+> 🔴 **`confidence` est en 0-100, PAS en 0-1** — je multipliais par 100 (« 9500 % » à l'écran) et mon
+> seuil d'alerte `< 70` devenait INATTEIGNABLE. Mesuré chez TOUS les producteurs, et confirmé par le
+> consommateur existant `Transactions.tsx` qui affiche `${t.confidence}%` SANS multiplier. Mes
+> fixtures valaient 0.93 / 0.42 : elles REPRODUISAIENT ma propre hypothèse fausse — deuxième fois sur
+> cette PR qu'un de mes tests fabrique la condition qu'il devrait prouver.
+> ⚠️ **Divergence assumée** : `resolveTransactionOwner` (`utils/budget.ts`) DÉDUIT un conjoint depuis
+> la catégorie budgétaire quand `ownerId` manque. Le panneau n'affiche le conjoint que s'il est
+> EXPLICITE — une déduction posée comme un fait sur une ligne de relevé serait non sourcée.
+>
 > **Les DEUX demandes de Marc du 2026-08-14 sont donc livrées** (courbe coupée + transactions).
-> Restent ses décisions en attente : PDF en mode discret, dette passée AMORTIE ou FIGÉE, GO Lot 7.
+> 🔴 **Il en a formulé une TROISIÈME pendant la PR** : « je veux voir la variabilité d'argent pour la
+> journée (tout compris mais détaillé) » → ticket **`[PASSE-REEL-VARIATION-DU-JOUR]`**, au BACKLOG,
+> PAS codé. C'est exactement le manque que le CHANGELOG de cette PR annonce : le total du jour est le
+> net encaissé, pas la variation du patrimoine. ⚠️ **Le moteur émet DÉJÀ la ventilation** —
+> `DailyPastRow` porte `NetTransferLiquid`, `deposits` ET `growth` par régime, `Immobilier`,
+> `DettesNonImmo`, `NetWorth` : aucun calcul financier neuf à écrire, seulement à consommer. Lire le
+> ticket AVANT de coder — il pose les deux pièges (dépôt compté deux fois, palier annuel de
+> l'immobilier) et le critère de fini (résiduel AFFICHÉ, jamais absorbé par un poste fourre-tout).
+> Restent ses décisions en attente : PDF en mode discret, dette passée AMORTIE ou FIGÉE, GO Lot 7,
+> + le cadrage du nouveau ticket (panneau existant ou section repliable).
+>
+> ⚠️ **`commit-gate` n'est PAS un hook GIT** — c'est un hook **Claude Code** (`PreToolUse` sur Bash,
+> `.claude/settings.json` → `scripts/hooks/commit-gate.mjs`). `.git/hooks/` ne contient donc QUE des
+> `.sample`, et c'est NORMAL : conclure « le gate n'est pas installé » depuis ce constat est faux
+> (je l'ai conclu, et annoncé à Marc, avant de lire le hook). Corollaire à connaître : le gate
+> s'auto-saute quand AUCUN `.ts/.tsx` n'est stagé (commit de docs pur) — voulu et documenté, pas une
+> défaillance.
 
 > ## 🔴 Session 2026-08-14 (suite 88) — `[PASSE-REEL-CAP-400J]` : BUG UTILISATEUR signalé par Marc
 > « je vois plus mon historique entre 2026-01-10 et 2026-08, je peux pas sélectionner dans la courbe ».

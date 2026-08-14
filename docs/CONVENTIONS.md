@@ -1084,6 +1084,17 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   est committé. `commit-gate` relance la suite complète **uniquement si des `.ts/.tsx` sont stagés**
   (~5 min — voulu) ; un commit de docs/config/hooks est instantané. `guard` laisse passer le push
   mais bloque toujours `rm -rf` sensible / `--no-verify` / `.env` (en ignorant le corps des messages).
+- ⚠️ **`HOOK-WRONG-MECHANISM` (2026-08-14)** — j'ai conclu « le hook `commit-gate` n'est pas installé
+  dans ce conteneur » parce que `.git/hooks/` ne contenait que des `.sample`, et je l'ai **annoncé à
+  Marc**. C'était FAUX sur les deux points : `commit-gate` n'a jamais été un hook **git**, c'est un
+  hook **Claude Code** (`PreToolUse` sur Bash → `scripts/hooks/commit-gate.mjs`), donc `.git/hooks/`
+  vide est l'état NORMAL ; et il tournait bien. Ce que j'ai pris pour son absence était en réalité
+  son comportement documenté : `touchesSource` est faux quand aucun `.ts/.tsx` n'est stagé, donc un
+  commit de docs pur sort en `exit 0` immédiatement — voulu, et écrit juste au-dessus dans ce
+  fichier. **La leçon générale** : constater qu'un mécanisme est absent de l'emplacement où l'on
+  SUPPOSE qu'il vit ne prouve rien sur son existence. Localiser l'implémentation (`grep` du nom dans
+  la config) AVANT de conclure — a fortiori avant de l'annoncer. Même famille que
+  `DOC-STALE-IMPOSSIBILITY` : un constat d'absence est une hypothèse, pas une mesure.
 
 ## Notes
 - ⚠️ **[PARTIAL-POINT-FAKE-ZERO] 2026-08-11 — fabriquer un point qui n'implémente qu'une PARTIE d'un

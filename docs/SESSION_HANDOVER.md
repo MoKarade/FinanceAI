@@ -4,6 +4,27 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-14 (suite 84) — `[A11Y-PRIVACY-PARAMS-AVANCES]` : 14 champs sur 41
+> Deuxième ticket du lot. `AdvancedProjectionParams.tsx`, 41 champs numériques, ZÉRO `isPrivacyMode`.
+> **Critère mécanique retenu : le libellé porte un `$`.** 14 champs masqués (soldes manuels, droits
+> restants, héritage, pension alimentaire, capital CI, dépenses CI, snowbird, boomerang, caregiving).
+> Les %, durées, âges, probabilités et itérations MC restent LISIBLES — masquer tout aurait coûté la
+> lisibilité sans rien protéger de plus, et un test le verrouille dans ce sens aussi.
+>
+> ⚠️ **Le critère est appliqué À LA MAIN**, pas en regex à l'exécution (leçon
+> `TEXT-HEURISTIC-OVER-USER-TEXT`). En revanche il est verrouillé par une **garde de SOURCE
+> SYMÉTRIQUE** — un libellé en `$` sur un `<input>` nu échoue, ET un libellé sans `$` sur un
+> `PrivateNumberInput` échoue aussi. Les deux sens prouvés discriminants. C'est le patron à
+> réutiliser pour les tickets suivants du lot : un test de RENDU ne voit que les champs montés
+> (la moitié du panneau est derrière des `xxxEnabled`), un scan de SOURCE voit tout le fichier.
+>
+> ⚠️ **AUCUN `<label>` de ce fichier n'était associé à son champ** (ni `htmlFor`/`id`, ni
+> enveloppement) : les 14 boutons masqués auraient été anonymes. Association câblée pour ces 14.
+> Les **27 autres** restent sans nom accessible → ticket `[A11Y-LABELS-PARAMS-AVANCES]`, et le même
+> trou est à greper dans les autres panneaux de Réglages avant de le chiffrer.
+> **Suite du lot** : `-SOLDES-COMPTES`, `-PATRIMOINE-ETENDU`, `-INVESTMENTS-DETAIL`,
+> `-PROJECTION-EXPLAINS`, `-DIVERS`, `-PROPERTY-CONFIG`, `-ONBOARDING`, `-TITLE-CLOBBER`.
+
 > ## 🟢 Session 2026-08-14 (suite 83) — `[A11Y-PRIVACY-SALAIRE]` : le mode discret entre dans les FORMULAIRES
 > Premier ticket du lot `[A11Y-PRIVACY-LOT2]`. #608 avait traité l'AFFICHAGE, jamais la SAISIE :
 > `UserConfigFields.tsx` n'avait aucune référence au mode discret. Passés en `PrivateNumberInput` :

@@ -20,6 +20,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   lecteur d'écran, quatre champs de salaire annonçaient tous « Montant masqué » — impossible de
   savoir lequel on éditait. Chaque champ garde désormais son libellé, l'état masqué étant annoncé
   en complément. Ça vaut pour TOUS les écrans qui masquent des champs, pas seulement Profil.
+### Les paramètres avancés aussi
+- Le panneau **Paramètres avancés** de la projection était le plus gros bloc de tes vraies données
+  jamais laissé en clair : tes soldes manuels CELI / REER / Non-Enreg / Cash / Crypto et tes droits
+  restants, ton héritage attendu, ta pension alimentaire, ton capital maladie grave, ton surcoût
+  snowbird, ton aide aux enfants et à tes parents. Tout ça se masque désormais en mode discret.
+- **Ce qui reste visible, à dessein** : les pourcentages, les durées en mois, les âges, les
+  probabilités et le nombre d'itérations Monte Carlo. Ce ne sont pas des sommes, et tout masquer
+  aurait rendu le panneau illisible sans rien protéger de plus.
+
+---
+
+## [unreleased] — 2026-08-14 (suite)
+
 - Dans la foulée, le champ « montant » de chaque ligne du **Budget** annonce enfin de quel poste il
   s'agit (« Montant de base — Épicerie »). Avant, les dix lignes d'un tableau disaient toutes la
   même chose : « Modifier le montant de base ».

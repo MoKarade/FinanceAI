@@ -41,6 +41,24 @@ fichier:ligne). Verdicts appliqués à la refonte :
 
 ---
 
+## Livré 2026-08-14 — PR #629 `[A11Y-PRIVACY-SALAIRE]` (lot `[A11Y-PRIVACY-LOT2]` 1/9)
+
+- [x] **`[A11Y-PRIVACY-SALAIRE]`** — le mode discret entre dans les FORMULAIRES. #608 avait traité
+  l'AFFICHAGE, jamais la SAISIE : `components/settings/UserConfigFields.tsx` n'avait aucune
+  référence au mode discret. Masqués : salaire brut ET net des DEUX conjoints, facteur
+  d'équivalence, RSU, revenus secondaires. Bonus en % laissé en clair À DESSEIN (c'est un %, pas un
+  montant, et le brut auquel il s'applique est masqué), verrouillé par un test d'INTENTION.
+  Gardes : `tests/components/settings/UserConfigFields.privacy.test.tsx`.
+- [x] **Défaut de la PRIMITIVE corrigé au passage** (`components/ui/PrivateNumberInput.tsx`) — le
+  bouton masqué portait un `aria-label` EN DUR, prioritaire sur le `<label htmlFor>`, sur
+  l'`aria-label` du champ ET sur `aria-labelledby`. MESURÉ : tous les champs masqués d'un formulaire
+  annonçaient le même nom. Le nom est désormais laissé au nommeur existant, l'état masqué porté par
+  `title` (description) + `sr-only`. `AssetLocationCard` et `RetirementIncomeCard` en bénéficient
+  immédiatement. Leçon `A11Y-MASK-STEALS-NAME` dans `docs/CONVENTIONS.md`.
+- [x] **`BudgetGroupTable`** — trouvé par le panel : ce champ n'avait AUCUN nommeur, son nom venait
+  du `title`, identique sur chaque ligne, y compris HORS mode discret. Le nom porte désormais le
+  POSTE (« Montant de base — Épicerie »), jamais le montant.
+
 ## ⚠️ 2026-08-13 — PR #613 RECALÉE par le panel moteur, reprise en #615
 
 > **Cette entrée a été écrite trop tôt.** Le panel moteur a rendu **NO-GO** sur #613 avec 12

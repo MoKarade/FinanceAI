@@ -2927,3 +2927,28 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   fichiers modifiés HORS du dépôt avant de lancer un panel, (2) ne committer qu'une fois le panel
   rendu, (3) RELIRE le contenu réellement commité (`git show HEAD:<fichier>`), jamais supposer que
   `git add` a capturé ce qu'on venait d'écrire.
+
+- ⚠️ **[A11Y-PRIVACY-PARAMS-AVANCES] 2026-08-14 — une garde de scan doit être SYMÉTRIQUE quand la
+  règle a deux sens.** Le critère « on masque les champs dont le libellé porte un `$` » se garde
+  naturellement dans un sens (un libellé en `$` sur un `<input>` nu = fuite). Mais il a un
+  SECOND sens tout aussi important : un champ SANS `$` masqué par mégarde coûte de la lisibilité
+  sans rien protéger, et signale que quelqu'un a masqué au jugé plutôt qu'au critère. Les deux
+  assertions sont écrites, et les DEUX prouvées discriminantes par perturbation. Sans la seconde,
+  « masquons tout » passait au vert — et c'est exactement la simplification tentante.
+  Corollaire : un test de RENDU ne voit que les champs MONTÉS (ici la moitié du panneau est derrière
+  des `projection.xxxEnabled`) ; un scan de SOURCE voit tout le fichier, y compris un champ ajouté
+  demain dans une section que la fixture n'active pas. Les deux sont nécessaires, pas au choix.
+- ⚠️ **[Même lot] Une transformation EN MASSE se vérifie attribut par attribut, pas au typecheck.**
+  Ma substitution regex `<input type="number" …>` → `<PrivateNumberInput …>` a absorbé le
+  `type="number"` dans le motif et l'a PERDU sur les 14 champs. `npm run typecheck` est resté VERT :
+  `type` est optionnel sur `InputHTMLAttributes`. Le champ révélé redevenait un champ TEXTE —
+  steppers et clavier numérique mobile en moins, sans la moindre erreur. Attrapé par un comptage
+  AVANT/APRÈS sur le fichier (`grep -c 'type="number"'` : 41 des deux côtés, et idem pour
+  `min|max|step`), pas par le compilateur. Règle : après un remplacement en masse, COMPTER les
+  attributs de part et d'autre — un typage optionnel ne signale jamais une perte.
+- ⚠️ **[Même lot] Un montant « unique » de fixture se vérifie contre le TEXTE RENDU, pas au flair.**
+  J'ai choisi `1213` comme montant témoin « improbable » : il apparaît dans le libellé STATIQUE
+  « T1213 retenue source ». Le test de fuite a donc échoué alors que le masquage était correct —
+  faux positif fabriqué par ma propre fixture, sur un fichier que je venais de lire en entier.
+  Un nombre de 3-4 chiffres a toutes les chances de croiser un numéro de formulaire fiscal, une
+  année, un seuil ou un pourcentage. Préférer 5+ chiffres, ou vérifier le nombre contre le rendu.

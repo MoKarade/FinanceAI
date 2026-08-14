@@ -41,12 +41,25 @@ export const PrivateNumberInput: React.FC<Props> = ({ className = '', onBlur, on
                 id={id}
                 type="button"
                 className={`${className} focus-ring min-h-[24px]`}
-                aria-label={`${MASKED_AMOUNT_LABEL} — cliquer pour modifier`}
+                // ⚠️ [A11Y-PRIVACY-SALAIRE] Surtout PAS d'`aria-label` en dur ici. Il est PRIORITAIRE sur
+                // les deux façons dont un champ est nommé dans le dépôt — le `<label htmlFor>` (salaires
+                // de Profil) et l'`aria-label` du champ (FE, RSU, Asset Location) — et les écrasait donc
+                // tous les deux. MESURÉ avec `computeAccessibleName` : « RSU vesting annuel » et
+                // « Salaire Brut annuel ($) » devenaient l'un comme l'autre « Montant masqué — cliquer
+                // pour modifier ». En mode discret, tous les champs d'un formulaire annonçaient le même
+                // nom : impossible de savoir lequel on édite au lecteur d'écran.
+                //
+                // On laisse donc le nom au NOMMEUR EXISTANT et on porte l'état masqué là où il ne peut
+                // écraser personne : le `title` sert de DESCRIPTION (annoncée en plus du nom), et le
+                // texte sr-only ne devient le nom que si rien d'autre ne nomme le bouton (le contenu est
+                // le dernier recours de l'algorithme de nom accessible).
+                aria-label={rest['aria-label']}
                 title={MASKED_AMOUNT_LABEL}
                 onClick={(e) => { e.stopPropagation(); setRevealed(true); }}
                 onFocus={(e) => { e.stopPropagation(); setRevealed(true); }}
             >
                 <span aria-hidden="true" className="select-none tracking-widest">•••</span>
+                <span className="sr-only">{MASKED_AMOUNT_LABEL} — cliquer pour modifier</span>
             </button>
         );
     }

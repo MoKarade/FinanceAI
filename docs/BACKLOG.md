@@ -1134,10 +1134,17 @@ stub : il n'aurait aucune date à lire.
 > soit le mode. La primitive existe déjà (`PrivateNumberInput`, utilisée par `AssetLocationCard`).
 > ⚠️ Rappel de méthode (leçon #608) : un test de fuite doit être prouvé DISCRIMINANT, et un canal de
 > fuite peut être un ATTRIBUT (`title`, `aria-label`) ou la STRUCTURE (nombre de lignes rendues).
+>
+> ⚠️ **Prérequis LEVÉ par `[A11Y-PRIVACY-SALAIRE]`** (2026-08-14) : la primitive volait le NOM
+> ACCESSIBLE du champ qu'elle masquait (`aria-label` en dur, prioritaire sur `<label htmlFor>` ET
+> sur l'`aria-label` du champ). Tous les champs masqués d'un formulaire annonçaient donc le même
+> nom. Corrigé DANS la primitive : les tickets suivants de ce lot en héritent, il n'y a rien à
+> refaire par écran. Voir `A11Y-MASK-STEALS-NAME` dans `docs/CONVENTIONS.md`.
 
-- [ ] 🔴 **`[A11Y-PRIVACY-SALAIRE]`** (S) — `components/settings/UserConfigFields.tsx:84-106` : salaire
-  brut ET net des DEUX conjoints en input natif, zéro référence au mode discret dans le fichier.
-  Le champ le plus sensible de l'app. **À traiter EN PREMIER.**
+- [x] 🔴 **`[A11Y-PRIVACY-SALAIRE]`** (S) — livré 2026-08-14. Salaires brut/net des DEUX conjoints,
+  facteur d'équivalence, RSU et revenus secondaires passés en `PrivateNumberInput` ; bonus en %
+  laissé en clair à dessein (le brut auquel il s'applique est masqué). Correctif de nom accessible
+  dans la primitive. Gardes : `tests/components/settings/UserConfigFields.privacy.test.tsx`.
 - [ ] 🔴 **`[A11Y-PRIVACY-PARAMS-AVANCES]`** (M) — `components/AdvancedProjectionParams.tsx` : zéro
   `isPrivacyMode`. Soldes manuels CELI/REER/Non-Enreg/Cash/Crypto + droits restants (l. 259-284),
   pension alimentaire (122), capital maladie grave (146), dépenses additionnelles (150), héritage

@@ -4,6 +4,30 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-14 (suite 83) — `[A11Y-PRIVACY-SALAIRE]` : le mode discret entre dans les FORMULAIRES
+> Premier ticket du lot `[A11Y-PRIVACY-LOT2]`. #608 avait traité l'AFFICHAGE, jamais la SAISIE :
+> `UserConfigFields.tsx` n'avait aucune référence au mode discret. Passés en `PrivateNumberInput` :
+> salaire brut + net des DEUX conjoints, facteur d'équivalence, RSU, revenus secondaires.
+> Le bonus en **%** reste en clair À DESSEIN (test d'intention dédié) — c'est un %, pas un montant.
+>
+> ⚠️ **Défaut de la PRIMITIVE trouvé et corrigé au passage, il débloque tout le reste du lot** :
+> le bouton « ••• » portait un `aria-label` EN DUR, prioritaire sur le `<label htmlFor>` ET sur
+> l'`aria-label` du champ. MESURÉ : « Salaire Brut annuel ($) » et « RSU vesting annuel » devenaient
+> tous deux « Montant masqué — cliquer pour modifier ». Tous les champs masqués d'un formulaire
+> annonçaient le même nom. Corrigé DANS la primitive (nom laissé au nommeur existant, état masqué
+> porté par `title` + `sr-only`) → **les tickets suivants du lot n'ont rien à refaire là-dessus**,
+> mais `AssetLocationCard` / `RetirementIncomeCard` / `BudgetGroupTable` en bénéficient déjà.
+> ⚠️ `getByLabelText` de Testing Library trouvait le bouton par son `<label>` alors que son nom réel
+> était le libellé masqué : la requête TL N'EST PAS l'algorithme de nommage. Mesurer avec
+> `toHaveAccessibleName`. Leçon `A11Y-MASK-STEALS-NAME` dans `docs/CONVENTIONS.md`.
+> ⚠️ La valeur d'un champ ÉDITABLE vit dans `.value`, pas dans `textContent` — les tests de fuite de
+> #608 (texte aplati) étaient structurellement aveugles aux formulaires. Les nouveaux inspectent
+> texte + `.value` + attributs.
+> **Suite du lot** : `[A11Y-PRIVACY-PARAMS-AVANCES]` (le plus gros bloc), puis `-SOLDES-COMPTES`,
+> `-PATRIMOINE-ETENDU`, `-INVESTMENTS-DETAIL`, `-PROJECTION-EXPLAINS`.
+> ❓ **En attente de Marc** : `[A11Y-PRIVACY-PDF-CONTRAT]` — l'export PDF doit-il tenir compte du
+> mode discret ? Reco : refuser de générer plutôt que produire un PDF de « ••• ».
+
 > ## 🔴 Session 2026-08-13 (suite 82) — `[PASSE-REEL-DETTE]` : constat VÉRIFIÉ, 3 volets ticketés
 > Demande Marc (signalée 2×) : « ma dette n'est pas exactement ce que j'ai — l'app me la met depuis
 > des années, c'est faux ; le PDF du contrat devrait suffire ». **Le symptôme est réel**, avec

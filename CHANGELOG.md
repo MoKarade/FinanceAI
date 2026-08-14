@@ -31,6 +31,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-14 (suite 2)
+
+### Tes soldes de comptes aussi
+- Les **soldes de départ** de chaque compte (chèque, épargne) — ceux que la projection prend comme
+  point de départ — se masquent maintenant en mode discret. Ils étaient en clair jusqu'ici.
+- Le **nom** de tes comptes reste visible : ce n'est pas un montant, et c'est lui qui te dit quel
+  champ tu es en train de modifier. Sans lui, tu aurais eu une colonne de « ••• » identiques.
+
+---
+
 ## [unreleased] — 2026-08-14 (suite)
 
 - Dans la foulée, le champ « montant » de chaque ligne du **Budget** annonce enfin de quel poste il

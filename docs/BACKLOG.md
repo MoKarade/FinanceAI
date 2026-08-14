@@ -1150,14 +1150,6 @@ stub : il n'aurait aucune date à lire.
   AUSSI une faiblesse mesurée par le panel : le tooltip `title` ne s'affiche qu'au SURVOL souris
   dans Chrome/Edge — un utilisateur voyant naviguant au CLAVIER n'a aucun indice visuel de
   « cliquer pour modifier ». Traiter les deux ensemble, pas séparément.
-- [x] 🔴 **`[A11Y-PRIVACY-PARAMS-AVANCES]`** (M) — livré 2026-08-14. **14 champs sur 40** masqués :
-  soldes manuels CELI/REER/Non-Enreg/Cash/Crypto + droits restants, pension alimentaire, capital
-  maladie grave, dépenses additionnelles, héritage attendu, surcoût snowbird, boomerang, proche
-  aidant. **Critère** : le libellé porte un `$`. Les %, durées, âges, probabilités et itérations MC
-  restent lisibles — masquer tout aurait coûté la lisibilité sans rien protéger de plus.
-  Association `<label htmlFor>` câblée au passage pour ces 14 champs (elle n'existait POUR AUCUN
-  champ du fichier). Garde de SOURCE **symétrique** :
-  `tests/components/AdvancedProjectionParams.privacy.test.tsx`.
 - [ ] **`[A11Y-LABELS-PARAMS-AVANCES]`** (S, découvert en livrant le ticket ci-dessus) — les **26
   champs NON monétaires** de `components/AdvancedProjectionParams.tsx` n'ont toujours AUCUNE
   association `<label>`↔champ : ni `htmlFor`/`id`, ni enveloppement. Leur nom accessible est donc
@@ -1166,9 +1158,16 @@ stub : il n'aurait aucune date à lire.
   mécanique (un `id` + un `htmlFor` par champ) ; c'est le volume qui l'a sorti du périmètre.
   ⚠️ Le même trou existe probablement dans les autres panneaux de Réglages : greper
   `<label className=` non suivi de `htmlFor` AVANT de chiffrer.
-- [ ] 🔴 **`[A11Y-PRIVACY-SOLDES-COMPTES]`** (S) — `components/settings/sections/AccountsSection.tsx:63-68`
-  : soldes de départ chèque/épargne réels en input natif.
-- [ ] 🔴 **`[A11Y-PRIVACY-PATRIMOINE-ETENDU]`** (M) — `components/PatrimoineExtended.tsx` : 4 panneaux
+- [x] 🔴 **`[A11Y-PRIVACY-SOLDES-COMPTES]`** (S) — livré 2026-08-14 (PR #631). Solde réel de CHAQUE
+  compte masqué. Association `<label htmlFor>` câblée (elle n'existait pas), avec un `id` **INDEXÉ**
+  et non dérivé du nom de compte — un nom saisi par l'utilisateur peut se nettoyer en un identifiant
+  DÉJÀ pris, ce qui casse l'association en silence. Nom et nombre de comptes laissés en clair, à
+  dessein et sous test. Garde : `tests/components/settings/AccountsSection.privacy.test.tsx`.
+- [ ] 🔴 **`[A11Y-PRIVACY-PATRIMOINE-ETENDU]`** (M) — ⚠️ **CADRAGE MESURÉ 2026-08-14, à lire avant de
+  coder** : 17 champs numériques, **ZÉRO `<label>` dans TOUT le fichier** (≠ des autres écrans du lot,
+  où le libellé existait mais n'était pas associé). Le nommage devra donc passer par `aria-label`,
+  pas par `htmlFor`. `toLocaleString` nu confirmé l. 119 (viole la règle `formatCAD`).
+  `components/PatrimoineExtended.tsx` : 4 panneaux
   (assurance, immeuble locatif, société, objectifs cycliques) entièrement à nu, plus un résumé
   NOI/Cap Rate en `toLocaleString` nu (l. 119 — viole aussi la règle `formatCAD`).
 - [ ] 🔴 **`[A11Y-PRIVACY-INVESTMENTS-DETAIL]`** (S) — `components/Investments.tsx` : `isPrivacyMode`

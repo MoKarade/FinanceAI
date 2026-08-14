@@ -41,6 +41,24 @@ fichier:ligne). Verdicts appliqués à la refonte :
 
 ---
 
+## Livré 2026-08-14 — PR #630 `[A11Y-PRIVACY-PARAMS-AVANCES]` (lot `[A11Y-PRIVACY-LOT2]` 2/9)
+
+- [x] **`[A11Y-PRIVACY-PARAMS-AVANCES]`** — **14 champs sur 40** masqués dans
+  `components/AdvancedProjectionParams.tsx` : soldes manuels CELI/REER/Non-Enreg/Cash/Crypto +
+  droits restants, pension alimentaire, capital maladie grave, dépenses additionnelles, héritage
+  attendu, surcoût snowbird, boomerang, proche aidant. **Critère** : le libellé porte un `$`. Les
+  %, durées, âges, probabilités et itérations MC restent lisibles — masquer tout aurait coûté la
+  lisibilité sans rien protéger de plus, et un test refuse cette simplification.
+- [x] Association `<label htmlFor>` câblée pour ces 14 champs (elle n'existait POUR AUCUN champ).
+- [x] **Garde de SOURCE symétrique + garde de la garde** — le scan doit couvrir TOUS les champs du
+  fichier, sinon vert trompeur. Trois angles morts fermés et prouvés par perturbation : commentaire
+  JSX entre libellé et champ, libellé à élément imbriqué, champ sans libellé.
+- [x] ⚠️ Deux erreurs à moi corrigées en route : `type="number"` perdu par une substitution en masse
+  (typecheck VERT, `type` étant optionnel) ; décompte « 41 champs » propagé partout alors que
+  `14 + 26 = 40` (un `<input type="number">` vivait dans le TEXTE d'un commentaire).
+- [x] Alerte CodeQL (ReDoS) sur la regex de la garde → corrigée en NORMALISANT la source (retrait
+  des commentaires) au lieu de tolérer la construction dans le motif. Plus simple et plus sûr.
+
 ## Livré 2026-08-14 — PR #629 `[A11Y-PRIVACY-SALAIRE]` (lot `[A11Y-PRIVACY-LOT2]` 1/9)
 
 - [x] **`[A11Y-PRIVACY-SALAIRE]`** — le mode discret entre dans les FORMULAIRES. #608 avait traité

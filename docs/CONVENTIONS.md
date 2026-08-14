@@ -2996,3 +2996,15 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   rien de plus et coûte la lisibilité — pire, masquer ce qui NOMME un champ rend les contrôles
   masqués indistinguables, soit exactement le défaut que le lot corrige. Écrire le test d'intention
   À CHAQUE FOIS : sans lui, un futur « masquons tout » passe au vert sans que le choix soit rediscuté.
+- ⚠️ **[Même lot] Un setter NO-OP dans une fixture rend le test structurellement AVEUGLE au
+  re-render.** Tous mes tests d'`AccountsSection` passaient `setInitialBalances={vi.fn()}` : la prop
+  ne changeait donc JAMAIS, et aucun d'eux ne pouvait voir ce qui arrive quand le parent se re-rend
+  en cours de saisie — le scénario le plus à risque du lot, puisqu'en prod l'objet est reconstruit à
+  CHAQUE frappe. Le comportement se trouvait correct, mais par accident heureux : il ne tient qu'au
+  `key={acc}` du `<div>` parent, qui empêche React de démonter `PrivateNumberInput` et préserve son
+  `useState` interne. Perturbation : rendre la clé instable (`key={acc + valeur}`) → le champ
+  **se re-masque au PREMIER caractère**, saisie impossible, aucune erreur.
+  Deux règles : (1) quand un composant remonte son état, la fixture doit REMONTER l'état pour de
+  vrai (`useState` dans un wrapper), pas le simuler par un `vi.fn()` ; (2) une feature qui dépend
+  d'une propriété INVISIBLE — ici l'identité d'un composant à travers les re-renders — mérite sa
+  garde explicite : rien dans le code ne signale que changer cette clé casse la saisie.

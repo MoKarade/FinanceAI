@@ -11,6 +11,7 @@
 // ⚠️ Le `<label>` n'était associé à AUCUN champ (pas de `htmlFor`/`id`, pas d'enveloppement) : les
 // boutons masqués auraient été anonymes, et ici c'est particulièrement grave puisqu'il y en a un
 // PAR COMPTE. Leçon `BudgetGroupTable` de #629, appliquée d'entrée.
+import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, cleanup, act, fireEvent } from '@testing-library/react';
 import { AccountsSection } from '../../../components/settings/sections/AccountsSection';
@@ -80,6 +81,51 @@ describe('[A11Y-PRIVACY-SOLDES-COMPTES] soldes de départ', () => {
         expect(champ.tagName).toBe('INPUT');
         expect(champ.type, 'le champ révélé doit rester numérique').toBe('number');
         expect(champ.value).toBe(String(SOLDES['Compte chèque']));
+    });
+});
+
+// ⚠️ Le scénario le plus à risque de ce lot, et celui qu'aucun autre test ne couvre : TAPER dans un
+// champ révélé. En prod, `setInitialBalances` (câblé sur `setAppState`, `TabRouter.tsx`) reconstruit
+// l'objet à CHAQUE frappe → le parent se re-rend à chaque caractère. Si l'état « révélé » de la
+// primitive ne survit pas à ce re-render, le champ se re-masque au premier caractère : la saisie
+// devient impossible, sans la moindre erreur.
+//
+// Le comportement est correct aujourd'hui, mais il ne tient qu'au `key={acc}` du <div> parent : React
+// ne démonte pas `PrivateNumberInput`, donc son `useState` interne survit. Rien ne garde cette
+// propriété — un refactor de la clé ou une mémoïsation mal posée la casserait au vert. D'où ce test.
+//
+// Les autres tests de ce fichier passent un `setInitialBalances` NO-OP : la prop ne change jamais,
+// et ils sont donc structurellement aveugles à ce scénario.
+describe('[A11Y-PRIVACY-SOLDES-COMPTES] saisie continue dans un champ révélé', () => {
+    /** Câblage RÉEL : l'état remonte et redescend, l'objet est reconstruit à chaque frappe. */
+    const Wrapper: React.FC = () => {
+        const [balances, setBalances] = React.useState<Record<string, number>>(SOLDES);
+        return (
+            <AccountsSection
+                initialBalances={balances}
+                setInitialBalances={setBalances}
+                transactions={[] as Transaction[]}
+                onImportData={vi.fn()}
+            />
+        );
+    };
+
+    it('taper plusieurs caractères ne re-masque pas le champ et ne lui vole pas le focus', () => {
+        setPrivacy(true);
+        const { container } = render(<Wrapper />);
+
+        act(() => { fireEvent.click(container.querySelector('#acc-balance-0')!); });
+        const champ = () => container.querySelector('#acc-balance-0') as HTMLInputElement;
+        expect(champ().tagName).toBe('INPUT');
+        champ().focus();
+
+        for (const valeur of ['5', '52', '523']) {
+            act(() => { fireEvent.change(champ(), { target: { value: valeur } }); });
+            expect(champ(), `le champ s'est re-masqué après avoir tapé « ${valeur} »`).not.toBeNull();
+            expect(champ().tagName, `re-masqué après « ${valeur} »`).toBe('INPUT');
+            expect(document.activeElement, `focus perdu après « ${valeur} »`).toBe(champ());
+        }
+        expect(champ().value).toBe('523');
     });
 });
 

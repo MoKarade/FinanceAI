@@ -1141,10 +1141,6 @@ stub : il n'aurait aucune date à lire.
 > nom. Corrigé DANS la primitive : les tickets suivants de ce lot en héritent, il n'y a rien à
 > refaire par écran. Voir `A11Y-MASK-STEALS-NAME` dans `docs/CONVENTIONS.md`.
 
-- [x] 🔴 **`[A11Y-PRIVACY-SALAIRE]`** (S) — livré 2026-08-14. Salaires brut/net des DEUX conjoints,
-  facteur d'équivalence, RSU et revenus secondaires passés en `PrivateNumberInput` ; bonus en %
-  laissé en clair à dessein (le brut auquel il s'applique est masqué). Correctif de nom accessible
-  dans la primitive. Gardes : `tests/components/settings/UserConfigFields.privacy.test.tsx`.
 - [ ] **`[A11Y-PRIVACY-TITLE-CLOBBER]`** (XS, relevé par le panel a11y de #629) —
   `components/ui/PrivateNumberInput.tsx` écrase en dur le `title` de l'appelant par
   « Montant masqué » en mode discret. Aucun appelant n'en dépend aujourd'hui pour son NOM (vérifié
@@ -1154,11 +1150,22 @@ stub : il n'aurait aucune date à lire.
   AUSSI une faiblesse mesurée par le panel : le tooltip `title` ne s'affiche qu'au SURVOL souris
   dans Chrome/Edge — un utilisateur voyant naviguant au CLAVIER n'a aucun indice visuel de
   « cliquer pour modifier ». Traiter les deux ensemble, pas séparément.
-- [ ] 🔴 **`[A11Y-PRIVACY-PARAMS-AVANCES]`** (M) — `components/AdvancedProjectionParams.tsx` : zéro
-  `isPrivacyMode`. Soldes manuels CELI/REER/Non-Enreg/Cash/Crypto + droits restants (l. 259-284),
-  pension alimentaire (122), capital maladie grave (146), dépenses additionnelles (150), héritage
-  attendu (156), surcoût snowbird (206), soutien boomerang/proche aidant (222-234). Le plus gros bloc
-  de données réelles jamais masqué du dépôt.
+- [x] 🔴 **`[A11Y-PRIVACY-PARAMS-AVANCES]`** (M) — livré 2026-08-14. **14 champs sur 40** masqués :
+  soldes manuels CELI/REER/Non-Enreg/Cash/Crypto + droits restants, pension alimentaire, capital
+  maladie grave, dépenses additionnelles, héritage attendu, surcoût snowbird, boomerang, proche
+  aidant. **Critère** : le libellé porte un `$`. Les %, durées, âges, probabilités et itérations MC
+  restent lisibles — masquer tout aurait coûté la lisibilité sans rien protéger de plus.
+  Association `<label htmlFor>` câblée au passage pour ces 14 champs (elle n'existait POUR AUCUN
+  champ du fichier). Garde de SOURCE **symétrique** :
+  `tests/components/AdvancedProjectionParams.privacy.test.tsx`.
+- [ ] **`[A11Y-LABELS-PARAMS-AVANCES]`** (S, découvert en livrant le ticket ci-dessus) — les **26
+  champs NON monétaires** de `components/AdvancedProjectionParams.tsx` n'ont toujours AUCUNE
+  association `<label>`↔champ : ni `htmlFor`/`id`, ni enveloppement. Leur nom accessible est donc
+  VIDE (WCAG 4.1.2). Défaut PRÉEXISTANT, sans rapport avec le mode discret — les 14 champs
+  monétaires ont été câblés parce que le masquage l'exigeait, pas les autres. Le geste est
+  mécanique (un `id` + un `htmlFor` par champ) ; c'est le volume qui l'a sorti du périmètre.
+  ⚠️ Le même trou existe probablement dans les autres panneaux de Réglages : greper
+  `<label className=` non suivi de `htmlFor` AVANT de chiffrer.
 - [ ] 🔴 **`[A11Y-PRIVACY-SOLDES-COMPTES]`** (S) — `components/settings/sections/AccountsSection.tsx:63-68`
   : soldes de départ chèque/épargne réels en input natif.
 - [ ] 🔴 **`[A11Y-PRIVACY-PATRIMOINE-ETENDU]`** (M) — `components/PatrimoineExtended.tsx` : 4 panneaux

@@ -2927,3 +2927,55 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   fichiers modifiés HORS du dépôt avant de lancer un panel, (2) ne committer qu'une fois le panel
   rendu, (3) RELIRE le contenu réellement commité (`git show HEAD:<fichier>`), jamais supposer que
   `git add` a capturé ce qu'on venait d'écrire.
+
+- ⚠️ **[A11Y-PRIVACY-PARAMS-AVANCES] 2026-08-14 — une garde de scan doit être SYMÉTRIQUE quand la
+  règle a deux sens.** Le critère « on masque les champs dont le libellé porte un `$` » se garde
+  naturellement dans un sens (un libellé en `$` sur un `<input>` nu = fuite). Mais il a un
+  SECOND sens tout aussi important : un champ SANS `$` masqué par mégarde coûte de la lisibilité
+  sans rien protéger, et signale que quelqu'un a masqué au jugé plutôt qu'au critère. Les deux
+  assertions sont écrites, et les DEUX prouvées discriminantes par perturbation. Sans la seconde,
+  « masquons tout » passait au vert — et c'est exactement la simplification tentante.
+  Corollaire : un test de RENDU ne voit que les champs MONTÉS (ici la moitié du panneau est derrière
+  des `projection.xxxEnabled`) ; un scan de SOURCE voit tout le fichier, y compris un champ ajouté
+  demain dans une section que la fixture n'active pas. Les deux sont nécessaires, pas au choix.
+- ⚠️ **[Même lot] Une transformation EN MASSE se vérifie attribut par attribut, pas au typecheck.**
+  Ma substitution regex `<input type="number" …>` → `<PrivateNumberInput …>` a absorbé le
+  `type="number"` dans le motif et l'a PERDU sur les 14 champs. `npm run typecheck` est resté VERT :
+  `type` est optionnel sur `InputHTMLAttributes`. Le champ révélé redevenait un champ TEXTE —
+  steppers et clavier numérique mobile en moins, sans la moindre erreur. Attrapé par un comptage
+  AVANT/APRÈS sur le fichier (`grep -c 'type="number"'` : 41 des deux côtés, et idem pour
+  `min|max|step`), pas par le compilateur. Règle : après un remplacement en masse, COMPTER les
+  attributs de part et d'autre — un typage optionnel ne signale jamais une perte.
+- ⚠️ **[Même lot] Un montant « unique » de fixture se vérifie contre le TEXTE RENDU, pas au flair.**
+  J'ai choisi `1213` comme montant témoin « improbable » : il apparaît dans le libellé STATIQUE
+  « T1213 retenue source ». Le test de fuite a donc échoué alors que le masquage était correct —
+  faux positif fabriqué par ma propre fixture, sur un fichier que je venais de lire en entier.
+  Un nombre de 3-4 chiffres a toutes les chances de croiser un numéro de formulaire fiscal, une
+  année, un seuil ou un pourcentage. Préférer 5+ chiffres, ou vérifier le nombre contre le rendu.
+- ⚠️ **[Même lot] Un dénominateur compté sur la source BRUTE compte les fantômes des commentaires.**
+  Ma garde de couverture comparait « paires libellé↔champ vues par le scan » à
+  `source.match(/type="number"/g).length`. Elle échouait à 40 contre 41 — et j'ai d'abord accusé le
+  scan d'un angle mort. Le vrai coupable : le commentaire de `divorceSplitPct` contient le TEXTE
+  `<input type="number">`, cité en exemple. Le fichier a 40 champs RÉELS, pas 41.
+  Deux conséquences, l'une technique et l'autre pire :
+  1. tout compte sur une source non nettoyée est faux dès qu'un commentaire cite du code — il faut
+     retirer les commentaires AVANT de compter ;
+  2. j'avais propagé « 41 champs » dans le message de commit, le corps de PR, le handover, le
+     BACKLOG et l'en-tête du test, sans jamais recouper la somme. `14 + 26 = 40` sautait aux yeux
+     et personne (moi compris) ne l'avait fait. Règle : **un décompte cité dans une doc se recoupe
+     par une addition**, pas par une seule mesure répétée en boucle.
+  Bénéfice net : cette garde de couverture n'existait pas au départ. Une garde qui ne prouve pas
+  qu'elle voit TOUT ce qu'elle prétend surveiller est de la même famille que la garde circulaire —
+  elle rend un vert qui ne veut rien dire.
+- ⚠️ **[Même lot] NORMALISER puis matcher, plutôt que tout tolérer DANS la regex.** Pour que le scan
+  voie un champ séparé de son libellé par un commentaire JSX, mon premier réflexe a été d'absorber
+  le commentaire dans le motif : `<\/label>\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)*(<[A-Za-z]+)`. CodeQL l'a
+  refusé, à raison : deux quantificateurs imbriqués sur un motif ambigu = backtracking exponentiel
+  (ReDoS). L'entrée est un fichier du dépôt, donc le risque réel est nul — mais le correctif de
+  forme s'est révélé MEILLEUR sur le fond : retirer les commentaires UNE fois
+  (`source.replace(/\{\/\*[\s\S]*?\*\/\}/g, '')`) donne une source normalisée que le scan ET le
+  décompte partagent, chaque motif reste linéaire, et les deux défauts que ces commentaires
+  causaient (paire invisible, champ fantôme compté) tombent du même geste.
+  Règle : quand une regex doit « tolérer » une construction, se demander d'abord si cette
+  construction peut être ÉLIMINÉE de l'entrée. La garde a été revérifiée sur ses trois
+  perturbations après le correctif — un correctif de forme ne doit jamais être supposé neutre.

@@ -131,3 +131,61 @@ describe('[PASSE-REEL-CAP-400J] le curseur donne exactement ce que donnaient les
         }
     });
 });
+
+// ── Divergences trouvées par la revue d'intégrité, et corrigées ────────────────────────────────
+// Un curseur suppose que le tri est TOTALEMENT cohérent avec le prédicat `date <= t` — hypothèse
+// que le scan complet de `priceAt` n'avait pas besoin de faire. Sans normalisation de l'historique,
+// trois divergences MESURÉES. Ces tests sont la garde de cette normalisation.
+describe('[PASSE-REEL-CAP-400J] historique de prix mal formé : le curseur reste indiscernable de priceAt', () => {
+    const base = (priceHistory: unknown[]): MinimalAsset[] => ([{
+        symbol: 'X', quantity: 10, currency: 'CAD', currentPrice: 100, accountType: 'CELI',
+        purchases: [{ date: '2025-01-01', quantity: 10, price: 1 }],
+        priceHistory: priceHistory as never,
+    }]);
+    const jour = (actifs: MinimalAsset[], d: string) =>
+        reconstructPortfolioHistoryDaily(actifs, {}, '2025-01-01', '2025-01-08').find((p) => p.date === d)!;
+
+    it('DOUBLON de date : la PREMIÈRE occurrence gagne, comme dans priceAt', () => {
+        const actifs = base([
+            { date: '2025-01-05', price: 50 },
+            { date: '2025-01-05', price: 70 },
+        ]);
+        // `priceAt` garde la 1re (son `p.date > best.date` est STRICT) → 10 × 50 = 500.
+        expect(priceAt(actifs[0], '2025-01-06')).toBe(50);
+        expect(jour(actifs, '2025-01-06').CELI, 'le curseur prenait la DERNIÈRE → 700 $').toBe(500);
+    });
+
+    it('`price` NULL : repli honnête sur le prix courant, jamais 0 $', () => {
+        const actifs = base([{ date: '2025-01-02', price: null }]);
+        const p = jour(actifs, '2025-01-05');
+        expect(p.CELI, 'un 0 $ crédible est pire qu’un repli assumé (no-fake-data)').toBe(1000);
+        expect(p.hasEstimatedPrice, 'et le repli doit être ANNONCÉ').toBe(true);
+    });
+
+    it('`price` ABSENT : aucun NaN ne remonte au patrimoine', () => {
+        const actifs = base([{ date: '2025-01-02' }]);
+        const p = jour(actifs, '2025-01-05');
+        expect(Number.isFinite(p.CELI), '`qty * undefined` = NaN se propageait jusqu’au patrimoine net').toBe(true);
+        expect(Number.isFinite(p.InvestedValue)).toBe(true);
+        expect(p.CELI).toBe(1000);
+    });
+
+    it('`date` absente EN TÊTE : le curseur ne reste pas gelé sur toute la fenêtre', () => {
+        const actifs = base([
+            { price: 60 },                              // point corrompu, placé en tête
+            { date: '2025-01-03', price: 80 },
+        ]);
+        // Gelé, le curseur ne franchissait jamais le point sans date → prix courant (100) partout.
+        expect(jour(actifs, '2025-01-05').CELI, 'le prix daté du 03 doit être pris en compte').toBe(800);
+    });
+
+    it('un historique VALIDE n’est pas altéré par la normalisation', () => {
+        const actifs = base([
+            { date: '2025-01-02', price: 10 },
+            { date: '2025-01-06', price: 20 },
+        ]);
+        for (const d of ['2025-01-02', '2025-01-03', '2025-01-06', '2025-01-08']) {
+            expect(jour(actifs, d).CELI, `au ${d}`).toBeCloseTo(10 * (priceAt(actifs[0], d) ?? 100), 6);
+        }
+    });
+});

@@ -269,7 +269,29 @@ export function reconstructPortfolioHistoryDaily(
     // les partagent (source unique de la définition prix/détention).
     const curseurs = invest.map((a) => ({
         actif: a,
-        hist: [...(a.priceHistory ?? [])].sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0)),
+        // ⚠️ NORMALISATION OBLIGATOIRE, pas de l'hygiène. Un curseur suppose que le tri est
+        // TOTALEMENT cohérent avec le prédicat `date <= t` — hypothèse que le scan complet de
+        // `priceAt` n'avait pas besoin de faire. Trois divergences MESURÉES sans elle :
+        //  · DOUBLON de date → le curseur s'arrête sur la DERNIÈRE occurrence, `priceAt` garde la
+        //    PREMIÈRE (son `p.date > best.date` est strict). Mesuré 700 $ contre 500 $, et surtout
+        //    la courbe QUOTIDIENNE et la courbe MENSUELLE affichaient deux prix différents pour la
+        //    même date et le même titre.
+        //  · `price` NULL ou ABSENT → `best.price` existe « techniquement », donc le repli
+        //    `?? currentPrice` ne se déclenche plus : 0 $ (le « 0 $ crédible » que no-fake-data
+        //    interdit) ou, pire, `qty * undefined` = NaN propagé jusqu'au patrimoine net du passé.
+        //  · `date` absente sur un point placé EN TÊTE → `undefined <= t` est faux, le curseur ne
+        //    franchit jamais ce point et reste GELÉ sur toute la fenêtre.
+        // On filtre donc les points invalides, on trie, puis on dédoublonne en gardant la PREMIÈRE
+        // occurrence — exactement le choix de `priceAt`, dont ce module doit rester indiscernable.
+        // `buildMarketData` et `periodReturn` filtrent déjà `p.date && Number.isFinite(p.price)` :
+        // c'était ce module qui faisait exception.
+        hist: (() => {
+            const vues = new Set<string>();
+            return [...(a.priceHistory ?? [])]
+                .filter((p) => typeof p?.date === 'string' && typeof p?.price === 'number' && Number.isFinite(p.price))
+                .sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0))
+                .filter((p) => (vues.has(p.date) ? false : (vues.add(p.date), true)));
+        })(),
         i: -1,
         achats: [...(a.purchases ?? [])].sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0)),
         j: 0,

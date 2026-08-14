@@ -1682,9 +1682,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         )}
                         {dailyPast?.truncatedFrom && (
                             <span className="mt-1 block text-amber-300/90">
-                                ⚠ L'historique au jour s'arrête au {dailyPast.truncatedFrom} : au-delà, la
-                                courbe passée n'est pas reconstruite (limite de volume). Les journées
-                                suivantes ne sont ni tracées ni sélectionnables.
+                                {/* ⚠️ `truncatedFrom` est le PREMIER jour NON reconstruit, pas le dernier
+                                    tracé. Mon premier libellé disait « s'arrête au {date} », ce qui
+                                    laissait croire que ce jour-là existait encore — décalage d'un jour
+                                    relevé par la revue, sur une mise en garde dont tout l'intérêt est
+                                    d'être exacte. */}
+                                ⚠ Le premier jour non reconstruit est le {dailyPast.truncatedFrom} : à
+                                partir de là, la courbe passée s'interrompt (limite de volume) et les
+                                journées ne sont ni tracées ni sélectionnables.
                             </span>
                         )}
                         {dailyPast !== null && Math.abs(dailyPast.flowsAfterNowDate) > 0.5 && (

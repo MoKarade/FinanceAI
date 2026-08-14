@@ -3082,3 +3082,30 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   ⚠️ Corollaire de méthode : une optimisation ne vaut RIEN si elle déplace un chiffre. Les helpers
   d'origine ont été laissés INCHANGÉS (ils servent aussi la reconstruction mensuelle), et le test
   d'équivalence compare la boucle optimisée À EUX, jour par jour — pas à une valeur recopiée.
+- ⚠️ **[PASSE-REEL-CAP-400J, revue d'intégrité] Remplacer un SCAN par un CURSEUR ajoute une
+  HYPOTHÈSE que l'original n'avait pas.** Un scan complet (`priceAt`) tolère n'importe quel ordre,
+  n'importe quel doublon, n'importe quel point corrompu : il regarde tout, à chaque fois. Un curseur
+  suppose que le tri est TOTALEMENT cohérent avec le prédicat qu'il avance. Trois divergences
+  MESURÉES par le panel sur mon curseur, aucune visible en lisant le diff :
+  · **doublon de date** → le curseur s'arrête sur la DERNIÈRE occurrence, `priceAt` garde la
+    PREMIÈRE (son `>` est strict). 700 $ contre 500 $ — et surtout la courbe QUOTIDIENNE et la
+    courbe MENSUELLE affichaient deux prix DIFFÉRENTS pour la même date et le même titre ;
+  · **`price` null ou absent** → `best.price` « existe » techniquement, donc le repli
+    `?? currentPrice` ne se déclenche plus : 0 $ (le « 0 $ crédible » interdit par no-fake-data),
+    ou `qty * undefined` = **NaN propagé jusqu'au patrimoine net** ;
+  · **`date` absente sur un point EN TÊTE** → `undefined <= t` est faux, le curseur ne franchit
+    jamais ce point et reste GELÉ sur toute la fenêtre.
+  Correctif : NORMALISER une fois à la construction (filtrer les points invalides, trier,
+  dédoublonner en gardant la PREMIÈRE occurrence — le choix de `priceAt`), pour que le module reste
+  INDISCERNABLE de l'implémentation qu'il remplace. Coût mesuré : nul (109 ms à 4 000 jours).
+  Règle : après une réécriture d'algorithme, la question n'est pas « est-ce plus rapide » mais
+  « quelles hypothèses NOUVELLES ai-je introduites, et qu'arrive-t-il quand elles sont fausses ».
+  ⚠️ Indice qui aurait dû m'alerter : `buildMarketData` et `periodReturn` filtraient DÉJÀ
+  `p.date && Number.isFinite(p.price)`. Ce module était le seul consommateur à ne pas suivre la
+  convention — une convention appliquée partout SAUF ici est un signal, pas un détail.
+- ⚠️ **[Même revue] Une mise en garde qui se trompe d'un jour perd sa raison d'être.** Mon bandeau
+  disait « l'historique s'arrête au {truncatedFrom} », alors que `truncatedFrom` est le PREMIER jour
+  NON reconstruit : la courbe s'arrête la VEILLE. Sur un texte dont tout l'intérêt est d'être exact —
+  il existe précisément parce qu'une coupure silencieuse a coûté sept mois d'historique — un décalage
+  d'un jour renvoie l'utilisateur chercher au mauvais endroit. Reformulé en « le premier jour non
+  reconstruit est le … », qui dit ce que la variable CONTIENT.

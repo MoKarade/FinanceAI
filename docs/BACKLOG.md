@@ -664,14 +664,25 @@
   Gardes : `tests/components/Profile.subTabs.test.tsx` (exhaustivité : l'union des onglets couvre
   EXACTEMENT les 5 groupes d'avant, ensembles comparés et non cardinalités) +
   `tests/components/SavedProfilesCard.test.tsx`. Les deux prouvées discriminantes.
-- [ ] **`[A11Y-SUBTABS-TABPANEL]`** (S, **découvert en livrant `[UI-TABS-RICH]`**) — les TROIS écrans
-  à sous-onglets (`Profile.tsx`, `Retirement.tsx`, `budget/BudgetWorkspace.tsx`) rendent un
-  `role="tablist"` + des boutons `role="tab"` **sans `role="tabpanel"` ni `aria-controls`**. Le
-  motif ARIA est donc incomplet : un lecteur d'écran annonce « onglet » mais ne peut pas relier
-  l'onglet à son contenu, ni y naviguer par le raccourci prévu. Défaut PRÉEXISTANT, pas une
-  régression du découpage de Profil — j'ai délibérément repris l'idiome existant plutôt que de
-  diverger sur un seul écran. ⚠️ **À corriger sur les TROIS d'un coup** : un patron ARIA à moitié
-  appliqué est plus déroutant que pas de patron du tout.
+- [x] **`[A11Y-SUBTABS-TABPANEL]`** — **LIVRÉ 2026-08-17**. Le motif ARIA des sous-onglets était
+  INCOMPLET (ni `role="tabpanel"`, ni `aria-controls`, ni `aria-labelledby`) et RECOPIÉ à la main
+  dans plusieurs écrans. Correctif : un composant UNIQUE `components/ui/SubTabs.tsx`
+  (`<SubTabs>` + `<TabPanel>`), qui pose le lien RÉCIPROQUE onglet↔panneau et rend le panneau
+  focalisable. Réparer les copies aurait garanti qu'elles divergent : le correctif durable est de
+  retirer la copie.
+  ⚠️ **La garde a révélé DEUX écrans que le ticket ne listait pas** (`Settings`, `FutureProjection`) :
+  le ticket en annonçait 3, il y en avait 5. Leçon déjà au dossier — resserrer le scan AVANT de
+  coder, les offenders donnent le vrai périmètre. Converti : `Profile`, `Retirement`,
+  `BudgetWorkspace`, `Settings` (4 écrans, style IDENTIQUE → zéro changement visuel).
+  Garde : `tests/components/subTabsAria.test.tsx` — rendu (lien réciproque, focalisabilité, panneau
+  actif seul, `id` préfixés) + scan de SOURCE en CLIQUET.
+- [ ] **`[A11Y-SUBTABS-FUTUR]`** (S, **découvert par la garde ci-dessus**) — `FutureProjection` est
+  le 5e écran à sous-onglets, mais son bandeau a un habillage DIFFÉRENT (emojis au lieu d'icônes,
+  autre fond, autres espacements). Le convertir tel quel CHANGERAIT l'apparence de l'écran principal
+  de Marc — non demandé, donc non fait. Il est épinglé comme exception LISTÉE et JUSTIFIÉE dans la
+  garde (jamais une exclusion silencieuse), et la liste est un cliquet qui ne doit que rétrécir.
+  **Deux voies** : ajouter une variante d'habillage à `<SubTabs>`, ou obtenir l'accord explicite de
+  Marc sur le changement visuel. À trancher avec lui.
 - [ ] **`[DETTE-CHART-THEME-DUP]`** (S) — tooltip/thème Recharts partagé (`CHART_TOOLTIP_STYLE`
   inexistant) — dédupliquer les styles inline des graphes.
 - [ ] **`[D6-GRAPH]`** (M, résiduel) — accès clavier aux graphes restants (projections,

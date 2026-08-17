@@ -19,6 +19,7 @@ import React, { useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { PageHeader } from './ui/PageHeader';
 import { Icon, type IconName } from './ui/Icon';
+import { SubTabs, TabPanel } from './ui/SubTabs';
 import { UsersCard } from './settings/sections/UsersCard';
 import { SavedProfilesCard } from './profile/SavedProfilesCard';
 import { UserConfigFields, RepartitionField } from './settings/UserConfigFields';
@@ -52,27 +53,21 @@ export const Profile: React.FC = () => {
                 subtitle="Toutes tes infos personnelles en un seul endroit — elles alimentent Impôts, Retraite, Futur et le reste."
             />
 
-            <div className="flex gap-1 p-0.5 rounded-card bg-black/30 border border-white/5 w-fit overflow-x-auto" role="tablist" aria-label="Sections Profil">
-                {PROFILE_SUB_TABS.map((s) => (
-                    <button
-                        key={s.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={subTab === s.id}
-                        onClick={() => setSubTab(s.id)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-meta font-bold rounded whitespace-nowrap transition-colors focus-ring ${subTab === s.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-50 hover:bg-white/10'}`}
-                    >
-                        <Icon name={s.icon} size={14} />{s.label}
-                    </button>
-                ))}
-            </div>
+            <SubTabs<ProfileSubTab>
+                idPrefix="profil"
+                label="Sections Profil"
+                tabs={PROFILE_SUB_TABS}
+                active={subTab}
+                onSelect={setSubTab}
+            />
 
             {/* [IA-DEDUP-COMPLETUDE] La complétude (SetupHub) vit UNIQUEMENT dans Configuration
                 (audit UX 2026-06-17 : doublon Profil+Config). Ici = uniquement les champs à remplir. */}
-            {subTab === 'identite' && <UsersCard config={config} setConfig={setConfig} />}
+            <TabPanel idPrefix="profil" tab="identite" when={subTab === 'identite'}>
+                <UsersCard config={config} setConfig={setConfig} />
+            </TabPanel>
 
-            {subTab === 'revenus' && (
-                <>
+            <TabPanel idPrefix="profil" tab="revenus" when={subTab === 'revenus'}>
                     <GroupTitle>Revenus &amp; fiscalité</GroupTitle>
                     <UserConfigFields section="salary" />
                     <UserConfigFields section="fiscal" />
@@ -81,21 +76,20 @@ export const Profile: React.FC = () => {
                     {/* PH3-c — champs santé/civil/emploi morts purgés ; reste carrière + rémunération variable. */}
                     <GroupTitle>Carrière &amp; rémunération variable</GroupTitle>
                     <UserConfigFields section="detailed" />
-                </>
-            )}
+            </TabPanel>
 
-            {subTab === 'retraite' && (
-                <>
+            <TabPanel idPrefix="profil" tab="retraite" when={subTab === 'retraite'}>
                     <GroupTitle>Retraite</GroupTitle>
                     <RetirementSettingsCard />
                     <RetirementIncomeCard />
 
                     <GroupTitle>Enfants</GroupTitle>
                     <UserConfigFields section="children" />
-                </>
-            )}
+            </TabPanel>
 
-            {subTab === 'profils' && <SavedProfilesCard config={config} setConfig={setConfig} />}
+            <TabPanel idPrefix="profil" tab="profils" when={subTab === 'profils'}>
+                <SavedProfilesCard config={config} setConfig={setConfig} />
+            </TabPanel>
         </div>
     );
 };

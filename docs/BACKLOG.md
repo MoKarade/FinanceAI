@@ -969,24 +969,24 @@
 > `SPLITPCT-UNBOUNDED`, `MC-OBSERVABILITY`, `NO-CONSERVATION-GUARD`, `DISPLAY-RATES`.
 > Ne reste ici que ce qui est encore à faire.
 
-- [ ] **`[ENG-DIVORCE-CHILDREN-REEE]`** (S, **MESURÉ 2026-08-17 — le ticket était à moitié faux**)
-  — **Ce qui est VÉRIFIÉ dans le code** :
-  · le **solde REEE EST déjà partagé** au divorce (`reee *= keep`, `services/projection.ts:764`) —
-    contrairement à ce que le ticket laissait entendre ;
-  · `services/projection/childrenReee.ts` (cotisations, subventions, allocations) n'a **AUCUNE**
-    notion de divorce : ni `activeUsersCount`, ni `taxFilers`, ni `divorced` (0 occurrence).
-  **Le vrai périmètre** est donc `childrenReee.ts`, pas le solde.
-  ⚠️ **BLOQUÉ SUR UNE DÉCISION DE MARC, pas sur de la technique** : après un divorce, les enfants
-  restent-ils à sa charge ? Les allocations familiales et les coûts d'enfants suivent la GARDE — et
-  l'app n'a **aucun champ de garde**. Sans ce modèle, toute correction serait une invention :
-  diviser par deux, garder entier ou zéroïser sont trois hypothèses également arbitraires.
-  → routé vers `docs/A_FAIRE_MOI.md`. Ne PAS coder avant sa réponse.
-
-### 🔴 Sécurité (1 MED · 2 LOW — aucune CRITIQUE)
-
-> Aucune faille CRITIQUE ni ÉLEVÉE nouvelle. Les points relevés sont des durcissements MOYEN/FAIBLE.
-> **Verdict global : codebase exceptionnellement mature sur ce périmètre.**
-
+- [ ] 🔴 **`[ENG-DIVORCE-CHILDREN-REEE]`** (M — **DÉBLOQUÉ par Marc 2026-08-17 : garde 50/50**,
+  `docs/decisions.md` — mais RE-CHIFFRÉ S→M sur un obstacle mesuré) —
+  **État vérifié du code** : le solde REEE EST déjà partagé (`reee *= keep`, `projection.ts:764`) ;
+  `childrenReee.ts` n'a AUCUNE notion de divorce (0 occurrence de `divorced`/`taxFilers`).
+  **Décision acquise** : coûts d'enfants et allocations familiales → **× 0,5** après divorce.
+  ⚠️ **L'OBSTACLE, mesuré avant de coder** : appliquer la part au site d'appel ne marche PAS.
+  `ChildTickResult.liquidDelta` transporte À LA FOIS des coûts d'enfants (`initialCost` l.162,
+  voiture l.294) ET des flux REEE (cotisations l.273, décaissement l.328). Or les deux ne suivent
+  pas la même clé : les coûts suivent la GARDE (0,5), les flux REEE suivent le partage
+  PATRIMONIAL (`keep`). Un `liquidDelta * 0.5` diviserait par deux les cotisations REEE — un faux.
+  C'est le motif « un flux alimente PLUSIEURS registres », déjà au dossier.
+  **Plan** : séparer les deux familles DANS `childrenReee.ts` (le résultat expose déjà
+  `reeeContribAdd`, `withdrawalLiquidAdd`, `contribLiquidAdd`, `reeePayoutAdd` — vérifier qu'elles
+  partitionnent bien `liquidDelta`), puis appliquer la part de garde à la SEULE famille « coûts ».
+  ⚠️ Param optionnel à défaut NEUTRE (`childShare = 1`) ⇒ rétrocompat bit-identique sans divorce,
+  à VÉRIFIER par test (déterministe ET MC).
+  ⚠️ Reste à trancher avec Marc : les COTISATIONS REEE futures suivent-elles la garde, le partage
+  patrimonial, ou restent-elles entières ? Non tranché = ne pas coder cette part.
 - [ ] **`[SEC-AUDIT-DEP-FASTURI]`** (S) — GHSA-7p8r-x3mc-p8w7 (confusion d'hôte) dans `fast-uri`
   (transitif ajv → @modelcontextprotocol/sdk), CVSS 7.5. Exploitabilité non confirmée dans le code
   actuel (aucun champ `format: uri` exposé dans MCP tools). **Correctif** : `npm audit fix`

@@ -4259,3 +4259,28 @@ quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
 - [x] **`[Q-COUPLE-VISION]`** ✅ Marc : « deux façons de voir l'app, mode couple et pas couple, et que tous les résultats et données soient fiables » → critère CIX défini : bascule couple↔solo (CIX-F) + fiabilité per-conjoint de bout en bout (CIX-A1B). Bloc CIX DÉBLOQUÉ : CIX-B → CIX-F → CIX-A1B en priorité.
 
 - [x] **`[Q-RSU]`** ✅ Marc : « retire » → supprimer `rsuYearsRemaining` + `futureProvince`/`futureMoveYear` (lot nettoyage, V3').
+
+
+## Livrés le 2026-08-17 — PR #645 / #646 (déménagés DANS le cycle, pas après coup)
+
+- [x] **`[PRIV-PAYEE-MODE-DISCRET]`** — **LIVRÉ 2026-08-17** (PR #645). Marc a tranché : « masquer
+  marchands ». `PrivateText` (jumelle de `PrivateAmount`) sur 8 surfaces, ATTRIBUTS compris
+  (`maskPayee` pour `title`/`aria-label`).
+  ⚠️ Deux pièges payés en route : le REPLI de l'infobulle fuyait (`dayLabels` = le vrai `payee` sur
+  un jour futur) et ma fixture le rendait inatteignable ; et `rowControlLabel` donnait le MÊME nom
+  accessible à toutes les transactions du même jour (trou WCAG 4.1.2 créé en bouchant la fuite) →
+  discriminant `id`.
+  Reste ouvert : `[PRIV-CATEGORIE-SENSIBLE]` (décision de Marc).
+
+- [x] **`[PRIV-CSV-MODE-DISCRET]`** — **LIVRÉ 2026-08-17** (PR #645, `CsvRefusedPrivacyError`).
+  Garde au SERVICE, pas au clic. ⚠️ Le CSV était PIRE que le PDF : marchands ET montants ligne par
+  ligne, quand le PDF ne porte aucun `payee`. Leçon `DECISION-PRIVACY-UNE-SEULE-SORTIE`.
+
+- [x] **`[PRIV-PRIVATEAMOUNT-TITLE]`** — **LIVRÉ 2026-08-17** (PR #646),
+  `tests/components/privateTitleGuard.test.ts`.
+  ⚠️ La garde interdit une VALEUR dans le `title`, pas le `title` lui-même : ces attributs portent
+  l'EXPLICATION (« Argent que tu ajoutes toi-même »), et les retirer en mode discret coûterait de la
+  compréhension sans retirer une seule fuite. Critère = interpolation (`${`).
+  ⚠️ Porte un contrôle ANTI-VACUITÉ : la garde doit voir > 20 primitives, sinon un renommage la
+  rendrait verte en ne regardant RIEN. Discrimination prouvée en ajoutant « Valeur exacte » au
+  survol du patrimoine.

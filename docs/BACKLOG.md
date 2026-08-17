@@ -251,18 +251,6 @@
   3:1 non-text. L'information reste lisible ; c'est l'effet « saute aux yeux » qui est affaibli.
   ⚠️ `check-contrast` ne couvre PAS ce cas (palette Tailwind par défaut, pas des tokens, et aucune
   composition alpha) → **étendre l'outil d'abord**, choisir le shade par mesure ensuite.
-- [ ] **`[PRIV-PAYEE-MODE-DISCRET]`** (S, **décision Marc requise**) — le nom du MARCHAND (`payee`)
-  s'affiche en clair en mode discret, partout dans l'app (`Transactions`, panneau du jour, et
-  maintenant l'infobulle). L'audit `[A11Y-PRIVACY-*]` n'a jamais couvert que les MONTANTS. Un
-  marchand + une date révèle un profil de dépenses (santé, religion…) — c'est de la PII au sens de
-  la Loi 25, même sans le montant. Deux options : documenter « mode discret = montants uniquement »
-  (cohérent avec l'existant), ou masquer aussi les marchands. **Ne pas trancher par défaut.**
-- [ ] **`[PRIV-CSV-MODE-DISCRET]`** (XS) — l'export CSV des transactions n'a aucune garde
-  `isPrivacyMode`, alors que le raisonnement de l'ADR « PDF refusé en mode discret » s'applique
-  identiquement (un fichier ne sait pas qu'il vient d'un écran masqué).
-- [ ] **`[PRIV-PRIVATEAMOUNT-TITLE]`** (XS, préventif) — `PrivateAmount` transmet sa prop `title`
-  SANS masquage. Aucun appelant ne lui passe un montant aujourd'hui (grep vérifié), et aucune garde
-  ne le détecterait si ça arrivait — la valeur fuirait par attribut en mode discret.
 - [ ] **`[FMT-INFOBULLE-TOLOCALESTRING]`** (XS) — `ProjectionTooltip` a son propre
   `fmt = Math.round(n).toLocaleString('fr-CA')` au lieu de `formatCAD` (non négociable du CLAUDE.md).
   Pré-existant, mais la PR l'ÉTEND à une nouvelle surface monétaire. Conséquences : une valeur non

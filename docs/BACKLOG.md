@@ -1150,6 +1150,24 @@ stub : il n'aurait aucune date à lire.
   `addDay` EXPORTÉ de `reconstructCashHistory` plutôt que dupliqué (pas de copie locale de formule).
   Gardes : `tests/services/dayVariation.test.ts` (11) + `tests/components/FutureDetailModal.variation.test.tsx`
   (9), les deux volets prouvés discriminants, avec assertion anti-sur-correctif sur le résiduel.
+
+### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
+
+> Balayage complet des 133 composants après la PR #608 (3 tours de revue). Les écrans de LECTURE
+> visés par #608 sont couverts et gardés par test. Le trou restant est d'une autre nature : **#608 a
+> traité l'affichage, jamais la SAISIE**. Les formulaires natifs de Réglages/Profil affichent les
+> données les plus sensibles de l'app — salaire des deux conjoints, soldes réels par compte,
+> assurances, immeubles locatifs, société — en `<input type="number" value={…}>` non masqué, quel que
+> soit le mode. La primitive existe déjà (`PrivateNumberInput`, utilisée par `AssetLocationCard`).
+> ⚠️ Rappel de méthode (leçon #608) : un test de fuite doit être prouvé DISCRIMINANT, et un canal de
+> fuite peut être un ATTRIBUT (`title`, `aria-label`) ou la STRUCTURE (nombre de lignes rendues).
+>
+> ⚠️ **Prérequis LEVÉ par `[A11Y-PRIVACY-SALAIRE]`** (2026-08-14) : la primitive volait le NOM
+> ACCESSIBLE du champ qu'elle masquait (`aria-label` en dur, prioritaire sur `<label htmlFor>` ET
+> sur l'`aria-label` du champ). Tous les champs masqués d'un formulaire annonçaient donc le même
+> nom. Corrigé DANS la primitive : les tickets suivants de ce lot en héritent, il n'y a rien à
+> refaire par écran. Voir `A11Y-MASK-STEALS-NAME` dans `docs/CONVENTIONS.md`.
+
 - [ ] **`[A11Y-PRIVACY-TITLE-CLOBBER]`** (XS, relevé par le panel a11y de #629) —
   `components/ui/PrivateNumberInput.tsx` écrase en dur le `title` de l'appelant par
   « Montant masqué » en mode discret. Aucun appelant n'en dépend aujourd'hui pour son NOM (vérifié

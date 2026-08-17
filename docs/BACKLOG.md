@@ -676,17 +676,38 @@
   `BudgetWorkspace`, `Settings` (4 écrans, style IDENTIQUE → zéro changement visuel).
   Garde : `tests/components/subTabsAria.test.tsx` — rendu (lien réciproque, focalisabilité, panneau
   actif seul, `id` préfixés) + scan de SOURCE en CLIQUET.
-- [ ] **`[A11Y-SUBTABS-FUTUR]`** (S, **découvert par la garde ci-dessus**) — `FutureProjection` est
-  le 5e écran à sous-onglets, mais son bandeau a un habillage DIFFÉRENT (emojis au lieu d'icônes,
-  autre fond, autres espacements). Le convertir tel quel CHANGERAIT l'apparence de l'écran principal
-  de Marc — non demandé, donc non fait. Il est épinglé comme exception LISTÉE et JUSTIFIÉE dans la
-  garde (jamais une exclusion silencieuse), et la liste est un cliquet qui ne doit que rétrécir.
-  **Deux voies** : ajouter une variante d'habillage à `<SubTabs>`, ou obtenir l'accord explicite de
-  Marc sur le changement visuel. À trancher avec lui.
+- [ ] **`[A11Y-SUBTABS-FUTUR]`** (M — **RE-CHIFFRÉ 2026-08-17, plus gros qu'annoncé**) —
+  `FutureProjection` est le 5e écran à sous-onglets et le seul non converti à `<SubTabs>`.
+  **Deux obstacles, mesurés** :
+  1. **Habillage différent** (emojis au lieu d'icônes, autre fond, autres espacements) → le convertir
+     tel quel changerait l'apparence de l'écran principal de Marc. Solution : une VARIANTE
+     d'habillage dans `<SubTabs>`, pas un alignement forcé.
+  2. ⚠️ **Obstacle STRUCTUREL, découvert en tentant la conversion** : ses 4 onglets ne sont pas
+     rendus par 4 blocs mais par **SEPT blocs conditionnels dispersés** — `graph` en 3 morceaux
+     (`curveRestoring`, `!curveVisible`, `curveVisible`), `plan` en 2, plus `params` et
+     `historique`. Un `role="tabpanel"` par bloc produirait **plusieurs panneaux avec le même `id`
+     pour un seul onglet** — un balisage ARIA invalide, donc pire que l'actuel.
+     La conversion exige donc de REGROUPER 7 blocs en 4 panneaux dans un fichier de ~2 000 lignes.
+  **C'est un refactor à part entière de l'écran principal**, pas un habillage : à faire dans une PR
+  DÉDIÉE, avec les tests de l'écran en filet. Chiffré M, pas S.
+  ⚠️ En attendant, il reste épinglé dans le CLIQUET de `tests/components/subTabsAria.test.tsx` —
+  exception listée et justifiée, jamais silencieuse.
 - [ ] **`[DETTE-CHART-THEME-DUP]`** (S) — tooltip/thème Recharts partagé (`CHART_TOOLTIP_STYLE`
   inexistant) — dédupliquer les styles inline des graphes.
 - [ ] **`[D6-GRAPH]`** (M, résiduel) — accès clavier aux graphes restants (projections,
   investissements) ; tables sr-only faites pour les donuts Budget.
+
+- [ ] 🔴 **`[FINTABLE-INVESTMENTS-MUET]`** (S, **demandé par Marc 2026-08-17**) — quand Plaid refuse le
+  produit `investments` pour une institution (`PRODUCTS_NOT_SUPPORTED`, `ITEM_ERROR`), les positions
+  n'arrivent jamais et l'app affiche un patrimoine de placements **VIDE, sans dire pourquoi**.
+  ⚠️ **Vérifié** : `services/fintable/` ne traite AUCUN code d'erreur Plaid — l'erreur est remontée
+  telle quelle par Fintable et l'app n'en sait rien.
+  C'est la classe `SILENCE-READS-AS-BROKEN`, la 4e du même motif : Marc conclurait à un bug de
+  l'app alors que la donnée n'a **jamais été fournie** par sa banque.
+  **Correctif** : distinguer « aucune position » de « ce compte ne fournit pas les positions », et le
+  DIRE là où les placements s'affichent. ⚠️ Ne PAS afficher 0 $ : c'est un chiffre crédible et faux.
+  ⚠️ L'action de RÉPARATION est chez Fintable (reconnecter l'institution sans `investments`, ajouter
+  le courtier comme source distincte) — l'app ne peut que rendre la cause visible.
 
 ## ⚡ Performance
 
@@ -948,9 +969,18 @@
 > `SPLITPCT-UNBOUNDED`, `MC-OBSERVABILITY`, `NO-CONSERVATION-GUARD`, `DISPLAY-RATES`.
 > Ne reste ici que ce qui est encore à faire.
 
-- [ ] **`[ENG-DIVORCE-CHILDREN-REEE]`** (S) — [NON MESURÉ, zone non couverte] allocations familiales,
-  coûts d'enfants et REEE après divorce : le REEE est divisé, les coûts restent entiers. À cadrer
-  avant de coder — signalé comme angle mort, pas comme défaut établi.
+- [ ] **`[ENG-DIVORCE-CHILDREN-REEE]`** (S, **MESURÉ 2026-08-17 — le ticket était à moitié faux**)
+  — **Ce qui est VÉRIFIÉ dans le code** :
+  · le **solde REEE EST déjà partagé** au divorce (`reee *= keep`, `services/projection.ts:764`) —
+    contrairement à ce que le ticket laissait entendre ;
+  · `services/projection/childrenReee.ts` (cotisations, subventions, allocations) n'a **AUCUNE**
+    notion de divorce : ni `activeUsersCount`, ni `taxFilers`, ni `divorced` (0 occurrence).
+  **Le vrai périmètre** est donc `childrenReee.ts`, pas le solde.
+  ⚠️ **BLOQUÉ SUR UNE DÉCISION DE MARC, pas sur de la technique** : après un divorce, les enfants
+  restent-ils à sa charge ? Les allocations familiales et les coûts d'enfants suivent la GARDE — et
+  l'app n'a **aucun champ de garde**. Sans ce modèle, toute correction serait une invention :
+  diviser par deux, garder entier ou zéroïser sont trois hypothèses également arbitraires.
+  → routé vers `docs/A_FAIRE_MOI.md`. Ne PAS coder avant sa réponse.
 
 ### 🔴 Sécurité (1 MED · 2 LOW — aucune CRITIQUE)
 

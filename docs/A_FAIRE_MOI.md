@@ -466,3 +466,18 @@ Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiff
   Claude relance le déploiement lui-même au reset (rappels programmés : minuit heure Québec + 20:45 UTC en secours).
   Mitigation appliquée côté Claude : **pushes groupés** (un push par PR au lieu d'un par correctif).
   👤 Rien à faire pour Marc, sauf s'il veut changer d'avis sur le plan payant.
+
+## 2026-08-17 — Divorce et enfants : un modèle de GARDE manque (bloque `[ENG-DIVORCE-CHILDREN-REEE]`)
+
+**Ce que j'ai mesuré**, pour que la question soit précise :
+- le solde **REEE est déjà partagé** au divorce (`reee *= keep`, `services/projection.ts:764`) ;
+- mais `services/projection/childrenReee.ts` — cotisations, subventions, **allocations familiales**,
+  coûts d'enfants — ignore totalement le divorce (0 occurrence de `divorced`/`taxFilers`).
+
+**Ce que je ne peux pas décider à ta place.** Après un divorce, les allocations familiales et les
+coûts d'enfants suivent la **garde**. L'app n'a aucun champ de garde. Diviser par deux, garder
+entier, ou zéroïser sont trois hypothèses **également arbitraires** — et sur du money-critical,
+inventer un modèle est pire que ne rien faire.
+
+**Ce dont j'ai besoin** : garde partagée 50/50 ? Enfants à ta charge ? À celle de l'ex ? Et
+faut-il un champ de garde dans le profil, ou un pourcentage global suffit-il ?

@@ -747,20 +747,19 @@
   le montant de chaque dépense dans l'infobulle. Périmètre borné au réel (le futur n'itemise pas).
   Plan complet au ticket d'origine ci-dessous ; le plafond de 6 doit devenir visible (« +N autres »).
 
-- [ ] 🔴 **`[FUTUR-DETAIL-CATEGORIES-MOIS]`** (M, **demande Marc 2026-08-17** : « je veux la catégorie
-  de chaque, pour le mois aussi, selon ce qu'il y a dans Transactions ») — ventiler les dépenses
-  PAR CATÉGORIE dans le panneau détail, y compris sur un point MENSUEL.
-  ⚠️ **La contrainte à ne pas contourner** : sur un mois PASSÉ, les catégories viennent des vraies
-  transactions (agrégation de `Transaction.category` sur le mois) — honnête. Sur un mois FUTUR, le
-  moteur n'a PAS de transactions : il applique des POSTES BUDGÉTAIRES. On peut montrer la
-  composition budgétaire projetée, mais elle doit être NOMMÉE comme telle (« postes projetés »),
-  jamais présentée comme des dépenses constatées. Mélanger les deux dans le même tableau ferait
-  passer du projeté pour du réel — exactement ce que `no-fake-data` interdit.
-  **Fini** = un mois passé montre ses catégories RÉELLES ; un mois futur montre ses postes en le
-  DISANT ; les deux ne sont jamais confondus visuellement.
-
-## ⚡ Performance
-
+- [x] 🔴 **`[FUTUR-DETAIL-CATEGORIES-MOIS]`** — **LIVRÉ 2026-08-17** (demande Marc, périmètre
+  resserré par lui : « oui juste pour passé »). Le panneau ventile les dépenses du mois PAR
+  CATÉGORIE, d'après les vraies transactions.
+  ⚠️ **La frontière est la feature** : `monthIso` n'est transmis que pour un mois PASSÉ ou en
+  cours. Un mois FUTUR n'a aucune transaction (postes budgétaires répartis) — y rendre une
+  ventilation présenterait du projeté comme du constaté. Garde discriminante prouvée en retirant
+  l'exigence de `monthIso` : la section apparaissait sur du projeté, 2 tests tombent.
+  ⚠️ Une dépense SANS catégorie est DITE (« à classer dans Transactions »), jamais fondue dans un
+  « Autre » inventé : c'est un fait sur les données de Marc, pas une catégorie. Elle reste dans le
+  TOTAL — l'argent est sorti, seule sa catégorie manque.
+  Même base d'exclusion que la courbe et la liste du jour ; entrées hors sujet ; tri décroissant
+  départagé par nom (ordre STABLE, sinon les données semblent bouger).
+  Gardes : `tests/services/monthCategories.test.ts` (9) + `tests/components/FutureDetailModal.categories.test.tsx` (6).
 - [ ] **`[PERF-BOOT]`** (M-L, différé SCIEMMENT — provider-aware) — paralléliser
   `hydrateAssets`/priceRefresh SANS dépasser CoinGecko free ~30/min (le sleep 2500 protège le
   provider le PLUS strict). Fix provider-aware planifié, pas un Promise.all aveugle. (≡ D7.)

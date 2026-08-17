@@ -286,8 +286,12 @@ describe('[PASSE-REEL-TXN-DU-JOUR] câblage : le jour est capté AVANT le rebasa
         // d'écriture : elle accepte la lecture directe comme le passage par une variable locale
         // liée à `tooltip.point`. Ce qu'elle interdit — dériver le jour de `detailPoint`, TOUJOURS
         // rebasé sur le mois — est vérifié séparément juste en dessous.
+        // ⚠️ Fenêtre élargie à 2 000 car. (2026-08-17) : `[FUTUR-DETAIL-CATEGORIES-MOIS]` a inséré
+        // du code ENTRE la déclaration et l'usage, et la garde a crié au FAUX POSITIF alors que
+        // l'intention était intacte. Une garde trop serrée sur la DISTANCE finit désactivée par
+        // agacement ; c'est l'ASSERTION NÉGATIVE ci-dessous qui porte la vraie protection.
         expect(src, 'le jour doit être capté sur `tooltip.point`, avant `detailPointFor`')
-            .toMatch(/(setDetailDayIso\(\(tooltip\.point[\s\S]{0,120}dayIso|const\s+pt\s*=\s*tooltip\.point[\s\S]{0,600}setDetailDayIso\(pt)/);
+            .toMatch(/(setDetailDayIso\(\(tooltip\.point[\s\S]{0,120}dayIso|const\s+pt\s*=\s*tooltip\.point[\s\S]{0,2000}setDetailDayIso\(pt)/);
         expect(src, 'et transmis en prop dédiée').toContain('dayIso={detailDayIso}');
         // ⚠️ [PASSE-REEL-TXN-JOUR-VIDE] Le jour ne part QUE s'il est MESURÉ. `dayIso` est posé sur
         // tout point quotidien, FUTUR COMPRIS (`mergeDailyRealPoint` fait `{ ...d }` sur la branche

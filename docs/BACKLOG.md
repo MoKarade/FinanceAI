@@ -1133,52 +1133,23 @@ stub : il n'aurait aucune date à lire.
   ⚠️ **Seconde cause POSSIBLE et DISTINCTE**, non confirmée chez lui : `undatedTotal` /
   `flowsAfterNowDate` décalent tout le NIVEAU passé au lieu de créer une marche d'un jour. Le
   bandeau les affiche déjà ; s'ils sont nuls chez Marc, cette piste est réfutée.
-- [ ] 🔴 **`[PASSE-REEL-VARIATION-DU-JOUR]`** (M, **demande de Marc 2026-08-14**, en direct : « je veux
-  voir la variabilité d'argent pour la journée (tout compris mais détaillé) ») — le panneau du jour
-  affiche aujourd'hui le **net encaissé/décaissé** (Σ des transactions). Ce n'est PAS la variation
-  du patrimoine : un jour de forte hausse boursière affiche 0 $ pendant que la courbe monte. Le
-  CHANGELOG de `[PASSE-REEL-TXN-DU-JOUR]` le dit en toutes lettres — c'est exactement ce manque que
-  Marc demande de combler. Livrer la variation **complète** de la journée, **ventilée par source**.
-  ⚠️ **Le moteur ÉMET DÉJÀ la ventilation — la CONSOMMER, ne rien recalculer côté UI**
-  (`DailyPastRow`, `services/history/dailyPastLedger.ts`, vérifié en écrivant ce ticket) :
-  `NetTransferLiquid` (flux de liquidités), `deposits` **et** `growth` par régime (les achats datés
-  vs le mouvement de marché sont séparés à la source), `Immobilier`, `DettesNonImmo`, `NetWorth`.
-  La ΔNetWorth jour-à-jour se ventile donc sans nouveau calcul financier.
-  ⚠️ **Deux pièges à traiter EXPLICITEMENT, sinon le total ne fermera pas** :
-  1. Un **dépôt** (achat de titre) sort des liquidités et entre dans un régime : il doit
-     s'**annuler** dans le total « tout compris », sinon il est compté deux fois. Il reste une
-     information utile à afficher (« tu as déplacé X »), mais à somme nulle sur le patrimoine.
-  2. `Immobilier` bouge par **palier ANNUEL** et `DettesNonImmo` est **figée** (décision Marc,
-     Option A, `pastNetWorth.ts`). Un jour de palier affichera donc un saut immobilier qui n'a rien
-     de journalier : le dire, ne pas le lisser. Lisser une donnée annuelle sur 365 jours fabriquerait
-     de la donnée — interdit.
-  **Critère de « fini » : le résiduel est affiché, jamais absorbé.** Σ des sources − ΔNetWorth du jour
-  doit être calculé et montré s'il n'est pas nul ; un « autre » fourre-tout qui ferme le total par
-  construction est une garde CIRCULAIRE (classe déjà consignée dans `CLAUDE.md`) et ne prouverait rien.
-  Garde attendue : sur des données réelles, ventilation vs `NetWorth[j] − NetWorth[j−1]`, résiduel
-  borné, et le test doit ÉCHOUER si un poste est retiré de la somme.
-  ⚠️ **Cadrage TRANCHÉ par Marc 2026-08-17** : **section REPLIABLE, FERMÉE par défaut**
-  (`docs/decisions.md`). Je lui ai signalé le risque `UX-UNREACHABLE-FEATURE` ; il assume, pour garder
-  le panneau court. À respecter : titre replié autonome (il doit dire ce qu'il contient) + état
-  ouvert/fermé PERSISTÉ, sinon son choix est à refaire à chaque ouverture. Et le mode discret masque les montants dès la naissance de la surface.
-
-### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
-
-> Balayage complet des 133 composants après la PR #608 (3 tours de revue). Les écrans de LECTURE
-> visés par #608 sont couverts et gardés par test. Le trou restant est d'une autre nature : **#608 a
-> traité l'affichage, jamais la SAISIE**. Les formulaires natifs de Réglages/Profil affichent les
-> données les plus sensibles de l'app — salaire des deux conjoints, soldes réels par compte,
-> assurances, immeubles locatifs, société — en `<input type="number" value={…}>` non masqué, quel que
-> soit le mode. La primitive existe déjà (`PrivateNumberInput`, utilisée par `AssetLocationCard`).
-> ⚠️ Rappel de méthode (leçon #608) : un test de fuite doit être prouvé DISCRIMINANT, et un canal de
-> fuite peut être un ATTRIBUT (`title`, `aria-label`) ou la STRUCTURE (nombre de lignes rendues).
->
-> ⚠️ **Prérequis LEVÉ par `[A11Y-PRIVACY-SALAIRE]`** (2026-08-14) : la primitive volait le NOM
-> ACCESSIBLE du champ qu'elle masquait (`aria-label` en dur, prioritaire sur `<label htmlFor>` ET
-> sur l'`aria-label` du champ). Tous les champs masqués d'un formulaire annonçaient donc le même
-> nom. Corrigé DANS la primitive : les tickets suivants de ce lot en héritent, il n'y a rien à
-> refaire par écran. Voir `A11Y-MASK-STEALS-NAME` dans `docs/CONVENTIONS.md`.
-
+- [x] 🔴 **`[PASSE-REEL-VARIATION-DU-JOUR]`** — **LIVRÉ 2026-08-17** (demande Marc 2026-08-14 :
+  « je veux voir la variabilité d'argent pour la journée, tout compris mais détaillé »).
+  Le panneau montrait le NET ENCAISSÉ, qui n'est pas la variation du patrimoine : un jour de hausse
+  boursière affichait 0 $ pendant que la courbe montait.
+  ⚠️ **RIEN de recalculé** : `services/history/dayVariation.ts` ne fait que COMBINER ce que
+  `DailyPastRow` émettait déjà. Les deux pièges annoncés au ticket sont traités et sous test —
+  le **dépôt** s'annule dans le total (sinon compté deux fois) mais reste montré à part ; le
+  **palier immobilier** est dit comme tel, jamais lissé.
+  ⚠️ **Le RÉSIDUEL est AFFICHÉ** (« Non expliqué », ambre), jamais absorbé par un poste fourre-tout —
+  c'était le critère de fini posé d'avance : un fourre-tout fermerait le total par construction et
+  rendrait la vérification circulaire.
+  Section repliable FERMÉE (choix Marc) + les deux contraintes qui rendent ce choix tenable :
+  **état persisté** (sinon « repliable » = « toujours fermée ») et **titre autonome portant le
+  montant** (la valeur est lisible sans déplier).
+  `addDay` EXPORTÉ de `reconstructCashHistory` plutôt que dupliqué (pas de copie locale de formule).
+  Gardes : `tests/services/dayVariation.test.ts` (11) + `tests/components/FutureDetailModal.variation.test.tsx`
+  (9), les deux volets prouvés discriminants, avec assertion anti-sur-correctif sur le résiduel.
 - [ ] **`[A11Y-PRIVACY-TITLE-CLOBBER]`** (XS, relevé par le panel a11y de #629) —
   `components/ui/PrivateNumberInput.tsx` écrase en dur le `title` de l'appelant par
   « Montant masqué » en mode discret. Aucun appelant n'en dépend aujourd'hui pour son NOM (vérifié

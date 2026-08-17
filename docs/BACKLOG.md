@@ -643,7 +643,13 @@
     - [ ] `[REFONTE-NAV-L6d]` 6d — explication du moteur.
     - [ ] `[REFONTE-NAV-L6e]` 6e — analyse de documents.
     - [ ] `[REFONTE-NAV-L6f]` 6f — assistant proactif.
-  - [ ] `[REFONTE-NAV-L7]` Lot 7 — Réglages retravaillés en sections.
+  - [x] `[REFONTE-NAV-L7]` Lot 7 — **CADUQUE 2026-08-17 (décision Marc, `docs/decisions.md`)**.
+    « Réglages retravaillés en sections » était **DÉJÀ LIVRÉ** : `components/Settings.tsx` est un
+    orchestrateur léger de SIX sous-onglets (Profil · Comptes & soldes · Patrimoine · Clés API ·
+    Sauvegarde · Système & diagnostics), délégués à `components/settings/sections/` — livré le
+    2026-07-31 par la PR #549, donc AVANT la rédaction du plan, qui ne consacrait au Lot 7 qu'une
+    ligne sans contenu. Classe `BACKLOG-STALE-TICKET`.
+    → remplacé par le découpage de **Profil** (seul volet vivant, cf. `[UI-TABS-RICH]`).
 - [ ] **`[UI-TABS-RICH]`** (S, **RÉDUIT à Profil**) — généraliser le pattern sous-onglets.
   ~~Retraite (4 outils empilés)~~ **FAIT** par `[REFONTE-NAV-L4]` 2026-08-12 : « Projection » /
   « Outils d'optimisation » (idiome `BudgetWorkspace`, aucune logique déplacée). Reste **Profil**
@@ -1111,8 +1117,10 @@ stub : il n'aurait aucune date à lire.
   construction est une garde CIRCULAIRE (classe déjà consignée dans `CLAUDE.md`) et ne prouverait rien.
   Garde attendue : sur des données réelles, ventilation vs `NetWorth[j] − NetWorth[j−1]`, résiduel
   borné, et le test doit ÉCHOUER si un poste est retiré de la somme.
-  ⚠️ Cadrage à confirmer avec Marc AVANT de coder : dans le panneau existant (comme les transactions)
-  ou dans une section repliable ? Et le mode discret masque les montants dès la naissance de la surface.
+  ⚠️ **Cadrage TRANCHÉ par Marc 2026-08-17** : **section REPLIABLE, FERMÉE par défaut**
+  (`docs/decisions.md`). Je lui ai signalé le risque `UX-UNREACHABLE-FEATURE` ; il assume, pour garder
+  le panneau court. À respecter : titre replié autonome (il doit dire ce qu'il contient) + état
+  ouvert/fermé PERSISTÉ, sinon son choix est à refaire à chaque ouverture. Et le mode discret masque les montants dès la naissance de la surface.
 
 ### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
 
@@ -1185,12 +1193,12 @@ stub : il n'aurait aucune date à lire.
 - [ ] **`[A11Y-PRIVACY-ONBOARDING]`** (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
   masqués, mais NON exploitable (overlay `fixed inset-0 z-[9999]` qui recouvre le bouton du mode
   discret → impossible de l'activer pendant l'onboarding). À aligner par cohérence, pas en urgence.
-- [ ] ❓ **`[A11Y-PRIVACY-PDF-CONTRAT]`** (XS, DÉCISION Marc) — `services/pdfReport.ts` ne consulte pas
-  le mode discret. Est-ce un bug ? Un export PDF est une action EXPLICITE de l'utilisateur, qui veut
-  précisément un document avec les vrais chiffres — menace différente du « regard par-dessus
-  l'épaule ». **Reco [Probable]** : laisser l'export en clair, mais REFUSER de générer tant que le
-  mode discret est actif (cohérent avec `AiChatConfirmModal`, qui refuse de rendre) plutôt que de
-  produire un PDF de « ••• » inutile. À trancher avant de coder.
+- [ ] **`[A11Y-PRIVACY-PDF-CONTRAT]`** (XS, **TRANCHÉ par Marc 2026-08-17** → `docs/decisions.md`) —
+  `services/pdfReport.ts` ne consulte pas le mode discret. **Décision : REFUSER de générer** tant que
+  le mode discret est actif, avec un message qui explique pourquoi (patron `AiChatConfirmModal`, qui
+  refuse déjà de rendre). Un PDF SORT de l'app et survit au mode : le générer en clair depuis un écran
+  volontairement masqué est un piège, et le générer en « ••• » produit un rapport sans chiffres, donc
+  inutile. → reste à CODER (le ticket n'attend plus de décision).
 
 - [ ] **`[A11Y-BUDGETGROUP-CHART-NOALT]`** (S, relevé par le panel a11y de #608) — le mini-graphique
   « Historique » par catégorie (`components/budget/BudgetGroupTable.tsx:312-330`) est le SEUL des 10

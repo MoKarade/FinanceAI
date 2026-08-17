@@ -709,6 +709,22 @@
   ⚠️ L'action de RÉPARATION est chez Fintable (reconnecter l'institution sans `investments`, ajouter
   le courtier comme source distincte) — l'app ne peut que rendre la cause visible.
 
+- [ ] 🔴 **`[FUTUR-INFOBULLE-MONTANTS]`** (S, **demande de Marc 2026-08-17** : « pour chaque dépense de
+  chaque jour dans Futur, dans l'infobulle, je veux voir le montant ») — l'infobulle liste
+  aujourd'hui les MARCHANDS seuls (`dayLabels.join(', ')`, `ProjectionTooltip.tsx:293`).
+  ⚠️ **PÉRIMÈTRE RÉEL, mesuré** : `dayLabels` sert DEUX populations — les jours PASSÉS (vraies
+  transactions, `dailyPastLedger` l.215) et les jours FUTURS (libellés d'événements projetés,
+  `dailyLedger.ts:536`). Les montants PAR DÉPENSE n'existent que pour le PASSÉ : dans le futur le
+  moteur RÉPARTIT les dépenses sans les détailler. Il n'y a donc rien d'honnête à afficher côté
+  projeté — ne pas inventer une ventilation (no-fake-data).
+  **Plan** : porter `labels: string[]` → `Array<{ payee: string; amount: number }>` dans
+  `DailyPastRow`, propager par `dailyCurve` (2 sites), rendre dans l'infobulle avec `PrivateAmount`
+  (montants = donnée sensible, mode discret).
+  ⚠️ **Le plafond de 6 doit devenir VISIBLE** : `dailyPastLedger` tronque à 6 marchands EN SILENCE
+  (l.217). Avec des montants affichés, Marc lirait 6 dépenses en croyant les avoir toutes — même
+  classe que `truncatedFrom` (une troncature muette est pire qu'une plage annoncée). Afficher
+  « +N autres ».
+
 ## ⚡ Performance
 
 - [ ] **`[PERF-BOOT]`** (M-L, différé SCIEMMENT — provider-aware) — paralléliser

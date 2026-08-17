@@ -1059,6 +1059,48 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         if (next) tooltip.freezeOn(enrichDailyPoint(next) ?? next);
     }, [frozenSeriesIdx, selectSeries, tooltip, enrichDailyPoint]);
 
+    /**
+     * [FUTUR-DETAIL-STEP-DAY] Ouvre le panneau de détail SUR un point donné.
+     *
+     * ⚠️ Extrait pour être appelé de DEUX endroits — le bouton « Détail complet » de l'infobulle et
+     * les flèches Veille/Lendemain du panneau lui-même. Les trois états (point, jour, mois) doivent
+     * bouger ENSEMBLE : un `detailDayIso` qui resterait sur la veille afficherait les transactions
+     * d'un jour à côté du patrimoine d'un autre. Dupliquer ce trio à deux endroits, c'est
+     * garantir qu'un des deux oubliera un état.
+     */
+    const ouvrirDetailSur = useCallback((pt: ProjectionChartPoint | null | undefined) => {
+        if (!pt) return;
+        const p = pt as ProjectionChartPoint & { dayIso?: string; dayIsReal?: boolean };
+        const cal = calendarFromMonthIndex(startYear, startMonth, Math.floor(p.monthIndex ?? 0));
+        const moisIso = `${cal.year}-${String(cal.month + 1).padStart(2, '0')}`;
+        setDetailMonthIso(moisIso <= todayIso.slice(0, 7) ? moisIso : null);
+        setDetailDayIso(p.dayIsReal ? (p.dayIso ?? null) : null);
+        setDetailPoint(detailPointFor(pt));
+    }, [startYear, startMonth, todayIso, detailPointFor]);
+
+    /**
+     * [FUTUR-DETAIL-STEP-DAY] Position du point AFFICHÉ DANS LE PANNEAU au sein de la série.
+     *
+     * ⚠️ Volontairement indépendant de `frozenSeriesIdx` (l'infobulle). Le panneau s'ouvre aussi
+     * depuis une pastille d'événement, sans infobulle figée — et une fois ouvert, l'infobulle peut
+     * être relâchée. Se caler sur elle laisserait les flèches inertes exactement dans ces cas.
+     * On résout par `dayIso` quand il existe (unique), sinon par `monthIndex`.
+     */
+    const detailSeriesIdx = useMemo(() => {
+        if (!detailPoint) return -1;
+        const d = detailPoint as ProjectionChartPoint & { dayIso?: string };
+        if (d.dayIso) return selectSeries.findIndex((p) => (p as { dayIso?: string }).dayIso === d.dayIso);
+        return selectSeries.findIndex((p) => p.monthIndex === detailPoint.monthIndex);
+    }, [detailPoint, selectSeries]);
+
+    /** Jour voisin DANS le panneau ouvert — demande de Marc (2026-08-17) : le panneau était un
+     *  cul-de-sac, il fallait le fermer, re-viser au pixel sur la courbe, et le rouvrir. */
+    const stepDetailDay = useCallback((dir: -1 | 1) => {
+        if (detailSeriesIdx === -1) return;
+        const next = selectSeries[detailSeriesIdx + dir];
+        if (next) ouvrirDetailSur(enrichDailyPoint(next) ?? next);
+    }, [detailSeriesIdx, selectSeries, enrichDailyPoint, ouvrirDetailSur]);
+
     // [R3] Clic sur le graphe = FIGE le tooltip (avant : ouvrait directement la modale).
     // La modale exhaustive s'ouvre désormais via le bouton « Détail complet » du tooltip
     // figé, et via les pastilles d'événement (inchangées). On résout le mois cliqué par
@@ -1860,18 +1902,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 // `mergeDailyRealPoint` (unique occurrence du dépôt), et le mois
                                 // ANCRE y passe aussi via `realOnlyMonthPoints` : couverture
                                 // complète, sans exclure les jours réels du premier mois.
-                                const pt = tooltip.point as ProjectionChartPoint & { dayIso?: string; dayIsReal?: boolean };
-                                // [FUTUR-DETAIL-CATEGORIES-MOIS] Mois du point, UNIQUEMENT s'il est
-                                // PASSÉ ou en cours. Un mois futur n'a pas de transactions — le
-                                // moteur applique des postes budgétaires — donc rien à catégoriser :
-                                // en fabriquer une ventilation présenterait du projeté comme du
-                                // constaté (périmètre resserré par Marc : « oui juste pour passé »).
-                                const calDetail = calendarFromMonthIndex(startYear, startMonth, Math.floor(pt?.monthIndex ?? 0));
-                                const moisIso = `${calDetail.year}-${String(calDetail.month + 1).padStart(2, '0')}`;
-                                setDetailMonthIso(moisIso <= todayIso.slice(0, 7) ? moisIso : null);
-
-                                setDetailDayIso(pt?.dayIsReal ? (pt.dayIso ?? null) : null);
-                                setDetailPoint(detailPointFor(tooltip.point));
+                                // [FUTUR-DETAIL-CATEGORIES-MOIS + FUTUR-DETAIL-STEP-DAY] Le trio
+                                // (point, jour, mois) est posé par `ouvrirDetailSur` — un seul
+                                // endroit, partagé avec les flèches Veille/Lendemain du panneau.
+                                ouvrirDetailSur(tooltip.point);
                             }}
                             onStepDay={stepDay}
                             canStepPrev={frozenSeriesIdx > 0}
@@ -1894,6 +1928,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         userName1={config.users[0]?.name}
                         userName2={config.users[1]?.name}
                         isPrivacyMode={isPrivacyMode}
+                        onStepDay={stepDetailDay}
+                        canStepPrev={detailSeriesIdx > 0}
+                        canStepNext={detailSeriesIdx !== -1 && detailSeriesIdx < selectSeries.length - 1}
                         onClose={() => { setDetailPoint(null); setDetailDayIso(null); setDetailMonthIso(null); }}
                     />
                 )}

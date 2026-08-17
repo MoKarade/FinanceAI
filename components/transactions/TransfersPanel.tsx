@@ -15,6 +15,7 @@
 // récidivé). Et `ink-500` échoue AA-normal (mesuré) → texte secondaire en `ink-400`.
 
 import React, { useMemo, useState } from 'react';
+import { PrivateText } from '../ui/PrivateText';
 import type { Transaction } from '../../types';
 import {
     applyTransferDetection,
@@ -160,11 +161,11 @@ const SuggestionRow: React.FC<{
                 {formatCAD(suggestion.amount)}
             </PrivateAmount>
             <div className="text-meta text-ink-400 truncate">
-                {suggestion.out.date} · {suggestion.out.payee || '(sans libellé)'}
+                {suggestion.out.date} · <PrivateText>{suggestion.out.payee || '(sans libellé)'}</PrivateText>
                 {suggestion.out.accountName ? ` · ${suggestion.out.accountName}` : ' · compte inconnu'}
             </div>
             <div className="text-meta text-ink-400 truncate">
-                {suggestion.incoming.date} · {suggestion.incoming.payee || '(sans libellé)'}
+                {suggestion.incoming.date} · <PrivateText>{suggestion.incoming.payee || '(sans libellé)'}</PrivateText>
                 {suggestion.incoming.accountName ? ` · ${suggestion.incoming.accountName}` : ' · compte inconnu'}
             </div>
         </div>

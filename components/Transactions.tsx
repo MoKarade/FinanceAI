@@ -1,5 +1,9 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+// [PRIV-PAYEE-MODE-DISCRET] Le nom du marchand est de la donnée personnelle (décision Marc
+// 2026-08-17) : masqué en mode discret comme les montants, y compris dans les ATTRIBUTS.
+import { PrivateText } from './ui/PrivateText';
+import { maskPayee, rowControlLabel } from '../utils/privacyAria';
 import { logError } from '../services/errorLogger';
 import { Tab, Transaction, BudgetCategory, CategorizationRule } from '../types';
 import { TAB_LABELS } from '../constants';
@@ -49,6 +53,9 @@ export const Transactions: React.FC<TransactionsProps> = ({
     // [PH4E-OWNER-EDIT] mode couple : colonne « Conjoint » pour OVERRIDER l'attribution auto (par type de poste).
     // Hooks de store regroupés en tête (avant les useState) pour la lisibilité.
     const config = useFinanceStore(s => s.config);
+    // [PRIV-PAYEE-MODE-DISCRET] Lu ICI plutôt que passé en prop : le masquage doit suivre le mode
+    // en direct, sans dépendre d'un appelant qui aurait oublié de propager le drapeau.
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
     // [TX-REVIEW] Revue d'échantillon persistée (graine + jugements) — l'échantillon ne doit pas
     // changer entre deux ouvertures, sinon le dénominateur du taux ne veut plus rien dire.
     const categoryReview = useFinanceStore(s => s.categoryReview);
@@ -613,7 +620,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     <div key={group.payee} className="flex flex-col md:flex-row items-center gap-4 p-4 bg-white/5 rounded-xl border border-white/5 hover:border-primary/30 transition-colors">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-1">
-                                                <div className="font-bold text-white text-lg">{group.payee}</div>
+                                                <PrivateText as="div" className="font-bold text-white text-lg">{group.payee}</PrivateText>
                                                 <div className="bg-danger-500/20 text-red-300 text-tiny px-2 py-0.5 rounded-full font-bold">
                                                     {group.count} trans.
                                                 </div>
@@ -627,7 +634,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
 
                                         <div className="w-full md:w-auto flex gap-2">
                                             <select
-                                                aria-label={`Categorie pour ${group.payee}`}
+                                                aria-label={isPrivacyMode ? `Catégorie pour ${maskPayee(group.payee, true)}` : `Categorie pour ${group.payee}`}
                                                 className="bg-black border border-white/10 rounded-lg px-3 py-2 text-body text-white focus:border-primary outline-none min-w-[180px]"
                                                 onChange={(e) => {
                                                     if (e.target.value) handleWizardApply(group.ids, e.target.value);
@@ -850,12 +857,12 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                             checked={selectedIds.has(t.id)}
                                             onChange={() => { /* géré par onClick (porte shiftKey) */ }}
                                             onClick={(e) => { e.stopPropagation(); handleSelectOne(t.id, e.shiftKey); }}
-                                            aria-label={`Selectionner ${t.payee}`}
+                                            aria-label={rowControlLabel('Sélectionner', t.payee, t.date, isPrivacyMode)}
                                             className="rounded bg-surfaceHighlight"
                                         />
                                     </td>
                                     <td className="p-3 text-ink-300 whitespace-nowrap">{t.date}</td>
-                                    <td className="p-3 font-medium text-white">{t.payee}</td>
+                                    <td className="p-3 font-medium text-white"><PrivateText>{t.payee}</PrivateText></td>
 
                                     <td className="p-3">
                                         {t.confidence !== undefined && (
@@ -883,7 +890,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
 
                                     <td className="p-3">
                                         <select
-                                            aria-label={`Categorie de ${t.payee}`}
+                                            aria-label={rowControlLabel('Catégorie de', t.payee, t.date, isPrivacyMode)}
                                             className={`bg-surfaceHighlight border border-white/10 rounded px-2 py-1 text-meta text-white focus:border-primary outline-none cursor-pointer w-full max-w-[180px] ${(t.category === 'Uncategorized' || t.category === 'Inconnu') ? 'border-danger-500/50 text-red-300' : ''
                                                 }`}
                                             value={t.category}
@@ -901,7 +908,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                                 aurait aucun effet (on n'offre pas un contrôle trompeur). aria-label discriminé par date (payee non unique). */}
                                             {t.amount < 0 && !t.isTransfer ? (
                                                 <select
-                                                    aria-label={`Conjoint propriétaire de ${t.payee} (${t.date})`}
+                                                    aria-label={`Conjoint propriétaire de ${maskPayee(t.payee, isPrivacyMode)} (${t.date})`}
                                                     className="bg-surfaceHighlight border border-white/10 rounded px-2 py-1 text-meta text-white focus:border-primary outline-none cursor-pointer"
                                                     value={t.ownerId === 0 ? '0' : t.ownerId === 1 ? '1' : 'auto'}
                                                     onChange={(e) => updateOwner(t.id, e.target.value === 'auto' ? undefined : (e.target.value === '0' ? 0 : 1))}
@@ -939,12 +946,12 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                             type="checkbox"
                                             checked={isSelected}
                                             onChange={(e) => { e.stopPropagation(); handleSelectOne(t.id, false); }}
-                                            aria-label={`Selectionner ${t.payee}`}
+                                            aria-label={rowControlLabel('Sélectionner', t.payee, t.date, isPrivacyMode)}
                                             className="mt-1 rounded bg-surfaceHighlight flex-shrink-0"
                                         />
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-1.5">
-                                                <span className="font-semibold text-white text-body truncate">{t.payee}</span>
+                                                <PrivateText className="font-semibold text-white text-body truncate">{t.payee}</PrivateText>
                                                 {t.confidence !== undefined && (
                                                     <span
                                                         className={`w-2 h-2 rounded-full flex-shrink-0 ${getConfidenceColor(t.confidence)}`}
@@ -964,7 +971,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
 
                                 <div className="flex items-center gap-2">
                                     <select
-                                        aria-label={`Categorie de ${t.payee}`}
+                                        aria-label={rowControlLabel('Catégorie de', t.payee, t.date, isPrivacyMode)}
                                         className={`flex-1 bg-surfaceHighlight border rounded px-2 py-1.5 text-meta text-white focus:border-primary outline-none cursor-pointer ${isUncat ? 'border-danger-500/50 text-red-300' : 'border-white/10'
                                             }`}
                                         value={t.category}
@@ -988,7 +995,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                             (revenus/transferts ignorés par le calcul). touch-target = cible tactile ≥ 44px (WCAG 2.5.5). */}
                                         <span className="text-tiny text-ink-400 shrink-0">Conjoint :</span>
                                         <select
-                                            aria-label={`Conjoint propriétaire de ${t.payee} (${t.date})`}
+                                            aria-label={`Conjoint propriétaire de ${maskPayee(t.payee, isPrivacyMode)} (${t.date})`}
                                             className="touch-target flex-1 bg-surfaceHighlight border border-white/10 rounded px-2 py-1.5 text-meta text-white focus:border-primary outline-none cursor-pointer"
                                             value={t.ownerId === 0 ? '0' : t.ownerId === 1 ? '1' : 'auto'}
                                             onChange={(e) => updateOwner(t.id, e.target.value === 'auto' ? undefined : (e.target.value === '0' ? 0 : 1))}

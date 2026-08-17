@@ -1,5 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { logError } from '../services/errorLogger';
+// [PRIV-PAYEE-MODE-DISCRET] Un nom d'abonnement EST un nom de marchand (décision Marc 2026-08-17).
+import { PrivateText } from './ui/PrivateText';
+import { maskPayee } from '../utils/privacyAria';
 import { Transaction, RecurringItem, SavingsGoal, BudgetConfig, BudgetCategory } from '../types';
 import { Card } from './ui/Card';
 import { Icon, type IconName } from './ui/Icon';
@@ -56,6 +59,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
     const [confirmDeleteGoalId, setConfirmDeleteGoalId] = useState<string | null>(null);
     const [newGoal, setNewGoal] = useState<Partial<SavingsGoal>>({ name: '', targetAmount: 0, currentAmount: 0, deadline: '', icon: '💰' });
     // [PH4-F] abonnements ÉPINGLÉS (persistés dans le store) — survivent au reload sans re-détection IA.
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
     const pinnedSubs = useFinanceStore(s => s.subscriptions) ?? EMPTY_SUBS;
     // [SUBS-TAB] Marchands explicitement écartés (« pas un abonnement ») — choix Marc : « ne plus
     // jamais le proposer ». Sans ça, un faux positif revenait à CHAQUE actualisation.
@@ -306,19 +310,19 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                 <div key={subscriptionKey(sub) || idx} className="flex justify-between items-center p-3 bg-[#1a1a1a] rounded-xl border border-white/5 hover:border-white/20 transition-all group">
                                     <div className="flex items-center gap-3 overflow-hidden">
                                         <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shadow-inner flex-shrink-0"><Icon name={subIcon(sub.payee)} size={16} className="text-ink-300" /></div>
-                                        <div className="min-w-0"><div className="font-bold text-white text-body truncate">{sub.payee}</div><div className="text-tiny text-ink-400">{subscriptionDueLabel(sub)}</div></div>
+                                        <div className="min-w-0"><PrivateText as="div" className="font-bold text-white text-body truncate">{sub.payee}</PrivateText><div className="text-tiny text-ink-400">{subscriptionDueLabel(sub)}</div></div>
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
                                         {/* [PH4-F] épingler = persister l'abo (survit au reload sans re-détection IA) */}
                                         {isPinned(pinnedSubs, sub) ? (
-                                            <button onClick={() => handleUnpinSub(sub)} aria-label={`Désépingler ${sub.payee}`} title="Épinglé — cliquer pour retirer" className="text-tiny font-bold text-primary hover:text-danger-400 px-2 py-1.5 rounded transition-colors">Épinglé</button>
+                                            <button onClick={() => handleUnpinSub(sub)} aria-label={`Désépingler ${maskPayee(sub.payee, isPrivacyMode)}`} title="Épinglé — cliquer pour retirer" className="text-tiny font-bold text-primary hover:text-danger-400 px-2 py-1.5 rounded transition-colors">Épinglé</button>
                                         ) : (
-                                            <button onClick={() => handlePinSub(sub)} aria-label={`Épingler ${sub.payee}`} title="Épingler — le garder après actualisation" className="text-tiny text-ink-400 hover:text-primary px-2 py-1.5 rounded transition-all opacity-0 group-hover:opacity-100 focus:opacity-100">Épingler</button>
+                                            <button onClick={() => handlePinSub(sub)} aria-label={`Épingler ${maskPayee(sub.payee, isPrivacyMode)}`} title="Épingler — le garder après actualisation" className="text-tiny text-ink-400 hover:text-primary px-2 py-1.5 rounded transition-all opacity-0 group-hover:opacity-100 focus:opacity-100">Épingler</button>
                                         )}
                                         {/* [SUBS-TAB] Refuser un faux positif — sinon il revient à CHAQUE actualisation.
                                             HORS du ternaire épinglé/non : refuser vaut dans les deux états (le handler
                                             désépingle en même temps, pour ne pas laisser deux vérités contradictoires). */}
-                                        <button onClick={() => handleDismissSub(sub)} aria-label={`${sub.payee} n'est pas un abonnement`} title="Ce n'est pas un abonnement — ne plus le proposer" className="text-tiny text-ink-400 hover:text-danger-400 px-2 py-1.5 rounded transition-all opacity-0 group-hover:opacity-100 focus:opacity-100">Pas un abo</button>
+                                        <button onClick={() => handleDismissSub(sub)} aria-label={`${maskPayee(sub.payee, isPrivacyMode)} n'est pas un abonnement`} title="Ce n'est pas un abonnement — ne plus le proposer" className="text-tiny text-ink-400 hover:text-danger-400 px-2 py-1.5 rounded transition-all opacity-0 group-hover:opacity-100 focus:opacity-100">Pas un abo</button>
                                         <div className="text-right"><PrivateAmount as="div" className="font-bold text-white">{formatCAD(monthlyEquivalent(sub))}</PrivateAmount><div className="text-tiny text-ink-400">/mois</div></div>
                                     </div>
                                 </div>
@@ -362,7 +366,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                 return (
                                     <div key={idx} className={`aspect-square rounded-lg border flex flex-col items-center justify-center relative ${isToday ? 'bg-primary/20 border-primary' : hasBills ? 'bg-danger-500/10 border-danger-500/30' : 'bg-dark/40 border-white/5'}`}>
                                         <span className={`text-meta font-bold ${isToday ? 'text-primary' : 'text-ink-400'}`}>{day}</span>
-                                        {hasBills && <div className="mt-1 text-center"><div className="text-tiny font-bold text-white leading-none">{formatCAD(dailyTotal)}</div><div className="flex gap-0.5 justify-center mt-0.5">{bills.slice(0, 3).map((b, bi) => <div key={bi} className="w-1 h-1 rounded-full bg-danger-400" title={b.payee}></div>)}</div></div>}
+                                        {hasBills && <div className="mt-1 text-center"><div className="text-tiny font-bold text-white leading-none">{formatCAD(dailyTotal)}</div><div className="flex gap-0.5 justify-center mt-0.5">{bills.slice(0, 3).map((b, bi) => <div key={bi} className="w-1 h-1 rounded-full bg-danger-400" title={maskPayee(b.payee, isPrivacyMode)}></div>)}</div></div>}
                                     </div>
                                 );
                             })}

@@ -1,16 +1,16 @@
 // components/settings/sections/UsersCard.tsx
-// Carte « Profils & utilisateurs » : profils enregistrés (localStorage) +
-// identité de base par utilisateur (nom, âge, immigré) + ajout/retrait conjoint.
-// PH3/PH3-c : TOUT le setup utilisateur vit désormais dans l'onglet PROFIL (salaires, fiscal,
-// répartition, carrière & rémunération variable, retraite, enfants) — cette carte = identité
-// de base + profils enregistrés, rendue en tête de Profil.
+// Carte « Utilisateurs » : identité de base par personne (nom, âge, immigré) + ajout/retrait
+// du conjoint.
+// PH3/PH3-c : TOUT le setup utilisateur vit dans l'onglet PROFIL (salaires, fiscal, répartition,
+// carrière & rémunération variable, retraite, enfants).
+// ⚠️ [PROFIL-SOUS-ONGLETS 2026-08-17] Les PROFILS ENREGISTRÉS ont quitté ce fichier pour
+// `components/profile/SavedProfilesCard.tsx` : ils n'ont rien à voir avec l'identité des personnes
+// et vivent désormais dans un autre sous-onglet. Ne PAS les réintroduire ici.
 
 import React from 'react';
 import { Card } from '../../ui/Card';
 import { showToast } from '../../ui/Toast';
 import type { AppState, User } from '../../../types';
-import { logAudit } from '../../../services/auditLog';
-import { logError } from '../../../services/errorLogger';
 import { Icon } from '../../ui/Icon';
 
 interface UsersCardProps {
@@ -19,9 +19,6 @@ interface UsersCardProps {
 }
 
 export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
-  const [savedProfiles, setSavedProfiles] = React.useState<string[]>([]);
-  const [newProfileName, setNewProfileName] = React.useState('');
-  const [profileToDelete, setProfileToDelete] = React.useState<string | null>(null);
   // [CPL-1] (Marc 2026-06-11) — passage en couple GATÉ sur une définition CONSCIENTE du partenaire.
   // Avant : « + Ajouter conjoint » créait un placeholder silencieux (age 30, salaires 0) dont la simple
   // PRÉSENCE change la projection (PSV/SRG du conjoint à ses 65 ans, fractionnement, imposition 2 têtes).
@@ -58,112 +55,8 @@ export const UsersCard: React.FC<UsersCardProps> = ({ config, setConfig }) => {
     partnerToggleRef.current?.focus();
   };
 
-  React.useEffect(() => {
-    try {
-      const profiles = JSON.parse(localStorage.getItem('saved_profiles_list') || '[]');
-      // Revue #245 (B2) — JSON valide mais non-tableau (donnée corrompue) → garde + journal,
-      // sinon crash .map au render.
-      if (Array.isArray(profiles)) {
-        setSavedProfiles(profiles);
-      } else {
-        logError({ source: 'storage', severity: 'warning', message: 'UsersCard: saved_profiles_list n\'est pas un tableau (corrompu) — ignoré.' });
-      }
-    } catch (err) {
-      // [SF-WARN] — liste de profils corrompue dans localStorage → logError (journal app).
-      logError({ source: 'storage', severity: 'warning', message: 'UsersCard: liste des profils sauvegardés illisible (localStorage).', error: err instanceof Error ? err : new Error(String(err)) });
-    }
-  }, []);
-
-  const saveProfile = () => {
-    if (!newProfileName.trim()) return;
-    const profileSlug = `profile_${newProfileName.trim().replace(/\s+/g, '_').toLowerCase()}`;
-    localStorage.setItem(profileSlug, JSON.stringify({ config }));
-
-    const newProfiles = [...new Set([...savedProfiles, newProfileName.trim()])];
-    setSavedProfiles(newProfiles);
-    localStorage.setItem('saved_profiles_list', JSON.stringify(newProfiles));
-    logAudit({ field: 'profile', operation: 'add', description: `Profil « ${newProfileName.trim()} » enregistré` });
-    setNewProfileName('');
-    showToast(`Profil "${newProfileName}" sauvegarde avec succes !`, 'success');
-  };
-
-  const loadProfile = (name: string) => {
-    const profileSlug = `profile_${name.replace(/\s+/g, '_').toLowerCase()}`;
-    try {
-      const dataStr = localStorage.getItem(profileSlug);
-      if (dataStr) {
-        const data = JSON.parse(dataStr);
-        if (data.config) {
-          setConfig(data.config);
-          logAudit({ field: 'config', operation: 'replace', description: `Profil « ${name} » chargé` });
-          showToast(`Profil "${name}" charge !`, 'success');
-        } else {
-          // Revue #245 (B3) — profil présent mais SANS config : avant, clic = rien (muet).
-          logError({ source: 'storage', severity: 'warning', message: `UsersCard: profil « ${name} » sans données config.` });
-          showToast(`Le profil "${name}" est vide ou invalide.`, 'error');
-        }
-      } else {
-        // Profil listé mais clé absente du localStorage (désynchronisation).
-        logError({ source: 'storage', severity: 'warning', message: `UsersCard: profil « ${name} » introuvable (clé absente).` });
-        showToast(`Le profil "${name}" est introuvable.`, 'error');
-      }
-    } catch (err: unknown) {
-      // Revue #245 (B3) — journal app en plus du toast (console.error ne laissait pas de trace).
-      logError({ source: 'storage', severity: 'warning', message: `UsersCard: échec de chargement du profil « ${name} ».`, error: err instanceof Error ? err : new Error(String(err)) });
-      const msg = err instanceof Error ? err.message : 'inconnu';
-      showToast(`Erreur sur "${name}": ${msg}`, 'error');
-    }
-  };
-
-  const deleteProfile = (name: string) => {
-    if (profileToDelete !== name) {
-      setProfileToDelete(name);
-      setTimeout(() => setProfileToDelete(null), 3000);
-      return;
-    }
-    const profileSlug = `profile_${name.replace(/\s+/g, '_').toLowerCase()}`;
-    localStorage.removeItem(profileSlug);
-    const newProfiles = savedProfiles.filter(p => p !== name);
-    setSavedProfiles(newProfiles);
-    localStorage.setItem('saved_profiles_list', JSON.stringify(newProfiles));
-    setProfileToDelete(null);
-  };
-
   return (
-    <Card icon={<Icon name="settings" size={18} />} title="Profils & utilisateurs">
-
-      <div className="mb-6 bg-black/30 p-4 rounded-xl border border-white/5 shadow-inner">
-        <h3 className="text-body font-bold text-white mb-3">Profils Enregistres</h3>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {savedProfiles.length === 0 && <span className="text-meta text-ink-400 italic">Aucun profil enregistre.</span>}
-          {savedProfiles.map(p => (
-            <div key={p} className="flex items-center bg-primary/15 text-info-400 text-meta px-3 py-1.5 rounded-full border border-primary/25">
-              <button type="button" className="font-bold cursor-pointer hover:underline rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" onClick={() => loadProfile(p)} aria-label={`Charger le profil ${p}`}>{p}</button>
-              <button
-                onClick={() => deleteProfile(p)}
-                className={`ml-2 font-bold px-1.5 rounded ${profileToDelete === p ? 'bg-danger-500 text-white' : 'text-white/50 hover:text-danger-400'}`}
-                title={profileToDelete === p ? 'Cliquez encore pour confirmer' : 'Supprimer'}
-                aria-label={profileToDelete === p ? 'Confirmer la suppression' : `Supprimer le profil ${p}`}
-              >
-                {profileToDelete === p ? 'Sur?' : '×'}
-              </button>
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            aria-label="Nom du profil à sauvegarder"
-            placeholder="Nom du profil (ex: Marc & Anna 2026)"
-            value={newProfileName}
-            onChange={e => setNewProfileName(e.target.value)}
-            className="flex-1 bg-white/5 border border-border rounded px-3 py-1.5 text-body text-white"
-          />
-          <button onClick={saveProfile} className="bg-primary text-dark px-4 py-1.5 rounded text-body font-bold hover:brightness-110">
-            Sauvegarder
-          </button>
-        </div>
-      </div>
+    <Card icon={<Icon name="users" size={18} />} title="Utilisateurs">
 
       <div className="space-y-6">
         <div className="flex items-center justify-between">

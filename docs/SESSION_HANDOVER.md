@@ -4,6 +4,35 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-17 (suite 91) — `[UI-TABS-RICH]` : Profil en sous-onglets, et un ticket PÉRIMÉ démasqué
+> Marc a demandé « le Lot 7 nav ». ⚠️ **Le Lot 7 était DÉJÀ LIVRÉ** — mesuré avant de coder :
+> `Settings.tsx` est un orchestrateur de SIX sous-onglets depuis la PR #549 (2026-07-31), donc AVANT
+> la rédaction du plan, qui ne lui consacrait qu'une ligne sans contenu. Classe
+> `BACKLOG-STALE-TICKET`. Coché caduque, décision consignée dans `docs/decisions.md`.
+> Le seul volet vivant était celui que `[UI-TABS-RICH]` avait déjà isolé : **Profil**.
+>
+> Livré : `Profile.tsx` passe de 5 groupes empilés à 4 sous-onglets (Identité · Revenus ·
+> Retraite & enfants · Profils enregistrés). Le vrai travail est l'**extraction** des profils
+> enregistrés hors de `UsersCard` (338 → 233 l.) vers `components/profile/SavedProfilesCard.tsx` :
+> la Card mélangeait l'identité des personnes et des snapshots de config.
+> ⚠️ **Le découpage de Marc ne couvrait pas tout** (ni Retraite ni Enfants) → 4e onglet ajouté et
+> SIGNALÉ, plutôt que de les rétrograder sous « Revenus » ou de les perdre.
+> ⚠️ Idiome REPRIS à l'identique de `Retirement`/`BudgetWorkspace` — ne pas inventer un 4e patron.
+> La lacune ARIA commune aux trois (pas de `tabpanel`) est ticketée à part
+> (`[A11Y-SUBTABS-TABPANEL]`), à corriger sur les TROIS d'un coup.
+>
+> **Les deux gardes, prouvées discriminantes** :
+> · EXHAUSTIVITÉ — l'union des 4 onglets couvre EXACTEMENT les 5 groupes d'avant, **ensembles
+>   comparés, pas cardinalités** (un groupe perdu + un dupliqué garderaient un compte au vert).
+>   C'est le seul défaut qu'un refactor de navigation livre sans rien faire rougir ailleurs.
+> · RÉTROCOMPAT — un profil écrit par l'ANCIEN code reste chargeable. La fixture écrit les clés
+>   `localStorage` À LA MAIN : la construire via l'UI n'aurait prouvé que la cohérence du code avec
+>   lui-même (garde auto-satisfaite).
+>
+> **Quatre décisions de Marc consignées** (`docs/decisions.md`) : PDF en mode discret → REFUSER de
+> générer · dette passée → reste FIGÉE (⚠️ signalée 2× comme un bug puis statu quo assumé — PAS une
+> régression à corriger) · variabilité du jour → section repliable FERMÉE · L7 caduque.
+
 > ## 🔴 Session 2026-08-14 (suite 90) — `[PASSE-REEL-TXN-JOUR-VIDE]` : Marc a dit « marche toujours pas »
 > **Livré la veille, CI verte, et pourtant inutilisable pour lui.** Il était bien en « courbe au
 > jour » et cliquait bien dans le PASSÉ. Le code était juste de bout en bout — j'ai vérifié chaque

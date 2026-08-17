@@ -632,3 +632,56 @@ de budget solo saisi à la main.
 ⚠️ **Le DÉCÈS a exactement le même comportement** (le bloc dépenses ne consulte pas non plus
 `survivorMode`) : une veuve conserve les dépenses du couple. Pré-existant, cohérent avec cette
 décision, et désormais explicite plutôt que tacite.
+
+## ADR — Quatre décisions de Marc (2026-08-17)
+
+Prises en un batch, en réponse à mes questions de cadrage. Consignées ici parce que trois
+d'entre elles CLOSENT des tickets ouverts depuis plusieurs sessions : sans trace, la prochaine
+session les rouvrirait.
+
+### Décision 1 — Export PDF en mode discret : REFUSER de générer
+
+Le mode discret actif ⇒ l'export PDF ne produit PAS de fichier et explique pourquoi.
+
+**Pourquoi.** Un PDF SORT de l'app et survit au mode : le fichier ne sait pas qu'il a été
+généré depuis un écran masqué. Générer en clair depuis un écran volontairement masqué est un
+piège (l'utilisateur croit ses montants protégés) ; générer avec les montants masqués produit
+un rapport financier sans chiffres, donc inutile. Refuser est le seul comportement qui ne
+trompe personne.
+**Alternatives rejetées** : générer masqué (inutile) ; générer en clair avec avertissement
+(l'écart entre écran et fichier reste implicite).
+
+### Décision 2 — La dette dans le passé de la courbe : reste FIGÉE au niveau actuel
+
+Confirmation de l'Option A. Aucun amortissement rétroactif, aucune saisie demandée à Marc.
+
+⚠️ **Marc a signalé ce symptôme DEUX FOIS comme un bug** (patrimoine d'il y a cinq ans amputé
+d'une dette contractée il y a six mois), puis a choisi le statu quo quand la question lui a été
+posée explicitement, avec les trois options et leurs conséquences. C'est donc un **arbitrage
+assumé**, pas un oubli : le coût de la saisie manuelle a été jugé supérieur au bénéfice.
+⚠️ Conséquence pour la prochaine session : ce n'est PAS une régression à corriger si le
+symptôme est re-signalé. Tout volet de `[PASSE-REEL-DETTE]` visant l'amortissement est CADUQUE.
+
+### Décision 3 — La variabilité du jour : section REPLIABLE, FERMÉE par défaut
+
+Pour `[PASSE-REEL-VARIATION-DU-JOUR]`, quand il sera codé.
+
+⚠️ J'ai signalé le risque à Marc au moment de la question : une feature gatée par une
+interaction se fait oublier (`UX-UNREACHABLE-FEATURE`, vécu deux fois dans la même journée).
+Il a choisi fermée quand même, pour garder le panneau court. **Conséquences à respecter** : le
+titre replié doit annoncer ce qu'il contient de façon autonome, et l'état ouvert/fermé mérite
+d'être persisté pour que le choix de Marc ne soit pas à refaire à chaque ouverture.
+
+### Décision 4 — `[REFONTE-NAV-L7]` est CADUQUE, remplacé par le découpage de Profil
+
+Le Lot 7 disait « Réglages retravaillés en sections ». **Mesuré** : `components/Settings.tsx`
+est déjà un orchestrateur léger de six sous-onglets (Profil · Comptes & soldes · Patrimoine ·
+Clés API · Sauvegarde · Système & diagnostics), livré le 2026-07-31 par la PR #549 — donc AVANT
+la rédaction du plan REFONTE-NAV, qui ne consacrait au Lot 7 qu'une ligne sans contenu.
+Le seul volet vivant est celui que `[UI-TABS-RICH]` avait déjà réduit à « Profil » :
+`components/Profile.tsx` monte `UsersCard` (338 lignes, le plus gros fichier du domaine) dans un
+long scroll de cinq groupes.
+**Découpage retenu par Marc** : Identité · Revenus · Profils enregistrés.
+⚠️ Ces trois bacs ne couvrent PAS tout l'écran — **Retraite** et **Enfants** n'y entrent pas.
+J'ajoute donc un 4e onglet plutôt que de les rétrograder sous « Revenus » (faux) ou de les
+perdre (pire). Écart signalé à Marc, pas décidé en silence.

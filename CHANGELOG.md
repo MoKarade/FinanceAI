@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-17 (Profil en sous-onglets)
+
+### Ton onglet Profil ne se scrolle plus à l'infini
+- Il était un empilement de cinq groupes. Il devient **quatre sous-onglets** : Identité · Revenus ·
+  Retraite & enfants · Profils enregistrés.
+- Les **profils enregistrés** (tes photos de configuration) ont leur propre onglet : ils n'avaient
+  rien à faire dans la carte de ton identité.
+- ⚠️ **Aucune de tes données ne bouge.** Mêmes champs, mêmes clés de stockage, même façon
+  d'enregistrer et de charger un profil : un profil créé avant cette mise à jour reste chargeable —
+  c'est vérifié par un test qui relit une sauvegarde écrite à l'ancienne.
+
 ## [unreleased] — 2026-08-14 (transactions du jour)
 
 ### Une journée sans mouvement te le dit maintenant

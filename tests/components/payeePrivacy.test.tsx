@@ -70,15 +70,31 @@ describe('[PRIV-PAYEE-MODE-DISCRET] les helpers d’ATTRIBUT', () => {
      * DATE, qui discrimine sans rien révéler de sensible.
      */
     it('`rowControlLabel` garde des noms DISTINCTS en mode discret', () => {
-        const a = rowControlLabel('Sélectionner', MARCHAND, '2026-06-18', true);
-        const b = rowControlLabel('Sélectionner', 'AUTRE-MARCHAND', '2026-06-19', true);
+        const a = rowControlLabel('Sélectionner', MARCHAND, '2026-06-18', 1, true);
+        const b = rowControlLabel('Sélectionner', 'AUTRE-MARCHAND', '2026-06-19', 2, true);
         expect(a).not.toContain(MARCHAND);
         expect(a).not.toBe(b);
         expect(a).toContain('2026-06-18');
     });
 
+    /**
+     * ⚠️ LE TEST QUI MANQUAIT, et c'est celui qui comptait. La version d'avant comparait deux
+     * transactions à des dates DIFFÉRENTES : elle prouvait l'évidence et laissait passer le cas
+     * COURANT — plusieurs transactions le MÊME JOUR, qui recevaient toutes le nom accessible
+     * « Sélectionner la transaction du 2026-06-18 ». Deux agents l'ont mesuré indépendamment.
+     * Le masquage échangeait alors une fuite de vie privée contre un trou WCAG 4.1.2.
+     */
+    it('MÊME JOUR : les noms restent distincts (c’est le cas courant, pas le cas rare)', () => {
+        const a = rowControlLabel('Sélectionner', MARCHAND, '2026-06-18', 1, true);
+        const b = rowControlLabel('Sélectionner', 'AUTRE-MARCHAND', '2026-06-18', 2, true);
+        expect(a).not.toBe(b);
+        // Le discriminant est l'`id` : opaque, jamais affiché ailleurs, il ne révèle rien.
+        expect(a).not.toContain(MARCHAND);
+        expect(b).not.toContain('AUTRE-MARCHAND');
+    });
+
     it('hors mode discret, le libellé nomme bien le marchand', () => {
-        expect(rowControlLabel('Sélectionner', MARCHAND, '2026-06-18', false)).toContain(MARCHAND);
+        expect(rowControlLabel('Sélectionner', MARCHAND, '2026-06-18', 1, false)).toContain(MARCHAND);
     });
 });
 
@@ -99,6 +115,31 @@ describe('[PRIV-PAYEE-MODE-DISCRET] l’infobulle du jour ne laisse rien filtrer
 
     it('hors mode discret : le marchand est bien lisible', () => {
         render(<ExpertTooltip data={jour()} />);
+        expect(document.body.textContent).toContain(MARCHAND);
+    });
+
+    /**
+     * ⚠️ LA FUITE QUE MA FIXTURE RENDAIT INVISIBLE. Le test ci-dessus pose TOUJOURS `dayMovements`,
+     * donc n'atteint jamais le REPLI — et c'est le repli qui fuyait. `dayMovements` n'existe que
+     * sur un jour PASSÉ reconstruit ; un jour FUTUR portant une charge récurrente passe forcément
+     * par `dayLabels`, dont le contenu est `r.payee` (`datedMonthEvents.ts`), soit un vrai nom de
+     * marchand. Le chemin heureux était masqué, le repli non.
+     * Leçon : une fixture qui remplit tous les champs teste le cas nominal et RIEN d'autre.
+     */
+    const jourFutur = () => ({
+        monthIndex: 30, dateLabel: '18 déc. 2028', age: 43, NetWorth: 400_000,
+        isDailyPoint: true, dayIsDated: true, dayLabels: [MARCHAND],
+        // ⚠️ Volontairement ABSENTS — c'est ce qui force le repli.
+    } as unknown as ProjectionChartPoint);
+
+    it('jour FUTUR (repli sur `dayLabels`) : le marchand est masqué aussi', () => {
+        privacy(true);
+        render(<ExpertTooltip data={jourFutur()} />);
+        expect(document.body.innerHTML).not.toContain(MARCHAND);
+    });
+
+    it('jour FUTUR hors mode discret : le libellé reste lisible', () => {
+        render(<ExpertTooltip data={jourFutur()} />);
         expect(document.body.textContent).toContain(MARCHAND);
     });
 });

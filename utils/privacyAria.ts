@@ -40,11 +40,22 @@ export const maskPayee = (payee: string | null | undefined, isPrivacyMode: boole
  * ⚠️ Le piège du masquage naïf : remplacer le marchand par « ••• » dans chaque `aria-label` donne à
  * TOUTES les cases à cocher le MÊME nom accessible — le masquage détruirait alors la navigation au
  * lecteur d'écran, ce qui est un autre problème d'accessibilité, pas une victoire de vie privée.
- * On bascule donc sur la DATE, qui discrimine sans rien révéler de sensible.
+ *
+ * ⚠️ ET LA DATE NE SUFFIT PAS — mon premier correctif s'arrêtait là, et son commentaire affirmait
+ * que les noms restaient « DISTINCTS ». C'était FAUX dans le cas le plus courant : plusieurs
+ * transactions le MÊME JOUR donnaient toutes « Sélectionner la transaction du 2026-08-10 ». Deux
+ * agents l'ont mesuré indépendamment (audits vie privée et a11y de la PR #645), et mon test ne le
+ * voyait pas — il comparait deux dates DIFFÉRENTES, donc prouvait l'évidence.
+ * D'où l'`id` : opaque, jamais affiché ailleurs, il ne révèle rien et il est unique par
+ * construction. La leçon générale : un masquage qui retire un DISCRIMINANT doit le remplacer, pas
+ * seulement le supprimer — sinon on échange une fuite de vie privée contre un trou WCAG 4.1.2.
  */
 export const rowControlLabel = (
     action: string,
     payee: string | null | undefined,
     date: string,
+    id: number | string,
     isPrivacyMode: boolean,
-): string => (isPrivacyMode ? `${action} la transaction du ${date}` : `${action} ${payee || '(sans libellé)'}`);
+): string => (isPrivacyMode
+    ? `${action} la transaction du ${date} (#${id})`
+    : `${action} ${payee || '(sans libellé)'}`);

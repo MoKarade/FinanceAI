@@ -129,7 +129,10 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
     const handlePinSub = useCallback((sub: RecurringItem) => {
         if (isPinned(pinnedSubs, sub)) return;
         setAppState({ subscriptions: addSubscription(pinnedSubs, sub) });
-        showToast(`« ${sub.payee} » épinglé — il restera après actualisation.`, 'success');
+        // ⚠️ [finding vie privée #645] `maskPayee` AUSSI dans les toasts : une notification est du texte
+        // rendu, au même titre qu'une ligne de tableau. Masquer la liste et pas la confirmation
+        // annule le masquage au moment précis où l'utilisateur interagit devant quelqu'un.
+        showToast(`« ${maskPayee(sub.payee, isPrivacyMode)} » épinglé — il restera après actualisation.`, 'success');
     }, [pinnedSubs, setAppState]);
     const handleUnpinSub = useCallback((sub: RecurringItem) => {
         setAppState({ subscriptions: removeSubscription(pinnedSubs, subscriptionKey(sub)) });
@@ -143,7 +146,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
             dismissedSubscriptions: dismissSubscription(dismissedSubs, sub),
             subscriptions: removeSubscription(pinnedSubs, subscriptionKey(sub)),
         });
-        showToast(`« ${sub.payee} » ne sera plus proposé comme abonnement.`, 'success');
+        showToast(`« ${maskPayee(sub.payee, isPrivacyMode)} » ne sera plus proposé comme abonnement.`, 'success');
     }, [dismissedSubs, pinnedSubs, setAppState]);
 
     const handleRestoreSub = useCallback((key: string) => {
@@ -257,10 +260,14 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                     <ul className="mt-2 space-y-1">
                         {dismissedSubs.map((key) => (
                             <li key={key} className="flex items-center justify-between gap-2">
-                                <span className="text-ink-300 truncate">{key}</span>
+                                {/* ⚠️ [finding vie privée #645] `key` N'EST PAS un identifiant opaque :
+                                    `subscriptionKey` le construit littéralement depuis
+                                    `payee.trim().toLowerCase()`. C'est donc un nom de marchand
+                                    normalisé — masqué comme les autres, texte ET attribut. */}
+                                <PrivateText className="text-ink-300 truncate">{key}</PrivateText>
                                 <button
                                     onClick={() => handleRestoreSub(key)}
-                                    aria-label={`Réafficher ${key} dans les abonnements détectés`}
+                                    aria-label={`Réafficher ${maskPayee(key, isPrivacyMode)} dans les abonnements détectés`}
                                     className="text-tiny text-ink-400 hover:text-primary px-2 py-1.5 rounded focus-ring"
                                 >Réafficher</button>
                             </li>
@@ -283,7 +290,8 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                         key={`${a.kind}-${a.merchantKey}`}
                                         className={`rounded-lg border p-2 text-meta ${a.kind === 'price_rise' ? 'border-warning-500/30 bg-warning-500/5' : 'border-info-500/30 bg-info-500/5'}`}
                                     >
-                                        <div className="font-bold text-ink-100 truncate">{a.label}</div>
+                                        {/* `a.label` vient de `merchantProfile.ts` : c'est le payee. */}
+                                        <PrivateText className="font-bold text-ink-100 truncate">{a.label}</PrivateText>
                                         {a.kind === 'price_rise' ? (
                                             <div className="text-ink-300">
                                                 Le prix a monté de {formatPercent((a.risePct ?? 0) * 100, 0)} —{' '}

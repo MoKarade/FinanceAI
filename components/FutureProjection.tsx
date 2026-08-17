@@ -5,6 +5,7 @@ import { Skeleton } from './ui/Skeleton';
 // [REFONTE-NAV-L2b] Sous-onglet « Historique » (évolution passée par compte, ex-Accueil) —
 // lazy : son pipeline (usePortfolioHistory + helpers immo/dettes) ne se paie qu'à l'affichage.
 import { lazyWithRetry } from '../utils/lazyWithRetry';
+import { resolveDaySeriesIndex, type DaySeriesPoint } from '../utils/daySeriesIndex';
 const FutureHistorySection = lazyWithRetry(() => import('./future/FutureHistorySection'), 'FutureHistorySection');
 import { PageHeader } from './ui/PageHeader';
 import { Badge } from './ui/Badge';
@@ -708,6 +709,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
      * que la règle no-fake-data interdit pour un objet. Le jour voyage donc SÉPARÉMENT.
      */
     const [detailDayIso, setDetailDayIso] = useState<string | null>(null);
+    /**
+     * [FUTUR-DETAIL-STEP-DAY] Ancre de NAVIGATION du panneau — distincte de `detailDayIso`.
+     *
+     * ⚠️ `detailDayIso` est gated sur `dayIsReal` : il autorise à AFFIRMER des transactions
+     * mesurées, et un jour futur n'en a pas (no-fake-data). Se déplacer d'un jour à l'autre
+     * n'affirme rien, donc l'ancre est posée sur TOUT jour, projeté compris. Les fusionner ferait
+     * soit mentir l'affichage, soit geler les flèches dans le futur.
+     */
+    const [detailAnchorIso, setDetailAnchorIso] = useState<string | null>(null);
     const [detailMonthIso, setDetailMonthIso] = useState<string | null>(null);
 
 
@@ -1075,6 +1085,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const moisIso = `${cal.year}-${String(cal.month + 1).padStart(2, '0')}`;
         setDetailMonthIso(moisIso <= todayIso.slice(0, 7) ? moisIso : null);
         setDetailDayIso(p.dayIsReal ? (p.dayIso ?? null) : null);
+        setDetailAnchorIso(p.dayIso ?? null);
         setDetailPoint(detailPointFor(pt));
     }, [startYear, startMonth, todayIso, detailPointFor]);
 
@@ -1086,12 +1097,17 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
      * être relâchée. Se caler sur elle laisserait les flèches inertes exactement dans ces cas.
      * On résout par `dayIso` quand il existe (unique), sinon par `monthIndex`.
      */
-    const detailSeriesIdx = useMemo(() => {
-        if (!detailPoint) return -1;
-        const d = detailPoint as ProjectionChartPoint & { dayIso?: string };
-        if (d.dayIso) return selectSeries.findIndex((p) => (p as { dayIso?: string }).dayIso === d.dayIso);
-        return selectSeries.findIndex((p) => p.monthIndex === detailPoint.monthIndex);
-    }, [detailPoint, selectSeries]);
+    const detailSeriesIdx = useMemo(
+        // ⚠️ L'ancre vient de `detailAnchorIso` (point d'ORIGINE), PAS de `detailPoint` — celui-ci
+        // est rebasé sur le mois par `detailPointFor` et n'a donc jamais de `dayIso`. Détail du
+        // défaut mesuré dans `utils/daySeriesIndex.ts`.
+        () => resolveDaySeriesIndex(
+            selectSeries as unknown as DaySeriesPoint[],
+            detailAnchorIso,
+            detailPoint?.monthIndex,
+        ),
+        [detailAnchorIso, detailPoint, selectSeries],
+    );
 
     /** Jour voisin DANS le panneau ouvert — demande de Marc (2026-08-17) : le panneau était un
      *  cul-de-sac, il fallait le fermer, re-viser au pixel sur la courbe, et le rouvrir. */
@@ -1715,7 +1731,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                             <ClickableEventIcon
                                                 kind={kind}
                                                 payload={evt}
-                                                onSelect={() => { const found = chartData.find((d: ProjectionChartPoint) => d.monthIndex === evt.monthIndex); if (found) { setDetailDayIso(null); setDetailMonthIso(null); setDetailPoint(found); } }}
+                                                onSelect={() => { const found = chartData.find((d: ProjectionChartPoint) => d.monthIndex === evt.monthIndex); if (found) { setDetailDayIso(null); setDetailAnchorIso(null); setDetailMonthIso(null); setDetailPoint(found); } }}
                                             />
                                         }
                                     />
@@ -1931,7 +1947,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         onStepDay={stepDetailDay}
                         canStepPrev={detailSeriesIdx > 0}
                         canStepNext={detailSeriesIdx !== -1 && detailSeriesIdx < selectSeries.length - 1}
-                        onClose={() => { setDetailPoint(null); setDetailDayIso(null); setDetailMonthIso(null); }}
+                        onClose={() => { setDetailPoint(null); setDetailDayIso(null); setDetailAnchorIso(null); setDetailMonthIso(null); }}
                     />
                 )}
 

@@ -9,6 +9,7 @@
 // CRLF line ending — conforme RFC 4180 pour compat Excel/Google Sheets.
 
 import type { Transaction, Asset, BudgetCategory } from '../types';
+import { useFinanceStore } from '../store/useFinanceStore';
 
 /**
  * Échappe une valeur pour CSV RFC 4180.
@@ -61,8 +62,36 @@ export function downloadCSV(filename: string, content: string): void {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** Export transactions au format CSV (preset). */
+/**
+ * [PRIV-EXPORT-CSV-CONTRAT] Refus d'exporter en mode discret — même contrat que le PDF
+ * (`PdfRefusedPrivacyError`, décision Marc 2026-08-17 dans `docs/decisions.md`).
+ *
+ * ⚠️ POURQUOI CETTE GARDE MANQUAIT, et pourquoi c'est la MÊME faute. La décision « refuser en mode
+ * discret » a été prise pour le PDF, avec cette justification : « un fichier SORT de l'app et
+ * SURVIT au mode ». Elle n'a jamais été étendue au CSV — or le CSV est PIRE : il contient le
+ * marchand ET le montant, ligne par ligne, alors que le PDF ne porte aucun `payee`. L'écran
+ * affichait « ••• » partout pendant que le bouton « Export CSV » fabriquait, en un clic, une copie
+ * permanente et intégralement en clair. Trouvé par l'audit vie privée de la PR #645.
+ *
+ * ⚠️ Au SERVICE, pas au clic : une borne posée dans le composant laisserait passer tout futur
+ * appelant (autre bouton, raccourci, outil MCP, script). Même motif que `clampSplitPct`, où la
+ * borne UI seule laissait passer un import de sauvegarde.
+ */
+export class CsvRefusedPrivacyError extends Error {
+    constructor() {
+        super('Export CSV refusé : le mode discret est actif.');
+        this.name = 'CsvRefusedPrivacyError';
+    }
+}
+
+/**
+ * Export transactions au format CSV (preset).
+ * @throws {CsvRefusedPrivacyError} si le mode discret est actif.
+ */
 export function exportTransactionsCSV(transactions: Transaction[]): string {
+    // ⚠️ Lu à l'APPEL, pas capturé en amont : le mode a pu être activé entre le rendu du bouton et
+    // le clic. Et on refuse AVANT de construire la moindre ligne.
+    if (useFinanceStore.getState().isPrivacyMode) throw new CsvRefusedPrivacyError();
     return toCSV<Transaction>(transactions, [
         { header: 'Date', accessor: t => t.date },
         { header: 'Payee', accessor: t => t.payee || '' },

@@ -462,7 +462,13 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                 {/* En-tête */}
                 <div className="flex items-start justify-between gap-3 mb-4 pb-3 border-b border-white/15">
                     <div>
-                        <div className="text-lg font-black text-white tracking-tight">{point.dateLabel || point.year || '—'}</div>
+                        {/* ⚠️ [finding a11y #645] `aria-live` OBLIGATOIRE depuis les flèches
+                            Veille/Lendemain : le focus reste volontairement SUR le bouton pour
+                            enchaîner les pas, et l'`aria-label` du bouton est STATIQUE. Sans région
+                            live, un utilisateur de lecteur d'écran cliquerait « Lendemain » cinq
+                            fois sans AUCUN retour sur le jour atteint — la feature marcherait à
+                            l'œil et serait muette à l'oreille. Pattern APG du sélecteur de date. */}
+                        <div className="text-lg font-black text-white tracking-tight" aria-live="polite" aria-atomic="true">{point.dateLabel || point.year || '—'}</div>
                         <div className="text-tiny text-ink-400 mt-0.5">Âge {point.age ?? '—'}</div>
                         {/* ⚠️ [WCAG 2.5.3 label-in-name] L'aria-label CONTIENT le texte visible :
                             un label de REMPLACEMENT (« Jour précédent » seul) casserait la commande
@@ -475,7 +481,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     onClick={() => onStepDay(-1)}
                                     disabled={!canStepPrev}
                                     aria-label="Veille (jour précédent)"
-                                    className="focus-ring inline-flex items-center justify-center min-h-[36px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 disabled:opacity-35 disabled:pointer-events-none border border-white/20 rounded-lg px-2.5 py-1.5 transition-colors"
+                                    className="focus-ring inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 disabled:opacity-35 disabled:pointer-events-none border border-white/20 rounded-lg px-2.5 py-1.5 transition-colors"
                                 >
                                     ← Veille
                                 </button>
@@ -484,7 +490,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     onClick={() => onStepDay(1)}
                                     disabled={!canStepNext}
                                     aria-label="Lendemain (jour suivant)"
-                                    className="focus-ring inline-flex items-center justify-center min-h-[36px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 disabled:opacity-35 disabled:pointer-events-none border border-white/20 rounded-lg px-2.5 py-1.5 transition-colors"
+                                    className="focus-ring inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 disabled:opacity-35 disabled:pointer-events-none border border-white/20 rounded-lg px-2.5 py-1.5 transition-colors"
                                 >
                                     Lendemain →
                                 </button>

@@ -63,3 +63,31 @@ describe('[FUTUR-DETAIL-STEP-DAY] les flèches du panneau', () => {
         expect(screen.queryByRole('button', { name: /Lendemain/ })).toBeNull();
     });
 });
+
+/**
+ * [finding a11y #645] Ce que le contrat des boutons ne couvrait pas.
+ *
+ * ⚠️ Les trois tests ci-dessus vérifient que la modale APPELLE `onStepDay` et désactive aux bornes.
+ * Ils ne disent rien de deux choses qui décident si la feature est utilisable :
+ *   • la CIBLE tactile (36 px livrés contre 44 dans le jumeau infobulle, alors que le commentaire
+ *     du code affirmait « même convention ») ;
+ *   • l'ANNONCE du changement de jour — le focus reste sur le bouton pour enchaîner les pas, et son
+ *     libellé est statique : sans région live, la feature est muette au lecteur d'écran.
+ */
+describe('[FUTUR-DETAIL-STEP-DAY] atteignable au doigt ET à l’oreille', () => {
+    it('les flèches respectent le plancher de 44 px (WCAG 2.5.5)', () => {
+        rendre({ onStepDay: vi.fn(), canStepPrev: true, canStepNext: true });
+        for (const nom of [/Veille/, /Lendemain/]) {
+            const btn = screen.getByRole('button', { name: nom });
+            // ⚠️ Sur la CLASSE : jsdom ne calcule aucun layout, donc mesurer en px serait vacueux.
+            expect(btn.className, `${nom} sous le plancher tactile`).toContain('min-h-[44px]');
+        }
+    });
+
+    it('le jour affiché est dans une région LIVE (sinon les flèches sont muettes)', () => {
+        rendre({ onStepDay: vi.fn(), canStepPrev: true, canStepNext: true });
+        const live = document.querySelector('[aria-live="polite"]');
+        expect(live, 'aucune région live : le changement de jour n’est jamais annoncé').not.toBeNull();
+        expect(live?.textContent).toBeTruthy();
+    });
+});

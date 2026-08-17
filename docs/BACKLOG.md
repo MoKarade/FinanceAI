@@ -664,14 +664,25 @@
   Gardes : `tests/components/Profile.subTabs.test.tsx` (exhaustivité : l'union des onglets couvre
   EXACTEMENT les 5 groupes d'avant, ensembles comparés et non cardinalités) +
   `tests/components/SavedProfilesCard.test.tsx`. Les deux prouvées discriminantes.
-- [ ] **`[A11Y-SUBTABS-TABPANEL]`** (S, **découvert en livrant `[UI-TABS-RICH]`**) — les TROIS écrans
-  à sous-onglets (`Profile.tsx`, `Retirement.tsx`, `budget/BudgetWorkspace.tsx`) rendent un
-  `role="tablist"` + des boutons `role="tab"` **sans `role="tabpanel"` ni `aria-controls`**. Le
-  motif ARIA est donc incomplet : un lecteur d'écran annonce « onglet » mais ne peut pas relier
-  l'onglet à son contenu, ni y naviguer par le raccourci prévu. Défaut PRÉEXISTANT, pas une
-  régression du découpage de Profil — j'ai délibérément repris l'idiome existant plutôt que de
-  diverger sur un seul écran. ⚠️ **À corriger sur les TROIS d'un coup** : un patron ARIA à moitié
-  appliqué est plus déroutant que pas de patron du tout.
+- [x] **`[A11Y-SUBTABS-TABPANEL]`** — **LIVRÉ 2026-08-17**. Le motif ARIA des sous-onglets était
+  INCOMPLET (ni `role="tabpanel"`, ni `aria-controls`, ni `aria-labelledby`) et RECOPIÉ à la main
+  dans plusieurs écrans. Correctif : un composant UNIQUE `components/ui/SubTabs.tsx`
+  (`<SubTabs>` + `<TabPanel>`), qui pose le lien RÉCIPROQUE onglet↔panneau et rend le panneau
+  focalisable. Réparer les copies aurait garanti qu'elles divergent : le correctif durable est de
+  retirer la copie.
+  ⚠️ **La garde a révélé DEUX écrans que le ticket ne listait pas** (`Settings`, `FutureProjection`) :
+  le ticket en annonçait 3, il y en avait 5. Leçon déjà au dossier — resserrer le scan AVANT de
+  coder, les offenders donnent le vrai périmètre. Converti : `Profile`, `Retirement`,
+  `BudgetWorkspace`, `Settings` (4 écrans, style IDENTIQUE → zéro changement visuel).
+  Garde : `tests/components/subTabsAria.test.tsx` — rendu (lien réciproque, focalisabilité, panneau
+  actif seul, `id` préfixés) + scan de SOURCE en CLIQUET.
+- [ ] **`[A11Y-SUBTABS-FUTUR]`** (S, **découvert par la garde ci-dessus**) — `FutureProjection` est
+  le 5e écran à sous-onglets, mais son bandeau a un habillage DIFFÉRENT (emojis au lieu d'icônes,
+  autre fond, autres espacements). Le convertir tel quel CHANGERAIT l'apparence de l'écran principal
+  de Marc — non demandé, donc non fait. Il est épinglé comme exception LISTÉE et JUSTIFIÉE dans la
+  garde (jamais une exclusion silencieuse), et la liste est un cliquet qui ne doit que rétrécir.
+  **Deux voies** : ajouter une variante d'habillage à `<SubTabs>`, ou obtenir l'accord explicite de
+  Marc sur le changement visuel. À trancher avec lui.
 - [ ] **`[DETTE-CHART-THEME-DUP]`** (S) — tooltip/thème Recharts partagé (`CHART_TOOLTIP_STYLE`
   inexistant) — dédupliquer les styles inline des graphes.
 - [ ] **`[D6-GRAPH]`** (M, résiduel) — accès clavier aux graphes restants (projections,
@@ -1100,17 +1111,25 @@ stub : il n'aurait aucune date à lire.
   Pistes : ne pas tracer la série tant qu'elle n'a pas de sens, ou marquer visuellement son point de
   départ avec la raison. À cadrer avec Marc — ne PAS fabriquer un impôt latent passé (il faudrait
   l'historique des prix de revient, que l'app n'a pas).
-- [ ] 🔴 **`[PASSE-REEL-RACCORD-CHUTE]`** (M, **signalé par Marc 2026-08-14** : « je vois une chute
-  de 10k aujourd'hui jsp pourquoi ») — [À VÉRIFIER, non reproduit : données locales de Marc]
-  Décrochement au RACCORD entre le passé reconstruit et le départ de la projection. Hypothèse
-  première, déjà documentée dans le code : l'ancre `computeStartingCash` compte des transactions que
-  la série quotidienne ne peut PAS placer (datées au mois seul, ou datées APRÈS aujourd'hui), ce qui
-  décale tout le niveau passé d'autant — `DailyPastLedgerResult.undatedTotal` et `flowsAfterNowDate`
-  existent précisément pour ça et sont déjà affichés dans le bandeau.
-  ⚠️ **Première étape = MESURER chez Marc, pas coder** : lui faire lire les deux montants du bandeau
-  « Courbe au jour ». S'ils valent ~10 k, la cause est établie et le correctif de fond est connu
-  (retrancher ces flux de l'ancre) — il touche `computeStartingCash`, donc le raccord au présent :
-  plan-first obligatoire. S'ils sont nuls, l'hypothèse est RÉFUTÉE et il faut chercher ailleurs.
+- [ ] 🔴 **`[PASSE-REEL-RACCORD-CHUTE]`** (S — **CAUSE ÉTABLIE PAR MESURE 2026-08-17**) — Marc :
+  « je vois une chute de 10k aujourd'hui jsp pourquoi ». Ses données étant locales, j'ai mesuré le
+  MÉCANISME sur des données construites : `tests/services/raccordChute.test.ts` (6 tests).
+  **`reconstructCashHistoryDaily` remonte le temps À PARTIR du solde d'aujourd'hui en DÉFAISANT les
+  flux jour par jour, et s'arrête à la VEILLE** (aujourd'hui n'est pas reconstruit — le présent
+  vient de l'ancre du moteur). Donc `veille = solde_aujourd'hui − flux_du_jour` : le dernier point
+  du passé ANNULE les mouvements du jour, et la marche veille→aujourd'hui vaut EXACTEMENT le flux
+  net d'aujourd'hui. Une sortie de 10 000 $ datée d'aujourd'hui (hypothèque, gros transfert,
+  facture) produit une chute de 10 000 $ — et elle revient à chaque échéance.
+  ⚠️ **PAS un bug de calcul** : l'argent est réellement sorti, les deux points sont justes. C'est un
+  défaut d'EXPLICATION — rien ne dit que la veille est un solde RECONSTRUIT qui a volontairement
+  défait la journée en cours. Même classe que `SILENCE-READS-AS-BROKEN` : le chiffre est juste, sa
+  lecture est fausse. Gardes discriminantes : sans mouvement du jour → aucune marche ; une ENTRÉE
+  produit la marche inverse ; un virement interne n'en produit aucune.
+  **Correctif à faire** : DIRE la marche (infobulle du jour ou mention au raccord).
+  ⚠️ Ne JAMAIS la lisser — ce serait fabriquer un solde que Marc n'a jamais eu.
+  ⚠️ **Seconde cause POSSIBLE et DISTINCTE**, non confirmée chez lui : `undatedTotal` /
+  `flowsAfterNowDate` décalent tout le NIVEAU passé au lieu de créer une marche d'un jour. Le
+  bandeau les affiche déjà ; s'ils sont nuls chez Marc, cette piste est réfutée.
 - [ ] 🔴 **`[PASSE-REEL-VARIATION-DU-JOUR]`** (M, **demande de Marc 2026-08-14**, en direct : « je veux
   voir la variabilité d'argent pour la journée (tout compris mais détaillé) ») — le panneau du jour
   affiche aujourd'hui le **net encaissé/décaissé** (Σ des transactions). Ce n'est PAS la variation

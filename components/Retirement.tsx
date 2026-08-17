@@ -4,6 +4,7 @@ import { PageHeader } from './ui/PageHeader';
 import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
 import { ProfileFieldsMoved } from './settings/ProfileFieldsMoved';
 import { Icon, type IconName } from './ui/Icon';
+import { SubTabs, TabPanel } from './ui/SubTabs';
 import { Badge } from './ui/Badge';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { maskedTick } from '../utils/chartPrivacy';
@@ -265,22 +266,15 @@ export const Retirement: React.FC<RetirementProps> = ({
 
             {/* [REFONTE-NAV-L4] + [UI-TABS-RICH] — sous-onglets légers : la colonne de 4 outils
                 empilés devient « Outils d'optimisation », la courbe garde toute la place. */}
-            <div className="flex gap-1 p-0.5 rounded-card bg-black/30 border border-white/5 w-fit overflow-x-auto" role="tablist" aria-label="Sections Retraite">
-                {RETIREMENT_SUB_TABS.map((s) => (
-                    <button
-                        key={s.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={subTab === s.id}
-                        onClick={() => setSubTab(s.id)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-meta font-bold rounded whitespace-nowrap transition-colors focus-ring ${subTab === s.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-50 hover:bg-white/10'}`}
-                    >
-                        <Icon name={s.icon} size={14} />{s.label}
-                    </button>
-                ))}
-            </div>
+            <SubTabs<RetirementSubTab>
+                idPrefix="retraite"
+                label="Sections Retraite"
+                tabs={RETIREMENT_SUB_TABS}
+                active={subTab}
+                onSelect={setSubTab}
+            />
 
-            {subTab === 'outils' && (
+            <TabPanel idPrefix="retraite" tab="outils" when={subTab === 'outils'}>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     {/* W1.5 — Goal Seeking + W2.6 Drawdown (extrait dans GoalSeekerCard) */}
                     <GoalSeekerCard
@@ -300,9 +294,9 @@ export const Retirement: React.FC<RetirementProps> = ({
                     {/* W4.1 — Tax bracket viz */}
                     <TaxBracketViz annualGrossIncome={baseGrossAnnual} label="revenu actuel" />
                 </div>
-            )}
+            </TabPanel>
 
-            {subTab === 'projection' && (
+            <TabPanel idPrefix="retraite" tab="projection" when={subTab === 'projection'}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-1 space-y-6">
 
@@ -435,7 +429,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                         </>
                 </div>
             </div>
-            )}
+            </TabPanel>
         </div>
     );
 };

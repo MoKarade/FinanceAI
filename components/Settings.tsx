@@ -15,6 +15,7 @@
 import React, { useState } from 'react';
 import { PageHeader } from './ui/PageHeader';
 import { Icon, type IconName } from './ui/Icon';
+import { SubTabs, TabPanel } from './ui/SubTabs';
 import {
   AppState, BudgetCategory, Transaction, Asset, SavingsGoal, TravelGoal, Debt,
   InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal,
@@ -171,25 +172,18 @@ export const Settings: React.FC<SettingsProps> = ({
       <SetupHub />
 
       {/* Navigation sous-onglets thématiques */}
-      <div className="flex gap-1 p-0.5 rounded-card bg-black/30 border border-white/5 w-fit overflow-x-auto" role="tablist" aria-label="Sections Configuration">
-        {SUB_TABS.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            role="tab"
-            aria-selected={sub === s.id}
-            onClick={() => setSub(s.id)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-meta font-bold rounded whitespace-nowrap transition-colors focus-ring ${sub === s.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-50 hover:bg-white/10'}`}
-          >
-            <Icon name={s.icon} size={14} />{s.label}
-          </button>
-        ))}
-      </div>
+      <SubTabs<SubTab>
+        idPrefix="config"
+        label="Sections Configuration"
+        tabs={SUB_TABS}
+        active={sub}
+        onSelect={setSub}
+      />
 
-      {sub === 'profile' && (
+      <TabPanel idPrefix="config" tab="profile" when={sub === 'profile'}>
         <ProfileSection config={config} setConfig={setConfig} />
-      )}
-      {sub === 'accounts' && (
+      </TabPanel>
+      <TabPanel idPrefix="config" tab="accounts" when={sub === 'accounts'}>
         <AccountsSection
           initialBalances={initialBalances}
           setInitialBalances={setInitialBalances}
@@ -197,18 +191,18 @@ export const Settings: React.FC<SettingsProps> = ({
           onImportData={onImportData}
           apiKey={apiKeys.anthropic}
         />
-      )}
-      {sub === 'patrimoine' && <PatrimoineSection />}
-      {sub === 'integrations' && (
+      </TabPanel>
+      <TabPanel idPrefix="config" tab="patrimoine" when={sub === 'patrimoine'}><PatrimoineSection /></TabPanel>
+      <TabPanel idPrefix="config" tab="integrations" when={sub === 'integrations'}>
         <div className="space-y-6">
           <IntegrationsSection apiKeys={apiKeys} setApiKeys={setApiKeys} />
           {/* [FINTABLE-7] Sync bancaire in-app : jeton + rôles de comptes, sans aucune config externe. */}
           <FintableSyncCard />
           <AnalyticsConsentCard />
         </div>
-      )}
-      {sub === 'backup' && <BackupSection buildPayload={buildBackupPayload} />}
-      {sub === 'system' && <SystemView state={appState} />}
+      </TabPanel>
+      <TabPanel idPrefix="config" tab="backup" when={sub === 'backup'}><BackupSection buildPayload={buildBackupPayload} /></TabPanel>
+      <TabPanel idPrefix="config" tab="system" when={sub === 'system'}><SystemView state={appState} /></TabPanel>
     </div>
   );
 };

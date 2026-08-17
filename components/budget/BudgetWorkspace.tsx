@@ -23,6 +23,7 @@ import { HealthIndicator } from '../dashboard/HealthIndicator';
 import { ProfileFieldsMoved } from '../settings/ProfileFieldsMoved';
 import { PageHeader } from '../ui/PageHeader';
 import { Icon, type IconName } from '../ui/Icon';
+import { SubTabs, TabPanel } from '../ui/SubTabs';
 
 interface BudgetWorkspaceProps {
     transactions: Transaction[];
@@ -87,36 +88,29 @@ export const BudgetWorkspace: React.FC<BudgetWorkspaceProps> = ({
                 subtitle="Budget, charges fixes & abonnements, objectifs et santé — ton argent au quotidien."
             />
 
-            <div className="flex gap-1 p-0.5 rounded-card bg-black/30 border border-white/5 w-fit overflow-x-auto" role="tablist" aria-label="Sections Budget">
-                {SUB_TABS.map((s) => (
-                    <button
-                        key={s.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={sub === s.id}
-                        onClick={() => setSub(s.id)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-meta font-bold rounded whitespace-nowrap transition-colors focus-ring ${sub === s.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-50 hover:bg-white/10'}`}
-                    >
-                        <Icon name={s.icon} size={14} />{s.label}
-                    </button>
-                ))}
-            </div>
+            <SubTabs<SubTab>
+                idPrefix="budget"
+                label="Sections Budget"
+                tabs={SUB_TABS}
+                active={sub}
+                onSelect={setSub}
+            />
 
             {/* PH3 — mode de répartition (couple) déplacé dans l'onglet Profil unifié. */}
             <ProfileFieldsMoved what="Le mode de répartition du couple" />
 
-            {sub === 'budget' && (
+            <TabPanel idPrefix="budget" tab="budget" when={sub === 'budget'}>
                 <Budget transactions={transactions} config={config} budgetItems={budgetItems} setBudgetItems={setBudgetItems} apiKey={apiKey} />
-            )}
-            {sub === 'fixed' && (
+            </TabPanel>
+            <TabPanel idPrefix="budget" tab="fixed" when={sub === 'fixed'}>
                 <Planning section="fixed" transactions={transactions} savingsGoals={savingsGoals} setSavingsGoals={setSavingsGoals} budgetItems={budgetItems} setBudgetItems={setBudgetItems} config={config} apiKey={apiKey} />
-            )}
-            {sub === 'goals' && (
+            </TabPanel>
+            <TabPanel idPrefix="budget" tab="goals" when={sub === 'goals'}>
                 <Planning section="goals" transactions={transactions} savingsGoals={savingsGoals} setSavingsGoals={setSavingsGoals} budgetItems={budgetItems} setBudgetItems={setBudgetItems} config={config} apiKey={apiKey} actualsMap={monthActualsMap} />
-            )}
-            {sub === 'sante' && (
+            </TabPanel>
+            <TabPanel idPrefix="budget" tab="sante" when={sub === 'sante'}>
                 <HealthIndicator />
-            )}
+            </TabPanel>
         </div>
     );
 };

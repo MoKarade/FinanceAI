@@ -634,7 +634,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
 
                                         <div className="w-full md:w-auto flex gap-2">
                                             <select
-                                                aria-label={isPrivacyMode ? `Catégorie pour ${maskPayee(group.payee, true)}` : `Categorie pour ${group.payee}`}
+                                                aria-label={isPrivacyMode ? `Catégorie pour ${maskPayee(group.payee, true)}` : `Catégorie pour ${group.payee}`}
                                                 className="bg-black border border-white/10 rounded-lg px-3 py-2 text-body text-white focus:border-primary outline-none min-w-[180px]"
                                                 onChange={(e) => {
                                                     if (e.target.value) handleWizardApply(group.ids, e.target.value);
@@ -803,7 +803,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 <th className="p-3 w-8">
                                     <input
                                         type="checkbox"
-                                        aria-label="Selectionner toutes les transactions de la page"
+                                        aria-label="Sélectionner toutes les transactions de la page"
                                         className="rounded bg-surfaceHighlight border-white/10"
                                         checked={selectedIds.size > 0 && selectedIds.size >= paginatedTransactions.length}
                                         ref={(el) => {

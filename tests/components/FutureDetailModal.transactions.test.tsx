@@ -286,12 +286,17 @@ describe('[PASSE-REEL-TXN-DU-JOUR] câblage : le jour est capté AVANT le rebasa
         // d'écriture : elle accepte la lecture directe comme le passage par une variable locale
         // liée à `tooltip.point`. Ce qu'elle interdit — dériver le jour de `detailPoint`, TOUJOURS
         // rebasé sur le mois — est vérifié séparément juste en dessous.
-        // ⚠️ Fenêtre élargie à 2 000 car. (2026-08-17) : `[FUTUR-DETAIL-CATEGORIES-MOIS]` a inséré
-        // du code ENTRE la déclaration et l'usage, et la garde a crié au FAUX POSITIF alors que
-        // l'intention était intacte. Une garde trop serrée sur la DISTANCE finit désactivée par
-        // agacement ; c'est l'ASSERTION NÉGATIVE ci-dessous qui porte la vraie protection.
-        expect(src, 'le jour doit être capté sur `tooltip.point`, avant `detailPointFor`')
-            .toMatch(/(setDetailDayIso\(\(tooltip\.point[\s\S]{0,120}dayIso|const\s+pt\s*=\s*tooltip\.point[\s\S]{0,2000}setDetailDayIso\(pt)/);
+        // ⚠️ HISTOIRE DE CETTE GARDE, parce qu'elle dit quelque chose sur les gardes de SOURCE.
+        // Écrite sur la forme INLINE d'origine, elle a crié au faux positif deux fois : d'abord
+        // quand du code s'est inséré entre la déclaration et l'usage (fenêtre élargie), puis quand
+        // `[FUTUR-DETAIL-STEP-DAY]` a extrait le tout dans `ouvrirDetailSur` — appelé depuis DEUX
+        // endroits, ce qui était le bon refactor. Une garde arrimée à une FORME D'ÉCRITURE finit
+        // par accuser les bons changements ; elle vise donc maintenant la RELATION.
+        //
+        // Ce qui compte : le jour est lu sur le point BRUT reçu, jamais sur le retour de
+        // `detailPointFor` (toujours rebasé sur le mois).
+        expect(src, 'le jour doit être lu sur le point BRUT, pas sur le point rebasé')
+            .toMatch(/const\s+p\s*=\s*pt as[\s\S]{0,600}setDetailDayIso\(p\./);
         expect(src, 'et transmis en prop dédiée').toContain('dayIso={detailDayIso}');
         // ⚠️ [PASSE-REEL-TXN-JOUR-VIDE] Le jour ne part QUE s'il est MESURÉ. `dayIso` est posé sur
         // tout point quotidien, FUTUR COMPRIS (`mergeDailyRealPoint` fait `{ ...d }` sur la branche
@@ -299,10 +304,11 @@ describe('[PASSE-REEL-TXN-DU-JOUR] câblage : le jour est capté AVANT le rebasa
         // une affirmation de mesure sur du projeté. Le défaut était INVISIBLE avant l'état vide —
         // la liste étant toujours vide dans le futur, la section ne se rendait pas du tout.
         expect(src, '`dayIsReal` doit conditionner l’envoi du jour, sinon le futur ment')
-            .toMatch(/dayIsReal\s*\?\s*\(?\s*pt\.dayIso/);
-        // Si quelqu'un « simplifie » en dérivant le jour du point de détail, la section redevient
-        // inatteignable en silence : `detailPoint` est TOUJOURS le point mensuel rebasé.
+            .toMatch(/dayIsReal\s*\?\s*\(?\s*p\.dayIso/);
+        // Les DEUX formes du même défaut : dériver le jour du point rebasé, directement ou en
+        // passant le retour de `detailPointFor` au setter.
         expect(src, 'le jour ne doit JAMAIS être dérivé de `detailPoint`').not.toMatch(/detailPoint[^\n]*\.dayIso/);
+        expect(src, 'ni du retour de `detailPointFor`').not.toMatch(/setDetailDayIso\([^)]*detailPointFor/);
     });
 
     it('`FutureDetailModal` ne lit plus `dayIso` sur son `point`', async () => {
@@ -315,17 +321,24 @@ describe('[PASSE-REEL-TXN-DU-JOUR] câblage : le jour est capté AVANT le rebasa
 });
 
 // ── Mode discret ─────────────────────────────────────────────────────────────────────────────
-// Cinq tickets de ce lot ont posé la même règle : on masque les MONTANTS, pas ce qui identifie.
-// Une nouvelle surface qui affiche des $ doit naître conforme, pas être rattrapée plus tard.
+// ⚠️ CE BLOC A CHANGÉ DE RÈGLE, et c'est une DÉCISION de Marc, pas une régression.
+// Cinq tickets de ce lot avaient posé « on masque les MONTANTS, pas ce qui identifie » — et ce
+// test CODIFIAIT ce périmètre, marchand visible compris. Le 2026-08-17, mis devant le constat que
+// « pharmacie X, le 3 » dit déjà beaucoup sans le moindre chiffre, Marc a tranché : « masquer
+// marchands » (`[PRIV-PAYEE-MODE-DISCRET]`). Le test suit la décision.
+// La CATÉGORIE, elle, reste : c'est une classe générique (« Alimentation »), pas un identifiant —
+// et sans elle la ligne masquée ne dirait plus rien du tout.
 describe('[PASSE-REEL-TXN-DU-JOUR] mode discret', () => {
-    it('les montants SORTENT du DOM, marchands et catégories restent', () => {
+    it('montants ET marchands sortent du DOM ; la catégorie reste', () => {
         act(() => { useFinanceStore.setState({ isPrivacyMode: true }); });
         ouvrir(pointDuJour);
         const t = texte();
         expect(t, 'montant d’une ligne').not.toContain('13741');
         expect(t, 'la paie').not.toContain('28319');
         expect(t, 'le total du jour').not.toContain('14578');
-        expect(t, 'le marchand identifie la ligne : il reste').toContain('ÉpicerieMetro');
-        expect(t, 'la catégorie aussi').toContain('Alimentation');
+        // ⚠️ Décision Marc 2026-08-17 : le marchand est de la donnée personnelle (Loi 25).
+        expect(t, 'le marchand ne doit plus rester en clair').not.toContain('ÉpicerieMetro');
+        expect(t, 'mais la ligne doit rester identifiable comme masquée').toContain('Marchandmasqué');
+        expect(t, 'la catégorie est une classe, pas un identifiant').toContain('Alimentation');
     });
 });

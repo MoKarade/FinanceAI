@@ -650,10 +650,28 @@
     2026-07-31 par la PR #549, donc AVANT la rédaction du plan, qui ne consacrait au Lot 7 qu'une
     ligne sans contenu. Classe `BACKLOG-STALE-TICKET`.
     → remplacé par le découpage de **Profil** (seul volet vivant, cf. `[UI-TABS-RICH]`).
-- [ ] **`[UI-TABS-RICH]`** (S, **RÉDUIT à Profil**) — généraliser le pattern sous-onglets.
-  ~~Retraite (4 outils empilés)~~ **FAIT** par `[REFONTE-NAV-L4]` 2026-08-12 : « Projection » /
-  « Outils d'optimisation » (idiome `BudgetWorkspace`, aucune logique déplacée). Reste **Profil**
-  (long scroll) — seul volet vivant de ce ticket. Plan-first.
+- [x] **`[UI-TABS-RICH]`** — **LIVRÉ 2026-08-17**. Généraliser le pattern sous-onglets.
+  ~~Retraite (4 outils empilés)~~ FAIT par `[REFONTE-NAV-L4]` 2026-08-12. ~~Profil (long scroll)~~
+  **FAIT** : `Profile.tsx` passe de CINQ groupes empilés à QUATRE sous-onglets — Identité · Revenus ·
+  Retraite & enfants · Profils enregistrés (découpage Marc, `docs/decisions.md` ; le 4e onglet est
+  mon ajout, ses trois bacs ne couvraient ni Retraite ni Enfants).
+  Vrai travail : **extraire** les profils enregistrés de `UsersCard` (338 l. → 233 l.) vers
+  `components/profile/SavedProfilesCard.tsx` — la Card mélangeait identité des personnes et
+  snapshots de config, deux sujets qui partent dans deux onglets différents.
+  ⚠️ Migration UI PURE : mêmes clés `localStorage` (`saved_profiles_list`, `profile_<slug>`), même
+  slug. Garde de **rétrocompatibilité** qui écrit les clés À LA MAIN, comme l'ancien code — passer
+  par l'UI pour construire la fixture n'aurait prouvé que la cohérence du code avec lui-même.
+  Gardes : `tests/components/Profile.subTabs.test.tsx` (exhaustivité : l'union des onglets couvre
+  EXACTEMENT les 5 groupes d'avant, ensembles comparés et non cardinalités) +
+  `tests/components/SavedProfilesCard.test.tsx`. Les deux prouvées discriminantes.
+- [ ] **`[A11Y-SUBTABS-TABPANEL]`** (S, **découvert en livrant `[UI-TABS-RICH]`**) — les TROIS écrans
+  à sous-onglets (`Profile.tsx`, `Retirement.tsx`, `budget/BudgetWorkspace.tsx`) rendent un
+  `role="tablist"` + des boutons `role="tab"` **sans `role="tabpanel"` ni `aria-controls`**. Le
+  motif ARIA est donc incomplet : un lecteur d'écran annonce « onglet » mais ne peut pas relier
+  l'onglet à son contenu, ni y naviguer par le raccourci prévu. Défaut PRÉEXISTANT, pas une
+  régression du découpage de Profil — j'ai délibérément repris l'idiome existant plutôt que de
+  diverger sur un seul écran. ⚠️ **À corriger sur les TROIS d'un coup** : un patron ARIA à moitié
+  appliqué est plus déroutant que pas de patron du tout.
 - [ ] **`[DETTE-CHART-THEME-DUP]`** (S) — tooltip/thème Recharts partagé (`CHART_TOOLTIP_STYLE`
   inexistant) — dédupliquer les styles inline des graphes.
 - [ ] **`[D6-GRAPH]`** (M, résiduel) — accès clavier aux graphes restants (projections,

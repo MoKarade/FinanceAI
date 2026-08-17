@@ -534,6 +534,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     // W3.x — États événements de vie stochastiques (résident hors loop)
     let divorced = false;                       // une fois divorcé, reste divorcé
+    /** [ENG-DIVORCE-REEE-COTISATIONS] Part patrimoniale cumulée — pilote les COTISATIONS REEE. */
+    let reeeContribShare = 1;
     let divorceLogged = false;
     let ltdMonthsRemaining = 0;                 // invalidité longue durée
     let ltdLogged = false;
@@ -818,6 +820,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             });
             taxPreviousYear = splitTaxBucket(taxPreviousYear);
             taxCurrentYear = splitTaxBucket(taxCurrentYear);
+            // [ENG-DIVORCE-REEE-COTISATIONS] Le SOLDE du REEE vient d'être partagé (`reee *= keep`
+            // ci-dessus). Les COTISATIONS futures doivent suivre la même clé — décision Marc
+            // 2026-08-17 — et `keep` n'existe que dans cette callback : sans le RETENIR ici, le
+            // déclarant continuait de cotiser la part ENTIÈRE sur un régime réduit de moitié.
+            // Multiplicatif, pas affecté : un second divorce doit composer avec le premier.
+            reeeContribShare *= keep;
         })) {
             divorced = true;
         }
@@ -1431,9 +1439,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
          *
          * ⚠️ Défaut NEUTRE (1) hors divorce ⇒ rétrocompat BIT-IDENTIQUE, sous test.
          * ⚠️ Cette part ne s'applique PAS aux flux REEE : le régime suit le partage PATRIMONIAL
-         * (`reee *= keep` au divorce), pas la garde — deuxième décision de Marc le même jour. Les
-         * deux familles sont ventilées à la source (`liquidDeltaCosts` / `liquidDeltaReee`) parce
-         * qu'appliquer une seule part au flux entier diviserait aussi les cotisations REEE.
+         * (`keep`), pas la garde — deuxième décision de Marc le même jour. Les deux familles sont
+         * ventilées à la source (`liquidDeltaCosts` / `liquidDeltaReee`) parce qu'appliquer une
+         * seule part au flux entier diviserait aussi les cotisations REEE.
+         * ⚠️ Le partage patrimonial des COTISATIONS est appliqué en AMONT, dans `processOneChild`
+         * (`reeeContribShare`), et surtout PAS ici : la cotisation alimente cinq registres à la
+         * fois (liquidités, tracker à vie, subventions, solde, `contribREEE`) et n'en réduire
+         * qu'un créerait de l'argent. Le premier jet de ce commentaire affirmait que
+         * `liquidDeltaReee` « suivait keep » alors qu'aucun facteur ne lui était appliqué —
+         * finding de revue, corrigé (classe `DOC-STALE-IMPOSSIBILITY` appliquée à un commentaire).
          */
         const childCustodyShare = divorced ? 0.5 : 1;
         let _childLiquid = liquid;
@@ -1466,6 +1480,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     trackerScee: tracker.scee, trackerIqee: tracker.iqee,
                     trackerReeeContribLifetime: tracker.contribLifetime ?? 0,
                     enableMonteCarlo,
+                    reeeContribShare,
                 },
                 calculateFiscalReport,
             );
@@ -1482,7 +1497,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             };
             childGrossCost += result.childGrossCostAdd * childCustodyShare;
             childBenefits += result.childBenefitsAdd * childCustodyShare;
-            childMonthlyCost += result.childMonthlyCostAdd;
+            // ⚠️ [finding revue #644] MÊME part que `childGrossCost` : les deux reçoivent des
+            // incréments IDENTIQUES dans `processOneChild` (coût courant, voiture, études). N'en
+            // partager qu'un les faisait diverger d'un facteur 2 après divorce — un registre de
+            // flux `dailyLedger` qui ne correspond plus à la sortie de liquidités réelle.
+            childMonthlyCost += result.childMonthlyCostAdd * childCustodyShare;
             reeeContribMonthly += result.reeeContribAdd;
             withdrawalLiquid += result.withdrawalLiquidAdd;
             withdrawalREEE += result.withdrawalREEEAdd;

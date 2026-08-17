@@ -42,7 +42,19 @@ const jour = (extras: DailyExtras = {}): ProjectionChartPoint => ({
     ...extras,
 } as unknown as ProjectionChartPoint);
 
-/** Tous les nœuds de TEXTE rendus (les `title` sont des attributs : hors comptage, par construction). */
+/**
+ * Tous les nœuds de TEXTE **VISIBLES** rendus.
+ *
+ * ⚠️ DEUX exclusions, et elles ne sont pas du confort :
+ *   • les `title` sont des ATTRIBUTS — hors comptage par construction, c'est la frontière même
+ *     que ce plafond verrouille ;
+ *   • les sous-arbres `.sr-only` sont EXCLUS parce que le plafond mesure la PROSE À L'ÉCRAN. Un
+ *     texte `sr-only` n'occupe aucun pixel : c'est l'équivalent accessible du `title`, ajouté
+ *     précisément pour ne PAS payer en information ce que la demande de Marc économise en texte.
+ *     Sans cette exclusion, la garde ferait ÉCHOUER le correctif d'accessibilité qu'elle est
+ *     censée protéger (piège relevé par l'audit a11y).
+ * ⚠️ Ce n'est pas un trou : « aucune réserve perdue » ci-dessous lit justement ces `sr-only`.
+ */
 const noeudsDeTexte = (): string[] => {
     const out: string[] = [];
     const walk = (n: Node) => {
@@ -51,6 +63,7 @@ const noeudsDeTexte = (): string[] => {
             if (t) out.push(t);
             return;
         }
+        if (n.nodeType === 1 && (n as Element).classList?.contains('sr-only')) return;
         n.childNodes.forEach(walk);
     };
     walk(document.body);
@@ -89,22 +102,47 @@ describe('[FUTUR-INFOBULLE-EPUREE] plafond de prose', () => {
 });
 
 describe('[FUTUR-INFOBULLE-EPUREE] aucune réserve perdue', () => {
-    it('prix ESTIMÉ : pastille visible + phrase complète au survol', () => {
+    /**
+     * ⚠️ Chaque réserve est vérifiée sur TROIS plans, et le troisième vient d'un finding a11y.
+     * J'avais écrit que la limite du `title` était « au doigt, il ne s'ouvre pas ». C'était faux
+     * par optimisme : un `title` sur un `<span>` NON focusable n'est révélé que par un survol
+     * SOURIS — ni au clavier seul (l'élément n'est pas focusable), ni par un lecteur d'écran (qui
+     * lit le CONTENU d'un span générique). L'explication était donc perdue pour tout le monde sauf
+     * la souris : une RÉGRESSION vs le paragraphe visible qu'elle remplaçait, pas un compromis.
+     * D'où le jumeau `sr-only`, et d'où cette assertion qui empêche qu'on le retire.
+     */
+    const verifieReserve = (labelVisible: string | RegExp, phrase: RegExp) => {
+        // ⚠️ Recherche par le `title`, PAS par le texte : depuis l'ajout du jumeau `sr-only`, la
+        // phrase complète est elle aussi un nœud de texte — `getByText` en trouverait deux.
+        const pastille = [...document.querySelectorAll('span[title]')]
+            .find((e) => phrase.test(e.getAttribute('title') || ''));
+        expect(pastille, `aucune pastille dont le title corresponde à ${phrase}`).toBeTruthy();
+        // 1. l'ALERTE est VISIBLE (nœud de texte direct, hors `sr-only`)…
+        const visible = [...pastille!.childNodes]
+            .filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim();
+        expect(visible).toMatch(labelVisible instanceof RegExp ? labelVisible : new RegExp(labelVisible.replace(/[.*+?^${}()|[\]\\~]/g, '\\$&')));
+        // 2. …la phrase complète est au survol (souris)…
+        expect(pastille!.getAttribute('title')).toMatch(phrase);
+        // 3. …et elle existe AUSSI dans l'arbre d'accessibilité (lecteur d'écran, clavier seul).
+        const sr = pastille!.querySelector('.sr-only');
+        expect(sr, 'la phrase doit exister hors du seul attribut `title`').not.toBeNull();
+        expect(sr!.textContent).toMatch(phrase);
+    };
+
+    it('prix ESTIMÉ : pastille visible + phrase complète (survol ET lecteur d’écran)', () => {
         render(<ExpertTooltip data={jour({ hasEstimatedPrice: true })} />);
-        const chip = screen.getByText('~ prix estimé');
-        expect(chip.getAttribute('title')).toMatch(/prix ACTUEL/);
+        verifieReserve('~ prix estimé', /prix ACTUEL/);
     });
 
     it('prix PÉRIMÉ : la pastille porte l’âge réel, pas un vague « ancien »', () => {
         render(<ExpertTooltip data={jour({ priceAgeMaxDays: 34 })} />);
-        const chip = screen.getByText('prix J−34');
-        expect(chip.getAttribute('title')).toMatch(/plateau de reconstruction/);
+        expect(screen.getByText(/prix J−34/)).toBeInTheDocument();
+        verifieReserve(/prix J−34/, /plateau de reconstruction/);
     });
 
-    it('sync NON CONFIRMÉE : pastille visible + phrase complète au survol', () => {
+    it('sync NON CONFIRMÉE : pastille visible + phrase complète (survol ET lecteur d’écran)', () => {
         render(<ExpertTooltip data={jour({ daySyncUnconfirmed: true })} />);
-        const chip = screen.getByText(/sync incomplète/);
-        expect(chip.getAttribute('title')).toMatch(/transactions de ce jour peuvent manquer/);
+        verifieReserve(/sync incomplète/, /transactions de ce jour peuvent manquer/);
     });
 
     // ⚠️ Sans cette garde, afficher les trois pastilles EN PERMANENCE resterait vert — et une
@@ -122,12 +160,12 @@ describe('[FUTUR-INFOBULLE-EPUREE] aucune réserve perdue', () => {
     });
 
     // La justification du badge « Réel » était un paragraphe ; elle est maintenant son `title`.
-    it('le badge Réel / Projeté garde sa justification au survol', () => {
+    it('le badge Réel / Projeté garde sa justification (survol ET lecteur d’écran)', () => {
         const { unmount } = render(<ExpertTooltip data={jour()} />);
-        expect(screen.getByText('Réel').getAttribute('title')).toMatch(/pas une moyenne du mois/);
+        verifieReserve('Réel', /pas une moyenne du mois/);
         unmount();
         render(<ExpertTooltip data={jour({ dayIsReal: false })} />);
-        expect(screen.getByText('Projeté').getAttribute('title')).toMatch(/pas une mesure/);
+        verifieReserve('Projeté', /pas une mesure/);
     });
 
     // La troncature de la liste des mouvements reste ANNONCÉE : c'est la garde de
@@ -140,5 +178,30 @@ describe('[FUTUR-INFOBULLE-EPUREE] aucune réserve perdue', () => {
         })} />);
         const reste = screen.getByText('+4 autres');
         expect(reste.getAttribute('title')).toMatch(/Détail complet/);
+    });
+
+    /**
+     * ⚠️ [finding silent-failure #644] Le compte doit survivre à la branche de REPLI.
+     *
+     * Quand aucune transaction du jour ne porte de description, la liste affichée est vide et
+     * l'infobulle bascule sur « Mouvement à date connue ». Si le « +N autres » vivait DANS la
+     * branche des montants, il disparaissait précisément là où il est le SEUL indice que des
+     * mouvements existent — le pire endroit possible pour le perdre.
+     */
+    it('le compte survit quand AUCUN mouvement n’est décrit (branche de repli)', () => {
+        render(<ExpertTooltip data={jour({
+            dayIsDated: true, dayMovements: [], dayMovementsTotal: 3,
+        })} />);
+        expect(screen.getByText('Mouvement à date connue')).toBeInTheDocument();
+        expect(screen.getByText('+3 autres')).toBeInTheDocument();
+    });
+
+    it('rien à annoncer quand la liste est complète (pas de « +0 autres »)', () => {
+        render(<ExpertTooltip data={jour({
+            dayIsDated: true,
+            dayMovements: [{ payee: 'Metro', amount: -42 }],
+            dayMovementsTotal: 1,
+        })} />);
+        expect(screen.queryByText(/autres?$/)).toBeNull();
     });
 });

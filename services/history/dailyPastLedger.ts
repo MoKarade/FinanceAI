@@ -133,6 +133,13 @@ export interface BuildDailyPastInput {
 
 const DAY_MS = 86_400_000;
 
+/**
+ * Nombre de mouvements RETENUS pour l'affichage d'une journée (l'infobulle en liste quelques-uns,
+ * pas 40). ⚠️ Ce plafond ne borne QUE `movements` : `movementsTotal` compte tout, pour que
+ * l'infobulle puisse dire « +N autres » au lieu de s'arrêter en silence.
+ */
+const MAX_MOVEMENTS_SHOWN = 6;
+
 const emptyByAccount = (): Record<PastAccountKey, number> => ({
     CELI: 0, CELIAPP: 0, REER: 0, REEE: 0, NonReg: 0, Crypto: 0,
 });
@@ -227,10 +234,17 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
         const d = t.date.slice(0, 10);
         if (t.amount >= 0) incomeByDay.set(d, (incomeByDay.get(d) ?? 0) + t.amount);
         else expenseByDay.set(d, (expenseByDay.get(d) ?? 0) + Math.abs(t.amount));
+        // ⚠️ [finding silent-failure #644] Le TOTAL et la LISTE AFFICHÉE ne se comptent pas au même
+        // endroit, et c'est le correctif. Les deux vivaient sous le même `if (t.payee)` : une
+        // transaction SANS description entrait bien dans `Income`/`Expenses` du jour mais pas dans
+        // `movementsCount` — donc `movementsTotal === movements.length`, donc « +N autres » ne
+        // s'affichait JAMAIS, et Marc lisait la liste en croyant l'avoir toute. Exactement la
+        // troncature silencieuse que ce champ existe pour supprimer, réintroduite par un autre
+        // déclencheur. Cas réel : `mcp/ingest/applyDocument.ts` écrit `payee: tx.payee || ''`.
+        movementsCount.set(d, (movementsCount.get(d) ?? 0) + 1);
         if (t.payee) {
-            movementsCount.set(d, (movementsCount.get(d) ?? 0) + 1);
             const slot = movementsByDay.get(d) ?? [];
-            if (slot.length < 6) slot.push({ payee: t.payee, amount: t.amount }); // l'infobulle en liste quelques-uns, pas 40
+            if (slot.length < MAX_MOVEMENTS_SHOWN) slot.push({ payee: t.payee, amount: t.amount });
             movementsByDay.set(d, slot);
         }
     }

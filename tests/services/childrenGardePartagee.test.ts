@@ -65,3 +65,84 @@ describe('[ENG-DIVORCE-CHILDREN-REEE] la PARTITION de `liquidDelta`', () => {
         expect(r.liquidDeltaCosts, 'une cotisation REEE n’est pas un coût d’enfant').toBe(0);
     });
 });
+
+/**
+ * [ENG-DIVORCE-REEE-COTISATIONS] Les COTISATIONS suivent le partage PATRIMONIAL (`keep`).
+ *
+ * ⚠️ Ce bloc existe parce que la première livraison de ce lot AFFIRMAIT ce comportement dans un
+ * commentaire sans l'implémenter : `liquidDeltaReee` ne recevait aucun facteur, donc le déclarant
+ * continuait de cotiser la part ENTIÈRE sur un régime réduit de moitié. Finding de revue.
+ *
+ * ⚠️ Et c'est un flux qui alimente CINQ registres — liquidités, tracker à vie, subventions
+ * SCEE/IQEE, solde du REEE, `contribREEE`. Ne réduire que la sortie de liquidités CRÉERAIT de
+ * l'argent : le solde créditerait une cotisation que les liquidités n'auraient pas payée. Les
+ * tests ci-dessous vérifient donc la COHÉRENCE entre registres, pas seulement le montant.
+ */
+describe('[ENG-DIVORCE-REEE-COTISATIONS] la part patrimoniale sur les cotisations', () => {
+    const cotise = (share?: number) =>
+        processOneChild(
+            enfant({ initialCost: 0 }), 0, false, 6,
+            ctx(share === undefined ? {} : { reeeContribShare: share }), fiscalStub,
+        );
+
+    it('part 0,5 ⇒ cotisation DEUX FOIS moindre qu’à part entière', () => {
+        const entier = cotise();
+        const moitie = cotise(0.5);
+        expect(entier.reeeContribAdd, 'scénario vacueux si personne ne cotise').toBeGreaterThan(0);
+        // ⚠️ Comparaison sur `liquidDeltaReee`, PAS sur `reeeContribAdd` : ce dernier est ARRONDI
+        // (`Math.round`), donc une cotisation impaire se partage en 208 vs 208,5 et un test exact
+        // rougirait pour une raison qui n'a rien à voir avec le partage.
+        expect(moitie.liquidDeltaReee).toBeCloseTo(entier.liquidDeltaReee / 2, 6);
+        expect(moitie.reeeContribAdd).toBeCloseTo(entier.reeeContribAdd / 2, -1);
+    });
+
+    // ⚠️ L'assertion qui empêche le mauvais correctif (réduire la seule sortie de liquidités).
+    it('la sortie de liquidités et le SOLDE bougent ensemble (aucun argent créé)', () => {
+        const r = cotise(0.5);
+        const sortie = -r.liquidDeltaReee;         // ce que les liquidités paient
+        const entree = r.reeeNewBalance;           // cotisation + subventions, solde initial nul
+        expect(sortie).toBeGreaterThan(0);
+        // Le solde reçoit la cotisation ET les subventions : il dépasse la sortie, mais il ne peut
+        // pas dépasser la cotisation + 60 % de subvention (SCEE 20 % + IQEE 10 % ⇒ marge large).
+        expect(entree).toBeGreaterThanOrEqual(sortie);
+        expect(entree).toBeLessThanOrEqual(sortie * 1.6);
+    });
+
+    it('le tracker à vie n’enregistre que ce qui a VRAIMENT été cotisé', () => {
+        const entier = cotise();
+        const moitie = cotise(0.5);
+        // Sans ça, le plafond ARC de 50 000 $/enfant se consommerait au rythme d'avant divorce.
+        expect(moitie.newTrackerReeeContribLifetime).toBeCloseTo(entier.newTrackerReeeContribLifetime / 2, 0);
+    });
+
+    it('les SUBVENTIONS suivent la cotisation (elles en sont un pourcentage)', () => {
+        const entier = cotise();
+        const moitie = cotise(0.5);
+        expect(entier.newTrackerScee).toBeGreaterThan(0);
+        expect(moitie.newTrackerScee).toBeCloseTo(entier.newTrackerScee / 2, 1);
+    });
+
+    // ⚠️ Anti-sur-correctif ET rétrocompat : hors divorce, rien ne doit changer. Un `undefined`
+    // (tout appelant d'avant) doit valoir « part entière », pas 0 — sinon la projection de
+    // quelqu'un qui n'a jamais divorcé cesserait silencieusement de cotiser au REEE.
+    it.each([
+        ['champ absent', undefined],
+        ['part explicite 1', 1],
+    ])('%s ⇒ résultat identique à la version sans partage', (_nom, share) => {
+        const ref = cotise();
+        const r = cotise(share as number | undefined);
+        expect(r.reeeContribAdd).toBe(ref.reeeContribAdd);
+        expect(r.liquidDeltaReee).toBe(ref.liquidDeltaReee);
+        expect(r.reeeNewBalance).toBe(ref.reeeNewBalance);
+    });
+
+    // La partition doit tenir AUSSI sous partage — sinon le correctif casse l'invariant du bloc
+    // précédent au lieu de s'y ajouter.
+    it('la partition coûts + REEE === liquidDelta tient encore sous partage', () => {
+        const r = processOneChild(
+            enfant({ carGift: 'usagee' }), 0, true, 0,
+            ctx({ reeeContribShare: 0.5 }), fiscalStub,
+        );
+        expect(r.liquidDeltaCosts + r.liquidDeltaReee).toBeCloseTo(r.liquidDelta, 6);
+    });
+});

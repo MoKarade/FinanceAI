@@ -830,7 +830,12 @@ export const App: React.FC = () => {
                             showToast('Mode discret actif : l’export PDF est bloqué. Un PDF sort de l’app et garderait tes montants en clair — désactive le mode discret pour le générer.', 'error');
                             return;
                         }
-                        console.error('[FinanceAI] PDF generation error:', e);
+                        // ⚠️ [finding silent-failure #644] `logError`, PAS `console.error` : ce
+                        // `catch` couvre aussi les imports dynamiques et les `build*Rows`, hors du
+                        // `try` interne de `pdfReport.ts` qui, lui, route déjà vers `logError`. Une
+                        // vraie panne ici ne laissait aucune trace dans Diagnostics — l'utilisateur
+                        // voyait un toast et moi rien du tout.
+                        logError({ source: 'ui', severity: 'error', message: 'Génération PDF échouée', error: e instanceof Error ? e : new Error(String(e)) });
                         showToast('Erreur lors de la génération du PDF.', 'error');
                     }
                 }}

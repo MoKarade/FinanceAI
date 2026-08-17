@@ -273,6 +273,112 @@
 > Analyse fiscale 2026-07-31 (financial-integrity, findings MESURÉS via npx tsx sur le vrai moteur).
 > ⚠️ Un finding = une hypothèse : chaque fix passe par discriminant git-stash + panel adversarial.
 
+### ⛔ NO-GO du panel PR #644 (2026-08-17) — divorce × enfants, à finir AVANT tout merge
+
+> ⚠️ **DEUX agents indépendants (`projection-validator`, `financial-integrity`) ont MESURÉ le même
+> défaut**, chacun de son côté et sur le vrai moteur. Ce n'est donc pas une hypothèse de revue.
+> La cause commune : `[ENG-DIVORCE-CHILDREN-REEE]` a ventilé `liquidDelta` par clé de partage,
+> mais PAS `monthlyIncomeDelta`, qui transporte exactement le même mélange de familles. C'est la
+> classe maison « un flux alimente PLUSIEURS registres » — appliquée à la moitié du problème.
+
+- [ ] 🔴 **`[ENG-DIVORCE-BENEFITS-FLUX]`** (M, **CRITIQUE — MESURÉ 2×**) — après divorce, les
+  allocations familiales sont encaissées à **100 %** mais publiées à **50 %**.
+  Mesuré : `Δ Income = +332 $/mois` contre `Δ childBenefits = +166 $/mois`, constant sur tout
+  l'horizon. Cumul 20 ans : 31 673 $ encaissés vs 17 629 $ affichés ; effet patrimoine final
+  **75 957 $**. Contredit frontalement la décision verrouillée (`decisions.md` Décision 5).
+  **Correctif** : ventiler `monthlyIncomeDelta` comme `liquidDelta` — `...Benefits` (garde),
+  `...Reee` (payout d'études), `...Rqap` (aucun facteur) — avec l'invariant de partition sous test.
+- [ ] 🔴 **`[ENG-DIVORCE-STUDIES-PAYOUT]`** (S, **ÉLEVÉ — MESURÉ 2×**) — pendant les études, la
+  dépense est partagée (× 0,5) mais le décaissement REEE reste ENTIER.
+  Mesuré : `payout = 2 899 $/mois` contre `1 450 $` de dépense portée → **+1 450 $/mois** de
+  trésorerie née de nulle part (≈ 69 600 $ sur 4 ans) et le REEE de l'enfant se vide **2× trop
+  vite** (épuisé 24 mois plus tôt). Pas de création monétaire au bilan — une incohérence de modèle,
+  dérivé oublié de la même assiette. **Correctif** : partager `studiesMonthly` à la SOURCE, pour
+  que le montant retiré finance le coût qu'il couvre.
+- [ ] 🔴 **`[ENG-DIVORCE-CHILDREN-NO-SCENARIO-TEST]`** (S, **ÉLEVÉ**) — **aucune garde n'exerce
+  divorce × enfants**, et c'est pourquoi les deux défauts ci-dessus sont passés avec 4 262 tests
+  verts. Tous les tests de divorce déclarent `childGoals: []` ; le fuzz a des enfants mais n'active
+  pas `enableMonteCarlo`, donc `tryDivorce` ne tire JAMAIS ; `childrenGardePartagee` teste
+  `processOneChild` en ISOLATION et ne touche aucun registre aval. Test exigé au niveau
+  `__runScenarioForTests`, divorce forcé : `Δ Income === Δ childBenefits`, `childCost === childGross`
+  sur tout l'horizon, `ReeePayout` cohérent avec `childGross` pendant les études.
+- [ ] 🔴 **`[PASSE-REEL-RESIDUEL-DEPOTS]`** (M, **ÉLEVÉ — MESURÉ**) — dans la ventilation du jour,
+  le résiduel « Non expliqué » vaut **exactement les dépôts du jour**, systématiquement.
+  `dayVariation.ts` exclut les `deposits` « parce qu'ils s'annulent » — mais
+  `reconstructCashHistoryDaily` construit les liquidités à partir des SEULES transactions, donc
+  `ΔLiquidités = NetTransferLiquid` et jamais `NetTransferLiquid − Σdépôts`. Mesuré sur un achat de
+  500 $ : l'écran affiche « Variation +500 », « Non expliqué +500 » ET « dont 500 $ déplacés — ça ne
+  change pas ton patrimoine ». Les trois lignes se contredisent. ⚠️ À trancher **par mesure** : les
+  deux branches (`isTransfer` ou non) donnent le même résiduel mais pas le même `deltaNetWorth`.
+- [ ] 🔴 **`[PASSE-REEL-RESIDUEL-ARRONDI]`** (S, **ÉLEVÉ — MESURÉ**) — résiduel d'ARRONDI permanent :
+  `NetWorth` et `cash` sont arrondis, les sources non. Mesuré sur 3 jours sans aucun dépôt :
+  +0,37 / −0,21 / +0,04 — tous au-dessus du seuil d'affichage (0,005 $), donc rendus en ambre comme
+  « Non expliqué **0 $** » et « **-0 $** ». Le seul garde-fou honnête du panneau devient du bruit
+  quotidien. Seuil à 0,50 $, ou cesser d'arrondir. ⚠️ Ne PAS absorber le résiduel.
+- [ ] 🔴 **`[FUTUR-CATEGORIES-TOTAL-INCOHERENT]`** (S, **MOYEN — MESURÉ**) — `totalDepenses` inclut
+  les dépenses SANS catégorie (incrémenté avant le test de catégorie) alors que son JSDoc affirme
+  l'inverse : **doc fausse**. À l'écran, l'en-tête montre un total supérieur à la somme des lignes,
+  et la note ne donne qu'un COMPTE, jamais le montant. Un mois à 3 000 $ dont 800 $ non classés
+  affiche « −3 000 $ » au-dessus de lignes qui font −2 200 $ — écart laissé à la soustraction
+  mentale, alors que le même panneau expose ailleurs son résiduel en $. **Correctif** : exposer
+  `montantSansCategorie` et l'afficher comme une LIGNE (jamais comme une catégorie « Autre »).
+- [ ] 🔴 **`[FUTUR-CATEGORIES-MOIS-100PCT-NON-CLASSE]`** (XS, **MOYEN — MESURÉ**) — un mois dont
+  100 % des dépenses n'ont pas de catégorie fait disparaître **toute la section**, avertissement
+  compris : la condition est `depenses.length > 0`. L'alerte « à classer » s'éteint exactement quand
+  tout est à classer, et le mois paraît vide pendant que la courbe descend
+  (`SILENCE-READS-AS-BROKEN`, 5e occurrence). Condition : `depenses.length > 0 || sansCategorie > 0`.
+- [ ] 🔴 **`[FUTUR-CATEGORIES-BASE-DE-DATE]`** (XS, **MOYEN — MESURÉ**) — `monthCategories` accepte
+  `date.length >= 7`, la courbe exige `>= 10` (les dates au mois seul partent dans `undatedTotal`).
+  L'en-tête du module affirme pourtant « MÊME BASE D'EXCLUSION ». Mesuré : 100 $ datés au jour
+  + 2 000 $ datés `2026-08` → catégories 2 100 $, courbe 100 $. La base doublon/virement est bien
+  identique ; la base de PRÉCISION DE DATE ne l'est pas. Inclure les dates au mois est défendable
+  pour une vue mensuelle — **le mensonge, c'est le commentaire**.
+- [ ] 🔴 **`[TEST-DAYVARIATION-AUTO-SATISFAIT]`** (XS) — le test « un dépôt s'annule dans le total »
+  construit à la main une ligne que le pipeline NE PRODUIT JAMAIS (mesuré : le vrai `NetWorth` bouge
+  de +5 000 dans ce cas). Il verrouille une donnée impossible et laisse passer le finding ci-dessus.
+  Classe « garde auto-satisfaite ». Repartir de `buildDailyPastLedger` sur un achat réel.
+- [ ] 🔴 **`[TEST-TOTAL-COMPTES-TAUTOLOGIQUE]`** (XS) — le test « total − dettes === valeur nette du
+  moteur » ne fait **aucun `render()`** : il compare trois valeurs de la fixture construites
+  ensemble. Son commentaire prétend qu'il tomberait si un compte était oublié — faux. Le lire sur
+  le DOM rendu, ou le supprimer (le premier test, lui, discrimine).
+
+### Trouvés par le panel #644 mais PRÉ-EXISTANTS (hors périmètre de la PR)
+
+- [ ] **`[ENG-DIVORCE-SOLO-HOUSEHOLD-ENFANTS]`** (S, **ÉLEVÉ — MESURÉ**) — le bloc enfants passe
+  `grossAnnaBaseAnnual` et `householdGross` SANS condition `soloHousehold`, alors que 5 autres sites
+  du moteur le font. Mesuré : un divorcé touche **12 mois de congé parental d'un ex-conjoint parti
+  (~36 000 $)**, et le clawback des allocations se calcule sur 183 600 $ au lieu de ~98 400 $. C'est
+  la porte de sortie du bug « RQAP fantôme parent seul », déjà fermée pour le célibataire.
+- [ ] **`[A11Y-FUTUR-DETAIL-FOCUS-TRAP]`** (S) — `FutureDetailModal` a `role="dialog"
+  aria-modal="true"`, gère le focus au montage et Échap, mais **ne piège pas Tab** : la tabulation
+  sort vers le contenu de fond masqué par l'overlay. Le dépôt a déjà le patron deux fois dans le
+  même écran (`Modal.tsx`, infobulle figée) — la modale réimplémente son portail et a raté ce bout.
+- [ ] **`[A11Y-SUBTABS-TOUCH-TARGET]`** (XS) — les onglets de `SubTabs` font ~28 px de haut (seuil
+  `.touch-target` = 44 px). Pré-existant, mais les TROIS écrans convergent maintenant vers ce seul
+  composant : un correctif, trois surfaces.
+- [ ] **`[A11Y-RESERVE-CHIP-PROMINENCE]`** (XS) — le TEXTE des pastilles de réserve est à ≈ 9–10:1
+  (AA et AAA : OK). C'est le CHIP qui ne ressort pas : fond à ≈ 1,15:1, bordure à ≈ 1,8:1, loin des
+  3:1 non-text. L'information reste lisible ; c'est l'effet « saute aux yeux » qui est affaibli.
+  ⚠️ `check-contrast` ne couvre PAS ce cas (palette Tailwind par défaut, pas des tokens, et aucune
+  composition alpha) → **étendre l'outil d'abord**, choisir le shade par mesure ensuite.
+- [ ] **`[PRIV-PAYEE-MODE-DISCRET]`** (S, **décision Marc requise**) — le nom du MARCHAND (`payee`)
+  s'affiche en clair en mode discret, partout dans l'app (`Transactions`, panneau du jour, et
+  maintenant l'infobulle). L'audit `[A11Y-PRIVACY-*]` n'a jamais couvert que les MONTANTS. Un
+  marchand + une date révèle un profil de dépenses (santé, religion…) — c'est de la PII au sens de
+  la Loi 25, même sans le montant. Deux options : documenter « mode discret = montants uniquement »
+  (cohérent avec l'existant), ou masquer aussi les marchands. **Ne pas trancher par défaut.**
+- [ ] **`[PRIV-CSV-MODE-DISCRET]`** (XS) — l'export CSV des transactions n'a aucune garde
+  `isPrivacyMode`, alors que le raisonnement de l'ADR « PDF refusé en mode discret » s'applique
+  identiquement (un fichier ne sait pas qu'il vient d'un écran masqué).
+- [ ] **`[PRIV-PRIVATEAMOUNT-TITLE]`** (XS, préventif) — `PrivateAmount` transmet sa prop `title`
+  SANS masquage. Aucun appelant ne lui passe un montant aujourd'hui (grep vérifié), et aucune garde
+  ne le détecterait si ça arrivait — la valeur fuirait par attribut en mode discret.
+- [ ] **`[FMT-INFOBULLE-TOLOCALESTRING]`** (XS) — `ProjectionTooltip` a son propre
+  `fmt = Math.round(n).toLocaleString('fr-CA')` au lieu de `formatCAD` (non négociable du CLAUDE.md).
+  Pré-existant, mais la PR l'ÉTEND à une nouvelle surface monétaire. Conséquences : une valeur non
+  finie afficherait `NaN$` au lieu de « — », et le même montant se lit « 1 234$ » dans l'infobulle
+  et « 1 234 $ » dans la modale.
+
 - [ ] **`[ENG-GK-THRESHOLD-KNIFE]`** (M, MOYEN [MESURÉ — panel #564], PRÉ-EXISTANT) — le garde-fou
   Guyton-Klinger (`taxJanuary.ts` §5 : `currentPortfolio < prevPortfolioNW * 0.95`) est un seuil
   COUTEAU : un écart d'impôt de quelques centaines de dollars suffit à déclencher un gel de

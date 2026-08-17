@@ -68,6 +68,17 @@ export interface ChildProcessCtx {
      *  permises (mais la croissance continue). */
     trackerReeeContribLifetime: number;
     enableMonteCarlo: boolean;
+    /**
+     * [ENG-DIVORCE-REEE-COTISATIONS] Part des COTISATIONS REEE qui reste à la charge du déclarant.
+     *
+     * Décision Marc 2026-08-17 : les cotisations suivent le partage **PATRIMONIAL** (`keep`,
+     * cumulé au fil des divorces), comme le SOLDE du régime — et NON la garde des enfants, qui
+     * pilote les coûts. `docs/decisions.md` laissait la question ouverte ; Marc l'a tranchée.
+     *
+     * ⚠️ Optionnel à défaut NEUTRE (1) : hors divorce, la projection est BIT-IDENTIQUE, donc
+     * aucun code de migration et aucune rétrocompat à écrire.
+     */
+    reeeContribShare?: number;
 }
 
 export interface ChildTickResult {
@@ -131,6 +142,8 @@ export function processOneChild(
         householdGross, trackerScee, trackerIqee,
         trackerReeeContribLifetime, enableMonteCarlo,
     } = ctx;
+    // Défaut neutre : un `undefined` (appelant d'avant, test existant) vaut « part entière ».
+    const reeeContribShare = Number.isFinite(ctx.reeeContribShare) ? Number(ctx.reeeContribShare) : 1;
 
     const childId = child.id || `enfant_${childIdx}`;
 
@@ -282,6 +295,18 @@ export function processOneChild(
         if (optimalReeeMonthly > lifetimeContribRoomLeft) {
             optimalReeeMonthly = lifetimeContribRoomLeft;
         }
+
+        // [ENG-DIVORCE-REEE-COTISATIONS] La part patrimoniale s'applique ICI, sur le MONTANT de
+        // cotisation, avant tout usage.
+        // ⚠️ POURQUOI ICI ET NULLE PART AILLEURS. Cette cotisation alimente CINQ registres à la
+        // fois : la sortie de liquidités, le tracker à vie, les subventions SCEE/IQEE (calculées
+        // EN PROPORTION de la cotisation), le nouveau solde du REEE et `contribREEE`. Mettre la
+        // part en aval — sur `liquidDeltaReee` seul, comme la première version le laissait
+        // croire — aurait CRÉÉ de l'argent : le solde REEE aurait crédité une cotisation que les
+        // liquidités n'auraient pas payée, et la conservation aurait cassé sans qu'aucun test de
+        // la garde 50/50 ne rougisse. Classe maison « un flux alimente PLUSIEURS registres ».
+        // Appliquée APRÈS le plafond à vie : une cotisation réduite ne peut pas le dépasser.
+        if (reeeContribShare !== 1) optimalReeeMonthly *= reeeContribShare;
 
         // Check against effective liquid (after birth cost if first month)
         if (optimalReeeMonthly > 0 && liquid + liquidDelta >= optimalReeeMonthly && !isRetired) {

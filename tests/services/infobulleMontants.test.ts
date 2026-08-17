@@ -88,6 +88,37 @@ describe('[FUTUR-INFOBULLE-MONTANTS] la troncature devient VISIBLE', () => {
         expect(jour.movementsTotal).toBe(jour.movements.length);
     });
 
+    /**
+     * ⚠️ [finding silent-failure #644] Une transaction SANS description comptait pour ZÉRO.
+     *
+     * Le total et la liste affichée vivaient sous le même `if (t.payee)`. Une transaction sans
+     * description entrait bien dans l'`Income`/`Expenses` du jour — elle a bougé le solde — mais
+     * pas dans `movementsTotal` : le total valait donc le nombre de lignes AFFICHÉES, « +N autres »
+     * ne s'affichait jamais, et Marc lisait la liste en croyant l'avoir toute. Exactement la
+     * troncature silencieuse que ce champ existe pour supprimer, réintroduite par un autre
+     * déclencheur. Cas réel : `mcp/ingest/applyDocument.ts` écrit `payee: tx.payee || ''`.
+     */
+    it('une transaction SANS description compte dans le total (mais pas dans la liste)', () => {
+        const r = construire([
+            txn({ payee: 'Metro', amount: -40 }),
+            txn({ payee: '', amount: -60 }),
+            txn({ payee: '', amount: -25 }),
+        ]);
+        const jour = ligneDu(r, JOUR);
+        expect(jour.movements.map((m) => m.payee)).toEqual(['Metro']);
+        // Sur le code d'avant : 1. Trois transactions ont bougé le solde, le total doit le dire.
+        expect(jour.movementsTotal).toBe(3);
+    });
+
+    it('un jour dont AUCUNE transaction n’est décrite garde son compte', () => {
+        // Le cas le plus traître : la liste affichée est VIDE, donc le compte est le SEUL indice
+        // que des mouvements existent ce jour-là.
+        const r = construire([txn({ payee: '', amount: -10 }), txn({ payee: '', amount: -20 })]);
+        const jour = ligneDu(r, JOUR);
+        expect(jour.movements).toEqual([]);
+        expect(jour.movementsTotal).toBe(2);
+    });
+
     // Même base d'exclusion que la courbe : un doublon ou un virement n'entre pas dans la liste.
     it.each([
         ['un doublon', { isDuplicate: true }],

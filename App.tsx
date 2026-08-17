@@ -821,10 +821,17 @@ export const App: React.FC = () => {
                                   )
                                 : [],
                         });
-                        showToast('Rapport PDF genere avec succes !', 'success');
+                        showToast('Rapport PDF généré avec succès.', 'success');
                     } catch (e) {
+                        // Le refus en mode discret n'est PAS une erreur : c'est le contrat. Le
+                        // confondre avec une panne dirait « ça a planté » là où il faut dire
+                        // « désactive le mode discret » — l'utilisateur chercherait un bug.
+                        if (e instanceof Error && e.name === 'PdfRefusedPrivacyError') {
+                            showToast('Mode discret actif : l’export PDF est bloqué. Un PDF sort de l’app et garderait tes montants en clair — désactive le mode discret pour le générer.', 'error');
+                            return;
+                        }
                         console.error('[FinanceAI] PDF generation error:', e);
-                        showToast('Erreur lors de la generation du PDF', 'error');
+                        showToast('Erreur lors de la génération du PDF.', 'error');
                     }
                 }}
                 monthlySavings={calculatedMonthlySavings}

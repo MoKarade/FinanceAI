@@ -1230,13 +1230,20 @@ stub : il n'aurait aucune date à lire.
 - [ ] **`[A11Y-PRIVACY-ONBOARDING]`** (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
   masqués, mais NON exploitable (overlay `fixed inset-0 z-[9999]` qui recouvre le bouton du mode
   discret → impossible de l'activer pendant l'onboarding). À aligner par cohérence, pas en urgence.
-- [ ] **`[A11Y-PRIVACY-PDF-CONTRAT]`** (XS, **TRANCHÉ par Marc 2026-08-17** → `docs/decisions.md`) —
-  `services/pdfReport.ts` ne consulte pas le mode discret. **Décision : REFUSER de générer** tant que
-  le mode discret est actif, avec un message qui explique pourquoi (patron `AiChatConfirmModal`, qui
-  refuse déjà de rendre). Un PDF SORT de l'app et survit au mode : le générer en clair depuis un écran
-  volontairement masqué est un piège, et le générer en « ••• » produit un rapport sans chiffres, donc
-  inutile. → reste à CODER (le ticket n'attend plus de décision).
-
+- [x] **`[A11Y-PRIVACY-PDF-CONTRAT]`** — **LIVRÉ 2026-08-17** (décision Marc, `docs/decisions.md`).
+  `services/pdfReport.ts` REFUSE désormais de générer tant que le mode discret est actif, via une
+  erreur TYPÉE (`PdfRefusedPrivacyError`) que l'appelant distingue d'une panne.
+  ⚠️ **La garde est AU SERVICE, pas au clic** : une borne posée seulement dans `App.tsx` laisserait
+  passer tout futur appelant (autre bouton, raccourci, outil MCP, script) — même motif que
+  `clampSplitPct`, où la borne UI seule laissait passer un import de sauvegarde.
+  ⚠️ Refus **immédiat**, avant toute construction : refuser au moment d'écrire le fichier aurait
+  laissé un PDF partiel. Le mode est lu à l'APPEL (il peut être activé entre le rendu du bouton et
+  le clic).
+  Le toast dit quoi FAIRE (« désactive le mode discret »), pas « erreur » — confondre le refus avec
+  une panne enverrait Marc chercher un bug.
+  Garde : `tests/services/pdfPrivacyRefus.test.ts`, avec assertion ANTI-SUR-CORRECTIF (mode inactif
+  → génère bel et bien : sans elle, refuser TOUJOURS resterait vert) et garde sur le `name` stable
+  de l'erreur, sur lequel l'appelant discrimine. Prouvée discriminante (2 tests tombent sans la garde).
 - [ ] **`[A11Y-BUDGETGROUP-CHART-NOALT]`** (S, relevé par le panel a11y de #608) — le mini-graphique
   « Historique » par catégorie (`components/budget/BudgetGroupTable.tsx:312-330`) est le SEUL des 10
   graphiques du dépôt sans `role="img"` + `aria-label` ni `ChartDataTable` sr-only : aucun nom

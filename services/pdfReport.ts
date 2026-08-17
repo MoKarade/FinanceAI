@@ -14,6 +14,7 @@ import { calculateFiscalReport } from '../utils/tax';
 import { formatCAD } from '../utils/format';
 import { assetValueCad } from './portfolio';
 import { logError } from './errorLogger';
+import { useFinanceStore } from '../store/useFinanceStore';
 
 // ============================================================================
 // Types — payload de report
@@ -239,7 +240,34 @@ const formatPct = (v: number, digits: number = 1) =>
 // Main entry — generateFinancialReport (compat existante, étendue)
 // ============================================================================
 
+/**
+ * [A11Y-PRIVACY-PDF-CONTRAT] Refus de générer en mode discret — décision Marc 2026-08-17
+ * (`docs/decisions.md`).
+ *
+ * ⚠️ POURQUOI UN REFUS, et pas un PDF masqué. Un PDF **SORT de l'app et survit au mode** : le
+ * fichier ne sait pas qu'il a été produit depuis un écran masqué. Générer en clair depuis un écran
+ * volontairement masqué est donc un piège — l'utilisateur croit ses montants protégés alors qu'il
+ * vient d'en fabriquer une copie permanente. Générer en « ••• » donnerait un rapport financier sans
+ * chiffres, c'est-à-dire rien. Refuser est le seul comportement qui ne trompe personne.
+ *
+ * ⚠️ LA GARDE EST AU SERVICE, PAS SEULEMENT AU CLIC. Une borne posée uniquement dans `App.tsx`
+ * laisserait passer tout futur appelant (bouton ailleurs, raccourci, outil MCP, script) — c'est
+ * exactement le motif corrigé sur `clampSplitPct`, où la borne UI seule laissait passer un import
+ * de sauvegarde. Le contrat vit donc là où le fichier est produit.
+ */
+export class PdfRefusedPrivacyError extends Error {
+    constructor() {
+        super('Export PDF refusé : le mode discret est actif.');
+        this.name = 'PdfRefusedPrivacyError';
+    }
+}
+
 export async function generateFinancialReport(data: ReportData): Promise<void> {
+    // ⚠️ Lu au moment de l'APPEL, pas capturé en amont : le mode a pu être activé entre le rendu du
+    // bouton et le clic. Et on refuse AVANT tout travail — pas au moment d'écrire le fichier, pour
+    // ne pas laisser un PDF partiel derrière soi.
+    if (useFinanceStore.getState().isPrivacyMode) throw new PdfRefusedPrivacyError();
+
     const isFr = (data.lang || 'fr') !== 'en';
     const L = {
         title: isFr ? 'FinanceAI — Bilan Financier Personnel' : 'FinanceAI — Personal Financial Report',

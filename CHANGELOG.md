@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-17 (mode discret et export PDF)
+
+### En mode discret, l'export PDF est maintenant bloqué
+- Tu pouvais masquer tes montants à l'écran **et** générer un PDF qui les contenait tous en clair.
+  Le fichier, lui, ne sait pas qu'il vient d'un écran masqué : il sort de l'app et garde tes
+  chiffres pour toujours.
+- Désormais l'export **refuse de se lancer** tant que le mode discret est actif, et te dit quoi
+  faire. Un PDF rempli de « ••• » n'aurait servi à rien ; te laisser fabriquer une copie en clair
+  sans le dire aurait été pire.
+
 ## [unreleased] — 2026-08-17 (Profil en sous-onglets)
 
 ### Ton onglet Profil ne se scrolle plus à l'infini

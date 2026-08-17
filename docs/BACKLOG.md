@@ -725,14 +725,16 @@
   classe que `truncatedFrom` (une troncature muette est pire qu'une plage annoncée). Afficher
   « +N autres ».
 
-- [ ] 🔴 **`[FUTUR-DETAIL-TOTAL-COMPTES]`** (XS, **demande Marc 2026-08-17**) — le panneau détail liste
-  chaque compte avec son solde, mais **jamais leur TOTAL**. Marc doit additionner de tête.
-  ⚠️ Le total DOIT venir de la source unique, pas d'une somme locale des lignes affichées : les
-  DETTES sont rendues à part et l'immobilier a son propre statut. Une addition « à l'œil » des
-  lignes visibles produirait un nombre qui ne correspond à AUCUNE grandeur du moteur. Consommer
-  `computeRawNetWorth` / le champ déjà émis, et nommer précisément ce qu'on additionne
-  (« total des comptes » ≠ « valeur nette », qui est déjà en haut du panneau).
-
+- [x] 🔴 **`[FUTUR-DETAIL-TOTAL-COMPTES]`** — **LIVRÉ 2026-08-17** (demande Marc). Le panneau détail
+  affiche désormais le **Total des comptes**, en pied de liste.
+  ⚠️ Somme des MÊMES champs moteur que les lignes, sur la liste **NON filtrée** : sommer la liste
+  filtrée ferait dépendre un TOTAL d'un critère d'AFFICHAGE — deux écrans montrant des lignes
+  différentes donneraient deux totaux pour la même donnée.
+  ⚠️ Libellé « **hors dettes** » obligatoire : ce n'est PAS la valeur nette, déjà affichée en haut.
+  Sur le cas réel de Marc l'écart vaut 49 337 $ — le confondre n'est pas un détail.
+  Garde : `tests/components/FutureDetailModal.totalComptes.test.tsx`, qui vérifie la RELATION
+  (`total − dettes === NetWorth` du moteur) et pas seulement l'addition — une addition juste d'un
+  ENSEMBLE faux resterait verte. Prouvée discriminante en omettant un compte.
 - [ ] 🔴 **`[FUTUR-INFOBULLE-EPUREE]`** (S, **demande Marc 2026-08-17**) — infobulle **plus grande** et
   **quasiment sans texte**. Aujourd'hui elle est dense en prose (bandeaux d'avertissement, phrases
   d'explication). ⚠️ Piège à éviter : « moins de texte » ne veut pas dire « moins d'information » —

@@ -324,6 +324,20 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
         return { ...a, value, variation, gain, flow };
     }).filter((a) => a.value !== 0 || a.variation !== 0);
 
+    /**
+     * [FUTUR-DETAIL-TOTAL-COMPTES] Total des comptes — demande de Marc 2026-08-17 (« j'ai la somme
+     * de chaque compte, je veux le total aussi »).
+     *
+     * ⚠️ Somme des MÊMES champs moteur que les lignes affichées, sur la liste NON filtrée : un
+     * compte à 0 ne change rien au total, mais sommer la liste filtrée ferait dépendre un TOTAL
+     * d'un critère d'AFFICHAGE — deux écrans montrant des lignes différentes donneraient alors des
+     * totaux différents pour la même donnée.
+     * ⚠️ Ce n'est PAS la valeur nette (déjà en haut du panneau) : les dettes en sont EXCLUES, elles
+     * sont rendues à part juste en dessous. Le libellé doit donc dire « comptes », jamais
+     * « patrimoine » — c'est tout l'écart entre les deux, et il vaut ici des dizaines de milliers.
+     */
+    const totalComptes = ACCOUNTS.reduce((acc, a) => acc + (Number(point[a.key]) || 0), 0);
+
     // Série temporelle du compte sélectionné (drill-down), enrichie des
     // composantes qui expliquent chaque mouvement (G13).
     const accountSeries = useMemo<AccountPoint[]>(() => {
@@ -489,6 +503,15 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     )}
                                 </button>
                             ))}
+
+                            {/* Total — hors dettes, rendues juste en dessous. */}
+                            <div className="flex items-baseline justify-between gap-2 pt-2 mt-1 border-t border-white/10 px-3">
+                                <span className="text-tiny uppercase tracking-widest text-ink-300 font-bold">
+                                    Total des comptes
+                                    <span className="ml-1.5 normal-case tracking-normal text-ink-400 font-normal">— hors dettes</span>
+                                </span>
+                                <PrivateAmount className="font-mono text-body font-black text-white">{fmt(totalComptes)}</PrivateAmount>
+                            </div>
                         </div>
 
                         {/* Dettes — explique un patrimoine net négatif (sinon invisible) */}

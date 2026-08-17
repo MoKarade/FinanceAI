@@ -725,6 +725,38 @@
   classe que `truncatedFrom` (une troncature muette est pire qu'une plage annoncée). Afficher
   « +N autres ».
 
+- [ ] 🔴 **`[FUTUR-DETAIL-TOTAL-COMPTES]`** (XS, **demande Marc 2026-08-17**) — le panneau détail liste
+  chaque compte avec son solde, mais **jamais leur TOTAL**. Marc doit additionner de tête.
+  ⚠️ Le total DOIT venir de la source unique, pas d'une somme locale des lignes affichées : les
+  DETTES sont rendues à part et l'immobilier a son propre statut. Une addition « à l'œil » des
+  lignes visibles produirait un nombre qui ne correspond à AUCUNE grandeur du moteur. Consommer
+  `computeRawNetWorth` / le champ déjà émis, et nommer précisément ce qu'on additionne
+  (« total des comptes » ≠ « valeur nette », qui est déjà en haut du panneau).
+
+- [ ] 🔴 **`[FUTUR-INFOBULLE-EPUREE]`** (S, **demande Marc 2026-08-17**) — infobulle **plus grande** et
+  **quasiment sans texte**. Aujourd'hui elle est dense en prose (bandeaux d'avertissement, phrases
+  d'explication). ⚠️ Piège à éviter : « moins de texte » ne veut pas dire « moins d'information » —
+  les avertissements qui portent une RÉSERVE (prix estimé, jour non couvert par la sync) ne peuvent
+  pas disparaître, sinon on ré-affirme en silence ce qu'on avait honnêtement nuancé
+  (`SILENCE-READS-AS-BROKEN`). Les convertir en MARQUEURS visuels compacts (pastille, icône) plutôt
+  qu'en phrases — l'information reste, la prose part.
+
+- [ ] 🔴 **`[FUTUR-INFOBULLE-MONTANTS]`** (S, **CONFIRMÉ par Marc 2026-08-17 : sur le PASSÉ**) — voir
+  le montant de chaque dépense dans l'infobulle. Périmètre borné au réel (le futur n'itemise pas).
+  Plan complet au ticket d'origine ci-dessous ; le plafond de 6 doit devenir visible (« +N autres »).
+
+- [ ] 🔴 **`[FUTUR-DETAIL-CATEGORIES-MOIS]`** (M, **demande Marc 2026-08-17** : « je veux la catégorie
+  de chaque, pour le mois aussi, selon ce qu'il y a dans Transactions ») — ventiler les dépenses
+  PAR CATÉGORIE dans le panneau détail, y compris sur un point MENSUEL.
+  ⚠️ **La contrainte à ne pas contourner** : sur un mois PASSÉ, les catégories viennent des vraies
+  transactions (agrégation de `Transaction.category` sur le mois) — honnête. Sur un mois FUTUR, le
+  moteur n'a PAS de transactions : il applique des POSTES BUDGÉTAIRES. On peut montrer la
+  composition budgétaire projetée, mais elle doit être NOMMÉE comme telle (« postes projetés »),
+  jamais présentée comme des dépenses constatées. Mélanger les deux dans le même tableau ferait
+  passer du projeté pour du réel — exactement ce que `no-fake-data` interdit.
+  **Fini** = un mois passé montre ses catégories RÉELLES ; un mois futur montre ses postes en le
+  DISANT ; les deux ne sont jamais confondus visuellement.
+
 ## ⚡ Performance
 
 - [ ] **`[PERF-BOOT]`** (M-L, différé SCIEMMENT — provider-aware) — paralléliser

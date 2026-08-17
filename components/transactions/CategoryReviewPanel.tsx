@@ -12,6 +12,7 @@
 // sans sa marge, serait un chiffre faux affiché avec assurance.
 
 import React, { useMemo, useState } from 'react';
+import { PrivateText } from '../ui/PrivateText';
 import type { CategoryReviewState, Transaction } from '../../types';
 import {
     drawReviewSample,
@@ -148,7 +149,7 @@ export const CategoryReviewPanel: React.FC<Props> = ({ transactions, review, onC
                                             {formatCAD(next.amount)}
                                         </PrivateAmount>
                                     </div>
-                                    <div className="text-body text-ink-100 truncate">{next.payee || '(sans libellé)'}</div>
+                                    <PrivateText as="div" className="text-body text-ink-100 truncate">{next.payee || '(sans libellé)'}</PrivateText>
                                     <div className="text-meta text-ink-300">
                                         Classée : <span className="font-bold text-ink-100">{next.category || 'Non catégorisé'}</span>
                                         {next.isTransfer && <span className="text-ink-400"> · marquée virement interne</span>}

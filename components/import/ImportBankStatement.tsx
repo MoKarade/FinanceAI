@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PrivateText } from '../ui/PrivateText';
 import { Icon } from '../ui/Icon';
 import { parseBankCsv, extractedTxnsToCsv, type ParsedBankCsv } from '../../services/import/parseBankCsv';
 import { analyzeBankStatement } from '../../services/claude';
@@ -149,7 +150,7 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
                                 {preview.transactions.slice(0, 3).map((t) => (
                                     <tr key={t.id}>
                                         <td className="p-2 font-mono text-ink-300">{t.date}</td>
-                                        <td className="p-2 text-ink-200 truncate max-w-[160px]">{t.payee}</td>
+                                        <td className="p-2 text-ink-200 truncate max-w-[160px]"><PrivateText>{t.payee}</PrivateText></td>
                                         <td className={`p-2 text-right font-mono ${t.amount < 0 ? 'text-orange-300' : 'text-success-400'}`}><PrivateAmount>{cad(t.amount)}</PrivateAmount></td>
                                     </tr>
                                 ))}

@@ -72,6 +72,18 @@ export interface ChildProcessCtx {
 
 export interface ChildTickResult {
     liquidDelta: number;
+    /**
+     * [ENG-DIVORCE-CHILDREN-REEE] `liquidDelta` VENTILÉ par CLÉ DE PARTAGE, parce que les deux
+     * familles ne suivent PAS la même règle après un divorce :
+     *   • `liquidDeltaCosts` — coûts d'enfants (frais de naissance, voiture) → suivent la GARDE ;
+     *   • `liquidDeltaReee`  — flux REEE (cotisations, décaissement) → suivent le partage
+     *     PATRIMONIAL `keep`, comme le SOLDE du régime (`reee *= keep`).
+     * ⚠️ Invariant : `liquidDeltaCosts + liquidDeltaReee === liquidDelta`, sous test. Sans cette
+     * séparation, appliquer une part au flux entier diviserait aussi les cotisations REEE — un faux
+     * SILENCIEUX. C'est le motif « un flux alimente PLUSIEURS registres », déjà au dossier.
+     */
+    liquidDeltaCosts: number;
+    liquidDeltaReee: number;
     monthlyExpenseDelta: number;
     monthlyIncomeDelta: number;
     newIncomeAnna: number | null;
@@ -123,6 +135,8 @@ export function processOneChild(
     const childId = child.id || `enfant_${childIdx}`;
 
     let liquidDelta = 0;
+    let liquidDeltaCosts = 0;
+    let liquidDeltaReee = 0;
     let monthlyExpenseDelta = 0;
     let monthlyIncomeDelta = 0;
     let newIncomeAnna: number | null = null;
@@ -160,6 +174,7 @@ export function processOneChild(
 
     if (isFirstMonth) {
         liquidDelta -= (child.initialCost ?? 0);
+        liquidDeltaCosts -= (child.initialCost ?? 0);
         lifeEventLogs.push(`Naissance 👶 (${child.name || 'Enfant'})`);
     }
 
@@ -271,6 +286,7 @@ export function processOneChild(
         // Check against effective liquid (after birth cost if first month)
         if (optimalReeeMonthly > 0 && liquid + liquidDelta >= optimalReeeMonthly && !isRetired) {
             liquidDelta -= optimalReeeMonthly;
+            liquidDeltaReee -= optimalReeeMonthly;
             withdrawalLiquidAdd += optimalReeeMonthly;
             reeeContribAdd += Math.round(optimalReeeMonthly);
             // Audit §6.9: tracker mis à jour pour bloquer les futurs mois
@@ -292,6 +308,7 @@ export function processOneChild(
     if (childAgeMonths === 18 * 12 && carCost > 0) {
         const carInflated = carCost * expenseMultiplier;
         liquidDelta -= carInflated;
+        liquidDeltaCosts -= carInflated;
         lifeEventLogs.push(`🚗 Cadeau voiture pour ${child.name || 'l\'enfant'} (18 ans) : -${Math.round(carInflated).toLocaleString('fr-CA')} $`);
         childGrossCostAdd += carInflated;
         childMonthlyCostAdd += carInflated;
@@ -326,6 +343,7 @@ export function processOneChild(
 
     if (childAgeMonths === 25 * 12 && reeeNewBalance > 0) {
         liquidDelta += reeeNewBalance;
+        liquidDeltaReee += reeeNewBalance;
         taxDiversAdd += reeeNewBalance * REEE_AIP_TAX_RATE;
         flowEventLogs.push(`🎓 Fermeture du REEE (régime d'épargne-études) de ${child.name || 'l\'enfant'} : +${Math.round(reeeNewBalance).toLocaleString('fr-CA')} $ versés dans tes liquidités`);
         reeeNewBalance = 0;
@@ -333,6 +351,8 @@ export function processOneChild(
 
     return {
         liquidDelta,
+        liquidDeltaCosts,
+        liquidDeltaReee,
         monthlyExpenseDelta,
         monthlyIncomeDelta,
         newIncomeAnna,

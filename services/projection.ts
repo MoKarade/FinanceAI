@@ -1422,6 +1422,20 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // ---- ENFANTS & REEE ----
         // Cycle 14 split: processOneChild → ./projection/childrenReee.
         // Les variables liquid/reee/monthlyIncome/incomeAnna sont commitées après le forEach.
+        /**
+         * [ENG-DIVORCE-CHILDREN-REEE] Part des enfants qui reste à la charge du déclarant.
+         *
+         * Décision Marc 2026-08-17 (`docs/decisions.md`) : **garde PARTAGÉE 50/50**. Après un
+         * divorce, les COÛTS d'enfants et les ALLOCATIONS familiales se partagent donc moitié-
+         * moitié — cohérent avec le régime réel (en garde partagée, l'ACE se divise 50/50).
+         *
+         * ⚠️ Défaut NEUTRE (1) hors divorce ⇒ rétrocompat BIT-IDENTIQUE, sous test.
+         * ⚠️ Cette part ne s'applique PAS aux flux REEE : le régime suit le partage PATRIMONIAL
+         * (`reee *= keep` au divorce), pas la garde — deuxième décision de Marc le même jour. Les
+         * deux familles sont ventilées à la source (`liquidDeltaCosts` / `liquidDeltaReee`) parce
+         * qu'appliquer une seule part au flux entier diviserait aussi les cotisations REEE.
+         */
+        const childCustodyShare = divorced ? 0.5 : 1;
         let _childLiquid = liquid;
         let _childReee = reee;
         let _childMonthlyIncome = monthlyIncome;
@@ -1455,9 +1469,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 },
                 calculateFiscalReport,
             );
-            _childLiquid += result.liquidDelta;
+            _childLiquid += result.liquidDeltaCosts * childCustodyShare + result.liquidDeltaReee;
             _childReee = result.reeeNewBalance;
-            monthlyExpenses += result.monthlyExpenseDelta;
+            monthlyExpenses += result.monthlyExpenseDelta * childCustodyShare;
             _childMonthlyIncome += result.monthlyIncomeDelta;
             if (result.newIncomeAnna !== null) _childIncomeAnna = result.newIncomeAnna;
             accGrossIncomeYear += result.accGrossDelta;
@@ -1466,8 +1480,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 iqee: result.newTrackerIqee,
                 contribLifetime: result.newTrackerReeeContribLifetime,
             };
-            childGrossCost += result.childGrossCostAdd;
-            childBenefits += result.childBenefitsAdd;
+            childGrossCost += result.childGrossCostAdd * childCustodyShare;
+            childBenefits += result.childBenefitsAdd * childCustodyShare;
             childMonthlyCost += result.childMonthlyCostAdd;
             reeeContribMonthly += result.reeeContribAdd;
             withdrawalLiquid += result.withdrawalLiquidAdd;

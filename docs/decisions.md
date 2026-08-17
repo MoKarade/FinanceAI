@@ -685,3 +685,17 @@ long scroll de cinq groupes.
 ⚠️ Ces trois bacs ne couvrent PAS tout l'écran — **Retraite** et **Enfants** n'y entrent pas.
 J'ajoute donc un 4e onglet plutôt que de les rétrograder sous « Revenus » (faux) ou de les
 perdre (pire). Écart signalé à Marc, pas décidé en silence.
+
+### Décision 5 — Garde des enfants après divorce : PARTAGÉE 50/50 (2026-08-17)
+
+Réponse de Marc à la question routée dans `docs/A_FAIRE_MOI.md`. Débloque
+`[ENG-DIVORCE-CHILDREN-REEE]`.
+
+**Ce que ça fixe** : après un divorce, les **coûts d'enfants** et les **allocations familiales**
+sont partagés **moitié-moitié**. C'est cohérent avec le régime canadien réel (en garde partagée,
+l'ACE se divise 50/50 entre les deux parents).
+
+⚠️ **Ce que ça NE fixe PAS, et qui reste ouvert** : le **REEE**. Son SOLDE suit déjà le partage
+PATRIMONIAL (`reee *= keep`, `services/projection.ts:764`) — pas la garde. Les COTISATIONS futures
+sont donc une troisième question : suivent-elles la garde (0,5), le partage patrimonial (`keep`),
+ou restent-elles entières ? Ne pas trancher par défaut.

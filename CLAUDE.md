@@ -211,6 +211,9 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   ne se copie pas d'une couleur à l'autre.
 - Vérifier qu'une classe est générée : build **propre** (`rm -rf dist`) avant de grep le CSS.
 - Un outil-garde à valeurs **re-codées en dur** dérive en silence → importer la source unique.
+- Une **constante JS qui duplique une valeur de style** (`TOOLTIP_WIDTH` vs la classe `w-80`) n'est
+  confrontée par RIEN au runtime : la garde lit la CLASSE (la vérité peinte) et la compare à la
+  constante — l'inverse serait circulaire (`STYLE-CONST-DUPLIQUEE`).
 - Un test `.length > 1` sur un **tuple** de longueur fixe est vacueux.
 
 **Divers**
@@ -218,6 +221,10 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   gestes depuis l'état par défaut et vérifier CHAQUE modalité (souris/doigt/clavier). Un test qui
   boucle pour atteindre l'état testé mesure le coût du chemin (`UX-UNREACHABLE-FEATURE`).
 - Un **nom trompeur fabrique des faux findings** → renommer est le vrai correctif.
+- « Moins de texte » se satisfait en SUPPRIMANT de l'information : séparer l'**alerte** (marqueur
+  compact, visible partout) du **libellé** (déplaçable en `title`). La garde tient les DEUX
+  exigences ensemble — plafond de prose ET « aucune réserve perdue » — car chacune seule est
+  satisfaite par le mauvais moyen (`EPURATION-SUPPRIME-LA-RESERVE`).
 - Une **heuristique de TEXTE** (regex sur un libellé) qui coexiste avec du texte UTILISATEUR interpolé
   dans les mêmes libellés produit des faux positifs : toléré sur une pastille visible à l'œil,
   INACCEPTABLE dans un prompt LLM (l'affirmation fausse hérite de l'autorité de la source unique).

@@ -4,6 +4,35 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-17 (suite 92) — quatre demandes de Marc sur le Futur, dont une piégée
+> Branche `claude/futur-infobulle-et-totaux` (empilée sur `claude/children-reee-garde`).
+>
+> Livré : **montants des mouvements** dans l'infobulle (passé — le futur n'itemise pas) avec la
+> troncature de 6 rendue VISIBLE (« +N autres ») · **total des comptes** au panneau détail (hors
+> dettes, sur la liste NON filtrée) · **catégories du mois** pour un mois PASSÉ uniquement ·
+> **infobulle épurée** (288×480 → 320×560, la prose part).
+>
+> ⚠️ **Le piège du dernier ticket, et la façon de le désamorcer.** « Quasiment pas de texte » se
+> satisfait trivialement en SUPPRIMANT — or trois des paragraphes retirés portaient une RÉSERVE sur
+> la fiabilité du point (prix estimé, prix périmé, sync non confirmée). Les effacer aurait
+> transformé un chiffre sous réserve en chiffre net. La sortie : **le marqueur reste visible, seul
+> le libellé long passe au `title`**. La garde tient les deux exigences ENSEMBLE — un plafond de
+> prose (45 car./nœud de texte) ET « aucune réserve perdue » — et elles se contredisent dès que
+> l'une est satisfaite par suppression. Plafond prouvé discriminant : 2 nœuds de 65 et 101 car. sur
+> le code d'avant.
+>
+> ⚠️ **Découverte pendant l'élargissement** : `TOOLTIP_WIDTH` (`utils/chartTooltip.ts`), qui borne
+> la position au viewport, DUPLIQUE la classe Tailwind `w-80` sans que rien ne les confronte au
+> runtime. Élargir la classe seule aurait fait déborder l'infobulle du bord droit — en silence, et
+> uniquement sur les écrans assez étroits pour que la borne serve. Garde ajoutée
+> (`tests/components/tooltipLargeur.test.ts`) : elle lit la CLASSE (la vérité peinte) et la
+> confronte à la constante.
+>
+> ⚠️ **Limite assumée et dite à Marc** : au DOIGT, un `title` ne s'ouvre pas. On ne perd jamais
+> l'ALERTE (la pastille est visible partout), seulement son libellé long. Si ça gêne à l'usage, le
+> correctif est de porter les mêmes réserves dans `FutureDetailModal` — elles n'y sont PAS
+> aujourd'hui (vérifié).
+
 > ## 🟢 Session 2026-08-17 (suite 91) — `[UI-TABS-RICH]` : Profil en sous-onglets, et un ticket PÉRIMÉ démasqué
 > Marc a demandé « le Lot 7 nav ». ⚠️ **Le Lot 7 était DÉJÀ LIVRÉ** — mesuré avant de coder :
 > `Settings.tsx` est un orchestrateur de SIX sous-onglets depuis la PR #549 (2026-07-31), donc AVANT

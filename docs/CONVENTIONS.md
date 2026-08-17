@@ -1149,6 +1149,34 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   `DOC-STALE-IMPOSSIBILITY` : un constat d'absence est une hypothèse, pas une mesure.
 
 ## Notes
+- ⚠️ **[EPURATION-SUPPRIME-LA-RESERVE] 2026-08-17 — « moins de texte » se satisfait trivialement en
+  supprimant de l'information.** Marc a demandé une infobulle Futur « quasiment sans texte ». Trois
+  des paragraphes candidats à la coupe portaient une RÉSERVE sur la fiabilité du point affiché
+  (titre valorisé à son prix actuel faute d'historique, prix vieux de N jours, jour pas encore
+  couvert par la sync bancaire). Les effacer aurait transformé un chiffre **sous réserve** en
+  chiffre **net** — la même faute que le « 0 $ crédible », mais par soustraction.
+  **La sortie** : séparer l'ALERTE du LIBELLÉ. L'alerte devient une pastille compacte et reste
+  visible dans TOUTES les modalités (`~ prix estimé`, `prix J−34`, `⚠ sync incomplète`) ; la phrase
+  complète passe au `title`. ⚠️ Limite à DIRE, pas à masquer : au doigt, un `title` ne s'ouvre pas —
+  on perd le libellé, jamais l'alerte.
+  **La garde ne peut pas être une seule assertion.** Un plafond de prose seul est satisfait en
+  vidant l'écran ; un « rien perdu » seul est satisfait en ne changeant rien. Il faut les DEUX,
+  tenues ensemble, parce qu'elles se contredisent dès que l'une est obtenue par le mauvais moyen
+  (`tests/components/tooltipEpuree.test.tsx` : plafond de 45 car. par nœud de texte + une assertion
+  par réserve). Corollaire de mesure : compter les **nœuds de texte** et non le `textContent` d'un
+  élément — les `title` sont des attributs, donc hors comptage par construction, ce qui est
+  exactement la frontière qu'on veut verrouiller.
+- ⚠️ **[STYLE-CONST-DUPLIQUEE] 2026-08-17 — une constante JS qui duplique une valeur de STYLE dérive
+  en silence.** `TOOLTIP_WIDTH = 288` (`utils/chartTooltip.ts`) sert à borner la position de
+  l'infobulle au viewport ; la largeur réellement peinte est la classe Tailwind `w-72` du
+  composant. Rien ne les confronte au runtime. Élargir la classe sans la constante compile, passe
+  le lint et tous les tests — et fait déborder l'infobulle du bord droit **uniquement** sur un écran
+  assez étroit pour que la borne serve, c'est-à-dire jamais chez le développeur.
+  Règle : quand une valeur de style doit exister aussi en JS, la garde lit la **classe** (la vérité
+  peinte) et la confronte à la constante — pas l'inverse, sinon elle est circulaire. Ici :
+  `tests/components/tooltipLargeur.test.ts`, qui extrait `w-<N>` de la source et vérifie
+  `N × 4 === TOOLTIP_WIDTH` (échelle Tailwind, base 16 px). Même famille que « un outil-garde à
+  valeurs re-codées en dur dérive en silence ».
 - ⚠️ **[PARTIAL-POINT-FAKE-ZERO] 2026-08-11 — fabriquer un point qui n'implémente qu'une PARTIE d'un
   contrat rallume tous les `|| 0` en aval.** Les points QUOTIDIENS de la courbe Futur ne portent
   qu'une poignée des dizaines de champs de `ProjectionChartPoint` (le moteur ne produit le reste

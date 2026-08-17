@@ -730,17 +730,23 @@
   Garde : `tests/components/FutureDetailModal.totalComptes.test.tsx`, qui vérifie la RELATION
   (`total − dettes === NetWorth` du moteur) et pas seulement l'addition — une addition juste d'un
   ENSEMBLE faux resterait verte. Prouvée discriminante en omettant un compte.
-- [ ] 🔴 **`[FUTUR-INFOBULLE-EPUREE]`** (S, **demande Marc 2026-08-17**) — infobulle **plus grande** et
-  **quasiment sans texte**. Aujourd'hui elle est dense en prose (bandeaux d'avertissement, phrases
-  d'explication). ⚠️ Piège à éviter : « moins de texte » ne veut pas dire « moins d'information » —
-  les avertissements qui portent une RÉSERVE (prix estimé, jour non couvert par la sync) ne peuvent
-  pas disparaître, sinon on ré-affirme en silence ce qu'on avait honnêtement nuancé
-  (`SILENCE-READS-AS-BROKEN`). Les convertir en MARQUEURS visuels compacts (pastille, icône) plutôt
-  qu'en phrases — l'information reste, la prose part.
-
-- [ ] 🔴 **`[FUTUR-INFOBULLE-MONTANTS]`** (S, **CONFIRMÉ par Marc 2026-08-17 : sur le PASSÉ**) — voir
-  le montant de chaque dépense dans l'infobulle. Périmètre borné au réel (le futur n'itemise pas).
-  Plan complet au ticket d'origine ci-dessous ; le plafond de 6 doit devenir visible (« +N autres »).
+- [x] 🔴 **`[FUTUR-INFOBULLE-EPUREE]`** — **LIVRÉ 2026-08-17** (demande Marc). Infobulle **plus
+  grande** (288×480 → **320×560**) et **quasiment sans prose** : trois paragraphes et deux légendes
+  sont devenus des pastilles ou des `title`.
+  ⚠️ **Aucune RÉSERVE perdue** — c'était tout le risque du ticket. Prix estimé, prix périmé, sync
+  non confirmée gardent chacun un marqueur VISIBLE (`~ prix estimé`, `prix J−34`, `⚠ sync
+  incomplète`) ; seule la phrase longue passe au survol. Le fait qu'il y a une réserve reste visible
+  dans TOUTES les modalités ; ⚠️ limite assumée : au doigt, un `title` ne s'ouvre pas — on perd le
+  libellé long, jamais l'alerte.
+  ⚠️ La distinction jour réel (« marché seul ») / jour projeté (« croissance étalée ») est
+  RACCOURCIE mais maintenue : les fondre ferait passer du lissage pour de la mesure.
+  ⚠️ Découverte : `TOOLTIP_WIDTH` (utils/chartTooltip.ts, borne de position) DUPLIQUE la classe
+  Tailwind `w-80` sans que rien ne les confronte au runtime → élargir la classe seule aurait fait
+  déborder l'infobulle du bord droit, en silence, sur les seuls écrans étroits.
+  Gardes : `tests/components/tooltipEpuree.test.tsx` (11) — plafond de prose (45 car./nœud de
+  texte) tenu ENSEMBLE avec « aucune réserve perdue », les deux se contredisant si l'un est
+  satisfait par suppression ; `tests/components/tooltipLargeur.test.ts` (2) confronte la classe et
+  la constante. Plafond prouvé discriminant : 2 nœuds de 65 et 101 caractères sur le code d'avant.
 
 - [x] 🔴 **`[FUTUR-DETAIL-CATEGORIES-MOIS]`** — **LIVRÉ 2026-08-17** (demande Marc, périmètre
   resserré par lui : « oui juste pour passé »). Le panneau ventile les dépenses du mois PAR

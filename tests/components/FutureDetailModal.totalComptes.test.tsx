@@ -24,6 +24,21 @@ vi.mock('recharts', async () => {
 
 const texte = () => (document.body.textContent || '').replace(/\s+/g, '');
 
+/**
+ * Premier montant rendu APRÈS un libellé donné, lu sur le DOM.
+ * ⚠️ Lire le RENDU et non la fixture est tout l'objet de la correction ci-dessous : une garde qui
+ * ne compare que des constantes du test ne peut rien détecter dans le composant.
+ */
+const montantApres = (libelleSansEspaces: string): number | null => {
+    const t = texte();
+    const i = t.indexOf(libelleSansEspaces);
+    if (i < 0) return null;
+    const m = t.slice(i + libelleSansEspaces.length).match(/-?[\d\u202f\u00a0]+/);
+    if (!m) return null;
+    const n = Number(m[0].replace(/[\u202f\u00a0]/g, ''));
+    return Number.isFinite(n) ? n : null;
+};
+
 /** Les soldes de la capture de Marc (nov. 2026), pour que le test parle de son cas réel. */
 const COMPTES = { Liquidites: 21_501, CELI: 28_211, CELIAPP: 8_178, REER: 31_909, NonReg: 184_585 };
 const DETTES = 49_337;
@@ -42,11 +57,19 @@ describe('[FUTUR-DETAIL-TOTAL-COMPTES] le total et sa relation à la valeur nett
         expect(texte()).toContain('274384');
     });
 
-    // ⚠️ LA garde. Elle relie les deux grandeurs affichées dans le même panneau. Si un compte
-    // était oublié de la somme, le total ne se réconcilierait plus avec la valeur nette du
-    // moteur — et ce test tomberait, là où une simple vérif d'addition serait restée verte.
-    it('total − dettes === valeur nette du MOTEUR (pas une valeur recalculée)', () => {
-        expect(TOTAL_COMPTES - DETTES).toBe(point.NetWorth);
+    /**
+     * ⚠️ CE TEST ÉTAIT TAUTOLOGIQUE, et son commentaire le prétendait discriminant — le pire des
+     * deux mondes. Il faisait `expect(TOTAL_COMPTES - DETTES).toBe(point.NetWorth)` sans AUCUN
+     * `render()` : trois valeurs de la fixture, construites ensemble quinze lignes plus haut,
+     * comparées entre elles. Si le composant oubliait un compte, il restait vert.
+     * Il lit désormais le total RENDU — donc ce que le composant a réellement calculé — et le
+     * confronte à la valeur nette du moteur.
+     */
+    it('le total RENDU − dettes === valeur nette du MOTEUR', () => {
+        render(<FutureDetailModal point={point} chartData={[point]} onClose={vi.fn()} />);
+        const totalRendu = montantApres('Totaldescomptes');
+        expect(totalRendu, 'total introuvable dans le rendu — le test serait vacueux').not.toBeNull();
+        expect(totalRendu! - DETTES).toBe(point.NetWorth);
     });
 
     it('le libellé dit « hors dettes » — sinon on le lit comme le patrimoine', () => {

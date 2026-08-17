@@ -74,6 +74,37 @@ describe('[FUTUR-DETAIL-CATEGORIES-MOIS] ventilation', () => {
         expect(r.totalDepenses).toBe(200);
     });
 
+    /**
+     * ⚠️ L'ÉCART EN DOLLARS, pas seulement en nombre. Avant, `sansCategorie` ne donnait qu'un
+     * COMPTE : l'en-tête affichait un total supérieur à la somme des lignes et la différence était
+     * laissée à la soustraction mentale. Le même panneau expose pourtant son résiduel en $ ailleurs.
+     */
+    it('le montant sans catégorie REFERME l’écart entre le total et les lignes', () => {
+        const r = monthCategories([
+            t({ id: 1, amount: -800, category: '' }),
+            t({ id: 2, amount: -2_200, category: 'Loyer' }),
+        ], '2026-07');
+        expect(r.montantSansCategorie).toBe(800);
+        const sommeDesLignes = r.depenses.reduce((a, d) => a + d.montant, 0);
+        // L'invariant qui rend l'écran vérifiable : lignes + non classé === total affiché.
+        expect(sommeDesLignes + r.montantSansCategorie).toBe(r.totalDepenses);
+    });
+
+    it('rien à classer ⇒ montant nul (pas de ligne parasite)', () => {
+        const r = monthCategories([t({ id: 1, amount: -100, category: 'Loyer' })], '2026-07');
+        expect(r.montantSansCategorie).toBe(0);
+    });
+
+    /**
+     * ⚠️ La base de DATE diffère volontairement de celle de la courbe, et c'est documenté au module.
+     * La courbe exige une date complète (elle place au JOUR) ; une vue mensuelle n'a pas ce besoin.
+     * Exclure une dépense datée « 2026-07 » la ferait disparaître du mois où elle a lieu.
+     */
+    it('une dépense datée au MOIS seul compte dans la ventilation du mois', () => {
+        const r = monthCategories([t({ id: 1, date: '2026-07', amount: -2_000, category: 'Loyer' })], '2026-07');
+        expect(r.totalDepenses).toBe(2_000);
+    });
+
     it('un montant non fini n’entre nulle part', () => {
         const r = monthCategories([t({ id: 1, amount: Number.NaN })], '2026-07');
         expect(r.totalDepenses).toBe(0);

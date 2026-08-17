@@ -6,6 +6,25 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-17 (la ventilation du jour dit enfin la vérité)
+
+### « Non expliqué » ne s'affiche plus quand tout est expliqué
+- Chaque jour où tu achetais des titres, le panneau annonçait « Non expliqué » pour **exactement le
+  montant de l'achat** — alors que la journée était parfaitement explicable. La ligne qui portait
+  l'entrée dans le placement manquait ; elle est là.
+- Et il l'affichait presque **tous les jours** pour quelques cents d'arrondi, rendus « 0 $ » et même
+  « **-0 $** ». En dessous d'un dollar, c'est du bruit de calcul, plus un avertissement.
+- ⚠️ **Ce que le correctif ne cache pas** : quand un achat est marqué « virement interne » dans tes
+  transactions, ton compte n'est jamais débité mais le titre entre quand même — ton patrimoine
+  **monte vraiment** du montant de l'achat, pour un simple déplacement d'argent. Le panneau te le
+  dit maintenant explicitement, au lieu de le noyer dans un « non expliqué ».
+
+### Les dépenses non classées du mois ont enfin un montant
+- L'en-tête affichait un total supérieur à la somme des lignes, et tu devais faire la soustraction.
+  Le montant non classé est maintenant une **ligne**, avec son chiffre.
+- Un mois dont **toutes** les dépenses sont non classées ne fait plus disparaître la section entière
+  — l'avertissement « à classer » s'éteignait exactement quand tout était à classer.
+
 ## [unreleased] — 2026-08-17 (divorce et enfants : deux chiffres faux, corrigés)
 
 ### Après un divorce, tes allocations familiales étaient comptées deux fois trop haut

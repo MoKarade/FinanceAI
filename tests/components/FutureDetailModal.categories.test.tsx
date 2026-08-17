@@ -87,3 +87,30 @@ describe('[FUTUR-DETAIL-CATEGORIES-MOIS] la frontière réel / projeté', () => 
         expect(screen.queryByText('Dépenses du mois par catégorie')).toBeNull();
     });
 });
+
+/**
+ * ⚠️ [finding financial-integrity #644] Le mois 100 % NON CLASSÉ, mesuré : `depenses` est vide,
+ * la condition d'affichage était `depenses.length > 0`, donc TOUTE la section disparaissait —
+ * avertissement compris. L'alerte « à classer » s'éteignait exactement quand 100 % des dépenses
+ * étaient à classer, et le mois paraissait vide pendant que la courbe descendait.
+ * C'est `SILENCE-READS-AS-BROKEN` : l'écran se tait au pire moment.
+ */
+describe('[FUTUR-CATEGORIES-MOIS-100PCT-NON-CLASSE] le mois entièrement à classer', () => {
+    const NON_CLASSE = [
+        txn({ id: 1, amount: -1_200, category: '' }),
+        txn({ id: 2, amount: -800, category: '   ' }),
+    ];
+
+    it('la section reste AFFICHÉE même sans une seule catégorie', () => {
+        rendre('2026-07', NON_CLASSE);
+        expect(screen.getByText('Dépenses du mois par catégorie')).toBeInTheDocument();
+        expect(texte()).toContain('àclasserdansTransactions');
+    });
+
+    it('et elle montre le MONTANT non classé, pas seulement le compte', () => {
+        rendre('2026-07', NON_CLASSE);
+        expect(screen.getByText('Sans catégorie')).toBeInTheDocument();
+        // 2 000 $ : l'écart entre le total affiché et la somme des lignes doit être LISIBLE.
+        expect(texte()).toContain('2000');
+    });
+});

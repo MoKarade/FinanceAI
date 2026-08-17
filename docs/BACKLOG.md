@@ -273,7 +273,7 @@
 > Analyse fiscale 2026-07-31 (financial-integrity, findings MESURÉS via npx tsx sur le vrai moteur).
 > ⚠️ Un finding = une hypothèse : chaque fix passe par discriminant git-stash + panel adversarial.
 
-### ⛔ NO-GO du panel PR #644 (2026-08-17) — divorce × enfants, à finir AVANT tout merge
+### ✅ Panel PR #644 (2026-08-17) — divorce × enfants : NO-GO LEVÉ, tout traité
 
 > ⚠️ **DEUX agents indépendants (`projection-validator`, `financial-integrity`) ont MESURÉ le même
 > défaut**, chacun de son côté et sur le vrai moteur. Ce n'est donc pas une hypothèse de revue.
@@ -313,45 +313,66 @@
   (2) un enfant de 18 ans ne cotise plus au REEE, donc sans solde de départ le régime est vide et
   « payout ≤ gross » passe sur un régime VIDE, pas sur un correctif. Les gardes `> 0` ont révélé
   les deux.
-- [ ] 🔴 **`[PASSE-REEL-RESIDUEL-DEPOTS]`** (M, **ÉLEVÉ — MESURÉ**) — dans la ventilation du jour,
-  le résiduel « Non expliqué » vaut **exactement les dépôts du jour**, systématiquement.
+- [x] 🔴 **`[PASSE-REEL-RESIDUEL-DEPOTS]`** — **CORRIGÉ 2026-08-17** (PR #644). Le résiduel
+  « Non expliqué » valait **exactement les dépôts du jour**, systématiquement.
   `dayVariation.ts` exclut les `deposits` « parce qu'ils s'annulent » — mais
   `reconstructCashHistoryDaily` construit les liquidités à partir des SEULES transactions, donc
   `ΔLiquidités = NetTransferLiquid` et jamais `NetTransferLiquid − Σdépôts`. Mesuré sur un achat de
   500 $ : l'écran affiche « Variation +500 », « Non expliqué +500 » ET « dont 500 $ déplacés — ça ne
-  change pas ton patrimoine ». Les trois lignes se contredisent. ⚠️ À trancher **par mesure** : les
-  deux branches (`isTransfer` ou non) donnent le même résiduel mais pas le même `deltaNetWorth`.
-- [ ] 🔴 **`[PASSE-REEL-RESIDUEL-ARRONDI]`** (S, **ÉLEVÉ — MESURÉ**) — résiduel d'ARRONDI permanent :
+  change pas ton patrimoine ». Les trois lignes se contredisent.
+  **Re-mesuré moi-même avant de corriger** (un finding money-critical est une hypothèse) — confirmé,
+  et la mesure a révélé DEUX cas distincts que le finding fusionnait :
+  · achat DÉBITÉ (transaction ordinaire) : ΔPatrimoine = 0, juste — mais « Non expliqué +500 $ ».
+    Les dépôts portent le côté PLACEMENT et n'avaient aucun pendant dans les sources. **Correctif** :
+    `depots` devient une SOURCE ; elle s'annule avec `tresorerie`, mais seulement parce que les deux
+    y sont.
+  · achat marqué VIREMENT INTERNE : exclu de la reconstruction du cash, donc le titre entre sans
+    débit et **ΔPatrimoine = +500 $ pour un simple déplacement**. ⚠️ Mettre les dépôts en source
+    ferme AUSSI le résiduel de ce cas — donc masquerait le défaut. D'où `depotsNonFinances`, un
+    drapeau dédié qui prend le relais du résiduel comme détecteur, avec son message à l'écran.
+    Heuristique assumée (comparaison aux sorties TOTALES du jour) : sous-détection possible, jamais
+    sur-détection.
+- [x] 🔴 **`[PASSE-REEL-RESIDUEL-ARRONDI]`** — **CORRIGÉ 2026-08-17** : résiduel d'ARRONDI permanent —
   `NetWorth` et `cash` sont arrondis, les sources non. Mesuré sur 3 jours sans aucun dépôt :
   +0,37 / −0,21 / +0,04 — tous au-dessus du seuil d'affichage (0,005 $), donc rendus en ambre comme
   « Non expliqué **0 $** » et « **-0 $** ». Le seul garde-fou honnête du panneau devient du bruit
-  quotidien. Seuil à 0,50 $, ou cesser d'arrondir. ⚠️ Ne PAS absorber le résiduel.
-- [ ] 🔴 **`[FUTUR-CATEGORIES-TOTAL-INCOHERENT]`** (S, **MOYEN — MESURÉ**) — `totalDepenses` inclut
+  quotidien. **Correctif** : `SEUIL_RESIDUEL_SIGNIFICATIF = 1 $` (deux points arrondis à l'unité
+  bornent l'erreur à ±1 $), exporté par le service pour que l'écran ne redéfinisse pas le seuil dans
+  son coin. ⚠️ Le résiduel n'est PAS absorbé : il reste exposé tel quel dans le résultat, seul son
+  AFFICHAGE est filtré.
+- [x] 🔴 **`[FUTUR-CATEGORIES-TOTAL-INCOHERENT]`** — **CORRIGÉ 2026-08-17** : `totalDepenses` inclut
   les dépenses SANS catégorie (incrémenté avant le test de catégorie) alors que son JSDoc affirme
   l'inverse : **doc fausse**. À l'écran, l'en-tête montre un total supérieur à la somme des lignes,
   et la note ne donne qu'un COMPTE, jamais le montant. Un mois à 3 000 $ dont 800 $ non classés
   affiche « −3 000 $ » au-dessus de lignes qui font −2 200 $ — écart laissé à la soustraction
-  mentale, alors que le même panneau expose ailleurs son résiduel en $. **Correctif** : exposer
-  `montantSansCategorie` et l'afficher comme une LIGNE (jamais comme une catégorie « Autre »).
-- [ ] 🔴 **`[FUTUR-CATEGORIES-MOIS-100PCT-NON-CLASSE]`** (XS, **MOYEN — MESURÉ**) — un mois dont
+  mentale, alors que le même panneau expose ailleurs son résiduel en $. **Correctif** :
+  `montantSansCategorie` exposé et rendu comme une LIGNE (jamais comme une catégorie « Autre » —
+  le libellé nomme le PROBLÈME, pas une nature de dépense), JSDoc corrigé, et l'invariant
+  `Σ(lignes) + non classé === total` sous test.
+- [x] 🔴 **`[FUTUR-CATEGORIES-MOIS-100PCT-NON-CLASSE]`** — **CORRIGÉ 2026-08-17** : un mois dont
   100 % des dépenses n'ont pas de catégorie fait disparaître **toute la section**, avertissement
   compris : la condition est `depenses.length > 0`. L'alerte « à classer » s'éteint exactement quand
   tout est à classer, et le mois paraît vide pendant que la courbe descend
-  (`SILENCE-READS-AS-BROKEN`, 5e occurrence). Condition : `depenses.length > 0 || sansCategorie > 0`.
-- [ ] 🔴 **`[FUTUR-CATEGORIES-BASE-DE-DATE]`** (XS, **MOYEN — MESURÉ**) — `monthCategories` accepte
+  (`SILENCE-READS-AS-BROKEN`, 5e occurrence). Condition corrigée en
+  `depenses.length > 0 || sansCategorie > 0`, sous test de rendu.
+- [x] 🔴 **`[FUTUR-CATEGORIES-BASE-DE-DATE]`** — **TRANCHÉ 2026-08-17** : `monthCategories` accepte
   `date.length >= 7`, la courbe exige `>= 10` (les dates au mois seul partent dans `undatedTotal`).
   L'en-tête du module affirme pourtant « MÊME BASE D'EXCLUSION ». Mesuré : 100 $ datés au jour
   + 2 000 $ datés `2026-08` → catégories 2 100 $, courbe 100 $. La base doublon/virement est bien
   identique ; la base de PRÉCISION DE DATE ne l'est pas. Inclure les dates au mois est défendable
-  pour une vue mensuelle — **le mensonge, c'est le commentaire**.
-- [ ] 🔴 **`[TEST-DAYVARIATION-AUTO-SATISFAIT]`** (XS) — le test « un dépôt s'annule dans le total »
+  pour une vue mensuelle — **le mensonge, c'était le commentaire**. **Décision** : on GARDE
+  l'inclusion (exclure une dépense datée « 2026-08 » la ferait disparaître du mois d'août où elle a
+  lieu) et on corrige le commentaire, qui affirmait une base identique. Sous test.
+- [x] 🔴 **`[TEST-DAYVARIATION-AUTO-SATISFAIT]`** — **CORRIGÉ 2026-08-17** : le test « un dépôt s'annule dans le total »
   construit à la main une ligne que le pipeline NE PRODUIT JAMAIS (mesuré : le vrai `NetWorth` bouge
   de +5 000 dans ce cas). Il verrouille une donnée impossible et laisse passer le finding ci-dessus.
-  Classe « garde auto-satisfaite ». Repartir de `buildDailyPastLedger` sur un achat réel.
-- [ ] 🔴 **`[TEST-TOTAL-COMPTES-TAUTOLOGIQUE]`** (XS) — le test « total − dettes === valeur nette du
+  Classe « garde auto-satisfaite ». Réécrit à partir de `buildDailyPastLedger` sur un achat réel,
+  en deux cas (débité / virement interne). 2 rouges sur le code d'avant.
+- [x] 🔴 **`[TEST-TOTAL-COMPTES-TAUTOLOGIQUE]`** — **CORRIGÉ 2026-08-17** : le test « total − dettes === valeur nette du
   moteur » ne fait **aucun `render()`** : il compare trois valeurs de la fixture construites
-  ensemble. Son commentaire prétend qu'il tomberait si un compte était oublié — faux. Le lire sur
-  le DOM rendu, ou le supprimer (le premier test, lui, discrimine).
+  ensemble. Son commentaire prétendait qu'il tomberait si un compte était oublié — faux : le pire
+  des deux mondes, tautologique ET annoncé discriminant. Il lit désormais le total RENDU. Prouvé en
+  omettant un compte de la somme du composant : 2 rouges.
 
 ### Trouvés par le panel #644 mais PRÉ-EXISTANTS (hors périmètre de la PR)
 

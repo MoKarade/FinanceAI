@@ -12,6 +12,14 @@
 // ⚠️ MÊME BASE D'EXCLUSION que `dailyPastLedger` et `transactionsOnDay` (`isDuplicate` = artefact
 // d'import, `isTransfer` = neutre au patrimoine). Sans ça, le total par catégorie ne collerait pas
 // à la courbe ni à la liste du jour — trois surfaces, trois chiffres, aucune vérité.
+//
+// ⚠️ MAIS PAS LA MÊME BASE DE DATE, et ce module l'affirmait à tort. La courbe exige une date
+// COMPLÈTE (`length >= 10`) — elle doit placer chaque montant sur un JOUR, et range les dates au
+// mois seul dans `undatedTotal`. Ici, une vue MENSUELLE n'a pas ce besoin : `length >= 7` suffit,
+// et exclure une dépense datée « 2026-08 » la ferait disparaître d'une ventilation du mois d'août
+// où elle a bel et bien sa place. Écart MESURÉ : 100 $ datés au jour + 2 000 $ datés au mois →
+// catégories 2 100 $, courbe 100 $. L'inclusion est le bon choix ; c'était le commentaire qui
+// mentait, et un commentaire faux sur une base de calcul se propage.
 import type { Transaction } from '../../types';
 
 export interface CategoryTotal {
@@ -25,13 +33,25 @@ export interface CategoryTotal {
 export interface MonthCategoriesResult {
     /** Catégories de DÉPENSE, triées par montant décroissant (la plus lourde d'abord). */
     depenses: CategoryTotal[];
-    /** Σ des dépenses ventilées — doit égaler le total des `depenses`. */
+    /**
+     * Σ de TOUTES les dépenses du mois — y compris celles sans catégorie.
+     *
+     * ⚠️ Ce commentaire disait l'INVERSE (« Σ des dépenses ventilées — doit égaler le total des
+     * `depenses` »). C'était faux : le total est incrémenté AVANT le test de catégorie. À l'écran,
+     * l'en-tête montrait donc un total supérieur à la somme des lignes, sans que l'écart soit dit
+     * autrement qu'en NOMBRE de transactions — un mois à 3 000 $ dont 800 $ non classés affichait
+     * « −3 000 $ » au-dessus de lignes qui font −2 200 $, la soustraction laissée à Marc.
+     * Le total inclut bien tout (l'argent EST sorti) ; c'est `montantSansCategorie` qui referme
+     * l'écart, exposé comme une LIGNE et jamais comme une catégorie « Autre » inventée.
+     */
     totalDepenses: number;
-    /** Nombre de transactions de dépense écartées faute de catégorie exploitable. */
+    /** Nombre de transactions de dépense sans catégorie exploitable. */
     sansCategorie: number;
+    /** Σ des dépenses sans catégorie. `Σ(depenses) + montantSansCategorie === totalDepenses`. */
+    montantSansCategorie: number;
 }
 
-const VIDE: MonthCategoriesResult = { depenses: [], totalDepenses: 0, sansCategorie: 0 };
+const VIDE: MonthCategoriesResult = { depenses: [], totalDepenses: 0, sansCategorie: 0, montantSansCategorie: 0 };
 
 /**
  * Ventile par catégorie les DÉPENSES du mois `monthIso` (`YYYY-MM`).
@@ -50,6 +70,7 @@ export function monthCategories(
     const parCategorie = new Map<string, { montant: number; nombre: number }>();
     let totalDepenses = 0;
     let sansCategorie = 0;
+    let montantSansCategorie = 0;
 
     for (const t of transactions) {
         // `length < 7` : un mois suffit ici (contrairement au jour, qui exige une date complète).
@@ -67,6 +88,7 @@ export function monthCategories(
             // catégorie est un fait sur les DONNÉES de Marc (import à classer), pas une catégorie.
             // La ranger sous un nom fabriqué la rendrait invisible en tant que problème.
             sansCategorie += 1;
+            montantSansCategorie += montant;
             continue;
         }
         const slot = parCategorie.get(cat) ?? { montant: 0, nombre: 0 };
@@ -82,5 +104,5 @@ export function monthCategories(
         // s'échanger d'un rendu à l'autre, ce qui donne l'illusion que les données bougent.
         .sort((a, b) => (b.montant - a.montant) || a.categorie.localeCompare(b.categorie, 'fr'));
 
-    return { depenses, totalDepenses, sansCategorie };
+    return { depenses, totalDepenses, sansCategorie, montantSansCategorie };
 }

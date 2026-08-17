@@ -73,3 +73,42 @@ describe('[A11Y-PRIVACY-PDF-CONTRAT] refus en mode discret', () => {
         expect(new PdfRefusedPrivacyError().name).toBe('PdfRefusedPrivacyError');
     });
 });
+
+/**
+ * [PRIV-EXPORT-CSV-CONTRAT] Le MÊME contrat, sur le CSV — trouvé par l'audit vie privée de #645.
+ *
+ * ⚠️ La décision « refuser en mode discret » avait été prise pour le PDF, avec cette justification :
+ * « un fichier SORT de l'app et SURVIT au mode ». Elle n'avait jamais été étendue au CSV — or le CSV
+ * est PIRE : il contient le marchand ET le montant, ligne par ligne, quand le PDF ne porte aucun
+ * `payee`. L'écran affichait « ••• » partout pendant que le bouton fabriquait, en un clic, une copie
+ * permanente et intégralement en clair.
+ * Leçon : une décision de vie privée écrite pour UNE sortie doit être passée en revue sur TOUTES
+ * les sorties (PDF, CSV, backup, prompt LLM, MCP) — sinon elle protège la porte qu'on regardait.
+ */
+describe('[PRIV-EXPORT-CSV-CONTRAT] l’export CSV refuse en mode discret', () => {
+    it('mode discret ACTIF → refus typé, et AUCUNE ligne produite', async () => {
+        const { exportTransactionsCSV, CsvRefusedPrivacyError } = await import('../../utils/csvExport');
+        useFinanceStore.setState({ isPrivacyMode: true });
+        expect(() => exportTransactionsCSV([
+            { id: 1, date: '2026-08-10', payee: 'PHARMACIE-TEST', amount: -42, category: 'Santé' },
+        ] as never)).toThrow(CsvRefusedPrivacyError);
+    });
+
+    it('mode discret INACTIF → export normal (anti-sur-correctif)', async () => {
+        const { exportTransactionsCSV } = await import('../../utils/csvExport');
+        useFinanceStore.setState({ isPrivacyMode: false });
+        const csv = exportTransactionsCSV([
+            { id: 1, date: '2026-08-10', payee: 'PHARMACIE-TEST', amount: -42, category: 'Santé' },
+        ] as never);
+        expect(csv).toContain('PHARMACIE-TEST');
+    });
+
+    it('le refus est LU À L’APPEL, pas capturé au chargement du module', async () => {
+        // Le mode peut être activé entre le rendu du bouton et le clic.
+        const { exportTransactionsCSV, CsvRefusedPrivacyError } = await import('../../utils/csvExport');
+        useFinanceStore.setState({ isPrivacyMode: false });
+        expect(() => exportTransactionsCSV([] as never)).not.toThrow();
+        useFinanceStore.setState({ isPrivacyMode: true });
+        expect(() => exportTransactionsCSV([] as never)).toThrow(CsvRefusedPrivacyError);
+    });
+});

@@ -60,7 +60,7 @@ function renderTransactions() {
 function rowCheckbox(container: HTMLElement, payee: string): HTMLInputElement {
     const table = container.querySelector('table');
     expect(table, 'le tableau desktop doit être rendu').toBeTruthy();
-    return within(table as HTMLElement).getByLabelText(`Selectionner ${payee}`) as HTMLInputElement;
+    return within(table as HTMLElement).getByLabelText(`Sélectionner ${payee}`) as HTMLInputElement;
 }
 
 describe('Transactions — sélection accessible (UI6)', () => {
@@ -89,7 +89,11 @@ describe('Transactions — sélection accessible (UI6)', () => {
         const cb = rowCheckbox(container, 'Alpha');
         // readOnly retiré : la checkbox est un véritable contrôle interactif.
         expect(cb.readOnly).toBe(false);
-        expect(cb.getAttribute('aria-label')).toBe('Selectionner Alpha');
+        // [PRIV-PAYEE-MODE-DISCRET] Accent RÉTABLI en passant par `rowControlLabel` : le nom
+        // accessible est du texte FRANÇAIS lu à voix haute par un lecteur d'écran, et
+        // « Selectionner » sans accent y était une coquille. Hors mode discret, le marchand reste
+        // dans le nom — c'est la garde `payeePrivacy` qui vérifie le masquage, pas celle-ci.
+        expect(cb.getAttribute('aria-label')).toBe('Sélectionner Alpha');
     });
 
     it('opérable au clavier : Espace sur la checkbox focalisée la coche', () => {

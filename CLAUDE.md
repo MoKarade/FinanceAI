@@ -241,6 +241,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   — un `onClick` React ne capte PAS un clic sur une forme SVG redessinée au survol : la moitié basse
   de la courbe Futur était morte au clic depuis toujours (`FUTUR-CLICK-AREA`, → `pointerup`).
 - Resserrer un scan-garde **AVANT** de coder le fix : les offenders révélés = le vrai périmètre.
+- Un composant testé à son **CONTRAT** ne dit rien de ce qu'on lui PASSE : quand un index/une clé est
+  calculé ailleurs, viser le CALCUL (l'extraire en fonction pure le rend testable)
+  (`TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`).
+- Une **fixture qui remplit tous les champs** rend le repli inatteignable — et c'est souvent le repli
+  qui fuit. Une fixture par branche (`FIXTURE-COMPLETE-CACHE-LE-REPLI`).
+- Une décision de **vie privée** écrite pour UNE sortie se repasse sur TOUTES (PDF, CSV, backup,
+  prompt LLM, MCP, logs), et la garde vit au SERVICE, pas au clic (`DECISION-PRIVACY-UNE-SEULE-SORTIE`).
+- Masquer une donnée peut **retirer un discriminant** et casser les noms accessibles : le remplacer
+  par un discriminant non sensible (`MASQUAGE-RETIRE-UN-DISCRIMINANT`).
 - Un **stub** documenté « retourne toujours `[]` » peut rester branché des mois sans alerte si le
   mode test nourrit les surfaces en synthétique.
 - Un audit externe/UX headless a un fort taux de faux positifs sur le money-critical — mais

@@ -1,6 +1,9 @@
 import React from 'react';
 import type { ProjectionChartPoint } from '../../services/projection/types';
 import { PrivateAmount } from '../ui/PrivateAmount';
+// [PRIV-PAYEE-MODE-DISCRET] Le NOM du marchand est de la donnée personnelle : « pharmacie X, le 3 »
+// dit déjà beaucoup, même sans le montant à côté. Décision Marc 2026-08-17.
+import { PrivateText } from '../ui/PrivateText';
 
 // Normalise un label d'event : extrait l'emoji du début pour l'aligner dans
 // un slot fixe, et garde le reste du texte. Si pas d'emoji détecté, retourne
@@ -361,7 +364,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                                 <>
                                     {dayMovements.map((mv, i) => (
                                         <div key={`${mv.payee}-${i}`} className="flex items-baseline justify-between gap-3">
-                                            <span className="text-tiny text-ink-100 truncate">{mv.payee}</span>
+                                            <PrivateText className="text-tiny text-ink-100 truncate">{mv.payee}</PrivateText>
                                             <PrivateAmount className={`text-tiny font-mono shrink-0 ${mv.amount >= 0 ? 'text-green-300' : 'text-ink-200'}`}>
                                                 {mv.amount > 0 ? '+' : ''}{fmt(mv.amount)}$
                                             </PrivateAmount>
@@ -369,7 +372,17 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                                     ))}
                                 </>
                             ) : (
-                                <span className="text-tiny text-ink-100">{dayLabels && dayLabels.length > 0 ? dayLabels.join(', ') : 'Mouvement à date connue'}</span>
+                                /* ⚠️ [finding CRITIQUE revue #645] CE REPLI FUYAIT. `dayMovements`
+                                   n'existe que sur un jour PASSÉ reconstruit ; un jour FUTUR portant
+                                   une charge récurrente passe donc toujours par ici — et `dayLabels`
+                                   y vaut `r.payee` (datedMonthEvents.ts), c'est-à-dire un vrai nom de
+                                   marchand. Le chemin heureux était masqué, le repli non : classe
+                                   « la fuite est dans le fallback, pas dans le cas nominal ».
+                                   ⚠️ Mon test ne pouvait PAS le voir : sa fixture posait TOUJOURS
+                                   `dayMovements`, donc n'atteignait jamais cette branche. */
+                                dayLabels && dayLabels.length > 0
+                                    ? <PrivateText className="text-tiny text-ink-100">{dayLabels.join(', ')}</PrivateText>
+                                    : <span className="text-tiny text-ink-100">Mouvement à date connue</span>
                             )}
                             {/* ⚠️ La troncature était SILENCIEUSE. Avec des montants affichés, Marc
                                 lirait six dépenses en croyant les avoir toutes — même classe que

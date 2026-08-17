@@ -6,6 +6,7 @@ import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
 import { splitEventIcon, ClickableEventIcon } from './ProjectionTooltip';
 import { Icon, type IconName } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { PrivateText } from '../ui/PrivateText';
 import { ChartDataTable, type ChartDataColumn } from '../ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
 import { ProjectionChartPoint } from '../../services/projection/types';
@@ -237,6 +238,18 @@ interface FutureDetailModalProps {
     /** [PASSE-REEL-VARIATION-DU-JOUR] Ventilation de la variation du jour, calculée en amont sur les
      *  lignes reconstruites. `null` = pas de veille connue ⇒ on n'affirme rien. */
     variation?: DayVariationResult | null;
+    /**
+     * [FUTUR-DETAIL-STEP-DAY] Jour voisin (−1 = veille, +1 = lendemain) — demande de Marc
+     * (2026-08-17) : « dans cette page là j'aimerais aussi pouvoir aller au lendemain ».
+     * ⚠️ Le panneau était un CUL-DE-SAC : pour voir la journée suivante il fallait le fermer,
+     * re-viser au pixel sur la courbe (un jour ≈ 6 px à ~150 jours affichés) et le rouvrir. Trois
+     * gestes, dont un au pixel près, pour un déplacement d'un jour.
+     * Absent ⇒ aucune flèche rendue (le panneau s'ouvre aussi sur des mois, où « lendemain » n'a
+     * pas de sens).
+     */
+    onStepDay?: (dir: -1 | 1) => void;
+    canStepPrev?: boolean;
+    canStepNext?: boolean;
     /** [FUTUR-DETAIL-CATEGORIES-MOIS] Mois du point (`YYYY-MM`), UNIQUEMENT s'il est passé ou en
      *  cours. `null` sur un mois futur : le moteur n'y a pas de transactions, donc rien à
      *  catégoriser — en fabriquer une ventilation présenterait du projeté comme du constaté. */
@@ -249,7 +262,8 @@ interface FutureDetailModalProps {
 }
 
 export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
-    point, chartData, transactions, dayIso = null, variation = null, monthIso = null, userName1, userName2, isPrivacyMode = false, onClose,
+    point, chartData, transactions, dayIso = null, variation = null, monthIso = null, userName1, userName2, isPrivacyMode = false,
+    onStepDay, canStepPrev = false, canStepNext = false, onClose,
 }) => {
     const [selected, setSelected] = useState<AccountDef | null>(null);
 
@@ -448,8 +462,40 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                 {/* En-tête */}
                 <div className="flex items-start justify-between gap-3 mb-4 pb-3 border-b border-white/15">
                     <div>
-                        <div className="text-lg font-black text-white tracking-tight">{point.dateLabel || point.year || '—'}</div>
+                        {/* ⚠️ [finding a11y #645] `aria-live` OBLIGATOIRE depuis les flèches
+                            Veille/Lendemain : le focus reste volontairement SUR le bouton pour
+                            enchaîner les pas, et l'`aria-label` du bouton est STATIQUE. Sans région
+                            live, un utilisateur de lecteur d'écran cliquerait « Lendemain » cinq
+                            fois sans AUCUN retour sur le jour atteint — la feature marcherait à
+                            l'œil et serait muette à l'oreille. Pattern APG du sélecteur de date. */}
+                        <div className="text-lg font-black text-white tracking-tight" aria-live="polite" aria-atomic="true">{point.dateLabel || point.year || '—'}</div>
                         <div className="text-tiny text-ink-400 mt-0.5">Âge {point.age ?? '—'}</div>
+                        {/* ⚠️ [WCAG 2.5.3 label-in-name] L'aria-label CONTIENT le texte visible :
+                            un label de REMPLACEMENT (« Jour précédent » seul) casserait la commande
+                            vocale — « clique Veille » ne trouverait aucun bouton de ce nom. Même
+                            convention que les flèches de l'infobulle, dont c'est le jumeau. */}
+                        {onStepDay && (
+                            <div className="flex items-center gap-1.5 mt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => onStepDay(-1)}
+                                    disabled={!canStepPrev}
+                                    aria-label="Veille (jour précédent)"
+                                    className="focus-ring inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 disabled:opacity-35 disabled:pointer-events-none border border-white/20 rounded-lg px-2.5 py-1.5 transition-colors"
+                                >
+                                    ← Veille
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => onStepDay(1)}
+                                    disabled={!canStepNext}
+                                    aria-label="Lendemain (jour suivant)"
+                                    className="focus-ring inline-flex items-center justify-center min-h-[44px] text-tiny font-bold text-white bg-white/10 hover:bg-white/20 disabled:opacity-35 disabled:pointer-events-none border border-white/20 rounded-lg px-2.5 py-1.5 transition-colors"
+                                >
+                                    Lendemain →
+                                </button>
+                            </div>
+                        )}
                     </div>
                     <div className="text-right">
                         <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold">Valeur nette</div>
@@ -792,7 +838,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                             {txnsDuJour.counted.map((t) => (
                                                 <tr key={`c-${t.id}`} className="border-t border-white/5">
                                                     <td className="px-2.5 py-1.5 text-ink-100 align-top">
-                                                        {t.payee}
+                                                        <PrivateText>{t.payee}</PrivateText>
                                                         {t.accountName && <span className="text-tiny text-ink-400"> · {t.accountName}</span>}
                                                         {(() => {
                                                             const d = detailsTransaction(t, userName1, userName2);
@@ -832,7 +878,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                             {txnsDuJour.excluded.map(({ txn, reason }) => (
                                                 <tr key={`e-${txn.id}`} className="border-t border-white/5 bg-white/[0.02]">
                                                     <td className="px-2.5 py-1.5 text-ink-300 align-top">
-                                                        <span className="line-through">{txn.payee}</span>
+                                                        <span className="line-through"><PrivateText>{txn.payee}</PrivateText></span>
                                                         {txn.accountName && <span className="text-tiny text-ink-400"> · {txn.accountName}</span>}
                                                         <span className="text-tiny text-amber-300"> · {reason}</span>
                                                         {(() => {

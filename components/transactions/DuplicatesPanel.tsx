@@ -10,6 +10,7 @@
 // transactions, une suppression déplacerait le solde en silence. Le marquage est réversible.
 
 import React, { useMemo, useState } from 'react';
+import { PrivateText } from '../ui/PrivateText';
 import type { Transaction } from '../../types';
 import {
     findDuplicateGroups,
@@ -207,7 +208,7 @@ const GroupRow: React.FC<{
                         />
                         <label htmlFor={`dup-${m.id}`} className="flex-1 text-meta text-ink-300 cursor-pointer">
                             <span className="text-ink-400">{m.date}</span>{' '}
-                            <span className="text-ink-200">{m.payee || '(sans libellé)'}</span>
+                            <PrivateText className="text-ink-200">{m.payee || '(sans libellé)'}</PrivateText>
                             {m.accountName && <span className="text-ink-400"> · {m.accountName}</span>}
                             <span className="text-ink-400"> · {m.category}</span>
                             {isKeeper && !checked && (

@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-17 (suite 93) — le panel a trouvé la feature livrée CASSÉE
+> PR #644 mergée (4 demandes Futur + 2 défauts d'argent divorce×enfants). PR #645 en cours :
+> flèches Veille/Lendemain dans le panneau, masquage des marchands, 57 items archivés.
+>
+> ⚠️ **CE QU'IL FAUT RETENIR EN PRIORITÉ.** J'ai livré la feature de Marc CASSÉE avec 4 300 tests
+> verts. L'index du jour était résolu depuis le point REBASÉ sur le mois (donc sans `dayIso`), avec
+> repli sur `monthIndex` — or seuls les 1ers du mois portent une abscisse entière dans une série
+> quotidienne. « Lendemain » depuis le 15 menait au 2 ; sur un jour futur, rien ne bougeait.
+> Mon test vérifiait le CONTRAT du composant (props → callback) et ne pouvait pas voir qu'on lui
+> passait un mauvais index. **Un composant testé à son contrat ne dit rien de ce qu'on lui passe** —
+> le calcul a été extrait en fonction pure (`utils/daySeriesIndex.ts`) pour être testable.
+>
+> ⚠️ **Deux fuites de vie privée dans le lot censé fermer les fuites** : le REPLI de l'infobulle
+> (`dayLabels` = le vrai `payee` sur un jour futur) que ma fixture rendait inatteignable, et
+> l'export CSV en clair — la décision « refuser en mode discret » n'avait été passée que sur le PDF.
+> ⚠️ Et un trou WCAG créé en bouchant l'autre : masquer le marchand dans les `aria-label` donnait
+> le même nom accessible à toutes les transactions du MÊME JOUR. Deux agents l'ont mesuré
+> indépendamment ; mon test comparait deux dates différentes, donc prouvait l'évidence.
+>
+> **Ouvert pour Marc** : `[PRIV-CATEGORIE-SENSIBLE]` — « Santé » / « Dons » datée ré-identifie
+> presque autant qu'un marchand. Trois options au BACKLOG, ma reco = statu quo documenté.
+
 > ## 🟢 Session 2026-08-17 (suite 92) — quatre demandes de Marc sur le Futur, dont une piégée
 > Branche `claude/futur-infobulle-et-totaux` (empilée sur `claude/children-reee-garde`).
 >

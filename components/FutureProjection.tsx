@@ -109,6 +109,8 @@ import { NO_DATA_LABEL } from './ui/emptyAware';
 // [REFONTE-NAV-L6a] Contexte d'écran « Futur » pour l'assistant (patron CHAT-PAGE-CONTEXT).
 import { useViewContextPublisher } from '../hooks/useViewContextPublisher';
 import { buildFutureViewDetail } from '../services/aiChat/futureViewContext';
+import { dayVariation } from '../services/history/dayVariation';
+import { addDay } from '../services/history/reconstructCashHistory';
 
 // [PROJECTION-PERSIST] Dédup MODULE-LEVEL de l'écriture du blob figé (finding code-reviewer) :
 // survit au démontage/remontage de l'onglet → pas de réécriture IDB (~1-2 Mo chiffrés) à chaque
@@ -707,6 +709,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
      */
     const [detailDayIso, setDetailDayIso] = useState<string | null>(null);
 
+
     // G10 — légende interactive : on stocke les séries MASQUÉES (le delta vs
     // défaut « tout visible »), persistées en localStorage. Même convention que
     // Dashboard (`dashboard:hiddenAccounts:v1`) : persistance dans le setter.
@@ -837,6 +840,21 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         };
     }, [dailyPastFrom, todayIso, transactions, calculatedStartingCash, storeAssets, fxRates, realEstateGoals, startYear, currentDebtNonImmo]);
     const dailyPastByDate = dailyPast?.byDate ?? null;
+    /**
+     * [PASSE-REEL-VARIATION-DU-JOUR] La ventilation du jour ouvert, calculée à partir des lignes
+     * DÉJÀ reconstruites — aucune donnée nouvelle, aucun recalcul financier.
+     *
+     * ⚠️ Une variation est une DIFFÉRENCE : il faut la VEILLE. Si elle manque (premier jour
+     * reconstruit, ou trou dans la série), `dayVariation` rend `null` et la section ne s'affiche
+     * pas — plutôt qu'un 0 crédible et faux.
+     */
+    const variationDuJour = useMemo(() => {
+        if (!detailDayIso || !dailyPastByDate) return null;
+        const jour = dailyPastByDate.get(detailDayIso);
+        if (!jour) return null;
+        const veilleIso = addDay(detailDayIso, -1);
+        return dayVariation(jour, dailyPastByDate.get(veilleIso));
+    }, [detailDayIso, dailyPastByDate]);
 
     // Contexte daté (paie/charges/dettes) — un objet STABLE pour la ventilation courbe + infobulle.
     const dailyDated = useMemo(() => ({
@@ -1860,6 +1878,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         chartData={chartData}
                         transactions={transactions}
                         dayIso={detailDayIso}
+                        variation={variationDuJour}
                         userName1={config.users[0]?.name}
                         userName2={config.users[1]?.name}
                         isPrivacyMode={isPrivacyMode}

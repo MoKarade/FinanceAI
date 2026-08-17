@@ -72,7 +72,11 @@ describe('ExpertTooltip — point QUOTIDIEN sélectionné', () => {
 
     it("dit explicitement qu'un jour SANS mouvement daté n'est que de l'étalement", () => {
         render(<ExpertTooltip data={dayPoint({ isDailyPoint: true, dayIsDated: false, dayLabels: [] })} />);
-        expect(screen.getByText(/croissance, répartie sur le mois/)).toBeInTheDocument();
+        // [FUTUR-INFOBULLE-EPUREE] Phrase raccourcie (demande Marc : « quasiment pas de texte »),
+        // mais l'AFFIRMATION reste la même — et sa version longue reste au survol (`title`).
+        const ligne = screen.getByText(/croissance étalée/);
+        expect(ligne).toBeInTheDocument();
+        expect(ligne.getAttribute('title')).toMatch(/croissance, répartie sur le mois/);
         expect(screen.queryByText('Ce jour')).toBeNull();
     });
 
@@ -85,7 +89,7 @@ describe('ExpertTooltip — point QUOTIDIEN sélectionné', () => {
     it("aucun bloc « jour » sur un point MENSUEL (l'immense majorité des survols)", () => {
         render(<ExpertTooltip data={pt({})} />);
         expect(screen.queryByText('Ce jour')).toBeNull();
-        expect(screen.queryByText(/croissance, répartie sur le mois/)).toBeNull();
+        expect(screen.queryByText(/croissance étalée/)).toBeNull();
     });
 });
 

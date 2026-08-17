@@ -68,10 +68,55 @@ export interface ChildProcessCtx {
      *  permises (mais la croissance continue). */
     trackerReeeContribLifetime: number;
     enableMonteCarlo: boolean;
+    /**
+     * [ENG-DIVORCE-REEE-COTISATIONS] Part des COTISATIONS REEE qui reste à la charge du déclarant.
+     *
+     * Décision Marc 2026-08-17 : les cotisations suivent le partage **PATRIMONIAL** (`keep`,
+     * cumulé au fil des divorces), comme le SOLDE du régime — et NON la garde des enfants, qui
+     * pilote les coûts. `docs/decisions.md` laissait la question ouverte ; Marc l'a tranchée.
+     *
+     * ⚠️ Optionnel à défaut NEUTRE (1) : hors divorce, la projection est BIT-IDENTIQUE, donc
+     * aucun code de migration et aucune rétrocompat à écrire.
+     */
+    reeeContribShare?: number;
+    /**
+     * [ENG-DIVORCE-BENEFITS-FLUX] Part des ENFANTS qui reste à la charge du déclarant (garde).
+     *
+     * ⚠️ APPLIQUÉE ICI, À LA SOURCE, et plus par l'appelant. La première version multipliait
+     * quelques champs du RÉSULTAT dans `projection.ts` — et c'était structurellement condamné :
+     * chaque montant d'enfant alimente 3 à 5 registres (liquidités, dépenses du mois, coût brut,
+     * coût mensuel, allocations, retrait REEE), et partager le résultat oblige à se souvenir de
+     * TOUS. Deux ont été oubliés, mesurés par deux agents indépendants :
+     *   • les ALLOCATIONS étaient encaissées à 100 % (`monthlyIncomeDelta` non partagé) mais
+     *     publiées à 50 % — 332 $/mois encaissés contre 166 $ affichés, 75 957 $ d'écart sur le
+     *     patrimoine final ;
+     *   • le DÉCAISSEMENT REEE d'études restait entier face à une dépense à 50 % — +1 450 $/mois
+     *     de trésorerie née de nulle part, et le régime de l'enfant vidé 2× trop vite.
+     * En partageant le MONTANT plutôt que ses reflets, tout dérivé suit par construction. C'est la
+     * classe maison « un flux alimente PLUSIEURS registres », traitée à la racine cette fois.
+     *
+     * ⚠️ Ne s'applique PAS au RQAP ni à l'économie de transport du congé parental : ceux-là
+     * dépendent du congé de l'ex-conjoint, pas de la garde. Ni aux cotisations REEE, qui suivent
+     * le partage patrimonial (`reeeContribShare`).
+     * ⚠️ Optionnel à défaut NEUTRE (1) ⇒ hors divorce, projection BIT-IDENTIQUE.
+     */
+    childCustodyShare?: number;
 }
 
 export interface ChildTickResult {
     liquidDelta: number;
+    /**
+     * [ENG-DIVORCE-CHILDREN-REEE] `liquidDelta` VENTILÉ par CLÉ DE PARTAGE, parce que les deux
+     * familles ne suivent PAS la même règle après un divorce :
+     *   • `liquidDeltaCosts` — coûts d'enfants (frais de naissance, voiture) → suivent la GARDE ;
+     *   • `liquidDeltaReee`  — flux REEE (cotisations, décaissement) → suivent le partage
+     *     PATRIMONIAL `keep`, comme le SOLDE du régime (`reee *= keep`).
+     * ⚠️ Invariant : `liquidDeltaCosts + liquidDeltaReee === liquidDelta`, sous test. Sans cette
+     * séparation, appliquer une part au flux entier diviserait aussi les cotisations REEE — un faux
+     * SILENCIEUX. C'est le motif « un flux alimente PLUSIEURS registres », déjà au dossier.
+     */
+    liquidDeltaCosts: number;
+    liquidDeltaReee: number;
     monthlyExpenseDelta: number;
     monthlyIncomeDelta: number;
     newIncomeAnna: number | null;
@@ -119,10 +164,15 @@ export function processOneChild(
         householdGross, trackerScee, trackerIqee,
         trackerReeeContribLifetime, enableMonteCarlo,
     } = ctx;
+    // Défaut neutre : un `undefined` (appelant d'avant, test existant) vaut « part entière ».
+    const reeeContribShare = Number.isFinite(ctx.reeeContribShare) ? Number(ctx.reeeContribShare) : 1;
+    const custody = Number.isFinite(ctx.childCustodyShare) ? Number(ctx.childCustodyShare) : 1;
 
     const childId = child.id || `enfant_${childIdx}`;
 
     let liquidDelta = 0;
+    let liquidDeltaCosts = 0;
+    let liquidDeltaReee = 0;
     let monthlyExpenseDelta = 0;
     let monthlyIncomeDelta = 0;
     let newIncomeAnna: number | null = null;
@@ -159,7 +209,10 @@ export function processOneChild(
     const childAgeYears = Math.floor(childAgeMonths / 12);
 
     if (isFirstMonth) {
-        liquidDelta -= (child.initialCost ?? 0);
+        // ⚠️ Part de garde au MONTANT, pas à ses reflets — voir `childCustodyShare` dans le ctx.
+        const fraisNaissance = (child.initialCost ?? 0) * custody;
+        liquidDelta -= fraisNaissance;
+        liquidDeltaCosts -= fraisNaissance;
         lifeEventLogs.push(`Naissance 👶 (${child.name || 'Enfant'})`);
     }
 
@@ -227,7 +280,7 @@ export function processOneChild(
         }
 
         // Total mensuel = essentiel + garderie/école/activités, indexé inflation
-        const currentChildGrossCost = (cMonthly + careMonthly) * expenseMultiplier;
+        const currentChildGrossCost = (cMonthly + careMonthly) * expenseMultiplier * custody;
         monthlyExpenseDelta += currentChildGrossCost;
 
         let adjustedBenefits = child.governmentBenefits ?? 0;
@@ -239,6 +292,10 @@ export function processOneChild(
             const clawbackRatio = Math.max(0, 1 - ((householdGross - 150000) / 100000));
             adjustedBenefits *= clawbackRatio;
         }
+        // ⚠️ LE défaut mesuré 2×. Partager `adjustedBenefits` ICI touche d'un coup
+        // `monthlyIncomeDelta` (l'encaisse) ET `childBenefitsAdd` (le registre publié) : c'est
+        // leur DIVERGENCE qui faisait encaisser 332 $/mois pendant que l'écran affichait 166 $.
+        adjustedBenefits *= custody;
         monthlyIncomeDelta += adjustedBenefits;
         childGrossCostAdd += currentChildGrossCost;
         childBenefitsAdd += adjustedBenefits;
@@ -268,9 +325,22 @@ export function processOneChild(
             optimalReeeMonthly = lifetimeContribRoomLeft;
         }
 
+        // [ENG-DIVORCE-REEE-COTISATIONS] La part patrimoniale s'applique ICI, sur le MONTANT de
+        // cotisation, avant tout usage.
+        // ⚠️ POURQUOI ICI ET NULLE PART AILLEURS. Cette cotisation alimente CINQ registres à la
+        // fois : la sortie de liquidités, le tracker à vie, les subventions SCEE/IQEE (calculées
+        // EN PROPORTION de la cotisation), le nouveau solde du REEE et `contribREEE`. Mettre la
+        // part en aval — sur `liquidDeltaReee` seul, comme la première version le laissait
+        // croire — aurait CRÉÉ de l'argent : le solde REEE aurait crédité une cotisation que les
+        // liquidités n'auraient pas payée, et la conservation aurait cassé sans qu'aucun test de
+        // la garde 50/50 ne rougisse. Classe maison « un flux alimente PLUSIEURS registres ».
+        // Appliquée APRÈS le plafond à vie : une cotisation réduite ne peut pas le dépasser.
+        if (reeeContribShare !== 1) optimalReeeMonthly *= reeeContribShare;
+
         // Check against effective liquid (after birth cost if first month)
         if (optimalReeeMonthly > 0 && liquid + liquidDelta >= optimalReeeMonthly && !isRetired) {
             liquidDelta -= optimalReeeMonthly;
+            liquidDeltaReee -= optimalReeeMonthly;
             withdrawalLiquidAdd += optimalReeeMonthly;
             reeeContribAdd += Math.round(optimalReeeMonthly);
             // Audit §6.9: tracker mis à jour pour bloquer les futurs mois
@@ -290,8 +360,9 @@ export function processOneChild(
 
     // Achat voiture cadeau à 18 ans (premier mois de la 18e année)
     if (childAgeMonths === 18 * 12 && carCost > 0) {
-        const carInflated = carCost * expenseMultiplier;
+        const carInflated = carCost * expenseMultiplier * custody;
         liquidDelta -= carInflated;
+        liquidDeltaCosts -= carInflated;
         lifeEventLogs.push(`🚗 Cadeau voiture pour ${child.name || 'l\'enfant'} (18 ans) : -${Math.round(carInflated).toLocaleString('fr-CA')} $`);
         childGrossCostAdd += carInflated;
         childMonthlyCostAdd += carInflated;
@@ -303,7 +374,10 @@ export function processOneChild(
     const uniStartMonths = 18 * 12;
     const uniEndMonths = uniStartMonths + uni.years * 12;
     if (uni.years > 0 && childAgeMonths >= uniStartMonths && childAgeMonths < uniEndMonths) {
-        const studiesMonthly = (uni.yearlyCost / 12) * expenseMultiplier;
+        // ⚠️ Deuxième défaut mesuré : partagé ICI, donc le RETRAIT REEE qui finance ces études
+        // (calibré sur `studiesMonthly` juste en dessous) suit automatiquement. Partager la seule
+        // dépense laissait sortir du régime 2× ce qu'il fallait payer.
+        const studiesMonthly = (uni.yearlyCost / 12) * expenseMultiplier * custody;
         monthlyExpenseDelta += studiesMonthly;
         childGrossCostAdd += studiesMonthly;
         childMonthlyCostAdd += studiesMonthly;
@@ -326,6 +400,7 @@ export function processOneChild(
 
     if (childAgeMonths === 25 * 12 && reeeNewBalance > 0) {
         liquidDelta += reeeNewBalance;
+        liquidDeltaReee += reeeNewBalance;
         taxDiversAdd += reeeNewBalance * REEE_AIP_TAX_RATE;
         flowEventLogs.push(`🎓 Fermeture du REEE (régime d'épargne-études) de ${child.name || 'l\'enfant'} : +${Math.round(reeeNewBalance).toLocaleString('fr-CA')} $ versés dans tes liquidités`);
         reeeNewBalance = 0;
@@ -333,6 +408,8 @@ export function processOneChild(
 
     return {
         liquidDelta,
+        liquidDeltaCosts,
+        liquidDeltaReee,
         monthlyExpenseDelta,
         monthlyIncomeDelta,
         newIncomeAnna,

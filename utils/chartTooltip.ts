@@ -3,8 +3,15 @@
 // isolée ici pour deux raisons : (1) la tester en isolation, (2) éviter de la
 // dupliquer entre le clic conteneur (géométrie) et le hook de positionnement.
 
-/** Largeur connue du tooltip (`w-72` = 288px dans ExpertTooltip). */
-export const TOOLTIP_WIDTH = 288;
+/**
+ * Largeur connue du tooltip (`w-80` = 320px dans ExpertTooltip).
+ *
+ * ⚠️ [FUTUR-INFOBULLE-EPUREE] Cette constante DUPLIQUE une classe Tailwind : elle sert à borner la
+ * position au viewport, et rien au runtime ne les confronte. Élargir la classe sans elle donne une
+ * infobulle qui déborde du bord droit — silencieusement, sur le seul écran où ça se voit (petit
+ * portable). Garde qui les confronte : `tests/components/tooltipLargeur.test.ts`.
+ */
+export const TOOLTIP_WIDTH = 320;
 /** Décalage horizontal du tooltip vs le curseur (à droite). */
 export const TOOLTIP_OFFSET_X = 16;
 /** Décalage vertical du tooltip vs le curseur (légèrement au-dessus). */

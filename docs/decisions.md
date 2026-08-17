@@ -685,3 +685,42 @@ long scroll de cinq groupes.
 ⚠️ Ces trois bacs ne couvrent PAS tout l'écran — **Retraite** et **Enfants** n'y entrent pas.
 J'ajoute donc un 4e onglet plutôt que de les rétrograder sous « Revenus » (faux) ou de les
 perdre (pire). Écart signalé à Marc, pas décidé en silence.
+
+### Décision 5 — Garde des enfants après divorce : PARTAGÉE 50/50 (2026-08-17)
+
+Réponse de Marc à la question routée dans `docs/A_FAIRE_MOI.md`. Débloque
+`[ENG-DIVORCE-CHILDREN-REEE]`.
+
+**Ce que ça fixe** : après un divorce, les **coûts d'enfants** et les **allocations familiales**
+sont partagés **moitié-moitié**. C'est cohérent avec le régime canadien réel (en garde partagée,
+l'ACE se divise 50/50 entre les deux parents).
+
+⚠️ **Ce que ça NE fixait PAS** : le **REEE**. Son SOLDE suit déjà le partage PATRIMONIAL
+(`reee *= keep`, `services/projection.ts`) — pas la garde. Les COTISATIONS futures étaient donc une
+troisième question : garde (0,5), partage patrimonial (`keep`), ou entières ?
+
+### Décision 5b — Cotisations REEE : elles suivent `keep` (2026-08-17)
+
+Réponse de Marc le même jour, mot pour mot : « les cotisations REEE suivent keep, fais le correctif
+complet ». La question ci-dessus est donc **tranchée** : les cotisations suivent le partage
+**PATRIMONIAL**, comme le solde du régime — pas la garde des enfants.
+
+**Implémentation** : `reeeContribShare` (cumulé au fil des divorces, `keep` étant multiplicatif) est
+transmis à `processOneChild` et appliqué au MONTANT de cotisation, avant tout usage. ⚠️ Pas en
+aval : la cotisation alimente cinq registres (liquidités, tracker à vie, subventions SCEE/IQEE,
+solde, `contribREEE`) et n'en réduire qu'un aurait CRÉÉ de l'argent.
+
+⚠️ **Ce que la première livraison affirmait sans le faire** : son commentaire disait que
+`liquidDeltaReee` « suivait `keep` » alors qu'aucun facteur ne lui était appliqué. Finding de revue,
+corrigé — et consigné ici parce qu'un commentaire faux sur du money-critical se propage.
+
+### Décision 5c — La part de garde s'applique à la SOURCE, pas au résultat (2026-08-17)
+
+Pas une décision de Marc mais une décision d'INGÉNIERIE, consignée parce qu'elle a coûté deux
+défauts d'argent mesurés par deux agents indépendants.
+
+Le premier jet appliquait `childCustodyShare` à quelques champs du RÉSULTAT de `processOneChild`.
+Or chaque montant d'enfant alimente 3 à 5 registres, et partager le résultat oblige à se souvenir
+de TOUS. Deux ont été oubliés : les allocations (encaissées à 100 %, publiées à 50 % — 75 957 $
+d'écart sur le patrimoine final) et le décaissement REEE d'études (entier face à une dépense à
+50 %). **Règle** : partager le MONTANT, jamais ses reflets. Tout dérivé suit alors par construction.

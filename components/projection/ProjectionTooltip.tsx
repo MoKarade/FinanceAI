@@ -53,6 +53,34 @@ const TOOLTIP_ACCOUNTS: Array<{ key: string; label: string; color: string; gainK
     { key: 'Immobilier', label: 'Immobilier', color: '#bd7d9c' },
 ];
 
+/**
+ * [FUTUR-INFOBULLE-EPUREE, finding a11y #644] Pastille compacte + sa phrase complète.
+ *
+ * ⚠️ POURQUOI LE `sr-only` EST OBLIGATOIRE, et pas une politesse. L'épuration a transformé des
+ * `<p>` VISIBLES en `title`. J'avais écrit que la limite était « au doigt, un `title` ne s'ouvre
+ * pas » — c'était trop optimiste de deux populations : un `title` sur un `<span>` NON FOCUSABLE
+ * n'est révélé que par un survol SOURIS. Ni le clavier seul (l'élément n'est pas focusable), ni
+ * un lecteur d'écran (qui lit le CONTENU d'un span générique, pas son attribut) n'y accèdent.
+ * L'explication était donc perdue pour tout le monde sauf la souris — une RÉGRESSION nette par
+ * rapport au paragraphe qu'elle remplaçait, et pas un simple compromis tactile.
+ *
+ * Le `title` reste pour la souris ; le jumeau `sr-only` porte la même phrase dans l'arbre
+ * d'accessibilité, sans rien ajouter à l'écran ni un arrêt de tabulation.
+ */
+const Reserve = ({ label, explication, ton }: { label: string; explication: string; ton: 'neutre' | 'reel' | 'alerte' }) => (
+    <span
+        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+            ton === 'alerte' ? 'border-amber-500/30 bg-amber-500/10 text-amber-300/90'
+                : ton === 'reel' ? 'border-green-500/30 bg-green-500/10 text-green-300 uppercase tracking-widest'
+                    : 'border-white/15 bg-white/5 text-ink-300 uppercase tracking-widest'
+        }`}
+        title={explication}
+    >
+        {label}
+        <span className="sr-only"> — {explication}</span>
+    </span>
+);
+
 // Infobulle du graphe Futur — résumé clair + détail par compte (gains) + dépenses.
 // G15 : libellés explicites (« Rendement » = marché, « Dépôts » = ce que tu
 // ajoutes, gros chiffre = « Variation ce mois »). Le détail exhaustif + le
@@ -83,6 +111,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
     // de `ProjectionChartPoint` (qui est le contrat du MOTEUR, pas celui de l'affichage).
     const daily = data as ProjectionChartPoint & {
         isDailyPoint?: boolean; dayLabels?: string[]; dayIsDated?: boolean;
+        dayMovements?: Array<{ payee: string; amount: number }>; dayMovementsTotal?: number;
         dayIsReal?: boolean; priceAgeMaxDays?: number; hasEstimatedPrice?: boolean;
         daySyncUnconfirmed?: boolean;
     };
@@ -94,6 +123,8 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
     const priceAge = Number(daily.priceAgeMaxDays);
     const stalePrice = Number.isFinite(priceAge) && priceAge > 7;
     const dayLabels = daily.dayLabels;
+    const dayMovements = daily.dayMovements;
+    const dayMovementsTotal = daily.dayMovementsTotal ?? 0;
     // ⚠️ `dayIsDated` ET les libellés (finding revue) : un `DatedDelta` sans `label` produit un jour
     // réellement DATÉ mais sans libellé — n'écouter que `labels.length` aurait alors annoncé
     // « aucun mouvement à date connue » un jour où un mouvement a bel et bien eu lieu.
@@ -116,10 +147,15 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
         .filter((a) => a.value !== 0);
 
     return (
+        /* [FUTUR-INFOBULLE-EPUREE] `w-80` (320 px), pas `w-72` — et la largeur est aussi une
+           CONSTANTE (`TOOLTIP_WIDTH`, utils/chartTooltip.ts) qui sert à borner la position au
+           viewport. Les deux DOIVENT rester d'accord : une classe élargie sans la constante donne
+           une infobulle qui déborde du bord droit sans que rien ne casse. Garde :
+           tests/components/tooltipLargeur.test.ts. */
         <div className={`relative bg-gradient-to-b from-[#11161f]/95 to-dark/95 backdrop-blur-md border border-white/15 ring-1 ring-white/5 p-3.5 shadow-[0_20px_60px_rgba(0,0,0,0.85)] overflow-y-auto z-50 animate-fade-in ${
             sheet
                 ? 'w-full max-h-[70dvh] rounded-t-2xl rounded-b-none border-b-0 pb-[max(0.875rem,env(safe-area-inset-bottom))]'
-                : 'w-72 max-h-[480px] rounded-2xl'
+                : 'w-80 max-h-[560px] rounded-2xl'
         }`}>
             <div className="absolute inset-x-0 top-0 h-px rounded-t-2xl bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
 
@@ -133,8 +169,13 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                 <div className="flex items-center justify-between gap-2">
                     <span className="text-tiny uppercase tracking-widest text-ink-300 font-bold">Valeur nette</span>
                     {hasDiffNW && (
+                        /* ⚠️ [finding a11y/privacy #644] Le MONTANT passe par `PrivateAmount`, pas
+                           le libellé : en mode discret, ce badge affichait la variation en clair
+                           juste à côté d'une valeur nette masquée — la donnée la plus regardée de
+                           l'infobulle échappait au seul mécanisme prévu pour elle. */
                         <span className={`text-tiny font-mono font-bold px-1.5 py-0.5 rounded ${diffNW >= 0 ? 'text-green-300 bg-green-500/15' : 'text-red-300 bg-danger-500/15'}`}>
-                            Variation {isDailyPoint ? 'du jour ' : ''}{diffNW > 0 ? '+' : ''}{fmt(diffNW)}$
+                            Variation {isDailyPoint ? 'du jour ' : ''}
+                            <PrivateAmount>{diffNW > 0 ? '+' : ''}{fmt(diffNW)}$</PrivateAmount>
                         </span>
                     )}
                 </div>
@@ -161,7 +202,11 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                 );
             })()}
 
-            {/* Pourquoi : dépôts (ce que tu ajoutes) vs rendement (marché) */}
+            {/* Pourquoi : dépôts (ce que tu ajoutes) vs rendement (marché).
+                [FUTUR-INFOBULLE-EPUREE] La légende « Dépôts = ce que tu ajoutes · Rendement = ce que
+                le marché rapporte » est RETIRÉE : elle répétait mot pour mot les `title` des deux
+                pastilles juste au-dessus. Aucune information perdue — la même phrase reste au
+                survol de la pastille qu'elle explique, là où on la cherche. */}
             {(totalFlow !== 0 || totalGain !== 0) && (
                 <div className="mb-2.5">
                     <div className="flex items-center gap-2 text-tiny font-mono">
@@ -172,7 +217,6 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                             Rendement {totalGain > 0 ? '+' : ''}{fmt(totalGain)}$
                         </PrivateAmount>
                     </div>
-                    <div className="text-[10px] text-ink-400 text-center mt-1">Dépôts = ce que tu ajoutes · Rendement = ce que le marché rapporte</div>
                 </div>
             )}
 
@@ -182,9 +226,9 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
             <div className="space-y-1 mb-2.5 text-meta">
                 {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Paye {userName1 || 'Util. 1'}</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.IncomeMarc || 0)}$</PrivateAmount></div>}
                 {(data.IncomeAnna || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Paye {userName2 || 'Util. 2'}</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.IncomeAnna || 0)}$</PrivateAmount></div>}
-                {(data.IncomeRetirement || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Rentes / retraite</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.IncomeRetirement || 0)}$</PrivateAmount></div>}
-                {portfolioOutflow > 0 && <div className="flex justify-between"><span className="text-ink-300">Décaissement portfolio</span><PrivateAmount className="font-mono text-warning-400">+{fmt(portfolioOutflow)}$</PrivateAmount></div>}
-                {(data.Expenses || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Dépenses de vie</span><PrivateAmount className="font-mono text-danger-400">-{fmt(data.Expenses || 0)}$</PrivateAmount></div>}
+                {(data.IncomeRetirement || 0) > 0 && <div className="flex justify-between" title="Rentes et prestations de retraite (RRQ, PSV, régimes)"><span className="text-ink-300">Rentes</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.IncomeRetirement || 0)}$</PrivateAmount></div>}
+                {portfolioOutflow > 0 && <div className="flex justify-between" title="Retraits de ton portefeuille (REER + CELI) pour couvrir tes dépenses"><span className="text-ink-300">Décaissement</span><PrivateAmount className="font-mono text-warning-400">+{fmt(portfolioOutflow)}$</PrivateAmount></div>}
+                {(data.Expenses || 0) > 0 && <div className="flex justify-between" title="Dépenses de vie (hors impôts et hors remboursements de dette)"><span className="text-ink-300">Dépenses</span><PrivateAmount className="font-mono text-danger-400">-{fmt(data.Expenses || 0)}$</PrivateAmount></div>}
             </div>
 
             {/* Impôts du point (demande Marc) : (1) régularisation réglée en avril
@@ -215,7 +259,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
             {/* Répartition par compte : valeur + rendement du mois (G14) */}
             {accounts.length > 0 && (
                 <div className="bg-black/30 p-2.5 rounded-xl space-y-1 text-meta border border-white/10 mb-2.5">
-                    <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1">Par compte (valeur · rendement {isDailyPoint ? 'du jour' : 'du mois'})</div>
+                    <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold mb-1" title={`Valeur de chaque compte, et à droite son rendement ${isDailyPoint ? 'du jour' : 'du mois'}`}>Par compte</div>
                     {accounts.map((a) => (
                         <div key={a.key} className="flex items-center justify-between gap-2">
                             <span className="flex items-center gap-1.5 text-ink-200 min-w-0">
@@ -225,7 +269,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                             <span className="flex items-center gap-1.5 shrink-0 font-mono">
                                 <PrivateAmount className="text-white">{fmt(a.value)}$</PrivateAmount>
                                 {Math.abs(a.gain) > 0.5 && (
-                                    <span className={`text-[10px] ${a.gain >= 0 ? 'text-green-400' : 'text-danger-400'}`}>{a.gain > 0 ? '+' : ''}{fmt(a.gain)}</span>
+                                    <PrivateAmount className={`text-[10px] ${a.gain >= 0 ? 'text-green-400' : 'text-danger-400'}`}>{a.gain > 0 ? '+' : ''}{fmt(a.gain)}</PrivateAmount>
                                 )}
                             </span>
                         </div>
@@ -267,36 +311,89 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                 faire passer du lissage pour de la mesure. */}
             {isDailyPoint && (
                 <div className="mt-2 pt-2 border-t border-white/10">
-                    <div className={`mb-1.5 inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${isRealDay ? 'border-green-500/30 bg-green-500/10 text-green-300' : 'border-white/15 bg-white/5 text-ink-300'}`}>
-                        {isRealDay ? 'Réel' : 'Projeté'}
+                    {/* [FUTUR-INFOBULLE-EPUREE] Trois PARAGRAPHES sont devenus une rangée de
+                        PASTILLES. « Moins de texte » ≠ « moins d'information » : chaque réserve que
+                        portait la prose (prix estimé, prix périmé, sync incomplète) garde un marqueur
+                        VISIBLE — c'est le fait qu'il y a une réserve qui doit sauter aux yeux — et sa
+                        phrase complète reste portée par `<Reserve>` : `title` pour la souris,
+                        `sr-only` pour le lecteur d'écran et le clavier seul. Voir le commentaire de
+                        `Reserve` : le `title` SEUL était une régression, pas un compromis tactile. */}
+                    <div className="mb-1.5 flex flex-wrap items-center gap-1">
+                        <Reserve
+                            ton={isRealDay ? 'reel' : 'neutre'}
+                            label={isRealDay ? 'Réel' : 'Projeté'}
+                            explication={isRealDay
+                                ? 'Jour RÉEL : reconstruit depuis tes transactions datées et le prix de tes titres ce jour-là — pas une moyenne du mois.'
+                                : 'Jour PROJETÉ : ventilé depuis le mois calculé par le moteur — pas une mesure.'}
+                        />
+                        {isRealDay && daily.hasEstimatedPrice === true && (
+                            <Reserve
+                                ton="alerte" label="~ prix estimé"
+                                explication="Au moins un titre est valorisé à son prix ACTUEL, faute d’historique à cette date."
+                            />
+                        )}
+                        {isRealDay && stalePrice && (
+                            <Reserve
+                                ton="alerte" label={`prix J−${Math.round(priceAge)}`}
+                                explication={`Le prix le plus ancien composant ce point a ${Math.round(priceAge)} jours : c’est un plateau de reconstruction, pas une valeur observée ce jour-là.`}
+                            />
+                        )}
+                        {/* [FUTUR-DAILY-ROLLOVER, finding silent-failure #593] Jour réel POSTÉRIEUR à
+                            la dernière sync bancaire : ses « 0 $ » peuvent n'être qu'une sync pas
+                            encore passée — le dire, sinon un plat crédible passe pour une journée
+                            mesurée. */}
+                        {isRealDay && daily.daySyncUnconfirmed === true && (
+                            <Reserve
+                                ton="alerte" label="⚠ sync incomplète"
+                                explication="Jour pas encore couvert par la sync bancaire — des transactions de ce jour peuvent manquer."
+                            />
+                        )}
                     </div>
-                    {isRealDay && (
-                        <p className="mb-1.5 text-[10px] text-ink-400">
-                            Reconstruit depuis tes transactions datées et le prix de tes titres ce jour-là
-                            — pas une moyenne du mois.
-                            {daily.hasEstimatedPrice === true && ' Au moins un titre est valorisé à son prix actuel, faute d’historique.'}
-                            {stalePrice && ` Le prix le plus ancien composant ce point a ${Math.round(priceAge)} jours : c’est un plateau de reconstruction, pas une valeur observée ce jour-là.`}
-                        </p>
-                    )}
-                    {/* [FUTUR-DAILY-ROLLOVER, finding silent-failure #593] Jour réel POSTÉRIEUR à la
-                        dernière sync bancaire : ses « 0 $ » peuvent n'être qu'une sync pas encore
-                        passée — le dire, sinon un plat crédible passe pour une journée mesurée. */}
-                    {isRealDay && daily.daySyncUnconfirmed === true && (
-                        <p className="mb-1.5 text-[10px] leading-snug text-amber-300/90">
-                            ⚠ Jour pas encore couvert par la sync bancaire — des transactions de ce
-                            jour peuvent manquer.
-                        </p>
-                    )}
                     {dayHasMovement ? (
-                        <div className="flex items-baseline gap-1.5">
-                            <span className="text-tiny uppercase tracking-widest text-primary font-bold shrink-0">Ce jour</span>
-                            <span className="text-tiny text-ink-100">{dayLabels && dayLabels.length > 0 ? dayLabels.join(', ') : 'Mouvement à date connue'}</span>
+                        /* [FUTUR-INFOBULLE-MONTANTS] Demande de Marc : voir le MONTANT de chaque
+                           dépense, pas seulement le marchand. Borné au PASSÉ — `dayMovements`
+                           n'existe que sur un jour reconstruit ; le futur n'itemise pas.
+                           ⚠️ Repli sur les libellés seuls quand les montants n'existent pas : ne
+                           JAMAIS afficher un montant qu'on n'a pas mesuré. */
+                        <div className="space-y-0.5">
+                            <span className="text-tiny uppercase tracking-widest text-primary font-bold">Ce jour</span>
+                            {dayMovements && dayMovements.length > 0 ? (
+                                <>
+                                    {dayMovements.map((mv, i) => (
+                                        <div key={`${mv.payee}-${i}`} className="flex items-baseline justify-between gap-3">
+                                            <span className="text-tiny text-ink-100 truncate">{mv.payee}</span>
+                                            <PrivateAmount className={`text-tiny font-mono shrink-0 ${mv.amount >= 0 ? 'text-green-300' : 'text-ink-200'}`}>
+                                                {mv.amount > 0 ? '+' : ''}{fmt(mv.amount)}$
+                                            </PrivateAmount>
+                                        </div>
+                                    ))}
+                                </>
+                            ) : (
+                                <span className="text-tiny text-ink-100">{dayLabels && dayLabels.length > 0 ? dayLabels.join(', ') : 'Mouvement à date connue'}</span>
+                            )}
+                            {/* ⚠️ La troncature était SILENCIEUSE. Avec des montants affichés, Marc
+                                lirait six dépenses en croyant les avoir toutes — même classe que
+                                `truncatedFrom`.
+                                ⚠️ [finding silent-failure #644] Cette ligne est HORS du ternaire, et
+                                c'est le correctif : une journée dont AUCUNE transaction ne porte de
+                                description tombe dans la branche de repli (liste affichée vide) —
+                                si le compte y vivait, il disparaissait justement dans le cas où il
+                                est le SEUL indice que des mouvements existent. */}
+                            {dayMovementsTotal > (dayMovements?.length ?? 0) && (
+                                <div className="text-[10px] text-ink-400" title="Les autres mouvements de ce jour — dont ceux sans description — sont listés dans « Détail complet ».">
+                                    +{dayMovementsTotal - (dayMovements?.length ?? 0)} autre{dayMovementsTotal - (dayMovements?.length ?? 0) > 1 ? 's' : ''}
+                                </div>
+                            )}
                         </div>
                     ) : (
-                        <div className="text-[10px] text-ink-400">
-                            {isRealDay
-                                ? 'Aucun mouvement sur tes comptes ce jour-là — la variation ne vient que du marché.'
-                                : 'Aucun mouvement à date connue ce jour-là — la variation vient de la croissance, répartie sur le mois.'}
+                        /* ⚠️ [FUTUR-INFOBULLE-EPUREE] Raccourci, mais la DISTINCTION reste dite : un
+                           jour réel sans mouvement ne bouge que par le marché, un jour projeté ne
+                           bouge que par l'étalement de la croissance. Fondre les deux en un seul
+                           « Aucun mouvement » ferait passer du lissage pour de la mesure. */
+                        <div className="text-[10px] text-ink-400" title={isRealDay
+                            ? 'Aucun mouvement sur tes comptes ce jour-là — la variation ne vient que du marché.'
+                            : 'Aucun mouvement à date connue ce jour-là — la variation vient de la croissance, répartie sur le mois.'}>
+                            {isRealDay ? 'Aucun mouvement · marché seul' : 'Aucun mouvement daté · croissance étalée'}
                         </div>
                     )}
                 </div>
@@ -372,8 +469,8 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                     </div>
                 </div>
             ) : (
-                <div className="text-tiny text-ink-400 text-center pt-1.5 border-t border-white/10">
-                    Clique pour figer · puis détail complet
+                <div className="text-tiny text-ink-400 text-center pt-1.5 border-t border-white/10" title="Une fois figée, l’infobulle devient cliquable : détail complet, jour précédent / suivant.">
+                    Clique pour figer
                 </div>
             )}
         </div>

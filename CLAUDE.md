@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **3 978 tests** Vitest
-(348 fichiers de test, mesuré le 2026-08-13). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 262 tests** Vitest
+(384 fichiers de test, mesuré le 2026-08-17). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -176,6 +176,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   Même famille : un jeton qui prouve À LA FOIS le problème et le correctif rend la garde AUTO-SATISFAITE.
 - Élargir l'assiette d'un calcul → auditer TOUS les dérivés qui partagent cette base.
 - Un registre per-conjoint qui devient pilote doit gérer **décès/divorce** (la conservation ne l'attrape pas).
+- **Partager le MONTANT, jamais ses reflets** : appliquer une part au RÉSULTAT d'un producteur oblige
+  à se souvenir de TOUS ses registres — deux oubliés = 75 957 $ d'écart mesuré
+  (`PARTAGER-LE-MONTANT-PAS-SES-REFLETS`).
+- Une garde qui teste le **producteur en isolation** ne prouve RIEN sur la chaîne : viser les
+  grandeurs PUBLIÉES. Et prouver que la grandeur mesurée est **non nulle** avant de la comparer —
+  en Monte Carlo les points sont réduits, un test qui lit des champs absents compare des zéros
+  (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`).
 - Vérifs money-critical **en ISOLATION, séquentielles** (course `git stash` concurrente vue 2×).
 
 **Avant de coder**
@@ -211,6 +218,9 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   ne se copie pas d'une couleur à l'autre.
 - Vérifier qu'une classe est générée : build **propre** (`rm -rf dist`) avant de grep le CSS.
 - Un outil-garde à valeurs **re-codées en dur** dérive en silence → importer la source unique.
+- Une **constante JS qui duplique une valeur de style** (`TOOLTIP_WIDTH` vs la classe `w-80`) n'est
+  confrontée par RIEN au runtime : la garde lit la CLASSE (la vérité peinte) et la compare à la
+  constante — l'inverse serait circulaire (`STYLE-CONST-DUPLIQUEE`).
 - Un test `.length > 1` sur un **tuple** de longueur fixe est vacueux.
 
 **Divers**
@@ -218,6 +228,10 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   gestes depuis l'état par défaut et vérifier CHAQUE modalité (souris/doigt/clavier). Un test qui
   boucle pour atteindre l'état testé mesure le coût du chemin (`UX-UNREACHABLE-FEATURE`).
 - Un **nom trompeur fabrique des faux findings** → renommer est le vrai correctif.
+- « Moins de texte » se satisfait en SUPPRIMANT de l'information : séparer l'**alerte** (marqueur
+  compact, visible partout) du **libellé** (déplaçable en `title`). La garde tient les DEUX
+  exigences ensemble — plafond de prose ET « aucune réserve perdue » — car chacune seule est
+  satisfaite par le mauvais moyen (`EPURATION-SUPPRIME-LA-RESERVE`).
 - Une **heuristique de TEXTE** (regex sur un libellé) qui coexiste avec du texte UTILISATEUR interpolé
   dans les mêmes libellés produit des faux positifs : toléré sur une pastille visible à l'œil,
   INACCEPTABLE dans un prompt LLM (l'affirmation fausse hérite de l'autorité de la source unique).

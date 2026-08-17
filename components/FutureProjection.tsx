@@ -708,6 +708,8 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
      * que la règle no-fake-data interdit pour un objet. Le jour voyage donc SÉPARÉMENT.
      */
     const [detailDayIso, setDetailDayIso] = useState<string | null>(null);
+    const [detailMonthIso, setDetailMonthIso] = useState<string | null>(null);
+
 
 
     // G10 — légende interactive : on stocke les séries MASQUÉES (le delta vs
@@ -1671,7 +1673,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                             <ClickableEventIcon
                                                 kind={kind}
                                                 payload={evt}
-                                                onSelect={() => { const found = chartData.find((d: ProjectionChartPoint) => d.monthIndex === evt.monthIndex); if (found) { setDetailDayIso(null); setDetailPoint(found); } }}
+                                                onSelect={() => { const found = chartData.find((d: ProjectionChartPoint) => d.monthIndex === evt.monthIndex); if (found) { setDetailDayIso(null); setDetailMonthIso(null); setDetailPoint(found); } }}
                                             />
                                         }
                                     />
@@ -1859,6 +1861,15 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                                 // ANCRE y passe aussi via `realOnlyMonthPoints` : couverture
                                 // complète, sans exclure les jours réels du premier mois.
                                 const pt = tooltip.point as ProjectionChartPoint & { dayIso?: string; dayIsReal?: boolean };
+                                // [FUTUR-DETAIL-CATEGORIES-MOIS] Mois du point, UNIQUEMENT s'il est
+                                // PASSÉ ou en cours. Un mois futur n'a pas de transactions — le
+                                // moteur applique des postes budgétaires — donc rien à catégoriser :
+                                // en fabriquer une ventilation présenterait du projeté comme du
+                                // constaté (périmètre resserré par Marc : « oui juste pour passé »).
+                                const calDetail = calendarFromMonthIndex(startYear, startMonth, Math.floor(pt?.monthIndex ?? 0));
+                                const moisIso = `${calDetail.year}-${String(calDetail.month + 1).padStart(2, '0')}`;
+                                setDetailMonthIso(moisIso <= todayIso.slice(0, 7) ? moisIso : null);
+
                                 setDetailDayIso(pt?.dayIsReal ? (pt.dayIso ?? null) : null);
                                 setDetailPoint(detailPointFor(tooltip.point));
                             }}
@@ -1879,10 +1890,11 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         transactions={transactions}
                         dayIso={detailDayIso}
                         variation={variationDuJour}
+                        monthIso={detailMonthIso}
                         userName1={config.users[0]?.name}
                         userName2={config.users[1]?.name}
                         isPrivacyMode={isPrivacyMode}
-                        onClose={() => { setDetailPoint(null); setDetailDayIso(null); }}
+                        onClose={() => { setDetailPoint(null); setDetailDayIso(null); setDetailMonthIso(null); }}
                     />
                 )}
 

@@ -10,7 +10,8 @@ import { ChartDataTable, type ChartDataColumn } from '../ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
 import { ProjectionChartPoint } from '../../services/projection/types';
 import { transactionsOnDay } from '../../services/history/dayTransactions';
-import type { DayVariationResult } from '../../services/history/dayVariation';
+import { SEUIL_RESIDUEL_SIGNIFICATIF, type DayVariationResult } from '../../services/history/dayVariation';
+import { monthCategories } from '../../services/history/monthCategories';
 import type { Transaction } from '../../types';
 
 /**
@@ -236,6 +237,10 @@ interface FutureDetailModalProps {
     /** [PASSE-REEL-VARIATION-DU-JOUR] Ventilation de la variation du jour, calculée en amont sur les
      *  lignes reconstruites. `null` = pas de veille connue ⇒ on n'affirme rien. */
     variation?: DayVariationResult | null;
+    /** [FUTUR-DETAIL-CATEGORIES-MOIS] Mois du point (`YYYY-MM`), UNIQUEMENT s'il est passé ou en
+     *  cours. `null` sur un mois futur : le moteur n'y a pas de transactions, donc rien à
+     *  catégoriser — en fabriquer une ventilation présenterait du projeté comme du constaté. */
+    monthIso?: string | null;
     chartData: ProjectionChartPoint[];
     userName1?: string;
     userName2?: string;
@@ -244,7 +249,7 @@ interface FutureDetailModalProps {
 }
 
 export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
-    point, chartData, transactions, dayIso = null, variation = null, userName1, userName2, isPrivacyMode = false, onClose,
+    point, chartData, transactions, dayIso = null, variation = null, monthIso = null, userName1, userName2, isPrivacyMode = false, onClose,
 }) => {
     const [selected, setSelected] = useState<AccountDef | null>(null);
 
@@ -252,6 +257,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
     // jours : y pré-indexer les transactions les garderait toutes en mémoire en permanence pour
     // n'en montrer qu'une journée. Ici, un balayage ponctuel sur une liste déjà chargée.
     const txnsDuJour = useMemo(() => transactionsOnDay(transactions, dayIso), [transactions, dayIso]);
+    const catsDuMois = useMemo(() => monthCategories(transactions, monthIso), [transactions, monthIso]);
 
     /**
      * [PASSE-REEL-VARIATION-DU-JOUR] Section REPLIABLE, FERMÉE par défaut — choix de Marc
@@ -279,6 +285,9 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
 
     const LIBELLE_SOURCE: Record<string, string> = {
         tresorerie: 'Encaissé / décaissé',
+        // ⚠️ Le côté PLACEMENT d'un achat de titre. Il s'annule avec « Encaissé / décaissé » — mais
+        // seulement parce que les DEUX sont là : sans cette ligne, le résiduel valait les dépôts.
+        depots: 'Placé (achat de titres)',
         rendement: 'Rendement des placements',
         immobilier: 'Équité immobilière',
         dettes: 'Dettes',
@@ -323,6 +332,20 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
         const flow: number | null = a.flowKey ? (Number(point[a.flowKey]) || 0) : null;   // apport net (dépôt − retrait)
         return { ...a, value, variation, gain, flow };
     }).filter((a) => a.value !== 0 || a.variation !== 0);
+
+    /**
+     * [FUTUR-DETAIL-TOTAL-COMPTES] Total des comptes — demande de Marc 2026-08-17 (« j'ai la somme
+     * de chaque compte, je veux le total aussi »).
+     *
+     * ⚠️ Somme des MÊMES champs moteur que les lignes affichées, sur la liste NON filtrée : un
+     * compte à 0 ne change rien au total, mais sommer la liste filtrée ferait dépendre un TOTAL
+     * d'un critère d'AFFICHAGE — deux écrans montrant des lignes différentes donneraient alors des
+     * totaux différents pour la même donnée.
+     * ⚠️ Ce n'est PAS la valeur nette (déjà en haut du panneau) : les dettes en sont EXCLUES, elles
+     * sont rendues à part juste en dessous. Le libellé doit donc dire « comptes », jamais
+     * « patrimoine » — c'est tout l'écart entre les deux, et il vaut ici des dizaines de milliers.
+     */
+    const totalComptes = ACCOUNTS.reduce((acc, a) => acc + (Number(point[a.key]) || 0), 0);
 
     // Série temporelle du compte sélectionné (drill-down), enrichie des
     // composantes qui expliquent chaque mouvement (G13).
@@ -489,6 +512,15 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     )}
                                 </button>
                             ))}
+
+                            {/* Total — hors dettes, rendues juste en dessous. */}
+                            <div className="flex items-baseline justify-between gap-2 pt-2 mt-1 border-t border-white/10 px-3">
+                                <span className="text-tiny uppercase tracking-widest text-ink-300 font-bold">
+                                    Total des comptes
+                                    <span className="ml-1.5 normal-case tracking-normal text-ink-400 font-normal">— hors dettes</span>
+                                </span>
+                                <PrivateAmount className="font-mono text-body font-black text-white">{fmt(totalComptes)}</PrivateAmount>
+                            </div>
                         </div>
 
                         {/* Dettes — explique un patrimoine net négatif (sinon invisible) */}
@@ -589,6 +621,69 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                             expliquent la ligne « encaissé/décaissé », pas le reste.
                             ⚠️ `variation === null` (pas de veille connue) ⇒ RIEN. Une variation est
                             une différence : sans les deux jours, on n'affirme pas. */}
+                        {/* [FUTUR-DETAIL-CATEGORIES-MOIS] Où est parti l'argent CE MOIS-LÀ, par
+                            catégorie — demande de Marc, périmètre resserré par lui au PASSÉ.
+                            ⚠️ `monthIso` est null sur un mois FUTUR : le moteur n'y a pas de
+                            transactions (il applique des postes budgétaires et répartit), donc il
+                            n'y a rien à catégoriser. Fabriquer une ventilation présenterait du
+                            projeté comme du constaté — c'est la frontière que ce panneau tient
+                            partout ailleurs, elle vaut ici aussi. */}
+                        {/* ⚠️ `|| sansCategorie > 0` : un mois dont 100 % des dépenses n'ont pas de
+                            catégorie faisait disparaître TOUTE la section, avertissement compris.
+                            L'alerte « à classer » s'éteignait exactement quand tout était à classer,
+                            et le mois paraissait vide pendant que la courbe descendait
+                            (`SILENCE-READS-AS-BROKEN`). */}
+                        {monthIso && (catsDuMois.depenses.length > 0 || catsDuMois.sansCategorie > 0) && (
+                            <div className="border-t border-white/10 pt-3">
+                                <div className="flex items-baseline justify-between gap-2 mb-2">
+                                    <div className="text-tiny uppercase tracking-widest text-ink-400 font-bold">
+                                        Dépenses du mois par catégorie
+                                    </div>
+                                    <PrivateAmount className="font-mono text-meta text-ink-200">{fmt(-catsDuMois.totalDepenses)}</PrivateAmount>
+                                </div>
+                                <div className="space-y-1">
+                                    {catsDuMois.depenses.map((c) => (
+                                        <div key={c.categorie} className="flex items-baseline justify-between gap-2 text-meta">
+                                            <span className="text-ink-200">
+                                                {c.categorie}
+                                                <span className="ml-1.5 text-tiny text-ink-400">
+                                                    {c.nombre} {c.nombre > 1 ? 'transactions' : 'transaction'}
+                                                </span>
+                                            </span>
+                                            <PrivateAmount className="font-mono text-ink-200">{fmt(-c.montant)}</PrivateAmount>
+                                        </div>
+                                    ))}
+                                </div>
+                                {/* ⚠️ Dit, jamais fondu dans un « Autre » inventé : une dépense sans
+                                    catégorie est un import à classer, pas une catégorie. La ranger
+                                    sous un nom fabriqué la rendrait invisible EN TANT QUE problème. */}
+                                {catsDuMois.sansCategorie > 0 && (
+                                    <>
+                                        {/* ⚠️ Une LIGNE avec son MONTANT, pas seulement un compte : sans
+                                            elle, l'en-tête affiche un total supérieur à la somme des
+                                            lignes et l'écart est laissé à la soustraction mentale. Le
+                                            même panneau expose son résiduel en $ trois blocs plus haut ;
+                                            la même exigence vaut ici.
+                                            ⚠️ Ce n'est PAS une catégorie « Autre » inventée : le libellé
+                                            nomme le problème (à classer), pas une nature de dépense. */}
+                                        <div className="flex items-baseline justify-between gap-2 text-meta border-t border-white/5 mt-1 pt-1">
+                                            <span className="text-amber-300/90">
+                                                Sans catégorie
+                                                <span className="ml-1.5 text-tiny text-amber-300/70">
+                                                    {catsDuMois.sansCategorie} {catsDuMois.sansCategorie > 1 ? 'transactions' : 'transaction'}
+                                                </span>
+                                            </span>
+                                            <PrivateAmount className="font-mono text-amber-300/90">{fmt(-catsDuMois.montantSansCategorie)}</PrivateAmount>
+                                        </div>
+                                        <p className="text-tiny text-amber-300/90 mt-1.5 leading-snug">
+                                            {catsDuMois.sansCategorie > 1 ? 'Ces dépenses sont comptées' : 'Cette dépense est comptée'} dans
+                                            le total mais {catsDuMois.sansCategorie > 1 ? 'n\u2019ont' : 'n\u2019a'} pas de catégorie — à classer dans Transactions.
+                                        </p>
+                                    </>
+                                )}
+                            </div>
+                        )}
+
                         {dayIso && variation && (
                             <div className="border-t border-white/10 pt-3">
                                 <button
@@ -621,7 +716,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                         {/* ⚠️ Le RÉSIDUEL est AFFICHÉ, jamais absorbé par un poste
                                             « autre » : un fourre-tout fermerait le total par
                                             construction et la vérification deviendrait circulaire. */}
-                                        {Math.abs(variation.residuel) > 0.005 && (
+                                        {Math.abs(variation.residuel) >= SEUIL_RESIDUEL_SIGNIFICATIF && (
                                             <div className="flex items-baseline justify-between gap-2 text-meta border-t border-white/5 pt-1">
                                                 <span className="text-amber-300">Non expliqué</span>
                                                 <PrivateAmount className="font-mono text-amber-300">
@@ -630,8 +725,24 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                             </div>
                                         )}
 
-                                        {/* Mouvement INTERNE : montré parce qu'il est utile, hors du
-                                            total parce qu'il ne change pas le patrimoine. */}
+                                        {/* ⚠️ Ce n'est PLUS le résiduel qui détecte ce cas : depuis que
+                                            les dépôts sont une source, il se ferme même quand l'argent
+                                            n'a jamais quitté le compte. Ce drapeau prend le relais —
+                                            sinon le correctif du résiduel MASQUERAIT le défaut qu'il
+                                            rendait visible par accident. */}
+                                        {variation.depotsNonFinances > 0.005 && (
+                                            <p className="text-tiny text-amber-300/90 leading-snug pt-1">
+                                                ⚠ <PrivateAmount as="span" className="font-mono">{fmt(variation.depotsNonFinances)}</PrivateAmount> de titres
+                                                sont entrés sans qu'aucune sortie d'argent ne les finance ce jour-là. Ton patrimoine
+                                                paraît donc monter d'autant, alors que tu as seulement déplacé de l'argent : l'achat
+                                                est probablement marqué « virement interne » dans tes transactions, ce qui l'exclut du
+                                                calcul de tes liquidités.
+                                            </p>
+                                        )}
+
+                                        {/* Mouvement INTERNE : montré parce qu'il est utile, et à somme
+                                            nulle sur le patrimoine — les deux lignes ci-dessus
+                                            (« Encaissé / décaissé » et « Placé ») s'annulent. */}
                                         {Math.abs(variation.depotsInternes) > 0.005 && (
                                             <p className="text-tiny text-ink-400 leading-snug pt-1">
                                                 Dont <PrivateAmount as="span" className="font-mono">{fmt(variation.depotsInternes)}</PrivateAmount> déplacés

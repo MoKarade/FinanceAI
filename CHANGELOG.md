@@ -6,6 +6,75 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-17 (la ventilation du jour dit enfin la vérité)
+
+### « Non expliqué » ne s'affiche plus quand tout est expliqué
+- Chaque jour où tu achetais des titres, le panneau annonçait « Non expliqué » pour **exactement le
+  montant de l'achat** — alors que la journée était parfaitement explicable. La ligne qui portait
+  l'entrée dans le placement manquait ; elle est là.
+- Et il l'affichait presque **tous les jours** pour quelques cents d'arrondi, rendus « 0 $ » et même
+  « **-0 $** ». En dessous d'un dollar, c'est du bruit de calcul, plus un avertissement.
+- ⚠️ **Ce que le correctif ne cache pas** : quand un achat est marqué « virement interne » dans tes
+  transactions, ton compte n'est jamais débité mais le titre entre quand même — ton patrimoine
+  **monte vraiment** du montant de l'achat, pour un simple déplacement d'argent. Le panneau te le
+  dit maintenant explicitement, au lieu de le noyer dans un « non expliqué ».
+
+### Les dépenses non classées du mois ont enfin un montant
+- L'en-tête affichait un total supérieur à la somme des lignes, et tu devais faire la soustraction.
+  Le montant non classé est maintenant une **ligne**, avec son chiffre.
+- Un mois dont **toutes** les dépenses sont non classées ne fait plus disparaître la section entière
+  — l'avertissement « à classer » s'éteignait exactement quand tout était à classer.
+
+## [unreleased] — 2026-08-17 (divorce et enfants : deux chiffres faux, corrigés)
+
+### Après un divorce, tes allocations familiales étaient comptées deux fois trop haut
+- Le partage 50/50 livré la veille était **incomplet** : la caisse encaissait la part **entière**
+  des allocations pendant que l'écran en affichait la **moitié**. Mesuré : 332 $/mois encaissés
+  contre 166 $ affichés — et **75 957 $** d'écart sur le patrimoine final d'une projection type.
+- Même famille : pendant les études, tu payais la moitié des frais mais le REEE se vidait pour la
+  **totalité**. Résultat : de la trésorerie qui apparaissait de nulle part, et le régime de
+  l'enfant épuisé deux fois trop vite.
+- Les deux venaient de la même cause : la part de garde était appliquée à quelques champs du
+  **résultat** au lieu du **montant**. Elle l'est maintenant à la source — tout ce qui en dérive
+  suit automatiquement, y compris ce qu'on n'avait pas en tête.
+- ⚠️ Rien ne change si tu n'as pas de divorce dans ta projection : la part vaut 1, le calcul est
+  identique au bit près.
+
+### Les cotisations REEE suivent maintenant le partage du régime
+- Après un divorce, le SOLDE du REEE était partagé mais tu continuais d'y cotiser comme avant.
+  Les cotisations suivent désormais la même clé que le solde.
+
+## [unreleased] — 2026-08-17 (l'infobulle Futur : plus grande, presque sans texte)
+
+### Tu vois les montants, plus les paragraphes
+- L'infobulle passe de **288 × 480** à **320 × 560** px, et sa prose disparaît : deux légendes et
+  trois paragraphes d'explication sont devenus des **pastilles** ou des info-bulles au survol.
+- ⚠️ **Rien de ce qui portait une réserve n'a été supprimé.** Un titre valorisé à son prix actuel,
+  un prix trop vieux, un jour pas encore couvert par ta sync bancaire : chacun garde un marqueur
+  VISIBLE (`~ prix estimé`, `prix J−34`, `⚠ sync incomplète`). Seule la phrase longue passe au
+  survol. Au doigt, le survol n'existe pas — tu gardes l'alerte, tu perds seulement son libellé
+  long.
+- La différence entre un jour **réel** (« marché seul ») et un jour **projeté** (« croissance
+  étalée ») est raccourcie mais maintenue : les confondre ferait passer du lissage pour une mesure.
+
+### Chaque dépense du jour porte son montant
+- Dans l'infobulle d'un jour PASSÉ, chaque mouvement affiche son marchand **et son montant** — plus
+  seulement une liste de noms.
+- Au-delà de 6 mouvements, l'infobulle le **dit** (« +3 autres ») au lieu de s'arrêter en silence :
+  lire six dépenses en croyant les avoir toutes est pire que savoir qu'il en manque.
+- Un jour futur n'itemise pas ses dépenses (le moteur répartit des postes budgétaires) : aucun
+  montant inventé n'y est affiché.
+
+### Le total de tes comptes, et les catégories du mois
+- Le panneau « Détail complet » affiche le **Total des comptes**, en pied de liste. ⚠️ Libellé
+  « hors dettes » : ce n'est PAS ta valeur nette (sur tes données, 49 337 $ d'écart).
+- Pour un mois **passé**, il ventile aussi tes **dépenses par catégorie**, d'après tes vraies
+  transactions, de la plus lourde à la plus légère, avec le nombre de transactions.
+- Une dépense **sans catégorie** est comptée à part et signalée « à classer dans Transactions » —
+  jamais rangée sous un « Autre » inventé. Elle reste dans le total : l'argent est bien sorti.
+- ⚠️ Rien de tout ça sur un mois **futur** : il n'a aucune transaction, et en fabriquer présenterait
+  du projeté comme du constaté.
+
 ## [unreleased] — 2026-08-17 (la variation du jour, ventilée)
 
 ### Tu vois enfin POURQUOI ton patrimoine a bougé un jour donné

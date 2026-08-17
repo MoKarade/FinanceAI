@@ -534,6 +534,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     // W3.x — États événements de vie stochastiques (résident hors loop)
     let divorced = false;                       // une fois divorcé, reste divorcé
+    /** [ENG-DIVORCE-REEE-COTISATIONS] Part patrimoniale cumulée — pilote les COTISATIONS REEE. */
+    let reeeContribShare = 1;
     let divorceLogged = false;
     let ltdMonthsRemaining = 0;                 // invalidité longue durée
     let ltdLogged = false;
@@ -818,6 +820,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             });
             taxPreviousYear = splitTaxBucket(taxPreviousYear);
             taxCurrentYear = splitTaxBucket(taxCurrentYear);
+            // [ENG-DIVORCE-REEE-COTISATIONS] Le SOLDE du REEE vient d'être partagé (`reee *= keep`
+            // ci-dessus). Les COTISATIONS futures doivent suivre la même clé — décision Marc
+            // 2026-08-17 — et `keep` n'existe que dans cette callback : sans le RETENIR ici, le
+            // déclarant continuait de cotiser la part ENTIÈRE sur un régime réduit de moitié.
+            // Multiplicatif, pas affecté : un second divorce doit composer avec le premier.
+            reeeContribShare *= keep;
         })) {
             divorced = true;
         }
@@ -1422,6 +1430,31 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // ---- ENFANTS & REEE ----
         // Cycle 14 split: processOneChild → ./projection/childrenReee.
         // Les variables liquid/reee/monthlyIncome/incomeAnna sont commitées après le forEach.
+        /**
+         * [ENG-DIVORCE-CHILDREN-REEE] Part des enfants qui reste à la charge du déclarant.
+         *
+         * Décision Marc 2026-08-17 (`docs/decisions.md`) : **garde PARTAGÉE 50/50**. Après un
+         * divorce, les COÛTS d'enfants et les ALLOCATIONS familiales se partagent donc moitié-
+         * moitié — cohérent avec le régime réel (en garde partagée, l'ACE se divise 50/50).
+         *
+         * ⚠️ Défaut NEUTRE (1) hors divorce ⇒ rétrocompat BIT-IDENTIQUE, sous test.
+         *
+         * ⚠️ ELLE EST TRANSMISE, PLUS APPLIQUÉE ICI — et c'est la leçon du lot. Le premier jet
+         * multipliait quelques champs du RÉSULTAT (`childGrossCostAdd`, `monthlyExpenseDelta`…).
+         * Ça oblige à se souvenir des 3 à 5 registres que chaque montant d'enfant alimente, et
+         * DEUX ont été oubliés — mesurés par deux agents indépendants :
+         *   • allocations encaissées à 100 % (`monthlyIncomeDelta` jamais partagé) mais publiées à
+         *     50 % : 332 $/mois contre 166 $ affichés, 75 957 $ d'écart sur le patrimoine final ;
+         *   • décaissement REEE d'études ENTIER face à une dépense à 50 % : +1 450 $/mois de
+         *     trésorerie née de nulle part, régime de l'enfant vidé 2× trop vite.
+         * En partageant le MONTANT à la source, tout dérivé suit par construction. Classe maison
+         * « un flux alimente PLUSIEURS registres », cette fois traitée à la racine.
+         *
+         * ⚠️ Elle ne s'applique PAS aux flux REEE : le régime suit le partage PATRIMONIAL
+         * (`reeeContribShare`), pas la garde — deuxième décision de Marc le même jour. Ni au RQAP
+         * ni à l'économie de transport du congé parental, qui dépendent du congé de l'ex-conjoint.
+         */
+        const childCustodyShare = divorced ? 0.5 : 1;
         let _childLiquid = liquid;
         let _childReee = reee;
         let _childMonthlyIncome = monthlyIncome;
@@ -1452,9 +1485,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     trackerScee: tracker.scee, trackerIqee: tracker.iqee,
                     trackerReeeContribLifetime: tracker.contribLifetime ?? 0,
                     enableMonteCarlo,
+                    reeeContribShare,
+                    childCustodyShare,
                 },
                 calculateFiscalReport,
             );
+            // ⚠️ AUCUNE part appliquée ici : elle l'est à la SOURCE (`childCustodyShare` dans le
+            // ctx). Multiplier les champs du RÉSULTAT obligeait à se souvenir des 3 à 5 registres
+            // que chaque montant alimente — deux ont été oubliés (allocations, retrait d'études),
+            // mesurés par deux agents indépendants. Partager le montant, pas ses reflets.
             _childLiquid += result.liquidDelta;
             _childReee = result.reeeNewBalance;
             monthlyExpenses += result.monthlyExpenseDelta;

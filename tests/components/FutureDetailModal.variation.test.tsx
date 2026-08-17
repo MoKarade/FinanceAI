@@ -37,6 +37,7 @@ const variation = (o: Partial<DayVariationResult> = {}): DayVariationResult => (
     ],
     residuel: 0,
     depotsInternes: 0,
+    depotsNonFinances: 0,
     immobilierEstPalier: false,
     ...o,
 });

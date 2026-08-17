@@ -97,6 +97,8 @@ export function mergeDailyRealPoint(
         dayIsReal: true,
         dayIsDated: real.isDated,
         dayLabels: real.labels,
+        dayMovements: real.movements,
+        dayMovementsTotal: real.movementsTotal,
         priceAgeMaxDays: real.priceAgeMaxDays,
         hasEstimatedPrice: real.hasEstimatedPrice,
     };

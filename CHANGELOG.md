@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-17 (le lendemain depuis le panneau, et tes marchands masqués)
+
+### Tu peux enfin avancer d'un jour sans fermer le panneau
+- « Détail complet » était un cul-de-sac : pour voir le lendemain il fallait fermer, re-viser **au
+  pixel** sur la courbe, rouvrir. Les flèches Veille / Lendemain y sont.
+- ⚠️ Livrée cassée une première fois, corrigée avant que tu la voies : les flèches partaient du
+  **1er du mois** au lieu du jour ouvert — depuis le 15, « Lendemain » menait au 2.
+
+### Tes marchands sont masqués en mode discret
+- Transactions, infobulle du jour, panneau du jour, abonnements, virements, doublons, revue de
+  catégories, import : le nom du commerçant disparaît du mode discret, **y compris** dans les
+  info-bulles et les libellés lus par un lecteur d'écran.
+- ⚠️ **L'export CSV refuse maintenant de générer** en mode discret, comme le PDF le fait déjà. Il
+  contenait tes marchands ET tes montants en clair pendant que ton écran affichait « ••• ».
+- La **catégorie** reste visible : c'est une classe (« Alimentation »), pas un identifiant. Question
+  ouverte pour toi côté « Santé » / « Dons » — ticketée, rien n'est décidé à ta place.
+
 ## [unreleased] — 2026-08-17 (la ventilation du jour dit enfin la vérité)
 
 ### « Non expliqué » ne s'affiche plus quand tout est expliqué

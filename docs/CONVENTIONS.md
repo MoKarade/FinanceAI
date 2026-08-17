@@ -1149,6 +1149,42 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   `DOC-STALE-IMPOSSIBILITY` : un constat d'absence est une hypothèse, pas une mesure.
 
 ## Notes
+- ⚠️ **[TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT] 2026-08-17 — un composant testé à son CONTRAT ne dit
+  rien de ce qu'on lui passe.** Les flèches Veille/Lendemain du panneau de détail avaient un test
+  vert et complet : props reçues → callback appelé, boutons désactivés aux bornes, WCAG 2.5.3
+  vérifié. Et la feature était CASSÉE — l'index fourni par la couche appelante désignait toujours le
+  1er du mois (résolu depuis un point rebasé, donc sans `dayIso`, avec repli sur `monthIndex` alors
+  que seuls les 1ers du mois portent une abscisse entière). « Lendemain » depuis le 15 menait au 2,
+  et sur un jour futur les clics ne faisaient RIEN de visible (même référence d'objet ⇒ pas de
+  re-render). Trouvé par une revue, pas par 4 300 tests.
+  **La règle** : quand un composant reçoit un index/une clé/une position calculée ailleurs, la
+  garde doit viser le CALCUL, pas la consommation. Corollaire pratique : extraire ce calcul en
+  fonction PURE est ce qui le rend testable (`utils/daySeriesIndex.ts`, 6 rouges sur le code
+  d'avant). Même famille que « une garde qui teste le producteur en isolation ne prouve rien sur la
+  chaîne », vue cette fois par l'autre bout.
+- ⚠️ **[FIXTURE-COMPLETE-CACHE-LE-REPLI] 2026-08-17 — une fixture qui remplit TOUS les champs teste
+  le cas nominal et rien d'autre.** Le test de masquage des marchands dans l'infobulle posait
+  toujours `dayMovements`. Or ce champ n'existe que sur un jour PASSÉ reconstruit : un jour FUTUR à
+  charge récurrente passe forcément par le REPLI `dayLabels`, dont le contenu est le `payee` réel —
+  et ce repli n'était pas masqué. Le chemin heureux était protégé, la fuite était dans le fallback,
+  et la fixture rendait la branche inatteignable. **Règle** : pour toute branche `A ? x : y`, une
+  fixture par branche, y compris (surtout) celle qui traite l'absence de donnée.
+- ⚠️ **[DECISION-PRIVACY-UNE-SEULE-SORTIE] 2026-08-17 — une décision de vie privée écrite pour UNE
+  sortie ne protège que celle qu'on regardait.** « Refuser en mode discret » avait été décidé pour
+  le PDF, avec la justification « un fichier SORT de l'app et SURVIT au mode ». L'export CSV, juste
+  à côté, n'a jamais été revu : il produisait marchands ET montants en clair, ligne par ligne —
+  strictement PIRE que le PDF, qui ne porte aucun `payee`. **Règle** : une décision de vie privée se
+  repasse sur TOUTES les sorties (PDF, CSV, backup, prompt LLM, MCP, presse-papiers, logs), et la
+  garde vit au SERVICE qui produit le fichier, jamais au clic — sinon le prochain appelant passe.
+- ⚠️ **[MASQUAGE-RETIRE-UN-DISCRIMINANT] 2026-08-17 — masquer une donnée peut créer un trou WCAG.**
+  Masquer le marchand dans les `aria-label` a donné à toutes les transactions du MÊME JOUR le même
+  nom accessible (« Sélectionner la transaction du 2026-06-18 ») : navigation au lecteur d'écran
+  cassée (WCAG 4.1.2). J'avais anticipé le piège à moitié — je basculais sur la date — et mon
+  commentaire affirmait « noms DISTINCTS » tandis que mon test comparait deux dates DIFFÉRENTES,
+  donc prouvait l'évidence. Deux agents l'ont mesuré indépendamment.
+  **Règle** : un masquage qui RETIRE un discriminant doit le REMPLACER par un discriminant non
+  sensible (ici l'`id`, opaque et unique), et le test doit viser le cas où la collision se produit,
+  pas le cas où elle ne peut pas.
 - ⚠️ **[PARTAGER-LE-MONTANT-PAS-SES-REFLETS] 2026-08-17 — appliquer une part au RÉSULTAT d'un
   producteur oblige à se souvenir de tous ses registres, et on en oublie.** La garde 50/50 après
   divorce multipliait quelques champs du retour de `processOneChild` (`childGrossCostAdd`,

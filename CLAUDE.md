@@ -176,6 +176,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   Même famille : un jeton qui prouve À LA FOIS le problème et le correctif rend la garde AUTO-SATISFAITE.
 - Élargir l'assiette d'un calcul → auditer TOUS les dérivés qui partagent cette base.
 - Un registre per-conjoint qui devient pilote doit gérer **décès/divorce** (la conservation ne l'attrape pas).
+- **Partager le MONTANT, jamais ses reflets** : appliquer une part au RÉSULTAT d'un producteur oblige
+  à se souvenir de TOUS ses registres — deux oubliés = 75 957 $ d'écart mesuré
+  (`PARTAGER-LE-MONTANT-PAS-SES-REFLETS`).
+- Une garde qui teste le **producteur en isolation** ne prouve RIEN sur la chaîne : viser les
+  grandeurs PUBLIÉES. Et prouver que la grandeur mesurée est **non nulle** avant de la comparer —
+  en Monte Carlo les points sont réduits, un test qui lit des champs absents compare des zéros
+  (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`).
 - Vérifs money-critical **en ISOLATION, séquentielles** (course `git stash` concurrente vue 2×).
 
 **Avant de coder**

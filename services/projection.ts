@@ -1438,16 +1438,21 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
          * moitié — cohérent avec le régime réel (en garde partagée, l'ACE se divise 50/50).
          *
          * ⚠️ Défaut NEUTRE (1) hors divorce ⇒ rétrocompat BIT-IDENTIQUE, sous test.
-         * ⚠️ Cette part ne s'applique PAS aux flux REEE : le régime suit le partage PATRIMONIAL
-         * (`keep`), pas la garde — deuxième décision de Marc le même jour. Les deux familles sont
-         * ventilées à la source (`liquidDeltaCosts` / `liquidDeltaReee`) parce qu'appliquer une
-         * seule part au flux entier diviserait aussi les cotisations REEE.
-         * ⚠️ Le partage patrimonial des COTISATIONS est appliqué en AMONT, dans `processOneChild`
-         * (`reeeContribShare`), et surtout PAS ici : la cotisation alimente cinq registres à la
-         * fois (liquidités, tracker à vie, subventions, solde, `contribREEE`) et n'en réduire
-         * qu'un créerait de l'argent. Le premier jet de ce commentaire affirmait que
-         * `liquidDeltaReee` « suivait keep » alors qu'aucun facteur ne lui était appliqué —
-         * finding de revue, corrigé (classe `DOC-STALE-IMPOSSIBILITY` appliquée à un commentaire).
+         *
+         * ⚠️ ELLE EST TRANSMISE, PLUS APPLIQUÉE ICI — et c'est la leçon du lot. Le premier jet
+         * multipliait quelques champs du RÉSULTAT (`childGrossCostAdd`, `monthlyExpenseDelta`…).
+         * Ça oblige à se souvenir des 3 à 5 registres que chaque montant d'enfant alimente, et
+         * DEUX ont été oubliés — mesurés par deux agents indépendants :
+         *   • allocations encaissées à 100 % (`monthlyIncomeDelta` jamais partagé) mais publiées à
+         *     50 % : 332 $/mois contre 166 $ affichés, 75 957 $ d'écart sur le patrimoine final ;
+         *   • décaissement REEE d'études ENTIER face à une dépense à 50 % : +1 450 $/mois de
+         *     trésorerie née de nulle part, régime de l'enfant vidé 2× trop vite.
+         * En partageant le MONTANT à la source, tout dérivé suit par construction. Classe maison
+         * « un flux alimente PLUSIEURS registres », cette fois traitée à la racine.
+         *
+         * ⚠️ Elle ne s'applique PAS aux flux REEE : le régime suit le partage PATRIMONIAL
+         * (`reeeContribShare`), pas la garde — deuxième décision de Marc le même jour. Ni au RQAP
+         * ni à l'économie de transport du congé parental, qui dépendent du congé de l'ex-conjoint.
          */
         const childCustodyShare = divorced ? 0.5 : 1;
         let _childLiquid = liquid;
@@ -1481,12 +1486,17 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                     trackerReeeContribLifetime: tracker.contribLifetime ?? 0,
                     enableMonteCarlo,
                     reeeContribShare,
+                    childCustodyShare,
                 },
                 calculateFiscalReport,
             );
-            _childLiquid += result.liquidDeltaCosts * childCustodyShare + result.liquidDeltaReee;
+            // ⚠️ AUCUNE part appliquée ici : elle l'est à la SOURCE (`childCustodyShare` dans le
+            // ctx). Multiplier les champs du RÉSULTAT obligeait à se souvenir des 3 à 5 registres
+            // que chaque montant alimente — deux ont été oubliés (allocations, retrait d'études),
+            // mesurés par deux agents indépendants. Partager le montant, pas ses reflets.
+            _childLiquid += result.liquidDelta;
             _childReee = result.reeeNewBalance;
-            monthlyExpenses += result.monthlyExpenseDelta * childCustodyShare;
+            monthlyExpenses += result.monthlyExpenseDelta;
             _childMonthlyIncome += result.monthlyIncomeDelta;
             if (result.newIncomeAnna !== null) _childIncomeAnna = result.newIncomeAnna;
             accGrossIncomeYear += result.accGrossDelta;
@@ -1495,13 +1505,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 iqee: result.newTrackerIqee,
                 contribLifetime: result.newTrackerReeeContribLifetime,
             };
-            childGrossCost += result.childGrossCostAdd * childCustodyShare;
-            childBenefits += result.childBenefitsAdd * childCustodyShare;
-            // ⚠️ [finding revue #644] MÊME part que `childGrossCost` : les deux reçoivent des
-            // incréments IDENTIQUES dans `processOneChild` (coût courant, voiture, études). N'en
-            // partager qu'un les faisait diverger d'un facteur 2 après divorce — un registre de
-            // flux `dailyLedger` qui ne correspond plus à la sortie de liquidités réelle.
-            childMonthlyCost += result.childMonthlyCostAdd * childCustodyShare;
+            childGrossCost += result.childGrossCostAdd;
+            childBenefits += result.childBenefitsAdd;
+            childMonthlyCost += result.childMonthlyCostAdd;
             reeeContribMonthly += result.reeeContribAdd;
             withdrawalLiquid += result.withdrawalLiquidAdd;
             withdrawalREEE += result.withdrawalREEEAdd;

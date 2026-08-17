@@ -1149,6 +1149,35 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   `DOC-STALE-IMPOSSIBILITY` : un constat d'absence est une hypothèse, pas une mesure.
 
 ## Notes
+- ⚠️ **[PARTAGER-LE-MONTANT-PAS-SES-REFLETS] 2026-08-17 — appliquer une part au RÉSULTAT d'un
+  producteur oblige à se souvenir de tous ses registres, et on en oublie.** La garde 50/50 après
+  divorce multipliait quelques champs du retour de `processOneChild` (`childGrossCostAdd`,
+  `monthlyExpenseDelta`, `liquidDeltaCosts`…). Chaque montant d'enfant alimente pourtant 3 à 5
+  registres. **Deux ont été oubliés**, mesurés par deux agents indépendants et sur le vrai moteur :
+  les ALLOCATIONS étaient encaissées à 100 % (`monthlyIncomeDelta` n'était partagé nulle part) mais
+  publiées à 50 % — 332 $/mois contre 166 $ affichés, **75 957 $ d'écart sur le patrimoine final** ;
+  et le DÉCAISSEMENT REEE d'études restait ENTIER face à une dépense partagée — +1 450 $/mois de
+  trésorerie née de nulle part, régime de l'enfant vidé 2× trop vite.
+  **La règle** : partager le MONTANT à la source (`childCustodyShare` dans le contexte du
+  producteur), jamais ses reflets — tout dérivé suit alors par construction, y compris ceux qu'on
+  n'a pas en tête. Corollaire : quand un correctif consiste à multiplier N champs d'un résultat,
+  c'est le signe qu'il faut remonter d'un cran. Même famille que « un flux alimente PLUSIEURS
+  registres » (meltdown REER), mais vue du côté du CORRECTIF et non du producteur.
+- ⚠️ **[GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE] 2026-08-17 — 4 262 tests verts, deux défauts
+  d'argent dedans.** Trois angles morts se sont additionnés, et aucun n'était visible : (1) TOUS les
+  tests de divorce déclaraient `childGoals: []` — divorce et enfants ne se rencontraient jamais ;
+  (2) le fuzz a des enfants mais appelle le moteur **sans** `enableMonteCarlo`, or `tryDivorce`
+  n'existe QUE dans cette branche — il ne tirait donc jamais ; (3) la garde dédiée testait le
+  producteur **en ISOLATION** et ne touchait aucun registre aval. Une garde qui vérifie le
+  producteur ne dit RIEN de la chaîne : il faut viser les grandeurs que le moteur PUBLIE.
+  ⚠️ **Deux pièges de vacuité en écrivant ce test de scénario**, tous deux silencieux :
+  · en mode MC, `buildMonthlyDataPoint` RÉDUIT chaque point à `{ NetWorth, monthIndex }` sauf
+    `verboseMonthlyPoints` → le test lisait des `undefined`, comparait des zéros via `?? 0`, et
+    serait resté VERT sur n'importe quel code ;
+  · un enfant de 18 ans ne cotise plus au REEE (branche bornée à `< 18 ans`) → sans solde de
+    départ, « payout ≤ gross » était satisfait par un régime VIDE, pas par un correctif.
+  D'où la discipline : **une assertion `> 0` sur la grandeur mesurée AVANT de la comparer**. C'est
+  elle qui a révélé les deux.
 - ⚠️ **[EPURATION-SUPPRIME-LA-RESERVE] 2026-08-17 — « moins de texte » se satisfait trivialement en
   supprimant de l'information.** Marc a demandé une infobulle Futur « quasiment sans texte ». Trois
   des paragraphes candidats à la coupe portaient une RÉSERVE sur la fiabilité du point affiché

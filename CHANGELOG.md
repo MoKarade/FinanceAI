@@ -6,6 +6,25 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-17 (divorce et enfants : deux chiffres faux, corrigés)
+
+### Après un divorce, tes allocations familiales étaient comptées deux fois trop haut
+- Le partage 50/50 livré la veille était **incomplet** : la caisse encaissait la part **entière**
+  des allocations pendant que l'écran en affichait la **moitié**. Mesuré : 332 $/mois encaissés
+  contre 166 $ affichés — et **75 957 $** d'écart sur le patrimoine final d'une projection type.
+- Même famille : pendant les études, tu payais la moitié des frais mais le REEE se vidait pour la
+  **totalité**. Résultat : de la trésorerie qui apparaissait de nulle part, et le régime de
+  l'enfant épuisé deux fois trop vite.
+- Les deux venaient de la même cause : la part de garde était appliquée à quelques champs du
+  **résultat** au lieu du **montant**. Elle l'est maintenant à la source — tout ce qui en dérive
+  suit automatiquement, y compris ce qu'on n'avait pas en tête.
+- ⚠️ Rien ne change si tu n'as pas de divorce dans ta projection : la part vaut 1, le calcul est
+  identique au bit près.
+
+### Les cotisations REEE suivent maintenant le partage du régime
+- Après un divorce, le SOLDE du REEE était partagé mais tu continuais d'y cotiser comme avant.
+  Les cotisations suivent désormais la même clé que le solde.
+
 ## [unreleased] — 2026-08-17 (l'infobulle Futur : plus grande, presque sans texte)
 
 ### Tu vois les montants, plus les paragraphes

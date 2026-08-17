@@ -79,6 +79,28 @@ export interface ChildProcessCtx {
      * aucun code de migration et aucune rétrocompat à écrire.
      */
     reeeContribShare?: number;
+    /**
+     * [ENG-DIVORCE-BENEFITS-FLUX] Part des ENFANTS qui reste à la charge du déclarant (garde).
+     *
+     * ⚠️ APPLIQUÉE ICI, À LA SOURCE, et plus par l'appelant. La première version multipliait
+     * quelques champs du RÉSULTAT dans `projection.ts` — et c'était structurellement condamné :
+     * chaque montant d'enfant alimente 3 à 5 registres (liquidités, dépenses du mois, coût brut,
+     * coût mensuel, allocations, retrait REEE), et partager le résultat oblige à se souvenir de
+     * TOUS. Deux ont été oubliés, mesurés par deux agents indépendants :
+     *   • les ALLOCATIONS étaient encaissées à 100 % (`monthlyIncomeDelta` non partagé) mais
+     *     publiées à 50 % — 332 $/mois encaissés contre 166 $ affichés, 75 957 $ d'écart sur le
+     *     patrimoine final ;
+     *   • le DÉCAISSEMENT REEE d'études restait entier face à une dépense à 50 % — +1 450 $/mois
+     *     de trésorerie née de nulle part, et le régime de l'enfant vidé 2× trop vite.
+     * En partageant le MONTANT plutôt que ses reflets, tout dérivé suit par construction. C'est la
+     * classe maison « un flux alimente PLUSIEURS registres », traitée à la racine cette fois.
+     *
+     * ⚠️ Ne s'applique PAS au RQAP ni à l'économie de transport du congé parental : ceux-là
+     * dépendent du congé de l'ex-conjoint, pas de la garde. Ni aux cotisations REEE, qui suivent
+     * le partage patrimonial (`reeeContribShare`).
+     * ⚠️ Optionnel à défaut NEUTRE (1) ⇒ hors divorce, projection BIT-IDENTIQUE.
+     */
+    childCustodyShare?: number;
 }
 
 export interface ChildTickResult {
@@ -144,6 +166,7 @@ export function processOneChild(
     } = ctx;
     // Défaut neutre : un `undefined` (appelant d'avant, test existant) vaut « part entière ».
     const reeeContribShare = Number.isFinite(ctx.reeeContribShare) ? Number(ctx.reeeContribShare) : 1;
+    const custody = Number.isFinite(ctx.childCustodyShare) ? Number(ctx.childCustodyShare) : 1;
 
     const childId = child.id || `enfant_${childIdx}`;
 
@@ -186,8 +209,10 @@ export function processOneChild(
     const childAgeYears = Math.floor(childAgeMonths / 12);
 
     if (isFirstMonth) {
-        liquidDelta -= (child.initialCost ?? 0);
-        liquidDeltaCosts -= (child.initialCost ?? 0);
+        // ⚠️ Part de garde au MONTANT, pas à ses reflets — voir `childCustodyShare` dans le ctx.
+        const fraisNaissance = (child.initialCost ?? 0) * custody;
+        liquidDelta -= fraisNaissance;
+        liquidDeltaCosts -= fraisNaissance;
         lifeEventLogs.push(`Naissance 👶 (${child.name || 'Enfant'})`);
     }
 
@@ -255,7 +280,7 @@ export function processOneChild(
         }
 
         // Total mensuel = essentiel + garderie/école/activités, indexé inflation
-        const currentChildGrossCost = (cMonthly + careMonthly) * expenseMultiplier;
+        const currentChildGrossCost = (cMonthly + careMonthly) * expenseMultiplier * custody;
         monthlyExpenseDelta += currentChildGrossCost;
 
         let adjustedBenefits = child.governmentBenefits ?? 0;
@@ -267,6 +292,10 @@ export function processOneChild(
             const clawbackRatio = Math.max(0, 1 - ((householdGross - 150000) / 100000));
             adjustedBenefits *= clawbackRatio;
         }
+        // ⚠️ LE défaut mesuré 2×. Partager `adjustedBenefits` ICI touche d'un coup
+        // `monthlyIncomeDelta` (l'encaisse) ET `childBenefitsAdd` (le registre publié) : c'est
+        // leur DIVERGENCE qui faisait encaisser 332 $/mois pendant que l'écran affichait 166 $.
+        adjustedBenefits *= custody;
         monthlyIncomeDelta += adjustedBenefits;
         childGrossCostAdd += currentChildGrossCost;
         childBenefitsAdd += adjustedBenefits;
@@ -331,7 +360,7 @@ export function processOneChild(
 
     // Achat voiture cadeau à 18 ans (premier mois de la 18e année)
     if (childAgeMonths === 18 * 12 && carCost > 0) {
-        const carInflated = carCost * expenseMultiplier;
+        const carInflated = carCost * expenseMultiplier * custody;
         liquidDelta -= carInflated;
         liquidDeltaCosts -= carInflated;
         lifeEventLogs.push(`🚗 Cadeau voiture pour ${child.name || 'l\'enfant'} (18 ans) : -${Math.round(carInflated).toLocaleString('fr-CA')} $`);
@@ -345,7 +374,10 @@ export function processOneChild(
     const uniStartMonths = 18 * 12;
     const uniEndMonths = uniStartMonths + uni.years * 12;
     if (uni.years > 0 && childAgeMonths >= uniStartMonths && childAgeMonths < uniEndMonths) {
-        const studiesMonthly = (uni.yearlyCost / 12) * expenseMultiplier;
+        // ⚠️ Deuxième défaut mesuré : partagé ICI, donc le RETRAIT REEE qui finance ces études
+        // (calibré sur `studiesMonthly` juste en dessous) suit automatiquement. Partager la seule
+        // dépense laissait sortir du régime 2× ce qu'il fallait payer.
+        const studiesMonthly = (uni.yearlyCost / 12) * expenseMultiplier * custody;
         monthlyExpenseDelta += studiesMonthly;
         childGrossCostAdd += studiesMonthly;
         childMonthlyCostAdd += studiesMonthly;

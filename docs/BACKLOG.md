@@ -281,27 +281,38 @@
 > mais PAS `monthlyIncomeDelta`, qui transporte exactement le même mélange de familles. C'est la
 > classe maison « un flux alimente PLUSIEURS registres » — appliquée à la moitié du problème.
 
-- [ ] 🔴 **`[ENG-DIVORCE-BENEFITS-FLUX]`** (M, **CRITIQUE — MESURÉ 2×**) — après divorce, les
-  allocations familiales sont encaissées à **100 %** mais publiées à **50 %**.
+- [x] 🔴 **`[ENG-DIVORCE-BENEFITS-FLUX]`** — **CORRIGÉ 2026-08-17** (PR #644). Après divorce, les
+  allocations familiales étaient encaissées à **100 %** mais publiées à **50 %**.
   Mesuré : `Δ Income = +332 $/mois` contre `Δ childBenefits = +166 $/mois`, constant sur tout
   l'horizon. Cumul 20 ans : 31 673 $ encaissés vs 17 629 $ affichés ; effet patrimoine final
   **75 957 $**. Contredit frontalement la décision verrouillée (`decisions.md` Décision 5).
-  **Correctif** : ventiler `monthlyIncomeDelta` comme `liquidDelta` — `...Benefits` (garde),
-  `...Reee` (payout d'études), `...Rqap` (aucun facteur) — avec l'invariant de partition sous test.
-- [ ] 🔴 **`[ENG-DIVORCE-STUDIES-PAYOUT]`** (S, **ÉLEVÉ — MESURÉ 2×**) — pendant les études, la
-  dépense est partagée (× 0,5) mais le décaissement REEE reste ENTIER.
+  **Correctif livré, et il ne ressemble pas au correctif prévu.** Ventiler `monthlyIncomeDelta`
+  comme `liquidDelta` n'aurait fait que déplacer le problème : chaque montant d'enfant alimente 3 à
+  5 registres, et partager le RÉSULTAT oblige à se souvenir de tous. La part de garde est désormais
+  appliquée **à la SOURCE**, sur le MONTANT (`childCustodyShare` dans le ctx de `processOneChild`) —
+  tout dérivé suit par construction, et les multiplications en aval ont disparu de `projection.ts`.
+- [x] 🔴 **`[ENG-DIVORCE-STUDIES-PAYOUT]`** — **CORRIGÉ 2026-08-17** (PR #644). Pendant les études,
+  la dépense était partagée (× 0,5) mais le décaissement REEE restait ENTIER.
   Mesuré : `payout = 2 899 $/mois` contre `1 450 $` de dépense portée → **+1 450 $/mois** de
   trésorerie née de nulle part (≈ 69 600 $ sur 4 ans) et le REEE de l'enfant se vide **2× trop
   vite** (épuisé 24 mois plus tôt). Pas de création monétaire au bilan — une incohérence de modèle,
-  dérivé oublié de la même assiette. **Correctif** : partager `studiesMonthly` à la SOURCE, pour
-  que le montant retiré finance le coût qu'il couvre.
-- [ ] 🔴 **`[ENG-DIVORCE-CHILDREN-NO-SCENARIO-TEST]`** (S, **ÉLEVÉ**) — **aucune garde n'exerce
+  dérivé oublié de la même assiette. **Correctif** : `studiesMonthly` partagé à la SOURCE ⇒ le
+  retrait, calibré dessus, suit automatiquement. Résolu par le même changement que ci-dessus.
+- [x] 🔴 **`[ENG-DIVORCE-CHILDREN-NO-SCENARIO-TEST]`** — **LIVRÉ 2026-08-17** :
+  `tests/services/divorceEnfantsScenario.test.ts` (10 tests). **Aucune garde n'exerçait
   divorce × enfants**, et c'est pourquoi les deux défauts ci-dessus sont passés avec 4 262 tests
   verts. Tous les tests de divorce déclarent `childGoals: []` ; le fuzz a des enfants mais n'active
   pas `enableMonteCarlo`, donc `tryDivorce` ne tire JAMAIS ; `childrenGardePartagee` teste
   `processOneChild` en ISOLATION et ne touche aucun registre aval. Test exigé au niveau
   `__runScenarioForTests`, divorce forcé : `Δ Income === Δ childBenefits`, `childCost === childGross`
-  sur tout l'horizon, `ReeePayout` cohérent avec `childGross` pendant les études.
+  sur tout l'horizon, `ReeePayout` cohérent avec `childGross` pendant les études. **7 rouges sur le
+  code d'avant.**
+  ⚠️ **Deux pièges de vacuité rencontrés en l'écrivant, et ils valent la leçon** : (1) en mode MC le
+  moteur RÉDUIT chaque point à `{ NetWorth, monthIndex }` — sans `verboseMonthlyPoints`, le test
+  lisait des `undefined`, comparait des zéros et serait resté VERT sur n'importe quel code ;
+  (2) un enfant de 18 ans ne cotise plus au REEE, donc sans solde de départ le régime est vide et
+  « payout ≤ gross » passe sur un régime VIDE, pas sur un correctif. Les gardes `> 0` ont révélé
+  les deux.
 - [ ] 🔴 **`[PASSE-REEL-RESIDUEL-DEPOTS]`** (M, **ÉLEVÉ — MESURÉ**) — dans la ventilation du jour,
   le résiduel « Non expliqué » vaut **exactement les dépôts du jour**, systématiquement.
   `dayVariation.ts` exclut les `deposits` « parce qu'ils s'annulent » — mais

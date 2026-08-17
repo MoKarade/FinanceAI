@@ -94,7 +94,9 @@ Le point porte `dayIsReal`, `priceAgeMaxDays` et `hasEstimatedPrice` : l'infobul
 | `dayOfMonth` | `number` | Quantième (1–31). |
 | `dayIsReal` | `true` (ou absent) | **LE marqueur de MESURE.** Posé uniquement par la branche réelle de `mergeDailyRealPoint` (`services/projection/dailyCurve.ts`) — donc vrai ssi la journée a été reconstruite depuis les vraies données. Le mois ANCRE y passe aussi (`realOnlyMonthPoints`). |
 | `dayIsDated` | `boolean` | Un mouvement à date connue tombe ce jour-là, plutôt qu'un étalement. |
-| `dayLabels` | `string[]` | Libellés des mouvements du jour. |
+| `dayLabels` | `string[]` | Marchands des mouvements du jour — **dérivé** de `dayMovements`. Sert de repli quand les montants n'existent pas (jour daté sans ligne itemisée) ; préférer `dayMovements` dès qu'il est présent. |
+| `dayMovements` | `Array<{payee: string; amount: number}>` | **PASSÉ UNIQUEMENT.** Mouvements du jour avec leur montant. ⚠️ `amount` est **SIGNÉ** (négatif = sortie, positif = entrée), pas une valeur absolue : une paie n'est pas une dépense, et l'infobulle colore d'après ce signe. Absent en projection (le moteur n'itemise pas — il répartit des postes budgétaires). Source : `dailyPastLedger.movements`, posé par la seule branche RÉELLE de `mergeDailyRealPoint` (donc toujours avec `dayIsReal`). ⚠️ `dayLabels` en est **DÉRIVÉ** (`movements.map(payee)`) et n'est jamais accumulé en parallèle — deux listes séparées divergeraient, et l'infobulle montrerait des noms sans leurs montants. |
+| `dayMovementsTotal` | `number` | **PASSÉ UNIQUEMENT.** Nombre TOTAL de mouvements du jour, avant plafonnage d'affichage à 6. ⚠️ Critique pour l'honnêteté : une infobulle qui s'arrête silencieusement à 6 lignes donne l'impression qu'il n'y en a que 6. Ce champ permet l'affichage « +N autres » — l'absence de signal serait pire qu'une plage raccourcie annoncée. Source : `dailyPastLedger.movementsTotal`. |
 | `hostMonthIndex` | `number` | Mois hôte (entier) — jointure vers le point mensuel. |
 | `isDailyPoint` | `true` | Marqueur de type. |
 

@@ -26,7 +26,7 @@ npm run preview
 ## Lancer les tests
 
 ```bash
-npm run test          # Vitest (3 978 tests, 348 fichiers, mesuré 2026-08-13)
+npm run test          # Vitest (4 262 tests, 384 fichiers, mesuré 2026-08-17)
 npm run typecheck     # TypeScript strict mode (clean)
 npm run build         # Vite 8 (--mode production)
 ```
@@ -98,7 +98,7 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 
 - **Frontend** : React 19.2 + Vite 8 (Rolldown) + TypeScript 5.8 strict + Tailwind CSS 3
 - **State** : Zustand 5 (avec `persist` + `partialize`, schema v7 + migrations v1→v7)
-- **Tests** : Vitest 4 + @testing-library/react + axe-core (2872 tests, 251 fichiers)
+- **Tests** : Vitest 4 + @testing-library/react + axe-core (4 262 tests, 384 fichiers)
 - **Validation** : Zod 3
 - **Charts** : Recharts 3 (lazy-loaded)
 - **Backend** : aucun — 100 % navigateur, déploiement statique **Vercel** (`vercel.json`)

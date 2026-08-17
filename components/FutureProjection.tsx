@@ -711,6 +711,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const [detailMonthIso, setDetailMonthIso] = useState<string | null>(null);
 
 
+
     // G10 — légende interactive : on stocke les séries MASQUÉES (le delta vs
     // défaut « tout visible »), persistées en localStorage. Même convention que
     // Dashboard (`dashboard:hiddenAccounts:v1`) : persistance dans le setter.

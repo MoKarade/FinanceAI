@@ -10,6 +10,7 @@ import { ChartDataTable, type ChartDataColumn } from '../ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
 import { ProjectionChartPoint } from '../../services/projection/types';
 import { transactionsOnDay } from '../../services/history/dayTransactions';
+import type { DayVariationResult } from '../../services/history/dayVariation';
 import type { Transaction } from '../../types';
 
 /**
@@ -232,6 +233,9 @@ interface FutureDetailModalProps {
      * `detailDayIso` dans `FutureProjection.tsx`.
      */
     dayIso?: string | null;
+    /** [PASSE-REEL-VARIATION-DU-JOUR] Ventilation de la variation du jour, calculée en amont sur les
+     *  lignes reconstruites. `null` = pas de veille connue ⇒ on n'affirme rien. */
+    variation?: DayVariationResult | null;
     chartData: ProjectionChartPoint[];
     userName1?: string;
     userName2?: string;
@@ -240,7 +244,7 @@ interface FutureDetailModalProps {
 }
 
 export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
-    point, chartData, transactions, dayIso = null, userName1, userName2, isPrivacyMode = false, onClose,
+    point, chartData, transactions, dayIso = null, variation = null, userName1, userName2, isPrivacyMode = false, onClose,
 }) => {
     const [selected, setSelected] = useState<AccountDef | null>(null);
 
@@ -248,6 +252,37 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
     // jours : y pré-indexer les transactions les garderait toutes en mémoire en permanence pour
     // n'en montrer qu'une journée. Ici, un balayage ponctuel sur une liste déjà chargée.
     const txnsDuJour = useMemo(() => transactionsOnDay(transactions, dayIso), [transactions, dayIso]);
+
+    /**
+     * [PASSE-REEL-VARIATION-DU-JOUR] Section REPLIABLE, FERMÉE par défaut — choix de Marc
+     * (`docs/decisions.md`), pour garder le panneau court.
+     *
+     * ⚠️ Je lui ai signalé le risque au moment de la question : une feature gatée par une
+     * interaction se fait oublier (`UX-UNREACHABLE-FEATURE`). Il assume, ET les deux contraintes qui
+     * en découlent sont donc obligatoires :
+     *   • l'état ouvert/fermé est PERSISTÉ — sinon son choix serait à refaire à chaque ouverture,
+     *     ce qui transformerait « repliable » en « toujours fermée » ;
+     *   • le titre replié dit ce qu'il contient de façon AUTONOME (montant de la variation compris),
+     *     pour que la valeur soit lisible SANS déplier.
+     */
+    const [variationOuverte, setVariationOuverte] = useState<boolean>(() => {
+        try { return localStorage.getItem('future:variationJour:open') === '1'; } catch { return false; }
+    });
+    const basculerVariation = () => {
+        setVariationOuverte((v) => {
+            const suivant = !v;
+            // Persistance DANS le setter — même convention que `future:hiddenSeries:v1`.
+            try { localStorage.setItem('future:variationJour:open', suivant ? '1' : '0'); } catch { /* stockage indisponible : le pli reste juste non mémorisé */ }
+            return suivant;
+        });
+    };
+
+    const LIBELLE_SOURCE: Record<string, string> = {
+        tresorerie: 'Encaissé / décaissé',
+        rendement: 'Rendement des placements',
+        immobilier: 'Équité immobilière',
+        dettes: 'Dettes',
+    };
 
     // [A11Y-FUTUR-MILESTONES-KEYBOARD] Une modale ouvrable au CLAVIER (pastilles focusables,
     // Entrée) doit se fermer au clavier : Échap n'était géré NULLE PART — seul le bouton
@@ -548,6 +583,73 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                             parce que le message a l'autorité d'un fait constaté (finding
                             silent-failure-hunter sur cette PR). Une liste `[]` EXPLICITE reste
                             légitime : c'est une liste fournie et vide, donc une vraie mesure. */}
+                        {/* [PASSE-REEL-VARIATION-DU-JOUR] La variation COMPLÈTE du jour, ventilée.
+                            Demande de Marc : « tout compris mais détaillé ». Rendue AVANT la liste
+                            des transactions, parce qu'elle en est le sur-ensemble : les transactions
+                            expliquent la ligne « encaissé/décaissé », pas le reste.
+                            ⚠️ `variation === null` (pas de veille connue) ⇒ RIEN. Une variation est
+                            une différence : sans les deux jours, on n'affirme pas. */}
+                        {dayIso && variation && (
+                            <div className="border-t border-white/10 pt-3">
+                                <button
+                                    type="button"
+                                    onClick={basculerVariation}
+                                    aria-expanded={variationOuverte}
+                                    className="w-full flex items-baseline justify-between gap-2 text-left focus-ring rounded"
+                                >
+                                    {/* Titre AUTONOME : le montant est lisible sans déplier. */}
+                                    <span className="text-tiny uppercase tracking-widest text-ink-400 font-bold">
+                                        <span aria-hidden="true" className="mr-1 inline-block">{variationOuverte ? '▾' : '▸'}</span>
+                                        Variation du patrimoine ce jour-là
+                                    </span>
+                                    <PrivateAmount className={`font-mono text-meta ${variation.deltaNetWorth >= 0 ? 'text-green-400' : 'text-danger-400'}`}>
+                                        {variation.deltaNetWorth > 0 ? '+' : ''}{fmt(variation.deltaNetWorth)}
+                                    </PrivateAmount>
+                                </button>
+
+                                {variationOuverte && (
+                                    <div className="mt-2 space-y-1">
+                                        {variation.sources.filter((src) => Math.abs(src.montant) > 0.005).map((src) => (
+                                            <div key={src.cle} className="flex items-baseline justify-between gap-2 text-meta">
+                                                <span className="text-ink-300">{LIBELLE_SOURCE[src.cle] ?? src.cle}</span>
+                                                <PrivateAmount className={`font-mono ${src.montant >= 0 ? 'text-green-300' : 'text-ink-200'}`}>
+                                                    {src.montant > 0 ? '+' : ''}{fmt(src.montant)}
+                                                </PrivateAmount>
+                                            </div>
+                                        ))}
+
+                                        {/* ⚠️ Le RÉSIDUEL est AFFICHÉ, jamais absorbé par un poste
+                                            « autre » : un fourre-tout fermerait le total par
+                                            construction et la vérification deviendrait circulaire. */}
+                                        {Math.abs(variation.residuel) > 0.005 && (
+                                            <div className="flex items-baseline justify-between gap-2 text-meta border-t border-white/5 pt-1">
+                                                <span className="text-amber-300">Non expliqué</span>
+                                                <PrivateAmount className="font-mono text-amber-300">
+                                                    {variation.residuel > 0 ? '+' : ''}{fmt(variation.residuel)}
+                                                </PrivateAmount>
+                                            </div>
+                                        )}
+
+                                        {/* Mouvement INTERNE : montré parce qu'il est utile, hors du
+                                            total parce qu'il ne change pas le patrimoine. */}
+                                        {Math.abs(variation.depotsInternes) > 0.005 && (
+                                            <p className="text-tiny text-ink-400 leading-snug pt-1">
+                                                Dont <PrivateAmount as="span" className="font-mono">{fmt(variation.depotsInternes)}</PrivateAmount> déplacés
+                                                de tes liquidités vers tes placements — ça ne change pas ton patrimoine, seulement où il se trouve.
+                                            </p>
+                                        )}
+
+                                        {variation.immobilierEstPalier && (
+                                            <p className="text-tiny text-ink-400 leading-snug pt-1">
+                                                L'équité immobilière est connue à l'<strong className="text-ink-200">année</strong>, pas au jour :
+                                                elle bouge par palier. Ce n'est pas un gain réalisé ce jour-là.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {dayIso && transactions && (
                             <div className="border-t border-white/10 pt-3">
                         {(txnsDuJour.counted.length > 0 || txnsDuJour.excluded.length > 0) ? (

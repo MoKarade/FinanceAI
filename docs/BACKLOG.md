@@ -1101,16 +1101,19 @@ stub : il n'aurait aucune date à lire.
   toujours sans section). Garde discriminante : 2 tests ÉCHOUENT sur le code d'avant, plus une
   assertion anti-sur-correctif (l'état vide ne doit pas s'afficher quand il y a des mouvements —
   sans elle, on pourrait rendre le message en permanence et rester vert).
-- [ ] **`[PASSE-REEL-IMPOT-LATENT-DEBUT]`** (S, **signalé par Marc 2026-08-14** : « je vois impôt
-  latent commencer le 1/09 mais jsp pourquoi ») — **cause CONFIRMÉE par mesure** : `ImpotLatent`
-  n'est émis NULLE PART dans le passé reconstruit (0 occurrence dans `services/history/
-  dailyPastLedger.ts` et `buildPastPrefix.ts` — le passé ne porte que soldes, flux et patrimoine
-  net). La série ne peut donc démarrer qu'au premier mois PROJETÉ. Le comportement est correct ; ce
-  qui manque, c'est de le DIRE — une courbe qui surgit à une date arbitraire se lit comme un bug.
-  ⚠️ Même classe que le ticket ci-dessus : une absence non énoncée se lit comme un défaut.
-  Pistes : ne pas tracer la série tant qu'elle n'a pas de sens, ou marquer visuellement son point de
-  départ avec la raison. À cadrer avec Marc — ne PAS fabriquer un impôt latent passé (il faudrait
-  l'historique des prix de revient, que l'app n'a pas).
+- [x] **`[PASSE-REEL-IMPOT-LATENT-DEBUT]`** — **LIVRÉ 2026-08-17**. Marc : « je vois impôt latent
+  commencer le 1/09 mais jsp pourquoi ». **Cause CONFIRMÉE par mesure** : `ImpotLatent` n'est émis
+  NULLE PART dans le passé reconstruit (0 occurrence dans `dailyPastLedger.ts` et
+  `buildPastPrefix.ts`) — le passé ne porte que soldes, flux et patrimoine net. Reconstruire un
+  impôt latent exigerait l'historique des PRIX DE REVIENT, que l'app n'a pas.
+  ⚠️ **Le calcul est JUSTE ; c'est le SILENCE qui était le défaut** — une courbe qui surgit à une
+  date arbitraire se lit comme un bug. Classe `SILENCE-READS-AS-BROKEN`, la troisième de la semaine.
+  Correctif : une phrase dans le bandeau « Courbe au jour », GATÉE sur la visibilité de la série
+  (sinon bruit permanent). ⚠️ On n'invente PAS un impôt latent passé — no-fake-data.
+  Garde : `tests/services/impotLatentPasse.test.ts`, qui verrouille le FAIT et non la phrase : si le
+  passé se met un jour à émettre `ImpotLatent`, le test ÉCHOUE — l'explication affichée deviendrait
+  fausse et devrait être retirée en même temps. Sans ça, l'app continuerait d'affirmer une
+  limitation qui n'existe plus.
 - [ ] 🔴 **`[PASSE-REEL-RACCORD-CHUTE]`** (S — **CAUSE ÉTABLIE PAR MESURE 2026-08-17**) — Marc :
   « je vois une chute de 10k aujourd'hui jsp pourquoi ». Ses données étant locales, j'ai mesuré le
   MÉCANISME sur des données construites : `tests/services/raccordChute.test.ts` (6 tests).
@@ -1130,34 +1133,23 @@ stub : il n'aurait aucune date à lire.
   ⚠️ **Seconde cause POSSIBLE et DISTINCTE**, non confirmée chez lui : `undatedTotal` /
   `flowsAfterNowDate` décalent tout le NIVEAU passé au lieu de créer une marche d'un jour. Le
   bandeau les affiche déjà ; s'ils sont nuls chez Marc, cette piste est réfutée.
-- [ ] 🔴 **`[PASSE-REEL-VARIATION-DU-JOUR]`** (M, **demande de Marc 2026-08-14**, en direct : « je veux
-  voir la variabilité d'argent pour la journée (tout compris mais détaillé) ») — le panneau du jour
-  affiche aujourd'hui le **net encaissé/décaissé** (Σ des transactions). Ce n'est PAS la variation
-  du patrimoine : un jour de forte hausse boursière affiche 0 $ pendant que la courbe monte. Le
-  CHANGELOG de `[PASSE-REEL-TXN-DU-JOUR]` le dit en toutes lettres — c'est exactement ce manque que
-  Marc demande de combler. Livrer la variation **complète** de la journée, **ventilée par source**.
-  ⚠️ **Le moteur ÉMET DÉJÀ la ventilation — la CONSOMMER, ne rien recalculer côté UI**
-  (`DailyPastRow`, `services/history/dailyPastLedger.ts`, vérifié en écrivant ce ticket) :
-  `NetTransferLiquid` (flux de liquidités), `deposits` **et** `growth` par régime (les achats datés
-  vs le mouvement de marché sont séparés à la source), `Immobilier`, `DettesNonImmo`, `NetWorth`.
-  La ΔNetWorth jour-à-jour se ventile donc sans nouveau calcul financier.
-  ⚠️ **Deux pièges à traiter EXPLICITEMENT, sinon le total ne fermera pas** :
-  1. Un **dépôt** (achat de titre) sort des liquidités et entre dans un régime : il doit
-     s'**annuler** dans le total « tout compris », sinon il est compté deux fois. Il reste une
-     information utile à afficher (« tu as déplacé X »), mais à somme nulle sur le patrimoine.
-  2. `Immobilier` bouge par **palier ANNUEL** et `DettesNonImmo` est **figée** (décision Marc,
-     Option A, `pastNetWorth.ts`). Un jour de palier affichera donc un saut immobilier qui n'a rien
-     de journalier : le dire, ne pas le lisser. Lisser une donnée annuelle sur 365 jours fabriquerait
-     de la donnée — interdit.
-  **Critère de « fini » : le résiduel est affiché, jamais absorbé.** Σ des sources − ΔNetWorth du jour
-  doit être calculé et montré s'il n'est pas nul ; un « autre » fourre-tout qui ferme le total par
-  construction est une garde CIRCULAIRE (classe déjà consignée dans `CLAUDE.md`) et ne prouverait rien.
-  Garde attendue : sur des données réelles, ventilation vs `NetWorth[j] − NetWorth[j−1]`, résiduel
-  borné, et le test doit ÉCHOUER si un poste est retiré de la somme.
-  ⚠️ **Cadrage TRANCHÉ par Marc 2026-08-17** : **section REPLIABLE, FERMÉE par défaut**
-  (`docs/decisions.md`). Je lui ai signalé le risque `UX-UNREACHABLE-FEATURE` ; il assume, pour garder
-  le panneau court. À respecter : titre replié autonome (il doit dire ce qu'il contient) + état
-  ouvert/fermé PERSISTÉ, sinon son choix est à refaire à chaque ouverture. Et le mode discret masque les montants dès la naissance de la surface.
+- [x] 🔴 **`[PASSE-REEL-VARIATION-DU-JOUR]`** — **LIVRÉ 2026-08-17** (demande Marc 2026-08-14 :
+  « je veux voir la variabilité d'argent pour la journée, tout compris mais détaillé »).
+  Le panneau montrait le NET ENCAISSÉ, qui n'est pas la variation du patrimoine : un jour de hausse
+  boursière affichait 0 $ pendant que la courbe montait.
+  ⚠️ **RIEN de recalculé** : `services/history/dayVariation.ts` ne fait que COMBINER ce que
+  `DailyPastRow` émettait déjà. Les deux pièges annoncés au ticket sont traités et sous test —
+  le **dépôt** s'annule dans le total (sinon compté deux fois) mais reste montré à part ; le
+  **palier immobilier** est dit comme tel, jamais lissé.
+  ⚠️ **Le RÉSIDUEL est AFFICHÉ** (« Non expliqué », ambre), jamais absorbé par un poste fourre-tout —
+  c'était le critère de fini posé d'avance : un fourre-tout fermerait le total par construction et
+  rendrait la vérification circulaire.
+  Section repliable FERMÉE (choix Marc) + les deux contraintes qui rendent ce choix tenable :
+  **état persisté** (sinon « repliable » = « toujours fermée ») et **titre autonome portant le
+  montant** (la valeur est lisible sans déplier).
+  `addDay` EXPORTÉ de `reconstructCashHistory` plutôt que dupliqué (pas de copie locale de formule).
+  Gardes : `tests/services/dayVariation.test.ts` (11) + `tests/components/FutureDetailModal.variation.test.tsx`
+  (9), les deux volets prouvés discriminants, avec assertion anti-sur-correctif sur le résiduel.
 
 ### 🔴 `[A11Y-PRIVACY-LOT2]` — le mode discret ne couvre PAS encore les formulaires (balayage exhaustif 2026-08-13)
 
@@ -1230,13 +1222,20 @@ stub : il n'aurait aucune date à lire.
 - [ ] **`[A11Y-PRIVACY-ONBOARDING]`** (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
   masqués, mais NON exploitable (overlay `fixed inset-0 z-[9999]` qui recouvre le bouton du mode
   discret → impossible de l'activer pendant l'onboarding). À aligner par cohérence, pas en urgence.
-- [ ] **`[A11Y-PRIVACY-PDF-CONTRAT]`** (XS, **TRANCHÉ par Marc 2026-08-17** → `docs/decisions.md`) —
-  `services/pdfReport.ts` ne consulte pas le mode discret. **Décision : REFUSER de générer** tant que
-  le mode discret est actif, avec un message qui explique pourquoi (patron `AiChatConfirmModal`, qui
-  refuse déjà de rendre). Un PDF SORT de l'app et survit au mode : le générer en clair depuis un écran
-  volontairement masqué est un piège, et le générer en « ••• » produit un rapport sans chiffres, donc
-  inutile. → reste à CODER (le ticket n'attend plus de décision).
-
+- [x] **`[A11Y-PRIVACY-PDF-CONTRAT]`** — **LIVRÉ 2026-08-17** (décision Marc, `docs/decisions.md`).
+  `services/pdfReport.ts` REFUSE désormais de générer tant que le mode discret est actif, via une
+  erreur TYPÉE (`PdfRefusedPrivacyError`) que l'appelant distingue d'une panne.
+  ⚠️ **La garde est AU SERVICE, pas au clic** : une borne posée seulement dans `App.tsx` laisserait
+  passer tout futur appelant (autre bouton, raccourci, outil MCP, script) — même motif que
+  `clampSplitPct`, où la borne UI seule laissait passer un import de sauvegarde.
+  ⚠️ Refus **immédiat**, avant toute construction : refuser au moment d'écrire le fichier aurait
+  laissé un PDF partiel. Le mode est lu à l'APPEL (il peut être activé entre le rendu du bouton et
+  le clic).
+  Le toast dit quoi FAIRE (« désactive le mode discret »), pas « erreur » — confondre le refus avec
+  une panne enverrait Marc chercher un bug.
+  Garde : `tests/services/pdfPrivacyRefus.test.ts`, avec assertion ANTI-SUR-CORRECTIF (mode inactif
+  → génère bel et bien : sans elle, refuser TOUJOURS resterait vert) et garde sur le `name` stable
+  de l'erreur, sur lequel l'appelant discrimine. Prouvée discriminante (2 tests tombent sans la garde).
 - [ ] **`[A11Y-BUDGETGROUP-CHART-NOALT]`** (S, relevé par le panel a11y de #608) — le mini-graphique
   « Historique » par catégorie (`components/budget/BudgetGroupTable.tsx:312-330`) est le SEUL des 10
   graphiques du dépôt sans `role="img"` + `aria-label` ni `ChartDataTable` sr-only : aucun nom

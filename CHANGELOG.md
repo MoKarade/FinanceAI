@@ -6,6 +6,33 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-17 (la variation du jour, ventilée)
+
+### Tu vois enfin POURQUOI ton patrimoine a bougé un jour donné
+- Le panneau d'une journée te montrait le **net encaissé** — la somme de tes transactions. Ce n'est
+  pas la variation de ton patrimoine : un jour de forte hausse boursière affichait 0 $ pendant que
+  ta courbe montait.
+- Nouvelle section : la **variation complète du jour, ventilée par source** — encaissé/décaissé,
+  rendement des placements, équité immobilière, dettes.
+- Elle est **repliée par défaut** pour ne pas allonger le panneau, mais **son titre porte déjà le
+  montant** : tu vois la variation sans rien déplier. Et si tu la déplies, elle reste ouverte la
+  fois suivante.
+- ⚠️ **Ce qui n'est pas expliqué est affiché comme tel**, en ambre. Aucune ligne « autre » ne vient
+  boucher l'écart : un total qui colle toujours ne prouverait rien.
+- Deux mentions honnêtes quand elles s'appliquent : l'argent **déplacé** de tes liquidités vers tes
+  placements (ça ne change pas ton patrimoine, seulement où il est), et le fait que l'équité
+  immobilière est connue à l'**année** — un jour de palier n'est pas un gain réalisé ce jour-là.
+
+## [unreleased] — 2026-08-17 (mode discret et export PDF)
+
+### En mode discret, l'export PDF est maintenant bloqué
+- Tu pouvais masquer tes montants à l'écran **et** générer un PDF qui les contenait tous en clair.
+  Le fichier, lui, ne sait pas qu'il vient d'un écran masqué : il sort de l'app et garde tes
+  chiffres pour toujours.
+- Désormais l'export **refuse de se lancer** tant que le mode discret est actif, et te dit quoi
+  faire. Un PDF rempli de « ••• » n'aurait servi à rien ; te laisser fabriquer une copie en clair
+  sans le dire aurait été pire.
+
 ## [unreleased] — 2026-08-17 (Profil en sous-onglets)
 
 ### Ton onglet Profil ne se scrolle plus à l'infini

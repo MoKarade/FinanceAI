@@ -137,7 +137,10 @@ export interface CashHistoryDailyResult {
 const DAY_MS = 86_400_000;
 
 /** Décale une date ISO de n jours (UTC — aucune dérive de fuseau sur une clé de date pure). */
-function addDay(iso: string, n: number): string {
+/** Décale une date ISO de `n` jours. EXPORTÉ pour que les appelants n'en refassent pas une copie
+ *  locale — l'arithmétique de dates est exactement le genre de formule qui dérive quand on la
+ *  duplique (`[PASSE-REEL-VARIATION-DU-JOUR]` avait besoin de la veille). */
+export function addDay(iso: string, n: number): string {
     return new Date(Date.parse(`${iso}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
 }
 

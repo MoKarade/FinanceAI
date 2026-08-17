@@ -109,6 +109,8 @@ import { NO_DATA_LABEL } from './ui/emptyAware';
 // [REFONTE-NAV-L6a] Contexte d'écran « Futur » pour l'assistant (patron CHAT-PAGE-CONTEXT).
 import { useViewContextPublisher } from '../hooks/useViewContextPublisher';
 import { buildFutureViewDetail } from '../services/aiChat/futureViewContext';
+import { dayVariation } from '../services/history/dayVariation';
+import { addDay } from '../services/history/reconstructCashHistory';
 
 // [PROJECTION-PERSIST] Dédup MODULE-LEVEL de l'écriture du blob figé (finding code-reviewer) :
 // survit au démontage/remontage de l'onglet → pas de réécriture IDB (~1-2 Mo chiffrés) à chaque
@@ -707,6 +709,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
      */
     const [detailDayIso, setDetailDayIso] = useState<string | null>(null);
 
+
     // G10 — légende interactive : on stocke les séries MASQUÉES (le delta vs
     // défaut « tout visible »), persistées en localStorage. Même convention que
     // Dashboard (`dashboard:hiddenAccounts:v1`) : persistance dans le setter.
@@ -837,6 +840,21 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         };
     }, [dailyPastFrom, todayIso, transactions, calculatedStartingCash, storeAssets, fxRates, realEstateGoals, startYear, currentDebtNonImmo]);
     const dailyPastByDate = dailyPast?.byDate ?? null;
+    /**
+     * [PASSE-REEL-VARIATION-DU-JOUR] La ventilation du jour ouvert, calculée à partir des lignes
+     * DÉJÀ reconstruites — aucune donnée nouvelle, aucun recalcul financier.
+     *
+     * ⚠️ Une variation est une DIFFÉRENCE : il faut la VEILLE. Si elle manque (premier jour
+     * reconstruit, ou trou dans la série), `dayVariation` rend `null` et la section ne s'affiche
+     * pas — plutôt qu'un 0 crédible et faux.
+     */
+    const variationDuJour = useMemo(() => {
+        if (!detailDayIso || !dailyPastByDate) return null;
+        const jour = dailyPastByDate.get(detailDayIso);
+        if (!jour) return null;
+        const veilleIso = addDay(detailDayIso, -1);
+        return dayVariation(jour, dailyPastByDate.get(veilleIso));
+    }, [detailDayIso, dailyPastByDate]);
 
     // Contexte daté (paie/charges/dettes) — un objet STABLE pour la ventilation courbe + infobulle.
     const dailyDated = useMemo(() => ({
@@ -1690,6 +1708,25 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             quotidienne ne peut pas placer décale TOUT le niveau passé. Le dire est le
                             minimum ; le corriger (retrancher ces flux de l'ancre) touche
                             `computeStartingCash`, donc le raccord au présent — plan-first, au BACKLOG. */}
+                        {/* [PASSE-REEL-IMPOT-LATENT-DEBUT] Marc : « je vois impôt latent commencer
+                            le 1/09 mais jsp pourquoi ». MESURÉ : `ImpotLatent` n'est émis NULLE PART
+                            dans le passé reconstruit (0 occurrence dans `dailyPastLedger.ts` et
+                            `buildPastPrefix.ts` — le passé ne porte que soldes, flux et patrimoine
+                            net). Sa série ne PEUT donc démarrer qu'au premier mois PROJETÉ.
+                            ⚠️ Le calcul est juste ; c'est de ne pas le DIRE qui est le défaut — une
+                            courbe qui surgit à une date arbitraire se lit comme un bug. Même classe
+                            que `SILENCE-READS-AS-BROKEN`.
+                            ⚠️ Affiché SEULEMENT si la série est visible : sinon c'est du bruit
+                            permanent sur un écran déjà dense. Et surtout, on n'invente PAS un impôt
+                            latent passé — il faudrait l'historique des prix de revient, que l'app
+                            n'a pas (no-fake-data). */}
+                        {isVisible('ImpotLatent') && (
+                            <span className="mt-1 block text-ink-300">
+                                L'<strong className="text-ink-100">impôt latent</strong> n'est pas reconstruit
+                                pour le passé : l'app n'a pas l'historique de tes prix de revient. Sa courbe
+                                démarre donc au premier mois projeté — ce n'est pas un trou dans tes données.
+                            </span>
+                        )}
                         {dailyPast !== null && Math.abs(dailyPast.undatedTotal) > 0.5 && (
                             <span className="mt-1 block text-amber-300/90">
                                 ⚠ {formatCAD(Math.abs(dailyPast.undatedTotal))} de transactions datées au mois
@@ -1841,6 +1878,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         chartData={chartData}
                         transactions={transactions}
                         dayIso={detailDayIso}
+                        variation={variationDuJour}
                         userName1={config.users[0]?.name}
                         userName2={config.users[1]?.name}
                         isPrivacyMode={isPrivacyMode}

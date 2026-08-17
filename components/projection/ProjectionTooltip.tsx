@@ -83,6 +83,7 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
     // de `ProjectionChartPoint` (qui est le contrat du MOTEUR, pas celui de l'affichage).
     const daily = data as ProjectionChartPoint & {
         isDailyPoint?: boolean; dayLabels?: string[]; dayIsDated?: boolean;
+        dayMovements?: Array<{ payee: string; amount: number }>; dayMovementsTotal?: number;
         dayIsReal?: boolean; priceAgeMaxDays?: number; hasEstimatedPrice?: boolean;
         daySyncUnconfirmed?: boolean;
     };
@@ -94,6 +95,8 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
     const priceAge = Number(daily.priceAgeMaxDays);
     const stalePrice = Number.isFinite(priceAge) && priceAge > 7;
     const dayLabels = daily.dayLabels;
+    const dayMovements = daily.dayMovements;
+    const dayMovementsTotal = daily.dayMovementsTotal ?? 0;
     // ⚠️ `dayIsDated` ET les libellés (finding revue) : un `DatedDelta` sans `label` produit un jour
     // réellement DATÉ mais sans libellé — n'écouter que `labels.length` aurait alors annoncé
     // « aucun mouvement à date connue » un jour où un mouvement a bel et bien eu lieu.
@@ -288,9 +291,35 @@ export const ExpertTooltip = ({ data, userName1, userName2, frozen = false, onOp
                         </p>
                     )}
                     {dayHasMovement ? (
-                        <div className="flex items-baseline gap-1.5">
-                            <span className="text-tiny uppercase tracking-widest text-primary font-bold shrink-0">Ce jour</span>
-                            <span className="text-tiny text-ink-100">{dayLabels && dayLabels.length > 0 ? dayLabels.join(', ') : 'Mouvement à date connue'}</span>
+                        /* [FUTUR-INFOBULLE-MONTANTS] Demande de Marc : voir le MONTANT de chaque
+                           dépense, pas seulement le marchand. Borné au PASSÉ — `dayMovements`
+                           n'existe que sur un jour reconstruit ; le futur n'itemise pas.
+                           ⚠️ Repli sur les libellés seuls quand les montants n'existent pas : ne
+                           JAMAIS afficher un montant qu'on n'a pas mesuré. */
+                        <div className="space-y-0.5">
+                            <span className="text-tiny uppercase tracking-widest text-primary font-bold">Ce jour</span>
+                            {dayMovements && dayMovements.length > 0 ? (
+                                <>
+                                    {dayMovements.map((mv, i) => (
+                                        <div key={`${mv.payee}-${i}`} className="flex items-baseline justify-between gap-3">
+                                            <span className="text-tiny text-ink-100 truncate">{mv.payee}</span>
+                                            <PrivateAmount className={`text-tiny font-mono shrink-0 ${mv.amount >= 0 ? 'text-green-300' : 'text-ink-200'}`}>
+                                                {mv.amount > 0 ? '+' : ''}{fmt(mv.amount)}$
+                                            </PrivateAmount>
+                                        </div>
+                                    ))}
+                                    {/* ⚠️ La troncature était SILENCIEUSE. Avec des montants
+                                        affichés, Marc lirait six dépenses en croyant les avoir
+                                        toutes — même classe que `truncatedFrom`. */}
+                                    {dayMovementsTotal > dayMovements.length && (
+                                        <div className="text-[10px] text-ink-400">
+                                            +{dayMovementsTotal - dayMovements.length} autre{dayMovementsTotal - dayMovements.length > 1 ? 's' : ''} — ouvre le détail
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <span className="text-tiny text-ink-100">{dayLabels && dayLabels.length > 0 ? dayLabels.join(', ') : 'Mouvement à date connue'}</span>
+                            )}
                         </div>
                     ) : (
                         <div className="text-[10px] text-ink-400">

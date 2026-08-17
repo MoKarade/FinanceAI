@@ -709,22 +709,17 @@
   ⚠️ L'action de RÉPARATION est chez Fintable (reconnecter l'institution sans `investments`, ajouter
   le courtier comme source distincte) — l'app ne peut que rendre la cause visible.
 
-- [ ] 🔴 **`[FUTUR-INFOBULLE-MONTANTS]`** (S, **demande de Marc 2026-08-17** : « pour chaque dépense de
-  chaque jour dans Futur, dans l'infobulle, je veux voir le montant ») — l'infobulle liste
-  aujourd'hui les MARCHANDS seuls (`dayLabels.join(', ')`, `ProjectionTooltip.tsx:293`).
-  ⚠️ **PÉRIMÈTRE RÉEL, mesuré** : `dayLabels` sert DEUX populations — les jours PASSÉS (vraies
-  transactions, `dailyPastLedger` l.215) et les jours FUTURS (libellés d'événements projetés,
-  `dailyLedger.ts:536`). Les montants PAR DÉPENSE n'existent que pour le PASSÉ : dans le futur le
-  moteur RÉPARTIT les dépenses sans les détailler. Il n'y a donc rien d'honnête à afficher côté
-  projeté — ne pas inventer une ventilation (no-fake-data).
-  **Plan** : porter `labels: string[]` → `Array<{ payee: string; amount: number }>` dans
-  `DailyPastRow`, propager par `dailyCurve` (2 sites), rendre dans l'infobulle avec `PrivateAmount`
-  (montants = donnée sensible, mode discret).
-  ⚠️ **Le plafond de 6 doit devenir VISIBLE** : `dailyPastLedger` tronque à 6 marchands EN SILENCE
-  (l.217). Avec des montants affichés, Marc lirait 6 dépenses en croyant les avoir toutes — même
-  classe que `truncatedFrom` (une troncature muette est pire qu'une plage annoncée). Afficher
-  « +N autres ».
-
+- [x] 🔴 **`[FUTUR-INFOBULLE-MONTANTS]`** — **LIVRÉ 2026-08-17** (demande Marc, périmètre confirmé
+  par lui : le PASSÉ). L'infobulle affiche le MONTANT de chaque mouvement, plus seulement le
+  marchand. `DailyPastRow.movements` porte `{ payee, amount }` ; **`labels` en est DÉRIVÉ**, pas
+  accumulé en parallèle — deux listes remplies séparément divergent, et l'infobulle montrerait des
+  noms sans leurs montants.
+  ⚠️ **Le plafond de 6 est devenu VISIBLE** (`movementsTotal` → « +N autres »). Il était SILENCIEUX :
+  tant qu'on n'affichait que des noms c'était un détail, mais avec des montants Marc lirait six
+  dépenses en croyant les avoir toutes — même classe que `truncatedFrom`.
+  ⚠️ Repli sur les libellés seuls quand les montants n'existent pas (jour projeté) : on n'affiche
+  JAMAIS un montant non mesuré. Montants via `PrivateAmount` (mode discret).
+  Garde : `tests/services/infobulleMontants.test.ts` (7), dont l'invariant `labels === movements.payee`.
 - [x] 🔴 **`[FUTUR-DETAIL-TOTAL-COMPTES]`** — **LIVRÉ 2026-08-17** (demande Marc). Le panneau détail
   affiche désormais le **Total des comptes**, en pied de liste.
   ⚠️ Somme des MÊMES champs moteur que les lignes, sur la liste **NON filtrée** : sommer la liste

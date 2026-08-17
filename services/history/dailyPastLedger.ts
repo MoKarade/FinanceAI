@@ -90,6 +90,20 @@ export interface DailyPastRow {
     growth: Record<PastAccountKey, number>;
     /** Libellés des mouvements réels du jour (payees), pour l'infobulle. */
     labels: string[];
+    /**
+     * [FUTUR-INFOBULLE-MONTANTS] Les mêmes mouvements que `labels`, AVEC leur montant — demande de
+     * Marc (2026-08-17), bornée au PASSÉ (le futur n'itemise pas ses dépenses).
+     * ⚠️ `labels` en est DÉRIVÉ, pas accumulé en parallèle : deux listes remplies séparément
+     * finissent par diverger, et l'infobulle afficherait des noms sans leurs montants.
+     */
+    movements: Array<{ payee: string; amount: number }>;
+    /**
+     * Nombre TOTAL de mouvements du jour, avant plafonnement d'affichage.
+     * ⚠️ Existe parce que le plafond de 6 était SILENCIEUX : avec des montants affichés, Marc
+     * lirait six dépenses en croyant les avoir toutes. Même classe que `truncatedFrom` — une
+     * troncature muette est pire qu'une plage annoncée.
+     */
+    movementsTotal: number;
     /** Au moins un mouvement réel ce jour-là. */
     isDated: boolean;
     /** Âge du prix le plus vieux composant le point — un plateau long n'est pas une valeur stable. */
@@ -205,7 +219,8 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
     // ne partagent pas leur base et divergent (classe PH4D).
     const incomeByDay = new Map<string, number>();
     const expenseByDay = new Map<string, number>();
-    const labelsByDay = new Map<string, string[]>();
+    const movementsByDay = new Map<string, Array<{ payee: string; amount: number }>>();
+    const movementsCount = new Map<string, number>();
     for (const t of transactions) {
         if (!t?.date || t.date.length < 10 || !Number.isFinite(t.amount)) continue;
         if (t.isDuplicate || t.isTransfer) continue;
@@ -213,9 +228,10 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
         if (t.amount >= 0) incomeByDay.set(d, (incomeByDay.get(d) ?? 0) + t.amount);
         else expenseByDay.set(d, (expenseByDay.get(d) ?? 0) + Math.abs(t.amount));
         if (t.payee) {
-            const slot = labelsByDay.get(d) ?? [];
-            if (slot.length < 6) slot.push(t.payee); // l'infobulle en liste quelques-uns, pas 40
-            labelsByDay.set(d, slot);
+            movementsCount.set(d, (movementsCount.get(d) ?? 0) + 1);
+            const slot = movementsByDay.get(d) ?? [];
+            if (slot.length < 6) slot.push({ payee: t.payee, amount: t.amount }); // l'infobulle en liste quelques-uns, pas 40
+            movementsByDay.set(d, slot);
         }
     }
 
@@ -266,7 +282,10 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
             NetTransferLiquid: income - expenses,
             deposits: dep,
             growth,
-            labels: labelsByDay.get(date) ?? [],
+            movements: movementsByDay.get(date) ?? [],
+            movementsTotal: movementsCount.get(date) ?? 0,
+            // DÉRIVÉ : une seule source, donc pas de dérive possible entre noms et montants.
+            labels: (movementsByDay.get(date) ?? []).map((mv) => mv.payee),
             isDated: c.isDated || income !== 0 || expenses !== 0,
             priceAgeMaxDays: i.priceAgeMaxDays,
             hasEstimatedPrice: i.hasEstimatedPrice,

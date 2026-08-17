@@ -1690,6 +1690,25 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                             quotidienne ne peut pas placer décale TOUT le niveau passé. Le dire est le
                             minimum ; le corriger (retrancher ces flux de l'ancre) touche
                             `computeStartingCash`, donc le raccord au présent — plan-first, au BACKLOG. */}
+                        {/* [PASSE-REEL-IMPOT-LATENT-DEBUT] Marc : « je vois impôt latent commencer
+                            le 1/09 mais jsp pourquoi ». MESURÉ : `ImpotLatent` n'est émis NULLE PART
+                            dans le passé reconstruit (0 occurrence dans `dailyPastLedger.ts` et
+                            `buildPastPrefix.ts` — le passé ne porte que soldes, flux et patrimoine
+                            net). Sa série ne PEUT donc démarrer qu'au premier mois PROJETÉ.
+                            ⚠️ Le calcul est juste ; c'est de ne pas le DIRE qui est le défaut — une
+                            courbe qui surgit à une date arbitraire se lit comme un bug. Même classe
+                            que `SILENCE-READS-AS-BROKEN`.
+                            ⚠️ Affiché SEULEMENT si la série est visible : sinon c'est du bruit
+                            permanent sur un écran déjà dense. Et surtout, on n'invente PAS un impôt
+                            latent passé — il faudrait l'historique des prix de revient, que l'app
+                            n'a pas (no-fake-data). */}
+                        {isVisible('ImpotLatent') && (
+                            <span className="mt-1 block text-ink-300">
+                                L'<strong className="text-ink-100">impôt latent</strong> n'est pas reconstruit
+                                pour le passé : l'app n'a pas l'historique de tes prix de revient. Sa courbe
+                                démarre donc au premier mois projeté — ce n'est pas un trou dans tes données.
+                            </span>
+                        )}
                         {dailyPast !== null && Math.abs(dailyPast.undatedTotal) > 0.5 && (
                             <span className="mt-1 block text-amber-300/90">
                                 ⚠ {formatCAD(Math.abs(dailyPast.undatedTotal))} de transactions datées au mois

@@ -1101,16 +1101,19 @@ stub : il n'aurait aucune date à lire.
   toujours sans section). Garde discriminante : 2 tests ÉCHOUENT sur le code d'avant, plus une
   assertion anti-sur-correctif (l'état vide ne doit pas s'afficher quand il y a des mouvements —
   sans elle, on pourrait rendre le message en permanence et rester vert).
-- [ ] **`[PASSE-REEL-IMPOT-LATENT-DEBUT]`** (S, **signalé par Marc 2026-08-14** : « je vois impôt
-  latent commencer le 1/09 mais jsp pourquoi ») — **cause CONFIRMÉE par mesure** : `ImpotLatent`
-  n'est émis NULLE PART dans le passé reconstruit (0 occurrence dans `services/history/
-  dailyPastLedger.ts` et `buildPastPrefix.ts` — le passé ne porte que soldes, flux et patrimoine
-  net). La série ne peut donc démarrer qu'au premier mois PROJETÉ. Le comportement est correct ; ce
-  qui manque, c'est de le DIRE — une courbe qui surgit à une date arbitraire se lit comme un bug.
-  ⚠️ Même classe que le ticket ci-dessus : une absence non énoncée se lit comme un défaut.
-  Pistes : ne pas tracer la série tant qu'elle n'a pas de sens, ou marquer visuellement son point de
-  départ avec la raison. À cadrer avec Marc — ne PAS fabriquer un impôt latent passé (il faudrait
-  l'historique des prix de revient, que l'app n'a pas).
+- [x] **`[PASSE-REEL-IMPOT-LATENT-DEBUT]`** — **LIVRÉ 2026-08-17**. Marc : « je vois impôt latent
+  commencer le 1/09 mais jsp pourquoi ». **Cause CONFIRMÉE par mesure** : `ImpotLatent` n'est émis
+  NULLE PART dans le passé reconstruit (0 occurrence dans `dailyPastLedger.ts` et
+  `buildPastPrefix.ts`) — le passé ne porte que soldes, flux et patrimoine net. Reconstruire un
+  impôt latent exigerait l'historique des PRIX DE REVIENT, que l'app n'a pas.
+  ⚠️ **Le calcul est JUSTE ; c'est le SILENCE qui était le défaut** — une courbe qui surgit à une
+  date arbitraire se lit comme un bug. Classe `SILENCE-READS-AS-BROKEN`, la troisième de la semaine.
+  Correctif : une phrase dans le bandeau « Courbe au jour », GATÉE sur la visibilité de la série
+  (sinon bruit permanent). ⚠️ On n'invente PAS un impôt latent passé — no-fake-data.
+  Garde : `tests/services/impotLatentPasse.test.ts`, qui verrouille le FAIT et non la phrase : si le
+  passé se met un jour à émettre `ImpotLatent`, le test ÉCHOUE — l'explication affichée deviendrait
+  fausse et devrait être retirée en même temps. Sans ça, l'app continuerait d'affirmer une
+  limitation qui n'existe plus.
 - [ ] 🔴 **`[PASSE-REEL-RACCORD-CHUTE]`** (S — **CAUSE ÉTABLIE PAR MESURE 2026-08-17**) — Marc :
   « je vois une chute de 10k aujourd'hui jsp pourquoi ». Ses données étant locales, j'ai mesuré le
   MÉCANISME sur des données construites : `tests/services/raccordChute.test.ts` (6 tests).

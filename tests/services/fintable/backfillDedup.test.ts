@@ -190,3 +190,68 @@ describe('[FINTABLE-RATTRAPAGE] les écartées ont une VOIX, pas seulement un co
         expect(r.report.warnings.join(' | ')).not.toContain('plus ANCIENNES');
     });
 });
+
+/**
+ * [FINTABLE-DOUBLON-DATE-DECALEE + FINTABLE-APPARIEMENT-GLOUTON] Les deux trous mesurés par l'audit
+ * de la PR #649, fermés après coup.
+ */
+describe('[FINTABLE-RATTRAPAGE] le doublon à DATE DÉCALÉE ne passe plus entre les mailles', () => {
+    /**
+     * ⚠️ LA FORME LA PLUS FRÉQUENTE du doublon bancaire réel : date de transaction vs date de
+     * comptabilisation, qui diffère systématiquement entre deux agrégateurs. Elle ne tombait dans
+     * AUCUNE branche (`d === 0 && similaire` → certain ; `!similaire` → incertain) et partait en
+     * NOUVELLE : ni neutralisée, ni listée, et invisible pour la dédup par clé puisque la date entre
+     * dans la clé. Double comptage silencieux.
+     */
+    it('même marchand, même montant, 1 jour d’écart → INCERTAIN (pas « nouvelle »)', () => {
+        const r = classerRattrapage(
+            [t({ date: '2026-06-10', payee: 'Metro', amount: -42 })],
+            [t({ date: '2026-06-11', payee: 'METRO #12', amount: -42 })],
+        );
+        expect(r.nouvelles, 'la laisser passer = double comptage').toHaveLength(0);
+        expect(r.incertaines).toHaveLength(1);
+        expect(r.incertaines[0].ecartJours).toBe(1);
+    });
+
+    // ⚠️ On ne la classe PAS « certaine » : un abonnement facturé deux jours de suite existe.
+    it('… mais elle n’est pas neutralisée en silence : c’est Marc qui tranche', () => {
+        const r = classerRattrapage(
+            [t({ date: '2026-06-10', payee: 'Metro', amount: -42 })],
+            [t({ date: '2026-06-11', payee: 'Metro', amount: -42 })],
+        );
+        expect(r.certaines).toHaveLength(0);
+        expect(r.incertaines).toHaveLength(1);
+    });
+
+    // ⚠️ `Date.parse('2026-06T00:00:00Z')` est VALIDE : deux dates au MOIS seul donnaient d === 0,
+    // donc « certain » sur une granularité mensuelle. Le dépôt manipule des transactions au mois.
+    it('deux dates au MOIS seul ne sont jamais « certaines »', () => {
+        const r = classerRattrapage(
+            [t({ date: '2026-06', payee: 'Metro', amount: -42 })],
+            [t({ date: '2026-06', payee: 'Metro', amount: -42 })],
+        );
+        expect(r.certaines).toHaveLength(0);
+    });
+});
+
+describe('[FINTABLE-RATTRAPAGE] la preuve la plus FORTE se sert la première', () => {
+    /**
+     * ⚠️ En une seule passe, l'ordre des ENTRANTES décidait : une entrante douteuse traitée en
+     * premier « volait » l'existante d'un vrai doublon → DEUX erreurs d'un coup (un faux positif
+     * listé à Marc, et le vrai doublon reclassé NOUVELLE, donc compté deux fois dans le budget).
+     */
+    it('un INCERTAIN ne vole plus l’existante d’un CERTAIN', () => {
+        const r = classerRattrapage(
+            [t({ date: '2026-06-10', payee: 'Metro', amount: -42 })],
+            [
+                t({ date: '2026-06-11', payee: 'Pharmacie', amount: -42 }), // douteux, traité en 1er
+                t({ date: '2026-06-10', payee: 'METRO #123', amount: -42 }), // LE vrai doublon
+            ],
+        );
+        expect(r.certaines, 'le vrai doublon doit être reconnu').toHaveLength(1);
+        expect(r.certaines[0].payee).toBe('METRO #123');
+        // L'existante étant consommée, la Pharmacie n'a plus de candidate : c'est une vraie dépense.
+        expect(r.nouvelles.map((x) => x.payee)).toEqual(['Pharmacie']);
+        expect(r.incertaines).toHaveLength(0);
+    });
+});

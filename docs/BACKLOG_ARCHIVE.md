@@ -4301,3 +4301,46 @@ quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
   ⚠️ `PrivateText` annonçait « Marchand masqué » sur une colonne de catégories — faux à l'oreille,
   corrigé par une prop `quoi` typée en union fermée (un oubli devient une erreur de compilation).
   Gardes : `tests/components/categoriePrivacy.test.tsx` (9), 6 rouges sans le masquage.
+
+
+## Livré le 2026-08-18 — PR #649 (rattrapage Fintable)
+
+- [x] 🔴 **`[FINTABLE-RATTRAPAGE]`** — **LIVRÉ 2026-08-18** (signalé par Marc : « l'import Fintable
+  marche pas, j'ai passé à 1 an d'historique et ça me dit 0 transactions en plus »).
+  ⚠️ **Ce n'était pas un bug de code** : la sync est STRICTEMENT EN AVANT. Bascule = date de la
+  transaction la plus récente connue → la requête est bornée à `date_from = bascule` ET le mapper
+  jette tout ce qui est `<=` (filtre strict). Le réglage d'historique côté Fintable n'est lu NULLE
+  PART dans ce chemin. Protection anti-doublon assumée (« pas de recouvrement = pas de dépendance à
+  la dédup »), dont le prix était l'impossibilité de rattraper.
+  ⚠️ **DEUX bornes, pas une** — n'en lever qu'une donne un rattrapage qui télécharge tout et n'en
+  garde rien, en silence. Les deux tests qui les gardent sont indissociables.
+  ⚠️ **Le vrai défaut d'affichage** : `skippedBeforeCutover` était calculé depuis toujours mais
+  n'était rendu QUE dans le script de dry-run. Marc lisait « 0 en plus » sans savoir que des
+  centaines venaient d'être ignorées (`SILENCE-READS-AS-BROKEN`, 6e occurrence). Remonté au rapport
+  et affiché, avec le renvoi vers le bouton de rattrapage.
+  Classement (décision Marc) : CERTAIN (même jour + montant + libellé similaire) neutralisé seul ·
+  INCERTAIN (même montant ±5 j, libellé différent) listé pour arbitrage · le reste ajouté.
+  ⚠️ **Neutralisé, pas supprimé** : effet identique à l'écran (hors courbe/budget) mais réversible —
+  une suppression sur de la donnée d'argent ne l'est pas.
+  ⚠️ **On ne touche PAS** deux vraies dépenses identiques rapprochées (choix de Marc) : la dédup
+  historique les marque pourtant, faux positif destructeur sur un an d'historique.
+  Gardes : `backfillDedup` (16, dont la moitié visent le faux positif) + `browserSync` (6).
+
+
+## Livrés le 2026-08-18 — PR #651 (trous de détection du rattrapage)
+
+- [x] 🔴 **`[FINTABLE-DOUBLON-DATE-DECALEE]`** — **CORRIGÉ 2026-08-18** (PR #651). Le cas
+  `même libellé + même montant + 1 à 5 j d'écart` tombe désormais en INCERTAIN (listé), plus en
+  NOUVELLE. ⚠️ C'est la forme la plus FRÉQUENTE du doublon bancaire réel (date de transaction vs
+  date de comptabilisation) : ni neutralisée, ni listée, ni rattrapable par `txnKey` — double
+  comptage silencieux. Mon en-tête justifiait l'exclusion par « deux cafés le même jour » :
+  raisonnement valable entre deux ENTRANTES du même lot, faux face à une transaction déjà connue.
+  ⚠️ Corrigé au passage : `Date.parse('2026-06T00:00:00Z')` étant valide, deux dates au MOIS seul
+  donnaient `d === 0` donc « certain » sur une granularité mensuelle — `jourComplet` l'exige
+  maintenant. 3 tests, prouvés discriminants.
+
+- [x] 🔴 **`[FINTABLE-APPARIEMENT-GLOUTON]`** — **CORRIGÉ 2026-08-18** (PR #651). Classement en
+  DEUX PASSES : tous les CERTAINS d'abord, les DOUTEUX sur le reliquat. ⚠️ En une passe, l'ordre des
+  entrantes décidait — une douteuse traitée en premier volait l'existante d'un vrai doublon, ce qui
+  produisait DEUX erreurs d'un coup (faux positif listé à Marc + vrai doublon reclassé NOUVELLE,
+  donc compté deux fois). 1 test, prouvé discriminant.

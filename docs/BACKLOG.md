@@ -197,28 +197,6 @@
 
 ---
 
-- [ ] 🔴 **`[PRIV-CATEGORIE-SENSIBLE]`** (S, **DÉCISION DE MARC ATTENDUE** — soulevé par l'audit vie
-  privée de la PR #645) — en mode discret, les MARCHANDS sont masqués (décision Marc 2026-08-17)
-  mais les CATÉGORIES restent en clair.
-  ⚠️ L'argument qui justifie de masquer le marchand vaut presque autant pour certaines catégories :
-  « Santé » ou « Dons » DATÉE ré-identifie à peu près aussi bien que le marchand qu'on vient de
-  masquer. La position actuelle est défendable pour l'écrasante majorité (Épicerie, Transport,
-  Loisirs) et incohérente sur une poignée.
-  **Trois options, à trancher par Marc** :
-  · **A** — statu quo : la catégorie est une CLASSE générique, pas un identifiant. Cohérent avec
-    « sans elle, une ligne masquée ne dirait plus rien ». Zéro travail.
-  · **B** — masquer TOUTES les catégories. Cohérent et simple, mais une ligne entièrement masquée
-    (marchand + catégorie + montant) n'apprend plus rien : le mode discret deviendrait un rideau
-    plutôt qu'un masque.
-  · **C** — masquer une LISTE de catégories sensibles (Santé, Dons, Juridique…). ⚠️ Piège : cette
-    liste est une HEURISTIQUE DE TEXTE sur des libellés que Marc écrit lui-même — classe
-    `TEXT-HEURISTIC-OVER-USER-TEXT`, déjà au dossier. Une catégorie personnalisée « Psy » y
-    échapperait. Ne pas choisir C sans un marqueur STRUCTUREL (drapeau « sensible » posé par Marc
-    sur la catégorie).
-  **Ma reco : A**, + documenter le périmètre (« le mode discret masque les VALEURS et les
-  IDENTIFIANTS, pas les CLASSES ») — B détruit l'utilité, C repose sur une heuristique de texte
-  déjà identifiée comme piège. [Probable]
-
 ## 🔴 Money-critical — fiabilité des chiffres
 
 > Analyse fiscale 2026-07-31 (financial-integrity, findings MESURÉS via npx tsx sur le vrai moteur).

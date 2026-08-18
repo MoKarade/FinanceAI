@@ -210,7 +210,7 @@ const GroupRow: React.FC<{
                             <span className="text-ink-400">{m.date}</span>{' '}
                             <PrivateText className="text-ink-200">{m.payee || '(sans libellé)'}</PrivateText>
                             {m.accountName && <span className="text-ink-400"> · {m.accountName}</span>}
-                            <span className="text-ink-400"> · {m.category}</span>
+                            <span className="text-ink-400"> · <PrivateText quoi="categorie">{m.category}</PrivateText></span>
                             {isKeeper && !checked && (
                                 <span className="ml-1 text-success-400">à conserver</span>
                             )}

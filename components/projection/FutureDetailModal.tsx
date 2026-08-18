@@ -691,7 +691,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                     {catsDuMois.depenses.map((c) => (
                                         <div key={c.categorie} className="flex items-baseline justify-between gap-2 text-meta">
                                             <span className="text-ink-200">
-                                                {c.categorie}
+                                                <PrivateText quoi="categorie">{c.categorie}</PrivateText>
                                                 <span className="ml-1.5 text-tiny text-ink-400">
                                                     {c.nombre} {c.nombre > 1 ? 'transactions' : 'transaction'}
                                                 </span>
@@ -859,7 +859,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                                             );
                                                         })()}
                                                     </td>
-                                                    <td className="px-2.5 py-1.5 text-ink-400">{t.category}</td>
+                                                    <td className="px-2.5 py-1.5 text-ink-400"><PrivateText quoi="categorie">{t.category}</PrivateText></td>
                                                     <td className={`px-2.5 py-1.5 text-right font-mono ${t.amount >= 0 ? 'text-green-300' : 'text-ink-200'}`}>
                                                         <PrivateAmount>{fmt(t.amount)}</PrivateAmount>
                                                     </td>
@@ -900,7 +900,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
                                                             );
                                                         })()}
                                                     </td>
-                                                    <td className="px-2.5 py-1.5 text-ink-400">{txn.category}</td>
+                                                    <td className="px-2.5 py-1.5 text-ink-400"><PrivateText quoi="categorie">{txn.category}</PrivateText></td>
                                                     <td className="px-2.5 py-1.5 text-right font-mono text-ink-400 line-through">
                                                         <PrivateAmount>{fmt(txn.amount)}</PrivateAmount>
                                                     </td>

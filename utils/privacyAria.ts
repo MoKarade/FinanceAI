@@ -59,3 +59,22 @@ export const rowControlLabel = (
 ): string => (isPrivacyMode
     ? `${action} la transaction du ${date} (#${id})`
     : `${action} ${payee || '(sans libellé)'}`);
+
+/**
+ * [PRIV-CATEGORIE-MASQUEE] Libellé annoncé à la place d'une CATÉGORIE masquée (mode privé).
+ *
+ * ⚠️ Décision Marc 2026-08-18 : « masquer ». L'audit vie privée de la PR #645 avait soulevé que
+ * l'argument justifiant de masquer le MARCHAND vaut presque autant pour la catégorie : « Santé »
+ * ou « Dons », datée, ré-identifie à peu près aussi bien qu'un nom de commerçant. J'avais
+ * recommandé le statu quo ; Marc a tranché l'inverse, et c'est sa donnée.
+ *
+ * ⚠️ Masquage de TOUTES les catégories, pas d'une liste de « sensibles ». Une liste serait une
+ * HEURISTIQUE DE TEXTE sur des libellés que Marc écrit lui-même (classe
+ * `TEXT-HEURISTIC-OVER-USER-TEXT`, déjà au dossier) : une catégorie personnalisée « Psy » y
+ * échapperait en silence. Le seul masquage qui ne ment pas est celui qui ne trie pas.
+ */
+export const MASKED_CATEGORY_LABEL = 'Catégorie masquée';
+
+/** Catégorie pour un ATTRIBUT (`title`, `aria-label`). Le texte VISIBLE passe par `<PrivateText>`. */
+export const maskCategory = (categorie: string | null | undefined, isPrivacyMode: boolean): string =>
+    isPrivacyMode ? MASKED_CATEGORY_LABEL : (categorie || '');

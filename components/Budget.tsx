@@ -4,6 +4,7 @@ import { Card } from './ui/Card';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { PrivateAmount } from './ui/PrivateAmount';
+import { PrivateText } from './ui/PrivateText';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import { showToast } from './ui/Toast';
 import { logError } from '../services/errorLogger';
@@ -1268,7 +1269,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     <ul className="space-y-1">
                                         {orphanCategories.map((o: OrphanCategory) => (
                                             <li key={o.category} className="flex items-center justify-between gap-2 text-meta">
-                                                <span className="text-ink-200 truncate">{o.category}</span>
+                                                <PrivateText quoi="categorie" className="text-ink-200 truncate">{o.category}</PrivateText>
                                                 <PrivateAmount className="font-mono text-warning-400 shrink-0">{formatCAD(o.total)}</PrivateAmount>
                                             </li>
                                         ))}
@@ -1338,7 +1339,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         </tr>
                                         {ledger.incomeRows.map(row => (
                                             <tr key={`in-${row.category}`} className="border-t border-white/5">
-                                                <th scope="row" className="text-left font-medium text-ink-100 py-1.5 pr-2 sticky left-0 bg-surface whitespace-nowrap">{row.category}</th>
+                                                <th scope="row" className="text-left font-medium text-ink-100 py-1.5 pr-2 sticky left-0 bg-surface whitespace-nowrap"><PrivateText quoi="categorie">{row.category}</PrivateText></th>
                                                 {row.byMonth.map((v, i) => (
                                                     <td key={ledger.months[i]} className="text-right py-1.5 px-1.5 font-mono">
                                                         {v > 0
@@ -1360,7 +1361,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                         </tr>
                                         {ledger.expenseRows.map(row => (
                                             <tr key={`out-${row.category}`} className="border-t border-white/5">
-                                                <th scope="row" className="text-left font-medium text-ink-100 py-1.5 pr-2 sticky left-0 bg-surface whitespace-nowrap">{row.category}</th>
+                                                <th scope="row" className="text-left font-medium text-ink-100 py-1.5 pr-2 sticky left-0 bg-surface whitespace-nowrap"><PrivateText quoi="categorie">{row.category}</PrivateText></th>
                                                 {row.byMonth.map((v, i) => (
                                                     <td key={ledger.months[i]} className="text-right py-1.5 px-1.5 font-mono">
                                                         {v > 0

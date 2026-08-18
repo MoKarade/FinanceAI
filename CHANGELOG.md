@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-18 (le mode discret masque aussi tes catégories)
+
+- Tu as tranché : « masquer ». En mode discret, les **catégories** disparaissent comme les montants
+  et les marchands — dans Transactions, le panneau du jour, la ventilation du mois, le Budget, les
+  doublons, la revue de classement.
+- ⚠️ **Tu peux toujours corriger une catégorie.** Le menu déroulant est masqué au repos et se révèle
+  au clic : masquer le texte aurait masqué la fonction. C'est exactement ce que font déjà tes champs
+  de montants.
+- ⚠️ Masquer TOUTES les catégories, pas une liste de « sensibles » : une liste serait un tri par
+  mots-clés sur des libellés que **tu** écris — une catégorie « Psy » y échapperait sans bruit, et un
+  masquage qui rate discrètement est pire qu'un masquage absent.
+
 ## [unreleased] — 2026-08-17 (le lendemain depuis le panneau, et tes marchands masqués)
 
 ### Tu peux enfin avancer d'un jour sans fermer le panneau

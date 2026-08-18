@@ -326,10 +326,13 @@ describe('[PASSE-REEL-TXN-DU-JOUR] câblage : le jour est capté AVANT le rebasa
 // test CODIFIAIT ce périmètre, marchand visible compris. Le 2026-08-17, mis devant le constat que
 // « pharmacie X, le 3 » dit déjà beaucoup sans le moindre chiffre, Marc a tranché : « masquer
 // marchands » (`[PRIV-PAYEE-MODE-DISCRET]`). Le test suit la décision.
-// La CATÉGORIE, elle, reste : c'est une classe générique (« Alimentation »), pas un identifiant —
-// et sans elle la ligne masquée ne dirait plus rien du tout.
+// ⚠️ PUIS ELLE A CHANGÉ UNE 2e FOIS, le lendemain : Marc a répondu « masquer » à la question de la
+// CATÉGORIE (`[PRIV-CATEGORIE-MASQUEE]`). Ce test a donc suivi TROIS décisions successives sur le
+// même périmètre — montants seuls, puis + marchands, puis + catégories. C'est normal et sain : il
+// CODIFIE une politique produit, il ne la fixe pas. Ce qui compterait comme une régression, ce
+// serait qu'il change SANS décision derrière ; d'où la date et l'auteur de chacune, écrits ici.
 describe('[PASSE-REEL-TXN-DU-JOUR] mode discret', () => {
-    it('montants ET marchands sortent du DOM ; la catégorie reste', () => {
+    it('montants, marchands ET catégories sortent tous du DOM', () => {
         act(() => { useFinanceStore.setState({ isPrivacyMode: true }); });
         ouvrir(pointDuJour);
         const t = texte();
@@ -339,6 +342,8 @@ describe('[PASSE-REEL-TXN-DU-JOUR] mode discret', () => {
         // ⚠️ Décision Marc 2026-08-17 : le marchand est de la donnée personnelle (Loi 25).
         expect(t, 'le marchand ne doit plus rester en clair').not.toContain('ÉpicerieMetro');
         expect(t, 'mais la ligne doit rester identifiable comme masquée').toContain('Marchandmasqué');
-        expect(t, 'la catégorie est une classe, pas un identifiant').toContain('Alimentation');
+        // ⚠️ Décision Marc 2026-08-18 : la catégorie AUSSI (`[PRIV-CATEGORIE-MASQUEE]`).
+        expect(t, 'la catégorie ne reste plus en clair non plus').not.toContain('Alimentation');
+        expect(t, 'et elle s’annonce comme catégorie, pas comme marchand').toContain('Catégoriemasquée');
     });
 });

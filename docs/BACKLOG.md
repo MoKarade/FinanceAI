@@ -197,27 +197,6 @@
 
 ---
 
-- [x] 🔴 **`[FINTABLE-RATTRAPAGE]`** — **LIVRÉ 2026-08-18** (signalé par Marc : « l'import Fintable
-  marche pas, j'ai passé à 1 an d'historique et ça me dit 0 transactions en plus »).
-  ⚠️ **Ce n'était pas un bug de code** : la sync est STRICTEMENT EN AVANT. Bascule = date de la
-  transaction la plus récente connue → la requête est bornée à `date_from = bascule` ET le mapper
-  jette tout ce qui est `<=` (filtre strict). Le réglage d'historique côté Fintable n'est lu NULLE
-  PART dans ce chemin. Protection anti-doublon assumée (« pas de recouvrement = pas de dépendance à
-  la dédup »), dont le prix était l'impossibilité de rattraper.
-  ⚠️ **DEUX bornes, pas une** — n'en lever qu'une donne un rattrapage qui télécharge tout et n'en
-  garde rien, en silence. Les deux tests qui les gardent sont indissociables.
-  ⚠️ **Le vrai défaut d'affichage** : `skippedBeforeCutover` était calculé depuis toujours mais
-  n'était rendu QUE dans le script de dry-run. Marc lisait « 0 en plus » sans savoir que des
-  centaines venaient d'être ignorées (`SILENCE-READS-AS-BROKEN`, 6e occurrence). Remonté au rapport
-  et affiché, avec le renvoi vers le bouton de rattrapage.
-  Classement (décision Marc) : CERTAIN (même jour + montant + libellé similaire) neutralisé seul ·
-  INCERTAIN (même montant ±5 j, libellé différent) listé pour arbitrage · le reste ajouté.
-  ⚠️ **Neutralisé, pas supprimé** : effet identique à l'écran (hors courbe/budget) mais réversible —
-  une suppression sur de la donnée d'argent ne l'est pas.
-  ⚠️ **On ne touche PAS** deux vraies dépenses identiques rapprochées (choix de Marc) : la dédup
-  historique les marque pourtant, faux positif destructeur sur un an d'historique.
-  Gardes : `backfillDedup` (16, dont la moitié visent le faux positif) + `browserSync` (6).
-
 - [ ] 🔴 **`[FINTABLE-DOUBLON-DATE-DECALEE]`** (S, **MOYEN — MESURÉ**, audit PR #649) — trou de
   classement du rattrapage : `même libellé + même montant + 1 à 5 jours d'écart` ne tombe dans
   AUCUNE branche (`d === 0 && similaire` → certain ; `!similaire` → incertain) et part en NOUVELLE.

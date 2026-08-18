@@ -151,7 +151,7 @@ export const CategoryReviewPanel: React.FC<Props> = ({ transactions, review, onC
                                     </div>
                                     <PrivateText as="div" className="text-body text-ink-100 truncate">{next.payee || '(sans libellé)'}</PrivateText>
                                     <div className="text-meta text-ink-300">
-                                        Classée : <span className="font-bold text-ink-100">{next.category || 'Non catégorisé'}</span>
+                                        Classée : <PrivateText quoi="categorie" className="font-bold text-ink-100">{next.category || 'Non catégorisé'}</PrivateText>
                                         {next.isTransfer && <span className="text-ink-400"> · marquée virement interne</span>}
                                     </div>
                                     <div className="flex flex-wrap gap-2 pt-1">

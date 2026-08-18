@@ -3,7 +3,8 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 // [PRIV-PAYEE-MODE-DISCRET] Le nom du marchand est de la donnée personnelle (décision Marc
 // 2026-08-17) : masqué en mode discret comme les montants, y compris dans les ATTRIBUTS.
 import { PrivateText } from './ui/PrivateText';
-import { maskPayee, rowControlLabel } from '../utils/privacyAria';
+import { PrivateSelect } from './ui/PrivateSelect';
+import { maskPayee, maskCategory, rowControlLabel } from '../utils/privacyAria';
 import { logError } from '../services/errorLogger';
 import { Tab, Transaction, BudgetCategory, CategorizationRule } from '../types';
 import { TAB_LABELS } from '../constants';
@@ -183,7 +184,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
         const updated = [...categorizationRules, rule];
         setCategorizationRules?.(updated);
         setNewPattern('');
-        showToast(`Regle ajoutee: "${rule.pattern}" -> ${rule.category}`, 'success');
+        showToast(`Règle ajoutée : « ${maskPayee(rule.pattern, isPrivacyMode)} » → ${maskCategory(rule.category, isPrivacyMode)}`, 'success');
     };
 
     const handleDeleteRule = (id: string) => {
@@ -603,7 +604,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     <div key={rule.id} className="flex items-center gap-2 bg-black/30 px-3 py-2 rounded-lg border border-white/5 text-meta group">
                                         <span className="text-ink-200 font-bold flex-1 truncate">"{rule.pattern}"</span>
                                         <Icon name="chevron-right" size={12} className="text-ink-500 hidden sm:inline shrink-0" />
-                                        <span className="text-ink-100 bg-white/10 px-2 py-0.5 rounded font-bold truncate max-w-[120px]">{rule.category}</span>
+                                        <PrivateText quoi="categorie" className="text-ink-100 bg-white/10 px-2 py-0.5 rounded font-bold truncate max-w-[120px]">{rule.category}</PrivateText>
                                         <button onClick={() => handleApplyRuleNow(rule)} aria-label={`Appliquer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 text-ink-300 hover:text-primary transition-all text-tiny font-bold ml-1">Appliquer</button>
                                         <button onClick={() => handleDeleteRule(rule.id)} aria-label={`Supprimer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 inline-flex text-danger-400 hover:text-danger-500 transition-all ml-1"><Icon name="close" size={13} /></button>
                                     </div>
@@ -910,7 +911,12 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     </td>
 
                                     <td className="p-3">
-                                        <select
+                                        {/* ⚠️ [PRIV-CATEGORIE-MASQUEE] `PrivateSelect`, pas
+                                            `PrivateText` : la catégorie s'ÉDITE. Masquer le texte
+                                            masquerait la fonction — le dépôt a déjà résolu ce cas
+                                            pour les montants (`PrivateNumberInput`, décision
+                                            `D6-PRIV-MONTANTS`), on reprend cet idiome. */}
+                                        <PrivateSelect
                                             aria-label={rowControlLabel('Catégorie de', t.payee, t.date, t.id, isPrivacyMode)}
                                             className={`bg-surfaceHighlight border border-white/10 rounded px-2 py-1 text-meta text-white focus:border-primary outline-none cursor-pointer w-full max-w-[180px] ${(t.category === 'Uncategorized' || t.category === 'Inconnu') ? 'border-danger-500/50 text-red-300' : ''
                                                 }`}
@@ -919,7 +925,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                             onClick={e => e.stopPropagation()}
                                         >
                                             {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                        </select>
+                                        </PrivateSelect>
                                     </td>
 
                                     {isCouple && (
@@ -991,7 +997,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                    <select
+                                    <PrivateSelect
                                         aria-label={rowControlLabel('Catégorie de', t.payee, t.date, t.id, isPrivacyMode)}
                                         className={`flex-1 bg-surfaceHighlight border rounded px-2 py-1.5 text-meta text-white focus:border-primary outline-none cursor-pointer ${isUncat ? 'border-danger-500/50 text-red-300' : 'border-white/10'
                                             }`}
@@ -999,7 +1005,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         onChange={(e) => updateCategory(t.id, e.target.value)}
                                     >
                                         {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
+                                    </PrivateSelect>
                                     <button
                                         onClick={() => toggleTransfer(t.id)}
                                         aria-pressed={t.isTransfer}

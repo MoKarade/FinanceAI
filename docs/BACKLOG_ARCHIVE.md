@@ -4284,3 +4284,20 @@ quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
   ⚠️ Porte un contrôle ANTI-VACUITÉ : la garde doit voir > 20 primitives, sinon un renommage la
   rendrait verte en ne regardant RIEN. Discrimination prouvée en ajoutant « Valeur exacte » au
   survol du patrimoine.
+
+
+## Livré le 2026-08-18 — PR #648 (déménagé DANS le cycle)
+
+- [x] 🔴 **`[PRIV-CATEGORIE-SENSIBLE]`** — **TRANCHÉ ET LIVRÉ 2026-08-18** (Marc : « masquer »).
+  Option **B** retenue : TOUTES les catégories sont masquées en mode discret, pas une liste de
+  « sensibles ». ⚠️ **Décision qui renverse ma reco (A)** — consignée dans `docs/decisions.md` pour
+  que la prochaine session ne la « corrige » pas en croyant retrouver une cohérence.
+  ⚠️ (C) écartée pour une raison de fond : une liste de catégories sensibles serait une heuristique
+  de TEXTE sur des libellés que Marc écrit lui-même (`TEXT-HEURISTIC-OVER-USER-TEXT`) — « Psy » y
+  échapperait en silence, et un masquage qui rate discrètement est pire qu'un masquage absent.
+  ⚠️ Le `<select>` de catégorie s'ÉDITE → `PrivateSelect` (idiome `PrivateNumberInput` /
+  `D6-PRIV-MONTANTS` : masqué au repos, révélé au focus). Le masquer comme un texte aurait retiré
+  une FONCTION pour protéger une valeur.
+  ⚠️ `PrivateText` annonçait « Marchand masqué » sur une colonne de catégories — faux à l'oreille,
+  corrigé par une prop `quoi` typée en union fermée (un oubli devient une erreur de compilation).
+  Gardes : `tests/components/categoriePrivacy.test.tsx` (9), 6 rouges sans le masquage.

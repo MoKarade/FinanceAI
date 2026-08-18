@@ -18,6 +18,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card } from '../ui/Card';
 import { Icon } from '../ui/Icon';
+import { PrivateText } from '../ui/PrivateText';
+import { PrivateAmount } from '../ui/PrivateAmount';
+import { formatCAD } from '../../utils/format';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { importWithRetry, isChunkLoadError } from '../../utils/lazyWithRetry';
 import { acquireFintableSyncLock, releaseFintableSyncLock } from '../../services/fintable/autoSync';
@@ -163,7 +166,13 @@ export const FintableSyncCard: React.FC = () => {
         } finally { setBusy('idle'); }
     };
 
-    const handleSync = async () => {
+    /**
+     * [FINTABLE-RATTRAPAGE] Paires douteuses de la dernière passe de rattrapage — état de TRAVAIL,
+     * jamais persisté (voir `BrowserSyncResult.incertaines`).
+     */
+    const [incertaines, setIncertaines] = useState<Array<{ entrante: { date: string; payee: string; amount: number }; existante: { date: string; payee: string; amount: number }; ecartJours: number }>>([]);
+
+    const handleSync = async (backfill = false) => {
         // [Finding code-reviewer #545, CRITIQUE] Verrou PARTAGÉ avec la sync AUTO : sans lui, une
         // passe manuelle lancée pendant la passe auto (fenêtre réseau de plusieurs secondes)
         // calculerait son patch sur une base figée → dernier-écrivain-gagne sur transactions/soldes.
@@ -183,9 +192,16 @@ export const FintableSyncCard: React.FC = () => {
             // La fenêtre qui compte est CLIC→ÉCRITURE (le fetch réseau, plusieurs secondes) : c'est
             // `getFreshState` qui la ferme, en relisant le store juste avant l'application.
             const current = useFinanceStore.getState() as unknown as AppState;
-            const { report: fresh, statePatch } = await runFintableBrowserSync(current, token, {
+            const { report: fresh, statePatch, incertaines: douteuses } = await runFintableBrowserSync(current, token, {
                 getFreshState: () => useFinanceStore.getState() as unknown as AppState,
+                backfill,
             });
+            // ⚠️ `?? []` : lecture DÉFENSIVE à la frontière. Un appelant plus ancien — ou un mock
+            // de test — rend un résultat SANS ce champ neuf, et `undefined.length` faisait planter
+            // TOUTE la carte de réglages, pas seulement la liste. Un champ additif ne doit jamais
+            // pouvoir casser l'écran qui l'affiche.
+            const douteusesSures = douteuses ?? [];
+            setIncertaines(douteusesSures);
             // [Finding security-privacy #545] Mode démo activé PENDANT le fetch → ne RIEN écrire
             // (de vraies données dans une session persona = l'inverse de PERSONA-PURGE).
             if (useFinanceStore.getState().isTestMode === true) {
@@ -203,7 +219,16 @@ export const FintableSyncCard: React.FC = () => {
             // (`services/fintable/applyStatePatch.ts` porte le pourquoi du delta par référence :
             // finding silent-failure PR #536, jamais de liste de clés à la main).
             setAppState(statePatch);
-            setNotice(`Synchronisé : ${fresh.transactionsAdded} transaction(s) ajoutée(s).`);
+            // ⚠️ [FINTABLE-RATTRAPAGE] Le message qui manquait. « 0 transaction ajoutée » tout seul
+            // se lit comme une PANNE — Marc l'a lu ainsi, à raison (2026-08-18), alors que la passe
+            // venait d'en écarter des centaines parce qu'antérieures à la bascule. Un écran qui se
+            // tait au moment où il doit expliquer, c'est `SILENCE-READS-AS-BROKEN`.
+            const ecartees = fresh.skippedBeforeCutover ?? 0;
+            const bout = ecartees > 0 && !backfill
+                ? ` · ${ecartees} plus ancienne(s) ignorée(s) — la sync ne remonte pas avant le ${fresh.cutoverDateUsed ?? '—'}. Utilise « Rattraper l'historique » pour les récupérer.`
+                : '';
+            const douteusesTxt = douteusesSures.length > 0 ? ` · ${douteusesSures.length} à vérifier ci-dessous.` : '';
+            setNotice(`Synchronisé : ${fresh.transactionsAdded} transaction(s) ajoutée(s).${bout}${douteusesTxt}`);
         } catch (err) {
             setError(isChunkLoadError(err)
                 ? 'Nouvelle version de l\'app disponible — recharge la page puis réessaie.'
@@ -281,14 +306,60 @@ export const FintableSyncCard: React.FC = () => {
                     </button>
                     <button
                         type="button"
-                        onClick={() => { void handleSync(); }}
+                        onClick={() => { void handleSync(false); }}
                         disabled={busy !== 'idle' || token.trim() === '' || isTestMode}
                         aria-describedby="fintable-actions-why"
                         className="px-3 py-2 bg-primary/90 hover:bg-primary text-dark rounded-card text-meta font-bold transition-colors focus-ring disabled:opacity-50"
                     >
                         {busy === 'syncing' ? 'Synchronisation…' : 'Synchroniser maintenant'}
                     </button>
+                    {/* ⚠️ [FINTABLE-RATTRAPAGE] Bouton SÉPARÉ, et volontairement moins proéminent :
+                        la sync ordinaire est sûre (aucun recouvrement), le rattrapage renonce à cette
+                        garantie et s'appuie sur le classement des doublons. Deux comportements
+                        différents ne doivent pas partager un bouton. */}
+                    <button
+                        type="button"
+                        onClick={() => { void handleSync(true); }}
+                        disabled={busy !== 'idle' || token.trim() === '' || isTestMode}
+                        aria-describedby="fintable-actions-why"
+                        title="Rapatrie TOUT l'historique exposé par Fintable, pas seulement les jours qui suivent ta transaction la plus récente. Les doublons évidents sont neutralisés automatiquement ; les cas douteux te sont listés."
+                        className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/15 rounded-card text-ink-200 text-meta font-bold transition-colors focus-ring disabled:opacity-50"
+                    >
+                        {busy === 'syncing' ? 'En cours…' : 'Rattraper l\u2019historique'}
+                    </button>
                 </div>
+
+                {/* ⚠️ Les paires DOUTEUSES : même montant, date proche, libellé différent — le cas
+                    que la dédup historique laisse passer (elle exige montant ET libellé), donc
+                    exactement ce contre quoi la bascule protégeait. Neutralisées par défaut : mieux
+                    vaut un doublon caché et récupérable qu'un doublon qui fausse le budget en
+                    silence. Marc tranche depuis l'onglet Transactions. */}
+                {incertaines.length > 0 && (
+                    <div className="rounded-card border border-amber-500/25 bg-amber-500/5 p-3 space-y-2">
+                        <div className="text-meta font-bold text-amber-300">
+                            {incertaines.length} transaction(s) à vérifier
+                        </div>
+                        <p className="text-tiny text-ink-300 leading-snug">
+                            Même montant qu'une transaction déjà connue, à quelques jours près, mais un libellé
+                            différent. Je les ai marquées comme doublons — elles ne comptent donc pas dans ton
+                            budget. Si l'une d'elles est une vraie dépense, décoche-la dans Transactions.
+                        </p>
+                        <ul className="space-y-1 max-h-56 overflow-y-auto">
+                            {incertaines.map((p, i) => (
+                                <li key={`${p.entrante.date}-${i}`} className="text-tiny text-ink-200 flex flex-wrap gap-x-2">
+                                    <span className="font-mono text-ink-400">{p.entrante.date}</span>
+                                    <PrivateText>{p.entrante.payee}</PrivateText>
+                                    <PrivateAmount className="font-mono">{formatCAD(p.entrante.amount)}</PrivateAmount>
+                                    <span className="text-ink-400">↔ déjà connu :</span>
+                                    <PrivateText>{p.existante.payee}</PrivateText>
+                                    <span className="text-ink-400">
+                                        ({p.ecartJours === 0 ? 'même jour' : `${p.ecartJours} j d'écart`})
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
                 <p id="fintable-actions-why" className="sr-only">
                     {token.trim() === ''
                         ? 'Ces actions nécessitent un jeton Fintable.'

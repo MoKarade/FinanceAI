@@ -302,3 +302,86 @@ describe('transport RÉEL depuis le navigateur (aucun client injecté)', () => {
         vi.unstubAllGlobals();
     });
 });
+
+/**
+ * [FINTABLE-RATTRAPAGE] Le mode RATTRAPAGE — demande de Marc (2026-08-18).
+ *
+ * ⚠️ CE QUE CES TESTS VERROUILLENT, et ce n'est pas évident : il y a DEUX bornes, pas une. La
+ * requête est bornée (`date_from = bascule`) ET le mapper filtre (`tx.date <= transactionsAfter`,
+ * strict). N'en lever qu'une donne un rattrapage qui télécharge tout l'historique et n'en garde
+ * RIEN — panne parfaitement silencieuse, et exactement le symptôme que Marc a signalé. Les deux
+ * assertions ci-dessous sont donc indissociables.
+ */
+describe('runFintableBrowserSync — rattrapage d\'historique', () => {
+    const txBrut = (o: Record<string, unknown> = {}) => ({
+        id: 'tx_1', account_id: 'acc_1', date: '2025-09-15', amount: '-42.00',
+        currency: 'CAD', description: 'Metro', pending: false, ...o,
+    });
+    const roles = { acc_1: { kind: 'cash' } as FintableAccountRoleConfig };
+
+    it('lève la borne de REQUÊTE : aucune `date_from` envoyée à l\'API', async () => {
+        const client = fakeClient([account()], [txBrut()]);
+        await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, transactions: [{ id: 1, date: '2026-07-01', payee: 'X', amount: -5 }] as never }),
+            'jeton', { client, now, backfill: true },
+        );
+        const query = (client.getAllPages as ReturnType<typeof vi.fn>).mock.calls[0][1];
+        expect(query.date_from, 'une borne ici = rien d\'ancien n\'est même téléchargé').toBeUndefined();
+    });
+
+    it('sync ORDINAIRE : la borne reste (rétrocompat bit-identique)', async () => {
+        const client = fakeClient([account()], [txBrut()]);
+        await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, transactions: [{ id: 1, date: '2026-07-01', payee: 'X', amount: -5 }] as never }),
+            'jeton', { client, now },
+        );
+        const query = (client.getAllPages as ReturnType<typeof vi.fn>).mock.calls[0][1];
+        expect(query.date_from).toBe('2026-07-01');
+    });
+
+    it('lève AUSSI la borne du MAPPER : l\'historique ancien est réellement gardé', async () => {
+        const client = fakeClient([account()], [txBrut({ date: '2025-09-15' })]);
+        const r = await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, transactions: [{ id: 1, date: '2026-07-01', payee: 'X', amount: -5 }] as never }),
+            'jeton', { client, now, backfill: true },
+        );
+        // Sans `transactionsAfter: null`, cette transaction de 2025 serait comptée « écartée ».
+        expect(r.report.skippedBeforeCutover).toBe(0);
+        expect(r.report.transactionsAdded).toBeGreaterThan(0);
+        expect(r.report.wasBackfill).toBe(true);
+    });
+
+    /**
+     * ⚠️ LA FIN DU « 0 EN PLUS » TROMPEUR. Le compteur existait dans le rapport du mapper depuis
+     * toujours, mais ne sortait que dans le script de dry-run — Marc voyait « 0 transactions en
+     * plus » sans savoir que la passe venait d'en ignorer des centaines, et en a conclu à une panne.
+     */
+    it('sync ordinaire : les écartées sont COMPTÉES et rendues', async () => {
+        const client = fakeClient([account()], [txBrut({ date: '2025-09-15' }), txBrut({ id: 'tx_2', date: '2025-10-01' })]);
+        const r = await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, transactions: [{ id: 1, date: '2026-07-01', payee: 'X', amount: -5 }] as never }),
+            'jeton', { client, now },
+        );
+        expect(r.report.skippedBeforeCutover, 'sans ce chiffre, « 0 en plus » se lit comme une panne').toBe(2);
+        expect(r.report.wasBackfill).toBe(false);
+    });
+
+    it('un doublon ÉVIDENT du rattrapage est neutralisé sans arbitrage', async () => {
+        const client = fakeClient([account()], [txBrut({ date: '2025-09-15', description: 'Metro', amount: '-42.00' })]);
+        const r = await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, transactions: [{ id: 1, date: '2025-09-15', payee: 'METRO #12', amount: -42 }] as never }),
+            'jeton', { client, now, backfill: true },
+        );
+        expect(r.incertaines, 'un doublon évident ne doit PAS déranger Marc').toHaveLength(0);
+    });
+
+    it('un cas DOUTEUX est remonté à Marc, jamais tranché seul', async () => {
+        const client = fakeClient([account()], [txBrut({ date: '2025-09-16', description: 'Hydro-Québec', amount: '-180.00' })]);
+        const r = await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, transactions: [{ id: 1, date: '2025-09-15', payee: 'PAIEMENT CAISSE', amount: -180 }] as never }),
+            'jeton', { client, now, backfill: true },
+        );
+        expect(r.incertaines).toHaveLength(1);
+        expect(r.incertaines[0].existante.payee).toBe('PAIEMENT CAISSE');
+    });
+});

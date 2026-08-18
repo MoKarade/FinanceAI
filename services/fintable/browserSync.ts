@@ -41,6 +41,7 @@ import { readFintableSnapshot } from './readSnapshot';
 import type { FintableSnapshot } from './types';
 import { mapFintableSnapshot, FINTABLE_TAX_REGIMES, type FintableAccountRole, type FintableTaxRegime } from './mapSnapshot';
 import { decideCutoverDate, applyPayloadsIsolated } from './syncCore';
+import { classerRattrapage, type ClassementRattrapage, type PaireIncertaine } from './backfillDedup';
 import { referenceDeltaPatch } from './applyStatePatch';
 import { toPersistableBrokerBalances } from './brokerBalances';
 import { FintableError } from './types';
@@ -67,6 +68,15 @@ export interface BrowserSyncResult {
      * calculé ICI, où la base est connue sans ambiguïté : la faute n'est plus exprimable.
      */
     statePatch: Partial<AppState> | null;
+    /**
+     * [FINTABLE-RATTRAPAGE] Paires DOUTEUSES à faire trancher par Marc — vide hors rattrapage.
+     *
+     * ⚠️ Rendu à l'appelant plutôt que persisté : c'est une liste de TRAVAIL, pas de la donnée. La
+     * persister créerait un second état à réconcilier (que faire d'une paire dont une des deux
+     * transactions a été supprimée depuis ?) pour un gain nul — l'arbitrage se fait dans la foulée
+     * de la passe, et les entrantes sont déjà neutralisées si Marc ne fait rien.
+     */
+    incertaines: PaireIncertaine[];
 }
 
 export interface BrowserSyncOptions {
@@ -95,6 +105,20 @@ export interface BrowserSyncOptions {
      * Défaut : `() => state` (comportement d'avant, pour les tests et tout appelant sans store).
      */
     getFreshState?: () => AppState;
+    /**
+     * [FINTABLE-RATTRAPAGE] Passe de RATTRAPAGE : rapatrie TOUT l'historique exposé par Fintable.
+     *
+     * ⚠️ Cette option RENONCE délibérément à la garantie centrale de la sync ordinaire — « pas de
+     * recouvrement, donc pas de dépendance à la dédup ». Elle ne borne plus la requête à la bascule
+     * et laisse le mapper accepter les dates antérieures (`transactionsAfter: null`). Le
+     * recouvrement devient CERTAIN, et c'est `classerRattrapage` qui le traite : doublons évidents
+     * neutralisés seuls, cas douteux listés pour arbitrage.
+     *
+     * Demande de Marc (2026-08-18) : « 0 transactions en plus » après avoir élargi son historique
+     * chez Fintable — la sync en avant ne pouvait rien rapatrier, par construction.
+     * ⚠️ Défaut `false` ⇒ la sync quotidienne est INCHANGÉE, bit pour bit.
+     */
+    backfill?: boolean;
 }
 
 function describeError(err: unknown): string {
@@ -179,7 +203,7 @@ export async function runFintableBrowserSync(
     });
 
     if (typeof token !== 'string' || token.trim() === '') {
-        return { report: emptyReport(null, 'Jeton Fintable absent — ajoute-le dans Réglages.'), statePatch: null };
+        return { report: emptyReport(null, 'Jeton Fintable absent — ajoute-le dans Réglages.'), statePatch: null, incertaines: [] };
     }
 
     let cutoverDateUsed: string | null = null;
@@ -200,8 +224,12 @@ export async function runFintableBrowserSync(
         // `state.transactions` est réellement vide, donc il n'y a rien à recouvrir. La borne sert à ne
         // pas rapatrier des mois de données dans un onglet au premier lancement (le cron, lui, tourne
         // sans utilisateur qui attend). Divergence documentée pour ne pas passer pour un oubli.
-        const dateFrom = cutoverDateUsed
-            ?? new Date(now() - LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 10);
+        // ⚠️ [FINTABLE-RATTRAPAGE] En rattrapage, `dateFrom` est VOLONTAIREMENT absent : Marc a
+        // demandé « tout ce que Fintable a ». C'est cette borne qui l'empêchait de récupérer son
+        // historique — la lever EST la demande, pas un effet de bord.
+        const dateFrom = opts.backfill
+            ? undefined
+            : (cutoverDateUsed ?? new Date(now() - LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 10));
         const snapshot = await readFintableSnapshot(client, { dateFrom, dateTo: todayStr });
 
         // ⚠️ [finding code-reviewer, PR #566] Les RÔLES viennent de `state` (pré-fetch), pas de
@@ -212,11 +240,34 @@ export async function runFintableBrowserSync(
         // relève pas de [FINTABLE-SYNC-STALE-BASE], qui visait la base d'ÉCRITURE.
         const { payloads, report: mapReport } = mapFintableSnapshot(snapshot, {
             roles: toMapperRoles(state.fintableRoles),
-            transactionsAfter: cutoverDateUsed,
+            // ⚠️ `null` en rattrapage : sans ça le mapper jetterait tout l'historique qu'on vient
+            // justement d'aller chercher (`tx.date <= transactionsAfter`, filtre STRICT). Les deux
+            // bornes — requête ET mapper — doivent tomber ENSEMBLE ; n'en lever qu'une donnerait un
+            // rattrapage qui télécharge tout et n'en garde rien, en silence.
+            transactionsAfter: opts.backfill ? null : cutoverDateUsed,
         });
 
         // [FINTABLE-SYNC-STALE-BASE] Base RELUE ici, après le réseau — voir `getFreshState`.
         const baseState = opts.getFreshState?.() ?? state;
+
+        // ⚠️ [FINTABLE-RATTRAPAGE] Le classement se fait ICI : après la relecture de la base (donc
+        // contre les VRAIES transactions existantes, saisies manuelles comprises) et AVANT
+        // l'application. Le faire plus tôt le baserait sur un état pré-réseau — exactement le défaut
+        // corrigé par [FINTABLE-SYNC-STALE-BASE] ; plus tard, les doublons seraient déjà écrits.
+        let rattrapage: ClassementRattrapage<{ date: string; payee: string; amount: number; isDuplicate?: boolean }> | null = null;
+        if (opts.backfill) {
+            for (const p of payloads) {
+                if (p.kind !== 'bank_statement') continue;
+                rattrapage = classerRattrapage(baseState.transactions ?? [], p.transactions);
+                // Les incertaines sont neutralisées AUSSI : mieux vaut un doublon caché (récupérable
+                // depuis la liste) qu'un doublon qui fausse le budget en silence.
+                p.transactions = [
+                    ...rattrapage.nouvelles,
+                    ...rattrapage.certaines,
+                    ...rattrapage.incertaines.map((i) => i.entrante),
+                ] as typeof p.transactions;
+            }
+        }
         // Isolation PAR PAYLOAD : PARTAGÉE avec le cron (`syncCore`), voir son en-tête.
         const applied = applyPayloadsIsolated(baseState, payloads);
         const { nextState, transactionsAdded, cashUpdated, debtsUpdated, warnings: applyWarnings } = applied;
@@ -224,6 +275,10 @@ export async function runFintableBrowserSync(
         const report: FintableSyncReport = {
             at: now(),
             cutoverDateUsed,
+            // ⚠️ La fin du « 0 transactions en plus » trompeur : le compteur existait dans le
+            // rapport du mapper depuis toujours, mais ne sortait que dans le script de dry-run.
+            skippedBeforeCutover: mapReport.transactions.skippedBeforeCutover,
+            wasBackfill: opts.backfill === true,
             accountsSeen: snapshot.accounts.length,
             accountsWithoutRole: mapReport.accountsWithoutRole.length,
             transactionsAdded,
@@ -240,6 +295,7 @@ export async function runFintableBrowserSync(
         // choix de la BASE, et c'est précisément ce que [FINTABLE-SYNC-STALE-BASE] corrige.
         return {
             report,
+            incertaines: rattrapage?.incertaines ?? [],
             statePatch: referenceDeltaPatch(baseState, {
                 ...nextState,
                 fintableSyncReport: report,
@@ -254,6 +310,6 @@ export async function runFintableBrowserSync(
         });
         // Rapport d'échec RENDU (pas persisté ici) : c'est l'appelant qui décide d'écrire, pour ne
         // jamais laisser un état à moitié appliqué. `statePatch: null` = « n'écris rien du contenu ».
-        return { report: emptyReport(cutoverDateUsed, describeError(err)), statePatch: null };
+        return { report: emptyReport(cutoverDateUsed, describeError(err)), statePatch: null, incertaines: [] };
     }
 }

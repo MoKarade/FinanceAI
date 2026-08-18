@@ -31,29 +31,40 @@
 // touche pas, et on ne les met pas non plus dans les incertains : une liste pleine de faux doublons
 // serait une liste que personne ne lit (`SILENCE-READS-AS-BROKEN` par saturation, plutôt que par
 // silence).
-import type { Transaction } from '../../types';
+/**
+ * ⚠️ Forme MINIMALE volontairement, pas `Transaction`. Le mapper Fintable produit des transactions
+ * partielles (sans `id`, assigné à l'application) : exiger `Transaction` obligerait à fabriquer des
+ * champs juste pour satisfaire le type — et fabriquer une donnée pour passer un typage est
+ * exactement la porte par laquelle entrent les faux champs crédibles.
+ */
+export interface TxComparable {
+    date: string;
+    payee: string;
+    amount: number;
+    isDuplicate?: boolean;
+}
 
 /** Fenêtre de rapprochement pour un doublon INCERTAIN, en jours. Même valeur que `markDuplicates`. */
 export const FENETRE_INCERTAIN_JOURS = 5;
 /** Écart de montant sous lequel deux transactions valent « le même montant » (arrondis de conversion). */
 export const TOLERANCE_MONTANT = 0.02;
 
-export interface PaireIncertaine {
+export interface PaireIncertaine<T extends TxComparable = TxComparable> {
     /** Transaction rapatriée, en attente de décision. */
-    entrante: Transaction;
+    entrante: T;
     /** Transaction DÉJÀ dans FinanceAI qui lui ressemble. */
-    existante: Transaction;
+    existante: TxComparable;
     /** Écart en jours (0 = même jour) — l'information qui aide Marc à trancher. */
     ecartJours: number;
 }
 
-export interface ClassementRattrapage {
+export interface ClassementRattrapage<T extends TxComparable = TxComparable> {
     /** À ajouter tel quel. */
-    nouvelles: Transaction[];
+    nouvelles: T[];
     /** À ajouter en `isDuplicate: true` — neutralisées, mais conservées et réversibles. */
-    certaines: Transaction[];
+    certaines: T[];
     /** À ajouter en `isDuplicate: true` AUSSI, mais listées pour arbitrage. */
-    incertaines: PaireIncertaine[];
+    incertaines: PaireIncertaine<T>[];
 }
 
 const jour = (d: string): string => (typeof d === 'string' ? d.slice(0, 10) : '');
@@ -95,20 +106,20 @@ export const libellesSimilaires = (p1: string, p2: string): boolean => {
  * fois (`dejaApparie`). Sans ça, trois vraies dépenses identiques face à une seule existante
  * seraient toutes neutralisées — on effacerait deux dépenses réelles pour un seul doublon.
  */
-export function classerRattrapage(
-    existantes: readonly Transaction[],
-    entrantes: readonly Transaction[],
-): ClassementRattrapage {
-    const nouvelles: Transaction[] = [];
-    const certaines: Transaction[] = [];
-    const incertaines: PaireIncertaine[] = [];
-    const dejaApparie = new Set<Transaction>();
+export function classerRattrapage<T extends TxComparable>(
+    existantes: readonly TxComparable[],
+    entrantes: readonly T[],
+): ClassementRattrapage<T> {
+    const nouvelles: T[] = [];
+    const certaines: T[] = [];
+    const incertaines: PaireIncertaine<T>[] = [];
+    const dejaApparie = new Set<TxComparable>();
 
     for (const e of entrantes) {
         if (!e || typeof e.date !== 'string') { nouvelles.push(e); continue; }
 
-        let certain: Transaction | null = null;
-        let incertain: { t: Transaction; d: number } | null = null;
+        let certain: TxComparable | null = null;
+        let incertain: { t: TxComparable; d: number } | null = null;
 
         for (const x of existantes) {
             if (dejaApparie.has(x)) continue;

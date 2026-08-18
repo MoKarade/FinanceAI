@@ -46,11 +46,42 @@ export interface BankTransaction {
      * différentes » : sans elle, une paire de montants opposés reste une simple suggestion.
      */
     accountName?: string;
+    /**
+     * [FINTABLE-RATTRAPAGE] Doublon DÉJÀ identifié par l'appelant — la transaction est écrite mais
+     * NEUTRALISÉE (hors courbe, hors budget), et reste rétablissable d'un clic.
+     *
+     * ⚠️ CE CHAMP MANQUAIT, et son absence rendait tout un lot inopérant. `applyBankStatement`
+     * reconstruit chaque transaction CHAMP PAR CHAMP : un drapeau posé en amont et non déclaré ici
+     * est silencieusement jeté. Le classement du rattrapage marquait donc ses doublons… pour rien,
+     * et les transactions à libellé différent (donc à clé différente) étaient écrites comme de
+     * VRAIES dépenses — double comptage dans le budget. Mesuré par l'audit de la PR #649.
+     * La leçon générale est déjà au dossier (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`) : la
+     * garde doit viser ce qui ATTEINT le store, jamais la sortie du producteur.
+     */
+    isDuplicate?: boolean;
 }
 export interface BankStatementPayload {
     kind: 'bank_statement';
     accountName?: string;
     transactions: BankTransaction[];
+    /**
+     * [FINTABLE-RATTRAPAGE] L'appelant a DÉJÀ tranché les doublons — ne pas re-filtrer par clé.
+     *
+     * ⚠️ DEUX DÉDUPS QUI SE CONTREDISENT, mesuré par l'audit de la PR #649. La dédup par CLÉ
+     * (`txnKey` = date|montant|payee) écarte tout ce qui lui ressemble, y compris deux dépenses
+     * RÉELLES et identiques du même jour (deux cafés à 4,25 $) — un compromis acceptable sur un
+     * relevé ponctuel. Le rattrapage, lui, classe explicitement avec un invariant d'APPARIEMENT
+     * UNIQUE : une transaction existante ne peut absorber qu'une entrante. Laisser la clé s'appliquer
+     * par-dessus annulait cet invariant et FAISAIT DISPARAÎTRE les vraies dépenses surnuméraires
+     * (mesuré : 3 cafés → 1 écrit).
+     *
+     * Quand ce drapeau est vrai, la clé ne DROPPE plus : le classement de l'appelant fait autorité,
+     * et ce qu'il a marqué `isDuplicate` est écrit puis neutralisé — donc VISIBLE et rétablissable,
+     * au lieu de disparaître sans trace.
+     * ⚠️ Défaut absent/false ⇒ tous les autres appelants (import CSV, relevé PDF, MCP, sync
+     * ordinaire) sont INCHANGÉS. La clé reste leur garde-fou.
+     */
+    callerClassified?: boolean;
 }
 
 /** Relevé de courtage — positions (snapshot de quantités/prix). */
@@ -679,7 +710,9 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
         if (!tx || typeof tx.amount !== 'number' || !tx.date) continue;
         if (!plausible(tx.amount, MAX_TXN_AMOUNT)) { rejCount++; continue; } // D9 : montant aberrant ignoré
         const k = txnKey(tx);
-        if (seen.has(k)) { dupCount++; continue; } // doublon (déjà présent OU déjà ajouté dans ce lot)
+        // ⚠️ `callerClassified` : le rattrapage a déjà tranché, avec un invariant d'appariement
+        // unique que cette clé annulerait en supprimant les dépenses réelles surnuméraires.
+        if (!doc.callerClassified && seen.has(k)) { dupCount++; continue; } // déjà présent OU déjà ajouté
         seen.add(k);
         // [TX-CATEGORY-RULES] + [MCP-CATEGORY-ALLOWLIST] Catégorie fournie ACCEPTÉE seulement si
         // canonique (remap vers la casse canonique) ; inconnue ou absente → règles déterministes
@@ -695,6 +728,9 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
             category: resolvedCat.category,
             status: 'processed',
             isTransfer: !!tx.isTransfer,
+            // ⚠️ Propagé SEULEMENT s'il est vrai : ajouter `isDuplicate: false` partout changerait
+            // la forme de toutes les transactions écrites par tous les autres appelants.
+            ...(tx.isDuplicate ? { isDuplicate: true } : {}),
             // [TX-TRANSFERS] Le compte de la LIGNE prime sur celui du document : un lot Fintable
             // couvre plusieurs comptes, alors qu'un relevé PDF n'en couvre qu'un.
             ...(tx.accountName || doc.accountName

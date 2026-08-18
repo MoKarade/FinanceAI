@@ -884,6 +884,18 @@ export interface FintableBrokerBalance {
 export interface FintableSyncReport {
   /** Epoch ms de la fin de la passe. */
   at: number;
+  /**
+   * [FINTABLE-RATTRAPAGE] Transactions ÉCARTÉES parce qu'antérieures ou égales à la bascule.
+   *
+   * ⚠️ Ce compteur EXISTAIT déjà dans le rapport du mapper, mais n'était affiché QUE dans le script
+   * de dry-run — jamais dans l'app. Marc voyait donc « 0 transactions en plus » sans savoir que la
+   * passe venait d'en ignorer des centaines : il en a conclu, à raison, que l'import était cassé
+   * (2026-08-18). C'est `SILENCE-READS-AS-BROKEN` — l'écran se tait au moment où il doit parler.
+   * ADDITIF optionnel : absent = rapport d'avant, aucune migration.
+   */
+  skippedBeforeCutover?: number;
+  /** [FINTABLE-RATTRAPAGE] Vrai si la passe était un RATTRAPAGE (bascule volontairement ignorée). */
+  wasBackfill?: boolean;
   /** Date de bascule (dérivée automatiquement) utilisée pour cette passe, ou `null` si vierge. */
   cutoverDateUsed: string | null;
   accountsSeen: number;

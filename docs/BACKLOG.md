@@ -197,6 +197,54 @@
 
 ---
 
+- [x] 🔴 **`[FINTABLE-RATTRAPAGE]`** — **LIVRÉ 2026-08-18** (signalé par Marc : « l'import Fintable
+  marche pas, j'ai passé à 1 an d'historique et ça me dit 0 transactions en plus »).
+  ⚠️ **Ce n'était pas un bug de code** : la sync est STRICTEMENT EN AVANT. Bascule = date de la
+  transaction la plus récente connue → la requête est bornée à `date_from = bascule` ET le mapper
+  jette tout ce qui est `<=` (filtre strict). Le réglage d'historique côté Fintable n'est lu NULLE
+  PART dans ce chemin. Protection anti-doublon assumée (« pas de recouvrement = pas de dépendance à
+  la dédup »), dont le prix était l'impossibilité de rattraper.
+  ⚠️ **DEUX bornes, pas une** — n'en lever qu'une donne un rattrapage qui télécharge tout et n'en
+  garde rien, en silence. Les deux tests qui les gardent sont indissociables.
+  ⚠️ **Le vrai défaut d'affichage** : `skippedBeforeCutover` était calculé depuis toujours mais
+  n'était rendu QUE dans le script de dry-run. Marc lisait « 0 en plus » sans savoir que des
+  centaines venaient d'être ignorées (`SILENCE-READS-AS-BROKEN`, 6e occurrence). Remonté au rapport
+  et affiché, avec le renvoi vers le bouton de rattrapage.
+  Classement (décision Marc) : CERTAIN (même jour + montant + libellé similaire) neutralisé seul ·
+  INCERTAIN (même montant ±5 j, libellé différent) listé pour arbitrage · le reste ajouté.
+  ⚠️ **Neutralisé, pas supprimé** : effet identique à l'écran (hors courbe/budget) mais réversible —
+  une suppression sur de la donnée d'argent ne l'est pas.
+  ⚠️ **On ne touche PAS** deux vraies dépenses identiques rapprochées (choix de Marc) : la dédup
+  historique les marque pourtant, faux positif destructeur sur un an d'historique.
+  Gardes : `backfillDedup` (16, dont la moitié visent le faux positif) + `browserSync` (6).
+
+- [ ] 🔴 **`[FINTABLE-DOUBLON-DATE-DECALEE]`** (S, **MOYEN — MESURÉ**, audit PR #649) — trou de
+  classement du rattrapage : `même libellé + même montant + 1 à 5 jours d'écart` ne tombe dans
+  AUCUNE branche (`d === 0 && similaire` → certain ; `!similaire` → incertain) et part en NOUVELLE.
+  ⚠️ C'est la forme la plus FRÉQUENTE du doublon bancaire réel — date de transaction vs date de
+  comptabilisation, qui diffère systématiquement entre deux agrégateurs. Ni neutralisé, ni listé,
+  ni rattrapable par `txnKey` (la date entre dans la clé) : **double comptage silencieux**.
+  ⚠️ Mon en-tête justifiait l'exclusion par « deux cafés le même jour » — raisonnement valable pour
+  deux ENTRANTES du même lot, PAS pour une entrante face à une transaction déjà connue.
+  **Correctif** : traiter ce cas en INCERTAIN (listé), pas en NOUVELLE.
+- [ ] 🔴 **`[FINTABLE-APPARIEMENT-GLOUTON]`** (S, **MOYEN — MESURÉ**, audit PR #649) — `dejaApparie`
+  consomme l'existante dans l'ordre des entrantes, sans préférer la preuve la plus forte. Mesuré :
+  une entrante INCERTAINE traitée en premier « vole » l'existante d'un doublon CERTAIN → double
+  erreur (un faux positif listé à Marc, et le vrai doublon reclassé NOUVELLE).
+  **Correctif** : deux passes — apparier tous les CERTAINS d'abord, les INCERTAINS sur le reliquat.
+- [ ] **`[FINTABLE-TXADDED-MENT]`** (XS, MOYEN — MESURÉ, audit PR #649) — `transactionsAdded` compte
+  la longueur du PAYLOAD (`syncCore.ts`), pas les écritures réelles ; `applyBankStatement` rend
+  pourtant `added.length`. Mesuré : 3 rapportées / 0 écrites. Le toast « N transaction(s)
+  ajoutée(s) » est donc faux précisément là où le recouvrement est maximal — ironie : ce lot existe
+  pour corriger un compteur qui mentait et en laisse un autre qui ment davantage.
+- [ ] **`[FINTABLE-ANCRE-LIQUIDITE-GONFLEE]`** (S, MOYEN — MESURÉ, audit PR #649) — un doublon non
+  neutralisé gonfle `initialBalances.LIQUIDITE` en silence (mesuré 1000 → 1584 $) : le total présent
+  est auto-réparé par le payload `cash_balance`, mais l'ANCRE visible dans Réglages → Comptes porte
+  un montant qui ne correspond à rien, et l'HISTORIQUE passé est déplacé d'autant (mesuré +500 $ sur
+  tous les mois antérieurs). ⚠️ Si aucun compte n'a le rôle `cash`, rien ne recale : l'écart cumulé
+  reste sur le solde courant. Largement fermé par le correctif `isDuplicate` de #649, mais le
+  mécanisme reste exposé pour tout doublon qui échappe au classement (cf. les deux tickets ci-dessus).
+
 ## 🔴 Money-critical — fiabilité des chiffres
 
 > Analyse fiscale 2026-07-31 (financial-integrity, findings MESURÉS via npx tsx sur le vrai moteur).

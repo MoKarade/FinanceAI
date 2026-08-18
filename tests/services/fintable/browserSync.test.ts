@@ -302,3 +302,119 @@ describe('transport RÉEL depuis le navigateur (aucun client injecté)', () => {
         vi.unstubAllGlobals();
     });
 });
+
+/**
+ * [FINTABLE-RATTRAPAGE] Le mode RATTRAPAGE — demande de Marc (2026-08-18).
+ *
+ * ⚠️ CE QUE CES TESTS VERROUILLENT, et ce n'est pas évident : il y a DEUX bornes, pas une. La
+ * requête est bornée (`date_from = bascule`) ET le mapper filtre (`tx.date <= transactionsAfter`,
+ * strict). N'en lever qu'une donne un rattrapage qui télécharge tout l'historique et n'en garde
+ * RIEN — panne parfaitement silencieuse, et exactement le symptôme que Marc a signalé. Les deux
+ * assertions ci-dessous sont donc indissociables.
+ */
+describe('runFintableBrowserSync — rattrapage d\'historique', () => {
+    const txBrut = (o: Record<string, unknown> = {}) => ({
+        id: 'tx_1', account_id: 'acc_1', date: '2025-09-15', amount: '-42.00',
+        currency: 'CAD', description: 'Metro', pending: false, ...o,
+    });
+    const roles = { acc_1: { kind: 'cash' } as FintableAccountRoleConfig };
+
+    it('lève la borne de REQUÊTE : aucune `date_from` envoyée à l\'API', async () => {
+        const client = fakeClient([account()], [txBrut()]);
+        await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, transactions: [{ id: 1, date: '2026-07-01', payee: 'X', amount: -5 }] as never }),
+            'jeton', { client, now, backfill: true },
+        );
+        const query = (client.getAllPages as ReturnType<typeof vi.fn>).mock.calls[0][1];
+        expect(query.date_from, 'une borne ici = rien d\'ancien n\'est même téléchargé').toBeUndefined();
+    });
+
+    it('sync ORDINAIRE : la borne reste (rétrocompat bit-identique)', async () => {
+        const client = fakeClient([account()], [txBrut()]);
+        await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, transactions: [{ id: 1, date: '2026-07-01', payee: 'X', amount: -5 }] as never }),
+            'jeton', { client, now },
+        );
+        const query = (client.getAllPages as ReturnType<typeof vi.fn>).mock.calls[0][1];
+        expect(query.date_from).toBe('2026-07-01');
+    });
+
+    it('lève AUSSI la borne du MAPPER : l\'historique ancien est réellement gardé', async () => {
+        const client = fakeClient([account()], [txBrut({ date: '2025-09-15' })]);
+        const r = await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, transactions: [{ id: 1, date: '2026-07-01', payee: 'X', amount: -5 }] as never }),
+            'jeton', { client, now, backfill: true },
+        );
+        // Sans `transactionsAfter: null`, cette transaction de 2025 serait comptée « écartée ».
+        expect(r.report.skippedBeforeCutover).toBe(0);
+        expect(r.report.transactionsAdded).toBeGreaterThan(0);
+        expect(r.report.wasBackfill).toBe(true);
+    });
+
+    /**
+     * ⚠️ LA FIN DU « 0 EN PLUS » TROMPEUR. Le compteur existait dans le rapport du mapper depuis
+     * toujours, mais ne sortait que dans le script de dry-run — Marc voyait « 0 transactions en
+     * plus » sans savoir que la passe venait d'en ignorer des centaines, et en a conclu à une panne.
+     */
+    it('sync ordinaire : les écartées sont COMPTÉES et rendues', async () => {
+        const client = fakeClient([account()], [txBrut({ date: '2025-09-15' }), txBrut({ id: 'tx_2', date: '2025-10-01' })]);
+        const r = await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, transactions: [{ id: 1, date: '2026-07-01', payee: 'X', amount: -5 }] as never }),
+            'jeton', { client, now },
+        );
+        expect(r.report.skippedBeforeCutover, 'sans ce chiffre, « 0 en plus » se lit comme une panne').toBe(2);
+        expect(r.report.wasBackfill).toBe(false);
+    });
+
+    /**
+     * ⚠️ CE TEST A ÉTÉ RÉÉCRIT, et c'est la faute la plus instructive du lot. Sa 1re version
+     * n'assérait que `r.incertaines` — la sortie du PRODUCTEUR. Or `applyBankStatement` reconstruit
+     * chaque transaction CHAMP PAR CHAMP : `isDuplicate` n'était pas déclaré dans `BankTransaction`
+     * et se faisait jeter en silence. Tout le classement était donc un NO-OP, et les doublons à
+     * libellé différent étaient écrits comme de vraies dépenses — double comptage dans le budget.
+     * Le test restait vert : il regardait le bon module et la mauvaise extrémité de la chaîne.
+     * C'est `GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`, leçon écrite le MATIN MÊME et répétée
+     * le jour même. La garde vise désormais `statePatch.transactions` : ce qui atteint le store.
+     */
+    it('un doublon ÉVIDENT est écrit MARQUÉ dans le store — pas seulement classé', async () => {
+        const client = fakeClient([account()], [txBrut({ date: '2025-09-15', description: 'Metro', amount: '-42.00' })]);
+        const r = await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, transactions: [{ id: 1, date: '2025-09-15', payee: 'METRO #12', amount: -42 }] as never }),
+            'jeton', { client, now, backfill: true },
+        );
+        expect(r.incertaines, 'un doublon évident ne doit PAS déranger Marc').toHaveLength(0);
+        const ecrites = (r.statePatch?.transactions ?? []) as Array<{ payee: string; isDuplicate?: boolean }>;
+        const metro = ecrites.find((t) => t.payee === 'Metro');
+        expect(metro, 'la transaction rapatriée doit exister dans le store').toBeTruthy();
+        expect(metro?.isDuplicate, 'sans ce drapeau EN BASE, le doublon compte dans le budget').toBe(true);
+    });
+
+    /**
+     * ⚠️ L'invariant d'APPARIEMENT UNIQUE, vérifié sur l'état ÉCRIT et non sur le classement.
+     * Deux dédups se contredisaient : la clé `txnKey` d'`applyBankStatement` écartait les entrantes
+     * surnuméraires à clé identique — donc les VRAIES dépenses que le classement avait justement
+     * protégées. Mesuré avant correctif : 3 cafés → 1 seul écrit.
+     */
+    it('trois dépenses identiques face à UNE existante : deux sont de vraies dépenses', async () => {
+        const cafes = [1, 2, 3].map((i) => txBrut({ id: `tx_${i}`, date: '2025-09-15', description: 'Café', amount: '-4.25' }));
+        const r = await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, transactions: [{ id: 1, date: '2025-09-15', payee: 'Café', amount: -4.25 }] as never }),
+            'jeton', { client: fakeClient([account()], cafes), now, backfill: true },
+        );
+        const ecrites = (r.statePatch?.transactions ?? []) as Array<{ payee: string; isDuplicate?: boolean }>;
+        const tousCafes = ecrites.filter((t) => t.payee === 'Café');
+        expect(tousCafes, 'l\'existante + les 3 rapatriées').toHaveLength(4);
+        // Une seule neutralisée : celle qui double l'existante. Les deux autres sont réelles.
+        expect(tousCafes.filter((t) => t.isDuplicate === true)).toHaveLength(1);
+    });
+
+    it('un cas DOUTEUX est remonté à Marc, jamais tranché seul', async () => {
+        const client = fakeClient([account()], [txBrut({ date: '2025-09-16', description: 'Hydro-Québec', amount: '-180.00' })]);
+        const r = await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, transactions: [{ id: 1, date: '2025-09-15', payee: 'PAIEMENT CAISSE', amount: -180 }] as never }),
+            'jeton', { client, now, backfill: true },
+        );
+        expect(r.incertaines).toHaveLength(1);
+        expect(r.incertaines[0].existante.payee).toBe('PAIEMENT CAISSE');
+    });
+});

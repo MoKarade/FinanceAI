@@ -6,6 +6,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-18 (rattraper ton historique Fintable)
+
+- **« 0 transactions en plus » ne veut plus dire « je ne sais pas quoi te dire ».** La sync te dit
+  maintenant combien de transactions plus anciennes elle a ignorées, et pourquoi : elle ne remonte
+  jamais avant ta transaction la plus récente.
+- **Nouveau bouton « Rattraper l'historique »** : il rapatrie TOUT ce que Fintable expose, sans
+  borne de date. C'est ce qui manquait — élargir l'historique côté Fintable ne servait à rien,
+  l'app ne le demandait pas.
+- Les **doublons évidents** (même jour, même montant, même marchand) sont neutralisés tout seuls.
+  Les **cas douteux** (même montant à quelques jours près, mais libellé différent) te sont listés :
+  je ne tranche pas à ta place sur ton argent.
+- ⚠️ Neutralisé ≠ supprimé : une transaction marquée ne compte plus dans ta courbe ni ton budget,
+  mais tu peux la rétablir d'un clic. Supprimer, non.
+- ⚠️ Deux vraies dépenses identiques le même jour (deux cafés) ne sont **pas** touchées.
+
 ## [unreleased] — 2026-08-18 (le mode discret masque aussi tes catégories)
 
 - Tu as tranché : « masquer ». En mode discret, les **catégories** disparaissent comme les montants

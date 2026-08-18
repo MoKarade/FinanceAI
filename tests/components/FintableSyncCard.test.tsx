@@ -275,3 +275,92 @@ describe('FintableSyncCard — trajet complet du jeton (findings panel #559)', (
         await waitFor(() => expect(saveKeysMock).toHaveBeenCalled());
     });
 });
+
+/**
+ * [FINTABLE-RATTRAPAGE, finding silent-failure #649] Le bouton de rattrapage et la liste des
+ * douteuses — zéro test avant ce bloc, et c'est là qu'était la fuite.
+ *
+ * ⚠️ LE DÉFAUT MESURÉ : `setIncertaines` s'exécutait AVANT le contrôle du mode démo. La liste
+ * affiche des dates, des marchands et des montants RÉELS. Si Marc activait le mode démo pendant le
+ * fetch (le scénario que le contrôle existe pour couvrir), l'écran montrait ses vraies données dans
+ * une session persona — sous un message affirmant « rien n'a été écrit ». Vrai pour le store, FAUX
+ * pour l'écran : une fuite avec une confirmation rassurante par-dessus, ce qui est pire qu'une fuite
+ * nue.
+ */
+describe('FintableSyncCard — rattrapage d\'historique', () => {
+    const MARCHAND = 'PHARMA-REELLE-ZQX';
+    const douteuse = {
+        entrante: { date: '2025-09-15', payee: MARCHAND, amount: -180 },
+        existante: { date: '2025-09-14', payee: 'PAIEMENT CAISSE', amount: -180 },
+        ecartJours: 1,
+    };
+
+    it('le bouton « Rattraper l\'historique » demande bien une passe de RATTRAPAGE', async () => {
+        syncMock.mockResolvedValue({
+            report: { at: 1, error: null, transactionsAdded: 12, accountsSeen: 1, warnings: [], skippedBeforeCutover: 0, wasBackfill: true },
+            statePatch: { lastUpdate: 1 }, incertaines: [],
+        });
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Rattraper l’historique/ }));
+        await waitFor(() => expect(syncMock).toHaveBeenCalled());
+        // 3e argument = options : c'est `backfill: true` qui lève les deux bornes.
+        expect(syncMock.mock.calls[0][2]).toMatchObject({ backfill: true });
+    });
+
+    it('« Synchroniser maintenant » ne déclenche JAMAIS un rattrapage (anti-sur-correctif)', async () => {
+        syncMock.mockResolvedValue({
+            report: { at: 1, error: null, transactionsAdded: 0, accountsSeen: 1, warnings: [] },
+            statePatch: { lastUpdate: 1 }, incertaines: [],
+        });
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Synchroniser maintenant/ }));
+        await waitFor(() => expect(syncMock).toHaveBeenCalled());
+        expect(syncMock.mock.calls[0][2]).toMatchObject({ backfill: false });
+    });
+
+    it('les cas douteux sont AFFICHÉS pour arbitrage', async () => {
+        syncMock.mockResolvedValue({
+            report: { at: 1, error: null, transactionsAdded: 5, accountsSeen: 1, warnings: [], wasBackfill: true },
+            statePatch: { lastUpdate: 1 }, incertaines: [douteuse],
+        });
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Rattraper l’historique/ }));
+        await waitFor(() => expect(screen.getByText(/1 transaction\(s\) à vérifier/)).toBeInTheDocument());
+        expect(document.body.textContent).toContain(MARCHAND);
+    });
+
+    // ⚠️ LE test de ce bloc.
+    it('mode démo activé PENDANT la passe → aucune donnée réelle à l\'écran', async () => {
+        syncMock.mockImplementation(async () => {
+            // Simule l'activation du mode démo pendant la fenêtre réseau.
+            useFinanceStore.setState({ isTestMode: true } as never);
+            return {
+                report: { at: 1, error: null, transactionsAdded: 5, accountsSeen: 1, warnings: [], wasBackfill: true },
+                statePatch: { lastUpdate: 1 }, incertaines: [douteuse],
+            };
+        });
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Rattraper l’historique/ }));
+        await waitFor(() => expect(screen.getByText(/Mode démo activé pendant/)).toBeInTheDocument());
+        // `innerHTML` : le marchand ne doit être ni dans le texte, ni dans un attribut.
+        expect(document.body.innerHTML, 'les vraies données de Marc dans une session persona').not.toContain(MARCHAND);
+    });
+
+    it('une nouvelle passe REMET À ZÉRO la liste précédente', async () => {
+        syncMock.mockResolvedValue({
+            report: { at: 1, error: null, transactionsAdded: 5, accountsSeen: 1, warnings: [], wasBackfill: true },
+            statePatch: { lastUpdate: 1 }, incertaines: [douteuse],
+        });
+        render(<FintableSyncCard />);
+        fireEvent.click(screen.getByRole('button', { name: /Rattraper l’historique/ }));
+        await waitFor(() => expect(document.body.textContent).toContain(MARCHAND));
+
+        // Passe suivante sans douteuse : l'ancienne liste ne doit pas survivre.
+        syncMock.mockResolvedValue({
+            report: { at: 2, error: null, transactionsAdded: 0, accountsSeen: 1, warnings: [] },
+            statePatch: { lastUpdate: 2 }, incertaines: [],
+        });
+        fireEvent.click(screen.getByRole('button', { name: /Synchroniser maintenant/ }));
+        await waitFor(() => expect(document.body.textContent).not.toContain(MARCHAND));
+    });
+});

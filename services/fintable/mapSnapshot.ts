@@ -315,6 +315,33 @@ export function mapFintableSnapshot(
         });
     }
 
+    // ⚠️ [finding silent-failure #649] AVERTISSEMENT, pas seulement un compteur — et c'est LA
+    // correction de fond. Un compteur neuf n'est visible que là où quelqu'un pense à l'afficher :
+    // mon premier jet ne le montrait que dans le toast de la sync MANUELLE, donc l'incident de Marc
+    // (« 0 transactions en plus ») restait aussi muet qu'avant sur la sync AUTOMATIQUE — celle qui
+    // l'a produit. Les `warnings`, eux, sont déjà transportés de bout en bout : comptés au pied de
+    // la carte, listés dans Système & diagnostics, persistés dans le rapport. Rouler dessus rend
+    // l'information visible partout SANS demander à chaque écran de s'en souvenir.
+    if (skippedBeforeCutover > 0) {
+        warnings.push(
+            `${skippedBeforeCutover} transaction(s) plus ANCIENNES que la bascule (${config.transactionsAfter}) `
+            + 'ont été ignorées : la synchronisation ne remonte jamais avant ta transaction la plus '
+            + 'récente. Utilise « Rattraper l\u2019historique » dans Réglages pour les récupérer.',
+        );
+    }
+
+    // ⚠️ [finding silent-failure #649] Même raisonnement pour les comptes de PLACEMENT : leurs
+    // transactions ne sont volontairement pas importées (seul le solde du courtier fait autorité),
+    // mais un compte étiqueté « Placement » PAR ERREUR au lieu de « Liquidités » ferait disparaître
+    // toutes ses transactions sans aucun signal. Le compteur existait ; il n'avait aucune voix.
+    if (skippedInvestmentAccount > 0) {
+        warnings.push(
+            `${skippedInvestmentAccount} transaction(s) écartée(s) car rattachée(s) à un compte de `
+            + 'PLACEMENT (seul le solde du courtier fait autorité pour ces comptes). Si l\u2019un d\u2019eux '
+            + 'est en réalité un compte de liquidités, corrige son rôle dans Réglages.',
+        );
+    }
+
     if (skippedForeignCurrency > 0) {
         warnings.push(
             `${skippedForeignCurrency} transaction(s) dans une devise ≠ ${baseCurrency} écartée(s) : `

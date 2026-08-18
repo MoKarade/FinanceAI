@@ -1149,6 +1149,31 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   `DOC-STALE-IMPOSSIBILITY` : un constat d'absence est une hypothèse, pas une mesure.
 
 ## Notes
+- ⚠️ **[GARDE-AU-PRODUCTEUR — RÉCIDIVE LE JOUR MÊME] 2026-08-18.** J'ai écrit le MATIN la leçon
+  « un test au producteur ne prouve rien sur la chaîne » (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`,
+  après les flèches Veille/Lendemain livrées cassées), et je l'ai REFAITE l'après-midi sur le
+  rattrapage Fintable : mon test assérait `r.incertaines` — la sortie du classeur — pendant que
+  `applyBankStatement` reconstruisait chaque transaction CHAMP PAR CHAMP et jetait `isDuplicate`,
+  non déclaré dans `BankTransaction`. **Tout le classement était un no-op**, et les doublons à
+  libellé différent étaient écrits comme de vraies dépenses : double comptage dans le budget.
+  Trouvé par un audit, pas par mes 16 tests.
+  ⚠️ **Ce qui a rendu la faute invisible** : un `as typeof p.transactions` posé pour faire passer un
+  type structurel a fait taire TypeScript sur le champ surnuméraire. Un cast qui « débloque » un
+  branchement est un endroit où le compilateur cesse de vérifier la chose même qu'on ajoute.
+  **Règles** : (1) quand on ajoute un CHAMP à une donnée qui traverse une frontière, vérifier que le
+  consommateur le DÉCLARE — une reconstruction champ par champ jette tout le reste, en silence ;
+  (2) l'assertion doit viser l'état ÉCRIT (`statePatch.transactions`), jamais la valeur de retour du
+  module qu'on vient d'écrire ; (3) écrire la leçon ne suffit pas — c'est le TEST qui l'applique.
+- ⚠️ **[DEUX-DEDUPS-QUI-SE-CONTREDISENT] 2026-08-18 — deux protections correctes, composées, en
+  détruisent une troisième chose.** `applyBankStatement` écarte par CLÉ (`date|montant|payee`) :
+  bon garde-fou pour un relevé ponctuel. Le rattrapage Fintable classe avec un invariant
+  d'APPARIEMENT UNIQUE (une existante n'absorbe qu'une entrante) : bon pour un recouvrement
+  volontaire. Composées, la clé s'applique APRÈS et supprime les entrantes surnuméraires que le
+  classement venait de protéger — **3 vraies dépenses identiques → 1 écrite** (mesuré). Chaque
+  moitié est défendable ; leur superposition perd de l'argent.
+  **Règle** : quand deux couches dédupliquent la même donnée, en désigner UNE comme autorité pour
+  le chemin concerné, explicitement (`callerClassified`), plutôt que de laisser la composition
+  décider. Et le test doit porter sur l'état écrit — au niveau de chaque couche il est vert.
 - ⚠️ **[GARDE-BORNEE-PAR-CLASSE-NEGATIVE] 2026-08-17 — borner une syntaxe IMBRIQUÉE avec `[^x]*` est
   faux par construction, et la garde devient aveugle EN SILENCE.** Le scan qui interdit une valeur
   dans le `title` d'une primitive de masquage bornait la balise avec `<Private…[^>]*>`. Or un `>`

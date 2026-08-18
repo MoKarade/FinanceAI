@@ -1149,6 +1149,24 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   `DOC-STALE-IMPOSSIBILITY` : un constat d'absence est une hypothèse, pas une mesure.
 
 ## Notes
+- ⚠️ **[GARDE-BORNEE-PAR-CLASSE-NEGATIVE] 2026-08-17 — borner une syntaxe IMBRIQUÉE avec `[^x]*` est
+  faux par construction, et la garde devient aveugle EN SILENCE.** Le scan qui interdit une valeur
+  dans le `title` d'une primitive de masquage bornait la balise avec `<Private…[^>]*>`. Or un `>`
+  apparaît DANS la balise bien avant sa fin, dès qu'un `className` interpolé contient une
+  comparaison : `className={\`… ${totalFlow >= 0 ? 'a' : 'b'}\`} title="…"`. Le `[^>]*` s'arrêtait
+  sur le `>` de `>=` — le `title` n'était jamais lu. **Mesuré : 3 des appels réels étaient dans ce
+  cas, et une fuite plantée derrière laissait la garde VERTE.**
+  ⚠️ **Et ma preuve de discrimination ne l'avait pas vu** : j'avais posé la fuite d'essai sur une
+  balise SANS comparaison — un cas favorable, choisi sans le savoir. Une preuve de discrimination
+  ne vaut que si le cas d'essai est REPRÉSENTATIF ; sur un scan de syntaxe, ça veut dire l'essayer
+  sur la forme la plus TORDUE du dépôt, pas sur la plus simple. Trouvé par la revue auto (#646),
+  après merge.
+  **Règles** : compter la PROFONDEUR (`{`/`}`) au lieu d'une classe négative ; et surtout
+  **tester l'EXTRACTEUR sur des cas de syntaxe construits**, pas seulement le balayage du dépôt —
+  un balayage vert ne prouve rien tant que l'extracteur peut être aveugle.
+  ⚠️ Corollaire : ajouter un anti-vacuité sur ce que la garde TROUVE (ici « au moins 3 `title`
+  vus », valeur MESURÉE et non estimée). Le compteur de primitives seul ne suffisait pas : il
+  restait à 253 pendant que le compteur de `title` tombait à 0.
 - ⚠️ **[TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT] 2026-08-17 — un composant testé à son CONTRAT ne dit
   rien de ce qu'on lui passe.** Les flèches Veille/Lendemain du panneau de détail avaient un test
   vert et complet : props reçues → callback appelé, boutons désactivés aux bornes, WCAG 2.5.3

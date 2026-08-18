@@ -241,6 +241,12 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   — un `onClick` React ne capte PAS un clic sur une forme SVG redessinée au survol : la moitié basse
   de la courbe Futur était morte au clic depuis toujours (`FUTUR-CLICK-AREA`, → `pointerup`).
 - Resserrer un scan-garde **AVANT** de coder le fix : les offenders révélés = le vrai périmètre.
+- Un scan-garde qui borne une syntaxe IMBRIQUÉE avec `[^x]*` est aveugle en silence (un `>` dans un
+  `className` interpolé tronque la balise) → compter la PROFONDEUR, **tester l'extracteur sur des
+  cas de syntaxe**, et poser un anti-vacuité sur ce qu'il TROUVE, pas seulement sur ce qu'il balaie
+  (`GARDE-BORNEE-PAR-CLASSE-NEGATIVE`).
+- Une **preuve de discrimination** ne vaut que si le cas d'essai est REPRÉSENTATIF : l'essayer sur la
+  forme la plus tordue du dépôt, pas la plus simple.
 - Un composant testé à son **CONTRAT** ne dit rien de ce qu'on lui PASSE : quand un index/une clé est
   calculé ailleurs, viser le CALCUL (l'extraire en fonction pure le rend testable)
   (`TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`).

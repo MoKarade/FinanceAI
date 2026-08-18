@@ -76,6 +76,9 @@ const ecartJours = (a: string, b: string): number => {
     return Math.abs(ta - tb) / 86_400_000;
 };
 
+/** Une date au JOUR (`YYYY-MM-DD`) — un mois seul (`2026-06`) ne prouve aucune coïncidence. */
+const jourComplet = (d: string): boolean => /^\d{4}-\d{2}-\d{2}/.test(d || '');
+
 const memeMontant = (a: number, b: number): boolean =>
     Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) < TOLERANCE_MONTANT;
 
@@ -115,32 +118,52 @@ export function classerRattrapage<T extends TxComparable>(
     const incertaines: PaireIncertaine<T>[] = [];
     const dejaApparie = new Set<TxComparable>();
 
-    for (const e of entrantes) {
-        if (!e || typeof e.date !== 'string') { nouvelles.push(e); continue; }
+    /** Candidate appariable : même montant, dans la fenêtre, existante encore libre. */
+    const candidates = (e: T) => existantes
+        .filter((x) => !dejaApparie.has(x) && memeMontant(e.amount, x.amount))
+        .map((x) => ({ x, d: ecartJours(e.date, x.date), similaire: libellesSimilaires(e.payee, x.payee) }))
+        .filter((c) => c.d <= FENETRE_INCERTAIN_JOURS)
+        // À égalité de force de preuve, la plus PROCHE en date : c'est la plus probable.
+        .sort((a, b) => a.d - b.d);
 
-        let certain: TxComparable | null = null;
-        let incertain: { t: TxComparable; d: number } | null = null;
+    const valides = entrantes.filter((e) => e && typeof e.date === 'string');
+    for (const e of entrantes) if (!e || typeof e.date !== 'string') nouvelles.push(e);
 
-        for (const x of existantes) {
-            if (dejaApparie.has(x)) continue;
-            if (!memeMontant(e.amount, x.amount)) continue;
-            const d = ecartJours(e.date, x.date);
-            if (d > FENETRE_INCERTAIN_JOURS) continue;
+    // ── PASSE 1 — les CERTAINS d'abord ──────────────────────────────────────────────────────────
+    // ⚠️ DEUX PASSES, et ce n'est pas de l'élégance. En une seule, l'ordre des ENTRANTES décidait :
+    // une entrante douteuse traitée en premier « volait » l'existante d'un vrai doublon, produisant
+    // DEUX erreurs d'un coup — un faux positif listé à Marc, et le vrai doublon reclassé NOUVELLE
+    // (donc compté deux fois dans le budget). Mesuré par l'audit de la PR #649.
+    // La preuve la plus FORTE se sert la première ; le douteux se contente du reliquat.
+    const restantes: T[] = [];
+    for (const e of valides) {
+        // CERTAIN : même JOUR EXACT **et** libellé similaire. Les deux, pas l'un ou l'autre — un même
+        // montant au même jour chez deux marchands différents est banal (deux achats).
+        // ⚠️ `jourComplet` exigé : `Date.parse('2026-06T00:00:00Z')` est VALIDE, donc deux
+        // transactions datées au MOIS seul donnaient `d === 0` et devenaient « certaines » sur une
+        // granularité mensuelle. Le dépôt manipule bien des transactions datées au mois.
+        const c = candidates(e).find((k) => k.d === 0 && k.similaire && jourComplet(e.date) && jourComplet(k.x.date));
+        if (c) { dejaApparie.add(c.x); certaines.push({ ...e, isDuplicate: true }); continue; }
+        restantes.push(e);
+    }
 
-            const similaire = libellesSimilaires(e.payee, x.payee);
-            // CERTAIN : même jour EXACT **et** libellé similaire. Les deux, pas l'un ou l'autre —
-            // un même montant au même jour chez deux marchands différents est banal (deux achats).
-            if (d === 0 && similaire) { certain = x; break; }
-            // INCERTAIN : montant identique, date proche, libellé qui NE correspond PAS. C'est le cas
-            // que la dédup historique laisse passer (elle exige les deux critères) — donc exactement
-            // ce contre quoi la bascule protégeait.
-            if (!similaire && (incertain === null || d < incertain.d)) incertain = { t: x, d };
-        }
-
-        if (certain) { dejaApparie.add(certain); certaines.push({ ...e, isDuplicate: true }); continue; }
-        if (incertain) {
-            dejaApparie.add(incertain.t);
-            incertaines.push({ entrante: { ...e, isDuplicate: true }, existante: incertain.t, ecartJours: incertain.d });
+    // ── PASSE 2 — les DOUTEUX sur le reliquat ───────────────────────────────────────────────────
+    for (const e of restantes) {
+        // Deux formes de doute, et la seconde manquait :
+        //  • libellé DIFFÉRENT (la banque a renommé le marchand) — ce que la dédup historique laisse
+        //    passer, puisqu'elle exige montant ET libellé ;
+        //  • libellé IDENTIQUE mais date DÉCALÉE de 1 à 5 jours — c'est la forme la plus FRÉQUENTE
+        //    du doublon bancaire réel (date de transaction vs date de comptabilisation, qui diffère
+        //    systématiquement entre deux agrégateurs). Elle ne tombait dans AUCUNE branche et partait
+        //    en NOUVELLE : ni neutralisée, ni listée, et invisible pour la dédup par clé (la date
+        //    entre dans la clé). Double comptage silencieux — le pire des trois sorts.
+        //    ⚠️ Mon commentaire d'origine justifiait l'exclusion par « deux cafés le même jour » :
+        //    raisonnement valable entre deux ENTRANTES du même lot, PAS face à une transaction déjà
+        //    connue. Ici on ne tranche pas, on LISTE.
+        const c = candidates(e)[0];
+        if (c) {
+            dejaApparie.add(c.x);
+            incertaines.push({ entrante: { ...e, isDuplicate: true }, existante: c.x, ecartJours: c.d });
             continue;
         }
         nouvelles.push(e);

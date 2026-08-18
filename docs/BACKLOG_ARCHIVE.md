@@ -4325,3 +4325,22 @@ quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
   ⚠️ **On ne touche PAS** deux vraies dépenses identiques rapprochées (choix de Marc) : la dédup
   historique les marque pourtant, faux positif destructeur sur un an d'historique.
   Gardes : `backfillDedup` (16, dont la moitié visent le faux positif) + `browserSync` (6).
+
+
+## Livrés le 2026-08-18 — PR #651 (trous de détection du rattrapage)
+
+- [x] 🔴 **`[FINTABLE-DOUBLON-DATE-DECALEE]`** — **CORRIGÉ 2026-08-18** (PR #651). Le cas
+  `même libellé + même montant + 1 à 5 j d'écart` tombe désormais en INCERTAIN (listé), plus en
+  NOUVELLE. ⚠️ C'est la forme la plus FRÉQUENTE du doublon bancaire réel (date de transaction vs
+  date de comptabilisation) : ni neutralisée, ni listée, ni rattrapable par `txnKey` — double
+  comptage silencieux. Mon en-tête justifiait l'exclusion par « deux cafés le même jour » :
+  raisonnement valable entre deux ENTRANTES du même lot, faux face à une transaction déjà connue.
+  ⚠️ Corrigé au passage : `Date.parse('2026-06T00:00:00Z')` étant valide, deux dates au MOIS seul
+  donnaient `d === 0` donc « certain » sur une granularité mensuelle — `jourComplet` l'exige
+  maintenant. 3 tests, prouvés discriminants.
+
+- [x] 🔴 **`[FINTABLE-APPARIEMENT-GLOUTON]`** — **CORRIGÉ 2026-08-18** (PR #651). Classement en
+  DEUX PASSES : tous les CERTAINS d'abord, les DOUTEUX sur le reliquat. ⚠️ En une passe, l'ordre des
+  entrantes décidait — une douteuse traitée en premier volait l'existante d'un vrai doublon, ce qui
+  produisait DEUX erreurs d'un coup (faux positif listé à Marc + vrai doublon reclassé NOUVELLE,
+  donc compté deux fois). 1 test, prouvé discriminant.

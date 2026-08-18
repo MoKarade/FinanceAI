@@ -197,20 +197,6 @@
 
 ---
 
-- [ ] 🔴 **`[FINTABLE-DOUBLON-DATE-DECALEE]`** (S, **MOYEN — MESURÉ**, audit PR #649) — trou de
-  classement du rattrapage : `même libellé + même montant + 1 à 5 jours d'écart` ne tombe dans
-  AUCUNE branche (`d === 0 && similaire` → certain ; `!similaire` → incertain) et part en NOUVELLE.
-  ⚠️ C'est la forme la plus FRÉQUENTE du doublon bancaire réel — date de transaction vs date de
-  comptabilisation, qui diffère systématiquement entre deux agrégateurs. Ni neutralisé, ni listé,
-  ni rattrapable par `txnKey` (la date entre dans la clé) : **double comptage silencieux**.
-  ⚠️ Mon en-tête justifiait l'exclusion par « deux cafés le même jour » — raisonnement valable pour
-  deux ENTRANTES du même lot, PAS pour une entrante face à une transaction déjà connue.
-  **Correctif** : traiter ce cas en INCERTAIN (listé), pas en NOUVELLE.
-- [ ] 🔴 **`[FINTABLE-APPARIEMENT-GLOUTON]`** (S, **MOYEN — MESURÉ**, audit PR #649) — `dejaApparie`
-  consomme l'existante dans l'ordre des entrantes, sans préférer la preuve la plus forte. Mesuré :
-  une entrante INCERTAINE traitée en premier « vole » l'existante d'un doublon CERTAIN → double
-  erreur (un faux positif listé à Marc, et le vrai doublon reclassé NOUVELLE).
-  **Correctif** : deux passes — apparier tous les CERTAINS d'abord, les INCERTAINS sur le reliquat.
 - [ ] **`[FINTABLE-TXADDED-MENT]`** (XS, MOYEN — MESURÉ, audit PR #649) — `transactionsAdded` compte
   la longueur du PAYLOAD (`syncCore.ts`), pas les écritures réelles ; `applyBankStatement` rend
   pourtant `added.length`. Mesuré : 3 rapportées / 0 écrites. Le toast « N transaction(s)

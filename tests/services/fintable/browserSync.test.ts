@@ -366,13 +366,46 @@ describe('runFintableBrowserSync — rattrapage d\'historique', () => {
         expect(r.report.wasBackfill).toBe(false);
     });
 
-    it('un doublon ÉVIDENT du rattrapage est neutralisé sans arbitrage', async () => {
+    /**
+     * ⚠️ CE TEST A ÉTÉ RÉÉCRIT, et c'est la faute la plus instructive du lot. Sa 1re version
+     * n'assérait que `r.incertaines` — la sortie du PRODUCTEUR. Or `applyBankStatement` reconstruit
+     * chaque transaction CHAMP PAR CHAMP : `isDuplicate` n'était pas déclaré dans `BankTransaction`
+     * et se faisait jeter en silence. Tout le classement était donc un NO-OP, et les doublons à
+     * libellé différent étaient écrits comme de vraies dépenses — double comptage dans le budget.
+     * Le test restait vert : il regardait le bon module et la mauvaise extrémité de la chaîne.
+     * C'est `GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`, leçon écrite le MATIN MÊME et répétée
+     * le jour même. La garde vise désormais `statePatch.transactions` : ce qui atteint le store.
+     */
+    it('un doublon ÉVIDENT est écrit MARQUÉ dans le store — pas seulement classé', async () => {
         const client = fakeClient([account()], [txBrut({ date: '2025-09-15', description: 'Metro', amount: '-42.00' })]);
         const r = await runFintableBrowserSync(
             stateWith({ fintableRoles: roles, transactions: [{ id: 1, date: '2025-09-15', payee: 'METRO #12', amount: -42 }] as never }),
             'jeton', { client, now, backfill: true },
         );
         expect(r.incertaines, 'un doublon évident ne doit PAS déranger Marc').toHaveLength(0);
+        const ecrites = (r.statePatch?.transactions ?? []) as Array<{ payee: string; isDuplicate?: boolean }>;
+        const metro = ecrites.find((t) => t.payee === 'Metro');
+        expect(metro, 'la transaction rapatriée doit exister dans le store').toBeTruthy();
+        expect(metro?.isDuplicate, 'sans ce drapeau EN BASE, le doublon compte dans le budget').toBe(true);
+    });
+
+    /**
+     * ⚠️ L'invariant d'APPARIEMENT UNIQUE, vérifié sur l'état ÉCRIT et non sur le classement.
+     * Deux dédups se contredisaient : la clé `txnKey` d'`applyBankStatement` écartait les entrantes
+     * surnuméraires à clé identique — donc les VRAIES dépenses que le classement avait justement
+     * protégées. Mesuré avant correctif : 3 cafés → 1 seul écrit.
+     */
+    it('trois dépenses identiques face à UNE existante : deux sont de vraies dépenses', async () => {
+        const cafes = [1, 2, 3].map((i) => txBrut({ id: `tx_${i}`, date: '2025-09-15', description: 'Café', amount: '-4.25' }));
+        const r = await runFintableBrowserSync(
+            stateWith({ fintableRoles: roles, transactions: [{ id: 1, date: '2025-09-15', payee: 'Café', amount: -4.25 }] as never }),
+            'jeton', { client: fakeClient([account()], cafes), now, backfill: true },
+        );
+        const ecrites = (r.statePatch?.transactions ?? []) as Array<{ payee: string; isDuplicate?: boolean }>;
+        const tousCafes = ecrites.filter((t) => t.payee === 'Café');
+        expect(tousCafes, 'l\'existante + les 3 rapatriées').toHaveLength(4);
+        // Une seule neutralisée : celle qui double l'existante. Les deux autres sont réelles.
+        expect(tousCafes.filter((t) => t.isDuplicate === true)).toHaveLength(1);
     });
 
     it('un cas DOUTEUX est remonté à Marc, jamais tranché seul', async () => {

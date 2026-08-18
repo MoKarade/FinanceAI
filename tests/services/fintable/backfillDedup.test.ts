@@ -140,3 +140,53 @@ describe('[FINTABLE-RATTRAPAGE] la similarité reste alignée sur la dédup hist
         expect(libellesSimilaires(a as string, b as string)).toBe(attendu);
     });
 });
+
+/**
+ * [finding silent-failure #649] Le compteur ne suffisait pas — il fallait une VOIX.
+ *
+ * ⚠️ Mon premier correctif remontait `skippedBeforeCutover` au rapport et l'affichait dans le toast
+ * de la sync MANUELLE. Or l'incident de Marc vient de la sync AUTOMATIQUE (au chargement de l'app,
+ * sans clic) : aucun toast, et les vues durables — pied de la carte, Système & diagnostics —
+ * n'affichaient pas le champ. Le silence n'était pas supprimé, il était DÉPLACÉ.
+ * Les `warnings`, eux, sont déjà transportés partout. Rouler dessus rend l'information visible sans
+ * demander à chaque écran de s'en souvenir : c'est ça, corriger la classe plutôt que le symptôme.
+ */
+import { mapFintableSnapshot } from '../../../services/fintable/mapSnapshot';
+
+describe('[FINTABLE-RATTRAPAGE] les écartées ont une VOIX, pas seulement un compteur', () => {
+    const snapshot = (dates: string[]) => ({
+        readAt: Date.parse('2026-08-18T12:00:00Z'),
+        accounts: [{ id: 'acc_1', connectionId: 'conn_1', name: 'Chèque', type: 'depository', currency: 'CAD', balance: 1500, cashBalance: null, debt: null }],
+        holdings: [], holdingsSkipped: [],
+        transactions: dates.map((d, i) => ({
+            id: `tx_${i}`, accountId: 'acc_1', date: d, amount: -20, currency: 'CAD',
+            description: `Achat ${i}`, pending: false,
+        })),
+    } as never);
+
+    const config = (after: string | null) => ({
+        roles: { acc_1: { kind: 'cash' } }, transactionsAfter: after, baseCurrency: 'CAD',
+    } as never);
+
+    it('des transactions écartées → un AVERTISSEMENT qui dit pourquoi et quoi faire', () => {
+        const r = mapFintableSnapshot(snapshot(['2025-01-05', '2025-02-05']), config('2026-07-01'));
+        expect(r.report.transactions.skippedBeforeCutover).toBe(2);
+        const w = r.report.warnings.join(' | ');
+        expect(w, 'le nombre').toContain('2 transaction(s) plus ANCIENNES');
+        expect(w, 'la raison').toContain('2026-07-01');
+        expect(w, 'et surtout : quoi faire').toContain('Rattraper l’historique');
+    });
+
+    // ⚠️ Anti-sur-correctif : un avertissement permanent ne se lit plus comme un avertissement.
+    it('rien d’écarté → aucun avertissement de bascule', () => {
+        const r = mapFintableSnapshot(snapshot(['2026-08-05']), config('2026-07-01'));
+        expect(r.report.transactions.skippedBeforeCutover).toBe(0);
+        expect(r.report.warnings.join(' | ')).not.toContain('plus ANCIENNES');
+    });
+
+    it('en RATTRAPAGE (bascule nulle), rien n’est écarté ni signalé à ce titre', () => {
+        const r = mapFintableSnapshot(snapshot(['2025-01-05']), config(null));
+        expect(r.report.transactions.skippedBeforeCutover).toBe(0);
+        expect(r.report.warnings.join(' | ')).not.toContain('plus ANCIENNES');
+    });
+});

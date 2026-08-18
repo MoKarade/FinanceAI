@@ -261,6 +261,9 @@ export async function runFintableBrowserSync(
                 rattrapage = classerRattrapage(baseState.transactions ?? [], p.transactions);
                 // Les incertaines sont neutralisées AUSSI : mieux vaut un doublon caché (récupérable
                 // depuis la liste) qu'un doublon qui fausse le budget en silence.
+                // L'appelant fait autorité : voir `callerClassified` (deux dédups qui se
+                // contredisaient et supprimaient de vraies dépenses).
+                p.callerClassified = true;
                 p.transactions = [
                     ...rattrapage.nouvelles,
                     ...rattrapage.certaines,

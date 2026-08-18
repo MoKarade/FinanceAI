@@ -247,6 +247,11 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   (`GARDE-BORNEE-PAR-CLASSE-NEGATIVE`).
 - Une **preuve de discrimination** ne vaut que si le cas d'essai est REPRÉSENTATIF : l'essayer sur la
   forme la plus tordue du dépôt, pas la plus simple.
+- ⚠️ **Ajouter un CHAMP qui traverse une frontière** : vérifier que le consommateur le DÉCLARE — une
+  reconstruction champ par champ le jette en silence, et un `as` posé pour faire passer le type fait
+  taire le compilateur sur ce champ précis. L'assertion vise l'état ÉCRIT, jamais le retour du module.
+- Quand **deux couches dédupliquent** la même donnée, en désigner UNE comme autorité pour ce chemin :
+  composées, deux protections correctes suppriment de vraies données (`DEUX-DEDUPS-QUI-SE-CONTREDISENT`).
 - Un composant testé à son **CONTRAT** ne dit rien de ce qu'on lui PASSE : quand un index/une clé est
   calculé ailleurs, viser le CALCUL (l'extraire en fonction pure le rend testable)
   (`TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`).

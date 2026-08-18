@@ -180,7 +180,10 @@ export const FintableSyncCard: React.FC = () => {
             setError('Une synchronisation est déjà en cours — réessaie dans un instant.');
             return;
         }
-        setBusy('syncing'); setError(null); setNotice(null);
+        // ⚠️ [finding silent-failure #649] RÉINITIALISÉE à chaque passe. Sans ça, une liste chargée
+        // restait affichée indéfiniment — y compris après un échec, et y compris si Marc basculait
+        // ensuite en mode démo pour montrer son écran à quelqu'un.
+        setBusy('syncing'); setError(null); setNotice(null); setIncertaines([]);
         await persistToken(); // ceinture : idem handleTest
         try {
             const { runFintableBrowserSync } = await importWithRetry(
@@ -201,13 +204,19 @@ export const FintableSyncCard: React.FC = () => {
             // TOUTE la carte de réglages, pas seulement la liste. Un champ additif ne doit jamais
             // pouvoir casser l'écran qui l'affiche.
             const douteusesSures = douteuses ?? [];
-            setIncertaines(douteusesSures);
             // [Finding security-privacy #545] Mode démo activé PENDANT le fetch → ne RIEN écrire
             // (de vraies données dans une session persona = l'inverse de PERSONA-PURGE).
+            // ⚠️ [finding silent-failure #649] LE TEST PASSE AVANT `setIncertaines`, et ce n'est pas
+            // cosmétique : la liste des douteuses affiche des DATES, des MARCHANDS et des MONTANTS
+            // réels. En la remplissant d'abord, l'écran montrait les vraies données de Marc dans une
+            // session persona — sous un message affirmant « rien n'a été écrit ». Vrai pour le
+            // store, FAUX pour l'écran : le pire des deux, une fuite avec une confirmation
+            // rassurante par-dessus.
             if (useFinanceStore.getState().isTestMode === true) {
                 setError('Mode démo activé pendant la synchronisation — rien n\'a été écrit.');
                 return;
             }
+            setIncertaines(douteusesSures);
             if (statePatch === null) {
                 // Échec : on écrit LE RAPPORT seul (pour que la carte de diagnostic le montre), et
                 // surtout AUCUN contenu — `statePatch: null` signifie « rien d'exploitable ».
@@ -341,8 +350,9 @@ export const FintableSyncCard: React.FC = () => {
                         </div>
                         <p className="text-tiny text-ink-300 leading-snug">
                             Même montant qu'une transaction déjà connue, à quelques jours près, mais un libellé
-                            différent. Je les ai marquées comme doublons — elles ne comptent donc pas dans ton
-                            budget. Si l'une d'elles est une vraie dépense, décoche-la dans Transactions.
+                            différent. Elles sont écrites <strong className="text-amber-200">marquées comme
+                            doublons</strong> : elles apparaissent barrées dans Transactions et ne comptent pas
+                            dans ton budget. Si l'une d'elles est une vraie dépense, décoche-la là-bas.
                         </p>
                         <ul className="space-y-1 max-h-56 overflow-y-auto">
                             {incertaines.map((p, i) => (
@@ -516,6 +526,8 @@ export const FintableSyncCard: React.FC = () => {
                         {report.error === null
                             ? `${report.transactionsAdded} transaction(s) ajoutée(s), ${report.accountsSeen} compte(s) vu(s)`
                             : <span className="text-danger-400">échec — {report.error}</span>}
+                        {(report.skippedBeforeCutover ?? 0) > 0
+                            && ` · ${report.skippedBeforeCutover} plus ancienne(s) ignorée(s)`}
                         {report.warnings.length > 0 && ` · ${report.warnings.length} avertissement(s)`}
                         <span className="block mt-1">Détail complet dans Réglages → Système &amp; diagnostics.</span>
                     </div>

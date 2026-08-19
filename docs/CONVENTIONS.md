@@ -4181,6 +4181,30 @@ visait la mauvaise LIGNE du même fichier, ici il vise la mauvaise NATURE de tex
 fond dans les deux cas — le scan doit d'abord définir *ce qui compte comme du code*, avant de
 chercher quoi que ce soit dedans.
 
+⚠️⚠️ **Et le pire : je n'ai rien découvert du tout.** En cherchant si un helper partagé existait,
+j'ai compté **six** décommenteurs déjà écrits dans le dépôt — `utils/fiscalConstGuardV2.ts:216`,
+`utils/fiscalConstantsGuard.ts:34`, `utils/chartDataSumGuard.ts:51`,
+`tests/aiTools/specFiniteGuard.test.ts:26`, `tests/services/assetFxGuard.test.ts:54`,
+`tests/components/subTabsAria.test.tsx:84`. Le mien fait le septième. Aucun n'est exporté, donc
+aucun n'était trouvable autrement qu'en cherchant le CONCEPT plutôt que le symbole.
+
+Deux d'entre eux portent en commentaire la leçon exacte que je venais de repayer :
+
+- `utils/fiscalConstantsGuard.ts:47` — *« n'extraire QUE des vraies constantes, pas des n° de ligne
+  ARC en commentaire »*. Quelqu'un s'était déjà fait piéger par un nombre fiscal cité dans une prose.
+- `tests/components/subTabsAria.test.tsx:80-83` — *« un fichier qui EXPLIQUE le motif n'est pas un
+  offender. Ma première version l'accusait — une garde qui crie sur sa propre documentation finit
+  désactivée. »* Même incident, même conclusion, **et même nom de helper choisi indépendamment**
+  (`sansCommentaires`).
+
+C'est `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` à l'échelle du dépôt, avec une aggravation : le patron
+n'était pas « à côté » dans le fichier voisin, il était **partout**, et je ne l'ai pas vu parce que
+j'ai cherché un appelant (`grep parseTransactions`) au lieu de chercher le PROBLÈME (`grep`
+« décommenter »). **Avant d'écrire un utilitaire de scan, grep le CONCEPT, pas le symbole** — un
+helper non exporté ne se trouve que comme ça. Ticket `[GUARD-STRIPCOMMENTS-DUPLIQUE]` ouvert pour la
+source unique : sept implémentations divergentes, c'est sept comportements différents sur les
+chaînes contenant `//`, et la garde la plus faible fixe le niveau réel de protection.
+
 ### `REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION` — tracer un repli n'est pas toujours un progrès
 
 Le ticket `[SILENT-HEALTHWEIGHTS-FIELD]` disait : `normalizeHealthWeights` retombe sur les défauts

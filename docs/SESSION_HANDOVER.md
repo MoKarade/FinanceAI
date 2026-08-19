@@ -30,6 +30,12 @@
 > **La mention en commentaire, elle, reste** : la garde protège le code, pas le droit de raconter
 > pourquoi le choix a été fait.
 >
+> ⚠️⚠️ **Et je n'ai rien découvert** : le dépôt contenait déjà SIX décommenteurs (aucun exporté), dont
+> `tests/components/subTabsAria.test.tsx:80-84` qui documente le MÊME incident, avec le MÊME nom de
+> helper choisi indépendamment. J'ai grepé le SYMBOLE (`parseTransactions`) au lieu du PROBLÈME
+> (« décommenter »). Item ouvert : `[GUARD-STRIPCOMMENTS-DUPLIQUE]` — les sept ne se comportent pas
+> pareil, et **le plus faible fixe le niveau réel de protection du dépôt**.
+>
 > **`parseTransactions` SUPPRIMÉE** (3 261 caractères) — plus aucun appelant, et elle jetait les
 > lignes invalides sans rien dire. `markDuplicates` et `isInternalTransferLabel` sont RESTÉES : elles
 > sont appelées par `App.tsx` et `services/import/parseBankCsv.ts`, et un test le verrouille (le vrai

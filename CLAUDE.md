@@ -318,6 +318,9 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   sinon « rien ne référence X » se prouve à partir de « il n'y a plus rien ». Ne PAS interdire la
   mention : la garde protège le code, la prose garde le droit de raconter l'histoire
   (`SCAN-QUI-MATCHE-LA-PROSE`).
+  ⚠️ Et avant d'écrire un utilitaire de scan, **grep le CONCEPT, pas le symbole** : le dépôt avait
+  déjà SIX décommenteurs, aucun exporté, dont deux portant en commentaire la leçon exacte que je
+  venais de repayer — l'un ayant même choisi le même nom de helper (`GUARD-STRIPCOMMENTS-DUPLIQUE`).
 - Avant de tracer un **repli silencieux**, classer les chemins qui l'atteignent *attendu* / *anormal* :
   un champ ABSENT est la rétrocompat voulue (silence LÉGITIME), un champ PRÉSENT mais non fini est une
   corruption (trace). Journaliser les deux crie sur le cas nominal à chaque chargement et noie le

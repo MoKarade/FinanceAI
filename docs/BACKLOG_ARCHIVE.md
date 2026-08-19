@@ -10,6 +10,67 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-19 — Vague 1c (fin) : deux angles morts d'invariant, deux défauts trouvés
+
+> Les deux items étaient des extensions de COUVERTURE, pas des correctifs. Chacune a trouvé un vrai
+> défaut que les gardes existantes ne pouvaient pas voir — c'est le rendement d'une extension de
+> couverture bien ciblée, et la raison de les traiter comme une investigation.
+
+### Livré — `[ENG-MC-CONSERVATION-BLIND]`
+
+`tests/services/mcConservation.test.ts` (4 cas). Toute la branche stochastique (divorce, décès du
+conjoint, LTD, maladie grave, LTC, perte d'emploi, héritage, bootstrap) n'existe que sous
+`enableMonteCarlo`, et l'API publique appelle TOUJOURS `runScenario(..., false, ...)` : ces chemins
+n'avaient jamais été parcourus par un invariant de conservation.
+
+**Deux verrous à lever, et il fallait les deux** : `__runScenarioForTests` (hook TEST-ONLY pour
+`enableMonteCarlo = true`) et `diagnostics.verboseMonthlyPoints` (sans lui, le point MC est réduit à
+`{ NetWorth, monthIndex }` — aucune ventilation à reconstruire).
+
+**MESURÉ (60 runs × 361 mois = 20 365 points)** : l'identité de bilan TIENT, pire écart **0,02 $**,
+zéro champ non fini, zéro actif négatif. **Aucun défaut corrigé** — un angle mort devient une garde.
+
+**Anti-vacuité assertée, pas supposée** : la couverture de chaque chemin est comptée avec un plancher
+(divorce ≥ 20 runs, perte d'emploi ≥ 25, maladie grave ≥ 12, héritage ≥ 12, LTD ≥ 6, LTC ≥ 3, décès
+du conjoint ≥ 1). Une gate d'âge déplacée ou une probabilité remise à zéro fait ÉCHOUER la suite au
+lieu de vider la garde en silence.
+
+**Force de la garde MESURÉE par perturbation** (un invariant qui ne trouve rien doit prouver qu'il
+POURRAIT trouver) : publier `CELI × 0,999` dans `monthlyOutput` → ÉCHEC à 6 892 $ (classe
+MONEY-PHANTOM, ce qu'INV-9 doit voir) ; `reer *= keep × 0,999` dans le partage de divorce → PASSE, et
+c'est correct — `NetWorth` est dérivé des mêmes soldes, un invariant de bilan juge la COHÉRENCE, pas
+le MONTANT. Écrit dans le fichier pour qu'on ne croie pas la garde plus forte qu'elle n'est.
+
+- [x] **`[ENG-MC-CONSERVATION-BLIND]`** (M) — ✅ 2026-08-19, PR #658.
+
+### Livré — `[ENG-INV-FLUXFORM-COVERAGE]` → a révélé `[ENG-FERR-NETTRANSFER-MUET]`
+
+La garde forme-flux tournait sur une fixture de **12 ans** avec une retraite à 62 ans pour un couple
+de 45 : elle n'ATTEIGNAIT JAMAIS le décaissement. Portée sur 35 ans, elle a trouvé immédiatement :
+
+> **`[ENG-FERR-NETTRANSFER-MUET]`** — le retrait MINIMUM FERR (72+) alimentait `retraitReerMois`
+> (registre d'AFFICHAGE) mais PAS `withdrawalREER` (registre des TRANSFERTS → `NetTransferREER`).
+> **MESURÉ : 131 566,62 $** de REER disparaissant sans flux publié, **en mode DÉTERMINISTE** — donc à
+> l'écran — à chaque janvier de 72+. Récidive exacte de `[ENG-FERR-FLOW-INVISIBLE]`, qui avait branché
+> UN des deux registres.
+
+⚠️ **Le pari du ticket était périmé** : il annonçait un échec sur `stressTestEnabled`. Le stress-test
+est corrigé depuis et reste vert. Le vrai défaut était ailleurs, et plus grave.
+
+⚠️ **Le correctif exclut la FERR de `stepReerByUser`** : elle a déjà été retirée de la part EXACTE de
+chaque conjoint (facteur RRIF de SON âge) ; l'y réinjecter la re-soustrairait AU PRORATA et fausserait
+un couple à écart d'âge. Un montant, deux registres, deux règles.
+
+**Preuve de non-régression** : goldens complets (~50 champs × 361 mois × 3 écarts d'âge 0/6/12 ans)
+comparés champ à champ AVANT/APRÈS. **Un seul champ change, `NetTransferREER`, sur 27 points.**
+`reerByUserFinal`, soldes, impôts, patrimoine : bit-identiques.
+
+**3 cas ajoutés à `tests/services/projection.fluxForm.test.ts`, 2 DISCRIMINENT** (vérifié par
+`git stash`). Le 3ᵉ verrouille la frontière : le partage per-conjoint ne doit PAS bouger — un
+correctif de FLUX qui déplacerait de l'ARGENT serait pire que le défaut.
+
+- [x] **`[ENG-INV-FLUXFORM-COVERAGE]`** (S) — ✅ 2026-08-19, PR #658.
+- [x] **`[ENG-FERR-NETTRANSFER-MUET]`** (S) — ✅ 2026-08-19, PR #658 (découvert par l'item ci-dessus).
 ## 2026-08-19 — Vague 1d (suite) : le bilan au jour, et un ticket fermé sans code
 
 ### Corrigé — `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`

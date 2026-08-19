@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 433 tests** Vitest
-(398 fichiers de test, mesuré le 2026-08-19). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 441 tests** Vitest
+(399 fichiers de test, mesuré le 2026-08-19). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -205,6 +205,18 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   d'une identité comptable (patrimoine vs ses composants) la casse entre les points de raccord —
   25 invariants du grand livre restaient VERTS pendant que l'identité dérivait de 89 $ au jour
   (`IDENTITE-COMPTABLE-INTERPOLEE-TROIS-FOIS`).
+- Une garde ne dit RIEN des mois qu'elle ne parcourt pas : la forme-flux tournait sur une fixture de
+  12 ans dont la retraite était à 62 ans — tout le DÉCAISSEMENT était hors de portée. Portée à 35 ans,
+  elle a trouvé 131 566 $ de FERR sans flux publié, en déterministe
+  (`INVARIANT-QUI-NE-PARCOURT-PAS-LA-PHASE`).
+- Avant d'ajouter un montant au « registre oublié », **grep TOUS ses consommateurs** : `withdrawalREER`
+  alimente à la fois l'affichage du flux ET le répartiteur per-conjoint, qui ne doit PAS le voir. Un
+  montant, deux registres, deux règles — preuve = goldens complets où SEUL le champ visé change
+  (`UN-MONTANT-DEUX-REGISTRES-DEUX-REGLES`).
+- Un invariant neuf qui ne trouve RIEN doit prouver qu'il POURRAIT trouver : couverture COMPTÉE avec
+  planchers + perturbation qui le fait échouer. La perturbation délimite aussi son angle mort — un
+  invariant de bilan juge la cohérence, jamais le montant
+  (`UN-INVARIANT-QUI-NE-TROUVE-RIEN-DOIT-PROUVER-QU-IL-POURRAIT`).
 - Vérifs money-critical **en ISOLATION, séquentielles** (course `git stash` concurrente vue 2×).
 
 **Avant de coder**

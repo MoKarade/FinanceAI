@@ -42,8 +42,10 @@
   `[FISC-DIV-DERIVED-BASES]`, `[ENG-GK-THRESHOLD-KNIFE]`, `[ENG-TTP-UNSETTLED-PROPAGATE]`,
   `[RAMQ-ACTIF-HORS-RETRAITS]`, puis `[DOC-CELIAPP-REPORT-PERIMEE]`) — même fichier, même risque de
   re-baser des goldens : 6 PR séparées se re-baseraient l'une l'autre.
-  **1c** ✅ *partiel* — `[MC-BANDES-CROISEES]` livré 2026-08-19. RESTE : `[ENG-MC-CONSERVATION-BLIND]`,
-  `[ENG-INV-FLUXFORM-COVERAGE]` (extensions de COUVERTURE, pas des correctifs — lot séparé).
+  **1c** ✅ *TERMINÉE 2026-08-19* — `[MC-BANDES-CROISEES]`, puis `[ENG-MC-CONSERVATION-BLIND]` +
+  `[ENG-INV-FLUXFORM-COVERAGE]`. Les deux extensions de couverture ont trouvé un défaut chacune :
+  `[ENG-FERR-NETTRANSFER-MUET]` (corrigé, 131 566 $ en DÉTERMINISTE) et `[ENG-DIVORCE-FLUX-MUET]`
+  (ouvert, MC seulement, impact utilisateur nul aujourd'hui).
   **1d** *en cours* — ✅ livrés 2026-08-19 : `[REVENUS-NON-VENTILES-AFFICHAGE]`,
   `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`, `[NW-PRESENT-DEUX-PERIMETRES]` (fermé SANS code : un seul
   site de recomposition, et il reçoit `netWorth` en prop). RESTE :
@@ -1246,13 +1248,17 @@
 
 #### HIGH — Bloque la fiabilité des chiffres
 
-- [ ] 🔴 **`[ENG-MC-CONSERVATION-BLIND]`** (M) — toute la branche stochastique du moteur
-  (divorce/décès/LTC/maladie grave/héritage/bootstrap) est **hors de portée de TOUS les invariants
-  de conservation**. `calculateFutureProjection` appelle toujours `runScenario(..., false, ...)` →
-  le `chartData` est toujours déterministe, et sous MC seul `{NetWorth, monthIndex}` est retourné
-  (aucune ventilation d'actifs/dettes pour reconstruire le bilan). Résidu NaN potentiel NON mesuré.
-  **Correctif** : assertion interne au moteur dans `runScenario`, et étendre
-  `projection.fuzzConservation` à `enableMonteCarlo=true` avec tous les flags stochastiques armés.
+- [ ] **`[ENG-DIVORCE-FLUX-MUET]`** (S) — le partage de divorce multiplie `celi`/`reer`/`crypto`/
+  `nonReg` par `keep` **sans publier de `NetTransfer*`** : la forme-flux est violée sur les 4 comptes.
+  **Mesuré (60 runs MC, `divorceAnnualProbability` 0,05) : 2 130 681 $ sur le REER, 1 281 789 $ sur le
+  CELI, 219 622 $ sur le Crypto** — trouvé par la garde `mcConservation` du 2026-08-19.
+  ⚠️ **Impact utilisateur NUL aujourd'hui** : le divorce n'existe que sous Monte Carlo, où les points
+  sont réduits à `{NetWorth, monthIndex}` avant publication. Ce devient un vrai défaut le jour où une
+  surface affiche la ventilation d'un run stochastique (ou si le divorce devient déterministe).
+  **Correctif** : dans le callback `tryDivorce` (`projection.ts`), alimenter `withdrawal<compte>` de la
+  part cédée — et vérifier la même chose pour le décès du conjoint (mesuré 212 850 $ sur le REER).
+  ⚠️ Même piège que `[ENG-FERR-NETTRANSFER-MUET]` : `withdrawalREER` alimente AUSSI `stepReerByUser`
+  (partage per-conjoint). Mesurer les goldens AVANT/APRÈS pour prouver qu'aucun dollar ne bouge.
 
 - [ ] 🔴 **`[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`** (S) — dernier producteur muet trouvé par la
   garde de forme-flux : `processAprilSettlement` verse le remboursement d'impôt au non-enregistré
@@ -1284,13 +1290,6 @@
   d'entreprise + 400 k$ RBN absents du NW** (300 k$ d'écart mesuré = uniquement dividendes
   capitalisés). **Correctif** : ajouter `privateBusinessValue` à `NetWorthParts` (le Record
   exhaustif force le compilateur, la garde existe déjà) et traiter dans `computeLatentTax`.
-
-- [ ] **`[ENG-INV-FLUXFORM-COVERAGE]`** (S) — forme-FLUX n'est assertée que sur socle salarié nu ;
-  c'est le SEUL invariant capable d'attraper #2 (stress-test silencieux) et il ne tourne jamais sur
-  scénarios qui en ont besoin. `fuzzConservation` documente explicitement l'abandon de la
-  forme-flux. **Correctif** : porter le détecteur résiduel dans la suite (seuil 1 k$, exclusion
-  événement journalisé) sur scénarios one-time. Test discriminant garanti : échoue aujourd'hui sur
-  `stressTestEnabled`.
 
 - [ ] **`[FISC-UI-MARGINAL-ABATEMENT]`** (S) — « Combiné marginal » de l'UI ≠ taux marginal du moteur.
   `TaxBracketViz.tsx` somme brute (fedRate + qcRate) ignore abattement 16,5 %, alors que

@@ -4,6 +4,50 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-19 (suite 102) — vague 1c (fin) : deux angles morts, deux défauts
+> Branche `claude/mc-conservation` (basée sur `main`, indépendante de `claude/nw-perimetre`/#657).
+>
+> **Livré** : `[ENG-MC-CONSERVATION-BLIND]`, `[ENG-INV-FLUXFORM-COVERAGE]`, et le défaut que le
+> second a révélé : `[ENG-FERR-NETTRANSFER-MUET]`.
+>
+> **Le défaut corrigé** : le retrait MINIMUM FERR (72+) alimentait `retraitReerMois` (AFFICHAGE) mais
+> pas `withdrawalREER` (TRANSFERTS → `NetTransferREER`, lu par le plan d'actions annuel). **MESURÉ
+> 131 566,62 $ en mode DÉTERMINISTE** — donc à l'écran : le plan disait « retirer 0 $ du REER »
+> l'année où la loi force un retrait de 131 k$. Récidive de `[ENG-FERR-FLOW-INVISIBLE]`.
+>
+> ⚠️ **Le piège du correctif** : `withdrawalREER` a DEUX consommateurs. `monthlyOutput` doit voir la
+> FERR ; `stepReerByUser` ne doit SURTOUT PAS la voir (elle a déjà été retirée de la part EXACTE de
+> chaque conjoint au facteur RRIF de SON âge — la re-soustraire au prorata fausserait un couple à
+> écart d'âge). D'où `ferrWithdrawalMois` et `withdrawalREER − ferrWithdrawalMois` au seul site du
+> partage. **Preuve** : goldens complets (~50 champs × 361 mois × écarts d'âge 0/6/12) → UN SEUL
+> champ change, `NetTransferREER`, sur 27 points.
+>
+> ⚠️ **Pourquoi personne ne l'avait vu** : la fixture de la garde forme-flux fait **12 ans** avec une
+> retraite à 62 pour un couple de 45 — elle n'atteignait JAMAIS le décaissement. L'horizon d'une
+> fixture est un choix de COUVERTURE, pas un réglage de perf.
+>
+> ⚠️ **Le pari du ticket était périmé** : il annonçait un échec sur `stressTestEnabled`. Le
+> stress-test est corrigé depuis et reste vert.
+>
+> **`[ENG-MC-CONSERVATION-BLIND]`** : toute la branche stochastique (divorce, décès du conjoint, LTD,
+> maladie grave, LTC, perte d'emploi, héritage, bootstrap) n'avait JAMAIS été parcourue par un
+> invariant — l'API publique appelle toujours `runScenario(..., false, ...)`. **Deux verrous à lever,
+> et il fallait les deux** : `__runScenarioForTests` ET `diagnostics.verboseMonthlyPoints` (sans lui
+> le point MC est réduit à `{NetWorth, monthIndex}`). **MESURÉ : 20 365 points, pire écart 0,02 $,
+> zéro NaN, zéro actif négatif — aucun défaut.** Un « tout vert » sur une garde neuve exige deux
+> preuves, toutes deux faites : couverture COMPTÉE avec planchers, et perturbation (publier
+> `CELI × 0,999` → échec à 6 892 $). La perturbation a aussi délimité l'angle mort : un invariant de
+> bilan juge la COHÉRENCE, jamais le MONTANT.
+>
+> **NOUVEAU ticket ouvert** : `[ENG-DIVORCE-FLUX-MUET]` (S) — le partage de divorce mute
+> CELI/REER/Crypto/NonReg sans publier de `NetTransfer*` (**mesuré 2 130 681 $ sur le REER**).
+> Impact utilisateur NUL aujourd'hui (points MC réduits avant publication). Même piège du double
+> consommateur que ci-dessus → mesurer les goldens.
+>
+> **SUITE** : vague 1d, ce qui reste — `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]` (S, mesuré 29 796 $,
+> et la garde est PRÊTE : ajouter `'NonReg'` à `ACCOUNTS` dans `projection.fluxForm.test.ts`),
+> `[ENG-LIQUIDDEBT-NEVER-REPAID]` (M — taux de découvert à SOURCER + choix produit → Marc),
+> `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`.
 > ## 🟢 Session 2026-08-19 (suite 104) — la carte du hub montre le mouvement des placements
 > Branche `claude/hub-placements-seance` (basée sur `main`). Demande Marc, hors backlog.
 >

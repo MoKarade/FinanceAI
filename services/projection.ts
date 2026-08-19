@@ -721,6 +721,14 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         let impotReerMois = 0; // V24: Impôt sur retraits REER, séparé de fluxImpots
         let impotSalaireMois = 0; // V36: Impôt sur salaire (retenues/provision)
         let taxOnRrif = 0; // V49: Impôt FERR retenu à la source
+        /**
+         * [ENG-FERR-NETTRANSFER-MUET] Part du retrait FERR de CE mois. La FERR EST un retrait REER :
+         * elle doit entrer dans `withdrawalREER`, donc dans le flux PUBLIÉ `NetTransferREER`. Mais
+         * `stepReerByUser` doit l'EXCLURE : elle a déjà été retirée de la part EXACTE de chaque
+         * conjoint (`ferrGrossByUser`, facteur RRIF de SON âge), et la re-soustraire AU PRORATA
+         * fausserait le partage d'un couple à écart d'âge. Un montant, deux registres, deux règles.
+         */
+        let ferrWithdrawalMois = 0;
 
         // V27: Variables de suivi pour le mois en cours
         let contribCELI = 0, withdrawalCELI = 0;
@@ -1340,6 +1348,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 // (l'impôt FERR arrive à totalTaxesPaid via le débit d'avril du bucket .reer —
                 // [PROJ-TTP-DOUBLECOUNT] : plus AUCUN terme séparé à ajouter.)
                 retraitReerMois += janResult.ferrMandatoryGross;
+                // [ENG-FERR-NETTRANSFER-MUET] (2026-08-19) — le lot [ENG-FERR-FLOW-INVISIBLE] avait
+                // alimenté le registre d'AFFICHAGE (`retraitReerMois`) et oublié celui des TRANSFERTS
+                // (`withdrawalREER` → `NetTransferREER`). MESURÉ : 131 566,62 $ de REER qui
+                // disparaissaient sans flux publié, en mode DÉTERMINISTE, à chaque janvier de 72+.
+                // La garde forme-flux ne l'avait jamais vu : sa fixture s'arrête AVANT la retraite.
+                withdrawalREER += janResult.ferrMandatoryGross;
+                ferrWithdrawalMois += janResult.ferrMandatoryGross;
                 // [ITEM-2C] La FERR de chaque conjoint sort de SA part REER (registre per-conjoint), pas au
                 // pro-rata du pool → le solde REER de chaque conjoint reflète SES conversions obligatoires
                 // (et conditionne SON FERR de l'an suivant). La réconciliation de fin de mois préserve l'attribution.
@@ -1880,7 +1895,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         reer = g.reer.newVal; growthREER = g.reer.growth; growthPctREER = g.reer.pct;
         // Registre REER par conjoint : retrait pro-rata, cotisation par part salariale, croissance
         // (et RAP/meltdown) absorbées pro-rata par la réconciliation au solde commun final `reer`.
-        reerByUser = stepReerByUser(reerByUser, { withdrawal: withdrawalREER, contribution: contribREER, poolEnd: reer, shares: reerShares });
+        reerByUser = stepReerByUser(reerByUser, { withdrawal: withdrawalREER - ferrWithdrawalMois, contribution: contribREER, poolEnd: reer, shares: reerShares });
         nonReg = g.nonReg.newVal; growthNonReg = g.nonReg.growth; growthPctNonReg = g.nonReg.pct;
         crypto = g.crypto.newVal; growthCrypto = g.crypto.growth; growthPctCrypto = g.crypto.pct;
         liquid = g.liquid.newVal; growthLiquid = g.liquid.growth; growthPctLiquid = g.liquid.pct;

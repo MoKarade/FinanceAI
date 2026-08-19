@@ -45,6 +45,13 @@ export function pastNetWorthAt(
     cash: number,
     immo: number,
     debtNonImmo: number,
+    /** [ENG-W5-BUSINESS-OFFBALANCE] Valeur des entreprises privées détenues (0 par défaut).
+     *  ⚠️ Le PASSÉ n'a AUCUN historique de valorisation d'une entreprise privée — il n'y a ni cours,
+     *  ni relevé, ni transaction à reconstruire. L'appelant passe donc la valeur COURANTE, affichée
+     *  PLATE sur tout le passé, ou `0` s'il n'en a pas. Même convention que l'immobilier, dont le
+     *  passé est reconstruit par paliers faute de série. Inventer une courbe de valorisation serait
+     *  de la donnée fabriquée ; laisser un TROU ferait sauter le patrimoine au raccord d'aujourd'hui. */
+    privateBusinessValue = 0,
 ): number {
     return Math.round(computeRawNetWorth({
         liquid: cash,
@@ -55,6 +62,7 @@ export function pastNetWorthAt(
         crypto: inv.Crypto,
         reee: inv.REEE,
         realEstateEquity: immo,
+        privateBusinessValue,
         liquidDebt: 0,
         smithManoeuvreDebt: 0,
         activeDebtsTotal: debtNonImmo,

@@ -10,13 +10,18 @@ import * as errorLogger from '../../services/errorLogger';
 
 const sample: NetWorthParts = {
     liquid: 10_000, celi: 40_000, celiapp: 5_000, reer: 80_000, nonReg: 25_000, crypto: 8_000, reee: 12_000,
-    realEstateEquity: 150_000, liquidDebt: 2_000, smithManoeuvreDebt: 50_000, activeDebtsTotal: 9_000,
+    realEstateEquity: 150_000,
+    // [ENG-W5-BUSINESS-OFFBALANCE] Nouveau terme d'ACTIF (2026-08-19). Le `Record` exhaustif de
+    // `NET_WORTH_SIGN` a forcé sa classification, et ce fichier a forcé son ajout à la fixture :
+    // c'est exactement le filet que cette garde existe pour tendre.
+    privateBusinessValue: 60_000,
+    liquidDebt: 2_000, smithManoeuvreDebt: 50_000, activeDebtsTotal: 9_000,
 };
 
 describe('computeRawNetWorth — [HARDEN-NETWORTH-EXHAUSTIVE]', () => {
     it('valeur de référence (golden) : Σactifs − Σdettes', () => {
-        // actifs 10k+40k+5k+80k+25k+8k+12k+150k = 330k ; dettes 2k+50k+9k = 61k → NW 269k.
-        expect(computeRawNetWorth(sample)).toBe(269_000);
+        // actifs 10k+40k+5k+80k+25k+8k+12k+150k+60k = 390k ; dettes 2k+50k+9k = 61k → NW 329k.
+        expect(computeRawNetWorth(sample)).toBe(329_000);
     });
 
     it('DISCRIMINANT : la formule littérale == Σ NET_WORTH_SIGN[k] × p[k] (aucun terme oublié)', () => {
@@ -40,10 +45,10 @@ describe('computeRawNetWorth — [HARDEN-NETWORTH-EXHAUSTIVE]', () => {
         }
     });
 
-    it('NET_WORTH_SIGN classe EXACTEMENT les 11 champs de NetWorthParts', () => {
+    it('NET_WORTH_SIGN classe EXACTEMENT les 12 champs de NetWorthParts', () => {
         expect(Object.keys(NET_WORTH_SIGN).sort()).toEqual([
             'activeDebtsTotal', 'celi', 'celiapp', 'crypto', 'liquid', 'liquidDebt',
-            'nonReg', 'realEstateEquity', 'reee', 'reer', 'smithManoeuvreDebt',
+            'nonReg', 'privateBusinessValue', 'realEstateEquity', 'reee', 'reer', 'smithManoeuvreDebt',
         ]);
     });
 
@@ -72,24 +77,24 @@ describe('computeRawNetWorth — [HARDEN-NETWORTH-NAN] garde de finitude', () =>
     it('un terme NaN (liquid) est rabattu sur 0 → patrimoine FINI (ancien code : NaN)', () => {
         vi.spyOn(errorLogger, 'logError').mockImplementation(() => {});
         const nw = computeRawNetWorth({ ...sample, liquid: NaN });
-        // DISCRIMINANT : sans garde, NaN se propage → Number.isNaN(nw) true. Avec garde : liquid→0, soit 269k−10k.
+        // DISCRIMINANT : sans garde, NaN se propage → Number.isNaN(nw) true. Avec garde : liquid→0, soit 329k−10k.
         expect(Number.isFinite(nw)).toBe(true);
-        expect(nw).toBe(259_000);
+        expect(nw).toBe(319_000);
     });
 
     it('Infinity (reer) rabattu sur 0 → fini', () => {
         vi.spyOn(errorLogger, 'logError').mockImplementation(() => {});
         const nw = computeRawNetWorth({ ...sample, reer: Infinity });
         expect(Number.isFinite(nw)).toBe(true);
-        expect(nw).toBe(269_000 - 80_000); // reer 80k → 0
+        expect(nw).toBe(329_000 - 80_000); // reer 80k → 0
     });
 
     it('plusieurs termes non finis (NaN actif + dette Infinity) : tous rabattus, total fini', () => {
         vi.spyOn(errorLogger, 'logError').mockImplementation(() => {});
         const nw = computeRawNetWorth({ ...sample, crypto: NaN, activeDebtsTotal: Infinity });
-        // crypto 8k → 0 ET activeDebtsTotal 9k → 0 : 269k − 8k(retiré de l'actif) + 9k(dette annulée) = 270k.
+        // crypto 8k → 0 ET activeDebtsTotal 9k → 0 : 329k − 8k(retiré de l'actif) + 9k(dette annulée) = 330k.
         expect(Number.isFinite(nw)).toBe(true);
-        expect(nw).toBe(269_000 - 8_000 + 9_000);
+        expect(nw).toBe(329_000 - 8_000 + 9_000);
     });
 
     it('journalise (logError source=projection) avec les termes fautifs en contexte', () => {
@@ -103,14 +108,14 @@ describe('computeRawNetWorth — [HARDEN-NETWORTH-NAN] garde de finitude', () =>
 
     it('chemin SAIN (tous finis) : AUCUN logError, valeur inchangée (zéro surcoût/bruit)', () => {
         const spy = vi.spyOn(errorLogger, 'logError').mockImplementation(() => {});
-        expect(computeRawNetWorth(sample)).toBe(269_000);
+        expect(computeRawNetWorth(sample)).toBe(329_000);
         expect(spy).not.toHaveBeenCalled();
     });
 
     it('throttle : une SIGNATURE de termes fautifs identique ne journalise QU\'UNE fois (anti-flood hot-path)', () => {
         const spy = vi.spyOn(errorLogger, 'logError').mockImplementation(() => {});
         // Même terme fautif (celiapp NaN) appelé 3× → 1 seul logError, mais le clamp s'applique à CHAQUE appel.
-        for (let i = 0; i < 3; i++) expect(computeRawNetWorth({ ...sample, celiapp: NaN })).toBe(269_000 - 5_000);
+        for (let i = 0; i < 3; i++) expect(computeRawNetWorth({ ...sample, celiapp: NaN })).toBe(329_000 - 5_000);
         expect(spy).toHaveBeenCalledTimes(1);
     });
 });

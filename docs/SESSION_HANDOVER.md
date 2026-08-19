@@ -4,6 +4,36 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-19 (suite 107) — vague 1d TERMINÉE : deux conteneurs W5 hors bilan
+> Branche `claude/w5-offbalance` (empilée sur `claude/dettes-dates` / #661).
+>
+> **Livrés** : `[ENG-W5-RENTAL-OFFBALANCE]` et `[ENG-W5-BUSINESS-OFFBALANCE]`. La vague 1d est CLOSE.
+>
+> ⚠️ **La leçon centrale** : TOUS les invariants de conservation étaient VERTS pendant que 302 574 $
+> d'équité, 499 160 $ de prêt et 2 M$ d'entreprise manquaient au bilan. Un invariant de COHÉRENCE ne
+> peut pas voir une OMISSION — rien à réconcilier quand rien n'est écrit. Il faut une assertion de
+> PRÉSENCE (comparer AVEC et SANS le conteneur).
+>
+> **Locatif** : `services/projection/rentalMonth.ts` (module pur). Les TROIS volets ensemble —
+> valeur, hypothèque, service de dette (+2 922,95 $/mois). Chaque moitié serait pire que le statu quo.
+> Hypothèse nommée : `DEFAULT_RENTAL_AMORTIZATION_YEARS = 25` quand le champ est absent.
+>
+> **Entreprise** : `privateBusinessValue` dans `NetWorthParts`. Le `Record` exhaustif a forcé les
+> **4 sites** (moteur, succession, `pastNetWorth`, `dailyPastLedger`) — c'est sa raison d'être.
+> ⚠️ On compte `estimatedValue × ownershipPct` et **PAS** `retainedEarnings` : une valeur marchande
+> les embarque déjà, les additionner double-compterait de 400 k$. Un test verrouille « 2 M$, pas 2,4 ».
+>
+> ⚠️ **Piège rencontré** : mon `+=` sur `immoInterest`/`immoPrincipal`/`immoHypo` était ÉCRASÉ par les
+> réaffectations plates depuis `reState`, 27 lignes plus bas. Bloc déplacé APRÈS. Après un `+=` sur
+> une variable de boucle, grep les affectations plates postérieures.
+>
+> **ROUTÉ VERS MARC** : `[ENG-LIQUIDDEBT-NEVER-REPAID]` → `docs/A_FAIRE_MOI.md`. Il faut un taux de
+> découvert SOURCÉ (marge ~8-10 % ? découvert ~19-21 % ?) et un choix de priorité de remboursement.
+> C'est le plus gros montant encore ouvert : 0,8–1,7 M$ sur 15 ans.
+>
+> **SUITE** : vague 1e (silences qui cachent de l'argent) — `[COUPLE-CTX-FAKE-ZERO]` +
+> `[TOOL-TAXSITUATION-FAKE-ZERO]` groupés, puis les XS.
+
 > ## 🟢 Session 2026-08-19 (suite 105) — les dettes ont un début et une fin, et sont éditables
 > Branche `claude/dettes-dates`. Demande Marc, hors backlog.
 >

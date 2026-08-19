@@ -26,6 +26,10 @@ export interface EstateCalcInputs {
     cryptoACB: number;
     reee: number;
     realEstateEquity: number;
+    /** [ENG-W5-BUSINESS-OFFBALANCE] Valeur des entreprises privées (au prorata détenu). Absente de
+     *  la succession jusqu'au 2026-08-19 — le legs sous-évaluait le patrimoine de la valeur ENTIÈRE
+     *  de l'entreprise. Optionnel (défaut 0) : rétrocompat bit-identique sans entreprise saisie. */
+    privateBusinessValue?: number;
     mortgageBalance: number;
     /** RE-GAIN-SUCC — gain latent BRUT des immeubles LOCATIFS (Σ max(0, valeur − coût)), imposable à
      *  50 % à la disposition réputée au décès. RP exclue par l'appelant. Absent → 0 (non-régression). */
@@ -146,6 +150,7 @@ export function computeEstateNetWorth(
     // ET activeDebtsTotal (prêts résiduels — manquant avant le fix 2026-06-16 → estate surévalué).
     const finalRawNetWorth = computeRawNetWorth({
         liquid, celi, celiapp, reer, nonReg, crypto, reee, realEstateEquity,
+        privateBusinessValue: fin(inputs.privateBusinessValue ?? 0),
         liquidDebt: fin(inputs.liquidDebt ?? 0),
         smithManoeuvreDebt,
         activeDebtsTotal: fin(inputs.activeDebtsTotal ?? 0),

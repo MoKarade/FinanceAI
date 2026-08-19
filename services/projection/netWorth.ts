@@ -23,6 +23,14 @@ export interface NetWorthParts {
     crypto: number;
     reee: number;
     realEstateEquity: number;
+    /** [ENG-W5-BUSINESS-OFFBALANCE] Valeur des ENTREPRISES PRIVÉES détenues (W5.7), au prorata de la
+     *  part détenue. Absente du patrimoine jusqu'au 2026-08-19 : seul `annualDividend` circulait,
+     *  mesuré **2 M$ d'entreprise absents du NW**.
+     *  ⚠️ On compte `estimatedValue × ownershipPct` et **PAS** `retainedEarnings` : une valeur juste
+     *  marchande EMBARQUE déjà les bénéfices non répartis (l'encaisse de la société en fait partie).
+     *  Les additionner double-compterait. Si un jour `estimatedValue` devait s'entendre HORS encaisse,
+     *  ce serait une décision à écrire dans `docs/decisions.md`, pas un `+` discret ici. */
+    privateBusinessValue: number;
     liquidDebt: number;
     smithManoeuvreDebt: number;
     activeDebtsTotal: number;
@@ -40,6 +48,7 @@ export interface NetWorthParts {
  */
 export const NET_WORTH_SIGN: Record<keyof NetWorthParts, 1 | -1> = {
     liquid: 1, celi: 1, celiapp: 1, reer: 1, nonReg: 1, crypto: 1, reee: 1, realEstateEquity: 1,
+    privateBusinessValue: 1,
     liquidDebt: -1, smithManoeuvreDebt: -1, activeDebtsTotal: -1,
 };
 
@@ -56,7 +65,7 @@ export function __resetNonFiniteSignatureLog(): void {
  *  helper module-scope (zéro alloc par appel) pour être l'UNIQUE formule, réutilisée par le garde NaN
  *  ci-dessous sur le chemin lent — sans risque de dérive entre chemin sain et chemin sanitisé. */
 function sumNetWorthParts(p: NetWorthParts): number {
-    return p.liquid + p.celi + p.celiapp + p.reer + p.nonReg + p.crypto + p.reee + p.realEstateEquity
+    return p.liquid + p.celi + p.celiapp + p.reer + p.nonReg + p.crypto + p.reee + p.realEstateEquity + p.privateBusinessValue
         - p.liquidDebt - p.smithManoeuvreDebt - p.activeDebtsTotal;
 }
 

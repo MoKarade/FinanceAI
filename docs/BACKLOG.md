@@ -49,9 +49,11 @@
   **1d** *en cours* — ✅ livrés 2026-08-19 : `[REVENUS-NON-VENTILES-AFFICHAGE]`,
   `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`, `[NW-PRESENT-DEUX-PERIMETRES]` (fermé SANS code : un seul
   site de recomposition, et il reçoit `netWorth` en prop). RESTE :
-  `[ENG-LIQUIDDEBT-NEVER-REPAID]` (⚠️ taux de découvert à SOURCER + choix produit → Marc),
-  `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`. ✅ `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`
-  livré 2026-08-19 (dernier producteur muet : la garde forme-flux couvre désormais `NonReg`).
+  ✅ **TERMINÉE 2026-08-19** — livrés : `[REVENUS-NON-VENTILES-AFFICHAGE]`,
+  `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`, `[NW-PRESENT-DEUX-PERIMETRES]`,
+  `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`, `[ENG-W5-RENTAL-OFFBALANCE]`,
+  `[ENG-W5-BUSINESS-OFFBALANCE]`. **Sorti du lot** : `[ENG-LIQUIDDEBT-NEVER-REPAID]` → bloqué sur un
+  taux de découvert à SOURCER + un choix produit, routé vers `docs/A_FAIRE_MOI.md`.
   **1e** Silence qui cache de l'argent (`[COUPLE-CTX-FAKE-ZERO]` + `[TOOL-TAXSITUATION-FAKE-ZERO]`
   groupés, puis les XS : `[SILENT-STOCKFORM-PRICEHINT]`, `[SYSVIEW-DBSIZE-ZERO]`,
   `[DEAD-PARSETX-SILENT-DROP]`, `[SILENT-PWA-PROMPT]`, `[SILENT-HEALTHWEIGHTS-FIELD]`).
@@ -1261,28 +1263,7 @@
   ⚠️ Même piège que `[ENG-FERR-NETTRANSFER-MUET]` : `withdrawalREER` alimente AUSSI `stepReerByUser`
   (partage per-conjoint). Mesurer les goldens AVANT/APRÈS pour prouver qu'aucun dollar ne bouge.
 
-- [ ] 🔴 **`[ENG-LIQUIDDEBT-NEVER-REPAID]`** (M) — `liquidDebt` ne fait que croître : jamais
-  remboursé (même avec millions en liquide), **jamais porteur d'intérêt**. **Mesuré : retraité
-  insolvable, héritage de 1,5 M$, liquidDebt gelé 559 k$ pendant 180 mois à côté de 1,65 M$ de
-  liquidités oisives.** À taux découvert 10-20 %, omission 56-112 k$/an ≈ 0,8-1,7 M$ sur 15 ans.
-  **Correctif** : traiter comme vraie dette — (a) intérêt mensuel paramétrable, (b) remboursement
-  prioritaire dès qu'un surplus existe, (c) exposer dans le plan d'action.
-
-- [ ] 🔴 **`[ENG-W5-RENTAL-OFFBALANCE]`** (M) — un immeuble locatif n'existe **PAS au bilan** :
-  ni sa valeur, ni hypothèque, ni service de dette. Seul le NOI n'afflue revenus. **Mesure exacte :
-  300 k$ d'équité + 500 k$ de prêt introuvables.** L'invariant du fuzz reste vert (tout absent du
-  chartData). Pire : le service non modélisé vaut ≈2,9 k$/mois sur le prêt → ≈700 k$ de coût omis
-  sur l'horizon. **Correctif** : brancher `currentValue` dans `realEstateEquity` et `mortgageBalance`
-  dans soldes de dette, servir hypothèque mensuellement (le module `realEstateMonth` le fait déjà
-  pour les buts immo).
-
 #### MOYEN
-
-- [ ] **`[ENG-W5-BUSINESS-OFFBALANCE]`** (M) — `PrivateBusiness.estimatedValue` et `retainedEarnings`
-  n'entrent ni patrimoine mensuel ni succession ; seul `annualDividend` circule. **Mesure : 2 M$
-  d'entreprise + 400 k$ RBN absents du NW** (300 k$ d'écart mesuré = uniquement dividendes
-  capitalisés). **Correctif** : ajouter `privateBusinessValue` à `NetWorthParts` (le Record
-  exhaustif force le compilateur, la garde existe déjà) et traiter dans `computeLatentTax`.
 
 - [ ] **`[FISC-UI-MARGINAL-ABATEMENT]`** (S) — « Combiné marginal » de l'UI ≠ taux marginal du moteur.
   `TaxBracketViz.tsx` somme brute (fedRate + qcRate) ignore abattement 16,5 %, alors que

@@ -10,6 +10,63 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-19 — Vague 1d (fin) : deux conteneurs W5 qui n'existaient pas au bilan
+
+> Un immeuble locatif ne montrait que son NOI ; une entreprise privée que son dividende. **Leur
+> valeur, leur dette et le service de cette dette n'existaient nulle part.**
+>
+> ⚠️ **L'invariant de conservation restait VERT dans les deux cas**, et c'est la leçon : tout était
+> ABSENT du `chartData`, donc il n'y avait rien à réconcilier. Un actif qu'on n'écrit nulle part ne
+> casse aucun bilan — il ment simplement. Un invariant de COHÉRENCE ne peut pas détecter une
+> OMISSION ; il faut une assertion de PRÉSENCE.
+
+### Livré — `[ENG-W5-RENTAL-OFFBALANCE]`
+
+`services/projection/rentalMonth.ts` (module pur) + branchement moteur. **Les trois volets ensemble**
+— valeur au bilan, hypothèque au bilan, service de la dette en dépense. Chaque moitié serait pire que
+le statu quo : l'équité sans le service donnerait une hypothèque qui ne descend jamais.
+
+**MESURÉ** (immeuble 800 k$, prêt 500 k$ à 5 % sur 25 ans) :
+
+| | avant | après |
+|---|---|---|
+| équité au bilan (m0) | 0 $ | **+302 574 $** |
+| hypothèque au bilan (m0) | 0 $ | **499 160 $** |
+| service de dette | 0 $/mois | **+2 922,95 $/mois** |
+| hypothèque à l'horizon | jamais amortie | **0 $** (éteinte) |
+
+⚠️ **Hypothèse assumée et nommée** : `DEFAULT_RENTAL_AMORTIZATION_YEARS = 25` quand
+`amortizationYears` est absent — standard canadien, et déjà le défaut du chemin « but immobilier ».
+Posée dans une constante documentée, pas dispersée en littéral. L'UI devrait à terme demander le
+champ (il existe déjà dans le type).
+
+⚠️ **Non modélisé, et nommé plutôt que découvert plus tard** : la vente de l'immeuble, la récupération
+de DPA (`ccaTaken`), l'impôt latent sur le gain. Le revenu locatif reste imposé au proxy 0,45 de
+`w5Effects` (`[W5-PROXY-NON-SOURCE]`).
+
+### Livré — `[ENG-W5-BUSINESS-OFFBALANCE]`
+
+`privateBusinessValue` ajouté à `NetWorthParts`. **Le `Record<keyof NetWorthParts, …>` exhaustif a
+fait exactement son travail** : il a forcé le compilateur à révéler les **4 sites** qui construisent
+un patrimoine (moteur, succession, `pastNetWorth`, `dailyPastLedger`), et le test croisé a forcé
+l'ajout à la fixture. Aucun site n'a pu être oublié en silence — c'est la raison d'être de ce patron.
+
+⚠️ **On compte `estimatedValue × ownershipPct` et PAS `retainedEarnings`** : une valeur juste
+marchande EMBARQUE déjà les bénéfices non répartis. Les additionner double-compterait de **400 k$**
+dans le persona de référence. Un test verrouille ce point précis (2 M$, pas 2,4 M$).
+
+⚠️ **Valeur CONSTANTE sur l'horizon** : aucune croissance modélisée. Faire croître une entreprise
+privée à un taux inventé serait de la donnée fabriquée.
+
+⚠️ **Le PASSÉ passe 0 EXPLICITEMENT** (`dailyPastLedger`) : il n'y a ni cours, ni relevé, ni
+transaction d'où reconstruire la valorisation d'une entreprise privée.
+
+**Preuve** : 10 cas, 4 discriminent (2 par moitié, vérifiés par perturbation), dont deux cas de
+rétrocompatibilité stricte point par point.
+
+- [x] **`[ENG-W5-RENTAL-OFFBALANCE]`** (M, HAUT) — ✅ 2026-08-19, PR #663.
+- [x] **`[ENG-W5-BUSINESS-OFFBALANCE]`** (M) — ✅ 2026-08-19, PR #663.
+
 ## 2026-08-19 — `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]` : le dernier producteur muet
 
 > `processAprilSettlement` réinvestissait le remboursement d'impôt de salaire au non-enregistré

@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 454 tests** Vitest
-(400 fichiers de test, mesuré le 2026-08-19). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 464 tests** Vitest
+(401 fichiers de test, mesuré le 2026-08-19). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -339,6 +339,11 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   (`assetValueCad` durci, le cash de départ non — 65 lignes plus bas dans le MÊME fichier).
   Avant d'écrire une garde, grep le patron dans le fichier et ses voisins et le RÉUTILISER tel quel
   (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`).
+- ⚠️ Un invariant de conservation **ne voit pas ce qui est ABSENT** : immeuble locatif et entreprise
+  privée manquaient au bilan (302 574 $ + 499 160 $ + 2 M$ mesurés) avec TOUTES les gardes vertes —
+  rien à réconcilier quand rien n'est écrit. Contre l'omission, une assertion de PRÉSENCE (avec/sans
+  le conteneur), et un type EXHAUSTIF (`Record<keyof …>`) qui casse le typecheck sur chaque site
+  (`UN-INVARIANT-NE-VOIT-PAS-CE-QUI-EST-ABSENT`).
 - Un **stub** documenté « retourne toujours `[]` » peut rester branché des mois sans alerte si le
   mode test nourrit les surfaces en synthétique.
 - Un audit externe/UX headless a un fort taux de faux positifs sur le money-critical — mais

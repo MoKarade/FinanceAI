@@ -3972,3 +3972,47 @@ pas.
 
 **Une date illisible vaut ABSENTE**, jamais une contrainte inventée : une saisie ratée ne doit pas
 faire disparaître une dette réelle du budget. Le sens conservateur est de garder la dette.
+
+### `UN-INVARIANT-NE-VOIT-PAS-CE-QUI-EST-ABSENT` — la conservation ne détecte pas une omission
+
+Deux conteneurs W5 — immeuble locatif, entreprise privée — vivaient dans le modèle et **pas au
+bilan**. L'immeuble ne publiait que son NOI ; l'entreprise que son dividende. Valeur, dette et
+service de dette : **nulle part**.
+
+Mesuré : **302 574 $ d'équité + 499 160 $ de prêt + 2 923 $/mois de service** pour l'immeuble,
+**2 M$** pour l'entreprise.
+
+⚠️ **Tous les invariants de conservation restaient VERTS.** C'est logique, et il faut se le dire
+clairement : ils vérifient que ce qui est ÉCRIT est cohérent. Un actif qu'on n'écrit nulle part ne
+casse aucune identité comptable — il ment simplement, en silence, et aucun test de cohérence ne peut
+le voir.
+
+**La règle** : contre l'OMISSION, il faut une assertion de **PRÉSENCE**, pas de cohérence. Concrètement,
+pour chaque conteneur que l'utilisateur peut saisir : « si j'en ajoute un, le patrimoine bouge-t-il
+de ce que j'attends ? ». Un test qui compare AVEC et SANS le conteneur, pas un invariant interne.
+
+**Le patron qui a fonctionné** : `NET_WORTH_SIGN` est un `Record<keyof NetWorthParts, 1 | -1>`
+exhaustif. Ajouter `privateBusinessValue` à l'interface a **cassé le typecheck sur les 4 sites** qui
+construisent un patrimoine (moteur, succession, `pastNetWorth`, `dailyPastLedger`), et le test croisé
+« formule littérale == Σ signe × valeur » a forcé la mise à jour de la fixture. Aucun site n'a pu
+être oublié. **Un type exhaustif transforme une omission silencieuse en erreur de compilation** —
+c'est le seul mécanisme fiable contre cette classe.
+
+**Trois pièges rencontrés en chemin, tous money-critical :**
+
+1. **Les volets vont ENSEMBLE.** Mettre la valeur au bilan sans servir la dette donnerait un
+   patrimoine +300 k$ dont l'hypothèque ne descend jamais ; servir la dette sans la valeur ferait
+   payer un bien qui n'existe pas. Chaque moitié est PIRE que le statu quo. Livrer tout ou rien.
+2. **Le `+=` écrasé.** `immoInterest`/`immoPrincipal`/`immoHypo` sont réaffectés (`=`, pas `+=`)
+   depuis `reState` APRÈS le point où j'avais d'abord posé le bloc locatif : ma contribution
+   disparaissait en silence. Après avoir ajouté un `+=` sur une variable de boucle, **grep les
+   affectations plates postérieures** (`CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`, encore).
+3. **Le double comptage plausible.** `PrivateBusiness` porte `estimatedValue` ET `retainedEarnings`,
+   et le ticket citait les deux montants. Les additionner aurait gonflé le patrimoine de 400 k$ :
+   une valeur juste marchande EMBARQUE déjà les bénéfices non répartis. Quand deux champs d'un même
+   objet décrivent la même richesse sous deux angles, **il faut choisir, l'écrire, et le tester** —
+   ici un cas verrouille « 2 M$, pas 2,4 M$ ».
+
+**Et nommer ce qu'on ne modélise pas** : vente de l'immeuble, récupération de DPA, impôt latent sur
+le gain, croissance de l'entreprise. Écrits dans l'en-tête du module et dans l'archive. Un manque
+nommé est un ticket ; un manque tu est un défaut qu'on redécouvrira comme une surprise.

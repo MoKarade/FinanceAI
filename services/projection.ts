@@ -16,6 +16,7 @@ import { processAprilSettlement } from './projection/taxApril';
 import { computeOasClawback, processTaxLossHarvesting, processGainHarvesting, processDecemberTaxFiling } from './projection/taxDecember';
 import { processJanuaryReset } from './projection/taxJanuary';
 import { phaseDette, estLePremierMoisApresLeTerme } from './projection/debtSchedule';
+import { initRentalStates, processRentalMonth } from './projection/rentalMonth';
 import { processAutoVehicleReplacement } from './projection/vehicleCycle';
 import { buildHistoricalSequence, buildReplaySequence, type YearReturn } from './projection/historicalReturns';
 import { computeRetirementIncome } from './projection/retirementIncome';
@@ -193,6 +194,34 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     let realEstateEquity = 0;
     let mortgageBalance = 0;
+    // [ENG-W5-RENTAL-OFFBALANCE] État des immeubles locatifs (W5.6). Jusqu'ici leur valeur, leur
+    // hypothèque et le service de celle-ci n'existaient NULLE PART dans le moteur — seul le NOI
+    // affluait au revenu (`w5Effects`). Mesuré : 300 k$ d'équité + 500 k$ de prêt introuvables.
+    const rentalStates = initRentalStates(rentalProperties);
+    /**
+     * [ENG-W5-BUSINESS-OFFBALANCE] Valeur des entreprises privées détenues (W5.7), au prorata de la
+     * part. Jusqu'au 2026-08-19, seul `annualDividend` circulait : la valeur elle-même n'entrait ni
+     * au patrimoine mensuel ni à la succession — **2 M$ mesurés absents du NW**.
+     *
+     * ⚠️ On compte `estimatedValue × ownershipPct` et **PAS** `retainedEarnings` : une valeur juste
+     * marchande EMBARQUE déjà les bénéfices non répartis (l'encaisse de la société en fait partie).
+     * Les additionner double-compterait de 400 k$ dans le persona de référence. Si `estimatedValue`
+     * devait un jour s'entendre HORS encaisse, ce serait une décision à écrire dans
+     * `docs/decisions.md`, pas un `+` discret ici.
+     *
+     * ⚠️ Valeur CONSTANTE sur tout l'horizon : aucune croissance n'est modélisée. Faire croître une
+     * entreprise privée à un taux inventé serait de la donnée fabriquée — le manque est nommé au
+     * BACKLOG plutôt que comblé au jugé.
+     */
+    const privateBusinessValue = (privateBusinesses ?? []).reduce((sum, b) => {
+        const v = Number(b?.estimatedValue);
+        const pct = Number(b?.ownershipPct);
+        if (!Number.isFinite(v) || v <= 0) return sum;
+        const part = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 100;
+        return sum + v * (part / 100);
+    }, 0);
+    const rentalNames = (rentalProperties ?? []).map(rp => rp?.name || 'immeuble locatif');
+
     let propertiesState = activeRE.map(g => {
         // [ENG-PAST-PURCHASE] (décision Marc 2026-07-31) Un bien acheté dans le PASSÉ démarre
         // DÉJÀ DÉTENU : équité présente dès le mois 0, hypothèque restante amortie, AUCUN débit
@@ -444,6 +473,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     );
     const currentRawNetWorth = (): number => computeRawNetWorth({
         liquid, celi, celiapp, reer, nonReg, crypto, reee, realEstateEquity,
+        privateBusinessValue,
         liquidDebt, smithManoeuvreDebt, activeDebtsTotal: sumActiveDebts(),
     });
 
@@ -1474,6 +1504,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         accRentesYear = reState.accRentesYear; accCapitalGainsYear = reState.accCapitalGainsYear;
         realEstateEquity = reState.realEstateEquity; mortgageBalance = reState.mortgageBalance;
         hasPurchasedPrimary = reState.hasPurchasedPrimary;
+
         hasUsedRap = reState.hasUsedRap; rapBorrowed = reState.rapBorrowed;
         rapRepaymentDueTotal = reState.rapRepaymentDueTotal;
         rapRepaymentStartOffset = reState.rapRepaymentStartOffset;
@@ -1500,6 +1531,27 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         }
         immoInterest = reState.immoInterest; immoPrincipal = reState.immoPrincipal;
         immoHypo = reState.immoHypo; immoCharges = reState.immoCharges;
+        // [ENG-W5-RENTAL-OFFBALANCE] Les immeubles locatifs, APRÈS **toutes** les réaffectations
+        // depuis `reState` — y compris `immoInterest`/`immoPrincipal`/`immoHypo`, qui sont ÉCRASÉES
+        // (`=`, pas `+=`) trois lignes plus haut. Placé avant, le `+=` de ce bloc disparaissait en
+        // SILENCE : le service de dette locatif n'aurait jamais atteint l'affichage, et le lot
+        // aurait été vert en test et inerte à l'écran (`CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`).
+        // Les trois volets vont ENSEMBLE — valeur au bilan, hypothèque au bilan, service
+        // de la dette en dépense. Chacun seul serait pire que le statu quo : l'équité sans le
+        // service donnerait une hypothèque qui ne descend jamais.
+        // ⚠️ `equity` est DÉJÀ nette (valeur − hypothèque), comme `realEstateEquity` : on ne
+        // re-soustrait JAMAIS `rentalMortgage` du patrimoine (double comptage interdit par la
+        // source unique `computeRawNetWorth`).
+        if (rentalStates.length > 0) {
+            const rm = processRentalMonth(rentalStates, effProj.propertyGrowthRate ?? 3, rentalNames);
+            realEstateEquity += rm.equity;
+            mortgageBalance += rm.mortgageBalance;
+            monthlyExpenses += rm.debtService;
+            immoInterest += rm.interest;
+            immoPrincipal += rm.principal;
+            immoHypo += rm.debtService;
+            rm.logs.forEach(msg => logEvent(lifeEventsLog, msg));
+        }
         const totalRentalIncome = reState.totalRentalIncome;
         reState.lifeEventLogs.forEach(msg => logEvent(lifeEventsLog, msg));
         reState.flowEventLogs.forEach(msg => logEvent(flowEventsLog, msg));
@@ -2074,6 +2126,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     const estate = computeEstateNetWorth({
         liquid, celi, celiapp, reer, nonReg, nonRegACB, crypto, cryptoACB, reee,
         realEstateEquity, mortgageBalance, realEstateLatentGain, smithManoeuvreDebt, liquidDebt,
+        // [ENG-W5-BUSINESS-OFFBALANCE] La succession aussi : sans ce terme, le legs sous-évaluait le
+        // patrimoine de la valeur ENTIÈRE de l'entreprise (mesuré 2 M$ dans le persona W5).
+        privateBusinessValue,
         // [fix 2026-06-16] dettes actives résiduelles en fin de sim : soustraites du patrimoine
         // successoral comme dans le NW mensuel (sinon « Patrimoine projeté » diverge du graphe).
         activeDebtsTotal: sumActiveDebts(),

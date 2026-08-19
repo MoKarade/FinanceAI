@@ -288,6 +288,11 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
                 celi: i.CELI, celiapp: i.CELIAPP, reer: i.REER, nonReg: i.NonReg,
                 crypto: i.Crypto, reee: i.REEE,
                 realEstateEquity: immo,
+                // [ENG-W5-BUSINESS-OFFBALANCE] Le grand livre du PASSÉ ne reconstruit aucune
+                // entreprise privée : il n'y a ni cours, ni relevé, ni transaction d'où la tirer.
+                // 0 EXPLICITE plutôt qu'un champ oublié — le `Record` exhaustif de `NetWorthParts`
+                // force ce choix à être écrit, ce qui est exactement son rôle.
+                privateBusinessValue: 0,
                 liquidDebt: 0, smithManoeuvreDebt: 0, activeDebtsTotal: currentDebtNonImmo,
             })),
             Income: income,

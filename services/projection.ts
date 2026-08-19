@@ -15,6 +15,7 @@ import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, t
 import { processAprilSettlement } from './projection/taxApril';
 import { computeOasClawback, processTaxLossHarvesting, processGainHarvesting, processDecemberTaxFiling } from './projection/taxDecember';
 import { processJanuaryReset } from './projection/taxJanuary';
+import { phaseDette, estLePremierMoisApresLeTerme } from './projection/debtSchedule';
 import { processAutoVehicleReplacement } from './projection/vehicleCycle';
 import { buildHistoricalSequence, buildReplaySequence, type YearReturn } from './projection/historicalReturns';
 import { computeRetirementIncome } from './projection/retirementIncome';
@@ -430,7 +431,17 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // Patrimoine net via la SOURCE UNIQUE (computeRawNetWorth) → rawNetWorth, prevNW et la
     // succession utilisent la MÊME formule. Closure : lit les valeurs courantes des variables de
     // boucle à chaque appel. [audit money-critical 2026-06-16]
-    const sumActiveDebts = (): number => activeDebts.reduce((s, d) => s + (Number.isFinite(d.balance) ? d.balance : 0), 0);
+    // [DETTE-DATES] Mois courant de la boucle, publié ici pour que `sumActiveDebts` (closure définie
+    // AVANT la boucle) puisse écarter les dettes PAS ENCORE COMMENCÉES. Sans ça, un prêt signé dans
+    // six mois pèserait sur le bilan dès aujourd'hui — une dette qu'on n'a pas encore est une
+    // donnée inventée, exactement ce que le no-fake-data interdit.
+    let moisCourantPourDettes = 0;
+    const sumActiveDebts = (): number => activeDebts.reduce(
+        (s, d) => (phaseDette(d, startYear, startMonth, moisCourantPourDettes) === 'a-venir'
+            ? s
+            : s + (Number.isFinite(d.balance) ? d.balance : 0)),
+        0,
+    );
     const currentRawNetWorth = (): number => computeRawNetWorth({
         liquid, celi, celiapp, reer, nonReg, crypto, reee, realEstateEquity,
         liquidDebt, smithManoeuvreDebt, activeDebtsTotal: sumActiveDebts(),
@@ -553,6 +564,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     }
 
     for (let m = 0; m <= projection.years * 12; m++) {
+        moisCourantPourDettes = m;   // [DETTE-DATES] cf. `sumActiveDebts` — closure sur ce compteur
         const currentLoopDate = loopDates[m];
         // Mois CALENDAIRE réel (0=jan … 11=déc), PAS le mois-dans-la-projection.
         // Indispensable quand la projection démarre ≠ janvier : les déclencheurs
@@ -1394,7 +1406,23 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // (balance/300 + intérêts), même si le minimumPayment est plus bas.
         let debtPayments = 0;
         activeDebts.forEach(d => {
-            if (d.balance > 0) {
+            // [DETTE-DATES] Le calendrier de la dette AVANT son arithmétique. Une dette pas encore
+            // commencée ne coûte rien ; une dette dont le terme est échu ne se paie plus.
+            const phase = phaseDette(d, startYear, startMonth, m);
+
+            // ⚠️ Terme échu avec un solde RESTANT : on ne l'efface PAS (décision Marc 2026-08-19).
+            // Effacer une dette parce qu'une date est passée fabriquerait du patrimoine — le solde
+            // reste au bilan, visible, et on le DIT une seule fois, le mois où le terme échoit.
+            // Répéter l'alerte tous les mois pendant vingt ans la rendrait invisible.
+            if (phase === 'terminee'
+                && d.balance > 0.005
+                && estLePremierMoisApresLeTerme(d, startYear, startMonth, m)) {
+                lifeEventsLog.push(
+                    `⚠️ ${d.name} : fin du terme, il reste ${Math.round(d.balance).toLocaleString('fr-CA')} $ à régler`,
+                );
+            }
+
+            if (phase === 'active' && d.balance > 0) {
                 const interest = (d.balance * (d.interestRate / 100)) / 12;
                 const principalFloor = d.balance / 300; // 300 = 25 ans × 12 mois
                 const effectiveMinimum = Math.max(d.minimumPayment, interest + principalFloor);

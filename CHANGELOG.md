@@ -6,6 +6,24 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-19 (tes dettes ont enfin un début et une fin — et tu peux les modifier)
+
+- **Tu ne pouvais pas corriger une dette.** La page Dettes n'offrait que « Ajouter » et
+  « Supprimer » : changer un montant, un taux ou un nom obligeait à détruire la dette et à la
+  ressaisir. Il y a maintenant un bouton **Modifier** sur chaque dette.
+- **Deux nouvelles dates, facultatives** : *début du prêt / bail* et *fin du terme*. Tu peux enfin
+  dire que ton bail auto a commencé le 20 juillet.
+- **Ce que ça change dans ta projection** :
+  - une dette qui **n'a pas encore commencé** ne pèse plus ni sur ton budget ni sur ton bilan —
+    avant, un prêt signé dans six mois te coûtait déjà de l'argent aujourd'hui ;
+  - à la **fin du terme**, le paiement s'arrête. Avant, un bail de 4 ans continuait d'être payé
+    pendant trente ans dans la projection.
+- **Et s'il reste un solde à la fin du terme, il n'est PAS effacé.** Il reste à ton bilan, avec un
+  avertissement daté. C'est important pour un **bail** : un bail ne s'amortit pas comme un prêt,
+  donc son solde ne tombe pas à zéro tout seul. Faire disparaître une dette parce qu'une date est
+  passée te fabriquerait du patrimoine que tu n'as pas.
+- **Rien ne bouge pour tes dettes actuelles** : sans dates, le comportement est strictement
+  identique à avant.
 ## [unreleased] — 2026-08-19 (ton remboursement d'impôt gagnait un mois de rendement en trop)
 
 - **Quand le fisc te rembourse en avril, la part venant de ta paye est réinvestie dans ton compte

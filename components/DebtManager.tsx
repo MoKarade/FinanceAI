@@ -26,6 +26,11 @@ interface DebtManagerProps {
 export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newDebt, setNewDebt] = useState<Partial<Debt>>({ name: '', balance: 0, interestRate: 0, minimumPayment: 0, category: 'CreditCard' });
+    // [DETTE-DATES] Édition d'une dette EXISTANTE. Avant ce lot il n'y avait que « Ajouter » et
+    // « Supprimer » : corriger une date (ou n'importe quel champ) obligeait à détruire la dette et
+    // à la ressaisir. Demande Marc 2026-08-19 — il ne pouvait pas corriger le début de son bail auto.
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [draft, setDraft] = useState<Partial<Debt>>({});
     const [extraPayment, setExtraPayment] = useState(200);
     // [D6-PRIV-MONTANTS] focus du slider → étiquette révélée pendant l'ajustement seulement.
     const [extraSliderFocus, setExtraSliderFocus] = useState(false);
@@ -40,6 +45,17 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
     };
 
     const handleDelete = (id: string) => { setConfirmDeleteId(id); };
+
+    const startEdit = (d: Debt) => { setEditingId(d.id); setDraft({ ...d }); setIsAdding(false); };
+    const cancelEdit = () => { setEditingId(null); setDraft({}); };
+    const saveEdit = () => {
+        if (!editingId) return;
+        // ⚠️ On fusionne sur la dette EXISTANTE (`{ ...d, ...draft }`) plutôt que de remplacer par le
+        // brouillon : les champs que le formulaire ne montre pas (`kind`, `limit`, `rateProvider`,
+        // `isInterestDeductible`…) survivraient sinon à peine à un clic sur « Enregistrer ».
+        setDebts(debts.map(d => (d.id === editingId ? ({ ...d, ...draft, id: d.id } as Debt) : d)));
+        cancelEdit();
+    };
 
     const doConfirmDelete = () => {
         if (confirmDeleteId) {
@@ -125,14 +141,76 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                     <input aria-label="Paiement minimum mensuel (dollars)" type="number" placeholder="Min. Payment $" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newDebt.minimumPayment || ''} onChange={e => setNewDebt({...newDebt, minimumPayment: parseFloat(e.target.value)})} />
                                     <select aria-label="Catégorie de la dette" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newDebt.category} onChange={e => setNewDebt({...newDebt, category: e.target.value as Debt['category']})}><option value="CreditCard">Carte Crédit</option><option value="Car">Auto</option><option value="Student">Étudiant</option><option value="Personal">Personnel</option></select>
                                 </div>
+                                {/* [DETTE-DATES] Début et fin de terme. Les deux sont FACULTATIFS :
+                                    une dette sans dates se comporte exactement comme avant. */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <label className="flex flex-col gap-1 text-tiny text-ink-400">
+                                        Début du prêt / bail
+                                        <input aria-label="Date de début du prêt ou du bail" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newDebt.startDate ?? ''} onChange={e => setNewDebt({...newDebt, startDate: e.target.value || undefined})} />
+                                    </label>
+                                    <label className="flex flex-col gap-1 text-tiny text-ink-400">
+                                        Fin du terme
+                                        <input aria-label="Date de fin du terme ou du bail" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newDebt.termEndDate ?? ''} onChange={e => setNewDebt({...newDebt, termEndDate: e.target.value || undefined})} />
+                                    </label>
+                                </div>
+                                <p className="text-tiny text-ink-400">
+                                    Laisse vide si tu ne sais pas : sans date de fin, le paiement continue jusqu'à
+                                    extinction. Avec une date de fin, il s'arrête à ce mois-là — et s'il reste un
+                                    solde, il est signalé au lieu d'être effacé.
+                                </p>
                                 <button onClick={handleAdd} className="w-full bg-danger-600 hover:bg-danger-500 text-white text-meta font-bold py-2 rounded">Enregistrer</button>
                             </div>
                         )}
                         <div className="space-y-3">
                             {debts.map(d => (
-                                <div key={d.id} className="p-3 bg-[#1a1a1a] rounded-xl border border-white/5 flex justify-between items-center group">
-                                    <div><div className="font-bold text-white text-body">{d.name}</div><div className="text-meta text-ink-400">{d.interestRate}% • Min: <PrivateAmount>{formatCAD(d.minimumPayment)}</PrivateAmount></div></div>
-                                    <div className="text-right"><PrivateAmount as="div" className="font-mono text-danger-400 font-bold">{formatCAD(d.balance)}</PrivateAmount><button onClick={() => handleDelete(d.id)} className="text-tiny text-ink-400 hover:text-danger-500 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-ring transition-opacity">Supprimer</button></div>
+                                <div key={d.id} className="p-3 bg-[#1a1a1a] rounded-xl border border-white/5 group">
+                                    {editingId === d.id ? (
+                                        <div className="space-y-2">
+                                            <input aria-label="Nom de la dette" type="text" className="w-full bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.name ?? ''} onChange={e => setDraft({ ...draft, name: e.target.value })} />
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <input aria-label="Solde de la dette (dollars)" type="number" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.balance ?? ''} onChange={e => setDraft({ ...draft, balance: parseFloat(e.target.value) })} />
+                                                <input aria-label="Taux d'intérêt (pourcentage)" type="number" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.interestRate ?? ''} onChange={e => setDraft({ ...draft, interestRate: parseFloat(e.target.value) })} />
+                                            </div>
+                                            <input aria-label="Paiement minimum mensuel (dollars)" type="number" className="w-full bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.minimumPayment ?? ''} onChange={e => setDraft({ ...draft, minimumPayment: parseFloat(e.target.value) })} />
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <label className="flex flex-col gap-1 text-tiny text-ink-400">
+                                                    Début du prêt / bail
+                                                    <input aria-label="Date de début du prêt ou du bail" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.startDate ?? ''} onChange={e => setDraft({ ...draft, startDate: e.target.value || undefined })} />
+                                                </label>
+                                                <label className="flex flex-col gap-1 text-tiny text-ink-400">
+                                                    Fin du terme
+                                                    <input aria-label="Date de fin du terme ou du bail" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={draft.termEndDate ?? ''} onChange={e => setDraft({ ...draft, termEndDate: e.target.value || undefined })} />
+                                                </label>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button onClick={saveEdit} className="flex-1 bg-green-600 hover:bg-green-500 text-white text-meta font-bold py-1.5 rounded focus-ring">Enregistrer</button>
+                                                <button onClick={cancelEdit} className="flex-1 bg-white/10 hover:bg-white/20 text-white text-meta py-1.5 rounded focus-ring">Annuler</button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <div className="font-bold text-white text-body">{d.name}</div>
+                                                <div className="text-meta text-ink-400">{d.interestRate}% • Min: <PrivateAmount>{formatCAD(d.minimumPayment)}</PrivateAmount></div>
+                                                {/* [DETTE-DATES] Les dates ne sont pas des montants : elles restent visibles en
+                                                    mode discret. Aucune n'est INVENTÉE — un tiret honnête quand elle manque. */}
+                                                {(d.startDate || d.termEndDate) && (
+                                                    <div className="text-tiny text-ink-400 mt-0.5">
+                                                        {d.startDate ? `Début ${d.startDate}` : 'Début —'}
+                                                        {' → '}
+                                                        {d.termEndDate ? `fin ${d.termEndDate}` : 'fin —'}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="text-right">
+                                                <PrivateAmount as="div" className="font-mono text-danger-400 font-bold">{formatCAD(d.balance)}</PrivateAmount>
+                                                <div className="flex gap-2 justify-end">
+                                                    <button onClick={() => startEdit(d)} className="text-tiny text-ink-400 hover:text-white opacity-0 group-hover:opacity-100 focus:opacity-100 focus-ring transition-opacity">Modifier</button>
+                                                    <button onClick={() => handleDelete(d.id)} className="text-tiny text-ink-400 hover:text-danger-500 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-ring transition-opacity">Supprimer</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                             {debts.length === 0 && (

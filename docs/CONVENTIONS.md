@@ -3916,3 +3916,59 @@ on re-trace le diagnostic d'un ticket perf.
 « un dépôt du 30 ne rapporte pas un mois » sont séparées. Un futur passage qui retirerait
 `contribNonReg` du calcul de croissance (« ça ne sert qu'à l'affichage ») recréerait la croissance
 fantôme **sans casser la forme-flux**. Il faut un cas dédié pour chacune.
+### `CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI` — le modèle savait, l'écran ne demandait pas
+
+Marc : « pour la dette de ma voiture la date de début est le 20 juillet mais j'ai jamais pu définir
+le début ni la fin du bail ». Vérification : `Debt.termEndDate` existait **depuis W5.3**, typé,
+persisté, traversant Drive et le schéma MCP. Il n'était exposé par **aucun** formulaire.
+
+Pire : `DebtManager` n'offrait que « Ajouter » et « Supprimer ». Même un champ qui EXISTE dans le
+formulaire d'ajout devenait irrattrapable après coup — corriger une dette imposait de la DÉTRUIRE et
+de la ressaisir, en perdant au passage tout champ non affiché (`kind`, `limit`, `rateProvider`,
+`isInterestDeductible`).
+
+**La règle** : un champ ajouté au type n'est livré que quand un GESTE permet de le remplir *et* de
+le corriger. Le typecheck, les tests et la persistance sont tous verts sur un champ que personne ne
+peut saisir — c'est la même famille que `UX-UNREACHABLE-FEATURE`, appliquée à la DONNÉE plutôt qu'à
+une interaction. Symptôme à chercher : un champ optionnel du modèle dont `grep` ne trouve aucun
+`onChange` / `value=` dans `components/`.
+
+**Corollaire** : « créer + supprimer » n'est pas « gérer ». Pour toute entité que l'utilisateur
+SAISIT (dette, but, actif, événement), l'édition est une fonctionnalité de base, pas un raffinement
+— sans elle, la moindre coquille coûte la ressaisie complète et la perte silencieuse des champs
+avancés.
+
+### `EFFACER-SUR-UNE-DATE-FABRIQUE-DU-PATRIMOINE` — une échéance ne solde pas une dette
+
+En posant une date de fin de terme sur une dette, le réflexe est de remettre le solde à zéro quand
+elle passe : « le bail est fini, donc il n'y a plus rien à payer ». C'est faux, et c'est du
+no-fake-data à l'envers — on **crée** du patrimoine par un effacement.
+
+Le cas de Marc le montre : son auto est un **BAIL**, pas un prêt. Un bail n'amortit rien — c'est un
+loyer sur un terme fixe, puis on rend le véhicule (ou on le rachète). Saisi dans un modèle
+« solde + taux + paiement minimum », son solde ne tombera généralement **pas** à zéro au terme.
+Cet écart est de l'information : il dit que le modèle et la réalité divergent.
+
+**La règle retenue (décision Marc, question posée AVANT de coder)** : à l'échéance, on **arrête le
+paiement** et on **laisse le solde au bilan**, avec une alerte datée. Trois propriétés à tenir
+ensemble :
+- le paiement cesse — sinon un bail de 4 ans est payé pendant trente ans dans la projection ;
+- le solde résiduel survit — l'effacer fabriquerait du patrimoine ;
+- l'alerte est émise **UNE** fois, le mois où le terme échoit. Répétée chaque mois pendant vingt
+  ans, elle ne se lit plus comme une alerte (cf. `EPURATION-SUPPRIME-LA-RESERVE`).
+
+**Le symétrique compte autant** : une dette dont le solde s'éteint AVANT le terme ne doit produire
+AUCUNE alerte. Une garde qui crie quand tout va bien devient du bruit, et on cesse de la lire.
+
+**Et le début, pas seulement la fin** : une dette qui n'a pas encore commencé ne doit peser ni sur le
+budget ni sur le BILAN. Le second point est facile à oublier — le paiement se gate naturellement
+dans la boucle mensuelle, mais `sumActiveDebts` est une closure définie AVANT elle, qui sommait tout.
+Un prêt signé dans six mois amputait donc le patrimoine d'aujourd'hui. Grep systématiquement les
+autres LECTEURS d'une collection qu'on vient de rendre conditionnelle.
+
+**Comparer des MOIS, pas des jours** : le moteur est mensuel. « 20 juillet » ⇒ juillet est dû, et le
+mois de la date de fin est INCLUS. Filtrer au jour près afficherait une précision que le modèle n'a
+pas.
+
+**Une date illisible vaut ABSENTE**, jamais une contrainte inventée : une saisie ratée ne doit pas
+faire disparaître une dette réelle du budget. Le sens conservateur est de garder la dette.

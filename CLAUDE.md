@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 442 tests** Vitest
-(399 fichiers de test, mesuré le 2026-08-19). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 454 tests** Vitest
+(400 fichiers de test, mesuré le 2026-08-19). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -271,6 +271,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   chaque pas de temps (`PERCENTILE-DE-TRAJECTOIRES-N-EST-PAS-UN-PERCENTILE`).
 
 **Divers**
+- Un **champ du TYPE que l'UI ne demande jamais** n'est pas livré : `Debt.termEndDate` existait
+  depuis W5.3, exposé nulle part, et `DebtManager` n'avait que « Ajouter »/« Supprimer » — corriger
+  une dette imposait de la détruire. « Créer + supprimer » n'est pas « gérer »
+  (`CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI`).
+- Une **échéance ne solde pas une dette** : à la fin d'un terme on arrête le paiement, on LAISSE le
+  solde résiduel au bilan (l'effacer fabriquerait du patrimoine) et on alerte UNE fois. Et une dette
+  pas encore commencée doit sortir AUSSI du bilan — `sumActiveDebts` est une closure définie avant la
+  boucle, elle sommait tout (`EFFACER-SUR-UNE-DATE-FABRIQUE-DU-PATRIMOINE`).
 - « Livré, testé, déployé » ≠ **ATTEIGNABLE** : pour une feature gatée par une INTERACTION, compter les
   gestes depuis l'état par défaut et vérifier CHAQUE modalité (souris/doigt/clavier). Un test qui
   boucle pour atteindre l'état testé mesure le coût du chemin (`UX-UNREACHABLE-FEATURE`).

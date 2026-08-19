@@ -67,6 +67,14 @@ const RENDER_MAX_POINTS = 700;
 const CURVE_FIELDS: ReadonlySet<string> = new Set([
     'Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto', 'Immobilier',
     'ImpotLatent', 'FluxImpots', 'P10', 'P50', 'P90', 'NetWorth', 'lockedNetWorth',
+    // ⚠️ `DettesNonImmo` n'est TRACÉE par aucune aire : elle est ici parce que le patrimoine au
+    // jour est RECOMPOSÉ (`NetWorth = Σ NET_WORTH_DAILY_ASSETS − DettesNonImmo`) et que la
+    // recomposition s'ABSTIENT si un seul terme manque — une somme partielle serait un patrimoine
+    // faux et crédible. Sans ce champ, le correctif `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]` était
+    // INERTE dans la vraie courbe : vert en test (qui ventile tout), sans effet en prod
+    // (`[CURVE-FIELDS-DETTE-MANQUANTE]`, 2026-08-19). La garde qui tient ce lien est
+    // `tests/services/bilanQuotidien.test.ts` — elle rejoue la ventilation avec CE set exact.
+    'DettesNonImmo',
     'year', 'age', 'isPast',
 ]);
 

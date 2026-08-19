@@ -68,6 +68,29 @@
 
 ---
 
+## 2026-08-19 — Correctif du correctif : `[CURVE-FIELDS-DETTE-MANQUANTE]`
+
+> Le correctif `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]` (PR #657) **ne s'exécutait jamais sur la vraie
+> courbe**. La recomposition s'abstient si un terme du bilan manque (garde délibérée, et bonne) ; or
+> `FutureProjection` passe `fields: CURVE_FIELDS` — une ventilation ALLÉGÉE (~100 ms au lieu de
+> ~500 ms sur 30 ans) qui ne liste que les champs TRACÉS. `DettesNonImmo` n'y figurait pas, puisque
+> aucune AIRE ne la dessine. Condition `complet` toujours fausse ⇒ **vert en test, inerte en prod**.
+>
+> ⚠️ Mes 4 tests appelaient `buildDailyLedger` **sans `fields`** : ventilation complète, tous les
+> termes présents. Le CONTRAT de la fonction était parfaitement respecté — c'est le PÉRIMÈTRE DE
+> TRAVAIL de l'appelant que je n'avais pas rejoué.
+>
+> ⚠️ Trouvé par la revue automatique Vercel sur la PR, **après** le merge. Un finding qui pointe une
+> INERTIE se vérifie en une minute par grep : le faire AVANT de le classer en faux positif.
+>
+> Livré : `DettesNonImmo` ajouté à `CURVE_FIELDS` (avec le POURQUOI en commentaire, puisque le champ
+> n'est tracé par rien), plus un cas qui lit le set dans le SOURCE du composant et rejoue la
+> ventilation avec LUI — en deux temps, la LISTE (qui nomme la cause) et l'EFFET (qui re-mesure
+> l'identité). Il DISCRIMINE (vérifié par `git stash`).
+
+- [x] **`[CURVE-FIELDS-DETTE-MANQUANTE]`** (XS, HAUT) — ✅ 2026-08-19, PR #659.
+      Leçon : `CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD` (`docs/CONVENTIONS.md`).
+
 ## 2026-08-19 — Vague 1d (début) : les revenus que la ventilation ne montrait pas
 
 > `Income` contient le revenu locatif, les allocations familiales et les paiements REEE ; la

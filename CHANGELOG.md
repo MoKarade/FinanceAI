@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-19 (le correctif du patrimoine au jour ne s'appliquait pas vraiment)
+
+- **Correctif du correctif.** La veille, le patrimoine net au JOUR a été rendu cohérent avec la somme
+  de ses composants. **Ce calcul ne s'exécutait jamais sur la vraie courbe.**
+- **Pourquoi** : pour rester rapide, le graphique ne ventile au jour qu'une liste RESTREINTE de
+  champs — ceux qu'il trace. Tes dettes n'en faisaient pas partie (aucune courbe ne les dessine).
+  Or le patrimoine ne peut pas se recomposer sans elles, et le calcul s'abstient plutôt que
+  d'inventer un patrimoine amputé. Résultat : correctif vert en test, sans effet à l'écran.
+- **Maintenant** les dettes sont ventilées comme le reste, et la cohérence tient là où tu la regardes.
+  Un test rejoue désormais la ventilation avec **exactement** la liste de champs de la vraie courbe.
 ## [unreleased] — 2026-08-19 (ta carte du hub montre enfin le mouvement de tes placements)
 
 - **Trois nouvelles lignes sur la carte FinanceAI de `hubperso.com`** : la valeur de tes placements

@@ -3766,3 +3766,36 @@ cas vacueux sans que rien ne bronche.
 Sœur de `PREUVE-DE-DISCRIMINATION-NON-REPRESENTATIVE` : ce n'est pas « le test échoue-t-il sur le code
 d'avant ? » qu'il faut se demander une fois, c'est le vérifier pour CHAQUE perturbation qu'il prétend
 couvrir. Trois refus, trois perturbations, trois vérifications — la troisième était verte.
+### `CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD` — le test et la prod n'appelaient pas la même configuration
+
+`[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]` recompose `NetWorth` au jour à partir de ses composants, et
+s'ABSTIENT dès qu'un terme manque (une somme partielle serait un patrimoine faux et crédible — la
+garde est bonne). Mes 4 tests appelaient `buildDailyLedger` **sans `fields`** : ventilation
+COMPLÈTE, tous les termes présents, recomposition exécutée, mesure 89,01 $ → 0,00 $.
+
+La vraie courbe passe `fields: CURVE_FIELDS` — une ventilation ALLÉGÉE (~100 ms au lieu de ~500 ms
+sur 30 ans) qui ne contient que les champs TRACÉS. `DettesNonImmo` n'y était pas, puisqu'aucune aire
+ne la dessine. La condition `complet` était donc TOUJOURS fausse en production : **le correctif était
+vert en test et INERTE à l'écran**. Trouvé par une revue automatique sur la PR, APRÈS le merge.
+
+**La règle** : quand une fonction accepte un paramètre de CONFIGURATION qui restreint son travail
+(`fields`, `include`, un `Set` de clés, un niveau de verbosité), le test doit s'exécuter avec la
+configuration RÉELLE de l'appelant, pas avec le défaut le plus généreux. C'est
+`TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT` appliqué non pas à une valeur, mais au *périmètre de
+travail* — et c'est plus sournois, parce que le contrat de la fonction est parfaitement respecté.
+
+**Symptôme à reconnaître** : une garde d'abstention (`if (complet)`, `if (tout est là)`) dont le test
+ne construit jamais le cas INCOMPLET. Si l'abstention n'est pas testée, on ne sait pas laquelle des
+deux branches la prod emprunte.
+
+**Le correctif de garde** : lire la configuration réelle dans le SOURCE de l'appelant et rejouer avec
+elle (patron `chartPrivacyScan`/`curveFields` déjà utilisé ici), en deux temps — la liste (« chaque
+terme du bilan ∈ `CURVE_FIELDS` », qui NOMME la cause) ET l'effet (rejouer la ventilation avec ce set
+et re-mesurer l'identité). La liste seule se satisferait d'un champ ajouté au mauvais endroit ;
+l'effet seul échouerait sans dire pourquoi.
+
+⚠️ **Et une note de posture** : c'est une revue AUTOMATIQUE qui l'a trouvé, sur du code que j'avais
+mesuré, testé et documenté. Les findings de bot ont un fort taux de faux positifs sur le
+money-critical (~3/8 des HIGH sont faux) — mais un finding qui pointe une INERTIE se vérifie en une
+minute par grep, et il faut le faire AVANT de le classer. Le coût d'un faux positif ici est une
+minute ; le coût d'un vrai positif ignoré est une livraison qui n'existe pas.

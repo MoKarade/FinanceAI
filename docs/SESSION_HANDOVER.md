@@ -4,6 +4,42 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-19 (suite 105) — les dettes ont un début et une fin, et sont éditables
+> Branche `claude/dettes-dates`. Demande Marc, hors backlog.
+>
+> **Le blocage réel** : `DebtManager` n'offrait que « Ajouter » et « Supprimer ». Corriger une date
+> imposait de DÉTRUIRE la dette et de la ressaisir (donc de perdre tout champ non affiché —
+> `kind`, `limit`, `rateProvider`…). Classe `UX-UNREACHABLE-FEATURE` : `termEndDate` existait dans
+> le type depuis W5.3 et n'était exposé NULLE PART.
+>
+> **Livré** : bouton « Modifier » + formulaire inline, champs `startDate` (nouveau) et `termEndDate`
+> (existant, doc généralisée : bail / prêt / renouvellement hypo), et `'auto-lease'` ajouté à
+> `DebtKind`. Module pur `services/projection/debtSchedule.ts`.
+>
+> ⚠️ **DÉCISION MARC** (question posée avant de coder) : son auto est un **BAIL**, pas un prêt ; et
+> la date de fin doit **arrêter le paiement ET signaler si le solde n'est pas nul**. Le solde
+> résiduel n'est donc JAMAIS remis à zéro — l'effacer fabriquerait du patrimoine. C'est exactement
+> le cas d'un bail, qui n'amortit rien : son « solde » saisi comme une dette ordinaire ne tombera
+> généralement pas à zéro au terme.
+>
+> ⚠️ **Trois effets moteur, trois perturbations, trois rouges** : gate de phase sur le paiement,
+> exclusion des dettes `a-venir` de `sumActiveDebts` (sinon un prêt futur pèse au bilan dès
+> aujourd'hui), et l'alerte de solde résiduel (émise UNE seule fois — une alerte permanente ne se
+> lit plus).
+>
+> ⚠️ **Comparaison au MOIS, pas au jour** : « 20 juillet » ⇒ juillet est dû. Le moteur est mensuel ;
+> prétendre au jour près serait une précision que le modèle n'a pas. Le mois de la date de FIN est
+> INCLUS (dernier paiement).
+>
+> ⚠️ **Une date illisible est traitée comme ABSENTE**, jamais comme une contrainte : une saisie
+> ratée ne doit pas faire disparaître une dette réelle du budget.
+>
+> ⚠️ **Fausse preuve corrigée** : mes assertions « aucun champ perdu à l'édition » passent AUSSI
+> avec un `setDebts([draft])` naïf, parce que `startEdit` copie la dette entière. Le merge est
+> défensif, pas prouvé — c'est écrit dans le test plutôt que revendiqué.
+>
+> **Rétrocompatibilité** : champs ADDITIFS optionnels, zéro migration (v7 inchangé). Un test compare
+> point par point une dette sans dates AVANT/APRÈS : identique.
 > ## 🟢 Session 2026-08-19 (suite 106) — le dernier producteur muet, et sa surprise
 > Branche `claude/avril-nonreg` (empilée sur `claude/mc-conservation` / #658, mergée depuis).
 >

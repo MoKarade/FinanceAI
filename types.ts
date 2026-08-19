@@ -400,7 +400,11 @@ export interface ProjectionConfig {
 // ────────────────────────────────────────────────────────────────────
 // W5.3 — Dettes étendues (HELOC, cartes, étudiants, auto, perso, marge)
 // ────────────────────────────────────────────────────────────────────
-export type DebtKind = 'mortgage' | 'heloc' | 'auto' | 'student-federal' | 'student-quebec' | 'credit-card' | 'personal' | 'margin' | 'spouse-loan' | 'other';
+/** ⚠️ `auto-lease` (BAIL) n'est PAS `auto` (prêt) : un bail ne s'amortit pas, c'est un loyer sur un
+ *  terme fixe puis on rend le véhicule (ou on le rachète). Le distinguer permet de dire la vérité
+ *  dans l'UI et de ne pas présenter un « solde » de bail comme une dette qui s'éteint toute seule
+ *  (demande Marc 2026-08-19). */
+export type DebtKind = 'mortgage' | 'heloc' | 'auto' | 'auto-lease' | 'student-federal' | 'student-quebec' | 'credit-card' | 'personal' | 'margin' | 'spouse-loan' | 'other';
 
 // ────────────────────────────────────────────────────────────────────
 // W5.4 — Assurances
@@ -579,7 +583,15 @@ export interface Debt {
   isVariableRate?: boolean;
   limit?: number;                  // pour HELOC, carte de crédit
   amortizationYears?: number;      // pour auto, hypothécaire
-  termEndDate?: string;            // date fin terme (renouvellement hypo)
+  /** [DETTE-DATES] Début du prêt / du bail (YYYY-MM-DD). Avant cette date, le moteur ne sert PAS la
+   *  dette : ni paiement, ni intérêt, ni présence au bilan. Absent ⇒ elle a toujours couru
+   *  (rétrocompatible bit-à-bit). Champ ADDITIF optionnel : aucune migration de schéma. */
+  startDate?: string;
+  /** [DETTE-DATES] Fin du TERME : échéance d'un bail, fin d'un prêt, renouvellement hypothécaire
+   *  (YYYY-MM-DD). Le mois de cette date est INCLUS (dernier paiement). Après, le moteur cesse de
+   *  payer — et si le solde n'est pas nul, il le LAISSE au bilan avec une alerte plutôt que de
+   *  l'effacer (décision Marc 2026-08-19). Absent ⇒ on paie jusqu'à extinction. */
+  termEndDate?: string;
   rateProvider?: string;           // institution prêteuse
   isInterestDeductible?: boolean;  // intérêt sur prêt placement / Smith Manoeuvre
 }

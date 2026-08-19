@@ -438,10 +438,19 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
     ];
 
     const portfolioOutflow = (point.RetraitREER || 0) + (point.RetraitCELI || 0);
+    // [REVENUS-NON-VENTILES-AFFICHAGE] `Income` contient AUSSI le revenu locatif, les prestations
+    // pour enfants et les paiements REEE — la ventilation n'en montrait aucun. MESURÉ : 3 551 $/mois
+    // de loyer invisibles (scénario locatif) et 550 $/mois d'allocations (scénario 1 enfant) ; le
+    // résidu `Income − (Marc + Anna + Retraite)` valait EXACTEMENT ces champs.
+    // ⚠️ On les CONSOMME (le moteur les émet déjà), on ne les recalcule pas — cf.
+    // `utils/chartDataSumGuard.ts` : additionner localement recréerait une source concurrente.
     const incomes = ([
         [`Paye ${userName1 || 'Util. 1'}`, point.IncomeMarc || 0],
         [`Paye ${userName2 || 'Util. 2'}`, point.IncomeAnna || 0],
         ['Rentes / Retraite', point.IncomeRetirement || 0],
+        ['Revenus locatifs', point.RentalIncome || 0],
+        ['Allocations familiales', point.childBenefits || 0],
+        ['Paiement REEE', point.ReeePayout || 0],
         ['Décaissement portfolio', portfolioOutflow],
     ] as Array<[string, number]>).filter((entry) => entry[1] > 0);
 

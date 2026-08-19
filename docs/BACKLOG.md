@@ -44,7 +44,8 @@
   re-baser des goldens : 6 PR séparées se re-baseraient l'une l'autre.
   **1c** ✅ *partiel* — `[MC-BANDES-CROISEES]` livré 2026-08-19. RESTE : `[ENG-MC-CONSERVATION-BLIND]`,
   `[ENG-INV-FLUXFORM-COVERAGE]` (extensions de COUVERTURE, pas des correctifs — lot séparé).
-  **1d** Registres oubliés (`[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`, `[ENG-LIQUIDDEBT-NEVER-REPAID]`,
+  **1d** *en cours* — ✅ `[REVENUS-NON-VENTILES-AFFICHAGE]` livré 2026-08-19. RESTE :
+  (`[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`, `[ENG-LIQUIDDEBT-NEVER-REPAID]`,
   `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`, `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`,
   `[REVENUS-NON-VENTILES-AFFICHAGE]`, `[NW-PRESENT-DEUX-PERIMETRES]`) — même CLASSE, un seul panel.
   **1e** Silence qui cache de l'argent (`[COUPLE-CTX-FAKE-ZERO]` + `[TOOL-TAXSITUATION-FAKE-ZERO]`
@@ -833,14 +834,6 @@
   aujourd'hui, **mais un reclassement stock→flux de `DetteTotale` passerait les trois tests**.
   Correctif : étendre le test de ratio à TOUS les stocks non nuls, sur tous les mois de la fenêtre.
   [MESURÉ — vacuité de couverture, pas un écart $]
-- [ ] **`[REVENUS-NON-VENTILES-AFFICHAGE]`** (S, MOYEN) — `Income` inclut le revenu locatif, les
-  prestations pour enfants et les paiements REEE, mais la ventilation montrée à l'utilisateur ne
-  liste que `IncomeMarc / IncomeAnna / IncomeRetirement / (RetraitREER+RetraitCELI)` —
-  `components/projection/FutureDetailModal.tsx:439-445`, `components/projection/ProjectionTooltip.tsx:230-232`.
-  **Mesuré : `Income − (IncomeMarc+IncomeAnna+IncomeRetirement)` = 5 299,30 $/mois** (scénario
-  locatif, m480) et **659,22 $/mois** (scénario 1 enfant) ; 0,01 $ sur le socle. Correctif : ajouter
-  les lignes manquantes — le moteur émet déjà les champs, donc les CONSOMMER et surtout **ne pas
-  additionner** (cf. `utils/chartDataSumGuard.ts`). [MESURÉ]
 - [ ] **`[CONSTANTES-MOTEUR-NON-SOURCEES]`** (XS, FAIBLE) — trois constantes financières en dur dans
   des champs **publiés** : taux HELOC Smith 5 %/an (`realEstateMonth.ts:378`), croissance 5 % du
   `CoastFIRE` (`monthlyOutput.ts:170` — **indépendante de `projection.returnRate`**), revenu barista

@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-19 (tes loyers et tes allocations n'apparaissaient nulle part)
+
+- **Le détail de tes revenus en cachait une partie.** Le panneau et l'infobulle du Futur listaient
+  ta paye, celle de ta conjointe, tes rentes et tes décaissements — mais **ni tes revenus locatifs,
+  ni tes allocations familiales, ni les versements de ton REEE**. Le total, lui, les comptait.
+- Autrement dit : la somme des lignes affichées ne faisait pas le total affiché, sans que rien ne
+  le signale. **Mesuré : 3 551 $/mois de loyer manquants** dans un scénario avec immeuble locatif,
+  **550 $/mois d'allocations** avec un enfant.
+- Les trois lignes sont maintenant là. Le moteur produisait déjà ces chiffres — ils n'étaient
+  simplement jamais affichés.
+
+---
+
 ## [unreleased] — 2026-08-19 (le cône de simulation se croisait sur un mois sur quatre)
 
 - **Les trois courbes de ta simulation Monte Carlo pouvaient se croiser.** La bande « pessimiste »

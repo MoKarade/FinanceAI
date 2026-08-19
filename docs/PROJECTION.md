@@ -1,6 +1,6 @@
 # 🔮 Projection Future — Documentation détaillée du moteur
 
-> **Fichier source** : `services/projection.ts` (~2400 lignes) + `services/projection/helpers.ts` + `services/projection/goalSeek.ts` + `services/projection/drawdownOptimizer.ts` + `services/projection/historicalReturns.ts` + `services/projection/runAsync.ts` + `services/projection/assetLocation.ts` + `services/projection.worker.ts`
+> **Fichier source** : `services/projection.ts` (2 228 lignes, mesuré 2026-08-19) + `services/projection/helpers.ts` + `services/projection/goalSeek.ts` + `services/projection/drawdownOptimizer.ts` + `services/projection/historicalReturns.ts` + `services/projection/runAsync.ts` + `services/projection/assetLocation.ts` + `services/projection.worker.ts`
 > **Point d'entrée public** : `calculateFutureProjection(params, runMC = false, selectedIdx = 0, onlyStratTypes?): ProjectionResult`
 > ⚠️ **[UI-SCEN] (2026-06-09) — changement de contrat** : par défaut le moteur ne calcule QUE le
 > scénario de la stratégie sélectionnée (`projection.withdrawalStrategy`, défaut AUTO_MARGINAL) —

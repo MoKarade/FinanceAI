@@ -3400,3 +3400,89 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   nom se lirait comme une certitude. Le choix est défendable, mais la conséquence ne l'est que si
   elle est écrite : une transaction imputée à un conjoint dans Budget peut n'avoir aucune pastille
   ici. Sans cette note, la prochaine session lira l'écart comme un bug et « corrigera ».
+
+---
+
+## Leçons du checkup de santé 2026-08-19 (panel de 9 agents)
+
+### `AUDIT-SUR-TREE-PERIME` — vérifier l'ÉTAT DU TREE avant de lancer un panel
+
+J'ai lancé six agents sur « l'état actuel de `main` ». Le conteneur avait été restauré à un
+snapshot du **2026-08-13** : le tree était sur une vieille branche, **13 000 lignes en retard**,
+et trois fichiers cités dans mes propres consignes (`backfillDedup.ts`, `PrivateText.tsx`,
+`daySeriesIndex.ts`) n'existaient tout simplement pas sur le disque. Les agents ont audité pendant
+plusieurs minutes du code qui n'existe plus.
+
+**Ce qui rend ce mode d'échec vicieux** : leurs rapports auraient été *plausibles*. Des
+`fichier:ligne` réels, des extraits de code réels, des mesures réelles — mais sur une version
+morte. Rien dans le rapport n'aurait signalé le décalage ; je les aurais consolidés au BACKLOG et
+la prochaine session aurait chassé des bugs déjà corrigés. Le seul indice a été un `git branch -vv`
+fait pour une AUTRE raison (le ménage de branches).
+
+**Règle** : avant de lancer un agent sur « l'état du code », prouver l'état du code —
+`git fetch origin && git status -sb` et comparer à `origin/main`. Le coût est de dix secondes ;
+le coût de l'omission est un audit entier à refaire. Corollaire : quand une consigne d'agent
+mentionne un fichier précis, `ls` ce fichier d'abord — s'il manque, le tree ment.
+
+C'est la **3ᵉ fois cette semaine** qu'un revert de conteneur coûte du travail (cf. la règle
+« committer et pousser avant toute attente longue »). La nouveauté ici : le revert ne s'est pas
+manifesté par une perte de travail, mais par un **travail neuf construit sur du sable**.
+
+### `FINDING-JUSTE-CORRECTIF-INVALIDE` — vérifier le correctif, pas seulement le finding
+
+La règle du dépôt dit qu'un finding est une hypothèse. Elle ne dit pas assez que **le CORRECTIF en
+est une aussi**, et qu'il peut être faux alors que le finding est juste.
+
+Cas mesuré : `RealEstateWorkspace.tsx:463-470`, un `<span role="button">` sans `tabIndex` ni
+`onKeyDown` — finding **exact**, la suppression d'une propriété est vraiment inatteignable au
+clavier. Le correctif proposé (« remplacer par un vrai `<button type="button">` ») est
+**impossible** : ce span est imbriqué dans le `<button>` d'onglet. Un `<button>` dans un `<button>`
+est du HTML invalide ; React le rendrait, le navigateur le réparerait en déplaçant le nœud, et le
+« correctif » aurait cassé le layout tout en paraissant conforme à la revue.
+
+**Règle** : lire le CONTEXTE SYNTAXIQUE du correctif (le parent, pas seulement la ligne citée)
+avant de l'appliquer. Un agent qui cite `fichier:ligne` a souvent lu la ligne, pas l'arbre.
+
+### `DOC-METRIQUE-RECOPIEE` — une métrique dupliquée diverge, et on ne la répare pas en la mettant à jour
+
+Trois documents donnaient trois réponses à « combien de sous-modules a le moteur ? » — `CLAUDE.md`
+disait 41, `docs/ARCHITECTURE.md` disait 48, la réalité était **50**. Idem pour la taille de
+l'orchestrateur (~1 310 / ~2 400 / **2 228** réelles). Pire : `ARCHITECTURE.md` portait **deux
+comptes de tests contradictoires dans le même fichier** (1 440/123 fichiers en §7, 3 887/339 en
+en-tête) — symptôme d'une doc entretenue par AJOUT plutôt que par relecture.
+
+**Le mauvais réflexe** est de corriger les trois. Ils re-divergeront au prochain push, parce que
+rien ne les lie. Le correctif est d'en désigner **UNE** comme source (ici `CLAUDE.md`, qui se
+charge à chaque session) et de faire pointer les autres vers elle — exactement la règle « source
+unique » qu'on applique déjà au patrimoine net et au formatage.
+
+**Corollaire** : une métrique qui ne peut pas être vérifiée d'un coup d'œil (nombre de lignes,
+nombre de modules, nombre de tests) n'a rien à faire recopiée dans de la prose. Soit elle est
+générée par script (comme `check-contrast`), soit elle vit à un seul endroit daté.
+
+### `CONSERVATION-NE-VOIT-PAS-L-IMPOT-ELUDE` — l'invariant le plus fort du moteur a un angle mort
+
+Les deux findings les plus lourds du checkup 2026-08-19 (`[REER-IMMO-HORS-ASSIETTE]`,
+`[REER-ACTIF-NON-RECONCILIE]`, jusqu'à **94 600 $ d'impôt jamais facturé** sur un scénario mesuré)
+coexistent avec `tests/services/projection.moneyConservation.test.ts` **au VERT, 20/20**.
+
+Ce n'est pas un défaut du test : c'est la définition de la conservation. Elle vérifie que l'argent
+ne se crée ni ne se détruit entre les registres. **Un impôt qui n'est jamais prélevé ne viole rien
+de tout ça** — le dollar reste simplement chez l'utilisateur au lieu de partir chez l'ARC. Du point
+de vue du bilan, c'est parfaitement conservatif. Du point de vue de Marc, c'est un patrimoine
+surévalué de six chiffres.
+
+**Ce que ça généralise.** Un invariant de FLUX (rien ne se perd) ne peut pas détecter une erreur
+d'ASSIETTE (le montant sur lequel on calcule). Ce sont deux familles de bugs orthogonales :
+- flux → conservation, résiduel en dollars ;
+- assiette → il faut une assertion qui **recalcule indépendamment** la base imposable et la compare
+  à celle qu'a utilisée le moteur, sans lire la même variable que lui (sinon la garde est circulaire,
+  cf. `dailyLedger`).
+
+**Signe d'alerte réutilisable** : quand une source de flux est ajoutée (ici une 5ᵉ source de retrait
+REER, pour l'immobilier), la question n'est pas « la conservation tient-elle ? » mais « quels
+registres cette source doit-elle alimenter, et lesquels a-t-elle oubliés ? ». C'est la règle déjà
+indexée « un flux moteur alimente PLUSIEURS registres » — le meltdown REER de 2026-07-31 était la
+même classe. Ici, le producteur a alimenté le registre de **retenue** (`taxCurrentYearReer`, que
+décembre CRÉDITE) sans alimenter le registre d'**assiette** (`accRetraitsReerYear`, que décembre
+DÉBITE) : le crédit sans la dette. Un registre n'a de sens qu'avec sa contrepartie.

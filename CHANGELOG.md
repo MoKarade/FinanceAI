@@ -6,6 +6,39 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-19 (checkup de santé : 9 agents, la doc recalée sur le code)
+
+- **Rien de visible n'a changé dans l'app** — cette entrée documente un audit, pas une feature.
+- **Neuf agents passés en parallèle sur l'état complet du code** (finance, sécurité, interface,
+  dette, échecs silencieux, moteur, IA, perf, architecture), pas sur un diff. Chaque finding est
+  reconfronté au vrai code avant d'entrer au backlog : deux ont été **réfutés** et un troisième
+  arrivait avec un **correctif techniquement faux** (transformer un `span role="button"` en
+  `<button>` alors qu'il est imbriqué dans un `<button>`).
+- **La documentation avait décroché du code.** Trois fichiers donnaient trois réponses différentes
+  au nombre de sous-modules du moteur (41 / 48 / **50** en vrai) et à la taille de l'orchestrateur
+  (~1 310 / ~2 400 / **2 228** en vrai). `docs/ARCHITECTURE.md` portait à lui seul deux comptes de
+  tests contradictoires et annonçait Vite 6 + Recharts 2 alors que le projet tourne sur Vite 8 et
+  Recharts 3. Corrigé, et le compte de tests renvoie désormais à `CLAUDE.md` (source unique) au
+  lieu d'être recopié à trois endroits.
+- **Ménage de branches** : 6 branches locales périmées supprimées après vérification fichier par
+  fichier que leur contenu est bien sur `main`. Les 7 branches distantes ne peuvent pas être
+  supprimées depuis le conteneur (le proxy git refuse en 403) — la liste et la commande sont dans
+  `docs/A_FAIRE_MOI.md`.
+- **Ce que l'audit a trouvé de plus grave** : deux retraits REER échappent à l'impôt. Celui qui
+  finance un achat immobilier pose une « retenue » que décembre crédite, sans jamais inscrire le
+  retrait dans l'assiette imposable — **94 600 $ d'impôt éludé** sur un scénario mesuré de bout en
+  bout. Et en phase active, aucun retrait REER n'entre dans la déclaration de décembre : c'est
+  exactement le bug corrigé côté retraité en juin 2026, dont le miroir côté actif n'a jamais été
+  fait. **La garde de conservation monétaire reste verte (20/20) avec les deux bugs en place** — un
+  impôt jamais prélevé ne viole aucune conservation, il faut une assertion sur l'assiette.
+- Trouvé aussi : le cash de départ de toute la projection coerce en silence un montant corrompu en
+  `0 $` crédible ; le bouton « supprimer une propriété » est inatteignable au clavier ; et le
+  plafond RQAP est figé à la valeur 2025 (98 000 $ au lieu de 103 000 $), soit 2 750 $/an de
+  prestation manquante. **Rien de tout cela n'est corrigé dans cette passe** — l'audit était le
+  livrable ; les correctifs sont au backlog, chiffrés.
+
+---
+
 ## [unreleased] — 2026-08-18 (rattraper ton historique Fintable)
 
 - **« 0 transactions en plus » ne veut plus dire « je ne sais pas quoi te dire ».** La sync te dit

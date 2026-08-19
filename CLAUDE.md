@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 466 tests** Vitest
-(401 fichiers de test, mesuré le 2026-08-19). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 471 tests** Vitest
+(402 fichiers de test, mesuré le 2026-08-19). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -302,6 +302,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Quand un test dépend d'un pas d'échantillonnage ou d'un modulo, la longueur de la fixture est un
   PARAMÈTRE : la calculer et l'asserter dans le test (`expect((N-8) % pas).not.toBe(0)`). Choisie au
   jugé, elle rend le cas vacueux par simple parité — mesuré (`PARITE-QUI-REND-UN-TEST-VACUEUX`).
+- Deux tickets groupés « même classe » n'ont pas forcément le même DÉFAUT : motif de code identique
+  (`|| 0`), mais un `.filter(g > 0)` trois lignes plus bas transformait un « faux 0 » en EFFACEMENT
+  silencieux — correctifs opposés. Re-dériver le défaut de chaque ticket sur son propre code
+  (`DIAGNOSTIC-GROUPE-A-MOITIE-FAUX`). Corollaire : une absence utile se publie comme une présence
+  VIDE, jamais comme un champ omis.
+- Un `toContain('identifiant')` dans un scan de source est presque vacueux quand l'identifiant existe
+  en DÉCLARATION *et* en usage : ancrer le motif sur l'USAGE, et perturber CHAQUE assertion du scan
+  séparément (`SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE`).
 - Resserrer un scan-garde **AVANT** de coder le fix : les offenders révélés = le vrai périmètre.
 - Un scan-garde qui borne une syntaxe IMBRIQUÉE avec `[^x]*` est aveugle en silence (un `>` dans un
   `className` interpolé tronque la balise) → compter la PROFONDEUR, **tester l'extracteur sur des

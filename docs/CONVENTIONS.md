@@ -4086,3 +4086,49 @@ locatif, j'ai partagé la mensualité (c'est le comportement juste) et **documen
 plutôt que de copier le défaut en silence ; le chemin des buts est tracé au BACKLOG
 (`[ENG-DIVORCE-PMT-NON-PARTAGEE]`) parce qu'il re-baserait des goldens. Copier un défaut voisin
 « pour rester cohérent » est le pire des deux mondes : on double le bug et on perd la trace.
+### `DIAGNOSTIC-GROUPE-A-MOITIE-FAUX` — deux tickets « même classe » n'ont pas forcément le même défaut
+
+`[COUPLE-CTX-FAKE-ZERO]` et `[TOOL-TAXSITUATION-FAKE-ZERO]` étaient groupés dans le plan sous un
+diagnostic commun : « un `(u.grossSalary || 0) * 12` publie un faux 0 $ à un LLM ». Le motif de code
+est LITTÉRALEMENT identique dans les deux fichiers. Le correctif annoncé aussi : « retirer le `|| 0` ».
+
+Vérifié avant de coder :
+
+- **Composant `CoupleOptimizationCard`** — diagnostic JUSTE. Le `|| 0` court-circuite `promptCad`,
+  qui rend « (non disponible) » sur une valeur non finie. Le modèle lit « 0 $ » et bâtit des
+  stratégies dessus.
+- **Tool `get_tax_situation`** — diagnostic FAUX. Le `|| 0` est suivi d'un `.filter(g > 0)` : le
+  conjoint est **EXCLU**, pas publié à 0. Retirer le `|| 0` n'aurait rien changé au payload.
+
+Le vrai défaut du second est l'INVERSE et il est plus grave : le conjoint **disparaît sans trace**,
+alors que le system prompt déclare les payloads d'outils « ta SEULE source de vérité chiffrée ». Le
+modèle voit un ménage à un contribuable et n'a aucun moyen de le savoir.
+
+**La règle** : un groupement de tickets par « même classe » est une hypothèse de PLANIFICATION, utile
+pour l'ordonnancement, jamais un diagnostic partagé. Le motif de code identique ne garantit pas le
+même comportement — ici trois lignes plus bas changeaient tout. Re-dériver le défaut de CHAQUE ticket
+sur son propre code avant d'écrire le correctif commun.
+
+**Et le correctif diverge en conséquence** : rendre la valeur NON FINIE d'un côté (pour que la garde
+existante reprenne son travail), NOMMER l'absence de l'autre. ⚠️ Tentation à éviter dans le second
+cas : inclure le conjoint avec un impôt à 0 pour « uniformiser » — ce serait rétablir exactement le
+faux zéro que le ticket croyait déjà présent. **On exclut ET on le dit.**
+
+**Corollaire sur la forme du champ** : `perUserOmitted` est publié **toujours**, même vide. Un champ
+omis quand la liste est vide serait indiscernable de « l'outil ne le dit pas » — le modèle ne pourrait
+pas distinguer « personne n'a été exclu » de « je n'en sais rien ». Une absence utile doit être une
+présence vide, pas une absence.
+
+### `SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE` — un `toContain` sur un identifiant est presque vacueux
+
+Garde écrite pour le point ci-dessus : `expect(src).toContain('perUserOmitted')`. Elle **passe même
+si le champ n'atteint jamais le payload** — la constante locale porte le même nom, et le scan la
+trouve. Vérifié par perturbation : retirer la ligne du payload laissait l'assertion VERTE.
+
+**La règle** : quand un scan de source cherche un identifiant qui existe à la fois en DÉCLARATION et
+en USAGE, il faut ancrer le motif sur l'usage — ici `/perUserOmitted,\n\s*perUser: perUserReports\.map/`,
+qui vise la ligne du payload et rien d'autre. Un identifiant nu ne prouve que sa propre existence.
+
+C'est la même famille que `GARDE-BORNEE-PAR-CLASSE-NEGATIVE` : un scan ne vaut que par la précision
+de son ancrage, et **chaque** assertion d'un scan doit être perturbée séparément — celle-ci était
+verte pendant que sa voisine, elle, tombait bien.

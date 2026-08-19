@@ -49,16 +49,23 @@ export const CoupleOptimizationCard: React.FC = () => {
         if (!apiKey) return;
         setIsLoading(true);
         setHasError(false);
+        // [COUPLE-CTX-FAKE-ZERO] ⚠️ PAS de `|| 0` ici. `promptCad` (services/claude.ts) rend
+        // « (non disponible) » sur une valeur NON FINIE — c'est exactement sa raison d'être. Un
+        // `|| 0` la court-circuitait : un salaire absent devenait un « 0 $ » AFFIRMÉ au modèle, qui
+        // bâtissait ensuite des stratégies de fractionnement REER/CELI sur ce revenu fantôme.
+        // `undefined * 12` vaut `NaN` (un `number` pour le type, non fini pour `promptCad`) : la
+        // garde reprend son travail sans qu'aucune signature ne change.
+        const annualiser = (mensuel: number | undefined): number => (mensuel as number) * 12;
         const ctx: CoupleTaxContext = {
             user1: {
                 name: u1.name || 'Personne 1',
-                grossAnnual: (u1.grossSalary || 0) * 12,
-                netAnnual: (u1.netSalary || 0) * 12,
+                grossAnnual: annualiser(u1.grossSalary),
+                netAnnual: annualiser(u1.netSalary),
             },
             user2: {
                 name: u2.name || 'Personne 2',
-                grossAnnual: (u2.grossSalary || 0) * 12,
-                netAnnual: (u2.netSalary || 0) * 12,
+                grossAnnual: annualiser(u2.grossSalary),
+                netAnnual: annualiser(u2.netSalary),
             },
         };
         try {

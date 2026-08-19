@@ -62,6 +62,21 @@ export const getTaxSituationSpec = {
             state.fxRates ?? {},
         );
         const splitRatio = users.length > 0 ? 1 / users.length : 1;
+        // [TOOL-TAXSITUATION-FAKE-ZERO] ⚠️ Le ticket annonçait un « faux 0 $ » publié au modèle.
+        // VÉRIFIÉ : c'est INEXACT ici — le `.filter(g > 0)` juste en dessous EXCLUT ces conjoints de
+        // `perUserReports`, donc aucun 0 n'est publié. Le vrai défaut est l'inverse et il est plus
+        // sournois : le conjoint DISPARAÎT du payload SANS TRACE. Or le system prompt déclare les
+        // payloads d'outils « ta SEULE source de vérité chiffrée » — le modèle voit donc un ménage
+        // à un seul contribuable et n'a aucun moyen de savoir qu'il en manque un.
+        // Correctif : `perUserOmitted` ci-dessous nomme les exclus et la raison (patron déjà utilisé
+        // par `describeFutureDetail`). On ne publie pas un chiffre faux, et on ne tait pas non plus
+        // une absence.
+        const perUserOmitted = activeUsers
+            .filter((u) => !((u.grossSalary || 0) > 0))
+            .map((u) => ({
+                name: u.name || null,
+                reason: 'brut annuel inconnu (seul un salaire NET est saisi) — impôt incalculable pour ce conjoint',
+            }));
         const perUserReports = activeUsers
             .map((u) => ({ user: u, grossAnnual: (u.grossSalary || 0) * 12 }))
             .filter(({ grossAnnual: g }) => g > 0)
@@ -150,6 +165,10 @@ export const getTaxSituationSpec = {
             // Détail PAR CONTRIBUABLE (fiscalité individuelle) — c'est le marginal de CHAQUE
             // conjoint qui guide une décision REER, pas celui du ménage. [TAX-DETAIL] retenues
             // détaillées + provenance du salaire (fiche de paie = source unique, demande Marc).
+            // [TOOL-TAXSITUATION-FAKE-ZERO] Conjoints ACTIFS mais absents de `perUser`, avec la
+            // raison. Vide dans le cas courant ; jamais omis du payload, pour que l'absence du
+            // tableau ne puisse pas être confondue avec « personne n'a été exclu ».
+            perUserOmitted,
             perUser: perUserReports.map((r) => ({
                 name: r.name,
                 grossAnnual: Math.round(r.grossAnnual),

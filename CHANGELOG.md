@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-19 (l'assistant ne raconte plus que tu gagnes 0 $)
+
+- **Quand un salaire n'est pas saisi, l'assistant fiscal de couple lisait « 0 $ »** — et bâtissait
+  ses stratégies de fractionnement REER/CELI sur ce revenu qui n'existe pas. Il lit maintenant
+  « (non disponible) » et le sait.
+- **Et dans l'autre sens** : l'outil qui décrit ta situation fiscale à Claude **effaçait purement et
+  simplement** un conjoint dont seul le salaire net est saisi (son impôt est incalculable sans le
+  brut). Claude voyait alors un ménage à une seule personne, sans rien pour s'en douter. Le conjoint
+  est maintenant **nommé** avec la raison de son exclusion.
+- Les deux corrigent la même faute de fond : dire « 0 $ » ou ne rien dire du tout, quand la vraie
+  réponse est « je ne sais pas ».
 ## [unreleased] — 2026-08-19 (ton immeuble locatif et ton entreprise existent enfin dans ton patrimoine)
 
 - **Un immeuble locatif n'apparaissait NULLE PART dans ton patrimoine.** Ni sa valeur, ni son

@@ -523,3 +523,41 @@ git push origin --delete claude/children-reee-garde claude/eng-divorce-coherent 
   claude/futur-aria-et-fintable claude/futur-detail-jour-et-marchands \
   claude/impot-latent-debut claude/pdf-mode-discret claude/jolly-davinci-PQpC1
 ```
+
+## Décision produit + valeur à sourcer — `[ENG-LIQUIDDEBT-NEVER-REPAID]` (2026-08-19)
+
+**Le problème, mesuré.** `liquidDebt` est le découvert que le moteur crée quand les liquidités
+passent sous zéro. Il ne fait que **croître** : jamais remboursé, même avec des millions en liquide,
+et **jamais porteur d'intérêt**.
+
+> Mesuré : retraité insolvable, héritage de 1,5 M$ reçu — `liquidDebt` **gelé à 559 k$ pendant
+> 180 mois** à côté de **1,65 M$ de liquidités oisives**.
+
+À un taux de découvert de 10–20 %, l'intérêt omis vaut **56–112 k$/an**, soit **0,8–1,7 M$ sur
+15 ans**. C'est le plus gros montant encore ouvert au backlog.
+
+**Pourquoi je ne le corrige pas seul.** Il me manque deux choses que je ne peux pas inventer :
+
+1. **Un taux de découvert SOURCÉ.** Toute constante fiscale ou financière doit venir de
+   `docs/FISCAL_REFERENCE.md`, datée et sourcée. Je n'ai pas de source pour « le » taux de découvert :
+   ça dépend du produit (marge de crédit ~8-10 %, découvert de compte ~19-21 %, carte ~19,99 %).
+   **Dis-moi lequel s'applique à ta situation**, ou donne-moi la source à citer.
+2. **Un choix produit sur la priorité de remboursement.** Quand un surplus existe, le découvert
+   doit-il être remboursé **avant** de cotiser au CELI/REER (mathématiquement optimal à 19 %), ou
+   après ? Et faut-il l'exposer comme une alerte dans le plan d'action ?
+
+**Ce que je livre dès que tu tranches** : intérêt mensuel paramétrable, remboursement prioritaire dès
+qu'un surplus existe, et exposition dans le plan d'action. Le ticket complet est ci-dessous.
+
+<details>
+<summary>Ticket d'origine (extrait du BACKLOG)</summary>
+
+- [ ] 🔴 **`[ENG-LIQUIDDEBT-NEVER-REPAID]`** (M) — `liquidDebt` ne fait que croître : jamais
+  remboursé (même avec millions en liquide), **jamais porteur d'intérêt**. **Mesuré : retraité
+  insolvable, héritage de 1,5 M$, liquidDebt gelé 559 k$ pendant 180 mois à côté de 1,65 M$ de
+  liquidités oisives.** À taux découvert 10-20 %, omission 56-112 k$/an ≈ 0,8-1,7 M$ sur 15 ans.
+  **Correctif** : traiter comme vraie dette — (a) intérêt mensuel paramétrable, (b) remboursement
+  prioritaire dès qu'un surplus existe, (c) exposer dans le plan d'action.
+
+</details>
+

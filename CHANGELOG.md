@@ -6,6 +6,27 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-19 (ton immeuble locatif et ton entreprise existent enfin dans ton patrimoine)
+
+- **Un immeuble locatif n'apparaissait NULLE PART dans ton patrimoine.** Ni sa valeur, ni son
+  hypothèque, ni les paiements. Seuls les loyers nets entraient dans tes revenus — comme si tu
+  encaissais un loyer sans posséder l'immeuble ni devoir un sou dessus.
+- **Mesuré** sur un duplex de 800 000 $ avec 500 000 $ de prêt : **302 574 $ d'équité** et
+  **499 160 $ de dette** absents de ton bilan, et **2 923 $/mois** de paiements jamais comptés.
+  L'hypothèque ne descendait donc jamais non plus.
+- **Les trois arrivent ensemble** — c'est important : mettre la valeur sans payer la dette
+  t'aurait enrichi de 300 000 $ avec une hypothèque éternelle. Maintenant ton immeuble vaut ce
+  qu'il vaut, ta dette baisse chaque mois, et le paiement sort de ton budget.
+- **Ton entreprise privée aussi** : sa valeur (au prorata de ta part) compte enfin dans ton
+  patrimoine et dans ta succession. Seul le dividende circulait — **2 M$ manquaient**.
+- **Une précision qui évite de te mentir à la hausse** : les bénéfices non répartis ne sont **pas**
+  ajoutés par-dessus. Une valeur marchande les contient déjà — les compter deux fois t'aurait
+  gonflé le patrimoine de 400 000 $.
+- **Ce qui n'est pas modélisé, et que je préfère te dire** : la vente de l'immeuble, la récupération
+  d'amortissement à la vente, et la croissance de la valeur de ton entreprise (elle reste constante).
+
+---
+
 ## [unreleased] — 2026-08-19 (tes dettes ont enfin un début et une fin — et tu peux les modifier)
 
 - **Tu ne pouvais pas corriger une dette.** La page Dettes n'offrait que « Ajouter » et

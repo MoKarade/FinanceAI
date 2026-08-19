@@ -3972,3 +3972,117 @@ pas.
 
 **Une date illisible vaut ABSENTE**, jamais une contrainte inventée : une saisie ratée ne doit pas
 faire disparaître une dette réelle du budget. Le sens conservateur est de garder la dette.
+
+### `UN-INVARIANT-NE-VOIT-PAS-CE-QUI-EST-ABSENT` — la conservation ne détecte pas une omission
+
+Deux conteneurs W5 — immeuble locatif, entreprise privée — vivaient dans le modèle et **pas au
+bilan**. L'immeuble ne publiait que son NOI ; l'entreprise que son dividende. Valeur, dette et
+service de dette : **nulle part**.
+
+Mesuré : **302 574 $ d'équité + 499 160 $ de prêt + 2 923 $/mois de service** pour l'immeuble,
+**2 M$** pour l'entreprise.
+
+⚠️ **Tous les invariants de conservation restaient VERTS.** C'est logique, et il faut se le dire
+clairement : ils vérifient que ce qui est ÉCRIT est cohérent. Un actif qu'on n'écrit nulle part ne
+casse aucune identité comptable — il ment simplement, en silence, et aucun test de cohérence ne peut
+le voir.
+
+**La règle** : contre l'OMISSION, il faut une assertion de **PRÉSENCE**, pas de cohérence. Concrètement,
+pour chaque conteneur que l'utilisateur peut saisir : « si j'en ajoute un, le patrimoine bouge-t-il
+de ce que j'attends ? ». Un test qui compare AVEC et SANS le conteneur, pas un invariant interne.
+
+**Le patron qui a fonctionné** : `NET_WORTH_SIGN` est un `Record<keyof NetWorthParts, 1 | -1>`
+exhaustif. Ajouter `privateBusinessValue` à l'interface a **cassé le typecheck sur les 4 sites** qui
+construisent un patrimoine (moteur, succession, `pastNetWorth`, `dailyPastLedger`), et le test croisé
+« formule littérale == Σ signe × valeur » a forcé la mise à jour de la fixture. Aucun site n'a pu
+être oublié. **Un type exhaustif transforme une omission silencieuse en erreur de compilation** —
+c'est le seul mécanisme fiable contre cette classe.
+
+**Trois pièges rencontrés en chemin, tous money-critical :**
+
+1. **Les volets vont ENSEMBLE.** Mettre la valeur au bilan sans servir la dette donnerait un
+   patrimoine +300 k$ dont l'hypothèque ne descend jamais ; servir la dette sans la valeur ferait
+   payer un bien qui n'existe pas. Chaque moitié est PIRE que le statu quo. Livrer tout ou rien.
+2. **Le `+=` écrasé.** `immoInterest`/`immoPrincipal`/`immoHypo` sont réaffectés (`=`, pas `+=`)
+   depuis `reState` APRÈS le point où j'avais d'abord posé le bloc locatif : ma contribution
+   disparaissait en silence. Après avoir ajouté un `+=` sur une variable de boucle, **grep les
+   affectations plates postérieures** (`CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`, encore).
+3. **Le double comptage plausible.** `PrivateBusiness` porte `estimatedValue` ET `retainedEarnings`,
+   et le ticket citait les deux montants. Les additionner aurait gonflé le patrimoine de 400 k$ :
+   une valeur juste marchande EMBARQUE déjà les bénéfices non répartis. Quand deux champs d'un même
+   objet décrivent la même richesse sous deux angles, **il faut choisir, l'écrire, et le tester** —
+   ici un cas verrouille « 2 M$, pas 2,4 M$ ».
+
+**Et nommer ce qu'on ne modélise pas** : vente de l'immeuble, récupération de DPA, impôt latent sur
+le gain, croissance de l'entreprise. Écrits dans l'en-tête du module et dans l'archive. Un manque
+nommé est un ticket ; un manque tu est un défaut qu'on redécouvrira comme une surprise.
+
+### `PR-EMPILEE-N-A-AUCUNE-CI` — le filtre de branche du workflow décide, pas la PR
+
+`.github/workflows/ci.yml` déclare :
+
+```yaml
+on:
+  push:    { branches: [main] }
+  pull_request: { branches: [main] }
+```
+
+`pull_request.branches` filtre sur la branche **CIBLE**. Une PR empilée (base `claude/xxx` au lieu de
+`main`) ne déclenche donc **aucun** run CI — ni lint, ni typecheck, ni tests, ni build, ni E2E. Les
+checks Vercel et CodeQL partent quand même, ce qui donne l'illusion d'une PR « en cours de
+vérification ». `enable_pr_auto_merge` répond alors *« unstable status (required checks are
+failing) »* : les checks requis ne sont pas en échec, ils sont **absents**.
+
+**Conséquence pratique** : dans une pile, seule la PR du BAS est réellement testée par la CI. Les
+autres n'obtiennent leur CI qu'au moment où GitHub re-cible automatiquement leur base sur `main`
+(c'est-à-dire quand la PR du dessous merge). L'ordre de merge n'est donc pas une préférence, c'est
+une **contrainte** — et le gate local devient la seule vérification réelle jusque-là.
+
+**Le symptôme à reconnaître** : `pull_request_read get_check_runs` ne montre QUE des checks tiers
+(Vercel, CodeQL) et aucun job du workflow maison. Ne pas confondre avec le cas « CI figée » (le job
+existe et reste `in_progress`) ni avec « check invisible dans `get_status` » (le job existe, mais
+`get_status` ne montre que les *statuses* legacy — d'où la lecture par `actions_list
+list_workflow_jobs`). Trois causes différentes, trois diagnostics différents.
+
+**Ce que ça change dans la méthode** : empiler reste utile pour éviter de re-résoudre dix fois les
+mêmes conflits de doc, mais il faut savoir qu'on échange cette économie contre l'absence de CI sur
+tout l'étage supérieur. Sur du money-critical, faire tourner le gate COMPLET en local avant chaque
+push d'une PR empilée n'est pas du zèle : c'est la seule vérification qui existe.
+
+### `NOUVEL-ETAT-PERSISTANT-A-CONFRONTER-AUX-MUTATEURS-GLOBAUX` — le divorce ne connaissait pas mon immeuble
+
+En livrant `[ENG-W5-RENTAL-OFFBALANCE]`, j'ai introduit `rentalStates` : un état PERSISTANT (valeur,
+hypothèque, mensualité) qui traverse toute la boucle mensuelle. Je l'ai branché au chemin heureux —
+croissance, amortissement, service de dette — et j'ai testé les trois volets.
+
+Ce que je n'ai pas fait : le confronter aux **mutateurs GLOBAUX** du moteur. Le callback de
+`tryDivorce` divise par `keep` les liquidités, le CELI, le REER, le non-enregistré, la crypto, le
+REEE, `realEstateEquity`, `mortgageBalance`, chaque bien de `propertiesState` et chaque dette
+active — **et ne connaissait pas `rentalStates`**. L'immeuble survivait donc INTACT au divorce.
+
+MESURÉ au mois du divorce :
+
+| | avant le divorce | après |
+|---|---|---|
+| CELI | 231 722,98 $ | 107 770,38 $ ✔ partagé |
+| Immobilier | 334 309,53 $ | **337 224,31 $** ✘ il CROISSAIT |
+| DetteTotale | 489 690,47 $ | **488 807,89 $** ✘ simple amortissement |
+
+**La règle** : tout état persistant NOUVEAU doit être confronté à la liste des mutateurs globaux
+avant d'être livré — divorce, décès du conjoint, événements de vie, mode survivant. Le chemin
+heureux ne les fait jamais passer. C'est `MODULE-ECRIT-HORS-CHECKLIST` retourné : là c'était un
+module oublié par des passes de correction, ici c'est un état oublié par des mutateurs existants.
+**Le grep à faire est l'inverse de l'habituel** : au lieu de chercher qui PRODUIT une grandeur,
+chercher qui MUTE globalement le patrimoine, et vérifier que le nouvel état y figure.
+
+⚠️ Trouvé par une revue automatique sur la PR. Deuxième fois de la session qu'un bot attrape une
+classe que mes tests ne couvraient pas (après `CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`). Les findings
+de bot ont un fort taux de faux positifs sur le money-critical — mais celui-ci s'est vérifié en une
+mesure, et c'est ça le critère : **coût de vérification faible ⇒ vérifier avant de classer**.
+
+**Un défaut PRÉEXISTANT révélé au passage** : le callback ne partage pas `calculatedPmt` des buts
+immobiliers — le divorcé paie la mensualité ENTIÈRE sur une hypothèque réduite de moitié. Côté
+locatif, j'ai partagé la mensualité (c'est le comportement juste) et **documenté la divergence**
+plutôt que de copier le défaut en silence ; le chemin des buts est tracé au BACKLOG
+(`[ENG-DIVORCE-PMT-NON-PARTAGEE]`) parce qu'il re-baserait des goldens. Copier un défaut voisin
+« pour rester cohérent » est le pire des deux mondes : on double le bug et on perd la trace.

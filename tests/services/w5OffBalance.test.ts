@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
+import { calculateFutureProjection, __runScenarioForTests, type SimulationParams } from '../../services/projection';
 import {
     initRentalStates, processRentalMonth, rentalMonthlyPayment,
     DEFAULT_RENTAL_AMORTIZATION_YEARS,
@@ -156,5 +156,88 @@ describe('[ENG-W5-BUSINESS-OFFBALANCE] l’entreprise privée entre au patrimoin
         const a = pts({});
         const b = pts({ privateBusinesses: [] });
         for (let i = 0; i < a.length; i++) expect(b[i].NetWorth).toBe(a[i].NetWorth);
+    });
+});
+
+
+describe('[ENG-W5-RENTAL-OFFBALANCE] l’immeuble se PARTAGE au divorce comme le reste', () => {
+    /**
+     * ⚠️ Défaut trouvé par une revue automatique sur la PR, et CONFIRMÉ par mesure : mon
+     * `rentalStates` — un état persistant que je venais moi-même d'introduire — n'était pas
+     * confronté au callback de partage de `tryDivorce`. L'immeuble survivait donc INTACT pendant que
+     * tous les autres actifs étaient divisés.
+     *
+     * MESURÉ au mois du divorce, avant correctif :
+     *   CELI        231 722,98 $ → 107 770,38 $   (partagé ✔)
+     *   Immobilier  334 309,53 $ → 337 224,31 $   (il CROISSAIT — jamais touché ✘)
+     *   DetteTotale 489 690,47 $ → 488 807,89 $   (simple amortissement — jamais touché ✘)
+     *
+     * C'est `MODULE-ECRIT-HORS-CHECKLIST` appliqué à MON propre code : un nouvel état persistant doit
+     * être confronté à TOUS les mutateurs globaux (divorce, décès, événements de vie), pas seulement
+     * au chemin heureux.
+     */
+    const divorceParams = () => {
+        const p = params({ rentalProperties: [IMMEUBLE] });
+        return {
+            ...p,
+            projection: {
+                ...p.projection,
+                years: 10,
+                divorceEnabled: true, divorceAnnualProbability: 1, divorceSplitPct: 50,
+            },
+            config: {
+                ...p.config,
+                users: [
+                    (p.config as unknown as { users: unknown[] }).users[0],
+                    { ...mkUser(), name: 'Anna', grossSalary: 6_000, netSalary: 4_200 },
+                ],
+            },
+        } as unknown as SimulationParams;
+    };
+
+    it('l’équité ET l’hypothèque locatives sont divisées au divorce', () => {
+        const r = __runScenarioForTests(
+            divorceParams(), 'AUTO_MARGINAL' as never, true, false, 0, 'BASE', {},
+            { verboseMonthlyPoints: true },
+        );
+        const d = r.chartData as unknown as Array<Record<string, number> & { lifeEvents?: string[] }>;
+
+        const moisDiv = d.findIndex((p) => (p.lifeEvents ?? []).some((e) => /Divorce/i.test(e)));
+        // Non-vacuité : le divorce doit VRAIMENT se déclencher, sinon le cas ne mesure rien.
+        expect(moisDiv, 'aucun divorce tiré : la fixture ne teste rien').toBeGreaterThan(0);
+
+        const avant = d[moisDiv - 1];
+        const apres = d[moisDiv];
+
+        // Repère de contrôle : un actif financier EST bien partagé — si celui-ci ne l'était pas,
+        // l'échec viendrait du divorce lui-même, pas de l'immeuble.
+        expect(apres.CELI).toBeLessThan(avant.CELI * 0.75);
+
+        // Le discriminant : avant le correctif, l'immobilier CROISSAIT au mois du divorce.
+        expect(apres.Immobilier, 'l’équité locative survit intacte au divorce')
+            .toBeLessThan(avant.Immobilier * 0.75);
+        expect(apres.DetteTotale, 'l’hypothèque locative survit intacte au divorce')
+            .toBeLessThan(avant.DetteTotale * 0.75);
+    });
+
+    it('la MENSUALITÉ suit le partage (sinon on rembourse deux fois trop vite)', () => {
+        // Payer la mensualité entière sur une hypothèque réduite de moitié amortirait le prêt deux
+        // fois trop vite ET ponctionnerait un cashflow que le divorcé n'a plus. Divergence VOULUE
+        // avec le chemin des buts immobiliers, qui ne partage pas `calculatedPmt`
+        // (défaut préexistant, tracé au BACKLOG).
+        const states = initRentalStates([IMMEUBLE]);
+        const pmtInitial = states[0].monthlyPayment;
+        expect(pmtInitial).toBeGreaterThan(0);
+
+        // On rejoue ce que fait le callback de partage.
+        const keep = 0.5;
+        states[0].currentValue *= keep;
+        states[0].mortgage *= keep;
+        states[0].monthlyPayment *= keep;
+
+        const r = processRentalMonth(states, 0, ['Duplex']);
+        expect(states[0].monthlyPayment).toBeCloseTo(pmtInitial * keep, 6);
+        // Le service payé reste proportionné à la dette conservée.
+        expect(r.debtService).toBeCloseTo(pmtInitial * keep, 6);
     });
 });

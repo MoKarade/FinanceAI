@@ -821,6 +821,26 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 currentValue: p.currentValue * keep,
                 mortgage: p.mortgage * keep,
             }));
+            // [ENG-W5-RENTAL-OFFBALANCE] Les IMMEUBLES LOCATIFS se partagent comme le reste du
+            // patrimoine familial. Oubliés ici, ils survivaient INTACTS au divorce pendant que tous
+            // les autres actifs étaient divisés — MESURÉ : équité de 337 224 $ conservée à 100 %
+            // alors que le CELI passait de 231 723 $ à 107 770 $. Trouvé par une revue automatique
+            // sur la PR ; c'est la classe `MODULE-ECRIT-HORS-CHECKLIST` appliquée à un état que je
+            // venais MOI-MÊME d'introduire — un état persistant nouveau doit être confronté à TOUS
+            // les mutateurs globaux existants (divorce, décès, événements de vie), pas seulement au
+            // chemin heureux.
+            //
+            // ⚠️ La MENSUALITÉ est partagée elle aussi, contrairement au chemin des buts immobiliers
+            // (`propertiesState` ci-dessus ne touche pas `calculatedPmt`). Payer la mensualité
+            // ENTIÈRE sur une hypothèque réduite de moitié amortirait le prêt deux fois trop vite et
+            // ponctionnerait un cashflow que le divorcé n'a plus. La divergence est VOLONTAIRE et
+            // assumée ; l'asymétrie du chemin des buts est un défaut préexistant, tracé au BACKLOG
+            // (`[ENG-DIVORCE-PMT-NON-PARTAGEE]`) plutôt que corrigé ici — il re-baserait des goldens.
+            for (const rs of rentalStates) {
+                rs.currentValue *= keep;
+                rs.mortgage *= keep;
+                rs.monthlyPayment *= keep;
+            }
             // [ENG-DIVORCE-DEBT-ASYMMETRY] Les dettes NON immobilières se partagent au MÊME taux que
             // les actifs — DÉCISION MARC 2026-08-13 (esprit du patrimoine familial québécois : on
             // partage la valeur NETTE, pas les actifs bruts ; cf. docs/decisions.md).

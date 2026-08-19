@@ -4048,3 +4048,41 @@ list_workflow_jobs`). Trois causes différentes, trois diagnostics différents.
 mêmes conflits de doc, mais il faut savoir qu'on échange cette économie contre l'absence de CI sur
 tout l'étage supérieur. Sur du money-critical, faire tourner le gate COMPLET en local avant chaque
 push d'une PR empilée n'est pas du zèle : c'est la seule vérification qui existe.
+
+### `NOUVEL-ETAT-PERSISTANT-A-CONFRONTER-AUX-MUTATEURS-GLOBAUX` — le divorce ne connaissait pas mon immeuble
+
+En livrant `[ENG-W5-RENTAL-OFFBALANCE]`, j'ai introduit `rentalStates` : un état PERSISTANT (valeur,
+hypothèque, mensualité) qui traverse toute la boucle mensuelle. Je l'ai branché au chemin heureux —
+croissance, amortissement, service de dette — et j'ai testé les trois volets.
+
+Ce que je n'ai pas fait : le confronter aux **mutateurs GLOBAUX** du moteur. Le callback de
+`tryDivorce` divise par `keep` les liquidités, le CELI, le REER, le non-enregistré, la crypto, le
+REEE, `realEstateEquity`, `mortgageBalance`, chaque bien de `propertiesState` et chaque dette
+active — **et ne connaissait pas `rentalStates`**. L'immeuble survivait donc INTACT au divorce.
+
+MESURÉ au mois du divorce :
+
+| | avant le divorce | après |
+|---|---|---|
+| CELI | 231 722,98 $ | 107 770,38 $ ✔ partagé |
+| Immobilier | 334 309,53 $ | **337 224,31 $** ✘ il CROISSAIT |
+| DetteTotale | 489 690,47 $ | **488 807,89 $** ✘ simple amortissement |
+
+**La règle** : tout état persistant NOUVEAU doit être confronté à la liste des mutateurs globaux
+avant d'être livré — divorce, décès du conjoint, événements de vie, mode survivant. Le chemin
+heureux ne les fait jamais passer. C'est `MODULE-ECRIT-HORS-CHECKLIST` retourné : là c'était un
+module oublié par des passes de correction, ici c'est un état oublié par des mutateurs existants.
+**Le grep à faire est l'inverse de l'habituel** : au lieu de chercher qui PRODUIT une grandeur,
+chercher qui MUTE globalement le patrimoine, et vérifier que le nouvel état y figure.
+
+⚠️ Trouvé par une revue automatique sur la PR. Deuxième fois de la session qu'un bot attrape une
+classe que mes tests ne couvraient pas (après `CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`). Les findings
+de bot ont un fort taux de faux positifs sur le money-critical — mais celui-ci s'est vérifié en une
+mesure, et c'est ça le critère : **coût de vérification faible ⇒ vérifier avant de classer**.
+
+**Un défaut PRÉEXISTANT révélé au passage** : le callback ne partage pas `calculatedPmt` des buts
+immobiliers — le divorcé paie la mensualité ENTIÈRE sur une hypothèque réduite de moitié. Côté
+locatif, j'ai partagé la mensualité (c'est le comportement juste) et **documenté la divergence**
+plutôt que de copier le défaut en silence ; le chemin des buts est tracé au BACKLOG
+(`[ENG-DIVORCE-PMT-NON-PARTAGEE]`) parce qu'il re-baserait des goldens. Copier un défaut voisin
+« pour rester cohérent » est le pire des deux mondes : on double le bug et on perd la trace.

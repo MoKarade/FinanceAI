@@ -1251,6 +1251,15 @@
 
 #### HIGH — Bloque la fiabilité des chiffres
 
+- [ ] **`[ENG-DIVORCE-PMT-NON-PARTAGEE]`** (S) — au divorce, le callback de `tryDivorce` divise
+  `currentValue` et `mortgage` de chaque bien de `propertiesState` par `keep`, mais **PAS
+  `calculatedPmt`**. Le divorcé paie donc la mensualité ENTIÈRE sur une hypothèque réduite de moitié :
+  le prêt s'amortit ~2× trop vite ET le cashflow est ponctionné d'un montant qu'il ne doit plus.
+  Défaut PRÉEXISTANT (chemin des buts immobiliers), révélé en corrigeant l'oubli symétrique côté
+  locatif — où la mensualité, elle, EST partagée (`[ENG-W5-RENTAL-OFFBALANCE]`, 2026-08-19).
+  ⚠️ **Re-basera des goldens** : mesurer AVANT/APRÈS et écrire l'écart à côté de chaque ancrage,
+  comme pour `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`. Vérifier aussi le chemin DÉCÈS/survivant.
+
 - [ ] **`[ENG-DIVORCE-FLUX-MUET]`** (S) — le partage de divorce multiplie `celi`/`reer`/`crypto`/
   `nonReg` par `keep` **sans publier de `NetTransfer*`** : la forme-flux est violée sur les 4 comptes.
   **Mesuré (60 runs MC, `divorceAnnualProbability` 0,05) : 2 130 681 $ sur le REER, 1 281 789 $ sur le

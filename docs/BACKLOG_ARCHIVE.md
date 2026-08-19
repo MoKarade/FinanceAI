@@ -10,6 +10,59 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-19 — Vague 1b (partielle) : l'espace CELIAPP et l'assiette RAMQ
+
+> Trois items du lot `taxDecember`/`taxJanuary`. Les deux restants du lot (`[FISC-BAND-AGE-CREDITS]`,
+> `[FISC-DIV-DERIVED-BASES]`, `[ENG-GK-THRESHOLD-KNIFE]`, `[ENG-TTP-UNSETTLED-PROPAGATE]`) sont
+> laissés OUVERTS : les bandes d'âge demandent de reconstruire un `ageOpts` valide hors des branches
+> actif/retraité et vont re-baser des goldens ; le seuil Guyton-Klinger demande un choix de design
+> (hystérésis). Les empiler ici aurait fait un lot ingérable.
+>
+> **Mesures de l'écart, sur la CHAÎNE** (couple à 16 k$/mois brut, achat immobilier dans 6 ans) :
+> solde CELIAPP à la fin de l'an 1 = **32 962 $ avant, 16 926 $ après** — plus du DOUBLE du plafond
+> annuel légal de 16 000 $. Effet symétrique pour qui ne cotise pas : l'espace publié retombait de
+> 32 000 $ à 16 000 $ chaque décembre (la « dent de scie »), sous-estimant des droits réels.
+>
+> ⚠️ **Deux de mes tests étaient faux avant d'être justes** — c'est la partie instructive :
+> les cas visant `processJanuaryReset` en direct passaient des DEUX côtés (le contrat de janvier
+> était bon, le défaut vivait chez son appelant), et mon premier test de chaîne accusait le moteur
+> sur un scénario sans cotisation, où le report maximal est parfaitement LÉGAL. Un test qui échoue
+> n'a pas forcément raison. Preuve finale : 5 cas sur 13 discriminent.
+
+- [x] **`[CELIAPP-DOUBLE-RECHARGE]`** (S, ÉLEVÉ) — l'espace CELIAPP a **deux producteurs qui
+  s'ignorent** : décembre écrase `fhsaRoom = FHSA_ANNUAL_LIMIT_PER_USER * taxFilers`
+  (`projection.ts:1190`), puis janvier calcule son report
+  `allowedCarryForward = min(annuel, fhsaRoomCurrent)` **sur cette valeur déjà écrasée**
+  (`taxJanuary.ts:164-167`) → le report est **toujours maximal**, quelle que soit l'utilisation
+  réelle. Chaîne vérifiée par Claude. **Mesuré** : dents de scie de `CELIAPPMax` (32 000 $ →
+  16 000 $ au m23 → 32 000 $ au m24, chaque année) ; sur un couple qui cotise vraiment, **22 535 $
+  cotisés en an 1 pour un maximum légal de 16 000 $, 54 666 $ cumulés fin an 2 pour 32 000 $ légal,
+  et le plafond à vie de 80 000 $ atteint en 3 ans au lieu de 5**. Correctif : supprimer l'écriture
+  de décembre (janvier est la source unique) et faire porter le report sur l'espace RÉELLEMENT
+  inutilisé. [MESURÉ]
+
+- [x] **`[DOC-CELIAPP-REPORT-PERIMEE]`** (XS, FAIBLE) — `docs/FISCAL_REFERENCE.md:431` affirme que
+  « le REPORT de droits n'est PAS modélisé » alors que `taxJanuary.ts:164-167` implémente bel et bien
+  un `allowedCarryForward` et publie 16 000 $/personne/an. La note dit explicitement « ne pas
+  corriger le clamp sans modéliser le report entier » : **elle protège aujourd'hui un bug au lieu
+  d'un choix**. Correctif : réécrire après le fix `[CELIAPP-DOUBLE-RECHARGE]`. [MESURÉ]
+
+- [x] **`[RAMQ-ACTIF-HORS-RETRAITS]`** (XS, MOYEN — **trouvé par Claude en corrigeant
+  `[REER-ACTIF-NON-RECONCILIE]`**) — l'assiette de la prime RAMQ est ASYMÉTRIQUE entre les deux
+  branches de décembre : en mode RETRAITÉ elle inclut `accRetraitsReerYear`
+  (`services/projection/taxDecember.ts:728-733`), en mode ACTIF elle vaut « salaire brut − déductions »
+  et **ignore les retraits REER** (`:735-741`). Or un retrait REER entre bien dans le revenu net au
+  sens de la ligne 275 TP-1, qui est l'assiette de la prime. Impact BORNÉ : la prime plafonne à
+  `RAMQ_MAX_PREMIUM_2026` = 766 $/adulte, donc l'écart n'existe que pour un revenu bas assorti d'un
+  gros retrait — nul sur les cas mesurés à 90 k$ et 150 k$ de salaire, déjà au plafond.
+  ⚠️ Le FSS voisin est un cas DIFFÉRENT : il ne s'applique qu'aux retraités par choix documenté
+  (« les salariés sont couverts par leur employeur ») — ne pas le « corriger » par symétrie.
+  Correctif : ajouter les retraits REER (et les gains) à `familyNetIncome` de la branche active.
+  ⚠️ NON corrigé dans le lot REER du 2026-08-19 : hors des deux CRITIQUES demandés par Marc, et
+  élargir un scope non demandé sur du fiscal est précisément ce que la règle interdit. [MESURÉ]
+
+---
+
 ## 2026-08-19 — Vague 1a : `[CASH-NAN-SILENT]`, le cash de départ trace enfin sa corruption
 
 > Premier lot de code du plan « vider le backlog ». Traité **seul** parce que c'est le POINT

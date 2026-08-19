@@ -428,7 +428,7 @@ pour minimiser l'impôt combiné (élection optionnelle).
 |---|---|---|
 | RAP (Régime accession propriété) | `RAP_LIMIT_PER_USER` | 60 000 $ / personne |
 | CELIAPP — plafond à vie | `FHSA_LIFETIME_LIMIT_PER_USER` | 40 000 $ / personne |
-| CELIAPP — plafond annuel | `FHSA_ANNUAL_LIMIT_PER_USER` | 8 000 $ / personne — ⚠️ le REPORT de droits (jusqu'à 8 000 $ d'années antérieures, déduction max 16 000 $/an à l'ARC) n'est PAS modélisé (choix de modèle, cf clamp `getTaxSituation` + `taxJanuary.ts` : 8 000 × users). Ne pas « corriger » le clamp sans modéliser le report entier. |
+| CELIAPP — plafond annuel | `FHSA_ANNUAL_LIMIT_PER_USER` | 8 000 $ / personne — le REPORT de droits **EST modélisé** (`taxJanuary.ts` : `allowedCarryForward = min(annuel, résiduel de l'an passé)`, plafond effectif 16 000 $/personne/an, conforme à l'ARC). ⚠️ **Note corrigée le 2026-08-19** : elle affirmait le contraire (« n'est PAS modélisé ») et interdisait de toucher au clamp — elle protégeait en fait un BUG, pas un choix. Le report existait bien, mais décembre remettait l'espace au plein annuel avant que janvier ne le lise, rendant le report toujours MAXIMAL (mesuré : 32 000 $/an pour un couple au lieu de 16 000 $, plafond à vie atteint en 3 ans au lieu de 5). Corrigé par `[CELIAPP-DOUBLE-RECHARGE]`. |
 | PBMA (palier de base montant ajusté) | `PBMA_THRESHOLD_PER_USER` | 17 183 $ |
 
 ### CELI — plafonds annuels (`CELI_ANNUAL_LIMITS`)

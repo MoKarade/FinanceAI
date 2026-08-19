@@ -3602,3 +3602,27 @@ sur 0, la somme restait finie, l'écriture passait. Seul `±Infinity` était int
 **Réflexe** : après avoir rendu une fonction « plus robuste », `grep` ses appelants pour
 `Number.isFinite` / `isNaN` / `!Number.isFinite`. Chaque occurrence est une garde qui reposait sur la
 fragilité qu'on vient de supprimer.
+
+
+### `UN-TEST-QUI-ECHOUE-N-A-PAS-FORCEMENT-RAISON` — vérifier le SCÉNARIO avant d'accuser le code
+
+En livrant `[CELIAPP-DOUBLE-RECHARGE]`, mon test de chaîne a échoué avec
+`expected 32000 to be less than or equal to 16000` — un écart d'un facteur 2 sur du money-critical,
+exactement la forme d'un vrai bug. Le réflexe naturel est de retourner corriger le moteur.
+
+C'était **le test** qui avait tort. Le scénario ne faisait cotiser personne au CELIAPP
+(`cashflowAllocation` exige `hasFuturePurchase`), et dans ce cas un report maximal est parfaitement
+LÉGAL : 8 000 $ reportés + 8 000 $ annuels par personne, soit 32 000 $ pour un couple. Mon
+assertion (« ne doit jamais dépasser le plafond annuel ») niait la règle que le ticket lui-même
+décrivait deux paragraphes plus haut.
+
+**Le contrôle qui tranche, avant de toucher au code** : mesurer la MÊME grandeur avec et sans le
+correctif (`git apply -R`), sur le même scénario. Ici :
+- sans achat → 32 000 avant **et** après : le scénario ne discrimine rien, l'échec était un artefact
+  de mon assertion ;
+- avec achat → **32 962 $ cotisés la 1re année avant, 16 926 $ après** : voilà le vrai signal.
+
+Si l'écart avant/après est NUL sur le scénario testé, le test ne parle pas du correctif — quoi
+qu'affiche son message d'erreur. Corollaire déjà connu mais qui se re-vérifie ici : un scénario doit
+faire *emprunter au code le chemin* qu'on prétend corriger. Un couple qui ne cotise pas ne traverse
+jamais la logique de cotisation.

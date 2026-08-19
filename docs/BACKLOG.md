@@ -37,7 +37,8 @@
   pire risque de cette app ; il passe avant l'a11y, la perf et la dette.
   **1a** ✅ `[CASH-NAN-SILENT]` **livré 2026-08-19** (source unique `services/startingCash.ts`) — c'est le point d'entrée de TOUTE la projection,
   s'il est faux tout ce qui en découle l'est aussi.
-  **1b** `taxDecember`/`taxJanuary` en UN lot (`[CELIAPP-DOUBLE-RECHARGE]`, `[FISC-BAND-AGE-CREDITS]`,
+  **1b** ✅ *partiel 2026-08-19* — livrés : `[CELIAPP-DOUBLE-RECHARGE]`, `[RAMQ-ACTIF-HORS-RETRAITS]`,
+  `[DOC-CELIAPP-REPORT-PERIMEE]`. RESTE dans ce lot (`[FISC-BAND-AGE-CREDITS]`,
   `[FISC-DIV-DERIVED-BASES]`, `[ENG-GK-THRESHOLD-KNIFE]`, `[ENG-TTP-UNSETTLED-PROPAGATE]`,
   `[RAMQ-ACTIF-HORS-RETRAITS]`, puis `[DOC-CELIAPP-REPORT-PERIMEE]`) — même fichier, même risque de
   re-baser des goldens : 6 PR séparées se re-baseraient l'une l'autre.
@@ -803,17 +804,6 @@
 > checklist « quels registres ce producteur doit-il alimenter ? ». **À traiter en UN lot**, pas
 > ticket par ticket.
 
-- [ ] **`[CELIAPP-DOUBLE-RECHARGE]`** (S, ÉLEVÉ) — l'espace CELIAPP a **deux producteurs qui
-  s'ignorent** : décembre écrase `fhsaRoom = FHSA_ANNUAL_LIMIT_PER_USER * taxFilers`
-  (`projection.ts:1190`), puis janvier calcule son report
-  `allowedCarryForward = min(annuel, fhsaRoomCurrent)` **sur cette valeur déjà écrasée**
-  (`taxJanuary.ts:164-167`) → le report est **toujours maximal**, quelle que soit l'utilisation
-  réelle. Chaîne vérifiée par Claude. **Mesuré** : dents de scie de `CELIAPPMax` (32 000 $ →
-  16 000 $ au m23 → 32 000 $ au m24, chaque année) ; sur un couple qui cotise vraiment, **22 535 $
-  cotisés en an 1 pour un maximum légal de 16 000 $, 54 666 $ cumulés fin an 2 pour 32 000 $ légal,
-  et le plafond à vie de 80 000 $ atteint en 3 ans au lieu de 5**. Correctif : supprimer l'écriture
-  de décembre (janvier est la source unique) et faire porter le report sur l'espace RÉELLEMENT
-  inutilisé. [MESURÉ]
 - [ ] **`[MC-BANDES-CROISEES]`** (M, MOYEN — unifie `[ENG-MC-BANDS-ORDER]`, même mécanisme) — `runMonteCarlo` classe les **trajectoires entières** par
   patrimoine FINAL puis publie `sorted[10%]/[50%]/[90%]` comme un cône P10/P50/P90
   (`services/projection/monteCarlo.ts:117-121`). Ce ne sont donc **pas** des percentiles mensuels :
@@ -860,11 +850,6 @@
   locatif, m480) et **659,22 $/mois** (scénario 1 enfant) ; 0,01 $ sur le socle. Correctif : ajouter
   les lignes manquantes — le moteur émet déjà les champs, donc les CONSOMMER et surtout **ne pas
   additionner** (cf. `utils/chartDataSumGuard.ts`). [MESURÉ]
-- [ ] **`[DOC-CELIAPP-REPORT-PERIMEE]`** (XS, FAIBLE) — `docs/FISCAL_REFERENCE.md:431` affirme que
-  « le REPORT de droits n'est PAS modélisé » alors que `taxJanuary.ts:164-167` implémente bel et bien
-  un `allowedCarryForward` et publie 16 000 $/personne/an. La note dit explicitement « ne pas
-  corriger le clamp sans modéliser le report entier » : **elle protège aujourd'hui un bug au lieu
-  d'un choix**. Correctif : réécrire après le fix `[CELIAPP-DOUBLE-RECHARGE]`. [MESURÉ]
 - [ ] **`[CONSTANTES-MOTEUR-NON-SOURCEES]`** (XS, FAIBLE) — trois constantes financières en dur dans
   des champs **publiés** : taux HELOC Smith 5 %/an (`realEstateMonth.ts:378`), croissance 5 % du
   `CoastFIRE` (`monthlyOutput.ts:170` — **indépendante de `projection.returnRate`**), revenu barista
@@ -877,19 +862,6 @@
   consultée ; documenté comme parité voulue avec l'ex-Accueil. Correctif : exposer un
   `computePresentNetWorthWithRealEstate` unique. [MESURÉ par lecture]
 
-- [ ] **`[RAMQ-ACTIF-HORS-RETRAITS]`** (XS, MOYEN — **trouvé par Claude en corrigeant
-  `[REER-ACTIF-NON-RECONCILIE]`**) — l'assiette de la prime RAMQ est ASYMÉTRIQUE entre les deux
-  branches de décembre : en mode RETRAITÉ elle inclut `accRetraitsReerYear`
-  (`services/projection/taxDecember.ts:728-733`), en mode ACTIF elle vaut « salaire brut − déductions »
-  et **ignore les retraits REER** (`:735-741`). Or un retrait REER entre bien dans le revenu net au
-  sens de la ligne 275 TP-1, qui est l'assiette de la prime. Impact BORNÉ : la prime plafonne à
-  `RAMQ_MAX_PREMIUM_2026` = 766 $/adulte, donc l'écart n'existe que pour un revenu bas assorti d'un
-  gros retrait — nul sur les cas mesurés à 90 k$ et 150 k$ de salaire, déjà au plafond.
-  ⚠️ Le FSS voisin est un cas DIFFÉRENT : il ne s'applique qu'aux retraités par choix documenté
-  (« les salariés sont couverts par leur employeur ») — ne pas le « corriger » par symétrie.
-  Correctif : ajouter les retraits REER (et les gains) à `familyNetIncome` de la branche active.
-  ⚠️ NON corrigé dans le lot REER du 2026-08-19 : hors des deux CRITIQUES demandés par Marc, et
-  élargir un scope non demandé sur du fiscal est précisément ce que la règle interdit. [MESURÉ]
 
 ### 🔴 Valeurs fiscales sans source (viole le non-négociable `FISCAL_REFERENCE.md`)
 

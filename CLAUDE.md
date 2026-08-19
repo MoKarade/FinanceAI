@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 393 tests** Vitest
-(393 fichiers de test, mesuré le 2026-08-19). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 406 tests** Vitest
+(394 fichiers de test, mesuré le 2026-08-19). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -169,6 +169,10 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   Arbitres outillés : résiduel de conservation ($), `check-contrast` (a11y), `git stash` (test discriminant).
 - **Prouver qu'un test DISCRIMINE** : il doit ÉCHOUER sur le code d'avant (`git stash`).
   Pour un invariant d'ORDRE, la preuve s'inverse (introduire l'inversion chirurgicalement).
+- ⚠️ Symétrique : **un test qui échoue n'a pas forcément raison**. Mesurer la même grandeur AVEC et
+  SANS le correctif sur le même scénario : si l'écart est NUL, le test ne parle pas du correctif,
+  quoi qu'affiche son message. Un scénario qui ne fait pas EMPRUNTER le chemin corrigé ne prouve
+  rien (`UN-TEST-QUI-ECHOUE-N-A-PAS-FORCEMENT-RAISON`).
 - Un bug confirmé peut viser du code **dont la sortie est jetée** → test de perturbation avant fix.
 - Une garde qui **lit la table de config** pour choisir quoi vérifier est CIRCULAIRE : elle ne peut
   pas détecter une erreur DANS la table. Il faut une assertion qui ne la consulte pas (mesuré sur

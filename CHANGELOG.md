@@ -6,6 +6,27 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-19 (ta carte du hub montre enfin le mouvement de tes placements)
+
+- **Trois nouvelles lignes sur la carte FinanceAI de `hubperso.com`** : la valeur de tes placements
+  à la dernière séance, ce qu'ils ont gagné ou perdu ce jour-là (en $ et en %), et la même chose
+  sur 7 jours. La variation du jour colore aussi ta valeur nette.
+- **Le libellé dit « séance du 18 août », pas « aujourd'hui »** — et ce n'est pas de la coquetterie.
+  Les marchés ferment, et l'historique de tes cours n'avance que quand tu ouvres l'app. Appeler
+  « aujourd'hui » la clôture de vendredi serait faux.
+- **La carte se TAIT plutôt que d'inventer.** Si le dernier cours connu a plus de 3 jours, si la
+  fenêtre de 7 jours n'a pas de point de départ, ou si aucun de tes titres n'a eu de vraie clôture
+  aux deux bornes comparées — la métrique n'est **pas publiée**. Pas de `0 %` qui ressemblerait à
+  « journée stable ».
+- **Trois lignes ont dû partir** pour faire la place (le hub en accepte 6) : `Investissements`,
+  `Dette totale` et `Espace CELI dispo`. La variation dit tout ce que la valeur des placements
+  disait, et les deux autres bougent trop peu pour mériter un coup d'œil quotidien. Elles restent
+  dans l'app.
+- **La date affichée sous la carte** est celle de la donnée la plus ancienne (ta dernière synchro
+  ou la clôture montrée) — jamais l'heure à laquelle la carte a été fabriquée.
+
+---
+
 ## [unreleased] — 2026-08-19 (au jour près, ton patrimoine ne correspondait pas à son propre bilan)
 
 - **Sur le graphique au JOUR, ton patrimoine net ne valait pas la somme de ce qui le compose.**

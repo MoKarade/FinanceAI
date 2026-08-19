@@ -169,3 +169,103 @@ describe('GET /hub/summary (HTTP, cas limites)', () => {
         }
     });
 });
+
+describe('[HUB-PLACEMENTS-SEANCE] variation des placements sur la carte', () => {
+    // Demande Marc 2026-08-19 : rendement du jour, variation $ du jour, variation de la semaine.
+    // Ce qui se joue ici n'est pas le calcul (couvert par `portfolioSessionMetrics.test.ts`) mais
+    // la CARTE : ordre des métriques, plafond de 6, libellés, et surtout ce qui se passe quand la
+    // donnée refuse — le hub n'affiche QUE ce qu'il reçoit, donc omettre EST la métrique.
+
+    const MAINTENANT = Date.parse('2026-08-19T18:00:00Z');
+
+    /** Titre CAD à 1 unité : la valeur du portefeuille vaut le prix — les montants se lisent à l'œil. */
+    const titre = (jours: number, dernierJour: number) => ({
+        symbol: 'XEQT.TO', quantity: 1, currency: 'CAD' as const, currentPrice: 100 + jours - 1,
+        name: 'XEQT', performance: 0, dateBought: '2026-08-01',
+        purchases: [{ date: '2026-08-01', quantity: 1, price: 100 }],
+        priceHistory: Array.from({ length: jours }, (_, i) => ({
+            date: `2026-08-${String(dernierJour - jours + 1 + i).padStart(2, '0')}`,
+            price: 100 + i,
+        })),
+        accountType: 'NON-ENREG' as const,
+    });
+
+    const avecPlacements = (jours: number, dernierJour: number) => ({
+        ...personaState(),
+        assets: [titre(jours, dernierJour)],
+        fxRates: { USD: 1.35, EUR: 1.45 },
+    });
+
+    it('publie 6 métriques ordonnées, la valeur nette en tête et sa tendance du jour', () => {
+        const s = buildHubSummary(avecPlacements(14, 18) as never, MAINTENANT);
+        expect(s.metrics).toHaveLength(6);   // le PLAFOND du contrat, exactement
+
+        // L'ordre est un arbitrage : le hub rend la PREMIÈRE en gros.
+        expect(s.metrics.map((m) => m.label)).toEqual([
+            'Valeur nette',
+            'Cashflow mensuel',
+            'Liquidités',
+            'Placements (séance du 18 août)',
+            'Variation de la séance',
+            'Variation 7 jours',
+        ]);
+
+        // Les trois sortantes ne doivent PLUS être là (sinon on dépasserait 6 et le contrat casserait).
+        for (const parti of ['Investissements', 'Dette totale', 'Espace CELI dispo']) {
+            expect(s.metrics.some((m) => m.label === parti), `${parti} aurait dû sortir`).toBe(false);
+        }
+
+        // Le libellé porte la DATE — jamais « aujourd'hui » (les marchés ferment, et l'historique
+        // daté n'avance que quand l'app navigateur s'ouvre).
+        expect(s.metrics.some((m) => /aujourd/i.test(m.label))).toBe(false);
+
+        // Montants et tendances : 113 la veille de rien, +1 $ sur la séance, +7 $ sur 7 jours.
+        const parLabel = Object.fromEntries(s.metrics.map((m) => [m.label, m]));
+        expect(parLabel['Placements (séance du 18 août)'].value).toBe(113);
+        expect(parLabel['Variation de la séance'].value).toBe(1);
+        expect(parLabel['Variation 7 jours'].value).toBe(7);
+        expect(parLabel['Valeur nette'].trend).toBeCloseTo((1 / 112) * 100, 2);
+        expect(parLabel['Variation de la séance'].trend).toBeCloseTo((1 / 112) * 100, 2);
+
+        // Tout doit rester conforme au contrat — c'est le hub qui valide, on ne triche pas.
+        expect(() => validateSummary(s as never)).not.toThrow();
+    });
+
+    it('donnée PÉRIMÉE : la carte publie MOINS, pas autre chose', () => {
+        // Dernier close le 8 août, soit 11 jours avant : aucune des trois métriques n'est publiable.
+        const s = buildHubSummary(avecPlacements(5, 8) as never, MAINTENANT);
+        expect(s.metrics.map((m) => m.label)).toEqual(['Valeur nette', 'Cashflow mensuel', 'Liquidités']);
+
+        // ⚠️ Le point le plus important du lot : AUCUN zéro n'est fabriqué. Un « 0 $ / 0 % » se
+        // lirait « journée stable » alors qu'on ne sait simplement pas.
+        expect(s.metrics.some((m) => /placement|variation/i.test(m.label))).toBe(false);
+        expect(s.metrics[0].trend).toBeUndefined();
+
+        // Et les trois sortantes ne REVIENNENT pas : une carte dont la composition change selon la
+        // fraîcheur des cours serait illisible.
+        expect(s.metrics.some((m) => m.label === 'Dette totale')).toBe(false);
+        expect(() => validateSummary(s as never)).not.toThrow();
+    });
+
+    it('semaine incalculable : la séance seule est publiée (refus indépendants)', () => {
+        const s = buildHubSummary(avecPlacements(2, 18) as never, MAINTENANT);
+        expect(s.metrics.map((m) => m.label)).toEqual([
+            'Valeur nette', 'Cashflow mensuel', 'Liquidités',
+            'Placements (séance du 18 août)', 'Variation de la séance',
+        ]);
+        expect(s.metrics.some((m) => m.label === 'Variation 7 jours')).toBe(false);
+    });
+
+    it('dataAsOf reflète la donnée la plus ANCIENNE, pas l\'instant du build', () => {
+        // Le push Drive est TRÈS récent, la clôture date du 18. Servir l'horodatage du push
+        // surestimerait la fraîcheur de ce qui est à l'écran.
+        setStateFreshness({ updatedAt: MAINTENANT - 60_000, source: 'test' });
+        const s = buildHubSummary(avecPlacements(14, 18) as never, MAINTENANT);
+        expect(s.dataAsOf).toBe(new Date(Date.parse('2026-08-18T23:59:59Z')).toISOString());
+
+        // Symétrique : quand c'est le PUSH qui est le plus vieux, c'est lui qui gouverne.
+        setStateFreshness({ updatedAt: Date.parse('2026-08-17T09:00:00Z'), source: 'test' });
+        const s2 = buildHubSummary(avecPlacements(14, 18) as never, MAINTENANT);
+        expect(s2.dataAsOf).toBe(new Date(Date.parse('2026-08-17T09:00:00Z')).toISOString());
+    });
+});

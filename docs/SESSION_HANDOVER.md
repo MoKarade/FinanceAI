@@ -4,6 +4,43 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-19 (suite 104) — la carte du hub montre le mouvement des placements
+> Branche `claude/hub-placements-seance` (basée sur `main`). Demande Marc, hors backlog.
+>
+> **La question qui décidait de tout, et sa réponse** : OUI, FinanceAI stocke des valeurs DATÉES.
+> `Asset.priceHistory` (`types.ts:55`) = clôtures natives datées, **persistées** (le `partialize`
+> n'exclut que `apiKeys` + 5 champs d'UI), poussées telles quelles vers Drive, et le schéma MCP
+> (`appStateSchema.ts:49`, `z.array(z.unknown()).passthrough()`) les laisse traverser. Granularité
+> QUOTIDIENNE sur 365 jours (`DOWNSAMPLE_AFTER_DAYS`), hebdo au-delà.
+> ⚠️ **Aucun snapshot du patrimoine** : tout le passé est RECONSTRUIT.
+>
+> ⚠️ **Le vrai problème de fraîcheur** : `priceHistory` n'avance QUE quand l'app navigateur s'ouvre
+> (`hydrateAssetHistories` ← `App.tsx`, titres dont `lastHistorySync > 24 h`). Le cron serveur
+> `[HUB-REFRESH-CRON]` ne rafraîchit que `currentPrice`. D'où « séance du <date> », jamais
+> « aujourd'hui », et un refus au-delà de 3 jours civils.
+>
+> **Livré** : `services/history/portfolioSessionMetrics.ts` + 3 métriques sur la carte. Sortent pour
+> faire la place (plafond de 6) : `Investissements`, `Dette totale`, `Espace CELI dispo`.
+>
+> ⚠️ **Ce que je NE livre PAS, et pourquoi** : la variation du jour du PATRIMOINE ENTIER. La
+> reconstruction du passé fige les dettes et fait bouger l'immobilier par palier ANNUEL (Option A,
+> cf. `dayVariation.ts`) — un « jour » par an porterait un saut immobilier qui n'a rien de journalier.
+>
+> ⚠️ **Deux gardes mortes attrapées par mes propres tests** (les deux valent une relecture) :
+> 1. `isSynthetic` passé pour la clé `TOTAL` — `syntheticTailKeys` est indexé PAR SYMBOLE, la garde
+>    ne pouvait JAMAIS se déclencher. Et même relevée au niveau agrégat, elle ratait le cas le plus
+>    courant : `priceAt` REPORTE le dernier close jusqu'à 7 jours sans rien marquer. Règle refondée
+>    sur un fait lisible dans `priceHistory` (`GARDE-SUR-AGREGAT-AVEC-INDEX-PAR-COMPOSANT`).
+> 2. Le cas anti-décimation avec N = 900 passait AUSSI avec la décimation active (`(900−8) % 2 === 0`).
+>    N = 1500 le rend discriminant, et la condition est désormais assertée DANS le test
+>    (`PARITE-QUI-REND-UN-TEST-VACUEUX`).
+>
+> **Preuve** : 3 perturbations, 3 vérifications (refus périmé, refus figé, décimation) — la 3ᵉ était
+> verte au premier jet. 9 cas unitaires + 4 cas de carte.
+>
+> ⚠️ **Sémantique à connaître** : c'est une VARIATION, pas un rendement de prix — un achat du jour y
+> apparaît (cf. l'en-tête de `periodReturn.ts`). Le libellé dit « Variation ».
+
 > ## 🟢 Session 2026-08-19 (suite 101) — vague 1d (suite) : le bilan au JOUR ne se refermait pas
 > Branche `claude/nw-perimetre` (empilée sur `claude/registres-oublies`).
 >

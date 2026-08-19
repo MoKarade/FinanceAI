@@ -259,6 +259,43 @@ contrat [`@mokarade/hub-contract` v1](https://github.com/MoKarade/hub-contract) 
   État de plus de 6 h (`freshness`) → `status: "degraded"` + `dataAsOf` ; état illisible
   → summary `status: "error"` (HTTP 200) — le widget montre la panne, jamais du vide.
 
+#### Les 6 métriques publiées (HUB-PLACEMENTS-SEANCE, 2026-08-19)
+
+Le contrat plafonne à **6 métriques**, et le hub rend la **première en gros**. L'ordre est donc un
+arbitrage, pas une liste :
+
+| # | libellé | source |
+|---|---|---|
+| 1 | `Valeur nette` (+ `trend` = % de la séance, si publiable) | `buildFinancialOverview` |
+| 2 | `Cashflow mensuel` | idem |
+| 3 | `Liquidités` | idem |
+| 4 | `Placements (séance du <date>)` | `computePortfolioSessionMetrics` |
+| 5 | `Variation de la séance` | idem |
+| 6 | `Variation 7 jours` | idem |
+
+`Investissements`, `Dette totale` et `Espace CELI dispo` ont été RETIRÉS pour faire la place : la
+variation dit tout ce que la valeur des placements disait et davantage, et les deux autres sont les
+grandeurs les plus stables du lot (rien à apprendre d'un coup d'œil quotidien).
+
+⚠️ **Les trois métriques de placements se REFUSENT** (`services/history/portfolioSessionMetrics.ts`)
+quand la donnée ne permet pas de les affirmer : série absente ou d'un seul point, séance de référence
+plus vieille que 3 jours civils, ou aucune vraie clôture aux deux bornes. Une métrique refusée n'est
+**pas publiée** — le hub n'affiche que ce qu'il reçoit, donc l'omettre est la seule façon honnête de
+dire « je ne sais pas ». Un `0` fabriquerait « journée stable ».
+
+⚠️ **Les trois sortantes ne REVIENNENT pas** quand les placements se refusent : une carte dont la
+composition change selon la fraîcheur des cours serait illisible. On publie **moins**, pas autre chose.
+
+⚠️ **« Séance », jamais « aujourd'hui »** : `Asset.priceHistory` n'avance que lorsque l'app navigateur
+s'ouvre (`hydrateAssetHistories`, appelé depuis `App.tsx` pour les titres dont `lastHistorySync > 24 h`).
+Le cron serveur (`refreshPrices.ts`) ne rafraîchit que `currentPrice`, jamais l'historique daté. Et
+les marchés ferment. La date de référence est donc presque toujours une séance passée : le libellé la
+porte.
+
+⚠️ **`dataAsOf` = la donnée la plus ANCIENNE** entre le push Drive et la clôture affichée. Servir
+l'horodatage du push pendant qu'on affiche la clôture de l'avant-veille surestimerait la fraîcheur de
+ce qui est à l'écran.
+
 ### En local (stdio n'expose rien ; HTTP seulement)
 
 ```powershell

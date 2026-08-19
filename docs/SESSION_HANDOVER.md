@@ -31,6 +31,14 @@
 > découvert SOURCÉ (marge ~8-10 % ? découvert ~19-21 % ?) et un choix de priorité de remboursement.
 > C'est le plus gros montant encore ouvert : 0,8–1,7 M$ sur 15 ans.
 >
+> ⚠️ **DÉCOUVERT EN CHEMIN, et ça explique toute la friction de la session** : une PR EMPILÉE
+> (base `claude/xxx`) ne déclenche **AUCUN** run CI — le workflow filtre sur
+> `pull_request: branches: [main]`. Vercel et CodeQL partent quand même, d'où l'illusion d'une
+> vérification en cours ; `enable_pr_auto_merge` répond « unstable status » parce que les checks
+> requis sont ABSENTS, pas en échec. Dans une pile, seule la PR du BAS est testée. L'ordre de merge
+> n'est pas une préférence, c'est une CONTRAINTE, et le gate LOCAL est la seule vérification réelle
+> jusqu'au re-ciblage automatique de la base (`PR-EMPILEE-N-A-AUCUNE-CI`).
+>
 > **SUITE** : vague 1e (silences qui cachent de l'argent) — `[COUPLE-CTX-FAKE-ZERO]` +
 > `[TOOL-TAXSITUATION-FAKE-ZERO]` groupés, puis les XS.
 

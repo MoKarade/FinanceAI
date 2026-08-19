@@ -4016,3 +4016,35 @@ c'est le seul mécanisme fiable contre cette classe.
 **Et nommer ce qu'on ne modélise pas** : vente de l'immeuble, récupération de DPA, impôt latent sur
 le gain, croissance de l'entreprise. Écrits dans l'en-tête du module et dans l'archive. Un manque
 nommé est un ticket ; un manque tu est un défaut qu'on redécouvrira comme une surprise.
+
+### `PR-EMPILEE-N-A-AUCUNE-CI` — le filtre de branche du workflow décide, pas la PR
+
+`.github/workflows/ci.yml` déclare :
+
+```yaml
+on:
+  push:    { branches: [main] }
+  pull_request: { branches: [main] }
+```
+
+`pull_request.branches` filtre sur la branche **CIBLE**. Une PR empilée (base `claude/xxx` au lieu de
+`main`) ne déclenche donc **aucun** run CI — ni lint, ni typecheck, ni tests, ni build, ni E2E. Les
+checks Vercel et CodeQL partent quand même, ce qui donne l'illusion d'une PR « en cours de
+vérification ». `enable_pr_auto_merge` répond alors *« unstable status (required checks are
+failing) »* : les checks requis ne sont pas en échec, ils sont **absents**.
+
+**Conséquence pratique** : dans une pile, seule la PR du BAS est réellement testée par la CI. Les
+autres n'obtiennent leur CI qu'au moment où GitHub re-cible automatiquement leur base sur `main`
+(c'est-à-dire quand la PR du dessous merge). L'ordre de merge n'est donc pas une préférence, c'est
+une **contrainte** — et le gate local devient la seule vérification réelle jusque-là.
+
+**Le symptôme à reconnaître** : `pull_request_read get_check_runs` ne montre QUE des checks tiers
+(Vercel, CodeQL) et aucun job du workflow maison. Ne pas confondre avec le cas « CI figée » (le job
+existe et reste `in_progress`) ni avec « check invisible dans `get_status` » (le job existe, mais
+`get_status` ne montre que les *statuses* legacy — d'où la lecture par `actions_list
+list_workflow_jobs`). Trois causes différentes, trois diagnostics différents.
+
+**Ce que ça change dans la méthode** : empiler reste utile pour éviter de re-résoudre dix fois les
+mêmes conflits de doc, mais il faut savoir qu'on échange cette économie contre l'absence de CI sur
+tout l'étage supérieur. Sur du money-critical, faire tourner le gate COMPLET en local avant chaque
+push d'une PR empilée n'est pas du zèle : c'est la seule vérification qui existe.

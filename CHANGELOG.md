@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-19 (ton retrait FERR obligatoire n'apparaissait pas dans le plan d'actions)
+
+- **À 72 ans, la loi t'oblige à retirer un minimum de ton REER converti en FERR. Le plan d'actions
+  de l'année affichait `0 $` pour ce retrait.** Le panneau « ce que tu dois déposer / retirer cette
+  année » lit le flux net par compte : la FERR n'y était jamais versée.
+- **Mesuré : 131 566,62 $ de retrait FERR invisibles**, chaque janvier à partir de 72 ans, dans une
+  projection ordinaire (pas une simulation — ta courbe de tous les jours).
+- **Pourquoi** : le retrait FERR alimentait bien le registre d'AFFICHAGE (« Retrait REER » du mois)
+  mais pas celui des TRANSFERTS, qui est celui que lit le plan d'actions. Deux registres pour le même
+  argent, un seul rempli — la même erreur qu'un correctif précédent avait déjà à moitié réparée.
+- **Aucun dollar ne change** : soldes, impôts et patrimoine sont strictement identiques (vérifié
+  champ par champ sur toute la projection, avec trois écarts d'âge dans le couple). Seul l'affichage
+  du flux était muet.
+- **Au passage**, la garde qui aurait dû l'attraper tournait sur une projection de 12 ans qui
+  n'atteignait jamais la retraite. Elle couvre désormais tout le décaissement — et la branche
+  simulée du moteur (divorce, décès du conjoint, invalidité, maladie grave, soins de longue durée,
+  perte d'emploi, héritage) est vérifiée pour la première fois : elle est saine.
 ## [unreleased] — 2026-08-19 (le correctif du patrimoine au jour ne s'appliquait pas vraiment)
 
 - **Correctif du correctif.** La veille, le patrimoine net au JOUR a été rendu cohérent avec la somme

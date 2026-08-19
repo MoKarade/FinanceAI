@@ -28,6 +28,24 @@ import type { ProjectionConfig, BudgetConfig, RetirementGoal } from '../../types
 /** Comptes dont la variation DOIT être expliquée par `MarketGrowth<k>` + `NetTransfer<k>`. */
 const ACCOUNTS = ['CELI', 'REER', 'Crypto'] as const;
 
+// [ENG-INV-FLUXFORM-COVERAGE] ⚠️ CE QUE CETTE GARDE NE VOYAIT PAS, ET POURQUOI.
+//
+// La fixture historique (`params`) tourne sur **12 ans** avec un couple de 45 ans dont la retraite
+// est fixée à 62 : elle ne l'ATTEINT JAMAIS. Toute la phase de DÉCAISSEMENT — retraits de retraite,
+// meltdown REER, et surtout le retrait MINIMUM FERR obligatoire à 72 ans — était donc hors de
+// portée d'un invariant qui, par construction, ne peut rien dire des mois qu'il ne parcourt pas.
+//
+// Le ticket pariait que l'extension échouerait sur `stressTestEnabled`. **Ce pari était périmé** :
+// le stress-test est corrigé et vert (cas ci-dessous). Ce que l'extension a réellement trouvé est
+// ailleurs et plus grave, parce qu'il frappe en mode DÉTERMINISTE — donc à l'écran :
+//
+//   `[ENG-FERR-NETTRANSFER-MUET]` — la FERR alimentait `retraitReerMois` (registre d'AFFICHAGE)
+//   mais PAS `withdrawalREER` (registre des TRANSFERTS → `NetTransferREER`).
+//   **MESURÉ : 131 566,62 $** de REER disparaissant sans flux publié, à CHAQUE janvier de 72+.
+//
+// C'est la récidive exacte de `[ENG-FERR-FLOW-INVISIBLE]` : le lot précédent avait branché UN des
+// deux registres. Un producteur qui alimente un registre doit les alimenter TOUS.
+
 // ⚠️ `NonReg` est ABSENT de cette liste, et c'est un constat mesuré, pas un confort. En écrivant
 // cette garde SANS restriction, elle a trouvé un TROISIÈME producteur muet, sans rapport avec le
 // stress-test : `processAprilSettlement` verse le remboursement d'impôt au non-enregistré
@@ -127,6 +145,92 @@ describe('[ENG-INV-FLUXFORM-COVERAGE] toute variation de compte est EXPLIQUÉE p
         const growthAtCrash = Number((data[crashMonth] as unknown as Record<string, number>).MarketGrowthCELI) || 0;
         expect(growthAtCrash, 'aucun krach observé au mois attendu : la fixture ne déclenche rien')
             .toBeLessThan(0);
+    });
+
+    // ── [ENG-INV-FLUXFORM-COVERAGE] La phase de DÉCAISSEMENT, jamais parcourue jusqu'ici. ──
+    //
+    // 35 ans d'horizon, couple de 45 ans, retraite à 62 : la simulation traverse l'accumulation,
+    // la retraite, puis les retraits FERR obligatoires (72+). C'est le SEUL réglage qui fait
+    // emprunter au moteur le chemin de `processJanuaryReset`.
+    const decumulation = (over: Partial<ProjectionConfig> = {}): SimulationParams => {
+        const p = params({ years: 35, ...over });
+        return { ...p, retirementGoal: { ...p.retirementGoal, targetAge: 62 } };
+    };
+
+    it('[ENG-FERR-NETTRANSFER-MUET] le retrait FERR obligatoire est publié comme un flux', () => {
+        const r = calculateFutureProjection(decumulation());
+        const data = r.chartData as ProjectionChartPoint[];
+
+        // Non-vacuité en DEUX temps — sans elle, une fixture qui n'atteindrait ni la retraite ni
+        // 72 ans rendrait le test vert sans jamais emprunter le chemin corrigé. C'est précisément
+        // le trou que ce cas vient boucher : il ne doit pas le recréer.
+        const rows = data as unknown as Record<string, number>[];
+        const ferrMonths = rows.filter((d) => (Number(d.WithheldTaxRrif) || 0) > 0);
+        expect(ferrMonths.length, 'la fixture n\'atteint jamais la FERR (72 ans) : rien n\'est mesuré')
+            .toBeGreaterThan(3);
+        expect(Math.max(...ferrMonths.map((d) => Number(d.RetraitREER) || 0)),
+            'retraits FERR insignifiants : le discriminant serait sous la tolérance')
+            .toBeGreaterThan(50_000);
+
+        // Discriminant MESURÉ : 131 566,62 $ de résiduel avant le correctif, 0,00 $ après.
+        const { max, where } = worstFluxResidual(data);
+        expect(max, `mouvement de compte non expliqué en décaissement — ${where}`)
+            .toBeLessThan(CENT_ROUNDING_TOLERANCE);
+    });
+
+    it('[ENG-FERR-NETTRANSFER-MUET] les deux registres du retrait REER disent la MÊME chose', () => {
+        // La garde ci-dessus attrape la conséquence (un solde qui bouge sans flux). Celle-ci nomme
+        // la CAUSE : deux registres parallèles du même retrait, `RetraitREER` (affichage) et
+        // `ContribREER − NetTransferREER` (transferts). Ils concordaient sur 129 mois de retraits
+        // ordinaires et divergeaient sur les 4 mois de FERR — la signature d'un producteur qui
+        // n'alimente qu'un registre sur deux. Sans ce cas, un futur correctif pourrait faire taire
+        // le symptôme (publier un flux bidon) sans rétablir l'accord.
+        const r = calculateFutureProjection(decumulation());
+        const rows = r.chartData as unknown as Record<string, number>[];
+        let worst = 0;
+        let where = '(aucun)';
+        let compares = 0;
+        for (let i = 0; i < rows.length; i++) {
+            const retrait = Number(rows[i].RetraitREER) || 0;
+            if (retrait <= 0) continue;
+            compares++;
+            const parLesFlux = (Number(rows[i].ContribREER) || 0) - (Number(rows[i].NetTransferREER) || 0);
+            const ecart = Math.abs(retrait - parLesFlux);
+            if (ecart > worst) {
+                worst = ecart;
+                where = `mois ${i} : RetraitREER=${retrait.toFixed(2)} $ vs flux=${parLesFlux.toFixed(2)} $`;
+            }
+        }
+        expect(compares, 'aucun retrait REER dans la fixture : rien n\'est comparé').toBeGreaterThan(100);
+        expect(worst, `les deux registres du retrait REER divergent — ${where}`)
+            .toBeLessThan(CENT_ROUNDING_TOLERANCE);
+    });
+
+    it('[ENG-FERR-NETTRANSFER-MUET] le partage per-conjoint du REER n\'a PAS bougé', () => {
+        // ⚠️ Le correctif exclut délibérément la FERR de `stepReerByUser` : elle a déjà été retirée
+        // de la part EXACTE de chaque conjoint (facteur RRIF de SON âge). L'y réinjecter la
+        // re-soustrairait AU PRORATA et fausserait un couple à écart d'âge — un correctif de
+        // FLUX qui déplacerait de l'ARGENT. Ce cas verrouille la frontière : le partage final doit
+        // rester celui d'AVANT, et l'écart d'âge doit vraiment le faire diverger d'un 50/50.
+        const p = decumulation();
+        const u = (p.config as unknown as { users: Array<Record<string, unknown>> }).users;
+        const decale = {
+            ...p,
+            config: { ...p.config, users: [u[0], { ...u[1], age: 33, birthYear: 1993, canadaArrivalYear: 1993 }] },
+        } as unknown as SimulationParams;
+        const r = calculateFutureProjection(decale);
+        const parts = (r as unknown as { reerByUserFinal?: number[] }).reerByUserFinal ?? [];
+
+        expect(parts.length, 'pas de registre per-conjoint : le cas ne mesure rien').toBe(2);
+        for (const v of parts) expect(Number.isFinite(v)).toBe(true);
+        const total = parts.reduce((s, v) => s + v, 0);
+        expect(total, 'registre per-conjoint vide : 12 ans d\'écart sans REER ne prouve rien')
+            .toBeGreaterThan(0);
+        // Un écart de 12 ans décale les conversions FERR : le partage NE PEUT PAS rester 50/50.
+        // (Valeur de référence relevée AVANT le correctif et INCHANGÉE après — c'est le point.)
+        expect(Math.abs(parts[0] / total - 0.5),
+            'partage 50/50 malgré 12 ans d\'écart : la FERR per-conjoint ne mord pas')
+            .toBeGreaterThan(0.01);
     });
 
     it('le krach est visible dans le TOTAL de croissance, pas seulement par compte', () => {

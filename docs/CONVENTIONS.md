@@ -3799,3 +3799,82 @@ mesuré, testé et documenté. Les findings de bot ont un fort taux de faux posi
 money-critical (~3/8 des HIGH sont faux) — mais un finding qui pointe une INERTIE se vérifie en une
 minute par grep, et il faut le faire AVANT de le classer. Le coût d'un faux positif ici est une
 minute ; le coût d'un vrai positif ignoré est une livraison qui n'existe pas.
+## Leçons de la vague 1c (fin) — 2026-08-19
+
+### `INVARIANT-QUI-NE-PARCOURT-PAS-LA-PHASE` — une garde ne dit rien des mois qu'elle ne visite pas
+
+`projection.fluxForm.test.ts` était la garde la plus fine du dépôt : « toute variation d'un compte est
+EXPLIQUÉE par les flux publiés ». Elle tournait sur une fixture de **12 ans**, couple de 45 ans,
+retraite fixée à **62**. Elle n'atteignait donc JAMAIS le décaissement — ni les retraits de retraite,
+ni le meltdown REER, ni le retrait minimum FERR obligatoire à 72 ans. L'invariant était juste, son
+implémentation correcte, et il n'avait simplement jamais rencontré la moitié du moteur.
+
+Porté à 35 ans, il a trouvé en une exécution : **131 566,62 $** de REER disparaissant sans flux publié,
+à chaque janvier de 72+, **en mode DÉTERMINISTE** — donc à l'écran, sur la courbe de tous les jours.
+
+**La règle** : pour un moteur à PHASES (accumulation → retraite → décaissement forcé → succession),
+l'horizon d'une fixture est un choix de COUVERTURE, pas un réglage de perf. Avant de faire confiance à
+un invariant, se demander quelles phases sa fixture traverse — et l'écrire à côté de la fixture.
+Symptôme à reconnaître : un `years:` court dans le fixture d'un test dont le nom promet « tout
+l'horizon ».
+
+**Corollaire de tenue** : quand une garde est étendue, comparer ce qu'elle trouve à ce que le ticket
+PRÉDISAIT. Ici le ticket annonçait un échec sur `stressTestEnabled` — pari **périmé** (le stress-test
+avait été corrigé entre-temps et reste vert). Le vrai défaut était ailleurs, et plus grave. Un ticket
+qui se trompe de cause n'invalide pas le travail : il invalide seulement la phrase qu'on allait
+recopier dans la PR.
+
+### `UN-MONTANT-DEUX-REGISTRES-DEUX-REGLES` — le correctif « ajouter au registre oublié » peut déplacer de l'argent
+
+Suite directe du défaut ci-dessus. Le retrait FERR alimentait `retraitReerMois` (registre
+d'AFFICHAGE) mais pas `withdrawalREER` (registre des TRANSFERTS → `NetTransferREER`, lu par le plan
+d'actions annuel). Le réflexe est d'écrire `withdrawalREER += ferr` et de passer à la suite.
+
+Or `withdrawalREER` a **deux** consommateurs, et ils ne veulent pas la même chose :
+- `monthlyOutput` → publie `NetTransferREER = contribREER − withdrawalREER`. Il DOIT voir la FERR.
+- `stepReerByUser` → répartit le retrait **AU PRORATA** entre conjoints. Il ne doit SURTOUT PAS la
+  voir : la FERR a déjà été retirée de la part EXACTE de chacun (`ferrGrossByUser`, facteur RRIF de
+  SON âge). L'y réinjecter la soustrairait une seconde fois, au prorata — un correctif de FLUX qui
+  déplace de l'ARGENT chez un couple à écart d'âge.
+
+D'où un accumulateur mensuel dédié (`ferrWithdrawalMois`) et un `withdrawalREER − ferrWithdrawalMois`
+au seul site du partage. **Un montant, deux registres, deux règles.**
+
+**La règle** : avant d'ajouter un montant à un registre, **grep TOUS ses consommateurs** et se
+demander pour chacun s'il attend ce terme. Un registre partagé par un producteur d'affichage et un
+répartiteur per-conjoint n'a pas une seule sémantique. Parent de `PARTAGER-LE-MONTANT-PAS-SES-REFLETS`
+(là c'était la part appliquée au mauvais objet ; ici c'est le terme versé au mauvais consommateur).
+
+**La preuve exigible** : goldens COMPLETS (tous les champs × tous les mois) capturés avant, comparés
+champ à champ après, sur plusieurs écarts d'âge dans le couple. Ici : **un seul champ change,
+`NetTransferREER`, sur 27 points ; `reerByUserFinal`, soldes, impôts et patrimoine bit-identiques.**
+Un diff de goldens qui ne montre QUE le champ visé est ce qui distingue « j'ai publié un flux » de
+« j'ai changé le plan financier sans m'en rendre compte ».
+
+### `UN-INVARIANT-QUI-NE-TROUVE-RIEN-DOIT-PROUVER-QU-IL-POURRAIT` — perturber, pas raisonner
+
+`[ENG-MC-CONSERVATION-BLIND]` a étendu l'invariant de bilan à toute la branche stochastique (divorce,
+décès du conjoint, LTD, maladie grave, LTC, perte d'emploi, héritage, bootstrap), jusque-là hors de
+portée de TOUTES les gardes parce que l'API publique appelle toujours `runScenario(..., false, ...)`.
+Résultat : **20 365 points, pire écart 0,02 $, aucun défaut**. Un « tout est vert » sur une garde
+neuve est le résultat le plus suspect qui soit — il ressemble exactement à une garde vide.
+
+Deux preuves ont été produites, dans cet ordre :
+1. **couverture assertée, pas supposée** — chaque chemin stochastique est COMPTÉ avec un plancher
+   (divorce ≥ 20 runs sur 60, perte d'emploi ≥ 25, maladie grave ≥ 12, héritage ≥ 12, LTD ≥ 6,
+   LTC ≥ 3, décès du conjoint ≥ 1). Une gate d'âge déplacée ou une probabilité remise à zéro fait
+   ÉCHOUER la suite au lieu de la vider en silence ;
+2. **perturbation** — publier `CELI × 0,999` dans `monthlyOutput` fait ÉCHOUER la garde à 6 892 $.
+   C'est la classe MONEY-PHANTOM, celle qu'INV-9 doit voir.
+
+⚠️ Et la perturbation a AUSSI délimité ce que la garde ne peut PAS voir : `reer *= keep × 0,999` dans
+le partage de divorce **passe**, et c'est correct — `NetWorth` est DÉRIVÉ des mêmes soldes, les deux
+côtés bougent ensemble. Un invariant de bilan juge la **cohérence**, jamais le **montant**. Écrire
+cette limite dans le fichier de test vaut mieux que de laisser croire la garde plus forte qu'elle
+n'est (famille `GARDE-CIRCULAIRE`).
+
+⚠️ **Le verrou d'observabilité comptait autant que le hook de test** : `__runScenarioForTests` seul ne
+suffisait pas, car sous MC `buildMonthlyDataPoint` réduit le point à `{ NetWorth, monthIndex }` —
+aucune ventilation d'actifs à reconstruire. Il fallait AUSSI `diagnostics.verboseMonthlyPoints`.
+Quand un chemin est « invérifiable », chercher s'il l'est par nature ou seulement par une
+OPTIMISATION d'affichage qu'un drapeau de diagnostic existant sait déjà désarmer.

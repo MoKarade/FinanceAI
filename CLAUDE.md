@@ -175,6 +175,9 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   `dailyLedger` : un solde reclassé en flux laissait les deux invariants verts).
   Même famille : un jeton qui prouve À LA FOIS le problème et le correctif rend la garde AUTO-SATISFAITE.
 - Élargir l'assiette d'un calcul → auditer TOUS les dérivés qui partagent cette base.
+- Corriger « le producteur X a oublié le registre Y » → **énumérer TOUS les producteurs** par grep sur
+  le registre, pas seulement celui du ticket. `realEstateMonth.ts` a cumulé 4 défauts money-critical
+  parce que 4 passes de correction l'ont sauté (`MODULE-ECRIT-HORS-CHECKLIST`).
 - Un registre per-conjoint qui devient pilote doit gérer **décès/divorce** (la conservation ne l'attrape pas).
 - ⚠️ La **conservation ne voit pas un impôt jamais facturé** : un flux non prélevé est parfaitement
   conservatif (94 600 $ éludés mesurés, `moneyConservation` 20/20 VERT). Un invariant de FLUX ne

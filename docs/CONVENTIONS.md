@@ -3486,3 +3486,32 @@ indexée « un flux moteur alimente PLUSIEURS registres » — le meltdown REER 
 même classe. Ici, le producteur a alimenté le registre de **retenue** (`taxCurrentYearReer`, que
 décembre CRÉDITE) sans alimenter le registre d'**assiette** (`accRetraitsReerYear`, que décembre
 DÉBITE) : le crédit sans la dette. Un registre n'a de sens qu'avec sa contrepartie.
+
+### `MODULE-ECRIT-HORS-CHECKLIST` — quatre défauts money-critical dans un seul fichier
+
+`services/projection/realEstateMonth.ts` a récolté **quatre findings indépendants** au checkup du
+2026-08-19, trouvés par **deux agents qui ne communiquaient pas** :
+
+1. le retrait REER n'alimente pas l'ASSIETTE fiscale (`accRetraitsReerYear`) — 94 600 $ éludés ;
+2. il n'alimente pas non plus le registre d'AFFICHAGE (`retraitReerMois`) — 355 639 $ publiés
+   comme « 0 $ retiré », avec 85 107 $ d'impôt affiché juste en face ;
+3. le plafond RAP est calculé sur `activeUsersCount` (toujours 2) au lieu de `taxFilers` — un
+   divorcé reçoit le plafond d'un couple, 38 081 $ de retrait non imposable illégitime ;
+4. l'impôt du retrait est un taux marginal PLAT au lieu d'incrémental — 22 110 $ sous-estimés.
+
+**Ce que ça dit.** Ce ne sont pas quatre inattentions : c'est **une seule** — le module a été écrit
+sans passer la checklist « quels registres ce producteur doit-il alimenter, et lesquels a-t-il
+oubliés ? ». Les trois premiers défauts sont littéralement la règle déjà indexée (« un flux moteur
+alimente PLUSIEURS registres ») et le piège déjà indexé (« un paramètre HOMONYME à deux niveaux »),
+appliqués au même bloc de code. Les corrections de 2026-07-31 (meltdown REER) et celles du divorce
+(`taxJanuary`, `taxDecember`, meltdown, `latentTax`) ont balayé les autres producteurs — **et sauté
+celui-ci**.
+
+**Deux règles pratiques.**
+- Quand on corrige une classe de bug « le producteur X a oublié le registre Y », **énumérer TOUS les
+  producteurs** par grep sur le registre, pas seulement ceux du ticket. Ici `retraitReerMois` a
+  quatre producteurs corrects (`projection.ts:1328, 1581, 1665, 1746`) et un cinquième absent :
+  l'écart se voyait d'un `grep`.
+- Un module qui accumule des findings de plusieurs agents indépendants se traite **en UN lot**, pas
+  ticket par ticket : quatre PR sur le même bloc de code, c'est trois rebases et trois occasions de
+  se contredire.

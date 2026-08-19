@@ -788,6 +788,117 @@
   `accRetraitsReerYearByUser`) au revenu imposable de la branche active, la retenue du bucket
   `.reer` restant créditée **une seule** fois. [MESURÉ, mécanisme reconfirmé par Claude]
 
+### 🔴 Moteur — invariants et registres (agent `projection-validator`, tout MESURÉ)
+
+> ⚠️ **Point chaud : `services/projection/realEstateMonth.ts` cumule QUATRE défauts money-critical
+> indépendants**, trouvés par deux agents qui ne se parlaient pas — assiette fiscale absente,
+> registre d'affichage absent, plafond RAP de couple accordé à un célibataire, taux marginal plat
+> sur un retrait à six chiffres. Le module d'achat immobilier a visiblement été écrit sans passer la
+> checklist « quels registres ce producteur doit-il alimenter ? ». **À traiter en UN lot**, pas
+> ticket par ticket.
+
+- [ ] **`[REER-RETRAIT-IMMO-REGISTRE]`** (S, ÉLEVÉ) — le retrait REER qui finance l'achat (RAP +
+  retrait imposable) alimente le SOLDE (`reer`), le FISCAL (`taxCurrentYearReer`) et
+  `NetTransferREER`, mais **pas le registre d'AFFICHAGE `retraitReerMois`** : `RealEstateState`
+  déclare `retraitCeliMois` (`realEstateMonth.ts:59`, alimenté l:228) et **aucun** `retraitReerMois`,
+  alors que les 4 autres producteurs REER l'alimentent tous (`projection.ts:1328` FERR, `:1581`
+  drawdown, `:1665` cashflow, `:1746` meltdown) — vérifié par Claude. Classe MELTDOWN-REER exacte.
+  **Mesuré : 355 639 $ sortis du REER (120 000 $ RAP + 235 639 $ imposable) publiés comme
+  `RetraitREER = 0 $`, avec `ImpotRetraitREER = 85 107 $` affiché juste en face** — le modal montre
+  85 k$ d'impôt sur un décaissement de zéro. Correctif : ajouter `retraitReerMois` au
+  `RealEstateState`, l'incrémenter aux 2 sites, le remonter comme `retraitCeliMois`
+  (`projection.ts:1423`). [MESURÉ]
+- [ ] **`[RAP-DIVORCE-DEUX-TETES]`** (XS, ÉLEVÉ) — `processRealEstate` reçoit `activeUsersCount`
+  (nominal, toujours 2) au lieu de `taxFilers` (1 après divorce/décès) :
+  `rapLimit = RAP_LIMIT_PER_USER * activeUsersCount` (`realEstateMonth.ts:201`, câblage
+  `projection.ts:1387-1390` — vérifié par Claude) accorde le **plafond RAP d'un COUPLE à une
+  personne seule**. C'est le même homonyme déjà corrigé dans `taxJanuary`, `taxDecember`, le meltdown
+  et `latentTax` — ce site-là a été oublié. **Mesuré : RAP de 98 080,68 $ après un divorce 50 %
+  (plafond légal 1 personne = 60 000 $) → 38 080,68 $ de retrait REER non imposable illégitime**,
+  plus l'obligation de remboursement correspondante ; témoin sans divorce non vacueux. Correctif :
+  passer `taxFilers`. À creuser dans le même lot : `rapBorrowed`/`rapRepaymentDueTotal` ne sont pas
+  partagés par le splitter de divorce (`projection.ts:758-830`) — [HYPOTHÈSE, non mesuré]. [MESURÉ]
+- [ ] **`[CELIAPP-DOUBLE-RECHARGE]`** (S, ÉLEVÉ) — l'espace CELIAPP a **deux producteurs qui
+  s'ignorent** : décembre écrase `fhsaRoom = FHSA_ANNUAL_LIMIT_PER_USER * taxFilers`
+  (`projection.ts:1190`), puis janvier calcule son report
+  `allowedCarryForward = min(annuel, fhsaRoomCurrent)` **sur cette valeur déjà écrasée**
+  (`taxJanuary.ts:164-167`) → le report est **toujours maximal**, quelle que soit l'utilisation
+  réelle. Chaîne vérifiée par Claude. **Mesuré** : dents de scie de `CELIAPPMax` (32 000 $ →
+  16 000 $ au m23 → 32 000 $ au m24, chaque année) ; sur un couple qui cotise vraiment, **22 535 $
+  cotisés en an 1 pour un maximum légal de 16 000 $, 54 666 $ cumulés fin an 2 pour 32 000 $ légal,
+  et le plafond à vie de 80 000 $ atteint en 3 ans au lieu de 5**. Correctif : supprimer l'écriture
+  de décembre (janvier est la source unique) et faire porter le report sur l'espace RÉELLEMENT
+  inutilisé. [MESURÉ]
+- [ ] **`[EMPILEMENT-REER-ACHAT-IMMO]`** (S, MOYEN) — la Phase 4 du financement d'achat applique un
+  taux marginal **PLAT** à un retrait REER de plusieurs centaines de k$
+  (`realEstateMonth.ts:246-256` : `getMarginalRate(...)` puis `drawn * margRate`), au lieu de l'impôt
+  incrémental `tax(rev+x) − tax(rev)`. **Mesuré : retrait 235 639 $ → impôt moteur 85 107 $ (36,12 %
+  plat) contre 107 217 $ en incrémental, soit 22 110 $ sous-estimés sur un seul mois.** Correctif :
+  le différentiel de `calculateFiscalReport`, comme le fait déjà la cascade de `cashflowAllocation`.
+  ⚠️ Recoupe `[REER-IMMO-HORS-ASSIETTE]` : même bloc de code, défauts distincts. [MESURÉ]
+- [ ] **`[MC-BANDES-CROISEES]`** (M, MOYEN) — `runMonteCarlo` classe les **trajectoires entières** par
+  patrimoine FINAL puis publie `sorted[10%]/[50%]/[90%]` comme un cône P10/P50/P90
+  (`services/projection/monteCarlo.ts:117-121`). Ce ne sont donc **pas** des percentiles mensuels :
+  à un mois donné la borne basse peut passer au-dessus de la médiane. **Mesuré (30 ans, 200
+  itérations) : P10 > P50 sur 60 mois / 361 (17 %), P50 > P90 sur 11 mois, pire croisement
+  32 808 $ au m57** ; non-vacuité vérifiée (361/361 points à P10 ≠ 0). **Aucun test ne le couvre** —
+  `tests/services/monteCarlo.test.ts:64` assied le tri par NW final avec un mock à NW constant, donc
+  le croisement y est **impossible par construction**. Correctif : soit calculer le percentile PAR
+  MOIS, soit renommer/documenter la série comme « trajectoire du run au décile terminal » ; dans les
+  deux cas ajouter la garde `P10 ≤ P50 ≤ P90` mois par mois. [MESURÉ]
+- [ ] **`[BUDGET-SENSIBILITE-FORMULE-5PCT]`** (XS, MOYEN) — **violation du non-négociable « Future =
+  source unique »** : la tuile « Sensibilité » recalcule localement un patrimoine long terme avec une
+  valeur future de rente à **5 % en dur** (`components/Budget.tsx:633-637`, affiché l:700 et l:945),
+  alors que le moteur répond exactement à la même question. **Mesuré (horizon 30,08 ans) : la formule
+  locale donne +80 149 $ ; le moteur re-simulé à −100 $/mois de dépenses donne +144 272 $ sur le NW
+  final (écart −64 123 $, ratio 0,56×) et +69 526 $ sur `estateNetWorth`** — soit 10 623 $ d'écart
+  avec la tuile voisine, qui affiche justement `estateNetWorth`. Correctif : dériver d'un run moteur
+  (`savingsMultiplier` existe déjà, cf. `tests/services/projection.savingsLever.test.ts`) ou retirer
+  la tuile. [MESURÉ]
+- [ ] **`[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`** (S, MOYEN) — au JOUR,
+  `NetWorth ≠ Σactifs − DettesNonImmo` en intra-mois : `NetWorth` reçoit les deltas datés et étale
+  son résidu **uniformément**, tandis que `DettesNonImmo`/`DetteTotale` étalent le leur en cadence
+  **hebdomadaire** et que `Liquidites` reçoit en plus `ctx.debt`
+  (`services/projection/dailyLedger.ts:572-595`, `:586-590`). **Mesuré : 0,01–0,02 $ sans immobilier
+  (5 scénarios), mais −1 408,37 $ avec hypothèque + prêt auto (0,28 % du NW), en dents de scie les
+  jeudis** ; l'identité se referme au dernier jour du mois. Effet visible : les aires empilées et la
+  ligne NetWorth ne se recomposent pas. Correctif : dériver la série quotidienne `NetWorth` de la
+  somme des séries de composants au lieu de l'interpoler indépendamment. [MESURÉ]
+- [ ] **`[GARDE-JOUR-ANTICIRCULAIRE-ETROITE]`** (S, MOYEN) — les deux invariants de raccord
+  (`tests/services/dailyLedger.test.ts:132` et `:146`) **lisent `FIELD_KIND` pour choisir quoi
+  vérifier** → circulaires (déjà documenté). La garde non circulaire (`:160`, « ordre de grandeur »)
+  ne couvre que **5 champs sur ~30 stocks** (`Liquidites, CELI, REER, NonReg, NetWorth`) et **un seul
+  jour** (14 févr. 2026). Ne sont protégés ni par le ratio ni par la liste explicite : `DetteTotale`,
+  `DettesNonImmo`, `LiquidDebt`, `CELIMax`/`REERMax`/`CELIAPPMax`, `rapBalance`, `AccruedTax*`,
+  `realNetWorth`, `reeeContribCum`/`GrantsCum`, `FireTarget`/`CoastFIRE`/`BaristaFIRE`. Écart 0 $
+  aujourd'hui, **mais un reclassement stock→flux de `DetteTotale` passerait les trois tests**.
+  Correctif : étendre le test de ratio à TOUS les stocks non nuls, sur tous les mois de la fenêtre.
+  [MESURÉ — vacuité de couverture, pas un écart $]
+- [ ] **`[REVENUS-NON-VENTILES-AFFICHAGE]`** (S, MOYEN) — `Income` inclut le revenu locatif, les
+  prestations pour enfants et les paiements REEE, mais la ventilation montrée à l'utilisateur ne
+  liste que `IncomeMarc / IncomeAnna / IncomeRetirement / (RetraitREER+RetraitCELI)` —
+  `components/projection/FutureDetailModal.tsx:439-445`, `components/projection/ProjectionTooltip.tsx:230-232`.
+  **Mesuré : `Income − (IncomeMarc+IncomeAnna+IncomeRetirement)` = 5 299,30 $/mois** (scénario
+  locatif, m480) et **659,22 $/mois** (scénario 1 enfant) ; 0,01 $ sur le socle. Correctif : ajouter
+  les lignes manquantes — le moteur émet déjà les champs, donc les CONSOMMER et surtout **ne pas
+  additionner** (cf. `utils/chartDataSumGuard.ts`). [MESURÉ]
+- [ ] **`[DOC-CELIAPP-REPORT-PERIMEE]`** (XS, FAIBLE) — `docs/FISCAL_REFERENCE.md:431` affirme que
+  « le REPORT de droits n'est PAS modélisé » alors que `taxJanuary.ts:164-167` implémente bel et bien
+  un `allowedCarryForward` et publie 16 000 $/personne/an. La note dit explicitement « ne pas
+  corriger le clamp sans modéliser le report entier » : **elle protège aujourd'hui un bug au lieu
+  d'un choix**. Correctif : réécrire après le fix `[CELIAPP-DOUBLE-RECHARGE]`. [MESURÉ]
+- [ ] **`[CONSTANTES-MOTEUR-NON-SOURCEES]`** (XS, FAIBLE) — trois constantes financières en dur dans
+  des champs **publiés** : taux HELOC Smith 5 %/an (`realEstateMonth.ts:378`), croissance 5 % du
+  `CoastFIRE` (`monthlyOutput.ts:170` — **indépendante de `projection.returnRate`**), revenu barista
+  1 500 $/mois et facteur 25× (`monthlyOutput.ts:172`). Correctif : sourcer dans
+  `FISCAL_REFERENCE.md` ou paramétrer. [HYPOTHÈSE pour l'écart $, MESURÉ pour l'absence de source]
+- [ ] **`[NW-PRESENT-DEUX-PERIMETRES]`** (XS, FAIBLE) — le patrimoine net PRÉSENT existe en deux
+  périmètres : `computePresentNetWorth` (`services/portfolio.ts:207`, **hors** immobilier) et une
+  recomposition locale `netWorth + realEstateEquity` avec son propre `presentEquityOfGoal`
+  (`components/FutureKpiStrip.tsx:84-97`). L'écart vaut l'équité immobilière entière selon la surface
+  consultée ; documenté comme parité voulue avec l'ex-Accueil. Correctif : exposer un
+  `computePresentNetWorthWithRealEstate` unique. [MESURÉ par lecture]
+
 ### 🔴 Valeurs fiscales sans source (viole le non-négociable `FISCAL_REFERENCE.md`)
 
 - [ ] **`[RQAP-CAP-98K]`** (XS, ÉLEVÉ) — plafond de revenu assurable RQAP écrit **en dur à 98 000 $**
@@ -1176,6 +1287,21 @@
 - **Divisions et arrondis** : `activeUsersCount` forcé ≥ 1, gardes `!(total > 0)` sur chaque quotient,
   `Number.isFinite` en entrée de toutes les fonctions fiscales. Les `toFixed(2)` ne touchent que les
   séries de SORTIE, jamais les soldes internes — pas d'accumulation d'erreur.
+- **Conservation, mesurée en DOLLARS sur 12 scénarios** (socle, dettes, enfants+REEE, achat de
+  résidence, locatif+vente, voyages, héritage, rénovation, véhicule cyclique, krach, retraité,
+  divorce MC), 30 à 60 ans : forme-BILAN `NetWorth == Σactifs − DettesNonImmo` **max 0,02 $** ;
+  forme-FLUX **max 0,02 $/mois, Σ 0,41 $ sur 481 mois**. Hypothèque jamais double-comptée
+  (`min(DetteTotale − DettesNonImmo) = 0,00 $`). Per-conjoint REER : **0,00 $**.
+  `totalTaxesPaid == Σ FluxImpots` : **0,00–0,01 $**. `Savings` au jour `== Income − Expenses` sur
+  1 795 jours : **0,00 $**.
+- **Divorce sous Monte Carlo** (split 50 %, 25 ans) : bilan max 0,02 $, et les espaces
+  CELI/REER/CELIAPP suivent bien `taxFilers` (CELIAPPMax 32 000 → 16 000).
+- **Source unique du patrimoine net** : grep exhaustif → 5 appelants de `computeRawNetWorth`,
+  **0 copie locale de la formule**, `realEstateEquity` jamais re-soustrait.
+- **Grand livre quotidien** : mesuré SANS consulter `FIELD_KIND` (donc non circulaire) sur 60 mois ×
+  tous champs → **0 champ ne raccordant ni en stock ni en flux**, 0 champ moteur absent de la table.
+  (La COUVERTURE de la garde reste étroite, cf. `[GARDE-JOUR-ANTICIRCULAIRE-ETROITE]`.)
+- **Robustesse NaN/Infinity** : INV-8 vert, aucun NaN propagé sur les 12 scénarios.
 - **Retenue REER** : créditée exactement UNE fois (décembre soustrait, avril débite) — pas de double
   comptage. C'est l'absence de la contrepartie (l'assiette) qui pose problème, pas la retenue.
 - **Moteur** : `services/projection*` n'importe **jamais** le store ni `components/` — le cœur

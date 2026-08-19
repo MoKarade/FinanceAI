@@ -30,6 +30,16 @@
 > ASSIETTES — ne jamais lire « conservation verte » comme « le fiscal est bon »
 > (`CONSERVATION-NE-VOIT-PAS-L-IMPOT-ELUDE`, nouvelle entrée CONVENTIONS).
 >
+> ⚠️ **Point chaud à traiter en UN lot : `services/projection/realEstateMonth.ts`** cumule QUATRE
+> défauts money-critical indépendants, trouvés par deux agents qui ne se parlaient pas — assiette
+> fiscale absente, registre d'affichage `retraitReerMois` absent (355 639 $ publiés comme « 0 $
+> retiré » avec 85 107 $ d'impôt affiché en face), plafond RAP de COUPLE accordé à un divorcé
+> (38 081 $ illégitimes), et taux marginal PLAT sur un retrait à six chiffres (22 110 $ sous-estimés).
+> Ce n'est pas quatre inattentions mais une seule : trois passes de correction (meltdown 2026-07-31,
+> divorce) ont balayé les autres producteurs et **sauté celui-ci**. Corriger une classe « le
+> producteur X a oublié le registre Y » = **grep TOUS les producteurs**, pas seulement celui du
+> ticket (`MODULE-ECRIT-HORS-CHECKLIST`).
+>
 > Aussi : `[CASH-NAN-SILENT]` (le cash de DÉPART de la projection coerce sans `logError`, alors que
 > le patron `HARDEN-*-NAN` est 65 lignes plus haut), `[A11Y-DELETE-SPAN-NO-KEYBOARD]`,
 > `[RQAP-CAP-98K]` (plafond 2025 figé, 2 750 $/an de prestation manquante).

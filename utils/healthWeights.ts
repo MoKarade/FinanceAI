@@ -37,7 +37,13 @@ export function normalizeHealthWeights(partial: Partial<HealthWeights> | null | 
     // quelque chose a écrit une valeur invalide. Retomber sur le défaut SANS TRACE fait qu'un poids
     // revenu à sa valeur d'usine paraît inexpliqué — l'utilisateur voit son réglage « oublié » et
     // n'a rien à quoi le rattacher. On trace donc ce cas-là, et lui seul.
-    const corrompus = cles.filter((k) => k in p && !(typeof p[k] === 'number' && Number.isFinite(p[k])));
+    // ⚠️ `k in p` seul classerait `{ savingsRate: undefined }` comme PRÉSENT (l'opérateur `in` teste
+    // la clé, pas la valeur) — or un `undefined` explicite, que `Partial<HealthWeights>` autorise,
+    // est conceptuellement un champ ABSENT. Latent aujourd'hui (aucun appelant n'en produit, et
+    // JSON n'a pas d'`undefined`), mais la fonction est exportée et pure : la clause coûte un `&&`.
+    const corrompus = cles.filter(
+        (k) => k in p && p[k] !== undefined && !(typeof p[k] === 'number' && Number.isFinite(p[k])),
+    );
     if (corrompus.length > 0) {
         // Agrégé en UN seul appel (throttle par signature de champs) : six champs corrompus ne
         // doivent pas produire six lignes de diagnostic.

@@ -21,6 +21,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - **Un vieux parseur d'import supprimé** : il jetait silencieusement les lignes mal formées d'un
   relevé. Plus personne ne l'appelait — le vrai import compte et affiche honnêtement les lignes
   ignorées. Le laisser aurait été un piège à recopier.
+- **Suggestion de prix, suite (trouvé en revue)** : quand la recherche échouait pour une panne
+  réseau, l'app disait « aucun cours trouvé » — une affirmation FAUSSE sur le titre, alors que le
+  vrai problème était ta connexion. Les deux cas sont maintenant distingués pour de bon.
+- **Et la notice ne traîne plus** : un « aucun cours trouvé » posé sur une date restait affiché
+  après une seconde tentative RÉUSSIE sur une autre date, contredisant le prix qui venait
+  d'apparaître.
+- **Validation de ticker** : son échec est tracé lui aussi (il ne l'était que dans la console).
+- **Fermeture de la bannière d'installation** : si l'app n'arrivait pas à mémoriser ton refus, la
+  bannière revenait au chargement suivant sans que rien ne l'explique. C'est tracé.
 
 ---
 

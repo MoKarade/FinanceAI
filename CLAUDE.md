@@ -1,7 +1,7 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 471 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 475 tests** Vitest
 (403 fichiers de test, mesuré le 2026-08-19). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -321,6 +321,17 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   ⚠️ Et avant d'écrire un utilitaire de scan, **grep le CONCEPT, pas le symbole** : le dépôt avait
   déjà SIX décommenteurs, aucun exporté, dont deux portant en commentaire la leçon exacte que je
   venais de repayer — l'un ayant même choisi le même nom de helper (`GUARD-STRIPCOMMENTS-DUPLIQUE`).
+  ⚠️ Et une garde d'ABSENCE contredit MÉCANIQUEMENT une bonne doc (la meilleure façon d'expliquer un
+  motif interdit est de l'écrire) : choisir le lecteur par la NATURE de l'assertion — source
+  DÉCOMMENTÉE pour un `not.toMatch`, source BRUTE pour une présence qui vise un commentaire. Et
+  l'anti-vacuité du décommentage se déplace avec la portée : par fichier elle est fausse dès qu'un
+  alias est à 88 % de prose, à l'échelle d'un dépôt elle est AGRÉGÉE (`codeTotal/brutTotal > 0.5`).
+- ⚠️ **Copier un patron de gestion d'erreur copie son CONTRAT** : `getQuote` LÈVE, `getHistory`
+  retourne `null` (et sa façade interdit en toutes lettres d'aplatir `null` en `[]`) — le même
+  `try/catch` donne un correctif juste pour l'une et **décoratif** pour l'autre, jamais atteint, qui
+  affiche « aucun cours trouvé » sur une panne réseau. Avant de réutiliser un patron voisin, trancher :
+  la fonction LÈVE-t-elle, ou encode-t-elle l'erreur dans son retour ? Si elle l'encode, `!x` fusionne
+  le code d'erreur avec le vide légitime (`PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`).
 - Avant de tracer un **repli silencieux**, classer les chemins qui l'atteignent *attendu* / *anormal* :
   un champ ABSENT est la rétrocompat voulue (silence LÉGITIME), un champ PRÉSENT mais non fini est une
   corruption (trace). Journaliser les deux crie sur le cas nominal à chaque chargement et noie le

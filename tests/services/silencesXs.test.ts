@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, globSync } from 'node:fs';
 import { join } from 'node:path';
 import { normalizeHealthWeights, DEFAULT_HEALTH_WEIGHTS } from '../../utils/healthWeights';
 import * as errorLogger from '../../services/errorLogger';
@@ -16,6 +16,29 @@ import * as errorLogger from '../../services/errorLogger';
  */
 
 afterEach(() => vi.restoreAllMocks());
+
+/**
+ * Retire les commentaires (`//` et bloc) d'une source avant de la scanner.
+ *
+ * ⚠️ TROIS fois dans cette seule PR mon motif a matché de la PROSE au lieu du code :
+ * `parseBankCsv.ts` EXPLIQUE en en-tête le parseur qu'il remplace (deux fois), et
+ * `AddStockForm.tsx` CITE dans un commentaire l'expression fautive `!history || history.length === 0`
+ * pour expliquer pourquoi elle est fautive. Resserrer le motif ne règle jamais rien : un
+ * commentaire peut contenir n'importe quelle forme syntaxique, c'est précisément son rôle de citer
+ * du code. Le correctif est en AMONT — décommenter, puis garder le motif simple
+ * (`SCAN-QUI-MATCHE-LA-PROSE`).
+ *
+ * ⚠️ Le `[^:]` évite de décapiter `https://…`. Ce décommentage est approximatif par construction
+ * (une chaîne contenant `//` sera coupée) — acceptable parce qu'il ne peut que SUPPRIMER du texte,
+ * donc AFFAIBLIR la garde, jamais fabriquer un faux positif. C'est pourquoi chaque scan qui l'emploie
+ * pose son anti-vacuité.
+ *
+ * ⚠️ Septième copie de ce helper dans le dépôt, et elles ne se comportent pas toutes pareil.
+ * Source unique tracée : `[GUARD-STRIPCOMMENTS-DUPLIQUE]`.
+ */
+const sansCommentaires = (src: string): string =>
+    src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
+
 
 describe('[SILENT-HEALTHWEIGHTS-FIELD] un poids corrompu laisse une trace, un poids absent non', () => {
     // Le seul des cinq qui se teste au CONTRAT (fonction pure exportée) plutôt que par scan.
@@ -65,6 +88,15 @@ describe('[SILENT-*] les erreurs avalées laissent désormais une trace (scan de
         return src;
     };
 
+    /** Source SANS ses commentaires — pour toute assertion d'ABSENCE (`not.toMatch`), qu'un
+     *  commentaire citant le motif fautif rendrait rouge à tort. Les assertions de PRÉSENCE qui
+     *  visent un commentaire (une leçon citée sur place) lisent `lire`, pas `lireCode`. */
+    const lireCode = (rel: string): string => {
+        const code = sansCommentaires(lire(rel));
+        expect(code.length, `${rel} : le décommentage a tout supprimé`).toBeGreaterThan(300);
+        return code;
+    };
+
     it('[SILENT-STOCKFORM-PRICEHINT] la suggestion de prix trace ET informe l’utilisateur', () => {
         const src = lire('components/investments/AddStockForm.tsx');
         expect(src).toContain('suggestHistoricalPrice');            // on lit bien le bon chemin
@@ -75,6 +107,34 @@ describe('[SILENT-*] les erreurs avalées laissent désormais une trace (scan de
         expect(src).toMatch(/setNotice\(`Aucun cours trouvé/);
     });
 
+    it('[SILENT-STOCKFORM-PRICEHINT] `null` (erreur) et `[]` (vide) ne sont PAS confondus', () => {
+        // ⚠️ Le défaut que cette garde verrouille est celui que mon premier correctif AVAIT :
+        // `if (!history || history.length === 0)` aplatit `null` dans `[]`. Or le contrat de
+        // `getHistory` (façade `services/marketData/index.ts`) dit l'inverse — `[]` = vide VALIDE,
+        // `null` = ERREUR — et INTERDIT explicitement l'aplatissement. Conséquence : la panne
+        // réseau s'affichait « aucun cours trouvé », c'est-à-dire une affirmation FAUSSE sur le
+        // titre, et le `catch` prévu pour ça ne se déclenchait jamais.
+        const code = lireCode('components/investments/AddStockForm.tsx');
+        expect(code, 'null est de nouveau aplati dans le cas « vide »')
+            .not.toMatch(/if \(!history \|\| history\.length === 0\)/);
+        expect(code, 'le cas ERREUR (null) doit être testé pour lui-même')
+            .toMatch(/if \(history === null\) \{/);
+        expect(code, 'le cas VIDE doit rester distinct et SANS logError')
+            .toMatch(/if \(history\.length === 0\) \{/);
+        // Le contrat des deux sœurs est cité sur place — assertion de PRÉSENCE dans un COMMENTAIRE,
+        // donc sur la source BRUTE. C'est le seul cas où lire la prose est voulu.
+        expect(lire('components/investments/AddStockForm.tsx'))
+            .toContain('PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR');
+    });
+
+    it('[SILENT-STOCKFORM-PRICEHINT] une nouvelle tentative efface la notice précédente', () => {
+        // Sans ça : « Aucun cours trouvé » posé sur une date sans séance SURVIT à une seconde
+        // tentative RÉUSSIE sur une autre date — le message contredit alors le prix affiché.
+        const src = lire('components/investments/AddStockForm.tsx');
+        expect(src, 'suggestHistoricalPrice ne repart plus d’un état de notice propre')
+            .toMatch(/setIsSuggestingPrice\(true\);[\s\S]{0,260}?setNotice\(null\);/);
+    });
+
     it('[SILENT-PWA-PROMPT] l’échec du prompt d’installation est journalisé en info', () => {
         const src = lire('hooks/usePwaInstallPrompt.ts');
         expect(src).toContain("severity: 'info'");
@@ -82,10 +142,40 @@ describe('[SILENT-*] les erreurs avalées laissent désormais une trace (scan de
         expect(src).not.toMatch(/catch \(err\) \{\s*console\.warn\('\[PWA\] prompt failed/);
     });
 
+    it('[VOISIN] `validateSymbol` trace aussi — le patron ne s’arrête pas au ticket', () => {
+        // ⚠️ `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`. Trouvé par revue : à 60 lignes du correctif de
+        // suggestion de prix, le `catch` de `validateSymbol` faisait `console.error` SEUL. Visible
+        // dans la console du navigateur, mais absent de l'écran Système : ni exportable, ni compté
+        // dans les stats 24 h. Une garde qui manque là où le voisin immédiat en a une est un signal
+        // BIEN plus fort qu'une absence isolée — le risque était connu, traité une fois, sauté ici.
+        const src = lire('components/investments/AddStockForm.tsx');
+        expect(lireCode('components/investments/AddStockForm.tsx'),
+            'le catch de validateSymbol est revenu au console.error seul')
+            .not.toMatch(/console\.error\('\[AddStockForm\] validate failed/);
+        expect(src).toMatch(/message: 'Validation de ticker ÉCHOUÉE/);
+    });
+
+    it('[VOISIN] l’écriture du refus PWA trace, la LECTURE reste muette', () => {
+        // Le discriminant est l'ASYMÉTRIE, pas la présence d'un log :
+        // `isRecentlyDismissed` (LECTURE) doit rester silencieux — une clé absente est le chemin
+        // nominal. `memoriserRefus` (ÉCRITURE) doit tracer — l'utilisateur a cliqué « fermer », il
+        // croit la bannière congédiée, et elle revient sans explication.
+        const src = lire('hooks/usePwaInstallPrompt.ts');
+        expect(src, 'un catch d’écriture localStorage est redevenu muet').not.toContain('/* quota */');
+        expect(src).toContain('function memoriserRefus');
+        expect(src).toMatch(/message: 'Refus de l’invite PWA non mémorisé/);
+        // Les deux sites d'écriture passent par le helper — aucun `setItem` nu ne subsiste.
+        const setItemsNus = src.match(/localStorage\.setItem\(DISMISSED_KEY/g) ?? [];
+        expect(setItemsNus, 'le refus doit s’écrire par `memoriserRefus`, une seule fois')
+            .toHaveLength(1);
+        // Et la lecture, elle, garde son `catch` NU : le tracer crierait à chaque chargement.
+        expect(src).toMatch(/const raw = localStorage\.getItem\(DISMISSED_KEY\);[\s\S]{0,220}?\} catch \{\n\s*return false;/);
+    });
+
     it('[SYSVIEW-DBSIZE-ZERO] la taille indisponible rend « — », jamais « 0 KB »', () => {
         const src = lire('components/SystemView.tsx');
         // Le discriminant : le `catch` ne fabrique plus une valeur crédible.
-        expect(src, 'un échec de sérialisation redevient un « 0 KB » crédible')
+        expect(sansCommentaires(src), 'un échec de sérialisation redevient un « 0 KB » crédible')
             .not.toMatch(/catch \{ return 0; \}/);
         expect(src).toMatch(/catch \{ return null; \}/);
         expect(src).toContain("dbSize === null ? '—'");
@@ -108,31 +198,45 @@ describe('[DEAD-PARSETX-SILENT-DROP] le parseur orphelin est parti, ses voisins 
         expect(typeof mod.isInternalTransferLabel).toBe('function');
     });
 
-    /**
-     * Retire les commentaires (`//` et `/* … *\/`) avant de scanner.
-     *
-     * ⚠️ Deux fois de suite mon motif a matché de la PROSE, pas du code : `parseBankCsv.ts`
-     * MENTIONNE le vieux parseur dans son en-tête pour expliquer pourquoi il existe — et c'est
-     * utile, l'interdire reviendrait à effacer l'historique du choix. Un `\bparseTransactions\b`
-     * nu échouait dessus ; le resserrer en `\bparseTransactions\s*\(` aussi, parce que la prose
-     * écrit « parseTransactions (TAB/`;` … ». Resserrer le motif ne règle pas le problème de
-     * FOND : un scan qui lit les commentaires les prendra toujours pour du code. On retire donc la
-     * prose une bonne fois, et le motif redevient simple.
-     */
-    const sansCommentaires = (src: string): string =>
-        src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
-    it('aucun appelant de production ne l’IMPORTE ni ne l’APPELLE', () => {
-        for (const rel of ['App.tsx', 'services/import/parseBankCsv.ts']) {
-            const brut = readFileSync(join(__dirname, '../..', rel), 'utf-8');
-            expect(brut.length).toBeGreaterThan(500);
+    it('aucun fichier de production du DÉPÔT ne l’IMPORTE ni ne l’APPELLE', () => {
+        // ⚠️ Relevé en revue : scanner deux fichiers EN DUR ne prouve rien sur le dépôt. Une
+        // réintroduction dans un fichier NEUF (un composant d'import, un script) passerait sous la
+        // garde — et c'est le scénario le plus probable, puisque la fonction supprimée était un
+        // parseur « pratique » qu'on est tenté de recopier. On balaie donc par glob.
+        const racine = join(__dirname, '../..');
+        const fichiers = globSync('{App,index,constants,types}.{ts,tsx}', { cwd: racine })
+            .concat(globSync('{components,services,hooks,utils,store,mcp,scripts}/**/*.{ts,tsx}', { cwd: racine }));
+
+        // Anti-vacuité du GLOB lui-même : un motif qui ne matche rien rendrait le test vert pour la
+        // pire des raisons. On exige le dépôt réel, et la présence des deux fichiers historiquement
+        // concernés (ceux que la version précédente de cette garde citait en dur).
+        expect(fichiers.length, 'le glob ne balaie rien — garde désarmée').toBeGreaterThan(200);
+        expect(fichiers).toContain('App.tsx');
+        expect(fichiers).toContain('services/import/parseBankCsv.ts');
+
+        // ⚠️ L'anti-vacuité du décommentage est AGRÉGÉE, pas par fichier. Une règle par fichier
+        // (« il reste au moins un quart de la source ») est FAUSSE à l'échelle d'un dépôt :
+        // `services/tax.ts` est un alias de 289 octets dont 4 lignes sur 5 sont un commentaire —
+        // légitimement 88 % de prose. Mesuré : la règle par fichier le déclarait « tout supprimé ».
+        // Un DÉPÔT, lui, ne peut pas être majoritairement composé de commentaires : c'est ça qu'on
+        // asserte, plus la survie de jetons de code CONNUS.
+        let brutTotal = 0;
+        let codeTotal = 0;
+        let avecMarkDuplicates = 0;
+        for (const rel of fichiers) {
+            const brut = readFileSync(join(racine, rel), 'utf-8');
             const code = sansCommentaires(brut);
-            // Anti-vacuité du décommentage : il ne doit pas avoir mangé le fichier entier.
-            expect(code.length, `${rel} : le retrait des commentaires a tout supprimé`)
-                .toBeGreaterThan(brut.length / 4);
-            expect(code).toContain('markDuplicates');   // du VRAI code a survécu
-            expect(code, `${rel} référence encore parseTransactions dans du CODE`)
+            brutTotal += brut.length;
+            codeTotal += code.length;
+            if (code.includes('markDuplicates')) avecMarkDuplicates++;
+            expect(code, `${rel} référence parseTransactions dans du CODE`)
                 .not.toMatch(/\bparseTransactions\b/);
         }
+        expect(codeTotal / brutTotal, 'le décommenteur a mangé le dépôt — garde vacueuse')
+            .toBeGreaterThan(0.5);
+        // Et du VRAI code a survécu, sur les deux sites attendus (`App.tsx`, `parseBankCsv.ts`).
+        expect(avecMarkDuplicates, 'markDuplicates a disparu — le décommenteur mange du code')
+            .toBeGreaterThanOrEqual(2);
     });
 });

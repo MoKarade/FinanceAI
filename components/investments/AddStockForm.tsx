@@ -131,7 +131,16 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
             setBuyPrice(quote.price.toString()); // par défaut = prix actuel
             return 'ok';
         } catch (e) {
-            console.error('[AddStockForm] validate failed:', e);
+            // [SILENT-STOCKFORM-PRICEHINT] Même patron que l'échec de suggestion 60 lignes plus bas :
+            // `console.error` seul est visible dans la console du navigateur, jamais dans les
+            // diagnostics de l'écran Système (ni exportable, ni compté dans les stats 24 h).
+            // `logError` route DÉJÀ vers `console.error` pour cette sévérité — on ne perd rien.
+            logError({
+                source: 'network', severity: 'error',
+                message: 'Validation de ticker ÉCHOUÉE (getQuote)',
+                error: e instanceof Error ? e : new Error(String(e)),
+                context: { symbole: sym },
+            });
             setError("Erreur lors de la validation. Vérifie ta connexion et la clé Finnhub.");
             return 'error';
         } finally {
@@ -162,6 +171,9 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
     const suggestHistoricalPrice = async () => {
         if (!validatedSymbol || !dateBought) return;
         setIsSuggestingPrice(true);
+        // Une nouvelle tentative repart d'un état propre : sans ça, un « Aucun cours trouvé » d'un
+        // essai précédent survit à un essai RÉUSSI sur une autre date, et contredit le prix affiché.
+        setNotice(null);
         try {
             const date = new Date(dateBought);
             const from = new Date(date);
@@ -169,32 +181,48 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
             const to = new Date(date);
             to.setDate(to.getDate() + 3);
             const history = await getHistory(validatedSymbol, from, to);
-            // [SILENT-STOCKFORM-PRICEHINT] Un historique VIDE n'est pas une erreur (titre trop récent,
-            // fenêtre sans séance) — mais ce n'est pas non plus « rien à dire ». Sans ce message,
-            // l'utilisateur voit le spinner s'arrêter et le champ rester vide : il ne peut pas
-            // distinguer « pas de cours à cette date » de « l'app n'a rien fait ».
-            if (!history || history.length === 0) {
-                setNotice(`Aucun cours trouvé pour « ${validatedSymbol} » autour du ${dateBought}. Entre le prix d'achat à la main.`);
-            }
-            if (history && history.length > 0) {
-                // Trouve le point le plus proche
-                const targetTime = date.getTime();
-                const closest = history.reduce((best, p) => {
-                    const diff = Math.abs(new Date(p.date).getTime() - targetTime);
-                    return diff < Math.abs(new Date(best.date).getTime() - targetTime) ? p : best;
+
+            // ⚠️ [SILENT-STOCKFORM-PRICEHINT] `getHistory` ne LÈVE PAS sur panne réseau : son contrat
+            // (documenté dans `services/marketData/index.ts`) distingue `[]` = vide VALIDE de
+            // `null` = ERREUR, et la façade INTERDIT explicitement d'aplatir l'un dans l'autre.
+            // Un `if (!history || history.length === 0)` fait exactement cet aplatissement chez le
+            // consommateur : la panne réseau s'affiche « aucun cours trouvé » (donc « ce titre n'a
+            // pas de cours »), et le `catch` ci-dessous ne sert plus à rien.
+            // ⚠️ C'est le patron de `validateSymbol` qui induit en erreur : `getQuote`, lui, LÈVE
+            // (`[QUOTE-ERRKIND]`). Deux fonctions sœurs, deux contrats d'erreur OPPOSÉS
+            // (`PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`).
+            if (history === null) {
+                logError({
+                    source: 'network', severity: 'warning',
+                    message: 'Suggestion de prix historique ÉCHOUÉE (getHistory → null) — champ laissé vide',
+                    context: { symbol: validatedSymbol, dateBought },
                 });
-                setBuyPrice(closest.close.toString());
+                setNotice(`Impossible de récupérer le cours du ${dateBought}. Vérifie ta connexion, ou entre le prix à la main.`);
+                return;
             }
+
+            // Vide VALIDE : titre trop récent, fenêtre sans séance. Pas une erreur — donc pas de
+            // `logError` — mais pas « rien à dire » non plus : sans message, l'utilisateur voit le
+            // spinner s'arrêter et le champ rester vide.
+            if (history.length === 0) {
+                setNotice(`Aucun cours trouvé pour « ${validatedSymbol} » autour du ${dateBought}. Entre le prix d'achat à la main.`);
+                return;
+            }
+
+            // Point le plus proche de la date visée.
+            const targetTime = date.getTime();
+            const closest = history.reduce((best, p) => {
+                const diff = Math.abs(new Date(p.date).getTime() - targetTime);
+                return diff < Math.abs(new Date(best.date).getTime() - targetTime) ? p : best;
+            });
+            setBuyPrice(closest.close.toString());
         } catch (e) {
-            // [SILENT-STOCKFORM-PRICEHINT] Avant : `console.warn` seul — aucune trace dans les
-            // diagnostics, aucun message à l'écran. Le spinner s'arrêtait, le champ restait vide, et
-            // l'utilisateur n'avait AUCUN moyen de savoir si l'app avait échoué ou simplement rien
-            // trouvé. `validateSymbol`, dans CE MÊME fichier, distingue proprement les deux cas :
-            // on réutilise son patron plutôt que d'en inventer un
-            // (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`).
+            // Chemin RÉSIDUEL : `getHistory` avale ses propres erreurs réseau (voir plus haut), donc
+            // ce `catch` n'attrape qu'un échec exceptionnel (cache IDB, bug interne). Il reste — un
+            // contrat peut changer — mais ce n'est PAS lui qui couvre la panne réseau.
             logError({
                 source: 'network', severity: 'warning',
-                message: 'Suggestion de prix historique ÉCHOUÉE (getHistory) — champ laissé vide',
+                message: 'Suggestion de prix historique — exception inattendue (getHistory a levé)',
                 error: e instanceof Error ? e : new Error(String(e)),
                 context: { symbol: validatedSymbol, dateBought },
             });

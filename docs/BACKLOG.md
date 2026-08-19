@@ -885,13 +885,21 @@
 
 ### 🔴 No-fake-data — la garde de `formatCAD` annulée sur place
 
-- [ ] **`[FORMATCAD-OR-ZERO]`** (S, MOYEN) — **10 sites** font `formatCAD(Number(v) || 0)` : le `|| 0`
+- [ ] **`[FORMATCAD-OR-ZERO]`** (S, MOYEN) — **16 sites** font `formatCAD(… || 0)` : le `|| 0`
   **annule la garde no-fake-data de `formatCAD`** (qui rend « — » sur non-fini) et transforme une
-  donnée absente en « 0 $ » crédible. `components/Retirement.tsx:188,206` ·
-  `components/Budget.tsx:589,613` · `components/DebtManager.tsx:96` · `components/Investments.tsx:143` ·
-  `components/investments/DividendPanel.tsx:79` · `components/LifeEvents.tsx:148` ·
-  `components/realestate/RealEstateWorkspace.tsx:342` · `components/realestate/MultiPropertyComparison.tsx:75`.
-  Correctif : passer la valeur brute à `formatCAD`, qui gère déjà `unknown`. [MESURÉ]
+  donnée absente en « 0 $ » crédible. Correctif : passer la valeur brute à `formatCAD`, qui gère
+  déjà `unknown`.
+  ⚠️ **Périmètre RE-MESURÉ le 2026-08-19** — l'ancien libellé annonçait « 10 sites » et n'en listait
+  que 9, à des lignes qui ont bougé depuis. Le vrai compte est **16**, dont **7 que l'ancienne liste
+  ne voyait pas** : cinq `formatCAD(data.X || 0)` (`Retirement.tsx:466,470,476,482,487` — motif
+  `data.X`, pas `Number(v)`), `AddStockForm.tsx:447` (`parseFloat(buyPrice) || 0`) et
+  `DividendPanel.tsx:198` (`val || 0`, dans un `formatter` Recharts — donc invisible aux tests qui
+  mockent Recharts, cf. revue #608). **Ne PAS repartir de la liste, repartir du scan** : le motif
+  utile n'est pas `Number(v) || 0` mais `formatCAD(<n'importe quoi> || 0)`, parenthèses imbriquées
+  comprises (`grep -oE "formatCAD\((\([^()]*\)|[^()])*\|\| ?0\)"`). Sites : `Budget.tsx:589,613` ·
+  `RealEstateWorkspace.tsx:342` · `MultiPropertyComparison.tsx:75` · `Retirement.tsx:206,466,470,476,482,487` ·
+  `DebtManager.tsx:112` · `Investments.tsx:143` · `AddStockForm.tsx:447` · `DividendPanel.tsx:79,198` ·
+  `LifeEvents.tsx:148`. Classe `DOC-METRIQUE-RECOPIEE` : un périmètre listé EN DUR se périme, un scan non. [MESURÉ]
 
 ### 🔴 Devises et unités
 

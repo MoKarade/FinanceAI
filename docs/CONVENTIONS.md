@@ -4237,3 +4237,77 @@ l'assertion `not.toHaveBeenCalled()` sur le champ absent est ce qui empêche la 
 Corollaire d'agrégation : six champs corrompus ne doivent pas donner six lignes. Un seul appel,
 throttlé par la SIGNATURE des champs concernés (`health-weights-corrompus:savingsRate,debtRatio`),
 avec l'inventaire en contexte.
+
+### `PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR` — deux fonctions sœurs, deux contrats opposés
+
+Dans `[SILENT-STOCKFORM-PRICEHINT]`, j'ai instrumenté l'échec de `suggestHistoricalPrice` en
+**réutilisant le patron de `validateSymbol`**, dans le même fichier, à soixante lignes de là. J'ai
+même écrit le nom de la leçon dans le commentaire — `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` — comme
+justification. Le patron était le bon. Le CONTRAT ne l'était pas.
+
+| | fonction appelée | sur erreur réseau |
+|---|---|---|
+| `validateSymbol` | `getQuote` | **lève** (`[QUOTE-ERRKIND]` : *« une ERREUR se PROPAGE (throw) »*) |
+| `suggestHistoricalPrice` | `getHistory` | **retourne `null`** (`[]` = vide VALIDE, `null` = erreur) |
+
+Mon code faisait `if (!history || history.length === 0)` → message *« Aucun cours trouvé »*. Donc :
+
+- la panne réseau affichait une affirmation **FAUSSE sur le titre** (« ce titre n'a pas de cours à
+  cette date ») au lieu de « vérifie ta connexion » — exactement l'inverse de ce que le ticket
+  demandait ;
+- et le `catch` que je venais d'écrire pour tracer la panne **n'était jamais atteint**, parce que
+  `getHistory` avale ses propres erreurs.
+
+Le plus cinglant : la façade `services/marketData/index.ts` **interdit explicitement** cet
+aplatissement, en toutes lettres et avec sa date de décision — *« ⚠️ Ne PAS aplatir null en [] ici
+(panel 2026-07-22) »*. La règle existait, elle était écrite au bon endroit, et je l'ai enfreinte
+**chez le consommateur** — là où le commentaire de la façade ne se lit pas.
+
+**La règle** : copier un patron de gestion d'erreur oblige à re-vérifier le **contrat d'erreur de la
+fonction appelée**, pas seulement la forme du `try/catch`. Deux fonctions du même module, aux noms
+symétriques, peuvent avoir des contrats opposés — et c'est le cas ici *par conception*, chacun
+documenté sur place. Un `try/catch` autour d'une fonction qui ne lève pas est un correctif
+**décoratif** : vert au typecheck, vert au lint, vert aux tests, et inerte en production. C'est
+`CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD` par un autre chemin.
+
+**Le tri à faire, une fois par appel** : la fonction lève-t-elle, ou encode-t-elle l'erreur dans sa
+valeur de retour ? Si elle l'encode, `!x` est un piège — il fusionne le code d'erreur avec la valeur
+vide légitime. Tester `x === null` d'abord, `x.length === 0` ensuite, et ne journaliser que le
+premier.
+
+⚠️ **Trouvé par revue automatique, sur du non-money-critical.** Le taux de faux positifs des bots est
+élevé sur le fiscal ; il ne l'est pas partout. Le critère reste le même : **coût de vérification
+faible ⇒ vérifier avant de classer**. Ici, deux `sed` dans les providers ont tranché en une minute.
+
+### `SCAN-QUI-MATCHE-LA-PROSE`, troisième fois — dans le commit qui le documente
+
+Post-scriptum au piège du même nom, et il vaut mieux que la leçon initiale.
+
+Après avoir écrit `SCAN-QUI-MATCHE-LA-PROSE`, écrit la ligne d'index dans `CLAUDE.md`, et ouvert
+`[GUARD-STRIPCOMMENTS-DUPLIQUE]`, j'ai ajouté une garde interdisant le retour de l'expression
+fautive `!history || history.length === 0` — et elle est partie **rouge immédiatement**. Cause :
+mon propre commentaire, trois lignes au-dessus du correctif, **cite l'expression** pour expliquer
+pourquoi elle est fautive.
+
+Trois occurrences dans une seule PR, dont une dans le commit qui documente le piège. Ce n'est plus
+de la malchance, c'est structurel : **une garde d'ABSENCE et une bonne documentation se contredisent
+mécaniquement**, parce que la meilleure façon d'expliquer un motif interdit est de l'écrire.
+
+D'où la forme finale, qui est le vrai livrable de cette leçon — **deux lecteurs, choisis par nature
+d'assertion** :
+
+- `lireCode(f)` (source décommentée) pour toute assertion d'**ABSENCE** (`not.toMatch`) ;
+- `lire(f)` (source brute) pour une assertion de **PRÉSENCE** qui vise justement un commentaire —
+  par exemple vérifier qu'une leçon est citée sur place.
+
+Choisir le lecteur par la NATURE de l'assertion, et non fichier par fichier, supprime la classe
+entière. Tant que le choix reste au jugé, il se refait à chaque nouvelle assertion, et se rate.
+
+⚠️ **Et l'anti-vacuité du décommentage se déplace avec la portée du scan.** Passée de deux fichiers
+en dur à un glob du dépôt (la garde ne voyait pas une réintroduction dans un fichier NEUF), ma règle
+« il reste au moins un quart de la source » est devenue FAUSSE : `services/tax.ts` est un alias de
+289 octets dont quatre lignes sur cinq sont un commentaire — légitimement 88 % de prose, et la garde
+le déclarait « tout supprimé ». À l'échelle d'un dépôt, l'anti-vacuité juste est **agrégée** — un
+dépôt ne peut pas être majoritairement composé de commentaires (`codeTotal / brutTotal > 0.5`) —
+plus la survie de jetons de code CONNUS. Une règle par fichier suppose une homogénéité qui n'existe
+pas.

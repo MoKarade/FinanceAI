@@ -41,6 +41,32 @@
 > sont appelées par `App.tsx` et `services/import/parseBankCsv.ts`, et un test le verrouille (le vrai
 > risque d'une suppression est d'emporter un voisin vivant).
 >
+> ⚠️⚠️ **Le panel a trouvé un défaut que mon propre correctif avait INTRODUIT** — et c'est le plus
+> instructif du lot. J'ai instrumenté `suggestHistoricalPrice` en réutilisant le patron de
+> `validateSymbol`, 60 lignes plus haut dans le même fichier, en citant `PATRON-APPLIQUE-A-COTE`
+> comme justification. Le patron était bon, le **CONTRAT** ne l'était pas : `getQuote` LÈVE,
+> `getHistory` retourne `null` (et sa façade INTERDIT en toutes lettres, avec la date du panel, de
+> l'aplatir en `[]`). Mon `if (!history || history.length === 0)` faisait exactement cet
+> aplatissement — la panne réseau affichait « aucun cours trouvé », affirmation FAUSSE sur le titre,
+> et le `catch` écrit pour la tracer n'était **jamais atteint**
+> (`PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`).
+>
+> ⚠️ **`SCAN-QUI-MATCHE-LA-PROSE`, TROISIÈME fois — dans le commit qui le documente.** La garde
+> interdisant le retour du motif fautif est partie rouge sur mon propre commentaire, qui CITE le
+> motif pour expliquer pourquoi il est fautif. Ce n'est pas de la malchance : une garde d'ABSENCE et
+> une bonne doc se contredisent mécaniquement. Forme finale = **deux lecteurs choisis par NATURE
+> d'assertion** — `lireCode` (décommenté) pour un `not.toMatch`, `lire` (brut) pour une présence qui
+> vise un commentaire.
+>
+> ⚠️ Et l'anti-vacuité du décommentage se déplace avec la PORTÉE : le scan est passé de 2 fichiers en
+> dur à un glob du dépôt (il ne voyait pas une réintroduction dans un fichier NEUF — prouvé par
+> perturbation), et ma règle « il reste un quart de la source » est devenue fausse sur
+> `services/tax.ts`, alias de 289 octets à 88 % de commentaire. Anti-vacuité désormais **agrégée**.
+>
+> **Aussi corrigés, tous trouvés en revue** : `validateSymbol` traçait en `console.error` seul ; les
+> deux écritures `localStorage` du refus PWA étaient muettes (la LECTURE, elle, reste muette
+> exprès) ; `k in p` classait un `undefined` explicite comme corrompu (latent).
+>
 > **SUITE** : vague 1f — `[FISC-GUARD-SCOPE]` EN PREMIER (élargir le cliquet révèle le vrai
 > périmètre), puis `[RQAP-CAP-98K]`, `[W5-PROXY-NON-SOURCE]`, `[ESTATE-NPV-07]`, `[MIGRATE-GROSS-135]`.
 > Ensuite vague 2 (devises / unités).

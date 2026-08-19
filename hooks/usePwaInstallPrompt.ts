@@ -56,6 +56,28 @@ function isRecentlyDismissed(): boolean {
     }
 }
 
+/**
+ * Mémorise le refus de l'invite d'installation.
+ *
+ * ⚠️ Asymétrie DÉLIBÉRÉE avec `isRecentlyDismissed` ci-dessus, qui lui reste MUET : une LECTURE qui
+ * échoue (clé absente, `localStorage` indisponible en navigation privée) est le chemin nominal — le
+ * repli « pas récemment refusé » est la bonne réponse, et la tracer crierait à chaque chargement.
+ * Une ÉCRITURE qui échoue est autre chose : l'utilisateur a cliqué « fermer », il croit la bannière
+ * congédiée, et elle revient au prochain chargement sans que rien n'explique pourquoi
+ * (`REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION`).
+ */
+function memoriserRefus(): void {
+    try {
+        localStorage.setItem(DISMISSED_KEY, String(Date.now()));
+    } catch (e) {
+        logError({
+            source: 'storage', severity: 'info',
+            message: 'Refus de l’invite PWA non mémorisé (écriture localStorage refusée) — la bannière reviendra',
+            error: e instanceof Error ? e : new Error(String(e)),
+        });
+    }
+}
+
 export function usePwaInstallPrompt(): PwaInstallState {
     const [deferredEvent, setDeferredEvent] = useState<BeforeInstallPromptEvent | null>(null);
     const [installed, setInstalled] = useState<boolean>(() => isStandalone());
@@ -85,7 +107,7 @@ export function usePwaInstallPrompt(): PwaInstallState {
             const { outcome } = await deferredEvent.userChoice;
             setDeferredEvent(null);
             if (outcome === 'dismissed') {
-                try { localStorage.setItem(DISMISSED_KEY, String(Date.now())); } catch { /* quota */ }
+                memoriserRefus();
                 setDismissed(true);
             }
             return outcome;
@@ -104,7 +126,7 @@ export function usePwaInstallPrompt(): PwaInstallState {
     }, [deferredEvent]);
 
     const dismissForNow = useCallback(() => {
-        try { localStorage.setItem(DISMISSED_KEY, String(Date.now())); } catch { /* quota */ }
+        memoriserRefus();
         setDismissed(true);
     }, []);
 

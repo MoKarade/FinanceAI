@@ -42,7 +42,8 @@
   `[FISC-DIV-DERIVED-BASES]`, `[ENG-GK-THRESHOLD-KNIFE]`, `[ENG-TTP-UNSETTLED-PROPAGATE]`,
   `[RAMQ-ACTIF-HORS-RETRAITS]`, puis `[DOC-CELIAPP-REPORT-PERIMEE]`) — même fichier, même risque de
   re-baser des goldens : 6 PR séparées se re-baseraient l'une l'autre.
-  **1c** Monte Carlo (`[MC-BANDES-CROISEES]`, `[ENG-MC-CONSERVATION-BLIND]`, `[ENG-INV-FLUXFORM-COVERAGE]`).
+  **1c** ✅ *partiel* — `[MC-BANDES-CROISEES]` livré 2026-08-19. RESTE : `[ENG-MC-CONSERVATION-BLIND]`,
+  `[ENG-INV-FLUXFORM-COVERAGE]` (extensions de COUVERTURE, pas des correctifs — lot séparé).
   **1d** Registres oubliés (`[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`, `[ENG-LIQUIDDEBT-NEVER-REPAID]`,
   `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`, `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`,
   `[REVENUS-NON-VENTILES-AFFICHAGE]`, `[NW-PRESENT-DEUX-PERIMETRES]`) — même CLASSE, un seul panel.
@@ -804,16 +805,6 @@
 > checklist « quels registres ce producteur doit-il alimenter ? ». **À traiter en UN lot**, pas
 > ticket par ticket.
 
-- [ ] **`[MC-BANDES-CROISEES]`** (M, MOYEN — unifie `[ENG-MC-BANDS-ORDER]`, même mécanisme) — `runMonteCarlo` classe les **trajectoires entières** par
-  patrimoine FINAL puis publie `sorted[10%]/[50%]/[90%]` comme un cône P10/P50/P90
-  (`services/projection/monteCarlo.ts:117-121`). Ce ne sont donc **pas** des percentiles mensuels :
-  à un mois donné la borne basse peut passer au-dessus de la médiane. **Mesuré (30 ans, 200
-  itérations) : P10 > P50 sur 60 mois / 361 (17 %), P50 > P90 sur 11 mois, pire croisement
-  32 808 $ au m57** ; non-vacuité vérifiée (361/361 points à P10 ≠ 0). **Aucun test ne le couvre** —
-  `tests/services/monteCarlo.test.ts:64` assied le tri par NW final avec un mock à NW constant, donc
-  le croisement y est **impossible par construction**. Correctif : soit calculer le percentile PAR
-  MOIS, soit renommer/documenter la série comme « trajectoire du run au décile terminal » ; dans les
-  deux cas ajouter la garde `P10 ≤ P50 ≤ P90` mois par mois. [MESURÉ]
 - [ ] **`[BUDGET-SENSIBILITE-FORMULE-5PCT]`** (XS, MOYEN) — **violation du non-négociable « Future =
   source unique »** : la tuile « Sensibilité » recalcule localement un patrimoine long terme avec une
   valeur future de rente à **5 % en dur** (`components/Budget.tsx:633-637`, affiché l:700 et l:945),

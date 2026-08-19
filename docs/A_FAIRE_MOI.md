@@ -481,3 +481,45 @@ inventer un modèle est pire que ne rien faire.
 
 **Ce dont j'ai besoin** : garde partagée 50/50 ? Enfants à ta charge ? À celle de l'ex ? Et
 faut-il un champ de garde dans le profil, ou un pourcentage global suffit-il ?
+
+---
+
+## 2026-08-19 — Supprimer 7 branches distantes (je n'ai PAS la permission git)
+
+**Ce que j'ai fait moi-même** : les 6 branches LOCALES périmées sont supprimées, `main` et
+`claude/progress-check-yua8yy` remis sur `origin/main`.
+
+**Ce qui bloque** : `git push origin --delete <branche>` renvoie **HTTP 403** depuis mon
+conteneur (le proxy git n'autorise que les pushs de mise à jour), et le serveur MCP GitHub
+n'expose aucun `delete_ref`. Je ne peux donc pas les supprimer, même en tag d'archive.
+
+**À supprimer sans risque** — j'ai vérifié fichier par fichier que 100 % de leur contenu est
+présent sur `main` (tests, composants et code de chacune) :
+
+- [ ] `claude/children-reee-garde` (PR #643, livrée par #644)
+- [ ] `claude/eng-divorce-coherent` (PR #613, remplacée par #616)
+- [ ] `claude/futur-aria-et-fintable` (PR #642, livrée par #644)
+- [ ] `claude/futur-detail-jour-et-marchands` (livrée par #645)
+- [ ] `claude/impot-latent-debut` (PR #640, livrée par #641)
+- [ ] `claude/pdf-mode-discret` (PR #639, livrée par #641)
+
+**À décider — une seule contient du travail JAMAIS mergé** :
+
+- [ ] `claude/jolly-davinci-PQpC1` — historique **orphelin** (aucune base commune avec `main`,
+  vestige d'une vieille session distante). Son seul commit non livré est `538ae4d`
+  `[HIST-NW-DEBT-DISCLAIMER]` (2026-07-07) : un bandeau sous le graphe Futur annonçant que
+  « le patrimoine passé est affiché **hors dettes** ».
+  ⚠️ **Ce bandeau serait FAUX aujourd'hui** : `docs/decisions.md` (Décision 2, 2026-08-17)
+  verrouille que la dette du passé reste **figée au niveau actuel**, donc le passé MONTRE bien
+  la dette — c'est même ce qu'a établi la PR #628 par mesure. L'afficher mentirait à l'écran.
+  Ma reco : **supprimer** cette branche comme les autres. Je ne l'ai pas fait moi-même parce que
+  je ne peux pas non plus pousser un tag d'archive (même 403) — donc pas de filet en cas d'erreur
+  de ma part. Si tu préfères garder le filet : le commit reste accessible par son SHA `538ae4d`.
+
+Commande, si tu veux tout faire d'un coup depuis ton PC :
+
+```bash
+git push origin --delete claude/children-reee-garde claude/eng-divorce-coherent \
+  claude/futur-aria-et-fintable claude/futur-detail-jour-et-marchands \
+  claude/impot-latent-debut claude/pdf-mode-discret claude/jolly-davinci-PQpC1
+```

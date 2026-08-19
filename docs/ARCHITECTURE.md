@@ -13,16 +13,16 @@
 | Couche | Technologie | Notes |
 |---|---|---|
 | UI | React 19 + TypeScript (strict) | `noImplicitAny`, `strictNullChecks`, `useUnknownInCatchVariables` |
-| Bundler | Vite 6 | esbuild en dev, Rollup pour le bundle prod, source-maps activées |
+| Bundler | Vite 8 (Rolldown) | esbuild en dev, Rollup pour le bundle prod, source-maps activées |
 | Styling | Tailwind CSS + index.css | Design tokens custom (couleurs sémantiques, scale typo) |
 | State | Zustand 5 + `persist` middleware | Schema versionné (v1 → v7), migrations en code |
-| Charts | Recharts 2 | Bundle dédié `recharts-*.js` (~445 KB) |
+| Charts | Recharts 3 | Bundle dédié `recharts-*.js`, lazy-chargé |
 | IA | `@anthropic-ai/sdk` (client-side) | `dangerouslyAllowBrowser: true` |
 | Storage sécurisé | AES-256-GCM IndexedDB | services/secureKeyStore.ts (clé device non-extractible) |
 | Import données | CSV universel + Finnhub + CoinGecko | parseBankCsv.ts (100% local) |
 | Crypto pricing | CoinGecko REST | Gratuit, sans clé, CORS-friendly |
 | Stock/ETF pricing | Finnhub REST | Clé gratuite optionnelle |
-| Tests | Vitest + React Testing Library | 3 887 tests, 339 fichiers (mesuré 2026-08-12) |
+| Tests | Vitest + React Testing Library | compte à jour dans `CLAUDE.md` (source unique) |
 | Auth | Cloudflare Access | Google OAuth, session 24h |
 | Hébergement | Vercel (auto) + GitHub Pages (workflow) | Preview par PR |
 
@@ -48,8 +48,8 @@ FinanceAI/
 │   ├── settings/            BackupPanel, ImportBankStatement
 │   └── retirement/          AssetLocationCard, GoalSeekerCard
 ├── services/                Logique métier pure (testable, sans React)
-│   ├── projection.ts        Orchestrateur (~1310 lignes)
-│   ├── projection/          48 sous-modules (split Phase 3, mesuré 2026-08-12)
+│   ├── projection.ts        Orchestrateur (2 228 lignes, mesuré 2026-08-19)
+│   ├── projection/          50 sous-modules (split Phase 3, mesuré 2026-08-19)
 │   ├── projection.worker.ts Worker MC
 │   ├── claude.ts            Wrapper Anthropic SDK
 │   ├── secureKeyStore.ts    AES-256-GCM + IndexedDB (clé device)
@@ -294,7 +294,9 @@ tests/
     └── useFinanceStore.test.ts
 ```
 
-**~1440 tests verts** (123 fichiers) au 2026-06. Tous les scénarios MC, les helpers de projection, les primitives UI, les migrations de store, la fiscalité (dont `taxDecember`/`taxJanuary`) et le moteur de sync Drive sont couverts.
+**Compte de tests : voir `CLAUDE.md`** — source unique, re-mesurée à chaque push. Ne pas le
+recopier ici : ce document a porté trois chiffres contradictoires (1 440 / 3 887 / 339 fichiers)
+avant le nettoyage du 2026-08-19. Tous les scénarios MC, les helpers de projection, les primitives UI, les migrations de store, la fiscalité (dont `taxDecember`/`taxJanuary`) et le moteur de sync Drive sont couverts.
 
 ---
 
@@ -302,7 +304,7 @@ tests/
 
 - **ADR-001** : Migration Gemini → Claude Anthropic
 - **ADR-002** : ~~Era Context comme moteur de qualité~~ — SUPERSEDED (era est MCP-only, REST API inexistante)
-- **ADR-003** : Projection.ts split en 48 sous-modules (mesuré 2026-08-12)
+- **ADR-003** : Projection.ts split en 50 sous-modules (mesuré 2026-08-19)
 - **ADR-004** : Design system primitives custom (vs shadcn/Radix)
 - **ADR-005** : Future = source unique pour les calculs projetés
 - **ADR-006** : Convention « valeurs réelles ou rien » (no-fake-data)
@@ -318,7 +320,7 @@ tests/
 npm install
 npm run dev        # localhost:3000
 npm run typecheck  # tsc --noEmit, doit rester clean
-npm test           # vitest, doit rester vert (~1440 tests)
+npm test           # vitest, doit rester vert (compte dans CLAUDE.md)
 npm run build      # vérifie le bundle prod (vite build --mode production)
 ```
 

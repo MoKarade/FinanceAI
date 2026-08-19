@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 262 tests** Vitest
-(384 fichiers de test, mesuré le 2026-08-17). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 368 tests** Vitest
+(391 fichiers de test, mesuré le 2026-08-19). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -122,7 +122,7 @@ i18next · jspdf. Prod : **Vercel**.
 
 Structure **PLATE** (pas de `src/`) : racine `App.tsx`, `index.tsx`, `constants.ts`, `types.ts`,
 `i18n.ts` ; dossiers `components/ hooks/ services/ store/ utils/ locales/ mcp/ e2e/ tests/
-scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (41 sous-modules).
+scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (50 sous-modules).
 
 ⚠️ Hoister un import au niveau App tire ses deps dans le bundle de BOOT → lazy-charger
 (`lazyWithRetry` + Suspense) tout composant/service app-level qui importe du lourd.
@@ -175,7 +175,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   `dailyLedger` : un solde reclassé en flux laissait les deux invariants verts).
   Même famille : un jeton qui prouve À LA FOIS le problème et le correctif rend la garde AUTO-SATISFAITE.
 - Élargir l'assiette d'un calcul → auditer TOUS les dérivés qui partagent cette base.
+- Corriger « le producteur X a oublié le registre Y » → **énumérer TOUS les producteurs** par grep sur
+  le registre, pas seulement celui du ticket. `realEstateMonth.ts` a cumulé 4 défauts money-critical
+  parce que 4 passes de correction l'ont sauté (`MODULE-ECRIT-HORS-CHECKLIST`).
 - Un registre per-conjoint qui devient pilote doit gérer **décès/divorce** (la conservation ne l'attrape pas).
+- ⚠️ La **conservation ne voit pas un impôt jamais facturé** : un flux non prélevé est parfaitement
+  conservatif (94 600 $ éludés mesurés, `moneyConservation` 20/20 VERT). Un invariant de FLUX ne
+  détecte pas une erreur d'ASSIETTE — il faut recalculer la base imposable indépendamment. Et un
+  producteur qui alimente le registre de RETENUE sans celui d'ASSIETTE pose un crédit sans dette
+  (`CONSERVATION-NE-VOIT-PAS-L-IMPOT-ELUDE`).
 - **Partager le MONTANT, jamais ses reflets** : appliquer une part au RÉSULTAT d'un producteur oblige
   à se souvenir de TOUS ses registres — deux oubliés = 75 957 $ d'écart mesuré
   (`PARTAGER-LE-MONTANT-PAS-SES-REFLETS`).
@@ -265,6 +273,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   mode test nourrit les surfaces en synthétique.
 - Un audit externe/UX headless a un fort taux de faux positifs sur le money-critical — mais
   garder le claim faux comme note de **perception**.
+- Avant de lancer un agent sur « l'état du code », **prouver l'état du code** (`git fetch` + comparer
+  à `origin/main`) : un revert de conteneur fait auditer une version morte, et le rapport reste
+  PLAUSIBLE — vrais `fichier:ligne`, vraies mesures, mauvaise version (`AUDIT-SUR-TREE-PERIME`).
+- Un finding juste peut porter un **correctif invalide** : lire le contexte SYNTAXIQUE (le parent),
+  pas la ligne citée — « en faire un `<button>` » sur un span imbriqué dans un `<button>` produit du
+  HTML invalide (`FINDING-JUSTE-CORRECTIF-INVALIDE`).
+- Une **métrique recopiée** dans plusieurs docs diverge (41/48/50 sous-modules, deux comptes de tests
+  contradictoires dans un MÊME fichier). Ne pas corriger les N copies : en désigner UNE comme source
+  et faire pointer les autres (`DOC-METRIQUE-RECOPIEE`).
 
 ## Agents & automatisation
 

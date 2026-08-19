@@ -4,6 +4,59 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-19 (suite 94) — checkup de santé demandé par Marc : 9 agents
+> Branche `claude/audit-sante`. Marc a demandé « gros checkup de santé (finance, code, sécu,
+> interface), supprime les branches inutiles, mets à jour le backlog et toute la doc ».
+>
+> ⚠️ **À LIRE EN PREMIER SI TU REPRENDS : le conteneur avait été restauré à l'état du 2026-08-13.**
+> Le tree local était sur une vieille branche, **13 000 lignes en retard sur `main`** — j'ai lancé
+> six agents dessus avant de m'en rendre compte, donc ils auditaient du code qui n'existe plus. Je
+> les ai tués et tout relancé après `git checkout -B <branche> origin/main`. **Vérifie l'état du
+> tree AVANT de juger quoi que ce soit** (`git fetch` + comparer à `origin/main`), c'est la 3ᵉ fois
+> que ce revert de conteneur coûte du travail cette semaine.
+>
+> **Trouvé de plus grave — deux CRITIQUES fiscaux, au BACKLOG, non corrigés dans cette passe** :
+> `[REER-IMMO-HORS-ASSIETTE]` (**94 600 $ d'impôt éludé** mesuré) — le retrait REER qui finance un
+> achat immobilier pose une « retenue » dans `taxCurrentYearReer` que décembre CRÉDITE, sans jamais
+> alimenter `accRetraitsReerYear` que décembre DÉBITE : un crédit sans sa dette. J'ai reconfirmé que
+> `accRetraitsReerYear` n'a qu'UN producteur dans tout le moteur (`cashflowAllocation.ts:206`).
+> `[REER-ACTIF-NON-RECONCILIE]` (jusqu'à 20 177 $) — en phase ACTIVE, décembre ne met que le salaire
+> dans l'assiette. C'est le bug corrigé côté RETRAITÉ en juin 2026 ; le commentaire de cette
+> correction (`taxDecember.ts:452-470`) décrit le symptôme mot pour mot. Le miroir côté actif n'a
+> jamais été fait.
+>
+> ⚠️⚠️ **`moneyConservation` est VERT 20/20 avec les deux bugs en place.** Un impôt jamais prélevé
+> est parfaitement conservatif. Notre invariant le plus fort ne couvre QUE les flux, pas les
+> ASSIETTES — ne jamais lire « conservation verte » comme « le fiscal est bon »
+> (`CONSERVATION-NE-VOIT-PAS-L-IMPOT-ELUDE`, nouvelle entrée CONVENTIONS).
+>
+> ⚠️ **Point chaud à traiter en UN lot : `services/projection/realEstateMonth.ts`** cumule QUATRE
+> défauts money-critical indépendants, trouvés par deux agents qui ne se parlaient pas — assiette
+> fiscale absente, registre d'affichage `retraitReerMois` absent (355 639 $ publiés comme « 0 $
+> retiré » avec 85 107 $ d'impôt affiché en face), plafond RAP de COUPLE accordé à un divorcé
+> (38 081 $ illégitimes), et taux marginal PLAT sur un retrait à six chiffres (22 110 $ sous-estimés).
+> Ce n'est pas quatre inattentions mais une seule : trois passes de correction (meltdown 2026-07-31,
+> divorce) ont balayé les autres producteurs et **sauté celui-ci**. Corriger une classe « le
+> producteur X a oublié le registre Y » = **grep TOUS les producteurs**, pas seulement celui du
+> ticket (`MODULE-ECRIT-HORS-CHECKLIST`).
+>
+> Aussi : `[CASH-NAN-SILENT]` (le cash de DÉPART de la projection coerce sans `logError`, alors que
+> le patron `HARDEN-*-NAN` est 65 lignes plus haut), `[A11Y-DELETE-SPAN-NO-KEYBOARD]`,
+> `[RQAP-CAP-98K]` (plafond 2025 figé, 2 750 $/an de prestation manquante).
+>
+> ⚠️ **Un finding n'est pas un correctif.** Sur les trois findings les plus gros, un venait avec une
+> reco **techniquement fausse** : « remplacer le `span role="button"` par un `<button>` » — sauf que
+> le span est IMBRIQUÉ dans un `<button>`, donc ça produirait du HTML invalide. Deux autres ont été
+> réfutés (`calculateDetailedTax` était présenté comme mort alors qu'il est appelé deux fois dans son
+> propre fichier ; `calculateNetFromGross` était un doublon d'un ticket existant). Reconfronte
+> TOUJOURS au vrai code — même quand l'agent écrit `[MESURÉ]`.
+>
+> **Ce qui est FAIT** : doc recalée sur le code (3 fichiers donnaient 3 chiffres différents pour le
+> même moteur), 6 branches locales supprimées, ~32 items d'audit ajoutés au BACKLOG avec leurs
+> RÉFUTÉS.
+> **Bloqué chez Marc** : les 7 branches DISTANTES — `git push --delete` renvoie 403 depuis le
+> conteneur et le MCP GitHub n'a pas de `delete_ref`. Liste + commande dans `docs/A_FAIRE_MOI.md`.
+
 > ## 🟢 Session 2026-08-17 (suite 93) — le panel a trouvé la feature livrée CASSÉE
 > PR #644 mergée (4 demandes Futur + 2 défauts d'argent divorce×enfants). PR #645 en cours :
 > flèches Veille/Lendemain dans le panneau, masquage des marchands, 57 items archivés.

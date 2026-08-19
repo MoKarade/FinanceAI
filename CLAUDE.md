@@ -297,6 +297,12 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Un composant testé à son **CONTRAT** ne dit rien de ce qu'on lui PASSE : quand un index/une clé est
   calculé ailleurs, viser le CALCUL (l'extraire en fonction pure le rend testable)
   (`TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`).
+  ⚠️ Même famille appliquée au **PÉRIMÈTRE DE TRAVAIL** : un correctif peut être vert en test et
+  **INERTE en prod** quand l'appelant passe une CONFIGURATION qui restreint (`fields`, `include`,
+  verbosité). La recomposition du patrimoine au jour s'abstenait TOUJOURS — `DettesNonImmo` n'était
+  pas dans `CURVE_FIELDS`, et mes tests ventilaient tout. Rejouer avec la configuration RÉELLE lue
+  dans le SOURCE de l'appelant, et tester la branche d'ABSTENTION
+  (`CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`).
 - Une **fixture qui remplit tous les champs** rend le repli inatteignable — et c'est souvent le repli
   qui fuit. Une fixture par branche (`FIXTURE-COMPLETE-CACHE-LE-REPLI`).
 - Une décision de **vie privée** écrite pour UNE sortie se repasse sur TOUTES (PDF, CSV, backup,

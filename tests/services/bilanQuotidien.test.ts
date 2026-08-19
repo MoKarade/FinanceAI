@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
 import { buildDailyLedger, NET_WORTH_DAILY_ASSETS, FIELD_KIND } from '../../services/projection/dailyLedger';
 import type { ProjectionResult, ProjectionChartPoint } from '../../services/projection/types';
@@ -123,6 +125,62 @@ describe('[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE] le patrimoine au jour EST son bilan
         expect(NET_WORTH_DAILY_ASSETS).not.toContain('DetteTotale');
         expect(NET_WORTH_DAILY_ASSETS).not.toContain('DettesNonImmo');
         expect(NET_WORTH_DAILY_ASSETS).toContain('Immobilier');
+    });
+
+    // ── [CURVE-FIELDS-DETTE-MANQUANTE] Ce que les trois cas ci-dessus NE prouvaient PAS. ──
+    //
+    // Ils appellent `buildDailyLedger` SANS `fields` : la ventilation est alors COMPLÈTE, tous les
+    // termes du bilan sont présents et la recomposition s'exécute. La vraie courbe, elle, passe
+    // `fields: CURVE_FIELDS` — une ventilation ALLÉGÉE (~100 ms au lieu de ~500 ms sur 30 ans).
+    // `DettesNonImmo` n'y figurait pas, parce qu'aucune AIRE ne la trace. Or la recomposition
+    // s'abstient dès qu'un terme manque (choix délibéré : une somme partielle serait un patrimoine
+    // faux et crédible). Résultat : le correctif était **vert en test et INERTE en production**.
+    //
+    // Trouvé par une revue automatique sur la PR #657, APRÈS merge. Ma garde visait le CONTRAT de
+    // `buildDailyLedger`, pas la configuration de son APPELANT — `TEST-AU-CONTRAT-NE-VOIT-PAS-
+    // L-APPELANT`, sur mon propre correctif. Ce cas-ci rejoue la ventilation avec le set EXACT lu
+    // dans le source du composant : il échoue si quelqu'un retire `DettesNonImmo` de `CURVE_FIELDS`.
+    const curveFieldsDuComposant = (): Set<string> => {
+        const src = readFileSync(join(__dirname, '../../components/FutureProjection.tsx'), 'utf-8');
+        const bloc = src.match(/const CURVE_FIELDS[^=]*= new Set\(\[([\s\S]*?)\]\)/);
+        if (!bloc) throw new Error('CURVE_FIELDS introuvable dans FutureProjection.tsx');
+        return new Set([...bloc[1].matchAll(/'([^']+)'/g)].map((m) => m[1]));
+    };
+
+    it('[CURVE-FIELDS-DETTE-MANQUANTE] la recomposition s’exécute avec le set de champs de la VRAIE courbe', () => {
+        const fields = curveFieldsDuComposant();
+
+        // Anti-vacuité du scan : si la regex ne matchait plus (renommage, reformatage), le set
+        // serait vide et tout ce qui suit deviendrait trivialement satisfait.
+        expect(fields.size).toBeGreaterThan(10);
+        expect(fields.has('NetWorth')).toBe(true);
+
+        // La condition NÉCESSAIRE, nommée : chaque terme du bilan doit être ventilé.
+        for (const k of NET_WORTH_DAILY_ASSETS) {
+            expect(fields.has(k), `${k} absent de CURVE_FIELDS : la recomposition s'abstiendra`).toBe(true);
+        }
+        expect(fields.has('DettesNonImmo'),
+            'DettesNonImmo absent de CURVE_FIELDS : la recomposition ne s\'exécutera JAMAIS en prod').toBe(true);
+
+        // Et la preuve par l'EFFET, pas seulement par la liste : on rejoue la ventilation avec ce
+        // set exact et on vérifie que l'identité tient vraiment.
+        const r = calculateFutureProjection(params(AVEC_DETTES));
+        const base = (r.allResults as ProjectionResult[]).find((x) => x.stratType === 'BASE')!;
+        const months = base.chartData as readonly ProjectionChartPoint[];
+        const days = buildDailyLedger({
+            months, startYear: 2026, startMonth: 0, fields,
+            dated: { recurring: [], monthlyNetSalary: 5700, monthlyDebtPayment: 450 },
+        }) as unknown as Jour[];
+
+        expect(days.length).toBeGreaterThan(1000);
+        expect(days.some((d) => (Number(d.DettesNonImmo) || 0) > 0)).toBe(true);
+        let pire = 0;
+        for (let i = 0; i < days.length; i++) {
+            if (i + 1 < days.length && days[i + 1].dayOfMonth !== 1) {
+                pire = Math.max(pire, Math.abs((Number(days[i].NetWorth) || 0) - bilanDuJour(days[i])));
+            }
+        }
+        expect(pire, 'la courbe RÉELLE dérive encore : la recomposition ne s\'applique pas').toBeLessThanOrEqual(0.005);
     });
 
     it('le raccord au point mensuel reste EXACT (la garde existante n’est pas affaiblie)', () => {

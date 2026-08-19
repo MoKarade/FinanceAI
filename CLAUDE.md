@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 406 tests** Vitest
-(394 fichiers de test, mesuré le 2026-08-19). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 410 tests** Vitest
+(395 fichiers de test, mesuré le 2026-08-19). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -240,6 +240,10 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   confrontée par RIEN au runtime : la garde lit la CLASSE (la vérité peinte) et la compare à la
   constante — l'inverse serait circulaire (`STYLE-CONST-DUPLIQUEE`).
 - Un test `.length > 1` sur un **tuple** de longueur fixe est vacueux.
+- Un **percentile de TRAJECTOIRES n'est pas un percentile** : trier des séries entières par UNE de
+  leurs valeurs puis lire toutes les autres ne garantit aucun ordre aux points intermédiaires
+  (mesuré : cône Monte Carlo croisé sur 27 % des mois, 737 974 $ d'écart). Trier la COLONNE de
+  chaque pas de temps (`PERCENTILE-DE-TRAJECTOIRES-N-EST-PAS-UN-PERCENTILE`).
 
 **Divers**
 - « Livré, testé, déployé » ≠ **ATTEIGNABLE** : pour une feature gatée par une INTERACTION, compter les

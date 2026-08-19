@@ -117,13 +117,46 @@ export function runMonteCarlo(
     }
 
     const successRate = Math.round((allRuns.filter(r => r.finalNW > 0).length / iterations) * 100);
-    const sorted = [...allRuns].sort((a, b) => a.finalNW - b.finalNW);
-    const p10Index = Math.floor(iterations * 0.10);
-    const p50Index = Math.floor(iterations * 0.50);
-    const p90Index = Math.floor(iterations * 0.90);
-    const p10Data = sorted[p10Index]?.netWorthByMonth || Array(nMonths + 1).fill(0);
-    const p50Data = sorted[p50Index]?.netWorthByMonth || Array(nMonths + 1).fill(0);
-    const p90Data = sorted[p90Index]?.netWorthByMonth || Array(nMonths + 1).fill(0);
+
+    // [MC-BANDES-CROISEES] Percentiles PAR MOIS — audit de santé 2026-08-19.
+    //
+    // AVANT : on triait les trajectoires ENTIÈRES par patrimoine FINAL, puis on publiait
+    // `sorted[10%].netWorthByMonth` comme « la bande P10 ». Ce n'était donc PAS un percentile
+    // mensuel mais la trajectoire d'UN run — celui qui finit au 10e centile. Rien ne garantissait
+    // l'ordre à un mois donné : un run qui finit bas peut très bien passer au-dessus de la médiane
+    // en cours de route (gros gain suivi d'un krach).
+    // MESURÉ (30 ans, 200 itérations) : P10 > P50 sur 60 mois / 361 (17 %), P50 > P90 sur 11 mois,
+    // pire croisement 32 808 $ au mois 57. Un cône qui se croise n'est pas lisible.
+    //
+    // MAINTENANT : à CHAQUE mois, on trie les valeurs de tous les runs et on prend le 10e / 50e /
+    // 90e centile. C'est la définition d'un fan chart, et l'ordre P10 ≤ P50 ≤ P90 devient vrai PAR
+    // CONSTRUCTION à chaque instant.
+    //
+    // ⚠️ Contrepartie ASSUMÉE, à ne pas « corriger » plus tard : la bande n'est plus une trajectoire
+    // ATTEIGNABLE. Aucun scénario simulé ne suit exactement la médiane mensuelle. C'est le compromis
+    // standard d'un cône de confiance — il répond à « où en serai-je à cette date, dans 80 % des
+    // cas ? », pas à « quel scénario précis vais-je vivre ? ».
+    //
+    // `finalNWp10`/`finalNWp50` (strategySearch) restent cohérents : le percentile du DERNIER mois
+    // est le même classement que le tri par patrimoine final.
+    const percentileParMois = (q: number): number[] => {
+        const out: number[] = new Array(nMonths + 1);
+        const colonne: number[] = new Array(allRuns.length);
+        for (let mois = 0; mois <= nMonths; mois++) {
+            for (let r = 0; r < allRuns.length; r++) {
+                const v = allRuns[r].netWorthByMonth[mois];
+                colonne[r] = Number.isFinite(v) ? v : 0;
+            }
+            colonne.sort((x, y) => x - y);
+            // Index par la même convention que l'ancien code (`Math.floor(n * q)`, borné), pour ne
+            // pas déplacer le niveau des bandes en plus de corriger leur ordre.
+            out[mois] = colonne[Math.min(colonne.length - 1, Math.floor(colonne.length * q))] ?? 0;
+        }
+        return out;
+    };
+    const p10Data = allRuns.length ? percentileParMois(0.10) : Array(nMonths + 1).fill(0);
+    const p50Data = allRuns.length ? percentileParMois(0.50) : Array(nMonths + 1).fill(0);
+    const p90Data = allRuns.length ? percentileParMois(0.90) : Array(nMonths + 1).fill(0);
 
     const startNW = (params.calculatedStartingCash + params.liveCSVBalances.CELI + params.liveCSVBalances.CELIAPP + params.liveCSVBalances.REER + params.liveCSVBalances.NON_ENREG + params.liveCSVBalances.CRYPTO + params.liveCSVBalances.REEE);
 
@@ -160,7 +193,13 @@ export function runMonteCarlo(
     }
     const sequenceRiskPct = Math.round((fragileCount / iterations) * 100);
 
-    const representativeRun = sorted[p50Index] || sorted[0];
+    // [MC-BANDES-CROISEES] Le run REPRÉSENTATIF reste un run RÉEL, trié par patrimoine final —
+    // et c'est volontaire : `swr` et les autres métriques expertes décrivent un scénario vécu de
+    // bout en bout, pas un assemblage de percentiles mensuels (qui n'est atteignable par personne).
+    // C'est le seul usage légitime de ce tri ; les BANDES, elles, sont désormais des percentiles
+    // par mois (voir plus haut).
+    const runsParFinalNW = [...allRuns].sort((a, b) => a.finalNW - b.finalNW);
+    const representativeRun = runsParFinalNW[Math.floor(iterations * 0.50)] || runsParFinalNW[0];
     const expertMetrics = {
         swr: representativeRun ? (representativeRun.totalExpenses / (representativeRun.chartDataLength || 1) * 12) / (startNW || 1) : 0,
         // [PROJ-TAXPAID-LABEL] Plancher 0 seulement (un compteur net négatif — année à gros

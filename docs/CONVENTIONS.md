@@ -3626,3 +3626,31 @@ Si l'écart avant/après est NUL sur le scénario testé, le test ne parle pas d
 qu'affiche son message d'erreur. Corollaire déjà connu mais qui se re-vérifie ici : un scénario doit
 faire *emprunter au code le chemin* qu'on prétend corriger. Un couple qui ne cotise pas ne traverse
 jamais la logique de cotisation.
+
+
+### `PERCENTILE-DE-TRAJECTOIRES-N-EST-PAS-UN-PERCENTILE` — trier des séries entières ne produit pas un cône
+
+`runMonteCarlo` classait les trajectoires ENTIÈRES par patrimoine final, puis publiait
+`sorted[10 %].netWorthByMonth` sous le nom « bande P10 ». L'erreur est subtile parce que le code se
+lit bien : on trie, on prend le 10ᵉ centile, on affiche. Mais l'objet trié est une **série**, pas une
+valeur — et l'ordre des séries au point final ne dit rien de leur ordre aux points intermédiaires.
+
+Mesuré : **99 mois sur 361 (27 %)** où « P10 » passait au-dessus de « P50 », pire écart **737 974 $**.
+
+**La règle** : un percentile n'a de sens que sur une DIMENSION à la fois. Pour un fan chart, la
+dimension est le temps → il faut trier la colonne de chaque mois, pas les lignes. Symptôme à
+reconnaître : un tableau de séries qu'on trie par une seule de leurs valeurs, puis dont on lit
+**toutes** les autres valeurs.
+
+**Ce qu'il faut assumer et écrire** : la bande devient un objet synthétique qu'aucune simulation ne
+suit. C'est le bon compromis pour « où en serai-je à cette date ? », mais pas pour « quel scénario
+précis vais-je vivre ? ». Les deux besoins coexistent : ici le `representativeRun` (métriques
+expertes) garde délibérément le tri par patrimoine final, parce qu'un SWR doit décrire un parcours
+réellement vécu. Deux consommateurs, deux définitions — chacune documentée à son point d'usage.
+
+**Deux gardes à ne pas oublier**, sinon le correctif est indémontrable :
+- **non-vacuité** : un cône de zéros satisfait l'ordre trivialement. Ma première mesure activait le
+  Monte Carlo par un flag de config inexistant (`runMC` est le 2ᵉ ARGUMENT de
+  `calculateFutureProjection`) : les bandes valaient 0 et le test était vert sans rien prouver ;
+- **anti-aplatissement** : rendre P10 = P50 = P90 satisferait l'ordre aussi. Exiger que le cône
+  reste OUVERT et qu'il s'ÉVASE — l'incertitude est l'information qu'on affiche.

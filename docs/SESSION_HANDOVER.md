@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-19 (suite 99) — vague 1c : le cône Monte Carlo se croisait
+> Branche `claude/mc-bandes` (empilée sur `claude/fisc-taxdecember-lot`, elle-même sur
+> `claude/backlog-menage` — PR #653 bloquée par le check E2E, cf. plus bas).
+>
+> **Livré** : `[MC-BANDES-CROISEES]`. Les bandes P10/P50/P90 sont désormais des percentiles PAR
+> MOIS et non plus les trajectoires des runs classés par patrimoine final. Mesuré : 99 mois sur 361
+> croisés avant (27 %), pire écart 737 974 $ ; 0 après.
+> **Laissés OUVERTS** : `[ENG-MC-CONSERVATION-BLIND]` et `[ENG-INV-FLUXFORM-COVERAGE]` — ce sont des
+> extensions de COUVERTURE de test, pas des correctifs, et la seconde promet d'ÉCHOUER (donc de
+> révéler un vrai bug sur `stressTestEnabled`). Lot séparé, à traiter comme une investigation.
+>
+> ⚠️ **`runMC` est le 2ᵉ ARGUMENT de `calculateFutureProjection(params, runMC)`**, pas un flag de
+> `params.projection`. Ma première mesure croyait activer le Monte Carlo par la config : les bandes
+> valaient 0 partout et mon test « 0 croisement » était VERT sans rien prouver. Toujours poser
+> l'anti-vacuité AVANT la comparaison.
+>
+> ⚠️ **Le blocage CI à connaître** : le check requis s'appelle **« E2E (Playwright / Chromium) »** et
+> n'apparaît PAS dans `pull_request_read get_status` (qui ne montre que les statuses legacy — seul
+> Vercel y figure). Une PR peut donc afficher `state: success` ET rester `mergeable_state: blocked`.
+> Le message d'erreur d'un `merge_pull_request` direct est ce qui le révèle. Ne pas conclure « la CI
+> est verte » depuis `get_status` seul.
+
 > ## 🟢 Session 2026-08-19 (suite 98) — vague 1b partielle : CELIAPP + RAMQ
 > Branche `claude/fisc-taxdecember-lot` (empilée sur `claude/backlog-menage`, PR #653 non encore
 > mergée au moment du commit — rebaser sur `main` dès que #653 atterrit).

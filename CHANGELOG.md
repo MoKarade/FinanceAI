@@ -6,6 +6,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-19 (le cône de simulation se croisait sur un mois sur quatre)
+
+- **Les trois courbes de ta simulation Monte Carlo pouvaient se croiser.** La bande « pessimiste »
+  passait au-dessus de la médiane sur **99 mois sur 361** (27 % du temps), avec un écart allant
+  jusqu'à **737 974 $**. Un cône censé encadrer ton patrimoine devenait illisible.
+- **Pourquoi** : le moteur ne calculait pas un percentile à chaque date. Il classait les simulations
+  par leur patrimoine FINAL, puis affichait la trajectoire complète de celle arrivée 10ᵉ, 50ᵉ et
+  90ᵉ. Or une simulation qui finit basse peut très bien passer au-dessus de la médiane en chemin.
+- **Maintenant**, à chaque mois, les 200 simulations sont triées et on prend le 10ᵉ, 50ᵉ et 90ᵉ
+  centile de CE mois-là. L'ordre est garanti par construction.
+- **Contrepartie assumée** : la courbe du milieu n'est plus le parcours d'une simulation précise,
+  mais « où tu en seras à cette date dans 50 % des cas ». C'est ce qu'un cône de confiance doit
+  répondre. Les métriques expertes, elles, continuent de décrire un scénario réellement vécu.
+
+---
+
 ## [unreleased] — 2026-08-19 (ton espace CELIAPP était compté deux fois)
 
 - **Le moteur te faisait cotiser jusqu'à deux fois le maximum légal au CELIAPP.** Deux endroits du

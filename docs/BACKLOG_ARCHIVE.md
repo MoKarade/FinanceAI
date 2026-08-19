@@ -10,6 +10,38 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-19 — Vague 1c (partielle) : le cône Monte Carlo cessait d'être ordonné
+
+> **Mesuré sur un scénario volatil** (30 ans, 200 itérations, gros non-enregistré + retraite à 60) :
+> P10 > P50 sur **99 mois / 361 (27 %)**, P50 > P90 sur 6 mois, pire écart **737 974 $**. Après :
+> **0 croisement**, garanti par construction.
+>
+> Le tri par patrimoine FINAL est conservé pour le seul `representativeRun` (les métriques expertes
+> décrivent un scénario VÉCU, pas un assemblage de percentiles). La contrepartie du fan chart est
+> assumée et écrite dans le code : la bande n'est plus une trajectoire atteignable.
+>
+> ⚠️ **Deux pièges rencontrés, tous deux de mon fait** :
+> le Monte Carlo s'active par le 2ᵉ ARGUMENT de `calculateFutureProjection(params, runMC)`, pas par
+> un flag de config — ma première mesure lisait des bandes à zéro et le test « 0 croisement » était
+> VERT sans rien prouver. Puis j'ai asserté que les trois bandes coïncident au premier point : faux,
+> `chartData[0]` a déjà subi un mois de rendement stochastique.
+>
+> Preuve : **2 cas sur 4** discriminent (les 2 autres gardent contre un « correctif » qui aplatirait
+> le cône ou le rendrait dégénéré).
+
+- [x] **`[MC-BANDES-CROISEES]`** (M, MOYEN — unifie `[ENG-MC-BANDS-ORDER]`, même mécanisme) — `runMonteCarlo` classe les **trajectoires entières** par
+  patrimoine FINAL puis publie `sorted[10%]/[50%]/[90%]` comme un cône P10/P50/P90
+  (`services/projection/monteCarlo.ts:117-121`). Ce ne sont donc **pas** des percentiles mensuels :
+  à un mois donné la borne basse peut passer au-dessus de la médiane. **Mesuré (30 ans, 200
+  itérations) : P10 > P50 sur 60 mois / 361 (17 %), P50 > P90 sur 11 mois, pire croisement
+  32 808 $ au m57** ; non-vacuité vérifiée (361/361 points à P10 ≠ 0). **Aucun test ne le couvre** —
+  `tests/services/monteCarlo.test.ts:64` assied le tri par NW final avec un mock à NW constant, donc
+  le croisement y est **impossible par construction**. Correctif : soit calculer le percentile PAR
+  MOIS, soit renommer/documenter la série comme « trajectoire du run au décile terminal » ; dans les
+  deux cas ajouter la garde `P10 ≤ P50 ≤ P90` mois par mois. [MESURÉ]
+
+---
+
 ## 2026-08-19 — Vague 1b (partielle) : l'espace CELIAPP et l'assiette RAMQ
 
 > Trois items du lot `taxDecember`/`taxJanuary`. Les deux restants du lot (`[FISC-BAND-AGE-CREDITS]`,

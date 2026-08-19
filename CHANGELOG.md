@@ -6,6 +6,26 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-19 (ton espace CELIAPP était compté deux fois)
+
+- **Le moteur te faisait cotiser jusqu'à deux fois le maximum légal au CELIAPP.** Deux endroits du
+  code écrivaient tes droits annuels sans se parler : décembre remettait le compteur au plein, puis
+  janvier ajoutait par-dessus le report des droits inutilisés. Résultat, ton report était **toujours
+  maximal**, que tu aies cotisé ou non.
+- **Mesuré** sur un couple qui épargne pour une maison : **32 962 $ versés la première année au lieu
+  de 16 926 $**, pour un plafond légal de 16 000 $. Le plafond à vie de 80 000 $ était atteint en
+  3 ans au lieu de 5.
+- **L'inverse était vrai aussi** : si tu ne cotisais pas, l'espace affiché retombait de 32 000 $ à
+  16 000 $ chaque mois de décembre — il sous-estimait des droits que tu avais réellement.
+- **La prime RAMQ tient maintenant compte de tes retraits REER quand tu travailles.** Elle le
+  faisait déjà si tu étais retraité, pas si tu étais salarié — alors que dans les deux cas ce
+  retrait est un revenu au sens de la déclaration. Effet limité : la prime plafonne à 766 $ par
+  adulte, donc l'écart ne se voit qu'à revenu modeste avec un retrait notable.
+- **Une note de la référence fiscale disait le contraire du code** : « le report de droits n'est pas
+  modélisé », et interdisait d'y toucher. Elle protégeait en fait le bug. Corrigée.
+
+---
+
 ## [unreleased] — 2026-08-19 (le cash de départ ne se corrompt plus en silence)
 
 - **Rien ne change à l'écran, et c'est voulu.** Un montant illisible dans tes données valait 0 $

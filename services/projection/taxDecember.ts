@@ -734,10 +734,30 @@ export function processDecemberTaxFiling(
             // Mode actif : revenu brut salarial - déductions REER + FHSA + Smith.
             // FIX audit code-reviewer HIGH 1 : sans soustraction des déductions, RAMQ
             // surestime systématiquement la prime pour les cotisants REER.
+            //
+            // [RAMQ-ACTIF-HORS-RETRAITS] — audit 2026-08-19. L'assiette était ASYMÉTRIQUE entre
+            // les deux branches : la retraitée ci-dessus inclut `accRetraitsReerYear` et les gains,
+            // l'active les ignorait. Or la prime RAMQ porte sur le revenu NET au sens de la ligne
+            // 275 TP-1, qui comprend un retrait REER comme un gain réalisé — un salarié qui retire
+            // 40 k$ de son REER a bien ce revenu-là. Trouvé en corrigeant
+            // `[REER-ACTIF-NON-RECONCILIE]` : un écart CONSTANT de 766 $ dans les tests menait à la
+            // prime, et de la prime à cette asymétrie.
+            //
+            // ⚠️ Le FSS juste en dessous est un cas DIFFÉRENT, à ne PAS « corriger » par symétrie :
+            // il ne s'applique qu'aux retraités par choix documenté (les salariés sont couverts par
+            // la cotisation de leur employeur), pas par oubli.
+            //
+            // Impact BORNÉ : la prime plafonne à `RAMQ_MAX_PREMIUM_2026` (766 $/adulte), donc
+            // l'écart n'existe que pour un revenu modeste assorti d'un retrait notable — nul dès
+            // que le salaire seul atteint déjà le plafond.
             const grossFamily = (ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual)
                 * Math.pow(1 + ctx.simSalaryGrowth / 100, ctx.yearsElapsed);
             const deductions = ctx.accRrspYear + ctx.accFhsaYear + ctx.smithInterestDeductibleYear;
-            familyNetIncome = Math.max(0, grossFamily - deductions) / ctx.inflationFactor;
+            const retraitsReer = Number.isFinite(ctx.accRetraitsReerYear) ? Math.max(0, ctx.accRetraitsReerYear) : 0;
+            const gainsImposables = Number.isFinite(ctx.accCapitalGainsYear)
+                ? Math.max(0, ctx.accCapitalGainsYear) * CAPITAL_GAINS_INCLUSION_STANDARD
+                : 0;
+            familyNetIncome = Math.max(0, grossFamily - deductions + retraitsReer + gainsImposables) / ctx.inflationFactor;
         }
         const ramqPerAdult = calculateRamqPremium(
             familyNetIncome,

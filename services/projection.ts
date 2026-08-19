@@ -1181,14 +1181,28 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
             // V28 + Cycle 12: TFSA Room reset géré en Janvier — voir processJanuaryReset (./projection/taxJanuary)
 
-            // V28: FHSA Room reset
-            const yearsSinceOpening = loopYear - celiappOpeningYear;
-            // [panel #613 — MOYEN-6] Les droits sont PERSONNELS : ceux du conjoint partent avec lui.
-            // `taxFilers` porte déjà « nombre de contribuables du ménage » (1 après divorce ou
-            // décès) — sans lui, un divorcé accumulait le DOUBLE de l'espace légal.
-            if (yearsSinceOpening < 15 && fhsaLifetimeContrib < FHSA_LIFETIME_LIMIT_PER_USER * taxFilers) {
-                fhsaRoom = FHSA_ANNUAL_LIMIT_PER_USER * taxFilers;
-            }
+            // [CELIAPP-DOUBLE-RECHARGE] Décembre n'écrit PLUS l'espace CELIAPP — audit 2026-08-19.
+            //
+            // Il posait ici `fhsaRoom = FHSA_ANNUAL_LIMIT_PER_USER * taxFilers`, ce qui REMETTAIT
+            // l'espace au plein annuel quoi qu'on ait cotisé. Or janvier (`taxJanuary.ts`, la
+            // source unique depuis le Cycle 12) calcule SON report à partir de cette valeur :
+            //   allowedCarryForward = min(annuel, fhsaRoomCurrent)
+            // Il lisait donc toujours « annuel » comme résiduel → report TOUJOURS MAXIMAL, quelle
+            // que soit l'utilisation réelle. Deux producteurs qui s'ignorent.
+            //
+            // MESURÉ (couple, plafond annuel 16 000 $) : espace publié 32 000 $ CHAQUE année au
+            // lieu de suivre le résiduel (16 000 $ si tout est cotisé, 24 000 $ si la moitié l'est),
+            // et le plafond à vie de 80 000 $ atteint en 3 ans au lieu de 5.
+            //
+            // ⚠️ La garde du panel #613 (« les droits sont PERSONNELS : ceux du conjoint partent
+            // avec lui ») n'est PAS perdue : janvier reçoit déjà `fhsaEligibleUsersCount` passé au
+            // travers de `soloHousehold` (voir l'appel à `processJanuaryReset` plus bas), et ce
+            // compteur est même PLUS juste que `taxFilers` — il exclut les propriétaires récents,
+            // qui n'ont pas droit au CELIAPP.
+            //
+            // Le résiduel transmis est désormais le VRAI : `cashflowAllocation` fait
+            // `state.fhsaRoom -= fillFhsa` à chaque cotisation. Le CELI avait migré vers janvier au
+            // Cycle 12 (cf. commentaire ci-dessus) ; le CELIAPP était resté en arrière.
 
             // Cycle 10 split: TLH → ./projection/taxCycle (processTaxLossHarvesting)
             const currentNonRegRate = enableMonteCarlo ? mcNonRegRate : baseRates.nonReg;

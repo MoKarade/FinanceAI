@@ -4,6 +4,31 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-19 (suite 98) — vague 1b partielle : CELIAPP + RAMQ
+> Branche `claude/fisc-taxdecember-lot` (empilée sur `claude/backlog-menage`, PR #653 non encore
+> mergée au moment du commit — rebaser sur `main` dès que #653 atterrit).
+>
+> **Livré** : `[CELIAPP-DOUBLE-RECHARGE]`, `[RAMQ-ACTIF-HORS-RETRAITS]`, `[DOC-CELIAPP-REPORT-PERIMEE]`.
+> **Volontairement laissés OUVERTS dans le même lot** : `[FISC-BAND-AGE-CREDITS]` (demande de
+> reconstruire un `ageOpts` valide HORS des branches actif/retraité, et va re-baser des goldens
+> retraités — mérite sa propre mesure), `[ENG-GK-THRESHOLD-KNIFE]` (choix de design : hystérésis),
+> `[FISC-DIV-DERIVED-BASES]` (le ticket dit lui-même « chiffrer avant de coder »),
+> `[ENG-TTP-UNSETTLED-PROPAGATE]` (touche `monteCarlo` + specs MCP, autre surface).
+>
+> ⚠️⚠️ **DEUX de mes tests étaient FAUX avant d'être justes — la partie la plus instructive.**
+> 1. Mes premiers cas visaient `processJanuaryReset` en direct : ils passaient des DEUX côtés. Le
+>    contrat de janvier était déjà bon, le défaut vivait chez son APPELANT (décembre). C'est le
+>    piège `TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`, déjà indexé — et j'y suis tombé quand même.
+> 2. Mon premier test de CHAÎNE a échoué avec `expected 32000 to be <= 16000` — la forme parfaite
+>    d'un vrai bug money-critical. **C'est le test qui avait tort** : le scénario ne faisait cotiser
+>    personne au CELIAPP, et dans ce cas le report maximal est LÉGAL. Le contrôle qui tranche :
+>    mesurer la même grandeur avec ET sans le correctif sur le même scénario. Écart nul ⇒ le test ne
+>    parle pas du correctif (`UN-TEST-QUI-ECHOUE-N-A-PAS-FORCEMENT-RAISON`).
+>
+> Preuve finale : **5 cas sur 13** discriminent, c'est écrit dans le fichier de test.
+> ⚠️ Un scénario CELIAPP doit avoir un `realEstateGoals` FUTUR : sans lui, `cashflowAllocation`
+> ne verse jamais au CELIAPP (`hasFuturePurchase` requis) et le test ne traverse pas le code visé.
+
 > ## 🟢 Session 2026-08-19 (suite 97) — vague 1a : `[CASH-NAN-SILENT]`
 > Branche `claude/backlog-menage` (vagues 0 + 1a ensemble). Source unique créée :
 > `services/startingCash.ts` — les 3 copies de la formule du cash dérivé pointent dessus.

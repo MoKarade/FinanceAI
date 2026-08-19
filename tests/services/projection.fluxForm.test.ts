@@ -26,7 +26,26 @@ import type { ProjectionChartPoint } from '../../services/projection';
 import type { ProjectionConfig, BudgetConfig, RetirementGoal } from '../../types';
 
 /** Comptes dont la variation DOIT être expliquée par `MarketGrowth<k>` + `NetTransfer<k>`. */
-const ACCOUNTS = ['CELI', 'REER', 'Crypto'] as const;
+const ACCOUNTS = ['CELI', 'REER', 'Crypto', 'NonReg'] as const;
+
+// [ENG-APRIL-REFUND-NONREG-UNPUBLISHED] `NonReg` est entré dans cette liste le 2026-08-19, une fois
+// son dernier producteur muet corrigé : `processAprilSettlement` réinvestissait le remboursement
+// d'impôt de salaire au non-enregistré sans publier `contribNonReg`.
+// **MESURÉ : 29 796,22 $ au mois 123 (un AVRIL), en mode déterministe.**
+//
+// ⚠️ Ce correctif N'EST PAS neutre en argent, contrairement à celui de la FERR — et le ticket ne
+// l'avait pas vu. `contribNonReg` a un SECOND consommateur : `growthApplication` calcule la
+// croissance sur `nonReg − contribNonReg`, pour exclure les dépôts de MI-MOIS d'un mois complet de
+// rendement. Le remboursement, versé le 30 avril, gagnait donc jusqu'ici un mois ENTIER de
+// rendement qu'il n'avait pas mérité. Publier le flux retire cette croissance fantôme :
+// **−428,67 $ de patrimoine final sur 30 ans** dans le scénario de référence (−0,009 %), et
+// jusqu'à −23 343 $ sur les ancrages les plus gros. L'écart est NÉGATIF partout et croît avec
+// l'horizon — signature d'un intérêt composé qu'on cesse de créditer à tort, pas d'une régression.
+//
+// Le ticket redoutait un TOUT AUTRE risque : que publier `contribNonReg` « déplace une décision
+// d'allocation dans le même mois », puisque `cashflowAllocation` le reçoit en entrée. VÉRIFIÉ par
+// grep : ce module ne fait qu'un `state.contribNonReg += excess` et ne LIT jamais la valeur. Le
+// risque annoncé n'existait pas ; le vrai était ailleurs.
 
 // [ENG-INV-FLUXFORM-COVERAGE] ⚠️ CE QUE CETTE GARDE NE VOYAIT PAS, ET POURQUOI.
 //
@@ -245,5 +264,33 @@ describe('[ENG-INV-FLUXFORM-COVERAGE] toute variation de compte est EXPLIQUÉE p
         expect(gSans, 'fixture sans croissance : le test ne mesure rien').toBeGreaterThan(0);
         // −40 % puis reprise partielle (0,9 × le drop) : le total doit rester STRICTEMENT en deçà.
         expect(gAvec, 'le krach n\'a pas atteint le compteur de croissance agrégé').toBeLessThan(gSans);
+    });
+});
+
+describe('[ENG-APRIL-REFUND-NONREG-UNPUBLISHED] le remboursement d\'avril n\'est plus une croissance fantôme', () => {
+    /**
+     * ⚠️ Ce bloc ne double PAS la garde de forme-flux ci-dessus. Celle-ci prouve que le mouvement
+     * est EXPLIQUÉ ; celui-ci prouve la conséquence FINANCIÈRE que la correction entraîne — et que
+     * le ticket n'avait pas anticipée. Sans lui, un futur passage qui retirerait `contribNonReg` du
+     * calcul de croissance (« ça ne sert qu'à l'affichage ») rendrait la croissance fantôme SANS
+     * casser la forme-flux : les deux propriétés sont indépendantes.
+     */
+    const AVRIL = 123;   // le mois où le remboursement est mesuré (cf. en-tête de fichier)
+
+    it('le remboursement réinvesti apparaît comme un TRANSFERT, pas comme du rendement', () => {
+        const r = calculateFutureProjection(params({}));
+        const rows = r.chartData as unknown as Record<string, number>[];
+
+        // Non-vacuité : il y a bien un remboursement réinvesti ce mois-là, et il est SUBSTANTIEL.
+        // Sans cette borne, un scénario sans remboursement rendrait tout le bloc vacueux.
+        expect(rows.length).toBeGreaterThan(AVRIL);
+        const transfert = Number(rows[AVRIL].NetTransferNonReg) || 0;
+        expect(transfert, 'aucun réinvestissement mesurable au mois 123').toBeGreaterThan(1_000);
+
+        // Et il ne s'est PAS glissé dans la croissance : sur un mois où l'essentiel du solde arrive
+        // le 30, la croissance du non-enregistré doit rester petite devant le transfert.
+        const croissance = Math.abs(Number(rows[AVRIL].MarketGrowthNonReg) || 0);
+        expect(croissance, 'le dépôt du 30 avril gagne un mois complet de rendement')
+            .toBeLessThan(transfert / 10);
     });
 });

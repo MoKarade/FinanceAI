@@ -1,7 +1,7 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 441 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 442 tests** Vitest
 (399 fichiers de test, mesuré le 2026-08-19). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -209,6 +209,11 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   12 ans dont la retraite était à 62 ans — tout le DÉCAISSEMENT était hors de portée. Portée à 35 ans,
   elle a trouvé 131 566 $ de FERR sans flux publié, en déterministe
   (`INVARIANT-QUI-NE-PARCOURT-PAS-LA-PHASE`).
+- ⚠️ Symétrique : remplir un « registre oublié » peut **déplacer de l'argent** si un de ses lecteurs
+  est un CALCUL et non un affichage — `contribNonReg` sert aussi de base d'exclusion à la croissance
+  de mi-mois : publier le remboursement d'avril a retiré 428 $ de rendement fantôme sur 30 ans.
+  Grep TOUS les lecteurs et classer chacun affichage/calcul ; juger le signe et sa dépendance à
+  l'horizon pour distinguer correction et régression (`REGISTRE-D-AFFICHAGE-QUI-PILOTE-UN-CALCUL`).
 - Avant d'ajouter un montant au « registre oublié », **grep TOUS ses consommateurs** : `withdrawalREER`
   alimente à la fois l'affichage du flux ET le répartiteur per-conjoint, qui ne doit PAS le voir. Un
   montant, deux registres, deux règles — preuve = goldens complets où SEUL le champ visé change

@@ -1050,6 +1050,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         const taxPaidGains = aprilResult.taxPaidGains;
         const taxPaidDivers = aprilResult.taxPaidDivers;
         const taxPaidREER = aprilResult.taxPaidREER;
+        // [ENG-APRIL-REFUND-NONREG-UNPUBLISHED] Le remboursement d'impôt réinvesti est un TRANSFERT
+        // vers le non-enregistré : il alimente le flux publié comme n'importe quelle cotisation.
+        // ⚠️ Le ticket redoutait que publier ce flux « déplace une décision d'allocation dans le même
+        // mois », `cashflowAllocation` recevant `contribNonReg` en ENTRÉE. VÉRIFIÉ : ce module ne
+        // fait qu'un `state.contribNonReg += excess` et ne LIT jamais la valeur. Le risque annoncé
+        // n'existe pas — le golden le confirme (seul `NetTransferNonReg` bouge).
+        contribNonReg += aprilResult.reinvestedNonReg;
         if (aprilResult.fluxImpots !== 0) {
             fluxImpots = aprilResult.fluxImpots;
             impotSalaireMois = taxPaidRevenu;

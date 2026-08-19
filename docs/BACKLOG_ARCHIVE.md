@@ -10,6 +10,38 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-19 — `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]` : le dernier producteur muet
+
+> `processAprilSettlement` réinvestissait le remboursement d'impôt de salaire au non-enregistré
+> (`addNonReg`) sans publier `contribNonReg`. **Mesuré : 29 796,22 $ au mois 123 (un AVRIL), en mode
+> DÉTERMINISTE.** `'NonReg'` entre enfin dans les `ACCOUNTS` de la garde forme-flux.
+>
+> ⚠️ **Le risque annoncé par le ticket était FAUX.** Il redoutait que publier ce flux « déplace une
+> décision d'allocation dans le même mois », `cashflowAllocation` recevant `contribNonReg` en entrée.
+> Vérifié par grep : ce module ne fait qu'un `state.contribNonReg += excess` et ne LIT jamais la
+> valeur. Un ticket qui se trompe de cause n'invalide pas le travail — il invalide la phrase qu'on
+> allait recopier.
+>
+> ⚠️ **Le VRAI risque était ailleurs, et le correctif n'est PAS neutre en argent.** `contribNonReg` a
+> un SECOND consommateur : `growthApplication` calcule la croissance sur `nonReg − contribNonReg`,
+> pour exclure les dépôts de MI-MOIS d'un mois complet de rendement. Le remboursement, versé le
+> **30 avril**, gagnait donc un mois ENTIER de rendement qu'il n'avait pas mérité. Publier le flux
+> retire cette croissance fantôme : **−428,67 $ de patrimoine final sur 30 ans** (−0,009 %) sur le
+> scénario de référence, jusqu'à **−23 343 $** sur le plus gros ancrage. L'écart est NÉGATIF partout
+> et croît avec l'horizon — signature d'un intérêt composé qu'on cesse de créditer à tort.
+>
+> **Trois ancrages goldens RE-BASÉS**, avec l'écart chiffré et expliqué à côté de chacun — jamais une
+> tolérance élargie « pour faire passer » (patron déjà appliqué dans ces mêmes fichiers).
+>
+> **Périmètre MESURÉ avant de coder** : la garde a été élargie à `NonReg` D'ABORD, sur la version
+> COMPLÈTE incluant les cas de décaissement (#658). Un seul contrevenant révélé.
+>
+> **4 cas rouges** sans le correctif (vérifié par perturbation), dont un cas dédié qui prouve la
+> conséquence financière — les deux propriétés (« mouvement expliqué » et « pas de rendement sur un
+> dépôt du 30 ») sont indépendantes, et la seconde se casserait en silence sans lui.
+
+- [x] **`[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`** (S, HAUT) — ✅ 2026-08-19, PR #662.
+
 ## 2026-08-19 — Vague 1c (fin) : deux angles morts d'invariant, deux défauts trouvés
 
 > Les deux items étaient des extensions de COUVERTURE, pas des correctifs. Chacune a trouvé un vrai

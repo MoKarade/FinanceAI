@@ -4,6 +4,31 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-19 (suite 106) — le dernier producteur muet, et sa surprise
+> Branche `claude/avril-nonreg` (empilée sur `claude/mc-conservation` / #658, mergée depuis).
+>
+> **Livré** : `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`. `processAprilSettlement` réinvestissait le
+> remboursement d'impôt au non-enregistré sans publier `contribNonReg` — **29 796,22 $ au mois 123**,
+> en DÉTERMINISTE. `'NonReg'` entre dans les `ACCOUNTS` de la garde forme-flux.
+>
+> ⚠️ **Le risque annoncé par le ticket était FAUX** : il craignait un déplacement de décision dans
+> `cashflowAllocation`. Grep : ce module ne fait qu'un `+=` et ne LIT jamais `contribNonReg`.
+>
+> ⚠️ **Le VRAI risque était ailleurs — et le correctif N'EST PAS neutre en argent.** `contribNonReg`
+> a un SECOND consommateur : `growthApplication` calcule sur `nonReg − contribNonReg` pour exclure
+> les dépôts de MI-MOIS. Le remboursement du 30 avril gagnait un mois COMPLET de rendement.
+> Publier le flux retire cette croissance fantôme : **−428,67 $ sur 30 ans** (−0,009 %), jusqu'à
+> **−23 343 $** sur le plus gros ancrage. **Trois goldens re-basés**, écart chiffré à côté de chacun.
+>
+> ⚠️ **Méthode qui a payé** : élargir la garde à `NonReg` D'ABORD (sur la version complète, avec les
+> cas de décaissement de #658) pour révéler le vrai périmètre — un seul contrevenant.
+>
+> **4 cas rouges** sans le correctif, dont un dédié à la conséquence FINANCIÈRE : les deux propriétés
+> (« mouvement expliqué » / « pas de rendement sur un dépôt du 30 ») sont indépendantes.
+>
+> **RESTE vague 1d** : `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`, et
+> `[ENG-LIQUIDDEBT-NEVER-REPAID]` (taux de découvert à SOURCER + choix produit → Marc).
+
 > ## 🟢 Session 2026-08-19 (suite 102) — vague 1c (fin) : deux angles morts, deux défauts
 > Branche `claude/mc-conservation` (basée sur `main`, indépendante de `claude/nw-perimetre`/#657).
 >

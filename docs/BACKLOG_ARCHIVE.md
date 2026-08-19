@@ -10,6 +10,34 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-19 — Vague 1d (début) : les revenus que la ventilation ne montrait pas
+
+> `Income` contient le revenu locatif, les allocations familiales et les paiements REEE ; la
+> ventilation affichée n'en listait AUCUN. **Mesuré : 3 551 $/mois de loyer invisibles** (scénario
+> locatif) et **550 $/mois d'allocations** (scénario 1 enfant) — le résidu
+> `Income − (Marc + Anna + Retraite)` valait EXACTEMENT ces champs. Le moteur les émettait déjà :
+> il suffisait de les CONSOMMER (jamais de les recalculer, cf. `chartDataSumGuard`).
+>
+> ⚠️ **Mes fixtures étaient fausses au premier essai** : `monthlyRent` au lieu de
+> `rentalIncomeMonthly` + `isRented`, et un `ChildGoal` incomplet. Les trois scénarios rendaient un
+> résidu de **0** et le test aurait été VERT sans rien mesurer. Vérifier les noms de champs contre
+> `types.ts` AVANT de conclure qu'un scénario ne reproduit rien.
+>
+> ⚠️ **Le test moteur ne discriminait pas** : le correctif vit dans deux COMPOSANTS, le moteur n'a
+> pas changé. D'où le scan de source (patron `chartPrivacyScan`) qui, lui, échoue sur le code
+> d'avant. 2 cas sur 6 discriminent — écrit dans le fichier.
+
+- [x] **`[REVENUS-NON-VENTILES-AFFICHAGE]`** (S, MOYEN) — `Income` inclut le revenu locatif, les
+  prestations pour enfants et les paiements REEE, mais la ventilation montrée à l'utilisateur ne
+  liste que `IncomeMarc / IncomeAnna / IncomeRetirement / (RetraitREER+RetraitCELI)` —
+  `components/projection/FutureDetailModal.tsx:439-445`, `components/projection/ProjectionTooltip.tsx:230-232`.
+  **Mesuré : `Income − (IncomeMarc+IncomeAnna+IncomeRetirement)` = 5 299,30 $/mois** (scénario
+  locatif, m480) et **659,22 $/mois** (scénario 1 enfant) ; 0,01 $ sur le socle. Correctif : ajouter
+  les lignes manquantes — le moteur émet déjà les champs, donc les CONSOMMER et surtout **ne pas
+  additionner** (cf. `utils/chartDataSumGuard.ts`). [MESURÉ]
+
+---
+
 ## 2026-08-19 — Vague 1c (partielle) : le cône Monte Carlo cessait d'être ordonné
 
 > **Mesuré sur un scénario volatil** (30 ans, 200 itérations, gros non-enregistré + retraite à 60) :

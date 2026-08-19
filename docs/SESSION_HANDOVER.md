@@ -4,6 +4,30 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-19 (suite 100) — vague 1d (début) : les revenus non ventilés
+> Branche `claude/registres-oublies` (empilée sur `claude/mc-bandes`).
+>
+> **Livré** : `[REVENUS-NON-VENTILES-AFFICHAGE]`. Loyers, allocations familiales et versements REEE
+> apparaissent enfin dans la ventilation du panneau Futur et de l'infobulle. Mesuré : 3 551 $/mois
+> et 550 $/mois de revenus qui comptaient dans le total sans figurer dans le détail.
+>
+> ⚠️ **Deux pièges de fixture, à connaître avant de croire qu'un scénario « ne reproduit rien »** :
+> le champ de loyer est `rentalIncomeMonthly` + `isRented` (PAS `monthlyRent`), et un `ChildGoal`
+> exige `birthDate` + `governmentBenefits` (pas `birthYear`). Avec mes premiers noms approximatifs,
+> les trois scénarios rendaient un résidu de **0** — le test aurait été vert sans rien mesurer.
+> Vérifier les noms contre `types.ts` AVANT de conclure.
+>
+> ⚠️ **Le test moteur ne discrimine pas ce correctif** : il vit dans deux COMPOSANTS et le moteur
+> n'a pas bougé. D'où le scan de SOURCE (patron `chartPrivacyScan`/`privateTitleGuard`), seul bloc
+> qui échoue sur le code d'avant. 2 cas sur 6.
+>
+> **RESTE dans la vague 1d** : `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]` (S, mesuré 29 796 $, la garde
+> est prête — mais le mutateur s'exécute AVANT `cashflowAllocation` qui reçoit `contribNonReg` en
+> ENTRÉE : y toucher peut déplacer une décision d'allocation dans le même mois, mesure requise),
+> `[ENG-LIQUIDDEBT-NEVER-REPAID]` (M — demande un taux de découvert À SOURCER et un choix produit),
+> `[ENG-W5-*-OFFBALANCE]` (M ×2), `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]` (S),
+> `[NW-PRESENT-DEUX-PERIMETRES]` (XS).
+
 > ## 🟢 Session 2026-08-19 (suite 99) — vague 1c : le cône Monte Carlo se croisait
 > Branche `claude/mc-bandes` (empilée sur `claude/fisc-taxdecember-lot`, elle-même sur
 > `claude/backlog-menage` — PR #653 bloquée par le check E2E, cf. plus bas).

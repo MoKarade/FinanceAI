@@ -3654,3 +3654,59 @@ réellement vécu. Deux consommateurs, deux définitions — chacune documentée
   `calculateFutureProjection`) : les bandes valaient 0 et le test était vert sans rien prouver ;
 - **anti-aplatissement** : rendre P10 = P50 = P90 satisferait l'ordre aussi. Exiger que le cône
   reste OUVERT et qu'il s'ÉVASE — l'incertitude est l'information qu'on affiche.
+
+### `IDENTITE-COMPTABLE-INTERPOLEE-TROIS-FOIS` — lisser séparément des grandeurs liées par une identité la casse
+
+`buildDailyLedger` interpole chaque champ mensuel vers le jour. Trois cadences y coexistent
+légitimement : uniforme (les stocks qui glissent), hebdomadaire (les flux de paye et de dette),
+datée (les événements ponctuels). Chaque cadence est correcte prise isolément.
+
+Le défaut : `NetWorth` était lui aussi interpolé, **pour lui-même**, avec sa propre cadence — alors
+qu'il n'est pas une grandeur indépendante mais l'IDENTITÉ `Σ actifs − DettesNonImmo`. Trois lissages
+différents appliqués aux deux côtés d'une égalité comptable : l'égalité ne tient plus qu'aux points
+où les trois se rejoignent, c'est-à-dire les fins de mois.
+
+Mesuré sur 1 461 jours : **89,01 $** (socle salarié) et **−76,62 $** (hypothèque + prêt auto), et
+jusqu'à **−1 408,37 $** (0,28 % du patrimoine) sur un profil plus gros. Les 25 invariants existants
+du grand livre étaient tous VERTS : ils vérifiaient la conservation champ par champ et le raccord
+aux fins de mois — jamais l'identité TRANSVERSE en intra-mois.
+
+**La règle** : une grandeur DÉRIVÉE ne s'interpole pas, elle se RECOMPOSE à partir de ses
+composants déjà interpolés. Symptôme à reconnaître : un même pipeline traite au même rang un
+agrégat et ses propres termes.
+
+**L'arbitrage à écrire noir sur blanc** : au DERNIER jour du mois, la valeur du moteur prime et
+n'est PAS recomposée. Le moteur arrondit chaque composant à 2 décimales, donc la somme des arrondis
+diffère de l'arrondi de la somme — mesuré 0,01 $. Le test de raccord existant exige l'égalité
+STRICTE avec le point mensuel et il a raison : `cur.NetWorth` est la source de vérité. Un cent le
+dernier jour contre une dérive structurelle les trente autres. Le test borne explicitement cet
+écart (≤ 0,02 $) : sans borne, l'exception deviendrait une porte ouverte.
+
+**Garde de couverture obligatoire** : la liste des composants (`NET_WORTH_DAILY_ASSETS`) est un
+duplicata de ce que le moteur additionne. Si un actif y était ajouté côté moteur sans y figurer, le
+jour l'oublierait EN SILENCE et le test d'identité échouerait sans nommer la cause. D'où un cas
+dédié qui vérifie que chaque entrée est un `stock` connu du grand livre — et que `DettesNonImmo` (et
+non `DetteTotale`) est le seul passif retranché, puisque `Immobilier` porte DÉJÀ l'équité nette
+d'hypothèque.
+
+### `HELPER-INAPPELABLE-PAR-SON-CONSOMMATEUR` — mesurer les sites AVANT d'écrire la source unique
+
+Ticket `[NW-PRESENT-DEUX-PERIMETRES]` : « le patrimoine présent est recomposé à deux endroits avec
+des périmètres différents → extraire une source unique ». J'ai écrit le helper
+`computePresentNetWorthWithRealEstate`, puis je l'ai SUPPRIMÉ avant de committer.
+
+Deux constats, dans cet ordre :
+1. **le grep n'a trouvé qu'UN site** de recomposition (`FutureKpiStrip`) — la prémisse « deux
+   périmètres » était périmée ;
+2. ce site ne pouvait pas appeler le helper : il reçoit `netWorth` en **prop**, déjà calculé en
+   amont. Un helper qui prend les entrées brutes est structurellement inatteignable depuis un
+   composant qui reçoit le résultat. Et la part immobilière passait déjà par `presentEquityOfGoal`,
+   qui porte sa propre garde de finitude.
+
+**La règle** : avant d'extraire une source unique, compter les sites RÉELS *et* vérifier que chacun
+peut l'appeler depuis les données dont il dispose. Une source unique que personne ne peut appeler
+est du code mort qui donne l'illusion que le problème est traité — pire que le problème.
+
+**Corollaire de tenue** : fermer un ticket SANS code est un résultat légitime, à condition d'écrire
+la mesure qui le justifie dans l'archive. Sinon la session suivante rouvre le même ticket sur la
+même prémisse périmée (famille `DOC-STALE-IMPOSSIBILITY`, en miroir).

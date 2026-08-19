@@ -10,6 +10,64 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-19 — Vague 1d (suite) : le bilan au jour, et un ticket fermé sans code
+
+### Corrigé — `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`
+
+> `NetWorth` était interpolé POUR LUI-MÊME au jour, avec ses propres deltas datés et un résidu
+> étalé uniformément — pendant que `DettesNonImmo` étalait le sien en cadence HEBDOMADAIRE et que
+> `Liquidites` encaissait en plus les remboursements. Trois formes d'étalement pour des grandeurs
+> liées par une identité comptable.
+>
+> **Mesuré, pire écart sur 1 461 jours** : socle salarié **89,01 $ → 0,00 $** · hypothèque + prêt
+> auto **−76,62 $ → 0,00 $** (l'audit initial mesurait jusqu'à −1 408,37 $, 0,28 % du patrimoine,
+> sur un profil plus gros). `NetWorth` est désormais DÉRIVÉ du bilan du jour, même patron que
+> `Savings` juste au-dessus.
+>
+> ⚠️ **Arbitrage assumé au DERNIER jour du mois** : la valeur du MOTEUR prime et n'est pas dérivée.
+> Le moteur arrondit chaque composant à 2 décimales, donc la somme des arrondis diffère de
+> l'arrondi de la somme — mesuré 0,01 $. Le test de raccord existant exige l'égalité stricte (5e-7)
+> avec le point mensuel et il a raison : `cur.NetWorth` EST la source de vérité. Un cent le dernier
+> jour contre une dérive structurelle les trente autres. **Le correctif aurait pu être « écrit » en
+> relâchant cette tolérance** — un test dédié verrouille l'inverse.
+>
+> Preuve : 3 cas sur 4 discriminent ; les 25 invariants existants du grand livre repassent.
+
+- [x] **`[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`** (S, MOYEN) — au JOUR,
+  `NetWorth ≠ Σactifs − DettesNonImmo` en intra-mois : `NetWorth` reçoit les deltas datés et étale
+  son résidu **uniformément**, tandis que `DettesNonImmo`/`DetteTotale` étalent le leur en cadence
+  **hebdomadaire** et que `Liquidites` reçoit en plus `ctx.debt`
+  (`services/projection/dailyLedger.ts:572-595`, `:586-590`). **Mesuré : 0,01–0,02 $ sans immobilier
+  (5 scénarios), mais −1 408,37 $ avec hypothèque + prêt auto (0,28 % du NW), en dents de scie les
+  jeudis** ; l'identité se referme au dernier jour du mois. Effet visible : les aires empilées et la
+  ligne NetWorth ne se recomposent pas. Correctif : dériver la série quotidienne `NetWorth` de la
+  somme des séries de composants au lieu de l'interpoler indépendamment. [MESURÉ]
+
+### Fermé SANS code — `[NW-PRESENT-DEUX-PERIMETRES]`
+
+> **Mesuré, pas supposé** : une SEULE surface recompose `netWorth + realEstateEquity`
+> (`FutureKpiStrip`, vérifié par grep), et elle utilise déjà la source unique `presentEquityOfGoal`,
+> qui porte sa propre garde de finitude (`presentEquity-nonfini`). **Aucun écart en production.**
+>
+> J'ai commencé par écrire le `computePresentNetWorthWithRealEstate` que le ticket proposait, puis
+> je l'ai RETIRÉ : `FutureKpiStrip` reçoit `netWorth` déjà calculé en PROP, il n'a pas les entrées
+> brutes (`initialBalances`, `transactions`, `assets`, `fxRates`, `debts`) et ne pourrait donc pas
+> l'appeler. Le helper n'aurait été appelable par personne, et sa garde de finitude existait déjà
+> en amont. Ajouter du code que rien ne consomme est pire que le ticket ouvert.
+>
+> Les deux périmètres sont LÉGITIMES et documentés : hors immobilier pour le Dashboard et le
+> snapshot IA, immobilier inclus pour le bandeau KPI du Futur (parité voulue avec l'ex-Accueil).
+> À rouvrir SI une 3ᵉ surface veut ce périmètre — là, le point d'entrée unique se justifiera.
+
+- [x] **`[NW-PRESENT-DEUX-PERIMETRES]`** (XS, FAIBLE) — le patrimoine net PRÉSENT existe en deux
+  périmètres : `computePresentNetWorth` (`services/portfolio.ts:207`, **hors** immobilier) et une
+  recomposition locale `netWorth + realEstateEquity` avec son propre `presentEquityOfGoal`
+  (`components/FutureKpiStrip.tsx:84-97`). L'écart vaut l'équité immobilière entière selon la surface
+  consultée ; documenté comme parité voulue avec l'ex-Accueil. Correctif : exposer un
+  `computePresentNetWorthWithRealEstate` unique. [MESURÉ par lecture]
+
+---
+
 ## 2026-08-19 — Vague 1d (début) : les revenus que la ventilation ne montrait pas
 
 > `Income` contient le revenu locatif, les allocations familiales et les paiements REEE ; la

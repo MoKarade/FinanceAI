@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 416 tests** Vitest
-(396 fichiers de test, mesuré le 2026-08-19). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 420 tests** Vitest
+(397 fichiers de test, mesuré le 2026-08-19). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -201,6 +201,10 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   grandeurs PUBLIÉES. Et prouver que la grandeur mesurée est **non nulle** avant de la comparer —
   en Monte Carlo les points sont réduits, un test qui lit des champs absents compare des zéros
   (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`).
+- Une grandeur **DÉRIVÉE ne s'interpole pas**, elle se RECOMPOSE : lisser séparément les deux côtés
+  d'une identité comptable (patrimoine vs ses composants) la casse entre les points de raccord —
+  25 invariants du grand livre restaient VERTS pendant que l'identité dérivait de 89 $ au jour
+  (`IDENTITE-COMPTABLE-INTERPOLEE-TROIS-FOIS`).
 - Vérifs money-critical **en ISOLATION, séquentielles** (course `git stash` concurrente vue 2×).
 
 **Avant de coder**
@@ -210,6 +214,10 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Un **constat d'IMPOSSIBILITÉ que j'ai écrit** (ticket, bandeau, réponse à Marc) se re-prouve avant
   d'être cité : « seule la valeur nette peut passer au jour » était faux, le moteur émettait déjà de
   quoi ventiler — deux livraisons perdues (`DOC-STALE-IMPOSSIBILITY`).
+- Avant d'extraire une **source unique**, compter les sites RÉELS *et* vérifier que chacun peut
+  l'appeler avec les données dont il dispose : un composant qui reçoit le résultat en **prop** ne
+  pourra jamais appeler un helper qui prend les entrées brutes. Une source unique inatteignable est
+  pire que le problème (`HELPER-INAPPELABLE-PAR-SON-CONSOMMATEUR`).
 - Un item BACKLOG peut être **périmé** ou **contredire une décision verrouillée**
   (`docs/decisions.md`) → confirmer avant de coder, cocher « caduque » sinon.
 - Un ticket peut **sur-prescrire** son périmètre : prouver que chaque volet est atteignable.

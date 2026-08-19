@@ -4,6 +4,36 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-19 (suite 101) — vague 1d (suite) : le bilan au JOUR ne se refermait pas
+> Branche `claude/nw-perimetre` (empilée sur `claude/registres-oublies`).
+>
+> **Livré** : `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`. Au jour, `NetWorth` était interpolé POUR
+> LUI-MÊME alors qu'il est l'identité `Σ actifs − DettesNonImmo` — et ses composants suivent des
+> cadences DIFFÉRENTES (uniforme / hebdo / datée). L'identité ne se refermait qu'aux fins de mois.
+> Mesuré sur 1 461 jours : **89,01 $ → 0,00 $** (socle salarié), **−76,62 $ → 0,00 $** (hypothèque
+> + prêt auto). `NetWorth` est maintenant RECOMPOSÉ après interpolation
+> (`NET_WORTH_DAILY_ASSETS` dans `dailyLedger.ts`). 4 tests, **3 discriminent**.
+>
+> ⚠️ **Arbitrage assumé au DERNIER jour du mois** : la valeur du moteur prime et n'est PAS
+> recomposée (`day < nDays`). Le moteur arrondit chaque composant à 2 décimales → somme des
+> arrondis ≠ arrondi de la somme, mesuré **0,01 $**. Le test de raccord existant exige l'égalité
+> STRICTE avec le point mensuel et il a raison. L'écart est BORNÉ par le test (≤ 0,02 $) — sans
+> borne, l'exception serait une porte ouverte.
+>
+> ⚠️ **Les 25 invariants existants du grand livre étaient tous VERTS** pendant cette dérive : ils
+> vérifient la conservation champ par champ et le raccord aux fins de mois, jamais l'identité
+> TRANSVERSE en intra-mois. Une nouvelle famille d'invariant, pas un test de plus.
+>
+> **Fermé SANS code** : `[NW-PRESENT-DEUX-PERIMETRES]`. Le grep n'a trouvé qu'**UN** site de
+> recomposition (`FutureKpiStrip`) — la prémisse « deux périmètres » était périmée — et ce site
+> reçoit `netWorth` en **prop** : il ne pourrait JAMAIS appeler un helper qui prend les entrées
+> brutes. J'ai écrit puis SUPPRIMÉ `computePresentNetWorthWithRealEstate`. La part immobilière
+> passe déjà par `presentEquityOfGoal`, qui porte sa propre garde de finitude.
+>
+> **RESTE dans la vague 1d** : `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]` (S),
+> `[ENG-LIQUIDDEBT-NEVER-REPAID]` (M — taux de découvert à SOURCER + choix produit → Marc),
+> `[ENG-W5-RENTAL-OFFBALANCE]` et `[ENG-W5-BUSINESS-OFFBALANCE]` (M ×2).
+
 > ## 🟢 Session 2026-08-19 (suite 100) — vague 1d (début) : les revenus non ventilés
 > Branche `claude/registres-oublies` (empilée sur `claude/mc-bandes`).
 >

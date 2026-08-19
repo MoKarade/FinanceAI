@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-19 (ton remboursement d'impôt gagnait un mois de rendement en trop)
+
+- **Quand le fisc te rembourse en avril, la part venant de ta paye est réinvestie dans ton compte
+  non enregistré.** Ce virement n'était déclaré nulle part : ton solde montait de **29 796 $** sans
+  qu'aucun mouvement ne l'explique.
+- **Et surtout** : versé le **30 avril**, il touchait quand même **un mois complet** de rendement.
+  C'est corrigé — un dépôt de fin de mois ne rapporte plus comme s'il avait été là depuis le 1er.
+- **Ça baisse légèrement tes projections**, et c'est voulu : **−429 $ sur 30 ans** (0,009 % de ton
+  patrimoine final) dans le scénario de référence. C'est du rendement qui n'aurait jamais dû être
+  crédité.
+
+---
+
 ## [unreleased] — 2026-08-19 (ton retrait FERR obligatoire n'apparaissait pas dans le plan d'actions)
 
 - **À 72 ans, la loi t'oblige à retirer un minimum de ton REER converti en FERR. Le plan d'actions

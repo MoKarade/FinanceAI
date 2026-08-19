@@ -3878,3 +3878,41 @@ suffisait pas, car sous MC `buildMonthlyDataPoint` réduit le point à `{ NetWor
 aucune ventilation d'actifs à reconstruire. Il fallait AUSSI `diagnostics.verboseMonthlyPoints`.
 Quand un chemin est « invérifiable », chercher s'il l'est par nature ou seulement par une
 OPTIMISATION d'affichage qu'un drapeau de diagnostic existant sait déjà désarmer.
+
+### `REGISTRE-D-AFFICHAGE-QUI-PILOTE-UN-CALCUL` — remplir le « registre oublié » peut déplacer de l'argent
+
+`[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]` avait tout du correctif cosmétique : un producteur mutait
+`nonReg` sans publier `contribNonReg`, donc le solde bougeait sans flux visible. On ajoute la ligne
+manquante, on coche, on passe.
+
+Sauf que `contribNonReg` a **deux** consommateurs :
+- `monthlyOutput` → `NetTransferNonReg` (affichage) ;
+- `growthApplication` → croissance calculée sur `nonReg − contribNonReg`, pour EXCLURE les dépôts de
+  mi-mois d'un mois complet de rendement.
+
+Publier le flux a donc **déplacé de l'argent** : le remboursement, versé le 30 avril, cessait de
+gagner un mois entier de rendement. **−428,67 $ de patrimoine final sur 30 ans** (−0,009 %) sur le
+scénario de référence, jusqu'à **−23 343 $** sur le plus gros ancrage golden.
+
+**La règle** : avant de remplir un registre, grep TOUS ses lecteurs et classer chacun en
+« affichage » ou « calcul ». Un seul lecteur de calcul suffit à faire d'un correctif d'affichage un
+correctif money-critical — qui exige une MESURE, une re-base des goldens, et une phrase honnête dans
+le CHANGELOG. Symétrique exact de `UN-MONTANT-DEUX-REGISTRES-DEUX-REGLES` (là, un consommateur ne
+devait PAS voir le terme ; ici, il devait le voir, et personne ne l'avait remarqué).
+
+**Comment savoir si le déplacement est une correction ou une régression** : regarder le SIGNE et sa
+dépendance à l'horizon. Ici l'écart est négatif partout et croît avec la durée et la taille du
+portefeuille — signature d'un intérêt composé qu'on cesse de créditer à tort. Un écart de signe
+variable, ou constant quel que soit l'horizon, aurait dit l'inverse.
+
+**Le ticket se trompait de risque**, et c'est instructif : il annonçait que publier `contribNonReg`
+« déplacerait une décision d'allocation dans le même mois », `cashflowAllocation` le recevant en
+entrée. Un grep suffit à réfuter — ce module ne fait qu'un `+=` et ne LIT jamais la valeur. On a donc
+dépensé la prudence au mauvais endroit, et le vrai risque était dans un module que le ticket ne
+mentionnait pas. **Re-dériver le risque d'un ticket par grep avant de le croire**, exactement comme
+on re-trace le diagnostic d'un ticket perf.
+
+**Et deux propriétés indépendantes, deux tests** : « le mouvement est expliqué » (forme-flux) et
+« un dépôt du 30 ne rapporte pas un mois » sont séparées. Un futur passage qui retirerait
+`contribNonReg` du calcul de croissance (« ça ne sert qu'à l'affichage ») recréerait la croissance
+fantôme **sans casser la forme-flux**. Il faut un cas dédié pour chacune.

@@ -17,6 +17,11 @@ export interface AprilSettlementResult {
     taxPaidGains: number;
     taxPaidDivers: number;
     taxPaidREER: number;
+    /** [ENG-APRIL-REFUND-NONREG-UNPUBLISHED] Part du remboursement RÉINVESTIE au non-enregistré
+     *  (0 si aucun remboursement de salaire). L'appelant DOIT la publier en `contribNonReg` :
+     *  sans ça, le solde du non-enregistré bouge sans qu'aucun flux ne l'explique — mesuré
+     *  29 796,22 $ au mois 123, en mode déterministe. */
+    reinvestedNonReg: number;
     /** Nouveau bucket taxPreviousYear après reset (toujours 0/0/0/0/0). */
     newTaxPreviousYear: { revenu: number; gains: number; divers: number; reer: number; donCredit: number };
 }
@@ -49,6 +54,7 @@ export function processAprilSettlement(
             taxPaidGains: 0,
             taxPaidDivers: 0,
             taxPaidREER: 0,
+            reinvestedNonReg: 0,
             newTaxPreviousYear: taxPreviousYear,
         };
     }
@@ -58,6 +64,9 @@ export function processAprilSettlement(
     const taxPaidDivers = taxPreviousYear.divers;
     const taxPaidREER = taxPreviousYear.reer;
     const fluxImpots = taxPaidRevenu + taxPaidGains + taxPaidDivers + taxPaidREER;
+    /** [ENG-APRIL-REFUND-NONREG-UNPUBLISHED] Part du remboursement RÉINVESTIE au non-enregistré
+     *  (0 si aucun remboursement de salaire). L'appelant la publie en `contribNonReg`. */
+    let reinvestedNonReg = 0;
 
     if (fluxImpots !== 0) {
         state.subtractLiquid(fluxImpots);
@@ -72,6 +81,15 @@ export function processAprilSettlement(
                 state.addNonReg(reinvest);
                 state.addNonRegACB(reinvest);
                 state.subtractLiquid(reinvest); // réinvesti → sort du liquide
+                // [ENG-APRIL-REFUND-NONREG-UNPUBLISHED] Ce réinvestissement est un TRANSFERT vers le
+                // non-enregistré : il doit alimenter le flux publié (`NetTransferNonReg`), comme
+                // toute autre entrée dans ce compte. Il ne le faisait pas — MESURÉ 29 796,22 $ au
+                // mois 123 (un AVRIL), en mode déterministe, trouvé par la garde de forme-flux.
+                // ⚠️ On le REND plutôt que de laisser l'appelant le recalculer : reconstituer
+                // `fluxImpots < 0 && taxPaidRevenu < 0` là-bas dupliquerait la condition, et les deux
+                // copies divergeraient au premier changement de règle
+                // (`PARTAGER-LE-MONTANT-PAS-SES-REFLETS`).
+                reinvestedNonReg = reinvest;
             }
         } else {
             state.logFlow(`🏛️ Fisc: Régularisation de ${formatCAD(fluxImpots)} payée.`, TAX_DUE_DAY);
@@ -84,6 +102,7 @@ export function processAprilSettlement(
         taxPaidGains,
         taxPaidDivers,
         taxPaidREER,
+        reinvestedNonReg,
         newTaxPreviousYear: { revenu: 0, gains: 0, divers: 0, reer: 0, donCredit: 0 },
     };
 }

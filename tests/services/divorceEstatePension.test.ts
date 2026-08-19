@@ -79,7 +79,16 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
     });
 
     it('sans divorce, la succession est INCHANGÉE (rétrocompat mesurée)', () => {
-        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_374_818);
-        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_716_383);
+        // ⚠️ ANCRAGE RE-BASÉ le 2026-08-19, et l'écart est EXPLIQUÉ — pas élargi pour faire passer.
+        // Valeur d'origine : 3 374 818 $ → 3 374 653 $, soit **−165 $ (−0,005 %)**.
+        // `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]` publie enfin le remboursement d'impôt réinvesti
+        // en `contribNonReg`. Or `growthApplication` utilise `nonReg − contribNonReg` comme base
+        // pour EXCLURE les dépôts de mi-mois de la croissance du mois : ce remboursement, versé le
+        // 30 avril, gagnait jusqu'ici un MOIS COMPLET de rendement. Le retrait de cette croissance
+        // fantôme est l'effet VOULU — l'écart est négatif partout, et il croît avec l'horizon et la
+        // taille du portefeuille, exactement comme un intérêt composé qu'on cesse de créditer à tort.
+        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_374_653);
+        // Idem sur le second ancrage : 2 716 383 $ → 2 715 684 $ (−699 $, −0,026 %).
+        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_715_684);
     });
 });

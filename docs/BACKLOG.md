@@ -49,8 +49,9 @@
   **1d** *en cours* — ✅ livrés 2026-08-19 : `[REVENUS-NON-VENTILES-AFFICHAGE]`,
   `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`, `[NW-PRESENT-DEUX-PERIMETRES]` (fermé SANS code : un seul
   site de recomposition, et il reçoit `netWorth` en prop). RESTE :
-  `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`, `[ENG-LIQUIDDEBT-NEVER-REPAID]` (⚠️ taux de découvert à
-  SOURCER + choix produit → Marc), `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`.
+  `[ENG-LIQUIDDEBT-NEVER-REPAID]` (⚠️ taux de découvert à SOURCER + choix produit → Marc),
+  `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`. ✅ `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`
+  livré 2026-08-19 (dernier producteur muet : la garde forme-flux couvre désormais `NonReg`).
   **1e** Silence qui cache de l'argent (`[COUPLE-CTX-FAKE-ZERO]` + `[TOOL-TAXSITUATION-FAKE-ZERO]`
   groupés, puis les XS : `[SILENT-STOCKFORM-PRICEHINT]`, `[SYSVIEW-DBSIZE-ZERO]`,
   `[DEAD-PARSETX-SILENT-DROP]`, `[SILENT-PWA-PROMPT]`, `[SILENT-HEALTHWEIGHTS-FIELD]`).
@@ -1259,14 +1260,6 @@
   part cédée — et vérifier la même chose pour le décès du conjoint (mesuré 212 850 $ sur le REER).
   ⚠️ Même piège que `[ENG-FERR-NETTRANSFER-MUET]` : `withdrawalREER` alimente AUSSI `stepReerByUser`
   (partage per-conjoint). Mesurer les goldens AVANT/APRÈS pour prouver qu'aucun dollar ne bouge.
-
-- [ ] 🔴 **`[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`** (S) — dernier producteur muet trouvé par la
-  garde de forme-flux : `processAprilSettlement` verse le remboursement d'impôt au non-enregistré
-  (`addNonReg`, `projection.ts:987`) sans publier `contribNonReg`. **Mesuré : 29 796,22 $ au mois
-  123 (un AVRIL), stress-test désactivé.** Non corrigé dans le lot : ce mutateur s'exécute AVANT
-  `cashflowAllocation`, qui reçoit `contribNonReg` en ENTRÉE — y toucher peut déplacer une décision
-  d'allocation dans le même mois et demande sa propre mesure. **Correctif** : publier le flux, puis
-  AJOUTER `'NonReg'` à `ACCOUNTS` dans `projection.fluxForm.test.ts` (la garde est prête).
 
 - [ ] 🔴 **`[ENG-LIQUIDDEBT-NEVER-REPAID]`** (M) — `liquidDebt` ne fait que croître : jamais
   remboursé (même avec millions en liquide), **jamais porteur d'intérêt**. **Mesuré : retraité

@@ -70,13 +70,21 @@ describe('[ENG-DIVORCE-ROOM-COUPLE] les droits enregistrés suivent le nombre de
     });
 
     // Ces deux lignes sont sur le chemin de TOUS les ménages : la rétrocompat se MESURE.
+    // ⚠️ ANCRAGES RE-BASÉS le 2026-08-19, et l'écart est EXPLIQUÉ — pas élargi pour faire passer.
+    // `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]` publie le remboursement d'impôt réinvesti en
+    // `contribNonReg`, que `growthApplication` soustrait de la base de croissance pour exclure les
+    // dépôts de MI-MOIS. Ce remboursement, versé le 30 avril, gagnait jusqu'ici un mois COMPLET de
+    // rendement : on retire une croissance fantôme.
+    //   22 894 519 $ → 22 890 883 $  (−3 636 $, −0,016 %)
+    //   44 499 602 $ → 44 476 259 $  (−23 343 $, −0,052 %)
+    // L'écart est NÉGATIF dans les deux cas et croît avec l'horizon et la taille du portefeuille —
+    // signature d'un intérêt composé qu'on cesse de créditer à tort. Ce que ces deux cas
+    // vérifient (le lot per-conjoint ne perturbe ni le ménage ordinaire ni le décès) reste vrai.
     it('sans divorce ni décès, la sortie est INCHANGÉE', () => {
-        // `roomUsers` a pour défaut `users`, et `taxFilers === activeUsersCount` hors ménage solo :
-        // la rétrocompat est bit-identique par construction, et vérifiée ici.
-        expect(Math.round(finalNW({}, false))).toBe(22_894_519);
+        expect(Math.round(finalNW({}, false))).toBe(22_890_883);
     });
 
     it('le scénario de décès n\'est pas perturbé par ce lot', () => {
-        expect(Math.round(finalNW({ modelSurvivor: true }, true))).toBe(44_499_602);
+        expect(Math.round(finalNW({ modelSurvivor: true }, true))).toBe(44_476_259);
     });
 });

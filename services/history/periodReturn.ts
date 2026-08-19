@@ -59,12 +59,32 @@ export function isBenchmarkCandidate(symbol: string, name?: string): boolean {
  * % est un 0,00 % techniquement exact mais TROMPEUR (donnée figée ≠ marché plat) → `null` (« — » honnête).
  * Si UN SEUL des deux est synthétique, le mouvement est réel (prix figé vs prix réel) → on garde le %.
  */
-export function seriesReturnPct(
+export interface SeriesEndpoints {
+    /** Valeur de la borne PASSÉE et sa date (YYYY-MM-DD). */
+    from: number;
+    fromDate: string;
+    /** Valeur de la borne RÉCENTE et sa date. */
+    to: number;
+    toDate: string;
+}
+
+/**
+ * Les DEUX bornes qui définissent la variation de `key` sur `period` — `null` sous exactement les
+ * mêmes conditions de refus que `seriesReturnPct` (pas de borne récente, pas de baseline dans la
+ * fenêtre, ou les deux bornes synthétiques).
+ *
+ * ⚠️ Extrait de `seriesReturnPct` pour qu'un appelant qui veut la variation en DOLLARS lise les
+ * mêmes deux points que celui qui veut le POURCENTAGE. Deux implémentations parallèles finiraient
+ * par diverger sur un cas de refus, et l'écran afficherait alors « +1,2 % » à côté d'un « — » (ou
+ * pire : un montant sans son pourcentage, sur des bornes différentes). `seriesReturnPct` est
+ * désormais un mince habillage de cette fonction : il n'y a plus qu'une règle.
+ */
+export function seriesReturnEndpoints(
     rows: MarketDataPoint[],
     key: string,
     period: PerfPeriod,
     isSynthetic?: (date: string, key: string) => boolean,
-): number | null {
+): SeriesEndpoints | null {
     if (!rows || rows.length === 0) return null;
     const bothSynthetic = (baselineDate: string, latestDate: string): boolean =>
         !!isSynthetic && isSynthetic(latestDate, key) && isSynthetic(baselineDate, key);
@@ -76,12 +96,14 @@ export function seriesReturnPct(
     }
     if (latest === null) return null;
     const latestDate = String(rows[latestIdx].date);
+    const borne = (i: number, v: number): SeriesEndpoints | null =>
+        bothSynthetic(String(rows[i].date), latestDate)
+            ? null
+            : { from: v, fromDate: String(rows[i].date), to: latest, toDate: latestDate };
     if (period === '24H') {
         for (let i = latestIdx - 1; i >= 0; i--) {
             const v = Number(rows[i][key]);
-            if (Number.isFinite(v) && v > 0) {
-                return bothSynthetic(String(rows[i].date), latestDate) ? null : pct(v, latest);
-            }
+            if (Number.isFinite(v) && v > 0) return borne(i, v);
         }
         return null;
     }
@@ -89,12 +111,20 @@ export function seriesReturnPct(
     for (let i = latestIdx - 1; i >= 0; i--) {
         if (String(rows[i].date) > start) continue;
         const v = Number(rows[i][key]);
-        if (Number.isFinite(v) && v > 0) {
-            return bothSynthetic(String(rows[i].date), latestDate) ? null : pct(v, latest);
-        }
+        if (Number.isFinite(v) && v > 0) return borne(i, v);
         // Ligne à la bonne date mais sans la clé → continuer vers le passé (lignes éparses).
     }
     return null; // série plus récente que la période → « — » honnête
+}
+
+export function seriesReturnPct(
+    rows: MarketDataPoint[],
+    key: string,
+    period: PerfPeriod,
+    isSynthetic?: (date: string, key: string) => boolean,
+): number | null {
+    const b = seriesReturnEndpoints(rows, key, period, isSynthetic);
+    return b === null ? null : pct(b.from, b.to);
 }
 
 /**

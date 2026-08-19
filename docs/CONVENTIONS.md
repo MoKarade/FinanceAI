@@ -3710,3 +3710,59 @@ est du code mort qui donne l'illusion que le problème est traité — pire que 
 **Corollaire de tenue** : fermer un ticket SANS code est un résultat légitime, à condition d'écrire
 la mesure qui le justifie dans l'archive. Sinon la session suivante rouvre le même ticket sur la
 même prémisse périmée (famille `DOC-STALE-IMPOSSIBILITY`, en miroir).
+
+### `GARDE-SUR-AGREGAT-AVEC-INDEX-PAR-COMPOSANT` — la garde existait, elle ne pouvait pas se déclencher
+
+`buildMarketData` publie `syntheticTailKeys`, un `Set` de `JSON.stringify([date, symbole])` marquant
+les valeurs raccordées au prix courant faute de chandelles. `seriesReturnPct` l'accepte pour rendre
+« — » plutôt qu'un 0,00 % trompeur. En branchant la variation des placements du hub, j'ai passé cette
+même fonction `isSynthetic` pour la clé **`TOTAL`**.
+
+Elle ne peut jamais rendre `true` : l'index est peuplé PAR SYMBOLE, et `TOTAL` est un agrégat qui
+mêle réel et synthétique — c'est même écrit dans le commentaire du champ. La garde compilait,
+se lisait bien, et ne protégeait rien.
+
+**Puis le second piège, plus grave** : même relevée correctement au niveau de l'agrégat, une règle
+bâtie sur `syntheticTailKeys` rate le cas le plus COURANT. `priceAt` REPORTE le dernier close connu
+jusqu'à 7 jours (`STALE_PRICE_DAYS`) sans rien marquer du tout. Deux jours consécutifs de report
+donnent exactement le même 0,00 % trompeur, et aucune clé synthétique n'existe pour le dire. Une
+garde correcte sur le mauvais indicateur reste une garde vide.
+
+**La règle** : avant de brancher une garde indexée sur des COMPOSANTS à une grandeur AGRÉGÉE,
+vérifier que l'index contient une entrée pour la clé qu'on interroge — et pas seulement que les types
+concordent. Puis se demander si l'indicateur couvre bien TOUS les chemins qui produisent le symptôme,
+ou seulement celui qui l'a fait naître.
+
+**Ce qui a marché ici** : refonder la règle sur un fait vérifiable dans la SOURCE plutôt que dans un
+sous-produit — « ce jour-là, au moins un titre portant une colonne avait-il une vraie clôture dans son
+`priceHistory` ? ». Insensible au report comme au raccord, et sans dépendance aux détails internes de
+`buildMarketData`. Sur une série quotidienne normale, elle ne se déclenche jamais.
+
+**Ce qui l'a révélé** : un test de REFUS écrit avant de croire la garde. Il a d'abord échoué pour la
+mauvaise raison (le refus « périmé » frappait avant), ce qui a obligé à construire une fixture où le
+chemin visé est le SEUL atteignable — deux titres, dont un qui fournit l'axe des dates sans porter de
+colonne. Une fixture qu'on doit tordre pour atteindre une garde est un signal : ou la garde est
+inatteignable, ou on ne l'a pas comprise.
+
+### `PARITE-QUI-REND-UN-TEST-VACUEUX` — une longueur de fixture choisie au jugé ne prouve rien
+
+Garde contre la décimation : `buildMarketData` réduit sa sortie à 500 points (pour Recharts) en
+gardant les indices `0, s, 2s…` plus les deux derniers. La borne « 7 jours » est à l'indice `N−8` :
+elle survit à la décimation quand `(N−8) % s === 0`.
+
+Mon premier test utilisait N = 900 (donc `s = 2`, et `892 % 2 === 0`) : la borne survivait, le test
+passait **aussi bien avec la décimation active que sans**. Il avait l'air de garder quelque chose.
+Vérifié par perturbation (remettre `maxPoints: 500`) : 9 tests verts dans les deux cas.
+
+Avec N = 1500 (`s = 3`, `1492 % 3 === 1`), la borne disparaît si l'on décime et la baseline recule
+d'un jour — « 7 jours » vaudrait 8. Le test discrimine.
+
+**La règle** : quand un test dépend d'un pas d'échantillonnage, d'un modulo, d'une taille de bloc ou
+d'une longueur de fenêtre, la valeur de la fixture est un PARAMÈTRE DU TEST, pas un décor. La choisir
+en calculant la condition d'échec, et **asserter cette condition dans le test lui-même** (ici :
+`expect((N − 8) % pas).not.toBe(0)`) — sinon un refactor de la constante de décimation rendrait le
+cas vacueux sans que rien ne bronche.
+
+Sœur de `PREUVE-DE-DISCRIMINATION-NON-REPRESENTATIVE` : ce n'est pas « le test échoue-t-il sur le code
+d'avant ? » qu'il faut se demander une fois, c'est le vérifier pour CHAQUE perturbation qu'il prétend
+couvrir. Trois refus, trois perturbations, trois vérifications — la troisième était verte.

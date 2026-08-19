@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 420 tests** Vitest
-(397 fichiers de test, mesuré le 2026-08-19). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 433 tests** Vitest
+(398 fichiers de test, mesuré le 2026-08-19). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -270,6 +270,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Un test d'interaction doit **cliquer là où l'utilisateur clique** (sur la donnée, pas dans la marge)
   — un `onClick` React ne capte PAS un clic sur une forme SVG redessinée au survol : la moitié basse
   de la courbe Futur était morte au clic depuis toujours (`FUTUR-CLICK-AREA`, → `pointerup`).
+- Une garde indexée **PAR COMPOSANT** branchée sur une grandeur **AGRÉGÉE** ne peut jamais se
+  déclencher (`syntheticTailKeys` est peuplé par symbole, jamais pour `TOTAL`) — et même relevée au
+  bon niveau, elle peut rater le chemin le PLUS courant (le report de prix ≤ 7 j ne marque rien).
+  Refonder la règle sur un fait lisible dans la SOURCE (`GARDE-SUR-AGREGAT-AVEC-INDEX-PAR-COMPOSANT`).
+- Quand un test dépend d'un pas d'échantillonnage ou d'un modulo, la longueur de la fixture est un
+  PARAMÈTRE : la calculer et l'asserter dans le test (`expect((N-8) % pas).not.toBe(0)`). Choisie au
+  jugé, elle rend le cas vacueux par simple parité — mesuré (`PARITE-QUI-REND-UN-TEST-VACUEUX`).
 - Resserrer un scan-garde **AVANT** de coder le fix : les offenders révélés = le vrai périmètre.
 - Un scan-garde qui borne une syntaxe IMBRIQUÉE avec `[^x]*` est aveugle en silence (un `>` dans un
   `className` interpolé tronque la balise) → compter la PROFONDEUR, **tester l'extracteur sur des

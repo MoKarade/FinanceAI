@@ -36,6 +36,7 @@ moteur réel** — un champ ajouté à `monthlyOutput.ts` sans classe fait écho
 | Classe | Traitement | Exemples |
 |---|---|---|
 | `stock` | Interpolé de la fin du mois précédent à la fin de ce mois. **Le dernier jour vaut EXACTEMENT la valeur du moteur.** | `Liquidites`, `CELI`, `REER`, `Immobilier`, `NetWorth`, `ImpotLatent`, `DettesNonImmo` |
+| `stock` **dérivé** | Interpolé comme les autres, puis **RECOMPOSÉ** à partir de ses composants (sauf le dernier jour du mois). | `NetWorth` (voir ci-dessous) |
 | `flow` | Réparti sur les jours selon sa cadence. **La somme des jours vaut EXACTEMENT le total du moteur.** | `Expenses`, `IncomeMarc`, `MarketGrowth*`, `NetTransfer*`, `FluxImpots` |
 | `monthly` | Recopié tel quel — un taux ne se divise pas. | `marginalTaxRate`, `MarketGrowthPct*`, `age` |
 | `recomputed` | Reconstruit au jour. | `dateLabel`, `diff*`, `Savings`, `lifeEvents`/`flowEvents` (posés à LEUR jour via `eventDays`, sinon au 1er) |
@@ -53,6 +54,27 @@ Cadences de répartition (`FLOW_CADENCE`, défaut `uniform`) :
 ⚠️ Les mouvements datés n'appartiennent pas tous aux mêmes champs (`datedDeltasForField`) : un
 **paiement de dette** sort de `Liquidites` mais est **neutre sur `NetWorth`** (la dette baisse
 d'autant). Les confondre creusait un faux trou dans le patrimoine net le jour de paie.
+
+⚠️ **`NetWorth` n'est pas une grandeur libre, c'est une IDENTITÉ** (`[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`,
+2026-08-19). Interpolé pour lui-même, il divergeait de la somme de ses propres composants en
+intra-mois — parce que ceux-ci suivent des cadences DIFFÉRENTES (uniforme pour les stocks,
+hebdomadaire pour la dette, datée pour les remboursements). Mesuré sur 1 461 jours : jusqu'à
+**89,01 $** (salarié) / **−76,62 $** (hypothèque + prêt auto), et **−1 408 $** sur un profil plus
+gros. Il est donc **recomposé** après interpolation :
+
+```
+NetWorth[jour] = Σ NET_WORTH_DAILY_ASSETS[jour] − DettesNonImmo[jour]
+```
+
+- `NET_WORTH_DAILY_ASSETS` = `Liquidites, CELI, CELIAPP, REER, REEE, NonReg, Crypto, Immobilier`.
+  `Immobilier` porte l'**équité NETTE** d'hypothèque → on retranche `DettesNonImmo`, **jamais**
+  `DetteTotale` (ce serait un double comptage). Un test garde cette liste contre `FIELD_KIND`.
+- ⚠️ **Exception au DERNIER jour du mois** : la valeur du moteur prime et n'est pas recomposée. Le
+  moteur arrondit chaque composant à 2 décimales → somme des arrondis ≠ arrondi de la somme
+  (mesuré 0,01 $). Le raccord mensuel doit rester EXACT ; l'écart d'arrondi est borné et testé
+  (`tests/services/bilanQuotidien.test.ts`).
+- Si un composant est absent ou non fini, la recomposition est ABANDONNÉE pour ce jour (la valeur
+  interpolée reste) — on ne fabrique pas un patrimoine amputé d'un poste.
 
 ⚠️ Un champ que le mois n'émet pas reste **absent** du jour — jamais un `0` crédible.
 

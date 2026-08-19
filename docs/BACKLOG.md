@@ -44,10 +44,11 @@
   re-baser des goldens : 6 PR séparées se re-baseraient l'une l'autre.
   **1c** ✅ *partiel* — `[MC-BANDES-CROISEES]` livré 2026-08-19. RESTE : `[ENG-MC-CONSERVATION-BLIND]`,
   `[ENG-INV-FLUXFORM-COVERAGE]` (extensions de COUVERTURE, pas des correctifs — lot séparé).
-  **1d** *en cours* — ✅ `[REVENUS-NON-VENTILES-AFFICHAGE]` livré 2026-08-19. RESTE :
-  (`[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`, `[ENG-LIQUIDDEBT-NEVER-REPAID]`,
-  `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`, `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`,
-  `[REVENUS-NON-VENTILES-AFFICHAGE]`, `[NW-PRESENT-DEUX-PERIMETRES]`) — même CLASSE, un seul panel.
+  **1d** *en cours* — ✅ livrés 2026-08-19 : `[REVENUS-NON-VENTILES-AFFICHAGE]`,
+  `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`, `[NW-PRESENT-DEUX-PERIMETRES]` (fermé SANS code : un seul
+  site de recomposition, et il reçoit `netWorth` en prop). RESTE :
+  `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`, `[ENG-LIQUIDDEBT-NEVER-REPAID]` (⚠️ taux de découvert à
+  SOURCER + choix produit → Marc), `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`.
   **1e** Silence qui cache de l'argent (`[COUPLE-CTX-FAKE-ZERO]` + `[TOOL-TAXSITUATION-FAKE-ZERO]`
   groupés, puis les XS : `[SILENT-STOCKFORM-PRICEHINT]`, `[SYSVIEW-DBSIZE-ZERO]`,
   `[DEAD-PARSETX-SILENT-DROP]`, `[SILENT-PWA-PROMPT]`, `[SILENT-HEALTHWEIGHTS-FIELD]`).
@@ -815,15 +816,6 @@
   avec la tuile voisine, qui affiche justement `estateNetWorth`. Correctif : dériver d'un run moteur
   (`savingsMultiplier` existe déjà, cf. `tests/services/projection.savingsLever.test.ts`) ou retirer
   la tuile. [MESURÉ]
-- [ ] **`[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`** (S, MOYEN) — au JOUR,
-  `NetWorth ≠ Σactifs − DettesNonImmo` en intra-mois : `NetWorth` reçoit les deltas datés et étale
-  son résidu **uniformément**, tandis que `DettesNonImmo`/`DetteTotale` étalent le leur en cadence
-  **hebdomadaire** et que `Liquidites` reçoit en plus `ctx.debt`
-  (`services/projection/dailyLedger.ts:572-595`, `:586-590`). **Mesuré : 0,01–0,02 $ sans immobilier
-  (5 scénarios), mais −1 408,37 $ avec hypothèque + prêt auto (0,28 % du NW), en dents de scie les
-  jeudis** ; l'identité se referme au dernier jour du mois. Effet visible : les aires empilées et la
-  ligne NetWorth ne se recomposent pas. Correctif : dériver la série quotidienne `NetWorth` de la
-  somme des séries de composants au lieu de l'interpoler indépendamment. [MESURÉ]
 - [ ] **`[GARDE-JOUR-ANTICIRCULAIRE-ETROITE]`** (S, MOYEN) — les deux invariants de raccord
   (`tests/services/dailyLedger.test.ts:132` et `:146`) **lisent `FIELD_KIND` pour choisir quoi
   vérifier** → circulaires (déjà documenté). La garde non circulaire (`:160`, « ordre de grandeur »)
@@ -839,12 +831,6 @@
   `CoastFIRE` (`monthlyOutput.ts:170` — **indépendante de `projection.returnRate`**), revenu barista
   1 500 $/mois et facteur 25× (`monthlyOutput.ts:172`). Correctif : sourcer dans
   `FISCAL_REFERENCE.md` ou paramétrer. [HYPOTHÈSE pour l'écart $, MESURÉ pour l'absence de source]
-- [ ] **`[NW-PRESENT-DEUX-PERIMETRES]`** (XS, FAIBLE) — le patrimoine net PRÉSENT existe en deux
-  périmètres : `computePresentNetWorth` (`services/portfolio.ts:207`, **hors** immobilier) et une
-  recomposition locale `netWorth + realEstateEquity` avec son propre `presentEquityOfGoal`
-  (`components/FutureKpiStrip.tsx:84-97`). L'écart vaut l'équité immobilière entière selon la surface
-  consultée ; documenté comme parité voulue avec l'ex-Accueil. Correctif : exposer un
-  `computePresentNetWorthWithRealEstate` unique. [MESURÉ par lecture]
 
 
 ### 🔴 Valeurs fiscales sans source (viole le non-négociable `FISCAL_REFERENCE.md`)

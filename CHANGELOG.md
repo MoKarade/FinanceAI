@@ -6,6 +6,25 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-19 (au jour près, ton patrimoine ne correspondait pas à son propre bilan)
+
+- **Sur le graphique au JOUR, ton patrimoine net ne valait pas la somme de ce qui le compose.**
+  Additionne toi-même liquidités + CELI + CELIAPP + REER + REEE + non-enregistré + crypto +
+  immobilier, retire tes dettes non immobilières : tu n'obtenais pas la courbe « patrimoine ».
+- **Pourquoi** : chaque grandeur était lissée entre deux fins de mois avec sa PROPRE cadence — le
+  patrimoine étalait son résidu uniformément, les dettes suivaient un rythme hebdomadaire, les
+  liquidités encaissaient en plus les remboursements datés. Trois lissages différents pour des
+  chiffres liés par une identité comptable : l'identité se rompait en cours de mois et ne se
+  refermait qu'au dernier jour.
+- **Mesuré sur 1 461 jours** : écart maximal **89,01 $** (salarié sans dette) et **−76,62 $**
+  (hypothèque + prêt auto) — jusqu'à **−1 408 $** sur un profil plus gros, soit 0,28 % du
+  patrimoine. Aujourd'hui : **0,00 $**, tous les jours.
+- **Comment** : le patrimoine au jour n'est plus lissé pour lui-même, il est RECOMPOSÉ à partir de
+  ses composants déjà lissés. Le dernier jour de chaque mois reste la valeur exacte du moteur
+  (à un cent d'arrondi près, borné et testé) : c'est elle la source de vérité.
+
+---
+
 ## [unreleased] — 2026-08-19 (tes loyers et tes allocations n'apparaissaient nulle part)
 
 - **Le détail de tes revenus en cachait une partie.** Le panneau et l'infobulle du Futur listaient

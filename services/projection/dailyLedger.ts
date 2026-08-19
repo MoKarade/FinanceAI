@@ -141,6 +141,19 @@ export type FlowCadence =
     | 'income';
 
 /** Cadence par champ de flux. Absent ⇒ `uniform` (aucune date connue, et on ne l'invente pas). */
+/**
+ * [JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE] Composants ACTIFS du patrimoine net, tels que le moteur les
+ * additionne (`monthlyOutput.ts`, note [M5]). `Immobilier` porte l'ÉQUITÉ (déjà nette
+ * d'hypothèque) — d'où l'usage de `DettesNonImmo`, jamais de `DetteTotale`.
+ *
+ * ⚠️ Un actif ajouté au moteur DOIT être ajouté ici, sinon le patrimoine au jour l'oubliera en
+ * silence. La garde `tests/services/bilanQuotidien.test.ts` compare cette liste au bilan mensuel
+ * réel : elle échoue si un composant manque.
+ */
+export const NET_WORTH_DAILY_ASSETS: readonly string[] = [
+    'Liquidites', 'CELI', 'CELIAPP', 'REER', 'REEE', 'NonReg', 'Crypto', 'Immobilier',
+];
+
 export const FLOW_CADENCE: Readonly<Record<string, FlowCadence>> = {
     IncomeMarc: 'weekly',
     IncomeAnna: 'weekly',
@@ -526,6 +539,53 @@ export function buildDailyLedger(input: BuildDailyLedgerInput): DailyLedgerPoint
             const income = point.Income;
             const expenses = point.Expenses;
             if (isPlainNumber(income) && isPlainNumber(expenses)) point.Savings = income - expenses;
+
+            // [JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE] `NetWorth` est DÉRIVÉ du bilan du jour, pas
+            // interpolé pour lui-même — audit 2026-08-19.
+            //
+            // Avant : chaque champ était interpolé indépendamment. `NetWorth` recevait ses propres
+            // deltas datés (salaire, récurrents, impôt) et étalait son résidu UNIFORMÉMENT, tandis
+            // que `DettesNonImmo`/`DetteTotale` étalaient le leur en cadence HEBDOMADAIRE
+            // (`shapeForStock`) et que `Liquidites` encaissait EN PLUS les remboursements de dette.
+            // Trois formes d'étalement différentes pour des grandeurs liées par une identité
+            // comptable → l'identité se rompait en intra-mois et se refermait au dernier jour.
+            // Effet visible : les aires empilées et la ligne NetWorth ne se recomposent pas, en
+            // dents de scie les jours de paiement. Mesuré : 89 $ sur un socle salarié, jusqu'à
+            // 1 408 $ (0,28 % du patrimoine) sur un profil hypothèque + prêt auto.
+            //
+            // Maintenant : même patron que `Savings` juste au-dessus — la grandeur composée est
+            // RECALCULÉE depuis ses composants du jour. L'identité devient vraie par construction,
+            // à chaque jour et plus seulement en fin de mois.
+            //
+            // ⚠️ Formule alignée sur celle du moteur (`monthlyOutput.ts`, commentaire [M5]) :
+            // `NetWorth = Σ actifs (Immobilier = ÉQUITÉ) − DettesNonImmo`. On utilise
+            // `DettesNonImmo` et JAMAIS `DetteTotale` : l'équité immobilière est déjà nette
+            // d'hypothèque, la soustraire à nouveau double-compterait le prêt (non négociable
+            // `CLAUDE.md`). Au dernier jour du mois, les composants valent ceux du point mensuel,
+            // donc la somme redonne exactement `cur.NetWorth` — le raccord est préservé.
+            //
+            // ⚠️ Si un seul composant manque (vue filtrée par `fields`, ou champ absent du point
+            // mensuel), on NE dérive PAS : une somme partielle serait un patrimoine faux et
+            // crédible. On laisse alors la série interpolée, qui reste au moins exacte aux bornes.
+            //
+            // ⚠️ SAUF le dernier jour du mois, où la valeur du MOTEUR prime. Le moteur arrondit
+            // chaque composant à 2 décimales avant de les publier : la somme des arrondis diffère
+            // de l'arrondi de la somme, mesuré 0,01 $. Le test de raccord exige une égalité stricte
+            // (5e-7) avec le point mensuel, et il a raison — `cur.NetWorth` EST la source de vérité.
+            // Arbitrage assumé : un cent d'écart de bilan le dernier jour du mois, contre une dérive
+            // structurelle allant jusqu'à 1 408 $ tous les autres jours. Aucun arrondi ne réconcilie
+            // les deux : c'est une propriété de l'arrondi par composant, pas un défaut de calcul.
+            if (day < nDays && wants('NetWorth') && isPlainNumber(point.NetWorth)) {
+                let bilan = 0;
+                let complet = isPlainNumber(point.DettesNonImmo);
+                for (const key of NET_WORTH_DAILY_ASSETS) {
+                    if (!(key in cur)) continue;           // composant absent du moteur : normal
+                    const v = point[key];
+                    if (!isPlainNumber(v)) { complet = false; break; }
+                    bilan += v;
+                }
+                if (complet) point.NetWorth = bilan - (point.DettesNonImmo as number);
+            }
 
             point.dateLabel = dayLabel(year, month, day);
             point.hostMonthIndex = hostMonthIndex;

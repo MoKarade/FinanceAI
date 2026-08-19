@@ -3515,3 +3515,33 @@ celui-ci**.
 - Un module qui accumule des findings de plusieurs agents indépendants se traite **en UN lot**, pas
   ticket par ticket : quatre PR sur le même bloc de code, c'est trois rebases et trois occasions de
   se contredire.
+
+### `ASSIETTE-ELARGIE-CASSE-SES-RACCOURCIS` — élargir une assiette invalide le code qui la supposait étroite
+
+En corrigeant `[REER-ACTIF-NON-RECONCILIE]` (ajouter les retraits REER à l'assiette imposable de
+décembre en phase active), trois lignes VOISINES sont devenues fausses **sans que rien ne le
+signale** — ni `tsc`, ni le lint, ni les 4 368 tests. Elles étaient correctes uniquement parce que
+l'assiette valait le salaire.
+
+1. **`calculateFiscalReport(gross, …)` fait `employmentIncome = gross` PAR DÉFAUT.** Élargir `gross`
+   sans passer `employmentIncome` explicitement calcule RRQ/RQAP/AE **sur le retrait REER**. Le
+   défaut est documenté comme « rétrocompat totale pour les appelants dont le gross EST le
+   salaire » — ce qui cesse d'être vrai à l'instant où on élargit.
+2. **`taxMarcEmployer = taxMarcReal`** était un raccourci juste tant que `taxMarcReal` était l'impôt
+   du salaire seul. Après élargissement, il faisait retenir à l'employeur l'impôt d'un revenu qu'il
+   ne verse pas. Recalculé explicitement sur le salaire.
+3. **`familyGrossReal`**, qui sert de base à la réduction des crédits d'âge, référait à l'ancienne
+   assiette — deux notions de « revenu familial » auraient cohabité dans la même fonction.
+
+**La règle** (renfort de « élargir l'assiette → auditer TOUS les dérivés ») : après avoir élargi une
+assiette, relire **toute la fonction** en se demandant, pour chaque usage de l'ancienne variable,
+« celui-ci voulait-il dire l'assiette, ou le salaire ? ». Les deux étaient le même objet ; ils ne le
+sont plus. Un raccourci d'égalité (`a = b`) entre deux grandeurs qui viennent de diverger est le
+symptôme à chercher.
+
+**Corollaire mesuré** : un écart CONSTANT dans un test (ici 766 $, présent même avec un retrait nul)
+n'est presque jamais le bug qu'on chasse — c'est une grandeur voisine qu'on a incluse par erreur
+dans la mesure. Ici, la prime RAMQ. Le réflexe utile est de faire varier l'entrée à zéro : si
+l'écart survit, il est ailleurs. Et creuser l'écart a payé — il a révélé
+`[RAMQ-ACTIF-HORS-RETRAITS]`, la même asymétrie actif/retraité sur un dérivé, laissée ouverte au
+BACKLOG plutôt qu'embarquée dans un lot dont Marc avait fixé le périmètre.

@@ -8,10 +8,9 @@
 // propertiesState est mutée en place (objets référencés).
 
 import type { RealEstateGoal, Municipality } from '../../types';
-import { RAP_LIMIT_PER_USER } from '../../utils/tax';
+import { RAP_LIMIT_PER_USER, calculateGrossWithholdingRRSP, withholdingForGrossRRSP } from '../../utils/tax';
 import { calculateB20StressTest, validateMortgageParameters, calculateSchlPremium, calculateNewHomeRebateTotal } from '../realEstate';
 
-type GetMarginalRateFn = (annualGross: number) => number;
 type GetMonthOffsetFn = (dateStr: string) => number;
 // FISC-WELCOME-UNIFY — la fonction injectée porte la municipalité du bien (welcome tax MTL vs reste QC).
 type WelcomeTaxFn = (price: number, municipality?: Municipality) => number;
@@ -57,6 +56,20 @@ export interface RealEstateState {
     contribLiquid: number;
     celiWithdrawalsThisYear: number;
     retraitCeliMois: number;
+    /** [REER-RETRAIT-IMMO-REGISTRE] Registre d'AFFICHAGE des retraits REER du mois (→ `RetraitREER`).
+     *  Le module l'ignorait : 355 639 $ sortis du REER s'affichaient « 0 $ retiré » avec l'impôt
+     *  correspondant juste en face. Alimenté par le RAP **et** par le retrait imposable — les deux
+     *  sont bien des sorties du REER du point de vue du décaissement. */
+    retraitReerMois: number;
+    /** [REER-IMMO-HORS-ASSIETTE] Retenue à la source prélevée ce mois sur les retraits REER
+     *  imposables (registre d'affichage, cf. `cashflowAllocation`). */
+    rrspWithholdingMois: number;
+    /** [REER-IMMO-HORS-ASSIETTE] Brut IMPOSABLE retiré du REER ce mois pour financer l'achat, à
+     *  ajouter par le caller à `accRetraitsReerYear` (l'ASSIETTE que décembre impose) et à sa
+     *  ventilation per-conjoint. ⚠️ EXCLUT le RAP, qui n'est pas imposable.
+     *  Sans ce registre, le module posait une RETENUE que décembre crédite sans jamais inscrire
+     *  le retrait dans l'assiette que décembre débite : un crédit sans sa dette. */
+    accRetraitsReerYearAdd: number;
     immoInterest: number;
     immoPrincipal: number;
     immoHypo: number;
@@ -71,6 +84,11 @@ export interface RealEstateCtx {
     loopYear: number;
     isRetired: boolean;
     activeUsersCount: number;
+    /** [RAP-DIVORCE-DEUX-TETES] Nombre de DÉCLARANTS vivants (1 après divorce/décès), à ne pas
+     *  confondre avec `activeUsersCount` qui reste nominal. Le plafond RAP est un droit PAR
+     *  PERSONNE : sur `activeUsersCount`, un divorcé recevait le plafond d'un couple.
+     *  Optionnel à défaut neutre (`activeUsersCount`) → rétrocompat bit-identique hors divorce. */
+    taxFilers?: number;
     simInflation: number;
     simSalaryGrowth: number;
     grossMarcBaseAnnual: number;
@@ -110,15 +128,14 @@ export function processRealEstate(
     propertiesState: PropertyStateMutable[],
     getMonthOffset: GetMonthOffsetFn,
     welcomeTax: WelcomeTaxFn,
-    getMarginalRate: GetMarginalRateFn,
 ): void {
     const {
-        m, loopYear, isRetired, activeUsersCount, simInflation, simSalaryGrowth,
-        grossMarcBaseAnnual, grossAnnaBaseAnnual, incomeRetirement,
+        m, loopYear, simInflation,
         useSmithManoeuvre, currentRentExpense,
         bootPrimaryHousingOffset = 0,
         skipRapForPurchase = false,
         downsizeThisMonth = false,
+        taxFilers = ctx.activeUsersCount,
     } = ctx;
 
     // PH4-FUT-B-4 — DOWNSIZING (au mois exact de la retraite) : vendre la résidence principale et
@@ -198,7 +215,13 @@ export function processRealEstate(
 
                 // Phase 1: RAP (si résidence principale, éligible, et non sauté par stratégie)
                 if (!skipRapForPurchase && goal.isPrimaryResidence && (!state.hasUsedRap || state.rapRepaymentDueTotal === 0)) {
-                    const rapLimit = RAP_LIMIT_PER_USER * activeUsersCount;
+                    // [RAP-DIVORCE-DEUX-TETES] `taxFilers`, PAS `activeUsersCount` : le plafond RAP est
+                    // un droit par PERSONNE. Sur `activeUsersCount` (nominal, toujours 2), un divorcé
+                    // recevait le plafond d'un COUPLE — mesuré 98 080,68 $ pour un plafond légal de
+                    // 60 000 $, soit 38 080,68 $ de retrait non imposable illégitime. Même homonyme
+                    // que celui déjà corrigé dans taxJanuary/taxDecember/meltdown/latentTax : ce
+                    // site-ci avait été sauté (cf. MODULE-ECRIT-HORS-CHECKLIST).
+                    const rapLimit = RAP_LIMIT_PER_USER * Math.max(1, taxFilers);
                     const rapAvailable = Math.max(0, rapLimit - state.rapBorrowed);
                     if (rapAvailable > 0) {
                         const rapAmount = Math.min(state.reer, rapAvailable, remainingShortfall);
@@ -211,6 +234,10 @@ export function processRealEstate(
                             const graceYears = (loopYear >= 2022 && loopYear <= 2025) ? 5 : 2;
                             state.rapRepaymentStartOffset = m + (graceYears * 12);
                             state.withdrawalREER += rapAmount;
+                            // [REER-RETRAIT-IMMO-REGISTRE] registre d'AFFICHAGE. Le RAP est bien une
+                            // sortie du REER — il n'entre en revanche PAS dans `accRetraitsReerYearAdd`
+                            // (l'assiette), puisqu'il n'est pas imposable.
+                            state.retraitReerMois += rapAmount;
                             state.contribLiquid += rapAmount;
                             remainingShortfall -= rapAmount;
                             state.flowEventLogs.push(`🏦 ↳ Retrait REER via le RAP, sans impôt : +${Math.round(rapAmount).toLocaleString('fr-CA')} $`);
@@ -242,22 +269,42 @@ export function processRealEstate(
                 }
 
                 // Phase 4: REER imposable (dernier recours)
+                //
+                // [REER-IMMO-HORS-ASSIETTE] + [EMPILEMENT-REER-ACHAT-IMMO] — audit 2026-08-19.
+                // AVANT : le retrait posait `taxCurrentYearReer += drawn * margRate` (marginal PLAT,
+                // évalué sur le revenu d'AVANT le retrait) sans jamais alimenter `accRetraitsReerYear`.
+                // Or décembre CRÉDITE le bucket `.reer` comme une retenue déjà prise
+                // (`withholdingAlreadyTaken`) et DÉBITE l'impôt calculé sur `accRetraitsReerYear` :
+                // un crédit sans sa dette. Le retrait finissait donc NON IMPOSÉ — mesuré 94 599,60 $
+                // d'impôt éludé sur un achat de condo 400 k$ financé par 207 758 $ de REER (6 679,78 $
+                // payés en avril au lieu de 101 279,37 $). Le marginal plat sous-estimait en plus de
+                // 22 110 $ sur un retrait de 235 639 $ (36,12 % plat contre 45,5 % incrémental).
+                //
+                // MAINTENANT : on suit le patron des 4 autres producteurs de retrait REER
+                // (`cashflowAllocation`, `meltdownReer`, FERR de janvier, drawdown) —
+                //   1. le brut est dimensionné par le BARÈME DE RETENUE (19/24/29 % combiné QC),
+                //      pas par un marginal deviné ;
+                //   2. la retenue va au bucket `.reer` (acompte, cf. FISC-REER-WHT-DOUBLE : elle
+                //      reste au liquide jusqu'au règlement d'avril, donc `liquid += drawn` brut) ;
+                //   3. le brut entre dans `accRetraitsReerYearAdd` → décembre l'impose au taux
+                //      marginal RÉEL et réconcilie contre la retenue. C'est la réconciliation qui
+                //      corrige l'écart, pas une meilleure estimation du taux.
                 if (remainingShortfall > 0 && state.reer > 0) {
-                    const currentAnnualGross = (isRetired
-                        ? incomeRetirement * 12
-                        : (grossMarcBaseAnnual + grossAnnaBaseAnnual) * Math.pow(1 + simSalaryGrowth / 100, Math.floor(m / 12))
-                    ) / activeUsersCount;
-                    const margRate = getMarginalRate(currentAnnualGross);
-                    const grossNeeded = remainingShortfall / Math.max(0.1, (1 - margRate));
+                    const { gross: grossNeeded } = calculateGrossWithholdingRRSP(remainingShortfall);
                     const drawn = Math.min(state.reer, grossNeeded);
-                    const tax = drawn * margRate;
-                    state.reer -= drawn;
-                    state.liquid += drawn;
-                    state.withdrawalREER += drawn;
-                    state.contribLiquid += drawn;
-                    state.taxCurrentYearReer += tax;
-                    state.impotReerMois += tax;
-                    state.flowEventLogs.push(`🚨 ↳ Retrait REER imposable pour l'achat (impôt ~${(margRate * 100).toFixed(0)} %) : -${Math.round(drawn).toLocaleString('fr-CA')} $`);
+                    if (drawn > 0) {
+                        const withholding = withholdingForGrossRRSP(drawn).withholding;
+                        state.reer -= drawn;
+                        state.liquid += drawn;
+                        state.withdrawalREER += drawn;
+                        state.retraitReerMois += drawn;
+                        state.contribLiquid += drawn;
+                        state.accRetraitsReerYearAdd += drawn;
+                        state.taxCurrentYearReer += withholding;
+                        state.rrspWithholdingMois += withholding;
+                        state.impotReerMois += withholding;
+                        state.flowEventLogs.push(`🚨 ↳ Retrait REER imposable pour l'achat : -${Math.round(drawn).toLocaleString('fr-CA')} $ brut (retenue ${Math.round(withholding).toLocaleString('fr-CA')} $, solde réglé en avril)`);
+                    }
                 }
             }
 

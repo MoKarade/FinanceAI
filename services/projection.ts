@@ -1380,6 +1380,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             taxCurrentYearReer: taxCurrentYear.reer, impotReerMois,
             withdrawalLiquid, withdrawalCELI, withdrawalNonReg, withdrawalREER, contribLiquid,
             celiWithdrawalsThisYear, retraitCeliMois,
+            retraitReerMois, rrspWithholdingMois, accRetraitsReerYearAdd: 0,
             immoInterest, immoPrincipal, immoHypo, immoCharges,
             totalRentalIncome: 0,
             lifeEventLogs: [], flowEventLogs: [],
@@ -1388,6 +1389,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             reState,
             { m, loopYear, isRetired, activeUsersCount, simInflation, simSalaryGrowth,
               grossMarcBaseAnnual, grossAnnaBaseAnnual, incomeRetirement,
+              // [RAP-DIVORCE-DEUX-TETES] plafond RAP = droit PAR PERSONNE → nombre de DÉCLARANTS.
+              taxFilers,
               useSmithManoeuvre: effProj.useSmithManoeuvre === true, currentRentExpense,
               bootPrimaryHousingOffset,
               skipRapForPurchase: overrides.skipRapForPurchase ?? (strategy === 'PRIO_CELI_NO_RAP'),
@@ -1399,7 +1402,6 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             propertiesState,
             getMonthOffset,
             welcomeTax,
-            getMarginalRate,
         );
         liquid = reState.liquid; celi = reState.celi; celiapp = reState.celiapp;
         reer = reState.reer; nonReg = reState.nonReg; nonRegACB = reState.nonRegACB;
@@ -1421,6 +1423,17 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         contribLiquid = reState.contribLiquid;
         celiWithdrawalsThisYear = reState.celiWithdrawalsThisYear;
         retraitCeliMois = reState.retraitCeliMois;
+        // [REER-RETRAIT-IMMO-REGISTRE] + [REER-IMMO-HORS-ASSIETTE] — le module alimente désormais
+        // TOUS les registres du retrait REER, pas seulement le solde et la retenue :
+        // l'AFFICHAGE (`retraitReerMois`, `rrspWithholdingMois`) et surtout l'ASSIETTE
+        // (`accRetraitsReerYear` + sa ventilation per-conjoint) que décembre impose.
+        // ⚠️ `accRetraitsReerYearAdd` EXCLUT le RAP, non imposable.
+        retraitReerMois = reState.retraitReerMois;
+        rrspWithholdingMois = reState.rrspWithholdingMois;
+        if (reState.accRetraitsReerYearAdd > 0) {
+            accRetraitsReerYear += reState.accRetraitsReerYearAdd;
+            accRetraitsReerYearByUser = addByWeights(accRetraitsReerYearByUser, reState.accRetraitsReerYearAdd, reerByUser);
+        }
         immoInterest = reState.immoInterest; immoPrincipal = reState.immoPrincipal;
         immoHypo = reState.immoHypo; immoCharges = reState.immoCharges;
         const totalRentalIncome = reState.totalRentalIncome;

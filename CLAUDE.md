@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 368 tests** Vitest
-(391 fichiers de test, mesuré le 2026-08-19). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 381 tests** Vitest
+(392 fichiers de test, mesuré le 2026-08-19). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -174,7 +174,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   pas détecter une erreur DANS la table. Il faut une assertion qui ne la consulte pas (mesuré sur
   `dailyLedger` : un solde reclassé en flux laissait les deux invariants verts).
   Même famille : un jeton qui prouve À LA FOIS le problème et le correctif rend la garde AUTO-SATISFAITE.
-- Élargir l'assiette d'un calcul → auditer TOUS les dérivés qui partagent cette base.
+- Élargir l'assiette d'un calcul → auditer TOUS les dérivés qui partagent cette base. Et relire
+  TOUTE la fonction : un raccourci d'égalité entre deux grandeurs qui viennent de diverger
+  (`taxEmployer = taxReal`, `employmentIncome` par défaut = `gross`) devient faux en SILENCE — ni
+  `tsc`, ni le lint, ni 4 368 tests ne l'ont vu (`ASSIETTE-ELARGIE-CASSE-SES-RACCOURCIS`).
+- Un écart CONSTANT dans un test (indépendant de l'entrée qu'on fait varier) n'est presque jamais le
+  bug cherché : c'est une grandeur voisine incluse par erreur dans la mesure. Le mettre à zéro pour
+  trancher — et creuser quand même, l'écart de 766 $ a révélé un vrai défaut voisin.
 - Corriger « le producteur X a oublié le registre Y » → **énumérer TOUS les producteurs** par grep sur
   le registre, pas seulement celui du ticket. `realEstateMonth.ts` a cumulé 4 défauts money-critical
   parce que 4 passes de correction l'ont sauté (`MODULE-ECRIT-HORS-CHECKLIST`).

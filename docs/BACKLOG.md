@@ -754,39 +754,6 @@
 > pas sur les soldes. Mécanismes reconfirmés ligne par ligne par Claude ; montants mesurés par
 > l'agent en exécutant le moteur.
 
-- [ ] **`[REER-IMMO-HORS-ASSIETTE]`** (M, CRITIQUE) — le retrait REER « dernier recours » qui finance
-  un achat immobilier **n'alimente pas `accRetraitsReerYear`** (ni la version per-conjoint : ces
-  champs n'existent même pas dans `RealEstateState`), mais pose quand même un « impôt » dans
-  `state.taxCurrentYearReer` (`services/projection/realEstateMonth.ts:245-259`, `tax = drawn * margRate`).
-  Or décembre lit ce bucket comme une **RETENUE déjà prise** et la crédite
-  (`services/projection/taxDecember.ts:646` : `withholdingAlreadyTaken = taxCurrent.reer`). Crédit
-  sans dette correspondante → **le retrait finit non imposé**. Aggravant : le marginal utilisé est
-  celui d'AVANT le retrait (0,2569 mesuré vs 0,49965 réel).
-  **Impact mesuré : 94 599,60 $ d'impôt éludé** sur un scénario complet (retraité, pension 48 k$/an,
-  condo 400 k$ / MDF 150 k$ → 207 758 $ retirés du REER, 53 373 $ « d'impôt » posés à 26 % plat,
-  total payé en avril **6 679,78 $ au lieu de 101 279,37 $**). Cascade sur tous les registres qui
-  lisent `accRetraitsReerYear` : test SRG N+1, récupération PSV, RAMQ, FSS, per-conjoint.
-  Vérifié par Claude : `accRetraitsReerYear` n'a **qu'un seul** producteur dans tout le moteur
-  (`services/projection/cashflowAllocation.ts:206`), et `realEstateMonth.ts` ne le mentionne jamais.
-  Correctif : ajouter `accRetraitsReerYear`/`accRetraitsReerYearByUser` au `RealEstateState` et les
-  alimenter au retrait (comme les 5 autres sources, cf. `projection.ts:1750` « 5e source de retrait
-  REER »), puis remplacer `drawn * margRate` par `withholdingForGrossRRSP(drawn)` (19/24/29 %) en
-  laissant décembre réconcilier. [MESURÉ, mécanisme reconfirmé par Claude]
-- [ ] **`[REER-ACTIF-NON-RECONCILIE]`** (L, CRITIQUE) — en phase **ACTIVE**, la déclaration de décembre
-  ne comprend QUE le salaire : `accRetraitsReerYear` n'entre jamais dans l'assiette
-  (`services/projection/taxDecember.ts:379-455`, branche `if (!ctx.isRetired)` — vérifié : elle ne
-  somme que `grossMarc + grossAnna − déductions`). Tout retrait REER d'un ménage actif (cascade de
-  shortfall, retraits d'objectifs, meltdown) reste donc au seul taux de retenue 19/24/29 %, jamais
-  réconcilié au marginal réel. Le cap `oasCap` vaut `Infinity` en actif
-  (`services/projection/cashflowAllocation.ts:196-215`) → le montant n'est même pas borné.
-  **Impôt jamais facturé, mesuré** : 1 424 $ (retrait 20 k$ sur salaire 60 k$) · **6 315 $** (50 k$
-  sur 90 k$) · **20 177 $** (100 k$ sur 150 k$).
-  ⚠️ C'est **exactement** le bug corrigé côté retraité en juin 2026 — le commentaire de la branche
-  retraité (`taxDecember.ts:452-470`) décrit le symptôme mot pour mot (« les retraits REER/FERR
-  étaient EXCLUS de l'assiette imposable → jamais réconciliés au taux marginal réel »). Le miroir
-  côté actif n'a jamais été fait. Correctif : ajouter `accRetraitsReerYear` (réparti par
-  `accRetraitsReerYearByUser`) au revenu imposable de la branche active, la retenue du bucket
-  `.reer` restant créditée **une seule** fois. [MESURÉ, mécanisme reconfirmé par Claude]
 
 ### 🔴 Moteur — invariants et registres (agent `projection-validator`, tout MESURÉ)
 
@@ -797,27 +764,6 @@
 > checklist « quels registres ce producteur doit-il alimenter ? ». **À traiter en UN lot**, pas
 > ticket par ticket.
 
-- [ ] **`[REER-RETRAIT-IMMO-REGISTRE]`** (S, ÉLEVÉ) — le retrait REER qui finance l'achat (RAP +
-  retrait imposable) alimente le SOLDE (`reer`), le FISCAL (`taxCurrentYearReer`) et
-  `NetTransferREER`, mais **pas le registre d'AFFICHAGE `retraitReerMois`** : `RealEstateState`
-  déclare `retraitCeliMois` (`realEstateMonth.ts:59`, alimenté l:228) et **aucun** `retraitReerMois`,
-  alors que les 4 autres producteurs REER l'alimentent tous (`projection.ts:1328` FERR, `:1581`
-  drawdown, `:1665` cashflow, `:1746` meltdown) — vérifié par Claude. Classe MELTDOWN-REER exacte.
-  **Mesuré : 355 639 $ sortis du REER (120 000 $ RAP + 235 639 $ imposable) publiés comme
-  `RetraitREER = 0 $`, avec `ImpotRetraitREER = 85 107 $` affiché juste en face** — le modal montre
-  85 k$ d'impôt sur un décaissement de zéro. Correctif : ajouter `retraitReerMois` au
-  `RealEstateState`, l'incrémenter aux 2 sites, le remonter comme `retraitCeliMois`
-  (`projection.ts:1423`). [MESURÉ]
-- [ ] **`[RAP-DIVORCE-DEUX-TETES]`** (XS, ÉLEVÉ) — `processRealEstate` reçoit `activeUsersCount`
-  (nominal, toujours 2) au lieu de `taxFilers` (1 après divorce/décès) :
-  `rapLimit = RAP_LIMIT_PER_USER * activeUsersCount` (`realEstateMonth.ts:201`, câblage
-  `projection.ts:1387-1390` — vérifié par Claude) accorde le **plafond RAP d'un COUPLE à une
-  personne seule**. C'est le même homonyme déjà corrigé dans `taxJanuary`, `taxDecember`, le meltdown
-  et `latentTax` — ce site-là a été oublié. **Mesuré : RAP de 98 080,68 $ après un divorce 50 %
-  (plafond légal 1 personne = 60 000 $) → 38 080,68 $ de retrait REER non imposable illégitime**,
-  plus l'obligation de remboursement correspondante ; témoin sans divorce non vacueux. Correctif :
-  passer `taxFilers`. À creuser dans le même lot : `rapBorrowed`/`rapRepaymentDueTotal` ne sont pas
-  partagés par le splitter de divorce (`projection.ts:758-830`) — [HYPOTHÈSE, non mesuré]. [MESURÉ]
 - [ ] **`[CELIAPP-DOUBLE-RECHARGE]`** (S, ÉLEVÉ) — l'espace CELIAPP a **deux producteurs qui
   s'ignorent** : décembre écrase `fhsaRoom = FHSA_ANNUAL_LIMIT_PER_USER * taxFilers`
   (`projection.ts:1190`), puis janvier calcule son report
@@ -829,13 +775,6 @@
   et le plafond à vie de 80 000 $ atteint en 3 ans au lieu de 5**. Correctif : supprimer l'écriture
   de décembre (janvier est la source unique) et faire porter le report sur l'espace RÉELLEMENT
   inutilisé. [MESURÉ]
-- [ ] **`[EMPILEMENT-REER-ACHAT-IMMO]`** (S, MOYEN) — la Phase 4 du financement d'achat applique un
-  taux marginal **PLAT** à un retrait REER de plusieurs centaines de k$
-  (`realEstateMonth.ts:246-256` : `getMarginalRate(...)` puis `drawn * margRate`), au lieu de l'impôt
-  incrémental `tax(rev+x) − tax(rev)`. **Mesuré : retrait 235 639 $ → impôt moteur 85 107 $ (36,12 %
-  plat) contre 107 217 $ en incrémental, soit 22 110 $ sous-estimés sur un seul mois.** Correctif :
-  le différentiel de `calculateFiscalReport`, comme le fait déjà la cascade de `cashflowAllocation`.
-  ⚠️ Recoupe `[REER-IMMO-HORS-ASSIETTE]` : même bloc de code, défauts distincts. [MESURÉ]
 - [ ] **`[MC-BANDES-CROISEES]`** (M, MOYEN) — `runMonteCarlo` classe les **trajectoires entières** par
   patrimoine FINAL puis publie `sorted[10%]/[50%]/[90%]` comme un cône P10/P50/P90
   (`services/projection/monteCarlo.ts:117-121`). Ce ne sont donc **pas** des percentiles mensuels :
@@ -898,6 +837,20 @@
   (`components/FutureKpiStrip.tsx:84-97`). L'écart vaut l'équité immobilière entière selon la surface
   consultée ; documenté comme parité voulue avec l'ex-Accueil. Correctif : exposer un
   `computePresentNetWorthWithRealEstate` unique. [MESURÉ par lecture]
+
+- [ ] **`[RAMQ-ACTIF-HORS-RETRAITS]`** (XS, MOYEN — **trouvé par Claude en corrigeant
+  `[REER-ACTIF-NON-RECONCILIE]`**) — l'assiette de la prime RAMQ est ASYMÉTRIQUE entre les deux
+  branches de décembre : en mode RETRAITÉ elle inclut `accRetraitsReerYear`
+  (`services/projection/taxDecember.ts:728-733`), en mode ACTIF elle vaut « salaire brut − déductions »
+  et **ignore les retraits REER** (`:735-741`). Or un retrait REER entre bien dans le revenu net au
+  sens de la ligne 275 TP-1, qui est l'assiette de la prime. Impact BORNÉ : la prime plafonne à
+  `RAMQ_MAX_PREMIUM_2026` = 766 $/adulte, donc l'écart n'existe que pour un revenu bas assorti d'un
+  gros retrait — nul sur les cas mesurés à 90 k$ et 150 k$ de salaire, déjà au plafond.
+  ⚠️ Le FSS voisin est un cas DIFFÉRENT : il ne s'applique qu'aux retraités par choix documenté
+  (« les salariés sont couverts par leur employeur ») — ne pas le « corriger » par symétrie.
+  Correctif : ajouter les retraits REER (et les gains) à `familyNetIncome` de la branche active.
+  ⚠️ NON corrigé dans le lot REER du 2026-08-19 : hors des deux CRITIQUES demandés par Marc, et
+  élargir un scope non demandé sur du fiscal est précisément ce que la règle interdit. [MESURÉ]
 
 ### 🔴 Valeurs fiscales sans source (viole le non-négociable `FISCAL_REFERENCE.md`)
 
@@ -1245,13 +1198,6 @@
 
 ### 📄 Documentation — la doc a décroché du code
 
-- [x] **`[DOC-METRIQUES-DERIVE]`** (S, ÉLEVÉ) — **livré 2026-08-19** : trois documents donnaient trois
-  réponses différentes à « combien de sous-modules ? » (`CLAUDE.md` 41 · `ARCHITECTURE.md` 48 · réel
-  **50**) et à la taille de l'orchestrateur (`ARCHITECTURE.md` ~1 310 · `PROJECTION.md` ~2 400 · réel
-  **2 228**). `ARCHITECTURE.md` portait à lui seul **deux** comptes de tests contradictoires
-  (1 440/123 fichiers ET 3 887/339) et annonçait « Vite 6 » / « Recharts 2 » alors que le
-  `package.json` dit `vite ^8.0.16` / `recharts ^3.7.0`. Corrigé + le compte de tests renvoie
-  désormais à `CLAUDE.md` comme **source unique** au lieu d'être recopié.
 
 ### ✅ Vérifié SAIN par le panel (ne pas re-lever sans nouvelle preuve)
 

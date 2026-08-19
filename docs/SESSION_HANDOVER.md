@@ -4,6 +4,35 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-19 (suite 95) — les 2 CRITIQUES fiscaux corrigés, en UN lot
+> Branche `claude/fisc-reer-retraits`. Marc a demandé la correction des deux CRITIQUES trouvés au
+> checkup, `realEstateMonth.ts` traité en un seul lot (ses 4 défauts se chevauchaient).
+>
+> **Livré** : `[REER-IMMO-HORS-ASSIETTE]`, `[REER-RETRAIT-IMMO-REGISTRE]`, `[RAP-DIVORCE-DEUX-TETES]`,
+> `[EMPILEMENT-REER-ACHAT-IMMO]`, `[REER-ACTIF-NON-RECONCILIE]` → archivés le jour même.
+> Garde : `tests/services/reerRetraitsRegistres.test.ts` (13 cas).
+>
+> ⚠️ **La preuve de discrimination est PARTIELLE et c'est écrit dans le fichier** : 11 des 13 cas
+> échouent sur le code d'avant (mesuré par `git apply -R`). Les 2 autres sont marqués NON
+> DISCRIMINANTS à leur emplacement — l'un est un test de rétrocompat (il doit passer des deux
+> côtés), l'autre était vacueux avant le correctif. Ne pas les lire comme des gardes du fix.
+>
+> ⚠️ **Trois pièges rencontrés, à connaître avant de retoucher `taxDecember`** :
+> 1. `calculateFiscalReport` fait `employmentIncome = grossIncome` par DÉFAUT. Élargir l'assiette
+>    imposable sans passer `employmentIncome` explicitement gonfle RRQ/RQAP/AE du montant retiré.
+> 2. `taxMarcEmployer = taxMarcReal` était un raccourci VALIDE tant que `taxMarcReal` était l'impôt
+>    du salaire seul. Il ne l'est plus une fois l'assiette élargie — la retenue de l'employeur ne
+>    porte jamais sur un retrait REER. Recalculé sur le salaire dans les deux branches.
+> 3. Le solde d'avril doit créditer AUSSI la retenue REER (`taxCurrentYearInitial.reer`), sinon
+>    l'élargissement la facture une seconde fois.
+>
+> ⚠️ **Un écart constant de 766 $ dans mes premiers tests n'était PAS un bug de mon correctif** :
+> c'est la prime RAMQ (`RAMQ_MAX_PREMIUM_2026`), présente même sans aucun retrait. En creusant :
+> l'assiette RAMQ du mode ACTIF ignore les retraits REER alors que celle du mode retraité les
+> inclut → `[RAMQ-ACTIF-HORS-RETRAITS]`, laissé OUVERT au BACKLOG. Je ne l'ai pas embarqué : Marc a
+> demandé deux CRITIQUES précis, et élargir un scope fiscal non demandé est ce que la règle
+> interdit. Le FSS voisin a été vérifié — ce n'est PAS le même cas (limitation documentée).
+
 > ## 🟢 Session 2026-08-19 (suite 94) — checkup de santé demandé par Marc : 9 agents
 > Branche `claude/audit-sante`. Marc a demandé « gros checkup de santé (finance, code, sécu,
 > interface), supprime les branches inutiles, mets à jour le backlog et toute la doc ».

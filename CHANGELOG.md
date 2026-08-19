@@ -6,6 +6,34 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-19 (deux retraits REER qui échappaient à l'impôt)
+
+- **Ton impôt sur les retraits REER était sous-évalué dans deux situations**, corrigées ensemble.
+- **Acheter une propriété en puisant dans le REER.** Le moteur posait un « impôt » sur ce retrait
+  mais n'inscrivait jamais le retrait dans ta déclaration de décembre. Décembre créditait donc cet
+  impôt comme s'il avait été retenu à la source, sans jamais facturer la dette correspondante : un
+  crédit sans sa dette. Sur un condo de 400 000 $ financé par 207 758 $ de REER, tu payais
+  6 679 $ en avril au lieu de 101 279 $. Le taux appliqué était en plus un taux plat estimé sur ton
+  revenu d'AVANT le retrait — 36 % là où le vrai taux était 45,5 %.
+- **Retirer du REER pendant que tu travailles.** La déclaration de décembre ne comprenait que ton
+  salaire : les retraits REER d'un ménage actif restaient au seul taux de retenue (19/24/29 %) et
+  n'étaient jamais réajustés à ton vrai taux marginal. Manquaient 1 424 $ pour 20 k$ retirés sur un
+  salaire de 60 k$, 6 315 $ pour 50 k$ sur 90 k$, 20 177 $ pour 100 k$ sur 150 k$. Le même défaut
+  avait été corrigé côté retraité en juin 2026 ; le miroir côté actif n'avait jamais été fait.
+- **Le RAP d'une personne seule ne vaut plus celui d'un couple.** Après un divorce, le plafond
+  restait calculé sur deux têtes : 98 081 $ empruntables au lieu de 60 000 $.
+- **Le panneau de détail ne ment plus.** Un retrait REER pour un achat s'affichait « 0 $ retiré »
+  avec son impôt juste à côté — 355 639 $ invisibles. Il apparaît désormais comme les autres.
+- ⚠️ **Effet attendu sur ta projection** : si un de ces cas te concerne, ton patrimoine projeté va
+  BAISSER. Ce n'est pas une régression — c'est l'impôt que tu devras réellement payer.
+- **Pourquoi les tests ne l'avaient pas vu** : la garde de conservation monétaire était verte, et
+  le restait avec les cinq défauts en place. Un impôt jamais prélevé ne fait disparaître aucun
+  dollar, il reste chez toi. Une garde qui vérifie les FLUX ne peut pas voir une erreur d'ASSIETTE.
+  La nouvelle garde vise l'assiette et les registres publiés ; 11 de ses 13 cas ont été prouvés
+  discriminants en retirant le correctif.
+
+---
+
 ## [unreleased] — 2026-08-19 (checkup de santé : 9 agents, la doc recalée sur le code)
 
 - **Rien de visible n'a changé dans l'app** — cette entrée documente un audit, pas une feature.

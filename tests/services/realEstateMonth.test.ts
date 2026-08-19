@@ -22,6 +22,9 @@ import type { RealEstateGoal } from '../../types';
 // source ; un comportement surprenant est noté en commentaire, pas corrigé.
 
 const makeState = (over: Partial<RealEstateState> = {}): RealEstateState => ({
+    retraitReerMois: 0,
+    rrspWithholdingMois: 0,
+    accRetraitsReerYearAdd: 0,
     liquid: 0, celi: 0, celiapp: 0, reer: 0, nonReg: 0, nonRegACB: 0, capitalLossBank: 0,
     monthlyIncome: 0, monthlyExpenses: 0, accRentesYear: 0, accCapitalGainsYear: 0,
     realEstateEquity: 0, mortgageBalance: 0, hasPurchasedPrimary: false,
@@ -61,7 +64,6 @@ const makeProp = (over: Partial<PropertyStateMutable> = {}): PropertyStateMutabl
 // possible dès m=0), taxe de bienvenue nulle, taux marginal fixe à 40 %.
 const offset0 = () => 0;
 const noWelcomeTax = () => 0;
-const marginal40 = () => 0.4;
 
 describe('realEstateMonth — amortissement (propriété détenue)', () => {
     it('sépare intérêt et capital : intérêt = solde × taux mensuel, capital = PMT − intérêt', () => {
@@ -71,7 +73,7 @@ describe('realEstateMonth — amortissement (propriété détenue)', () => {
         const prop = makeProp({ isBought: true, mortgage: 300000, currentValue: 600000, calculatedPmt: 2000 });
 
         // m=12 (pas un multiple de 60 → aucun renouvellement déclenché).
-        processRealEstate(state, makeCtx({ m: 12 }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 12 }), [goal], [prop], offset0, noWelcomeTax);
 
         expect(state.immoInterest).toBeCloseTo(1500, 6);
         expect(state.immoPrincipal).toBeCloseTo(500, 6);
@@ -84,7 +86,7 @@ describe('realEstateMonth — amortissement (propriété détenue)', () => {
         // solde résiduel 400 $, PMT 10 000 → le capital efface tout.
         const prop = makeProp({ isBought: true, mortgage: 400, currentValue: 500000, calculatedPmt: 10000 });
 
-        processRealEstate(state, makeCtx({ m: 12 }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 12 }), [goal], [prop], offset0, noWelcomeTax);
 
         expect(prop.mortgage).toBe(0);
         expect(prop.isPaidOff).toBe(true);
@@ -98,7 +100,7 @@ describe('realEstateMonth — valeur de la propriété', () => {
         const goal = makeGoal({ propertyGrowthRate: 12, isPrimaryResidence: false });
         const prop = makeProp({ isBought: true, mortgage: 0, currentValue: 500000, calculatedPmt: 0 });
 
-        processRealEstate(state, makeCtx({ m: 1 }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 1 }), [goal], [prop], offset0, noWelcomeTax);
 
         expect(prop.currentValue).toBeCloseTo(500000 * Math.pow(1.12, 1 / 12), 2);
     });
@@ -108,7 +110,7 @@ describe('realEstateMonth — valeur de la propriété', () => {
         const goal = makeGoal({ propertyGrowthRate: 12, maxValue: 502000, isPrimaryResidence: false });
         const prop = makeProp({ isBought: true, mortgage: 0, currentValue: 500000, calculatedPmt: 0 });
 
-        processRealEstate(state, makeCtx({ m: 1 }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 1 }), [goal], [prop], offset0, noWelcomeTax);
 
         // 500 000 × 1,0095 ≈ 504 746 > 502 000 → écrêté.
         expect(prop.currentValue).toBe(502000);
@@ -125,7 +127,7 @@ describe('realEstateMonth — achat', () => {
         // Solde du prêt pré-initialisé par le moteur (prix − mise de fonds). MDF 20 % → pas de SCHL.
         const prop = makeProp({ isBought: false, mortgage: 400000, currentValue: 500000 });
 
-        processRealEstate(state, makeCtx({ m: 0 }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 0 }), [goal], [prop], offset0, noWelcomeTax);
 
         // totalCashNeeded = 100 000 + 5 000 + 0 (taxe bienvenue) − 0 (pas de neuf) = 105 000.
         expect(prop.isBought).toBe(true);
@@ -145,7 +147,7 @@ describe('realEstateMonth — achat', () => {
         const goal = makeGoal({ price: 500000, downPayment: 100000, totalClosingCosts: 5000, isPrimaryResidence: true });
         const prop = makeProp({ isBought: false, mortgage: 400000, currentValue: 500000 });
 
-        processRealEstate(state, makeCtx({ m: 0 }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 0 }), [goal], [prop], offset0, noWelcomeTax);
 
         expect(prop.isBought).toBe(false);
         expect(state.liquid).toBe(50000); // intact
@@ -157,7 +159,7 @@ describe('realEstateMonth — achat', () => {
         const goal = makeGoal({ price: 500000, downPayment: 100000, totalClosingCosts: 5000, isPrimaryResidence: false });
         const prop = makeProp({ isBought: false, mortgage: 400000, currentValue: 500000 });
 
-        processRealEstate(state, makeCtx({ m: 0 }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 0 }), [goal], [prop], offset0, noWelcomeTax);
 
         // manque = 105 000 − 50 000 = 55 000 → tiré du CELI.
         expect(state.withdrawalCELI).toBeCloseTo(55000, 6);
@@ -170,7 +172,7 @@ describe('realEstateMonth — achat', () => {
         const goal = makeGoal({ price: 500000, downPayment: 100000, totalClosingCosts: 5000, isPrimaryResidence: true });
         const prop = makeProp({ isBought: false, mortgage: 400000, currentValue: 500000 });
 
-        processRealEstate(state, makeCtx({ m: 0, loopYear: 2026, activeUsersCount: 1 }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 0, loopYear: 2026, activeUsersCount: 1 }), [goal], [prop], offset0, noWelcomeTax);
 
         expect(state.hasUsedRap).toBe(true);
         expect(state.rapBorrowed).toBeGreaterThan(0);
@@ -185,7 +187,7 @@ describe('realEstateMonth — flux post-achat', () => {
         const state = makeState({ monthlyExpenses: 5000, hasPurchasedPrimary: true });
 
         // Aucune propriété active : seule la logique « plus de loyer » s'applique.
-        processRealEstate(state, makeCtx({ m: 0, currentRentExpense: 2000, simInflation: 0 }), [], [], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 0, currentRentExpense: 2000, simInflation: 0 }), [], [], offset0, noWelcomeTax);
 
         expect(state.monthlyExpenses).toBeCloseTo(3000, 6); // 5 000 − 2 000
     });
@@ -195,7 +197,7 @@ describe('realEstateMonth — flux post-achat', () => {
         const goal = makeGoal({ isPrimaryResidence: false, rentalIncomeMonthly: 2000, propertyGrowthRate: 0 });
         const prop = makeProp({ isBought: true, mortgage: 0, currentValue: 400000, calculatedPmt: 0 });
 
-        processRealEstate(state, makeCtx({ m: 0, simInflation: 0 }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 0, simInflation: 0 }), [goal], [prop], offset0, noWelcomeTax);
 
         expect(state.monthlyIncome).toBeCloseTo(2000, 6);
         expect(state.accRentesYear).toBeCloseTo(2000, 6);
@@ -210,7 +212,7 @@ describe('realEstateMonth — chemins-bords', () => {
         // solde 300 000 @ 6 % → intérêt 1 500 ; PMT 2 000 → capital 500. Valeur haute → pas d'appel de marge.
         const prop = makeProp({ isBought: true, mortgage: 300000, currentValue: 1000000, calculatedPmt: 2000 });
 
-        processRealEstate(state, makeCtx({ m: 12, useSmithManoeuvre: true }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 12, useSmithManoeuvre: true }), [goal], [prop], offset0, noWelcomeTax);
 
         expect(state.nonReg).toBeCloseTo(500, 6);
         expect(state.nonRegACB).toBeCloseTo(500, 6);
@@ -227,7 +229,7 @@ describe('realEstateMonth — chemins-bords', () => {
         });
 
         // m = 24 = début du remboursement ; aucune propriété active (on isole le RAP).
-        processRealEstate(state, makeCtx({ m: 24 }), [], [], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 24 }), [], [], offset0, noWelcomeTax);
 
         const monthly = (30000 / 15) / 12; // 166,67 $
         expect(state.liquid).toBeCloseTo(10000 - monthly, 4);
@@ -241,7 +243,7 @@ describe('realEstateMonth — chemins-bords', () => {
             hasUsedRap: true, rapBorrowed: 30000, rapRepaymentDueTotal: 30000, rapRepaymentStartOffset: 24,
         });
 
-        processRealEstate(state, makeCtx({ m: 12 }), [], [], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 12 }), [], [], offset0, noWelcomeTax);
 
         expect(state.liquid).toBe(10000);
         expect(state.reer).toBe(5000);
@@ -254,7 +256,7 @@ describe('realEstateMonth — chemins-bords', () => {
         const goal = makeGoal({ mortgageRate: 6, amortization: 25, isPrimaryResidence: false, propertyGrowthRate: 0 });
         const prop = makeProp({ id: 'p1', isBought: true, mortgage: 280000, currentValue: 600000, calculatedPmt: 1 });
 
-        processRealEstate(state, makeCtx({ m: 60 }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 60 }), [goal], [prop], offset0, noWelcomeTax);
 
         // 240 mois restants @ 6 % sur 280 000.
         const nr = 0.06 / 12;
@@ -272,7 +274,7 @@ describe('realEstateMonth — downsizing à la retraite (PH4-FUT-B-4)', () => {
         // Bien 600k, hypothèque 200k → équité 400k. Libéré 160k (40 %), reste 240k (60 %).
         const prop = makeProp({ isBought: true, mortgage: 200000, currentValue: 600000, calculatedPmt: 1500 });
 
-        processRealEstate(state, makeCtx({ m: 12, downsizeThisMonth: true }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 12, downsizeThisMonth: true }), [goal], [prop], offset0, noWelcomeTax);
 
         expect(state.liquid).toBeCloseTo(1000 + 160000, 0);   // équité libérée → liquide (cash, pas de croissance)
         // Bien réduit à 60 % de l'équité (240k), + ≤1 mois de croissance immo appliquée ensuite par la boucle.
@@ -289,7 +291,7 @@ describe('realEstateMonth — downsizing à la retraite (PH4-FUT-B-4)', () => {
         const goal = makeGoal({ isPrimaryResidence: true, propertyGrowthRate: 0 });
         const prop = makeProp({ isBought: true, mortgage: 200000, currentValue: 600000, calculatedPmt: 1500 });
 
-        processRealEstate(state, makeCtx({ m: 12 }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 12 }), [goal], [prop], offset0, noWelcomeTax);
 
         expect(prop.currentValue).toBeGreaterThan(500000);    // PAS réduit à 60 % (downsizing non déclenché)
         expect(prop.mortgage).toBeGreaterThan(0);             // amortissement normal (pas remis à 0)
@@ -301,7 +303,7 @@ describe('realEstateMonth — downsizing à la retraite (PH4-FUT-B-4)', () => {
         const goal = makeGoal({ isPrimaryResidence: true, propertyGrowthRate: 0 });
         const prop = makeProp({ isBought: true, mortgage: 700000, currentValue: 600000, calculatedPmt: 1500 });
 
-        processRealEstate(state, makeCtx({ m: 12, downsizeThisMonth: true }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 12, downsizeThisMonth: true }), [goal], [prop], offset0, noWelcomeTax);
 
         expect(state.lifeEventLogs.some((l) => l.includes('Downsizing'))).toBe(false);
     });
@@ -311,7 +313,7 @@ describe('realEstateMonth — downsizing à la retraite (PH4-FUT-B-4)', () => {
         const goal = makeGoal({ isPrimaryResidence: false, propertyGrowthRate: 0 });
         const prop = makeProp({ isBought: true, mortgage: 100000, currentValue: 300000, calculatedPmt: 1000 });
 
-        processRealEstate(state, makeCtx({ m: 12, downsizeThisMonth: true }), [goal], [prop], offset0, noWelcomeTax, marginal40);
+        processRealEstate(state, makeCtx({ m: 12, downsizeThisMonth: true }), [goal], [prop], offset0, noWelcomeTax);
 
         expect(state.lifeEventLogs.some((l) => l.includes('Downsizing'))).toBe(false);
     });

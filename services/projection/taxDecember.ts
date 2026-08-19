@@ -386,6 +386,45 @@ export function processDecemberTaxFiling(
         const grossAnnaReal = grossAnna / ctx.inflationFactor;
         const deductionsReal = totalDeductions / ctx.inflationFactor;
 
+        // [REER-ACTIF-NON-RECONCILIE] — audit 2026-08-19.
+        // AVANT : l'assiette de décembre en phase ACTIVE ne contenait QUE le salaire. Les retraits
+        // REER d'un ménage actif (cascade de shortfall, retraits d'objectifs, meltdown, achat immo)
+        // n'y entraient jamais → ils restaient au seul taux de RETENUE (19/24/29 %) et n'étaient
+        // jamais réconciliés au taux marginal réel. Impôt jamais facturé, mesuré : 1 424 $ pour un
+        // retrait de 20 k$ sur 60 k$ de salaire, 6 315 $ pour 50 k$ sur 90 k$, 20 177 $ pour 100 k$
+        // sur 150 k$.
+        // ⚠️ C'est EXACTEMENT le bug corrigé côté RETRAITÉ en juin 2026 — le commentaire de cette
+        // correction (branche `else` ci-dessous) décrit le symptôme mot pour mot. Seul le miroir
+        // côté actif manquait. `moneyConservation` ne pouvait pas l'attraper : un impôt jamais
+        // prélevé est parfaitement conservatif (cf. CONSERVATION-NE-VOIT-PAS-L-IMPOT-ELUDE).
+        //
+        // Répartition per-conjoint : même contrat que la branche retraitée — on n'utilise
+        // `accRetraitsReerYearByUser` que s'il est COHÉRENT avec le total (Σ == total, bonne
+        // longueur, tout fini), sinon repli sur le split égal. Un tableau incohérent taxerait le
+        // mauvais conjoint en silence.
+        const nFilersActive = Math.max(1, ctx.activeUsersCount);
+        const reerAnnualNominal = Number.isFinite(ctx.accRetraitsReerYear) ? Math.max(0, ctx.accRetraitsReerYear) : 0;
+        const reerByUserActive = ctx.accRetraitsReerYearByUser;
+        const reerByUserSum = Array.isArray(reerByUserActive)
+            ? reerByUserActive.reduce((acc, v) => acc + (Number.isFinite(v) ? v : NaN), 0)
+            : NaN;
+        const reerByUserValid = Array.isArray(reerByUserActive)
+            && reerByUserActive.length === nFilersActive
+            && Number.isFinite(reerByUserSum)
+            && Math.abs(reerByUserSum - reerAnnualNominal) <= Math.max(1, Math.abs(reerAnnualNominal) * 1e-6);
+        const reerShareOf = (i: number): number => (reerByUserValid
+            ? Math.max(0, reerByUserActive![i])
+            : reerAnnualNominal / nFilersActive);
+        // Solo (1 déclarant) : tout le retrait est au principal, rien au « conjoint ».
+        const reerMarcReal = reerShareOf(0) / ctx.inflationFactor;
+        const reerAnnaReal = nFilersActive > 1 ? reerShareOf(1) / ctx.inflationFactor : 0;
+        // Assiette IMPOSABLE élargie. ⚠️ L'assiette d'EMPLOI reste le SALAIRE SEUL : les cotisations
+        // RRQ/RQAP/AE ne portent pas sur un retrait REER, et `employmentIncome` absent vaut
+        // `grossIncome` par défaut (cf. FISC-PAYROLL-BASE-INVEST) — l'omettre ici gonflerait les
+        // cotisations sociales du montant retiré.
+        const taxableMarcReal = grossMarcReal + reerMarcReal;
+        const taxableAnnaReal = grossAnnaReal + reerAnnaReal;
+
         // V31: Optimisation fiscale — déductions au salaire le plus élevé
         const deductionsMarc = grossMarcReal > grossAnnaReal ? deductionsReal : 0;
         const deductionsAnna = grossMarcReal > grossAnnaReal ? 0 : deductionsReal;
@@ -396,7 +435,7 @@ export function processDecemberTaxFiling(
         // travaille a le crédit d'âge, un conjoint <65 ne l'a pas (corrige l'ancien biais
         // qui appliquait l'âge de Marc aux deux). eligiblePensionIncome=0 (aucune pension
         // admissible en mode actif) ; familyIncome = revenu familial (réduction ligne 361).
-        const familyGrossReal = grossMarcReal + grossAnnaReal;
+        const familyGrossReal = taxableMarcReal + taxableAnnaReal;
         const mkActiveAgeOpts = (a: number | undefined): AgeCreditOptions | undefined =>
             (a !== undefined && a >= 65)
                 ? { age: a, eligiblePensionIncome: 0, hasSpouse: ctx.activeUsersCount > 1, familyIncome: familyGrossReal }
@@ -407,18 +446,21 @@ export function processDecemberTaxFiling(
         // [FISC-BRACKET-REALINDEX] revenus en dollars RÉELS (déflatés ci-dessus) → paliers/crédits
         // ramenés en réel via realDeflator = ctx.inflationFactor (sinon : double indexation, les
         // paliers s'élargissaient de ~2 %/an en termes réels → impôt long-terme sous-évalué).
-        const taxMarcReal = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, deductionsMarc, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsMarc, undefined, ctx.inflationFactor).totalTax : 0;
-        const taxAnnaReal = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, deductionsAnna, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna, undefined, ctx.inflationFactor).totalTax : 0;
+        const taxMarcReal = taxableMarcReal > 0 ? helpers.calculateFiscalReport(taxableMarcReal, deductionsMarc, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsMarc, grossMarcReal, ctx.inflationFactor).totalTax : 0;
+        const taxAnnaReal = taxableAnnaReal > 0 ? helpers.calculateFiscalReport(taxableAnnaReal, deductionsAnna, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna, grossAnnaReal, ctx.inflationFactor).totalTax : 0;
         const totalAnnualTax = (taxMarcReal + taxAnnaReal) * ctx.inflationFactor;
         grossIncomeTax = totalAnnualTax; // [FA-6-CREDIT-CAP] liability salariale de l'année
 
         // V49: Retenue source (T1213 ou non)
-        let taxMarcEmployer = taxMarcReal;
-        let taxAnnaEmployer = taxAnnaReal;
-        if (!ctx.optimizeSourceDeductions) {
-            taxMarcEmployer = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsMarc, undefined, ctx.inflationFactor).totalTax : 0;
-            taxAnnaEmployer = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna, undefined, ctx.inflationFactor).totalTax : 0;
-        }
+        // ⚠️ [REER-ACTIF-NON-RECONCILIE] La retenue de l'EMPLOYEUR porte sur le SALAIRE, jamais sur
+        // un retrait REER (celui-ci a sa propre retenue, dans le bucket `.reer`). Avant l'élargissement
+        // de l'assiette, `taxMarcReal` ÉTAIT l'impôt du salaire seul, donc le raccourci
+        // `taxMarcEmployer = taxMarcReal` était juste ; il ne l'est plus. On recalcule donc sur
+        // `grossMarcReal` dans les DEUX branches — avec les déductions quand T1213 est actif.
+        const deductionsEmployerMarc = ctx.optimizeSourceDeductions ? deductionsMarc : 0;
+        const deductionsEmployerAnna = ctx.optimizeSourceDeductions ? deductionsAnna : 0;
+        const taxMarcEmployer = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, deductionsEmployerMarc, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsMarc, grossMarcReal, ctx.inflationFactor).totalTax : 0;
+        const taxAnnaEmployer = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, deductionsEmployerAnna, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna, grossAnnaReal, ctx.inflationFactor).totalTax : 0;
         const totalEmployerTax = (taxMarcEmployer + taxAnnaEmployer) * ctx.inflationFactor;
         // [FISC-WHT-92PCT] retenue = 100 % de l'impôt sans déductions (GO Marc 2026-08-01). L'ancien
         // ×0,92 n'était sourcé nulle part et facturait ~8 % de l'impôt salarial EN DOUBLE chaque avril :
@@ -430,7 +472,14 @@ export function processDecemberTaxFiling(
         // Panel #558 : le plancher tronquait EN SILENCE — et la retenue 100 % rend les gros
         // remboursements (hauts revenus + REER/Smith) bien plus proches du plancher qu'avant.
         // On journalise la troncature pour qu'un remboursement sous-évalué soit VISIBLE.
-        const aprilSettlementRaw = totalAnnualTax - estimatedWithholding;
+        // [REER-ACTIF-NON-RECONCILIE] Créditer AUSSI la retenue REER déjà prélevée sur les retraits
+        // de l'année : elle vit dans le bucket `.reer`, que le règlement d'avril débite à part.
+        // Sans ce crédit, l'élargissement de l'assiette ci-dessus la facturerait une SECONDE fois.
+        // Total réellement payé en avril = `.revenu` + `.reer`
+        //   = (impôt total − retenue salariale − retenue REER) + retenue REER
+        //   = impôt total − retenue salariale.  ✔
+        const reerWithholdingAlreadyTaken = Number.isFinite(taxCurrentYearInitial.reer) ? taxCurrentYearInitial.reer : 0;
+        const aprilSettlementRaw = totalAnnualTax - estimatedWithholding - reerWithholdingAlreadyTaken;
         // [ENG-TAXDEC-NAN-GUARD] ⚠️ `Math.max(-100000, NaN) === NaN` : le clamp AVAIT L'AIR d'un
         // garde-fou mais laissait passer un NaN amont (prouvé avec inflationFactor = 0) jusqu'à
         // FluxImpots puis totalTaxesPaid/NetWorth, sans la moindre trace. La branche RETRAITÉE

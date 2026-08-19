@@ -4,6 +4,31 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-19 (suite 108) — vague 1e : deux silences vers un LLM
+> Branche `claude/silences-couple-fisc` (basée sur `main`, PAS empilée — cf. `PR-EMPILEE-N-A-AUCUNE-CI`).
+>
+> **Livrés** : `[COUPLE-CTX-FAKE-ZERO]` et `[TOOL-TAXSITUATION-FAKE-ZERO]`.
+>
+> ⚠️ **Le diagnostic groupé était à MOITIÉ FAUX**, et c'est la leçon. Les deux tickets partageaient
+> le motif `(u.grossSalary || 0) * 12` et le correctif annoncé « retirer le `|| 0` ».
+> • Composant : diagnostic JUSTE — le `|| 0` court-circuite `promptCad`, le modèle lit « 0 $ ».
+> • Tool : diagnostic FAUX — un `.filter(g > 0)` trois lignes plus bas EXCLUT le conjoint. Aucun
+>   faux zéro n'existait ; le vrai défaut est l'inverse (disparition silencieuse du payload).
+> Deux correctifs OPPOSÉS : rendre la valeur non finie d'un côté, NOMMER l'absence de l'autre.
+>
+> ⚠️ **Tentation évitée** : inclure le conjoint avec un impôt à 0 pour « uniformiser » aurait rétabli
+> le faux zéro que le ticket croyait déjà là. On exclut ET on le dit (`perUserOmitted`), toujours
+> publié même vide — un champ omis serait indiscernable de « l'outil ne le dit pas ».
+>
+> ⚠️ **Assertion presque vacueuse attrapée par perturbation** : `toContain('perUserOmitted')` passait
+> même sans le champ dans le payload (la constante locale porte le même nom). Resserrée sur la ligne
+> DU PAYLOAD. Perturber CHAQUE assertion d'un scan séparément.
+>
+> **Refactor** : `buildCoupleProfileLines` extrait de `getCoupleOptimizationStrategies` (pur, exporté,
+> prompt bit-identique) — ce qui compte n'est pas la valeur passée mais le TEXTE que le modèle lit.
+>
+> **RESTE vague 1e** : les XS `[SILENT-STOCKFORM-PRICEHINT]`, `[SYSVIEW-DBSIZE-ZERO]`,
+> `[DEAD-PARSETX-SILENT-DROP]`, `[SILENT-PWA-PROMPT]`, `[SILENT-HEALTHWEIGHTS-FIELD]`.
 > ## 🟢 Session 2026-08-19 (suite 107) — vague 1d TERMINÉE : deux conteneurs W5 hors bilan
 > Branche `claude/w5-offbalance` (empilée sur `claude/dettes-dates` / #661).
 >

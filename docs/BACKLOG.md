@@ -46,17 +46,17 @@
   `[ENG-INV-FLUXFORM-COVERAGE]`. Les deux extensions de couverture ont trouvé un défaut chacune :
   `[ENG-FERR-NETTRANSFER-MUET]` (corrigé, 131 566 $ en DÉTERMINISTE) et `[ENG-DIVORCE-FLUX-MUET]`
   (ouvert, MC seulement, impact utilisateur nul aujourd'hui).
-  **1d** *en cours* — ✅ livrés 2026-08-19 : `[REVENUS-NON-VENTILES-AFFICHAGE]`,
+  **1d** ✅ *TERMINÉE 2026-08-19* — livrés : `[REVENUS-NON-VENTILES-AFFICHAGE]`,
   `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`, `[NW-PRESENT-DEUX-PERIMETRES]` (fermé SANS code : un seul
-  site de recomposition, et il reçoit `netWorth` en prop). RESTE :
-  ✅ **TERMINÉE 2026-08-19** — livrés : `[REVENUS-NON-VENTILES-AFFICHAGE]`,
-  `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`, `[NW-PRESENT-DEUX-PERIMETRES]`,
-  `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`, `[ENG-W5-RENTAL-OFFBALANCE]`,
-  `[ENG-W5-BUSINESS-OFFBALANCE]`. **Sorti du lot** : `[ENG-LIQUIDDEBT-NEVER-REPAID]` → bloqué sur un
-  taux de découvert à SOURCER + un choix produit, routé vers `docs/A_FAIRE_MOI.md`.
-  **1e** Silence qui cache de l'argent (`[COUPLE-CTX-FAKE-ZERO]` + `[TOOL-TAXSITUATION-FAKE-ZERO]`
-  groupés, puis les XS : `[SILENT-STOCKFORM-PRICEHINT]`, `[SYSVIEW-DBSIZE-ZERO]`,
-  `[DEAD-PARSETX-SILENT-DROP]`, `[SILENT-PWA-PROMPT]`, `[SILENT-HEALTHWEIGHTS-FIELD]`).
+  site de recomposition, et il reçoit `netWorth` en prop), `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`,
+  `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`. **Sorti du lot** :
+  `[ENG-LIQUIDDEBT-NEVER-REPAID]` → bloqué sur un taux de découvert à SOURCER + un choix produit,
+  routé vers `docs/A_FAIRE_MOI.md`.
+  **1e** Silence qui cache de l'argent — ✅ `[COUPLE-CTX-FAKE-ZERO]` et
+  `[TOOL-TAXSITUATION-FAKE-ZERO]` livrés 2026-08-19 (⚠️ le diagnostic groupé était à moitié FAUX :
+  le second ne publiait pas un 0, il EFFAÇAIT le conjoint — deux correctifs différents).
+  RESTE les XS : `[SILENT-STOCKFORM-PRICEHINT]`, `[SYSVIEW-DBSIZE-ZERO]`,
+  `[DEAD-PARSETX-SILENT-DROP]`, `[SILENT-PWA-PROMPT]`, `[SILENT-HEALTHWEIGHTS-FIELD]`.
   **1f** Valeurs fiscales sans source NON gatées (`[RQAP-CAP-98K]`, `[W5-PROXY-NON-SOURCE]`,
   `[ESTATE-NPV-07]`, `[MIGRATE-GROSS-135]`, `[FISC-GUARD-SCOPE]` — ce dernier **en premier**,
   élargir le ratchet AVANT révèle le vrai périmètre).
@@ -897,18 +897,6 @@
   convertir via `toCurrencyFactor`. [MESURÉ]
 
 ### 🔴 Argent — valeurs fausses ou silencieuses
-
-- [ ] **`[COUPLE-CTX-FAKE-ZERO]`** (XS, MOYEN) — `components/tax/CoupleOptimizationCard.tsx:55-61`
-  construit le contexte envoyé à Claude avec `(u1.grossSalary || 0) * 12`. Ce `|| 0` **court-circuite
-  `promptCad`** (`services/claude.ts:55`), qui rend justement « (non disponible) » sur une valeur non
-  finie. Un salaire absent devient un « 0 $ » affirmé au modèle, qui calcule ensuite des stratégies
-  fiscales (fractionnement REER, CELI) SUR ce revenu fantôme. Correctif : retirer les `|| 0` et
-  laisser `promptCad` faire son travail. [MESURÉ, reconfirmé par Claude]
-- [ ] **`[TOOL-TAXSITUATION-FAKE-ZERO]`** (XS, MOYEN) — même `(u.grossSalary || 0) * 12` dans le tool
-  `get_tax_situation` (`mcp/tools/getTaxSituation.spec.ts:66`), partagé MCP + chat in-app. Aggravant :
-  le system prompt déclare les payloads d'outils « ta SEULE source de vérité chiffrée… cite les
-  montants tels quels » — le faux 0 $ hérite donc de l'autorité maximale. Correctif : ne pas coercer,
-  ou porter l'absence par un champ explicite comme le fait déjà `describeFutureDetail`. [MESURÉ]
 
 ### 🔴 Interface — atteignabilité et clavier
 

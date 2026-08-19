@@ -755,6 +755,24 @@ export interface CoupleTaxContext {
     isRetired?: boolean;
 }
 
+/**
+ * [COUPLE-CTX-FAKE-ZERO] Bloc « profil » du prompt de couple — extrait PUR, exporté pour test.
+ *
+ * ⚠️ Ce qui compte n'est pas la valeur passée mais le TEXTE que le modèle lit. Tant que ce bloc
+ * vivait inline dans une fonction `async` qui appelle l'API, la seule façon de vérifier qu'un revenu
+ * inconnu rend « (non disponible) » plutôt que « 0$ » était un scan de source. L'extraction rend la
+ * garantie TESTABLE, sans changer un caractère du prompt produit.
+ *
+ * `promptCad` rend « (non disponible) » sur une valeur non finie : c'est la garde no-fake-data de ce
+ * fichier. Tout appelant qui coerce en `|| 0` avant d'arriver ici la court-circuite.
+ */
+export const buildCoupleProfileLines = (ctx: CoupleTaxContext): string => [
+    `- ${sanitizePromptText(ctx.user1.name, 40)} : brut ${promptCad(ctx.user1.grossAnnual)}, net ${promptCad(ctx.user1.netAnnual)}/an${ctx.user1.rrspRoom ? `, REER dispo ${promptCad(ctx.user1.rrspRoom)}` : ''}${ctx.user1.tfsaRoom ? `, CELI dispo ${promptCad(ctx.user1.tfsaRoom)}` : ''}`,
+    `- ${sanitizePromptText(ctx.user2.name, 40)} : brut ${promptCad(ctx.user2.grossAnnual)}, net ${promptCad(ctx.user2.netAnnual)}/an${ctx.user2.rrspRoom ? `, REER dispo ${promptCad(ctx.user2.rrspRoom)}` : ''}${ctx.user2.tfsaRoom ? `, CELI dispo ${promptCad(ctx.user2.tfsaRoom)}` : ''}`,
+    ctx.combinedAssetsCAD ? `- Patrimoine combiné : ${promptCad(ctx.combinedAssetsCAD)}` : '',
+    ctx.isRetired ? '- Statut : à la retraite (fractionnement de revenus de pension applicable)' : '',
+].filter(Boolean).join('\n');
+
 export const getCoupleOptimizationStrategies = async (
     ctx: CoupleTaxContext,
     apiKey: string,
@@ -764,12 +782,7 @@ export const getCoupleOptimizationStrategies = async (
     // [SEC-1] noms utilisateur (user1/user2.name) neutralisés via sanitizePromptText + bloc de données
     // isolé en <DONNEES> — parité avec categorizeBatch/buildRebalancePrompt (le system prompt
     // QUEBEC_FISCAL_CONTEXT instruit le modèle d'ignorer toute consigne à l'intérieur de <DONNEES>).
-    const profil = [
-        `- ${sanitizePromptText(ctx.user1.name, 40)} : brut ${promptCad(ctx.user1.grossAnnual)}, net ${promptCad(ctx.user1.netAnnual)}/an${ctx.user1.rrspRoom ? `, REER dispo ${promptCad(ctx.user1.rrspRoom)}` : ''}${ctx.user1.tfsaRoom ? `, CELI dispo ${promptCad(ctx.user1.tfsaRoom)}` : ''}`,
-        `- ${sanitizePromptText(ctx.user2.name, 40)} : brut ${promptCad(ctx.user2.grossAnnual)}, net ${promptCad(ctx.user2.netAnnual)}/an${ctx.user2.rrspRoom ? `, REER dispo ${promptCad(ctx.user2.rrspRoom)}` : ''}${ctx.user2.tfsaRoom ? `, CELI dispo ${promptCad(ctx.user2.tfsaRoom)}` : ''}`,
-        ctx.combinedAssetsCAD ? `- Patrimoine combiné : ${promptCad(ctx.combinedAssetsCAD)}` : '',
-        ctx.isRetired ? '- Statut : à la retraite (fractionnement de revenus de pension applicable)' : '',
-    ].filter(Boolean).join('\n');
+    const profil = buildCoupleProfileLines(ctx);
 
     const userPrompt = `Tu es conseiller fiscal québécois expert en stratégies pour couple.
 

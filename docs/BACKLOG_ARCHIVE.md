@@ -10,6 +10,49 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-19 — Vague 1e (début) : deux silences vers un LLM, et un diagnostic à moitié faux
+
+> Les deux tickets étaient groupés sous le même diagnostic : « un `(u.grossSalary || 0) * 12` publie
+> un faux 0 $ au modèle ». **Vérifié : ce diagnostic n'est juste que pour le premier.**
+
+### Livré — `[COUPLE-CTX-FAKE-ZERO]` (diagnostic CONFIRMÉ)
+
+`CoupleOptimizationCard` coerçait en `|| 0` avant `promptCad`, qui rend justement « (non disponible) »
+sur une valeur non finie. Un salaire absent devenait donc un **« 0 $ » affirmé** au modèle, qui
+bâtissait ensuite des stratégies de fractionnement REER/CELI sur ce revenu fantôme. Coercition
+retirée : `undefined * 12` vaut `NaN`, et la garde reprend son travail sans qu'aucune signature ne
+change.
+
+**Refactor pour rendre la garantie testable** : le bloc « profil » du prompt vivait inline dans une
+fonction `async` qui appelle l'API — invérifiable autrement que par scan. Extrait en
+`buildCoupleProfileLines` (pur, exporté), **sans changer un caractère du prompt produit**. Ce qui
+compte n'est pas la valeur passée, c'est le TEXTE que le modèle lit.
+
+### Livré — `[TOOL-TAXSITUATION-FAKE-ZERO]` (diagnostic RÉFUTÉ, vrai défaut ailleurs)
+
+Dans `get_tax_situation`, le `|| 0` est suivi d'un `.filter(g > 0)` : le conjoint sans brut est
+**EXCLU**, pas publié à 0. Aucun faux zéro n'existait.
+
+Le vrai défaut est l'inverse, et plus sournois : **le conjoint disparaît du payload sans trace**. Or
+le system prompt déclare les payloads d'outils « ta SEULE source de vérité chiffrée » — le modèle
+voit un ménage à un seul contribuable et n'a aucun moyen de savoir qu'il en manque un.
+
+Correctif : `perUserOmitted` nomme les exclus et la raison. ⚠️ **On exclut ET on le dit** — inclure
+le conjoint avec un impôt à 0 aurait rétabli le faux zéro que le ticket croyait déjà présent. Le
+champ est **toujours** présent, même vide : omis quand la liste est vide, il serait indiscernable de
+« l'outil ne le dit pas ».
+
+### Une assertion presque vacueuse, attrapée par perturbation
+
+`expect(src).toContain('perUserOmitted')` passait **même sans le champ dans le payload** — la
+constante locale porte le même nom. Resserré sur la ligne DU PAYLOAD
+(`/perUserOmitted,\n\s*perUser: perUserReports\.map/`). Vérifié : les deux assertions tombent
+maintenant quand on retire la ligne.
+
+**5 cas, 3 discriminent** (vérifiés par perturbation).
+
+- [x] **`[COUPLE-CTX-FAKE-ZERO]`** (XS, MOYEN) — ✅ 2026-08-19, PR #664.
+- [x] **`[TOOL-TAXSITUATION-FAKE-ZERO]`** (XS, MOYEN) — ✅ 2026-08-19, PR #664.
 ## 2026-08-19 — Vague 1d (fin) : deux conteneurs W5 qui n'existaient pas au bilan
 
 > Un immeuble locatif ne montrait que son NOI ; une entreprise privée que son dividende. **Leur

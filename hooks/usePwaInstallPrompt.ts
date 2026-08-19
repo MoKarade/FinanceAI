@@ -14,6 +14,7 @@
 // agressivement si l'utilisateur a déjà refusé.
 
 import { useEffect, useState, useCallback } from 'react';
+import { logError } from '../services/errorLogger';
 
 interface BeforeInstallPromptEvent extends Event {
     prompt: () => Promise<void>;
@@ -89,7 +90,15 @@ export function usePwaInstallPrompt(): PwaInstallState {
             }
             return outcome;
         } catch (err) {
-            console.warn('[PWA] prompt failed:', err);
+            // [SILENT-PWA-PROMPT] Impact faible (on perd l'invite d'installation, aucune donnée
+            // financière) — mais la règle du dépôt est qu'une erreur avalée laisse une TRACE, et
+            // « faible impact » ne veut pas dire « invisible ». `severity: 'info'` : le diagnostic
+            // existe sans polluer le bandeau d'erreurs.
+            logError({
+                source: 'ui', severity: 'info',
+                message: 'Invite d’installation PWA refusée par le navigateur (prompt() a échoué)',
+                error: err instanceof Error ? err : new Error(String(err)),
+            });
             return null;
         }
     }, [deferredEvent]);

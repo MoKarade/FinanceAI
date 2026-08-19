@@ -1,5 +1,5 @@
 import type { HealthWeights } from '../types';
-import { logError } from '../services/errorLogger';
+import { logError, logErrorThrottled } from '../services/errorLogger';
 
 /**
  * @deprecated [PH4D-WEIGHTS-STORE] Clé localStorage HÉRITÉE — lue UNE SEULE FOIS par `loadLegacyHealthWeights` à l'init
@@ -27,6 +27,27 @@ const num = (v: unknown, fallback: number): number => (typeof v === 'number' && 
  */
 export function normalizeHealthWeights(partial: Partial<HealthWeights> | null | undefined): HealthWeights {
     const p = partial ?? {};
+    const cles = Object.keys(DEFAULT_HEALTH_WEIGHTS) as Array<keyof HealthWeights>;
+
+    // [SILENT-HEALTHWEIGHTS-FIELD] Distinguer ABSENT de CORROMPU.
+    // Un champ ABSENT est normal et voulu : c'est la rétrocompat (un utilisateur d'avant l'ajout de
+    // `budgetParity`/`subscriptionLoad` n'a que 4 poids, et reçoit les 2 nouveaux au défaut). Le
+    // repli est alors la bonne réponse, silencieusement.
+    // Un champ PRÉSENT mais non fini (`NaN`, `null`, une chaîne, `Infinity`) est tout autre chose :
+    // quelque chose a écrit une valeur invalide. Retomber sur le défaut SANS TRACE fait qu'un poids
+    // revenu à sa valeur d'usine paraît inexpliqué — l'utilisateur voit son réglage « oublié » et
+    // n'a rien à quoi le rattacher. On trace donc ce cas-là, et lui seul.
+    const corrompus = cles.filter((k) => k in p && !(typeof p[k] === 'number' && Number.isFinite(p[k])));
+    if (corrompus.length > 0) {
+        // Agrégé en UN seul appel (throttle par signature de champs) : six champs corrompus ne
+        // doivent pas produire six lignes de diagnostic.
+        logErrorThrottled(`health-weights-corrompus:${corrompus.join(',')}`, {
+            source: 'storage', severity: 'warning',
+            message: `Pondérations de santé : ${corrompus.length} champ(s) invalide(s) remis au défaut`,
+            context: { champs: corrompus, valeurs: corrompus.map((k) => String(p[k])) },
+        });
+    }
+
     return {
         savingsRate: num(p.savingsRate, DEFAULT_HEALTH_WEIGHTS.savingsRate),
         emergencyFund: num(p.emergencyFund, DEFAULT_HEALTH_WEIGHTS.emergencyFund),

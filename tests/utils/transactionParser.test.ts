@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { markDuplicates, parseTransactions } from '../../utils/transactionParser';
+import { markDuplicates } from '../../utils/transactionParser';
 import type { Transaction } from '../../types';
 
 const tx = (overrides: Partial<Transaction>): Transaction => ({
@@ -69,68 +69,11 @@ describe('markDuplicates', () => {
     });
 });
 
-describe('parseTransactions', () => {
-    it('parses tab-separated CSV without header', () => {
-        const raw = `01/01/2026\tMaxi\t-50.00\tÉpicerie\tCourant`;
-        const result = parseTransactions(raw);
-        expect(result).toHaveLength(1);
-        expect(result[0].payee).toBe('Maxi');
-        expect(result[0].amount).toBe(-50);
-        expect(result[0].date).toBe('2026-01-01');
-    });
-
-    it('skips header line when first column contains "date"', () => {
-        const raw = `Date\tPayee\tAmount\tCategory\tAccount\n01/01/2026\tIGA\t-30\tÉpicerie\tCourant`;
-        const result = parseTransactions(raw);
-        expect(result).toHaveLength(1);
-        expect(result[0].payee).toBe('IGA');
-    });
-
-    it('parses semicolon-separated as fallback', () => {
-        const raw = `01/02/2026;Metro;-25;Épicerie;Courant`;
-        const result = parseTransactions(raw);
-        expect(result).toHaveLength(1);
-        expect(result[0].amount).toBe(-25);
-    });
-
-    it('classifies Interac as Remboursement (not transfer)', () => {
-        const raw = `15/01/2026\tInterac Marc\t100\tInterac\tCourant`;
-        const result = parseTransactions(raw);
-        expect(result[0].category).toBe('Remboursement');
-        expect(result[0].isTransfer).toBe(false);
-    });
-
-    it('marks virement as transfer', () => {
-        const raw = `10/01/2026\tVirement Épargne\t-1000\tVirement\tCourant`;
-        const result = parseTransactions(raw);
-        expect(result[0].isTransfer).toBe(true);
-    });
-
-    it('skips lines with invalid date format', () => {
-        const raw = `2026-01-01\tMaxi\t-50\tÉpicerie\tCourant`;
-        const result = parseTransactions(raw);
-        expect(result).toHaveLength(0);
-    });
-
-    it('handles comma as decimal separator', () => {
-        const raw = `05/01/2026\tMarché\t-12,50\tÉpicerie\tCourant`;
-        const result = parseTransactions(raw);
-        expect(result[0].amount).toBe(-12.5);
-    });
-
-    it('parse un CSV séparé par virgules (exports nord-américains, décimale = point)', () => {
-        const raw = `08/01/2026,Costco,-99.99,Épicerie,Courant`;
-        const result = parseTransactions(raw);
-        expect(result).toHaveLength(1);
-        expect(result[0].payee).toBe('Costco');
-        expect(result[0].amount).toBe(-99.99);
-    });
-
-    it('tolère un BOM UTF-8 en tête de fichier (export Excel/Windows)', () => {
-        const raw = `﻿01/01/2026\tMaxi\t-50\tÉpicerie\tCourant`;
-        const result = parseTransactions(raw);
-        expect(result).toHaveLength(1);
-        expect(result[0].date).toBe('2026-01-01');
-        expect(result[0].payee).toBe('Maxi');
-    });
-});
+// [DEAD-PARSETX-SILENT-DROP] Les cas de `parseTransactions` ont été supprimés avec la fonction
+// (2026-08-19) : elle n'avait plus d'appelant en production et jetait silencieusement les lignes
+// mal formées. Le parseur RÉEL est couvert par `tests/services/parseBankCsv.test.ts`, qui
+// vérifie en plus le compte honnête `imported`/`skipped`.
+//
+// ⚠️ Garder les tests d'une fonction morte aurait été pire que la fonction elle-même : une suite
+// verte sur du code que personne n'appelle donne l'illusion d'une couverture, et invite au
+// copier-coller du piège.

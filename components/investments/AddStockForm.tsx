@@ -3,6 +3,7 @@ import { Modal } from '../ui/Modal';
 import { Icon } from '../ui/Icon';
 import { getQuote, getHistory, searchSymbols, getActiveProviderName, type SymbolSearchResult } from '../../services/marketData';
 import { formatCAD } from '../../utils/format';
+import { logError } from '../../services/errorLogger';
 import type { Asset } from '../../types';
 
 /**
@@ -168,6 +169,13 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
             const to = new Date(date);
             to.setDate(to.getDate() + 3);
             const history = await getHistory(validatedSymbol, from, to);
+            // [SILENT-STOCKFORM-PRICEHINT] Un historique VIDE n'est pas une erreur (titre trop récent,
+            // fenêtre sans séance) — mais ce n'est pas non plus « rien à dire ». Sans ce message,
+            // l'utilisateur voit le spinner s'arrêter et le champ rester vide : il ne peut pas
+            // distinguer « pas de cours à cette date » de « l'app n'a rien fait ».
+            if (!history || history.length === 0) {
+                setNotice(`Aucun cours trouvé pour « ${validatedSymbol} » autour du ${dateBought}. Entre le prix d'achat à la main.`);
+            }
             if (history && history.length > 0) {
                 // Trouve le point le plus proche
                 const targetTime = date.getTime();
@@ -178,7 +186,19 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                 setBuyPrice(closest.close.toString());
             }
         } catch (e) {
-            console.warn('[AddStockForm] suggest price failed:', e);
+            // [SILENT-STOCKFORM-PRICEHINT] Avant : `console.warn` seul — aucune trace dans les
+            // diagnostics, aucun message à l'écran. Le spinner s'arrêtait, le champ restait vide, et
+            // l'utilisateur n'avait AUCUN moyen de savoir si l'app avait échoué ou simplement rien
+            // trouvé. `validateSymbol`, dans CE MÊME fichier, distingue proprement les deux cas :
+            // on réutilise son patron plutôt que d'en inventer un
+            // (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`).
+            logError({
+                source: 'network', severity: 'warning',
+                message: 'Suggestion de prix historique ÉCHOUÉE (getHistory) — champ laissé vide',
+                error: e instanceof Error ? e : new Error(String(e)),
+                context: { symbol: validatedSymbol, dateBought },
+            });
+            setNotice(`Impossible de récupérer le cours du ${dateBought}. Vérifie ta connexion, ou entre le prix à la main.`);
         } finally {
             setIsSuggestingPrice(false);
         }

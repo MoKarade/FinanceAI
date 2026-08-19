@@ -4132,3 +4132,84 @@ qui vise la ligne du payload et rien d'autre. Un identifiant nu ne prouve que sa
 C'est la même famille que `GARDE-BORNEE-PAR-CLASSE-NEGATIVE` : un scan ne vaut que par la précision
 de son ancrage, et **chaque** assertion d'un scan doit être perturbée séparément — celle-ci était
 verte pendant que sa voisine, elle, tombait bien.
+
+### `SCAN-QUI-MATCHE-LA-PROSE` — mon motif a trouvé un commentaire, pas du code
+
+En supprimant le parseur mort `parseTransactions` (`[DEAD-PARSETX-SILENT-DROP]`), j'ai voulu poser
+une garde : « aucun fichier de production ne référence plus ce symbole ». Le scan a échoué **deux
+fois de suite**, et les deux fois sur la même cause.
+
+1. `\bparseTransactions\b` : rouge sur `services/import/parseBankCsv.ts`. Le fichier ne l'appelle
+   pas — son en-tête EXPLIQUE qu'il remplace le vieux parseur, et pourquoi celui-ci a été supprimé.
+2. Resserré en `\bparseTransactions\s*\(` (« seulement les APPELS ») : rouge quand même, parce que
+   la prose écrit *« le vieux parseTransactions (TAB/`;` + JJ/MM/AAAA … »* — une parenthèse suit
+   bel et bien le nom, dans une phrase française.
+
+La deuxième tentative est celle qui instruit. Resserrer le motif **paraissait** être le correctif :
+il visait mieux, il était plus « précis ». Mais le défaut n'est pas dans le motif, il est dans le
+TEXTE BALAYÉ. Tant que le scan lit les commentaires, il n'y a pas de motif assez fin — un
+commentaire peut contenir n'importe quelle forme syntaxique, c'est précisément son rôle de citer du
+code. Chaque resserrement achète un faux positif de moins et une chance de plus de rater un vrai
+appel.
+
+**Le correctif est en amont** : retirer les commentaires AVANT de scanner, puis garder le motif
+simple.
+
+```ts
+const sansCommentaires = (src: string): string =>
+    src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
+```
+
+Le `[^:]` évite de décapiter `https://…` dans une URL. Ce décommentage est approximatif par
+construction (une chaîne contenant `//` sera coupée) — acceptable ici parce qu'il ne peut que
+SUPPRIMER du texte, donc affaiblir la garde, jamais fabriquer un faux positif.
+
+⚠️ **Un décommenteur qui affaiblit la garde exige son anti-vacuité.** Un `.replace` trop gourmand
+(ou un fichier mal résolu) qui vide la source rend le scan vert pour la pire des raisons. La garde
+vérifie donc, sur CHAQUE fichier balayé, que le décommentage a laissé au moins un quart du fichier
+ET que du vrai code identifiable a survécu (`expect(code).toContain('markDuplicates')`) avant
+d'asserter l'absence. Sans ces deux lignes, le test prouverait « rien ne référence X » à partir de
+« il n'y a plus rien ».
+
+**Ne pas confondre avec l'interdiction de la mention.** La tentation, en voyant l'en-tête rouge, est
+d'exiger que le commentaire disparaisse. Ce serait effacer l'explication d'un choix — un futur
+lecteur de `parseBankCsv.ts` doit pouvoir savoir ce qui a été remplacé et pourquoi. La garde
+protège le CODE ; la prose garde le droit de raconter l'histoire.
+
+Cousin direct de `SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE` (même session) : là le motif
+visait la mauvaise LIGNE du même fichier, ici il vise la mauvaise NATURE de texte. Même remède de
+fond dans les deux cas — le scan doit d'abord définir *ce qui compte comme du code*, avant de
+chercher quoi que ce soit dedans.
+
+### `REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION` — tracer un repli n'est pas toujours un progrès
+
+Le ticket `[SILENT-HEALTHWEIGHTS-FIELD]` disait : `normalizeHealthWeights` retombe sur les défauts
+sans rien dire, ajoute une trace. Vrai — mais appliqué tel quel, le correctif aurait été une
+RÉGRESSION.
+
+La fonction rencontre en effet DEUX cas que le même `?? défaut` traite identiquement :
+
+- **champ ABSENT** — c'est la rétrocompat, et elle est VOULUE. Un utilisateur d'avant l'ajout de
+  `budgetParity` / `subscriptionLoad` n'a que quatre poids persistés ; il reçoit les deux nouveaux
+  au défaut. C'est le fonctionnement nominal, pour tout le monde, à chaque chargement.
+- **champ PRÉSENT mais non fini** (`NaN`, `null`, `'douze'`, `Infinity`) — là quelque chose a écrit
+  une valeur invalide. L'utilisateur voit son réglage revenu à l'usine, sans rien à quoi le
+  rattacher.
+
+Tracer les deux aurait produit un avertissement à CHAQUE chargement pour chaque utilisateur en
+rétrocompat. Un diagnostic qui crie sur le cas nominal cesse d'être lu — et il aurait noyé le seul
+cas qui méritait de l'être. La distinction tient en un `k in p` :
+
+```ts
+const corrompus = cles.filter((k) => k in p && !(typeof p[k] === 'number' && Number.isFinite(p[k])));
+```
+
+**La règle** : avant d'ajouter une trace sur un repli, énumérer les chemins qui l'atteignent et les
+classer *attendu* / *anormal*. « Ce repli est silencieux » n'est un défaut que pour les seconds. Et
+le test doit verrouiller les DEUX sens — celui qui journalise, et celui qui **ne doit pas** :
+l'assertion `not.toHaveBeenCalled()` sur le champ absent est ce qui empêche la prochaine passe de
+« généraliser » le correctif.
+
+Corollaire d'agrégation : six champs corrompus ne doivent pas donner six lignes. Un seul appel,
+throttlé par la SIGNATURE des champs concernés (`health-weights-corrompus:savingsRate,debtRatio`),
+avec l'inventaire en contexte.

@@ -10,6 +10,57 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-19 — Vague 1e (fin) : les cinq XS du silence
+
+> Cinq erreurs avalées sans trace, regroupées par CLASSE. ⚠️ Chaque diagnostic a été **re-dérivé sur
+> son propre code** avant d'écrire quoi que ce soit (leçon `DIAGNOSTIC-GROUPE-A-MOITIE-FAUX`, née du
+> lot précédent où un groupement identique cachait deux défauts opposés). Les cinq se sont confirmés
+> — cette fois.
+
+**`[SILENT-STOCKFORM-PRICEHINT]`** — `suggestHistoricalPrice` échouait en `console.warn` seul : le
+spinner s'arrêtait, le champ restait vide, aucune trace, aucun message. `logError` + un message à
+l'écran, et un cas SÉPARÉ pour « aucun cours trouvé » (qui n'est pas une erreur). Patron repris de
+`validateSymbol`, dans le MÊME fichier, qui distinguait déjà proprement les deux cas.
+
+**`[SYSVIEW-DBSIZE-ZERO]`** — `catch { return 0; }` affichait « 0 KB », une valeur CRÉDIBLE donc un
+mensonge : l'utilisateur lit « ma base est vide » quand la sérialisation vient d'échouer. Rend `null`
+→ « — », avec la raison en `title`. L'incohérence était entre deux lignes du même écran :
+`computeDiagnostics` poussait déjà un `level: 'err'` pour le MÊME échec.
+
+**`[SILENT-PWA-PROMPT]`** — `logError` en `severity: 'info'`. Impact faible assumé, mais « faible
+impact » ne veut pas dire « invisible ».
+
+**`[SILENT-HEALTHWEIGHTS-FIELD]`** — distingue enfin ABSENT de CORROMPU. Un champ absent est la
+rétrocompat normale (repli silencieux, voulu) ; un champ PRÉSENT mais non fini signale que quelque
+chose a écrit une valeur invalide, et son repli muet rendait un réglage « oublié » inexplicable.
+Journalisé, agrégé en un seul appel throttlé par signature de champs.
+
+**`[DEAD-PARSETX-SILENT-DROP]`** — `parseTransactions` SUPPRIMÉE (fonction + ses tests). Plus aucun
+appelant en production ; elle jetait silencieusement toute ligne à date ou montant invalide.
+⚠️ Supprimée plutôt que corrigée **à dessein** : du code mort à perte silencieuse est un piège
+RÉ-EXPOSABLE par copier-coller, et le corriger l'aurait rendu plus crédible sans lui rendre d'utilité.
+`markDuplicates` et `isInternalTransferLabel` RESTENT (appelées par `App.tsx` et `parseBankCsv.ts`) —
+un test le verrouille, parce que le vrai risque d'une suppression est d'emporter un voisin vivant.
+
+### Un scan qui matchait la PROSE, deux fois de suite
+
+La garde « aucun appelant ne référence `parseTransactions` » a échoué deux fois sur un COMMENTAIRE
+d'en-tête de `parseBankCsv.ts` — qui mentionne légitimement le vieux parseur pour expliquer pourquoi
+il existe. Le motif nu matchait la prose ; le resserrer sur l'appel (`\s*\(`) aussi, parce que la
+prose écrit « parseTransactions (TAB/`;` … ».
+
+**Resserrer le motif ne réglait pas le problème de fond** : un scan qui lit les commentaires les
+prendra toujours pour du code. Les commentaires sont désormais RETIRÉS avant le scan, avec un
+anti-vacuité sur le décommentage lui-même (il ne doit pas avoir mangé le fichier).
+
+**9 cas, 5 discriminent** (un par correctif, vérifiés par perturbation).
+
+- [x] **`[SILENT-STOCKFORM-PRICEHINT]`** (S, MOYEN) — ✅ 2026-08-19, PR #665.
+- [x] **`[SYSVIEW-DBSIZE-ZERO]`** (XS, FAIBLE) — ✅ 2026-08-19, PR #665.
+- [x] **`[DEAD-PARSETX-SILENT-DROP]`** (XS, FAIBLE) — ✅ 2026-08-19, PR #665.
+- [x] **`[SILENT-PWA-PROMPT]`** (S) — ✅ 2026-08-19, PR #665.
+- [x] **`[SILENT-HEALTHWEIGHTS-FIELD]`** (S) — ✅ 2026-08-19, PR #665.
+
 ## 2026-08-19 — Vague 1e (début) : deux silences vers un LLM, et un diagnostic à moitié faux
 
 > Les deux tickets étaient groupés sous le même diagnostic : « un `(u.grossSalary || 0) * 12` publie

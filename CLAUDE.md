@@ -2,7 +2,7 @@
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
 assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 471 tests** Vitest
-(402 fichiers de test, mesuré le 2026-08-19). Tout en français.
+(403 fichiers de test, mesuré le 2026-08-19). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -311,6 +311,18 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   en DÉCLARATION *et* en usage : ancrer le motif sur l'USAGE, et perturber CHAQUE assertion du scan
   séparément (`SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE`).
 - Resserrer un scan-garde **AVANT** de coder le fix : les offenders révélés = le vrai périmètre.
+- Un scan de source qui lit les **COMMENTAIRES** matche de la PROSE : `parseBankCsv.ts` EXPLIQUE en
+  en-tête le parseur qu'il remplace, et resserrer le motif (`\bX\b` → `\bX\s*\(`) ne sert à rien —
+  une phrase française écrit « le vieux X (TAB/`;` … ». Décommenter AVANT de scanner, garder le motif
+  simple, et poser l'anti-vacuité du décommentage (taille restante + un jeton de vrai code retrouvé),
+  sinon « rien ne référence X » se prouve à partir de « il n'y a plus rien ». Ne PAS interdire la
+  mention : la garde protège le code, la prose garde le droit de raconter l'histoire
+  (`SCAN-QUI-MATCHE-LA-PROSE`).
+- Avant de tracer un **repli silencieux**, classer les chemins qui l'atteignent *attendu* / *anormal* :
+  un champ ABSENT est la rétrocompat voulue (silence LÉGITIME), un champ PRÉSENT mais non fini est une
+  corruption (trace). Journaliser les deux crie sur le cas nominal à chaque chargement et noie le
+  seul cas utile. Le test verrouille les DEUX sens, dont le `not.toHaveBeenCalled()`
+  (`REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION`).
 - Un scan-garde qui borne une syntaxe IMBRIQUÉE avec `[^x]*` est aveugle en silence (un `>` dans un
   `className` interpolé tronque la balise) → compter la PROFONDEUR, **tester l'extracteur sur des
   cas de syntaxe**, et poser un anti-vacuité sur ce qu'il TROUVE, pas seulement sur ce qu'il balaie

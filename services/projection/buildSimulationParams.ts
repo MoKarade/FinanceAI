@@ -47,6 +47,7 @@ import {
 import { deriveStartingBalancesFromHistory } from '../history/startingBalancesFromHistory';
 import { getEffectivePurchases } from '../../utils/assetPurchases';
 import { isSavingsNature } from '../../utils/budget';
+import { computeCashLedger } from '../startingCash';
 
 /**
  * Loyer mensuel par défaut quand aucune ligne de budget « loyer / rent /
@@ -136,14 +137,10 @@ export function computeStartingCash(
     initialBalances: Record<string, number>,
     transactions: readonly Transaction[],
 ): number {
-    let cash = 0;
-    (Object.values(initialBalances ?? {}) as number[]).forEach((v) => {
-        cash += Number(v) || 0;
-    });
-    (transactions ?? []).forEach((t) => {
-        if (!t.isDuplicate && !t.isTransfer) cash += Number(t.amount) || 0;
-    });
-    return cash;
+    // [CASH-NAN-SILENT] Délègue à la SOURCE UNIQUE (`services/startingCash.ts`). La formule était
+    // recopiée ici avec des `Number(v) || 0` muets, alors que c'est l'ANCRE de toute la
+    // reconstruction du passé ET le cash de départ du moteur.
+    return computeCashLedger(initialBalances, transactions);
 }
 
 /**

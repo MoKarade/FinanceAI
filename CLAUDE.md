@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 381 tests** Vitest
-(392 fichiers de test, mesuré le 2026-08-19). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 393 tests** Vitest
+(393 fichiers de test, mesuré le 2026-08-19). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -266,6 +266,11 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   taire le compilateur sur ce champ précis. L'assertion vise l'état ÉCRIT, jamais le retour du module.
 - Quand **deux couches dédupliquent** la même donnée, en désigner UNE comme autorité pour ce chemin :
   composées, deux protections correctes suppriment de vraies données (`DEUX-DEDUPS-QUI-SE-CONTREDISENT`).
+- ⚠️ Rendre une fonction **plus robuste DÉSARME les gardes aval** qui reposaient sur sa fragilité :
+  après un durcissement, grep les appelants pour `Number.isFinite`/`isNaN`. Et exposer DEUX portes —
+  le total (pour LIRE : écarter + tracer + montrer) et l'inventaire des termes écartés (pour ÉCRIRE :
+  refuser). Sinon l'aval ne distingue plus « 0 $ vrai » de « 0 $ parce qu'on a jeté »
+  (`TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`).
 - Un composant testé à son **CONTRAT** ne dit rien de ce qu'on lui PASSE : quand un index/une clé est
   calculé ailleurs, viser le CALCUL (l'extraire en fonction pure le rend testable)
   (`TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`).
@@ -275,6 +280,11 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   prompt LLM, MCP, logs), et la garde vit au SERVICE, pas au clic (`DECISION-PRIVACY-UNE-SEULE-SORTIE`).
 - Masquer une donnée peut **retirer un discriminant** et casser les noms accessibles : le remplacer
   par un discriminant non sensible (`MASQUAGE-RETIRE-UN-DISCRIMINANT`).
+- Une garde qui manque **là où le voisin immédiat en a une** est un signal bien plus fort qu'une
+  absence isolée : le risque était connu, traité une fois, et le site d'à côté oublié
+  (`assetValueCad` durci, le cash de départ non — 65 lignes plus bas dans le MÊME fichier).
+  Avant d'écrire une garde, grep le patron dans le fichier et ses voisins et le RÉUTILISER tel quel
+  (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`).
 - Un **stub** documenté « retourne toujours `[]` » peut rester branché des mois sans alerte si le
   mode test nourrit les surfaces en synthétique.
 - Un audit externe/UX headless a un fort taux de faux positifs sur le money-critical — mais

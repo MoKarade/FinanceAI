@@ -17,6 +17,67 @@
 
 ---
 
+## 🎯 PLAN VERS ZÉRO (analyse PM du 2026-08-19 — demande Marc : « fais tout jusqu'à ce que le backlog soit fini »)
+
+> **Le chiffre honnête** : 230 items ouverts ≠ 230 PR. Après le ménage (vague 0, faite) et le tri
+> des blocages, il reste **~46-50 PR livrables**, dont ~30 items qui resteront ouverts quoi qu'il
+> arrive parce qu'ils attendent une réponse ou une action de Marc (→ `docs/A_FAIRE_MOI.md`).
+>
+> **Règle de groupement** : un lot = une PR = un FICHIER ou un domaine. Plusieurs PR sur le même
+> fichier, ce sont des rebases et des occasions de se contredire.
+>
+> ⚠️ **Les cases de CE bloc sont un compteur d'avancement du PLAN, pas des tâches.** Ne PAS les
+> déménager vers l'archive en les cochant (règle « item fini → archive ») : le plan perdrait sa
+> raison d'être. Elles se cochent au fur et à mesure et RESTENT ici jusqu'à ce que le backlog soit
+> vide, moment où le bloc entier part à l'archive.
+
+- [x] **Vague 0 — Ménage** (2026-08-19, sans code) : 14 doublons fermés, `[DEBT-FROM-CONTRACT]` et
+  `[PASSE-REEL-DETTE-*]` confirmés VIVANTS contre l'avis du PM (`docs/decisions.md` précisé).
+- [ ] **Vague 1 — L'argent faux d'abord.** Un chiffre financier faux affiché avec assurance est le
+  pire risque de cette app ; il passe avant l'a11y, la perf et la dette.
+  **1a** ✅ `[CASH-NAN-SILENT]` **livré 2026-08-19** (source unique `services/startingCash.ts`) — c'est le point d'entrée de TOUTE la projection,
+  s'il est faux tout ce qui en découle l'est aussi.
+  **1b** `taxDecember`/`taxJanuary` en UN lot (`[CELIAPP-DOUBLE-RECHARGE]`, `[FISC-BAND-AGE-CREDITS]`,
+  `[FISC-DIV-DERIVED-BASES]`, `[ENG-GK-THRESHOLD-KNIFE]`, `[ENG-TTP-UNSETTLED-PROPAGATE]`,
+  `[RAMQ-ACTIF-HORS-RETRAITS]`, puis `[DOC-CELIAPP-REPORT-PERIMEE]`) — même fichier, même risque de
+  re-baser des goldens : 6 PR séparées se re-baseraient l'une l'autre.
+  **1c** Monte Carlo (`[MC-BANDES-CROISEES]`, `[ENG-MC-CONSERVATION-BLIND]`, `[ENG-INV-FLUXFORM-COVERAGE]`).
+  **1d** Registres oubliés (`[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`, `[ENG-LIQUIDDEBT-NEVER-REPAID]`,
+  `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`, `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`,
+  `[REVENUS-NON-VENTILES-AFFICHAGE]`, `[NW-PRESENT-DEUX-PERIMETRES]`) — même CLASSE, un seul panel.
+  **1e** Silence qui cache de l'argent (`[COUPLE-CTX-FAKE-ZERO]` + `[TOOL-TAXSITUATION-FAKE-ZERO]`
+  groupés, puis les XS : `[SILENT-STOCKFORM-PRICEHINT]`, `[SYSVIEW-DBSIZE-ZERO]`,
+  `[DEAD-PARSETX-SILENT-DROP]`, `[SILENT-PWA-PROMPT]`, `[SILENT-HEALTHWEIGHTS-FIELD]`).
+  **1f** Valeurs fiscales sans source NON gatées (`[RQAP-CAP-98K]`, `[W5-PROXY-NON-SOURCE]`,
+  `[ESTATE-NPV-07]`, `[MIGRATE-GROSS-135]`, `[FISC-GUARD-SCOPE]` — ce dernier **en premier**,
+  élargir le ratchet AVANT révèle le vrai périmètre).
+- [ ] **Vague 2 — Devises/unités** : `[FX-FALLBACK-SILENCIEUX]`, `[RETIREMENT-GROSSINCOME-DEAD]`,
+  `[ADDSTOCK-CAD-NATIF]`. Indépendant.
+- [ ] **Vague 3 — `formatCAD`** ⚠️ **AVANT la vague 4** : les deux touchent les mêmes fichiers
+  (`ProjectionTooltip`, `GoalSeekerCard`…). **3a** livrer le scan-garde d'abord — il n'existe pas et
+  ses offenders SONT le périmètre. **3b** corriger ce qu'il révèle, par dossier
+  (`services/projection/*` en premier, 80 % du volume). Puis `[FORMATCAD-OR-ZERO]`, classe distincte.
+- [ ] **Vague 4 — a11y.** **4a Étendre les outils-garde D'ABORD** (`[A11Y-CONTRAST-ANGLE-MORT-541]`,
+  `[A11Y-CONTRAST-TOOL-GAP-CTA]`, `[A11Y-PRIVACY-SCAN-GLOBAL]`) — coder les fixes avant donnerait un
+  périmètre DEVINÉ, pas mesuré. **4b** mode discret formulaires · **4c** contraste · **4d** clavier /
+  focus / cibles tactiles (indépendant des outils, peut partir en parallèle) ·
+  **4e** `[A11Y-SUBTABS-FUTUR]` ⚠️ **APRÈS** la vague 8b (même fichier, 2 026 lignes).
+- [ ] **Vague 5 — IA/Anthropic** : un seul lot, une seule surface (`services/claude.ts` + `mcp/`).
+- [ ] **Vague 6 — Performance** : `[PERF-ENGINE-DATELABEL-INTL]` (correctif déjà écrit 200 lignes
+  plus loin dans le même fichier), `[PERF-ENGINE-ISOSTRING-HOTLOOP]`, `[PERF-MARKETDATA-DYNIMPORT-INERTE]`,
+  puis `[PERF-ENGINE-TOFIXED-ROUND]` ⚠️ **fuzz exhaustif obligatoire avant merge** (le correctif
+  « évident » diverge de `toFixed` sur les piles `.xx5`).
+- [ ] **Vague 7 — Fintable/sync** : `[FINTABLE-INVESTMENTS-MUET]` en tête (demandé par Marc).
+- [ ] **Vague 8 — Dette technique** : **8a** god-fonctions moteur · **8b** god-files UI, UN fichier à
+  la fois · **8c** primitives et tokens · **8d** casts/dépréciations/exports morts ·
+  **8e** garde-fous structurels (`[STORE-RENAME-NO-GUARD]`, `[SVC-STORE-COUPLING]`,
+  `[ENGINE-IMPLICIT-ORDER]` — des TESTS d'ordre, pas un refactor de l'orchestrateur) ·
+  **8f** divers · **8g** dépendances · **8h** tests.
+- [ ] **Vague 9 — Chat/contexte d'écran** · **Vague 10 — Gros chantiers** (en DERNIER : les plus
+  risqués en régression, à faire quand le reste est stable) · **Vague 11 — `[PASSE-REEL]` restant**.
+
+---
+
 ## Plan d'exécution (vagues — PM + analyses code/fiscal 2026-07-31)
 
 > Synthèse des 3 analyses (PM : ordre/valeur · code-analyzer : 15 findings nouveaux ·
@@ -242,11 +303,6 @@
   3:1 non-text. L'information reste lisible ; c'est l'effet « saute aux yeux » qui est affaibli.
   ⚠️ `check-contrast` ne couvre PAS ce cas (palette Tailwind par défaut, pas des tokens, et aucune
   composition alpha) → **étendre l'outil d'abord**, choisir le shade par mesure ensuite.
-- [ ] **`[FMT-INFOBULLE-TOLOCALESTRING]`** (XS) — `ProjectionTooltip` a son propre
-  `fmt = Math.round(n).toLocaleString('fr-CA')` au lieu de `formatCAD` (non négociable du CLAUDE.md).
-  Pré-existant, mais la PR l'ÉTEND à une nouvelle surface monétaire. Conséquences : une valeur non
-  finie afficherait `NaN$` au lieu de « — », et le même montant se lit « 1 234$ » dans l'infobulle
-  et « 1 234 $ » dans la modale.
 
 - [ ] **`[ENG-GK-THRESHOLD-KNIFE]`** (M, MOYEN [MESURÉ — panel #564], PRÉ-EXISTANT) — le garde-fou
   Guyton-Klinger (`taxJanuary.ts` §5 : `currentPortfolio < prevPortfolioNW * 0.95`) est un seuil
@@ -313,9 +369,6 @@
 - [ ] **`[ENG-RAP-MISSED-REPAYMENT-TAX]`** (S — panel #554, PRÉ-EXISTANT) — un remboursement RAP
   sauté (liquide insuffisant, `realEstateMonth.ts:419-427`) devrait ajouter 1/15 du solde au revenu
   IMPOSABLE (règle ARC) — jamais modélisé, dans aucun compteur.
-- [ ] **`[UI-FMTM-FORMATCAD]`** (S — panel #554, PRÉ-EXISTANT) — `fmtM` maison
-  (`StrategyOptimizerPanel.tsx:57`, `(v/1e6).toFixed(2)M$`) viole « formatCAD UNIQUEMENT » et
-  écrase la granularité (6 157 $ → « 0.01M$ »).
 - [ ] **`[FISC-GIS-COUPLE-RATE]`** (M, ÉLEVÉ hors profil Marc [Probable — table Service Canada NON
   confirmable du conteneur]) — `utils/tax.ts:497-498` : clawback SRG 0,50 PAR ADULTE sur le revenu
   COMBINÉ → récupération 2× trop rapide ; `GIS_INCOME_THRESHOLD_COUPLE` 29 760 $ = CODE MORT (la
@@ -672,13 +725,6 @@
   dans la même PR #594 avec la garde fiscale). Diagnostiquer pourquoi (chemins quotés ? CWD du
   hook ? suivi du graphe ?) et soit corriger, soit élargir la gate. En attendant : la CI
   complète reste l'arbitre (design assumé), les gardes-scan sont déjà forcées.
-- [ ] **`[ENG-MC-BANDS-ORDER]`** (M, moteur, 🧭 financial-integrity d'abord) — les bandes Monte
-  Carlo sortent DÉSORDONNÉES du moteur : sur 361 mois, 171 violations d'ordre et 8 mois où
-  P10 > P90 (jusqu'à 36 952 $, 17,25 % du P50), toutes dans les ~60 premiers mois (mesuré
-  projection-validator 2026-08-12, `probe7_mc.ts` — la ventilation quotidienne n'en crée AUCUNE :
-  47,3 % au jour vs 47,4 % au mois, l'interpolation hérite). PRÉEXISTANT à #592, rendu plus
-  visible depuis que les bandes se tracent partout. Diagnostiquer dans le moteur MC (tri des
-  percentiles par mois ? graine ? fenêtre courte ?) — passe financial-integrity avant tout fix.
 
 > Findings code-analyzer 2026-07-31 (preuve fichier:ligne, chacun vérifié par grep) :
 
@@ -690,16 +736,9 @@
   **`[GODFILE-STORE]`** `useFinanceStore.ts` 717 l. (slices par domaine — DERNIER, risque migration).
   **`[GODFILE-REALESTATE-CMP]`** RealEstate.tsx 624 · **`[GODFILE-FUTUREDETAILMODAL]`** 606.
 
-- [ ] **`[DETTE-GODFILES]`** (L, ⏳, par barrel — au fil de l'eau) — restent : `Budget.tsx` 1413 l.
-  (a GROSSI), `Investments.tsx` 1345, `FutureProjection.tsx` 1199, `Transactions.tsx` 982,
-  `Dashboard.tsx` 735, `utils/tax.ts` 908, `services/claude.ts` 912, `services/pdfReport.ts` 851,
-  `services/projection.ts` 1751. (syncOrchestrator ✓, TaxCenter ✓ 613 l.) (≡ D4, CA-06, CA-09,
-  DETTE-CLAUDE-SPLIT.) + [D4-H2] sélecteurs atomiques (App re-render sur tout slice non-lastProjection).
-- [ ] **`[DETTE-UI-PRIMITIVES]`** (M) — `components/ui/Input|Select|Field` (label+erreur+aria) sur
+- [ ] **`[DETTE-UI-PRIMITIVES]`** (unifie `[UI-NO-INPUT-PRIMITIVE]`) (M) — `components/ui/Input|Select|Field` (label+erreur+aria) sur
   les tokens existants + migrer les hotspots (AdvancedProjectionParams 40 inputs, PatrimoineExtended
   19, Onboarding 11, ProjectionControls 10). (≡ CA-08.)
-- [ ] **`[CA-07]`** (M) — tokens couleur : `constants/chartColors.ts` (source Recharts), ~200 hex en
-  className → tokens sémantiques + règle ESLint anti-régression. (≡ D3 restes ; text-gray = 0 ✓.)
 - [ ] **`[PH3-c-bis]`** (S, reste) — `futureProvince`/`futureMoveYear` orphelins (types.ts:343-344,
   0 consommateur services/) ; `rsuYearsRemaining` consommé (activeIncome.ts:101) mais AUCUN éditeur
   UI → auditer W2.7 + éditeur ou retrait.
@@ -775,7 +814,7 @@
   et le plafond à vie de 80 000 $ atteint en 3 ans au lieu de 5**. Correctif : supprimer l'écriture
   de décembre (janvier est la source unique) et faire porter le report sur l'espace RÉELLEMENT
   inutilisé. [MESURÉ]
-- [ ] **`[MC-BANDES-CROISEES]`** (M, MOYEN) — `runMonteCarlo` classe les **trajectoires entières** par
+- [ ] **`[MC-BANDES-CROISEES]`** (M, MOYEN — unifie `[ENG-MC-BANDS-ORDER]`, même mécanisme) — `runMonteCarlo` classe les **trajectoires entières** par
   patrimoine FINAL puis publie `sorted[10%]/[50%]/[90%]` comme un cône P10/P50/P90
   (`services/projection/monteCarlo.ts:117-121`). Ce ne sont donc **pas** des percentiles mensuels :
   à un mois donné la borne basse peut passer au-dessus de la médiane. **Mesuré (30 ans, 200
@@ -889,14 +928,6 @@
   `components/investments/DividendPanel.tsx:79` · `components/LifeEvents.tsx:148` ·
   `components/realestate/RealEstateWorkspace.tsx:342` · `components/realestate/MultiPropertyComparison.tsx:75`.
   Correctif : passer la valeur brute à `formatCAD`, qui gère déjà `unknown`. [MESURÉ]
-- [ ] **`[FORMAT-CAD-BYPASS]`** (S, MOYEN) — helpers `$` **locaux** qui court-circuitent `formatCAD` :
-  rendu mesuré `"NaN$"` / `"-NaN $"` au lieu de « — ». `components/projection/ActionPlanDrilldown.tsx:17` ·
-  `components/projection/ProjectionExplains.tsx:24` · `components/projection/ProjectionTooltip.tsx:135` ·
-  `components/retirement/GoalSeekerCard.tsx:100,111` · `components/import/ImportBankStatement.tsx:19` ·
-  `components/investments/ImportBrokerPositions.tsx:20`. **Aucune garde du dépôt n'interdit ce
-  motif** — `chartPrivacyScan` ne le couvre pas. Correctif : remplacer par `formatCAD` **et** ajouter
-  le test-scan manquant (« pas de `toLocaleString` suivi de `$` hors `utils/format.ts` ») — sans quoi
-  le motif reviendra. Recoupe `[DETTE-FORMATCAD-BYPASS]` (77 occurrences au total). [MESURÉ]
 
 ### 🔴 Devises et unités
 
@@ -907,7 +938,7 @@
   détenus, 3 points d'écart de taux = ~3 000 $ CAD d'erreur silencieuse sur le patrimoine affiché.
   C'est le miroir exact de `DECISION-PRIVACY-UNE-SEULE-SORTIE` : un signal posé pour UNE surface ne
   protège que celle-là. [MESURÉ pour le code ; ampleur = HYPOTHÈSE]
-- [ ] **`[RETIREMENT-GROSSINCOME-DEAD]`** (XS, FAIBLE) — la prop `grossIncome` passée à `<Retirement>`
+- [ ] **`[RETIREMENT-GROSSINCOME-DEAD]`** (XS, FAIBLE — unifie `[DEAD-PROP-GROSSINCOME]`) — la prop `grossIncome` passée à `<Retirement>`
   est une somme **MENSUELLE** de `grossSalary` (pas de ×12) sous un nom qui annonce l'annuel
   (`components/TabRouter.tsx:230`, déclarée `components/Retirement.tsx:56`). Elle n'est **jamais
   consommée** → piège d'échelle 12× armé pour le premier qui s'en servira. Correctif : supprimer la
@@ -920,20 +951,6 @@
 
 ### 🔴 Argent — valeurs fausses ou silencieuses
 
-- [ ] **`[CASH-NAN-SILENT]`** (M, CRITIQUE) — le **cash de départ de TOUTE la projection** coerce en
-  silence : `Number(v) || 0` sur `initialBalances` ET sur `transaction.amount`, sans aucun
-  `logError`, dans les 3 copies de la formule (`hooks/useSimulationParams.ts:128-135` — celle
-  réellement consommée par `ProjectionEngine`, `services/portfolio.ts:120-130`,
-  `services/projection/buildSimulationParams.ts:135-147`). Le patron `HARDEN-*-NAN` est appliqué
-  65 lignes plus haut dans le MÊME fichier (`assetValueCad`) et dans `computeRawNetWorth`
-  (`services/projection/netWorth.ts:77-93`), créé après l'incident réel « −193 k$ » du 2026-06-16 —
-  mais pas ici. **Chemin d'atteinte vérifié** : `components/settings/BackupPanel.tsx:24` valide les
-  backups restaurés avec `transactions: z.array(z.object({}).passthrough())` → `amount` n'est PAS
-  typé (contrairement à `initialBalances: z.record(z.string(), z.number())` qui l'est), et le store
-  recharge par `JSON.parse` brut (`store/useFinanceStore.ts:318`) sans re-validation. Un montant
-  corrompu devient un `0 $` crédible à la racine de la projection, sans trace. Correctif : unifier
-  les 3 copies sur un helper unique + `logErrorThrottled` avec les termes fautifs, calqué sur
-  `computeRawNetWorth`. [MESURÉ]
 - [ ] **`[COUPLE-CTX-FAKE-ZERO]`** (XS, MOYEN) — `components/tax/CoupleOptimizationCard.tsx:55-61`
   construit le contexte envoyé à Claude avec `(u1.grossSalary || 0) * 12`. Ce `|| 0` **court-circuite
   `promptCad`** (`services/claude.ts:55`), qui rend justement « (non disponible) » sur une valeur non
@@ -1010,7 +1027,7 @@
   `safeJsonValidate` et s'affiche verbatim (`components/Transactions.tsx:893-894`, 985-986) :
   « Confiance: 9999 % ». Correctif : `.min(0).max(100)` sur `confidence`, `.nonnegative().finite()`
   sur les montants, + clamp défensif à l'affichage. [MESURÉ, reconfirmé par Claude]
-- [ ] **`[BUDGET-AI-WRONG-MODEL]`** (XS, MOYEN — coût) — `components/budget/BudgetAiModal.tsx:68-72`
+- [ ] **`[BUDGET-AI-WRONG-MODEL]`** (XS, MOYEN — coût ; unifie `[AI-BUDGETMODAL-MODEL-COST]`) — `components/budget/BudgetAiModal.tsx:68-72`
   appelle `chatStream` **sans `model`** → retombe sur `MODEL_SONNET` (`services/claude.ts:261`). Or
   les 4 surfaces de même nature (rééquilibrage, abonnements, conseil immo, optimisation couple)
   passent toutes Haiku explicitement. Seule surface Haiku-éligible qui paie le tarif Sonnet, sur la
@@ -1161,12 +1178,6 @@
 - [ ] **`[DETTE-GODFN-JANUARY]`** (S, ÉLEVÉ) — `processJanuaryReset` fait **183 lignes**
   (`services/projection/taxJanuary.ts:102-284`) : roulement des droits, impôt annuel, remise à zéro
   des compteurs, tout mélangé. [MESURÉ]
-- [ ] **`[DETTE-FORMATCAD-BYPASS]`** (S, ÉLEVÉ) — **77 occurrences** de `toLocaleString('fr-CA')` hors
-  `utils/format.ts` (hors dates), dont **6 dans `services/projection/cashflowAllocation.ts`**
-  (l:213, 266, 272, 285, 332, 398 — logs de flux money-critical) et des affichages UI directs
-  (`ProjectionTooltip.tsx:135`, `ProjectionExplains.tsx:24`, `ActionPlanDrilldown.tsx:17`,
-  `GoalSeekerCard.tsx:100,111`, `assetLocation.ts:188`, `drawdownOptimizer.ts:79`, `goalSeek.ts:91`).
-  Viole le non-négociable « `formatCAD` UNIQUEMENT ». [MESURÉ]
 - [ ] **`[DETTE-CAST-DAILYCURVE]`** (S, ÉLEVÉ) — **17 `as unknown as`** sur la courbe journalière
   money-critical : 8 dans `services/projection/dailyCurve.ts` (l:81, 121, 154, 211, 226-227, 248, 329)
   et 9 dans `components/FutureProjection.tsx` (l:886-906, 972, 1014, 1105, 1593-1594) — pile aux
@@ -1181,17 +1192,10 @@
   `aiChat/AiChatView.tsx` (×2), `Retirement.tsx` (×2). Ces teintes échappent à `check-contrast` ET
   aux tokens. Correctif : mapper vers `tailwind.config.js`, ou y ajouter la teinte si elle est
   volontaire. [MESURÉ]
-- [ ] **`[DETTE-KNIP-API-ENTRY]`** (XS, FAIBLE) — `knip.json` ne déclare pas `api/**/*.ts` en entry
+- [ ] **`[DETTE-KNIP-API-ENTRY]`** (XS, FAIBLE — unifie `[KNIP-EDGE-FALSE-POSITIVE]`) — `knip.json` ne déclare pas `api/**/*.ts` en entry
   point → `api/claude/[...path].ts` (fonction Vercel Edge, routée par la plateforme) ressort en
   « fichier inutilisé » alors qu'il est en PROD. Le faux positif aveugle aussi le scan sur du vrai
   code mort futur dans `api/`. Correctif : ajouter `"api/**/*.ts"` à `entry`. [MESURÉ]
-- [ ] **`[DETTE-GODFILE-FUTUREPROJECTION]`** (L, MOYEN) — `components/FutureProjection.tsx` =
-  **2 026 lignes**, le plus gros fichier du dépôt (devant `Investments.tsx` 1 440, `Budget.tsx` 1 423,
-  `projection/FutureDetailModal.tsx` 1 116, `Transactions.tsx` 1 054). Correctement lazy-chargé (zéro
-  risque de bundle de boot) — le coût est la revue : un fichier de cette taille tronque le contexte
-  des agents et dilue la relecture humaine. **Pas de chantier dédié** (Marc n'aime pas le refactor
-  gratuit) : traiter chaque tâche qui y touche comme une occasion d'extraire le bloc concerné vers
-  `components/future/` ou `components/projection/`, comme déjà amorcé. [MESURÉ]
 - [ ] **`[DETTE-GODFN-PDF]`** (M, MOYEN) — `generateFinancialReport` fait **615 lignes**
   (`services/pdfReport.ts:265-879`), soit quasi tout le fichier. Correctif : découper par section
   de rapport (`buildHoldingsSection`, `buildDebtSection`…). [MESURÉ]
@@ -1395,13 +1399,7 @@
   `childrenReee.ts` (SCEE/IQEE), et 3 autres. **Correctif** : étendre `FISCAL_MODULES` AVANT de
   corriger quoi que ce soit (leçon « resserrer le scan AVANT le fix »).
 
-- [ ] **`[FMT-MONEY-BYPASS]`** (S) — montants rendus sans `formatCAD` (9 sites en grep).
-  Aucun n'est faux au cent près — dérive de présentation. Classe comptabilisée dans
-  `[FMT-TOLOCALESTRING-MONEY]` (HIGH, part d'un seul ticket).
 
-- [ ] **`[DEAD-PROP-GROSSINCOME]`** (S) — `Retirement.tsx` reçoit prop `grossIncome` = somme des
-  salaires MENSUELS (sans ×12). Jamais consommée, donc aucun bug visible. Premier consommateur
-  héritera d'un facteur ×12 dormant. **Correctif** : supprimer la prop.
 
 - [ ] **`[ENG-TTP-NEGATIF]`** (S) — `totalTaxesPaid` ressort NÉGATIF pour salarié (compte seulement
   débits du liquide, retenues à la source n'y transitent pas → seuls remboursements nets). Cohérent
@@ -1436,10 +1434,6 @@
 > Référence : `services/finance.ts` (parseRate, patron parfait), `services/marketData/*` (appliqué),
 > `services/claude.ts` (safeJsonValidate loggue sys, rejets massifs tracés).
 
-- [ ] **`[SILENT-STOCKFORM-PRICEHINT]`** (S) — `AddStockForm.suggestHistoryPrice()` échoue en silence
-  (réseau/provider) : catch sans `logError` ni `setNotice` (contrairement à `validateSymbol` du même
-  fichier). L'utilisateur voit spinner s'arrêter, prix vide, aucune explication. **Correctif** :
-  `logError + setNotice` sur le modèle de validateSymbol.
 
 - [ ] **`[SILENT-PWA-PROMPT]`** (S) — `usePwaInstallPrompt` échoue de `deferredEvent.prompt()`
   sans `logError`. Impact faible (perte invite installation PWA seulement, pas donnée financière).
@@ -1476,6 +1470,13 @@
 > des années mais c'est faux ; je t'ai donné le pdf du contrat, ça devrait être automatique ».
 > **Constat VÉRIFIÉ dans le code le 2026-08-13** — le symptôme est réel, et il a DEUX causes
 > indépendantes. Même famille que `[PASSE-REEL-1]` : le passé affiche quelque chose de faux.
+
+> ✅ **CONFIRMÉ VIVANT le 2026-08-19** (Marc : « oui on veut extraire »). Le PM de la passe de
+> ménage proposait de fermer ces trois tickets + `[DEBT-FROM-CONTRACT]` comme caducs, en citant la
+> Décision 2 de `docs/decisions.md`. **Refusé après vérification** : cette décision interdit
+> l'amortissement RÉTROACTIF et toute SAISIE demandée à Marc — lire le PDF du contrat qu'il a déjà
+> fourni n'est ni l'un ni l'autre. La décision a été précisée en conséquence
+> (`docs/decisions.md`, « PRÉCISION Marc du 2026-08-19 »). Ne pas re-fermer ces items.
 
 - [ ] 🔴 **`[PASSE-REEL-DETTE-1]`** (M) — **le passé soustrait la dette d'AUJOURD'HUI à CHAQUE point
   passé.** `FutureProjection.tsx` (~l. 395) lit `chartData[0].DettesNonImmo` et le passe à
@@ -1651,9 +1652,6 @@ stub : il n'aurait aucune date à lire.
 
 > Périmètre : services/claude.ts, Vision payslip, chat in-app, budget recommandations.
 
-- [ ] **`[AI-BUDGETMODAL-MODEL-COST]`** (S) — `BudgetAiModal.tsx` `chatStream` sans `model` →
-  défaut Sonnet pour 3 recos courtes (toutes les tâches comparables épinglent Haiku). `MODEL_HAIKU`
-  n'est pas exporté (piège futur). **Correctif** : `model: MODEL_IDS.haiku`.
 
 - [ ] **`[AI-BUDGETMODAL-ERROR-COLLAPSE]`** (S) — catch générique rend « Vérifie ta clé Anthropic »
   même quand clé valide (réseau, 429, JSON tronqué). Contraste avec `agentLoop.ts` qui distingue
@@ -1682,19 +1680,29 @@ stub : il n'aurait aucune date à lire.
 
 > Périmètre : bundling, UI, sync, linting, code mort, god files.
 
-- [ ] 🔴 **`[FMT-TOLOCALESTRING-MONEY]`** (L) — **45 sites** `Math.round(x).toLocaleString('fr-CA') + '$'`
+- [ ] 🔴 **`[FMT-TOLOCALESTRING-MONEY]`** (L) — ⚠️ **TICKET UNIFIÉ le 2026-08-19** : absorbe
+  `[FMT-MONEY-BYPASS]`, `[FMT-INFOBULLE-TOLOCALESTRING]`, `[UI-FMTM-FORMATCAD]`,
+  `[FORMAT-CAD-BYPASS]` et `[DETTE-FORMATCAD-BYPASS]` — cinq tickets pour la MÊME classe, mesurée à
+  trois dates différentes (45 → 77 sites). Ne pas re-scinder.
+  **Mesure la plus récente (2026-08-19) : 77 occurrences** de `toLocaleString('fr-CA')` hors
+  `utils/format.ts` et hors dates, dont **6 dans `services/projection/cashflowAllocation.ts`**
+  (l:213, 266, 272, 285, 332, 398 — logs de flux money-critical). Offenders nommés à surveiller :
+  `ProjectionTooltip.tsx:135` (son propre `fmt` → rendrait `NaN$` au lieu de « — »),
+  `ProjectionExplains.tsx:24`, `ActionPlanDrilldown.tsx:17`, `GoalSeekerCard.tsx:100,111`,
+  `StrategyOptimizerPanel.tsx:57` (`fmtM` maison : 6 157 $ → « 0.01M$ », granularité écrasée),
+  `assetLocation.ts:188`, `drawdownOptimizer.ts:79`, `goalSeek.ts:91`,
+  `import/ImportBankStatement.tsx:19`, `investments/ImportBrokerPositions.tsx:20`.
+  ⚠️ **Aucune garde du dépôt n'interdit ce motif** — `chartPrivacyScan` ne le couvre pas. Le scan
+  se livre AVANT les fixes (règle « resserrer le scan-garde d'abord ») : ses offenders SONT le
+  périmètre. ⚠️ NE PAS confondre avec `[FORMATCAD-OR-ZERO]`, classe DISTINCTE (le `|| 0` annule la
+  garde de `formatCAD` au lieu de la contourner — correctif différent).
+  Historique : **45 sites** `Math.round(x).toLocaleString('fr-CA') + '$'`
   sur des MONTANTS (hors dates, exclues). **17 fichiers**, services/projection/* surtout (80 % volume).
   Classe de bug déjà vécue (couleurs/contraste divergence par site). **Correctif** : helper
   `formatCADSigned`/`formatCADRound` dans `utils/format.ts` (réutilise `formatCAD`), remplacer les
   45 sites (script grep-replace + relecture, aucun changement visuel attendu). Par dossier
   `services/projection/*` d'abord (plein d'impact).
 
-- [ ] **`[UI-NO-INPUT-PRIMITIVE]`** (L) — `components/ui/` n'a **aucun** composant `Input`/`Select`/`Field`
-  (seul `PrivateNumberInput` existe). **132 occurrences** `<input>` brut dans **16 fichiers**. Chaque
-  site réécrit sa propre chaîne Tailwind → dérive de style (focus ring, contraste, cible tactile) doit
-  être corrigée site par site. **Correctif** : créer `components/ui/Input.tsx` + `Select.tsx` +
-  `Field.tsx` (label+erreur+aria) + migrer sliders d'abord (fort impact partagé), puis texte/date. Par
-  fichier, aucun changement comportement.
 
 - [ ] **`[SYNC-PUSH-PULL-NO-UNIT-TEST]`** (M) — `syncPush.ts` / `syncPull.ts` (logique push/pull Drive,
   write direct `localStorage.setItem`) + 4 autres modules sync (`syncPassphrase`, `syncSnapshot`,
@@ -1704,7 +1712,8 @@ stub : il n'aurait aucune date à lire.
   réel) ; ajouter tests directs `syncPush`/`syncPull` priorité (paths de conflit, payload
   partiel/corrompu).
 
-- [ ] **`[CHART-COLOR-DUP]`** (S) — Aucun module central de tokens couleurs graphiques. **212 hex
+- [ ] **`[CHART-COLOR-DUP]`** (S — unifie `[CA-07]`, dont la **règle ESLint anti-régression** est
+  à reprendre : sans elle les hex reviennent) — Aucun module central de tokens couleurs graphiques. **212 hex
   littéraux** dans 6+ fichiers (FutureProjection, Retirement, Investments…), mêmes valeurs répétées
   (ex. `#ef4444` rouge alerte dans 6 fichiers). Un changement de teinte design system = grep-replace
   manuel 6 fichiers sans garantie exhaustivité. **Correctif** : `utils/chartColors.ts` exportant
@@ -1721,11 +1730,14 @@ stub : il n'aurait aucune date à lire.
   comme si active → lecture trompeuse. **Correctif** : supprimer, ou ajouter test dédié si futur UI
   l'utilisera.
 
-- [ ] **`[KNIP-EDGE-FALSE-POSITIVE]`** (S) — `api/claude/[...path].ts` listé « unused » par knip (faux
-  positif : route Vercel par convention, jamais importée statiquement). **Correctif** : ajouter
-  `"api/**/*.ts"` aux `entry` de `knip.json`.
 
-- [ ] **`[GODFILE-FUTUREPROJECTION]`** (L) — `FutureProjection.tsx` **1 820 lignes**, 91 fonctions
+- [ ] **`[GODFILE-FUTUREPROJECTION]`** (L — unifie `[DETTE-GODFILE-FUTUREPROJECTION]` et la part
+  `FutureProjection` de l'ex-`[DETTE-GODFILES]`) — ⚠️ **taille re-mesurée le 2026-08-19 : 2 026
+  lignes**, pas 1 820 : le fichier a GROSSI de 12 % entre deux tickets qui le décrivaient. C'est la
+  démonstration que l'agrégat périmé ne servait à rien.
+  ⚠️ **À faire AVANT `[A11Y-SUBTABS-FUTUR]`**, qui est un second refactor du MÊME fichier : les
+  mener en parallèle garantit un conflit sur le plus gros fichier du dépôt.
+  Détail historique (mesure 1 820 l.) : `FutureProjection.tsx` **1 820 lignes**, 91 fonctions
   locales, 15 `useMemo`, 6 `useEffect`. Combine : config séries + zoom/tooltip + marqueurs événements
   + persistance localStorage. **Correctif (découpe sans changement comportement)** : (1) extraire config
   statique vers `components/future/seriesConfig.ts` ; (2) logique marqueurs vers

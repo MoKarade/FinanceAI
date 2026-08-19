@@ -8,6 +8,7 @@
 // `useDerivedFinancials` (App) — on évite de le recalculer ici.
 
 import { useMemo, useSyncExternalStore } from 'react';
+import { computeCashLedger } from '../services/startingCash';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useShallow } from 'zustand/shallow';
 import { buildSimulationParams } from '../services/projection/buildSimulationParams';
@@ -125,14 +126,14 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
         [pastHistory.points],
     );
 
-    const calculatedStartingCash = useMemo(() => {
-        let cash = 0;
-        (Object.values(initialBalances ?? {}) as number[]).forEach((v) => { cash += Number(v) || 0; });
-        (transactions as Transaction[]).forEach((t) => {
-            if (!t.isDuplicate && !t.isTransfer) cash += Number(t.amount) || 0;
-        });
-        return cash;
-    }, [initialBalances, transactions]);
+    // [CASH-NAN-SILENT] SOURCE UNIQUE (`services/startingCash.ts`). C'est CETTE copie que consomme
+    // `ProjectionEngine`, donc le cash de départ de toute la projection : elle faisait
+    // `Number(v) || 0` sans la moindre trace, alors que le patron `HARDEN-*-NAN` est appliqué
+    // 65 lignes plus haut dans `portfolio.ts` et dans `computeRawNetWorth`.
+    const calculatedStartingCash = useMemo(
+        () => computeCashLedger(initialBalances, transactions as Transaction[]),
+        [initialBalances, transactions],
+    );
 
     // La projection démarre AUJOURD'HUI (mois courant), pas au 1er janvier en dur :
     // passé reconstruit et futur projeté se rejoignent au point « aujourd'hui ».

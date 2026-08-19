@@ -3545,3 +3545,60 @@ dans la mesure. Ici, la prime RAMQ. Le réflexe utile est de faire varier l'entr
 l'écart survit, il est ailleurs. Et creuser l'écart a payé — il a révélé
 `[RAMQ-ACTIF-HORS-RETRAITS]`, la même asymétrie actif/retraité sur un dérivé, laissée ouverte au
 BACKLOG plutôt qu'embarquée dans un lot dont Marc avait fixé le périmètre.
+
+
+### `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` — chercher le patron *voisin* avant de croire qu'il n'existe pas
+
+`[CASH-NAN-SILENT]` : le cash de départ de toute la projection coerçait ses termes non finis en
+silence. Le patron de durcissement qu'il lui fallait — isoler le terme fautif, le rabattre sur 0,
+**journaliser en throttlant par signature** — existait déjà dans le dépôt, et pas loin : dans
+`assetValueCad`, **65 lignes au-dessus, dans le même fichier**. Il avait été écrit après un
+incident réel (patrimoine affiché à −193 k$).
+
+**Ce que ça dit d'un audit.** Le finding intéressant n'est pas « il manque une garde » — c'est
+« il manque une garde *là où le voisin immédiat en a une* ». Cette asymétrie est un signal beaucoup
+plus fort qu'une absence isolée : elle prouve que l'équipe connaissait le risque, l'a traité une
+fois, et a manqué le site d'à côté. Même famille que `MODULE-ECRIT-HORS-CHECKLIST`, vue le même jour
+sur `realEstateMonth.ts`.
+
+**Réflexe** : avant d'écrire une garde, `grep logError` / `Number.isFinite` dans le fichier et ses
+voisins directs. Si un patron existe, le RÉUTILISER tel quel (même throttle, même forme de
+`context`) — deux gardes de forme différente pour le même risque, c'est la prochaine divergence.
+
+**Corollaire sur la preuve** : quand le correctif consiste à extraire une source unique NEUVE, la
+plupart des tests portent sur du code neuf et ne peuvent PAS échouer sur « le code d'avant ». Seuls
+ceux qui visent les **consommateurs** discriminent (ici 1 sur 10). Le dire dans le fichier plutôt
+que laisser croire que dix gardes protègent le fix.
+
+
+### `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL` — la même donnée n'a pas le même contrat en lecture et en écriture
+
+Corollaire découvert en livrant `[CASH-NAN-SILENT]` — **et attrapé uniquement par la suite complète**
+(le fichier de test du lot passait 10/10 en isolation) : durcir un calcul en écartant ses termes non
+finis a **désarmé une garde située en aval**, à l'autre bout du dépôt.
+
+`applyCashBalance` (`mcp/ingest/applyDocument.ts`, chemin d'écriture piloté par l'IA) refusait
+d'écrire quand `!Number.isFinite(current)`. Comme la source unique rend désormais **toujours** un
+nombre fini, ce test ne pouvait plus jamais être vrai : l'écriture passait sur un cash silencieusement
+amputé. Deux protections correctes, composées, annulent la garantie — même famille que
+`DEUX-DEDUPS-QUI-SE-CONTREDISENT`.
+
+**Le principe, réutilisable tel quel** :
+- en **LECTURE / AFFICHAGE**, la bonne réponse à une donnée corrompue est *écarter le terme, tracer,
+  montrer le reste* — un écran vide ou `NaN` n'aide personne ;
+- en **ÉCRITURE**, c'est *refuser* — on ne calcule pas un delta sur une somme dont on sait qu'elle est
+  incomplète.
+
+Donc une source unique durcie doit exposer **deux** portes : le total (pour lire) **et l'inventaire de
+ce qu'elle a écarté** (pour que l'aval décide de refuser). C'est le rôle de
+`computeCashLedgerDetailed` à côté de `computeCashLedger`. Ne pas se contenter du total : l'aval perd
+alors toute capacité de distinguer « 0 $ parce que c'est vrai » de « 0 $ parce qu'on a jeté ».
+
+**Bénéfice inattendu** : en réécrivant la garde sur l'inventaire plutôt que sur la finitude, elle
+attrape maintenant le `NaN` qu'elle **ratait depuis toujours** — l'ancien `Number(v) || 0` le rabattait
+sur 0, la somme restait finie, l'écriture passait. Seul `±Infinity` était intercepté. Un test qui
+échouait a donc révélé un trou plus ancien que le changement qui l'a fait échouer.
+
+**Réflexe** : après avoir rendu une fonction « plus robuste », `grep` ses appelants pour
+`Number.isFinite` / `isNaN` / `!Number.isFinite`. Chaque occurrence est une garde qui reposait sur la
+fragilité qu'on vient de supprimer.

@@ -120,6 +120,29 @@ describe('applyCashBalance — bornes anti-injection + gardes non-fini (throw, r
         expect(() => applyDocument(s2, setCash(50000))).toThrow(/non calculable|corrompu/i);
     });
 
+    // [CASH-NAN-SILENT] ⚠️ Ce cas ÉCHOUAIT avant le 2026-08-19 — et personne ne le savait.
+    // L'ancienne garde testait `!Number.isFinite(current)`, or l'ancien `Number(v) || 0` rabattait
+    // un NaN sur 0 : la somme restait FINIE et l'écriture passait, sur un cash amputé en silence.
+    // Seul ±Infinity était attrapé (truthy, donc il empoisonnait le total). La garde interroge
+    // désormais l'INVENTAIRE des termes écartés par la source unique, pas la finitude du total.
+    it('REJETTE aussi un NaN — que l\'ancienne garde laissait passer (somme finie, cash amputé)', () => {
+        const s1 = baseState();
+        s1.initialBalances = { LIQUIDITE: Number.NaN, REER: 1000 };
+        expect(() => applyDocument(s1, setCash(50000))).toThrow(/non calculable|corrompu/i);
+
+        const s2 = baseState();
+        s2.transactions = [{ id: 1, date: '2026-01-05', amount: Number.NaN, category: 'Salaire', payee: 'x', status: 'processed' }] satisfies Transaction[];
+        expect(() => applyDocument(s2, setCash(50000))).toThrow(/non calculable|corrompu/i);
+    });
+
+    it('un état SAIN écrit toujours normalement (la garde ne sur-bloque pas)', () => {
+        const s = baseState();
+        s.initialBalances = { LIQUIDITE: 1000, REER: 5000 };
+        const r = applyDocument(s, setCash(3000));
+        expect(r.changes.length).toBeGreaterThan(0);
+        expect(Number.isFinite(r.nextState.initialBalances.LIQUIDITE)).toBe(true);
+    });
+
     it('le rejet ne MUTE pas l\'état d\'entrée (fonction pure)', () => {
         const s = richState();
         const snapshot = JSON.stringify(s.initialBalances);

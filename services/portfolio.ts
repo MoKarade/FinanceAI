@@ -11,6 +11,7 @@ import type {
 } from '../types';
 import { isSavingsNature } from '../utils/budget';
 import { logErrorThrottled } from './errorLogger';
+import { computeCashLedger } from './startingCash';
 
 export interface AssetBreakdown {
   reer: number;
@@ -116,18 +117,16 @@ export const computeInvestmentsValue = (
 /**
  * Liquidite courante = somme des soldes initiaux + somme des transactions
  * non-duplicate et non-transfer (gere les depots/retraits).
+ *
+ * [CASH-NAN-SILENT] Délègue à la SOURCE UNIQUE `computeCashLedger` (`services/startingCash.ts`).
+ * Cette fonction portait sa propre copie de la formule avec des `Number(v) || 0` MUETS — juste
+ * en dessous d'`assetValueCad`, qui applique pourtant le patron `HARDEN-*-NAN` depuis l'incident
+ * « −193 k$ ». Deux poids, deux mesures dans le même fichier.
  */
 export const computeCurrentLiquidity = (
   initialBalances: Record<string, number>,
   transactions: Transaction[],
-): number => {
-  let cash = 0;
-  for (const v of Object.values(initialBalances)) cash += Number(v) || 0;
-  for (const t of transactions) {
-    if (!t.isDuplicate && !t.isTransfer) cash += Number(t.amount) || 0;
-  }
-  return cash;
-};
+): number => computeCashLedger(initialBalances, transactions);
 
 /**
  * Actifs BRUTS = liquidité + investissements (CAD), AVANT dettes.

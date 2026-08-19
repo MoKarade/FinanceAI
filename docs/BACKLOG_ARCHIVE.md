@@ -10,6 +10,156 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-19 — Vague 1a : `[CASH-NAN-SILENT]`, le cash de départ trace enfin sa corruption
+
+> Premier lot de code du plan « vider le backlog ». Traité **seul** parce que c'est le POINT
+> D'ENTRÉE de toute la projection : si le cash de départ est faux, tout ce qui en découle l'est.
+>
+> Le nombre ne change PAS (un terme non fini valait 0, il vaut toujours 0) — c'est la **trace** qui
+> manquait. Trois copies de la formule faisaient `Number(v) || 0` en silence, alors que le patron
+> `HARDEN-*-NAN` (né de l'incident « −193 k$ ») est appliqué à `assetValueCad` 65 lignes plus haut
+> dans le MÊME fichier. Les trois pointent désormais sur `services/startingCash.ts`.
+>
+> ⚠️ Portée de la preuve de discrimination : **1 cas sur 10** échoue sur le code d'avant (celui qui
+> vise les consommateurs réels). Les 9 autres testent un module NEUF — écrit dans le fichier plutôt
+> que présenté comme une garde du fix.
+>
+> Le schéma de restauration de backup (`transactions: passthrough()`, `amount` non typé) n'a PAS été
+> durci : c'est un choix documenté (« accepter large plutôt que rejeter un backup légitime »), et la
+> trace est précisément la bonne réponse à ce choix.
+
+- [x] **`[CASH-NAN-SILENT]`** (M, CRITIQUE) — le **cash de départ de TOUTE la projection** coerce en
+  silence : `Number(v) || 0` sur `initialBalances` ET sur `transaction.amount`, sans aucun
+  `logError`, dans les 3 copies de la formule (`hooks/useSimulationParams.ts:128-135` — celle
+  réellement consommée par `ProjectionEngine`, `services/portfolio.ts:120-130`,
+  `services/projection/buildSimulationParams.ts:135-147`). Le patron `HARDEN-*-NAN` est appliqué
+  65 lignes plus haut dans le MÊME fichier (`assetValueCad`) et dans `computeRawNetWorth`
+  (`services/projection/netWorth.ts:77-93`), créé après l'incident réel « −193 k$ » du 2026-06-16 —
+  mais pas ici. **Chemin d'atteinte vérifié** : `components/settings/BackupPanel.tsx:24` valide les
+  backups restaurés avec `transactions: z.array(z.object({}).passthrough())` → `amount` n'est PAS
+  typé (contrairement à `initialBalances: z.record(z.string(), z.number())` qui l'est), et le store
+  recharge par `JSON.parse` brut (`store/useFinanceStore.ts:318`) sans re-validation. Un montant
+  corrompu devient un `0 $` crédible à la racine de la projection, sans trace. Correctif : unifier
+  les 3 copies sur un helper unique + `logErrorThrottled` avec les termes fautifs, calqué sur
+  `computeRawNetWorth`. [MESURÉ]
+
+---
+
+## 2026-08-19 — Ménage : 14 tickets fermés comme DOUBLONS (aucun code)
+
+> Vague 0 du plan « vider le backlog » (analyse PM du 2026-08-19). **Aucun travail réel n'est
+> retiré** : chaque classe garde UN ticket canonique, enrichi des mesures que ses doublons
+> portaient. Ce qui disparaît, ce sont les IDs redondants.
+>
+> **Pourquoi ça comptait** : trois audits successifs (2026-07-31, 08-12, 08-19) ont re-décrit les
+> mêmes défauts sans se comparer entre eux. Le bypass de `formatCAD` existait sous **cinq** IDs, les
+> god-files sous un agrégat périmé PLUS un ticket par fichier, et `[SILENT-STOCKFORM-PRICEHINT]`
+> était copié-collé deux fois dans le même fichier. Deux PR auraient pu partir sur le même code.
+>
+> **Preuve que l'agrégat nuisait** : `[DETTE-GODFILES]` annonçait `FutureProjection.tsx` à 1 199
+> lignes, `[GODFILE-FUTUREPROJECTION]` à 1 820, la mesure du 2026-08-19 dit **2 026**. Le fichier
+> grossissait pendant qu'on le décrivait à trois tailles différentes.
+>
+> ⚠️ **Une fusion proposée par le PM a été REFUSÉE** : `[FORMATCAD-OR-ZERO]` (10 sites
+> `formatCAD(Number(v) || 0)`) n'est pas du même groupe que le bypass de `formatCAD`. Le `|| 0`
+> ANNULE la garde no-fake-data au lieu de la contourner, et son correctif est l'inverse (retirer le
+> `|| 0`, pas remplacer l'appel). Les deux tickets restent séparés.
+
+**Fermé comme DOUBLON de `[FMT-TOLOCALESTRING-MONEY]`** :
+- [x] **`[FMT-INFOBULLE-TOLOCALESTRING]`** (XS) — `ProjectionTooltip` a son propre
+  `fmt = Math.round(n).toLocaleString('fr-CA')` au lieu de `formatCAD` (non négociable du CLAUDE.md).
+  Pré-existant, mais la PR l'ÉTEND à une nouvelle surface monétaire. Conséquences : une valeur non
+  finie afficherait `NaN$` au lieu de « — », et le même montant se lit « 1 234$ » dans l'infobulle
+  et « 1 234 $ » dans la modale.
+
+**Fermé comme DOUBLON de `[FMT-TOLOCALESTRING-MONEY]`** :
+- [x] **`[UI-FMTM-FORMATCAD]`** (S — panel #554, PRÉ-EXISTANT) — `fmtM` maison
+  (`StrategyOptimizerPanel.tsx:57`, `(v/1e6).toFixed(2)M$`) viole « formatCAD UNIQUEMENT » et
+  écrase la granularité (6 157 $ → « 0.01M$ »).
+
+**Fermé comme DOUBLON de `[MC-BANDES-CROISEES]`** :
+- [x] **`[ENG-MC-BANDS-ORDER]`** (M, moteur, 🧭 financial-integrity d'abord) — les bandes Monte
+  Carlo sortent DÉSORDONNÉES du moteur : sur 361 mois, 171 violations d'ordre et 8 mois où
+  P10 > P90 (jusqu'à 36 952 $, 17,25 % du P50), toutes dans les ~60 premiers mois (mesuré
+  projection-validator 2026-08-12, `probe7_mc.ts` — la ventilation quotidienne n'en crée AUCUNE :
+  47,3 % au jour vs 47,4 % au mois, l'interpolation hérite). PRÉEXISTANT à #592, rendu plus
+  visible depuis que les bandes se tracent partout. Diagnostiquer dans le moteur MC (tri des
+  percentiles par mois ? graine ? fenêtre courte ?) — passe financial-integrity avant tout fix.
+
+**Fermé comme DOUBLON de `[GODFILE-BUDGET / GODFILE-INVESTMENTS / GODFILE-FUTUREPROJECTION]`** :
+- [x] **`[DETTE-GODFILES]`** (L, ⏳, par barrel — au fil de l'eau) — restent : `Budget.tsx` 1413 l.
+  (a GROSSI), `Investments.tsx` 1345, `FutureProjection.tsx` 1199, `Transactions.tsx` 982,
+  `Dashboard.tsx` 735, `utils/tax.ts` 908, `services/claude.ts` 912, `services/pdfReport.ts` 851,
+  `services/projection.ts` 1751. (syncOrchestrator ✓, TaxCenter ✓ 613 l.) (≡ D4, CA-06, CA-09,
+  DETTE-CLAUDE-SPLIT.) + [D4-H2] sélecteurs atomiques (App re-render sur tout slice non-lastProjection).
+
+**Fermé comme DOUBLON de `[CHART-COLOR-DUP]`** :
+- [x] **`[CA-07]`** (M) — tokens couleur : `constants/chartColors.ts` (source Recharts), ~200 hex en
+  className → tokens sémantiques + règle ESLint anti-régression. (≡ D3 restes ; text-gray = 0 ✓.)
+
+**Fermé comme DOUBLON de `[FMT-TOLOCALESTRING-MONEY]`** :
+- [x] **`[FORMAT-CAD-BYPASS]`** (S, MOYEN) — helpers `$` **locaux** qui court-circuitent `formatCAD` :
+  rendu mesuré `"NaN$"` / `"-NaN $"` au lieu de « — ». `components/projection/ActionPlanDrilldown.tsx:17` ·
+  `components/projection/ProjectionExplains.tsx:24` · `components/projection/ProjectionTooltip.tsx:135` ·
+  `components/retirement/GoalSeekerCard.tsx:100,111` · `components/import/ImportBankStatement.tsx:19` ·
+  `components/investments/ImportBrokerPositions.tsx:20`. **Aucune garde du dépôt n'interdit ce
+  motif** — `chartPrivacyScan` ne le couvre pas. Correctif : remplacer par `formatCAD` **et** ajouter
+  le test-scan manquant (« pas de `toLocaleString` suivi de `$` hors `utils/format.ts` ») — sans quoi
+  le motif reviendra. Recoupe `[DETTE-FORMATCAD-BYPASS]` (77 occurrences au total). [MESURÉ]
+
+**Fermé comme DOUBLON de `[FMT-TOLOCALESTRING-MONEY]`** :
+- [x] **`[DETTE-FORMATCAD-BYPASS]`** (S, ÉLEVÉ) — **77 occurrences** de `toLocaleString('fr-CA')` hors
+  `utils/format.ts` (hors dates), dont **6 dans `services/projection/cashflowAllocation.ts`**
+  (l:213, 266, 272, 285, 332, 398 — logs de flux money-critical) et des affichages UI directs
+  (`ProjectionTooltip.tsx:135`, `ProjectionExplains.tsx:24`, `ActionPlanDrilldown.tsx:17`,
+  `GoalSeekerCard.tsx:100,111`, `assetLocation.ts:188`, `drawdownOptimizer.ts:79`, `goalSeek.ts:91`).
+  Viole le non-négociable « `formatCAD` UNIQUEMENT ». [MESURÉ]
+
+**Fermé comme DOUBLON de `[GODFILE-FUTUREPROJECTION]`** :
+- [x] **`[DETTE-GODFILE-FUTUREPROJECTION]`** (L, MOYEN) — `components/FutureProjection.tsx` =
+  **2 026 lignes**, le plus gros fichier du dépôt (devant `Investments.tsx` 1 440, `Budget.tsx` 1 423,
+  `projection/FutureDetailModal.tsx` 1 116, `Transactions.tsx` 1 054). Correctement lazy-chargé (zéro
+  risque de bundle de boot) — le coût est la revue : un fichier de cette taille tronque le contexte
+  des agents et dilue la relecture humaine. **Pas de chantier dédié** (Marc n'aime pas le refactor
+  gratuit) : traiter chaque tâche qui y touche comme une occasion d'extraire le bloc concerné vers
+  `components/future/` ou `components/projection/`, comme déjà amorcé. [MESURÉ]
+
+**Fermé comme DOUBLON de `[FMT-TOLOCALESTRING-MONEY]`** :
+- [x] **`[FMT-MONEY-BYPASS]`** (S) — montants rendus sans `formatCAD` (9 sites en grep).
+  Aucun n'est faux au cent près — dérive de présentation. Classe comptabilisée dans
+  `[FMT-TOLOCALESTRING-MONEY]` (HIGH, part d'un seul ticket).
+
+**Fermé comme DOUBLON de `[RETIREMENT-GROSSINCOME-DEAD]`** :
+- [x] **`[DEAD-PROP-GROSSINCOME]`** (S) — `Retirement.tsx` reçoit prop `grossIncome` = somme des
+  salaires MENSUELS (sans ×12). Jamais consommée, donc aucun bug visible. Premier consommateur
+  héritera d'un facteur ×12 dormant. **Correctif** : supprimer la prop.
+
+**Fermé comme DOUBLON de `[SILENT-STOCKFORM-PRICEHINT (copie unique conservée au BACKLOG)]`** :
+- [x] **`[SILENT-STOCKFORM-PRICEHINT]`** (S) — `AddStockForm.suggestHistoryPrice()` échoue en silence
+  (réseau/provider) : catch sans `logError` ni `setNotice` (contrairement à `validateSymbol` du même
+  fichier). L'utilisateur voit spinner s'arrêter, prix vide, aucune explication. **Correctif** :
+  `logError + setNotice` sur le modèle de validateSymbol.
+
+**Fermé comme DOUBLON de `[BUDGET-AI-WRONG-MODEL]`** :
+- [x] **`[AI-BUDGETMODAL-MODEL-COST]`** (S) — `BudgetAiModal.tsx` `chatStream` sans `model` →
+  défaut Sonnet pour 3 recos courtes (toutes les tâches comparables épinglent Haiku). `MODEL_HAIKU`
+  n'est pas exporté (piège futur). **Correctif** : `model: MODEL_IDS.haiku`.
+
+**Fermé comme DOUBLON de `[DETTE-UI-PRIMITIVES]`** :
+- [x] **`[UI-NO-INPUT-PRIMITIVE]`** (L) — `components/ui/` n'a **aucun** composant `Input`/`Select`/`Field`
+  (seul `PrivateNumberInput` existe). **132 occurrences** `<input>` brut dans **16 fichiers**. Chaque
+  site réécrit sa propre chaîne Tailwind → dérive de style (focus ring, contraste, cible tactile) doit
+  être corrigée site par site. **Correctif** : créer `components/ui/Input.tsx` + `Select.tsx` +
+  `Field.tsx` (label+erreur+aria) + migrer sliders d'abord (fort impact partagé), puis texte/date. Par
+  fichier, aucun changement comportement.
+
+**Fermé comme DOUBLON de `[DETTE-KNIP-API-ENTRY]`** :
+- [x] **`[KNIP-EDGE-FALSE-POSITIVE]`** (S) — `api/claude/[...path].ts` listé « unused » par knip (faux
+  positif : route Vercel par convention, jamais importée statiquement). **Correctif** : ajouter
+  `"api/**/*.ts"` aux `entry` de `knip.json`.
+
+---
+
 ## 2026-08-19 — Checkup de santé : la doc recalée sur le code (PR #651)
 
 - [x] **`[DOC-METRIQUES-DERIVE]`** (S, ÉLEVÉ) — **livré 2026-08-19** : trois documents donnaient trois

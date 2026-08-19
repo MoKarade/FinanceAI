@@ -698,6 +698,29 @@ assumé**, pas un oubli : le coût de la saisie manuelle a été jugé supérieu
 ⚠️ Conséquence pour la prochaine session : ce n'est PAS une régression à corriger si le
 symptôme est re-signalé. Tout volet de `[PASSE-REEL-DETTE]` visant l'amortissement est CADUQUE.
 
+#### ⚠️ PRÉCISION Marc du 2026-08-19 — l'EXTRACTION du contrat, elle, est VOULUE
+
+La Décision 2 ci-dessus a failli faire fermer `[DEBT-FROM-CONTRACT]` comme caduc lors du ménage de
+backlog. Question posée à Marc, réponse : **« oui on veut extraire »**. La décision est donc
+précisée, pas renversée :
+
+- ❌ **Reste caduc** : l'**amortissement rétroactif** (recalculer un solde décroissant mois par mois
+  dans le passé). Le solde de dette du passé reste FIGÉ au niveau actuel.
+- ❌ **Reste caduc** : demander une **saisie manuelle** à Marc (date de début, principal d'origine).
+- ✅ **Est voulu** : **extraire ces champs du PDF du contrat** que Marc a déjà fourni. Lire un
+  document n'est pas une saisie — c'était la demande d'origine de Marc le 2026-08-12 (« je t'ai
+  donné le PDF du contrat, ça devrait être automatique »), et cette option n'était pas explicitement
+  sur la table quand la Décision 2 a été tranchée.
+- ✅ **Est voulu, par conséquence** : ne pas soustraire une dette AVANT sa date de début. C'est le
+  symptôme que Marc a signalé deux fois (« ça me dit que j'ai la dette depuis des années mais c'est
+  faux »), et c'est DISTINCT de l'amortissement — la dette reste à son niveau actuel sur toute la
+  période où elle existe, elle est simplement absente avant.
+
+Conséquence pour le BACKLOG : `[DEBT-FROM-CONTRACT]`, `[PASSE-REEL-DETTE-1]` (ne pas soustraire
+avant la date de début), `[PASSE-REEL-DETTE-2]` (les champs `startDate`/`originalBalance`, remplis
+par l'extraction et non par Marc) et `[PASSE-REEL-DETTE-3]` (l'import PDF les capte) restent
+OUVERTS et VIVANTS. Seul un éventuel volet « amortissement rétroactif » serait à refuser.
+
 ### Décision 3 — La variabilité du jour : section REPLIABLE, FERMÉE par défaut
 
 Pour `[PASSE-REEL-VARIATION-DU-JOUR]`, quand il sera codé.

@@ -6,6 +6,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-19 (le cash de départ ne se corrompt plus en silence)
+
+- **Rien ne change à l'écran, et c'est voulu.** Un montant illisible dans tes données valait 0 $
+  avant, il vaut toujours 0 $. Ce qui change : l'app le **dit** maintenant, au lieu de faire comme
+  si de rien n'était.
+- **Pourquoi ça comptait.** Ton solde de liquidités n'est pas stocké : il est recalculé à partir de
+  tes soldes de comptes et de toutes tes transactions. C'est le point de départ de TOUTE la
+  projection. Si une transaction restaurée depuis un vieux backup portait un montant illisible, elle
+  était silencieusement comptée pour 0 $ — un chiffre parfaitement crédible, sans le moindre
+  signal. Tout ce que la projection en déduisait était faux, et rien ne le disait.
+- La protection existait déjà pour tes placements et ton patrimoine net (posée après un incident où
+  le patrimoine s'affichait à −193 k$). Elle manquait au point d'entrée.
+- Trois copies de ce calcul cohabitaient dans le code ; elles n'en font plus qu'une.
+
+---
+
 ## [unreleased] — 2026-08-19 (deux retraits REER qui échappaient à l'impôt)
 
 - **Ton impôt sur les retraits REER était sous-évalué dans deux situations**, corrigées ensemble.

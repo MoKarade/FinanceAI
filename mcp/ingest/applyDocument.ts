@@ -8,7 +8,7 @@
 import type { AppState, User, Asset, Transaction, Debt } from '../../types';
 import { annualSalaryToMonthly } from '../../utils/salary';
 import { RULE_CATEGORIES, buildCategoryCanonicalMap, resolveCandidateCategory } from '../../services/import/categoryRules';
-import { computeStartingCash } from '../../services/projection/buildSimulationParams';
+import { computeCashLedgerDetailed } from '../../services/startingCash';
 import { monthlyTargetOf } from '../../utils/healthRatios';
 import { matchCategoryToName } from '../../utils/budget';
 
@@ -260,15 +260,28 @@ function applyCashBalance(state: AppState, doc: CashBalancePayload): ApplyResult
     if (!plausible(doc.targetCad, MAX_CASH_BALANCE) || doc.targetCad < 0) {
         throw new Error('Solde de liquidités invalide ou aberrant (négatif / non fini / hors bornes). Rien n\'a été écrit.');
     }
-    const current = computeStartingCash(state.initialBalances ?? {}, state.transactions ?? []);
+    // [HARDEN-NETWORTH-NAN] + [CASH-NAN-SILENT] `current` est DÉRIVÉ de données PERSISTÉES
+    // (initialBalances/transactions) que le schéma ne garantit PAS finies (Zod `z.number()` laisse passer
+    // ±Infinity ; `transactions` = `z.unknown()`). Écrire un delta calculé sur une somme corrompue
+    // empoisonnerait le patrimoine en SILENCE (applied:true).
+    //
+    // ⚠️ **Deux protections correctes qui se contredisaient** (classe DEUX-DEDUPS-QUI-SE-CONTREDISENT).
+    // Depuis `[CASH-NAN-SILENT]`, la source unique ÉCARTE les termes non finis et journalise — donc elle
+    // rend toujours un nombre FINI, et le test `!Number.isFinite(current)` ci-dessous ne se déclenchait
+    // plus JAMAIS. C'est le bon comportement pour un AFFICHAGE (montrer quelque chose + tracer), pas pour
+    // une ÉCRITURE : on ne calcule pas un delta sur une somme dont on SAIT qu'elle est incomplète.
+    // On interroge donc l'INVENTAIRE des termes écartés, pas la finitude du total.
+    //
+    // Effet de bord bénéfique : l'ancienne garde ratait le `NaN` (l'ancien `Number(v) || 0` le rabattait
+    // sur 0, donc la somme restait finie et l'écriture passait). La nouvelle l'attrape aussi.
+    const { cash: current, termesFautifs } = computeCashLedgerDetailed(
+        state.initialBalances ?? {},
+        state.transactions ?? [],
+    );
     const target = doc.targetCad;
     const delta = target - current;
-    // [HARDEN-NETWORTH-NAN] `current` est DÉRIVÉ de données PERSISTÉES (initialBalances/transactions) que le
-    // schéma ne garantit PAS finies (Zod `z.number()` laisse passer ±Infinity ; `transactions` = `z.unknown()`).
-    // Un seul solde/montant non fini en amont ferait `current`/`delta` non finis → on écrirait `NaN` dans
-    // LIQUIDITE en SILENCE (applied:true, patrimoine empoisonné). Garder l'AGRÉGAT avant toute écriture : non
-    // fini → throw (runApply logError + errorContent), JAMAIS d'écriture. Message sans montant brut (Loi 25).
-    if (!Number.isFinite(current) || !Number.isFinite(delta)) {
+    // Message sans montant brut (Loi 25 : il remonte à logError côté serveur).
+    if (termesFautifs.length > 0 || !Number.isFinite(current) || !Number.isFinite(delta)) {
         throw new Error('Solde de liquidités actuel non calculable (un solde de départ ou une transaction est corrompu / non fini). Rien n\'a été écrit — corrige la donnée en cause d\'abord.');
     }
     if (Math.abs(delta) < 0.005) {

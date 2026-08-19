@@ -4,6 +4,57 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-19 (suite 97) — vague 1a : `[CASH-NAN-SILENT]`
+> Branche `claude/backlog-menage` (vagues 0 + 1a ensemble). Source unique créée :
+> `services/startingCash.ts` — les 3 copies de la formule du cash dérivé pointent dessus.
+>
+> ⚠️⚠️ **LE PIÈGE DE CE LOT, à retenir avant tout durcissement futur.** Mon fichier de test passait
+> 10/10 en isolation ; c'est la **suite complète** qui a cassé, dans `tests/mcp/setCash.test.ts`, à
+> l'autre bout du dépôt. Cause : `applyCashBalance` refusait d'écrire quand `!Number.isFinite(cash)`.
+> En rendant la source unique toujours FINIE, j'avais **désarmé cette garde** — l'écriture passait sur
+> un cash silencieusement amputé.
+> La leçon généralisable : **une donnée n'a pas le même contrat en lecture et en écriture.** Lire →
+> écarter le terme fautif, tracer, montrer le reste. Écrire → REFUSER. Une source unique durcie doit
+> donc exposer DEUX portes : le total ET l'inventaire de ce qu'elle a écarté
+> (`computeCashLedgerDetailed`). Réflexe : après tout durcissement, grep les appelants pour
+> `Number.isFinite`/`isNaN` — chaque occurrence est une garde qui reposait sur la fragilité supprimée.
+>
+> **Bénéfice inattendu** : la garde MCP réécrite sur l'inventaire attrape maintenant le `NaN` qu'elle
+> RATAIT depuis toujours (l'ancien `|| 0` le rabattait sur 0, somme finie, écriture acceptée). Seul
+> `±Infinity` était intercepté. Un test cassé a révélé un trou plus vieux que le changement.
+>
+> **Portée de la preuve** : 1 cas sur 10 discrimine dans `startingCash.test.ts` (les 9 autres testent
+> un module NEUF) ; les 2 cas MCP discriminent tous les deux. C'est écrit dans les fichiers.
+>
+> **Suite** : vague 1b = `taxDecember`/`taxJanuary` en UN lot (`[CELIAPP-DOUBLE-RECHARGE]` en tête).
+
+> ## 🟢 Session 2026-08-19 (suite 96) — vague 0 : le ménage, et un caduc REFUSÉ
+> Branche `claude/backlog-menage`. Marc : « fais selon ce que le PM a dit, fais tout jusqu'à ce que
+> le backlog soit fini ». Le **plan complet vers zéro est désormais EN TÊTE de `docs/BACKLOG.md`** —
+> c'est lui qu'il faut suivre, pas re-planifier.
+>
+> ⚠️ **5e revert de conteneur de la semaine, attrapé à temps.** Le tree était retombé au 2026-08-13
+> APRÈS le merge de #652 — `origin/main` local était périmé lui aussi, donc un simple `git log`
+> mentait. Le réflexe qui a sauvé : `git fetch` puis vérifier qu'un marqueur du travail récent est
+> bien sur le disque (`grep accRetraitsReerYearAdd`). **Faire ça avant de juger l'état, toujours.**
+>
+> **Fait** : 14 doublons fermés (le bypass `formatCAD` existait sous **5** IDs ; les god-files sous
+> un agrégat périmé + un ticket par fichier ; `[SILENT-STOCKFORM-PRICEHINT]` était copié-collé
+> deux fois dans le même fichier). Aucun travail réel retiré — chaque classe garde un canonique
+> enrichi des mesures de ses doublons.
+>
+> ⚠️ **J'ai REFUSÉ deux propositions du PM, après vérification** :
+> 1. Fermer `[DEBT-FROM-CONTRACT]` + `[PASSE-REEL-DETTE-1/2/3]` comme caducs. La Décision 2 de
+>    `decisions.md` interdit l'amortissement RÉTROACTIF et toute SAISIE demandée à Marc — lire le
+>    PDF du contrat n'est ni l'un ni l'autre. **Question posée à Marc, réponse : « oui on veut
+>    extraire ».** La décision est PRÉCISÉE dans `decisions.md` pour que la prochaine session ne
+>    refasse pas l'erreur.
+> 2. Fusionner `[FORMATCAD-OR-ZERO]` dans le groupe `formatCAD`. Le `|| 0` ANNULE la garde
+>    no-fake-data au lieu de la contourner : correctif inverse, ticket séparé.
+>
+> **Suite immédiate** : vague 1a = `[CASH-NAN-SILENT]`, SEUL et en tête (point d'entrée de toute la
+> projection). Puis 1b (`taxDecember` en un lot), 1c (Monte Carlo), etc. — l'ordre est dans le plan.
+
 > ## 🟢 Session 2026-08-19 (suite 95) — les 2 CRITIQUES fiscaux corrigés, en UN lot
 > Branche `claude/fisc-reer-retraits`. Marc a demandé la correction des deux CRITIQUES trouvés au
 > checkup, `realEstateMonth.ts` traité en un seul lot (ses 4 défauts se chevauchaient).

@@ -1045,8 +1045,18 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 activeGrossAddByUser = [activeGrossAddByUser[0] * incomeLossFactor, activeGrossAddByUser[1] * incomeLossFactor];
                 logEvent(lifeEventsLog, `📉 Perte de revenu planifiée (-${Math.round((1 - incomeLossFactor) * 100)} %)`);
             }
-            accGrossIncomeYearByUser[0] += activeGrossAddByUser[0];
-            accGrossIncomeYearByUser[1] += activeGrossAddByUser[1];
+            // [Revue #679 ÉLEVÉ-1] Ménage à UN SEUL déclarant : le mode « sandbox »
+            // (computeIncomeBaseline) splitte TOUJOURS le revenu théorique 55/45, même avec un
+            // seul user — sans repli, la part « 45 % » atterrit à l'index 1 qu'aucun roomUsers ne
+            // lit : −12 173 $/an de droits mesurés (−50 159 $ de NW à 12 ans). MÊME critère que
+            // reerShares (l. 438) — pas soloHousehold : après décès/divorce, activeIncome met déjà
+            // le brut du conjoint à 0 et le repli est alors un no-op.
+            if (activeUsersCount > 1) {
+                accGrossIncomeYearByUser[0] += activeGrossAddByUser[0];
+                accGrossIncomeYearByUser[1] += activeGrossAddByUser[1];
+            } else {
+                accGrossIncomeYearByUser[0] += activeGrossAddByUser[0] + activeGrossAddByUser[1];
+            }
             unemployedMonthsRemaining = aiResult.newUnemployedMonths;
             ltdMonthsRemaining = aiResult.newLtdMonths;
             ltdLogged = aiResult.ltdLogged;

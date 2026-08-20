@@ -31,10 +31,19 @@ plus les conjoints, et un FE > droits d'un conjoint ne devient jamais négatif (
 **Garde** : `tests/services/rrspRoomPerUser.test.ts` (7 tests) — pins mesurés + ancres négatives
 contre le calcul ménage + invariant Σ(ventilation) == scalaire d'activeIncome. Perturbation :
 calcul ménage restauré → 3 rouges exactement (l'« équilibré » reste vert : non-régression prouvée).
-**« Zéro golden bougé » EXPLIQUÉ** (la règle l'exige) : compté sur les fixtures d'intégration —
-aucun `facteurEquivalence`, salaire max 120 k$/an, or par-personne ≡ ménage sous ~191,6 k$/personne
-à FE nul. Attendu mathématiquement, pas un trou de couverture : le chemin nouveau est pinné en
-unitaire (ticket reproduit au dollar).
+**« Zéro golden bougé » EXPLIQUÉ — et ma première explication était FAUSSE** (revue #679 MOYEN-1) :
+j'avais écrit « salaire max 120 k$/an », en lisant `grossSalary` comme un ANNUEL — il est MENSUEL
+(§1). `divorceRegisteredRoom.test.ts` porte 300 k$ et 264 k$/an, au-dessus du seuil. La vraie
+raison, MESURÉE : ces deux conjoints saturent le plafond DES DEUX côtés (min(cap,·)×2 ≡ min(cap×2,·))
+— l'équivalence tient aussi au-dessus. Preuve d'ensemble : formule ménage réintroduite → suite
+complète 3 rouges / 4 545, tous dans `rrspRoomPerUser.test.ts`, ZÉRO golden (mesuré, pas déduit).
+**Revue #679 (financial-integrity)** : ÉLEVÉ-1 corrigé — ménage SOLO en mode sandbox, le split
+55/45 de `computeIncomeBaseline` droppait 45 % du revenu gagné (−12 173 $/an de droits, −50 159 $
+de NW à 12 ans mesurés) → repli `activeUsersCount <= 1` (même critère que `reerShares`), espion
+discriminant. MOYEN-2/3 : le CÂBLAGE de projection.ts n'était couvert par rien (croisement d'index
+et inversion du congé laissaient 4 545 tests verts, jusqu'à 7 911 $ déplacés) → 3 tests-ESPIONS
+(`rrspRoomWiring.test.ts`), 3 perturbations prouvées rouges. Garde NaN par slot, année du plafond
+confirmée (droits N+1, plafond N+1), commentaire « 2026 » corrigé (droits 2027).
 
 ## 2026-08-20 — [FISC-TAXDEC-INCR] (a) : les bandes de décembre portent l'érosion des crédits d'âge
 

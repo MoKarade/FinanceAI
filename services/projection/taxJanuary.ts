@@ -185,11 +185,17 @@ export function processJanuaryReset(
     // revenu_gagné_i × 18 %) − FE_i, clampé à 0 par personne, puis sommé. L'ancien calcul
     // ménage min(cap × N, Σrevenus × 18 %) − ΣFE accordait au ménage le plafond de DEUX
     // personnes sur le revenu d'UNE seule : MESURÉ 45 000 $ accordés vs 34 480 $ dus
-    // (250 k$ mono-gagnant, 2026) = +10 520 $/an de droits fantômes. Effets du clamp
-    // par personne : le FE d'un conjoint sans revenu ne réduit plus le room de l'autre,
-    // et un revenu au-delà du plafond ne « déborde » plus sur le conjoint.
+    // (250 k$ mono-gagnant, droits 2027 — plafond 2026 : 33 810) = +10 520 $/an de droits
+    // fantômes. Effets du clamp par personne : le FE d'un conjoint sans revenu ne réduit plus
+    // le room de l'autre, et un revenu au-delà du plafond ne « déborde » plus sur le conjoint.
+    // ⚠️ Alignement POSITIONNEL : roomUsers[i] doit rester l'utilisateur du slot i du tuple —
+    // ne PAS copier le patron `.filter(u => u).forEach` de la boucle CELI ci-dessus, qui
+    // désynchroniserait les index en silence.
     const newRrspRoom = roomUsers.reduce((acc, u, i) => {
-        const earnedIncome = ctx.accGrossIncomeYearByUser[i] ?? 0;
+        // `?? 0` couvre undefined mais PAS NaN — un slot corrompu rendrait rrspRoom NaN qui
+        // remonte dans REERMax puis les allocations (2 producteurs alimentent le registre).
+        const rawEarned = ctx.accGrossIncomeYearByUser[i] ?? 0;
+        const earnedIncome = Number.isFinite(rawEarned) ? rawEarned : 0;
         const roomUser = Math.min(rrspYearlyCap, earnedIncome * RRSP_ROOM_RATE) - (u?.facteurEquivalence || 0);
         return acc + Math.max(0, roomUser);
     }, 0);

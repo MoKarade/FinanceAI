@@ -80,6 +80,10 @@ describe('[FISC-RRSP-ROOM-PER-USER] ventilation du revenu gagné (activeIncome)'
         ...o,
     });
 
+    // ⚠️ [Revue #679] Cette assertion est STRUCTURELLE (les deux grandeurs sortent des mêmes
+    // variables dans activeIncome) : elle n'attrape qu'une réécriture de la formule, PAS un
+    // échange d'index. La preuve de la ventilation, ce sont les deux tests NOMINATIFS ci-dessous
+    // et l'espion de câblage (rrspRoomWiring.test.ts).
     it('Σ(accGrossAddByUser) == accGrossAdd sur les configurations clés', () => {
         const configs: Array<Partial<ActiveIncomeCtx>> = [
             {},

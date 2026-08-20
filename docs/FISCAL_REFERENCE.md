@@ -693,6 +693,9 @@ moins le facteur d'équivalence, plafonné par `RRSP_ANNUAL_LIMITS`. Source : AR
 > mono-gagnant 250 k$ : 45 000 → 34 480 $ (−10 520, le chiffre du ticket au dollar) ; couple
 > 125/125 : inchangé (45 000) ; 90/10 sous plafond : inchangé (36 000) ; le FE d'un conjoint
 > sans revenu ne réduit PLUS le room de l'autre (10 000 → 18 000, clamp par personne).
+> ⚠️ **Biais assumé et borné** (`[RRSP-FIRST-YEAR-13M]`, préexistant) : la PREMIÈRE année de droits
+> compte 13 mois de revenu gagné (+8,33 % une seule fois, ex. 19 500 au lieu de 18 000 sur
+> 100 k$) ; fenêtre glissante de 12 mois ensuite — la règle ARC stricte est l'année civile N.
 
 ### FERR / RRIF — conversion et retrait minimum (`services/projection/helpers.ts:RRIF_RATES`)
 **Règle ARC.** La conversion REER→FERR est obligatoire **au plus tard à la fin de l'année des

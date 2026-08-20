@@ -11,9 +11,15 @@
 > scalaire ménage est SUPPRIMÉ (aucun lecteur restant — un total se dérive, il ne se co-tient pas).
 > MESURÉ : mono-gagnant 250 k$ 45 000 → 34 480 (le ticket au dollar) ; équilibré/90-10 inchangés ;
 > le FE d'un conjoint sans revenu ne vole plus le room de l'autre (10 000 → 18 000). 7 tests neufs,
-> perturbation « retour au ménage » → 3 rouges exacts. Push sans leçon NOUVELLE (les classes
-> existantes ont suffi — l'ancre [2026] au lieu de [2027] du premier jet est une récidive connue
-> d'ECRIRE-UN-CHIFFRE-SANS-LE-MESURER, attrapée par la mesure avant commit).
+> perturbation « retour au ménage » → 3 rouges exacts. **Revue financial-integrity (#679)** :
+> ÉLEVÉ-1 corrigé (solo sandbox : le split 55/45 droppait 45 % du revenu gagné, repli
+> `activeUsersCount <= 1`, −50 159 $ de NW mesurés sans lui) ; le CÂBLAGE projection.ts est
+> désormais gardé par 3 tests-ESPIONS (`rrspRoomWiring.test.ts`, perturbations prouvées — le
+> croisement d'index laissait 4 545 tests verts avant) ; mon explication « zéro golden » était
+> FAUSSE (grossSalary lu comme un annuel — il est MENSUEL, §1) et la vraie raison est mesurée
+> dans l'archive. 2 tickets routés : [RRSP-FIRST-YEAR-13M] (13 mois la 1re année, borné,
+> documenté §REER) et [REEE-CONGE-SANS-GARDE-SOLO] (préexistant, absorbé par le clamp).
+> Push sans leçon NOUVELLE (récidives de classes existantes, attrapées par la mesure).
 >
 > ## 🟢 Session 2026-08-20 (suite 119) — [FISC-TAXDEC-INCR] : les bandes de décembre portent l'érosion des crédits d'âge
 > Branche `claude/taxdec-incr`, PR #676 (basée sur `main` post-#675, PAS empilée). 2 goldens NW

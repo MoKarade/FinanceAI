@@ -294,11 +294,14 @@ Compléments sourcés du même échange :
 
 ### Érosion des crédits d'âge sur les bandes incrémentales (FISC-TAXDEC-INCR, 2026-08-20)
 
-**Règle** : les bandes de décembre (gains en capital §2, dividendes §3 de `taxDecember.ts`) sont imposées par différence `impôt(base + bande) − impôt(base)`. Depuis [FISC-TAXDEC-INCR], les DEUX appels portent les `AgeCreditOptions` de chaque adulte 65+, avec un `familyIncome` qui évolue AVEC la bande — l'érosion des crédits d'âge (féd ligne 30100 : 15 % au-delà du seuil, tableau ci-dessus ; QC ligne 361 : 18,75 % du revenu FAMILIAL) est donc facturée à la bande. Avant, la bande était calculée sans `ageOpts` : sous-imposition d'un 65+ en zone d'érosion.
+**Règle** : les bandes de décembre (gains en capital §2, dividendes §3 de `taxDecember.ts`) sont imposées par différence `impôt(base + bande) − impôt(base)`. Depuis [FISC-TAXDEC-INCR] (+ revue #676), les DEUX appels portent les `AgeCreditOptions` COMPLETS de chaque adulte 65+ : son âge, sa pension admissible réelle (source unique `eligiblePensionFor`, renominalisée — le NIVEAU du crédit s'annule dans la soustraction, le clamp de la ligne 361 tombe au vrai montant), et un `familyIncome` qui évolue AVEC la bande. **La bande est donc imposée exactement comme si on recalculait l'impôt « en un coup »** — vérifié à 0,00 $ d'écart sur 6 niveaux de revenu (10 k → 100 k$, revue #676).
 
-**Implémentation** : helper `incrementalBandTax(perAdultBase, perAdultBand, familyBase, familyBand)`, par adulte selon SON âge. `eligiblePensionIncome: 0` dans le helper — le crédit pension est traité aux §4/§6, pas à la bande.
+**⚠️ L'effet est BIDIRECTIONNEL** — les deux sens sont corrects et testés :
+- zone d'ÉROSION (revenu moyen) : chaque dollar de bande érode les crédits → impôt de bande **plus haut** qu'avant (+675,56 $ mesurés sur le profil ci-dessous) ;
+- revenu FAIBLE : le crédit d'âge **inutilisé** abrite la bande (`impôt(base)` déjà clampé à 0) → impôt de bande **plus bas** qu'avant (mesuré : 10 k$ + 30 k$ de gains à 68 ans → 0 $ contre 1 708,61 $ avant) ;
+- revenu élevé (crédits déjà érodés à zéro) et < 65 ans → inchangé.
 
-**MESURÉ** (`tests/services/taxDecemberAgeCreditBand.test.ts`) : retraité seul 68 ans, 60 k$ de revenu + 30 k$ de gains (15 k$ imposables) → **+675,56 $** d'impôt de bande vs le même profil à 60 ans. Bornes vérifiées : à 200 k$ de revenu les crédits sont déjà érodés à zéro → delta ≈ 0 ; sous 65 ans → bit-identique à l'ancien calcul. ⚠️ Ne pas « déduire » ce delta de 15 % + 18,75 % appliqués à la bande : il est borné par le crédit RESTANT au niveau de base (un calcul de tête a rendu 776,25, faux).
+**MESURÉ** (`tests/services/taxDecemberAgeCreditBand.test.ts`) : retraité seul 68 ans, 60 k$ de revenu + 30 k$ de gains (15 k$ imposables) → **+675,5625 $**, décomposition qui RECOMPOSE la valeur : féd `15 000 × 15 % (érosion) × 15 % (taux de crédit) × (1 − 16,5 % abattement QC) = 281,8125` + QC `15 000 × 18,75 % (érosion) × 14 % (taux de crédit) = 393,75`. Sur ce profil les deux érosions sont strictement linéaires (aucune borne ne joue). Deux mécanismes déduits de tête ont été faux avant cette décomposition (776,25 ; « borné par le crédit restant ») — le chiffre ET son mécanisme se mesurent.
 
 ---
 

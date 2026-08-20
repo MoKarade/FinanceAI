@@ -20,7 +20,9 @@
 
 **Goldens re-basés** : couple retraité 62 ans en MELTDOWN_REER, −57,98 $ sur `finalNetWorth` ET `estateNetWorth` (la bande de dividendes du non-enregistré que le meltdown remplit porte l'érosion après 65 ans) ; la fixture FERR (pension couvrante, aucune bande) ne bouge PAS — effet ciblé, preuve inverse. Pins ADDITIVITÉ ré-basés 2 776,96→4 220,90 / 7 377,67→7 599,71 (delta = l'érosion nouvellement facturée). Perturbations prouvées (ageOpts retirés / familyIncome figé / asymétrie tb-tt). Ratchet fiscal : helper `a >= 65` marqué `[≠4]`.
 
-⚠️ **Récidive du pin fiscal déduit** (776,25 $ vs mesuré 675,56 $) : le pin d'un test EST une valeur fiscale documentée, il se mesure. Entrée leçon enrichie dans `CONVENTIONS.md` `ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER`.
+⚠️ **Récidive du pin fiscal déduit** (776,25 $ vs mesuré 675,56 $), puis **récidive du MÉCANISME déduit** (« borné par le crédit restant » — faux, la vraie décomposition est l'abattement QC 16,5 % sur le crédit féd + conversion 14 %) : le pin ET son explication se mesurent. Entrée `ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER` doublement enrichie.
+
+**Panel #676 (6 agents), correctifs DANS la PR** : pension admissible réelle aux deux appels de la bande (F1 ÉLEVÉ, +317,81 $ re-facturés, source unique `eligiblePensionFor` hissée, test discriminant) ; branche revenu-FAIBLE documentée+testée (le crédit inutilisé abrite la bande — bidirectionnel, prouvé égal au calcul 1-coup sur 6 points) ; garde NaN patron `ENG-TAXDEC-NAN-GUARD` ; test couple 68/60 (ratio 0,5) + pin §3 (466,14). 5 tickets routés au BACKLOG (`[FISC-BANDES-FRERES-SANS-AGEOPTS]` ÉLEVÉ en tête).
 
 ## 2026-08-20 — Lot « prestations » : l'assiette d'emploi nulle (règle Marc du jour appliquée)
 

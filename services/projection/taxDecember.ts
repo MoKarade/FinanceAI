@@ -375,6 +375,63 @@ export function processDecemberTaxFiling(
         ? Math.max(0, ctx.incomeRetirementGisMonthly as number)
         : 0;
 
+    // [FISC-TAXDEC-INCR] (revue #676, F1) — la pension ADMISSIBLE par conjoint est une SOURCE
+    // UNIQUE hissée ici : le bloc retraité §6 la consomme en RÉEL, la bande incrémentale ci-dessous
+    // en NOMINAL (× ctx.inflationFactor). La dupliquer avait déjà un précédent de divergence
+    // (UNE-FORMULE-RECOPIEE-DIVERGE).
+    const nAdults = Math.max(1, ctx.activeUsersCount);
+    // Phase 2 — retraits REER/FERR attribués PAR CONJOINT (accRetraitsReerYearByUser, au
+    // prorata des soldes au retrait) : chacun est taxé sur SES vrais retraits au lieu du
+    // split 50/50. Le TOTAL imposable est inchangé (Σ == accRetraitsReerYear) ; seule la
+    // répartition entre conjoints bouge → impôt plus exact sous barème progressif. Repli
+    // égal si l'attribution est absente/incohérente (solo, ou breakdown manquant).
+    const perUserReer = ctx.accRetraitsReerYearByUser;
+    // Garde-fou (audit fiscal-accuracy) : on n'attribue par conjoint QUE si la somme
+    // par conjoint reconstitue bien le total (Σ == accRetraitsReerYear, à epsilon près).
+    // Sinon (un retrait non attribué en amont — ex. meltdown oublié), on retombe sur le
+    // split égal CONSERVATEUR plutôt que de taxer une assiette sous-comptée (sous-imposition).
+    const perUserReerSum = Array.isArray(perUserReer) ? perUserReer.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0) : NaN;
+    const useReerPerUser = ctx.activeUsersCount > 1
+        && Array.isArray(perUserReer)
+        && perUserReer.length === nAdults
+        && perUserReer.every(v => Number.isFinite(v))
+        && Math.abs(perUserReerSum - ctx.accRetraitsReerYear) <= Math.max(1, Math.abs(ctx.accRetraitsReerYear) * 1e-6);
+
+    // Revenu imposable réel et pension admissible réelle, par conjoint.
+    // - splitÉgal : tout le taxable / N (comportement historique).
+    // - perUser   : pension_i + part égale des rentes + SES retraits REER (Phase 2).
+    const ages = [ctx.age, ctx.ageSpouse];
+
+    // FA-1 (audit fiscal 2026-06-09) — assiette du crédit pension (féd ligne 31400 + QC
+    // ligne 361) CORRIGÉE : l'ancienne assiette (pension RRQ/PSV/DB + accRentesYear)
+    // incluait RRQ/PSV (EXCLUS par l'ARC et RQ) et les revenus LOCATIFS (accRentesYear =
+    // loyers, jamais admissibles) → crédit surévalué ~250-680 $/an/personne 65+.
+    // Bonne assiette dans ce modèle = la MÊME que l'assiette FRACTIONNABLE (ligne 116 /
+    // Annexe Q, #211) : rente DB dès 65 ans + retraits FERR dès 72 ans (proxy de la
+    // conversion REER→FERR à 72). Réf. FISCAL_REFERENCE §4.
+    // Garde-fou symétrique à perUserPension/perUserReer (l.327-349) : `?? 0` ne capte PAS
+    // NaN — un NaN traverserait Math.max(0, NaN)=NaN puis serait avalé par safe() en aval
+    // (crédit zéroté en silence). Number.isFinite par valeur, repli 0 conservateur.
+    const dbRealUser = (i: number): number => {
+        const v = ctx.incomeRetirementDbPerUserMonthly?.[i];
+        return Number.isFinite(v) ? ((v as number) * 12) / ctx.inflationFactor : 0;
+    };
+    const reerRealUser = (i: number): number => (useReerPerUser ? perUserReer![i] : ctx.accRetraitsReerYear / nAdults) / ctx.inflationFactor;
+    const eligiblePensionFor = (i: number): number => {
+        const a = ages[i];
+        if (a === undefined) return 0;
+        // ⚠️ [Audit 2026-08-06] `RRIF_FIRST_WITHDRAWAL_AGE` est ici DÉRIVÉ, pas coïncident :
+        // un retrait REER n'entre dans l'assiette du crédit pension qu'à partir du moment où
+        // le moteur le considère comme du FERR — c'est-à-dire exactement le gate de
+        // `taxJanuary`. Découpler les deux constantes accorderait le crédit (et le
+        // fractionnement) un an trop tôt : MESURÉ +6 508 $ sur 22 personas / 56.
+        // La règle stricte serait `max(65 ARC ; âge FERR du modèle)` ; le `max` est lié par
+        // 72 aujourd'hui et ne se dénouerait que si la conversion volontaire 65-71 était
+        // modélisée (limite déjà consignée FISCAL_REFERENCE §4).
+        return (a >= 65 ? Math.max(0, dbRealUser(i)) : 0)
+            + (a >= RRIF_FIRST_WITHDRAWAL_AGE ? Math.max(0, reerRealUser(i)) : 0);
+    };
+
     // ---- 1. Impôt sur revenu salarial ou retraite ----
     if (!ctx.isRetired) {
         // F9 (audit 2026-05-28) — même facteur de croissance salariale pour Marc et Anna : hissé une fois.
@@ -552,57 +609,6 @@ export function processDecemberTaxFiling(
             // Revenus LOCATIFS (accRentesYear = loyers, cf realEstateMonth.ts:355 — PAS des
             // rentes ; non attribuables par conjoint) : part ÉGALE par conjoint, en réel.
             const rentalRealPerAdult = ctx.accRentesYear / ctx.inflationFactor / n;
-            // Phase 2 — retraits REER/FERR attribués PAR CONJOINT (accRetraitsReerYearByUser, au
-            // prorata des soldes au retrait) : chacun est taxé sur SES vrais retraits au lieu du
-            // split 50/50. Le TOTAL imposable est inchangé (Σ == accRetraitsReerYear) ; seule la
-            // répartition entre conjoints bouge → impôt plus exact sous barème progressif. Repli
-            // égal si l'attribution est absente/incohérente (solo, ou breakdown manquant).
-            const perUserReer = ctx.accRetraitsReerYearByUser;
-            // Garde-fou (audit fiscal-accuracy) : on n'attribue par conjoint QUE si la somme
-            // par conjoint reconstitue bien le total (Σ == accRetraitsReerYear, à epsilon près).
-            // Sinon (un retrait non attribué en amont — ex. meltdown oublié), on retombe sur le
-            // split égal CONSERVATEUR plutôt que de taxer une assiette sous-comptée (sous-imposition).
-            const perUserReerSum = Array.isArray(perUserReer) ? perUserReer.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0) : NaN;
-            const useReerPerUser = ctx.activeUsersCount > 1
-                && Array.isArray(perUserReer)
-                && perUserReer.length === n
-                && perUserReer.every(v => Number.isFinite(v))
-                && Math.abs(perUserReerSum - ctx.accRetraitsReerYear) <= Math.max(1, Math.abs(ctx.accRetraitsReerYear) * 1e-6);
-
-            // Revenu imposable réel et pension admissible réelle, par conjoint.
-            // - splitÉgal : tout le taxable / N (comportement historique).
-            // - perUser   : pension_i + part égale des rentes + SES retraits REER (Phase 2).
-            const ages = [ctx.age, ctx.ageSpouse];
-
-            // FA-1 (audit fiscal 2026-06-09) — assiette du crédit pension (féd ligne 31400 + QC
-            // ligne 361) CORRIGÉE : l'ancienne assiette (pension RRQ/PSV/DB + accRentesYear)
-            // incluait RRQ/PSV (EXCLUS par l'ARC et RQ) et les revenus LOCATIFS (accRentesYear =
-            // loyers, jamais admissibles) → crédit surévalué ~250-680 $/an/personne 65+.
-            // Bonne assiette dans ce modèle = la MÊME que l'assiette FRACTIONNABLE (ligne 116 /
-            // Annexe Q, #211) : rente DB dès 65 ans + retraits FERR dès 72 ans (proxy de la
-            // conversion REER→FERR à 72). Réf. FISCAL_REFERENCE §4.
-            // Garde-fou symétrique à perUserPension/perUserReer (l.327-349) : `?? 0` ne capte PAS
-            // NaN — un NaN traverserait Math.max(0, NaN)=NaN puis serait avalé par safe() en aval
-            // (crédit zéroté en silence). Number.isFinite par valeur, repli 0 conservateur.
-            const dbRealUser = (i: number): number => {
-                const v = ctx.incomeRetirementDbPerUserMonthly?.[i];
-                return Number.isFinite(v) ? ((v as number) * 12) / ctx.inflationFactor : 0;
-            };
-            const reerRealUser = (i: number): number => (useReerPerUser ? perUserReer![i] : ctx.accRetraitsReerYear / n) / ctx.inflationFactor;
-            const eligiblePensionFor = (i: number): number => {
-                const a = ages[i];
-                if (a === undefined) return 0;
-                // ⚠️ [Audit 2026-08-06] `RRIF_FIRST_WITHDRAWAL_AGE` est ici DÉRIVÉ, pas coïncident :
-                // un retrait REER n'entre dans l'assiette du crédit pension qu'à partir du moment où
-                // le moteur le considère comme du FERR — c'est-à-dire exactement le gate de
-                // `taxJanuary`. Découpler les deux constantes accorderait le crédit (et le
-                // fractionnement) un an trop tôt : MESURÉ +6 508 $ sur 22 personas / 56.
-                // La règle stricte serait `max(65 ARC ; âge FERR du modèle)` ; le `max` est lié par
-                // 72 aujourd'hui et ne se dénouerait que si la conversion volontaire 65-71 était
-                // modélisée (limite déjà consignée FISCAL_REFERENCE §4).
-                return (a >= 65 ? Math.max(0, dbRealUser(i)) : 0)
-                    + (a >= RRIF_FIRST_WITHDRAWAL_AGE ? Math.max(0, reerRealUser(i)) : 0);
-            };
 
             const taxableRealByUser: number[] = [];
             const eligiblePensionRealByUser: number[] = [];
@@ -808,21 +814,41 @@ export function processDecemberTaxFiling(
         }
     }
 
+
     // [FISC-TAXDEC-INCR] (a) — impôt d'une BANDE incrémentale [base, base+bande] par adulte, avec
     // les crédits d'âge de CHAQUE conjoint. Espace NOMINAL (jamais de realDeflator ici — cf. notes
     // FISC-BRACKET-REALINDEX des deux blocs appelants). Retourne le total FAMILIAL.
     const incrementalBandTax = (perAdultBase: number, perAdultBand: number,
         familyBase: number, familyBand: number): number => {
         const ages = [ctx.age, ctx.ageSpouse];
+        // [Revue #676] Un 3e déclarant serait imposé sur sa bande SANS jamais pouvoir porter de
+        // crédit d'âge (ages[2] === undefined, silencieux). L'UI plafonne à 2 — si ça change, on
+        // le dit au lieu de sous-créditer en silence. Ne PAS borner la boucle à ages.length : ça
+        // supprimerait la bande du 3e déclarant (argent perdu).
+        if (ctx.activeUsersCount > ages.length) {
+            logs.push(`⚠️ incrementalBandTax : ${ctx.activeUsersCount} déclarants mais ${ages.length} âges — crédits d'âge indisponibles au-delà du 2e.`);
+        }
         let total = 0;
         for (let i = 0; i < ctx.activeUsersCount; i++) {
             const a = ages[i];
+            // [Revue #676 F1] La pension admissible RÉELLE de l'adulte, renominalisée — la MÊME
+            // aux deux appels (le NIVEAU du crédit s'annule dans la soustraction) : avec 0, le
+            // clamp de la ligne 361 QC mordait ~16 300 $ de revenu familial trop tôt et la bande
+            // était SOUS-facturée (mesuré −317,81 $ sur 80 k$ + 15 k$ de gains, 73 ans, DB).
+            const pensionNominal = eligiblePensionFor(i) * ctx.inflationFactor;
             const mk = (fam: number): AgeCreditOptions | undefined =>
                 a !== undefined && a >= 65
-                    ? { age: a, eligiblePensionIncome: 0, hasSpouse: ctx.activeUsersCount > 1, familyIncome: fam }
+                    ? { age: a, eligiblePensionIncome: pensionNominal, hasSpouse: ctx.activeUsersCount > 1, familyIncome: fam }
                     : undefined;
             const tb = helpers.calculateFiscalReport(perAdultBase, 0, 0, ctx.loopYear, true, mk(familyBase)).totalTax;
             const tt = helpers.calculateFiscalReport(perAdultBase + perAdultBand, 0, 0, ctx.loopYear, true, mk(familyBase + familyBand)).totalTax;
+            // [ENG-TAXDEC-NAN-GUARD] même patron qu'au solde d'avril : `Math.max(0, NaN) === NaN`,
+            // le clamp n'est PAS une garde. Un terme non fini se dit et retombe sur 0 — jamais un
+            // défaut numérique silencieux qui empoisonnerait FluxImpots puis le patrimoine.
+            if (!Number.isFinite(tb) || !Number.isFinite(tt)) {
+                logs.push(`⚠️ Bande incrémentale NON FINIE (tb=${tb}, tt=${tt}, base=${perAdultBase}, bande=${perAdultBand}) → 0 retenu ; donnée amont corrompue.`);
+                continue;
+            }
             total += Math.max(0, tt - tb);
         }
         return total;

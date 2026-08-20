@@ -22,6 +22,20 @@
 > expliqué. NB conteneur : le hook `commit-gate` local n'existe pas dans l'environnement remote —
 > gate lancé à la main, ne pas se fier au silence du commit.
 >
+> **Panel /review-all (6 agents) — 4 correctifs appliqués dans la PR** : (F1, ÉLEVÉ confirmé par
+> re-mesure) la pension admissible RÉELLE passe aux deux appels de la bande — source unique
+> `eligiblePensionFor` HISSÉE hors du bloc §6, +317,81 $ re-facturés sur le profil 73 ans/DB, test
+> discriminant rouge-avant ; (validator) l'effet est BIDIRECTIONNEL — à revenu faible le crédit
+> inutilisé ABRITE la bande (10 k$ + 30 k$ gains : 1 708,61 → 0 $), documenté + testé ; garde NaN au
+> patron ENG-TAXDEC-NAN-GUARD ; test couple 68/60 (ratio 0,5 exact) + pin §3 (466,14). Le validator
+> a PROUVÉ bande == calcul « en un coup » à 0,00 $ sur 6 niveaux de revenu, conservation intacte,
+> impôt de bande réellement débité (LiquidDebt +57,97). ⚠️ TRIPLE récidive du mécanisme déduit :
+> « borné par le crédit restant » était FAUX aussi (vraie décomposition : abattement QC 16,5 % sur
+> le crédit féd + conversion 14 %) — CONVENTIONS enrichie : le MÉCANISME se mesure comme le chiffre.
+> 5 tickets routés (dont `[FISC-BANDES-FRERES-SANS-AGEOPTS]` ÉLEVÉ : latentTax/estate ×2, mesures
+> 1,3-2,4 k$/adulte). Doc-manager : doublon d'archive évité de justesse, exemple fiscal INVENTÉ
+> (50 k$) retiré de FISCAL_REFERENCE — relire ce qu'un agent écrit dans la source de vérité.
+>
 > ## 🟢 Session 2026-08-20 (suite 118) — le lot « prestations » : la règle de Marc appliquée le jour même
 > Branche `claude/prestations-assiette` (basée sur `main` post-#673, PAS empilée).
 >

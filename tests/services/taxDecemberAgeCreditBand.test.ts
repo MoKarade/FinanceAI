@@ -41,12 +41,12 @@ describe('[FISC-TAXDEC-INCR] la bande incrémentale porte l\'érosion du crédit
         const a68 = gainsTax({ ...common, age: 68 });
         const a60 = gainsTax({ ...common, age: 60 });
         expect(a68).toBeGreaterThan(a60);
-        // Ampleur PINNÉE à la valeur MESURÉE (675,5625 $) — jamais déduite de tête : la
-        // superposition des deux érosions (féd 15 % ; QC 18,75 % sur revenu FAMILIAL) est bornée
-        // par le crédit RESTANT au niveau de revenu de base, et cette borne ne se calcule pas de
-        // mémoire (un premier pin « raisonné » à 776,25 était FAUX — classe
-        // ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE). Si ce pin bouge,
-        // re-mesurer et expliquer le delta, ne pas l'ajuster au jugé.
+        // Ampleur PINNÉE à la valeur MESURÉE (675,5625 $), décomposition VÉRIFIÉE (revue #676 F2) :
+        // féd 15 000 × 15 % (érosion) × 15 % (taux de crédit) × (1 − 16,5 % abattement QC) = 281,8125
+        // + QC 15 000 × 18,75 % (érosion) × 14 % (taux de crédit) = 393,75. Ni borne ni clamp sur ce
+        // profil — les deux érosions y sont strictement linéaires. Deux mécanismes déduits de tête
+        // ont été FAUX avant celui-ci (776,25 « raisonné », puis « borné par le crédit restant ») :
+        // le pin ET son explication se mesurent (ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER).
         expect(a68 - a60).toBeCloseTo(675.56, 1);
     });
 
@@ -70,11 +70,53 @@ describe('[FISC-TAXDEC-INCR] la bande incrémentale porte l\'érosion du crédit
         expect(gainsTax({ ...common, age: 68 })).toBeCloseTo(gainsTax({ ...common, age: 60 }), 2);
     });
 
-    it('la bande de DIVIDENDES porte aussi l\'érosion (même helper, §3)', () => {
+    it('la bande de DIVIDENDES porte aussi l\'érosion (même helper, §3) — delta PINNÉ', () => {
         const common = { isRetired: true, activeUsersCount: 1, incomeRetirementMonthly: 60_000 / 12,
             nonReg: 500_000, baseNonRegRate: 5 } as Partial<DecemberContext>;
         const a68 = gainsTax({ ...common, age: 68 });
         const a60 = gainsTax({ ...common, age: 60 });
         expect(a68).toBeGreaterThan(a60);
+        // Pin de MAGNITUDE (revue #676 F4) : sans lui, une régression qui diviserait l'érosion de
+        // ce site par deux resterait verte (le §2 avait son pin, pas le §3). MESURÉ.
+        expect(a68 - a60).toBeCloseTo(466.14, 1);
+    });
+
+    it('COUPLE à âges décalés : 68/60 capte exactement la MOITIÉ de l\'érosion de 68/68 (par-adulte)', () => {
+        // Revue #676 (test-writer + code-reviewer) : aucune fixture n'exerçait la boucle par-adulte
+        // avec activeUsersCount: 2. Ce cas verrouille l'indexation ages[i], hasSpouse: true, et la
+        // non-duplication du crédit d'un seul conjoint. Valeurs MESURÉES.
+        const couple = { isRetired: true, activeUsersCount: 2, incomeRetirementMonthly: 120_000 / 12,
+            accCapitalGainsYear: 60_000 } as Partial<DecemberContext>;
+        const b60 = gainsTax({ ...couple, age: 60, ageSpouse: 60 });
+        const b68 = gainsTax({ ...couple, age: 68, ageSpouse: 68 });
+        const mix = gainsTax({ ...couple, age: 68, ageSpouse: 60 });
+        expect(b68 - b60).toBeCloseTo(563.63, 1);
+        expect(mix - b60).toBeCloseTo((b68 - b60) / 2, 6);
+        // Symétrie : l'érosion ne dépend pas de QUI est le 65+.
+        expect(gainsTax({ ...couple, age: 60, ageSpouse: 68 })).toBeCloseTo(mix, 6);
+    });
+
+    it('revenu FAIBLE 65+ : le crédit d\'âge INUTILISÉ abrite la bande — l\'impôt BAISSE (bidirectionnel)', () => {
+        // Revue #676 (projection-validator) : le lot ne fait pas qu'augmenter l'impôt. À revenu
+        // faible, impôt(base) est déjà clampé à 0 par les crédits, et le crédit restant abrite la
+        // bande — exactement comme le calcul « en un coup ». Sur l'ANCIEN code cette bande valait
+        // 1 708,61 $ (l'incrément ignorait le crédit) : ce cas est le discriminant de la branche.
+        const low = { isRetired: true, activeUsersCount: 1, incomeRetirementMonthly: 10_000 / 12,
+            accCapitalGainsYear: 30_000 } as Partial<DecemberContext>;
+        expect(gainsTax({ ...low, age: 68 })).toBeCloseTo(0, 2);
+        expect(gainsTax({ ...low, age: 60 })).toBeCloseTo(1708.61, 1);
+    });
+
+    it('PENSION ADMISSIBLE (revue #676 F1) : le clamp QC 361 de la bande tombe au VRAI montant', () => {
+        // Avec eligiblePensionIncome: 0 dans le helper, grossLine361 perdait le montant « revenu
+        // de retraite » et le clamp mordait ~16 300 $ de revenu familial trop tôt → bande
+        // SOUS-facturée de 317,81 $ sur ce profil (73 ans, DB 80 k$, 30 k$ de gains). Le correctif
+        // passe la MÊME pension admissible (nominalisée) aux deux appels : le niveau s'annule, le
+        // clamp est au bon endroit. Valeurs MESURÉES ; rouge sur le code d'avant (5 699,44).
+        const db = { isRetired: true, activeUsersCount: 1, incomeRetirementMonthly: 80_000 / 12,
+            incomeRetirementDbPerUserMonthly: [80_000 / 12, 0], accCapitalGainsYear: 30_000 } as Partial<DecemberContext>;
+        expect(gainsTax({ ...db, age: 73 })).toBeCloseTo(6017.25, 1);
+        // Sans pension admissible, l'ancien monde : la bande plus basse reste la référence du profil sans DB.
+        expect(gainsTax({ ...db, incomeRetirementDbPerUserMonthly: undefined, age: 73 })).toBeCloseTo(5699.44, 1);
     });
 });

@@ -137,8 +137,10 @@ export function applyW5Effects(
         // ⚠️ Le 0,45 est un PROXY de taux marginal, pas une règle fiscale — hypothèse de MODÈLE
         // désormais ANCRÉE : `docs/FISCAL_REFERENCE.md` §6 « Proxys d'impôt W5 » (décision Marc
         // `[W5-TAX-PROXY]` : garder le forfait, le documenter). Son sens d'erreur est MESURÉ et il
-        // CHANGE DE SIGNE vers 145 k$ de revenu : +2 665 $/an de trop à 60 k$, −2 208 $ de moins à
-        // 250 k$. Le tableau complet vit dans la doc — ne pas le recopier ici, il dériverait.
+        // CHANGE DE SIGNE selon le revenu (~125-140 k$ selon le NOI — le seuil, le tableau et les
+        // bandes du barème vivent dans la doc : ne RIEN recopier ici, un chiffre en commentaire
+        // dérive comme un autre. Preuve : le « 145 k$ » qui vivait sur cette ligne, réfuté en revue,
+        // a SURVÉCU à sa première correction parce qu'un `git checkout` de mesure l'a restauré).
         // ⚠️ PAS de `/ 12` ici — `rentalPropertyNoiMonthly` est DÉJÀ mensuel (construit `noi / 12`
         // quatre lignes plus haut), et `addTaxDivers` alimente un accumulateur ANNUEL à raison d'un
         // versement par mois. L'ancien `(mensuel × taux) / 12` cumulait donc sur l'année à

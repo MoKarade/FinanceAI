@@ -122,6 +122,43 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
         expect(maxResid).toBeLessThan(1);
     });
 
+    it('[W5] locatif + CCPC : conservation tenue avec le forfait d\u2019impôt à taux PLEIN', () => {
+        // ⚠️ AUCUNE fixture de ce fichier ne portait de `rentalProperties`/`privateBusinesses` :
+        // ses 20 verts « prouvaient » la conservation d'un moteur où ces flux n'existaient pas
+        // (`UN-INVARIANT-NE-VOIT-PAS-CE-QUI-EST-ABSENT`). Le bug 12× sur le forfait W5 est passé
+        // au travers exactement comme ça. `propertyGrowthRate: 0` neutralise l'appréciation de
+        // l'immeuble, que la formule INV-2 ne modélise pas (mesuré : 2 993 $ de résiduel sinon,
+        // entièrement l'appréciation — pas une fuite).
+        const cd = run(makeParams({
+            projection: makeProjection({ propertyGrowthRate: 0 }),
+            rentalProperties: [{ id: 'r1', name: 'Duplex', monthlyRent: 2_500, monthlyExpenses: 500,
+                vacancyPct: 5, purchasePrice: 0, currentValue: 0, mortgageBalance: 0 }],
+            privateBusinesses: [{ id: 'b1', name: 'CCPC', annualDividend: 60_000, ownershipPct: 100,
+                estimatedValue: 0 }],
+        } as Partial<SimulationParams>)).chartData;
+        // INV-2 : chaque mois reste expliqué — l'impôt forfaitaire sort par FluxImpots en avril,
+        // le revenu entre par Income chaque mois, rien ne s'évapore entre les deux.
+        let maxResid = 0;
+        for (let i = 1; i < cd.length; i++) maxResid = Math.max(maxResid, Math.abs(unexplained(cd[i], cd[i - 1])));
+        expect(maxResid).toBeLessThan(1);
+        // INV-1 : reconstructibilité — même patron que le test INV-1 canonique (DetteTotale publiée).
+        for (const p of cd) {
+            expect(Math.abs(num(p.NetWorth) - (shownAssets(p) - num(p.DetteTotale)))).toBeLessThan(2);
+        }
+        // ANTI-VACUITÉ + niveau : l'impôt forfaitaire est bien PRÉLEVÉ à taux plein, mesuré au
+        // niveau CHAÎNE (le champ PUBLIÉ `AccruedTaxDivers`, pas le mutateur). Deux précautions :
+        //   · `AccruedTaxDivers` porte AUSSI RAMQ/FSS (`taxDecember`) → on soustrait un JUMEAU sans
+        //     W5, dont le reste est identique (le revenu W5 n'entre pas dans leur assiette) ;
+        //   · les bornes d'année du moteur sont piégeuses (le point 12 porte 13 mois d'accumulation,
+        //     mesuré) → on asserte le DELTA D'UN MOIS en plein milieu d'année, insensible aux bornes.
+        // Attendu par mois : (22 500 × 0,45 + 60 000 × 0,36) / 12 = 2 643,75 $. Sous le bug 12×,
+        // cette assertion aurait lu 220,31 $ — elle l'aurait vu.
+        const sansW5 = run(makeParams({ projection: makeProjection({ propertyGrowthRate: 0 }) })).chartData;
+        const diversA = (pts: ProjectionChartPoint[], i: number): number => num((pts[i] as Record<string, unknown>).AccruedTaxDivers);
+        const deltaMoisW5 = (diversA(cd, 6) - diversA(cd, 5)) - (diversA(sansW5, 6) - diversA(sansW5, 5));
+        expect(deltaMoisW5).toBeCloseTo((22_500 * 0.45 + 60_000 * 0.36) / 12, 2);
+    });
+
     it('[FISC-EVENT-INCOMELOSS] perte de revenu : ΔNW conservé (résiduel ≈ 0) ET patrimoine réduit vs sans événement', () => {
         // Salarié : perte de revenu MÉNAGE de 50 % pendant 6 mois dès 2027-01 (un des deux revenus coupé).
         const withLoss = (): SimulationParams => makeParams({

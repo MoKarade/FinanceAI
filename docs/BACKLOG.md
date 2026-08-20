@@ -1044,6 +1044,28 @@
   money-critical sans couverture d'INTÉGRATION : mes tests unitaires visent `processOneChild` en
   isolation, ce qui ne prouve rien sur la chaîne (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`).
   **Correctif** : une fixture golden avec cette configuration.
+- [ ] **`[PROJ-TAXPAID-SOLDE-AVRIL]`** (S, MOYEN — revue du correctif 12×, 2026-08-20) —
+  `totalTaxesPaid` (`services/projection.ts`, `+= fluxImpots`) ne somme QUE les règlements d'avril,
+  et l'avril actif vaut `totalAnnualTax − estimatedWithholding` — donc **négatif structurel** dès
+  qu'il y a des déductions REER/CELIAPP (mesuré −126 094 $ sur un témoin sans W5) : la retenue
+  salariale, incorporée au `netSalary` saisi, ne transite jamais par `fluxImpots`. Nom trompeur
+  (`UN-NOM-TROMPEUR-FABRIQUE-DES-FAUX-FINDINGS`). Pas affiché à l'écran, MAIS pilote
+  `strategyRanking.ts` (`lifetimeTax`), `drawdownOptimizer` et `strategySearch` — un objectif
+  « impôt minimum » assis sur un solde d'avril. ⚠️ Se coordonne avec `[ENG-RANKTAX-ESTATE]`
+  (décision Marc A4 : impôt TOTAL, successoral inclus) : même refonte de la grandeur. [MESURÉ]
+
+- [ ] **`[W5-RENTAL-INTERET-DPA]`** (S, FAIBLE→MOYEN depuis le fix 12× — revue 2026-08-20) —
+  le forfait imposant désormais 12× plus, deux déductions non modélisées deviennent matérielles :
+  les **intérêts hypothécaires** du locatif (le service de dette sort en dépense mais le NOI est
+  imposé BRUT à 45 %) et la **DPA** — `ccaTaken` est une SAISIE (`PatrimoineExtended.tsx`) que
+  AUCUN module moteur ne lit (grep : un seul commentaire). Sens conservateur (sur-imposition d'un
+  bailleur levieré) mais un champ de saisie sans effet est un mensonge d'UI. [À vérifier l'ampleur]
+
+- [ ] **`[W5-DOUBLE-SAISIE-LOCATIF]`** (XS, FAIBLE — revue 2026-08-20) — rien n'empêche de saisir
+  le MÊME immeuble comme `realEstateGoal` avec `rentalIncomeMonthly` (imposé via `accRentesYear` en
+  décembre) ET comme `rentalProperty` W5 (imposé par le forfait) → double comptage du revenu et
+  double imposition par deux mécanismes distincts. Garde de saisie ou note UX. [À vérifier]
+
 - [ ] **`[W5-DIVIDENDE-PROXY-VS-MOTEUR]`** (S, MOYEN — découvert en livrant `[W5-PROXY-NON-SOURCE]`,
   PR #673) — `services/projection/w5Effects.ts` impose le dividende CCPC à un forfait de 36 %, alors
   que **le dépôt sait déjà le calculer exactement** : `utils/tax.ts` `calculateDividendTax` applique

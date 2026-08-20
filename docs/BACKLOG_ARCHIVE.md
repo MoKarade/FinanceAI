@@ -29,7 +29,8 @@
 | 150 000 $ | 47,46 % | **−738 $/an** | 42,23 % | 32,87 % |
 | 250 000 $ | 52,36 % | −2 208 $/an | 47,75 % | 39,16 % |
 
-Le forfait locatif **change de signe vers 145 k$** de revenu : conservateur en dessous, non
+Le forfait locatif **change de signe vers ~125-140 k$ selon le NOI** (121 272 $ à 5 k$ de NOI,
+139 603 $ à 30 k$ — la revue a réfuté mon « 145 k$ » écrit de tête) : conservateur en dessous, non
 conservateur au-dessus. Le forfait dividende ne vaut que pour un dividende **ordinaire à ~100 k$**,
 et à personne d'autre.
 

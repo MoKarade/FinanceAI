@@ -81,25 +81,34 @@ describe('[W5-PROXY-NON-SOURCE] les proxys d\'impôt W5 sont ancrés, et les 3 s
         const ctx = { m: 12, currentMonthIndex: 0, currentLoopDate: new Date('2027-01-01'),
             startYear: 2026, startMonth: 0, expenseMultiplier: 1 } as unknown as W5Context;
 
-        // Locatif seul : NOI = (3 000 − 500) × 12 = 30 000 $/an → impôt mensuel = 30 000 × 0,45 / 12.
+        // ⚠️ On asserte le CUMUL ANNUEL (12 appels), pas la valeur d'UN appel. Le bug 12× était une
+        // erreur de CADENCE : `addTaxDivers` alimente un accumulateur ANNUEL à raison d'un versement
+        // par mois. Une assertion par appel supposerait la cadence connue — si un refactor passait
+        // `applyW5Effects` à un appel annuel, elle resterait verte pendant que l'impôt redeviendrait
+        // 1/12 (finding de la revue du correctif). Le cumul, lui, est invariant de cadence.
+        // Locatif seul : NOI = (3 000 − 500) × 12 = 30 000 $/an → cumul attendu 13 500 $/an.
         const contLoc = { insurancePolicies: [], vehicleReplacements: [], majorRenovations: [],
             charitableGoals: [], privateBusinesses: [],
             rentalProperties: [{ id: 'r1', name: 'R1', monthlyRent: 3_000, monthlyExpenses: 500,
                 vacancyPct: 0, purchasePrice: 0, currentValue: 0, mortgageBalance: 0 }],
         } as unknown as W5Containers;
-        applyW5Effects(ctx, contLoc, mutator);
-        expect(s.taxDivers).toBeCloseTo(30_000 * RENTAL_NOI_TAX_PROXY / 12, 6);
+        for (let mois = 0; mois < 12; mois++) {
+            applyW5Effects({ ...ctx, m: mois + 1, currentMonthIndex: mois } as unknown as W5Context, contLoc, mutator);
+        }
+        expect(s.taxDivers).toBeCloseTo(30_000 * RENTAL_NOI_TAX_PROXY, 6);
 
-        // Dividende seul : 24 000 $/an → impôt mensuel = 24 000 × 0,36 / 12. Valeurs choisies pour
-        // que 30 000 × 0,36 ≠ 30 000 × 0,45 : l'échange des constantes rougit les DEUX assertions.
+        // Dividende seul : 24 000 $/an → cumul attendu 8 640 $/an. Montants distincts pour que
+        // l'ÉCHANGE des deux constantes rougisse les deux assertions.
         s.taxDivers = 0;
         const contDiv = { insurancePolicies: [], vehicleReplacements: [], majorRenovations: [],
             charitableGoals: [], rentalProperties: [],
             privateBusinesses: [{ id: 'b1', name: 'B1', annualDividend: 24_000, ownershipPct: 100,
                 estimatedValue: 0 }],
         } as unknown as W5Containers;
-        applyW5Effects(ctx, contDiv, mutator);
-        expect(s.taxDivers).toBeCloseTo(24_000 * CCPC_DIVIDEND_TAX_PROXY / 12, 6);
+        for (let mois = 0; mois < 12; mois++) {
+            applyW5Effects({ ...ctx, m: mois + 1, currentMonthIndex: mois } as unknown as W5Context, contDiv, mutator);
+        }
+        expect(s.taxDivers).toBeCloseTo(24_000 * CCPC_DIVIDEND_TAX_PROXY, 6);
     });
 
     it('le moteur applique bien les CONSTANTES NOMMÉES, plus des littéraux nus', () => {

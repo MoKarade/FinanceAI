@@ -381,7 +381,11 @@ chaque rente s'applique ensuite à la part correspondante.
 
 `services/projection/w5Effects.ts`. Le NOI d'un immeuble locatif et le dividende d'une société
 privée (CCPC) sont imposés par un **taux marginal FORFAITAIRE**, pas par le barème complet :
-`addTaxDivers(noi × 0,45 / 12)` et `addTaxDivers(dividende × 0,36 / 12)`.
+`addTaxDivers(noiMensuel × 0,45)` et `addTaxDivers(dividendeMensuel × 0,36)`, appelés **chaque
+mois** contre un accumulateur **ANNUEL** (`taxCurrentYear.divers`) réglé en avril → cumul annuel
+= base annuelle × taux. ⚠️ NE PAS réintroduire de `/ 12` : l'ancienne forme `(mensuel × taux) / 12`
+cumulait à 1/12 de l'impôt — taux effectif 3,75 %/3 % pendant que tout annonçait 45/36 (bug corrigé
+le 2026-08-20, −1,4 M$ de patrimoine fantôme sur un ménage duplex + CCPC à 30 ans).
 
 **Décision Marc (2026, `docs/A_FAIRE_MOI.md` §[W5-TAX-PROXY])** : garder les proxys plats, les
 documenter ici comme une **estimation de taux marginal québécois**. Ce ne sont donc PAS des règles

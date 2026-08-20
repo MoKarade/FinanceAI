@@ -157,7 +157,8 @@ export const RentalPropertyPanel: React.FC<{
                 <p className="text-tiny text-ink-400 italic">
                     L'impôt sur le revenu locatif est estimé à un taux marginal forfaitaire de{' '}
                     {formatPercent(RENTAL_NOI_TAX_PROXY * 100, 0)}, pas calculé au barème. C'est prudent
-                    en dessous d'environ 145 000 $ de revenu total, et optimiste au-dessus.
+                    en dessous d'environ 125 000 $ de revenu total (jusqu'à ~140 000 $ pour un gros
+                    revenu locatif), et optimiste au-dessus.
                 </p>
             </div>
         </Card>
@@ -196,7 +197,7 @@ export const BusinessPanel: React.FC<{
                 <p className="text-tiny text-ink-400 italic">
                     L'impôt sur le dividende est estimé à un taux forfaitaire de{' '}
                     {formatPercent(CCPC_DIVIDEND_TAX_PROXY * 100, 0)}, sans distinguer dividende déterminé
-                    et ordinaire. Un dividende déterminé est en réalité moins imposé.
+                    et ordinaire. Un dividende déterminé est moins imposé qu'un dividende ordinaire.
                 </p>
             </div>
         </Card>

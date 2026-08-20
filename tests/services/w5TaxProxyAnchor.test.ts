@@ -12,7 +12,9 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { RENTAL_NOI_TAX_PROXY, CCPC_DIVIDEND_TAX_PROXY } from '../../services/projection/w5Effects';
+import { RENTAL_NOI_TAX_PROXY, CCPC_DIVIDEND_TAX_PROXY, applyW5Effects } from '../../services/projection/w5Effects';
+import type { W5Context, W5Containers, W5Mutator } from '../../services/projection/w5Effects';
+import { vi } from 'vitest';
 
 const lire = (rel: string): string => readFileSync(resolve(__dirname, '../../', rel), 'utf8');
 const pct = (r: number): string => `${Math.round(r * 100)} %`;
@@ -33,7 +35,12 @@ describe('[W5-PROXY-NON-SOURCE] les proxys d\'impôt W5 sont ancrés, et les 3 s
             .toContain("Proxys d'impôt W5");
         // Les taux doivent apparaître dans la section, écrits comme le code les porte.
         const i = doc.indexOf("Proxys d'impôt W5");
-        const section = doc.slice(i, i + 6000);
+        // ⚠️ Fenêtre bornée à la PROCHAINE section, pas à un offset arbitraire : mesuré, un
+        // `slice(i, i+6000)` débordait de 1 740 caractères sur la section suivante — la garde
+        // pouvait être satisfaite demain par un voisin (`GARDE-BORNEE-PAR-CLASSE-NEGATIVE`, cousin).
+        const finSection = doc.indexOf('\n### ', i + 1);
+        const section = doc.slice(i, finSection > i ? finSection : undefined);
+        expect(section.length, 'section vide → la garde ne mesure rien').toBeGreaterThan(1000);
         expect(section, `taux locatif ${pct(RENTAL_NOI_TAX_PROXY)} absent de la doc`)
             .toContain(pct(RENTAL_NOI_TAX_PROXY));
         expect(section, `taux dividende ${pct(CCPC_DIVIDEND_TAX_PROXY)} absent de la doc`)
@@ -48,14 +55,51 @@ describe('[W5-PROXY-NON-SOURCE] les proxys d\'impôt W5 sont ancrés, et les 3 s
         expect(ui).toContain('RENTAL_NOI_TAX_PROXY');
         expect(ui).toContain('CCPC_DIVIDEND_TAX_PROXY');
         // …et elles sont RENDUES, pas seulement importées.
-        expect(ui).toMatch(/formatPercent\(RENTAL_NOI_TAX_PROXY/);
-        expect(ui).toMatch(/formatPercent\(CCPC_DIVIDEND_TAX_PROXY/);
+        // ⚠️ Motif EXACT (`× 100, 0`) : perturbation mesurée — `RENTAL_NOI_TAX_PROXY * 100 + 5`
+        // passait le motif lâche `formatPercent\(RENTAL_NOI_TAX_PROXY` en affichant 50 %.
+        expect(ui).toMatch(/formatPercent\(RENTAL_NOI_TAX_PROXY \* 100, 0\)/);
+        expect(ui).toMatch(/formatPercent\(CCPC_DIVIDEND_TAX_PROXY \* 100, 0\)/);
         // ⚠️ DISCRIMINANT du recopiage : aucun littéral « 45 % » / « 36 % » en dur dans le composant.
         // C'est ce qui empêcherait la mention de survivre à un changement de constante.
         const code = ui.split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
         expect(code.length).toBeGreaterThan(ui.length * 0.5); // anti-vacuité du décommentage
         expect(code, 'taux recopié en dur dans l\'écran').not.toMatch(/\b45\s*%/);
         expect(code, 'taux recopié en dur dans l\'écran').not.toMatch(/\b36\s*%/);
+    });
+
+    it('le CALCUL applique chaque constante à SON flux — échanger les deux doit rougir', () => {
+        // ⚠️ Trou mesuré en revue : ÉCHANGER les deux constantes (0,36 au locatif, 0,45 au dividende)
+        // laissait 4/4 vert et déplaçait `estateNetWorth` de −14 460 $ sans une assertion rouge —
+        // aucun test du dépôt ne fixait la VALEUR de ces impôts (`w5Effects.test.ts` n'assertait que
+        // `taxDivers > 0`). Un scan de texte prouve des jetons ; seul le COMPORTEMENT prouve le câblage.
+        const s = { taxDivers: 0, income: 0 };
+        const mutator = {
+            addExpense: () => {}, addIncome: (n: number) => { s.income += n; }, subtractLiquid: () => {},
+            addTaxRevenu: () => {}, addTaxGains: () => {}, addTaxDivers: (n: number) => { s.taxDivers += n; },
+            addDonationCredit: () => {}, logFlow: vi.fn(), logLife: vi.fn(),
+        } as unknown as W5Mutator;
+        const ctx = { m: 12, currentMonthIndex: 0, currentLoopDate: new Date('2027-01-01'),
+            startYear: 2026, startMonth: 0, expenseMultiplier: 1 } as unknown as W5Context;
+
+        // Locatif seul : NOI = (3 000 − 500) × 12 = 30 000 $/an → impôt mensuel = 30 000 × 0,45 / 12.
+        const contLoc = { insurancePolicies: [], vehicleReplacements: [], majorRenovations: [],
+            charitableGoals: [], privateBusinesses: [],
+            rentalProperties: [{ id: 'r1', name: 'R1', monthlyRent: 3_000, monthlyExpenses: 500,
+                vacancyPct: 0, purchasePrice: 0, currentValue: 0, mortgageBalance: 0 }],
+        } as unknown as W5Containers;
+        applyW5Effects(ctx, contLoc, mutator);
+        expect(s.taxDivers).toBeCloseTo(30_000 * RENTAL_NOI_TAX_PROXY / 12, 6);
+
+        // Dividende seul : 24 000 $/an → impôt mensuel = 24 000 × 0,36 / 12. Valeurs choisies pour
+        // que 30 000 × 0,36 ≠ 30 000 × 0,45 : l'échange des constantes rougit les DEUX assertions.
+        s.taxDivers = 0;
+        const contDiv = { insurancePolicies: [], vehicleReplacements: [], majorRenovations: [],
+            charitableGoals: [], rentalProperties: [],
+            privateBusinesses: [{ id: 'b1', name: 'B1', annualDividend: 24_000, ownershipPct: 100,
+                estimatedValue: 0 }],
+        } as unknown as W5Containers;
+        applyW5Effects(ctx, contDiv, mutator);
+        expect(s.taxDivers).toBeCloseTo(24_000 * CCPC_DIVIDEND_TAX_PROXY / 12, 6);
     });
 
     it('le moteur applique bien les CONSTANTES NOMMÉES, plus des littéraux nus', () => {

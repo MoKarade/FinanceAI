@@ -50,6 +50,26 @@ de les recopier (`UN-OUTIL-GARDE-A-VALEURS-RECODEES`). Cinq perturbations, cinq 
 qui a attrapé un « 45 % » dans **mon propre commentaire JSX** : un commentaire qui porte le chiffre
 dérive comme le reste, il a été réécrit sans lui plutôt que d'assouplir la garde.
 
+### ⚠️⚠️ La garde COMPORTEMENTALE a découvert que le forfait n'était PAS appliqué — 12× trop bas
+
+En fermant le trou « échanger les deux constantes laissait tout vert » (finding de revue), j'ai écrit
+l'assertion `taxDivers === noi_mensuel × 0,45` — et elle a ROUGI sur le moteur : le code faisait
+`(noi_mensuel × 0,45) / 12`, alors que `addTaxDivers` alimente un accumulateur ANNUEL à raison d'un
+versement PAR MOIS. Le taux effectivement prélevé était **3,75 %** (locatif) et **3 %** (dividende)
+— pendant que la décision Marc, la doc toute neuve et l'écran annonçaient 45 et 36.
+
+MESURÉ bout en bout : 1 125 $/an collectés sur 30 000 $ de NOI au lieu de 13 500 $. Sur un ménage
+duplex + CCPC (60 k$ de dividende) à 30 ans : patrimoine successoral **8 141 254 → 6 736 381 $
+(−1 404 873 $, −17 %)**. Le bug gonflait le patrimoine de tout bailleur/actionnaire depuis
+l'introduction des conteneurs W5 ; AUCUN test ne le voyait parce qu'aucun ne fixait la VALEUR de ces
+impôts (`taxDivers > 0` seulement) et qu'aucun golden ne porte de locatif/CCPC.
+
+Trois leçons d'un coup : (1) **un scan de texte prouve des jetons, seul le COMPORTEMENT prouve le
+câblage** — la garde comportementale a trouvé en une assertion ce que six passes de texte n'ont pas
+vu ; (2) le défaut d'unité venait de la ligne VOISINE (`noi / 12` quatre lignes plus haut) — encore
+un recopiage de voisin ; (3) « documenter un forfait » n'est fini qu'après avoir VÉRIFIÉ que le
+moteur l'applique — sinon on ancre dans la source de vérité un taux que personne ne prélève.
+
 **Bundle de boot vérifié** (l'écran importe désormais du moteur) : 9 `modulepreload` et 3,2 Mo
 d'assets avant comme après, build PROPRE des deux côtés.
 

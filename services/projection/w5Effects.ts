@@ -139,7 +139,14 @@ export function applyW5Effects(
         // `[W5-TAX-PROXY]` : garder le forfait, le documenter). Son sens d'erreur est MESURÉ et il
         // CHANGE DE SIGNE vers 145 k$ de revenu : +2 665 $/an de trop à 60 k$, −2 208 $ de moins à
         // 250 k$. Le tableau complet vit dans la doc — ne pas le recopier ici, il dériverait.
-        state.addTaxDivers((rentalPropertyNoiMonthly * RENTAL_NOI_TAX_PROXY) / 12);
+        // ⚠️ PAS de `/ 12` ici — `rentalPropertyNoiMonthly` est DÉJÀ mensuel (construit `noi / 12`
+        // quatre lignes plus haut), et `addTaxDivers` alimente un accumulateur ANNUEL à raison d'un
+        // versement par mois. L'ancien `(mensuel × taux) / 12` cumulait donc sur l'année à
+        // `mensuel × taux` = 1/12 de l'impôt : MESURÉ bout en bout, 1 125 $/an collectés sur
+        // 30 000 $ de NOI au lieu de 13 500 $ — un taux EFFECTIF de 3,75 % pendant que la décision
+        // Marc, la doc et l'écran annonçaient 45 %. Le défaut d'unité classique : traiter une
+        // grandeur mensuelle comme annuelle parce que la ligne d'à côté divisait par 12.
+        state.addTaxDivers(rentalPropertyNoiMonthly * RENTAL_NOI_TAX_PROXY);
     }
 
     // W5.7 — Entreprise privée (CCPC) : dividendes mensuels.
@@ -160,7 +167,9 @@ export function applyW5Effects(
         // vaut que pour un dividende ORDINAIRE à ~100 k$ de revenu : il sur-impose un dividende
         // DÉTERMINÉ de jusqu'à 7 606 $/an sur 30 k$. Remplacement suivi par `[W5-DIVIDENDE-PROXY-VS-MOTEUR]`
         // — hors périmètre ici, la décision Marc était de GARDER le forfait et de le documenter.
-        state.addTaxDivers((businessDividendMonthly * CCPC_DIVIDEND_TAX_PROXY) / 12);
+        // ⚠️ Même défaut d'unité que le locatif ci-dessus : `businessDividendMonthly` est déjà
+        // mensuel, le `/ 12` ramenait le taux effectif à 3 % au lieu de 36 %.
+        state.addTaxDivers(businessDividendMonthly * CCPC_DIVIDEND_TAX_PROXY);
     }
 }
 

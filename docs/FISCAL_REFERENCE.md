@@ -372,17 +372,28 @@ MESURÉ : impôt INCRÉMENTAL réel sur **30 000 $ de NOI** empilés sur un reve
 | 200 000 $ | 49,96 % | −1 489 $/an |
 | 250 000 $ | 52,36 % | −2 208 $/an |
 
-> Le proxy est donc **conservateur jusqu'à ~140 k$ de revenu** et **NON conservateur au-delà** : le
-> point de bascule est vers 145 k$, là où le taux marginal réel croise 45 %. Un bailleur à haut
-> revenu voit son impôt locatif SOUS-estimé, donc son patrimoine projeté SUR-estimé.
+> Le proxy est **conservateur pour les revenus modestes et moyens, NON conservateur au-delà** — et le
+> point de bascule DÉPEND de la taille du NOI (mesuré, en revenu TOTAL) : **121 272 $** pour 5 k$ de
+> NOI · 125 499 $ (10 k$) · 133 482 $ (20 k$) · **139 603 $ (30 k$)** · 154 859 $ (50 k$). Retenir
+> « ~125 k$ pour un locatif modeste, jusqu'à ~140 k$ pour un gros NOI ». Un bailleur à haut revenu
+> voit son impôt locatif SOUS-estimé, donc son patrimoine projeté SUR-estimé.
+> ⚠️ Ma première rédaction disait « vers 145 k$, là où le marginal croise 45 % » : FAUX deux fois —
+> le marginal croise 45 % dès **117 045 $** (fin du palier fédéral 20,5 %), et le basculement du
+> CUMUL arrive avant 145 k$ pour tout NOI ≤ 50 k$. Mesuré, pas déduit.
 > ⚠️ Le taux marginal dépend AUSSI de la taille de la tranche (une tranche traverse des paliers) :
 > à 100 k$ de base, 10 k$ de NOI donnent 36,78 %, 30 k$ donnent 41,65 %, 60 k$ donnent 44,49 %.
 > Le tableau ci-dessus fixe la tranche à 30 k$ pour être comparable ligne à ligne.
 
-Ordre de grandeur de référence : taux marginal combiné QC 2026 = **~41 %** dans la tranche
-108 680 → 132 245 $ (QC 24 % + fédéral 20,5 % × 0,835) et **~47,5 %** au-dessus de 132 245 $
-(QC 25,75 % + fédéral 26 % × 0,835). `0,45` se situe entre les deux — cohérent avec un bailleur de
-classe moyenne supérieure, faux pour les extrêmes.
+Ordre de grandeur de référence — TROIS bandes, pas deux (les paliers QC et fédéral ne coïncident
+pas, cf. §1 du présent fichier) : **41,12 %** de 108 680 à 117 045 $ (QC 24 % + féd 20,5 % × 0,835),
+**45,71 %** de 117 045 à 132 245 $ (QC 24 % + féd 26 % × 0,835), **47,46 %** au-delà
+(QC 25,75 % + féd 26 % × 0,835). `0,45` tombe DANS la bande du milieu — c'est ce qui explique le
+basculement précoce du cumul, bien avant le dernier palier.
+
+⚠️ Les tableaux ci-dessus échantillonnent **40 k$ → 250 k$** de revenu de base. SOUS 40 k$ — le
+régime RETRAITE, que le moteur simule sur la moitié de l'horizon — la sur-imposition est PIRE que
+tout ce qui y figure : NOI locatif sur-imposé de **10 507 $/an** à revenu nul et 5 793 $/an à 20 k$ ;
+dividende déterminé sur-imposé de **10 800 $/an** à ≤ 10 k$ (impôt réel : 0 %).
 
 #### Dividende CCPC — `0,36`
 
@@ -415,6 +426,10 @@ d'impôt pour dividende fédéral et québécois, avec l'ordre correct de l'abat
 Ces deux flux passent par `addTaxDivers`, donc ils **échappent au barème progressif** : ils
 n'occupent aucune place dans les paliers et ne poussent pas les autres revenus vers le haut. Leur
 impôt ne varie ni avec le reste du revenu, ni avec l'année, ni avec le fractionnement de pension.
+Corollaire 65+ : ces revenus n'entrent **ni dans la récupération PSV, ni dans la prime RAMQ, ni
+dans la réduction des crédits d'âge** — pour un bailleur retraité, le modèle est optimiste EN PLUS
+du forfait. (Contrepartie vérifiée : cette isolation garantit qu'il n'y a PAS de double-imposition —
+le NOI W5 n'est jamais réinjecté dans l'assiette de décembre.)
 Un remplacement par le barème réel re-baserait des goldens et changerait le patrimoine projeté de
 tout ménage détenant un immeuble locatif ou une CCPC — c'est un lot à part entière, pas un
 ajustement de constante.

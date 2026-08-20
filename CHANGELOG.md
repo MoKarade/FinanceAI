@@ -6,14 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased] — 2026-08-20 (l'app te dit maintenant quand un impôt est estimé, pas calculé)
+## [unreleased] — 2026-08-20 (l'impôt de tes revenus locatifs et de dividendes était 12× trop bas)
 
-- Si tu as un **immeuble locatif** ou une **société (CCPC)**, l'app estimait l'impôt sur ces revenus
-  à un taux **forfaitaire** — 45 % sur le revenu locatif net, 36 % sur les dividendes — au lieu de
+- Si tu as un **immeuble locatif** ou une **société (CCPC)**, l'app estime l'impôt sur ces revenus à
+  un taux **forfaitaire** — 45 % sur le revenu locatif net, 36 % sur les dividendes — au lieu de
   passer par le barème. C'était le cas depuis toujours, et rien ne te le disait.
-- Les deux écrans l'annoncent désormais, et la limite est chiffrée : le forfait locatif est
-  **prudent en dessous d'environ 145 000 \$** de revenu total et **optimiste au-dessus**.
-- **Rien ne change dans tes chiffres** : c'est le même calcul, simplement nommé et documenté.
+- **En documentant ce forfait, on a découvert qu'il n'était même pas appliqué** : une erreur d'unité
+  (une division par 12 en trop) ramenait le taux réellement prélevé à **3,75 %** sur le locatif et
+  **3 %** sur les dividendes. Mesuré sur un ménage avec duplex et société à 30 ans d'horizon : le
+  patrimoine projeté était **surestimé de ~1,4 M\$**. C'est corrigé — si tu as ces actifs, tes
+  projections vont BAISSER, et c'est la nouvelle valeur qui est honnête.
+- Les deux écrans annoncent désormais le forfait, et sa limite est chiffrée : prudent en dessous
+  d'environ **125 000 \$** de revenu total (jusqu'à ~140 000 \$ pour un gros revenu locatif),
+  optimiste au-dessus. Sans immeuble ni société, **rien ne change**.
 
 ---
 

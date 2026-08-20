@@ -989,11 +989,6 @@
   incrémental réel sur 30 k$ de NOI : +2 665 $/an à 60 k$ de revenu, +1 004 $ à 100 k$, −2 208 $ à
   250 k$** — donc **non conservateur aux hauts revenus**. L'item était coché alors que la moitié du
   livrable manquait (classe `PM-STALE-BACKLOG`). [MESURÉ]
-- [ ] **`[ESTATE-NPV-07]`** (XS, FAIBLE) — facteur `0,7` appliqué à la VAN des rentes RRQ/PSV dans le
-  patrimoine successoral, **sans nom, sans commentaire, absent de FISCAL_REFERENCE** (les `1.02`
-  voisins non plus) — `services/projection/estateCalculation.ts:224-227`. Écran Succession seulement,
-  mais 30 % d'une VAN de rentes = plusieurs dizaines de k$ affichés. Correctif : nommer et ancrer
-  comme hypothèse de modèle, ou retirer. [MESURÉ pour l'absence de source]
 - [ ] **`[ENV-NODE-NON-DECLARE]`** (XS, MOYEN) — aucun `engines` dans `package.json`, aucun `.nvmrc` :
   la seule déclaration de la version visée est `node-version: '20'`, répété dans **4 workflows**
   (`ci.yml` ×2, `lighthouse.yml`, `refresh-screenshots.yml`). Le conteneur de dev tourne sur Node

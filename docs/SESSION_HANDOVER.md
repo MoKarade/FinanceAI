@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-20 (suite 115) — encore un facteur plat, encore contre les modestes
+> Branche `claude/estate-npv` (basée sur `main`, PAS empilée). Vague 1f, 4e des 5.
+>
+> **Livré** : `[ESTATE-NPV-07]`. Le ticket annonçait « nommer ou retirer un 0,7 » et « écran
+> Succession seulement » — **les deux étaient faux**. `estateNetWorth` alimente un chiffre-TITRE du
+> Budget, le panneau de stress et la carte FIRE ; et le facteur n'était juste pour PERSONNE
+> (facteur net réel mesuré : 0,94 pour un ménage vivant de ses rentes, 0,594 à 100 k$ d'autre
+> revenu). Remplacé par un abattement CALCULÉ, patron déjà présent 40 lignes plus haut.
+>
+> **Goldens re-basés** : +144 924 $, +128 464 $, et +42 262 $ (**+29,3 %** — cette fixture finit
+> insolvable, donc son patrimoine successoral EST la VAN des rentes).
+>
+> ⚠️⚠️ **TROIS de mes tests étaient vacueux, tous démasqués par PERTURBATION** : le `fiscalStub`
+> partagé du fichier est un taux PLAT (30 %) qui rendait le correctif strictement invisible ; mon
+> facteur dérivé par RATIO annulait tout facteur constant ; et mon test du clamp utilisait une
+> fixture qui désactivait la branche testée. Verts et sérieux d'apparence, tous les trois
+> (`UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR`).
+>
+> ⚠️ **Faux raisonnement rattrapé de justesse** : `accRentesYear` cumule les LOYERS malgré son nom
+> (`realEstateMonth.ts`), pas les rentes publiques — ce sont `incomeRetirement * 12`. J'ai failli
+> câbler le calcul à l'envers sur la foi d'un nom.
+>
 > ## 🟢 Session 2026-08-20 (suite 114) — une valeur fiscale figée par un défaut de signature
 > Branche `claude/grossfromnet-annee` (basée sur `main`, PAS empilée). Suite directe de #669.
 >

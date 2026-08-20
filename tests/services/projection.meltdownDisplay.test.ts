@@ -132,6 +132,11 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // de taxDecember.test.ts qui le fait.
         const melt = runWith('MELTDOWN_REER' as AllocationStrategy);
         expect(melt.finalNetWorth).toBeCloseTo(-7209.82, 0);
-        expect(melt.estateNetWorth).toBeCloseTo(144219.86, 0);
+        // ⚠️ RE-BASÉ le 2026-08-20 par `[ESTATE-NPV-07]` : 144 219,86 $ → 186 481,96 $
+        // (+42 262,10 $, +29,3 %). L'écart RELATIF est énorme ici parce que cette fixture finit
+        // INSOLVABLE (`finalNetWorth = −7 209 $`) : son patrimoine successoral est presque
+        // entièrement la VAN des rentes publiques. C'est exactement la population que le facteur
+        // plat de 0,7 pénalisait le plus — un ménage sans actifs paie peu d'impôt sur ses rentes.
+        expect(melt.estateNetWorth).toBeCloseTo(186481.96, 0);
     });
 });

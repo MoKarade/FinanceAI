@@ -87,8 +87,12 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // 30 avril, gagnait jusqu'ici un MOIS COMPLET de rendement. Le retrait de cette croissance
         // fantôme est l'effet VOULU — l'écart est négatif partout, et il croît avec l'horizon et la
         // taille du portefeuille, exactement comme un intérêt composé qu'on cesse de créditer à tort.
-        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_374_653);
-        // Idem sur le second ancrage : 2 716 383 $ → 2 715 684 $ (−699 $, −0,026 %).
-        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_715_684);
+        // ⚠️ RE-BASÉ le 2026-08-20 par `[ESTATE-NPV-07]` : 3 374 653 $ → 3 519 577 $ (+144 924 $,
+        // +4,3 %). La VAN des rentes publiques n'est plus amputée d'un facteur PLAT de 30 % mais
+        // d'un abattement CALCULÉ sur l'impôt qu'elles portent réellement en contexte. L'écart est
+        // positif parce que le 0,7 sur-taxait ce ménage.
+        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_519_577);
+        // Second ancrage, même cause : 2 715 684 $ → 2 844 148 $ (+128 464 $, +4,7 %).
+        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_844_148);
     });
 });

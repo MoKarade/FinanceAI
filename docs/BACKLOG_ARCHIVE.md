@@ -10,6 +10,56 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-20 — Vague 1f (4/5) : encore un facteur plat, encore contre les modestes
+
+- [x] **`[ESTATE-NPV-07]`** (XS annoncé, S réel) — ✅ 2026-08-20, PR #671.
+
+> Le ticket disait « facteur `0,7` sans nom, sans commentaire, absent de FISCAL_REFERENCE — nommer
+> ou retirer ». Il disait aussi « écran Succession seulement ». **Les deux sont à corriger.**
+
+**Le périmètre était sous-estimé** : `estateNetWorth` alimente aussi un chiffre-TITRE de l'onglet
+Budget (avec sa note explicative), le panneau de stress-tests et la carte FIRE du Futur.
+
+**Le facteur n'était juste pour personne** — MESURÉ, facteur net RÉEL d'une rente publique :
+
+| situation du ménage | facteur net réel |
+|---|---|
+| vit surtout de ses rentes (24 k$/an) | **0,94** |
+| + 30 k$ d'autre revenu de retraite | 0,743 |
+| + 60 k$ | 0,639 |
+| + 100 k$ | 0,594 |
+
+`0,7` n'était donc correct que dans une bande étroite, et il **sous-estimait le patrimoine
+successoral des ménages modestes** — ceux pour qui les rentes publiques pèsent le plus. Même forme
+d'erreur que `[MIGRATE-GROSS-135]` : un facteur plat sur une relation qui ne l'est pas.
+
+**Correctif** : abattement CALCULÉ par le patron déjà présent 40 lignes plus haut
+(`estateReportFinal − estateReportBase`), appliqué au FLUX ANNUEL et non à la VAN — taxer une VAN de
+plusieurs centaines de k$ comme un revenu d'une seule année l'aurait envoyée au taux marginal
+maximal, bien plus faux que le 0,7 remplacé. Facteur borné à [0, 1].
+
+**Goldens re-basés, delta écrit à côté** : 3 374 653 → **3 519 577 $** (+144 924, +4,3 %) ;
+2 715 684 → **2 844 148 $** (+128 464) ; et 144 220 → **186 482 $** (+42 262, **+29,3 %**) — l'écart
+relatif y est énorme parce que cette fixture finit INSOLVABLE, donc son patrimoine successoral est
+presque entièrement la VAN des rentes. C'est la population que le 0,7 pénalisait le plus.
+
+⚠️ **TROIS erreurs de méthode attrapées par mes propres perturbations, dans ce seul lot** :
+1. Le `fiscalStub` du fichier de test est `gross * 0.3` — un taux PLAT. Un stub qui reproduit la
+   FORME du défaut ne peut pas le détecter : le correctif y était strictement invisible. Tests
+   réécrits avec un stub PROGRESSIF.
+2. Mon premier test dérivait le facteur en divisant la VAN nette par une VAN « brute ». **Vacueux** :
+   un facteur constant se simplifie dans un ratio. Perturbation à l'appui — remettre `0,7` ne le
+   faisait pas rougir. Refondé en comparaison entre DEUX barèmes.
+3. Mon test du clamp ne mordait pas : la fixture avait `incomeRetirement: 0`, donc la soustraction
+   était clampée et l'impôt incrémental valait 0. Corrigé avec un revenu non nul.
+
+⚠️ **Et un faux raisonnement rattrapé de justesse** : j'avais justifié la soustraction des rentes par
+`accRentesYear`. Malgré son nom, ce terme cumule les **LOYERS**
+(`realEstateMonth.ts : accRentesYear += rentalIncome`). Ce sont `incomeRetirement * 12`
+(= RRQ + PSV + rente privée) qui portent les rentes publiques. Le code était bon, la justification
+fausse — et j'ai failli câbler le calcul à l'envers. `UN-NOM-TROMPEUR-FABRIQUE-DES-FAUX-FINDINGS`,
+vécu en direct.
+
 ## 2026-08-20 — Une valeur fiscale figée par un défaut de signature
 
 - [x] **`[GROSSFROMNET-ANNEE-FIGEE]`** (S) — ✅ 2026-08-20, PR #670.

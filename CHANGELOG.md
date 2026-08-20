@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-20 (ton patrimoine successoral sous-estimait tes rentes publiques)
+
+- L'app valorise les rentes RRQ/PSV que tu toucherais jusqu'à 95 ans, et les ajoute à ton
+  **patrimoine successoral** (visible dans Budget, Futur et les stress-tests).
+- Elle en retranchait **30 % forfaitairement**, au titre de l'impôt. Or l'impôt réel sur des rentes
+  publiques dépend de tes autres revenus : proche de **0 %** si tu vis surtout de tes rentes, jusqu'à
+  ~40 % avec un gros revenu de retraite à côté. Le forfait pénalisait donc le plus les ménages
+  modestes.
+- L'abattement est maintenant **calculé** sur ta situation. Effet mesuré sur nos scénarios de
+  référence : **+144 924 \$** et **+42 262 \$** de patrimoine successoral, ce dernier valant **+29 %**
+  pour un ménage sans actifs qui vit de ses rentes.
+
+---
+
 ## [unreleased] — 2026-08-20 (le brut deviné suit maintenant le barème de l'année, pas celui de 2026)
 
 - Suite directe du correctif précédent. Quand l'app **déduit** ton salaire brut de ton net, elle

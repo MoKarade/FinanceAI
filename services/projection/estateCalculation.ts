@@ -229,7 +229,51 @@ export function computeEstateNetWorth(
     const rrqNPV = finalAge >= 65 ? (rrqExpected * npvFactor) : (rrqExpected * npvFactor * Math.pow(1.02, -(65 - finalAge)));
     const psvNPV = finalAge >= 65 ? (psvExpected * npvFactor) : (psvExpected * npvFactor * Math.pow(1.02, -(65 - finalAge)));
 
-    const estateNetWorth = finalRawNetWorth - totalEstateTax + ((rrqNPV + psvNPV) * 0.7);
+    // [ESTATE-NPV-07] La VAN des rentes est ajoutée NETTE d'impôt — les rentes publiques sont un
+    // revenu IMPOSABLE, et `totalEstateTax` ci-dessus ne couvre que la LIQUIDATION (REER + gains),
+    // pas ce flux-là.
+    //
+    // ⚠️ C'était un facteur PLAT `× 0,7`, sans nom ni commentaire, seul littéral nu d'un bloc où
+    // tout le reste est justifié. MESURÉ sur le barème 2026, le facteur net RÉEL d'une rente
+    // publique n'est plat pour personne :
+    //     ménage vivant surtout de ses rentes (24 k$/an) ....... 0,94
+    //     avec 30 k$ d'autre revenu de retraite ................ 0,743
+    //     avec 60 k$ ........................................... 0,639
+    //     avec 100 k$ .......................................... 0,594
+    // `0,7` n'était donc juste que dans une bande étroite, et il SOUS-ESTIMAIT lourdement le
+    // patrimoine successoral des ménages modestes — ceux pour qui les rentes publiques pèsent le
+    // plus. Même forme d'erreur que `[MIGRATE-GROSS-135]` : un facteur plat sur une relation qui
+    // ne l'est pas.
+    //
+    // Le patron correct vit 40 lignes plus haut (`estateReportFinal − estateReportBase`) : on
+    // mesure l'impôt INCRÉMENTAL que les rentes portent DANS LE CONTEXTE de revenu du ménage.
+    // ⚠️ On l'applique au FLUX ANNUEL, pas à la VAN : taxer une VAN de plusieurs centaines de k$
+    // comme un revenu d'une seule année la ferait passer au taux marginal maximal, ce qui serait
+    // bien plus faux que le 0,7 qu'on remplace.
+    //
+    // ⚠️ POURQUOI ON SOUSTRAIT (et pas on ajoute) — vérifié, j'ai failli le câbler à l'envers.
+    // `estateCurrentIncome` CONTIENT déjà les rentes publiques, via `incomeRetirement * 12` :
+    // `incomeRetirement = retirementBreakdown.total = rrq + psv + privee − oasReduction`
+    // (`retirementIncome.ts`). On les en retire donc pour isoler l'impôt qu'elles portent EN
+    // CONTEXTE. ⚠️ Ne pas se fier au nom `accRentesYear` du terme voisin : malgré « rentes », il
+    // cumule les LOYERS (`realEstateMonth.ts` : `accRentesYear += rentalIncome`), pas des rentes
+    // publiques. Un nom trompeur, et le calcul partait à l'envers.
+    //
+    // Quand la soustraction dépasse le revenu enregistré (fixtures où `incomeRetirement` est nul
+    // alors qu'un `governmentPension` est saisi), le `Math.max(0, …)` fait retomber le facteur à 1 :
+    // sans revenu enregistré, aucun impôt ne peut leur être attribué. Dégradation gracieuse.
+    const rentesAnnuellesFinales = rrqMonthlyFamily * MONTHS_PER_YEAR + psvMonthlyFamily * MONTHS_PER_YEAR;
+    const revenuSansRentes = Math.max(0, estateCurrentIncome - rentesAnnuellesFinales);
+    const impotSurRentes = rentesAnnuellesFinales > 0
+        ? Math.max(0, calculateFiscalReport(estateCurrentIncome, 0, 0, finalYear, enableMonteCarlo).totalTax
+            - calculateFiscalReport(revenuSansRentes, 0, 0, finalYear, enableMonteCarlo).totalTax)
+        : 0;
+    // Facteur net borné à [0, 1] : un barème ne peut ni rembourser plus que la rente ni la confisquer.
+    const facteurNetRentes = rentesAnnuellesFinales > 0
+        ? Math.min(1, Math.max(0, 1 - impotSurRentes / rentesAnnuellesFinales))
+        : 1;
+
+    const estateNetWorth = finalRawNetWorth - totalEstateTax + ((rrqNPV + psvNPV) * facteurNetRentes);
 
     const startNW = startingCash + startingCELI + startingCELIAPP + startingREER + startingNonReg + startingCrypto + startingREEE;
 

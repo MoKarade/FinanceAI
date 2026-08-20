@@ -4779,3 +4779,43 @@ C'est `TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`, re-commis dans le lot même qui 
 d'appelant. Le site d'appel vit au milieu d'une boucle moteur non instanciable : le patron du dépôt
 pour ce cas est le scan de SOURCE, et il a immédiatement révélé **deux appelants MCP oubliés** dont
 l'un publie ce brut à un LLM comme « seule source de vérité chiffrée ».
+
+### `UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR`
+
+`[ESTATE-NPV-07]` remplaçait un abattement PLAT (`× 0,7`) sur la VAN des rentes publiques par un
+abattement CALCULÉ. Le fichier de test de ce module partage un stub fiscal :
+
+```ts
+const fiscalStub = (gross: number): FiscalReport => ({ totalTax: Math.max(0, gross) * 0.3 } as FiscalReport);
+```
+
+Un taux **plat de 30 %**. Avec lui, l'impôt incrémental sur les rentes vaut exactement 30 % quel que
+soit le revenu — donc le facteur calculé rend précisément `0,7`, et le correctif est **strictement
+invisible**. Les 23 tests existants restaient verts, non pas parce que rien ne changeait, mais parce
+que le stub reproduisait la FORME du défaut qu'on corrigeait.
+
+**La règle** : avant d'écrire un test sur un correctif, regarder ce que le stub/la fixture partagée
+suppose. Si elle a la même forme que le défaut (plat contre plat, linéaire contre linéaire, uniforme
+contre uniforme), elle ne peut RIEN distinguer. Il faut un stub dont la forme est structurellement
+différente — ici un barème progressif minimal (0 % sous un seuil, 40 % au-delà), qui suffit à
+séparer un facteur contextuel d'un facteur constant sans dépendre du vrai barème.
+
+⚠️ **Deux autres vacuités du même lot, toutes deux trouvées par PERTURBATION et non à la lecture** :
+
+1. **Un ratio annule un facteur constant.** J'avais dérivé le facteur en divisant la VAN nette par
+   une VAN « brute » calculée avec un stub sans impôt. Avec `× 0,7` en dur, numérateur ET
+   dénominateur sont multipliés par 0,7 : le ratio vaut 1 quoi qu'il arrive. Le test passait aussi
+   bien sur le code d'avant. Remède : comparer la même grandeur sous DEUX barèmes, pas la diviser
+   par elle-même.
+2. **Une fixture peut désactiver la branche testée.** Mon test du clamp `[0, 1]` utilisait
+   `incomeRetirement: 0` ; la soustraction des rentes était donc clampée à 0, l'impôt incrémental
+   valait 0, et le clamp n'était jamais sollicité. Retirer le clamp ne faisait rien rougir.
+
+Les trois étaient VERTES et paraissaient sérieuses. Seule la perturbation les a démasquées — c'est
+la seule preuve qui vaille, et il faut la faire assertion par assertion, pas une fois pour le lot.
+
+⚠️ **Bonus, sur le nommage** : j'ai justifié une soustraction par le terme `accRentesYear` — qui,
+malgré son nom, cumule les **LOYERS** (`realEstateMonth.ts : accRentesYear += rentalIncome`). Ce
+sont `incomeRetirement * 12` qui portent les rentes publiques. Le code était juste, la justification
+fausse, et j'ai failli câbler le calcul à l'envers sur la foi d'un nom.
+`UN-NOM-TROMPEUR-FABRIQUE-DES-FAUX-FINDINGS` — y compris les siens.

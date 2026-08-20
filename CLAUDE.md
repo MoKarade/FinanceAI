@@ -1,7 +1,7 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 492 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 495 tests** Vitest
 (403 fichiers de test, mesuré le 2026-08-20). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -163,6 +163,15 @@ scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (50 s
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 **Money-critical / moteur**
+- ⚠️ **Un stub qui a la FORME du défaut ne peut pas le voir** : le `fiscalStub` partagé d'un fichier
+  de test était `gross * 0.3` — un taux PLAT — et rendait strictement invisible le remplacement d'un
+  abattement plat par un abattement calculé. Regarder ce que la fixture partagée SUPPOSE avant
+  d'écrire le test ; il faut une forme structurellement différente (ici un barème progressif).
+  Corollaires du même lot, tous deux démasqués par PERTURBATION seule : un **ratio annule un facteur
+  constant** (diviser la grandeur par elle-même sous un autre stub ne prouve rien — comparer DEUX
+  barèmes), et une **fixture peut désactiver la branche testée** (`incomeRetirement: 0` clampait la
+  soustraction, donc le clamp n'était jamais sollicité). Perturber assertion par assertion, jamais
+  une fois pour le lot (`UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR`).
 - ⚠️ **Câbler une année, c'est câbler une PAIRE** : j'ai passé l'année courante à l'inversion
   net→brut de `TaxCenter` et laissé `calculateFiscalReport` à son défaut 2026 trois lignes plus bas.
   Avant, les DEUX étaient à 2026 — donc cohérents. Après, 212 $/an d'écart dès 2027. **Améliorer un

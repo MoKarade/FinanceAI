@@ -253,3 +253,75 @@ describe('computeEstateNetWorth — [FISC-ESTATE-PENSION-NPV] annualisation des 
         expect(extractNPV(r)).toBeGreaterThan(400_000);
     });
 });
+
+/**
+ * [ESTATE-NPV-07] La VAN des rentes publiques est ajoutée NETTE d'impôt.
+ *
+ * ⚠️ PIÈGE DE CE FICHIER, à connaître avant d'ajouter un test ici : le `fiscalStub` partagé est
+ * `gross * 0.3`, un taux PLAT. Avec lui, l'impôt incrémental sur les rentes vaut exactement 30 %
+ * quel que soit le revenu — donc le nouveau facteur calculé rend précisément 0,7, et le correctif
+ * est INVISIBLE. Un stub qui reproduit la forme du défaut ne peut pas le détecter. Ces tests
+ * utilisent donc un stub PROGRESSIF.
+ */
+describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, plus un 0,7 plat', () => {
+    // Barème progressif minimal : 0 % sous 20 k$, 40 % au-delà. Suffit à distinguer un facteur
+    // contextuel d'un facteur plat, sans dépendre du vrai barème (qui bouge chaque année).
+    const stubProgressif = (gross: number): FiscalReport =>
+        ({ totalTax: Math.max(0, gross - 20000) * 0.4 } as FiscalReport);
+    const sansImpot = (): FiscalReport => ({ totalTax: 0 } as FiscalReport);
+
+    const retraite = { ...base, currentAge: 60, retirementTargetAge: 65, incomeRetirement: 0 };
+
+    /**
+     * Le facteur net appliqué à la VAN, DÉRIVÉ des trois champs publiés :
+     *   estateNetWorth = finalRawNetWorth − totalEstateTax + VAN × facteur
+     * On isole `VAN × facteur`, puis on divise par la VAN BRUTE obtenue avec un stub sans impôt.
+     * C'est la grandeur que le lot change — l'asserter directement évite de comparer des
+     * patrimoines dont mille autres termes bougent.
+     */
+    const facteurNet = (inputs: EstateCalcInputs): number => {
+        const avec = computeEstateNetWorth(inputs, stubProgressif);
+        const brut = computeEstateNetWorth(inputs, sansImpot);
+        const vanNette = avec.estateNetWorth - avec.finalRawNetWorth + avec.totalEstateTax;
+        const vanBrute = brut.estateNetWorth - brut.finalRawNetWorth + brut.totalEstateTax;
+        expect(vanBrute, 'VAN brute nulle → le test ne mesurerait rien').toBeGreaterThan(1000);
+        return vanNette / vanBrute;
+    };
+
+    it('le facteur RÉPOND au barème — un facteur plat n’y répondrait pas du tout', () => {
+        // ⚠️ Mon premier jet divisait la VAN nette par une VAN « brute » calculée avec un stub sans
+        // impôt. VACUEUX : avec un facteur CONSTANT, numérateur et dénominateur sont multipliés par
+        // la même chose et le ratio vaut 1 quoi qu'il arrive. Perturbation à l'appui — remettre
+        // `0,7` ne faisait pas rougir ce test. On compare donc la VAN nette entre DEUX barèmes.
+        const aise = { ...retraite, incomeRetirement: 8000 };
+        const vanNette = (fn: (g: number) => FiscalReport): number => {
+            const r = computeEstateNetWorth(aise, fn);
+            return r.estateNetWorth - r.finalRawNetWorth + r.totalEstateTax;
+        };
+        const sans = vanNette(sansImpot);
+        const avec = vanNette(stubProgressif);
+        expect(sans, 'VAN nulle → le test ne mesurerait rien').toBeGreaterThan(1000);
+        // Sous un barème qui impose, la VAN nette DOIT être plus basse. Avec `× 0,7` en dur, les
+        // deux valent 0,7 × VAN — strictement égales.
+        expect(avec).toBeLessThan(sans * 0.95);
+    });
+
+    it('le facteur DÉCROÎT quand le revenu monte — ce qu’un facteur plat ne peut pas faire', () => {
+        const fModeste = facteurNet({ ...retraite, incomeRetirement: 0 });
+        const fAise = facteurNet({ ...retraite, incomeRetirement: 8000 });
+        expect(fAise).toBeLessThan(fModeste);
+        // Et il descend VRAIMENT (le stub prélève 40 % au-delà du seuil), pas d'un epsilon.
+        expect(fModeste - fAise).toBeGreaterThan(0.2);
+    });
+
+    it('le facteur reste BORNÉ à [0, 1] — un barème ne confisque ni ne rembourse la rente', () => {
+        const confiscatoire = (gross: number): FiscalReport => ({ totalTax: Math.max(0, gross) * 2 } as FiscalReport);
+        // ⚠️ `incomeRetirement` NON NUL, sinon la soustraction des rentes est clampée à 0, l'impôt
+        // incrémental vaut 0 et le clamp n'est jamais sollicité — mon premier jet était vacueux
+        // pour cette raison exacte (perturbation : retirer le clamp ne faisait rien rougir).
+        const avec = computeEstateNetWorth({ ...retraite, incomeRetirement: 8000 }, confiscatoire);
+        const vanNette = avec.estateNetWorth - avec.finalRawNetWorth + avec.totalEstateTax;
+        // Clampé à 0 : la VAN n'ajoute rien, mais elle ne doit JAMAIS soustraire du patrimoine.
+        expect(vanNette).toBeGreaterThanOrEqual(0);
+    });
+});

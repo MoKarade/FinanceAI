@@ -133,7 +133,11 @@ describe('[GROSSFROMNET-ANNEE-FIGEE] l’inversion suit le barème de l’ANNÉE
         // Le sens est le discriminant : indexer les paliers allège l'impôt, donc il faut MOINS de
         // brut pour atteindre le même net. Un `year` ignoré rendrait les deux STRICTEMENT égaux.
         expect(b2030).toBeLessThan(b2026);
-        expect(b2026 - b2030).toBeGreaterThan(100);
+        // ⚠️ ENCADRÉ, pas un plancher lâche : le `> 100 $` d'origine laissait passer une
+        // indexation ramenée à 0,15 %/an (marge 13×). L'écart MESURÉ est 1 377 $ pour +2 %/an sur
+        // 4 ans — l'encadrement teste donc vraiment le TAUX, pas juste son signe.
+        expect(b2026 - b2030).toBeGreaterThan(1200);
+        expect(b2026 - b2030).toBeLessThan(1600);
     });
 
     it('chaque année inverse VRAIMENT son propre barème (aller-retour)', () => {

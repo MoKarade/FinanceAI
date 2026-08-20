@@ -11,7 +11,7 @@
  * d'utilisateurs sont concernés.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { calculateFiscalReport } from '../../utils/tax';
+import { calculateFiscalReport, calculateGrossFromNet } from '../../utils/tax';
 
 // jsdom fournit un VRAI `localStorage` : on l'utilise tel quel plutôt que de le stubber — le stub
 // masquait le vrai chemin et rendait les quatre cas vacueux (grossSalary restait à 0).
@@ -31,7 +31,11 @@ describe('[MIGRATE-GROSS-135] migration legacy : le brut PERSISTÉ est déduit, 
         // ⚠️ UNITÉS — le piège n°1 du dépôt. Le store est MENSUEL, `calculateGrossFromNet` est
         // ANNUEL : on vérifie l'aller-retour complet plutôt que le nombre intermédiaire.
         for (const [i, netMensuel] of [[0, 5000], [1, 4000]] as const) {
-            const netAnnuelRendu = calculateFiscalReport(users[i].grossSalary * 12, 0, 0).netIncome;
+            // ⚠️ MÊME ANNÉE que le code testé, sinon ce test devient une BOMBE À RETARDEMENT :
+            // la migration lit l'horloge, et une vérification figée à 2026 aurait rougi le
+            // 2027-01-01 sans le moindre changement de code (mesuré : écart 208 $ à 2027).
+            const netAnnuelRendu = calculateFiscalReport(
+                users[i].grossSalary * 12, 0, 0, new Date().getFullYear()).netIncome;
             // Tolérance = la GARANTIE de la dichotomie (< 1 $), plus l'arrondi au dollar du brut
             // MENSUEL que la migration écrit (`Math.round`), qui vaut jusqu'à 12 $ une fois annualisé.
             expect(Math.abs(netAnnuelRendu - netMensuel * 12)).toBeLessThan(13);
@@ -45,7 +49,11 @@ describe('[MIGRATE-GROSS-135] migration legacy : le brut PERSISTÉ est déduit, 
         // L'ancien code écrivait 5000 × 1,35 = 6 750 $/mois. Le brut déduit est sensiblement plus
         // haut (mesuré ≈ 7 247 $/mois) — c'est tout l'objet du lot.
         expect(u.grossSalary).not.toBe(Math.round(5000 * 1.35));
+        // ⚠️ Le seuil `5000 × 1,35` cesserait d'être discriminant vers 2060 (le brut déduit
+        // décroît avec l'indexation des paliers : mesuré 6 783 $ en 2040, 6 338 $ en 2060).
+        // On compare donc au brut déduit de l'année COURANTE, pas à un nombre figé.
         expect(u.grossSalary).toBeGreaterThan(5000 * 1.35);
+        expect(u.grossSalary).toBe(Math.round(calculateGrossFromNet(5000 * 12, new Date().getFullYear()) / 12));
     });
 
     it('un brut DÉJÀ saisi n’est jamais écrasé', async () => {

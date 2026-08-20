@@ -878,8 +878,13 @@ export const calculateNetFromGross = (monthlyGross: number) => {
  * Paramètre OPTIONNEL à défaut NEUTRE : un appelant qui ne le passe pas obtient exactement le
  * comportement d'avant, donc zéro code de migration et zéro risque de rétrocompat.
  */
-export const calculateGrossFromNet = (targetNetAnnual: number, year: number = 2026): number => {
+export const calculateGrossFromNet = (targetNetAnnual: number, year: number = TAX_BASE_YEAR): number => {
     if (targetNetAnnual <= 0) return 0;
+    // GUARD-NAN — même convention que `getMarginalRate` et `calculateFiscalReport` dans ce module :
+    // repli BORNÉ et VOLONTAIRE plutôt qu'une propagation silencieuse. Sans ça, `year = NaN` rendait
+    // `brut = net` (impôt ZÉRO) sans un bruit — mesuré. Non atteignable par les 7 appelants actuels,
+    // mais c'était le seul paramètre numérique du module ajouté sans coercition.
+    const anneeSure = Number.isFinite(year) ? year : TAX_BASE_YEAR;
     const low0 = targetNetAnnual;
     let high = targetNetAnnual * 2;
 
@@ -887,7 +892,7 @@ export const calculateGrossFromNet = (targetNetAnnual: number, year: number = 20
     // double. Plafond d'expansion (40 doublements ≈ ×10^12) = garde-fou anti-boucle
     // si la fonction n'était pas monotone/atteignable (ne devrait jamais arriver).
     let expand = 0;
-    while (calculateFiscalReport(high, 0, 0, year).netIncome < targetNetAnnual && expand < 40) {
+    while (calculateFiscalReport(high, 0, 0, anneeSure).netIncome < targetNetAnnual && expand < 40) {
         high *= 2;
         expand++;
     }
@@ -896,7 +901,7 @@ export const calculateGrossFromNet = (targetNetAnnual: number, year: number = 20
     let iterations = 0;
     while (iterations < 40) {
         const mid = (low + high) / 2;
-        const net = calculateFiscalReport(mid, 0, 0, year).netIncome;
+        const net = calculateFiscalReport(mid, 0, 0, anneeSure).netIncome;
         if (Math.abs(net - targetNetAnnual) < 1) return mid;
         if (net < targetNetAnnual) {
             low = mid;

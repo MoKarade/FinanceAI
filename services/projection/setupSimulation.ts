@@ -9,7 +9,7 @@
 // dérivées.
 
 import { mulberry32 } from './helpers';
-import { calculateCeliRoom, calculateGrossFromNet, getResidencyStartYear, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK, rrqAdjustmentFactor as computeRrqFactor, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, RRSP_ROOM_RATE } from '../../utils/tax';
+import { TAX_BASE_YEAR, calculateCeliRoom, calculateGrossFromNet, getResidencyStartYear, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK, rrqAdjustmentFactor as computeRrqFactor, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, RRSP_ROOM_RATE } from '../../utils/tax';
 import type { FutureScenarioType } from '../projection';
 
 /**
@@ -149,7 +149,7 @@ export function computeIncomeBaseline(
     projection: { useTheoretical?: boolean; theoreticalIncome?: number },
     users: Array<{ netSalary?: number; grossSalary?: number } | undefined>,
     /** Année du barème pour l'inversion net→brut ([GROSSFROMNET-ANNEE-FIGEE]). Défaut NEUTRE. */
-    startYear: number = 2026,
+    startYear: number = TAX_BASE_YEAR,
 ): IncomeBaselineResult {
     const useTheo = projection.useTheoretical;
     const theoIncome = projection.theoreticalIncome || 8000;

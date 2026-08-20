@@ -913,6 +913,15 @@
   doublement caché. Il faut les DEUX correctifs, avec `[FISC-GUARD-ARGUMENT]`. C'est la leçon
   `AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE` qui n'est pas encore entièrement payée.
 
+- [ ] **`[TAXBRACKETVIZ-ANNEE]`** (S, FAIBLE — découvert en revue de `[GROSSFROMNET-ANNEE-FIGEE]`) —
+  `components/TaxBracketViz.tsx` trace `FED_BRACKETS`/`QC_BRACKETS` **bruts** (2026, non indexés) et
+  calcule son total par `calculateFiscalReport(gross, 0, 0)` — année 2026 — alors que le brut qu'il
+  reçoit de `Retirement.tsx` est désormais déduit au barème de l'année COURANTE. Paire désaccordée,
+  comme celle corrigée dans `TaxCenter`. **MESURÉ** : 333 $ sur 86 968 (0,4 %) dès 2027 — visuellement
+  invisible sur des barres de paliers, d'où le classement FAIBLE. **Correctif** : passer l'année au
+  composant ET indexer les paliers affichés — un demi-correctif (total indexé, barres non) créerait
+  une incohérence PIRE, entre les barres et leur propre total. Voisin de `[ASSETLOC-YEAR-2026]`.
+
 - [ ] **`[GROSSFROMNET-CREDITS-65]`** (S, FAIBLE — découvert en revue de `[MIGRATE-GROSS-135]`) —
   `calculateGrossFromNet` n'accepte pas d'`ageOpts`, alors que `taxDecember` accorde les crédits
   d'âge à un salarié de 65 ans et plus. Le brut déduit est donc SURESTIMÉ pour cette population.

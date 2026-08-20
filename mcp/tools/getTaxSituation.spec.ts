@@ -36,7 +36,9 @@ export const getTaxSituationSpec = {
     handler: async ({ year }, getState) => withState(getState, (state: AppState) => {
         const users = (state.config?.users ?? []) as unknown as User[];
         const activeUsers = users.filter((u) => u && (u.grossSalary || u.netSalary));
-        const grossAnnual = computeBaseGrossAnnual(users);
+        // [GROSSFROMNET-ANNEE-FIGEE] le brut PUBLIÉ au modèle doit suivre le même barème que l'impôt
+        // du même payload — le system prompt les déclare « seule source de vérité chiffrée ».
+        const grossAnnual = computeBaseGrossAnnual(users, year);
 
         // [MCP-TAX-COUPLE] — impôt PAR CONJOINT puis sommé, comme le moteur (taxDecember.ts
         // calcule taxMarcReal et taxAnnaReal SÉPARÉMENT). L'ancien code sommait les 2 salaires

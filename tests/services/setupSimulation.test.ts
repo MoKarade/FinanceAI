@@ -6,7 +6,10 @@
  * Ces tests verrouillent le comportement corrigé.
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { calculateFiscalReport } from '../../utils/tax';
+import { computeBaseGrossAnnual } from '../../services/projection/buildSimulationParams';
 import {
     buildSeededRng,
     computeIncomeBaseline,
@@ -53,6 +56,52 @@ describe('computeIncomeBaseline — régression bug « revenu ×12 »', () => {
         // serrée : `toBeCloseTo(x, 0)` exige `< 0,5 $`, et sur 2 951 cibles mesurées 43 %
         // dépassent ce seuil (résidu max 0,998 $). Cette ancre-ci passait par CHANCE.
         expect(Math.abs(calculateFiscalReport(r.grossMarcBaseAnnual, 0, 0).netIncome - 66000)).toBeLessThan(1);
+    });
+
+    it('[GROSSFROMNET-ANNEE-FIGEE] le CÂBLAGE de startYear est effectif, pas seulement la feuille', () => {
+        // ⚠️ Trou relevé en revue : les 3 tests du lot visaient `calculateGrossFromNet` en direct.
+        // Retirer `startYear` de l'appel dans `projection.ts` n'aurait fait rougir AUCUN test — le
+        // no-op est exact tant que l'année courante vaut 2026. C'est la LIVRAISON du lot qui n'était
+        // pas couverte, pas la fonction.
+        const a2026 = computeIncomeBaseline({}, [{ netSalary: 5000 }, undefined], 2026);
+        const a2030 = computeIncomeBaseline({}, [{ netSalary: 5000 }, undefined], 2030);
+        // Indexer les paliers allège l'impôt → il faut MOINS de brut pour le même net.
+        expect(a2030.grossMarcBaseAnnual).toBeLessThan(a2026.grossMarcBaseAnnual);
+        expect(a2026.grossMarcBaseAnnual - a2030.grossMarcBaseAnnual).toBeGreaterThan(1000);
+        // Et le défaut reste NEUTRE (rétrocompat bit-identique).
+        expect(computeIncomeBaseline({}, [{ netSalary: 5000 }, undefined]).grossMarcBaseAnnual)
+            .toBe(a2026.grossMarcBaseAnnual);
+    });
+
+    it('[GROSSFROMNET-ANNEE-FIGEE] idem pour computeBaseGrossAnnual (l’autre site câblé)', () => {
+        const users = [{ netSalary: 5000 }] as never;
+        const b2026 = computeBaseGrossAnnual(users, 2026);
+        const b2030 = computeBaseGrossAnnual(users, 2030);
+        expect(b2030).toBeLessThan(b2026);
+        expect(computeBaseGrossAnnual(users)).toBe(b2026);
+    });
+
+    it('[GROSSFROMNET-ANNEE-FIGEE] les APPELANTS passent bien l’année (scan de source)', () => {
+        // ⚠️ Les deux tests ci-dessus prouvent que les FONCTIONS honorent l'année. Ils ne prouvent
+        // RIEN sur leurs appelants : mesuré, retirer `startYear` de `projection.ts` les laisse tous
+        // VERTS, parce que le no-op est exact tant que l'année courante vaut 2026. C'est
+        // `TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT` — et le site d'appel vit au milieu d'une boucle
+        // moteur de 1 500 lignes, non instanciable isolément. Le patron du dépôt pour ce cas est le
+        // scan de SOURCE (`chartPrivacyScan`, `curveFields`, `silencesXs`).
+        const lire = (rel: string): string => {
+            const src = readFileSync(join(__dirname, '../..', rel), 'utf-8');
+            expect(src.length, `${rel} : fichier vide ou mal résolu`).toBeGreaterThan(500);
+            return src;
+        };
+        expect(lire('services/projection.ts'),
+            'projection.ts ne passe plus startYear à computeIncomeBaseline')
+            .toMatch(/computeIncomeBaseline\(\s*projection,\s*config\.users,\s*startYear\s*\)/);
+        expect(lire('services/projection/buildSimulationParams.ts'),
+            'buildSimulationParams ne passe plus l’année à computeBaseGrossAnnual')
+            .toMatch(/computeBaseGrossAnnual\(\s*users,\s*inputs\.startYear\s*\)/);
+        // Les deux sites MCP, oubliés au premier jet et trouvés en revue.
+        expect(lire('mcp/financialSignals.ts')).toMatch(/computeBaseGrossAnnual\(\s*users,\s*year\s*\)/);
+        expect(lire('mcp/tools/getTaxSituation.spec.ts')).toMatch(/computeBaseGrossAnnual\(\s*users,\s*year\s*\)/);
     });
 
     it('mode théorique : theoreticalIncome par défaut = 8000', () => {

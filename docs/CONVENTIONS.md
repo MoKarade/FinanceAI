@@ -4740,3 +4740,42 @@ que `< 1 $` (`Math.abs(net - target) < 1` dans sa condition d'arrêt). Mesuré s
 marges de 0,2 à 0,4 $ — toute retouche du barème aurait pu les faire rougir sans le moindre défaut.
 Une assertion plus serrée que la garantie de la fonction testée est un piège CI à retardement : lire
 la condition d'arrêt, et s'y aligner (`toBeLessThan(1)`).
+
+### `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` — j'ai désaccordé ce qui était accordé
+
+En donnant un paramètre `year` à `calculateGrossFromNet`, j'ai câblé cinq sites. Sur l'un d'eux,
+`TaxCenter.tsx`, j'ai changé **l'inversion** et laissé **l'imposition** à son défaut, trois lignes
+plus bas :
+
+```ts
+: calculateGrossFromNet((u.netSalary || 0) * 12, new Date().getFullYear());   // changé
+...
+const res = calculateFiscalReport(uTotalTaxable, …, undefined /* year */, …); // pas changé
+```
+
+**Avant mon lot, les deux étaient à 2026** — donc l'aller-retour net→brut→impôt était EXACT.
+Après, la paire est désaccordée : MESURÉ **212 $/an dès 2027, 874 $ en 2030**, sur un panneau
+étiqueté « Estimation {année courante} ». J'ai transformé une cohérence accidentelle en incohérence
+réelle, en croyant améliorer.
+
+**La règle** : une année (ou tout paramètre de contexte : devise, région, barème) ne se câble jamais
+seule. Elle appartient à une PAIRE — ce qui produit une grandeur et ce qui la consomme. Avant de
+passer un contexte à un appel, chercher dans la même fonction tous les autres appels de la même
+famille, et se demander lequel devient incohérent. **Le danger est spécifiquement d'améliorer un
+seul côté** : un défaut partagé est souvent auto-cohérent, et le corriger à moitié est pire que de
+ne rien faire.
+
+⚠️ **Corollaire pour les tests : un test qui fige une année pendant que le code lit l'horloge est une
+BOMBE À RETARDEMENT.** Mon `migrateGrossFromNet.test.ts` vérifiait l'aller-retour au barème 2026
+alors que la migration utilise `new Date().getFullYear()` : rouge garanti le 2027-01-01, sans le
+moindre changement de code. Reproduit en exécution (écart 208 $), corrigé, puis vérifié sous horloge
+forcée à 2027, 2030 et 2040. Quand le code dépend de l'horloge, le test doit dépendre de la MÊME
+horloge — ou la figer explicitement, jamais coder l'année en dur d'un seul côté.
+
+⚠️ **Et le scan de source est le seul moyen de couvrir un APPELANT enfoui.** Mes deux tests de
+câblage vérifiaient que les FONCTIONS honorent l'année. Mesuré : retirer `startYear` de l'appel dans
+`projection.ts` les laissait tous VERTS — le no-op est exact tant que l'année courante vaut 2026.
+C'est `TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`, re-commis dans le lot même qui corrigeait un défaut
+d'appelant. Le site d'appel vit au milieu d'une boucle moteur non instanciable : le patron du dépôt
+pour ce cas est le scan de SOURCE, et il a immédiatement révélé **deux appelants MCP oubliés** dont
+l'un publie ce brut à un LLM comme « seule source de vérité chiffrée ».

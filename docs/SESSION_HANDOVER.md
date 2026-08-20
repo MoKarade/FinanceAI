@@ -19,6 +19,18 @@
 > ⚠️ **Le ratchet fiscal a encore attrapé mon propre code** (3e lot d'affilée) : le défaut
 > `startYear: number = 2026` est un littéral neuf dans un module scanné. Inventorié `structural`.
 >
+> ⚠️⚠️ **LA REVUE A TROUVÉ UNE RÉGRESSION QUE J'AVAIS INTRODUITE** : dans `TaxCenter`, j'avais câblé
+> l'année sur l'inversion et pas sur l'imposition trois lignes plus bas. AVANT le lot les deux
+> étaient à 2026, donc cohérents — 212 $/an d'écart dès 2027 APRÈS. Câbler une année, c'est câbler
+> une PAIRE (`CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`).
+>
+> ⚠️ **Bombe à retardement dans mon propre test** : il figeait 2026 pendant que le code lit
+> l'horloge → rouge garanti le 2027-01-01. Corrigé et vérifié sous horloge forcée à 2027/2030/2040.
+>
+> ⚠️ **Deux appelants MCP oubliés** (`year` était pourtant dans la portée), dont un qui publie ce
+> brut à un LLM. Et **mes tests de câblage ne testaient pas les appelants** — retirer `startYear` de
+> `projection.ts` laissait tout vert. Fermé par un scan de SOURCE, prouvé discriminant.
+>
 > **SUITE — candidats NON bloqués**, tous mesurés dans `docs/BACKLOG.md` :
 > `[ESTATE-NPV-07]` (vague 1f, nommer une hypothèse — pas de sourçage requis),
 > `[GROSSFROMNET-CREDITS-65]`, `[AUTOMARGINAL-BASCULE-SILENCIEUSE]`,

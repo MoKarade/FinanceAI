@@ -32,7 +32,8 @@ export function computeFinancialSignals(
     const overview = buildFinancialOverview(state);
     const users = (state.config?.users ?? []) as unknown as User[];
     const activeUsers = users.filter((u) => u && (u.grossSalary || u.netSalary));
-    const grossAnnual = computeBaseGrossAnnual(users);
+    // [GROSSFROMNET-ANNEE-FIGEE] même barème que les droits REER calculés juste en dessous.
+    const grossAnnual = computeBaseGrossAnnual(users, year);
     const room = computeHistoricalContributionRoom(activeUsers, grossAnnual, year);
     const breakdown = computeAssetBreakdown(state.assets ?? [], state.fxRates ?? {});
     const celiRoom = Math.max(0, room.totalHistoricalCeliRoom - breakdown.celi);

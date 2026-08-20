@@ -23,6 +23,9 @@ l'**unique** terme non homogène du barème réel (sweep 1 920 cas, panel #556).
 fermée (≤ 250,50 $ réels/pers/an, ~12 k$ réels/30 ans pour un couple 65+ à pension). Discrimination
 prouvée par `git stash push utils/tax.ts` (ancien moteur + tests neufs → 1 rouge exact — ⚠️ un
 stash COMPLET emporte les tests avec le fix et ne prouve rien). 3 tests neufs dans `tax.test.ts`.
+**1 golden re-basé, expliqué** (item2c solo 70 : tax +291 $ cumulé, NW −198 $) — SEUL le solo
+bouge : sa pension admissible dépasse le montant déflaté ; chez les couples la pension per-adulte
+reste sous le montant, le min prend la pension dans les deux versions (delta structurellement nul).
 
 ## 2026-08-20 — [FISC-RRSP-ROOM-PER-USER] : les droits REER se calculent par personne (règle ARC)
 

@@ -95,7 +95,12 @@ describe('[ITEM-2C] gates de timing per-conjoint — FERR (conversion) + PSV/RRQ
         coupleUser1Older:   { ferr: 24, nw: -82434, tax: 13337 },  // FERR + PSV/RRQ per-conjoint (user2=64 : PSV démarre à SES 65)
         coupleUser1Younger: { ferr: 24, nw: -82024, tax: 13337 },  // idem ; user0=64<65 mais user1=70 touche PSV → SRG calculé (psvMonthly>0)
         coupleEqual:        { ferr: 24, nw: -78810, tax: 13351 },  // ANCRE — inchangé vs ménage
-        solo:               { ferr: 24, nw: -116753, tax: 59919 }, // ANCRE — inchangé vs ménage ; TP1G-VIVANT-SEUL conservé
+        // Re-basé 2026-08-20 [FISC-PENSION-CREDIT-REAL] (était nw −116 753 / tax 59 919) : le
+        // crédit pension féd est désormais déflaté en espace réel → +291 $ d'impôt cumulé, −198 $
+        // de NW. SEUL le solo bouge : sa pension admissible dépasse le montant déflaté (le min
+        // prenait 2 000 $ réels à tort) ; chez les couples la pension per-adulte reste sous le
+        // montant — le min prend la pension dans les deux versions, delta nul (sens vérifié).
+        solo:               { ferr: 24, nw: -116951, tax: 60210 }, // ANCRE — inchangé vs ménage ; TP1G-VIVANT-SEUL conservé
         couplePsvBonus:     { ferr: 12, nw: -84939, tax: 14165 },  // bonus PSV 75+ SEULEMENT sur user1=76 ; user2=64 pas de PSV
         couplePsvStartGap:  { ferr: 72, nw: -82480, tax: 15044 },  // user1=66 PSV démarrée ; user2=63 PSV démarre à SES 65
     } as const;

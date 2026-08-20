@@ -523,6 +523,46 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
         // revenu, donc indirectement de la stratégie. Le découplage est mesuré, pas prouvé.
     });
 
+    it('le MOTEUR alimente vraiment les champs plombés — scan du SITE D\u2019APPEL', () => {
+        // ⚠️ Ce fichier teste le MODULE avec les champs posés à la main : rien n'y prouve que
+        // `services/projection.ts` les alimente. MESURÉ : débrancher `dbPensionMonthlyPlanned` ou
+        // `pensionOasReductionMonthlyFinal` au site d'appel laissait **324 tests VERTS** sur les
+        // 15 fichiers qui touchent `estateNetWorth`. `TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT` —
+        // et le site d'appel vit au milieu d'une boucle moteur non instanciable, donc le patron
+        // du dépôt pour ce cas est le scan de SOURCE.
+        const src = readFileSync(resolve(__dirname, '../../services/projection.ts'), 'utf8');
+        const code = src
+            .replace(/\/\*[\s\S]*?\*\//g, '')
+            .split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+        // Anti-vacuité du décommentage : il doit rester du VRAI code et un jeton connu.
+        expect(code.length).toBeGreaterThan(src.length * 0.25);
+        expect(code).toContain('computeEstateNetWorth');
+        // Chaque champ doit être alimenté par la variable moteur ATTENDUE, pas par un littéral.
+        const attendus: Array<[string, string]> = [
+            ['pensionRrqMonthlyFinal', 'pensionRRQ'],
+            ['pensionPsvMonthlyFinal', 'pensionPSV'],
+            ['pensionGisMonthlyFinal', 'incomeRetirementGis'],
+            ['pensionOasReductionMonthlyFinal', 'pensionOasReduction'],
+            ['pensionPriveeMonthlyFinal', 'pensionPrivee'],
+        ];
+        for (const [champ, source] of attendus) {
+            const m = code.match(new RegExp(`${champ}\\s*:\\s*([A-Za-z0-9_.]+)`));
+            expect(m, `${champ} absent du site d'appel`).not.toBeNull();
+            expect(m?.[1], `${champ} n'est pas alimenté par ${source}`).toBe(source);
+        }
+        // Le proxy DB doit passer par la SOURCE UNIQUE, jamais par une indexation recopiée.
+        expect(code).toMatch(/dbPensionMonthlyPlanned:\s*computeDbPensionMonthly\(/);
+        // Et ces variables doivent être remises à zéro EN TÊTE DE BOUCLE, comme leurs voisines.
+        // ⚠️ `toContain('x = 0;')` serait VACUEUX : la DÉCLARATION `let x = 0;` le satisfait déjà.
+        // Mesuré — la perturbation « reset retiré » laissait 40/40 vert avec cette formulation.
+        // On exige donc DEUX occurrences : la déclaration hors boucle, et le reset dans la boucle.
+        for (const v of ['incomeRetirementGis', 'pensionOasReduction', 'pensionPrivee', 'pensionRRQ', 'pensionPSV']) {
+            const occurrences = code.split(new RegExp(`(?:^|[^A-Za-z0-9_.])${v}\\s*=\\s*0;`)).length - 1;
+            expect(occurrences, `${v} : déclaration + reset de boucle attendus, trouvé ${occurrences}`)
+                .toBeGreaterThanOrEqual(2);
+        }
+    });
+
     it('les DEUX appels fiscaux du facteur portent la MÊME année — scan de SOURCE', () => {
         // ⚠️ Ce lot CRÉE une paire `calculateFiscalReport(…, finalYear, …)`. Désapparier l'année sur
         // un seul des deux appels laisse 34/34 VERT : les stubs de ce fichier ignorent tous
@@ -590,16 +630,44 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
             ...base, currentAge: 35, retirementTargetAge: 65, simulationYears: 20,
             incomeRetirement: 0, pensionRrqMonthlyFinal: 0, pensionPsvMonthlyFinal: 0,
         };
+        // ⚠️ `dbPensionMonthlyPlanned` est reçu DÉJÀ valorisé à l'année finale — c'est
+        // `computeDbPensionMonthly` (source unique) qui porte l'indexation, l'âge de début et le
+        // facteur de survivant. Ce module ne fait plus que l'annualiser : le recopier ici avait
+        // produit trois divergences mesurées contre le moteur.
         const renteValorisee = 1_200 * 12 * Math.pow(1.02, 20);
-        const dbPlanifiee = 3_000 * 12 * Math.pow(1.02, 20);
+        const dbPlanifiee = 3_000 * 12;
         const avecDb = { ...preRetraite, dbPensionMonthlyPlanned: 3_000 };
         expect(facteurNet(avecDb, stubPaliers))
             .toBeCloseTo(1 - (paliers(dbPlanifiee + renteValorisee) - paliers(dbPlanifiee)) / renteValorisee, 6);
-        // DISCRIMINANT : sans le plancher, le contexte serait la rente seule — plusieurs points d'écart.
+        // DISCRIMINANT : sans le proxy, le contexte serait la rente seule — plusieurs points d'écart.
         expect(facteurNet(preRetraite, stubPaliers) - facteurNet(avecDb, stubPaliers)).toBeGreaterThan(0.05);
-        // CONTINUITÉ au passage à la retraite : la DB devient réelle, le facteur ne saute pas.
-        const retraiteJuste = { ...avecDb, retirementTargetAge: 55, incomeRetirement: dbPlanifiee / 12 };
-        expect(facteurNet(retraiteJuste, stubPaliers)).toBeCloseTo(facteurNet(avecDb, stubPaliers), 6);
+        // CONTINUITÉ au démarrage de la DB : elle devient réelle, le proxy s'efface, contexte égal.
+        const dbVersee = { ...avecDb, incomeRetirement: 3_000, pensionPriveeMonthlyFinal: 3_000 };
+        expect(facteurNet(dbVersee, stubPaliers)).toBeCloseTo(facteurNet(avecDb, stubPaliers), 6);
+    });
+
+    it('DB pas encore versée : le proxy S\u2019AJOUTE au revenu réel, il ne le REMPLACE pas', () => {
+        // ⚠️ Mon jet précédent écrivait `Math.max(revenuRéel, proxyDB)`. Entre l'âge de la retraite
+        // et `dbPensionStartAge`, un ménage touche déjà ses rentes publiques mais pas encore sa DB :
+        // le `max` prenait le proxy et JETAIT les rentes réelles. MESURÉ sur un solo (retraite 58,
+        // DB à 70) : contexte surestimé de 53 799 $/an, `estateNetWorth` sous-évalué de 142 890 $,
+        // et une falaise NEUVE de 5,49 points — le défaut même que ce terme devait supprimer.
+        // Ici : revenu réel 18 000 $ (rentes versées) + proxy DB 24 000 $ = 42 000 $ de contexte.
+        const cas = { ...retraite(1_500), dbPensionMonthlyPlanned: 2_000, pensionPriveeMonthlyFinal: 0 };
+        expect(facteurNet(cas, stubPaliers)).toBeCloseTo(1 - (paliers(42_000) - paliers(24_000)) / 18_000, 6);
+        // DISCRIMINANT : un `max` rendrait 24 000 $ de contexte, donc une valeur nettement différente.
+        expect(Math.abs(facteurNet(cas, stubPaliers)
+            - (1 - (paliers(24_000) - paliers(6_000)) / 18_000))).toBeGreaterThan(0.05);
+    });
+
+    it('DB déjà versée : le proxy ne compte PLUS (sinon il double, et à VIE)', () => {
+        // `incomeRetirement` porte alors la DB à sa valeur RÉELLE — indexation partielle comprise.
+        // Un proxy qui continuerait de compter surestimerait le contexte de façon PERMANENTE (le
+        // `max` ne redescend jamais) : mesuré jusqu'à 47 287 $/an pour une pension NON indexée,
+        // soit 34 645 $ d'`estateNetWorth` effacés.
+        const sansProxy = { ...retraite(4_000), pensionPriveeMonthlyFinal: 2_500 };
+        const avecProxy = { ...sansProxy, dbPensionMonthlyPlanned: 9_999 };
+        expect(facteurNet(avecProxy, stubPaliers)).toBeCloseTo(facteurNet(sansProxy, stubPaliers), 10);
     });
 
     it('un NaN sur les champs de rente PLOMBÉS ne bascule pas de branche en silence', () => {

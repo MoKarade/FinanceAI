@@ -94,10 +94,18 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // publiques, sur lesquelles le barème 2051 prélève bien moins que 30 %.
         // Décomposition du +190 745 $ (VAN brute 922 473 $), chaque étape MESURÉE :
         //   · 0,700 → 0,857 : abattement CALCULÉ au lieu du forfait ................ +144 924 $
-        //   · 0,857 → 0,899 : tranche = la rente RÉELLEMENT versée (40 616 $) et non
-        //                     l'estimé de saisie non indexé (28 800 $) ............. +38 348 $
-        //   · 0,899 → 0,907 : contexte STRUCTUREL, net du SRG et de l'écrêtement PSV,
-        //                     hors accumulateurs année-à-date ................ +7 473 $ (résidu)
+        //   · 0,857 → 0,907 : la tranche cesse d'être l'estimé de saisie NON INDEXÉ (28 800 $)
+        //                     et devient ce que la VAN VALORISE, en dollars de l'année finale
+        //                     (47 249 $) ; le contexte devient le revenu STRUCTUREL net du SRG
+        //                     et de l'écrêtement PSV ....................... +45 821 $ (résidu)
+        // ⚠️ Une version antérieure de ce commentaire disait « tranche = la rente RÉELLEMENT versée
+        // (40 616 $) ». C'était vrai d'un état INTERMÉDIAIRE du lot, mort depuis : le code livré
+        // prend `max(versé, valorisé)` et c'est la valorisée (47 249 $) qui gagne ici. Un chiffre
+        // périmé dans un commentaire se relit comme un FAIT — vérifié par dump des internes.
+        // ⚠️ Sur cette fixture `revenuSansRentes` vaut 0 : le ménage n'a pas de pension privée, donc
+        // le « facteur incrémental » y dégénère en TAUX MOYEN sur la rente. Ce n'est pas un cas
+        // dégradé, c'est le cas NOMINAL d'un ménage qui vit de ses rentes publiques — et c'est
+        // exactement la population que le forfait de 0,7 sur-taxait le plus.
         expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_565_398);
         // Second ancrage, même cause : 2 715 684 $ → 2 906 430 $, soit +190 746 $ — le MÊME écart
         // qu'au-dessus à un dollar d'arrondi près, parce que la VAN des rentes ne dépend pas du

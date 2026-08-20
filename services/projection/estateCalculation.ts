@@ -75,14 +75,21 @@ export interface EstateCalcInputs {
      *  contexte) en est NET : sans ce terme, la tranche retirée dépasserait le revenu qui la contient
      *  pour un retraité en récupération PSV. Un montant, deux registres, une seule convention. */
     pensionOasReductionMonthlyFinal?: number;
-    /** [ESTATE-NPV-07] Pension privée DB PLANIFIÉE (`retirementGoal.dbPensionMonthly` : montant
-     *  MÉNAGE, mensuel, dollars d'aujourd'hui). Sert de PROXY du revenu de retraite tant que le
-     *  ménage n'est pas encore retraité — sans elle, le contexte fiscal pré-retraite est nul et le
-     *  facteur s'effondre au passage à la retraite (mesuré −65 687 $ pour UN an d'horizon en plus).
-     *  ⚠️ Simplification assumée : `dbPensionIndexationPct` et `dbPensionStartAge` ne sont PAS
-     *  répliqués ici — ce terme n'est qu'un plancher de contexte, et il cesse de compter dès que le
-     *  revenu de retraite RÉEL existe. */
+    /** [ESTATE-NPV-07] Pension privée DB que le ménage touchera, **déjà valorisée à l'année finale**
+     *  par `computeDbPensionMonthly` (la SOURCE UNIQUE partagée avec `retirementIncome.ts`) —
+     *  mensuel, familial. Sert de proxy du revenu de retraite tant que la DB n'est pas encore
+     *  versée : sans elle, le contexte fiscal pré-retraite est nul et le facteur s'effondre au
+     *  passage à la retraite (mesuré −65 687 $ pour UN an d'horizon en plus).
+     *  ⚠️ Mon premier jet la calculait ICI, en recopiant une indexation approximative. Trois
+     *  divergences MESURÉES contre le moteur : `dbPensionIndexationPct` ignoré (jusqu'à 47 287 $/an
+     *  de contexte fantôme, À VIE, pour une pension non indexée), `dbPensionStartAge` ignoré
+     *  (53 799 $/an), et `dbSurvivorPct` remplacé par `householdPensionShare` (0,60 contre 0,50 pour
+     *  la même grandeur). D'où l'extraction en source unique. */
     dbPensionMonthlyPlanned?: number;
+    /** [ESTATE-NPV-07] Pension privée DB RÉELLEMENT versée au dernier point (`retirementBreakdown.privee`,
+     *  mensuel familial). Sert UNIQUEMENT à savoir si la DB coule déjà : si oui, `incomeRetirement`
+     *  la porte et le proxy ci-dessus ne doit RIEN ajouter. */
+    pensionPriveeMonthlyFinal?: number;
     activeUsersCount: number;
     /**
      * [ENG-DIVORCE-ESTATE-PENSION] Part du ménage qui reste au déclarant, pour les rentes exprimées
@@ -349,13 +356,16 @@ export function computeEstateNetWorth(
     // outils MCP l'exposent au LLM. Le contexte total faisait donc BASCULER le conseil de décaissement
     // au gré du curseur d'horizon ; le contexte structurel reproduit l'ordre de `main` à tous les
     // horizons mesurés, en ne corrigeant que le NIVEAU.
-    // ⚠️ HYPOTHÈSE DE MODÈLE ASSUMÉE, avec son sens d'erreur et sa BORNE MESURÉE — pas « légère » :
-    // pour un retraité qui décaisse son REER/FERR chaque année, ce contexte sous-estime le revenu
-    // récurrent, donc SURESTIME le facteur. Mesuré : +3,5 pts / +32 135 $ sur la fixture divorce,
-    // mais **+16,5 pts / +66 232 $** sur un REER de 700 k$ et **+36,1 pts / +144 963 $** sur un REER
-    // de 2 M$ — le biais croît avec la taille du REER, donc frappe le plus la population que
-    // `drawdownOptimizer` conseille. Le vrai correctif est un revenu de retraite MOYEN sur les années
-    // restantes, pas un point : ticket `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`.
+    // ⚠️ HYPOTHÈSE DE MODÈLE ASSUMÉE, avec son sens d'erreur : pour un retraité qui décaisse son
+    // REER/FERR chaque année, ce contexte sous-estime le revenu récurrent, donc SURESTIME le facteur.
+    // ⚠️ NE PAS écrire ici un chiffre en le présentant comme une BORNE — j'ai publié « +3,5 pts »
+    // (une fixture), puis « +36,1 pts / +144 963 $ » (une autre), et la mesure suivante a rendu
+    // +43,98 pts / +375 176 $ ailleurs. Un maximum trouvé n'est pas un maximum. Le biais croît avec
+    // la taille du REER et avec les loyers, donc frappe le plus la population que `drawdownOptimizer`
+    // conseille. Pour le re-mesurer plutôt que le citer, comparer ce facteur à celui obtenu avec
+    // `revenuDeContexte = estateCurrentIncome` sur des fixtures à gros REER et à immeuble locatif.
+    // Le vrai correctif est un revenu de retraite MOYEN sur les années restantes, pas un point :
+    // ticket `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`.
     // ⚠️ `accRentesYear` EST EXCLU, ET C'EST UNE ERREUR D'UNITÉS, PAS UN CHOIX DE PÉRIMÈTRE.
     // Malgré son nom (il cumule les LOYERS, pas des rentes), c'est un accumulateur ANNÉE-À-DATE remis
     // à zéro chaque janvier (`taxJanuary.ts : accRentesYearReset: 0`). L'additionner à un
@@ -373,13 +383,25 @@ export function computeEstateNetWorth(
     // Le moteur ne renseigne `incomeRetirement` que dans le bloc retraite : à 54 ans il vaut 0, et un
     // contexte nul faisait rendre 0,9068 à un ménage qui touchera 60 000 $/an de rente DB. Au passage
     // à la retraite le facteur tombait à 0,6388 d'un coup : `estateNetWorth` DÉCROISSAIT de 65 687 $
-    // quand l'horizon augmentait d'UN an. La pension DB planifiée est une SAISIE de l'utilisateur,
-    // connue dès le premier mois — s'en priver, c'est fabriquer une falaise sur une information qu'on
-    // a déjà. Le `Math.max` évite une branche : dès que le revenu de retraite réel existe, il
-    // contient la DB et domine ce plancher.
-    const dbPlanifieeAnnuelle = Math.max(0, fin(inputs.dbPensionMonthlyPlanned ?? 0))
-        * MONTHS_PER_YEAR * Math.pow(1 + simInflation / 100, simulationYears) * householdPensionShare;
-    const revenuStructurel = Math.max(Math.max(0, incomeRetirement * 12 - gisAnnuel), dbPlanifieeAnnuelle);
+    // quand l'horizon augmentait d'UN an. La pension DB est une SAISIE de l'utilisateur, connue dès
+    // le premier mois — s'en priver, c'est fabriquer une falaise sur une information qu'on a déjà.
+    //
+    // ⚠️⚠️ C'EST UN COMPLÉMENT, PAS UN `Math.max` — mon premier jet mettait le proxy EN CONCURRENCE
+    // avec le revenu réel. Entre l'âge de la retraite et `dbPensionStartAge`, un ménage touche déjà
+    // ses rentes publiques mais pas encore sa DB : le `max` prenait le proxy et JETAIT les rentes
+    // réelles. MESURÉ sur un solo (retraite 58, DB à 70) : contexte surestimé de 53 799 $/an,
+    // `estateNetWorth` sous-évalué de 142 890 $, et une falaise NEUVE de 5,49 points au démarrage
+    // de la DB — exactement le défaut que ce terme était censé supprimer. Le patron correct vivait
+    // 20 lignes plus bas (`complementNonVerse`) : `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`, dans la
+    // MÊME expression, pour la troisième fois de ce lot.
+    // Le proxy ne compte donc que tant que la DB n'est PAS versée ; dès qu'elle coule,
+    // `incomeRetirement` la porte à sa valeur réelle (indexation partielle comprise) et le
+    // complément tombe à zéro. Continu : au mois du démarrage, l'un monte de ce dont l'autre descend.
+    const dbVerseeAnnuelle = Math.max(0, fin(inputs.pensionPriveeMonthlyFinal ?? 0)) * MONTHS_PER_YEAR;
+    const dbNonEncoreVersee = dbVerseeAnnuelle > 0
+        ? 0
+        : Math.max(0, fin(inputs.dbPensionMonthlyPlanned ?? 0)) * MONTHS_PER_YEAR;
+    const revenuStructurel = Math.max(0, incomeRetirement * 12 - gisAnnuel) + dbNonEncoreVersee;
 
     // ⚠️ ON IMPOSE EXACTEMENT CE QU'ON VALORISE, ET LE COMPLÉMENT NON ENCORE VERSÉ S'AJOUTE AU CONTEXTE.
     // La VAN ci-dessus valorise `rrqExpected + psvExpected` — les DEUX rentes, à tout horizon. Une

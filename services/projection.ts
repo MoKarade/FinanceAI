@@ -19,7 +19,7 @@ import { phaseDette, estLePremierMoisApresLeTerme } from './projection/debtSched
 import { initRentalStates, processRentalMonth } from './projection/rentalMonth';
 import { processAutoVehicleReplacement } from './projection/vehicleCycle';
 import { buildHistoricalSequence, buildReplaySequence, type YearReturn } from './projection/historicalReturns';
-import { computeRetirementIncome } from './projection/retirementIncome';
+import { computeRetirementIncome, computeDbPensionMonthly } from './projection/retirementIncome';
 import { processOneChild } from './projection/childrenReee';
 // [FUTUR-FIRE-STRUCT] Libellé du jalon FIRE partagé avec ses consommateurs (le texte n'est plus
 // dupliqué en dur : un lecteur qui doit matcher le libellé compare à la MÊME constante).
@@ -2178,9 +2178,20 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         pensionPsvMonthlyFinal: pensionPSV,
         pensionGisMonthlyFinal: incomeRetirementGis,
         pensionOasReductionMonthlyFinal: pensionOasReduction,
-        // [ESTATE-NPV-07] Plancher de contexte AVANT la retraite (saisie utilisateur, pas une sortie
-        // de simulation) : `incomeRetirement` vaut 0 tant que le ménage travaille.
-        dbPensionMonthlyPlanned: retirementGoal.dbPensionMonthly,
+        // [ESTATE-NPV-07] Proxy de contexte tant que la DB n'est pas versée. ⚠️ Calculé par la
+        // SOURCE UNIQUE `computeDbPensionMonthly` (partagée avec `retirementIncome.ts`), et NON
+        // recopié : la re-dérivation avait produit trois divergences mesurées (indexation partielle,
+        // âge de début, facteur de survivant). `age` est forcé au-delà de `dbPensionStartAge` parce
+        // qu'on veut « ce que la DB vaudra », pas « ce qu'elle vaut aujourd'hui » ; `inflFactor` est
+        // porté à l'année finale, comme `rrqExpected`.
+        dbPensionMonthlyPlanned: computeDbPensionMonthly({
+            retirementGoal,
+            age: Math.max(currentAge + projection.years, retirementGoal.dbPensionStartAge ?? retirementGoal.targetAge),
+            inflFactor: Math.pow(1 + simInflation / 100, projection.years),
+            survivorMode, dbSurvivorPct,
+            householdPensionShare: (survivorMode || divorced) ? 1 / Math.max(1, activeUsersCount) : 1,
+        }),
+        pensionPriveeMonthlyFinal: pensionPrivee,
         // [ENG-DIVORCE-ESTATE-PENSION] Le compteur de TÊTES : il MULTIPLIE ici un estimé
         // per-personne pour reconstituer le familial — sémantique INVERSE de `retirementIncome`,
         // où le même nom désigne un DIVISEUR d'agrégat. D'où une lecture ligne à ligne avant de

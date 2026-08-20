@@ -4,6 +4,52 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-20 (suite 112) — le garde fiscal ne voyait pas la table FERR
+> Branche `claude/rqap-cotisations` (basée sur `main`, PAS empilée).
+>
+> **Livré** : `[FISC-GUARD-VALEUR-LIEE]` — ouvert sous le nom `[FISC-GUARD-TERNAIRE]`, renommé parce
+> que **la mesure a contredit mon hypothèse** : le `:` attrapait surtout des PROPRIÉTÉS D'OBJET, et
+> c'est là qu'était le gros du trou.
+>
+> ⚠️⚠️ **`RRIF_RATES` — les 24 facteurs de retrait minimum du FERR (ARC) — était invisible au garde
+> fiscal DEPUIS SON PREMIER JOUR.** Idem `DONATION_CREDIT_RATES` (15/29 féd, 20/24 QC). Les deux
+> sont ANCRÉES (§7, §10) : ce qui manquait n'était pas la source, c'était la protection contre la
+> dérive silencieuse. Le filtre de position ne relevait qu'un littéral qu'on CALCULE ; un barème est
+> tout aussi souvent un littéral qu'on NOMME ou qu'on CHOISIT
+> (`FILTRE-DE-POSITION-QUI-NE-VOIT-QUE-L-ARITHMETIQUE`).
+>
+> **Mesuré** : 50 clés neuves. Une entrée PAR ÂGE pour les 24 facteurs FERR, pour que la garde nomme
+> lequel a bougé. Discrimination prouvée sur ce qui compte : dériver le facteur de 80 ans et le taux
+> fédéral pour dons font rougir la garde.
+>
+> **Effet de bord vertueux** : l'élargissement a rendu visible `survivorPsvFactor = survivorMode ?
+> 0.5 : 1`, et la garde `[×N]`/`[≠N]` a IMMÉDIATEMENT exigé le passage de `[≠3]` à `[≠4]`. Le
+> mécanisme fait ce qu'il annonce.
+>
+> ⚠️ **La revue a trouvé 4 raisons fausses de plus** (`setupSimulation::2.0` décrivait le mauvais
+> fichier et portait la mauvaise famille, `::5.0` et `::5.5` recyclaient une formule vague,
+> `assetLocation::5.0` marquait `[×2]` deux CHAMPS différents) — même motif qu'aux deux lots
+> précédents : raison lue sur la ligne au lieu du bloc. Et `RRIF_RATES[94]` était certifié « barème
+> ARC » alors que §7 le déclare **CONTESTÉ** (18,79 % probable, 13 726 $ d'écart).
+>
+> ⚠️ **Un finding ÉLEVÉ de la revue est RÉFUTÉ par la mesure** : elle affirmait qu'une PERMUTATION de
+> deux facteurs FERR passerait inaperçue. Le ratchet reste effectivement vert, mais
+> `projection.helpers.test.ts` tombe DEUX fois — l'assertion de stricte croissance 73→94 existe
+> depuis longtemps. Son grep cherchait des âges littéraux, la boucle n'en contient aucun. J'ai donc
+> corrigé MA PROSE d'archive (qui surestimait le ratchet) plutôt que d'ajouter une garde en double
+> (`UNE-CLE-PAR-VALEUR-NE-PROTEGE-PAS-L-ORDRE`).
+>
+> **Tickets neufs** : `[FISC-GUARD-ARGUMENT]` (35 littéraux encore invisibles en position d'argument,
+> dont l'âge 18 de début de cotisation RRQ ; ⚠️ ne PAS couvrir `return`, mesuré 20 hits pour 0 gain),
+> `[FISC-GUARD-BENIGN-60]`. Et `[FISC-ANTIFLIP-WINDOW]` renommé `[FISC-RAP-GRACE-WINDOW]` — son nom
+> venait de ma première lecture fausse.
+>
+> ⛔ **`[RQAP-PRESTATION-COTISATIONS]` (ÉLEVÉ, 4 328,50 $/an) est BLOQUÉ SUR MARC** — routé en
+> `docs/A_FAIRE_MOI.md` §A00. Le correctif tient en un paramètre, mais il déplace de l'argent sur
+> une affirmation fiscale, et le proxy réseau **bloque** `revenuquebec.ca` / `rqap.gouv.qc.ca` /
+> `rrq.gouv.qc.ca` (`EGRESS_BLOCKED`) : je ne peux pas sourcer moi-même. L'URL exacte à consulter est
+> dans le fichier. NE PAS coder sans sa réponse.
+>
 > ## 🟢 Session 2026-08-20 (suite 111) — une règle de portefeuille déplaçait un plafond légal
 > Branche `claude/rqap-cap` (basée sur `main`, PAS empilée). Vague 1f, 2e des 5.
 >

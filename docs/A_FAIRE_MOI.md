@@ -17,6 +17,40 @@
 > Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
 > d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
 
+## A00. ⚠️ SOURCER UNE RÈGLE FISCALE — 4 328 $/an en jeu (ajouté 2026-08-20, revue de PR #667)
+
+- [ ] **Confirmer qu'une prestation du RQAP n'est pas assujettie aux cotisations RRQ / AE / RQAP.**
+
+**Ce que j'ai mesuré** (`[RQAP-PRESTATION-COTISATIONS]` au BACKLOG) : le moteur fait payer des
+cotisations RRQ + AE + RQAP **sur la prestation de congé parental elle-même**. Sur une prestation de
+56 650 $ : net **42 366,76 $** au lieu de **46 695,26 $** → **4 328,50 $/an de cotisations
+fantômes**. C'est **1,57×** le gain de 2 750 $/an que la PR #667 vient de restaurer sur le plafond.
+
+**Pourquoi je ne l'ai pas corrigé.** Le correctif code est d'un seul paramètre. Mais il déplace de
+l'argent en s'appuyant sur une affirmation fiscale — « une prestation du RQAP n'est pas un revenu de
+travail » — et le non-négociable du dépôt est que toute valeur ou règle fiscale vient de
+`docs/FISCAL_REFERENCE.md`, **datée et sourcée**. Je ne code pas sur ma propre supposition, même
+quand elle me paraît évidente.
+
+**Pourquoi toi et pas moi.** Le proxy réseau de mon environnement **bloque** `revenuquebec.ca`,
+`rqap.gouv.qc.ca` et `rrq.gouv.qc.ca` (erreur `EGRESS_BLOCKED`). Je ne peux pas lire la source
+officielle. Deux minutes pour toi, impossible pour moi.
+
+**Ce que j'ai besoin que tu regardes** — la page qui répond exactement à la question :
+<https://www.revenuquebec.ca/fr/entreprises/retenues-a-la-source-et-cotisations-de-lemployeur/calcul-des-retenues-et-des-cotisations/cotisations-au-rqap/remunerations-non-assujetties/>
+(« Rémunérations **non assujetties** au Régime québécois d'assurance parentale »).
+
+**La question précise** : les prestations versées PAR le RQAP (maternité, paternité, parentales)
+figurent-elles dans les rémunérations non assujetties ? Et même question côté RRQ et AE.
+
+**Réponds-moi juste ça**, et je fais le reste : ancrage en `FISCAL_REFERENCE.md` §2 avec la source
+et la date, correctif d'une ligne, test discriminant, mesure avant/après.
+
+⚠️ **Si tu m'autorises une autre voie** : tu peux aussi me dire « débloque le proxy pour
+revenuquebec.ca » (c'est un réglage de l'environnement, côté toi), et je sourcerai moi-même.
+
+---
+
 ## A0. Smoke test 2 minutes — pincement sur TON téléphone (ajouté 2026-08-12, PR #596)
 
 - [ ] **Tester le zoom au pincement sur ton vrai téléphone** dès le déploiement : ouvre la courbe

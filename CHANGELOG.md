@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-20 (le détecteur de chiffres fiscaux ne voyait pas la table la plus importante)
+
+- **Rien ne change pour toi dans l'app** — c'est de l'outillage, et le dire vaut mieux qu'inventer.
+- Le garde qui surveille les chiffres fiscaux ne regardait que les nombres **utilisés dans un
+  calcul**. Il ne voyait pas ceux **rangés dans une table**. Résultat : les **24 facteurs de retrait
+  minimum du FERR** — le barème qui décide combien tu DOIS retirer de ton FERR chaque année après
+  71 ans, et donc l'impôt que tu paies dessus — n'étaient surveillés par rien depuis toujours. Les
+  taux du crédit pour dons non plus.
+- Les valeurs elles-mêmes sont bonnes et documentées : ce qui manquait, c'était la protection contre
+  une dérive silencieuse. Maintenant, si un seul facteur bouge, l'outil dit lequel.
+
+---
+
 ## [unreleased] — 2026-08-20 (congé parental : le plafond RQAP était périmé, et une règle de retraite pouvait le déplacer)
 
 - **Ton congé parental valait moins qu'il ne devrait.** Le plafond de revenu assurable du RQAP était

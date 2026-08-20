@@ -871,9 +871,10 @@
   ne couvre que le PRA, le clawback de subventions et les PAE). **Correctif** : une ligne en §9,
   ou aligner sur 35.
 
-- [ ] **`[FISC-ANTIFLIP-WINDOW]`** (XS, MOYEN — découvert par `[FISC-GUARD-SCOPE]`) — la fenêtre
-  `2022`/`2025` de `services/projection/realEstateMonth.ts:234` module la période de grâce de
-  l'exemption de gain en capital sur résidence (règle anti-flip fédérale) : `graceYears = 5` dans la
+- [ ] **`[FISC-RAP-GRACE-WINDOW]`** (XS, MOYEN — découvert par `[FISC-GUARD-SCOPE]`, RENOMMÉ en revue :
+  il s'appelait `[FISC-RAP-GRACE-WINDOW]`, nom hérité de ma première lecture FAUSSE du code) — la
+  fenêtre `2022`/`2025` de `services/projection/realEstateMonth.ts` module la période de grâce du
+  **début de remboursement du RAP** (Budget fédéral 2024), et **PAS** la règle anti-flip : `graceYears = 5` dans la
   fenêtre, `2` dehors. **Deux bornes d'une vraie règle ARC, absentes de `FISCAL_REFERENCE.md` §8.**
   **Correctif** : sourcer les deux bornes ET la durée de grâce, ou retirer la règle. ⚠️ Les trois
   valeurs doivent bouger ENSEMBLE — en sourcer une seule laisserait une règle à moitié fausse.
@@ -894,6 +895,24 @@
   achète en l'ajoutant. **Décider** : l'inclure (31 clés à trier) ou acter l'exclusion dans
   `decisions.md`.
 
+- [ ] **`[FISC-GUARD-ARGUMENT]`** (S, MOYEN — découvert en revue de `[FISC-GUARD-VALEUR-LIEE]`) — après
+  l'élargissement aux valeurs LIÉES, il reste une position où un barème se cache : l'**argument de
+  fonction**. **MESURÉ** sur les 20 modules : 35 littéraux encore invisibles en position `f(0.29)`,
+  dont **un vrai paramètre** — `retirementIncome.ts` `Math.max(18, residencyStartU - birthYearU)`,
+  soit l'âge de début de cotisation à la RRQ (§6, « années cotisées 18→retraite / 39 »). Aucune clé
+  `retirementIncome.ts::18` n'existe. **Arbitrage à faire** : ajouter `/[(,]$/` rapporte ~1 clé
+  fiscale pour ~15 clés de bruit (`Math.min(1.0, …)`, `Math.pow(1.02, y)`, `toString(36)`).
+  ⚠️ **NE PAS ajouter `return`** : mesuré à 20 littéraux pour **0** gain fiscal (courbes
+  mortalité/LTC + smile curve) — un garde bruyant se fait désarmer, leçon déjà payée sur `helpers.ts`.
+
+- [ ] **`[FISC-GUARD-BENIGN-60]`** (XS, MOYEN — découvert en revue de `[FISC-GUARD-VALEUR-LIEE]`) —
+  `'60'` est dans `BENIGN` alors que c'est la borne légale d'**anticipation de la RRQ** (§6, plage
+  60 → 65), en dur dans `retirementIncome.ts` (`Math.max(60, …)`). ⚠️ **Le retirer de `BENIGN` ne
+  suffit PAS** : MESURÉ, ça révèle 3 littéraux (courbe de mortalité, renouvellement hypothécaire,
+  repli ILD) dont **aucun** n'est le 60 de la RRQ — celui-là est en position d'ARGUMENT, donc
+  doublement caché. Il faut les DEUX correctifs, avec `[FISC-GUARD-ARGUMENT]`. C'est la leçon
+  `AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE` qui n'est pas encore entièrement payée.
+
 - [ ] **`[RQAP-PRESTATION-COTISATIONS]`** (S, **ÉLEVÉ** — découvert en revue de `[RQAP-CAP-98K]`) —
   la prestation de congé parental se fait prélever **RRQ + AE + RQAP**. `childrenReee.ts` appelle
   `calculateFiscalReport(base, 0, 0, loopYear, enableMonteCarlo)` sans le paramètre
@@ -906,16 +925,6 @@
   travail, donc ni RRQ ni AE ni cotisation RQAP » est une règle à **ancrer d'abord dans
   FISCAL_REFERENCE §2 avec sa référence Revenu Québec**. Le code suit ensuite (`, undefined, 0`).
   Même famille que `[AE-PLAFOND-MANQUANT]`. [MESURÉ]
-
-- [ ] **`[FISC-GUARD-TERNAIRE]`** (S, MOYEN — découvert en revue de `[RQAP-CAP-98K]`) — le filtre de
-  position de `findFiscalConstants` exige un opérateur avant (`[*/+\-<>=]`, `||`, `??`) ou après
-  (`*`, `/`) : **un littéral en branche de ternaire est invisible**. Vérifié :
-  `retirementIncome.ts` `survivorPsvFactor = survivorMode ? 0.5 : 1` n'est pas relevé, alors que
-  c'est un facteur de rente au survivant. Conséquence : la promesse de la marque `[×N]`/`[≠N]`
-  (« N ne bouge que si une occurrence apparaît ou disparaît ») est **fausse pour les ternaires** —
-  supprimer ce facteur ne ferait bouger aucun compte. **Correctif** : ajouter `?`/`:` au filtre —
-  ⚠️ **mesurer les nouveaux offenders AVANT** (règle « resserrer le scan avant le fix » : sur 20
-  modules, l'élargissement peut être large).
 
 - [ ] **`[RQAP-INDEX-SOURCE]`** (XS, FAIBLE — découvert en revue de `[RQAP-CAP-98K]`) — la phrase
   « le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne au Québec » justifie le

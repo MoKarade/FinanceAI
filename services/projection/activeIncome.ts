@@ -11,8 +11,11 @@ import { tickJobLoss, tickLtd } from './stochasticEvents';
 import { AE_MAX_INCOME } from '../../utils/tax';
 import type { FiscalReport } from '../../utils/tax';
 
-/** Signature injectée de `calculateFiscalReport` (même patron que `childrenReee.ts` — l'injection
- *  évite la dépendance circulaire moteur↔tax et permet aux tests de brancher un stub). */
+/** Signature injectée de `calculateFiscalReport` (même patron que `childrenReee.ts`).
+ *  ⚠️ La raison de l'injection est la TESTABILITÉ (brancher un stub/espion), PAS une dépendance
+ *  circulaire : `utils/tax.ts` n'importe RIEN, il n'y a jamais eu de cycle — la phrase « évite la
+ *  dépendance circulaire », recopiée d'un commentaire voisin, était fausse (revue 2026-08-20),
+ *  et ce fichier importe d'ailleurs `AE_MAX_INCOME` statiquement trois lignes plus bas. */
 type FiscalReportFn = (
     grossIncome: number,
     rrspContrib: number,
@@ -103,8 +106,12 @@ export function computeActiveIncome(
                 aeGrossAnnual, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, undefined, 0,
             ).netIncome / 12;
         } else {
-            // Sans brut connu (donnée legacy), impossible de calculer les gains assurables :
-            // l'ancienne approximation `net × 0,55` vaut mieux qu'une prestation inventée à 0.
+            // ⚠️ Repli quasi INATTEIGNABLE, gardé en défense en profondeur (revue 2026-08-20) :
+            // depuis #669, `computeIncomeBaseline` dérive TOUJOURS un brut positif d'un net —
+            // mesuré sur 8 formes d'entrée, le seul chemin vivant jusqu'ici est un `grossSalary`
+            // NÉGATIF persisté, c'est-à-dire une CORRUPTION de données, pas du legacy. Dans ce cas
+            // l'approximation `net × 0,55` (bornée) vaut mieux qu'une prestation inventée à 0 —
+            // mais elle restitue l'ancienne sur-prestation : ne pas s'appuyer dessus.
             incomeMarc *= 0.55;
         }
     }

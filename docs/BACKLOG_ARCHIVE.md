@@ -21,8 +21,11 @@
 
 **RQAP** : la prestation de congé parental payait RRQ + RQAP + AE (`employmentIncome` absent → le
 défaut retombait sur `grossIncome`). Correctif d'un argument : `employmentIncome: 0`. MESURÉ :
-**+4 328,50 $/an** de net au plafond (le chiffre du ticket, re-vérifié au sou), **+9 518 $** de
-patrimoine à 10 ans pour un enfant. Garde : test-ESPION `vi.mock` qui vérifie l'ARGUMENT réellement
+**+4 328,50 $/an** de net au plafond (le chiffre du ticket, re-vérifié au sou — exact, indépendant
+du profil) ; effet patrimoine à 10 ans FIXTURE-DÉPENDANT : +9 518 $ (ma fixture) / +8 803 $ (celle
+de la revue). La revue a aussi mesuré le POINT DE CROISEMENT de l'AE : **86 606 $ de brut** — en
+dessous, l'ancien modèle SOUS-payait (jusqu'à +21 % de prestation aujourd'hui) ; au-dessus, il
+sur-payait (−51 % à 200 k$). Garde : test-ESPION `vi.mock` qui vérifie l'ARGUMENT réellement
 passé sur chacun des ≥ 12 appels de la fenêtre de congé (patron du proxy DB — jamais de
 reconstruction).
 

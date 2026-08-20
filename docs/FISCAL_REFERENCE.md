@@ -170,7 +170,8 @@ Compléments sourcés du même échange :
 **Implémentation moteur (2026-08-20, `[RQAP-PRESTATION-COTISATIONS]` + `[AE-PLAFOND-MANQUANT]`)** :
 - Prestation RQAP (`childrenReee.ts`) : `calculateFiscalReport(prestation, …, employmentIncome: 0)`
   — la prestation est imposée mais ne cotise plus RRQ/RQAP/AE. MESURÉ : +4 328,50 $/an de net au
-  plafond (56 650 $ de prestation), +9 518 $ de patrimoine à 10 ans pour un enfant.
+  plafond (56 650 $ de prestation — exact, indépendant du profil) ; l'effet patrimoine à 10 ans est
+  FIXTURE-DÉPENDANT (9 518 $ et 8 803 $ sur deux fixtures).
 - Chômage simulé (`activeIncome.ts`) : la prestation AE = **55 % des gains assurables BRUTS,
   plafonnés à `AE_MAX_INCOME`** (68 900 $, projeté au patron MGA `inflation simulée + 0,5 pt` —
   même biais documenté que `rqapCapProjected`), puis nette d'impôt à assiette de cotisation nulle.

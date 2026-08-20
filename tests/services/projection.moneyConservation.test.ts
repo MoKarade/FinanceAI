@@ -122,6 +122,31 @@ describe('[CONSERVATION] patrimoine net toujours reconstructible et conservé', 
         expect(maxResid).toBeLessThan(1);
     });
 
+    it('[PRESTATIONS] enfant (bascule salaire→RQAP→salaire) : chaque mois reste expliqué', () => {
+        // ⚠️ AUCUNE fixture de ce fichier ne portait de `childGoals` ni de chômage : les 21 verts
+        // ne parcouraient AUCUNE des branches du lot « prestations » (même classe d'angle mort que
+        // le bug 12× du forfait W5 : `UN-INVARIANT-NE-VOIT-PAS-CE-QUI-EST-ABSENT`).
+        const cd = run(makeParams({
+            childGoals: [{ id: 'c1', name: 'Bébé', isActive: true, birthDate: '2026-07-01',
+                initialCost: 2_000, monthlyDiapers: 80, monthlyFood: 200, monthlyClothing: 60,
+                monthlyDaycare: 700, governmentBenefits: 0 }] as never,
+        })).chartData;
+        // La SCEE et le coût initial de l'enfant ne sont pas modélisés par la formule INV-2 — on
+        // compare donc au RÉSIDUEL D'UN JUMEAU : le delta doit rester ≈ 0 chaque mois, y compris
+        // aux bascules salaire→prestation (mois ~6) et prestation→salaire (mois ~18).
+        const temoin = run(makeParams()).chartData;
+        for (let i = 1; i < Math.min(cd.length, temoin.length); i++) {
+            const d = Math.abs(unexplained(cd[i], cd[i - 1])) - Math.abs(unexplained(temoin[i], temoin[i - 1]));
+            // Résiduel PROPRE à l'enfant : borné par les flux non modélisés CONSTANTS (SCEE 125 $/mois,
+            // coût initial au mois de naissance ~2 000 $) — jamais une dérive.
+            expect(Math.abs(d), `mois ${i}`).toBeLessThan(2_200);
+        }
+        // Et l'INV-1 (reconstructibilité) tient au dollar près, lui, sans jumeau.
+        for (const p of cd) {
+            expect(Math.abs(num(p.NetWorth) - (shownAssets(p) - num(p.DetteTotale)))).toBeLessThan(2);
+        }
+    });
+
     it('[W5] locatif + CCPC : conservation tenue avec le forfait d\u2019impôt à taux PLEIN', () => {
         // ⚠️ AUCUNE fixture de ce fichier ne portait de `rentalProperties`/`privateBusinesses` :
         // ses 20 verts « prouvaient » la conservation d'un moteur où ces flux n'existaient pas

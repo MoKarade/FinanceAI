@@ -1018,6 +1018,26 @@
   money-critical sans couverture d'INTÉGRATION : mes tests unitaires visent `processOneChild` en
   isolation, ce qui ne prouve rien sur la chaîne (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`).
   **Correctif** : une fixture golden avec cette configuration.
+- [ ] **`[MGA-PATRON-5-COPIES]`** (S, MOYEN — revue #675, 2026-08-20) — le patron d'indexation MGA
+  (`base × (1 + (simInflation + 0,5)/100)^années`) est recopié à **5 sites** : `retirementIncome.ts`
+  (×2), `taxJanuary.ts`, `childrenReee.ts` (`rqapCapProjected`, non exporté), `activeIncome.ts`
+  (plafond AE, neuf). ⚠️ **La divergence a DÉJÀ commencé** : `taxJanuary` utilise un exposant
+  DIFFÉRENT (`nextLoopYear − 2026` au lieu de `yearsElapsed`). Extraire
+  `mgaPatternProjected(base, simInflation, années)` dans `services/projection/helpers.ts` et faire
+  passer les 5 sites — en TRAITANT la divergence de `taxJanuary` (est-elle voulue ?), pas en
+  l'écrasant. `UNE-FORMULE-RECOPIEE-DIVERGE`. [MESURÉ]
+
+- [ ] **`[CHOMAGE-DEUX-MODELES]`** (M, MOYEN — revue #675) — deux modèles de chômage DIVERGENTS :
+  le stochastique (`activeIncome`, Marc seul, prestation AE complète 55 % du brut plafonné net
+  d'impôt) et l'événement daté `PERTE_EMPLOI` (`computeIncomeLossFactor`, coupe le MÉNAGE entier
+  de `incomeLossPercent` %, **aucune prestation AE**). #675 a fortement amélioré le premier ; l'écart
+  entre les deux se creuse. Unifier : donner l'AE à l'événement daté (le levier le plus rentable),
+  plutôt qu'étendre le stochastique à Anna. [MESURÉ]
+
+- [ ] **`[JOBLOSS-DUREE-N-PLUS-1]`** (XS, FAIBLE — revue #675) — `jobLossDurationMonths: 6` produit
+  **7 mois** de prestation (le mois de déclenchement est déjà réduit, puis le compteur en décompte
+  6 de plus) ; le log dit « durée prévue 6 mois ». ~347 $/mois d'écart sur un épisode. Pré-existant.
+
 - [ ] **`[PROJ-TAXPAID-SOLDE-AVRIL]`** (S, MOYEN — revue du correctif 12×, 2026-08-20) —
   `totalTaxesPaid` (`services/projection.ts`, `+= fluxImpots`) ne somme QUE les règlements d'avril,
   et l'avril actif vaut `totalAnnualTax − estimatedWithholding` — donc **négatif structurel** dès

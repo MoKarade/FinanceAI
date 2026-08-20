@@ -9,8 +9,9 @@
 >
 > **Livré** : `[RQAP-PRESTATION-COTISATIONS]` + `[AE-PLAFOND-MANQUANT]` — les deux items débloqués
 > le matin par la réponse sourcée de Marc (assiette de cotisation = revenus de TRAVAIL uniquement).
-> RQAP : `employmentIncome: 0`, +4 328,50 $/an net au plafond (chiffre du ticket re-vérifié au sou),
-> +9 518 $ de patrimoine à 10 ans. AE : 55 % du BRUT plafonné (68 900 $, projeté patron MGA) net
+> RQAP : `employmentIncome: 0`, +4 328,50 $/an net au plafond (chiffre du ticket re-vérifié au sou,
+> EXACT et indépendant du profil) ; l'effet patrimoine à 10 ans est fixture-dépendant (9 518 $ /
+> 8 803 $ sur deux fixtures — ne pas le citer comme un fait général). AE : 55 % du BRUT plafonné (68 900 $, projeté patron MGA) net
 > d'impôt à assiette nulle, au lieu de `net × 0,55` sans plafond.
 >
 > ⚠️ **Six tests asservissaient l'ANCIEN comportement** (`× 0,55` en dur) — réécrits avec des ancres

@@ -59,22 +59,24 @@ const params = (): SimulationParams => ({
 describe('[RQAP-PRESTATION-COTISATIONS] la prestation de congé parental ne cotise plus', () => {
     it('chaque appel fiscal de la fenêtre RQAP porte employmentIncome: 0 — vérifié par ESPION', () => {
         appelsRqap.length = 0;
+        // ⚠️ COUPLAGE DE FIXTURE, rendu EXPLICITE (finding de revue) : la fenêtre en dollars plus
+        // bas (base > 50 k$) n'est valide QUE parce qu'Anna gagne AU-DESSUS du plafond RQAP — sa
+        // base plafonnée est alors toujours ≈ 103 k$. MESURÉ à 42 k$ de brut : la fenêtre RATE les
+        // vrais appels RQAP (23 100 $) ET attrape le calcul salarial de décembre à la place. Cette
+        // assertion casse EN PREMIER, avec le bon message, si quelqu'un abaisse le salaire.
+        expect((users()[1].grossSalary ?? 0) * 12, 'fixture invalide : Anna doit gagner > plafond RQAP')
+            .toBeGreaterThan(RQAP_MAX_INCOME);
         __runScenarioForTests(params(), 'AUTO_MARGINAL' as AllocationStrategy, false, false);
         // La fenêtre RQAP : base = 55 % d'un salaire ≤ plafond (~108 k × 0,55 ≈ 59 k) — on identifie
         // les appels dont le gross est EXACTEMENT 0,55 × min(salaire indexé, plafond projeté).
-        const rqap = appelsRqap.filter(a => {
-            const base = a.gross / 0.55;
-            return base > 50_000 && base <= RQAP_MAX_INCOME * 1.2 && Math.abs(a.gross % 1) >= 0;
-        }).filter(a => a.nbArgs >= 7);
-        // Anti-vacuité : la fenêtre doit avoir eu lieu (12 mois de congé → ≥ 12 appels candidats).
         const candidats = appelsRqap.filter(a => { const b = a.gross / 0.55; return b > 50_000 && b <= RQAP_MAX_INCOME * 1.2; });
-        expect(candidats.length, 'aucun appel RQAP capturé → la fixture ne déclenche pas le congé')
+        expect(candidats.length, 'fenêtre vide : le congé RQAP n\u2019a pas produit ses appels dans la plage attendue')
             .toBeGreaterThanOrEqual(12);
-        // TOUS les appels de la fenêtre doivent porter l'assiette d'emploi NULLE.
+        // TOUS les appels de la fenêtre doivent porter l'assiette d'emploi NULLE (le `toBe(0)`
+        // couvre aussi « l'argument est explicitement passé » : undefined échouerait).
         for (const a of candidats) {
             expect(a.employmentIncome, `appel RQAP à ${a.gross.toFixed(0)} $ sans employmentIncome: 0`).toBe(0);
         }
-        void rqap;
     });
 
     it('le NET de la prestation vaut celui d\'une assiette nulle — 4 328,50 $/an d\'écart au plafond', () => {

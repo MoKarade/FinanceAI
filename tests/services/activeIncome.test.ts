@@ -16,7 +16,7 @@
  * NE MODIFIE PAS le source. Tests de caractérisation du comportement actuel.
  */
 import { describe, it, expect } from 'vitest';
-import { calculateFiscalReport } from '../../utils/tax';
+import { calculateFiscalReport, AE_MAX_INCOME } from '../../utils/tax';
 import { computeActiveIncome } from '../../services/projection/activeIncome';
 import type { ActiveIncomeCtx } from '../../services/projection/activeIncome';
 import type { ProjectionConfig, User } from '../../types';
@@ -98,8 +98,8 @@ describe('computeActiveIncome — croissance salariale', () => {
 // d'impôt à assiette de cotisation NULLE (règle sourcée, FISCAL_REFERENCE §2). Dérivée ici par la
 // MÊME fonction fiscale que le module — ce que ces tests prouvent est le CÂBLAGE (plafond, 55 %,
 // employmentIncome: 0, remplacement du net), les ancres négatives excluent les anciens chemins.
-const aeNetMonthly = (grossAnnual: number): number =>
-    calculateFiscalReport(Math.min(grossAnnual, 68_900) * 0.55, 0, 0, 2026, false, undefined, 0).netIncome / 12;
+const aeNetMonthly = (grossAnnual: number, year = 2026): number =>
+    calculateFiscalReport(Math.min(grossAnnual, AE_MAX_INCOME) * 0.55, 0, 0, year, false, undefined, 0).netIncome / 12;
 
 describe('computeActiveIncome — perte d\'emploi (prestation AE par le brut plafonné)', () => {
     it('chômage en cours → prestation = net(min(brut, plafond) × 55 %), PAS net × 0,55', () => {
@@ -128,6 +128,15 @@ describe('computeActiveIncome — perte d\'emploi (prestation AE par le brut pla
         const r = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4, grossMarcBaseAnnual: 40_000 }), proj(), plainUsers);
         expect(r.incomeMarc).toBeCloseTo(aeNetMonthly(40_000), 4);
         expect(r.incomeMarc).toBeLessThan(aeNetMonthly(100_000));
+    });
+
+    it('l\u2019ANNÉE fiscale est celle du mois courant, pas 2026 figé — discriminant', () => {
+        // ⚠️ Perturbation de revue : figer `ctx.loopYear` à 2026 laissait 45/45 verts
+        // (`CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`). Ce test passe une année lointaine dont le
+        // barème indexé diffère : si le module ignorait `loopYear`, les deux membres divergeraient.
+        const r = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4, loopYear: 2030 }), proj(), plainUsers);
+        expect(r.incomeMarc).toBeCloseTo(aeNetMonthly(100_000, 2030), 4);
+        expect(r.incomeMarc).not.toBeCloseTo(aeNetMonthly(100_000, 2026), 2);
     });
 
     it('brut ABSENT (donnée legacy) : repli documenté sur net × 0,55 — jamais une prestation à 0', () => {

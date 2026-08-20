@@ -4,8 +4,7 @@
 //
 // Pattern: Pure Return — la fonction retourne tous les deltas, le caller
 // les applique sur ses propres variables locales.
-// Injection: calculateFiscalReport passé en argument (évite dep circulaire
-// avec utils/tax).
+// Injection: calculateFiscalReport passé en argument — pour la TESTABILITÉ (stub/espion).
 
 import type { ChildGoal } from '../../types';
 import { RQAP_MAX_INCOME, type FiscalReport } from '../../utils/tax';

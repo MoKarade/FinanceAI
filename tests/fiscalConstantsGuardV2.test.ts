@@ -21,6 +21,7 @@ import {
     inventoryKey,
     FISCAL_CONST_INVENTORY,
     FISCAL_MODULES,
+    FISCAL_MODULES_HORS_PERIMETRE,
 } from '../utils/fiscalConstGuardV2';
 
 const root = process.cwd();
@@ -73,6 +74,59 @@ describe('[FISC-CONST-GUARD-V2] intégrité de l’inventaire', () => {
         const scanned = new Set<string>(FISCAL_MODULES);
         const orphans = FISCAL_CONST_INVENTORY.filter((e) => !scanned.has(e.file)).map((e) => e.file);
         expect([...new Set(orphans)]).toEqual([]);
+    });
+
+    it('une clé qui recouvre PLUSIEURS occurrences les ÉNUMÈRE toutes', () => {
+        // ⚠️ [FISC-GUARD-SCOPE] L'index est (fichier, valeur), PAS la ligne — choix assumé (un
+        // numéro de ligne dérive au premier refactor). Le prix devient LOURD sur un module dense :
+        // dans `childrenReee.ts`, `0.20` est À LA FOIS le taux de SCEE (barème ARC) et le taux
+        // d'impôt sur le PRA à la fermeture (approximation de modèle), et `500` recouvre TROIS sens
+        // sans rapport. Une raison qui n'en décrit qu'un est un document FAUX : elle certifie
+        // « trié » une valeur dont un des sens n'a jamais été regardé.
+        //
+        // La garde est STRUCTURELLE (on compte des références `L<n>`), pas une heuristique de
+        // prose : une clé vue N fois dans le fichier doit citer N lignes distinctes.
+        const manquants: string[] = [];
+        let clesMultiples = 0;
+
+        for (const e of FISCAL_CONST_INVENTORY) {
+            const src = readFileSync(resolve(root, e.file), 'utf-8');
+            const lignes = new Set(findFiscalConstants(src).filter((h) => h.value === e.value).map((h) => h.line));
+            if (lignes.size < 2) continue;
+            clesMultiples++;
+            // DEUX façons d'être honnête, et il faut en CHOISIR une — c'est le but :
+            //   • `[×N]` en tête    → les N occurrences ont le MÊME sens (table d'âges FERR, proxy
+            //                          répété pour les deux conjoints…). Rien à énumérer.
+            //   • N références `L<n>` → les sens DIFFÈRENT, et chacun est décrit.
+            // Un `[×N]` posé sur des sens divergents reste possible : aucune garde ne lit le sens.
+            // Ce qu'on supprime, c'est le cas où PERSONNE n'a regardé.
+            const memeSens = new RegExp(`^\\[×${lignes.size}\\]`).test(e.reason);
+            const refs = new Set(e.reason.match(/L\d+/g) ?? []);
+            if (!memeSens && refs.size < lignes.size) {
+                manquants.push(`${e.file}::${e.value} — ${lignes.size} occurrences, ${refs.size} référence(s) L<n>, pas de marque [×${lignes.size}]`);
+            }
+        }
+
+        // ANTI-VACUITÉ : si plus aucune clé n'est multiple, cette garde ne vérifie RIEN et doit
+        // être revue plutôt que laissée verte.
+        expect(clesMultiples, 'aucune clé multiple → cette garde ne prouve plus rien').toBeGreaterThanOrEqual(8);
+        expect(manquants, `Raison(s) qui ne couvrent pas toutes les occurrences de leur clé :\n${manquants.join('\n')}`).toEqual([]);
+    });
+
+    it('le périmètre EXCLU est déclaré, réel, et vraiment hors scan', () => {
+        // Un périmètre borné en silence se lit comme « tout est couvert ». On vérifie que chaque
+        // exclusion existe encore, produirait vraiment du bruit, et n'est pas scannée par ailleurs.
+        const scanned = new Set<string>(FISCAL_MODULES);
+        expect(FISCAL_MODULES_HORS_PERIMETRE.length).toBeGreaterThanOrEqual(3);
+
+        for (const x of FISCAL_MODULES_HORS_PERIMETRE) {
+            expect(scanned.has(x.file), `${x.file} est déclaré HORS périmètre ET scanné`).toBe(false);
+            const reel = findFiscalConstants(readFileSync(resolve(root, x.file), 'utf-8')).length;
+            expect(reel, `${x.file} n'a plus de littéral : l'exclusion n'a plus d'objet`).toBeGreaterThan(0);
+            // Tolérance large : on veut attraper un fichier VIDÉ ou renommé, pas facturer un ±2.
+            expect(reel, `${x.file} : ${reel} littéraux réels vs ${x.literals} déclarés — chiffre périmé`)
+                .toBeGreaterThanOrEqual(Math.floor(x.literals / 2));
+        }
     });
 
     it('la DETTE fiscale est visible : au moins une entrée « fiscal » reste à ancrer', () => {

@@ -4,6 +4,42 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-20 (suite 110) — le ratchet fiscal voyait 8 modules sur 20
+> Branche `claude/fisc-guard-scope` (basée sur `main`, PAS empilée). Vague 1f, 1er des 5.
+>
+> **Livré** : `[FISC-GUARD-SCOPE]` — réestimé **M**, annoncé S.
+>
+> ⚠️ **Le critère d'inclusion ÉTAIT le bug.** `FISCAL_MODULES` disait « les modules qui PRODUISENT
+> de l'impôt ou une rente ». Or écrire un barème ne demande pas de produire un impôt : une
+> SUBVENTION (SCEE/IQEE), une PRESTATION (RQAP), un PLAFOND LÉGAL (RAP, REEE) et un PROXY d'impôt
+> (`noi * 0.45`) en sont tout autant. C'est par ce trou que **`98000`** — plafond RQAP figé à sa
+> valeur 2025 alors que la source unique porte **103 000 $** — vivait invisible dans
+> `childrenReee.ts`. Auditer le CRITÈRE, pas seulement les entrées
+> (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`).
+>
+> **Mesuré avant d'écrire** : 12 modules ajoutés (8 → **20**), **76 littéraux → 63 clés
+> `(fichier, valeur)`** triées à la main contre le code. Les 4 autres tickets 1f sont désormais tous
+> inventoriés, **leurs diagnostics re-dérivés et confirmés**.
+>
+> **Deux gardes NEUVES, 6 perturbations, 6 rouges ciblés** :
+> le périmètre EXCLU est déclaré et vérifié (`FISCAL_MODULES_HORS_PERIMETRE`) ; et une clé qui
+> recouvre N occurrences doit porter `[×N]` (même sens) ou N références `L<n>` (sens différents) —
+> cette dernière a sorti **15 offenders PRÉEXISTANTS** de l'inventaire d'origine.
+>
+> ⚠️⚠️ **Leçon la plus importante du lot, et elle ne parle pas de fiscalité** : mon point de contrôle
+> affirmait qu'un `plan-1f.md` « MESURÉ » était sauvé dans le scratchpad. **Le fichier n'a jamais
+> existé**, et ses chiffres étaient faux. Une note que je m'écris arrive au tour suivant avec
+> l'apparence d'une consigne — sans rien derrière. Vérifier avant de suivre ; mettre la COMMANDE et
+> non le chiffre ; committer ce qui doit survivre (`MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE`).
+>
+> **SUITE — vague 1f, reste 4** : `[RQAP-CAP-98K]` en premier (le plus gros impact mesuré :
+> ~2 750 $/an de prestation brute manquante), puis `[W5-PROXY-NON-SOURCE]`, `[ESTATE-NPV-07]`,
+> `[MIGRATE-GROSS-135]`. Découvertes ouvertes : `[FISC-ANTIFLIP-WINDOW]`, `[FISC-RAP-15ANS]`,
+> `[ASSETLOC-YEAR-2026]`, `[FISC-GUARD-PROJECTION-TS]`.
+>
+> ⛔ **BLOQUÉ sur Marc** : `[ENG-LIQUIDDEBT-NEVER-REPAID]`, suppression des branches mortes (proxy
+> git 403), et `[ENV-NODE-NON-DECLARE]` (modification de chaîne d'outils).
+>
 > ## 🟢 Session 2026-08-19 (suite 109) — vague 1e CLOSE : cinq XS, cinq silences
 > Branche `claude/silences-xs` (basée sur `main`, PAS empilée — leçon `PR-EMPILEE-N-A-AUCUNE-CI`).
 >

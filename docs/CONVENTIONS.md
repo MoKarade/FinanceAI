@@ -4350,3 +4350,88 @@ compatibilité est déjà prouvée par la CI.
 ⚠️ Alignement de l'environnement (`engines` + `.nvmrc`) NON fait ici : c'est une modification de
 chaîne d'outils que Marc n'a pas demandée, et elle mérite sa propre décision. Tracée en
 `[ENV-NODE-NON-DECLARE]`.
+
+### `MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE` — j'ai cité un fichier que je n'avais jamais écrit
+
+En armant un point de contrôle avant d'attendre un merge, je me suis écrit à moi-même :
+
+> « Le plan 1f est déjà MESURÉ et sauvé dans le scratchpad : `…/scratchpad/plan-1f.md` — le relire
+> d'abord. En résumé : 71 littéraux à trier (childrenReee 34, realEstateMonth 8, w5Effects 5…) »
+
+Au réveil, `ls` : **le fichier n'existait pas.** Les chiffres avaient l'air d'une mesure — précis,
+ventilés par module, avec un total. Rien ne les distinguait, à la lecture, d'un vrai relevé.
+
+Re-mesuré depuis zéro : **76 littéraux, pas 71**, et 63 clés une fois l'index `(fichier, valeur)`
+appliqué — une grandeur que la note ne mentionnait même pas, alors que c'est ELLE qui dimensionne le
+travail. La note avait aussi omis `activeIncome.ts` et sur-estimé deux modules.
+
+**Pourquoi c'est grave et pas anecdotique.** Un message que je m'adresse à moi-même arrive au tour
+suivant avec la même apparence qu'une consigne de Marc ou qu'un résultat d'outil. Il n'est pourtant
+adossé à rien : c'est une affirmation, pas une observation. Le pire cas n'est pas le fichier
+manquant — c'est le fichier PRÉSENT mais périmé, où plus rien ne signale qu'il faut re-mesurer.
+
+C'est `DOC-STALE-IMPOSSIBILITY` (« un constat d'impossibilité que j'ai écrit se re-prouve avant
+d'être cité ») élargi à TOUTE assertion que je me transmets : le constat d'impossibilité n'était
+qu'un cas particulier de la note de soi à soi.
+
+**La règle** :
+
+1. Un rappel qui prétend qu'un artefact existe se vérifie (`ls`, `git show`) **avant** d'être suivi.
+   Si l'artefact manque, ce qu'il contenait est réputé FAUX — pas « probablement bon ».
+2. Ne jamais recopier un chiffre mesuré dans le corps d'un rappel : y mettre **la COMMANDE** qui le
+   re-mesure. Une commande périmée échoue bruyamment ; un chiffre périmé se lit comme un fait.
+3. Si un plan mérite d'être transmis, il est **committé dans le dépôt**, pas laissé dans un
+   scratchpad éphémère — la seule mémoire qui survit à un redémarrage de conteneur est `git`.
+
+### `CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG` — le garde ne voyait pas les subventions
+
+`FISCAL_MODULES` (garde des constantes fiscales) déclarait scanner « les modules qui **PRODUISENT
+de l'impôt ou une rente** ». Le critère semblait raisonnable ; il était faux, et son coût s'est
+mesuré : `98000` — le plafond de revenu assurable RQAP figé à sa valeur 2025 alors que la source
+unique porte `RQAP_MAX_INCOME = 103000` — vivait dans `childrenReee.ts`, hors périmètre, invisible.
+
+**Écrire un barème ne demande pas de produire un impôt.** Une SUBVENTION (SCEE 20 %, IQEE 10 %), une
+PRESTATION (taux de remplacement RQAP), un PLAFOND LÉGAL (RAP 15 ans, REEE 50 000 $) et un PROXY
+d'impôt (`noi * 0.45`) sont tout autant des valeurs fiscales. Le critère décrivait la MÉCANIQUE
+(« produire de l'impôt ») là où il fallait décrire l'ORIGINE (« un nombre qui vient d'une règle de
+l'ARC ou de Revenu Québec »).
+
+**La règle** : quand une garde a une liste d'inclusion, **le critère qui l'a remplie est lui-même à
+auditer** — pas seulement les entrées. Une liste correcte selon un critère faux est une liste fausse,
+et elle a l'air complète. Écrire le critère EN TÊTE de la liste (comme une phrase, pas comme un
+titre) le rend relisible et donc réfutable.
+
+⚠️ Corollaire du même lot : **déclarer aussi ce qu'on EXCLUT, avec son volume et sa raison**. Un
+périmètre borné en silence se lit comme « tout est couvert ». `utils/tax.ts` (82 littéraux) est
+exclu parce que c'est la source DÉSIGNÉE de l'autre garde — l'inclure inverserait le sens du
+dispositif ; `services/projection.ts` (31) est un trou ASSUMÉ. Les deux méritent d'être écrits, avec
+un test qui vérifie que chaque exclusion existe encore et n'est pas scannée par ailleurs.
+
+### `CLE-QUI-FUSIONNE-DEUX-SENS` — une entrée « triée » dont un sens n'a jamais été regardé
+
+L'inventaire du garde est indexé par `(fichier, valeur)` et **pas** par ligne — choix assumé et
+justifié : un numéro de ligne dérive au premier refactor et rendrait la garde bruyante pour rien.
+
+Ce compromis était sain sur 38 entrées dans des modules d'impôt. Il devient dangereux dès qu'un
+module dense entre dans le périmètre. Dans `childrenReee.ts` :
+
+- `0.20` est **à la fois** `SCEE_GRANT_RATE` (barème ARC, 20 % de la cotisation REEE) **et**
+  `REEE_AIP_TAX_RATE` (approximation de l'impôt sur le PRA à la fermeture, une limite assumée).
+  Deux natures opposées : l'une est à ancrer, l'autre à ne surtout pas « sourcer ».
+- `500` recouvre **trois** sens sans rapport : subvention SCEE annuelle, plafond IQEE de rattrapage,
+  et un coût d'enfant de 500 $ à 16 ans.
+
+Une raison qui n'en décrit qu'un est un **document FAUX** : elle certifie « trié » un littéral dont
+un des sens n'a jamais été examiné. Et c'est invisible — l'entrée existe, elle a une raison longue
+et crédible.
+
+**Le remède, sans changer la clé** : forcer un CHOIX explicite et structurel. Une clé vue N fois
+dans son fichier doit porter soit `[×N]` en tête de sa raison (« les N occurrences ont le même
+sens »), soit N références `L<n>` distinctes (« les sens diffèrent, les voici »). La garde compte
+des marques — elle ne lit pas la prose, donc elle ne prétend pas juger le sens. Ce qu'elle supprime,
+c'est le cas où **personne n'a regardé**.
+
+⚠️ Posée sur l'inventaire existant, cette garde a immédiatement sorti **15 offenders préexistants**
+(dont `setupSimulation.ts::1.35`, le proxy brut/net répété 4 fois). Encore la règle « resserrer le
+scan AVANT de coder le fix » : les offenders révélés sont le vrai périmètre, et ils étaient là
+depuis le premier jour du garde.

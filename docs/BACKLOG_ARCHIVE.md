@@ -10,6 +10,36 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-20 — Vague 1f (1/5) : le ratchet fiscal voyait 8 modules sur 20
+
+> ⚠️ **Le critère d'inclusion était le bug.** `FISCAL_MODULES` disait « les modules qui PRODUISENT
+> de l'impôt ou une rente ». Or écrire un barème ne demande pas de produire un impôt : une
+> SUBVENTION (SCEE/IQEE), une PRESTATION (RQAP), un PLAFOND LÉGAL (RAP, REEE) et un PROXY d'impôt
+> (`noi * 0.45`) en sont tout autant. C'est par cette définition trop étroite que `98000` — le
+> plafond RQAP figé à sa valeur 2025 alors que la source unique porte **103 000 $** — a vécu hors de
+> portée du garde.
+
+- [x] **`[FISC-GUARD-SCOPE]`** (réestimé **M**, annoncé S) — ✅ 2026-08-20, PR #666.
+  **Mesuré avant d'écrire** : 12 modules à ajouter, **76 littéraux → 63 clés `(fichier, valeur)`**
+  triées à la main contre le code (27 pour `childrenReee.ts` seul). `FISCAL_MODULES` passe de 8 à
+  **20**. Les quatre autres tickets 1f (`[RQAP-CAP-98K]`, `[W5-PROXY-NON-SOURCE]`, `[ESTATE-NPV-07]`,
+  `[MIGRATE-GROSS-135]`) sont désormais tous inventoriés avec leur raison — leur diagnostic a été
+  re-dérivé sur le code et **les quatre sont confirmés**.
+
+**Deux gardes NEUVES, chacune prouvée discriminante :**
+
+- *Le périmètre EXCLU est déclaré et vérifié* (`FISCAL_MODULES_HORS_PERIMETRE`) : `utils/tax.ts`
+  (82 littéraux) et `services/realEstate.ts` (26) sont les sources DÉSIGNÉES du garde V1 — les
+  scanner inverserait le sens du garde ; `services/projection.ts` (31) est un trou assumé. Un
+  périmètre borné en silence se lit comme « tout est couvert ».
+- *Une clé qui recouvre plusieurs occurrences les énumère* : soit `[×N]` en tête (les N occurrences
+  ont le MÊME sens), soit N références `L<n>` (les sens diffèrent, chacun décrit). **La garde a
+  trouvé 15 offenders PRÉEXISTANTS** dans l'inventaire d'origine — resserrer le scan avant le fix,
+  encore une fois.
+
+**Découvertes ouvertes au BACKLOG** : `[FISC-ANTIFLIP-WINDOW]`, `[FISC-RAP-15ANS]`,
+`[ASSETLOC-YEAR-2026]`, `[FISC-GUARD-PROJECTION-TS]`.
+
 ## 2026-08-19 — Vague 1e (fin) : les cinq XS du silence
 
 > Cinq erreurs avalées sans trace, regroupées par CLASSE. ⚠️ Chaque diagnostic a été **re-dérivé sur

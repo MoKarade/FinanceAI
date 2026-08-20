@@ -839,6 +839,34 @@
 
 ### 🔴 Valeurs fiscales sans source (viole le non-négociable `FISCAL_REFERENCE.md`)
 
+> ⚠️ **Périmètre RÉVÉLÉ par `[FISC-GUARD-SCOPE]` (livré 2026-08-20, PR #666)** — l'élargissement du
+> ratchet à 12 modules a sorti **76 littéraux / 63 clés** de l'ombre. Les quatre tickets ci-dessous
+> sont désormais tous inventoriés et tracés dans `utils/fiscalConstGuardV2.ts` : aucun ne peut plus
+> disparaître en silence. Trois DÉCOUVERTES s'y sont ajoutées (juste après).
+
+- [ ] **`[FISC-ANTIFLIP-WINDOW]`** (XS, MOYEN — découvert par `[FISC-GUARD-SCOPE]`) — la fenêtre
+  `2022`/`2025` de `services/projection/realEstateMonth.ts:234` module la période de grâce de
+  l'exemption de gain en capital sur résidence (règle anti-flip fédérale) : `graceYears = 5` dans la
+  fenêtre, `2` dehors. **Deux bornes d'une vraie règle ARC, absentes de `FISCAL_REFERENCE.md` §8.**
+  **Correctif** : sourcer les deux bornes ET la durée de grâce, ou retirer la règle. ⚠️ Les trois
+  valeurs doivent bouger ENSEMBLE — en sourcer une seule laisserait une règle à moitié fausse.
+
+- [ ] **`[FISC-RAP-15ANS]`** (XS, FAIBLE — découvert par `[FISC-GUARD-SCOPE]`) — la durée de
+  remboursement du RAP (15 ans, ARC) est en dur dans `services/projection/realEstateMonth.ts:467`
+  (`state.rapBorrowed / 15`) et absente de `FISCAL_REFERENCE.md` §7. Vraie règle, non ancrée.
+
+- [ ] **`[ASSETLOC-YEAR-2026]`** (XS, FAIBLE — découvert par `[FISC-GUARD-SCOPE]`) —
+  `services/projection/assetLocation.ts:135` lit le taux marginal avec une année fiscale de repli
+  **écrite en dur à 2026**. En 2027 le module consultatif lira un barème périmé sans rien dire.
+  **Correctif** : reprendre l'année courante du moteur plutôt qu'un littéral.
+
+- [ ] **`[FISC-GUARD-PROJECTION-TS]`** (S, FAIBLE — trou CONNU et chiffré) — `services/projection.ts`
+  (**31 littéraux mesurés**) reste hors du ratchet : c'est l'orchestrateur, le travail fiscal vit
+  dans les sous-modules déjà scannés. Un barème écrit directement dans la boucle y échapperait donc.
+  Déclaré dans `FISCAL_MODULES_HORS_PERIMETRE` avec son volume pour que le prochain sache ce qu'il
+  achète en l'ajoutant. **Décider** : l'inclure (31 clés à trier) ou acter l'exclusion dans
+  `decisions.md`.
+
 - [ ] **`[RQAP-CAP-98K]`** (XS, ÉLEVÉ) — plafond de revenu assurable RQAP écrit **en dur à 98 000 $**
   (valeur 2025) au lieu de la source unique `RQAP_MAX_INCOME = 103 000 $`, et taux de remplacement
   `0,55` non sourcé — aucun des deux n'est dans `docs/FISCAL_REFERENCE.md`
@@ -1328,10 +1356,6 @@
   **Correctif** : re-sourcer ARC d'abord, PUIS importer la constante unique — ou documenter en §10
   pourquoi elles sont volontairement découplées. Ne rien changer sans la source.
 
-- [ ] **`[FISC-GUARD-SCOPE]`** (S) — le ratchet de constantes scanne 8 modules, MANQUENT
-  `donationCredit.ts` (où vivent les findings #2), `realEstate.ts` (SCHL/mutations/TPS-TVQ),
-  `childrenReee.ts` (SCEE/IQEE), et 3 autres. **Correctif** : étendre `FISCAL_MODULES` AVANT de
-  corriger quoi que ce soit (leçon « resserrer le scan AVANT le fix »).
 
 
 

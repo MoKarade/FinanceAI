@@ -189,6 +189,16 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   soustraire l'estimé non indexé, sans prorata et sans SRG d'un revenu nominal faisait −29 % sur le
   seul dénominateur — rien ne crie. Signal : **la même variable indexée à 40 lignes d'écart et pas
   à l'autre** ; quand deux usages d'un même symbole divergent dans un même bloc, l'un est faux.
+- ⚠️ **Un correctif de correctif se fait relire AUSSI** : la 2e revue du même lot a trouvé 2 défauts
+  que j'avais introduits. (a) Retirer le SRG de la TRANCHE et pas du CONTEXTE le rendait imposable —
+  `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` re-commis dans le lot dont le commit CITAIT cette leçon.
+  (b) `estateNetWorth` DÉCROISSAIT quand l'horizon montait d'un an : mon discriminant de branche
+  (`rentesRéelles > 0`) répondait à « les rentes sont-elles déjà dans le revenu ? », pas à « est-on
+  retraité ? ». **Un discriminant doit énoncer la question à laquelle il répond RÉELLEMENT** — bien
+  nommé, il a supprimé la branche. Et pour toute grandeur qu'un CURSEUR pilote, monotonie et
+  continuité SONT des invariants : les balayer, pas mesurer un point. Deux corollaires : un sens
+  d'erreur assumé se déclare avec sa BORNE (j'avais écrit « 3,5 pts », mesuré 36,1 pts ailleurs),
+  et une ligne non testable s'ÉCRIT comme telle plutôt que couverte par une fixture absurde.
 - ⚠️ **Câbler une année, c'est câbler une PAIRE** : j'ai passé l'année courante à l'inversion
   net→brut de `TaxCenter` et laissé `calculateFiscalReport` à son défaut 2026 trois lignes plus bas.
   Avant, les DEUX étaient à 2026 — donc cohérents. Après, 212 $/an d'écart dès 2027. **Améliorer un

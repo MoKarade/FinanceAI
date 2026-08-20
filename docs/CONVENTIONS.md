@@ -4863,6 +4863,56 @@ Trois enseignements distincts :
    une grandeur dépendante de l'état, grepper qui la **trie**, la **compare** ou la **maximise** —
    pas seulement qui l'affiche. Et mesurer le CLASSEMENT avant/après, pas seulement la valeur.
 
+⚠️⚠️ **ET UNE SECONDE REVUE A TROUVÉ DEUX DÉFAUTS QUE LA PREMIÈRE N'AVAIT PAS — que mon correctif
+avait INTRODUITS.** Un correctif de correctif est un correctif : il se fait relire aussi.
+
+**Le SRG servait d'assiette imposable.** J'avais retiré le SRG de la TRANCHE (non imposable, et la
+VAN ne le valorise pas) mais pas du CONTEXTE — or `incomeRetirement = retirementBreakdown.total` le
+CONTIENT via `psv`. Le résidu était alors composé de SRG PUR, sur lequel la tranche s'empilait comme
+s'il l'était. C'est `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` **re-commis dans le lot même dont le
+message de commit citait cette leçon** : quand une convention (« retirer X ») s'applique à une PAIRE
+de grandeurs, l'appliquer à une seule est pire que ne l'appliquer à aucune, parce que le résultat
+devient incohérent au lieu d'être uniformément biaisé. Mesuré : 35 838 $ effacés sur un ménage à
+faible revenu, et un renversement de la recommandation de décaissement sur 4 points /52.
+⚠️ **Et la prose qui justifiait le nouveau golden décrivait le défaut comme légitime** : j'avais
+écrit « un revenu de retraite de 37 435 $, le reste est une pension privée » — la fixture n'a aucune
+pension privée, les 26 066 $ étaient intégralement le SRG. Un commentaire de re-basage n'est pas de
+la décoration : c'est ce que la prochaine session lira au lieu de re-mesurer. Le vérifier coûte une
+commande.
+
+**Une grandeur monotone qui cesse de l'être est un signal, et personne ne la regardait.**
+`estateNetWorth` DÉCROISSAIT de 169 437 $ quand l'horizon augmentait d'UN an, alors que le code
+d'avant est strictement croissant sur la même plage. Cause : j'avais choisi comme discriminant de
+branche « une rente publique est-elle versée ? » en le lisant comme « le ménage est-il retraité ? ».
+Faux entre l'âge de retraite et le début du RRQ — un retraité à 55 ans avec une rente DB était
+imposé « depuis zéro » sur sa rente publique ESTIMÉE, son revenu réel ignoré.
+
+Deux règles en sortent :
+1. **Un discriminant de branche doit énoncer la question à laquelle il répond RÉELLEMENT.**
+   `rentesRéelles > 0` répond à « les rentes sont-elles déjà dans le revenu ? », pas à « est-on
+   retraité ? ». La bonne formulation a supprimé la branche : le revenu structurel est toujours le
+   même terme, la seule variable est de savoir si la tranche y est DÉJÀ comprise ou si elle viendra
+   PAR-DESSUS. Continu par construction — au mois où la rente commence, le revenu structurel monte
+   exactement du montant qu'on cessait d'ajouter.
+2. **Balayer un PARAMÈTRE CONTINU, pas un point.** Mes mesures de non-régression du classement
+   portaient sur une seule fixture. La revue a fait varier l'horizon d'un an à la fois et la falaise
+   est apparue immédiatement. Pour toute grandeur qu'un utilisateur pilote par un curseur, la
+   monotonie et la continuité SONT des invariants — et elles ne se voient qu'en balayant.
+
+⚠️ **Un sens d'erreur qu'on déclare doit porter sa BORNE, pas un exemple.** J'avais écrit que le
+contexte structurel « surestime légèrement le facteur (3,5 pts) » — mesuré sur UNE fixture. Ailleurs :
+16,5 pts sur un REER de 700 k$, **36,1 pts / 144 963 $** sur un REER de 2 M$, le biais croissant avec
+la taille du REER. Un ticket de suivi chiffré « 3,5 pts » serait priorisé comme cosmétique. Quand on
+assume une hypothèse de modèle, chercher le cas où elle coûte le PLUS, pas celui qu'on a sous la main.
+
+⚠️ **Écrire ce qui n'est PAS testable, plutôt que fabriquer une couverture.** Une perturbation a
+montré que le `Math.max(0, …)` sur le revenu résiduel ne fait rougir aucun test — et ne le PEUT pas :
+tout barème sain rend 0 sur un revenu négatif, donc un résidu de −48 000 $ et un résidu de 0 $
+produisent le même impôt. J'ai commencé par fabriquer une fixture incohérente pour le « couvrir » ;
+elle passait par la coïncidence du stub, pas par le clamp. La bonne réponse est une note dans le test
+qui dit que la ligne est une ceinture, pas une branche, et pourquoi. Un test qui n'aurait discriminé
+que contre un barème impossible n'aurait rien prouvé sur le moteur réel.
+
 ⚠️ **La tranche qu'on retire d'une assiette doit être la grandeur RÉELLE, pas son estimé de saisie.**
 Quatrième défaut du même lot : je soustrayais `rrqMonthlyFamily × 12` (l'estimé saisi par
 l'utilisateur) d'un revenu NOMINAL, alors que trois écarts s'accumulaient — dollars d'aujourd'hui

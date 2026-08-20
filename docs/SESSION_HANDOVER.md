@@ -14,7 +14,7 @@
 > revenu). Remplacé par un abattement CALCULÉ, patron déjà présent 40 lignes plus haut.
 >
 > **Goldens re-basés** : +215 407 $, +215 407 $ (même écart au dollar près — la VAN ne dépend pas
-> du tirage MC), et +29 061 $ (**+20,2 %** — cette fixture finit insolvable, donc son patrimoine
+> du tirage MC), et +64 898 $ (**+45,0 %** — cette fixture finit insolvable, donc son patrimoine
 > successoral EST la VAN des rentes).
 >
 > ⚠️⚠️⚠️ **LA REVUE A DÉMOLI MON PREMIER JET — trois défauts non bornés, tous MESURÉS.** Le lot
@@ -29,6 +29,23 @@
 > Correctifs : rente RÉELLE plombée depuis la boucle, branche pré-retraite traitée explicitement,
 > contexte STRUCTUREL (hors retrait REER ponctuel — seule variante qui reproduit l'ordre de `main`
 > à tous les horizons mesurés).
+>
+> ⚠️⚠️⚠️ **PUIS UNE SECONDE REVUE A TROUVÉ DEUX DÉFAUTS QUE J'AVAIS INTRODUITS**, invisibles à la
+> première : (4) le **SRG servait d'assiette imposable** — je l'avais retiré de la TRANCHE et pas du
+> CONTEXTE, alors que `incomeRetirement` le contient. 35 838 $ effacés sur le golden meltdown, sur un
+> ménage à FAIBLE revenu ; et le commentaire que j'avais écrit pour justifier ce golden disait « le
+> reste est une pension privée », **c'était le SRG**. (5) `estateNetWorth` **DÉCROISSAIT de 169 437 $
+> quand l'horizon augmentait d'un an** : j'avais branché sur « une rente est-elle versée ? » en le
+> traitant comme « est-on retraité ? ». La correction supprime la branche — la seule question est si
+> les rentes sont DÉJÀ dans le revenu ; sinon elles s'ajoutent PAR-DESSUS. Continu par construction.
+>
+> ✅ **Preuve que le classement de décaissement ne bouge PAS** : 32 points de mesure (REER × horizon),
+> marges MELTDOWN−AUTO **identiques au dollar près** à `origin/main`. Le contexte structurel ne
+> dépend d'aucune grandeur pilotée par la stratégie, donc le terme VAN s'annule au tri.
+>
+> ⚠️ **J'avais sous-déclaré un sens d'erreur d'un facteur ~10** (« légère, 3,5 pts » sur UNE fixture ;
+> mesuré ailleurs jusqu'à **36,1 pts / 144 963 $**). Un ticket chiffré « 3,5 pts » aurait été
+> priorisé comme cosmétique.
 >
 > ⚠️⚠️ **TROIS de mes tests étaient vacueux, tous démasqués par PERTURBATION** : le `fiscalStub`
 > partagé du fichier est un taux PLAT (30 %) qui rendait le correctif strictement invisible ; mon

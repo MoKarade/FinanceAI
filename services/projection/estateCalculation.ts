@@ -70,6 +70,11 @@ export interface EstateCalcInputs {
     pensionRrqMonthlyFinal?: number;
     pensionPsvMonthlyFinal?: number;
     pensionGisMonthlyFinal?: number;
+    /** [ESTATE-NPV-07] Écrêtement PSV du dernier point (`retirementBreakdown.oasReduction`, mensuel
+     *  familial). `.rrq`/`.psv` sont BRUTS de cet écrêtement alors que `.total` (donc le revenu de
+     *  contexte) en est NET : sans ce terme, la tranche retirée dépasserait le revenu qui la contient
+     *  pour un retraité en récupération PSV. Un montant, deux registres, une seule convention. */
+    pensionOasReductionMonthlyFinal?: number;
     activeUsersCount: number;
     /**
      * [ENG-DIVORCE-ESTATE-PENSION] Part du ménage qui reste au déclarant, pour les rentes exprimées
@@ -282,9 +287,22 @@ export function computeEstateNetWorth(
     // un ménage vivant à 100 % de ses rentes). D'où le plombage de `pension*MonthlyFinal`.
     // Le SRG est retranché : il est du REVENU (donc dans `psv`) mais NON IMPOSABLE (`taxDecember.ts`),
     // et la VAN ci-dessus ne le valorise pas.
+    // ⚠️ LA TRANCHE ET LE CONTEXTE SUIVENT LA MÊME CONVENTION, SINON L'UN IMPOSE CE QUE L'AUTRE EXONÈRE.
+    // `incomeRetirement` = `retirementBreakdown.total` = `rrq + psv + privee − oasReduction`, et `psv`
+    // CONTIENT le SRG. Trois retraits obligatoires, et il faut les faire des DEUX côtés :
+    //   · le SRG est du REVENU mais N'EST PAS IMPOSABLE (`taxDecember.ts` le soustrait de ses cinq
+    //     assiettes) — et la VAN ci-dessus ne le valorise pas ;
+    //   · l'écrêtement PSV est déjà déduit de `total` mais PAS de `psv`.
+    // ⚠️ Mon 1er correctif ne retirait le SRG que de la TRANCHE. Le résidu `revenuSansRentes` était
+    // alors composé de SRG PUR, sur lequel la tranche s'empilait comme s'il était imposable :
+    // MESURÉ, ce seul défaut RENVERSAIT la recommandation de décaissement (MELTDOWN → AUTO) sur
+    // 4 points de mesure /52, et valait jusqu'à 62 830 $ sur le patrimoine successoral. Corriger un
+    // seul côté d'une convention partagée est pire que ne rien corriger.
+    const gisAnnuel = fin(inputs.pensionGisMonthlyFinal ?? 0) * MONTHS_PER_YEAR;
+    const ecretementPsvAnnuel = fin(inputs.pensionOasReductionMonthlyFinal ?? 0) * MONTHS_PER_YEAR;
     const rentesReellesAnnuelles = Math.max(0,
-        (fin(inputs.pensionRrqMonthlyFinal ?? 0) + fin(inputs.pensionPsvMonthlyFinal ?? 0)
-            - fin(inputs.pensionGisMonthlyFinal ?? 0)) * MONTHS_PER_YEAR);
+        (fin(inputs.pensionRrqMonthlyFinal ?? 0) + fin(inputs.pensionPsvMonthlyFinal ?? 0)) * MONTHS_PER_YEAR
+            - gisAnnuel - ecretementPsvAnnuel);
 
     // ⚠️ BRANCHE NON RETRAITÉE — un salaire n'est PAS le contexte fiscal d'une rente.
     // Quand l'horizon s'arrête avant l'âge de retraite, `estateCurrentIncome` est un SALAIRE et
@@ -296,9 +314,21 @@ export function computeEstateNetWorth(
     // Le seul contexte défendable est alors la rente ELLE-MÊME, valorisée à l'année finale
     // (`rrqExpected + psvExpected`, la grandeur exactement actualisée ci-dessus) et imposée depuis
     // zéro : c'est ce que touchera un ménage dont le salaire a cessé. Continu et sans falaise.
-    const contexteRetraite = rentesReellesAnnuelles > 0;
-    const rentesAnnuellesFinales = contexteRetraite ? rentesReellesAnnuelles : (rrqExpected + psvExpected);
-
+    // ⚠️ LA SEULE QUESTION EST « LES RENTES SONT-ELLES DÉJÀ DANS LE REVENU ? », PAS « EST-ON RETRAITÉ ? ».
+    // Mon 1er correctif branchait sur `rentesReellesAnnuelles > 0` en le traitant comme un
+    // « le ménage est retraité », et basculait alors sur un contexte qui IGNORE le revenu réel.
+    // Faux entre l'âge de retraite et le début des rentes publiques : un retraité à 55 ans avec
+    // 60 000 $/an de rente DB était imposé « depuis zéro » sur sa rente publique ESTIMÉE.
+    // MESURÉ : facteur 0,9068 au lieu de 0,6388, soit 235 205 $ de patrimoine successoral fantôme,
+    // et `estateNetWorth` qui DÉCROISSAIT de 169 437 $ quand l'horizon augmentait d'UN an — alors
+    // que `origin/main` est strictement croissant sur la même plage.
+    //
+    // La formulation ci-dessous n'a plus de branche « retraité » du tout. Le revenu STRUCTUREL du
+    // ménage est toujours le même terme ; la seule chose qui change est de savoir si la tranche y
+    // est DÉJÀ comprise (rentes versées) ou si elle viendra PAR-DESSUS (pas encore versées, que le
+    // ménage soit pré-retraité ou retraité-avant-65). Continu par construction : au mois où la rente
+    // commence, `revenuStructurel` monte exactement du montant qu'on cessait d'ajouter.
+    //
     // ⚠️ CONTEXTE **STRUCTUREL**, PAS `estateCurrentIncome` — un retrait REER d'UNE année ne peut pas
     // piloter 25 ans de VAN. `estateCurrentIncome` inclut `accRetraitsReerYear`, c.-à-d. le décaissement
     // de la SEULE dernière année, qui dépend de la stratégie ET de l'endroit où l'utilisateur coupe
@@ -310,14 +340,18 @@ export function computeEstateNetWorth(
     // « Meilleur avenir : X », `strategyRanking.ts` en fait le score de l'objectif `wealth`, et deux
     // outils MCP l'exposent au LLM. Le contexte total faisait donc BASCULER le conseil de décaissement
     // au gré du curseur d'horizon ; le contexte structurel reproduit l'ordre de `main` à tous les
-    // horizons mesurés, en ne corrigeant que le NIVEAU. C'est la seule variante qui corrige le facteur
-    // sans changer la recommandation en effet de bord.
-    // ⚠️ HYPOTHÈSE DE MODÈLE ASSUMÉE, avec son sens d'erreur : pour un retraité qui continue de
-    // décaisser son REER/FERR chaque année, ce contexte SOUS-estime le revenu récurrent, donc
-    // SURESTIME légèrement le facteur (mesuré 0,9335 au lieu de 0,8987 sur la fixture divorce).
-    // Le vrai correctif serait un revenu de retraite MOYEN sur les années restantes, pas un point :
-    // ticket `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`.
-    const revenuDeContexte = contexteRetraite ? (incomeRetirement * 12 + accRentesYear) : rentesAnnuellesFinales;
+    // horizons mesurés, en ne corrigeant que le NIVEAU.
+    // ⚠️ HYPOTHÈSE DE MODÈLE ASSUMÉE, avec son sens d'erreur et sa BORNE MESURÉE — pas « légère » :
+    // pour un retraité qui décaisse son REER/FERR chaque année, ce contexte sous-estime le revenu
+    // récurrent, donc SURESTIME le facteur. Mesuré : +3,5 pts / +32 135 $ sur la fixture divorce,
+    // mais **+16,5 pts / +66 232 $** sur un REER de 700 k$ et **+36,1 pts / +144 963 $** sur un REER
+    // de 2 M$ — le biais croît avec la taille du REER, donc frappe le plus la population que
+    // `drawdownOptimizer` conseille. Le vrai correctif est un revenu de retraite MOYEN sur les années
+    // restantes, pas un point : ticket `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`.
+    const revenuStructurel = Math.max(0, incomeRetirement * 12 - gisAnnuel + accRentesYear);
+    const rentesDejaVersees = rentesReellesAnnuelles > 0;
+    const rentesAnnuellesFinales = rentesDejaVersees ? rentesReellesAnnuelles : (rrqExpected + psvExpected);
+    const revenuDeContexte = rentesDejaVersees ? revenuStructurel : (revenuStructurel + rentesAnnuellesFinales);
 
     // Quand la tranche dépasse le revenu de contexte (fixtures où `incomeRetirement` est nul alors
     // qu'un `governmentPension` est saisi), le `Math.max(0, …)` ramène le revenu résiduel à zéro :

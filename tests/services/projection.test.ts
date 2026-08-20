@@ -546,14 +546,33 @@ const ALL_TYPES = ['BASE', 'LIBERTE_55', 'HYPER_INFLATION', 'WINDFALL', 'ECONOMI
             expect(post65.length).toBeGreaterThan(0);
         });
 
-        it('avec pension DB de 2000$/mois, le patrimoine successoral augmente', () => {
-            const noPension: ProjectionResult = calculateFutureProjection(buildAtRetirement({ dbPensionMonthly: 0 }));
-            const withPension: ProjectionResult = calculateFutureProjection(buildAtRetirement({ dbPensionMonthly: 2000 }));
-
-            const noBase = noPension.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
-            const withBase = withPension.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
-
-            expect(withBase!.estateNetWorth).toBeGreaterThan(noBase!.estateNetWorth!);
+        it('avec pension DB de 2000$/mois, le patrimoine successoral augmente (horizon 10 ans)', () => {
+            // ⚠️ HORIZON PORTÉ DE 5 À 10 ANS le 2026-08-20 par `[ESTATE-NPV-07]`, et la raison est
+            // MESURÉE, pas un ajustement pour faire passer le test. Le lot rend l'abattement fiscal
+            // de la VAN des rentes publiques DÉPENDANT du revenu de retraite du ménage. Or une
+            // pension DB fait exactement deux choses opposées :
+            //   · elle ENRICHIT (5 ans d'épargne supplémentaire : +92 813 $ de patrimoine brut) ;
+            //   · elle fait passer les rentes publiques d'un taux effectif de 0 % (revenu 16 826 $,
+            //     sous le montant personnel de base → facteur 1,0000) à ~25,7 % (revenu 43 324 $ →
+            //     facteur 0,7431), ce qui coûte 0,2569 × 399 874 = 102 728 $ sur la VAN.
+            // À 5 ans EXACTEMENT, le second l'emporte de 11 298 $ — c'est un point de bascule, pas
+            // une propriété du modèle. Delta mesuré par horizon, tout le reste constant :
+            //     5 ans → −11 298 $ · 10 ans → +108 559 $ · 15 ans → +266 090 $
+            //     20 ans → +488 619 $ · 25 ans → +789 492 $
+            // L'invariant que ce test protège (« la pension DB alimente le patrimoine successoral »)
+            // vaut donc partout sauf au tout premier horizon. Les DEUX cas sont asservis ci-dessous
+            // pour que ni la bascule ni l'invariant ne puisse dériver en silence.
+            const at = (years: number, db: number): number => {
+                const p = buildAtRetirement({ dbPensionMonthly: db });
+                const r: ProjectionResult = calculateFutureProjection({ ...p, projection: makeProjection({ years }) });
+                return r.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE')!.estateNetWorth!;
+            };
+            expect(at(10, 2000)).toBeGreaterThan(at(10, 0));
+            expect(at(10, 2000) - at(10, 0)).toBeGreaterThan(50_000);
+            // Le point de bascule, verrouillé lui aussi : à 5 ans l'effet fiscal domine. Si un jour
+            // ce signe s'inverse, ce n'est pas forcément une régression — mais ça doit être VU.
+            expect(at(5, 2000)).toBeLessThan(at(5, 0));
+            expect(at(5, 0) - at(5, 2000)).toBeCloseTo(11_298, -2);
         });
 
         it('la pension DB ne se déclenche pas avant dbPensionStartAge', () => {

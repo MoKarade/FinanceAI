@@ -539,6 +539,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let pensionRRQ = 0;
     let pensionPSV = 0;
     let pensionPrivee = 0;
+    let pensionOasReduction = 0;
 
     // D2.8: Mortalité stochastique. En MC, à chaque début d'année on tire la
     // probabilité de décès du user principal. Le loop arrête à la mort.
@@ -653,6 +654,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         pensionRRQ = 0;
         pensionPSV = 0;
         pensionPrivee = 0;
+        // [ESTATE-NPV-07] `incomeRetirementGis` et `pensionOasReduction` manquaient à ce reset alors
+        // que leurs SIX voisins immédiats y sont — `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`. Inoffensif
+        // tant que `isRetired` est monotone, mais ces champs PILOTENT désormais un calcul
+        // money-critical (l'assiette du facteur net de la VAN successorale).
+        incomeRetirementGis = 0;
+        pensionOasReduction = 0;
         let childGrossCost = 0;
         let childBenefits = 0;
         let childMonthlyCost = 0;
@@ -989,6 +996,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             pensionRRQ = retirementBreakdown.rrq;
             pensionPSV = retirementBreakdown.psv;
             pensionPrivee = retirementBreakdown.privee;
+            pensionOasReduction = retirementBreakdown.oasReduction;
             monthlyIncome = incomeRetirement;
 
             // D2.3: monthlyExpenses est défini de façon unique dans le bloc
@@ -2169,6 +2177,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         pensionRrqMonthlyFinal: pensionRRQ,
         pensionPsvMonthlyFinal: pensionPSV,
         pensionGisMonthlyFinal: incomeRetirementGis,
+        pensionOasReductionMonthlyFinal: pensionOasReduction,
         // [ENG-DIVORCE-ESTATE-PENSION] Le compteur de TÊTES : il MULTIPLIE ici un estimé
         // per-personne pour reconstituer le familial — sémantique INVERSE de `retirementIncome`,
         // où le même nom désigne un DIVISEUR d'agrégat. D'où une lecture ligne à ligne avant de

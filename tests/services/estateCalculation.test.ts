@@ -367,12 +367,16 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
         // Horizon qui s'arrête AVANT la retraite → aucune rente versée, `estateCurrentIncome` est un
         // SALAIRE (ici 70 000 × 1,02^20 ≈ 104 000 $). Mesurer un taux marginal au sommet de ce salaire
         // pour taxer des rentes encaissées 10 ans plus tard rendait 0,52 — PIRE que le 0,7 remplacé.
+        // ⚠️ `incomeRetirement: 0` EXPLICITE — la fixture `base` en pose 4 000, ce qui n'a aucun sens
+        // pour un ménage pas encore retraité et masquerait ce que ce test vérifie (le revenu de
+        // contexte est la rente, et RIEN d'autre que le revenu de retraite structurel).
         const preRetraite: EstateCalcInputs = {
             ...base, currentAge: 35, retirementTargetAge: 65, simulationYears: 20,
+            incomeRetirement: 0,
             pensionRrqMonthlyFinal: 0, pensionPsvMonthlyFinal: 0,
         };
         const f = facteurNet(preRetraite, stubPaliers);
-        // La rente valorisée à l'année finale : 1 200 $/mois × 12 × 1,02^20 = 21 388 $.
+        // La rente valorisée à l'année finale : 1 200 $/mois × 12 × 1,02^20 = 21 397,64 $.
         const renteValorisee = 1_200 * 12 * Math.pow(1.02, 20);
         expect(f).toBeCloseTo(1 - paliers(renteValorisee) / renteValorisee, 6);
         // DISCRIMINANT : le salaire ne doit avoir AUCUNE influence. Doubler le salaire de base
@@ -395,6 +399,89 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
         expect(structurel).toBeLessThan(sans - 0.3);
     });
 
+    it('le SRG est retiré des DEUX côtés — il ne peut pas servir d’assiette imposable', () => {
+        // ⚠️ Défaut de mon 2e jet, trouvé en revue : je retirais le SRG de la TRANCHE mais pas du
+        // CONTEXTE. `incomeRetirement` = `retirementBreakdown.total`, qui CONTIENT le SRG via `psv`.
+        // Le résidu `revenuSansRentes` était donc composé de SRG PUR — non imposable (`taxDecember`
+        // le soustrait de ses cinq assiettes) — et la tranche s'empilait dessus comme s'il l'était.
+        // MESURÉ : ce seul défaut renversait la recommandation de décaissement sur 4 points /52.
+        //
+        // Fixture : rentes 1 500 $/mois dont 500 $ de SRG → tranche imposable = 1 000 × 12 = 12 000 $.
+        // `incomeRetirement` 2 500 $/mois = 30 000 $/an dont 6 000 $ de SRG → contexte = 24 000 $.
+        //   impôt(24 000) = 800 ; impôt(24 000 − 12 000) = 0 → facteur = 1 − 800/12 000 = 0,933333.
+        const avecSrg = {
+            ...retraite(2_500),
+            pensionRrqMonthlyFinal: 900, pensionPsvMonthlyFinal: 600, pensionGisMonthlyFinal: 500,
+        };
+        expect(facteurNet(avecSrg, stubPaliers)).toBeCloseTo(1 - (paliers(24_000) - paliers(12_000)) / 12_000, 6);
+        expect(facteurNet(avecSrg, stubPaliers)).toBeCloseTo(0.933333, 5);
+        // DISCRIMINANT de l'asymétrie : si le SRG restait dans le contexte (30 000 $) sans être dans
+        // la tranche (12 000 $), le résidu vaudrait 18 000 $ et le facteur 1 − (2 000 − 0)/12 000
+        // = 0,833333. Les deux valeurs sont séparées de 10 points : aucune coïncidence possible.
+        expect(facteurNet(avecSrg, stubPaliers)).not.toBeCloseTo(1 - (paliers(30_000) - paliers(18_000)) / 12_000, 3);
+    });
+
+    it('l’écrêtement PSV est retiré des DEUX côtés (même convention que le SRG)', () => {
+        // `retirementBreakdown.rrq`/`.psv` sont BRUTS de l'écrêtement, `.total` en est NET. Sans ce
+        // terme, la tranche retirée dépasse le revenu qui la contient pour un retraité en
+        // récupération PSV. Fixture : rentes brutes 1 500, écrêtement 300 → tranche 1 200 × 12.
+        const avecEcretement = {
+            ...retraite(2_500),
+            pensionRrqMonthlyFinal: 900, pensionPsvMonthlyFinal: 600, pensionOasReductionMonthlyFinal: 300,
+        };
+        expect(facteurNet(avecEcretement, stubPaliers))
+            .toBeCloseTo(1 - (paliers(30_000) - paliers(30_000 - 14_400)) / 14_400, 6);
+        // Sans le retrait, la tranche vaudrait 18 000 $ : facteur différent d'au moins 2 points.
+        expect(Math.abs(facteurNet(avecEcretement, stubPaliers) - (1 - (paliers(30_000) - paliers(12_000)) / 18_000)))
+            .toBeGreaterThan(0.02);
+    });
+
+    it('RETRAITÉ mais rentes PAS ENCORE versées : la tranche s’ajoute PAR-DESSUS le revenu réel', () => {
+        // ⚠️ Défaut de mon 2e jet, trouvé en revue : je branchais sur « une rente est-elle versée ? »
+        // en le traitant comme « le ménage est-il retraité ? ». Entre l'âge de retraite et le début
+        // du RRQ, un retraité avec une rente DB tombait dans la branche pré-retraite et était imposé
+        // « depuis zéro » sur sa rente publique ESTIMÉE, en IGNORANT son revenu réel. MESURÉ :
+        // 235 205 $ de patrimoine successoral fantôme, et `estateNetWorth` qui DÉCROISSAIT de
+        // 169 437 $ quand l'horizon augmentait d'UN an — alors que le code d'avant est croissant.
+        //
+        // Fixture : retraité (`finalAge` 65 ≥ `retirementTargetAge` 65), 4 000 $/mois de rente DB,
+        // AUCUNE rente publique encore versée. Contexte attendu = 48 000 $ + la rente valorisée.
+        const sansRentePublique: EstateCalcInputs = {
+            ...base, currentAge: 35, retirementTargetAge: 65, simulationYears: 30,
+            incomeRetirement: 4_000,
+            pensionRrqMonthlyFinal: 0, pensionPsvMonthlyFinal: 0, pensionGisMonthlyFinal: 0,
+        };
+        const renteValorisee = 1_200 * 12 * Math.pow(1.02, 30);
+        expect(facteurNet(sansRentePublique, stubPaliers))
+            .toBeCloseTo(1 - (paliers(48_000 + renteValorisee) - paliers(48_000)) / renteValorisee, 6);
+        // DISCRIMINANT : le revenu réel doit COMPTER. Sans lui (contexte = la rente seule), le
+        // facteur serait 1 − impôt(rente)/rente — un écart de plusieurs points.
+        expect(Math.abs(facteurNet(sansRentePublique, stubPaliers) - (1 - paliers(renteValorisee) / renteValorisee)))
+            .toBeGreaterThan(0.05);
+        // Et la CONTINUITÉ : le jour où la rente commence, le revenu structurel monte exactement du
+        // montant qu'on cessait d'ajouter → même contexte, donc même facteur.
+        const renteVersee: EstateCalcInputs = {
+            ...sansRentePublique,
+            incomeRetirement: 4_000 + renteValorisee / 12,
+            pensionRrqMonthlyFinal: renteValorisee / 12, pensionPsvMonthlyFinal: 0,
+        };
+        expect(facteurNet(renteVersee, stubPaliers)).toBeCloseTo(facteurNet(sansRentePublique, stubPaliers), 6);
+    });
+
+    it('le facteur ne dépend d’AUCUNE grandeur pilotée par la stratégie de décaissement', () => {
+        // C'est ce qui garantit que le terme VAN s'ANNULE au classement de `drawdownOptimizer` —
+        // exactement comme le faisait le forfait plat, et donc que corriger le facteur ne change
+        // aucune recommandation. Vérifié à l'échelle du moteur : 32 points de mesure (REER × horizon)
+        // rendent des marges MELTDOWN−AUTO identiques au dollar près à `origin/main`.
+        // Ici, au niveau unitaire : ni le retrait REER de l'année, ni les soldes ne doivent compter.
+        const ref = facteurNet(retraite(2_500), stubPaliers);
+        expect(facteurNet({ ...retraite(2_500), accRetraitsReerYear: 250_000 }, stubPaliers)).toBeCloseTo(ref, 10);
+        expect(facteurNet({ ...retraite(2_500), reer: 900_000, startingREER: 900_000 }, stubPaliers)).toBeCloseTo(ref, 10);
+        expect(facteurNet({ ...retraite(2_500), celi: 400_000, startingCELI: 400_000 }, stubPaliers)).toBeCloseTo(ref, 10);
+        // ⚠️ Réserve honnête : `incomeRetirement` est NET de l'écrêtement PSV, lequel dépend du
+        // revenu, donc indirectement de la stratégie. Le découplage est mesuré, pas prouvé.
+    });
+
     it('le facteur ne descend jamais SOUS 0 — un barème ne confisque pas plus que la rente', () => {
         // ⚠️ Seule la borne BASSE est atteignable : `impotSurRentes` est clampé à ≥ 0 et le
         // dénominateur est > 0, donc le ratio est ≤ 1 par construction. Le `Math.min(1, …)` du code
@@ -403,5 +490,16 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
         const confiscatoire = (gross: number): FiscalReport => ({ totalTax: Math.max(0, gross) * 2 } as FiscalReport);
         const r = computeEstateNetWorth(retraite(8_000), confiscatoire);
         expect(vanNette(r)).toBeGreaterThanOrEqual(0);
+
+
+        // ⚠️ HONNÊTETÉ SUR CE QUI N'EST **PAS** TESTABLE ICI. Le `Math.max(0, …)` sur
+        // `revenuSansRentes` n'est exercé par aucune fixture (perturbation : le retirer laisse
+        // 32/32 VERT), et il ne PEUT pas l'être : tout barème sain rend 0 sur un revenu négatif —
+        // `calculateFiscalReport` comme ce stub commencent par clamper leur entrée. Un résidu de
+        // −48 000 $ et un résidu de 0 $ produisent donc exactement le même impôt. Le clamp est une
+        // ceinture de lisibilité, pas une branche : plutôt que de fabriquer un stub absurde
+        // (impôt non nul sur un revenu négatif) pour le « couvrir », on écrit ici qu'il ne l'est
+        // pas et pourquoi. Un test qui n'aurait discriminé que contre un barème impossible
+        // n'aurait rien prouvé sur le moteur réel.
     });
 });

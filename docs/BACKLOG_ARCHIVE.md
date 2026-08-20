@@ -40,7 +40,7 @@ maximal, bien plus faux que le 0,7 remplacé. Facteur borné à [0, 1].
 
 **Goldens re-basés, delta écrit à côté** : 3 374 653 → **3 590 060 $** (+215 407, +6,4 %) ;
 2 715 684 → **2 931 091 $** (+215 407, même écart au dollar près — la VAN des rentes ne dépend pas
-du tirage Monte Carlo) ; et 144 220 → **173 281 $** (+29 061, **+20,2 %**) — l'écart relatif y est
+du tirage Monte Carlo) ; et 144 220 → **209 118 $** (+64 898, **+45,0 %**) — l'écart relatif y est
 énorme parce que cette fixture finit INSOLVABLE, donc son patrimoine successoral est presque
 entièrement la VAN des rentes.
 
@@ -89,9 +89,62 @@ seule variante qui corrige le NIVEAU **sans changer la recommandation en effet d
 année, ce contexte sous-estime le revenu récurrent, donc surestime légèrement le facteur (0,9335 au
 lieu de 0,8987 sur la fixture divorce) → ticket `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`.
 
-**Tests re-écrits et PROUVÉS discriminants** (5 perturbations, chacune rougit) : contexte incrémental
-annulé (2 rouges), retour au 0,7 plat (10 rouges), base = estimé non indexé (3 rouges), contexte =
-revenu total (1 rouge), branche pré-retraite forcée sur le salaire (1 rouge). Le stub est désormais
+### ⚠️⚠️ Puis une SECONDE revue a trouvé deux défauts que la première n'avait pas — que j'avais INTRODUITS
+
+**4. Le SRG servait d'assiette imposable (jusqu'à 64 898 $ sur un seul ménage).** J'avais retiré le
+SRG de la TRANCHE (il est du revenu non imposable, et la VAN ne le valorise pas) mais **pas du
+CONTEXTE** — or `incomeRetirement = retirementBreakdown.total` le contient via `psv`. Le résidu
+`revenuSansRentes` était donc composé de **SRG pur**, sur lequel la tranche s'empilait comme s'il
+était imposable. Corriger un seul côté d'une convention partagée est pire que ne rien corriger
+(`CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`, re-commis dans le lot même qui en portait la leçon).
+MESURÉ sur le golden meltdown : facteur 0,8343 au lieu de 1,0000, soit **35 838 $ effacés** — sur un
+ménage à faible revenu, exactement la population que le lot prétend servir. Le même défaut
+renversait la recommandation de décaissement sur 4 points de mesure /52.
+⚠️ Et le commentaire que j'avais écrit pour justifier le golden re-basé disait « le reste est une
+pension privée » : **faux**, c'était le SRG. La prose qui justifie un chiffre décrivait le défaut
+comme s'il était légitime. Même convention appliquée à l'**écrêtement PSV** au passage (`.rrq`/`.psv`
+sont bruts, `.total` en est net).
+
+**5. `estateNetWorth` DÉCROISSAIT quand l'horizon augmentait (−169 437 $ pour un an de plus).**
+J'avais branché sur `rentesRéelles > 0` en le traitant comme « le ménage est-il retraité ». Faux
+entre l'âge de retraite et le début des rentes publiques : un retraité à 55 ans avec 60 000 $/an de
+rente DB était imposé « depuis zéro » sur sa rente publique ESTIMÉE, en **ignorant son revenu réel**
+— 235 205 $ de patrimoine successoral fantôme, sur une plage où `origin/main` est strictement
+croissant. La correction supprime la branche : la seule question est « les rentes sont-elles DÉJÀ
+dans le revenu ? » ; si oui le contexte les contient, sinon elles s'ajoutent PAR-DESSUS le revenu
+structurel. Continu par construction — au mois où la rente commence, le revenu structurel monte
+exactement du montant qu'on cessait d'ajouter. Vérifié : 1 734 681 → 1 789 760 → 1 850 785 →
+1 926 376 → 1 997 198, strictement croissant.
+
+**Et la preuve que le classement ne bouge PAS** : sur 32 points de mesure (REER 300 k$ → 1 M$ ×
+8 horizons), les marges MELTDOWN − AUTO sont **identiques au dollar près** à `origin/main`. Ce n'est
+pas une coïncidence : le contexte structurel ne dépend d'aucune grandeur pilotée par la stratégie,
+donc le terme VAN s'annule au classement — exactement comme le faisait le forfait plat. Réserve
+honnête : `incomeRetirement` est net de l'écrêtement PSV, lequel dépend du revenu ; le découplage
+est mesuré, pas prouvé.
+
+**6. Point de bascule assumé et VERROUILLÉ.** Le lot rend l'abattement dépendant du revenu de
+retraite ; une pension DB fait donc deux choses opposées (elle enrichit, et elle fait passer les
+rentes publiques de 0 % à ~25,7 %). À un horizon de **5 ans exactement**, le second l'emporte de
+11 298 $ : `tests/services/projection.test.ts` asservit désormais les DEUX faits, l'invariant à
+10 ans (+108 559 $) et la bascule à 5 ans, pour qu'aucun des deux ne dérive en silence.
+Delta mesuré : 5 ans −11 298 $ · 10 ans +108 559 $ · 15 ans +266 090 $ · 20 ans +488 619 $ ·
+25 ans +789 492 $.
+
+⚠️ **Le sens d'erreur du contexte structurel était sous-déclaré d'un facteur ~10** : j'avais écrit
+« surestime légèrement (3,5 pts) » sur la foi d'une seule fixture. Mesuré ailleurs : **+16,5 pts /
++66 232 $** sur un REER de 700 k$ et **+36,1 pts / +144 963 $** sur un REER de 2 M$ — le biais croît
+avec la taille du REER, donc frappe le plus la population que `drawdownOptimizer` conseille. Un
+ticket de suivi chiffré « 3,5 pts » aurait été priorisé comme cosmétique.
+
+**Tests re-écrits et PROUVÉS discriminants** (perturbations, chacune rougit) : contexte incrémental
+annulé, retour au 0,7 plat (13 rouges), base = estimé non indexé (4 rouges), contexte = revenu total
+(3 rouges), branche pré-retraite forcée sur le salaire, SRG non retiré de la tranche, SRG non retiré
+du contexte, écrêtement PSV non retiré, contexte = la rente seule. **8 perturbations sur 9 rougissent** ;
+la neuvième (retrait du `Math.max(0, …)` sur le résidu) ne le peut PAS et c'est écrit dans le test :
+tout barème sain rend 0 sur un revenu négatif, donc un résidu de −48 000 $ et un résidu de 0 $
+produisent le même impôt. Fabriquer un stub absurde pour « couvrir » cette ligne n'aurait rien prouvé
+sur le moteur réel. Le stub est désormais
 à DEUX PALIERS (0 / 20 / 50 %) et les points de mesure sont strictement positifs de part et d'autre
 des coudes — le stub `(g − 20 000) × 0,4` du premier jet était **affine**, donc plat au-dessus du
 coude, donc aveugle. Les trois helpers `extractNPV` du fichier, qui divisaient par un `0,7` codé en

@@ -15,8 +15,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   ~40 % avec un gros revenu de retraite à côté. Le forfait pénalisait donc le plus les ménages
   modestes.
 - L'abattement est maintenant **calculé** sur ta situation. Effet mesuré sur nos scénarios de
-  référence : **+215 407 \$** et **+29 061 \$** de patrimoine successoral, ce dernier valant **+20 %**
+  référence : **+215 407 \$** et **+64 898 \$** de patrimoine successoral, ce dernier valant **+45 %**
   pour un ménage sans actifs qui vit de ses rentes.
+- **Le Supplément de revenu garanti n'est plus traité comme imposable.** Il ne l'est pas — Service
+  Canada. Une version intermédiaire de ce correctif l'oubliait d'un côté du calcul : 35 838 \$ de
+  patrimoine successoral en moins, sur un ménage à faible revenu.
 - **Si ta projection s'arrête AVANT ta retraite**, l'impôt est estimé sur les rentes elles-mêmes et
   non sur ton salaire de l'époque : ces rentes, tu les toucheras une fois le salaire arrêté. Un
   premier jet les taxait au taux de ton salaire, ce qui aurait affiché jusqu'à **158 000 \$ de moins**

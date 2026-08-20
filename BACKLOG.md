@@ -206,8 +206,8 @@
   **Mesuré +13 726 $** de patrimoine final si corrigé. Le proxy bloque `canada.ca` → NE PAS
   modifier sans avoir vu le règlement 7308(4). Corriger aussi `FISCAL_REFERENCE.md:467` et
   `tests/services/projection.helpers.test.ts:80` dans le même lot.
-- [x] ~~**`[FISC-RRSP-ROOM-PER-USER]`**~~ ✅ **LIVRÉ 2026-08-20** (branche
-  `claude/rrsp-room-per-user` — détail : section datée en tête de `docs/BACKLOG_ARCHIVE.md`).
+- [x] ~~**`[FISC-RRSP-ROOM-PER-USER]`**~~ ✅ **LIVRÉ 2026-08-20, PR #679** (détail : section
+  datée en tête de `docs/BACKLOG_ARCHIVE.md`).
 - [ ] **`[FISC-RRSP-LIMITS-PRE2024-DOC]`** (S, doc — audit 2026-08-06) — `RRSP_ANNUAL_LIMITS` porte
   **14 valeurs 2010→2023** (22 000 → 30 780) qui n'apparaissent NULLE PART dans
   `FISCAL_REFERENCE.md` (§REER ne liste que 2024+). Elles pilotent les droits REER HISTORIQUES via

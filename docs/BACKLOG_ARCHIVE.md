@@ -12,7 +12,7 @@
 
 ## 2026-08-20 — [FISC-RRSP-ROOM-PER-USER] : les droits REER se calculent par personne (règle ARC)
 
-- [x] **`[FISC-RRSP-ROOM-PER-USER]`** (M, ÉLEVÉ) — ✅ 2026-08-20, PR à compléter au merge.
+- [x] **`[FISC-RRSP-ROOM-PER-USER]`** (M, ÉLEVÉ) — ✅ 2026-08-20, PR #679.
 
 **Décision Marc A1 (ADR 0014)** : « par personne ». `taxJanuary.ts` calculait les droits sur le
 revenu du MÉNAGE (`min(cap × N, Σrevenus × 18 %) − ΣFE`) — le plafond de DEUX personnes s'appliquait

@@ -22,7 +22,7 @@
 > **Réponse reçue** (recherche sourcée : canada.ca, Retraite Québec, dépliant RQAP, U. Sherbrooke) :
 > les prestations versées PAR le RQAP, l'AE et le RRQ ne sont assujetties à AUCUNE des trois
 > cotisations — seule l'imposition s'applique. Assiette de cotisation = revenus de TRAVAIL
-> uniquement. Transcrit dans `FISCAL_REFERENCE.md` §2 + ADR dans `decisions.md`.
+> uniquement. Transcrit dans `FISCAL_REFERENCE.md` §2 + ADR dans `docs/adr/0015-prestations-rqap-ae-rrq-hors-assiette.md`.
 > `[RQAP-PRESTATION-COTISATIONS]` et `[AE-PLAFOND-MANQUANT]` sont DÉBLOQUÉS.
 > ⚠️ Marc a aussi demandé de débloquer le proxy pour revenuquebec.ca — testé depuis ce conteneur le
 > 2026-08-20 16:10 UTC : **encore 403** (CONNECT tunnel failed). Le déblocage n'a pas atteint cette

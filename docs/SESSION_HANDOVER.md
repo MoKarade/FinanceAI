@@ -32,7 +32,24 @@
 > l'apparence d'une consigne — sans rien derrière. Vérifier avant de suivre ; mettre la COMMANDE et
 > non le chiffre ; committer ce qui doit survivre (`MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE`).
 >
-> **SUITE — vague 1f, reste 4** : `[RQAP-CAP-98K]` en premier (le plus gros impact mesuré :
+> ⚠️⚠️ **LA REVUE A TROUVÉ QUATRE DE MES RAISONS FAUSSES** — dans le lot même qui prétend éliminer
+> les entrées « triées » sans qu'on les regarde. `activeIncome::0.55` était le taux STATUTAIRE de
+> l'AE (le code dit `// Job loss (AE 55%)` six lignes plus haut) et je l'avais classé « design, ne
+> jamais sourcer » ; `realEstateMonth::2022/2025` est le report de remboursement du RAP (Budget
+> 2024), pas la règle anti-flip ; `childrenReee::25` invoquait un §9 inexistant ;
+> `setupSimulation::1.35` était classé à l'opposé de son site jumeau. Motif COMMUN : j'ai lu la
+> LIGNE du littéral, pas le BLOC autour (`MON-CORRECTIF-CONTENAIT-LA-FAUTE-QU-IL-CORRIGEAIT`).
+>
+> ⚠️ **Et j'avais audité le critère de la LISTE sans regarder celui du FILTRE.** `BENIGN` contenait
+> `0.5` et `1000` que sa propre justification n'énumérait pas — ils masquaient le taux d'inclusion
+> des gains en capital (`assetLocation:117`, seul site du dépôt à le recopier), le plafond légal de
+> 50 % du fractionnement (`taxDecember:667`) et la SCEE de rattrapage (`childrenReee:24`). Retrait
+> mesuré : **15 occurrences, 8 clés neuves** (`AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`).
+>
+> **Inventaire final : 71 clés** (63 + 8). Trois tickets neufs, dont **`[AE-PLAFOND-MANQUANT]`
+> (ÉLEVÉ)** : le 55 % de l'AE est appliqué au salaire NET et SANS le plafond de 68 900 $.
+>
+> > **SUITE — vague 1f, reste 4** : `[RQAP-CAP-98K]` en premier (le plus gros impact mesuré :
 > ~2 750 $/an de prestation brute manquante), puis `[W5-PROXY-NON-SOURCE]`, `[ESTATE-NPV-07]`,
 > `[MIGRATE-GROSS-135]`. Découvertes ouvertes : `[FISC-ANTIFLIP-WINDOW]`, `[FISC-RAP-15ANS]`,
 > `[ASSETLOC-YEAR-2026]`, `[FISC-GUARD-PROJECTION-TS]`.

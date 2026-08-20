@@ -326,6 +326,19 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   la MÉCANIQUE au lieu de l'ORIGINE. Et **déclarer aussi ce qu'on EXCLUT**, chiffré et motivé : un
   périmètre borné en silence se lit comme « tout est couvert »
   (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`).
+  ⚠️ Et un détecteur a DEUX réglages : ce qu'il regarde (la liste) et ce qu'il IGNORE (le filtre).
+  Le filtre est le plus dangereux — une liste trop courte se voit, une exclusion se lit comme un
+  détail déjà tranché. `BENIGN` contenait `0.5` et `1000` que sa propre justification n'énumérait
+  pas : ils masquaient le taux d'inclusion des gains en capital, le plafond légal de 50 % du
+  fractionnement et la SCEE de rattrapage — dans des modules scannés depuis toujours. **Signal
+  mécanique, repérable à l'œil** : une justification qui énumère moins d'éléments que le `Set`
+  (`AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`).
+- Trier une constante fiscale se fait en lisant **le BLOC**, jamais l'expression : quatre de mes 63
+  raisons étaient fausses parce que j'avais lu la ligne du littéral et pas la fonction autour — le
+  commentaire `// Job loss (AE 55%)` était six lignes plus haut. Et un lot dont la valeur EST le
+  jugement se fait **relire par un tiers** : les 13 tests vérifiaient la FORME (chaque entrée a une
+  raison), et aucune forme ne détecte qu'une raison est FAUSSE
+  (`MON-CORRECTIF-CONTENAIT-LA-FAUTE-QU-IL-CORRIGEAIT`).
 - Une clé d'inventaire **`(fichier, valeur)`** fusionne des sens sans rapport dès que le module est
   dense : dans `childrenReee.ts`, `0.20` est le taux de SCEE ET le taux d'impôt sur le PRA, `500`
   recouvre TROIS sens. Une raison qui n'en décrit qu'un certifie « trié » ce que personne n'a

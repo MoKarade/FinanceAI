@@ -844,6 +844,33 @@
 > sont désormais tous inventoriés et tracés dans `utils/fiscalConstGuardV2.ts` : aucun ne peut plus
 > disparaître en silence. Trois DÉCOUVERTES s'y sont ajoutées (juste après).
 
+- [ ] **`[AE-PLAFOND-MANQUANT]`** (S, **ÉLEVÉ** — découvert en revue de `[FISC-GUARD-SCOPE]`) —
+  `services/projection/activeIncome.ts:70` applique le taux de remplacement de l'assurance-emploi
+  (`incomeMarc *= 0.55`, commentaire du code : « Job loss (AE 55%) ») **au salaire NET et SANS
+  PLAFOND**. Deux erreurs superposées : (a) le 55 % statutaire porte sur les gains assurables
+  **BRUTS**, pas sur le net ; (b) l'AE est plafonnée à `AE_MAX_INCOME = 68 900 $` (§2), soit
+  ≈ 3 158 $/mois bruts d'assiette — le moteur ignore ce plafond. Un salarié à 6 000 $/mois net reçoit
+  donc ≈ 3 300 $/mois pendant le chômage simulé au lieu d'un maximum réel bien inférieur.
+  **Correctif** : passer par le brut, plafonner à `AE_MAX_INCOME`, puis repasser au net via le calcul
+  fiscal (l'AE est imposable). ⚠️ Re-baserait des goldens. [Structure VÉRIFIÉE dans le code ;
+  l'écart $ exact reste à MESURER par un run]
+
+- [ ] **`[ASSETLOC-INCLUSION-RECOPIEE]`** (XS, MOYEN — découvert en revue de `[FISC-GUARD-SCOPE]`) —
+  `services/projection/assetLocation.ts:117` écrit `return marginalRate * 0.5` : le taux d'inclusion
+  des gains en capital **recopié en dur**. C'est le SEUL site du dépôt à le faire — `latentTax`,
+  `estateCalculation`, `retirementIncome`, `taxDecember`, `taxEstimate` et `projection.ts` importent
+  tous `CAPITAL_GAINS_INCLUSION_STANDARD` (vérifié par grep). Il était invisible parce que `0.5`
+  figurait dans le `BENIGN` du garde. **Correctif** : importer la source unique. Rétrocompat
+  bit-identique tant que le taux vaut 50 %, et c'est justement l'intérêt : le jour où il change,
+  ce site suivra.
+
+- [ ] **`[FISC-REEE-AGE-FERMETURE]`** (XS, FAIBLE — découvert en revue de `[FISC-GUARD-SCOPE]`) —
+  `services/projection/childrenReee.ts:401` ferme le REEE à **25 ans** alors que le régime réel
+  autorise 35 ans. L'écart est un choix de simulation défendable, mais il n'est **documenté nulle
+  part** : `FISCAL_REFERENCE.md` ne mentionne ni « 35 ans » ni l'âge de fermeture (vérifié — le §9
+  ne couvre que le PRA, le clawback de subventions et les PAE). **Correctif** : une ligne en §9,
+  ou aligner sur 35.
+
 - [ ] **`[FISC-ANTIFLIP-WINDOW]`** (XS, MOYEN — découvert par `[FISC-GUARD-SCOPE]`) — la fenêtre
   `2022`/`2025` de `services/projection/realEstateMonth.ts:234` module la période de grâce de
   l'exemption de gain en capital sur résidence (règle anti-flip fédérale) : `graceYears = 5` dans la

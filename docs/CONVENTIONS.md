@@ -4435,3 +4435,67 @@ c'est le cas où **personne n'a regardé**.
 (dont `setupSimulation.ts::1.35`, le proxy brut/net répété 4 fois). Encore la règle « resserrer le
 scan AVANT de coder le fix » : les offenders révélés sont le vrai périmètre, et ils étaient là
 depuis le premier jour du garde.
+
+### `AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE` — j'ai corrigé le critère d'un côté et laissé l'autre
+
+Le lot `[FISC-GUARD-SCOPE]` avait pour thèse que **le critère d'inclusion était le bug** : la liste
+`FISCAL_MODULES` disait « les modules qui PRODUISENT de l'impôt », un critère trop étroit qui laissait
+un plafond RQAP faux hors de portée. Thèse juste, corrigée, documentée.
+
+Et j'ai livré ça sans regarder le filtre qui vit trente lignes plus bas.
+
+`BENIGN` liste les littéraux réputés inoffensifs. Sa justification écrite :
+
+> *« Les exclure n'affaiblit pas le garde — aucun barème fiscal ne vaut 0, 1, 2, 12 ou 100. »*
+
+La phrase est vraie. Le `Set`, lui, contenait aussi `'1000'` et `'0.5'`, que la phrase ne mentionne
+même pas : quelqu'un les avait ajoutés sans étendre le critère qui les justifie. Ils masquaient
+**trois vraies valeurs légales, dans des modules pourtant scannés depuis le premier jour** :
+
+| Site | Masqué | Ce que c'était |
+|---|---|---|
+| `assetLocation.ts:117` | `marginalRate * 0.5` | taux d'INCLUSION des gains en capital — seul site du dépôt à le recopier au lieu d'importer `CAPITAL_GAINS_INCLUSION_STANDARD` |
+| `taxDecember.ts:667` | `0.5 * splittable[H]` | plafond LÉGAL de 50 % du fractionnement de pension (T1032) |
+| `childrenReee.ts:24` | `SCEE_ANNUAL_GRANT_CATCHUP = 1000` | SCEE de rattrapage (ARC) — son jumeau IQEE à 500 $ était, lui, inventorié |
+
+Retrait mesuré : **15 occurrences révélées, 8 clés neuves**, dont les rentes au survivant
+(`retirementIncome.ts:261-262`).
+
+**La règle** : un dispositif de détection a DEUX réglages — ce qu'il regarde (la liste) et ce qu'il
+ignore (le filtre). Les deux portent un critère, les deux peuvent être faux, et **le filtre est le
+plus dangereux des deux** : une liste trop courte se voit (« ce module n'y est pas »), une exclusion
+se lit comme un détail technique déjà tranché. Auditer les deux dans le même passage.
+
+**Signal à reconnaître** : une liste d'exclusion dont la justification en commentaire **énumère
+moins d'éléments que le `Set`**. C'est le symptôme mécanique d'un ajout fait sans revenir sur le
+critère — et il se repère à l'œil, sans exécuter quoi que ce soit.
+
+### `MON-CORRECTIF-CONTENAIT-LA-FAUTE-QU-IL-CORRIGEAIT`
+
+Le même lot introduisait une garde contre les entrées « triées » dont un sens n'a jamais été
+regardé (`CLE-QUI-FUSIONNE-DEUX-SENS`). La revue a trouvé, **dans mes propres 63 entrées**, quatre
+raisons factuellement fausses :
+
+- `activeIncome.ts::0.55` classé *design*, « proxy brut→net, sans rapport avec le RQAP ». C'était le
+  **taux de remplacement statutaire de l'assurance-emploi** — le commentaire du code, deux lignes
+  plus haut, dit `// Job loss (AE 55%)`. J'avais donc certifié « ne jamais sourcer » un taux légal,
+  et déclaré « sans rapport » deux prestations de même nature.
+- `realEstateMonth.ts::2022`/`::2025` décrits comme la règle anti-flip et l'exemption de résidence
+  principale. Le code est **dans le bloc RAP** et pilote `rapRepaymentStartOffset` : c'est le report
+  temporaire du début de remboursement du RAP (Budget 2024). Mon ancrage envoyait la prochaine
+  session écrire une valeur fausse en §8.
+- `childrenReee.ts::25` affirmait « la LIMITE est notée §9 ». Elle ne l'est nulle part.
+- `setupSimulation.ts::1.35` classé *design* « revenu théorique », alors que deux de ses quatre
+  occurrences s'appliquent au salaire RÉEL — et que son site jumeau, nommé dans le MÊME ticket,
+  était classé *fiscal*.
+
+**Ce qu'il faut en retenir, et ce n'est pas « faire attention ».** Ces quatre erreurs ont un motif
+commun : j'ai classé en lisant **la ligne** du littéral, pas la **fonction qui l'entoure**. Le
+commentaire qui disait « AE 55% » était à six lignes ; le `state.rapRepaymentStartOffset` à une
+ligne. Un tri de constante fiscale se fait en lisant le BLOC, jamais l'expression.
+
+Et le correctif de méthode : **un lot dont la valeur EST le jugement humain doit être relu par un
+tiers avant merge**, pas seulement testé. Les 13 tests passaient — ils vérifient la FORME (chaque
+entrée a une raison, chaque clé multiple est annotée), et aucune forme ne peut détecter qu'une
+raison est fausse. La garde et la revue couvrent deux risques différents ; croire que l'une remplace
+l'autre est l'erreur.

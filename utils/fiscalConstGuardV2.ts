@@ -59,7 +59,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection/taxJanuary.ts', value: '18', family: 'fiscal',
       reason: '[×2] Âge d’ouverture des droits CELI / admissibilité CELIAPP.' },
     { file: 'services/projection/taxJanuary.ts', value: '71', family: 'fiscal',
-      reason: '[×4] Conversion obligatoire REER → FERR à la fin de l’année des 71 ans (ARC).' },
+      reason: 'DEUX RÈGLES ARC distinctes sous la même clé — ma marque `[×4]` prétendait à tort qu’elles avaient le même sens. L146 et L153 : fermeture obligatoire du CELIAPP/FHSA au 31 décembre de l’année des 71 ans (`closureForcedBy71`, cf. commentaire L136-139). L272 et L273 : arrêt de l’accumulation des droits REER et remise à zéro, corollaire de la conversion REER → FERR. Deux dispositions qui partagent un âge et peuvent bouger indépendamment.' },
     { file: 'services/projection/taxJanuary.ts', value: '15', family: 'fiscal',
       reason: '[×2] Durée de vie maximale du CELIAPP (15 ans depuis l’ouverture, ARC).' },
     { file: 'services/projection/taxJanuary.ts', value: '0.25', family: 'design',
@@ -73,7 +73,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
 
     // ── services/projection/taxDecember.ts ───────────────────────────────────────────────────
     { file: 'services/projection/taxDecember.ts', value: '65', family: 'fiscal',
-      reason: '[×3] Âge d’ouverture du crédit en raison de l’âge, et pivot RRQ/PSV.' },
+      reason: 'TROIS dispositions distinctes, dont une que ma marque `[×3]` passait sous silence. L52 : gate de `computeOasClawback` — âge d’ouverture de la PSV. L440 : `mkActiveAgeOpts` — crédit en raison de l’âge (§4). L603 : gate du revenu de pension admissible / fractionnement (§4 et §6). ⚠️ Et il n’y a AUCUN « pivot RRQ » dans ce fichier : cette mention de ma première raison était fausse.' },
     { file: 'services/projection/taxDecember.ts', value: '0.50', family: 'design',
       reason: 'Fraction de vente FICTIVE servant à estimer la récolte de pertes — pas un taux d’inclusion.' },
     { file: 'services/projection/taxDecember.ts', value: '40', family: 'design',
@@ -122,17 +122,17 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection/helpers.ts', value: '2.0', family: 'structural',
       reason: 'Constante de la transformation de Box-Muller (loi normale). Mathématique, pas fiscale.' },
     { file: 'services/projection/helpers.ts', value: '65', family: 'design',
-      reason: '[×2] Seuil d’âge de la courbe de probabilité LTC (calibrée sur Genworth/StatCan, cf. commentaire D2.8) — hypothèse de RISQUE, pas un âge fiscal.' },
+      reason: 'Seuil d’âge présent DANS LES DEUX courbes : probabilité LTC (L194-199, calibrée Genworth/StatCan, cf. D2.8) et probabilité de mortalité (L207-215, Stats Canada 2020-2022). Ma marque `[×2]` n’en nommait qu’une. Hypothèses de RISQUE dans les deux cas, jamais un âge fiscal.' },
     { file: 'services/projection/helpers.ts', value: '70', family: 'design',
-      reason: '[×2] Palier d’âge de la courbe LTC. Même nature que 65.' },
+      reason: 'Palier d’âge présent DANS LES DEUX courbes : `ltcAnnualProbability` (L194-199) et `mortalityAnnualProbability` (L207-215, « Stats Canada 2020-2022, unisexe lissé »). Ma marque `[×2]` ne décrivait que la LTC. Même famille pour les deux — hypothèses de RISQUE calibrées, jamais des âges fiscaux.' },
     { file: 'services/projection/helpers.ts', value: '75', family: 'design',
-      reason: '[×2] Palier d’âge de la courbe LTC. Même nature que 65.' },
+      reason: 'Palier d’âge présent DANS LES DEUX courbes : `ltcAnnualProbability` (L194-199) et `mortalityAnnualProbability` (L207-215, « Stats Canada 2020-2022, unisexe lissé »). Ma marque `[×2]` ne décrivait que la LTC. Même famille pour les deux — hypothèses de RISQUE calibrées, jamais des âges fiscaux.' },
     { file: 'services/projection/helpers.ts', value: '80', family: 'design',
-      reason: '[×2] Palier d’âge de la courbe LTC. Même nature que 65.' },
+      reason: 'Palier d’âge présent DANS LES DEUX courbes : `ltcAnnualProbability` (L194-199) et `mortalityAnnualProbability` (L207-215, « Stats Canada 2020-2022, unisexe lissé »). Ma marque `[×2]` ne décrivait que la LTC. Même famille pour les deux — hypothèses de RISQUE calibrées, jamais des âges fiscaux.' },
     { file: 'services/projection/helpers.ts', value: '85', family: 'design',
-      reason: '[×2] Palier d’âge de la courbe LTC. Même nature que 65.' },
+      reason: 'Palier d’âge présent DANS LES DEUX courbes : `ltcAnnualProbability` (L194-199) et `mortalityAnnualProbability` (L207-215, « Stats Canada 2020-2022, unisexe lissé »). Ma marque `[×2]` ne décrivait que la LTC. Même famille pour les deux — hypothèses de RISQUE calibrées, jamais des âges fiscaux.' },
     { file: 'services/projection/helpers.ts', value: '90', family: 'design',
-      reason: '[×2] Palier d’âge de la courbe LTC. Même nature que 65.' },
+      reason: 'Palier d’âge présent DANS LES DEUX courbes : `ltcAnnualProbability` (L194-199) et `mortalityAnnualProbability` (L207-215, « Stats Canada 2020-2022, unisexe lissé »). Ma marque `[×2]` ne décrivait que la LTC. Même famille pour les deux — hypothèses de RISQUE calibrées, jamais des âges fiscaux.' },
     // ⚠️ ENTRÉE DOUBLE DE SENS — la première fois que la clé (fichier, valeur) coûte quelque chose.
     // `95` apparaît DEUX fois dans helpers.ts avec des natures OPPOSÉES, et la clé ne peut pas les
     // distinguer. Les deux sont décrites ici plutôt que d'en taire une ; `family` prend le sens le
@@ -140,7 +140,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     // relecture stricte même s'il porte aussi une heuristique. Le compromis était documenté en tête
     // de fichier ; il est désormais VÉCU, pas seulement anticipé.
     { file: 'services/projection/helpers.ts', value: '95', family: 'fiscal',
-      reason: '[×2] DEUX occurrences distinctes. (1) FISCAL — RRIF_PLATEAU_AGE : âge à partir duquel le facteur FERR est figé au plateau de 20 %. Ancré le 2026-08-06 ; il était jusque-là IMPLICITE, porté par la seule ABSENCE d’entrée dans la table au-delà de 94 — un seuil qu’aucune ligne n’écrit ne peut être ni relu ni corrigé. (2) DESIGN — palier terminal de la courbe de mortalité/LTC (`if (age < 95) return 0.140`), hypothèse de risque calibrée, à ne JAMAIS sourcer comme une valeur fiscale.' },
+      reason: 'DEUX occurrences de natures OPPOSÉES — L89 et L215. (1) FISCAL — RRIF_PLATEAU_AGE : âge à partir duquel le facteur FERR est figé au plateau de 20 %. Ancré le 2026-08-06 ; il était jusque-là IMPLICITE, porté par la seule ABSENCE d’entrée dans la table au-delà de 94 — un seuil qu’aucune ligne n’écrit ne peut être ni relu ni corrigé. (2) DESIGN — palier terminal de la courbe de mortalité/LTC (`if (age < 95) return 0.140`), hypothèse de risque calibrée, à ne JAMAIS sourcer comme une valeur fiscale.' },
     { file: 'services/projection/helpers.ts', value: '50', family: 'design',
       reason: 'Palier d’âge bas de la courbe de mortalité/LTC. Hypothèse de risque.' },
     { file: 'services/projection/setupSimulation.ts', value: '42', family: 'structural',
@@ -157,8 +157,8 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Part du revenu théorique attribuée au 1er conjoint (55/45). Hypothèse de répartition, pas une règle.' },
     { file: 'services/projection/setupSimulation.ts', value: '0.45', family: 'design',
       reason: 'Part du revenu théorique attribuée au 2e conjoint. Même nature que 0.55.' },
-    { file: 'services/projection/setupSimulation.ts', value: '1.35', family: 'design',
-      reason: '[×4] Facteur brut/net approximatif pour remonter un revenu théorique. Approximation de modèle.' },
+    { file: 'services/projection/setupSimulation.ts', value: '1.35', family: 'fiscal',
+      reason: '⚠️ Reclassé en revue (2026-08-20) : « approximation pour un revenu THÉORIQUE » n’est vrai qu’en L152/L155 (branche `useTheo`). En L153/L156 le même facteur s’applique au `netSalary` RÉEL d’un utilisateur qui n’a pas saisi son brut — et ce brut fabriqué alimente `baseGrossAnnual`, donc TOUTE l’assiette d’impôt et les droits REER. C’est le site JUMEAU de `store/useFinanceStore.ts:144`, que le ticket `[MIGRATE-GROSS-135]` nomme explicitement avec lui : le même défaut ne peut pas recevoir deux familles opposées. `calculateGrossFromNet` (`utils/tax.ts:870`) existe et est vérifié exact au roundtrip.' },
     { file: 'services/projection/setupSimulation.ts', value: '2.0', family: 'structural',
       reason: 'Constante mathématique d’une formule de simulation. Pas fiscale.' },
     { file: 'services/projection/setupSimulation.ts', value: '5.5', family: 'design',
@@ -218,13 +218,13 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection/childrenReee.ts', value: '0.30', family: 'design',
       reason: 'Part du coût de garde restant à charge au-delà du seuil (≈70 % d’aide implicite). Approximation de modèle, cf. §9 — le vrai crédit est un barème progressif selon le revenu familial.' },
     { file: 'services/projection/childrenReee.ts', value: '150000', family: 'design',
-      reason: 'Seuil de revenu familial où le modèle commence à réduire l’aide aux études (L291) et base du prorata (L292). PROXY de conception : ce n’est pas le seuil d’un programme réel, c’est une courbe de dégressivité inventée pour l’écran.' },
+      reason: 'Seuil de revenu familial où le modèle commence à réduire les ALLOCATIONS gouvernementales de l’enfant (L291), et base du prorata (L292). ⚠️ Ma première raison disait « aide aux études » et « inventée pour l’écran » : les deux sont faux — le code réduit `child.governmentBenefits` et l’ajoute à `monthlyIncomeDelta`, donc ça DÉPLACE de l’encaisse. Reste `design` : la courbe de dégressivité est un proxy, pas le barème d’un programme réel (§7 le nomme « clawback d’allocation »).' },
     { file: 'services/projection/childrenReee.ts', value: '100000', family: 'design',
-      reason: 'Largeur de la plage de dégressivité de ce même proxy (L292). Même nature que 150000 — la paire définit une rampe, pas un barème.' },
+      reason: 'Largeur de la plage de dégressivité du clawback d’ALLOCATION (L292). Même nature que 150000 — la paire définit une rampe de proxy, pas un barème réel.' },
     { file: 'services/projection/childrenReee.ts', value: '18', family: 'structural',
       reason: 'Âge de majorité converti en MOIS (`18 * 12`), trois fois : fin des coûts d’enfant (L219), achat auto (L362), début des études (L374). Borne de calendrier du modèle, pas un seuil fiscal.' },
     { file: 'services/projection/childrenReee.ts', value: '25', family: 'structural',
-      reason: 'Âge (en mois × 12) de fermeture du REEE dans le modèle. Le régime réel autorise 35 ans ; ici c’est la borne de la simulation, donc structurel — la LIMITE est notée §9.' },
+      reason: 'Âge (en mois × 12) de fermeture du REEE dans le modèle (L401). Le régime réel autorise 35 ans : c’est donc la borne de la SIMULATION, pas une règle. ⚠️ Ma première raison affirmait « la LIMITE est notée §9 » — VÉRIFIÉ EN REVUE : c’est FAUX, FISCAL_REFERENCE ne mentionne nulle part l’âge de fermeture du REEE (le §9 ne couvre que le PRA, le clawback de subventions et les PAE). Écart à documenter : ticket `[FISC-REEE-AGE-FERMETURE]`.' },
     { file: 'services/projection/childrenReee.ts', value: '16', family: 'design',
       reason: 'Âge auquel le modèle ajoute un coût ponctuel (permis de conduire). Hypothèse de coût de ménage.' },
     { file: 'services/projection/childrenReee.ts', value: '50', family: 'design',
@@ -234,7 +234,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection/childrenReee.ts', value: '11', family: 'design',
       reason: 'Borne haute de la tranche d’âge 5-11 ans de la grille de coûts d’enfant. Paramètre de grille.' },
     { file: 'services/projection/childrenReee.ts', value: '17', family: 'design',
-      reason: 'Borne haute des tranches 12-17 ans, utilisée deux fois : grille de coûts (L239) et fenêtre d’aide aux études (L288). Paramètre de grille dans les deux cas.' },
+      reason: 'Borne haute des tranches 12-17 ans : grille de coûts d’enfant (L239) et fenêtre de réduction des ALLOCATIONS (L288, et non « aide aux études » comme je l’avais écrit). Paramètre de grille dans les deux cas.' },
     { file: 'services/projection/childrenReee.ts', value: '80', family: 'design',
       reason: 'Composante forfaitaire du coût mensuel d’un enfant de 5-11 ans. Hypothèse de coût.' },
     { file: 'services/projection/childrenReee.ts', value: '1.2', family: 'design',
@@ -248,15 +248,15 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection/realEstateMonth.ts', value: '0.4', family: 'design',
       reason: '`DOWNSIZE_RELEASE_PCT` — part de l’équité libérée lors d’un downsizing. Hypothèse de stratégie (frais de vente, achat plus petit), pas une règle.' },
     { file: 'services/projection/realEstateMonth.ts', value: '2022', family: 'fiscal',
-      reason: 'Borne BASSE de la fenêtre où l’exemption de gain en capital sur résidence bénéficie d’une période de grâce allongée (règle anti-flip fédérale). Absente de FISCAL_REFERENCE — à ancrer §8.' },
+      reason: '⚠️ MA PREMIÈRE RAISON ÉTAIT FAUSSE (revue 2026-08-20) : j’y avais lu la règle anti-flip et l’exemption de résidence principale. Le code (L234) est DANS le bloc RAP et pilote `rapRepaymentStartOffset` — c’est la borne BASSE de la fenêtre du report temporaire du DÉBUT DE REMBOURSEMENT du RAP (Budget fédéral 2024 : 5 ans de grâce au lieu de 2 pour les retraits du 1er janvier 2022 au 31 décembre 2025). Rien à voir avec le gain en capital. À ancrer §7 (régimes enregistrés), avec la durée de 15 ans — pas §8.' },
     { file: 'services/projection/realEstateMonth.ts', value: '2025', family: 'fiscal',
-      reason: 'Borne HAUTE de cette même fenêtre. Même statut : règle réelle, non ancrée. Les deux bornes doivent être sourcées ensemble ou retirées ensemble.' },
+      reason: 'Borne HAUTE de la fenêtre du report de remboursement du RAP (Budget fédéral 2024), cf. l’entrée `2022` du même fichier. Les deux bornes ET la durée de grâce (5 ans vs 2) doivent être sourcées ENSEMBLE en §7 : en ancrer une seule laisserait une règle à moitié fausse.' },
     { file: 'services/projection/realEstateMonth.ts', value: '0.015', family: 'design',
       reason: 'Amplitude du choc de taux pseudo-aléatoire dérivé de l’identifiant du bien (±1,5 pp). Paramètre de simulation, pas un taux de marché observé.' },
     { file: 'services/projection/realEstateMonth.ts', value: '0.05', family: 'design',
       reason: 'Taux d’intérêt supposé de la marge Smith Manoeuvre (5 %). Hypothèse de modèle — la LIMITE est notée §8 ; le vrai taux dépend du produit et du dossier.' },
-    { file: 'services/projection/realEstateMonth.ts', value: '0.65', family: 'design',
-      reason: 'Ratio prêt/valeur au-delà duquel le modèle déclenche un appel de marge (L431 test, L432 calcul du surplus). Les prêteurs plafonnent réellement une marge réavançable à 65 % — mais c’est une pratique commerciale, pas un barème fiscal : cf. §8.' },
+    { file: 'services/projection/realEstateMonth.ts', value: '0.65', family: 'fiscal',
+      reason: 'Ratio prêt/valeur au-delà duquel le modèle déclenche un appel de marge (L431 test, L432 calcul du surplus). ⚠️ Reclassé `fiscal` en revue : j’avais écrit « pratique commerciale » alors que le §8 que je citais en preuve dit « LTV 65 %, plafond B-20 de la portion réavançable » — B-20 est une ligne directrice OSFI, source réglementaire dont §8 ancre déjà quatre constantes (`OSFI_MQR_FLOOR`, `OSFI_MQR_BUFFER`, GDS, TDS). Une raison ne peut pas contredire la section qu’elle invoque.' },
     { file: 'services/projection/realEstateMonth.ts', value: '15', family: 'fiscal',
       reason: 'Durée de remboursement du RAP (régime d’accession à la propriété) : 15 ans, ARC. Non ancrée dans FISCAL_REFERENCE — à ajouter §7.' },
 
@@ -279,20 +279,20 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Taux d’actualisation réel de la VAN des rentes (`r_npv` = 2 %). Hypothèse financière de modèle. Le `1.02` de L229-230 en est le reflet et doit bouger AVEC lui — piège de duplication signalé par `[ESTATE-NPV-07]`.' },
     { file: 'services/projection/estateCalculation.ts', value: '65', family: 'fiscal',
       reason: 'Âge pivot des rentes publiques (RRQ/PSV), en L229 (RRQ) et L230 (PSV), pour décider si la rente est déjà en cours. Vrai paramètre fédéral/QC, ancré FISCAL_REFERENCE §6.' },
-    { file: 'services/projection/estateCalculation.ts', value: '0.7', family: 'fiscal',
-      reason: 'Facteur de 30 % d’abattement appliqué à la VAN des rentes dans le patrimoine successoral (L232). SANS NOM, SANS COMMENTAIRE, absent de FISCAL_REFERENCE — et 30 % d’une VAN de rentes vaut des dizaines de k$ à l’écran Succession. Ticket `[ESTATE-NPV-07]` : le nommer comme hypothèse de modèle, ou le retirer.' },
+    { file: 'services/projection/estateCalculation.ts', value: '0.7', family: 'design',
+      reason: 'Facteur de 30 % d’abattement appliqué à la VAN des rentes dans le patrimoine successoral (L232). SANS NOM, SANS COMMENTAIRE, absent de FISCAL_REFERENCE — et 30 % d’une VAN de rentes vaut des dizaines de k$ à l’écran Succession. Ticket `[ESTATE-NPV-07]` : le nommer comme hypothèse de modèle, ou le retirer. ⚠️ Reclassé `design` en revue : `fiscal` signifie « DOIT finir dans FISCAL_REFERENCE », et ancrer un abattement de 30 % qu’aucune règle ARC/RQ ne produit polluerait la source de vérité. Le défaut est qu’il est ANONYME, pas qu’il manque une source.' },
 
     // ── services/projection/activeIncome.ts ──────────────────────────────────────────────────
-    { file: 'services/projection/activeIncome.ts', value: '0.55', family: 'design',
-      reason: 'Facteur brut→net appliqué au salaire (L70), puis aux bonus/RSU/revenus d’appoint du 1er conjoint (L106) et du 2e (L107). PROXY de charge fiscale globale, pas un taux statutaire. ⚠️ Homonyme du 0,55 du RQAP dans `childrenReee.ts` : deux valeurs identiques, deux sens sans rapport — ne pas les unifier.' },
+    { file: 'services/projection/activeIncome.ts', value: '0.55', family: 'fiscal',
+      reason: 'DEUX SENS, et mon premier tri s’est trompé sur le principal (revue 2026-08-20). L70 — `incomeMarc *= 0.55` sous le commentaire « Job loss (AE 55%) » — est le TAUX DE REMPLACEMENT STATUTAIRE de l’assurance-emploi (55 % des gains assurables, Loi sur l’AE) : une PRESTATION fédérale, à ancrer §2 à côté de `AE_RATE_QC`/`AE_MAX_INCOME`, et de MÊME nature que le 0,55 du RQAP — pas « sans rapport » comme je l’avais écrit. L106 et L107, elles, sont un PROXY de charge fiscale sur les bonus/RSU/revenus d’appoint (cf. commentaire L98 « taxés ~45 % marginal ») : celles-là sont bien du design. La famille retenue est la plus stricte des deux. ⚠️ Défaut VOISIN relevé au passage : le 55 % est appliqué au net NON PLAFONNÉ, alors que l’AE est plafonnée à 68 900 $ — ticket `[AE-PLAFOND-MANQUANT]`.'},
     { file: 'services/projection/activeIncome.ts', value: '99', family: 'structural',
       reason: 'Sentinelle « pas de fin connue » pour les années de RSU restantes (`?? 99`), en L101 (1er conjoint) et L102 (2e). Valeur d’absence, pas un paramètre.' },
 
     // ── services/projection/assetLocation.ts ─────────────────────────────────────────────────
     { file: 'services/projection/assetLocation.ts', value: '0.60', family: 'design',
-      reason: 'Taux effectif « dividende canadien éligible » estimé à 60 % du marginal (proxy majoration 1,38 + crédits). Hypothèse de modèle NOMMÉE et commentée sur place (FA-8), dans un module CONSULTATIF — pas un barème à sourcer.' },
-    { file: 'services/projection/assetLocation.ts', value: '2026', family: 'fiscal',
-      reason: 'Année fiscale de repli pour lire le taux marginal quand l’appelant n’en fournit pas. Ancrage temporel du barème, donc fiscal — à faire pointer vers l’année courante du moteur plutôt qu’un littéral.' },
+      reason: 'Taux effectif « dividende canadien éligible » estimé à 60 % du marginal (proxy majoration 1,38 + crédits), L110. Hypothèse de modèle COMMENTÉE sur place (FA-8) — mais pas nommée : c’est un littéral nu dans un `return`. Module CONSULTATIF (perte d’allocation), pas le moteur : proxy assumé, pas un barème à sourcer.' },
+    { file: 'services/projection/assetLocation.ts', value: '2026', family: 'structural',
+      reason: 'Année fiscale de REPLI (`input.year ?? 2026`, L135) pour lire le taux marginal quand l’appelant n’en fournit pas. ⚠️ Reclassé `structural` en revue : une année de repli ne peut pas « finir ancrée dans FISCAL_REFERENCE », donc `fiscal` décrivait mal l’action attendue. Le défaut est qu’elle ne suit pas l’année courante du moteur — ticket `[ASSETLOC-YEAR-2026]`.' },
     { file: 'services/projection/assetLocation.ts', value: '0.02', family: 'design',
       reason: 'Écart de rendement supposé actions−obligations (2 pp) servant à chiffrer le coût d’opportunité d’obligations logées au CELI. Hypothèse de marché, pas fiscale.' },
     { file: 'services/projection/assetLocation.ts', value: '20', family: 'design',
@@ -335,6 +335,26 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Numéro de version de schéma persisté (`fromVersion < 6`). Palier de migration.' },
     { file: 'store/useFinanceStore.ts', value: '7', family: 'structural',
       reason: 'Numéro de version de schéma persisté (`fromVersion < 7`). Palier de migration.' },
+    // ── Révélés par le RETRAIT de `0.5` et `1000` de BENIGN (2026-08-20, revue) ──────────────
+    // Trois de ces huit clés recouvrent une VRAIE valeur légale qui était invisible dans des
+    // modules pourtant scannés depuis le premier jour du garde.
+    { file: 'services/projection/assetLocation.ts', value: '0.5', family: 'fiscal',
+      reason: 'DEUX SENS. L117 `return marginalRate * 0.5` — TAUX D’INCLUSION des gains en capital (50 %, §3), et c’est le SEUL site du dépôt qui le recopie : partout ailleurs (`latentTax`, `estateCalculation`, `retirementIncome`, `taxDecember`, `taxEstimate`, `projection.ts`) `CAPITAL_GAINS_INCLUSION_STANDARD` est importé. Vraie dette, ticket `[ASSETLOC-INCLUSION-RECOPIEE]` : importer la source unique. L67 — rendement de 0,5 % de la classe `growth-small` dans la table d’hypothèses, celui-là purement design.' },
+    { file: 'services/projection/taxDecember.ts', value: '0.5', family: 'fiscal',
+      reason: 'TROIS occurrences, une seule fiscale. L667 `Math.min(0.5 * splittable[H], …)` — PLAFOND LÉGAL de 50 % du fractionnement de revenu de pension (T1032 fédéral / Annexe Q, §6). L232 et L237 — seuils d’affichage à 0,50 $ décidant si un libellé mentionne la banque de pertes ou le palier bas ; aucun enjeu fiscal.' },
+    { file: 'services/projection/childrenReee.ts', value: '1000', family: 'fiscal',
+      reason: '`SCEE_ANNUAL_GRANT_CATCHUP` (L24) — Subvention canadienne pour l’épargne-études en mode RATTRAPAGE, 1 000 $/an (ARC), ancrée §7. Son jumeau `IQEE_ANNUAL_GRANT_CATCHUP = 500` était inventorié dès le premier jet ; celui-ci restait invisible parce que `1000` figurait dans BENIGN sans que le critère de BENIGN le couvre.' },
+    { file: 'services/projection/retirementIncome.ts', value: '0.5', family: 'fiscal',
+      reason: 'QUATRE occurrences, deux natures. L261 (×2) et L262 — facteurs de rente au SURVIVANT : la PSV du défunt cesse (facteur 0,5 sur un couple) et la RRQ est recalculée via `rrqSurvivorPct`. Règles de Service Canada / Retraite Québec, §6. L177 et L193 — prime de 0,5 pp au-dessus de l’inflation pour projeter le MGA de la RRQ : celle-là est une hypothèse d’indexation, pas une règle.' },
+    { file: 'services/projection/taxJanuary.ts', value: '0.5', family: 'design',
+      reason: 'Prime d’indexation de 0,5 pp au-dessus de l’inflation servant à EXTRAPOLER le plafond REER au-delà de la dernière année connue de `RRSP_ANNUAL_LIMITS` (L181, §7.G). Le plafond lui-même est sourcé ; la vitesse d’extrapolation est une hypothèse de modèle.' },
+    { file: 'services/projection/childrenReee.ts', value: '0.5', family: 'design',
+      reason: 'Demi-part de couches dans le coût mensuel d’un nourrisson (L234, `diapers * 0.5`). Hypothèse de coût de ménage — homonyme sans rapport du taux d’inclusion des gains en capital.' },
+    { file: 'services/projection/realEstateMonth.ts', value: '0.5', family: 'design',
+      reason: 'Moitié des frais de copropriété retenue dans le calcul d’un but immobilier (L362). Hypothèse de modèle sur la part récupérable/évitable, aucune règle derrière.' },
+    { file: 'services/projection/cashflowAllocation.ts', value: '1000', family: 'design',
+      reason: 'Seuil de banque de pertes en capital (1 000 $) au-delà duquel la stratégie préfère vendre du non-enregistré avant le REER pour consommer les pertes (L245). Heuristique de séquencement, pas un barème.' },
+
     { file: 'store/useFinanceStore.ts', value: '5000', family: 'structural',
       reason: 'Durée de vie en ms d’un focus d’onglet en attente (5 s). Paramètre d’interface.' },
 ];
@@ -408,13 +428,32 @@ export const FISCAL_MODULES_HORS_PERIMETRE = [
     { file: 'utils/tax.ts', literals: 82, reason: 'source désignée du garde V1' },
     { file: 'services/realEstate.ts', literals: 26, reason: 'source désignée du garde V1' },
     { file: 'services/projection.ts', literals: 31, reason: 'orchestrateur — trou connu et assumé' },
+    // Ces trois-ci étaient chiffrés en PROSE seulement : une métrique qu'aucun test ne relit dérive
+    // en silence (`DOC-METRIQUE-RECOPIEE`). Elles rejoignent la table pour être vérifiées.
+    { file: 'services/projection/historicalReturns.ts', literals: 58, reason: 'rendements de marché observés' },
+    { file: 'services/pdfReport.ts', literals: 61, reason: 'mise en page du rapport PDF' },
+    { file: 'services/projection/monthlyCalcs.ts', literals: 15, reason: 'agrégats mensuels, aucun barème' },
 ] as const;
 
 /**
- * Littéraux BÉNINS : indices, mois, pourcentage, epsilons. Les exclure n'affaiblit pas le garde —
- * aucun barème fiscal ne vaut 0, 1, 2, 12 ou 100.
+ * Littéraux BÉNINS : indices, mois, pourcentage, epsilons.
+ *
+ * ⚠️ 2026-08-20 — `'0.5'` et `'1000'` RETIRÉS ([FISC-GUARD-SCOPE], revue). La justification d'origine
+ * (« aucun barème fiscal ne vaut 0, 1, 2, 12 ou 100 ») ne les mentionnait même pas : ils avaient été
+ * ajoutés à la liste sans que le critère soit étendu pour les couvrir. Ils masquaient TROIS vraies
+ * valeurs légales, dans des modules pourtant scannés :
+ *   • `assetLocation.ts:117` `marginalRate * 0.5` — taux d'INCLUSION des gains en capital, seul site
+ *     du dépôt à le recopier au lieu d'importer `CAPITAL_GAINS_INCLUSION_STANDARD` ;
+ *   • `taxDecember.ts:667` `0.5 * splittable[H]` — plafond LÉGAL de 50 % du fractionnement de
+ *     pension (T1032 / Annexe Q) ;
+ *   • `childrenReee.ts:24` `SCEE_ANNUAL_GRANT_CATCHUP = 1000` — SCEE de rattrapage (ARC), dont le
+ *     jumeau IQEE (500 $) était, lui, bien inventorié.
+ * Leçon du lot : **auditer le critère du FILTRE autant que celui de la LISTE** — j'avais corrigé
+ * l'un et laissé l'autre. Retrait mesuré : 15 occurrences révélées, 8 clés neuves.
+ *
+ * Ce qui reste ici est vraiment inoffensif : indices, mois, jours, pourcentage, epsilons.
  */
-const BENIGN = new Set(['0', '1', '2', '3', '4', '10', '12', '24', '60', '100', '365', '1000', '0.5', '1e-9', '1e-6']);
+const BENIGN = new Set(['0', '1', '2', '3', '4', '10', '12', '24', '60', '100', '365', '1e-9', '1e-6']);
 
 export interface ConstHit {
     line: number;

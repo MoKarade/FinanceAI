@@ -683,10 +683,15 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
         // bascule vers l'autre terme du `max(…)` sans que rien ne le signale. Avec `fin()`, le champ
         // ne contribue que 0 — dégradation gracieuse, comme `rrqEstimateMonthly` chez le voisin.
         const ref = facteurNet(retraite(2_500), stubPaliers);
-        // ⚠️ `pensionPriveeMonthlyFinal` était ABSENT de cette liste alors qu'il est le SEUL champ
-        // qui DISCRIMINE une branche (`dbVerseeAnnuelle > 0`) — soit exactement la « bascule de
-        // branche en silence » que ce test protège. Le scan voisin, lui, en listait déjà six : deux
-        // listes de la même famille, dans le même fichier, désynchronisées.
+        // ⚠️ `pensionPriveeMonthlyFinal` était ABSENT de cette liste, qui en listait cinq quand le
+        // scan voisin en listait six — deux listes de la même famille, dans le même fichier,
+        // désynchronisées.
+        // ⚠️ HONNÊTETÉ SUR CE QUE CETTE ENTRÉE-LÀ PROTÈGE : rien, aujourd'hui. J'avais écrit qu'elle
+        // couvrait « le SEUL champ qui discrimine une branche » ; c'est faux. Sa seule consommation
+        // est `dbVerseeAnnuelle > 0`, et `NaN > 0` est faux exactement comme `0 > 0` : retirer le
+        // `fin()` de cette ligne laisse 40/40 VERT (mesuré). L'entrée est de la défense en
+        // profondeur — elle deviendra discriminante le jour où `dbVerseeAnnuelle` sera lu
+        // numériquement. Un invariant qui ne trouve rien doit dire qu'il POURRAIT trouver, et quand.
         for (const champ of ['pensionRrqMonthlyFinal', 'pensionPsvMonthlyFinal', 'pensionGisMonthlyFinal',
             'pensionOasReductionMonthlyFinal', 'dbPensionMonthlyPlanned', 'pensionPriveeMonthlyFinal'] as const) {
             const avecNaN = computeEstateNetWorth({ ...retraite(2_500), [champ]: NaN }, stubPaliers);

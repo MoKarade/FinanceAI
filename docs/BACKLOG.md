@@ -913,6 +913,40 @@
   doublement caché. Il faut les DEUX correctifs, avec `[FISC-GUARD-ARGUMENT]`. C'est la leçon
   `AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE` qui n'est pas encore entièrement payée.
 
+- [ ] **`[GROSSFROMNET-ANNEE-FIGEE]`** (S, MOYEN — découvert en revue de `[MIGRATE-GROSS-135]`) —
+  `calculateGrossFromNet` n'a pas de paramètre d'année : elle appelle `calculateFiscalReport(high, 0, 0)`,
+  donc le barème par DÉFAUT (2026), alors que le moteur indexe par `startYear` / `loopYear`.
+  **MESURÉ** — brut qui redonne le même net selon le barème : à 60 000 $ de net, 86 968 $ (2026) vs
+  86 634 $ (2027) vs 85 590 $ (2030) ; à 100 000 $, 157 028 vs 156 125 vs 153 305. Dès janvier 2027
+  le brut déduit sera surestimé de 330 à 900 $, et la dérive s'accumule (~2 %/an).
+  **Correctif** : `calculateGrossFromNet(target, year = 2026)` + passer `startYear` depuis
+  `computeIncomeBaseline`. ⚠️ Changement de signature → grep les appelants (`Retirement.tsx`,
+  `buildSimulationParams.ts`, `useFinanceStore.ts`). Petit devant les 6-22 k$ que le lot corrige,
+  mais c'est une valeur fiscale figée par un défaut de signature.
+
+- [ ] **`[GROSSFROMNET-CREDITS-65]`** (S, FAIBLE — découvert en revue de `[MIGRATE-GROSS-135]`) —
+  `calculateGrossFromNet` n'accepte pas d'`ageOpts`, alors que `taxDecember` accorde les crédits
+  d'âge à un salarié de 65 ans et plus. Le brut déduit est donc SURESTIMÉ pour cette population.
+  **MESURÉ** (salarié de 66 ans, net du modèle − net déclaré) : **+1 904 $/an** à 36 k$ de net,
+  +1 018 $ à 48 k$, +392 $ à 60 k$. Un salarié de 65+ sans brut saisi est rare mais pas absurde.
+
+- [ ] **`[AUTOMARGINAL-BASCULE-SILENCIEUSE]`** (XS, FAIBLE — découvert en revue de
+  `[MIGRATE-GROSS-135]`) — pour un déclarant SEUL dont le net est entre **6 175 et 6 700 $/mois**,
+  le brut corrigé fait passer le taux marginal au-dessus de 0,40, et la stratégie `AUTO_MARGINAL`
+  bascule de « CELI d'abord » à « REER d'abord » pour TOUTE la projection
+  (`cashflowAllocation.ts`). La direction est CORRECTE (le vrai marginal est bien > 40 %), mais
+  c'est une discontinuité de comportement qu'aucun libellé n'explique à l'utilisateur.
+  **Correctif possible** : nommer la bascule dans l'explication de la stratégie.
+
+- [ ] **`[MIGRATE-GROSS-DEJA-PERSISTE]`** (S, MOYEN — découvert en livrant `[MIGRATE-GROSS-135]`) —
+  le correctif ne rattrape PAS les utilisateurs dont le brut a **déjà** été fabriqué à 1,35 et
+  persisté. `migrateUserConfig` fait `u.grossSalary || (…)` : dès que le champ existe, le repli est
+  court-circuité, donc la valeur erronée est STICKY. Le correctif ne profite qu'aux configs qui
+  n'ont encore aucun `grossSalary`. **Correctif possible** : une migration de schéma qui re-dérive
+  le brut quand il est exactement `round(net × 1,35)` — la signature du défaut est reconnaissable.
+  ⚠️ **Risque** : écraser un brut que l'utilisateur a SAISI et qui coïnciderait avec 1,35 × net.
+  Décision produit à poser à Marc avant de coder. [Structure VÉRIFIÉE dans le code]
+
 - [ ] **`[RQAP-PRESTATION-COTISATIONS]`** (S, **ÉLEVÉ** — découvert en revue de `[RQAP-CAP-98K]`) —
   la prestation de congé parental se fait prélever **RRQ + AE + RQAP**. `childrenReee.ts` appelle
   `calculateFiscalReport(base, 0, 0, loopYear, enableMonteCarlo)` sans le paramètre
@@ -962,14 +996,6 @@
   voisins non plus) — `services/projection/estateCalculation.ts:224-227`. Écran Succession seulement,
   mais 30 % d'une VAN de rentes = plusieurs dizaines de k$ affichés. Correctif : nommer et ancrer
   comme hypothèse de modèle, ou retirer. [MESURÉ pour l'absence de source]
-- [ ] **`[MIGRATE-GROSS-135]`** (XS, FAIBLE) — la migration legacy fabrique un salaire BRUT à partir du
-  net avec un facteur plat non sourcé `1,35` (`store/useFinanceStore.ts:141-150`, dupliqué dans
-  `services/projection/setupSimulation.ts:153-156`) ; ce brut alimente `baseGrossAnnual`, donc TOUT
-  l'impôt de la projection. Correctif : utiliser `calculateGrossFromNet`, déjà présent et vérifié
-  exact au roundtrip. [MESURÉ]
-
-### 🟡 Environnement — la version de Node n'est déclarée nulle part
-
 - [ ] **`[ENV-NODE-NON-DECLARE]`** (XS, MOYEN) — aucun `engines` dans `package.json`, aucun `.nvmrc` :
   la seule déclaration de la version visée est `node-version: '20'`, répété dans **4 workflows**
   (`ci.yml` ×2, `lighthouse.yml`, `refresh-screenshots.yml`). Le conteneur de dev tourne sur Node

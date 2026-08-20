@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-20 (si tu n'as pas saisi ton salaire brut, l'app le devinait mal)
+
+- **Quand ton salaire BRUT n'est pas saisi, l'app le déduit de ton net.** Elle le faisait en
+  multipliant par 1,35 — un raccourci qui ne peut pas marcher, parce que l'écart change de sens
+  selon le revenu : il **sur**estimait d'environ 2 700 $ à 30 000 $ de net annuel, mais
+  **sous**estimait de 22 000 $ à 100 000 $, et de 132 000 $ à 250 000 $.
+- Ce brut sert à calculer **tout** l'impôt de ta projection, tes droits REER et tes bonus. Il est
+  maintenant calculé par inversion exacte du calcul fiscal, au dollar près.
+- **Rien ne change si tu as saisi ton brut** — c'est uniquement le mode « deviné » qui est corrigé.
+- ⚠️ **Ce que ça ne rattrape pas** : si l'app avait déjà deviné et enregistré un brut pour toi, cette
+  valeur reste en place. Dis-le-moi si tu veux que je la recalcule.
+
+---
+
 ## [unreleased] — 2026-08-20 (le détecteur de chiffres fiscaux ne voyait pas la table la plus importante)
 
 - **Rien ne change pour toi dans l'app** — c'est de l'outillage, et le dire vaut mieux qu'inventer.

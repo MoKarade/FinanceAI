@@ -41,10 +41,17 @@ describe('computeIncomeBaseline — brut MENSUEL → annuel (× 12)', () => {
         expect(r.incomeAnnaNetMonthly).toBe(2900);
     });
 
-    it('estime le brut depuis le net (× 12 × 1.35) quand grossSalary est absent', () => {
+    it('DÉDUIT le brut du net par inversion fiscale quand grossSalary est absent', () => {
+        // [MIGRATE-GROSS-135] — RE-BASÉ le 2026-08-20. Ancre AVANT : 64 800 $ (= 4 000 × 12 × 1,35).
+        // Ancre APRÈS : 66 553,71 $. Δ = +1 754 $ de brut annuel, à 48 000 $ de net.
         const r = computeIncomeBaseline({}, [{ netSalary: 4000 }, undefined]);
-        // Pas de division/multiplication parasite : net mensuel × 12 × 1.35.
-        expect(r.grossMarcBaseAnnual).toBeCloseTo(4000 * 12 * 1.35, 5);
+        // L'intention d'origine du test — « pas de division/multiplication parasite », le net
+        // mensuel est bien annualisé — est CONSERVÉE, mais vérifiée par la propriété qui compte :
+        // le brut déduit doit redonner exactement le net annuel visé (4 000 × 12).
+        // ⚠️ Tolérance alignée sur la GARANTIE de `calculateGrossFromNet` (`< 1 $`), pas plus
+        // serrée : `toBeCloseTo(x, 0)` exige `< 0,5 $`, et sur 2 951 cibles mesurées 43 %
+        // dépassent ce seuil (résidu max 0,998 $). Cette ancre-ci passait par CHANCE.
+        expect(Math.abs(calculateFiscalReport(r.grossMarcBaseAnnual, 0, 0).netIncome - 48000)).toBeLessThan(1);
         expect(r.grossAnnaBaseAnnual).toBe(0);
     });
 

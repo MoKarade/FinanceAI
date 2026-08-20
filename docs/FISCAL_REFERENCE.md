@@ -745,7 +745,13 @@ choisir). Calcul cumulatif par tranche (style impôt).
   actif→retraite change quand même via le patrimoine accumulé en phase active (mesuré : +21,5 %
   NW sur une fixture 40 ans avec retraite à 62). **Biais assumés** (panel #558) : (a) le net
   MENSUEL encaissé reste le `netSalary` saisi — jamais réconcilié avec l'impôt du MODÈLE (résidu
-  mesuré ±3 à 7 k$/an selon la fixture, cf `[ENG-NET-MODEL-RESIDUAL]`) ; (b) un REER cotisé PAR
+  mesuré ±3 à 7 k$/an selon la fixture, cf `[ENG-NET-MODEL-RESIDUAL]`) — ⚠️ **ce biais (a) est ANNULÉ
+  depuis `[MIGRATE-GROSS-135]` (2026-08-20) pour toute la population « brut DÉDUIT »** : le brut
+  n'est plus approximé par un facteur plat mais obtenu en INVERSANT le calcul fiscal, donc le net du
+  modèle redonne le net saisi par construction. MESURÉ, net du modèle − net déclaré : à 60 000 $ de
+  net, −3 627 $ avec l'ancien facteur contre **−0,29 $** avec le brut déduit ; à 120 000 $,
+  −17 388 $ contre **+0,77 $**. Le biais SUBSISTE pour les utilisateurs qui ont SAISI leur brut
+  (rien ne réconcilie alors le net saisi avec l'impôt du modèle) ; (b) un REER cotisé PAR
   RETENUE SALARIALE (l'employeur réduit la rémunération assujettie sans T1213) équivaut à
   `optimizeSourceDeductions=true` — sinon le modèle rembourse en avril un bénéfice déjà dans le
   net saisi (double-comptage côté utilisateur, remède : activer le flag).

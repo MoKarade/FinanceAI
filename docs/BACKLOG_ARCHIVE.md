@@ -10,6 +10,74 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-20 — Vague 1f (3/5) : un facteur plat dont l'erreur change de signe
+
+- [x] **`[MIGRATE-GROSS-135]`** (XS annoncé, S réel) — ✅ 2026-08-20, PR #669.
+
+> Le brut était FABRIQUÉ à partir du net par un facteur plat `× 1,35`, à deux endroits
+> (`store/useFinanceStore.ts` et `services/projection/setupSimulation.ts`, 4 usages). Ce brut
+> alimente `baseGrossAnnual` — donc **toute** l'assiette d'impôt de la projection, les droits REER
+> (18 % du revenu gagné) et les bonus/RSU.
+
+**MESURÉ sur le barème 2026 — l'erreur CHANGE DE SIGNE**, ce qui est le point :
+
+| net annuel | brut à 1,35× | brut EXACT | écart |
+|---|---|---|---|
+| 30 000 $ | 40 500 | 37 819 | **+2 681** (surestimé) |
+| 100 000 $ | 135 000 | **157 028** | **−22 028** |
+| 250 000 $ | 337 500 | 469 696 | **−132 196** |
+
+Aucun réglage du facteur ne peut donc marcher : la relation net→brut est CONVEXE, un facteur plat la
+coupe en un point et diverge des deux côtés. Remplacé par `calculateGrossFromNet` (inversion par
+dichotomie, exacte à moins de 1 $ — roundtrip re-vérifié).
+
+**Deux risques VÉRIFIÉS avant de câbler, pas supposés :**
+- *Perf* — `calculateGrossFromNet` tourne dans `computeIncomeBaseline`, que `goalSeek` appelle en
+  boucle. Mesuré : **0,026 ms/appel**, soit ~2 ms sur une dichotomie `goalSeek` complète. Négligeable.
+- *Boot* — le store n'importait pas `utils/tax`, et le store EST dans le bundle de boot. Mesuré par
+  build propre avant/après : le chunk `tax` (**6 125 octets**) passe de « chargé à la demande » à
+  **préchargé** (8 → 9 `modulepreload`), +358 octets de JS total.
+  ⚠️ **Justification revue à la baisse après relecture** : ce coût est imputable au SEUL import du
+  store (vérifié en le retirant : on retombe à 8 preloads, plus de chunk `tax` — le correctif du
+  moteur, lui, vit dans le bundle lazy et ne coûte rien). Or `getInitialStateWithMigration` fait un
+  early-return dès que `financeai-storage` existe : ce chemin ne sert qu'aux upgrades d'avant l'ère
+  persist. On paie donc 6 ko au boot pour TOUT LE MONDE au bénéfice d'une population résiduelle.
+  Gardé quand même — une valeur fausse PERSISTÉE l'est à vie — mais c'est un arbitrage, pas un
+  cadeau, et ma première formulation le présentait trop favorablement.
+
+**Trois ancres re-basées**, chacune avec son delta mesuré à côté (+5 968 $, +7 324 $, +1 754 $) — et
+réécrites pour viser la PROPRIÉTÉ (« le brut déduit redonne le net visé ») plutôt qu'un nombre.
+
+⚠️ **Les gardes des deux PR précédentes ont travaillé sur ce lot** : la garde anti-fantôme (#668) a
+exigé le retrait des deux entrées `1.35` au moment même où la dette était payée, et le ratchet
+fiscal rougit maintenant si quelqu'un remet le facteur plat. Le registre décroît comme prévu.
+
+**⚠️ LA REVUE A TROUVÉ UN DÉFAUT PLUS GROS QUE LE LOT** — `computeBaseGrossAnnual`
+(`buildSimulationParams.ts`) n'avait AUCUN repli net→brut (`grossSalary || 0`). Le moteur DÉDUISAIT
+donc un brut pour un conjoint sans salaire saisi et l'IMPOSAIT dessus, tout en le comptant pour ZÉRO
+dans `baseGrossAnnual` — qui alimente les DROITS REER historiques et le ratio gains/MGA de la RENTE
+RRQ. MESURÉ sur un couple dont le conjoint a 4 000 $/mois de net : **−211 532 $ de droits REER** et
+**−247 $/mois de rente RRQ**. Corrigé dans ce lot, avec le patron qui existait déjà dans
+`components/Retirement.tsx` (trois conventions net→brut coexistaient : `× 1,35`,
+`calculateGrossFromNet`, et `|| 0`).
+
+**⚠️ Mes trois ancres passaient par CHANCE.** `toBeCloseTo(x, 0)` exige `< 0,5 $`, or
+`calculateGrossFromNet` ne garantit que `< 1 $`. Mesuré sur 2 951 cibles : **43 % dépassent 0,5 $**
+(max 0,998 $). Tolérance réalignée sur la garantie de la fonction — une assertion plus serrée que ce
+que la fonction promet est un piège CI à retardement.
+
+**Trou de test comblé** : le site PERSISTÉ n'avait aucun test (`tests/store/migrateGrossFromNet.test.ts`,
+4 cas, discrimination prouvée). C'était pourtant le seul des deux à ÉCRIRE des dollars.
+
+**Effet non documenté ailleurs, et c'est le meilleur argument du lot** : il ANNULE le biais
+`[ENG-NET-MODEL-RESIDUAL]` de FISCAL_REFERENCE §9 pour la population « brut déduit » — net du modèle
+moins net déclaré : −3 627 $ → **−0,29 $** à 60 k$, −17 388 $ → **+0,77 $** à 120 k$. §9 mise à jour.
+
+**Découvertes ouvertes** : `[GROSSFROMNET-ANNEE-FIGEE]` (barème figé à 2026, dérive 330-900 $ dès
+2027), `[GROSSFROMNET-CREDITS-65]` (+1 904 $/an à 36 k$ pour un salarié 65+),
+`[AUTOMARGINAL-BASCULE-SILENCIEUSE]`, et `[MIGRATE-GROSS-DEJA-PERSISTE]` — le correctif ne rattrape pas les configs
+dont le brut erroné est DÉJÀ persisté (`u.grossSalary || …` court-circuite).
+
 ## 2026-08-20 — Le garde fiscal ne voyait pas la table FERR (ni le crédit pour dons)
 
 - [x] **`[FISC-GUARD-VALEUR-LIEE]`** (M) — ✅ 2026-08-20, PR #668.

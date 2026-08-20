@@ -9,7 +9,7 @@
 // dérivées.
 
 import { mulberry32 } from './helpers';
-import { calculateCeliRoom, getResidencyStartYear, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK, rrqAdjustmentFactor as computeRrqFactor, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, RRSP_ROOM_RATE } from '../../utils/tax';
+import { calculateCeliRoom, calculateGrossFromNet, getResidencyStartYear, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK, rrqAdjustmentFactor as computeRrqFactor, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, RRSP_ROOM_RATE } from '../../utils/tax';
 import type { FutureScenarioType } from '../projection';
 
 /**
@@ -130,7 +130,13 @@ export interface IncomeBaselineResult {
  * Calcule les revenus de base (net mensuel + brut annuel) pour les 2 users.
  * Mode useTheoretical: split 55/45 du theoreticalIncome.
  * Mode réel: lit netSalary/grossSalary depuis config.users.
- * Brut estimé à net*1.35 si grossSalary manquant (proxy taux marginal moyen).
+ * Brut DÉDUIT du net par inversion EXACTE du calcul fiscal quand `grossSalary` est absent
+ * ([MIGRATE-GROSS-135]). C'était `net * 1.35`, un facteur plat dont l'erreur MESURÉE sur le barème
+ * 2026 change de SIGNE selon le revenu : +2 681 $ à 30 k$ de net annuel, mais −22 028 $ à 100 k$ et
+ * −132 196 $ à 250 k$. Aucun facteur plat ne peut donc convenir — la relation net→brut est convexe.
+ * `calculateGrossFromNet` inverse par dichotomie à moins de 1 $ près.
+ * ⚠️ Perf VÉRIFIÉE avant de câbler : 0,026 ms/appel, soit ~2 ms sur une dichotomie `goalSeek`
+ * complète (qui relance le moteur ~40 fois). Négligeable devant le coût d'une projection.
  *
  * IMPORTANT — unités : `grossSalary` et `netSalary` sont stockés MENSUELS dans
  * le store (cf Budget.tsx, FutureProjection.tsx, Retirement.tsx, TaxCenter.tsx,
@@ -148,12 +154,15 @@ export function computeIncomeBaseline(
 
     const incomeMarcNetMonthly = useTheo ? (theoIncome * 0.55) : (users[0]?.netSalary || 0);
     const incomeAnnaNetMonthly = useTheo ? (theoIncome * 0.45) : (users[1]?.netSalary || 0);
+    // ⚠️ UNITÉS : les salaires du store sont MENSUELS, `calculateGrossFromNet` travaille en ANNUEL.
+    const brutDeduit = (netMensuel: number): number =>
+        (netMensuel > 0 ? calculateGrossFromNet(netMensuel * 12) : 0);
     const grossMarcBaseAnnual = useTheo
-        ? (incomeMarcNetMonthly * 12 * 1.35)
-        : (users[0]?.grossSalary ? users[0].grossSalary * 12 : incomeMarcNetMonthly * 12 * 1.35);
+        ? brutDeduit(incomeMarcNetMonthly)
+        : (users[0]?.grossSalary ? users[0].grossSalary * 12 : brutDeduit(incomeMarcNetMonthly));
     const grossAnnaBaseAnnual = useTheo
-        ? (incomeAnnaNetMonthly * 12 * 1.35)
-        : (users[1]?.grossSalary ? users[1].grossSalary * 12 : incomeAnnaNetMonthly * 12 * 1.35);
+        ? brutDeduit(incomeAnnaNetMonthly)
+        : (users[1]?.grossSalary ? users[1].grossSalary * 12 : brutDeduit(incomeAnnaNetMonthly));
 
     return { incomeMarcNetMonthly, incomeAnnaNetMonthly, grossMarcBaseAnnual, grossAnnaBaseAnnual };
 }

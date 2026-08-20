@@ -46,6 +46,7 @@ import {
 } from '../history/reconstructPortfolioHistory';
 import { deriveStartingBalancesFromHistory } from '../history/startingBalancesFromHistory';
 import { getEffectivePurchases } from '../../utils/assetPurchases';
+import { calculateGrossFromNet } from '../../utils/tax';
 import { isSavingsNature } from '../../utils/budget';
 import { computeCashLedger } from '../startingCash';
 
@@ -91,9 +92,28 @@ export interface BuildSimulationParamsInputs {
     savingsGoals?: SavingsGoal[];
 }
 
-/** Σ (grossSalary × 12) sur tous les utilisateurs. Réplique `baseGrossAnnual`. */
+/**
+ * Σ (brut annuel) sur tous les utilisateurs, avec REPLI net→brut.
+ *
+ * ⚠️ [MIGRATE-GROSS-135] — ce site n'avait AUCUN repli : `grossSalary || 0`. Un conjoint sans brut
+ * saisi comptait donc pour ZÉRO ici, pendant que `computeIncomeBaseline` lui déduisait un brut et
+ * l'IMPOSAIT dessus. Or `baseGrossAnnual` alimente exactement deux choses, toutes deux
+ * money-critical : les DROITS REER historiques (`computeHistoricalContributionRoom`) et le ratio
+ * gains/MGA qui détermine la RENTE RRQ (`computeRetirementIncome`).
+ *
+ * Le moteur imposait donc un revenu qu'il refusait de créditer. MESURÉ sur un couple dont le
+ * conjoint a 4 000 $/mois de net sans brut saisi : **−211 532 $ de droits REER** et
+ * **−247 $/mois de rente RRQ** (≈ −2 968 $/an à vie).
+ *
+ * Trois conventions net→brut coexistaient dans le dépôt (`× 1,35`, `calculateGrossFromNet`, et
+ * `|| 0`). Le patron retenu est celui de `components/Retirement.tsx`, réutilisé tel quel.
+ */
 export function computeBaseGrossAnnual(users: readonly User[]): number {
-    return (users ?? []).reduce((sum, u) => sum + ((u?.grossSalary || 0) * 12), 0);
+    return (users ?? []).reduce((sum, u) => {
+        if (u?.grossSalary) return sum + (u.grossSalary * 12);
+        const netAnnual = ((u?.netSalary || u?.salary || 0) as number) * 12;
+        return sum + (netAnnual > 0 ? calculateGrossFromNet(netAnnual) : 0);
+    }, 0);
 }
 
 /**

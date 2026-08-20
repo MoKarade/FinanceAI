@@ -8,7 +8,7 @@
 // avec utils/tax).
 
 import type { ChildGoal } from '../../types';
-import type { FiscalReport } from '../../utils/tax';
+import { RQAP_MAX_INCOME, type FiscalReport } from '../../utils/tax';
 import {
     DAYCARE_INFO, SCHOOL_INFO, ACTIVITIES_INFO, UNI_INFO, CAR_INFO,
     type DaycareType, type SchoolType, type ActivitiesLevel,
@@ -39,6 +39,54 @@ const REEE_TARGET_ANNUAL_CONTRIB_CATCHUP = 5000;
 // Biais : frappe le solde TOTAL (cotisations + gains) → SUR-impose les cotisations remboursées
 // sans impôt, et SOUS-impose si le taux marginal + la surtaxe PRA de 20 % dépasse 20 %.
 const REEE_AIP_TAX_RATE = 0.20;
+
+// ── RQAP — congé parental ───────────────────────────────────────────────────────
+// Source de vérité du PLAFOND : `RQAP_MAX_INCOME` (`utils/tax.ts`, FISCAL_REFERENCE §2).
+// Il était RECOPIÉ ici en dur à 98 000 $ — la valeur 2025 — pendant que la source unique portait
+// 103 000 $. Écart MESURÉ : 2 750 $/an de prestation brute manquante pour un 2e parent au-dessus
+// du plafond (`[RQAP-CAP-98K]`).
+//
+// ⚠️ TAUX DE REMPLACEMENT — DIVERGENCE ASSUMÉE ET DOCUMENTÉE, pas une valeur à « sourcer ».
+// Le régime de BASE du RQAP ne verse pas un taux plat : il verse 70 % pendant les semaines de
+// maternité/paternité et le début du parental, puis 55 % pour le reste. Le moteur applique 55 %
+// sur les 12 mois, donc il SOUS-ESTIME le début du congé.
+// Le corriger fidèlement demanderait de modéliser le nombre de semaines par prestation ET le choix
+// entre régime de base et régime particulier — que l'app ne saisit nulle part. C'est une décision
+// PRODUIT, pas un correctif : ticket `[RQAP-PHASES-70-55]`. En attendant, la constante est NOMMÉE
+// pour que la divergence soit lisible plutôt que noyée dans un `* 0.55`.
+const RQAP_REPLACEMENT_RATE_BASE = 0.55;
+
+/**
+ * Indexation du plafond de revenu assurable RQAP.
+ *
+ * ⚠️ C'était `98000 * expenseMultiplier`, et le multiplicateur était le MAUVAIS index — pas
+ * seulement imprécis, structurellement faux :
+ *   • `expenseMultiplier` compose l'inflation des DÉPENSES DU MÉNAGE, courbe du sourire de retraite
+ *     comprise (`computeEffectiveExpenseInflation` dépend de `age` et `isRetired`) ;
+ *   • et il est GELABLE par Guyton-Klinger. MESURÉ : à l'année 20, un gel de la règle de
+ *     décaissement faisait passer l'assiette RQAP de 80 092 $ à 53 900 $. Aucune stratégie de
+ *     portefeuille ne peut déplacer un plafond gouvernemental.
+ *
+ * Le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne au Québec — la même nature
+ * que le MGA de la RRQ, que ce dépôt projette DÉJÀ à `inflation + 0,5 %/an`
+ * (`retirementIncome.ts`, FISCAL_REFERENCE §6). On réutilise ce patron plutôt que d'en inventer un.
+ *
+ * ⚠️ DEUX INDEX DIFFÉRENTS SUR LA MÊME BOUCLE, ET C'EST VOULU — ne pas « harmoniser ».
+ * `annaGrossAnnual` juste au-dessus est indexé par `simSalaryGrowth`, pas par ce facteur-ci. C'est
+ * OBLIGATOIRE : ce salaire est RETIRÉ du brut imposable par `accGrossDelta -= annaGrossMonthly`, et
+ * il doit donc valoir exactement ce qu'`activeIncome.ts` avait crédité (même base, même exposant).
+ * L'indexer autrement fabriquerait ou détruirait du brut à chaque mois de congé.
+ * Le précédent B-AUDIT-4 (`retirementIncome.ts`) indexe salaire ET MGA par le MÊME facteur pour
+ * une raison qui ne vaut PAS ici : la RRQ dépend d'un ratio gains/MGA moyen de CARRIÈRE, qu'on gèle
+ * délibérément. Le RQAP, lui, compare le revenu assurable de l'ANNÉE au plafond de cette année-là.
+ *
+ * ⚠️ Le +0,5 pp est une HYPOTHÈSE calibrée SOUS l'indexation observée, pas une valeur sourcée : les
+ * seuls points du dépôt donnent RQAP 98 000 → 103 000 $ (+5,10 %) et MGA 71 300 → 74 600 $
+ * (+4,63 %), contre 2,5 %/an modélisé. Le biais est CONSERVATEUR (le plafond mord plus tôt, donc la
+ * prestation est sous-estimée avec l'horizon) et hérité du patron MGA. Écart chiffré en §2.
+ */
+const rqapCapProjected = (simInflation: number, yearsElapsed: number): number =>
+    RQAP_MAX_INCOME * Math.pow(1 + (simInflation + 0.5) / 100, yearsElapsed);
 
 type FiscalReportFn = (
     grossIncome: number,
@@ -159,7 +207,7 @@ export function processOneChild(
     calculateFiscalReport: FiscalReportFn,
 ): ChildTickResult {
     const {
-        m, loopYear, simSalaryGrowth, expenseMultiplier, isRetired,
+        m, loopYear, simSalaryGrowth, simInflation, expenseMultiplier, isRetired,
         grossAnnaBaseAnnual, incomeAnna, liquid, reee,
         householdGross, trackerScee, trackerIqee,
         trackerReeeContribLifetime, enableMonteCarlo,
@@ -253,10 +301,11 @@ export function processOneChild(
         if (annaIsOnMatLeave) {
             const yearsElapsed = Math.floor(m / 12);
             const annaGrossAnnual = grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);
-            const rqapCap = 98000 * expenseMultiplier;
+            const rqapCap = rqapCapProjected(simInflation, yearsElapsed);
             const eligibleSalary = Math.min(annaGrossAnnual, rqapCap);
 
-            const rqapNetInfo = calculateFiscalReport(eligibleSalary * 0.55, 0, 0, loopYear, enableMonteCarlo);
+            const rqapNetInfo = calculateFiscalReport(
+                eligibleSalary * RQAP_REPLACEMENT_RATE_BASE, 0, 0, loopYear, enableMonteCarlo);
             const rqapNetMonthly = rqapNetInfo.netIncome / 12;
 
             // Replace Anna's salary with RQAP in the income pool

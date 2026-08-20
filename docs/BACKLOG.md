@@ -894,14 +894,53 @@
   achète en l'ajoutant. **Décider** : l'inclure (31 clés à trier) ou acter l'exclusion dans
   `decisions.md`.
 
-- [ ] **`[RQAP-CAP-98K]`** (XS, ÉLEVÉ) — plafond de revenu assurable RQAP écrit **en dur à 98 000 $**
-  (valeur 2025) au lieu de la source unique `RQAP_MAX_INCOME = 103 000 $`, et taux de remplacement
-  `0,55` non sourcé — aucun des deux n'est dans `docs/FISCAL_REFERENCE.md`
-  (`services/projection/childrenReee.ts:256-259`). **Impact mesuré : 2 750 $/an de prestation brute
-  manquante (1 707 $ net)** pour un 2ᵉ parent au-dessus du plafond, sur toute l'année de congé.
-  Correctif : importer `RQAP_MAX_INCOME`, nommer et sourcer le taux de remplacement (régime de base :
-  70 % puis 55 %) dans FISCAL_REFERENCE §2, et justifier — ou retirer — le `* expenseMultiplier`
-  appliqué à un **plafond légal**. [MESURÉ]
+- [ ] **`[RQAP-PRESTATION-COTISATIONS]`** (S, **ÉLEVÉ** — découvert en revue de `[RQAP-CAP-98K]`) —
+  la prestation de congé parental se fait prélever **RRQ + AE + RQAP**. `childrenReee.ts` appelle
+  `calculateFiscalReport(base, 0, 0, loopYear, enableMonteCarlo)` sans le paramètre
+  `employmentIncome` ; `utils/tax.ts` retombe alors sur `grossIncome` (« absent → grossIncome »), et
+  la prestation devient une **assiette d'EMPLOI**. **MESURÉ** sur `103 000 × 0,55 = 56 650 $` :
+  net **42 366,76 $** contre **46 695,26 $** avec `employmentIncome: 0` → **4 328,50 $/an de
+  cotisations fantômes**. C'est **1,57×** le gain de 2 750 $/an que `[RQAP-CAP-98K]` vient de
+  restaurer — le plafond est corrigé et l'erreur voisine, plus grosse, reste.
+  ⚠️ **Correctif à NE PAS appliquer sans source** : « une prestation du RQAP n'est pas un revenu de
+  travail, donc ni RRQ ni AE ni cotisation RQAP » est une règle à **ancrer d'abord dans
+  FISCAL_REFERENCE §2 avec sa référence Revenu Québec**. Le code suit ensuite (`, undefined, 0`).
+  Même famille que `[AE-PLAFOND-MANQUANT]`. [MESURÉ]
+
+- [ ] **`[FISC-GUARD-TERNAIRE]`** (S, MOYEN — découvert en revue de `[RQAP-CAP-98K]`) — le filtre de
+  position de `findFiscalConstants` exige un opérateur avant (`[*/+\-<>=]`, `||`, `??`) ou après
+  (`*`, `/`) : **un littéral en branche de ternaire est invisible**. Vérifié :
+  `retirementIncome.ts` `survivorPsvFactor = survivorMode ? 0.5 : 1` n'est pas relevé, alors que
+  c'est un facteur de rente au survivant. Conséquence : la promesse de la marque `[×N]`/`[≠N]`
+  (« N ne bouge que si une occurrence apparaît ou disparaît ») est **fausse pour les ternaires** —
+  supprimer ce facteur ne ferait bouger aucun compte. **Correctif** : ajouter `?`/`:` au filtre —
+  ⚠️ **mesurer les nouveaux offenders AVANT** (règle « resserrer le scan avant le fix » : sur 20
+  modules, l'élargissement peut être large).
+
+- [ ] **`[RQAP-INDEX-SOURCE]`** (XS, FAIBLE — découvert en revue de `[RQAP-CAP-98K]`) — la phrase
+  « le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne au Québec » justifie le
+  choix d'index dans le code ET dans `FISCAL_REFERENCE.md` §2, **sans aucune citation** (pas
+  d'article de la Loi sur l'assurance parentale). C'est le rationnel d'une hypothèse, pas une
+  source — or il vit dans la source de vérité, où il hérite de son autorité. **Correctif** : citer,
+  ou requalifier explicitement en hypothèse. (Le caractère « hypothèse » est déjà écrit ; il reste à
+  sourcer ou à retirer l'affirmation juridique.)
+
+- [ ] **`[RQAP-PHASES-70-55]`** (M, MOYEN — sorti de `[RQAP-CAP-98K]`, décision PRODUIT) — le moteur
+  applique **55 % plat** sur les 12 mois de congé parental. Le régime de BASE du RQAP verse en
+  réalité **70 %** pendant la maternité/paternité et le début du parental, puis 55 % — donc le début
+  du congé est SOUS-ESTIMÉ. Le corriger fidèlement demande de modéliser le nombre de semaines par
+  prestation **et** le choix entre régime de base et régime particulier, que l'app ne saisit nulle
+  part. ⚠️ **Ce n'est pas un correctif, c'est une feature** : il faut d'abord décider si on demande
+  le régime à l'utilisateur ou si on assume le régime de base. La constante est déjà NOMMÉE
+  (`RQAP_REPLACEMENT_RATE_BASE`) et la divergence documentée sur place + FISCAL_REFERENCE §2.
+
+- [ ] **`[GOLDEN-RQAP-NON-COUVERT]`** (S, MOYEN — découvert en livrant `[RQAP-CAP-98K]`) — **aucun
+  golden n'exerce le plafond RQAP.** Preuve : le correctif déplace l'assiette de +2 750 $/an dès que
+  le 2ᵉ parent dépasse le plafond, et **zéro** golden a bougé sur la suite complète — donc aucune
+  fixture ne combine « enfant < 12 mois » et « 2ᵉ parent au-dessus du plafond ». Un chemin
+  money-critical sans couverture d'INTÉGRATION : mes tests unitaires visent `processOneChild` en
+  isolation, ce qui ne prouve rien sur la chaîne (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`).
+  **Correctif** : une fixture golden avec cette configuration.
 - [ ] **`[W5-PROXY-NON-SOURCE]`** (XS, MOYEN) — les proxys d'impôt plats `0,45` (NOI locatif) et
   `0,36` (dividende CCPC) sont toujours absents de `FISCAL_REFERENCE.md`
   (`services/projection/w5Effects.ts:127,141`), alors que la décision Marc **cochée close**

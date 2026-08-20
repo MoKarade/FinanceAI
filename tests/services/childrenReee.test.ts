@@ -8,7 +8,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { processOneChild, type ChildProcessCtx } from '../../services/projection/childrenReee';
 import type { ChildGoal } from '../../types';
-import type { FiscalReport } from '../../utils/tax';
+import { RQAP_MAX_INCOME, type FiscalReport } from '../../utils/tax';
 
 // Stub : netIncome = gross fourni (relation déterministe), marginalRate fixe.
 const fiscalStub = (gross: number): FiscalReport =>
@@ -103,5 +103,68 @@ describe('processOneChild — REEE (plafond viager F13, cotisation, fermeture)',
         );
         expect(r.reeePayoutAdd).toBeGreaterThan(0);
         expect(r.withdrawalREEEAdd).toBeGreaterThan(0);
+    });
+});
+
+/**
+ * [RQAP-CAP-98K] — le plafond de revenu assurable RQAP.
+ *
+ * Trois volets, prouvés séparément parce qu'ils peuvent régresser séparément :
+ *  (a) la VALEUR vient de la source unique, pas d'un littéral périmé ;
+ *  (b) l'INDEX est la rémunération moyenne (patron du MGA de la RRQ), pas l'inflation des DÉPENSES ;
+ *  (c) corollaire de (b) et le plus important : une règle de DÉCAISSEMENT ne peut plus déplacer un
+ *      plafond gouvernemental.
+ */
+describe('[RQAP-CAP-98K] plafond de revenu assurable — source, index, immunité', () => {
+    // Assiette = ce qui est passé au calcul fiscal. On la CAPTE plutôt que de lire une sortie
+    // dérivée : c'est la grandeur que le défaut déformait.
+    const capterAssiette = () => {
+        const vues: number[] = [];
+        const fn = vi.fn((gross: number) => { vues.push(gross); return fiscalStub(gross); });
+        return { fn, vues };
+    };
+    // 2e parent AU-DESSUS du plafond : c'est la seule population que le plafond touche.
+    const ctxRiche = (o: Partial<ChildProcessCtx> = {}) =>
+        baseCtx({ grossAnnaBaseAnnual: 120000, incomeAnna: 6000, householdGross: 216000, ...o });
+
+    it('(a) l’assiette vient de RQAP_MAX_INCOME, pas du littéral 98 000 $ de 2025', () => {
+        const c = capterAssiette();
+        processOneChild(makeChild(), 0, false, 2, ctxRiche({ m: 2 }), c.fn);
+        // Le discriminant est un ÉCART de 2 750 $/an : 98 000 × 0,55 = 53 900 contre
+        // 103 000 × 0,55 = 56 650. Les deux sont des nombres crédibles — d'où le test.
+        expect(c.vues[0]).toBeCloseTo(RQAP_MAX_INCOME * 0.55, 6);
+        expect(c.vues[0]).not.toBeCloseTo(98000 * 0.55, 0);
+    });
+
+    it('(b) le plafond suit inflation + 0,5 pp/an — le patron du MGA de la RRQ', () => {
+        const c = capterAssiette();
+        const annees = 10;
+        processOneChild(makeChild(), 0, false, 2, ctxRiche({ m: annees * 12 + 2, simInflation: 2 }), c.fn);
+        expect(c.vues[0]).toBeCloseTo(RQAP_MAX_INCOME * Math.pow(1.025, annees) * 0.55, 4);
+    });
+
+    it('(c) ⚠️ un gel Guyton-Klinger ne déplace PLUS le plafond légal', () => {
+        // Le défaut : le plafond était `98000 * expenseMultiplier`, or `expenseMultiplier` est
+        // GELÉ par la règle de décaissement Guyton-Klinger. MESURÉ avant correctif, à l'année 20 :
+        // 80 092,56 $ sans gel contre 53 900,00 $ avec — 26 192 $ d'écart sur un plafond
+        // GOUVERNEMENTAL, décidé par une règle de PORTEFEUILLE.
+        const sansGel = capterAssiette();
+        const avecGel = capterAssiette();
+        const m = 20 * 12 + 2;
+        processOneChild(makeChild(), 0, false, 2, ctxRiche({ m, expenseMultiplier: Math.pow(1.02, 20) }), sansGel.fn);
+        processOneChild(makeChild(), 0, false, 2, ctxRiche({ m, expenseMultiplier: 1 }), avecGel.fn);
+        expect(avecGel.vues[0]).toBeCloseTo(sansGel.vues[0], 6);
+        // ⚠️ PRÉCONDITION ASSERTÉE (revue) : sans elle, ce test passerait pour N'IMPORTE QUELLE
+        // implémentation le jour où la fixture change — si le salaire tombe SOUS le plafond, les
+        // deux appels rendent `annaGross × 0,55` et l'égalité devient vraie sans rien prouver.
+        // On vérifie donc que c'est bien le PLAFOND qu'on lit, pas le salaire.
+        expect(sansGel.vues[0]).toBeCloseTo(RQAP_MAX_INCOME * Math.pow(1.025, 20) * 0.55, 4);
+    });
+
+    it('un salaire SOUS le plafond n’est pas touché — le plafond ne mord que par le haut', () => {
+        // Anti-vacuité du lot : si le correctif avait déplacé TOUT le monde, il serait faux.
+        const c = capterAssiette();
+        processOneChild(makeChild(), 0, false, 2, baseCtx({ grossAnnaBaseAnnual: 40000, m: 2 }), c.fn);
+        expect(c.vues[0]).toBeCloseTo(40000 * 0.55, 6);
     });
 });

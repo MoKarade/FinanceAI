@@ -10,6 +10,41 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-20 — Vague 1f (2/5) : le plafond RQAP, et une règle de portefeuille qui déplaçait une loi
+
+- [x] **`[RQAP-CAP-98K]`** (XS annoncé, S réel) — ✅ 2026-08-20, PR #667.
+
+**Trois volets, prouvés séparément parce qu'ils régressent séparément.**
+
+**(a) La valeur.** `98000` recopié en dur — la valeur 2025 — pendant que la source unique portait
+`RQAP_MAX_INCOME = 103 000 $`. Remplacé par un import. **Écart MESURÉ à l'année 0 : 53 900 $ →
+56 650 $, soit +2 750 $/an** de prestation brute. Le chiffre du ticket est confirmé.
+
+**(b) Le taux de remplacement.** Constante nommée `RQAP_REPLACEMENT_RATE_BASE`, sourcée §2. La
+divergence avec le vrai régime (70 % puis 55 %, pas 55 % plat) est **documentée, pas corrigée** :
+elle demande de modéliser les semaines par prestation et le choix de régime, que l'app ne saisit
+pas. C'est une décision produit → `[RQAP-PHASES-70-55]`.
+
+**(c) L'index — le volet qui comptait vraiment.** Le plafond était multiplié par
+`expenseMultiplier`, qui compose l'inflation des DÉPENSES DU MÉNAGE (courbe du sourire de retraite
+comprise) **et qui est GELABLE par Guyton-Klinger**.
+
+> MESURÉ à l'année 20 : avec le gel de la règle de décaissement, l'assiette RQAP tombait de
+> **80 092 $ à 53 900 $**. Une règle de PORTEFEUILLE déplaçait un plafond GOUVERNEMENTAL de
+> 26 192 $. Ce n'est pas une imprécision, c'est une inversion de causalité.
+
+Remplacé par le patron que le dépôt emploie DÉJÀ pour le MGA de la RRQ — `inflation + 0,5 %/an`,
+documenté §6 — plutôt que d'en inventer un.
+
+**La garde livrée la veille a attrapé ce lot-ci.** `rqapCapProjected` ajoutait un second `0.5` dans
+`childrenReee.ts` ; la garde `[FISC-GUARD-SCOPE]` a exigé qu'on le déclare. Elle a aussi révélé, en
+étant renforcée, que **16 de ses propres références de ligne étaient fausses** — certaines de
+naissance, d'autres dérivées par les éditions de CE lot. Les numéros de ligne ont donc été
+remplacés par des NOMS de construction, et le mécanisme `L<n>` par un compte `[×N]` / `[≠N]` qui
+ne dérive pas.
+
+**Découvertes ouvertes** : `[RQAP-PHASES-70-55]`, `[GOLDEN-RQAP-NON-COUVERT]`.
+
 ## 2026-08-20 — Vague 1f (1/5) : le ratchet fiscal voyait 8 modules sur 20
 
 > ⚠️ **Le critère d'inclusion était le bug.** `FISCAL_MODULES` disait « les modules qui PRODUISENT

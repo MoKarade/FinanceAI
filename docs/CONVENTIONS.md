@@ -4499,3 +4499,113 @@ tiers avant merge**, pas seulement testé. Les 13 tests passaient — ils vérif
 entrée a une raison, chaque clé multiple est annotée), et aucune forme ne peut détecter qu'une
 raison est fausse. La garde et la revue couvrent deux risques différents ; croire que l'une remplace
 l'autre est l'erreur.
+
+### `UN-INDEX-GELABLE-NE-PEUT-PAS-PORTER-UNE-LOI` — Guyton-Klinger déplaçait un plafond gouvernemental
+
+`[RQAP-CAP-98K]` disait « plafond en dur à 98 000 $ au lieu de 103 000 $, et un
+`* expenseMultiplier` à justifier ou retirer ». Le premier volet est une faute de recopie ; c'est le
+second qui apprend quelque chose.
+
+`rqapCap = 98000 * expenseMultiplier` — et `expenseMultiplier` est :
+
+- l'inflation des **DÉPENSES DU MÉNAGE**, pas des salaires. Elle passe par
+  `computeEffectiveExpenseInflation`, qui dépend de `age` et `isRetired` : le plafond se courbait
+  donc avec le **sourire de dépenses de la retraite** ;
+- et surtout **GELABLE** : `if (!guytonKlinger_freezeInflation) { expenseMultiplier *= … }`.
+
+MESURÉ à l'année 20, même scénario :
+
+| | assiette RQAP brute |
+|---|---|
+| sans gel | 80 092,56 $ |
+| **avec gel Guyton-Klinger** | **53 900,00 $** |
+
+**Une règle de décaissement de portefeuille déplaçait un plafond décidé par le gouvernement, de
+26 192 $.** Ce n'est pas une imprécision d'index, c'est une **inversion de causalité** : la loi
+devenait fonction de la stratégie financière de l'utilisateur.
+
+**Le test qui rend ça visible** : prendre chaque grandeur d'origine LÉGALE et se demander *qui peut
+la faire bouger dans le moteur ?* Si la réponse inclut un choix de l'utilisateur, une stratégie ou
+un mode de simulation, l'index est faux — indépendamment de sa valeur numérique. Le symptôme est
+introuvable par la conservation (l'argent reste conservé) et par les goldens (il faut le scénario
+exact), mais il saute aux yeux dès qu'on liste les écritures de la variable multiplicatrice.
+
+**Et le correctif était déjà dans le dépôt** : le MGA de la RRQ — un plafond de gains de même
+nature — est projeté depuis longtemps à `inflation + 0,5 %/an`, documenté en FISCAL_REFERENCE §6.
+Réutiliser ce patron plutôt qu'en inventer un (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`, troisième
+occurrence en trois lots).
+
+⚠️ **Zéro golden n'a bougé** sur un changement qui déplace l'assiette de 2 750 $/an. Ça ne veut pas
+dire « pas d'impact » : ça PROUVE qu'aucune fixture ne combine « enfant < 12 mois » et « 2ᵉ parent
+au-dessus du plafond ». Un « aucun golden ne bouge » sur du money-critical est un **résultat à
+expliquer**, jamais un feu vert (`[GOLDEN-RQAP-NON-COUVERT]`).
+
+### `UNE-REFERENCE-DE-LIGNE-DANS-UNE-DOC-EST-UNE-DETTE` — j'ai vérifié mes numéros, ils étaient faux
+
+La garde `CLE-QUI-FUSIONNE-DEUX-SENS` (livrée la veille) demandait, pour une clé vue N fois, soit
+`[×N]` soit N références `L<n>`. Elle **comptait** les références sans les vérifier — limite que
+j'avais documentée comme assumée.
+
+Elle a mordu dans la PR suivante : en ajoutant `rqapCapProjected`, j'ai écrit `L285` pour un littéral
+vivant en `L75`. Un numéro faux est **pire qu'absent** — il envoie le lecteur au mauvais endroit avec
+l'air d'une preuve.
+
+J'ai donc voulu vérifier les numéros. La vérification a sorti **16 entrées**, de deux natures :
+
+1. **fausses de naissance** — j'avais cité des plages d'en-tête de fonction (`L194-199`) au lieu des
+   lignes des littéraux ;
+2. **dérivées** — correctes à leur écriture, devenues fausses parce que **mes propres éditions du
+   même lot** avaient décalé le fichier de 35 lignes.
+
+Le second groupe est le verdict : vérifier les numéros revenait à réintroduire **dans la prose** le
+couplage à la ligne que la CLÉ `(fichier, valeur)` évite par conception — et à se condamner à un
+rouge à chaque refactor. La bonne réponse n'était ni « compter sans vérifier » ni « vérifier », mais
+**ne pas écrire de numéro** :
+
+- marque `[×N]` (N occurrences de même sens) ou `[≠N]` (sens différents), **vérifiée** contre le
+  compte réel. Elle ne bouge que si une occurrence apparaît ou disparaît — exactement le moment où
+  il faut re-regarder. C'est ce qui s'est produit le jour même : `rqapCapProjected` a fait passer
+  `childrenReee::0.5` de 1 à 2 occurrences, et la garde l'a exigé ;
+- et dans la prose, **nommer la construction** (`survivorRrqFactor`, `closureForcedBy71`, branche
+  `ca-equity`) plutôt que sa ligne. Un nom survit au refactor ; c'est aussi plus lisible.
+
+**La règle** : dans un document de dépôt, un numéro de ligne est une dette qui se paie au premier
+refactor, en silence. Nommer, ou compter — jamais pointer.
+
+### `ENTREE-D-INVENTAIRE-FANTOME` — le document affirmait comme vivant un défaut que je venais de fermer
+
+En important `RQAP_MAX_INCOME`, le littéral `98000` a disparu de `childrenReee.ts`. Son entrée dans
+`FISCAL_CONST_INVENTORY` est restée, à décrire le défaut au présent : *« recopié ici en dur … à
+remplacer par un import »*. Le seul `98000` survivant était dans un COMMENTAIRE, que `stripComments`
+efface avant le scan — donc **zéro occurrence réelle**.
+
+Aucune garde ne le voyait. L'inventaire vérifiait les modules orphelins (niveau FICHIER), les
+doublons de clé, les comptes d'occurrences — jamais l'**existence** de la valeur. Trouvé en revue,
+dans la PR qui l'a créé.
+
+**Pourquoi c'est structurel et pas une étourderie.** L'en-tête du fichier dit que cet inventaire est
+censé **DÉCROÎTRE** : chaque entrée `fiscal` est une dette qui disparaît le jour où la constante est
+ancrée et importée. Une entrée à zéro occurrence est donc exactement le signal *« c'est réglé,
+supprime-moi »* — et c'est le seul moment de sa vie où il faut agir. La laisser transforme un
+constat daté en **affirmation fausse sur le code de production**, dans le document qui sert de tri
+fiscal. La classe est la même que celle que le lot précédent prétendait clore : une entrée crédible,
+longue, motivée — et fausse.
+
+**La garde** : chaque entrée doit correspondre à au moins un littéral réellement relevé.
+
+```ts
+const hits = findFiscalConstants(readFileSync(resolve(root, e.file), 'utf-8'))
+    .filter((h) => h.value === e.value);
+if (hits.length === 0) fantomes.push(`${e.file}::${e.value}`);
+```
+
+**La règle générale** : tout registre censé DÉCROÎTRE (inventaire de dette, liste d'exemptions,
+allowlist de suppressions) a besoin d'une garde sur l'**obsolescence de ses entrées**, pas seulement
+sur leur forme. Sans elle il ne décroît jamais — il accumule des constats périmés qui se lisent
+comme des faits. Et cette garde est presque toujours à trois lignes : on possède déjà l'outil qui
+dit si l'entrée a encore un objet.
+
+⚠️ Corollaire vécu dans le même lot : la revue a aussi trouvé une raison qui affirmait *« ni le taux
+ni le choix de la phase ne sont dans FISCAL_REFERENCE »* — devenue fausse **par le commit qui la
+laissait en place**, puisque ce même commit ajoutait la section §2. Quand une PR ancre une valeur,
+grep l'inventaire pour toutes les raisons qui parlent de son absence.

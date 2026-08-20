@@ -19,7 +19,7 @@ import { phaseDette, estLePremierMoisApresLeTerme } from './projection/debtSched
 import { initRentalStates, processRentalMonth } from './projection/rentalMonth';
 import { processAutoVehicleReplacement } from './projection/vehicleCycle';
 import { buildHistoricalSequence, buildReplaySequence, type YearReturn } from './projection/historicalReturns';
-import { computeRetirementIncome } from './projection/retirementIncome';
+import { computeRetirementIncome, computeDbPensionMonthly } from './projection/retirementIncome';
 import { processOneChild } from './projection/childrenReee';
 // [FUTUR-FIRE-STRUCT] Libellé du jalon FIRE partagé avec ses consommateurs (le texte n'est plus
 // dupliqué en dur : un lecteur qui doit matcher le libellé compare à la MÊME constante).
@@ -539,6 +539,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let pensionRRQ = 0;
     let pensionPSV = 0;
     let pensionPrivee = 0;
+    let pensionOasReduction = 0;
 
     // D2.8: Mortalité stochastique. En MC, à chaque début d'année on tire la
     // probabilité de décès du user principal. Le loop arrête à la mort.
@@ -653,6 +654,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         pensionRRQ = 0;
         pensionPSV = 0;
         pensionPrivee = 0;
+        // [ESTATE-NPV-07] `incomeRetirementGis` et `pensionOasReduction` manquaient à ce reset alors
+        // que leurs SIX voisins immédiats y sont — `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`. Inoffensif
+        // tant que `isRetired` est monotone, mais ces champs PILOTENT désormais un calcul
+        // money-critical (l'assiette du facteur net de la VAN successorale).
+        incomeRetirementGis = 0;
+        pensionOasReduction = 0;
         let childGrossCost = 0;
         let childBenefits = 0;
         let childMonthlyCost = 0;
@@ -989,6 +996,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             pensionRRQ = retirementBreakdown.rrq;
             pensionPSV = retirementBreakdown.psv;
             pensionPrivee = retirementBreakdown.privee;
+            pensionOasReduction = retirementBreakdown.oasReduction;
             monthlyIncome = incomeRetirement;
 
             // D2.3: monthlyExpenses est défini de façon unique dans le bloc
@@ -2162,6 +2170,37 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // comme dans le revenu de retraite (plus de divergence silencieuse).
         rrqEstimateMonthly: retirementGoal.rrqEstimateMonthly,
         psvEstimateMonthly: retirementGoal.psvEstimateMonthly,
+        // [ESTATE-NPV-07] Rentes RÉELLEMENT versées au dernier point (nominal, familial) : elles
+        // portent le prorata gains/résidence et l'indexation que les estimés de saisie ci-dessus
+        // n'ont pas. Elles ne servent QU'À isoler la tranche imposable dans le facteur net d'impôt
+        // de la VAN — la VAN elle-même reste bâtie sur les estimés (convention FA-8 inchangée).
+        pensionRrqMonthlyFinal: pensionRRQ,
+        pensionPsvMonthlyFinal: pensionPSV,
+        pensionGisMonthlyFinal: incomeRetirementGis,
+        pensionOasReductionMonthlyFinal: pensionOasReduction,
+        // [ESTATE-NPV-07] Proxy de contexte tant que la DB n'est pas versée. ⚠️ Calculé par la
+        // SOURCE UNIQUE `computeDbPensionMonthly` (partagée avec `retirementIncome.ts`), et NON
+        // recopié : la re-dérivation avait produit trois divergences mesurées (indexation partielle,
+        // âge de début, facteur de survivant). `age` est forcé au-delà de `dbPensionStartAge` parce
+        // qu'on veut « ce que la DB vaudra », pas « ce qu'elle vaut aujourd'hui » ; `inflFactor` est
+        // porté à l'année finale, comme `rrqExpected`.
+        dbPensionMonthlyPlanned: computeDbPensionMonthly({
+            retirementGoal,
+            age: Math.max(currentAge + projection.years, retirementGoal.dbPensionStartAge ?? retirementGoal.targetAge),
+            inflFactor: Math.pow(1 + simInflation / 100, projection.years),
+            survivorMode, dbSurvivorPct,
+            // ⚠️ `divorced` SEUL, PAS `survivorMode || divorced` — exactement comme l'appel de
+            // référence de `computeRetirementIncome` 1 200 lignes plus haut. Le décès est DÉJÀ porté
+            // par `dbSurvivorFactor = survivorMode ? dbSurvivorPct : 1` À L'INTÉRIEUR de la source
+            // unique ; y ajouter un `1/N` réduit DEUX FOIS. J'avais recopié l'expression de la ligne
+            // voisine (`householdPensionShare` du repli `governmentPension`), où le halving survivant
+            // est légitime parce que l'agrégat couvre les DEUX conjoints. MESURÉ : proxy/réel = 0,5000
+            // en mode survivant (contre 1,0000 en couple intact et en divorce), soit jusqu'à
+            // 17 067 $ de patrimoine successoral surestimé tant que la DB n'a pas démarré, et une
+            // marche résiduelle de ~2 k$ à son démarrage — la falaise même que ce terme supprime.
+            householdPensionShare: divorced ? 1 / Math.max(1, activeUsersCount) : 1,
+        }),
+        pensionPriveeMonthlyFinal: pensionPrivee,
         // [ENG-DIVORCE-ESTATE-PENSION] Le compteur de TÊTES : il MULTIPLIE ici un estimé
         // per-personne pour reconstituer le familial — sémantique INVERSE de `retirementIncome`,
         // où le même nom désigne un DIVISEUR d'agrégat. D'où une lecture ligne à ligne avant de

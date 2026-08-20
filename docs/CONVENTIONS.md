@@ -4779,3 +4779,236 @@ C'est `TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`, re-commis dans le lot même qui 
 d'appelant. Le site d'appel vit au milieu d'une boucle moteur non instanciable : le patron du dépôt
 pour ce cas est le scan de SOURCE, et il a immédiatement révélé **deux appelants MCP oubliés** dont
 l'un publie ce brut à un LLM comme « seule source de vérité chiffrée ».
+
+### `UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR`
+
+`[ESTATE-NPV-07]` remplaçait un abattement PLAT (`× 0,7`) sur la VAN des rentes publiques par un
+abattement CALCULÉ. Le fichier de test de ce module partage un stub fiscal :
+
+```ts
+const fiscalStub = (gross: number): FiscalReport => ({ totalTax: Math.max(0, gross) * 0.3 } as FiscalReport);
+```
+
+Un taux **plat de 30 %**. Avec lui, l'impôt incrémental sur les rentes vaut exactement 30 % quel que
+soit le revenu — donc le facteur calculé rend précisément `0,7`, et le correctif est **strictement
+invisible**. Les 23 tests existants restaient verts, non pas parce que rien ne changeait, mais parce
+que le stub reproduisait la FORME du défaut qu'on corrigeait.
+
+**La règle** : avant d'écrire un test sur un correctif, regarder ce que le stub/la fixture partagée
+suppose. Si elle a la même forme que le défaut (plat contre plat, linéaire contre linéaire, uniforme
+contre uniforme), elle ne peut RIEN distinguer. Il faut un stub dont la forme est structurellement
+différente — ici un barème à plusieurs PALIERS.
+
+⚠️⚠️ **Et mon second jet a re-commis la même faute d'un cran.** J'avais remplacé le stub plat par
+`(gross − 20 000) × 0,4` en le croyant « progressif ». Il ne l'est pas : c'est un **affine**, dont la
+pente est CONSTANTE à 40 % au-dessus du coude. Mes deux points de mesure tombaient l'un sur la
+branche dégénérée (revenu nul → impôt incrémental nul par le clamp), l'autre en pleine zone plate.
+MESURÉ par perturbation : les trois tests restaient VERTS en annulant tout le contexte incrémental
+**et** en changeant la base soustraite de +81 %. Un stub n'est « progressif » que s'il a au moins
+**deux coudes** et que les points de mesure sont **strictement positifs et de part et d'autre** —
+sinon il reste, localement, exactement le stub plat qu'on croyait avoir remplacé.
+⚠️ Corollaire mesuré à l'exécution : deux tranches différentes peuvent rendre le MÊME facteur par
+coïncidence du barème (à 96 k$, les tranches 18 k$ et 36 k$ rendaient toutes deux 0,5). Un test
+« A ≠ B » doit donc être vérifié en le LANÇANT, jamais admis parce que les entrées diffèrent.
+
+⚠️ **Deux autres vacuités du même lot, toutes deux trouvées par PERTURBATION et non à la lecture** :
+
+1. **Un ratio annule un facteur constant.** J'avais dérivé le facteur en divisant la VAN nette par
+   une VAN « brute » calculée avec un stub sans impôt. Avec `× 0,7` en dur, numérateur ET
+   dénominateur sont multipliés par 0,7 : le ratio vaut 1 quoi qu'il arrive. Le test passait aussi
+   bien sur le code d'avant. Remède : comparer la même grandeur sous DEUX barèmes, pas la diviser
+   par elle-même.
+2. **Une fixture peut désactiver la branche testée.** Mon test du clamp `[0, 1]` utilisait
+   `incomeRetirement: 0` ; la soustraction des rentes était donc clampée à 0, l'impôt incrémental
+   valait 0, et le clamp n'était jamais sollicité. Retirer le clamp ne faisait rien rougir.
+
+Les trois étaient VERTES et paraissaient sérieuses. Seule la perturbation les a démasquées — c'est
+la seule preuve qui vaille, et il faut la faire assertion par assertion, pas une fois pour le lot.
+
+### `UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`
+
+Toujours `[ESTATE-NPV-07]`, mais c'est la revue qui l'a trouvé, pas moi. Le lot remplaçait un facteur
+plat de 0,7 par un facteur calculé sur le revenu du ménage à l'horizon. Sur la branche **retraitée**,
+c'est juste. Sur la branche **NON retraitée** — l'horizon s'arrête avant l'âge de retraite —
+`estateCurrentIncome` est un **SALAIRE**, et le code mesurait le taux marginal au sommet de ce
+salaire pour taxer des rentes encaissées dix ans plus tard, une fois le salaire disparu. Facteur
+rendu : **0,52**. Le forfait de 0,7 qu'on remplaçait était donc **PLUS JUSTE** sur toute cette
+population — mesuré **−123 000 à −158 543 $** de patrimoine successoral affiché.
+
+Trois enseignements distincts :
+
+1. **Un biais BORNÉ et connu vaut mieux qu'un calcul « exact » appliqué au mauvais contexte.**
+   Remplacer un forfait par un calcul n'est un progrès que là où les entrées du calcul ont un sens.
+   Avant de supprimer une constante de modèle, énumérer les branches où elle s'appliquait et vérifier
+   que le remplaçant a une entrée VALIDE sur chacune — sinon garder le forfait sur celles-là,
+   explicitement et nommément.
+2. **« Aucun golden n'a bougé » est un résultat à EXPLIQUER.** Le silence des goldens m'avait
+   confirmé un périmètre restreint. La revue a mesuré pourquoi : en annulant COMPLÈTEMENT la VAN sur
+   la branche non-retraitée, **1 seul test rouge sur 4 495**, et c'était un legacy `toBeGreaterThan(0)`.
+   Aucune fixture, aucun persona, aucun golden n'exerçait cette branche. Le silence ne prouvait pas
+   l'absence d'effet, il prouvait l'absence de COUVERTURE.
+3. **Un chiffre d'écran peut être une FONCTION OBJECTIF.** `estateNetWorth` n'alimente pas que des
+   affichages : `drawdownOptimizer.ts` **trie dessus** et publie « Meilleur avenir : X »,
+   `strategyRanking.ts` en fait le score de l'objectif `wealth`, et deux outils MCP l'exposent au LLM.
+   Tant que le terme était identique pour toutes les stratégies (facteur plat), il s'annulait au tri ;
+   dès qu'il dépend de l'état final, il **classe**. Mesuré, en ne bougeant QUE l'horizon :
+
+   | contexte du facteur | gagnant à 25 / 28 / 30 / 33 / 35 ans |
+   |---|---|
+   | revenu TOTAL de l'année finale (1er jet) | MELTDOWN · **MELTDOWN** · **MELTDOWN** · AUTO · AUTO |
+   | revenu STRUCTUREL, hors retrait REER ponctuel | MELTDOWN · AUTO · AUTO · AUTO · AUTO |
+   | `origin/main` (0,7 plat) | MELTDOWN · AUTO · AUTO · AUTO · AUTO |
+
+   Le conseil de décaissement changeait de gagnant **au gré du curseur d'horizon**. Avant de rendre
+   une grandeur dépendante de l'état, grepper qui la **trie**, la **compare** ou la **maximise** —
+   pas seulement qui l'affiche. Et mesurer le CLASSEMENT avant/après, pas seulement la valeur.
+
+⚠️⚠️ **ET UNE SECONDE REVUE A TROUVÉ DEUX DÉFAUTS QUE LA PREMIÈRE N'AVAIT PAS — que mon correctif
+avait INTRODUITS.** Un correctif de correctif est un correctif : il se fait relire aussi.
+
+**Le SRG servait d'assiette imposable.** J'avais retiré le SRG de la TRANCHE (non imposable, et la
+VAN ne le valorise pas) mais pas du CONTEXTE — or `incomeRetirement = retirementBreakdown.total` le
+CONTIENT via `psv`. Le résidu était alors composé de SRG PUR, sur lequel la tranche s'empilait comme
+s'il l'était. C'est `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` **re-commis dans le lot même dont le
+message de commit citait cette leçon** : quand une convention (« retirer X ») s'applique à une PAIRE
+de grandeurs, l'appliquer à une seule est pire que ne l'appliquer à aucune, parce que le résultat
+devient incohérent au lieu d'être uniformément biaisé. Mesuré : 35 838 $ effacés sur un ménage à
+faible revenu, et un renversement de la recommandation de décaissement sur 4 points /52.
+⚠️ **Et la prose qui justifiait le nouveau golden décrivait le défaut comme légitime** : j'avais
+écrit « un revenu de retraite de 37 435 $, le reste est une pension privée » — la fixture n'a aucune
+pension privée, les 26 066 $ étaient intégralement le SRG. Un commentaire de re-basage n'est pas de
+la décoration : c'est ce que la prochaine session lira au lieu de re-mesurer. Le vérifier coûte une
+commande.
+
+**Une grandeur monotone qui cesse de l'être est un signal, et personne ne la regardait.**
+`estateNetWorth` DÉCROISSAIT de 169 437 $ quand l'horizon augmentait d'UN an, alors que le code
+d'avant est strictement croissant sur la même plage. Cause : j'avais choisi comme discriminant de
+branche « une rente publique est-elle versée ? » en le lisant comme « le ménage est-il retraité ? ».
+Faux entre l'âge de retraite et le début du RRQ — un retraité à 55 ans avec une rente DB était
+imposé « depuis zéro » sur sa rente publique ESTIMÉE, son revenu réel ignoré.
+
+Deux règles en sortent :
+1. **Un discriminant de branche doit énoncer la question à laquelle il répond RÉELLEMENT.**
+   `rentesRéelles > 0` répond à « les rentes sont-elles déjà dans le revenu ? », pas à « est-on
+   retraité ? ». La bonne formulation a supprimé la branche : le revenu structurel est toujours le
+   même terme, la seule variable est de savoir si la tranche y est DÉJÀ comprise ou si elle viendra
+   PAR-DESSUS. Continu par construction — au mois où la rente commence, le revenu structurel monte
+   exactement du montant qu'on cessait d'ajouter.
+2. **Balayer un PARAMÈTRE CONTINU, pas un point.** Mes mesures de non-régression du classement
+   portaient sur une seule fixture. La revue a fait varier l'horizon d'un an à la fois et la falaise
+   est apparue immédiatement. Pour toute grandeur qu'un utilisateur pilote par un curseur, la
+   monotonie et la continuité SONT des invariants — et elles ne se voient qu'en balayant.
+
+⚠️ **Un sens d'erreur qu'on déclare doit porter sa BORNE, pas un exemple.** J'avais écrit que le
+contexte structurel « surestime légèrement le facteur (3,5 pts) » — mesuré sur UNE fixture. Ailleurs :
+16,5 pts sur un REER de 700 k$, **36,1 pts / 144 963 $** sur un REER de 2 M$, le biais croissant avec
+la taille du REER. Un ticket de suivi chiffré « 3,5 pts » serait priorisé comme cosmétique. Quand on
+assume une hypothèse de modèle, chercher le cas où elle coûte le PLUS, pas celui qu'on a sous la main.
+
+⚠️ **Écrire ce qui n'est PAS testable, plutôt que fabriquer une couverture.** Une perturbation a
+montré que le `Math.max(0, …)` sur le revenu résiduel ne fait rougir aucun test — et ne le PEUT pas :
+tout barème sain rend 0 sur un revenu négatif, donc un résidu de −48 000 $ et un résidu de 0 $
+produisent le même impôt. J'ai commencé par fabriquer une fixture incohérente pour le « couvrir » ;
+elle passait par la coïncidence du stub, pas par le clamp. La bonne réponse est une note dans le test
+qui dit que la ligne est une ceinture, pas une branche, et pourquoi. Un test qui n'aurait discriminé
+que contre un barème impossible n'aurait rien prouvé sur le moteur réel.
+
+⚠️⚠️⚠️ **ET UNE TROISIÈME REVUE A ENCORE TROUVÉ DEUX DÉFAUTS — les miens.** Trois passes, trois
+récoltes. La leçon de premier ordre du lot est là : **sur du money-critical, un correctif de
+correctif est un correctif, et il se fait relire aussi.** Ne jamais merger sur l'hypothèse que la
+passe suivante serait vide — je l'ai supposé deux fois, et deux fois c'était faux.
+
+**Un accumulateur ANNÉE-À-DATE ne s'additionne pas à une grandeur ANNUALISÉE.** `accRentesYear` (qui
+cumule les LOYERS malgré son nom) est remis à zéro chaque janvier ; `incomeRetirement × 12` est un
+taux mensuel annualisé. Les additionner rendait `estateNetWorth` dépendant du **mois calendrier de
+lancement de la simulation** : à loyer annuel identique, 5 383 $ en janvier contre 64 019 $ en
+décembre, soit 210 997 $ d'amplitude sur le patrimoine affiché. Contre-épreuve décisive : sans
+immeuble locatif, l'amplitude est **exactement 0** — c'est ce qui prouve le canal.
+Le signal était sous mes yeux : j'avais exclu son **jumeau** `accRetraitsReerYear` trois lignes plus
+haut, pour une autre raison, et gardé celui-ci. `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` à l'intérieur
+de la **même expression**. Règle : quand on écarte un terme d'une somme, examiner **chaque autre
+terme de la même somme** avec le même critère — ici « quelle est son unité, et sur quelle fenêtre ? ».
+
+**La MONOTONIE et la CONTINUITÉ d'une grandeur pilotée par un curseur SONT des invariants.**
+`estateNetWorth` décroissait de 65 687 $ quand l'utilisateur augmentait son horizon d'un an. Ça ne se
+voit pas en mesurant un point, seulement en **balayant le paramètre**. Deux causes, et chacune porte
+sa propre règle :
+
+1. **Imposer exactement ce qu'on VALORISE.** La VAN valorise `rrqExpected + psvExpected` à tout
+   horizon ; j'imposais la rente déjà VERSÉE. À 64 ans seule la RRQ est versée, donc un facteur
+   calculé sur la RRQ seule était appliqué à une VAN contenant aussi la PSV — et au démarrage de la
+   PSV le facteur chutait de 10,59 points sans que rien de réel ne se produise. Quand un facteur
+   multiplie une grandeur, son assiette doit être **cette grandeur-là**, pas une grandeur voisine.
+2. **« Pas encore connu » n'est pas « zéro ».** Avant la retraite le moteur laisse `incomeRetirement`
+   à 0 ; j'en avais déduit un contexte fiscal nul pour un ménage qui touchera 60 000 $/an de rente DB.
+   Or cette pension est une **saisie utilisateur**, disponible dès le premier mois. Avant de traiter
+   une absence comme un zéro, chercher si l'information existe ailleurs sous une autre forme —
+   fabriquer une falaise sur une donnée qu'on possède déjà est le pire des deux mondes.
+
+⚠️ **Un scan de source qui cherche une PRÉSENCE peut être satisfait par une perturbation.** Ma garde
+d'appariement d'année vérifiait `appel.toContain('finalYear')`. Or `finalYear + 5` le contient : la
+perturbation laissait 36/36 vert. Il faut isoler l'**argument** (4ᵉ position, à profondeur 0) et
+exiger l'égalité STRICTE. Et l'extracteur d'appels doit compter la PROFONDEUR — un `[^)]*` tronquait
+`calculateFiscalReport((a + b), 0, 0, …)` au premier `)` et rendait la garde aveugle
+(`GARDE-BORNEE-PAR-CLASSE-NEGATIVE`, repayé ici). L'extracteur est désormais testé sur ce cas précis.
+
+⚠️ **Un test ne doit pas rendre un correctif futur rouge PAR CONCEPTION.** J'avais verrouillé un
+point de bascule (« à 5 ans, une pension DB fait BAISSER le patrimoine successoral ») à ±50 $ sur la
+différence de deux runs moteur complets. Deux fautes : la tolérance est un piège CI à retardement, et
+surtout ça transforme un **artefact de modèle** en **contrat** — le correctif propre
+(`[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`) ferait rougir ce test alors qu'il aurait raison. Un artefact
+connu se **surveille** par une borne large (« il doit rester marginal »), il ne s'ancre pas au dollar.
+
+⚠️⚠️⚠️⚠️ **CINQ revues sur le même lot. Les QUATRE dernières ont trouvé un défaut que j'avais
+introduit en corrigeant la précédente**, toujours dans les mêmes ~20 lignes. Trois règles en sortent,
+et elles valent bien au-delà de ce lot :
+
+1. **Une formule money-critical recopiée est une formule qui DIVERGE.** J'ai re-dérivé la pension DB
+   dans `estateCalculation` au lieu de réutiliser celle du moteur : trois divergences en une seule
+   expression (indexation partielle ignorée, âge de début ignoré, facteur de survivant remplacé par
+   un autre facteur). Le correctif n'est pas de mieux recopier, c'est d'EXTRAIRE
+   (`computeDbPensionMonthly`) et de faire passer les deux appelants par là.
+2. **Recopier l'expression de la ligne VOISINE est un piège spécifique**, parce qu'elle est
+   plausible et qu'elle compile. `householdPensionShare: (survivorMode || divorced) ? 1/N : 1` est
+   JUSTE pour le repli `governmentPension` (l'agrégat couvre les deux conjoints) et FAUX pour la
+   pension DB (le décès y est déjà porté ailleurs). Deux slots adjacents, deux sémantiques. Avant de
+   copier une ligne, se demander ce que chaque facteur CORRIGE, pas s'il « ressemble ».
+3. **Extraire une expression, c'est hériter de ses cas limites.** `age >= start ? X : 0` devenu
+   `if (age < start) return 0` inverse le comportement sur un `NaN` : l'ancien rendait 0, le nouveau
+   verse la pension à tout âge. La négation explicite (`if (!(age >= start))`) préserve la sémantique.
+   Une refactorisation « à comportement identique » se prouve sur les entrées SALES, pas sur les propres.
+
+⚠️⚠️ **Le test écrit pour fermer un trou peut re-commettre le trou.** Mon test de câblage devait
+prouver que le moteur alimente bien le proxy. Il le RECONSTRUISAIT en appelant la même fonction avec
+les arguments recopiés du site d'appel — donc perturber le site d'appel ne le faisait pas rougir :
+cinq perturbations sur cinq passaient. Pour vérifier un ARGUMENT, il faut l'OBSERVER (espion
+`vi.mock` qui capture les entrées réelles), jamais le reproduire. Signal d'alerte : si le test
+contient une expression qui ressemble au code testé, il ne teste pas le code, il teste sa copie.
+
+⚠️ **Quand une branche n'a AUCUN chemin déterministe, l'écrire vaut mieux que la simuler.**
+`survivorMode` ne s'active que par une mortalité stochastique qu'aucune graine testée ne déclenche au
+bon moment. Fabriquer une fixture qui n'exerce rien mais SEMBLE couvrir est pire que rien : elle
+éteint l'alarme. La réponse honnête est un scan de l'argument à la source, une garde anti-vacuité, et
+la raison écrite dans le test.
+
+⚠️ **Un scan de source prouve la présence d'un JETON, pas l'acheminement d'une valeur.** Le mien reste
+vert sur une clé dupliquée par spread (JS garde la dernière, la regex trouve la première), sur un
+leurre placé dans un export bidon du même fichier, sur une variable au bon nom mais au mauvais
+contenu, et sur un reset déplacé en fin de boucle. Ces cas étaient rattrapés ailleurs — c'est de la
+défense en profondeur, pas une garde suffisante. Le dire DANS le test, sinon la prochaine session le
+croira suffisant.
+
+⚠️ **La tranche qu'on retire d'une assiette doit être la grandeur RÉELLE, pas son estimé de saisie.**
+Quatrième défaut du même lot : je soustrayais `rrqMonthlyFamily × 12` (l'estimé saisi par
+l'utilisateur) d'un revenu NOMINAL, alors que trois écarts s'accumulaient — dollars d'aujourd'hui
+contre dollars de l'année finale (×1,64 à 25 ans), prorata de gains/résidence absent (mesuré 0,784),
+et SRG présent dans le revenu mais absent de la tranche. Total : **−29 %**. Le numérateur était bon,
+seul le dénominateur était faux, donc rien ne criait. Signal à retenir : **la même variable est
+multipliée par un facteur d'indexation à 40 lignes d'écart et pas à l'autre** — quand deux usages
+d'un même symbole divergent dans un même bloc, l'un des deux est faux.
+
+⚠️ **Bonus, sur le nommage** : j'ai justifié une soustraction par le terme `accRentesYear` — qui,
+malgré son nom, cumule les **LOYERS** (`realEstateMonth.ts : accRentesYear += rentalIncome`). Ce
+sont `incomeRetirement * 12` qui portent les rentes publiques. Le code était juste, la justification
+fausse, et j'ai failli câbler le calcul à l'envers sur la foi d'un nom.
+`UN-NOM-TROMPEUR-FABRIQUE-DES-FAUX-FINDINGS` — y compris les siens.

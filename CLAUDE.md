@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 492 tests** Vitest
-(403 fichiers de test, mesuré le 2026-08-20). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 515 tests** Vitest
+(405 fichiers de test, mesuré le 2026-08-20). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -163,6 +163,72 @@ scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (50 s
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 **Money-critical / moteur**
+- ⚠️ **Un stub qui a la FORME du défaut ne peut pas le voir** : le `fiscalStub` partagé d'un fichier
+  de test était `gross * 0.3` — un taux PLAT — et rendait strictement invisible le remplacement d'un
+  abattement plat par un abattement calculé. Regarder ce que la fixture partagée SUPPOSE avant
+  d'écrire le test ; il faut une forme structurellement différente (ici un barème progressif).
+  Corollaires du même lot, tous deux démasqués par PERTURBATION seule : un **ratio annule un facteur
+  constant** (diviser la grandeur par elle-même sous un autre stub ne prouve rien — comparer DEUX
+  barèmes), et une **fixture peut désactiver la branche testée** (`incomeRetirement: 0` clampait la
+  soustraction, donc le clamp n'était jamais sollicité). Perturber assertion par assertion, jamais
+  une fois pour le lot (`UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR`). ⚠️ Mon 2e jet a
+  re-commis la faute d'un cran : `(g − 20 000) × 0,4` est **affine**, donc à pente CONSTANTE au-dessus
+  du coude — un stub n'est progressif qu'avec ≥ 2 coudes ET des points de mesure strictement positifs
+  de part et d'autre. Et un « A ≠ B » se vérifie en LANÇANT (deux tranches ont rendu 0,5 par coïncidence).
+- ⚠️ **Un correctif peut être PIRE que le défaut sur une BRANCHE** : remplacer un forfait par un
+  calcul n'est un progrès que là où les entrées du calcul ont un sens. Taxer une rente au taux
+  marginal d'un SALAIRE qui aura cessé rendait 0,52 contre le forfait 0,7 — −158 543 $, et **1 seul
+  test sur 4 495** voyait cette branche. Trois corollaires : un biais BORNÉ et connu vaut mieux qu'un
+  calcul exact hors contexte ; **« aucun golden n'a bougé » est un résultat à EXPLIQUER** (ici ça
+  mesurait l'absence de COUVERTURE, pas l'absence d'effet) ; et **un chiffre d'écran peut être une
+  FONCTION OBJECTIF** — `estateNetWorth` est TRIÉ par `drawdownOptimizer` et publié comme « Meilleur
+  avenir : X », donc le rendre dépendant de l'état final a fait basculer le conseil de décaissement
+  au gré du curseur d'horizon. Grepper qui TRIE/compare/maximise une grandeur, pas seulement qui
+  l'affiche, et mesurer le CLASSEMENT avant/après (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`).
+- ⚠️ **La tranche retirée d'une assiette doit être la grandeur RÉELLE, pas l'estimé de saisie** :
+  soustraire l'estimé non indexé, sans prorata et sans SRG d'un revenu nominal faisait −29 % sur le
+  seul dénominateur — rien ne crie. Signal : **la même variable indexée à 40 lignes d'écart et pas
+  à l'autre** ; quand deux usages d'un même symbole divergent dans un même bloc, l'un est faux.
+- ⚠️ **Un correctif de correctif se fait relire AUSSI** : la 2e revue du même lot a trouvé 2 défauts
+  que j'avais introduits. (a) Retirer le SRG de la TRANCHE et pas du CONTEXTE le rendait imposable —
+  `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` re-commis dans le lot dont le commit CITAIT cette leçon.
+  (b) `estateNetWorth` DÉCROISSAIT quand l'horizon montait d'un an : mon discriminant de branche
+  (`rentesRéelles > 0`) répondait à « les rentes sont-elles déjà dans le revenu ? », pas à « est-on
+  retraité ? ». **Un discriminant doit énoncer la question à laquelle il répond RÉELLEMENT** — bien
+  nommé, il a supprimé la branche. Et pour toute grandeur qu'un CURSEUR pilote, monotonie et
+  continuité SONT des invariants : les balayer, pas mesurer un point. Deux corollaires : un sens
+  d'erreur assumé se déclare avec sa BORNE (j'avais écrit « 3,5 pts », mesuré 36,1 pts ailleurs),
+  et une ligne non testable s'ÉCRIT comme telle plutôt que couverte par une fixture absurde.
+  ⚠️ Une 3e revue a encore trouvé 2 défauts à moi : **trois passes, trois récoltes** — ne jamais
+  merger en supposant la suivante vide. (c) Un **accumulateur ANNÉE-À-DATE** (`accRentesYear`, remis
+  à zéro chaque janvier) additionné à un `× 12` annualisé rendait le patrimoine successoral dépendant
+  du **MOIS CALENDRIER** de lancement (210 997 $) — alors que j'avais écarté son JUMEAU 3 lignes plus
+  haut : quand on retire un terme d'une somme, réexaminer CHAQUE autre terme au même critère.
+  (d) **MONOTONIE et CONTINUITÉ d'une grandeur pilotée par un CURSEUR sont des invariants** — ça ne
+  se voit qu'en BALAYANT le paramètre, jamais sur un point. Deux règles en sont sorties : *imposer
+  exactement ce qu'on VALORISE* (un facteur s'applique à SON assiette, pas à une grandeur voisine),
+  et *« pas encore connu » n'est pas « zéro »* (la pension DB planifiée était une SAISIE disponible
+  dès le 1er mois). Corollaires : un scan de PRÉSENCE peut être satisfait par la perturbation
+  (`toContain('finalYear')` matche `finalYear + 5` — isoler l'ARGUMENT et exiger l'égalité), et un
+  test ne doit pas rendre un correctif futur rouge PAR CONCEPTION (un artefact connu se SURVEILLE
+  par une borne large, il ne s'ancre pas au dollar).
+- ⚠️⚠️ **CINQ revues sur un même lot, les QUATRE dernières trouvant un défaut que J'AVAIS introduit
+  en corrigeant la précédente** — toujours dans les mêmes ~20 lignes. (e) Une **formule
+  money-critical recopiée DIVERGE** : la re-dériver a produit 3 divergences d'un coup ; le correctif
+  est d'EXTRAIRE une source unique, pas de mieux recopier. (f) **Recopier la ligne VOISINE** est un
+  piège à part : elle compile et paraît juste (`(survivorMode || divorced) ? 1/N : 1` est correct
+  pour l'agrégat d'à côté, FAUX pour la DB dont le décès est déjà porté ailleurs) — se demander ce
+  que chaque facteur CORRIGE, pas s'il ressemble. (g) **Extraire une expression, c'est hériter de ses
+  cas limites** : `age >= s ? X : 0` devenu `if (age < s) return 0` s'inverse sur un NaN ; une
+  refacto « à comportement identique » se prouve sur les entrées SALES.
+- ⚠️⚠️ **Le test écrit pour fermer un trou peut re-commettre le trou** : mon test de câblage
+  RECONSTRUISAIT le proxy au lieu de l'observer → 5 perturbations sur 5 passaient. Pour vérifier un
+  ARGUMENT, l'OBSERVER (espion `vi.mock` capturant les entrées), jamais le reproduire. **Signal : si
+  le test contient une expression qui ressemble au code testé, il teste sa copie.** Corollaires :
+  quand une branche n'a AUCUN chemin déterministe (mortalité stochastique), l'ÉCRIRE vaut mieux que
+  fabriquer une fixture qui n'exerce rien mais éteint l'alarme ; et un scan de source prouve la
+  présence d'un JETON, pas l'acheminement d'une valeur (trompé par une clé dupliquée en spread, un
+  leurre dans le même fichier, un bon nom au mauvais contenu) — le dire DANS le test.
 - ⚠️ **Câbler une année, c'est câbler une PAIRE** : j'ai passé l'année courante à l'inversion
   net→brut de `TaxCenter` et laissé `calculateFiscalReport` à son défaut 2026 trois lignes plus bas.
   Avant, les DEUX étaient à 2026 — donc cohérents. Après, 212 $/an d'écart dès 2027. **Améliorer un

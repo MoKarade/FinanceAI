@@ -159,6 +159,47 @@ export interface RetirementIncomeBreakdown {
  * Pour la compat legacy : `result.total` est l'équivalent du `number` retourné
  * avant le refactor.
  */
+/**
+ * Pension privée DB (prestations déterminées) versée à un instant donné — **SOURCE UNIQUE**.
+ *
+ * Extrait de `computeRetirementIncome` par `[ESTATE-NPV-07]` : `estateCalculation.ts` avait besoin
+ * de la MÊME grandeur pour son revenu de contexte, et la re-dériver a produit trois divergences
+ * mesurées (indexation `dbPensionIndexationPct` ignorée → jusqu'à 47 287 $/an de contexte fantôme
+ * À VIE ; `dbPensionStartAge` ignoré → 53 799 $/an ; `dbSurvivorPct` remplacé par
+ * `householdPensionShare`, soit 0,60 contre 0,50 pour la même grandeur). Une formule money-critical
+ * recopiée est une formule qui diverge : les deux appelants passent désormais par ici.
+ *
+ * ⚠️ `inflFactor` est le facteur d'inflation NOMINAL déjà calculé par l'appelant
+ * (`(1 + infl/100)^(mois/12)`), pas un taux — l'indexation partielle s'applique à `inflFactor − 1`.
+ */
+export const computeDbPensionMonthly = (p: {
+    retirementGoal: RetirementGoal;
+    age: number;
+    inflFactor: number;
+    survivorMode: boolean;
+    dbSurvivorPct: number;
+    householdPensionShare?: number;
+}): number => {
+    const dbStartAge = p.retirementGoal.dbPensionStartAge ?? p.retirementGoal.targetAge;
+    // ⚠️ `!(age >= start)` et NON `age < start` : l'ancienne forme ternaire `age >= start ? X : 0`
+    // rendait 0 sur un NaN ; l'early-return naïf, lui, LAISSE PASSER (NaN < x est faux) et verse la
+    // pension à tout âge, ou propage un NaN dans `incomeRetirement`. L'UI est protégée
+    // (`utils/numericInput.ts`), mais une restauration de sauvegarde ne l'est pas
+    // (`BackupPanel` valide `retirementGoal: z.unknown()`). Extraire une expression, c'est hériter
+    // de ses cas limites — la négation explicite les préserve.
+    if (!(p.age >= dbStartAge)) return 0;
+    const dbBaseMonthly = p.retirementGoal.dbPensionMonthly || 0;
+    const dbIndexationFraction = Math.min(1, Math.max(0, (p.retirementGoal.dbPensionIndexationPct ?? 100) / 100));
+    const dbInflFactor = 1 + (p.inflFactor - 1) * dbIndexationFraction;
+    const dbSurvivorFactor = p.survivorMode ? p.dbSurvivorPct : 1;
+    // [ENG-DIVORCE — ÉLEVÉ-1] `householdPensionShare` : la DB est un montant MÉNAGE que rien ne
+    // divise ici. Sans ce facteur, un divorcé conservait 100 % de la DB du couple.
+    const dbHouseholdShare = Number.isFinite(p.householdPensionShare) && (p.householdPensionShare as number) > 0
+        ? (p.householdPensionShare as number)
+        : 1;
+    return dbBaseMonthly * dbInflFactor * dbSurvivorFactor * dbHouseholdShare;
+};
+
 export function computeRetirementIncome(
     ctx: RetirementIncomeCtx,
     retirementGoal: RetirementGoal,
@@ -307,17 +348,10 @@ export function computeRetirementIncome(
 
     const inflFactor = Math.pow(1 + simInflation / 100, m / 12);
 
-    const dbStartAge = retirementGoal.dbPensionStartAge ?? retirementGoal.targetAge;
-    const dbBaseMonthly = retirementGoal.dbPensionMonthly || 0;
-    const dbIndexationFraction = Math.min(1, Math.max(0, (retirementGoal.dbPensionIndexationPct ?? 100) / 100));
-    const dbInflFactor = 1 + (inflFactor - 1) * dbIndexationFraction;
-    const dbSurvivorFactor = survivorMode ? dbSurvivorPct : 1;
-    // [ENG-DIVORCE — ÉLEVÉ-1] `householdPensionShare` : la DB est un montant MÉNAGE que rien ne
-    // divise ici. Sans ce facteur, un divorcé conservait 100 % de la DB du couple.
-    const dbHouseholdShare = Number.isFinite(ctx.householdPensionShare) && (ctx.householdPensionShare as number) > 0
-        ? (ctx.householdPensionShare as number)
-        : 1;
-    const dbMonthly = age >= dbStartAge ? dbBaseMonthly * dbInflFactor * dbSurvivorFactor * dbHouseholdShare : 0;
+    const dbMonthly = computeDbPensionMonthly({
+        retirementGoal, age, inflFactor, survivorMode, dbSurvivorPct,
+        householdPensionShare: ctx.householdPensionShare,
+    });
 
     // §6.3 — SRG (Supplément de revenu garanti) pour retraités 65+ recevant la PSV.
     // FA-3b (audit fiscal 2026-06-09) : le « revenu autre que PSV » du test SRG inclut

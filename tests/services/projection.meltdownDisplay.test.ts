@@ -132,6 +132,21 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // de taxDecember.test.ts qui le fait.
         const melt = runWith('MELTDOWN_REER' as AllocationStrategy);
         expect(melt.finalNetWorth).toBeCloseTo(-7209.82, 0);
-        expect(melt.estateNetWorth).toBeCloseTo(144219.86, 0);
+        // ⚠️ RE-BASÉ le 2026-08-20 par `[ESTATE-NPV-07]` : 144 219,86 $ → 208 594,46 $
+        // (+64 374,60 $, +44,6 %). L'écart RELATIF est énorme ici parce que cette fixture finit
+        // INSOLVABLE (`finalNetWorth = −7 209 $`) : son patrimoine successoral est presque
+        // entièrement la VAN des rentes publiques (216 328 $ brut), et le facteur y monte à 1,0000.
+        //
+        // ⚠️ MESURÉ, et c'est CE point qui a démasqué le défaut du SRG : ce ménage touche 11 369 $/an
+        // de rentes publiques nettes et 26 066 $/an de **SRG** — pas de pension privée (la fixture
+        // n'a aucun `dbPensionMonthly` ; mon commentaire précédent l'affirmait, à tort). Le SRG est
+        // du REVENU mais N'EST PAS IMPOSABLE. Une version intermédiaire de ce lot le retirait de la
+        // tranche sans le retirer du contexte : le résidu `revenuSansRentes` valait alors 26 066 $
+        // de SRG PUR, taxé comme un revenu ordinaire → facteur 0,8343 au lieu de 1,0000, soit
+        // 35 838 $ de patrimoine successoral effacés sur ce seul ménage — un ménage à faible revenu,
+        // c'est-à-dire exactement la population que tout ce lot prétend servir.
+        // Le REER étant déjà vidé à 87 ans, le contexte structurel et le contexte total coïncident
+        // ici : ce point n'exerce PAS cette branche-là.
+        expect(melt.estateNetWorth).toBeCloseTo(208594.46, 0);
     });
 });

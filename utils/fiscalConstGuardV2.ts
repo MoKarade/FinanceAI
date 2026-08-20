@@ -280,8 +280,6 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Taux d’actualisation réel de la VAN des rentes (`r_npv` = 2 %). Hypothèse financière de modèle. Le `1.02` des deux lignes de VAN (RRQ et PSV) en est le reflet et doit bouger AVEC lui — piège de duplication signalé par `[ESTATE-NPV-07]`.' },
     { file: 'services/projection/estateCalculation.ts', value: '65', family: 'fiscal',
       reason: '[×2] Âge pivot des rentes publiques (RRQ/PSV), pour la RRQ et pour la PSV, pour décider si la rente est déjà en cours. Vrai paramètre fédéral/QC, ancré FISCAL_REFERENCE §6.' },
-    { file: 'services/projection/estateCalculation.ts', value: '0.7', family: 'design',
-      reason: 'Facteur de 30 % d’abattement appliqué à la VAN des rentes dans le patrimoine successoral. SANS NOM, SANS COMMENTAIRE, absent de FISCAL_REFERENCE — et 30 % d’une VAN de rentes vaut des dizaines de k$ à l’écran Succession. Ticket `[ESTATE-NPV-07]` : le nommer comme hypothèse de modèle, ou le retirer. ⚠️ Reclassé `design` en revue : `fiscal` signifie « DOIT finir dans FISCAL_REFERENCE », et ancrer un abattement de 30 % qu’aucune règle ARC/RQ ne produit polluerait la source de vérité. Le défaut est qu’il est ANONYME, pas qu’il manque une source.' },
 
     // ── services/projection/activeIncome.ts ──────────────────────────────────────────────────
     { file: 'services/projection/activeIncome.ts', value: '0.55', family: 'fiscal',

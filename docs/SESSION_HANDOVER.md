@@ -4,6 +4,89 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-20 (suite 115) — encore un facteur plat, encore contre les modestes
+> Branche `claude/estate-npv` (basée sur `main`, PAS empilée). Vague 1f, 4e des 5.
+>
+> **Livré** : `[ESTATE-NPV-07]`. Le ticket annonçait « nommer ou retirer un 0,7 » et « écran
+> Succession seulement » — **les deux étaient faux**. `estateNetWorth` alimente un chiffre-TITRE du
+> Budget, le panneau de stress et la carte FIRE ; et le facteur n'était juste pour PERSONNE
+> (facteur net réel mesuré : 0,94 pour un ménage vivant de ses rentes, 0,594 à 100 k$ d'autre
+> revenu). Remplacé par un abattement CALCULÉ, patron déjà présent 40 lignes plus haut.
+>
+> **Goldens re-basés** : +190 745 $, +190 746 $ (le même écart à un dollar d'arrondi près — la VAN
+> ne dépend pas du tirage MC), et +64 375 $ (**+44,6 %** — cette fixture finit insolvable, donc son
+> patrimoine successoral EST la VAN des rentes).
+>
+> ⚠️⚠️⚠️ **TROIS revues successives, chacune a trouvé du vrai — et les 2e et 3e ont trouvé des défauts
+> que MES PROPRES CORRECTIFS avaient introduits.** C'est la leçon principale du lot : sur du
+> money-critical, un correctif de correctif se fait relire aussi. La 3e a trouvé (7) `estateNetWorth`
+> dépendait du **MOIS CALENDRIER** de lancement (210 997 $ d'amplitude) parce que j'avais gardé
+> `accRentesYear`, un accumulateur ANNÉE-À-DATE, dans un contexte annualisé — alors que j'avais exclu
+> son JUMEAU trois lignes plus haut ; et (8) `estateNetWorth` restait **NON MONOTONE en horizon**
+> (−65 687 $ pour un an de plus). Corrigés : la tranche imposée est celle que la VAN VALORISE (le
+> complément non encore versé s'ajoute au contexte), et la pension DB PLANIFIÉE — une saisie, connue
+> dès le premier mois — S'AJOUTE au contexte tant qu'elle n'est pas versée.
+> ⚠️ C'est un **COMPLÉMENT**, pas un « plancher » : une version intermédiaire la combinait par
+> `Math.max` au revenu réel, ce qui JETAIT les rentes déjà versées entre l'âge de la retraite et
+> `dbPensionStartAge` (−142 890 $ mesuré, plus une falaise NEUVE). Corrigé en 4e revue.
+>
+> ✅ **Vérifié** : 9 familles de fixtures, horizon balayé AN PAR AN de 5 à 45 ans. ⚠️ Formulation
+> EXACTE : « le lot n'ajoute AUCUNE non-monotonie », et NON « monotone partout » — j'avais écrit le
+> second, qui est faux : certaines familles décroissent par DÉPLÉTION D'ACTIFS, à l'identique sur la
+> baseline pré-lot (vérifié chute par chute, 820 runs comparés).
+> Amplitude au `startMonth` redevenue IDENTIQUE à `main`. Classement de décaissement identique à
+> `main` sur 62 points de mesure au total.
+>
+> ⚠️⚠️ **CINQ revues. Les quatre dernières ont trouvé un défaut que J'AVAIS introduit en corrigeant
+> la précédente**, toujours dans les mêmes ~20 lignes. La 5e : en mode survivant je réduisais le
+> proxy DB DEUX FOIS (`dbSurvivorPct` dans la source unique + un `1/N` recopié de la ligne voisine).
+> Et mon test de câblage écrit pour fermer ce trou était lui-même VACUEUX — il RECONSTRUISAIT le
+> proxy au lieu d'observer celui que le moteur passe : cinq perturbations passaient. Refait avec un
+> espion `vi.mock` sur `computeEstateNetWorth`.
+>
+> ⚠️⚠️⚠️ **LA REVUE A DÉMOLI MON PREMIER JET — trois défauts non bornés, tous MESURÉS.** Le lot
+> corrigeait bien un vrai défaut, mais il échangeait un biais BORNÉ et connu (30 pts) contre :
+> (1) un **contresens sur toute la population pré-retraite** — un salaire n'est pas le contexte
+> fiscal d'une rente encaissée 10 ans plus tard : facteur 0,52, soit **pire que le 0,7 remplacé**,
+> −158 543 $ mesuré, et **1 seul test au monde sur 4 495** voyait cette branche ;
+> (2) une **tranche soustraite fausse de 29 %** (estimé de saisie non indexé, sans prorata, SRG
+> absent) dont l'erreur était **maximale sur les ménages modestes que le lot prétend servir** ;
+> (3) un **basculement de la recommandation de décaissement** — `estateNetWorth` n'est pas qu'un
+> chiffre d'écran : `drawdownOptimizer` trie DESSUS et publie « Meilleur avenir : X ».
+> Correctifs : rente RÉELLE plombée depuis la boucle, branche pré-retraite traitée explicitement,
+> contexte STRUCTUREL (hors retrait REER ponctuel — seule variante qui reproduit l'ordre de `main`
+> à tous les horizons mesurés).
+>
+> ⚠️⚠️⚠️ **PUIS UNE SECONDE REVUE A TROUVÉ DEUX DÉFAUTS QUE J'AVAIS INTRODUITS**, invisibles à la
+> première : (4) le **SRG servait d'assiette imposable** — je l'avais retiré de la TRANCHE et pas du
+> CONTEXTE, alors que `incomeRetirement` le contient. 35 838 $ effacés sur le golden meltdown, sur un
+> ménage à FAIBLE revenu ; et le commentaire que j'avais écrit pour justifier ce golden disait « le
+> reste est une pension privée », **c'était le SRG**. (5) `estateNetWorth` **DÉCROISSAIT de 169 437 $
+> quand l'horizon augmentait d'un an** : j'avais branché sur « une rente est-elle versée ? » en le
+> traitant comme « est-on retraité ? ». La correction supprime la branche — la seule question est si
+> les rentes sont DÉJÀ dans le revenu ; sinon elles s'ajoutent PAR-DESSUS. Continu par construction.
+>
+> ✅ **Preuve que le classement de décaissement ne bouge PAS** : 32 points de mesure (REER × horizon),
+> marges MELTDOWN−AUTO **identiques au dollar près** à `origin/main`. Le contexte structurel ne
+> dépend d'aucune grandeur pilotée par la stratégie, donc le terme VAN s'annule au tri.
+>
+> ⚠️ **J'avais sous-déclaré un sens d'erreur d'un facteur ~10** (« légère, 3,5 pts » sur UNE fixture ;
+> mesuré ailleurs jusqu'à **36,1 pts / 144 963 $**). Un ticket chiffré « 3,5 pts » aurait été
+> priorisé comme cosmétique.
+>
+> ⚠️⚠️ **TROIS de mes tests étaient vacueux, tous démasqués par PERTURBATION** : le `fiscalStub`
+> partagé du fichier est un taux PLAT (30 %) qui rendait le correctif strictement invisible ; mon
+> facteur dérivé par RATIO annulait tout facteur constant ; et mon test du clamp utilisait une
+> fixture qui désactivait la branche testée. Verts et sérieux d'apparence, tous les trois
+> (`UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR`).
+> ⚠️ Puis mon SECOND jet de tests l'était encore : le stub « progressif » `(g − 20 000) × 0,4` est
+> **affine**, donc à pente CONSTANTE au-dessus du coude. Les cinq tests actuels sont prouvés
+> discriminants par cinq perturbations distinctes.
+>
+> ⚠️ **Faux raisonnement rattrapé de justesse** : `accRentesYear` cumule les LOYERS malgré son nom
+> (`realEstateMonth.ts`), pas les rentes publiques — ce sont `incomeRetirement * 12`. J'ai failli
+> câbler le calcul à l'envers sur la foi d'un nom.
+>
 > ## 🟢 Session 2026-08-20 (suite 114) — une valeur fiscale figée par un défaut de signature
 > Branche `claude/grossfromnet-annee` (basée sur `main`, PAS empilée). Suite directe de #669.
 >

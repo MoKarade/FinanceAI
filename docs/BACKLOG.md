@@ -844,6 +844,60 @@
 > sont désormais tous inventoriés et tracés dans `utils/fiscalConstGuardV2.ts` : aucun ne peut plus
 > disparaître en silence. Trois DÉCOUVERTES s'y sont ajoutées (juste après).
 
+- [ ] **`[FLAKE-DIVORCE-INCOME-PHANTOM]`** (S, MOYEN — observé 2026-08-20 pendant `[ESTATE-NPV-07]`) —
+  `tests/services/projection.divorce.test.ts > [FISC-DIVORCE-INCOME-PHANTOM] > un divorce à 50 %
+  coûte bien plus que quelques pourcents du patrimoine final` a ÉCHOUÉ une fois dans une suite
+  complète, puis passé **en isolation** et à la **re-exécution complète suivante**, sur le MÊME
+  commit (`26f45d3`) et sans aucune modification. Deux suites complètes vertes avant, une verte
+  après. C'est donc un flake d'ORDRE ou de PARALLÉLISME, pas une régression — mais un flake sur un
+  test money-critical est un futur faux négatif : la prochaine session peut le voir rouge et
+  « corriger » du code sain. **À faire** : le lancer en boucle (`--repeat`) et sous
+  `--sequence.shuffle` pour reproduire, puis isoler l'état partagé (le fichier voisin qui le
+  précède dans l'ordre par défaut est le premier suspect). ⚠️ Ne PAS élargir la tolérance de
+  l'assertion pour le faire taire — c'est la garde d'un défaut réel (`FISC-DIVORCE-INCOME-PHANTOM`).
+
+- [ ] **`[ESTATE-NPV-BASE-REELLE]`** (M, **ÉLEVÉ** — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
+  la VAN des rentes publiques (`services/projection/estateCalculation.ts`, bloc `rrqExpected`/`psvExpected`)
+  est bâtie sur l'estimé de SAISIE (`rrqEstimateMonthly` ou le split 65/35 de `governmentPension`)
+  indexé à l'inflation, **pas** sur la rente que le moteur verse réellement. Elle ignore donc
+  `rrqProrata` (gains/MGA × années de résidence). **MESURÉ** sur la fixture divorce : VAN RRQ
+  599 584 $ contre 470 081 $ à partir de la rente réellement versée → **+129 503 $ de VAN
+  surévaluée**. Le lot `[ESTATE-NPV-07]` a plombé la vraie rente (`pensionRrqMonthlyFinal`…) mais
+  **uniquement pour le facteur d'impôt**, pas pour la VAN elle-même — les deux grandeurs divergent
+  donc encore. C'est aussi la cause de la discontinuité résiduelle à la frontière de retraite
+  (facteur 0,9068 juste avant, 1,0000 juste après, mesuré sur un horizon qui bouge d'UN an).
+  ⚠️ Toucher à la VAN re-base des goldens ET peut déplacer le classement de `compareLifeScenarios` —
+  vérifier le classement à 25/28/30/33/35 ans avant/après, comme #671 l'a fait.
+
+- [ ] **`[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`** (M, MOYEN — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
+  le facteur net d'impôt de la VAN se calcule sur le revenu de retraite d'UN SEUL point (l'année
+  finale) alors qu'il valorise 25 ans de rentes. #671 a retenu un contexte **structurel**
+  (`incomeRetirement × 12 + accRentesYear`, hors retrait REER ponctuel) parce que c'est la seule
+  variante qui ne fait pas basculer la recommandation de décaissement au gré du curseur d'horizon —
+  mais l'hypothèse a un sens d'erreur ASSUMÉ : pour un retraité qui décaisse son REER/FERR chaque
+  année, elle sous-estime le revenu récurrent, donc **surestime** le facteur (0,9335 au lieu de
+  0,8987 mesuré sur la fixture divorce). Le correctif propre est un revenu de retraite MOYEN sur les
+  années restantes. ⚠️ `estateNetWorth` est l'objectif de tri de `drawdownOptimizer.ts` et le score
+  `wealth` de `strategyRanking.ts` : toute variante doit être mesurée sur le CLASSEMENT, pas seulement
+  sur la valeur.
+
+- [ ] **`[ESTATE-COUPLE-DECLARANT-UNIQUE]`** (M, MOYEN — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
+  `estateCalculation.ts` empile la liquidation successorale sur UNE déclaration (hypothèse du double
+  décès, correcte pour la liquidation). `[ESTATE-NPV-07]` réutilise ce même revenu mono-déclarant
+  pour taxer la VAN — or cette VAN représente des rentes encaissées **par deux personnes, sur deux
+  déclarations, pendant 25 ans**. Le barème étant progressif, l'abattement est structurellement trop
+  élevé pour un couple. Hypothèse de modèle NOUVELLE, à > 100 k$ d'impact, écrite nulle part hors du
+  commentaire de code. **Correctif** : soit ventiler la VAN par conjoint avant d'appliquer le barème,
+  soit documenter l'hypothèse dans `docs/PROJECTION.md` et la nommer dans l'UI.
+
+- [ ] **`[ESTATE-LIFEEXPECTANCY-95-DUR]`** (S, MOYEN — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
+  `services/projection/estateCalculation.ts` fixe `lifeExpectancy = 95` **en dur** pour le nombre
+  d'années de rentes restantes, alors que `retirementGoal.lifeExpectancy` existe (`types.ts`, défaut
+  90 ; 90/92/94 selon les personas) et est **ignoré**. Piège d'HOMONYME à deux niveaux : l'entrée du
+  ratchet `utils/fiscalConstGuardV2.ts` justifie ce 95 en disant qu'il est « explicitement nommé
+  `lifeExpectancy` » — ce qui est précisément ce qui masque le no-op. Un utilisateur qui règle son
+  espérance de vie à 90 voit toujours 95 ans de rentes valorisés. ⚠️ Re-baserait des goldens.
+
 - [ ] **`[AE-PLAFOND-MANQUANT]`** (S, **ÉLEVÉ** — découvert en revue de `[FISC-GUARD-SCOPE]`) —
   `services/projection/activeIncome.ts:70` applique le taux de remplacement de l'assurance-emploi
   (`incomeMarc *= 0.55`, commentaire du code : « Job loss (AE 55%) ») **au salaire NET et SANS
@@ -989,11 +1043,6 @@
   incrémental réel sur 30 k$ de NOI : +2 665 $/an à 60 k$ de revenu, +1 004 $ à 100 k$, −2 208 $ à
   250 k$** — donc **non conservateur aux hauts revenus**. L'item était coché alors que la moitié du
   livrable manquait (classe `PM-STALE-BACKLOG`). [MESURÉ]
-- [ ] **`[ESTATE-NPV-07]`** (XS, FAIBLE) — facteur `0,7` appliqué à la VAN des rentes RRQ/PSV dans le
-  patrimoine successoral, **sans nom, sans commentaire, absent de FISCAL_REFERENCE** (les `1.02`
-  voisins non plus) — `services/projection/estateCalculation.ts:224-227`. Écran Succession seulement,
-  mais 30 % d'une VAN de rentes = plusieurs dizaines de k$ affichés. Correctif : nommer et ancrer
-  comme hypothèse de modèle, ou retirer. [MESURÉ pour l'absence de source]
 - [ ] **`[ENV-NODE-NON-DECLARE]`** (XS, MOYEN) — aucun `engines` dans `package.json`, aucun `.nvmrc` :
   la seule déclaration de la version visée est `node-version: '20'`, répété dans **4 workflows**
   (`ci.yml` ×2, `lighthouse.yml`, `refresh-screenshots.yml`). Le conteneur de dev tourne sur Node

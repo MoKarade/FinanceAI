@@ -59,6 +59,37 @@ export interface EstateCalcInputs {
      *  retraite (plus de divergence silencieuse). Absents → repli sur le split 65/35. */
     rrqEstimateMonthly?: number;
     psvEstimateMonthly?: number;
+    /** [ESTATE-NPV-07] Rentes publiques RÉELLEMENT versées au dernier point de la simulation
+     *  (mensuel FAMILIAL, dollars NOMINAUX de l'année finale) — `retirementBreakdown.rrq` / `.psv`,
+     *  remontés hors boucle par `services/projection.ts` comme `incomeRetirement` l'est déjà.
+     *  ⚠️ NE PAS reconstruire cette grandeur depuis `rrqEstimateMonthly`/`governmentPension` : celle-ci
+     *  porte le prorata de gains/résidence (`rrqProrata`, mesuré 0,784) et l'indexation à l'année
+     *  finale, que la base d'estimé ne porte PAS. Absents → repli sur l'estimé indexé (rétrocompat).
+     *  `pensionGisMonthlyFinal` est le SRG, INCLUS dans `.psv` mais NON IMPOSABLE : on le retranche
+     *  de l'assiette (même traitement que `taxDecember.ts`). */
+    pensionRrqMonthlyFinal?: number;
+    pensionPsvMonthlyFinal?: number;
+    pensionGisMonthlyFinal?: number;
+    /** [ESTATE-NPV-07] Écrêtement PSV du dernier point (`retirementBreakdown.oasReduction`, mensuel
+     *  familial). `.rrq`/`.psv` sont BRUTS de cet écrêtement alors que `.total` (donc le revenu de
+     *  contexte) en est NET : sans ce terme, la tranche retirée dépasserait le revenu qui la contient
+     *  pour un retraité en récupération PSV. Un montant, deux registres, une seule convention. */
+    pensionOasReductionMonthlyFinal?: number;
+    /** [ESTATE-NPV-07] Pension privée DB que le ménage touchera, **déjà valorisée à l'année finale**
+     *  par `computeDbPensionMonthly` (la SOURCE UNIQUE partagée avec `retirementIncome.ts`) —
+     *  mensuel, familial. Sert de proxy du revenu de retraite tant que la DB n'est pas encore
+     *  versée : sans elle, le contexte fiscal pré-retraite est nul et le facteur s'effondre au
+     *  passage à la retraite (mesuré −65 687 $ pour UN an d'horizon en plus).
+     *  ⚠️ Mon premier jet la calculait ICI, en recopiant une indexation approximative. Trois
+     *  divergences MESURÉES contre le moteur : `dbPensionIndexationPct` ignoré (jusqu'à 47 287 $/an
+     *  de contexte fantôme, À VIE, pour une pension non indexée), `dbPensionStartAge` ignoré
+     *  (53 799 $/an), et `dbSurvivorPct` remplacé par `householdPensionShare` (0,60 contre 0,50 pour
+     *  la même grandeur). D'où l'extraction en source unique. */
+    dbPensionMonthlyPlanned?: number;
+    /** [ESTATE-NPV-07] Pension privée DB RÉELLEMENT versée au dernier point (`retirementBreakdown.privee`,
+     *  mensuel familial). Sert UNIQUEMENT à savoir si la DB coule déjà : si oui, `incomeRetirement`
+     *  la porte et le proxy ci-dessus ne doit RIEN ajouter. */
+    pensionPriveeMonthlyFinal?: number;
     activeUsersCount: number;
     /**
      * [ENG-DIVORCE-ESTATE-PENSION] Part du ménage qui reste au déclarant, pour les rentes exprimées
@@ -229,7 +260,185 @@ export function computeEstateNetWorth(
     const rrqNPV = finalAge >= 65 ? (rrqExpected * npvFactor) : (rrqExpected * npvFactor * Math.pow(1.02, -(65 - finalAge)));
     const psvNPV = finalAge >= 65 ? (psvExpected * npvFactor) : (psvExpected * npvFactor * Math.pow(1.02, -(65 - finalAge)));
 
-    const estateNetWorth = finalRawNetWorth - totalEstateTax + ((rrqNPV + psvNPV) * 0.7);
+    // [ESTATE-NPV-07] La VAN des rentes est ajoutée NETTE d'impôt — les rentes publiques sont un
+    // revenu IMPOSABLE, et `totalEstateTax` ci-dessus ne couvre que la LIQUIDATION (REER + gains),
+    // pas ce flux-là.
+    //
+    // ⚠️ C'était un facteur PLAT `× 0,7`, sans nom ni commentaire, seul littéral nu d'un bloc où
+    // tout le reste est justifié. MESURÉ sur le barème 2026, le facteur net RÉEL d'une rente
+    // publique n'est plat pour personne :
+    //     ménage vivant surtout de ses rentes (24 k$/an) ....... 0,94
+    //     avec 30 k$ d'autre revenu de retraite ................ 0,743
+    //     avec 60 k$ ........................................... 0,639
+    //     avec 100 k$ .......................................... 0,594
+    // `0,7` n'était donc juste que dans une bande étroite, et il SOUS-ESTIMAIT lourdement le
+    // patrimoine successoral des ménages modestes — ceux pour qui les rentes publiques pèsent le
+    // plus. Même forme d'erreur que `[MIGRATE-GROSS-135]` : un facteur plat sur une relation qui
+    // ne l'est pas.
+    //
+    // Le patron correct vit 40 lignes plus haut (`estateReportFinal − estateReportBase`) : on
+    // mesure l'impôt INCRÉMENTAL que les rentes portent DANS LE CONTEXTE de revenu du ménage.
+    // ⚠️ On l'applique au FLUX ANNUEL, pas à la VAN : taxer une VAN de plusieurs centaines de k$
+    // comme un revenu d'une seule année la ferait passer au taux marginal maximal, ce qui serait
+    // bien plus faux que le 0,7 qu'on remplace.
+    //
+    // ⚠️ POURQUOI ON SOUSTRAIT (et pas on ajoute) — vérifié, j'ai failli le câbler à l'envers.
+    // `estateCurrentIncome` CONTIENT déjà les rentes publiques, via `incomeRetirement * 12` :
+    // `incomeRetirement = retirementBreakdown.total = rrq + psv + privee − oasReduction`
+    // (`retirementIncome.ts`). On les en retire donc pour isoler l'impôt qu'elles portent EN
+    // CONTEXTE. ⚠️ Ne pas se fier au nom `accRentesYear` du terme voisin : malgré « rentes », il
+    // cumule les LOYERS (`realEstateMonth.ts` : `accRentesYear += rentalIncome`), pas des rentes
+    // publiques. Un nom trompeur, et le calcul partait à l'envers.
+    //
+    // ⚠️ LA TRANCHE À RETIRER EST LA RENTE **RÉELLEMENT VERSÉE**, PAS L'ESTIMÉ DE SAISIE.
+    // Première version de ce lot : `rrqMonthlyFamily * 12`. MESURÉ faux de −29 % (28 800 $ retirés
+    // pour 40 616 $ réellement portés par `incomeRetirement`), pour trois causes cumulées :
+    //   1. `rrqMonthlyFamily` est en dollars D'AUJOURD'HUI — 40 lignes plus haut, `rrqExpected` le
+    //      multiplie par `(1+inflation)^années` précisément pour ça. La soustraction l'oubliait.
+    //   2. il ne porte NI `rrqProrata` (gains/MGA × résidence ; mesuré 0,784) NI `rrqFactor` ;
+    //   3. le SRG est DANS `estateCurrentIncome` (via `psv`) mais était absent de la tranche retirée.
+    // Le dénominateur seul étant faux, le facteur sortait systématiquement TROP BAS — l'erreur était
+    // MAXIMALE sur les ménages modestes que ce lot prétend servir (0,898 rendu au lieu de 0,948 pour
+    // un ménage vivant à 100 % de ses rentes). D'où le plombage de `pension*MonthlyFinal`.
+    // Le SRG est retranché : il est du REVENU (donc dans `psv`) mais NON IMPOSABLE (`taxDecember.ts`),
+    // et la VAN ci-dessus ne le valorise pas.
+    // ⚠️ LA TRANCHE ET LE CONTEXTE SUIVENT LA MÊME CONVENTION, SINON L'UN IMPOSE CE QUE L'AUTRE EXONÈRE.
+    // `incomeRetirement` = `retirementBreakdown.total` = `rrq + psv + privee − oasReduction`, et `psv`
+    // CONTIENT le SRG. Trois retraits obligatoires, et il faut les faire des DEUX côtés :
+    //   · le SRG est du REVENU mais N'EST PAS IMPOSABLE (`taxDecember.ts` le soustrait de ses cinq
+    //     assiettes) — et la VAN ci-dessus ne le valorise pas ;
+    //   · l'écrêtement PSV est déjà déduit de `total` mais PAS de `psv`.
+    // ⚠️ Mon 1er correctif ne retirait le SRG que de la TRANCHE. Le résidu `revenuSansRentes` était
+    // alors composé de SRG PUR, sur lequel la tranche s'empilait comme s'il était imposable :
+    // MESURÉ, ce seul défaut RENVERSAIT la recommandation de décaissement (MELTDOWN → AUTO) sur
+    // 4 points de mesure /52, et valait jusqu'à 62 830 $ sur le patrimoine successoral. Corriger un
+    // seul côté d'une convention partagée est pire que ne rien corriger.
+    const gisAnnuel = fin(inputs.pensionGisMonthlyFinal ?? 0) * MONTHS_PER_YEAR;
+    const ecretementPsvAnnuel = fin(inputs.pensionOasReductionMonthlyFinal ?? 0) * MONTHS_PER_YEAR;
+    const rentesReellesAnnuelles = Math.max(0,
+        (fin(inputs.pensionRrqMonthlyFinal ?? 0) + fin(inputs.pensionPsvMonthlyFinal ?? 0)) * MONTHS_PER_YEAR
+            - gisAnnuel - ecretementPsvAnnuel);
+
+    // ⚠️ BRANCHE NON RETRAITÉE — un salaire n'est PAS le contexte fiscal d'une rente.
+    // Quand l'horizon s'arrête avant l'âge de retraite, `estateCurrentIncome` est un SALAIRE et
+    // aucune rente n'est encore versée (`rentesReellesAnnuelles = 0`). Mesurer un taux marginal au
+    // SOMMET de ce salaire pour taxer des rentes encaissées 10 ans plus tard, une fois le salaire
+    // disparu, est un contresens : mesuré, il rendait 0,52 — soit PIRE que le 0,7 plat qu'on
+    // remplace (−158 543 $ sur le patrimoine successoral affiché, pour la population même que le
+    // bloc VAN a été écrit pour servir : « valeur invisible en fin de simulation AVANT 65 ans »).
+    // Le seul contexte défendable est alors la rente ELLE-MÊME, valorisée à l'année finale
+    // (`rrqExpected + psvExpected`, la grandeur exactement actualisée ci-dessus) et imposée depuis
+    // zéro : c'est ce que touchera un ménage dont le salaire a cessé. Continu et sans falaise.
+    // ⚠️ LA SEULE QUESTION EST « LES RENTES SONT-ELLES DÉJÀ DANS LE REVENU ? », PAS « EST-ON RETRAITÉ ? ».
+    // Mon 1er correctif branchait sur `rentesReellesAnnuelles > 0` en le traitant comme un
+    // « le ménage est retraité », et basculait alors sur un contexte qui IGNORE le revenu réel.
+    // Faux entre l'âge de retraite et le début des rentes publiques : un retraité à 55 ans avec
+    // 60 000 $/an de rente DB était imposé « depuis zéro » sur sa rente publique ESTIMÉE.
+    // MESURÉ : facteur 0,9068 au lieu de 0,6388, soit 235 205 $ de patrimoine successoral fantôme,
+    // et `estateNetWorth` qui DÉCROISSAIT de 169 437 $ quand l'horizon augmentait d'UN an — alors
+    // que `origin/main` est strictement croissant sur la même plage.
+    //
+    // La formulation ci-dessous n'a plus de branche « retraité » du tout. Le revenu STRUCTUREL du
+    // ménage est toujours le même terme ; la seule chose qui change est de savoir si la tranche y
+    // est DÉJÀ comprise (rentes versées) ou si elle viendra PAR-DESSUS (pas encore versées, que le
+    // ménage soit pré-retraité ou retraité-avant-65). Continu par construction : au mois où la rente
+    // commence, `revenuStructurel` monte exactement du montant qu'on cessait d'ajouter.
+    //
+    // ⚠️ CONTEXTE **STRUCTUREL**, PAS `estateCurrentIncome` — un retrait REER d'UNE année ne peut pas
+    // piloter 25 ans de VAN. `estateCurrentIncome` inclut `accRetraitsReerYear`, c.-à-d. le décaissement
+    // de la SEULE dernière année, qui dépend de la stratégie ET de l'endroit où l'utilisateur coupe
+    // l'horizon. MESURÉ sur un couple 45 ans / REER 300 k$ / retraite à 60, en ne bougeant QUE `years` :
+    //     contexte = estateCurrentIncome  → gagnant : MELTDOWN(25) MELTDOWN(28) MELTDOWN(30) AUTO(33) AUTO(35)
+    //     contexte = structurel (ce code) → gagnant : MELTDOWN(25) AUTO(28)     AUTO(30)     AUTO(33) AUTO(35)
+    //     `origin/main` (facteur 0,7 plat) → gagnant : MELTDOWN(25) AUTO(28)     AUTO(30)     AUTO(33) AUTO(35)
+    // `estateNetWorth` n'est pas qu'un chiffre d'écran : `drawdownOptimizer.ts` trie DESSUS et publie
+    // « Meilleur avenir : X », `strategyRanking.ts` en fait le score de l'objectif `wealth`, et deux
+    // outils MCP l'exposent au LLM. Le contexte total faisait donc BASCULER le conseil de décaissement
+    // au gré du curseur d'horizon ; le contexte structurel reproduit l'ordre de `main` à tous les
+    // horizons mesurés, en ne corrigeant que le NIVEAU.
+    // ⚠️ HYPOTHÈSE DE MODÈLE ASSUMÉE, avec son sens d'erreur : pour un retraité qui décaisse son
+    // REER/FERR chaque année, ce contexte sous-estime le revenu récurrent, donc SURESTIME le facteur.
+    // ⚠️ NE PAS écrire ici un chiffre en le présentant comme une BORNE — j'ai publié « +3,5 pts »
+    // (une fixture), puis « +36,1 pts / +144 963 $ » (une autre), et la mesure suivante a rendu
+    // +43,98 pts / +375 176 $ ailleurs. Un maximum trouvé n'est pas un maximum. Le biais croît avec
+    // la taille du REER et avec les loyers, donc frappe le plus la population que `drawdownOptimizer`
+    // conseille. Pour le re-mesurer plutôt que le citer, comparer ce facteur à celui obtenu avec
+    // `revenuDeContexte = estateCurrentIncome` sur des fixtures à gros REER et à immeuble locatif.
+    // Le vrai correctif est un revenu de retraite MOYEN sur les années restantes, pas un point :
+    // ticket `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`.
+    // ⚠️ `accRentesYear` EST EXCLU, ET C'EST UNE ERREUR D'UNITÉS, PAS UN CHOIX DE PÉRIMÈTRE.
+    // Malgré son nom (il cumule les LOYERS, pas des rentes), c'est un accumulateur ANNÉE-À-DATE remis
+    // à zéro chaque janvier (`taxJanuary.ts : accRentesYearReset: 0`). L'additionner à un
+    // `incomeRetirement * 12` — une grandeur MENSUELLE annualisée — mélange deux unités.
+    // MESURÉ : à loyer annuel identique (~64 000 $), le seul `startMonth` faisait varier le terme de
+    // 5 383 $ (janvier) à 64 019 $ (décembre), donc le facteur de 0,8920 à 0,6765, donc
+    // `estateNetWorth` de **210 997 $** — le patrimoine successoral dépendait du MOIS CALENDRIER de
+    // lancement de la simulation. Contre-épreuve : sans immeuble locatif, l'amplitude est
+    // exactement 0. Son jumeau `accRetraitsReerYear` était déjà exclu ; garder l'autre était
+    // `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` à l'intérieur de la MÊME expression.
+    // Sens d'erreur assumé : un retraité qui vit de ses loyers voit son revenu de contexte
+    // sous-estimé, donc son facteur surestimé. Le rétablir proprement demande le loyer ANNUALISÉ du
+    // dernier point, pas le cumul — ticket `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`.
+    // ⚠️ AVANT LA RETRAITE, LE REVENU DE RETRAITE N'EST PAS ZÉRO — IL EST INCONNU, CE N'EST PAS PAREIL.
+    // Le moteur ne renseigne `incomeRetirement` que dans le bloc retraite : à 54 ans il vaut 0, et un
+    // contexte nul faisait rendre 0,9068 à un ménage qui touchera 60 000 $/an de rente DB. Au passage
+    // à la retraite le facteur tombait à 0,6388 d'un coup : `estateNetWorth` DÉCROISSAIT de 65 687 $
+    // quand l'horizon augmentait d'UN an. La pension DB est une SAISIE de l'utilisateur, connue dès
+    // le premier mois — s'en priver, c'est fabriquer une falaise sur une information qu'on a déjà.
+    //
+    // ⚠️⚠️ C'EST UN COMPLÉMENT, PAS UN `Math.max` — mon premier jet mettait le proxy EN CONCURRENCE
+    // avec le revenu réel. Entre l'âge de la retraite et `dbPensionStartAge`, un ménage touche déjà
+    // ses rentes publiques mais pas encore sa DB : le `max` prenait le proxy et JETAIT les rentes
+    // réelles. MESURÉ sur un solo (retraite 58, DB à 70) : contexte surestimé de 53 799 $/an,
+    // `estateNetWorth` sous-évalué de 142 890 $, et une falaise NEUVE de 5,49 points au démarrage
+    // de la DB — exactement le défaut que ce terme était censé supprimer. Le patron correct vivait
+    // 20 lignes plus bas (`complementNonVerse`) : `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`, dans la
+    // MÊME expression, pour la troisième fois de ce lot.
+    // Le proxy ne compte donc que tant que la DB n'est PAS versée ; dès qu'elle coule,
+    // `incomeRetirement` la porte à sa valeur réelle (indexation partielle comprise) et le
+    // complément tombe à zéro. Continu : au mois du démarrage, l'un monte de ce dont l'autre descend.
+    const dbVerseeAnnuelle = Math.max(0, fin(inputs.pensionPriveeMonthlyFinal ?? 0)) * MONTHS_PER_YEAR;
+    const dbNonEncoreVersee = dbVerseeAnnuelle > 0
+        ? 0
+        : Math.max(0, fin(inputs.dbPensionMonthlyPlanned ?? 0)) * MONTHS_PER_YEAR;
+    const revenuStructurel = Math.max(0, incomeRetirement * 12 - gisAnnuel) + dbNonEncoreVersee;
+
+    // ⚠️ ON IMPOSE EXACTEMENT CE QU'ON VALORISE, ET LE COMPLÉMENT NON ENCORE VERSÉ S'AJOUTE AU CONTEXTE.
+    // La VAN ci-dessus valorise `rrqExpected + psvExpected` — les DEUX rentes, à tout horizon. Une
+    // version antérieure imposait la tranche RÉELLEMENT versée dès qu'elle était non nulle : à 64 ans,
+    // seule la RRQ est versée, donc un facteur calculé sur la RRQ SEULE était appliqué à une VAN qui
+    // contient AUSSI la PSV. Au démarrage de la PSV à 65 ans, le facteur chutait de 10,59 points d'un
+    // coup (−61 936 $ de patrimoine successoral pour UN an d'horizon en plus), alors que rien de réel
+    // ne s'était produit — la mesure changeait, pas le ménage.
+    //
+    // La tranche est donc `max(versé, valorisé)`, et le COMPLÉMENT (la part valorisée pas encore
+    // encaissée) s'ajoute au revenu de contexte, puisqu'il s'y ajoutera vraiment le jour venu.
+    // Continu par construction : quand une rente démarre, `rentesReellesAnnuelles` monte exactement
+    // de ce dont `complementNonVerse` descend — le contexte et la tranche ne bougent pas.
+    const rentesValorisees = rrqExpected + psvExpected;
+    const complementNonVerse = Math.max(0, rentesValorisees - rentesReellesAnnuelles);
+    const rentesAnnuellesFinales = rentesReellesAnnuelles + complementNonVerse;
+    const revenuDeContexte = revenuStructurel + complementNonVerse;
+
+    // Quand la tranche dépasse le revenu de contexte (fixtures où `incomeRetirement` est nul alors
+    // qu'un `governmentPension` est saisi), le `Math.max(0, …)` ramène le revenu résiduel à zéro :
+    // l'impôt attribué aux rentes devient l'impôt TOTAL du ménage, soit le taux MOYEN et non un
+    // taux marginal de sommet. ⚠️ Ce n'est PAS « le facteur retombe à 1 » (ce que disait ce
+    // commentaire, à tort) : il vaut alors `1 − impôt(revenu)/rentes`, qui ne vaut 1 que si le
+    // revenu est sous le montant personnel de base. Dégradation gracieuse et continue en `Y = R`.
+    const revenuSansRentes = Math.max(0, revenuDeContexte - rentesAnnuellesFinales);
+    const impotSurRentes = rentesAnnuellesFinales > 0
+        ? Math.max(0, calculateFiscalReport(revenuDeContexte, 0, 0, finalYear, enableMonteCarlo).totalTax
+            - calculateFiscalReport(revenuSansRentes, 0, 0, finalYear, enableMonteCarlo).totalTax)
+        : 0;
+    // Facteur net borné à [0, 1]. ⚠️ Seule la borne BASSE est atteignable en pratique (`impotSurRentes`
+    // est déjà clampé à ≥ 0 et le dénominateur est > 0, donc le ratio ≤ 1 dès que l'impôt ne dépasse
+    // pas la rente) : le `Math.min` est une ceinture contre une entrée aberrante, pas une branche
+    // que les tests peuvent exercer — d'où l'intitulé du test, qui ne promet que la borne basse.
+    const facteurNetRentes = rentesAnnuellesFinales > 0
+        ? Math.min(1, Math.max(0, 1 - impotSurRentes / rentesAnnuellesFinales))
+        : 1;
+    const estateNetWorth = finalRawNetWorth - totalEstateTax + ((rrqNPV + psvNPV) * facteurNetRentes);
 
     const startNW = startingCash + startingCELI + startingCELIAPP + startingREER + startingNonReg + startingCrypto + startingREEE;
 

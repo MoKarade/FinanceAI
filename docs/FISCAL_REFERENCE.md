@@ -347,6 +347,55 @@ le moteur le scinde 65 % RRQ / 35 % PSV — source unique des 3 sites (`setupSim
 le split n'est qu'un repli. Conséquence assumée : le facteur de report/anticipation propre à
 chaque rente s'applique ensuite à la part correspondante.
 
+### Abattement fiscal de la VAN des rentes publiques (succession) — hypothèse de MODÈLE
+
+`services/projection/estateCalculation.ts` (`[ESTATE-NPV-07]`, 2026-08-20). Le bilan successoral
+ajoute la **valeur actualisée** des rentes RRQ/PSV restantes. Ces rentes sont du revenu **imposable**,
+et `totalEstateTax` ne couvre que la LIQUIDATION (REER + gains au décès) : il faut donc un abattement.
+
+Avant : un forfait **plat de 30 %** (`× 0,7`), sans nom, sans source. MESURÉ sur le barème 2026, le
+facteur net RÉEL d'une rente publique n'est plat pour personne :
+
+| autre revenu de retraite du ménage | facteur net réel |
+|---|---|
+| ~0 (vit de ses rentes, 24 k$/an) | **0,94** |
+| 30 k$ | 0,743 |
+| 60 k$ | 0,639 |
+| 100 k$ | 0,594 |
+
+Le forfait sur-taxait donc lourdement les ménages modestes — ceux pour qui les rentes publiques
+pèsent le plus. Remplacé par un abattement **calculé**, avec le patron déjà utilisé pour l'impôt de
+liquidation (impôt INCRÉMENTAL : `impôt(contexte) − impôt(contexte − tranche)`).
+
+**Ce ne sont PAS des règles ARC/RQ, ce sont des choix de modèle, tous assumés :**
+
+1. **L'abattement s'applique au FLUX ANNUEL, pas à la VAN.** Taxer une VAN de plusieurs centaines de
+   k$ comme un revenu d'une seule année l'enverrait au taux marginal maximal — bien plus faux que le
+   forfait remplacé.
+2. **La tranche imposée est `max(rente versée, rente valorisée)`** — on impose exactement ce que la
+   VAN valorise. Imposer la seule rente déjà versée faisait chuter le facteur de 10,6 points au
+   démarrage de la PSV à 65 ans, sans que rien de réel ne se produise.
+3. **Le contexte est le revenu de retraite STRUCTUREL**, net du SRG (non imposable) et de
+   l'écrêtement PSV — à l'exclusion des accumulateurs année-à-date (`accRetraitsReerYear`,
+   `accRentesYear`). Motif : un décaissement REER d'UNE année ne peut pas piloter 25 ans de VAN, et
+   un cumul remis à zéro chaque janvier rendrait le résultat dépendant du mois de lancement de la
+   simulation (mesuré : 210 997 $ d'amplitude avant correction).
+   ⚠️ Sens d'erreur assumé : pour un retraité qui décaisse chaque année, ce contexte sous-estime le
+   revenu récurrent, donc SURESTIME le facteur. Ticket de suivi `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`.
+4. **Tant que la pension privée DB n'est pas versée**, sa valeur PLANIFIÉE sert de proxy de contexte
+   (elle s'AJOUTE au revenu réel, elle ne le remplace pas) — sinon le facteur s'effondre au passage
+   à la retraite. Calculée par `computeDbPensionMonthly`, source unique partagée avec
+   `retirementIncome.ts`.
+5. **Le ménage est traité comme un déclarant UNIQUE**, cohérent avec l'hypothèse de double décès de
+   l'impôt de liquidation. Le barème étant progressif, l'abattement est structurellement trop élevé
+   pour un couple. Ticket de suivi `[ESTATE-COUPLE-DECLARANT-UNIQUE]`.
+6. Pour un ménage **sans pension privée**, le revenu résiduel est nul et le facteur « incrémental »
+   dégénère en **taux MOYEN** sur la rente. Ce n'est pas un cas dégradé : c'est le cas nominal d'un
+   ménage qui vit de ses rentes publiques.
+
+> La VAN elle-même reste bâtie sur l'estimé de saisie (convention FA-8) et ignore `rrqProrata` :
+> surévaluation mesurée de 129 503 $ sur la fixture de référence. Ticket `[ESTATE-NPV-BASE-REELLE]`.
+
 ### Fractionnement de revenu de pension (couple) — `services/projection/taxDecember.ts`
 Sources : ARC ligne 11600 / formulaire **T1032** ; Revenu Québec **Annexe Q**. Un couple peut
 **transférer jusqu'à 50 %** du revenu de pension ADMISSIBLE du conjoint au revenu élevé vers l'autre,

@@ -87,8 +87,29 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // 30 avril, gagnait jusqu'ici un MOIS COMPLET de rendement. Le retrait de cette croissance
         // fantôme est l'effet VOULU — l'écart est négatif partout, et il croît avec l'horizon et la
         // taille du portefeuille, exactement comme un intérêt composé qu'on cesse de créditer à tort.
-        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_374_653);
-        // Idem sur le second ancrage : 2 716 383 $ → 2 715 684 $ (−699 $, −0,026 %).
-        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_715_684);
+        // ⚠️ RE-BASÉ le 2026-08-20 par `[ESTATE-NPV-07]` : 3 374 653 $ → 3 565 398 $ (+190 745 $,
+        // +5,7 %). La VAN des rentes publiques n'est plus amputée d'un facteur PLAT de 30 % mais
+        // d'un abattement CALCULÉ sur l'impôt qu'elles portent réellement en contexte. L'écart est
+        // positif parce que le 0,7 sur-taxait ce ménage : à l'horizon, il vit de ses rentes
+        // publiques, sur lesquelles le barème 2051 prélève bien moins que 30 %.
+        // Décomposition du +190 745 $ (VAN brute 922 473 $), chaque étape MESURÉE :
+        //   · 0,700 → 0,857 : abattement CALCULÉ au lieu du forfait ................ +144 924 $
+        //   · 0,857 → 0,907 : la tranche cesse d'être l'estimé de saisie NON INDEXÉ (28 800 $)
+        //                     et devient ce que la VAN VALORISE, en dollars de l'année finale
+        //                     (47 249 $) ; le contexte devient le revenu STRUCTUREL net du SRG
+        //                     et de l'écrêtement PSV ....................... +45 821 $ (résidu)
+        // ⚠️ Une version antérieure de ce commentaire disait « tranche = la rente RÉELLEMENT versée
+        // (40 616 $) ». C'était vrai d'un état INTERMÉDIAIRE du lot, mort depuis : le code livré
+        // prend `max(versé, valorisé)` et c'est la valorisée (47 249 $) qui gagne ici. Un chiffre
+        // périmé dans un commentaire se relit comme un FAIT — vérifié par dump des internes.
+        // ⚠️ Sur cette fixture `revenuSansRentes` vaut 0 : le ménage n'a pas de pension privée, donc
+        // le « facteur incrémental » y dégénère en TAUX MOYEN sur la rente. Ce n'est pas un cas
+        // dégradé, c'est le cas NOMINAL d'un ménage qui vit de ses rentes publiques — et c'est
+        // exactement la population que le forfait de 0,7 sur-taxait le plus.
+        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_565_398);
+        // Second ancrage, même cause : 2 715 684 $ → 2 906 430 $, soit +190 746 $ — le MÊME écart
+        // qu'au-dessus à un dollar d'arrondi près, parce que la VAN des rentes ne dépend pas du
+        // tirage Monte Carlo ; seul le patrimoine de base en dépend.
+        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_906_430);
     });
 });

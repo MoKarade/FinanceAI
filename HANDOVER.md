@@ -9,6 +9,14 @@
 > `calculateAgeAndPensionCredits` (`min(2 000/realDeflator, pension)`), nominal inchangé, réel
 > mesuré 201,89 $ vs 300 $ à 20 ans. 3 tests neufs ; discrimination par `git stash push
 > utils/tax.ts` (⚠️ le stash complet emportait les tests — preuve invalide, refaite ciblée).
+> **Panel #680 (3 agents) appliqué** : garde safeDeflator (2000/0 = Infinity → pension entière
+> créditée, fini et invisible — la ligne n'était couverte par AUCUN test de corruption) ; else
+> journalisé sur la régularisation retraité ; test zone-de-bascule discriminant (le 1er jet
+> testait sous les deux caps) ; date 2015→2006 ; impact « 12 k$ » corrigé (≤ 3 809 $ à i=2 %/30
+> ans) ; **3e récidive du jour** : l'attribution causale du golden était fausse (fedTax des
+> couples déjà clampé à 0, pas « pension sous le montant ») — leçon enrichie d'un 3e étage dans
+> CONVENTIONS. 2 tickets : [PROJ-NW-FALAISE-REER] (ÉLEVÉ — NW saute de 86 k$ sur ±500 $ de REER,
+> préexistant, domine toute mesure d'impact NW à 1,5 M$) et [TAXDEC-INFLATIONFACTOR-AMONT].
 > NB conteneur : `@mokarade/hub-contract` manquant après le merge d'une PR parallèle →
 > `npm install` requis avant tout typecheck.
 > ⚠️ **Vérif §6 FAITE, 22:18 UTC : le merge #679 (main `4c67d5b`) n'a AUCUN déploiement

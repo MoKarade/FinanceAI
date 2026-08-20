@@ -4,6 +4,7 @@
 // scénarios déjà calculés et retourne le meilleur selon l'objectif, avec un score
 // normalisé et de quoi expliquer « pourquoi ». Aucune relance de simulation.
 
+import { lifetimeTaxTotal } from './lifetimeTax';
 import { isFireReached, findFireReachedPoint } from './fireMilestone';
 
 export type OptimizeObjective = 'balanced' | 'wealth' | 'tax' | 'fire';
@@ -20,6 +21,10 @@ export interface RankableScenario {
     strategyName: string;
     estateNetWorth: number;
     totalTaxesPaid: number;
+    /** [ENG-RANKTAX-ESTATE] dette fiscale non réglée à l'horizon + impôt successoral :
+     *  l'objectif « impôt » score lifetimeTaxTotal (A4), plus jamais le seul solde d'avril. */
+    unsettledTaxAtHorizon?: number;
+    totalEstateTax?: number;
     minNetWorth: number;
     chartData: Array<{ NetWorth?: number; FireTarget?: number; age?: number; monthIndex?: number }>;
     /** C3 — 'strategy' = façon de gérer comparable ; 'stress' = test de monde. */
@@ -40,7 +45,9 @@ export interface RankedScenario {
     strategyName: string;
     score: number; // 0..1
     estateNetWorth: number;
-    totalTaxesPaid: number;
+    /** Impôt TOTAL scoré (vivant + dette horizon + successoral — A4). Renommé de
+     *  `totalTaxesPaid` : le champ portait le nom d'un registre qu'il ne contient plus. */
+    lifetimeTaxTotal: number;
     fireAge: number | null; // âge au 1er mois où NetWorth ≥ FireTarget, sinon null
 }
 
@@ -84,7 +91,9 @@ export function rankStrategies(
     if (entries.length === 0) return { ranked: [], bestIndex: 0, objective };
 
     const estates = entries.map(({ s }) => s.estateNetWorth || 0);
-    const taxes = entries.map(({ s }) => s.totalTaxesPaid || 0);
+    // [ENG-RANKTAX-ESTATE] A4 : l'impôt scoré est le TOTAL — le seul totalTaxesPaid
+    // récompensait le report (PRIO_CELI 1er avec 1,3 M$ d'estate tax ignoré, panel #554).
+    const taxes = entries.map(({ s }) => lifetimeTaxTotal(s));
     const mins = entries.map(({ s }) => s.minNetWorth || 0);
     const fireMonths = entries.map(({ s }) => fireMonthIndex(s));
 
@@ -114,7 +123,7 @@ export function rankStrategies(
             strategyName: s.strategyName,
             score,
             estateNetWorth: estates[k],
-            totalTaxesPaid: taxes[k],
+            lifetimeTaxTotal: taxes[k],
             fireAge: fireAgeOf(s),
         };
     });

@@ -19,6 +19,7 @@
 import type { SimulationParams, AllocationStrategy, FutureScenarioType } from '../projection';
 import type { EngineOverrides, StrategyConfig } from './strategyConfig';
 import { configToEngine } from './strategySpace';
+import { lifetimeTaxTotal } from './lifetimeTax';
 import { runMonteCarlo } from './monteCarlo';
 
 type RunScenarioFn = (
@@ -36,6 +37,9 @@ type RunScenarioFn = (
     totalTaxesPaid: number;
     /** [ENG-TTP-UNSETTLED-HORIZON] dette fiscale réconciliée non réglée à l'horizon (signée). */
     unsettledTaxAtHorizon?: number;
+    /** [ENG-RANKTAX-ESTATE] impôt de liquidation successorale (décision Marc A4 : il entre
+     *  dans l'objectif « impôt minimum » via lifetimeTaxTotal). */
+    totalEstateTax?: number;
     totalGrowth: number;
     totalExpenses: number;
     minNetWorth: number;
@@ -53,7 +57,7 @@ export interface ConfigResult {
     finalNWp10: number;
     finalNWp50: number;
     finalNWp90: number;
-    /** Impôt total payé sur la vie de la projection (run déterministe). */
+    /** Impôt TOTAL du scénario (réglé du vivant + dette à l'horizon + successoral — A4). */
     lifetimeTax: number;
     /** Âge auquel l'indépendance financière (FIRE) est atteinte, ou null si jamais. */
     fireAge: number | null;
@@ -131,9 +135,11 @@ export function runStrategySearch(
             finalNWp10: lastFinalNW(mc.p10Data),
             finalNWp50: lastFinalNW(mc.p50Data),
             finalNWp90: lastFinalNW(mc.p90Data),
-            // [ENG-TTP-UNSETTLED-HORIZON] + la dette fiscale réconciliée non réglée à l'horizon —
-            // sans elle, un horizon court sous-affichait (mesuré NET : 8,6 % à 10 ans, 100 % à 1 an).
-            lifetimeTax: (baseline?.totalTaxesPaid ?? 0) + (baseline?.unsettledTaxAtHorizon ?? 0),
+            // [ENG-TTP-UNSETTLED-HORIZON] + dette non réglée à l'horizon (un horizon court
+            // sous-affichait : 8,6 % à 10 ans, 100 % à 1 an). [ENG-RANKTAX-ESTATE] + impôt
+            // SUCCESSORAL (A4 : « impôt minimum » ne récompense plus le report — PRIO_CELI
+            // 1er avec 1,3 M$ d'estate tax ignoré, panel #554). Source unique lifetimeTaxTotal.
+            lifetimeTax: lifetimeTaxTotal(baseline),
             fireAge: findFireAge(baseline?.chartData ?? []),
             sequenceRiskPct: mc.expertMetrics.sequenceRiskPct,
         };

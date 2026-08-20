@@ -65,6 +65,9 @@ const fakeRunScenario = (
     });
     return {
         finalNetWorth: finalNW, minNetWorth: 0, totalTaxesPaid: finalNW * 0.3, totalGrowth: finalNW,
+        // [ENG-RANKTAX-ESTATE] estate tax = 10 % du NW final : prouve que le CÂBLAGE de
+        // lifetimeTax additionne bien le successoral (test « impôt à vie » ci-dessous).
+        totalEstateTax: finalNW * 0.1,
         totalExpenses: 0, shortfallRate: 0, estateNetWorth: finalNW, chartData,
     };
 };
@@ -98,8 +101,10 @@ describe('strategySearch — runStrategySearch', () => {
         const configs = generateStrategySpace({ retirementAge: [65] }, ctx);
         const { results } = runStrategySearch(fakeRunScenario, baseParams(), configs, { iterations: 50 });
         const r = results[0];
-        // finalNW = (65-35)*20000 = 600000 → impôt = 180000.
-        expect(r.lifetimeTax).toBeCloseTo(600000 * 0.3, 0);
+        // finalNW = (65-35)*20000 = 600000 → impôt vivant 180 000 + successoral 60 000 (A4 :
+        // lifetimeTax est le TOTAL — ancre négative : 180 000 seul serait l'ancien câblage).
+        expect(r.lifetimeTax).toBeCloseTo(600000 * 0.3 + 600000 * 0.1, 0);
+        expect(r.lifetimeTax).not.toBeCloseTo(600000 * 0.3, 0);
         // FIRE (NetWorth>=200000) atteint en cours de projection → âge non-null entre 35 et 40.
         expect(r.fireAge).not.toBeNull();
         expect(r.fireAge!).toBeGreaterThan(35);

@@ -818,37 +818,43 @@ export function processDecemberTaxFiling(
     // [FISC-TAXDEC-INCR] (a) — impôt d'une BANDE incrémentale [base, base+bande] par adulte, avec
     // les crédits d'âge de CHAQUE conjoint. Espace NOMINAL (jamais de realDeflator ici — cf. notes
     // FISC-BRACKET-REALINDEX des deux blocs appelants). Retourne le total FAMILIAL.
+    // [Revue #676] Un 3e déclarant serait imposé sur sa bande SANS jamais pouvoir porter de
+    // crédit d'âge (ages[2] === undefined, silencieux). L'UI plafonne à 2 — si ça change, on le
+    // dit au lieu de sous-créditer en silence. Ne PAS borner la boucle à ages.length : ça
+    // supprimerait la bande du 3e déclarant (argent perdu). Hors du helper : émis UNE fois par
+    // décembre, pas une fois par site d'appel (§2 + §3).
+    if (ctx.activeUsersCount > ages.length) {
+        logs.push(`⚠️ incrementalBandTax : ${ctx.activeUsersCount} déclarants mais ${ages.length} âges — crédits d'âge indisponibles au-delà du 2e.`);
+    }
     const incrementalBandTax = (perAdultBase: number, perAdultBand: number,
         familyBase: number, familyBand: number): number => {
-        const ages = [ctx.age, ctx.ageSpouse];
-        // [Revue #676] Un 3e déclarant serait imposé sur sa bande SANS jamais pouvoir porter de
-        // crédit d'âge (ages[2] === undefined, silencieux). L'UI plafonne à 2 — si ça change, on
-        // le dit au lieu de sous-créditer en silence. Ne PAS borner la boucle à ages.length : ça
-        // supprimerait la bande du 3e déclarant (argent perdu).
-        if (ctx.activeUsersCount > ages.length) {
-            logs.push(`⚠️ incrementalBandTax : ${ctx.activeUsersCount} déclarants mais ${ages.length} âges — crédits d'âge indisponibles au-delà du 2e.`);
+        // [ENG-TAXDEC-NAN-GUARD, resserré 2e relecture #676] La garde porte sur les ENTRÉES :
+        // `calculateFiscalReport` assainit son grossIncome (`Number(x) || 0`), donc tb/tt sortent
+        // FINIS même d'une base NaN — tester les sorties laissait passer 3 chemins de corruption
+        // sur 4 en rendant 0 $ sans trace. Un terme non fini se dit et retombe sur 0 — jamais un
+        // défaut numérique silencieux qui empoisonnerait FluxImpots puis le patrimoine.
+        if (![perAdultBase, perAdultBand, familyBase, familyBand].every(Number.isFinite)) {
+            logs.push(`⚠️ Bande incrémentale : entrée NON FINIE (base=${perAdultBase}, bande=${perAdultBand}, familyBase=${familyBase}, familyBand=${familyBand}) → 0 retenu ; donnée amont corrompue.`);
+            return 0;
         }
         let total = 0;
         for (let i = 0; i < ctx.activeUsersCount; i++) {
             const a = ages[i];
-            // [Revue #676 F1] La pension admissible RÉELLE de l'adulte, renominalisée — la MÊME
-            // aux deux appels (le NIVEAU du crédit s'annule dans la soustraction) : avec 0, le
-            // clamp de la ligne 361 QC mordait ~16 300 $ de revenu familial trop tôt et la bande
-            // était SOUS-facturée (mesuré −317,81 $ sur 80 k$ + 15 k$ de gains, 73 ans, DB).
-            const pensionNominal = eligiblePensionFor(i) * ctx.inflationFactor;
+            // [Revue #676 F1 + 2e relecture] Pension admissible RÉELLE de l'adulte, renominalisée
+            // par l'inflation SIMULÉE (comme le revenu du bloc), la MÊME aux deux appels — le
+            // NIVEAU du crédit s'annule, le clamp de la ligne 361 QC tombe au vrai montant (avec
+            // 0, il mordait ~16 300 $ de revenu familial trop tôt : −317,81 $ mesurés sur 80 k$
+            // + 15 k$ de gains, 73 ans, DB). BORNÉE À LA BRANCHE RETRAITÉE : chez un actif, le
+            // calcul principal (§1) garde `eligiblePensionIncome: 0` — porter la pension d'un
+            // seul côté re-créerait l'incohérence que F1 vient de fermer (mesuré ±1 878 $ sur un
+            // actif 72+ à retraits REER ; routé [TAXDEC-ACTIF-72-PENSION-CREDIT]).
+            const pensionNominal = ctx.isRetired ? eligiblePensionFor(i) * ctx.inflationFactor : 0;
             const mk = (fam: number): AgeCreditOptions | undefined =>
                 a !== undefined && a >= 65
                     ? { age: a, eligiblePensionIncome: pensionNominal, hasSpouse: ctx.activeUsersCount > 1, familyIncome: fam }
                     : undefined;
             const tb = helpers.calculateFiscalReport(perAdultBase, 0, 0, ctx.loopYear, true, mk(familyBase)).totalTax;
             const tt = helpers.calculateFiscalReport(perAdultBase + perAdultBand, 0, 0, ctx.loopYear, true, mk(familyBase + familyBand)).totalTax;
-            // [ENG-TAXDEC-NAN-GUARD] même patron qu'au solde d'avril : `Math.max(0, NaN) === NaN`,
-            // le clamp n'est PAS une garde. Un terme non fini se dit et retombe sur 0 — jamais un
-            // défaut numérique silencieux qui empoisonnerait FluxImpots puis le patrimoine.
-            if (!Number.isFinite(tb) || !Number.isFinite(tt)) {
-                logs.push(`⚠️ Bande incrémentale NON FINIE (tb=${tb}, tt=${tt}, base=${perAdultBase}, bande=${perAdultBand}) → 0 retenu ; donnée amont corrompue.`);
-                continue;
-            }
             total += Math.max(0, tt - tb);
         }
         return total;
@@ -884,12 +890,14 @@ export function processDecemberTaxFiling(
         // [FISC-TAXDEC-INCR] (a) — la bande porte les ageOpts PAR CONJOINT (GO Marc A2, 2026-08-20) :
         // avant, l'incrément ignorait le crédit d'âge, donc son ÉROSION (féd 15 % du revenu au-dessus
         // du seuil, QC 18,75 % du revenu FAMILIAL au-dessus de la ligne 361) n'était pas capturée →
-        // sous-imposition d'un retraité 65+ en zone d'érosion. `eligiblePensionIncome: 0` SYMÉTRIQUE
-        // aux deux appels : la bande n'ajoute aucune pension admissible, le NIVEAU du crédit s'annule
-        // dans la soustraction et seule l'ÉROSION reste — pas de double comptage avec le bloc
-        // retraité principal (qui a déjà crédité le niveau sur le revenu SANS gains). `familyIncome`
-        // = le familial NOMINAL du bloc, augmenté de la bande FAMILIALE côté top (le test QC ligne
-        // 361 est familial). Actif < 65 → opts undefined → bit-identique à l'ancien calcul.
+        // sous-imposition d'un retraité 65+ en zone d'érosion. Pension admissible (revue #676 F1) :
+        // le helper passe la pension RÉELLE per-conjoint (source unique `eligiblePensionFor`,
+        // renominalisée) — la MÊME aux deux appels, donc le NIVEAU du crédit s'annule tant qu'aucun
+        // clamp ne mord, et le clamp de la ligne 361 tombe au VRAI montant — pas de double comptage
+        // avec le bloc retraité principal (qui a déjà crédité le niveau sur le revenu SANS gains).
+        // Chez un ACTIF elle reste 0, aligné sur mkActiveAgeOpts (§1). `familyIncome` = le familial
+        // NOMINAL du bloc, augmenté de la bande FAMILIALE côté top (le test QC ligne 361 est
+        // familial). Actif < 65 → opts undefined → bit-identique à l'ancien calcul.
         const tax = incrementalBandTax(perAdultIncome, perAdultGains, incomeForGains, taxableCapGains);
         taxCurrent.gains += tax;
         if (tax > 100) logs.push(`↳ Impôt Gains Cap Accumulés: +${Math.round(tax).toLocaleString('fr-CA')}$`);

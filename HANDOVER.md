@@ -36,6 +36,17 @@
 > 1,3-2,4 k$/adulte). Doc-manager : doublon d'archive évité de justesse, exemple fiscal INVENTÉ
 > (50 k$) retiré de FISCAL_REFERENCE — relire ce qu'un agent écrit dans la source de vérité.
 >
+> **2e relecture (correctif de correctif — récolte confirmée, 6e fois)** : le hissage emportait la
+> branche ACTIVE (un actif 72-75 à retraits REER portait la pension dans la bande, son calcul
+> principal non — ±1 878 $) → borne `ctx.isRetired`, test discriminant, ticket
+> `[TAXDEC-ACTIF-72-PENSION-CREDIT]` pour corriger les DEUX côtés ensemble. Garde NaN déplacée sur
+> les ENTRÉES (tax.ts assainit ses sorties — l'ancienne garde manquait 3 chemins sur 4). Commentaire
+> périmé du §2 réécrit (il décrivait encore « pension 0 symétrique »). Phrase « exactement le 1-coup »
+> BORNÉE dans FISCAL_REFERENCE (solo/couple égal retraité ; écarts pré-existants mesurés −345,72 $
+> per-conjoint inégal, 69-1 130 $ actif). Fuzz de la relecture : 4 000 scénarios, `revenu`/`divers`
+> bit-identiques, seul `gains` bouge (100 % attribuable à F1) ; bande == 1-coup à 0,00 $ sur 8
+> revenus là où l'avant déviait de −1 053 à +856 $.
+>
 > ## 🟢 Session 2026-08-20 (suite 118) — le lot « prestations » : la règle de Marc appliquée le jour même
 > Branche `claude/prestations-assiette` (basée sur `main` post-#673, PAS empilée).
 >

@@ -22,7 +22,7 @@
 
 ⚠️ **Récidive du pin fiscal déduit** (776,25 $ vs mesuré 675,56 $), puis **récidive du MÉCANISME déduit** (« borné par le crédit restant » — faux, la vraie décomposition est l'abattement QC 16,5 % sur le crédit féd + conversion 14 %) : le pin ET son explication se mesurent. Entrée `ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER` doublement enrichie.
 
-**Panel #676 (6 agents), correctifs DANS la PR** : pension admissible réelle aux deux appels de la bande (F1 ÉLEVÉ, +317,81 $ re-facturés, source unique `eligiblePensionFor` hissée, test discriminant) ; branche revenu-FAIBLE documentée+testée (le crédit inutilisé abrite la bande — bidirectionnel, prouvé égal au calcul 1-coup sur 6 points) ; garde NaN patron `ENG-TAXDEC-NAN-GUARD` ; test couple 68/60 (ratio 0,5) + pin §3 (466,14). 5 tickets routés au BACKLOG (`[FISC-BANDES-FRERES-SANS-AGEOPTS]` ÉLEVÉ en tête).
+**Panel #676 (6 agents), correctifs DANS la PR** : pension admissible réelle aux deux appels de la bande (F1 ÉLEVÉ, +317,81 $ re-facturés, source unique `eligiblePensionFor` hissée, test discriminant) ; branche revenu-FAIBLE documentée+testée (le crédit inutilisé abrite la bande — bidirectionnel, prouvé égal au calcul 1-coup sur 6 points) ; garde NaN patron `ENG-TAXDEC-NAN-GUARD` ; test couple 68/60 (ratio 0,5) + pin §3 (466,14). **2e relecture** : borne `ctx.isRetired` sur la pension de la bande (le hissage emportait la branche active, ±1 878 $ — test discriminant), garde NaN passée aux ENTRÉES, phrase « 1-coup » bornée à son périmètre mesuré. 6 tickets routés au BACKLOG (`[FISC-BANDES-FRERES-SANS-AGEOPTS]` ÉLEVÉ en tête, `[TAXDEC-ACTIF-72-PENSION-CREDIT]`).
 
 ## 2026-08-20 — Lot « prestations » : l'assiette d'emploi nulle (règle Marc du jour appliquée)
 

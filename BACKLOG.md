@@ -1049,12 +1049,26 @@
   `eligiblePensionFor` plutôt que recopier. Mesurer le CLASSEMENT du ranking avant/après
   (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`). [MESURÉ par la revue, à re-mesurer]
 
+- [ ] **`[TAXDEC-ACTIF-72-PENSION-CREDIT]`** (S, MOYEN — 2e relecture #676, MESURÉ) — un ACTIF de
+  72-75 ans (`targetAge` saisissable jusqu'à 75) avec retraits REER (cascade shortfall, meltdown,
+  achat immo) n'a AUCUN crédit pension : `mkActiveAgeOpts` passe `eligiblePensionIncome: 0` alors
+  que les retraits REER sont admissibles dès 72 ans (règle FERR du modèle). La bande incrémentale
+  a été ALIGNÉE sur ce 0 (borne `ctx.isRetired` du helper — porter la pension d'un seul côté
+  faisait ±1 878 $/an d'incohérence interne). Corriger les DEUX côtés ensemble : `mkActiveAgeOpts`
+  ET la bande via `eligiblePensionFor`, avec l'assiette de bande active (`incomeForGains` = salaires
+  SEULS, sans les retraits REER — défaut dominant à traiter dans le même lot). Population marginale.
+  [MESURÉ par la revue]
+
 - [ ] **`[TAXDEC-TROIS-FABRIQUES-AGEOPTS]`** (S, MOYEN — revue #676, projection-validator) — trois
   fabriques d'`AgeCreditOptions` coexistent dans `taxDecember.ts` (`mkActiveAgeOpts` L~439,
   `mkRetiredAgeOpts` L~630, `mk` du helper de bande) avec des gardes déjà textuellement différentes
   (`a >= 65` vs `a !== undefined` seul). Équivalentes AUJOURD'HUI (les gates internes de
   `calculateAgeAndPensionCredits` rattrapent), mais classe `UNE-FORMULE-RECOPIEE-DIVERGE` : 3 copies,
-  3 dérives possibles. Consolider en une fabrique unique paramétrée. [VÉRIFIÉ équivalentes]
+  3 dérives possibles. Consolider en une fabrique unique paramétrée. Même passe : la branche ACTIVE
+  garde une validation `accRetraitsReerYearByUser` quasi-jumelle de `useReerPerUser` (règles
+  subtilement différentes — gate `> 1`, assainissement, NaN), désormais dans la MÊME portée depuis
+  le hissage #676 : à un caractère d'une erreur d'aiguillage — aligner ou documenter pourquoi.
+  [VÉRIFIÉ équivalentes]
 
 - [ ] **`[TAXDEC-BANDE-ACTIVE-BASE-BRUTE]`** (XS, FAIBLE — revue #676, financial-integrity F6) —
   branche ACTIVE : `incomeForGains` est le salaire BRUT alors que le §4 accorde le crédit d'âge sur

@@ -119,4 +119,20 @@ describe('[FISC-TAXDEC-INCR] la bande incrémentale porte l\'érosion du crédit
         // Sans pension admissible, l'ancien monde : la bande plus basse reste la référence du profil sans DB.
         expect(gainsTax({ ...db, incomeRetirementDbPerUserMonthly: undefined, age: 73 })).toBeCloseTo(5699.44, 1);
     });
+
+    it('ACTIF 72+ à retraits REER : la bande garde pension admissible = 0, alignée sur le calcul §1', () => {
+        // 2e relecture #676 (MOYEN 2) : le hissage de eligiblePensionFor faisait porter les
+        // retraits REER (admissibles dès 72 ans) à la bande d'un ACTIF, pendant que son calcul
+        // d'impôt principal garde eligiblePensionIncome: 0 — améliorer UN seul côté d'une
+        // incohérence partagée re-crée la classe CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE
+        // (mesuré ±1 878 $/an). Bornée à la branche retraitée ; l'incohérence active est routée
+        // ([TAXDEC-ACTIF-72-PENSION-CREDIT]). Ce test échoue si la borne saute (l'attendu est
+        // reconstruit avec pension 0 et l'ÂGE porté — le crédit d'âge, lui, reste dû).
+        const t = gainsTax({ isRetired: false, age: 72, ageSpouse: undefined, activeUsersCount: 1,
+            grossMarcBaseAnnual: 75_000, accRetraitsReerYear: 20_000, accCapitalGainsYear: 30_000 });
+        const mk = (fam: number) => ({ age: 72, eligiblePensionIncome: 0, hasSpouse: false, familyIncome: fam });
+        const attendu = calculateFiscalReport(75_000 + 15_000, 0, 0, 2026, true, mk(90_000)).totalTax
+            - calculateFiscalReport(75_000, 0, 0, 2026, true, mk(75_000)).totalTax;
+        expect(t).toBeCloseTo(attendu, 6);
+    });
 });

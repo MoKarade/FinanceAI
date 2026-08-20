@@ -163,6 +163,14 @@ scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (50 s
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 **Money-critical / moteur**
+- Remplacer une fonction par une **constante multiplicative** : mesurer l'écart à ≥3 points écartés.
+  Un écart de même signe est un biais ; un écart qui **change de signe** prouve que la FORME est
+  fausse et ferme le débat sur la valeur — `net * 1.35` surestimait de 2 681 $ à 30 k$ et
+  sous-estimait de 132 196 $ à 250 k$ (relation net→brut CONVEXE, un facteur plat n'est qu'une
+  sécante). ⚠️ Et un repli **PERSISTÉ** est pire qu'un repli calculé : `u.grossSalary || (…)`
+  court-circuite, donc corriger le code ne rattrape pas les configs déjà écrites. Avant de livrer un
+  correctif de repli : **le mauvais résultat a-t-il été SAUVEGARDÉ ?**
+  (`UN-FACTEUR-PLAT-SUR-UNE-RELATION-CONVEXE`).
 - ⚠️ Une grandeur d'origine **LÉGALE** ne peut pas être indexée par un facteur que l'UTILISATEUR ou
   une STRATÉGIE peut faire bouger : le plafond RQAP était `98000 * expenseMultiplier`, or ce
   multiplicateur porte l'inflation des DÉPENSES et est **gelé par Guyton-Klinger** — une règle de

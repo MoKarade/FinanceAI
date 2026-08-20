@@ -52,6 +52,11 @@ export interface InventoryEntry {
 // source unique (`utils/tax.ts` / `helpers.ts`), sont ancrées dans FISCAL_REFERENCE et importées.
 // Le littéral ayant disparu du module scanné, l'entrée n'a plus d'objet — c'est la façon dont
 // cet inventaire est censé DÉCROÎTRE. [FISC-CONST-ANCHOR-DEBT]
+// ⚠️ 2026-08-20 — DEUX entrées de plus retirées pour la même raison : `1.35` (le facteur brut/net
+// plat) a disparu de `setupSimulation.ts` ET de `useFinanceStore.ts`, remplacé par
+// `calculateGrossFromNet` ([MIGRATE-GROSS-135]). Ce sont les gardes anti-fantôme livrées la veille
+// qui l'ont EXIGÉ : elles ont rougi au moment même où la dette était payée. C'est exactement le
+// comportement attendu d'un registre censé décroître.
 export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     // ── services/projection/taxJanuary.ts ────────────────────────────────────────────────────
     { file: 'services/projection/taxJanuary.ts', value: '2026', family: 'fiscal',
@@ -157,9 +162,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Part du revenu théorique attribuée au 1er conjoint (55/45). Hypothèse de répartition, pas une règle.' },
     { file: 'services/projection/setupSimulation.ts', value: '0.45', family: 'design',
       reason: 'Part du revenu théorique attribuée au 2e conjoint. Même nature que 0.55.' },
-    { file: 'services/projection/setupSimulation.ts', value: '1.35', family: 'fiscal',
-      reason: '[≠4] ⚠️ Reclassé en revue (2026-08-20) : « approximation pour un revenu THÉORIQUE » n’est vrai que dans la branche `useTheo`. Dans la branche de repli, le même facteur s’applique au `netSalary` RÉEL d’un utilisateur qui n’a pas saisi son brut — et ce brut fabriqué alimente `baseGrossAnnual`, donc TOUTE l’assiette d’impôt et les droits REER. C’est le site JUMEAU de `store/useFinanceStore.ts:144`, que le ticket `[MIGRATE-GROSS-135]` nomme explicitement avec lui : le même défaut ne peut pas recevoir deux familles opposées. `calculateGrossFromNet` (`utils/tax.ts:870`) existe et est vérifié exact au roundtrip.' },
-    { file: 'services/projection/setupSimulation.ts', value: '2.0', family: 'design',
+        { file: 'services/projection/setupSimulation.ts', value: '2.0', family: 'design',
       reason: '[≠2] DEUX SENS, tous deux dans ce fichier. (1) `simInflation = projection.inflationRate ?? 2.0` — l’inflation par DÉFAUT de la projection, qui pilote toute l’indexation du moteur, plafond RQAP compris. (2) `baseRates.nonReg` du jeu de rendement de stress (`ECONOMIC_WINTER` / `COMPOUND_STRESS`), soit 2 %/an sur le non-enregistré. ⚠️ Ma première raison parlait d’une « constante mathématique d’une formule de simulation » : FAUX pour ce fichier — le Box-Muller vit dans `helpers.ts` et a sa propre entrée. Famille corrigée `structural` → `design` : deux hypothèses de modèle, pas des index.' },
     { file: 'services/projection/setupSimulation.ts', value: '5.5', family: 'design',
       reason: '`simInflation = 5.5` forcée par le scénario `HYPER_INFLATION`. Hypothèse de scénario, pas un barème. ⚠️ La raison d’origine disait « paramètre d’amorçage de simulation », ce qui ne désignait rien — corrigé en revue avec ses voisines 2.0 et 5.0.' },
@@ -325,9 +328,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: '`DONATION_FIRST_TIER_CEILING` — plafond du premier palier du crédit pour dons (200 $), au-delà duquel le taux bonifié s’applique. Vrai paramètre ARC/RQ, déjà ancré FISCAL_REFERENCE §10 et nommé sur place.' },
 
     // ── store/useFinanceStore.ts ─────────────────────────────────────────────────────────────
-    { file: 'store/useFinanceStore.ts', value: '1.35', family: 'fiscal',
-      reason: 'Facteur brut/net plat servant à FABRIQUER un salaire brut à la migration legacy (`u.grossSalary || (net * 1.35)`). Ce brut alimente `baseGrossAnnual`, donc TOUT l’impôt de la projection. `calculateGrossFromNet` existe déjà et est vérifié exact au roundtrip : ticket `[MIGRATE-GROSS-135]`.' },
-    { file: 'store/useFinanceStore.ts', value: '5', family: 'structural',
+        { file: 'store/useFinanceStore.ts', value: '5', family: 'structural',
       reason: 'Numéro de version de schéma persisté (`fromVersion < 5`). Palier de migration, aucun rapport avec la fiscalité.' },
     { file: 'store/useFinanceStore.ts', value: '6', family: 'structural',
       reason: 'Numéro de version de schéma persisté (`fromVersion < 6`). Palier de migration.' },

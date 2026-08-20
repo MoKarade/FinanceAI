@@ -4,6 +4,31 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-20 (suite 113) — un facteur plat dont l'erreur change de signe
+> Branche `claude/migrate-gross` (basée sur `main`, PAS empilée). Vague 1f, 3e des 5.
+>
+> **Livré** : `[MIGRATE-GROSS-135]`. Le brut était FABRIQUÉ depuis le net par `× 1,35`, à 2 endroits
+> (4 usages), et ce brut alimente TOUTE l'assiette d'impôt + les droits REER + les bonus/RSU.
+>
+> ⚠️ **L'erreur CHANGE DE SIGNE** — c'est ce qui tranche : +2 681 $ à 30 k$ de net, mais −22 028 $ à
+> 100 k$ et −132 196 $ à 250 k$. La relation net→brut est CONVEXE ; un facteur plat n'est qu'une
+> sécante. Aucun réglage ne pouvait marcher (`UN-FACTEUR-PLAT-SUR-UNE-RELATION-CONVEXE`).
+> Remplacé par `calculateGrossFromNet` (dichotomie, exacte à < 1 $, roundtrip re-vérifié).
+>
+> **Les deux risques ont été MESURÉS, pas supposés** : perf 0,026 ms/appel (~2 ms sur une dichotomie
+> `goalSeek` complète) ; boot — le chunk `tax` (6 125 octets) passe de « à la demande » à préchargé
+> (8 → 9 `modulepreload`), car le store n'importait pas `utils/tax`. Coût assumé et écrit.
+>
+> **3 ancres re-basées** avec leur delta mesuré (+5 968 $, +7 324 $, +1 754 $), et réécrites pour
+> viser la PROPRIÉTÉ (« le brut déduit redonne le net visé ») plutôt qu'un nombre.
+>
+> ⚠️ **Les gardes des 2 PR précédentes ont travaillé sur CE lot** : l'anti-fantôme (#668) a exigé le
+> retrait des deux entrées `1.35` au moment où la dette était payée, et le ratchet rougit maintenant
+> si on remet le facteur plat. Le registre décroît comme prévu.
+>
+> ⚠️ **Limite connue** : `[MIGRATE-GROSS-DEJA-PERSISTE]` — le correctif ne rattrape PAS les configs
+> dont le brut erroné est déjà persisté (`u.grossSalary || …` court-circuite). Décision produit.
+>
 > ## 🟢 Session 2026-08-20 (suite 112) — le garde fiscal ne voyait pas la table FERR
 > Branche `claude/rqap-cotisations` (basée sur `main`, PAS empilée).
 >

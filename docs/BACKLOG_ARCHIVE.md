@@ -10,6 +10,44 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-20 — Vague 1f (3/5) : un facteur plat dont l'erreur change de signe
+
+- [x] **`[MIGRATE-GROSS-135]`** (XS annoncé, S réel) — ✅ 2026-08-20, PR #669.
+
+> Le brut était FABRIQUÉ à partir du net par un facteur plat `× 1,35`, à deux endroits
+> (`store/useFinanceStore.ts` et `services/projection/setupSimulation.ts`, 4 usages). Ce brut
+> alimente `baseGrossAnnual` — donc **toute** l'assiette d'impôt de la projection, les droits REER
+> (18 % du revenu gagné) et les bonus/RSU.
+
+**MESURÉ sur le barème 2026 — l'erreur CHANGE DE SIGNE**, ce qui est le point :
+
+| net annuel | brut à 1,35× | brut EXACT | écart |
+|---|---|---|---|
+| 30 000 $ | 40 500 | 37 819 | **+2 681** (surestimé) |
+| 100 000 $ | 135 000 | **157 028** | **−22 028** |
+| 250 000 $ | 337 500 | 469 696 | **−132 196** |
+
+Aucun réglage du facteur ne peut donc marcher : la relation net→brut est CONVEXE, un facteur plat la
+coupe en un point et diverge des deux côtés. Remplacé par `calculateGrossFromNet` (inversion par
+dichotomie, exacte à moins de 1 $ — roundtrip re-vérifié).
+
+**Deux risques VÉRIFIÉS avant de câbler, pas supposés :**
+- *Perf* — `calculateGrossFromNet` tourne dans `computeIncomeBaseline`, que `goalSeek` appelle en
+  boucle. Mesuré : **0,026 ms/appel**, soit ~2 ms sur une dichotomie `goalSeek` complète. Négligeable.
+- *Boot* — le store n'importait pas `utils/tax`, et le store EST dans le bundle de boot. Mesuré par
+  build propre avant/après : le chunk `tax` (**6 125 octets**) passe de « chargé à la demande » à
+  **préchargé** (8 → 9 `modulepreload`), +358 octets de JS total. Coût assumé et écrit, pas tu.
+
+**Trois ancres re-basées**, chacune avec son delta mesuré à côté (+5 968 $, +7 324 $, +1 754 $) — et
+réécrites pour viser la PROPRIÉTÉ (« le brut déduit redonne le net visé ») plutôt qu'un nombre.
+
+⚠️ **Les gardes des deux PR précédentes ont travaillé sur ce lot** : la garde anti-fantôme (#668) a
+exigé le retrait des deux entrées `1.35` au moment même où la dette était payée, et le ratchet
+fiscal rougit maintenant si quelqu'un remet le facteur plat. Le registre décroît comme prévu.
+
+**Découverte ouverte** : `[MIGRATE-GROSS-DEJA-PERSISTE]` — le correctif ne rattrape pas les configs
+dont le brut erroné est DÉJÀ persisté (`u.grossSalary || …` court-circuite).
+
 ## 2026-08-20 — Le garde fiscal ne voyait pas la table FERR (ni le crédit pour dons)
 
 - [x] **`[FISC-GUARD-VALEUR-LIEE]`** (M) — ✅ 2026-08-20, PR #668.

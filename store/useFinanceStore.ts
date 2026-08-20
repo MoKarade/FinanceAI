@@ -7,6 +7,7 @@ import { quotaStorage } from '../services/quotaStorage';
 import { logError } from '../services/errorLogger';
 import { saveLockedProjection, clearLockedProjection } from '../services/lockedProjectionStore';
 import { loadLegacyHealthWeights } from '../utils/healthWeights';
+import { calculateGrossFromNet } from '../utils/tax';
 import { sanitizePersonaArtifacts } from '../services/personaSanitizer';
 import { clearAttachmentCache } from '../services/aiChat/attachments';
 import { clearHistorySyncReport } from '../services/history/syncDiagnostics';
@@ -141,7 +142,15 @@ type LegacyBudgetConfig = { users: LegacyUser[]; [k: string]: unknown };
 const migrateUserConfig = (config: LegacyBudgetConfig): LegacyBudgetConfig => {
     const newUsers = config.users.map((u) => {
         const net = u.netSalary || u.salary || 0;
-        const gross = u.grossSalary || (net * 1.35);
+        // [MIGRATE-GROSS-135] Le brut FABRIQUÉ ici est PERSISTÉ : une fois écrit, le moteur prend la
+        // branche `users[0].grossSalary` et ne recalcule plus jamais. Un facteur plat de 1,35 y
+        // gravait donc une erreur durable — MESURÉE sur le barème 2026 : +2 681 $ à 30 k$ de net
+        // annuel (surestimé), mais −22 028 $ à 100 k$ et −132 196 $ à 250 k$ (sous-estimé). Le signe
+        // s'inverse, donc aucun réglage du facteur ne peut marcher : c'est l'INVERSE exact qu'il
+        // faut. `calculateGrossFromNet` le donne par dichotomie, à moins de 1 $ près (vérifié).
+        // ⚠️ UNITÉS : `netSalary`/`grossSalary` sont MENSUELS dans le store, `calculateGrossFromNet`
+        // prend et rend de l'ANNUEL — d'où le ×12 puis le /12.
+        const gross = u.grossSalary || (net > 0 ? calculateGrossFromNet(net * 12) / 12 : 0);
         return {
             ...u,
             netSalary: net,

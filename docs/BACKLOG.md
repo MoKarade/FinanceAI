@@ -913,6 +913,15 @@
   doublement caché. Il faut les DEUX correctifs, avec `[FISC-GUARD-ARGUMENT]`. C'est la leçon
   `AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE` qui n'est pas encore entièrement payée.
 
+- [ ] **`[MIGRATE-GROSS-DEJA-PERSISTE]`** (S, MOYEN — découvert en livrant `[MIGRATE-GROSS-135]`) —
+  le correctif ne rattrape PAS les utilisateurs dont le brut a **déjà** été fabriqué à 1,35 et
+  persisté. `migrateUserConfig` fait `u.grossSalary || (…)` : dès que le champ existe, le repli est
+  court-circuité, donc la valeur erronée est STICKY. Le correctif ne profite qu'aux configs qui
+  n'ont encore aucun `grossSalary`. **Correctif possible** : une migration de schéma qui re-dérive
+  le brut quand il est exactement `round(net × 1,35)` — la signature du défaut est reconnaissable.
+  ⚠️ **Risque** : écraser un brut que l'utilisateur a SAISI et qui coïnciderait avec 1,35 × net.
+  Décision produit à poser à Marc avant de coder. [Structure VÉRIFIÉE dans le code]
+
 - [ ] **`[RQAP-PRESTATION-COTISATIONS]`** (S, **ÉLEVÉ** — découvert en revue de `[RQAP-CAP-98K]`) —
   la prestation de congé parental se fait prélever **RRQ + AE + RQAP**. `childrenReee.ts` appelle
   `calculateFiscalReport(base, 0, 0, loopYear, enableMonteCarlo)` sans le paramètre
@@ -962,14 +971,6 @@
   voisins non plus) — `services/projection/estateCalculation.ts:224-227`. Écran Succession seulement,
   mais 30 % d'une VAN de rentes = plusieurs dizaines de k$ affichés. Correctif : nommer et ancrer
   comme hypothèse de modèle, ou retirer. [MESURÉ pour l'absence de source]
-- [ ] **`[MIGRATE-GROSS-135]`** (XS, FAIBLE) — la migration legacy fabrique un salaire BRUT à partir du
-  net avec un facteur plat non sourcé `1,35` (`store/useFinanceStore.ts:141-150`, dupliqué dans
-  `services/projection/setupSimulation.ts:153-156`) ; ce brut alimente `baseGrossAnnual`, donc TOUT
-  l'impôt de la projection. Correctif : utiliser `calculateGrossFromNet`, déjà présent et vérifié
-  exact au roundtrip. [MESURÉ]
-
-### 🟡 Environnement — la version de Node n'est déclarée nulle part
-
 - [ ] **`[ENV-NODE-NON-DECLARE]`** (XS, MOYEN) — aucun `engines` dans `package.json`, aucun `.nvmrc` :
   la seule déclaration de la version visée est `node-version: '20'`, répété dans **4 workflows**
   (`ci.yml` ×2, `lighthouse.yml`, `refresh-screenshots.yml`). Le conteneur de dev tourne sur Node

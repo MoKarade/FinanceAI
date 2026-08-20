@@ -4691,3 +4691,44 @@ aurait été une duplication.
 n'était pas une garde manquante, c'était une phrase qui promettait plus que le mécanisme ne donne.
 Une doc qui surestime sa propre protection est exactement ce qui fait sauter la vérification
 suivante — quelqu'un lira « la garde nomme lequel a bougé » et ne cherchera pas plus loin.
+
+### `UN-FACTEUR-PLAT-SUR-UNE-RELATION-CONVEXE` — l'erreur change de signe, donc aucun réglage ne marche
+
+Le moteur fabriquait un salaire BRUT à partir du NET avec `net * 1.35`, à deux endroits. Le ticket
+disait « facteur plat non sourcé » — ce qui laisse croire qu'il suffirait de le sourcer, ou de
+l'ajuster. Mesuré sur le barème 2026 :
+
+| net annuel | brut à 1,35× | brut EXACT | écart |
+|---|---|---|---|
+| 30 000 $ | 40 500 | 37 819 | **+2 681** |
+| 100 000 $ | 135 000 | **157 028** | **−22 028** |
+| 250 000 $ | 337 500 | 469 696 | **−132 196** |
+
+**L'erreur change de SIGNE.** C'est ça qui tranche : la relation net→brut est convexe (le taux moyen
+d'imposition croît avec le revenu), un facteur plat n'est qu'une sécante — juste en un point,
+divergente des deux côtés. Aucune valeur du facteur ne peut convenir, et « le calibrer mieux »
+serait déplacer le point de croisement, pas corriger.
+
+**Le signal à reconnaître, avant même de connaître le domaine** : quand on remplace une fonction par
+une constante multiplicative, mesurer l'écart à **trois points au moins**, écartés. Un écart qui
+garde le même signe est un biais (discutable, parfois assumable) ; un écart qui change de signe
+prouve que la FORME est fausse, et ferme le débat sur la valeur.
+
+⚠️ **Et un repli PERSISTÉ est plus grave qu'un repli calculé.** Ici l'un des deux sites est une
+migration de store : la valeur fabriquée est ÉCRITE dans l'état, et `u.grossSalary || (…)`
+court-circuite au chargement suivant. L'erreur devient donc STICKY — corriger le code ne rattrape
+pas les configs déjà écrites (`[MIGRATE-GROSS-DEJA-PERSISTE]`). Avant de livrer un correctif de
+repli, se demander : **est-ce que le mauvais résultat a été SAUVEGARDÉ quelque part ?** Si oui, le
+correctif de code est la moitié du travail.
+
+**Les deux risques se vérifient, ils ne se supposent pas.** L'inverse exact coûte une dichotomie :
+- *perf* — mesuré à **0,026 ms/appel**, dans une fonction que `goalSeek` appelle en boucle : ~2 ms
+  sur toute une bissection. Le risque était réel à formuler, nul à la mesure ;
+- *boot* — le store n'importait pas `utils/tax`, et le store est dans le bundle de boot. Build
+  PROPRE avant/après : le chunk `tax` (6 125 octets) passe de « à la demande » à **préchargé**
+  (8 → 9 `modulepreload`). C'est le prix de la correction ; il s'écrit, il ne se tait pas.
+
+**Re-baser une ancre, c'est aussi l'occasion de la rendre moins fragile.** Les trois tests épinglaient
+`net × 12 × 1,35` — un NOMBRE, qui redevient faux au prochain changement de barème. Réécrits pour
+viser la PROPRIÉTÉ : « le brut déduit, repassé dans le calcul fiscal, redonne le net visé ». Cette
+assertion-là survit à une réforme fiscale, et elle dit ce qu'on veut vraiment.

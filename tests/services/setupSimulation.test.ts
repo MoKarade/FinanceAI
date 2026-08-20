@@ -6,6 +6,7 @@
  * Ces tests verrouillent le comportement corrigé.
  */
 import { describe, it, expect } from 'vitest';
+import { calculateFiscalReport } from '../../utils/tax';
 import {
     buildSeededRng,
     computeIncomeBaseline,
@@ -26,16 +27,26 @@ describe('computeIncomeBaseline — régression bug « revenu ×12 »', () => {
         expect(r.grossAnnaBaseAnnual).toBe(0);
     });
 
-    it('mode réel sans grossSalary : brut estimé = net × 12 × 1.35', () => {
+    it('mode réel sans grossSalary : brut DÉDUIT par inversion exacte du calcul fiscal', () => {
+        // [MIGRATE-GROSS-135] — RE-BASÉ le 2026-08-20. Ancre AVANT : 81 000 $ (= 5 000 × 12 × 1,35).
+        // Ancre APRÈS : 86 967,77 $. Δ = +5 968 $ de brut annuel, à 60 000 $ de net.
+        // Le facteur plat sous-estimait donc l'assiette d'impôt — et l'écart s'aggrave avec le
+        // revenu (mesuré : −22 028 $ à 100 k$ de net, −132 196 $ à 250 k$).
         const r = computeIncomeBaseline({}, [{ netSalary: 5000 }, undefined]);
-        expect(r.grossMarcBaseAnnual).toBeCloseTo(5000 * 12 * 1.35, 5); // 81 000
+        // L'assertion vise la PROPRIÉTÉ, pas le nombre : le brut déduit doit redonner le net visé.
+        expect(calculateFiscalReport(r.grossMarcBaseAnnual, 0, 0).netIncome).toBeCloseTo(60000, 0);
+        // Et il n'est PLUS le produit d'un facteur plat — c'est le discriminant du lot.
+        expect(r.grossMarcBaseAnnual).not.toBeCloseTo(5000 * 12 * 1.35, 0);
     });
 
     it('mode théorique : split 55/45 du theoreticalIncome', () => {
         const r = computeIncomeBaseline({ useTheoretical: true, theoreticalIncome: 10000 }, []);
         expect(r.incomeMarcNetMonthly).toBe(5500);
         expect(r.incomeAnnaNetMonthly).toBe(4500);
-        expect(r.grossMarcBaseAnnual).toBeCloseTo(5500 * 12 * 1.35, 5);
+        // [MIGRATE-GROSS-135] — RE-BASÉ. Ancre AVANT : 89 100 $ (= 5 500 × 12 × 1,35).
+        // Ancre APRÈS : 96 423,89 $. Δ = +7 324 $. Même propriété : le brut déduit redonne le net
+        // visé, ce que le facteur plat ne faisait pour AUCUN revenu.
+        expect(calculateFiscalReport(r.grossMarcBaseAnnual, 0, 0).netIncome).toBeCloseTo(66000, 0);
     });
 
     it('mode théorique : theoreticalIncome par défaut = 8000', () => {

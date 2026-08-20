@@ -4985,6 +4985,19 @@ cinq perturbations sur cinq passaient. Pour vérifier un ARGUMENT, il faut l'OBS
 `vi.mock` qui capture les entrées réelles), jamais le reproduire. Signal d'alerte : si le test
 contient une expression qui ressemble au code testé, il ne teste pas le code, il teste sa copie.
 
+⚠️⚠️ **AVANT d'écrire « il n'existe pas de chemin déterministe », le RE-PROUVER contre le dépôt —
+pas contre sa propre fixture.** J'ai justifié un scan de source par cette phrase. Elle était fausse :
+`tests/services/projection.survivor.test.ts` épinglait déjà `K_DEATH_YEAR1 = 0` avec un conjoint
+centenaire (p = 0,33/an, le plafond), et le seul obstacle restant — `chartData` allégé sous Monte
+Carlo — se lève avec le drapeau `diagnostics.verboseMonthlyPoints`, écrit précisément pour ça. La
+mesure bout en bout tenait en quinze lignes. J'avais conclu depuis MA fixture (un couple de 45 ans,
+sans `modelSurvivor`) au lieu de chercher dans le dépôt. C'est `DOC-STALE-IMPOSSIBILITY` — une classe
+déjà nommée dans ce fichier — re-commise dans le lot suivant.
+**Coût mesuré** : le scan ne juge qu'UNE ligne, donc deux défauts réels du même site d'appel
+restaient invisibles à 226 tests — `survivorMode: false` passé au proxy (**−19 657 $**) et un
+diviseur de divorce faux (**+12 000 $**). Un scan de source est un pis-aller ; l'invoquer sur une
+impossibilité non re-prouvée, c'est se donner la permission de ne pas mesurer.
+
 ⚠️ **Quand une branche n'a AUCUN chemin déterministe, l'écrire vaut mieux que la simuler.**
 `survivorMode` ne s'active que par une mortalité stochastique qu'aucune graine testée ne déclenche au
 bon moment. Fabriquer une fixture qui n'exerce rien mais SEMBLE couvrir est pire que rien : elle

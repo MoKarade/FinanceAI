@@ -1,7 +1,7 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 515 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 516 tests** Vitest
 (405 fichiers de test, mesuré le 2026-08-20). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -229,6 +229,11 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   fabriquer une fixture qui n'exerce rien mais éteint l'alarme ; et un scan de source prouve la
   présence d'un JETON, pas l'acheminement d'une valeur (trompé par une clé dupliquée en spread, un
   leurre dans le même fichier, un bon nom au mauvais contenu) — le dire DANS le test.
+  ⚠️ **Et « il n'existe pas de chemin déterministe » est un constat que j'ai écrit, donc à re-prouver
+  AVANT de s'en servir pour justifier un scan** : le dépôt épinglait déjà un seed qui déclenche le
+  décès du conjoint, et `verboseMonthlyPoints` expose les points sous MC. J'avais conclu depuis MA
+  fixture au lieu du dépôt (`DOC-STALE-IMPOSSIBILITY`, leçon déjà nommée ici et re-commise). Coût :
+  deux défauts réels invisibles sur 226 tests (−19 657 $ et +12 000 $).
 - ⚠️ **Câbler une année, c'est câbler une PAIRE** : j'ai passé l'année courante à l'inversion
   net→brut de `TaxCenter` et laissé `calculateFiscalReport` à son défaut 2026 trois lignes plus bas.
   Avant, les DEUX étaient à 2026 — donc cohérents. Après, 212 $/an d'écart dès 2027. **Améliorer un

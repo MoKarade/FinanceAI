@@ -4,6 +4,31 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-20 (suite 116) — le trou que mon propre constat d'impossibilité avait ouvert
+> Branche `claude/estate-proxy-coverage` (basée sur `main`, PAS empilée). Suite directe de #671, mergée.
+>
+> **Livré** : couverture des deux bras non testés du proxy de pension DB. Aucun défaut dans le code
+> en prod — la 6e revue l'a validé sur les trois modes (proxy/réel = 1,0000 en couple intact, en
+> divorce et en survivant). Ce sont deux TROUS DE GARDE que je ferme.
+>
+> ⚠️⚠️ **La cause est un constat d'impossibilité que J'AVAIS ÉCRIT et qui était FAUX** : « `survivorMode`
+> ne s'active que par une mortalité stochastique, il n'existe pas de chemin déterministe ».
+> `projection.survivor.test.ts` épinglait déjà `k = 0` avec un conjoint centenaire, et
+> `diagnostics.verboseMonthlyPoints` expose les points sous MC. J'avais conclu depuis MA fixture au
+> lieu du dépôt — `DOC-STALE-IMPOSSIBILITY`, une classe déjà nommée dans `CONVENTIONS.md`.
+> **Coût mesuré** : deux défauts réels du même site d'appel invisibles à 226 tests —
+> `survivorMode: false` passé au proxy (**−19 657 $**) et un diviseur de divorce faux (**+12 000 $**).
+> Le scan est remplacé par deux mesures bout en bout, chacune prouvée par perturbation (4/4 rougissent).
+>
+> ⚠️ Un commentaire de test qui sur-promettait est corrigé : j'avais écrit que l'entrée NaN de
+> `pensionPriveeMonthlyFinal` couvrait « le SEUL champ qui discrimine une branche ». Faux — `NaN > 0`
+> est faux exactement comme `0 > 0`, retirer le `fin()` laisse 40/40 vert. C'est de la défense en
+> profondeur, et c'est écrit comme tel.
+>
+> **Bilan de #671 : SIX revues.** Les quatre du milieu ont chacune trouvé un défaut que mes propres
+> correctifs avaient introduit, toujours dans les mêmes ~20 lignes. La sixième a rendu « rien de
+> CRITIQUE ni d'ÉLEVÉ » sur le code livré.
+>
 > ## 🟢 Session 2026-08-20 (suite 115) — encore un facteur plat, encore contre les modestes
 > Branche `claude/estate-npv` (basée sur `main`, PAS empilée). Vague 1f, 4e des 5.
 >

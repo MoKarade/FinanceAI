@@ -6,6 +6,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-20 (congé parental : le plafond RQAP était périmé, et une règle de retraite pouvait le déplacer)
+
+- **Ton congé parental valait moins qu'il ne devrait.** Le plafond de revenu assurable du RQAP était
+  figé à 98 000 $ (la valeur 2025) alors que le reste de l'app utilise 103 000 $. Pour un 2ᵉ parent
+  au-dessus du plafond, ça manquait **2 750 $ de prestation brute** sur l'année de congé.
+- ⚠️ **Plus étrange, et corrigé aussi** : ce plafond suivait l'inflation de TES DÉPENSES. Or cette
+  inflation-là est gelée par la stratégie de décaissement Guyton-Klinger — donc une règle de
+  portefeuille pouvait faire baisser un plafond décidé par le gouvernement. Mesuré à 20 ans : l'écart
+  atteignait 26 192 $. Le plafond suit maintenant la croissance des salaires, comme le maximum de la
+  RRQ.
+- **Ce qui n'a PAS changé, et qu'il faut savoir** : le taux de remplacement reste à 55 % sur les
+  12 mois, alors que le vrai régime verse 70 % au début du congé. L'app sous-estime donc encore le
+  début. Le corriger demande de savoir quel régime tu as choisi — une question que l'app ne pose pas
+  encore.
+
+---
+
 ## [unreleased] — 2026-08-20 (aucun changement visible — mais le détecteur de chiffres fiscaux voit enfin les subventions)
 
 - **Rien ne change pour toi dans l'app.** C'est un travail d'outillage, et le dire franchement vaut

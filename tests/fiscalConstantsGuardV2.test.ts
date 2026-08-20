@@ -76,16 +76,25 @@ describe('[FISC-CONST-GUARD-V2] intégrité de l’inventaire', () => {
         expect([...new Set(orphans)]).toEqual([]);
     });
 
-    it('une clé qui recouvre PLUSIEURS occurrences les ÉNUMÈRE toutes', () => {
-        // ⚠️ [FISC-GUARD-SCOPE] L'index est (fichier, valeur), PAS la ligne — choix assumé (un
-        // numéro de ligne dérive au premier refactor). Le prix devient LOURD sur un module dense :
-        // dans `childrenReee.ts`, `0.20` est À LA FOIS le taux de SCEE (barème ARC) et le taux
-        // d'impôt sur le PRA à la fermeture (approximation de modèle), et `500` recouvre TROIS sens
-        // sans rapport. Une raison qui n'en décrit qu'un est un document FAUX : elle certifie
-        // « trié » une valeur dont un des sens n'a jamais été regardé.
+    it('une clé qui recouvre PLUSIEURS occurrences le DÉCLARE, et le compte est JUSTE', () => {
+        // ⚠️ [FISC-GUARD-SCOPE] L'index est (fichier, valeur), PAS la ligne — un numéro de ligne
+        // dérive au premier refactor. Le prix : dans `childrenReee.ts`, `0.20` est À LA FOIS le taux
+        // de SCEE (barème ARC) et le taux d'impôt sur le PRA (approximation), et `500` recouvre
+        // TROIS sens. Une raison qui n'en décrit qu'un certifie « trié » ce que personne n'a regardé.
         //
-        // La garde est STRUCTURELLE (on compte des références `L<n>`), pas une heuristique de
-        // prose : une clé vue N fois dans le fichier doit citer N lignes distinctes.
+        // ⚠️ HISTOIRE DE CETTE GARDE, parce qu'elle explique sa forme. Première version (#666) :
+        // « soit `[×N]`, soit N références `L<n>` ». Elle ne VÉRIFIAIT pas les `L<n>` — limite
+        // documentée comme assumée. Elle a mordu dans la PR suivante : j'ai cité `L285` pour un
+        // littéral vivant en `L75`. J'ai donc voulu vérifier les numéros… et la vérification a sorti
+        // 16 entrées, dont une partie n'était fausse que parce que MES PROPRES éditions avaient
+        // décalé le fichier. C'était réintroduire, dans la PROSE, le couplage à la ligne que la CLÉ
+        // évite par conception — et se condamner à un rouge à chaque refactor.
+        //
+        // Forme retenue : un compte, jamais un numéro. `[×N]` = N occurrences de MÊME sens ;
+        // `[≠N]` = N occurrences de sens DIFFÉRENTS, que la prose décrit en NOMMANT les constructions
+        // (un nom ne dérive pas). N ne bouge que si une occurrence apparaît ou disparaît — c'est
+        // précisément le moment où il FAUT re-regarder, et c'est ce qui s'est produit aujourd'hui
+        // quand `rqapCapProjected` a ajouté un second `0.5` dans `childrenReee.ts`.
         const manquants: string[] = [];
         let clesMultiples = 0;
 
@@ -94,23 +103,17 @@ describe('[FISC-CONST-GUARD-V2] intégrité de l’inventaire', () => {
             const lignes = new Set(findFiscalConstants(src).filter((h) => h.value === e.value).map((h) => h.line));
             if (lignes.size < 2) continue;
             clesMultiples++;
-            // DEUX façons d'être honnête, et il faut en CHOISIR une — c'est le but :
-            //   • `[×N]` en tête    → les N occurrences ont le MÊME sens (table d'âges FERR, proxy
-            //                          répété pour les deux conjoints…). Rien à énumérer.
-            //   • N références `L<n>` → les sens DIFFÈRENT, et chacun est décrit.
-            // Un `[×N]` posé sur des sens divergents reste possible : aucune garde ne lit le sens.
-            // Ce qu'on supprime, c'est le cas où PERSONNE n'a regardé.
-            const memeSens = new RegExp(`^\\[×${lignes.size}\\]`).test(e.reason);
-            const refs = new Set(e.reason.match(/L\d+/g) ?? []);
-            if (!memeSens && refs.size < lignes.size) {
-                manquants.push(`${e.file}::${e.value} — ${lignes.size} occurrences, ${refs.size} référence(s) L<n>, pas de marque [×${lignes.size}]`);
+            const marque = e.reason.match(/^\[([×≠])(\d+)\]/);
+            if (!marque) {
+                manquants.push(`${e.file}::${e.value} — ${lignes.size} occurrences, aucune marque [×N] ou [≠N] en tête`);
+            } else if (Number(marque[2]) !== lignes.size) {
+                manquants.push(`${e.file}::${e.value} — marque [${marque[1]}${marque[2]}] mais ${lignes.size} occurrences RÉELLES : une occurrence est apparue ou a disparu, il faut la regarder`);
             }
         }
 
-        // ANTI-VACUITÉ : si plus aucune clé n'est multiple, cette garde ne vérifie RIEN et doit
-        // être revue plutôt que laissée verte.
+        // ANTI-VACUITÉ : si plus aucune clé n'est multiple, cette garde ne vérifie RIEN.
         expect(clesMultiples, 'aucune clé multiple → cette garde ne prouve plus rien').toBeGreaterThanOrEqual(8);
-        expect(manquants, `Raison(s) qui ne couvrent pas toutes les occurrences de leur clé :\n${manquants.join('\n')}`).toEqual([]);
+        expect(manquants, `Clé(s) multiples mal déclarées :\n${manquants.join('\n')}`).toEqual([]);
     });
 
     it('le périmètre EXCLU est déclaré, réel, et vraiment hors scan', () => {

@@ -96,6 +96,27 @@
 | Revenu max (`RQAP_MAX_INCOME`) | 103 000 $ |
 | Cotisation max (`RQAP_MAX`) | 442,90 $ |
 
+#### Congé parental — taux de remplacement et indexation du plafond (`childrenReee.ts`) — RQAP-CAP-98K (2026-08-20)
+
+| Élément | Valeur | Statut |
+|---|---|---|
+| Plafond de revenu assurable | `RQAP_MAX_INCOME` (103 000 $) | **importé** de `utils/tax.ts` — il était recopié en dur à 98 000 $ (valeur 2025), soit **−2 750 $/an** de prestation brute pour un 2ᵉ parent au-dessus du plafond |
+| Taux de remplacement (`RQAP_REPLACEMENT_RATE_BASE`) | 55 % | ⚠️ **DIVERGENCE ASSUMÉE** — voir ci-dessous |
+| Indexation du plafond | inflation + **0,5 %/an** | même patron que le MGA de la RRQ (§6) |
+
+> ⚠️ **Le taux n'est pas plat dans la réalité.** Le régime de BASE du RQAP verse **70 %** pendant les
+> semaines de maternité/paternité et le début du parental, puis **55 %**. Le moteur applique 55 % sur
+> les 12 mois : il **sous-estime le début du congé**. Modéliser fidèlement demande le nombre de
+> semaines par prestation ET le choix base/particulier, que l'app ne saisit nulle part — décision
+> produit tracée `[RQAP-PHASES-70-55]`. La constante est NOMMÉE pour que la divergence soit lisible.
+
+> **Pourquoi `inflation + 0,5 %/an` et pas l'inflation des dépenses.** Le plafond était indexé par
+> `expenseMultiplier`, qui compose l'inflation des DÉPENSES DU MÉNAGE — et qui est **gelable par
+> Guyton-Klinger**. MESURÉ à l'année 20 : un gel de la règle de décaissement faisait tomber
+> l'assiette RQAP de **80 092 $ à 53 900 $**. Aucune stratégie de portefeuille ne peut déplacer un
+> plafond gouvernemental. Le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne au
+> Québec — même nature que le MGA de la RRQ, déjà projeté à inflation + 0,5 %/an (§6).
+
 ### AE — Assurance-emploi (taux Québec)
 | Constante | Valeur 2026 |
 |---|---|

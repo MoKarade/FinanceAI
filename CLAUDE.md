@@ -1,7 +1,7 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 477 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 481 tests** Vitest
 (403 fichiers de test, mesuré le 2026-08-20). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -163,6 +163,15 @@ scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (50 s
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 **Money-critical / moteur**
+- ⚠️ Une grandeur d'origine **LÉGALE** ne peut pas être indexée par un facteur que l'UTILISATEUR ou
+  une STRATÉGIE peut faire bouger : le plafond RQAP était `98000 * expenseMultiplier`, or ce
+  multiplicateur porte l'inflation des DÉPENSES et est **gelé par Guyton-Klinger** — une règle de
+  décaissement déplaçait un plafond gouvernemental de 26 192 $ (mesuré à 20 ans). Test à faire pour
+  chaque valeur légale : « QUI peut la faire bouger dans le moteur ? » Ni la conservation ni les
+  goldens ne le voient (`UN-INDEX-GELABLE-NE-PEUT-PAS-PORTER-UNE-LOI`).
+- ⚠️ **« Aucun golden n'a bougé » sur du money-critical est un résultat à EXPLIQUER**, jamais un feu
+  vert : sur un correctif qui déplace l'assiette de 2 750 $/an, zéro golden rouge PROUVE qu'aucune
+  fixture n'exerce ce chemin.
 - Un finding de review sur du fiscal/moteur est une **hypothèse** (≈3/8 des HIGH sont FAUX) —
   vérifier contre le vrai code avant de « corriger ». Un faux fix est pire que le finding.
 - **Mesurer, pas raisonner** : l'agent qui a EXÉCUTÉ l'emporte sur celui qui a déduit.
@@ -319,6 +328,12 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   en DÉCLARATION *et* en usage : ancrer le motif sur l'USAGE, et perturber CHAQUE assertion du scan
   séparément (`SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE`).
 - Resserrer un scan-garde **AVANT** de coder le fix : les offenders révélés = le vrai périmètre.
+- Dans un document de dépôt, un **numéro de ligne est une dette** qui se paie au premier refactor, en
+  silence. Vouloir VÉRIFIER mes `L<n>` a sorti 16 entrées fausses — dont une partie n'était fausse
+  que parce que mes propres éditions avaient décalé le fichier : vérifier revenait à réintroduire
+  dans la PROSE le couplage à la ligne que la CLÉ évite par conception. **Nommer la construction**
+  (`survivorRrqFactor`, branche `ca-equity`) ou **compter** (`[×N]`/`[≠N]`, vérifié) — jamais pointer
+  (`UNE-REFERENCE-DE-LIGNE-DANS-UNE-DOC-EST-UNE-DETTE`).
 - Quand une garde a une **liste d'inclusion**, auditer le CRITÈRE qui l'a remplie, pas seulement ses
   entrées : `FISCAL_MODULES` disait « les modules qui PRODUISENT de l'impôt » — or une SUBVENTION,
   une PRESTATION, un PLAFOND LÉGAL et un PROXY d'impôt sont tout autant des barèmes. `98000`

@@ -4,6 +4,45 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-20 (suite 111) — une règle de portefeuille déplaçait un plafond légal
+> Branche `claude/rqap-cap` (basée sur `main`, PAS empilée). Vague 1f, 2e des 5.
+>
+> **Livré** : `[RQAP-CAP-98K]`. Trois volets, prouvés séparément.
+>
+> **(a)** `98000` recopié en dur (valeur 2025) au lieu de `RQAP_MAX_INCOME = 103 000 $`. Import.
+> **MESURÉ : 53 900 $ → 56 650 $, soit +2 750 $/an** — le chiffre du ticket est confirmé.
+>
+> **(b)** Taux de remplacement nommé `RQAP_REPLACEMENT_RATE_BASE`, sourcé §2. La divergence avec le
+> vrai régime (70 % puis 55 %, pas 55 % plat) est **documentée, PAS corrigée** : elle demande de
+> modéliser les semaines par prestation et le choix base/particulier, que l'app ne saisit pas.
+> Décision produit → `[RQAP-PHASES-70-55]`.
+>
+> ⚠️⚠️ **(c) le volet qui comptait.** Le plafond était `98000 * expenseMultiplier`, or ce
+> multiplicateur porte l'inflation des DÉPENSES DU MÉNAGE **et est GELÉ par Guyton-Klinger**.
+> MESURÉ à l'année 20 : avec le gel, l'assiette RQAP tombait de **80 092 $ à 53 900 $**. Une règle de
+> DÉCAISSEMENT déplaçait un plafond GOUVERNEMENTAL de 26 192 $ — inversion de causalité, pas
+> imprécision. Remplacé par le patron déjà employé pour le MGA de la RRQ (`inflation + 0,5 %/an`,
+> §6) — `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`, 3e fois en 3 lots
+> (`UN-INDEX-GELABLE-NE-PEUT-PAS-PORTER-UNE-LOI`).
+>
+> ⚠️ **La garde livrée la veille (#666) a attrapé ce lot-ci** : `rqapCapProjected` ajoutait un second
+> `0.5` dans `childrenReee.ts`. Et en voulant VÉRIFIER ses références de ligne, j'ai découvert que
+> **16 étaient fausses** — certaines de naissance, d'autres dérivées par mes propres éditions.
+> Vérifier revenait à réintroduire dans la PROSE le couplage à la ligne que la CLÉ évite par
+> conception. Mécanisme remplacé : marque `[×N]`/`[≠N]` vérifiée + NOMS de construction, zéro numéro
+> de ligne dans l'inventaire (`UNE-REFERENCE-DE-LIGNE-DANS-UNE-DOC-EST-UNE-DETTE`).
+>
+> ⚠️ **ZÉRO golden n'a bougé** sur un correctif à +2 750 $/an. Ça ne veut pas dire « pas d'impact » :
+> ça PROUVE qu'aucune fixture ne combine « enfant < 12 mois » et « 2e parent au-dessus du plafond ».
+> Trou de couverture d'intégration → `[GOLDEN-RQAP-NON-COUVERT]`.
+>
+> **SUITE — vague 1f, reste 3** : `[W5-PROXY-NON-SOURCE]`, `[ESTATE-NPV-07]`, `[MIGRATE-GROSS-135]`.
+> ⚠️ **`[AE-PLAFOND-MANQUANT]` (ÉLEVÉ) est probablement prioritaire sur les trois** — juger sur
+> l'impact mesuré, pas sur l'ordre du plan.
+>
+> ⛔ **BLOQUÉ sur Marc** : `[ENG-LIQUIDDEBT-NEVER-REPAID]`, branches mortes (proxy git 403),
+> `[ENV-NODE-NON-DECLARE]`.
+>
 > ## 🟢 Session 2026-08-20 (suite 110) — le ratchet fiscal voyait 8 modules sur 20
 > Branche `claude/fisc-guard-scope` (basée sur `main`, PAS empilée). Vague 1f, 1er des 5.
 >

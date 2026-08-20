@@ -10,9 +10,12 @@
 > mesuré 201,89 $ vs 300 $ à 20 ans. 3 tests neufs ; discrimination par `git stash push
 > utils/tax.ts` (⚠️ le stash complet emportait les tests — preuve invalide, refaite ciblée).
 > NB conteneur : `@mokarade/hub-contract` manquant après le merge d'une PR parallèle →
-> `npm install` requis avant tout typecheck. Vérif §6 du déploiement production #679 en cours
-> (limite Vercel quotidienne atteinte plus tôt — un trigger vérifie et route vers A_FAIRE_MOI si
-> production absente).
+> `npm install` requis avant tout typecheck.
+> ⚠️ **Vérif §6 FAITE, 22:18 UTC : le merge #679 (main `4c67d5b`) n'a AUCUN déploiement
+> production Vercel** — la limite quotidienne a mangé l'événement du push sur main (les previews,
+> elles, remarchent). Le site sert le build de #676. Attendu : le PROCHAIN merge sur main
+> (pension-credit-real) déclenchera un déploiement production qui rattrape tout — À VÉRIFIER à ce
+> merge ; si production manque encore, escalader à Marc (A_FAIRE_MOI déjà noté).
 >
 > ## 🟢 Session 2026-08-20 (suite 120) — [FISC-RRSP-ROOM-PER-USER] : droits REER par personne (règle ARC)
 > Branche `claude/rrsp-room-per-user` (depuis main post-#676). Décision Marc A1 « par personne »

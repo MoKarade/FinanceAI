@@ -1,5 +1,13 @@
 # À FAIRE — Marc (tâches humaines) + blocages remontés par Claude
 
+- [ ] **[VERCEL-PROD-679-NON-DEPLOYE]** (2026-08-20 22:18 UTC) — le merge #679 sur `main`
+  (`4c67d5b`, droits REER par personne) n'a **pas** créé de déploiement production Vercel
+  (limite quotidienne « 100/jour » du plan gratuit atteinte au moment du push ; les previews
+  remarchent depuis). Le site sert encore le build de #676. Claude vérifie au prochain merge que
+  production rattrape ; si finance.hubperso.com reste sur l'ancien build demain, redéployer à la
+  main depuis le dashboard Vercel (Redeploy sur le dernier commit de main) — ou considérer la
+  limite du plan gratuit si les journées à ~15 PR deviennent la norme.
+
 > Ce que **Claude ne peut pas faire seul** (comptes Google/Drive/Cloudflare/Vercel,
 > ressenti visuel sur device, secrets) + les **blocages** que Claude découvre en
 > chemin. Claude **ajoute** ici ; Marc coche. Détail des tests manuels par onglet :

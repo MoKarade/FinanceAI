@@ -6,6 +6,29 @@ import type { FiscalReport } from '../../utils/tax';
 const fiscalStub = (gross: number): FiscalReport =>
     ({ totalTax: Math.max(0, gross) * 0.3 } as FiscalReport);
 
+// Barème nul — sert de RÉFÉRENCE pour isoler la VAN BRUTE (aucun impôt, donc facteur net = 1).
+const sansImpotStub = (): FiscalReport => ({ totalTax: 0 } as FiscalReport);
+
+/**
+ * VAN des rentes CONTENUE dans un résultat :
+ *   estateNetWorth = finalRawNetWorth − totalEstateTax + (VAN × facteurNet)
+ * → `VAN × facteurNet` s'isole exactement par les trois champs publiés.
+ */
+const vanNette = (r: ReturnType<typeof computeEstateNetWorth>): number =>
+    r.estateNetWorth - r.finalRawNetWorth + r.totalEstateTax;
+
+/**
+ * VAN BRUTE (avant le facteur net d'impôt), DÉRIVÉE en relançant le même calcul sous un barème nul.
+ *
+ * ⚠️ Ces helpers divisaient par un `0,7` CODÉ EN DUR, hérité du facteur plat supprimé par
+ * `[ESTATE-NPV-07]`. Ils ne passaient plus que par coïncidence : `fiscalStub` est plat à 30 %, donc
+ * le facteur CALCULÉ retombait sur 0,7 — mais changer `governmentPension` de 1 200 à 5 000 les
+ * faisait rougir avec un message parlant d'annualisation, diagnostic totalement trompeur
+ * (classe `UN-TEST-QUI-ECHOUE-N-A-PAS-FORCEMENT-RAISON`). Dériver la VAN brute d'un SECOND appel
+ * supprime la constante : aucune valeur du facteur n'est supposée.
+ */
+const extractNPVBrute = (inputs: EstateCalcInputs): number => vanNette(computeEstateNetWorth(inputs, sansImpotStub));
+
 const base: EstateCalcInputs = {
     liquid: 50000, celi: 100000, celiapp: 0, reer: 200000, nonReg: 80000, nonRegACB: 60000,
     crypto: 10000, cryptoACB: 0, reee: 20000, realEstateEquity: 300000, mortgageBalance: 150000, smithManoeuvreDebt: 0,
@@ -123,18 +146,18 @@ describe('computeEstateNetWorth — FA-5 (audit 2026-06-09) : NPV des rentes NON
     // `governmentPension` est déjà FAMILIAL dans tout le moteur (retirementIncome ne multiplie
     // pas par N). L'ancien code multipliait rrqExpected/psvExpected par activeUsersCount →
     // NPV ~doublée pour un couple → estateNetWorth gonflé de dizaines de k$.
-    // Extraction : estateNetWorth = finalRawNetWorth − totalEstateTax + 0,7×(rrqNPV+psvNPV)
-    //   → (rrqNPV+psvNPV) = (estateNetWorth − finalRawNetWorth + totalEstateTax) / 0,7.
-    const extractNPV = (r: ReturnType<typeof computeEstateNetWorth>): number =>
-        (r.estateNetWorth - r.finalRawNetWorth + r.totalEstateTax) / 0.7;
+    // Extraction : estateNetWorth = finalRawNetWorth − totalEstateTax + facteurNet×(rrqNPV+psvNPV).
+    // Le facteur n'est PAS supposé (plus de `/0,7` en dur) : on relance sous un barème nul.
+    const extractNPV = extractNPVBrute;
 
     it('RÉGRESSION : couple et solo au même governmentPension familial → même (rrqNPV+psvNPV)', () => {
-        const solo = computeEstateNetWorth({ ...base, activeUsersCount: 1 }, fiscalStub);
-        const couple = computeEstateNetWorth({ ...base, activeUsersCount: 2 }, fiscalStub);
-        expect(extractNPV(couple)).toBeCloseTo(extractNPV(solo), 6);
+        const soloIn = { ...base, activeUsersCount: 1 };
+        const coupleIn = { ...base, activeUsersCount: 2 };
+        expect(extractNPV(coupleIn)).toBeCloseTo(extractNPV(soloIn), 6);
         // Le stub fiscal est plat → totalEstateTax identique (M-2) → le patrimoine successoral
         // COMPLET doit être identique solo vs couple. Avant FA-5 : couple = solo + 0,7×NPV en trop.
-        expect(couple.estateNetWorth).toBeCloseTo(solo.estateNetWorth, 6);
+        expect(computeEstateNetWorth(coupleIn, fiscalStub).estateNetWorth)
+            .toBeCloseTo(computeEstateNetWorth(soloIn, fiscalStub).estateNetWorth, 6);
     });
 
     it('NPV PINNÉE à la formule FAMILIALE (sans ×N) : pension×12×infl^années×facteur d\'annuité', () => {
@@ -143,32 +166,29 @@ describe('computeEstateNetWorth — FA-5 (audit 2026-06-09) : NPV des rentes NON
         // [FISC-ESTATE-PENSION-NPV] ×12 : la pension mensuelle (1200) est ANNUALISÉE avant le facteur
         // d'annuité ANNUEL (avant le fix, le ×12 manquait → NPV ÷12, ~49 k$ au lieu de ~584 k$ brut).
         const expected = 1200 * 12 * Math.pow(1 + 2 / 100, 30) * npvFactor; // (0,65+0,35) = 1 → familial
-        const couple = computeEstateNetWorth({ ...base, activeUsersCount: 2 }, fiscalStub);
-        expect(extractNPV(couple)).toBeCloseTo(expected, 4);
+        const coupleIn = { ...base, activeUsersCount: 2 };
+        expect(extractNPV(coupleIn)).toBeCloseTo(expected, 4);
         // Contre-preuve : l'ancienne valeur ×2 (le double-comptage ×N) est exclue.
-        expect(extractNPV(couple)).toBeLessThan(expected * 2 - 1000);
+        expect(extractNPV(coupleIn)).toBeLessThan(expected * 2 - 1000);
     });
 
     it('équivalence solo/couple maintenue AVANT 65 ans (branche escomptée 1,02^-(65-âge))', () => {
         const cfg = { ...base, simulationYears: 20 }; // finalAge 55 < 65 → escompte sur 10 ans
-        const solo = computeEstateNetWorth({ ...cfg, activeUsersCount: 1 }, fiscalStub);
-        const couple = computeEstateNetWorth({ ...cfg, activeUsersCount: 2 }, fiscalStub);
-        expect(extractNPV(couple)).toBeCloseTo(extractNPV(solo), 6);
-        expect(extractNPV(couple)).toBeGreaterThan(0);
+        const soloIn = { ...cfg, activeUsersCount: 1 };
+        const coupleIn = { ...cfg, activeUsersCount: 2 };
+        expect(extractNPV(coupleIn)).toBeCloseTo(extractNPV(soloIn), 6);
+        expect(extractNPV(coupleIn)).toBeGreaterThan(0);
     });
 
     it('governmentPension = 0 → composante NPV nulle, peu importe N', () => {
-        const solo = computeEstateNetWorth({ ...base, governmentPension: 0, activeUsersCount: 1 }, fiscalStub);
-        const couple = computeEstateNetWorth({ ...base, governmentPension: 0, activeUsersCount: 2 }, fiscalStub);
-        expect(extractNPV(solo)).toBeCloseTo(0, 6);
-        expect(extractNPV(couple)).toBeCloseTo(0, 6);
+        expect(extractNPV({ ...base, governmentPension: 0, activeUsersCount: 1 })).toBeCloseTo(0, 6);
+        expect(extractNPV({ ...base, governmentPension: 0, activeUsersCount: 2 })).toBeCloseTo(0, 6);
     });
 
 });
 
 describe('computeEstateNetWorth — FA-8 : estimés précis par rente priment sur le split 65/35', () => {
-    const extractNPV = (r: ReturnType<typeof computeEstateNetWorth>): number =>
-        (r.estateNetWorth - r.finalRawNetWorth + r.totalEstateTax) / 0.7;
+    const extractNPV = extractNPVBrute;
     // base : finalAge 35+30 = 65 → branche SANS escompte pré-65 ; 95−65 = 30 ans restants.
     const npvFactor = (1 - Math.pow(1.02, -30)) / 0.02;
     const inflPow = Math.pow(1 + 2 / 100, 30);
@@ -178,20 +198,18 @@ describe('computeEstateNetWorth — FA-8 : estimés précis par rente priment su
 
     it('estimés fournis (solo) → NPV basée sur RRQ+PSV estimés, PAS sur le split 65/35 de l\'agrégé', () => {
         // estimés per-personne 800+600 = 1400/mois familial (solo) ≠ split de governmentPension (1200).
-        const r = computeEstateNetWorth({ ...base, rrqEstimateMonthly: 800, psvEstimateMonthly: 600, activeUsersCount: 1 }, fiscalStub);
-        expect(extractNPV(r)).toBeCloseTo(expectedNPV(800 + 600), 4);
+        const avecEstimes = { ...base, rrqEstimateMonthly: 800, psvEstimateMonthly: 600, activeUsersCount: 1 };
+        expect(extractNPV(avecEstimes)).toBeCloseTo(expectedNPV(800 + 600), 4);
         // Contre-preuve : différent du repli agrégé (1200) — les estimés ont bien primé.
-        const fallback = computeEstateNetWorth({ ...base, activeUsersCount: 1 }, fiscalStub);
-        expect(extractNPV(r)).not.toBeCloseTo(extractNPV(fallback), 0);
+        expect(extractNPV(avecEstimes)).not.toBeCloseTo(extractNPV({ ...base, activeUsersCount: 1 }), 0);
     });
 
     it('estimés PER-PERSONNE → ×activeUsersCount (comme retirementIncome) ; le repli AGRÉGÉ reste SANS ×N (garde FA-5)', () => {
         // couple : estimés (800+600)×2 = 2800/mois familial.
-        const couple = computeEstateNetWorth({ ...base, rrqEstimateMonthly: 800, psvEstimateMonthly: 600, activeUsersCount: 2 }, fiscalStub);
-        expect(extractNPV(couple)).toBeCloseTo(expectedNPV((800 + 600) * 2), 4);
+        expect(extractNPV({ ...base, rrqEstimateMonthly: 800, psvEstimateMonthly: 600, activeUsersCount: 2 }))
+            .toBeCloseTo(expectedNPV((800 + 600) * 2), 4);
         // Le repli agrégé (sans estimé) ne prend toujours PAS de ×N : couple == solo (FA-5 non régressé).
-        const fallbackCouple = computeEstateNetWorth({ ...base, activeUsersCount: 2 }, fiscalStub);
-        expect(extractNPV(fallbackCouple)).toBeCloseTo(expectedNPV(1200), 4);
+        expect(extractNPV({ ...base, activeUsersCount: 2 })).toBeCloseTo(expectedNPV(1200), 4);
     });
 
     it('estimés absents → repli sur le split 65/35 (non-régression stricte)', () => {
@@ -202,8 +220,8 @@ describe('computeEstateNetWorth — FA-8 : estimés précis par rente priment su
 
     it('un seul estimé fourni → indépendance par rente : l\'estimé pour la sienne, le split 65/35 pour l\'autre', () => {
         // rrqEstimate 900 fourni, psv absent → psv = 0,35 × 1200 = 420. Σ = 1320.
-        const r = computeEstateNetWorth({ ...base, rrqEstimateMonthly: 900, activeUsersCount: 1 }, fiscalStub);
-        expect(extractNPV(r)).toBeCloseTo(expectedNPV(900 + 1200 * 0.35), 4);
+        expect(extractNPV({ ...base, rrqEstimateMonthly: 900, activeUsersCount: 1 }))
+            .toBeCloseTo(expectedNPV(900 + 1200 * 0.35), 4);
     });
 
     it('garde fin() : un rrqEstimateMonthly NaN ne propage pas de NaN (estateNetWorth reste fini)', () => {
@@ -227,101 +245,163 @@ describe('computeEstateNetWorth — FA-8 : estimés précis par rente priment su
 
     it('RRQ-PSV-MIN : un estimé NÉGATIF est clampé à 0 (pas de rente négative), == estimé 0 explicite', () => {
         // rrq -500 → max(0,-500)=0 ; psv absent → repli 0,35×1200 = 420. Σ = 420.
-        const neg = computeEstateNetWorth({ ...base, rrqEstimateMonthly: -500, activeUsersCount: 1 }, fiscalStub);
+        const neg = { ...base, rrqEstimateMonthly: -500, activeUsersCount: 1 };
+        const zero = { ...base, rrqEstimateMonthly: 0, activeUsersCount: 1 };
         expect(extractNPV(neg)).toBeCloseTo(expectedNPV(0 + 1200 * 0.35), 4);
-        const zero = computeEstateNetWorth({ ...base, rrqEstimateMonthly: 0, activeUsersCount: 1 }, fiscalStub);
         expect(extractNPV(zero)).toBeCloseTo(expectedNPV(0 + 1200 * 0.35), 4); // ancré en absolu
         expect(extractNPV(neg)).toBeCloseTo(extractNPV(zero), 6);
     });
 });
 
 describe('computeEstateNetWorth — [FISC-ESTATE-PENSION-NPV] annualisation des rentes (×12)', () => {
-    const extractNPV = (r: ReturnType<typeof computeEstateNetWorth>): number =>
-        (r.estateNetWorth - r.finalRawNetWorth + r.totalEstateTax) / 0.7;
+    const extractNPV = extractNPVBrute;
 
     it('la NPV des rentes publiques est ANNUELLE (×12), pas mensuelle — discrimine le bug d\'unité', () => {
         // base : 1200 $/mois familial, finalAge 65 (sans escompte pré-65), 30 ans restants, infl 2 %.
         const npvFactor = (1 - Math.pow(1.02, -30)) / 0.02;
         const inflPow = Math.pow(1 + 2 / 100, 30);
-        const r = computeEstateNetWorth(base, fiscalStub);
         const annualNPV = 1200 * 12 * inflPow * npvFactor;   // correct
         const monthlyNPV = 1200 * inflPow * npvFactor;        // ANCIENNE valeur buggée (÷12)
-        expect(extractNPV(r)).toBeCloseTo(annualNPV, 4);
+        expect(extractNPV(base)).toBeCloseTo(annualNPV, 4);
         // Discriminant fort : la NPV correcte vaut ~12× l'ancienne → un retour au bug échouerait ici.
-        expect(extractNPV(r)).toBeGreaterThan(monthlyNPV * 11);
+        expect(extractNPV(base)).toBeGreaterThan(monthlyNPV * 11);
         // Ordre de grandeur : une rente viagère de 1200 $/mois vaut des CENTAINES de k$ (pas des dizaines).
-        expect(extractNPV(r)).toBeGreaterThan(400_000);
+        expect(extractNPV(base)).toBeGreaterThan(400_000);
     });
 });
 
 /**
  * [ESTATE-NPV-07] La VAN des rentes publiques est ajoutée NETTE d'impôt.
  *
- * ⚠️ PIÈGE DE CE FICHIER, à connaître avant d'ajouter un test ici : le `fiscalStub` partagé est
- * `gross * 0.3`, un taux PLAT. Avec lui, l'impôt incrémental sur les rentes vaut exactement 30 %
- * quel que soit le revenu — donc le nouveau facteur calculé rend précisément 0,7, et le correctif
- * est INVISIBLE. Un stub qui reproduit la forme du défaut ne peut pas le détecter. Ces tests
- * utilisent donc un stub PROGRESSIF.
+ * ⚠️ DEUX PIÈGES DE CE FICHIER, à connaître avant d'ajouter un test ici.
+ *
+ * 1. Le `fiscalStub` partagé est `gross * 0,3`, un taux PLAT : l'impôt incrémental sur les rentes
+ *    vaut alors exactement 30 % quel que soit le revenu, le facteur calculé retombe sur 0,7, et le
+ *    correctif est INVISIBLE. Un stub qui a la FORME du défaut ne peut pas le voir.
+ * 2. Mon premier jet a remplacé ce stub par `(gross − 20 000) × 0,4` en le croyant progressif. Il
+ *    ne l'est PAS au-dessus du coude : c'est un affine dont la pente est CONSTANTE à 40 %. Or les
+ *    deux points mesurés (`incomeRetirement` 0 et 8 000) tombaient l'un sur la branche dégénérée
+ *    (revenu nul → impôt incrémental nul par le clamp), l'autre en pleine zone plate. Résultat
+ *    MESURÉ par perturbation : les trois tests restaient VERTS en annulant tout le contexte
+ *    incrémental (`revenuSansRentes = 0`) ET en changeant la base de +81 %. Ils ne discriminaient
+ *    RIEN. Ce bloc est donc réécrit autour d'un stub à DEUX PALIERS et de points de mesure
+ *    STRICTEMENT POSITIFS placés de part et d'autre des coudes.
  */
 describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, plus un 0,7 plat', () => {
-    // Barème progressif minimal : 0 % sous 20 k$, 40 % au-delà. Suffit à distinguer un facteur
-    // contextuel d'un facteur plat, sans dépendre du vrai barème (qui bouge chaque année).
-    const stubProgressif = (gross: number): FiscalReport =>
-        ({ totalTax: Math.max(0, gross - 20000) * 0.4 } as FiscalReport);
-    const sansImpot = (): FiscalReport => ({ totalTax: 0 } as FiscalReport);
+    // Barème à deux paliers, VRAIMENT convexe : 0 % sous 20 k$, 20 % de 20 à 60 k$, 50 % au-delà.
+    // Le second coude est ce qui rend le facteur sensible à la BASE soustraite, pas seulement au
+    // revenu : entre deux revenus au-dessus de 60 k$, un affine rendrait la même chose.
+    const paliers = (gross: number): number => {
+        const g = Math.max(0, gross);
+        return Math.min(g, 20_000) * 0
+            + Math.min(Math.max(0, g - 20_000), 40_000) * 0.2
+            + Math.max(0, g - 60_000) * 0.5;
+    };
+    const stubPaliers = (gross: number): FiscalReport => ({ totalTax: paliers(gross) } as FiscalReport);
 
-    const retraite = { ...base, currentAge: 60, retirementTargetAge: 65, incomeRetirement: 0 };
+    // Ménage RETRAITÉ à l'horizon (`finalAge` 65 ≥ `retirementTargetAge` 65) ET dont les rentes
+    // RÉELLEMENT versées sont renseignées — sans elles, `contexteRetraite` est faux et c'est la
+    // branche pré-retraite qui s'exécute. Les deux branches sont couvertes séparément plus bas.
+    const RENTES_MENSUELLES = 1_500; // familial → 18 000 $/an de tranche imposable
+    const retraite = (incomeRetirementMensuel: number): EstateCalcInputs => ({
+        ...base,
+        currentAge: 35, retirementTargetAge: 65, simulationYears: 30,
+        incomeRetirement: incomeRetirementMensuel,
+        pensionRrqMonthlyFinal: 900, pensionPsvMonthlyFinal: 600, pensionGisMonthlyFinal: 0,
+    });
 
-    /**
-     * Le facteur net appliqué à la VAN, DÉRIVÉ des trois champs publiés :
-     *   estateNetWorth = finalRawNetWorth − totalEstateTax + VAN × facteur
-     * On isole `VAN × facteur`, puis on divise par la VAN BRUTE obtenue avec un stub sans impôt.
-     * C'est la grandeur que le lot change — l'asserter directement évite de comparer des
-     * patrimoines dont mille autres termes bougent.
-     */
-    const facteurNet = (inputs: EstateCalcInputs): number => {
-        const avec = computeEstateNetWorth(inputs, stubProgressif);
-        const brut = computeEstateNetWorth(inputs, sansImpot);
-        const vanNette = avec.estateNetWorth - avec.finalRawNetWorth + avec.totalEstateTax;
-        const vanBrute = brut.estateNetWorth - brut.finalRawNetWorth + brut.totalEstateTax;
-        expect(vanBrute, 'VAN brute nulle → le test ne mesurerait rien').toBeGreaterThan(1000);
-        return vanNette / vanBrute;
+    /** Facteur net effectivement appliqué = VAN nette ÷ VAN brute (dérivée sous barème nul). */
+    const facteurNet = (inputs: EstateCalcInputs, fn: (g: number) => FiscalReport): number => {
+        const brute = extractNPVBrute(inputs);
+        expect(brute, 'VAN brute nulle → le test ne mesurerait rien').toBeGreaterThan(1_000);
+        return vanNette(computeEstateNetWorth(inputs, fn)) / brute;
     };
 
-    it('le facteur RÉPOND au barème — un facteur plat n’y répondrait pas du tout', () => {
-        // ⚠️ Mon premier jet divisait la VAN nette par une VAN « brute » calculée avec un stub sans
-        // impôt. VACUEUX : avec un facteur CONSTANT, numérateur et dénominateur sont multipliés par
-        // la même chose et le ratio vaut 1 quoi qu'il arrive. Perturbation à l'appui — remettre
-        // `0,7` ne faisait pas rougir ce test. On compare donc la VAN nette entre DEUX barèmes.
-        const aise = { ...retraite, incomeRetirement: 8000 };
-        const vanNette = (fn: (g: number) => FiscalReport): number => {
-            const r = computeEstateNetWorth(aise, fn);
-            return r.estateNetWorth - r.finalRawNetWorth + r.totalEstateTax;
+    // Le facteur ATTENDU, calculé à la main sur le barème ci-dessus — pas seulement un ordre.
+    const facteurAttendu = (revenuAnnuel: number): number =>
+        1 - (paliers(revenuAnnuel) - paliers(Math.max(0, revenuAnnuel - RENTES_MENSUELLES * 12))) / (RENTES_MENSUELLES * 12);
+
+    it('le facteur vaut l’impôt INCRÉMENTAL des rentes dans leur contexte — valeur PINNÉE, pas un ordre', () => {
+        // Revenu de contexte = `incomeRetirement × 12` (+ `accRentesYear`, nul ici).
+        // 30 000 $ : la tranche 18 000 $ descend de 30 000 à 12 000, donc à cheval sur le 1er coude.
+        //   impôt(30 000) = 2 000 ; impôt(12 000) = 0 → facteur = 1 − 2 000/18 000 = 0,8889.
+        const f30 = facteurNet(retraite(2_500), stubPaliers);
+        expect(f30).toBeCloseTo(facteurAttendu(30_000), 6);
+        expect(f30).toBeCloseTo(0.888889, 5);
+
+        // 96 000 $ : la tranche descend de 96 000 à 78 000, entièrement au-dessus du 2e coude.
+        //   impôt(96 000) = 8 000 + 18 000 = 26 000 ; impôt(78 000) = 8 000 + 9 000 = 17 000
+        //   → facteur = 1 − 9 000/18 000 = 0,5.
+        const f96 = facteurNet(retraite(8_000), stubPaliers);
+        expect(f96).toBeCloseTo(facteurAttendu(96_000), 6);
+        expect(f96).toBeCloseTo(0.5, 6);
+
+        // ⚠️ LE point qui rend ces deux ancrages non vacueux : ils encadrent 0,7. Un retour au
+        // facteur plat rendrait 0,7 pour les DEUX, donc échouerait des deux côtés — et une
+        // perturbation qui annule le contexte incrémental (`revenuSansRentes = 0`) rendrait
+        // 1 − impôt(revenu)/rentes, soit −0,444 et −0,444 : hors de portée des deux ancrages.
+        expect(f30).toBeGreaterThan(0.7);
+        expect(f96).toBeLessThan(0.7);
+    });
+
+    it('la BASE soustraite est la rente RÉELLE, pas l’estimé de saisie — discrimine l’erreur d’unité', () => {
+        // Même ménage, mêmes estimés de saisie (donc MÊME VAN brute), mais des rentes réellement
+        // versées deux fois plus élevées : seul le facteur peut bouger. Une base reconstruite depuis
+        // `governmentPension`/`rrqEstimateMonthly` (le premier jet de ce lot) rendrait la MÊME valeur.
+        // ⚠️ Revenu de contexte choisi pour que les deux tranches ne tombent PAS dans le même
+        // palier — à 96 000 $, les tranches 18 000 et 36 000 rendent toutes deux 0,5 par pure
+        // coïncidence du barème, et le test serait vacueux (constaté à l'exécution, pas déduit).
+        // À 70 000 $ : tranche 18 000 → de 70 000 à 52 000, à cheval sur le 2e coude ;
+        //              tranche 36 000 → de 70 000 à 34 000, à cheval sur les DEUX coudes.
+        const contexte = { ...retraite(70_000 / 12) };
+        const petites = facteurNet(contexte, stubPaliers);
+        const grandes = facteurNet({ ...contexte, pensionRrqMonthlyFinal: 1_800, pensionPsvMonthlyFinal: 1_200 }, stubPaliers);
+        expect(petites).toBeCloseTo(1 - (paliers(70_000) - paliers(70_000 - 18_000)) / 18_000, 6);
+        expect(grandes).toBeCloseTo(1 - (paliers(70_000) - paliers(70_000 - 36_000)) / 36_000, 6);
+        expect(petites).toBeCloseTo(0.633333, 5);
+        expect(grandes).toBeCloseTo(0.716667, 5);
+        expect(grandes - petites).toBeGreaterThan(0.05);
+    });
+
+    it('BRANCHE PRÉ-RETRAITE : le contexte est la rente elle-même, JAMAIS le salaire', () => {
+        // Horizon qui s'arrête AVANT la retraite → aucune rente versée, `estateCurrentIncome` est un
+        // SALAIRE (ici 70 000 × 1,02^20 ≈ 104 000 $). Mesurer un taux marginal au sommet de ce salaire
+        // pour taxer des rentes encaissées 10 ans plus tard rendait 0,52 — PIRE que le 0,7 remplacé.
+        const preRetraite: EstateCalcInputs = {
+            ...base, currentAge: 35, retirementTargetAge: 65, simulationYears: 20,
+            pensionRrqMonthlyFinal: 0, pensionPsvMonthlyFinal: 0,
         };
-        const sans = vanNette(sansImpot);
-        const avec = vanNette(stubProgressif);
-        expect(sans, 'VAN nulle → le test ne mesurerait rien').toBeGreaterThan(1000);
-        // Sous un barème qui impose, la VAN nette DOIT être plus basse. Avec `× 0,7` en dur, les
-        // deux valent 0,7 × VAN — strictement égales.
-        expect(avec).toBeLessThan(sans * 0.95);
+        const f = facteurNet(preRetraite, stubPaliers);
+        // La rente valorisée à l'année finale : 1 200 $/mois × 12 × 1,02^20 = 21 388 $.
+        const renteValorisee = 1_200 * 12 * Math.pow(1.02, 20);
+        expect(f).toBeCloseTo(1 - paliers(renteValorisee) / renteValorisee, 6);
+        // DISCRIMINANT : le salaire ne doit avoir AUCUNE influence. Doubler le salaire de base
+        // change `estateCurrentIncome` du simple au double ; le facteur, lui, ne doit pas bouger.
+        const fSalaireDouble = facteurNet({ ...preRetraite, grossMarcBaseAnnual: 140_000 }, stubPaliers);
+        expect(fSalaireDouble).toBeCloseTo(f, 10);
     });
 
-    it('le facteur DÉCROÎT quand le revenu monte — ce qu’un facteur plat ne peut pas faire', () => {
-        const fModeste = facteurNet({ ...retraite, incomeRetirement: 0 });
-        const fAise = facteurNet({ ...retraite, incomeRetirement: 8000 });
-        expect(fAise).toBeLessThan(fModeste);
-        // Et il descend VRAIMENT (le stub prélève 40 % au-delà du seuil), pas d'un epsilon.
-        expect(fModeste - fAise).toBeGreaterThan(0.2);
+    it('CONTEXTE STRUCTUREL : un retrait REER d’UNE année ne pilote pas 25 ans de VAN', () => {
+        // `accRetraitsReerYear` est le décaissement de la SEULE dernière année — il dépend de la
+        // stratégie et de l'endroit où l'utilisateur coupe l'horizon. L'inclure faisait BASCULER
+        // le gagnant de `compareLifeScenarios` au gré du curseur d'horizon (mesuré : MELTDOWN_REER
+        // gagnait à 28 et 30 ans, AUTO_MARGINAL à 33 et 35 — inversion que `main` n'a pas).
+        const sans = facteurNet(retraite(2_500), stubPaliers);
+        const avec = facteurNet({ ...retraite(2_500), accRetraitsReerYear: 200_000 }, stubPaliers);
+        expect(avec).toBeCloseTo(sans, 10);
+        // Contre-preuve que la fixture EXERCE bien le terme : le même montant en revenu STRUCTUREL
+        // (loyers) doit, lui, faire chuter le facteur — sinon ce test ne prouverait rien.
+        const structurel = facteurNet({ ...retraite(2_500), accRentesYear: 200_000 }, stubPaliers);
+        expect(structurel).toBeLessThan(sans - 0.3);
     });
 
-    it('le facteur reste BORNÉ à [0, 1] — un barème ne confisque ni ne rembourse la rente', () => {
+    it('le facteur ne descend jamais SOUS 0 — un barème ne confisque pas plus que la rente', () => {
+        // ⚠️ Seule la borne BASSE est atteignable : `impotSurRentes` est clampé à ≥ 0 et le
+        // dénominateur est > 0, donc le ratio est ≤ 1 par construction. Le `Math.min(1, …)` du code
+        // est une ceinture contre une entrée aberrante, pas une branche testable — d'où l'intitulé,
+        // qui ne promet plus « borné à [0, 1] » comme le faisait mon premier jet.
         const confiscatoire = (gross: number): FiscalReport => ({ totalTax: Math.max(0, gross) * 2 } as FiscalReport);
-        // ⚠️ `incomeRetirement` NON NUL, sinon la soustraction des rentes est clampée à 0, l'impôt
-        // incrémental vaut 0 et le clamp n'est jamais sollicité — mon premier jet était vacueux
-        // pour cette raison exacte (perturbation : retirer le clamp ne faisait rien rougir).
-        const avec = computeEstateNetWorth({ ...retraite, incomeRetirement: 8000 }, confiscatoire);
-        const vanNette = avec.estateNetWorth - avec.finalRawNetWorth + avec.totalEstateTax;
-        // Clampé à 0 : la VAN n'ajoute rien, mais elle ne doit JAMAIS soustraire du patrimoine.
-        expect(vanNette).toBeGreaterThanOrEqual(0);
+        const r = computeEstateNetWorth(retraite(8_000), confiscatoire);
+        expect(vanNette(r)).toBeGreaterThanOrEqual(0);
     });
 });

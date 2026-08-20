@@ -844,6 +844,48 @@
 > sont désormais tous inventoriés et tracés dans `utils/fiscalConstGuardV2.ts` : aucun ne peut plus
 > disparaître en silence. Trois DÉCOUVERTES s'y sont ajoutées (juste après).
 
+- [ ] **`[ESTATE-NPV-BASE-REELLE]`** (M, **ÉLEVÉ** — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
+  la VAN des rentes publiques (`services/projection/estateCalculation.ts`, bloc `rrqExpected`/`psvExpected`)
+  est bâtie sur l'estimé de SAISIE (`rrqEstimateMonthly` ou le split 65/35 de `governmentPension`)
+  indexé à l'inflation, **pas** sur la rente que le moteur verse réellement. Elle ignore donc
+  `rrqProrata` (gains/MGA × années de résidence). **MESURÉ** sur la fixture divorce : VAN RRQ
+  599 584 $ contre 470 081 $ à partir de la rente réellement versée → **+129 503 $ de VAN
+  surévaluée**. Le lot `[ESTATE-NPV-07]` a plombé la vraie rente (`pensionRrqMonthlyFinal`…) mais
+  **uniquement pour le facteur d'impôt**, pas pour la VAN elle-même — les deux grandeurs divergent
+  donc encore. C'est aussi la cause de la discontinuité résiduelle à la frontière de retraite
+  (facteur 0,9068 juste avant, 1,0000 juste après, mesuré sur un horizon qui bouge d'UN an).
+  ⚠️ Toucher à la VAN re-base des goldens ET peut déplacer le classement de `compareLifeScenarios` —
+  vérifier le classement à 25/28/30/33/35 ans avant/après, comme #671 l'a fait.
+
+- [ ] **`[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`** (M, MOYEN — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
+  le facteur net d'impôt de la VAN se calcule sur le revenu de retraite d'UN SEUL point (l'année
+  finale) alors qu'il valorise 25 ans de rentes. #671 a retenu un contexte **structurel**
+  (`incomeRetirement × 12 + accRentesYear`, hors retrait REER ponctuel) parce que c'est la seule
+  variante qui ne fait pas basculer la recommandation de décaissement au gré du curseur d'horizon —
+  mais l'hypothèse a un sens d'erreur ASSUMÉ : pour un retraité qui décaisse son REER/FERR chaque
+  année, elle sous-estime le revenu récurrent, donc **surestime** le facteur (0,9335 au lieu de
+  0,8987 mesuré sur la fixture divorce). Le correctif propre est un revenu de retraite MOYEN sur les
+  années restantes. ⚠️ `estateNetWorth` est l'objectif de tri de `drawdownOptimizer.ts` et le score
+  `wealth` de `strategyRanking.ts` : toute variante doit être mesurée sur le CLASSEMENT, pas seulement
+  sur la valeur.
+
+- [ ] **`[ESTATE-COUPLE-DECLARANT-UNIQUE]`** (M, MOYEN — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
+  `estateCalculation.ts` empile la liquidation successorale sur UNE déclaration (hypothèse du double
+  décès, correcte pour la liquidation). `[ESTATE-NPV-07]` réutilise ce même revenu mono-déclarant
+  pour taxer la VAN — or cette VAN représente des rentes encaissées **par deux personnes, sur deux
+  déclarations, pendant 25 ans**. Le barème étant progressif, l'abattement est structurellement trop
+  élevé pour un couple. Hypothèse de modèle NOUVELLE, à > 100 k$ d'impact, écrite nulle part hors du
+  commentaire de code. **Correctif** : soit ventiler la VAN par conjoint avant d'appliquer le barème,
+  soit documenter l'hypothèse dans `docs/PROJECTION.md` et la nommer dans l'UI.
+
+- [ ] **`[ESTATE-LIFEEXPECTANCY-95-DUR]`** (S, MOYEN — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
+  `services/projection/estateCalculation.ts` fixe `lifeExpectancy = 95` **en dur** pour le nombre
+  d'années de rentes restantes, alors que `retirementGoal.lifeExpectancy` existe (`types.ts`, défaut
+  90 ; 90/92/94 selon les personas) et est **ignoré**. Piège d'HOMONYME à deux niveaux : l'entrée du
+  ratchet `utils/fiscalConstGuardV2.ts` justifie ce 95 en disant qu'il est « explicitement nommé
+  `lifeExpectancy` » — ce qui est précisément ce qui masque le no-op. Un utilisateur qui règle son
+  espérance de vie à 90 voit toujours 95 ans de rentes valorisés. ⚠️ Re-baserait des goldens.
+
 - [ ] **`[AE-PLAFOND-MANQUANT]`** (S, **ÉLEVÉ** — découvert en revue de `[FISC-GUARD-SCOPE]`) —
   `services/projection/activeIncome.ts:70` applique le taux de remplacement de l'assurance-emploi
   (`incomeMarc *= 0.55`, commentaire du code : « Job loss (AE 55%) ») **au salaire NET et SANS

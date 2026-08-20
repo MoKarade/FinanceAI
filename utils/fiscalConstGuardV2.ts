@@ -280,7 +280,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Taux d’actualisation réel de la VAN des rentes (`r_npv` = 2 %). Hypothèse financière de modèle. Le `1.02` des deux lignes de VAN (RRQ et PSV) en est le reflet et doit bouger AVEC lui — piège de duplication signalé par `[ESTATE-NPV-07]`.' },
     { file: 'services/projection/estateCalculation.ts', value: '65', family: 'fiscal',
       reason: '[×2] Âge pivot des rentes publiques (RRQ/PSV), pour la RRQ et pour la PSV, pour décider si la rente est déjà en cours. Vrai paramètre fédéral/QC, ancré FISCAL_REFERENCE §6.' },
-    
+
     // ── services/projection/activeIncome.ts ──────────────────────────────────────────────────
     { file: 'services/projection/activeIncome.ts', value: '0.55', family: 'fiscal',
       reason: '[≠3] DEUX SENS, et mon premier tri s’est trompé sur le principal (revue 2026-08-20). `incomeMarc *= 0.55`, sous le commentaire « Job loss (AE 55%) », — est le TAUX DE REMPLACEMENT STATUTAIRE de l’assurance-emploi (55 % des gains assurables, Loi sur l’AE) : une PRESTATION fédérale, à ancrer §2 à côté de `AE_RATE_QC`/`AE_MAX_INCOME`, et de MÊME nature que le 0,55 du RQAP — pas « sans rapport » comme je l’avais écrit. Les deux applications aux bonus/RSU, elles, sont un PROXY de charge fiscale sur les bonus/RSU/revenus d’appoint (le commentaire du bloc dit « taxés ~45 % marginal ») : celles-là sont bien du design. La famille retenue est la plus stricte des deux. ⚠️ Défaut VOISIN relevé au passage : le 55 % est appliqué au net NON PLAFONNÉ, alors que l’AE est plafonnée à 68 900 $ — ticket `[AE-PLAFOND-MANQUANT]`.'},

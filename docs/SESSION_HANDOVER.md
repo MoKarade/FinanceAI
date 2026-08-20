@@ -13,14 +13,31 @@
 > (facteur net réel mesuré : 0,94 pour un ménage vivant de ses rentes, 0,594 à 100 k$ d'autre
 > revenu). Remplacé par un abattement CALCULÉ, patron déjà présent 40 lignes plus haut.
 >
-> **Goldens re-basés** : +144 924 $, +128 464 $, et +42 262 $ (**+29,3 %** — cette fixture finit
-> insolvable, donc son patrimoine successoral EST la VAN des rentes).
+> **Goldens re-basés** : +215 407 $, +215 407 $ (même écart au dollar près — la VAN ne dépend pas
+> du tirage MC), et +29 061 $ (**+20,2 %** — cette fixture finit insolvable, donc son patrimoine
+> successoral EST la VAN des rentes).
+>
+> ⚠️⚠️⚠️ **LA REVUE A DÉMOLI MON PREMIER JET — trois défauts non bornés, tous MESURÉS.** Le lot
+> corrigeait bien un vrai défaut, mais il échangeait un biais BORNÉ et connu (30 pts) contre :
+> (1) un **contresens sur toute la population pré-retraite** — un salaire n'est pas le contexte
+> fiscal d'une rente encaissée 10 ans plus tard : facteur 0,52, soit **pire que le 0,7 remplacé**,
+> −158 543 $ mesuré, et **1 seul test au monde sur 4 495** voyait cette branche ;
+> (2) une **tranche soustraite fausse de 29 %** (estimé de saisie non indexé, sans prorata, SRG
+> absent) dont l'erreur était **maximale sur les ménages modestes que le lot prétend servir** ;
+> (3) un **basculement de la recommandation de décaissement** — `estateNetWorth` n'est pas qu'un
+> chiffre d'écran : `drawdownOptimizer` trie DESSUS et publie « Meilleur avenir : X ».
+> Correctifs : rente RÉELLE plombée depuis la boucle, branche pré-retraite traitée explicitement,
+> contexte STRUCTUREL (hors retrait REER ponctuel — seule variante qui reproduit l'ordre de `main`
+> à tous les horizons mesurés).
 >
 > ⚠️⚠️ **TROIS de mes tests étaient vacueux, tous démasqués par PERTURBATION** : le `fiscalStub`
 > partagé du fichier est un taux PLAT (30 %) qui rendait le correctif strictement invisible ; mon
 > facteur dérivé par RATIO annulait tout facteur constant ; et mon test du clamp utilisait une
 > fixture qui désactivait la branche testée. Verts et sérieux d'apparence, tous les trois
 > (`UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR`).
+> ⚠️ Puis mon SECOND jet de tests l'était encore : le stub « progressif » `(g − 20 000) × 0,4` est
+> **affine**, donc à pente CONSTANTE au-dessus du coude. Les cinq tests actuels sont prouvés
+> discriminants par cinq perturbations distinctes.
 >
 > ⚠️ **Faux raisonnement rattrapé de justesse** : `accRentesYear` cumule les LOYERS malgré son nom
 > (`realEstateMonth.ts`), pas les rentes publiques — ce sont `incomeRetirement * 12`. J'ai failli

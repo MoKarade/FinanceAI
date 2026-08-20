@@ -171,7 +171,24 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   constant** (diviser la grandeur par elle-même sous un autre stub ne prouve rien — comparer DEUX
   barèmes), et une **fixture peut désactiver la branche testée** (`incomeRetirement: 0` clampait la
   soustraction, donc le clamp n'était jamais sollicité). Perturber assertion par assertion, jamais
-  une fois pour le lot (`UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR`).
+  une fois pour le lot (`UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR`). ⚠️ Mon 2e jet a
+  re-commis la faute d'un cran : `(g − 20 000) × 0,4` est **affine**, donc à pente CONSTANTE au-dessus
+  du coude — un stub n'est progressif qu'avec ≥ 2 coudes ET des points de mesure strictement positifs
+  de part et d'autre. Et un « A ≠ B » se vérifie en LANÇANT (deux tranches ont rendu 0,5 par coïncidence).
+- ⚠️ **Un correctif peut être PIRE que le défaut sur une BRANCHE** : remplacer un forfait par un
+  calcul n'est un progrès que là où les entrées du calcul ont un sens. Taxer une rente au taux
+  marginal d'un SALAIRE qui aura cessé rendait 0,52 contre le forfait 0,7 — −158 543 $, et **1 seul
+  test sur 4 495** voyait cette branche. Trois corollaires : un biais BORNÉ et connu vaut mieux qu'un
+  calcul exact hors contexte ; **« aucun golden n'a bougé » est un résultat à EXPLIQUER** (ici ça
+  mesurait l'absence de COUVERTURE, pas l'absence d'effet) ; et **un chiffre d'écran peut être une
+  FONCTION OBJECTIF** — `estateNetWorth` est TRIÉ par `drawdownOptimizer` et publié comme « Meilleur
+  avenir : X », donc le rendre dépendant de l'état final a fait basculer le conseil de décaissement
+  au gré du curseur d'horizon. Grepper qui TRIE/compare/maximise une grandeur, pas seulement qui
+  l'affiche, et mesurer le CLASSEMENT avant/après (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`).
+- ⚠️ **La tranche retirée d'une assiette doit être la grandeur RÉELLE, pas l'estimé de saisie** :
+  soustraire l'estimé non indexé, sans prorata et sans SRG d'un revenu nominal faisait −29 % sur le
+  seul dénominateur — rien ne crie. Signal : **la même variable indexée à 40 lignes d'écart et pas
+  à l'autre** ; quand deux usages d'un même symbole divergent dans un même bloc, l'un est faux.
 - ⚠️ **Câbler une année, c'est câbler une PAIRE** : j'ai passé l'année courante à l'inversion
   net→brut de `TaxCenter` et laissé `calculateFiscalReport` à son défaut 2026 trois lignes plus bas.
   Avant, les DEUX étaient à 2026 — donc cohérents. Après, 212 $/an d'écart dès 2027. **Améliorer un

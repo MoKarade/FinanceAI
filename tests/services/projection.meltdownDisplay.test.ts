@@ -132,11 +132,14 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // de taxDecember.test.ts qui le fait.
         const melt = runWith('MELTDOWN_REER' as AllocationStrategy);
         expect(melt.finalNetWorth).toBeCloseTo(-7209.82, 0);
-        // ⚠️ RE-BASÉ le 2026-08-20 par `[ESTATE-NPV-07]` : 144 219,86 $ → 186 481,96 $
-        // (+42 262,10 $, +29,3 %). L'écart RELATIF est énorme ici parce que cette fixture finit
+        // ⚠️ RE-BASÉ le 2026-08-20 par `[ESTATE-NPV-07]` : 144 219,86 $ → 173 280,52 $
+        // (+29 060,66 $, +20,2 %). L'écart RELATIF est énorme ici parce que cette fixture finit
         // INSOLVABLE (`finalNetWorth = −7 209 $`) : son patrimoine successoral est presque
-        // entièrement la VAN des rentes publiques. C'est exactement la population que le facteur
-        // plat de 0,7 pénalisait le plus — un ménage sans actifs paie peu d'impôt sur ses rentes.
-        expect(melt.estateNetWorth).toBeCloseTo(186481.96, 0);
+        // entièrement la VAN des rentes publiques (216 328 $ brut).
+        // MESURÉ sur ce point : rentes publiques réellement versées 11 369 $/an, DANS un revenu de
+        // retraite de 37 435 $ (le reste est une pension privée) → impôt incrémental 1 883 $, soit
+        // un facteur net de 0,8343 et non 0,70. Le REER étant déjà vidé à 87 ans, le contexte
+        // structurel et le contexte total coïncident ici : ce point n'exerce PAS cette branche.
+        expect(melt.estateNetWorth).toBeCloseTo(173280.52, 0);
     });
 });

@@ -4797,8 +4797,19 @@ que le stub reproduisait la FORME du défaut qu'on corrigeait.
 **La règle** : avant d'écrire un test sur un correctif, regarder ce que le stub/la fixture partagée
 suppose. Si elle a la même forme que le défaut (plat contre plat, linéaire contre linéaire, uniforme
 contre uniforme), elle ne peut RIEN distinguer. Il faut un stub dont la forme est structurellement
-différente — ici un barème progressif minimal (0 % sous un seuil, 40 % au-delà), qui suffit à
-séparer un facteur contextuel d'un facteur constant sans dépendre du vrai barème.
+différente — ici un barème à plusieurs PALIERS.
+
+⚠️⚠️ **Et mon second jet a re-commis la même faute d'un cran.** J'avais remplacé le stub plat par
+`(gross − 20 000) × 0,4` en le croyant « progressif ». Il ne l'est pas : c'est un **affine**, dont la
+pente est CONSTANTE à 40 % au-dessus du coude. Mes deux points de mesure tombaient l'un sur la
+branche dégénérée (revenu nul → impôt incrémental nul par le clamp), l'autre en pleine zone plate.
+MESURÉ par perturbation : les trois tests restaient VERTS en annulant tout le contexte incrémental
+**et** en changeant la base soustraite de +81 %. Un stub n'est « progressif » que s'il a au moins
+**deux coudes** et que les points de mesure sont **strictement positifs et de part et d'autre** —
+sinon il reste, localement, exactement le stub plat qu'on croyait avoir remplacé.
+⚠️ Corollaire mesuré à l'exécution : deux tranches différentes peuvent rendre le MÊME facteur par
+coïncidence du barème (à 96 k$, les tranches 18 k$ et 36 k$ rendaient toutes deux 0,5). Un test
+« A ≠ B » doit donc être vérifié en le LANÇANT, jamais admis parce que les entrées diffèrent.
 
 ⚠️ **Deux autres vacuités du même lot, toutes deux trouvées par PERTURBATION et non à la lecture** :
 
@@ -4813,6 +4824,53 @@ séparer un facteur contextuel d'un facteur constant sans dépendre du vrai bar�
 
 Les trois étaient VERTES et paraissaient sérieuses. Seule la perturbation les a démasquées — c'est
 la seule preuve qui vaille, et il faut la faire assertion par assertion, pas une fois pour le lot.
+
+### `UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`
+
+Toujours `[ESTATE-NPV-07]`, mais c'est la revue qui l'a trouvé, pas moi. Le lot remplaçait un facteur
+plat de 0,7 par un facteur calculé sur le revenu du ménage à l'horizon. Sur la branche **retraitée**,
+c'est juste. Sur la branche **NON retraitée** — l'horizon s'arrête avant l'âge de retraite —
+`estateCurrentIncome` est un **SALAIRE**, et le code mesurait le taux marginal au sommet de ce
+salaire pour taxer des rentes encaissées dix ans plus tard, une fois le salaire disparu. Facteur
+rendu : **0,52**. Le forfait de 0,7 qu'on remplaçait était donc **PLUS JUSTE** sur toute cette
+population — mesuré **−123 000 à −158 543 $** de patrimoine successoral affiché.
+
+Trois enseignements distincts :
+
+1. **Un biais BORNÉ et connu vaut mieux qu'un calcul « exact » appliqué au mauvais contexte.**
+   Remplacer un forfait par un calcul n'est un progrès que là où les entrées du calcul ont un sens.
+   Avant de supprimer une constante de modèle, énumérer les branches où elle s'appliquait et vérifier
+   que le remplaçant a une entrée VALIDE sur chacune — sinon garder le forfait sur celles-là,
+   explicitement et nommément.
+2. **« Aucun golden n'a bougé » est un résultat à EXPLIQUER.** Le silence des goldens m'avait
+   confirmé un périmètre restreint. La revue a mesuré pourquoi : en annulant COMPLÈTEMENT la VAN sur
+   la branche non-retraitée, **1 seul test rouge sur 4 495**, et c'était un legacy `toBeGreaterThan(0)`.
+   Aucune fixture, aucun persona, aucun golden n'exerçait cette branche. Le silence ne prouvait pas
+   l'absence d'effet, il prouvait l'absence de COUVERTURE.
+3. **Un chiffre d'écran peut être une FONCTION OBJECTIF.** `estateNetWorth` n'alimente pas que des
+   affichages : `drawdownOptimizer.ts` **trie dessus** et publie « Meilleur avenir : X »,
+   `strategyRanking.ts` en fait le score de l'objectif `wealth`, et deux outils MCP l'exposent au LLM.
+   Tant que le terme était identique pour toutes les stratégies (facteur plat), il s'annulait au tri ;
+   dès qu'il dépend de l'état final, il **classe**. Mesuré, en ne bougeant QUE l'horizon :
+
+   | contexte du facteur | gagnant à 25 / 28 / 30 / 33 / 35 ans |
+   |---|---|
+   | revenu TOTAL de l'année finale (1er jet) | MELTDOWN · **MELTDOWN** · **MELTDOWN** · AUTO · AUTO |
+   | revenu STRUCTUREL, hors retrait REER ponctuel | MELTDOWN · AUTO · AUTO · AUTO · AUTO |
+   | `origin/main` (0,7 plat) | MELTDOWN · AUTO · AUTO · AUTO · AUTO |
+
+   Le conseil de décaissement changeait de gagnant **au gré du curseur d'horizon**. Avant de rendre
+   une grandeur dépendante de l'état, grepper qui la **trie**, la **compare** ou la **maximise** —
+   pas seulement qui l'affiche. Et mesurer le CLASSEMENT avant/après, pas seulement la valeur.
+
+⚠️ **La tranche qu'on retire d'une assiette doit être la grandeur RÉELLE, pas son estimé de saisie.**
+Quatrième défaut du même lot : je soustrayais `rrqMonthlyFamily × 12` (l'estimé saisi par
+l'utilisateur) d'un revenu NOMINAL, alors que trois écarts s'accumulaient — dollars d'aujourd'hui
+contre dollars de l'année finale (×1,64 à 25 ans), prorata de gains/résidence absent (mesuré 0,784),
+et SRG présent dans le revenu mais absent de la tranche. Total : **−29 %**. Le numérateur était bon,
+seul le dénominateur était faux, donc rien ne criait. Signal à retenir : **la même variable est
+multipliée par un facteur d'indexation à 40 lignes d'écart et pas à l'autre** — quand deux usages
+d'un même symbole divergent dans un même bloc, l'un des deux est faux.
 
 ⚠️ **Bonus, sur le nommage** : j'ai justifié une soustraction par le terme `accRentesYear` — qui,
 malgré son nom, cumule les **LOYERS** (`realEstateMonth.ts : accRentesYear += rentalIncome`). Ce

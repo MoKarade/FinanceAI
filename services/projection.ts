@@ -2162,6 +2162,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // comme dans le revenu de retraite (plus de divergence silencieuse).
         rrqEstimateMonthly: retirementGoal.rrqEstimateMonthly,
         psvEstimateMonthly: retirementGoal.psvEstimateMonthly,
+        // [ESTATE-NPV-07] Rentes RÉELLEMENT versées au dernier point (nominal, familial) : elles
+        // portent le prorata gains/résidence et l'indexation que les estimés de saisie ci-dessus
+        // n'ont pas. Elles ne servent QU'À isoler la tranche imposable dans le facteur net d'impôt
+        // de la VAN — la VAN elle-même reste bâtie sur les estimés (convention FA-8 inchangée).
+        pensionRrqMonthlyFinal: pensionRRQ,
+        pensionPsvMonthlyFinal: pensionPSV,
+        pensionGisMonthlyFinal: incomeRetirementGis,
         // [ENG-DIVORCE-ESTATE-PENSION] Le compteur de TÊTES : il MULTIPLIE ici un estimé
         // per-personne pour reconstituer le familial — sémantique INVERSE de `retirementIncome`,
         // où le même nom désigne un DIVISEUR d'agrégat. D'où une lecture ligne à ligne avant de

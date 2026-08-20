@@ -15,8 +15,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   ~40 % avec un gros revenu de retraite à côté. Le forfait pénalisait donc le plus les ménages
   modestes.
 - L'abattement est maintenant **calculé** sur ta situation. Effet mesuré sur nos scénarios de
-  référence : **+144 924 \$** et **+42 262 \$** de patrimoine successoral, ce dernier valant **+29 %**
+  référence : **+215 407 \$** et **+29 061 \$** de patrimoine successoral, ce dernier valant **+20 %**
   pour un ménage sans actifs qui vit de ses rentes.
+- **Si ta projection s'arrête AVANT ta retraite**, l'impôt est estimé sur les rentes elles-mêmes et
+  non sur ton salaire de l'époque : ces rentes, tu les toucheras une fois le salaire arrêté. Un
+  premier jet les taxait au taux de ton salaire, ce qui aurait affiché jusqu'à **158 000 \$ de moins**
+  qu'avant le correctif.
+- L'estimation ne dépend **pas** d'un retrait REER ponctuel de ta dernière année simulée : sans cela,
+  la stratégie de décaissement recommandée changeait selon l'endroit où tu coupes ton horizon.
 
 ---
 

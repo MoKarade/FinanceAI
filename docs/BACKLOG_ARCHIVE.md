@@ -10,6 +10,28 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-20 — [FISC-RRSP-ROOM-PER-USER] : les droits REER se calculent par personne (règle ARC)
+
+- [x] **`[FISC-RRSP-ROOM-PER-USER]`** (M, ÉLEVÉ) — ✅ 2026-08-20, PR à compléter au merge.
+
+**Décision Marc A1 (ADR 0014)** : « par personne ». `taxJanuary.ts` calculait les droits sur le
+revenu du MÉNAGE (`min(cap × N, Σrevenus × 18 %) − ΣFE`) — le plafond de DEUX personnes s'appliquait
+au revenu d'UNE seule. Désormais : `room_i = max(0, min(cap, revenu_gagné_i × 18 %) − FE_i)`, sommé.
+
+**Ventilation à la SOURCE** : `activeIncome` retourne `accGrossAddByUser` ([Marc, Anna] — chômage/LTD
+neutralise le brut du SEUL touché, survivant celui d'Anna) ; le congé parental (`childrenReee`)
+s'attribue à l'index 1 (toujours Anna dans ce modèle). **Le scalaire ménage est SUPPRIMÉ** (plus
+aucun lecteur) : un total se dérive, il ne se co-tient pas (`PARTAGER-LE-MONTANT-PAS-SES-REFLETS`).
+
+**MESURÉ avant/après** (janvier 2027, barème estimé) : mono-gagnant 250 k$ : **45 000 → 34 480 $**
+(−10 520, le chiffre du ticket au dollar) · couple 125/125 : inchangé · 90/10 sous plafond :
+inchangé · FE croisé (conjoint sans revenu, FE 8 k$) : **10 000 → 18 000 $** — le FE ne traverse
+plus les conjoints, et un FE > droits d'un conjoint ne devient jamais négatif (clamp par personne).
+
+**Garde** : `tests/services/rrspRoomPerUser.test.ts` (7 tests) — pins mesurés + ancres négatives
+contre le calcul ménage + invariant Σ(ventilation) == scalaire d'activeIncome. Perturbation :
+calcul ménage restauré → 3 rouges exactement (l'« équilibré » reste vert : non-régression prouvée).
+
 ## 2026-08-20 — [FISC-TAXDEC-INCR] (a) : les bandes de décembre portent l'érosion des crédits d'âge
 
 - [x] **`[FISC-TAXDEC-INCR]`** (S, ÉLEVÉ) — ✅ 2026-08-20, PR #676.

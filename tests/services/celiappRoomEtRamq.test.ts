@@ -43,9 +43,11 @@ const janCtx = (o: Partial<JanuaryContext> = {}): JanuaryContext => ({
     celiappOpeningYear: 2026, fhsaEligibleUsersCount: 2,
     users: [{ birthYear: 1986 }, { birthYear: 1988 }],
     celiapp: 0, reer: 100000, liquid: 50000, nonReg: 0, crypto: 0, celi: 0,
-    accGrossIncomeYear: 160000, accRetraitsReerYearOld: 0, incomeRetirementMonthly: 0,
+    accRetraitsReerYearOld: 0, incomeRetirementMonthly: 0,
     fhsaRoomCurrent: 0, fhsaLifetimeContrib: 0, celiRoomCurrent: 0, rrspRoomCurrent: 0,
     taxCurrentYearGains: 0, prevPortfolioNW: 0, loopYear: 2027, reerByUser: [100000],
+    // [FISC-RRSP-ROOM-PER-USER] couple à revenus égaux : 160 000 réparti 80/80 (Σ == scalaire).
+    accGrossIncomeYearByUser: [80000, 80000],
     ...o,
 });
 

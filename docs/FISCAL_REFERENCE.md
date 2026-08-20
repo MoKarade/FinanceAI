@@ -685,10 +685,14 @@ moins le facteur d'équivalence, plafonné par `RRSP_ANNUAL_LIMITS`. Source : AR
 > ⚠️ Corrigé le 2026-08-06 : cette ligne disait « 18 % du **brut** », ce qui contredisait la règle
 > ARC 146(1) ET le code (`activeIncome.ts:113-120` neutralise le salaire pendant AE/LTD). Une source
 > de vérité qui se contredit fabrique un faux finding à la session suivante.
-> ⚠️ **Approximation MÉNAGE assumée** : `taxJanuary.ts` calcule les droits sur le revenu du MÉNAGE
-> (`min(plafond × nb_conjoints, revenu_ménage × 18 %)`), alors que la règle ARC est **par personne**.
-> Mesuré sur un ménage à 250 k$ avec un seul gagnant : 45 000 $ accordés vs 34 480 $ dus. Corriger
-> serait un changement de MODÈLE → `[FISC-RRSP-ROOM-PER-USER]`, en attente d'arbitrage.
+> ✅ **PAR PERSONNE depuis le 2026-08-20** (`[FISC-RRSP-ROOM-PER-USER]`, décision Marc A1, ADR
+> 0014) : `taxJanuary.ts` calcule désormais `room_i = max(0, min(plafond, revenu_gagné_i × 18 %)
+> − FE_i)` par personne puis somme — la règle ARC. Le revenu gagné est ventilé à la SOURCE
+> (`accGrossAddByUser` d'`activeIncome`, congé parental attribué au parent en congé) ; l'ancien
+> agrégat ménage est SUPPRIMÉ (aucun co-registre qui pourrait diverger). MESURÉ avant/après :
+> mono-gagnant 250 k$ : 45 000 → 34 480 $ (−10 520, le chiffre du ticket au dollar) ; couple
+> 125/125 : inchangé (45 000) ; 90/10 sous plafond : inchangé (36 000) ; le FE d'un conjoint
+> sans revenu ne réduit PLUS le room de l'autre (10 000 → 18 000, clamp par personne).
 
 ### FERR / RRIF — conversion et retrait minimum (`services/projection/helpers.ts:RRIF_RATES`)
 **Règle ARC.** La conversion REER→FERR est obligatoire **au plus tard à la fin de l'année des

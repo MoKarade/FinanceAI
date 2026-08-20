@@ -4,6 +4,17 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-20 (suite 120) — [FISC-RRSP-ROOM-PER-USER] : droits REER par personne (règle ARC)
+> Branche `claude/rrsp-room-per-user` (depuis main post-#676). Décision Marc A1 « par personne »
+> appliquée : `taxJanuary` calcule `room_i = max(0, min(cap, revenu_gagné_i × 18 %) − FE_i)` sommé,
+> le revenu gagné est VENTILÉ à la source (`accGrossAddByUser`, congé parental → index 1), et le
+> scalaire ménage est SUPPRIMÉ (aucun lecteur restant — un total se dérive, il ne se co-tient pas).
+> MESURÉ : mono-gagnant 250 k$ 45 000 → 34 480 (le ticket au dollar) ; équilibré/90-10 inchangés ;
+> le FE d'un conjoint sans revenu ne vole plus le room de l'autre (10 000 → 18 000). 7 tests neufs,
+> perturbation « retour au ménage » → 3 rouges exacts. Push sans leçon NOUVELLE (les classes
+> existantes ont suffi — l'ancre [2026] au lieu de [2027] du premier jet est une récidive connue
+> d'ECRIRE-UN-CHIFFRE-SANS-LE-MESURER, attrapée par la mesure avant commit).
+>
 > ## 🟢 Session 2026-08-20 (suite 119) — [FISC-TAXDEC-INCR] : les bandes de décembre portent l'érosion des crédits d'âge
 > Branche `claude/taxdec-incr`, PR #676 (basée sur `main` post-#675, PAS empilée). 2 goldens NW
 > re-basés SCIEMMENT (fixture meltdown 62 ans : −57,98 $, la bande de dividendes du non-enregistré

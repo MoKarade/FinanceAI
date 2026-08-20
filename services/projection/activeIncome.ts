@@ -54,6 +54,10 @@ export interface ActiveIncomeResult {
     incomeAnna: number;
     monthlyIncome: number;
     accGrossAdd: number;
+    /** [FISC-RRSP-ROOM-PER-USER] Ventilation par personne du brut « revenu gagné » mensuel
+     *  ([Marc, Anna]) — Σ == accGrossAdd (invariant testé). La règle ARC calcule les droits
+     *  REER PAR PERSONNE : l'agrégat ménage ne suffit plus. */
+    accGrossAddByUser: [number, number];
     newUnemployedMonths: number;
     newLtdMonths: number;
     ltdLogged: boolean;
@@ -164,12 +168,14 @@ export function computeActiveIncome(
     const currentGrossMarcAnnual = baseGrossMarc + (bonusMonthly1 + rsuMonthly1 + sideMonthly1) * 12;
     const currentGrossAnnaAnnual = baseGrossAnna + (bonusMonthly2 + rsuMonthly2 + sideMonthly2) * 12;
     const accGrossAdd = (currentGrossMarcAnnual + currentGrossAnnaAnnual) / 12;
+    const accGrossAddByUser: [number, number] = [currentGrossMarcAnnual / 12, currentGrossAnnaAnnual / 12];
 
     return {
         incomeMarc,
         incomeAnna,
         monthlyIncome,
         accGrossAdd,
+        accGrossAddByUser,
         newUnemployedMonths: jobLossResult.newMonthsRemaining,
         newLtdMonths: ltdResult.newMonthsRemaining,
         ltdLogged,

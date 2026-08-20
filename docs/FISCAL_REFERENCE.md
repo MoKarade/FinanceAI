@@ -137,6 +137,36 @@
 
 ---
 
+### Prestations RQAP / AE / RRQ — hors assiette de cotisation, imposables (2026-08-20)
+
+Recherche sourcée de Marc (2026-08-20 ; canada.ca, Retraite Québec, dépliant officiel RQAP,
+U. Sherbrooke). **Règle moteur** : l'assiette des cotisations RRQ/RQAP/AE = revenus de **TRAVAIL
+uniquement** (salaire + revenu d'entreprise). Une prestation de remplacement du revenu n'est pas un
+salaire → hors base **par construction** (ces prestations ne figurent pas dans les tables
+« rémunérations non assujetties » de RQ parce qu'elles sont hors du périmètre paie : aucun employeur
+ne les verse).
+
+| Prestation reçue | Impôt | Cotis. RRQ | Cotis. RQAP | Cotis. AE | Retenue à la source |
+|---|---|---|---|---|---|
+| RQAP (maternité, paternité, parentales, adoption) | Oui (féd. + QC) | Non | Non | Non | Impôt retenu d'office |
+| AE (régulières, maladie, proches aidants…) | Oui (féd. + prov.) | Non | Non | Non | Impôt retenu d'office |
+| RRQ (retraite, invalidité, survivant) | Oui | Non | Non | Non | **Aucune par défaut** — sur demande |
+
+> Lecture croisée complète : **aucune** des trois prestations n'est assujettie à **aucune** des
+> trois cotisations. La seule chose prélevable sur ces versements est de l'impôt.
+
+Compléments sourcés du même échange :
+- **Remboursement AE 30 %** si revenu net > **86 125 $** (2026) — prestations RÉGULIÈRES seulement ;
+  les prestations spéciales (maternité, parentales, maladie) n'y sont PAS assujetties.
+- **RRQ : pas de retenue d'impôt automatique** (sur demande seulement) → côté cashflow, le brut
+  arrive au complet et l'impôt tombe à la déclaration.
+- Congé parental sur RQAP = zéro cotisation RRQ pendant la période ; le régime compense au calcul de
+  la rente (retrait des 15 % d'années faibles + exclusion des périodes enfant < 7 ans).
+- Top-up EMPLOYEUR pendant le congé = rémunération d'emploi (assujettissement distinct, [À vérifier]
+  si besoin). Indemnités CNESST/SAAQ : **non imposables**.
+- Feuillet fédéral RQAP : T4E selon le dépliant officiel, T4A selon des sources récentes —
+  [À vérifier] seulement si un import de feuillet en dépend.
+
 ## 3. Gains en capital & dividendes (2026)
 
 - **Inclusion gains en capital** (`CAPITAL_GAINS_INCLUSION_STANDARD`) : **50 %** uniforme

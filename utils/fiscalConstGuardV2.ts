@@ -150,7 +150,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection/setupSimulation.ts', value: '18', family: 'fiscal',
       reason: 'Âge d’ouverture des droits REER historiques (`birthYear + 18`) — âge fiscal, à ancrer avec les autres âges-seuils.' },
     { file: 'services/projection/setupSimulation.ts', value: '65', family: 'fiscal',
-      reason: 'Âge pivot RRQ : base du décalage `(pensionStartAge - 65) * 12`. Âge fiscal, à ancrer.' },
+      reason: '[×2] Âge pivot RRQ : base du décalage `(pensionStartAge - 65) * 12`. Âge fiscal, à ancrer.' },
     { file: 'services/projection/setupSimulation.ts', value: '8000', family: 'design',
       reason: 'Revenu théorique mensuel de repli quand aucun salaire n’est saisi. Hypothèse d’amorçage, pas un barème.' },
     { file: 'services/projection/setupSimulation.ts', value: '0.55', family: 'design',
@@ -160,11 +160,11 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection/setupSimulation.ts', value: '1.35', family: 'fiscal',
       reason: '[≠4] ⚠️ Reclassé en revue (2026-08-20) : « approximation pour un revenu THÉORIQUE » n’est vrai que dans la branche `useTheo`. Dans la branche de repli, le même facteur s’applique au `netSalary` RÉEL d’un utilisateur qui n’a pas saisi son brut — et ce brut fabriqué alimente `baseGrossAnnual`, donc TOUTE l’assiette d’impôt et les droits REER. C’est le site JUMEAU de `store/useFinanceStore.ts:144`, que le ticket `[MIGRATE-GROSS-135]` nomme explicitement avec lui : le même défaut ne peut pas recevoir deux familles opposées. `calculateGrossFromNet` (`utils/tax.ts:870`) existe et est vérifié exact au roundtrip.' },
     { file: 'services/projection/setupSimulation.ts', value: '2.0', family: 'structural',
-      reason: 'Constante mathématique d’une formule de simulation. Pas fiscale.' },
+      reason: '[≠2] DEUX SENS depuis l’élargissement du filtre. Constante mathématique d’une formule de simulation ; ET `simInflation = projection.inflationRate ?? 2.0`, l’inflation par DÉFAUT de la projection — celle-là pilote tout l’indexation du moteur, y compris le plafond RQAP. Aucune des deux n’est fiscale, mais elles ne bougent pas ensemble.' },
     { file: 'services/projection/setupSimulation.ts', value: '5.5', family: 'design',
       reason: 'Paramètre d’amorçage de simulation. Hypothèse de modèle.' },
     { file: 'services/projection/setupSimulation.ts', value: '5.0', family: 'design',
-      reason: 'Paramètre d’amorçage de simulation. Hypothèse de modèle.' },
+      reason: '[≠2] DEUX SENS. Paramètre d’amorçage d’une courbe de simulation ; ET l’inflation forcée à 5 % du scénario `COMPOUND_STRESS`. Hypothèses de modèle toutes les deux, mais indépendantes. Paramètre d’amorçage de simulation. Hypothèse de modèle.' },
     { file: 'services/projection/setupSimulation.ts', value: '75', family: 'design',
       reason: 'Palier d’âge d’une courbe d’amorçage. Hypothèse de modèle (≠ la bonification PSV de retirementIncome).' },
     { file: 'services/projection/setupSimulation.ts', value: '85', family: 'design',
@@ -306,7 +306,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
 
     // ── services/projection/glidepathRates.ts ────────────────────────────────────────────────
     { file: 'services/projection/glidepathRates.ts', value: '1.0', family: 'design',
-      reason: 'Prime de 1 pp au-dessus de l’inflation visée en fin de glidepath, et facteur neutre du même calcul. Hypothèse d’allocation, pas un rendement observé.' },
+      reason: '[≠2] Prime de 1 pp au-dessus de l’inflation visée en fin de glidepath, et facteur neutre du même calcul. Hypothèse d’allocation, pas un rendement observé.' },
     { file: 'services/projection/glidepathRates.ts', value: '1.5', family: 'design',
       reason: 'Rendement en dividendes par défaut des actions américaines (1,5 %) quand l’utilisateur ne le renseigne pas. Hypothèse de marché. ⚠️ Le taux de retenue qui le multiplie, LUI, est sourcé (`US_DIVIDEND_WITHHOLDING_RATE`, §3) — ne pas confondre les deux facteurs de la même ligne.' },
 
@@ -332,18 +332,130 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'store/useFinanceStore.ts', value: '6', family: 'structural',
       reason: 'Numéro de version de schéma persisté (`fromVersion < 6`). Palier de migration.' },
     { file: 'store/useFinanceStore.ts', value: '7', family: 'structural',
-      reason: 'Numéro de version de schéma persisté (`fromVersion < 7`). Palier de migration.' },
+      reason: '[×2] Numéro de version de schéma persisté (`fromVersion < 7`). Palier de migration.' },
+    // ── Révélés par l'élargissement du filtre aux VALEURS LIÉES (2026-08-20) ────────────────────
+    // `[FISC-GUARD-VALEUR-LIEE]`. Le filtre ne relevait qu'un littéral qu'on CALCULE. Or un barème
+    // est tout aussi souvent un littéral qu'on NOMME (propriété d'objet) ou qu'on CHOISIT (branche
+    // de ternaire). Conséquence mesurée : la table `RRIF_RATES` — les 24 facteurs de retrait
+    // minimum FERR de l'ARC, le barème le plus utilisé du moteur de décaissement — était invisible
+    // depuis le PREMIER JOUR du garde. `DONATION_CREDIT_RATES` aussi. 50 clés neuves au total.
+
+    // — services/projection/helpers.ts : RRIF_RATES, facteurs de retrait minimum FERR ————————————
+    // Les 24 sont ANCRÉS FISCAL_REFERENCE §7 et nommés. Ce qui manquait n'est pas la source, c'est
+    // la PROTECTION : rien n'empêchait un facteur de dériver en silence. Une entrée par âge, pour
+    // que la garde nomme précisément lequel a bougé.
+    { file: 'services/projection/helpers.ts', value: '0.0528', family: 'fiscal',
+      reason: '`RRIF_RATES[71]` — facteur de retrait MINIMUM du FERR à 71 ans (5.28 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0540', family: 'fiscal',
+      reason: '`RRIF_RATES[72]` — facteur de retrait MINIMUM du FERR à 72 ans (5.4 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0553', family: 'fiscal',
+      reason: '`RRIF_RATES[73]` — facteur de retrait MINIMUM du FERR à 73 ans (5.53 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0567', family: 'fiscal',
+      reason: '`RRIF_RATES[74]` — facteur de retrait MINIMUM du FERR à 74 ans (5.67 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0582', family: 'fiscal',
+      reason: '`RRIF_RATES[75]` — facteur de retrait MINIMUM du FERR à 75 ans (5.82 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0598', family: 'fiscal',
+      reason: '`RRIF_RATES[76]` — facteur de retrait MINIMUM du FERR à 76 ans (5.98 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0617', family: 'fiscal',
+      reason: '`RRIF_RATES[77]` — facteur de retrait MINIMUM du FERR à 77 ans (6.17 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0636', family: 'fiscal',
+      reason: '`RRIF_RATES[78]` — facteur de retrait MINIMUM du FERR à 78 ans (6.36 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0658', family: 'fiscal',
+      reason: '`RRIF_RATES[79]` — facteur de retrait MINIMUM du FERR à 79 ans (6.58 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0682', family: 'fiscal',
+      reason: '`RRIF_RATES[80]` — facteur de retrait MINIMUM du FERR à 80 ans (6.82 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0708', family: 'fiscal',
+      reason: '`RRIF_RATES[81]` — facteur de retrait MINIMUM du FERR à 81 ans (7.08 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0738', family: 'fiscal',
+      reason: '`RRIF_RATES[82]` — facteur de retrait MINIMUM du FERR à 82 ans (7.38 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0771', family: 'fiscal',
+      reason: '`RRIF_RATES[83]` — facteur de retrait MINIMUM du FERR à 83 ans (7.71 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0808', family: 'fiscal',
+      reason: '`RRIF_RATES[84]` — facteur de retrait MINIMUM du FERR à 84 ans (8.08 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0851', family: 'fiscal',
+      reason: '`RRIF_RATES[85]` — facteur de retrait MINIMUM du FERR à 85 ans (8.51 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0899', family: 'fiscal',
+      reason: '`RRIF_RATES[86]` — facteur de retrait MINIMUM du FERR à 86 ans (8.99 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.0955', family: 'fiscal',
+      reason: '`RRIF_RATES[87]` — facteur de retrait MINIMUM du FERR à 87 ans (9.55 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.1021', family: 'fiscal',
+      reason: '`RRIF_RATES[88]` — facteur de retrait MINIMUM du FERR à 88 ans (10.21 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.1099', family: 'fiscal',
+      reason: '`RRIF_RATES[89]` — facteur de retrait MINIMUM du FERR à 89 ans (10.99 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.1192', family: 'fiscal',
+      reason: '`RRIF_RATES[90]` — facteur de retrait MINIMUM du FERR à 90 ans (11.92 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.1306', family: 'fiscal',
+      reason: '`RRIF_RATES[91]` — facteur de retrait MINIMUM du FERR à 91 ans (13.06 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.1449', family: 'fiscal',
+      reason: '`RRIF_RATES[92]` — facteur de retrait MINIMUM du FERR à 92 ans (14.49 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.1634', family: 'fiscal',
+      reason: '`RRIF_RATES[93]` — facteur de retrait MINIMUM du FERR à 93 ans (16.34 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.2000', family: 'fiscal',
+      reason: '`RRIF_RATES[94]` — facteur de retrait MINIMUM du FERR à 94 ans (20 %), barème ARC ancré FISCAL_REFERENCE §7. Statutaire : il pilote un retrait FORCÉ, donc de l’impôt.' },
+    { file: 'services/projection/helpers.ts', value: '0.15', family: 'design',
+      reason: '`ASSET_VOLATILITY.stocks` — écart-type annuel supposé des actions (15 %), utilisé par le tirage stochastique. Hypothèse de MARCHÉ, aucun rapport avec un barème fiscal malgré la proximité de `RRIF_RATES` dans le même fichier.' },
+    { file: 'services/projection/helpers.ts', value: '0.50', family: 'design',
+      reason: '`ASSET_VOLATILITY.crypto` — écart-type annuel supposé de la crypto (50 %). Hypothèse de marché.' },
+    { file: 'services/projection/helpers.ts', value: '0.03', family: 'design',
+      reason: '`ASSET_VOLATILITY.cash` — écart-type annuel supposé des liquidités (3 %). Hypothèse de marché.' },
+    { file: 'utils/donationCredit.ts', value: '0.15', family: 'fiscal',
+      reason: '`DONATION_CREDIT_RATES.fed.first` — taux du crédit fédéral pour dons sur les premiers 200 $ (15 %). Barème ARC, ancré FISCAL_REFERENCE §10. ⚠️ Invisible au garde jusqu’au 2026-08-20 : une valeur de propriété d’objet n’était pas relevée.' },
+    { file: 'utils/donationCredit.ts', value: '0.29', family: 'fiscal',
+      reason: '`DONATION_CREDIT_RATES.fed.excess` — taux du crédit fédéral pour dons au-delà de 200 $ (29 %). Barème ARC, ancré §10.' },
+    { file: 'utils/donationCredit.ts', value: '0.20', family: 'fiscal',
+      reason: '`DONATION_CREDIT_RATES.qc.first` — taux du crédit québécois pour dons sur les premiers 200 $ (20 %). Barème Revenu Québec, ancré §10.' },
+    { file: 'utils/donationCredit.ts', value: '0.24', family: 'fiscal',
+      reason: '`DONATION_CREDIT_RATES.qc.excess` — taux du crédit québécois pour dons au-delà de 200 $ (24 %). Barème Revenu Québec, ancré §10.' },
+    { file: 'services/projection/realEstateMonth.ts', value: '5', family: 'fiscal',
+      reason: 'Durée de la période de grâce ALLONGÉE du RAP (5 ans au lieu de 2) pour les retraits de la fenêtre 2022-2025 — Budget fédéral 2024. Elle forme un TOUT avec les bornes `2022`/`2025` et la durée de 15 ans du même fichier : les quatre se sourcent ou se retirent ENSEMBLE, ticket `[FISC-ANTIFLIP-WINDOW]`.' },
+    { file: 'services/projection/setupSimulation.ts', value: '72', family: 'fiscal',
+      reason: 'Âge de report MAXIMAL des rentes publiques quand `delayPensions` est actif (`delayPensions ? 72 : 65`). La RRQ peut être reportée jusqu’à 72 ans depuis 2024 — vrai paramètre, à ancrer §6 à côté des facteurs d’ajustement.' },
+    { file: 'services/projection/setupSimulation.ts', value: '1.0', family: 'design',
+      reason: 'Rendement de repli des LIQUIDITÉS dans le jeu de taux conservateur (1,0 %/an). Hypothèse de marché.' },
+    { file: 'services/projection/setupSimulation.ts', value: '3.0', family: 'design',
+      reason: 'Rendement de repli du CELI et du REER dans le jeu conservateur (3,0 %/an). Hypothèse de marché.' },
+    { file: 'services/projection/setupSimulation.ts', value: '6.5', family: 'design',
+      reason: 'Rendement de repli du REER et du non-enregistré dans le jeu par défaut (6,5 %/an). Hypothèse de marché.' },
+    { file: 'services/projection/setupSimulation.ts', value: '7', family: 'design',
+      reason: 'Rendement de repli du CELI dans le jeu par défaut (7 %/an). Hypothèse de marché.' },
+    { file: 'services/projection/assetLocation.ts', value: '4.0', family: 'design',
+      reason: '`ASSET_ASSUMPTIONS.bonds.yield` — rendement courant supposé des obligations (4 %). Table d’hypothèses du module CONSULTATIF d’emplacement d’actifs, pas un barème.' },
+    { file: 'services/projection/assetLocation.ts', value: '0.0', family: 'design',
+      reason: '[×2] Croissance supposée nulle des obligations et des liquidités dans la même table d’hypothèses. Hypothèse de marché.' },
+    { file: 'services/projection/assetLocation.ts', value: '1.5', family: 'design',
+      reason: '`ASSET_ASSUMPTIONS[’us-equity’].yield` — rendement en dividendes supposé des actions américaines (1,5 %). Hypothèse de marché. ⚠️ Le taux de retenue qui s’y applique, lui, est SOURCÉ (`US_DIVIDEND_WITHHOLDING_RATE`, §3).' },
+    { file: 'services/projection/assetLocation.ts', value: '6.0', family: 'design',
+      reason: '[×2] Croissance supposée des actions américaines et internationales (6 %). Hypothèse de marché.' },
+    { file: 'services/projection/assetLocation.ts', value: '2.5', family: 'design',
+      reason: '[×2] Rendement en dividendes supposé des actions canadiennes et internationales (2,5 %). Hypothèse de marché.' },
+    { file: 'services/projection/assetLocation.ts', value: '5.0', family: 'design',
+      reason: '[×2] Croissance supposée des actions canadiennes (5 %) et rendement supposé des FPI (5 %) dans la même table. Hypothèse de marché.' },
+    { file: 'services/projection/assetLocation.ts', value: '8.0', family: 'design',
+      reason: 'Croissance supposée des petites capitalisations de croissance (8 %). Hypothèse de marché.' },
+    { file: 'services/projection/assetLocation.ts', value: '2.0', family: 'design',
+      reason: 'Croissance supposée des FPI (2 %). Hypothèse de marché.' },
+    { file: 'services/projection/assetLocation.ts', value: '3.5', family: 'design',
+      reason: 'Rendement supposé des liquidités (3,5 %). Hypothèse de marché.' },
+    { file: 'store/useFinanceStore.ts', value: '65', family: 'design',
+      reason: '[×2] Âge de retraite VISÉ par défaut dans l’état initial et dans le repli de lecture du store. ⚠️ Homonyme de l’âge-pivot fiscal des rentes publiques, mais ici c’est un DÉFAUT d’amorçage que l’utilisateur change — pas une règle.' },
+    { file: 'store/useFinanceStore.ts', value: '4000', family: 'design',
+      reason: '[×2] Revenu mensuel de retraite VISÉ par défaut (4 000 $). Valeur d’amorçage de l’état, modifiable par l’utilisateur.' },
+    { file: 'store/useFinanceStore.ts', value: '1200', family: 'design',
+      reason: '[×2] Rente gouvernementale mensuelle supposée par défaut (1 200 $). Valeur d’amorçage, remplacée dès que l’utilisateur saisit ses estimations RRQ/PSV.' },
+    { file: 'store/useFinanceStore.ts', value: '90', family: 'design',
+      reason: 'Espérance de vie par défaut posée par une migration de schéma (90 ans). Hypothèse de modèle, pas une table de mortalité.' },
+
     // ── Révélés par le RETRAIT de `0.5` et `1000` de BENIGN (2026-08-20, revue) ──────────────
     // Trois de ces huit clés recouvrent une VRAIE valeur légale qui était invisible dans des
     // modules pourtant scannés depuis le premier jour du garde.
     { file: 'services/projection/assetLocation.ts', value: '0.5', family: 'fiscal',
-      reason: 'DEUX SENS. `return marginalRate * 0.5` (branche « gain en capital ») — TAUX D’INCLUSION des gains en capital (50 %, §3), et c’est le SEUL site du dépôt qui le recopie : partout ailleurs (`latentTax`, `estateCalculation`, `retirementIncome`, `taxDecember`, `taxEstimate`, `projection.ts`) `CAPITAL_GAINS_INCLUSION_STANDARD` est importé. Vraie dette, ticket `[ASSETLOC-INCLUSION-RECOPIEE]` : importer la source unique. Le rendement de 0,5 % de la classe `growth-small` dans la table d’hypothèses, celui-là purement design.' },
+      reason: '[≠2] DEUX SENS. `return marginalRate * 0.5` (branche « gain en capital ») — TAUX D’INCLUSION des gains en capital (50 %, §3), et c’est le SEUL site du dépôt qui le recopie : partout ailleurs (`latentTax`, `estateCalculation`, `retirementIncome`, `taxDecember`, `taxEstimate`, `projection.ts`) `CAPITAL_GAINS_INCLUSION_STANDARD` est importé. Vraie dette, ticket `[ASSETLOC-INCLUSION-RECOPIEE]` : importer la source unique. Le rendement de 0,5 % de la classe `growth-small` dans la table d’hypothèses, celui-là purement design.' },
     { file: 'services/projection/taxDecember.ts', value: '0.5', family: 'fiscal',
       reason: '[≠3] TROIS occurrences, une seule fiscale. `Math.min(0.5 * splittable[H], …)` — PLAFOND LÉGAL de 50 % du fractionnement de revenu de pension (T1032 fédéral / Annexe Q, §6). Les seuils d’affichage à 0,50 $ décidant si un libellé mentionne la banque de pertes ou le palier bas ; aucun enjeu fiscal.' },
     { file: 'services/projection/childrenReee.ts', value: '1000', family: 'fiscal',
       reason: '`SCEE_ANNUAL_GRANT_CATCHUP` — Subvention canadienne pour l’épargne-études en mode RATTRAPAGE, 1 000 $/an (ARC), ancrée §7. Son jumeau `IQEE_ANNUAL_GRANT_CATCHUP = 500` était inventorié dès le premier jet ; celui-ci restait invisible parce que `1000` figurait dans BENIGN sans que le critère de BENIGN le couvre.' },
     { file: 'services/projection/retirementIncome.ts', value: '0.5', family: 'fiscal',
-      reason: '[≠3] TROIS occurrences VUES PAR LE SCAN, deux natures — et une QUATRIÈME qu’il ne voit pas (`survivorPsvFactor = survivorMode ? 0.5 : 1` : un littéral en branche de ternaire échappe au filtre de position, ticket `[FISC-GUARD-TERNAIRE]`). `survivorRrqFactor` et `survivorPsvFactor` — facteurs de rente au SURVIVANT : la PSV du défunt cesse (facteur 0,5 sur un couple) et la RRQ est recalculée via `rrqSurvivorPct`. Règles de Service Canada / Retraite Québec, §6. La prime de 0,5 pp au-dessus de l’inflation pour projeter le MGA de la RRQ : celle-là est une hypothèse d’indexation, pas une règle.' },
+      reason: '[≠4] QUATRE occurrences, deux natures. La quatrième — `survivorPsvFactor = survivorMode ? 0.5 : 1` — était INVISIBLE au scan jusqu’au 2026-08-20 : un littéral en branche de ternaire n’était pas relevé. C’est l’élargissement `[FISC-GUARD-VALEUR-LIEE]` qui l’a fait apparaître, et cette garde qui a exigé qu’on la regarde. `survivorRrqFactor` et `survivorPsvFactor` — facteurs de rente au SURVIVANT : la PSV du défunt cesse (facteur 0,5 sur un couple) et la RRQ est recalculée via `rrqSurvivorPct`. Règles de Service Canada / Retraite Québec, §6. La prime de 0,5 pp au-dessus de l’inflation pour projeter le MGA de la RRQ : celle-là est une hypothèse d’indexation, pas une règle.' },
     { file: 'services/projection/taxJanuary.ts', value: '0.5', family: 'design',
       reason: 'Prime d’indexation de 0,5 pp au-dessus de l’inflation servant à EXTRAPOLER le plafond REER au-delà de la dernière année connue de `RRSP_ANNUAL_LIMITS` (§7.G). Le plafond lui-même est sourcé ; la vitesse d’extrapolation est une hypothèse de modèle.' },
     { file: 'services/projection/childrenReee.ts', value: '0.5', family: 'design',
@@ -490,6 +602,13 @@ export function findFiscalConstants(source: string): ConstHit[] {
                 /[*/+\-<>=]$/.test(before)   // calcul, comparaison, affectation
                 || /(\|\||\?\?)$/.test(before) // repli (`|| 0.20`, `?? 0.20`)
                 || /^[*/]/.test(after)       // le littéral est à GAUCHE d'un produit
+                // ⚠️ AJOUTÉ le 2026-08-20 (`[FISC-GUARD-VALEUR-LIEE]`). Le filtre ne voyait qu'un
+                // littéral qu'on CALCULE. Or un barème est tout aussi souvent un littéral qu'on
+                // NOMME — valeur de propriété d'objet — ou qu'on CHOISIT — branche de ternaire.
+                // Angle mort MESURÉ : `RRIF_RATES` (24 facteurs de retrait minimum FERR, ARC) était
+                // invisible depuis le premier jour du garde, ainsi que `DONATION_CREDIT_RATES`
+                // (15/29 % féd, 20/24 % QC). Les deux tables les plus fiscales du moteur.
+                || /[?:]$/.test(before)      // valeur liée à un nom (`taux: 0.29`) ou choisie (`? 0.5`)
             );
             if (!significant) continue;
             out.push({ line: i + 1, value, text: line.trim() });

@@ -4609,3 +4609,43 @@ dit si l'entrée a encore un objet.
 ni le choix de la phase ne sont dans FISCAL_REFERENCE »* — devenue fausse **par le commit qui la
 laissait en place**, puisque ce même commit ajoutait la section §2. Quand une PR ancre une valeur,
 grep l'inventaire pour toutes les raisons qui parlent de son absence.
+
+### `FILTRE-DE-POSITION-QUI-NE-VOIT-QUE-L-ARITHMETIQUE` — la table FERR était invisible depuis toujours
+
+Le garde des constantes fiscales relevait un littéral seulement s'il était en position de **calcul**
+(`* 0.45`), de **comparaison** (`>= 65`), d'**affectation** (`= 100_000`) ou de **repli**
+(`|| 0.20`). Ce filtre paraît complet — il couvre « tout ce qu'on fait avec un nombre ».
+
+Il lui manquait les deux positions où l'on RANGE un nombre plutôt que de l'utiliser :
+
+```ts
+export const RRIF_RATES: Record<number, number> = { 71: 0.0528, 72: 0.0540, … };   // NOMMÉ
+const graceYears = (loopYear >= 2022 && loopYear <= 2025) ? 5 : 2;                 // CHOISI
+```
+
+Conséquence mesurée : **les 24 facteurs de retrait minimum du FERR** (ARC) et **les quatre taux du
+crédit pour dons** (15/29 féd, 20/24 QC) étaient hors de vue **depuis le premier jour du garde**. Le
+barème le plus utilisé du moteur de décaissement — celui qui pilote un retrait FORCÉ, donc de
+l'impôt — n'était protégé par rien. Les valeurs étaient pourtant ancrées en FISCAL_REFERENCE §7
+et §10 : **ce qui manquait n'était pas la source, c'était la protection contre la dérive.**
+
+**La règle** : un barème est un nombre qu'on **calcule**, qu'on **nomme**, ou qu'on **choisit**. Un
+filtre de position qui n'attrape que le premier laisse dehors les tables — c'est-à-dire précisément
+la forme sous laquelle les vrais barèmes sont écrits. Quand une garde repose sur un filtre de
+POSITION, énumérer les positions par ce qu'elles font au nombre, pas par la syntaxe rencontrée en
+écrivant le filtre.
+
+⚠️ **Et mesurer avant d'élargir, y compris pour se contredire.** Ma première hypothèse était « il
+faut couvrir les ternaires » (nom du ticket : `[FISC-GUARD-TERNAIRE]`). La mesure a montré que le
+`:` attrapait surtout des **propriétés d'objet**, et que c'est là qu'était le gros du trou — le
+ternaire n'en était qu'une moitié. Le ticket a été renommé `[FISC-GUARD-VALEUR-LIEE]` : un nom qui
+décrit le mauvais périmètre fabrique les mauvais correctifs (`UN-NOM-TROMPEUR-FABRIQUE-DES-FAUX-FINDINGS`
+appliqué à un ticket plutôt qu'à du code).
+
+**Une entrée par âge, pas une par table.** Les 24 facteurs FERR auraient pu tenir dans une seule
+entrée « la table est ancrée §7 ». Chacun a la sienne : c'est la seule façon pour que la garde
+NOMME celui qui a bougé. Une garde qui dit « quelque chose a changé dans RRIF_RATES » oblige à
+tout relire ; une garde qui dit « `helpers.ts:110 → 0.0862` » désigne le défaut.
+
+**Preuve** : dériver le facteur de 80 ans (0,0682 → 0,0862) et le taux fédéral pour dons
+(0,29 → 0,31) font rougir la garde. Ni l'un ni l'autre n'aurait bougé la veille.

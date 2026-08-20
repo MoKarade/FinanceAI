@@ -10,6 +10,43 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-20 — Le garde fiscal ne voyait pas la table FERR (ni le crédit pour dons)
+
+- [x] **`[FISC-GUARD-VALEUR-LIEE]`** (M) — ✅ 2026-08-20, PR #668.
+  *(Ouvert sous le nom `[FISC-GUARD-TERNAIRE]` ; la mesure a montré que le ternaire n'était que la
+  moitié du trou, d'où le renommage.)*
+
+> ⚠️ **Le filtre de position ne relevait qu'un littéral qu'on CALCULE** (`* 0.45`, `>= 65`,
+> `|| 0.20`). Or un barème est tout aussi souvent un littéral qu'on **NOMME** — valeur de propriété
+> d'objet — ou qu'on **CHOISIT** — branche de ternaire. Deux positions entièrement hors de vue.
+
+**Ce qui était invisible depuis le PREMIER JOUR du garde :**
+
+| Table | Ce que c'est |
+|---|---|
+| `RRIF_RATES` (24 valeurs) | les facteurs de retrait **minimum du FERR** de l'ARC, de 5,28 % à 71 ans à 20 % à 94 ans — le barème le plus utilisé de tout le moteur de décaissement, et il pilote un retrait **forcé**, donc de l'impôt |
+| `DONATION_CREDIT_RATES` | 15 % / 29 % fédéral, 20 % / 24 % Québec |
+
+Les deux sont **ancrées** dans `FISCAL_REFERENCE.md` (§7 et §10) : ce qui manquait n'était pas la
+source, c'était la **protection**. Rien n'empêchait un facteur de dériver en silence.
+
+**Mesuré** : 50 clés neuves à trier (27 dans `helpers.ts`, 9 `assetLocation`, 5 `setupSimulation`,
+4 `donationCredit`, 4 `useFinanceStore`, 1 `realEstateMonth`). Une entrée **par âge** pour les
+24 facteurs FERR, afin que la garde nomme précisément lequel a bougé.
+
+**Discrimination prouvée sur ce qui compte** : dériver le facteur FERR de 80 ans (0,0682 → 0,0862)
+et le taux du crédit fédéral pour dons (0,29 → 0,31) font rougir la garde. Ni l'un ni l'autre
+n'aurait bougé avant ce lot.
+
+**Effet de bord vertueux** : l'élargissement a rendu visible le `survivorPsvFactor = survivorMode ?
+0.5 : 1` de `retirementIncome.ts`, et **la garde `[×N]`/`[≠N]` a immédiatement exigé** que l'entrée
+correspondante passe de `[≠3]` à `[≠4]`. C'est le mécanisme qui fonctionne comme annoncé : le compte
+bouge quand une occurrence apparaît, et c'est exactement le moment où il faut re-regarder.
+
+**Découvertes classées au passage** : `setupSimulation::72` (report de la RRQ jusqu'à 72 ans depuis
+2024 — vrai paramètre, à ancrer §6) et `realEstateMonth::5` (grâce RAP de 5 ans, à sourcer avec les
+bornes 2022/2025 de `[FISC-ANTIFLIP-WINDOW]`).
+
 ## 2026-08-20 — Vague 1f (2/5) : le plafond RQAP, et une règle de portefeuille qui déplaçait une loi
 
 - [x] **`[RQAP-CAP-98K]`** (XS annoncé, S réel) — ✅ 2026-08-20, PR #667.

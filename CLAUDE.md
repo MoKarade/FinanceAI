@@ -328,6 +328,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   en DÉCLARATION *et* en usage : ancrer le motif sur l'USAGE, et perturber CHAQUE assertion du scan
   séparément (`SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE`).
 - Resserrer un scan-garde **AVANT** de coder le fix : les offenders révélés = le vrai périmètre.
+- Un barème est un nombre qu'on **calcule**, qu'on **nomme** (`{ 71: 0.0528 }`) ou qu'on **choisit**
+  (`cond ? 5 : 2`). Le filtre de position du garde fiscal n'attrapait que le premier : les 24 facteurs
+  de retrait minimum du FERR et les 4 taux du crédit pour dons étaient invisibles **depuis le premier
+  jour**, alors qu'ils sont ancrés en FISCAL_REFERENCE — il manquait la PROTECTION, pas la source.
+  Énumérer les positions par ce qu'elles FONT au nombre, pas par la syntaxe rencontrée en écrivant le
+  filtre. Et une entrée PAR VALEUR, pas par table : une garde qui dit « quelque chose a changé dans
+  RRIF_RATES » oblige à tout relire (`FILTRE-DE-POSITION-QUI-NE-VOIT-QUE-L-ARITHMETIQUE`).
 - Tout registre censé **DÉCROÎTRE** (inventaire de dette, exemptions, allowlist) a besoin d'une garde
   sur l'**obsolescence de ses entrées**, pas seulement sur leur forme : l'entrée `childrenReee::98000`
   a survécu au commit qui SUPPRIMAIT le littéral, continuant d'affirmer le défaut au présent dans le

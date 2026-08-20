@@ -907,16 +907,6 @@
   FISCAL_REFERENCE §2 avec sa référence Revenu Québec**. Le code suit ensuite (`, undefined, 0`).
   Même famille que `[AE-PLAFOND-MANQUANT]`. [MESURÉ]
 
-- [ ] **`[FISC-GUARD-TERNAIRE]`** (S, MOYEN — découvert en revue de `[RQAP-CAP-98K]`) — le filtre de
-  position de `findFiscalConstants` exige un opérateur avant (`[*/+\-<>=]`, `||`, `??`) ou après
-  (`*`, `/`) : **un littéral en branche de ternaire est invisible**. Vérifié :
-  `retirementIncome.ts` `survivorPsvFactor = survivorMode ? 0.5 : 1` n'est pas relevé, alors que
-  c'est un facteur de rente au survivant. Conséquence : la promesse de la marque `[×N]`/`[≠N]`
-  (« N ne bouge que si une occurrence apparaît ou disparaît ») est **fausse pour les ternaires** —
-  supprimer ce facteur ne ferait bouger aucun compte. **Correctif** : ajouter `?`/`:` au filtre —
-  ⚠️ **mesurer les nouveaux offenders AVANT** (règle « resserrer le scan avant le fix » : sur 20
-  modules, l'élargissement peut être large).
-
 - [ ] **`[RQAP-INDEX-SOURCE]`** (XS, FAIBLE — découvert en revue de `[RQAP-CAP-98K]`) — la phrase
   « le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne au Québec » justifie le
   choix d'index dans le code ET dans `FISCAL_REFERENCE.md` §2, **sans aucune citation** (pas

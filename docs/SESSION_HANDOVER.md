@@ -4,6 +4,42 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-20 (suite 117) — vague 1 CLOSE : les deux derniers forfaits non sourcés
+> Branche `claude/w5-proxy-source` (basée sur `main`, PAS empilée).
+>
+> **Livré** : `[W5-PROXY-NON-SOURCE]` — dernier item de la vague 1f, donc **vague 1 terminée**.
+> Décision Marc `[W5-TAX-PROXY]` : garder les forfaits, les documenter, les annoncer à l'écran.
+> Ils sont maintenant NOMMÉS et EXPORTÉS (`RENTAL_NOI_TAX_PROXY`, `CCPC_DIVIDEND_TAX_PROXY`),
+> ancrés dans `FISCAL_REFERENCE.md` §6 avec leur sens d'erreur MESURÉ, et affichés par l'UI qui les
+> IMPORTE du moteur. Garde de concordance à 3 sites, 5 perturbations, 5 rouges.
+>
+> ⚠️⚠️⚠️ **DÉCOUVERTE MAJEURE en fermant un trou de garde : le forfait n'était PAS APPLIQUÉ.**
+> L'assertion comportementale `taxDivers === noi_mensuel × 0,45` a ROUGI sur le moteur : le code
+> faisait `(mensuel × taux) / 12` dans un accumulateur ANNUEL → **impôt 12× trop bas** (taux
+> effectif 3,75 %/3 %). MESURÉ : duplex + CCPC à 30 ans = patrimoine surestimé de **1,4 M$**.
+> Corrigé, revue dédiée : diagnostic confirmé maillon par maillon, conservation ≤ 0,02 $, témoin
+> sans W5 à delta 0,00 $, pas de double-imposition. Aucun golden ne portait de locatif/CCPC — la
+> suite était verte des deux côtés, c'est la garde COMPORTEMENTALE qui a vu.
+>
+> ⚠️ **Le forfait locatif change de SIGNE vers ~125-140 k$ de revenu selon le NOI** (mon premier
+> « 145 k$ » était faux — et sa correction a été EFFACÉE une fois par un `git checkout` de mesure
+> avant d'être re-perdue : vérifier le diff FINAL, pas son souvenir d'avoir corrigé). Le forfait
+> dividende ne vaut que pour un dividende ORDINAIRE à ~100 k$, et à personne d'autre.
+>
+> ⚠️⚠️ **Une affirmation fausse arrêtée par la mesure** : j'allais publier « 0,36 est proche du taux
+> marginal SUPÉRIEUR d'un dividende déterminé ». Ce taux vaut 39,16 % à 250 k$. Écrire un chiffre
+> fiscal sans le mesurer, c'est fabriquer la source qu'on prétend citer.
+>
+> ⚠️ Une garde a attrapé un « 45 % » dans **mon propre commentaire JSX** — un commentaire qui porte
+> le chiffre dérive comme le reste. Réécrit sans lui, plutôt que d'assouplir la garde.
+>
+> **Découverte routée** : `[W5-DIVIDENDE-PROXY-VS-MOTEUR]` — `utils/tax.ts` `calculateDividendTax`
+> sait déjà faire le calcul exact (majoration + les deux CID, bon ordre vis-à-vis de l'abattement).
+> Bloquant produit : `PrivateBusiness` ne porte pas le TYPE de dividende.
+>
+> **SUITE** : vague 2 (devises/unités) — `[FX-FALLBACK-SILENCIEUX]`, `[RETIREMENT-GROSSINCOME-DEAD]`,
+> `[ADDSTOCK-CAD-NATIF]`. Indépendante, aucun prérequis.
+>
 > ## 🟢 Session 2026-08-20 (suite 116) — le trou que mon propre constat d'impossibilité avait ouvert
 > Branche `claude/estate-proxy-coverage` (basée sur `main`, PAS empilée). Suite directe de #671, mergée.
 >

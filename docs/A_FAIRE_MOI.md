@@ -17,7 +17,20 @@
 > Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
 > d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
 
-## A00. ⚠️ SOURCER UNE RÈGLE FISCALE — 4 328 $/an en jeu (ajouté 2026-08-20, revue de PR #667)
+## A00. ✅ RÉPONDU par Marc le 2026-08-20 — règle sourcée, transcrite
+
+> **Réponse reçue** (recherche sourcée : canada.ca, Retraite Québec, dépliant RQAP, U. Sherbrooke) :
+> les prestations versées PAR le RQAP, l'AE et le RRQ ne sont assujetties à AUCUNE des trois
+> cotisations — seule l'imposition s'applique. Assiette de cotisation = revenus de TRAVAIL
+> uniquement. Transcrit dans `FISCAL_REFERENCE.md` §2 + ADR dans `decisions.md`.
+> `[RQAP-PRESTATION-COTISATIONS]` et `[AE-PLAFOND-MANQUANT]` sont DÉBLOQUÉS.
+> ⚠️ Marc a aussi demandé de débloquer le proxy pour revenuquebec.ca — testé depuis ce conteneur le
+> 2026-08-20 16:10 UTC : **encore 403** (CONNECT tunnel failed). Le déblocage n'a pas atteint cette
+> session ; à re-tester à la prochaine session ou après modification de la politique réseau de
+> l'environnement.
+
+### (historique de la demande, conservé)
+⚠️ SOURCER UNE RÈGLE FISCALE — 4 328 $/an en jeu (ajouté 2026-08-20, revue de PR #667)
 
 - [ ] **Confirmer qu'une prestation du RQAP n'est pas assujettie aux cotisations RRQ / AE / RQAP.**
 
@@ -53,7 +66,8 @@ revenuquebec.ca » (c'est un réglage de l'environnement, côté toi), et je sou
 
 ## A0. Smoke test 2 minutes — pincement sur TON téléphone (ajouté 2026-08-12, PR #596)
 
-- [ ] **Tester le zoom au pincement sur ton vrai téléphone** dès le déploiement : ouvre la courbe
+- [x] ✅ **FAIT — réponse Marc 2026-08-20 : « marche »** (le pincement zoome le graphe).
+  (historique) Tester le zoom au pincement sur ton vrai téléphone dès le déploiement : ouvre la courbe
   Futur, pince à 2 doigts (écarte = zoom, resserre = dézoom, translate = déplace), vérifie que
   1 doigt fait toujours défiler la page et qu'un tap sélectionne un jour. **Pourquoi toi** : mes
   e2e tactiles ne couvrent que Chromium — si ton téléphone est un iPhone (Safari/WebKit), le
@@ -461,9 +475,8 @@ Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiff
 - [ ] **[TP1G-VIVANT-SEUL]** — données reçues 2026-07-06. Grille crédit 65+/personne vivant seule (source MFQ fiche 110606)
   : 2 172 $ (base) + supplément monoparental 2 681 $. Seuil revenu 42 955 $. Transcrit `FISCAL_REFERENCE.md` §4.
   Item 🔧 ACTIONNABLE moyen (plan-first + discriminant git-stash + panel).
-- [ ] ~~**[FISC-TAXDEC-INCR]**~~ — **À CONFIRMER** : interprétation de la réponse Marc « ok » 2026-07-06. Signifie-t-il
-  (a) COD ER le fix risqué (re-baser golden + tests), ou (b) statu quo/différé ? En attente d'un « go » ou « wait »
-  explicite avant de coder (risque $ élevé).
+- [x] ✅ **[FISC-TAXDEC-INCR]** — TRANCHÉ 2026-08-20 : réponse Marc A2 = **« code le »**.
+  GO explicite ; plan-first + re-base goldens assumé (risque $ élevé). Cf. ADR « Sept décisions ».
 
 ## A0 — Quota Vercel (2026-08-12) — ✅ CLOS le 2026-08-13 : Marc est passé à Vercel PRO
 

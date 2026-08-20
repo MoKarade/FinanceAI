@@ -6,7 +6,10 @@ import React from 'react';
 import { Card } from './ui/Card';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { PrivateNumberInput } from './ui/PrivateNumberInput';
-import { formatCAD } from '../utils/format';
+import { formatCAD, formatPercent } from '../utils/format';
+// [W5-PROXY-NON-SOURCE] Les deux taux forfaitaires viennent du MOTEUR — jamais recopiés ici, sinon
+// l'écran annoncerait un taux que le calcul n'applique plus (`UN-OUTIL-GARDE-A-VALEURS-RECODEES`).
+import { RENTAL_NOI_TAX_PROXY, CCPC_DIVIDEND_TAX_PROXY } from '../services/projection/w5Effects';
 import { Icon } from './ui/Icon';
 import type {
     InsurancePolicy, InsuranceKind,
@@ -146,6 +149,17 @@ export const RentalPropertyPanel: React.FC<{
                 <button onClick={add} className="text-meta bg-success-500/20 border border-success-500/40 rounded px-2 py-1 text-emerald-300 hover:bg-success-500/30">
                     + Ajouter un immeuble locatif
                 </button>
+                {/* [W5-PROXY-NON-SOURCE] Décision Marc `[W5-TAX-PROXY]` : garder le forfait, mais le
+                    NOMMER à l'utilisateur — un chiffre estimé qui ne se présente pas comme tel est une
+                    fausse précision. ⚠️ Le TAUX ne se recopie ni ici ni dans ce commentaire : il vient
+                    de `RENTAL_NOI_TAX_PROXY`, et son sens d'erreur mesuré vit dans
+                    `docs/FISCAL_REFERENCE.md` §6. Une garde interdit tout littéral dans ce fichier. */}
+                <p className="text-tiny text-ink-400 italic">
+                    L'impôt sur le revenu locatif est estimé à un taux marginal forfaitaire de{' '}
+                    {formatPercent(RENTAL_NOI_TAX_PROXY * 100, 0)}, pas calculé au barème. C'est prudent
+                    en dessous d'environ 125 000 $ de revenu total (jusqu'à ~140 000 $ pour un gros
+                    revenu locatif), et optimiste au-dessus.
+                </p>
             </div>
         </Card>
     );
@@ -178,6 +192,13 @@ export const BusinessPanel: React.FC<{
                     </div>
                 ))}
                 <button onClick={add} className="text-meta bg-purple-500/20 border border-purple-500/40 rounded px-2 py-1 text-purple-300 hover:bg-purple-500/30">+ Ajouter une société</button>
+                {/* [W5-PROXY-NON-SOURCE] Idem locatif — et ici l'écart est plus large, parce que le
+                    modèle ne distingue pas dividende déterminé et ordinaire. */}
+                <p className="text-tiny text-ink-400 italic">
+                    L'impôt sur le dividende est estimé à un taux forfaitaire de{' '}
+                    {formatPercent(CCPC_DIVIDEND_TAX_PROXY * 100, 0)}, sans distinguer dividende déterminé
+                    et ordinaire. Un dividende déterminé est moins imposé qu'un dividende ordinaire.
+                </p>
             </div>
         </Card>
     );

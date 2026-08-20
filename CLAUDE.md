@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 516 tests** Vitest
-(405 fichiers de test, mesuré le 2026-08-20). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 522 tests** Vitest
+(406 fichiers de test, mesuré le 2026-08-20). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -189,6 +189,25 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   soustraire l'estimé non indexé, sans prorata et sans SRG d'un revenu nominal faisait −29 % sur le
   seul dénominateur — rien ne crie. Signal : **la même variable indexée à 40 lignes d'écart et pas
   à l'autre** ; quand deux usages d'un même symbole divergent dans un même bloc, l'un est faux.
+- ⚠️ **Documenter un chiffre fiscal sans le MESURER, c'est fabriquer la source qu'on prétend citer** :
+  j'allais écrire dans `FISCAL_REFERENCE.md` que « 0,36 ≈ le taux marginal supérieur d'un dividende
+  déterminé » — mesuré, ce taux vaut 39,16 % et 0,36 est un taux de MILIEU pour l'AUTRE type de
+  dividende. Une fois dans la source de vérité, la phrase aurait l'autorité de la source. Documenter
+  un forfait = produire le TABLEAU de son écart réel sur plusieurs points ; « proche de » ne se
+  vérifie pas. Corollaire : un chiffre recopié dans un COMMENTAIRE dérive aussi — ma garde a rougi
+  sur mon propre commentaire JSX, réécrit sans le chiffre plutôt qu'exempté
+  (`ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE`).
+- ⚠️ **Un `git checkout` de mesure avant/après peut EFFACER une correction non commitée** : mon
+  script de ré-application ne restaurait que le FIX, pas la correction de commentaire faite dans le
+  même arbre — et mon commit a ensuite AFFIRMÉ « aligné aux 4 sites » de mémoire. Après toute
+  restauration : `git diff` FINAL contre la liste de ce qu'on croit avoir changé, jamais le souvenir.
+  (Récidive immédiate : un pipeline d'édition à ancre périmée a échoué SANS bloquer le commit qui le
+  suivait — chaîner édition et commit par `&&`, et relire le DIFF du commit, pas l'intention.)
+- ⚠️ **La garde COMPORTEMENTALE bat six passes de scan** : l'assertion `taxDivers === base × taux`
+  a trouvé en UNE ligne un impôt 12× trop bas (accumulateur ANNUEL nourri d'un versement mensuel
+  divisé par 12 « comme le voisin ») que goldens, conservation et revues n'avaient pas vu — AUCUNE
+  fixture ne portait le flux (`UN-INVARIANT-NE-VOIT-PAS-CE-QUI-EST-ABSENT`). Asserter le CUMUL
+  (invariant de cadence) et le champ PUBLIÉ, pas la valeur d'un appel au mutateur.
 - ⚠️ **Un correctif de correctif se fait relire AUSSI** : la 2e revue du même lot a trouvé 2 défauts
   que j'avais introduits. (a) Retirer le SRG de la TRANCHE et pas du CONTEXTE le rendait imposable —
   `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` re-commis dans le lot dont le commit CITAIT cette leçon.

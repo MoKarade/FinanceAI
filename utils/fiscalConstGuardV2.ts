@@ -263,9 +263,9 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
 
     // ── services/projection/w5Effects.ts ─────────────────────────────────────────────────────
     { file: 'services/projection/w5Effects.ts', value: '0.45', family: 'fiscal',
-      reason: 'PROXY d’impôt plat de 45 % sur le revenu net d’exploitation locatif. Écart MESURÉ vs impôt incrémental réel : +2 665 $/an à 60 k$ de revenu, +1 004 $ à 100 k$, −2 208 $ à 250 k$ — donc NON conservateur aux hauts revenus. Décision Marc close exigeait de le documenter : ticket `[W5-PROXY-NON-SOURCE]`.' },
+      reason: 'PROXY d’impôt plat de 45 % sur le revenu net d’exploitation locatif. DOCUMENTÉ dans FISCAL_REFERENCE.md §6 « Proxys d’impôt W5 » (décision Marc [W5-TAX-PROXY] : garder le forfait, l’ancrer comme estimation de taux marginal QC). Écart MESURÉ vs impôt incrémental réel sur 30 k$ de NOI : +4 387 $/an à 40 k$ de revenu, +2 665 $ à 60 k$, +1 004 $ à 100 k$, puis NÉGATIF au-delà de ~145 k$ (−738 $ à 150 k$, −2 208 $ à 250 k$) — conservateur en bas, NON conservateur en haut.' },
     { file: 'services/projection/w5Effects.ts', value: '0.36', family: 'fiscal',
-      reason: 'PROXY d’impôt plat de 36 % sur un dividende de société privée. Même statut que le 0,45 : ni sourcé, ni ancré, alors qu’il pilote un montant affiché. Ticket `[W5-PROXY-NON-SOURCE]`.' },
+      reason: 'PROXY d’impôt plat de 36 % sur un dividende de société privée. DOCUMENTÉ dans FISCAL_REFERENCE.md §6 « Proxys d’impôt W5 ». MESURÉ sur 30 k$ de dividende : correspond au taux d’un dividende ORDINAIRE à ~100 k$ de revenu (36,04 %) et à personne d’autre — il sur-impose un dividende DÉTERMINÉ de jusqu’à 7 606 $/an et sous-impose un actionnaire à 250 k$ de 3 526 $/an. Le dépôt sait pourtant calculer ce taux exactement (utils/tax.ts calculateDividendTax) : ticket `[W5-DIVIDENDE-PROXY-VS-MOTEUR]`.' },
     { file: 'services/projection/w5Effects.ts', value: '8', family: 'design',
       reason: 'Durée par défaut d’un cycle de véhicule quand l’utilisateur ne la précise pas (8 ans). Hypothèse d’amorçage.' },
     { file: 'services/projection/w5Effects.ts', value: '5', family: 'design',

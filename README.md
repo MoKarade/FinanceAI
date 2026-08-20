@@ -26,13 +26,17 @@ npm run preview
 ## Lancer les tests
 
 ```bash
-npm run test          # Vitest (4 262 tests, 384 fichiers, mesuré 2026-08-17)
+npm run test          # Vitest — le compte fait foi dans la CI, pas ici
 npm run typecheck     # TypeScript strict mode (clean)
 npm run build         # Vite 8 (--mode production)
 ```
 
 Tests manuels : ~195 cas couvrant les onglets actifs — voir
 [`docs/HISTORIQUE.md`](docs/HISTORIQUE.md).
+
+*(Le nombre de tests était écrit ici, daté du 2026-08-17, pendant que le `CLAUDE.md` en portait
+un autre daté du 2026-08-20. Deux chiffres, deux dates, une seule vérité : celui qui n'est pas
+relu ment en silence. Un compteur se lit dans la CI.)*
 
 ## 🎓 Conventions clés
 
@@ -65,8 +69,8 @@ Tests manuels : ~195 cas couvrant les onglets actifs — voir
 
 | Fichier | Contenu |
 |---|---|
-| **[`docs/BACKLOG.md`](docs/BACKLOG.md)** | **Source de vérité du restant à faire** — items P0/P1/P2/P3 |
-| [`docs/SESSION_HANDOVER.md`](docs/SESSION_HANDOVER.md) | Reprise rapide — état actuel + recommandations |
+| **[`BACKLOG.md`](BACKLOG.md)** | **Source de vérité du restant à faire** — items P0/P1/P2/P3 |
+| [`HANDOVER.md`](HANDOVER.md) | Reprise rapide — état actuel + recommandations |
 | [`docs/HISTORIQUE.md`](docs/HISTORIQUE.md) | Archive consolidée : snapshots, audits, designs livrés, ADRs, 131 tests manuels par onglet |
 | [`docs/PROJECTION_OUTPUT_SCHEMA.md`](docs/PROJECTION_OUTPUT_SCHEMA.md) | Schéma exhaustif `chartData[i]` (~50 champs) |
 | [`docs/PROJECTION.md`](docs/PROJECTION.md) | Moteur de projection (9 phases, 7 scénarios, MC) |

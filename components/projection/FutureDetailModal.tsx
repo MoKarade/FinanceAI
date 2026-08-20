@@ -275,7 +275,7 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
 
     /**
      * [PASSE-REEL-VARIATION-DU-JOUR] Section REPLIABLE, FERMÉE par défaut — choix de Marc
-     * (`docs/decisions.md`), pour garder le panneau court.
+     * (`docs/adr/`), pour garder le panneau court.
      *
      * ⚠️ Je lui ai signalé le risque au moment de la question : une feature gatée par une
      * interaction se fait oublier (`UX-UNREACHABLE-FEATURE`). Il assume, ET les deux contraintes qui

@@ -34,9 +34,9 @@ Fichier dense et court (il se charge à chaque session = coûte des tokens).
 Doc détaillée dans `docs/`, qui fait foi.
 
 ## Système de docs (qui sert à quoi)
-- `docs/BACKLOG.md`          — tâches que CLAUDE peut faire (schéma + règles ci-dessous)
+- `BACKLOG.md`          — tâches que CLAUDE peut faire (schéma + règles ci-dessous)
 - `docs/A_FAIRE_MOI.md`      — tâches HUMAINES (Claude y ajoute ses blocages)
-- `docs/SESSION_HANDOVER.md` — état actuel de l'app + reprise rapide
+- `HANDOVER.md` — état actuel de l'app + reprise rapide
 - `docs/VISION.md`           — où va le projet (futur)
 - `docs/FISCAL_REFERENCE.md` — valeurs fiscales : SOURCE DE VÉRITÉ (datée + sourcée)
 - `docs/ARCHITECTURE.md`, `docs/PROJECTION.md`, `docs/PROJECTION_OUTPUT_SCHEMA.md`, `mcp/README.md`, `CHANGELOG.md`
@@ -57,7 +57,7 @@ Doc détaillée dans `docs/`, qui fait foi.
 - **À CHAQUE reprise de chat**, d'abord `git fetch origin main` + `git merge --ff-only origin/main`
   AVANT de juger l'état (le clone local du PC ne se met PAS à jour seul — vu 146 commits de retard
   le 2026-06-15 : des PR/symboles crus « absents » étaient déjà sur origin). Puis un point bref (lu
-  depuis `docs/SESSION_HANDOVER.md` + `docs/BACKLOG.md`) :
+  depuis `HANDOVER.md` + `BACKLOG.md`) :
   1. **Fait** — terminé depuis la dernière fois
   2. **État** — build/tests, chantiers ouverts
   3. **Suite proposée** — prochaine étape recommandée (+ ID)
@@ -137,21 +137,21 @@ Doc détaillée dans `docs/`, qui fait foi.
   ailleurs (chat, mémoire harness) mais PAS portée ici = perdue à la prochaine session.
 - **TOUTE la doc concernée s'améliore à CHAQUE PUSH** (règle Marc 2026-06-17) : pas seulement CLAUDE.md —
   AVANT le commit final, se demander « quels docs décrivent ce que je viens de changer ? » et mettre à jour
-  TOUS les documents touchés, dans la MÊME PR : `README` (features/usage), `docs/BACKLOG.md` (cocher les ID
-  livrés + découvertes), `docs/SESSION_HANDOVER.md` (état), `CHANGELOG.md`, et les docs TECHNIQUES concernés
+  TOUS les documents touchés, dans la MÊME PR : `README` (features/usage), `BACKLOG.md` (cocher les ID
+  livrés + découvertes), `HANDOVER.md` (état), `CHANGELOG.md`, et les docs TECHNIQUES concernés
   (`PROJECTION.md`, `PROJECTION_OUTPUT_SCHEMA.md`, `FISCAL_REFERENCE.md`, `ARCHITECTURE.md`…). Un champ/calcul/
   règle/valeur fiscale ajouté SANS sa doc = doc périmée qui trompe la prochaine session (la doc « fait foi »).
-  ⚠️ **`SESSION_HANDOVER.md` est la responsabilité KEYSTONE de l'agent `documentation-manager`** (renforcé Marc
+  ⚠️ **`HANDOVER.md` est la responsabilité KEYSTONE de l'agent `documentation-manager`** (renforcé Marc
   2026-06-18, après 6 PR mergées sans MAJ du handover) : il est désormais dans le « Toujours » de `/review-all` →
   il met à jour le bandeau de tête + la table §1 à CHAQUE PR, pas seulement « quand on y pense ». Le hook
   `learn-on-push` le rappelle (point 3). Le handover n'est PAS optionnel : c'est l'état que LIT la prochaine session.
 - **Backlog tenu par Claude** (l'Action `backlog-autocheck` a été RETIRÉE — choix Marc 2026-06-09 ;
   règles RENFORCÉES Marc 2026-07-31) :
-  au moment du MERGE d'une PR, Claude coche lui-même les `[ID]` livrés dans `docs/BACKLOG.md`
+  au moment du MERGE d'une PR, Claude coche lui-même les `[ID]` livrés dans `BACKLOG.md`
   (dans la PR même ou la suivante), ajoute les découvertes, et route les blocages humains
-  vers `docs/A_FAIRE_MOI.md`. Fin de session : BACKLOG + SESSION_HANDOVER à jour = partie du travail.
+  vers `docs/A_FAIRE_MOI.md`. Fin de session : BACKLOG + HANDOVER à jour = partie du travail.
   ⚠️ **CHAQUE tâche du BACKLOG a une case `- [ ]`** — aucune puce de tâche sans case (une note sans
-  travail à faire n'est pas une tâche : archive ou decisions.md). ⚠️ **Item fini + validé (mergé,
+  travail à faire n'est pas une tâche : archive ou `docs/adr/`). ⚠️ **Item fini + validé (mergé,
   gate vert) → DÉMÉNAGE vers `docs/BACKLOG_ARCHIVE.md`** (avec date + PR), au plus tard à la PR
   suivante — le BACKLOG ne garde que le vivant. ⚠️ Leçon de la refonte 2026-07-31 : ~65 items étaient
   FAITS sans case cochée et ~128 puces n'avaient pas de case — un backlog qui mélange fait/à-faire
@@ -159,7 +159,7 @@ Doc détaillée dans `docs/`, qui fait foi.
   empêche la dérive, pas les grandes passes de nettoyage.
   ⚠️ **`MERGE-MARKERS-IN-MAIN` (2026-08-14) — le gate NE LIT PAS les `.md`, donc il ne les protège
   pas.** La PR #622 a livré sur `main` des marqueurs de conflit NON RÉSOLUS, committés en clair dans
-  `CHANGELOG.md` (2 blocs) et `docs/BACKLOG.md` (1 bloc DÉSÉQUILIBRÉ : deux `<<<<<<<` pour un seul
+  `CHANGELOG.md` (2 blocs) et `BACKLOG.md` (1 bloc DÉSÉQUILIBRÉ : deux `<<<<<<<` pour un seul
   `>>>>>>>`). Ils y ont vécu plus d'une journée. Le gate était VERT tout du long — et c'est logique :
   `typecheck`, `lint`, `test` et `build` ne lisent aucun `.md`. Aucune barrière ne regardait.
   **Ce que ça produisait** : `[ENG-DIVORCE-ROOM-COUPLE]`, `[ENG-DIVORCE-ESTATE-PENSION]` et
@@ -408,7 +408,7 @@ n'est correct qu'APRÈS commit, pour reviewer une branche déjà poussée.)
   ne ménage PAS que Finnhub (60/min) — il protège AUSSI **CoinGecko free (~30/min)**. Un speedup provider-AVEUGLE qui dépasse ~30/min déclenche des
   429 crypto au cold-boot → actifs non rafraîchis = **régression UX PIRE que la lenteur**. Pour un item perf borné par un rate-limit EXTERNE,
   vérifier la limite du provider le PLUS STRICT (pas du plus permissif) AVANT d'estimer/coder ; le vrai fix sûr est provider-aware (M-L, plan-first), pas un `Promise.all` aveugle.
-  ⚠️ **Un ticket BACKLOG peut CONTREDIRE une décision VERROUILLÉE — relire `docs/decisions.md` + historique avant de coder** (leçon P0-PROXY 2026-07-06, généralise [[PM-STALE-BACKLOG]] aux décisions) : le ticket `[P0-PROXY]` disait « proxy pour la clé » (multi-user) alors que `ADR-002` (2026-07-06) verrouille « app SOLO » ; le plan-first l'a attrapé AVANT le code. Un item BACKLOG peut avoir été créé avant une décision Marc qui le REND obsolète ou le REDIRIGE (remis en perso vs multi-user). AVANT de coder un item : confirmer contre `docs/decisions.md` + `docs/VISION.md` qu'il n'a pas été annulé/remisé (leçon PM-STALE-BACKLOG : le PM/BACKLOG peut déraler) — s'il a, le COCHER « caduque/remis » + passer au suivant.
+  ⚠️ **Un ticket BACKLOG peut CONTREDIRE une décision VERROUILLÉE — relire `docs/adr/` + historique avant de coder** (leçon P0-PROXY 2026-07-06, généralise [[PM-STALE-BACKLOG]] aux décisions) : le ticket `[P0-PROXY]` disait « proxy pour la clé » (multi-user) alors que `ADR-002` (2026-07-06) verrouille « app SOLO » ; le plan-first l'a attrapé AVANT le code. Un item BACKLOG peut avoir été créé avant une décision Marc qui le REND obsolète ou le REDIRIGE (remis en perso vs multi-user). AVANT de coder un item : confirmer contre `docs/adr/` + `docs/VISION.md` qu'il n'a pas été annulé/remisé (leçon PM-STALE-BACKLOG : le PM/BACKLOG peut déraler) — s'il a, le COCHER « caduque/remis » + passer au suivant.
   ⚠️ **Un `onClick` React sur un conteneur de graphe ne capte PAS les clics tombant sur une forme SVG redessinée au survol — utiliser `pointerup`** (leçon FUTUR-CLICK-AREA 2026-08-11, mesurée par sonde Playwright, pas déduite). Sur le graphe Futur, cliquer sur une aire empilée (`path.recharts-curve.recharts-area-area`) ne déclenchait **aucun** événement `click` — vérifié jusqu'au listener `document` en phase de CAPTURE, qui ne voyait rien non plus, alors qu'un clic sur l'espace vide (`svg.recharts-surface`) passait normalement. Cause : recharts re-rend le `<path>` entre `pointerdown` et `pointerup` (l'état de survol change), donc les deux cibles ne sont plus le même nœud DOM et le navigateur ne synthétise jamais le `click`. `pointerup` arrive, lui, dans les deux cas. Conséquence utilisateur : la moitié basse de la courbe était **morte au clic** depuis toujours, et personne ne l'avait vu parce que l'e2e cliquait justement dans le vide au-dessus de la pile. **Deux leçons transverses** : (1) un test d'interaction doit cliquer là où l'utilisateur clique VRAIMENT (sur la donnée, pas dans la marge) — sinon il prouve un chemin que personne n'emprunte ; (2) quand un handler « ne se déclenche pas », instrumenter par SIDE-CHANNEL DOM (`setAttribute`) plutôt que `console.log` : le mode test peut réduire la console au silence, et j'ai perdu une passe entière sur un log jamais imprimé.
   ⚠️ **Superposer du RÉEL sur du PROJETÉ par `{...projeté, ...réel}` laisse filtrer les champs projetés dans une ligne présentée comme réelle — reconstruire le point À PARTIR DE RIEN** (leçon FUTUR-DAILY-PAST-REAL 2026-08-11). Le point quotidien du graphe Futur porte ~90 champs. En recouvrant seulement ceux qu'on sait mesurer (soldes, cash, dépenses), les ~70 autres — impôt dormant, rentes RRQ/PSV, solde d'impôt d'avril, cotisations, cibles FIRE — auraient SURVÉCU du point projeté vers une journée d'hier étiquetée « Réel ». Des chiffres crédibles, invérifiables, et faux par nature (on ne projette pas le passé). La forme sûre est structurelle : construire un objet NEUF ne contenant que le mesuré + l'identité du point ; ce qui n'est pas mesuré est ABSENT, donc « — ». Corollaire de la règle no-fake-data, appliquée non plus à UNE valeur mais à un objet entier — et c'est le cas de l'objet qui est piégeux, parce que la fuite est invisible à la relecture du diff (on voit ce qu'on écrit, pas ce qu'on hérite).
   ⚠️ **« Livré et testé » ne dit RIEN sur ce qui est VISIBLE par défaut — vérifier ce que l'état initial montre RÉELLEMENT** (leçon UX-UNREACHABLE-FEATURE, 3e occurrence, `[FUTUR-DAILY-PAST-REACH]` 2026-08-11). Le bouton « Jour » posait la fenêtre à `lo = todayIndex − 1`. Or la construction des jours CONSOMME la première ancre comme valeur d'ENTRÉE sans la rendre : le premier jour affiché était donc le 1er du mois COURANT, et le bouton ne montrait **aucun** jour passé. Toute la reconstruction du passé au jour — un module entier, 13 tests, une PR — était livrée, verte, déployée et **strictement invisible**. Aucun test ne l'attrapait parce que tous portaient sur la fenêtre OU sur la ventilation, jamais sur « qu'est-ce que l'utilisateur voit au premier clic ». Les trois occurrences de la classe sur ce seul chantier : (1) la vue au jour n'était atteignable qu'à 23-31 crans de molette ; (2) elle ne portait que la valeur nette ; (3) elle ne descendait jamais avant aujourd'hui. **Le test qui manque est toujours le même** : instancier l'état PAR DÉFAUT et assertionner sur son CONTENU (« la moitié des mois rendus tombe avant aujourd'hui »), pas sur la correction des briques.
@@ -1103,7 +1103,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   `silent-failure-hunter` pour les NaN/échecs avalés). Un finding = hypothèse → vérifier avant de coder.
 
 ## Automatisation (hooks `.claude/settings.json`)
-- **SessionStart** → `session-brief` injecte l'état (SESSION_HANDOVER + quick wins) : la reprise est automatique.
+- **SessionStart** → `session-brief` injecte l'état (HANDOVER + quick wins) : la reprise est automatique.
   **+ [ACC Lot 5]** démarre le dashboard Agent Control Center (`tools/agent-control-center/server.mjs`, port 4317,
   détaché, s'auto-termine sur EADDRINUSE) et surface son URL `http://127.0.0.1:4317` dans le brief → présence « un clic »
   (Marc épingle le preview une fois). Non-bloquant. Le dashboard montre les 14 agents (message+transcription) + backlog + workflows.
@@ -1665,7 +1665,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   zéro output). Tout mock de hook consommé par un useEffect à dep-référence → constante HOISTÉE (identité stable), et
   un vitest qui pend sans sortie = suspecter cette boucle avant tout le reste. (5) **Un `system` qui varie par envoi invalide le préfixe
   de prompt-caching ENTIER** (pièces jointes incluses) → scinder en blocs [statique+cache_control, dynamique] dès
-  qu'on injecte du contenu par-envoi dans system. ADR complet : docs/decisions.md. (6) **`scrollIntoView` sur une
+  qu'on injecte du contenu par-envoi dans system. ADR complet : docs/adr/. (6) **`scrollIntoView` sur une
   sentinelle fait défiler TOUS les ancêtres scrollables — y compris un drawer `overflow-hidden` (scrollable par
   script)** : header/fil sortaient par le haut du panneau (bug Marc, intermittent). Auto-scroll d'un fil de messages =
   `scrollTop = scrollHeight` sur le CONTENEUR du fil, jamais scrollIntoView. Vérité d'un bug de layout = e2e Chromium
@@ -2785,7 +2785,7 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
   dépenses du ménage quand il perd une tête (le décès a le même défaut). Ce n'était dans aucun
   ticket. Un correctif qui déplace un résultat d'un extrême à l'autre doit faire chercher ce qui
   compensait : ici, une hypothèse que personne n'avait jamais écrite. Elle est désormais une
-  DÉCISION explicite (`docs/decisions.md`), pas un oubli — et c'est Marc qui l'a tranchée, parce
+  DÉCISION explicite (`docs/adr/`), pas un oubli — et c'est Marc qui l'a tranchée, parce
   que le choix change le résultat d'un facteur 8.
 
 - ⚠️ **[ENG-DIVORCE] re-revue #616 — corriger une règle DUPLIQUÉE à moitié est PIRE que l'erreur

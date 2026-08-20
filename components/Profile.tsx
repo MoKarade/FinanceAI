@@ -5,7 +5,7 @@
 // chaque sous-composant lit/écrit les MÊMES clés store qu'avant → ZÉRO perte de données.
 //
 // [PROFIL-SOUS-ONGLETS 2026-08-17] Les cinq groupes empilés deviennent QUATRE sous-onglets.
-// Découpage choisi par Marc (`docs/decisions.md`) : Identité · Revenus · Profils enregistrés.
+// Découpage choisi par Marc (`docs/adr/0012-quatre-decisions-de-marc-2026-08-17.md`) : Identité · Revenus · Profils enregistrés.
 // ⚠️ Ses trois bacs ne couvraient pas Retraite ni Enfants — d'où un 4e onglet plutôt que de les
 // rétrograder sous « Revenus » (faux : ce ne sont pas des revenus d'aujourd'hui) ou de les perdre.
 // Écart signalé à Marc, pas décidé en silence.

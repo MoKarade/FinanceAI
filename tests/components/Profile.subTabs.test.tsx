@@ -1,7 +1,7 @@
 /**
  * [PROFIL-SOUS-ONGLETS] L'onglet Profil passe de CINQ groupes empilés à QUATRE sous-onglets.
  *
- * Découpage choisi par Marc (`docs/decisions.md` 2026-08-17) : Identité · Revenus · Profils
+ * Découpage choisi par Marc (`docs/adr/0012-quatre-decisions-de-marc-2026-08-17.md` 2026-08-17) : Identité · Revenus · Profils
  * enregistrés — plus un 4e (« Retraite & enfants ») que j'ai ajouté parce que ses trois bacs ne
  * couvraient pas ces deux groupes, et que les rétrograder sous « Revenus » aurait été faux.
  *

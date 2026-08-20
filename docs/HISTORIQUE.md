@@ -56,7 +56,7 @@
 > **STATUT (2026-06-05)** : ce document est désormais le **rapport d'audit de référence**
 > (catalogue + parcours + constats détaillés). Les items **encore ouverts** (D3 tokens, D4
 > god-files, D6-SR fuite lecteur d'écran, D7 perf boot, etc.) ont été **fondus dans
-> [`docs/BACKLOG.md`](BACKLOG.md)** avec des `[ID]` (source unique des tâches). Garder ce doc
+> [`BACKLOG.md`](BACKLOG.md)** avec des `[ID]` (source unique des tâches). Garder ce doc
 > pour le détail/justification de chaque constat ; suivre l'avancement dans le backlog.
 >
 > Demande de Marc : « grand nettoyage de tous les fichiers, niveau triple-A ». Décisions de cadrage :
@@ -1082,7 +1082,7 @@ C'est en pratique ce que le store fait déjà partiellement avec
 > local à chaque machine et ne traverse pas).
 >
 > **Dernière mise à jour : 2026-06-01.** Détail fin = `CHANGELOG.md` (haut = récent) et
-> `docs/BACKLOG.md` (§ « Bugs audit 2026-06-01 » + checklist de tests manuels en tête).
+> `BACKLOG.md` (§ « Bugs audit 2026-06-01 » + checklist de tests manuels en tête).
 
 ---
 
@@ -1196,14 +1196,14 @@ PSV 75+ — vraie 2e piste d'âge) · dividendes Non-Reg empilés (résiduel B-A
 
 ## 8. Tâche en cours pour Marc (test manuel)
 
-Marc teste la version fraîche (checklist vivante en tête de `docs/BACKLOG.md`, repeuplée à chaque cycle) :
+Marc teste la version fraîche (checklist vivante en tête de `BACKLOG.md`, repeuplée à chaque cycle) :
 sync, clés chiffrées, zoom, écran de chargement Futur, salaire mensuel, + les scénarios money corrigés
 (chômage → moins d'espace REER ; gros gain → impôt progressif ; couple à âges décalés → crédits par conjoint).
 
 ## 9. Comment reprendre (nouvelle session)
 
 1. `git pull` (sync entre PC).
-2. Lire ce doc + le haut du `CHANGELOG.md` + la checklist en tête de `docs/BACKLOG.md`.
+2. Lire ce doc + le haut du `CHANGELOG.md` + la checklist en tête de `BACKLOG.md`.
 3. Demander à Marc quelle priorité attaquer (P0 sync/Cloudflare/proxy, ou suite B-AUDIT-3 timing, ou autre).
 4. Toujours : branche → TDD → tsc+eslint+suite complète → commit FR → merge --no-ff → push → CI verte.
 
@@ -3582,7 +3582,7 @@ Finnhub, Era) sont optionnelles et utilisent tes propres cles.
 
 - Issues GitHub : https://github.com/MoKarade/FinanceAI/issues
 - Architecture detaillee : [docs/ARCHITECTURE.md](ARCHITECTURE.md)
-- Roadmap : [docs/BACKLOG.md](BACKLOG.md)
+- Roadmap : [BACKLOG.md](BACKLOG.md)
 - Tests : [docs/MANUAL_TEST_CHECKLIST.md](MANUAL_TEST_CHECKLIST.md)
 
 
@@ -5525,7 +5525,7 @@ Ajouter cleanup dead code + duplications dans le Sprint 2 quick wins (~4h). Le b
 | `README.md` | ✅ mis à jour ce cycle (chiffres tests 388 → 573) |
 | `CHANGELOG.md` | ✅ cycle 16 ajouté |
 | `docs/HANDOVER.md` | ✅ jusqu'à PR #114 |
-| `docs/SESSION_HANDOVER.md` | ✅ jusqu'à PR #118 (cache validé) |
+| `HANDOVER.md` | ✅ jusqu'à PR #118 (cache validé) |
 | `docs/ARCHITECTURE.md` | ✅ mis à jour ce cycle (tests 225 → 573, schema v3 → v6, build --mode production) |
 | `docs/PROJECTION.md` | ✅ |
 | `docs/WIRING_NOTES.md` | ✅ |
@@ -5675,7 +5675,7 @@ Estimation : 12h effectif (1.5 jour), tests à 573/573 conservés, bundle target
 
 > Snapshot COMPLET du backlog AVANT la refonte « lean » du 2026-06-05 (aucune perte de
 > contenu : trace des décisions et du travail livré).
-> **Le backlog actif et actionnable est `docs/BACKLOG.md`.** Audit qualité : `docs/AAA_AUDIT_2026-06.md`.
+> **Le backlog actif et actionnable est `BACKLOG.md`.** Audit qualité : `docs/AAA_AUDIT_2026-06.md`.
 
 ---
 
@@ -7807,7 +7807,7 @@ git push -u origin claude/analyze-finance-app-CtLvs
 
 ## 1. Symptôme initial
 
-Le `docs/SESSION_HANDOVER.md` (PR #117) listait 5 items « à valider en prod » dont :
+Le `HANDOVER.md` (PR #117) listait 5 items « à valider en prod » dont :
 
 > Cache Storage `financeai-v2` peuplé (était vide avant fix #116)
 
@@ -8778,7 +8778,7 @@ sensibilité). **669 tests existants toujours verts** → non-régression prouv�
 
 ### Commit 7 — Docs
 - ADR sur le découplage moteur (`decisions/<NNNN>-strategy-config-decoupling.md`).
-- MAJ `docs/BACKLOG.md` (C5 fait) + `CHANGELOG.md`.
+- MAJ `BACKLOG.md` (C5 fait) + `CHANGELOG.md`.
 
 ## 5. Gotchas / environnement (IMPORTANT)
 - **Node pas sur le PATH** : lancer via PowerShell avec

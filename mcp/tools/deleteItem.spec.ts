@@ -2,7 +2,7 @@
 // [MCP-DIRECT-EDIT Lots 4-5] SPEC pur (browser-safe) du tool de SUPPRESSION `delete_item` — actif
 // (« j'ai tout vendu mes X »), dette (soldée/erronée) ou objectif d'épargne. Geste DESTRUCTIF :
 // correspondance normalisée EXACTE (jamais de fuzzy), ambiguïté → erreur, confirmation à 2 temps
-// STRICTE + sauvegarde horodatée avant écriture. Détail des choix : docs/decisions.md (ADR Lots 4-5).
+// STRICTE + sauvegarde horodatée avant écriture. Détail des choix : docs/adr/0009-suppressions-via-mcp-delete-item.md (ADR Lots 4-5).
 
 import { z } from 'zod';
 import type { WriteToolSpec } from './_toolSpec';

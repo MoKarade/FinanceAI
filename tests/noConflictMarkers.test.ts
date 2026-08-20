@@ -3,7 +3,7 @@
 // [MERGE-MARKERS-IN-MAIN 2026-08-14] Garde née d'un incident RÉEL, pas d'une précaution.
 //
 // La PR #622 a livré sur `main` des MARQUEURS DE CONFLIT non résolus, committés tels quels dans
-// `CHANGELOG.md` (2 blocs) et `docs/BACKLOG.md` (1 bloc, déséquilibré : deux `<<<<<<<` pour un seul
+// `CHANGELOG.md` (2 blocs) et `BACKLOG.md` (1 bloc, déséquilibré : deux `<<<<<<<` pour un seul
 // `>>>>>>>`). Ils y sont restés plus d'une journée et n'ont été découverts que parce qu'une PR
 // suivante a dû fusionner ces mêmes fichiers et a produit un conflit imbriqué illisible.
 //

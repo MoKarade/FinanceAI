@@ -23,6 +23,6 @@ Cherche :
 
 Méthode : `grep`/`knip`/lecture ciblée ; quantifie (nb de lignes, nb d'occurrences, nb de fichiers).
 
-Sortie : une liste d'items prêts à coller dans `docs/BACKLOG.md`, chacun avec un **ID proposé**,
+Sortie : une liste d'items prêts à coller dans `BACKLOG.md`, chacun avec un **ID proposé**,
 un titre, l'impact, l'effort estimé et les fichiers concernés, triés par rentabilité. Ne corrige
 rien toi-même : tu alimentes le backlog.

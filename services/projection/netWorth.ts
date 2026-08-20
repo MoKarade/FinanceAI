@@ -29,7 +29,7 @@ export interface NetWorthParts {
      *  ⚠️ On compte `estimatedValue × ownershipPct` et **PAS** `retainedEarnings` : une valeur juste
      *  marchande EMBARQUE déjà les bénéfices non répartis (l'encaisse de la société en fait partie).
      *  Les additionner double-compterait. Si un jour `estimatedValue` devait s'entendre HORS encaisse,
-     *  ce serait une décision à écrire dans `docs/decisions.md`, pas un `+` discret ici. */
+     *  ce serait une décision à écrire dans `docs/adr/`, pas un `+` discret ici. */
     privateBusinessValue: number;
     liquidDebt: number;
     smithManoeuvreDebt: number;

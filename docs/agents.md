@@ -1,7 +1,7 @@
 # Agents FinanceAI
 
 > Flotte d'agents de revue spécialisés FinanceAI. Définitions : `.claude/agents/*.md`.
-> Usage (commandes, panel) : `docs/workflow.md`. Décision de design : `docs/decisions.md` (ADR-001).
+> Usage (commandes, panel) : `docs/workflow.md`. Décision de design : `docs/adr/` (ADR-001).
 
 ## Deux niveaux
 - **Globaux** (`~/.claude/agents/`, ~184 via claude-config / ECC / toolkit) : génériques, dispo dans tous les projets.

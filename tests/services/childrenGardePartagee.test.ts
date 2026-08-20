@@ -1,7 +1,7 @@
 /**
  * [ENG-DIVORCE-CHILDREN-REEE] Garde 50/50 : ce qui suit la GARDE, et ce qui suit `keep`.
  *
- * Décisions de Marc (2026-08-17, `docs/decisions.md`), en DEUX temps :
+ * Décisions de Marc (2026-08-17, `docs/adr/0012-quatre-decisions-de-marc-2026-08-17.md`), en DEUX temps :
  *   • garde partagée 50/50 ⇒ coûts d'enfants et allocations familiales × 0,5 après divorce ;
  *   • cotisations REEE ⇒ suivent le partage PATRIMONIAL (`keep`), pas la garde.
  *

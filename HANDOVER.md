@@ -114,7 +114,7 @@
 > brut à un LLM. Et **mes tests de câblage ne testaient pas les appelants** — retirer `startYear` de
 > `projection.ts` laissait tout vert. Fermé par un scan de SOURCE, prouvé discriminant.
 >
-> **SUITE — candidats NON bloqués**, tous mesurés dans `docs/BACKLOG.md` :
+> **SUITE — candidats NON bloqués**, tous mesurés dans `BACKLOG.md` :
 > `[ESTATE-NPV-07]` (vague 1f, nommer une hypothèse — pas de sourçage requis),
 > `[GROSSFROMNET-CREDITS-65]`, `[AUTOMARGINAL-BASCULE-SILENCIEUSE]`,
 > `[FISC-GUARD-ARGUMENT]` + `[FISC-GUARD-BENIGN-60]` (ENSEMBLE), `[GUARD-STRIPCOMMENTS-DUPLIQUE]`,
@@ -728,7 +728,7 @@
 
 > ## 🟢 Session 2026-08-19 (suite 96) — vague 0 : le ménage, et un caduc REFUSÉ
 > Branche `claude/backlog-menage`. Marc : « fais selon ce que le PM a dit, fais tout jusqu'à ce que
-> le backlog soit fini ». Le **plan complet vers zéro est désormais EN TÊTE de `docs/BACKLOG.md`** —
+> le backlog soit fini ». Le **plan complet vers zéro est désormais EN TÊTE de `BACKLOG.md`** —
 > c'est lui qu'il faut suivre, pas re-planifier.
 >
 > ⚠️ **5e revert de conteneur de la semaine, attrapé à temps.** Le tree était retombé au 2026-08-13
@@ -743,9 +743,9 @@
 >
 > ⚠️ **J'ai REFUSÉ deux propositions du PM, après vérification** :
 > 1. Fermer `[DEBT-FROM-CONTRACT]` + `[PASSE-REEL-DETTE-1/2/3]` comme caducs. La Décision 2 de
->    `decisions.md` interdit l'amortissement RÉTROACTIF et toute SAISIE demandée à Marc — lire le
+>    `docs/adr/` interdit l'amortissement RÉTROACTIF et toute SAISIE demandée à Marc — lire le
 >    PDF du contrat n'est ni l'un ni l'autre. **Question posée à Marc, réponse : « oui on veut
->    extraire ».** La décision est PRÉCISÉE dans `decisions.md` pour que la prochaine session ne
+>    extraire ».** La décision est PRÉCISÉE dans `docs/adr/` pour que la prochaine session ne
 >    refasse pas l'erreur.
 > 2. Fusionner `[FORMATCAD-OR-ZERO]` dans le groupe `formatCAD`. Le `|| 0` ANNULE la garde
 >    no-fake-data au lieu de la contourner : correctif inverse, ticket séparé.
@@ -890,7 +890,7 @@
 > Marc a demandé « le Lot 7 nav ». ⚠️ **Le Lot 7 était DÉJÀ LIVRÉ** — mesuré avant de coder :
 > `Settings.tsx` est un orchestrateur de SIX sous-onglets depuis la PR #549 (2026-07-31), donc AVANT
 > la rédaction du plan, qui ne lui consacrait qu'une ligne sans contenu. Classe
-> `BACKLOG-STALE-TICKET`. Coché caduque, décision consignée dans `docs/decisions.md`.
+> `BACKLOG-STALE-TICKET`. Coché caduque, décision consignée dans `docs/adr/`.
 > Le seul volet vivant était celui que `[UI-TABS-RICH]` avait déjà isolé : **Profil**.
 >
 > Livré : `Profile.tsx` passe de 5 groupes empilés à 4 sous-onglets (Identité · Revenus ·
@@ -911,7 +911,7 @@
 >   `localStorage` À LA MAIN : la construire via l'UI n'aurait prouvé que la cohérence du code avec
 >   lui-même (garde auto-satisfaite).
 >
-> **Quatre décisions de Marc consignées** (`docs/decisions.md`) : PDF en mode discret → REFUSER de
+> **Quatre décisions de Marc consignées** (`docs/adr/`) : PDF en mode discret → REFUSER de
 > générer · dette passée → reste FIGÉE (⚠️ signalée 2× comme un bug puis statu quo assumé — PAS une
 > régression à corriger) · variabilité du jour → section repliable FERMÉE · L7 caduque.
 
@@ -1311,7 +1311,7 @@
 
 > ## 🟢 Session 2026-08-13 (suite 67) — lot MOTEUR 2/5 : le bloc DIVORCE (PR #613)
 > Les 3 tickets divorce livrés ENSEMBLE (un seul changement sémantique : le ménage passe à une
-> tête). Décisions produit dans `docs/decisions.md` — ADR « Modèle du DIVORCE ».
+> tête). Décisions produit dans `docs/adr/` — ADR « Modèle du DIVORCE ».
 > - Dettes non immobilières partagées comme les actifs (décision Marc).
 > - `soloHousehold = survivorMode || divorced` sur les 7 sites fiscaux ; `computeRetirementIncome`
 >   garde `survivorMode` (un divorcé n'a AUCUNE prestation de survivant) et reçoit à part un
@@ -1389,7 +1389,7 @@
 >    passe à 1 personne) — ne pas les livrer séparément.
 >    ⚠️ **DÉCISION MARC 2026-08-13** : au divorce, les dettes NON immobilières se partagent au
 >    MÊME pourcentage que les actifs (esprit du patrimoine familial QC : on partage le NET).
->    À porter dans `docs/decisions.md` au moment de coder.
+>    À porter dans `docs/adr/` au moment de coder.
 > 3. ⏳ **Stress-test + invariants** — `[ENG-STRESSTEST-GROWTH-UNREGISTERED]`,
 >    `[ENG-MC-CONSERVATION-BLIND]`, `[ENG-INV-FLUXFORM-COVERAGE]`.
 > 4. ⏳ **Bilan complet** — `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`,
@@ -1439,7 +1439,7 @@
 >   jamais été abordée : #608 a traité l'AFFICHAGE, jamais la **SAISIE**. Les formulaires natifs de
 >   Réglages/Profil (salaire des deux conjoints, soldes réels par compte, paramètres avancés,
 >   patrimoine étendu) sont en clair quel que soit le mode. Tout est ticketé en un lot priorisé :
->   `[A11Y-PRIVACY-LOT2]` dans `docs/BACKLOG.md`. La primitive existe déjà (`PrivateNumberInput`).
+>   `[A11Y-PRIVACY-LOT2]` dans `BACKLOG.md`. La primitive existe déjà (`PrivateNumberInput`).
 >   ⚠️ Le CHANGELOG a été CORRIGÉ pour ne plus dire « le mode discret masque TOUT » — c'était faux.
 > - ⚠️ Une question de contrat attend Marc : l'export PDF doit-il tenir compte du mode discret ?
 >   (`[A11Y-PRIVACY-PDF-CONTRAT]`, reco : refuser de générer plutôt que produire un PDF de « ••• »).
@@ -1589,7 +1589,7 @@
 > - `AI-VISION-PAYSLIP-NOGATE` : hallucination OCR écrase profil salarial sans confirmation.
 > - `PERF-ENG-LATENT-MC-WASTE` : 5-10 % MC gaspillé (301 ms sur 6532 ms mesuré).
 >
-> **Backlog** : 62 tickets injectés dans `docs/BACKLOG.md` section « Audit complet 2026-08-12 »,
+> **Backlog** : 62 tickets injectés dans `BACKLOG.md` section « Audit complet 2026-08-12 »,
 > groupés par domaine (Moteur & fiscal · Sécurité · Silence · A11y · Perf · IA · Dette) et 
 > sévérité. Chaque ticket porte 🔴 si argent/données privées, mesure exécutée, effort S/M/L.
 > **Doublons** : 0 (aucun ID d'audit ne préexistait au BACKLOG).
@@ -2910,7 +2910,7 @@
 > cap), garantie « rapport toujours écrit » élargie à la lecture d'état initiale, montant $ retiré d'un
 > avertissement (fuite mode discret + logs GitHub), `fintableSyncReport` ajouté à `DEFAULT_APP_STATE` (purge
 > persona), carte UI durcie contre une forme corrompue. Détail complet dans `CLAUDE.md` (bloc
-> `[FUTUR-PAST-DEBT-FREEZE]`, sous-point panel) et `docs/decisions.md` (n°5).
+> `[FUTUR-PAST-DEBT-FREEZE]`, sous-point panel) et `docs/adr/` (n°5).
 > **🔵 `[FUTUR-PAST-DEBT-FREEZE]` LIVRÉ** (même PR) — demande Marc distincte, arrivée en cours de Lot 3 :
 > « assure-toi que le passé marche… le passé doit être exactement ce que c'était à cette date ». Audit
 > lecture seule d'abord (3/4 volets déjà corrects) puis fix d'un écart réel : `currentDebtNonImmo` (segment
@@ -3010,7 +3010,7 @@
 >
 > ## 🟢 Session 2026-07-29 (suite 2) — FINTABLE Lot 1 LIVRÉ : lecteur API + dry-run (blocage levé)
 > **Marc a fourni la doc officielle de l'API Fintable V2** → le « Ouvert » de l'ADR est fermé (mise à jour
-> ajoutée à `docs/decisions.md` : base `https://fintable.io/api/v2`, Bearer, enveloppe `{data}`, curseur,
+> ajoutée à `docs/adr/` : base `https://fintable.io/api/v2`, Bearer, enveloppe `{data}`, curseur,
 > `order=updated&updated_since` pour l'incrémental, 300 lectures/min).
 > **🔵 `[FINTABLE-1]` livré** : `services/fintable/` = `types.ts` (formes brutes + modèle normalisé +
 > `FintableError` à code typé transitoire/confirmé, classe QUOTE-ERRKIND) · `decode.ts` (décodage STRICT) ·
@@ -3033,7 +3033,7 @@
 > ## 🟠 Session 2026-07-29 (suite) — nouveau chantier FINTABLE : cadrage + ADR livrés, Lot 1 BLOQUÉ sur la forme de l'API
 > **Demande Marc** : « mettre en place Fintable pour récupérer mes transactions et mes investissements en temps réel »,
 > sans perdre l'import manuel (le mettre de côté), en gardant tous les tools MCP. 14 questions de cadrage répondues.
-> **🔵 `[FINTABLE-0]` LIVRÉ (cette PR)** : ADR (`docs/decisions.md`) + plan en 6 lots (`docs/BACKLOG.md` § 🏦 FINTABLE).
+> **🔵 `[FINTABLE-0]` LIVRÉ (cette PR)** : ADR (`docs/adr/`) + plan en 6 lots (`BACKLOG.md` § 🏦 FINTABLE).
 > **Découverte de cadrage qui RÉDUIT le chantier** (classe `R2-FIRE` — vérifier l'état RÉEL avant de coder) :
 > `mcp/ingest/applyDocument.ts` couvre DÉJÀ toute la fusion via 3 payloads existants — `bank_statement`
 > (transactions + dédup + allowlist), `broker_statement` (positions), `cash_balance` (delta `initialBalances.LIQUIDITE`).
@@ -3057,7 +3057,7 @@
 > **Contexte** : `set_cash` (#517) mergé + **déployé par Marc sur Cloud Run (v0.8.0 → confirmé fonctionnel sur claude.ai)**. Marc a ensuite donné la directive : vider TOUT le backlog, trouver/corriger les erreurs, non-stop. Stratégie : lots de PR sur les items actionnables (vérifier l'état RÉEL avant de coder, leçon PM-STALE-BACKLOG) ; items gated décision/action humaine → routés `A_FAIRE_MOI.md`.
 > **🔵 Lots 2-3 MCP-DIRECT-EDIT** (cette PR) : `set_budget_item` (upsert poste par nom, édition cible → `autoTarget:false`) + `upsert_savings_goal` (upsert objectif par nom). Même pattern que set_cash (confirmation 2 temps, bornes D9, update partiel). MCP v0.9.0. ⚠️ Chaque lot MCP mergé exige un redéploiement Cloud Run par Marc (manuel — deploy-mcp.yml PAS configuré, `gcloud` non dispo en session cloud) → regrouper les lots avant de lui demander.
 > **PR #518** (Lots 2-3 + HIST quick wins) : panel 3 agents FAIT (2 ÉLEVÉ financial-integrity corrigés : parité autoTarget/fréquence + note « poste orphelin retiré au prochain sync » ; 1 ÉLEVÉ silent-failure corrigé : '' avalé par toDocument → '' = effacer ; MOYENS/FAIBLES appliqués). Auto-merge armé.
-> **Lots 4-5 FAITS localement (PR suivante)** : `delete_item` (actif = vente totale / dette / objectif) + ADR « Suppressions via MCP/IA » (docs/decisions.md) — correspondance EXACTE, ambiguïté → throw, confirmation stricte, transactions différées. MCP v0.10.0. Panel à lancer au push.
+> **Lots 4-5 FAITS localement (PR suivante)** : `delete_item` (actif = vente totale / dette / objectif) + ADR « Suppressions via MCP/IA » (docs/adr/) — correspondance EXACTE, ambiguïté → throw, confirmation stricte, transactions différées. MCP v0.10.0. Panel à lancer au push.
 > **Suite prévue** : merge #518 → réconcilier → push Lots 4-5 + panel → silent-failure/MCP LOW (AITOOLS-HISTORY-BOUND, PERSONA-SANITIZE-CHAT, PRICE-SYNC-REPORT, MCP-ENGINE-WARNINGS, ENG-LIFEEVENT-VENTE-SUBSTRING) → a11y (A11Y-INK500 Lot 3, A11Y-FUTUR-MILESTONES-KEYBOARD) → dette. Items gated décision Marc → A_FAIRE_MOI. Voir BACKLOG.
 >
 > ## 🟢 Session 2026-07-28 — MCP-DIRECT-EDIT Lot 1 : `set_cash` (changer ses liquidités « juste en le demandant ») [PR — branche `claude/progress-check-yua8yy`]
@@ -3128,12 +3128,12 @@
 > purge cache history + hydratation forcée + quotes fraîches. HistorySyncDoctor : diagnostic par titre
 > (symbole de cotation inline, recherche `/api/search/yahoo` par NOM de titre), module `services/history/syncDiagnostics.ts`,
 > composant `HistorySyncDoctor` sur Investissements. Rewrites vercel.json + proxy vite dev. Tests 2954 verts (+24).
-> ADR complet docs/decisions.md (bloc HIST-MULTI-PROVIDER). Leçons CLAUDE.md portées.
+> ADR complet docs/adr/ (bloc HIST-MULTI-PROVIDER). Leçons CLAUDE.md portées.
 >
 > ## 🟢 Session 2026-07-23 (suite 2) — HIST-COVERAGE-TOTAL : portefeuille complet (PR #493)
 > **✅ `[HIST-COVERAGE-TOTAL]`** (panel 30 agents, 9 confirmés, 17 vérifiés) : le TOTAL du portefeuille couvre
 > TOUT — titres sans historique comptés à valeur actuelle (contribution plate, noHistorySymbols), backfill pré-historique,
-> queue périmée au currentPrice, variantes Yahoo-devise persistées (Asset.historySymbol, additif). ADR-complet docs/decisions.md.
+> queue périmée au currentPrice, variantes Yahoo-devise persistées (Asset.historySymbol, additif). ADR-complet docs/adr/.
 > Trade-off assumé : reconstructibilité `TOTAL == Σ colonnes` ne tient plus dès qu'existe un titre sans historique —
 > test coché, usage cohérent (UI+modals). Tests 2930 verts (+24 dont correctifs panel, gate propre). BACKLOG [HIST-COVERAGE-TOTAL] ✅ coché,
 > [HIST-GOOGLE-PARITY] absorbé. Suite : [INVEST-CURVES-LOW], [INVEST-ALLOC-GEO-SECTOR], [BUDGET-3-VUES] (plan-first).
@@ -3145,7 +3145,7 @@
 > du chat, clic → discussion contextualisée ; widget Haiku getNextBestActions + cache 1h RETIRÉS ;
 > `Tab.ACTIONS` retiré de l'enum (8 sites, typecheck = filet) + redirect `#ACTIONS`→`#ASSISTANT` ;
 > mode discret = clic désactivé (ADR). Tests : parité narrow↔full (garde anti-staleness du hook),
-> clic/discret discriminants, scan redirect. ADR : docs/decisions.md.
+> clic/discret discriminants, scan redirect. ADR : docs/adr/.
 >
 > ## 🟢 Session 2026-07-23 — vague 1.5 : panneau réparé + Budget à 100 % (PR #491)
 > **Fix bug Marc (captures)** : auto-scroll du chat par `scrollTop` sur le CONTENEUR de messages —
@@ -3251,7 +3251,7 @@
 > que le cron rougisse — `StateConflictError` typée, finding sécu ÉLEVÉ appliqué) + déclencheur GitHub Actions gratuit
 > (`.github/workflows/refresh-prices.yml`, 6 h + manuel — Cloud Run dort, un cron externe le réveille).
 > `deploy.sh` monte `financeai-refresh-secret` + `financeai-finnhub-key` (optionnelle, actions) depuis
-> Secret Manager s'ils existent. Tests `tests/mcp/refreshPrices.test.ts` (7, verts). ADR `docs/decisions.md`.
+> Secret Manager s'ils existent. Tests `tests/mcp/refreshPrices.test.ts` (7, verts). ADR `docs/adr/`.
 > ⏳ **Marc doit** : créer les secrets Cloud Run (`financeai-refresh-secret` + `financeai-finnhub-key`),
 > redéployer (`./mcp/deploy.sh`), puis créer les 2 secrets GitHub (`FINANCEAI_MCP_URL` +
 > `FINANCEAI_REFRESH_SECRET`). Détail : `mcp/README.md` § Refresh planifié.
@@ -4410,7 +4410,7 @@ Onglets retirés : Planning (fusionné dans Budget — G22-N3), Système (fusion
 **Core actif (9 fichiers `docs/`)** — réduction 2026-06-11 (47→9, le reste fusionné dans HISTORIQUE) :
 | Doc | Quand le lire |
 |---|---|
-| **`docs/BACKLOG.md`** | **Restant à faire — à lire EN PREMIER** |
+| **`BACKLOG.md`** | **Restant à faire — à lire EN PREMIER** |
 | `docs/A_FAIRE_MOI.md` | Tâches HUMAINES (Marc) |
 | `docs/FISCAL_REFERENCE.md` | Valeurs fiscales — SOURCE DE VÉRITÉ (datée + sourcée) |
 | `docs/ARCHITECTURE.md` | Stack, topologie, store, pipeline IA |

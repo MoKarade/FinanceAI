@@ -5,7 +5,7 @@
 > FINIES + VALIDÉES retirées de `BACKLOG.md`, avec leur contexte d'origine.
 >
 > ⚠️ **Toute case NON cochée ci-dessous est HISTORIQUE** : les items encore ouverts au
-> 2026-07-31 ont été EXTRAITS vers `docs/BACKLOG.md` (refonte complète, vérification
+> 2026-07-31 ont été EXTRAITS vers `BACKLOG.md` (refonte complète, vérification
 > item-par-item contre le code par 2 agents, preuve fichier:ligne). Ne JAMAIS reprendre une
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
@@ -1246,7 +1246,7 @@ fichier:ligne). Verdicts appliqués à la refonte :
   panel sur un patrimoine de 135 $ — d'où un `totalTaxesPaid` NÉGATIF). Livré : `keep` appliqué aux
   DEUX buckets (`taxPreviousYear` ET `taxCurrentYear`, ce dernier par symétrie — il vaut ~0 en
   janvier, mais n'en corriger qu'un est le motif « règle dupliquée corrigée à moitié »).
-  Conforme à la décision VERROUILLÉE « on partage la valeur NETTE » (`docs/decisions.md`), celle-là
+  Conforme à la décision VERROUILLÉE « on partage la valeur NETTE » (`docs/adr/`), celle-là
   même qui avait justifié d'ajouter les dettes au split.
   ⚠️ Test impossible à écrire avant `[ENG-MC-OBSERVABILITY]` : `FluxImpots` n'existe que dans le
   point COMPLET, et le divorce n'existe que sous MC. Garde anti-sur-correctif incluse (à 50 %, la
@@ -1288,7 +1288,7 @@ fichier:ligne). Verdicts appliqués à la refonte :
   ⚠️ Fixture à salaires TRÈS inégaux (14 000 vs 2 000 $/mois) : à salaires égaux `(a+b)/2 === a`
   et le défaut est INVISIBLE. Test rendu possible par `[ENG-MC-OBSERVABILITY]`.
 
-- [ ] **`[ENG-DIVORCE-CHILDREN-REEE]`** reste OUVERT et est resté dans `docs/BACKLOG.md` —
+- [ ] **`[ENG-DIVORCE-CHILDREN-REEE]`** reste OUVERT et est resté dans `BACKLOG.md` —
   ne pas le reprendre depuis ce fichier.
 
 ## Livré 2026-08-14 — PR #632 `[A11Y-PRIVACY-PATRIMOINE-ETENDU]` (lot `[A11Y-PRIVACY-LOT2]` 4/9)
@@ -1367,7 +1367,7 @@ fichier:ligne). Verdicts appliqués à la refonte :
 
 > Gate vert. Les 3 tickets forment UN seul changement sémantique (le ménage passe à une tête) :
 > les livrer séparément aurait produit des états incohérents. Décisions produit dans
-> `docs/decisions.md` (ADR « Modèle du DIVORCE »).
+> `docs/adr/` (ADR « Modèle du DIVORCE »).
 
 - [x] 🔴 **`[ENG-DIVORCE-DEBT-ASYMMETRY]`** (S) — le divorce partage ACTIFS et l'hypothèque,
   mais garde **100 % des dettes non immobilières** (activeDebts[], liquidDebt, smithManoeuvreDebt).
@@ -2219,7 +2219,7 @@ valeur qui agit, l'autre OFFRE un choix qui ne produit que du faux.
 ---
 
 ## 🏦 Chantier FINTABLE — sync bancaire & investissements (cadrage validé Marc 2026-07-29, 14 questions)
-> ADR complet : `docs/decisions.md` § « Sync bancaire & investissements via Fintable ».
+> ADR complet : `docs/adr/` § « Sync bancaire & investissements via Fintable ».
 > Décisions verrouillées : Fintable = PRODUCTEUR de `DocumentPayload` (aucun nouveau moteur de fusion —
 > `applyDocument` couvre déjà `bank_statement` / `broker_statement` / `cash_balance`) ; exécution SERVEUR
 > (Cloud Run, cron quotidien) jamais navigateur ; jeton lecture seule en Secret Manager ; écriture via
@@ -2663,7 +2663,7 @@ valeur qui agit, l'autre OFFRE un choix qui ne produit que du faux.
   bump du SDK MCP (dès qu'il passe à node-server 2.x, le résiduel tombe tout seul).
 
 ## 📈 Investissements — couverture d'historique incomplète (demande Marc 2026-07-22, verbatim « backlog », captures)
-- [x] **`[HIST-COVERAGE-TOTAL]`** 🔴 (M-L) — ✅ 2026-07-23 (PR #493, ADR docs/decisions.md) : la courbe TOTAL
+- [x] **`[HIST-COVERAGE-TOTAL]`** 🔴 (M-L) — ✅ 2026-07-23 (PR #493, ADR docs/adr/) : la courbe TOTAL
   n'omet PLUS aucun titre détenu. Livré : (b) titre sans historique → compté au TOTAL/buckets à sa valeur
   actuelle (contribution plate, AUCUNE colonne inventée, `noHistorySymbols` signalé) ; backfill borné
   pré-historique au PREMIER close (plus de « marche » fantôme) ; queue périmée raccordée au `currentPrice`
@@ -2702,7 +2702,7 @@ valeur qui agit, l'autre OFFRE un choix qui ne produit que du faux.
   Finnhub → repli Yahoo via le proxy chart, `meta.regularMarketPrice`, devise vérifiée) ; `priceRefresh` quote
   `historySymbol || symbol` ; bouton « Actualiser les cours » = resync COMPLÈTE (purge cache history + hydratation
   forcée + quotes + diagnostic) ; `HistorySyncDoctor` (Investissements) : raison exacte par titre + symbole de
-  cotation inline + recherche par NOM (`/api/search/yahoo`). ADR docs/decisions.md.
+  cotation inline + recherche par NOM (`/api/search/yahoo`). ADR docs/adr/.
 - [x] **`[INVEST-PERF-PERIOD]`** (S-M) — ✅ 2026-07-23 (demande Marc : « la performance actuellement c'est 24h
   mais je veux pouvoir choisir moi ») : sélecteur de période (24h / 7 j / 1 mois / 3 mois / 6 mois / cette
   année / 1 an) sur la carte Performance, qui pilote AUSSI les chips du graphe et les cartes par titre.
@@ -2860,14 +2860,14 @@ valeur qui agit, l'autre OFFRE un choix qui ne produit que du faux.
   `getNextBestActions` + cache 1h RETIRÉS de services/claude.ts ; enum `Tab.ACTIONS` retiré (8 sites
   migrés, typecheck comme filet) + redirect deep-link `#ACTIONS`→`#ASSISTANT` ; mode discret = clic
   désactivé (ADR : pas de redaction fragile). Tests : parité narrow↔full du hook, clic/mode discret
-  discriminants, scan redirect. ADR complet : docs/decisions.md.
+  discriminants, scan redirect. ADR complet : docs/adr/.
 
 ## 🖥️ Chat conscient de la page (demande Marc 2026-07-22 : « le chat peut réagir à tout sur la page »)
 - [x] **`[CHAT-PAGE-CONTEXT]`** ✅ vague 1 (2026-07-22, PR #490) — onglet actif (Tier 1, TOUTES les pages,
   `TAB_LABELS` déplacé en source unique dans `constants.ts`) + Budget en contexte FIN (Tier 2 : période
   humanisée, vue, dépenses/cible/revenus AFFICHÉS, top 3 catégories, filtre personne) via le registre pur
   `services/aiChat/viewContext.ts` + `useViewContextPublisher` (gate mode discret À LA SOURCE). Injection en
-  FIN de `system` (figée par envoi — ADR docs/decisions.md, PAS un tool). Badge « Contexte : Budget —
+  FIN de `system` (figée par envoi — ADR docs/adr/, PAS un tool). Badge « Contexte : Budget —
   juillet 2026 » contestable dans le chat. Page non instrumentée → aveu honnête. Parité canonique verrouillée
   (`Budget.viewContext.test.tsx` : détail ≡ computeBudgetParity/computeIncomeBreakdown — jamais un 3e chiffre).
 - [ ] **`[CHAT-PAGE-CONTEXT-V2]`** (M) — vague 2 : instrumenter les autres onglets (Investissements : filtres/
@@ -3221,7 +3221,7 @@ valeur qui agit, l'autre OFFRE un choix qui ne produit que du faux.
     RÉEL dans la projection (retrait cible−accumulé au mois de l'échéance) et que le MCP peut désormais la
     poser : une écriture IA non visible/réversible à l'écran. Afficher l'échéance sur la carte + permettre
     de l'éditer/effacer.
-  - [x] **Lots 4-5 — `delete_item`** ✅ 2026-07-29 (ADR docs/decisions.md) : suppression actif/dette/objectif,
+  - [x] **Lots 4-5 — `delete_item`** ✅ 2026-07-29 (ADR docs/adr/) : suppression actif/dette/objectif,
     correspondance normalisée EXACTE (ambiguïté → throw, accountType pour un symbole multi-comptes),
     aperçu des effets (courbe passée, NW, décaissement), confirmation 2 temps stricte. « Vente totale » =
     suppression (quantity:0 réfuté : holdingsAt compte les purchases → courbe fausse à vie). Transactions
@@ -3239,7 +3239,7 @@ valeur qui agit, l'autre OFFRE un choix qui ne produit que du faux.
   ≥16 car., Bearer temps constant, conflit OCC = `200 {ok:false}` transitoire). Déclencheur GitHub Actions gratuit
   (`.github/workflows/refresh-prices.yml`, 6 h + manuel — Cloud Run scale-to-zero, cron externe le réveille).
   `deploy.sh` monte `financeai-refresh-secret` + `financeai-finnhub-key` (optionnelle, actions) s'ils existent.
-  5 tests (`tests/mcp/refreshPrices.test.ts`). ADR `docs/decisions.md`. ⚠️ Marc : secrets Cloud Run + GitHub + redéploiement.
+  5 tests (`tests/mcp/refreshPrices.test.ts`). ADR `docs/adr/`. ⚠️ Marc : secrets Cloud Run + GitHub + redéploiement.
 - **`[PRICE-REFRESH-LIVE]`** ✅ **LIVRÉ 2026-07-14 (PR à venir)** — `services/priceRefresh.ts` : `refreshAssetPrices`
   (getQuote séquentiel espacé 2 500 ms ≈ 24/min, sous CoinGecko free ~30/min — jamais de Promise.all) + patches par
   symbole fusionnés sur l'état FRAIS (`applyPricePatches`, anti-course avec un pull Drive/édition). Gardes : prix natif
@@ -4393,7 +4393,7 @@ valeur qui agit, l'autre OFFRE un choix qui ne produit que du faux.
 
 ## 🚨 P0 — Bloquant pour un vrai produit multi-utilisateurs
 > ⚠️ **Décision 2026-07-06 (Marc)** : app SOLO — multi-user REMISÉ indéfiniment (focus qualité AAA). Items P0 relus
-> sous cet angle : **sync Drive + gate Google = multi-APPAREILS de Marc** (pas multi-user public). `docs/decisions.md`
+> sous cet angle : **sync Drive + gate Google = multi-APPAREILS de Marc** (pas multi-user public). `docs/adr/`
 > ADR-002, `docs/VISION.md` cap produit.
 
 - [~] **[P0-PROXY]** 🔧 Proxy backend pour la clé Anthropic — **Phases 1-2 LIVRÉES dark-launch** (2026-07-06) :
@@ -5148,7 +5148,7 @@ quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
 - [x] **`[UI-TABS-RICH]`** — **LIVRÉ 2026-08-17**. Généraliser le pattern sous-onglets.
   ~~Retraite (4 outils empilés)~~ FAIT par `[REFONTE-NAV-L4]` 2026-08-12. ~~Profil (long scroll)~~
   **FAIT** : `Profile.tsx` passe de CINQ groupes empilés à QUATRE sous-onglets — Identité · Revenus ·
-  Retraite & enfants · Profils enregistrés (découpage Marc, `docs/decisions.md` ; le 4e onglet est
+  Retraite & enfants · Profils enregistrés (découpage Marc, `docs/adr/` ; le 4e onglet est
   mon ajout, ses trois bacs ne couvraient ni Retraite ni Enfants).
   Vrai travail : **extraire** les profils enregistrés de `UsersCard` (338 l. → 233 l.) vers
   `components/profile/SavedProfilesCard.tsx` — la Card mélangeait identité des personnes et
@@ -5258,7 +5258,7 @@ quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
 - [x] **`[ENG-DIVORCE-ROOM-DOUBLE]`** (S) — REMPLACÉ par `[ENG-DIVORCE-ROOM-COUPLE]` ci-dessous :
   l'hypothèse est désormais MESURÉE, avec les montants. Ne pas traiter deux fois.
 
-- [x] 🔴 **`[ENG-DIVORCE-CHILDREN-REEE]`** — **LIVRÉ 2026-08-17** (décisions Marc, `docs/decisions.md` :
+- [x] 🔴 **`[ENG-DIVORCE-CHILDREN-REEE]`** — **LIVRÉ 2026-08-17** (décisions Marc, `docs/adr/` :
   garde 50/50 + cotisations REEE suivant `keep`).
   ⚠️ **Le raccourci était FAUX, et c'est le cœur du ticket** : `liquidDelta` transportait les DEUX
   familles mélangées — coûts d'enfants (naissance l.162, voiture l.294) ET flux REEE (cotisation
@@ -5370,7 +5370,7 @@ quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
   d'intention. Garde de SOURCE sur tout le fichier :
   `tests/components/Investments.privacy.test.tsx`.
 
-- [x] **`[A11Y-PRIVACY-PDF-CONTRAT]`** — **LIVRÉ 2026-08-17** (décision Marc, `docs/decisions.md`).
+- [x] **`[A11Y-PRIVACY-PDF-CONTRAT]`** — **LIVRÉ 2026-08-17** (décision Marc, `docs/adr/`).
   `services/pdfReport.ts` REFUSE désormais de générer tant que le mode discret est actif, via une
   erreur TYPÉE (`PdfRefusedPrivacyError`) que l'appelant distingue d'une panne.
   ⚠️ **La garde est AU SERVICE, pas au clic** : une borne posée seulement dans `App.tsx` laisserait
@@ -5446,7 +5446,7 @@ quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
 
 - [x] 🔴 **`[PRIV-CATEGORIE-SENSIBLE]`** — **TRANCHÉ ET LIVRÉ 2026-08-18** (Marc : « masquer »).
   Option **B** retenue : TOUTES les catégories sont masquées en mode discret, pas une liste de
-  « sensibles ». ⚠️ **Décision qui renverse ma reco (A)** — consignée dans `docs/decisions.md` pour
+  « sensibles ». ⚠️ **Décision qui renverse ma reco (A)** — consignée dans `docs/adr/` pour
   que la prochaine session ne la « corrige » pas en croyant retrouver une cohérence.
   ⚠️ (C) écartée pour une raison de fond : une liste de catégories sensibles serait une heuristique
   de TEXTE sur des libellés que Marc écrit lui-même (`TEXT-HEURISTIC-OVER-USER-TEXT`) — « Psy » y

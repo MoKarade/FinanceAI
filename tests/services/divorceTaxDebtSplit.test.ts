@@ -6,7 +6,7 @@
 //   · s'il attendait un REMBOURSEMENT : il l'encaissait INTÉGRALEMENT (26 948,77 $ mesurés par le
 //     panel sur un patrimoine de 135 $), ce qui rendait au passage `totalTaxesPaid` NÉGATIF.
 //
-// C'est la décision VERROUILLÉE de Marc (`docs/decisions.md`) : on partage la valeur NETTE. C'est
+// C'est la décision VERROUILLÉE de Marc (`docs/adr/0011-modele-du-divorce-dans-la-projection.md`) : on partage la valeur NETTE. C'est
 // elle qui a justifié d'ajouter les dettes au split — une créance fiscale née pendant l'union est
 // de la valeur nette comme une autre.
 //

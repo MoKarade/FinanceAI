@@ -1,6 +1,6 @@
 // tests/mcp/deleteItem.test.ts
 // [MCP-DIRECT-EDIT Lots 4-5] delete_item — suppression d'un actif (« vente totale »), d'une dette ou
-// d'un objectif. Spec (ADR docs/decisions.md) : correspondance normalisée EXACTE (jamais de fuzzy sur
+// d'un objectif. Spec (ADR docs/adr/0009-suppressions-via-mcp-delete-item.md) : correspondance normalisée EXACTE (jamais de fuzzy sur
 // un geste destructif), ambiguïté → throw, aperçu qui liste les effets, confirmation STRICTE à 2 temps.
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';

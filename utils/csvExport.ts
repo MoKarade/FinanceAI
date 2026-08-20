@@ -64,7 +64,7 @@ export function downloadCSV(filename: string, content: string): void {
 
 /**
  * [PRIV-EXPORT-CSV-CONTRAT] Refus d'exporter en mode discret — même contrat que le PDF
- * (`PdfRefusedPrivacyError`, décision Marc 2026-08-17 dans `docs/decisions.md`).
+ * (`PdfRefusedPrivacyError`, décision Marc 2026-08-17 dans `docs/adr/0012-quatre-decisions-de-marc-2026-08-17.md`).
  *
  * ⚠️ POURQUOI CETTE GARDE MANQUAIT, et pourquoi c'est la MÊME faute. La décision « refuser en mode
  * discret » a été prise pour le PDF, avec cette justification : « un fichier SORT de l'app et

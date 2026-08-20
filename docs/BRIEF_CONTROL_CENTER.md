@@ -48,7 +48,7 @@ les `Pre/PostToolUse` DANS un sous-agent portent `agent_id` + `agent_type`.
 
 ## Lot 2 — Lecture backlog + git (PR 2) [parsing tolérant]
 Fichiers : nouveau `tools/agent-control-center/backlog-scan.mjs` (Node natif) + route `/backlog` dans `server.mjs`.
-Sources : `docs/BACKLOG.md`, `docs/A_FAIRE_MOI.md`, `git`, `docs/SESSION_HANDOVER.md` (nb de tests déjà tenu).
+Sources : `BACKLOG.md`, `docs/A_FAIRE_MOI.md`, `git`, `HANDOVER.md` (nb de tests déjà tenu).
 - Parser BACKLOG : items `[ID]`, état (`[x]`=fait), priorité (P0–P3 ou dérivée de section), marqueur (Claude/Marc/humain), desc. **Parsing tolérant** + mode dégradé (format semi-libre).
 - **En cours** : `git branch --show-current` → `claude/<slug>` mappé à l'ID + PR ouvertes. **En attente de Marc** : items « décision Marc » + `A_FAIRE_MOI.md`. **Phases** depuis BACKLOG/HANDOVER. **Métriques** : nb tests **lu** (pas de re-run vitest) + vélocité `git log --since`.
 - Fini : `/backlog` → `{ enCours[], aVenir[], enAttente[], fait[], phases[], metrics{} }` en réel.

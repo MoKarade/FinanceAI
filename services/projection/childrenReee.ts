@@ -121,7 +121,7 @@ export interface ChildProcessCtx {
      *
      * Décision Marc 2026-08-17 : les cotisations suivent le partage **PATRIMONIAL** (`keep`,
      * cumulé au fil des divorces), comme le SOLDE du régime — et NON la garde des enfants, qui
-     * pilote les coûts. `docs/decisions.md` laissait la question ouverte ; Marc l'a tranchée.
+     * pilote les coûts. `docs/adr/0012-quatre-decisions-de-marc-2026-08-17.md` laissait la question ouverte ; Marc l'a tranchée.
      *
      * ⚠️ Optionnel à défaut NEUTRE (1) : hors divorce, la projection est BIT-IDENTIQUE, donc
      * aucun code de migration et aucune rétrocompat à écrire.

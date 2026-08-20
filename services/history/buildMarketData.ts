@@ -10,7 +10,7 @@
 //
 // Règles :
 //  - PURE (aucun réseau, aucun store) → testable ; l'horloge s'injecte via `opts.nowMs` ;
-//  - ⚠️ [HIST-COVERAGE-TOTAL] COUVERTURE DU TOTAL (décision Marc 2026-07-23, ADR docs/decisions.md,
+//  - ⚠️ [HIST-COVERAGE-TOTAL] COUVERTURE DU TOTAL (décision Marc 2026-07-23, ADR docs/adr/0007-couverture-du-total-de-la-courbe.md,
 //    SURCLASSE l'ancien « un actif sans historique n'a NI colonne NI part dans les totaux ») : un
 //    TOTAL qui omet des titres détenus est un chiffre FAUX (vu : ~190 k$ affiché vs ~242 k$ réels —
 //    pire que l'approximation qu'on évitait). Désormais :

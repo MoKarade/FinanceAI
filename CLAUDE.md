@@ -1,4 +1,4 @@
-# FinanceAI — CLAUDE.md
+# CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
 assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 522 tests** Vitest
@@ -9,38 +9,53 @@ assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 522 tests** 
 > qui est l'ancien CLAUDE.md intégral. Ici : ce qu'il faut savoir AVANT de savoir quoi
 > chercher. Une leçon nouvelle va dans `docs/CONVENTIONS.md` ; on n'ajoute ici qu'une
 > LIGNE d'index quand une classe de piège n'y figure pas encore.
+>
+> Structure imposée par la convention commune aux huit dépôts
+> ([`claude-config/conventions/STRUCTURE-DEPOT.md`](https://github.com/MoKarade/claude-config/blob/main/conventions/STRUCTURE-DEPOT.md)) :
+> mêmes titres, même ordre, dans les huit. Les principes en §1, le gate en §5, les leçons en §9.
+> **Trois documents ont déménagé le 2026-08-20** pour s'y conformer : `docs/BACKLOG.md` →
+> `BACKLOG.md`, `docs/SESSION_HANDOVER.md` → `HANDOVER.md`, et `docs/decisions.md` (785 lignes,
+> treize décisions empilées dans le désordre) → `docs/adr/NNNN-slug.md`, une par fichier.
 
-## Docs (qui sert à quoi)
+## 1. Principes non négociables
 
-- `docs/CONVENTIONS.md` — **détail de tout ce qui est indexé plus bas** (leçons, pièges, rationnels)
-- `docs/BACKLOG.md` — tâches que Claude peut faire · `docs/BACKLOG_ARCHIVE.md` — items finis
-- `docs/A_FAIRE_MOI.md` — tâches HUMAINES (Claude y route ses blocages)
-- `docs/SESSION_HANDOVER.md` — état actuel + reprise rapide
-- `docs/VISION.md` — où va le projet · `docs/decisions.md` — décisions verrouillées (ADR)
-- `docs/FISCAL_REFERENCE.md` — valeurs fiscales : **SOURCE DE VÉRITÉ** (datée + sourcée)
-- `docs/ARCHITECTURE.md`, `docs/PROJECTION.md`, `docs/PROJECTION_OUTPUT_SCHEMA.md`, `mcp/README.md`, `CHANGELOG.md`
-- `docs/HISTORIQUE.md` — archive consolidée
+- **Source unique — Future** : tout calcul long-terme vient de `lastProjection.chartData`.
+  Avant d'ajouter un calcul côté UI, **grep le moteur** : s'il l'émet déjà, le CONSOMMER.
+- **Source unique — Patrimoine net** : `services/projection/netWorth.ts` `computeRawNetWorth`.
+  `realEstateEquity` est DÉJÀ net d'hypothèque (ne jamais re-soustraire). Jamais de copie
+  locale de la formule.
+- **No-fake-data** : zéro donnée simulée en prod. Projection non calculée →
+  `<ProjectionRequired>`. Une valeur non finie ne devient JAMAIS un défaut numérique
+  (`0 $` crédible est pire qu'un « — » honnête), y compris dans un prompt IA.
+  ⚠️ Vaut aussi pour un OBJET : superposer du réel sur du projeté par `{...projeté, ...réel}` laisse
+  filtrer tous les champs non recouverts. Un point « réel » se construit à partir de RIEN.
+- **Valeurs fiscales** : toute constante fiscale vient de `docs/FISCAL_REFERENCE.md` (datée +
+  sourcée). Jamais de chiffre fiscal en dur non sourcé — un chiffre sans source est SUSPECT,
+  pas « à re-sourcer un jour ».
+- **Unités argent** : `grossSalary`/`netSalary` du store sont **MENSUELS** → ×12 pour toute
+  comparaison annuelle (sinon bug d'échelle ~12×).
+- **Devises** : `Asset.currentPrice`/`buyPrice` sont en devise **NATIVE** → toute somme
+  affichée passe par `assetValueCad`. Garde-test : `tests/services/assetFxGuard.test.ts`.
+- **Formatage $** : `formatCAD` (`utils/format.ts`) UNIQUEMENT. Jamais `toLocaleString()` nu,
+  jamais `` `${n.toFixed(0)}$` ``. Pourcentages → `formatPercent`.
+- **Sécurité** : jamais de secret en clair (code, repo, chat). Clés API en IDB chiffré,
+  exclues de localStorage / backups / push Drive.
 
-## Reprise de session
+## 2. Conventions de code
 
-1. `git fetch origin main && git merge --ff-only origin/main` **AVANT de juger l'état**
-   (le clone local ne se met pas à jour seul — vu 146 commits de retard).
-2. Point bref lu depuis `SESSION_HANDOVER.md` + `BACKLOG.md` : **Fait** / **État** /
-   **Suite proposée** (+ ID) / **Planifié**.
+React 19.2 + Vite 8 (Rolldown) + TS 5.8 strict + Tailwind 3 · Zustand 5 (persist+partialize,
+schema v7) · Zod 3 · Recharts 3 (lazy) · Vitest 4 + Testing Library + axe-core ·
+@anthropic-ai/sdk (Sonnet 4.6 + Haiku 4.5) · @modelcontextprotocol/sdk · Finnhub + CoinGecko ·
+i18next · jspdf. Prod : **Vercel**.
 
-## Ton & réponses
+Structure **PLATE** (pas de `src/`) : racine `App.tsx`, `index.tsx`, `constants.ts`, `types.ts`,
+`i18n.ts` ; dossiers `components/ hooks/ services/ store/ utils/ locales/ mcp/ e2e/ tests/
+scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (50 sous-modules).
 
-- **Français**, tutoiement, direct et technique. **PAS d'emojis** dans le chat sauf demande.
-- **`[YYYY-MM-DD HH:MM UTC]` en tête de CHAQUE réponse** (via `date`), sans exception.
-- Structuré : essentiel d'abord, puis le détail. Expliquer le POURQUOI. Pour un choix :
-  options (bon/mauvais de chacune) PUIS ta reco.
-- **Vérifier avant d'affirmer** ; si pas sûr, le dire. Vérifier un fait avancé par Marc avant
-  de construire dessus, et le corriger s'il est faux.
-- Étiqueter toute affirmation non triviale ET tes recommandations :
-  **[Certain] / [Probable] / [Supposition] / [À vérifier]** (rien sur l'évident).
-- Pas de complaisance : si une approche est mauvaise, le dire et proposer mieux.
+⚠️ Hoister un import au niveau App tire ses deps dans le bundle de BOOT → lazy-charger
+(`lazyWithRetry` + Suspense) tout composant/service app-level qui importe du lourd.
 
-## Workflow
+## 3. Workflow git
 
 - **Plan d'abord, TOUJOURS** pour une tâche non triviale : toutes les questions de cadrage
   d'un coup (un seul batch), y compris la définition de « fini », puis plan court et OK avant
@@ -80,7 +95,7 @@ Au MERGE d'une PR, Claude coche lui-même les `[ID]` livrés, ajoute les découv
 les blocages humains vers `docs/A_FAIRE_MOI.md`.
 
 - ⚠️ **CHAQUE tâche a une case `- [ ]`** — aucune puce de tâche sans case. Une note sans travail
-  à faire n'est pas une tâche : elle va dans l'archive ou dans `decisions.md`.
+  à faire n'est pas une tâche : elle va dans l'archive ou dans `docs/adr/`.
 - ⚠️ **Item fini ET validé (mergé, gate vert) → DÉMÉNAGE vers `docs/BACKLOG_ARCHIVE.md`**
   (avec date + PR), au plus tard à la PR suivante. Le BACKLOG ne garde que le vivant.
 - ⚠️ Leçon de la refonte 2026-07-31 : ~65 items étaient FAITS sans case cochée et ~128 puces
@@ -91,7 +106,7 @@ les blocages humains vers `docs/A_FAIRE_MOI.md`.
 ### Docs à jour à CHAQUE push
 
 Avant le commit final, se demander « quels docs décrivent ce que je viens de changer ? » et
-les mettre à jour **dans la MÊME PR** : `SESSION_HANDOVER.md` (état — responsabilité keystone,
+les mettre à jour **dans la MÊME PR** : `HANDOVER.md` (état — responsabilité keystone,
 dans le « Toujours » de `/review-all`), `BACKLOG.md`, `CHANGELOG.md`, `README`, et les docs
 techniques touchés (`PROJECTION*.md`, `FISCAL_REFERENCE.md`, `ARCHITECTURE.md`…). Un champ,
 calcul ou valeur fiscale ajouté SANS sa doc = doc périmée qui trompe la prochaine session.
@@ -100,7 +115,24 @@ calcul ou valeur fiscale ajouté SANS sa doc = doc périmée qui trompe la proch
 (« push sans leçon »), pas de skip silencieux. Une leçon notée ailleurs (chat, mémoire
 harness) mais pas portée dans le dépôt est perdue à la prochaine session.
 
-## Gate (non négociable)
+## 4. Commandes utiles
+
+```bash
+npm run dev                  # Vite
+npm run test  · test:watch   # Vitest
+npm run test:e2e             # Playwright / Chromium
+npm run typecheck · lint     # tsc --noEmit · ESLint
+npm run build                # ⚠️ prebuild = lint : le build CASSE si le lint échoue
+npm run knip · check-contrast
+npm run mcp:dev | mcp:auth | mcp:connect | mcp:pack
+```
+
+- `/review-all` — panel d'agents sur le diff courant (voir §11).
+- `tools/agent-control-center` — vue `/backlog` dérivée de `BACKLOG.md`, `docs/A_FAIRE_MOI.md`
+  et de git. **Lecture seule**, et les nombres de tests y sont *lus* du `HANDOVER.md` plutôt
+  que re-mesurés : une commande de tableau de bord ne doit pas coûter une suite complète.
+
+## 5. Vérifications avant commit
 
 ```bash
 npm run typecheck && npm run lint && npm run test && npm run build
@@ -113,45 +145,84 @@ Avant CHAQUE commit (hook `commit-gate`). Jamais `--no-verify`.
 - ⚠️ `npm run build` a un `prebuild` = `lint` : le build CASSE si le lint échoue.
 - Autres : `test:watch`, `test:e2e`, `knip`, `check-contrast`, MCP `mcp:dev|auth|connect|pack`.
 
-## Stack & structure
+## 6. Après un merge : vérifier le DÉPLOIEMENT, pas seulement la CI
 
-React 19.2 + Vite 8 (Rolldown) + TS 5.8 strict + Tailwind 3 · Zustand 5 (persist+partialize,
-schema v7) · Zod 3 · Recharts 3 (lazy) · Vitest 4 + Testing Library + axe-core ·
-@anthropic-ai/sdk (Sonnet 4.6 + Haiku 4.5) · @modelcontextprotocol/sdk · Finnhub + CoinGecko ·
-i18next · jspdf. Prod : **Vercel**.
+**CI verte ne veut pas dire « en ligne ».** Ce sont deux systèmes indépendants : la CI juge le
+code, l'hébergeur construit et sert. Un merge peut passer le gate et ne jamais être déployé — la
+branche reste verte, le site continue de servir l'ancien build, et rien n'est rouge nulle part.
 
-Structure **PLATE** (pas de `src/`) : racine `App.tsx`, `index.tsx`, `constants.ts`, `types.ts`,
-`i18n.ts` ; dossiers `components/ hooks/ services/ store/ utils/ locales/ mcp/ e2e/ tests/
-scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (50 sous-modules).
+Vécu le 31/07/2026 : quatre projets Vercel ont cessé de créer des déploiements pendant ~3 h.
+DriveAI et JobAI ont rattrapé au push suivant ; Hubperso et BatchChef n'en ont pas eu — leur
+commit d'en-têtes de sécurité est resté **cinq jours** en attente sans que personne ne le voie.
 
-⚠️ Hoister un import au niveau App tire ses deps dans le bundle de BOOT → lazy-charger
-(`lazyWithRetry` + Suspense) tout composant/service app-level qui importe du lourd.
+Donc, après un merge qui change ce qui est SERVI : vérifier qu'un déploiement de production a
+bien été créé et qu'il est `READY`, puis **contrôler l'effet sur la réponse réelle** — un en-tête
+se lit dans la réponse, il ne se déduit pas du fichier source. Ici, ça vise en particulier la
+**CSP de `vercel.json`**, qui est **enforcée** (pas en `Report-Only`) : y ajouter un domaine à
+`connect-src` sans vérifier la réponse revient à couper l'app d'une API en silence, et un `fetch`
+bloqué par CSP ne casse ni le build ni les tests.
 
-## Non négociables (le cœur)
+Corollaire : un merge qui ne change QUE de la doc n'a pas de déploiement à vérifier. Le dire
+plutôt que de laisser croire qu'on a vérifié.
 
-- **Source unique — Future** : tout calcul long-terme vient de `lastProjection.chartData`.
-  Avant d'ajouter un calcul côté UI, **grep le moteur** : s'il l'émet déjà, le CONSOMMER.
-- **Source unique — Patrimoine net** : `services/projection/netWorth.ts` `computeRawNetWorth`.
-  `realEstateEquity` est DÉJÀ net d'hypothèque (ne jamais re-soustraire). Jamais de copie
-  locale de la formule.
-- **No-fake-data** : zéro donnée simulée en prod. Projection non calculée →
-  `<ProjectionRequired>`. Une valeur non finie ne devient JAMAIS un défaut numérique
-  (`0 $` crédible est pire qu'un « — » honnête), y compris dans un prompt IA.
-  ⚠️ Vaut aussi pour un OBJET : superposer du réel sur du projeté par `{...projeté, ...réel}` laisse
-  filtrer tous les champs non recouverts. Un point « réel » se construit à partir de RIEN.
-- **Valeurs fiscales** : toute constante fiscale vient de `docs/FISCAL_REFERENCE.md` (datée +
-  sourcée). Jamais de chiffre fiscal en dur non sourcé — un chiffre sans source est SUSPECT,
-  pas « à re-sourcer un jour ».
-- **Unités argent** : `grossSalary`/`netSalary` du store sont **MENSUELS** → ×12 pour toute
-  comparaison annuelle (sinon bug d'échelle ~12×).
-- **Devises** : `Asset.currentPrice`/`buyPrice` sont en devise **NATIVE** → toute somme
-  affichée passe par `assetValueCad`. Garde-test : `tests/services/assetFxGuard.test.ts`.
-- **Formatage $** : `formatCAD` (`utils/format.ts`) UNIQUEMENT. Jamais `toLocaleString()` nu,
-  jamais `` `${n.toFixed(0)}$` ``. Pourcentages → `formatPercent`.
-- **Sécurité** : jamais de secret en clair (code, repo, chat). Clés API en IDB chiffré,
-  exclues de localStorage / backups / push Drive.
+## 7. Intégration hub
 
-## Index des pièges — détail dans `docs/CONVENTIONS.md`
+FinanceAI publie un résumé au **hub perso** (`hubperso.com`) — mais **pas** depuis Vercel : le
+endpoint vit dans le serveur MCP auto-hébergé (`mcp/http.ts` → `GET /hub/summary`), construit par
+`mcp/hubSummary.ts`. C'est la différence avec les autres apps, et elle est structurelle : les
+données financières ne quittent pas la machine de Marc, donc le résumé se calcule là où elles sont.
+
+- **Identité publiée** : `id: "financeai"`, `name: "FinanceAI"`, `url:
+  "https://finance.hubperso.com"`, `color: "#0f766e"`. L'`id` doit rester identique à l'entrée de
+  `Hubperso/lib/sources.ts` — c'est du **code** côté hub, donc le changer exige un redéploiement
+  du hub, pas seulement une variable d'environnement.
+- **Auth (échec fermé)** : la route n'existe QUE si `FINANCEAI_HUB_TOKEN` est défini ; header
+  `x-hub-token` exigé, **401** sinon, comparaison en temps constant. Réponse toujours
+  `Cache-Control: no-store` — un résumé est un instantané, jamais une page mise en cache.
+- **Validé avant d'être servi.** `buildHubSummary` passe par `validateSummary()` du vrai schéma du
+  contrat : ce serveur ne publie jamais un JSON non conforme. Une panne interne rend
+  `errorHubSummary` — le widget affiche la panne au lieu de traiter l'app comme injoignable.
+- **No-fake-data au contrat** : les métriques viennent de `computeFinancialSignals` sur l'état
+  réel, la fraîcheur Drive donne `status`/`dataAsOf`. Aucun chiffre inventé, jamais un `0`
+  plausible à la place d'une mesure absente (§1).
+- **Période et devise** : le hub somme **par période** et refuse de fusionner « cumulé » avec
+  « ce mois-ci ». Une app qui publierait `mois` se retrouverait seule dans sa colonne et casserait
+  le total pour tout le monde.
+
+## 8. Documentation (où vit quoi)
+
+- `docs/CONVENTIONS.md` — **détail de tout ce qui est indexé plus bas** (leçons, pièges, rationnels)
+- `BACKLOG.md` — tâches que Claude peut faire · `docs/BACKLOG_ARCHIVE.md` — items finis
+- `docs/A_FAIRE_MOI.md` — tâches HUMAINES (Claude y route ses blocages)
+- `HANDOVER.md` — état actuel + reprise rapide
+- `docs/VISION.md` — où va le projet · `docs/adr/` — décisions verrouillées (ADR)
+- `docs/FISCAL_REFERENCE.md` — valeurs fiscales : **SOURCE DE VÉRITÉ** (datée + sourcée)
+- `docs/ARCHITECTURE.md`, `docs/PROJECTION.md`, `docs/PROJECTION_OUTPUT_SCHEMA.md`, `mcp/README.md`, `CHANGELOG.md`
+- `docs/HISTORIQUE.md` — archive consolidée
+
+**Reprise de session**
+
+1. `git fetch origin main && git merge --ff-only origin/main` **AVANT de juger l'état**
+   (le clone local ne se met pas à jour seul — vu 146 commits de retard).
+2. Point bref lu depuis `HANDOVER.md` + `BACKLOG.md` : **Fait** / **État** /
+   **Suite proposée** (+ ID) / **Planifié**.
+
+La structure est commune aux huit dépôts — elle est fixée dans
+[`conventions/STRUCTURE-DEPOT.md`](https://github.com/MoKarade/claude-config/blob/main/conventions/STRUCTURE-DEPOT.md)
+du dépôt `claude-config`, et nulle part ailleurs.
+
+⚠️ **Un fichier daté est un RÉCIT, pas une référence.** `docs/AUDIT_2026-08-12.md`,
+`docs/AUDIT_FINANCIER_2026-06-17.md`, `docs/ANALYSE_APP_2026-07-15.md`,
+`docs/PLAN_CHANTIERS_2026-06-19.md`… disent à quoi ils correspondaient **à leur date** et ne se
+mettent pas à jour — les rafraîchir effacerait ce qui était vrai ce jour-là. Ce qui doit rester
+vrai va dans un document **sans date** : `BACKLOG.md` pour le restant, `HANDOVER.md` pour l'état,
+`docs/CONVENTIONS.md` pour les leçons, `docs/adr/` pour les décisions.
+
+Nuance du déménagement du 2026-08-20 : dans ces récits, les **chemins** ont été réparés (un lien
+mort n'aide personne), mais **rien de ce qu'ils affirment** n'a été rafraîchi. Réparer un pointeur
+n'est pas réécrire un récit.
+
+## 9. Leçons apprises — index des pièges, détail dans `docs/CONVENTIONS.md`
 
 - Une valeur sensible qui sort par une **prop de composant tiers** (`tickFormatter`/`formatter` Recharts)
   échappe AU grep ET aux tests qui mockent ce composant : la garde est un scan de SOURCE (revue #608).
@@ -363,7 +434,7 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   pourra jamais appeler un helper qui prend les entrées brutes. Une source unique inatteignable est
   pire que le problème (`HELPER-INAPPELABLE-PAR-SON-CONSOMMATEUR`).
 - Un item BACKLOG peut être **périmé** ou **contredire une décision verrouillée**
-  (`docs/decisions.md`) → confirmer avant de coder, cocher « caduque » sinon.
+  (`docs/adr/`) → confirmer avant de coder, cocher « caduque » sinon.
 - Un ticket peut **sur-prescrire** son périmètre : prouver que chaque volet est atteignable.
 - Une spec d'un plan validé peut être **à l'envers** → instancier 2 cas extrêmes avant d'implémenter.
 - L'estimation d'effort peut être fausse : vérifier la **vraie contrainte** (ex. le rate-limit
@@ -572,7 +643,7 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   contradictoires dans un MÊME fichier). Ne pas corriger les N copies : en désigner UNE comme source
   et faire pointer les autres (`DOC-METRIQUE-RECOPIEE`).
 
-### CI (GitHub Actions)
+### CI (GitHub Actions) — pourquoi un gate vert ne suffit pas
 
 ⚠️ **« Gate local vert » ≠ « CI verte »** : le conteneur de dev tourne sur Node **22**, les workflows
 épinglent **20**, et rien ne déclare la cible (`engines`/`.nvmrc` absents — `[ENV-NODE-NON-DECLARE]`).
@@ -596,7 +667,23 @@ get_status` (qui ne montre que les *statuses* legacy — seul Vercel y figure) :
 (blocage d'infra, vu 3× : 45 min, 32 min, 32 min) → `cancel_workflow_run`, attendre la propagation
 (un rerun immédiat rend 403 « already running »), puis `rerun_workflow_run`.
 
-## Agents & automatisation
+## 10. Style
+
+- **Français**, tutoiement, direct et technique. **PAS d'emojis** dans le chat sauf demande.
+- **`[YYYY-MM-DD HH:MM UTC]` en tête de CHAQUE réponse** (via `date`), sans exception.
+- Structuré : essentiel d'abord, puis le détail. Expliquer le POURQUOI. Pour un choix :
+  options (bon/mauvais de chacune) PUIS ta reco.
+- **Vérifier avant d'affirmer** ; si pas sûr, le dire. Vérifier un fait avancé par Marc avant
+  de construire dessus, et le corriger s'il est faux.
+- Étiqueter toute affirmation non triviale ET tes recommandations :
+  **[Certain] / [Probable] / [Supposition] / [À vérifier]** (rien sur l'évident).
+- Pas de complaisance : si une approche est mauvaise, le dire et proposer mieux.
+
+Hérité du `CLAUDE.md` global de Marc (`claude-config`) : TypeScript strict, pas de `any`
+silencieux ; nommage clair plutôt que commentaires verbeux ; **erreurs honnêtes** — ne pas avaler
+une panne, ne pas ajouter un `catch` qui cache un vrai bug.
+
+## 11. Agents & automatisation
 
 Agents et hooks : voir `.claude/` et la section correspondante de `docs/CONVENTIONS.md`.
 Les agents ECC sont en anglais → **répondre à Marc en français** quoi qu'il arrive.

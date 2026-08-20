@@ -25,9 +25,9 @@ const reminder =
   'dans CLAUDE.md (section pertinente), MÊME PR ; si non -> dire « push sans leçon » au point de contrôle. ' +
   '(2) Un agent .claude/agents/ a-t-il produit du bruit, raté un angle mort, ou une convention a-t-elle ' +
   'changé ? Si oui -> mettre à jour le fichier de l\'agent (et docs/agents.md si le rôle bouge), MÊME PR. ' +
-  '(3) TOUS les docs touchés sont-ils à jour dans CETTE PR ? `docs/SESSION_HANDOVER.md` (état + bandeau de ' +
+  '(3) TOUS les docs touchés sont-ils à jour dans CETTE PR ? `HANDOVER.md` (état + bandeau de ' +
   'tête : ce que la PR vient de livrer — NON optionnel, c\'est le job de `documentation-manager`), ' +
-  '`docs/BACKLOG.md` (ID cochés + découvertes), `CHANGELOG.md`, et les docs techniques (PROJECTION/' +
+  '`BACKLOG.md` (ID cochés + découvertes), `CHANGELOG.md`, et les docs techniques (PROJECTION/' +
   'FISCAL_REFERENCE/ARCHITECTURE) si un champ/calcul/règle a changé. Doc périmée = doc qui trompe la prochaine session. ' +
   'Ne pas parquer la leçon/MAJ ailleurs (mémoire/chat) sans la porter dans le repo.';
 

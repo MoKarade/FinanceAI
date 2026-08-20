@@ -4,7 +4,7 @@
 > Pour le détail du moteur de projection, voir [PROJECTION.md](PROJECTION.md).
 > Pour les wirings inter-onglets, voir [WIRING_NOTES.md](WIRING_NOTES.md).
 > Pour la flotte d'agents de revue et le workflow, voir [agents.md](agents.md) + [workflow.md](workflow.md).
-> Pour les décisions d'architecture (ADR), voir [decisions.md](decisions.md).
+> Pour les décisions d'architecture (ADR), voir [`docs/adr/`](adr/).
 
 ---
 

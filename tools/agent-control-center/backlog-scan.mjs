@@ -3,8 +3,8 @@
 // Node natif, ZÉRO dépendance. TOLÉRANT (le BACKLOG est semi-libre) : une ligne non reconnue est ignorée,
 // jamais d'exception propagée (mode dégradé). Utilisé par la route GET /backlog de server.mjs.
 //
-// Sources : docs/BACKLOG.md (items), docs/A_FAIRE_MOI.md (en attente humaine), git (branche + vélocité),
-// docs/SESSION_HANDOVER.md (nb de tests déjà tenu — PAS de re-run vitest coûteux).
+// Sources : BACKLOG.md (items), docs/A_FAIRE_MOI.md (en attente humaine), git (branche + vélocité),
+// HANDOVER.md (nb de tests déjà tenu — PAS de re-run vitest coûteux).
 //
 // Sécurité : on n'exécute QUE des commandes FIXES (git/gh) via execFileSync (PAS de shell → aucune
 // injection possible ; zéro entrée utilisateur interpolée). Best-effort : timeout court, stderr muet, jamais bloquant.
@@ -14,9 +14,9 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const BACKLOG = join(ROOT, 'docs', 'BACKLOG.md');
+const BACKLOG = join(ROOT, 'BACKLOG.md');
 const AFAIRE = join(ROOT, 'docs', 'A_FAIRE_MOI.md');
-const HANDOVER = join(ROOT, 'docs', 'SESSION_HANDOVER.md');
+const HANDOVER = join(ROOT, 'HANDOVER.md');
 
 const readSafe = (p) => { try { return existsSync(p) ? readFileSync(p, 'utf8') : ''; } catch { return ''; } };
 // Exécution SANS shell (execFile) de commandes FIXES → aucune injection. Jamais bloquant.

@@ -3,7 +3,7 @@
 > Ce que **Claude ne peut pas faire seul** (comptes Google/Drive/Cloudflare/Vercel,
 > ressenti visuel sur device, secrets) + les **blocages** que Claude découvre en
 > chemin. Claude **ajoute** ici ; Marc coche. Détail des tests manuels par onglet :
-> `docs/MANUAL_TEST_CHECKLIST.md`. Tâches que Claude peut faire : `docs/BACKLOG.md`.
+> `docs/MANUAL_TEST_CHECKLIST.md`. Tâches que Claude peut faire : `BACKLOG.md`.
 
 ---
 
@@ -398,7 +398,7 @@ COMPLET dans `mcp/README.md` § « Déployer sur Cloud Run ». Résumé des acti
 ## O3 — Prouver la sync Drive en réel (P0 produit multi-user)
 - [x] ~~Créer le `VITE_GOOGLE_CLIENT_ID`~~ — ✅ **FAIT (O1-A)** : client OAuth Google déployé.
 - [ ] **Valider sur hubperso.com** : fenêtre privée neuve → login Google → toutes les données + clés API reviennent
-  (cf checklist `docs/BACKLOG.md` § sync).
+  (cf checklist `BACKLOG.md` § sync).
 
 ## O4 — Relais BYOK pour Claude (P0-PROXY, dark-launch awaiting env+flag)
 Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiffré, anti-abus.
@@ -417,7 +417,7 @@ Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiff
 
 ## O5 — Validations manuelles sur device (ressenti / prod)
 - [ ] Fluidité zoom 60 fps sur tous les onglets ; PDF complet ; iOS Safari ; Lighthouse re-run.
-  Liste vivante détaillée : `docs/BACKLOG.md` § « Tests manuels ».
+  Liste vivante détaillée : `BACKLOG.md` § « Tests manuels ».
 - [ ] **[RECH-ACTION-UX] confirmer le bug « sélectionner le prix fait quitter la page »** avec une **clé Finnhub
   configurée** (Investissement → Ajouter une action → tape un nom → sélectionne une suggestion). Le dropdown
   d'autocomplétion n'apparaît qu'avec une clé, que je n'ai pas en dev → je n'ai pas pu reproduire le symptôme
@@ -556,7 +556,7 @@ présent sur `main` (tests, composants et code de chacune) :
   vestige d'une vieille session distante). Son seul commit non livré est `538ae4d`
   `[HIST-NW-DEBT-DISCLAIMER]` (2026-07-07) : un bandeau sous le graphe Futur annonçant que
   « le patrimoine passé est affiché **hors dettes** ».
-  ⚠️ **Ce bandeau serait FAUX aujourd'hui** : `docs/decisions.md` (Décision 2, 2026-08-17)
+  ⚠️ **Ce bandeau serait FAUX aujourd'hui** : `docs/adr/` (Décision 2, 2026-08-17)
   verrouille que la dette du passé reste **figée au niveau actuel**, donc le passé MONTRE bien
   la dette — c'est même ce qu'a établi la PR #628 par mesure. L'afficher mentirait à l'écran.
   Ma reco : **supprimer** cette branche comme les autres. Je ne l'ai pas fait moi-même parce que

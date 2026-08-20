@@ -694,7 +694,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - ⚠️ **Le résultat est maintenant beaucoup plus sombre, et c'est voulu** : le moteur ne réduit
   PAS tes dépenses quand tu te retrouves seul (tu gardes 100 % du budget du couple, plus la
   pension). Hypothèse volontairement pessimiste, discutée et retenue — le détail est dans
-  `docs/decisions.md`.
+  `docs/adr/`.
 - Deux erreurs de plus, trouvées par une seconde revue avant la mise en ligne :
   - **Le Supplément de revenu garanti te ENRICHISSAIT en divorçant.** Une fois seul, tu restais
     évalué au barème d'un COUPLE, puis la prestation t'était versée en double : 1 226 $/mois, une
@@ -1746,7 +1746,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ### Interne
 - `[MCP-DIRECT-EDIT]` Lots 2-3 : kinds `budget_item` + `savings_goal` dans `applyDocument` (upsert par nom
   normalisé, bornes D9, gardes non-fini), specs/tools scindés, parité app↔MCP (WRITE_SPECS).
-- `[MCP-DIRECT-EDIT]` Lots 4-5 : kind `delete_item` + ADR « Suppressions via MCP/IA » (docs/decisions.md —
+- `[MCP-DIRECT-EDIT]` Lots 4-5 : kind `delete_item` + ADR « Suppressions via MCP/IA » (docs/adr/ —
   vente totale = suppression, quantity:0 réfuté preuve holdingsAt ; transactions différées). MCP v0.10.0.
   ⚠️ Actif sur claude.ai après redéploiement Cloud Run.
 - `[HIST-INFLIGHT-DEDUP]` withCache déduplique les requêtes en vol ; `[HIST-SESSION-HYDRATE]` un actif
@@ -2324,7 +2324,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   dort (scale-to-zero), un cron externe le réveille. `deploy.sh` monte `financeai-refresh-secret` et
   la `financeai-finnhub-key` (optionnelle, cours actions) depuis Secret Manager s'ils existent.
   Tests : `tests/mcp/refreshPrices.test.ts` (OCC, no-write-si-inchangé, skip honnête, source non
-  inscriptible). ADR : `docs/decisions.md` § `HUB-REFRESH-CRON`.
+  inscriptible). ADR : `docs/adr/` § `HUB-REFRESH-CRON`.
 
 ## [unreleased — chantier Claude-in-app, Lot D : écritures avec confirmation] — 2026-07-21
 
@@ -3073,7 +3073,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   comptes CELI/REER/CELIAPP/REEE/non-enregistré/crypto, immobilier, dettes, par âge) pour les graphiques.
 - **Chantier relancé (choix Marc 2026-07-13)** : cible = claude.ai web/mobile (Cloud Run). Phase 0
   refaite — correction au brief : l'UI connecteurs custom claude.ai exige OAuth 2.0/2.1 (pas de champ
-  Bearer statique) → lots suivants HTTP → OAuth → déploiement (cf `docs/BACKLOG.md` §MCP-CLOUDRUN).
+  Bearer statique) → lots suivants HTTP → OAuth → déploiement (cf `BACKLOG.md` §MCP-CLOUDRUN).
 
 ---
 
@@ -3169,8 +3169,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 ### Produit : app SOLO (multi-user remisé)
 - **Décision Marc 2026-07-06** : FinanceAI = outil perso qualité AAA, pas produit bêta public. Multi-appareil
   (sync Drive + gate Google) CONSERVÉ.
-- **Impact docs** : `docs/decisions.md` ADR-002 (contexte/trade-offs/alt), `docs/VISION.md` cap remisé,
-  `docs/BACKLOG.md` section P0 annotée (multi-user → multi-appareil Marc).
+- **Impact docs** : `docs/adr/` ADR-002 (contexte/trade-offs/alt), `docs/VISION.md` cap remisé,
+  `BACKLOG.md` section P0 annotée (multi-user → multi-appareil Marc).
 - Aucun changement de code produit — infra invisible au-delà de la route relais.
 
 ---
@@ -3868,9 +3868,9 @@ que *noté* non-bloquant, cf. plus bas, jamais corrigé).
 - **Verdict complétude** (analyste) : ~90 % pour l'usage solo (Marc derrière Cloudflare), mais **~72 %
   comme produit multi-utilisateurs fiable**. Les 3 derniers mètres solo→multi-user ne sont pas franchis :
   sync Drive jamais prouvée en réel (Client ID absent), Cloudflare verrouillé sur l'email de Marc, clé
-  Anthropic exposée côté navigateur (`dangerouslyAllowBrowser`). Plan P0/P1/P2 dans `docs/BACKLOG.md`.
+  Anthropic exposée côté navigateur (`dangerouslyAllowBrowser`). Plan P0/P1/P2 dans `BACKLOG.md`.
 - **Bugs fiscaux confirmés mais NON corrigés ce cycle** (chacun = TDD ciblé + parfois décision de
-  modélisation — consignés dans `docs/BACKLOG.md` § « Bugs audit 2026-06-01 ») :
+  modélisation — consignés dans `BACKLOG.md` § « Bugs audit 2026-06-01 ») :
   - [money] revenus variables (bonus/RSU) NET de Marc non réduits pendant chômage/LTD (jumeau du fix REER) ;
   - [money] gains en capital imposés au taux marginal NON empilé → sous-estimation d'impôt sur gros gains ;
   - [money] crédits d'âge/pension basés sur l'âge de Marc pour les DEUX conjoints (couples à âges décalés) ;

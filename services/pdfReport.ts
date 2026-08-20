@@ -242,7 +242,7 @@ const formatPct = (v: number, digits: number = 1) =>
 
 /**
  * [A11Y-PRIVACY-PDF-CONTRAT] Refus de générer en mode discret — décision Marc 2026-08-17
- * (`docs/decisions.md`).
+ * (`docs/adr/0012-quatre-decisions-de-marc-2026-08-17.md`).
  *
  * ⚠️ POURQUOI UN REFUS, et pas un PDF masqué. Un PDF **SORT de l'app et survit au mode** : le
  * fichier ne sait pas qu'il a été produit depuis un écran masqué. Générer en clair depuis un écran

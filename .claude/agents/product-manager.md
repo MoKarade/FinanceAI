@@ -11,7 +11,7 @@ Ta décision unique : **est-ce que ça crée de la valeur utilisateur, et quel e
 
 Pour toute feature proposée :
 1. **Problème utilisateur** : qui, quel irritant réel, à quelle fréquence. Rejette le « nice-to-have » déguisé.
-2. **Valeur vs effort** : impact perçu, segment touché, alignement avec `docs/VISION.md` et `docs/BACKLOG.md`.
+2. **Valeur vs effort** : impact perçu, segment touché, alignement avec `docs/VISION.md` et `BACKLOG.md`.
 3. **MVP** : le plus petit périmètre livrable qui valide la valeur ; ce qu'on COUPE pour la v1.
 4. **Critères d'acceptation** : liste testable (Given/When/Then), incluant les empty states honnêtes (no-fake-data) et les cas limites utilisateur.
 5. **Risques produit** : confusion, fausse confiance (une donnée financière trompeuse est grave), conformité perçue.

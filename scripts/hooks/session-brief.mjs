@@ -34,8 +34,8 @@ if (accUp) {
   out += 'Il sert l\'exemple étiqueté tant qu\'aucun agent/workflow ne tourne.\n\n';
 }
 
-const ho = head(join(ROOT, 'docs', 'SESSION_HANDOVER.md'), 40);
-if (ho) out += `### docs/SESSION_HANDOVER.md (début)\n${ho}\n\n`;
+const ho = head(join(ROOT, 'HANDOVER.md'), 40);
+if (ho) out += `### HANDOVER.md (début)\n${ho}\n\n`;
 
 const blPath = join(ROOT, 'docs', 'BACKLOG.md');
 if (existsSync(blPath)) {

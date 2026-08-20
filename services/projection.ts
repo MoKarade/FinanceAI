@@ -207,7 +207,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
      * marchande EMBARQUE déjà les bénéfices non répartis (l'encaisse de la société en fait partie).
      * Les additionner double-compterait de 400 k$ dans le persona de référence. Si `estimatedValue`
      * devait un jour s'entendre HORS encaisse, ce serait une décision à écrire dans
-     * `docs/decisions.md`, pas un `+` discret ici.
+     * `docs/adr/`, pas un `+` discret ici.
      *
      * ⚠️ Valeur CONSTANTE sur tout l'horizon : aucune croissance n'est modélisée. Faire croître une
      * entreprise privée à un taux inventé serait de la donnée fabriquée — le manque est nommé au
@@ -850,7 +850,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             }
             // [ENG-DIVORCE-DEBT-ASYMMETRY] Les dettes NON immobilières se partagent au MÊME taux que
             // les actifs — DÉCISION MARC 2026-08-13 (esprit du patrimoine familial québécois : on
-            // partage la valeur NETTE, pas les actifs bruts ; cf. docs/decisions.md).
+            // partage la valeur NETTE, pas les actifs bruts ; cf. docs/adr/).
             // Avant : seule l'hypothèque suivait `keep`. Mesuré : après avoir cédé 100 % des ACTIFS,
             // le patrimoine restait à −81 827 $ — 100 k$ de dettes intactes en face de rien.
             activeDebts = activeDebts.map(d => ({
@@ -882,7 +882,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // le remboursement INTÉGRAL du couple — mesuré 26 948,77 $ crédités sur un patrimoine
             // de 135 $, montant identique au témoin sans divorce. Symétrique et plus grave dans
             // l'autre sens : il aurait porté SEUL une dette d'impôt du ménage.
-            // C'est la DÉCISION VERROUILLÉE de Marc (`docs/decisions.md`) : on partage la valeur
+            // C'est la DÉCISION VERROUILLÉE de Marc (`docs/adr/`) : on partage la valeur
             // NETTE — c'est elle qui a justifié d'ajouter les dettes au split, et une créance
             // fiscale née pendant l'union est de la valeur nette comme une autre.
             // Effet de bord corrigé au passage : ce remboursement non partagé rendait
@@ -1590,7 +1590,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         /**
          * [ENG-DIVORCE-CHILDREN-REEE] Part des enfants qui reste à la charge du déclarant.
          *
-         * Décision Marc 2026-08-17 (`docs/decisions.md`) : **garde PARTAGÉE 50/50**. Après un
+         * Décision Marc 2026-08-17 (`docs/adr/`) : **garde PARTAGÉE 50/50**. Après un
          * divorce, les COÛTS d'enfants et les ALLOCATIONS familiales se partagent donc moitié-
          * moitié — cohérent avec le régime réel (en garde partagée, l'ACE se divise 50/50).
          *

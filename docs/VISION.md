@@ -1,7 +1,7 @@
 # VISION — où va FinanceAI
 
 > Le « nord » du projet. Sert à trancher les arbitrages : si une tâche ne sert pas
-> cette vision, elle attend. Tâches concrètes : `docs/BACKLOG.md`. Actions humaines :
+> cette vision, elle attend. Tâches concrètes : `BACKLOG.md`. Actions humaines :
 > `docs/A_FAIRE_MOI.md`.
 
 ## En une phrase
@@ -23,7 +23,7 @@ de qualité d'une « triple AAA company ».
 
 ## Cap produit (ordre indicatif)
 > ⚠️ **DÉCISION 2026-07-06 (Marc)** : app SOLO (multi-user REMISÉ indéfiniment). Raison : focus qualité AAA.
-> Details : `docs/decisions.md` ADR-002. Raison : une app QC existentielle pour Marc n'est pas un produit
+> Details : `docs/adr/` ADR-002. Raison : une app QC existentielle pour Marc n'est pas un produit
 > bêta public ; multi-appareil + sync Drive MAINTENUS. Relais BYOK pour Claude (Edge Vercel, token chiffré)
 > livré + dark-launch ; awaiting env+flag.
 

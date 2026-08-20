@@ -42,7 +42,7 @@ invariant-arbitre) + findings par gravité (vérifiés) + limites assumées + re
 Comparer au rapport précédent (« peaufiner à chaque passage » : les findings fermés deviennent des garde-fous).
 
 ## 5. Router les findings
-- Tout finding actionnable → entrée `docs/BACKLOG.md` (ID, gravité, `file:line`, fix, effort).
+- Tout finding actionnable → entrée `BACKLOG.md` (ID, gravité, `file:line`, fix, effort).
 - Findings réfutés / limites assumées → `docs/FISCAL_REFERENCE.md` §9 ou commentaire code (traçabilité).
 - Leçon de méthode/convention → delta `CLAUDE.md` (même PR).
 

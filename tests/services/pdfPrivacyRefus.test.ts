@@ -1,7 +1,7 @@
 /**
  * [A11Y-PRIVACY-PDF-CONTRAT] L'export PDF REFUSE de générer quand le mode discret est actif.
  *
- * Décision de Marc (2026-08-17, `docs/decisions.md`). ⚠️ Le raisonnement, parce qu'il n'est pas
+ * Décision de Marc (2026-08-17, `docs/adr/0012-quatre-decisions-de-marc-2026-08-17.md`). ⚠️ Le raisonnement, parce qu'il n'est pas
  * évident : un PDF **sort de l'app et survit au mode**. Le fichier ne sait pas qu'il a été produit
  * depuis un écran masqué. Générer en clair depuis un écran volontairement masqué est donc un piège
  * — l'utilisateur croit ses montants protégés alors qu'il vient d'en fabriquer une copie

@@ -4,7 +4,7 @@
 // ⚠️ POURQUOI CETTE EXTRACTION. `UsersCard` mélangeait deux sujets sans rapport dans une seule
 // Card de 338 lignes : l'IDENTITÉ des personnes (nom, âge, immigration, ajout de conjoint) et la
 // gestion de snapshots de configuration. Le découpage de Profil en sous-onglets (décision Marc
-// 2026-08-17, `docs/decisions.md`) les envoie dans deux onglets différents — il fallait donc
+// 2026-08-17, `docs/adr/0012-quatre-decisions-de-marc-2026-08-17.md`) les envoie dans deux onglets différents — il fallait donc
 // séparer le composant, pas seulement l'affichage.
 //
 // ⚠️ MIGRATION UI PURE : mêmes clés localStorage (`saved_profiles_list`, `profile_<slug>`), même

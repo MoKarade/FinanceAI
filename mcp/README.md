@@ -63,7 +63,7 @@ l'écriture, le tool refuse (rien d'écrasé) et invite à relancer. Exposés un
 | `set_cash` | Ajuste le solde de LIQUIDITÉS (cash) à une cible en $ CAD. Cash DÉRIVÉ → delta sur le compte `LIQUIDITE` des soldes de départ (visible Réglages → Comptes), transactions intactes, idempotent. ⚠️ **Confirmation à 2 temps** : sans `confirm:true`, renvoie un APERÇU (avant→après) SANS écrire ; n'applique qu'après accord explicite de l'utilisateur |
 | `set_budget_item` | Ajoute ou met à jour PAR NOM un poste de budget (cible/fréquence/nature/répartition, update PARTIEL). ⚠️ Éditer la cible décroche la cible auto-gérée (`autoTarget:false`). Confirmation à 2 temps (`confirm`) |
 | `upsert_savings_goal` | Ajoute ou met à jour PAR NOM un objectif d'épargne (cible/accumulé/échéance/icône, update PARTIEL). Confirmation à 2 temps (`confirm`) |
-| `delete_item` | SUPPRIME un actif (= vente totale, la position ET sa contribution passée à la courbe disparaissent), une dette (le NW monte) ou un objectif (décaissement annulé). Correspondance EXACTE (ambiguïté → erreur), confirmation 2 temps STRICTE + sauvegarde avant. Détail : ADR docs/decisions.md |
+| `delete_item` | SUPPRIME un actif (= vente totale, la position ET sa contribution passée à la courbe disparaissent), une dette (le NW monte) ou un objectif (décaissement annulé). Correspondance EXACTE (ambiguïté → erreur), confirmation 2 temps STRICTE + sauvegarde avant. Détail : ADR docs/adr/ |
 
 ### Connexion (amorçage)
 | `connect_drive` | Autorise le Google Drive de l'utilisateur **dans la conversation** (consentement navigateur, client OAuth partagé) — pour l'install `.mcpb` sans terminal |
@@ -571,7 +571,7 @@ Workload Identity Federation (aucune clé de service en secret GitHub). Il ne to
 les variables de repo `GCP_PROJECT_ID` + secrets `GCP_WIF_PROVIDER`/`GCP_DEPLOY_SA` sont
 configurés — sinon il est ignoré (le déploiement manuel `mcp/deploy.sh` reste toujours valable).
 
-> ⚠️ **Avant l'exposition publique** (cf `docs/BACKLOG.md` §MCP-CLOUDRUN-AUTH-HARDENING) :
+> ⚠️ **Avant l'exposition publique** (cf `BACKLOG.md` §MCP-CLOUDRUN-AUTH-HARDENING) :
 > `FINANCEAI_ACCESS_KEY` DOIT être générée aléatoirement (étape 3), `min-instances 1`
 > évite de vider le cache anti-rejeu à froid, et un rate-limit sur `/oauth/authorize`
 > est recommandé. Kill-switch en cas d'incident : régénère `financeai-oauth-signing-key`

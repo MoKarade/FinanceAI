@@ -4,7 +4,7 @@
 // portefeuille — composant PARTAGÉ Dashboard + Investissements (le même bloc dupliqué dériverait,
 // classe « delta appliqué à DEUX copies ») :
 //  - titre sans historique : PAS de courbe mais COMPTÉ au total à sa valeur actuelle (décision Marc
-//    2026-07-23, ADR docs/decisions.md — un TOTAL amputé de ~50 k$ était pire que l'approximation) ;
+//    2026-07-23, ADR docs/adr/0007-couverture-du-total-de-la-courbe.md — un TOTAL amputé de ~50 k$ était pire que l'approximation) ;
 //  - titre sans historique NI prix connu : rien à compter (hors total, dit explicitement) ;
 //  - historique borné par le provider : compte au premier cours connu avant sa date de départ.
 // Le montant compté passe par <PrivateAmount> (mode discret : jamais la valeur dans le DOM).

@@ -7,7 +7,7 @@
 
 ## Convention (règles Marc 2026-07-31, NON négociables)
 - **CHAQUE tâche a une case `- [ ]`** — aucune puce de tâche sans case. Une note/décision sans
-  travail à faire n'est pas une tâche : elle va en archive ou dans decisions.md.
+  travail à faire n'est pas une tâche : elle va en archive ou dans `docs/adr/`.
 - **Tenu à jour à CHAQUE push** : cocher les items livrés dans la PR même, ajouter les découvertes.
 - **Archivage** : un item coché + validé (mergé sur main, gate vert) DÉMÉNAGE vers
   `BACKLOG_ARCHIVE.md` (avec date + PR) au plus tard à la PR suivante — le BACKLOG ne garde que le vivant.
@@ -32,7 +32,7 @@
 > vide, moment où le bloc entier part à l'archive.
 
 - [x] **Vague 0 — Ménage** (2026-08-19, sans code) : 14 doublons fermés, `[DEBT-FROM-CONTRACT]` et
-  `[PASSE-REEL-DETTE-*]` confirmés VIVANTS contre l'avis du PM (`docs/decisions.md` précisé).
+  `[PASSE-REEL-DETTE-*]` confirmés VIVANTS contre l'avis du PM (`docs/adr/` précisé).
 - [ ] **Vague 1 — L'argent faux d'abord.** Un chiffre financier faux affiché avec assurance est le
   pire risque de cette app ; il passe avant l'a11y, la perf et la dette.
   **1a** ✅ `[CASH-NAN-SILENT]` **livré 2026-08-19** (source unique `services/startingCash.ts`) — c'est le point d'entrée de TOUTE la projection,
@@ -670,7 +670,7 @@
     - [ ] `[REFONTE-NAV-L6d]` 6d — explication du moteur.
     - [ ] `[REFONTE-NAV-L6e]` 6e — analyse de documents.
     - [ ] `[REFONTE-NAV-L6f]` 6f — assistant proactif.
-  - [x] `[REFONTE-NAV-L7]` Lot 7 — **CADUQUE 2026-08-17 (décision Marc, `docs/decisions.md`)**.
+  - [x] `[REFONTE-NAV-L7]` Lot 7 — **CADUQUE 2026-08-17 (décision Marc, `docs/adr/`)**.
     « Réglages retravaillés en sections » était **DÉJÀ LIVRÉ** : `components/Settings.tsx` est un
     orchestrateur léger de SIX sous-onglets (Profil · Comptes & soldes · Patrimoine · Clés API ·
     Sauvegarde · Système & diagnostics), délégués à `components/settings/sections/` — livré le
@@ -954,7 +954,7 @@
   dans les sous-modules déjà scannés. Un barème écrit directement dans la boucle y échapperait donc.
   Déclaré dans `FISCAL_MODULES_HORS_PERIMETRE` avec son volume pour que le prochain sache ce qu'il
   achète en l'ajoutant. **Décider** : l'inclure (31 clés à trier) ou acter l'exclusion dans
-  `decisions.md`.
+  une ADR (`docs/adr/`).
 
 - [ ] **`[FISC-GUARD-ARGUMENT]`** (S, MOYEN — découvert en revue de `[FISC-GUARD-VALEUR-LIEE]`) — après
   l'élargissement aux valeurs LIÉES, il reste une position où un barème se cache : l'**argument de
@@ -1446,7 +1446,7 @@
   échantillon → presque tous suivent le patron légitime « garde d'existence avant assertion réelle »
   (`find(...)` puis `expect(x!.valeur).toBe(...)`). Pas un item.
 - **`components/Settings.tsx` god-file** : périmé — refactoré à 208 lignes (orchestrateur de 6
-  sous-onglets), documenté dans `docs/decisions.md`.
+  sous-onglets), documenté dans `docs/adr/`.
 - **`as any` / `@ts-ignore` en prod** : quasi absents (0 `as any` hors tests, 2 `@ts-expect-error`
   tous deux dans des tests).
 - Faux positifs `knip` vérifiés : `encryptBackupPayload`/`decryptBackupPayload` (usage interne),
@@ -1606,10 +1606,10 @@
 
 > ✅ **CONFIRMÉ VIVANT le 2026-08-19** (Marc : « oui on veut extraire »). Le PM de la passe de
 > ménage proposait de fermer ces trois tickets + `[DEBT-FROM-CONTRACT]` comme caducs, en citant la
-> Décision 2 de `docs/decisions.md`. **Refusé après vérification** : cette décision interdit
+> Décision 2 de `docs/adr/`. **Refusé après vérification** : cette décision interdit
 > l'amortissement RÉTROACTIF et toute SAISIE demandée à Marc — lire le PDF du contrat qu'il a déjà
 > fourni n'est ni l'un ni l'autre. La décision a été précisée en conséquence
-> (`docs/decisions.md`, « PRÉCISION Marc du 2026-08-19 »). Ne pas re-fermer ces items.
+> (`docs/adr/`, « PRÉCISION Marc du 2026-08-19 »). Ne pas re-fermer ces items.
 
 - [ ] 🔴 **`[PASSE-REEL-DETTE-1]`** (M) — **le passé soustrait la dette d'AUJOURD'HUI à CHAQUE point
   passé.** `FutureProjection.tsx` (~l. 395) lit `chartData[0].DettesNonImmo` et le passe à
@@ -1618,7 +1618,7 @@
   d'historique d'amortissement ». Conséquence exacte : une dette contractée il y a 6 mois ampute le
   patrimoine d'il y a 5 ans. **Correctif** : ne soustraire une dette qu'à partir de sa date de
   début — donc `buildPastPrefix` doit recevoir les DETTES DATÉES, pas un total agrégé.
-  ⚠️ Ne remet PAS en cause la décision « Option A » (raccord exact au présent, `docs/decisions.md`) :
+  ⚠️ Ne remet PAS en cause la décision « Option A » (raccord exact au présent, `docs/adr/`) :
   la dette existe AUJOURD'HUI, le raccord au présent reste exact ; seul le passé change.
 - [ ] 🔴 **`[PASSE-REEL-DETTE-2]`** (S) — **la donnée nécessaire N'EXISTE PAS.** `Debt` (`types.ts`
   l. 570) n'a NI date de début NI solde d'origine — seulement `amortizationYears` et `termEndDate`.

@@ -1,6 +1,8 @@
 // services/import/parseBankCsv.ts
 // Import de relevés bancaires CSV « pour n'importe quelle banque ». Remplace le
-// vieux parseTransactions (TAB/`;` + JJ/MM/AAAA + colonnes fixes seulement).
+// vieux parseTransactions (TAB/`;` + JJ/MM/AAAA + colonnes fixes seulement), SUPPRIMÉ le
+// 2026-08-19 : plus aucun appelant, et il jetait les lignes invalides sans rien dire
+// (`[DEAD-PARSETX-SILENT-DROP]`).
 //
 // 2 passes : (1) détecte séparateur + en-tête + mappe les colonnes (FR/EN) +
 // déduit l'ordre de date ; (2) construit les Transaction[]. Gère virgule/`;`/TAB,

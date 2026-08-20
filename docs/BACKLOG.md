@@ -52,10 +52,9 @@
   `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`. **Sorti du lot** :
   `[ENG-LIQUIDDEBT-NEVER-REPAID]` → bloqué sur un taux de découvert à SOURCER + un choix produit,
   routé vers `docs/A_FAIRE_MOI.md`.
-  **1e** Silence qui cache de l'argent — ✅ `[COUPLE-CTX-FAKE-ZERO]` et
-  `[TOOL-TAXSITUATION-FAKE-ZERO]` livrés 2026-08-19 (⚠️ le diagnostic groupé était à moitié FAUX :
-  le second ne publiait pas un 0, il EFFAÇAIT le conjoint — deux correctifs différents).
-  RESTE les XS : `[SILENT-STOCKFORM-PRICEHINT]`, `[SYSVIEW-DBSIZE-ZERO]`,
+  **1e** ✅ *TERMINÉE 2026-08-19* — `[COUPLE-CTX-FAKE-ZERO]` + `[TOOL-TAXSITUATION-FAKE-ZERO]`
+  (⚠️ diagnostic groupé à moitié FAUX : le second ne publiait pas un 0, il EFFAÇAIT le conjoint —
+  deux correctifs opposés), puis les cinq XS `[SILENT-STOCKFORM-PRICEHINT]`, `[SYSVIEW-DBSIZE-ZERO]`,
   `[DEAD-PARSETX-SILENT-DROP]`, `[SILENT-PWA-PROMPT]`, `[SILENT-HEALTHWEIGHTS-FIELD]`.
   **1f** Valeurs fiscales sans source NON gatées (`[RQAP-CAP-98K]`, `[W5-PROXY-NON-SOURCE]`,
   `[ESTATE-NPV-07]`, `[MIGRATE-GROSS-135]`, `[FISC-GUARD-SCOPE]` — ce dernier **en premier**,
@@ -866,15 +865,53 @@
   l'impôt de la projection. Correctif : utiliser `calculateGrossFromNet`, déjà présent et vérifié
   exact au roundtrip. [MESURÉ]
 
+### 🟡 Environnement — la version de Node n'est déclarée nulle part
+
+- [ ] **`[ENV-NODE-NON-DECLARE]`** (XS, MOYEN) — aucun `engines` dans `package.json`, aucun `.nvmrc` :
+  la seule déclaration de la version visée est `node-version: '20'`, répété dans **4 workflows**
+  (`ci.yml` ×2, `lighthouse.yml`, `refresh-screenshots.yml`). Le conteneur de dev tourne sur Node
+  **22**. **Conséquence MESURÉE le 2026-08-19** : `globSync` (`node:fs`, Node 22+) a donné un gate
+  local VERT et une CI ROUGE sur le même commit (`TypeError: globSync is not a function`, PR #665).
+  Rien n'avertit à l'écriture. **Correctif** : `engines: { node: '20.x' }` + `.nvmrc`, et faire
+  pointer les workflows dessus plutôt que de répéter le littéral (`DOC-METRIQUE-RECOPIEE` appliqué à
+  une version). ⚠️ Modification de chaîne d'outils → **valider avec Marc avant** : un `engines`
+  strict peut casser un `npm install` local sur une autre machine. [MESURÉ]
+
+### 🟡 Gardes de scan — le décommenteur écrit sept fois
+
+- [ ] **`[GUARD-STRIPCOMMENTS-DUPLIQUE]`** (S, MOYEN) — **sept** décommenteurs indépendants, aucun
+  exporté, donc aucun trouvable autrement qu'en cherchant le concept : `utils/fiscalConstGuardV2.ts:216`,
+  `utils/fiscalConstantsGuard.ts:34`, `utils/chartDataSumGuard.ts:51`,
+  `tests/aiTools/specFiniteGuard.test.ts:26`, `tests/services/assetFxGuard.test.ts:54`,
+  `tests/components/subTabsAria.test.tsx:84`, `tests/services/silencesXs.test.ts:122`. **Ils ne se
+  comportent PAS pareil** : certains préservent les numéros de ligne (remplacement par des espaces),
+  d'autres non ; certains gèrent le `//` dans une URL (`(^|[^:])`), d'autres le coupent ; l'un rend
+  `string`, l'autre `string[]`. Une garde de scan ne vaut que par son décommenteur — **le plus faible
+  des sept fixe le niveau réel de protection du dépôt**, et personne ne sait lequel c'est.
+  **Correctif** : un `utils/stripSourceComments.ts` exporté, avec ses cas de syntaxe testés (chaîne
+  contenant `//`, URL, commentaire imbriqué, template literal), puis migrer les sept sites. ⚠️ Migrer
+  AVANT de tester chaque garde perturbée : un décommenteur plus STRICT peut réveiller des offenders
+  jusqu'ici invisibles — ce sont eux le vrai périmètre (leçon « resserrer le scan AVANT le fix »).
+  ⚠️ Ne PAS unifier la SÉMANTIQUE au passage (préserver les lignes ou non) : c'est un choix par
+  appelant, pas un défaut. [MESURÉ — 7 définitions comptées le 2026-08-19]
+
 ### 🔴 No-fake-data — la garde de `formatCAD` annulée sur place
 
-- [ ] **`[FORMATCAD-OR-ZERO]`** (S, MOYEN) — **10 sites** font `formatCAD(Number(v) || 0)` : le `|| 0`
+- [ ] **`[FORMATCAD-OR-ZERO]`** (S, MOYEN) — **16 sites** font `formatCAD(… || 0)` : le `|| 0`
   **annule la garde no-fake-data de `formatCAD`** (qui rend « — » sur non-fini) et transforme une
-  donnée absente en « 0 $ » crédible. `components/Retirement.tsx:188,206` ·
-  `components/Budget.tsx:589,613` · `components/DebtManager.tsx:96` · `components/Investments.tsx:143` ·
-  `components/investments/DividendPanel.tsx:79` · `components/LifeEvents.tsx:148` ·
-  `components/realestate/RealEstateWorkspace.tsx:342` · `components/realestate/MultiPropertyComparison.tsx:75`.
-  Correctif : passer la valeur brute à `formatCAD`, qui gère déjà `unknown`. [MESURÉ]
+  donnée absente en « 0 $ » crédible. Correctif : passer la valeur brute à `formatCAD`, qui gère
+  déjà `unknown`.
+  ⚠️ **Périmètre RE-MESURÉ le 2026-08-19** — l'ancien libellé annonçait « 10 sites » et n'en listait
+  que 9, à des lignes qui ont bougé depuis. Le vrai compte est **16**, dont **7 que l'ancienne liste
+  ne voyait pas** : cinq `formatCAD(data.X || 0)` (`Retirement.tsx:466,470,476,482,487` — motif
+  `data.X`, pas `Number(v)`), `AddStockForm.tsx:447` (`parseFloat(buyPrice) || 0`) et
+  `DividendPanel.tsx:198` (`val || 0`, dans un `formatter` Recharts — donc invisible aux tests qui
+  mockent Recharts, cf. revue #608). **Ne PAS repartir de la liste, repartir du scan** : le motif
+  utile n'est pas `Number(v) || 0` mais `formatCAD(<n'importe quoi> || 0)`, parenthèses imbriquées
+  comprises (`grep -oE "formatCAD\((\([^()]*\)|[^()])*\|\| ?0\)"`). Sites : `Budget.tsx:589,613` ·
+  `RealEstateWorkspace.tsx:342` · `MultiPropertyComparison.tsx:75` · `Retirement.tsx:206,466,470,476,482,487` ·
+  `DebtManager.tsx:112` · `Investments.tsx:143` · `AddStockForm.tsx:447` · `DividendPanel.tsx:79,198` ·
+  `LifeEvents.tsx:148`. Classe `DOC-METRIQUE-RECOPIEE` : un périmètre listé EN DUR se périme, un scan non. [MESURÉ]
 
 ### 🔴 Devises et unités
 
@@ -1002,21 +1039,6 @@
   de chaque tool exposant du texte libre. [MESURÉ]
 
 ### 🔴 Échecs silencieux
-
-- [ ] **`[SILENT-STOCKFORM-PRICEHINT]`** (S, MOYEN) — `components/investments/AddStockForm.tsx:180-184` :
-  `suggestHistoricalPrice()` échoue en `catch (e) { console.warn }` sans `logError` ni message.
-  L'utilisateur voit le spinner s'arrêter et le champ prix rester vide, sans explication — alors que
-  `validateSymbol` du MÊME fichier distingue proprement réseau vs absence de cotation. [MESURÉ]
-- [ ] **`[SYSVIEW-DBSIZE-ZERO]`** (XS, FAIBLE) — `components/SystemView.tsx:163` : `catch { return 0; }`
-  → le badge affiche « 0 KB » (valeur crédible) au lieu d'un état d'erreur, alors que
-  `computeDiagnostics` (même fichier, l:122-123) pousse correctement un `level: 'err'` pour le MÊME
-  échec. Correctif : afficher « — » ou réutiliser la ligne d'erreur. [MESURÉ]
-- [ ] **`[DEAD-PARSETX-SILENT-DROP]`** (XS, FAIBLE) — `utils/transactionParser.ts:parseTransactions()`
-  jette silencieusement (aucun log) toute ligne à date ou montant invalide (l:168, 182). **Mesuré :
-  cette fonction n'est plus appelée que par ses propres tests** — le vrai pipeline d'import est
-  `services/import/parseBankCsv.ts`, qui compte honnêtement `imported`/`skipped` et les affiche.
-  Risque : code orphelin à perte silencieuse, ré-exposable par copier-coller. Correctif : supprimer
-  la fonction et ses tests. [MESURÉ]
 
 ### 🚀 Performance — mesurée par harnais, pas déduite
 
@@ -1346,14 +1368,6 @@
 > Référence : `services/finance.ts` (parseRate, patron parfait), `services/marketData/*` (appliqué),
 > `services/claude.ts` (safeJsonValidate loggue sys, rejets massifs tracés).
 
-
-- [ ] **`[SILENT-PWA-PROMPT]`** (S) — `usePwaInstallPrompt` échoue de `deferredEvent.prompt()`
-  sans `logError`. Impact faible (perte invite installation PWA seulement, pas donnée financière).
-  Signalé pour cohérence règle projet. **Correctif** : `logError(..., severity: 'info', ...)`.
-
-- [ ] **`[SILENT-HEALTHWEIGHTS-FIELD]`** (S) — `healthWeights` parse un JSON et coerce champ invalide
-  (présent-mais-non-fini) à son défaut sans trace. Impact faible (pondération UI, pas argent).
-  **Correctif optionnel** : détection `présent && !fini` avec `logError` agrégé par champ.
 
 ### 🔴 A11y — 1 HIGH restant, 3 MED, 1 LOW  *(4 HIGH « Mode Discret » livrés par #608 → archive)*
 

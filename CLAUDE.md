@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 471 tests** Vitest
-(402 fichiers de test, mesuré le 2026-08-19). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 475 tests** Vitest
+(403 fichiers de test, mesuré le 2026-08-19). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -311,6 +311,32 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   en DÉCLARATION *et* en usage : ancrer le motif sur l'USAGE, et perturber CHAQUE assertion du scan
   séparément (`SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE`).
 - Resserrer un scan-garde **AVANT** de coder le fix : les offenders révélés = le vrai périmètre.
+- Un scan de source qui lit les **COMMENTAIRES** matche de la PROSE : `parseBankCsv.ts` EXPLIQUE en
+  en-tête le parseur qu'il remplace, et resserrer le motif (`\bX\b` → `\bX\s*\(`) ne sert à rien —
+  une phrase française écrit « le vieux X (TAB/`;` … ». Décommenter AVANT de scanner, garder le motif
+  simple, et poser l'anti-vacuité du décommentage (taille restante + un jeton de vrai code retrouvé),
+  sinon « rien ne référence X » se prouve à partir de « il n'y a plus rien ». Ne PAS interdire la
+  mention : la garde protège le code, la prose garde le droit de raconter l'histoire
+  (`SCAN-QUI-MATCHE-LA-PROSE`).
+  ⚠️ Et avant d'écrire un utilitaire de scan, **grep le CONCEPT, pas le symbole** : le dépôt avait
+  déjà SIX décommenteurs, aucun exporté, dont deux portant en commentaire la leçon exacte que je
+  venais de repayer — l'un ayant même choisi le même nom de helper (`GUARD-STRIPCOMMENTS-DUPLIQUE`).
+  ⚠️ Et une garde d'ABSENCE contredit MÉCANIQUEMENT une bonne doc (la meilleure façon d'expliquer un
+  motif interdit est de l'écrire) : choisir le lecteur par la NATURE de l'assertion — source
+  DÉCOMMENTÉE pour un `not.toMatch`, source BRUTE pour une présence qui vise un commentaire. Et
+  l'anti-vacuité du décommentage se déplace avec la portée : par fichier elle est fausse dès qu'un
+  alias est à 88 % de prose, à l'échelle d'un dépôt elle est AGRÉGÉE (`codeTotal/brutTotal > 0.5`).
+- ⚠️ **Copier un patron de gestion d'erreur copie son CONTRAT** : `getQuote` LÈVE, `getHistory`
+  retourne `null` (et sa façade interdit en toutes lettres d'aplatir `null` en `[]`) — le même
+  `try/catch` donne un correctif juste pour l'une et **décoratif** pour l'autre, jamais atteint, qui
+  affiche « aucun cours trouvé » sur une panne réseau. Avant de réutiliser un patron voisin, trancher :
+  la fonction LÈVE-t-elle, ou encode-t-elle l'erreur dans son retour ? Si elle l'encode, `!x` fusionne
+  le code d'erreur avec le vide légitime (`PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`).
+- Avant de tracer un **repli silencieux**, classer les chemins qui l'atteignent *attendu* / *anormal* :
+  un champ ABSENT est la rétrocompat voulue (silence LÉGITIME), un champ PRÉSENT mais non fini est une
+  corruption (trace). Journaliser les deux crie sur le cas nominal à chaque chargement et noie le
+  seul cas utile. Le test verrouille les DEUX sens, dont le `not.toHaveBeenCalled()`
+  (`REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION`).
 - Un scan-garde qui borne une syntaxe IMBRIQUÉE avec `[^x]*` est aveugle en silence (un `>` dans un
   `className` interpolé tronque la balise) → compter la PROFONDEUR, **tester l'extracteur sur des
   cas de syntaxe**, et poser un anti-vacuité sur ce qu'il TROUVE, pas seulement sur ce qu'il balaie
@@ -367,6 +393,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   et faire pointer les autres (`DOC-METRIQUE-RECOPIEE`).
 
 ### CI (GitHub Actions)
+
+⚠️ **« Gate local vert » ≠ « CI verte »** : le conteneur de dev tourne sur Node **22**, les workflows
+épinglent **20**, et rien ne déclare la cible (`engines`/`.nvmrc` absents — `[ENV-NODE-NON-DECLARE]`).
+`globSync` (`node:fs`, Node 22+) a donné un gate local vert et une CI rouge sur le MÊME commit.
+Avant d'employer une API `node:*`, vérifier depuis quelle version elle existe vs le `node-version`
+des workflows — pas le `node -v` local. Symptôme : `TypeError: X is not a function` en CI seulement.
+Le correctif est presque toujours de **réutiliser le marcheur/patron déjà employé par le dépôt**
+(ici `readdirSync(dir, { recursive: true })`), dont la compatibilité est déjà prouvée par la CI
+(`GATE-LOCAL-VERT-CI-ROUGE-PAR-VERSION-DE-NODE`).
 
 ⚠️ Le workflow filtre sur `pull_request: branches: [main]` : une **PR EMPILÉE** (base `claude/xxx`)
 ne déclenche **aucun** run CI — Vercel et CodeQL partent quand même, ce qui donne l'illusion d'une

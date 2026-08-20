@@ -4,6 +4,85 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-19 (suite 109) — vague 1e CLOSE : cinq XS, cinq silences
+> Branche `claude/silences-xs` (basée sur `main`, PAS empilée — leçon `PR-EMPILEE-N-A-AUCUNE-CI`).
+>
+> **Livrés** : `[SILENT-STOCKFORM-PRICEHINT]`, `[SILENT-PWA-PROMPT]`, `[SILENT-HEALTHWEIGHTS-FIELD]`,
+> `[SYSVIEW-DBSIZE-ZERO]`, `[DEAD-PARSETX-SILENT-DROP]`. **La vague 1e est CLOSE.**
+>
+> Les cinq diagnostics ont été re-dérivés sur leur propre code avant d'écrire une ligne
+> (`DIAGNOSTIC-GROUPE-A-MOITIE-FAUX`, appris à la PR précédente) : les cinq se sont confirmés — cette
+> fois. Chaque correctif est prouvé DISCRIMINANT par perturbation individuelle.
+>
+> ⚠️ **`[SILENT-HEALTHWEIGHTS-FIELD]` : le ticket appliqué tel quel aurait été une RÉGRESSION.**
+> `normalizeHealthWeights` atteint son repli par DEUX chemins que le même `?? défaut` confond : un
+> champ **ABSENT** (la rétrocompat VOULUE — quatre poids persistés avant l'ajout de `budgetParity` /
+> `subscriptionLoad`) et un champ **PRÉSENT mais non fini** (une corruption). Tracer les deux aurait
+> crié sur le cas nominal à chaque chargement, pour tout le monde, et noyé le seul cas utile. La
+> distinction tient en un `k in p` (`REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION`). Le test verrouille
+> les deux sens, dont le `not.toHaveBeenCalled()` sur le champ absent.
+>
+> ⚠️ **Mon scan-garde a matché de la PROSE, deux fois.** `parseBankCsv.ts` EXPLIQUE en en-tête le
+> parseur qu'il remplace ; `\bparseTransactions\b` puis `\bparseTransactions\s*\(` sont tombés dessus
+> (une phrase française écrit « le vieux parseTransactions (TAB/`;` … »). Resserrer le motif ne règle
+> rien — le défaut est dans le TEXTE BALAYÉ. On décommente AVANT de scanner, avec anti-vacuité du
+> décommentage (`SCAN-QUI-MATCHE-LA-PROSE`, cousin de `SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE`).
+> **La mention en commentaire, elle, reste** : la garde protège le code, pas le droit de raconter
+> pourquoi le choix a été fait.
+>
+> ⚠️⚠️ **Et je n'ai rien découvert** : le dépôt contenait déjà SIX décommenteurs (aucun exporté), dont
+> `tests/components/subTabsAria.test.tsx:80-84` qui documente le MÊME incident, avec le MÊME nom de
+> helper choisi indépendamment. J'ai grepé le SYMBOLE (`parseTransactions`) au lieu du PROBLÈME
+> (« décommenter »). Item ouvert : `[GUARD-STRIPCOMMENTS-DUPLIQUE]` — les sept ne se comportent pas
+> pareil, et **le plus faible fixe le niveau réel de protection du dépôt**.
+>
+> **`parseTransactions` SUPPRIMÉE** (3 261 caractères) — plus aucun appelant, et elle jetait les
+> lignes invalides sans rien dire. `markDuplicates` et `isInternalTransferLabel` sont RESTÉES : elles
+> sont appelées par `App.tsx` et `services/import/parseBankCsv.ts`, et un test le verrouille (le vrai
+> risque d'une suppression est d'emporter un voisin vivant).
+>
+> ⚠️⚠️ **Le panel a trouvé un défaut que mon propre correctif avait INTRODUIT** — et c'est le plus
+> instructif du lot. J'ai instrumenté `suggestHistoricalPrice` en réutilisant le patron de
+> `validateSymbol`, 60 lignes plus haut dans le même fichier, en citant `PATRON-APPLIQUE-A-COTE`
+> comme justification. Le patron était bon, le **CONTRAT** ne l'était pas : `getQuote` LÈVE,
+> `getHistory` retourne `null` (et sa façade INTERDIT en toutes lettres, avec la date du panel, de
+> l'aplatir en `[]`). Mon `if (!history || history.length === 0)` faisait exactement cet
+> aplatissement — la panne réseau affichait « aucun cours trouvé », affirmation FAUSSE sur le titre,
+> et le `catch` écrit pour la tracer n'était **jamais atteint**
+> (`PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`).
+>
+> ⚠️ **`SCAN-QUI-MATCHE-LA-PROSE`, TROISIÈME fois — dans le commit qui le documente.** La garde
+> interdisant le retour du motif fautif est partie rouge sur mon propre commentaire, qui CITE le
+> motif pour expliquer pourquoi il est fautif. Ce n'est pas de la malchance : une garde d'ABSENCE et
+> une bonne doc se contredisent mécaniquement. Forme finale = **deux lecteurs choisis par NATURE
+> d'assertion** — `lireCode` (décommenté) pour un `not.toMatch`, `lire` (brut) pour une présence qui
+> vise un commentaire.
+>
+> ⚠️ Et l'anti-vacuité du décommentage se déplace avec la PORTÉE : le scan est passé de 2 fichiers en
+> dur à un glob du dépôt (il ne voyait pas une réintroduction dans un fichier NEUF — prouvé par
+> perturbation), et ma règle « il reste un quart de la source » est devenue fausse sur
+> `services/tax.ts`, alias de 289 octets à 88 % de commentaire. Anti-vacuité désormais **agrégée**.
+>
+> ⚠️⚠️ **CI ROUGE sur un gate local VERT — même commit.** `globSync` (`node:fs`) n'existe qu'à
+> partir de **Node 22** ; le conteneur de dev tourne sur 22, les 4 workflows épinglent **20**, et
+> rien dans le dépôt ne déclare la cible (`engines`/`.nvmrc` absents). Remplacé par le marcheur que
+> le dépôt emploie DÉJÀ (`readdirSync(dir, { recursive: true })`,
+> `tests/fiscalConstants.guard.test.ts`) — dont la compatibilité est prouvée par la CI, gratuitement.
+> Leçon `GATE-LOCAL-VERT-CI-ROUGE-PAR-VERSION-DE-NODE` ; alignement de la chaîne d'outils NON fait
+> (décision de Marc) → `[ENV-NODE-NON-DECLARE]`.
+>
+> **Aussi corrigés, tous trouvés en revue** : `validateSymbol` traçait en `console.error` seul ; les
+> deux écritures `localStorage` du refus PWA étaient muettes (la LECTURE, elle, reste muette
+> exprès) ; `k in p` classait un `undefined` explicite comme corrompu (latent).
+>
+> **SUITE** : vague 1f — `[FISC-GUARD-SCOPE]` EN PREMIER (élargir le cliquet révèle le vrai
+> périmètre), puis `[RQAP-CAP-98K]`, `[W5-PROXY-NON-SOURCE]`, `[ESTATE-NPV-07]`, `[MIGRATE-GROSS-135]`.
+> Ensuite vague 2 (devises / unités).
+>
+> ⛔ **Toujours BLOQUÉ sur Marc, ne pas reprendre sans sa réponse** :
+> `[ENG-LIQUIDDEBT-NEVER-REPAID]` (taux de découvert SOURCÉ + priorité de remboursement, 0,8–1,7 M$)
+> et la suppression des branches mortes (proxy git 403) — les deux dans `docs/A_FAIRE_MOI.md`.
+>
 > ## 🟢 Session 2026-08-19 (suite 108) — vague 1e : deux silences vers un LLM
 > Branche `claude/silences-couple-fisc` (basée sur `main`, PAS empilée — cf. `PR-EMPILEE-N-A-AUCUNE-CI`).
 >

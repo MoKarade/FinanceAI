@@ -4132,3 +4132,221 @@ qui vise la ligne du payload et rien d'autre. Un identifiant nu ne prouve que sa
 C'est la même famille que `GARDE-BORNEE-PAR-CLASSE-NEGATIVE` : un scan ne vaut que par la précision
 de son ancrage, et **chaque** assertion d'un scan doit être perturbée séparément — celle-ci était
 verte pendant que sa voisine, elle, tombait bien.
+
+### `SCAN-QUI-MATCHE-LA-PROSE` — mon motif a trouvé un commentaire, pas du code
+
+En supprimant le parseur mort `parseTransactions` (`[DEAD-PARSETX-SILENT-DROP]`), j'ai voulu poser
+une garde : « aucun fichier de production ne référence plus ce symbole ». Le scan a échoué **deux
+fois de suite**, et les deux fois sur la même cause.
+
+1. `\bparseTransactions\b` : rouge sur `services/import/parseBankCsv.ts`. Le fichier ne l'appelle
+   pas — son en-tête EXPLIQUE qu'il remplace le vieux parseur, et pourquoi celui-ci a été supprimé.
+2. Resserré en `\bparseTransactions\s*\(` (« seulement les APPELS ») : rouge quand même, parce que
+   la prose écrit *« le vieux parseTransactions (TAB/`;` + JJ/MM/AAAA … »* — une parenthèse suit
+   bel et bien le nom, dans une phrase française.
+
+La deuxième tentative est celle qui instruit. Resserrer le motif **paraissait** être le correctif :
+il visait mieux, il était plus « précis ». Mais le défaut n'est pas dans le motif, il est dans le
+TEXTE BALAYÉ. Tant que le scan lit les commentaires, il n'y a pas de motif assez fin — un
+commentaire peut contenir n'importe quelle forme syntaxique, c'est précisément son rôle de citer du
+code. Chaque resserrement achète un faux positif de moins et une chance de plus de rater un vrai
+appel.
+
+**Le correctif est en amont** : retirer les commentaires AVANT de scanner, puis garder le motif
+simple.
+
+```ts
+const sansCommentaires = (src: string): string =>
+    src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
+```
+
+Le `[^:]` évite de décapiter `https://…` dans une URL. Ce décommentage est approximatif par
+construction (une chaîne contenant `//` sera coupée) — acceptable ici parce qu'il ne peut que
+SUPPRIMER du texte, donc affaiblir la garde, jamais fabriquer un faux positif.
+
+⚠️ **Un décommenteur qui affaiblit la garde exige son anti-vacuité.** Un `.replace` trop gourmand
+(ou un fichier mal résolu) qui vide la source rend le scan vert pour la pire des raisons. La garde
+vérifie donc, sur CHAQUE fichier balayé, que le décommentage a laissé au moins un quart du fichier
+ET que du vrai code identifiable a survécu (`expect(code).toContain('markDuplicates')`) avant
+d'asserter l'absence. Sans ces deux lignes, le test prouverait « rien ne référence X » à partir de
+« il n'y a plus rien ».
+
+**Ne pas confondre avec l'interdiction de la mention.** La tentation, en voyant l'en-tête rouge, est
+d'exiger que le commentaire disparaisse. Ce serait effacer l'explication d'un choix — un futur
+lecteur de `parseBankCsv.ts` doit pouvoir savoir ce qui a été remplacé et pourquoi. La garde
+protège le CODE ; la prose garde le droit de raconter l'histoire.
+
+Cousin direct de `SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE` (même session) : là le motif
+visait la mauvaise LIGNE du même fichier, ici il vise la mauvaise NATURE de texte. Même remède de
+fond dans les deux cas — le scan doit d'abord définir *ce qui compte comme du code*, avant de
+chercher quoi que ce soit dedans.
+
+⚠️⚠️ **Et le pire : je n'ai rien découvert du tout.** En cherchant si un helper partagé existait,
+j'ai compté **six** décommenteurs déjà écrits dans le dépôt — `utils/fiscalConstGuardV2.ts:216`,
+`utils/fiscalConstantsGuard.ts:34`, `utils/chartDataSumGuard.ts:51`,
+`tests/aiTools/specFiniteGuard.test.ts:26`, `tests/services/assetFxGuard.test.ts:54`,
+`tests/components/subTabsAria.test.tsx:84`. Le mien fait le septième. Aucun n'est exporté, donc
+aucun n'était trouvable autrement qu'en cherchant le CONCEPT plutôt que le symbole.
+
+Deux d'entre eux portent en commentaire la leçon exacte que je venais de repayer :
+
+- `utils/fiscalConstantsGuard.ts:47` — *« n'extraire QUE des vraies constantes, pas des n° de ligne
+  ARC en commentaire »*. Quelqu'un s'était déjà fait piéger par un nombre fiscal cité dans une prose.
+- `tests/components/subTabsAria.test.tsx:80-83` — *« un fichier qui EXPLIQUE le motif n'est pas un
+  offender. Ma première version l'accusait — une garde qui crie sur sa propre documentation finit
+  désactivée. »* Même incident, même conclusion, **et même nom de helper choisi indépendamment**
+  (`sansCommentaires`).
+
+C'est `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` à l'échelle du dépôt, avec une aggravation : le patron
+n'était pas « à côté » dans le fichier voisin, il était **partout**, et je ne l'ai pas vu parce que
+j'ai cherché un appelant (`grep parseTransactions`) au lieu de chercher le PROBLÈME (`grep`
+« décommenter »). **Avant d'écrire un utilitaire de scan, grep le CONCEPT, pas le symbole** — un
+helper non exporté ne se trouve que comme ça. Ticket `[GUARD-STRIPCOMMENTS-DUPLIQUE]` ouvert pour la
+source unique : sept implémentations divergentes, c'est sept comportements différents sur les
+chaînes contenant `//`, et la garde la plus faible fixe le niveau réel de protection.
+
+### `REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION` — tracer un repli n'est pas toujours un progrès
+
+Le ticket `[SILENT-HEALTHWEIGHTS-FIELD]` disait : `normalizeHealthWeights` retombe sur les défauts
+sans rien dire, ajoute une trace. Vrai — mais appliqué tel quel, le correctif aurait été une
+RÉGRESSION.
+
+La fonction rencontre en effet DEUX cas que le même `?? défaut` traite identiquement :
+
+- **champ ABSENT** — c'est la rétrocompat, et elle est VOULUE. Un utilisateur d'avant l'ajout de
+  `budgetParity` / `subscriptionLoad` n'a que quatre poids persistés ; il reçoit les deux nouveaux
+  au défaut. C'est le fonctionnement nominal, pour tout le monde, à chaque chargement.
+- **champ PRÉSENT mais non fini** (`NaN`, `null`, `'douze'`, `Infinity`) — là quelque chose a écrit
+  une valeur invalide. L'utilisateur voit son réglage revenu à l'usine, sans rien à quoi le
+  rattacher.
+
+Tracer les deux aurait produit un avertissement à CHAQUE chargement pour chaque utilisateur en
+rétrocompat. Un diagnostic qui crie sur le cas nominal cesse d'être lu — et il aurait noyé le seul
+cas qui méritait de l'être. La distinction tient en un `k in p` :
+
+```ts
+const corrompus = cles.filter((k) => k in p && !(typeof p[k] === 'number' && Number.isFinite(p[k])));
+```
+
+**La règle** : avant d'ajouter une trace sur un repli, énumérer les chemins qui l'atteignent et les
+classer *attendu* / *anormal*. « Ce repli est silencieux » n'est un défaut que pour les seconds. Et
+le test doit verrouiller les DEUX sens — celui qui journalise, et celui qui **ne doit pas** :
+l'assertion `not.toHaveBeenCalled()` sur le champ absent est ce qui empêche la prochaine passe de
+« généraliser » le correctif.
+
+Corollaire d'agrégation : six champs corrompus ne doivent pas donner six lignes. Un seul appel,
+throttlé par la SIGNATURE des champs concernés (`health-weights-corrompus:savingsRate,debtRatio`),
+avec l'inventaire en contexte.
+
+### `PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR` — deux fonctions sœurs, deux contrats opposés
+
+Dans `[SILENT-STOCKFORM-PRICEHINT]`, j'ai instrumenté l'échec de `suggestHistoricalPrice` en
+**réutilisant le patron de `validateSymbol`**, dans le même fichier, à soixante lignes de là. J'ai
+même écrit le nom de la leçon dans le commentaire — `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` — comme
+justification. Le patron était le bon. Le CONTRAT ne l'était pas.
+
+| | fonction appelée | sur erreur réseau |
+|---|---|---|
+| `validateSymbol` | `getQuote` | **lève** (`[QUOTE-ERRKIND]` : *« une ERREUR se PROPAGE (throw) »*) |
+| `suggestHistoricalPrice` | `getHistory` | **retourne `null`** (`[]` = vide VALIDE, `null` = erreur) |
+
+Mon code faisait `if (!history || history.length === 0)` → message *« Aucun cours trouvé »*. Donc :
+
+- la panne réseau affichait une affirmation **FAUSSE sur le titre** (« ce titre n'a pas de cours à
+  cette date ») au lieu de « vérifie ta connexion » — exactement l'inverse de ce que le ticket
+  demandait ;
+- et le `catch` que je venais d'écrire pour tracer la panne **n'était jamais atteint**, parce que
+  `getHistory` avale ses propres erreurs.
+
+Le plus cinglant : la façade `services/marketData/index.ts` **interdit explicitement** cet
+aplatissement, en toutes lettres et avec sa date de décision — *« ⚠️ Ne PAS aplatir null en [] ici
+(panel 2026-07-22) »*. La règle existait, elle était écrite au bon endroit, et je l'ai enfreinte
+**chez le consommateur** — là où le commentaire de la façade ne se lit pas.
+
+**La règle** : copier un patron de gestion d'erreur oblige à re-vérifier le **contrat d'erreur de la
+fonction appelée**, pas seulement la forme du `try/catch`. Deux fonctions du même module, aux noms
+symétriques, peuvent avoir des contrats opposés — et c'est le cas ici *par conception*, chacun
+documenté sur place. Un `try/catch` autour d'une fonction qui ne lève pas est un correctif
+**décoratif** : vert au typecheck, vert au lint, vert aux tests, et inerte en production. C'est
+`CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD` par un autre chemin.
+
+**Le tri à faire, une fois par appel** : la fonction lève-t-elle, ou encode-t-elle l'erreur dans sa
+valeur de retour ? Si elle l'encode, `!x` est un piège — il fusionne le code d'erreur avec la valeur
+vide légitime. Tester `x === null` d'abord, `x.length === 0` ensuite, et ne journaliser que le
+premier.
+
+⚠️ **Trouvé par revue automatique, sur du non-money-critical.** Le taux de faux positifs des bots est
+élevé sur le fiscal ; il ne l'est pas partout. Le critère reste le même : **coût de vérification
+faible ⇒ vérifier avant de classer**. Ici, deux `sed` dans les providers ont tranché en une minute.
+
+### `SCAN-QUI-MATCHE-LA-PROSE`, troisième fois — dans le commit qui le documente
+
+Post-scriptum au piège du même nom, et il vaut mieux que la leçon initiale.
+
+Après avoir écrit `SCAN-QUI-MATCHE-LA-PROSE`, écrit la ligne d'index dans `CLAUDE.md`, et ouvert
+`[GUARD-STRIPCOMMENTS-DUPLIQUE]`, j'ai ajouté une garde interdisant le retour de l'expression
+fautive `!history || history.length === 0` — et elle est partie **rouge immédiatement**. Cause :
+mon propre commentaire, trois lignes au-dessus du correctif, **cite l'expression** pour expliquer
+pourquoi elle est fautive.
+
+Trois occurrences dans une seule PR, dont une dans le commit qui documente le piège. Ce n'est plus
+de la malchance, c'est structurel : **une garde d'ABSENCE et une bonne documentation se contredisent
+mécaniquement**, parce que la meilleure façon d'expliquer un motif interdit est de l'écrire.
+
+D'où la forme finale, qui est le vrai livrable de cette leçon — **deux lecteurs, choisis par nature
+d'assertion** :
+
+- `lireCode(f)` (source décommentée) pour toute assertion d'**ABSENCE** (`not.toMatch`) ;
+- `lire(f)` (source brute) pour une assertion de **PRÉSENCE** qui vise justement un commentaire —
+  par exemple vérifier qu'une leçon est citée sur place.
+
+Choisir le lecteur par la NATURE de l'assertion, et non fichier par fichier, supprime la classe
+entière. Tant que le choix reste au jugé, il se refait à chaque nouvelle assertion, et se rate.
+
+⚠️ **Et l'anti-vacuité du décommentage se déplace avec la portée du scan.** Passée de deux fichiers
+en dur à un glob du dépôt (la garde ne voyait pas une réintroduction dans un fichier NEUF), ma règle
+« il reste au moins un quart de la source » est devenue FAUSSE : `services/tax.ts` est un alias de
+289 octets dont quatre lignes sur cinq sont un commentaire — légitimement 88 % de prose, et la garde
+le déclarait « tout supprimé ». À l'échelle d'un dépôt, l'anti-vacuité juste est **agrégée** — un
+dépôt ne peut pas être majoritairement composé de commentaires (`codeTotal / brutTotal > 0.5`) —
+plus la survie de jetons de code CONNUS. Une règle par fichier suppose une homogénéité qui n'existe
+pas.
+
+### `GATE-LOCAL-VERT-CI-ROUGE-PAR-VERSION-DE-NODE` — mon gate ne tourne pas sur le même Node que la CI
+
+Le gate complet est passé vert en local — typecheck, lint, 4 475 tests, build — et la CI a cassé sur
+le MÊME commit, sur un seul test :
+
+```
+TypeError: globSync is not a function
+  ❯ tests/services/silencesXs.test.ts:208
+```
+
+Cause : `globSync` de `node:fs` n'existe qu'à partir de **Node 22**. Le conteneur de dev tourne sur
+`v22.22.2`, les quatre workflows GitHub Actions épinglent `node-version: '20'`. L'API que je venais
+d'utiliser n'existait donc que d'un seul côté.
+
+**Ce que ça invalide** : « gate local vert » ne veut PAS dire « CI verte ». C'est la seule
+vérification dont on dispose sur une PR empilée (`PR-EMPILEE-N-A-AUCUNE-CI`) — et cette leçon-ci en
+montre la limite. Les deux se combinent mal : sur une PR empilée utilisant une API récente, RIEN ne
+vérifie quoi que ce soit avant le re-ciblage sur `main`.
+
+**Ce qui l'a rendu invisible** : rien dans le dépôt ne déclare la version de Node visée — pas
+d'`engines` dans `package.json`, pas de `.nvmrc`. La contrainte n'existe que dans les workflows, où
+on ne la lit pas en écrivant un test.
+
+**La règle** : avant d'employer une API Node dans un test ou un script, vérifier depuis quelle
+version elle existe, et la comparer au `node-version` des workflows — pas au `node -v` local.
+Symptôme à reconnaître : une CI qui échoue sur un `TypeError: X is not a function` alors que le gate
+local est vert, sur un identifiant importé d'un module `node:*`.
+
+**Et le correctif est presque toujours « réutiliser le patron du dépôt »** : `globSync` n'apportait
+rien que `readdirSync(dir, { recursive: true })` (Node 18.17+) ne fasse déjà — marcheur employé
+depuis longtemps par `tests/fiscalConstants.guard.test.ts`, à trois fichiers de là. Encore
+`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` : j'ai cherché « comment lister des fichiers » au lieu de
+« comment CE dépôt liste des fichiers ». Le patron existant est aussi, gratuitement, celui dont la
+compatibilité est déjà prouvée par la CI.
+
+⚠️ Alignement de l'environnement (`engines` + `.nvmrc`) NON fait ici : c'est une modification de
+chaîne d'outils que Marc n'a pas demandée, et elle mérite sa propre décision. Tracée en
+`[ENV-NODE-NON-DECLARE]`.

@@ -159,8 +159,12 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const logs = useMemo(() => computeDiagnostics(state), [state, refreshKey]);
 
-    const dbSize = useMemo(() => {
-        try { return JSON.stringify(state).length / 1024; } catch { return 0; }
+    // [SYSVIEW-DBSIZE-ZERO] `null` et non `0` : un « 0 KB » est une valeur CRÉDIBLE, donc un mensonge
+    // — l'utilisateur lit « ma base est vide » alors que la sérialisation vient d'échouer (structure
+    // cyclique, mémoire). `computeDiagnostics`, dans CE MÊME fichier, pousse déjà un `level: 'err'`
+    // pour le MÊME échec : l'incohérence était entre deux lignes du même écran.
+    const dbSize = useMemo<number | null>(() => {
+        try { return JSON.stringify(state).length / 1024; } catch { return null; }
     }, [state]);
 
     const fintableReportSafe = useMemo(
@@ -225,7 +229,14 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                     <div className="grid grid-cols-2 gap-4">
                         <Card className="!p-4 bg-white/5 border-white/10">
                             <div className="text-tiny text-ink-400 uppercase font-bold">Base de Données</div>
-                            <div className="text-xl font-bold text-white">{dbSize.toFixed(0)} KB</div>
+                            {/* [SYSVIEW-DBSIZE-ZERO] « — » honnête plutôt qu'un « 0 KB » crédible.
+                                `title` porte la raison : l'écart se voit ET s'explique. */}
+                            <div
+                                className="text-xl font-bold text-white"
+                                title={dbSize === null ? 'Taille indisponible : la sérialisation de l’état a échoué (voir les diagnostics ci-dessous)' : undefined}
+                            >
+                                {dbSize === null ? '—' : `${dbSize.toFixed(0)} KB`}
+                            </div>
                         </Card>
                         <Card className="!p-4 bg-white/5 border-white/10">
                             <div className="text-tiny text-ink-400 uppercase font-bold">Objectifs</div>

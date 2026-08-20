@@ -14,6 +14,7 @@
 // agressivement si l'utilisateur a déjà refusé.
 
 import { useEffect, useState, useCallback } from 'react';
+import { logError } from '../services/errorLogger';
 
 interface BeforeInstallPromptEvent extends Event {
     prompt: () => Promise<void>;
@@ -55,6 +56,28 @@ function isRecentlyDismissed(): boolean {
     }
 }
 
+/**
+ * Mémorise le refus de l'invite d'installation.
+ *
+ * ⚠️ Asymétrie DÉLIBÉRÉE avec `isRecentlyDismissed` ci-dessus, qui lui reste MUET : une LECTURE qui
+ * échoue (clé absente, `localStorage` indisponible en navigation privée) est le chemin nominal — le
+ * repli « pas récemment refusé » est la bonne réponse, et la tracer crierait à chaque chargement.
+ * Une ÉCRITURE qui échoue est autre chose : l'utilisateur a cliqué « fermer », il croit la bannière
+ * congédiée, et elle revient au prochain chargement sans que rien n'explique pourquoi
+ * (`REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION`).
+ */
+function memoriserRefus(): void {
+    try {
+        localStorage.setItem(DISMISSED_KEY, String(Date.now()));
+    } catch (e) {
+        logError({
+            source: 'storage', severity: 'info',
+            message: 'Refus de l’invite PWA non mémorisé (écriture localStorage refusée) — la bannière reviendra',
+            error: e instanceof Error ? e : new Error(String(e)),
+        });
+    }
+}
+
 export function usePwaInstallPrompt(): PwaInstallState {
     const [deferredEvent, setDeferredEvent] = useState<BeforeInstallPromptEvent | null>(null);
     const [installed, setInstalled] = useState<boolean>(() => isStandalone());
@@ -84,18 +107,26 @@ export function usePwaInstallPrompt(): PwaInstallState {
             const { outcome } = await deferredEvent.userChoice;
             setDeferredEvent(null);
             if (outcome === 'dismissed') {
-                try { localStorage.setItem(DISMISSED_KEY, String(Date.now())); } catch { /* quota */ }
+                memoriserRefus();
                 setDismissed(true);
             }
             return outcome;
         } catch (err) {
-            console.warn('[PWA] prompt failed:', err);
+            // [SILENT-PWA-PROMPT] Impact faible (on perd l'invite d'installation, aucune donnée
+            // financière) — mais la règle du dépôt est qu'une erreur avalée laisse une TRACE, et
+            // « faible impact » ne veut pas dire « invisible ». `severity: 'info'` : le diagnostic
+            // existe sans polluer le bandeau d'erreurs.
+            logError({
+                source: 'ui', severity: 'info',
+                message: 'Invite d’installation PWA refusée par le navigateur (prompt() a échoué)',
+                error: err instanceof Error ? err : new Error(String(err)),
+            });
             return null;
         }
     }, [deferredEvent]);
 
     const dismissForNow = useCallback(() => {
-        try { localStorage.setItem(DISMISSED_KEY, String(Date.now())); } catch { /* quota */ }
+        memoriserRefus();
         setDismissed(true);
     }, []);
 

@@ -6,6 +6,33 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-19 (cinq endroits où l'app se taisait au lieu de te le dire)
+
+- **Suggestion de prix d'achat** : quand la recherche du cours historique échouait, le champ restait
+  vide sans un mot — tu ne pouvais pas savoir si l'app avait planté ou simplement rien trouvé. Elle
+  te le dit maintenant, et distingue les deux cas.
+- **Taille de la base** (écran Système) : affichait « 0 KB » quand le calcul échouait. Un zéro
+  crédible est pire qu'un tiret honnête — c'est « — » désormais, avec la raison au survol.
+- **Pondérations de santé financière** : un réglage corrompu revenait à sa valeur d'usine sans
+  trace, et tu voyais ton ajustement « oublié » sans explication. C'est maintenant journalisé.
+  ⚠️ Un réglage simplement *absent* reste silencieux — c'est la rétrocompatibilité normale, pas une
+  corruption.
+- **Invite d'installation de l'app** : son échec est tracé (impact mineur, mais plus invisible).
+- **Un vieux parseur d'import supprimé** : il jetait silencieusement les lignes mal formées d'un
+  relevé. Plus personne ne l'appelait — le vrai import compte et affiche honnêtement les lignes
+  ignorées. Le laisser aurait été un piège à recopier.
+- **Suggestion de prix, suite (trouvé en revue)** : quand la recherche échouait pour une panne
+  réseau, l'app disait « aucun cours trouvé » — une affirmation FAUSSE sur le titre, alors que le
+  vrai problème était ta connexion. Les deux cas sont maintenant distingués pour de bon.
+- **Et la notice ne traîne plus** : un « aucun cours trouvé » posé sur une date restait affiché
+  après une seconde tentative RÉUSSIE sur une autre date, contredisant le prix qui venait
+  d'apparaître.
+- **Validation de ticker** : son échec est tracé lui aussi (il ne l'était que dans la console).
+- **Fermeture de la bannière d'installation** : si l'app n'arrivait pas à mémoriser ton refus, la
+  bannière revenait au chargement suivant sans que rien ne l'explique. C'est tracé.
+
+---
+
 ## [unreleased] — 2026-08-19 (l'assistant ne raconte plus que tu gagnes 0 $)
 
 - **Quand un salaire n'est pas saisi, l'assistant fiscal de couple lisait « 0 $ »** — et bâtissait

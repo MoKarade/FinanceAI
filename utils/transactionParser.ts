@@ -135,90 +135,15 @@ export const markDuplicates = (transactions: Transaction[]): Transaction[] => {
   return sorted.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };
 
-export const parseTransactions = (rawData: string): Transaction[] => {
-  const lines = rawData.trim().split('\n');
-  const transactions: Transaction[] = [];
-
-  // Skip header if it detects "Date" in the first line
-  const startIndex = lines[0].toLowerCase().includes('date') ? 1 : 0;
-
-  for (let i = startIndex; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    // Détection du séparateur : tabulation > point-virgule > virgule.
-    // L'ordre compte : les CSV FR (Excel Québec) utilisent ';' car la virgule y
-    // est le séparateur décimal ; la virgule en dernier recours couvre les
-    // exports nord-américains standards (décimale = point).
-    let parts = line.split('\t');
-    if (parts.length < 2) parts = line.split(';');
-    if (parts.length < 2) parts = line.split(',');
-
-    if (parts.length >= 2) {
-      try {
-        const dateRaw = parts[0].trim();
-        const payee = parts[1].trim();
-        // Handle cases where columns might be missing or shifted
-        const amountRaw = parts[2]?.trim() || "0";
-        const categoryRaw = parts[3]?.trim() || "Uncategorized";
-        const account = parts[4]?.trim() || "Unknown";
-
-        // Parse Date (DD/MM/YYYY)
-        const dateParts = dateRaw.split('/');
-        if (dateParts.length !== 3) continue;
-
-        const [day, month, year] = dateParts.map(Number);
-        const isoDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-        // Parse Amount
-        const cleanAmount = amountRaw
-          .replace(/\s/g, '')
-          .replace(/\u00A0/g, '')
-          .replace('$', '')
-          .replace(',', '.');
-
-        const amount = parseFloat(cleanAmount);
-
-        if (!isNaN(amount) && isoDate) {
-
-          // --- LOGIC: INTERAC HANDLING ---
-          const lowerCat = categoryRaw.toLowerCase();
-          const lowerPayee = payee.toLowerCase();
-          const isInterac = lowerCat.includes('interac') || lowerCat.includes('e-transfer') || lowerPayee.includes('interac') || lowerPayee.includes('e-transfer');
-
-          let finalCategory = categoryRaw;
-          let isTransfer = false;
-
-          if (isInterac) {
-            // Interac is Reimbursement (Expense/Income), NOT a Transfer
-            finalCategory = "Remboursement";
-            isTransfer = false;
-          } else {
-            // Standard Transfer Detection
-            isTransfer = lowerCat.includes('virement') || lowerCat.includes('transfert');
-          }
-
-          // ID unique basé sur timestamp + index + hash contenu pour éviter collisions entre imports
-          const uniqueId = -(Date.now() * 1000 + i); // Négatif pour distinguer des IDs LunchMoney (positifs grands)
-          transactions.push({
-            id: uniqueId,
-            date: isoDate,
-            payee: payee,
-            amount: amount,
-            category: finalCategory,
-            originalCategory: categoryRaw,
-            accountName: account || "Unknown",
-            status: 'processed',
-            isTransfer: isTransfer,
-            isDuplicate: false
-          });
-        }
-      } catch (e) {
-        console.warn(`Failed to parse line ${i}: ${line}`, e);
-      }
-    }
-  }
-
-  // Apply duplicate marking
-  return markDuplicates(transactions);
-};
+// [DEAD-PARSETX-SILENT-DROP] `parseTransactions` a été SUPPRIMÉE le 2026-08-19.
+//
+// C'était l'ancien parseur d'import (TAB/`;` + JJ/MM/AAAA + colonnes fixes). Il jetait
+// SILENCIEUSEMENT toute ligne à date ou montant invalide — un `continue` et un `console.warn` — donc
+// un relevé partiellement mal formé s'importait « avec succès » en perdant des transactions sans le
+// dire. Mesuré : **plus aucun appelant en production**, seulement ses propres tests. Le vrai pipeline
+// est `services/import/parseBankCsv.ts`, qui compte honnêtement `imported`/`skipped` et les AFFICHE.
+//
+// ⚠️ Supprimée plutôt que corrigée, à dessein : du code mort à perte silencieuse est un piège
+// RÉ-EXPOSABLE par un simple copier-coller, et le corriger l'aurait rendu plus crédible sans lui
+// rendre d'utilité. `markDuplicates` et `isInternalTransferLabel`, eux, RESTENT — ils sont appelés
+// par `App.tsx` et `parseBankCsv.ts`.

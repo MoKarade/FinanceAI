@@ -871,9 +871,10 @@
   ne couvre que le PRA, le clawback de subventions et les PAE). **Correctif** : une ligne en §9,
   ou aligner sur 35.
 
-- [ ] **`[FISC-ANTIFLIP-WINDOW]`** (XS, MOYEN — découvert par `[FISC-GUARD-SCOPE]`) — la fenêtre
-  `2022`/`2025` de `services/projection/realEstateMonth.ts:234` module la période de grâce de
-  l'exemption de gain en capital sur résidence (règle anti-flip fédérale) : `graceYears = 5` dans la
+- [ ] **`[FISC-RAP-GRACE-WINDOW]`** (XS, MOYEN — découvert par `[FISC-GUARD-SCOPE]`, RENOMMÉ en revue :
+  il s'appelait `[FISC-RAP-GRACE-WINDOW]`, nom hérité de ma première lecture FAUSSE du code) — la
+  fenêtre `2022`/`2025` de `services/projection/realEstateMonth.ts` module la période de grâce du
+  **début de remboursement du RAP** (Budget fédéral 2024), et **PAS** la règle anti-flip : `graceYears = 5` dans la
   fenêtre, `2` dehors. **Deux bornes d'une vraie règle ARC, absentes de `FISCAL_REFERENCE.md` §8.**
   **Correctif** : sourcer les deux bornes ET la durée de grâce, ou retirer la règle. ⚠️ Les trois
   valeurs doivent bouger ENSEMBLE — en sourcer une seule laisserait une règle à moitié fausse.
@@ -893,6 +894,24 @@
   Déclaré dans `FISCAL_MODULES_HORS_PERIMETRE` avec son volume pour que le prochain sache ce qu'il
   achète en l'ajoutant. **Décider** : l'inclure (31 clés à trier) ou acter l'exclusion dans
   `decisions.md`.
+
+- [ ] **`[FISC-GUARD-ARGUMENT]`** (S, MOYEN — découvert en revue de `[FISC-GUARD-VALEUR-LIEE]`) — après
+  l'élargissement aux valeurs LIÉES, il reste une position où un barème se cache : l'**argument de
+  fonction**. **MESURÉ** sur les 20 modules : 35 littéraux encore invisibles en position `f(0.29)`,
+  dont **un vrai paramètre** — `retirementIncome.ts` `Math.max(18, residencyStartU - birthYearU)`,
+  soit l'âge de début de cotisation à la RRQ (§6, « années cotisées 18→retraite / 39 »). Aucune clé
+  `retirementIncome.ts::18` n'existe. **Arbitrage à faire** : ajouter `/[(,]$/` rapporte ~1 clé
+  fiscale pour ~15 clés de bruit (`Math.min(1.0, …)`, `Math.pow(1.02, y)`, `toString(36)`).
+  ⚠️ **NE PAS ajouter `return`** : mesuré à 20 littéraux pour **0** gain fiscal (courbes
+  mortalité/LTC + smile curve) — un garde bruyant se fait désarmer, leçon déjà payée sur `helpers.ts`.
+
+- [ ] **`[FISC-GUARD-BENIGN-60]`** (XS, MOYEN — découvert en revue de `[FISC-GUARD-VALEUR-LIEE]`) —
+  `'60'` est dans `BENIGN` alors que c'est la borne légale d'**anticipation de la RRQ** (§6, plage
+  60 → 65), en dur dans `retirementIncome.ts` (`Math.max(60, …)`). ⚠️ **Le retirer de `BENIGN` ne
+  suffit PAS** : MESURÉ, ça révèle 3 littéraux (courbe de mortalité, renouvellement hypothécaire,
+  repli ILD) dont **aucun** n'est le 60 de la RRQ — celui-là est en position d'ARGUMENT, donc
+  doublement caché. Il faut les DEUX correctifs, avec `[FISC-GUARD-ARGUMENT]`. C'est la leçon
+  `AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE` qui n'est pas encore entièrement payée.
 
 - [ ] **`[RQAP-PRESTATION-COTISATIONS]`** (S, **ÉLEVÉ** — découvert en revue de `[RQAP-CAP-98K]`) —
   la prestation de congé parental se fait prélever **RRQ + AE + RQAP**. `childrenReee.ts` appelle

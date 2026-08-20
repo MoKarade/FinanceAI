@@ -4649,3 +4649,45 @@ tout relire ; une garde qui dit « `helpers.ts:110 → 0.0862` » désigne le d�
 
 **Preuve** : dériver le facteur de 80 ans (0,0682 → 0,0862) et le taux fédéral pour dons
 (0,29 → 0,31) font rougir la garde. Ni l'un ni l'autre n'aurait bougé la veille.
+
+### `UNE-CLE-PAR-VALEUR-NE-PROTEGE-PAS-L-ORDRE` — et la revue s'est trompée sur qui protège
+
+En livrant les 24 facteurs FERR à l'inventaire, j'ai écrit dans l'archive : *« une entrée par âge,
+afin que la garde nomme précisément lequel a bougé »*. La revue a relevé que c'était surestimé, et
+elle a raison sur le fond : la clé d'inventaire est `(fichier, valeur)` — **elle ignore l'âge**. Une
+PERMUTATION de deux facteurs laisse les 24 valeurs présentes dans le fichier, donc :
+
+- aucune clé nouvelle,
+- aucune entrée fantôme,
+- **ratchet VERT**.
+
+La revue en concluait que le dépôt ne détecterait pas une permutation `80 ↔ 94` (qui forcerait un
+retrait de 20 % à 80 ans), et proposait d'ajouter une assertion de stricte croissance.
+
+**Mesuré, cette conclusion est fausse.** J'ai permuté 80 et 94 et lancé la suite :
+
+| | résultat |
+|---|---|
+| `tests/fiscalConstantsGuardV2.test.ts` | 14/14 **VERT** — la revue avait raison sur ce point |
+| `tests/services/projection.helpers.test.ts` | **2 échecs** : l'ancre à 94 ans, et surtout `is monotonically increasing`, qui boucle **déjà** de 73 à 94 |
+
+L'assertion proposée existait donc depuis longtemps, dans un autre fichier. Le correctif recommandé
+aurait été une duplication.
+
+**Ce qu'il faut en retenir, en deux temps.**
+
+1. **Une clé « par valeur » protège la VALEUR, jamais la RELATION entre valeurs.** Ordre,
+   monotonicité, somme, unicité : rien de tout cela n'est dans le champ de vision d'un ratchet
+   indexé par valeur. Quand une table porte un INVARIANT (ici : strictement croissante), il faut une
+   assertion qui l'exprime — et c'est une garde d'une autre NATURE, pas un réglage du ratchet.
+2. **Avant d'ajouter la garde qu'un reviewer réclame, vérifier qu'elle n'existe pas déjà ailleurs.**
+   Le reviewer avait cherché des assertions `RRIF_RATES[<âge>]` littérales et conclu « les âges 73 à
+   94 ne sont épinglés nulle part » ; la boucle qui les couvre tous ne contient aucun âge littéral,
+   donc elle était invisible à ce grep. Même piège que
+   `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`, retourné : chercher le CONCEPT (« qu'est-ce qui protège
+   l'ordre de cette table ? »), pas la forme syntaxique attendue.
+
+⚠️ Et la conséquence de méthode : **corriger ma prose d'archive plutôt que le code**. Le défaut réel
+n'était pas une garde manquante, c'était une phrase qui promettait plus que le mécanisme ne donne.
+Une doc qui surestime sa propre protection est exactement ce qui fait sauter la vérification
+suivante — quelqu'un lira « la garde nomme lequel a bougé » et ne cherchera pas plus loin.

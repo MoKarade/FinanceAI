@@ -32,7 +32,16 @@ source, c'était la **protection**. Rien n'empêchait un facteur de dériver en 
 
 **Mesuré** : 50 clés neuves à trier (27 dans `helpers.ts`, 9 `assetLocation`, 5 `setupSimulation`,
 4 `donationCredit`, 4 `useFinanceStore`, 1 `realEstateMonth`). Une entrée **par âge** pour les
-24 facteurs FERR, afin que la garde nomme précisément lequel a bougé.
+24 facteurs FERR.
+
+⚠️ **Correction d'une surestimation que j'avais écrite ici** : « afin que la garde nomme précisément
+lequel a bougé » était à moitié faux. La clé d'inventaire est `(fichier, valeur)` — elle ignore
+l'ÂGE. La revue en a tiré qu'une PERMUTATION de deux facteurs passerait inaperçue ; **mesuré, c'est
+inexact** : en échangeant 80 ↔ 94, le ratchet reste effectivement VERT, mais
+`tests/services/projection.helpers.test.ts` tombe DEUX fois (ancre à 94 ans, et surtout l'assertion
+de stricte croissance qui boucle de 73 à 94 — elle existait déjà). Le dépôt est donc protégé, par
+une garde AUTRE que celle-ci. Formulation juste : le ratchet nomme la VALEUR apparue ou disparue ;
+l'ORDRE des âges est tenu par le test de monotonicité.
 
 **Discrimination prouvée sur ce qui compte** : dériver le facteur FERR de 80 ans (0,0682 → 0,0862)
 et le taux du crédit fédéral pour dons (0,29 → 0,31) font rougir la garde. Ni l'un ni l'autre
@@ -45,7 +54,7 @@ bouge quand une occurrence apparaît, et c'est exactement le moment où il faut 
 
 **Découvertes classées au passage** : `setupSimulation::72` (report de la RRQ jusqu'à 72 ans depuis
 2024 — vrai paramètre, à ancrer §6) et `realEstateMonth::5` (grâce RAP de 5 ans, à sourcer avec les
-bornes 2022/2025 de `[FISC-ANTIFLIP-WINDOW]`).
+bornes 2022/2025 de `[FISC-RAP-GRACE-WINDOW]`).
 
 ## 2026-08-20 — Vague 1f (2/5) : le plafond RQAP, et une règle de portefeuille qui déplaçait une loi
 
@@ -116,7 +125,7 @@ masquait trois vraies valeurs légales dans des modules scannés depuis toujours
 
 **Découvertes ouvertes au BACKLOG** : `[AE-PLAFOND-MANQUANT]` (ÉLEVÉ — le 55 % de l'AE appliqué au
 NET et sans plafond), `[ASSETLOC-INCLUSION-RECOPIEE]`, `[FISC-REEE-AGE-FERMETURE]`,
-`[FISC-ANTIFLIP-WINDOW]`, `[FISC-RAP-15ANS]`, `[ASSETLOC-YEAR-2026]`, `[FISC-GUARD-PROJECTION-TS]`.
+`[FISC-RAP-GRACE-WINDOW]`, `[FISC-RAP-15ANS]`, `[ASSETLOC-YEAR-2026]`, `[FISC-GUARD-PROJECTION-TS]`.
 
 ## 2026-08-19 — Vague 1e (fin) : les cinq XS du silence
 

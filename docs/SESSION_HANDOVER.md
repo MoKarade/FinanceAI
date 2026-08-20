@@ -26,6 +26,24 @@
 > 0.5 : 1`, et la garde `[×N]`/`[≠N]` a IMMÉDIATEMENT exigé le passage de `[≠3]` à `[≠4]`. Le
 > mécanisme fait ce qu'il annonce.
 >
+> ⚠️ **La revue a trouvé 4 raisons fausses de plus** (`setupSimulation::2.0` décrivait le mauvais
+> fichier et portait la mauvaise famille, `::5.0` et `::5.5` recyclaient une formule vague,
+> `assetLocation::5.0` marquait `[×2]` deux CHAMPS différents) — même motif qu'aux deux lots
+> précédents : raison lue sur la ligne au lieu du bloc. Et `RRIF_RATES[94]` était certifié « barème
+> ARC » alors que §7 le déclare **CONTESTÉ** (18,79 % probable, 13 726 $ d'écart).
+>
+> ⚠️ **Un finding ÉLEVÉ de la revue est RÉFUTÉ par la mesure** : elle affirmait qu'une PERMUTATION de
+> deux facteurs FERR passerait inaperçue. Le ratchet reste effectivement vert, mais
+> `projection.helpers.test.ts` tombe DEUX fois — l'assertion de stricte croissance 73→94 existe
+> depuis longtemps. Son grep cherchait des âges littéraux, la boucle n'en contient aucun. J'ai donc
+> corrigé MA PROSE d'archive (qui surestimait le ratchet) plutôt que d'ajouter une garde en double
+> (`UNE-CLE-PAR-VALEUR-NE-PROTEGE-PAS-L-ORDRE`).
+>
+> **Tickets neufs** : `[FISC-GUARD-ARGUMENT]` (35 littéraux encore invisibles en position d'argument,
+> dont l'âge 18 de début de cotisation RRQ ; ⚠️ ne PAS couvrir `return`, mesuré 20 hits pour 0 gain),
+> `[FISC-GUARD-BENIGN-60]`. Et `[FISC-ANTIFLIP-WINDOW]` renommé `[FISC-RAP-GRACE-WINDOW]` — son nom
+> venait de ma première lecture fausse.
+>
 > ⛔ **`[RQAP-PRESTATION-COTISATIONS]` (ÉLEVÉ, 4 328,50 $/an) est BLOQUÉ SUR MARC** — routé en
 > `docs/A_FAIRE_MOI.md` §A00. Le correctif tient en un paramètre, mais il déplace de l'argent sur
 > une affirmation fiscale, et le proxy réseau **bloque** `revenuquebec.ca` / `rqap.gouv.qc.ca` /

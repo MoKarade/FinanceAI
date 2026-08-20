@@ -330,11 +330,18 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Resserrer un scan-garde **AVANT** de coder le fix : les offenders révélés = le vrai périmètre.
 - Un barème est un nombre qu'on **calcule**, qu'on **nomme** (`{ 71: 0.0528 }`) ou qu'on **choisit**
   (`cond ? 5 : 2`). Le filtre de position du garde fiscal n'attrapait que le premier : les 24 facteurs
-  de retrait minimum du FERR et les 4 taux du crédit pour dons étaient invisibles **depuis le premier
-  jour**, alors qu'ils sont ancrés en FISCAL_REFERENCE — il manquait la PROTECTION, pas la source.
+  de retrait minimum du FERR et les 4 taux du crédit pour dons n'ont **jamais** été vus depuis l'entrée
+  de leur fichier au périmètre, alors qu'ils sont ancrés en FISCAL_REFERENCE — il manquait la
+  PROTECTION, pas la source.
   Énumérer les positions par ce qu'elles FONT au nombre, pas par la syntaxe rencontrée en écrivant le
   filtre. Et une entrée PAR VALEUR, pas par table : une garde qui dit « quelque chose a changé dans
   RRIF_RATES » oblige à tout relire (`FILTRE-DE-POSITION-QUI-NE-VOIT-QUE-L-ARITHMETIQUE`).
+  ⚠️ Mais une clé **par VALEUR protège la valeur, jamais la RELATION** : ordre, monotonicité, somme,
+  unicité sont hors de son champ. Une PERMUTATION de deux facteurs FERR laisse le ratchet VERT
+  (mesuré) — c'est le test de stricte croissance, dans un AUTRE fichier, qui l'attrape. Et avant
+  d'ajouter la garde qu'un reviewer réclame, **vérifier qu'elle n'existe pas déjà** : la boucle qui
+  couvre les âges 73→94 ne contient aucun âge littéral, donc son grep ne l'avait pas vue
+  (`UNE-CLE-PAR-VALEUR-NE-PROTEGE-PAS-L-ORDRE`).
 - Tout registre censé **DÉCROÎTRE** (inventaire de dette, exemptions, allowlist) a besoin d'une garde
   sur l'**obsolescence de ses entrées**, pas seulement sur leur forme : l'entrée `childrenReee::98000`
   a survécu au commit qui SUPPRIMAIT le littéral, continuant d'affirmer le défaut au présent dans le

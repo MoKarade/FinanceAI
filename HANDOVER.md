@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-20 (suite 119) — [FISC-TAXDEC-INCR] : les bandes de décembre portent l'érosion des crédits d'âge
+> Branche `claude/taxdec-incr` (basée sur `main` post-#675, PAS empilée).
+>
+> **Livré** : sous-volet (a) du ticket — helper `incrementalBandTax` (par adulte, `familyIncome`
+> évolue AVEC la bande) branché aux bandes §2 gains et §3 dividendes de `taxDecember.ts`. (b) était
+> déjà corrigé (#564), (c) est un statu quo documenté in situ — les deux fermés SANS code, re-tracés
+> sur le code avant de coder.
+>
+> ⚠️ **Récidive du jour** : pin de test DÉDUIT de tête (776,25) au lieu de mesuré (675,56) —
+> l'entrée `ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER` de CONVENTIONS est enrichie : le pin d'un
+> test EST un chiffre fiscal documenté, il se mesure. 3 perturbations discriminantes (ageOpts
+> retirés / familyIncome figé / asymétrie tb-tt), restauration prouvée par diff. Ratchet : 5e prise
+> (`taxDecember::65` passé `[≠4]`, le `a >= 65` du helper). Pins ADDITIVITÉ ré-basés avec delta
+> expliqué. NB conteneur : le hook `commit-gate` local n'existe pas dans l'environnement remote —
+> gate lancé à la main, ne pas se fier au silence du commit.
+>
 > ## 🟢 Session 2026-08-20 (suite 118) — le lot « prestations » : la règle de Marc appliquée le jour même
 > Branche `claude/prestations-assiette` (basée sur `main` post-#673, PAS empilée).
 >

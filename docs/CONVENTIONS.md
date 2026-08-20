@@ -4847,6 +4847,14 @@ commentaire JSX**, qui répétait le taux pour « expliquer ». J'ai réécrit l
 chiffre plutôt que d'exempter les commentaires de la garde — un commentaire faux est pire qu'absent,
 parce qu'il se lit comme une intention.
 
+⚠️ **RÉCIDIVE le jour même, dans un PIN de test** (`[FISC-TAXDEC-INCR]`, 2026-08-20) : j'ai écrit
+`toBeCloseTo(776.25)` en DÉDUISANT le delta d'érosion attendu (15 % féd + 18,75 % QC appliqués « de
+tête » à la bande). Mesuré : **675,56 $** — la superposition des deux érosions est bornée par le
+crédit RESTANT au niveau de revenu de base, et cette borne ne se calcule pas de mémoire. Le pin d'un
+test EST un chiffre fiscal documenté : il se MESURE (on exécute, on lit, on épingle la valeur lue,
+on explique sa composition), il ne se déduit jamais. Un pin déduit qui par chance serait vert est
+pire encore : il certifierait une composition fausse.
+
 ### `UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`
 
 Toujours `[ESTATE-NPV-07]`, mais c'est la revue qui l'a trouvé, pas moi. Le lot remplaçait un facteur

@@ -105,8 +105,8 @@
   `[FISC-REEE-GRANT-CLAWBACK]` (⚠️ **mesuré 0 $ sur le profil de Marc** : `reee: 0`, aucun objectif
   d'études → dormant, actif seulement s'il ajoute un enfant ; confirmé contre le code —
   `childrenReee.ts:327` verse 100 % du solde, les trackers SCEE/IQEE existent mais ne sont jamais
-  décrémentés → modélisation en 3 poches nécessaire, plan-first) + `[FISC-TAXDEC-INCR]`
-  (✅ **GO Marc 2026-08-20, A2 : « code le »** — plan-first + re-base goldens assumé, risque $ élevé).
+  décrémentés → modélisation en 3 poches nécessaire, plan-first) + ~~`[FISC-TAXDEC-INCR]`~~
+  ✅ **LIVRÉ 2026-08-20** (GO Marc A2 « code le » ; (a) codé, (b) déjà fait #564, (c) statu quo documenté — archivé).
 - [ ] **V7 — Sécurité serveur + sync** — **2/4 livrés** (PR #566) :
   ✅ `[FINTABLE-SYNC-STALE-BASE]` + ✅ `[MCP-CLOUDRUN-AUTH-HARDENING]` (archivés).
   ✅ `[MCP-CHARTDATA-SUM-GUARD]` (#567) + ✅ `[FISC-CONST-GUARD-V2]` (#568). **V7 TERMINÉE (4/4).**

@@ -844,6 +844,18 @@
 > sont désormais tous inventoriés et tracés dans `utils/fiscalConstGuardV2.ts` : aucun ne peut plus
 > disparaître en silence. Trois DÉCOUVERTES s'y sont ajoutées (juste après).
 
+- [ ] **`[FLAKE-DIVORCE-INCOME-PHANTOM]`** (S, MOYEN — observé 2026-08-20 pendant `[ESTATE-NPV-07]`) —
+  `tests/services/projection.divorce.test.ts > [FISC-DIVORCE-INCOME-PHANTOM] > un divorce à 50 %
+  coûte bien plus que quelques pourcents du patrimoine final` a ÉCHOUÉ une fois dans une suite
+  complète, puis passé **en isolation** et à la **re-exécution complète suivante**, sur le MÊME
+  commit (`26f45d3`) et sans aucune modification. Deux suites complètes vertes avant, une verte
+  après. C'est donc un flake d'ORDRE ou de PARALLÉLISME, pas une régression — mais un flake sur un
+  test money-critical est un futur faux négatif : la prochaine session peut le voir rouge et
+  « corriger » du code sain. **À faire** : le lancer en boucle (`--repeat`) et sous
+  `--sequence.shuffle` pour reproduire, puis isoler l'état partagé (le fichier voisin qui le
+  précède dans l'ordre par défaut est le premier suspect). ⚠️ Ne PAS élargir la tolérance de
+  l'assertion pour le faire taire — c'est la garde d'un défaut réel (`FISC-DIVORCE-INCOME-PHANTOM`).
+
 - [ ] **`[ESTATE-NPV-BASE-REELLE]`** (M, **ÉLEVÉ** — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
   la VAN des rentes publiques (`services/projection/estateCalculation.ts`, bloc `rrqExpected`/`psvExpected`)
   est bâtie sur l'estimé de SAISIE (`rrqEstimateMonthly` ou le split 65/35 de `governmentPension`)

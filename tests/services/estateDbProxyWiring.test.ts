@@ -45,6 +45,8 @@ const users = (age: number): User[] => ([
 ] as unknown as User[]);
 
 const YEARS = 25;
+// Seed épinglé par `projection.survivor.test.ts` : k=0 → décès du conjoint au PREMIER janvier.
+const K_DECES_AN1 = 0;
 const AGE = 45;
 const goal = (o: Partial<RetirementGoal>): RetirementGoal => ({
     targetAge: 60, targetMonthlyIncome: 5_000, governmentPension: 1_500, lifeExpectancy: 92,
@@ -123,38 +125,70 @@ describe('[ESTATE-NPV-07] le proxy de pension DB vaut ce que le moteur VERSE', (
         expect(court.proxy).not.toBeCloseTo(4_000 * Math.pow(1.02, 9), 2);
     });
 
-    it('mode SURVIVANT : une seule réduction — scan de SOURCE, faute de chemin déterministe', () => {
-        // ⚠️ LE défaut trouvé en 5e revue : j'avais recopié `(survivorMode || divorced) ? 1/N : 1`
-        // de la ligne voisine, où le halving est légitime parce que l'agrégat `governmentPension`
-        // couvre les DEUX conjoints. Ici le décès est DÉJÀ porté par `dbSurvivorFactor` À L'INTÉRIEUR
-        // de la source unique : le `1/N` réduisait une SECONDE fois. MESURÉ proxy/réel = 0,5000,
-        // soit jusqu'à 17 067 $ de patrimoine successoral surestimé.
+    it('mode SURVIVANT : le proxy porte `dbSurvivorPct`, et UNE SEULE FOIS', () => {
+        // ⚠️ LE défaut trouvé en 5e revue : j'avais recopié `(survivorMode || divorced) ? 1/N : 1` de
+        // la ligne voisine — où le halving EST légitime, parce que l'agrégat `governmentPension`
+        // couvre les deux conjoints. Dans le slot DB, le décès est déjà porté par `dbSurvivorFactor`
+        // À L'INTÉRIEUR de la source unique : le `1/N` réduisait une SECONDE fois (proxy/réel = 0,5).
         //
-        // ⚠️ Pourquoi un scan et pas une mesure : `survivorMode` ne s'active que par la mortalité
-        // STOCHASTIQUE du conjoint. Aucune graine testée ne la déclenche avant le dernier point, donc
-        // il n'existe pas de chemin déterministe pour l'exercer bout en bout. Plutôt que de fabriquer
-        // une fixture qui n'exerce rien et qui SEMBLERAIT couvrir (mon premier jet de ce fichier
-        // reconstruisait le proxy et laissait passer CINQ perturbations), on vérifie l'ARGUMENT à
-        // la source, et on écrit ici pourquoi.
-        const src = readFileSync(resolve(__dirname, '../../services/projection.ts'), 'utf8');
-        const i = src.indexOf('dbPensionMonthlyPlanned: computeDbPensionMonthly(');
-        expect(i, "l'appel au proxy est introuvable").toBeGreaterThan(0);
-        // Bloc d'arguments, borné par profondeur de parenthèses.
-        let d = 0, fin = i;
-        for (let j = src.indexOf('(', i); j < src.length; j++) {
-            if (src[j] === '(') d++;
-            else if (src[j] === ')') { d--; if (d === 0) { fin = j; break; } }
-        }
-        const bloc = src.slice(i, fin)
-            .split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
-        expect(bloc).toContain('householdPensionShare');
-        const ligne = bloc.split('\n').find(l => l.includes('householdPensionShare')) ?? '';
-        expect(ligne, 'le proxy réduit DEUX FOIS en mode survivant').not.toContain('survivorMode');
-        expect(ligne).toContain('divorced');
-        // Anti-vacuité : la même contrainte NE doit PAS valoir pour le repli `governmentPension`,
-        // où le halving survivant est légitime — sinon ce test passerait pour une mauvaise raison.
-        const repli = src.split('\n').find(l => l.includes('householdPensionShare') && l.includes('survivorMode'));
-        expect(repli, 'aucune ligne ne porte plus le halving survivant : la garde est devenue vacue')
-            .toBeDefined();
+        // ⚠️⚠️ ET CE TEST ÉTAIT UN SCAN DE SOURCE, sur la foi d'un constat d'impossibilité que
+        // J'AVAIS ÉCRIT : « `survivorMode` ne s'active que par une mortalité stochastique, aucun
+        // chemin déterministe ». **FAUX** — `projection.survivor.test.ts` épingle déjà `k = 0` avec
+        // un conjoint centenaire (p = 0,33/an, plafond `mortalityAnnualProbability`) et le décès
+        // tombe au PREMIER janvier. J'avais conclu depuis MA fixture (couple de 45 ans, sans
+        // `modelSurvivor`) au lieu du dépôt. `DOC-STALE-IMPOSSIBILITY` — une leçon déjà nommée dans
+        // `CLAUDE.md`, re-commise. Coût du scan : perturber `survivorMode: false` au site d'appel
+        // laissait 226 tests VERTS pour 19 657 $ d'écart.
+        entreesEstate.length = 0;
+        const rgSurv = {
+            targetAge: 60, targetMonthlyIncome: 6_000, governmentPension: 1_850,
+            rrqEstimateMonthly: 800, psvEstimateMonthly: 700, lifeExpectancy: 96,
+            dbPensionMonthly: 1_500, dbPensionStartAge: 60, dbPensionIndexationPct: 100, dbSurvivorPct: 60,
+        } as unknown as RetirementGoal;
+        const p = params(rgSurv, { years: 12, modelSurvivor: true, replayHistoricalYear: 1990 } as Partial<ProjectionConfig>);
+        // Conjoint CENTENAIRE : c'est lui qui rend le décès déterministe au seed épinglé.
+        (p as unknown as { config: { users: User[] } }).config.users = [
+            { name: 'Solo', grossSalary: 0, netSalary: 0, color: '#10b981', age: 64, birthYear: 1962, canadaArrivalYear: 1980, hasOwnedPropertyLast4Years: true, celiContributed: 0, rrspContributed: 0 },
+            { name: 'Conjoint', grossSalary: 0, netSalary: 0, color: '#3b82f6', age: 100, birthYear: 1926, canadaArrivalYear: 1950, hasOwnedPropertyLast4Years: true, celiContributed: 0, rrspContributed: 0 },
+        ] as unknown as User[];
+        // `verboseMonthlyPoints` : sous Monte-Carlo, `chartData` est allégé et ne publierait pas
+        // `pensionPrivee` — sans ce drapeau la comparaison serait vacueuse (elle lirait 0).
+        const r = __runScenarioForTests(p, 'AUTO_MARGINAL' as AllocationStrategy, true, false,
+            K_DECES_AN1, 'BASE', {}, { verboseMonthlyPoints: true }) as unknown as { chartData: ProjectionChartPoint[] };
+        const last = r.chartData[r.chartData.length - 1];
+        const reel = (last as unknown as { pensionPrivee?: number }).pensionPrivee ?? 0;
+        const proxy = Number(entreesEstate[entreesEstate.length - 1].dbPensionMonthlyPlanned ?? NaN);
+
+        // Anti-vacuité : le décès DOIT avoir eu lieu, sinon ce test ne mesure pas le survivant.
+        const attenduSurvivant = 1_500 * Math.pow(1.02, 12) * 0.6;
+        expect(reel, 'la DB doit couler, sinon rien à comparer').toBeGreaterThan(0);
+        expect(reel, "le conjoint n'est pas décédé → la fixture n'exerce pas le survivant")
+            .toBeCloseTo(attenduSurvivant, 1);
+        // Le proxy doit valoir la DB versée : ni doublement réduit, ni ignorant `dbSurvivorPct`.
+        expect(proxy).toBeCloseTo(reel, 1);
+        expect(proxy, 'double réduction (le défaut de la 5e revue)').not.toBeCloseTo(reel / 2, 1);
+        expect(proxy, '`dbSurvivorPct` ignoré par le proxy').not.toBeCloseTo(reel / 0.6, 1);
+    });
+
+    it('mode DIVORCE : le `1/N` s\u2019applique, lui — la DB est un montant MÉNAGE', () => {
+        // ⚠️ Bras totalement NON couvert jusqu'ici, alors qu'il est 100 % déterministe
+        // (`divorceAnnualProbability: 1` → `rng() >= 1` toujours faux → divorce garanti au premier
+        // janvier, aucun seed à épingler). Perturber le diviseur laissait 226 tests verts pour
+        // 12 000 $ d'écart (+53 %).
+        entreesEstate.length = 0;
+        const rg = goal({ dbPensionStartAge: 60 });
+        const r = __runScenarioForTests(
+            params(rg, { divorceEnabled: true, divorceAnnualProbability: 1, divorceSplitPct: 50 } as Partial<ProjectionConfig>),
+            'AUTO_MARGINAL' as AllocationStrategy, true, false, 0, 'BASE', {}, { verboseMonthlyPoints: true },
+        ) as unknown as { chartData: ProjectionChartPoint[] };
+        const last = r.chartData[r.chartData.length - 1];
+        const reel = (last as unknown as { pensionPrivee?: number }).pensionPrivee ?? 0;
+        const proxy = Number(entreesEstate[entreesEstate.length - 1].dbPensionMonthlyPlanned ?? NaN);
+        const attenduDivorce = 4_000 * Math.pow(1.02, YEARS) / 2;
+        expect(reel, 'le divorce doit avoir eu lieu et la DB couler').toBeCloseTo(attenduDivorce, 1);
+        expect(proxy).toBeCloseTo(reel, 1);
+        // DISCRIMINANT du diviseur : ni 1/1 (divorce ignoré) ni 1/3.
+        expect(proxy, 'le divorce ne divise pas la DB du ménage').not.toBeCloseTo(attenduDivorce * 2, 1);
+        expect(proxy, 'mauvais diviseur').not.toBeCloseTo(attenduDivorce * 2 / 3, 1);
     });
 });

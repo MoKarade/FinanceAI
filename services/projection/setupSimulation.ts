@@ -9,7 +9,7 @@
 // dérivées.
 
 import { mulberry32 } from './helpers';
-import { calculateCeliRoom, calculateGrossFromNet, getResidencyStartYear, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK, rrqAdjustmentFactor as computeRrqFactor, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, RRSP_ROOM_RATE } from '../../utils/tax';
+import { TAX_BASE_YEAR, calculateCeliRoom, calculateGrossFromNet, getResidencyStartYear, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK, rrqAdjustmentFactor as computeRrqFactor, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, RRSP_ROOM_RATE } from '../../utils/tax';
 import type { FutureScenarioType } from '../projection';
 
 /**
@@ -148,6 +148,8 @@ export interface IncomeBaselineResult {
 export function computeIncomeBaseline(
     projection: { useTheoretical?: boolean; theoreticalIncome?: number },
     users: Array<{ netSalary?: number; grossSalary?: number } | undefined>,
+    /** Année du barème pour l'inversion net→brut ([GROSSFROMNET-ANNEE-FIGEE]). Défaut NEUTRE. */
+    startYear: number = TAX_BASE_YEAR,
 ): IncomeBaselineResult {
     const useTheo = projection.useTheoretical;
     const theoIncome = projection.theoreticalIncome || 8000;
@@ -156,7 +158,7 @@ export function computeIncomeBaseline(
     const incomeAnnaNetMonthly = useTheo ? (theoIncome * 0.45) : (users[1]?.netSalary || 0);
     // ⚠️ UNITÉS : les salaires du store sont MENSUELS, `calculateGrossFromNet` travaille en ANNUEL.
     const brutDeduit = (netMensuel: number): number =>
-        (netMensuel > 0 ? calculateGrossFromNet(netMensuel * 12) : 0);
+        (netMensuel > 0 ? calculateGrossFromNet(netMensuel * 12, startYear) : 0);
     const grossMarcBaseAnnual = useTheo
         ? brutDeduit(incomeMarcNetMonthly)
         : (users[0]?.grossSalary ? users[0].grossSalary * 12 : brutDeduit(incomeMarcNetMonthly));

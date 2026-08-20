@@ -120,6 +120,41 @@ describe('calculateGrossFromNet', () => {
     }
   });
 });
+describe('[GROSSFROMNET-ANNEE-FIGEE] l’inversion suit le barème de l’ANNÉE demandée', () => {
+    // ⚠️ Le défaut : `calculateGrossFromNet` inversait toujours le barème 2026 (le défaut de
+    // `calculateFiscalReport`) pendant que le moteur indexait par `startYear`/`loopYear`. Dès
+    // janvier 2027 le brut déduit aurait été surestimé — MESURÉ 334 à 903 $ selon le revenu, et la
+    // dérive s'accumule (~2 %/an d'indexation des paliers).
+
+    it('un barème plus TARDIF demande MOINS de brut pour le même net (paliers indexés)', () => {
+        const net = 60000;
+        const b2026 = calculateGrossFromNet(net, 2026);
+        const b2030 = calculateGrossFromNet(net, 2030);
+        // Le sens est le discriminant : indexer les paliers allège l'impôt, donc il faut MOINS de
+        // brut pour atteindre le même net. Un `year` ignoré rendrait les deux STRICTEMENT égaux.
+        expect(b2030).toBeLessThan(b2026);
+        // ⚠️ ENCADRÉ, pas un plancher lâche : le `> 100 $` d'origine laissait passer une
+        // indexation ramenée à 0,15 %/an (marge 13×). L'écart MESURÉ est 1 377 $ pour +2 %/an sur
+        // 4 ans — l'encadrement teste donc vraiment le TAUX, pas juste son signe.
+        expect(b2026 - b2030).toBeGreaterThan(1200);
+        expect(b2026 - b2030).toBeLessThan(1600);
+    });
+
+    it('chaque année inverse VRAIMENT son propre barème (aller-retour)', () => {
+        for (const year of [2026, 2027, 2030]) {
+            const brut = calculateGrossFromNet(48000, year);
+            const net = calculateFiscalReport(brut, 0, 0, year).netIncome;
+            // Tolérance = la garantie de la dichotomie (< 1 $), jamais plus serrée.
+            expect(Math.abs(net - 48000), `barème ${year}`).toBeLessThan(1);
+        }
+    });
+
+    it('le défaut est NEUTRE : sans année, comportement d’avant à l’identique', () => {
+        // Rétrocompat bit-identique — c'est ce qui rend le paramètre sans risque de migration.
+        expect(calculateGrossFromNet(60000)).toBe(calculateGrossFromNet(60000, 2026));
+    });
+});
+
 
 describe('calculateCeliRoom', () => {
   it('cumule l\'espace depuis 2009 pour un adulte deja arrive', () => {

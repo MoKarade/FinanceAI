@@ -1,7 +1,7 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 486 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 492 tests** Vitest
 (403 fichiers de test, mesuré le 2026-08-20). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -163,6 +163,14 @@ scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (50 s
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
 **Money-critical / moteur**
+- ⚠️ **Câbler une année, c'est câbler une PAIRE** : j'ai passé l'année courante à l'inversion
+  net→brut de `TaxCenter` et laissé `calculateFiscalReport` à son défaut 2026 trois lignes plus bas.
+  Avant, les DEUX étaient à 2026 — donc cohérents. Après, 212 $/an d'écart dès 2027. **Améliorer un
+  seul côté d'un défaut partagé est pire que ne rien faire** : chercher, dans la même fonction, tous
+  les appels de la même famille. Corollaire test : un test qui fige une année pendant que le code lit
+  l'horloge est une BOMBE (rouge garanti au 1er janvier, sans changement de code). Et pour couvrir un
+  APPELANT enfoui dans une boucle moteur, seul le scan de SOURCE marche — mes tests de câblage
+  laissaient tout vert quand on retirait l'argument (`CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`).
 - Remplacer une fonction par une **constante multiplicative** : mesurer l'écart à ≥3 points écartés.
   Un écart de même signe est un biais ; un écart qui **change de signe** prouve que la FORME est
   fausse et ferme le débat sur la valeur — `net * 1.35` surestimait de 2 681 $ à 30 k$ et

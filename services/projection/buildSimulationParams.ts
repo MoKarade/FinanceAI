@@ -46,7 +46,7 @@ import {
 } from '../history/reconstructPortfolioHistory';
 import { deriveStartingBalancesFromHistory } from '../history/startingBalancesFromHistory';
 import { getEffectivePurchases } from '../../utils/assetPurchases';
-import { calculateGrossFromNet } from '../../utils/tax';
+import { TAX_BASE_YEAR, calculateGrossFromNet } from '../../utils/tax';
 import { isSavingsNature } from '../../utils/budget';
 import { computeCashLedger } from '../startingCash';
 
@@ -108,11 +108,11 @@ export interface BuildSimulationParamsInputs {
  * Trois conventions net→brut coexistaient dans le dépôt (`× 1,35`, `calculateGrossFromNet`, et
  * `|| 0`). Le patron retenu est celui de `components/Retirement.tsx`, réutilisé tel quel.
  */
-export function computeBaseGrossAnnual(users: readonly User[]): number {
+export function computeBaseGrossAnnual(users: readonly User[], year: number = TAX_BASE_YEAR): number {
     return (users ?? []).reduce((sum, u) => {
         if (u?.grossSalary) return sum + (u.grossSalary * 12);
         const netAnnual = ((u?.netSalary || u?.salary || 0) as number) * 12;
-        return sum + (netAnnual > 0 ? calculateGrossFromNet(netAnnual) : 0);
+        return sum + (netAnnual > 0 ? calculateGrossFromNet(netAnnual, year) : 0);
     }, 0);
 }
 
@@ -201,7 +201,8 @@ export function derivePortfolioStartingBalances(
  */
 export function buildSimulationParams(inputs: BuildSimulationParamsInputs): SimulationParams {
     const users = (inputs.config?.users ?? []) as unknown as User[];
-    const baseGrossAnnual = computeBaseGrossAnnual(users);
+    // [GROSSFROMNET-ANNEE-FIGEE] même barème que le moteur, pas celui de 2026 en dur.
+    const baseGrossAnnual = computeBaseGrossAnnual(users, inputs.startYear);
     const baseNetAnnual = computeBaseNetAnnual(users);
     const baseMonthlyExpenses = baseNetAnnual / 12 - inputs.calculatedMonthlySavings;
     const currentRentExpense = computeCurrentRentExpense(inputs.budgetItems);

@@ -182,17 +182,22 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
             // le brut ANNUEL → × 12. Avant ce fix, TaxCenter affichait
             // grossIncome = 13 700$ comme "REVENU BRUT ANNUEL" pour un couple
             // dont le brut annuel réel est 164 400$ → impôt = 0$ (sous le PBMA).
+            const anneeFiscaleCourante = new Date().getFullYear();
             const monthlyGross = u.grossSalary || 0;
             const uGross = monthlyGross > 0
                 ? monthlyGross * 12
-                : calculateGrossFromNet((u.netSalary || 0) * 12);
+                // [GROSSFROMNET-ANNEE-FIGEE] ⚠️ Cette année DOIT être la même que celle passée à
+                // `calculateFiscalReport` juste en dessous. Les désaccorder rend l'aller-retour faux :
+                // mesuré 212 $/an d'écart dès 2027, 874 $ en 2030, sur un panneau étiqueté
+                // « Estimation {année courante} ».
+                : calculateGrossFromNet((u.netSalary || 0) * 12, anneeFiscaleCourante);
             const splitRatio = 1 / config.users.length;
             const uTotalTaxable = uGross + (investmentTaxData.taxableAddOn * splitRatio);
             // [FISC-PAYROLL-BASE-INVEST] assiette IMPOSABLE = salaire + placement (paliers d'impôt),
             // mais assiette EMPLOI (RRQ/RQAP/AE) = salaire SEUL (uGross) — le placement ne cotise pas.
             const res = calculateFiscalReport(
                 uTotalTaxable, rrspContribution * splitRatio, fhsaContribution * splitRatio,
-                undefined /* year */, undefined /* skipBreakdown */, undefined /* ageOpts */, uGross /* employmentIncome */,
+                anneeFiscaleCourante, undefined /* skipBreakdown */, undefined /* ageOpts */, uGross /* employmentIncome */,
             );
             const refundOrOwe = (alreadyPaidTax * splitRatio) > 0 ? ((alreadyPaidTax * splitRatio) - res.totalTax) : 0;
             return {

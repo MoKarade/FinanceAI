@@ -111,7 +111,8 @@ export const Retirement: React.FC<RetirementProps> = ({
     const baseGrossAnnual = useMemo(() => config.users.reduce((sum: number, u) => {
         if (u.grossSalary) return sum + (u.grossSalary * 12);
         const netAnnual = (u.netSalary || u.salary || 0) * 12;
-        return sum + calculateGrossFromNet(netAnnual);
+        // [GROSSFROMNET-ANNEE-FIGEE] barème de l'année COURANTE, pas 2026 figé.
+        return sum + calculateGrossFromNet(netAnnual, new Date().getFullYear());
     }, 0), [config]);
 
     const baseMonthlyExpenses = Math.max(0, (baseNetAnnual / 12) - calculatedMonthlySavings);

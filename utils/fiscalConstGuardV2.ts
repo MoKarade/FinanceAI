@@ -152,7 +152,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Graine par défaut du générateur pseudo-aléatoire (`mulberry32(... || 42)`). Aucun rapport avec la fiscalité.' },
     { file: 'services/projection/setupSimulation.ts', value: '30', family: 'structural',
       reason: 'Repli d’âge par défaut quand ni birthYear ni age ne sont saisis. Structurel.' },
-    { file: 'services/projection/setupSimulation.ts', value: '18', family: 'fiscal',
+        { file: 'services/projection/setupSimulation.ts', value: '18', family: 'fiscal',
       reason: 'Âge d’ouverture des droits REER historiques (`birthYear + 18`) — âge fiscal, à ancrer avec les autres âges-seuils.' },
     { file: 'services/projection/setupSimulation.ts', value: '65', family: 'fiscal',
       reason: '[×2] Âge pivot RRQ : base du décalage `(pensionStartAge - 65) * 12`. Âge fiscal, à ancrer.' },
@@ -545,6 +545,12 @@ export const FISCAL_MODULES_HORS_PERIMETRE = [
     { file: 'services/projection/historicalReturns.ts', literals: 58, reason: 'rendements de marché observés' },
     { file: 'services/pdfReport.ts', literals: 61, reason: 'mise en page du rapport PDF' },
     { file: 'services/projection/monthlyCalcs.ts', literals: 15, reason: 'agrégats mensuels, aucun barème' },
+    // ⚠️ AJOUTÉ le 2026-08-20 (revue de `[GROSSFROMNET-ANNEE-FIGEE]`). Ce module ASSEMBLE les
+    // paramètres du moteur ; il ne calcule aucun barème, mais il porte désormais un défaut d'année
+    // (`computeBaseGrossAnnual(users, year = TAX_BASE_YEAR)`). Il n'était NI scanné NI déclaré ici —
+    // donc invisible aux deux bouts, ce qui rendait à moitié fausse mon affirmation « le ratchet a
+    // attrapé mon propre code » : il en avait attrapé UN des DEUX littéraux du même commit.
+    { file: 'services/projection/buildSimulationParams.ts', literals: 1, reason: 'assemblage des paramètres, aucun barème' },
 ] as const;
 
 /**

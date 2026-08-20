@@ -13,9 +13,23 @@
 > (facteur net réel mesuré : 0,94 pour un ménage vivant de ses rentes, 0,594 à 100 k$ d'autre
 > revenu). Remplacé par un abattement CALCULÉ, patron déjà présent 40 lignes plus haut.
 >
-> **Goldens re-basés** : +215 407 $, +215 407 $ (même écart au dollar près — la VAN ne dépend pas
-> du tirage MC), et +64 898 $ (**+45,0 %** — cette fixture finit insolvable, donc son patrimoine
-> successoral EST la VAN des rentes).
+> **Goldens re-basés** : +190 745 $, +190 746 $ (le même écart à un dollar d'arrondi près — la VAN
+> ne dépend pas du tirage MC), et +64 375 $ (**+44,6 %** — cette fixture finit insolvable, donc son
+> patrimoine successoral EST la VAN des rentes).
+>
+> ⚠️⚠️⚠️ **TROIS revues successives, chacune a trouvé du vrai — et les 2e et 3e ont trouvé des défauts
+> que MES PROPRES CORRECTIFS avaient introduits.** C'est la leçon principale du lot : sur du
+> money-critical, un correctif de correctif se fait relire aussi. La 3e a trouvé (7) `estateNetWorth`
+> dépendait du **MOIS CALENDRIER** de lancement (210 997 $ d'amplitude) parce que j'avais gardé
+> `accRentesYear`, un accumulateur ANNÉE-À-DATE, dans un contexte annualisé — alors que j'avais exclu
+> son JUMEAU trois lignes plus haut ; et (8) `estateNetWorth` restait **NON MONOTONE en horizon**
+> (−65 687 $ pour un an de plus). Corrigés : la tranche imposée est celle que la VAN VALORISE (le
+> complément non encore versé s'ajoute au contexte), et la pension DB PLANIFIÉE — une saisie, connue
+> dès le premier mois — sert de plancher au contexte tant que le ménage travaille.
+>
+> ✅ **Vérifié** : 9 familles de fixtures, horizon balayé AN PAR AN de 5 à 45 ans → monotone partout.
+> Amplitude au `startMonth` redevenue IDENTIQUE à `main`. Classement de décaissement identique à
+> `main` sur 62 points de mesure au total.
 >
 > ⚠️⚠️⚠️ **LA REVUE A DÉMOLI MON PREMIER JET — trois défauts non bornés, tous MESURÉS.** Le lot
 > corrigeait bien un vrai défaut, mais il échangeait un biais BORNÉ et connu (30 pts) contre :

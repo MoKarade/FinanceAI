@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { computeEstateNetWorth, type EstateCalcInputs } from '../../services/projection/estateCalculation';
 import type { FiscalReport } from '../../utils/tax';
 
@@ -303,9 +305,15 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
     // RÉELLEMENT versées sont renseignées — sans elles, `contexteRetraite` est faux et c'est la
     // branche pré-retraite qui s'exécute. Les deux branches sont couvertes séparément plus bas.
     const RENTES_MENSUELLES = 1_500; // familial → 18 000 $/an de tranche imposable
+    // ⚠️ `governmentPension: 500` (au lieu du 1 200 de `base`) : la tranche imposée est
+    // `max(rente VERSÉE, rente VALORISÉE par la VAN)`. Avec 1 200 $/mois, la valorisation à 30 ans
+    // (26 087 $) DÉPASSERAIT la rente versée (18 000 $) et c'est elle qui piloterait le calcul —
+    // les valeurs analytiques ci-dessous porteraient alors sur autre chose que ce qu'elles annoncent.
+    // À 500 $/mois la valorisation vaut 10 870 $, donc la rente versée domine, ce qu'un test dédié
+    // vérifie explicitement pour que ce choix ne devienne pas un présupposé tacite.
     const retraite = (incomeRetirementMensuel: number): EstateCalcInputs => ({
         ...base,
-        currentAge: 35, retirementTargetAge: 65, simulationYears: 30,
+        currentAge: 35, retirementTargetAge: 65, simulationYears: 30, governmentPension: 500,
         incomeRetirement: incomeRetirementMensuel,
         pensionRrqMonthlyFinal: 900, pensionPsvMonthlyFinal: 600, pensionGisMonthlyFinal: 0,
     });
@@ -320,6 +328,36 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
     // Le facteur ATTENDU, calculé à la main sur le barème ci-dessus — pas seulement un ordre.
     const facteurAttendu = (revenuAnnuel: number): number =>
         1 - (paliers(revenuAnnuel) - paliers(Math.max(0, revenuAnnuel - RENTES_MENSUELLES * 12))) / (RENTES_MENSUELLES * 12);
+
+    it('la fixture impose bien la rente VERSÉE (et non la rente valorisée) — anti-présupposé', () => {
+        // Sans cette garde, un changement de `governmentPension` dans `base` ferait basculer tous les
+        // tests suivants sur l'autre terme du `max(…)` en restant VERTS sur des valeurs fausses.
+        expect(500 * 12 * Math.pow(1.02, 30)).toBeLessThan(RENTES_MENSUELLES * 12);
+    });
+
+    it('la tranche imposée est celle que la VAN VALORISE — continuité au démarrage d’une rente', () => {
+        // La VAN valorise `rrqExpected + psvExpected` à TOUT horizon. Imposer seulement ce qui est
+        // déjà versé faisait chuter le facteur de 10,59 points au démarrage de la PSV à 65 ans
+        // (−61 936 $ pour un an d'horizon en plus) alors que rien de réel ne s'était produit.
+        const partiel = {
+            ...retraite(2_500), governmentPension: 1_200,
+            pensionRrqMonthlyFinal: 1_000, pensionPsvMonthlyFinal: 0,
+        };
+        const valorisee = 1_200 * 12 * Math.pow(1.02, 30);
+        const complement = valorisee - 12_000;
+        expect(complement).toBeGreaterThan(0); // sinon le test n'exerce pas la branche
+        // contexte = revenu structurel (30 000) + complément ; tranche = la rente valorisée entière.
+        expect(facteurNet(partiel, stubPaliers))
+            .toBeCloseTo(1 - (paliers(30_000 + complement) - paliers(30_000 + complement - valorisee)) / valorisee, 6);
+        // CONTINUITÉ : le jour où le reste de la rente est versé, `rentesReellesAnnuelles` monte
+        // exactement de ce dont le complément descend → contexte et tranche inchangés, facteur égal.
+        const versee = {
+            ...partiel,
+            pensionPsvMonthlyFinal: valorisee / 12 - 1_000,
+            incomeRetirement: 2_500 + complement / 12,
+        };
+        expect(facteurNet(versee, stubPaliers)).toBeCloseTo(facteurNet(partiel, stubPaliers), 6);
+    });
 
     it('le facteur vaut l’impôt INCRÉMENTAL des rentes dans leur contexte — valeur PINNÉE, pas un ordre', () => {
         // Revenu de contexte = `incomeRetirement × 12` (+ `accRentesYear`, nul ici).
@@ -391,12 +429,15 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
         // le gagnant de `compareLifeScenarios` au gré du curseur d'horizon (mesuré : MELTDOWN_REER
         // gagnait à 28 et 30 ans, AUTO_MARGINAL à 33 et 35 — inversion que `main` n'a pas).
         const sans = facteurNet(retraite(2_500), stubPaliers);
-        const avec = facteurNet({ ...retraite(2_500), accRetraitsReerYear: 200_000 }, stubPaliers);
-        expect(avec).toBeCloseTo(sans, 10);
-        // Contre-preuve que la fixture EXERCE bien le terme : le même montant en revenu STRUCTUREL
-        // (loyers) doit, lui, faire chuter le facteur — sinon ce test ne prouverait rien.
-        const structurel = facteurNet({ ...retraite(2_500), accRentesYear: 200_000 }, stubPaliers);
-        expect(structurel).toBeLessThan(sans - 0.3);
+        // Les DEUX accumulateurs ANNÉE-À-DATE sont exclus — ils sont remis à zéro chaque janvier
+        // (`taxJanuary.ts`) et les additionner à un `incomeRetirement × 12` mélange deux unités.
+        // Garder `accRentesYear` faisait dépendre `estateNetWorth` du MOIS CALENDRIER de lancement :
+        // 210 997 $ d'amplitude mesurée à loyer annuel identique.
+        expect(facteurNet({ ...retraite(2_500), accRetraitsReerYear: 200_000 }, stubPaliers)).toBeCloseTo(sans, 10);
+        expect(facteurNet({ ...retraite(2_500), accRentesYear: 200_000 }, stubPaliers)).toBeCloseTo(sans, 10);
+        // Contre-preuve que la fixture EXERCE bien le contexte : le revenu de retraite MENSUEL,
+        // lui, DOIT compter — sinon ce test ne prouverait rien du tout.
+        expect(facteurNet(retraite(8_000), stubPaliers)).toBeLessThan(sans - 0.3);
     });
 
     it('le SRG est retiré des DEUX côtés — il ne peut pas servir d’assiette imposable', () => {
@@ -480,6 +521,101 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
         expect(facteurNet({ ...retraite(2_500), celi: 400_000, startingCELI: 400_000 }, stubPaliers)).toBeCloseTo(ref, 10);
         // ⚠️ Réserve honnête : `incomeRetirement` est NET de l'écrêtement PSV, lequel dépend du
         // revenu, donc indirectement de la stratégie. Le découplage est mesuré, pas prouvé.
+    });
+
+    it('les DEUX appels fiscaux du facteur portent la MÊME année — scan de SOURCE', () => {
+        // ⚠️ Ce lot CRÉE une paire `calculateFiscalReport(…, finalYear, …)`. Désapparier l'année sur
+        // un seul des deux appels laisse 34/34 VERT : les stubs de ce fichier ignorent tous
+        // l'argument `year`, donc AUCUN test de comportement ne peut voir la faute.
+        // `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` — et pour une paire enfouie dans une expression,
+        // le patron du dépôt est le scan de SOURCE. On lit la source DÉCOMMENTÉE : le bloc au-dessus
+        // explique la paire en prose, et un `toBe(2)` sur du texte commenté serait vacueux.
+        const src = readFileSync(resolve(__dirname, '../../services/projection/estateCalculation.ts'), 'utf8');
+        const code = src
+            .replace(/\/\*[\s\S]*?\*\//g, '')
+            .split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+        // Anti-vacuité du décommentage : il doit rester du VRAI code, et un jeton connu.
+        expect(code.length).toBeGreaterThan(src.length * 0.25);
+        expect(code).toContain('const facteurNetRentes');
+        // ⚠️ Extraction par PROFONDEUR, pas par `[^)]*` : un argument parenthésé
+        // (`(estateCurrentIncome + totalEstateLiquidation)`) tronque la classe négative et l'appel
+        // paraît alors ne pas contenir `finalYear` — `GARDE-BORNEE-PAR-CLASSE-NEGATIVE`, constaté à
+        // l'exécution sur ce fichier même. L'extracteur est vérifié sur ce cas juste en dessous.
+        const extraireAppels = (texte: string): string[] => {
+            const out: string[] = [];
+            const jeton = 'calculateFiscalReport(';
+            for (let i = texte.indexOf(jeton); i >= 0; i = texte.indexOf(jeton, i + 1)) {
+                let d = 0;
+                for (let j = i + jeton.length - 1; j < texte.length; j++) {
+                    if (texte[j] === '(') d++;
+                    else if (texte[j] === ')') { d--; if (d === 0) { out.push(texte.slice(i, j + 1)); break; } }
+                }
+            }
+            return out;
+        };
+        // L'extracteur lui-même, sur la forme la plus tordue du fichier :
+        expect(extraireAppels('x = calculateFiscalReport((a + b), 0, 0, Y, mc).totalTax;'))
+            .toEqual(['calculateFiscalReport((a + b), 0, 0, Y, mc)']);
+
+        const appels = extraireAppels(code);
+        expect(appels.length, 'la fonction doit appeler calculateFiscalReport').toBeGreaterThanOrEqual(4);
+        // ⚠️ `toContain('finalYear')` NE SUFFIT PAS : `finalYear + 5` le contient aussi, et cette
+        // perturbation laissait 36/36 VERT. On isole le 4ᵉ argument (à profondeur 0) et on exige
+        // qu'il soit EXACTEMENT `finalYear` — `SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE`.
+        const quatriemeArg = (appel: string): string => {
+            const inner = appel.slice(appel.indexOf('(') + 1, -1);
+            const args: string[] = []; let d = 0, courant = '';
+            for (const c of inner) {
+                if (c === '(' || c === '[') d++;
+                else if (c === ')' || c === ']') d--;
+                if (c === ',' && d === 0) { args.push(courant.trim()); courant = ''; continue; }
+                courant += c;
+            }
+            args.push(courant.trim());
+            return args[3] ?? '';
+        };
+        expect(quatriemeArg('calculateFiscalReport((a + b), 0, 0, Y, mc)')).toBe('Y');
+        for (const a of appels) {
+            expect(quatriemeArg(a), `année non appariée dans : ${a}`).toBe('finalYear');
+        }
+    });
+
+    it('AVANT la retraite, la pension DB PLANIFIÉE sert de plancher au contexte', () => {
+        // Sans ce plancher, `incomeRetirement` vaut 0 tant que le ménage travaille et le contexte
+        // fiscal est la rente seule : le facteur s'effondrait au passage à la retraite, faisant
+        // DÉCROÎTRE `estateNetWorth` de 65 687 $ pour UN an d'horizon en plus. La pension DB est une
+        // SAISIE, connue dès le premier mois — s'en priver fabrique une falaise sur une information
+        // qu'on a déjà.
+        const preRetraite: EstateCalcInputs = {
+            ...base, currentAge: 35, retirementTargetAge: 65, simulationYears: 20,
+            incomeRetirement: 0, pensionRrqMonthlyFinal: 0, pensionPsvMonthlyFinal: 0,
+        };
+        const renteValorisee = 1_200 * 12 * Math.pow(1.02, 20);
+        const dbPlanifiee = 3_000 * 12 * Math.pow(1.02, 20);
+        const avecDb = { ...preRetraite, dbPensionMonthlyPlanned: 3_000 };
+        expect(facteurNet(avecDb, stubPaliers))
+            .toBeCloseTo(1 - (paliers(dbPlanifiee + renteValorisee) - paliers(dbPlanifiee)) / renteValorisee, 6);
+        // DISCRIMINANT : sans le plancher, le contexte serait la rente seule — plusieurs points d'écart.
+        expect(facteurNet(preRetraite, stubPaliers) - facteurNet(avecDb, stubPaliers)).toBeGreaterThan(0.05);
+        // CONTINUITÉ au passage à la retraite : la DB devient réelle, le facteur ne saute pas.
+        const retraiteJuste = { ...avecDb, retirementTargetAge: 55, incomeRetirement: dbPlanifiee / 12 };
+        expect(facteurNet(retraiteJuste, stubPaliers)).toBeCloseTo(facteurNet(avecDb, stubPaliers), 6);
+    });
+
+    it('un NaN sur les champs de rente PLOMBÉS ne bascule pas de branche en silence', () => {
+        // Sans `fin()`, un NaN rend `rentesReellesAnnuelles` NaN : la comparaison au complément
+        // bascule vers l'autre terme du `max(…)` sans que rien ne le signale. Avec `fin()`, le champ
+        // ne contribue que 0 — dégradation gracieuse, comme `rrqEstimateMonthly` chez le voisin.
+        const ref = facteurNet(retraite(2_500), stubPaliers);
+        for (const champ of ['pensionRrqMonthlyFinal', 'pensionPsvMonthlyFinal', 'pensionGisMonthlyFinal',
+            'pensionOasReductionMonthlyFinal', 'dbPensionMonthlyPlanned'] as const) {
+            const avecNaN = computeEstateNetWorth({ ...retraite(2_500), [champ]: NaN }, stubPaliers);
+            expect(Number.isFinite(avecNaN.estateNetWorth), `${champ} NaN → estate non fini`).toBe(true);
+            const avecZero = facteurNet({ ...retraite(2_500), [champ]: 0 }, stubPaliers);
+            const avecNaNFac = facteurNet({ ...retraite(2_500), [champ]: NaN }, stubPaliers);
+            expect(avecNaNFac, `${champ} : NaN doit se comporter comme 0`).toBeCloseTo(avecZero, 10);
+        }
+        expect(Number.isFinite(ref)).toBe(true);
     });
 
     it('le facteur ne descend jamais SOUS 0 — un barème ne confisque pas plus que la rente', () => {

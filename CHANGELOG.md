@@ -15,7 +15,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   ~40 % avec un gros revenu de retraite à côté. Le forfait pénalisait donc le plus les ménages
   modestes.
 - L'abattement est maintenant **calculé** sur ta situation. Effet mesuré sur nos scénarios de
-  référence : **+215 407 \$** et **+64 898 \$** de patrimoine successoral, ce dernier valant **+45 %**
+  référence : **+190 745 \$** et **+64 375 \$** de patrimoine successoral, ce dernier valant **+45 %**
   pour un ménage sans actifs qui vit de ses rentes.
 - **Le Supplément de revenu garanti n'est plus traité comme imposable.** Il ne l'est pas — Service
   Canada. Une version intermédiaire de ce correctif l'oubliait d'un côté du calcul : 35 838 \$ de
@@ -24,8 +24,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   non sur ton salaire de l'époque : ces rentes, tu les toucheras une fois le salaire arrêté. Un
   premier jet les taxait au taux de ton salaire, ce qui aurait affiché jusqu'à **158 000 \$ de moins**
   qu'avant le correctif.
-- L'estimation ne dépend **pas** d'un retrait REER ponctuel de ta dernière année simulée : sans cela,
-  la stratégie de décaissement recommandée changeait selon l'endroit où tu coupes ton horizon.
+- L'estimation ne dépend **pas** d'un retrait REER ponctuel de ta dernière année simulée, ni de tes
+  loyers encaissés depuis le 1er janvier : sans cela, la stratégie de décaissement recommandée
+  changeait selon l'endroit où tu coupes ton horizon, et ton patrimoine successoral dépendait du
+  **mois** où tu avais lancé ta simulation (jusqu'à 210 000 \$ d'écart pour la même situation).
+- **Ton patrimoine successoral ne baisse plus quand tu allonges ton horizon.** Trois situations le
+  faisaient chuter jusqu'à 65 000 \$ pour une année de plus : l'impôt est maintenant estimé sur les
+  rentes que l'app **valorise**, et il tient compte de ta pension privée dès que tu l'as saisie —
+  même si tu n'es pas encore à la retraite.
 
 ---
 

@@ -38,9 +38,9 @@ d'erreur que `[MIGRATE-GROSS-135]` : un facteur plat sur une relation qui ne l'e
 plusieurs centaines de k$ comme un revenu d'une seule année l'aurait envoyée au taux marginal
 maximal, bien plus faux que le 0,7 remplacé. Facteur borné à [0, 1].
 
-**Goldens re-basés, delta écrit à côté** : 3 374 653 → **3 590 060 $** (+215 407, +6,4 %) ;
-2 715 684 → **2 931 091 $** (+215 407, même écart au dollar près — la VAN des rentes ne dépend pas
-du tirage Monte Carlo) ; et 144 220 → **209 118 $** (+64 898, **+45,0 %**) — l'écart relatif y est
+**Goldens re-basés, delta écrit à côté** : 3 374 653 → **3 565 398 $** (+190 745, +5,7 %) ;
+2 715 684 → **2 906 430 $** (+190 746, le même écart à un dollar d'arrondi près — la VAN des rentes ne
+dépend pas du tirage Monte Carlo) ; et 144 220 → **208 594 $** (+64 375, **+44,6 %**) — l'écart relatif y est
 énorme parce que cette fixture finit INSOLVABLE, donc son patrimoine successoral est presque
 entièrement la VAN des rentes.
 
@@ -137,14 +137,49 @@ Delta mesuré : 5 ans −11 298 $ · 10 ans +108 559 $ · 15 ans +266 090 $ · 2
 avec la taille du REER, donc frappe le plus la population que `drawdownOptimizer` conseille. Un
 ticket de suivi chiffré « 3,5 pts » aurait été priorisé comme cosmétique.
 
+### ⚠️⚠️⚠️ Et une TROISIÈME revue a trouvé deux défauts de plus — encore les miens
+
+**7. `estateNetWorth` dépendait du MOIS CALENDRIER de lancement (210 997 $ d'amplitude).** J'avais
+gardé `accRentesYear` dans le revenu de contexte. Malgré son nom (il cumule les LOYERS), c'est un
+accumulateur **année-à-date** remis à zéro chaque janvier : l'additionner à un `incomeRetirement × 12`
+mélange deux unités. MESURÉ, à loyer annuel identique (~64 000 $), le seul `startMonth` faisait varier
+le terme de 5 383 $ (janvier) à 64 019 $ (décembre) — donc le facteur de 0,8920 à 0,6765. Contre-épreuve :
+sans immeuble locatif, l'amplitude est exactement 0. J'avais exclu son JUMEAU `accRetraitsReerYear`
+et gardé l'autre : `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` à l'intérieur de la **même expression**.
+Après correction, l'amplitude au `startMonth` est **identique à `origin/main`** (35 692 $ / 12 344 $) :
+la branche n'ajoute plus aucune dépendance calendaire.
+
+**8. `estateNetWorth` restait NON MONOTONE en horizon (−65 687 $ et −61 936 $).** Deux causes
+distinctes, chacune corrigée :
+- *La tranche imposée n'était pas celle que la VAN valorise.* La VAN valorise `rrqExpected + psvExpected`
+  à tout horizon ; j'imposais la rente déjà VERSÉE. À 64 ans seule la RRQ est versée → un facteur
+  calculé sur la RRQ seule appliqué à une VAN qui contient aussi la PSV. Au démarrage de la PSV, le
+  facteur chutait de 10,59 points. Corrigé : la tranche est `max(versé, valorisé)` et le **complément
+  non encore versé** s'ajoute au contexte, puisqu'il s'y ajoutera vraiment. Continu par construction.
+- *Avant la retraite, le revenu de retraite n'est pas zéro — il est INCONNU.* Le moteur ne renseigne
+  `incomeRetirement` que dans le bloc retraite. Un ménage qui touchera 60 000 $/an de rente DB était
+  donc évalué à contexte nul. La pension DB planifiée est une **saisie utilisateur**, connue dès le
+  premier mois : s'en priver fabriquait une falaise sur une information déjà disponible.
+
+**Vérifié après correction** : **9 familles** de fixtures (rente DB 1 500 à 8 000 $, estimés RRQ/PSV,
+immigrante à résidence partielle, retraite de 55 à 70 ans), horizon balayé **an par an de 5 à 45 ans**
+→ **monotone partout**. Et le classement de décaissement reste **identique à `origin/main` sur 30
+points supplémentaires** (5 familles × 6 horizons), en plus des 32 déjà mesurés.
+
 **Tests re-écrits et PROUVÉS discriminants** (perturbations, chacune rougit) : contexte incrémental
-annulé, retour au 0,7 plat (13 rouges), base = estimé non indexé (4 rouges), contexte = revenu total
-(3 rouges), branche pré-retraite forcée sur le salaire, SRG non retiré de la tranche, SRG non retiré
-du contexte, écrêtement PSV non retiré, contexte = la rente seule. **8 perturbations sur 9 rougissent** ;
-la neuvième (retrait du `Math.max(0, …)` sur le résidu) ne le peut PAS et c'est écrit dans le test :
-tout barème sain rend 0 sur un revenu négatif, donc un résidu de −48 000 $ et un résidu de 0 $
-produisent le même impôt. Fabriquer un stub absurde pour « couvrir » cette ligne n'aurait rien prouvé
-sur le moteur réel. Le stub est désormais
+: retour au 0,7 plat (14 rouges), contexte = revenu total (4), complément hors contexte (3), tranche
+= versé seulement, SRG hors tranche, SRG hors contexte, écrêtement PSV hors tranche, `accRentesYear`
+réintroduit, plancher DB retiré, indexation du plancher retirée, `fin()` retiré des champs plombés,
+année désappariée. **Toutes rougissent.** Deux d'entre elles ne rougissaient PAS au jet précédent et
+ont été fermées ici : le plancher DB (aucun test pré-retraite avec pension DB) et l'appariement
+d'année — mon scan disait `toContain('finalYear')`, or `finalYear + 5` le contient aussi ; il isole
+maintenant le 4ᵉ argument à profondeur 0 et exige l'égalité stricte. L'extracteur d'appels est
+lui-même testé sur un appel à argument parenthésé (`GARDE-BORNEE-PAR-CLASSE-NEGATIVE` : un `[^)]*`
+tronquait `calculateFiscalReport((a + b), …)` et laissait la garde aveugle).
+La seule perturbation qui ne peut PAS rougir est le retrait du `Math.max(0, …)` sur le résidu, et
+c'est écrit dans le test : tout barème sain rend 0 sur un revenu négatif, donc un résidu de −48 000 $
+et un résidu de 0 $ produisent le même impôt. Fabriquer un stub absurde pour « couvrir » cette ligne
+n'aurait rien prouvé sur le moteur réel. Le stub est désormais
 à DEUX PALIERS (0 / 20 / 50 %) et les points de mesure sont strictement positifs de part et d'autre
 des coudes — le stub `(g − 20 000) × 0,4` du premier jet était **affine**, donc plat au-dessus du
 coude, donc aveugle. Les trois helpers `extractNPV` du fichier, qui divisaient par un `0,7` codé en

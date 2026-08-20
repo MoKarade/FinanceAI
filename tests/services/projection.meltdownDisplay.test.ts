@@ -132,8 +132,8 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // de taxDecember.test.ts qui le fait.
         const melt = runWith('MELTDOWN_REER' as AllocationStrategy);
         expect(melt.finalNetWorth).toBeCloseTo(-7209.82, 0);
-        // ⚠️ RE-BASÉ le 2026-08-20 par `[ESTATE-NPV-07]` : 144 219,86 $ → 209 118,29 $
-        // (+64 898,43 $, +45,0 %). L'écart RELATIF est énorme ici parce que cette fixture finit
+        // ⚠️ RE-BASÉ le 2026-08-20 par `[ESTATE-NPV-07]` : 144 219,86 $ → 208 594,46 $
+        // (+64 374,60 $, +44,6 %). L'écart RELATIF est énorme ici parce que cette fixture finit
         // INSOLVABLE (`finalNetWorth = −7 209 $`) : son patrimoine successoral est presque
         // entièrement la VAN des rentes publiques (216 328 $ brut), et le facteur y monte à 1,0000.
         //
@@ -147,6 +147,6 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // c'est-à-dire exactement la population que tout ce lot prétend servir.
         // Le REER étant déjà vidé à 87 ans, le contexte structurel et le contexte total coïncident
         // ici : ce point n'exerce PAS cette branche-là.
-        expect(melt.estateNetWorth).toBeCloseTo(209118.29, 0);
+        expect(melt.estateNetWorth).toBeCloseTo(208594.46, 0);
     });
 });

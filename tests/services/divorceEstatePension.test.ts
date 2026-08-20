@@ -87,20 +87,21 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // 30 avril, gagnait jusqu'ici un MOIS COMPLET de rendement. Le retrait de cette croissance
         // fantôme est l'effet VOULU — l'écart est négatif partout, et il croît avec l'horizon et la
         // taille du portefeuille, exactement comme un intérêt composé qu'on cesse de créditer à tort.
-        // ⚠️ RE-BASÉ le 2026-08-20 par `[ESTATE-NPV-07]` : 3 374 653 $ → 3 590 060 $ (+215 407 $,
-        // +6,4 %). La VAN des rentes publiques n'est plus amputée d'un facteur PLAT de 30 % mais
+        // ⚠️ RE-BASÉ le 2026-08-20 par `[ESTATE-NPV-07]` : 3 374 653 $ → 3 565 398 $ (+190 745 $,
+        // +5,7 %). La VAN des rentes publiques n'est plus amputée d'un facteur PLAT de 30 % mais
         // d'un abattement CALCULÉ sur l'impôt qu'elles portent réellement en contexte. L'écart est
-        // positif parce que le 0,7 sur-taxait ce ménage : à l'horizon, il vit de 40 616 $ de rentes
-        // publiques, sur lesquelles le barème 2051 prélève 6,65 % — pas 30 %.
-        // Décomposition du +215 407 $ (facteur net mesuré, sur une VAN brute de 922 473 $) :
+        // positif parce que le 0,7 sur-taxait ce ménage : à l'horizon, il vit de ses rentes
+        // publiques, sur lesquelles le barème 2051 prélève bien moins que 30 %.
+        // Décomposition du +190 745 $ (VAN brute 922 473 $), chaque étape MESURÉE :
         //   · 0,700 → 0,857 : abattement CALCULÉ au lieu du forfait ................ +144 924 $
-        //   · 0,857 → 0,899 : tranche soustraite = la rente RÉELLEMENT versée
-        //                     (40 616 $) et non l'estimé de saisie non indexé (28 800 $)  +38 348 $
-        //   · 0,899 → 0,933 : contexte STRUCTUREL (hors retrait REER de la dernière
-        //                     année, qui ne peut pas piloter 25 ans de VAN) ... +32 135 $ (résidu)
-        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_590_060);
-        // Second ancrage, même cause, et MÊME écart au dollar près (+215 407 $, +7,9 %) : la
-        // VAN des rentes ne dépend pas du tirage Monte Carlo, seul le patrimoine de base en dépend.
-        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_931_091);
+        //   · 0,857 → 0,899 : tranche = la rente RÉELLEMENT versée (40 616 $) et non
+        //                     l'estimé de saisie non indexé (28 800 $) ............. +38 348 $
+        //   · 0,899 → 0,907 : contexte STRUCTUREL, net du SRG et de l'écrêtement PSV,
+        //                     hors accumulateurs année-à-date ................ +7 473 $ (résidu)
+        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_565_398);
+        // Second ancrage, même cause : 2 715 684 $ → 2 906 430 $, soit +190 746 $ — le MÊME écart
+        // qu'au-dessus à un dollar d'arrondi près, parce que la VAN des rentes ne dépend pas du
+        // tirage Monte Carlo ; seul le patrimoine de base en dépend.
+        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_906_430);
     });
 });

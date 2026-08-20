@@ -199,6 +199,19 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   continuité SONT des invariants : les balayer, pas mesurer un point. Deux corollaires : un sens
   d'erreur assumé se déclare avec sa BORNE (j'avais écrit « 3,5 pts », mesuré 36,1 pts ailleurs),
   et une ligne non testable s'ÉCRIT comme telle plutôt que couverte par une fixture absurde.
+  ⚠️ Une 3e revue a encore trouvé 2 défauts à moi : **trois passes, trois récoltes** — ne jamais
+  merger en supposant la suivante vide. (c) Un **accumulateur ANNÉE-À-DATE** (`accRentesYear`, remis
+  à zéro chaque janvier) additionné à un `× 12` annualisé rendait le patrimoine successoral dépendant
+  du **MOIS CALENDRIER** de lancement (210 997 $) — alors que j'avais écarté son JUMEAU 3 lignes plus
+  haut : quand on retire un terme d'une somme, réexaminer CHAQUE autre terme au même critère.
+  (d) **MONOTONIE et CONTINUITÉ d'une grandeur pilotée par un CURSEUR sont des invariants** — ça ne
+  se voit qu'en BALAYANT le paramètre, jamais sur un point. Deux règles en sont sorties : *imposer
+  exactement ce qu'on VALORISE* (un facteur s'applique à SON assiette, pas à une grandeur voisine),
+  et *« pas encore connu » n'est pas « zéro »* (la pension DB planifiée était une SAISIE disponible
+  dès le 1er mois). Corollaires : un scan de PRÉSENCE peut être satisfait par la perturbation
+  (`toContain('finalYear')` matche `finalYear + 5` — isoler l'ARGUMENT et exiger l'égalité), et un
+  test ne doit pas rendre un correctif futur rouge PAR CONCEPTION (un artefact connu se SURVEILLE
+  par une borne large, il ne s'ancre pas au dollar).
 - ⚠️ **Câbler une année, c'est câbler une PAIRE** : j'ai passé l'année courante à l'inversion
   net→brut de `TaxCenter` et laissé `calculateFiscalReport` à son défaut 2026 trois lignes plus bas.
   Avant, les DEUX étaient à 2026 — donc cohérents. Après, 212 $/an d'écart dès 2027. **Améliorer un

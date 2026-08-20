@@ -2178,6 +2178,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         pensionPsvMonthlyFinal: pensionPSV,
         pensionGisMonthlyFinal: incomeRetirementGis,
         pensionOasReductionMonthlyFinal: pensionOasReduction,
+        // [ESTATE-NPV-07] Plancher de contexte AVANT la retraite (saisie utilisateur, pas une sortie
+        // de simulation) : `incomeRetirement` vaut 0 tant que le ménage travaille.
+        dbPensionMonthlyPlanned: retirementGoal.dbPensionMonthly,
         // [ENG-DIVORCE-ESTATE-PENSION] Le compteur de TÊTES : il MULTIPLIE ici un estimé
         // per-personne pour reconstituer le familial — sémantique INVERSE de `retirementIncome`,
         // où le même nom désigne un DIVISEUR d'agrégat. D'où une lecture ligne à ligne avant de

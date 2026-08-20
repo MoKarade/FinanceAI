@@ -75,6 +75,14 @@ export interface EstateCalcInputs {
      *  contexte) en est NET : sans ce terme, la tranche retirée dépasserait le revenu qui la contient
      *  pour un retraité en récupération PSV. Un montant, deux registres, une seule convention. */
     pensionOasReductionMonthlyFinal?: number;
+    /** [ESTATE-NPV-07] Pension privée DB PLANIFIÉE (`retirementGoal.dbPensionMonthly` : montant
+     *  MÉNAGE, mensuel, dollars d'aujourd'hui). Sert de PROXY du revenu de retraite tant que le
+     *  ménage n'est pas encore retraité — sans elle, le contexte fiscal pré-retraite est nul et le
+     *  facteur s'effondre au passage à la retraite (mesuré −65 687 $ pour UN an d'horizon en plus).
+     *  ⚠️ Simplification assumée : `dbPensionIndexationPct` et `dbPensionStartAge` ne sont PAS
+     *  répliqués ici — ce terme n'est qu'un plancher de contexte, et il cesse de compter dès que le
+     *  revenu de retraite RÉEL existe. */
+    dbPensionMonthlyPlanned?: number;
     activeUsersCount: number;
     /**
      * [ENG-DIVORCE-ESTATE-PENSION] Part du ménage qui reste au déclarant, pour les rentes exprimées
@@ -348,10 +356,47 @@ export function computeEstateNetWorth(
     // de 2 M$ — le biais croît avec la taille du REER, donc frappe le plus la population que
     // `drawdownOptimizer` conseille. Le vrai correctif est un revenu de retraite MOYEN sur les années
     // restantes, pas un point : ticket `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`.
-    const revenuStructurel = Math.max(0, incomeRetirement * 12 - gisAnnuel + accRentesYear);
-    const rentesDejaVersees = rentesReellesAnnuelles > 0;
-    const rentesAnnuellesFinales = rentesDejaVersees ? rentesReellesAnnuelles : (rrqExpected + psvExpected);
-    const revenuDeContexte = rentesDejaVersees ? revenuStructurel : (revenuStructurel + rentesAnnuellesFinales);
+    // ⚠️ `accRentesYear` EST EXCLU, ET C'EST UNE ERREUR D'UNITÉS, PAS UN CHOIX DE PÉRIMÈTRE.
+    // Malgré son nom (il cumule les LOYERS, pas des rentes), c'est un accumulateur ANNÉE-À-DATE remis
+    // à zéro chaque janvier (`taxJanuary.ts : accRentesYearReset: 0`). L'additionner à un
+    // `incomeRetirement * 12` — une grandeur MENSUELLE annualisée — mélange deux unités.
+    // MESURÉ : à loyer annuel identique (~64 000 $), le seul `startMonth` faisait varier le terme de
+    // 5 383 $ (janvier) à 64 019 $ (décembre), donc le facteur de 0,8920 à 0,6765, donc
+    // `estateNetWorth` de **210 997 $** — le patrimoine successoral dépendait du MOIS CALENDRIER de
+    // lancement de la simulation. Contre-épreuve : sans immeuble locatif, l'amplitude est
+    // exactement 0. Son jumeau `accRetraitsReerYear` était déjà exclu ; garder l'autre était
+    // `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` à l'intérieur de la MÊME expression.
+    // Sens d'erreur assumé : un retraité qui vit de ses loyers voit son revenu de contexte
+    // sous-estimé, donc son facteur surestimé. Le rétablir proprement demande le loyer ANNUALISÉ du
+    // dernier point, pas le cumul — ticket `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`.
+    // ⚠️ AVANT LA RETRAITE, LE REVENU DE RETRAITE N'EST PAS ZÉRO — IL EST INCONNU, CE N'EST PAS PAREIL.
+    // Le moteur ne renseigne `incomeRetirement` que dans le bloc retraite : à 54 ans il vaut 0, et un
+    // contexte nul faisait rendre 0,9068 à un ménage qui touchera 60 000 $/an de rente DB. Au passage
+    // à la retraite le facteur tombait à 0,6388 d'un coup : `estateNetWorth` DÉCROISSAIT de 65 687 $
+    // quand l'horizon augmentait d'UN an. La pension DB planifiée est une SAISIE de l'utilisateur,
+    // connue dès le premier mois — s'en priver, c'est fabriquer une falaise sur une information qu'on
+    // a déjà. Le `Math.max` évite une branche : dès que le revenu de retraite réel existe, il
+    // contient la DB et domine ce plancher.
+    const dbPlanifieeAnnuelle = Math.max(0, fin(inputs.dbPensionMonthlyPlanned ?? 0))
+        * MONTHS_PER_YEAR * Math.pow(1 + simInflation / 100, simulationYears) * householdPensionShare;
+    const revenuStructurel = Math.max(Math.max(0, incomeRetirement * 12 - gisAnnuel), dbPlanifieeAnnuelle);
+
+    // ⚠️ ON IMPOSE EXACTEMENT CE QU'ON VALORISE, ET LE COMPLÉMENT NON ENCORE VERSÉ S'AJOUTE AU CONTEXTE.
+    // La VAN ci-dessus valorise `rrqExpected + psvExpected` — les DEUX rentes, à tout horizon. Une
+    // version antérieure imposait la tranche RÉELLEMENT versée dès qu'elle était non nulle : à 64 ans,
+    // seule la RRQ est versée, donc un facteur calculé sur la RRQ SEULE était appliqué à une VAN qui
+    // contient AUSSI la PSV. Au démarrage de la PSV à 65 ans, le facteur chutait de 10,59 points d'un
+    // coup (−61 936 $ de patrimoine successoral pour UN an d'horizon en plus), alors que rien de réel
+    // ne s'était produit — la mesure changeait, pas le ménage.
+    //
+    // La tranche est donc `max(versé, valorisé)`, et le COMPLÉMENT (la part valorisée pas encore
+    // encaissée) s'ajoute au revenu de contexte, puisqu'il s'y ajoutera vraiment le jour venu.
+    // Continu par construction : quand une rente démarre, `rentesReellesAnnuelles` monte exactement
+    // de ce dont `complementNonVerse` descend — le contexte et la tranche ne bougent pas.
+    const rentesValorisees = rrqExpected + psvExpected;
+    const complementNonVerse = Math.max(0, rentesValorisees - rentesReellesAnnuelles);
+    const rentesAnnuellesFinales = rentesReellesAnnuelles + complementNonVerse;
+    const revenuDeContexte = revenuStructurel + complementNonVerse;
 
     // Quand la tranche dépasse le revenu de contexte (fixtures où `incomeRetirement` est nul alors
     // qu'un `governmentPension` est saisi), le `Math.max(0, …)` ramène le revenu résiduel à zéro :

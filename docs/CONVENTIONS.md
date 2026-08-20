@@ -4913,6 +4913,52 @@ elle passait par la coïncidence du stub, pas par le clamp. La bonne réponse es
 qui dit que la ligne est une ceinture, pas une branche, et pourquoi. Un test qui n'aurait discriminé
 que contre un barème impossible n'aurait rien prouvé sur le moteur réel.
 
+⚠️⚠️⚠️ **ET UNE TROISIÈME REVUE A ENCORE TROUVÉ DEUX DÉFAUTS — les miens.** Trois passes, trois
+récoltes. La leçon de premier ordre du lot est là : **sur du money-critical, un correctif de
+correctif est un correctif, et il se fait relire aussi.** Ne jamais merger sur l'hypothèse que la
+passe suivante serait vide — je l'ai supposé deux fois, et deux fois c'était faux.
+
+**Un accumulateur ANNÉE-À-DATE ne s'additionne pas à une grandeur ANNUALISÉE.** `accRentesYear` (qui
+cumule les LOYERS malgré son nom) est remis à zéro chaque janvier ; `incomeRetirement × 12` est un
+taux mensuel annualisé. Les additionner rendait `estateNetWorth` dépendant du **mois calendrier de
+lancement de la simulation** : à loyer annuel identique, 5 383 $ en janvier contre 64 019 $ en
+décembre, soit 210 997 $ d'amplitude sur le patrimoine affiché. Contre-épreuve décisive : sans
+immeuble locatif, l'amplitude est **exactement 0** — c'est ce qui prouve le canal.
+Le signal était sous mes yeux : j'avais exclu son **jumeau** `accRetraitsReerYear` trois lignes plus
+haut, pour une autre raison, et gardé celui-ci. `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` à l'intérieur
+de la **même expression**. Règle : quand on écarte un terme d'une somme, examiner **chaque autre
+terme de la même somme** avec le même critère — ici « quelle est son unité, et sur quelle fenêtre ? ».
+
+**La MONOTONIE et la CONTINUITÉ d'une grandeur pilotée par un curseur SONT des invariants.**
+`estateNetWorth` décroissait de 65 687 $ quand l'utilisateur augmentait son horizon d'un an. Ça ne se
+voit pas en mesurant un point, seulement en **balayant le paramètre**. Deux causes, et chacune porte
+sa propre règle :
+
+1. **Imposer exactement ce qu'on VALORISE.** La VAN valorise `rrqExpected + psvExpected` à tout
+   horizon ; j'imposais la rente déjà VERSÉE. À 64 ans seule la RRQ est versée, donc un facteur
+   calculé sur la RRQ seule était appliqué à une VAN contenant aussi la PSV — et au démarrage de la
+   PSV le facteur chutait de 10,59 points sans que rien de réel ne se produise. Quand un facteur
+   multiplie une grandeur, son assiette doit être **cette grandeur-là**, pas une grandeur voisine.
+2. **« Pas encore connu » n'est pas « zéro ».** Avant la retraite le moteur laisse `incomeRetirement`
+   à 0 ; j'en avais déduit un contexte fiscal nul pour un ménage qui touchera 60 000 $/an de rente DB.
+   Or cette pension est une **saisie utilisateur**, disponible dès le premier mois. Avant de traiter
+   une absence comme un zéro, chercher si l'information existe ailleurs sous une autre forme —
+   fabriquer une falaise sur une donnée qu'on possède déjà est le pire des deux mondes.
+
+⚠️ **Un scan de source qui cherche une PRÉSENCE peut être satisfait par une perturbation.** Ma garde
+d'appariement d'année vérifiait `appel.toContain('finalYear')`. Or `finalYear + 5` le contient : la
+perturbation laissait 36/36 vert. Il faut isoler l'**argument** (4ᵉ position, à profondeur 0) et
+exiger l'égalité STRICTE. Et l'extracteur d'appels doit compter la PROFONDEUR — un `[^)]*` tronquait
+`calculateFiscalReport((a + b), 0, 0, …)` au premier `)` et rendait la garde aveugle
+(`GARDE-BORNEE-PAR-CLASSE-NEGATIVE`, repayé ici). L'extracteur est désormais testé sur ce cas précis.
+
+⚠️ **Un test ne doit pas rendre un correctif futur rouge PAR CONCEPTION.** J'avais verrouillé un
+point de bascule (« à 5 ans, une pension DB fait BAISSER le patrimoine successoral ») à ±50 $ sur la
+différence de deux runs moteur complets. Deux fautes : la tolérance est un piège CI à retardement, et
+surtout ça transforme un **artefact de modèle** en **contrat** — le correctif propre
+(`[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`) ferait rougir ce test alors qu'il aurait raison. Un artefact
+connu se **surveille** par une borne large (« il doit rester marginal »), il ne s'ancre pas au dollar.
+
 ⚠️ **La tranche qu'on retire d'une assiette doit être la grandeur RÉELLE, pas son estimé de saisie.**
 Quatrième défaut du même lot : je soustrayais `rrqMonthlyFamily × 12` (l'estimé saisi par
 l'utilisateur) d'un revenu NOMINAL, alors que trois écarts s'accumulaient — dollars d'aujourd'hui

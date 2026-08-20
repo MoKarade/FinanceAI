@@ -25,11 +25,24 @@
 > son JUMEAU trois lignes plus haut ; et (8) `estateNetWorth` restait **NON MONOTONE en horizon**
 > (−65 687 $ pour un an de plus). Corrigés : la tranche imposée est celle que la VAN VALORISE (le
 > complément non encore versé s'ajoute au contexte), et la pension DB PLANIFIÉE — une saisie, connue
-> dès le premier mois — sert de plancher au contexte tant que le ménage travaille.
+> dès le premier mois — S'AJOUTE au contexte tant qu'elle n'est pas versée.
+> ⚠️ C'est un **COMPLÉMENT**, pas un « plancher » : une version intermédiaire la combinait par
+> `Math.max` au revenu réel, ce qui JETAIT les rentes déjà versées entre l'âge de la retraite et
+> `dbPensionStartAge` (−142 890 $ mesuré, plus une falaise NEUVE). Corrigé en 4e revue.
 >
-> ✅ **Vérifié** : 9 familles de fixtures, horizon balayé AN PAR AN de 5 à 45 ans → monotone partout.
+> ✅ **Vérifié** : 9 familles de fixtures, horizon balayé AN PAR AN de 5 à 45 ans. ⚠️ Formulation
+> EXACTE : « le lot n'ajoute AUCUNE non-monotonie », et NON « monotone partout » — j'avais écrit le
+> second, qui est faux : certaines familles décroissent par DÉPLÉTION D'ACTIFS, à l'identique sur la
+> baseline pré-lot (vérifié chute par chute, 820 runs comparés).
 > Amplitude au `startMonth` redevenue IDENTIQUE à `main`. Classement de décaissement identique à
 > `main` sur 62 points de mesure au total.
+>
+> ⚠️⚠️ **CINQ revues. Les quatre dernières ont trouvé un défaut que J'AVAIS introduit en corrigeant
+> la précédente**, toujours dans les mêmes ~20 lignes. La 5e : en mode survivant je réduisais le
+> proxy DB DEUX FOIS (`dbSurvivorPct` dans la source unique + un `1/N` recopié de la ligne voisine).
+> Et mon test de câblage écrit pour fermer ce trou était lui-même VACUEUX — il RECONSTRUISAIT le
+> proxy au lieu d'observer celui que le moteur passe : cinq perturbations passaient. Refait avec un
+> espion `vi.mock` sur `computeEstateNetWorth`.
 >
 > ⚠️⚠️⚠️ **LA REVUE A DÉMOLI MON PREMIER JET — trois défauts non bornés, tous MESURÉS.** Le lot
 > corrigeait bien un vrai défaut, mais il échangeait un biais BORNÉ et connu (30 pts) contre :

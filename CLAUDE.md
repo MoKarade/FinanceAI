@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 509 tests** Vitest
-(404 fichiers de test, mesuré le 2026-08-20). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 515 tests** Vitest
+(405 fichiers de test, mesuré le 2026-08-20). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -212,6 +212,23 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   (`toContain('finalYear')` matche `finalYear + 5` — isoler l'ARGUMENT et exiger l'égalité), et un
   test ne doit pas rendre un correctif futur rouge PAR CONCEPTION (un artefact connu se SURVEILLE
   par une borne large, il ne s'ancre pas au dollar).
+- ⚠️⚠️ **CINQ revues sur un même lot, les QUATRE dernières trouvant un défaut que J'AVAIS introduit
+  en corrigeant la précédente** — toujours dans les mêmes ~20 lignes. (e) Une **formule
+  money-critical recopiée DIVERGE** : la re-dériver a produit 3 divergences d'un coup ; le correctif
+  est d'EXTRAIRE une source unique, pas de mieux recopier. (f) **Recopier la ligne VOISINE** est un
+  piège à part : elle compile et paraît juste (`(survivorMode || divorced) ? 1/N : 1` est correct
+  pour l'agrégat d'à côté, FAUX pour la DB dont le décès est déjà porté ailleurs) — se demander ce
+  que chaque facteur CORRIGE, pas s'il ressemble. (g) **Extraire une expression, c'est hériter de ses
+  cas limites** : `age >= s ? X : 0` devenu `if (age < s) return 0` s'inverse sur un NaN ; une
+  refacto « à comportement identique » se prouve sur les entrées SALES.
+- ⚠️⚠️ **Le test écrit pour fermer un trou peut re-commettre le trou** : mon test de câblage
+  RECONSTRUISAIT le proxy au lieu de l'observer → 5 perturbations sur 5 passaient. Pour vérifier un
+  ARGUMENT, l'OBSERVER (espion `vi.mock` capturant les entrées), jamais le reproduire. **Signal : si
+  le test contient une expression qui ressemble au code testé, il teste sa copie.** Corollaires :
+  quand une branche n'a AUCUN chemin déterministe (mortalité stochastique), l'ÉCRIRE vaut mieux que
+  fabriquer une fixture qui n'exerce rien mais éteint l'alarme ; et un scan de source prouve la
+  présence d'un JETON, pas l'acheminement d'une valeur (trompé par une clé dupliquée en spread, un
+  leurre dans le même fichier, un bon nom au mauvais contenu) — le dire DANS le test.
 - ⚠️ **Câbler une année, c'est câbler une PAIRE** : j'ai passé l'année courante à l'inversion
   net→brut de `TaxCenter` et laissé `calculateFiscalReport` à son défaut 2026 trois lignes plus bas.
   Avant, les DEUX étaient à 2026 — donc cohérents. Après, 212 $/an d'écart dès 2027. **Améliorer un

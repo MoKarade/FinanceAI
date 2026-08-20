@@ -2189,7 +2189,16 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             age: Math.max(currentAge + projection.years, retirementGoal.dbPensionStartAge ?? retirementGoal.targetAge),
             inflFactor: Math.pow(1 + simInflation / 100, projection.years),
             survivorMode, dbSurvivorPct,
-            householdPensionShare: (survivorMode || divorced) ? 1 / Math.max(1, activeUsersCount) : 1,
+            // ⚠️ `divorced` SEUL, PAS `survivorMode || divorced` — exactement comme l'appel de
+            // référence de `computeRetirementIncome` 1 200 lignes plus haut. Le décès est DÉJÀ porté
+            // par `dbSurvivorFactor = survivorMode ? dbSurvivorPct : 1` À L'INTÉRIEUR de la source
+            // unique ; y ajouter un `1/N` réduit DEUX FOIS. J'avais recopié l'expression de la ligne
+            // voisine (`householdPensionShare` du repli `governmentPension`), où le halving survivant
+            // est légitime parce que l'agrégat couvre les DEUX conjoints. MESURÉ : proxy/réel = 0,5000
+            // en mode survivant (contre 1,0000 en couple intact et en divorce), soit jusqu'à
+            // 17 067 $ de patrimoine successoral surestimé tant que la DB n'a pas démarré, et une
+            // marche résiduelle de ~2 k$ à son démarrage — la falaise même que ce terme supprime.
+            householdPensionShare: divorced ? 1 / Math.max(1, activeUsersCount) : 1,
         }),
         pensionPriveeMonthlyFinal: pensionPrivee,
         // [ENG-DIVORCE-ESTATE-PENSION] Le compteur de TÊTES : il MULTIPLIE ici un estimé

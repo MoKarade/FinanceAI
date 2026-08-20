@@ -181,7 +181,13 @@ export const computeDbPensionMonthly = (p: {
     householdPensionShare?: number;
 }): number => {
     const dbStartAge = p.retirementGoal.dbPensionStartAge ?? p.retirementGoal.targetAge;
-    if (p.age < dbStartAge) return 0;
+    // ⚠️ `!(age >= start)` et NON `age < start` : l'ancienne forme ternaire `age >= start ? X : 0`
+    // rendait 0 sur un NaN ; l'early-return naïf, lui, LAISSE PASSER (NaN < x est faux) et verse la
+    // pension à tout âge, ou propage un NaN dans `incomeRetirement`. L'UI est protégée
+    // (`utils/numericInput.ts`), mais une restauration de sauvegarde ne l'est pas
+    // (`BackupPanel` valide `retirementGoal: z.unknown()`). Extraire une expression, c'est hériter
+    // de ses cas limites — la négation explicite les préserve.
+    if (!(p.age >= dbStartAge)) return 0;
     const dbBaseMonthly = p.retirementGoal.dbPensionMonthly || 0;
     const dbIndexationFraction = Math.min(1, Math.max(0, (p.retirementGoal.dbPensionIndexationPct ?? 100) / 100));
     const dbInflFactor = 1 + (p.inflFactor - 1) * dbIndexationFraction;

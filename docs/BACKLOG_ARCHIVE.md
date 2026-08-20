@@ -166,6 +166,38 @@ immigrante à résidence partielle, retraite de 55 à 70 ans), horizon balayé *
 → **monotone partout**. Et le classement de décaissement reste **identique à `origin/main` sur 30
 points supplémentaires** (5 familles × 6 horizons), en plus des 32 déjà mesurés.
 
+### ⚠️ 4e et 5e revues — deux défauts de plus, dans le proxy de pension DB
+
+**9. Le proxy DB mettait la valeur planifiée EN CONCURRENCE avec le revenu réel.** `Math.max(réel,
+proxy)` au lieu d'un complément : entre l'âge de la retraite et `dbPensionStartAge`, un ménage touche
+déjà ses rentes publiques mais pas encore sa DB, et le `max` prenait le proxy en JETANT les rentes
+réelles. MESURÉ sur un solo (retraite 58, DB à 70) : contexte surestimé de 53 799 $/an,
+`estateNetWorth` sous-évalué de **142 890 $**, et une falaise NEUVE de 5,49 points — le défaut même
+que ce terme devait supprimer. Le patron correct vivait 20 lignes plus bas.
+Le proxy recopiait aussi une indexation approximative : `dbPensionIndexationPct` ignoré (jusqu'à
+47 287 $/an de contexte fantôme, **à vie**, pour une pension non indexée), `dbPensionStartAge` ignoré,
+`dbSurvivorPct` remplacé par `householdPensionShare`. D'où l'extraction de `computeDbPensionMonthly`
+en **source unique** partagée avec `retirementIncome.ts` : une formule money-critical recopiée est
+une formule qui diverge.
+
+**10. Puis le proxy était réduit DEUX FOIS en mode survivant.** J'avais recopié
+`(survivorMode || divorced) ? 1/N : 1` de la ligne voisine — où le halving EST légitime, parce que
+l'agrégat `governmentPension` couvre les deux conjoints. Dans le slot DB, le décès est déjà porté par
+`dbSurvivorFactor` À L'INTÉRIEUR de la source unique. MESURÉ proxy/réel = **0,5000** en survivant
+contre 1,0000 en couple intact et en divorce, soit jusqu'à **17 067 $** de patrimoine successoral
+surestimé et une marche résiduelle de ~2 k$ au démarrage de la DB. `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`,
+**quatrième fois du lot**, et précisément la divergence que le commit précédent affirmait avoir
+supprimée : le code livré appliquait alors les DEUX facteurs.
+
+⚠️ **Et le test de câblage écrit pour fermer ce trou était lui-même VACUEUX** : il RECONSTRUISAIT le
+proxy en appelant la source unique avec les arguments recopiés du site d'appel, au lieu d'observer
+celui que le moteur passe. Les cinq perturbations passaient. `TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`,
+re-commis dans le test écrit pour le fermer. Refait avec un espion `vi.mock` sur
+`computeEstateNetWorth` qui capture les entrées réelles — les cinq rougissent désormais.
+La branche survivant, elle, n'a **aucun chemin déterministe** (mortalité stochastique) : plutôt que
+de fabriquer une fixture qui n'exerce rien et qui SEMBLERAIT couvrir, l'argument est vérifié par scan
+de source, avec une garde anti-vacuité et la raison écrite dans le test.
+
 **Tests re-écrits et PROUVÉS discriminants** (perturbations, chacune rougit) : contexte incrémental
 : retour au 0,7 plat (14 rouges), contexte = revenu total (4), complément hors contexte (3), tranche
 = versé seulement, SRG hors tranche, SRG hors contexte, écrêtement PSV hors tranche, `accRentesYear`

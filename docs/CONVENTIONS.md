@@ -4959,6 +4959,45 @@ surtout ça transforme un **artefact de modèle** en **contrat** — le correcti
 (`[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`) ferait rougir ce test alors qu'il aurait raison. Un artefact
 connu se **surveille** par une borne large (« il doit rester marginal »), il ne s'ancre pas au dollar.
 
+⚠️⚠️⚠️⚠️ **CINQ revues sur le même lot. Les QUATRE dernières ont trouvé un défaut que j'avais
+introduit en corrigeant la précédente**, toujours dans les mêmes ~20 lignes. Trois règles en sortent,
+et elles valent bien au-delà de ce lot :
+
+1. **Une formule money-critical recopiée est une formule qui DIVERGE.** J'ai re-dérivé la pension DB
+   dans `estateCalculation` au lieu de réutiliser celle du moteur : trois divergences en une seule
+   expression (indexation partielle ignorée, âge de début ignoré, facteur de survivant remplacé par
+   un autre facteur). Le correctif n'est pas de mieux recopier, c'est d'EXTRAIRE
+   (`computeDbPensionMonthly`) et de faire passer les deux appelants par là.
+2. **Recopier l'expression de la ligne VOISINE est un piège spécifique**, parce qu'elle est
+   plausible et qu'elle compile. `householdPensionShare: (survivorMode || divorced) ? 1/N : 1` est
+   JUSTE pour le repli `governmentPension` (l'agrégat couvre les deux conjoints) et FAUX pour la
+   pension DB (le décès y est déjà porté ailleurs). Deux slots adjacents, deux sémantiques. Avant de
+   copier une ligne, se demander ce que chaque facteur CORRIGE, pas s'il « ressemble ».
+3. **Extraire une expression, c'est hériter de ses cas limites.** `age >= start ? X : 0` devenu
+   `if (age < start) return 0` inverse le comportement sur un `NaN` : l'ancien rendait 0, le nouveau
+   verse la pension à tout âge. La négation explicite (`if (!(age >= start))`) préserve la sémantique.
+   Une refactorisation « à comportement identique » se prouve sur les entrées SALES, pas sur les propres.
+
+⚠️⚠️ **Le test écrit pour fermer un trou peut re-commettre le trou.** Mon test de câblage devait
+prouver que le moteur alimente bien le proxy. Il le RECONSTRUISAIT en appelant la même fonction avec
+les arguments recopiés du site d'appel — donc perturber le site d'appel ne le faisait pas rougir :
+cinq perturbations sur cinq passaient. Pour vérifier un ARGUMENT, il faut l'OBSERVER (espion
+`vi.mock` qui capture les entrées réelles), jamais le reproduire. Signal d'alerte : si le test
+contient une expression qui ressemble au code testé, il ne teste pas le code, il teste sa copie.
+
+⚠️ **Quand une branche n'a AUCUN chemin déterministe, l'écrire vaut mieux que la simuler.**
+`survivorMode` ne s'active que par une mortalité stochastique qu'aucune graine testée ne déclenche au
+bon moment. Fabriquer une fixture qui n'exerce rien mais SEMBLE couvrir est pire que rien : elle
+éteint l'alarme. La réponse honnête est un scan de l'argument à la source, une garde anti-vacuité, et
+la raison écrite dans le test.
+
+⚠️ **Un scan de source prouve la présence d'un JETON, pas l'acheminement d'une valeur.** Le mien reste
+vert sur une clé dupliquée par spread (JS garde la dernière, la regex trouve la première), sur un
+leurre placé dans un export bidon du même fichier, sur une variable au bon nom mais au mauvais
+contenu, et sur un reset déplacé en fin de boucle. Ces cas étaient rattrapés ailleurs — c'est de la
+défense en profondeur, pas une garde suffisante. Le dire DANS le test, sinon la prochaine session le
+croira suffisant.
+
 ⚠️ **La tranche qu'on retire d'une assiette doit être la grandeur RÉELLE, pas son estimé de saisie.**
 Quatrième défaut du même lot : je soustrayais `rrqMonthlyFamily × 12` (l'estimé saisi par
 l'utilisateur) d'un revenu NOMINAL, alors que trois écarts s'accumulaient — dollars d'aujourd'hui

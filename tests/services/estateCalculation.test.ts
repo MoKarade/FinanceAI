@@ -537,6 +537,14 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
         // Anti-vacuité du décommentage : il doit rester du VRAI code et un jeton connu.
         expect(code.length).toBeGreaterThan(src.length * 0.25);
         expect(code).toContain('computeEstateNetWorth');
+        // ⚠️ CE QUE CE SCAN PROUVE, ET CE QU'IL NE PROUVE PAS. Il vérifie qu'un JETON attendu est
+        // présent au bon endroit — pas que la valeur est réellement acheminée. Mesuré : il reste
+        // vert sur une clé dupliquée par spread (JS garde la DERNIÈRE, la regex trouve la PREMIÈRE),
+        // sur un leurre placé dans un export bidon du même fichier, sur `pensionPrivee` alimenté par
+        // `retirementBreakdown.rrq` (bon nom, mauvais contenu), et sur un reset DÉPLACÉ en fin de
+        // boucle. Ces quatre cas sont rattrapés ailleurs (`projection.test.ts > indexation 0 %`,
+        // `projection.convergence.test.ts`, `estateDbProxyWiring.test.ts`) — c'est de la défense en
+        // profondeur, pas une garde suffisante à elle seule.
         // Chaque champ doit être alimenté par la variable moteur ATTENDUE, pas par un littéral.
         const attendus: Array<[string, string]> = [
             ['pensionRrqMonthlyFinal', 'pensionRRQ'],
@@ -675,8 +683,12 @@ describe('[ESTATE-NPV-07] VAN des rentes nette d’impôt — facteur CALCULÉ, 
         // bascule vers l'autre terme du `max(…)` sans que rien ne le signale. Avec `fin()`, le champ
         // ne contribue que 0 — dégradation gracieuse, comme `rrqEstimateMonthly` chez le voisin.
         const ref = facteurNet(retraite(2_500), stubPaliers);
+        // ⚠️ `pensionPriveeMonthlyFinal` était ABSENT de cette liste alors qu'il est le SEUL champ
+        // qui DISCRIMINE une branche (`dbVerseeAnnuelle > 0`) — soit exactement la « bascule de
+        // branche en silence » que ce test protège. Le scan voisin, lui, en listait déjà six : deux
+        // listes de la même famille, dans le même fichier, désynchronisées.
         for (const champ of ['pensionRrqMonthlyFinal', 'pensionPsvMonthlyFinal', 'pensionGisMonthlyFinal',
-            'pensionOasReductionMonthlyFinal', 'dbPensionMonthlyPlanned'] as const) {
+            'pensionOasReductionMonthlyFinal', 'dbPensionMonthlyPlanned', 'pensionPriveeMonthlyFinal'] as const) {
             const avecNaN = computeEstateNetWorth({ ...retraite(2_500), [champ]: NaN }, stubPaliers);
             expect(Number.isFinite(avecNaN.estateNetWorth), `${champ} NaN → estate non fini`).toBe(true);
             const avecZero = facteurNet({ ...retraite(2_500), [champ]: 0 }, stubPaliers);

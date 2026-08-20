@@ -48,7 +48,10 @@ describe('computeIncomeBaseline — brut MENSUEL → annuel (× 12)', () => {
         // L'intention d'origine du test — « pas de division/multiplication parasite », le net
         // mensuel est bien annualisé — est CONSERVÉE, mais vérifiée par la propriété qui compte :
         // le brut déduit doit redonner exactement le net annuel visé (4 000 × 12).
-        expect(calculateFiscalReport(r.grossMarcBaseAnnual, 0, 0).netIncome).toBeCloseTo(48000, 0);
+        // ⚠️ Tolérance alignée sur la GARANTIE de `calculateGrossFromNet` (`< 1 $`), pas plus
+        // serrée : `toBeCloseTo(x, 0)` exige `< 0,5 $`, et sur 2 951 cibles mesurées 43 %
+        // dépassent ce seuil (résidu max 0,998 $). Cette ancre-ci passait par CHANCE.
+        expect(Math.abs(calculateFiscalReport(r.grossMarcBaseAnnual, 0, 0).netIncome - 48000)).toBeLessThan(1);
         expect(r.grossAnnaBaseAnnual).toBe(0);
     });
 

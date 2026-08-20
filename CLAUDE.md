@@ -1,7 +1,7 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 482 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 486 tests** Vitest
 (403 fichiers de test, mesuré le 2026-08-20). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -171,6 +171,10 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   court-circuite, donc corriger le code ne rattrape pas les configs déjà écrites. Avant de livrer un
   correctif de repli : **le mauvais résultat a-t-il été SAUVEGARDÉ ?**
   (`UN-FACTEUR-PLAT-SUR-UNE-RELATION-CONVEXE`).
+  ⚠️ Corollaire de test : la **TOLÉRANCE d'une assertion vient de la fonction testée**, pas du
+  confort — `toBeCloseTo(x, 0)` exige < 0,50 $ alors que la dichotomie ne garantit que < 1 $, et
+  43 % des cibles dépassent le seuil (mesuré). Lire la condition d'arrêt et s'y aligner : une
+  assertion plus serrée que la garantie est un piège CI à retardement.
 - ⚠️ Une grandeur d'origine **LÉGALE** ne peut pas être indexée par un facteur que l'UTILISATEUR ou
   une STRATÉGIE peut faire bouger : le plafond RQAP était `98000 * expenseMultiplier`, or ce
   multiplicateur porte l'inflation des DÉPENSES et est **gelé par Guyton-Klinger** — une règle de

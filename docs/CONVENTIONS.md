@@ -4731,4 +4731,12 @@ correctif de code est la moitié du travail.
 **Re-baser une ancre, c'est aussi l'occasion de la rendre moins fragile.** Les trois tests épinglaient
 `net × 12 × 1,35` — un NOMBRE, qui redevient faux au prochain changement de barème. Réécrits pour
 viser la PROPRIÉTÉ : « le brut déduit, repassé dans le calcul fiscal, redonne le net visé ». Cette
-assertion-là survit à une réforme fiscale, et elle dit ce qu'on veut vraiment.
+assertion-là dit ce qu'on veut vraiment, au lieu d'un nombre qui redevient faux au prochain barème.
+
+⚠️ **Mais viser la propriété ne suffit pas : la TOLÉRANCE doit venir de la fonction, pas du confort.**
+J'avais écrit `toBeCloseTo(net, 0)`, soit `< 0,5 $`, alors que `calculateGrossFromNet` ne garantit
+que `< 1 $` (`Math.abs(net - target) < 1` dans sa condition d'arrêt). Mesuré sur 2 951 cibles :
+**43 % dépassent 0,5 $** de résidu, max 0,998 $. Mes trois ancres passaient par CHANCE, avec des
+marges de 0,2 à 0,4 $ — toute retouche du barème aurait pu les faire rougir sans le moindre défaut.
+Une assertion plus serrée que la garantie de la fonction testée est un piège CI à retardement : lire
+la condition d'arrêt, et s'y aligner (`toBeLessThan(1)`).

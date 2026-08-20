@@ -26,6 +26,27 @@
 > retrait des deux entrées `1.35` au moment où la dette était payée, et le ratchet rougit maintenant
 > si on remet le facteur plat. Le registre décroît comme prévu.
 >
+> ⚠️⚠️ **LA REVUE A TROUVÉ PLUS GROS QUE LE LOT** : `computeBaseGrossAnnual`
+> (`buildSimulationParams.ts`) n'avait AUCUN repli net→brut. Le moteur DÉDUISAIT un brut pour un
+> conjoint sans salaire saisi et l'IMPOSAIT dessus, tout en le comptant ZÉRO dans `baseGrossAnnual`
+> — qui alimente les DROITS REER et la RENTE RRQ. MESURÉ : **−211 532 $ de droits REER** et
+> **−247 $/mois de RRQ**. Corrigé ici, avec le patron qui existait DÉJÀ dans `Retirement.tsx`
+> (trois conventions net→brut coexistaient dans le dépôt).
+>
+> ⚠️ **Mes 3 ancres passaient par CHANCE** : `toBeCloseTo(x, 0)` exige < 0,50 $, la dichotomie ne
+> garantit que < 1 $ — 43 % des cibles dépassent 0,50 $ (mesuré sur 2 951). Tolérance réalignée.
+>
+> ⚠️ **Justification du coût de boot revue à la baisse** : les 6 125 octets sont imputables au SEUL
+> import du store (vérifié en le retirant), et ce chemin ne sert qu'aux upgrades d'avant l'ère
+> persist. On paie pour tout le monde au bénéfice d'une population résiduelle. Gardé (une valeur
+> fausse PERSISTÉE l'est à vie) mais c'est un arbitrage, pas un cadeau.
+>
+> **Le meilleur argument du lot n'était écrit nulle part** : il ANNULE le biais
+> `[ENG-NET-MODEL-RESIDUAL]` de FISCAL_REFERENCE §9 (−3 627 $ → −0,29 $ à 60 k$ de net). §9 à jour.
+>
+> **Tickets neufs** : `[GROSSFROMNET-ANNEE-FIGEE]`, `[GROSSFROMNET-CREDITS-65]`,
+> `[AUTOMARGINAL-BASCULE-SILENCIEUSE]`.
+>
 > ⚠️ **Limite connue** : `[MIGRATE-GROSS-DEJA-PERSISTE]` — le correctif ne rattrape PAS les configs
 > dont le brut erroné est déjà persisté (`u.grossSalary || …` court-circuite). Décision produit.
 >

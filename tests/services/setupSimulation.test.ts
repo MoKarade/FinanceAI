@@ -34,7 +34,10 @@ describe('computeIncomeBaseline — régression bug « revenu ×12 »', () => {
         // revenu (mesuré : −22 028 $ à 100 k$ de net, −132 196 $ à 250 k$).
         const r = computeIncomeBaseline({}, [{ netSalary: 5000 }, undefined]);
         // L'assertion vise la PROPRIÉTÉ, pas le nombre : le brut déduit doit redonner le net visé.
-        expect(calculateFiscalReport(r.grossMarcBaseAnnual, 0, 0).netIncome).toBeCloseTo(60000, 0);
+        // ⚠️ Tolérance alignée sur la GARANTIE de `calculateGrossFromNet` (`< 1 $`), pas plus
+        // serrée : `toBeCloseTo(x, 0)` exige `< 0,5 $`, et sur 2 951 cibles mesurées 43 %
+        // dépassent ce seuil (résidu max 0,998 $). Cette ancre-ci passait par CHANCE.
+        expect(Math.abs(calculateFiscalReport(r.grossMarcBaseAnnual, 0, 0).netIncome - 60000)).toBeLessThan(1);
         // Et il n'est PLUS le produit d'un facteur plat — c'est le discriminant du lot.
         expect(r.grossMarcBaseAnnual).not.toBeCloseTo(5000 * 12 * 1.35, 0);
     });
@@ -46,7 +49,10 @@ describe('computeIncomeBaseline — régression bug « revenu ×12 »', () => {
         // [MIGRATE-GROSS-135] — RE-BASÉ. Ancre AVANT : 89 100 $ (= 5 500 × 12 × 1,35).
         // Ancre APRÈS : 96 423,89 $. Δ = +7 324 $. Même propriété : le brut déduit redonne le net
         // visé, ce que le facteur plat ne faisait pour AUCUN revenu.
-        expect(calculateFiscalReport(r.grossMarcBaseAnnual, 0, 0).netIncome).toBeCloseTo(66000, 0);
+        // ⚠️ Tolérance alignée sur la GARANTIE de `calculateGrossFromNet` (`< 1 $`), pas plus
+        // serrée : `toBeCloseTo(x, 0)` exige `< 0,5 $`, et sur 2 951 cibles mesurées 43 %
+        // dépassent ce seuil (résidu max 0,998 $). Cette ancre-ci passait par CHANCE.
+        expect(Math.abs(calculateFiscalReport(r.grossMarcBaseAnnual, 0, 0).netIncome - 66000)).toBeLessThan(1);
     });
 
     it('mode théorique : theoreticalIncome par défaut = 8000', () => {

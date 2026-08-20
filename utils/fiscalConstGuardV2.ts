@@ -162,7 +162,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Part du revenu théorique attribuée au 1er conjoint (55/45). Hypothèse de répartition, pas une règle.' },
     { file: 'services/projection/setupSimulation.ts', value: '0.45', family: 'design',
       reason: 'Part du revenu théorique attribuée au 2e conjoint. Même nature que 0.55.' },
-        { file: 'services/projection/setupSimulation.ts', value: '2.0', family: 'design',
+    { file: 'services/projection/setupSimulation.ts', value: '2.0', family: 'design',
       reason: '[≠2] DEUX SENS, tous deux dans ce fichier. (1) `simInflation = projection.inflationRate ?? 2.0` — l’inflation par DÉFAUT de la projection, qui pilote toute l’indexation du moteur, plafond RQAP compris. (2) `baseRates.nonReg` du jeu de rendement de stress (`ECONOMIC_WINTER` / `COMPOUND_STRESS`), soit 2 %/an sur le non-enregistré. ⚠️ Ma première raison parlait d’une « constante mathématique d’une formule de simulation » : FAUX pour ce fichier — le Box-Muller vit dans `helpers.ts` et a sa propre entrée. Famille corrigée `structural` → `design` : deux hypothèses de modèle, pas des index.' },
     { file: 'services/projection/setupSimulation.ts', value: '5.5', family: 'design',
       reason: '`simInflation = 5.5` forcée par le scénario `HYPER_INFLATION`. Hypothèse de scénario, pas un barème. ⚠️ La raison d’origine disait « paramètre d’amorçage de simulation », ce qui ne désignait rien — corrigé en revue avec ses voisines 2.0 et 5.0.' },
@@ -210,7 +210,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: '`REEE_TARGET_ANNUAL_CONTRIB_BASIC` — cotisation visée pour toucher la SCEE pleine (20 % × 2 500 $ = 500 $). Dérivée du barème, donc fiscale par construction. Ancrée §7.' },
     { file: 'services/projection/childrenReee.ts', value: '5000', family: 'fiscal',
       reason: '`REEE_TARGET_ANNUAL_CONTRIB_CATCHUP` — cotisation visée en mode rattrapage (subvention doublée tant que la SCEE cumulée reste sous le maximum théorique). Ancrée §7.' },
-        { file: 'services/projection/childrenReee.ts', value: '0.55', family: 'fiscal',
+    { file: 'services/projection/childrenReee.ts', value: '0.55', family: 'fiscal',
       reason: '`RQAP_REPLACEMENT_RATE_BASE` — taux de remplacement du revenu pendant le congé parental. ANCRÉ FISCAL_REFERENCE §2 depuis `[RQAP-CAP-98K]` (2026-08-20), avec sa divergence : le régime de BASE verse 70 % puis 55 % selon la phase, donc un 0,55 plat SOUS-ESTIME le début du congé. Modéliser les phases demande le nombre de semaines par prestation ET le choix base/particulier, que l’app ne saisit pas — décision produit, ticket `[RQAP-PHASES-70-55]`.' },
     { file: 'services/projection/childrenReee.ts', value: '350', family: 'design',
       reason: 'Économie de transport pendant le congé parental (350 $/mois). Hypothèse de coût de ménage, indexée par `expenseMultiplier` — aucune règle fiscale, à ne surtout pas « sourcer ».' },
@@ -328,7 +328,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: '`DONATION_FIRST_TIER_CEILING` — plafond du premier palier du crédit pour dons (200 $), au-delà duquel le taux bonifié s’applique. Vrai paramètre ARC/RQ, déjà ancré FISCAL_REFERENCE §10 et nommé sur place.' },
 
     // ── store/useFinanceStore.ts ─────────────────────────────────────────────────────────────
-        { file: 'store/useFinanceStore.ts', value: '5', family: 'structural',
+    { file: 'store/useFinanceStore.ts', value: '5', family: 'structural',
       reason: 'Numéro de version de schéma persisté (`fromVersion < 5`). Palier de migration, aucun rapport avec la fiscalité.' },
     { file: 'store/useFinanceStore.ts', value: '6', family: 'structural',
       reason: 'Numéro de version de schéma persisté (`fromVersion < 6`). Palier de migration.' },

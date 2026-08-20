@@ -347,6 +347,78 @@ le moteur le scinde 65 % RRQ / 35 % PSV — source unique des 3 sites (`setupSim
 le split n'est qu'un repli. Conséquence assumée : le facteur de report/anticipation propre à
 chaque rente s'applique ensuite à la part correspondante.
 
+### Proxys d'impôt W5 (locatif `0,45`, dividende CCPC `0,36`) — hypothèses de MODÈLE
+
+`services/projection/w5Effects.ts`. Le NOI d'un immeuble locatif et le dividende d'une société
+privée (CCPC) sont imposés par un **taux marginal FORFAITAIRE**, pas par le barème complet :
+`addTaxDivers(noi × 0,45 / 12)` et `addTaxDivers(dividende × 0,36 / 12)`.
+
+**Décision Marc (2026, `docs/A_FAIRE_MOI.md` §[W5-TAX-PROXY])** : garder les proxys plats, les
+documenter ici comme une **estimation de taux marginal québécois**. Ce ne sont donc PAS des règles
+ARC/RQ — ce sont des choix de modèle assumés, et voici ce qu'ils valent.
+
+#### Locatif — `0,45`
+
+MESURÉ : impôt INCRÉMENTAL réel sur **30 000 $ de NOI** empilés sur un revenu existant, barème 2026
+(`calculateFiscalReport`, QC + fédéral net de l'abattement de 16,5 %) :
+
+| revenu avant NOI | taux marginal RÉEL sur la tranche | écart du proxy 45 % |
+|---|---|---|
+| 40 000 $ | 30,38 % | **+4 387 $/an** (sur-imposé) |
+| 60 000 $ | 36,12 % | +2 665 $/an |
+| 80 000 $ | 36,34 % | +2 599 $/an |
+| 100 000 $ | 41,65 % | +1 004 $/an |
+| **150 000 $** | **47,46 %** | **−738 $/an** (sous-imposé) |
+| 200 000 $ | 49,96 % | −1 489 $/an |
+| 250 000 $ | 52,36 % | −2 208 $/an |
+
+> Le proxy est donc **conservateur jusqu'à ~140 k$ de revenu** et **NON conservateur au-delà** : le
+> point de bascule est vers 145 k$, là où le taux marginal réel croise 45 %. Un bailleur à haut
+> revenu voit son impôt locatif SOUS-estimé, donc son patrimoine projeté SUR-estimé.
+> ⚠️ Le taux marginal dépend AUSSI de la taille de la tranche (une tranche traverse des paliers) :
+> à 100 k$ de base, 10 k$ de NOI donnent 36,78 %, 30 k$ donnent 41,65 %, 60 k$ donnent 44,49 %.
+> Le tableau ci-dessus fixe la tranche à 30 k$ pour être comparable ligne à ligne.
+
+Ordre de grandeur de référence : taux marginal combiné QC 2026 = **~41 %** dans la tranche
+108 680 → 132 245 $ (QC 24 % + fédéral 20,5 % × 0,835) et **~47,5 %** au-dessus de 132 245 $
+(QC 25,75 % + fédéral 26 % × 0,835). `0,45` se situe entre les deux — cohérent avec un bailleur de
+classe moyenne supérieure, faux pour les extrêmes.
+
+#### Dividende CCPC — `0,36`
+
+Même forme d'hypothèse, mais l'écart est plus large — et le TYPE de dividende (déterminé vs
+ordinaire) change tout, alors que le modèle **ne le distingue pas** : `PrivateBusiness` ne porte
+qu'un `annualDividend`.
+
+⚠️ **Le dépôt sait déjà calculer ce taux correctement ailleurs** : `utils/tax.ts`
+`calculateDividendTax` applique la majoration (38 % déterminé / 15 % ordinaire) et les crédits
+d'impôt pour dividende fédéral et québécois, avec l'ordre correct de l'abattement. Le proxy plat de
+`w5Effects.ts` ignore cette source. MESURÉ sur **30 000 $ de dividende** empilés, barème 2026 :
+
+| revenu avant dividende | ORDINAIRE (non déterminé) | DÉTERMINÉ | écart du proxy 36 % (ordinaire / déterminé) |
+|---|---|---|---|
+| 40 000 $ | 23,19 % | 10,65 % | +3 843 $ / +7 606 $ |
+| 60 000 $ | 28,93 % | 16,39 % | +2 121 $ / +5 883 $ |
+| **100 000 $** | **36,04 %** | 26,10 % | **−11 $** / +2 969 $ |
+| 150 000 $ | 42,23 % | 32,87 % | −1 869 $ / +938 $ |
+| 250 000 $ | 47,75 % | 39,16 % | −3 526 $ / −949 $ |
+
+> `0,36` correspond donc au taux d'un dividende **ORDINAIRE** d'un actionnaire à **~100 k$** de
+> revenu — juste à ce point-là, et à personne d'autre. Il **sur-impose lourdement** un dividende
+> DÉTERMINÉ (jusqu'à 7 606 $/an sur 30 k$), et **sous-impose** un actionnaire à haut revenu.
+> ⚠️ Ma première rédaction de cette entrée affirmait que « 0,36 est proche du taux marginal
+> SUPÉRIEUR d'un dividende déterminé ». C'est **faux** : ce taux vaut 39,16 % à 250 k$ de revenu, et
+> 0,36 est un taux de MILIEU de barème pour un dividende ordinaire. Mesuré, pas déduit.
+
+#### Limite commune, à connaître avant de s'en servir
+
+Ces deux flux passent par `addTaxDivers`, donc ils **échappent au barème progressif** : ils
+n'occupent aucune place dans les paliers et ne poussent pas les autres revenus vers le haut. Leur
+impôt ne varie ni avec le reste du revenu, ni avec l'année, ni avec le fractionnement de pension.
+Un remplacement par le barème réel re-baserait des goldens et changerait le patrimoine projeté de
+tout ménage détenant un immeuble locatif ou une CCPC — c'est un lot à part entière, pas un
+ajustement de constante.
+
 ### Abattement fiscal de la VAN des rentes publiques (succession) — hypothèse de MODÈLE
 
 `services/projection/estateCalculation.ts` (`[ESTATE-NPV-07]`, 2026-08-20). Le bilan successoral

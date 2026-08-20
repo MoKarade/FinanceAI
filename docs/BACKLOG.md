@@ -1036,13 +1036,18 @@
   money-critical sans couverture d'INTÉGRATION : mes tests unitaires visent `processOneChild` en
   isolation, ce qui ne prouve rien sur la chaîne (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`).
   **Correctif** : une fixture golden avec cette configuration.
-- [ ] **`[W5-PROXY-NON-SOURCE]`** (XS, MOYEN) — les proxys d'impôt plats `0,45` (NOI locatif) et
-  `0,36` (dividende CCPC) sont toujours absents de `FISCAL_REFERENCE.md`
-  (`services/projection/w5Effects.ts:127,141`), alors que la décision Marc **cochée close**
-  (`docs/A_FAIRE_MOI.md:422`) exigeait de les y documenter avec leur source. **Écart mesuré vs impôt
-  incrémental réel sur 30 k$ de NOI : +2 665 $/an à 60 k$ de revenu, +1 004 $ à 100 k$, −2 208 $ à
-  250 k$** — donc **non conservateur aux hauts revenus**. L'item était coché alors que la moitié du
-  livrable manquait (classe `PM-STALE-BACKLOG`). [MESURÉ]
+- [ ] **`[W5-DIVIDENDE-PROXY-VS-MOTEUR]`** (S, MOYEN — découvert en livrant `[W5-PROXY-NON-SOURCE]`,
+  PR #673) — `services/projection/w5Effects.ts` impose le dividende CCPC à un forfait de 36 %, alors
+  que **le dépôt sait déjà le calculer exactement** : `utils/tax.ts` `calculateDividendTax` applique
+  la majoration (38 % déterminé / 15 % ordinaire) et les deux crédits d'impôt pour dividende, dans
+  le bon ordre vis-à-vis de l'abattement québécois. C'est le cas d'école « grep le moteur : s'il
+  l'émet déjà, le CONSOMMER ». **MESURÉ** sur 30 k$ de dividende, barème 2026 : le forfait ne vaut
+  que pour un dividende **ORDINAIRE à ~100 k$** de revenu (36,04 %) ; il sur-impose un dividende
+  **DÉTERMINÉ** de **+7 606 $/an** à 40 k$ de revenu et **+2 969 $** à 100 k$, et sous-impose un
+  actionnaire à 250 k$ de **−3 526 $/an**. ⚠️ Bloquant produit : `PrivateBusiness` ne porte pas le
+  TYPE de dividende — il faut d'abord ajouter le champ (déterminé / ordinaire), donc c'est un lot
+  avec une décision Marc, pas un remplacement mécanique. ⚠️ Re-baserait des goldens. [MESURÉ]
+
 - [ ] **`[ENV-NODE-NON-DECLARE]`** (XS, MOYEN) — aucun `engines` dans `package.json`, aucun `.nvmrc` :
   la seule déclaration de la version visée est `node-version: '20'`, répété dans **4 workflows**
   (`ci.yml` ×2, `lighthouse.yml`, `refresh-screenshots.yml`). Le conteneur de dev tourne sur Node

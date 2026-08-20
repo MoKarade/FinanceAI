@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-20 (l'app te dit maintenant quand un impôt est estimé, pas calculé)
+
+- Si tu as un **immeuble locatif** ou une **société (CCPC)**, l'app estimait l'impôt sur ces revenus
+  à un taux **forfaitaire** — 45 % sur le revenu locatif net, 36 % sur les dividendes — au lieu de
+  passer par le barème. C'était le cas depuis toujours, et rien ne te le disait.
+- Les deux écrans l'annoncent désormais, et la limite est chiffrée : le forfait locatif est
+  **prudent en dessous d'environ 145 000 \$** de revenu total et **optimiste au-dessus**.
+- **Rien ne change dans tes chiffres** : c'est le même calcul, simplement nommé et documenté.
+
+---
+
 ## [unreleased] — 2026-08-20 (ton patrimoine successoral sous-estimait tes rentes publiques)
 
 - L'app valorise les rentes RRQ/PSV que tu toucherais jusqu'à 95 ans, et les ajoute à ton

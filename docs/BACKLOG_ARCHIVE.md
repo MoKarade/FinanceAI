@@ -10,6 +10,49 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-20 — Vague 1f (5/5) : les deux derniers forfaits fiscaux non sourcés
+
+- [x] **`[W5-PROXY-NON-SOURCE]`** (XS) — ✅ 2026-08-20, PR #673.
+
+> Décision Marc `[W5-TAX-PROXY]` (close, mais à moitié livrée — classe `PM-STALE-BACKLOG`) :
+> **(a) garder les proxys plats**, les documenter comme estimation de taux marginal QC, et ajouter
+> une mention UI. Le ticket demandait « nommer ou retirer » : ils sont désormais **nommés, exportés,
+> documentés et annoncés à l'utilisateur**.
+
+**Ce que valent vraiment les deux forfaits** — MESURÉ sur 30 k$ de flux, barème 2026 :
+
+| revenu du ménage | locatif : marginal RÉEL | écart du 45 % | dividende ORDINAIRE | dividende DÉTERMINÉ |
+|---|---|---|---|---|
+| 40 000 $ | 30,38 % | +4 387 $/an | 23,19 % | 10,65 % |
+| 60 000 $ | 36,12 % | +2 665 $/an | 28,93 % | 16,39 % |
+| 100 000 $ | 41,65 % | +1 004 $/an | **36,04 %** | 26,10 % |
+| 150 000 $ | 47,46 % | **−738 $/an** | 42,23 % | 32,87 % |
+| 250 000 $ | 52,36 % | −2 208 $/an | 47,75 % | 39,16 % |
+
+Le forfait locatif **change de signe vers 145 k$** de revenu : conservateur en dessous, non
+conservateur au-dessus. Le forfait dividende ne vaut que pour un dividende **ordinaire à ~100 k$**,
+et à personne d'autre.
+
+⚠️ **Une affirmation que j'allais publier était fausse, et la mesure l'a arrêtée.** Mon premier jet
+de l'entrée doc écrivait « 0,36 est proche du taux marginal SUPÉRIEUR d'un dividende déterminé ».
+Ce taux vaut **39,16 %** à 250 k$ de revenu : 0,36 est un taux de MILIEU de barème pour un dividende
+ORDINAIRE. Écrire un chiffre fiscal sans le mesurer, c'est fabriquer la source qu'on prétend citer.
+
+⚠️ **Découverte routée** : `[W5-DIVIDENDE-PROXY-VS-MOTEUR]` — le dépôt sait déjà calculer ce taux
+exactement (`utils/tax.ts` `calculateDividendTax`, majoration + les deux CID, dans le bon ordre
+vis-à-vis de l'abattement). Le forfait ignore une source unique existante. Bloquant produit :
+`PrivateBusiness` ne porte pas le TYPE de dividende — il faut d'abord ajouter le champ.
+
+**Garde de concordance à TROIS sites** (`tests/services/w5TaxProxyAnchor.test.ts`) : les taux sont
+exportés depuis le moteur, la doc doit les porter, l'écran doit les AFFICHER en les important — et
+aucun littéral `45 %`/`36 %` n'est toléré dans le composant. La garde IMPORTE les constantes au lieu
+de les recopier (`UN-OUTIL-GARDE-A-VALEURS-RECODEES`). Cinq perturbations, cinq rouges — dont une
+qui a attrapé un « 45 % » dans **mon propre commentaire JSX** : un commentaire qui porte le chiffre
+dérive comme le reste, il a été réécrit sans lui plutôt que d'assouplir la garde.
+
+**Bundle de boot vérifié** (l'écran importe désormais du moteur) : 9 `modulepreload` et 3,2 Mo
+d'assets avant comme après, build PROPRE des deux côtés.
+
 ## 2026-08-20 — Vague 1f (4/5) : encore un facteur plat, encore contre les modestes
 
 - [x] **`[ESTATE-NPV-07]`** (XS annoncé, S réel) — ✅ 2026-08-20, PR #671.

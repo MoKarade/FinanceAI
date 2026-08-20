@@ -46,6 +46,17 @@ export interface W5Containers {
  * Applique les 6 effets W5.x sur l'état du mois courant.
  * Doit être appelé une fois par itération mensuelle.
  */
+/**
+ * [W5-PROXY-NON-SOURCE] Taux d'impôt FORFAITAIRES des flux W5 — **hypothèses de MODÈLE**, pas des
+ * règles ARC/RQ. Ancrés et chiffrés dans `docs/FISCAL_REFERENCE.md` §6 « Proxys d'impôt W5 ».
+ *
+ * Le ticket demandait « nommer ou retirer » ; décision Marc `[W5-TAX-PROXY]` : GARDER le forfait et
+ * le documenter. Ils sont donc NOMMÉS et EXPORTÉS — l'UI qui les annonce à l'utilisateur et la garde
+ * qui vérifie la doc les IMPORTENT, au lieu de recopier deux chiffres qui dériveraient en silence.
+ */
+export const RENTAL_NOI_TAX_PROXY = 0.45;
+export const CCPC_DIVIDEND_TAX_PROXY = 0.36;
+
 export function applyW5Effects(
     ctx: W5Context,
     containers: W5Containers,
@@ -122,9 +133,13 @@ export function applyW5Effects(
     if (Number.isFinite(rentalPropertyNoiMonthly) && rentalPropertyNoiMonthly !== 0) {
         state.addIncome(rentalPropertyNoiMonthly);
         // [FA-6] via `addTaxDivers` → l'impôt locatif SURVIT à l'écrasement de `.revenu` en décembre :
-        // avant, le revenu locatif d'un bailleur ACTIF n'était PAS imposé (clobberé). Le 0,45 reste un
-        // PROXY de taux marginal (non sourcé — suivi BACKLOG W5-TAX-PROXY).
-        state.addTaxDivers((rentalPropertyNoiMonthly * 0.45) / 12);
+        // avant, le revenu locatif d'un bailleur ACTIF n'était PAS imposé (clobberé).
+        // ⚠️ Le 0,45 est un PROXY de taux marginal, pas une règle fiscale — hypothèse de MODÈLE
+        // désormais ANCRÉE : `docs/FISCAL_REFERENCE.md` §6 « Proxys d'impôt W5 » (décision Marc
+        // `[W5-TAX-PROXY]` : garder le forfait, le documenter). Son sens d'erreur est MESURÉ et il
+        // CHANGE DE SIGNE vers 145 k$ de revenu : +2 665 $/an de trop à 60 k$, −2 208 $ de moins à
+        // 250 k$. Le tableau complet vit dans la doc — ne pas le recopier ici, il dériverait.
+        state.addTaxDivers((rentalPropertyNoiMonthly * RENTAL_NOI_TAX_PROXY) / 12);
     }
 
     // W5.7 — Entreprise privée (CCPC) : dividendes mensuels.
@@ -137,8 +152,15 @@ export function applyW5Effects(
     if (businessDividendMonthly > 0) {
         state.addIncome(businessDividendMonthly);
         // [FA-6] via `addTaxDivers` → l'impôt sur dividende CCPC SURVIT à l'écrasement décembre (avant :
-        // non imposé en année active). Le 0,36 reste un PROXY (non sourcé — suivi BACKLOG W5-TAX-PROXY).
-        state.addTaxDivers((businessDividendMonthly * 0.36) / 12);
+        // non imposé en année active).
+        // ⚠️ Le 0,36 est un PROXY, ancré dans `docs/FISCAL_REFERENCE.md` §6 « Proxys d'impôt W5 ».
+        // ⚠️ Le dépôt sait déjà faire le calcul EXACT : `utils/tax.ts` `calculateDividendTax` applique
+        // la majoration (38 % déterminé / 15 % ordinaire) et les deux crédits d'impôt pour dividende,
+        // dans le bon ordre vis-à-vis de l'abattement québécois. Ce forfait l'ignore, et MESURÉ il ne
+        // vaut que pour un dividende ORDINAIRE à ~100 k$ de revenu : il sur-impose un dividende
+        // DÉTERMINÉ de jusqu'à 7 606 $/an sur 30 k$. Remplacement suivi par `[W5-DIVIDENDE-PROXY-VS-MOTEUR]`
+        // — hors périmètre ici, la décision Marc était de GARDER le forfait et de le documenter.
+        state.addTaxDivers((businessDividendMonthly * CCPC_DIVIDEND_TAX_PROXY) / 12);
     }
 }
 

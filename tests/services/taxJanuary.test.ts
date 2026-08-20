@@ -26,12 +26,14 @@ const baseCtx = (o: Partial<JanuaryContext> = {}): JanuaryContext => {
         celiappOpeningYear: 2026, fhsaEligibleUsersCount: 1,
         users: [{ birthYear: 1986 }],
         celiapp: 0, reer, liquid: 50000, nonReg: 0, crypto: 0, celi: 0,
-        accGrossIncomeYear: 80000, accRetraitsReerYearOld: 0, incomeRetirementMonthly: 0,
+        accRetraitsReerYearOld: 0, incomeRetirementMonthly: 0,
         fhsaRoomCurrent: 0, fhsaLifetimeContrib: 0, celiRoomCurrent: 0, rrspRoomCurrent: 0,
         taxCurrentYearGains: 0, prevPortfolioNW: 0, loopYear: 2027,
         ...o,
         // [ITEM-2C] registre per-conjoint : 1 conjoint par défaut = pool entier (FERR per-user == ancien calcul).
         reerByUser: o.reerByUser ?? [reer],
+        // [FISC-RRSP-ROOM-PER-USER] solo par défaut : tout le revenu gagné à l'index 0.
+        accGrossIncomeYearByUser: o.accGrossIncomeYearByUser ?? [80000, 0],
     };
 };
 

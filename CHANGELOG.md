@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-20 (les droits REER se calculent par personne)
+
+- Les droits de cotisation REER étaient calculés sur le revenu du MÉNAGE : un couple dont un seul
+  conjoint gagne 250 k$ recevait le plafond de DEUX personnes (45 000 $) au lieu du plafond d'une
+  seule (34 480 $) — la règle ARC est PAR PERSONNE. Corrigé : chaque conjoint gagne ses propres
+  droits (18 % de SON revenu gagné, plafonné, moins SON facteur d'équivalence). Les couples aux
+  revenus équilibrés ne changent pas ; les ménages déséquilibrés voient leur REER projeté revenir
+  à la réalité (−10 520 $/an de droits fantômes sur le profil type).
+
 ## [unreleased] — 2026-08-20 (l'impôt de décembre voit l'érosion des crédits d'âge)
 
 - Quand l'app calcule l'impôt supplémentaire dû sur tes gains en capital et tes dividendes de

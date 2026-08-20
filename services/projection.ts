@@ -362,7 +362,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     // FIX cycle 2 TS reviewer: type explicite pour éviter inférence `null` (cascade strict)
     let month1ActionPlan: { monthlyCashflow: number; strategy: AllocationStrategy } | null = null;
-    let accGrossIncomeYear = 0;
+    // [FISC-RRSP-ROOM-PER-USER] Revenu gagné de l'année PAR personne (règle ARC : les droits REER
+    // se calculent PAR PERSONNE, jamais sur l'agrégat ménage). SOURCE UNIQUE : l'ancien scalaire
+    // ménage accGrossIncomeYear a été SUPPRIMÉ (plus aucun lecteur) — un total se dérive par somme,
+    // il ne se co-tient pas (PARTAGER-LE-MONTANT-PAS-SES-REFLETS).
+    let accGrossIncomeYearByUser: [number, number] = [0, 0];
     let accRrspYear = 0;
 
     // donCredit [FA-6-CREDIT-CAP] = crédit-don accumulé (positif) ; plafonné à l'impôt dû puis appliqué
@@ -936,7 +940,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // divorce n'arme qu'en janvier et que le dépôt fiscal est en décembre. C'était FAUX : le
         // dépôt de décembre était bien épargné, mais pas la PHASE REVENUS — mesuré 5 094,90 $ de
         // salaire du conjoint encaissé pendant l'année du divorce, et intégralement conservé
-        // (le split précède la trésorerie du mois). Ce revenu gonflait aussi `accGrossIncomeYear`,
+        // (le split précède la trésorerie du mois). Ce revenu gonflait aussi le revenu gagné annuel (aujourd'hui `accGrossIncomeYearByUser`),
         // donc l'espace REER de l'année suivante, alors que décembre déclarait `grossAnna = 0`.
         // `tryDivorce` est donc désormais évalué JUSTE AU-DESSUS, avant les revenus.
         const soloHousehold = survivorMode || divorced;
@@ -1033,15 +1037,26 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // STOCHASTIQUE (Monte-Carlo) le même mois : composition MULTIPLICATIVE (× 0,55 × facteur), bornée
             // [0, 1] — voulu (aléa MC + événement planifié = deux pertes distinctes).
             const incomeLossFactor = computeIncomeLossFactor(lifeEvents, currentLoopDate);
-            let activeGrossAdd = aiResult.accGrossAdd;
+            let activeGrossAddByUser = aiResult.accGrossAddByUser;
             if (incomeLossFactor < 1) {
                 incomeMarc *= incomeLossFactor;
                 incomeAnna *= incomeLossFactor;
                 monthlyIncome *= incomeLossFactor;
-                activeGrossAdd *= incomeLossFactor;
+                activeGrossAddByUser = [activeGrossAddByUser[0] * incomeLossFactor, activeGrossAddByUser[1] * incomeLossFactor];
                 logEvent(lifeEventsLog, `📉 Perte de revenu planifiée (-${Math.round((1 - incomeLossFactor) * 100)} %)`);
             }
-            accGrossIncomeYear += activeGrossAdd;
+            // [Revue #679 ÉLEVÉ-1] Ménage à UN SEUL déclarant : le mode « sandbox »
+            // (computeIncomeBaseline) splitte TOUJOURS le revenu théorique 55/45, même avec un
+            // seul user — sans repli, la part « 45 % » atterrit à l'index 1 qu'aucun roomUsers ne
+            // lit : −12 173 $/an de droits mesurés (−50 159 $ de NW à 12 ans). MÊME critère que
+            // reerShares (l. 438) — pas soloHousehold : après décès/divorce, activeIncome met déjà
+            // le brut du conjoint à 0 et le repli est alors un no-op.
+            if (activeUsersCount > 1) {
+                accGrossIncomeYearByUser[0] += activeGrossAddByUser[0];
+                accGrossIncomeYearByUser[1] += activeGrossAddByUser[1];
+            } else {
+                accGrossIncomeYearByUser[0] += activeGrossAddByUser[0] + activeGrossAddByUser[1];
+            }
             unemployedMonthsRemaining = aiResult.newUnemployedMonths;
             ltdMonthsRemaining = aiResult.newLtdMonths;
             ltdLogged = aiResult.ltdLogged;
@@ -1376,7 +1391,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 // convertirait jamais en FERR — silencieusement. Deux questions, deux listes.
                 roomUsers: soloHousehold ? config.users.slice(0, 1) : config.users,
                 celiapp, reer, reerByUser, liquid, nonReg, crypto, celi,
-                accGrossIncomeYear, accRetraitsReerYearOld: accRetraitsReerYear,
+                accGrossIncomeYearByUser, accRetraitsReerYearOld: accRetraitsReerYear,
                 incomeRetirementMonthly: incomeRetirement,
                 fhsaRoomCurrent: fhsaRoom, fhsaLifetimeContrib,
                 celiRoomCurrent: celiRoom, rrspRoomCurrent: rrspRoom,
@@ -1412,7 +1427,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             } else {
                 rrspRoom += janResult.rrspRoomDelta;
             }
-            accGrossIncomeYear = janResult.accGrossIncomeYearReset;
+            accGrossIncomeYearByUser = [0, 0];
             // FERR
             if (janResult.ferrMandatoryGross > 0) {
                 taxOnRrif = janResult.ferrTaxOnRrif;
@@ -1658,7 +1673,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             monthlyExpenses += result.monthlyExpenseDelta;
             _childMonthlyIncome += result.monthlyIncomeDelta;
             if (result.newIncomeAnna !== null) _childIncomeAnna = result.newIncomeAnna;
-            accGrossIncomeYear += result.accGrossDelta;
+            // Le congé parental modélisé est TOUJOURS celui d'Anna (childrenReee `annaIsOnMatLeave`,
+            // `accGrossDelta -= annaGrossMonthly`) : le retrait s'attribue à l'index 1. Si le congé
+            // devient per-parent un jour, cette attribution doit suivre.
+            accGrossIncomeYearByUser[1] += result.accGrossDelta;
             reeeTracker[result.childId] = {
                 scee: result.newTrackerScee,
                 iqee: result.newTrackerIqee,

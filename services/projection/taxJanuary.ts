@@ -57,7 +57,9 @@ export interface JanuaryContext {
     crypto: number;
     celi: number;
     // Accumulateurs
-    accGrossIncomeYear: number;
+    /** [FISC-RRSP-ROOM-PER-USER] Revenu gagné de l'année PAR personne ([Marc, Anna]) — SOURCE
+     *  UNIQUE du room REER (règle ARC : par personne ; l'ancien scalaire ménage est supprimé). */
+    accGrossIncomeYearByUser: [number, number];
     accRetraitsReerYearOld: number;     // valeur AVANT le reset (pour FERR margRate)
     incomeRetirementMonthly: number;
     fhsaRoomCurrent: number;
@@ -84,7 +86,6 @@ export interface JanuaryResult {
     fhsaRoomNew: number;
     rrspRoomDelta: number;                   // ajouté à rrspRoom (ou reset à 0 si 71+)
     rrspRoomReset: boolean;                  // true si âge > 71 (rrspRoom = 0)
-    accGrossIncomeYearReset: number;         // 0
     // CELIAPP fermeture 15 ans
     celiappTransferToReer: number;           // si fermeture: solde transféré
     // FERR (only if age >= 72) — PER-CONJOINT [ITEM-2C]
@@ -179,8 +180,25 @@ export function processJanuaryReset(
     // inflation + 0.5%/yr from the 2026 official cap (§7.G RRSP desync fix).
     const rrspYearlyCap = RRSP_ANNUAL_LIMITS[nextLoopYear]
         ?? (RRSP_ANNUAL_LIMITS[2026] * Math.pow(1 + (ctx.simInflation + 0.5) / 100, nextLoopYear - 2026));
-    const totalFE = roomUsers.reduce((acc, u) => acc + (u?.facteurEquivalence || 0), 0);
-    const newRrspRoom = Math.max(0, Math.min(rrspYearlyCap * ctx.activeUsersCount, ctx.accGrossIncomeYear * RRSP_ROOM_RATE) - totalFE);
+    // [FISC-RRSP-ROOM-PER-USER] Règle ARC (décision Marc A1 2026-08-20, ADR 0014 : « par
+    // personne ») : les droits REER se calculent PAR PERSONNE — room_i = min(plafond,
+    // revenu_gagné_i × 18 %) − FE_i, clampé à 0 par personne, puis sommé. L'ancien calcul
+    // ménage min(cap × N, Σrevenus × 18 %) − ΣFE accordait au ménage le plafond de DEUX
+    // personnes sur le revenu d'UNE seule : MESURÉ 45 000 $ accordés vs 34 480 $ dus
+    // (250 k$ mono-gagnant, droits 2027 — plafond 2026 : 33 810) = +10 520 $/an de droits
+    // fantômes. Effets du clamp par personne : le FE d'un conjoint sans revenu ne réduit plus
+    // le room de l'autre, et un revenu au-delà du plafond ne « déborde » plus sur le conjoint.
+    // ⚠️ Alignement POSITIONNEL : roomUsers[i] doit rester l'utilisateur du slot i du tuple —
+    // ne PAS copier le patron `.filter(u => u).forEach` de la boucle CELI ci-dessus, qui
+    // désynchroniserait les index en silence.
+    const newRrspRoom = roomUsers.reduce((acc, u, i) => {
+        // `?? 0` couvre undefined mais PAS NaN — un slot corrompu rendrait rrspRoom NaN qui
+        // remonte dans REERMax puis les allocations (2 producteurs alimentent le registre).
+        const rawEarned = ctx.accGrossIncomeYearByUser[i] ?? 0;
+        const earnedIncome = Number.isFinite(rawEarned) ? rawEarned : 0;
+        const roomUser = Math.min(rrspYearlyCap, earnedIncome * RRSP_ROOM_RATE) - (u?.facteurEquivalence || 0);
+        return acc + Math.max(0, roomUser);
+    }, 0);
 
     // === 4. FERR — retrait minimum obligatoire (dès 72 ans) ===
     let ferrMandatoryGross = 0;
@@ -271,7 +289,6 @@ export function processJanuaryReset(
         fhsaRoomNew,
         rrspRoomDelta: ctx.age <= 71 ? newRrspRoom : 0,
         rrspRoomReset: ctx.age > 71,
-        accGrossIncomeYearReset: 0,
         celiappTransferToReer,
         ferrMandatoryGross,
         ferrGrossByUser,

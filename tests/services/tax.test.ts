@@ -574,6 +574,42 @@ describe('calculateAgeAndPensionCredits (§6.2)', () => {
     expect(high - low).toBeCloseTo((PENSION_INCOME_AMOUNT_FED - 1500) * FED_NONREFUNDABLE_RATE, 2);
   });
 
+  // [FISC-PENSION-CREDIT-REAL] (GO Marc A3, 2026-08-20) — le montant fédéral est GELÉ à
+  // 2 000 $ NOMINAUX : en espace RÉEL (realDeflator > 1) il doit DÉCROÎTRE en 1/realDeflator.
+  // Avant le fix c'était l'unique terme du barème réel traité à plat (sweep 1 920 cas, #556).
+  describe('[FISC-PENSION-CREDIT-REAL] crédit pension fédéral en espace réel', () => {
+    // Composante pension isolée par DIFFÉRENCE (pension 10 k$ vs 0) — le crédit d'âge s'annule.
+    const pensionComponent = (year: number, deflator: number): number => {
+      const { fedCredit: avec } = calculateAgeAndPensionCredits(
+        { age: 70, eligiblePensionIncome: 10000 }, 40000, year, deflator);
+      const { fedCredit: sans } = calculateAgeAndPensionCredits(
+        { age: 70, eligiblePensionIncome: 0 }, 40000, year, deflator);
+      return avec - sans;
+    };
+
+    it('NOMINAL (realDeflator = 1) : strictement l\'ancien comportement, 2 000 × 15 %', () => {
+      expect(pensionComponent(2046, 1)).toBeCloseTo(300, 6);
+    });
+
+    it('RÉEL à 20 ans (deflator 1,02^20) : le montant gelé vaut 1 345,94 $ réels → crédit 201,89 $', () => {
+      // MESURÉ (pas déduit) : 2 000 / 1,02^20 × 15 % = 201,8915… — l'ancien code rendait 300,00
+      // (2 000 réels constants = sous-imposition ≤ 250,50 $/pers/an, sens NON conservateur).
+      const deflator = Math.pow(1.02, 20);
+      expect(pensionComponent(2046, deflator)).toBeCloseTo(201.89, 2);
+      expect(pensionComponent(2046, deflator)).not.toBeCloseTo(300, 0); // ancre négative : l'à-plat
+    });
+
+    it('la pension DEVIENT le plafond quand elle passe sous le montant déflaté', () => {
+      // À deflator 2, le montant gelé vaut 1 000 $ réels : une pension de 800 $ est en dessous
+      // → crédit = 800 × 15 % = 120 (le min bascule du montant vers la pension).
+      const { fedCredit: avec } = calculateAgeAndPensionCredits(
+        { age: 70, eligiblePensionIncome: 800 }, 40000, 2046, 2);
+      const { fedCredit: sans } = calculateAgeAndPensionCredits(
+        { age: 70, eligiblePensionIncome: 0 }, 40000, 2046, 2);
+      expect(avec - sans).toBeCloseTo(120, 6);
+    });
+  });
+
   it('applique la ligne 361 QC à plein pour 65+ sous le seuil sans conjoint (montant vivant seul inclus)', () => {
     const familyIncome = QC_LINE_361_THRESHOLD_2026 - 1000;
     const pension = RETIREMENT_INCOME_AMOUNT_QC_2026;

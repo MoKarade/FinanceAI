@@ -911,11 +911,13 @@ choisir). Calcul cumulatif par tranche (style impôt).
   `realDeflator` (= `(1+i)^Δ`) sur `getIndexedBracketsForYear` et ses dérivés (paliers, BPA,
   crédits d'âge/ligne 361, RAMQ, FSS, `getMarginalRate`, `calculateFiscalReport`) → facteur effectif
   `1,02^Δ/(1+i)^Δ` : `palier_réel = palier_2026 × (1,02/(1+i))^Δ`, soit l'indexation légale
-  2 %/an vue en termes réels (constant si `i = 2 %`). **Une exception mesurée** (panel 2026-08-01) :
-  le crédit pension fédéral 2 000 $ (GELÉ nominalement, `utils/tax.ts` `PENSION_INCOME_AMOUNT_FED`)
-  n'est pas divisé par le déflateur → en espace réel il vaut de facto 2 000 $ constants au lieu de
-  `2 000/(1+i)^Δ` (sous-imposition ≤ 250,50 $ réels/pers/an ; pré-existant, correctif =
-  `/realDeflator`, chantier séparé avec re-base de goldens — cf BACKLOG `[FISC-PENSION-CREDIT-REAL]`).
+  2 %/an vue en termes réels (constant si `i = 2 %`). **L'exception mesurée du panel 2026-08-01 est
+  FERMÉE le 2026-08-20** (`[FISC-PENSION-CREDIT-REAL]`, GO Marc A3) : le crédit pension fédéral
+  2 000 $ (GELÉ nominalement, `utils/tax.ts` `PENSION_INCOME_AMOUNT_FED`) est désormais divisé par
+  le déflateur — `min(2 000/realDeflator, pension)`. En réel il décroît comme la loi le fait ;
+  en NOMINAL (realDeflator = 1) rien ne change. MESURÉ : à 20 ans (1,02^20), composante crédit
+  201,89 $ au lieu de 300 $ — la sous-imposition ≤ 250,50 $ réels/pers/an est fermée. Le barème
+  réel n'a plus AUCUN terme à plat (le sweep 1 920 cas du panel n'avait trouvé que celui-ci).
   Sites en espace RÉEL qui passent le deflator : `taxDecember` (salarial, `combinedTaxFor`,
   RAMQ, FSS) **et l'impôt latent** (`latentTax.ts` — site oublié de la passe initiale, corrigé
   2026-08-01 : sous-évaluait l'obligation dormante affichée de ~35 %/~53 k$ à 30 ans).

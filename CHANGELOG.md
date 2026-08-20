@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-20 (le crédit pension fédéral suit l'inflation en espace réel)
+
+- Le crédit fédéral pour revenu de pension (2 000 $) est gelé par la loi depuis 2006 : en dollars
+  d'aujourd'hui, il perd de la valeur chaque année. La projection en dollars réels le traitait
+  comme s'il restait à 2 000 $ pleins pour toujours — l'impôt des retraités avec pension était
+  légèrement sous-estimé (jusqu'à ~250 $/personne/an à long horizon). Corrigé ; aucun changement
+  en dollars courants.
+
 ## [unreleased] — 2026-08-20 (les droits REER se calculent par personne)
 
 - Les droits de cotisation REER étaient calculés sur le revenu du MÉNAGE : un couple dont un seul

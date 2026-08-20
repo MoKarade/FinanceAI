@@ -345,14 +345,8 @@
   **−648,66 $/an** à 45 k$ de revenu de base, **−675,56 $/an** à 60 k$, −146,89 $ à 100 k$.
   ⚠️ Non introduit par #564 (identique sur origin/main). Fix : passer `ageOpts` aux deux bornes —
   attention, ça re-basera des goldens retraités (mesurer avant).
-- [ ] **`[FISC-PENSION-CREDIT-REAL]`**
-  ✅ **DÉBLOQUÉ 2026-08-20 (réponses Marc, ADR « Sept décisions »)** — GO. Re-base des goldens retraités assumé. (S, MOYEN [Certain, mesuré — panel #556], GO Marc requis :
-  re-base de goldens retraités) — le crédit pension fédéral 2 000 $ est GELÉ nominalement
-  (FISCAL_REFERENCE:178) mais traité à plat en espace RÉEL (`utils/tax.ts` l.249) → il vaut de
-  facto 2 000 $ réels constants au lieu de `2 000/(1+i)^Δ`. Unique terme non homogène du barème
-  réel (sweep 1 920 cas : zéro autre écart). Sous-imposition ≤ 250,50 $ réels/pers/an (couple 65+
-  avec pension admissible : ~12 k$ réels sur 30 ans, sens NON conservateur). Fix connu :
-  `Math.min(PENSION_INCOME_AMOUNT_FED / realDeflator, pension)` + note FISCAL_REFERENCE.
+- [x] ~~**`[FISC-PENSION-CREDIT-REAL]`**~~ ✅ **LIVRÉ 2026-08-20** (détail : section datée en
+  tête de `docs/BACKLOG_ARCHIVE.md` — réf PR au merge).
 - [x] **`[FISC-BRACKET-CPI-STRESS]`** — ✅ FERMÉ SANS CODE 2026-08-20 (réponse Marc A7 : **« conservateur »**,
   statu quo ADR 009 confirmé — les scénarios de stress surestiment l'impôt et c'est ASSUMÉ). → archive à la prochaine PR.
   Détail historique du finding (panel #556) —

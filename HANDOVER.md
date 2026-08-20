@@ -4,6 +4,16 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-20 (suite 121) — [FISC-PENSION-CREDIT-REAL] : crédit pension déflaté en réel
+> Branche `claude/pension-credit-real` (depuis main post-#679). GO Marc A3 : fix d'une ligne dans
+> `calculateAgeAndPensionCredits` (`min(2 000/realDeflator, pension)`), nominal inchangé, réel
+> mesuré 201,89 $ vs 300 $ à 20 ans. 3 tests neufs ; discrimination par `git stash push
+> utils/tax.ts` (⚠️ le stash complet emportait les tests — preuve invalide, refaite ciblée).
+> NB conteneur : `@mokarade/hub-contract` manquant après le merge d'une PR parallèle →
+> `npm install` requis avant tout typecheck. Vérif §6 du déploiement production #679 en cours
+> (limite Vercel quotidienne atteinte plus tôt — un trigger vérifie et route vers A_FAIRE_MOI si
+> production absente).
+>
 > ## 🟢 Session 2026-08-20 (suite 120) — [FISC-RRSP-ROOM-PER-USER] : droits REER par personne (règle ARC)
 > Branche `claude/rrsp-room-per-user` (depuis main post-#676). Décision Marc A1 « par personne »
 > appliquée : `taxJanuary` calcule `room_i = max(0, min(cap, revenu_gagné_i × 18 %) − FE_i)` sommé,

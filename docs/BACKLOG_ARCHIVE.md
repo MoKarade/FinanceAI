@@ -10,6 +10,20 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-20 — [FISC-PENSION-CREDIT-REAL] : le crédit pension fédéral décroît en espace réel
+
+- [x] **`[FISC-PENSION-CREDIT-REAL]`** (S, MOYEN) — ✅ 2026-08-20, PR à compléter au merge.
+
+**GO Marc A3.** Le montant fédéral (2 000 $, ARC 31400) est GELÉ nominalement depuis 2006 ; le
+barème réel le traitait à plat → 2 000 $ RÉELS constants au lieu de `2 000/(1+i)^Δ`. C'était
+l'**unique** terme non homogène du barème réel (sweep 1 920 cas, panel #556). Fix d'une ligne :
+`min(PENSION_INCOME_AMOUNT_FED / realDeflator, pension)` — nominal strictement inchangé.
+
+**MESURÉ** : à 20 ans (1,02^20), composante crédit 201,89 $ au lieu de 300 $ ; sous-imposition
+fermée (≤ 250,50 $ réels/pers/an, ~12 k$ réels/30 ans pour un couple 65+ à pension). Discrimination
+prouvée par `git stash push utils/tax.ts` (ancien moteur + tests neufs → 1 rouge exact — ⚠️ un
+stash COMPLET emporte les tests avec le fix et ne prouve rien). 3 tests neufs dans `tax.test.ts`.
+
 ## 2026-08-20 — [FISC-RRSP-ROOM-PER-USER] : les droits REER se calculent par personne (règle ARC)
 
 - [x] **`[FISC-RRSP-ROOM-PER-USER]`** (M, ÉLEVÉ) — ✅ 2026-08-20, PR #679.

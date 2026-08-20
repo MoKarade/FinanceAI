@@ -904,18 +904,6 @@
   `lifeExpectancy` » — ce qui est précisément ce qui masque le no-op. Un utilisateur qui règle son
   espérance de vie à 90 voit toujours 95 ans de rentes valorisés. ⚠️ Re-baserait des goldens.
 
-- [ ] **`[AE-PLAFOND-MANQUANT]`**
-  ✅ **DÉBLOQUÉ 2026-08-20 (réponses Marc, ADR « Sept décisions »)** — règle sourcée §2 : base = revenus de travail uniquement ; prestations AE imposables ; remboursement 30 % > 86 125 $ (régulières seulement). (S, **ÉLEVÉ** — découvert en revue de `[FISC-GUARD-SCOPE]`) —
-  `services/projection/activeIncome.ts:70` applique le taux de remplacement de l'assurance-emploi
-  (`incomeMarc *= 0.55`, commentaire du code : « Job loss (AE 55%) ») **au salaire NET et SANS
-  PLAFOND**. Deux erreurs superposées : (a) le 55 % statutaire porte sur les gains assurables
-  **BRUTS**, pas sur le net ; (b) l'AE est plafonnée à `AE_MAX_INCOME = 68 900 $` (§2), soit
-  ≈ 3 158 $/mois bruts d'assiette — le moteur ignore ce plafond. Un salarié à 6 000 $/mois net reçoit
-  donc ≈ 3 300 $/mois pendant le chômage simulé au lieu d'un maximum réel bien inférieur.
-  **Correctif** : passer par le brut, plafonner à `AE_MAX_INCOME`, puis repasser au net via le calcul
-  fiscal (l'AE est imposable). ⚠️ Re-baserait des goldens. [Structure VÉRIFIÉE dans le code ;
-  l'écart $ exact reste à MESURER par un run]
-
 - [ ] **`[ASSETLOC-INCLUSION-RECOPIEE]`** (XS, MOYEN — découvert en revue de `[FISC-GUARD-SCOPE]`) —
   `services/projection/assetLocation.ts:117` écrit `return marginalRate * 0.5` : le taux d'inclusion
   des gains en capital **recopié en dur**. C'est le SEUL site du dépôt à le faire — `latentTax`,
@@ -1006,20 +994,6 @@
   ⚠️ **Risque** : écraser un brut que l'utilisateur a SAISI et qui coïnciderait avec 1,35 × net.
   Décision produit à poser à Marc avant de coder. [Structure VÉRIFIÉE dans le code]
 
-- [ ] **`[RQAP-PRESTATION-COTISATIONS]`**
-  ✅ **DÉBLOQUÉ 2026-08-20 (réponses Marc, ADR « Sept décisions »)** — règle sourcée transcrite (`FISCAL_REFERENCE.md` §2) : prestations hors assiette de cotisation, imposables. (S, **ÉLEVÉ** — découvert en revue de `[RQAP-CAP-98K]`) —
-  la prestation de congé parental se fait prélever **RRQ + AE + RQAP**. `childrenReee.ts` appelle
-  `calculateFiscalReport(base, 0, 0, loopYear, enableMonteCarlo)` sans le paramètre
-  `employmentIncome` ; `utils/tax.ts` retombe alors sur `grossIncome` (« absent → grossIncome »), et
-  la prestation devient une **assiette d'EMPLOI**. **MESURÉ** sur `103 000 × 0,55 = 56 650 $` :
-  net **42 366,76 $** contre **46 695,26 $** avec `employmentIncome: 0` → **4 328,50 $/an de
-  cotisations fantômes**. C'est **1,57×** le gain de 2 750 $/an que `[RQAP-CAP-98K]` vient de
-  restaurer — le plafond est corrigé et l'erreur voisine, plus grosse, reste.
-  ⚠️ **Correctif à NE PAS appliquer sans source** : « une prestation du RQAP n'est pas un revenu de
-  travail, donc ni RRQ ni AE ni cotisation RQAP » est une règle à **ancrer d'abord dans
-  FISCAL_REFERENCE §2 avec sa référence Revenu Québec**. Le code suit ensuite (`, undefined, 0`).
-  Même famille que `[AE-PLAFOND-MANQUANT]`. [MESURÉ]
-
 - [ ] **`[RQAP-INDEX-SOURCE]`** (XS, FAIBLE — découvert en revue de `[RQAP-CAP-98K]`) — la phrase
   « le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne au Québec » justifie le
   choix d'index dans le code ET dans `FISCAL_REFERENCE.md` §2, **sans aucune citation** (pas
@@ -1044,6 +1018,26 @@
   money-critical sans couverture d'INTÉGRATION : mes tests unitaires visent `processOneChild` en
   isolation, ce qui ne prouve rien sur la chaîne (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`).
   **Correctif** : une fixture golden avec cette configuration.
+- [ ] **`[MGA-PATRON-5-COPIES]`** (S, MOYEN — revue #675, 2026-08-20) — le patron d'indexation MGA
+  (`base × (1 + (simInflation + 0,5)/100)^années`) est recopié à **5 sites** : `retirementIncome.ts`
+  (×2), `taxJanuary.ts`, `childrenReee.ts` (`rqapCapProjected`, non exporté), `activeIncome.ts`
+  (plafond AE, neuf). ⚠️ **La divergence a DÉJÀ commencé** : `taxJanuary` utilise un exposant
+  DIFFÉRENT (`nextLoopYear − 2026` au lieu de `yearsElapsed`). Extraire
+  `mgaPatternProjected(base, simInflation, années)` dans `services/projection/helpers.ts` et faire
+  passer les 5 sites — en TRAITANT la divergence de `taxJanuary` (est-elle voulue ?), pas en
+  l'écrasant. `UNE-FORMULE-RECOPIEE-DIVERGE`. [MESURÉ]
+
+- [ ] **`[CHOMAGE-DEUX-MODELES]`** (M, MOYEN — revue #675) — deux modèles de chômage DIVERGENTS :
+  le stochastique (`activeIncome`, Marc seul, prestation AE complète 55 % du brut plafonné net
+  d'impôt) et l'événement daté `PERTE_EMPLOI` (`computeIncomeLossFactor`, coupe le MÉNAGE entier
+  de `incomeLossPercent` %, **aucune prestation AE**). #675 a fortement amélioré le premier ; l'écart
+  entre les deux se creuse. Unifier : donner l'AE à l'événement daté (le levier le plus rentable),
+  plutôt qu'étendre le stochastique à Anna. [MESURÉ]
+
+- [ ] **`[JOBLOSS-DUREE-N-PLUS-1]`** (XS, FAIBLE — revue #675) — `jobLossDurationMonths: 6` produit
+  **7 mois** de prestation (le mois de déclenchement est déjà réduit, puis le compteur en décompte
+  6 de plus) ; le log dit « durée prévue 6 mois ». ~347 $/mois d'écart sur un épisode. Pré-existant.
+
 - [ ] **`[PROJ-TAXPAID-SOLDE-AVRIL]`** (S, MOYEN — revue du correctif 12×, 2026-08-20) —
   `totalTaxesPaid` (`services/projection.ts`, `+= fluxImpots`) ne somme QUE les règlements d'avril,
   et l'avril actif vaut `totalAnnualTax − estimatedWithholding` — donc **négatif structurel** dès

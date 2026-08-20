@@ -63,6 +63,14 @@
 > perturbation), et ma règle « il reste un quart de la source » est devenue fausse sur
 > `services/tax.ts`, alias de 289 octets à 88 % de commentaire. Anti-vacuité désormais **agrégée**.
 >
+> ⚠️⚠️ **CI ROUGE sur un gate local VERT — même commit.** `globSync` (`node:fs`) n'existe qu'à
+> partir de **Node 22** ; le conteneur de dev tourne sur 22, les 4 workflows épinglent **20**, et
+> rien dans le dépôt ne déclare la cible (`engines`/`.nvmrc` absents). Remplacé par le marcheur que
+> le dépôt emploie DÉJÀ (`readdirSync(dir, { recursive: true })`,
+> `tests/fiscalConstants.guard.test.ts`) — dont la compatibilité est prouvée par la CI, gratuitement.
+> Leçon `GATE-LOCAL-VERT-CI-ROUGE-PAR-VERSION-DE-NODE` ; alignement de la chaîne d'outils NON fait
+> (décision de Marc) → `[ENV-NODE-NON-DECLARE]`.
+>
 > **Aussi corrigés, tous trouvés en revue** : `validateSymbol` traçait en `console.error` seul ; les
 > deux écritures `localStorage` du refus PWA étaient muettes (la LECTURE, elle, reste muette
 > exprès) ; `k in p` classait un `undefined` explicite comme corrompu (latent).

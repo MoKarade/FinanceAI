@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { readFileSync, globSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, sep } from 'node:path';
 import { normalizeHealthWeights, DEFAULT_HEALTH_WEIGHTS } from '../../utils/healthWeights';
 import * as errorLogger from '../../services/errorLogger';
 
@@ -204,9 +204,20 @@ describe('[DEAD-PARSETX-SILENT-DROP] le parseur orphelin est parti, ses voisins 
         // réintroduction dans un fichier NEUF (un composant d'import, un script) passerait sous la
         // garde — et c'est le scénario le plus probable, puisque la fonction supprimée était un
         // parseur « pratique » qu'on est tenté de recopier. On balaie donc par glob.
+        // ⚠️ PAS `globSync` de `node:fs` : il n'existe qu'à partir de Node 22, et la CI tourne sur
+        // Node 20 — le gate LOCAL (Node 22) était vert pendant que la CI cassait. Le dépôt a déjà
+        // son marcheur, `readdirSync(dir, { recursive: true })` (Node 18.17+), dans
+        // `tests/fiscalConstants.guard.test.ts` : on le réutilise tel quel plutôt que d'en inventer
+        // un (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`).
         const racine = join(__dirname, '../..');
-        const fichiers = globSync('{App,index,constants,types}.{ts,tsx}', { cwd: racine })
-            .concat(globSync('{components,services,hooks,utils,store,mcp,scripts}/**/*.{ts,tsx}', { cwd: racine }));
+        const estSource = (f: string): boolean => /\.(ts|tsx)$/.test(f) && !/\.test\.(ts|tsx)$/.test(f);
+        const fichiers = ['App.tsx', 'index.tsx', 'constants.ts', 'types.ts', 'i18n.ts'];
+        for (const dir of ['components', 'services', 'hooks', 'utils', 'store', 'mcp', 'scripts']) {
+            for (const entree of readdirSync(join(racine, dir), { recursive: true })) {
+                const rel = `${dir}/${entree.toString().split(sep).join('/')}`;
+                if (estSource(rel)) fichiers.push(rel);
+            }
+        }
 
         // Anti-vacuité du GLOB lui-même : un motif qui ne matche rien rendrait le test vert pour la
         // pire des raisons. On exige le dépôt réel, et la présence des deux fichiers historiquement

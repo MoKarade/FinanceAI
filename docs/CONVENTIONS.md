@@ -4311,3 +4311,42 @@ le déclarait « tout supprimé ». À l'échelle d'un dépôt, l'anti-vacuité 
 dépôt ne peut pas être majoritairement composé de commentaires (`codeTotal / brutTotal > 0.5`) —
 plus la survie de jetons de code CONNUS. Une règle par fichier suppose une homogénéité qui n'existe
 pas.
+
+### `GATE-LOCAL-VERT-CI-ROUGE-PAR-VERSION-DE-NODE` — mon gate ne tourne pas sur le même Node que la CI
+
+Le gate complet est passé vert en local — typecheck, lint, 4 475 tests, build — et la CI a cassé sur
+le MÊME commit, sur un seul test :
+
+```
+TypeError: globSync is not a function
+  ❯ tests/services/silencesXs.test.ts:208
+```
+
+Cause : `globSync` de `node:fs` n'existe qu'à partir de **Node 22**. Le conteneur de dev tourne sur
+`v22.22.2`, les quatre workflows GitHub Actions épinglent `node-version: '20'`. L'API que je venais
+d'utiliser n'existait donc que d'un seul côté.
+
+**Ce que ça invalide** : « gate local vert » ne veut PAS dire « CI verte ». C'est la seule
+vérification dont on dispose sur une PR empilée (`PR-EMPILEE-N-A-AUCUNE-CI`) — et cette leçon-ci en
+montre la limite. Les deux se combinent mal : sur une PR empilée utilisant une API récente, RIEN ne
+vérifie quoi que ce soit avant le re-ciblage sur `main`.
+
+**Ce qui l'a rendu invisible** : rien dans le dépôt ne déclare la version de Node visée — pas
+d'`engines` dans `package.json`, pas de `.nvmrc`. La contrainte n'existe que dans les workflows, où
+on ne la lit pas en écrivant un test.
+
+**La règle** : avant d'employer une API Node dans un test ou un script, vérifier depuis quelle
+version elle existe, et la comparer au `node-version` des workflows — pas au `node -v` local.
+Symptôme à reconnaître : une CI qui échoue sur un `TypeError: X is not a function` alors que le gate
+local est vert, sur un identifiant importé d'un module `node:*`.
+
+**Et le correctif est presque toujours « réutiliser le patron du dépôt »** : `globSync` n'apportait
+rien que `readdirSync(dir, { recursive: true })` (Node 18.17+) ne fasse déjà — marcheur employé
+depuis longtemps par `tests/fiscalConstants.guard.test.ts`, à trois fichiers de là. Encore
+`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` : j'ai cherché « comment lister des fichiers » au lieu de
+« comment CE dépôt liste des fichiers ». Le patron existant est aussi, gratuitement, celui dont la
+compatibilité est déjà prouvée par la CI.
+
+⚠️ Alignement de l'environnement (`engines` + `.nvmrc`) NON fait ici : c'est une modification de
+chaîne d'outils que Marc n'a pas demandée, et elle mérite sa propre décision. Tracée en
+`[ENV-NODE-NON-DECLARE]`.

@@ -865,6 +865,18 @@
   l'impôt de la projection. Correctif : utiliser `calculateGrossFromNet`, déjà présent et vérifié
   exact au roundtrip. [MESURÉ]
 
+### 🟡 Environnement — la version de Node n'est déclarée nulle part
+
+- [ ] **`[ENV-NODE-NON-DECLARE]`** (XS, MOYEN) — aucun `engines` dans `package.json`, aucun `.nvmrc` :
+  la seule déclaration de la version visée est `node-version: '20'`, répété dans **4 workflows**
+  (`ci.yml` ×2, `lighthouse.yml`, `refresh-screenshots.yml`). Le conteneur de dev tourne sur Node
+  **22**. **Conséquence MESURÉE le 2026-08-19** : `globSync` (`node:fs`, Node 22+) a donné un gate
+  local VERT et une CI ROUGE sur le même commit (`TypeError: globSync is not a function`, PR #665).
+  Rien n'avertit à l'écriture. **Correctif** : `engines: { node: '20.x' }` + `.nvmrc`, et faire
+  pointer les workflows dessus plutôt que de répéter le littéral (`DOC-METRIQUE-RECOPIEE` appliqué à
+  une version). ⚠️ Modification de chaîne d'outils → **valider avec Marc avant** : un `engines`
+  strict peut casser un `npm install` local sur une autre machine. [MESURÉ]
+
 ### 🟡 Gardes de scan — le décommenteur écrit sept fois
 
 - [ ] **`[GUARD-STRIPCOMMENTS-DUPLIQUE]`** (S, MOYEN) — **sept** décommenteurs indépendants, aucun

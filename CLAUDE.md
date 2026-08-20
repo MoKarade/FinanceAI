@@ -394,6 +394,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 
 ### CI (GitHub Actions)
 
+⚠️ **« Gate local vert » ≠ « CI verte »** : le conteneur de dev tourne sur Node **22**, les workflows
+épinglent **20**, et rien ne déclare la cible (`engines`/`.nvmrc` absents — `[ENV-NODE-NON-DECLARE]`).
+`globSync` (`node:fs`, Node 22+) a donné un gate local vert et une CI rouge sur le MÊME commit.
+Avant d'employer une API `node:*`, vérifier depuis quelle version elle existe vs le `node-version`
+des workflows — pas le `node -v` local. Symptôme : `TypeError: X is not a function` en CI seulement.
+Le correctif est presque toujours de **réutiliser le marcheur/patron déjà employé par le dépôt**
+(ici `readdirSync(dir, { recursive: true })`), dont la compatibilité est déjà prouvée par la CI
+(`GATE-LOCAL-VERT-CI-ROUGE-PAR-VERSION-DE-NODE`).
+
 ⚠️ Le workflow filtre sur `pull_request: branches: [main]` : une **PR EMPILÉE** (base `claude/xxx`)
 ne déclenche **aucun** run CI — Vercel et CodeQL partent quand même, ce qui donne l'illusion d'une
 vérification. `enable_pr_auto_merge` répond « unstable status » parce que les checks requis sont

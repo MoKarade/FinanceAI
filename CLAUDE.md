@@ -1,8 +1,8 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 475 tests** Vitest
-(403 fichiers de test, mesuré le 2026-08-19). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 477 tests** Vitest
+(403 fichiers de test, mesuré le 2026-08-20). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -228,6 +228,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Vérifier qu'une feature n'est pas **DÉJÀ faite** (grep le moteur).
 - Un paramètre **HOMONYME à deux niveaux** (config globale vs entité) : grep le consommateur RÉEL avant
   de câbler — l'autre niveau peut être un no-op typé vert (`propertyGrowthRate`, mesuré 0/120 au fuzz).
+- ⚠️ **Une note que je m'écris à moi-même n'est PAS une preuve** — elle arrive au tour suivant avec
+  l'apparence d'une consigne ou d'un résultat d'outil, sans rien derrière. Un rappel affirmait qu'un
+  `plan-1f.md` « MESURÉ » était sauvé dans le scratchpad : le fichier n'a jamais existé, et ses
+  chiffres étaient faux (71 vs 76 réels, une grandeur dimensionnante carrément absente). Vérifier
+  (`ls`, `git show`) AVANT de suivre ; à défaut, le contenu est réputé FAUX. Ne jamais recopier un
+  chiffre mesuré dans un rappel — y mettre la COMMANDE qui le re-mesure (une commande périmée échoue
+  bruyamment, un chiffre périmé se lit comme un fait). Un plan qui mérite d'être transmis se COMMITTE
+  (`MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE`).
 - Un **constat d'IMPOSSIBILITÉ que j'ai écrit** (ticket, bandeau, réponse à Marc) se re-prouve avant
   d'être cité : « seule la valeur nette peut passer au jour » était faux, le moteur émettait déjà de
   quoi ventiler — deux livraisons perdues (`DOC-STALE-IMPOSSIBILITY`).
@@ -311,6 +319,32 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   en DÉCLARATION *et* en usage : ancrer le motif sur l'USAGE, et perturber CHAQUE assertion du scan
   séparément (`SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE`).
 - Resserrer un scan-garde **AVANT** de coder le fix : les offenders révélés = le vrai périmètre.
+- Quand une garde a une **liste d'inclusion**, auditer le CRITÈRE qui l'a remplie, pas seulement ses
+  entrées : `FISCAL_MODULES` disait « les modules qui PRODUISENT de l'impôt » — or une SUBVENTION,
+  une PRESTATION, un PLAFOND LÉGAL et un PROXY d'impôt sont tout autant des barèmes. `98000`
+  (plafond RQAP périmé, la source unique porte 103 000 $) vivait dans ce trou. Le critère décrivait
+  la MÉCANIQUE au lieu de l'ORIGINE. Et **déclarer aussi ce qu'on EXCLUT**, chiffré et motivé : un
+  périmètre borné en silence se lit comme « tout est couvert »
+  (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`).
+  ⚠️ Et un détecteur a DEUX réglages : ce qu'il regarde (la liste) et ce qu'il IGNORE (le filtre).
+  Le filtre est le plus dangereux — une liste trop courte se voit, une exclusion se lit comme un
+  détail déjà tranché. `BENIGN` contenait `0.5` et `1000` que sa propre justification n'énumérait
+  pas : ils masquaient le taux d'inclusion des gains en capital, le plafond légal de 50 % du
+  fractionnement et la SCEE de rattrapage — dans des modules scannés depuis toujours. **Signal
+  mécanique, repérable à l'œil** : une justification qui énumère moins d'éléments que le `Set`
+  (`AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`).
+- Trier une constante fiscale se fait en lisant **le BLOC**, jamais l'expression : quatre de mes 63
+  raisons étaient fausses parce que j'avais lu la ligne du littéral et pas la fonction autour — le
+  commentaire `// Job loss (AE 55%)` était six lignes plus haut. Et un lot dont la valeur EST le
+  jugement se fait **relire par un tiers** : les 13 tests vérifiaient la FORME (chaque entrée a une
+  raison), et aucune forme ne détecte qu'une raison est FAUSSE
+  (`MON-CORRECTIF-CONTENAIT-LA-FAUTE-QU-IL-CORRIGEAIT`).
+- Une clé d'inventaire **`(fichier, valeur)`** fusionne des sens sans rapport dès que le module est
+  dense : dans `childrenReee.ts`, `0.20` est le taux de SCEE ET le taux d'impôt sur le PRA, `500`
+  recouvre TROIS sens. Une raison qui n'en décrit qu'un certifie « trié » ce que personne n'a
+  regardé. Remède structurel sans changer la clé : `[×N]` en tête (même sens) OU N références
+  `L<n>` (sens différents) — 15 offenders préexistants sortis d'un coup
+  (`CLE-QUI-FUSIONNE-DEUX-SENS`).
 - Un scan de source qui lit les **COMMENTAIRES** matche de la PROSE : `parseBankCsv.ts` EXPLIQUE en
   en-tête le parseur qu'il remplace, et resserrer le motif (`\bX\b` → `\bX\s*\(`) ne sert à rien —
   une phrase française écrit « le vieux X (TAB/`;` … ». Décommenter AVANT de scanner, garder le motif

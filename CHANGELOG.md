@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-20 (aucun changement visible — mais le détecteur de chiffres fiscaux voit enfin les subventions)
+
+- **Rien ne change pour toi dans l'app.** C'est un travail d'outillage, et le dire franchement vaut
+  mieux qu'inventer une ligne de fonctionnalité.
+- Le garde qui surveille les chiffres fiscaux écrits « en dur » ne regardait que **8 modules sur 20**
+  parce qu'il cherchait seulement ceux qui *produisent de l'impôt*. Les subventions (REEE), les
+  prestations (congé parental) et les plafonds légaux lui échappaient.
+- ⚠️ **Ce qu'il a immédiatement trouvé** : le plafond de revenu assurable du **RQAP** est resté figé
+  à 98 000 $ (valeur 2025) alors que le reste de l'app utilise 103 000 $. Pour un 2ᵉ parent au-dessus
+  du plafond, ça manque environ **2 750 $ de prestation brute sur l'année de congé**. Le correctif
+  arrive dans un lot séparé — ici, on s'est assuré qu'il ne puisse plus jamais se cacher.
+
+---
+
 ## [unreleased] — 2026-08-19 (cinq endroits où l'app se taisait au lieu de te le dire)
 
 - **Suggestion de prix d'achat** : quand la recherche du cours historique échouait, le champ restait

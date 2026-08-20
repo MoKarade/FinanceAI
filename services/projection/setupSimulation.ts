@@ -148,6 +148,8 @@ export interface IncomeBaselineResult {
 export function computeIncomeBaseline(
     projection: { useTheoretical?: boolean; theoreticalIncome?: number },
     users: Array<{ netSalary?: number; grossSalary?: number } | undefined>,
+    /** Année du barème pour l'inversion net→brut ([GROSSFROMNET-ANNEE-FIGEE]). Défaut NEUTRE. */
+    startYear: number = 2026,
 ): IncomeBaselineResult {
     const useTheo = projection.useTheoretical;
     const theoIncome = projection.theoreticalIncome || 8000;
@@ -156,7 +158,7 @@ export function computeIncomeBaseline(
     const incomeAnnaNetMonthly = useTheo ? (theoIncome * 0.45) : (users[1]?.netSalary || 0);
     // ⚠️ UNITÉS : les salaires du store sont MENSUELS, `calculateGrossFromNet` travaille en ANNUEL.
     const brutDeduit = (netMensuel: number): number =>
-        (netMensuel > 0 ? calculateGrossFromNet(netMensuel * 12) : 0);
+        (netMensuel > 0 ? calculateGrossFromNet(netMensuel * 12, startYear) : 0);
     const grossMarcBaseAnnual = useTheo
         ? brutDeduit(incomeMarcNetMonthly)
         : (users[0]?.grossSalary ? users[0].grossSalary * 12 : brutDeduit(incomeMarcNetMonthly));

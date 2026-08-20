@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-20 (le brut deviné suit maintenant le barème de l'année, pas celui de 2026)
+
+- Suite directe du correctif précédent. Quand l'app **déduit** ton salaire brut de ton net, elle
+  inversait toujours le barème d'impôt **2026**, même pour une projection qui court jusqu'en 2060.
+- Dès janvier 2027 le brut deviné aurait été surestimé de 330 à 900 \$ selon ton revenu, et l'écart
+  se creusait d'environ 2 % par an. Il suit désormais l'année réellement simulée.
+- **Rien ne change si tu as saisi ton brut**, ni pour l'année en cours.
+
+---
+
 ## [unreleased] — 2026-08-20 (si tu n'as pas saisi ton salaire brut, l'app le devinait mal)
 
 - **Quand ton salaire BRUT n'est pas saisi, l'app le déduit de ton net.** Elle le faisait en

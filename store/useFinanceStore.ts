@@ -150,7 +150,7 @@ const migrateUserConfig = (config: LegacyBudgetConfig): LegacyBudgetConfig => {
         // faut. `calculateGrossFromNet` le donne par dichotomie, à moins de 1 $ près (vérifié).
         // ⚠️ UNITÉS : `netSalary`/`grossSalary` sont MENSUELS dans le store, `calculateGrossFromNet`
         // prend et rend de l'ANNUEL — d'où le ×12 puis le /12.
-        const gross = u.grossSalary || (net > 0 ? calculateGrossFromNet(net * 12) / 12 : 0);
+        const gross = u.grossSalary || (net > 0 ? calculateGrossFromNet(net * 12, new Date().getFullYear()) / 12 : 0);
         return {
             ...u,
             netSalary: net,

@@ -4,6 +4,27 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-20 (suite 114) — une valeur fiscale figée par un défaut de signature
+> Branche `claude/grossfromnet-annee` (basée sur `main`, PAS empilée). Suite directe de #669.
+>
+> **Livré** : `[GROSSFROMNET-ANNEE-FIGEE]`. `calculateGrossFromNet` inversait toujours le barème
+> 2026 (le défaut de `calculateFiscalReport`) pendant que le moteur indexe par `startYear`.
+> Le lot #669 venait de rendre TOUTE l'assiette d'impôt dépendante de cette inversion — la dérive
+> n'était donc plus théorique. **MESURÉ** : +380 / +334 / +903 $ dès 2027 (48 k / 60 k / 100 k de
+> net), et ~2 %/an d'accumulation ; 1 378 à 3 723 $ en 2030.
+>
+> **Paramètre OPTIONNEL à défaut NEUTRE** → rétrocompat bit-identique, verrouillée par un test.
+> Cinq sites câblés (moteur ×2 avec `startYear`, UI ×2 et store avec l'année courante).
+>
+> ⚠️ **Le ratchet fiscal a encore attrapé mon propre code** (3e lot d'affilée) : le défaut
+> `startYear: number = 2026` est un littéral neuf dans un module scanné. Inventorié `structural`.
+>
+> **SUITE — candidats NON bloqués**, tous mesurés dans `docs/BACKLOG.md` :
+> `[ESTATE-NPV-07]` (vague 1f, nommer une hypothèse — pas de sourçage requis),
+> `[GROSSFROMNET-CREDITS-65]`, `[AUTOMARGINAL-BASCULE-SILENCIEUSE]`,
+> `[FISC-GUARD-ARGUMENT]` + `[FISC-GUARD-BENIGN-60]` (ENSEMBLE), `[GUARD-STRIPCOMMENTS-DUPLIQUE]`,
+> `[GOLDEN-RQAP-NON-COUVERT]`, `[ASSETLOC-INCLUSION-RECOPIEE]`, `[ASSETLOC-YEAR-2026]`.
+>
 > ## 🟢 Session 2026-08-20 (suite 113) — un facteur plat dont l'erreur change de signe
 > Branche `claude/migrate-gross` (basée sur `main`, PAS empilée). Vague 1f, 3e des 5.
 >

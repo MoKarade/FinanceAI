@@ -867,7 +867,18 @@ export const calculateNetFromGross = (monthlyGross: number) => {
 // dichotomie. Le taux moyen tend vers le marginal max (~53 % au QC) sans jamais
 // l'atteindre → net(high) > target finit toujours par être vrai ; la garde
 // d'itérations borne le pire cas.
-export const calculateGrossFromNet = (targetNetAnnual: number): number => {
+/**
+ * ⚠️ [GROSSFROMNET-ANNEE-FIGEE] — `year` ajouté le 2026-08-20. Sans lui, l'inversion utilisait le
+ * barème par DÉFAUT de `calculateFiscalReport` (2026) pendant que le moteur, lui, indexe par
+ * `startYear` / `loopYear`. MESURÉ, brut qui redonne le même net selon le barème : à 60 000 $ de
+ * net, 86 968 $ (2026) contre 86 634 $ (2027) et 85 590 $ (2030) ; à 100 000 $, 157 028 / 156 125 /
+ * 153 305. Dès janvier 2027 le brut déduit aurait été surestimé de 330 à 900 $, et la dérive
+ * s'accumule d'environ 2 %/an — une valeur fiscale figée par un simple défaut de signature.
+ *
+ * Paramètre OPTIONNEL à défaut NEUTRE : un appelant qui ne le passe pas obtient exactement le
+ * comportement d'avant, donc zéro code de migration et zéro risque de rétrocompat.
+ */
+export const calculateGrossFromNet = (targetNetAnnual: number, year: number = 2026): number => {
     if (targetNetAnnual <= 0) return 0;
     const low0 = targetNetAnnual;
     let high = targetNetAnnual * 2;
@@ -876,7 +887,7 @@ export const calculateGrossFromNet = (targetNetAnnual: number): number => {
     // double. Plafond d'expansion (40 doublements ≈ ×10^12) = garde-fou anti-boucle
     // si la fonction n'était pas monotone/atteignable (ne devrait jamais arriver).
     let expand = 0;
-    while (calculateFiscalReport(high, 0, 0).netIncome < targetNetAnnual && expand < 40) {
+    while (calculateFiscalReport(high, 0, 0, year).netIncome < targetNetAnnual && expand < 40) {
         high *= 2;
         expand++;
     }
@@ -885,7 +896,7 @@ export const calculateGrossFromNet = (targetNetAnnual: number): number => {
     let iterations = 0;
     while (iterations < 40) {
         const mid = (low + high) / 2;
-        const net = calculateFiscalReport(mid, 0, 0).netIncome;
+        const net = calculateFiscalReport(mid, 0, 0, year).netIncome;
         if (Math.abs(net - targetNetAnnual) < 1) return mid;
         if (net < targetNetAnnual) {
             low = mid;

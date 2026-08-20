@@ -185,7 +185,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
             const monthlyGross = u.grossSalary || 0;
             const uGross = monthlyGross > 0
                 ? monthlyGross * 12
-                : calculateGrossFromNet((u.netSalary || 0) * 12);
+                : calculateGrossFromNet((u.netSalary || 0) * 12, new Date().getFullYear());
             const splitRatio = 1 / config.users.length;
             const uTotalTaxable = uGross + (investmentTaxData.taxableAddOn * splitRatio);
             // [FISC-PAYROLL-BASE-INVEST] assiette IMPOSABLE = salaire + placement (paliers d'impôt),

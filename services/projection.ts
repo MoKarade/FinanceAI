@@ -414,7 +414,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     // Cycle 22 split: revenus net/brut baseline → ./projection/setupSimulation
     const { incomeMarcNetMonthly, incomeAnnaNetMonthly, grossMarcBaseAnnual, grossAnnaBaseAnnual } =
-        computeIncomeBaseline(projection, config.users);
+        computeIncomeBaseline(projection, config.users, startYear);
 
     // Registre REER PAR CONJOINT maintenu EN PARALLÈLE du solde commun (qui reste la vérité). Clé de
     // répartition = part salariale (proxy d'historique de cotisation ; `rrspContributed` prévu — ITEM-2C

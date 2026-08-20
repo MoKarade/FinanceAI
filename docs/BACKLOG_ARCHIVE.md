@@ -10,6 +10,42 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-20 — Une valeur fiscale figée par un défaut de signature
+
+- [x] **`[GROSSFROMNET-ANNEE-FIGEE]`** (S) — ✅ 2026-08-20, PR #670.
+
+> Suite directe de `[MIGRATE-GROSS-135]`. `calculateGrossFromNet` n'avait pas de paramètre d'année :
+> elle appelait `calculateFiscalReport(x, 0, 0)`, donc le barème par DÉFAUT (2026), pendant que le
+> moteur indexe par `startYear` / `loopYear`. Le lot précédent venait de rendre TOUTE l'assiette
+> d'impôt dépendante de cette inversion — la dérive n'était donc plus théorique.
+
+**MESURÉ** — brut qui redonne le même net selon le barème :
+
+| net annuel | 2026 (figé) | 2027 | 2030 | dérive 2027 | dérive 2030 |
+|---|---|---|---|---|---|
+| 48 000 $ | 66 554 | 66 174 | 64 988 | **380** | 1 565 |
+| 60 000 $ | 86 968 | 86 634 | 85 590 | **334** | 1 378 |
+| 100 000 $ | 157 028 | 156 125 | 153 305 | **903** | 3 723 |
+
+Dès janvier 2027 le brut déduit aurait été surestimé de 330 à 900 $, avec accumulation (~2 %/an
+d'indexation des paliers).
+
+**Paramètre OPTIONNEL à défaut NEUTRE** — un appelant qui ne passe rien obtient exactement le
+comportement d'avant : zéro code de migration, zéro risque de rétrocompat, et un test le verrouille
+(`calculateGrossFromNet(60000) === calculateGrossFromNet(60000, 2026)`).
+
+**Cinq sites câblés** : `computeIncomeBaseline` et `computeBaseGrossAnnual` reçoivent `startYear` du
+moteur ; `Retirement.tsx`, `TaxCenter.tsx` et la migration du store passent l'année COURANTE.
+
+**Discrimination prouvée** : ignorer le paramètre dans l'implémentation fait rougir deux des trois
+tests neufs. Le sens est le discriminant — indexer les paliers ALLÈGE l'impôt, donc il faut MOINS de
+brut pour le même net ; un `year` ignoré rendrait toutes les années strictement égales.
+
+⚠️ **Le ratchet fiscal a de nouveau attrapé mon propre code** : le défaut `startYear: number = 2026`
+est un littéral neuf dans un module scanné. Inventorié `structural` — c'est la valeur de
+rétrocompat, pas un ancrage de barème. Troisième lot d'affilée où une garde livrée récemment se
+déclenche sur le lot suivant.
+
 ## 2026-08-20 — Vague 1f (3/5) : un facteur plat dont l'erreur change de signe
 
 - [x] **`[MIGRATE-GROSS-135]`** (XS annoncé, S réel) — ✅ 2026-08-20, PR #669.

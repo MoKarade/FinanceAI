@@ -152,6 +152,8 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Graine par défaut du générateur pseudo-aléatoire (`mulberry32(... || 42)`). Aucun rapport avec la fiscalité.' },
     { file: 'services/projection/setupSimulation.ts', value: '30', family: 'structural',
       reason: 'Repli d’âge par défaut quand ni birthYear ni age ne sont saisis. Structurel.' },
+    { file: 'services/projection/setupSimulation.ts', value: '2026', family: 'structural',
+      reason: 'Défaut NEUTRE du paramètre `startYear` de `computeIncomeBaseline`, ajouté par `[GROSSFROMNET-ANNEE-FIGEE]` pour que l’inversion net→brut suive le barème de l’année du moteur au lieu de 2026 figé. Ce n’est PAS un ancrage de barème : c’est la valeur qui reproduit exactement le comportement d’avant quand l’appelant ne passe rien (rétrocompat bit-identique). L’appelant réel (`projection.ts`) passe TOUJOURS `startYear`. Même nature que le repli d’année de `assetLocation.ts`, classé `structural` pour la même raison.' },
     { file: 'services/projection/setupSimulation.ts', value: '18', family: 'fiscal',
       reason: 'Âge d’ouverture des droits REER historiques (`birthYear + 18`) — âge fiscal, à ancrer avec les autres âges-seuils.' },
     { file: 'services/projection/setupSimulation.ts', value: '65', family: 'fiscal',

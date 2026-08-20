@@ -1472,7 +1472,7 @@ fichier:ligne). Verdicts appliqués à la refonte :
   **Mesuré : après avoir cédé 100 % des actifs, le NW reste −81 827 $ (100 k$ de dettes intactes).**
   Impact = solde total dettes × divorceSplitPct, cumulé sur tous les MC où le divorce se déclenche.
   **Correctif** : appliquer `keep` à `activeDebts[i].balance`, `liquidDebt`, `smithManoeuvreDebt`.
-  Décision produit requise si dettes ne se partagent pas (documenté dans decisions.md).
+  Décision produit requise si dettes ne se partagent pas (documenté dans `docs/adr/`).
 
 - [x] 🔴 **`[ENG-DIVORCE-REGISTRE-PERCONJOINT]`** (M) — le divorce est **fiscalement INERTE** :
   `reerByUser`, `activeUsersCount`, `liveFilers`, espaces CELI/REER/CELIAPP, revenus, tous
@@ -5127,7 +5127,7 @@ quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
   allocations familiales étaient encaissées à **100 %** mais publiées à **50 %**.
   Mesuré : `Δ Income = +332 $/mois` contre `Δ childBenefits = +166 $/mois`, constant sur tout
   l'horizon. Cumul 20 ans : 31 673 $ encaissés vs 17 629 $ affichés ; effet patrimoine final
-  **75 957 $**. Contredit frontalement la décision verrouillée (`decisions.md` Décision 5).
+  **75 957 $**. Contredit frontalement la décision verrouillée (`docs/adr/0012-quatre-decisions-de-marc-2026-08-17.md`, Décision 5).
   **Correctif livré, et il ne ressemble pas au correctif prévu.** Ventiler `monthlyIncomeDelta`
   comme `liquidDelta` n'aurait fait que déplacer le problème : chaque montant d'enfant alimente 3 à
   5 registres, et partager le RÉSULTAT oblige à se souvenir de tous. La part de garde est désormais

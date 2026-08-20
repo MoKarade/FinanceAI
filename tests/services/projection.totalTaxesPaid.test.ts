@@ -69,7 +69,11 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
         // elle, reste garantie par l'identité ttp == Σ FluxImpots du 1er test.
         // Re-basé SCIEMMENT 2026-08-05 ([FISC-STACK-GAINS-DIV] + [FISC-DTC-ABATEMENT-ORDER], était
         // -7169,52) : vrai changement fiscal (impôt de placement ↑), pas une fuite de compteur.
-        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(-7209.82, 0);
+        // Re-basé SCIEMMENT 2026-08-20 ([FISC-TAXDEC-INCR], était −7209,82 : −57,98 $) : l'érosion
+        // des crédits d'âge est désormais facturée à la bande de dividendes du non-enregistré que
+        // le meltdown remplit (impôt ↑ → NW ↓). La fixture FERR ne bouge PAS (pension couvrante,
+        // aucune bande de placement) — l'effet est ciblé, c'est la preuve inverse.
+        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(-7267.80, 0);
         expect(run(ferrParams, 'AUTO_MARGINAL').finalNetWorth).toBeCloseTo(372625.14, 0);
     });
 

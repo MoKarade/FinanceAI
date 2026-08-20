@@ -5,7 +5,9 @@
 > à la fin.
 >
 > ## 🟢 Session 2026-08-20 (suite 119) — [FISC-TAXDEC-INCR] : les bandes de décembre portent l'érosion des crédits d'âge
-> Branche `claude/taxdec-incr` (basée sur `main` post-#675, PAS empilée).
+> Branche `claude/taxdec-incr`, PR #676 (basée sur `main` post-#675, PAS empilée). 2 goldens NW
+> re-basés SCIEMMENT (fixture meltdown 62 ans : −57,98 $, la bande de dividendes du non-enregistré
+> porte l'érosion ; la fixture FERR ne bouge pas — effet ciblé, preuve inverse).
 >
 > **Livré** : sous-volet (a) du ticket — helper `incrementalBandTax` (par adulte, `familyIncome`
 > évolue AVEC la bande) branché aux bandes §2 gains et §3 dividendes de `taxDecember.ts`. (b) était

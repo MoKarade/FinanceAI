@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-20 (l'impôt de décembre voit l'érosion des crédits d'âge)
+
+- Quand l'app calcule l'impôt supplémentaire dû sur tes gains en capital et tes dividendes de
+  l'année (la « bande » ajoutée à ton revenu en décembre), elle ignorait un effet réel pour les
+  65 ans et plus : chaque dollar de plus **érode aussi les crédits d'âge** (fédéral et Québec).
+  Un retraité en zone d'érosion payait donc trop peu d'impôt projeté sur ses gains — corrigé
+  (mesuré : ~676 $ de plus sur 30 000 $ de gains à 60 k$ de revenu). Et dans l'autre sens : à
+  revenu modeste, le crédit d'âge **inutilisé** abrite maintenant ces gains (mesuré : 0 $ au lieu
+  de ~1 709 $ sur 30 000 $ de gains à 10 k$ de revenu) — l'app calcule désormais exactement comme
+  une vraie déclaration. La revue a aussi fait passer la pension admissible dans ce calcul (le
+  crédit québécois s'arrêtait ~16 300 $ trop tôt : ~318 $/an de plus facturés aux retraités à
+  pension en zone de sortie de crédit). Aucun changement pour les moins de 65 ans ni pour les
+  revenus élevés dont les crédits sont déjà épuisés.
+
 ## [unreleased] — 2026-08-20 (les prestations de congé parental et de chômage ne « cotisent » plus)
 
 - Règle confirmée à la source (ta recherche du jour) : une prestation RQAP ou AE est **imposable,

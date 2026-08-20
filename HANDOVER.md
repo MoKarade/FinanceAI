@@ -4,6 +4,49 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-20 (suite 119) — [FISC-TAXDEC-INCR] : les bandes de décembre portent l'érosion des crédits d'âge
+> Branche `claude/taxdec-incr`, PR #676 (basée sur `main` post-#675, PAS empilée). 2 goldens NW
+> re-basés SCIEMMENT (fixture meltdown 62 ans : −57,98 $, la bande de dividendes du non-enregistré
+> porte l'érosion ; la fixture FERR ne bouge pas — effet ciblé, preuve inverse).
+>
+> **Livré** : sous-volet (a) du ticket — helper `incrementalBandTax` (par adulte, `familyIncome`
+> évolue AVEC la bande) branché aux bandes §2 gains et §3 dividendes de `taxDecember.ts`. (b) était
+> déjà corrigé (#564), (c) est un statu quo documenté in situ — les deux fermés SANS code, re-tracés
+> sur le code avant de coder.
+>
+> ⚠️ **Récidive du jour** : pin de test DÉDUIT de tête (776,25) au lieu de mesuré (675,56) —
+> l'entrée `ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER` de CONVENTIONS est enrichie : le pin d'un
+> test EST un chiffre fiscal documenté, il se mesure. 3 perturbations discriminantes (ageOpts
+> retirés / familyIncome figé / asymétrie tb-tt), restauration prouvée par diff. Ratchet : 5e prise
+> (`taxDecember::65` passé `[≠4]`, le `a >= 65` du helper). Pins ADDITIVITÉ ré-basés avec delta
+> expliqué. NB conteneur : le hook `commit-gate` local n'existe pas dans l'environnement remote —
+> gate lancé à la main, ne pas se fier au silence du commit.
+>
+> **Panel /review-all (6 agents) — 4 correctifs appliqués dans la PR** : (F1, ÉLEVÉ confirmé par
+> re-mesure) la pension admissible RÉELLE passe aux deux appels de la bande — source unique
+> `eligiblePensionFor` HISSÉE hors du bloc §6, +317,81 $ re-facturés sur le profil 73 ans/DB, test
+> discriminant rouge-avant ; (validator) l'effet est BIDIRECTIONNEL — à revenu faible le crédit
+> inutilisé ABRITE la bande (10 k$ + 30 k$ gains : 1 708,61 → 0 $), documenté + testé ; garde NaN au
+> patron ENG-TAXDEC-NAN-GUARD ; test couple 68/60 (ratio 0,5 exact) + pin §3 (466,14). Le validator
+> a PROUVÉ bande == calcul « en un coup » à 0,00 $ sur 6 niveaux de revenu, conservation intacte,
+> impôt de bande réellement débité (LiquidDebt +57,97). ⚠️ TRIPLE récidive du mécanisme déduit :
+> « borné par le crédit restant » était FAUX aussi (vraie décomposition : abattement QC 16,5 % sur
+> le crédit féd + conversion 14 %) — CONVENTIONS enrichie : le MÉCANISME se mesure comme le chiffre.
+> 5 tickets routés (dont `[FISC-BANDES-FRERES-SANS-AGEOPTS]` ÉLEVÉ : latentTax/estate ×2, mesures
+> 1,3-2,4 k$/adulte). Doc-manager : doublon d'archive évité de justesse, exemple fiscal INVENTÉ
+> (50 k$) retiré de FISCAL_REFERENCE — relire ce qu'un agent écrit dans la source de vérité.
+>
+> **2e relecture (correctif de correctif — récolte confirmée, 6e fois)** : le hissage emportait la
+> branche ACTIVE (un actif 72-75 à retraits REER portait la pension dans la bande, son calcul
+> principal non — ±1 878 $) → borne `ctx.isRetired`, test discriminant, ticket
+> `[TAXDEC-ACTIF-72-PENSION-CREDIT]` pour corriger les DEUX côtés ensemble. Garde NaN déplacée sur
+> les ENTRÉES (tax.ts assainit ses sorties — l'ancienne garde manquait 3 chemins sur 4). Commentaire
+> périmé du §2 réécrit (il décrivait encore « pension 0 symétrique »). Phrase « exactement le 1-coup »
+> BORNÉE dans FISCAL_REFERENCE (solo/couple égal retraité ; écarts pré-existants mesurés −345,72 $
+> per-conjoint inégal, 69-1 130 $ actif). Fuzz de la relecture : 4 000 scénarios, `revenu`/`divers`
+> bit-identiques, seul `gains` bouge (100 % attribuable à F1) ; bande == 1-coup à 0,00 $ sur 8
+> revenus là où l'avant déviait de −1 053 à +856 $.
+>
 > ## 🟢 Session 2026-08-20 (suite 118) — le lot « prestations » : la règle de Marc appliquée le jour même
 > Branche `claude/prestations-assiette` (basée sur `main` post-#673, PAS empilée).
 >

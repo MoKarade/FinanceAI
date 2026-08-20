@@ -78,7 +78,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
 
     // ── services/projection/taxDecember.ts ───────────────────────────────────────────────────
     { file: 'services/projection/taxDecember.ts', value: '65', family: 'fiscal',
-      reason: '[≠3] TROIS dispositions distinctes, dont une que ma marque `[×3]` passait sous silence. Gate de `computeOasClawback` — âge d’ouverture de la PSV. `mkActiveAgeOpts` — crédit en raison de l’âge (§4). Gate `dbRealUser` du revenu de pension admissible / fractionnement (§4 et §6). ⚠️ Et il n’y a AUCUN « pivot RRQ » dans ce fichier : cette mention de ma première raison était fausse.' },
+      reason: '[≠4] QUATRE occurrences, trois dispositions distinctes. Gate de `computeOasClawback` — âge d’ouverture de la PSV. Admissibilité au crédit en raison de l’âge, à DEUX sites : `mkActiveAgeOpts` (§4) et le `mk` d’`incrementalBandTax` (bandes incrémentales §2 gains / §3 dividendes, [FISC-TAXDEC-INCR]). Gate `dbRealUser` du revenu de pension admissible / fractionnement (§4 et §6). ⚠️ Et il n’y a AUCUN « pivot RRQ » dans ce fichier : cette mention de ma première raison était fausse.' },
     { file: 'services/projection/taxDecember.ts', value: '0.50', family: 'design',
       reason: 'Fraction de vente FICTIVE servant à estimer la récolte de pertes — pas un taux d’inclusion.' },
     { file: 'services/projection/taxDecember.ts', value: '40', family: 'design',

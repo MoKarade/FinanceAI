@@ -4847,6 +4847,18 @@ commentaire JSX**, qui répétait le taux pour « expliquer ». J'ai réécrit l
 chiffre plutôt que d'exempter les commentaires de la garde — un commentaire faux est pire qu'absent,
 parce qu'il se lit comme une intention.
 
+⚠️ **RÉCIDIVE le jour même, dans un PIN de test — puis DANS SON EXPLICATION** (`[FISC-TAXDEC-INCR]`,
+2026-08-20) : j'ai écrit `toBeCloseTo(776.25)` en DÉDUISANT le delta d'érosion (15 % féd + 18,75 %
+QC appliqués « de tête »). Mesuré : **675,56 $**. J'ai alors documenté l'écart par « borné par le
+crédit RESTANT » — encore un mécanisme déduit, encore FAUX : la revue l'a mesuré, aucune borne ne
+joue sur ce profil ; l'écart est l'**abattement QC de 16,5 % sur le crédit fédéral** (337,50 →
+281,81) plus la conversion de l'érosion QC au taux de crédit 14 % (393,75). Deux leçons emboîtées :
+le pin d'un test EST un chiffre fiscal documenté (il se MESURE, jamais ne se déduit), et **le
+MÉCANISME qu'on écrit à côté du chiffre est un fait fiscal au même titre** — une explication se
+vérifie par décomposition qui RECOMPOSE la valeur au cent, sinon elle fabrique sa source aussi
+sûrement qu'un chiffre inventé. Un pin juste avec une explication fausse re-dérivera de travers à
+la prochaine session.
+
 ### `UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`
 
 Toujours `[ESTATE-NPV-07]`, mais c'est la revue qui l'a trouvé, pas moi. Le lot remplaçait un facteur

@@ -131,7 +131,11 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // fix. Ne pas croire que cette fixture couvre l'empilement : c'est le test d'additivité
         // de taxDecember.test.ts qui le fait.
         const melt = runWith('MELTDOWN_REER' as AllocationStrategy);
-        expect(melt.finalNetWorth).toBeCloseTo(-7209.82, 0);
+        // Re-basé SCIEMMENT 2026-08-20 ([FISC-TAXDEC-INCR], était −7209,82 : −57,98 $) : la bande
+        // de DIVIDENDES de décembre (le meltdown remplit le non-enregistré → §3 non nul) porte
+        // désormais l'érosion des crédits d'âge après 65 ans. Vrai changement fiscal, sens attendu
+        // (impôt ↑ → NW ↓) ; les GAINS restent nuls ici (accCapitalGainsYear = 0, cf. note #564).
+        expect(melt.finalNetWorth).toBeCloseTo(-7267.80, 0);
         // ⚠️ RE-BASÉ le 2026-08-20 par `[ESTATE-NPV-07]` : 144 219,86 $ → 208 594,46 $
         // (+64 374,60 $, +44,6 %). L'écart RELATIF est énorme ici parce que cette fixture finit
         // INSOLVABLE (`finalNetWorth = −7 209 $`) : son patrimoine successoral est presque
@@ -147,6 +151,8 @@ describe('Meltdown REER — compteurs d\'affichage honnêtes', () => {
         // c'est-à-dire exactement la population que tout ce lot prétend servir.
         // Le REER étant déjà vidé à 87 ans, le contexte structurel et le contexte total coïncident
         // ici : ce point n'exerce PAS cette branche-là.
-        expect(melt.estateNetWorth).toBeCloseTo(208594.46, 0);
+        // Re-basé 2026-08-20 ([FISC-TAXDEC-INCR], était 208 594,46) : même −57,98 $ que le NW
+        // final ci-dessus — l'estate en hérite tel quel, aucun effet propre à la branche estate.
+        expect(melt.estateNetWorth).toBeCloseTo(208536.48, 0);
     });
 });

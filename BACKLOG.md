@@ -105,8 +105,8 @@
   `[FISC-REEE-GRANT-CLAWBACK]` (⚠️ **mesuré 0 $ sur le profil de Marc** : `reee: 0`, aucun objectif
   d'études → dormant, actif seulement s'il ajoute un enfant ; confirmé contre le code —
   `childrenReee.ts:327` verse 100 % du solde, les trackers SCEE/IQEE existent mais ne sont jamais
-  décrémentés → modélisation en 3 poches nécessaire, plan-first) + `[FISC-TAXDEC-INCR]`
-  (✅ **GO Marc 2026-08-20, A2 : « code le »** — plan-first + re-base goldens assumé, risque $ élevé).
+  décrémentés → modélisation en 3 poches nécessaire, plan-first) + ~~`[FISC-TAXDEC-INCR]`~~
+  ✅ **LIVRÉ 2026-08-20, PR #676** ((a) codé, (b) déjà fait #564, (c) statu quo documenté — archivé).
 - [ ] **V7 — Sécurité serveur + sync** — **2/4 livrés** (PR #566) :
   ✅ `[FINTABLE-SYNC-STALE-BASE]` + ✅ `[MCP-CLOUDRUN-AUTH-HARDENING]` (archivés).
   ✅ `[MCP-CHARTDATA-SUM-GUARD]` (#567) + ✅ `[FISC-CONST-GUARD-V2]` (#568). **V7 TERMINÉE (4/4).**
@@ -1037,6 +1037,60 @@
 - [ ] **`[JOBLOSS-DUREE-N-PLUS-1]`** (XS, FAIBLE — revue #675) — `jobLossDurationMonths: 6` produit
   **7 mois** de prestation (le mois de déclenchement est déjà réduit, puis le compteur en décompte
   6 de plus) ; le log dit « durée prévue 6 mois ». ~347 $/mois d'écart sur un épisode. Pré-existant.
+
+- [ ] **`[FISC-BANDES-FRERES-SANS-AGEOPTS]`** (M, **ÉLEVÉ** — revue #676, financial-integrity, MESURÉ) —
+  trois bandes incrémentales frères passent encore `ageOpts: undefined` dans des contextes par
+  définition 65+, même classe que le défaut fermé par #676 (`MODULE-ECRIT-HORS-CHECKLIST` : le
+  ticket disait « les bandes », le lot n'a couvert que décembre). Mesures de la revue :
+  `latentTax.ts:65,78` (impôt latent **sous-estimé de 1 741 à 2 444 $/adulte** → NW surévalué) ;
+  `estateCalculation.ts:217-218` (impôt successoral sous-estimé 1 291-2 192 $ — ⚠️ `estateNetWorth`
+  est une FONCTION OBJECTIF triée par `drawdownOptimizer`) ; `estateCalculation.ts:431-432`
+  (`facteurNetRentes` déplacé de −2,8 à +8,9 pts). Réutiliser `incrementalBandTax`/la source unique
+  `eligiblePensionFor` plutôt que recopier. Mesurer le CLASSEMENT du ranking avant/après
+  (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`). [MESURÉ par la revue, à re-mesurer]
+
+- [ ] **`[TAXDEC-ACTIF-72-PENSION-CREDIT]`** (S, MOYEN — 2e relecture #676, MESURÉ) — un ACTIF de
+  72-75 ans (`targetAge` saisissable jusqu'à 75) avec retraits REER (cascade shortfall, meltdown,
+  achat immo) n'a AUCUN crédit pension : `mkActiveAgeOpts` passe `eligiblePensionIncome: 0` alors
+  que les retraits REER sont admissibles dès 72 ans (règle FERR du modèle). La bande incrémentale
+  a été ALIGNÉE sur ce 0 (borne `ctx.isRetired` du helper — porter la pension d'un seul côté
+  faisait ±1 878 $/an d'incohérence interne). Corriger les DEUX côtés ensemble : `mkActiveAgeOpts`
+  ET la bande via `eligiblePensionFor`, avec l'assiette de bande active (`incomeForGains` = salaires
+  SEULS, sans les retraits REER — défaut dominant à traiter dans le même lot). Population marginale.
+  [MESURÉ par la revue]
+
+- [ ] **`[TAXDEC-TROIS-FABRIQUES-AGEOPTS]`** (S, MOYEN — revue #676, projection-validator) — trois
+  fabriques d'`AgeCreditOptions` coexistent dans `taxDecember.ts` (`mkActiveAgeOpts` L~439,
+  `mkRetiredAgeOpts` L~630, `mk` du helper de bande) avec des gardes déjà textuellement différentes
+  (`a >= 65` vs `a !== undefined` seul). Équivalentes AUJOURD'HUI (les gates internes de
+  `calculateAgeAndPensionCredits` rattrapent), mais classe `UNE-FORMULE-RECOPIEE-DIVERGE` : 3 copies,
+  3 dérives possibles. Consolider en une fabrique unique paramétrée. Même passe : la branche ACTIVE
+  garde une validation `accRetraitsReerYearByUser` quasi-jumelle de `useReerPerUser` (règles
+  subtilement différentes — gate `> 1`, assainissement, NaN), désormais dans la MÊME portée depuis
+  le hissage #676 : à un caractère d'une erreur d'aiguillage — aligner ou documenter pourquoi.
+  [VÉRIFIÉ équivalentes]
+
+- [ ] **`[TAXDEC-BANDE-ACTIVE-BASE-BRUTE]`** (XS, FAIBLE — revue #676, financial-integrity F6) —
+  branche ACTIVE : `incomeForGains` est le salaire BRUT alors que le §4 accorde le crédit d'âge sur
+  le taxable NET des déductions (REER/FHSA). Un travailleur 65+ qui cotise voit l'érosion de sa
+  bande calculée depuis une base plus haute que celle du crédit → sous-facturation bornée
+  (~1 153 $/adulte/an max). Population marginale ; incohérence née de #676 (avant, la bande active
+  ne portait aucun crédit). Documenter en limite assumée OU aligner la base. [MESURÉ borné]
+
+- [ ] **`[TAXDEC-SPLIT-EGAL-VS-PERUSER]`** (XS, FAIBLE — revue #676, financial-integrity F5) — le
+  crédit d'âge FÉDÉRAL s'érode sur le revenu individuel : le bloc §6 le calcule sur
+  `taxableRealByUser[i]` (asymétrique si `usePerUser`), la bande sur `incomeForGains / N` (moyen).
+  Pour un couple 90/10, crédit accordé et crédit érodé ne se chaînent pas. Approximation
+  PRÉ-EXISTANTE des paliers étendue aux crédits — signe dépendant du profil : consigner comme
+  limite assumée (FISCAL_REFERENCE §4), ne PAS « corriger » à l'aveugle. [À consigner]
+
+- [ ] **`[KEYSTORE-DECRYPT-FAILED-SILENCIEUX]`** (XS, MOYEN — revue #676, silent-failure-hunter,
+  HORS diff : préexistant) — `services/secureKeyStore.ts:252-253` : à la sauvegarde de clés,
+  `existing?.status === 'ok'` traite `decrypt_failed` (coffre corrompu → champs device-local
+  `fintable` NON préservés) exactement comme `empty` (rien à préserver), sans trace. Classe
+  `REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION` : `empty` est légitime, `decrypt_failed` mérite un
+  `logError`. Le `.catch(() => null)` externe est mort (la fonction encode l'erreur dans son
+  retour — `PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`). [VÉRIFIÉ dans le code par la revue]
 
 - [ ] **`[PROJ-TAXPAID-SOLDE-AVRIL]`** (S, MOYEN — revue du correctif 12×, 2026-08-20) —
   `totalTaxesPaid` (`services/projection.ts`, `+= fluxImpots`) ne somme QUE les règlements d'avril,

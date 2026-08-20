@@ -154,6 +154,11 @@ describe('[RQAP-CAP-98K] plafond de revenu assurable — source, index, immunit�
         processOneChild(makeChild(), 0, false, 2, ctxRiche({ m, expenseMultiplier: Math.pow(1.02, 20) }), sansGel.fn);
         processOneChild(makeChild(), 0, false, 2, ctxRiche({ m, expenseMultiplier: 1 }), avecGel.fn);
         expect(avecGel.vues[0]).toBeCloseTo(sansGel.vues[0], 6);
+        // ⚠️ PRÉCONDITION ASSERTÉE (revue) : sans elle, ce test passerait pour N'IMPORTE QUELLE
+        // implémentation le jour où la fixture change — si le salaire tombe SOUS le plafond, les
+        // deux appels rendent `annaGross × 0,55` et l'égalité devient vraie sans rien prouver.
+        // On vérifie donc que c'est bien le PLAFOND qu'on lit, pas le salaire.
+        expect(sansGel.vues[0]).toBeCloseTo(RQAP_MAX_INCOME * Math.pow(1.025, 20) * 0.55, 4);
     });
 
     it('un salaire SOUS le plafond n’est pas touché — le plafond ne mord que par le haut', () => {

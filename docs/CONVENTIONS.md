@@ -4571,3 +4571,41 @@ rouge à chaque refactor. La bonne réponse n'était ni « compter sans vérifie
 
 **La règle** : dans un document de dépôt, un numéro de ligne est une dette qui se paie au premier
 refactor, en silence. Nommer, ou compter — jamais pointer.
+
+### `ENTREE-D-INVENTAIRE-FANTOME` — le document affirmait comme vivant un défaut que je venais de fermer
+
+En important `RQAP_MAX_INCOME`, le littéral `98000` a disparu de `childrenReee.ts`. Son entrée dans
+`FISCAL_CONST_INVENTORY` est restée, à décrire le défaut au présent : *« recopié ici en dur … à
+remplacer par un import »*. Le seul `98000` survivant était dans un COMMENTAIRE, que `stripComments`
+efface avant le scan — donc **zéro occurrence réelle**.
+
+Aucune garde ne le voyait. L'inventaire vérifiait les modules orphelins (niveau FICHIER), les
+doublons de clé, les comptes d'occurrences — jamais l'**existence** de la valeur. Trouvé en revue,
+dans la PR qui l'a créé.
+
+**Pourquoi c'est structurel et pas une étourderie.** L'en-tête du fichier dit que cet inventaire est
+censé **DÉCROÎTRE** : chaque entrée `fiscal` est une dette qui disparaît le jour où la constante est
+ancrée et importée. Une entrée à zéro occurrence est donc exactement le signal *« c'est réglé,
+supprime-moi »* — et c'est le seul moment de sa vie où il faut agir. La laisser transforme un
+constat daté en **affirmation fausse sur le code de production**, dans le document qui sert de tri
+fiscal. La classe est la même que celle que le lot précédent prétendait clore : une entrée crédible,
+longue, motivée — et fausse.
+
+**La garde** : chaque entrée doit correspondre à au moins un littéral réellement relevé.
+
+```ts
+const hits = findFiscalConstants(readFileSync(resolve(root, e.file), 'utf-8'))
+    .filter((h) => h.value === e.value);
+if (hits.length === 0) fantomes.push(`${e.file}::${e.value}`);
+```
+
+**La règle générale** : tout registre censé DÉCROÎTRE (inventaire de dette, liste d'exemptions,
+allowlist de suppressions) a besoin d'une garde sur l'**obsolescence de ses entrées**, pas seulement
+sur leur forme. Sans elle il ne décroît jamais — il accumule des constats périmés qui se lisent
+comme des faits. Et cette garde est presque toujours à trois lignes : on possède déjà l'outil qui
+dit si l'entrée a encore un objet.
+
+⚠️ Corollaire vécu dans le même lot : la revue a aussi trouvé une raison qui affirmait *« ni le taux
+ni le choix de la phase ne sont dans FISCAL_REFERENCE »* — devenue fausse **par le commit qui la
+laissait en place**, puisque ce même commit ajoutait la section §2. Quand une PR ancre une valeur,
+grep l'inventaire pour toutes les raisons qui parlent de son absence.

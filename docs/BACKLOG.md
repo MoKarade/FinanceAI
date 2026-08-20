@@ -894,6 +894,37 @@
   achète en l'ajoutant. **Décider** : l'inclure (31 clés à trier) ou acter l'exclusion dans
   `decisions.md`.
 
+- [ ] **`[RQAP-PRESTATION-COTISATIONS]`** (S, **ÉLEVÉ** — découvert en revue de `[RQAP-CAP-98K]`) —
+  la prestation de congé parental se fait prélever **RRQ + AE + RQAP**. `childrenReee.ts` appelle
+  `calculateFiscalReport(base, 0, 0, loopYear, enableMonteCarlo)` sans le paramètre
+  `employmentIncome` ; `utils/tax.ts` retombe alors sur `grossIncome` (« absent → grossIncome »), et
+  la prestation devient une **assiette d'EMPLOI**. **MESURÉ** sur `103 000 × 0,55 = 56 650 $` :
+  net **42 366,76 $** contre **46 695,26 $** avec `employmentIncome: 0` → **4 328,50 $/an de
+  cotisations fantômes**. C'est **1,57×** le gain de 2 750 $/an que `[RQAP-CAP-98K]` vient de
+  restaurer — le plafond est corrigé et l'erreur voisine, plus grosse, reste.
+  ⚠️ **Correctif à NE PAS appliquer sans source** : « une prestation du RQAP n'est pas un revenu de
+  travail, donc ni RRQ ni AE ni cotisation RQAP » est une règle à **ancrer d'abord dans
+  FISCAL_REFERENCE §2 avec sa référence Revenu Québec**. Le code suit ensuite (`, undefined, 0`).
+  Même famille que `[AE-PLAFOND-MANQUANT]`. [MESURÉ]
+
+- [ ] **`[FISC-GUARD-TERNAIRE]`** (S, MOYEN — découvert en revue de `[RQAP-CAP-98K]`) — le filtre de
+  position de `findFiscalConstants` exige un opérateur avant (`[*/+\-<>=]`, `||`, `??`) ou après
+  (`*`, `/`) : **un littéral en branche de ternaire est invisible**. Vérifié :
+  `retirementIncome.ts` `survivorPsvFactor = survivorMode ? 0.5 : 1` n'est pas relevé, alors que
+  c'est un facteur de rente au survivant. Conséquence : la promesse de la marque `[×N]`/`[≠N]`
+  (« N ne bouge que si une occurrence apparaît ou disparaît ») est **fausse pour les ternaires** —
+  supprimer ce facteur ne ferait bouger aucun compte. **Correctif** : ajouter `?`/`:` au filtre —
+  ⚠️ **mesurer les nouveaux offenders AVANT** (règle « resserrer le scan avant le fix » : sur 20
+  modules, l'élargissement peut être large).
+
+- [ ] **`[RQAP-INDEX-SOURCE]`** (XS, FAIBLE — découvert en revue de `[RQAP-CAP-98K]`) — la phrase
+  « le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne au Québec » justifie le
+  choix d'index dans le code ET dans `FISCAL_REFERENCE.md` §2, **sans aucune citation** (pas
+  d'article de la Loi sur l'assurance parentale). C'est le rationnel d'une hypothèse, pas une
+  source — or il vit dans la source de vérité, où il hérite de son autorité. **Correctif** : citer,
+  ou requalifier explicitement en hypothèse. (Le caractère « hypothèse » est déjà écrit ; il reste à
+  sourcer ou à retirer l'affirmation juridique.)
+
 - [ ] **`[RQAP-PHASES-70-55]`** (M, MOYEN — sorti de `[RQAP-CAP-98K]`, décision PRODUIT) — le moteur
   applique **55 % plat** sur les 12 mois de congé parental. Le régime de BASE du RQAP verse en
   réalité **70 %** pendant la maternité/paternité et le début du parental, puis 55 % — donc le début

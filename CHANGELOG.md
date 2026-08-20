@@ -14,8 +14,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - ⚠️ **Plus étrange, et corrigé aussi** : ce plafond suivait l'inflation de TES DÉPENSES. Or cette
   inflation-là est gelée par la stratégie de décaissement Guyton-Klinger — donc une règle de
   portefeuille pouvait faire baisser un plafond décidé par le gouvernement. Mesuré à 20 ans : l'écart
-  atteignait 26 192 $. Le plafond suit maintenant la croissance des salaires, comme le maximum de la
-  RRQ.
+  atteignait 26 192 $. Le plafond suit maintenant l'inflation + 0,5 pp/an — le proxy de croissance
+  salariale que l'app utilise déjà pour le maximum de la RRQ.
 - **Ce qui n'a PAS changé, et qu'il faut savoir** : le taux de remplacement reste à 55 % sur les
   12 mois, alors que le vrai régime verse 70 % au début du congé. L'app sous-estime donc encore le
   début. Le corriger demande de savoir quel régime tu as choisi — une question que l'app ne pose pas

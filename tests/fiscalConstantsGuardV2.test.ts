@@ -76,6 +76,29 @@ describe('[FISC-CONST-GUARD-V2] intégrité de l’inventaire', () => {
         expect([...new Set(orphans)]).toEqual([]);
     });
 
+    it('aucune entrée FANTÔME : chaque clé correspond à un littéral qui existe VRAIMENT', () => {
+        // ⚠️ Trouvé en revue de `[RQAP-CAP-98K]` (2026-08-20). En important `RQAP_MAX_INCOME`, le
+        // littéral `98000` a disparu de `childrenReee.ts` — mais son entrée d'inventaire est restée,
+        // à décrire comme VIVANT (« à remplacer par un import ») un défaut que la PR venait de
+        // fermer. Le seul `98000` restant était dans un COMMENTAIRE, que `stripComments` efface.
+        //
+        // Aucune garde ne le voyait : l'inventaire vérifiait les modules orphelins (niveau FICHIER),
+        // les doublons de clé et les comptes — jamais l'EXISTENCE de la valeur. Or le sens de ce
+        // fichier est de DÉCROÎTRE à mesure que les constantes sont ancrées et importées ; une
+        // entrée à zéro occurrence est exactement le signal « c'est réglé, supprime-moi », et le
+        // laisser passer transforme un constat daté en affirmation fausse sur le code de prod.
+        const fantomes: string[] = [];
+        for (const e of FISCAL_CONST_INVENTORY) {
+            const hits = findFiscalConstants(readFileSync(resolve(root, e.file), 'utf-8'))
+                .filter((h) => h.value === e.value);
+            if (hits.length === 0) fantomes.push(`${e.file}::${e.value}`);
+        }
+        expect(
+            fantomes,
+            `Entrée(s) sans littéral correspondant — le défaut est RÉGLÉ, supprime l’entrée :\n${fantomes.join('\n')}`,
+        ).toEqual([]);
+    });
+
     it('une clé qui recouvre PLUSIEURS occurrences le DÉCLARE, et le compte est JUSTE', () => {
         // ⚠️ [FISC-GUARD-SCOPE] L'index est (fichier, valeur), PAS la ligne — un numéro de ligne
         // dérive au premier refactor. Le prix : dans `childrenReee.ts`, `0.20` est À LA FOIS le taux

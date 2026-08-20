@@ -1,7 +1,7 @@
 # FinanceAI — CLAUDE.md
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 481 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 482 tests** Vitest
 (403 fichiers de test, mesuré le 2026-08-20). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -328,6 +328,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   en DÉCLARATION *et* en usage : ancrer le motif sur l'USAGE, et perturber CHAQUE assertion du scan
   séparément (`SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE`).
 - Resserrer un scan-garde **AVANT** de coder le fix : les offenders révélés = le vrai périmètre.
+- Tout registre censé **DÉCROÎTRE** (inventaire de dette, exemptions, allowlist) a besoin d'une garde
+  sur l'**obsolescence de ses entrées**, pas seulement sur leur forme : l'entrée `childrenReee::98000`
+  a survécu au commit qui SUPPRIMAIT le littéral, continuant d'affirmer le défaut au présent dans le
+  document qui sert de tri fiscal. Sans cette garde il n'y a pas de décroissance, juste des constats
+  périmés qui se lisent comme des faits — et elle tient en trois lignes, l'outil qui dit si l'entrée a
+  encore un objet existe déjà. Quand une PR ANCRE une valeur, grep aussi toutes les raisons qui
+  parlaient de son absence (`ENTREE-D-INVENTAIRE-FANTOME`).
 - Dans un document de dépôt, un **numéro de ligne est une dette** qui se paie au premier refactor, en
   silence. Vouloir VÉRIFIER mes `L<n>` a sorti 16 entrées fausses — dont une partie n'était fausse
   que parce que mes propres éditions avaient décalé le fichier : vérifier revenait à réintroduire

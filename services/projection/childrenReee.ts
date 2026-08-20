@@ -70,6 +70,20 @@ const RQAP_REPLACEMENT_RATE_BASE = 0.55;
  * Le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne au Québec — la même nature
  * que le MGA de la RRQ, que ce dépôt projette DÉJÀ à `inflation + 0,5 %/an`
  * (`retirementIncome.ts`, FISCAL_REFERENCE §6). On réutilise ce patron plutôt que d'en inventer un.
+ *
+ * ⚠️ DEUX INDEX DIFFÉRENTS SUR LA MÊME BOUCLE, ET C'EST VOULU — ne pas « harmoniser ».
+ * `annaGrossAnnual` juste au-dessus est indexé par `simSalaryGrowth`, pas par ce facteur-ci. C'est
+ * OBLIGATOIRE : ce salaire est RETIRÉ du brut imposable par `accGrossDelta -= annaGrossMonthly`, et
+ * il doit donc valoir exactement ce qu'`activeIncome.ts` avait crédité (même base, même exposant).
+ * L'indexer autrement fabriquerait ou détruirait du brut à chaque mois de congé.
+ * Le précédent B-AUDIT-4 (`retirementIncome.ts`) indexe salaire ET MGA par le MÊME facteur pour
+ * une raison qui ne vaut PAS ici : la RRQ dépend d'un ratio gains/MGA moyen de CARRIÈRE, qu'on gèle
+ * délibérément. Le RQAP, lui, compare le revenu assurable de l'ANNÉE au plafond de cette année-là.
+ *
+ * ⚠️ Le +0,5 pp est une HYPOTHÈSE calibrée SOUS l'indexation observée, pas une valeur sourcée : les
+ * seuls points du dépôt donnent RQAP 98 000 → 103 000 $ (+5,10 %) et MGA 71 300 → 74 600 $
+ * (+4,63 %), contre 2,5 %/an modélisé. Le biais est CONSERVATEUR (le plafond mord plus tôt, donc la
+ * prestation est sous-estimée avec l'horizon) et hérité du patron MGA. Écart chiffré en §2.
  */
 const rqapCapProjected = (simInflation: number, yearsElapsed: number): number =>
     RQAP_MAX_INCOME * Math.pow(1 + (simInflation + 0.5) / 100, yearsElapsed);

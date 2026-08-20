@@ -36,6 +36,19 @@
 > ça PROUVE qu'aucune fixture ne combine « enfant < 12 mois » et « 2e parent au-dessus du plafond ».
 > Trou de couverture d'intégration → `[GOLDEN-RQAP-NON-COUVERT]`.
 >
+> ⚠️⚠️ **LA REVUE A TROUVÉ PLUS GROS QUE LE TICKET.** `[RQAP-PRESTATION-COTISATIONS]` (ÉLEVÉ) : la
+> prestation de congé parental se fait prélever RRQ + AE + RQAP, parce que l'appel à
+> `calculateFiscalReport` omet `employmentIncome` et que le défaut retombe sur `grossIncome`.
+> **MESURÉ : 4 328,50 $/an de cotisations fantômes — 1,57× le gain de 2 750 $ que ce lot restaure.**
+> NON corrigé ici : la règle « une prestation n'est pas un revenu de travail » doit être ANCRÉE avec
+> sa source Revenu Québec avant de déplacer de l'argent.
+>
+> ⚠️ Elle a aussi trouvé une **entrée d'inventaire FANTÔME** : `childrenReee::98000` a survécu au
+> commit qui supprimait le littéral, continuant d'affirmer le défaut au présent. Garde ajoutée
+> (« chaque entrée correspond à un littéral qui existe »), prouvée discriminante
+> (`ENTREE-D-INVENTAIRE-FANTOME`). Et un **angle mort de l'extracteur** : un littéral en branche de
+> TERNAIRE est invisible → `[FISC-GUARD-TERNAIRE]`.
+>
 > **SUITE — vague 1f, reste 3** : `[W5-PROXY-NON-SOURCE]`, `[ESTATE-NPV-07]`, `[MIGRATE-GROSS-135]`.
 > ⚠️ **`[AE-PLAFOND-MANQUANT]` (ÉLEVÉ) est probablement prioritaire sur les trois** — juger sur
 > l'impact mesuré, pas sur l'ordre du plan.

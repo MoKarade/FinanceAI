@@ -106,7 +106,7 @@
   d'études → dormant, actif seulement s'il ajoute un enfant ; confirmé contre le code —
   `childrenReee.ts:327` verse 100 % du solde, les trackers SCEE/IQEE existent mais ne sont jamais
   décrémentés → modélisation en 3 poches nécessaire, plan-first) + `[FISC-TAXDEC-INCR]`
-  (⚠️ reste À CONFIRMER avec Marc, cf A_FAIRE_MOI — ne pas coder sans go).
+  (✅ **GO Marc 2026-08-20, A2 : « code le »** — plan-first + re-base goldens assumé, risque $ élevé).
 - [ ] **V7 — Sécurité serveur + sync** — **2/4 livrés** (PR #566) :
   ✅ `[FINTABLE-SYNC-STALE-BASE]` + ✅ `[MCP-CLOUDRUN-AUTH-HARDENING]` (archivés).
   ✅ `[MCP-CHARTDATA-SUM-GUARD]` (#567) + ✅ `[FISC-CONST-GUARD-V2]` (#568). **V7 TERMINÉE (4/4).**
@@ -206,7 +206,8 @@
   **Mesuré +13 726 $** de patrimoine final si corrigé. Le proxy bloque `canada.ca` → NE PAS
   modifier sans avoir vu le règlement 7308(4). Corriger aussi `FISCAL_REFERENCE.md:467` et
   `tests/services/projection.helpers.test.ts:80` dans le même lot.
-- [ ] **`[FISC-RRSP-ROOM-PER-USER]`** (M, ⚠️ GATÉ décision Marc — `A_FAIRE_MOI`) — les droits REER
+- [ ] **`[FISC-RRSP-ROOM-PER-USER]`**
+  ✅ **DÉBLOQUÉ 2026-08-20 (réponses Marc, ADR « Sept décisions »)** — décision : **par personne** (règle ARC). GO avec plan + mesure avant/après. (M, ⚠️ GATÉ décision Marc — `A_FAIRE_MOI`) — les droits REER
   sont calculés sur le revenu du MÉNAGE (`taxJanuary.ts:165`) alors que la règle ARC est PAR
   PERSONNE. **Mesuré : 45 000 $ accordés vs 34 480 $ dus** sur un ménage à 250 k$ avec un seul
   gagnant (+10 520 $/an de droits fantômes) → déduction REER surestimée, REER surdimensionné en
@@ -335,14 +336,17 @@
   **−648,66 $/an** à 45 k$ de revenu de base, **−675,56 $/an** à 60 k$, −146,89 $ à 100 k$.
   ⚠️ Non introduit par #564 (identique sur origin/main). Fix : passer `ageOpts` aux deux bornes —
   attention, ça re-basera des goldens retraités (mesurer avant).
-- [ ] **`[FISC-PENSION-CREDIT-REAL]`** (S, MOYEN [Certain, mesuré — panel #556], GO Marc requis :
+- [ ] **`[FISC-PENSION-CREDIT-REAL]`**
+  ✅ **DÉBLOQUÉ 2026-08-20 (réponses Marc, ADR « Sept décisions »)** — GO. Re-base des goldens retraités assumé. (S, MOYEN [Certain, mesuré — panel #556], GO Marc requis :
   re-base de goldens retraités) — le crédit pension fédéral 2 000 $ est GELÉ nominalement
   (FISCAL_REFERENCE:178) mais traité à plat en espace RÉEL (`utils/tax.ts` l.249) → il vaut de
   facto 2 000 $ réels constants au lieu de `2 000/(1+i)^Δ`. Unique terme non homogène du barème
   réel (sweep 1 920 cas : zéro autre écart). Sous-imposition ≤ 250,50 $ réels/pers/an (couple 65+
   avec pension admissible : ~12 k$ réels sur 30 ans, sens NON conservateur). Fix connu :
   `Math.min(PENSION_INCOME_AMOUNT_FED / realDeflator, pension)` + note FISCAL_REFERENCE.
-- [ ] **`[FISC-BRACKET-CPI-STRESS]`** (M, décision de MODÈLE [À vérifier avec Marc] — panel #556) —
+- [x] **`[FISC-BRACKET-CPI-STRESS]`** — ✅ FERMÉ SANS CODE 2026-08-20 (réponse Marc A7 : **« conservateur »**,
+  statu quo ADR 009 confirmé — les scénarios de stress surestiment l'impôt et c'est ASSUMÉ). → archive à la prochaine PR.
+  Détail historique du finding (panel #556) —
   post-fix, à `i ≠ 2 %` le barème érode en réel à `(1,02/(1+i))^Δ` alors que l'ARC/RQ indexent au
   CPI réel, et que PSV (seuil clawback ×(1+i)^Δ) et SRG (gelé en $ réels) sont indexés pleinement →
   les scénarios de STRESS surestiment l'impôt (mesuré : ttp +106 % à i = 8 %, +76 % à 5,5 %).
@@ -367,7 +371,8 @@
   compteur (poids 0,25) : pinner l'ORDRE complet (objectifs `tax` et `balanced`) sur une fixture de
   référence, pas seulement la paire MELT/AUTO. Le validator a MESURÉ le nouvel ordre post-fix
   (balanced : MELTDOWN > PRIO_REER > AUTO sur retraité 62) — c'est LA baseline à pinner.
-- [ ] **`[ENG-RANKTAX-ESTATE]`** (M, MOYEN [Certain, mesuré ×3,6] — panel #554, PRÉ-EXISTANT
+- [ ] **`[ENG-RANKTAX-ESTATE]`**
+  ✅ **DÉBLOQUÉ 2026-08-20 (réponses Marc, ADR « Sept décisions »)** — décision : **TOUT** — l'impôt successoral entre dans « impôt minimum ». (M, MOYEN [Certain, mesuré ×3,6] — panel #554, PRÉ-EXISTANT
   amplifié) — l'objectif « impôt » de `rankStrategies` ne score QUE `totalTaxesPaid` :
   `totalEstateTax` n'entre nulle part → « impôt minimum » récompense le REPORT (mesuré : PRIO_CELI
   classé 1er avec ttp −189 849 $ + estateTax 1 299 510 $ = 3,6× l'impôt TOTAL de MELTDOWN).
@@ -409,7 +414,8 @@
 > Findings panel #552 (financial-integrity MESURÉ + silent-failure + code-reviewer, 2026-07-31) —
 > les corrigés dans #552 même sont dans l'archive au merge ; ici le RESTE à faire :
 
-- [ ] **`[ENG-PAST-OWNED-VS-PLANNED]`** (M, ÉLEVÉ [Certain, mesuré] — panel #552) — `RealEstateGoal`
+- [ ] **`[ENG-PAST-OWNED-VS-PLANNED]`**
+  ✅ **DÉBLOQUÉ 2026-08-20 (réponses Marc, ADR « Sept décisions »)** — OUI au champ « déjà détenu » + à la date planifiée, POPUP « est-ce acheté ? ». (M, ÉLEVÉ [Certain, mesuré] — panel #552) — `RealEstateGoal`
   n'a AUCUN discriminant « bien DÉTENU » vs « objectif planifié non réalisé » : un objectif saisi
   pour 2024 jamais mis à jour injecte +156 628 $ d'équité et +307 081 $ de dette FANTÔMES au m0
   (`purchaseOffset < 0` suffit depuis V2'). Mitigé dans #552 par un log lifeEvents visible au m0 ;
@@ -452,11 +458,11 @@
   cumulé 330 353 $ vs `RetraitREER` sur 301 mois) ; les deux séries cohabitent dans
   `ProjectionExplains.tsx:41`. Aligner (ou documenter la sémantique « transferts de la cascade
   seulement » à l'écran).
-- [ ] **`[UX-ISACTIVE-SEMANTIQUE]`** (S, **décision Marc** — panel #552) — un bien créé dans
-  l'onglet Immobilier naît `isActive: false` (« Activer dans Simulation ») → il ne compte NI au
-  KPI Accueil NI au moteur tant qu'on ne l'active pas. Cohérent (mêmes conventions partout) mais
-  piégeux : ta maison saisie sans clic « Activer » = patrimoine amputé de l'équité. Trancher :
-  activer par défaut à la création ? Badge « non comptée » sur le KPI ?
+- [ ] **`[UX-ISACTIVE-BADGE]`** (XS — reformulé depuis `[UX-ISACTIVE-SEMANTIQUE]`, TRANCHÉ par Marc
+  2026-08-20, A5) — décision : **on ATTEND le clic « Activer »** (« pareil pour enfant ») ; le défaut
+  `isActive: false` est VOULU, ne pas le « corriger ». Reste le volet CLARTÉ : un badge « non comptée
+  dans la simulation » sur le bien (et l'enfant) inactif, pour que l'amputation du patrimoine soit
+  VISIBLE au lieu de silencieuse. Cf. ADR « Sept décisions » (2026-08-20).
 
 ## 🏦 Sync & données (Fintable, Drive, persistance)
 
@@ -898,7 +904,8 @@
   `lifeExpectancy` » — ce qui est précisément ce qui masque le no-op. Un utilisateur qui règle son
   espérance de vie à 90 voit toujours 95 ans de rentes valorisés. ⚠️ Re-baserait des goldens.
 
-- [ ] **`[AE-PLAFOND-MANQUANT]`** (S, **ÉLEVÉ** — découvert en revue de `[FISC-GUARD-SCOPE]`) —
+- [ ] **`[AE-PLAFOND-MANQUANT]`**
+  ✅ **DÉBLOQUÉ 2026-08-20 (réponses Marc, ADR « Sept décisions »)** — règle sourcée §2 : base = revenus de travail uniquement ; prestations AE imposables ; remboursement 30 % > 86 125 $ (régulières seulement). (S, **ÉLEVÉ** — découvert en revue de `[FISC-GUARD-SCOPE]`) —
   `services/projection/activeIncome.ts:70` applique le taux de remplacement de l'assurance-emploi
   (`incomeMarc *= 0.55`, commentaire du code : « Job loss (AE 55%) ») **au salaire NET et SANS
   PLAFOND**. Deux erreurs superposées : (a) le 55 % statutaire porte sur les gains assurables
@@ -999,7 +1006,8 @@
   ⚠️ **Risque** : écraser un brut que l'utilisateur a SAISI et qui coïnciderait avec 1,35 × net.
   Décision produit à poser à Marc avant de coder. [Structure VÉRIFIÉE dans le code]
 
-- [ ] **`[RQAP-PRESTATION-COTISATIONS]`** (S, **ÉLEVÉ** — découvert en revue de `[RQAP-CAP-98K]`) —
+- [ ] **`[RQAP-PRESTATION-COTISATIONS]`**
+  ✅ **DÉBLOQUÉ 2026-08-20 (réponses Marc, ADR « Sept décisions »)** — règle sourcée transcrite (`FISCAL_REFERENCE.md` §2) : prestations hors assiette de cotisation, imposables. (S, **ÉLEVÉ** — découvert en revue de `[RQAP-CAP-98K]`) —
   la prestation de congé parental se fait prélever **RRQ + AE + RQAP**. `childrenReee.ts` appelle
   `calculateFiscalReport(base, 0, 0, loopYear, enableMonteCarlo)` sans le paramètre
   `employmentIncome` ; `utils/tax.ts` retombe alors sur `grossIncome` (« absent → grossIncome »), et
@@ -1036,13 +1044,40 @@
   money-critical sans couverture d'INTÉGRATION : mes tests unitaires visent `processOneChild` en
   isolation, ce qui ne prouve rien sur la chaîne (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`).
   **Correctif** : une fixture golden avec cette configuration.
-- [ ] **`[W5-PROXY-NON-SOURCE]`** (XS, MOYEN) — les proxys d'impôt plats `0,45` (NOI locatif) et
-  `0,36` (dividende CCPC) sont toujours absents de `FISCAL_REFERENCE.md`
-  (`services/projection/w5Effects.ts:127,141`), alors que la décision Marc **cochée close**
-  (`docs/A_FAIRE_MOI.md:422`) exigeait de les y documenter avec leur source. **Écart mesuré vs impôt
-  incrémental réel sur 30 k$ de NOI : +2 665 $/an à 60 k$ de revenu, +1 004 $ à 100 k$, −2 208 $ à
-  250 k$** — donc **non conservateur aux hauts revenus**. L'item était coché alors que la moitié du
-  livrable manquait (classe `PM-STALE-BACKLOG`). [MESURÉ]
+- [ ] **`[PROJ-TAXPAID-SOLDE-AVRIL]`** (S, MOYEN — revue du correctif 12×, 2026-08-20) —
+  `totalTaxesPaid` (`services/projection.ts`, `+= fluxImpots`) ne somme QUE les règlements d'avril,
+  et l'avril actif vaut `totalAnnualTax − estimatedWithholding` — donc **négatif structurel** dès
+  qu'il y a des déductions REER/CELIAPP (mesuré −126 094 $ sur un témoin sans W5) : la retenue
+  salariale, incorporée au `netSalary` saisi, ne transite jamais par `fluxImpots`. Nom trompeur
+  (`UN-NOM-TROMPEUR-FABRIQUE-DES-FAUX-FINDINGS`). Pas affiché à l'écran, MAIS pilote
+  `strategyRanking.ts` (`lifetimeTax`), `drawdownOptimizer` et `strategySearch` — un objectif
+  « impôt minimum » assis sur un solde d'avril. ⚠️ Se coordonne avec `[ENG-RANKTAX-ESTATE]`
+  (décision Marc A4 : impôt TOTAL, successoral inclus) : même refonte de la grandeur. [MESURÉ]
+
+- [ ] **`[W5-RENTAL-INTERET-DPA]`** (S, FAIBLE→MOYEN depuis le fix 12× — revue 2026-08-20) —
+  le forfait imposant désormais 12× plus, deux déductions non modélisées deviennent matérielles :
+  les **intérêts hypothécaires** du locatif (le service de dette sort en dépense mais le NOI est
+  imposé BRUT à 45 %) et la **DPA** — `ccaTaken` est une SAISIE (`PatrimoineExtended.tsx`) que
+  AUCUN module moteur ne lit (grep : un seul commentaire). Sens conservateur (sur-imposition d'un
+  bailleur levieré) mais un champ de saisie sans effet est un mensonge d'UI. [À vérifier l'ampleur]
+
+- [ ] **`[W5-DOUBLE-SAISIE-LOCATIF]`** (XS, FAIBLE — revue 2026-08-20) — rien n'empêche de saisir
+  le MÊME immeuble comme `realEstateGoal` avec `rentalIncomeMonthly` (imposé via `accRentesYear` en
+  décembre) ET comme `rentalProperty` W5 (imposé par le forfait) → double comptage du revenu et
+  double imposition par deux mécanismes distincts. Garde de saisie ou note UX. [À vérifier]
+
+- [ ] **`[W5-DIVIDENDE-PROXY-VS-MOTEUR]`** (S, MOYEN — découvert en livrant `[W5-PROXY-NON-SOURCE]`,
+  PR #673) — `services/projection/w5Effects.ts` impose le dividende CCPC à un forfait de 36 %, alors
+  que **le dépôt sait déjà le calculer exactement** : `utils/tax.ts` `calculateDividendTax` applique
+  la majoration (38 % déterminé / 15 % ordinaire) et les deux crédits d'impôt pour dividende, dans
+  le bon ordre vis-à-vis de l'abattement québécois. C'est le cas d'école « grep le moteur : s'il
+  l'émet déjà, le CONSOMMER ». **MESURÉ** sur 30 k$ de dividende, barème 2026 : le forfait ne vaut
+  que pour un dividende **ORDINAIRE à ~100 k$** de revenu (36,04 %) ; il sur-impose un dividende
+  **DÉTERMINÉ** de **+7 606 $/an** à 40 k$ de revenu et **+2 969 $** à 100 k$, et sous-impose un
+  actionnaire à 250 k$ de **−3 526 $/an**. ⚠️ Bloquant produit : `PrivateBusiness` ne porte pas le
+  TYPE de dividende — il faut d'abord ajouter le champ (déterminé / ordinaire), donc c'est un lot
+  avec une décision Marc, pas un remplacement mécanique. ⚠️ Re-baserait des goldens. [MESURÉ]
+
 - [ ] **`[ENV-NODE-NON-DECLARE]`** (XS, MOYEN) — aucun `engines` dans `package.json`, aucun `.nvmrc` :
   la seule déclaration de la version visée est `node-version: '20'`, répété dans **4 workflows**
   (`ci.yml` ×2, `lighthouse.yml`, `refresh-screenshots.yml`). Le conteneur de dev tourne sur Node

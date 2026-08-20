@@ -4,7 +4,7 @@ Une décision par fichier, `NNNN-slug.md`, numérotées dans l'ordre chronologiq
 commune aux huit dépôts du hub
 ([`conventions/STRUCTURE-DEPOT.md`](https://github.com/MoKarade/claude-config/blob/main/conventions/STRUCTURE-DEPOT.md)).
 
-Jusqu'au 2026-08-20, ces treize décisions vivaient empilées dans un `docs/adr/` unique,
+Jusqu'au 2026-08-20, ces décisions vivaient empilées dans un `docs/adr/` unique,
 dans le désordre chronologique (l'ADR-001 arrivait en quatrième position). Le fichier a été
 découpé sans qu'une ligne soit réécrite : chaque bloc `##` est devenu un fichier, son titre est
 passé en `#`, et rien d'autre n'a bougé. Les numéros `ADR-001` et `ADR-002` d'origine sont
@@ -25,6 +25,8 @@ conservés en 0001 et 0002.
 | [`0011-modele-du-divorce-dans-la-projection.md`](0011-modele-du-divorce-dans-la-projection.md) | ADR — Modèle du DIVORCE dans le moteur de projection (2026-08-13) |
 | [`0012-quatre-decisions-de-marc-2026-08-17.md`](0012-quatre-decisions-de-marc-2026-08-17.md) | ADR — Quatre décisions de Marc (2026-08-17) |
 | [`0013-mode-discret-categories-masquees.md`](0013-mode-discret-categories-masquees.md) | ADR — Mode discret : les CATÉGORIES sont masquées aussi (2026-08-18) |
+| [`0014-sept-decisions-de-cadrage-2026-08-20.md`](0014-sept-decisions-de-cadrage-2026-08-20.md) | ADR — Sept décisions de cadrage en lot (Marc, 2026-08-20) |
+| [`0015-prestations-rqap-ae-rrq-hors-assiette.md`](0015-prestations-rqap-ae-rrq-hors-assiette.md) | ADR — Prestations RQAP/AE/RRQ : hors assiette de cotisation, imposables (Marc, 2026-08-20) |
 
 Une nouvelle décision prend le numéro suivant. Elle ne se réécrit pas après coup : une ADR est
 un **récit daté**, et une mise à jour s'y ajoute en section datée (voir 0010, qui en porte cinq).

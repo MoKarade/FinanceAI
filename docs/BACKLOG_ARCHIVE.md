@@ -10,6 +10,70 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-20 — Vague 1f (5/5) : les deux derniers forfaits fiscaux non sourcés
+
+- [x] **`[W5-PROXY-NON-SOURCE]`** (XS) — ✅ 2026-08-20, PR #673.
+
+> Décision Marc `[W5-TAX-PROXY]` (close, mais à moitié livrée — classe `PM-STALE-BACKLOG`) :
+> **(a) garder les proxys plats**, les documenter comme estimation de taux marginal QC, et ajouter
+> une mention UI. Le ticket demandait « nommer ou retirer » : ils sont désormais **nommés, exportés,
+> documentés et annoncés à l'utilisateur**.
+
+**Ce que valent vraiment les deux forfaits** — MESURÉ sur 30 k$ de flux, barème 2026 :
+
+| revenu du ménage | locatif : marginal RÉEL | écart du 45 % | dividende ORDINAIRE | dividende DÉTERMINÉ |
+|---|---|---|---|---|
+| 40 000 $ | 30,38 % | +4 387 $/an | 23,19 % | 10,65 % |
+| 60 000 $ | 36,12 % | +2 665 $/an | 28,93 % | 16,39 % |
+| 100 000 $ | 41,65 % | +1 004 $/an | **36,04 %** | 26,10 % |
+| 150 000 $ | 47,46 % | **−738 $/an** | 42,23 % | 32,87 % |
+| 250 000 $ | 52,36 % | −2 208 $/an | 47,75 % | 39,16 % |
+
+Le forfait locatif **change de signe vers ~125-140 k$ selon le NOI** (121 272 $ à 5 k$ de NOI,
+139 603 $ à 30 k$ — la revue a réfuté mon « 145 k$ » écrit de tête) : conservateur en dessous, non
+conservateur au-dessus. Le forfait dividende ne vaut que pour un dividende **ordinaire à ~100 k$**,
+et à personne d'autre.
+
+⚠️ **Une affirmation que j'allais publier était fausse, et la mesure l'a arrêtée.** Mon premier jet
+de l'entrée doc écrivait « 0,36 est proche du taux marginal SUPÉRIEUR d'un dividende déterminé ».
+Ce taux vaut **39,16 %** à 250 k$ de revenu : 0,36 est un taux de MILIEU de barème pour un dividende
+ORDINAIRE. Écrire un chiffre fiscal sans le mesurer, c'est fabriquer la source qu'on prétend citer.
+
+⚠️ **Découverte routée** : `[W5-DIVIDENDE-PROXY-VS-MOTEUR]` — le dépôt sait déjà calculer ce taux
+exactement (`utils/tax.ts` `calculateDividendTax`, majoration + les deux CID, dans le bon ordre
+vis-à-vis de l'abattement). Le forfait ignore une source unique existante. Bloquant produit :
+`PrivateBusiness` ne porte pas le TYPE de dividende — il faut d'abord ajouter le champ.
+
+**Garde de concordance à TROIS sites** (`tests/services/w5TaxProxyAnchor.test.ts`) : les taux sont
+exportés depuis le moteur, la doc doit les porter, l'écran doit les AFFICHER en les important — et
+aucun littéral `45 %`/`36 %` n'est toléré dans le composant. La garde IMPORTE les constantes au lieu
+de les recopier (`UN-OUTIL-GARDE-A-VALEURS-RECODEES`). Cinq perturbations, cinq rouges — dont une
+qui a attrapé un « 45 % » dans **mon propre commentaire JSX** : un commentaire qui porte le chiffre
+dérive comme le reste, il a été réécrit sans lui plutôt que d'assouplir la garde.
+
+### ⚠️⚠️ La garde COMPORTEMENTALE a découvert que le forfait n'était PAS appliqué — 12× trop bas
+
+En fermant le trou « échanger les deux constantes laissait tout vert » (finding de revue), j'ai écrit
+l'assertion `taxDivers === noi_mensuel × 0,45` — et elle a ROUGI sur le moteur : le code faisait
+`(noi_mensuel × 0,45) / 12`, alors que `addTaxDivers` alimente un accumulateur ANNUEL à raison d'un
+versement PAR MOIS. Le taux effectivement prélevé était **3,75 %** (locatif) et **3 %** (dividende)
+— pendant que la décision Marc, la doc toute neuve et l'écran annonçaient 45 et 36.
+
+MESURÉ bout en bout : 1 125 $/an collectés sur 30 000 $ de NOI au lieu de 13 500 $. Sur un ménage
+duplex + CCPC (60 k$ de dividende) à 30 ans : patrimoine successoral **8 141 254 → 6 736 381 $
+(−1 404 873 $, −17 %)**. Le bug gonflait le patrimoine de tout bailleur/actionnaire depuis
+l'introduction des conteneurs W5 ; AUCUN test ne le voyait parce qu'aucun ne fixait la VALEUR de ces
+impôts (`taxDivers > 0` seulement) et qu'aucun golden ne porte de locatif/CCPC.
+
+Trois leçons d'un coup : (1) **un scan de texte prouve des jetons, seul le COMPORTEMENT prouve le
+câblage** — la garde comportementale a trouvé en une assertion ce que six passes de texte n'ont pas
+vu ; (2) le défaut d'unité venait de la ligne VOISINE (`noi / 12` quatre lignes plus haut) — encore
+un recopiage de voisin ; (3) « documenter un forfait » n'est fini qu'après avoir VÉRIFIÉ que le
+moteur l'applique — sinon on ancre dans la source de vérité un taux que personne ne prélève.
+
+**Bundle de boot vérifié** (l'écran importe désormais du moteur) : 9 `modulepreload` et 3,2 Mo
+d'assets avant comme après, build PROPRE des deux côtés.
+
 ## 2026-08-20 — Vague 1f (4/5) : encore un facteur plat, encore contre les modestes
 
 - [x] **`[ESTATE-NPV-07]`** (XS annoncé, S réel) — ✅ 2026-08-20, PR #671.

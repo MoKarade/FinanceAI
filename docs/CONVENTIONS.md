@@ -4825,6 +4825,28 @@ coïncidence du barème (à 96 k$, les tranches 18 k$ et 36 k$ rendaient toutes 
 Les trois étaient VERTES et paraissaient sérieuses. Seule la perturbation les a démasquées — c'est
 la seule preuve qui vaille, et il faut la faire assertion par assertion, pas une fois pour le lot.
 
+### `ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE`
+
+`[W5-PROXY-NON-SOURCE]` demandait de documenter deux forfaits d'impôt. En rédigeant l'entrée de
+`FISCAL_REFERENCE.md`, j'ai écrit — de tête, parce que ça « sonnait juste » — que « 0,36 est proche
+du taux marginal SUPÉRIEUR d'un dividende déterminé au Québec ». Mesuré : ce taux vaut **39,16 %** à
+250 k$ de revenu, et 0,36 correspond en réalité au taux d'un dividende **ORDINAIRE** à ~100 k$ — un
+taux de MILIEU de barème, pour l'autre type de dividende.
+
+La phrase serait partie dans le fichier qui est la **source de vérité fiscale** du dépôt. Une fois
+là, elle aurait l'autorité de la source : la prochaine session l'aurait citée au lieu de la vérifier.
+**Documenter un chiffre fiscal sans le mesurer, ce n'est pas le sourcer — c'est fabriquer la source.**
+Le coût de la mesure était de quinze lignes de test jetable.
+
+Corollaire opérationnel : quand on documente un forfait, produire le TABLEAU de son écart réel sur
+plusieurs points, pas une phrase qualitative. Un tableau se vérifie ; « proche de » ne se vérifie pas.
+
+⚠️ **Et un chiffre recopié dans un COMMENTAIRE dérive comme n'importe quel autre.** Ma garde de
+concordance interdit tout littéral `45 %` dans le composant ; elle a rougi sur mon **propre
+commentaire JSX**, qui répétait le taux pour « expliquer ». J'ai réécrit le commentaire sans le
+chiffre plutôt que d'exempter les commentaires de la garde — un commentaire faux est pire qu'absent,
+parce qu'il se lit comme une intention.
+
 ### `UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`
 
 Toujours `[ESTATE-NPV-07]`, mais c'est la revue qui l'a trouvé, pas moi. Le lot remplaçait un facteur

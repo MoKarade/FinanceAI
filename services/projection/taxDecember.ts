@@ -808,6 +808,26 @@ export function processDecemberTaxFiling(
         }
     }
 
+    // [FISC-TAXDEC-INCR] (a) — impôt d'une BANDE incrémentale [base, base+bande] par adulte, avec
+    // les crédits d'âge de CHAQUE conjoint. Espace NOMINAL (jamais de realDeflator ici — cf. notes
+    // FISC-BRACKET-REALINDEX des deux blocs appelants). Retourne le total FAMILIAL.
+    const incrementalBandTax = (perAdultBase: number, perAdultBand: number,
+        familyBase: number, familyBand: number): number => {
+        const ages = [ctx.age, ctx.ageSpouse];
+        let total = 0;
+        for (let i = 0; i < ctx.activeUsersCount; i++) {
+            const a = ages[i];
+            const mk = (fam: number): AgeCreditOptions | undefined =>
+                a !== undefined && a >= 65
+                    ? { age: a, eligiblePensionIncome: 0, hasSpouse: ctx.activeUsersCount > 1, familyIncome: fam }
+                    : undefined;
+            const tb = helpers.calculateFiscalReport(perAdultBase, 0, 0, ctx.loopYear, true, mk(familyBase)).totalTax;
+            const tt = helpers.calculateFiscalReport(perAdultBase + perAdultBand, 0, 0, ctx.loopYear, true, mk(familyBase + familyBand)).totalTax;
+            total += Math.max(0, tt - tb);
+        }
+        return total;
+    };
+
     // ---- 2. Gains en capital accumulés (palier 250k) ----
     // [FISC-STACK-GAINS-DIV] Hissé hors du bloc : le montant imposable des gains est l'ASSIETTE
     // sur laquelle les dividendes s'empilent ensuite (§3). Vaut 0 sans gains → §3 inchangé.
@@ -835,9 +855,16 @@ export function processDecemberTaxFiling(
         // [FISC-BRACKET-REALINDEX] bloc NOMINAL-cohérent : revenus/gains JAMAIS déflatés ici, impôt
         // ajouté sans re-nominalisation → paliers ×1,02^Δ nominal = le bon espace. PAS de realDeflator
         // (en passer un déflaterait les paliers sous un revenu nominal → sur-imposition croissante).
-        const taxBase = helpers.calculateFiscalReport(perAdultIncome, 0, 0, ctx.loopYear, true).totalTax;
-        const taxTop = helpers.calculateFiscalReport(perAdultIncome + perAdultGains, 0, 0, ctx.loopYear, true).totalTax;
-        const tax = Math.max(0, taxTop - taxBase) * ctx.activeUsersCount;
+        // [FISC-TAXDEC-INCR] (a) — la bande porte les ageOpts PAR CONJOINT (GO Marc A2, 2026-08-20) :
+        // avant, l'incrément ignorait le crédit d'âge, donc son ÉROSION (féd 15 % du revenu au-dessus
+        // du seuil, QC 18,75 % du revenu FAMILIAL au-dessus de la ligne 361) n'était pas capturée →
+        // sous-imposition d'un retraité 65+ en zone d'érosion. `eligiblePensionIncome: 0` SYMÉTRIQUE
+        // aux deux appels : la bande n'ajoute aucune pension admissible, le NIVEAU du crédit s'annule
+        // dans la soustraction et seule l'ÉROSION reste — pas de double comptage avec le bloc
+        // retraité principal (qui a déjà crédité le niveau sur le revenu SANS gains). `familyIncome`
+        // = le familial NOMINAL du bloc, augmenté de la bande FAMILIALE côté top (le test QC ligne
+        // 361 est familial). Actif < 65 → opts undefined → bit-identique à l'ancien calcul.
+        const tax = incrementalBandTax(perAdultIncome, perAdultGains, incomeForGains, taxableCapGains);
         taxCurrent.gains += tax;
         if (tax > 100) logs.push(`↳ Impôt Gains Cap Accumulés: +${Math.round(tax).toLocaleString('fr-CA')}$`);
     }
@@ -884,9 +911,11 @@ export function processDecemberTaxFiling(
         if (grossUpRate !== undefined) {
             const annualDivPerAdult = annualDiv / ctx.activeUsersCount;
             const grossedUpPerAdult = annualDivPerAdult * grossUpRate;
-            const taxBase = helpers.calculateFiscalReport(incomeForDiv, 0, 0, ctx.loopYear, true).totalTax;
-            const taxTop = helpers.calculateFiscalReport(incomeForDiv + grossedUpPerAdult, 0, 0, ctx.loopYear, true).totalTax;
-            progressiveGrossTax = Math.max(0, taxTop - taxBase) * ctx.activeUsersCount;
+            // [FISC-TAXDEC-INCR] (a) — même traitement que la bande des gains : ageOpts par
+            // conjoint, érosion du crédit d'âge capturée sur la bande du dividende MAJORÉ.
+            progressiveGrossTax = incrementalBandTax(
+                incomeForDiv, grossedUpPerAdult,
+                incomeForDiv * ctx.activeUsersCount, grossedUpPerAdult * ctx.activeUsersCount);
         }
         const divTax = helpers.calculateDividendTax(annualDiv, currentMarginal, 'eligible', progressiveGrossTax);
         if (divTax > 1) taxCurrent.gains += divTax;

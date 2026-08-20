@@ -1400,8 +1400,16 @@ describe('processDecemberTaxFiling — FA-8 : assiette dividendes retraité incl
         // Direction du fix : l'empilement démarre plus haut → impôt dividendes PLUS ÉLEVÉ.
         expect(avecRetraits.newTaxCurrentYear.gains).toBeGreaterThan(sansRetraits.newTaxCurrentYear.gains);
         // Valeurs PINNÉES (barème 2026 réel, inflationFactor 1) pour figer le comportement.
-        expect(sansRetraits.newTaxCurrentYear.gains).toBeCloseTo(2776.96, 0);
-        expect(avecRetraits.newTaxCurrentYear.gains).toBeCloseTo(7377.67, 0);
+        // ⚠️ RE-BASÉ le 2026-08-20 par [FISC-TAXDEC-INCR] (a) : 2 776,96 → 4 220,90 $ (+1 443,94)
+        // et 7 377,67 → 7 599,71 $ (+222,04). La bande du dividende porte désormais les ageOpts du
+        // retraité de 70 ans : l'ÉROSION des crédits d'âge (féd 15 % au-dessus du seuil, QC ligne
+        // 361 sur le revenu familial) est facturée à la bande. L'écart est PLUS GROS sans retraits
+        // (la bande traverse la pleine zone d'érosion depuis 36 000 $) que avec (à 96 000 $, les
+        // crédits sont déjà largement érodés par le revenu de base → il reste peu à éroder). Le
+        // titre historique du test (« 6 351,66 $ ») date d'un re-basage antérieur — l'INVARIANT
+        // (avec retraits > sans) reste la vraie garde, re-vérifié au-dessus.
+        expect(sansRetraits.newTaxCurrentYear.gains).toBeCloseTo(4220.90, 0);
+        expect(avecRetraits.newTaxCurrentYear.gains).toBeCloseTo(7599.71, 0);
     });
 });
 
@@ -1488,7 +1496,12 @@ describe('[FISC-STACK-GAINS-DIV] empilement séquentiel gains → dividendes', (
             ramqExempt: true,
         }), realHelpers, ZERO_TAX);
 
-        const t = (x: number): number => calculateFiscalReport(x, 0, 0, undefined, true).totalTax;
+        // [FISC-TAXDEC-INCR] (a) — la bande porte désormais les ageOpts du conjoint (érosion du
+        // crédit d'âge capturée). L'invariant d'additivité reste EXACT dans le nouveau modèle : les
+        // deux bandes séquentielles, chacune avec des opts cohérents (familyIncome = le revenu de
+        // l'appel), se chaînent en la bande totale. L'attendu utilise donc les MÊMES opts.
+        const t = (x: number): number => calculateFiscalReport(x, 0, 0, undefined, true,
+            { age: 70, eligiblePensionIncome: 0, hasSpouse: false, familyIncome: x }).totalTax;
         const taxableGains = gainsBruts * 0.5;
         const annualDiv = nonReg * (taux / 100) * 0.30;
         const grossedUp = annualDiv * getDividendGrossUpRate('eligible');

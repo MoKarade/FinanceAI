@@ -31,6 +31,10 @@ plus les conjoints, et un FE > droits d'un conjoint ne devient jamais négatif (
 **Garde** : `tests/services/rrspRoomPerUser.test.ts` (7 tests) — pins mesurés + ancres négatives
 contre le calcul ménage + invariant Σ(ventilation) == scalaire d'activeIncome. Perturbation :
 calcul ménage restauré → 3 rouges exactement (l'« équilibré » reste vert : non-régression prouvée).
+**« Zéro golden bougé » EXPLIQUÉ** (la règle l'exige) : compté sur les fixtures d'intégration —
+aucun `facteurEquivalence`, salaire max 120 k$/an, or par-personne ≡ ménage sous ~191,6 k$/personne
+à FE nul. Attendu mathématiquement, pas un trou de couverture : le chemin nouveau est pinné en
+unitaire (ticket reproduit au dollar).
 
 ## 2026-08-20 — [FISC-TAXDEC-INCR] (a) : les bandes de décembre portent l'érosion des crédits d'âge
 

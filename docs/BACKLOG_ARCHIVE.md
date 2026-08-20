@@ -12,8 +12,8 @@
 
 ## 2026-08-20 — Lot « prestations » : l'assiette d'emploi nulle (règle Marc du jour appliquée)
 
-- [x] **`[RQAP-PRESTATION-COTISATIONS]`** (S, ÉLEVÉ) — ✅ 2026-08-20, PR #674.
-- [x] **`[AE-PLAFOND-MANQUANT]`** (S, ÉLEVÉ) — ✅ 2026-08-20, PR #674.
+- [x] **`[RQAP-PRESTATION-COTISATIONS]`** (S, ÉLEVÉ) — ✅ 2026-08-20, PR #675.
+- [x] **`[AE-PLAFOND-MANQUANT]`** (S, ÉLEVÉ) — ✅ 2026-08-20, PR #675.
 
 > Débloqués le matin même par la réponse sourcée de Marc (ADR + `FISCAL_REFERENCE.md` §2) :
 > les prestations RQAP/AE/RRQ ne sont assujetties à AUCUNE des trois cotisations — assiette de

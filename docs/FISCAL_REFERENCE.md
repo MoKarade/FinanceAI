@@ -292,6 +292,16 @@ Compléments sourcés du même échange :
 > de **< 65 ans** n'est PAS crédité (le montant est en réalité indépendant de l'âge, mais l'étendre = surface golden
 > énorme sur tout actif solo → différé). Gate `!hasSpouse` = solo ET survivant (tous deux 1 contribuable via `taxFilers`).
 
+### Érosion des crédits d'âge sur les bandes incrémentales (FISC-TAXDEC-INCR, 2026-08-20)
+
+**Règle** : les bandes de décembre (gains en capital §2, dividendes §3 de `taxDecember.ts`) sont imposées par différence `impôt(base + bande) − impôt(base)`. Depuis [FISC-TAXDEC-INCR], les DEUX appels portent les `AgeCreditOptions` de chaque adulte 65+, avec un `familyIncome` qui évolue AVEC la bande — l'érosion des crédits d'âge (féd ligne 30100 : 15 % au-delà du seuil, tableau ci-dessus ; QC ligne 361 : 18,75 % du revenu FAMILIAL) est donc facturée à la bande. Avant, la bande était calculée sans `ageOpts` : sous-imposition d'un 65+ en zone d'érosion.
+
+**Implémentation** : helper `incrementalBandTax(perAdultBase, perAdultBand, familyBase, familyBand)`, par adulte selon SON âge. `eligiblePensionIncome: 0` dans le helper — le crédit pension est traité aux §4/§6, pas à la bande.
+
+**MESURÉ** (`tests/services/taxDecemberAgeCreditBand.test.ts`) : retraité seul 68 ans, 60 k$ de revenu + 30 k$ de gains (15 k$ imposables) → **+675,56 $** d'impôt de bande vs le même profil à 60 ans. Bornes vérifiées : à 200 k$ de revenu les crédits sont déjà érodés à zéro → delta ≈ 0 ; sous 65 ans → bit-identique à l'ancien calcul. ⚠️ Ne pas « déduire » ce delta de 15 % + 18,75 % appliqués à la bande : il est borné par le crédit RESTANT au niveau de base (un calcul de tête a rendu 776,25, faux).
+
+---
+
 ### Assiette du revenu de pension ADMISSIBLE (féd 31400 + QC 361) — règle ET implémentation
 **Règle (ARC/RQ)** : sont admissibles la rente viagère d'un régime de pension (RPA/DB) et, à 65 ans+,
 les retraits FERR/RIF et rentes REER. Sont **EXCLUS** : RRQ, PSV, SRG, et les revenus locatifs.

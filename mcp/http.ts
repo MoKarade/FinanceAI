@@ -25,7 +25,7 @@ import { createServer as createHttpServer, type IncomingMessage, type Server, ty
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
-import { HUB_TOKEN_HEADER } from '@mokarade/hub-contract';
+import { HUB_TOKEN_HEADER, serveSummary } from '@mokarade/hub-contract/endpoint';
 import { createServer as createMcpServer } from './server';
 import { MCP_SERVER_VERSION, resolveState, type ResolvedState } from './bootstrap';
 import { makeOAuthProvider, OAuthError, type OAuthProvider } from './auth/oauthProvider';
@@ -490,25 +490,42 @@ ${['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_metho
     };
 
     // [HUB-01] GET /hub/summary — résumé conforme au contrat hub, données réelles.
-    // Un échec de lecture d'état renvoie un summary status "error" (HTTP 200) : le
-    // widget du hub affiche la panne au lieu de traiter l'app comme injoignable.
+    //
+    // La mécanique (405, jeton comparé en temps constant, `no-store`, validation avant
+    // émission) vient de `serveSummary` (`@mokarade/hub-contract/endpoint`), écrite une fois
+    // pour toutes les apps. Elle est SANS framework, ce qui est exactement ce qu'il faut
+    // ici : ce serveur-ci est un `node:http` nu, pas un route handler Next.
+    //
+    // ⚠️ DEUX ÉCARTS VOULUS, tous deux préservés :
+    //
+    // 1. Le 503 « hub désactivé » de `serveSummary` ne peut pas se produire : cette route
+    //    n'est CÂBLÉE que si `options.hubToken` existe (voir le routeur plus bas). Sans
+    //    jeton, l'URL n'existe pas du tout — 404, et c'est plus discret qu'un 503 qui
+    //    confirmerait l'existence du endpoint à qui le sonde.
+    // 2. Un échec de lecture d'état renvoie un summary `status: "error"` en **HTTP 200**,
+    //    pas un 500 : le widget du hub affiche la panne au lieu de traiter l'app comme
+    //    injoignable. `serveSummary` répondrait 500 si son `build` JETAIT — d'où le `catch`
+    //    ci-dessous, qui EST le contrat et ne doit pas disparaître.
     const handleHubSummary = (req: IncomingMessage, res: ServerResponse, hubToken: string): void => {
-        if (req.method !== 'GET') {
-            sendJson(res, 405, { error: 'GET uniquement.' }, HUB_NO_STORE);
-            return;
-        }
-        const provided = req.headers[HUB_TOKEN_HEADER];
-        if (typeof provided !== 'string' || !hubTokensMatch(provided, hubToken)) {
-            sendJson(res, 401, { error: `Header ${HUB_TOKEN_HEADER} absent ou invalide.` }, HUB_NO_STORE);
-            return;
-        }
-        state.store.get()
-            .then((appState) => sendJson(res, 200, buildHubSummary(appState), HUB_NO_STORE))
-            .catch((err: unknown) => {
-                const reason = err instanceof Error ? err.message : String(err);
-                console.error('[FinanceAI MCP http] /hub/summary : état indisponible —', reason);
-                sendJson(res, 200, errorHubSummary(reason), HUB_NO_STORE);
-            });
+        const jeton = req.headers[HUB_TOKEN_HEADER];
+        void serveSummary(
+            { method: req.method ?? 'GET', token: typeof jeton === 'string' ? jeton : null },
+            {
+                expectedToken: hubToken,
+                build: () =>
+                    state.store
+                        .get()
+                        .then((appState) => buildHubSummary(appState))
+                        .catch((err: unknown) => {
+                            const reason = err instanceof Error ? err.message : String(err);
+                            console.error('[FinanceAI MCP http] /hub/summary : état indisponible —', reason);
+                            return errorHubSummary(reason);
+                        }),
+            },
+        ).then(({ status, headers, body }) => {
+            res.writeHead(status, headers);
+            res.end(body);
+        });
     };
 
     const server = createHttpServer((req, res) => {

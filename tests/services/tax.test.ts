@@ -578,7 +578,14 @@ describe('calculateAgeAndPensionCredits (§6.2)', () => {
   // 2 000 $ NOMINAUX : en espace RÉEL (realDeflator > 1) il doit DÉCROÎTRE en 1/realDeflator.
   // Avant le fix c'était l'unique terme du barème réel traité à plat (sweep 1 920 cas, #556).
   describe('[FISC-PENSION-CREDIT-REAL] crédit pension fédéral en espace réel', () => {
-    // Composante pension isolée par DIFFÉRENCE (pension 10 k$ vs 0) — le crédit d'âge s'annule.
+    // Composante pension isolée par DIFFÉRENCE (avec vs sans pension) — le crédit d'âge s'annule.
+    const pensionComponent2 = (pension: number, deflator: number): number => {
+      const { fedCredit: avec } = calculateAgeAndPensionCredits(
+        { age: 70, eligiblePensionIncome: pension }, 40000, 2046, deflator);
+      const { fedCredit: sans } = calculateAgeAndPensionCredits(
+        { age: 70, eligiblePensionIncome: 0 }, 40000, 2046, deflator);
+      return avec - sans;
+    };
     const pensionComponent = (year: number, deflator: number): number => {
       const { fedCredit: avec } = calculateAgeAndPensionCredits(
         { age: 70, eligiblePensionIncome: 10000 }, 40000, year, deflator);
@@ -599,14 +606,24 @@ describe('calculateAgeAndPensionCredits (§6.2)', () => {
       expect(pensionComponent(2046, deflator)).not.toBeCloseTo(300, 0); // ancre négative : l'à-plat
     });
 
-    it('la pension DEVIENT le plafond quand elle passe sous le montant déflaté', () => {
-      // À deflator 2, le montant gelé vaut 1 000 $ réels : une pension de 800 $ est en dessous
-      // → crédit = 800 × 15 % = 120 (le min bascule du montant vers la pension).
-      const { fedCredit: avec } = calculateAgeAndPensionCredits(
-        { age: 70, eligiblePensionIncome: 800 }, 40000, 2046, 2);
-      const { fedCredit: sans } = calculateAgeAndPensionCredits(
-        { age: 70, eligiblePensionIncome: 0 }, 40000, 2046, 2);
-      expect(avec - sans).toBeCloseTo(120, 6);
+    it('ZONE DE BASCULE : pension entre le montant déflaté et le montant nominal (discriminant)', () => {
+      // [Revue #680] Le premier jet testait pension 800 $ < LES DEUX caps — vert avant ET après,
+      // non discriminant. La vraie frontière du fix : pension STRICTEMENT entre 2 000/d et 2 000.
+      // À d = 2, pension 1 500 $ : nouveau = min(1 000, 1 500) × 15 % = 150 ; l'ANCIEN code
+      // rendait min(2 000, 1 500) × 15 % = 225 (mesuré, ancre négative).
+      expect(pensionComponent2(1500, 2)).toBeCloseTo(150, 6);
+      expect(pensionComponent2(1500, 2)).not.toBeCloseTo(225, 0);
+    });
+
+    it('deflator corrompu (0 / NaN / négatif) → repli sur 1, jamais Infinity ni NaN', () => {
+      // [Revue #680, 3 agents] La garde de getIndexedBracketsForYear est reprise À CE SITE :
+      // sans elle, 2000/0 = Infinity → min(Infinity, pension) crédite la pension ENTIÈRE — un
+      // nombre FINI plausible qu'aucune garde aval ne voit (incident inflationFactor = 0 documenté
+      // au dépôt). NB : bracketRealIndex.test passe NaN mais SANS ageOpts — cette ligne n'était
+      // exercée par AUCUN test de corruption.
+      for (const bad of [0, Number.NaN, -1]) {
+        expect(pensionComponent2(10000, bad)).toBeCloseTo(300, 6); // = nominal (repli sur 1)
+      }
     });
   });
 

@@ -916,8 +916,12 @@ choisir). Calcul cumulatif par tranche (style impôt).
   2 000 $ (GELÉ nominalement, `utils/tax.ts` `PENSION_INCOME_AMOUNT_FED`) est désormais divisé par
   le déflateur — `min(2 000/realDeflator, pension)`. En réel il décroît comme la loi le fait ;
   en NOMINAL (realDeflator = 1) rien ne change. MESURÉ : à 20 ans (1,02^20), composante crédit
-  201,89 $ au lieu de 300 $ — la sous-imposition ≤ 250,50 $ réels/pers/an est fermée. Le barème
-  réel n'a plus AUCUN terme à plat (le sweep 1 920 cas du panel n'avait trouvé que celui-ci).
+  201,89 $ au lieu de 300 $ — la sous-imposition ≤ 250,50 $ réels/pers/an est fermée (cumul 30 ans
+  à i = 2 % : ≤ 3 809 $ réels au max analytique, mesuré). Le barème réel n'a plus aucun MONTANT DE
+  CRÉDIT ni palier à plat (le sweep 1 920 cas n'avait trouvé que celui-ci) ; les plafonds de
+  COTISATION (RRQ/RQAP/AE : MPE, YAMPE, maximums) restent hors indexation — pré-existant, hors
+  périmètre de ce correctif, défendable à i = 2 % (plafonds indexés aux salaires ≈ constants en
+  réel) mais divergent en stress.
   Sites en espace RÉEL qui passent le deflator : `taxDecember` (salarial, `combinedTaxFor`,
   RAMQ, FSS) **et l'impôt latent** (`latentTax.ts` — site oublié de la passe initiale, corrigé
   2026-08-01 : sous-évaluait l'obligation dormante affichée de ~35 %/~53 k$ à 30 ans).

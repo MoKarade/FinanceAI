@@ -347,6 +347,20 @@
   attention, ça re-basera des goldens retraités (mesurer avant).
 - [x] ~~**`[FISC-PENSION-CREDIT-REAL]`**~~ ✅ **LIVRÉ 2026-08-20** (détail : section datée en
   tête de `docs/BACKLOG_ARCHIVE.md` — réf PR au merge).
+- [ ] **`[PROJ-NW-FALAISE-REER]`** (M, **ÉLEVÉ** [MESURÉ — revue #680, PRÉEXISTANT]) — le NW final
+  d'un couple retraité 72/72 saute de **−86 189 $** quand le REER d'ouverture passe de 1 500 500 à
+  1 501 000 $ (±500 $ d'entrée → 86 k$ de sortie, code HEAD intact). Découvert en attribuant le
+  re-base de #680 : +2 229 $ d'impôt → NW +83 331 $, signe OPPOSÉ, la falaise domine l'effet
+  fiscal. Monotonie/continuité d'une grandeur pilotée par une entrée SONT des invariants
+  (`CONVENTIONS`) : balayer le paramètre, localiser la discontinuité (soupçon : bascule de
+  stratégie de décaissement ou seuil de solvabilité), router à projection-validator. ⚠️ Toute
+  mesure d'impact « NW » près de 1,5 M$ de REER est non représentative tant que ce n'est pas
+  compris.
+- [ ] **`[TAXDEC-INFLATIONFACTOR-AMONT]`** (S, FAIBLE — revue #680) — `taxDecember.ts` transmet
+  `ctx.inflationFactor` brut comme `realDeflator` à 5 sites (506, 507, 519, 520, 651) ; la garde
+  vit désormais en AVAL (`calculateAgeAndPensionCredits`, `getIndexedBracketsForYear`) mais un
+  facteur corrompu devrait être dit UNE fois à l'entrée du mois (logs.push, patron L546) plutôt
+  que réparé en silence N fois en aval. Incident `inflationFactor = 0` documenté in situ.
 - [x] **`[FISC-BRACKET-CPI-STRESS]`** — ✅ FERMÉ SANS CODE 2026-08-20 (réponse Marc A7 : **« conservateur »**,
   statu quo ADR 009 confirmé — les scénarios de stress surestiment l'impôt et c'est ASSUMÉ). → archive à la prochaine PR.
   Détail historique du finding (panel #556) —

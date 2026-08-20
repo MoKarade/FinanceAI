@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-20 (les prestations de congé parental et de chômage ne « cotisent » plus)
+
+- Règle confirmée à la source (ta recherche du jour) : une prestation RQAP ou AE est **imposable,
+  mais ne paie aucune cotisation** RRQ/RQAP/AE — ces cotisations ne portent que sur un salaire.
+- **Congé parental** : l'app faisait cotiser la prestation comme un salaire. Corrigé —
+  **+4 328,50 \$/an** de revenu net pendant le congé (prestation au plafond), soit **+9 518 \$** de
+  patrimoine à 10 ans pour un enfant.
+- **Chômage simulé** : l'app versait 55 % de ton salaire NET, sans plafond — trop généreux pour un
+  haut salaire, et cotisé à tort. La prestation est maintenant **55 % du brut assurable, plafonné**
+  (68 900 \$ en 2026), imposée mais sans cotisations — le vrai calcul de l'assurance-emploi.
+
+---
+
 ## [unreleased] — 2026-08-20 (l'impôt de tes revenus locatifs et de dividendes était 12× trop bas)
 
 - Si tu as un **immeuble locatif** ou une **société (CCPC)**, l'app estime l'impôt sur ces revenus à

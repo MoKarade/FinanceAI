@@ -167,6 +167,18 @@ Compléments sourcés du même échange :
 - Feuillet fédéral RQAP : T4E selon le dépliant officiel, T4A selon des sources récentes —
   [À vérifier] seulement si un import de feuillet en dépend.
 
+**Implémentation moteur (2026-08-20, `[RQAP-PRESTATION-COTISATIONS]` + `[AE-PLAFOND-MANQUANT]`)** :
+- Prestation RQAP (`childrenReee.ts`) : `calculateFiscalReport(prestation, …, employmentIncome: 0)`
+  — la prestation est imposée mais ne cotise plus RRQ/RQAP/AE. MESURÉ : +4 328,50 $/an de net au
+  plafond (56 650 $ de prestation), +9 518 $ de patrimoine à 10 ans pour un enfant.
+- Chômage simulé (`activeIncome.ts`) : la prestation AE = **55 % des gains assurables BRUTS,
+  plafonnés à `AE_MAX_INCOME`** (68 900 $, projeté au patron MGA `inflation simulée + 0,5 pt` —
+  même biais documenté que `rqapCapProjected`), puis nette d'impôt à assiette de cotisation nulle.
+  Avant : `net × 0,55` sans plafond — sur-payait les hauts salaires et cotisait sur la prestation.
+  Repli documenté : brut absent (donnée legacy) → `net × 0,55` (mieux qu'une prestation inventée à 0).
+- Non modélisé, assumé : le remboursement AE 30 % > 86 125 $ (prestations régulières) — le chômage
+  simulé remplace le revenu, le cumul prestation + haut revenu la même année est hors modèle.
+
 ## 3. Gains en capital & dividendes (2026)
 
 - **Inclusion gains en capital** (`CAPITAL_GAINS_INCLUSION_STANDARD`) : **50 %** uniforme

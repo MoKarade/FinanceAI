@@ -94,6 +94,11 @@ type FiscalReportFn = (
     fhsaContrib: number,
     year: number,
     skipBreakdown: boolean,
+    // [RQAP-PRESTATION-COTISATIONS] Les deux paramètres suivants de la vraie signature — le type
+    // injecté doit les porter, sinon l'appel « prestation à assiette d'emploi NULLE » ne compile
+    // pas et le défaut (assiette = grossIncome) redevient le seul chemin possible.
+    ageOpts?: undefined,
+    employmentIncome?: number,
 ) => FiscalReport;
 
 export interface ChildProcessCtx {
@@ -304,8 +309,16 @@ export function processOneChild(
             const rqapCap = rqapCapProjected(simInflation, yearsElapsed);
             const eligibleSalary = Math.min(annaGrossAnnual, rqapCap);
 
+            // [RQAP-PRESTATION-COTISATIONS] `employmentIncome: 0` — une prestation RQAP est du
+            // revenu IMPOSABLE à assiette de cotisation NULLE (règle sourcée, décision Marc
+            // 2026-08-20, FISCAL_REFERENCE §2 : les cotisations RRQ/RQAP/AE ne portent que sur la
+            // rémunération de TRAVAIL, et aucun employeur ne verse cette prestation). Sans le 7e
+            // argument, `calculateFiscalReport` retombe sur `grossIncome` et la prestation payait
+            // RRQ + RQAP + AE : MESURÉ, 4 328,50 $/an de cotisations fantômes sur une prestation
+            // au plafond (56 650 $ → net 42 366,76 au lieu de 46 695,26).
             const rqapNetInfo = calculateFiscalReport(
-                eligibleSalary * RQAP_REPLACEMENT_RATE_BASE, 0, 0, loopYear, enableMonteCarlo);
+                eligibleSalary * RQAP_REPLACEMENT_RATE_BASE, 0, 0, loopYear, enableMonteCarlo,
+                undefined, 0);
             const rqapNetMonthly = rqapNetInfo.netIncome / 12;
 
             // Replace Anna's salary with RQAP in the income pool

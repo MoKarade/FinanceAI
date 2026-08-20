@@ -16,6 +16,7 @@
  * NE MODIFIE PAS le source. Tests de caractérisation du comportement actuel.
  */
 import { describe, it, expect } from 'vitest';
+import { calculateFiscalReport } from '../../utils/tax';
 import { computeActiveIncome } from '../../services/projection/activeIncome';
 import type { ActiveIncomeCtx } from '../../services/projection/activeIncome';
 import type { ProjectionConfig, User } from '../../types';
@@ -40,6 +41,11 @@ function baseCtx(overrides: Partial<ActiveIncomeCtx> = {}): ActiveIncomeCtx {
         unemployedMonthsRemaining: 0,
         ltdMonthsRemaining: 0,
         ltdLogged: false,
+        // [AE-PLAFOND-MANQUANT] la vraie fonction fiscale : les tests AE asserte le NET réel de la
+        // prestation (un stub plat aurait la forme du défaut — cf. UN-STUB-QUI-A-LA-FORME-DU-DEFAUT).
+        loopYear: 2026,
+        simInflation: 2,
+        calculateFiscalReport,
         ...overrides,
     };
 }
@@ -88,9 +94,44 @@ describe('computeActiveIncome — croissance salariale', () => {
     });
 });
 
-describe('computeActiveIncome — perte d\'emploi (AE 55%)', () => {
-    it('chômage déjà en cours (unemployedMonths > 0) → revenu Marc × 0.55', () => {
+// [AE-PLAFOND-MANQUANT] Prestation AE attendue : 55 % du BRUT plafonné (68 900 $ en 2026), nette
+// d'impôt à assiette de cotisation NULLE (règle sourcée, FISCAL_REFERENCE §2). Dérivée ici par la
+// MÊME fonction fiscale que le module — ce que ces tests prouvent est le CÂBLAGE (plafond, 55 %,
+// employmentIncome: 0, remplacement du net), les ancres négatives excluent les anciens chemins.
+const aeNetMonthly = (grossAnnual: number): number =>
+    calculateFiscalReport(Math.min(grossAnnual, 68_900) * 0.55, 0, 0, 2026, false, undefined, 0).netIncome / 12;
+
+describe('computeActiveIncome — perte d\'emploi (prestation AE par le brut plafonné)', () => {
+    it('chômage en cours → prestation = net(min(brut, plafond) × 55 %), PAS net × 0,55', () => {
         const r = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4 }), proj(), plainUsers);
+        expect(r.incomeMarc).toBeCloseTo(aeNetMonthly(100_000), 4);
+        // Ancres négatives — les trois anciens chemins sont EXCLUS :
+        expect(r.incomeMarc).not.toBeCloseTo(5000 * 0.55, 0);                       // net × 0,55
+        expect(r.incomeMarc).not.toBeCloseTo((100_000 * 0.55) / 12, 0);             // brut SANS plafond
+        expect(r.incomeMarc).not.toBeCloseTo(
+            calculateFiscalReport(68_900 * 0.55, 0, 0, 2026, false).netIncome / 12, 2); // avec cotisations
+    });
+
+    it('la prestation ne dépend PAS du salaire NET saisi (elle vient du brut assurable)', () => {
+        const a = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4 }), proj(), plainUsers);
+        const b = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4, incomeMarcNetMonthly: 9_999 }), proj(), plainUsers);
+        expect(b.incomeMarc).toBeCloseTo(a.incomeMarc, 6);
+    });
+
+    it('le PLAFOND mord : brut 200 k$ → même prestation que brut 100 k$ (tous deux au-dessus)', () => {
+        const a = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4 }), proj(), plainUsers);
+        const b = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4, grossMarcBaseAnnual: 200_000 }), proj(), plainUsers);
+        expect(b.incomeMarc).toBeCloseTo(a.incomeMarc, 6);
+    });
+
+    it('SOUS le plafond : brut 40 k$ → prestation proportionnelle, plus basse', () => {
+        const r = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4, grossMarcBaseAnnual: 40_000 }), proj(), plainUsers);
+        expect(r.incomeMarc).toBeCloseTo(aeNetMonthly(40_000), 4);
+        expect(r.incomeMarc).toBeLessThan(aeNetMonthly(100_000));
+    });
+
+    it('brut ABSENT (donnée legacy) : repli documenté sur net × 0,55 — jamais une prestation à 0', () => {
+        const r = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4, grossMarcBaseAnnual: 0 }), proj(), plainUsers);
         expect(r.incomeMarc).toBeCloseTo(5000 * 0.55, 6);
     });
 
@@ -111,7 +152,11 @@ describe('computeActiveIncome — perte d\'emploi (AE 55%)', () => {
             p,
             plainUsers,
         );
-        expect(r.incomeMarc).toBeCloseTo(5000 * 0.55, 6);
+        // m = 12 → yearsElapsed = 1 : le PLAFOND est projeté d'un an (inflation simulée 2 % + 0,5 pt,
+        // patron MGA partagé avec rqapCapProjected) — 68 900 × 1,025 = 70 622,50 $.
+        const capAn1 = 68_900 * 1.025;
+        expect(r.incomeMarc).toBeCloseTo(
+            calculateFiscalReport(Math.min(100_000, capAn1) * 0.55, 0, 0, 2026, false, undefined, 0).netIncome / 12, 4);
         expect(r.newUnemployedMonths).toBe(8);
         expect(r.lifeEventLogs.some(l => l.includes('Perte d\'emploi'))).toBe(true);
     });
@@ -165,7 +210,8 @@ describe('computeActiveIncome — invalidité longue durée (LTD)', () => {
             proj(),
             plainUsers,
         );
-        expect(r.incomeMarc).toBeCloseTo(5000 * 0.55 * 0.6, 6);
+        // La prestation AE puis le facteur LTD — cumul multiplicatif conservé de l'ancien modèle.
+        expect(r.incomeMarc).toBeCloseTo(aeNetMonthly(100_000) * 0.6, 4);
     });
 });
 
@@ -209,14 +255,14 @@ describe('computeActiveIncome — bonus/RSU stoppés pendant chômage/LTD (B-AUD
     const rsuUser: User[] = [user({ rsuVestingPerYear: 24000, rsuYearsRemaining: 5 }), user()];
     const sideUser: User[] = [user({ sideIncomeAnnual: 12000 }), user()];
 
-    it('chômage → bonus de Marc EXCLU du revenu net (= base × 0.55 seulement)', () => {
+    it('chômage → bonus de Marc EXCLU du revenu net (= la prestation AE seule)', () => {
         const r = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4 }), proj(), bonusUser);
-        expect(r.incomeMarc).toBeCloseTo(5000 * 0.55, 6);
+        expect(r.incomeMarc).toBeCloseTo(aeNetMonthly(100_000), 4);
     });
 
     it('chômage → RSU de Marc EXCLU du revenu net', () => {
         const r = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4 }), proj(), rsuUser);
-        expect(r.incomeMarc).toBeCloseTo(5000 * 0.55, 6);
+        expect(r.incomeMarc).toBeCloseTo(aeNetMonthly(100_000), 4);
     });
 
     it('LTD → bonus de Marc EXCLU du revenu net (= base × 0.60)', () => {
@@ -226,7 +272,8 @@ describe('computeActiveIncome — bonus/RSU stoppés pendant chômage/LTD (B-AUD
 
     it('chômage → side income (autonome) CONSERVÉ dans le revenu net', () => {
         const r = computeActiveIncome(baseCtx({ unemployedMonthsRemaining: 4 }), proj(), sideUser);
-        expect(r.incomeMarc).toBeCloseTo((5000 + 1000) * 0.55, 6); // base×0.55 + side(1000/mois)×0.55
+        // prestation AE + side income (travail autonome, CONSERVÉ) au proxy marginal ×0,55.
+        expect(r.incomeMarc).toBeCloseTo(aeNetMonthly(100_000) + 1000 * 0.55, 4);
     });
 
     it('chômage → bonus EXCLU de accGrossAdd (espace REER) → brut = Anna seule', () => {

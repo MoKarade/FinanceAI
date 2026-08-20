@@ -8,6 +8,21 @@
 import type { ProjectionConfig, User } from '../../types';
 import { tickJobLoss, tickLtd } from './stochasticEvents';
 
+import { AE_MAX_INCOME } from '../../utils/tax';
+import type { FiscalReport } from '../../utils/tax';
+
+/** Signature injectée de `calculateFiscalReport` (même patron que `childrenReee.ts` — l'injection
+ *  évite la dépendance circulaire moteur↔tax et permet aux tests de brancher un stub). */
+type FiscalReportFn = (
+    grossIncome: number,
+    rrspContrib: number,
+    fhsaContrib: number,
+    year: number,
+    skipBreakdown: boolean,
+    ageOpts?: undefined,
+    employmentIncome?: number,
+) => FiscalReport;
+
 export interface ActiveIncomeCtx {
     m: number;
     currentMonthIndex: number;
@@ -22,6 +37,13 @@ export interface ActiveIncomeCtx {
     unemployedMonthsRemaining: number;
     ltdMonthsRemaining: number;
     ltdLogged: boolean;
+    // [AE-PLAFOND-MANQUANT] Nécessaires au calcul de la prestation AE par le BRUT plafonné :
+    // l'année fiscale du mois courant, l'inflation simulée (indexation du plafond), et la fonction
+    // fiscale injectée. REQUIS (pas optionnels) : un appelant qui les omettrait retomberait en
+    // silence sur l'ancienne approximation `net × 0,55` — le compilateur doit le voir.
+    loopYear: number;
+    simInflation: number;
+    calculateFiscalReport: FiscalReportFn;
 }
 
 export interface ActiveIncomeResult {
@@ -67,7 +89,24 @@ export function computeActiveIncome(
         lifeEventLogs.push(`💼 Perte d'emploi (durée prévue ${jobLossResult.duration} mois)`);
     }
     if (wasUnemployed || jobLossResult.triggered) {
-        incomeMarc *= 0.55;
+        // [AE-PLAFOND-MANQUANT] La prestation AE = 55 % des gains assurables BRUTS, PLAFONNÉS —
+        // jamais 55 % du net sans plafond (l'ancien `incomeMarc *= 0.55` sur-payait un haut salaire
+        // et l'assujettissait aux cotisations). Règle sourcée (décision Marc 2026-08-20,
+        // FISCAL_REFERENCE §2) : la prestation est IMPOSABLE à assiette de cotisation NULLE
+        // (`employmentIncome: 0`). Le plafond 2026 (`AE_MAX_INCOME`, §2) est projeté au même patron
+        // MGA que `rqapCapProjected` (inflation simulée + 0,5 pt — biais documenté §2).
+        const grossMarcAnnual = ctx.grossMarcBaseAnnual * salaryGrowthFactor;
+        if (grossMarcAnnual > 0) {
+            const aeCapProjected = AE_MAX_INCOME * Math.pow(1 + (ctx.simInflation + 0.5) / 100, yearsElapsed);
+            const aeGrossAnnual = Math.min(grossMarcAnnual, aeCapProjected) * 0.55;
+            incomeMarc = ctx.calculateFiscalReport(
+                aeGrossAnnual, 0, 0, ctx.loopYear, ctx.enableMonteCarlo, undefined, 0,
+            ).netIncome / 12;
+        } else {
+            // Sans brut connu (donnée legacy), impossible de calculer les gains assurables :
+            // l'ancienne approximation `net × 0,55` vaut mieux qu'une prestation inventée à 0.
+            incomeMarc *= 0.55;
+        }
     }
 
     // LTD

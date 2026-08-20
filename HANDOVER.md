@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-20 (suite 118) — le lot « prestations » : la règle de Marc appliquée le jour même
+> Branche `claude/prestations-assiette` (basée sur `main` post-#673, PAS empilée).
+>
+> **Livré** : `[RQAP-PRESTATION-COTISATIONS]` + `[AE-PLAFOND-MANQUANT]` — les deux items débloqués
+> le matin par la réponse sourcée de Marc (assiette de cotisation = revenus de TRAVAIL uniquement).
+> RQAP : `employmentIncome: 0`, +4 328,50 $/an net au plafond (chiffre du ticket re-vérifié au sou),
+> +9 518 $ de patrimoine à 10 ans. AE : 55 % du BRUT plafonné (68 900 $, projeté patron MGA) net
+> d'impôt à assiette nulle, au lieu de `net × 0,55` sans plafond.
+>
+> ⚠️ **Six tests asservissaient l'ANCIEN comportement** (`× 0,55` en dur) — réécrits avec des ancres
+> NÉGATIVES excluant chacun des trois anciens chemins. Garde RQAP par ESPION (l'argument réellement
+> passé, jamais une reconstruction). 5 perturbations, 5 rouges. Ratchet : 4e prise (0.5 d'indexation
+> inventorié design, 0.55 re-déclaré [≠4]).
+>
+> Pas de leçon NOUVELLE — réutilisation des patrons espion + ancres négatives (dit explicitement,
+> pas de skip silencieux). Aucun golden ne portait ces chemins : les nouveaux tests sont les
+> premiers à les épingler.
+>
 > ## 🟢 Session 2026-08-20 (suite 117) — vague 1 CLOSE : les deux derniers forfaits non sourcés
 > Branche `claude/w5-proxy-source` (basée sur `main`, PAS empilée).
 >

@@ -1010,7 +1010,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                   // « pas de revenu de conjoint » — vrai au décès comme au divorce.
                   incomeMarcNetMonthly, incomeAnnaNetMonthly, survivorMode: soloHousehold,
                   grossMarcBaseAnnual, grossAnnaBaseAnnual,
-                  unemployedMonthsRemaining, ltdMonthsRemaining, ltdLogged },
+                  unemployedMonthsRemaining, ltdMonthsRemaining, ltdLogged,
+                  // [AE-PLAFOND-MANQUANT] prestation AE par le brut plafonné, imposée à assiette nulle
+                  loopYear, simInflation, calculateFiscalReport },
                 effProj,
                 config.users,
             );

@@ -10,6 +10,37 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-20 — Lot « prestations » : l'assiette d'emploi nulle (règle Marc du jour appliquée)
+
+- [x] **`[RQAP-PRESTATION-COTISATIONS]`** (S, ÉLEVÉ) — ✅ 2026-08-20, PR #674.
+- [x] **`[AE-PLAFOND-MANQUANT]`** (S, ÉLEVÉ) — ✅ 2026-08-20, PR #674.
+
+> Débloqués le matin même par la réponse sourcée de Marc (ADR + `FISCAL_REFERENCE.md` §2) :
+> les prestations RQAP/AE/RRQ ne sont assujetties à AUCUNE des trois cotisations — assiette de
+> cotisation = revenus de TRAVAIL uniquement.
+
+**RQAP** : la prestation de congé parental payait RRQ + RQAP + AE (`employmentIncome` absent → le
+défaut retombait sur `grossIncome`). Correctif d'un argument : `employmentIncome: 0`. MESURÉ :
+**+4 328,50 $/an** de net au plafond (le chiffre du ticket, re-vérifié au sou), **+9 518 $** de
+patrimoine à 10 ans pour un enfant. Garde : test-ESPION `vi.mock` qui vérifie l'ARGUMENT réellement
+passé sur chacun des ≥ 12 appels de la fenêtre de congé (patron du proxy DB — jamais de
+reconstruction).
+
+**AE** : le chômage simulé faisait `net × 0,55` SANS plafond — il sur-payait un haut salaire ET
+assujettissait la prestation aux cotisations. Désormais : 55 % des gains assurables BRUTS plafonnés
+à `AE_MAX_INCOME` (68 900 $, projeté au patron MGA), nets d'impôt à assiette nulle. Champs REQUIS
+ajoutés au contexte (`loopYear`, `simInflation`, `calculateFiscalReport` injecté) — pas optionnels :
+un appelant qui les omettrait retomberait en silence sur l'ancienne approximation, le compilateur
+doit le voir. Repli documenté : brut absent (legacy) → `net × 0,55`.
+
+**Six tests asservissaient l'ANCIEN comportement** (`× 0,55` en dur) : réécrits avec des ancres
+NÉGATIVES qui excluent chacun des trois anciens chemins (net × 0,55, brut sans plafond, avec
+cotisations). Cinq perturbations, cinq rouges. Le ratchet fiscal a encore attrapé le lot (4e fois) :
+`0.5` d'indexation du plafond inventorié `design`, `0.55` re-déclaré `[≠4]` avec ses deux sens.
+
+Aucun golden ne portait ces chemins (suite verte avant/après sans re-basage) — les nouveaux tests
+SONT les premiers à les épingler.
+
 ## 2026-08-20 — Vague 1f (5/5) : les deux derniers forfaits fiscaux non sourcés
 
 - [x] **`[W5-PROXY-NON-SOURCE]`** (XS) — ✅ 2026-08-20, PR #673.

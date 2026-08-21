@@ -30,7 +30,15 @@ import { RULE_CATEGORIES, ruleCategorize, buildCategoryCanonicalMap, resolveCand
 // l'UI peut importer sans tirer le SDK) — plus jamais deux littéraux d'id qui divergent.
 // [AITOOLS-B] Export ADDITIF : services/aiTools/agentLoop.ts (Sonnet = chat interactif, choix Marc).
 export const MODEL_SONNET = MODEL_IDS.sonnet;
-const MODEL_HAIKU = MODEL_IDS.haiku;
+// [BUDGET-AI-WRONG-MODEL] Exporté : `BudgetAiModal` n'en passait AUCUN et retombait sur le défaut
+// Sonnet, alors que les 5 autres surfaces de même nature passent Haiku — seule surface
+// Haiku-éligible à payer le tarif Sonnet sur la clé BYOK de Marc.
+export const MODEL_HAIKU = MODEL_IDS.haiku;
+
+/** [TX-STALE-MODEL-LABEL] Modèle employé par `categorizeBatch`, exporté pour que l'UI NOMME ce
+ *  qu'elle fait tourner au lieu de le recopier. Le site d'appel ci-dessous lit cette constante :
+ *  changer de modèle met donc à jour le libellé du même geste, par construction. */
+export const CATEGORIZE_MODEL_ID = MODEL_HAIKU;
 
 // ─── Privacy hardening ───────────────────────────────────────────────────────
 // La neutralisation des libellés utilisateur est centralisée dans
@@ -57,21 +65,27 @@ const promptCad = (amount: number): string =>
 
 // ─── Schémas Zod ─────────────────────────────────────────────────────────────
 
+// [AI-UNBOUNDED-CONFIDENCE] ⚠️ `z.number()` NU accepte Infinity, NaN et n'importe quelle magnitude :
+// une valeur hallucinée traverse `safeJsonValidate` intacte et s'affiche verbatim (« Confiance :
+// 9999 % »). `PayslipSchema` avait déjà été durci pour ce risque exact — ces trois schémas-ci
+// étaient restés en arrière. Le domaine est BORNÉ par nature (un pourcentage vit dans [0,100], un
+// montant est fini et non négatif, un jour du mois dans [1,31]) : le dire au schéma coûte une
+// méthode et supprime la classe entière.
 const CategorizeItemSchema = z.object({
     id: z.number(),
     category: z.string(),
     isTransfer: z.boolean(),
-    confidence: z.number(),
+    confidence: z.number().min(0).max(100),
 });
 const CategorizeArraySchema = z.array(CategorizeItemSchema);
 
 const SubscriptionItemSchema = z.object({
     payee: z.string(),
-    averageAmount: z.number(),
-    dayOfMonth: z.number(),
+    averageAmount: z.number().nonnegative().finite(),
+    dayOfMonth: z.number().int().min(1).max(31),
     category: z.string(),
     lastDate: z.string(),
-    yearlyCost: z.number(),
+    yearlyCost: z.number().nonnegative().finite(),
 });
 const SubscriptionArraySchema = z.array(SubscriptionItemSchema);
 
@@ -478,7 +492,7 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict, sans markdown, sans commentaire:
             const text = await chat(
                 [{ role: 'user', content: userPrompt }],
                 apiKey,
-                { model: MODEL_HAIKU, system: QUEBEC_FISCAL_CONTEXT, maxTokens: 4096, temperature: 0 },
+                { model: CATEGORIZE_MODEL_ID, system: QUEBEC_FISCAL_CONTEXT, maxTokens: 4096, temperature: 0 },
             );
             done = true;
             const validated = safeJsonValidate(text, CategorizeArraySchema);
@@ -741,7 +755,10 @@ RÉPONDS UNIQUEMENT par un JSON strict (pas de markdown) :
 const CoupleOptimizationStrategySchema = z.object({
     title: z.string().min(3),
     description: z.string().min(10),
-    estimated_savings_cad: z.number().optional(),
+    // [AI-UNBOUNDED-CONFIDENCE] Montant $ affiché tel quel : `.finite()` interdit Infinity/NaN,
+    // `.nonnegative()` interdit une « économie » négative (qui se lirait comme un gain). Le
+    // `confidence` voisin est un enum — déjà borné par construction, rien à durcir là.
+    estimated_savings_cad: z.number().nonnegative().finite().optional(),
     confidence: z.enum(['high', 'medium', 'low']),
 });
 const CoupleOptimizationStrategiesSchema = z.array(CoupleOptimizationStrategySchema).min(1).max(4);

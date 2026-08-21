@@ -10,7 +10,8 @@ import { Tab, Transaction, BudgetCategory, CategorizationRule } from '../types';
 import { TAB_LABELS } from '../constants';
 import { showToast } from './ui/Toast';
 // Phase 4 A3: bascule sur services/claude.ts (Haiku 4.5 pour vitesse)
-import { categorizeBatch } from '../services/claude';
+import { categorizeBatch, CATEGORIZE_MODEL_ID } from '../services/claude';
+import { modelLabelFromId } from '../services/aiChat/models';
 import { RULE_CATEGORIES } from '../services/import/categoryRules';
 // [TX-CATEGORIZE] La catégorie « Abonnements » ne se décide plus sur le seul libellé : chez un
 // marchand de plateforme (Steam, App Store…), seul le profil de récurrence distingue un achat
@@ -373,7 +374,9 @@ export const Transactions: React.FC<TransactionsProps> = ({
         }
 
         setProgressStatus({ current: 0, total: targetTxs.length });
-        setLiveLogs(prev => [...prev, `${targetTxs.length} transactions ciblees.`, `Modele: Claude Sonnet 4.6`]);
+        // [TX-STALE-MODEL-LABEL] Libellé DÉRIVÉ du modèle réellement employé par `categorizeBatch`
+        // (Haiku depuis la bascule) — le texte en dur affichait encore « Claude Sonnet 4.6 ».
+        setLiveLogs(prev => [...prev, `${targetTxs.length} transactions ciblees.`, `Modele: ${modelLabelFromId(CATEGORIZE_MODEL_ID)}`]);
 
         try {
             await categorizeBatch(
@@ -468,6 +471,15 @@ export const Transactions: React.FC<TransactionsProps> = ({
         if (score >= 70) return 'bg-yellow-500';
         return 'bg-danger-500';
     };
+
+    // [AI-UNBOUNDED-CONFIDENCE] Ceinture d'AFFICHAGE, en plus de la bretelle Zod (`CategorizeItemSchema`
+    // borne désormais `confidence` à [0,100]). Les deux sont nécessaires : le schéma protège ce qui
+    // ENTRE aujourd'hui, ce clamp protège ce qui est DÉJÀ PERSISTÉ — une transaction catégorisée
+    // avant ce correctif porte encore sa valeur hallucinée dans le store, et aucune revalidation
+    // rétroactive n'a lieu à la lecture (même raisonnement que « le mauvais résultat a-t-il été
+    // SAUVEGARDÉ ? », classe UN-FACTEUR-PLAT-SUR-UNE-RELATION-CONVEXE).
+    const displayConfidence = (score: number): number =>
+        Number.isFinite(score) ? Math.min(100, Math.max(0, Math.round(score))) : 0;
 
     return (
         <div className="space-y-6 relative stagger-in">
@@ -890,8 +902,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         {t.confidence !== undefined && (
                                             <div
                                                 className={`w-2 h-2 rounded-full ${getConfidenceColor(t.confidence)}`}
-                                                title={`Confiance: ${t.confidence}%`}
-                                                aria-label={`Confiance IA ${t.confidence}%`}
+                                                title={`Confiance: ${displayConfidence(t.confidence)}%`}
+                                                aria-label={`Confiance IA ${displayConfidence(t.confidence)}%`}
                                             ></div>
                                         )}
                                     </td>
@@ -982,8 +994,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                                 {t.confidence !== undefined && (
                                                     <span
                                                         className={`w-2 h-2 rounded-full flex-shrink-0 ${getConfidenceColor(t.confidence)}`}
-                                                        title={`Confiance: ${t.confidence}%`}
-                                                        aria-label={`Confiance IA ${t.confidence}%`}
+                                                        title={`Confiance: ${displayConfidence(t.confidence)}%`}
+                                                        aria-label={`Confiance IA ${displayConfidence(t.confidence)}%`}
                                                     ></span>
                                                 )}
                                             </div>

@@ -39,3 +39,16 @@ export const AI_CHAT_MODELS: Array<{ key: AiChatModelKey; label: string; descrip
 export function resolveChatModelKey(value: unknown): AiChatModelKey {
     return value === 'haiku' || value === 'sonnet' || value === 'opus' ? value : DEFAULT_AI_CHAT_MODEL;
 }
+
+/**
+ * [TX-STALE-MODEL-LABEL] Libellé LISIBLE d'un id de modèle, DÉRIVÉ de la table ci-dessus.
+ * Pourquoi : une surface affichait « Claude Sonnet 4.6 » en dur pendant une opération qui tourne
+ * sur Haiku depuis la bascule — un libellé recopié ne suit jamais le modèle qu'il prétend nommer
+ * (classe `DOC-METRIQUE-RECOPIEE` appliquée à l'UI). Rendu ici plutôt qu'au site d'affichage pour
+ * que TOUTE surface qui nomme un modèle lise la même source.
+ * Un id inconnu rend l'id brut : honnête (on ne sait pas le traduire) plutôt qu'un faux nom.
+ */
+export function modelLabelFromId(id: string): string {
+    const entry = AI_CHAT_MODELS.find((m) => MODEL_IDS[m.key] === id);
+    return entry ? `Claude ${entry.label}` : id;
+}

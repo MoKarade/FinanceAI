@@ -5251,3 +5251,74 @@ ici : choisir une dette dont le solde est structurellement trop gros pour qu'AUC
 plausible ne l'éteigne en un mois (`UN-TEST-QUI-ECHOUE-N-A-PAS-FORCEMENT-RAISON`, même famille :
 un test peut aussi ÉCHOUER — ou sembler réussir — pour la MAUVAISE raison si son scénario emprunte
 une branche de stratégie qu'il n'avait pas anticipée).
+
+## Leçon du lot `[DEBT-MCP-PARITE]` — 2026-08-21
+
+### `UN-CHAMP-PAYLOAD-NE-PEUT-PAS-PORTER-LE-NOM-DU-DISCRIMINANT` — `kind` voulait dire deux choses
+
+En câblant `kind`/`startDate`/`termEndDate` dans `DebtPayload` (import PDF, `mcp/ingest/
+applyDocument.ts`) pour qu'ils atteignent enfin `Debt.kind` (le type précis de dette, `DebtKind`),
+mon premier jet ajoutait un champ nommé `kind?: DebtKind` sur `DebtPayload` — qui a DÉJÀ un champ
+`kind: 'debt'`, le DISCRIMINANT utilisé par le switch de routage d'`applyDocument` (`payslip` /
+`bank_statement` / `debt` / …). Deux conséquences, l'une bloquante et visible, l'autre silencieuse
+et invisible :
+1. **TypeScript refuse la déclaration** (deux membres `kind` de types incompatibles sur la même
+   interface) — attrapée immédiatement au typecheck, avant tout test.
+2. **Si elle avait compilé quand même** (ex. via un type plus permissif), `toDocument: (args) =>
+   ({ kind: 'debt', ...args })` aurait laissé `...args` ÉCRASER `kind: 'debt'` par la valeur fournie
+   pour le type de dette (ex. `'auto-lease'`) — le switch de routage aurait alors reçu un `doc.kind`
+   qui n'est PLUS `'debt'`, et le document ne serait jamais arrivé à `applyDebt` (ou pire, aurait
+   matché une AUTRE branche par accident de valeur). Un bug de ROUTAGE de tous les documents,
+   pas seulement des dettes — largement hors du rayon qu'un test ciblé sur les dettes aurait pensé
+   à vérifier.
+
+**Règle générale** : avant de nommer un nouveau champ optionnel sur un type qui porte DÉJÀ un
+discriminant de union (`kind`/`type`/`variant`…), vérifier que le nom choisi n'est PAS déjà pris
+par ce discriminant — même si le champ existant a un type totalement différent (ici `'debt'`
+littéral vs `DebtKind` union). Le nom du champ métier sur l'ENTITÉ finale (`Debt.kind`) n'a pas à
+dicter le nom du champ correspondant sur le PAYLOAD d'entrée s'il collisionne avec un nom déjà
+utilisé à ce niveau — renommer côté payload (`debtKind`) et mapper explicitement vers `Debt.kind`
+à l'écriture (`apply('kind', doc.debtKind)`) coûte une ligne, la collision aurait coûté un bug de
+routage silencieux. Profité de l'occasion pour établir `types.ts` `DEBT_KINDS` (tableau `as const`)
+comme source UNIQUE des valeurs de `DebtKind` — dérivé une fois, réutilisé tel quel par le `z.enum`
+du tool MCP ET par la garde runtime d'`applyDebt` (leçon indexée au CLAUDE.md : une valeur re-codée
+en dur ailleurs dérive en silence).
+
+### `UNE-GARDE-DE-COHERENCE-DOIT-LIRE-L-ETAT-FUSIONNE-PAS-LE-PAYLOAD` — ma garde ne gardait que le cas facile
+
+Trouvé par DEUX agents indépendamment (code-reviewer et financial-integrity), sur le lot ci-dessus.
+J'avais ajouté une garde de cohérence chronologique « la date de fin ne peut pas précéder la date
+de début » — écrite comme `doc.startDate != null && doc.termEndDate != null && doc.termEndDate <
+doc.startDate`. Elle est correcte… uniquement quand les DEUX dates arrivent dans le MÊME appel.
+Or la fonction supporte explicitement la **mise à jour PARTIELLE** (un champ absent du payload
+laisse la valeur déjà stockée intacte) : un appel qui ne fournit QUE `termEndDate`, sur une dette
+dont le `startDate` est déjà en base, passe la garde sans rien comparer — les deux conditions
+`!= null` ne sont jamais vraies ensemble. Mesuré par le panel : une dette dont `startDate` reste au
+FUTUR et dont `termEndDate` bascule au PASSÉ n'est alors JAMAIS `'active'` (phases `'a-venir'` →
+`'terminee'` sans jamais passer par `'active'`) — jamais payée, exclue du bilan, puis réapparaissant
+d'un bloc. Exactement l'incohérence que la garde prétendait bloquer.
+
+**Règle générale** : dans une fonction qui fait de la mise à jour PARTIELLE, une garde qui met en
+relation DEUX champs doit lire les valeurs **EFFECTIVES après fusion** (`doc.x ?? existant.x`),
+jamais les seuls champs du payload. Le signal mécanique est visible à l'œil : une condition de la
+forme `doc.a != null && doc.b != null && <relation>` dans une fonction dont le contrat annonce
+« seuls les champs fournis changent » est presque toujours incomplète — elle ne garde que le cas où
+l'appelant fournit tout, c'est-à-dire le cas le moins risqué. Mes 9 tests initiaux ne couvraient que
+ce cas facile : c'est POUR ÇA que le trou est passé.
+
+**Corollaire du même lot, autre défaut, autre agent** : le résumé rendu à l'assistant (et affiché à
+l'aperçu de consentement avant écriture) affirmait toujours « servie dès maintenant par la
+projection » — y compris quand `startDate` est dans le futur, cas que ce lot venait précisément
+d'ajouter. La description du tool, corrigée dans la MÊME PR, disait déjà l'inverse. **Quand on ajoute
+un cas à un comportement, grep TOUTES les phrases qui décrivent ce comportement** — la description
+du tool, le résumé de retour, les commentaires de module, la doc : j'en avais corrigé deux sur trois,
+et celle que j'ai oubliée est la seule que l'utilisateur lit au moment d'approuver l'écriture
+(récidive `DOC-STALE`, 3e site).
+
+**Corollaire de validation** : `/^\d{4}-\d{2}-\d{2}$/` valide une FORME, pas une DATE — `2026-13-01`
+et `2026-02-30` passent. En aval, `moisAbsolu()` rejette un mois hors 0-11 et traite alors la date
+comme ABSENTE : un silence LÉGITIME pour une date vraiment absente devient un silence TROMPEUR pour
+une date que la garde d'écriture vient d'ACCEPTER (l'assistant croit avoir daté la dette, le moteur
+l'ignore, personne n'est prévenu). Une garde de format sur une valeur qu'un module aval va PARSER
+doit valider ce que ce module sait parser, pas seulement la syntaxe — ici un aller-retour `Date.UTC`
+(qui attrape les débordements type 31 février) plus une borne d'année réaliste.

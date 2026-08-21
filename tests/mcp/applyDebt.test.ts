@@ -8,11 +8,13 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { applyDocument, type DebtPayload } from '../../mcp/ingest/applyDocument';
 import { FileStateSource, buildDefaultAppState, loadAppStateFromSource } from '../../mcp/state/loadAppState';
 import { makeStateStore, type StateStore } from '../../mcp/state/stateStore';
 import { registerApplyDebt } from '../../mcp/tools/applyDebt.tool';
+import { applyDebtSpec } from '../../mcp/tools/applyDebt.spec';
 import type { AppState, Debt } from '../../types';
 
 const baseState = (): AppState => buildDefaultAppState();
@@ -144,6 +146,112 @@ describe('applyDocument — kind debt (bornes anti-injection + gardes non-fini)'
         const s = baseState();
         try { applyDocument(s, carDebt({ balance: Infinity })); } catch { /* attendu */ }
         expect(s.debts ?? []).toHaveLength(0);
+    });
+});
+
+// [DEBT-MCP-PARITE] `debtKind`/`startDate`/`termEndDate` sont câblés dans le moteur
+// (`[DETTE-DATES]`) et l'UI DebtManager depuis un mois — jusqu'ici absents de l'import PDF ET du
+// tool MCP direct. ⚠️ Le champ payload s'appelle `debtKind`, PAS `kind` : `DebtPayload.kind` porte
+// déjà le discriminant `'debt'` du routage `applyDocument` — un second `kind` de même nom
+// l'écraserait silencieusement (`{ kind: 'debt', ...args }`), cassant le routage de TOUS les
+// documents. `debtKind` alimente bien le champ `Debt.kind` une fois sur l'entité.
+describe('applyDocument — kind debt : parité debtKind/startDate/termEndDate [DEBT-MCP-PARITE]', () => {
+    it('AJOUT : debtKind/startDate/termEndDate sont posés sur la nouvelle dette (sous Debt.kind)', () => {
+        const { nextState } = applyDocument(baseState(), carDebt({
+            debtKind: 'auto-lease', startDate: '2026-07-20', termEndDate: '2029-07-20',
+        }));
+        const d = nextState.debts[0] as Debt;
+        expect(d.kind).toBe('auto-lease');
+        expect(d.startDate).toBe('2026-07-20');
+        expect(d.termEndDate).toBe('2029-07-20');
+    });
+
+    it('AJOUT sans ces champs : absents de la dette créée (rétrocompat, rien n\'est inventé)', () => {
+        const { nextState } = applyDocument(baseState(), carDebt());
+        const d = nextState.debts[0] as Debt;
+        expect(d.kind).toBeUndefined();
+        expect(d.startDate).toBeUndefined();
+        expect(d.termEndDate).toBeUndefined();
+    });
+
+    it('MISE À JOUR PARTIELLE : debtKind seul, puis startDate seul, chacun sans toucher aux autres champs', () => {
+        const first = applyDocument(baseState(), carDebt());
+        const withKind = applyDocument(first.nextState, {
+            kind: 'debt', name: 'Prêt auto Honda Civic', debtKind: 'auto',
+        });
+        expect((withKind.nextState.debts[0] as Debt).kind).toBe('auto');
+        const withDate = applyDocument(withKind.nextState, {
+            kind: 'debt', name: 'Prêt auto Honda Civic', startDate: '2025-01-15',
+        });
+        const d = withDate.nextState.debts[0] as Debt;
+        expect(d.startDate).toBe('2025-01-15');
+        expect(d.balance).toBe(32000); // intact
+        expect(d.kind).toBe('auto');   // intact (posé au tour précédent)
+    });
+
+    it('REJETTE un `debtKind` inconnu (halluciné par un import PDF/IA)', () => {
+        expect(() => applyDocument(baseState(), carDebt({ debtKind: 'crypto-loan' as unknown as DebtPayload['debtKind'] })))
+            .toThrow(/type de dette inconnu/i);
+    });
+
+    it('REJETTE une date malformée (startDate ET termEndDate)', () => {
+        expect(() => applyDocument(baseState(), carDebt({ startDate: '20-07-2026' })))
+            .toThrow(/date de début invalide/i);
+        expect(() => applyDocument(baseState(), carDebt({ termEndDate: 'juillet 2026' })))
+            .toThrow(/date de fin invalide/i);
+    });
+
+    it('REJETTE une date au bon FORMAT mais calendairement invalide (mois 13, 30 février) [MOYEN panel]', () => {
+        expect(() => applyDocument(baseState(), carDebt({ startDate: '2026-13-01' })))
+            .toThrow(/date de début invalide/i);
+        expect(() => applyDocument(baseState(), carDebt({ termEndDate: '2026-02-30' })))
+            .toThrow(/date de fin invalide/i);
+    });
+
+    it('REJETTE termEndDate antérieure à startDate (incohérence chronologique)', () => {
+        expect(() => applyDocument(baseState(), carDebt({ startDate: '2026-07-20', termEndDate: '2026-01-01' })))
+            .toThrow(/précède/i);
+    });
+
+    it('REJETTE termEndDate antérieure à startDate même en MISE À JOUR PARTIELLE, contre la valeur DÉJÀ STOCKÉE [ÉLEVÉ panel]', () => {
+        // La dette existante a startDate 2030 (future) ; un 2e appel ne fournit QUE termEndDate au
+        // passé — sans fusion avec l'existant, cette incohérence passerait inaperçue (mesuré par
+        // le panel : la dette ne devient alors JAMAIS 'active', phases 'a-venir' → 'terminee').
+        const first = applyDocument(baseState(), carDebt({ name: 'Prêt futur', startDate: '2030-01-01' }));
+        expect(() => applyDocument(first.nextState, { kind: 'debt', name: 'Prêt futur', termEndDate: '2026-01-01' }))
+            .toThrow(/précède/i);
+    });
+
+    it('accepte termEndDate == startDate (terme d\'un seul mois, cas limite)', () => {
+        const { nextState } = applyDocument(baseState(), carDebt({ startDate: '2026-07-20', termEndDate: '2026-07-20' }));
+        expect((nextState.debts[0] as Debt).termEndDate).toBe('2026-07-20');
+    });
+
+    it('le résumé annonce le vrai début quand startDate est FUTUR, pas "servie dès maintenant" [ÉLEVÉ panel]', () => {
+        const future = applyDocument(baseState(), carDebt({ startDate: '2099-01-01' }));
+        expect(future.summary).not.toContain('Servie dès maintenant');
+        expect(future.summary).toContain('2099-01-01');
+        const now = applyDocument(baseState(), carDebt());
+        expect(now.summary).toContain('Servie dès maintenant');
+    });
+
+    it('les rejets debtKind/date ne mutent pas l\'état d\'entrée (fonction pure)', () => {
+        const s = baseState();
+        try { applyDocument(s, carDebt({ debtKind: 'bogus' as unknown as DebtPayload['debtKind'] })); } catch { /* attendu */ }
+        expect(s.debts ?? []).toHaveLength(0);
+    });
+
+    it('le schéma Zod du tool MCP (ceinture À L\'ENTRÉE, avant même applyDocument) accepte les 3 champs valides et rejette un debtKind/une date invalide', () => {
+        const schema = z.object(applyDebtSpec.inputSchema);
+        const valid = schema.safeParse({
+            name: 'Bail auto', debtKind: 'auto-lease', startDate: '2026-07-20', termEndDate: '2029-07-20',
+        });
+        expect(valid.success).toBe(true);
+        expect(schema.safeParse({ name: 'Bail auto', debtKind: 'bogus' }).success).toBe(false);
+        expect(schema.safeParse({ name: 'Bail auto', startDate: '20-07-2026' }).success).toBe(false);
+        // [MOYEN panel] Même ceinture calendaire côté Zod que côté applyDocument (source unique
+        // utils/isoDate.ts) : le bon FORMAT ne suffit pas.
+        expect(schema.safeParse({ name: 'Bail auto', startDate: '2026-13-01' }).success).toBe(false);
     });
 });
 

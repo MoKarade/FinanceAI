@@ -10,6 +10,91 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — Lot « échecs silencieux IA » : 6 items XS de l'audit 2026-08-19
+
+> Premier lot de la passe sur les 120 items d'audit (ordre choisi par Marc : les plus rapides
+> d'abord). Six items XS regroupés par TERRAIN (les surfaces IA et le coffre de clés) plutôt que par
+> gravité — un lot cohérent se relit et se teste ensemble.
+
+- [x] **`[AI-UNBOUNDED-CONFIDENCE]`** (XS, ÉLEVÉ) — `CategorizeItemSchema`, `SubscriptionItemSchema`
+  et `CoupleOptimizationStrategySchema` validaient leurs nombres avec `z.number()` NU, alors que
+  `PayslipSchema` avait été durci pour ce risque exact. Une confiance hallucinée traversait
+  `safeJsonValidate` et s'affichait verbatim (« Confiance : 9999 % »). Bornes posées
+  (`confidence` ∈ [0,100], montants `.nonnegative().finite()`, `dayOfMonth` ∈ [1,31] entier) **plus**
+  un clamp d'AFFICHAGE (`displayConfidence`) : les deux sont nécessaires — le schéma protège ce qui
+  ENTRE, le clamp protège ce qui est DÉJÀ PERSISTÉ (aucune revalidation rétroactive à la lecture).
+- [x] **`[BUDGET-AI-WRONG-MODEL]`** (XS, MOYEN — coût) — `BudgetAiModal` appelait `chatStream` sans
+  `model` → défaut Sonnet, alors que les 5 autres surfaces de même nature passent Haiku
+  explicitement. Seule surface Haiku-éligible à payer le tarif Sonnet sur la clé BYOK de Marc.
+- [x] **`[TX-STALE-MODEL-LABEL]`** (XS, FAIBLE) — « Modele: Claude Sonnet 4.6 » affiché en dur
+  pendant une catégorisation qui tourne sur Haiku depuis la bascule. Libellé désormais DÉRIVÉ :
+  `CATEGORIZE_MODEL_ID` (exporté, et lu par le site d'appel lui-même) + `modelLabelFromId()`
+  (nouveau, dans `services/aiChat/models.ts`, la source unique des modèles). Changer de modèle met
+  le libellé à jour du même geste, par construction.
+- [x] **`[REBALANCE-SILENT-FAIL]`** (XS, MOYEN) — `getRebalanceJustifications` rend `[]` sur ERREUR
+  comme sur « rien à dire », et `Investments` ne posait aucun état d'erreur : un 429 se lisait
+  « l'IA n'avait rien à ajouter ». Patron `hasError` de `CoupleOptimizationCard` répliqué. Le vide
+  ne peut pas être un succès ici : le bouton n'existe que si `hasActions`.
+- [x] **`[BUDGET-AI-DUP-PARSING]`** (XS, FAIBLE) — parsing JSON réimplémenté sur place au lieu de
+  `safeJsonValidate` (qui gère déjà les fences ```json et la prose autour). L'ancienne version
+  JETAIT sur un JSON malformé, ce qui perdait TOUT le texte déjà streamé alors qu'il était lisible.
+- [x] **`[KEYSTORE-DECRYPT-FAILED-SILENCIEUX]`** (XS, MOYEN) — à la sauvegarde de clés,
+  `decrypt_failed` (coffre existant mais illisible → champs device-local perdus) était traité
+  exactement comme `empty` (premier usage, rien à préserver), sans trace. Classe
+  `REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION` : l'écriture continue (refuser bloquerait l'utilisateur
+  hors de ses propres clés) mais la perte est désormais journalisée.
+
+5 tests neufs (`tests/services/aiSchemaBounds.test.ts`), bout-en-bout avec le SDK mocké — ces
+schémas ne sont pas exportés, un test sur une copie locale ne prouverait rien. **3 des 5 prouvés
+rouges par perturbation** (bornes retirées du vrai fichier, restauré vérifié au `git diff`).
+Gate complet vert : 4 629 tests / 416 fichiers, build inclus.
+
+## 2026-08-21 — `[DEBT-MCP-PARITE]` : parité kind/dates de dette entre PDF, MCP direct et moteur/UI
+
+- [x] **`[DEBT-MCP-PARITE]`** (S) — ✅ PR #? (à compléter au merge).
+  `Debt.kind`/`startDate`/`termEndDate` étaient absents des DEUX voies d'écriture externes : l'import
+  PDF (`mcp/ingest/applyDocument.ts`, `DebtPayload`) et l'appel MCP direct de l'assistant Claude
+  (`mcp/tools/applyDebt.spec.ts`). Le tool MCP affirmait même encore « les dettes n'ont pas de date
+  de début » — faux depuis `[DETTE-DATES]` (2026-08-19), un risque réel de désinformer l'assistant
+  en session. ⚠️ Nuance apportée par le panel : `startDate`/`termEndDate` sont bien câblés dans le
+  moteur ; `kind` existe dans le type depuis W5.3 mais n'a encore AUCUN consommateur moteur ni
+  champ UI — c'est un discriminant PRÉPARÉ pour `[DEBT-AMORTIZATION]`/`[DEBT-UI-PAR-TYPE]`.
+  **Corrigé aux deux endroits** : champ payload `debtKind` (voir piège de nommage ci-dessous),
+  `startDate`/`termEndDate`, avec validations miroir de celles déjà en place pour balance/taux/
+  paiement (kind contre une liste fermée `DEBT_KINDS`, dates au format ISO strict `YYYY-MM-DD`,
+  cohérence chronologique `startDate ≤ termEndDate`) — ceinture ET bretelle, un appel direct du
+  handler bypasse Zod (leçon `MCP-WHATIF` déjà connue). Description du tool + commentaires de
+  module corrigés (la fausse affirmation datait d'avant `[DETTE-DATES]`).
+  ⚠️ **Piège rencontré** (leçon `UN-CHAMP-PAYLOAD-NE-PEUT-PAS-PORTER-LE-NOM-DU-DISCRIMINANT`,
+  `docs/CONVENTIONS.md`) : le champ ne peut pas s'appeler `kind` sur `DebtPayload`, qui porte déjà
+  le discriminant de routage `kind: 'debt'` — une collision aurait cassé le routage de TOUS les
+  documents (pas seulement des dettes) via `{ kind: 'debt', ...args }`. Renommé `debtKind`, mappé
+  vers `Debt.kind` à l'écriture. `types.ts` gagne `DEBT_KINDS` (tableau `as const`, source UNIQUE
+  des valeurs `DebtKind`) réutilisé par le `z.enum` Zod ET la garde runtime — zéro liste redupliquée.
+  **Panel de revue (4 agents) appliqué avant merge — 2 ÉLEVÉS confirmés par mesure directe :**
+  (1) la cohérence `startDate ≤ termEndDate` ne comparait que les deux champs du payload COURANT
+  (code-reviewer ET financial-integrity, indépendamment) — une mise à jour PARTIELLE ne touchant
+  QUE `termEndDate` contournait la garde ; mesuré, une dette avec `startDate` future et
+  `termEndDate` passée n'était alors JAMAIS `'active'` (`'a-venir'` → `'terminee'` sans passer par
+  `'active'`) : jamais payée, exclue du bilan, puis réapparaissant d'un bloc. Corrigé par
+  comparaison sur les valeurs FUSIONNÉES avec l'existant.
+  (2) le résumé rendu à l'assistant (et à l'aperçu de consentement) affirmait TOUJOURS « servie dès
+  maintenant », y compris avec `startDate` future — contredisant la description du tool corrigée
+  dans le MÊME lot (`DOC-STALE` re-commise à un 3e site). Corrigé, message conditionnel.
+  **MOYEN** (silent-failure-hunter + financial-integrity) : le format ISO seul acceptait
+  `2026-13-01`/`2026-02-30` — `moisAbsolu()` rejette alors le mois et traite la date comme ABSENTE,
+  SILENCIEUSEMENT (l'assistant croit avoir daté la dette, le moteur l'ignore). Corrigé par
+  `utils/isoDate.ts` (nouveau, source UNIQUE partagée garde runtime + `.refine()` Zod) :
+  validation calendaire réelle par aller-retour `Date.UTC` + borne d'année [1970, 2200].
+  **FAIBLE non retenu** : `changes.after` de l'ajout omet les 3 nouveaux champs — cohérent avec le
+  pattern préexistant (`amortizationYears`/`rateProvider`), pas une régression de ce lot.
+  12 tests neufs (parité ajout/mise à jour, rejets kind/date invalides — format ET calendaire,
+  cohérence chronologique y compris en mise à jour partielle, résumé conditionnel, garde Zod).
+  Gate complet vert : 4 624 tests / 415 fichiers, build inclus.
+  En chemin : `A00b` (déploiement production bloqué du lot précédent, #687) vérifié et CLOS —
+  `list_deployments` Vercel confirme `production READY` sur `3bbc380` (#690), qui contient `3dd9d9d`
+  (#687).
+
 ## 2026-08-21 — `[PASSE-REEL-DETTE-1]` : une dette n'apparaît plus dans le passé avant sa date de début
 
 - [x] **`[PASSE-REEL-DETTE-1]`** (M, money-critical) — ✅ PR #687.

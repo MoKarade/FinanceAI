@@ -187,18 +187,22 @@ describe('processJanuaryReset — CELIAPP & Guyton-Klinger', () => {
         expect(r.guytonKlingerIndexationFactor).toBe(0);
         expect(r.newPrevPortfolioNW).toBe(150000);
     });
-    it('[ENG-GK-THRESHOLD-KNIFE] le seuil n\'est plus un couteau : facteur CONTINU entre 0 et −5 %', () => {
-        // Baisse de 2,5 % (150k courant, précédent 153 846,15…) → facteur 0,5 exactement.
-        const r = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 150000 / 0.975 }), helpers)!;
+    it('[ENG-GK-THRESHOLD-KNIFE] le seuil n\'est plus un couteau : bande continue −4 %/−6 %', () => {
+        // Baisse de 5 % pile (l'ancien POINT du couteau) → facteur 0,5 : le milieu de la bande.
+        const r = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 150000 / 0.95 }), helpers)!;
         expect(r.guytonKlingerIndexationFactor).toBeCloseTo(0.5, 6);
-        // Continuité au voisinage du seuil (l'ancien code sautait de 1 à 0 ici — ancre du couteau) :
+        // Continuité au voisinage de l'ancien seuil (l'ancien code sautait de 1 à 0 ici) :
         const juste = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 150000 / 0.9501 }), helpers)!;
         const presque = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 150000 / 0.9499 }), helpers)!;
         expect(Math.abs(juste.guytonKlingerIndexationFactor - presque.guytonKlingerIndexationFactor)).toBeLessThan(0.02);
     });
-    it('Guyton-Klinger : hausse ou stabilité → indexation pleine (facteur 1)', () => {
-        const r = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 140000 }), helpers)!;
-        expect(r.guytonKlingerIndexationFactor).toBe(1);
+    it('LOIN du seuil : comportement strictement identique à l\'ancien binaire (bande étroite)', () => {
+        // Baisse 3 % (< 4 %) → indexation PLEINE, comme l'ancien code sous son seuil.
+        const doux = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 150000 / 0.97 }), helpers)!;
+        expect(doux.guytonKlingerIndexationFactor).toBe(1);
+        // Hausse → pleine aussi.
+        const up = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 140000 }), helpers)!;
+        expect(up.guytonKlingerIndexationFactor).toBe(1);
     });
     it('réduction PSV mensualisée = clawback annuel / 12', () => {
         const r = processJanuaryReset(0, baseCtx({ oasClawbackNextPeriod: 1200 }), helpers)!;

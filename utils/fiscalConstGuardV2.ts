@@ -69,8 +69,10 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: '[×2] Durée de vie maximale du CELIAPP (15 ans depuis l’ouverture, ARC).' },
     { file: 'services/projection/taxJanuary.ts', value: '0.25', family: 'design',
       reason: 'PROXY de modèle : inverse l’impôt sur gains vers le gain BRUT en supposant un taux effectif de 25 % (inclusion 50 % × marginal 50 %). Combine un vrai paramètre et un marginal SUPPOSÉ → approximation, jamais un taux statutaire à sourcer.' },
-    { file: 'services/projection/taxJanuary.ts', value: '0.95', family: 'design',
-      reason: 'Seuil de gel Guyton-Klinger (−5 % du portefeuille). Heuristique de stratégie ; cf. [ENG-GK-THRESHOLD-KNIFE].' },
+    { file: 'services/projection/taxJanuary.ts', value: '0.06', family: 'design',
+      reason: 'Plafond de la bande de lissage Guyton-Klinger (gel total dès −6 % de baisse). Heuristique de stratégie, centrée sur l’ancien seuil −5 % ; [ENG-GK-THRESHOLD-KNIFE] a remplacé le couteau binaire (0.95) par cette bande.' },
+    { file: 'services/projection/taxJanuary.ts', value: '0.02', family: 'design',
+      reason: 'Largeur de la bande de lissage Guyton-Klinger (−4 % → −6 %, linéaire). Design d’instabilité numérique, pas un chiffre fiscal ; [ENG-GK-THRESHOLD-KNIFE].' },
 
     // ── services/projection/taxApril.ts ─────────────────────────────────────────────────────
     { file: 'services/projection/taxApril.ts', value: '30', family: 'fiscal',

@@ -93,7 +93,10 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
         const rs = run(solvable, 'AUTO_MARGINAL');
         // Solvable 10 ans : vraie dette nette au dernier décembre (mesuré 16 404,67 — re-basé
         // [FISC-BRACKET-REALINDEX] 2026-08-01, était 13 542,07 : impôt réel tardif ↑).
-        expect(rs.unsettledTaxAtHorizon).toBeCloseTo(16_404.67, 0);
+        // Re-basé 2026-08-21 [FISC-DIV-DERIVED-BASES] (était 16 404,67, +137,31) : l'assiette
+        // FSS du dernier exercice voit désormais le dividende MAJORÉ du non-enregistré de la
+        // fixture — la dette réconciliée du dernier décembre monte d'autant (sens conservateur).
+        expect(rs.unsettledTaxAtHorizon).toBeCloseTo(16_541.98, 0);
         // FERR 10 ans : net PETIT (remboursement compense la retenue) — pin de la sémantique NETTE
         // (re-basé, était 171,89).
         expect(run(ferrParams, 'AUTO_MARGINAL').unsettledTaxAtHorizon).toBeCloseTo(907.71, 0);

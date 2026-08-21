@@ -145,6 +145,15 @@ export function __resetNonFiniteDebtSignatureLog(): void {
  * `dailyPastLedger.ts`) DOIT clamper le résultat à 0 (`Math.max(0, …)`) — une dette ne peut jamais
  * être négative, et `computeRawNetWorth` ne clampe pas ce terme lui-même.
  *
+ * ⚠️ [MOYEN, revue #687, mesuré 371,50 $] Le clamp ci-dessus ne borne que le côté NÉGATIF : quand
+ * une AUTRE dette (non gatée) maintient `debtNonImmo` positif, le même écart (solde brut vs
+ * post-amortissement de la dette gatée) SURVIT comme un résidu d'argent fantôme, borné au paiement
+ * mensuel de la dette gatée SEULE (jamais au solde des autres dettes, qui ne sont pas touchées par
+ * le delta). Approximation ASSUMÉE — c'est la même nature que le biais négatif ci-dessus, juste non
+ * clampable sans fausser le total des AUTRES dettes. Fermeture complète hors périmètre de ce lot :
+ * exigerait que le moteur publie un solde PER-DETTE déjà amorti (voir `DEBT-AMORTIZATION` au
+ * backlog), plutôt que de le retrancher depuis le store.
+ *
  * Pourquoi une SOUSTRACTION plutôt qu'une resommation complète : `chartData[0].DettesNonImmo`
  * n'est PAS la simple somme des `balance` bruts des dettes actives — le moteur a déjà appliqué son
  * propre pas d'amortissement du mois 0 (intérêt + paiement) AVANT de le publier. Resommer les

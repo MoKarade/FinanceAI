@@ -5223,3 +5223,31 @@ commencée du tout). Une revue à un seul angle (juste financial-integrity, ou j
 aurait pu suffire ici — mais le fait que les DEUX l'aient trouvé, avec la même justesse au dollar
 près, est la preuve que ce n'était pas un accident de lecture : un test avant merge sur cette
 branche précise (« dette avec `startDate` après aujourd'hui ») l'aurait aussi attrapé, mécaniquement.
+
+⚠️ **Un 3e agent (projection-validator), après le correctif ci-dessus, a trouvé que le clamp NE
+BORNE QUE LE CAS À UNE SEULE DETTE.** `Math.max(0, currentDebtNonImmo − delta)` empêche le total de
+devenir négatif quand la dette gatée est SEULE — mais dès qu'une AUTRE dette (non gatée) maintient
+le total largement positif, le MÊME écart (solde brut vs post-amortissement de la dette gatée)
+survit à l'intérieur du total, comme un résidu d'argent fantôme BORNÉ (mesuré 371,50 $/371,67 $ par
+deux mesures indépendantes, à 17 cents près). Le clamp protège contre un SYMPTÔME (négatif), pas
+contre la CAUSE (mélanger un solde brut et un solde post-calcul dans la même somme) — un clamp qui
+ne couvre qu'un côté d'un biais laisse l'autre côté filer sans qu'aucun signal ne le montre. Deux
+options honnêtes : fermer la cause (faire publier par le producteur un solde PER-ÉLÉMENT déjà dans
+l'état post-calcul, plutôt que de retrancher un brut du store — la vraie fermeture ici, routée à un
+lot séparé) ou, à défaut, documenter et TESTER le résidu comme une approximation BORNÉE (assertion
+`< marge`, jamais `=== valeur exacte`) plutôt que de laisser un clamp partiel se lire comme une
+garantie complète.
+
+⚠️ **Un test qui isole une dette pour mesurer un résidu peut être rendu VACUEUX par la STRATÉGIE du
+moteur, pas par une erreur du test.** Le 1er choix de fixture pour mesurer ce résidu était une carte
+de crédit à faible solde et taux élevé (15 000 $ / 19 %) — la stratégie BASE du moteur l'a payée
+d'un coup dès le mois 0 (cash disponible suffisant), la faisant tomber à 0 $. Le résidu se serait
+alors comparé à 0 $ au lieu du vrai solde de l'autre dette : un test qui semble mesurer une
+divergence borné mais ne mesure en réalité qu'un cas dégénéré où l'autre dette n'existe déjà plus.
+Signal : MESURER la valeur isolée (`points([autreDetteSeule])`) avant de l'utiliser comme référence
+dans une assertion — ne jamais supposer qu'un solde de dette « actif » reste stable d'un mois à
+l'autre sans le vérifier, surtout à taux élevé sur un faible solde face à un cash abondant. Remède
+ici : choisir une dette dont le solde est structurellement trop gros pour qu'AUCUNE stratégie
+plausible ne l'éteigne en un mois (`UN-TEST-QUI-ECHOUE-N-A-PAS-FORCEMENT-RAISON`, même famille :
+un test peut aussi ÉCHOUER — ou sembler réussir — pour la MAUVAISE raison si son scénario emprunte
+une branche de stratégie qu'il n'avait pas anticipée).

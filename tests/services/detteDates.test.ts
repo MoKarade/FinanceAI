@@ -152,11 +152,37 @@ describe('[PASSE-REEL-DETTE-1] phaseDetteAuMoisAbsolu / sumNotYetStartedDebtsAtM
         // Ce test vérifie seulement que le wrapper (startYear, startMonth, m=0) calcule bien
         // moisAujourdhui == courant dans ce cas particulier — PAS un raccord contre le moteur réel
         // (delta nul ici, quelle que soit la formule : ne prouve pas la non-divergence des $ bruts
-        // vs post-amortissement, couverte séparément par le test de clamp de `buildPastPrefix.test.ts`).
+        // vs post-amortissement, couverte séparément par le test suivant).
         const dettes = [bail({ startDate: '2026-01-01' })];
         const pts = points(dettes);
         const currentDebtNonImmo = pts[0].DettesNonImmo;
         expect(currentDebtNonImmo - sumNotYetStartedDebtsAtMonth(dettes as never, 2026, 0, 0)).toBe(currentDebtNonImmo);
+    });
+
+    it('[MOYEN, revue #687] deux dettes (une active partout, une EFFECTIVEMENT gatée) — résidu borné au paiement mensuel de la dette gatée SEULE, jamais au solde de l\'autre', () => {
+        // Régression trouvée par projection-validator (mesuré 371,50 $ sur un exemple similaire) :
+        // le delta retranche le solde BRUT du bail (gaté), alors que `currentDebtNonImmo` porte son
+        // solde APRÈS le pas d'amortissement du mois 0 du moteur — le clamp (`Math.max(0, …)`, testé
+        // séparément dans `buildPastPrefix.test.ts`) ne borne que le côté NÉGATIF (une seule dette,
+        // gatée) ; ici, un GROS prêt (jamais gaté) maintient le total largement positif, donc le
+        // résidu SURVIT comme argent fantôme borné, plutôt que d'être clampé à 0. Approximation
+        // ASSUMÉE (documentée dans `debtSchedule.ts`), fermeture complète routée à
+        // `[DEBT-AMORTIZATION]` (solde per-dette publié par le moteur, pas retranché du store).
+        // ⚠️ Solde volontairement GROS (200 000 $, pas une carte à faible solde) : une petite dette à
+        // taux élevé peut être payée d'un coup par la stratégie BASE si le cash disponible le permet
+        // (mesuré : une carte à 15 000 $/19 % tombe à 0 $ dès le mois 0) — un artefact de STRATÉGIE
+        // qui aurait rendu ce test vacueux (résidu comparé à 0, pas à la vraie valeur de l'autre dette).
+        const grosPret = { id: 'gros', name: 'Prêt perso', balance: 200_000, interestRate: 5, minimumPayment: 1_000, category: 'Personal' };
+        const bailGate = bail({ startDate: '2025-12-01' }); // 2 mois avant aujourd'hui (m=-2 = nov 2025)
+
+        const currentDebtNonImmo = points([grosPret, bailGate])[0].DettesNonImmo; // post-amortissement des DEUX
+        const pretSeulCurrent = points([grosPret])[0].DettesNonImmo; // valeur CORRECTE attendue au mois -2 (bail exclu)
+
+        const debtNonImmoAvant = currentDebtNonImmo - sumNotYetStartedDebtsAtMonth([grosPret, bailGate] as never, 2026, 0, -2);
+
+        // Résidu borné au paiement mensuel du BAIL SEUL (500 $) + marge — jamais au solde du gros
+        // prêt (200 000 $), qui n'est pas touché par le delta et doit rester quasi intact.
+        expect(Math.abs(debtNonImmoAvant - pretSeulCurrent)).toBeLessThan(600);
     });
 });
 

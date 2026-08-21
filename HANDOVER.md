@@ -42,8 +42,21 @@
 > le solde BRUT contre un total post-amortissement, mesuré jusqu'à −4 651,67 $). silent-failure-hunter
 > a aussi trouvé un ÉLEVÉ (solde de dette non fini avalé sans `logError`, contrairement au moteur) —
 > corrigé (`logError` throttlé par dette, même patron que `netWorth.ts`). documentation-manager a
-> corrigé un `docs/PROJECTION_OUTPUT_SCHEMA.md` périmé. 8 tests neufs (dont 4 discriminants du
-> CRITIQUE/ÉLEVÉ, prouvés rouges par perturbation chirurgicale du garde-fou et du clamp).
+> corrigé un `docs/PROJECTION_OUTPUT_SCHEMA.md` périmé. **projection-validator (5e agent, MESURÉ
+> contre le vrai moteur, 24 696 combinaisons pour le refactor `phaseDette` — 0 divergence)** a
+> confirmé le CRITIQUE avant correctif ET trouvé un résidu MOYEN qui SURVIT au clamp : `Math.max(0,
+> …)` ne borne que le côté négatif (une dette gatée seule) — avec une AUTRE dette non gatée qui
+> maintient le total positif, le même écart (solde brut vs post-amortissement de la dette gatée)
+> survit comme argent fantôme borné (mesuré 371,50 $/371,67 $, deux mesures indépendantes à 0,17 $
+> près). Approximation ASSUMÉE, documentée, fermeture complète routée à `[DEBT-AMORTIZATION]` (le
+> moteur devrait publier un solde per-dette déjà amorti). Test dédié ajouté, mesuré contre le VRAI
+> moteur (`calculateFutureProjection`), borné à &lt;600 $ plutôt qu'exact — piège de fixture rencontré
+> en le construisant : une carte à faible solde (15 000 $/19 %) était payée d'un coup par la
+> stratégie BASE dès le mois 0, rendant le test vacueux (résidu comparé à 0 $ au lieu du vrai solde
+> de l'autre dette) ; remplacé par un gros prêt (200 000 $) inextinguible en un mois. Un test
+> `[discriminant]` tautologique (`X − 0 === X`) repéré par le même agent a été reformulé en note
+> honnête. 14 tests neufs au total (dont 5 discriminants CRITIQUE/ÉLEVÉ/MOYEN, prouvés rouges par
+> perturbation chirurgicale ou mesurés directement contre le moteur réel).
 > Nouvelle leçon `EXCLURE-N-EST-PAS-LE-DROIT-DE-RETRANCHER-DE-N-IMPORTE-QUEL-TOTAL`.
 >
 > ## 🟢 Session 2026-08-21 (suite 125) — Vague 2 PM : badge FX estimé, prop morte, récap devise native

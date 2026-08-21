@@ -75,9 +75,31 @@ aux deux call sites. Nouvelle leçon `docs/CONVENTIONS.md` :
 - **[documentation-manager]** `docs/PROJECTION_OUTPUT_SCHEMA.md` (description de `DettesNonImmo`)
   était périmée — corrigée pour mentionner le gating par `startDate`.
 
-13 tests neufs au total (dont 4 discriminants du CRITIQUE/ÉLEVÉ trouvés par le panel, prouvés
-rouges par perturbation chirurgicale du garde-fou ET du clamp, restaurés ensuite). Gate complet
-vert : 4 611 tests / 415 fichiers, build inclus.
+⚠️ **projection-validator (5e agent, revue MESURÉE contre le VRAI moteur, sur 24 696 combinaisons
+pour le refactor de `phaseDette`)** a confirmé le CRITIQUE ci-dessus AVANT que mon correctif
+n'atterrisse (mesuré −22 000 $ de patrimoine fantôme sur `ec83a04`, 0 $ après `013704a`), ET trouvé
+un **résidu MOYEN qui SURVIT au clamp** : le clamp (`Math.max(0, …)`) ne borne que le côté NÉGATIF
+(une seule dette gatée) — quand une AUTRE dette (non gatée) maintient le total positif, le même
+écart solde-brut-vs-post-amortissement de la dette gatée survit comme argent fantôme BORNÉ (mesuré
+371,50 $). Approximation ASSUMÉE (documentée, pas éliminée — fermeture complète = publier un solde
+per-dette déjà amorti par le moteur, hors périmètre, routée à `[DEBT-AMORTIZATION]`). Un test dédié
+mesure ce résidu avec le VRAI moteur (`calculateFutureProjection`, pas une réimplémentation) et
+l'assertit BORNÉ (< 600 $, la marge du paiement mensuel de la dette gatée) plutôt qu'exact —
+mesuré −371,67 $ sur mon propre banc, à 0,17 $ près de la mesure indépendante de l'agent. Le même
+agent a aussi signalé un test `[discriminant]` tautologique (`X − 0 === X`, dette déjà active au
+mois 0 lui-même — ne peut jamais échouer) : reformulé en note honnête + remplacé par ce test du
+résidu pour la preuve réelle. Nouvelle section dans `docs/CONVENTIONS.md` (même leçon
+`EXCLURE-N-EST-PAS-LE-DROIT-DE-RETRANCHER-DE-N-IMPORTE-QUEL-TOTAL`, précisée).
+
+⚠️ **Piège de fixture rencontré en écrivant CE test du résidu** : une carte de crédit à faible solde
+(15 000 $/19 %) était payée d'un coup par la stratégie BASE dès le mois 0 (cash disponible
+suffisant) — mesuré directement (script), pas supposé — rendant le résidu comparé à 0 $ au lieu du
+vrai solde de l'autre dette, un test VACUEUX. Remplacé par un gros prêt (200 000 $) qu'aucune
+stratégie ne peut éteindre en un mois.
+
+14 tests neufs au total (dont 5 discriminants du CRITIQUE/ÉLEVÉ/MOYEN trouvés par le panel, prouvés
+rouges par perturbation chirurgicale du garde-fou et du clamp, ou mesurés directement contre le
+moteur réel). Gate complet vert : 4 611 tests / 415 fichiers, build inclus.
 
 ## 2026-08-21 — Vague 2 : devises/unités (badge FX estimé, prop morte, récap en devise native)
 

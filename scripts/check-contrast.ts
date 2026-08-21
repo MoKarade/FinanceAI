@@ -131,6 +131,115 @@ failures
         console.log(`| ${r.text} | ${r.background} | ${r.ratio.toFixed(2)} | ${aa} | ${large} |`);
     });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// [A11Y-CONTRAST-TOOL-GAP-CTA] Deuxième passe : les CTA PLEINS (`bg-{couleur}-{shade}` + `text-…`).
+//
+// Trou de couverture de l'outil-arbitre, pas un échec constaté : la passe ci-dessus ne teste que
+// `text-*` sur les TROIS fonds de page. Un bouton plein (`bg-danger-600` + `text-white`) n'y
+// apparaît jamais — or c'est précisément une combinaison où le contraste peut échouer, et on ne
+// juge pas un contraste à l'œil.
+//
+// ⚠️ Les paires sont EXTRAITES DU CODE PEINT, jamais devinées : une liste écrite à la main
+// « teste » des combinaisons qui n'existent plus et rate celles qu'on vient d'ajouter — exactement
+// le défaut que l'en-tête de ce fichier décrit pour les tokens (`A11Y-CHECK-CONTRAST-DRIFT`).
+//
+// ⚠️ ANGLE MORT ASSUMÉ, déclaré ici plutôt que découvert plus tard : seuls les `className="…"`
+// LITTÉRAUX sont lus. Une classe construite par interpolation (`` className={`bg-${v}-600`} ``) ou
+// par une fonction utilitaire échappe à ce scan. Le compteur plancher ci-dessous garantit qu'on
+// trouve quand même un volume plausible ; il ne garantit pas l'exhaustivité, et prétendre le
+// contraire serait pire que le trou lui-même.
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// `__dirname` n'existe PAS en module ES (ce dépôt est `"type": "module"`) — il faut le dériver de
+// `import.meta.url`. Erreur commise ici en écrivant cette passe, attrapée en rejouant l'outil.
+const ICI = dirname(fileURLToPath(import.meta.url));
+
+/** Marche récursive — `readdirSync(recursive)` (Node 18.17+), patron déjà employé par les gardes du
+ *  dépôt et dont la compatibilité est prouvée par la CI (cf. GATE-LOCAL-VERT-CI-ROUGE-PAR-VERSION-DE-NODE). */
+function fichiersTsx(racine: string): string[] {
+    try {
+        if (!statSync(racine).isDirectory()) return [];
+    } catch { return []; }
+    return readdirSync(racine, { recursive: true })
+        .map((f) => String(f))
+        .filter((f) => f.endsWith('.tsx'))
+        .map((f) => join(racine, f));
+}
+
+/** Résout un nom de classe Tailwind (`danger-600`, `white`, `ink-100`) en HEX opaque, ou null. */
+function hexDeClasse(nom: string): string | null {
+    if (nom === 'white') return '#ffffff';
+    if (nom === 'black') return '#000000';
+    const plat = COLORS[nom];
+    if (isOpaqueHex(plat)) return plat;
+    const sep = nom.lastIndexOf('-');
+    if (sep <= 0) return null;
+    const famille = COLORS[nom.slice(0, sep)];
+    if (famille && typeof famille === 'object') {
+        const v = (famille as Record<string, unknown>)[nom.slice(sep + 1)];
+        if (isOpaqueHex(v)) return v;
+    }
+    return null;
+}
+
+const CTA_PAIRES = new Map<string, { bg: string; text: string; bgHex: string; textHex: string }>();
+let attributsLus = 0;
+for (const fichier of fichiersTsx(join(ICI, '..', 'components'))) {
+    const src = readFileSync(fichier, 'utf8');
+    for (const m of src.matchAll(/className="([^"]*)"/g)) {
+        attributsLus++;
+        const classes = m[1].split(/\s+/);
+        // Fond PLEIN uniquement : un `bg-…/10` (translucide) exigerait une composition sur le fond
+        // sous-jacent, hors périmètre de ce contrôle (même règle que les tokens `rgba(...)`).
+        const bg = classes.find((c) => /^bg-[a-z]+-\d{3}$/.test(c));
+        const text = classes.find((c) => /^text-(white|black|[a-z]+-\d{2,3})$/.test(c));
+        if (!bg || !text) continue;
+        const bgNom = bg.slice(3);
+        const textNom = text.slice(5);
+        const bgHex = hexDeClasse(bgNom);
+        const textHex = hexDeClasse(textNom);
+        if (!bgHex || !textHex) continue;
+        CTA_PAIRES.set(`${bg}|${text}`, { bg, text, bgHex, textHex });
+    }
+}
+
+// Anti-vacuité : sans ce plancher, un motif cassé ou un déplacement de `components/` rendrait la
+// passe VIDE et donc « verte » — le mode de panne exact que ce lot corrige ailleurs.
+if (attributsLus < 200 || CTA_PAIRES.size < 5) {
+    console.error(`check-contrast: passe CTA quasi vide (attributs=${attributsLus}, paires=${CTA_PAIRES.size}) — le scan a-t-il cassé ?`);
+    process.exit(2);
+}
+
+const ctaResults: Result[] = [...CTA_PAIRES.values()].map(({ bg, text, bgHex, textHex }) => {
+    const ratio = contrastRatio(textHex, bgHex);
+    return { text, background: bg, ratio, aa_normal: ratio >= 4.5, aa_large: ratio >= 3.0 };
+});
+
+console.log(`\n## CTA pleins (${ctaResults.length} paires extraites de ${attributsLus} attributs className littéraux)\n`);
+console.log('| Texte | Fond | Ratio | AA normal | AA large |');
+console.log('|---|---|---|---|---|');
+ctaResults
+    .sort((a, b) => a.ratio - b.ratio)
+    .forEach(r => {
+        console.log(`| ${r.text} | ${r.background} | ${r.ratio.toFixed(2)} | ${r.aa_normal ? '✅' : '❌'} | ${r.aa_large ? '✅' : '❌'} |`);
+    });
+
+const ctaFailures = ctaResults.filter(r => !r.aa_normal);
+console.log(`\n- CTA conformes AA texte normal : ${ctaResults.length - ctaFailures.length} / ${ctaResults.length}`);
+
+// ⚠️ Cette passe RAPPORTE mais ne fait PAS échouer le script — choix assumé et daté, pas un oubli.
+// En l'étendant (2026-08-21) elle a révélé 4 offenders PRÉEXISTANTS, dont `text-white` sur
+// `bg-warning-500` à 2,15 (sous le seuil même pour du texte large). Les rendre bloquants tout de
+// suite livrerait un outil ROUGE dès sa première exécution, ce qui apprend à ignorer sa sortie —
+// et corriger 4 couleurs de bouton est une décision d'APPARENCE qui appartient à Marc, pas un
+// correctif mécanique. Les offenders sont routés en `[A11Y-CTA-CONTRASTE-OFFENDERS]`, dont la
+// dernière étape est précisément de basculer ce bloc en `process.exit(1)`.
+if (ctaFailures.length > 0) {
+    console.log(`  ⚠️  ${ctaFailures.length} CTA sous le seuil AA — voir [A11Y-CTA-CONTRASTE-OFFENDERS] (non bloquant pour l'instant).`);
+}
+
 console.log('\n## Tous les ratios\n');
 console.log('| Text | Background | Ratio | AA normal | AA large |');
 console.log('|---|---|---|---|---|');

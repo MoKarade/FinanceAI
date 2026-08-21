@@ -6,6 +6,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-21 (le mode discret cache aussi la répartition entre conjoints)
+
+- En mode discret, le **pourcentage** de répartition du patrimoine entre toi et ta conjointe est
+  masqué comme les montants. Avant, les dollars disparaissaient mais « 70 % / 30 % » restait
+  lisible — une information sur le couple, pas sur le portefeuille.
+
 ## [unreleased] — 2026-08-21 (les conseils de placement suivent l'année en cours)
 
 - La carte « Où placer chaque type de placement » calculait ton taux d'imposition marginal sur le

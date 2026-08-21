@@ -27,6 +27,18 @@ export interface MonthlyBudgetAggregates {
   savings: number;
 }
 
+/**
+ * [FX-FALLBACK-SILENCIEUX] `true` si le taux de change vient du repli EN DUR (jamais récupéré /
+ * cache trop vieux) — même signal que `SystemView` (`fxAge === 0`), extrait ici pour être
+ * consommé par toute surface qui convertit une devise étrangère, pas seulement la page technique.
+ */
+export const isFxRatesEstimated = (fxRates: { lastFetched?: number } | undefined): boolean =>
+  (fxRates?.lastFetched ?? 0) === 0;
+
+/** Au moins un actif détenu dans une devise ÉTRANGÈRE (CAD exclu) — un taux estimé n'importe que là. */
+export const hasForeignCurrencyAssets = (assets: ReadonlyArray<{ currency?: string }>): boolean =>
+  assets.some(a => !!a.currency && a.currency !== 'CAD');
+
 export const toCurrencyFactor = (fxRates: Record<string, number> | undefined, currency: string): number => {
   // CAD (devise de base) ou devise absente → 1:1 légitime (l'absence de devise sur un ACTIF est
   // signalée par assetValueCad, qui a le contexte). Devise ÉTRANGÈRE sans taux valide → repli 1:1

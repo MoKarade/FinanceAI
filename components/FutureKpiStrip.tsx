@@ -5,6 +5,7 @@ import { NO_DATA_LABEL } from './ui/emptyAware';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useNetWorthVariation, VARIATION_WINDOW_DAYS } from '../hooks/useNetWorthVariation';
 import { presentEquityOfGoal, monthsSince } from '../services/projection/pastPurchaseInit';
+import { FxEstimateBadge } from './ui/FxEstimateBadge';
 
 /**
  * [REFONTE-NAV Lot 1] Bandeau KPI compact AU-DESSUS de la courbe Future (choix Marc :
@@ -32,9 +33,13 @@ const KpiTile: React.FC<{
     /** Étiquette de PÉRIMÈTRE (assiette du chiffre), sous le sublabel — jamais privée : elle ne
      *  contient aucune donnée financière, et doit rester lisible même en mode discret. */
     scope?: string;
-}> = ({ label, value, signed = false, sublabel, privateSublabel = false, scope }) => (
+    /** Signal additionnel à côté du libellé (ex. FxEstimateBadge) — jamais de donnée financière. */
+    badge?: React.ReactNode;
+}> = ({ label, value, signed = false, sublabel, privateSublabel = false, scope, badge }) => (
     <div className="flex-1 min-w-[140px] rounded-card bg-white/5 border border-white/5 px-4 py-3">
-        <p className="text-tiny uppercase tracking-widest text-ink-400 font-bold">{label}</p>
+        <p className="text-tiny uppercase tracking-widest text-ink-400 font-bold flex items-center gap-1.5">
+            {label}{badge}
+        </p>
         {Number.isFinite(value) ? (
             <PrivateAmount as="div" className="text-lg font-bold text-ink-50 font-mono">
                 {signed && value > 0 ? '+' : ''}{formatCAD(value)}
@@ -95,6 +100,10 @@ export const FutureKpiStrip: React.FC<{
                 label="Patrimoine net"
                 value={netWorth + realEstateEquity}
                 sublabel={hasRealEstate ? 'équité immo incluse' : undefined}
+                // [FX-FALLBACK-SILENCIEUX] : ce chiffre convertit les avoirs étrangers en CAD via
+                // le taux du store — le signal doit vivre ICI (surface la plus vue de l'app),
+                // pas seulement dans SystemView.
+                badge={<FxEstimateBadge />}
             />
             <KpiTile
                 label="Variation 30 j"

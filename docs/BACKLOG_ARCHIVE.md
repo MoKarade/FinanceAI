@@ -10,6 +10,32 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — Vague 2 : devises/unités (badge FX estimé, prop morte, récap en devise native)
+
+- [x] **`[FX-FALLBACK-SILENCIEUX]`** (S, MOYEN) — ✅ 2026-08-21, PR à compléter au merge.
+- [x] **`[RETIREMENT-GROSSINCOME-DEAD]`** (XS, FAIBLE) — ✅ idem.
+- [x] **`[ADDSTOCK-CAD-NATIF]`** (XS, FAIBLE) — ✅ idem.
+
+**FX-FALLBACK-SILENCIEUX** : le repli FX en dur (`lastFetched: 0`) n'était visible que dans
+SystemView (page technique). Deux helpers purs (`services/portfolio.ts` : `isFxRatesEstimated`,
+`hasForeignCurrencyAssets`) + un badge partagé (`components/ui/FxEstimateBadge.tsx`) qui ne se
+déclenche QUE quand un taux estimé compte réellement (au moins un avoir en devise étrangère —
+sinon pur bruit). Câblé sur la tuile « Patrimoine net » (`FutureKpiStrip`, surface la plus vue —
+couvre à la fois Dashboard et Patrimoine, consolidés au même tuile depuis REFONTE-NAV), le header
+Investissements, et une note sous « Total placements » du PDF (le seul des 4 qui ne pouvait pas
+porter un badge — texte discret à la place). 6 tests neufs, 3 perturbations prouvées rouges.
+
+**RETIREMENT-GROSSINCOME-DEAD** : la prop `grossIncome` (`TabRouter.tsx` → `Retirement.tsx`)
+n'avait AUCUN consommateur — retirée du type ET du site d'appel plutôt que renommée (zéro usage
+à préserver). Piège d'échelle ×12 dormant fermé sans jamais avoir mordu personne.
+
+**ADDSTOCK-CAD-NATIF** : le récapitulatif d'ajout de titre passait `quantity × buyPrice` (devise
+NATIVE saisie par Marc) par `formatCAD` — affichait un montant USD/EUR comme si c'était du CAD.
+`formatNumber` (sans symbole) + le code de devise explicite, comme la ligne du prix unitaire déjà
+correcte. Effet de bord a11y : la checkbox « Devise » n'avait aucune association label↔contrôle
+(`htmlFor`/`id` ajoutés, nécessaires pour que le test l'atteigne — et pour tout lecteur d'écran).
+2 tests neufs, perturbation prouvée rouge.
+
 ## 2026-08-21 — La détention immobilière se DÉCLARE (isOwned) + badges « non compté » (A6 + A5)
 
 - [x] **`[ENG-PAST-OWNED-VS-PLANNED]`** (M, ÉLEVÉ [Certain, mesuré] — panel #552) — ✅ 2026-08-21,

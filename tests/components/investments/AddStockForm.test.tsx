@@ -115,3 +115,37 @@ describe('AddStockForm — [FINNHUB-MISMATCH] suggestion non cotable → fallbac
         expect(screen.getByDisplayValue('APPL')).toBeInTheDocument();
     });
 });
+
+describe('[ADDSTOCK-CAD-NATIF] le récapitulatif reste en devise NATIVE, jamais formatCAD', () => {
+    it('devise USD (défaut) : quantité × prix affichés en USD, aucun symbole "$ CA"', () => {
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/AAPL, TSLA/i), { target: { value: 'gic-rbc' } });
+        fireEvent.click(screen.getByRole('button', { name: /À la main/i }));
+        fireEvent.change(screen.getByPlaceholderText(/152\.30/), { target: { value: '100' } });
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '5' } });
+        fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '90' } });
+
+        const recap = screen.getByText('Récapitulatif').parentElement as HTMLElement;
+        // quantity × buyPrice EST en devise native (USD ici) — formatCAD y afficherait "$ CA",
+        // qui n'apparaît nulle part. Le code de devise, lui, apparaît deux fois (prix + total).
+        expect(recap.textContent).not.toMatch(/\$\s*CA/);
+        expect((recap.textContent!.match(/USD/g) ?? []).length).toBe(2);
+        expect(recap.textContent).toContain('450,00'); // 5 × 90,00 = 450,00 (formatNumber, pas formatCAD)
+    });
+
+    it('devise EUR : le total porte EUR, pas un symbole CAD', () => {
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/AAPL, TSLA/i), { target: { value: 'lvmh' } });
+        fireEvent.click(screen.getByRole('button', { name: /À la main/i }));
+        fireEvent.change(screen.getByPlaceholderText(/152\.30/), { target: { value: '800' } });
+        fireEvent.change(screen.getByLabelText('Devise'), { target: { value: 'EUR' } });
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '2' } });
+        fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '700' } });
+
+        const recap = screen.getByText('Récapitulatif').parentElement as HTMLElement;
+        expect(recap.textContent).not.toMatch(/\$\s*CA/);
+        // espace INSÉCABLE (Intl fr-CA), pas une espace normale — normaliser avant de comparer.
+        expect(recap.textContent!.replace(/\s/g, ' ')).toContain('1 400,00'); // 2 × 700,00 EUR
+        expect((recap.textContent!.match(/EUR/g) ?? []).length).toBe(2);
+    });
+});

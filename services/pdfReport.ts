@@ -101,6 +101,10 @@ export interface ReportData {
     // P1.5 — nouvelles sections optionnelles
     fiscal?: FiscalSummary;
     holdings?: HoldingRow[];
+    /** [FX-FALLBACK-SILENCIEUX] : au moins un holding en devise étrangère ET le taux vient du
+     *  repli en dur (jamais récupéré) — ajoute une note sous le total des placements. `undefined`/
+     *  `false` = rien n'est ajouté (rétrocompat des appelants qui ne le fournissent pas). */
+    fxRatesEstimated?: boolean;
     debtsDetail?: DebtRow[];
     goalsDetail?: GoalRow[];
     // PDF Futur — comparaison de scénarios de projection
@@ -536,6 +540,22 @@ export async function generateFinancialReport(data: ReportData): Promise<void> {
             doc.setTextColor(...primary);
             doc.text(isFr ? 'Total placements' : 'Total holdings', 20, y);
             doc.text(formatCAD(total), W - 20, y, { align: 'right' });
+
+            // [FX-FALLBACK-SILENCIEUX] : le total ci-dessus convertit les holdings en devise
+            // étrangère via le taux du store — le repli en dur n'était visible que dans la page
+            // technique SystemView. Note discrète, seulement quand elle s'applique.
+            if (data.fxRatesEstimated) {
+                y += 5;
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(7);
+                doc.setTextColor(...gray);
+                doc.text(
+                    isFr
+                        ? 'Taux de change estimés (non récupérés récemment) — total en devise étrangère approximatif.'
+                        : 'Estimated exchange rates (not recently fetched) — foreign-currency total is approximate.',
+                    20, y,
+                );
+            }
         }
 
         // ------- PAGE: DETTES (nouveau) -------

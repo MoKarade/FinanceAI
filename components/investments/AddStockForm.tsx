@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { Icon } from '../ui/Icon';
 import { getQuote, getHistory, searchSymbols, getActiveProviderName, type SymbolSearchResult } from '../../services/marketData';
-import { formatCAD } from '../../utils/format';
+import { formatCAD, formatNumber } from '../../utils/format';
 import { logError } from '../../services/errorLogger';
 import type { Asset } from '../../types';
 
@@ -445,8 +445,9 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-meta text-ink-300 mb-1 font-bold uppercase">Devise</label>
+                                <label htmlFor="stock-currency" className="block text-meta text-ink-300 mb-1 font-bold uppercase">Devise</label>
                                 <select
+                                    id="stock-currency"
                                     value={currency}
                                     onChange={(e) => setCurrency(e.target.value as 'USD' | 'CAD' | 'EUR')}
                                     className="w-full bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none"
@@ -463,8 +464,13 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                             <div className="p-3 bg-info-500/10 border border-info-500/30 rounded">
                                 <div className="text-tiny text-info-400 uppercase font-bold mb-1">Récapitulatif</div>
                                 <div className="text-meta text-ink-100">
-                                    <strong className="font-mono">{quantity}</strong> × <strong className="font-mono">{formatCAD(parseFloat(buyPrice) || 0)}</strong> {currency}
-                                    {' '}= <strong className="font-mono">{formatCAD((parseFloat(quantity) || 0) * (parseFloat(buyPrice) || 0))}</strong> investi le {new Date(dateBought).toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                    {/* [ADDSTOCK-CAD-NATIF] quantity × buyPrice est en devise NATIVE
+                                        (`currency`, saisie par Marc), jamais en CAD — formatCAD
+                                        affichait "$ CA" sur un montant USD/EUR (§1, garde
+                                        assetFxGuard). formatNumber (sans symbole) + le code de
+                                        devise explicite, comme la ligne du prix unitaire. */}
+                                    <strong className="font-mono">{quantity}</strong> × <strong className="font-mono">{formatNumber(parseFloat(buyPrice) || 0, { decimals: 2 })}</strong> {currency}
+                                    {' '}= <strong className="font-mono">{formatNumber((parseFloat(quantity) || 0) * (parseFloat(buyPrice) || 0), { decimals: 2 })}</strong> {currency} investi le {new Date(dateBought).toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' })}
                                 </div>
                                 {currentPrice && parseFloat(buyPrice) > 0 && (
                                     <div className={`text-tiny mt-1 font-mono ${currentPrice >= parseFloat(buyPrice) ? 'text-emerald-300' : 'text-red-300'}`}>

@@ -59,8 +59,6 @@
   **1f** Valeurs fiscales sans source NON gatées (`[RQAP-CAP-98K]`, `[W5-PROXY-NON-SOURCE]`,
   `[ESTATE-NPV-07]`, `[MIGRATE-GROSS-135]`, `[FISC-GUARD-SCOPE]` — ce dernier **en premier**,
   élargir le ratchet AVANT révèle le vrai périmètre).
-- [ ] **Vague 2 — Devises/unités** : `[FX-FALLBACK-SILENCIEUX]`, `[RETIREMENT-GROSSINCOME-DEAD]`,
-  `[ADDSTOCK-CAD-NATIF]`. Indépendant.
 - [ ] **Vague 3 — `formatCAD`** ⚠️ **AVANT la vague 4** : les deux touchent les mêmes fichiers
   (`ProjectionTooltip`, `GoalSeekerCard`…). **3a** livrer le scan-garde d'abord — il n'existe pas et
   ses offenders SONT le périmètre. **3b** corriger ce qu'il révèle, par dossier
@@ -1204,24 +1202,6 @@
   `LifeEvents.tsx:148`. Classe `DOC-METRIQUE-RECOPIEE` : un périmètre listé EN DUR se périme, un scan non. [MESURÉ]
 
 ### 🔴 Devises et unités
-
-- [ ] **`[FX-FALLBACK-SILENCIEUX]`** (S, MOYEN) — repli FX en dur `USD 1,40 / EUR 1,47` avec
-  `lastFetched: 0` (`services/finance.ts:149`, `constants.ts:125-130`). Le signal « jamais récupéré »
-  n'est lu **que** par `SystemView` (page technique, `components/SystemView.tsx:89-96`) : Dashboard,
-  Investissements, Patrimoine et le PDF convertissent sans aucun badge « taux estimé ». Sur 100 k USD
-  détenus, 3 points d'écart de taux = ~3 000 $ CAD d'erreur silencieuse sur le patrimoine affiché.
-  C'est le miroir exact de `DECISION-PRIVACY-UNE-SEULE-SORTIE` : un signal posé pour UNE surface ne
-  protège que celle-là. [MESURÉ pour le code ; ampleur = HYPOTHÈSE]
-- [ ] **`[RETIREMENT-GROSSINCOME-DEAD]`** (XS, FAIBLE — unifie `[DEAD-PROP-GROSSINCOME]`) — la prop `grossIncome` passée à `<Retirement>`
-  est une somme **MENSUELLE** de `grossSalary` (pas de ×12) sous un nom qui annonce l'annuel
-  (`components/TabRouter.tsx:230`, déclarée `components/Retirement.tsx:56`). Elle n'est **jamais
-  consommée** → piège d'échelle 12× armé pour le premier qui s'en servira. Correctif : supprimer la
-  prop, ou la renommer `grossMonthlyIncome`. [MESURÉ]
-- [ ] **`[ADDSTOCK-CAD-NATIF]`** (XS, FAIBLE) — le total « investi » du récapitulatif d'ajout de titre
-  passe par `formatCAD` alors que `quantity × buyPrice` est en devise **NATIVE**, et la mention
-  `{currency}` est placée AVANT le total au lieu d'après
-  (`components/investments/AddStockForm.tsx:418-419`). Correctif : afficher sans suffixe CAD, ou
-  convertir via `toCurrencyFactor`. [MESURÉ]
 
 ### 🔴 Argent — valeurs fausses ou silencieuses
 

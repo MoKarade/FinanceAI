@@ -17,6 +17,7 @@ import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
 import { Icon, type IconName } from './ui/Icon';
 import { Pill } from './ui/Pill';
 import { Badge } from './ui/Badge';
+import { FxEstimateBadge } from './ui/FxEstimateBadge';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Skeleton } from './ui/Skeleton';
 import { MarketDataPoint } from '../services/finance';
@@ -636,13 +637,19 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 icon={<Icon name="investments" size={28} />}
                 title="Investissements"
                 badge={
-                    <Badge
-                        variant={diversificationScore >= 80 ? 'success' : diversificationScore >= 50 ? 'warning' : 'danger'}
-                        size="md"
-                        title="Sous-mesure : diversification du portefeuille + tendance vs marché (le score de santé financière GLOBAL est sur l'Accueil)"
-                    >
-                        Diversification {diversificationScore}/100
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                        <Badge
+                            variant={diversificationScore >= 80 ? 'success' : diversificationScore >= 50 ? 'warning' : 'danger'}
+                            size="md"
+                            title="Sous-mesure : diversification du portefeuille + tendance vs marché (le score de santé financière GLOBAL est sur l'Accueil)"
+                        >
+                            Diversification {diversificationScore}/100
+                        </Badge>
+                        {/* [FX-FALLBACK-SILENCIEUX] : les totaux de cette page convertissent des
+                            avoirs étrangers en CAD — le signal doit vivre ICI, pas seulement
+                            dans SystemView (page technique que personne ne visite). */}
+                        <FxEstimateBadge size="md" />
+                    </div>
                 }
             />
 

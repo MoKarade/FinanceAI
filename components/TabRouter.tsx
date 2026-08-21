@@ -227,7 +227,6 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                             goal={state.retirementGoal}
                             currentREER={assetBreakdown.reer} currentCELI={assetBreakdown.celi} currentNonReg={assetBreakdown.nonReg}
                             calculatedMonthlySavings={calculatedMonthlySavings}
-                            grossIncome={state.config.users.reduce((acc, u) => acc + (u.grossSalary || u.salary || 0), 0)}
                             projection={state.projection}
                             config={state.config}
                             initialBalances={state.initialBalances}

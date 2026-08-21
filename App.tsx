@@ -784,6 +784,7 @@ export const App: React.FC = () => {
                         // en dur → la ligne « Équité bâtie » du PDF ne s'affichait jamais). Import
                         // dynamique : même frontière lazy que le PDF lui-même (rien au boot).
                         const { presentEquityOfGoal, monthsSince } = await import('./services/projection/pastPurchaseInit');
+                        const { isFxRatesEstimated, hasForeignCurrencyAssets } = await import('./services/portfolio');
                         // Snapshot store hors React pour éviter la dépendance sur state
                         // (lastProjection est délibérément exclu du selector App.tsx).
                         const { lastProjection } = useFinanceStore.getState();
@@ -811,6 +812,9 @@ export const App: React.FC = () => {
                             // P1.5 — sections étendues (dérivées via builders purs testés)
                             fiscal: buildFiscalSummary(state),
                             holdings: buildHoldingsRows(state),
+                            // [FX-FALLBACK-SILENCIEUX] : note sous « Total placements » quand le
+                            // taux vient du repli en dur ET qu'un avoir est en devise étrangère.
+                            fxRatesEstimated: isFxRatesEstimated(state.fxRates) && hasForeignCurrencyAssets(state.assets),
                             debtsDetail: buildDebtsRows(state),
                             goalsDetail: buildGoalsRows(state),
                             // PDF Futur — comparaison scénarios (allResults depuis lastProjection)

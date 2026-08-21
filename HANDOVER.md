@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-21 (suite 125) — Vague 2 PM : badge FX estimé, prop morte, récap devise native
+> Branche `claude/vague2-devises` (rebasée sur main post-#685 — Marc a mergé #684 lui-même, PUIS
+> #685 doc-only, pendant la rédaction du gate ; réconciliée). **§6 vérifié** : déploiement
+> production `READY` sur `723315b` (#685), qui contient bien `de08327` (#684) — rien à router.
+> 3 items indépendants :
+> `[FX-FALLBACK-SILENCIEUX]` (badge partagé `FxEstimateBadge`, gated sur avoir étranger RÉEL — pas
+> de bruit si tout est en CAD — câblé tuile Patrimoine net + Investissements + note PDF),
+> `[RETIREMENT-GROSSINCOME-DEAD]` (prop supprimée, zéro consommateur), `[ADDSTOCK-CAD-NATIF]`
+> (récap en `formatNumber` + devise explicite, plus `formatCAD` sur un montant USD/EUR — checkbox
+> Devise gagne son association label↔id au passage). 9 tests neufs, 3 perturbations prouvées
+> rouges assertion par assertion.
+>
 > ## 🟢 Session 2026-08-21 (suite 124) — isOwned + badges (A6 + A5) : la détention se DÉCLARE
 > Branche `claude/past-owned-badge` (depuis main post-#683), PR #684. Champ `isOwned?: boolean`
 > additif sur `RealEstateGoal` : `false` = objectif planifié non réalisé → RIEN au m0 (ferme les

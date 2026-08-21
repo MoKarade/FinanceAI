@@ -172,6 +172,12 @@ export function processRealEstate(
 
         const purchaseOffset = getMonthOffset(goal.purchaseDate);
         if (!goal.isActive || m < purchaseOffset) return;
+        // [ENG-PAST-OWNED-VS-PLANNED] (A6) 3e registre attrapé par le test bout-en-bout : sans ce
+        // gate, un objectif « pas encore acheté » à date PASSÉE était ACHETÉ d'office au m0
+        // (mise de fonds débitée, équité injectée — l'achat fantôme remplaçait l'équité fantôme).
+        // Un objectif non réalisé n'agit PAS tant que l'utilisateur n'a pas repoussé sa date ou
+        // confirmé l'achat (badge « Date passée — non acheté » à l'écran).
+        if (goal.isOwned === false && purchaseOffset < 0 && !pState.isBought) return;
 
         // ── ACHAT ──────────────────────────────────────────────────────
         if (!pState.isBought) {

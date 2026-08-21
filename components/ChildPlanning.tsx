@@ -292,7 +292,9 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         {/* Phase F.9 — indicateur d'activation FUTUR uniformisé avec Immobilier */}
                         {goal.isActive
                             ? <Badge variant="success" size="md">Active dans simulation</Badge>
-                            : <Badge variant="neutral" size="md">Inactive</Badge>
+                            // [UX-ISACTIVE-BADGE] (A5) : le défaut inactif est VOULU (« on attend
+                            // le clic Activer ») — mais l'absence de la simulation doit être DITE.
+                            : <Badge variant="neutral" size="md">Non compté dans la simulation</Badge>
                         }
                         <Badge variant="info" size="md">Coût total: {fmt(costTimeline.totalCost)}</Badge>
                     </div>

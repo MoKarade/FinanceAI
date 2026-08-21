@@ -11,6 +11,7 @@ import { RealEstateGoal, Tab as TabEnum } from '../../types';
 import { INITIAL_REAL_ESTATE_GOAL, TAB_LABELS } from '../../constants';
 import { VieCurveLink } from '../vie/VieCurveLink';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { Modal } from '../ui/Modal';
 import { PropertyConfigurator } from './PropertyConfigurator';
 import { MultiPropertyComparison } from './MultiPropertyComparison';
 import { RealEstateAdviceCard } from './RealEstateAdviceCard';
@@ -74,6 +75,26 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
         setAllGoals(allGoals.map(g => g.id === activeGoal.id ? { ...g, ...updates } : g));
     };
 
+    // [ENG-PAST-OWNED-VS-PLANNED] (décision Marc A6) : un objectif ACTIF dont la date planifiée
+    // est PASSÉE sans que l'achat soit tranché (isOwned indéfini — legacy ou projet rattrapé par
+    // le calendrier) déclenche LA question. Répondre écrit le champ ; « Pas encore » retire le
+    // bien du m0 (badge « Date passée — non acheté » + contrôle du formulaire pour corriger).
+    // Fermer sans répondre = « plus tard » pour CETTE session d'écran (pas persisté — la
+    // question doit revenir tant que le champ n'est pas tranché).
+    const [ownedQuestionDismissed, setOwnedQuestionDismissed] = useState(false);
+    const firstDayOfCurrentMonth = useMemo(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    }, []);
+    const pendingOwnedGoal = useMemo(() =>
+        ownedQuestionDismissed ? null
+            : allGoals.find(g => g.isActive && g.isOwned === undefined && g.purchaseDate
+                && g.purchaseDate < firstDayOfCurrentMonth) ?? null,
+        [allGoals, firstDayOfCurrentMonth, ownedQuestionDismissed]);
+    const answerOwned = (goalId: string, owned: boolean) => {
+        setAllGoals(allGoals.map(g => g.id === goalId ? { ...g, isOwned: owned } : g));
+    };
+
     const addNewGoal = () => {
         const newId = `prop_${Date.now()}`;
         // La nouvelle entrée DOIT atterrir dans la vue courante (sinon elle « disparaît »
@@ -97,6 +118,9 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
         const newGoal: RealEstateGoal = {
             ...INITIAL_REAL_ESTATE_GOAL,
             id: newId,
+            // [ENG-PAST-OWNED-VS-PLANNED] un bien créé depuis la page « Actuel » est par
+            // définition DÉTENU — le champ est posé explicitement (jamais deviné d'une date).
+            ...(isActuel ? { isOwned: true } : {}),
             isActive: false,
             isPrimaryResidence: false,
             price: 400000,
@@ -423,11 +447,45 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                 message="Supprimer ce scénario immobilier définitivement ?"
                 confirmLabel="Supprimer"
             />
+            {pendingOwnedGoal && (
+                // [ENG-PAST-OWNED-VS-PLANNED] Modal nu (PAS ConfirmModal : son onClose == onCancel,
+                // une fermeture accidentelle écrirait « pas acheté » et retirerait le bien du m0).
+                // Trois issues : Oui / Pas encore / fermer = décider plus tard (rien n'est écrit,
+                // la question reviendra).
+                <Modal
+                    isOpen
+                    onClose={() => setOwnedQuestionDismissed(true)}
+                    title="Date d'achat passée"
+                    size="sm"
+                    footer={
+                        <>
+                            <Button onClick={() => answerOwned(pendingOwnedGoal.id, false)} variant="ghost" size="sm">Pas encore</Button>
+                            <Button onClick={() => answerOwned(pendingOwnedGoal.id, true)} variant="primary" size="sm">Oui, acheté</Button>
+                        </>
+                    }
+                >
+                    <p className="text-body text-ink-300 leading-relaxed">
+                        La date d'achat planifiée de « {pendingOwnedGoal.name || 'ce bien'} » ({pendingOwnedGoal.purchaseDate}) est passée.
+                        As-tu acheté ce bien ? « Pas encore » le retire de la simulation au mois 0 (badge visible, réversible dans le formulaire).
+                    </p>
+                </Modal>
+            )}
             <PageHeader
                 icon={<Icon name={pageIcon} size={28} />}
                 title={pageTitle}
                 subtitle={pageSubtitle}
-                badge={activeGoal.isActive ? <Badge variant="success" size="md">Active dans simulation</Badge> : <Badge variant="neutral" size="md">Inactive</Badge>}
+                badge={
+                    <div className="flex items-center gap-2">
+                        {activeGoal.isActive
+                            ? <Badge variant="success" size="md">Active dans simulation</Badge>
+                            // [UX-ISACTIVE-BADGE] (A5) : l'amputation du patrimoine doit être VISIBLE.
+                            : <Badge variant="neutral" size="md">Non comptée dans la simulation</Badge>}
+                        {/* [ENG-PAST-OWNED-VS-PLANNED] (A6) : date passée sans achat confirmé. */}
+                        {activeGoal.isOwned === false && (
+                            <Badge variant="warning" size="md">Date passée — non acheté</Badge>
+                        )}
+                    </div>
+                }
                 actions={
                     <>
                         {/* [REFONTE-NAV-L4] affordance commune des pages « Vie » — variante « projet »

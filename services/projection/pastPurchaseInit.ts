@@ -132,7 +132,11 @@ export function presentEquityOfGoal(goal: RealEstateGoal, monthsSincePurchase: n
         });
         return 0;
     }
-    if (monthsSincePurchase > 0) {
+    // [ENG-PAST-OWNED-VS-PLANNED] (A6) même gate que le moteur (un flux alimente PLUSIEURS
+    // registres — moteur ET affichage) : date passée + isOwned === false = objectif planifié non
+    // réalisé → on retombe sur les seuls champs EXPLICITES (un currentValue saisi prime), pas
+    // sur une équité reconstruite d'un achat qui n'a pas eu lieu.
+    if (monthsSincePurchase > 0 && goal.isOwned !== false) {
         const s = initPastPurchase(goal, monthsSincePurchase);
         return s.currentValue - s.mortgage;
     }

@@ -10,6 +10,33 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-20 — [FISC-PENSION-CREDIT-REAL] : le crédit pension fédéral décroît en espace réel
+
+- [x] **`[FISC-PENSION-CREDIT-REAL]`** (S, MOYEN) — ✅ 2026-08-20, PR à compléter au merge.
+
+**GO Marc A3.** Le montant fédéral (2 000 $, ARC 31400) est GELÉ nominalement depuis 2006 ; le
+barème réel le traitait à plat → 2 000 $ RÉELS constants au lieu de `2 000/(1+i)^Δ`. C'était
+l'**unique** terme non homogène du barème réel (sweep 1 920 cas, panel #556). Fix d'une ligne :
+`min(PENSION_INCOME_AMOUNT_FED / realDeflator, pension)` — nominal strictement inchangé.
+
+**MESURÉ** : à 20 ans (1,02^20), composante crédit 201,89 $ au lieu de 300 $ ; sous-imposition
+fermée (≤ 250,50 $ réels/pers/an en asymptote ; cumul 30 ans à i = 2 % : ≤ 3 809 $ réels au max
+analytique, 2 229-4 414 $ sur profils moteur réalistes — le « ~12 k$ » du ticket n'apparaît qu'à
+5,5 %/40 ans, chiffre d'estimation corrigé par la revue #680, classe ECRIRE-UN-CHIFFRE). Discrimination
+prouvée par `git stash push utils/tax.ts` (ancien moteur + tests neufs → 1 rouge exact — ⚠️ un
+stash COMPLET emporte les tests avec le fix et ne prouve rien). 3 tests neufs dans `tax.test.ts`.
+**1 golden re-basé — et ma 1re attribution causale était FAUSSE** (revue #680, 3e récidive du
+jour) : j'avais écrit « la pension per-adulte des couples reste sous le montant » — mesuré, elle
+est 10× AU-DESSUS (20 568 vs 1 922 $). La vraie raison : le fedTax des couples est DÉJÀ clampé à
+0 (BPA + montant d'âge > imposable per-adulte), le crédit non remboursable est perdu — réduire un
+crédit perdu ne change rien. Ces goldens ne sont PAS structurellement insensibles au fix.
+**Vague revue #680 appliquée** : garde safeDeflator reprise de getIndexedBracketsForYear (2000/0 =
+Infinity → min créditait la pension ENTIÈRE, fini et invisible ; bracketRealIndex passe NaN mais
+sans ageOpts — la ligne n'était couverte par AUCUN test de corruption, fermé) ; else journalisé
+sur la régularisation retraité NON FINIE (asymétrie avec la branche active) ; test « zone de
+bascule » discriminant (pension entre cap déflaté et cap nominal — le 1er jet testait 800 $ sous
+LES DEUX caps, vert avant ET après) ; date du gel 2015 → 2006 (recopie divergente de tête).
+
 ## 2026-08-20 — [FISC-RRSP-ROOM-PER-USER] : les droits REER se calculent par personne (règle ARC)
 
 - [x] **`[FISC-RRSP-ROOM-PER-USER]`** (M, ÉLEVÉ) — ✅ 2026-08-20, PR #679.

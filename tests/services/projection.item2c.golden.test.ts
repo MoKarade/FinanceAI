@@ -95,7 +95,16 @@ describe('[ITEM-2C] gates de timing per-conjoint — FERR (conversion) + PSV/RRQ
         coupleUser1Older:   { ferr: 24, nw: -82434, tax: 13337 },  // FERR + PSV/RRQ per-conjoint (user2=64 : PSV démarre à SES 65)
         coupleUser1Younger: { ferr: 24, nw: -82024, tax: 13337 },  // idem ; user0=64<65 mais user1=70 touche PSV → SRG calculé (psvMonthly>0)
         coupleEqual:        { ferr: 24, nw: -78810, tax: 13351 },  // ANCRE — inchangé vs ménage
-        solo:               { ferr: 24, nw: -116753, tax: 59919 }, // ANCRE — inchangé vs ménage ; TP1G-VIVANT-SEUL conservé
+        // Re-basé 2026-08-20 [FISC-PENSION-CREDIT-REAL] (était nw −116 753 / tax 59 919) : le
+        // crédit pension féd est désormais déflaté en espace réel → +291 $ d'impôt cumulé
+        // (recoupé analytiquement : Σ 0,15 × 0,835 × 2 000 × (d−1) ≈ 288 $), −198 $ de NW.
+        // ⚠️ POURQUOI seul le solo bouge (MESURÉ par la revue — ma 1re explication était fausse) :
+        // la pension per-adulte des couples est 10× AU-DESSUS du montant déflaté (20 568 vs
+        // 1 922 $) — le min prend le MONTANT partout. Mais le fedTax des couples est DÉJÀ clampé
+        // à 0 (BPA + montant d'âge > revenu imposable per-adulte) : le crédit non remboursable
+        // est perdu, réduire un crédit perdu ne change rien. Si le REVENU des couples monte, ces
+        // goldens DOIVENT bouger — ils ne sont pas structurellement insensibles au fix.
+        solo:               { ferr: 24, nw: -116951, tax: 60210 }, // ANCRE — inchangé vs ménage ; TP1G-VIVANT-SEUL conservé
         couplePsvBonus:     { ferr: 12, nw: -84939, tax: 14165 },  // bonus PSV 75+ SEULEMENT sur user1=76 ; user2=64 pas de PSV
         couplePsvStartGap:  { ferr: 72, nw: -82480, tax: 15044 },  // user1=66 PSV démarrée ; user2=63 PSV démarre à SES 65
     } as const;

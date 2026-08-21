@@ -574,6 +574,59 @@ describe('calculateAgeAndPensionCredits (§6.2)', () => {
     expect(high - low).toBeCloseTo((PENSION_INCOME_AMOUNT_FED - 1500) * FED_NONREFUNDABLE_RATE, 2);
   });
 
+  // [FISC-PENSION-CREDIT-REAL] (GO Marc A3, 2026-08-20) — le montant fédéral est GELÉ à
+  // 2 000 $ NOMINAUX : en espace RÉEL (realDeflator > 1) il doit DÉCROÎTRE en 1/realDeflator.
+  // Avant le fix c'était l'unique terme du barème réel traité à plat (sweep 1 920 cas, #556).
+  describe('[FISC-PENSION-CREDIT-REAL] crédit pension fédéral en espace réel', () => {
+    // Composante pension isolée par DIFFÉRENCE (avec vs sans pension) — le crédit d'âge s'annule.
+    const pensionComponent2 = (pension: number, deflator: number): number => {
+      const { fedCredit: avec } = calculateAgeAndPensionCredits(
+        { age: 70, eligiblePensionIncome: pension }, 40000, 2046, deflator);
+      const { fedCredit: sans } = calculateAgeAndPensionCredits(
+        { age: 70, eligiblePensionIncome: 0 }, 40000, 2046, deflator);
+      return avec - sans;
+    };
+    const pensionComponent = (year: number, deflator: number): number => {
+      const { fedCredit: avec } = calculateAgeAndPensionCredits(
+        { age: 70, eligiblePensionIncome: 10000 }, 40000, year, deflator);
+      const { fedCredit: sans } = calculateAgeAndPensionCredits(
+        { age: 70, eligiblePensionIncome: 0 }, 40000, year, deflator);
+      return avec - sans;
+    };
+
+    it('NOMINAL (realDeflator = 1) : strictement l\'ancien comportement, 2 000 × 15 %', () => {
+      expect(pensionComponent(2046, 1)).toBeCloseTo(300, 6);
+    });
+
+    it('RÉEL à 20 ans (deflator 1,02^20) : le montant gelé vaut 1 345,94 $ réels → crédit 201,89 $', () => {
+      // MESURÉ (pas déduit) : 2 000 / 1,02^20 × 15 % = 201,8915… — l'ancien code rendait 300,00
+      // (2 000 réels constants = sous-imposition ≤ 250,50 $/pers/an, sens NON conservateur).
+      const deflator = Math.pow(1.02, 20);
+      expect(pensionComponent(2046, deflator)).toBeCloseTo(201.89, 2);
+      expect(pensionComponent(2046, deflator)).not.toBeCloseTo(300, 0); // ancre négative : l'à-plat
+    });
+
+    it('ZONE DE BASCULE : pension entre le montant déflaté et le montant nominal (discriminant)', () => {
+      // [Revue #680] Le premier jet testait pension 800 $ < LES DEUX caps — vert avant ET après,
+      // non discriminant. La vraie frontière du fix : pension STRICTEMENT entre 2 000/d et 2 000.
+      // À d = 2, pension 1 500 $ : nouveau = min(1 000, 1 500) × 15 % = 150 ; l'ANCIEN code
+      // rendait min(2 000, 1 500) × 15 % = 225 (mesuré, ancre négative).
+      expect(pensionComponent2(1500, 2)).toBeCloseTo(150, 6);
+      expect(pensionComponent2(1500, 2)).not.toBeCloseTo(225, 0);
+    });
+
+    it('deflator corrompu (0 / NaN / négatif) → repli sur 1, jamais Infinity ni NaN', () => {
+      // [Revue #680, 3 agents] La garde de getIndexedBracketsForYear est reprise À CE SITE :
+      // sans elle, 2000/0 = Infinity → min(Infinity, pension) crédite la pension ENTIÈRE — un
+      // nombre FINI plausible qu'aucune garde aval ne voit (incident inflationFactor = 0 documenté
+      // au dépôt). NB : bracketRealIndex.test passe NaN mais SANS ageOpts — cette ligne n'était
+      // exercée par AUCUN test de corruption.
+      for (const bad of [0, Number.NaN, -1]) {
+        expect(pensionComponent2(10000, bad)).toBeCloseTo(300, 6); // = nominal (repli sur 1)
+      }
+    });
+  });
+
   it('applique la ligne 361 QC à plein pour 65+ sous le seuil sans conjoint (montant vivant seul inclus)', () => {
     const familyIncome = QC_LINE_361_THRESHOLD_2026 - 1000;
     const pension = RETIREMENT_INCOME_AMOUNT_QC_2026;

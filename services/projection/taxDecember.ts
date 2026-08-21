@@ -713,6 +713,11 @@ export function processDecemberTaxFiling(
                 if (reconciliation < floor) {
                     logs.push(`⚠️ Régularisation retraité tronquée au plancher ${Math.round(floor).toLocaleString('fr-CA')}$ (calculée: ${Math.round(reconciliation).toLocaleString('fr-CA')}$)`);
                 }
+            } else if (!Number.isFinite(reconciliation)) {
+                // [Revue #680] Symétrie avec la branche ACTIVE (⚠️ solde d'avril NON FINI) : un
+                // NaN ici laissait taxCurrent.revenu inchangé SANS trace — seul filet du sous-cas
+                // NaN de la chaîne des crédits. On dit, on ne corrige pas en silence.
+                logs.push(`⚠️ Régularisation retraité NON FINIE (reconciliation=${reconciliation}) → ignorée ; donnée amont corrompue.`);
             }
         }
     }

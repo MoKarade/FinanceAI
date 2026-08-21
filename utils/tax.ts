@@ -246,7 +246,17 @@ export const calculateAgeAndPensionCredits = (
     // standard (FERR, pension privée, REER converti). Les exceptions invalidité
     // < 65 ans ne sont pas modélisées dans FinanceAI (caller responsabilité).
     if (age >= AGE_AMOUNT_FED_MIN_AGE) {
-        fedAmount += Math.min(PENSION_INCOME_AMOUNT_FED, pension);
+        // [FISC-PENSION-CREDIT-REAL] Le montant est GELÉ nominalement (2 000 $ depuis 2006,
+        // FISCAL_REFERENCE §4) : en espace RÉEL il DÉCROÎT donc en 1/realDeflator — c'était
+        // l'unique MONTANT du barème réel traité à plat (sweep 1 920 cas, panel #556 ; les
+        // plafonds de COTISATION restent hors indexation, pré-existant). En nominal
+        // (realDeflator = 1) : inchangé. Sous-imposition fermée : ≤ 250,50 $ réels/pers/an en
+        // asymptote, ≤ 3 809 $ réels cumulés sur 30 ans à i = 2 % (mesuré ; 12 k$ n'apparaît
+        // qu'à 5,5 %/40 ans). Garde reprise de getIndexedBracketsForYear (même fichier) : un
+        // deflator 0/NaN/négatif retombe sur 1 — sinon 2000/0 = Infinity et le min crédite la
+        // pension ENTIÈRE, un nombre fini plausible qu'aucune garde aval ne voit.
+        const safeDeflator = Number.isFinite(realDeflator) && realDeflator > 0 ? realDeflator : 1;
+        fedAmount += Math.min(PENSION_INCOME_AMOUNT_FED / safeDeflator, pension);
     }
 
     // Ligne 361 QC — âge + revenu de retraite + « personne vivant seule », COMBINÉS puis réduits UNE fois.

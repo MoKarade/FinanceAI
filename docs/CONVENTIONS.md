@@ -4859,6 +4859,15 @@ vérifie par décomposition qui RECOMPOSE la valeur au cent, sinon elle fabrique
 sûrement qu'un chiffre inventé. Un pin juste avec une explication fausse re-dérivera de travers à
 la prochaine session.
 
+**3e étage de la même classe** (récidive ×3 le 2026-08-20, PR #676/#679/#680) : après le CHIFFRE
+(pin 776,25 déduit vs 675,56 mesuré) et le MÉCANISME (« borné par le crédit restant » — faux,
+c'était l'abattement QC 16,5 %), l'**ATTRIBUTION CAUSALE d'un golden re-basé** : « les couples ne
+bougent pas parce que leur pension est sous le montant » — mesuré, elle est 10× AU-DESSUS ; la
+vraie cause était un fedTax déjà clampé à 0. Les trois se corrigent pareil : INSTRUMENTER et
+mesurer la grandeur intermédiaire qui porte la cause (le min, le crédit restant, le fedTax),
+jamais raconter le mécanisme le plus plausible. Une attribution fausse est pire qu'absente : elle
+dit à la prochaine session quels goldens sont « insensibles » — et ils ne le sont pas.
+
 ### `UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`
 
 Toujours `[ESTATE-NPV-07]`, mais c'est la revue qui l'a trouvé, pas moi. Le lot remplaçait un facteur

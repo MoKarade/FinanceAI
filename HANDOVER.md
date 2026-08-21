@@ -28,6 +28,23 @@
 > `[DEBT-UI-PAR-TYPE]` (kind exposé dans DebtManager, actuellement invisible malgré 11 valeurs déjà
 > dans `types.ts`). Comparateur prêt-vs-bail explicitement PAS scopé (cadrage insuffisant, routé
 > backlog séparé). 3 discriminants prouvés rouges par perturbation chirurgicale (delta forcé à 0).
+> **Panel #687 (5 agents) appliqué — CRITIQUE trouvé indépendamment par financial-integrity ET
+> code-reviewer, par lecture de code (pas exécution)** : le 1er jet du delta excluait une dette
+> dès qu'elle était 'a-venir' au mois passé regardé, SANS vérifier qu'elle était déjà comptée dans
+> `currentDebtNonImmo` en premier lieu — une dette dont le `startDate` est encore dans le FUTUR
+> (pas seulement après le mois regardé, mais après AUJOURD'HUI ; cas d'usage même de
+> `[DETTE-DATES]` : « un prêt signé dans six mois ») n'a JAMAIS contribué à `currentDebtNonImmo`
+> (le moteur l'exclut déjà), donc la retrancher fabriquait −22 000 $ de patrimoine passé FANTÔME —
+> le symptôme INVERSE du bug initial, introduit par le correctif sur une branche non testée.
+> **Corrigé** : `sumNotYetStartedDebtsAt(Absolute)Month` compare désormais la phase de la dette à
+> DEUX mois (le mois passé ET aujourd'hui), n'excluant que si 'a-venir' au premier ET PAS au
+> second ; `Math.max(0, …)` ajouté aux deux call sites (résidu négatif possible : le delta emprunte
+> le solde BRUT contre un total post-amortissement, mesuré jusqu'à −4 651,67 $). silent-failure-hunter
+> a aussi trouvé un ÉLEVÉ (solde de dette non fini avalé sans `logError`, contrairement au moteur) —
+> corrigé (`logError` throttlé par dette, même patron que `netWorth.ts`). documentation-manager a
+> corrigé un `docs/PROJECTION_OUTPUT_SCHEMA.md` périmé. 8 tests neufs (dont 4 discriminants du
+> CRITIQUE/ÉLEVÉ, prouvés rouges par perturbation chirurgicale du garde-fou et du clamp).
+> Nouvelle leçon `EXCLURE-N-EST-PAS-LE-DROIT-DE-RETRANCHER-DE-N-IMPORTE-QUEL-TOTAL`.
 >
 > ## 🟢 Session 2026-08-21 (suite 125) — Vague 2 PM : badge FX estimé, prop morte, récap devise native
 > Branche `claude/vague2-devises` (rebasée sur main post-#685 — Marc a mergé #684 lui-même, PUIS

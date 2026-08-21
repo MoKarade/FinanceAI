@@ -5175,9 +5175,51 @@ une transformation invisible depuis les composants).
 ⚠️ Corollaire de test découvert dans le MÊME lot : un test composant qui compare une valeur À une
 autre pour prouver un gating (« avant » vs « après » une date) doit chercher les LIGNES par un
 identifiant STABLE (ici le libellé de date `dateLabel`, `YYYY-MM`), jamais par une POSITION
-suposée dans un tableau — le nombre de lignes dépend d'une reconstruction de cash dont la
+supposée dans un tableau — le nombre de lignes dépend d'une reconstruction de cash dont la
 longueur n'est pas un invariant du test. Un 1er jet indexé par position (`rows[1]`/`rows[2]`)
 comparait deux mois tous deux AVANT la date de la dette (le vrai point après restait `rows[3]`,
 jamais lu) : le test passait pour la MAUVAISE raison, dans les deux sens (fixé et perturbé) tant
 que la perturbation n'a pas été essayée — seule la perturbation chirurgicale (delta forcé à 0
 dans le code réel, pas une réimplémentation) l'a démasqué.
+
+### `EXCLURE-N-EST-PAS-LE-DROIT-DE-RETRANCHER-DE-N-IMPORTE-QUEL-TOTAL` — le delta ci-dessus avait lui-même un défaut critique
+
+Panel de revue de la PR #687 (financial-integrity ET code-reviewer, INDÉPENDAMMENT, par LECTURE
+directe du code — pas par exécution). Mon 1er jet du delta ci-dessus (`RESOMMER-UN-AGREGAT-...`)
+excluait une dette du passé dès que `phaseDetteAuMoisAbsolu(dette, moisPassé) === 'a-venir'`, SANS
+vérifier une chose essentielle : que cette dette faisait bien partie du total `currentDebtNonImmo`
+qu'on cherche à corriger. Pour une dette dont le `startDate` est encore dans le FUTUR par rapport à
+AUJOURD'HUI (pas seulement par rapport au mois passé regardé — exactement le cas d'usage que
+`[DETTE-DATES]` visait : « un prêt signé dans six mois »), le moteur (`sumActiveDebts`) l'exclut
+DÉJÀ de `currentDebtNonImmo` — elle vaut 0 dans ce total. La retrancher quand même revient à
+soustraire d'un total qui ne l'a JAMAIS contenue : mesuré, −22 000 $ de patrimoine passé FABRIQUÉ,
+le symptôme INVERSE de celui que le lot corrigeait, introduit par le correctif lui-même sur une
+branche voisine non testée par AUCUN des tests écrits pour ce lot (tous utilisaient une dette déjà
+active aujourd'hui, `startDate` ≤ mois 0 — jamais une dette future).
+
+**Règle générale** : avant de retrancher un ÉLÉMENT d'un TOTAL agrégé pour corriger un sous-cas,
+vérifier que cet élément a RÉELLEMENT contribué à ce total — un gating qui répond « doit-on exclure
+ceci à CE point ? » sans jamais vérifier « était-ce inclus au DÉPART ? » retranche dans le vide dès
+que les deux questions divergent. Concrètement ici : le garde-fou compare la phase de la dette à
+DEUX mois distincts — le mois passé regardé, ET le mois « aujourd'hui » qui a produit le total —,
+et n'agit que si la dette est 'a-venir' au premier ET PAS au second. Une seule comparaison de phase
+(au mois passé seul) ne peut pas distinguer ces deux cas.
+
+**Corollaire, même lot** : même pour une dette CORRECTEMENT exclue, le delta emprunte le solde BRUT
+de la dette (`d.balance`) alors que le total agrégé porte sa valeur APRÈS un pas de calcul du
+moteur (ici l'amortissement du mois 0) — la soustraction peut rendre le résultat légèrement
+NÉGATIF (mesuré jusqu'à −4 651,67 $ sur un exemple à paiement élevé). Une grandeur qui ne peut
+JAMAIS être négative (une dette) doit être bornée au point de calcul (`Math.max(0, …)`), PAS
+supposée positive parce que « ça ne devrait pas arriver » — le composant en amont
+(`computeRawNetWorth`) ne clampe pas ce terme lui-même, et ne doit pas être chargé de le faire (la
+correction appartient à l'appelant qui CONNAÎT la nature du terme, pas au calcul générique).
+
+⚠️ **Deux agents de revue INDÉPENDANTS ont trouvé le MÊME défaut critique, par la MÊME méthode**
+(lecture du code source, pas exécution) — un signal fort que le defaut était structurellement
+visible pour quiconque suivait la chaîne `sumActiveDebts` → signe de `activeDebtsTotal` dans
+`computeRawNetWorth` jusqu'au bout, mais invisible à des tests qui ne couvraient que le scénario
+DEMANDÉ (dette déjà commencée) et jamais la branche VOISINE la plus évidente (dette pas encore
+commencée du tout). Une revue à un seul angle (juste financial-integrity, ou juste code-reviewer)
+aurait pu suffire ici — mais le fait que les DEUX l'aient trouvé, avec la même justesse au dollar
+près, est la preuve que ce n'était pas un accident de lecture : un test avant merge sur cette
+branche précise (« dette avec `startDate` après aujourd'hui ») l'aurait aussi attrapé, mécaniquement.

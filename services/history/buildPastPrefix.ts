@@ -112,8 +112,10 @@ export function buildPastPrefix(input: BuildPastPrefixInput): PastPrefixPoint[] 
         const hasNW = mi >= firstTxnMi; // VN seulement à partir de la 1re transaction connue
         // [PASSE-REEL-DETTE-1] `mi` partage le même repère absolu (mois 0 = début de projection,
         // négatif au passé) que le `m` de simulation du moteur — cf. `moisDeSimulation`. Une dette
-        // non encore commencée à CE mi est retranchée du total d'aujourd'hui (delta, cf en-tête).
-        const debtNonImmo = currentDebtNonImmo - sumNotYetStartedDebtsAtMonth(debts, startYear, startMonth, mi);
+        // DÉJÀ ACTIVE aujourd'hui mais non encore commencée à CE mi est retranchée du total (delta,
+        // cf en-tête de `sumNotYetStartedDebtsAtMonth`). `Math.max(0, …)` : le delta utilise le solde
+        // BRUT contre un total déjà post-amortissement — borne le résidu, une dette n'étant jamais négative.
+        const debtNonImmo = Math.max(0, currentDebtNonImmo - sumNotYetStartedDebtsAtMonth(debts, startYear, startMonth, mi));
         out.push({
             monthIndex: mi,
             year,

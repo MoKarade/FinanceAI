@@ -19,6 +19,14 @@
 // et cet écart doit se voir plutôt que d'être absorbé.
 //
 // Fonctions PURES, sans dépendance au moteur : testables sur des dates, pas sur une projection.
+// ⚠️ [finding silent-failure-hunter, revue #687] `sumNotYetStartedDebtsAt(Absolute)Month` journalise
+// (`logError`) un solde de dette non fini plutôt que de le rabattre à 0 en silence — même patron que
+// `sumActiveDebts` (services/projection.ts) et son miroir `computeRawNetWorth` (netWorth.ts), qui
+// journalisent tous les deux le même genre de corruption. Cette journalisation est un SIDE-CHANNEL
+// diagnostique (ne change jamais le résultat retourné) ; le chemin sain ne paie qu'un
+// `Number.isFinite`, comme dans `netWorth.ts`.
+
+import { logError } from '../errorLogger';
 
 /** Ce que le moteur a besoin de savoir d'une dette pour décider de la servir ce mois-ci. */
 export interface DebtDates {
@@ -93,18 +101,51 @@ export function phaseDette(
 }
 
 /** Ce qu'il faut connaître d'une dette pour la sommer dans un registre de patrimoine : ses dates
- *  (cf. `DebtDates`) et son solde ACTUEL. */
+ *  (cf. `DebtDates`) et son solde ACTUEL. `id`/`name` sont optionnels — utilisés UNIQUEMENT comme
+ *  contexte de diagnostic si le solde est corrompu (jamais lus pour le calcul lui-même). */
 export interface DebtBalance extends DebtDates {
     balance: number;
+    id?: string;
+    name?: string;
+}
+
+/** Throttle du `logError` de solde de dette non fini : une signature (id de dette) par run, même
+ *  patron que `netWorth.ts` — sans ça, `sumNotYetStartedDebtsAtAbsoluteMonth` est appelée jusqu'à
+ *  `maxDays` fois/jour reconstruit (`dailyPastLedger.ts`), et journaliser à CHAQUE appel pour une
+ *  même dette corrompue thrasherait le localStorage de `logError`. */
+const loggedNonFiniteDebtSignatures = new Set<string>();
+
+/** Test-only : remet à zéro le throttle ci-dessus (isolation entre tests, convention `__` du dépôt). */
+export function __resetNonFiniteDebtSignatureLog(): void {
+    loggedNonFiniteDebtSignatures.clear();
 }
 
 /**
- * Somme des soldes ACTUELS (bruts, `d.balance`) des dettes PAS ENCORE COMMENCÉES (phase 'a-venir')
- * au mois ABSOLU `courant` — à SOUSTRAIRE d'un total agrégé « aujourd'hui » (typiquement
- * `chartData[0].DettesNonImmo`, déjà EXACT et déjà sanitisé par le moteur) pour obtenir le total
- * d'un mois PASSÉ où certaines dettes n'existaient pas encore.
+ * Somme des soldes ACTUELS (bruts, `d.balance`) des dettes DÉJÀ ACTIVES AUJOURD'HUI (mois
+ * `moisAujourdhui`) mais PAS ENCORE COMMENCÉES au mois ABSOLU `courant` — à SOUSTRAIRE d'un total
+ * agrégé « aujourd'hui » (typiquement `chartData[0].DettesNonImmo`, déjà EXACT et déjà sanitisé par
+ * le moteur) pour obtenir le total d'un mois PASSÉ où certaines dettes n'existaient pas encore.
  *
- * ⚠️ Pourquoi une SOUSTRACTION plutôt qu'une resommation complète : `chartData[0].DettesNonImmo`
+ * ⚠️ [CRITIQUE, revue #687 — trouvé indépendamment par financial-integrity ET code-reviewer,
+ * MESURÉ] Le 1er jet excluait une dette dès que `phaseDetteAuMoisAbsolu(d, courant) === 'a-venir'`,
+ * SANS vérifier qu'elle était déjà comptée dans `currentDebtNonImmo` en premier lieu. Or
+ * `sumActiveDebts` du moteur (`services/projection.ts`) exclut DÉJÀ toute dette 'a-venir'
+ * AUJOURD'HUI — une dette dont le `startDate` est encore dans le FUTUR (cas d'usage explicite de
+ * `[DETTE-DATES]` : « un prêt signé dans six mois ») ne contribue JAMAIS à `currentDebtNonImmo`.
+ * La retrancher quand même fabriquait du patrimoine négatif de dette = un NetWorth passé GONFLÉ du
+ * solde entier de cette dette (mesuré : −22 000 $ sur un exemple). Le garde-fou : une dette n'est
+ * incluse dans ce delta QUE si elle est déjà active/terminée AUJOURD'HUI (`moisAujourdhui`) — sinon
+ * elle n'a jamais fait partie du total à corriger, et sa contribution correcte à TOUT mois passé
+ * est 0, identique à sa contribution à `currentDebtNonImmo`.
+ *
+ * ⚠️ [ÉLEVÉ, mesuré] Même pour une dette CORRECTEMENT exclue, le delta utilise son solde BRUT
+ * (`d.balance`) alors que `currentDebtNonImmo` porte le solde APRÈS le pas d'amortissement du mois 0
+ * du moteur (voir plus bas) — la soustraction peut donc rendre `debtNonImmo` légèrement NÉGATIF
+ * (mesuré : jusqu'à −4 651,67 $ sur un exemple à paiement élevé). L'appelant (`buildPastPrefix.ts`/
+ * `dailyPastLedger.ts`) DOIT clamper le résultat à 0 (`Math.max(0, …)`) — une dette ne peut jamais
+ * être négative, et `computeRawNetWorth` ne clampe pas ce terme lui-même.
+ *
+ * Pourquoi une SOUSTRACTION plutôt qu'une resommation complète : `chartData[0].DettesNonImmo`
  * n'est PAS la simple somme des `balance` bruts des dettes actives — le moteur a déjà appliqué son
  * propre pas d'amortissement du mois 0 (intérêt + paiement) AVANT de le publier. Resommer les
  * `balance` bruts pour TOUTES les dettes actives diverge donc de ce total de quelques dizaines à
@@ -112,23 +153,41 @@ export interface DebtBalance extends DebtDates {
  * garantit. En ne touchant qu'au DELTA des dettes EXCLUES (qui, avant ce lot, n'existaient dans
  * AUCUN total agrégé de toute façon), le cas « aucune dette datée » reste bit-identique à avant
  * (delta nul), et seule la correction visée (une dette pas encore commencée ne doit pas peser sur
- * le passé) introduit une approximation — bornée à cette dette précise, jamais aux autres.
+ * le passé) introduit une approximation — bornée à la dette EFFECTIVEMENT gatée (borné par le clamp
+ * ci-dessus), jamais aux autres.
  *
  * Même sanitisation à la frontière que `sumActiveDebts` du moteur (entrée nullish ignorée, solde
- * non fini rabattu à 0 plutôt que propagé en NaN).
+ * non fini rabattu à 0 plutôt que propagé en NaN) — ET même réflexe de traçabilité : un solde non
+ * fini est JOURNALISÉ (`logError`, throttlé par dette), jamais avalé en silence (§1 no-fake-data :
+ * un `0 $` crédible issu d'une corruption est pire qu'une trace honnête).
  */
 export function sumNotYetStartedDebtsAtAbsoluteMonth(
     debts: ReadonlyArray<DebtBalance> | null | undefined,
     courant: number,
+    moisAujourdhui: number,
 ): number {
     return (debts ?? []).filter(d => !!d).reduce((s, d) => {
+        // Pas encore active AUJOURD'HUI ⇒ jamais dans currentDebtNonImmo ⇒ rien à en retrancher.
+        if (phaseDetteAuMoisAbsolu(d, moisAujourdhui) === 'a-venir') return s;
         if (phaseDetteAuMoisAbsolu(d, courant) !== 'a-venir') return s;
-        return s + (Number.isFinite(d.balance) ? d.balance : 0);
+        if (Number.isFinite(d.balance)) return s + d.balance;
+        const signature = d.id ?? d.name ?? 'sans-identifiant';
+        if (!loggedNonFiniteDebtSignatures.has(signature)) {
+            loggedNonFiniteDebtSignatures.add(signature);
+            logError({
+                source: 'projection',
+                severity: 'warning',
+                message: 'sumNotYetStartedDebtsAtAbsoluteMonth : solde de dette non fini rabattu à 0 (passé reconstruit)',
+                context: { id: d.id, name: d.name },
+            });
+        }
+        return s;
     }, 0);
 }
 
 /** Comme `sumNotYetStartedDebtsAtAbsoluteMonth`, mais au mois `m` de la simulation plutôt qu'en
- *  mois absolu. */
+ *  mois absolu. « Aujourd'hui » == le mois 0 de la simulation, par construction de `buildPastPrefix`
+ *  (mi &lt; 0 pour le passé, mi = 0 non calculé ici mais correspond au présent). */
 export function sumNotYetStartedDebtsAtMonth(
     debts: ReadonlyArray<DebtBalance> | null | undefined,
     startYear: number,
@@ -136,7 +195,8 @@ export function sumNotYetStartedDebtsAtMonth(
     m: number,
 ): number {
     const { annee, mois } = moisDeSimulation(startYear, startMonth, m);
-    return sumNotYetStartedDebtsAtAbsoluteMonth(debts, annee * 12 + mois);
+    const moisAujourdhui = startYear * 12 + startMonth; // == moisDeSimulation(startYear, startMonth, 0)
+    return sumNotYetStartedDebtsAtAbsoluteMonth(debts, annee * 12 + mois, moisAujourdhui);
 }
 
 /**

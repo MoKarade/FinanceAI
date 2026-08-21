@@ -208,6 +208,12 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
     // ⚠️ [PASSE-REEL-CAP-400J] Défaut PARTAGÉ avec la reconstruction des placements. Deux `?? 400`
     // indépendants, c'était deux plafonds à faire évoluer ensemble — et donc un jour à désynchroniser.
     const maxDays = input.maxDays ?? MAX_DAILY_DAYS_DEFAULT;
+    // [PASSE-REEL-DETTE-1, CRITIQUE corrigé revue #687] Référence « aujourd'hui » pour le gating :
+    // une dette n'est retranchée du total que si elle est DÉJÀ active aujourd'hui (sinon elle n'a
+    // jamais fait partie de `currentDebtNonImmo` — cf commentaire dédié dans `debtSchedule.ts`).
+    // `?? Number.POSITIVE_INFINITY` en repli défensif (jamais atteint — `today` est une entrée ISO
+    // garantie par l'appelant) neutralise seulement CE garde-fou, sans réintroduire le bug d'origine.
+    const moisAujourdhui = moisAbsolu(today) ?? Number.POSITIVE_INFINITY;
 
     // Borne HAUTE à aujourd'hui : au-delà, ce n'est plus du reconstruit. `reconstructPortfolioHistoryDaily`
     // produirait pourtant des points (elle reconduit le dernier prix connu) — des placements PLATS
@@ -283,11 +289,13 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
         const expenses = expenseByDay.get(date) ?? 0;
         // [PASSE-REEL-DETTE-1] Palier MENSUEL volontaire (cf en-tête) : `moisAbsolu` ne retient que
         // l'année/le mois de `date`, jamais le jour. `?? Number.POSITIVE_INFINITY` en repli défensif
-        // (jamais atteint en pratique — `date` vient toujours de notre propre boucle ISO) fait qu'AUCUNE
-        // dette n'est plus jamais 'a-venir' à ce point → delta nul → repli sur `currentDebtNonImmo`
-        // inchangé, le comportement conservateur d'avant ce lot.
-        const debtNonImmo = currentDebtNonImmo
-            - sumNotYetStartedDebtsAtAbsoluteMonth(debts, moisAbsolu(date) ?? Number.POSITIVE_INFINITY);
+        // sur LE JOUR (jamais atteint en pratique — `date` vient toujours de notre propre boucle ISO)
+        // fait qu'AUCUNE dette n'est plus jamais 'a-venir' à ce point → delta nul → repli sur
+        // `currentDebtNonImmo` inchangé. `Math.max(0, …)` : voir le commentaire de
+        // `sumNotYetStartedDebtsAtAbsoluteMonth` (le delta utilise le solde BRUT contre un total
+        // post-amortissement — borne le résidu, une dette n'étant jamais négative).
+        const debtNonImmo = Math.max(0, currentDebtNonImmo
+            - sumNotYetStartedDebtsAtAbsoluteMonth(debts, moisAbsolu(date) ?? Number.POSITIVE_INFINITY, moisAujourdhui));
 
         out.push({
             date,

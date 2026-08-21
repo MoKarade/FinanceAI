@@ -51,7 +51,34 @@ même message est explicitement PAS scopé (cadrage insuffisant, à faire dans u
 forcé à 0, restauré ensuite), `FutureProjection.pastDebtFreeze.test.tsx` (wiring bout-en-bout,
 localisation des lignes par libellé de date plutôt que position — un 1er jet indexé par position
 comparait deux mois tous deux AVANT la date de la dette, test vacant démasqué par la perturbation).
-10 tests neufs. Gate complet vert : 4 608 tests / 415 fichiers.
+
+⚠️ **Panel #687 (5 agents) appliqué — CRITIQUE trouvé INDÉPENDAMMENT par financial-integrity ET
+code-reviewer, par lecture directe du code (pas exécution)** : mon delta ci-dessus excluait une
+dette dès qu'elle était 'a-venir' au MOIS PASSÉ regardé, sans jamais vérifier qu'elle avait
+réellement contribué à `currentDebtNonImmo` en premier lieu. Une dette dont le `startDate` est
+encore dans le FUTUR par rapport à AUJOURD'HUI (pas seulement après le mois regardé — le cas
+d'usage même de `[DETTE-DATES]` : « un prêt signé dans six mois ») n'a JAMAIS été comptée dans
+`currentDebtNonImmo` (le moteur l'exclut déjà de `sumActiveDebts`) — la retrancher quand même
+fabriquait **−22 000 $ de patrimoine passé FANTÔME**, mesuré, le symptôme INVERSE du bug initial
+de Marc, introduit par mon propre correctif sur une branche voisine qu'AUCUN test du 1er jet
+n'exerçait (tous utilisaient une dette déjà commencée aujourd'hui). **Corrigé** : le garde-fou
+compare désormais la phase de la dette à DEUX mois (le mois passé ET aujourd'hui), n'excluant que
+si 'a-venir' au premier ET PAS au second. **Corollaire ÉLEVÉ, même mécanisme** : même une dette
+correctement exclue peut faire passer le total en dessous de 0 (le delta emprunte le solde BRUT
+contre un total déjà post-amortissement — mesuré jusqu'à −4 651,67 $) ; `Math.max(0, …)` ajouté
+aux deux call sites. Nouvelle leçon `docs/CONVENTIONS.md` :
+`EXCLURE-N-EST-PAS-LE-DROIT-DE-RETRANCHER-DE-N-IMPORTE-QUEL-TOTAL`.
+
+- **[ÉLEVÉ, silent-failure-hunter]** un solde de dette non fini (NaN) était rabattu à 0 SANS
+  `logError`, contrairement au moteur (`sumActiveDebts`/`computeRawNetWorth`) qui journalise le
+  même genre de corruption — corrigé (`logError` throttlé par dette, même patron que `netWorth.ts`).
+- **[documentation-manager]** `docs/PROJECTION_OUTPUT_SCHEMA.md` (description de `DettesNonImmo`)
+  était périmée — corrigée pour mentionner le gating par `startDate`.
+
+Tests neufs au total (dont 4 discriminants du CRITIQUE/ÉLEVÉ trouvés par le panel, prouvés
+rouges par perturbation chirurgicale du garde-fou ET du clamp, restaurés ensuite). Gate complet
+vert : 4 608 tests / 415 fichiers (mesuré après le 1er jet — le panel a ajouté des tests
+supplémentaires depuis, compte final à re-mesurer avant merge).
 
 ## 2026-08-21 — Vague 2 : devises/unités (badge FX estimé, prop morte, récap en devise native)
 

@@ -115,4 +115,55 @@ describe('[FUTUR-HIST-WIRING-TEST] buildPastPrefix', () => {
         const last = out[out.length - 1];
         expect(last.NetWorth).toBe(13_000 - 8_000);
     });
+
+    it('[CRITIQUE, revue #687] une dette pas-encore-commencée AUJOURD\'HUI ne réduit JAMAIS le passé', () => {
+        // Régression trouvée indépendamment par financial-integrity ET code-reviewer : le 1er jet
+        // retranchait cette dette (10 000 $) de CHAQUE point passé alors qu'elle n'a jamais fait
+        // partie de `currentDebtNonImmo` (le moteur l'exclut déjà de sumActiveDebts AUJOURD'HUI) —
+        // fabriquant 10 000 $ de patrimoine passé (le signe INVERSE du bug initial de Marc).
+        const pts = [
+            invPoint('2025-11-30', { CELI: 10_000 }),
+            invPoint('2025-12-31', { CELI: 10_000 }),
+        ];
+        const avecDetteFuture = buildPastPrefix({
+            ...base,
+            transactions: [{ date: '2025-11-05', amount: -100 }],
+            pastHistoryPoints: pts,
+            currentDebtNonImmo: 0, // le moteur l'exclut déjà AUJOURD'HUI — 0, pas 10 000
+            debts: [{ balance: 10_000, startDate: '2028-01-01' }], // encore À VENIR même aujourd'hui
+        });
+        const sansCetteDette = buildPastPrefix({
+            ...base,
+            transactions: [{ date: '2025-11-05', amount: -100 }],
+            pastHistoryPoints: pts,
+            currentDebtNonImmo: 0, debts: [],
+        });
+        // Identique au cas SANS la dette — elle n'existe encore nulle part, ni aujourd'hui ni avant.
+        expect(avecDetteFuture.map(q => q.NetWorth)).toEqual(sansCetteDette.map(q => q.NetWorth));
+    });
+
+    it('[ÉLEVÉ, revue #687] une dette gatée à un solde BRUT > sa part post-amortissement dans currentDebtNonImmo ne rend jamais le total négatif (clamp)', () => {
+        // Le delta soustrait le solde BRUT (8 000 $) d'une dette dont `currentDebtNonImmo` (le total
+        // publié par le moteur AUJOURD'HUI) reflète déjà un pas d'amortissement — ici, plus bas que
+        // le solde brut d'origine (7 800 $ < 8 000 $, cas le plus défavorable : cette dette est la
+        // SEULE dette du ménage).
+        const pts = [
+            invPoint('2025-11-30', { CELI: 10_000 }),
+            invPoint('2025-12-31', { CELI: 10_000 }),
+        ];
+        const out = buildPastPrefix({
+            ...base,
+            transactions: [{ date: '2025-11-05', amount: -100 }], // firstTxnMi = -2 (nov 2025)
+            pastHistoryPoints: pts,
+            currentDebtNonImmo: 7_800, // < 8 000 (solde brut) — le pas d'amortissement du mois 0 a réduit le total
+            debts: [{ balance: 8_000, startDate: '2025-12-01' }], // déjà active aujourd'hui, PAS ENCORE au mois de nov (gatée)
+        });
+        const nov = out.find(p => p.monthIndex === -2)!; // dette gatée ⇒ delta = 8 000 brut > 7 800 (currentDebtNonImmo)
+        const dec = out.find(p => p.monthIndex === -1)!; // dette déjà active ⇒ delta = 0
+        const detteDe = (p: typeof nov) => p.Liquidites + p.Immobilier + p.CELI + p.CELIAPP + p.REER + p.REEE + p.NonReg + p.Crypto - (p.NetWorth as number);
+        // Sans clamp, nov aurait une dette de 7 800 − 8 000 = −200 $ (patrimoine gonflé). Avec le
+        // clamp : 0, jamais négative.
+        expect(detteDe(nov)).toBe(0);
+        expect(detteDe(dec)).toBe(7_800);
+    });
 });

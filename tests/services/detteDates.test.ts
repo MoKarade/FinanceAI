@@ -111,35 +111,48 @@ describe('[PASSE-REEL-DETTE-1] phaseDetteAuMoisAbsolu / sumNotYetStartedDebtsAtM
             .toBe(phaseDette({ startDate: '2026-07-20' }, 2026, 0, 6));
     });
 
-    it('sumNotYetStartedDebtsAtMonth ne compte QUE les dettes pas-encore-commencées, jamais les « terminée »', () => {
+    it('sumNotYetStartedDebtsAtMonth exclut une dette DÉJÀ ACTIVE AUJOURD\'HUI, pas encore commencée au mois passé — jamais les « terminée »', () => {
+        // Mois 0 = janvier 2026 (« aujourd'hui »). m=-24 = janvier 2024 (mois PASSÉ vérifié).
         const dettes = [
             { balance: 8_000 }, // toujours active → jamais dans le delta d'exclusion
-            { balance: 5_000, startDate: '2028-01-01' }, // pas encore commencée en 2026 → exclue (delta)
+            { balance: 5_000, startDate: '2025-01-01' }, // commencée en 2025 : 'a-venir' en 2024, DÉJÀ active aujourd'hui (2026) → exclue du passé de 2024 (delta)
             { balance: 3_000, termEndDate: '2020-01-01' }, // terme échu, jamais effacée → PAS dans le delta
         ];
-        // Mois 0 = janvier 2026 (startYear/startMonth de la fixture) : seule la dette 2028 est à exclure.
-        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, 0)).toBe(5_000);
-        // Après 2028 : plus rien à exclure (la dette 2028 a commencé, la 'terminee' n'a jamais compté ici).
-        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, 24)).toBe(0);
+        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, -24)).toBe(5_000);
+        // À un mois APRÈS son début (2025) mais toujours dans le passé : plus rien à exclure.
+        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, -6)).toBe(0);
     });
 
-    it('sanitise comme le moteur (entrée nullish/solde non fini → 0 dans le delta)', () => {
-        const dettes = [null, { balance: NaN, startDate: '2028-01-01' }, { balance: 1_000, startDate: '2028-01-01' }] as unknown as Parameters<typeof sumNotYetStartedDebtsAtMonth>[0];
-        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, 0)).toBe(1_000);
-        expect(sumNotYetStartedDebtsAtAbsoluteMonth(dettes, 2026 * 12)).toBe(1_000);
+    it('[CRITIQUE, revue #687] une dette qui n\'a PAS ENCORE COMMENCÉ AUJOURD\'HUI n\'est JAMAIS dans le delta, à AUCUN mois passé', () => {
+        // Régression trouvée indépendamment par financial-integrity ET code-reviewer : le 1er jet
+        // excluait cette dette (balance 10 000 $ retranchée) à CHAQUE mois passé, alors qu'elle n'a
+        // jamais fait partie de `currentDebtNonImmo` (le moteur exclut déjà une dette 'a-venir'
+        // AUJOURD'HUI de `sumActiveDebts`) — fabriquant 10 000 $ de patrimoine passé.
+        const dettes = [{ balance: 10_000, startDate: '2028-01-01' }]; // 2028 : encore À VENIR même aujourd'hui (2026)
+        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, -24)).toBe(0); // PAS 10 000
+        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, -120)).toBe(0); // même 10 ans plus tôt
+        expect(sumNotYetStartedDebtsAtAbsoluteMonth(dettes, 2016 * 12, 2026 * 12)).toBe(0);
+    });
+
+    it('sanitise comme le moteur (entrée nullish/solde non fini → 0 dans le delta), pour une dette ÉLIGIBLE au delta', () => {
+        // Dettes déjà actives AUJOURD'HUI (2025 &lt; 2026) mais pas encore commencées au mois vérifié
+        // (2024) — donc bien ÉLIGIBLES au delta, ce qui isole la sanitisation du garde-fou CRITIQUE.
+        const dettes = [null, { balance: NaN, startDate: '2025-01-01' }, { balance: 1_000, startDate: '2025-01-01' }] as unknown as Parameters<typeof sumNotYetStartedDebtsAtMonth>[0];
+        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, -24)).toBe(1_000);
+        expect(sumNotYetStartedDebtsAtAbsoluteMonth(dettes, 2024 * 12, 2026 * 12)).toBe(1_000);
     });
 
     it('acceptent undefined/[] → 0 (rien à exclure)', () => {
         expect(sumNotYetStartedDebtsAtMonth(undefined, 2026, 0, 0)).toBe(0);
         expect(sumNotYetStartedDebtsAtMonth([], 2026, 0, 0)).toBe(0);
-        expect(sumNotYetStartedDebtsAtAbsoluteMonth(undefined, 2026 * 12)).toBe(0);
+        expect(sumNotYetStartedDebtsAtAbsoluteMonth(undefined, 2026 * 12, 2026 * 12)).toBe(0);
     });
 
-    it('[discriminant] currentDebtNonImmo − sumNotYetStartedDebtsAtMonth == sumActiveDebts du moteur (raccord EXACT, Option A)', () => {
-        // Même dette, même sanitisation, même exclusion — vérifié via le MOTEUR réel (calculateFutureProjection),
-        // pas une réimplémentation locale de sumActiveDebts (qui prouverait sa propre copie, pas le raccord).
-        // La dette est DÉJÀ active au mois 0 (startDate au 1er janvier = mois 0 lui-même) → rien à exclure,
-        // donc le total attendu du passé est EXACTEMENT `pts[0].DettesNonImmo`, sans aucune approximation.
+    it('au mois 0 lui-même (aujourd\'hui), aucune dette DÉJÀ active n\'a besoin d\'être exclue — cas trivial du wrapper 4-arguments', () => {
+        // Ce test vérifie seulement que le wrapper (startYear, startMonth, m=0) calcule bien
+        // moisAujourdhui == courant dans ce cas particulier — PAS un raccord contre le moteur réel
+        // (delta nul ici, quelle que soit la formule : ne prouve pas la non-divergence des $ bruts
+        // vs post-amortissement, couverte séparément par le test de clamp de `buildPastPrefix.test.ts`).
         const dettes = [bail({ startDate: '2026-01-01' })];
         const pts = points(dettes);
         const currentDebtNonImmo = pts[0].DettesNonImmo;

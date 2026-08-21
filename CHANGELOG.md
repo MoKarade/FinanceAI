@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-21 (les conseils de placement suivent l'année en cours)
+
+- La carte « Où placer chaque type de placement » calculait ton taux d'imposition marginal sur le
+  barème **2026 figé**, quelle que soit l'année réelle. Elle utilise maintenant l'année en cours.
+  Concrètement : dès 2027, un revenu proche d'un palier pouvait être classé jusqu'à 5 points
+  d'impôt trop haut, ce qui surestimait le gain annoncé d'un déplacement de placement.
+
 ## [unreleased] — 2026-08-21 (l'IA ne peut plus afficher un chiffre impossible ni échouer en silence)
 
 - Un score de confiance de catégorisation ne peut plus dépasser 100 % ni descendre sous 0 :

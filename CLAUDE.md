@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 632 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 634 tests** Vitest
 (416 fichiers de test, mesuré le 2026-08-21). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -235,6 +235,12 @@ n'est pas réécrire un récit.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
+- Un **défaut qui SE PÉRIME** (année fiscale, exercice courant) ne se corrige ni en changeant le
+  littéral ni en lisant l'horloge (qui rend la fonction non déterministe et fait une BOMBE des tests
+  qui l'omettent) : **supprimer le défaut** et rendre le champ REQUIS — le typecheck l'exige alors
+  sur chaque site, présent et futur (`UN-DEFAUT-QUI-SE-PERIME-SE-CORRIGE-EN-RENDANT-LE-CHAMP-REQUIS`).
+  Corollaire : le cas de test se MESURE avant d'être écrit — l'écart y était nul sur un revenu rond
+  et de 5 points près d'une borne de palier.
 - Une vérification sur une conversion **fuseau-dépendante** (`getMonth` vs `getUTCMonth`,
   `toLocaleString`, `toISOString`) rejouée UNIQUEMENT dans le conteneur (qui tourne en **UTC**)
   mesure l'environnement, pas le code : sous UTC les deux variantes coïncident toujours. Balayer

@@ -5361,3 +5361,40 @@ non-réfuté par un dispositif aveugle. Écrire la contre-épreuve coûte trois 
 ticket dans le compte-rendu du travail qui le corrige, c'est fabriquer une source (classe
 `ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE`, ici appliquée à la perf) : le gain
 reste réel et l'ordre de grandeur tient, mais le chiffre publié doit être celui qu'on a obtenu.
+
+## Leçon du lot `[ASSETLOC-YEAR-2026]` — 2026-08-21
+
+### `UN-DEFAUT-QUI-SE-PERIME-SE-CORRIGE-EN-RENDANT-LE-CHAMP-REQUIS` — trois options, une seule ne se repérime pas
+
+`assetLocation.ts` lisait le taux marginal avec `input.year ?? 2026`, et l'unique appelant de
+production ne passait jamais `year` : le repli s'appliquait donc TOUJOURS. Trois correctifs
+possibles, et le choix compte plus que le défaut lui-même :
+
+1. **Mettre à jour le littéral** (`?? 2027`) — repousse le problème d'un an, à l'identique. Non.
+2. **Défaut = année courante** (`?? new Date().getFullYear()`) — corrige l'appelant sans le toucher,
+   mais rend une fonction PURE non déterministe, et transforme chaque test qui omet le champ en
+   **bombe à retardement** : rouge au 1er janvier, sans le moindre changement de code. Ce dépôt a
+   déjà payé ce piège (« un test qui fige une année pendant que le code lit l'horloge »).
+3. **Rendre le champ REQUIS** — casse au TYPECHECK sur chaque site d'appel, présent ET futur. Les
+   tests doivent alors déclarer leur année, donc restent déterministes ; l'appelant UI déclare la
+   sienne, donc l'intention est lisible à l'endroit où elle est prise.
+
+**Règle générale** : quand un défaut encode une valeur qui SE PÉRIME (année fiscale, version de
+barème, exercice courant), le corriger en remplaçant le littéral ou en lisant l'horloge ne fait que
+déplacer la dette. Le seul correctif qui ne se repérime pas est de **supprimer le défaut** et de
+laisser le compilateur exiger la valeur à chaque site. Un défaut silencieux se périme sans bruit ;
+un champ requis ne peut pas être oublié.
+
+**Corollaire, sur le choix du cas de test** : l'écart mesuré ici est NUL pour la plupart des revenus
+et vaut −5,000 points à 55 000 $. Un test écrit sur un revenu « rond » (100 000 $, celui qu'on
+choisit spontanément) aurait passé **même si l'année restait ignorée** — vacueux. Mesurer AVANT
+d'écrire le test, puis choisir le point d'essai là où l'écart existe : près des BORNES, jamais au
+milieu d'un palier. Même famille que `PARITE-QUI-REND-UN-TEST-VACUEUX` — le paramètre du test se
+calcule, il ne se devine pas.
+
+**Corollaire, sur la garde d'inventaire** : le commit a fait ROUGIR la garde anti-entrée-fantôme
+(`fiscalConstGuardV2.ts` portait une entrée `assetLocation.ts::2026` décrivant le défaut désormais
+fermé). C'est le comportement VOULU, pas un obstacle : une PR qui supprime un littéral doit aussi
+supprimer les raisons qui parlaient de lui, sinon l'inventaire conserve un constat périmé qui se lit
+comme un fait au présent. La garde a fait ce travail sans intervention — c'est la preuve, en
+exécution, que `ENTREE-D-INVENTAIRE-FANTOME` tient.

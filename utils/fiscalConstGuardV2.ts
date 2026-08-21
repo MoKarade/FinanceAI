@@ -294,8 +294,12 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     // ── services/projection/assetLocation.ts ─────────────────────────────────────────────────
     { file: 'services/projection/assetLocation.ts', value: '0.60', family: 'design',
       reason: 'Taux effectif « dividende canadien éligible » estimé à 60 % du marginal (proxy majoration 1,38 + crédits), branche `ca-equity`. Hypothèse de modèle COMMENTÉE sur place (FA-8) — mais pas nommée : c’est un littéral nu dans un `return`. Module CONSULTATIF (perte d’allocation), pas le moteur : proxy assumé, pas un barème à sourcer.' },
-    { file: 'services/projection/assetLocation.ts', value: '2026', family: 'structural',
-      reason: 'Année fiscale de REPLI (`input.year ?? 2026`) pour lire le taux marginal quand l’appelant n’en fournit pas. ⚠️ Reclassé `structural` en revue : une année de repli ne peut pas « finir ancrée dans FISCAL_REFERENCE », donc `fiscal` décrivait mal l’action attendue. Le défaut est qu’elle ne suit pas l’année courante du moteur — ticket `[ASSETLOC-YEAR-2026]`.' },
+    // [ASSETLOC-YEAR-2026] L'entrée `2026` (année fiscale de repli, `input.year ?? 2026`) a été
+    // RETIRÉE ici le 2026-08-21 parce que le littéral n'existe plus : `year` est devenu REQUIS dans
+    // `AssetLocationInput`, et l'appelant fournit l'année courante. La garde anti-entrée-fantôme a
+    // d'ailleurs rougi d'elle-même sur ce commit — c'est exactement son rôle
+    // (`ENTREE-D-INVENTAIRE-FANTOME` : un inventaire de dette doit DÉCROÎTRE, pas conserver des
+    // constats périmés qui se lisent comme des faits au présent).
     { file: 'services/projection/assetLocation.ts', value: '0.02', family: 'design',
       reason: 'Écart de rendement supposé actions−obligations (2 pp) servant à chiffrer le coût d’opportunité d’obligations logées au CELI. Hypothèse de marché, pas fiscale.' },
     { file: 'services/projection/assetLocation.ts', value: '20', family: 'design',

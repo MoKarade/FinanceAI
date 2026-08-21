@@ -10,6 +10,30 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — `[ASSETLOC-YEAR-2026]` : l'année fiscale devient une entrée EXIGÉE
+
+- [x] **`[ASSETLOC-YEAR-2026]`** (XS, FAIBLE au ticket — **impact mesuré plus élevé que son
+  étiquette**) — `assetLocation.ts` lisait le taux marginal avec `input.year ?? 2026`, et l'unique
+  appelant de production (`AssetLocationCard`) ne passait JAMAIS `year` : le repli s'appliquait donc
+  **toujours**, et le module aurait conseillé sur le barème 2026 à perpétuité.
+  **Écart MESURÉ sur le taux marginal** (avant de coder) : nul pour la plupart des revenus, mais
+  **−5,000 points à 55 000 $ dès 2027** (30,690 % → 25,690 %) — un revenu juste au-dessus d'une
+  borne de palier en 2026 repasse dessous une fois la borne indexée. À 2030 : 60 000 $ perd
+  5,4 pts, 120 000 $ en perd 4,6. L'erreur n'est pas diffuse : elle est CONCENTRÉE près des bornes,
+  et c'est ce qui rend un test bâti sur un revenu « rond » (100 000 $) VACUEUX — les deux années y
+  donnent le même taux.
+  **Correctif** : `year` rendu **REQUIS** dans `AssetLocationInput`. Écarté : « défaut = année
+  courante », qui rendrait cette fonction pure non déterministe et transformerait chaque test
+  l'omettant en bombe à retardement (rouge au 1er janvier, sans changement de code — piège déjà
+  vécu dans ce dépôt). Un champ requis casse au TYPECHECK sur chaque site, présent et futur.
+  ⚠️ **La garde anti-entrée-fantôme a rougi d'elle-même sur ce commit** : l'inventaire
+  `fiscalConstGuardV2.ts` portait une entrée `assetLocation.ts::2026` décrivant précisément le
+  défaut que ce lot ferme, et le littéral ayant disparu, l'entrée est devenue un constat périmé.
+  Retirée. C'est exactement le rôle de cette garde (`ENTREE-D-INVENTAIRE-FANTOME` : un inventaire
+  de dette doit DÉCROÎTRE) — elle a fonctionné sans intervention.
+  3 tests neufs, dont un prouvé rouge par perturbation (année re-figée à 2026), avec assertion de
+  non-nullité de la grandeur mesurée AVANT comparaison. Gate vert : 4 634 tests / 416 fichiers.
+
 ## 2026-08-21 — Lot « perf moteur » : deux points chauds de la boucle mensuelle
 
 > Deuxième lot de la passe audit. Les deux correctifs sont **bit-identiques par construction** —

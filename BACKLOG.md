@@ -1007,7 +1007,7 @@
   remboursement du RAP (15 ans, ARC) est en dur dans `services/projection/realEstateMonth.ts:467`
   (`state.rapBorrowed / 15`) et absente de `FISCAL_REFERENCE.md` §7. Vraie règle, non ancrée.
 
-- [ ] **`[ASSETLOC-YEAR-2026]`** (XS, FAIBLE — découvert par `[FISC-GUARD-SCOPE]`) —
+- [x] **`[ASSETLOC-YEAR-2026]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — découvert par `[FISC-GUARD-SCOPE]`) —
   `services/projection/assetLocation.ts:135` lit le taux marginal avec une année fiscale de repli
   **écrite en dur à 2026**. En 2027 le module consultatif lira un barème périmé sans rien dire.
   **Correctif** : reprendre l'année courante du moteur plutôt qu'un littéral.

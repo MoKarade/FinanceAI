@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-21 (suite 130) — `[ASSETLOC-YEAR-2026]` : l'année fiscale devient EXIGÉE
+> `assetLocation.ts` lisait le marginal avec `input.year ?? 2026` et l'unique appelant de prod ne
+> passait jamais `year` → barème 2026 à perpétuité. **Mesuré AVANT de coder** : écart nul sur la
+> plupart des revenus, mais **−5,000 pts à 55 000 $ dès 2027** (concentré près des BORNES de palier ;
+> un test sur 100 000 $ aurait été VACUEUX). `year` rendu **REQUIS** — écarté « défaut = année
+> courante », qui rendrait la fonction pure non déterministe et ferait de chaque test l'omettant une
+> bombe au 1er janvier. Leçon `UN-DEFAUT-QUI-SE-PERIME-SE-CORRIGE-EN-RENDANT-LE-CHAMP-REQUIS`.
+> ⚠️ **La garde anti-entrée-fantôme a rougi TOUTE SEULE** sur ce commit : `fiscalConstGuardV2.ts`
+> portait `assetLocation.ts::2026`, entrée devenue périmée par la disparition du littéral. Retirée.
+> C'est son rôle exact (`ENTREE-D-INVENTAIRE-FANTOME`) — preuve en exécution qu'elle tient.
+> 3 tests neufs, 1 prouvé rouge par perturbation. Gate vert : **4 634 tests / 416 fichiers**.
+>
 > ## 🟢 Session 2026-08-21 (suite 129) — Lot « perf moteur » : 2 points chauds de la boucle mensuelle
 > `[PERF-ENGINE-DATELABEL-INTL]` (table de 12 mois précalculée, construite DEPUIS `toLocaleString`
 > — jamais une liste recopiée) et `[PERF-ENGINE-ISOSTRING-HOTLOOP]` (`getUTCFullYear()*12 +

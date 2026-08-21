@@ -5322,3 +5322,42 @@ une date que la garde d'écriture vient d'ACCEPTER (l'assistant croit avoir dat�
 l'ignore, personne n'est prévenu). Une garde de format sur une valeur qu'un module aval va PARSER
 doit valider ce que ce module sait parser, pas seulement la syntaxe — ici un aller-retour `Date.UTC`
 (qui attrape les débordements type 31 février) plus une borne d'année réaliste.
+
+## Leçon du lot perf moteur — 2026-08-21
+
+### `UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC` — mon balayage prouvait 0 divergence, et ne prouvait rien
+
+En remplaçant `currentLoopDate.toLocaleString('fr-CA', { month: 'short' })` (appelé à chaque mois de
+chaque run) par une table de 12 mois précalculée, la question qui décide de la correction est :
+**par quoi indexer la table — `getMonth()` (local) ou `getUTCMonth()` ?** J'ai écrit un balayage de
+972 dates comparant l'ancien et le nouveau code : **0 divergence**. Verdict apparent : les deux
+marchent, le choix est indifférent.
+
+Faux. Le conteneur de dev tourne en **UTC** — et sous UTC, `getMonth()` et `getUTCMonth()` rendent
+toujours la même valeur. Mon balayage ne testait donc pas la question qu'il prétendait trancher : il
+mesurait une différence structurellement nulle dans son propre environnement. Rejoué sous
+`TZ=Australia/Sydney` (UTC+11), la variante UTC diverge sur **132 cas sur 132** — un libellé de mois
+décalé d'un cran pour tout utilisateur à l'est de Greenwich. Sous `TZ=America/Montreal`, 0
+divergence : le fuseau de Marc masque le défaut, ce qui aurait rendu le bug invisible en production
+locale ET en CI.
+
+**Règle générale** : quand un correctif porte sur une conversion **fuseau-dépendante** (date,
+heure, `toLocaleString`, `toISOString`, `getX` vs `getUTCX`), le balayage de vérification doit être
+rejoué sous **au moins un fuseau à décalage non nul de chaque signe** — sinon « 0 divergence »
+mesure l'environnement, pas le code. Même famille que
+`UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR` : ici, c'est l'**environnement** qui a la
+forme du défaut. Le signal mécanique est simple à retenir : si la valeur d'`Intl.DateTimeFormat()
+.resolvedOptions().timeZone` peut changer le résultat de l'assertion, alors le fuseau est un
+PARAMÈTRE du test — il se déclare et se balaie, il ne se subit pas.
+
+**Corollaire, sur la contre-épreuve** : ce n'est pas le test « ancien == nouveau » qui a révélé le
+piège, c'est la contre-épreuve « la variante FAUSSE donnerait-elle un résultat différent ? ». Un
+correctif dont la variante erronée passe tous les tests n'est pas prouvé — il est seulement
+non-réfuté par un dispositif aveugle. Écrire la contre-épreuve coûte trois lignes et transforme
+« aucune divergence » (constat sans portée) en « le choix est discriminant, et voici où ».
+
+**Corollaire, sur le chiffre annoncé** : les tickets promettaient 97× et 24× ; j'ai mesuré 38× et
+18× sur ce matériel. J'ai rapporté MA mesure dans l'archive, pas la leur. Recopier le chiffre du
+ticket dans le compte-rendu du travail qui le corrige, c'est fabriquer une source (classe
+`ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE`, ici appliquée à la perf) : le gain
+reste réel et l'ordre de grandeur tient, mais le chiffre publié doit être celui qu'on a obtenu.

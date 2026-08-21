@@ -576,6 +576,19 @@ describe('computeIncomeLossFactor', () => {
         expect(computeIncomeLossFactor([ev({ incomeLossPercent: 50 })], at(2028, 5))).toBe(0.5);
     });
 
+    // [PERF-ENGINE-ISOSTRING-HOTLOOP] L'index du mois courant venait d'un
+    // `toISOString().substring(0,7).split('-')` exécuté à chaque mois, même sans aucun événement
+    // (1,096 µs) ; il vient désormais de `getUTCFullYear()/getUTCMonth()` (0,046 µs). La base reste
+    // UTC — elle DOIT rester alignée sur `applyLifeEvents`. Ce test vise les bornes de mois où un
+    // décalage d'un cran se verrait : le 1er du mois à 00:00 UTC et le dernier instant du mois.
+    it('[PERF-ENGINE-ISOSTRING-HOTLOOP] l’index de mois reste en UTC aux bornes exactes du mois', () => {
+        const debutMars = new Date(Date.UTC(2028, 2, 1, 0, 0, 0));
+        const finFevrier = new Date(Date.UTC(2028, 1, 29, 23, 59, 59)); // 2028 est bissextile
+        // Début de fenêtre (2028-03) : actif au 1er mars UTC, inactif au dernier instant de février.
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: 100 })], debutMars)).toBe(0);
+        expect(computeIncomeLossFactor([ev({ incomeLossPercent: 100 })], finFevrier)).toBe(1);
+    });
+
     it('inactif AVANT la date de début → 1', () => {
         expect(computeIncomeLossFactor([ev()], at(2028, 2))).toBe(1);
     });

@@ -9,6 +9,24 @@ import type { ProjectionChartPoint } from './types';
 
 type TaxBucket = { revenu: number; gains: number; reer: number; divers: number };
 
+// [PERF-ENGINE-DATELABEL-INTL] Table des 12 mois abrégés, construite UNE fois au chargement du
+// module — même patron (et même raison) que `WEEKDAY_SHORT_FR` dans `dailyLedger.ts`.
+//
+// Pourquoi : `toLocaleString('fr-CA', { month: 'short' })` était appelé À CHAQUE MOIS de CHAQUE run.
+// Mesuré 79,4 µs/appel contre 0,023 µs pour un accès indexé (~3 400×) → ~45 ms par run déterministe
+// pour ce seul point, sur un chemin qui tourne à chaque debounce de saisie (300 ms) dans l'onglet
+// Futur. Le coût vient de la construction d'un formateur Intl à chaque appel, pas du formatage.
+//
+// ⚠️ La table est construite depuis `toLocaleString` — PAS depuis une liste de noms recopiée à la
+// main, qui divergerait du locale en silence (classe DOC-METRIQUE-RECOPIEE appliquée aux données).
+// ⚠️ Indexée par `getMonth()` LOCAL, et les dates sources sont construites en LOCAL
+// (`new Date(2026, i, 1)`) : c'est exactement ce que faisait l'appel remplacé, qui lisait lui aussi
+// le fuseau local (aucun `timeZone` passé) sur un `currentLoopDate` local
+// (`new Date(startYear, startMonth + i, 1)`, projection.ts). Le libellé rendu est donc
+// bit-identique — utiliser UTC d'un côté et local de l'autre décalerait le mois d'un cran.
+const MONTH_SHORT_FR: ReadonlyArray<string> = Array.from({ length: 12 }, (_, i) =>
+    new Date(2026, i, 1).toLocaleString('fr-CA', { month: 'short' }));
+
 export interface MonthlyOutputCtx {
     m: number;
     retirementMonthIndex: number;
@@ -206,7 +224,7 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
         // aucun consommateur existant n'est affecté).
         ...(eventDaysLog && Object.keys(eventDaysLog).length > 0 ? { eventDays: { ...eventDaysLog } } : {}),
         monthIndex: m,
-        dateLabel: `${currentLoopDate.toLocaleString('fr-CA', { month: 'short' })} ${loopYear}`,
+        dateLabel: `${MONTH_SHORT_FR[currentLoopDate.getMonth()]} ${loopYear}`,
         year: loopYear,
         age,
         IncomeMarc: Number(incomeMarc.toFixed(2)),

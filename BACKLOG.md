@@ -1376,7 +1376,7 @@
 > `ProjectionResult` complet (481 points × ~90 champs, ~2,05 Mo) **8,4 ms** · bundle de boot
 > **~540,9 ko brut / ~177,3 ko gzip**. Croissance quasi-linéaire (~3,3 ms/année) — pas de blowup.
 
-- [ ] **`[PERF-ENGINE-DATELABEL-INTL]`** (XS, CRITIQUE) — `currentLoopDate.toLocaleString('fr-CA',
+- [x] **`[PERF-ENGINE-DATELABEL-INTL]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, CRITIQUE) — `currentLoopDate.toLocaleString('fr-CA',
   { month: 'short' })` appelé **sans formatter mis en cache**, à chaque mois de chaque run
   (`services/projection/monthlyOutput.ts:209`). **Mesuré : 79,4 µs/appel** contre **0,82 µs** avec une
   instance `Intl.DateTimeFormat` réutilisée (~97×) et 0,023 µs avec une table précalculée → **~45 ms
@@ -1387,7 +1387,7 @@
   Le jour de la semaine a été traité, **le mois a été oublié**. Correctif : table de 12 libellés
   construite par `toLocaleString` (même source, pas de liste re-codée qui dériverait du locale).
   Sortie strictement identique → zéro risque money/fiscal. [MESURÉ, précédent vérifié par Claude]
-- [ ] **`[PERF-ENGINE-ISOSTRING-HOTLOOP]`** (XS, MOYEN) — `computeIncomeLossFactor` fait
+- [x] **`[PERF-ENGINE-ISOSTRING-HOTLOOP]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, MOYEN) — `computeIncomeLossFactor` fait
   `toISOString().substring(0,7).split('-')` **inconditionnellement** à chaque mois, même sans aucun
   événement `PERTE_EMPLOI`/`SABBATIQUE`/`ACCIDENT` (`services/projection/monthlyEvents.ts:78-79`).
   **Mesuré : 1,096 µs/appel** contre **0,046 µs** avec

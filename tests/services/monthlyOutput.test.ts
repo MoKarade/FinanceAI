@@ -260,4 +260,32 @@ describe('buildMonthlyDataPoint — mode déterministe : mappings dérivés', ()
         expect(point.isRetired).toBe(true);
         expect(point.dateLabel).toContain('2053');
     });
+
+    // [PERF-ENGINE-DATELABEL-INTL] Le libellé venait d'un `toLocaleString` appelé à CHAQUE mois de
+    // CHAQUE run (79,4 µs) ; il vient désormais d'une table précalculée (0,023 µs). L'ORACLE de ce
+    // test est le comportement d'AVANT — `toLocaleString` sur la même date — et non une liste de
+    // noms de mois recopiée à la main : recopier les noms ferait passer le test même si la table
+    // était construite de travers, et divergerait en silence du locale.
+    describe('[PERF-ENGINE-DATELABEL-INTL] le libellé de mois reste bit-identique', () => {
+        it('les 12 mois rendent exactement ce que rendait toLocaleString', () => {
+            for (let mois = 0; mois < 12; mois++) {
+                const date = new Date(2026, mois, 15);
+                const point = buildMonthlyDataPoint(makeCtx({ currentLoopDate: date, loopYear: 2026 }));
+                expect(point.dateLabel).toBe(`${date.toLocaleString('fr-CA', { month: 'short' })} 2026`);
+            }
+        });
+
+        it('l’indexation suit le mois LOCAL, comme la date de boucle du moteur', () => {
+            // `projection.ts` construit ses dates de boucle en LOCAL (`new Date(y, m, 1)`), et
+            // l'appel remplacé lisait lui aussi le fuseau local (aucun `timeZone` passé). Indexer
+            // par `getUTCMonth()` décalerait le libellé d'un mois pour tout utilisateur à l'est de
+            // Greenwich — mesuré : 132 cas sur 132 à Sydney (UTC+11), 0 à Montréal. Ce test ancre
+            // le CHOIX ; il ne peut pas le mettre en défaut depuis un conteneur en UTC, où les deux
+            // coïncident — d'où l'assertion sur la date locale explicite plutôt qu'un aller-retour.
+            const premierJanvier = new Date(2026, 0, 1);
+            const point = buildMonthlyDataPoint(makeCtx({ currentLoopDate: premierJanvier, loopYear: 2026 }));
+            expect(point.dateLabel).toBe(`${premierJanvier.toLocaleString('fr-CA', { month: 'short' })} 2026`);
+            expect(point.dateLabel).toContain(new Date(2026, 0, 1).toLocaleString('fr-CA', { month: 'short' }));
+        });
+    });
 });

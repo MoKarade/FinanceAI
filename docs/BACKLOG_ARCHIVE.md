@@ -10,6 +10,38 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — Lot « perf moteur » : deux points chauds de la boucle mensuelle
+
+> Deuxième lot de la passe audit. Les deux correctifs sont **bit-identiques par construction** —
+> aucun golden n'a bougé, et c'est le résultat ATTENDU ici (contrairement à la règle « aucun golden
+> n'a bougé est un résultat à EXPLIQUER » : il ne s'agit pas d'un changement d'assiette mais du
+> remplacement d'un calcul par un équivalent prouvé, l'identité étant elle-même la propriété visée).
+
+- [x] **`[PERF-ENGINE-DATELABEL-INTL]`** (XS, CRITIQUE) — `toLocaleString('fr-CA', { month: 'short' })`
+  appelé à chaque mois de chaque run sans formateur en cache (`monthlyOutput.ts`). Remplacé par une
+  table de 12 mois précalculée, **construite depuis `toLocaleString` lui-même** — pas depuis une
+  liste de noms recopiée à la main, qui divergerait du locale en silence. Même patron que
+  `WEEKDAY_SHORT_FR` (`dailyLedger.ts`), déjà présent dans le dépôt pour la même raison.
+  ⚠️ **Piège du fuseau, tranché par mesure** : la table est indexée par `getMonth()` **LOCAL**,
+  parce que `projection.ts` construit ses dates de boucle en local (`new Date(y, m, 1)`) et que
+  l'appel remplacé lisait lui aussi le fuseau local (aucun `timeZone` passé). Indexer par
+  `getUTCMonth()` décalerait le libellé d'un mois pour tout utilisateur à l'est de Greenwich —
+  **mesuré 132 cas sur 132 à Sydney (UTC+11), 0 à Montréal**. Le conteneur de dev tournant en UTC,
+  un balayage local-seul ne peut PAS départager les deux : la vérification a donc été rejouée sous
+  `TZ=America/Montreal`, `Australia/Sydney` et `Pacific/Kiritimati` (0 divergence, 972 cas).
+- [x] **`[PERF-ENGINE-ISOSTRING-HOTLOOP]`** (XS, MOYEN) — `toISOString().substring(0,7).split('-')`
+  exécuté inconditionnellement à chaque mois dans `computeIncomeLossFactor`, même sans aucun
+  événement de perte de revenu. Remplacé par `getUTCFullYear()*12 + getUTCMonth()` : **la base UTC
+  est conservée** (elle doit rester alignée sur `applyLifeEvents`), seuls la construction de chaîne
+  et son reparsing disparaissent. Identité vérifiée sur 3 888 cas × 4 fuseaux.
+
+**Gain MESURÉ localement** (360 mois = un run de 30 ans, moyenne sur 20 passes) : le libellé passe
+de 23,00 ms à 0,61 ms (**38×**), l'index de mois de 0,955 ms à 0,053 ms (**18×**) — soit ~22,4 ms
+par run déterministe. ⚠️ Les tickets annonçaient 97× et 24× : mes chiffres sont plus bas, je
+rapporte **ma** mesure et non la leur (matériel et version de V8 différents).
+3 tests neufs, **tous prouvés rouges par perturbation** (décalage d'un mois injecté dans les deux
+fichiers réels, restauration vérifiée au `git diff`). Gate vert : 4 632 tests / 416 fichiers.
+
 ## 2026-08-21 — Lot « échecs silencieux IA » : 6 items XS de l'audit 2026-08-19
 
 > Premier lot de la passe sur les 120 items d'audit (ordre choisi par Marc : les plus rapides

@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-21 (suite 129) — Lot « perf moteur » : 2 points chauds de la boucle mensuelle
+> `[PERF-ENGINE-DATELABEL-INTL]` (table de 12 mois précalculée, construite DEPUIS `toLocaleString`
+> — jamais une liste recopiée) et `[PERF-ENGINE-ISOSTRING-HOTLOOP]` (`getUTCFullYear()*12 +
+> getUTCMonth()`, base UTC conservée). **Gain mesuré localement : 38× et 18×**, ~22,4 ms par run de
+> 30 ans — ⚠️ les tickets annonçaient 97× et 24×, j'ai publié MA mesure et non la leur.
+> ⚠️ **Le piège du lot, et la leçon** (`UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC`) :
+> le choix `getMonth()` (local) vs `getUTCMonth()` décide de la correction du libellé, et mon
+> balayage de 972 dates rendait **0 divergence** — parce que le conteneur tourne en **UTC**, où les
+> deux coïncident TOUJOURS. Rejoué sous `TZ=Australia/Sydney` : la variante UTC diverge **132/132**
+> (mois décalé d'un cran pour tout utilisateur à l'est de Greenwich) ; 0 à Montréal, donc le fuseau
+> de Marc aurait masqué le défaut en prod ET en CI. Le local est le bon choix (les dates de boucle
+> de `projection.ts` sont construites en local). **Ce n'est pas le test qui a révélé le piège, c'est
+> la CONTRE-ÉPREUVE** « la variante fausse donnerait-elle autre chose ? ».
+> Les deux correctifs sont bit-identiques par construction : aucun golden n'a bougé, et ici c'est le
+> résultat ATTENDU (identité = la propriété visée), pas un signal d'absence de couverture.
+> 3 tests neufs, tous prouvés rouges par perturbation. Gate vert : **4 632 tests / 416 fichiers**.
+>
 > ## 🟢 Session 2026-08-21 (suite 128) — Lot « échecs silencieux IA » : 6 items XS de l'audit
 > **Cadrage Marc (7 réponses en 2 batches)** : priorité aux **120 items d'audit**, traités **les
 > plus rapides d'abord** ; rythme « ne me montre que les décisions et les problèmes » (donc

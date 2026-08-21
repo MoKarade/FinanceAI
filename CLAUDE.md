@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 629 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 632 tests** Vitest
 (416 fichiers de test, mesuré le 2026-08-21). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -234,6 +234,13 @@ n'est pas réécrire un récit.
   nouveau ou corrigé doit alimenter TOUS les registres (meltdown REER, 2026-07-31).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
+
+- Une vérification sur une conversion **fuseau-dépendante** (`getMonth` vs `getUTCMonth`,
+  `toLocaleString`, `toISOString`) rejouée UNIQUEMENT dans le conteneur (qui tourne en **UTC**)
+  mesure l'environnement, pas le code : sous UTC les deux variantes coïncident toujours. Balayer
+  au moins un fuseau de chaque signe (mesuré : la variante UTC diverge 132/132 à Sydney, 0 à
+  Montréal) et écrire la CONTRE-ÉPREUVE — « la variante fausse donnerait-elle autre chose ? »
+  (`UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC`).
 
 **Money-critical / moteur**
 - ⚠️ **Un stub qui a la FORME du défaut ne peut pas le voir** : le `fiscalStub` partagé d'un fichier

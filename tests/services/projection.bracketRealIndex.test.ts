@@ -115,8 +115,13 @@ describe('[FISC-BRACKET-REALINDEX] moteur — un revenu réel constant paie un i
         const r = __runScenarioForTests(retraite, 'AUTO_MARGINAL' as AllocationStrategy, false, false);
         // Avant fix : ttp 29 806,15 / nw −164 301,67. L'ancien code sous-imposait les années
         // tardives (paliers élargis en réel) → le fix REHAUSSE l'impôt à vie de +62 %.
-        expect(r.totalTaxesPaid).toBeCloseTo(48_314.04, 0);
-        expect(r.finalNetWorth).toBeCloseTo(-196_188.58, 0);
+        // Re-basé 2026-08-21 [ENG-GK-THRESHOLD-KNIFE] (était 48 314,04 / −196 188,58) : la
+        // fixture traverse la bande de lissage GK — gel partiel au lieu de total dans [−5, −6] →
+        // dépenses plus indexées → plus de retraits imposés (ttp ↑) ET NW ↓. La DIRECTION
+        // conservatrice du test (ttp ↑, NW ↓ vs l'ancien barème figé) est INCHANGÉE — les deux
+        // assertions d'inégalité ci-dessous restent la preuve, les pins ne sont que l'ampleur.
+        expect(r.totalTaxesPaid).toBeCloseTo(49_657.43, 0);
+        expect(r.finalNetWorth).toBeCloseTo(-204_034.74, 0);
     });
 });
 

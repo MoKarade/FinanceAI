@@ -75,7 +75,12 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // ménage, d'où +2 402 $ de patrimoine. C'est l'effet VOULU de ce correctif-là, pas une
         // régression de celui-ci — ce que ce test vérifie (le lot SUCCESSION ne touche pas au
         // patrimoine mensuel) reste vrai.
-        expect(Math.round(r.finalNetWorth)).toBe(482_510);
+        // Re-basé 2026-08-21 [ENG-GK-THRESHOLD-KNIFE] : la fixture traverse la bande de lissage
+        // GK (−4 %/−6 %) — dans [−5, −6] l'ancien code gelait TOUT, la bande gèle partiellement
+        // → dépenses un peu plus indexées certaines années (et l'inverse dans [−4, −5]). Attribué
+        // par retrait chirurgical des assiettes DIV (rouge inchangé → cause GK), sens symétrique
+        // du lissage, pas une fuite.
+        expect(Math.round(r.finalNetWorth)).toBe(475_413);
     });
 
     it('sans divorce, la succession est INCHANGÉE (rétrocompat mesurée)', () => {
@@ -106,7 +111,8 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // le « facteur incrémental » y dégénère en TAUX MOYEN sur la rente. Ce n'est pas un cas
         // dégradé, c'est le cas NOMINAL d'un ménage qui vit de ses rentes publiques — et c'est
         // exactement la population que le forfait de 0,7 sur-taxait le plus.
-        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_565_398);
+        // Re-basé 2026-08-21 [ENG-GK-THRESHOLD-KNIFE] (même attribution que ci-dessus, −130 $).
+        expect(Math.round(scenario({}, false).estateNetWorth)).toBe(3_565_268);
         // Second ancrage, même cause : 2 715 684 $ → 2 906 430 $, soit +190 746 $ — le MÊME écart
         // qu'au-dessus à un dollar d'arrondi près, parce que la VAN des rentes ne dépend pas du
         // tirage Monte Carlo ; seul le patrimoine de base en dépend.

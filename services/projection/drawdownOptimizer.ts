@@ -59,9 +59,11 @@ export function compareLifeScenarios(params: SimulationParams): ScenarioComparis
         estateNetWorth: s.estateNetWorth ?? 0,
         finalNetWorth: s.finalNetWorth ?? 0,
         // [ENG-TTP-UNSETTLED-PROPAGATE, corrigé revue #683] compteur NU assumé. ⚠️ Ce module
-        // N'EST PAS orphelin : l'alias `optimizeDrawdownOrder` (bas de fichier) est appelé par
-        // GoalSeekerCard (bouton « Optimiser ordre de décaissement ») — un premier commentaire
-        // l'affirmait orphelin sur un grep qui ratait l'alias. MAIS ce champ précis n'est PAS
+        // N'EST PAS orphelin : `compareLifeScenarios` est appelé par GoalSeekerCard (bouton
+        // « Optimiser ordre de décaissement »). Un premier commentaire l'affirmait orphelin sur un
+        // grep qui ratait l'ALIAS `optimizeDrawdownOrder` par lequel il passait alors — alias
+        // supprimé depuis (`[DETTE-DEPRECATED-DRAWDOWN]`), donc ce grep-là ne peut plus mentir.
+        // MAIS ce champ précis n'est PAS
         // affiché par la carte (strategyName + estateNetWorth seulement) et le tri porte sur
         // estateNetWorth : le nu est sans effet UI aujourd'hui. Si le champ devient affiché,
         // utiliser lifetimeTaxTotal (source unique).
@@ -88,8 +90,16 @@ export function compareLifeScenarios(params: SimulationParams): ScenarioComparis
     };
 }
 
-// Backward compat: l'API précédente s'appelait optimizeDrawdownOrder.
-// On garde l'export sous ce nom pour ne pas casser les consumers, en
-// le déclarant deprecated dans la doc.
-/** @deprecated Utiliser compareLifeScenarios. La version précédente était un placebo. */
-export const optimizeDrawdownOrder = compareLifeScenarios;
+// [DETTE-DEPRECATED-DRAWDOWN] L'alias `optimizeDrawdownOrder` est SUPPRIMÉ (2026-08-21).
+//
+// Il existait « pour ne pas casser les consumers » — mais il n'a jamais protégé personne : le seul
+// consommateur du dépôt (`GoalSeekerCard`) l'utilisait, donc l'alias ne faisait que MAINTENIR un
+// second nom pour la même fonction, marqué `@deprecated` et pourtant vivant en production.
+//
+// Son coût réel était une DÉSINFORMATION : un grep sur `compareLifeScenarios` ne trouvait aucun
+// appelant et faisait conclure « module orphelin » — conclusion FAUSSE écrite noir sur blanc dans
+// un commentaire de ce fichier (voir plus haut, corrigé au même commit). Un alias déprécié rend le
+// code cherchable par deux noms, donc introuvable par un seul.
+//
+// Le renommage est bit-identique : l'alias était une simple affectation (`= compareLifeScenarios`),
+// pas une adaptation de signature.

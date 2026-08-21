@@ -5524,3 +5524,41 @@ en allant lire le jumeau AVANT de coder, pas après. Corriger le chômage seul a
 mécaniques jusqu'ici cohérentes (toutes deux fausses du même cran), ce qui est pire que ne rien
 faire : `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` s'applique dès que deux fonctions sœurs partagent
 une convention, pas seulement à deux appels dans une même fonction.
+
+## Leçon du lot dette technique XS — 2026-08-21
+
+### `UN-ALIAS-DEPRECIE-REND-LE-CODE-INTROUVABLE-PAR-UN-SEUL-NOM`
+
+`optimizeDrawdownOrder` était un alias `@deprecated` de `compareLifeScenarios`, gardé « pour ne pas
+casser les consumers ». Il n'a jamais protégé personne : le seul consommateur du dépôt l'utilisait,
+donc l'alias ne faisait que maintenir un second nom pour la même fonction — marqué obsolète, et
+pourtant l'unique chemin vivant en production.
+
+Son coût réel n'était pas la duplication, c'était une **désinformation déjà matérialisée** : un
+`grep compareLifeScenarios` ne trouvait aucun appelant, d'où la conclusion « ce module est
+orphelin » — écrite noir sur blanc dans un commentaire du fichier, puis corrigée par une revue qui
+avait dû découvrir l'alias à la main. Un alias rend le code cherchable par DEUX noms, donc
+introuvable par UN seul ; et c'est toujours le nom canonique qu'on cherche.
+
+**Règle générale** : un alias de compatibilité ne se justifie que s'il protège un consommateur
+qu'on ne contrôle PAS (API publique, format persisté, contrat externe). À l'intérieur d'un dépôt
+fermé, il ne diffère pas le travail — il l'augmente, en ajoutant une chance permanente de conclure
+faux sur un `grep`. Le renommer coûte une ligne par site ; le garder coûte à chaque lecture.
+Corollaire : le test « l'alias pointe bien sur la fonction » n'est pas une couverture, c'est une
+tautologie sur une ligne d'affectation — il disparaît avec l'alias, et rien ne le remplace.
+
+### `UN-SCANNER-QUI-CRIE-SUR-DU-CODE-VIVANT-APPREND-A-ETRE-IGNORE`
+
+`knip` signalait `api/claude/[...path].ts` comme fichier inutilisé — une fonction Edge **routée par
+la plateforme Vercel**, donc sans importateur dans le dépôt, et en production. Ticket classé
+XS/FAIBLE, et à raison sur l'effort. Mais le coût n'est pas le faux positif : c'est ce qu'il
+**anesthésie**. Un scanner de code mort qui signale du code vivant à chaque exécution enseigne que
+sa sortie se survole ; le jour où du vrai code mort apparaît dans `api/`, il sera lu comme le bruit
+habituel.
+
+**Corollaire mesuré, et c'est l'argument qui manquait au ticket** : déclarer `api/**/*.ts` en point
+d'entrée n'a pas seulement retiré la ligne « fichier inutilisé ». L'export `anthropicError`
+(`api/_lib/relay.ts`) a AUSSI quitté la liste des exports inutilisés — il n'y figurait que parce que
+son consommateur n'était pas analysé. Un point d'entrée manquant ne cache pas un fichier : il cache
+tout un SOUS-GRAPHE, et chaque nœud de ce sous-graphe produit ses propres faux positifs. Vérifier
+l'effet en REJOUANT l'outil, pas en supposant que le correctif ne touche que la ligne visée.

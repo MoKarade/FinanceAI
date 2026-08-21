@@ -10,6 +10,37 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — Dette technique XS : deux angles morts qui rendaient le code INTROUVABLE
+
+> Lot réuni non par la zone touchée mais par le SYMPTÔME : dans les deux cas, du code parfaitement
+> vivant paraissait mort — à un outil dans un cas, à un `grep` dans l'autre. Les deux ont déjà
+> produit une conclusion FAUSSE écrite dans le dépôt.
+
+- [x] **`[DETTE-KNIP-API-ENTRY]`** (XS, FAIBLE) — `knip.json` ne déclarait pas `api/**/*.ts` en
+  point d'entrée, alors que `api/claude/[...path].ts` est une fonction Edge **routée par la
+  plateforme Vercel**, donc sans importateur dans le dépôt. Elle ressortait en « fichier inutilisé »
+  à chaque exécution. Le coût n'est pas le faux positif lui-même mais ce qu'il ANESTHÉSIE : un
+  scanner de code mort qui signale du code vivant apprend à être ignoré, et le vrai code mort futur
+  de `api/` sera lu comme du bruit habituel. **Rejoué après correctif** : le fichier disparaît de la
+  liste, et l'export `anthropicError` (`api/_lib/relay.ts`) sort AUSSI des 80 « exports inutilisés »
+  — il n'était signalé que parce que son consommateur n'était pas analysé (80 → 79).
+- [x] **`[DETTE-DEPRECATED-DRAWDOWN]`** (XS, MOYEN) — l'alias `@deprecated optimizeDrawdownOrder`
+  était **encore le seul chemin** par lequel `GoalSeekerCard` appelait `compareLifeScenarios`. Un
+  alias « pour ne pas casser les consumers » qui n'a jamais rien protégé : il maintenait un second
+  nom pour la même fonction, marqué obsolète et pourtant vivant en production.
+  ⚠️ **Son coût réel était une DÉSINFORMATION, déjà matérialisée** : un `grep` sur
+  `compareLifeScenarios` ne trouvait aucun appelant, d'où la conclusion « module orphelin » —
+  écrite noir sur blanc dans un commentaire de `drawdownOptimizer.ts`, puis corrigée par la revue
+  #683 qui avait dû découvrir l'alias. Un alias déprécié rend le code cherchable par deux noms,
+  donc INTROUVABLE par un seul. Le commentaire est réactualisé au même commit.
+  Renommage bit-identique (l'alias était `= compareLifeScenarios`, pas une adaptation de signature).
+  Le test qui vérifiait « l'alias pointe bien sur la fonction » est supprimé avec lui : c'était une
+  tautologie sur une ligne d'affectation, et la seule chose qu'il protégeait était le second nom.
+
+Gate vert : 4 643 tests / 418 fichiers (−1 : le test tautologique de l'alias), build inclus.
+Découverte au passage, NON traitée (hors périmètre) : `@types/adm-zip` est signalé comme dépendance
+de développement inutilisée — routé en `[DETTE-KNIP-ADMZIP]`.
+
 ## 2026-08-21 — `[JOBLOSS-DUREE-N-PLUS-1]` + `[ASSETLOC-INCLUSION-RECOPIEE]` : une durée qui vaut N, et une constante qui vient de sa source
 
 - [x] **`[JOBLOSS-DUREE-N-PLUS-1]`** (XS au ticket, **money-critical en pratique**) — une perte

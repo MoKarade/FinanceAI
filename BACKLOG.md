@@ -1488,7 +1488,7 @@
   et 9 dans `components/FutureProjection.tsx` (l:886-906, 972, 1014, 1105, 1593-1594) — pile aux
   points de fusion réel↔projeté, terrain identifié à risque dans `CLAUDE.md`. Correctif : typer les
   unions ou introduire un type guard partagé. [MESURÉ]
-- [ ] **`[DETTE-DEPRECATED-DRAWDOWN]`** (XS, MOYEN) — l'alias `@deprecated` `optimizeDrawdownOrder`
+- [x] **`[DETTE-DEPRECATED-DRAWDOWN]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, MOYEN) — l'alias `@deprecated` `optimizeDrawdownOrder`
   (`services/projection/drawdownOptimizer.ts:88`) est **encore consommé en prod** par
   `components/retirement/GoalSeekerCard.tsx:8,20,46`. Correctif : basculer sur `compareLifeScenarios`,
   retirer l'alias, mettre à jour `tests/services/drawdownOptimizer.test.ts:142-145`. [MESURÉ]
@@ -1497,10 +1497,17 @@
   `aiChat/AiChatView.tsx` (×2), `Retirement.tsx` (×2). Ces teintes échappent à `check-contrast` ET
   aux tokens. Correctif : mapper vers `tailwind.config.js`, ou y ajouter la teinte si elle est
   volontaire. [MESURÉ]
-- [ ] **`[DETTE-KNIP-API-ENTRY]`** (XS, FAIBLE — unifie `[KNIP-EDGE-FALSE-POSITIVE]`) — `knip.json` ne déclare pas `api/**/*.ts` en entry
+- [x] **`[DETTE-KNIP-API-ENTRY]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — unifie `[KNIP-EDGE-FALSE-POSITIVE]`) — `knip.json` ne déclare pas `api/**/*.ts` en entry
   point → `api/claude/[...path].ts` (fonction Vercel Edge, routée par la plateforme) ressort en
   « fichier inutilisé » alors qu'il est en PROD. Le faux positif aveugle aussi le scan sur du vrai
   code mort futur dans `api/`. Correctif : ajouter `"api/**/*.ts"` à `entry`. [MESURÉ]
+- [ ] **`[DETTE-KNIP-ADMZIP]`** (XS, FAIBLE — découvert en livrant `[DETTE-KNIP-API-ENTRY]`, 2026-08-21) —
+  `knip` signale `@types/adm-zip` comme **dépendance de développement inutilisée**
+  (`package.json:54`). NON traité dans ce lot : hors périmètre du ticket, et il faut d'abord
+  trancher — le paquet `adm-zip` lui-même est-il encore employé (auquel cas ses types le sont
+  indirectement, et c'est knip qui a tort), ou les deux sont-ils morts ? Vérifier AVANT de
+  supprimer : retirer des types encore nécessaires casse le typecheck, retirer un faux positif
+  réintroduit le bruit qu'on vient d'éliminer. [MESURÉ — signalé par l'outil, cause non instruite]
 - [ ] **`[DETTE-GODFN-PDF]`** (M, MOYEN) — `generateFinancialReport` fait **615 lignes**
   (`services/pdfReport.ts:265-879`), soit quasi tout le fichier. Correctif : découper par section
   de rapport (`buildHoldingsSection`, `buildDebtSection`…). [MESURÉ]

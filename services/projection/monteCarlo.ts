@@ -20,6 +20,9 @@ type RunScenarioFn = (
     finalNetWorth: number;
     estateNetWorth: number;
     totalTaxesPaid: number;
+    /** [ENG-TTP-UNSETTLED-PROPAGATE] dette du dernier exercice non réglée à l'horizon (signée) —
+     *  optionnel : le vrai moteur la fournit toujours, un fake de test peut l'omettre (→ 0). */
+    unsettledTaxAtHorizon?: number;
     totalGrowth: number;
     totalExpenses: number;
     minNetWorth: number;
@@ -85,6 +88,7 @@ export function runMonteCarlo(
         finalNW: number;
         minNetWorth: number;
         totalTaxesPaid: number;
+        unsettledTaxAtHorizon: number;
         totalGrowth: number;
         totalExpenses: number;
         shortfallRate: number;
@@ -108,6 +112,10 @@ export function runMonteCarlo(
             finalNW: result.finalNetWorth,
             minNetWorth: result.minNetWorth,
             totalTaxesPaid: result.totalTaxesPaid,
+            // [ENG-TTP-UNSETTLED-PROPAGATE] la dette du dernier exercice, jamais réglée par un
+            // avril de l'horizon — sans elle, l'efficacité fiscale d'un horizon court était
+            // aveugle à 8,6 % (10 ans) → 100 % (1 an) de l'impôt réel.
+            unsettledTaxAtHorizon: result.unsettledTaxAtHorizon ?? 0,
             totalGrowth: result.totalGrowth,
             totalExpenses: result.totalExpenses,
             shortfallRate: result.shortfallRate,
@@ -165,7 +173,12 @@ export function runMonteCarlo(
     const avgEfficiency = allRuns.reduce((acc, r) => {
         // [PROJ-TAXPAID-LABEL] Clamp [0,1] : `totalTaxesPaid` peut être NÉGATIF (année à gros
         // remboursement net) → sans plancher 0, leakage < 0 donnait une « efficacité » > 100 %.
-        const leakage = r.totalGrowth > 0 ? Math.min(1, Math.max(0, r.totalTaxesPaid / r.totalGrowth)) : 0.5;
+        // [ENG-TTP-UNSETTLED-PROPAGATE] impôt de l'HORIZON complet (réglé + dette du dernier
+        // exercice). L'impôt SUCCESSORAL n'y entre pas encore : décision A4-FVI en suspens —
+        // ticket [ENG-FVI-EFFICIENCY-ESTATE] (le clamp à 0 masque aussi le ttp négatif d'un
+        // salarié, même ticket).
+        const horizonTax = r.totalTaxesPaid + r.unsettledTaxAtHorizon;
+        const leakage = r.totalGrowth > 0 ? Math.min(1, Math.max(0, horizonTax / r.totalGrowth)) : 0.5;
         return acc + (1 - leakage);
     }, 0) / iterations;
     const avgLegacyRatio = allRuns.reduce((acc, r) => acc + Math.min(3, r.estateNetWorth / (startNW || 1)), 0) / iterations;
@@ -207,8 +220,9 @@ export function runMonteCarlo(
         // ratio > 1 est une INFORMATION réelle (impôts payés > croissance de la période, mesuré
         // 3-5× sur un retraité REER) — le capper fabriquerait un 100 % plausible (finding
         // financial-integrity #549). growth ≤ 0 → 0 honnête (pas « ratio = dollars bruts »).
+        // [ENG-TTP-UNSETTLED-PROPAGATE] même impôt d'horizon complet qu'avgEfficiency.
         taxLeakage: representativeRun && representativeRun.totalGrowth > 0
-            ? Math.max(0, representativeRun.totalTaxesPaid / representativeRun.totalGrowth)
+            ? Math.max(0, (representativeRun.totalTaxesPaid + representativeRun.unsettledTaxAtHorizon) / representativeRun.totalGrowth)
             : 0,
         shortfallRisk: representativeRun ? representativeRun.shortfallRate : 0,
         sequenceRiskPct,

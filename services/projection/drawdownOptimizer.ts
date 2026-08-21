@@ -58,6 +58,9 @@ export function compareLifeScenarios(params: SimulationParams): ScenarioComparis
         strategyName: s.strategyName ?? s.stratType ?? '—',
         estateNetWorth: s.estateNetWorth ?? 0,
         finalNetWorth: s.finalNetWorth ?? 0,
+        // [ENG-TTP-UNSETTLED-PROPAGATE] compteur NU assumé : ce module est ORPHELIN (aucun
+        // appelant vivant — ticket ENG-RANKING-MODULES-ORPHELINS) et son tri porte sur
+        // estateNetWorth ; s'il est un jour branché, afficher lifetimeTaxTotal (source unique).
         totalTaxesPaid: s.totalTaxesPaid ?? 0,
         gainVsBase: (s.estateNetWorth ?? 0) - baseEstate,
         pros: s.pros ?? [],

@@ -107,6 +107,26 @@ describe('runMonteCarlo — agrégation', () => {
         expect(r.fvi).toBe(100); // ancien code : 102 (échoue)
     });
 
+    it('[ENG-TTP-UNSETTLED-PROPAGATE] taxLeakage et efficacité voient la dette d\'horizon (pas le ttp nu)', () => {
+        // ttp 100 seul → leakage 0,1 ; avec la dette du dernier exercice (300) → 0,4. Un horizon
+        // court dont l'impôt vit surtout dans unsettled était invisible (8,6 % à 10 ans, 100 % à
+        // 1 an). Ancre négative : 0,1 = l'ancien câblage au compteur nu.
+        const run = vi.fn(() => ({
+            chartData: Array.from({ length: 13 }, () => ({ NetWorth: 50000 })),
+            finalNetWorth: 50000,
+            estateNetWorth: 50000,
+            totalTaxesPaid: 100,
+            unsettledTaxAtHorizon: 300,
+            totalGrowth: 1000,
+            totalExpenses: 1000,
+            minNetWorth: 50000,
+            shortfallRate: 0,
+        }));
+        const r = runMonteCarlo(run as never, makeParams(), STRAT, false, 10);
+        expect(r.expertMetrics.taxLeakage).toBeCloseTo(0.4, 6);
+        expect(r.expertMetrics.taxLeakage).not.toBeCloseTo(0.1, 2);
+    });
+
     it('[PROJ-TAXPAID-LABEL] taxLeakage > 1 en décaissement = INFORMATION conservée (pas de cap haut)', () => {
         // En décaissement, payer plus d'impôt que la croissance de la période est un état RÉEL
         // (mesuré 3-5× sur un retraité REER) — un cap à 1,0 fabriquerait un « 100 % » plausible.

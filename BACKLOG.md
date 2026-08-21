@@ -59,8 +59,6 @@
   **1f** Valeurs fiscales sans source NON gatées (`[RQAP-CAP-98K]`, `[W5-PROXY-NON-SOURCE]`,
   `[ESTATE-NPV-07]`, `[MIGRATE-GROSS-135]`, `[FISC-GUARD-SCOPE]` — ce dernier **en premier**,
   élargir le ratchet AVANT révèle le vrai périmètre).
-- [ ] **Vague 2 — Devises/unités** : `[FX-FALLBACK-SILENCIEUX]`, `[RETIREMENT-GROSSINCOME-DEAD]`,
-  `[ADDSTOCK-CAD-NATIF]`. Indépendant.
 - [ ] **Vague 3 — `formatCAD`** ⚠️ **AVANT la vague 4** : les deux touchent les mêmes fichiers
   (`ProjectionTooltip`, `GoalSeekerCard`…). **3a** livrer le scan-garde d'abord — il n'existe pas et
   ses offenders SONT le périmètre. **3b** corriger ce qu'il révèle, par dossier
@@ -1205,23 +1203,14 @@
 
 ### 🔴 Devises et unités
 
-- [ ] **`[FX-FALLBACK-SILENCIEUX]`** (S, MOYEN) — repli FX en dur `USD 1,40 / EUR 1,47` avec
-  `lastFetched: 0` (`services/finance.ts:149`, `constants.ts:125-130`). Le signal « jamais récupéré »
-  n'est lu **que** par `SystemView` (page technique, `components/SystemView.tsx:89-96`) : Dashboard,
-  Investissements, Patrimoine et le PDF convertissent sans aucun badge « taux estimé ». Sur 100 k USD
-  détenus, 3 points d'écart de taux = ~3 000 $ CAD d'erreur silencieuse sur le patrimoine affiché.
-  C'est le miroir exact de `DECISION-PRIVACY-UNE-SEULE-SORTIE` : un signal posé pour UNE surface ne
-  protège que celle-là. [MESURÉ pour le code ; ampleur = HYPOTHÈSE]
-- [ ] **`[RETIREMENT-GROSSINCOME-DEAD]`** (XS, FAIBLE — unifie `[DEAD-PROP-GROSSINCOME]`) — la prop `grossIncome` passée à `<Retirement>`
-  est une somme **MENSUELLE** de `grossSalary` (pas de ×12) sous un nom qui annonce l'annuel
-  (`components/TabRouter.tsx:230`, déclarée `components/Retirement.tsx:56`). Elle n'est **jamais
-  consommée** → piège d'échelle 12× armé pour le premier qui s'en servira. Correctif : supprimer la
-  prop, ou la renommer `grossMonthlyIncome`. [MESURÉ]
-- [ ] **`[ADDSTOCK-CAD-NATIF]`** (XS, FAIBLE) — le total « investi » du récapitulatif d'ajout de titre
-  passe par `formatCAD` alors que `quantity × buyPrice` est en devise **NATIVE**, et la mention
-  `{currency}` est placée AVANT le total au lieu d'après
-  (`components/investments/AddStockForm.tsx:418-419`). Correctif : afficher sans suffixe CAD, ou
-  convertir via `toCurrencyFactor`. [MESURÉ]
+- [ ] **`[FX-BADGE-SURFACES-RESTANTES]`** (S, FAIBLE — routé revue #686, financial-integrity
+  INFO) — le badge `FxEstimateBadge` (câblé Patrimoine net + Investissements + PDF) ne couvre PAS
+  toutes les surfaces qui convertissent des devises étrangères : `TaxCenter.tsx:170-171`
+  (`estimateTaxableInvestmentIncome`, nourrit un affichage FISCAL) et
+  `services/projection/buildSimulationParams.ts:279` (`derivePortfolioStartingBalances`, alimente
+  TOUTE la courbe Futur). « Un signal posé pour UNE surface ne protège que celle-là »
+  (`DECISION-PRIVACY-UNE-SEULE-SORTIE`) s'applique ici aussi. Pas une régression du lot FX ; le
+  ticket d'origine ne les listait pas.
 
 ### 🔴 Argent — valeurs fausses ou silencieuses
 
@@ -1660,6 +1649,13 @@
 > Les 4 fuites de Mode Discret de l'audit sont CORRIGÉES (#608), ainsi qu'une 5e trouvée à la revue
 > (axes et infobulles de graphiques, `[A11Y-PRIVACY-CHART-FORMATTER]`). Garde de non-régression :
 > `tests/components/chartPrivacyScan.test.ts`.
+
+- [ ] **`[A11Y-ADDSTOCKFORM-LABELS]`** (S — routé revue #686, a11y-auditor LOW) —
+  `components/investments/AddStockForm.tsx` : 7 champs (Symbole/Ticker, Prix manuel, Date d'achat,
+  Quantité, Prix d'achat, + le `role="combobox"` de l'autocomplétion) n'ont AUCUNE association
+  label↔contrôle (ni `htmlFor`/`id`, ni `aria-label`/`aria-labelledby`) — un lecteur d'écran devine
+  le nom par proximité DOM, non fiable. Les 2 champs « Devise »/« Compte fiscal » ont été corrigés
+  en passant (revue #686, même patron `htmlFor`+`id`) ; ce ticket couvre le reste du formulaire.
 
 - [ ] 🔴 **`[A11Y-MODAL-GUIDE-NODIALOG]`** (S) — `GuideModal` : aucune sémantique de dialogue
   (`role="dialog"` absente), pas de focus initial/piège Tab/restauration focus/Escape. Atteignable au

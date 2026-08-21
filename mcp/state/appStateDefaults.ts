@@ -43,6 +43,7 @@ export function buildDefaultAppState(): AppState {
         initialBalances: {},
         apiKeys: { anthropic: '', finnhub: '' },
         fxRates: DEFAULT_FX_RATES,
+        fxRatesEstimated: true, // [FX-FALLBACK-SILENCIEUX] DEFAULT_FX_RATES est un repli en dur.
         lastUpdate: Date.now(),
         categorizationRules: [],
         aiConversation: [],

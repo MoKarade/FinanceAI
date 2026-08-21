@@ -5122,3 +5122,23 @@ reformulation locale ; (2) la comparaison de chaînes ISO est correcte SI le seu
 mécanisme ; (3) le test du helper épingle l'ÉQUIVALENCE avec le prédicat moteur, pas juste le
 format. Même famille que `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` : deux sites qui encodent le
 même fait avec deux conventions divergent en silence.
+
+### `NOUVEAU-CHAMP-STORE-A-TROIS-SITES` — un champ top-level touche DEFAULT_APP_STATE, buildDefaultAppState, ET la migration legacy
+
+Ajouter `AppState.fxRatesEstimated` (revue #686) : posé dans `DEFAULT_APP_STATE`
+(`store/useFinanceStore.ts`), OUBLIÉ dans `mcp/state/appStateDefaults.ts`
+(`buildDefaultAppState`, lu par le chat in-app ET la garde bidirectionnelle
+`[DEFAULTS-DRIFT-FINTABLE-FIELDS]` déjà indexée au BACKLOG) et dans le chemin de
+MIGRATION LEGACY pré-persist (`getInitialStateWithMigration`, un 3e littéral qui
+construit l'état à la main, jamais un spread de `DEFAULT_APP_STATE`) — **trois
+sites**, pas deux, pour tout NOUVEAU champ top-level du store.
+
+⚠️ **Gate local VERT, CI ROUGE — encore une fois, mais une classe DIFFÉRENTE** de
+`GATE-LOCAL-VERT-CI-ROUGE-PAR-VERSION-DE-NODE` : ici c'est l'état de `localStorage`
+au démarrage du test qui diffère entre l'environnement local (une clé
+`financeai-storage` traîne d'exécutions antérieures → prend le chemin
+`{...DEFAULT_APP_STATE, lastUpdate}`, qui AVAIT le nouveau champ) et un checkout CI
+frais (`localStorage` vide → tombe dans le 3e littéral legacy, qui NE L'AVAIT PAS).
+Le gate local ne peut PAS être fiable sur ce test précis sans un environnement
+vierge. Réflexe pour tout nouveau champ top-level : grep les TROIS littéraux
+avant de committer, pas seulement les deux évidents.

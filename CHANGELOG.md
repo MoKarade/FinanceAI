@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-21 (un signal quand ton patrimoine est converti à taux estimé)
+
+- Si le taux de change n'a pas pu être récupéré — jamais, ou une seule des deux devises (USD/EUR)
+  lors d'une tentative — ET que tu détiens un placement dans cette devise, un badge « Taux de
+  change estimés » apparaît maintenant sur ta tuile Patrimoine net et sur la page Investissements
+  — avant, seule la page technique le disait, et un repli partiel passait totalement inaperçu.
+  Le PDF porte la même précision en note sous le total des placements. Sans avoir étranger, ou
+  avec un vrai taux, rien ne change à l'écran.
+- Le récapitulatif d'ajout de titre affichait le montant investi comme s'il était en dollars
+  canadiens même quand tu l'avais saisi en USD ou en EUR — corrigé : il affiche maintenant le
+  bon montant, dans la bonne devise.
+
 ## [unreleased] — 2026-08-21 (un bien immobilier « détenu » se déclare, il ne se devine plus)
 
 - Un objectif immobilier dont la date d'achat est passée n'est plus automatiquement traité comme

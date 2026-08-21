@@ -8,6 +8,8 @@ import {
   computeMonthlyBudgetAggregates,
   computeTotalDebt,
   monthlyAmountFor,
+  isFxRatesEstimated,
+  hasForeignCurrencyAssets,
 } from '../../services/portfolio';
 import type {
   Asset,
@@ -174,5 +176,51 @@ describe('computeTotalDebt', () => {
   it('renvoie 0 pour un tableau vide ou indefini', () => {
     expect(computeTotalDebt([])).toBe(0);
     expect(computeTotalDebt(undefined as unknown as Debt[])).toBe(0);
+  });
+});
+
+// [FX-FALLBACK-SILENCIEUX] — le repli FX en dur n'était visible que dans SystemView (page
+// technique). Ces deux helpers pures alimentent le badge partagé (FxEstimateBadge) consommé par
+// Investissements, le bandeau Patrimoine net et le PDF — le signal doit se déclencher SEULEMENT
+// quand il compte (un taux estimé qui ne convertit RIEN n'est pas une information utile).
+describe('isFxRatesEstimated', () => {
+  it('lastFetched: 0 (jamais récupéré, ou repli en dur) → true', () => {
+    expect(isFxRatesEstimated({ lastFetched: 0 })).toBe(true);
+  });
+
+  it('lastFetched absent → true (même repli, contrat DEFAULT_FX_RATES)', () => {
+    expect(isFxRatesEstimated({})).toBe(true);
+    expect(isFxRatesEstimated(undefined)).toBe(true);
+  });
+
+  it('lastFetched > 0 (taux réel, même périmé) → false', () => {
+    expect(isFxRatesEstimated({ lastFetched: 1700000000 })).toBe(false);
+  });
+
+  // Revue #686 (financial-integrity, MOYEN mesuré) : un succès GLOBAL du fetch BdC (lastFetched
+  // > 0) peut cacher un repli PAR TAUX (une des deux séries absente/corrompue) — `estimated`
+  // (posé par services/finance.ts) le fait remonter explicitement, ce que lastFetched seul ne
+  // pouvait pas voir. `estimated` est donc TOUJOURS prioritaire quand présent.
+  it('estimated: true PRIME sur lastFetched > 0 (repli par taux caché par un succès global)', () => {
+    expect(isFxRatesEstimated({ lastFetched: 1700000000 }, true)).toBe(true);
+  });
+
+  it('estimated: false PRIME sur lastFetched: 0 (rétrocompat exotique, mais estimated fait foi)', () => {
+    expect(isFxRatesEstimated({ lastFetched: 0 }, false)).toBe(false);
+  });
+});
+
+describe('hasForeignCurrencyAssets', () => {
+  it('un seul actif CAD → false (rien à convertir, le badge ne doit PAS apparaître)', () => {
+    expect(hasForeignCurrencyAssets([makeAsset({ currency: 'CAD' })])).toBe(false);
+  });
+
+  it('au moins un actif USD/EUR parmi des CAD → true', () => {
+    expect(hasForeignCurrencyAssets([makeAsset({ currency: 'CAD' }), makeAsset({ currency: 'USD' })])).toBe(true);
+  });
+
+  it('liste vide ou currency absente → false', () => {
+    expect(hasForeignCurrencyAssets([])).toBe(false);
+    expect(hasForeignCurrencyAssets([{ } as Asset])).toBe(false);
   });
 });

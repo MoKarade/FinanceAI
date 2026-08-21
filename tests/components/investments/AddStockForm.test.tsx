@@ -115,3 +115,61 @@ describe('AddStockForm — [FINNHUB-MISMATCH] suggestion non cotable → fallbac
         expect(screen.getByDisplayValue('APPL')).toBeInTheDocument();
     });
 });
+
+describe('[ADDSTOCK-CAD-NATIF] le récapitulatif reste en devise NATIVE, jamais formatCAD', () => {
+    it('devise USD (défaut) : quantité × prix affichés en USD, aucun symbole "$ CA"', () => {
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/AAPL, TSLA/i), { target: { value: 'gic-rbc' } });
+        fireEvent.click(screen.getByRole('button', { name: /À la main/i }));
+        fireEvent.change(screen.getByPlaceholderText(/152\.30/), { target: { value: '100' } });
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '5' } });
+        fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '90' } });
+
+        const recap = screen.getByText('Récapitulatif').parentElement as HTMLElement;
+        // quantity × buyPrice EST en devise native (USD ici) — formatCAD y afficherait "$ CA",
+        // qui n'apparaît nulle part. Le code de devise, lui, apparaît deux fois (prix + total).
+        // [FISC-INTEGRITY revue #686] `not.toMatch(/\$\s*CA/)` était VACUEUX : formatCAD ne rend
+        // jamais "$ CA" sous cette version d'ICU (juste "$") — l'assertion ne pouvait pas rougir.
+        // `not.toContain('$')` discrimine vraiment : l'ancien formatCAD rendait un symbole $.
+        expect(recap.textContent).not.toContain('$');
+        expect((recap.textContent!.match(/USD/g) ?? []).length).toBe(2);
+        expect(recap.textContent).toContain('450,00'); // 5 × 90,00 = 450,00 (formatNumber, pas formatCAD)
+    });
+
+    it('devise EUR : le total porte EUR, pas un symbole CAD', () => {
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/AAPL, TSLA/i), { target: { value: 'lvmh' } });
+        fireEvent.click(screen.getByRole('button', { name: /À la main/i }));
+        fireEvent.change(screen.getByPlaceholderText(/152\.30/), { target: { value: '800' } });
+        fireEvent.change(screen.getByLabelText('Devise'), { target: { value: 'EUR' } });
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '2' } });
+        fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '700' } });
+
+        const recap = screen.getByText('Récapitulatif').parentElement as HTMLElement;
+        // [FISC-INTEGRITY revue #686] `not.toMatch(/\$\s*CA/)` était VACUEUX : formatCAD ne rend
+        // jamais "$ CA" sous cette version d'ICU (juste "$") — l'assertion ne pouvait pas rougir.
+        // `not.toContain('$')` discrimine vraiment : l'ancien formatCAD rendait un symbole $.
+        expect(recap.textContent).not.toContain('$');
+        // espace INSÉCABLE (Intl fr-CA), pas une espace normale — normaliser avant de comparer.
+        expect(recap.textContent!.replace(/\s/g, ' ')).toContain('1 400,00'); // 2 × 700,00 EUR
+        expect((recap.textContent!.match(/EUR/g) ?? []).length).toBe(2);
+    });
+
+    // [code-reviewer revue #686, MOYEN] Le chemin « validation Finnhub réussie » (bannière
+    // « Prix actuel : … ») n'avait AUCUN test — un `formatCAD(currentPrice)` oublié y a survécu
+    // 90 lignes sous le premier correctif, sans qu'aucune suite ne rougisse.
+    it('bannière « Prix actuel » (Finnhub validé) : devise NATIVE, pas CAD', async () => {
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(getQuote).mockResolvedValue({ symbol: 'AAPL', price: 231.4 } as never);
+
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'aapl' } });
+        fireEvent.click(screen.getByRole('button', { name: /Valider/i }));
+
+        const banner = await screen.findByText(/Prix actuel/i);
+        // devise par défaut du formulaire = USD (state initial) — jamais un symbole $ CAD.
+        expect(banner.textContent).toContain('USD');
+        expect(banner.textContent).not.toContain('$');
+        expect(banner.textContent).toContain('231,40');
+    });
+});

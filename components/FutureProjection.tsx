@@ -6,6 +6,7 @@ import { Skeleton } from './ui/Skeleton';
 // lazy : son pipeline (usePortfolioHistory + helpers immo/dettes) ne se paie qu'à l'affichage.
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { resolveDaySeriesIndex, type DaySeriesPoint } from '../utils/daySeriesIndex';
+import { hasForeignCurrencyAssets } from '../services/portfolio';
 const FutureHistorySection = lazyWithRetry(() => import('./future/FutureHistorySection'), 'FutureHistorySection');
 import { PageHeader } from './ui/PageHeader';
 import { Badge } from './ui/Badge';
@@ -266,7 +267,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // [FUTUR-REAL-HISTORY] La mention « change du jour » ne concerne QUE les titres en devise étrangère
     // (facteur FX=1 pour CAD) → ne l'affiche pas pour un portefeuille 100 % CAD (finding code-reviewer :
     // sinon on suggère un risque de change qui ne s'applique pas). Sélecteur booléen = re-render minimal.
-    const hasForeignHoldings = useFinanceStore(s => (s.assets ?? []).some(a => (a.currency || 'CAD') !== 'CAD'));
+    const hasForeignHoldings = useFinanceStore(s => hasForeignCurrencyAssets(s.assets));
 
     // [PROJECTION-PERSIST 2026-07-16, demande Marc] — la projection révélée RESTE (reload / changement
     // de page / autre PC) et se FIGE quand les entrées changent (badge « pas à jour », choix Marc :

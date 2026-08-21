@@ -53,7 +53,6 @@ interface RetirementProps {
     currentCELI: number;
     currentNonReg: number;
     calculatedMonthlySavings: number;
-    grossIncome?: number;
     projection: ProjectionConfig;
     config: BudgetConfig;
     initialBalances?: Record<string, number>;

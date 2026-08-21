@@ -13,6 +13,11 @@ import { parseBankCsv } from './services/import/parseBankCsv';
 // sans effet sur le bundle de boot.
 import { applyTransferDetection } from './services/transactions/applyTransferDetection';
 import { logAudit } from './services/auditLog';
+// [FX-FALLBACK-SILENCIEUX] Import STATIQUE, pas dynamique : services/portfolio.ts est déjà tiré au
+// boot par de nombreux autres composants (DebtManager, FutureProjection, Investments, TaxCenter,
+// HealthIndicator…) — un `import()` ici ne l'aurait PAS rendu lazy (mesuré : warning Rolldown
+// INEFFECTIVE_DYNAMIC_IMPORT au build) ; il aurait juste ajouté une indirection sans bénéfice.
+import { isFxRatesEstimated, hasForeignCurrencyAssets } from './services/portfolio';
 import { fetchFxRates } from './services/finance';
 // Phase 3E perf — lazy-load pdfReport (jspdf = 595KB) seulement au clic
 // "Générer PDF" plutôt qu'au boot de l'app.
@@ -784,7 +789,6 @@ export const App: React.FC = () => {
                         // en dur → la ligne « Équité bâtie » du PDF ne s'affichait jamais). Import
                         // dynamique : même frontière lazy que le PDF lui-même (rien au boot).
                         const { presentEquityOfGoal, monthsSince } = await import('./services/projection/pastPurchaseInit');
-                        const { isFxRatesEstimated, hasForeignCurrencyAssets } = await import('./services/portfolio');
                         // Snapshot store hors React pour éviter la dépendance sur state
                         // (lastProjection est délibérément exclu du selector App.tsx).
                         const { lastProjection } = useFinanceStore.getState();

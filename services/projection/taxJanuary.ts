@@ -94,7 +94,8 @@ export interface JanuaryResult {
     ferrTaxOnRrif: number;
     ferrLogMsg?: string;
     // Guyton-Klinger
-    guytonKlingerFreeze: boolean;
+        /** [ENG-GK-THRESHOLD-KNIFE] facteur d'indexation des dépenses 0..1 (1 = pleine, 0 = gel total, lissé linéairement sur la baisse 0-5 % du portefeuille). */
+    guytonKlingerIndexationFactor: number;
     newPrevPortfolioNW: number;
     // Logs
     logs: string[];
@@ -272,12 +273,26 @@ export function processJanuaryReset(
     }
 
     // === 5. Guyton-Klinger trigger ===
-    let guytonKlingerFreeze = false;
+    // [ENG-GK-THRESHOLD-KNIFE] Le gel binaire à −5 % était un seuil COUTEAU : quelques centaines
+    // de dollars d'impôt suffisaient à déclencher un gel valant −174,36 $/mois À VIE, et le
+    // CLASSEMENT des stratégies basculait sur un écart négligeable (panel #564 : le CID de
+    // 256 $/an faisait passer MELTDOWN de 1re à 3e). Désormais LISSÉ : l'indexation décroît
+    // LINÉAIREMENT de pleine (baisse 0 %) à nulle (baisse ≥ 5 %) — les extrêmes sont identiques
+    // à l'ancien comportement (0 % de baisse → indexation pleine ; ≥ 5 % → gel total), le
+    // couteau disparaît entre les deux. NB : le GK canonique gèle en binaire, mais le moteur
+    // applique déjà une variante maison (seuil sur le NW, pas sur le taux de retrait initial) —
+    // le lissage corrige l'INSTABILITÉ du modèle maison, pas la règle canonique.
+    let guytonKlingerIndexationFactor = 1;
     let newPrevPortfolioNW = ctx.prevPortfolioNW;
     if (ctx.isRetired && ctx.m > 12) {
         const currentPortfolio = ctx.liquid + ctx.celi + ctx.reer + ctx.nonReg + ctx.crypto;
-        guytonKlingerFreeze = currentPortfolio < ctx.prevPortfolioNW * 0.95;
-        if (guytonKlingerFreeze) logs.push('❄️ Guyton-Klinger: Gel de l’indexation des dépenses');
+        const drop = ctx.prevPortfolioNW > 0
+            ? Math.max(0, (ctx.prevPortfolioNW - currentPortfolio) / ctx.prevPortfolioNW)
+            : 0;
+        guytonKlingerIndexationFactor = Math.max(0, Math.min(1, 1 - drop / 0.05));
+        if (guytonKlingerIndexationFactor < 1) {
+            logs.push(`❄️ Guyton-Klinger: indexation des dépenses réduite à ${Math.round(guytonKlingerIndexationFactor * 100)} % (portefeuille −${(drop * 100).toFixed(1)} %)`);
+        }
         newPrevPortfolioNW = currentPortfolio;
     }
 
@@ -294,7 +309,7 @@ export function processJanuaryReset(
         ferrGrossByUser,
         ferrTaxOnRrif,
         ferrLogMsg,
-        guytonKlingerFreeze,
+        guytonKlingerIndexationFactor,
         newPrevPortfolioNW,
         logs,
     };

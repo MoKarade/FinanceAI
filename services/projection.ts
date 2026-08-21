@@ -393,7 +393,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let capitalLossBank = 0;
     let accCapitalGainsYear = 0;
     let prevPortfolioNW = 0;
-    let guytonKlinger_freezeInflation = false;
+    let guytonKlinger_indexationFactor = 1; // [ENG-GK-THRESHOLD-KNIFE] 1 = indexation pleine, 0 = gel total (lissé)
     let expenseMultiplier = 1;
 
     // V65: Advanced Metrics Tracking
@@ -638,8 +638,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
         // Cycle 29 split: inflation effective des dépenses → ./projection/monthlyCalcs
         const effectiveExpenseInflation = computeEffectiveExpenseInflation(age, isRetired, currentInflation, effProj);
-        if (!guytonKlinger_freezeInflation) {
-            expenseMultiplier *= Math.pow(1 + effectiveExpenseInflation / 100, 1 / 12);
+        // [ENG-GK-THRESHOLD-KNIFE] indexation PROPORTIONNELLE au facteur GK (1 = pleine,
+        // 0 = gel — extrêmes identiques à l'ancien booléen ; entre les deux, le lissage
+        // remplace le seuil couteau).
+        if (guytonKlinger_indexationFactor > 0) {
+            expenseMultiplier *= Math.pow(1 + (effectiveExpenseInflation * guytonKlinger_indexationFactor) / 100, 1 / 12);
         }
 
         prevCELI = celi;
@@ -1463,7 +1466,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 if (janResult.ferrLogMsg) flowEventsLog.push(janResult.ferrLogMsg);
             }
             // Guyton-Klinger
-            guytonKlinger_freezeInflation = janResult.guytonKlingerFreeze;
+            guytonKlinger_indexationFactor = janResult.guytonKlingerIndexationFactor;
             prevPortfolioNW = janResult.newPrevPortfolioNW;
             // Logs
             janResult.logs.forEach(msg => flowEventsLog.push(msg));

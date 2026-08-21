@@ -4,6 +4,31 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-21 (suite 126) — `[PASSE-REEL-DETTE-1]` : gating par dette dans le passé
+> Branche `claude/passe-reel-dette-1` (depuis main post-#686), PR à créer. Demande Marc, en creusant
+> depuis « je veux seter la date de ma dette » (déjà livré par `[DETTE-DATES]`) : le graphe Futur
+> montre encore sa dette-auto (bail, débute 20 juillet) « depuis toujours » dans le passé reconstruit.
+> **Diagnostic** : `buildPastPrefix`/`dailyPastLedger` recevaient un scalaire `currentDebtNonImmo`
+> figé, appliqué à TOUS les mois passés, sans regarder `startDate`.
+> **Correctif** : nouvelles fonctions PURES dans `debtSchedule.ts`
+> (`phaseDetteAuMoisAbsolu`/`sumNotYetStartedDebtsAtMonth`/`...AtAbsoluteMonth`) qui retranchent en
+> **DELTA** le solde des dettes pas-encore-commencées de `currentDebtNonImmo` — **jamais** une
+> resommation complète des `debts[].balance` bruts (piège découvert en cours de route : le moteur a
+> déjà appliqué son pas d'amortissement du mois 0 avant de publier ce total, donc resommer diverge de
+> quelques centaines de $ et casse le raccord EXACT qu'Option A garantit ; le delta reste
+> bit-identique à avant quand aucune dette n'est gatée). `FutureProjection.tsx` passe désormais
+> `debts` (store, tableau frais) EN PLUS de `currentDebtNonImmo` (le mécanisme figé/frais existant,
+> INCHANGÉ) aux deux builders.
+> ⚠️ **Revirement de décision, assumé** : en creusant, Marc a redemandé une VRAIE courbe
+> d'amortissement (« chaque semaine je dois un peu moins »), ce qui inverse la Décision 2 de
+> `docs/adr/0012-...md` (« aucun amortissement rétroactif ») — confirmé par Marc après rappel
+> explicite du contexte du 17-19 août. Scopé en panel produit+archi (product-manager + architect,
+> read-only) en 5 lots : CE lot (`-1`, livré), `[DEBT-MCP-PARITE]`, `[DEBT-AMORTIZATION]` (la
+> courbe, allowlist de kinds amortissants, garde de plausibilité bornée), `[DEBT-MCP-ORIGINALBALANCE]`,
+> `[DEBT-UI-PAR-TYPE]` (kind exposé dans DebtManager, actuellement invisible malgré 11 valeurs déjà
+> dans `types.ts`). Comparateur prêt-vs-bail explicitement PAS scopé (cadrage insuffisant, routé
+> backlog séparé). 3 discriminants prouvés rouges par perturbation chirurgicale (delta forcé à 0).
+>
 > ## 🟢 Session 2026-08-21 (suite 125) — Vague 2 PM : badge FX estimé, prop morte, récap devise native
 > Branche `claude/vague2-devises` (rebasée sur main post-#685 — Marc a mergé #684 lui-même, PUIS
 > #685 doc-only, pendant la rédaction du gate ; réconciliée), PR #686. **§6 vérifié** : déploiement

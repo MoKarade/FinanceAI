@@ -39,7 +39,7 @@ const construire = (transactions: MinimalPastTransaction[]) =>
         // `fxRates`/`realEstateGoals`. Mon premier jet les avait inventés et les 7 tests
         // plantaient en accusant le code — deuxième fois aujourd'hui qu'une fixture inventée
         // mesure autre chose que ce qu'elle croit.
-        fx: {}, equityByYear: new Map<number, number>(), currentDebtNonImmo: 0,
+        fx: {}, equityByYear: new Map<number, number>(), currentDebtNonImmo: 0, debts: [],
     } as never);
 
 const ligneDu = (res: { rows: Array<{ date: string }> }, date: string) =>

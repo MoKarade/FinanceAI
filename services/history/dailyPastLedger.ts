@@ -17,14 +17,17 @@
 //   ✅ Dépôts vs rendement — le dépôt du jour vient des ACHATS datés ; le reste de la variation est
 //                            du mouvement de marché. Les deux sont donc de l'information, pas une clé.
 //   ⚠️ Équité immobilière — connue à l'ANNÉE (amortissement), pas au jour : palier annuel.
-//   ⚠️ Dettes             — figées au niveau ACTUEL (décision Marc, Option A, `pastNetWorth.ts`) :
-//                            l'app n'a pas l'historique d'amortissement des dettes génériques.
+//   ⚠️ Dettes             — chaque dette figée à son niveau ACTUEL depuis son `startDate` propre
+//                            (décision Marc, Option A + gating par dette `[PASSE-REEL-DETTE-1]`,
+//                            palier MENSUEL même ici — pas de fausse précision au jour) : l'app n'a
+//                            pas de courbe d'amortissement (voir `DEBT-AMORTIZATION` au backlog).
 //
 // ⚠️ CE MODULE NE FABRIQUE JAMAIS UN JOUR. Une date hors de la période où les DEUX reconstructions
 // (cash ET placements) ont de la matière ne produit AUCUNE ligne — l'appelant garde alors la valeur
 // interpolée, qui est honnête pour ce qu'elle est. Un jour à moitié réel serait pire que les deux.
 
 import { computeRawNetWorth } from '../projection/netWorth';
+import { moisAbsolu, sumNotYetStartedDebtsAtAbsoluteMonth, type DebtBalance } from '../projection/debtSchedule';
 import { reconstructCashHistoryDaily } from './reconstructCashHistory';
 import { reconstructPortfolioHistoryDaily, MAX_DAILY_DAYS_DEFAULT, type MinimalAsset } from './reconstructPortfolioHistory';
 
@@ -127,6 +130,10 @@ export interface BuildDailyPastInput {
     equityByYear: ReadonlyMap<number, number>;
     /** Dettes hors hypothèque au niveau ACTUEL (Option A). */
     currentDebtNonImmo: number;
+    /** Dettes hors hypothèque (store, tableau FRAIS) : sert UNIQUEMENT à déterminer, en palier
+     *  MENSUEL, quelles dettes exclure de `currentDebtNonImmo` pour un jour où elles n'existaient
+     *  pas encore (`sumNotYetStartedDebtsAtAbsoluteMonth`). */
+    debts: ReadonlyArray<DebtBalance>;
     /** Garde-fou de volume : au-delà, on ne reconstruit pas (le graphe ne va pas jusque-là). */
     maxDays?: number;
 }
@@ -197,7 +204,7 @@ export function depositsOnDay(
  * future) — l'appelant garde alors ce qu'il avait, plutôt qu'une ligne inventée.
  */
 export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedgerResult {
-    const { from, to, today, transactions, currentCash, assets, fx, equityByYear, currentDebtNonImmo } = input;
+    const { from, to, today, transactions, currentCash, assets, fx, equityByYear, currentDebtNonImmo, debts } = input;
     // ⚠️ [PASSE-REEL-CAP-400J] Défaut PARTAGÉ avec la reconstruction des placements. Deux `?? 400`
     // indépendants, c'était deux plafonds à faire évoluer ensemble — et donc un jour à désynchroniser.
     const maxDays = input.maxDays ?? MAX_DAILY_DAYS_DEFAULT;
@@ -274,13 +281,20 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
         const immo = equityByYear.get(Number(date.slice(0, 4))) ?? 0;
         const income = incomeByDay.get(date) ?? 0;
         const expenses = expenseByDay.get(date) ?? 0;
+        // [PASSE-REEL-DETTE-1] Palier MENSUEL volontaire (cf en-tête) : `moisAbsolu` ne retient que
+        // l'année/le mois de `date`, jamais le jour. `?? Number.POSITIVE_INFINITY` en repli défensif
+        // (jamais atteint en pratique — `date` vient toujours de notre propre boucle ISO) fait qu'AUCUNE
+        // dette n'est plus jamais 'a-venir' à ce point → delta nul → repli sur `currentDebtNonImmo`
+        // inchangé, le comportement conservateur d'avant ce lot.
+        const debtNonImmo = currentDebtNonImmo
+            - sumNotYetStartedDebtsAtAbsoluteMonth(debts, moisAbsolu(date) ?? Number.POSITIVE_INFINITY);
 
         out.push({
             date,
             Liquidites: c.cash,
             CELI: i.CELI, CELIAPP: i.CELIAPP, REER: i.REER, REEE: i.REEE, NonReg: i.NonReg, Crypto: i.Crypto,
             Immobilier: immo,
-            DettesNonImmo: currentDebtNonImmo,
+            DettesNonImmo: debtNonImmo,
             // SOURCE UNIQUE : `computeRawNetWorth` via le helper du passé — jamais une copie locale
             // de la formule. `Immobilier` est DÉJÀ net d'hypothèque (ne jamais re-soustraire).
             NetWorth: Math.round(computeRawNetWorth({
@@ -293,7 +307,7 @@ export function buildDailyPastLedger(input: BuildDailyPastInput): DailyPastLedge
                 // 0 EXPLICITE plutôt qu'un champ oublié — le `Record` exhaustif de `NetWorthParts`
                 // force ce choix à être écrit, ce qui est exactement son rôle.
                 privateBusinessValue: 0,
-                liquidDebt: 0, smithManoeuvreDebt: 0, activeDebtsTotal: currentDebtNonImmo,
+                liquidDebt: 0, smithManoeuvreDebt: 0, activeDebtsTotal: debtNonImmo,
             })),
             Income: income,
             Expenses: expenses,

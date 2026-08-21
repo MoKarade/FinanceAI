@@ -39,7 +39,7 @@ const PRIX = ['2026-08-08', '2026-08-09', '2026-08-10', '2026-08-11', '2026-08-1
 
 const ledger = (transactions: unknown[]) => buildDailyPastLedger({
     from: '2026-08-08', to: '2026-08-13', today: '2026-08-14', transactions,
-    currentCash: 10_000, fx: {}, equityByYear: new Map<number, number>(), currentDebtNonImmo: 0,
+    currentCash: 10_000, fx: {}, equityByYear: new Map<number, number>(), currentDebtNonImmo: 0, debts: [],
     assets: [{
         id: 'a1', symbol: 'ABC', currency: 'CAD', accountType: 'CELI',
         quantity: 100, currentPrice: 10, buyPrice: 10, priceHistory: PRIX,

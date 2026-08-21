@@ -56,6 +56,7 @@ const base = {
     fx: FX,
     equityByYear: new Map([[2026, 120_000]]),
     currentDebtNonImmo: 8_000,
+    debts: [{ balance: 8_000 }],
 };
 
 describe('dailyPastLedger — reconstruction du passé au jour', () => {
@@ -87,6 +88,28 @@ describe('dailyPastLedger — reconstruction du passé au jour', () => {
         const { rows } = buildDailyPastLedger(base);
         expect(new Set(rows.map((r) => r.Immobilier))).toEqual(new Set([120_000]));
         expect(new Set(rows.map((r) => r.DettesNonImmo))).toEqual(new Set([8_000]));
+    });
+
+    it('[PASSE-REEL-DETTE-1] le gating est en palier MENSUEL, pas au jour près : un départ en cours de mois active tout le mois', () => {
+        const { rows } = buildDailyPastLedger({
+            ...base,
+            // startDate au 04 mars ne coupe PAS le mois en deux jours : la fenêtre entière (01-05 mars)
+            // est dans le MÊME mois calendaire que startDate → active partout, y compris le 01-03.
+            // (Une vraie coupure jour-par-jour exigerait une fenêtre à cheval sur deux mois — hors
+            // périmètre ici, ce module ne connaît la dette qu'au mois, jamais au jour.)
+            debts: [{ balance: 8_000, startDate: '2026-03-04' }],
+        });
+        const byDate = new Map(rows.map((r) => [r.date, r]));
+        expect(byDate.get('2026-03-01')?.DettesNonImmo).toBe(8_000);
+        expect(byDate.get('2026-03-04')?.DettesNonImmo).toBe(8_000);
+    });
+
+    it('[PASSE-REEL-DETTE-1, discriminant] une dette dont le mois de départ est APRÈS la fenêtre reconstruite est absente', () => {
+        const { rows } = buildDailyPastLedger({
+            ...base,
+            debts: [{ balance: 8_000, startDate: '2026-04-01' }], // avril, après toute la fenêtre (mars)
+        });
+        expect(rows.every((r) => r.DettesNonImmo === 0)).toBe(true);
     });
 
     it('les revenus et dépenses du jour sont les VRAIES transactions de ce jour-là', () => {

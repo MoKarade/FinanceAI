@@ -1,10 +1,17 @@
 // [FUTUR-PAST-DEBT-FREEZE 2026-07-29] — demande Marc : « le passé doit être exactement ce que
 // c'était à cette date », même quand le FUTUR affiché est gelé (PROJECTION-PERSIST, badge « Pas à
-// jour »). Un audit lecture seule a trouvé que `currentDebtNonImmo` (dette soustraite du segment
-// PASSÉ) était dérivé de `chartData[0]` — qui peut être le blob FIGÉ — au lieu de `liveResults`
-// (toujours frais). Discriminant : geler le futur, puis faire varier la dette LIVE ; le segment
-// passé doit refléter la NOUVELLE dette malgré le gel (sur l'ancien code, il resterait figé à
-// l'ANCIENNE dette).
+// jour »). Un audit lecture seule avait trouvé que la dette soustraite du segment PASSÉ était
+// dérivée de `chartData[0]` — qui peut être le blob FIGÉ — au lieu de `liveResults` (toujours frais).
+//
+// ⚠️ [PASSE-REEL-DETTE-1, 2026-08-21] Ce mécanisme de repli (`chartData` vs `liveResults`) reste
+// INCHANGÉ par ce lot : `currentDebtNonImmo` (le total « aujourd'hui ») vient toujours de
+// `chartData[0].DettesNonImmo`/`liveResults`, jamais du store `debts` directement — les deux tests
+// ci-dessous restent donc valides tels quels. ⚠️ Ce que `[PASSE-REEL-DETTE-1]` AJOUTE est un mécanisme
+// SÉPARÉ : `buildPastPrefix`/`buildDailyPastLedger` retranchent de ce total le solde des dettes du
+// store `debts` qui ne sont PAS ENCORE COMMENCÉES à un mois passé donné (`sumNotYetStartedDebtsAt
+// Month`/`...AtAbsoluteMonth`, gaté par `startDate`) — jamais une resommation complète (qui
+// diverge du total exact du moteur, cf `debtSchedule.ts`). Le 3e test ci-dessous prouve ce
+// mécanisme de gating, distinct du mécanisme figé/frais des deux premiers.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, act, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { FutureProjection } from '../../components/FutureProjection';
@@ -90,7 +97,7 @@ describe('FutureProjection — segment PASSÉ reste réel même quand le FUTUR e
             useFinanceStore.setState({
                 ...data,
                 // Isolation : SEULS cash + dette influencent le NetWorth passé mesuré ici.
-                assets: [], realEstateGoals: [], transactions: [pastTransaction()],
+                assets: [], realEstateGoals: [], transactions: [pastTransaction()], debts: [],
                 isTestMode: false, activeTestPersonaId: null, realDataSnapshot: null,
                 projectionRunMC: false, lastProjection: resultWithDebt('STRAT-A', 0), projectionStatus: 'idle',
                 isProjectionLocked: false, lockedProjection: null,
@@ -169,5 +176,49 @@ describe('FutureProjection — segment PASSÉ reste réel même quand le FUTUR e
         // NetWorth = seulement le cash (271 k$, positif). Avec le repli sur le blob figé (50 000 $ de
         // dette), le NetWorth doit être ce cash MOINS cette dette — donc strictement plus bas.
         expect(netWorthCell.textContent).not.toMatch(/^271\s?k\$/);
+    });
+
+    it('[PASSE-REEL-DETTE-1] une dette PAS ENCORE COMMENCÉE au mois du 1er point passé n\'est PAS soustraite, malgré un total « aujourd\'hui » qui l\'inclut', async () => {
+        // Une SEULE transaction connue (comme les 2 tests précédents), 2 mois avant aujourd'hui →
+        // deux points passés reconstruits : mi=-2 et mi=-1 (cf `pastTransaction`, firstTxnMi=-2).
+        const now = new Date();
+        // Dette qui commence 1 mois avant aujourd'hui : le point à -2 mois est AVANT son début, le
+        // point à -1 mois est APRÈS — mais `currentDebtNonImmo` (le total « aujourd'hui », comme le
+        // publierait le VRAI moteur pour une dette déjà commencée) l'inclut déjà entièrement.
+        const debut = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const isoDebut = `${debut.getFullYear()}-${String(debut.getMonth() + 1).padStart(2, '0')}-01`;
+        const dateLabelMoins2 = (() => {
+            const d = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        })();
+        const dateLabelMoins1 = `${debut.getFullYear()}-${String(debut.getMonth() + 1).padStart(2, '0')}`;
+
+        act(() => {
+            useFinanceStore.setState({
+                debts: [{ id: 'd1', name: 'Prêt récent', balance: 30_000, interestRate: 0, minimumPayment: 0, category: 'Other', startDate: isoDebut }],
+                lastProjection: resultWithDebt('STRAT-GATING', 30_000), // le moteur inclut la dette (déjà active aujourd'hui)
+            });
+        });
+        render(<Harness />);
+        fireEvent.click(revealBtn());
+        await waitFor(() => expect(screen.getByText(/La Courbe de Vie - STRAT-GATING/i)).toBeInTheDocument());
+
+        const table = document.querySelector('table.sr-only') as HTMLTableElement;
+        // Recherche par LIBELLÉ DE DATE (colonne "Date", `dateLabel` = `YYYY-MM`), jamais par position :
+        // le nombre de lignes dépend de la reconstruction du cash, pas d'une position fixe supposée.
+        const rowOf = (dateLabel: string): HTMLElement => {
+            const header = within(table).getByRole('rowheader', { name: dateLabel });
+            return header.closest('tr') as HTMLElement;
+        };
+        const netWorthOf = (row: HTMLElement) =>
+            within(row).getAllByRole('rowheader').concat(within(row).getAllByRole('cell'))[1].textContent;
+
+        const avantDebut = netWorthOf(rowOf(dateLabelMoins2));
+        const apresDebut = netWorthOf(rowOf(dateLabelMoins1));
+        // Discriminant : sur l'ANCIEN code (currentDebtNonImmo appliqué à TOUT le passé), les deux
+        // points auraient soustrait 30 000 $ de la même façon (identiques, aucune transaction entre les
+        // deux). Avec le gating, le point AVANT le début de la dette doit être ~30 000 $ PLUS HAUT.
+        expect(avantDebut).not.toBe(apresDebut);
+        expect(avantDebut).not.toMatch(/-\s?\d/); // positif : pas de dette avant son début
     });
 });

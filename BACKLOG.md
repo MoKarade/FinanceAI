@@ -612,13 +612,12 @@
   ce que j'ai — là ça me dit que j'ai la dette depuis des années mais c'est faux, je t'ai donné
   le PDF du contrat, ça devrait être automatique » : extraire du contrat la date de début, le
   principal, le taux, l'échéancier → la dette du store reflète le contrat RÉEL.
-  ✅ **DIAGNOSTIQUÉ le 2026-08-13** : les trois maillons cassés sont identifiés, avec emplacements
-  exacts et ordre imposé — voir `[PASSE-REEL-DETTE-1/2/3]`. Ce ticket-ci reste le point d'entrée
-  « demande de Marc » ; les trois sous-tickets sont le PLAN.
-  ⚠️ Question de CADRAGE ouverte (posée à Marc, sans réponse à ce jour) : le passé doit-il montrer
-  la dette qui S'AMORTIT (courbe décroissante depuis le solde d'origine — exige `originalBalance`
-  dans le PDF) ou FIGÉE à son niveau actuel depuis sa date de début (plus simple, peut-être
-  suffisant) ? La réponse change le périmètre de `-2` et `-3`.
+  ✅ **DIAGNOSTIQUÉ le 2026-08-13** : les trois maillons cassés sont identifiés — voir
+  `[PASSE-REEL-DETTE-1/2/3]`. Ce ticket-ci reste le point d'entrée « demande de Marc » ; les
+  sous-tickets sont le PLAN.
+  ✅ **CADRAGE TRANCHÉ le 2026-08-21** : Marc a confirmé vouloir la courbe qui S'AMORTIT (pas le
+  niveau figé) — voir `[DEBT-AMORTIZATION]` ci-dessus, qui reprend `originalBalance` et le reste
+  du périmètre.
 - [ ] **`[MCP-V2-OVERHAUL]`** (L, 🧭 retour Marc 2026-08-12) — « grosse MAJ du MCP : je veux que
   tout fonctionne bien et plus de fonctionnalités » : passe complète sur les tools MCP (fiabilité,
   erreurs honnêtes, couverture) + nouvelles capacités à cadrer avec Marc (écritures étendues,
@@ -1686,29 +1685,77 @@
 > fourni n'est ni l'un ni l'autre. La décision a été précisée en conséquence
 > (`docs/adr/`, « PRÉCISION Marc du 2026-08-19 »). Ne pas re-fermer ces items.
 
-- [ ] 🔴 **`[PASSE-REEL-DETTE-1]`** (M) — **le passé soustrait la dette d'AUJOURD'HUI à CHAQUE point
-  passé.** `FutureProjection.tsx` (~l. 395) lit `chartData[0].DettesNonImmo` et le passe à
-  `buildPastPrefix`, qui l'applique à TOUS les mois (`pastNetWorthAt(..., currentDebtNonImmo)`).
-  Le code le DOCUMENTE comme une approximation : « dette supposée constante dans le passé, faute
-  d'historique d'amortissement ». Conséquence exacte : une dette contractée il y a 6 mois ampute le
-  patrimoine d'il y a 5 ans. **Correctif** : ne soustraire une dette qu'à partir de sa date de
-  début — donc `buildPastPrefix` doit recevoir les DETTES DATÉES, pas un total agrégé.
-  ⚠️ Ne remet PAS en cause la décision « Option A » (raccord exact au présent, `docs/adr/`) :
-  la dette existe AUJOURD'HUI, le raccord au présent reste exact ; seul le passé change.
-- [ ] 🔴 **`[PASSE-REEL-DETTE-2]`** (S) — **la donnée nécessaire N'EXISTE PAS.** `Debt` (`types.ts`
-  l. 570) n'a NI date de début NI solde d'origine — seulement `amortizationYears` et `termEndDate`.
-  Sans date de début, `[PASSE-REEL-DETTE-1]` est INAPPLICABLE. **Correctif** : `startDate?: string`
-  (champ ADDITIF optionnel ⇒ aucun bump de version, aucune migration — cf. `CLAUDE.md`), plus
-  `originalBalance?: number` pour amortir le passé au lieu de le figer.
+- [x] 🔴 **`[PASSE-REEL-DETTE-1]`** (M) — ✅ 2026-08-21. **Le passé soustrayait la dette d'AUJOURD'HUI
+  à CHAQUE point passé.** `FutureProjection.tsx` lisait `chartData[0].DettesNonImmo` et le passait
+  tel quel à `buildPastPrefix`/`buildDailyPastLedger`, appliqué à TOUS les mois. Correctif : gating
+  PAR DETTE via `startDate` (champ déjà livré par `[DETTE-DATES]`, 2026-08-19) — delta
+  (`sumNotYetStartedDebtsAtMonth`/`...AtAbsoluteMonth`, `services/projection/debtSchedule.ts`)
+  retranché de `currentDebtNonImmo`, jamais une resommation complète (qui diverge de quelques
+  dizaines/centaines de $ du total exact du moteur — mesuré, cf commentaire dédié). Raccord EXACT
+  au présent préservé quand aucune dette n'est gatée (bit-identique à avant). Détail archivé.
+- [ ] 🔴 **`[PASSE-REEL-DETTE-2]`** (S) — ⚠️ PRÉMISSE PARTIELLEMENT PÉRIMÉE (2026-08-21) : `Debt`
+  a désormais `startDate?`/`termEndDate?` (livrés par `[DETTE-DATES]`, 2026-08-19) — SEUL
+  `originalBalance?: number` manque encore. Nécessaire pour la courbe d'amortissement du passé
+  demandée par Marc (voir `[DEBT-AMORTIZATION]` ci-dessous, qui reprend ce champ dans son scope).
+  Ce ticket-ci reste ouvert comme POINTEUR vers `[DEBT-AMORTIZATION]` plutôt que dupliqué.
 - [ ] 🔴 **`[PASSE-REEL-DETTE-3]`** (S) — **l'import du PDF ne capte pas ces champs non plus.**
-  `DebtPayload` (`mcp/ingest/applyDocument.ts` l. 80) porte `balance`, `interestRate`,
-  `minimumPayment`, `category`, `amortizationYears`, `rateProvider` — **pas la date du contrat**.
-  C'est ce qui rend le « ça devrait être automatique » de Marc impossible EN L'ÉTAT : le PDF a
-  l'information, le schéma d'ingestion la jette. **Correctif** : ajouter les deux champs au payload
-  et au prompt d'extraction, une fois `-2` livré.
+  `DebtPayload` (`mcp/ingest/applyDocument.ts`) porte `balance`, `interestRate`, `minimumPayment`,
+  `category`, `amortizationYears`, `rateProvider` — **ni les dates, ni `originalBalance`**. Repris
+  et précisé par `[DEBT-MCP-PARITE]` (dates, plus large que prévu ici — le tool MCP direct a le
+  MÊME trou) et `[DEBT-MCP-ORIGINALBALANCE]` (le nouveau champ) ci-dessous.
 
-**Ordre imposé** : `-2` (donnée) → `-1` (passé) → `-3` (ingestion). Faire `-1` d'abord serait un
-stub : il n'aurait aucune date à lire.
+### 🔴 `[DEBT-AMORTIZATION]` — courbe d'amortissement du passé + refonte onglet Dette (Marc, 2026-08-21)
+
+> Marc a demandé le fix `[PASSE-REEL-DETTE-1]` (dette absente avant sa date de début), puis en
+> creusant a demandé PLUS : une vraie courbe décroissante dans le passé (« chaque semaine je dois
+> un peu moins »), pas juste un niveau figé. **Ceci INVERSE explicitement la Décision 2 de
+> `docs/adr/0012-quatre-decisions-de-marc-2026-08-17.md`** (« aucun amortissement rétroactif,
+> aucune saisie demandée ») — confirmé par Marc en connaissance de cause après rappel du contexte
+> (« Je confirme, je veux la courbe malgré le coût supplémentaire »). ⚠️ À documenter dans l'ADR
+> comme une inversion CONSCIENTE, pas un oubli, dès que ce chantier avance.
+
+- [ ] 🔴 **`[DEBT-MCP-PARITE]`** (S) — `kind`/`startDate`/`termEndDate` sont câblés dans le moteur
+  depuis `[DETTE-DATES]` mais **absents** de l'import PDF (`mcp/ingest/applyDocument.ts`,
+  `DebtPayload`) ET de l'appel MCP direct (`mcp/tools/applyDebt.spec.ts`/`.tool.ts`). En prime, la
+  description du tool MCP affirme encore « les dettes n'ont pas de date de début » — **faux**
+  depuis un mois, un risque de désinformer l'assistant Claude en session. **Priorité sur
+  `[DEBT-MCP-ORIGINALBALANCE]`** : empiler un 2e champ inatteignable par-dessus le premier serait
+  `CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI`, version import.
+- [ ] 🔴 **`[DEBT-AMORTIZATION]`** (L, money-critical) — **Le cœur.** `Debt.originalBalance?:
+  number` (additif, aucune migration). Formule d'amortissement standard dans un nouveau service pur
+  (`services/projection/debtAmortization.ts`, patron `runAmortization` déjà utilisé côté immobilier).
+  Allowlist EXPLICITE des `kind` amortissants (`mortgage`, `auto`, `student-federal`,
+  `student-quebec`, `personal`, `spouse-loan`) — **PAS** `auto-lease`/`heloc`/`margin`/
+  `credit-card`/`other` (pas de solde qui s'amortit de cette façon ; le cas réel de Marc,
+  `auto-lease`, reste donc au niveau figé du `[PASSE-REEL-DETTE-1]`). Câblage en **DELTA additif**
+  dans `buildPastPrefix`/`dailyPastLedger` (jamais une resommation complète — même piège que
+  `[PASSE-REEL-DETTE-1]` a déjà rencontré et corrigé, cf commentaire dans `debtSchedule.ts`), avec
+  garde de plausibilité : rééchelonnage proportionnel BORNÉ (ratio `[0,5 ; 2]`) pour recoller
+  exactement au solde actuel ; hors de cette bande → repli automatique sur le niveau figé (jamais
+  une courbe absurde affichée comme un fait). Palier MENSUEL même au jour (pas de fausse précision).
+  Dépend de `[DEBT-MCP-PARITE]` pour que `kind` soit fiable comme discriminant.
+- [ ] 🔴 **`[DEBT-MCP-ORIGINALBALANCE]`** (S) — `originalBalance` au MCP/PDF, une fois
+  `[DEBT-MCP-PARITE]` et `[DEBT-AMORTIZATION]` livrés. Validation `plausible()` (rejeter si
+  `originalBalance < balance`, incohérent pour une dette qui s'amortit normalement).
+- [ ] 🟡 **`[DEBT-UI-PAR-TYPE]`** (M) — `DebtManager.tsx` n'expose JAMAIS le sélecteur `kind` (11
+  valeurs déjà dans `types.ts` depuis un lot antérieur — bail/prêt/marge/étudiant/autre…), seulement
+  4 `category` grossières. Marc ne peut donc pas distinguer bail vs prêt dans l'UI alors que le
+  moteur le sait déjà — `CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI`. **Correctif** : sélecteur
+  `kind` + champs conditionnels (originalBalance/amortizationYears pour les kinds amortissants,
+  `limit` pour heloc/carte, dates pour un bail) sortis en sous-composants dédiés
+  (`components/debt/LoanForm.tsx`, `LeaseForm.tsx`…) plutôt qu'empilés dans le même JSX déjà dense.
+  Indépendant de `[DEBT-AMORTIZATION]` (peut être livré avant ou après), mais fournit SON
+  discriminant `kind` fiable.
+
+**Ordre imposé** : `[DEBT-MCP-PARITE]` → `[DEBT-AMORTIZATION]` → `[DEBT-MCP-ORIGINALBALANCE]`.
+`[DEBT-UI-PAR-TYPE]` en parallèle, n'importe quand.
+
+⚠️ **`[DEBT-LEASE-VS-LOAN-COMPARATOR]` (comparateur prêt vs bail, demandé par Marc dans le même
+message) N'EST PAS scopé ici** — cadrage insuffisant pour un MVP fiable : « rentable » n'a pas de
+sens univoque sans trancher hypothétique-avant-signature vs rétrospectif-sur-dette-existante, ni
+sans décision sur la valeur résiduelle nette de l'actif (ignorer la valeur résiduelle rendrait
+« le prêt coûte plus cher » trompeur — un prêt payé laisse un bien au bilan, un bail non). Router
+vers une session de cadrage dédiée (batch de questions habituel) avant d'écrire un seul test.
 
 ### 🔴 `[PASSE-REEL]` — le passé affichait la PROJECTION (signalé par Marc 2026-08-13)
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
 import {
     phaseDette, moisAbsolu, moisDeSimulation, estLePremierMoisApresLeTerme,
+    phaseDetteAuMoisAbsolu, sumNotYetStartedDebtsAtMonth, sumNotYetStartedDebtsAtAbsoluteMonth,
 } from '../../services/projection/debtSchedule';
 import type { ProjectionResult, ProjectionChartPoint } from '../../services/projection/types';
 import type { BudgetConfig, User } from '../../types';
@@ -96,6 +97,53 @@ describe('[DETTE-DATES] le calendrier de la dette — fonctions pures', () => {
         expect(estLePremierMoisApresLeTerme(d, 2026, 0, 54)).toBe(true);   // le mois d'après
         expect(estLePremierMoisApresLeTerme(d, 2026, 0, 55)).toBe(false);  // et plus jamais
         expect(estLePremierMoisApresLeTerme({}, 2026, 0, 54)).toBe(false); // sans date : jamais
+    });
+});
+
+describe('[PASSE-REEL-DETTE-1] phaseDetteAuMoisAbsolu / sumNotYetStartedDebtsAtMonth / ...AtAbsoluteMonth', () => {
+    it('phaseDetteAuMoisAbsolu(dette, courant) est le même noyau que phaseDette (mois absolu direct)', () => {
+        // Juillet 2026 = moisAbsolu('2026-07-20') = 2026*12+6, cf. test ci-dessus.
+        const courantJuillet = 2026 * 12 + 6;
+        expect(phaseDetteAuMoisAbsolu({ startDate: '2026-07-20' }, courantJuillet)).toBe('active');
+        expect(phaseDetteAuMoisAbsolu({ startDate: '2026-07-20' }, courantJuillet - 1)).toBe('a-venir');
+        // Doit coïncider EXACTEMENT avec phaseDette (même startYear/startMonth/m que moisAbsolu(date)).
+        expect(phaseDetteAuMoisAbsolu({ startDate: '2026-07-20' }, courantJuillet))
+            .toBe(phaseDette({ startDate: '2026-07-20' }, 2026, 0, 6));
+    });
+
+    it('sumNotYetStartedDebtsAtMonth ne compte QUE les dettes pas-encore-commencées, jamais les « terminée »', () => {
+        const dettes = [
+            { balance: 8_000 }, // toujours active → jamais dans le delta d'exclusion
+            { balance: 5_000, startDate: '2028-01-01' }, // pas encore commencée en 2026 → exclue (delta)
+            { balance: 3_000, termEndDate: '2020-01-01' }, // terme échu, jamais effacée → PAS dans le delta
+        ];
+        // Mois 0 = janvier 2026 (startYear/startMonth de la fixture) : seule la dette 2028 est à exclure.
+        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, 0)).toBe(5_000);
+        // Après 2028 : plus rien à exclure (la dette 2028 a commencé, la 'terminee' n'a jamais compté ici).
+        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, 24)).toBe(0);
+    });
+
+    it('sanitise comme le moteur (entrée nullish/solde non fini → 0 dans le delta)', () => {
+        const dettes = [null, { balance: NaN, startDate: '2028-01-01' }, { balance: 1_000, startDate: '2028-01-01' }] as unknown as Parameters<typeof sumNotYetStartedDebtsAtMonth>[0];
+        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, 0)).toBe(1_000);
+        expect(sumNotYetStartedDebtsAtAbsoluteMonth(dettes, 2026 * 12)).toBe(1_000);
+    });
+
+    it('acceptent undefined/[] → 0 (rien à exclure)', () => {
+        expect(sumNotYetStartedDebtsAtMonth(undefined, 2026, 0, 0)).toBe(0);
+        expect(sumNotYetStartedDebtsAtMonth([], 2026, 0, 0)).toBe(0);
+        expect(sumNotYetStartedDebtsAtAbsoluteMonth(undefined, 2026 * 12)).toBe(0);
+    });
+
+    it('[discriminant] currentDebtNonImmo − sumNotYetStartedDebtsAtMonth == sumActiveDebts du moteur (raccord EXACT, Option A)', () => {
+        // Même dette, même sanitisation, même exclusion — vérifié via le MOTEUR réel (calculateFutureProjection),
+        // pas une réimplémentation locale de sumActiveDebts (qui prouverait sa propre copie, pas le raccord).
+        // La dette est DÉJÀ active au mois 0 (startDate au 1er janvier = mois 0 lui-même) → rien à exclure,
+        // donc le total attendu du passé est EXACTEMENT `pts[0].DettesNonImmo`, sans aucune approximation.
+        const dettes = [bail({ startDate: '2026-01-01' })];
+        const pts = points(dettes);
+        const currentDebtNonImmo = pts[0].DettesNonImmo;
+        expect(currentDebtNonImmo - sumNotYetStartedDebtsAtMonth(dettes as never, 2026, 0, 0)).toBe(currentDebtNonImmo);
     });
 });
 

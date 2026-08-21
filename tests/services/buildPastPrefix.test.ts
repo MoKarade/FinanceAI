@@ -24,7 +24,7 @@ describe('[FUTUR-HIST-WIRING-TEST] buildPastPrefix', () => {
         const out = buildPastPrefix({
             ...base,
             pastHistoryPoints: [invPoint('2025-12-31', { CELI: 10_000, REER: 5_000, NonReg: 2_000, Crypto: 1_000 })],
-            currentDebtNonImmo: 8_000,
+            currentDebtNonImmo: 8_000, debts: [{ balance: 8_000 }],
         });
         const last = out[out.length - 1];
         expect(last.monthIndex).toBe(-1);
@@ -37,8 +37,8 @@ describe('[FUTUR-HIST-WIRING-TEST] buildPastPrefix', () => {
 
     it('[discriminant] la dette réduit le NW d\'EXACTEMENT son montant (vs dette 0 = ancien comportement gonflé)', () => {
         const pts = [invPoint('2025-12-31', { CELI: 10_000, REER: 5_000, NonReg: 2_000, Crypto: 1_000 })];
-        const avecDette = buildPastPrefix({ ...base, pastHistoryPoints: pts, currentDebtNonImmo: 8_000 });
-        const sansDette = buildPastPrefix({ ...base, pastHistoryPoints: pts, currentDebtNonImmo: 0 });
+        const avecDette = buildPastPrefix({ ...base, pastHistoryPoints: pts, currentDebtNonImmo: 8_000, debts: [{ balance: 8_000 }] });
+        const sansDette = buildPastPrefix({ ...base, pastHistoryPoints: pts, currentDebtNonImmo: 0, debts: [] });
         const nwAvec = avecDette[avecDette.length - 1].NetWorth!;
         const nwSans = sansDette[sansDette.length - 1].NetWorth!;
         expect(nwSans).toBe(21_000); // gonflé (sans dette) = l'ancien bug MONEY-PHANTOM
@@ -49,7 +49,7 @@ describe('[FUTUR-HIST-WIRING-TEST] buildPastPrefix', () => {
         const out = buildPastPrefix({
             ...base,
             pastHistoryPoints: [invPoint('2025-12-31', { CELI: 1, CELIAPP: 2, REER: 3, REEE: 4, NonReg: 5, Crypto: 6 })],
-            currentDebtNonImmo: 0,
+            currentDebtNonImmo: 0, debts: [],
         });
         const last = out[out.length - 1];
         expect([last.CELI, last.CELIAPP, last.REER, last.REEE, last.NonReg, last.Crypto]).toEqual([1, 2, 3, 4, 5, 6]);
@@ -65,7 +65,7 @@ describe('[FUTUR-HIST-WIRING-TEST] buildPastPrefix', () => {
                 invPoint('2025-11-30', { CELI: 9_000 }),
                 invPoint('2025-12-31', { CELI: 10_000 }),
             ],
-            currentDebtNonImmo: 0,
+            currentDebtNonImmo: 0, debts: [],
         });
         const at2 = out.find(p => p.monthIndex === -2)!;
         const at1 = out.find(p => p.monthIndex === -1)!;
@@ -76,6 +76,43 @@ describe('[FUTUR-HIST-WIRING-TEST] buildPastPrefix', () => {
     });
 
     it('aucun passé connu → []', () => {
-        expect(buildPastPrefix({ ...base, transactions: [], pastHistoryPoints: [], currentDebtNonImmo: 0 })).toEqual([]);
+        expect(buildPastPrefix({ ...base, transactions: [], pastHistoryPoints: [], currentDebtNonImmo: 0, debts: [] })).toEqual([]);
+    });
+
+    it('[PASSE-REEL-DETTE-1, discriminant] une dette n\'est soustraite qu\'À PARTIR de son startDate propre', () => {
+        const pts = [
+            invPoint('2025-11-30', { CELI: 10_000 }),
+            invPoint('2025-12-31', { CELI: 10_000 }),
+        ];
+        const out = buildPastPrefix({
+            ...base,
+            transactions: [{ date: '2025-11-05', amount: -100 }], // firstTxnMi = -2 (nov 2025)
+            pastHistoryPoints: pts,
+            // currentDebtNonImmo = ce que le moteur publierait AUJOURD'HUI (la dette est déjà active
+            // depuis le 1er décembre, donc déjà incluse dans ce total, comme le ferait sumActiveDebts).
+            currentDebtNonImmo: 8_000,
+            debts: [{ balance: 8_000, startDate: '2025-12-01' }],
+        });
+        const nov = out.find(p => p.monthIndex === -2)!; // AVANT le début de la dette
+        const dec = out.find(p => p.monthIndex === -1)!; // dette déjà commencée
+        // Sur l'ANCIEN code (currentDebtNonImmo appliqué à TOUT le passé sans gating), nov.NetWorth
+        // aurait été 5 000 (10 000 + 3 000 − 8 000) — exactement le bug signalé par Marc (dette vue
+        // avant sa date). Avec le gating (delta retranché de currentDebtNonImmo, cf `debtSchedule.ts`) :
+        expect(nov.NetWorth).toBe(13_000); // 10 000 + cash 3 000, PAS de dette (pas encore commencée)
+        expect(dec.NetWorth).toBe(5_000); // 10 000 + cash 3 000 − 8 000, dette active depuis le 1er déc.
+    });
+
+    it('[PASSE-REEL-DETTE-1] une dette « terminée » (termEndDate dépassé) garde son solde au bilan', () => {
+        const pts = [invPoint('2025-12-31', { CELI: 10_000 })];
+        const out = buildPastPrefix({
+            ...base,
+            pastHistoryPoints: pts,
+            // Le moteur (sumActiveDebts) n'exclut QUE 'a-venir', jamais 'terminee' : currentDebtNonImmo
+            // inclut donc toujours cette dette, terme échu ou pas — jamais effacée en silence.
+            currentDebtNonImmo: 8_000,
+            debts: [{ balance: 8_000, termEndDate: '2020-01-01' }],
+        });
+        const last = out[out.length - 1];
+        expect(last.NetWorth).toBe(13_000 - 8_000);
     });
 });

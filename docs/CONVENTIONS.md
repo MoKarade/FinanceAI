@@ -5142,3 +5142,42 @@ frais (`localStorage` vide → tombe dans le 3e littéral legacy, qui NE L'AVAIT
 Le gate local ne peut PAS être fiable sur ce test précis sans un environnement
 vierge. Réflexe pour tout nouveau champ top-level : grep les TROIS littéraux
 avant de committer, pas seulement les deux évidents.
+
+### `RESOMMER-UN-AGREGAT-DEJA-TRANSFORME-DIVERGE` — un gating par date n'est pas un droit de resommer
+
+Lot `[PASSE-REEL-DETTE-1]` (2026-08-21). Le fix demandé (une dette absente avant `startDate` dans
+le passé reconstruit) semblait n'exiger qu'un remplacement trivial : passer `debts[]` brut aux
+deux builders (`buildPastPrefix`/`dailyPastLedger`) au lieu d'un scalaire `currentDebtNonImmo`, et
+resommer les `balance` des dettes ACTIVES à chaque point. Un test qui compare ce total resommé au
+mois 0 contre `chartData[0].DettesNonImmo` (le total que le moteur publie RÉELLEMENT pour
+« aujourd'hui ») a révélé un écart de 372 $ sur une dette de 22 000 $ — le moteur applique déjà son
+propre pas d'amortissement du mois 0 (intérêt + paiement) AVANT de publier ce total ; resommer les
+soldes bruts de TOUTES les dettes actives, même celles qui n'ont RIEN à voir avec le gating, casse
+donc le raccord EXACT que l'Option A garantit — silencieusement, sur toute dette qui amortit.
+
+**Correctif structurel** : ne jamais resommer un agrégat déjà publié par le moteur. Retrancher un
+**DELTA** — ici, la somme des SEULES dettes EXCLUES (`sumNotYetStartedDebtsAtMonth`, qui ne compte
+que la phase `'a-venir'`) — de l'agrégat existant (`currentDebtNonImmo − delta`). Propriété
+gratuite : quand rien n'est exclu (aucune dette datée, ou toutes déjà commencées), le delta est
+NUL et le résultat est **bit-identique** à avant le lot — la régression-zéro vient de la
+CONSTRUCTION de la formule, pas d'un test qui la vérifie après coup. Seule la dette EFFECTIVEMENT
+gatée porte l'approximation (son solde brut plutôt que sa part dans l'agrégat post-amortissement),
+bornée à elle seule.
+
+**Généralisation** : avant de resommer un total à partir de ses composants pour en exclure un
+sous-ensemble, vérifier que le total N'A PAS déjà subi une transformation qu'aucun composant seul
+ne porte (arrondi collectif, pas de calcul appliqué UNE fois sur l'ensemble, etc.). Si oui,
+retrancher un delta du total existant, ne jamais reconstruire le total depuis zéro — même quand
+« juste resommer » semble plus simple à lire (`ASSIETTE-ELARGIE-CASSE-SES-RACCOURCIS`, famille
+proche mais distincte : ici ce n'est pas un raccourci qui casse, c'est une resommation qui ignore
+une transformation invisible depuis les composants).
+
+⚠️ Corollaire de test découvert dans le MÊME lot : un test composant qui compare une valeur À une
+autre pour prouver un gating (« avant » vs « après » une date) doit chercher les LIGNES par un
+identifiant STABLE (ici le libellé de date `dateLabel`, `YYYY-MM`), jamais par une POSITION
+suposée dans un tableau — le nombre de lignes dépend d'une reconstruction de cash dont la
+longueur n'est pas un invariant du test. Un 1er jet indexé par position (`rows[1]`/`rows[2]`)
+comparait deux mois tous deux AVANT la date de la dette (le vrai point après restait `rows[3]`,
+jamais lu) : le test passait pour la MAUVAISE raison, dans les deux sens (fixé et perturbé) tant
+que la perturbation n'a pas été essayée — seule la perturbation chirurgicale (delta forcé à 0
+dans le code réel, pas une réimplémentation) l'a démasqué.

@@ -75,10 +75,9 @@ aux deux call sites. Nouvelle leçon `docs/CONVENTIONS.md` :
 - **[documentation-manager]** `docs/PROJECTION_OUTPUT_SCHEMA.md` (description de `DettesNonImmo`)
   était périmée — corrigée pour mentionner le gating par `startDate`.
 
-Tests neufs au total (dont 4 discriminants du CRITIQUE/ÉLEVÉ trouvés par le panel, prouvés
+13 tests neufs au total (dont 4 discriminants du CRITIQUE/ÉLEVÉ trouvés par le panel, prouvés
 rouges par perturbation chirurgicale du garde-fou ET du clamp, restaurés ensuite). Gate complet
-vert : 4 608 tests / 415 fichiers (mesuré après le 1er jet — le panel a ajouté des tests
-supplémentaires depuis, compte final à re-mesurer avant merge).
+vert : 4 611 tests / 415 fichiers, build inclus.
 
 ## 2026-08-21 — Vague 2 : devises/unités (badge FX estimé, prop morte, récap en devise native)
 

@@ -57,15 +57,17 @@ scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (50 s
 
 ## 3. Workflow git
 
-- **Plan d'abord, TOUJOURS** pour une tâche non triviale : toutes les questions de cadrage
-  d'un coup (un seul batch), y compris la définition de « fini », puis plan court et OK avant
-  de coder. **Proposer ≠ faire** : jamais de scope que Marc n'a pas demandé.
-- **NE PAS s'arrêter en pleine tâche** : chaque tour contient des appels d'outils tant que ce
-  n'est pas fini. Jamais « je vais faire X » suivi d'un arrêt. On s'arrête après un merge
-  confirmé visuellement, ou sur une vraie question bloquante.
-- **Qualité d'abord, coût tokens NON contraint** : passes multiples, panels d'agents, vérifs
-  exhaustives. Seule limite = le SIGNAL (pas de bruit que personne ne lira). Pas de stub ni de
-  « TODO plus tard » non demandé.
+- **Cadrage, plan et exécution : voir la convention commune** (§7, chargée par la §10 de ce
+  fichier). Elle porte désormais la règle qui est NÉE ici — « plan d'abord, toutes les
+  questions d'un coup, OK avant de coder, puis exécution continue sans arrêt en pleine tâche ».
+  Marc l'a étendue aux neuf dépôts le 21/08/2026 plutôt que de la supprimer : elle protégeait
+  du code money-critical, elle protège maintenant partout. Écrite ici ET là-bas, elle aurait
+  divergé — c'est le problème qu'on vient de régler.
+- **Proposer ≠ faire** : jamais de scope que Marc n'a pas demandé. Ici, le rappel vaut aussi
+  pour l'arrêt : on s'arrête après un merge confirmé VISUELLEMENT, ou sur une vraie question
+  bloquante — pas sur « je vais faire X ».
+- **Qualité d'abord, coût tokens NON contraint** : voir §10, « Propre à ce dépôt ». La règle
+  est intacte ; ce qui a été ajouté, c'est qu'elle porte sur l'EFFORT et non sur le volume écrit.
 
 ### Cycle git (autonome, de bout en bout)
 
@@ -667,40 +669,35 @@ get_status` (qui ne montre que les *statuses* legacy — seul Vercel y figure) :
 (blocage d'infra, vu 3× : 45 min, 32 min, 32 min) → `cancel_workflow_run`, attendre la propagation
 (un rerun immédiat rend 403 « already running »), puis `rerun_workflow_run`.
 
-## 10. Style
+## 10. Style et compte-rendu
 
-- **Français**, tutoiement, direct et technique. **PAS d'emojis** dans le chat sauf demande.
+> 📣 Forme des comptes-rendus, des commits, des PR et des docs générées :
+> [convention commune aux neuf dépôts](https://github.com/MoKarade/claude-config/blob/main/conventions/COMPTE-RENDU.md).
+> Elle régit **la forme** ; ce fichier garde **le contenu métier**. Sur la forme, c'est la
+> convention qui gagne ; sur le métier, c'est ce fichier.
+
+@docs/COMPTE-RENDU.md
+
+⚠️ **Pourquoi une COPIE et pas seulement un lien.** Un `CLAUDE.md` ne charge rien hors de son
+propre arbre : le lien ci-dessus est lisible par un humain, il n'arrive jamais dans la session.
+C'est exactement le mode de panne du 20/08/2026 — les règles de cadrage écrites dans un
+`~/.claude/CLAUDE.md` local ne descendaient nulle part, et Marc constatait « je ne vois pas la
+différence » alors que rien n'était jamais arrivé. `docs/COMPTE-RENDU.md` est donc une copie
+**synchronisée**, importée ci-dessus, et la CI échoue si elle a dérivé de la source.
+
+Pour changer la convention : la changer dans `claude-config`, propager les huit copies, mettre
+à jour les huit empreintes. La friction est le garde-fou — une copie qu'on peut modifier sur
+place redevient huit conventions différentes en trois mois.
+
+### Propre à ce dépôt
+
 - **`[YYYY-MM-DD HH:MM UTC]` en tête de CHAQUE réponse** (via `date`), sans exception.
-- Structuré : essentiel d'abord, puis le détail. Expliquer le POURQUOI. Pour un choix :
-  options (bon/mauvais de chacune) PUIS ta reco.
-- **Vérifier avant d'affirmer** ; si pas sûr, le dire. Vérifier un fait avancé par Marc avant
-  de construire dessus, et le corriger s'il est faux.
-- Étiqueter toute affirmation non triviale ET tes recommandations :
-  **[Certain] / [Probable] / [Supposition] / [À vérifier]** (rien sur l'évident).
-- Pas de complaisance : si une approche est mauvaise, le dire et proposer mieux.
-
-Hérité du `CLAUDE.md` global de Marc (`claude-config`) : TypeScript strict, pas de `any`
-silencieux ; nommage clair plutôt que commentaires verbeux ; **erreurs honnêtes** — ne pas avaler
-une panne, ne pas ajouter un `catch` qui cache un vrai bug.
-
-### Règles de travail (source : `claude-config`)
-
-Copie des trois règles de cadrage de Marc. Le texte qui **fait foi** est celui du
-[`CLAUDE.md` global](https://github.com/MoKarade/claude-config/blob/main/CLAUDE.md) — en cas
-de divergence, c'est lui qui gagne.
-
-- **Avant de coder : TOUTES les questions de cadrage d'un coup**, en un seul batch — y
-  compris ce qui définit « fini » et l'objectif exact. Pas de questions au compte-gouttes.
-- **Une fois que tu as tout ce qu'il te faut : exécute en continu** jusqu'à atteindre
-  l'objectif, puis arrête-toi. Ni avant, ni au-delà.
-- **Sur le technique, assume ton expertise** : sois ferme sur les faits, très réfléchi. Une
-  recommandation molle qui renvoie la décision à Marc ne l'aide pas — et si tu t'es trompé,
-  corrige-toi franchement.
-
-⚠️ Ces règles se chargent au DÉMARRAGE d'une session, depuis un dépôt cloné. Les écrire dans
-un `~/.claude/CLAUDE.md` local sans pousser ne les fait pas descendre dans une session
-distante — vécu le 20/08/2026, où Marc constatait « je ne vois pas la différence » alors que
-rien n'était jamais arrivé jusqu'à la session.
+- **Qualité d'abord, coût tokens NON contraint** : passes multiples, panels d'agents, vérifs
+  exhaustives. Seule limite = le SIGNAL (pas de bruit que personne ne lira). Pas de stub ni de
+  « TODO plus tard » non demandé.
+  ⚠️ Cette règle porte sur l'**effort**, pas sur le volume écrit. Le « ~15 lignes » de la
+  convention (§4) décrit le RAPPORT, pas la recherche. Chercher moins pour écrire moins serait
+  exactement l'inverse de ce qui est demandé ici (arbitrage Marc, 21/08/2026).
 
 ## 11. Agents & automatisation
 

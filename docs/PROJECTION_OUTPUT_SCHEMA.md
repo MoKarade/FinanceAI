@@ -95,7 +95,7 @@ aujourd'hui**, le point de la courbe est donc RECONSTRUIT et remplace le point v
 | `MarketGrowth<Compte>` | Δ solde − dépôts du jour = le mouvement de marché |
 | `NetWorth` | `computeRawNetWorth` (source unique) sur ces composantes − dettes |
 | `Immobilier` | équité par **année** (palier — l'amortissement n'est pas connu au jour) |
-| `DettesNonImmo` | niveau **actuel**, figé (Option A, `pastNetWorth.ts`) |
+| `DettesNonImmo` | niveau **actuel** au mois d'aujourd'hui, figé en projection (Option A, `pastNetWorth.ts`). ⚠️ Au jour du **passé**, exclut les dettes n'ayant pas encore commencé (cf. `Debt.startDate`, [PASSE-REEL-DETTE-1] 2026-08-21). |
 
 ⚠️ Le point réel est construit **à partir de rien**, jamais par `{...projeté, ...réel}` : sinon des
 dizaines de champs projetés (impôt dormant, rentes, solde d'impôt, cotisations) survivraient dans une

@@ -30,6 +30,9 @@ on:
 
 jobs:
   deploy:
+    # Plafond : sans lui, un job fige tourne SIX HEURES avant d'echouer (vecu sur
+    # DriveAI le 19/08/2026). Calibre sur la duree reelle — non observe.
+    timeout-minutes: 20
     name: Build & deploy to Cloud Run
     runs-on: ubuntu-latest
     # Ne tourne que si l'infra GCP est configurée (sinon no-op silencieux, pas d'échec rouge).

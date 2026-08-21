@@ -8,6 +8,9 @@ on:
 
 jobs:
   quality:
+    # Plafond : sans lui, un job fige tourne SIX HEURES avant d'echouer (vecu sur
+    # DriveAI le 19/08/2026). Calibre sur la duree reelle — 10 min 12 s observe.
+    timeout-minutes: 30
     name: Lint / Typecheck / Tests / Build
     runs-on: ubuntu-latest
     steps:
@@ -46,6 +49,9 @@ jobs:
         run: npm run build
 
   e2e:
+    # Plafond : sans lui, un job fige tourne SIX HEURES avant d'echouer (vecu sur
+    # DriveAI le 19/08/2026). Calibre sur la duree reelle — 4 min 03 s observe - Playwright, variance a l'installation.
+    timeout-minutes: 30
     name: E2E (Playwright / Chromium)
     runs-on: ubuntu-latest
     steps:

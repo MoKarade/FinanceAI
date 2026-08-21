@@ -1,46 +1,96 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "claude/*": false
+    }
+  },
   "rewrites": [
-    { "source": "/api/history/yahoo/:symbol", "destination": "https://query1.finance.yahoo.com/v8/finance/chart/:symbol" },
-    { "source": "/api/search/yahoo", "destination": "https://query1.finance.yahoo.com/v1/finance/search" },
-    { "source": "/api/fintable/:path*", "destination": "https://fintable.io/api/v2/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/history/yahoo/:symbol",
+      "destination": "https://query1.finance.yahoo.com/v8/finance/chart/:symbol"
+    },
+    {
+      "source": "/api/search/yahoo",
+      "destination": "https://query1.finance.yahoo.com/v1/finance/search"
+    },
+    {
+      "source": "/api/fintable/:path*",
+      "destination": "https://fintable.io/api/v2/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' https://www.googletagmanager.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.anthropic.com https://finnhub.io https://api.coingecko.com https://www.bankofcanada.ca https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com https://www.googleapis.com https://accounts.google.com; worker-src 'self' blob:; frame-src https://accounts.google.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none';" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://www.googletagmanager.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.anthropic.com https://finnhub.io https://api.coingecko.com https://www.bankofcanada.ca https://www.google-analytics.com https://*.analytics.google.com https://*.google-analytics.com https://www.googleapis.com https://accounts.google.com; worker-src 'self' blob:; frame-src https://accounts.google.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none';"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=31536000; includeSubDomains"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        }
       ]
     },
     {
       "source": "/api/fintable/:path*",
       "headers": [
-        { "key": "x-vercel-enable-rewrite-caching", "value": "0" },
-        { "key": "Cache-Control", "value": "private, no-store" }
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store"
+        }
       ]
     },
     {
       "source": "/",
       "headers": [
-        { "key": "Cache-Control", "value": "public, no-cache, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "public, no-cache, must-revalidate"
+        }
       ]
     },
     {
       "source": "/index.html",
       "headers": [
-        { "key": "Cache-Control", "value": "public, no-cache, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "public, no-cache, must-revalidate"
+        }
       ]
     },
     {
       "source": "/assets/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
     }
   ]

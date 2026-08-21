@@ -229,7 +229,10 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // (mise de fonds dépensée DEUX fois) ou « Achat reporté » à l'infini sinon (le Futur
         // perdait la maison — mesuré Immobilier = 0 sur tout l'horizon).
         const purchaseOffset = getMonthOffset(g.purchaseDate);
-        const past = g.isActive && purchaseOffset < 0 ? initPastPurchase(g, -purchaseOffset) : null;
+        // [ENG-PAST-OWNED-VS-PLANNED] (A6) : une date passée n'implique plus l'achat — seul
+        // `isOwned !== false` initialise le passé (false = objectif planifié non réalisé → RIEN ;
+        // undefined = legacy, comportement historique conservé, l'UI pose la question).
+        const past = g.isActive && purchaseOffset < 0 && g.isOwned !== false ? initPastPurchase(g, -purchaseOffset) : null;
         return {
             id: g.id || 'anon',
             isBought: !!past,

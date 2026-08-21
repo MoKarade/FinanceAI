@@ -30,7 +30,11 @@ export function reconstructRealEstateEquityByYear(
     if (!properties || properties.length === 0) return byYear;
 
     for (const p of properties) {
-        if (p.isActive === false || !p.purchaseDate) continue;
+        // [ENG-PAST-OWNED-VS-PLANNED] (A6) : un objectif déclaré NON réalisé (`isOwned: false`)
+        // n'a jamais existé — aucune équité passée à reconstruire (sinon le préfixe passé de la
+        // courbe Futur affichait l'équité d'un achat qui n'a pas eu lieu : marche de 67 472 $
+        // mesurée au raccord passé→présent sur la fixture du lot). `undefined`/`true` = legacy.
+        if (p.isActive === false || !p.purchaseDate || p.isOwned === false) continue;
         const purchaseYear = yearOf(p.purchaseDate);
         if (!Number.isFinite(purchaseYear) || purchaseYear > currentYear) continue; // achat futur → ignoré ici
 

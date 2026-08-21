@@ -496,6 +496,13 @@ export interface RealEstateGoal {
   id: string;
   name?: string;
   isActive: boolean;
+  /** [ENG-PAST-OWNED-VS-PLANNED] Décision Marc A6 (ADR 0014) : discrimine un bien DÉJÀ DÉTENU
+   *  (true → le moteur initialise équité+dette passées) d'un objectif PLANIFIÉ dont la date est
+   *  passée sans achat (false → RIEN n'est injecté au m0 — fin des +156 628 $ d'équité et
+   *  +307 081 $ de dette fantômes du panel #552). undefined = legacy : comportement historique
+   *  (traité comme détenu) + l'UI pose la question (popup « est-ce acheté ? »). Champ ADDITIF
+   *  optionnel — aucun bump de version de store. */
+  isOwned?: boolean;
   purchaseDate: string;
   price: number;
   downPayment: number;

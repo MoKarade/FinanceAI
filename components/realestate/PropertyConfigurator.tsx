@@ -5,6 +5,7 @@ import { RealEstateGoal, Municipality } from '../../types';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { maskedSliderAria } from '../../utils/privacyAria';
+import { firstDayOfCurrentMonthIso } from '../../services/realEstatePartition';
 
 const fmt = (val: number) =>
     new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(val);
@@ -137,6 +138,24 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                         <div>
                             <label className="block text-meta text-ink-300 mb-1">Date cible</label>
                             <input type="date" value={targetDate} onChange={e => updateActiveGoal({ purchaseDate: e.target.value })} className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-white text-body" />
+                            {/* [ENG-PAST-OWNED-VS-PLANNED] (A6) : une date passée n'implique plus
+                                l'achat — le fait se DÉCLARE (et se corrige) ici. Seuil au MOIS
+                                (1er du mois courant, LOCAL — même helper que le popup), jamais
+                                `toISOString()` au jour : le moteur raisonne en année-mois, une
+                                granularité jour promettait « compté au mois 0 » sur un créneau où
+                                le moteur ACHÈTE le bien (mesuré : m0 à 34 310 $ sous le badge
+                                « non acheté », revue #684). */}
+                            {targetDate < firstDayOfCurrentMonthIso() && (
+                                <label className="mt-2 touch-target flex items-center gap-2 p-2 -mx-2 rounded-lg hover:bg-white/5 transition-colors text-meta text-ink-300 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={activeGoal.isOwned !== false}
+                                        onChange={e => updateActiveGoal({ isOwned: e.target.checked })}
+                                        className="w-4 h-4 accent-primary flex-shrink-0"
+                                    />
+                                    <span>Bien déjà acheté (compté au mois 0 : équité et hypothèque)</span>
+                                </label>
+                            )}
                         </div>
                     </div>
                     <div>

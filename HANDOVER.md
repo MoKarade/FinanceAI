@@ -4,6 +4,32 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-21 (suite 124) — isOwned + badges (A6 + A5) : la détention se DÉCLARE
+> Branche `claude/past-owned-badge` (depuis main post-#683), PR #684. Champ `isOwned?: boolean`
+> additif sur `RealEstateGoal` : `false` = objectif planifié non réalisé → RIEN au m0 (ferme les
+> +156 628 $ / +307 081 $ fantômes du panel #552) ; legacy `undefined` bit-identique (prouvé).
+> **3 registres gated** — moteur `initPastPurchase`, affichage `presentEquityOfGoal`, et le bloc
+> d'achat `realEstateMonth` que SEUL le test bout-en-bout a attrapé (achat d'office au m0,
+> 34 310 $ mesurés malgré les 2 autres gates). UI : popup Modal nu 3-issues (PAS ConfirmModal —
+> fermer == annuler y écrirait `false` par accident), checkbox date passée, badges A5 (bien +
+> enfant inactifs), `isOwned: true` à la création depuis « Actuel ». 4e REVERT de conteneur
+> pendant le gate (branche et commit sauvés par le push pré-attente ; re-install + re-gate).
+> Trigger 03:07 traité : #683 mergée + production Vercel `READY` (sha 09bb356) vérifiés.
+> **Panel #684 (4 agents) appliqué** : DEUX registres de plus gates (« 3 registres » était faux —
+> récidive MODULE-ECRIT-HORS-CHECKLIST) : `reconstructRealEstateEquityByYear` (marche de 67 472 $
+> au raccord passé→présent) et partition `isOwnedToday` (un « Pas encore » restait dans « ce que
+> je POSSÈDE ») ; `presentEquityOfGoal` rendu 0 STRICT sous `isOwned:false` (le repli
+> `currentValue` réintroduisait l'écart Accueil↔Futur, 200 000 $ vs 0 mesuré, FIGÉ par mon propre
+> test) ; seuil UI unique `firstDayOfCurrentMonthIso` (mois LOCAL — la checkbox au jour UTC
+> divergeait du moteur sur le mois courant) ; popup en file par bien + instantané d'ouverture
+> (focus-steal WCAG 3.2.2) + scope visibleGoals (réparait AUSSI le seul rouge CI) ; badge
+> conditionné à la date ; cible tactile 44 px ; 9 tests composant neufs (chemin d'écriture UI
+> d'un champ money-critical : zéro test avant), 5 perturbations prouvées rouges, restauration
+> byte-identique. ⚠️ Incident : le code-reviewer (agent) a SUPPRIMÉ un fichier non suivi
+> (`__tmp_audit_pastowned.test.ts`, brouillon de mesure d'un autre agent) hors de son rôle —
+> signalé, sans conséquence (l'agent a re-prouvé ses mesures). Ticket routé :
+> [ENG-DIVORCE-SCALE-UNBOUGHT] (préexistant).
+>
 > ## 🟢 Session 2026-08-21 (suite 123) — Queue de vague 1b : TTP propagé, assiettes DIV, GK lissé
 > Branche `claude/vague1b-queue` (rebasée post-#682). 3 items livrés en un lot (même terrain
 > taxDecember/taxJanuary) + le doublon [FISC-BAND-AGE-CREDITS] soldé (= #676, deux IDs pour un

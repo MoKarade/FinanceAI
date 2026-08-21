@@ -448,13 +448,6 @@
 > Findings panel #552 (financial-integrity MESURÉ + silent-failure + code-reviewer, 2026-07-31) —
 > les corrigés dans #552 même sont dans l'archive au merge ; ici le RESTE à faire :
 
-- [ ] **`[ENG-PAST-OWNED-VS-PLANNED]`**
-  ✅ **DÉBLOQUÉ 2026-08-20 (réponses Marc, ADR « Sept décisions »)** — OUI au champ « déjà détenu » + à la date planifiée, POPUP « est-ce acheté ? ». (M, ÉLEVÉ [Certain, mesuré] — panel #552) — `RealEstateGoal`
-  n'a AUCUN discriminant « bien DÉTENU » vs « objectif planifié non réalisé » : un objectif saisi
-  pour 2024 jamais mis à jour injecte +156 628 $ d'équité et +307 081 $ de dette FANTÔMES au m0
-  (`purchaseOffset < 0` suffit depuis V2'). Mitigé dans #552 par un log lifeEvents visible au m0 ;
-  vrai fix = champ explicite `isOwned` + question UI à la saisie d'une date passée → **décision
-  Marc requise** (UX). 
 - [ ] **`[IMMO-3-FORMULES]`** (M, MOYEN [Certain, mesuré 8 364 $] — panel #552) — TROIS formules
   concurrentes pour l'équité passée/présente : `initPastPurchase` (SCHL, sans rénos), 
   `runAmortization` (`realEstate.ts:118` — IGNORE la prime SCHL, clampe l'équité ≥ 0, rénos),
@@ -473,6 +466,13 @@
   le fuzz tant que le taux était câblé côté config). Fix à trancher : le retirer de
   `ProjectionConfig` (+ des `makeProjection` de tests), OU le brancher comme défaut d'un bien
   sans taux propre — puis nettoyer.
+- [ ] **`[ENG-DIVORCE-SCALE-UNBOUGHT]`** (S, FAIBLE — revue #684 financial-integrity,
+  PRÉEXISTANT [À vérifier]) — au divorce, le `.map` de mise à l'échelle de `propertiesState`
+  (`projection.ts`, bloc divorce ~836) divise aussi `mortgage`/`currentValue` des biens
+  `isBought: false`, or `mortgage` y sert de PRINCIPAL au futur achat (`realEstateMonth`) : un
+  achat futur post-divorce hériterait d'un principal réduit de moitié. Sans effet pour un bien
+  `isOwned: false` à date passée (l'achat est gaté à jamais). Re-prouver le chemin par mesure
+  avant de corriger (finding non vérifié par perturbation).
 - [ ] **`[ENG-RENEWAL-M0]`** (S, FAIBLE — panel #552) — un bien passé détenu depuis un multiple
   exact de 60 mois subit le RENOUVELLEMENT (choc déterministe `charCodeAt % 3`) dès le mois 0
   (PMT −240 $ mesuré au 1er point affiché). Préexistant, atteignable au m0 depuis V2'. Option :
@@ -492,12 +492,6 @@
   cumulé 330 353 $ vs `RetraitREER` sur 301 mois) ; les deux séries cohabitent dans
   `ProjectionExplains.tsx:41`. Aligner (ou documenter la sémantique « transferts de la cascade
   seulement » à l'écran).
-- [ ] **`[UX-ISACTIVE-BADGE]`** (XS — reformulé depuis `[UX-ISACTIVE-SEMANTIQUE]`, TRANCHÉ par Marc
-  2026-08-20, A5) — décision : **on ATTEND le clic « Activer »** (« pareil pour enfant ») ; le défaut
-  `isActive: false` est VOULU, ne pas le « corriger ». Reste le volet CLARTÉ : un badge « non comptée
-  dans la simulation » sur le bien (et l'enfant) inactif, pour que l'amputation du patrimoine soit
-  VISIBLE au lieu de silencieuse. Cf. ADR « Sept décisions » (2026-08-20).
-
 ## 🏦 Sync & données (Fintable, Drive, persistance)
 
 - [ ] **`[DEFAULTS-DRIFT-FINTABLE-FIELDS]`** (S effort, L sévérité — V3, finding code-analyzer

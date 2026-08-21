@@ -10,9 +10,50 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — La détention immobilière se DÉCLARE (isOwned) + badges « non compté » (A6 + A5)
+
+- [x] **`[ENG-PAST-OWNED-VS-PLANNED]`** (M, ÉLEVÉ [Certain, mesuré] — panel #552) — ✅ 2026-08-21,
+  PR #684. Décision Marc A6 (ADR 0014) : champ `isOwned?: boolean` sur `RealEstateGoal`
+  (additif, zéro migration). `false` = objectif planifié non réalisé → RIEN au m0 (ferme les
+  +156 628 $ d'équité et +307 081 $ de dette fantômes du panel #552) ; `true`/`undefined` =
+  comportement V2' bit-identique (prouvé par test).
+- [x] **`[UX-ISACTIVE-BADGE]`** (XS — A5, reformulé depuis `[UX-ISACTIVE-SEMANTIQUE]`) — ✅ idem.
+  Défaut `isActive: false` INCHANGÉ (décision : on attend le clic « Activer ») ; badge « Non
+  comptée dans la simulation » sur le bien ET l'enfant inactifs — l'amputation du patrimoine
+  est désormais VISIBLE.
+
+**CINQ registres gated — pas « 3 »** (un flux alimente PLUSIEURS registres ; récidive
+`MODULE-ECRIT-HORS-CHECKLIST` : ma 1re archive affirmait « 3 registres » et la revue #684 en a
+trouvé DEUX de plus par grep des consommateurs de `purchaseDate`) :
+(1) moteur `projection.ts` `initPastPurchase` ; (2) affichage `pastPurchaseInit.presentEquityOfGoal`
+— et PAS de repli sur `currentValue` sous `isOwned:false` : ma 1re version l'honorait (200 000 $
+au KPI pendant que le moteur publiait 0 — l'écart Accueil↔Futur du panel #552 réintroduit ET figé
+par mon propre test, financial-integrity mesuré) ; (3) `realEstateMonth` bloc d'achat — sans ce
+gate le bien `isOwned:false` était acheté D'OFFICE au m0 (34 310 $ mesuré malgré les 2 autres
+gates) ; (4) `reconstructRealEstateEquityByYear` (préfixe passé de la courbe Futur — marche de
+67 472 $ mesurée au raccord passé→présent) ; (5) partition `isOwnedToday` (un « Pas encore »
+restait affiché dans « ce que je POSSÈDE »). Corollaires revue #684 : seuil UI unique
+`firstDayOfCurrentMonthIso` (LOCAL, granularité MOIS — la checkbox au jour UTC divergeait du
+moteur sur tout le mois courant : acheté au m0 à 34 310 $ SOUS le badge « non acheté », mesuré) ;
+badge conditionné à la date (sinon affiché à JAMAIS après correction de la date) ; popup en file
+par bien (fermer saute CE bien — un booléen global avalait tout le lot) + instantané à l'ouverture
+d'écran (plus de vol de focus en pleine saisie, WCAG 3.2.2) + scope aux biens VISIBLES de la page.
+Effet de bord documenté : une résidence principale `isOwned:false` rouvre les cotisations CELIAPP
+(`hasPurchasedPrimary` faux) — cohérent avec « pas encore propriétaire ». 9 tests composant neufs
+(le chemin d'écriture UI d'un champ money-critical n'en avait AUCUN), 5 perturbations prouvées
+rouges, restauration byte-identique par diff.
+
+**UI (spec A6)** : popup à l'ouverture de l'espace immobilier quand un objectif ACTIF a une date
+planifiée passée sans réponse — Modal nu à 3 issues (« Pas encore » → `isOwned:false` / « Oui,
+acheté » → `true` / fermer → on redemandera), PAS `ConfirmModal` dont fermer == répondre non ;
+checkbox au formulaire quand la date saisie est passée ; un bien créé depuis la page « Actuel »
+naît `isOwned: true`. 4 tests neufs (`pastOwnedVsPlanned.test.ts`) dont un bout-en-bout moteur
+comparant m0 `Immobilier`/`DetteTotale` ; perturbation prouvée rouge, restauration par diff.
+Docs : PROJECTION.md (phase 6) aligné.
+
 ## 2026-08-21 — Queue de vague 1b : dette d'horizon propagée, dividende majoré dans les assiettes, GK lissé
 
-- [x] **`[ENG-TTP-UNSETTLED-PROPAGATE]`** (S-M) — ✅ 2026-08-21, PR à compléter au merge.
+- [x] **`[ENG-TTP-UNSETTLED-PROPAGATE]`** (S-M) — ✅ 2026-08-21, PR #683.
 - [x] **`[FISC-DIV-DERIVED-BASES]`** (S-M, FAIBLE) — ✅ idem.
 - [x] **`[ENG-GK-THRESHOLD-KNIFE]`** (M, MOYEN) — ✅ idem.
 - [x] **`[FISC-BAND-AGE-CREDITS]`** — ✅ DOUBLON de `[FISC-TAXDEC-INCR]`, livré par #676 (mêmes

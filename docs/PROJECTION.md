@@ -141,12 +141,25 @@ Pour **chaque** mois `m`, le moteur exécute ces 9 phases séquentiellement. Com
 ### Phase 6 — Immobilier
 
 Pour chaque `RealEstateGoal` actif :
-- **Si `purchaseDate` est PASSÉE** (2026-07-31, `[V2']` PR #552) : le bien est initialisé **DÉTENU
+- **Si `purchaseDate` est PASSÉE et `isOwned !== false`** (V2' PR #552, gate déclaratif
+  `[ENG-PAST-OWNED-VS-PLANNED]` décision Marc A6, 2026-08-21) : le bien est initialisé **DÉTENU
   dès le mois 0** via `pastPurchaseInit.ts` (principal = (prix − mise) + prime SCHL — même
   `calculateSchlPremium` que l'achat futur ; PMT annuité au taux/amortissement d'origine ; solde
   restant en forme fermée ; valeur = prix apprécié, plafonné `maxValue`). Aucun débit de mise de
   fonds au mois 0, pas de re-achat ni d'« Achat reporté ». Approximation assumée : pas de choc de
   renouvellement rétroactif (taux d'origine constant sur le passé).
+  ⚠️ La détention se **DÉCLARE**, elle ne se déduit plus de la seule date : `isOwned: false`
+  (objectif planifié dont la date est passée sans achat) = RIEN au mois 0 — ni équité, ni dette,
+  ni achat d'office. **Cinq registres gated** : moteur (`initPastPurchase`),
+  `presentEquityOfGoal` (0 STRICT, sans repli sur `currentValue`), bloc d'achat
+  (`realEstateMonth`), équité passée reconstruite (`reconstructRealEstateEquityByYear` — préfixe
+  passé de la courbe Futur), et partition des pages (`isOwnedToday` → un « Pas encore » vit dans
+  « Projets immo »). `isOwned: true` ou `undefined` (legacy) = comportement V2' bit-identique ;
+  l'UI pose la question (popup à l'ouverture d'écran, checkbox au formulaire — seuil commun
+  `firstDayOfCurrentMonthIso`, granularité MOIS locale comme le moteur) et un bien créé depuis
+  la page « Actuel » naît `isOwned: true`. Effet de bord assumé : une résidence principale
+  `isOwned: false` rouvre les cotisations CELIAPP (`hasPurchasedPrimary` reste faux) — cohérent
+  avec « pas encore propriétaire ».
 - **Si pas encore acheté** et mois = `purchaseOffset` :
   - Calcul mise de fonds nécessaire
   - Retrait CELIAPP/FHSA si éligible (40k$ max à vie)

@@ -115,8 +115,9 @@ export function initPastPurchase(goal: RealEstateGoal, monthsSincePurchase: numb
 
 /**
  * Équité PRÉSENTE d'un bien pour les surfaces UI (KPI Accueil, PDF).
- * Bien passé → délégation à `initPastPurchase` (MÊME convention que le moteur, champs explicites
- * inclus). Bien sans date / à date future : seuls des champs EXPLICITES `currentValue`
+ * `isOwned === false` (A6 : objectif planifié non réalisé) → 0, TOUJOURS. Bien passé →
+ * délégation à `initPastPurchase` (MÊME convention que le moteur, champs explicites inclus).
+ * Bien sans date / à date future : seuls des champs EXPLICITES `currentValue`
  * (/`mortgageBalance`) comptent — un fait utilisateur prime sur une date incohérente ; sinon 0
  * (pas encore détenu). Donnée corrompue (non finie) → 0 TRACÉ, jamais un défaut crédible —
  * la garde vit ICI pour couvrir TOUS les consommateurs (panel #552 : 1 site gardé sur 3).
@@ -132,6 +133,13 @@ export function presentEquityOfGoal(goal: RealEstateGoal, monthsSincePurchase: n
         });
         return 0;
     }
+    // [ENG-PAST-OWNED-VS-PLANNED] (A6) même gate que le moteur (un flux alimente PLUSIEURS
+    // registres — moteur ET affichage) : isOwned === false = objectif planifié NON réalisé →
+    // ZÉRO, sans repli sur les champs explicites. « Non détenu » + « valeur actuelle » sont
+    // contradictoires ; honorer currentValue ici affichait 200 000 $ (KPI/PDF) pendant que le
+    // moteur, gate en aval, publiait 0 — l'écart Accueil↔Futur du panel #552 réintroduit
+    // (revue #684, mesuré). Le repli explicite reste réservé aux dates futures/absentes.
+    if (goal.isOwned === false) return 0;
     if (monthsSincePurchase > 0) {
         const s = initPastPurchase(goal, monthsSincePurchase);
         return s.currentValue - s.mortgage;

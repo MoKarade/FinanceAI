@@ -350,6 +350,9 @@ export const getInitialStateWithMigration = (): AppState => {
             initialBalances: savedBalances ? JSON.parse(savedBalances) : {},
             apiKeys: safeApiKeys,
             fxRates: storedFxRates ? JSON.parse(storedFxRates) : DEFAULT_FX_RATES,
+            // [FX-FALLBACK-SILENCIEUX] Cette migration LEGACY (pré-persist Zustand) n'a aucune
+            // source pour ce nouveau champ — `true` est le même défaut neutre que DEFAULT_APP_STATE.
+            fxRatesEstimated: true,
             lastUpdate: Date.now(),
             categorizationRules: (() => { try { const r = localStorage.getItem('categorization_rules'); return r ? JSON.parse(r) : []; } catch (e) { logError({ source: 'storage', severity: 'warning', message: 'Migration store : parse localStorage échoué (champ ignoré, défaut appliqué)', error: e }); return []; } })(),
             aiConversation: [],

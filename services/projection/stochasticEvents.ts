@@ -185,7 +185,15 @@ export function tickJobLoss(
     if (ctx.rng() >= pAnnual) return { newMonthsRemaining: 0, triggered: false, duration: 0 };
 
     const duration = proj.jobLossDurationMonths || 6;
-    return { newMonthsRemaining: duration, triggered: true, duration };
+    // [JOBLOSS-DUREE-N-PLUS-1] `duration - 1`, et non `duration` : le mois du DÉCLENCHEMENT est
+    // DÉJÀ un mois de chômage. L'appelant (`activeIncome.ts`) réduit le revenu dès que
+    // `wasUnemployed || triggered` — donc ce mois-ci compte. Rendre `duration` faisait décompter
+    // `duration` mois DE PLUS, soit N+1 au total. MESURÉ en rejouant la boucle réelle : une durée
+    // de 6 produisait 7 mois de prestation, 12 → 13, 24 → 25, et surtout **1 → 2** (+100 %, le
+    // pire ratio). Le log annonçait « durée prévue 6 mois » pendant que le moteur en servait 7 :
+    // l'intention était donc claire et le code seul était faux.
+    // ⚠️ `duration` reste rendu INCHANGÉ : c'est la durée ANNONCÉE (log), pas le compteur.
+    return { newMonthsRemaining: duration - 1, triggered: true, duration };
 }
 
 /**
@@ -246,5 +254,11 @@ export function tickLtd(
     if (ctx.rng() >= pAnnual) return { newMonthsRemaining: 0, needsLog: false, duration: 0 };
 
     const duration = proj.ltdDurationMonths || 24;
-    return { newMonthsRemaining: duration, needsLog: false, duration };
+    // [JOBLOSS-DUREE-N-PLUS-1] MÊME défaut que `tickJobLoss` ci-dessus, et le ticket ne le
+    // mentionnait PAS — trouvé en vérifiant le jumeau (règle « énumérer TOUS les producteurs »,
+    // classe MODULE-ECRIT-HORS-CHECKLIST). L'appelant réduit le revenu dès que
+    // `wasLtd || duration > 0`, donc le mois du déclenchement compte déjà : mesuré, 24 → 25 mois.
+    // Corriger `tickJobLoss` SEUL aurait désaccordé deux mécaniques jusqu'ici cohérentes (toutes
+    // deux fausses du même cran) — pire que de ne rien faire (CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE).
+    return { newMonthsRemaining: duration - 1, needsLog: false, duration };
 }

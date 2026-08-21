@@ -10,6 +10,36 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — `[JOBLOSS-DUREE-N-PLUS-1]` + `[ASSETLOC-INCLUSION-RECOPIEE]` : une durée qui vaut N, et une constante qui vient de sa source
+
+- [x] **`[JOBLOSS-DUREE-N-PLUS-1]`** (XS au ticket, **money-critical en pratique**) — une perte
+  d'emploi configurée à N mois en produisait **N+1**. Le mois du DÉCLENCHEMENT est déjà un mois de
+  chômage (l'appelant réduit le revenu dès `triggered`), et le code posait ensuite un compteur de
+  N mois SUPPLÉMENTAIRES. Le log annonçait pourtant « durée prévue 6 mois » : l'intention était
+  claire, seul le code était faux.
+  **MESURÉ en rejouant la boucle réelle** : 6 → **7**, 12 → **13**, 24 → **25**, et surtout
+  **1 → 2 (+100 %)** — le pire ratio, et celui qu'un test « durée moyenne » ne montre jamais.
+  ⚠️ **Le ticket ne parlait que du chômage. `tickLtd` (invalidité longue durée) portait EXACTEMENT
+  le même défaut** — trouvé en vérifiant le jumeau (règle « énumérer TOUS les producteurs »,
+  `MODULE-ECRIT-HORS-CHECKLIST`). Corriger le chômage SEUL aurait désaccordé deux mécaniques
+  jusqu'ici cohérentes — toutes deux fausses du même cran — ce qui est pire que ne rien faire
+  (`CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`). Les deux sont corrigés.
+  ⚠️ **DEUX tests figeaient le défaut**, l'un sur le producteur (`stochasticEvents.test.ts`),
+  l'autre sur l'appelant (`activeIncome.test.ts`) — cohérents entre eux et faux ensemble. Chacun
+  vérifiait que le compteur valait ce que le code y mettait, sans jamais compter les mois VÉCUS :
+  `newMonthsRemaining = 8` est défendable en isolation, il ne devient faux qu'en sachant que
+  l'appelant a déjà servi le mois courant (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`). Le test
+  neuf rejoue la condition exacte du consommateur et compte les mois — il ne reconstruit pas le
+  calcul testé. 4 assertions prouvées rouges par perturbation.
+- [x] **`[ASSETLOC-INCLUSION-RECOPIEE]`** (XS, MOYEN) — `assetLocation.ts` écrivait
+  `marginalRate * 0.5`, seul site du dépôt à recopier le taux d'inclusion des gains en capital
+  (six autres modules importent `CAPITAL_GAINS_INCLUSION_STANDARD`). Il était invisible parce que
+  `0.5` figurait dans la liste `BENIGN` du garde fiscal — **l'exclusion cachait la copie**
+  (`AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`). Bit-identique tant que le taux vaut 50 %, et c'est
+  l'intérêt : le jour où il change, ce site suivra au lieu de rester seul en arrière.
+
+Gate vert : 4 644 tests / 418 fichiers, build inclus.
+
 ## 2026-08-21 — Lot a11y XS : le % de répartition masqué, et l'outil de contraste qui voit enfin les boutons
 
 - [x] **`[A11Y-PCT-NOT-MASKED]`** (XS, FAIBLE) — dans `NetWorthByOwnerCard`, le montant par personne

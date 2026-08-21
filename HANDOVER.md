@@ -4,7 +4,7 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟢 Session 2026-08-21 (suite 126) — `[PASSE-REEL-DETTE-1]` : gating par dette dans le passé
+> ## 🟡 Session 2026-08-21 (suite 126) — `[PASSE-REEL-DETTE-1]` : gating par dette dans le passé (mergé, déploiement PROD bloqué)
 > Branche `claude/passe-reel-dette-1` (depuis main post-#686), PR #687. Demande Marc, en creusant
 > depuis « je veux seter la date de ma dette » (déjà livré par `[DETTE-DATES]`) : le graphe Futur
 > montre encore sa dette-auto (bail, débute 20 juillet) « depuis toujours » dans le passé reconstruit.
@@ -57,6 +57,14 @@
 > `[discriminant]` tautologique (`X − 0 === X`) repéré par le même agent a été reformulé en note
 > honnête. 14 tests neufs au total (dont 5 discriminants CRITIQUE/ÉLEVÉ/MOYEN, prouvés rouges par
 > perturbation chirurgicale ou mesurés directement contre le moteur réel).
+> **PR mergée (squash, sha `3dd9d9d`), branche réconciliée. §6 : ÉCHEC constaté, pas juste
+> « pas encore vérifié »** — aucun déploiement Vercel (ni prod ni preview) n'existe pour ce merge
+> plus de 6 minutes après, alors que #684/#685/#686 avaient tous un déploiement prod `READY` en
+> quelques secondes. Le projet a heurté 2× aujourd'hui la limite « 100 déploiements/jour » du plan
+> gratuit (previews de PR) — quasi certainement la même cause bloque désormais `main`, silencieusement
+> (pas de commentaire GitHub pour un push direct sur `main`, contrairement à une preview de PR).
+> Routé à Marc : `docs/A_FAIRE_MOI.md` §A00b. **Prochaine session : revérifier le déploiement prod
+> AVANT de supposer que le lot est en ligne.**
 > Nouvelle leçon `EXCLURE-N-EST-PAS-LE-DROIT-DE-RETRANCHER-DE-N-IMPORTE-QUEL-TOTAL`.
 >
 > ## 🟢 Session 2026-08-21 (suite 125) — Vague 2 PM : badge FX estimé, prop morte, récap devise native

@@ -48,7 +48,8 @@ describe('rankStrategies', () => {
     });
 
     it('[ENG-RANKTAX-ESTATE] « impôt minimum » ne récompense PLUS le report (cas panel #554)', () => {
-        // Chiffres du panel #554 (mesurés sur l'app réelle) : PRIO_CELI affichait ttp −189 849 $
+        // Chiffres du panel #554 (non re-mesurables ici — fixture SYNTHÉTIQUE cohérente avec le
+        // ratio 3,6× du panel) : PRIO_CELI affichait ttp −189 849 $
         // mais laissait 1 299 510 $ d'impôt successoral ; MELTDOWN payait plus de son vivant pour
         // un impôt TOTAL 3,6× plus bas. L'ancien score (ttp seul) classait PRIO_CELI 1er.
         const prioCeli = base({ strategyName: 'PRIO_CELI', totalTaxesPaid: -189_849,
@@ -64,11 +65,17 @@ describe('rankStrategies', () => {
 
     it('[ENG-RANKTAX-ESTATE] la dette non réglée à l\'horizon compte aussi (3 registres)', () => {
         // Deux scénarios à ttp et estate identiques : seule la dette d'horizon les sépare.
+        // ⚠️ [Relecture #681] DEBT passé EN PREMIER : mon 1er jet passait CLEAN en premier et le
+        // test restait vert sur l'ancien code (tMax ≤ tMin → nTax 0,5 partout → départage par
+        // INDEX D'ENTRÉE — le test ne mesurait que l'ordre du tableau). L'assertion sur la
+        // grandeur scorée ferme l'autre porte.
         const clean = base({ strategyName: 'CLEAN', totalTaxesPaid: 100_000, totalEstateTax: 50_000 });
         const debt = base({ strategyName: 'DEBT', totalTaxesPaid: 100_000, totalEstateTax: 50_000,
             unsettledTaxAtHorizon: 80_000 });
-        const r = rankStrategies([clean, debt], 'tax');
+        const r = rankStrategies([debt, clean], 'tax');
         expect(r.ranked[0].strategyName).toBe('CLEAN');
+        expect(r.ranked.find(x => x.strategyName === 'DEBT')!.lifetimeTaxTotal)
+            .toBeCloseTo(230_000, 2);
     });
 
     it('objectif patrimoine → choisit le plus gros patrimoine', () => {

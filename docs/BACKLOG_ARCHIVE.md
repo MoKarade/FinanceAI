@@ -28,7 +28,18 @@ par diff. `[PROJ-TAXPAID-SOLDE-AVRIL]` reste ouvert (biais constant entre strat�
 sur un classement, documenté dans le helper).
 
 **Découvertes routées** : `[ENG-RANKING-MODULES-ORPHELINS]` (rankStrategies et
-compareLifeScenarios sans appelant vivant — le ticket #554 sur-prescrivait leur rôle).
+compareLifeScenarios sans appelant vivant — le ticket #554 sur-prescrivait leur rôle ; + double
+comptage estate dans son score balanced, noté au ticket), `[ENG-FVI-EFFICIENCY-ESTATE]` (ré-ouvert
+— l'angle mort FVI du ticket #554 avait été SUPPRIMÉ au cochage au lieu d'être routé : −20 pts de
+FVI mesurés, clamp à 100 % dès ttp < 0).
+**Relecture #681 appliquée** : l'infobulle du panneau vivant promettait « ni l'impôt
+successoral » sur la valeur qui l'inclut désormais (étiquette → « Impôt total (modélisé) », les
+deux tooltips réécrits, la divergence avec le MCP netTaxSettlements DOCUMENTÉE au commentaire) ;
+mon test « 3 registres » était VACUEUX (départage par index d'entrée — ordre inversé + assertion
+sur la grandeur) ; unsettled ajouté au fake de strategySearch (sa suppression laissait 82 tests
+verts) ; « biais constant entre stratégies » borné (faux sous T1213 : 107 530 $ mesurés) ;
+« impôt total » précisé « MODÉLISÉ » (la retenue salariale ~732 k$/10 ans reste hors compteur) ;
+PROJECTION_OUTPUT_SCHEMA + types.ts mis à jour dans la même PR.
 
 ⚠️ **3e revert de conteneur de la session** pendant ce lot : le snapshot restauré portait un
 `origin/main` PÉRIMÉ (95f0a5f, −5 semaines) et la branche est partie de là — trahie par le

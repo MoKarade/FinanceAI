@@ -192,12 +192,16 @@ Mensuels ($/mois) : `ImpotLatent`, `FluxImpots`, `ImpotRetraitREER`, `ImpotSalai
 > **`unsettledTaxAtHorizon`** (scalaire SIGNÉ = le débit d'avril manquant, NET remboursements
 > inclus — mesuré 13 542 $ / 8,6 % sur retraité solvable 10 ans, 51,5 % à 2 ans, 100 % à 1 an,
 > ~0 sur portefeuille épuisé ; ADDITIVITÉ prouvée : TTP(N) + unsettled(N) == TTP(N+1) au cent) ;
-> `strategySearch.lifetimeTax` l'additionne. Exclusion assumée : les retenues des décaissements du
+> `strategySearch.lifetimeTax` l'additionne — et depuis [ENG-RANKTAX-ESTATE] (2026-08-21,
+> décision Marc A4) il additionne AUSSI `totalEstateTax` : la grandeur est l'impôt TOTAL MODÉLISÉ
+> (source unique `services/projection/lifetimeTax.ts::lifetimeTaxTotal`, trois registres
+> disjoints — disjonction prouvée par mesure, relecture #681). Exclusion assumée : les retenues des décaissements du
 > mois de DÉCEMBRE tombent après la réconciliation (stub non réconcilié, ~1 900 $ mesurés) — elles
 > se règlent dans l'avril de l'année suivante, hors horizon. ⚠️ 4 surfaces lisent encore le
 > compteur NU (taxLeakage MC, netTaxSettlements MCP, drawdownOptimizer) — ticket
-> [ENG-TTP-UNSETTLED-PROPAGATE]. `totalEstateTax` (impôt de liquidation successorale) reste une
-> grandeur DISJOINTE.
+> [ENG-TTP-UNSETTLED-PROPAGATE]. `totalEstateTax` (impôt de liquidation successorale) reste un REGISTRE
+> disjoint (aucun recouvrement avec ttp/unsettled — prouvé par mesure), mais il ENTRE désormais
+> dans la grandeur agrégée `lifetimeTaxTotal` (A4).
 Payés (cumul YTD) : `TaxPaidRevenu`, `TaxPaidGains`, `TaxPaidDivers`, `TaxPaidREER`.
 Provisionnés (current + previous year) : `AccruedTaxRevenu`, `AccruedTaxGains`, `AccruedTaxDivers`, `AccruedTaxREER`.
 Note `[FISC-WHT-92PCT]` : en phase ACTIVE sans déductions, `AccruedTaxRevenu` vaut structurellement **0** (retenue = 100 % de l'impôt) — un 0 ici signifie « rien à régler en avril », pas « aucun impôt payé » (l'impôt est dans le net saisi).

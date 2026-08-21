@@ -5103,3 +5103,22 @@ confirmation encode « fermer == refuser » ; c'est correct pour « confirmer un
 (refuser est sans état), FAUX pour « déclarer un fait » (chaque issue écrit — ou s'abstient
 d'écrire — une donnée persistée). Même famille que `PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR` :
 réutiliser un composant, c'est hériter de son contrat de sortie.
+
+### `SEUIL-UI-AU-JOUR-CONTRE-UN-MOTEUR-AU-MOIS` — la granularité d'un seuil fait partie du contrat
+
+Corollaire du même lot (revue #684, financial-integrity, MESURÉ). La checkbox « Bien déjà
+acheté » s'affichait si `targetDate < toISOString().split('T')[0]` — granularité JOUR, en UTC.
+Le moteur, lui, tranche « passé » au MOIS (`getMonthOffset < 0`, origine = mois courant). Sur
+tout le créneau « même mois, jour antérieur », l'UI disait « passé » (checkbox visible, badge
+« non acheté ») pendant que le moteur ACHETAIT le bien au m0 — mesuré : 34 310 $ d'Immobilier
+au premier point sous un badge qui affirmait le contraire. `toISOString()` (UTC) élargissait la
+fenêtre d'un jour de plus en soirée au Québec — l'anti-patron que le fichier VOISIN du même
+commit documentait déjà.
+
+Règles : (1) quand une UI reflète une décision du moteur, elle emprunte le SEUIL du moteur —
+même granularité, même fuseau — via un helper partagé (`firstDayOfCurrentMonthIso`), jamais une
+reformulation locale ; (2) la comparaison de chaînes ISO est correcte SI le seuil est aligné
+(`date < 'YYYY-MM-01'` ⟺ `monthsSince > 0`) — c'est la granularité qui était fausse, pas le
+mécanisme ; (3) le test du helper épingle l'ÉQUIVALENCE avec le prédicat moteur, pas juste le
+format. Même famille que `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` : deux sites qui encodent le
+même fait avec deux conventions divergent en silence.

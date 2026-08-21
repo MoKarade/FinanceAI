@@ -22,11 +22,26 @@
   comptée dans la simulation » sur le bien ET l'enfant inactifs — l'amputation du patrimoine
   est désormais VISIBLE.
 
-**Les 3 registres gated** (un flux alimente PLUSIEURS registres — le 3e attrapé par le test
-bout-en-bout, pas par la relecture) : (1) moteur `projection.ts` `initPastPurchase` ;
-(2) affichage `pastPurchaseInit.presentEquityOfGoal` (repli sur les champs EXPLICITES saisis —
-`currentValue` prime) ; (3) `realEstateMonth` bloc d'achat — sans ce gate le bien `isOwned:false`
-était acheté D'OFFICE au m0 (Immobilier = 34 310 $ mesuré au 1er point malgré les 2 autres gates).
+**CINQ registres gated — pas « 3 »** (un flux alimente PLUSIEURS registres ; récidive
+`MODULE-ECRIT-HORS-CHECKLIST` : ma 1re archive affirmait « 3 registres » et la revue #684 en a
+trouvé DEUX de plus par grep des consommateurs de `purchaseDate`) :
+(1) moteur `projection.ts` `initPastPurchase` ; (2) affichage `pastPurchaseInit.presentEquityOfGoal`
+— et PAS de repli sur `currentValue` sous `isOwned:false` : ma 1re version l'honorait (200 000 $
+au KPI pendant que le moteur publiait 0 — l'écart Accueil↔Futur du panel #552 réintroduit ET figé
+par mon propre test, financial-integrity mesuré) ; (3) `realEstateMonth` bloc d'achat — sans ce
+gate le bien `isOwned:false` était acheté D'OFFICE au m0 (34 310 $ mesuré malgré les 2 autres
+gates) ; (4) `reconstructRealEstateEquityByYear` (préfixe passé de la courbe Futur — marche de
+67 472 $ mesurée au raccord passé→présent) ; (5) partition `isOwnedToday` (un « Pas encore »
+restait affiché dans « ce que je POSSÈDE »). Corollaires revue #684 : seuil UI unique
+`firstDayOfCurrentMonthIso` (LOCAL, granularité MOIS — la checkbox au jour UTC divergeait du
+moteur sur tout le mois courant : acheté au m0 à 34 310 $ SOUS le badge « non acheté », mesuré) ;
+badge conditionné à la date (sinon affiché à JAMAIS après correction de la date) ; popup en file
+par bien (fermer saute CE bien — un booléen global avalait tout le lot) + instantané à l'ouverture
+d'écran (plus de vol de focus en pleine saisie, WCAG 3.2.2) + scope aux biens VISIBLES de la page.
+Effet de bord documenté : une résidence principale `isOwned:false` rouvre les cotisations CELIAPP
+(`hasPurchasedPrimary` faux) — cohérent avec « pas encore propriétaire ». 9 tests composant neufs
+(le chemin d'écriture UI d'un champ money-critical n'en avait AUCUN), 5 perturbations prouvées
+rouges, restauration byte-identique par diff.
 
 **UI (spec A6)** : popup à l'ouverture de l'espace immobilier quand un objectif ACTIF a une date
 planifiée passée sans réponse — Modal nu à 3 issues (« Pas encore » → `isOwned:false` / « Oui,

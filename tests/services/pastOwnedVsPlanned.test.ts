@@ -6,6 +6,8 @@
 // jamais mis à jour. `undefined` = legacy (comportement historique conservé, l'UI questionne).
 import { describe, it, expect } from 'vitest';
 import { presentEquityOfGoal } from '../../services/projection/pastPurchaseInit';
+import { isOwnedToday, partitionRealEstateGoals, firstDayOfCurrentMonthIso } from '../../services/realEstatePartition';
+import { reconstructRealEstateEquityByYear } from '../../services/history/reconstructRealEstateEquity';
 import { __runScenarioForTests, type SimulationParams } from '../../services/projection';
 import type { RealEstateGoal, ProjectionConfig, BudgetConfig, RetirementGoal, User } from '../../types';
 import type { AllocationStrategy } from '../../services/projection/types';
@@ -52,9 +54,13 @@ describe('[ENG-PAST-OWNED-VS-PLANNED] la détention se déclare, elle ne se déd
         expect(presentEquityOfGoal(goal({ isOwned: false }), 26)).toBe(0);
     });
 
-    it('isOwned: false + currentValue SAISI → le fait utilisateur explicite prime', () => {
+    it('isOwned: false + currentValue SAISI → 0 quand même (pas de repli sur les champs explicites)', () => {
+        // Revue #684 (financial-integrity, mesuré) : la 1re version honorait currentValue et
+        // affichait 200 000 $ (KPI/PDF) pendant que le moteur, gate en aval, publiait 0 — l'écart
+        // Accueil↔Futur du panel #552 réintroduit, et FIGÉ par ce même test. « Non détenu » +
+        // « valeur actuelle » sont contradictoires : sous A6, false = RIEN, sans exception.
         expect(presentEquityOfGoal(goal({ isOwned: false, currentValue: 500_000, mortgageBalance: 300_000 }), 26))
-            .toBe(200_000);
+            .toBe(0);
     });
 
     it('isOwned: true → équité passée reconstruite, STRICTEMENT identique au legacy (undefined)', () => {
@@ -62,5 +68,40 @@ describe('[ENG-PAST-OWNED-VS-PLANNED] la détention se déclare, elle ne se déd
         const legacy = presentEquityOfGoal(goal({}), 26);
         expect(owned).toBeGreaterThan(0);
         expect(owned).toBe(legacy); // rétro-compat : undefined == true (comportement historique)
+    });
+
+    // Revue #684 : DEUX registres de plus déduisaient la détention de la seule date — la
+    // partition des pages (isOwnedToday) et la reconstruction d'équité passée (préfixe de la
+    // courbe Futur, marche de 67 472 $ mesurée au raccord). Classe MODULE-ECRIT-HORS-CHECKLIST :
+    // le grep des CONSOMMATEURS de purchaseDate, pas la relecture, les a trouvés.
+    it('PARTITION : « Pas encore » classe le bien en PROJET malgré la date passée ; legacy inchangé', () => {
+        const now = new Date(2026, 0, 15);
+        expect(isOwnedToday(goal({ isOwned: false }), now)).toBe(false);
+        expect(isOwnedToday(goal({}), now)).toBe(true);          // legacy : la date passée décide
+        expect(isOwnedToday(goal({ isOwned: true }), now)).toBe(true);
+        // isOwned: true ne FORCE pas « actuel » : une date repoussée au futur redevient un achat
+        // à faire pour le moteur (gate `purchaseOffset < 0`), la partition dit la même chose.
+        expect(isOwnedToday(goal({ isOwned: true, purchaseDate: '2030-01-01' }), now)).toBe(false);
+        const { actual, future } = partitionRealEstateGoals(
+            [goal({ id: 'a', isOwned: false }), goal({ id: 'b' })], now);
+        expect(future.map(g => g.id)).toEqual(['a']);
+        expect(actual.map(g => g.id)).toEqual(['b']);
+    });
+
+    it('HISTORIQUE : aucune équité passée reconstruite pour un objectif non réalisé ; legacy intact', () => {
+        expect(reconstructRealEstateEquityByYear([goal({ isOwned: false })], 2026).size).toBe(0);
+        const legacy = reconstructRealEstateEquityByYear([goal({})], 2026);
+        expect(legacy.size).toBeGreaterThan(0);
+        expect(legacy.get(2024)).toBeGreaterThan(0); // l'année d'achat porte ≈ la mise de fonds
+    });
+
+    it('SEUIL UI commun : 1er du mois courant en LOCAL, équivalent au mois-strict du moteur', () => {
+        expect(firstDayOfCurrentMonthIso(new Date(2026, 0, 15))).toBe('2026-01-01');
+        // Une date du MOIS COURANT n'est PAS passée (le moteur la traite en achat à faire) ;
+        // le dernier jour du mois précédent l'est. Comparaison de chaînes ISO — même verdict
+        // que `monthsSince > 0`.
+        const seuil = firstDayOfCurrentMonthIso(new Date(2026, 0, 15));
+        expect('2026-01-05' < seuil).toBe(false);
+        expect('2025-12-31' < seuil).toBe(true);
     });
 });

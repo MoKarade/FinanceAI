@@ -150,10 +150,16 @@ Pour chaque `RealEstateGoal` actif :
   renouvellement rétroactif (taux d'origine constant sur le passé).
   ⚠️ La détention se **DÉCLARE**, elle ne se déduit plus de la seule date : `isOwned: false`
   (objectif planifié dont la date est passée sans achat) = RIEN au mois 0 — ni équité, ni dette,
-  ni achat d'office par `realEstateMonth` (3 registres gated : moteur, `presentEquityOfGoal`,
-  bloc d'achat). `isOwned: true` ou `undefined` (legacy) = comportement V2' bit-identique ;
-  l'UI pose la question (popup à la date passée, checkbox au formulaire) et un bien créé depuis
-  la page « Actuel » naît `isOwned: true`.
+  ni achat d'office. **Cinq registres gated** : moteur (`initPastPurchase`),
+  `presentEquityOfGoal` (0 STRICT, sans repli sur `currentValue`), bloc d'achat
+  (`realEstateMonth`), équité passée reconstruite (`reconstructRealEstateEquityByYear` — préfixe
+  passé de la courbe Futur), et partition des pages (`isOwnedToday` → un « Pas encore » vit dans
+  « Projets immo »). `isOwned: true` ou `undefined` (legacy) = comportement V2' bit-identique ;
+  l'UI pose la question (popup à l'ouverture d'écran, checkbox au formulaire — seuil commun
+  `firstDayOfCurrentMonthIso`, granularité MOIS locale comme le moteur) et un bien créé depuis
+  la page « Actuel » naît `isOwned: true`. Effet de bord assumé : une résidence principale
+  `isOwned: false` rouvre les cotisations CELIAPP (`hasPurchasedPrimary` reste faux) — cohérent
+  avec « pas encore propriétaire ».
 - **Si pas encore acheté** et mois = `purchaseOffset` :
   - Calcul mise de fonds nécessaire
   - Retrait CELIAPP/FHSA si éligible (40k$ max à vie)

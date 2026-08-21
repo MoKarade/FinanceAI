@@ -17,6 +17,7 @@ import { MultiPropertyComparison } from './MultiPropertyComparison';
 import { RealEstateAdviceCard } from './RealEstateAdviceCard';
 import { calculateWelcomeTax } from '../../services/realEstate';
 import { presentEquityOfGoal, monthsSince } from '../../services/projection/pastPurchaseInit';
+import { firstDayOfCurrentMonthIso } from '../../services/realEstatePartition';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { PageHeader } from '../ui/PageHeader';
 import { Icon } from '../ui/Icon';
@@ -79,18 +80,32 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
     // est PASSÉE sans que l'achat soit tranché (isOwned indéfini — legacy ou projet rattrapé par
     // le calendrier) déclenche LA question. Répondre écrit le champ ; « Pas encore » retire le
     // bien du m0 (badge « Date passée — non acheté » + contrôle du formulaire pour corriger).
-    // Fermer sans répondre = « plus tard » pour CETTE session d'écran (pas persisté — la
-    // question doit revenir tant que le champ n'est pas tranché).
-    const [ownedQuestionDismissed, setOwnedQuestionDismissed] = useState(false);
-    const firstDayOfCurrentMonth = useMemo(() => {
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-    }, []);
+    // Fermer sans répondre = « plus tard » pour CE bien et CETTE session d'écran (pas persisté).
+    //
+    // Trois bornes délibérées (revue #684) :
+    //  - file figée à l'OUVERTURE de l'écran (instantané d'ids) : la question ne s'invite JAMAIS
+    //    en pleine saisie — éditer une date vers le passé ne vole pas le focus (WCAG 3.2.2), la
+    //    checkbox du formulaire, visible dès que la date est passée, couvre l'édition en direct ;
+    //  - rejet PAR BIEN (Set), pas global : fermer saute CE bien, le suivant en attente est
+    //    questionné — une fermeture accidentelle n'avale plus tout le lot en silence ;
+    //  - biens VISIBLES sur CETTE page seulement : la question se pose dans le contexte où le
+    //    bien s'affiche (et le popup ne fuit pas dans les tests/pages de l'autre moitié).
+    const firstDayOfCurrentMonth = useMemo(() => firstDayOfCurrentMonthIso(), []);
+    const [pendingOwnedIds, setPendingOwnedIds] = useState<ReadonlySet<string>>(() =>
+        new Set(visibleGoals
+            .filter(g => g.isActive && g.isOwned === undefined && g.purchaseDate
+                && g.purchaseDate < firstDayOfCurrentMonthIso())
+            .map(g => g.id)));
     const pendingOwnedGoal = useMemo(() =>
-        ownedQuestionDismissed ? null
-            : allGoals.find(g => g.isActive && g.isOwned === undefined && g.purchaseDate
-                && g.purchaseDate < firstDayOfCurrentMonth) ?? null,
-        [allGoals, firstDayOfCurrentMonth, ownedQuestionDismissed]);
+        visibleGoals.find(g => pendingOwnedIds.has(g.id) && g.isOwned === undefined) ?? null,
+        [visibleGoals, pendingOwnedIds]);
+    const dismissOwnedQuestion = (goalId: string) => {
+        setPendingOwnedIds(prev => {
+            const next = new Set(prev);
+            next.delete(goalId);
+            return next;
+        });
+    };
     const answerOwned = (goalId: string, owned: boolean) => {
         setAllGoals(allGoals.map(g => g.id === goalId ? { ...g, isOwned: owned } : g));
     };
@@ -454,7 +469,7 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                 // la question reviendra).
                 <Modal
                     isOpen
-                    onClose={() => setOwnedQuestionDismissed(true)}
+                    onClose={() => dismissOwnedQuestion(pendingOwnedGoal.id)}
                     title="Date d'achat passée"
                     size="sm"
                     footer={
@@ -479,9 +494,13 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                         {activeGoal.isActive
                             ? <Badge variant="success" size="md">Active dans simulation</Badge>
                             // [UX-ISACTIVE-BADGE] (A5) : l'amputation du patrimoine doit être VISIBLE.
-                            : <Badge variant="neutral" size="md">Non comptée dans la simulation</Badge>}
-                        {/* [ENG-PAST-OWNED-VS-PLANNED] (A6) : date passée sans achat confirmé. */}
-                        {activeGoal.isOwned === false && (
+                            : <Badge variant="neutral" size="md">Non compté dans la simulation</Badge>}
+                        {/* [ENG-PAST-OWNED-VS-PLANNED] (A6) : date passée sans achat confirmé. La
+                            condition de DATE est requise : une date repoussée au futur rend le
+                            « Pas encore » caduc (le moteur achètera normalement) — sans elle, le
+                            badge d'avertissement resterait affiché à jamais (revue #684). */}
+                        {activeGoal.isOwned === false && !!activeGoal.purchaseDate
+                            && activeGoal.purchaseDate < firstDayOfCurrentMonth && (
                             <Badge variant="warning" size="md">Date passée — non acheté</Badge>
                         )}
                     </div>

@@ -466,6 +466,13 @@
   le fuzz tant que le taux était câblé côté config). Fix à trancher : le retirer de
   `ProjectionConfig` (+ des `makeProjection` de tests), OU le brancher comme défaut d'un bien
   sans taux propre — puis nettoyer.
+- [ ] **`[ENG-DIVORCE-SCALE-UNBOUGHT]`** (S, FAIBLE — revue #684 financial-integrity,
+  PRÉEXISTANT [À vérifier]) — au divorce, le `.map` de mise à l'échelle de `propertiesState`
+  (`projection.ts`, bloc divorce ~836) divise aussi `mortgage`/`currentValue` des biens
+  `isBought: false`, or `mortgage` y sert de PRINCIPAL au futur achat (`realEstateMonth`) : un
+  achat futur post-divorce hériterait d'un principal réduit de moitié. Sans effet pour un bien
+  `isOwned: false` à date passée (l'achat est gaté à jamais). Re-prouver le chemin par mesure
+  avant de corriger (finding non vérifié par perturbation).
 - [ ] **`[ENG-RENEWAL-M0]`** (S, FAIBLE — panel #552) — un bien passé détenu depuis un multiple
   exact de 60 mois subit le RENOUVELLEMENT (choc déterministe `charCodeAt % 3`) dès le mois 0
   (PMT −240 $ mesuré au 1er point affiché). Préexistant, atteignable au m0 depuis V2'. Option :

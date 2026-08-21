@@ -13,7 +13,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   formulaire). Réponds « pas encore » et le bien ne compte NI équité NI dette dans la projection —
   fini l'objectif de 2024 jamais mis à jour qui injectait +156 628 $ d'équité et +307 081 $ de
   dette fantômes au premier mois. Sans réponse, rien ne change à tes projections actuelles.
-- Un bien immobilier ou un enfant INACTIF porte maintenant un badge « Non compté(e) dans la
+- Un bien auquel tu réponds « pas encore » déménage vers « Projets immo » (ce que je prévois) :
+  il n'apparaît plus dans « Immobilier » (ce que je possède), ni dans l'historique d'équité
+  passée de la courbe Future — partout, l'app dit la même chose que le calcul.
+- Un bien immobilier ou un enfant INACTIF porte maintenant un badge « Non compté dans la
   simulation » : l'amputation du patrimoine était réelle mais silencieuse, elle est désormais
   visible. (Le défaut « inactif à la création » reste voulu : on attend ton clic « Activer ».)
 

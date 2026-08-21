@@ -9,16 +9,21 @@
 // Sémantique de « détenu aujourd'hui » — PROUVÉE contre le CODE du moteur, jamais contre un
 // commentaire (classe DOC-STALE-IMPOSSIBILITY : la version d'origine de cet en-tête affirmait
 // l'alignement inverse, et la partition mentait de ~500 k$ sur un bien du mois courant) :
-//  - `projection.ts:182` n'initialise un bien comme DÉJÀ acheté que si
-//    `getMonthOffset(purchaseDate) < 0` — STRICT ;
+//  - le gate d'init passé du moteur (`projection.ts`, construction
+//    `purchaseOffset < 0 && g.isOwned !== false`) n'initialise un bien comme DÉJÀ acheté que si
+//    `getMonthOffset(purchaseDate) < 0` — STRICT — ET que la détention n'est pas NIÉE ;
 //  - `presentEquityOfGoal` (`projection/pastPurchaseInit.ts`) ne reconstruit l'équité présente
-//    que si `monthsSincePurchase > 0` — STRICT ;
+//    que sous la MÊME paire de conditions (`monthsSincePurchase > 0 && isOwned !== false`) ;
 //  - et `getMonthOffset === -monthsSince` : mêmes champs `YYYY-MM`, et l'origine de la projection
 //    est le MOIS COURANT (`useSimulationParams` : `startYear/startMonth` = year/month d'aujourd'hui).
 //  ⇒ un achat daté du MOIS COURANT n'est PAS détenu pour le moteur : c'est encore un achat à faire
 //    (mise de fonds + taxe de bienvenue à débiter). L'UI doit dire la MÊME chose.
 //
 // D'où :
+//  - `isOwned === false` ([ENG-PAST-OWNED-VS-PLANNED], décision A6) → PROJET quelle que soit la
+//    date : la détention DÉCLARÉE nie ce que la date laissait déduire — même priorité que les
+//    gates du moteur. `isOwned: true` ne force PAS « actuel » (un bien déclaré détenu dont la
+//    date est repoussée au futur redevient, pour le moteur, un achat à faire — la date tranche) ;
 //  - `purchaseDate` lisible et STRICTEMENT antérieure au mois courant (`monthsSince > 0`) → ACTUEL ;
 //  - `purchaseDate` du mois COURANT ou future → PROJET ;
 //  - `purchaseDate` absente/illisible : seul un FAIT explicite de détention compte —
@@ -43,11 +48,25 @@ const hasReadableMonth = (d: string | undefined | null): boolean => {
     return !Number.isNaN(parseInt(d.slice(0, 4), 10)) && !Number.isNaN(parseInt(d.slice(5, 7), 10));
 };
 
+/**
+ * 1er jour du mois courant en ISO LOCAL (`YYYY-MM-01`) — le SEUIL commun des surfaces UI qui
+ * comparent une `purchaseDate` au présent (popup « est-ce acheté ? », checkbox du formulaire,
+ * badge « Date passée »). `dateIso < firstDayOfCurrentMonthIso()` ⟺ `monthsSince(dateIso) > 0` :
+ * même granularité MOIS que le moteur. Jamais `toISOString()` (UTC — recule d'un jour en soirée
+ * au Québec, et une granularité JOUR diverge du moteur sur tout le mois courant : mesuré, un
+ * bien « Date passée — non acheté » au jour près était ACHETÉ au m0 par le moteur, 34 310 $).
+ */
+export function firstDayOfCurrentMonthIso(now: Date = new Date()): string {
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
 /** Le bien est-il détenu aujourd'hui ? (voir la sémantique en tête de fichier) */
 export function isOwnedToday(goal: RealEstateGoal, now: Date = new Date()): boolean {
     // Élément nul/absent dans la tranche : jamais une détention par défaut (le moteur, lui,
     // le filtre en amont — `filter(g => !!g)`).
     if (!goal) return false;
+    // [ENG-PAST-OWNED-VS-PLANNED] (A6) : « Pas encore » l'emporte sur toute déduction de date.
+    if (goal.isOwned === false) return false;
     if (hasReadableMonth(goal.purchaseDate)) {
         // STRICT : `> 0` et pas `>= 0`. Un achat du mois courant vaut `getMonthOffset === 0`
         // côté moteur → `purchaseOffset < 0` est FAUX → le bien n'est PAS détenu.

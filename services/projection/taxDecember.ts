@@ -121,9 +121,10 @@ export function computeOasClawback(
     // PV-9 — gain imposable (50 % d'inclusion) réparti également par adulte. Garde NaN symétrique.
     const taxableGainsPerUser = (Number.isFinite(accCapitalGainsYear)
         ? Math.max(0, accCapitalGainsYear) : 0) * CAPITAL_GAINS_INCLUSION_STANDARD / n;
-    // [FISC-DIV-DERIVED-BASES] dividende majoré réparti également — même patron que les gains.
-    const grossedUpDivPerUser = (Number.isFinite(annualGrossedUpDividends)
-        ? Math.max(0, annualGrossedUpDividends) : 0) / n;
+    // [FISC-DIV-DERIVED-BASES] dividende majoré réparti également. Patron FA-8 (pas celui des
+    // gains) : présent-mais-NaN = corruption amont, elle se DIT (revue #683).
+    const divInvalid = !Number.isFinite(annualGrossedUpDividends);
+    const grossedUpDivPerUser = (divInvalid ? 0 : Math.max(0, annualGrossedUpDividends)) / n;
     let clawbackAnnual = 0;
     for (let i = 0; i < n; i++) {
         const incomeUser = (validIncome ? perUserIncomeMonthly![i] * 12 : (incomeRetirementMonthly * 12) / n)
@@ -138,7 +139,8 @@ export function computeOasClawback(
     }
 
     // Revue FA-8 — cap NaN signalé même si le clawback résultant est nul (corruption amont).
-    const invalidNote = capInvalid ? ' [cap PSV réel invalide (NaN) — repli sur la base, corruption amont ?]' : '';
+    const invalidNote = (capInvalid ? ' [cap PSV réel invalide (NaN) — repli sur la base, corruption amont ?]' : '')
+        + (divInvalid ? ' [dividende majoré invalide (NaN) — repli 0, corruption amont ?]' : '');
     if (clawbackAnnual > 1 || capInvalid) {
         return {
             clawbackAnnual,
@@ -364,7 +366,9 @@ export interface DecemberHelpers {
     // Quand fourni, il remplace le calcul plat (montant majoré × taux marginal).
     calculateDividendTax: (annualDiv: number, marginalRate: number, kind?: 'eligible' | 'non-eligible', progressiveGrossTax?: number) => number;
     // ITEM 2d — taux de majoration du dividende (pour empiler le montant majoré).
-    getDividendGrossUpRate?: (kind?: 'eligible' | 'non-eligible') => number;
+    /** REQUIS depuis la revue #683 : le seul appelant réel le fournit toujours, et l'assiette
+     *  FSS/RAMQ/PSV en dépend — un helper optionnel laissait un repli ×1 (cash) silencieux. */
+    getDividendGrossUpRate: (kind?: 'eligible' | 'non-eligible') => number;
 }
 
 export interface DecemberResult {
@@ -747,10 +751,7 @@ export function processDecemberTaxFiling(
     // par l'assiette FSS (§1.6), le revenu de récupération PSV (via le caller) et le bloc
     // dividendes (§3). Deux copies de cette formule divergeraient en silence.
     const annualDivForBases = computeAnnualNonRegDividends(ctx.nonReg, ctx.baseNonRegRate);
-    // Repli si le helper gross-up est absent (même contrat optionnel qu'au §3) : dividende CASH —
-    // sous-estime l'assiette plutôt que d'inventer un taux ; le vrai moteur passe toujours le helper.
-    const annualGrossedUpDivForBases = annualDivForBases
-        * (helpers.getDividendGrossUpRate ? helpers.getDividendGrossUpRate('eligible') : 1);
+    const annualGrossedUpDivForBases = annualDivForBases * helpers.getDividendGrossUpRate('eligible');
 
     // ---- 1.5. RAMQ — prime annuelle régime public d'assurance médicaments (audit §6.4) ----
     // Calculée par adulte sur le revenu familial NET (après déductions REER/FHSA).
@@ -765,11 +766,15 @@ export function processDecemberTaxFiling(
             // mais est déduit au revenu IMPOSABLE (295 QC / 25000 féd) ; pour la RAMQ, l'exclusion
             // est une approximation SANS effet pratique (prestataire SRG ≈ sous l'exemption de
             // prime) qui va dans le sens de l'exemption réelle.
+            // [FISC-DIV-DERIVED-BASES, revue #683 MOYEN-2] + dividende MAJORÉ : la ligne 275
+            // TP-1 le comprend comme un retrait REER ou un gain — l'asymétrie laissée ici valait
+            // jusqu'à +814 $/an/ménage (mesuré, 30 k$ de revenu + 500 k$ non-enreg), 8× le FSS.
             familyNetIncome = (
                 (ctx.incomeRetirementMonthly - gisMonthlySafe) * 12
                 + ctx.accRentesYear
                 + ctx.accRetraitsReerYear
                 + ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD
+                + annualGrossedUpDivForBases
             ) / ctx.inflationFactor;
         } else {
             // Mode actif : revenu brut salarial - déductions REER + FHSA + Smith.
@@ -798,7 +803,9 @@ export function processDecemberTaxFiling(
             const gainsImposables = Number.isFinite(ctx.accCapitalGainsYear)
                 ? Math.max(0, ctx.accCapitalGainsYear) * CAPITAL_GAINS_INCLUSION_STANDARD
                 : 0;
-            familyNetIncome = Math.max(0, grossFamily - deductions + retraitsReer + gainsImposables) / ctx.inflationFactor;
+            // [revue #683 MOYEN-2] même ligne 275 : le dividende majoré du non-enregistré d'un
+            // ACTIF entre aussi dans l'assiette RAMQ.
+            familyNetIncome = Math.max(0, grossFamily - deductions + retraitsReer + gainsImposables + annualGrossedUpDivForBases) / ctx.inflationFactor;
         }
         const ramqPerAdult = calculateRamqPremium(
             familyNetIncome,
@@ -836,7 +843,9 @@ export function processDecemberTaxFiling(
         // FA-3a : SRG exclu du revenu net individuel (non imposable).
         // [FISC-DIV-DERIVED-BASES] le dividende MAJORÉ entre dans le revenu net (ligne 275 QC),
         // comme le gain imposable — l'assiette FSS l'ignorait (asymétrie du panel #564).
-        // MESURÉ : +70 $/an/ménage à 500 k$ non-enreg (borné par le plafond 1 000 $/adulte).
+        // MESURÉ (revue #683) : +70 $/ménage au pin (30 k$/adulte — franchissement du palier
+        // 150 $) ; borne réelle +103,50 $/ménage (2 × 1 % × majoré/2) ; effet NUL dans les
+        // plateaux (33,5-64,4 k$/adulte et > 149 k$) — pas une généralisation du +70.
         const individualNetIncome = (
             (ctx.incomeRetirementMonthly - gisMonthlySafe) * 12
             + ctx.accRentesYear
@@ -979,7 +988,7 @@ export function processDecemberTaxFiling(
         // revenu de base sous-estimait (voire annulait via le crédit d'impôt dividende)
         // l'impôt d'un gros dividende franchissant un palier. Le crédit (CID) reste géré
         // dans calculateDividendTax. Repli sur le plat si le helper gross-up est absent.
-        const grossUpRate = helpers.getDividendGrossUpRate ? helpers.getDividendGrossUpRate('eligible') : undefined;
+        const grossUpRate = helpers.getDividendGrossUpRate('eligible');
         let progressiveGrossTax: number | undefined;
         if (grossUpRate !== undefined) {
             const annualDivPerAdult = annualDiv / ctx.activeUsersCount;

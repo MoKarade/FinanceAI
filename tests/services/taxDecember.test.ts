@@ -487,6 +487,8 @@ const makeHelpers = (overrides: Partial<DecemberHelpers> = {}): DecemberHelpers 
         ({ totalTax: Math.max(0, gross - (deductions ?? 0)) * STUB_RATE } as unknown as FiscalReport)) as DecemberHelpers['calculateFiscalReport'],
     getMarginalRate: () => STUB_MARGINAL,
     calculateDividendTax: (annualDiv: number, marginalRate: number) => annualDiv * marginalRate,
+    // [Revue #683] requis depuis que le helper n'est plus optionnel — vrai taux admissible.
+    getDividendGrossUpRate: () => 1.38,
     ...overrides,
 });
 
@@ -625,7 +627,7 @@ describe('processDecemberTaxFiling — actif : régularisation salariale (T1213)
         // mort avec la retenue 100 % (complément nul sans déductions, quel que soit le brut).
         // Le nouvel invariant équivalent : le remboursement des déductions suit le taux MARGINAL,
         // donc grossit (en valeur absolue) avec le salaire — barème RÉEL requis (le stub est linéaire).
-        const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+        const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate };
         const low = processDecemberTaxFiling(
             DECEMBER,
             baseCtx({ grossMarcBaseAnnual: 60000, accRrspYear: 20000, optimizeSourceDeductions: false }),
@@ -665,7 +667,7 @@ describe('processDecemberTaxFiling — actif : régularisation salariale (T1213)
         // de plus en plus tôt à mesure que la projection avance. À inflationFactor = 2, le
         // plancher doit valoir -200 000, pas -100 000. DISCRIMINANT : sur le code d'avant, le
         // même scénario était tronqué à -100 000 exactement.
-        const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+        const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate };
         const ctx = baseCtx({
             grossMarcBaseAnnual: 1_000_000, accRrspYear: 250_000,
             optimizeSourceDeductions: false, inflationFactor: 2,
@@ -684,7 +686,7 @@ describe('processDecemberTaxFiling — actif : régularisation salariale (T1213)
         // (taux marginal ~53 %), SOUS le plancher. Égalité STRICTE (pas >=) : sans le clamp,
         // la valeur ≈ -133 k$ échoue ici. Et la troncature doit être VISIBLE dans les logs
         // (finding silent-failure #558 : un remboursement sous-évalué en silence).
-        const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+        const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate };
         const r = processDecemberTaxFiling(
             DECEMBER,
             baseCtx({ grossMarcBaseAnnual: 1_000_000, accRrspYear: 250_000, optimizeSourceDeductions: false }),
@@ -850,7 +852,7 @@ describe('processDecemberTaxFiling — retraité : impôt marginal réel réconc
         // Régression money-critical : au vrai barème QC+fed (crédits d'âge/pension 70 ans,
         // célibataire), l'impôt sur 60 000$ de pension est de l'ordre de ~9 000-10 000$,
         // PAS ~750$ (l'ancien 5 % du stub). On vérifie l'ordre de grandeur réel.
-        const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+        const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate };
         const r = processDecemberTaxFiling(
             DECEMBER,
             baseCtx({ isRetired: true, incomeRetirementMonthly: 5000, age: 70, activeUsersCount: 1, ramqExempt: true }),
@@ -941,7 +943,7 @@ describe('processDecemberTaxFiling — gains en capital EMPILÉS sur le barème 
     // Avec le VRAI barème progressif : un gros gain qui franchit des paliers doit être
     // imposé PLUS que (gain imposable × taux marginal du revenu de base). L'ancien calcul
     // (taux marginal plat sur le revenu AVANT gain) sous-estimait cet impôt.
-    const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+    const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate };
 
     it('gros gain franchissant des paliers → impôt > gain × taux marginal de base (empilement)', () => {
         const baseIncome = 50000;   // revenu modeste
@@ -976,7 +978,7 @@ describe('processDecemberTaxFiling — crédits d\'âge PAR conjoint (B-AUDIT-3)
     // Le stub calculateFiscalReport ignore les ageOpts → on utilise le VRAI barème,
     // seul à appliquer les crédits d'âge/pension. Avant le fix, ctx.age (Marc) servait
     // aux DEUX conjoints ; après, chacun selon SON âge (ctx.age / ctx.ageSpouse).
-    const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+    const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate };
 
     it('couple retraité à âges décalés : le conjoint <65 ne reçoit PAS le crédit d\'âge → impôt plus élevé', () => {
         const retiredCtx = (ageSpouse: number) => baseCtx({
@@ -1014,7 +1016,7 @@ describe('processDecemberTaxFiling — impôt de retraite PAR conjoint (A1)', ()
     // Avec le VRAI barème (progressif + crédits), taxer chaque conjoint sur SON revenu
     // de retraite réel doit donner un impôt ≥ celui du split égal (qui minimise sous un
     // barème progressif). Un couple à revenus de retraite ÉGAUX ne doit PAS bouger.
-    const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+    const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate };
 
     // 6000$/mois de pension ménage = 72 000$/an ; + 60 000$ de retraits REER → assiette
     // 132 000$. Assez haut pour qu'un split inégal franchisse des paliers.
@@ -1176,7 +1178,7 @@ describe('processDecemberTaxFiling — FA-1 (audit 2026-06-09) : assiette du cr�
     });
 
     // ── EFFET au VRAI barème (le stub ignore les ageOpts → seul le vrai barème applique le crédit) ──
-    const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+    const realHelpers: DecemberHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate };
 
     it('RÉGRESSION clé — 65+ RRQ/PSV + loyers SEULEMENT : paie PLUS qu\'avec l\'ancienne assiette (zéro crédit)', () => {
         const r = processDecemberTaxFiling(DECEMBER, baseCtx({

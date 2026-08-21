@@ -295,9 +295,11 @@ export function processJanuaryReset(
     let newPrevPortfolioNW = ctx.prevPortfolioNW;
     if (ctx.isRetired && ctx.m > 12) {
         const currentPortfolio = ctx.liquid + ctx.celi + ctx.reer + ctx.nonReg + ctx.crypto;
-        const drop = ctx.prevPortfolioNW > 0
-            ? Math.max(0, (ctx.prevPortfolioNW - currentPortfolio) / ctx.prevPortfolioNW)
-            : 0;
+        // [Revue #683 F1] « strictement identique hors bande » ne vaut que pour prev > 0 FINI :
+        // un portefeuille précédent négatif ou corrompu rend le facteur 1 (pas de gel — l'ancien
+        // code gelait parfois sur un prev négatif, comportement dénué de sens économique).
+        const rawDrop = (ctx.prevPortfolioNW - currentPortfolio) / ctx.prevPortfolioNW;
+        const drop = ctx.prevPortfolioNW > 0 && Number.isFinite(rawDrop) ? Math.max(0, rawDrop) : 0;
         guytonKlingerIndexationFactor = Math.max(0, Math.min(1, (GK_SMOOTH_CEIL_DROP - drop) / GK_SMOOTH_BAND_WIDTH));
         if (guytonKlingerIndexationFactor < 1) {
             logs.push(`❄️ Guyton-Klinger: indexation des dépenses réduite à ${Math.round(guytonKlingerIndexationFactor * 100)} % (portefeuille −${(drop * 100).toFixed(1)} %)`);

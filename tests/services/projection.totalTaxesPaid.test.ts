@@ -93,9 +93,10 @@ describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne
         const rs = run(solvable, 'AUTO_MARGINAL');
         // Solvable 10 ans : vraie dette nette au dernier décembre (mesuré 16 404,67 — re-basé
         // [FISC-BRACKET-REALINDEX] 2026-08-01, était 13 542,07 : impôt réel tardif ↑).
-        // Re-basé 2026-08-21 [FISC-DIV-DERIVED-BASES] (était 16 404,67, +137,31) : l'assiette
-        // FSS du dernier exercice voit désormais le dividende MAJORÉ du non-enregistré de la
-        // fixture — la dette réconciliée du dernier décembre monte d'autant (sens conservateur).
+        // Re-basé 2026-08-21 (+137,31). ⚠️ Ma 1re attribution disait « FSS du dividende » — la
+        // fixture a NON_ENREG: 0, c'était IMPOSSIBLE (revue #683, bissection) : la vraie cause
+        // est la bande GK ([ENG-GK-THRESHOLD-KNIFE]) qui module l'indexation des dépenses → les
+        // retraits du dernier exercice changent → sa dette réconciliée aussi.
         expect(rs.unsettledTaxAtHorizon).toBeCloseTo(16_541.98, 0);
         // FERR 10 ans : net PETIT (remboursement compense la retenue) — pin de la sémantique NETTE
         // (re-basé, était 171,89).

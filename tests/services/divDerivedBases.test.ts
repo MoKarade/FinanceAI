@@ -22,9 +22,10 @@ describe('[FISC-DIV-DERIVED-BASES] le dividende majoré entre dans les assiettes
     it('FSS : un non-enregistré à dividendes AUGMENTE la cotisation (mesuré +70 $/ménage)', () => {
         const sans = processDecemberTaxFiling(11, ctx({}), helpers, ZERO_TAX);
         const avec = processDecemberTaxFiling(11, ctx({ nonReg: 500_000, baseNonRegRate: 5 }), helpers, ZERO_TAX);
-        // divers contient FSS (+RAMQ exemptée ici). Le delta FSS mesuré : 2 × 35 = 70 $ — mais
-        // `divers` porte AUSSI l'impôt des dividendes… non : l'impôt du §3 va à `gains`. On isole
-        // le delta de `divers` : seul le FSS bouge entre les deux contextes.
+        // `divers` reçoit RAMQ (exemptée ici) et FSS ; l'impôt des gains/dividendes du §2-§3 va
+        // à `gains` (vérifié) — le delta de `divers` isole donc le FSS. ⚠️ Pin de FRANCHISSEMENT
+        // de palier (30 k$/adulte traverse le seuil 33,5 k$ du plafond 150 $) : la borne générale
+        // est 103,50 $/ménage et l'effet est NUL dans les plateaux — cf. revue #683 F2.
         const delta = avec.newTaxCurrentYear.divers - sans.newTaxCurrentYear.divers;
         expect(delta).toBeCloseTo(70, 0);
         expect(delta).toBeGreaterThan(0); // ancre de sens : l'ancienne assiette rendait 0
@@ -45,8 +46,24 @@ describe('[FISC-DIV-DERIVED-BASES] le dividende majoré entre dans les assiettes
     });
 
     it('rétro-compat : dividende omis (défaut 0) → bit-identique à l\'ancien calcul', () => {
-        const legacy = computeOasClawback(11, 12, true, 70, 1, 180_000 / 12, 0, 0, 600, 2, 2, undefined, undefined, 0, 600);
-        expect(legacy.clawbackAnnual).toBeCloseTo(0, 6);
+        // [Revue #683 F3] Le 1er jet ancrait un 0 sous le seuil (quasi vacueux — vert des deux
+        // côtés). Ancre AU-DESSUS du seuil : 200 k$ ménage sans dividende → 831,16 $ (mesuré,
+        // identique sur origin/main) — le zéro n'est plus la seule preuve.
+        const audessus = computeOasClawback(11, 12, true, 70, 1, 200_000 / 12, 0, 0, 600, 2, 2, undefined, undefined, 0, 600);
+        expect(audessus.clawbackAnnual).toBeCloseTo(831.16, 1);
+        const sousSeuil = computeOasClawback(11, 12, true, 70, 1, 180_000 / 12, 0, 0, 600, 2, 2, undefined, undefined, 0, 600);
+        expect(sousSeuil.clawbackAnnual).toBeCloseTo(0, 6);
+    });
+
+    it('[Revue #683 MOYEN-2] la RAMQ voit aussi le dividende majoré (ligne 275)', () => {
+        // Couple retraité 30 k$ ménage + 500 k$ non-enreg à 5 % : la RAMQ passe de 0 (sous
+        // l'exemption) à ~814 $/ménage (mesuré par la revue — 8× le FSS). ramqExempt: false.
+        const sans = processDecemberTaxFiling(11, ctx({ ramqExempt: false, incomeRetirementMonthly: 30_000 / 12 }), helpers, ZERO_TAX);
+        const avec = processDecemberTaxFiling(11, ctx({ ramqExempt: false, incomeRetirementMonthly: 30_000 / 12, nonReg: 500_000, baseNonRegRate: 5 }), helpers, ZERO_TAX);
+        const delta = avec.newTaxCurrentYear.divers - sans.newTaxCurrentYear.divers;
+        // delta = RAMQ (+~814) + FSS de la nouvelle assiette — on ancre la COMPOSANTE RAMQ en
+        // exigeant delta nettement au-delà de la borne FSS seule (103,50 $).
+        expect(delta).toBeGreaterThan(500);
     });
 
     it('la source unique est UNE formule (3 sites la consomment, aucun ne la recopie)', () => {

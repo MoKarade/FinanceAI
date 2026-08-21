@@ -196,7 +196,14 @@ describe('processJanuaryReset — CELIAPP & Guyton-Klinger', () => {
         const presque = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 150000 / 0.9499 }), helpers)!;
         expect(Math.abs(juste.guytonKlingerIndexationFactor - presque.guytonKlingerIndexationFactor)).toBeLessThan(0.02);
     });
-    it('LOIN du seuil : comportement strictement identique à l\'ancien binaire (bande étroite)', () => {
+    it('portefeuille précédent NÉGATIF ou corrompu → indexation pleine (pas de gel insensé)', () => {
+        // [Revue #683 F1] L'ancien binaire pouvait geler sur un prev négatif (division par un
+        // négatif) — dénué de sens ; le facteur est désormais 1 dans ces cas, et l'affirmation
+        // « identique hors bande » est BORNÉE à prev > 0 fini.
+        const neg = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: -100000 }), helpers)!;
+        expect(neg.guytonKlingerIndexationFactor).toBe(1);
+    });
+    it('LOIN du seuil : comportement strictement identique à l\'ancien binaire (bande étroite, prev > 0)', () => {
         // Baisse 3 % (< 4 %) → indexation PLEINE, comme l'ancien code sous son seuil.
         const doux = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 150000 / 0.97 }), helpers)!;
         expect(doux.guytonKlingerIndexationFactor).toBe(1);

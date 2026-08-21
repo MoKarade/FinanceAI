@@ -236,8 +236,12 @@ Compléments sourcés du même échange :
   > somme des deux bandes = bande totale `[revenu, revenu+gains+majoré]`, sans trou ni
   > recouvrement (exact au cent). Effet mesuré : +815 $/an (retraité 100 k$ / gains 30 k$ /
   > non-enreg 500 k$). Limite restante
-  > (OUVERTE, hors lot FA-8 — cf BACKLOG) : dividendes/intérêts non-reg toujours exclus du test
-  > SRG et du revenu de clawback PSV.
+  > (mise à jour 2026-08-21, `[FISC-DIV-DERIVED-BASES]`) : le dividende **MAJORÉ** du non-enreg
+  > entre désormais dans le revenu de clawback PSV (ligne 23400 ARC — mesuré +1 552,50 $/an de
+  > récupération, couple 100 k$/conjoint + 500 k$ à 5 %) et dans les assiettes FSS et RAMQ
+  > (ligne 275 QC). RESTE OUVERT : le test **SRG** ignore toujours dividendes/intérêts non-reg,
+  > et les INTÉRÊTS restent hors de toutes ces assiettes (le modèle ne distribue que des
+  > dividendes, part 30 %).
 - **Retenue à la source US sur dividendes** (`US_DIVIDEND_WITHHOLDING_RATE` = **15 %**, FA-8
   2026-06-11) : Convention fiscale **Canada–États-Unis (1980), art. X(2)b)** (taux réduit
   « portefeuille »). **REER/FERR exemptés** (art. XXI — régimes de pension) ; **CELI NON exempté**
@@ -624,6 +628,16 @@ pour minimiser l'impôt combiné (élection optionnelle).
 > sans source violerait la règle « aucun chiffre fiscal non sourcé » → documenté comme limite, à
 > modéliser si on transcrit un jour les tables (candidat 🧭, cf BACKLOG FA-11). Les deux ancres du
 > modèle (max à revenu 0, zéro au seuil officiel) restent exactes et sourcées.
+> **[FISC-DIV-DERIVED-BASES] (2026-08-21)** : le **dividende MAJORÉ** du non-enregistré (cash ×
+> gross-up 1,38, part distribuée 30 % — source unique `computeAnnualNonRegDividends`) entre AUSSI
+> dans le revenu de récupération PSV (le dividende imposable est une composante du revenu net,
+> ligne 12000 féd → 23400), réparti à parts égales par conjoint (non attribuable dans le modèle,
+> même limite que les gains). Mesuré : +1 552,50 $/an de récupération (couple 100 k$/conjoint +
+> 500 k$ non-enreg à 5 %) ; 0 sous le seuil. Le test SRG reste OUVERT (ci-dessus).
+> ⚠️ **Limite assumée [FISC-DIV-ACB-STEPUP]** : le dividende réputé est imposé mais l'ACB du
+> non-enregistré n'est PAS incrémenté (pas de step-up) ni le cash sorti — le même rendement est
+> re-imposé en gain latent à la réalisation/au décès (≈ 58 k$ sur 500 k$/5 %/20 ans, arithmétique
+> revue #683). Correctif = re-base massif, ticket ouvert au BACKLOG.
 
 ### Décès du conjoint — survivorMode (FA-10, 2026-06-10)
 > Quand le conjoint (user2) décède (`modelSurvivor`, Monte Carlo), le moteur traite le SURVIVANT
@@ -972,8 +986,9 @@ choisir). Calcul cumulatif par tranche (style impôt).
   différé) ; et les subventions SCEE/IQEE non utilisées ne sont PAS remboursées au gouvernement
   (`[FISC-REEE-GRANT-CLAWBACK]`, BACKLOG V6). Les PAE (imposés entre les mains de l'étudiant) ne
   sont pas modélisés.
-- **FSS d'un retraité** : assiette simplifiée vs Annexe F réelle (seule l'exclusion SRG est
-  documentée §5) — écart borné par le plafond 1 000 $/adulte.
+- **FSS d'un retraité** : assiette simplifiée vs Annexe F réelle (exclusion SRG documentée §5 ;
+  depuis 2026-08-21 le dividende MAJORÉ du non-enreg y entre — `[FISC-DIV-DERIVED-BASES]`) —
+  écart borné par le plafond 1 000 $/adulte.
 - **Frais de garde — modèle SIMPLIFIÉ** (`childrenReee.ts:~225`, FISC-CHILDCARE) : le moteur applique
   un facteur de coût résiduel de **30 %** (= aide implicite ~70 %) sur la garde privée > 400 $/mois. C'est
   une **HEURISTIQUE conservatrice**, PAS le vrai régime (féd = déduction T778 ligne 21400 plafonnée par

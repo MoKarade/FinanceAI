@@ -861,6 +861,8 @@ describe('processDecemberTaxFiling intègre la prime RAMQ (§6.4)', () => {
     calculateFiscalReport: calcReport,
     getMarginalRate: getMarg,
     calculateDividendTax: calcDiv,
+    // [Revue #683] REQUIS depuis que le helper n'est plus optionnel — le stub rend le vrai taux.
+    getDividendGrossUpRate: () => 1.38,
   };
 
   it('applique la prime RAMQ à taxCurrent.divers pour un actif non-exempt', () => {
@@ -992,6 +994,7 @@ describe('processDecemberTaxFiling intègre FSS §6.1', () => {
     calculateFiscalReport: calcReport,
     getMarginalRate: getMarg,
     calculateDividendTax: calcDiv,
+      getDividendGrossUpRate: () => 1.38,
   };
 
   it('applique la cotisation FSS pour un retraité avec revenu > seuil', () => {

@@ -116,6 +116,7 @@ describe('[ENG-DIVORCE-ESTATE-PENSION] les rentes de l\'ex quittent aussi le bil
         // Second ancrage, même cause : 2 715 684 $ → 2 906 430 $, soit +190 746 $ — le MÊME écart
         // qu'au-dessus à un dollar d'arrondi près, parce que la VAN des rentes ne dépend pas du
         // tirage Monte Carlo ; seul le patrimoine de base en dépend.
-        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_906_430);
+        // Re-basé 2026-08-21 [ENG-GK-THRESHOLD-KNIFE] (était 2 906 430, −59 $ — même attribution bande GK).
+        expect(Math.round(scenario({}, true).estateNetWorth)).toBe(2_906_371);
     });
 });

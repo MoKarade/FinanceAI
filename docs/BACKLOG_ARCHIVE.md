@@ -10,6 +10,32 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — `[DEBT-MCP-PARITE]` : parité kind/dates de dette entre PDF, MCP direct et moteur/UI
+
+- [x] **`[DEBT-MCP-PARITE]`** (S) — ✅ PR #? (à compléter au merge).
+  `Debt.kind`/`startDate`/`termEndDate` — câblés dans le moteur (`[DETTE-DATES]`, 2026-08-19) et
+  l'UI DebtManager depuis un mois — étaient absents des DEUX voies d'écriture externes : l'import
+  PDF (`mcp/ingest/applyDocument.ts`, `DebtPayload`) et l'appel MCP direct de l'assistant Claude
+  (`mcp/tools/applyDebt.spec.ts`). Le tool MCP affirmait même encore « les dettes n'ont pas de date
+  de début » — faux depuis un mois, un risque réel de désinformer l'assistant en session.
+  **Corrigé aux deux endroits** : champ payload `debtKind` (voir piège de nommage ci-dessous),
+  `startDate`/`termEndDate`, avec validations miroir de celles déjà en place pour balance/taux/
+  paiement (kind contre une liste fermée `DEBT_KINDS`, dates au format ISO strict `YYYY-MM-DD`,
+  cohérence chronologique `startDate ≤ termEndDate`) — ceinture ET bretelle, un appel direct du
+  handler bypasse Zod (leçon `MCP-WHATIF` déjà connue). Description du tool + commentaires de
+  module corrigés (la fausse affirmation datait d'avant `[DETTE-DATES]`).
+  ⚠️ **Piège rencontré** (leçon `UN-CHAMP-PAYLOAD-NE-PEUT-PAS-PORTER-LE-NOM-DU-DISCRIMINANT`,
+  `docs/CONVENTIONS.md`) : le champ ne peut pas s'appeler `kind` sur `DebtPayload`, qui porte déjà
+  le discriminant de routage `kind: 'debt'` — une collision aurait cassé le routage de TOUS les
+  documents (pas seulement des dettes) via `{ kind: 'debt', ...args }`. Renommé `debtKind`, mappé
+  vers `Debt.kind` à l'écriture. `types.ts` gagne `DEBT_KINDS` (tableau `as const`, source UNIQUE
+  des valeurs `DebtKind`) réutilisé par le `z.enum` Zod ET la garde runtime — zéro liste redupliquée.
+  9 tests neufs (parité ajout/mise à jour, rejets kind/date invalides, cohérence chronologique,
+  garde Zod). Gate complet vert : 4 621 tests / 415 fichiers, build inclus.
+  En chemin : `A00b` (déploiement production bloqué du lot précédent, #687) vérifié et CLOS —
+  `list_deployments` Vercel confirme `production READY` sur `3bbc380` (#690), qui contient `3dd9d9d`
+  (#687).
+
 ## 2026-08-21 — `[PASSE-REEL-DETTE-1]` : une dette n'apparaît plus dans le passé avant sa date de début
 
 - [x] **`[PASSE-REEL-DETTE-1]`** (M, money-critical) — ✅ PR #687.

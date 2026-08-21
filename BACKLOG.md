@@ -17,6 +17,56 @@
 
 ---
 
+## 🧭 Vague Budget/Transactions/Investissements (Marc, 2026-08-21)
+
+> Retours de Marc en bloc, non cadrés — chaque item à cadrer (questions groupées) avant de coder,
+> par ticket ou par petit paquet cohérent.
+
+- [ ] **`[BUDGET-DRIVE-BANNER-FLASH]`** (S) — la bannière « Drive déconnecté » apparaît brièvement
+  au chargement de la page puis disparaît une fois chargée. Marc ne veut PAS qu'elle apparaisse
+  quand ce n'est pas nécessaire (faux « déconnecté » transitoire, pas un vrai état).
+- [ ] **`[BUDGET-TRANSACTIONS-SYNC-AUDIT]`** (M) — Marc n'est pas sûr que Budget s'adapte
+  correctement à Transactions : valider (ou corriger) cette synchronisation.
+- [ ] **`[BUDGET-CATEGORY-INCOME-SIGN]`** (M) — valider que, quand une catégorie de DÉPENSE a des
+  montants POSITIFS dans Transactions (une entrée d'argent — ex. remboursement), Budget le traite
+  bien comme telle plutôt que comme une dépense.
+- [ ] **`[BUDGET-REMOVE-AMELIORER]`** (S) — retirer la section « Améliorer mon budget » de l'onglet
+  Budget, devenue inutile selon Marc.
+- [ ] **`[BUDGET-PREVU-BUG]`** (M, 🔴 possiblement money-critical) — le « budget prévu » semble pas
+  à jour et affiche des valeurs impossibles : exemple donné, une entrée d'argent de 18 000 $ prévue
+  sur 1 trimestre — irréaliste pour la situation de Marc. À diagnostiquer.
+- [ ] **`[BUDGET-REEL-PREVISIONNEL-OBJECTIF]`** (M) — dans la zone « Revenus / dépenses / fin de
+  mois / restant », afficher TROIS valeurs plutôt qu'une : **Réel** / **Prévisionnel** / **Objectif**
+  (l'Objectif = les valeurs saisies par Marc dans les cibles de dépense par catégorie).
+- [ ] **`[BUDGET-CHARGES-FIXES-REFONTE]`** (L) — « Charges fixes et abonnements » ne fonctionne pas
+  assez bien : Marc veut une analyse BEAUCOUP plus approfondie et une interface plus interactive
+  et utile (refonte, pas un correctif ponctuel).
+- [ ] **`[NAV-REMOVE-OBJECTIFS-TAB]`** (S) — retirer l'onglet « Objectifs ».
+- [ ] **`[NAV-MERGE-SANTE-FUTUR]`** (M) — fusionner l'onglet « Santé » dans la page « Futur », tout
+  en haut, combiné avec le reste plutôt qu'en onglet séparé.
+- [ ] **`[INVEST-COURS-EXACT-TOUTES-ACTIONS]`** (M) — Marc veut voir le cours exact, au jour, de
+  TOUTES ses actions — actuellement seulement une PARTIE du portefeuille l'affiche. Étendre à
+  la totalité des positions.
+- [ ] **`[INVEST-PORTFOLIO-DATA-CORRECTION]`** (S, 👤 données réelles de Marc à appliquer) —
+  remplacer/corriger les positions du portefeuille pour correspondre EXACTEMENT à l'historique
+  d'achat suivant (fourni par Marc, toutes les transactions en **CAD**) :
+  - Amundi MSCI Em Asia UCITS ETF – USD (C) (OTCMKTS:ANDXF) : 12 déc. 2025, 180 actions à 52,43 $ CAD
+  - Amundi MSCI World Swap UCITS ETF EUR Acc (EPA:CW8) : 12 déc. 2025, 42 actions à 601,42 $ CAD
+  - Broadcom Inc (NASDAQ:AVGO) : 12 déc. 2025, 25 actions à 360,48 $ CAD
+  - Gold Bullion Securities Limited (BIT:GBS) : 12 déc. 2025, 115 actions à 334,61 $ CAD
+  - Howmet Aerospace Inc (NYSE:HWM) : 12 déc. 2025, 38 actions à 198,62 $ CAD
+  - KLA Corp (ETR:KLA) : 12 déc. 2025, 6 actions à 1 018,09 $ CAD ; puis 12 juin 2026, 54 actions à 213,60 $ CAD
+  - NVIDIA Corp (NASDAQ:NVDA) : 12 déc. 2025, 90 actions à 175,29 $ CAD
+  - Palantir Technologies Inc (NASDAQ:PLTR) : 12 déc. 2025, 55 actions à 183,86 $ CAD
+  - Safran SA (EPA:SAF) : 12 déc. 2025, 20 actions à 291,30 $ CAD
+  - Space Exploration Technologies Corp (NASDAQ:SPCX) : 15 juin 2026, 19,44 actions à 172,80 $ CAD
+  - Taiwan Semiconductor Mnfg Co Ltd (NYSE:TSM) : 12 déc. 2025, 20 actions à 292,46 $ CAD
+  - Visa Inc (NYSE:V) : 12 déc. 2025, 21 actions à 348,37 $ CAD
+  ⚠️ Vérifier d'abord l'écart avec les positions actuelles avant d'écraser quoi que ce soit (ne pas
+  dupliquer si déjà en partie correct).
+
+---
+
 ## 🎯 PLAN VERS ZÉRO (analyse PM du 2026-08-19 — demande Marc : « fais tout jusqu'à ce que le backlog soit fini »)
 
 > **Le chiffre honnête** : 230 items ouverts ≠ 230 PR. Après le ménage (vague 0, faite) et le tri
@@ -1708,13 +1758,9 @@
 > (« Je confirme, je veux la courbe malgré le coût supplémentaire »). ⚠️ À documenter dans l'ADR
 > comme une inversion CONSCIENTE, pas un oubli, dès que ce chantier avance.
 
-- [ ] 🔴 **`[DEBT-MCP-PARITE]`** (S) — `kind`/`startDate`/`termEndDate` sont câblés dans le moteur
-  depuis `[DETTE-DATES]` mais **absents** de l'import PDF (`mcp/ingest/applyDocument.ts`,
-  `DebtPayload`) ET de l'appel MCP direct (`mcp/tools/applyDebt.spec.ts`/`.tool.ts`). En prime, la
-  description du tool MCP affirme encore « les dettes n'ont pas de date de début » — **faux**
-  depuis un mois, un risque de désinformer l'assistant Claude en session. **Priorité sur
-  `[DEBT-MCP-ORIGINALBALANCE]`** : empiler un 2e champ inatteignable par-dessus le premier serait
-  `CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI`, version import.
+- [x] 🔴 **`[DEBT-MCP-PARITE]`** — ✅ **LIVRÉ 2026-08-21** (PR #? — à compléter au merge), voir
+  `docs/BACKLOG_ARCHIVE.md`. `debtKind`/`startDate`/`termEndDate` câblés dans l'import PDF et le
+  tool MCP direct ; description du tool corrigée.
 - [ ] 🔴 **`[DEBT-AMORTIZATION]`** (L, money-critical) — **Le cœur.** `Debt.originalBalance?:
   number` (additif, aucune migration). Formule d'amortissement standard dans un nouveau service pur
   (`services/projection/debtAmortization.ts`, patron `runAmortization` déjà utilisé côté immobilier).
@@ -1727,7 +1773,7 @@
   garde de plausibilité : rééchelonnage proportionnel BORNÉ (ratio `[0,5 ; 2]`) pour recoller
   exactement au solde actuel ; hors de cette bande → repli automatique sur le niveau figé (jamais
   une courbe absurde affichée comme un fait). Palier MENSUEL même au jour (pas de fausse précision).
-  Dépend de `[DEBT-MCP-PARITE]` pour que `kind` soit fiable comme discriminant.
+  Dépendait de `[DEBT-MCP-PARITE]` pour que `kind` soit fiable comme discriminant — **livré**.
 - [ ] 🔴 **`[DEBT-MCP-ORIGINALBALANCE]`** (S) — `originalBalance` au MCP/PDF, une fois
   `[DEBT-MCP-PARITE]` et `[DEBT-AMORTIZATION]` livrés. Validation `plausible()` (rejeter si
   `originalBalance < balance`, incohérent pour une dette qui s'amortit normalement).

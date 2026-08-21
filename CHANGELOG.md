@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-21 (l'import de dette — PDF et assistant Claude — connaît enfin le type et les dates)
+
+- L'ajout/mise à jour d'une dette par PDF (relevé, contrat) ou par l'assistant Claude en session
+  connaît désormais le **type précis** (bail auto, hypothèque, marge, prêt étudiant…) et les
+  **dates de début/fin** — jusqu'ici seuls le solde, le taux et le paiement passaient par ces deux
+  voies, alors que l'onglet Dette et le moteur les connaissaient déjà depuis un mois. Une dette
+  décrite dans un contrat PDF ou dictée à l'assistant peut donc être datée correctement dès sa
+  création, sans passage manuel par l'onglet Dette.
+
 ## [unreleased] — 2026-08-21 (une dette n'apparaît plus dans le passé avant qu'elle existe)
 
 - Sur le graphe Futur, une dette récente (ex. un prêt ou un bail contracté cette année)

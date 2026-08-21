@@ -404,7 +404,12 @@ export interface ProjectionConfig {
  *  terme fixe puis on rend le véhicule (ou on le rachète). Le distinguer permet de dire la vérité
  *  dans l'UI et de ne pas présenter un « solde » de bail comme une dette qui s'éteint toute seule
  *  (demande Marc 2026-08-19). */
-export type DebtKind = 'mortgage' | 'heloc' | 'auto' | 'auto-lease' | 'student-federal' | 'student-quebec' | 'credit-card' | 'personal' | 'margin' | 'spouse-loan' | 'other';
+/** [DEBT-MCP-PARITE] Source UNIQUE des valeurs de `DebtKind` (tableau `as const`, le type est
+ *  DÉRIVÉ dessous) — un `kind` MCP/import re-codé en dur ailleurs dérive en silence (piège
+ *  indexé au CLAUDE.md) ; ce tableau se réutilise tel quel côté runtime (Zod `z.enum`, garde
+ *  `applyDebt`) au lieu d'être retapé. */
+export const DEBT_KINDS = ['mortgage', 'heloc', 'auto', 'auto-lease', 'student-federal', 'student-quebec', 'credit-card', 'personal', 'margin', 'spouse-loan', 'other'] as const;
+export type DebtKind = typeof DEBT_KINDS[number];
 
 // ────────────────────────────────────────────────────────────────────
 // W5.4 — Assurances

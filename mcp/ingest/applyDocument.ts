@@ -5,7 +5,8 @@
 // Fonction pure (state, doc) → { nextState, changes, summary }. Réutilisée telle quelle par la couche
 // Drive. Quatre types : fiche de paie, relevé bancaire, relevé de courtage, feuillet fiscal.
 
-import type { AppState, User, Asset, Transaction, Debt } from '../../types';
+import { DEBT_KINDS } from '../../types';
+import type { AppState, User, Asset, Transaction, Debt, DebtKind } from '../../types';
 import { annualSalaryToMonthly } from '../../utils/salary';
 import { RULE_CATEGORIES, buildCategoryCanonicalMap, resolveCandidateCategory } from '../../services/import/categoryRules';
 import { computeCashLedgerDetailed } from '../../services/startingCash';
@@ -123,6 +124,19 @@ export interface DebtPayload {
     category?: Debt['category'];
     amortizationYears?: number;
     rateProvider?: string;
+    /** [DEBT-MCP-PARITE] Type précis (mortgage/auto-lease/heloc/carte…) — câblé dans le moteur
+     *  (`Debt.kind: DebtKind`) et l'UI DebtManager depuis W5.3, mais absent d'ici jusqu'ici.
+     *  ⚠️ Nommé `debtKind` et NON `kind` : ce champ `DebtPayload.kind` porte déjà le discriminant
+     *  `'debt'` utilisé par le switch de routage d'`applyDocument` — un deuxième `kind` de même nom
+     *  l'aurait ÉCRASÉ à la construction du payload (`{ kind: 'debt', ...args }`), cassant le
+     *  routage de TOUS les documents, pas seulement les dettes. */
+    debtKind?: DebtKind;
+    /** [DEBT-MCP-PARITE] Début du prêt/bail (YYYY-MM-DD) — câblé dans le moteur depuis
+     *  `[DETTE-DATES]` (2026-08-19) et l'UI DebtManager, mais absent d'ici jusqu'ici. Absent ⇒ la
+     *  dette a toujours couru (comportement historique, inchangé). */
+    startDate?: string;
+    /** [DEBT-MCP-PARITE] Fin du terme (YYYY-MM-DD), même sémantique que `startDate`. */
+    termEndDate?: string;
 }
 
 /** [MCP-DIRECT-EDIT] Ajustement DIRECT du solde de liquidités (cash) à une cible. Le cash n'est PAS un
@@ -832,13 +846,21 @@ function applyBrokerStatement(state: AppState, doc: BrokerStatementPayload): App
 }
 
 // ── Dette (prêt auto, carte, perso…) — ajout OU mise à jour par nom ──────────
-// ⚠️ Sémantique moteur : les dettes n'ont PAS de date de début (servies dès le MOIS 0 de la
-// projection, cf CLAUDE.md § dettes datées). Ce kind est donc réservé aux dettes DÉJÀ CONTRACTÉES
-// (l'achat a eu lieu, le solde est réel). Un achat FUTUR/hypothétique doit passer par
-// `simulate_what_if` (qui modélise l'événement daté) — la description du tool le dit à Claude.
+// ⚠️ [DEBT-MCP-PARITE, 2026-08-21] Ce commentaire affirmait « les dettes n'ont PAS de date de
+// début » — FAUX depuis `[DETTE-DATES]` (2026-08-19) : `Debt.startDate`/`termEndDate` existent et
+// sont servis par le moteur (`debtSchedule.ts`). Ce tool reste réservé aux dettes DÉJÀ
+// CONTRACTÉES (le solde fourni doit être réel AUJOURD'HUI) ; `startDate` sert à dater une dette
+// contractée dans le PASSÉ (pour que le graphe Futur ne la montre pas avant son vrai début) ou
+// SIGNÉE mais dont le premier paiement est encore à venir — pas à modéliser un achat hypothétique,
+// qui reste le rôle de `simulate_what_if`.
 
 /** Clé de dédup/mise à jour : nom normalisé (le retry d'un même ajout ne duplique pas). */
 const debtKey = (name: string): string => String(name || '').trim().toLowerCase();
+
+/** [DEBT-MCP-PARITE] Date complète exigée (contrairement à `GOAL_DEADLINE_RE` plus permissif) :
+ *  une date de dette vient d'un document réel (contrat, relevé) ou d'une saisie DebtManager
+ *  (`<input type="date">`), toujours au jour près — jamais un YYYY-MM approximatif. */
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Catégorie inférée du nom quand absente (auto/études/carte → sinon Personal).
  *  Accents strippés une fois (« véhicule » matche `vehic`) ; les mots COURTS sont ancrés `\b…\b` —
@@ -872,6 +894,23 @@ function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
     if (doc.amortizationYears != null && (!Number.isFinite(doc.amortizationYears) || doc.amortizationYears <= 0 || doc.amortizationYears > 50)) {
         throw new Error(`Amortissement invalide (${doc.amortizationYears} ans). Rien n'a été écrit.`);
     }
+    // [DEBT-MCP-PARITE] Même ceinture que balance/interestRate : `kind` est un ENUM Zod côté tool,
+    // mais l'IMPORT PDF (`applyDebt` appelé directement, sans passer par le schéma Zod du tool MCP —
+    // même leçon MCP-WHATIF que ci-dessus) peut fournir n'importe quelle chaîne. Un `kind` inconnu
+    // est REJETÉ plutôt que silencieusement accepté (il pilote `debtAmortization`/l'allowlist à
+    // venir — un kind halluciné y serait invisible, pas juste cosmétique).
+    if (doc.debtKind != null && !DEBT_KINDS.includes(doc.debtKind)) {
+        throw new Error(`Type de dette inconnu (${doc.debtKind}). Valeurs valides : ${DEBT_KINDS.join(', ')}. Rien n'a été écrit.`);
+    }
+    if (doc.startDate != null && !ISO_DATE_RE.test(doc.startDate)) {
+        throw new Error(`Date de début invalide (${doc.startDate}), format attendu YYYY-MM-DD. Rien n'a été écrit.`);
+    }
+    if (doc.termEndDate != null && !ISO_DATE_RE.test(doc.termEndDate)) {
+        throw new Error(`Date de fin invalide (${doc.termEndDate}), format attendu YYYY-MM-DD. Rien n'a été écrit.`);
+    }
+    if (doc.startDate != null && doc.termEndDate != null && doc.termEndDate < doc.startDate) {
+        throw new Error(`La date de fin (${doc.termEndDate}) précède la date de début (${doc.startDate}). Rien n'a été écrit.`);
+    }
 
     const debts = (state.debts ?? []).map((d) => ({ ...d })) as Debt[];
     const changes: Change[] = [];
@@ -895,6 +934,9 @@ function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
         if (doc.category) apply('category', doc.category);
         apply('amortizationYears', doc.amortizationYears);
         apply('rateProvider', doc.rateProvider);
+        apply('kind', doc.debtKind);
+        apply('startDate', doc.startDate);
+        apply('termEndDate', doc.termEndDate);
         const nextState: AppState = { ...state, debts, lastUpdate: Date.now() };
         const summary = changes.length
             ? `Dette « ${d.name} » mise à jour : ${changes.length} champ(s).`
@@ -920,6 +962,9 @@ function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
         category,
         ...(doc.amortizationYears != null ? { amortizationYears: doc.amortizationYears } : {}),
         ...(doc.rateProvider ? { rateProvider: doc.rateProvider } : {}),
+        ...(doc.debtKind != null ? { kind: doc.debtKind } : {}),
+        ...(doc.startDate != null ? { startDate: doc.startDate } : {}),
+        ...(doc.termEndDate != null ? { termEndDate: doc.termEndDate } : {}),
     };
     debts.push(newDebt);
     changes.push({

@@ -4,6 +4,39 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-21 (suite 127) — `[DEBT-MCP-PARITE]` : parité dettes MCP/PDF + A00b clos
+> Reprise après pause. **A00b vérifié et CLOS** : `list_deployments` Vercel confirme un déploiement
+> `production READY` sur `3bbc380` (#690), qui contient `3dd9d9d` (#687) dans son historique — le
+> lot `[PASSE-REEL-DETTE-1]` de la session précédente est bien EN LIGNE (le rattrapage vient
+> probablement de #690, qui a coupé les previews `claude/*` et libéré le quota Vercel partagé).
+> ⚠️ Note en passant : une branche `claude/eng-divorce-coherent-v2` (2 commits, dernier daté
+> 2026-08-13) traîne sur le repo SANS PR ouverte — 111 commits de retard sur `main`, clairement
+> abandonnée/dépassée par les sessions 121-126. Ni supprimée ni retravaillée (juste signalée) ;
+> Marc peut la nettoyer ou dire s'il faut en reprendre le contenu.
+>
+> **Lot livré** : `kind`/`startDate`/`termEndDate` de `Debt` — câblés dans le moteur depuis
+> `[DETTE-DATES]` et l'UI DebtManager depuis un mois — étaient absents de l'import PDF
+> (`mcp/ingest/applyDocument.ts`, `DebtPayload`) ET de l'appel MCP direct (`applyDebt.spec.ts`),
+> qui affirmait même encore « les dettes n'ont pas de date de début » (faux depuis `[DETTE-DATES]`,
+> 2026-08-19). Corrigé aux deux endroits + validations (kind contre une liste fermée, dates
+> ISO strictes, cohérence chronologique startDate ≤ termEndDate).
+> ⚠️ **Piège rencontré en cours de route** (voir `docs/CONVENTIONS.md`,
+> `UN-CHAMP-PAYLOAD-NE-PEUT-PAS-PORTER-LE-NOM-DU-DISCRIMINANT`) : le nouveau champ ne peut PAS
+> s'appeler `kind` sur `DebtPayload`, qui porte déjà `kind: 'debt'` (discriminant de routage
+> `applyDocument`) — collision qui aurait cassé le routage de TOUS les documents, pas seulement
+> des dettes. Renommé `debtKind` côté payload, mappé vers `Debt.kind` à l'écriture. Profité de
+> l'occasion pour établir `types.ts` `DEBT_KINDS` (tableau `as const`) comme source UNIQUE des
+> valeurs de `DebtKind`, réutilisée par le `z.enum` du tool MCP ET la garde runtime.
+> 9 tests neufs (parité ajout/MAJ, rejets kind/date invalides, cohérence chronologique, garde Zod).
+> Gate complet vert : **4 621 tests / 415 fichiers**, build inclus.
+> **Nouveau backlog** : Marc a envoyé une vague de retours Budget/Transactions/Investissements
+> (bannière Drive qui flashe, sync Budget↔Transactions à auditer, signe des entrées d'argent en
+> catégorie dépense, budget prévu qui affiche des valeurs impossibles, Réel/Prévisionnel/Objectif,
+> refonte Charges fixes & abonnements, retrait onglet Objectifs, fusion Santé→Futur, cours exact de
+> TOUTES les actions, correction des positions du portefeuille avec un historique d'achat précis)
+> — 11 tickets ajoutés en tête de `BACKLOG.md`, section `🧭 Vague Budget/Transactions/
+> Investissements`, AUCUN cadré ni codé (demande explicite : « à rajouter au backlog »).
+>
 > ## 🟡 Session 2026-08-21 (suite 126) — `[PASSE-REEL-DETTE-1]` : gating par dette dans le passé (mergé, déploiement PROD bloqué)
 > Branche `claude/passe-reel-dette-1` (depuis main post-#686), PR #687. Demande Marc, en creusant
 > depuis « je veux seter la date de ma dette » (déjà livré par `[DETTE-DATES]`) : le graphe Futur

@@ -5251,3 +5251,35 @@ ici : choisir une dette dont le solde est structurellement trop gros pour qu'AUC
 plausible ne l'éteigne en un mois (`UN-TEST-QUI-ECHOUE-N-A-PAS-FORCEMENT-RAISON`, même famille :
 un test peut aussi ÉCHOUER — ou sembler réussir — pour la MAUVAISE raison si son scénario emprunte
 une branche de stratégie qu'il n'avait pas anticipée).
+
+## Leçon du lot `[DEBT-MCP-PARITE]` — 2026-08-21
+
+### `UN-CHAMP-PAYLOAD-NE-PEUT-PAS-PORTER-LE-NOM-DU-DISCRIMINANT` — `kind` voulait dire deux choses
+
+En câblant `kind`/`startDate`/`termEndDate` dans `DebtPayload` (import PDF, `mcp/ingest/
+applyDocument.ts`) pour qu'ils atteignent enfin `Debt.kind` (le type précis de dette, `DebtKind`),
+mon premier jet ajoutait un champ nommé `kind?: DebtKind` sur `DebtPayload` — qui a DÉJÀ un champ
+`kind: 'debt'`, le DISCRIMINANT utilisé par le switch de routage d'`applyDocument` (`payslip` /
+`bank_statement` / `debt` / …). Deux conséquences, l'une bloquante et visible, l'autre silencieuse
+et invisible :
+1. **TypeScript refuse la déclaration** (deux membres `kind` de types incompatibles sur la même
+   interface) — attrapée immédiatement au typecheck, avant tout test.
+2. **Si elle avait compilé quand même** (ex. via un type plus permissif), `toDocument: (args) =>
+   ({ kind: 'debt', ...args })` aurait laissé `...args` ÉCRASER `kind: 'debt'` par la valeur fournie
+   pour le type de dette (ex. `'auto-lease'`) — le switch de routage aurait alors reçu un `doc.kind`
+   qui n'est PLUS `'debt'`, et le document ne serait jamais arrivé à `applyDebt` (ou pire, aurait
+   matché une AUTRE branche par accident de valeur). Un bug de ROUTAGE de tous les documents,
+   pas seulement des dettes — largement hors du rayon qu'un test ciblé sur les dettes aurait pensé
+   à vérifier.
+
+**Règle générale** : avant de nommer un nouveau champ optionnel sur un type qui porte DÉJÀ un
+discriminant de union (`kind`/`type`/`variant`…), vérifier que le nom choisi n'est PAS déjà pris
+par ce discriminant — même si le champ existant a un type totalement différent (ici `'debt'`
+littéral vs `DebtKind` union). Le nom du champ métier sur l'ENTITÉ finale (`Debt.kind`) n'a pas à
+dicter le nom du champ correspondant sur le PAYLOAD d'entrée s'il collisionne avec un nom déjà
+utilisé à ce niveau — renommer côté payload (`debtKind`) et mapper explicitement vers `Debt.kind`
+à l'écriture (`apply('kind', doc.debtKind)`) coûte une ligne, la collision aurait coûté un bug de
+routage silencieux. Profité de l'occasion pour établir `types.ts` `DEBT_KINDS` (tableau `as const`)
+comme source UNIQUE des valeurs de `DebtKind` — dérivé une fois, réutilisé tel quel par le `z.enum`
+du tool MCP ET par la garde runtime d'`applyDebt` (leçon indexée au CLAUDE.md : une valeur re-codée
+en dur ailleurs dérive en silence).

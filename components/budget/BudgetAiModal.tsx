@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { logError } from '../../services/errorLogger';
 import { Modal } from '../ui/Modal';
 import { Icon } from '../ui/Icon';
-import { chatStream } from '../../services/claude';
+import { chatStream, safeJsonValidate, MODEL_HAIKU } from '../../services/claude';
 import { z } from 'zod';
 import { sanitizePromptText, wrapUserData, PROMPT_DATA_ISOLATION_NOTE } from '../../utils/promptSafety';
 
@@ -68,20 +68,26 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
                 for await (const chunk of chatStream(
                     [{ role: 'user', content: buildPrompt(payload) }],
                     apiKey,
-                    { system: QUEBEC_SYSTEM, maxTokens: 1024, temperature: 0.7, signal: controller.signal },
+                    // [BUDGET-AI-WRONG-MODEL] Haiku EXPLICITE : sans `model`, `chatStream` retombe
+                    // sur MODEL_SONNET. Les 5 autres surfaces de même nature (catégorisation,
+                    // rééquilibrage, abonnements, conseil immo, optimisation couple) passent toutes
+                    // Haiku — celle-ci était la seule Haiku-éligible à payer le tarif Sonnet.
+                    { model: MODEL_HAIKU, system: QUEBEC_SYSTEM, maxTokens: 1024, temperature: 0.7, signal: controller.signal },
                 )) {
                     if (cancelled) return;
                     accumulator += chunk;
                     setStreamingText(accumulator);
                 }
-                // Stream complet : parse le JSON final
-                const jsonMatch = accumulator.match(/\[[\s\S]*\]/);
-                if (jsonMatch) {
-                    const parsed = JSON.parse(jsonMatch[0]);
-                    const validated = RecosSchema.parse(parsed);
+                // [BUDGET-AI-DUP-PARSING] `safeJsonValidate` (services/claude.ts) au lieu d'un
+                // parsing réimplémenté ici : il gère déjà les fences ```json, la prose autour, et
+                // rend `null` au lieu de JETER sur un JSON malformé — l'ancienne version faisait
+                // remonter l'exception au `catch` global, qui affichait « erreur » et perdait TOUT
+                // le texte déjà streamé alors qu'il était lisible.
+                const validated = safeJsonValidate(accumulator, RecosSchema);
+                if (validated) {
                     if (!cancelled) setRecommendations(validated);
                 } else {
-                    // Pas de JSON détecté : fallback affichage brut
+                    // Rien d'exploitable en JSON : on montre le texte brut plutôt que rien.
                     if (!cancelled) setRecommendations([accumulator]);
                 }
             } catch (err) {

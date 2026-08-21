@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-21 (suite 128) — Lot « échecs silencieux IA » : 6 items XS de l'audit
+> **Cadrage Marc (7 réponses en 2 batches)** : priorité aux **120 items d'audit**, traités **les
+> plus rapides d'abord** ; rythme « ne me montre que les décisions et les problèmes » (donc
+> j'enchaîne les lots sans compte-rendu intermédiaire) ; correction du portefeuille = **montrer
+> l'écart AVANT** de toucher quoi que ce soit ; onglet Objectifs = supprimer **onglet ET données** ;
+> « Prévisionnel » du budget = **fin de mois estimée** (réel + reste à venir, extrapolé) ;
+> Charges fixes = les **4** manques cochés (détection, analyse, interactivité, lien au budget).
+> Ces réponses cadrent des tickets encore OUVERTS — voir `BACKLOG.md` § Vague Budget.
+>
+> **Lot livré** (1er de la passe audit) : 6 items XS regroupés par TERRAIN (surfaces IA + coffre de
+> clés) plutôt que par gravité. `[AI-UNBOUNDED-CONFIDENCE]` (bornes Zod + clamp d'affichage — les
+> DEUX : le schéma protège ce qui entre, le clamp ce qui est déjà persisté),
+> `[BUDGET-AI-WRONG-MODEL]` (seule surface Haiku-éligible à payer le tarif Sonnet),
+> `[TX-STALE-MODEL-LABEL]` (libellé dérivé via `modelLabelFromId` + `CATEGORIZE_MODEL_ID`, lu par le
+> site d'appel lui-même → plus de dérive possible), `[REBALANCE-SILENT-FAIL]` (patron `hasError`),
+> `[BUDGET-AI-DUP-PARSING]` (`safeJsonValidate` au lieu d'un parsing local qui JETAIT et perdait le
+> texte streamé), `[KEYSTORE-DECRYPT-FAILED-SILENCIEUX]` (`decrypt_failed` ≠ `empty`).
+> 5 tests neufs, **3 prouvés rouges par perturbation**. Gate vert : **4 629 tests / 416 fichiers**.
+>
 > ## 🟢 Session 2026-08-21 (suite 127) — `[DEBT-MCP-PARITE]` : parité dettes MCP/PDF + A00b clos
 > Reprise après pause. **A00b vérifié et CLOS** : `list_deployments` Vercel confirme un déploiement
 > `production READY` sur `3bbc380` (#690), qui contient `3dd9d9d` (#687) dans son historique — le

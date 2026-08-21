@@ -39,6 +39,8 @@
  * - Clé non-extractible persistée dans IndexedDB (structured-clone)
  */
 
+import { logError } from './errorLogger';
+
 export interface PersistedApiKeys {
     anthropic: string;
     finnhub: string;
@@ -256,6 +258,19 @@ export const saveApiKeys = async (keys: PersistedApiKeys): Promise<void> => {
                     merged[field] = existing.keys[field];
                 }
             }
+        } else if (existing?.status === 'decrypt_failed') {
+            // [KEYSTORE-DECRYPT-FAILED-SILENCIEUX] Classe REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION :
+            // `empty` est le cas NORMAL (premier usage — rien à préserver, silence légitime), mais
+            // `decrypt_failed` signifie que le coffre EXISTE et n'a pas pu être lu (clé de device
+            // tournée, blob altéré). L'écriture continue — refuser bloquerait l'utilisateur hors de
+            // ses propres clés — mais les champs device-local NON réécrits ici sont alors perdus
+            // sans que personne ne l'apprenne. On le trace.
+            logError({
+                source: 'storage',
+                severity: 'warning',
+                message: 'Coffre de clés illisible à la sauvegarde : les champs device-local existants n’ont pas pu être préservés',
+                context: { preservableFields: DEVICE_LOCAL_KEY_FIELDS, providedFields: Object.keys(keys) },
+            });
         }
         const blob = await encryptJson(key, merged);
         localStorage.setItem(LS_BLOB_KEY, blob);

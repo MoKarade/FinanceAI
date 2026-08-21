@@ -215,6 +215,10 @@ export const Investments: React.FC<InvestmentsProps> = ({
     // Phase E.7 — justifications IA des actions de rééquilibrage
     const [iaJustifications, setIaJustifications] = useState<Map<string, string>>(new Map());
     const [isFetchingJustifications, setIsFetchingJustifications] = useState(false);
+    // [REBALANCE-SILENT-FAIL] `getRebalanceJustifications` rend `[]` sur ERREUR comme sur « rien à
+    // dire » — sans état d'erreur, un 429 ou une clé invalide se lisait « l'IA n'avait rien à
+    // ajouter ». Même patron que CoupleOptimizationCard / RealEstateAdviceCard.
+    const [justificationsError, setJustificationsError] = useState(false);
     // Phase E.9 — modal d'ajout manuel d'une action
     const [showAddStockForm, setShowAddStockForm] = useState(false);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // suppression de position (2 clics)
@@ -1033,6 +1037,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         type="button"
                                         onClick={async () => {
                                             setIsFetchingJustifications(true);
+                                            setJustificationsError(false);
                                             const inputs: RebalanceActionInput[] = rebalancingActions.map(a => ({
                                                 id: a.id,
                                                 label: a.label,
@@ -1042,9 +1047,17 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                 diffAmount: a.diffAmount,
                                             }));
                                             const justifications = await getRebalanceJustifications(inputs, claudeKey);
-                                            const map = new Map<string, string>();
-                                            justifications.forEach(j => map.set(j.actionId, j.reason));
-                                            setIaJustifications(map);
+                                            // [REBALANCE-SILENT-FAIL] Un tableau VIDE ne peut pas
+                                            // être un succès ici : on a demandé une justification
+                                            // pour au moins une action (`hasActions` garde le
+                                            // bouton). Vide ⇒ l'appel a échoué, on le DIT.
+                                            if (justifications.length === 0) {
+                                                setJustificationsError(true);
+                                            } else {
+                                                const map = new Map<string, string>();
+                                                justifications.forEach(j => map.set(j.actionId, j.reason));
+                                                setIaJustifications(map);
+                                            }
                                             setIsFetchingJustifications(false);
                                         }}
                                         disabled={isFetchingJustifications}
@@ -1052,6 +1065,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     >
                                         {isFetchingJustifications ? 'Analyse…' : 'Pourquoi ces actions ?'}
                                     </button>
+                                )}
+                                {justificationsError && (
+                                    <p role="status" className="text-danger-400 text-tiny">
+                                        Erreur lors de la génération. Vérifie ta clé Anthropic.
+                                    </p>
                                 )}
                                 <button
                                     onClick={() => setIsRebalanceEdit(!isRebalanceEdit)}

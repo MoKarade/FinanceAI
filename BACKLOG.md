@@ -1159,7 +1159,7 @@
   PRÉ-EXISTANTE des paliers étendue aux crédits — signe dépendant du profil : consigner comme
   limite assumée (FISCAL_REFERENCE §4), ne PAS « corriger » à l'aveugle. [À consigner]
 
-- [ ] **`[KEYSTORE-DECRYPT-FAILED-SILENCIEUX]`** (XS, MOYEN — revue #676, silent-failure-hunter,
+- [x] **`[KEYSTORE-DECRYPT-FAILED-SILENCIEUX]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, MOYEN — revue #676, silent-failure-hunter,
   HORS diff : préexistant) — `services/secureKeyStore.ts:252-253` : à la sauvegarde de clés,
   `existing?.status === 'ok'` traite `decrypt_failed` (coffre corrompu → champs device-local
   `fintable` NON préservés) exactement comme `empty` (rien à préserver), sans trace. Classe
@@ -1320,28 +1320,28 @@
 
 ### 🔴 IA / Anthropic
 
-- [ ] **`[AI-UNBOUNDED-CONFIDENCE]`** (XS, ÉLEVÉ) — `CategorizeItemSchema` / `SubscriptionItemSchema`
+- [x] **`[AI-UNBOUNDED-CONFIDENCE]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, ÉLEVÉ) — `CategorizeItemSchema` / `SubscriptionItemSchema`
   / `CoupleOptimizationStrategySchema` valident `confidence`, `averageAmount`, `dayOfMonth`,
   `yearlyCost` avec `z.number()` **nu** (`services/claude.ts:60-76`), alors que `PayslipSchema` a été
   durci (`.positive().finite()`) pour exactement ce risque. Une confiance hallucinée traverse
   `safeJsonValidate` et s'affiche verbatim (`components/Transactions.tsx:893-894`, 985-986) :
   « Confiance: 9999 % ». Correctif : `.min(0).max(100)` sur `confidence`, `.nonnegative().finite()`
   sur les montants, + clamp défensif à l'affichage. [MESURÉ, reconfirmé par Claude]
-- [ ] **`[BUDGET-AI-WRONG-MODEL]`** (XS, MOYEN — coût ; unifie `[AI-BUDGETMODAL-MODEL-COST]`) — `components/budget/BudgetAiModal.tsx:68-72`
+- [x] **`[BUDGET-AI-WRONG-MODEL]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, MOYEN — coût ; unifie `[AI-BUDGETMODAL-MODEL-COST]`) — `components/budget/BudgetAiModal.tsx:68-72`
   appelle `chatStream` **sans `model`** → retombe sur `MODEL_SONNET` (`services/claude.ts:261`). Or
   les 4 surfaces de même nature (rééquilibrage, abonnements, conseil immo, optimisation couple)
   passent toutes Haiku explicitement. Seule surface Haiku-éligible qui paie le tarif Sonnet, sur la
   clé BYOK de Marc. Correctif : passer `model: MODEL_HAIKU`. [MESURÉ, reconfirmé par Claude]
-- [ ] **`[TX-STALE-MODEL-LABEL]`** (XS, FAIBLE) — `components/Transactions.tsx:376` affiche
+- [x] **`[TX-STALE-MODEL-LABEL]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE) — `components/Transactions.tsx:376` affiche
   « Modele: Claude Sonnet 4.6 » pendant la catégorisation, alors que `categorizeBatch` utilise
   `MODEL_HAIKU` (`services/claude.ts:481`). Étiquette jamais mise à jour lors de la bascule.
   Correctif : dériver le libellé de la table `services/aiChat/models.ts`. [MESURÉ, reconfirmé]
-- [ ] **`[REBALANCE-SILENT-FAIL]`** (XS, MOYEN) — `components/Investments.tsx:1024-1039` :
+- [x] **`[REBALANCE-SILENT-FAIL]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, MOYEN) — `components/Investments.tsx:1024-1039` :
   `getRebalanceJustifications` rend `[]` sur erreur, et le composant ne pose **aucun** état d'erreur
   — contrairement à `CoupleOptimizationCard` / `RealEstateAdviceCard` qui font
   `if (result.length === 0) setHasError(true)`. Un 429 se lit « l'IA n'avait rien à dire ».
   Correctif : répliquer le pattern `hasError`. [MESURÉ]
-- [ ] **`[BUDGET-AI-DUP-PARSING]`** (XS, FAIBLE) — `components/budget/BudgetAiModal.tsx:78-86`
+- [x] **`[BUDGET-AI-DUP-PARSING]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE) — `components/budget/BudgetAiModal.tsx:78-86`
   réimplémente son parsing JSON (`match(/\[[\s\S]*\]/)` + `JSON.parse` + `.parse`) au lieu de
   `safeJsonValidate` (déjà testé pour les fences ```json et la prose autour). Un JSON malformé jette
   tout le texte streamé. [MESURÉ]

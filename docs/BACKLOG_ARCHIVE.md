@@ -10,6 +10,45 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — Lot « échecs silencieux IA » : 6 items XS de l'audit 2026-08-19
+
+> Premier lot de la passe sur les 120 items d'audit (ordre choisi par Marc : les plus rapides
+> d'abord). Six items XS regroupés par TERRAIN (les surfaces IA et le coffre de clés) plutôt que par
+> gravité — un lot cohérent se relit et se teste ensemble.
+
+- [x] **`[AI-UNBOUNDED-CONFIDENCE]`** (XS, ÉLEVÉ) — `CategorizeItemSchema`, `SubscriptionItemSchema`
+  et `CoupleOptimizationStrategySchema` validaient leurs nombres avec `z.number()` NU, alors que
+  `PayslipSchema` avait été durci pour ce risque exact. Une confiance hallucinée traversait
+  `safeJsonValidate` et s'affichait verbatim (« Confiance : 9999 % »). Bornes posées
+  (`confidence` ∈ [0,100], montants `.nonnegative().finite()`, `dayOfMonth` ∈ [1,31] entier) **plus**
+  un clamp d'AFFICHAGE (`displayConfidence`) : les deux sont nécessaires — le schéma protège ce qui
+  ENTRE, le clamp protège ce qui est DÉJÀ PERSISTÉ (aucune revalidation rétroactive à la lecture).
+- [x] **`[BUDGET-AI-WRONG-MODEL]`** (XS, MOYEN — coût) — `BudgetAiModal` appelait `chatStream` sans
+  `model` → défaut Sonnet, alors que les 5 autres surfaces de même nature passent Haiku
+  explicitement. Seule surface Haiku-éligible à payer le tarif Sonnet sur la clé BYOK de Marc.
+- [x] **`[TX-STALE-MODEL-LABEL]`** (XS, FAIBLE) — « Modele: Claude Sonnet 4.6 » affiché en dur
+  pendant une catégorisation qui tourne sur Haiku depuis la bascule. Libellé désormais DÉRIVÉ :
+  `CATEGORIZE_MODEL_ID` (exporté, et lu par le site d'appel lui-même) + `modelLabelFromId()`
+  (nouveau, dans `services/aiChat/models.ts`, la source unique des modèles). Changer de modèle met
+  le libellé à jour du même geste, par construction.
+- [x] **`[REBALANCE-SILENT-FAIL]`** (XS, MOYEN) — `getRebalanceJustifications` rend `[]` sur ERREUR
+  comme sur « rien à dire », et `Investments` ne posait aucun état d'erreur : un 429 se lisait
+  « l'IA n'avait rien à ajouter ». Patron `hasError` de `CoupleOptimizationCard` répliqué. Le vide
+  ne peut pas être un succès ici : le bouton n'existe que si `hasActions`.
+- [x] **`[BUDGET-AI-DUP-PARSING]`** (XS, FAIBLE) — parsing JSON réimplémenté sur place au lieu de
+  `safeJsonValidate` (qui gère déjà les fences ```json et la prose autour). L'ancienne version
+  JETAIT sur un JSON malformé, ce qui perdait TOUT le texte déjà streamé alors qu'il était lisible.
+- [x] **`[KEYSTORE-DECRYPT-FAILED-SILENCIEUX]`** (XS, MOYEN) — à la sauvegarde de clés,
+  `decrypt_failed` (coffre existant mais illisible → champs device-local perdus) était traité
+  exactement comme `empty` (premier usage, rien à préserver), sans trace. Classe
+  `REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION` : l'écriture continue (refuser bloquerait l'utilisateur
+  hors de ses propres clés) mais la perte est désormais journalisée.
+
+5 tests neufs (`tests/services/aiSchemaBounds.test.ts`), bout-en-bout avec le SDK mocké — ces
+schémas ne sont pas exportés, un test sur une copie locale ne prouverait rien. **3 des 5 prouvés
+rouges par perturbation** (bornes retirées du vrai fichier, restauré vérifié au `git diff`).
+Gate complet vert : 4 629 tests / 416 fichiers, build inclus.
+
 ## 2026-08-21 — `[DEBT-MCP-PARITE]` : parité kind/dates de dette entre PDF, MCP direct et moteur/UI
 
 - [x] **`[DEBT-MCP-PARITE]`** (S) — ✅ PR #? (à compléter au merge).

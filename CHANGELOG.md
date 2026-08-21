@@ -6,6 +6,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-21 (l'IA ne peut plus afficher un chiffre impossible ni échouer en silence)
+
+- Un score de confiance de catégorisation ne peut plus dépasser 100 % ni descendre sous 0 :
+  une valeur aberrante rendue par le modèle est refusée au lieu de s'afficher telle quelle.
+- Quand la génération des justifications de rééquilibrage échoue (clé invalide, quota dépassé),
+  un message le dit — avant, ça se lisait comme « l'IA n'avait rien à ajouter ».
+- Le diagnostic de budget par IA tourne désormais sur le modèle économique, comme les cinq autres
+  fonctions du même genre : il était le seul à payer le tarif du modèle plus cher.
+- Le diagnostic de budget n'efface plus sa réponse quand elle est mal formée : le texte reçu reste
+  affiché au lieu de disparaître derrière un message d'erreur.
+- Pendant la catégorisation, le nom du modèle affiché est celui réellement utilisé (il indiquait
+  encore l'ancien depuis un changement de modèle).
+- Si le coffre de clés API est illisible au moment d'en enregistrer une nouvelle, la perte des
+  réglages qu'il contenait est journalisée au lieu de passer inaperçue.
+
 ## [unreleased] — 2026-08-21 (l'import de dette — PDF et assistant Claude — connaît enfin le type et les dates)
 
 - L'ajout/mise à jour d'une dette par PDF (relevé, contrat) ou par l'assistant Claude en session

@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-21 (suite 131) — `[ENV-NODE-NON-DECLARE]` : le TYPECHECK devient la garde
+> `.nvmrc` + `engines.node: 20.x` + les 4 workflows sur `node-version-file` (plus aucun littéral de
+> version dupliqué). Garde neuve `tests/nodeVersionDeclared.test.ts` (4 assertions, 3 perturbations
+> prouvées rouges, 2 anti-vacuités).
+> ⚠️ **Le vrai coupable n'était AUCUN des deux que le ticket nommait.** `engines`/`.nvmrc` sont
+> DÉCLARATIFS : sans `.npmrc` `engine-strict` (absent, et l'ajouter casserait le dev en Node 22),
+> `engines` n'est qu'un avertissement npm — aucun des deux n'aurait empêché l'incident `globSync`.
+> Ce qui rend la classe impossible : **`@types/node` était en `^22` face à une CI en Node 20**, donc
+> le typecheck promettait des API absentes du runtime CI. Aligné sur `^20` → `tsc` refuse désormais
+> l'API trop récente À L'ÉCRITURE. **Mesuré avant** : le typecheck passe sous `@types/node@20`, donc
+> aucun code n'utilisait d'API 22+ (garde posée sur un arbre propre, aucune dette masquée).
+> Leçon : face à un « vert local / rouge distant », distinguer l'artefact DÉCLARATIF de
+> l'EXÉCUTOIRE — corriger le déclaratif rassure, seul l'exécutoire protège.
+> ⚠️ Le conteneur de dev reste en Node 22 : `engines` n'étant pas strict, rien ne casse localement.
+> Gate vert : **4 638 tests / 417 fichiers**.
+>
 > ## 🟢 Session 2026-08-21 (suite 130) — `[ASSETLOC-YEAR-2026]` : l'année fiscale devient EXIGÉE
 > `assetLocation.ts` lisait le marginal avec `input.year ?? 2026` et l'unique appelant de prod ne
 > passait jamais `year` → barème 2026 à perpétuité. **Mesuré AVANT de coder** : écart nul sur la

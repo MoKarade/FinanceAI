@@ -4363,6 +4363,40 @@ compatibilité est déjà prouvée par la CI.
 chaîne d'outils que Marc n'a pas demandée, et elle mérite sa propre décision. Tracée en
 `[ENV-NODE-NON-DECLARE]`.
 
+#### Suite, 2026-08-21 : ce n'est pas `engines`/`.nvmrc` qui protège — c'est `@types/node`
+
+`[ENV-NODE-NON-DECLARE]` livré. En le faisant, une chose s'est révélée que le ticket n'avait pas
+vue, et qui renverse la priorité des trois correctifs qu'il listait :
+
+**`engines` et `.nvmrc` DÉCRIVENT la cible, ils ne l'IMPOSENT à rien.** Sans `.npmrc`
+`engine-strict=true` (absent de ce dépôt, et l'ajouter casserait le dev en Node 22), `engines.node`
+n'est qu'un avertissement au `npm install`. `.nvmrc` ne fait rien du tout tant qu'un outil ne le lit
+pas. Aucun des deux n'aurait empêché l'incident `globSync` : au moment où on ÉCRIT `globSync`, rien
+ne rougit.
+
+**Ce qui rend la classe entière impossible, c'est d'aligner les TYPES sur la version EXÉCUTÉE.**
+`@types/node` était en `^22` alors que la CI tourne en Node 20 : le typecheck promettait donc des
+API que le runtime de la CI n'a pas. Repassé en `^20`, `tsc` refuse `globSync` **à l'écriture**, là
+où le développeur peut encore corriger — la vérification remonte du runtime de la CI au clavier.
+
+**Règle générale** : quand un écart d'environnement produit un « vert local / rouge distant », se
+demander lequel des artefacts est *déclaratif* (il documente une intention) et lequel est *exécutoire*
+(il fait échouer quelque chose). Corriger le déclaratif rassure ; seul l'exécutoire protège. Ici :
+`engines`/`.nvmrc` = déclaratif, `@types/node` = exécutoire. Le ticket ne nommait que le déclaratif.
+
+**Corollaire, sur la façon de le vérifier** : avant d'aligner `@types/node` vers le BAS, mesurer que
+le typecheck passe quand même — s'il rougit, les erreurs révélées SONT le périmètre réel du travail
+(« resserrer le scan-garde AVANT de coder le fix »). Ici il passait : aucune API 22+ n'était
+employée, donc la garde se pose sur un arbre propre et ne masque aucune dette. Ne jamais rétrograder
+une déclaration de types en supposant que « ça devrait aller ».
+
+**Corollaire, sur la garde** : `tests/nodeVersionDeclared.test.ts` vérifie que les trois
+déclarations CONCORDENT, sans figer le numéro 20 — passer à Node 22 reste possible, mais exige de
+bouger les trois ensemble (`CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`, appliqué à la version de
+Node). Et deux anti-vacuités sont posées sur le balayage des workflows : au moins un fichier
+parcouru, au moins quatre pointeurs trouvés — sans elles, supprimer TOUS les `setup-node` rendrait
+la garde verte.
+
 ### `MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE` — j'ai cité un fichier que je n'avais jamais écrit
 
 En armant un point de contrôle avant d'attendre un merge, je me suis écrit à moi-même :

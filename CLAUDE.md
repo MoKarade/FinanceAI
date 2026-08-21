@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 634 tests** Vitest
-(416 fichiers de test, mesuré le 2026-08-21). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 638 tests** Vitest
+(417 fichiers de test, mesuré le 2026-08-21). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -668,6 +668,13 @@ des workflows — pas le `node -v` local. Symptôme : `TypeError: X is not a fun
 Le correctif est presque toujours de **réutiliser le marcheur/patron déjà employé par le dépôt**
 (ici `readdirSync(dir, { recursive: true })`), dont la compatibilité est déjà prouvée par la CI
 (`GATE-LOCAL-VERT-CI-ROUGE-PAR-VERSION-DE-NODE`).
+✅ **Réglé le 2026-08-21** (`[ENV-NODE-NON-DECLARE]`) : `.nvmrc` + `engines.node` + les 4 workflows
+sur `node-version-file`, gardés par `tests/nodeVersionDeclared.test.ts`. ⚠️ Mais la vraie protection
+n'est AUCUN des deux que le ticket nommait : `engines`/`.nvmrc` sont DÉCLARATIFS (sans
+`engine-strict`, `engines` n'est qu'un avertissement npm). C'est **`@types/node` aligné sur la
+version EXÉCUTÉE** (`^22` → `^20`) qui rend la classe impossible : `tsc` refuse alors l'API trop
+récente À L'ÉCRITURE. Face à un « vert local / rouge distant », distinguer l'artefact *déclaratif*
+de l'*exécutoire* — seul le second protège.
 
 ⚠️ Le workflow filtre sur `pull_request: branches: [main]` : une **PR EMPILÉE** (base `claude/xxx`)
 ne déclenche **aucun** run CI — Vercel et CodeQL partent quand même, ce qui donne l'illusion d'une

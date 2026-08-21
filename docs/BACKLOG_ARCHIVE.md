@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — `[ENV-NODE-NON-DECLARE]` : la version de Node se déclare une fois, et le TYPECHECK la fait respecter
+
+- [x] **`[ENV-NODE-NON-DECLARE]`** (XS, MOYEN) — le conteneur de dev tourne sur **Node 22**, les
+  workflows épinglent **Node 20**, et rien ne déclarait la cible (`engines` absent, `.nvmrc` absent,
+  littéral `'20'` répété dans **4 workflows**). Incident réel du 2026-08-19 (PR #665) : `globSync`
+  (`node:fs`, Node 22+) a donné un **gate local VERT et une CI ROUGE sur le même commit**.
+  **Livré** : `.nvmrc` (source unique), `engines.node: '20.x'`, et les 4 workflows repointés sur
+  `node-version-file: '.nvmrc'` — plus aucun littéral de version dupliqué.
+  ⚠️ **Le vrai coupable n'était aucun des deux que le ticket nommait.** `engines` et `.nvmrc`
+  DÉCRIVENT la cible sans l'imposer à quoi que ce soit : sans `.npmrc` `engine-strict` (absent ici),
+  `engines` n'est qu'un avertissement npm. Ce qui transforme la classe entière en **erreur de
+  compilation**, c'est `@types/node`, qui était en `^22` face à une CI en Node 20 : le typecheck
+  autorisait des API que le runtime de la CI n'a pas. Aligné sur `^20`. **Mesuré avant de le
+  faire** : le typecheck passe sous `@types/node@20`, donc aucun code n'utilisait d'API 22+ — la
+  garde est posée sur un arbre propre, elle ne masque aucune dette existante.
+  Nouvelle garde `tests/nodeVersionDeclared.test.ts` (4 assertions) : les trois déclarations
+  existent ET concordent, et aucun workflow ne re-code la version. Elle ne fige PAS le numéro 20 —
+  passer à Node 22 reste possible, mais exige de bouger les trois ensemble
+  (`CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` appliqué à la version de Node). Deux anti-vacuités
+  posées : au moins un workflow balayé, au moins 4 pointeurs trouvés (sinon supprimer tous les
+  `setup-node` rendrait le test vert). **3 perturbations prouvées rouges**, une par assertion.
+  Gate vert : 4 638 tests / 417 fichiers.
+
 ## 2026-08-21 — `[ASSETLOC-YEAR-2026]` : l'année fiscale devient une entrée EXIGÉE
 
 - [x] **`[ASSETLOC-YEAR-2026]`** (XS, FAIBLE au ticket — **impact mesuré plus élevé que son

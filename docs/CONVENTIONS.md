@@ -5283,3 +5283,42 @@ routage silencieux. Profité de l'occasion pour établir `types.ts` `DEBT_KINDS`
 comme source UNIQUE des valeurs de `DebtKind` — dérivé une fois, réutilisé tel quel par le `z.enum`
 du tool MCP ET par la garde runtime d'`applyDebt` (leçon indexée au CLAUDE.md : une valeur re-codée
 en dur ailleurs dérive en silence).
+
+### `UNE-GARDE-DE-COHERENCE-DOIT-LIRE-L-ETAT-FUSIONNE-PAS-LE-PAYLOAD` — ma garde ne gardait que le cas facile
+
+Trouvé par DEUX agents indépendamment (code-reviewer et financial-integrity), sur le lot ci-dessus.
+J'avais ajouté une garde de cohérence chronologique « la date de fin ne peut pas précéder la date
+de début » — écrite comme `doc.startDate != null && doc.termEndDate != null && doc.termEndDate <
+doc.startDate`. Elle est correcte… uniquement quand les DEUX dates arrivent dans le MÊME appel.
+Or la fonction supporte explicitement la **mise à jour PARTIELLE** (un champ absent du payload
+laisse la valeur déjà stockée intacte) : un appel qui ne fournit QUE `termEndDate`, sur une dette
+dont le `startDate` est déjà en base, passe la garde sans rien comparer — les deux conditions
+`!= null` ne sont jamais vraies ensemble. Mesuré par le panel : une dette dont `startDate` reste au
+FUTUR et dont `termEndDate` bascule au PASSÉ n'est alors JAMAIS `'active'` (phases `'a-venir'` →
+`'terminee'` sans jamais passer par `'active'`) — jamais payée, exclue du bilan, puis réapparaissant
+d'un bloc. Exactement l'incohérence que la garde prétendait bloquer.
+
+**Règle générale** : dans une fonction qui fait de la mise à jour PARTIELLE, une garde qui met en
+relation DEUX champs doit lire les valeurs **EFFECTIVES après fusion** (`doc.x ?? existant.x`),
+jamais les seuls champs du payload. Le signal mécanique est visible à l'œil : une condition de la
+forme `doc.a != null && doc.b != null && <relation>` dans une fonction dont le contrat annonce
+« seuls les champs fournis changent » est presque toujours incomplète — elle ne garde que le cas où
+l'appelant fournit tout, c'est-à-dire le cas le moins risqué. Mes 9 tests initiaux ne couvraient que
+ce cas facile : c'est POUR ÇA que le trou est passé.
+
+**Corollaire du même lot, autre défaut, autre agent** : le résumé rendu à l'assistant (et affiché à
+l'aperçu de consentement avant écriture) affirmait toujours « servie dès maintenant par la
+projection » — y compris quand `startDate` est dans le futur, cas que ce lot venait précisément
+d'ajouter. La description du tool, corrigée dans la MÊME PR, disait déjà l'inverse. **Quand on ajoute
+un cas à un comportement, grep TOUTES les phrases qui décrivent ce comportement** — la description
+du tool, le résumé de retour, les commentaires de module, la doc : j'en avais corrigé deux sur trois,
+et celle que j'ai oubliée est la seule que l'utilisateur lit au moment d'approuver l'écriture
+(récidive `DOC-STALE`, 3e site).
+
+**Corollaire de validation** : `/^\d{4}-\d{2}-\d{2}$/` valide une FORME, pas une DATE — `2026-13-01`
+et `2026-02-30` passent. En aval, `moisAbsolu()` rejette un mois hors 0-11 et traite alors la date
+comme ABSENTE : un silence LÉGITIME pour une date vraiment absente devient un silence TROMPEUR pour
+une date que la garde d'écriture vient d'ACCEPTER (l'assistant croit avoir daté la dette, le moteur
+l'ignore, personne n'est prévenu). Une garde de format sur une valeur qu'un module aval va PARSER
+doit valider ce que ce module sait parser, pas seulement la syntaxe — ici un aller-retour `Date.UTC`
+(qui attrape les débordements type 31 février) plus une borne d'année réaliste.

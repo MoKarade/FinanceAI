@@ -14,12 +14,16 @@
 > abandonnée/dépassée par les sessions 121-126. Ni supprimée ni retravaillée (juste signalée) ;
 > Marc peut la nettoyer ou dire s'il faut en reprendre le contenu.
 >
-> **Lot livré** : `kind`/`startDate`/`termEndDate` de `Debt` — câblés dans le moteur depuis
-> `[DETTE-DATES]` et l'UI DebtManager depuis un mois — étaient absents de l'import PDF
+> **Lot livré** : `kind`/`startDate`/`termEndDate` de `Debt` étaient absents de l'import PDF
 > (`mcp/ingest/applyDocument.ts`, `DebtPayload`) ET de l'appel MCP direct (`applyDebt.spec.ts`),
 > qui affirmait même encore « les dettes n'ont pas de date de début » (faux depuis `[DETTE-DATES]`,
-> 2026-08-19). Corrigé aux deux endroits + validations (kind contre une liste fermée, dates
-> ISO strictes, cohérence chronologique startDate ≤ termEndDate).
+> 2026-08-19, qui a câblé `startDate`/`termEndDate` dans le moteur ; `kind` existe dans le type
+> depuis W5.3 mais n'a encore AUCUN consommateur moteur — précision apportée par code-reviewer, ma
+> 1ère formulation laissait croire le contraire). C'est un discriminant préparé pour
+> `[DEBT-AMORTIZATION]`/`[DEBT-UI-PAR-TYPE]`, pas encore actif. L'UI DebtManager expose
+> `startDate`/`termEndDate` (`<input type="date">`) depuis le même lot ; PAS `kind` (routé à
+> `[DEBT-UI-PAR-TYPE]`, encore ouvert). Corrigé aux deux endroits + validations (kind contre une
+> liste fermée, dates ISO CALENDAIRES strictes, cohérence chronologique startDate ≤ termEndDate).
 > ⚠️ **Piège rencontré en cours de route** (voir `docs/CONVENTIONS.md`,
 > `UN-CHAMP-PAYLOAD-NE-PEUT-PAS-PORTER-LE-NOM-DU-DISCRIMINANT`) : le nouveau champ ne peut PAS
 > s'appeler `kind` sur `DebtPayload`, qui porte déjà `kind: 'debt'` (discriminant de routage
@@ -27,8 +31,28 @@
 > des dettes. Renommé `debtKind` côté payload, mappé vers `Debt.kind` à l'écriture. Profité de
 > l'occasion pour établir `types.ts` `DEBT_KINDS` (tableau `as const`) comme source UNIQUE des
 > valeurs de `DebtKind`, réutilisée par le `z.enum` du tool MCP ET la garde runtime.
-> 9 tests neufs (parité ajout/MAJ, rejets kind/date invalides, cohérence chronologique, garde Zod).
-> Gate complet vert : **4 621 tests / 415 fichiers**, build inclus.
+> **Panel de revue (4 agents) appliqué avant merge** : 2 ÉLEVÉS confirmés par mesure directe.
+> (1) code-reviewer + financial-integrity, indépendamment : la cohérence `startDate ≤ termEndDate`
+> ne comparait que les DEUX champs du payload COURANT — une mise à jour PARTIELLE qui ne change
+> QUE `termEndDate` (l'autre date restant celle déjà stockée) contournait la garde ; mesuré, une
+> dette avec `startDate` future et `termEndDate` passée n'était alors JAMAIS `'active'` (phases
+> `'a-venir'` → `'terminee'` sans jamais passer par `'active'`). Corrigé : comparaison sur les
+> valeurs FUSIONNÉES (`doc.startDate ?? existant.startDate`), pas le payload seul.
+> (2) financial-integrity : le résumé renvoyé à l'assistant (et à l'aperçu de consentement)
+> affirmait TOUJOURS « servie dès maintenant », y compris avec une `startDate` future — contredit
+> la description du tool corrigée dans le MÊME lot. Corrigé : message conditionnel sur
+> `startDate > aujourd'hui`.
+> MOYEN (silent-failure-hunter + financial-integrity) : le format ISO seul (`2026-13-01`,
+> `2026-02-30`) passait la regex — `moisAbsolu()` rejette alors le mois hors 0-11 et traite la date
+> comme ABSENTE, silencieusement. Corrigé : `utils/isoDate.ts` (nouveau, source UNIQUE), validation
+> calendaire réelle (aller-retour `Date.UTC`, borne d'année [1970, 2200]), réutilisée par la garde
+> runtime ET le `z.enum`/`.refine()` Zod. FAIBLE non retenu (code-reviewer) : `changes.after` de
+> l'ajout omet `kind`/`startDate`/`termEndDate` — cohérent avec le pattern déjà en place pour
+> `amortizationYears`/`rateProvider`, pas une régression de ce lot.
+> 12 tests neufs au total (9 initiaux + 3 issus du panel — 2 rejets + 1 résumé conditionnel ; une
+> 4e assertion calendaire est ajoutée au test Zod existant plutôt que dans un nouveau test). Gate
+> complet vert : **4 624 tests / 415 fichiers** (nouveau fichier `utils/isoDate.ts`, testé via ses
+> deux appelants plutôt qu'un fichier de test dédié — fonction pure de 6 lignes), build inclus.
 > **Nouveau backlog** : Marc a envoyé une vague de retours Budget/Transactions/Investissements
 > (bannière Drive qui flashe, sync Budget↔Transactions à auditer, signe des entrées d'argent en
 > catégorie dépense, budget prévu qui affiche des valeurs impossibles, Réel/Prévisionnel/Objectif,

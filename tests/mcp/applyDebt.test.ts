@@ -201,14 +201,38 @@ describe('applyDocument — kind debt : parité debtKind/startDate/termEndDate [
             .toThrow(/date de fin invalide/i);
     });
 
+    it('REJETTE une date au bon FORMAT mais calendairement invalide (mois 13, 30 février) [MOYEN panel]', () => {
+        expect(() => applyDocument(baseState(), carDebt({ startDate: '2026-13-01' })))
+            .toThrow(/date de début invalide/i);
+        expect(() => applyDocument(baseState(), carDebt({ termEndDate: '2026-02-30' })))
+            .toThrow(/date de fin invalide/i);
+    });
+
     it('REJETTE termEndDate antérieure à startDate (incohérence chronologique)', () => {
         expect(() => applyDocument(baseState(), carDebt({ startDate: '2026-07-20', termEndDate: '2026-01-01' })))
+            .toThrow(/précède/i);
+    });
+
+    it('REJETTE termEndDate antérieure à startDate même en MISE À JOUR PARTIELLE, contre la valeur DÉJÀ STOCKÉE [ÉLEVÉ panel]', () => {
+        // La dette existante a startDate 2030 (future) ; un 2e appel ne fournit QUE termEndDate au
+        // passé — sans fusion avec l'existant, cette incohérence passerait inaperçue (mesuré par
+        // le panel : la dette ne devient alors JAMAIS 'active', phases 'a-venir' → 'terminee').
+        const first = applyDocument(baseState(), carDebt({ name: 'Prêt futur', startDate: '2030-01-01' }));
+        expect(() => applyDocument(first.nextState, { kind: 'debt', name: 'Prêt futur', termEndDate: '2026-01-01' }))
             .toThrow(/précède/i);
     });
 
     it('accepte termEndDate == startDate (terme d\'un seul mois, cas limite)', () => {
         const { nextState } = applyDocument(baseState(), carDebt({ startDate: '2026-07-20', termEndDate: '2026-07-20' }));
         expect((nextState.debts[0] as Debt).termEndDate).toBe('2026-07-20');
+    });
+
+    it('le résumé annonce le vrai début quand startDate est FUTUR, pas "servie dès maintenant" [ÉLEVÉ panel]', () => {
+        const future = applyDocument(baseState(), carDebt({ startDate: '2099-01-01' }));
+        expect(future.summary).not.toContain('Servie dès maintenant');
+        expect(future.summary).toContain('2099-01-01');
+        const now = applyDocument(baseState(), carDebt());
+        expect(now.summary).toContain('Servie dès maintenant');
     });
 
     it('les rejets debtKind/date ne mutent pas l\'état d\'entrée (fonction pure)', () => {
@@ -225,6 +249,9 @@ describe('applyDocument — kind debt : parité debtKind/startDate/termEndDate [
         expect(valid.success).toBe(true);
         expect(schema.safeParse({ name: 'Bail auto', debtKind: 'bogus' }).success).toBe(false);
         expect(schema.safeParse({ name: 'Bail auto', startDate: '20-07-2026' }).success).toBe(false);
+        // [MOYEN panel] Même ceinture calendaire côté Zod que côté applyDocument (source unique
+        // utils/isoDate.ts) : le bon FORMAT ne suffit pas.
+        expect(schema.safeParse({ name: 'Bail auto', startDate: '2026-13-01' }).success).toBe(false);
     });
 });
 

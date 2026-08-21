@@ -13,11 +13,13 @@
 ## 2026-08-21 — `[DEBT-MCP-PARITE]` : parité kind/dates de dette entre PDF, MCP direct et moteur/UI
 
 - [x] **`[DEBT-MCP-PARITE]`** (S) — ✅ PR #? (à compléter au merge).
-  `Debt.kind`/`startDate`/`termEndDate` — câblés dans le moteur (`[DETTE-DATES]`, 2026-08-19) et
-  l'UI DebtManager depuis un mois — étaient absents des DEUX voies d'écriture externes : l'import
+  `Debt.kind`/`startDate`/`termEndDate` étaient absents des DEUX voies d'écriture externes : l'import
   PDF (`mcp/ingest/applyDocument.ts`, `DebtPayload`) et l'appel MCP direct de l'assistant Claude
   (`mcp/tools/applyDebt.spec.ts`). Le tool MCP affirmait même encore « les dettes n'ont pas de date
-  de début » — faux depuis un mois, un risque réel de désinformer l'assistant en session.
+  de début » — faux depuis `[DETTE-DATES]` (2026-08-19), un risque réel de désinformer l'assistant
+  en session. ⚠️ Nuance apportée par le panel : `startDate`/`termEndDate` sont bien câblés dans le
+  moteur ; `kind` existe dans le type depuis W5.3 mais n'a encore AUCUN consommateur moteur ni
+  champ UI — c'est un discriminant PRÉPARÉ pour `[DEBT-AMORTIZATION]`/`[DEBT-UI-PAR-TYPE]`.
   **Corrigé aux deux endroits** : champ payload `debtKind` (voir piège de nommage ci-dessous),
   `startDate`/`termEndDate`, avec validations miroir de celles déjà en place pour balance/taux/
   paiement (kind contre une liste fermée `DEBT_KINDS`, dates au format ISO strict `YYYY-MM-DD`,
@@ -30,8 +32,26 @@
   documents (pas seulement des dettes) via `{ kind: 'debt', ...args }`. Renommé `debtKind`, mappé
   vers `Debt.kind` à l'écriture. `types.ts` gagne `DEBT_KINDS` (tableau `as const`, source UNIQUE
   des valeurs `DebtKind`) réutilisé par le `z.enum` Zod ET la garde runtime — zéro liste redupliquée.
-  9 tests neufs (parité ajout/mise à jour, rejets kind/date invalides, cohérence chronologique,
-  garde Zod). Gate complet vert : 4 621 tests / 415 fichiers, build inclus.
+  **Panel de revue (4 agents) appliqué avant merge — 2 ÉLEVÉS confirmés par mesure directe :**
+  (1) la cohérence `startDate ≤ termEndDate` ne comparait que les deux champs du payload COURANT
+  (code-reviewer ET financial-integrity, indépendamment) — une mise à jour PARTIELLE ne touchant
+  QUE `termEndDate` contournait la garde ; mesuré, une dette avec `startDate` future et
+  `termEndDate` passée n'était alors JAMAIS `'active'` (`'a-venir'` → `'terminee'` sans passer par
+  `'active'`) : jamais payée, exclue du bilan, puis réapparaissant d'un bloc. Corrigé par
+  comparaison sur les valeurs FUSIONNÉES avec l'existant.
+  (2) le résumé rendu à l'assistant (et à l'aperçu de consentement) affirmait TOUJOURS « servie dès
+  maintenant », y compris avec `startDate` future — contredisant la description du tool corrigée
+  dans le MÊME lot (`DOC-STALE` re-commise à un 3e site). Corrigé, message conditionnel.
+  **MOYEN** (silent-failure-hunter + financial-integrity) : le format ISO seul acceptait
+  `2026-13-01`/`2026-02-30` — `moisAbsolu()` rejette alors le mois et traite la date comme ABSENTE,
+  SILENCIEUSEMENT (l'assistant croit avoir daté la dette, le moteur l'ignore). Corrigé par
+  `utils/isoDate.ts` (nouveau, source UNIQUE partagée garde runtime + `.refine()` Zod) :
+  validation calendaire réelle par aller-retour `Date.UTC` + borne d'année [1970, 2200].
+  **FAIBLE non retenu** : `changes.after` de l'ajout omet les 3 nouveaux champs — cohérent avec le
+  pattern préexistant (`amortizationYears`/`rateProvider`), pas une régression de ce lot.
+  12 tests neufs (parité ajout/mise à jour, rejets kind/date invalides — format ET calendaire,
+  cohérence chronologique y compris en mise à jour partielle, résumé conditionnel, garde Zod).
+  Gate complet vert : 4 624 tests / 415 fichiers, build inclus.
   En chemin : `A00b` (déploiement production bloqué du lot précédent, #687) vérifié et CLOS —
   `list_deployments` Vercel confirme `production READY` sur `3bbc380` (#690), qui contient `3dd9d9d`
   (#687).

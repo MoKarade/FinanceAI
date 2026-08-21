@@ -14,6 +14,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   voies, alors que l'onglet Dette et le moteur les connaissaient déjà depuis un mois. Une dette
   décrite dans un contrat PDF ou dictée à l'assistant peut donc être datée correctement dès sa
   création, sans passage manuel par l'onglet Dette.
+- Une date de dette incohérente ou impossible est refusée à l'écriture plutôt qu'acceptée puis
+  ignorée en silence : fin de terme avant le début (y compris quand une seule des deux dates est
+  modifiée), et dates qui n'existent pas au calendrier (31 février, mois 13).
+- Quand une dette est enregistrée avec une date de début future, le message de confirmation
+  l'annonce (« Débute le … ») au lieu d'affirmer à tort qu'elle est active immédiatement.
 
 ## [unreleased] — 2026-08-21 (une dette n'apparaît plus dans le passé avant qu'elle existe)
 

@@ -7,6 +7,7 @@
 
 import { DEBT_KINDS } from '../../types';
 import type { AppState, User, Asset, Transaction, Debt, DebtKind } from '../../types';
+import { isValidIsoDate } from '../../utils/isoDate';
 import { annualSalaryToMonthly } from '../../utils/salary';
 import { RULE_CATEGORIES, buildCategoryCanonicalMap, resolveCandidateCategory } from '../../services/import/categoryRules';
 import { computeCashLedgerDetailed } from '../../services/startingCash';
@@ -859,8 +860,9 @@ const debtKey = (name: string): string => String(name || '').trim().toLowerCase(
 
 /** [DEBT-MCP-PARITE] Date complète exigée (contrairement à `GOAL_DEADLINE_RE` plus permissif) :
  *  une date de dette vient d'un document réel (contrat, relevé) ou d'une saisie DebtManager
- *  (`<input type="date">`), toujours au jour près — jamais un YYYY-MM approximatif. */
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+ *  (`<input type="date">`), toujours au jour près — jamais un YYYY-MM approximatif. Validation
+ *  CALENDAIRE (pas seulement le format) : `utils/isoDate.ts`, source unique partagée avec le
+ *  schéma Zod du tool MCP (`applyDebt.spec.ts`) — voir sa doc pour le piège `2026-13-01`.
 
 /** Catégorie inférée du nom quand absente (auto/études/carte → sinon Personal).
  *  Accents strippés une fois (« véhicule » matche `vehic`) ; les mots COURTS sont ancrés `\b…\b` —
@@ -902,14 +904,11 @@ function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
     if (doc.debtKind != null && !DEBT_KINDS.includes(doc.debtKind)) {
         throw new Error(`Type de dette inconnu (${doc.debtKind}). Valeurs valides : ${DEBT_KINDS.join(', ')}. Rien n'a été écrit.`);
     }
-    if (doc.startDate != null && !ISO_DATE_RE.test(doc.startDate)) {
-        throw new Error(`Date de début invalide (${doc.startDate}), format attendu YYYY-MM-DD. Rien n'a été écrit.`);
+    if (doc.startDate != null && !isValidIsoDate(doc.startDate)) {
+        throw new Error(`Date de début invalide (${doc.startDate}), format attendu YYYY-MM-DD (date calendaire réelle). Rien n'a été écrit.`);
     }
-    if (doc.termEndDate != null && !ISO_DATE_RE.test(doc.termEndDate)) {
-        throw new Error(`Date de fin invalide (${doc.termEndDate}), format attendu YYYY-MM-DD. Rien n'a été écrit.`);
-    }
-    if (doc.startDate != null && doc.termEndDate != null && doc.termEndDate < doc.startDate) {
-        throw new Error(`La date de fin (${doc.termEndDate}) précède la date de début (${doc.startDate}). Rien n'a été écrit.`);
+    if (doc.termEndDate != null && !isValidIsoDate(doc.termEndDate)) {
+        throw new Error(`Date de fin invalide (${doc.termEndDate}), format attendu YYYY-MM-DD (date calendaire réelle). Rien n'a été écrit.`);
     }
 
     const debts = (state.debts ?? []).map((d) => ({ ...d })) as Debt[];
@@ -917,6 +916,19 @@ function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
     const category = doc.category ?? inferDebtCategory(name);
 
     const existingIdx = debts.findIndex((d) => debtKey(d.name) === debtKey(name));
+    // [DEBT-MCP-PARITE, ÉLEVÉ revue] La cohérence chronologique doit se vérifier sur les valeurs
+    // EFFECTIVES (après fusion avec la dette déjà stockée), jamais sur le seul payload courant :
+    // une mise à jour PARTIELLE qui ne touche que `termEndDate` (l'autre date restant celle déjà
+    // en base) contournait la garde précédente (comparaison payload-seul) — mesuré : une dette
+    // dont `startDate` reste au FUTUR et `termEndDate` bascule au PASSÉ n'est alors JAMAIS
+    // 'active' (phases 'a-venir' → 'terminee' sans jamais passer par 'active'), donc jamais payée
+    // ni comptée au bilan avant de réapparaître d'un bloc à `startDate`.
+    const existingForDates = existingIdx >= 0 ? debts[existingIdx] : undefined;
+    const effectiveStart = doc.startDate ?? existingForDates?.startDate;
+    const effectiveEnd = doc.termEndDate ?? existingForDates?.termEndDate;
+    if (effectiveStart != null && effectiveEnd != null && effectiveEnd < effectiveStart) {
+        throw new Error(`La date de fin (${effectiveEnd}) précède la date de début (${effectiveStart}). Rien n'a été écrit.`);
+    }
     if (existingIdx >= 0) {
         // MISE À JOUR par nom (idempotent : re-soumettre la même dette ne crée pas de doublon).
         // Un champ ABSENT est laissé intact (mise à jour partielle) — et donc jamais EFFAÇABLE via
@@ -974,7 +986,17 @@ function applyDebt(state: AppState, doc: DebtPayload): ApplyResult {
         note: doc.category ? undefined : `catégorie inférée du nom : ${category}`,
     });
     const nextState: AppState = { ...state, debts, lastUpdate: Date.now() };
+    // [DEBT-MCP-PARITE, ÉLEVÉ revue] Ce résumé (relu par l'assistant ET affiché à l'aperçu de
+    // consentement, `_writeHelper.ts`) affirmait TOUJOURS « servie dès maintenant » — faux dès que
+    // `startDate` est dans le futur : la dette est alors ABSENTE du patrimoine du jour (exclue de
+    // `activeDebtsTotal`) jusqu'à cette date, contredisant la description du tool ET la phrase
+    // elle-même. `today` au même format YYYY-MM-DD que `doc.startDate` (comparaison lexicographique
+    // valide sur ce format) — même patron que `applyBankStatement` plus haut dans ce fichier.
+    const today = new Date().toISOString().slice(0, 10);
+    const debutDifferencie = doc.startDate != null && doc.startDate > today
+        ? `Débute le ${doc.startDate} (absente du patrimoine avant cette date).`
+        : 'Servie dès maintenant par la projection.';
     const summary = `Dette « ${name} » ajoutée (${category}) : solde ${balance} $, ${interestRate} %, ` +
-        `paiement ${minimumPayment} $/mois. Servie dès maintenant par la projection.`;
+        `paiement ${minimumPayment} $/mois. ${debutDifferencie}`;
     return { nextState, changes, summary };
 }

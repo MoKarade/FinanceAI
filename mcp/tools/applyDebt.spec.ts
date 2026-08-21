@@ -13,6 +13,7 @@
 
 import { z } from 'zod';
 import { DEBT_KINDS } from '../../types';
+import { isValidIsoDate } from '../../utils/isoDate';
 import type { WriteToolSpec } from './_toolSpec';
 
 // Leçon MCP-WHATIF : `.finite()` OBLIGATOIRE sur tout montant (Zod .positive()/.max() laissent
@@ -38,15 +39,20 @@ const inputSchema = {
             "un BAIL auto (auto-lease, ne s'amortit pas) d'un PRÊT auto (auto, s'amortit) — les " +
             'confondre fausse la façon dont la dette est présentée. Absente → catégorie large ' +
             "(`category`) seulement, comme avant ce champ."),
-    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
-        .describe("Date de début du prêt ou du bail (YYYY-MM-DD). ⚠️ CONSÉQUENCE RÉELLE : le " +
-            "graphe Futur ne montre cette dette dans le PASSÉ reconstruit qu'à partir de cette " +
-            "date — ne fournis QUE la vraie date de signature/premier paiement, jamais une " +
-            "estimation. Absente ⇒ la dette a toujours couru (comportement historique)."),
-    termEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(isValidIsoDate, {
+        message: 'Date calendaire invalide (ex. mois > 12 ou jour hors du mois) — pas seulement le format.',
+    }).optional()
+        .describe("Date de début du prêt ou du bail (YYYY-MM-DD réelle, ex. 2026-07-20). ⚠️ " +
+            "CONSÉQUENCE RÉELLE : le graphe Futur ne montre cette dette dans le PASSÉ reconstruit " +
+            "qu'à partir de cette date — ne fournis QUE la vraie date de signature/premier " +
+            "paiement, jamais une estimation. Absente ⇒ la dette a toujours couru (comportement " +
+            "historique)."),
+    termEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(isValidIsoDate, {
+        message: 'Date calendaire invalide (ex. mois > 12 ou jour hors du mois) — pas seulement le format.',
+    }).optional()
         .describe('Fin du terme (échéance du bail, fin du prêt, renouvellement hypothécaire), ' +
-            'YYYY-MM-DD. Après cette date, la projection cesse de payer la dette ; si un solde ' +
-            'reste dû, il demeure au bilan (jamais effacé silencieusement). Absente ⇒ payée ' +
+            'YYYY-MM-DD réelle. Après cette date, la projection cesse de payer la dette ; si un ' +
+            'solde reste dû, il demeure au bilan (jamais effacé silencieusement). Absente ⇒ payée ' +
             "jusqu'à extinction."),
 };
 

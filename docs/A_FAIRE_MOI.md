@@ -1,6 +1,6 @@
 # À FAIRE — Marc (tâches humaines) + blocages remontés par Claude
 
-- [ ] **[VERCEL-PROD-679-NON-DEPLOYE]** (2026-08-20 22:18 UTC) — le merge #679 sur `main`
+- [x] **[VERCEL-PROD-679-NON-DEPLOYE]** ✅ **RÉSOLU 2026-08-21 00:10 UTC** — le merge #680 a déclenché le déploiement production (sha 683b520, contient #679+#680) ; la limite s'est libérée après minuit UTC. (Historique : 2026-08-20 22:18 UTC) — le merge #679 sur `main`
   (`4c67d5b`, droits REER par personne) n'a **pas** créé de déploiement production Vercel
   (limite quotidienne « 100/jour » du plan gratuit atteinte au moment du push ; les previews
   remarchent depuis). Le site sert encore le build de #676. Claude vérifie au prochain merge que

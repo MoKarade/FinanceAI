@@ -388,14 +388,14 @@
   compteur (poids 0,25) : pinner l'ORDRE complet (objectifs `tax` et `balanced`) sur une fixture de
   référence, pas seulement la paire MELT/AUTO. Le validator a MESURÉ le nouvel ordre post-fix
   (balanced : MELTDOWN > PRIO_REER > AUTO sur retraité 62) — c'est LA baseline à pinner.
-- [ ] **`[ENG-RANKTAX-ESTATE]`**
-  ✅ **DÉBLOQUÉ 2026-08-20 (réponses Marc, ADR « Sept décisions »)** — décision : **TOUT** — l'impôt successoral entre dans « impôt minimum ». (M, MOYEN [Certain, mesuré ×3,6] — panel #554, PRÉ-EXISTANT
-  amplifié) — l'objectif « impôt » de `rankStrategies` ne score QUE `totalTaxesPaid` :
-  `totalEstateTax` n'entre nulle part → « impôt minimum » récompense le REPORT (mesuré : PRIO_CELI
-  classé 1er avec ttp −189 849 $ + estateTax 1 299 510 $ = 3,6× l'impôt TOTAL de MELTDOWN).
-  `avgEfficiency`/FVI ont le même angle mort (PRIO_CELI « 98,9 % efficace » avec 1,3 M$ d'impôt
-  latent). Fix : `nTax` sur `totalTaxesPaid + totalEstateTax` OU libeller « impôt payé de son
-  vivant » — décision produit, poser à Marc.
+- [x] ~~**`[ENG-RANKTAX-ESTATE]`**~~ ✅ **LIVRÉ 2026-08-21** (décision Marc A4 « TOUT » ; détail :
+  section datée en tête de `docs/BACKLOG_ARCHIVE.md` — réf PR au merge).
+- [ ] **`[ENG-RANKING-MODULES-ORPHELINS]`** (S, FAIBLE — découvert au lot RANKTAX, 2026-08-21) —
+  `rankStrategies` (strategyRanking.ts) et `compareLifeScenarios` (drawdownOptimizer.ts) n'ont
+  **AUCUN appelant vivant** (tests seuls — vérifié par grep exhaustif) : le classement réel passe
+  par `strategySearch → strategyConfigRanking`. Deux modules money-critical orphelins = surface de
+  faux findings et de dérive (le lot les a corrigés quand même pour cohérence). Trancher : les
+  BRANCHER à une surface (le comparateur d'avenirs ?) ou les retirer (knip les voit-il ?).
 - [ ] **`[ENG-RAP-MISSED-REPAYMENT-TAX]`** (S — panel #554, PRÉ-EXISTANT) — un remboursement RAP
   sauté (liquide insuffisant, `realEstateMonth.ts:419-427`) devrait ajouter 1/15 du solde au revenu
   IMPOSABLE (règle ARC) — jamais modélisé, dans aucun compteur.

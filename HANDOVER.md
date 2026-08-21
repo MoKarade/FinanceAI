@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-21 (suite 122) — [ENG-RANKTAX-ESTATE] : « impôt minimum » = impôt TOTAL
+> Branche `claude/ranktax-estate` (rebasée sur main post-#680). Décision A4 « TOUT » appliquée :
+> source unique `lifetimeTaxTotal` (paid + unsettled + estate) au site vivant (strategySearch →
+> strategyConfigRanking) et à rankStrategies (champ renommé). Cas #554 pinné, 2 perturbations
+> prouvées. Découverte : rankStrategies ET compareLifeScenarios sont ORPHELINS (aucun appelant
+> vivant) → ticket. ⚠️ 3e REVERT de conteneur pendant ce lot — snapshot avec origin/main PÉRIMÉ
+> (−5 semaines), trahi par le COMPTE DU GATE (348 fichiers au lieu de 410) ; réparé (fetch,
+> rebase, force-with-lease, npm install, re-gate vert). Leçon au dépôt : le compte de tests du
+> gate est un détecteur de revert.
+> ✅ **§6 RÉSOLU** : le merge #680 a déclenché le déploiement PRODUCTION (sha 683b520, contient
+> #679 + #680) — le retard de #679 est rattrapé, item A_FAIRE_MOI fermé.
+>
 > ## 🟢 Session 2026-08-20 (suite 121) — [FISC-PENSION-CREDIT-REAL] : crédit pension déflaté en réel
 > Branche `claude/pension-credit-real` (depuis main post-#679). GO Marc A3 : fix d'une ligne dans
 > `calculateAgeAndPensionCredits` (`min(2 000/realDeflator, pension)`), nominal inchangé, réel

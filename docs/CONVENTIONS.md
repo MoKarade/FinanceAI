@@ -3405,6 +3405,18 @@ projection ; PH2-c : index 660→536 kB gzip après bascule lazy).
 
 ## Leçons du checkup de santé 2026-08-19 (panel de 9 agents)
 
+
+**Un revert de conteneur peut restaurer un `origin/main` PÉRIMÉ** (vécu 2026-08-21, 3e revert de
+la session « vers zéro ») : le snapshot avait cinq semaines, et un `git checkout -B <branche>
+origin/main` SANS `git fetch` préalable a créé la branche sur cette base morte — le travail commité
+dessus a été poussé tel quel. Deux gardes, toutes deux vécues : (1) `git fetch origin main` AVANT
+tout `checkout -B ... origin/main`, systématiquement — la règle de reprise du CLAUDE.md vaut aussi
+en PLEINE session après toute anomalie ; (2) **le COMPTE du gate est un détecteur de revert** :
+348 fichiers de test au lieu de 410 a trahi le snapshot avant tout autre symptôme — un compte
+anormalement BAS signifie « arbre périmé », jamais « des tests ont disparu ». Réparation : fetch,
+`git rebase origin/main`, `--force-with-lease`, `npm install` (le package.json a pu changer), et
+re-gate COMPLET — un gate vert sur une base morte ne prouve rien.
+
 ### `AUDIT-SUR-TREE-PERIME` — vérifier l'ÉTAT DU TREE avant de lancer un panel
 
 J'ai lancé six agents sur « l'état actuel de `main` ». Le conteneur avait été restauré à un

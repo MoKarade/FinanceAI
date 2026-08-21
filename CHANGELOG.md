@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-21 (« impôt minimum » compte aussi l'impôt successoral)
+
+- Le classement des stratégies sur l'objectif « impôt minimum » ne comptait que l'impôt payé de
+  ton vivant : une stratégie qui REPORTE l'impôt jusqu'à la succession (comme tout garder dans le
+  REER) paraissait imbattable alors qu'elle pouvait coûter 3,6× plus d'impôt au total. Désormais
+  l'objectif compte TOUT : l'impôt payé, la dette fiscale restante à l'horizon, et l'impôt de
+  liquidation successorale (ta décision : « l'impôt successoral entre dans impôt minimum »).
+
 ## [unreleased] — 2026-08-20 (le crédit pension fédéral suit l'inflation en espace réel)
 
 - Le crédit fédéral pour revenu de pension (2 000 $) est gelé par la loi depuis 2006 : en dollars

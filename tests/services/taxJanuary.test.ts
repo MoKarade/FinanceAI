@@ -181,11 +181,35 @@ describe('processJanuaryReset — CELIAPP & Guyton-Klinger', () => {
         expect(r.celiappTransferToReer).toBe(8000);
         expect(r.logs.some(l => l.includes('CELIAPP'))).toBe(true);
     });
-    it('Guyton-Klinger : gel si portefeuille < 95 % du précédent (retraité, m>12)', () => {
-        // portefeuille courant = 50k + 0 + 100k = 150k ; précédent 200k → 150k < 190k → gel.
+    it('Guyton-Klinger LISSÉ : baisse ≥ 5 % → gel total (facteur 0), extrême identique à l\'ancien', () => {
+        // portefeuille courant = 50k + 0 + 100k = 150k ; précédent 200k → −25 % ≥ 5 % → facteur 0.
         const r = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 200000 }), helpers)!;
-        expect(r.guytonKlingerFreeze).toBe(true);
+        expect(r.guytonKlingerIndexationFactor).toBe(0);
         expect(r.newPrevPortfolioNW).toBe(150000);
+    });
+    it('[ENG-GK-THRESHOLD-KNIFE] le seuil n\'est plus un couteau : bande continue −4 %/−6 %', () => {
+        // Baisse de 5 % pile (l'ancien POINT du couteau) → facteur 0,5 : le milieu de la bande.
+        const r = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 150000 / 0.95 }), helpers)!;
+        expect(r.guytonKlingerIndexationFactor).toBeCloseTo(0.5, 6);
+        // Continuité au voisinage de l'ancien seuil (l'ancien code sautait de 1 à 0 ici) :
+        const juste = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 150000 / 0.9501 }), helpers)!;
+        const presque = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 150000 / 0.9499 }), helpers)!;
+        expect(Math.abs(juste.guytonKlingerIndexationFactor - presque.guytonKlingerIndexationFactor)).toBeLessThan(0.02);
+    });
+    it('portefeuille précédent NÉGATIF ou corrompu → indexation pleine (pas de gel insensé)', () => {
+        // [Revue #683 F1] L'ancien binaire pouvait geler sur un prev négatif (division par un
+        // négatif) — dénué de sens ; le facteur est désormais 1 dans ces cas, et l'affirmation
+        // « identique hors bande » est BORNÉE à prev > 0 fini.
+        const neg = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: -100000 }), helpers)!;
+        expect(neg.guytonKlingerIndexationFactor).toBe(1);
+    });
+    it('LOIN du seuil : comportement strictement identique à l\'ancien binaire (bande étroite, prev > 0)', () => {
+        // Baisse 3 % (< 4 %) → indexation PLEINE, comme l'ancien code sous son seuil.
+        const doux = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 150000 / 0.97 }), helpers)!;
+        expect(doux.guytonKlingerIndexationFactor).toBe(1);
+        // Hausse → pleine aussi.
+        const up = processJanuaryReset(0, baseCtx({ isRetired: true, m: 24, prevPortfolioNW: 140000 }), helpers)!;
+        expect(up.guytonKlingerIndexationFactor).toBe(1);
     });
     it('réduction PSV mensualisée = clawback annuel / 12', () => {
         const r = processJanuaryReset(0, baseCtx({ oasClawbackNextPeriod: 1200 }), helpers)!;

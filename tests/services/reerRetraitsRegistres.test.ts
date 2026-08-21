@@ -6,7 +6,7 @@ import {
     type PropertyStateMutable,
 } from '../../services/projection/realEstateMonth';
 import { processDecemberTaxFiling, type DecemberContext } from '../../services/projection/taxDecember';
-import { calculateFiscalReport, getMarginalRate, calculateDividendTax, RAP_LIMIT_PER_USER, withholdingForGrossRRSP } from '../../utils/tax';
+import { calculateFiscalReport, getMarginalRate, calculateDividendTax, RAP_LIMIT_PER_USER, withholdingForGrossRRSP , getDividendGrossUpRate } from '../../utils/tax';
 import type { RealEstateGoal } from '../../types';
 
 /**
@@ -88,7 +88,7 @@ const acheteParReer = (ctxOver: Partial<RealEstateCtx> = {}, reer = 600000) => {
 
 // ─── Fixtures décembre ────────────────────────────────────────────────────────
 
-const decHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+const decHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate };
 
 const makeDecCtx = (over: Partial<DecemberContext> = {}): DecemberContext => ({
     m: 11,

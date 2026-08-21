@@ -101,7 +101,10 @@ export const getProjectionSpec = {
                 "Somme des régularisations fiscales (soldes/remboursements d'avril + impôts de " +
                 "retraits en retraite) sur l'horizon — négatif = remboursements nets (grosses " +
                 "cotisations REER). Ce N'EST PAS l'impôt total payé (l'impôt retenu à la source " +
-                'sur les salaires n\'y figure pas). Pour la charge fiscale courante : get_tax_situation.',
+                "sur les salaires n'y figure pas, ni la dette du dernier exercice non réglée à " +
+                "l'horizon, ni l'impôt successoral — l'optimiseur de stratégies affiche lui " +
+                "l'impôt total modélisé, les deux chiffres divergent par construction). " +
+                'Pour la charge fiscale courante : get_tax_situation.',
             monteCarlo: monteCarlo
                 ? {
                     // Survie BRUTE Monte Carlo (% de runs patrimoine final > 0) — PAS

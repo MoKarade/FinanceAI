@@ -154,7 +154,9 @@ export const simulateWhatIfSpec = {
             },
             netTaxSettlementsNote:
                 "netTaxSettlements = somme des régularisations fiscales d'avril (négatif = " +
-                "remboursements nets, ex. grosses cotisations REER) — PAS l'impôt total payé. " +
+                "remboursements nets, ex. grosses cotisations REER) — PAS l'impôt total payé " +
+                "(retenue salariale, dette du dernier exercice à l'horizon et impôt successoral " +
+                "exclus ; l'optimiseur de stratégies affiche lui l'impôt total modélisé). " +
                 'Pour la charge fiscale courante : get_tax_situation.',
             deltasByHorizon: compareAtHorizons(baseChart, whatIfChart, horizon),
             series: includeSeries

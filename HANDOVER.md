@@ -4,6 +4,16 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-21 (suite 123) — Queue de vague 1b : TTP propagé, assiettes DIV, GK lissé
+> Branche `claude/vague1b-queue` (rebasée post-#682). 3 items livrés en un lot (même terrain
+> taxDecember/taxJanuary) + le doublon [FISC-BAND-AGE-CREDITS] soldé (= #676, deux IDs pour un
+> défaut). Détail en tête d'archive. Leçons de parcours : le chiffrage jetable qui oublie la part
+> distribuée 30 % (récidive ECRIRE-UN-CHIFFRE, re-mesuré à la source unique) ; le PREMIER lissage
+> GK (0→−5 %) changeait la politique bien au-delà du couteau — attrapé par les goldens, resserré
+> en bande −4 %/−6 % strictement identique hors bande ; le scanner du ratchet ne voit pas un
+> littéral en position d'argument → constantes NOMMÉES. Tickets : [FISC-CID-CLAMP-EXCEDENT]
+> (extrait), décision A4-FVI toujours en suspens ([ENG-FVI-EFFICIENCY-ESTATE]).
+>
 > ## 🟢 Session 2026-08-21 (suite 122) — [ENG-RANKTAX-ESTATE] : « impôt minimum » = impôt TOTAL
 > Branche `claude/ranktax-estate` (rebasée sur main post-#680). Décision A4 « TOUT » appliquée :
 > source unique `lifetimeTaxTotal` (paid + unsettled + estate) au site vivant (strategySearch →

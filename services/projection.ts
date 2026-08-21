@@ -13,7 +13,7 @@ import { SCENARIO_DEFINITIONS, strategyDefFor } from './projection/scenarios';
 import { applyW5Effects, applyAgeBasedExpenses } from './projection/w5Effects';
 import { tryCriticalIllness, tryInheritance, tryMortality, trySpouseMortality, tryLtcTrigger, ltcMonthlyCost, tryDivorce, clampSplitPct, DIVORCE_SPLIT_PCT_DEFAULT } from './projection/stochasticEvents';
 import { processAprilSettlement } from './projection/taxApril';
-import { computeOasClawback, processTaxLossHarvesting, processGainHarvesting, processDecemberTaxFiling } from './projection/taxDecember';
+import { computeOasClawback, computeAnnualNonRegDividends, processTaxLossHarvesting, processGainHarvesting, processDecemberTaxFiling } from './projection/taxDecember';
 import { processJanuaryReset } from './projection/taxJanuary';
 import { phaseDette, estLePremierMoisApresLeTerme } from './projection/debtSchedule';
 import { initRentalStates, processRentalMonth } from './projection/rentalMonth';
@@ -393,7 +393,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     let capitalLossBank = 0;
     let accCapitalGainsYear = 0;
     let prevPortfolioNW = 0;
-    let guytonKlinger_freezeInflation = false;
+    let guytonKlinger_indexationFactor = 1; // [ENG-GK-THRESHOLD-KNIFE] 1 = indexation pleine, 0 = gel total (lissé)
     let expenseMultiplier = 1;
 
     // V65: Advanced Metrics Tracking
@@ -638,8 +638,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
         // Cycle 29 split: inflation effective des dépenses → ./projection/monthlyCalcs
         const effectiveExpenseInflation = computeEffectiveExpenseInflation(age, isRetired, currentInflation, effProj);
-        if (!guytonKlinger_freezeInflation) {
-            expenseMultiplier *= Math.pow(1 + effectiveExpenseInflation / 100, 1 / 12);
+        // [ENG-GK-THRESHOLD-KNIFE] indexation PROPORTIONNELLE au facteur GK (1 = pleine,
+        // 0 = gel — extrêmes identiques à l'ancien booléen ; entre les deux, le lissage
+        // remplace le seuil couteau).
+        if (guytonKlinger_indexationFactor > 0) {
+            expenseMultiplier *= Math.pow(1 + (effectiveExpenseInflation * guytonKlinger_indexationFactor) / 100, 1 / 12);
         }
 
         prevCELI = celi;
@@ -1356,6 +1359,11 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 // HORS SRG — facteur de report, bonus 75+, prorata résidence et survivant inclus),
                 // au lieu de la base sans report (psvBasePension, désormais simple repli legacy).
                 pensionPSV - incomeRetirementGis,
+                // [FISC-DIV-DERIVED-BASES] dividendes MAJORÉS de l'année : le revenu de
+                // récupération PSV (ligne 23400) inclut le dividende imposable, comme les gains
+                // (PV-9). Source unique de la formule ; MESURÉ +1 552,50 $/an sur un couple
+                // 100 k$/conjoint + 500 k$ non-enreg à 5 % (part distribuée 30 % incluse).
+                computeAnnualNonRegDividends(nonReg, baseRates.nonReg ?? 0) * getDividendGrossUpRate('eligible'),
             );
             oasClawbackNextPeriod = oasResult.clawbackAnnual;
             if (oasResult.logMsg) flowEventsLog.push(oasResult.logMsg);
@@ -1458,7 +1466,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 if (janResult.ferrLogMsg) flowEventsLog.push(janResult.ferrLogMsg);
             }
             // Guyton-Klinger
-            guytonKlinger_freezeInflation = janResult.guytonKlingerFreeze;
+            guytonKlinger_indexationFactor = janResult.guytonKlingerIndexationFactor;
             prevPortfolioNW = janResult.newPrevPortfolioNW;
             // Logs
             janResult.logs.forEach(msg => flowEventsLog.push(msg));
@@ -2112,8 +2120,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // Centralisation Phase 3 Tier 3 — dividendes mensuels + revenus de
         // placement imposables (50% des gains capital + 100% des dividendes).
         // Approximation : rendement non-reg × 30% × balance, divisé par 12.
-        const baseNonRegRateForDiv = baseRates.nonReg ?? 0;
-        const dividendIncome = (nonReg * (baseNonRegRateForDiv / 100) * NONREG_DIVIDEND_DISTRIBUTION_SHARE) / 12;
+        // [FISC-DIV-DERIVED-BASES] 3e copie de la formule remplacée par la source unique.
+        const dividendIncome = computeAnnualNonRegDividends(nonReg, baseRates.nonReg ?? 0) / 12;
         const taxableInvIncome = dividendIncome + (accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD) / 12;
 
         // Phase 3 Tier 3 — taux d'imposition marginal et effectif (PAR ADULTE)

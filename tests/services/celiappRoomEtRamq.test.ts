@@ -4,7 +4,7 @@ import { processDecemberTaxFiling, type DecemberContext } from '../../services/p
 import {
     calculateFiscalReport, getMarginalRate, calculateDividendTax,
     FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER, RAMQ_MAX_PREMIUM_2026,
-    type FiscalReport,
+    type FiscalReport, getDividendGrossUpRate,
 } from '../../utils/tax';
 import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
 import type { ProjectionResult, ProjectionChartPoint } from '../../services/projection/types';
@@ -212,7 +212,7 @@ describe('[CELIAPP-DOUBLE-RECHARGE] la CHAÎNE : ce que la projection PUBLIE vra
 
 // ─── RAMQ ─────────────────────────────────────────────────────────────────────
 
-const decHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax };
+const decHelpers = { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate };
 
 const decCtx = (over: Partial<DecemberContext> = {}): DecemberContext => ({
     m: 11, loopYear: 2026, isRetired: false, activeUsersCount: 1,

@@ -58,6 +58,13 @@ export function compareLifeScenarios(params: SimulationParams): ScenarioComparis
         strategyName: s.strategyName ?? s.stratType ?? '—',
         estateNetWorth: s.estateNetWorth ?? 0,
         finalNetWorth: s.finalNetWorth ?? 0,
+        // [ENG-TTP-UNSETTLED-PROPAGATE, corrigé revue #683] compteur NU assumé. ⚠️ Ce module
+        // N'EST PAS orphelin : l'alias `optimizeDrawdownOrder` (bas de fichier) est appelé par
+        // GoalSeekerCard (bouton « Optimiser ordre de décaissement ») — un premier commentaire
+        // l'affirmait orphelin sur un grep qui ratait l'alias. MAIS ce champ précis n'est PAS
+        // affiché par la carte (strategyName + estateNetWorth seulement) et le tri porte sur
+        // estateNetWorth : le nu est sans effet UI aujourd'hui. Si le champ devient affiché,
+        // utiliser lifetimeTaxTotal (source unique).
         totalTaxesPaid: s.totalTaxesPaid ?? 0,
         gainVsBase: (s.estateNetWorth ?? 0) - baseEstate,
         pros: s.pros ?? [],

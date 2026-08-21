@@ -5,6 +5,12 @@
 import { RRIF_FIRST_WITHDRAWAL_AGE, rrifRateForAge } from './helpers';
 import { FHSA_LIFETIME_LIMIT_PER_USER, FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, RRSP_ROOM_RATE, CELI_LIMIT_ROUNDING, CELI_ANNUAL_LIMITS, LAST_KNOWN_CELI_YEAR, getResidencyStartYear, type FiscalReport, type AgeCreditOptions } from '../../utils/tax';
 
+// [ENG-GK-THRESHOLD-KNIFE] Bande de lissage du gel Guyton-Klinger — DESIGN (stabilité du modèle
+// maison), pas des chiffres fiscaux : indexation pleine jusqu'à −4 % de baisse du portefeuille,
+// gel total dès −6 %, linéaire entre — centrée sur l'ancien seuil couteau de −5 %.
+const GK_SMOOTH_CEIL_DROP = 0.06;
+const GK_SMOOTH_BAND_WIDTH = 0.02;
+
 // FA-4 (audit fiscal 2026-06-09) — dernière année où le plafond CELI est CONNU (annoncé, sourcé
 // dans FISCAL_REFERENCE §7 via CELI_ANNUAL_LIMITS). Au-delà : extrapolation indexée arrondie 500 $.
 // FA-8 (2026-06-11) : LAST_KNOWN_CELI_YEAR vient de utils/tax.ts (source unique partagée avec
@@ -94,7 +100,8 @@ export interface JanuaryResult {
     ferrTaxOnRrif: number;
     ferrLogMsg?: string;
     // Guyton-Klinger
-    guytonKlingerFreeze: boolean;
+        /** [ENG-GK-THRESHOLD-KNIFE] facteur d'indexation des dépenses 0..1 (1 = pleine, 0 = gel total, lissé linéairement sur la baisse 0-5 % du portefeuille). */
+    guytonKlingerIndexationFactor: number;
     newPrevPortfolioNW: number;
     // Logs
     logs: string[];
@@ -272,12 +279,31 @@ export function processJanuaryReset(
     }
 
     // === 5. Guyton-Klinger trigger ===
-    let guytonKlingerFreeze = false;
+    // [ENG-GK-THRESHOLD-KNIFE] Le gel binaire à −5 % était un seuil COUTEAU : quelques centaines
+    // de dollars d'impôt suffisaient à déclencher un gel valant −174,36 $/mois À VIE, et le
+    // CLASSEMENT des stratégies basculait sur un écart négligeable (panel #564 : le CID de
+    // 256 $/an faisait passer MELTDOWN de 1re à 3e). Désormais LISSÉ dans une BANDE autour du
+    // seuil : indexation pleine jusqu'à −4 % de baisse, nulle dès −6 %, linéaire entre les deux.
+    // LOIN du seuil le comportement est STRICTEMENT identique à l'ancien (baisse < 4 % →
+    // indexation pleine comme avant ; ≥ 6 % → gel total comme avant) — seul le voisinage du
+    // couteau change. (Un premier jet lissait 0→−5 % : il réduisait l'indexation dès −0,1 % de
+    // baisse — changement de politique BEAUCOUP plus large que le défaut à corriger, attrapé
+    // par les goldens : +8 683 $ sur la fixture FERR.) NB : le GK canonique gèle en binaire,
+    // mais le moteur applique une variante maison (seuil NW, pas taux de retrait initial) —
+    // le lissage corrige l'INSTABILITÉ de la variante maison.
+    let guytonKlingerIndexationFactor = 1;
     let newPrevPortfolioNW = ctx.prevPortfolioNW;
     if (ctx.isRetired && ctx.m > 12) {
         const currentPortfolio = ctx.liquid + ctx.celi + ctx.reer + ctx.nonReg + ctx.crypto;
-        guytonKlingerFreeze = currentPortfolio < ctx.prevPortfolioNW * 0.95;
-        if (guytonKlingerFreeze) logs.push('❄️ Guyton-Klinger: Gel de l’indexation des dépenses');
+        // [Revue #683 F1] « strictement identique hors bande » ne vaut que pour prev > 0 FINI :
+        // un portefeuille précédent négatif ou corrompu rend le facteur 1 (pas de gel — l'ancien
+        // code gelait parfois sur un prev négatif, comportement dénué de sens économique).
+        const rawDrop = (ctx.prevPortfolioNW - currentPortfolio) / ctx.prevPortfolioNW;
+        const drop = ctx.prevPortfolioNW > 0 && Number.isFinite(rawDrop) ? Math.max(0, rawDrop) : 0;
+        guytonKlingerIndexationFactor = Math.max(0, Math.min(1, (GK_SMOOTH_CEIL_DROP - drop) / GK_SMOOTH_BAND_WIDTH));
+        if (guytonKlingerIndexationFactor < 1) {
+            logs.push(`❄️ Guyton-Klinger: indexation des dépenses réduite à ${Math.round(guytonKlingerIndexationFactor * 100)} % (portefeuille −${(drop * 100).toFixed(1)} %)`);
+        }
         newPrevPortfolioNW = currentPortfolio;
     }
 
@@ -294,7 +320,7 @@ export function processJanuaryReset(
         ferrGrossByUser,
         ferrTaxOnRrif,
         ferrLogMsg,
-        guytonKlingerFreeze,
+        guytonKlingerIndexationFactor,
         newPrevPortfolioNW,
         logs,
     };

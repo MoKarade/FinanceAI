@@ -10,6 +10,42 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — Queue de vague 1b : dette d'horizon propagée, dividende majoré dans les assiettes, GK lissé
+
+- [x] **`[ENG-TTP-UNSETTLED-PROPAGATE]`** (S-M) — ✅ 2026-08-21, PR à compléter au merge.
+- [x] **`[FISC-DIV-DERIVED-BASES]`** (S-M, FAIBLE) — ✅ idem.
+- [x] **`[ENG-GK-THRESHOLD-KNIFE]`** (M, MOYEN) — ✅ idem.
+- [x] **`[FISC-BAND-AGE-CREDITS]`** — ✅ DOUBLON de `[FISC-TAXDEC-INCR]`, livré par #676 (mêmes
+  chiffres : 675,56 $ — deux IDs pour un défaut, constaté au cochage).
+
+**TTP-PROPAGATE, surface par surface** : monteCarlo (avgEfficiency + taxLeakage) PROPAGÉ —
+l'impôt d'horizon = ttp + dette du dernier exercice (un horizon court était aveugle à 8,6-100 %
+de l'impôt réel) ; l'ESTATE attend la décision A4-FVI ([ENG-FVI-EFFICIENCY-ESTATE]). MCP
+netTaxSettlements : VALEUR intacte (contrat IA adversarial 2026-07-14), notes enrichies des trois
+exclusions et de la divergence assumée avec l'optimiseur. drawdownOptimizer : nu assumé (orphelin).
+
+**DIV-DERIVED-BASES** : source unique `computeAnnualNonRegDividends` (3 copies remplacées), le
+dividende MAJORÉ entre dans l'assiette FSS (+70 $/ménage mesuré à 500 k$ non-enreg) et le revenu
+de récupération PSV (+1 552,50 $/an, couple 100 k$/conjoint ; 0 sous le seuil, testé). ⚠️ Mon
+chiffrage jetable disait +3 006 $ : il oubliait la part distribuée 30 % — re-mesuré à la source
+unique (récidive ECRIRE-UN-CHIFFRE). Le clamp CID voisin extrait en ticket propre
+([FISC-CID-CLAMP-EXCEDENT], 0 $ mesuré sur le profil du panel).
+
+**GK-THRESHOLD-KNIFE** : le gel binaire à −5 % (couteau : −174,36 $/mois À VIE déclenché par
+256 $/an de CID, classement instable) devient une BANDE de lissage −4 %/−6 % (constantes nommées,
+ratchet 0.95 → 0.06+0.02 design). ⚠️ Un premier lissage 0→−5 % réduisait l'indexation dès −0,1 %
+de baisse — politique bien plus large que le défaut, attrapée par les goldens (FERR +8 683 $) et
+resserrée : hors bande, comportement STRICTEMENT identique à l'ancien. 6 goldens re-basés — **et mes attributions
+étaient CROISÉES sur 3 d'entre eux** (revue #683, bissection de commits : les pins estate = DIV,
+le pin unsettled solvable = GK — sa fixture n'a pas de non-enregistré, mon « FSS du dernier
+exercice » était impossible ; 4e récidive de la classe attribution-causale, commentaires
+réécrits). **Vague revue #683 appliquée** : la RAMQ voit aussi le dividende majoré (+814 $/ménage
+mesuré, 8× le FSS — l'asymétrie voisine que mon lot laissait), gross-up REQUIS dans
+DecemberHelpers, NaN tracé patron FA-8, GK bordé prev>0 fini, FISCAL_REFERENCE aligné (3 passages
++ limite assumée [FISC-DIV-ACB-STEPUP] ≈ 58 k$ de double imposition, ticket ÉLEVÉ routé).
+
+11 tests neufs, 8 perturbations prouvées rouges au total, restaurations par diff.
+
 ## 2026-08-21 — [ENG-RANKTAX-ESTATE] : « impôt minimum » score l'impôt TOTAL (successoral inclus)
 
 - [x] **`[ENG-RANKTAX-ESTATE]`** (M, MOYEN) — ✅ 2026-08-21, PR à compléter au merge.
@@ -27,9 +63,9 @@ d'horizon, ancre négative sur le câblage search. 2 perturbations prouvées rou
 par diff. `[PROJ-TAXPAID-SOLDE-AVRIL]` reste ouvert (biais constant entre stratégies — sans effet
 sur un classement, documenté dans le helper).
 
-**Découvertes routées** : `[ENG-RANKING-MODULES-ORPHELINS]` (rankStrategies et
-compareLifeScenarios sans appelant vivant — le ticket #554 sur-prescrivait leur rôle ; + double
-comptage estate dans son score balanced, noté au ticket), `[ENG-FVI-EFFICIENCY-ESTATE]` (ré-ouvert
+**Découvertes routées** : `[ENG-RANKING-MODULES-ORPHELINS]` (⚠️ CORRIGÉ par la revue #683 :
+seul rankStrategies est orphelin — compareLifeScenarios vit via l'alias optimizeDrawdownOrder →
+GoalSeekerCard ; + double comptage estate dans balanced), `[ENG-FVI-EFFICIENCY-ESTATE]` (ré-ouvert
 — l'angle mort FVI du ticket #554 avait été SUPPRIMÉ au cochage au lieu d'être routé : −20 pts de
 FVI mesurés, clamp à 100 % dès ttp < 0).
 **Relecture #681 appliquée** : l'infobulle du panneau vivant promettait « ni l'impôt

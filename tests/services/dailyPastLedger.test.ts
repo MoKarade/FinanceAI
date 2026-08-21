@@ -56,6 +56,7 @@ const base = {
     fx: FX,
     equityByYear: new Map([[2026, 120_000]]),
     currentDebtNonImmo: 8_000,
+    debts: [{ balance: 8_000 }],
 };
 
 describe('dailyPastLedger — reconstruction du passé au jour', () => {
@@ -88,6 +89,43 @@ describe('dailyPastLedger — reconstruction du passé au jour', () => {
         expect(new Set(rows.map((r) => r.Immobilier))).toEqual(new Set([120_000]));
         expect(new Set(rows.map((r) => r.DettesNonImmo))).toEqual(new Set([8_000]));
     });
+
+    it('[PASSE-REEL-DETTE-1] le gating est en palier MENSUEL, pas au jour près : un départ en cours de mois active tout le mois', () => {
+        const { rows } = buildDailyPastLedger({
+            ...base,
+            // startDate au 04 mars ne coupe PAS le mois en deux jours : la fenêtre entière (01-05 mars)
+            // est dans le MÊME mois calendaire que startDate → active partout, y compris le 01-03.
+            // (Une vraie coupure jour-par-jour exigerait une fenêtre à cheval sur deux mois — hors
+            // périmètre ici, ce module ne connaît la dette qu'au mois, jamais au jour.)
+            debts: [{ balance: 8_000, startDate: '2026-03-04' }],
+        });
+        const byDate = new Map(rows.map((r) => [r.date, r]));
+        expect(byDate.get('2026-03-01')?.DettesNonImmo).toBe(8_000);
+        expect(byDate.get('2026-03-04')?.DettesNonImmo).toBe(8_000);
+    });
+
+    it('[CRITIQUE, revue #687] une dette dont le mois de départ est APRÈS AUJOURD\'HUI (today) n\'est JAMAIS retranchée — elle n\'a jamais existé dans currentDebtNonImmo', () => {
+        // Régression trouvée indépendamment par financial-integrity ET code-reviewer : cette dette
+        // n'a pas encore commencé le 2026-03-05 (`today` de `base`) NON PLUS — le VRAI moteur
+        // publierait donc `DettesNonImmo = 0` aujourd'hui (currentDebtNonImmo honnête ci-dessous),
+        // PAS 8 000 $. Le 1er jet du lot retranchait quand même 8 000 $ d'un total qui ne l'a jamais
+        // contenu, fabriquant −8 000 $ de dette (patrimoine gonflé de 8 000 $).
+        const { rows } = buildDailyPastLedger({
+            ...base,
+            currentDebtNonImmo: 0, // ce que publie le moteur AUJOURD'HUI pour une dette pas-encore-commencée
+            debts: [{ balance: 8_000, startDate: '2026-04-01' }], // avril, après AUJOURD'HUI (05 mars) et toute la fenêtre
+        });
+        expect(rows.every((r) => r.DettesNonImmo === 0)).toBe(true);
+    });
+
+    // ⚠️ [ÉLEVÉ, revue #687] Le clamp (`Math.max(0, …)`) protégeant contre un solde brut gaté >
+    // `currentDebtNonImmo` est le MÊME code, sur la MÊME fonction `sumNotYetStartedDebtsAt
+    // AbsoluteMonth`, que celui déjà prouvé par le test dédié de `tests/services/buildPastPrefix.
+    // test.ts` — la fenêtre d'un seul mois calendaire de cette fixture (mars) ne permet pas de
+    // distinguer « gatée » de « déjà active » à l'intérieur de la fenêtre reconstruite (palier
+    // mensuel, cf test ci-dessus), donc reproduire ce cas ICI exigerait une fixture à cheval sur
+    // deux mois — pas fait, pour ne pas fragiliser ce fichier avec un montage artificiel alors que
+    // le comportement est déjà verrouillé ailleurs sur le code partagé.
 
     it('les revenus et dépenses du jour sont les VRAIES transactions de ce jour-là', () => {
         const { rows } = buildDailyPastLedger(base);

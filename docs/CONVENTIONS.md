@@ -5142,3 +5142,112 @@ frais (`localStorage` vide → tombe dans le 3e littéral legacy, qui NE L'AVAIT
 Le gate local ne peut PAS être fiable sur ce test précis sans un environnement
 vierge. Réflexe pour tout nouveau champ top-level : grep les TROIS littéraux
 avant de committer, pas seulement les deux évidents.
+
+### `RESOMMER-UN-AGREGAT-DEJA-TRANSFORME-DIVERGE` — un gating par date n'est pas un droit de resommer
+
+Lot `[PASSE-REEL-DETTE-1]` (2026-08-21). Le fix demandé (une dette absente avant `startDate` dans
+le passé reconstruit) semblait n'exiger qu'un remplacement trivial : passer `debts[]` brut aux
+deux builders (`buildPastPrefix`/`dailyPastLedger`) au lieu d'un scalaire `currentDebtNonImmo`, et
+resommer les `balance` des dettes ACTIVES à chaque point. Un test qui compare ce total resommé au
+mois 0 contre `chartData[0].DettesNonImmo` (le total que le moteur publie RÉELLEMENT pour
+« aujourd'hui ») a révélé un écart de 372 $ sur une dette de 22 000 $ — le moteur applique déjà son
+propre pas d'amortissement du mois 0 (intérêt + paiement) AVANT de publier ce total ; resommer les
+soldes bruts de TOUTES les dettes actives, même celles qui n'ont RIEN à voir avec le gating, casse
+donc le raccord EXACT que l'Option A garantit — silencieusement, sur toute dette qui amortit.
+
+**Correctif structurel** : ne jamais resommer un agrégat déjà publié par le moteur. Retrancher un
+**DELTA** — ici, la somme des SEULES dettes EXCLUES (`sumNotYetStartedDebtsAtMonth`, qui ne compte
+que la phase `'a-venir'`) — de l'agrégat existant (`currentDebtNonImmo − delta`). Propriété
+gratuite : quand rien n'est exclu (aucune dette datée, ou toutes déjà commencées), le delta est
+NUL et le résultat est **bit-identique** à avant le lot — la régression-zéro vient de la
+CONSTRUCTION de la formule, pas d'un test qui la vérifie après coup. Seule la dette EFFECTIVEMENT
+gatée porte l'approximation (son solde brut plutôt que sa part dans l'agrégat post-amortissement),
+bornée à elle seule.
+
+**Généralisation** : avant de resommer un total à partir de ses composants pour en exclure un
+sous-ensemble, vérifier que le total N'A PAS déjà subi une transformation qu'aucun composant seul
+ne porte (arrondi collectif, pas de calcul appliqué UNE fois sur l'ensemble, etc.). Si oui,
+retrancher un delta du total existant, ne jamais reconstruire le total depuis zéro — même quand
+« juste resommer » semble plus simple à lire (`ASSIETTE-ELARGIE-CASSE-SES-RACCOURCIS`, famille
+proche mais distincte : ici ce n'est pas un raccourci qui casse, c'est une resommation qui ignore
+une transformation invisible depuis les composants).
+
+⚠️ Corollaire de test découvert dans le MÊME lot : un test composant qui compare une valeur À une
+autre pour prouver un gating (« avant » vs « après » une date) doit chercher les LIGNES par un
+identifiant STABLE (ici le libellé de date `dateLabel`, `YYYY-MM`), jamais par une POSITION
+supposée dans un tableau — le nombre de lignes dépend d'une reconstruction de cash dont la
+longueur n'est pas un invariant du test. Un 1er jet indexé par position (`rows[1]`/`rows[2]`)
+comparait deux mois tous deux AVANT la date de la dette (le vrai point après restait `rows[3]`,
+jamais lu) : le test passait pour la MAUVAISE raison, dans les deux sens (fixé et perturbé) tant
+que la perturbation n'a pas été essayée — seule la perturbation chirurgicale (delta forcé à 0
+dans le code réel, pas une réimplémentation) l'a démasqué.
+
+### `EXCLURE-N-EST-PAS-LE-DROIT-DE-RETRANCHER-DE-N-IMPORTE-QUEL-TOTAL` — le delta ci-dessus avait lui-même un défaut critique
+
+Panel de revue de la PR #687 (financial-integrity ET code-reviewer, INDÉPENDAMMENT, par LECTURE
+directe du code — pas par exécution). Mon 1er jet du delta ci-dessus (`RESOMMER-UN-AGREGAT-...`)
+excluait une dette du passé dès que `phaseDetteAuMoisAbsolu(dette, moisPassé) === 'a-venir'`, SANS
+vérifier une chose essentielle : que cette dette faisait bien partie du total `currentDebtNonImmo`
+qu'on cherche à corriger. Pour une dette dont le `startDate` est encore dans le FUTUR par rapport à
+AUJOURD'HUI (pas seulement par rapport au mois passé regardé — exactement le cas d'usage que
+`[DETTE-DATES]` visait : « un prêt signé dans six mois »), le moteur (`sumActiveDebts`) l'exclut
+DÉJÀ de `currentDebtNonImmo` — elle vaut 0 dans ce total. La retrancher quand même revient à
+soustraire d'un total qui ne l'a JAMAIS contenue : mesuré, −22 000 $ de patrimoine passé FABRIQUÉ,
+le symptôme INVERSE de celui que le lot corrigeait, introduit par le correctif lui-même sur une
+branche voisine non testée par AUCUN des tests écrits pour ce lot (tous utilisaient une dette déjà
+active aujourd'hui, `startDate` ≤ mois 0 — jamais une dette future).
+
+**Règle générale** : avant de retrancher un ÉLÉMENT d'un TOTAL agrégé pour corriger un sous-cas,
+vérifier que cet élément a RÉELLEMENT contribué à ce total — un gating qui répond « doit-on exclure
+ceci à CE point ? » sans jamais vérifier « était-ce inclus au DÉPART ? » retranche dans le vide dès
+que les deux questions divergent. Concrètement ici : le garde-fou compare la phase de la dette à
+DEUX mois distincts — le mois passé regardé, ET le mois « aujourd'hui » qui a produit le total —,
+et n'agit que si la dette est 'a-venir' au premier ET PAS au second. Une seule comparaison de phase
+(au mois passé seul) ne peut pas distinguer ces deux cas.
+
+**Corollaire, même lot** : même pour une dette CORRECTEMENT exclue, le delta emprunte le solde BRUT
+de la dette (`d.balance`) alors que le total agrégé porte sa valeur APRÈS un pas de calcul du
+moteur (ici l'amortissement du mois 0) — la soustraction peut rendre le résultat légèrement
+NÉGATIF (mesuré jusqu'à −4 651,67 $ sur un exemple à paiement élevé). Une grandeur qui ne peut
+JAMAIS être négative (une dette) doit être bornée au point de calcul (`Math.max(0, …)`), PAS
+supposée positive parce que « ça ne devrait pas arriver » — le composant en amont
+(`computeRawNetWorth`) ne clampe pas ce terme lui-même, et ne doit pas être chargé de le faire (la
+correction appartient à l'appelant qui CONNAÎT la nature du terme, pas au calcul générique).
+
+⚠️ **Deux agents de revue INDÉPENDANTS ont trouvé le MÊME défaut critique, par la MÊME méthode**
+(lecture du code source, pas exécution) — un signal fort que le defaut était structurellement
+visible pour quiconque suivait la chaîne `sumActiveDebts` → signe de `activeDebtsTotal` dans
+`computeRawNetWorth` jusqu'au bout, mais invisible à des tests qui ne couvraient que le scénario
+DEMANDÉ (dette déjà commencée) et jamais la branche VOISINE la plus évidente (dette pas encore
+commencée du tout). Une revue à un seul angle (juste financial-integrity, ou juste code-reviewer)
+aurait pu suffire ici — mais le fait que les DEUX l'aient trouvé, avec la même justesse au dollar
+près, est la preuve que ce n'était pas un accident de lecture : un test avant merge sur cette
+branche précise (« dette avec `startDate` après aujourd'hui ») l'aurait aussi attrapé, mécaniquement.
+
+⚠️ **Un 3e agent (projection-validator), après le correctif ci-dessus, a trouvé que le clamp NE
+BORNE QUE LE CAS À UNE SEULE DETTE.** `Math.max(0, currentDebtNonImmo − delta)` empêche le total de
+devenir négatif quand la dette gatée est SEULE — mais dès qu'une AUTRE dette (non gatée) maintient
+le total largement positif, le MÊME écart (solde brut vs post-amortissement de la dette gatée)
+survit à l'intérieur du total, comme un résidu d'argent fantôme BORNÉ (mesuré 371,50 $/371,67 $ par
+deux mesures indépendantes, à 17 cents près). Le clamp protège contre un SYMPTÔME (négatif), pas
+contre la CAUSE (mélanger un solde brut et un solde post-calcul dans la même somme) — un clamp qui
+ne couvre qu'un côté d'un biais laisse l'autre côté filer sans qu'aucun signal ne le montre. Deux
+options honnêtes : fermer la cause (faire publier par le producteur un solde PER-ÉLÉMENT déjà dans
+l'état post-calcul, plutôt que de retrancher un brut du store — la vraie fermeture ici, routée à un
+lot séparé) ou, à défaut, documenter et TESTER le résidu comme une approximation BORNÉE (assertion
+`< marge`, jamais `=== valeur exacte`) plutôt que de laisser un clamp partiel se lire comme une
+garantie complète.
+
+⚠️ **Un test qui isole une dette pour mesurer un résidu peut être rendu VACUEUX par la STRATÉGIE du
+moteur, pas par une erreur du test.** Le 1er choix de fixture pour mesurer ce résidu était une carte
+de crédit à faible solde et taux élevé (15 000 $ / 19 %) — la stratégie BASE du moteur l'a payée
+d'un coup dès le mois 0 (cash disponible suffisant), la faisant tomber à 0 $. Le résidu se serait
+alors comparé à 0 $ au lieu du vrai solde de l'autre dette : un test qui semble mesurer une
+divergence borné mais ne mesure en réalité qu'un cas dégénéré où l'autre dette n'existe déjà plus.
+Signal : MESURER la valeur isolée (`points([autreDetteSeule])`) avant de l'utiliser comme référence
+dans une assertion — ne jamais supposer qu'un solde de dette « actif » reste stable d'un mois à
+l'autre sans le vérifier, surtout à taux élevé sur un faible solde face à un cash abondant. Remède
+ici : choisir une dette dont le solde est structurellement trop gros pour qu'AUCUNE stratégie
+plausible ne l'éteigne en un mois (`UN-TEST-QUI-ECHOUE-N-A-PAS-FORCEMENT-RAISON`, même famille :
+un test peut aussi ÉCHOUER — ou sembler réussir — pour la MAUVAISE raison si son scénario emprunte
+une branche de stratégie qu'il n'avait pas anticipée).

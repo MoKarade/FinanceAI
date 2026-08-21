@@ -10,6 +10,97 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — `[PASSE-REEL-DETTE-1]` : une dette n'apparaît plus dans le passé avant sa date de début
+
+- [x] **`[PASSE-REEL-DETTE-1]`** (M, money-critical) — ✅ PR #687.
+
+**Demande** : Marc, en creusant depuis « je veux seter la date de ma dette » (déjà livré par
+`[DETTE-DATES]`, 2026-08-19) : « je veux que la dette ne se voie sur le graph futur seulement à la
+date où ça a commencé ». Sa dette-auto (bail, débute le 20 juillet) apparaissait dans le passé
+reconstruit comme si elle existait depuis toujours.
+
+**Diagnostic** : `buildPastPrefix.ts`/`dailyPastLedger.ts` recevaient un scalaire unique
+`currentDebtNonImmo` (= `chartData[0].DettesNonImmo`), appliqué à TOUS les mois passés, sans
+jamais consulter `startDate`/`termEndDate` par dette.
+
+**Correctif** : nouvelles fonctions pures dans `services/projection/debtSchedule.ts`
+(`phaseDetteAuMoisAbsolu`, `sumNotYetStartedDebtsAtMonth`/`...AtAbsoluteMonth`) qui retranchent en
+**DELTA** le solde des dettes pas-encore-commencées de `currentDebtNonImmo` — jamais une
+resommation complète. `FutureProjection.tsx` passe désormais `debts` (store, tableau frais) EN
+PLUS de `currentDebtNonImmo` aux deux builders. Palier MENSUEL préservé au jour.
+
+⚠️ **Mon 1er jet resommait les `balance` bruts de toutes les dettes actives** (au lieu du delta) —
+un test de raccord a révélé un écart de 372 $ sur une dette de 22 000 $ : le moteur applique déjà
+son propre pas d'amortissement du mois 0 (intérêt + paiement) avant de publier `DettesNonImmo`, et
+resommer les soldes bruts diverge de ce total exact, cassant le raccord qu'Option A garantit. Le
+delta corrige ça : quand aucune dette n'est datée (l'état de tout le monde aujourd'hui), le
+comportement reste bit-identique à avant ce lot. Nouvelle leçon `docs/CONVENTIONS.md` :
+`RESOMMER-UN-AGREGAT-DEJA-TRANSFORME-DIVERGE`.
+
+⚠️ **Revirement de décision, ASSUMÉ par Marc** : en creusant encore, Marc a redemandé une VRAIE
+courbe d'amortissement (« chaque semaine je dois un peu moins »), pas juste un niveau figé — ce qui
+inverse la Décision 2 de `docs/adr/0012-quatre-decisions-de-marc-2026-08-17.md` (« aucun
+amortissement rétroactif »). Confirmé par Marc après rappel explicite du contexte du 17-19 août
+(« je confirme, je veux la courbe malgré le coût supplémentaire »). Scopé en panel produit+archi
+(lecture seule) en lots séparés, routés au BACKLOG : `[DEBT-MCP-PARITE]`, `[DEBT-AMORTIZATION]`,
+`[DEBT-MCP-ORIGINALBALANCE]`, `[DEBT-UI-PAR-TYPE]`. Le comparateur prêt-vs-bail demandé dans le
+même message est explicitement PAS scopé (cadrage insuffisant, à faire dans une session dédiée).
+
+**Tests** : `detteDates.test.ts` (nouvelles fonctions pures), `buildPastPrefix.test.ts`/
+`dailyPastLedger.test.ts` (discriminants prouvés rouges par perturbation chirurgicale — delta
+forcé à 0, restauré ensuite), `FutureProjection.pastDebtFreeze.test.tsx` (wiring bout-en-bout,
+localisation des lignes par libellé de date plutôt que position — un 1er jet indexé par position
+comparait deux mois tous deux AVANT la date de la dette, test vacant démasqué par la perturbation).
+
+⚠️ **Panel #687 (5 agents) appliqué — CRITIQUE trouvé INDÉPENDAMMENT par financial-integrity ET
+code-reviewer, par lecture directe du code (pas exécution)** : mon delta ci-dessus excluait une
+dette dès qu'elle était 'a-venir' au MOIS PASSÉ regardé, sans jamais vérifier qu'elle avait
+réellement contribué à `currentDebtNonImmo` en premier lieu. Une dette dont le `startDate` est
+encore dans le FUTUR par rapport à AUJOURD'HUI (pas seulement après le mois regardé — le cas
+d'usage même de `[DETTE-DATES]` : « un prêt signé dans six mois ») n'a JAMAIS été comptée dans
+`currentDebtNonImmo` (le moteur l'exclut déjà de `sumActiveDebts`) — la retrancher quand même
+fabriquait **−22 000 $ de patrimoine passé FANTÔME**, mesuré, le symptôme INVERSE du bug initial
+de Marc, introduit par mon propre correctif sur une branche voisine qu'AUCUN test du 1er jet
+n'exerçait (tous utilisaient une dette déjà commencée aujourd'hui). **Corrigé** : le garde-fou
+compare désormais la phase de la dette à DEUX mois (le mois passé ET aujourd'hui), n'excluant que
+si 'a-venir' au premier ET PAS au second. **Corollaire ÉLEVÉ, même mécanisme** : même une dette
+correctement exclue peut faire passer le total en dessous de 0 (le delta emprunte le solde BRUT
+contre un total déjà post-amortissement — mesuré jusqu'à −4 651,67 $) ; `Math.max(0, …)` ajouté
+aux deux call sites. Nouvelle leçon `docs/CONVENTIONS.md` :
+`EXCLURE-N-EST-PAS-LE-DROIT-DE-RETRANCHER-DE-N-IMPORTE-QUEL-TOTAL`.
+
+- **[ÉLEVÉ, silent-failure-hunter]** un solde de dette non fini (NaN) était rabattu à 0 SANS
+  `logError`, contrairement au moteur (`sumActiveDebts`/`computeRawNetWorth`) qui journalise le
+  même genre de corruption — corrigé (`logError` throttlé par dette, même patron que `netWorth.ts`).
+- **[documentation-manager]** `docs/PROJECTION_OUTPUT_SCHEMA.md` (description de `DettesNonImmo`)
+  était périmée — corrigée pour mentionner le gating par `startDate`.
+
+⚠️ **projection-validator (5e agent, revue MESURÉE contre le VRAI moteur, sur 24 696 combinaisons
+pour le refactor de `phaseDette`)** a confirmé le CRITIQUE ci-dessus AVANT que mon correctif
+n'atterrisse (mesuré −22 000 $ de patrimoine fantôme sur `ec83a04`, 0 $ après `013704a`), ET trouvé
+un **résidu MOYEN qui SURVIT au clamp** : le clamp (`Math.max(0, …)`) ne borne que le côté NÉGATIF
+(une seule dette gatée) — quand une AUTRE dette (non gatée) maintient le total positif, le même
+écart solde-brut-vs-post-amortissement de la dette gatée survit comme argent fantôme BORNÉ (mesuré
+371,50 $). Approximation ASSUMÉE (documentée, pas éliminée — fermeture complète = publier un solde
+per-dette déjà amorti par le moteur, hors périmètre, routée à `[DEBT-AMORTIZATION]`). Un test dédié
+mesure ce résidu avec le VRAI moteur (`calculateFutureProjection`, pas une réimplémentation) et
+l'assertit BORNÉ (< 600 $, la marge du paiement mensuel de la dette gatée) plutôt qu'exact —
+mesuré −371,67 $ sur mon propre banc, à 0,17 $ près de la mesure indépendante de l'agent. Le même
+agent a aussi signalé un test `[discriminant]` tautologique (`X − 0 === X`, dette déjà active au
+mois 0 lui-même — ne peut jamais échouer) : reformulé en note honnête + remplacé par ce test du
+résidu pour la preuve réelle. Nouvelle section dans `docs/CONVENTIONS.md` (même leçon
+`EXCLURE-N-EST-PAS-LE-DROIT-DE-RETRANCHER-DE-N-IMPORTE-QUEL-TOTAL`, précisée).
+
+⚠️ **Piège de fixture rencontré en écrivant CE test du résidu** : une carte de crédit à faible solde
+(15 000 $/19 %) était payée d'un coup par la stratégie BASE dès le mois 0 (cash disponible
+suffisant) — mesuré directement (script), pas supposé — rendant le résidu comparé à 0 $ au lieu du
+vrai solde de l'autre dette, un test VACUEUX. Remplacé par un gros prêt (200 000 $) qu'aucune
+stratégie ne peut éteindre en un mois.
+
+14 tests neufs au total (dont 5 discriminants du CRITIQUE/ÉLEVÉ/MOYEN trouvés par le panel, prouvés
+rouges par perturbation chirurgicale du garde-fou et du clamp, ou mesurés directement contre le
+moteur réel). Gate complet vert : 4 612 tests / 415 fichiers, build inclus.
+
 ## 2026-08-21 — Vague 2 : devises/unités (badge FX estimé, prop morte, récap en devise native)
 
 - [x] **`[FX-FALLBACK-SILENCIEUX]`** (S, MOYEN) — ✅ 2026-08-21, PR #686.

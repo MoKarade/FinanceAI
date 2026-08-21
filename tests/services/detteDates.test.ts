@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { calculateFutureProjection, type SimulationParams } from '../../services/projection';
 import {
     phaseDette, moisAbsolu, moisDeSimulation, estLePremierMoisApresLeTerme,
+    phaseDetteAuMoisAbsolu, sumNotYetStartedDebtsAtMonth, sumNotYetStartedDebtsAtAbsoluteMonth,
 } from '../../services/projection/debtSchedule';
 import type { ProjectionResult, ProjectionChartPoint } from '../../services/projection/types';
 import type { BudgetConfig, User } from '../../types';
@@ -96,6 +97,92 @@ describe('[DETTE-DATES] le calendrier de la dette — fonctions pures', () => {
         expect(estLePremierMoisApresLeTerme(d, 2026, 0, 54)).toBe(true);   // le mois d'après
         expect(estLePremierMoisApresLeTerme(d, 2026, 0, 55)).toBe(false);  // et plus jamais
         expect(estLePremierMoisApresLeTerme({}, 2026, 0, 54)).toBe(false); // sans date : jamais
+    });
+});
+
+describe('[PASSE-REEL-DETTE-1] phaseDetteAuMoisAbsolu / sumNotYetStartedDebtsAtMonth / ...AtAbsoluteMonth', () => {
+    it('phaseDetteAuMoisAbsolu(dette, courant) est le même noyau que phaseDette (mois absolu direct)', () => {
+        // Juillet 2026 = moisAbsolu('2026-07-20') = 2026*12+6, cf. test ci-dessus.
+        const courantJuillet = 2026 * 12 + 6;
+        expect(phaseDetteAuMoisAbsolu({ startDate: '2026-07-20' }, courantJuillet)).toBe('active');
+        expect(phaseDetteAuMoisAbsolu({ startDate: '2026-07-20' }, courantJuillet - 1)).toBe('a-venir');
+        // Doit coïncider EXACTEMENT avec phaseDette (même startYear/startMonth/m que moisAbsolu(date)).
+        expect(phaseDetteAuMoisAbsolu({ startDate: '2026-07-20' }, courantJuillet))
+            .toBe(phaseDette({ startDate: '2026-07-20' }, 2026, 0, 6));
+    });
+
+    it('sumNotYetStartedDebtsAtMonth exclut une dette DÉJÀ ACTIVE AUJOURD\'HUI, pas encore commencée au mois passé — jamais les « terminée »', () => {
+        // Mois 0 = janvier 2026 (« aujourd'hui »). m=-24 = janvier 2024 (mois PASSÉ vérifié).
+        const dettes = [
+            { balance: 8_000 }, // toujours active → jamais dans le delta d'exclusion
+            { balance: 5_000, startDate: '2025-01-01' }, // commencée en 2025 : 'a-venir' en 2024, DÉJÀ active aujourd'hui (2026) → exclue du passé de 2024 (delta)
+            { balance: 3_000, termEndDate: '2020-01-01' }, // terme échu, jamais effacée → PAS dans le delta
+        ];
+        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, -24)).toBe(5_000);
+        // À un mois APRÈS son début (2025) mais toujours dans le passé : plus rien à exclure.
+        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, -6)).toBe(0);
+    });
+
+    it('[CRITIQUE, revue #687] une dette qui n\'a PAS ENCORE COMMENCÉ AUJOURD\'HUI n\'est JAMAIS dans le delta, à AUCUN mois passé', () => {
+        // Régression trouvée indépendamment par financial-integrity ET code-reviewer : le 1er jet
+        // excluait cette dette (balance 10 000 $ retranchée) à CHAQUE mois passé, alors qu'elle n'a
+        // jamais fait partie de `currentDebtNonImmo` (le moteur exclut déjà une dette 'a-venir'
+        // AUJOURD'HUI de `sumActiveDebts`) — fabriquant 10 000 $ de patrimoine passé.
+        const dettes = [{ balance: 10_000, startDate: '2028-01-01' }]; // 2028 : encore À VENIR même aujourd'hui (2026)
+        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, -24)).toBe(0); // PAS 10 000
+        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, -120)).toBe(0); // même 10 ans plus tôt
+        expect(sumNotYetStartedDebtsAtAbsoluteMonth(dettes, 2016 * 12, 2026 * 12)).toBe(0);
+    });
+
+    it('sanitise comme le moteur (entrée nullish/solde non fini → 0 dans le delta), pour une dette ÉLIGIBLE au delta', () => {
+        // Dettes déjà actives AUJOURD'HUI (2025 &lt; 2026) mais pas encore commencées au mois vérifié
+        // (2024) — donc bien ÉLIGIBLES au delta, ce qui isole la sanitisation du garde-fou CRITIQUE.
+        const dettes = [null, { balance: NaN, startDate: '2025-01-01' }, { balance: 1_000, startDate: '2025-01-01' }] as unknown as Parameters<typeof sumNotYetStartedDebtsAtMonth>[0];
+        expect(sumNotYetStartedDebtsAtMonth(dettes, 2026, 0, -24)).toBe(1_000);
+        expect(sumNotYetStartedDebtsAtAbsoluteMonth(dettes, 2024 * 12, 2026 * 12)).toBe(1_000);
+    });
+
+    it('acceptent undefined/[] → 0 (rien à exclure)', () => {
+        expect(sumNotYetStartedDebtsAtMonth(undefined, 2026, 0, 0)).toBe(0);
+        expect(sumNotYetStartedDebtsAtMonth([], 2026, 0, 0)).toBe(0);
+        expect(sumNotYetStartedDebtsAtAbsoluteMonth(undefined, 2026 * 12, 2026 * 12)).toBe(0);
+    });
+
+    it('au mois 0 lui-même (aujourd\'hui), aucune dette DÉJÀ active n\'a besoin d\'être exclue — cas trivial du wrapper 4-arguments', () => {
+        // Ce test vérifie seulement que le wrapper (startYear, startMonth, m=0) calcule bien
+        // moisAujourdhui == courant dans ce cas particulier — PAS un raccord contre le moteur réel
+        // (delta nul ici, quelle que soit la formule : ne prouve pas la non-divergence des $ bruts
+        // vs post-amortissement, couverte séparément par le test suivant).
+        const dettes = [bail({ startDate: '2026-01-01' })];
+        const pts = points(dettes);
+        const currentDebtNonImmo = pts[0].DettesNonImmo;
+        expect(currentDebtNonImmo - sumNotYetStartedDebtsAtMonth(dettes as never, 2026, 0, 0)).toBe(currentDebtNonImmo);
+    });
+
+    it('[MOYEN, revue #687] deux dettes (une active partout, une EFFECTIVEMENT gatée) — résidu borné au paiement mensuel de la dette gatée SEULE, jamais au solde de l\'autre', () => {
+        // Régression trouvée par projection-validator (mesuré 371,50 $ sur un exemple similaire) :
+        // le delta retranche le solde BRUT du bail (gaté), alors que `currentDebtNonImmo` porte son
+        // solde APRÈS le pas d'amortissement du mois 0 du moteur — le clamp (`Math.max(0, …)`, testé
+        // séparément dans `buildPastPrefix.test.ts`) ne borne que le côté NÉGATIF (une seule dette,
+        // gatée) ; ici, un GROS prêt (jamais gaté) maintient le total largement positif, donc le
+        // résidu SURVIT comme argent fantôme borné, plutôt que d'être clampé à 0. Approximation
+        // ASSUMÉE (documentée dans `debtSchedule.ts`), fermeture complète routée à
+        // `[DEBT-AMORTIZATION]` (solde per-dette publié par le moteur, pas retranché du store).
+        // ⚠️ Solde volontairement GROS (200 000 $, pas une carte à faible solde) : une petite dette à
+        // taux élevé peut être payée d'un coup par la stratégie BASE si le cash disponible le permet
+        // (mesuré : une carte à 15 000 $/19 % tombe à 0 $ dès le mois 0) — un artefact de STRATÉGIE
+        // qui aurait rendu ce test vacueux (résidu comparé à 0, pas à la vraie valeur de l'autre dette).
+        const grosPret = { id: 'gros', name: 'Prêt perso', balance: 200_000, interestRate: 5, minimumPayment: 1_000, category: 'Personal' };
+        const bailGate = bail({ startDate: '2025-12-01' }); // 2 mois avant aujourd'hui (m=-2 = nov 2025)
+
+        const currentDebtNonImmo = points([grosPret, bailGate])[0].DettesNonImmo; // post-amortissement des DEUX
+        const pretSeulCurrent = points([grosPret])[0].DettesNonImmo; // valeur CORRECTE attendue au mois -2 (bail exclu)
+
+        const debtNonImmoAvant = currentDebtNonImmo - sumNotYetStartedDebtsAtMonth([grosPret, bailGate] as never, 2026, 0, -2);
+
+        // Résidu borné au paiement mensuel du BAIL SEUL (500 $) + marge — jamais au solde du gros
+        // prêt (200 000 $), qui n'est pas touché par le delta et doit rester quasi intact.
+        expect(Math.abs(debtNonImmoAvant - pretSeulCurrent)).toBeLessThan(600);
     });
 });
 

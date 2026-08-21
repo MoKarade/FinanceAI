@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-21 (une dette n'apparaît plus dans le passé avant qu'elle existe)
+
+- Sur le graphe Futur, une dette récente (ex. un prêt ou un bail contracté cette année)
+  n'ampute plus le patrimoine des mois AVANT sa date de début — avant, le passé reconstruit
+  soustrayait le total de dette actuel à TOUS les mois passés, même ceux d'avant sa signature.
+  Une dette sans date de début garde son comportement d'avant (toujours active). Le graphe
+  au jour (zoom journalier) bénéficie du même correctif, en palier mensuel.
+
 ## [unreleased] — 2026-08-21 (un signal quand ton patrimoine est converti à taux estimé)
 
 - Si le taux de change n'a pas pu être récupéré — jamais, ou une seule des deux devises (USD/EUR)

@@ -36,6 +36,7 @@ type FinanceStoreState = ReturnType<typeof useFinanceStore.getState>;
 const EMPTY_ASSETS: FinanceStoreState['assets'] = [];
 const EMPTY_RECURRING: NonNullable<FinanceStoreState['subscriptions']> = [];
 const EMPTY_FX: Record<string, number> = {};
+const EMPTY_DEBTS: NonNullable<FinanceStoreState['debts']> = [];
 /** Domaine de l'axe X, en CONSTANTE de module : un littéral recréé à chaque rendu ferait comparer
  *  la prop par identité à recharts sur des re-rendus où les données n'ont PAS bougé (bascule d'une
  *  série via la légende, par exemple). */
@@ -407,6 +408,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     const rawDebtNonImmo = effectiveChartData?.[0]?.DettesNonImmo;
     const currentDebtNonImmo = Number(rawDebtNonImmo) || 0;
     const debtAnomaly = (effectiveChartData?.length ?? 0) > 0 && !Number.isFinite(Number(rawDebtNonImmo));
+    // [PASSE-REEL-DETTE-1] `currentDebtNonImmo` reste LE total appliqué au passé (raccord EXACT
+    // inchangé, Option A) ; `storeDebts` (tableau brut, FRAIS) sert UNIQUEMENT à déterminer, mois par
+    // mois, QUELLES dettes en retrancher parce qu'elles n'existaient pas encore (`sumNotYetStarted
+    // DebtsAtMonth`/`...AtAbsoluteMonth` dans `buildPastPrefix`/`buildDailyPastLedger`) — jamais à
+    // resommer le total en entier (cf commentaire dédié dans `debtSchedule.ts`).
+    const storeDebts = useFinanceStore(s => s.debts) ?? EMPTY_DEBTS;
     useEffect(() => {
         if (debtAnomaly) {
             logError({ source: 'ui', severity: 'warning', message: 'FutureProjection : DettesNonImmo (liveResults, repli chartData) non fini — dette du passé rabattue à 0', context: { rawDebtNonImmo } });
@@ -416,9 +423,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // (unit-testable, hors composant) → le câblage money-critical (buckets → helper, dette soustraite,
     // dates) se prouve sans rendre le composant. Vide → `EMPTY_ARRAY` (référence stable pour l'aval).
     const pastPrefix = useMemo(() => {
-        const built = buildPastPrefix({ pastHistoryPoints: pastHistory.points, transactions, calculatedStartingCash, realEstateGoals, startYear, startMonth, currentDebtNonImmo });
+        const built = buildPastPrefix({ pastHistoryPoints: pastHistory.points, transactions, calculatedStartingCash, realEstateGoals, startYear, startMonth, currentDebtNonImmo, debts: storeDebts });
         return built.length ? built : EMPTY_ARRAY;
-    }, [pastHistory.points, startYear, startMonth, transactions, calculatedStartingCash, realEstateGoals, currentDebtNonImmo]);
+    }, [pastHistory.points, startYear, startMonth, transactions, calculatedStartingCash, realEstateGoals, currentDebtNonImmo, storeDebts]);
     // PH2-d — index NetWorth de la courbe VERROUILLÉE par monthIndex (référence à superposer).
     const lockedByMonth = useMemo(
         () => buildLockedByMonth(lockedProjection, isProjectionLocked, (p) => p.NetWorth ?? NaN),
@@ -844,6 +851,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             fx: fxRates,
             equityByYear: reconstructRealEstateEquityByYear(realEstateGoals, startYear),
             currentDebtNonImmo,
+            debts: storeDebts,
         });
         return {
             byDate: built.rows.length ? new Map(built.rows.map((r) => [r.date, r])) : null,
@@ -859,7 +867,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             // fait qu'un trou de 7 mois est passé inaperçu jusqu'à ce que Marc le signale.
             truncatedFrom: built.truncatedFrom,
         };
-    }, [dailyPastFrom, todayIso, transactions, calculatedStartingCash, storeAssets, fxRates, realEstateGoals, startYear, currentDebtNonImmo]);
+    }, [dailyPastFrom, todayIso, transactions, calculatedStartingCash, storeAssets, fxRates, realEstateGoals, startYear, currentDebtNonImmo, storeDebts]);
     const dailyPastByDate = dailyPast?.byDate ?? null;
     /**
      * [PASSE-REEL-VARIATION-DU-JOUR] La ventilation du jour ouvert, calculée à partir des lignes

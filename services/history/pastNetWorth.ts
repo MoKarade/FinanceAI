@@ -6,13 +6,17 @@
 // courbe SAUTE à « aujourd'hui » (bug MONEY-PHANTOM d'un endetté : le passé, sans dettes, était gonflé de
 // tout le solde des dettes vs le futur qui les soustrait dès le mois 0).
 //
-// Décision Marc 2026-07-24 (Option A) : le passé soustrait les dettes AU NIVEAU ACTUEL (`DettesNonImmo` du
-// moteur, l'unique source de vérité de la dette) — approximation ASSUMÉE et SIGNALÉE (on n'a pas l'historique
-// d'amortissement des dettes génériques ; seul le solde courant existe). Le raccord au présent devient EXACT ;
-// le milieu du passé suppose la dette constante (documenté dans le bandeau du graphe). ⚠️ [FUTUR-PAST-DEBT-
-// FREEZE 2026-07-29] Le raccord « EXACT » suppose que l'APPELANT passe une valeur FRAÎCHE (`liveResults`,
-// jamais le blob figé de PROJECTION-PERSIST) — ce helper reste agnostique, la responsabilité vit dans
-// `FutureProjection.tsx` (commentaire dédié à l'emplacement où `currentDebtNonImmo` est dérivé).
+// Décision Marc 2026-07-24 (Option A) : le passé soustrait les dettes à leur solde ACTUEL — approximation
+// ASSUMÉE et SIGNALÉE (on n'a pas l'historique d'amortissement des dettes génériques ; seul le solde
+// courant existe). Depuis `[PASSE-REEL-DETTE-1]` (2026-08-21), chaque dette n'entre dans ce total qu'À
+// PARTIR de son `startDate` propre : l'appelant (`buildPastPrefix`/`dailyPastLedger`) retranche du total
+// « aujourd'hui » (`debtNonImmo` passé ici) le solde des dettes pas-encore-commencées à CE mois passé
+// (`sumNotYetStartedDebtsAtMonth`/`...AtAbsoluteMonth`, delta plutôt que resommation — cf commentaire
+// dédié dans `debtSchedule.ts`) — le raccord au présent reste EXACT quand aucune dette n'est exclue
+// (cas identique à avant ce lot), et le milieu du passé suppose chaque dette DÉJÀ COMMENCÉE constante
+// (documenté dans le bandeau du graphe). ⚠️ [FUTUR-PAST-DEBT-FREEZE 2026-07-29] Le raccord « EXACT »
+// suppose que l'APPELANT passe des valeurs FRAÎCHES (`liveResults`/store, jamais le blob figé de
+// PROJECTION-PERSIST) — ce helper reste agnostique, la responsabilité vit dans `FutureProjection.tsx`.
 //
 // Route par `computeRawNetWorth` (SOURCE UNIQUE, `services/projection/netWorth.ts`) — JAMAIS une copie locale
 // de la formule : `DettesNonImmo` entier va dans `activeDebtsTotal`, les autres termes de dette à 0 (l'immo

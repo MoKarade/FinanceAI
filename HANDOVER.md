@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-21 (suite 133) — `[JOBLOSS-DUREE-N-PLUS-1]` : une durée de N valait N+1
+> Une perte d'emploi configurée à N mois en SERVAIT N+1 : le mois du déclenchement est déjà un mois
+> de chômage, et le code posait ensuite un compteur de N mois de plus. **MESURÉ** : 6 → 7, 12 → 13,
+> 24 → 25, et **1 → 2 (+100 %)** — le pire ratio, invisible sur la durée par défaut.
+> ⚠️ **Le ticket ne parlait QUE du chômage** : `tickLtd` (invalidité) portait le même défaut à la
+> ligne près (24 → 25), trouvé en lisant le jumeau AVANT de coder. Corriger un seul côté aurait
+> désaccordé deux mécaniques jusqu'ici cohérentes — pire que ne rien faire.
+> ⚠️ **DEUX tests figeaient le défaut**, l'un au producteur, l'autre à l'appelant : cohérents entre
+> eux et faux ensemble. Chacun vérifiait que le compteur valait ce que le code y mettait, sans
+> jamais compter les mois VÉCUS. Leçon `DEUX-TESTS-COHERENTS-ENTRE-EUX-PEUVENT-ETRE-FAUX-ENSEMBLE`.
+> `[ASSETLOC-INCLUSION-RECOPIEE]` : le `0.5` des gains en capital vient enfin de la source unique —
+> il était invisible parce que `0.5` était dans la liste `BENIGN` du garde (l'exclusion cachait la
+> copie). Bit-identique aujourd'hui, aligné le jour où le taux change.
+> 4 assertions prouvées rouges par perturbation. Gate vert : **4 644 tests / 418 fichiers**.
+>
 > ## 🟠 Session 2026-08-21 (suite 132) — Lot a11y XS : 4 CTA hors WCAG découverts, décision Marc requise
 > `[A11Y-PCT-NOT-MASKED]` : le % de répartition entre conjoints suit désormais le mode discret.
 > ⚠️ **Ce lot fixe un ARBITRAGE contre la règle générale du dépôt** (« les % restent visibles, à

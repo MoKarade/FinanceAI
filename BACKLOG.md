@@ -979,7 +979,7 @@
   `lifeExpectancy` » — ce qui est précisément ce qui masque le no-op. Un utilisateur qui règle son
   espérance de vie à 90 voit toujours 95 ans de rentes valorisés. ⚠️ Re-baserait des goldens.
 
-- [ ] **`[ASSETLOC-INCLUSION-RECOPIEE]`** (XS, MOYEN — découvert en revue de `[FISC-GUARD-SCOPE]`) —
+- [x] **`[ASSETLOC-INCLUSION-RECOPIEE]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, MOYEN — découvert en revue de `[FISC-GUARD-SCOPE]`) —
   `services/projection/assetLocation.ts:117` écrit `return marginalRate * 0.5` : le taux d'inclusion
   des gains en capital **recopié en dur**. C'est le SEUL site du dépôt à le faire — `latentTax`,
   `estateCalculation`, `retirementIncome`, `taxDecember`, `taxEstimate` et `projection.ts` importent
@@ -1109,7 +1109,7 @@
   entre les deux se creuse. Unifier : donner l'AE à l'événement daté (le levier le plus rentable),
   plutôt qu'étendre le stochastique à Anna. [MESURÉ]
 
-- [ ] **`[JOBLOSS-DUREE-N-PLUS-1]`** (XS, FAIBLE — revue #675) — `jobLossDurationMonths: 6` produit
+- [x] **`[JOBLOSS-DUREE-N-PLUS-1]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — revue #675) — `jobLossDurationMonths: 6` produit
   **7 mois** de prestation (le mois de déclenchement est déjà réduit, puis le compteur en décompte
   6 de plus) ; le log dit « durée prévue 6 mois ». ~347 $/mois d'écart sur un épisode. Pré-existant.
 

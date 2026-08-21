@@ -12,6 +12,7 @@ import {
     tryLtcTrigger,
     ltcMonthlyCost,
     tickJobLoss,
+    tickLtd,
     tryDivorce,
 } from '../../services/projection/stochasticEvents';
 import type { ProjectionConfig } from '../../types';
@@ -101,13 +102,73 @@ describe('tickJobLoss', () => {
         expect(r.newMonthsRemaining).toBe(3);
         expect(r.triggered).toBe(false);
     });
-    it('déclenche un nouveau chômage (rng < p) avec la durée configurée', () => {
+    it('déclenche un nouveau chômage (rng < p) : le compteur RESTANT vaut durée − 1', () => {
         const r = tickJobLoss(ctx(0), proj({ jobLossEnabled: true, jobLossAnnualProbability: 0.5, jobLossDurationMonths: 8 }), 0);
         expect(r.triggered).toBe(true);
-        expect(r.newMonthsRemaining).toBe(8);
+        // [JOBLOSS-DUREE-N-PLUS-1] Cette assertion attendait `8` et FIGEAIT le défaut : le mois du
+        // déclenchement est déjà un mois de chômage (l'appelant réduit le revenu sur `triggered`),
+        // donc il reste 7 mois APRÈS lui pour une durée de 8. La durée ANNONCÉE, elle, ne change
+        // pas — c'est ce que vérifie la ligne suivante.
+        expect(r.newMonthsRemaining).toBe(7);
+        expect(r.duration).toBe(8); // la durée annoncée au log reste la durée demandée
     });
     it('désactivé → aucun trigger', () => {
         expect(tickJobLoss(ctx(0), proj({ jobLossEnabled: false }), 0).triggered).toBe(false);
+    });
+});
+
+// [JOBLOSS-DUREE-N-PLUS-1] Le vrai discriminant : COMPTER LES MOIS VÉCUS, pas lire le compteur.
+//
+// ⚠️ Les trois tests ci-dessus interrogent la fonction à son CONTRAT (« que rend-elle pour un
+// appel ? »). Aucun ne pouvait voir le défaut, parce que le défaut n'est pas dans un appel : il est
+// dans la SOMME des appels. `newMonthsRemaining = 8` est parfaitement défendable en isolation — il
+// ne devient faux qu'une fois qu'on sait que l'appelant a DÉJÀ réduit le revenu du mois courant.
+// Classe `GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE` : viser la grandeur qui compte pour
+// l'utilisateur (combien de mois est-il payé 55 % ?), pas la valeur intermédiaire.
+//
+// La boucle ci-dessous REJOUE la condition exacte d'`activeIncome.ts` (`wasUnemployed || triggered`
+// pour le chômage, `wasLtd || duration > 0` pour l'invalidité). Elle ne reconstruit PAS le calcul
+// testé — elle rejoue son CONSOMMATEUR, qui est ce qu'on veut vérifier.
+describe('[JOBLOSS-DUREE-N-PLUS-1] la durée configurée est la durée VÉCUE', () => {
+    /** Nombre de mois où le revenu est réduit, condition d'`activeIncome.ts` reproduite. */
+    const moisDeChomage = (duree: number): number => {
+        const p = proj({ jobLossEnabled: true, jobLossDurationMonths: duree, jobLossAnnualProbability: 1 });
+        let restant = 0, vecus = 0;
+        for (let m = 1; m <= 60; m++) {
+            const etait = restant > 0;
+            // Déclenchement possible au 1er tour seulement (`currentMonthIndex: 0`), comme en janvier.
+            const r = tickJobLoss(ctx(0, { m, currentMonthIndex: m === 1 ? 0 : 5 }), p, restant);
+            if (etait || r.triggered) vecus++;
+            restant = r.newMonthsRemaining;
+        }
+        return vecus;
+    };
+
+    const moisInvalidite = (duree: number): number => {
+        const p = proj({ ltdEnabled: true, ltdDurationMonths: duree, ltdAnnualProbability: 1 });
+        let restant = 0, vecus = 0;
+        for (let m = 1; m <= 80; m++) {
+            const etait = restant > 0;
+            const r = tickLtd(ctx(0, { m, currentMonthIndex: m === 1 ? 0 : 5 }), p, restant, false);
+            if (etait || r.duration > 0) vecus++;
+            restant = r.newMonthsRemaining;
+        }
+        return vecus;
+    };
+
+    it('chômage : N mois configurés → N mois vécus (avant : N+1)', () => {
+        expect(moisDeChomage(6)).toBe(6);    // mesuré à 7 avant le correctif
+        expect(moisDeChomage(12)).toBe(12);  // mesuré à 13
+    });
+
+    it('chômage d’UN mois : le cas où l’erreur valait +100 %', () => {
+        // Le pire ratio, et celui qu'un test « durée moyenne » ne montre pas : 1 → 2 mois.
+        expect(moisDeChomage(1)).toBe(1);
+    });
+
+    it('invalidité longue durée : même défaut, même correctif (le ticket ne la mentionnait pas)', () => {
+        expect(moisInvalidite(24)).toBe(24); // mesuré à 25 avant le correctif
+        expect(moisInvalidite(1)).toBe(1);   // mesuré à 2
     });
 });
 

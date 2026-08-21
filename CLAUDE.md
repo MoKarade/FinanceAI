@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 641 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 644 tests** Vitest
 (418 fichiers de test, mesuré le 2026-08-21). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -235,6 +235,12 @@ n'est pas réécrire un récit.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
+- **Deux tests cohérents entre eux peuvent être faux ENSEMBLE** : un test au producteur et un test à
+  l'appelant qui affirment la même valeur INTERMÉDIAIRE ne se confirment pas — ils partagent
+  peut-être la même hypothèse. Une durée de chômage de N servait N+1 mois SOUS deux gardes qui la
+  figeaient. Viser la grandeur PUBLIÉE (combien de mois vécus ?), jamais le compteur. Et inclure le
+  plus PETIT cas légal : l'erreur « +1 » valait +17 % à 6 mois, **+100 % à 1 mois**
+  (`DEUX-TESTS-COHERENTS-ENTRE-EUX-PEUVENT-ETRE-FAUX-ENSEMBLE`).
 - Quand un ticket **CONTREDIT une règle établie** du dépôt, remonter à la JUSTIFICATION de la règle,
   pas à sa conclusion : « les % restent visibles » valait pour un ratio de portefeuille, pas pour une
   répartition ENTRE CONJOINTS (information relationnelle). Une règle formulée par sa conclusion a un

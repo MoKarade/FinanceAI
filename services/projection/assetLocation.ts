@@ -13,7 +13,7 @@
 // L'optimizer estime le gain net annuel d'une mauvaise vs bonne allocation
 // pour un patrimoine donné, sur la base du taux marginal de l'utilisateur.
 
-import { getMarginalRate, US_DIVIDEND_WITHHOLDING_RATE } from '../../utils/tax';
+import { getMarginalRate, US_DIVIDEND_WITHHOLDING_RATE, CAPITAL_GAINS_INCLUSION_STANDARD } from '../../utils/tax';
 
 export type AssetClass =
     | 'bonds'              // obligations, GIC, fonds monétaire
@@ -133,7 +133,14 @@ function annualLoss(
         if (assetClass === 'bonds' || assetClass === 'cash' || assetClass === 'reit') {
             return marginalRate; // intérêt 100% taxé
         }
-        return marginalRate * 0.5; // gain en capital
+        // [ASSETLOC-INCLUSION-RECOPIEE] Le taux d'inclusion des gains en capital vient de la SOURCE
+        // UNIQUE, plus d'un `0.5` recopié : ce site était le SEUL du dépôt à le re-coder
+        // (`latentTax`, `estateCalculation`, `retirementIncome`, `taxDecember`, `taxEstimate` et
+        // `projection.ts` importent tous la constante). Il était invisible parce que `0.5` figurait
+        // dans la liste `BENIGN` du garde fiscal — l'exclusion cachait la copie.
+        // Bit-identique tant que le taux vaut 50 %, et c'est justement l'intérêt : le jour où il
+        // change, ce site suivra au lieu de rester seul en arrière.
+        return marginalRate * CAPITAL_GAINS_INCLUSION_STANDARD; // gain en capital
     };
 
     const taxCurrent = yieldDollars * taxRate(current);

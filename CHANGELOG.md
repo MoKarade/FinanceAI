@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-21 (une perte d'emploi de 6 mois dure enfin 6 mois)
+
+- Dans les simulations, une **perte d'emploi** configurée à N mois en durait N+1 : le mois du
+  déclenchement comptait déjà, et le compteur en ajoutait N de plus. Une durée de 6 mois servait
+  7 mois de prestation, 12 en servait 13 — et 1 seul mois en servait 2, soit le double.
+- Même correction pour l'**invalidité longue durée** : 24 mois configurés en duraient 25.
+- Ces deux scénarios n'apparaissent que dans les simulations Monte Carlo : tes chiffres habituels
+  ne changent pas, seules les projections de risque deviennent justes.
+
 ## [unreleased] — 2026-08-21 (le mode discret cache aussi la répartition entre conjoints)
 
 - En mode discret, le **pourcentage** de répartition du patrimoine entre toi et ta conjointe est

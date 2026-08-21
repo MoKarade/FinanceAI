@@ -5484,3 +5484,43 @@ corriger (changer la couleur d'un bouton est une décision d'apparence). Un outi
 apprend à ignorer sa sortie. Le basculement en `exit(1)` est donc la DERNIÈRE étape du ticket de
 correction, pas la première du ticket d'outillage — et il est écrit noir sur blanc pour que
 « non bloquant » ne se lise pas un jour comme un oubli.
+
+## Leçon du lot `[JOBLOSS-DUREE-N-PLUS-1]` — 2026-08-21
+
+### `DEUX-TESTS-COHERENTS-ENTRE-EUX-PEUVENT-ETRE-FAUX-ENSEMBLE`
+
+Une perte d'emploi configurée à 6 mois en servait 7. Le défaut vivait dans le dépôt depuis
+l'origine, sous **deux** tests qui le couvraient — et le figeaient :
+
+- `stochasticEvents.test.ts` : « déclenche avec la durée configurée » → `newMonthsRemaining === 8`.
+- `activeIncome.test.ts` : « déclenchement stochastique » → `newUnemployedMonths === 8`.
+
+Les deux passaient. Ils étaient même *cohérents entre eux*. Et tous deux vérifiaient la même chose :
+**que le compteur contient ce que le code y met**. Aucun ne se demandait combien de mois
+l'utilisateur est réellement payé à 55 % — la seule grandeur qui compte.
+
+`newMonthsRemaining = 8` est parfaitement défendable EN ISOLATION. Il ne devient faux qu'une fois
+qu'on sait que l'appelant réduit DÉJÀ le revenu du mois courant (`wasUnemployed || triggered`). Le
+défaut n'est donc dans aucun appel : il est dans la **somme** des appels. Un test au contrat ne peut
+structurellement pas le voir (`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`, ici sous sa forme la
+plus coûteuse : la garde existait, en double, et validait le défaut).
+
+**Règle générale** : quand deux tests écrits à des niveaux différents (producteur et appelant)
+affirment la même valeur intermédiaire, ils ne se CONFIRMENT pas l'un l'autre — ils partagent
+peut-être la même hypothèse non vérifiée. La confirmation viendrait d'un test qui mesure la grandeur
+PUBLIÉE (combien de mois vécus ?), pas d'un second test qui relit le même compteur un cran plus
+haut. Signal mécanique : si un test peut s'écrire sans jamais nommer ce que l'utilisateur observe,
+il teste une plomberie, pas un comportement.
+
+**Corollaire, sur le choix des points d'essai** : le ticket chiffrait l'écart à « ~347 $/mois sur un
+épisode » pour une durée de 6 mois — soit un écart relatif de 1/6. Mesuré sur toutes les durées, le
+cas `duration = 1` donne **2 mois au lieu de 1, soit +100 %**. Une erreur « +1 » a un poids relatif
+qui EXPLOSE quand la grandeur est petite : tester la valeur par défaut (6) sous-estime le défaut
+d'un facteur 6. Toujours inclure le plus petit cas légal dans le balayage.
+
+**Corollaire, sur le jumeau** : le ticket ne mentionnait que le chômage. `tickLtd` (invalidité
+longue durée) portait le même défaut, à la ligne près — 24 mois configurés en servaient 25. Trouvé
+en allant lire le jumeau AVANT de coder, pas après. Corriger le chômage seul aurait désaccordé deux
+mécaniques jusqu'ici cohérentes (toutes deux fausses du même cran), ce qui est pire que ne rien
+faire : `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE` s'applique dès que deux fonctions sœurs partagent
+une convention, pas seulement à deux appels dans une même fonction.

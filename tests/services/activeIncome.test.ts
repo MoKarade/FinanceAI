@@ -166,7 +166,12 @@ describe('computeActiveIncome — perte d\'emploi (prestation AE par le brut pla
         const capAn1 = 68_900 * 1.025;
         expect(r.incomeMarc).toBeCloseTo(
             calculateFiscalReport(Math.min(100_000, capAn1) * 0.55, 0, 0, 2026, false, undefined, 0).netIncome / 12, 4);
-        expect(r.newUnemployedMonths).toBe(8);
+        // [JOBLOSS-DUREE-N-PLUS-1] Attendait `8` et figeait le défaut — deuxième site à le faire,
+        // après `stochasticEvents.test.ts`. Le mois du déclenchement est DÉJÀ servi à 55 % (c'est
+        // l'assertion `incomeMarc` juste au-dessus), donc il reste 7 mois après lui pour une durée
+        // de 8. Les deux tests étaient cohérents entre eux et faux ensemble : chacun vérifiait que
+        // le compteur valait ce que le code y mettait, sans jamais compter les mois VÉCUS.
+        expect(r.newUnemployedMonths).toBe(7);
         expect(r.lifeEventLogs.some(l => l.includes('Perte d\'emploi'))).toBe(true);
     });
 

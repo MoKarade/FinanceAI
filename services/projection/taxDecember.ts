@@ -20,6 +20,14 @@ const APRIL_SETTLEMENT_FLOOR_REAL = 100_000;
  * S'applique uniquement aux retraités 65+ avec revenu de pension > seuil.
  * Retourne le clawback annuel prévu (à diviser par 12 par le caller).
  */
+// [FISC-DIV-DERIVED-BASES] SOURCE UNIQUE du dividende annuel CASH du non-enregistré — la même
+// formule alimente l'assiette FSS, le revenu de récupération PSV, l'impôt du §3 et l'affichage
+// mensuel (projection.ts DividendIncome). Le MAJORÉ = × getDividendGrossUpRate('eligible').
+export const computeAnnualNonRegDividends = (nonReg: number, baseNonRegRate: number): number =>
+    (Number.isFinite(nonReg) ? Math.max(0, nonReg) : 0)
+    * ((Number.isFinite(baseNonRegRate) ? baseNonRegRate : 0) / 100)
+    * NONREG_DIVIDEND_DISTRIBUTION_SHARE;
+
 export function computeOasClawback(
     currentMonthIndex: number,
     m: number,
@@ -48,6 +56,15 @@ export function computeOasClawback(
     // prorata de résidence et le facteur survivant — pas la pension de BASE. Absent → repli legacy
     // (base sans report, rétro-compat).
     psvActualMonthlyNominal?: number,
+    // [FISC-DIV-DERIVED-BASES] Dividendes MAJORÉS annuels du non-enregistré (cash × gross-up).
+    // Le revenu de récupération PSV (ligne 23400 ARC) inclut le dividende IMPOSABLE = le majoré,
+    // comme il inclut déjà le gain imposable (PV-9). Réparti également (non attribuable par
+    // conjoint dans le modèle, même limite que les gains). Défaut 0 = rétro-compat bit-identique.
+    // MESURÉ (vraie formule, part distribuée 30 %) : +1 552,50 $/an de récupération sur un
+    // couple à 100 k$/conjoint + 500 k$ non-enreg à 5 % ; +2 484 $ à 110 k$/conjoint + 800 k$.
+    // ⚠️ Un premier chiffrage disait +3 006 $ — il oubliait NONREG_DIVIDEND_DISTRIBUTION_SHARE
+    // (0,3) dans l'assiette : re-mesuré avec la source unique (classe ECRIRE-UN-CHIFFRE).
+    annualGrossedUpDividends: number = 0,
 ): { clawbackAnnual: number; logMsg?: string } {
     if (currentMonthIndex !== 11 || m === 0 || !isRetired || age < 65) {
         return { clawbackAnnual: 0 };
@@ -104,12 +121,16 @@ export function computeOasClawback(
     // PV-9 — gain imposable (50 % d'inclusion) réparti également par adulte. Garde NaN symétrique.
     const taxableGainsPerUser = (Number.isFinite(accCapitalGainsYear)
         ? Math.max(0, accCapitalGainsYear) : 0) * CAPITAL_GAINS_INCLUSION_STANDARD / n;
+    // [FISC-DIV-DERIVED-BASES] dividende majoré réparti également — même patron que les gains.
+    const grossedUpDivPerUser = (Number.isFinite(annualGrossedUpDividends)
+        ? Math.max(0, annualGrossedUpDividends) : 0) / n;
     let clawbackAnnual = 0;
     for (let i = 0; i < n; i++) {
         const incomeUser = (validIncome ? perUserIncomeMonthly![i] * 12 : (incomeRetirementMonthly * 12) / n)
             + (validReer ? perUserReerAnnual![i] : accRetraitsReerYear / n)
             + accRentesYear / n
-            + taxableGainsPerUser;
+            + taxableGainsPerUser
+            + grossedUpDivPerUser;
         const excess = incomeUser - OAS_THRESHOLD;
         // Taux de récupération PSV : 15 % de l'excédent (ARC, ligne 23500) — OAS_CLAWBACK_RATE,
         // sourcé FISCAL_REFERENCE §6 (FA-8 : littéral 0.15 nommé).
@@ -722,6 +743,15 @@ export function processDecemberTaxFiling(
         }
     }
 
+    // [FISC-DIV-DERIVED-BASES] SOURCE UNIQUE du dividende annuel du non-enregistré — consommée
+    // par l'assiette FSS (§1.6), le revenu de récupération PSV (via le caller) et le bloc
+    // dividendes (§3). Deux copies de cette formule divergeraient en silence.
+    const annualDivForBases = computeAnnualNonRegDividends(ctx.nonReg, ctx.baseNonRegRate);
+    // Repli si le helper gross-up est absent (même contrat optionnel qu'au §3) : dividende CASH —
+    // sous-estime l'assiette plutôt que d'inventer un taux ; le vrai moteur passe toujours le helper.
+    const annualGrossedUpDivForBases = annualDivForBases
+        * (helpers.getDividendGrossUpRate ? helpers.getDividendGrossUpRate('eligible') : 1);
+
     // ---- 1.5. RAMQ — prime annuelle régime public d'assurance médicaments (audit §6.4) ----
     // Calculée par adulte sur le revenu familial NET (après déductions REER/FHSA).
     // Si l'utilisateur a une couverture privée (régime employeur/association),
@@ -804,11 +834,15 @@ export function processDecemberTaxFiling(
     //     un suivi individuel des revenus retraite (hors scope §6.1).
     if (ctx.isRetired) {
         // FA-3a : SRG exclu du revenu net individuel (non imposable).
+        // [FISC-DIV-DERIVED-BASES] le dividende MAJORÉ entre dans le revenu net (ligne 275 QC),
+        // comme le gain imposable — l'assiette FSS l'ignorait (asymétrie du panel #564).
+        // MESURÉ : +70 $/an/ménage à 500 k$ non-enreg (borné par le plafond 1 000 $/adulte).
         const individualNetIncome = (
             (ctx.incomeRetirementMonthly - gisMonthlySafe) * 12
             + ctx.accRentesYear
             + ctx.accRetraitsReerYear
             + ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD
+            + annualGrossedUpDivForBases
         ) / ctx.activeUsersCount / ctx.inflationFactor;
         // [FISC-BRACKET-REALINDEX] individualNetIncome est en $ RÉELS → seuils FSS en réel.
         const fssPerAdult = calculateFSSPremium(individualNetIncome, ctx.loopYear, ctx.inflationFactor);
@@ -916,7 +950,7 @@ export function processDecemberTaxFiling(
     // soustrait AVANT l'abattement QC, donc sa valeur effective est réduite d'autant) ; le CID
     // QC (11,7 %) n'est pas abattu.
     if (ctx.nonReg > 0) {
-        const annualDiv = ctx.nonReg * (ctx.baseNonRegRate / 100) * NONREG_DIVIDEND_DISTRIBUTION_SHARE;
+        const annualDiv = annualDivForBases; // source unique hissée avant le bloc FSS
         // FA-3a : SRG exclu de l'assiette d'empilement (non imposable).
         // FA-8 (2026-06-11) : MÊME assiette de BASE que l'empilement des gains (§2 ci-dessus) —
         // les retraits REER/FERR de l'année (`accRetraitsReerYear`) font partie du revenu sur

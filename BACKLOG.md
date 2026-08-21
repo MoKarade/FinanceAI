@@ -388,14 +388,26 @@
   compteur (poids 0,25) : pinner l'ORDRE complet (objectifs `tax` et `balanced`) sur une fixture de
   référence, pas seulement la paire MELT/AUTO. Le validator a MESURÉ le nouvel ordre post-fix
   (balanced : MELTDOWN > PRIO_REER > AUTO sur retraité 62) — c'est LA baseline à pinner.
-- [ ] **`[ENG-RANKTAX-ESTATE]`**
-  ✅ **DÉBLOQUÉ 2026-08-20 (réponses Marc, ADR « Sept décisions »)** — décision : **TOUT** — l'impôt successoral entre dans « impôt minimum ». (M, MOYEN [Certain, mesuré ×3,6] — panel #554, PRÉ-EXISTANT
-  amplifié) — l'objectif « impôt » de `rankStrategies` ne score QUE `totalTaxesPaid` :
-  `totalEstateTax` n'entre nulle part → « impôt minimum » récompense le REPORT (mesuré : PRIO_CELI
-  classé 1er avec ttp −189 849 $ + estateTax 1 299 510 $ = 3,6× l'impôt TOTAL de MELTDOWN).
-  `avgEfficiency`/FVI ont le même angle mort (PRIO_CELI « 98,9 % efficace » avec 1,3 M$ d'impôt
-  latent). Fix : `nTax` sur `totalTaxesPaid + totalEstateTax` OU libeller « impôt payé de son
-  vivant » — décision produit, poser à Marc.
+- [x] ~~**`[ENG-RANKTAX-ESTATE]`**~~ ✅ **LIVRÉ 2026-08-21** (décision Marc A4 « TOUT » ; détail :
+  section datée en tête de `docs/BACKLOG_ARCHIVE.md` — réf PR au merge).
+- [ ] **`[ENG-FVI-EFFICIENCY-ESTATE]`** (M, MOYEN [MESURÉ — relecture #681 ; ré-ouvert : la ligne
+  « avgEfficiency/FVI ont le même angle mort » du ticket #554 avait été SUPPRIMÉE au cochage au
+  lieu d'être routée]) — `monteCarlo.ts:165-173` : `leakage = clamp(ttp/totalGrowth, 0, 1)` —
+  le clamp force 100 % d'« efficacité fiscale » dès que ttp < 0, la situation NORMALE d'un
+  salarié, et l'impôt successoral n'y entre pas. Mesuré : PRIO_REER affiché 100 % d'efficacité
+  vs 0 % avec l'impôt total (−20 points de FVI sur 100). Le FVI alimente la carte Vitalité,
+  le PDF, DEUX outils MCP lus par le LLM, et ÉCRASE successRate (projection.ts:2416). Trancher :
+  brancher lifetimeTaxTotal dans leakage (re-base FVI massif) ou documenter « A4 ne s'applique
+  pas au FVI » dans l'ADR.
+- [ ] **`[ENG-RANKING-MODULES-ORPHELINS]`** (S, FAIBLE — découvert au lot RANKTAX, 2026-08-21) —
+  `rankStrategies` (strategyRanking.ts) et `compareLifeScenarios` (drawdownOptimizer.ts) n'ont
+  **AUCUN appelant vivant** (tests seuls — vérifié par grep exhaustif) : le classement réel passe
+  par `strategySearch → strategyConfigRanking`. Deux modules money-critical orphelins = surface de
+  faux findings et de dérive (le lot les a corrigés quand même pour cohérence). Trancher : les
+  BRANCHER à une surface (le comparateur d'avenirs ?) ou les retirer (knip les voit-il ?).
+  ⚠️ AVANT tout branchement de `rankStrategies` : son score `balanced` compte l'impôt successoral
+  DEUX fois (axe estate = estateNetWorth déjà NET d'estate tax à 0,40 + axe tax = lifetimeTaxTotal
+  qui l'inclut à 0,25 — relecture #681, sans effet aujourd'hui faute d'appelant).
 - [ ] **`[ENG-RAP-MISSED-REPAYMENT-TAX]`** (S — panel #554, PRÉ-EXISTANT) — un remboursement RAP
   sauté (liquide insuffisant, `realEstateMonth.ts:419-427`) devrait ajouter 1/15 du solde au revenu
   IMPOSABLE (règle ARC) — jamais modélisé, dans aucun compteur.
@@ -1117,7 +1129,10 @@
   (`UN-NOM-TROMPEUR-FABRIQUE-DES-FAUX-FINDINGS`). Pas affiché à l'écran, MAIS pilote
   `strategyRanking.ts` (`lifetimeTax`), `drawdownOptimizer` et `strategySearch` — un objectif
   « impôt minimum » assis sur un solde d'avril. ⚠️ Se coordonne avec `[ENG-RANKTAX-ESTATE]`
-  (décision Marc A4 : impôt TOTAL, successoral inclus) : même refonte de la grandeur. [MESURÉ]
+  (LIVRÉ 2026-08-21 : l'objectif score désormais lifetimeTaxTotal — le biais des retenues reste).
+  ⚠️ Relecture #681 : le biais n'est PAS constant entre stratégies sous T1213
+  (optimizeSourceDeductions) — la retenue absorbe les déductions REER strategy-dépendantes,
+  écart mesuré 107 530 $ entre PRIO_REER et PRIO_CELI sur le même profil. [MESURÉ]
 
 - [ ] **`[W5-RENTAL-INTERET-DPA]`** (S, FAIBLE→MOYEN depuis le fix 12× — revue 2026-08-20) —
   le forfait imposant désormais 12× plus, deux déductions non modélisées deviennent matérielles :

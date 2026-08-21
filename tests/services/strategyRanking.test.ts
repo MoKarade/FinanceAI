@@ -40,6 +40,44 @@ const taxLow: RankableScenario = {
 const scenarios = [fireEarly, wealthMax, taxLow]; // indices 0,1,2
 
 describe('rankStrategies', () => {
+    // Fabrique locale des nouveaux cas : chartData minimal, champs surchargés par cas.
+    const base = (o: Partial<RankableScenario>): RankableScenario => ({
+        strategyName: 'S', estateNetWorth: 1_000_000, totalTaxesPaid: 0, minNetWorth: 0,
+        chartData: [{ monthIndex: 0, age: 40, NetWorth: 100_000, FireTarget: 800_000 }],
+        ...o,
+    });
+
+    it('[ENG-RANKTAX-ESTATE] « impôt minimum » ne récompense PLUS le report (cas panel #554)', () => {
+        // Chiffres du panel #554 (non re-mesurables ici — fixture SYNTHÉTIQUE cohérente avec le
+        // ratio 3,6× du panel) : PRIO_CELI affichait ttp −189 849 $
+        // mais laissait 1 299 510 $ d'impôt successoral ; MELTDOWN payait plus de son vivant pour
+        // un impôt TOTAL 3,6× plus bas. L'ancien score (ttp seul) classait PRIO_CELI 1er.
+        const prioCeli = base({ strategyName: 'PRIO_CELI', totalTaxesPaid: -189_849,
+            totalEstateTax: 1_299_510, estateNetWorth: 1_000_000 });
+        const meltdown = base({ strategyName: 'MELTDOWN', totalTaxesPaid: 240_000,
+            totalEstateTax: 68_000, estateNetWorth: 1_000_000 });
+        const r = rankStrategies([prioCeli, meltdown], 'tax');
+        expect(r.ranked[0].strategyName).toBe('MELTDOWN');
+        // La grandeur scorée est exposée sous son VRAI nom, avec l'estate dedans :
+        expect(r.ranked.find(x => x.strategyName === 'PRIO_CELI')!.lifetimeTaxTotal)
+            .toBeCloseTo(-189_849 + 1_299_510, 2);
+    });
+
+    it('[ENG-RANKTAX-ESTATE] la dette non réglée à l\'horizon compte aussi (3 registres)', () => {
+        // Deux scénarios à ttp et estate identiques : seule la dette d'horizon les sépare.
+        // ⚠️ [Relecture #681] DEBT passé EN PREMIER : mon 1er jet passait CLEAN en premier et le
+        // test restait vert sur l'ancien code (tMax ≤ tMin → nTax 0,5 partout → départage par
+        // INDEX D'ENTRÉE — le test ne mesurait que l'ordre du tableau). L'assertion sur la
+        // grandeur scorée ferme l'autre porte.
+        const clean = base({ strategyName: 'CLEAN', totalTaxesPaid: 100_000, totalEstateTax: 50_000 });
+        const debt = base({ strategyName: 'DEBT', totalTaxesPaid: 100_000, totalEstateTax: 50_000,
+            unsettledTaxAtHorizon: 80_000 });
+        const r = rankStrategies([debt, clean], 'tax');
+        expect(r.ranked[0].strategyName).toBe('CLEAN');
+        expect(r.ranked.find(x => x.strategyName === 'DEBT')!.lifetimeTaxTotal)
+            .toBeCloseTo(230_000, 2);
+    });
+
     it('objectif patrimoine → choisit le plus gros patrimoine', () => {
         const r = rankStrategies(scenarios, 'wealth');
         expect(r.bestIndex).toBe(1); // wealthMax

@@ -350,15 +350,16 @@ const WinnerCard: React.FC<{
             <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <Metric label="Succès" value={`${r.successRate}%`} />
                 <Metric label="Patrimoine méd." value={fmtM(r.finalNWp50)} blur />
-                {/* [PROJ-TTP-DOUBLECOUNT F2] « Impôt à vie » était trompeur : le compteur = les
-                    régularisations d'avril + impôt des décaissements — il n'a JAMAIS inclus la
-                    retenue à la source des salaires (mesuré : −47 k$ affichés pour ~846 k$ réels
-                    chez un couple salarié). Même sémantique que le MCP (netTaxSettlements). */}
+                {/* [ENG-RANKTAX-ESTATE] lifetimeTax est désormais l'impôt TOTAL MODÉLISÉ (A4) :
+                    régularisations d'avril + solde à l'horizon + impôt SUCCESSORAL. ⚠️ Sémantique
+                    DIFFÉRENTE du MCP netTaxSettlements (resté sur les seuls règlements) — les deux
+                    chiffres ne se comparent plus. Toujours HORS retenue salariale (incorporée au
+                    net saisi — [PROJ-TAXPAID-SOLDE-AVRIL], mesuré ~732 k$ sur 10 ans de couple). */}
                 <Metric
-                    label="Régularisations d'impôt (net)"
+                    label="Impôt total (modélisé)"
                     value={fmtM(r.lifetimeTax)}
                     blur
-                    title="Soldes et remboursements d'avril sur l'horizon (l'impôt des décaissements en retraite y est réglé), + le solde de la dernière année — réglé l'avril suivant la fin de l'horizon. N'inclut PAS l'impôt retenu à la source sur les salaires, ni l'impôt successoral. Négatif = remboursements nets."
+                    title="Impôt total du scénario : soldes/remboursements d'avril sur l'horizon, + le solde de la dernière année, + l'impôt successoral de liquidation (décision : l'impôt successoral entre dans « impôt minimum »). N'inclut PAS l'impôt retenu à la source sur les salaires. Négatif = remboursements nets supérieurs au reste."
                 />
                 <Metric label="FIRE" value={r.fireAge !== null ? `${Math.round(r.fireAge)} ans` : '—'} />
             </div>
@@ -472,7 +473,7 @@ const ResultsTable: React.FC<{
                             <th className="px-2 py-1.5 text-left font-medium">#</th>
                             <th className="px-2 py-1.5 text-right font-medium">Succès</th>
                             <th className="px-2 py-1.5 text-right font-medium">Patrim. méd.</th>
-                            <th className="px-2 py-1.5 text-right font-medium" title="Régularisations d'impôt nettes sur l'horizon (n'inclut pas la retenue à la source des salaires)">Régul. impôt</th>
+                            <th className="px-2 py-1.5 text-right font-medium" title="Impôt total modélisé : régularisations d'avril + solde à l'horizon + impôt successoral (hors retenue à la source des salaires)">Impôt total</th>
                             <th className="px-2 py-1.5 text-right font-medium">FIRE</th>
                             <th className="px-2 py-1.5 text-right font-medium">Score</th>
                         </tr>

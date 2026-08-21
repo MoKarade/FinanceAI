@@ -10,6 +10,43 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — [ENG-RANKTAX-ESTATE] : « impôt minimum » score l'impôt TOTAL (successoral inclus)
+
+- [x] **`[ENG-RANKTAX-ESTATE]`** (M, MOYEN) — ✅ 2026-08-21, PR à compléter au merge.
+
+**Décision Marc A4 (ADR 0014) : « TOUT ».** L'objectif « impôt minimum » ne scorait que
+`totalTaxesPaid` (règlements d'avril) : il RÉCOMPENSAIT le report — panel #554 : PRIO_CELI classé
+1er avec ttp −189 849 $ et 1 299 510 $ d'impôt successoral ignoré (3,6× l'impôt total de MELTDOWN).
+
+**Livré** : source unique `lifetimeTaxTotal` (`services/projection/lifetimeTax.ts`) = les trois
+registres DISJOINTS du moteur (`totalTaxesPaid` + `unsettledTaxAtHorizon` + `totalEstateTax`),
+branchée au site VIVANT (`strategySearch.lifetimeTax` → `strategyConfigRanking`) et à
+`rankStrategies` (champ retourné renommé `lifetimeTaxTotal` — il portait le nom d'un registre
+qu'il ne contient plus). Cas #554 pinné (MELTDOWN bat PRIO_CELI sur « impôt minimum »), test dette
+d'horizon, ancre négative sur le câblage search. 2 perturbations prouvées rouges, restauration
+par diff. `[PROJ-TAXPAID-SOLDE-AVRIL]` reste ouvert (biais constant entre stratégies — sans effet
+sur un classement, documenté dans le helper).
+
+**Découvertes routées** : `[ENG-RANKING-MODULES-ORPHELINS]` (rankStrategies et
+compareLifeScenarios sans appelant vivant — le ticket #554 sur-prescrivait leur rôle ; + double
+comptage estate dans son score balanced, noté au ticket), `[ENG-FVI-EFFICIENCY-ESTATE]` (ré-ouvert
+— l'angle mort FVI du ticket #554 avait été SUPPRIMÉ au cochage au lieu d'être routé : −20 pts de
+FVI mesurés, clamp à 100 % dès ttp < 0).
+**Relecture #681 appliquée** : l'infobulle du panneau vivant promettait « ni l'impôt
+successoral » sur la valeur qui l'inclut désormais (étiquette → « Impôt total (modélisé) », les
+deux tooltips réécrits, la divergence avec le MCP netTaxSettlements DOCUMENTÉE au commentaire) ;
+mon test « 3 registres » était VACUEUX (départage par index d'entrée — ordre inversé + assertion
+sur la grandeur) ; unsettled ajouté au fake de strategySearch (sa suppression laissait 82 tests
+verts) ; « biais constant entre stratégies » borné (faux sous T1213 : 107 530 $ mesurés) ;
+« impôt total » précisé « MODÉLISÉ » (la retenue salariale ~732 k$/10 ans reste hors compteur) ;
+PROJECTION_OUTPUT_SCHEMA + types.ts mis à jour dans la même PR.
+
+⚠️ **3e revert de conteneur de la session** pendant ce lot : le snapshot restauré portait un
+`origin/main` PÉRIMÉ (95f0a5f, −5 semaines) et la branche est partie de là — trahie par le
+COMPTE DU GATE (348 fichiers au lieu de 410). Réparé : fetch, rebase sur le vrai main,
+`--force-with-lease`, `npm install` (deps du nouveau package.json), re-gate vert. Leçon portée
+dans CONVENTIONS : le compte de tests du gate est un DÉTECTEUR de revert.
+
 ## 2026-08-20 — [FISC-PENSION-CREDIT-REAL] : le crédit pension fédéral décroît en espace réel
 
 - [x] **`[FISC-PENSION-CREDIT-REAL]`** (S, MOYEN) — ✅ 2026-08-20, PR à compléter au merge.

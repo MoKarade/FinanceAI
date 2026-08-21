@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-21 (suite 124) — isOwned + badges (A6 + A5) : la détention se DÉCLARE
+> Branche `claude/past-owned-badge` (depuis main post-#683), PR #684. Champ `isOwned?: boolean`
+> additif sur `RealEstateGoal` : `false` = objectif planifié non réalisé → RIEN au m0 (ferme les
+> +156 628 $ / +307 081 $ fantômes du panel #552) ; legacy `undefined` bit-identique (prouvé).
+> **3 registres gated** — moteur `initPastPurchase`, affichage `presentEquityOfGoal`, et le bloc
+> d'achat `realEstateMonth` que SEUL le test bout-en-bout a attrapé (achat d'office au m0,
+> 34 310 $ mesurés malgré les 2 autres gates). UI : popup Modal nu 3-issues (PAS ConfirmModal —
+> fermer == annuler y écrirait `false` par accident), checkbox date passée, badges A5 (bien +
+> enfant inactifs), `isOwned: true` à la création depuis « Actuel ». 4e REVERT de conteneur
+> pendant le gate (branche et commit sauvés par le push pré-attente ; re-install + re-gate).
+> Trigger 03:07 traité : #683 mergée + production Vercel `READY` (sha 09bb356) vérifiés.
+>
 > ## 🟢 Session 2026-08-21 (suite 123) — Queue de vague 1b : TTP propagé, assiettes DIV, GK lissé
 > Branche `claude/vague1b-queue` (rebasée post-#682). 3 items livrés en un lot (même terrain
 > taxDecember/taxJanuary) + le doublon [FISC-BAND-AGE-CREDITS] soldé (= #676, deux IDs pour un

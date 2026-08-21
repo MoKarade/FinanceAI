@@ -10,9 +10,35 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — La détention immobilière se DÉCLARE (isOwned) + badges « non compté » (A6 + A5)
+
+- [x] **`[ENG-PAST-OWNED-VS-PLANNED]`** (M, ÉLEVÉ [Certain, mesuré] — panel #552) — ✅ 2026-08-21,
+  PR #684. Décision Marc A6 (ADR 0014) : champ `isOwned?: boolean` sur `RealEstateGoal`
+  (additif, zéro migration). `false` = objectif planifié non réalisé → RIEN au m0 (ferme les
+  +156 628 $ d'équité et +307 081 $ de dette fantômes du panel #552) ; `true`/`undefined` =
+  comportement V2' bit-identique (prouvé par test).
+- [x] **`[UX-ISACTIVE-BADGE]`** (XS — A5, reformulé depuis `[UX-ISACTIVE-SEMANTIQUE]`) — ✅ idem.
+  Défaut `isActive: false` INCHANGÉ (décision : on attend le clic « Activer ») ; badge « Non
+  comptée dans la simulation » sur le bien ET l'enfant inactifs — l'amputation du patrimoine
+  est désormais VISIBLE.
+
+**Les 3 registres gated** (un flux alimente PLUSIEURS registres — le 3e attrapé par le test
+bout-en-bout, pas par la relecture) : (1) moteur `projection.ts` `initPastPurchase` ;
+(2) affichage `pastPurchaseInit.presentEquityOfGoal` (repli sur les champs EXPLICITES saisis —
+`currentValue` prime) ; (3) `realEstateMonth` bloc d'achat — sans ce gate le bien `isOwned:false`
+était acheté D'OFFICE au m0 (Immobilier = 34 310 $ mesuré au 1er point malgré les 2 autres gates).
+
+**UI (spec A6)** : popup à l'ouverture de l'espace immobilier quand un objectif ACTIF a une date
+planifiée passée sans réponse — Modal nu à 3 issues (« Pas encore » → `isOwned:false` / « Oui,
+acheté » → `true` / fermer → on redemandera), PAS `ConfirmModal` dont fermer == répondre non ;
+checkbox au formulaire quand la date saisie est passée ; un bien créé depuis la page « Actuel »
+naît `isOwned: true`. 4 tests neufs (`pastOwnedVsPlanned.test.ts`) dont un bout-en-bout moteur
+comparant m0 `Immobilier`/`DetteTotale` ; perturbation prouvée rouge, restauration par diff.
+Docs : PROJECTION.md (phase 6) aligné.
+
 ## 2026-08-21 — Queue de vague 1b : dette d'horizon propagée, dividende majoré dans les assiettes, GK lissé
 
-- [x] **`[ENG-TTP-UNSETTLED-PROPAGATE]`** (S-M) — ✅ 2026-08-21, PR à compléter au merge.
+- [x] **`[ENG-TTP-UNSETTLED-PROPAGATE]`** (S-M) — ✅ 2026-08-21, PR #683.
 - [x] **`[FISC-DIV-DERIVED-BASES]`** (S-M, FAIBLE) — ✅ idem.
 - [x] **`[ENG-GK-THRESHOLD-KNIFE]`** (M, MOYEN) — ✅ idem.
 - [x] **`[FISC-BAND-AGE-CREDITS]`** — ✅ DOUBLON de `[FISC-TAXDEC-INCR]`, livré par #676 (mêmes

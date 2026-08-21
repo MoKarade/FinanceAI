@@ -5080,3 +5080,26 @@ malgré son nom, cumule les **LOYERS** (`realEstateMonth.ts : accRentesYear += r
 sont `incomeRetirement * 12` qui portent les rentes publiques. Le code était juste, la justification
 fausse, et j'ai failli câbler le calcul à l'envers sur la foi d'un nom.
 `UN-NOM-TROMPEUR-FABRIQUE-DES-FAUX-FINDINGS` — y compris les siens.
+
+## Leçon du lot isOwned (A6 + A5) — 2026-08-21
+
+### `QUESTION-A-TROIS-ISSUES-DANS-UN-COMPOSANT-A-DEUX` — fermer n'est pas répondre
+
+Contexte : le popup « est-ce acheté ? » (spec A6). La question a TROIS issues sémantiques :
+« oui » (écrire `isOwned: true`), « pas encore » (écrire `isOwned: false`), et « je ne réponds
+pas maintenant » (n'écrire RIEN — on redemandera). Le composant disponible, `ConfirmModal`,
+n'en a que deux : son `onClose` EST son `onCancel` — le X, la touche Échap et le clic hors
+du panneau déclenchent la même callback que le bouton « Annuler ».
+
+Câblé naïvement, une fermeture ACCIDENTELLE (Échap réflexe, clic à côté) aurait écrit
+`isOwned: false` dans le store — une réponse PERSISTÉE que l'utilisateur n'a jamais donnée,
+sur un champ money-critical (il ampute le bien du patrimoine). Le correctif n'est pas de
+tordre `ConfirmModal` : c'est de descendre au `Modal` nu et de câbler trois issues distinctes,
+dont une qui n'écrit rien.
+
+Règle : **compter les issues de la QUESTION avant de choisir le composant** — le nombre
+d'issues vient de la sémantique, pas du composant qu'on a sous la main. Un composant de
+confirmation encode « fermer == refuser » ; c'est correct pour « confirmer une action »
+(refuser est sans état), FAUX pour « déclarer un fait » (chaque issue écrit — ou s'abstient
+d'écrire — une donnée persistée). Même famille que `PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR` :
+réutiliser un composant, c'est hériter de son contrat de sortie.

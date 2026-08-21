@@ -63,7 +63,17 @@ export const NetWorthByOwnerCard: React.FC<NetWorthByOwnerCardProps> = ({ assets
                             <span className="text-meta text-ink-200 truncate">{b.label}</span>
                         </div>
                         <PrivateAmount as="div" className="font-mono font-bold text-white">{fmt(b.value)}</PrivateAmount>
-                        <div className="text-tiny text-ink-400">{pct(b.value, bd.total)}</div>
+                        {/* [A11Y-PCT-NOT-MASKED] Le montant juste au-dessus était masqué en mode
+                            discret, mais PAS ce pourcentage — or une répartition du patrimoine
+                            ENTRE CONJOINTS est une information relationnelle, et elle reste
+                            lisible même quand les montants sont cachés (« 70 % / 30 % » se lit
+                            par-dessus l'épaule aussi bien qu'un dollar). `FutureKpiStrip` traite
+                            déjà explicitement un `%` comme une donnée à masquer (drapeau
+                            `privateSublabel`) : la garde manquait ICI alors que la ligne VOISINE
+                            l'avait — motif `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`.
+                            Le libellé du poste (`b.label`) reste visible : masquer la valeur ne
+                            retire donc aucun discriminant du nom accessible. */}
+                        <PrivateAmount as="div" className="text-tiny text-ink-400">{pct(b.value, bd.total)}</PrivateAmount>
                     </div>
                 ))}
             </div>

@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟠 Session 2026-08-21 (suite 132) — Lot a11y XS : 4 CTA hors WCAG découverts, décision Marc requise
+> `[A11Y-PCT-NOT-MASKED]` : le % de répartition entre conjoints suit désormais le mode discret.
+> ⚠️ **Ce lot fixe un ARBITRAGE contre la règle générale du dépôt** (« les % restent visibles, à
+> dessein », `Investments.privacy.test.tsx`) : cette règle valait pour un ratio de PORTEFEUILLE, pas
+> pour une répartition entre PERSONNES (information relationnelle, lisible même dollars masqués).
+> Le raisonnement est écrit dans le test — sans ça, le prochain lecteur « corrige » l'incohérence au
+> hasard. Leçon `UNE-REGLE-GENERALE-A-UN-DOMAINE-DE-VALIDITE`.
+> `[A11Y-CONTRAST-TOOL-GAP-CTA]` : `check-contrast.ts` gagne une passe CTA, paires **extraites du
+> code peint** (3 492 attributs balayés), angle mort des `className` interpolés DÉCLARÉ, plancher
+> anti-scan-vide.
+> 🧭 **DÉCISION MARC EN ATTENTE — `[A11Y-CTA-CONTRASTE-OFFENDERS]`** : rejouer l'outil élargi a
+> révélé **4 CTA sur 6 hors WCAG AA**, tous PRÉEXISTANTS, dont `text-white` sur `bg-warning-500` à
+> **2,15** (échoue même le seuil « texte large »). Mesurés et localisés au fichier:ligne dans le
+> ticket. NON corrigés : changer une couleur de bouton est une décision d'APPARENCE. La passe
+> rapporte sans bloquer — choix daté DANS le script (un outil qui naît rouge apprend à être ignoré) ;
+> le basculement en `exit(1)` est la dernière étape du ticket de correction.
+> 6 tests neufs, 1 prouvé rouge par perturbation. Gate vert : **4 641 tests / 418 fichiers**.
+>
 > ## 🟢 Session 2026-08-21 (suite 131) — `[ENV-NODE-NON-DECLARE]` : le TYPECHECK devient la garde
 > `.nvmrc` + `engines.node: 20.x` + les 4 workflows sur `node-version-file` (plus aucun littéral de
 > version dupliqué). Garde neuve `tests/nodeVersionDeclared.test.ts` (4 assertions, 3 perturbations

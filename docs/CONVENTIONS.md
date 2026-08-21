@@ -5432,3 +5432,55 @@ fermé). C'est le comportement VOULU, pas un obstacle : une PR qui supprime un l
 supprimer les raisons qui parlaient de lui, sinon l'inventaire conserve un constat périmé qui se lit
 comme un fait au présent. La garde a fait ce travail sans intervention — c'est la preuve, en
 exécution, que `ENTREE-D-INVENTAIRE-FANTOME` tient.
+
+## Leçon du lot a11y XS — 2026-08-21
+
+### `UNE-REGLE-GENERALE-A-UN-DOMAINE-DE-VALIDITE` — « les % restent visibles » était vrai, et faux ici
+
+Le lot `[A11Y-PRIVACY-LOT2]` avait posé une règle explicite, écrite dans
+`Investments.privacy.test.tsx` : « CE QUI RESTE VISIBLE, à dessein : les pourcentages (part du
+portefeuille, écart de rééquilibrage, variation, gain en %). Ce sont des ratios et une direction,
+pas des sommes. » Règle correcte, justifiée, et appliquée partout.
+
+`[A11Y-PCT-NOT-MASKED]` demandait de masquer un pourcentage. Contradiction apparente — et la
+tentation est de trancher par autorité (« la règle dit non ») ou par le ticket (« l'audit dit
+oui »). Les deux seraient une erreur de méthode : il faut rouvrir le RAISONNEMENT de la règle, pas
+sa conclusion.
+
+Ce raisonnement était : *un ratio ne dit rien sur la personne*. Vrai pour « 40 % en actions ». **Faux
+pour « 70 % / 30 % » entre deux conjoints** : là, le ratio n'est pas une composition de portefeuille,
+c'est une information RELATIONNELLE. Elle reste parfaitement lisible quand les dollars sont masqués,
+et le mode discret existe précisément pour le regard par-dessus l'épaule. La règle générale n'était
+donc pas « jamais un pourcentage » mais « pas les ratios anodins » — et le dépôt le savait déjà sans
+l'avoir écrit : `FutureKpiStrip` porte un drapeau `privateSublabel` qui masque un `%` selon le
+contexte.
+
+**Règle générale** : quand un ticket contredit une règle établie du dépôt, remonter à la
+JUSTIFICATION de la règle et vérifier si elle couvre le cas. Une règle formulée par sa conclusion
+(« les % restent visibles ») a un domaine de validité que sa formulation ne dit pas ; le cas
+nouveau tombe soit dedans, soit dehors. Et l'issue s'ÉCRIT dans le test qui la fixe — sinon le
+lecteur suivant voit une incohérence, et la « corrige » dans un sens ou dans l'autre au hasard.
+
+### `REJOUER-L-OUTIL-ELARGI-AVANT-DE-CROIRE-QU-IL-N-Y-A-RIEN`
+
+`[A11Y-CONTRAST-TOOL-GAP-CTA]` était classé XS/FAIBLE et libellé « trou de couverture de l'outil,
+pas un échec constaté ». Étendre l'outil aux boutons pleins, puis le rejouer, a sorti **4 offenders
+sur 6**, dont un à 2,15 — sous le seuil WCAG même pour du texte large. Le ticket disait vrai sur la
+forme (aucun échec n'était CONSTATÉ) et sous-estimait complètement l'enjeu : personne n'avait
+regardé, donc personne ne pouvait constater.
+
+**Deux règles en sortent.** (1) Un ticket « l'outil ne couvre pas X » ne se solde pas en étendant
+l'outil : il se solde en le REJOUANT, parce que ce qu'il révèle est le vrai périmètre — et ce
+périmètre peut être d'une gravité sans rapport avec l'étiquette du ticket. (2) Les paires à tester
+s'EXTRAIENT du code peint, jamais d'une liste écrite à la main : une liste teste des combinaisons
+mortes et rate celles qu'on vient d'ajouter, exactement le défaut que ce même script documentait
+déjà pour ses tokens (`A11Y-CHECK-CONTRAST-DRIFT`) — le piège était décrit en tête du fichier et
+la nouvelle passe allait le re-commettre.
+
+**Corollaire, sur le moment de rendre une garde bloquante** : la passe RAPPORTE sans faire échouer,
+et c'est écrit dans le script avec sa date et sa raison. La rendre bloquante d'emblée livrerait un
+outil ROUGE dès sa première exécution, sur des défauts préexistants qu'on n'a pas mandat de
+corriger (changer la couleur d'un bouton est une décision d'apparence). Un outil qui naît rouge
+apprend à ignorer sa sortie. Le basculement en `exit(1)` est donc la DERNIÈRE étape du ticket de
+correction, pas la première du ticket d'outillage — et il est écrit noir sur blanc pour que
+« non bloquant » ne se lise pas un jour comme un oubli.

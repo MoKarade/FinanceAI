@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 638 tests** Vitest
-(417 fichiers de test, mesuré le 2026-08-21). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 641 tests** Vitest
+(418 fichiers de test, mesuré le 2026-08-21). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -235,6 +235,18 @@ n'est pas réécrire un récit.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
+- Quand un ticket **CONTREDIT une règle établie** du dépôt, remonter à la JUSTIFICATION de la règle,
+  pas à sa conclusion : « les % restent visibles » valait pour un ratio de portefeuille, pas pour une
+  répartition ENTRE CONJOINTS (information relationnelle). Une règle formulée par sa conclusion a un
+  domaine de validité que sa formulation ne dit pas — et l'issue s'ÉCRIT dans le test
+  (`UNE-REGLE-GENERALE-A-UN-DOMAINE-DE-VALIDITE`).
+- Un ticket « l'outil ne couvre pas X » se solde en **REJOUANT** l'outil élargi, jamais en
+  l'élargissant seulement : les offenders révélés sont le vrai périmètre, et leur gravité peut être
+  sans rapport avec l'étiquette du ticket (XS/FAIBLE → 4 CTA sur 6 hors WCAG, dont un à 2,15).
+  Les entrées à tester s'EXTRAIENT du code peint, jamais d'une liste écrite à la main. Et une garde
+  qui naîtrait ROUGE se livre non bloquante avec sa raison DATÉE dans le code, le basculement en
+  `exit(1)` étant la dernière étape du ticket de correction
+  (`REJOUER-L-OUTIL-ELARGI-AVANT-DE-CROIRE-QU-IL-N-Y-A-RIEN`).
 - Un **défaut qui SE PÉRIME** (année fiscale, exercice courant) ne se corrige ni en changeant le
   littéral ni en lisant l'horloge (qui rend la fonction non déterministe et fait une BOMBE des tests
   qui l'omettent) : **supprimer le défaut** et rendre le champ REQUIS — le typecheck l'exige alors

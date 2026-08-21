@@ -1308,15 +1308,35 @@
   périmètre de migration vers les tokens = les offenders qu'il révèle, pas une liste devinée
   (règle « resserrer le scan-garde AVANT de coder le fix »). [MESURÉ pour l'angle mort ; échec de
   contraste = NON MESURÉ]
-- [ ] **`[A11Y-CONTRAST-TOOL-GAP-CTA]`** (XS, FAIBLE) — `scripts/check-contrast.ts` ne teste que
+- [x] **`[A11Y-CONTRAST-TOOL-GAP-CTA]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE) — `scripts/check-contrast.ts` ne teste que
   `text-{couleur}` sur les 3 fonds de page ; il ne teste **pas** les CTA pleins
   (`bg-{danger,info,warning,success}-600` + `text-white`, ex. `DebtManager.tsx:128`,
   `TaxCenter.tsx:342`). C'est un **trou de couverture de l'outil-arbitre**, pas un échec constaté
   (non mesuré, et on ne juge pas un contraste à l'œil). Correctif : étendre le script, puis rejouer.
-- [ ] **`[A11Y-PCT-NOT-MASKED]`** (XS, FAIBLE) — `components/investments/NetWorthByOwnerCard.tsx:66` :
+- [x] **`[A11Y-PCT-NOT-MASKED]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE) — `components/investments/NetWorthByOwnerCard.tsx:66` :
   le montant par personne passe par `PrivateAmount` mais le **pourcentage** juste à côté non, alors
   que `FutureKpiStrip` traite explicitement un `%` comme une donnée financière à masquer. Un % de
   répartition entre conjoints reste une info relationnelle. [MESURÉ]
+
+- [ ] **`[A11Y-CTA-CONTRASTE-OFFENDERS]`** (S, 🧭 **décision d'APPARENCE — Marc tranche**) — révélé
+  par `[A11Y-CONTRAST-TOOL-GAP-CTA]` en rejouant l'outil étendu : **4 CTA pleins sur 6 échouent
+  WCAG AA** (texte normal, seuil 4,5), tous PRÉEXISTANTS. **Mesuré** :
+  - `text-white` sur `bg-warning-500` → **2,15** ⚠️ échoue même le seuil « texte large » (3,0).
+    Site : `components/ui/ProjectionRequired.tsx:63`.
+  - `text-white` sur `bg-warning-600` → **3,19**. Sites : `ProjectionRequired.tsx:63` (état survol),
+    `transactions/DuplicatesPanel.tsx:150`, `transactions/CategoryReviewPanel.tsx:166`.
+  - `text-white` sur `bg-danger-500` → **3,76**. Sites : `settings/BackupPanel.tsx:402`,
+    `DebtManager.tsx:161` (survol), `aiChat/AiChatView.tsx:500`.
+  - `text-white` sur `bg-success-600` → **3,77**. Site : `transactions/CategoryReviewPanel.tsx:160`.
+  Conformes : `bg-danger-600` (4,83) et `bg-info-600` (5,17).
+  ⚠️ **Pourquoi Marc et pas Claude** : changer la couleur d'un bouton est une décision d'apparence,
+  pas un correctif mécanique — et le dépôt interdit de choisir un shade au jugé (« par MESURE,
+  jamais à l'œil »). Options à trancher : assombrir le fond (700), passer le texte en `text-dark`
+  sur les fonds clairs (le jaune surtout), ou accepter l'écart pour les libellés en gras ≥ 14 px
+  (qui relèvent du seuil « texte large » à 3,0 — ce qui sauverait 3 des 4, mais PAS le 2,15).
+  **Dernière étape une fois tranché** : basculer la passe CTA de `check-contrast.ts` en
+  `process.exit(1)` (elle rapporte sans bloquer aujourd'hui, à dessein et c'est écrit dans le
+  script) pour que la régression devienne impossible.
 
 ### 🔴 IA / Anthropic
 

@@ -10,6 +10,48 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — Lot a11y XS : le % de répartition masqué, et l'outil de contraste qui voit enfin les boutons
+
+- [x] **`[A11Y-PCT-NOT-MASKED]`** (XS, FAIBLE) — dans `NetWorthByOwnerCard`, le montant par personne
+  passait par `PrivateAmount` mais le **pourcentage juste à côté** non. Motif
+  `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` : la garde existait sur la ligne VOISINE.
+  ⚠️ **Ce lot fixe un ARBITRAGE qui va contre la règle générale du dépôt**, et c'est écrit dans le
+  test plutôt que subi. `Investments.privacy.test.tsx` pose en toutes lettres que « les
+  pourcentages restent visibles, à dessein : ce sont des ratios, pas des sommes ». Vrai pour un
+  portefeuille (40 % en actions ne dit rien de la personne) ; **faux entre deux conjoints** —
+  « 70 % / 30 % » est une information RELATIONNELLE, reste lisible quand les dollars sont masqués,
+  et parle du couple, pas du portefeuille. Le dépôt masquait d'ailleurs déjà un `%` selon le
+  contexte (`FutureKpiStrip`, drapeau `privateSublabel`) : la règle n'était pas « jamais un
+  pourcentage » mais « pas les ratios anodins ». Le libellé du poste reste en clair — masquer ne
+  doit pas retirer le discriminant du nom accessible (`MASQUAGE-RETIRE-UN-DISCRIMINANT`), sinon les
+  trois tuiles deviennent « ••• / ••• » trois fois.
+  3 tests (garde de SOURCE, pas de rendu : atteindre ce composant exige un état de couple complet,
+  et un test de rendu qui n'atteint pas le site le ferait croire couvert), 1 prouvé rouge par
+  perturbation, avec anti-vacuité explicite.
+
+- [x] **`[A11Y-CONTRAST-TOOL-GAP-CTA]`** (XS, FAIBLE) — `check-contrast.ts` ne testait que
+  `text-*` sur les 3 fonds de page : un bouton plein (`bg-danger-600` + `text-white`) n'y
+  apparaissait JAMAIS. Trou de couverture de l'**outil-arbitre** — celui-là même dont le dépôt se
+  sert pour trancher « par mesure, jamais à l'œil ».
+  **Paires EXTRAITES DU CODE PEINT** (3 492 attributs `className` littéraux balayés), jamais
+  devinées : une liste écrite à la main teste des combinaisons mortes et rate les nouvelles —
+  exactement le défaut que l'en-tête du script décrit déjà pour les tokens
+  (`A11Y-CHECK-CONTRAST-DRIFT`). Angle mort DÉCLARÉ dans le script : les `className` construits par
+  interpolation échappent au scan ; un plancher (200 attributs, 5 paires) empêche la passe de
+  devenir vide et donc faussement verte.
+  ⚠️ **Rejouer l'outil a révélé 4 offenders préexistants sur 6** (règle « resserrer le scan-garde
+  AVANT de coder le fix : les offenders révélés = le vrai périmètre ») — dont `text-white` sur
+  `bg-warning-500` à **2,15**, sous le seuil même pour du texte large. **NON corrigés ici** :
+  changer la couleur d'un bouton est une décision d'apparence qui appartient à Marc. Routés,
+  chiffrés et localisés en `[A11Y-CTA-CONTRASTE-OFFENDERS]`, dont la dernière étape est de basculer
+  la passe en `process.exit(1)`. La passe rapporte donc sans bloquer aujourd'hui — choix assumé et
+  daté DANS le script : la rendre bloquante d'emblée livrerait un outil rouge à sa première
+  exécution, ce qui apprend à ignorer sa sortie.
+  ⚠️ Erreur commise en chemin, attrapée en rejouant : `__dirname` n'existe pas en module ES
+  (`"type": "module"`) — dérivé de `import.meta.url`.
+
+Gate vert : 4 641 tests / 418 fichiers, build inclus.
+
 ## 2026-08-21 — `[ENV-NODE-NON-DECLARE]` : la version de Node se déclare une fois, et le TYPECHECK la fait respecter
 
 - [x] **`[ENV-NODE-NON-DECLARE]`** (XS, MOYEN) — le conteneur de dev tourne sur **Node 22**, les

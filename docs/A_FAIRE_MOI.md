@@ -88,6 +88,26 @@ revenuquebec.ca » (c'est un réglage de l'environnement, côté toi), et je sou
 
 ---
 
+## A00b. 🔴 Vercel bloque le déploiement de PRODUCTION du merge #687 (constaté 2026-08-21)
+
+- [ ] **Vérifier/débloquer le déploiement Vercel de `finance-ai`.** Le merge de la PR #687
+  (`[PASSE-REEL-DETTE-1]`, sha `3dd9d9d`, mergé 2026-08-21 17:31 UTC) n'a produit **aucun
+  déploiement** — ni production, ni preview — plus de 6 minutes après le merge, alors que tous
+  les merges précédents d'aujourd'hui (#684, #685, #686) avaient un déploiement production
+  `READY` en quelques secondes. Le projet a heurté DEUX FOIS aujourd'hui le message Vercel
+  « Resource is limited — try again in 24 hours (more than 100, code: api-deployments-free-per-day) »
+  (sur des previews de PR, pas encore sur `main`) — très probablement la même limite bloque
+  maintenant silencieusement le déploiement de `main`, sans commentaire visible nulle part
+  puisque ce n'est plus une preview de PR qui poste un commentaire GitHub.
+  **Pourquoi toi** : c'est une limite du plan Vercel gratuit (100 déploiements/jour, tous
+  environnements confondus), pas un bug de code — je ne peux ni la lever ni la contourner.
+  **Options** : attendre le reset (~24h depuis le 1er dépassement, mesuré vers 16h06 UTC
+  aujourd'hui) puis vérifier que `main` se déploie bien tout seul au prochain push, OU passer au
+  plan Pro Vercel si les ~15-20 déploiements/session (previews à chaque commit + productions)
+  dépassent régulièrement 100/jour. **Vérification une fois débloqué** : `finance.hubperso.com`
+  (ou l'URL de prod) doit servir le comportement du lot #687 (dette absente du passé avant sa
+  date de début).
+
 ## A0. Smoke test 2 minutes — pincement sur TON téléphone (ajouté 2026-08-12, PR #596)
 
 - [x] ✅ **FAIT — réponse Marc 2026-08-20 : « marche »** (le pincement zoome le graphe).

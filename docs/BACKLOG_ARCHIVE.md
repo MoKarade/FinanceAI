@@ -10,6 +10,49 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-21 — `[PASSE-REEL-DETTE-1]` : une dette n'apparaît plus dans le passé avant sa date de début
+
+- [x] **`[PASSE-REEL-DETTE-1]`** (M, money-critical) — ✅ PR #687.
+
+**Demande** : Marc, en creusant depuis « je veux seter la date de ma dette » (déjà livré par
+`[DETTE-DATES]`, 2026-08-19) : « je veux que la dette ne se voie sur le graph futur seulement à la
+date où ça a commencé ». Sa dette-auto (bail, débute le 20 juillet) apparaissait dans le passé
+reconstruit comme si elle existait depuis toujours.
+
+**Diagnostic** : `buildPastPrefix.ts`/`dailyPastLedger.ts` recevaient un scalaire unique
+`currentDebtNonImmo` (= `chartData[0].DettesNonImmo`), appliqué à TOUS les mois passés, sans
+jamais consulter `startDate`/`termEndDate` par dette.
+
+**Correctif** : nouvelles fonctions pures dans `services/projection/debtSchedule.ts`
+(`phaseDetteAuMoisAbsolu`, `sumNotYetStartedDebtsAtMonth`/`...AtAbsoluteMonth`) qui retranchent en
+**DELTA** le solde des dettes pas-encore-commencées de `currentDebtNonImmo` — jamais une
+resommation complète. `FutureProjection.tsx` passe désormais `debts` (store, tableau frais) EN
+PLUS de `currentDebtNonImmo` aux deux builders. Palier MENSUEL préservé au jour.
+
+⚠️ **Mon 1er jet resommait les `balance` bruts de toutes les dettes actives** (au lieu du delta) —
+un test de raccord a révélé un écart de 372 $ sur une dette de 22 000 $ : le moteur applique déjà
+son propre pas d'amortissement du mois 0 (intérêt + paiement) avant de publier `DettesNonImmo`, et
+resommer les soldes bruts diverge de ce total exact, cassant le raccord qu'Option A garantit. Le
+delta corrige ça : quand aucune dette n'est datée (l'état de tout le monde aujourd'hui), le
+comportement reste bit-identique à avant ce lot. Nouvelle leçon `docs/CONVENTIONS.md` :
+`RESOMMER-UN-AGREGAT-DEJA-TRANSFORME-DIVERGE`.
+
+⚠️ **Revirement de décision, ASSUMÉ par Marc** : en creusant encore, Marc a redemandé une VRAIE
+courbe d'amortissement (« chaque semaine je dois un peu moins »), pas juste un niveau figé — ce qui
+inverse la Décision 2 de `docs/adr/0012-quatre-decisions-de-marc-2026-08-17.md` (« aucun
+amortissement rétroactif »). Confirmé par Marc après rappel explicite du contexte du 17-19 août
+(« je confirme, je veux la courbe malgré le coût supplémentaire »). Scopé en panel produit+archi
+(lecture seule) en lots séparés, routés au BACKLOG : `[DEBT-MCP-PARITE]`, `[DEBT-AMORTIZATION]`,
+`[DEBT-MCP-ORIGINALBALANCE]`, `[DEBT-UI-PAR-TYPE]`. Le comparateur prêt-vs-bail demandé dans le
+même message est explicitement PAS scopé (cadrage insuffisant, à faire dans une session dédiée).
+
+**Tests** : `detteDates.test.ts` (nouvelles fonctions pures), `buildPastPrefix.test.ts`/
+`dailyPastLedger.test.ts` (discriminants prouvés rouges par perturbation chirurgicale — delta
+forcé à 0, restauré ensuite), `FutureProjection.pastDebtFreeze.test.tsx` (wiring bout-en-bout,
+localisation des lignes par libellé de date plutôt que position — un 1er jet indexé par position
+comparait deux mois tous deux AVANT la date de la dette, test vacant démasqué par la perturbation).
+10 tests neufs. Gate complet vert : 4 608 tests / 415 fichiers.
+
 ## 2026-08-21 — Vague 2 : devises/unités (badge FX estimé, prop morte, récap en devise native)
 
 - [x] **`[FX-FALLBACK-SILENCIEUX]`** (S, MOYEN) — ✅ 2026-08-21, PR #686.

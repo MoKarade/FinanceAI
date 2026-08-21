@@ -5,7 +5,7 @@
 > à la fin.
 >
 > ## 🟢 Session 2026-08-21 (suite 126) — `[PASSE-REEL-DETTE-1]` : gating par dette dans le passé
-> Branche `claude/passe-reel-dette-1` (depuis main post-#686), PR à créer. Demande Marc, en creusant
+> Branche `claude/passe-reel-dette-1` (depuis main post-#686), PR #687. Demande Marc, en creusant
 > depuis « je veux seter la date de ma dette » (déjà livré par `[DETTE-DATES]`) : le graphe Futur
 > montre encore sa dette-auto (bail, débute 20 juillet) « depuis toujours » dans le passé reconstruit.
 > **Diagnostic** : `buildPastPrefix`/`dailyPastLedger` recevaient un scalaire `currentDebtNonImmo`

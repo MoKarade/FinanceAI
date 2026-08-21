@@ -1685,14 +1685,8 @@
 > fourni n'est ni l'un ni l'autre. La décision a été précisée en conséquence
 > (`docs/adr/`, « PRÉCISION Marc du 2026-08-19 »). Ne pas re-fermer ces items.
 
-- [x] 🔴 **`[PASSE-REEL-DETTE-1]`** (M) — ✅ 2026-08-21. **Le passé soustrayait la dette d'AUJOURD'HUI
-  à CHAQUE point passé.** `FutureProjection.tsx` lisait `chartData[0].DettesNonImmo` et le passait
-  tel quel à `buildPastPrefix`/`buildDailyPastLedger`, appliqué à TOUS les mois. Correctif : gating
-  PAR DETTE via `startDate` (champ déjà livré par `[DETTE-DATES]`, 2026-08-19) — delta
-  (`sumNotYetStartedDebtsAtMonth`/`...AtAbsoluteMonth`, `services/projection/debtSchedule.ts`)
-  retranché de `currentDebtNonImmo`, jamais une resommation complète (qui diverge de quelques
-  dizaines/centaines de $ du total exact du moteur — mesuré, cf commentaire dédié). Raccord EXACT
-  au présent préservé quand aucune dette n'est gatée (bit-identique à avant). Détail archivé.
+✅ **`[PASSE-REEL-DETTE-1]` livré 2026-08-21, PR #687 — voir `docs/BACKLOG_ARCHIVE.md`.**
+
 - [ ] 🔴 **`[PASSE-REEL-DETTE-2]`** (S) — ⚠️ PRÉMISSE PARTIELLEMENT PÉRIMÉE (2026-08-21) : `Debt`
   a désormais `startDate?`/`termEndDate?` (livrés par `[DETTE-DATES]`, 2026-08-19) — SEUL
   `originalBalance?: number` manque encore. Nécessaire pour la courbe d'amortissement du passé

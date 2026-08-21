@@ -1,5 +1,21 @@
 # À FAIRE — Marc (tâches humaines) + blocages remontés par Claude
 
+- [ ] **[DÉCISION — PROJ-NW-FALAISE-REER]** (2026-08-21) — la cascade de décaissement
+  AUTO_MARGINAL a un MUR au sommet du palier 14 % : au-delà, elle vide le CELI avant le REER.
+  Mesuré : deux couples identiques à 1 000 $ de REER près finissent à **112 k$ d'écart** (celui
+  qui « préserve » son REER au-delà du palier perd — son CELI meurt plus tôt, puis tout sort au
+  marginal plein). Trois options, choisis-en une :
+  **(a) Lisser le mur** — au-delà du palier, continuer à retirer du REER en partageant
+  REER/CELI (ex. 50/50) au lieu de tout basculer sur le CELI. Le moins de re-base, corrige la
+  falaise, garde l'esprit « optimiser le marginal ».
+  **(b) Plancher de préservation CELI** — le CELI ne descend jamais sous X mois de dépenses
+  (X = 24 ?) tant que le REER n'est pas vide : au-delà du palier, on tire du REER quand même.
+  Plus proche de la vraie planification (le CELI est le dernier abri), re-base plus large.
+  **(c) Statu quo documenté** — la bascule est réelle fiscalement ; on documente la sensibilité
+  dans l'UI (« résultat sensible autour des seuils de palier ») sans changer le moteur.
+  Ma reco : **(a)**, mesurable et borné ; (b) est meilleur produit mais mérite son propre lot.
+  Détail complet : `[PROJ-NW-FALAISE-REER]` au BACKLOG.
+
 - [x] **[VERCEL-PROD-679-NON-DEPLOYE]** ✅ **RÉSOLU 2026-08-21 00:10 UTC** — le merge #680 a déclenché le déploiement production (sha 683b520, contient #679+#680) ; la limite s'est libérée après minuit UTC. (Historique : 2026-08-20 22:18 UTC) — le merge #679 sur `main`
   (`4c67d5b`, droits REER par personne) n'a **pas** créé de déploiement production Vercel
   (limite quotidienne « 100/jour » du plan gratuit atteinte au moment du push ; les previews

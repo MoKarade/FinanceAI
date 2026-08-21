@@ -347,15 +347,22 @@
   attention, ça re-basera des goldens retraités (mesurer avant).
 - [x] ~~**`[FISC-PENSION-CREDIT-REAL]`**~~ ✅ **LIVRÉ 2026-08-20** (détail : section datée en
   tête de `docs/BACKLOG_ARCHIVE.md` — réf PR au merge).
-- [ ] **`[PROJ-NW-FALAISE-REER]`** (M, **ÉLEVÉ** [MESURÉ — revue #680, PRÉEXISTANT]) — le NW final
-  d'un couple retraité 72/72 saute de **−86 189 $** quand le REER d'ouverture passe de 1 500 500 à
-  1 501 000 $ (±500 $ d'entrée → 86 k$ de sortie, code HEAD intact). Découvert en attribuant le
-  re-base de #680 : +2 229 $ d'impôt → NW +83 331 $, signe OPPOSÉ, la falaise domine l'effet
-  fiscal. Monotonie/continuité d'une grandeur pilotée par une entrée SONT des invariants
-  (`CONVENTIONS`) : balayer le paramètre, localiser la discontinuité (soupçon : bascule de
-  stratégie de décaissement ou seuil de solvabilité), router à projection-validator. ⚠️ Toute
-  mesure d'impact « NW » près de 1,5 M$ de REER est non représentative tant que ce n'est pas
-  compris.
+- [ ] **`[PROJ-NW-FALAISE-REER]`** (M, **ÉLEVÉ** [DIAGNOSTIQUÉ 2026-08-21 — décision produit
+  routée A_FAIRE_MOI]) — reproduit et EXPLIQUÉ : ±1 000 $ de REER d'ouverture → **−112 k$** de NW
+  final (couple 72/72, 30 ans, AUTO_MARGINAL ; bifurcation au mois 143). **Mécanisme prouvé**
+  (`cashflowAllocation.ts:182-236`) : `runningGross` inclut le FERR minimum forcé (∝ REER
+  initial) → le remplissage « Palier 14 % » (`bracket1Top`, MUR dur) se plafonne plus bas → le
+  solde du shortfall passe à la cascade standard dont le 1er bucket AUTO_MARGINAL est **CELI** →
+  le CELI s'épuise des années plus tôt → une fois mort, tout sort du REER au marginal PLEIN →
+  spirale composée. La politique est LOCALEMENT optimale (éviter la tranche suivante) et
+  GLOBALEMENT perdante (mesuré : le run qui « préserve » son REER finit 112 k$ plus pauvre).
+  **Pas un bug d'arithmétique — une politique myope + un seuil dur.** Options routées à Marc
+  (A_FAIRE_MOI) : (a) lisser le mur (retrait partiel au-delà du palier), (b) plancher de
+  préservation CELI (basculer sur le REER au-delà du palier quand CELI < X mois de dépenses),
+  (c) statu quo documenté (la sensibilité est réelle mais le modèle l'amplifie). ⚠️ Tout
+  correctif re-base des goldens et peut changer le CLASSEMENT des stratégies. ⚠️ D'ici là, toute
+  mesure d'impact « NW » d'un retraité à gros REER près d'un seuil de palier est non
+  représentative (la falaise domine).
 - [ ] **`[TAXDEC-INFLATIONFACTOR-AMONT]`** (S, FAIBLE — revue #680) — `taxDecember.ts` transmet
   `ctx.inflationFactor` brut comme `realDeflator` à 5 sites (506, 507, 519, 520, 651) ; la garde
   vit désormais en AVAL (`calculateAgeAndPensionCredits`, `getIndexedBracketsForYear`) mais un

@@ -99,7 +99,7 @@ stratégie ne peut éteindre en un mois.
 
 14 tests neufs au total (dont 5 discriminants du CRITIQUE/ÉLEVÉ/MOYEN trouvés par le panel, prouvés
 rouges par perturbation chirurgicale du garde-fou et du clamp, ou mesurés directement contre le
-moteur réel). Gate complet vert : 4 611 tests / 415 fichiers, build inclus.
+moteur réel). Gate complet vert : 4 612 tests / 415 fichiers, build inclus.
 
 ## 2026-08-21 — Vague 2 : devises/unités (badge FX estimé, prop morte, récap en devise native)
 

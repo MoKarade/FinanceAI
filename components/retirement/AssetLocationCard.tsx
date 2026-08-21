@@ -78,9 +78,14 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
     const [holdings, setHoldings] = useState<Holding[]>(initialHoldings);
 
     // Analyse en temps réel (re-calcule à chaque changement)
+    // [ASSETLOC-YEAR-2026] L'année fiscale est désormais EXIGÉE par `optimizeAssetLocation` (elle
+    // était auparavant omise ici, et le module retombait sur un « 2026 » écrit en dur — donc un
+    // barème périmé dès 2027, silencieusement). Lue à chaque rendu plutôt que figée dans une
+    // constante de module : une session laissée ouverte pendant le passage du 31 décembre au
+    // 1er janvier consulterait sinon le barème de l'an dernier jusqu'au prochain rechargement.
     const analysis = useMemo(() => {
         if (annualGrossIncome <= 0) return null;
-        return optimizeAssetLocation({ annualGrossIncome, holdings });
+        return optimizeAssetLocation({ annualGrossIncome, holdings, year: new Date().getFullYear() });
     }, [annualGrossIncome, holdings]);
 
     // Synthèse par compte

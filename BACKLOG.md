@@ -1007,7 +1007,7 @@
   remboursement du RAP (15 ans, ARC) est en dur dans `services/projection/realEstateMonth.ts:467`
   (`state.rapBorrowed / 15`) et absente de `FISCAL_REFERENCE.md` §7. Vraie règle, non ancrée.
 
-- [ ] **`[ASSETLOC-YEAR-2026]`** (XS, FAIBLE — découvert par `[FISC-GUARD-SCOPE]`) —
+- [x] **`[ASSETLOC-YEAR-2026]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — découvert par `[FISC-GUARD-SCOPE]`) —
   `services/projection/assetLocation.ts:135` lit le taux marginal avec une année fiscale de repli
   **écrite en dur à 2026**. En 2027 le module consultatif lira un barème périmé sans rien dire.
   **Correctif** : reprendre l'année courante du moteur plutôt qu'un littéral.
@@ -1204,7 +1204,7 @@
   TYPE de dividende — il faut d'abord ajouter le champ (déterminé / ordinaire), donc c'est un lot
   avec une décision Marc, pas un remplacement mécanique. ⚠️ Re-baserait des goldens. [MESURÉ]
 
-- [ ] **`[ENV-NODE-NON-DECLARE]`** (XS, MOYEN) — aucun `engines` dans `package.json`, aucun `.nvmrc` :
+- [x] **`[ENV-NODE-NON-DECLARE]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, MOYEN) — aucun `engines` dans `package.json`, aucun `.nvmrc` :
   la seule déclaration de la version visée est `node-version: '20'`, répété dans **4 workflows**
   (`ci.yml` ×2, `lighthouse.yml`, `refresh-screenshots.yml`). Le conteneur de dev tourne sur Node
   **22**. **Conséquence MESURÉE le 2026-08-19** : `globSync` (`node:fs`, Node 22+) a donné un gate

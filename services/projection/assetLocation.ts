@@ -28,7 +28,26 @@ export type AccountType = 'CELI' | 'REER' | 'NonReg';
 
 export interface AssetLocationInput {
     annualGrossIncome: number;
-    year?: number;
+    /**
+     * [ASSETLOC-YEAR-2026] Année fiscale du barème à consulter. **OBLIGATOIRE** — et c'est le
+     * correctif lui-même.
+     *
+     * Avant : `year?: number` avec un repli `?? 2026` écrit en dur, et l'unique appelant de
+     * production (`AssetLocationCard`) ne le passait jamais. Le repli s'appliquait donc TOUJOURS :
+     * en 2027 ce module aurait conseillé sur le barème 2026 sans rien dire.
+     * **Écart MESURÉ** sur le taux marginal : nul pour la plupart des revenus, mais **−5,000 points
+     * à 55 000 $ dès 2027** (30,690 % → 25,690 %) — un revenu juste au-dessus d'une borne de palier
+     * en 2026 repasse dessous une fois la borne indexée. À 2030 : 60 000 $ perd 5,4 pts,
+     * 120 000 $ en perd 4,6. L'erreur n'est pas diffuse, elle est CONCENTRÉE près des bornes.
+     *
+     * Rendu REQUIS plutôt que « défaut = année courante » pour deux raisons :
+     * 1. Un défaut lisant l'horloge rendrait cette fonction PURE non déterministe, et les tests qui
+     *    l'omettent deviendraient des bombes à retardement (rouges au 1er janvier, sans changement
+     *    de code — piège déjà vécu dans ce dépôt).
+     * 2. Un champ requis casse au TYPECHECK sur chaque site d'appel, présent et futur ; un défaut
+     *    silencieux, lui, se périme sans bruit — c'est exactement le défaut qu'on corrige ici.
+     */
+    year: number;
     holdings: Array<{
         assetClass: AssetClass;
         amount: number;
@@ -132,7 +151,8 @@ function annualLoss(
 }
 
 export function optimizeAssetLocation(input: AssetLocationInput): AssetLocationResult {
-    const marginalRate = getMarginalRate(input.annualGrossIncome, input.year ?? 2026);
+    // [ASSETLOC-YEAR-2026] Plus de repli en dur : l'année vient de l'appelant (cf. `AssetLocationInput.year`).
+    const marginalRate = getMarginalRate(input.annualGrossIncome, input.year);
 
     const recommendations: AssetLocationRecommendation[] = [];
     let totalLoss = 0;

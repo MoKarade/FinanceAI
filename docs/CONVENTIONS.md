@@ -4363,6 +4363,40 @@ compatibilité est déjà prouvée par la CI.
 chaîne d'outils que Marc n'a pas demandée, et elle mérite sa propre décision. Tracée en
 `[ENV-NODE-NON-DECLARE]`.
 
+#### Suite, 2026-08-21 : ce n'est pas `engines`/`.nvmrc` qui protège — c'est `@types/node`
+
+`[ENV-NODE-NON-DECLARE]` livré. En le faisant, une chose s'est révélée que le ticket n'avait pas
+vue, et qui renverse la priorité des trois correctifs qu'il listait :
+
+**`engines` et `.nvmrc` DÉCRIVENT la cible, ils ne l'IMPOSENT à rien.** Sans `.npmrc`
+`engine-strict=true` (absent de ce dépôt, et l'ajouter casserait le dev en Node 22), `engines.node`
+n'est qu'un avertissement au `npm install`. `.nvmrc` ne fait rien du tout tant qu'un outil ne le lit
+pas. Aucun des deux n'aurait empêché l'incident `globSync` : au moment où on ÉCRIT `globSync`, rien
+ne rougit.
+
+**Ce qui rend la classe entière impossible, c'est d'aligner les TYPES sur la version EXÉCUTÉE.**
+`@types/node` était en `^22` alors que la CI tourne en Node 20 : le typecheck promettait donc des
+API que le runtime de la CI n'a pas. Repassé en `^20`, `tsc` refuse `globSync` **à l'écriture**, là
+où le développeur peut encore corriger — la vérification remonte du runtime de la CI au clavier.
+
+**Règle générale** : quand un écart d'environnement produit un « vert local / rouge distant », se
+demander lequel des artefacts est *déclaratif* (il documente une intention) et lequel est *exécutoire*
+(il fait échouer quelque chose). Corriger le déclaratif rassure ; seul l'exécutoire protège. Ici :
+`engines`/`.nvmrc` = déclaratif, `@types/node` = exécutoire. Le ticket ne nommait que le déclaratif.
+
+**Corollaire, sur la façon de le vérifier** : avant d'aligner `@types/node` vers le BAS, mesurer que
+le typecheck passe quand même — s'il rougit, les erreurs révélées SONT le périmètre réel du travail
+(« resserrer le scan-garde AVANT de coder le fix »). Ici il passait : aucune API 22+ n'était
+employée, donc la garde se pose sur un arbre propre et ne masque aucune dette. Ne jamais rétrograder
+une déclaration de types en supposant que « ça devrait aller ».
+
+**Corollaire, sur la garde** : `tests/nodeVersionDeclared.test.ts` vérifie que les trois
+déclarations CONCORDENT, sans figer le numéro 20 — passer à Node 22 reste possible, mais exige de
+bouger les trois ensemble (`CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`, appliqué à la version de
+Node). Et deux anti-vacuités sont posées sur le balayage des workflows : au moins un fichier
+parcouru, au moins quatre pointeurs trouvés — sans elles, supprimer TOUS les `setup-node` rendrait
+la garde verte.
+
 ### `MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE` — j'ai cité un fichier que je n'avais jamais écrit
 
 En armant un point de contrôle avant d'attendre un merge, je me suis écrit à moi-même :
@@ -5361,3 +5395,40 @@ non-réfuté par un dispositif aveugle. Écrire la contre-épreuve coûte trois 
 ticket dans le compte-rendu du travail qui le corrige, c'est fabriquer une source (classe
 `ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE`, ici appliquée à la perf) : le gain
 reste réel et l'ordre de grandeur tient, mais le chiffre publié doit être celui qu'on a obtenu.
+
+## Leçon du lot `[ASSETLOC-YEAR-2026]` — 2026-08-21
+
+### `UN-DEFAUT-QUI-SE-PERIME-SE-CORRIGE-EN-RENDANT-LE-CHAMP-REQUIS` — trois options, une seule ne se repérime pas
+
+`assetLocation.ts` lisait le taux marginal avec `input.year ?? 2026`, et l'unique appelant de
+production ne passait jamais `year` : le repli s'appliquait donc TOUJOURS. Trois correctifs
+possibles, et le choix compte plus que le défaut lui-même :
+
+1. **Mettre à jour le littéral** (`?? 2027`) — repousse le problème d'un an, à l'identique. Non.
+2. **Défaut = année courante** (`?? new Date().getFullYear()`) — corrige l'appelant sans le toucher,
+   mais rend une fonction PURE non déterministe, et transforme chaque test qui omet le champ en
+   **bombe à retardement** : rouge au 1er janvier, sans le moindre changement de code. Ce dépôt a
+   déjà payé ce piège (« un test qui fige une année pendant que le code lit l'horloge »).
+3. **Rendre le champ REQUIS** — casse au TYPECHECK sur chaque site d'appel, présent ET futur. Les
+   tests doivent alors déclarer leur année, donc restent déterministes ; l'appelant UI déclare la
+   sienne, donc l'intention est lisible à l'endroit où elle est prise.
+
+**Règle générale** : quand un défaut encode une valeur qui SE PÉRIME (année fiscale, version de
+barème, exercice courant), le corriger en remplaçant le littéral ou en lisant l'horloge ne fait que
+déplacer la dette. Le seul correctif qui ne se repérime pas est de **supprimer le défaut** et de
+laisser le compilateur exiger la valeur à chaque site. Un défaut silencieux se périme sans bruit ;
+un champ requis ne peut pas être oublié.
+
+**Corollaire, sur le choix du cas de test** : l'écart mesuré ici est NUL pour la plupart des revenus
+et vaut −5,000 points à 55 000 $. Un test écrit sur un revenu « rond » (100 000 $, celui qu'on
+choisit spontanément) aurait passé **même si l'année restait ignorée** — vacueux. Mesurer AVANT
+d'écrire le test, puis choisir le point d'essai là où l'écart existe : près des BORNES, jamais au
+milieu d'un palier. Même famille que `PARITE-QUI-REND-UN-TEST-VACUEUX` — le paramètre du test se
+calcule, il ne se devine pas.
+
+**Corollaire, sur la garde d'inventaire** : le commit a fait ROUGIR la garde anti-entrée-fantôme
+(`fiscalConstGuardV2.ts` portait une entrée `assetLocation.ts::2026` décrivant le défaut désormais
+fermé). C'est le comportement VOULU, pas un obstacle : une PR qui supprime un littéral doit aussi
+supprimer les raisons qui parlaient de lui, sinon l'inventaire conserve un constat périmé qui se lit
+comme un fait au présent. La garde a fait ce travail sans intervention — c'est la preuve, en
+exécution, que `ENTREE-D-INVENTAIRE-FANTOME` tient.

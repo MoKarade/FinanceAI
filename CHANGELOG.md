@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-21 (trois précisions du moteur fiscal des retraités)
+
+- L'« efficacité fiscale » des simulations Monte Carlo compte désormais la dette d'impôt du
+  dernier exercice (jamais réglée dans l'horizon) — sur un horizon court, jusqu'à 100 % de
+  l'impôt réel lui échappait.
+- Les dividendes de tes placements non enregistrés comptent maintenant dans la cotisation FSS et
+  dans la récupération de la PSV (comme le fait l'impôt réel — jusqu'à ~1 550 $/an de
+  récupération qui manquait pour un couple retraité aisé).
+- Le « gel des dépenses » de sécurité (règle Guyton-Klinger) n'est plus tout-ou-rien à −5 % de
+  portefeuille : il s'installe progressivement entre −4 % et −6 %. Fini les recommandations de
+  stratégie qui basculaient pour quelques centaines de dollars d'écart.
+
 ## [unreleased] — 2026-08-21 (« impôt minimum » compte aussi l'impôt successoral)
 
 - Le classement des stratégies sur l'objectif « impôt minimum » ne comptait que l'impôt payé de

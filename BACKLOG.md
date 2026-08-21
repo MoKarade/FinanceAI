@@ -322,27 +322,18 @@
   ⚠️ `check-contrast` ne couvre PAS ce cas (palette Tailwind par défaut, pas des tokens, et aucune
   composition alpha) → **étendre l'outil d'abord**, choisir le shade par mesure ensuite.
 
-- [ ] **`[ENG-GK-THRESHOLD-KNIFE]`** (M, MOYEN [MESURÉ — panel #564], PRÉ-EXISTANT) — le garde-fou
-  Guyton-Klinger (`taxJanuary.ts` §5 : `currentPortfolio < prevPortfolioNW * 0.95`) est un seuil
-  COUTEAU : un écart d'impôt de quelques centaines de dollars suffit à déclencher un gel de
-  dépenses supplémentaire, qui vaut ensuite **−174,36 $/mois À VIE**. Mesuré au panel #564 : le
-  CID (256 $/an) fait basculer le classement des stratégies d'un couple à 800 k$ non-enregistré
-  (MELTDOWN 1re → 3e ; AUTO +28 % de patrimoine final EN PAYANT 2 225 $ d'impôt de PLUS).
-  Le moteur est cohérent, mais la recommandation de stratégie devient instable pour un écart
-  négligeable. Piste : hystérésis ou lissage du seuil plutôt qu'une comparaison sèche.
-- [ ] **`[FISC-DIV-DERIVED-BASES]`** (S-M, FAIBLE [panel #564], PRÉ-EXISTANT) — deux assiettes
-  dérivées ignorent le dividende majoré alors qu'elles incluent les gains : la prime **FSS**
-  (`taxDecember.ts:719`, prend `accCapitalGainsYear × 0,5`) et le revenu de récupération **PSV**
-  (`computeOasClawback`). Asymétrie rendue plus saillante par [FISC-STACK-GAINS-DIV] sans être
-  corrigée. Chiffrer avant de coder. Voisin : le **clamp du CID** (`Math.max(0, grossTax − cid)`)
-  perd l'excédent annuel au lieu de réduire l'impôt des autres revenus (mesuré : 0 $ d'impôt
-  dividendes sur un couple à 1,5 M$ non-enreg à faible autre revenu, avant comme après).
-- [ ] **`[FISC-BAND-AGE-CREDITS]`** (M, MOYEN [MESURÉ — panel #564], PRÉ-EXISTANT) — les bandes
-  incrémentales de gains et de dividendes (`taxDecember.ts` §2 et §3) appellent
-  `calculateFiscalReport(income, 0, 0, year, true)` **sans `ageOpts`** : les crédits 65+/pension
-  sont donc absents des DEUX bornes, ce qui efface leur **récupération** (income-tested) sur le
-  revenu de placement → sous-imposition d'un retraité. Mesuré sur une bande de +15 k$ à 70 ans :
-  **−648,66 $/an** à 45 k$ de revenu de base, **−675,56 $/an** à 60 k$, −146,89 $ à 100 k$.
+- [x] ~~**`[ENG-GK-THRESHOLD-KNIFE]`**~~ ✅ **LIVRÉ 2026-08-21** (bande de lissage −4 %/−6 % —
+  détail : section datée en tête de `docs/BACKLOG_ARCHIVE.md`, réf PR au merge).
+- [x] ~~**`[FISC-DIV-DERIVED-BASES]`**~~ ✅ **LIVRÉ 2026-08-21** (FSS +70 $/ménage, récupération
+  PSV +1 552,50 $/an mesurés — détail en tête d'archive, réf PR au merge). Le voisin **clamp du
+  CID** reste OUVERT et documenté (mesuré 0 $ avant comme après sur le profil du panel) :
+- [ ] **`[FISC-CID-CLAMP-EXCEDENT]`** (S, FAIBLE — ex-« voisin » de DIV-DERIVED-BASES) — le clamp
+  `Math.max(0, grossTax − cid)` perd l'excédent annuel de crédit d'impôt pour dividendes au lieu
+  de réduire l'impôt des autres revenus (mesuré : 0 $ d'impôt dividendes sur un couple à 1,5 M$
+  non-enreg à faible autre revenu, avant comme après — l'excédent du CID est perdu).
+- [x] ~~**`[FISC-BAND-AGE-CREDITS]`**~~ ✅ **DOUBLON — LIVRÉ par #676** (`[FISC-TAXDEC-INCR]`,
+  2026-08-20) : mêmes bandes §2/§3 sans ageOpts, mêmes chiffres (675,56 $ à 60 k$). Le panel #564
+  et le triage 2026-06-16 avaient nommé le même défaut sous deux IDs. Constaté au lot vague 1b.
   ⚠️ Non introduit par #564 (identique sur origin/main). Fix : passer `ageOpts` aux deux bornes —
   attention, ça re-basera des goldens retraités (mesurer avant).
 - [x] ~~**`[FISC-PENSION-CREDIT-REAL]`**~~ ✅ **LIVRÉ 2026-08-20** (détail : section datée en
@@ -385,12 +376,9 @@
   `projection.ts:1616-1618` (taux affichés sous-évalués : salaire de base sans croissance vs
   barème indexé). Chiffrer en $ avant tout fix ; propager `year`+`realDeflator` au
   `.marginalRate` du report changerait TOUS les lecteurs → mesurer d'abord.
-- [ ] **`[ENG-TTP-UNSETTLED-PROPAGATE]`** (S-M — contre-vérif #555) — 4 surfaces lisent encore
-  `totalTaxesPaid` NU : `monteCarlo.ts:108,145` (taxLeakage), `getProjection.spec.ts:99` +
-  `simulateWhatIf.spec.ts:131` (netTaxSettlements servi à l'IA), `drawdownOptimizer.ts:61`
-  (GoalSeekerCard). Le terme dépend de la STRATÉGIE (AUTO 13 542 vs MELT 15 933 sur le même
-  scénario) → l'IA et l'optimiseur peuvent annoncer deux « impôts » divergents de 8,6 % (100 % à
-  1 an). Propager `+ unsettledTaxAtHorizon` OU documenter la divergence par surface.
+- [x] ~~**`[ENG-TTP-UNSETTLED-PROPAGATE]`**~~ ✅ **LIVRÉ 2026-08-21** (surface par surface :
+  monteCarlo PROPAGÉ, MCP netTaxSettlements DOCUMENTÉ — contrat IA stable, drawdownOptimizer
+  documenté orphelin — détail en tête d'archive, réf PR au merge).
 - [ ] **`[ENG-RANKING-ORDER-PIN]`** (S — panel #554) — `rankStrategies` normalise min-max sur le
   compteur (poids 0,25) : pinner l'ORDRE complet (objectifs `tax` et `balanced`) sur une fixture de
   référence, pas seulement la paire MELT/AUTO. Le validator a MESURÉ le nouvel ordre post-fix

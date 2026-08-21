@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { Icon } from '../ui/Icon';
 import { getQuote, getHistory, searchSymbols, getActiveProviderName, type SymbolSearchResult } from '../../services/marketData';
-import { formatCAD, formatNumber } from '../../utils/format';
+import { formatNumber } from '../../utils/format';
 import { logError } from '../../services/errorLogger';
 import type { Asset } from '../../types';
 
@@ -372,7 +372,10 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                     {validatedSymbol && currentPrice !== null && (
                         <div className="mt-2 p-2 bg-success-500/10 border border-success-500/30 rounded text-meta text-emerald-300 flex justify-between">
                             <span>Validé : <strong className="font-mono">{validatedSymbol}</strong></span>
-                            <span className="font-mono">Prix actuel : {formatCAD(currentPrice)}</span>
+                            {/* [ADDSTOCK-CAD-NATIF] même défaut que le récapitulatif : `currentPrice`
+                                vient de getQuote (devise NATIVE du titre), pas de CAD — c'est LUI qui
+                                pré-remplit buyPrice (revue #686, code-reviewer ÉLEVÉ, mesuré). */}
+                            <span className="font-mono">Prix actuel : {formatNumber(currentPrice, { decimals: 2 })} {currency}</span>
                         </div>
                     )}
                 </div>
@@ -431,8 +434,9 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({ isOpen, onClose, onA
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-meta text-ink-300 mb-1 font-bold uppercase">5. Compte fiscal</label>
+                                <label htmlFor="stock-account-type" className="block text-meta text-ink-300 mb-1 font-bold uppercase">5. Compte fiscal</label>
                                 <select
+                                    id="stock-account-type"
                                     value={accountType}
                                     onChange={(e) => setAccountType(e.target.value as Asset['accountType'])}
                                     className="w-full bg-dark border border-white/10 rounded px-3 py-2 text-white focus:border-primary outline-none"

@@ -12,18 +12,62 @@
 
 ## 2026-08-21 — Vague 2 : devises/unités (badge FX estimé, prop morte, récap en devise native)
 
-- [x] **`[FX-FALLBACK-SILENCIEUX]`** (S, MOYEN) — ✅ 2026-08-21, PR à compléter au merge.
+- [x] **`[FX-FALLBACK-SILENCIEUX]`** (S, MOYEN) — ✅ 2026-08-21, PR #686.
 - [x] **`[RETIREMENT-GROSSINCOME-DEAD]`** (XS, FAIBLE) — ✅ idem.
 - [x] **`[ADDSTOCK-CAD-NATIF]`** (XS, FAIBLE) — ✅ idem.
 
-**FX-FALLBACK-SILENCIEUX** : le repli FX en dur (`lastFetched: 0`) n'était visible que dans
-SystemView (page technique). Deux helpers purs (`services/portfolio.ts` : `isFxRatesEstimated`,
+**FX-FALLBACK-SILENCIEUX** : le repli FX en dur n'était visible que dans SystemView (page
+technique). Deux helpers purs (`services/portfolio.ts` : `isFxRatesEstimated`,
 `hasForeignCurrencyAssets`) + un badge partagé (`components/ui/FxEstimateBadge.tsx`) qui ne se
-déclenche QUE quand un taux estimé compte réellement (au moins un avoir en devise étrangère —
-sinon pur bruit). Câblé sur la tuile « Patrimoine net » (`FutureKpiStrip`, surface la plus vue —
-couvre à la fois Dashboard et Patrimoine, consolidés au même tuile depuis REFONTE-NAV), le header
-Investissements, et une note sous « Total placements » du PDF (le seul des 4 qui ne pouvait pas
-porter un badge — texte discret à la place). 6 tests neufs, 3 perturbations prouvées rouges.
+déclenche QUE quand un taux estimé compte réellement (avoir étranger présent — sinon pur bruit).
+Câblé sur la tuile « Patrimoine net » (`FutureKpiStrip` — couvre Dashboard ET Patrimoine,
+consolidés au même tuile depuis REFONTE-NAV), le header Investissements, et une note sous
+« Total placements » du PDF.
+
+⚠️ **Panel #686 (4 agents) appliqué — le premier jet était incomplet sur le fond ET la forme** :
+
+- **[MOYEN money-critical, financial-integrity]** le signal ne portait QUE `lastFetched === 0` —
+  un succès GLOBAL du fetch BdC (une série présente, l'autre absente/corrompue) faisait conclure
+  « taux réel » alors qu'une des deux devises était inventée : exactement le scénario chiffré par
+  le ticket (~3 000 $ CAD/100 k$ US à 3 pts d'écart), et il restait invisible. Correctif réel (pas
+  cosmétique) : `services/finance.ts` fait remonter un `estimated: boolean` PAR APPEL (vrai si
+  n'importe laquelle des deux séries est tombée sur son repli), propagé comme un champ **SIBLING**
+  de `fxRates` — `AppState.fxRatesEstimated`, jamais DANS `fxRates` lui-même (qui reste un
+  `Record<string, number>` compatible avec ses ~13 consommateurs, `toCurrencyFactor`/
+  `assetValueCad` en tête — un champ booléen dedans les aurait tous cassés typecheck). Rétrocompat :
+  `fxRatesEstimated` absent (état antérieur) → `isFxRatesEstimated` retombe sur
+  `fxRates.lastFetched === 0`, seul signal qui existait alors.
+- **[ÉLEVÉ, code-reviewer]** `AddStockForm.tsx` bannière « Prix actuel » (chemin Finnhub validé,
+  le PLUS courant) affichait encore `formatCAD(currentPrice)` — le même défaut que le ticket
+  corrigeait 90 lignes plus bas, jamais touché. Corrigé au même patron (`formatNumber` + devise).
+- **[MOYEN, code-reviewer]** ce chemin (validation Finnhub réussie) n'avait AUCUN test — d'où le
+  défaut ci-dessus invisible ; test ajouté.
+- **[MOYEN, code-reviewer]** le commentaire du 1er jet affirmait détecter un « cache trop vieux » —
+  faux : seul « jamais récupéré » est détecté (le cache réel mais périmé est volontairement
+  préféré à l'approximation, `services/finance.ts`). Libellés (badge + PDF) corrigés pour ne plus
+  surclaimer.
+- **[HIGH a11y]** le select « Compte fiscal », juste au-dessus de « Devise » dans la même grille,
+  avait le même trou d'association `label`/`id` — corrigé au même patron (1 champ sur 2 réparé au
+  1er jet ; les 7 autres champs du formulaire, hors périmètre de ce lot, routés en ticket
+  `[A11Y-ADDSTOCKFORM-LABELS]`).
+- **[MEDIUM a11y]** les deux badges du header Investissements (Diversification + FX) pouvaient
+  déborder sur mobile étroit (pas de `flex-wrap`) — corrigé au patron déjà présent dans
+  `Retirement.tsx`. Même correctif (optionnel, dégradation déjà gracieuse) sur la tuile
+  Patrimoine net.
+- **[FAIBLE, financial-integrity]** `hasForeignCurrencyAssets(undefined)` levait une exception —
+  garde `?? []` ajoutée ; et son jumeau exact (`FutureProjection.tsx:269`, écrit en dur) consomme
+  désormais l'helper partagé (source unique).
+- **[FAIBLE, financial-integrity]** une assertion de test (`not.toMatch(/\$\s*CA/)`) était
+  VACUEUSE — `formatCAD` ne rend jamais ce motif sous cette version d'ICU, l'assertion ne pouvait
+  pas rougir. Remplacée par `not.toContain('$')`, qui discrimine vraiment.
+- **[INFO]** deux surfaces FX non couvertes par ce badge (`TaxCenter.tsx`, un affichage fiscal ;
+  `buildSimulationParams.ts`, toute la courbe Futur) — routées `[FX-BADGE-SURFACES-RESTANTES]`.
+
+**19 tests neufs** (8 `portfolio.test.ts`, 4 `FxEstimateBadge.test.tsx`, 3 `pdfReport.fxNote.test.ts`,
+3 `AddStockForm.test.tsx`, 1 `finance.test.ts` — dont le test qui reproduit EXACTEMENT le bug F-1 :
+une série réelle + une absente, `lastFetched > 0` mesuré, `estimated: true` mesuré), 5 perturbations
+prouvées rouges assertion par assertion (dont la perturbation du VRAI correctif money-critical),
+restaurations vérifiées par diff.
 
 **RETIREMENT-GROSSINCOME-DEAD** : la prop `grossIncome` (`TabRouter.tsx` → `Retirement.tsx`)
 n'avait AUCUN consommateur — retirée du type ET du site d'appel plutôt que renommée (zéro usage
@@ -32,9 +76,7 @@ n'avait AUCUN consommateur — retirée du type ET du site d'appel plutôt que r
 **ADDSTOCK-CAD-NATIF** : le récapitulatif d'ajout de titre passait `quantity × buyPrice` (devise
 NATIVE saisie par Marc) par `formatCAD` — affichait un montant USD/EUR comme si c'était du CAD.
 `formatNumber` (sans symbole) + le code de devise explicite, comme la ligne du prix unitaire déjà
-correcte. Effet de bord a11y : la checkbox « Devise » n'avait aucune association label↔contrôle
-(`htmlFor`/`id` ajoutés, nécessaires pour que le test l'atteigne — et pour tout lecteur d'écran).
-2 tests neufs, perturbation prouvée rouge.
+correcte.
 
 ## 2026-08-21 — La détention immobilière se DÉCLARE (isOwned) + badges « non compté » (A6 + A5)
 

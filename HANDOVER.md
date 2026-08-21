@@ -6,15 +6,23 @@
 >
 > ## 🟢 Session 2026-08-21 (suite 125) — Vague 2 PM : badge FX estimé, prop morte, récap devise native
 > Branche `claude/vague2-devises` (rebasée sur main post-#685 — Marc a mergé #684 lui-même, PUIS
-> #685 doc-only, pendant la rédaction du gate ; réconciliée). **§6 vérifié** : déploiement
+> #685 doc-only, pendant la rédaction du gate ; réconciliée), PR #686. **§6 vérifié** : déploiement
 > production `READY` sur `723315b` (#685), qui contient bien `de08327` (#684) — rien à router.
-> 3 items indépendants :
-> `[FX-FALLBACK-SILENCIEUX]` (badge partagé `FxEstimateBadge`, gated sur avoir étranger RÉEL — pas
-> de bruit si tout est en CAD — câblé tuile Patrimoine net + Investissements + note PDF),
-> `[RETIREMENT-GROSSINCOME-DEAD]` (prop supprimée, zéro consommateur), `[ADDSTOCK-CAD-NATIF]`
-> (récap en `formatNumber` + devise explicite, plus `formatCAD` sur un montant USD/EUR — checkbox
-> Devise gagne son association label↔id au passage). 9 tests neufs, 3 perturbations prouvées
-> rouges assertion par assertion.
+> 3 items indépendants : `[FX-FALLBACK-SILENCIEUX]`, `[RETIREMENT-GROSSINCOME-DEAD]`,
+> `[ADDSTOCK-CAD-NATIF]`.
+> **Panel #686 (4 agents) appliqué — trouvailles substantielles, pas cosmétiques** : le signal FX
+> du 1er jet (`lastFetched === 0` seul) manquait exactement le cas chiffré par le ticket — un
+> succès GLOBAL du fetch BdC peut cacher un repli PAR SÉRIE (une devise réelle, l'autre inventée).
+> Correctif réel : `services/finance.ts` fait remonter `estimated` par appel, propagé comme champ
+> **SIBLING** `AppState.fxRatesEstimated` (jamais DANS `fxRates`, qui reste un
+> `Record<string, number>` — un booléen dedans aurait cassé ~13 signatures ailleurs dans le
+> dépôt). Un ÉLEVÉ code-reviewer : la bannière « Prix actuel » d'`AddStockForm` (chemin Finnhub
+> validé, LE plus courant) portait encore le défaut que le ticket corrigeait 90 lignes plus bas —
+> zéro test ne l'exerçait. Un HIGH a11y : le select « Compte fiscal » avait le même trou
+> label/id que « Devise » (1 champ réparé sur 2 au 1er jet). 19 tests neufs au total, 5
+> perturbations prouvées rouges (dont celle du vrai correctif money-critical). 2 tickets routés :
+> `[FX-BADGE-SURFACES-RESTANTES]` (TaxCenter + courbe Futur non couverts), `[A11Y-ADDSTOCKFORM-LABELS]`
+> (7 champs restants du formulaire).
 >
 > ## 🟢 Session 2026-08-21 (suite 124) — isOwned + badges (A6 + A5) : la détention se DÉCLARE
 > Branche `claude/past-owned-badge` (depuis main post-#683), PR #684. Champ `isOwned?: boolean`

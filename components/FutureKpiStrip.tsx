@@ -37,7 +37,7 @@ const KpiTile: React.FC<{
     badge?: React.ReactNode;
 }> = ({ label, value, signed = false, sublabel, privateSublabel = false, scope, badge }) => (
     <div className="flex-1 min-w-[140px] rounded-card bg-white/5 border border-white/5 px-4 py-3">
-        <p className="text-tiny uppercase tracking-widest text-ink-400 font-bold flex items-center gap-1.5">
+        <p className="text-tiny uppercase tracking-widest text-ink-400 font-bold flex flex-wrap items-center gap-1.5">
             {label}{badge}
         </p>
         {Number.isFinite(value) ? (

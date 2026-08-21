@@ -29,7 +29,7 @@ const baseData = {
     scenarios: [],
 } as unknown as Parameters<typeof generateFinancialReport>[0];
 
-const NOTE = 'Taux de change estimés (non récupérés récemment)';
+const NOTE = 'Taux de change estimés (non récupérés)';
 
 beforeEach(() => {
     jsPDFCtor.mockClear();

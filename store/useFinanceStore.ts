@@ -84,7 +84,7 @@ export interface FinanceState extends AppState {
     navigateWithFocus: (tab: Tab, section?: string) => void;
     /** Called by the destination page after it has consumed the focus intent. */
     clearPendingFocus: () => void;
-    updateFxRates: (rates: { USD: number; EUR: number; CAD: number; lastFetched?: number }) => void;
+    updateFxRates: (rates: { USD: number; EUR: number; CAD: number; lastFetched?: number; estimated?: boolean }) => void;
     updateApiKeys: (keys: { anthropic: string; finnhub?: string }) => void;
     updateLastUpdate: () => void;
     resetState: () => void;
@@ -182,6 +182,7 @@ const DEFAULT_APP_STATE: AppState = {
     initialBalances: {},
     apiKeys: { anthropic: '', finnhub: '' },
     fxRates: DEFAULT_FX_RATES,
+    fxRatesEstimated: true, // [FX-FALLBACK-SILENCIEUX] DEFAULT_FX_RATES est un repli en dur.
     lastUpdate: Date.now(),
     categorizationRules: [],
     aiConversation: [],
@@ -557,8 +558,11 @@ export const useFinanceStore = create<FinanceState>()(
                 });
             },
             clearPendingFocus: () => set({ pendingFocus: null }),
-            updateFxRates: (rates) => set((prev) => ({
-                fxRates: { ...prev.fxRates, ...rates }
+            updateFxRates: ({ estimated, ...rates }) => set((prev) => ({
+                // [FX-FALLBACK-SILENCIEUX] `estimated` vit SIBLING de fxRates (jamais dans l'objet
+                // lui-même — il resterait un Record<string, number> pour ses ~13 consommateurs).
+                fxRates: { ...prev.fxRates, ...rates },
+                fxRatesEstimated: estimated ?? prev.fxRatesEstimated,
             })),
             updateApiKeys: (keys) => set((prev) => ({
                 apiKeys: { ...prev.apiKeys, ...keys }

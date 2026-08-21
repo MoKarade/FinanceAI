@@ -15,7 +15,7 @@ export interface MarketDataPoint {
 const FETCH_TIMEOUT_MS = 12000; // 12 secondes max
 
 // Taux de change mis en cache localement
-let cachedFxRates: { USD: number; EUR: number; CAD: number; lastFetched: number } | null = null;
+let cachedFxRates: { USD: number; EUR: number; CAD: number; lastFetched: number; estimated: boolean } | null = null;
 
 // --- Wrapper localStorage tolerant aux environnements sans Web Storage ---
 // Le module est importe par App (browser) et potentiellement par le MCP server (Node).
@@ -69,7 +69,7 @@ const fetchWithTimeout = async (url: string, timeoutMs: number = FETCH_TIMEOUT_M
  * Cache 24h pour eviter trop de requetes.
  * Fallback sur les valeurs stockees en cas d'echec.
  */
-export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: number; lastFetched: number }> => {
+export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: number; lastFetched: number; estimated: boolean }> => {
     const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 heures
     const now = Date.now();
 
@@ -104,17 +104,22 @@ export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: n
             if (obs) {
                 // Distingue un taux ABSENT (repli silencieux normal) d'un taux PRÉSENT mais
                 // CORROMPU (0/NaN/texte) → ce dernier est loggué au lieu d'être masqué par le repli.
+                // [FX-FALLBACK-SILENCIEUX] Un succès GLOBAL du fetch (obs présent) peut cacher un
+                // repli PAR SÉRIE (une des deux absente/corrompue) — `estimated` le fait remonter,
+                // ce que `lastFetched > 0` seul ne pouvait pas voir (revue #686, mesuré).
+                let anyFallback = false;
                 const parseRate = (raw: unknown, fallback: number, label: string): number => {
-                    if (raw === undefined || raw === null || String(raw).trim() === '') return fallback; // absent : normal
+                    if (raw === undefined || raw === null || String(raw).trim() === '') { anyFallback = true; return fallback; } // absent : normal
                     const v = parseFloat(String(raw));
                     if (Number.isFinite(v) && v > 0) return v;
+                    anyFallback = true;
                     logError({ source: 'network', severity: 'warning', message: `Taux de change ${label} corrompu — repli sur ${fallback}`, context: { raw: String(raw).slice(0, 24) } });
                     return fallback;
                 };
                 const usdCad = parseRate(obs?.FXUSDCAD?.v, 1.40, 'USD/CAD');
                 const eurCad = parseRate(obs?.FXEURCAD?.v, 1.47, 'EUR/CAD');
 
-                const rates = { USD: usdCad, EUR: eurCad, CAD: 1.00, lastFetched: now };
+                const rates = { USD: usdCad, EUR: eurCad, CAD: 1.00, lastFetched: now, estimated: anyFallback };
                 cachedFxRates = rates;
 
                 // Persistance dans localStorage si disponible (no-op en Node)
@@ -146,7 +151,7 @@ export const fetchFxRates = async (): Promise<{ USD: number; EUR: number; CAD: n
 
     // Dernier recours : défauts approximatifs. `lastFetched: 0` = signal « jamais récupéré »
     // (contrat qu'un futur badge UI « taux estimé » pourra détecter).
-    const fallback = { USD: 1.40, EUR: 1.47, CAD: 1.00, lastFetched: 0 };
+    const fallback = { USD: 1.40, EUR: 1.47, CAD: 1.00, lastFetched: 0, estimated: true };
     return fallback;
 };
 

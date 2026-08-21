@@ -551,8 +551,8 @@ export async function generateFinancialReport(data: ReportData): Promise<void> {
                 doc.setTextColor(...gray);
                 doc.text(
                     isFr
-                        ? 'Taux de change estimés (non récupérés récemment) — total en devise étrangère approximatif.'
-                        : 'Estimated exchange rates (not recently fetched) — foreign-currency total is approximate.',
+                        ? 'Taux de change estimés (non récupérés) — total en devise étrangère approximatif.'
+                        : 'Estimated exchange rates (not fetched) — foreign-currency total is approximate.',
                     20, y,
                 );
             }

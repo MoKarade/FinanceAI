@@ -12,13 +12,14 @@ import { isFxRatesEstimated, hasForeignCurrencyAssets } from '../../services/por
 /** `null` si aucun avoir étranger ou si le taux vient bien de l'API — pas de bruit hors-sujet. */
 export const FxEstimateBadge: React.FC<{ size?: 'sm' | 'md' }> = ({ size = 'sm' }) => {
     const fxRates = useFinanceStore(s => s.fxRates);
+    const fxRatesEstimated = useFinanceStore(s => s.fxRatesEstimated);
     const assets = useFinanceStore(s => s.assets);
-    if (!isFxRatesEstimated(fxRates) || !hasForeignCurrencyAssets(assets)) return null;
+    if (!isFxRatesEstimated(fxRates, fxRatesEstimated) || !hasForeignCurrencyAssets(assets)) return null;
     return (
         <Badge
             variant="warning"
             size={size}
-            title="Le taux de change USD/EUR n'a jamais été récupéré (ou le cache est trop vieux) — un repli approximatif est utilisé pour convertir tes avoirs étrangers en dollars canadiens."
+            title="Le taux de change USD/EUR n'a pas pu être récupéré (jamais, ou la Banque du Canada n'a pas répondu pour une des deux devises) — un repli approximatif est utilisé pour convertir tes avoirs étrangers en dollars canadiens."
         >
             Taux de change estimés
         </Badge>

@@ -1203,6 +1203,15 @@
 
 ### 🔴 Devises et unités
 
+- [ ] **`[FX-BADGE-SURFACES-RESTANTES]`** (S, FAIBLE — routé revue #686, financial-integrity
+  INFO) — le badge `FxEstimateBadge` (câblé Patrimoine net + Investissements + PDF) ne couvre PAS
+  toutes les surfaces qui convertissent des devises étrangères : `TaxCenter.tsx:170-171`
+  (`estimateTaxableInvestmentIncome`, nourrit un affichage FISCAL) et
+  `services/projection/buildSimulationParams.ts:279` (`derivePortfolioStartingBalances`, alimente
+  TOUTE la courbe Futur). « Un signal posé pour UNE surface ne protège que celle-là »
+  (`DECISION-PRIVACY-UNE-SEULE-SORTIE`) s'applique ici aussi. Pas une régression du lot FX ; le
+  ticket d'origine ne les listait pas.
+
 ### 🔴 Argent — valeurs fausses ou silencieuses
 
 ### 🔴 Interface — atteignabilité et clavier
@@ -1640,6 +1649,13 @@
 > Les 4 fuites de Mode Discret de l'audit sont CORRIGÉES (#608), ainsi qu'une 5e trouvée à la revue
 > (axes et infobulles de graphiques, `[A11Y-PRIVACY-CHART-FORMATTER]`). Garde de non-régression :
 > `tests/components/chartPrivacyScan.test.ts`.
+
+- [ ] **`[A11Y-ADDSTOCKFORM-LABELS]`** (S — routé revue #686, a11y-auditor LOW) —
+  `components/investments/AddStockForm.tsx` : 7 champs (Symbole/Ticker, Prix manuel, Date d'achat,
+  Quantité, Prix d'achat, + le `role="combobox"` de l'autocomplétion) n'ont AUCUNE association
+  label↔contrôle (ni `htmlFor`/`id`, ni `aria-label`/`aria-labelledby`) — un lecteur d'écran devine
+  le nom par proximité DOM, non fiable. Les 2 champs « Devise »/« Compte fiscal » ont été corrigés
+  en passant (revue #686, même patron `htmlFor`+`id`) ; ce ticket couvre le reste du formulaire.
 
 - [ ] 🔴 **`[A11Y-MODAL-GUIDE-NODIALOG]`** (S) — `GuideModal` : aucune sémantique de dialogue
   (`role="dialog"` absente), pas de focus initial/piège Tab/restauration focus/Escape. Atteignable au

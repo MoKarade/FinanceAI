@@ -816,6 +816,15 @@ export interface AppState {
     CAD: number;
     lastFetched?: number;
   };
+  /** [FX-FALLBACK-SILENCIEUX] `true` si AU MOINS un taux de `fxRates` vient du repli en dur
+   *  (jamais récupéré, OU la BdC a répondu mais une série était absente/corrompue — un succès
+   *  GLOBAL de fetch peut cacher un repli PAR TAUX que `fxRates.lastFetched > 0` seul ne voit
+   *  pas). Champ SIBLING de `fxRates` (pas un champ dedans) : `fxRates` reste un
+   *  `Record<string, number>` compatible avec ses ~13 consommateurs (`toCurrencyFactor`,
+   *  `assetValueCad`…), qu'un champ booléen aurait cassés. ADDITIF optionnel, persisté via
+   *  partialize allow-all — absent (état antérieur) → `isFxRatesEstimated` retombe sur
+   *  `fxRates.lastFetched === 0`, rétrocompat bit-identique. */
+  fxRatesEstimated?: boolean;
   lastUpdate: number;
   categorizationRules: CategorizationRule[];
   aiConversation: AiMessage[];

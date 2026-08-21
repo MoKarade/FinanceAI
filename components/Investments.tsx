@@ -637,7 +637,10 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 icon={<Icon name="investments" size={28} />}
                 title="Investissements"
                 badge={
-                    <div className="flex items-center gap-2">
+                    // [A11Y-REFLOW] flex-wrap (patron Retirement.tsx) : deux badges côte à côte
+                    // (~360 px cumulés) débordaient sur un viewport mobile étroit sans lui
+                    // (WCAG 1.4.10, revue #686).
+                    <div className="flex flex-wrap items-center gap-2">
                         <Badge
                             variant={diversificationScore >= 80 ? 'success' : diversificationScore >= 50 ? 'warning' : 'danger'}
                             size="md"

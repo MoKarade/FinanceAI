@@ -196,6 +196,18 @@ describe('isFxRatesEstimated', () => {
   it('lastFetched > 0 (taux réel, même périmé) → false', () => {
     expect(isFxRatesEstimated({ lastFetched: 1700000000 })).toBe(false);
   });
+
+  // Revue #686 (financial-integrity, MOYEN mesuré) : un succès GLOBAL du fetch BdC (lastFetched
+  // > 0) peut cacher un repli PAR TAUX (une des deux séries absente/corrompue) — `estimated`
+  // (posé par services/finance.ts) le fait remonter explicitement, ce que lastFetched seul ne
+  // pouvait pas voir. `estimated` est donc TOUJOURS prioritaire quand présent.
+  it('estimated: true PRIME sur lastFetched > 0 (repli par taux caché par un succès global)', () => {
+    expect(isFxRatesEstimated({ lastFetched: 1700000000 }, true)).toBe(true);
+  });
+
+  it('estimated: false PRIME sur lastFetched: 0 (rétrocompat exotique, mais estimated fait foi)', () => {
+    expect(isFxRatesEstimated({ lastFetched: 0 }, false)).toBe(false);
+  });
 });
 
 describe('hasForeignCurrencyAssets', () => {

@@ -28,16 +28,25 @@ export interface MonthlyBudgetAggregates {
 }
 
 /**
- * [FX-FALLBACK-SILENCIEUX] `true` si le taux de change vient du repli EN DUR (jamais récupéré /
- * cache trop vieux) — même signal que `SystemView` (`fxAge === 0`), extrait ici pour être
- * consommé par toute surface qui convertit une devise étrangère, pas seulement la page technique.
+ * [FX-FALLBACK-SILENCIEUX] `true` si AU MOINS un taux vient du repli en dur — jamais récupéré,
+ * OU la Banque du Canada a répondu mais une série était absente/corrompue (repli PAR TAUX qu'un
+ * succès global de fetch peut cacher). `estimated` (2e param, posé par `services/finance.ts` puis
+ * porté par `AppState.fxRatesEstimated` — un champ SIBLING de `fxRates`, jamais dedans : `fxRates`
+ * reste un `Record<string, number>` compatible avec ses ~13 consommateurs) prime quand fourni.
+ * Rétrocompat : `estimated` absent (état antérieur à ce champ) retombe sur `lastFetched === 0`,
+ * seul signal qui existait alors.
+ * ⚠️ Ne détecte PAS un cache réel mais PÉRIMÉ (`services/finance.ts` le préfère volontairement à
+ * l'approximation — « un taux d'hier est plus honnête qu'un taux inventé ») : ce n'est pas un
+ * taux estimé, juste un taux vieux. Aucune surface de ce dépôt n'affirme le contraire (vérifié).
  */
-export const isFxRatesEstimated = (fxRates: { lastFetched?: number } | undefined): boolean =>
-  (fxRates?.lastFetched ?? 0) === 0;
+export const isFxRatesEstimated = (
+  fxRates: { lastFetched?: number } | undefined,
+  estimated?: boolean,
+): boolean => estimated ?? (fxRates?.lastFetched ?? 0) === 0;
 
 /** Au moins un actif détenu dans une devise ÉTRANGÈRE (CAD exclu) — un taux estimé n'importe que là. */
-export const hasForeignCurrencyAssets = (assets: ReadonlyArray<{ currency?: string }>): boolean =>
-  assets.some(a => !!a.currency && a.currency !== 'CAD');
+export const hasForeignCurrencyAssets = (assets: ReadonlyArray<{ currency?: string }> | undefined): boolean =>
+  (assets ?? []).some(a => !!a.currency && a.currency.toUpperCase() !== 'CAD');
 
 export const toCurrencyFactor = (fxRates: Record<string, number> | undefined, currency: string): number => {
   // CAD (devise de base) ou devise absente → 1:1 légitime (l'absence de devise sur un ACTIF est

@@ -814,7 +814,7 @@ export const App: React.FC = () => {
                             holdings: buildHoldingsRows(state),
                             // [FX-FALLBACK-SILENCIEUX] : note sous « Total placements » quand le
                             // taux vient du repli en dur ET qu'un avoir est en devise étrangère.
-                            fxRatesEstimated: isFxRatesEstimated(state.fxRates) && hasForeignCurrencyAssets(state.assets),
+                            fxRatesEstimated: isFxRatesEstimated(state.fxRates, state.fxRatesEstimated) && hasForeignCurrencyAssets(state.assets),
                             debtsDetail: buildDebtsRows(state),
                             goalsDetail: buildGoalsRows(state),
                             // PDF Futur — comparaison scénarios (allResults depuis lastProjection)

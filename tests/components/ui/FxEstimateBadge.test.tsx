@@ -12,9 +12,12 @@ const asset = (o: Partial<Asset>): Asset => ({
 } as Asset);
 
 describe('FxEstimateBadge', () => {
-    it('taux estimé (lastFetched: 0) + avoir ÉTRANGER → visible', () => {
+    // `fxRatesEstimated` posé explicitement (même `undefined`) à CHAQUE test : `setState` MERGE,
+    // un test qui le laisserait à `true` ferait leaker un faux positif dans le suivant.
+    it('taux estimé (lastFetched: 0, rétrocompat sans le sibling) + avoir ÉTRANGER → visible', () => {
         useFinanceStore.setState({
             fxRates: { USD: 1.40, EUR: 1.47, CAD: 1, lastFetched: 0 },
+            fxRatesEstimated: undefined,
             assets: [asset({ currency: 'USD' })],
         });
         render(<FxEstimateBadge />);
@@ -24,6 +27,7 @@ describe('FxEstimateBadge', () => {
     it('taux estimé mais AUCUN avoir étranger → invisible (rien à convertir)', () => {
         useFinanceStore.setState({
             fxRates: { USD: 1.40, EUR: 1.47, CAD: 1, lastFetched: 0 },
+            fxRatesEstimated: undefined,
             assets: [asset({ currency: 'CAD' })],
         });
         render(<FxEstimateBadge />);
@@ -33,9 +37,23 @@ describe('FxEstimateBadge', () => {
     it('avoir étranger mais taux RÉEL (lastFetched > 0) → invisible', () => {
         useFinanceStore.setState({
             fxRates: { USD: 1.35, EUR: 1.45, CAD: 1, lastFetched: 1700000000 },
+            fxRatesEstimated: undefined,
             assets: [asset({ currency: 'USD' })],
         });
         render(<FxEstimateBadge />);
         expect(screen.queryByText('Taux de change estimés')).toBeNull();
+    });
+
+    // Revue #686 (financial-integrity F-1) : un succès GLOBAL du fetch (lastFetched > 0) peut
+    // cacher un repli PAR TAUX — `fxRatesEstimated` (sibling, posé par services/finance.ts) doit
+    // faire apparaître le badge MÊME quand `lastFetched` seul dirait « taux réel ».
+    it('lastFetched > 0 MAIS fxRatesEstimated: true (repli par taux) + avoir étranger → visible', () => {
+        useFinanceStore.setState({
+            fxRates: { USD: 1.38, EUR: 1.47, CAD: 1, lastFetched: 1700000000 },
+            fxRatesEstimated: true,
+            assets: [asset({ currency: 'USD' })],
+        });
+        render(<FxEstimateBadge />);
+        expect(screen.getByText('Taux de change estimés')).toBeInTheDocument();
     });
 });

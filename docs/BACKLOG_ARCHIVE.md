@@ -35,9 +35,14 @@ unique (récidive ECRIRE-UN-CHIFFRE). Le clamp CID voisin extrait en ticket prop
 256 $/an de CID, classement instable) devient une BANDE de lissage −4 %/−6 % (constantes nommées,
 ratchet 0.95 → 0.06+0.02 design). ⚠️ Un premier lissage 0→−5 % réduisait l'indexation dès −0,1 %
 de baisse — politique bien plus large que le défaut, attrapée par les goldens (FERR +8 683 $) et
-resserrée : hors bande, comportement STRICTEMENT identique à l'ancien. 5 goldens re-basés
-ATTRIBUÉS (fixtures qui traversent la bande — cause prouvée par retrait chirurgical des
-assiettes DIV ; unsettled solvable +137,31 $ = FSS du dernier exercice).
+resserrée : hors bande, comportement STRICTEMENT identique à l'ancien. 6 goldens re-basés — **et mes attributions
+étaient CROISÉES sur 3 d'entre eux** (revue #683, bissection de commits : les pins estate = DIV,
+le pin unsettled solvable = GK — sa fixture n'a pas de non-enregistré, mon « FSS du dernier
+exercice » était impossible ; 4e récidive de la classe attribution-causale, commentaires
+réécrits). **Vague revue #683 appliquée** : la RAMQ voit aussi le dividende majoré (+814 $/ménage
+mesuré, 8× le FSS — l'asymétrie voisine que mon lot laissait), gross-up REQUIS dans
+DecemberHelpers, NaN tracé patron FA-8, GK bordé prev>0 fini, FISCAL_REFERENCE aligné (3 passages
++ limite assumée [FISC-DIV-ACB-STEPUP] ≈ 58 k$ de double imposition, ticket ÉLEVÉ routé).
 
 11 tests neufs, 8 perturbations prouvées rouges au total, restaurations par diff.
 
@@ -58,9 +63,9 @@ d'horizon, ancre négative sur le câblage search. 2 perturbations prouvées rou
 par diff. `[PROJ-TAXPAID-SOLDE-AVRIL]` reste ouvert (biais constant entre stratégies — sans effet
 sur un classement, documenté dans le helper).
 
-**Découvertes routées** : `[ENG-RANKING-MODULES-ORPHELINS]` (rankStrategies et
-compareLifeScenarios sans appelant vivant — le ticket #554 sur-prescrivait leur rôle ; + double
-comptage estate dans son score balanced, noté au ticket), `[ENG-FVI-EFFICIENCY-ESTATE]` (ré-ouvert
+**Découvertes routées** : `[ENG-RANKING-MODULES-ORPHELINS]` (⚠️ CORRIGÉ par la revue #683 :
+seul rankStrategies est orphelin — compareLifeScenarios vit via l'alias optimizeDrawdownOrder →
+GoalSeekerCard ; + double comptage estate dans balanced), `[ENG-FVI-EFFICIENCY-ESTATE]` (ré-ouvert
 — l'angle mort FVI du ticket #554 avait été SUPPRIMÉ au cochage au lieu d'être routé : −20 pts de
 FVI mesurés, clamp à 100 % dès ttp < 0).
 **Relecture #681 appliquée** : l'infobulle du panneau vivant promettait « ni l'impôt

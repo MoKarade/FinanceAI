@@ -327,6 +327,14 @@
 - [x] ~~**`[FISC-DIV-DERIVED-BASES]`**~~ ✅ **LIVRÉ 2026-08-21** (FSS +70 $/ménage, récupération
   PSV +1 552,50 $/an mesurés — détail en tête d'archive, réf PR au merge). Le voisin **clamp du
   CID** reste OUVERT et documenté (mesuré 0 $ avant comme après sur le profil du panel) :
+- [ ] **`[FISC-DIV-ACB-STEPUP]`** (M, **ÉLEVÉ** [Probable — arithmétique revue #683, PRÉ-EXISTANT
+  amplifié par la visibilité du dividende]) — le dividende réputé du non-enregistré est IMPOSÉ
+  chaque année (§3) mais l'ACB n'est PAS incrémenté (aucun des 6 sites `nonRegACB`) ni le cash
+  sorti : les 30 % du rendement sont imposés comme dividende PUIS re-imposés dans le gain latent
+  à la réalisation/au décès. Arithmétique : 500 k$ à 5 %/20 ans → ≈ 248 k$ d'ACB manquant ≈
+  58 k$ d'impôt en double. Point d'accroche évident : `computeAnnualNonRegDividends` (source
+  unique du montant). ⚠️ Re-base massif de goldens — lot dédié. Limite assumée documentée
+  FISCAL_REFERENCE §6 en attendant.
 - [ ] **`[FISC-CID-CLAMP-EXCEDENT]`** (S, FAIBLE — ex-« voisin » de DIV-DERIVED-BASES) — le clamp
   `Math.max(0, grossTax − cid)` perd l'excédent annuel de crédit d'impôt pour dividendes au lieu
   de réduire l'impôt des autres revenus (mesuré : 0 $ d'impôt dividendes sur un couple à 1,5 M$
@@ -394,12 +402,14 @@
   le PDF, DEUX outils MCP lus par le LLM, et ÉCRASE successRate (projection.ts:2416). Trancher :
   brancher lifetimeTaxTotal dans leakage (re-base FVI massif) ou documenter « A4 ne s'applique
   pas au FVI » dans l'ADR.
-- [ ] **`[ENG-RANKING-MODULES-ORPHELINS]`** (S, FAIBLE — découvert au lot RANKTAX, 2026-08-21) —
-  `rankStrategies` (strategyRanking.ts) et `compareLifeScenarios` (drawdownOptimizer.ts) n'ont
-  **AUCUN appelant vivant** (tests seuls — vérifié par grep exhaustif) : le classement réel passe
-  par `strategySearch → strategyConfigRanking`. Deux modules money-critical orphelins = surface de
-  faux findings et de dérive (le lot les a corrigés quand même pour cohérence). Trancher : les
-  BRANCHER à une surface (le comparateur d'avenirs ?) ou les retirer (knip les voit-il ?).
+- [ ] **`[ENG-RANKING-MODULES-ORPHELINS]`** (S, FAIBLE — RE-CADRÉ par la revue #683 : ma
+  1re affirmation était à moitié FAUSSE) — `rankStrategies` (strategyRanking.ts) est orphelin
+  (aucun appelant hors tests, re-vérifié alias compris). **`compareLifeScenarios` NE L'EST PAS** :
+  son alias `optimizeDrawdownOrder` est appelé par `GoalSeekerCard` (bouton « Optimiser ordre de
+  décaissement ») — le 1er grep ratait l'alias, et « le retirer » aurait supprimé une
+  fonctionnalité UI vivante (leçon : grep les ALIAS d'export avant de déclarer un module mort).
+  Reste à trancher pour `rankStrategies` seul : brancher ou retirer. Son champ `totalTaxesPaid`
+  affiché par compareLifeScenarios n'est pas rendu par la carte (0 impact UI aujourd'hui).
   ⚠️ AVANT tout branchement de `rankStrategies` : son score `balanced` compte l'impôt successoral
   DEUX fois (axe estate = estateNetWorth déjà NET d'estate tax à 0,40 + axe tax = lifetimeTaxTotal
   qui l'inclut à 0,25 — relecture #681, sans effet aujourd'hui faute d'appelant).

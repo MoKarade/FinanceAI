@@ -1,5 +1,5 @@
 // tests/services/drawdownOptimizer.test.ts
-// Couverture de compareLifeScenarios (alias optimizeDrawdownOrder) :
+// Couverture de compareLifeScenarios :
 // sélection du meilleur scénario, cas allResults vide, classement et explication.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -10,7 +10,7 @@ vi.mock('../../services/projection', () => ({
 }));
 
 import { calculateFutureProjection } from '../../services/projection';
-import { compareLifeScenarios, optimizeDrawdownOrder } from '../../services/projection/drawdownOptimizer';
+import { compareLifeScenarios } from '../../services/projection/drawdownOptimizer';
 import type { SimulationParams } from '../../services/projection';
 
 const mockCalculate = vi.mocked(calculateFutureProjection);
@@ -139,9 +139,8 @@ describe('compareLifeScenarios', () => {
     });
 });
 
-describe('optimizeDrawdownOrder (alias backward compat)', () => {
-    it('est l\'alias de compareLifeScenarios', () => {
-        // Assert
-        expect(optimizeDrawdownOrder).toBe(compareLifeScenarios);
-    });
-});
+// [DETTE-DEPRECATED-DRAWDOWN] Le test « l'alias `optimizeDrawdownOrder` pointe bien sur
+// `compareLifeScenarios` » est SUPPRIMÉ avec l'alias lui-même (2026-08-21). Il ne vérifiait rien
+// d'autre que l'existence de l'alias : une tautologie sur une ligne d'affectation. Le garder après
+// suppression n'aurait pas été possible ; le remplacer par un équivalent n'aurait aucun sens —
+// la seule chose qu'il protégeait, c'était le second nom qu'on vient d'enlever.

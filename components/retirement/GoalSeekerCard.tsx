@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import { Card } from '../ui/Card';
 import { findRequiredMonthlySavings, findEarliestRetirementAge } from '../../services/projection/goalSeek';
-import { optimizeDrawdownOrder } from '../../services/projection/drawdownOptimizer';
+import { compareLifeScenarios } from '../../services/projection/drawdownOptimizer';
 import type { SimulationParams } from '../../services/projection';
 import { Icon } from '../ui/Icon';
 
@@ -17,7 +17,7 @@ interface GoalSeekerCardProps {
 export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, targetAge }) => {
     const [goalSeekTarget, setGoalSeekTarget] = useState<number>(1_000_000);
     const [goalSeekResult, setGoalSeekResult] = useState<{ savings?: number; age?: number; error?: string } | null>(null);
-    const [drawdownResult, setDrawdownResult] = useState<ReturnType<typeof optimizeDrawdownOrder> | null>(null);
+    const [drawdownResult, setDrawdownResult] = useState<ReturnType<typeof compareLifeScenarios> | null>(null);
     const [busySavings, setBusySavings] = useState(false);
     const [busyAge, setBusyAge] = useState(false);
     const [busyDrawdown, setBusyDrawdown] = useState(false);
@@ -43,7 +43,7 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
     const handleDrawdown = () => {
         setBusyDrawdown(true);
         setTimeout(() => {
-            setDrawdownResult(optimizeDrawdownOrder(paramsBuilder()));
+            setDrawdownResult(compareLifeScenarios(paramsBuilder()));
             setBusyDrawdown(false);
         }, 50);
     };

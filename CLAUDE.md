@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 644 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 643 tests** Vitest
 (418 fichiers de test, mesuré le 2026-08-21). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -235,6 +235,14 @@ n'est pas réécrire un récit.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
+- Un **alias `@deprecated`** interne rend le code cherchable par DEUX noms, donc INTROUVABLE par un
+  seul : un `grep` sur le nom canonique a déjà fait conclure « module orphelin » — faux, et écrit
+  dans le dépôt. Un alias ne se justifie que face à un consommateur qu'on ne CONTRÔLE pas
+  (`UN-ALIAS-DEPRECIE-REND-LE-CODE-INTROUVABLE-PAR-UN-SEUL-NOM`).
+- Un **point d'entrée manquant dans `knip.json`** ne cache pas un fichier mais tout un SOUS-GRAPHE :
+  déclarer `api/**` a retiré le faux « fichier inutilisé » ET un export faussement signalé, dont le
+  seul tort était d'avoir son consommateur hors analyse. Rejouer l'outil, ne pas supposer que le
+  correctif ne touche que la ligne visée (`UN-SCANNER-QUI-CRIE-SUR-DU-CODE-VIVANT-APPREND-A-ETRE-IGNORE`).
 - **Deux tests cohérents entre eux peuvent être faux ENSEMBLE** : un test au producteur et un test à
   l'appelant qui affirment la même valeur INTERMÉDIAIRE ne se confirment pas — ils partagent
   peut-être la même hypothèse. Une durée de chômage de N servait N+1 mois SOUS deux gardes qui la

@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-21 (suite 134) — Dette XS : deux angles morts qui rendaient le code INTROUVABLE
+> Lot réuni par le SYMPTÔME, pas par la zone : dans les deux cas du code vivant paraissait mort, et
+> les deux avaient DÉJÀ produit une conclusion fausse écrite dans le dépôt.
+> `[DETTE-KNIP-API-ENTRY]` : `api/**/*.ts` déclaré en point d'entrée. ⚠️ Effet plus large que la
+> ligne visée — l'export `anthropicError` a AUSSI quitté la liste des inutilisés (80 → 79) : un
+> point d'entrée manquant cache tout un SOUS-GRAPHE, pas un fichier. Rejouer l'outil, ne pas supposer.
+> `[DETTE-DEPRECATED-DRAWDOWN]` : alias `@deprecated optimizeDrawdownOrder` supprimé — il était le
+> SEUL chemin vivant vers `compareLifeScenarios`. ⚠️ Son coût était une désinformation DÉJÀ
+> matérialisée : un grep sur le nom canonique ne trouvait aucun appelant, d'où un commentaire
+> « module orphelin » faux dans le dépôt (corrigé au même commit). Renommage bit-identique.
+> Test de l'alias supprimé avec lui : tautologie sur une ligne d'affectation.
+> Leçons `UN-ALIAS-DEPRECIE-REND-LE-CODE-INTROUVABLE-PAR-UN-SEUL-NOM` et
+> `UN-SCANNER-QUI-CRIE-SUR-DU-CODE-VIVANT-APPREND-A-ETRE-IGNORE`.
+> Routé sans le traiter : `[DETTE-KNIP-ADMZIP]` (dépendance signalée inutilisée — cause à instruire
+> avant de supprimer). Gate vert : **4 643 tests / 418 fichiers** (−1, le test tautologique).
+>
 > ## 🟢 Session 2026-08-21 (suite 133) — `[JOBLOSS-DUREE-N-PLUS-1]` : une durée de N valait N+1
 > Une perte d'emploi configurée à N mois en SERVAIT N+1 : le mois du déclenchement est déjà un mois
 > de chômage, et le code posait ensuite un compteur de N mois de plus. **MESURÉ** : 6 → 7, 12 → 13,

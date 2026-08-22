@@ -911,11 +911,35 @@
   aujourd'hui, **mais un reclassement stock→flux de `DetteTotale` passerait les trois tests**.
   Correctif : étendre le test de ratio à TOUS les stocks non nuls, sur tous les mois de la fenêtre.
   [MESURÉ — vacuité de couverture, pas un écart $]
-- [ ] **`[CONSTANTES-MOTEUR-NON-SOURCEES]`** (XS, FAIBLE) — trois constantes financières en dur dans
-  des champs **publiés** : taux HELOC Smith 5 %/an (`realEstateMonth.ts:378`), croissance 5 % du
-  `CoastFIRE` (`monthlyOutput.ts:170` — **indépendante de `projection.returnRate`**), revenu barista
-  1 500 $/mois et facteur 25× (`monthlyOutput.ts:172`). Correctif : sourcer dans
-  `FISCAL_REFERENCE.md` ou paramétrer. [HYPOTHÈSE pour l'écart $, MESURÉ pour l'absence de source]
+- [x] **`[CONSTANTES-MOTEUR-NON-SOURCEES]`** ✅ 2026-08-22 — les quatre nombres sont nommés et
+  documentés dans `services/projection/modelAssumptions.ts` (un 4e site s'est ajouté au tri : le
+  multiple 25× existait en DEUX copies anonymes, `projection.ts` et `monthlyOutput.ts`). ⚠️ Ils
+  n'ont PAS été rangés dans `FISCAL_REFERENCE.md` : ce sont des hypothèses de MODÈLE, qu'aucune
+  autorité ne publie — les y mettre leur prêterait l'autorité d'un texte de loi. ⚠️ Le tri a montré
+  que le ticket groupait des enjeux **incomparables** : les deux tickets ci-dessous en sortent.
+
+- [ ] **`[SMITH-HELOC-TAUX-FIGE]`** (S en code, **DÉCISION PRODUIT — arbitrage Marc requis**,
+  **ÉLEVÉ [MESURÉ 2026-08-22]**) — le taux de la marge du levier **Smith Manoeuvre** est figé à 5 %/an
+  et ne suit ni `goal.mortgageRate`, ni l'environnement de taux, ni aucune saisie. Or une marge
+  hypothécaire canadienne est indexée sur le taux préférentiel, donc structurellement AU-DESSUS du
+  prêt qu'elle accompagne. **Ce n'est pas un chiffre d'affichage : `useSmithManoeuvre` fait partie de
+  l'espace de recherche de stratégies** (`strategySpace.ts`, `strategyConfig.ts`), donc ce taux décide
+  de ce que l'app RECOMMANDE. Mesuré sur 30 ans (célibataire 8 000 $/mois, maison 500 k$, hypothèque
+  5 %, rendement 6 %) — gain du levier sur le patrimoine net final : **+533 577 $ à 3 %, +489 760 $ à
+  5 % (valeur actuelle), +326 361 $ à 8 %, +146 425 $ à 10 %** → **343 335 $ d'amplitude**. Et à 10 %
+  la succession passe SOUS le scénario sans levier (2 212 026 $ contre 2 212 234 $) : **le conseil
+  s'inverse**. Question pour Marc : la marge doit-elle suivre `mortgageRate` (+ un écart), devenir une
+  saisie, ou rester figée avec sa limite écrite ? Corriger déplace de l'argent et re-base les goldens.
+  Le gel est aujourd'hui GARDÉ et documenté (`tests/services/modelAssumptions.test.ts`).
+
+- [ ] **`[COASTFIRE-CROISSANCE-FIGEE]`** (XS, FAIBLE — **portée mesurée NULLE**) — la croissance qui
+  actualise la cible CoastFIRE est figée à 5 %/an, indépendante de `projection.returnRate` : deux
+  utilisateurs qui projettent 4 % et 9 % obtiennent le même CoastFIRE, alors que la question n'a pas
+  de sens sans le rendement. Même famille pour le revenu « barista » de 1 500 $/mois, qui ne s'indexe
+  pas alors que les dépenses dont il se soustrait le sont. ⚠️ **Trancher d'ABORD si ces champs ont un
+  consommateur** : `CoastFIRE` et `BaristaFIRE` sont publiés au contrat et lus par **personne**
+  (mesuré, gardé). Corriger un champ que rien ne lit ne se distingue pas d'une régression — et la
+  seule garde existante n'exerce que la branche post-retraite, où cette croissance n'intervient pas.
 
 
 ### 🔴 Valeurs fiscales sans source (viole le non-négociable `FISCAL_REFERENCE.md`)

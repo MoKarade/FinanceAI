@@ -116,6 +116,7 @@ export interface RealEstateCtx {
 export const DOWNSIZE_RELEASE_PCT = 0.4;
 
 import { handleNonRegSale } from './portfolioOps';
+import { SMITH_HELOC_ANNUAL_RATE } from './modelAssumptions';
 
 /**
  * Traite tout l'immobilier pour le mois courant.
@@ -428,7 +429,7 @@ export function processRealEstate(
                 state.smithManoeuvreDebt += principalPaid;
                 state.nonReg += principalPaid;
                 state.nonRegACB += principalPaid;
-                const smithInterest = state.smithManoeuvreDebt * (0.05 / 12);
+                const smithInterest = state.smithManoeuvreDebt * (SMITH_HELOC_ANNUAL_RATE / 12);
                 state.smithManoeuvreDebt += smithInterest;
                 state.smithInterestDeductibleYear += smithInterest;
             }

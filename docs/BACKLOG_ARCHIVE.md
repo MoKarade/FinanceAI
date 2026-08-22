@@ -10,6 +10,34 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-22 — Quatre hypothèses de modèle nommées, et une décision qui remonte à Marc
+
+- [x] **`[CONSTANTES-MOTEUR-NON-SOURCEES]`** — ticket étiqueté **XS / FAIBLE** (« trois littéraux en
+  dur dans des champs publiés »). La mesure l'a **reclassé** : les trois constantes ne partageaient
+  qu'une FORME, pas un enjeu. Le taux de la marge du levier Smith pilote une **fonction objectif** —
+  `useSmithManoeuvre` fait partie de l'espace de recherche de stratégies, donc ce nombre décide de ce
+  que l'app RECOMMANDE : mesuré sur 30 ans, le gain annoncé du levier va de **+533 577 $ (marge 3 %)
+  à +146 425 $ (marge 10 %)**, soit **343 335 $ d'amplitude**, et à 10 % la succession passe SOUS le
+  scénario sans levier — **le conseil s'inverse**. À l'opposé, `CoastFIRE` et `BaristaFIRE` sont
+  publiés au contrat et lus par **personne** (balayage de `components/ hooks/ utils/ mcp/
+  services/aiChat/`, avec `FireTarget` en contre-épreuve) : leur incohérence est réelle et sa portée
+  est nulle.
+  Un **4e site** manquait à la liste du ticket : le multiple 25× de la règle des 4 % existait en DEUX
+  copies anonymes, dont une seule portait sa justification.
+  **Livré** : `services/projection/modelAssumptions.ts`, où chaque nombre est nommé avec sa PORTÉE
+  MESURÉE et son STATUT. ⚠️ **PAS dans `FISCAL_REFERENCE.md`** — ce sont des hypothèses de modèle,
+  qu'aucune autorité ne publie ; les y ranger leur prêterait l'autorité d'un texte de loi.
+  ⚠️ **Aucun comportement changé** : les deux corrections possibles sont routées en tickets
+  (`[SMITH-HELOC-TAUX-FIGE]`, décision produit pour Marc ; `[COASTFIRE-CROISSANCE-FIGEE]`, XS gaté
+  par « ce champ a-t-il un consommateur ? »).
+  Le ratchet fiscal a rougi **sur ce commit** en constatant que `0.05` avait quitté
+  `realEstateMonth.ts` : le module d'hypothèses a donc été AJOUTÉ au périmètre scanné et les entrées
+  ré-inventoriées (`[≠2]`, deux sens nommés) — nommer une constante ne doit jamais la faire changer
+  de cachette.
+  7 tests neufs, **3 perturbations prouvées rouges** (multiple nu restauré ; marge suivant
+  l'hypothèque → 297 % d'écart contre une borne mesurée à 1 % ; consommateur `CoastFIRE` ajouté).
+  Gate vert : 4 660 tests / 421 fichiers.
+
 ## 2026-08-22 — `[W5-DOUBLE-SAISIE-LOCATIF]` : un même immeuble peut compter deux fois
 
 - [x] **`[W5-DOUBLE-SAISIE-LOCATIF]`** (XS, FAIBLE — ticket marqué « [À vérifier] », donc INSTRUIT

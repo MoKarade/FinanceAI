@@ -6,6 +6,9 @@
 // Pattern: Pure Function — reçoit un contexte immuable, retourne le point.
 
 import type { ProjectionChartPoint } from './types';
+import {
+    COAST_FIRE_ASSUMED_ANNUAL_GROWTH, BARISTA_ASSUMED_MONTHLY_INCOME, FIRE_TARGET_MULTIPLE,
+} from './modelAssumptions';
 
 type TaxBucket = { revenu: number; gains: number; reer: number; divers: number };
 
@@ -185,9 +188,10 @@ export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoi
 
     const coastFireNominal = m >= retirementMonthIndex
         ? futureFireTarget
-        : (fireTargetNetWorth / Math.pow(1 + 0.05 / 12, Math.max(0, retirementMonthIndex - m))) * expenseMultiplier;
+        : (fireTargetNetWorth / Math.pow(1 + COAST_FIRE_ASSUMED_ANNUAL_GROWTH / 12, Math.max(0, retirementMonthIndex - m))) * expenseMultiplier;
 
-    const baristaTargetFuture = Math.max(0, effectiveBaseExpenses - 1500) * 12 * 25 * expenseMultiplier;
+    const baristaTargetFuture = Math.max(0, effectiveBaseExpenses - BARISTA_ASSUMED_MONTHLY_INCOME)
+        * 12 * FIRE_TARGET_MULTIPLE * expenseMultiplier;
 
     const {
         currentLoopDate, loopYear, age, isRetired,

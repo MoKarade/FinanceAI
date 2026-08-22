@@ -5659,3 +5659,64 @@ Corollaire : les documents SANS date (`CLAUDE.md` en-tête, `BACKLOG.md`) sont l
 doivent porter la valeur d'AUJOURD'HUI, et un remplacement global y est correct. La règle du dépôt
 « un fichier daté est un RÉCIT, pas une référence » se lit donc aussi dans ce sens : elle dit quoi
 mettre à jour, pas seulement quoi ne pas rafraîchir.
+
+### `UN-TICKET-QUI-GROUPE-PAR-LA-SYNTAXE-GROUPE-DES-ENJEUX-INCOMPARABLES` — 2026-08-22
+
+`[CONSTANTES-MOTEUR-NON-SOURCEES]` était étiqueté **XS / FAIBLE** et décrivait « trois constantes
+financières en dur dans des champs publiés ». Les trois partageaient une **forme** — un littéral
+anonyme au milieu d'une boucle moteur — et rien d'autre. Mesurées une à une, elles se sont révélées
+sans commune mesure :
+
+| Constante | Portée MESURÉE |
+|---|---|
+| Taux de marge Smith, 5 %/an | pilote une **fonction objectif** : 343 335 $ d'amplitude, et le conseil s'inverse |
+| Croissance CoastFIRE, 5 %/an | **zéro** : champ publié, lu par personne |
+| Revenu barista, 1 500 $/mois | **zéro** : idem |
+
+La première décide de ce que l'application RECOMMANDE — `useSmithManoeuvre` fait partie de l'espace
+de recherche de stratégies, donc le taux est une entrée du CLASSEMENT, pas un chiffre d'écran. Les
+deux autres alimentent des champs que le balayage du dépôt ne trouve consommés nulle part. Traiter
+les trois « en un lot XS », c'était garantir de sous-traiter la première et de sur-traiter les
+autres.
+
+**La règle** : trier une constante par ce qu'elle ATTEINT, jamais par la syntaxe sous laquelle on
+l'a rencontrée. Concrètement, la question n'est pas « ce nombre est-il en dur ? » mais « qui LIT le
+champ qu'il alimente, et est-ce que quelqu'un TRIE dessus ? ». Les deux réponses se mesurent en
+quelques minutes, et elles ont ici reclassé un ticket de FAIBLE à décision produit.
+
+Trois corollaires, tous payés dans ce lot :
+
+1. **L'étiquette d'effort d'un ticket est une hypothèse, au même titre que son diagnostic.** XS
+   décrivait le geste (nommer un littéral), pas le travail (mesurer ce que le littéral déplace).
+2. **La liste des sites d'un ticket est incomplète par défaut.** Le multiple 25× de la règle des 4 %
+   existait en DEUX copies anonymes, et le ticket n'en nommait qu'une — même schéma que
+   `MODULE-ECRIT-HORS-CHECKLIST`. Un grep sur la VALEUR, pas sur le fichier cité.
+3. **« Sourcer » ne veut pas dire « ranger dans la source de vérité fiscale ».** Le correctif proposé
+   par le ticket était « sourcer dans `FISCAL_REFERENCE.md` ou paramétrer » — or aucune de ces
+   quatre valeurs n'est une valeur de LOI. Les y mettre leur aurait donné l'autorité d'un texte
+   fiscal, c'est-à-dire la faute `ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE` prise
+   par l'autre bout : non plus inventer la source d'un chiffre, mais donner à un chiffre une source
+   qui n'est pas la sienne. Une hypothèse de modèle se documente comme telle — nommée, avec sa
+   portée mesurée et son statut — dans un module qui ne prétend à aucune autorité externe.
+
+⚠️ Et la garde qui en sort ne protège **pas une valeur** : elle protège les trois AFFIRMATIONS que
+la documentation avance pour justifier de ne rien changer — le taux est bien figé, le multiple est
+bien unique, les deux champs sont bien sans consommateur. La troisième est la plus fragile : c'est
+une garde d'INVENTAIRE (`ENTREE-D-INVENTAIRE-FANTOME`), et sans elle, « portée nulle » resterait
+écrit au présent le jour où quelqu'un branche `CoastFIRE` sur un écran.
+
+⚠️ **Et la garde d'absence a rougi sur MA propre prose, d'une façon que la leçon existante ne
+couvrait pas.** `SCAN-QUI-MATCHE-LA-PROSE` prescrit de DÉCOMMENTER avant de scanner. Ici ça n'aurait
+rien réglé : la mention parasite de `CoastFIRE` ne vivait pas dans un commentaire mais dans un
+**littéral de chaîne** — la `reason` que je venais d'écrire dans l'inventaire fiscal, qui explique en
+français à quoi sert la constante. Un `stripComments` la laisse intacte, et l'interdire reviendrait à
+interdire de documenter.
+
+Le remède n'est donc pas côté LECTEUR (quoi effacer avant de scanner) mais côté MOTIF : ancrer sur la
+forme d'un **accès** (`p.CoastFIRE`, `?.CoastFIRE`, `CoastFIRE?:`, déstructuration) plutôt que sur le
+nom nu. « On en parle » et « on le lit » sont deux faits différents, et seule la seconde forme est
+celle qu'on veut interdire. La contre-épreuve se resserre avec le motif : le champ témoin
+(`FireTarget`) doit rester trouvé PAR LE MÊME MOTIF ANCRÉ, sinon on aurait simplement rendu la garde
+trop étroite pour trouver quoi que ce soit. Et la perturbation se dédouble : un vrai consommateur
+doit rendre la garde ROUGE, une simple mention en prose doit la laisser VERTE — les deux ont été
+lancées.

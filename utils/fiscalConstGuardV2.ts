@@ -247,6 +247,18 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection/childrenReee.ts', value: '150', family: 'design',
       reason: 'Composante forfaitaire du coût mensuel d’un adolescent (12-17 ans). Hypothèse de coût.' },
 
+    // ── services/projection/modelAssumptions.ts ──────────────────────────────────────────────
+    // ⚠️ Ce module est le domicile DÉSIGNÉ des hypothèses de MODÈLE. Ses entrées sont donc toutes
+    // `design` par construction — et c'est précisément pour ça qu'il doit rester scanné : un
+    // fichier « pour les hypothèses » est l'endroit rêvé où un vrai barème finirait par se glisser
+    // sous couvert d'hypothèse.
+    { file: 'services/projection/modelAssumptions.ts', value: '0.05', family: 'design',
+      reason: '[≠2] DEUX sens distincts, sans rapport entre eux. (a) `SMITH_HELOC_ANNUAL_RATE` — taux supposé de la marge du levier Smith Manoeuvre ; hypothèse de modèle FIGÉE, dont la limite et le coût mesuré (343 335 $ d’amplitude sur le conseil) sont documentés dans le module et suivis par `[SMITH-HELOC-TAUX-FIGE]`. (b) `COAST_FIRE_ASSUMED_ANNUAL_GROWTH` — croissance supposée pour actualiser la cible CoastFIRE, indépendante de `projection.returnRate` ; portée mesurée NULLE (champ publié sans consommateur), suivie par `[COASTFIRE-CROISSANCE-FIGEE]`. Aucune des deux n’est une valeur de loi : les ancrer dans FISCAL_REFERENCE leur donnerait une autorité qu’elles n’ont pas.' },
+    { file: 'services/projection/modelAssumptions.ts', value: '1500', family: 'design',
+      reason: '`BARISTA_ASSUMED_MONTHLY_INCOME` — revenu mensuel supposé d’un emploi d’appoint dans la cible BaristaFIRE. Nombre conventionnel, sans source et NON indexé (il reste nominal alors que les dépenses dont il se soustrait sont indexées). Portée mesurée nulle : `BaristaFIRE` est publié au contrat et lu par personne.' },
+    { file: 'services/projection/modelAssumptions.ts', value: '25', family: 'design',
+      reason: '`FIRE_TARGET_MULTIPLE` — multiple de dépenses annuelles de la règle des 4 % (Trinity Study, 1998). Convention de planification largement documentée, PAS un paramètre fiscal : aucune autorité ne la publie et aucun texte de loi ne s’y réfère. Source unique des deux sites qui en portaient chacun une copie anonyme (`projection.ts`, `monthlyOutput.ts`).' },
+
     // ── services/projection/realEstateMonth.ts ───────────────────────────────────────────────
     { file: 'services/projection/realEstateMonth.ts', value: '0.4', family: 'design',
       reason: '`DOWNSIZE_RELEASE_PCT` — part de l’équité libérée lors d’un downsizing. Hypothèse de stratégie (frais de vente, achat plus petit), pas une règle.' },
@@ -256,8 +268,12 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Borne HAUTE de la fenêtre du report de remboursement du RAP (Budget fédéral 2024), cf. l’entrée `2022` du même fichier. Les deux bornes ET la durée de grâce (5 ans vs 2) doivent être sourcées ENSEMBLE en §7 : en ancrer une seule laisserait une règle à moitié fausse.' },
     { file: 'services/projection/realEstateMonth.ts', value: '0.015', family: 'design',
       reason: 'Amplitude du choc de taux pseudo-aléatoire dérivé de l’identifiant du bien (±1,5 pp). Paramètre de simulation, pas un taux de marché observé.' },
-    { file: 'services/projection/realEstateMonth.ts', value: '0.05', family: 'design',
-      reason: 'Taux d’intérêt supposé de la marge Smith Manoeuvre (5 %). Hypothèse de modèle — la LIMITE est notée §8 ; le vrai taux dépend du produit et du dossier.' },
+    // ⚠️ 2026-08-22 — l'entrée `0.05` (taux de marge Smith) a QUITTÉ ce fichier : le littéral est
+    // devenu `SMITH_HELOC_ANNUAL_RATE` dans `modelAssumptions.ts`, importé ici
+    // ([CONSTANTES-MOTEUR-NON-SOURCEES]). Elle n'est PAS supprimée pour autant — la valeur existe
+    // toujours et pèse toujours : elle est ré-inventoriée à son nouveau domicile, lui-même AJOUTÉ au
+    // périmètre scanné. C'est la seule façon de nommer une constante sans la faire changer de
+    // cachette (même leçon qu'en 2026-08-06 pour `helpers.ts`).
     { file: 'services/projection/realEstateMonth.ts', value: '0.65', family: 'fiscal',
       reason: '[×2] Ratio prêt/valeur au-delà duquel le modèle déclenche un appel de marge (test du seuil, puis calcul du surplus). ⚠️ Reclassé `fiscal` en revue : j’avais écrit « pratique commerciale » alors que le §8 que je citais en preuve dit « LTV 65 %, plafond B-20 de la portion réavançable » — B-20 est une ligne directrice OSFI, source réglementaire dont §8 ancre déjà quatre constantes (`OSFI_MQR_FLOOR`, `OSFI_MQR_BUFFER`, GDS, TDS). Une raison ne peut pas contredire la section qu’elle invoque.' },
     { file: 'services/projection/realEstateMonth.ts', value: '15', family: 'fiscal',
@@ -510,6 +526,12 @@ export const FISCAL_MODULES = [
     // une SUBVENTION (SCEE/IQEE), une PRESTATION (RQAP), un PROXY d'impôt (`* 0.45`) et un
     // PLAFOND LÉGAL sont tout autant des valeurs fiscales, et vivaient hors de portée.
     // Périmètre MESURÉ avant d'écrire : 76 littéraux → 63 clés (fichier, valeur) à trier.
+    // ⚠️ AJOUTÉ le 2026-08-22 ([CONSTANTES-MOTEUR-NON-SOURCEES]). Nommer une constante la déplace :
+    // `SMITH_HELOC_ANNUAL_RATE` est sorti de `realEstateMonth.ts` (scanné) pour entrer ici. Sans cet
+    // ajout, l'opération aurait fait DISPARAÎTRE la valeur du garde tout en la laissant peser autant
+    // sur le moteur — exactement le mode de panne décrit six lignes plus haut. Le ratchet l'a d'ailleurs
+    // exigé de lui-même : sa garde anti-fantôme a rougi sur ce commit.
+    'services/projection/modelAssumptions.ts',
     'services/projection/childrenReee.ts',
     'services/projection/realEstateMonth.ts',
     'services/projection/w5Effects.ts',

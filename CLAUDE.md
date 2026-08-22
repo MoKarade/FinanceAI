@@ -235,6 +235,11 @@ n'est pas réécrire un récit.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
+- Quand un fait **ne peut pas être établi de façon fiable** (deux structures sans identifiant
+  commun), ne pas l'affirmer ET ne pas se taire : avertir sur un fait STRUCTUREL vérifiable et
+  laisser la conclusion à l'utilisateur. Une détection par NOM raterait en silence et donnerait une
+  confiance injustifiée. Tester les DEUX sens (une alarme permanente s'ignore), et PROUVER que le
+  défaut existe avant d'avertir (`QUAND-ON-NE-PEUT-PAS-DETECTER-DE-FACON-FIABLE-ON-AVERTIT-SANS-PRETENDRE`).
 - Un **alias `@deprecated`** interne rend le code cherchable par DEUX noms, donc INTROUVABLE par un
   seul : un `grep` sur le nom canonique a déjà fait conclure « module orphelin » — faux, et écrit
   dans le dépôt. Un alias ne se justifie que face à un consommateur qu'on ne CONTRÔLE pas

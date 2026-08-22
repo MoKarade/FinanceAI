@@ -15,6 +15,14 @@ export const PatrimoineSection: React.FC = () => {
   const majorRenovations = useFinanceStore(s => s.majorRenovations ?? []);
   const charitableGoals = useFinanceStore(s => s.charitableGoals ?? []);
   const setAppState = useFinanceStore(s => s.setAppState);
+  // [W5-DOUBLE-SAISIE-LOCATIF] Objectifs immobiliers réellement LOCATIFS : non-résidence principale
+  // ET loyer saisi. Ce sont EXACTEMENT les deux conditions que le moteur exige pour produire un
+  // revenu locatif (`realEstateMonth.ts` : `!goal.isPrimaryResidence && goal.rentalIncomeMonthly`) —
+  // compter tous les objectifs immobiliers avertirait pour une résidence principale, qui ne produit
+  // aucun loyer et ne peut donc pas doubler quoi que ce soit.
+  const nbLocatifsImmobilier = useFinanceStore(
+    s => (s.realEstateGoals ?? []).filter(g => !g.isPrimaryResidence && (g.rentalIncomeMonthly ?? 0) > 0).length,
+  );
 
   return (
     <div className="space-y-6">
@@ -28,6 +36,7 @@ export const PatrimoineSection: React.FC = () => {
       <RentalPropertyPanel
         properties={rentalProperties}
         onChange={next => setAppState({ rentalProperties: next })}
+        nbLocatifsImmobilier={nbLocatifsImmobilier}
       />
 
       {/* W5.7 — Entreprises privées */}

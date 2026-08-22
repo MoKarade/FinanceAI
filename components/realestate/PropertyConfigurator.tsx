@@ -32,6 +32,21 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
 }) => {
     // D6-SR-2 — masque la valeur des sliders monétaires au lecteur d'écran en mode privé (parité blur).
     const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
+    // [W5-DOUBLE-SAISIE-LOCATIF] Un immeuble locatif peut être saisi DEUX FOIS, dans deux écrans
+    // sans aucun lien entre eux : ici (`RealEstateGoal.rentalIncomeMonthly` → revenu + `accRentesYear`,
+    // imposé au barème réel en décembre) ET dans Réglages → Patrimoine (`RentalProperty` → NOI,
+    // imposé au forfait W5). Les deux producteurs S'ADDITIONNENT : le loyer compte double, et
+    // l'impôt est calculé deux fois par deux mécanismes distincts.
+    // ⚠️ Le fait est STRUCTUREL (« les deux listes sont non vides »), jamais une comparaison de NOMS :
+    // rapprocher deux immeubles par leur libellé serait une heuristique de texte sur du texte
+    // UTILISATEUR (`TEXT-HEURISTIC-OVER-USER-TEXT`), qui raterait « Plex Papineau » vs « 4-plex »
+    // en silence. On ne prétend donc PAS que c'est le même immeuble — on demande de vérifier.
+    // ⚠️ Aucun filtre ici, contrairement au compte SYMÉTRIQUE de `PatrimoineSection` (qui, lui,
+    // ne retient que les objectifs non-résidence-principale AVEC loyer) : un `RentalProperty` est
+    // locatif PAR NATURE — le type ne porte pas de notion de résidence principale — et il alimente
+    // le NOI même à loyer nul (le NOI devient alors négatif, dépenses seules). Filtrer sur
+    // `monthlyRent > 0` raterait donc un doublon réel dont seules les charges sont saisies.
+    const nbLocatifsW5 = useFinanceStore((s) => (s.rentalProperties ?? []).length);
     const price = activeGoal.price || 450000;
     const downPayment = activeGoal.downPayment || (price * 0.2);
     const downPaymentPercent = Math.round((downPayment / price) * 100);
@@ -102,6 +117,13 @@ export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
                                 className="w-full bg-black/50 border border-green-500/30 rounded px-2 py-1.5 text-green-400 text-body font-bold focus:outline-none focus:border-green-400"
                                 placeholder="Ex: 1500$"
                             />
+                            {nbLocatifsW5 > 0 && (
+                                <p role="status" className="mt-2 text-tiny text-warning-300">
+                                    ⚠️ {nbLocatifsW5 === 1 ? 'Un immeuble locatif est aussi saisi' : `${nbLocatifsW5} immeubles locatifs sont aussi saisis`}
+                                    {' '}dans Réglages → Patrimoine. Si c’est le <strong>même</strong> immeuble, son loyer
+                                    est compté <strong>deux fois</strong> dans la projection — saisis-le d’un seul côté.
+                                </p>
+                            )}
                         </div>
                     )}
                 </div>

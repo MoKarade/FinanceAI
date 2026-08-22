@@ -105,7 +105,13 @@ export const InsurancePanel: React.FC<{
 export const RentalPropertyPanel: React.FC<{
     properties: RentalProperty[];
     onChange: (next: RentalProperty[]) => void;
-}> = ({ properties, onChange }) => {
+    /** [W5-DOUBLE-SAISIE-LOCATIF] Nombre d'objectifs immobiliers LOCATIFS (non-résidence principale
+     *  avec un loyer saisi) déclarés dans l'onglet Immobilier. Passé en PROP plutôt que lu du store
+     *  ici : ce panneau est déjà découplé du store (il reçoit `properties`/`onChange`), et l'y
+     *  coupler pour un seul avertissement le rendrait intestable en isolation. Absent ⇒ pas
+     *  d'avertissement, comportement d'avant. */
+    nbLocatifsImmobilier?: number;
+}> = ({ properties, onChange, nbLocatifsImmobilier = 0 }) => {
     const add = () => onChange([...properties, { id: newId(), name: 'Nouveau locatif', purchasePrice: 0, currentValue: 0, mortgageBalance: 0, mortgageRate: 5, monthlyRent: 0, vacancyPct: 5, monthlyExpenses: 0 }]);
     const update = (i: number, patch: Partial<RentalProperty>) => { const next = [...properties]; next[i] = { ...next[i], ...patch }; onChange(next); };
     const remove = (i: number) => { const next = [...properties]; next.splice(i, 1); onChange(next); };
@@ -115,6 +121,19 @@ export const RentalPropertyPanel: React.FC<{
             <div className="space-y-2">
                 {properties.length === 0 && (
                     <p className="text-meta text-ink-400 italic">Pour mesurer cap rate, NOI, vacancy. La résidence principale reste dans l'onglet Real Estate.</p>
+                )}
+                {/* [W5-DOUBLE-SAISIE-LOCATIF] Le message ci-dessus distinguait déjà la RÉSIDENCE
+                    PRINCIPALE de cet écran — mais rien ne prévenait qu'un immeuble LOCATIF peut
+                    exister des DEUX côtés. Les deux producteurs s'additionnent dans la projection
+                    (ici via le NOI imposé au forfait W5, là-bas via `rentalIncomeMonthly` imposé au
+                    barème réel) : loyer compté double, impôt calculé deux fois. Condition
+                    STRUCTURELLE (les deux listes non vides), jamais un rapprochement par nom. */}
+                {properties.length > 0 && nbLocatifsImmobilier > 0 && (
+                    <p role="status" className="text-tiny text-warning-300 bg-warning-500/10 border border-warning-500/20 rounded p-2">
+                        ⚠️ {nbLocatifsImmobilier === 1 ? 'Un bien locatif est aussi déclaré' : `${nbLocatifsImmobilier} biens locatifs sont aussi déclarés`}
+                        {' '}dans l’onglet Immobilier. Si c’est le <strong>même</strong> immeuble, son loyer est compté
+                        <strong> deux fois</strong> dans la projection — garde-le d’un seul côté.
+                    </p>
                 )}
                 {properties.map((rp, i) => {
                     const annualRent = rp.monthlyRent * 12 * (1 - rp.vacancyPct / 100);

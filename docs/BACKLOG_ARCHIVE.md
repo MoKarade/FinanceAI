@@ -10,6 +10,35 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-22 — `[W5-DOUBLE-SAISIE-LOCATIF]` : un même immeuble peut compter deux fois
+
+- [x] **`[W5-DOUBLE-SAISIE-LOCATIF]`** (XS, FAIBLE — ticket marqué « [À vérifier] », donc INSTRUIT
+  avant d'écrire une ligne de code). **Vérifié : le défaut est réel.** Un immeuble locatif peut être
+  saisi dans DEUX écrans sans aucun lien entre eux :
+  · onglet Immobilier → `RealEstateGoal.rentalIncomeMonthly` → revenu + `accRentesYear`, imposé au
+    barème **RÉEL** en décembre (`realEstateMonth.ts`) ;
+  · Réglages → Patrimoine → `RentalProperty` → NOI, imposé au **FORFAIT** W5 (`w5Effects.ts`).
+  Les deux producteurs s'ADDITIONNENT et **aucun ne consulte la structure de l'autre** (vérifié par
+  scan de source, c'est la 1re assertion du test) : rien ne peut dédupliquer. Loyer compté deux
+  fois, impôt calculé deux fois par deux mécanismes distincts.
+  **Livré : une note UX conditionnelle aux DEUX écrans.** Corriger un seul côté aurait laissé
+  l'autre porte grande ouverte — le lot précédent (`tickLtd`) venait de rappeler ce piège.
+  ⚠️ **Ce que ce lot NE fait PAS, et c'est un choix** : il ne tente pas de détecter que « c'est le
+  même immeuble ». Les deux structures n'ont aucun identifiant commun, et les rapprocher par leur
+  NOM serait une heuristique de texte sur du texte UTILISATEUR
+  (`TEXT-HEURISTIC-OVER-USER-TEXT`) — « Plex Papineau » vs « 4-plex » échapperait en silence, et une
+  détection qui rate discrètement est pire que pas de détection. L'avertissement repose donc sur un
+  fait **STRUCTUREL** (les deux listes sont non vides) et ne PRÉTEND rien : il demande de vérifier.
+  ⚠️ **Asymétrie assumée des deux compteurs**, expliquée dans le code : côté Immobilier on filtre
+  (`!isPrimaryResidence && rentalIncomeMonthly > 0` — la condition EXACTE du moteur, sinon on
+  avertirait pour une résidence principale qui ne produit aucun loyer) ; côté W5 on ne filtre pas
+  (un `RentalProperty` est locatif par nature, et alimente le NOI même à loyer nul — dépenses
+  seules). Filtrer sur `monthlyRent > 0` y raterait un doublon réel.
+  5 tests neufs, dont **la preuve que le double comptage est possible** (sans elle, l'avertissement
+  serait une précaution invérifiée, donc du bruit qu'on finit par retirer) et les DEUX sens de la
+  condition — apparition ET non-apparition, car une alarme permanente s'ignore. 1 perturbation
+  prouvée rouge. Gate vert : 4 648 tests / 419 fichiers.
+
 ## 2026-08-22 — Deux limites fiscales CONSIGNÉES avec leur cause (pas corrigées)
 
 > Les deux tickets demandaient explicitement de **documenter une limite assumée**, l'un d'eux avec

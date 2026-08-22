@@ -5592,3 +5592,47 @@ le plafond de cotisation retenu. À 18 % du brut + 8 000 $ CELIAPP (droits de l'
 FAUSSE : elle sera citée comme un maximum alors qu'elle n'en est pas un. Écrire les deux chiffres et
 l'hypothèse qui les sépare coûte deux lignes (`ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE`,
 appliqué ici au chiffre d'un TICKET : un ticket n'est pas une source, même quand il dit « MESURÉ »).
+
+## Leçon du lot `[W5-DOUBLE-SAISIE-LOCATIF]` — 2026-08-22
+
+### `QUAND-ON-NE-PEUT-PAS-DETECTER-DE-FACON-FIABLE-ON-AVERTIT-SANS-PRETENDRE`
+
+Un immeuble locatif peut être saisi dans DEUX écrans sans lien : l'onglet Immobilier
+(`RealEstateGoal.rentalIncomeMonthly`, imposé au barème réel) et Réglages → Patrimoine
+(`RentalProperty`, imposé au forfait W5). Les deux producteurs s'additionnent et **aucun ne consulte
+la structure de l'autre** — rien ne peut dédupliquer, le loyer compte double et l'impôt est calculé
+deux fois par deux mécanismes distincts.
+
+Le réflexe est d'écrire une détection de doublon. Elle est **impossible de façon fiable** ici : les
+deux structures n'ont aucun identifiant commun, et le seul rapprochement disponible serait le NOM —
+une heuristique de texte sur du texte que l'utilisateur écrit lui-même
+(`TEXT-HEURISTIC-OVER-USER-TEXT`). « Plex Papineau » d'un côté, « 4-plex » de l'autre : la détection
+échoue **en silence**, et l'utilisateur croit être protégé. Une détection qui rate discrètement est
+pire qu'une absence de détection, parce qu'elle donne une confiance injustifiée.
+
+**Règle générale** : quand un fait ne peut pas être établi de façon fiable, ne pas l'affirmer —
+mais ne pas se taire non plus. Avertir sur un fait **structurel** vérifiable (« tu as des biens
+locatifs des deux côtés »), et laisser la conclusion à l'utilisateur (« si c'est le même, il compte
+double »). Le message ne prétend rien qu'il ne sache ; il rend visible ce qu'il sait vraiment.
+C'est la même famille que « dériver le fait d'un marqueur STRUCTUREL plutôt que d'une regex » —
+appliquée ici non pas au choix du signal, mais à ce que le signal a le DROIT d'affirmer.
+
+**Corollaire, les deux sens se testent** : un avertissement qui s'affiche toujours est une alarme
+permanente, et une alarme permanente s'ignore. Le test verrouille donc l'apparition ET la
+non-apparition (un seul côté peuplé, prop absente). Sans le second sens, on livrerait du bruit avec
+la conviction d'avoir livré une garde.
+
+**Corollaire, prouver que le défaut existe AVANT d'avertir** : la première assertion du test montre,
+par scan de source, que les deux producteurs ajoutent bien du revenu chacun de son côté et
+qu'aucun ne lit la structure opposée. Sans cette preuve, l'avertissement serait une précaution
+invérifiée — donc du bruit qu'une session future retirera à juste titre. Un ticket marqué
+« [À vérifier] » s'instruit avant d'écrire la moindre ligne de code, et le résultat de
+l'instruction se GARDE dans le test.
+
+**Corollaire, une asymétrie se justifie ou se supprime** : les deux compteurs ne filtrent pas
+pareil — côté Immobilier on exige `!isPrimaryResidence && rentalIncomeMonthly > 0` (la condition
+EXACTE du moteur : une résidence principale ne produit aucun loyer, avertir pour elle serait un faux
+positif), côté W5 on ne filtre rien (un `RentalProperty` est locatif par nature et alimente le NOI
+même à loyer nul, dépenses seules — filtrer sur le loyer y raterait un vrai doublon). Cette
+différence RESSEMBLE à un oubli : elle est donc écrite dans le code, sinon la prochaine session
+« harmonise » et casse l'un des deux.

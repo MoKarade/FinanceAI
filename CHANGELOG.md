@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-22 (un immeuble locatif saisi deux fois est maintenant signalé)
+
+- Un même immeuble locatif peut être déclaré à **deux endroits** — l'onglet Immobilier et
+  Réglages → Patrimoine — sans que rien ne le relie. Dans ce cas, son loyer était compté **deux
+  fois** dans la projection, et son impôt calculé deux fois. Les deux écrans t'avertissent
+  désormais quand des biens locatifs existent des deux côtés, pour que tu vérifies.
+- L'avertissement n'apparaît que si les deux côtés sont peuplés — il ne dit pas que c'est le même
+  immeuble (l'app n'a aucun moyen fiable de le savoir), il te demande de regarder.
+
 ## [unreleased] — 2026-08-21 (une perte d'emploi de 6 mois dure enfin 6 mois)
 
 - Dans les simulations, une **perte d'emploi** configurée à N mois en durait N+1 : le mois du

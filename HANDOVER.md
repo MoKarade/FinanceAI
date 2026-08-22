@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-22 (suite 136) — `[W5-DOUBLE-SAISIE-LOCATIF]` : un immeuble comptable deux fois
+> Ticket marqué « [À vérifier] » → INSTRUIT avant tout code. **Défaut réel** : un locatif peut être
+> saisi dans DEUX écrans sans lien (onglet Immobilier `rentalIncomeMonthly` → barème RÉEL ;
+> Réglages → Patrimoine `RentalProperty` → forfait W5). Les deux producteurs S'ADDITIONNENT et
+> **aucun ne consulte l'autre** (vérifié par scan de source) : rien ne peut dédupliquer.
+> **Livré : note UX conditionnelle aux DEUX écrans** — corriger un seul côté aurait laissé l'autre
+> porte ouverte (piège rappelé par `tickLtd` au lot précédent).
+> ⚠️ **Choix assumé** : AUCUNE détection « c'est le même immeuble ». Pas d'identifiant commun, et
+> rapprocher par le NOM serait une heuristique de texte sur du texte UTILISATEUR
+> (`TEXT-HEURISTIC-OVER-USER-TEXT`) — « Plex Papineau » vs « 4-plex » raterait en silence. Fait
+> STRUCTUREL (deux listes non vides) ; l'avertissement ne PRÉTEND rien, il demande de vérifier.
+> ⚠️ Asymétrie assumée des compteurs, expliquée dans le code : filtre côté Immobilier (condition
+> EXACTE du moteur), pas de filtre côté W5 (un `RentalProperty` est locatif par nature et alimente
+> le NOI même à loyer nul).
+> 5 tests dont la PREUVE que le double comptage est possible (sinon l'avertissement serait une
+> précaution invérifiée) et les DEUX sens de la condition (une alarme permanente s'ignore).
+> Gate vert : **4 653 tests / 420 fichiers**.
+>
 > ## 🟢 Session 2026-08-22 (suite 135) — Deux limites fiscales CONSIGNÉES (pas corrigées)
 > Les deux tickets demandaient de DOCUMENTER une limite assumée, l'un avec « ne PAS corriger à
 > l'aveugle ». Le vrai manque n'était pas le chiffre — les deux écarts étaient DÉJÀ en §4 (« 69 à

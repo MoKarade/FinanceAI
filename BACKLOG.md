@@ -1187,7 +1187,7 @@
   AUCUN module moteur ne lit (grep : un seul commentaire). Sens conservateur (sur-imposition d'un
   bailleur levieré) mais un champ de saisie sans effet est un mensonge d'UI. [À vérifier l'ampleur]
 
-- [ ] **`[W5-DOUBLE-SAISIE-LOCATIF]`** (XS, FAIBLE — revue 2026-08-20) — rien n'empêche de saisir
+- [x] **`[W5-DOUBLE-SAISIE-LOCATIF]`** ✅ LIVRÉ 2026-08-22 (note UX aux DEUX écrans ; voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — revue 2026-08-20) — rien n'empêche de saisir
   le MÊME immeuble comme `realEstateGoal` avec `rentalIncomeMonthly` (imposé via `accRentesYear` en
   décembre) ET comme `rentalProperty` W5 (imposé par le forfait) → double comptage du revenu et
   double imposition par deux mécanismes distincts. Garde de saisie ou note UX. [À vérifier]

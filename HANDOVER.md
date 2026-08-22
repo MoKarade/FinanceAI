@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-22 (suite 139) — `[FLAKE-DIVORCE-INCOME-PHANTOM]` : non reproduit, mais réfuté
+> Le ticket concluait « flake d'ORDRE ou de PARALLÉLISME » et prescrivait `--repeat` + `--shuffle`.
+> **Non reproduit** — 8 exécutions vertes sur le même commit (5 isolées, 3 suites complètes). Le
+> travail utile a été de RÉFUTER chaque hypothèse par une mesure : `fileParallelism: false` (il n'y a
+> aucun parallélisme de fichiers) · durées en suite complète = durées en isolation (2 289/1 888/1 343
+> contre 2 400/1 838/1 417 ms, donc aucun effet de charge) · RNG entièrement graine et **zéro**
+> `new Date()`/`Date.now()` dans toute la chaîne MC · marge d'assertion `perte = 1,132` contre un
+> seuil de 0,5.
+> 🔴 **Il ne restait qu'un mécanisme, et il était RÉEL** : une grandeur ABSENTE. `P50` est annulable
+> côté moteur (`d.P50 = mcResult.p50Data[i] ?? null`) et le helper la convertissait en `NaN` par un
+> `?? NaN` — le test comparait alors ce `NaN` à un seuil, et **le message accusait le moteur d'un
+> défaut d'argent inexistant**. Violation de `GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`, leçon
+> pourtant déjà indexée dans `CLAUDE.md` : une leçon écrite ne s'applique pas seule aux tests déjà là.
+> **Livré** : le helper EXIGE la mesure avant de comparer. Preuve par perturbation (P50 forcé à
+> `null`) — ancien message « expected NaN to be greater than 0.5 », nouveau « P50 ABSENT du dernier
+> point ». La tolérance n'a PAS été élargie.
+> Gate vert : **4 663 tests / 421 fichiers** (aucun test ajouté : c'est le même nombre d'assertions,
+> rendues honnêtes).
+>
 > ## 🟢 Session 2026-08-22 (suite 138) — `[FISC-GUARD-ARGUMENT]` + `[FISC-GUARD-BENIGN-60]` : le bon dénominateur
 > Les deux tickets exigeaient d'être livrés ENSEMBLE, et ils avaient raison : le `60` d'anticipation
 > de la RRQ était caché **deux fois**, par l'exemption `BENIGN` ET par sa position d'argument.

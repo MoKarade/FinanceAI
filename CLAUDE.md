@@ -235,6 +235,13 @@ n'est pas réécrire un récit.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
+- Un **flake non reproduit** ne se solde ni en le taisant ni en le laissant ouvert : on rend sa
+  PROCHAINE occurrence auto-explicative. Réfuter les hypothèses une par une PAR LA MESURE (ici :
+  `fileParallelism: false` tue le parallélisme, durées en suite = durées en isolation, RNG graine +
+  zéro `Date` dans la chaîne, marge 1,132 contre un seuil de 0,5) laisse un seul mécanisme — une
+  grandeur ABSENTE. ⚠️ `?? NaN` sur une valeur annulable transforme « pas de mesure » en « écart de
+  valeur » et fait accuser le moteur : exiger la mesure AVANT de comparer, et le prouver en forçant
+  l'absence (`UN-FLAKE-NON-REPRODUIT-SE-SOLDE-EN-RENDANT-SA-PROCHAINE-OCCURRENCE-LISIBLE`).
 - En élargissant un détecteur, la métrique n'est pas « combien de résultats PERTINENTS » mais
   « combien que RIEN d'autre ne couvrait » : le motif large sortait 16 clés fiscales, dont 14 étaient
   les ÂGES de la table FERR déjà décrits par les 24 entrées de TAUX — fiscales, neuves, et protégeant

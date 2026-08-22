@@ -5757,3 +5757,44 @@ Trois corollaires :
 3. **La preuve que le motif étroit suffit se fait par PERTURBATION, pas par raisonnement** : remettre
    le motif large fait rougir le test de prose ET le compte de `childrenReee.ts::18`, avec le message
    qui NOMME l'occurrence en cause. Le garde explique alors lui-même pourquoi il est étroit.
+
+### `UN-FLAKE-NON-REPRODUIT-SE-SOLDE-EN-RENDANT-SA-PROCHAINE-OCCURRENCE-LISIBLE` — 2026-08-22
+
+`[FLAKE-DIVORCE-INCOME-PHANTOM]` décrivait un test money-critical rouge **une fois**, vert en
+isolation et à la suite complète suivante, sur le même commit. Le ticket concluait « flake d'ORDRE ou
+de PARALLÉLISME » et prescrivait de reproduire par `--repeat` et `--sequence.shuffle`.
+
+**Il n'a pas été reproduit** — 8 exécutions vertes. Ce qui a été productif, ce n'est pas la
+répétition, c'est d'avoir **réfuté une par une** les explications, chacune par une mesure :
+
+| Hypothèse | Ce qui la réfute |
+|---|---|
+| Parallélisme | `vitest.config.ts` pose `fileParallelism: false` — il n'y en a pas |
+| Charge / dépassement de délai | Durées dans la suite complète (2 289 / 1 888 / 1 343 ms) = durées en isolation (2 400 / 1 838 / 1 417 ms) |
+| Ordre des fichiers, faux timers | RNG entièrement graine, et **aucun** `new Date()`/`Date.now()` dans toute la chaîne Monte-Carlo |
+| Tremblement numérique | Marge mesurée : `perte = 1,132` contre un seuil de 0,5 |
+
+Il ne restait qu'un mécanisme capable de rendre l'assertion rouge sans toucher au code : **une
+grandeur ABSENTE**. Et celui-là était bien réel — `P50` est annulable côté moteur, le helper la
+convertissait en `NaN` par un `?? NaN`, et le test comparait ce `NaN` à un seuil. Le message
+d'échec accusait alors le moteur d'un défaut d'argent qui n'existe pas.
+
+**La règle** : un flake qu'on ne reproduit pas ne se solde ni en le taisant (élargir la tolérance),
+ni en le laissant ouvert indéfiniment, mais en rendant sa **prochaine occurrence auto-explicative**.
+Concrètement : exiger la mesure avant de la comparer, et écrire dans le message ce qui MANQUE plutôt
+que l'écart au seuil. La preuve se fait par perturbation — forcer l'absence, et vérifier que le
+message change de nature (« expected NaN to be greater than 0.5 » → « P50 ABSENT du dernier point »).
+
+Deux corollaires :
+
+1. **`?? NaN` sur une valeur annulable est un piège à diagnostic**, cousin direct du no-fake-data :
+   un `0 $` crédible est pire qu'un « — » honnête, et un `NaN` comparé à un seuil est pire encore
+   parce qu'il ressemble à un écart de valeur. La leçon
+   `GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE` le disait déjà — « prouver que la grandeur mesurée
+   est non nulle AVANT de la comparer, en Monte Carlo les points sont réduits ». Elle était indexée
+   dans `CLAUDE.md`, et ce fichier l'enfreignait quand même : une leçon écrite ne s'applique pas
+   toute seule aux tests déjà en place.
+2. **Le ticket avait pré-diagnostiqué**, et son diagnostic était faux. « Flake d'ordre ou de
+   parallélisme » était plausible et a orienté le travail vers `--shuffle` ; c'est la lecture de
+   `vitest.config.ts` — trente secondes — qui a montré qu'il n'y a aucun parallélisme de fichiers.
+   Lire la CONFIG avant de lancer l'outil que le ticket recommande.

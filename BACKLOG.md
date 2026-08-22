@@ -949,17 +949,26 @@
 > sont désormais tous inventoriés et tracés dans `utils/fiscalConstGuardV2.ts` : aucun ne peut plus
 > disparaître en silence. Trois DÉCOUVERTES s'y sont ajoutées (juste après).
 
-- [ ] **`[FLAKE-DIVORCE-INCOME-PHANTOM]`** (S, MOYEN — observé 2026-08-20 pendant `[ESTATE-NPV-07]`) —
-  `tests/services/projection.divorce.test.ts > [FISC-DIVORCE-INCOME-PHANTOM] > un divorce à 50 %
-  coûte bien plus que quelques pourcents du patrimoine final` a ÉCHOUÉ une fois dans une suite
-  complète, puis passé **en isolation** et à la **re-exécution complète suivante**, sur le MÊME
-  commit (`26f45d3`) et sans aucune modification. Deux suites complètes vertes avant, une verte
-  après. C'est donc un flake d'ORDRE ou de PARALLÉLISME, pas une régression — mais un flake sur un
-  test money-critical est un futur faux négatif : la prochaine session peut le voir rouge et
-  « corriger » du code sain. **À faire** : le lancer en boucle (`--repeat`) et sous
-  `--sequence.shuffle` pour reproduire, puis isoler l'état partagé (le fichier voisin qui le
-  précède dans l'ordre par défaut est le premier suspect). ⚠️ Ne PAS élargir la tolérance de
-  l'assertion pour le faire taire — c'est la garde d'un défaut réel (`FISC-DIVORCE-INCOME-PHANTOM`).
+- [x] **`[FLAKE-DIVORCE-INCOME-PHANTOM]`** ✅ 2026-08-22 — **NON reproduit** (8 exécutions vertes sur
+  le même commit : 5 en isolation, 3 suites complètes). Le ticket supposait « ORDRE ou PARALLÉLISME » ;
+  les mesures réfutent les deux, et toutes les autres explications faciles :
+  · le RNG du Monte-Carlo est **entièrement graine** (`buildSeededRng(scenarioType, strategy, iterIndex)`,
+    aucun `Math.random`) et **aucun `new Date()`/`Date.now()` n'existe dans la chaîne** → immunisé aux
+    faux timers comme à l'ordre des fichiers ;
+  · `vitest.config.ts` pose `fileParallelism: false` → il n'y a **pas** de parallélisme de fichiers, et
+    **mesuré**, la durée des 3 tests dans la SUITE COMPLÈTE (2 289 / 1 888 / 1 343 ms) est la même
+    qu'en isolation (2 400 / 1 838 / 1 417 ms) : **aucun effet de charge**, donc pas un dépassement de
+    délai ;
+  · la marge de l'assertion est **énorme** — mesuré `perte = 1,132` contre un seuil de 0,5, le scénario
+    divorcé finissant à **−644 980 $** contre 4 885 681 $ sans divorce : aucun tremblement numérique ne
+    peut la franchir.
+  **Reste UN mécanisme possible, et il était réel** : une grandeur ABSENTE. `P50` est annulable côté
+  moteur (`d.P50 = mcResult.p50Data[i] ?? null`) et le helper la convertissait en `NaN` en silence —
+  `expect(NaN).toBeGreaterThan(0.5)` échoue alors avec un message qui **accuse le moteur d'un défaut
+  d'argent inexistant**. Violation de `GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`, leçon pourtant
+  déjà indexée. **Livré** : le helper EXIGE la mesure avant de comparer. Perturbation (P50 forcé à
+  `null`) : l'ancien helper rendait « expected NaN to be greater than 0.5 », le nouveau rend « P50
+  ABSENT du dernier point ». La tolérance n'a PAS été élargie.
 
 - [ ] **`[ESTATE-NPV-BASE-REELLE]`** (M, **ÉLEVÉ** — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
   la VAN des rentes publiques (`services/projection/estateCalculation.ts`, bloc `rrqExpected`/`psvExpected`)

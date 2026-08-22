@@ -47,13 +47,54 @@ const makeParams = (proj: Partial<ProjectionConfig>, debtsUsed: Debt[] = debts):
     baseMonthlyExpenses: 6_801, startYear: 2026, startMonth: 0,
 } as unknown as SimulationParams);
 
-/** Lance le MC (le divorce n'existe que là) et rend le P50 du dernier point + la survie brute. */
+/**
+ * Lance le MC (le divorce n'existe que là) et rend le P50 du dernier point + la survie brute.
+ *
+ * ⚠️ [FLAKE-DIVORCE-INCOME-PHANTOM] — POURQUOI CE HELPER REFUSE PLUTÔT QUE DE RENDRE `NaN`.
+ * Il rendait `cd.at(-1)?.P50 ?? NaN`. Or `P50` est explicitement ANNULABLE côté moteur
+ * (`projection.ts` : `d.P50 = mcResult.p50Data[i] ?? null`), et `chartData` peut être vide. Une
+ * mesure ABSENTE devenait donc un `NaN` silencieux, que le test comparait ensuite à un seuil :
+ * `expect(NaN).toBeGreaterThan(0.5)` échoue, mais son message parle du SEUIL — pas du fait qu'il
+ * n'y avait rien à comparer. C'est exactement `GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`
+ * (« prouver que la grandeur mesurée est NON NULLE avant de la comparer ; en Monte Carlo les points
+ * sont réduits »), leçon déjà indexée dans `CLAUDE.md` — et que ce fichier enfreignait.
+ *
+ * Ce n'est pas cosmétique : c'est la seule façon connue de rendre ces assertions rouges sans
+ * changer le code. La marge y est ÉNORME (mesuré : perte = 1,132 contre un seuil de 0,5, le
+ * scénario divorcé finissant à −644 980 $ pour 4 885 681 $ sans divorce) — aucun tremblement
+ * numérique ne peut la franchir. Si ces tests redeviennent rouges, ce sera parce qu'une grandeur
+ * MANQUE, et le message doit le dire tout de suite plutôt que de faire chercher un défaut de
+ * moteur qui n'existe pas.
+ *
+ * ⚠️ Choix assumé : le helper valide les DEUX grandeurs qu'il publie, donc un appelant qui n'utilise
+ * que la survie échoue quand même si `P50` manque. C'est voulu — une exécution Monte-Carlo sans
+ * bandes n'est pas partiellement bonne, elle est cassée, et laisser un cas vert dans ce monde-là
+ * ferait croire que la moitié du résultat est fiable.
+ *
+ * ⚠️ Ce que ce lot ne prétend PAS : il ne REPRODUIT pas le flake d'origine. 8 exécutions vertes
+ * (5 en isolation, 3 suites complètes) sur le même commit. Ce qui a été MESURÉ, en revanche,
+ * réfute les explications faciles — voir `BACKLOG.md`, `[FLAKE-DIVORCE-INCOME-PHANTOM]`.
+ */
 const runMc = (proj: Partial<ProjectionConfig>, debtsUsed: Debt[] = debts) => {
     const r = calculateFutureProjection(makeParams(proj, debtsUsed), true) as unknown as {
-        chartData?: Record<string, number>[]; survivalRatePct?: number;
+        chartData?: Record<string, number | null>[]; survivalRatePct?: number | null;
     };
     const cd = r.chartData ?? [];
-    return { p50Final: cd[cd.length - 1]?.P50 ?? NaN, survie: r.survivalRatePct ?? NaN };
+    const dernier = cd[cd.length - 1];
+
+    expect(cd.length, 'chartData VIDE : le moteur n’a produit aucun point, rien à mesurer').toBeGreaterThan(0);
+    expect(dernier, 'dernier point de chartData absent').toBeDefined();
+    expect(
+        dernier?.P50,
+        'P50 ABSENT du dernier point — le Monte Carlo n’a pas publié de bande (P50 est annulable : '
+        + '`d.P50 = mcResult.p50Data[i] ?? null`). Ce n’est PAS un écart de valeur : il n’y a pas de valeur.',
+    ).toEqual(expect.any(Number));
+    expect(
+        r.survivalRatePct,
+        'survivalRatePct ABSENT — le Monte Carlo n’a pas tourné, ou son résultat n’a pas été rattaché.',
+    ).toEqual(expect.any(Number));
+
+    return { p50Final: dernier!.P50 as number, survie: r.survivalRatePct as number };
 };
 
 // Divorce CERTAIN (probabilité 1) → il se déclenche au 1er janvier de chaque itération, donc

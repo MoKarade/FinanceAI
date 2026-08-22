@@ -37,7 +37,7 @@
   5 tests neufs, dont **la preuve que le double comptage est possible** (sans elle, l'avertissement
   serait une précaution invérifiée, donc du bruit qu'on finit par retirer) et les DEUX sens de la
   condition — apparition ET non-apparition, car une alarme permanente s'ignore. 1 perturbation
-  prouvée rouge. Gate vert : 4 648 tests / 419 fichiers.
+  prouvée rouge. Gate vert : 4 653 tests / 420 fichiers.
 
 ## 2026-08-22 — Deux limites fiscales CONSIGNÉES avec leur cause (pas corrigées)
 

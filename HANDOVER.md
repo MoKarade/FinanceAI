@@ -20,7 +20,7 @@
 > le NOI même à loyer nul).
 > 5 tests dont la PREUVE que le double comptage est possible (sinon l'avertissement serait une
 > précaution invérifiée) et les DEUX sens de la condition (une alarme permanente s'ignore).
-> Gate vert : **4 648 tests / 419 fichiers**.
+> Gate vert : **4 653 tests / 420 fichiers**.
 >
 > ## 🟢 Session 2026-08-22 (suite 135) — Deux limites fiscales CONSIGNÉES (pas corrigées)
 > Les deux tickets demandaient de DOCUMENTER une limite assumée, l'un avec « ne PAS corriger à

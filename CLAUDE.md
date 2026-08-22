@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 648 tests** Vitest
-(419 fichiers de test, mesuré le 2026-08-22). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 653 tests** Vitest
+(420 fichiers de test, mesuré le 2026-08-22). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -235,6 +235,11 @@ n'est pas réécrire un récit.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
+- Dans un document-RÉCIT (`BACKLOG_ARCHIVE.md`, sessions passées de `HANDOVER.md`), un `replace`
+  GLOBAL sur une valeur qui varie dans le temps (compteur de tests) **falsifie** les entrées
+  précédentes — leur chiffre était vrai À LEUR DATE. Cibler la ligne du lot courant par index
+  ASSERTÉ. Les documents sans date (en-tête `CLAUDE.md`) sont l'inverse : eux portent la valeur du
+  jour (`UN-REMPLACEMENT-GLOBAL-DANS-UNE-ARCHIVE-FALSIFIE-UN-RECIT`).
 - Quand un fait **ne peut pas être établi de façon fiable** (deux structures sans identifiant
   commun), ne pas l'affirmer ET ne pas se taire : avertir sur un fait STRUCTUREL vérifiable et
   laisser la conclusion à l'utilisateur. Une détection par NOM raterait en silence et donnerait une

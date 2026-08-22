@@ -5636,3 +5636,26 @@ positif), côté W5 on ne filtre rien (un `RentalProperty` est locatif par natur
 même à loyer nul, dépenses seules — filtrer sur le loyer y raterait un vrai doublon). Cette
 différence RESSEMBLE à un oubli : elle est donc écrite dans le code, sinon la prochaine session
 « harmonise » et casse l'un des deux.
+
+### `UN-REMPLACEMENT-GLOBAL-DANS-UNE-ARCHIVE-FALSIFIE-UN-RECIT` — 2026-08-22
+
+Après un rebase, il fallait mettre à jour le compteur de tests de mon lot (4 648 → 4 653). Réflexe :
+un `replace` global sur les trois documents concernés. Résultat : l'entrée d'archive du lot
+PRÉCÉDENT — mergé, daté, exact — a vu son « Gate vert : 4 648 tests » réécrit en 4 653. Idem pour sa
+session dans `HANDOVER.md`.
+
+Le chiffre n'était pas périmé : il était **vrai à sa date**. `BACKLOG_ARCHIVE.md` et les sessions
+passées de `HANDOVER.md` sont des RÉCITS — ils disent ce qui était vrai au moment du merge, et c'est
+précisément ce qui les rend utiles pour reconstituer une régression (« à quel lot le compteur
+a-t-il baissé ? »). Les rafraîchir efface l'information.
+
+**Règle générale** : dans un document-récit, un `replace` global sur une valeur qui varie dans le
+temps est une falsification, pas une mise à jour. Cibler la ligne du lot COURANT (par index vérifié
+par assertion, jamais par motif), et laisser les autres intactes. Le repère mécanique est simple :
+si la même chaîne apparaît plusieurs fois dans un fichier daté, elle décrit plusieurs MOMENTS —
+seul le dernier vous appartient.
+
+Corollaire : les documents SANS date (`CLAUDE.md` en-tête, `BACKLOG.md`) sont l'inverse — eux
+doivent porter la valeur d'AUJOURD'HUI, et un remplacement global y est correct. La règle du dépôt
+« un fichier daté est un RÉCIT, pas une référence » se lit donc aussi dans ce sens : elle dit quoi
+mettre à jour, pas seulement quoi ne pas rafraîchir.

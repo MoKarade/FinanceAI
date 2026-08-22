@@ -10,6 +10,28 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-22 — Un flake non reproduit, mais réfuté et rendu lisible
+
+- [x] **`[FLAKE-DIVORCE-INCOME-PHANTOM]`** — le ticket concluait « flake d'ORDRE ou de PARALLÉLISME »
+  et prescrivait `--repeat` + `--sequence.shuffle`. **Non reproduit** : 8 exécutions vertes sur le
+  même commit (5 isolées, 3 suites complètes). Ce qui a été productif, c'est d'avoir RÉFUTÉ chaque
+  hypothèse par une mesure : `vitest.config.ts` pose `fileParallelism: false` (aucun parallélisme de
+  fichiers — trente secondes de lecture de config, avant de lancer l'outil recommandé par le
+  ticket) · durées dans la suite complète = durées en isolation (2 289/1 888/1 343 contre
+  2 400/1 838/1 417 ms) · RNG entièrement graine (`buildSeededRng`) et **zéro** `new Date()` /
+  `Date.now()` dans toute la chaîne Monte-Carlo · marge d'assertion mesurée `perte = 1,132` contre
+  un seuil de 0,5, le scénario divorcé finissant à −644 980 $.
+  ⚠️ **Il ne restait qu'un mécanisme capable de rendre l'assertion rouge sans toucher au code — une
+  grandeur ABSENTE — et celui-là était RÉEL.** `P50` est annulable côté moteur
+  (`d.P50 = mcResult.p50Data[i] ?? null`) et le helper la convertissait en `NaN` par un `?? NaN` : le
+  test comparait ce `NaN` à un seuil et son message **accusait le moteur d'un défaut d'argent
+  inexistant**. C'est `GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`, leçon déjà indexée — une leçon
+  écrite ne s'applique pas toute seule aux tests déjà en place.
+  **Livré** : le helper EXIGE la mesure avant de comparer, sur les deux grandeurs qu'il publie.
+  Perturbation (P50 forcé à `null`) : ancien message « expected NaN to be greater than 0.5 », nouveau
+  « P50 ABSENT du dernier point ». La tolérance n'a PAS été élargie — c'est la garde d'un défaut réel.
+  Gate vert : 4 663 tests / 421 fichiers (aucun test ajouté : les mêmes assertions, rendues honnêtes).
+
 ## 2026-08-22 — Le garde fiscal voit enfin les barèmes passés en ARGUMENT
 
 - [x] **`[FISC-GUARD-ARGUMENT]`** + **`[FISC-GUARD-BENIGN-60]`** — livrés ENSEMBLE, comme le ticket

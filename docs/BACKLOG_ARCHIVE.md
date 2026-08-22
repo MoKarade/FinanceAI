@@ -10,6 +10,42 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-22 — Deux limites fiscales CONSIGNÉES avec leur cause (pas corrigées)
+
+> Les deux tickets demandaient explicitement de **documenter une limite assumée**, l'un d'eux avec
+> la mention « ne PAS corriger à l'aveugle ». Livrer ici, c'est donc écrire une explication — et la
+> GARDER, pour qu'elle ne se périme pas en silence.
+
+- [x] **`[TAXDEC-BANDE-ACTIVE-BASE-BRUTE]`** (XS, FAIBLE) — chez un non-retraité, `incomeForGains`
+  est le salaire **BRUT** alors que le crédit d'âge s'érode sur le revenu **NET des déductions**
+  (REER + CELIAPP) : l'érosion de la bande part d'une base plus haute que celle du crédit lui-même
+  → sous-facturation bornée.
+  **RE-MESURÉ plutôt que recopié** (balayage 20 k$ → 160 k$ par pas de 500 $, cotisation au plafond
+  ANNUEL légal = 18 % du brut + 8 000 $ CELIAPP) : **1 052,51 $/adulte/an** au maximum, à 75 500 $
+  de brut. ⚠️ Le ticket avançait « ~1 153 $ » — chiffre NON retrouvé, d'où sa re-dérivation
+  (`ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE` : on ne recopie pas une mesure
+  qu'on n'a pas refaite). ⚠️ Et **une borne sans son hypothèse est fausse** : celle-ci vaut pour la
+  cotisation de l'ANNÉE seule ; avec un rattrapage de droits REER accumulés — courant à 65 ans et
+  parfaitement légal — l'écart monte à **1 482,78 $** (mesuré, 32 000 $ cotisés sur 75 k$). Les deux
+  chiffres ET leur hypothèse sont écrits.
+- [x] **`[TAXDEC-SPLIT-EGAL-VS-PERUSER]`** (XS, FAIBLE) — le crédit d'âge fédéral s'érode sur le
+  revenu **individuel** (`taxableRealByUser[i]`), la bande répartit à parts **ÉGALES**
+  (`incomeForGains / N`) : sur un couple 90/10, crédit accordé et crédit érodé ne portent pas sur la
+  même personne. Approximation **PRÉ-EXISTANTE** des paliers, étendue aux crédits par
+  `[FISC-TAXDEC-INCR]` — pas un défaut né du lot. Consignée avec l'interdiction explicite de la
+  corriger à l'aveugle : son signe dépend du profil, l'aligner naïvement DÉPLACERAIT l'écart au lieu
+  de le fermer et re-baserait les goldens.
+
+⚠️ **Ce que ce lot corrige vraiment** : les deux écarts étaient DÉJÀ chiffrés en §4 (« 69 à
+1 130 $ », « −345,72 $ ») — mais leur MÉCANISME n'était nommé nulle part. Un écart chiffré sans
+cause invite le lecteur suivant à le « corriger ». C'est la RAISON qui manquait, et c'est elle que
+la nouvelle garde protège.
+Garde `tests/services/taxDecemberLimitesConsignees.test.ts` (5 assertions) : elle vérifie que la
+CAUSE et ses hypothèses sont écrites, **sans figer les bornes au dollar** — une borne dépend
+d'hypothèses et se re-mesure ; l'ancrer ferait de ce test une bombe au premier changement
+d'indexation. Perturbations prouvées : section supprimée → 5 rouges, hypothèse de cotisation
+retirée → 1 rouge.
+Gate vert : 4 648 tests / 419 fichiers, build inclus.
 ## 2026-08-21 — Dette technique XS : deux angles morts qui rendaient le code INTROUVABLE
 
 > Lot réuni non par la zone touchée mais par le SYMPTÔME : dans les deux cas, du code parfaitement

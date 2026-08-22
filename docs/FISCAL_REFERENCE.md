@@ -307,6 +307,42 @@ Compléments sourcés du même échange :
 
 **MESURÉ** (`tests/services/taxDecemberAgeCreditBand.test.ts`) : retraité seul 68 ans, 60 k$ de revenu + 30 k$ de gains (15 k$ imposables) → **+675,5625 $**, décomposition qui RECOMPOSE la valeur : féd `15 000 × 15 % (érosion) × 15 % (taux de crédit) × (1 − 16,5 % abattement QC) = 281,8125` + QC `15 000 × 18,75 % (érosion) × 14 % (taux de crédit) = 393,75`. Sur ce profil les deux érosions sont strictement linéaires (aucune borne ne joue). Deux mécanismes déduits de tête ont été faux avant cette décomposition (776,25 ; « borné par le crédit restant ») — le chiffre ET son mécanisme se mesurent.
 
+#### Les deux écarts résiduels : leur CAUSE, et pourquoi ils ne se « corrigent » pas à l'aveugle
+
+Les deux plages ci-dessus (branche ACTIVE « 69 à 1 130 $ », couple inégal « −345,72 $ ») étaient
+CHIFFRÉES sans que leur mécanisme soit nommé — un écart chiffré mais inexpliqué invite le lecteur
+suivant à le « corriger », alors que les deux sont des approximations ASSUMÉES dont l'alignement
+naïf coûterait plus cher que l'écart. Consigné ici (`[TAXDEC-BANDE-ACTIVE-BASE-BRUTE]` et
+`[TAXDEC-SPLIT-EGAL-VS-PERUSER]`, revue #676).
+
+**1. Branche ACTIVE — base BRUTE contre base NETTE.** Chez un non-retraité, `incomeForGains`
+(`taxDecember.ts`) est le salaire **BRUT** projeté, alors que le crédit d'âge s'érode sur le revenu
+**imposable NET des déductions** (REER + CELIAPP). Un travailleur de 65+ qui cotise voit donc
+l'érosion de sa bande calculée depuis une base plus haute que celle qui sert au crédit lui-même →
+**sous-facturation bornée**.
+**MESURÉ le 2026-08-21** (balayage 20 k$ → 160 k$ par pas de 500 $, cotisation à son plafond
+ANNUEL légal = 18 % du brut + 8 000 $ CELIAPP) : écart maximal **1 052,51 $/adulte/an**, atteint à
+75 500 $ de brut (cotisation 21 590 $, net 53 910 $). ⚠️ Cette borne suppose la cotisation de
+l'année SEULE : avec un **rattrapage de droits REER accumulés** — courant à 65 ans et parfaitement
+légal — la déduction dépasse 18 % et l'écart monte, **mesuré 1 482,78 $** à 75 k$ de brut pour
+32 000 $ cotisés. La borne dépend donc de l'hypothèse de cotisation, et l'énoncer sans elle serait
+faux. *(Le ticket d'origine avançait « ~1 153 $ » : chiffre non retrouvé par cette mesure, d'où sa
+re-dérivation ici plutôt que sa recopie.)*
+Population concernée : 65+ ENCORE actif, qui cotise, ET qui réalise des gains en capital la même
+année — marginale, mais non vide.
+
+**2. Couple à revenus inégaux — le crédit s'érode par personne, la bande se répartit à parts égales.**
+Le crédit d'âge fédéral s'érode sur le revenu **individuel** : le bloc §6 le calcule sur
+`taxableRealByUser[i]` (asymétrique quand `usePerUser`), tandis que la bande divise le revenu
+familial par le nombre d'adultes (`incomeForGains / N`, donc la MOYENNE). Sur un couple 90/10, le
+crédit accordé et le crédit érodé ne portent pas sur la même personne.
+⚠️ **Ce n'est PAS un défaut né du lot** : c'est l'approximation « parts égales » des paliers, déjà
+présente, simplement ÉTENDUE aux crédits par [FISC-TAXDEC-INCR]. Son signe dépend du profil (elle
+sur-impose autant qu'elle sous-impose selon l'asymétrie) — **d'où l'interdiction de la corriger à
+l'aveugle** : passer la bande en per-conjoint sans re-mesurer déplacerait l'écart au lieu de le
+fermer, et re-baserait les goldens. Le corriger vraiment suppose de rendre la bande per-conjoint
+sur TOUTE sa chaîne, ce qui est un lot en soi, pas un ajustement.
+
 ---
 
 ### Assiette du revenu de pension ADMISSIBLE (féd 31400 + QC 361) — règle ET implémentation

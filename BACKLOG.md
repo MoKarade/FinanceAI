@@ -1145,14 +1145,14 @@
   le hissage #676 : à un caractère d'une erreur d'aiguillage — aligner ou documenter pourquoi.
   [VÉRIFIÉ équivalentes]
 
-- [ ] **`[TAXDEC-BANDE-ACTIVE-BASE-BRUTE]`** (XS, FAIBLE — revue #676, financial-integrity F6) —
+- [x] **`[TAXDEC-BANDE-ACTIVE-BASE-BRUTE]`** ✅ CONSIGNÉ 2026-08-22 (FISCAL_REFERENCE §4 + garde ; voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — revue #676, financial-integrity F6) —
   branche ACTIVE : `incomeForGains` est le salaire BRUT alors que le §4 accorde le crédit d'âge sur
   le taxable NET des déductions (REER/FHSA). Un travailleur 65+ qui cotise voit l'érosion de sa
   bande calculée depuis une base plus haute que celle du crédit → sous-facturation bornée
   (~1 153 $/adulte/an max). Population marginale ; incohérence née de #676 (avant, la bande active
   ne portait aucun crédit). Documenter en limite assumée OU aligner la base. [MESURÉ borné]
 
-- [ ] **`[TAXDEC-SPLIT-EGAL-VS-PERUSER]`** (XS, FAIBLE — revue #676, financial-integrity F5) — le
+- [x] **`[TAXDEC-SPLIT-EGAL-VS-PERUSER]`** ✅ CONSIGNÉ 2026-08-22 (FISCAL_REFERENCE §4 + garde ; voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — revue #676, financial-integrity F5) — le
   crédit d'âge FÉDÉRAL s'érode sur le revenu individuel : le bloc §6 le calcule sur
   `taxableRealByUser[i]` (asymétrique si `usePerUser`), la bande sur `incomeForGains / N` (moyen).
   Pour un couple 90/10, crédit accordé et crédit érodé ne se chaînent pas. Approximation

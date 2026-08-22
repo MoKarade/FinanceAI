@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 643 tests** Vitest
-(418 fichiers de test, mesuré le 2026-08-21). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 648 tests** Vitest
+(419 fichiers de test, mesuré le 2026-08-22). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -243,6 +243,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   déclarer `api/**` a retiré le faux « fichier inutilisé » ET un export faussement signalé, dont le
   seul tort était d'avoir son consommateur hors analyse. Rejouer l'outil, ne pas supposer que le
   correctif ne touche que la ligne visée (`UN-SCANNER-QUI-CRIE-SUR-DU-CODE-VIVANT-APPREND-A-ETRE-IGNORE`).
+- **Consigner une limite, ce n'est pas écrire son montant** mais sa CAUSE, son coût, et ce qui
+  arriverait si on la « corrigeait » : un écart chiffré sans mécanisme se lit comme un défaut en
+  attente et invite à le corriger — ici l'alignement naïf aurait DÉPLACÉ le biais et re-basé les
+  goldens. La garde vise les mots qui expliquent, pas le nombre (l'ancrer au dollar = bombe à la
+  prochaine indexation). Et une borne sans son HYPOTHÈSE est fausse : 1 052 $ à cotisation annuelle,
+  1 483 $ avec rattrapage de droits — le ticket disait « ~1 153 $ », non retrouvé
+  (`UN-ECART-CHIFFRE-SANS-SA-CAUSE-INVITE-A-LE-CORRIGER` ; un ticket n'est pas une source, même
+  quand il dit « MESURÉ »).
 - **Deux tests cohérents entre eux peuvent être faux ENSEMBLE** : un test au producteur et un test à
   l'appelant qui affirment la même valeur INTERMÉDIAIRE ne se confirment pas — ils partagent
   peut-être la même hypothèse. Une durée de chômage de N servait N+1 mois SOUS deux gardes qui la

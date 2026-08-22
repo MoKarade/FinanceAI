@@ -10,6 +10,25 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-22 — Le garde fiscal voit enfin les barèmes passés en ARGUMENT
+
+- [x] **`[FISC-GUARD-ARGUMENT]`** + **`[FISC-GUARD-BENIGN-60]`** — livrés ENSEMBLE, comme le ticket
+  l'exigeait : le `60` d'anticipation de la RRQ était caché DEUX fois, par l'exemption `BENIGN` et par
+  sa position d'ARGUMENT. Corriger l'un sans l'autre ne l'aurait pas révélé.
+  ⚠️ **L'arbitrage du ticket était faux, et son inverse aussi.** Le ticket annonçait « ~1 clé fiscale
+  pour ~15 de bruit ». Re-mesuré : le motif large `/[(,]$/` rend **26 clés neuves dont 16 fiscales**.
+  Mais **14 de ces 16 sont les ÂGES de la table FERR**, déjà décrits par les 24 entrées de TAUX
+  (`RRIF_RATES[73]` nomme son âge dans sa raison) : fiscales, neuves comme clés, et n'ajoutant
+  **aucune protection**. Le motif retenu `/\w\($/` (1er argument d'un APPEL) rend **11 clés + 3
+  comptes** et attrape les **deux seuls barèmes réellement non protégés** — l'âge 18 de début de la
+  période cotisable RRQ et la borne 60 d'anticipation. **100 % de la protection pour 42 % des
+  entrées.** Il évite en prime le faux positif du motif large : « (18 ans) » dans un MESSAGE
+  utilisateur de `childrenReee.ts` (`SCAN-QUI-MATCHE-LA-PROSE`, dans un littéral de CHAÎNE cette fois
+  — hors de portée de `stripComments`).
+  Les 11 entrées sont triées à la main en lisant le BLOC, pas la ligne : 2 `fiscal`, 6 `design`,
+  3 `structural`. Trois comptes existants passent en `[≠3]`/`[×2]` avec leurs sens nommés.
+  3 tests neufs, **3 perturbations prouvées rouges**. Gate vert : 4 663 tests / 421 fichiers.
+
 ## 2026-08-22 — Quatre hypothèses de modèle nommées, et une décision qui remonte à Marc
 
 - [x] **`[CONSTANTES-MOTEUR-NON-SOURCEES]`** — ticket étiqueté **XS / FAIBLE** (« trois littéraux en

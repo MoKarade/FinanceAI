@@ -42,6 +42,36 @@ describe('[FISC-CONST-GUARD-V2] relevé des littéraux (DISCRIMINANT)', () => {
         expect(findFiscalConstants('const r = RRIF_RATES[age] || 0.20;').map((h) => h.value)).toContain('0.20');
     });
 
+    it('relève le 1er ARGUMENT d’un appel — les DEUX barèmes qui s’y cachaient', () => {
+        // [FISC-GUARD-ARGUMENT] Quatrième position ajoutée le 2026-08-22. Ces deux lignes sont les
+        // VRAIES du dépôt (`retirementIncome.ts`), pas des exemples : l’âge de début de la période
+        // cotisable RRQ et la borne légale d’anticipation. Aucune des deux n’avait de clé.
+        expect(findFiscalConstants('const a = Math.max(18, residencyStart - birthYear);').map((h) => h.value))
+            .toContain('18');
+        expect(findFiscalConstants('let s = Math.min(72, Math.max(60, goal.rrqStartAge ?? d));').map((h) => h.value))
+            .toEqual(expect.arrayContaining(['72', '60']));
+    });
+
+    it('IGNORE une parenthèse de PROSE — pourquoi le motif exige un identifiant collé', () => {
+        // ⚠️ Le premier motif mesuré était `/[(,]$/`, plus large. Il relevait « (18 ans) » dans un
+        // message UTILISATEUR de `childrenReee.ts` : `SCAN-QUI-MATCHE-LA-PROSE`, cette fois dans un
+        // littéral de CHAÎNE — que `stripComments` ne touche pas. Exiger `\w` avant la parenthèse
+        // sépare l’appel de fonction du texte, sans rien perdre : mesuré, les DEUX barèmes ci-dessus
+        // sont toujours relevés et le faux positif disparaît.
+        const prose = findFiscalConstants('logs.push(`🚗 Cadeau voiture pour ${n} (18 ans) : -${c} $`);');
+        expect(prose.map((h) => h.value)).not.toContain('18');
+    });
+
+    it('`60` n’est PLUS bénin — et ses quatre sens sont bien distincts', () => {
+        // [FISC-GUARD-BENIGN-60] Il y était comme « secondes/minutes », or aucune des occurrences du
+        // dépôt n’est une durée. Une seule est fiscale (l’anticipation RRQ) : c’est justement pour ça
+        // qu’une exemption globale était le mauvais outil — elle range quatre sens sous un seul.
+        expect(findFiscalConstants('if (age < 60) return 0.003;').map((h) => h.value)).toContain('60');
+        expect(findFiscalConstants('x *= (proj.ltdIncomeReplacementPct ?? 60) / 100;').map((h) => h.value)).toContain('60');
+        // Contre-épreuve : les vrais bénins restent bénins, sinon on aurait juste tout ouvert.
+        expect(findFiscalConstants('const m = i * 12; const p = x / 100;').map((h) => h.value)).toEqual([]);
+    });
+
     it('IGNORE les littéraux bénins (indices, mois, pourcentage)', () => {
         const hits = findFiscalConstants('const pct = x / 100; const m = i * 12; if (n > 0) y = 1;');
         expect(hits.map((h) => h.value)).toEqual([]);

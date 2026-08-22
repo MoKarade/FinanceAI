@@ -92,11 +92,19 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
 
     // ── services/projection/retirementIncome.ts ──────────────────────────────────────────────
     { file: 'services/projection/retirementIncome.ts', value: '65', family: 'fiscal',
-      reason: '[×2] Âge pivot RRQ et PSV — base des facteurs d’ajustement/report.' },
+      reason: '[≠3] TROIS occurrences, deux sens. (1)+(2) Âge PIVOT de la RRQ et de la PSV, base des facteurs d’ajustement et de report (`(rrqStartAge - 65) * 12`, `(psvStartAge - 65) * 12`). (3) ⚠️ AJOUTÉE au périmètre le 2026-08-22 : borne LÉGALE BASSE de la PSV, `Math.max(65, psvStartAge ?? defaultStart)` — on ne peut pas toucher la PSV avant 65 ans. Le pivot et la borne coïncident numériquement mais ne sont PAS la même règle : le pivot survivrait à un changement de la borne.' },
     { file: 'services/projection/retirementIncome.ts', value: '70', family: 'fiscal',
-      reason: 'Âge maximal de report de la PSV.' },
+      reason: '[×2] Âge maximal de report de la PSV, écrit DEUX fois : comme borne du clamp (`Math.min(70, …)`, visible depuis le 2026-08-22 seulement) et comme valeur imposée par la stratégie de report optimal (`psvStartAge = 70`). Deux écritures de la même règle légale — si l’une change sans l’autre, le clamp et la stratégie se contredisent en silence.' },
     { file: 'services/projection/retirementIncome.ts', value: '72', family: 'fiscal',
-      reason: 'Âge maximal de report de la rente RRQ.' },
+      reason: '[×2] Âge maximal de report de la rente RRQ (étendu de 70 à 72 en 2024), écrit DEUX fois : borne du clamp (`Math.min(72, …)`, visible depuis le 2026-08-22 seulement) et valeur de la stratégie de report optimal (`rrqStartAge = 72`). Même risque de divergence silencieuse que son jumeau PSV.' },
+    // ⚠️ AJOUTÉES le 2026-08-22 ([FISC-GUARD-ARGUMENT] + [FISC-GUARD-BENIGN-60]) : révélées par
+    // l’élargissement à la position d’ARGUMENT et par le retrait de `60` de BENIGN.
+    { file: 'services/projection/retirementIncome.ts', value: '18', family: 'fiscal',
+      reason: 'Âge de début de la période COTISABLE à la RRQ. Le modèle « 39 meilleures années » compte les années cotisées de 18 ans jusqu’à la retraite (FISCAL_REFERENCE §6) : ce 18 est le numérateur du prorata de résidence RRQ, `Math.max(18, residencyStartU - birthYearU)`. Barème légal, à ancrer §6 aux côtés de `RRQ_DENOMINATOR_YEARS` (39) qui est, lui, déjà nommé — c’est le déséquilibre qui rendait ce littéral suspect.' },
+    { file: 'services/projection/retirementIncome.ts', value: '60', family: 'fiscal',
+      reason: 'Borne LÉGALE basse d’anticipation de la rente RRQ : `Math.max(60, rrqStartAge ?? defaultStart)`. On ne peut pas demander sa rente avant 60 ans, et le facteur d’anticipation est calibré sur cette borne. Elle était doublement invisible — `60` était dans BENIGN, ET la valeur est en position d’argument : il a fallu les deux correctifs du même lot pour la voir.' },
+    { file: 'services/projection/retirementIncome.ts', value: '1.0', family: 'structural',
+      reason: '[≠2] DEUX plafonnements à 100 %, sans rapport entre eux. (a) `Math.min(1.0, currentGrossUser / rrqMpeProjected)` — le ratio gains/MGA ne dépasse pas 1, cotiser au-delà du maximum des gains admissibles n’augmente pas la rente. (b) `Math.min(1.0, residencyYears / PSV_FULL_RESIDENCY_YEARS)` — le prorata de résidence PSV plafonne à la pleine pension. Les DEUX bornes traduisent une règle, mais le nombre lui-même n’est qu’un plafond de fraction : aucune indexation ne le fera bouger.' },
     { file: 'services/projection/retirementIncome.ts', value: '75', family: 'fiscal',
       reason: 'Bonification de la PSV à compter de 75 ans.' },
     { file: 'services/projection/retirementIncome.ts', value: '39', family: 'fiscal',
@@ -150,6 +158,8 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: '[≠2] DEUX occurrences de natures OPPOSÉES. (1) FISCAL — RRIF_PLATEAU_AGE : âge à partir duquel le facteur FERR est figé au plateau de 20 %. Ancré le 2026-08-06 ; il était jusque-là IMPLICITE, porté par la seule ABSENCE d’entrée dans la table au-delà de 94 — un seuil qu’aucune ligne n’écrit ne peut être ni relu ni corrigé. (2) DESIGN — palier terminal de la courbe de mortalité/LTC (`if (age < 95) return 0.140`), hypothèse de risque calibrée, à ne JAMAIS sourcer comme une valeur fiscale.' },
     { file: 'services/projection/helpers.ts', value: '50', family: 'design',
       reason: 'Palier d’âge bas de la courbe de mortalité/LTC. Hypothèse de risque.' },
+    { file: 'services/projection/helpers.ts', value: '60', family: 'design',
+      reason: 'Palier d’âge de `mortalityAnnualProbability` (`if (age < 60) return 0.003`), courbe Stats Canada 2020-2022 unisexe lissée. Hypothèse de RISQUE, comme ses voisins 50/65/70/75/80/85/90/95 déjà inventoriés — surtout PAS l’âge d’anticipation de la RRQ, qui porte le même nombre dans un AUTRE fichier. C’est précisément cette homonymie qui avait fait glisser `60` dans BENIGN.' },
     { file: 'services/projection/setupSimulation.ts', value: '42', family: 'structural',
       reason: 'Graine par défaut du générateur pseudo-aléatoire (`mulberry32(... || 42)`). Aucun rapport avec la fiscalité.' },
     { file: 'services/projection/setupSimulation.ts', value: '30', family: 'structural',
@@ -158,6 +168,8 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Âge d’ouverture des droits REER historiques (`birthYear + 18`) — âge fiscal, à ancrer avec les autres âges-seuils.' },
     { file: 'services/projection/setupSimulation.ts', value: '65', family: 'fiscal',
       reason: '[×2] Âge pivot RRQ : base du décalage `(pensionStartAge - 65) * 12`. Âge fiscal, à ancrer.' },
+    { file: 'services/projection/setupSimulation.ts', value: '1.02', family: 'design',
+      reason: 'Dé-indexation du salaire à 2 %/an pour RECONSTITUER les salaires passés (`individualSalaryPortion / Math.pow(1.02, y)`) et en déduire les droits REER accumulés avant le début de la simulation. Hypothèse de carrière, pas un barème : le barème de cette même ligne, ce sont `RRSP_ROOM_RATE` et `RRSP_ANNUAL_LIMITS`, tous deux déjà nommés et ancrés. ⚠️ Ce 2 % est INDÉPENDANT de l’inflation saisie par l’utilisateur — un profil qui projette 4 % voit quand même son passé reconstruit à 2 %.' },
     { file: 'services/projection/setupSimulation.ts', value: '8000', family: 'design',
       reason: 'Revenu théorique mensuel de repli quand aucun salaire n’est saisi. Hypothèse d’amorçage, pas un barème.' },
     { file: 'services/projection/setupSimulation.ts', value: '0.55', family: 'design',
@@ -266,6 +278,10 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: '⚠️ MA PREMIÈRE RAISON ÉTAIT FAUSSE (revue 2026-08-20) : j’y avais lu la règle anti-flip et l’exemption de résidence principale. Le code est DANS le bloc RAP et pilote `rapRepaymentStartOffset` — c’est la borne BASSE de la fenêtre du report temporaire du DÉBUT DE REMBOURSEMENT du RAP (Budget fédéral 2024 : 5 ans de grâce au lieu de 2 pour les retraits du 1er janvier 2022 au 31 décembre 2025). Rien à voir avec le gain en capital. À ancrer §7 (régimes enregistrés), avec la durée de 15 ans — pas §8.' },
     { file: 'services/projection/realEstateMonth.ts', value: '2025', family: 'fiscal',
       reason: 'Borne HAUTE de la fenêtre du report de remboursement du RAP (Budget fédéral 2024), cf. l’entrée `2022` du même fichier. Les deux bornes ET la durée de grâce (5 ans vs 2) doivent être sourcées ENSEMBLE en §7 : en ancrer une seule laisserait une règle à moitié fausse.' },
+    { file: 'services/projection/realEstateMonth.ts', value: '60', family: 'design',
+      reason: 'Terme hypothécaire de 5 ans exprimé en MOIS : `remainingMonths > 60` empêche de « renouveler » un prêt dont il reste moins d’un terme. Convention du marché canadien, pas une règle de loi. ⚠️ Son JUMEAU `monthsSincePurchase % 60 === 0`, deux lignes plus haut, reste INVISIBLE au scan — l’opérateur `%` n’est pas une position retenue. Les deux 60 disent la même chose et doivent bouger ensemble ; celui-ci sert de sentinelle pour l’autre.' },
+    { file: 'services/projection/realEstateMonth.ts', value: '0.01', family: 'design',
+      reason: 'Plancher du taux au renouvellement hypothécaire (`Math.max(0.01, mortgageRate/100 + rateShock)`) : le choc pseudo-aléatoire de ±1,5 pp pourrait sinon rendre un taux négatif, qui casserait la formule d’amortissement. Garde-fou numérique du modèle, aucune origine réglementaire.' },
     { file: 'services/projection/realEstateMonth.ts', value: '0.015', family: 'design',
       reason: 'Amplitude du choc de taux pseudo-aléatoire dérivé de l’identifiant du bien (±1,5 pp). Paramètre de simulation, pas un taux de marché observé.' },
     // ⚠️ 2026-08-22 — l'entrée `0.05` (taux de marge Smith) a QUITTÉ ce fichier : le littéral est
@@ -296,6 +312,8 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: 'Espérance de vie retenue pour actualiser les rentes publiques restantes. Hypothèse de modèle explicitement nommée (`lifeExpectancy`), pas une table de mortalité.' },
     { file: 'services/projection/estateCalculation.ts', value: '0.02', family: 'design',
       reason: 'Taux d’actualisation réel de la VAN des rentes (`r_npv` = 2 %). Hypothèse financière de modèle. Le `1.02` des deux lignes de VAN (RRQ et PSV) en est le reflet et doit bouger AVEC lui — piège de duplication signalé par `[ESTATE-NPV-07]`.' },
+    { file: 'services/projection/estateCalculation.ts', value: '1.02', family: 'design',
+      reason: '[×2] Le REFLET de `r_npv` (0.02, entrée ci-dessus), écrit en dur sur les DEUX lignes de VAN — RRQ et PSV — pour actualiser une rente qui ne démarrera qu’à 65 ans. Même sens les deux fois, et même nombre que `r_npv` : c’est une duplication, pas un second paramètre. Le piège est déjà nommé par `[ESTATE-NPV-07]` — changer `r_npv` sans changer ces deux `1.02` fait diverger l’actualisation de son propre taux, en silence. La clé existe pour que la duplication soit VISIBLE au garde, pas seulement en commentaire.' },
     { file: 'services/projection/estateCalculation.ts', value: '65', family: 'fiscal',
       reason: '[×2] Âge pivot des rentes publiques (RRQ/PSV), pour la RRQ et pour la PSV, pour décider si la rente est déjà en cours. Vrai paramètre fédéral/QC, ancré FISCAL_REFERENCE §6.' },
 
@@ -304,6 +322,8 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: '[≠4] DEUX SENS. (1) Le TAUX DE REMPLACEMENT STATUTAIRE de l’assurance-emploi (55 % des gains assurables, Loi sur l’AE, ancré §2) — DEUX occurrences depuis `[AE-PLAFOND-MANQUANT]` (2026-08-20) : la voie normale `min(brut, plafond) × 0,55` puis net à assiette de cotisation nulle, et le REPLI legacy `net × 0,55` quand le brut est absent (approximation documentée, mieux qu’une prestation inventée à 0). (2) Les deux applications aux bonus/RSU/side : un PROXY de charge fiscale (« taxés ~45 % marginal »), du design. Famille retenue = la plus stricte. Le défaut voisin d’avant (55 % du net NON plafonné comme voie PRINCIPALE) est corrigé par ce même lot.'},
     { file: 'services/projection/activeIncome.ts', value: '0.5', family: 'design',
       reason: 'Indexation PROJETÉE du plafond AE : `(simInflation + 0,5)/100` — le demi-point au-dessus de l’inflation approxime la croissance des salaires moyens qui indexe le MRA en réalité. MÊME patron (et même biais documenté §2) que `rqapCapProjected` dans childrenReee.ts : une hypothèse de modèle, pas un paramètre ARC — ne JAMAIS la « sourcer ».'},
+    { file: 'services/projection/activeIncome.ts', value: '60', family: 'design',
+      reason: 'Taux de remplacement du revenu par DÉFAUT d’une assurance invalidité longue durée (`proj.ltdIncomeReplacementPct ?? 60`, en pourcentage). Paramètre d’un CONTRAT privé — 60 à 70 % est l’usage du marché — jamais une règle fiscale ni un programme public. À ne pas confondre avec `0.55` du même fichier, qui est LUI le taux de l’assurance-emploi (fédéral, barème). Deux taux de remplacement voisins dans un même module, l’un légal et l’autre contractuel : c’est exactement le genre de paire qu’un inventaire doit distinguer.' },
     { file: 'services/projection/activeIncome.ts', value: '99', family: 'structural',
       reason: '[×2] Sentinelle « pas de fin connue » pour les années de RSU restantes (`?? 99`), pour le 1er conjoint et pour le 2e. Valeur d’absence, pas un paramètre.' },
 
@@ -332,6 +352,8 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     // ── services/projection/glidepathRates.ts ────────────────────────────────────────────────
     { file: 'services/projection/glidepathRates.ts', value: '1.0', family: 'design',
       reason: '[≠2] Prime de 1 pp au-dessus de l’inflation visée en fin de glidepath, et facteur neutre du même calcul. Hypothèse d’allocation, pas un rendement observé.' },
+    { file: 'services/projection/glidepathRates.ts', value: '0.60', family: 'design',
+      reason: 'Plancher du facteur de glissement une fois à la retraite (`Math.max(0.60, glideFactor)`) : le portefeuille ne se dé-risque pas au-delà de 60 % de la trajectoire, sans quoi un retraité de long horizon convergerait vers un rendement quasi nul. Hypothèse d’allocation, pas un barème.' },
     { file: 'services/projection/glidepathRates.ts', value: '1.5', family: 'design',
       reason: 'Rendement en dividendes par défaut des actions américaines (1,5 %) quand l’utilisateur ne le renseigne pas. Hypothèse de marché. ⚠️ Le taux de retenue qui le multiplie, LUI, est sourcé (`US_DIVIDEND_WITHHOLDING_RATE`, §3) — ne pas confondre les deux facteurs de la même ligne.' },
 
@@ -350,6 +372,8 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
       reason: '`DONATION_FIRST_TIER_CEILING` — plafond du premier palier du crédit pour dons (200 $), au-delà duquel le taux bonifié s’applique. Vrai paramètre ARC/RQ, déjà ancré FISCAL_REFERENCE §10 et nommé sur place.' },
 
     // ── store/useFinanceStore.ts ─────────────────────────────────────────────────────────────
+    { file: 'store/useFinanceStore.ts', value: '36', family: 'structural',
+      reason: 'Base 36 de `Math.random().toString(36)` dans le générateur d’identifiants. Mécanique de chaîne de caractères — le seul faux positif ASSUMÉ de l’élargissement à la position d’argument, gardé plutôt qu’exempté : une exemption se lit comme un détail déjà tranché, une entrée d’inventaire dit ce qu’elle est (`AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`).' },
     { file: 'store/useFinanceStore.ts', value: '5', family: 'structural',
       reason: 'Numéro de version de schéma persisté (`fromVersion < 5`). Palier de migration, aucun rapport avec la fiscalité.' },
     { file: 'store/useFinanceStore.ts', value: '6', family: 'structural',
@@ -597,9 +621,20 @@ export const FISCAL_MODULES_HORS_PERIMETRE = [
  * Leçon du lot : **auditer le critère du FILTRE autant que celui de la LISTE** — j'avais corrigé
  * l'un et laissé l'autre. Retrait mesuré : 15 occurrences révélées, 8 clés neuves.
  *
+ * ⚠️ 2026-08-22 — `'60'` RETIRÉ ([FISC-GUARD-BENIGN-60]). Même faute que ci-dessus, une seconde fois :
+ * la justification parlait d'indices et de mois, et `60` y avait été glissé comme « secondes/minutes »
+ * — or aucune des quatre occurrences du dépôt n'est une durée. Ce qu'il masquait, MESURÉ :
+ *   • `retirementIncome.ts` `Math.max(60, …)` — borne LÉGALE basse d'anticipation de la RRQ (§6),
+ *     et la seule des quatre qui soit fiscale. C'était la cible du ticket ;
+ *   • `helpers.ts` `if (age < 60)` — palier de la courbe de mortalité (Stats Canada) ;
+ *   • `realEstateMonth.ts` `remainingMonths > 60` — terme hypothécaire de 5 ans en mois ;
+ *   • `activeIncome.ts` `?? 60` — taux de remplacement par défaut d'une assurance invalidité.
+ * ⚠️ Le retirer ne SUFFISAIT PAS : le 60 de la RRQ est en position d'ARGUMENT, donc doublement
+ * caché. Il fallait les DEUX correctifs, d'où le lot commun avec [FISC-GUARD-ARGUMENT].
+ *
  * Ce qui reste ici est vraiment inoffensif : indices, mois, jours, pourcentage, epsilons.
  */
-const BENIGN = new Set(['0', '1', '2', '3', '4', '10', '12', '24', '60', '100', '365', '1e-9', '1e-6']);
+const BENIGN = new Set(['0', '1', '2', '3', '4', '10', '12', '24', '100', '365', '1e-9', '1e-6']);
 
 export interface ConstHit {
     line: number;
@@ -645,6 +680,14 @@ export function findFiscalConstants(source: string): ConstHit[] {
                 // invisible depuis l'entrée de son fichier au périmètre, ainsi que `DONATION_CREDIT_RATES`
                 // (15/29 % féd, 20/24 % QC). Les deux tables les plus fiscales du moteur.
                 || /[?:]$/.test(before)      // valeur liée à un nom (`taux: 0.29`) ou choisie (`? 0.5`)
+                // ⚠️ AJOUTÉ le 2026-08-22 (`[FISC-GUARD-ARGUMENT]`). Quatrième position : le littéral
+                // PASSÉ à une fonction — `Math.max(18, …)`, `Math.min(60, …)`. Deux barèmes légaux y
+                // vivaient sans aucune clé : l'âge 18 de début de la période cotisable RRQ et la borne
+                // 60 d'anticipation de la RRQ. Le motif exige un IDENTIFIANT collé à la parenthèse :
+                // c'est ce qui distingue un appel de fonction d'une parenthèse de PROSE. Le motif large
+                // `/[(,]$/`, mesuré d'abord, relevait « (18 ans) » dans un message utilisateur de
+                // `childrenReee.ts` — `SCAN-QUI-MATCHE-LA-PROSE`, payé une fois de trop.
+                || /\w\($/.test(before)      // 1er argument d'un appel (`Math.max(60, …)`)
             );
             if (!significant) continue;
             out.push({ line: i + 1, value, text: line.trim() });

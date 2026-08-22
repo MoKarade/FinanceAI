@@ -1043,23 +1043,18 @@
   achète en l'ajoutant. **Décider** : l'inclure (31 clés à trier) ou acter l'exclusion dans
   une ADR (`docs/adr/`).
 
-- [ ] **`[FISC-GUARD-ARGUMENT]`** (S, MOYEN — découvert en revue de `[FISC-GUARD-VALEUR-LIEE]`) — après
-  l'élargissement aux valeurs LIÉES, il reste une position où un barème se cache : l'**argument de
-  fonction**. **MESURÉ** sur les 20 modules : 35 littéraux encore invisibles en position `f(0.29)`,
-  dont **un vrai paramètre** — `retirementIncome.ts` `Math.max(18, residencyStartU - birthYearU)`,
-  soit l'âge de début de cotisation à la RRQ (§6, « années cotisées 18→retraite / 39 »). Aucune clé
-  `retirementIncome.ts::18` n'existe. **Arbitrage à faire** : ajouter `/[(,]$/` rapporte ~1 clé
-  fiscale pour ~15 clés de bruit (`Math.min(1.0, …)`, `Math.pow(1.02, y)`, `toString(36)`).
-  ⚠️ **NE PAS ajouter `return`** : mesuré à 20 littéraux pour **0** gain fiscal (courbes
-  mortalité/LTC + smile curve) — un garde bruyant se fait désarmer, leçon déjà payée sur `helpers.ts`.
-
-- [ ] **`[FISC-GUARD-BENIGN-60]`** (XS, MOYEN — découvert en revue de `[FISC-GUARD-VALEUR-LIEE]`) —
-  `'60'` est dans `BENIGN` alors que c'est la borne légale d'**anticipation de la RRQ** (§6, plage
-  60 → 65), en dur dans `retirementIncome.ts` (`Math.max(60, …)`). ⚠️ **Le retirer de `BENIGN` ne
-  suffit PAS** : MESURÉ, ça révèle 3 littéraux (courbe de mortalité, renouvellement hypothécaire,
-  repli ILD) dont **aucun** n'est le 60 de la RRQ — celui-là est en position d'ARGUMENT, donc
-  doublement caché. Il faut les DEUX correctifs, avec `[FISC-GUARD-ARGUMENT]`. C'est la leçon
-  `AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE` qui n'est pas encore entièrement payée.
+- [x] **`[FISC-GUARD-ARGUMENT]`** + **`[FISC-GUARD-BENIGN-60]`** ✅ 2026-08-22 (livrés ENSEMBLE, le
+  ticket l'exigeait : le `60` de la RRQ était caché DEUX fois, par l'exemption ET par la position).
+  ⚠️ **L'arbitrage du ticket était FAUX, et son inverse aussi.** Le ticket annonçait « ~1 clé fiscale
+  pour ~15 de bruit ». RE-MESURÉ : le motif large `/[(,]$/` sort **26 clés neuves dont 16 fiscales**
+  — ce qui semble renverser l'arbitrage. Mais 14 de ces 16 sont les **âges** de la table FERR, dont
+  le fait est DÉJÀ porté par les 24 entrées de **taux** (`RRIF_RATES[73]` etc.) : des clés fiscales
+  qui n'ajoutent **aucune protection**. Le motif retenu, `/\w\($/` (1er argument d'un APPEL), sort
+  **11 clés + 3 comptes** et attrape **les DEUX barèmes réellement neufs** — l'âge 18 de début de la
+  période cotisable RRQ et la borne 60 d'anticipation — soit **100 % de la protection pour 42 % des
+  entrées**. Il évite en prime un faux positif que le motif large importait : « (18 ans) » dans un
+  MESSAGE utilisateur de `childrenReee.ts` (`SCAN-QUI-MATCHE-LA-PROSE`, cette fois dans un littéral
+  de chaîne — hors de portée de `stripComments`). 3 tests neufs, **3 perturbations prouvées rouges**.
 
 - [ ] **`[TAXBRACKETVIZ-ANNEE]`** (S, FAIBLE — découvert en revue de `[GROSSFROMNET-ANNEE-FIGEE]`) —
   `components/TaxBracketViz.tsx` trace `FED_BRACKETS`/`QC_BRACKETS` **bruts** (2026, non indexés) et

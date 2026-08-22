@@ -5720,3 +5720,40 @@ celle qu'on veut interdire. La contre-épreuve se resserre avec le motif : le ch
 trop étroite pour trouver quoi que ce soit. Et la perturbation se dédouble : un vrai consommateur
 doit rendre la garde ROUGE, une simple mention en prose doit la laisser VERTE — les deux ont été
 lancées.
+
+### `COMPTER-LES-CLES-N-EST-PAS-COMPTER-LA-PROTECTION` — 2026-08-22
+
+`[FISC-GUARD-ARGUMENT]` demandait explicitement un **arbitrage** : élargir le scan du garde fiscal à
+la position d'ARGUMENT « rapporte ~1 clé fiscale pour ~15 clés de bruit ». Formulé ainsi, l'arbitrage
+se tranche tout seul — on n'élargit pas.
+
+Re-mesuré, le motif large `/[(,]$/` sort **26 clés neuves, dont 16 fiscales**. Le rapport
+signal/bruit s'inverse, et j'ai d'abord conclu qu'il fallait élargir largement. C'était la deuxième
+erreur, symétrique de la première : **14 de ces 16 clés fiscales sont les ÂGES de la table FERR, dont
+le fait est déjà porté par les 24 entrées de TAUX** (`RRIF_RATES[73]` nomme son âge dans sa raison).
+Elles sont fiscales, elles sont neuves comme clés, et elles ne protègent **rien de plus**.
+
+Le motif retenu, `/\w\($/` — le littéral en 1er argument d'un **appel de fonction** — sort **11 clés
+et 3 comptes**, et attrape les **deux seuls barèmes réellement non protégés** : l'âge 18 de début de
+la période cotisable RRQ et la borne 60 d'anticipation. **100 % de la protection neuve pour 42 % des
+entrées.**
+
+**La règle** : quand on élargit un détecteur, la métrique n'est pas « combien de résultats
+pertinents » mais « combien de résultats pertinents que RIEN d'autre ne couvrait ». Les deux se
+répondent par un `grep` de l'inventaire existant, avant d'écrire la moindre entrée. Un lot mesuré au
+mauvais dénominateur produit une décision confiante et fausse — dans les DEUX sens, ici, à quelques
+minutes d'intervalle.
+
+Trois corollaires :
+
+1. **Élargir un motif, c'est aussi importer ses faux positifs.** `/[(,]$/` relevait « (18 ans) »
+   dans un MESSAGE utilisateur de `childrenReee.ts`. C'est `SCAN-QUI-MATCHE-LA-PROSE` — mais dans un
+   **littéral de chaîne**, que `stripComments` ne touche pas, exactement comme la garde `CoastFIRE`
+   du lot précédent. Deux fois la même classe en deux lots : le remède est toujours côté MOTIF
+   (exiger un identifiant collé à la parenthèse distingue l'appel du texte), jamais côté lecteur.
+2. **Un ticket qui pose son propre arbitrage l'a déjà pré-tranché par ses chiffres.** Ceux-ci
+   n'étaient pas des mesures mais une estimation, et le ticket ne le disait pas. Re-mesurer coûte
+   quelques minutes ; hériter d'un dénominateur faux coûte la décision.
+3. **La preuve que le motif étroit suffit se fait par PERTURBATION, pas par raisonnement** : remettre
+   le motif large fait rougir le test de prose ET le compte de `childrenReee.ts::18`, avec le message
+   qui NOMME l'occurrence en cause. Le garde explique alors lui-même pourquoi il est étroit.

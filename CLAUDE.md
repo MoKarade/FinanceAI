@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 660 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 663 tests** Vitest
 (421 fichiers de test, mesuré le 2026-08-22). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -235,6 +235,14 @@ n'est pas réécrire un récit.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
+- En élargissant un détecteur, la métrique n'est pas « combien de résultats PERTINENTS » mais
+  « combien que RIEN d'autre ne couvrait » : le motif large sortait 16 clés fiscales, dont 14 étaient
+  les ÂGES de la table FERR déjà décrits par les 24 entrées de TAUX — fiscales, neuves, et protégeant
+  zéro. Le motif étroit rendait 100 % de la protection pour 42 % des entrées. Se répond par un grep de
+  l'inventaire AVANT d'écrire une entrée. Et élargir un motif importe ses faux positifs : `/[(,]$/`
+  relevait « (18 ans) » dans un MESSAGE utilisateur — `SCAN-QUI-MATCHE-LA-PROSE` dans un littéral de
+  CHAÎNE, hors de portée de `stripComments`, deuxième fois en deux lots
+  (`COMPTER-LES-CLES-N-EST-PAS-COMPTER-LA-PROTECTION`).
 - Trier une constante par ce qu'elle ATTEINT, jamais par la SYNTAXE sous laquelle on l'a rencontrée :
   un ticket XS groupait « trois littéraux en dur » dont l'un pilotait une **fonction objectif**
   (`useSmithManoeuvre` est dans l'espace de recherche de stratégies → 343 335 $ d'amplitude, conseil

@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-22 (suite 138) — `[FISC-GUARD-ARGUMENT]` + `[FISC-GUARD-BENIGN-60]` : le bon dénominateur
+> Les deux tickets exigeaient d'être livrés ENSEMBLE, et ils avaient raison : le `60` d'anticipation
+> de la RRQ était caché **deux fois**, par l'exemption `BENIGN` ET par sa position d'argument.
+> ⚠️ **L'arbitrage du ticket était faux — et mon premier contre-arbitrage aussi.** Le ticket annonçait
+> « ~1 clé fiscale pour ~15 de bruit ». Re-mesuré, le motif large `/[(,]$/` rend **26 clés dont 16
+> fiscales** : de quoi croire l'arbitrage renversé. Or **14 de ces 16 sont les ÂGES de la table FERR**,
+> dont le fait est déjà porté par les 24 entrées de TAUX — fiscales, neuves comme clés, et protégeant
+> **zéro**. Le motif retenu `/\w\($/` (1er argument d'un APPEL) rend **11 clés + 3 comptes** et attrape
+> **les deux seuls barèmes non protégés** : l'âge 18 de début de la période cotisable RRQ et la borne
+> 60. **100 % de la protection neuve pour 42 % des entrées.**
+> Il évite aussi un faux positif que le motif large importait : « (18 ans) » dans un MESSAGE
+> utilisateur — `SCAN-QUI-MATCHE-LA-PROSE` dans un littéral de CHAÎNE, hors de portée de
+> `stripComments`, **deuxième fois en deux lots**.
+> 3 tests neufs, **3 perturbations prouvées rouges** (position retirée · `60` remis dans BENIGN ·
+> motif large remis → le garde NOMME lui-même l'occurrence de prose fautive).
+> Gate vert : **4 663 tests / 421 fichiers**.
+> ⚠️ Effet de bord assumé : `npm install` a inscrit `engines: node 20.x` dans `package-lock.json`
+> (rattrapage de `[ENV-NODE-NON-DECLARE]`, jamais régénéré depuis) — 3 lignes, gardées.
+>
 > ## 🟢 Session 2026-08-22 (suite 137) — `[CONSTANTES-MOTEUR-NON-SOURCEES]` : trier par PORTÉE, pas par syntaxe
 > Ticket étiqueté **XS / FAIBLE** — « trois littéraux en dur ». La mesure a montré qu'il groupait des
 > enjeux **incomparables**, et qu'un 4e site manquait à sa liste (le multiple 25× existait en DEUX

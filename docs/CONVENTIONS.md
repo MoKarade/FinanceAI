@@ -5562,3 +5562,33 @@ d'entrée n'a pas seulement retiré la ligne « fichier inutilisé ». L'export 
 son consommateur n'était pas analysé. Un point d'entrée manquant ne cache pas un fichier : il cache
 tout un SOUS-GRAPHE, et chaque nœud de ce sous-graphe produit ses propres faux positifs. Vérifier
 l'effet en REJOUANT l'outil, pas en supposant que le correctif ne touche que la ligne visée.
+## Leçon du lot « limites consignées » — 2026-08-22
+
+### `UN-ECART-CHIFFRE-SANS-SA-CAUSE-INVITE-A-LE-CORRIGER`
+
+Deux tickets demandaient de consigner une approximation fiscale, l'un portant même la consigne
+explicite « ne PAS corriger à l'aveugle ». En ouvrant `FISCAL_REFERENCE.md` §4, surprise : les deux
+écarts y étaient **déjà chiffrés** (« branche ACTIVE : 69 à 1 130 $ », « couple inégal :
+−345,72 $ »). Le travail semblait donc fait.
+
+Il ne l'était pas, et ce qui manquait est précisément ce qui protège : le **mécanisme**. Un écart
+chiffré mais inexpliqué se lit comme un défaut qu'on n'a pas eu le temps de corriger — jamais comme
+une approximation assumée. Le lecteur suivant, voyant un nombre et aucune raison, corrige. Or ici
+l'alignement naïf du second écart DÉPLACERAIT le biais au lieu de le fermer (son signe dépend du
+profil) et re-baserait les goldens.
+
+**Règle générale** : consigner une limite, ce n'est pas écrire son montant — c'est écrire *pourquoi
+elle existe*, *ce qu'elle coûte*, et *ce qui se passerait si on la « corrigeait »*. Le montant seul
+est une invitation ; la cause est une protection. Corollaire pour la garde qui l'accompagne : elle
+doit viser la CAUSE (les mots qui expliquent), pas le nombre — ancrer une borne au dollar dans un
+test en ferait une bombe au premier changement d'indexation, et le nombre n'est pas ce qui empêche
+la correction à l'aveugle.
+
+**Corollaire, sur la borne elle-même** : le ticket avançait « ~1 153 $/adulte/an ». Re-mesuré, je
+trouve **1 052,51 $** — et surtout, la valeur dépend d'une hypothèse que le ticket ne nommait pas :
+le plafond de cotisation retenu. À 18 % du brut + 8 000 $ CELIAPP (droits de l'année), c'est
+1 052,51 $ ; avec un **rattrapage de droits REER accumulés** — parfaitement légal et courant à
+65 ans — j'ai mesuré **1 482,78 $**. Une borne sans son hypothèse n'est pas approximative, elle est
+FAUSSE : elle sera citée comme un maximum alors qu'elle n'en est pas un. Écrire les deux chiffres et
+l'hypothèse qui les sépare coûte deux lignes (`ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE`,
+appliqué ici au chiffre d'un TICKET : un ticket n'est pas une source, même quand il dit « MESURÉ »).

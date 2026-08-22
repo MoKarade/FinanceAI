@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-22 (suite 135) — Deux limites fiscales CONSIGNÉES (pas corrigées)
+> Les deux tickets demandaient de DOCUMENTER une limite assumée, l'un avec « ne PAS corriger à
+> l'aveugle ». Le vrai manque n'était pas le chiffre — les deux écarts étaient DÉJÀ en §4 (« 69 à
+> 1 130 $ », « −345,72 $ ») — mais leur MÉCANISME, nommé nulle part : un écart chiffré sans cause
+> invite le lecteur suivant à le « corriger ».
+> `[TAXDEC-BANDE-ACTIVE-BASE-BRUTE]` : base BRUTE vs base NETTE des déductions.
+> ⚠️ **Borne RE-MESURÉE, pas recopiée** : le ticket disait « ~1 153 $ », je mesure
+> **1 052,51 $/adulte/an** (balayage 20-160 k$, cotisation au plafond ANNUEL 18 % + 8 000 $ CELIAPP).
+> ⚠️ **Une borne sans son hypothèse est fausse** : avec rattrapage de droits REER (légal, courant à
+> 65 ans), l'écart monte à **1 482,78 $** mesuré. Les deux chiffres et l'hypothèse sont écrits.
+> `[TAXDEC-SPLIT-EGAL-VS-PERUSER]` : crédit érodé par PERSONNE vs bande répartie à parts ÉGALES.
+> Approximation PRÉ-EXISTANTE, signe dépendant du profil → l'aligner naïvement DÉPLACERAIT l'écart
+> et re-baserait les goldens. Interdiction écrite noir sur blanc.
+> Garde `taxDecemberLimitesConsignees.test.ts` : vérifie que la CAUSE et ses hypothèses sont
+> écrites, **sans figer les bornes au dollar** (une borne se re-mesure ; l'ancrer serait une bombe).
+> Perturbations : section supprimée → 5 rouges, hypothèse retirée → 1 rouge.
+> Gate vert : **4 648 tests / 419 fichiers**.
 > ## 🟢 Session 2026-08-21 (suite 134) — Dette XS : deux angles morts qui rendaient le code INTROUVABLE
 > Lot réuni par le SYMPTÔME, pas par la zone : dans les deux cas du code vivant paraissait mort, et
 > les deux avaient DÉJÀ produit une conclusion fausse écrite dans le dépôt.

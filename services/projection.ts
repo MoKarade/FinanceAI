@@ -34,6 +34,7 @@ import { computeGlidepathRates } from './projection/glidepathRates';
 import { processCashflowAllocation, type CashflowState } from './projection/cashflowAllocation';
 import { processRealEstate, type RealEstateState } from './projection/realEstateMonth';
 import { buildMonthlyDataPoint } from './projection/monthlyOutput';
+import { FIRE_TARGET_MULTIPLE } from './projection/modelAssumptions';
 import { computeRawNetWorth } from './projection/netWorth';
 import { applyMonthlyGrowth } from './projection/growthApplication';
 import { buildSeededRng, computeHistoricalContributionRoom, computeRrqAdjustment, computeIncomeBaseline, computeScenarioOverrides, makeSmileLifestyleFactor } from './projection/setupSimulation';
@@ -359,9 +360,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         : baseMonthlyExpenses;
     const effectiveBaseExpenses = projection.useTheoretical ? (projection.theoreticalExpenses || 4000) : adjustedRealExpenses;
     const fireTargetAnnual = effectiveBaseExpenses * 12;
-    // Règle des 4% (Trinity Study, 1998) : on peut retirer 4%/an d'un
-    // portefeuille sans l'épuiser → capital cible = dépenses annuelles × 25.
-    const fireTargetNetWorth = fireTargetAnnual * 25;
+    // Règle des 4 % (Trinity Study, 1998) — justification et source unique du multiple :
+    // `services/projection/modelAssumptions.ts`.
+    const fireTargetNetWorth = fireTargetAnnual * FIRE_TARGET_MULTIPLE;
 
     // FIX cycle 2 TS reviewer: type explicite pour éviter inférence `null` (cascade strict)
     let month1ActionPlan: { monthlyCashflow: number; strategy: AllocationStrategy } | null = null;

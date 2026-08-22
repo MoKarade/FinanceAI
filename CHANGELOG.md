@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-22 (les hypothèses cachées du moteur ont enfin un nom)
+
+- Quatre nombres décidaient de tes projections sans jamais être nommés ni expliqués : le taux de la
+  marge de crédit du levier « Smith Manoeuvre », la croissance supposée du CoastFIRE, le revenu d'un
+  emploi d'appoint, et le multiple de la règle des 4 %. Ils sont désormais regroupés, nommés et
+  documentés — avec, pour chacun, la mesure de ce qu'il change réellement.
+- **Découverte importante, remontée à toi plutôt que corrigée** : le taux de la marge Smith est figé
+  à 5 %/an et ne suit pas ton taux hypothécaire. Comme l'app teste ce levier pour te recommander une
+  stratégie, ce taux figé oriente le conseil : mesuré sur 30 ans, le gain annoncé du levier passe de
+  +533 577 $ à +146 425 $ selon le taux retenu, et au-delà d'un certain seuil le levier devient
+  perdant. Rien n'est changé pour l'instant : c'est un choix qui te revient.
+
 ## [unreleased] — 2026-08-22 (un immeuble locatif saisi deux fois est maintenant signalé)
 
 - Un même immeuble locatif peut être déclaré à **deux endroits** — l'onglet Immobilier et

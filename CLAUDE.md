@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 653 tests** Vitest
-(420 fichiers de test, mesuré le 2026-08-22). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 660 tests** Vitest
+(421 fichiers de test, mesuré le 2026-08-22). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -235,6 +235,20 @@ n'est pas réécrire un récit.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
+- Trier une constante par ce qu'elle ATTEINT, jamais par la SYNTAXE sous laquelle on l'a rencontrée :
+  un ticket XS groupait « trois littéraux en dur » dont l'un pilotait une **fonction objectif**
+  (`useSmithManoeuvre` est dans l'espace de recherche de stratégies → 343 335 $ d'amplitude, conseil
+  INVERSÉ aux taux hauts) et deux alimentaient des champs publiés que **personne ne lit**. Les deux
+  questions qui reclassent : qui LIT le champ, et qui TRIE dessus ? Corollaires : la liste de sites
+  d'un ticket est incomplète par défaut (grep la VALEUR, pas le fichier cité — 25× existait en deux
+  copies), et « sourcer » ≠ « ranger dans `FISCAL_REFERENCE.md` » — y mettre une hypothèse de MODÈLE
+  lui donne l'autorité d'un texte de loi
+  (`UN-TICKET-QUI-GROUPE-PAR-LA-SYNTAXE-GROUPE-DES-ENJEUX-INCOMPARABLES`).
+  ⚠️ Corollaire de garde : une garde d'ABSENCE de consommateur matche la PROSE — et pas seulement
+  celle des commentaires. La mienne a rougi sur un **littéral de chaîne** (la `reason` d'un
+  inventaire), que `stripComments` laisse intact. Le remède est côté MOTIF, pas côté lecteur : ancrer
+  sur la forme d'un ACCÈS (`p.X`, `X?:`, déstructuration), garder le témoin trouvé par le MÊME motif
+  ancré, et perturber DEUX fois — vrai consommateur → rouge, simple mention → vert.
 - Dans un document-RÉCIT (`BACKLOG_ARCHIVE.md`, sessions passées de `HANDOVER.md`), un `replace`
   GLOBAL sur une valeur qui varie dans le temps (compteur de tests) **falsifie** les entrées
   précédentes — leur chiffre était vrai À LEUR DATE. Cibler la ligne du lot courant par index

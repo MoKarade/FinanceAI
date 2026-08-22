@@ -230,6 +230,16 @@ conjoint, au facteur RRIF de SON âge. Un montant, deux registres, deux règles.
 
 `NetWorth`, `Savings` (= `Income − Expenses`), `FireTarget`, `CoastFIRE`, `BaristaFIRE`.
 
+⚠️ **`CoastFIRE` et `BaristaFIRE` sont publiés mais lus par PERSONNE** (vérifié par balayage de
+`components/ hooks/ utils/ mcp/ services/aiChat/`, gardé par `tests/services/modelAssumptions.test.ts`).
+Leur contrat tient, leurs valeurs n'atteignent aucun écran. Deux conséquences pratiques : un
+correctif de leurs hypothèses ne changerait rien pour l'utilisateur, et « aucun test n'a bougé » ne
+prouverait rien à leur sujet. Les hypothèses en question — croissance supposée du CoastFIRE, revenu
+« barista » — sont nommées et documentées dans `services/projection/modelAssumptions.ts`.
+
+`FireTarget`, lui, est bel et bien consommé (jalon FIRE, classement de stratégies, contexte du chat) :
+c'est la contre-épreuve qui prouve que le balayage ci-dessus n'est pas simplement en panne.
+
 ### Inflation
 
 `ExpenseInflationImpact` ($/mois), `ExpenseInflationPct` (%/mois).

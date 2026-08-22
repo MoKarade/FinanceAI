@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-22 (suite 137) — `[CONSTANTES-MOTEUR-NON-SOURCEES]` : trier par PORTÉE, pas par syntaxe
+> Ticket étiqueté **XS / FAIBLE** — « trois littéraux en dur ». La mesure a montré qu'il groupait des
+> enjeux **incomparables**, et qu'un 4e site manquait à sa liste (le multiple 25× existait en DEUX
+> copies anonymes). Les quatre nombres sont nommés dans `services/projection/modelAssumptions.ts`.
+> ⚠️ **PAS dans `FISCAL_REFERENCE.md`** : ce sont des hypothèses de MODÈLE, qu'aucune autorité ne
+> publie — les y ranger leur prêterait l'autorité d'un texte de loi.
+> 🔴 **Le vrai résultat est une DÉCISION remontée à Marc (`[SMITH-HELOC-TAUX-FIGE]`)** : le taux de la
+> marge du levier Smith est figé à 5 % et ne suit pas le taux hypothécaire — or `useSmithManoeuvre`
+> est dans l'espace de recherche de stratégies, donc ce nombre décide de ce que l'app RECOMMANDE.
+> Mesuré sur 30 ans : gain du levier **+533 577 $ (marge 3 %) → +146 425 $ (marge 10 %)**, soit
+> **343 335 $ d'amplitude**, et à 10 % la succession passe SOUS le scénario sans levier — **le conseil
+> s'inverse**. Rien n'a été changé au comportement : le gel est GARDÉ et documenté.
+> À l'opposé, `CoastFIRE`/`BaristaFIRE` sont publiés au contrat et lus par **personne** (mesuré) :
+> leur incohérence est réelle et sa portée est nulle → `[COASTFIRE-CROISSANCE-FIGEE]`, XS.
+> 7 tests neufs, **3 perturbations prouvées rouges** (multiple nu restauré ; marge qui suit
+> l'hypothèque → 297 % d'écart contre une borne à 1 % ; consommateur `CoastFIRE` ajouté).
+> Gate vert : **4 660 tests / 421 fichiers**.
+>
 > ## 🟢 Session 2026-08-22 (suite 136) — `[W5-DOUBLE-SAISIE-LOCATIF]` : un immeuble comptable deux fois
 > Ticket marqué « [À vérifier] » → INSTRUIT avant tout code. **Défaut réel** : un locatif peut être
 > saisi dans DEUX écrans sans lien (onglet Immobilier `rentalIncomeMonthly` → barème RÉEL ;

@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 151) — `[MC-LABEL-FROZEN]` : un résultat gelé porte ses métadonnées
+> Le libellé « Monte Carlo (N itér.) » lisait la CONFIG vivante alors que `results` peut être gelé →
+> il annonçait un nombre qui n'avait pas servi. Le compte voyage désormais avec le résultat :
+> `MonteCarloResult.iterationsRun` = **`allRuns.length`** (ce qui a tourné, pas le paramètre
+> demandé), propagé en `mcIterationsRun`, lu par `mcSublabel`.
+> ⚠️ Troisième cas ajouté, absent du ticket : résultat SANS compte → « Monte Carlo » **sans chiffre**,
+> jamais le nombre emprunté à la config (no-fake-data).
+> 7 tests, dont le compteur moteur vérifié par DEUX moitiés (champ publié + nombre d'appels
+> observés). **2 perturbations rouges.**
+> Gate vert (relancé après rebase sur #717) : **4 734 tests / 431 fichiers**.
+> Gate vert : **4 727 tests / 430 fichiers**.
+>
 > ## 🟢 Session 2026-08-24 (suite 150) — `[A11Y-FUTUR-DETAIL-FOCUS-TRAP]` : un hook, trois dialogues
 > Le ticket disait « reprends le patron déjà présent deux fois ». ⚠️ **Les deux copies avaient déjà
 > divergé** : `Modal.tsx` liste `select`/`textarea` parmi les éléments focusables, `SyncConflictModal`

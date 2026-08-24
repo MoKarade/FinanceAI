@@ -184,6 +184,10 @@ export interface ProjectionResult {
      *  par le FVI quand MC tourne (V65) — pour un verdict de soutenabilité, utiliser CE champ. */
     survivalRatePct?: number | null;
     fvi?: number | null;
+    /** [MC-LABEL-FROZEN] Itérations Monte Carlo réellement exécutées pour CE résultat. Absent quand
+     *  le MC n'a pas tourné, ou pour un résultat calculé avant ce lot : l'UI doit alors afficher
+     *  « Monte Carlo » SANS chiffre plutôt qu'un nombre lu ailleurs (no-fake-data). */
+    mcIterationsRun?: number | null;
     expertMetrics?: {
         swr: number;
         taxLeakage: number;

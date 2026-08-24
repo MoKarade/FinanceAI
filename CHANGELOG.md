@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-24 (le nombre de simulations affiché correspond au calcul montré)
+
+- Sous « Taux de succès », la mention « Monte Carlo (N itér.) » lisait le réglage **courant** :
+  changer le nombre de simulations sans relancer la projection faisait afficher un chiffre qui
+  n'avait pas servi au résultat à l'écran. Le nombre affiché est désormais celui du calcul montré.
+- Si ce nombre n'est pas connu (résultat calculé avant cette version), la mention s'affiche
+  simplement « Monte Carlo », sans chiffre — plutôt qu'un nombre crédible mais faux.
 ## [unreleased] — 2026-08-24 (le panneau de détail retient enfin le clavier)
 
 - Dans le panneau « Détail complet » de la courbe Futur, la touche Tab **sortait du panneau** et

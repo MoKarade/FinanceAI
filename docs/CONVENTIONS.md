@@ -6081,10 +6081,19 @@ positif).
 ### `LE-GATE-N-EST-PAS-LANCE-SI-LE-HOOK-N-EST-PAS-INSTALLE` — 2026-08-24
 
 Le dépôt fournit `scripts/hooks/commit-gate.mjs` et `CLAUDE.md` §5 dit « avant CHAQUE commit (hook
-`commit-gate`) ». Dans le conteneur de session distante, ce hook **n'est pas branché** :
-`git config core.hooksPath` est vide et `.git/hooks/` ne contient que les `.sample`. `git commit`
-n'exécute donc rien du tout — et il n'y a aucun message pour le dire, puisque c'est précisément
-l'absence de hook.
+`commit-gate`) ». Dans le conteneur de session distante, ce gate **ne s'exécute pas** : les commits
+passent en quelques secondes là où le gate complet prend une dizaine de minutes, et une erreur de
+typage a traversé un commit pour n'être vue qu'en CI.
+
+⚠️ **CORRECTION du 2026-08-24, même journée** : la première version de cette leçon donnait la
+mauvaise CAUSE. J'avais écrit « `core.hooksPath` est vide et `.git/hooks/` ne contient que les
+`.sample` » — vrai, mais hors sujet : `commit-gate.mjs` n'a **jamais** été un hook git. C'est un hook
+**PreToolUse de Claude Code**, déclaré dans `.claude/settings.json` avec `matcher: "Bash"`, qui lit
+le JSON de l'appel d'outil sur son entrée standard et rend `exit 2` pour bloquer. Chercher dans
+`.git/hooks` ne pouvait donc RIEN prouver — le constat était juste par accident. La conclusion
+opératoire ne change pas (ici, le gate doit être lancé à la main), mais une cause fausse écrite dans
+ce fichier aurait envoyé la prochaine session réparer une plomberie qui n'existe pas
+(`ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE`, versant mécanisme).
 
 Ce qui l'a révélé : une PR verte en local, ROUGE en CI sur
 `TS2459: 'AppState' … is not exported`. La cause immédiate est un mauvais chemin d'import dans un
@@ -6299,3 +6308,39 @@ carte centrée. C'est honnête, mais l'étape décrit encore un contrôle que l'
 lui-même. L'alternative — que le tour ouvre le groupe — défait un repli VOLONTAIRE et couple les
 étapes à l'état de la nav : c'est une décision d'UX, elle est routée en ticket
 (`[TOUR-STEP-GROUPE-REPLIE]`) plutôt que tranchée en passant.
+
+---
+
+### `UNE-GARDE-DE-CABLAGE-DOIT-LIRE-L-INITIALISEUR-PAS-LA-LIGNE` — 2026-08-24
+
+Lot `[GATE-RELATED-RELIABILITY]`. Le correctif ajoute une liste de tests au gate ciblé ; la garde
+devait vérifier que cette liste est **utilisée**, pas seulement calculée — c'est exactement le défaut
+que le ticket décrivait côté `vitest related` (un test qui existe et qu'on ne lance pas).
+
+Trois versions, deux vacueuses, chacune démasquée par la MÊME perturbation
+(`const TOUJOURS = [...SCAN_GUARD_TESTS]; void TESTS_HOMONYMES;`) :
+
+1. `expect(src).toMatch(/TESTS_HOMONYMES/)` — verte : le symbole existe toujours, en pure décoration.
+   C'est `SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE`, re-commis.
+2. Bornée à la LIGNE de `const TOUJOURS` — encore verte : la perturbation tient sur cette ligne.
+   Une borne « jusqu'au `\n` » suppose une mise en forme, et la mise en forme n'est pas une garantie.
+3. Bornée à l'**INITIALISEUR** (de `const TOUJOURS` au premier `;`) — rouge. C'est la seule portion
+   qui décrit ce qui est RÉELLEMENT composé.
+
+**La règle** : une garde de câblage lit l'expression qui PRODUIT la valeur, jamais un voisinage
+textuel. Et la perturbation ne se choisit pas « facile » : celle qui compte est la plus PROCHE du
+défaut réel — ici « je calcule et j'oublie de m'en servir », qui laisse le symbole intact.
+
+⚠️ Corollaire de structure, découvert en essayant : `commit-gate.mjs` **lit stdin au chargement**
+(c'est un hook PreToolUse, il reçoit le JSON de l'appel d'outil). L'importer depuis un test BLOQUE le
+processus, en attente d'une entrée qui ne vient jamais. Une logique qu'on veut tester se met dans un
+module SANS effet de bord — `scripts/hooks/lib/testsHomonymes.mjs` — et le hook l'importe. Le même
+geste que pour `scripts/lib/ctaContrast.ts`, pour la même raison : ce qui n'est pas importable n'est
+pas testable.
+
+⚠️ Et le résultat principal du lot n'est pas le correctif mais la MESURE : le symptôme du ticket
+(un test homonyme non sélectionné) **ne se reproduit plus** — 72 et 87 fichiers sélectionnés, cibles
+incluses, avec la forme exacte de la commande. On ne clôt pas pour autant sur « ça marche
+maintenant » : la cause reste inconnue, donc on rend la classe impossible là où c'est vérifiable,
+plutôt que de parier sur sa disparition (`UN-FLAKE-NON-REPRODUIT-SE-SOLDE-EN-RENDANT-SA-PROCHAINE-OCCURRENCE-LISIBLE`,
+pris en amont : ici, la prochaine occurrence n'aurait plus d'effet).

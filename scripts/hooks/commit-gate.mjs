@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // PreToolUse (Bash) : avant tout `git commit`, exige typecheck + tests (ciblés) + build verts. exit 2 = bloque.
 import { readFileSync, existsSync } from 'node:fs';
+import { testsHomonymes } from './lib/testsHomonymes.mjs';
 import { execSync } from 'node:child_process';
 
 let cmd = '';
@@ -42,8 +43,22 @@ const SCAN_GUARD_TESTS = [
   // readFileSync → invisible à `vitest related`, exactement le cas que ce bloc existe pour couvrir.
   'tests/components/chartPrivacyScan.test.ts',
 ].filter(existsSync);
+// ⚠️ [GATE-RELATED-RELIABILITY 2026-08-24] Le test HOMONYME est ajouté EXPLICITEMENT.
+//
+// L'incident d'origine (PR #594, 2× dans la même PR) : `services/projection/monthlyEvents.ts` stagé,
+// et `tests/services/monthlyEvents.test.ts` NON sélectionné par `vitest related` — l'échec n'a été
+// vu qu'en CI. Re-mesuré le 2026-08-24 sur Vitest 4.1.8, avec la forme EXACTE de cette commande
+// (guillemets simples, un puis deux fichiers stagés) : la sélection contient bien le test homonyme
+// (72 puis 87 fichiers). Le symptôme ne se reproduit donc plus, et sa cause reste INCONNUE.
+//
+// Plutôt que de clore sur « ça marche maintenant », on rend la classe impossible là où elle est
+// vérifiable : quand un module stagé a un test qui porte SON nom, ce test est lancé, que le graphe
+// d'imports l'ait retrouvé ou non. Quelques secondes de plus, et aucune hypothèse sur le pourquoi.
+// (Même geste que `SCAN_GUARD_TESTS` ci-dessus, pour une autre cause.)
+const TESTS_HOMONYMES = testsHomonymes(sourceFiles).filter(existsSync);
+const TOUJOURS = [...new Set([...SCAN_GUARD_TESTS, ...TESTS_HOMONYMES])];
 const testCmd = sourceFiles.length > 0
-  ? `npx vitest related --run ${sourceFiles.map(f => `'${f}'`).join(' ')} && npx vitest run ${SCAN_GUARD_TESTS.join(' ')}`
+  ? `npx vitest related --run ${sourceFiles.map(f => `'${f}'`).join(' ')} && npx vitest run ${TOUJOURS.join(' ')}`
   : 'npm run test';
 
 for (const [name, c] of [['typecheck','npm run typecheck'],['tests (affectés)', testCmd],['build','npm run build']]) {

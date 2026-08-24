@@ -26,7 +26,7 @@ import {
     type RealEstateCtx,
     type PropertyStateMutable,
 } from '../../services/projection/realEstateMonth';
-import { FIRE_TARGET_MULTIPLE } from '../../services/projection/modelAssumptions';
+import { FIRE_TARGET_MULTIPLE, smithHelocAnnualRate } from '../../services/projection/modelAssumptions';
 import type { RealEstateGoal } from '../../types';
 
 const RACINE = resolve(__dirname, '../../');
@@ -74,8 +74,14 @@ function interetMargeSelonTauxHypo(tauxHypo: number): { interet: number; dette: 
     return { interet: state.smithInterestDeductibleYear, dette: state.smithManoeuvreDebt };
 }
 
-describe('[CONSTANTES-MOTEUR-NON-SOURCEES] 1 — le taux de la marge Smith est FIGÉ (limite assumée)', () => {
-    it('l’intérêt de marge ne suit PAS le taux hypothécaire, même de 3 % à 12 %', () => {
+describe('[CONSTANTES-MOTEUR-NON-SOURCEES] 1 — le taux de la marge Smith SUIT le prêt (limite LEVÉE)', () => {
+    // ⚠️ CETTE GARDE A ÉTÉ INVERSÉE le 2026-08-24, et c'est le comportement attendu d'un test de
+    // LIMITE. Elle affirmait « l'intérêt de marge ne suit PAS le taux hypothécaire » — c'était vrai,
+    // documenté, et assumé tant que personne n'avait tranché. Marc a tranché
+    // (`[SMITH-HELOC-TAUX-FIGE]` : « la marge suit l'hypothèque ») : la garde devient donc l'exact
+    // opposé, au même endroit, plutôt que d'être supprimée. Un test de limite qui disparaît laisse
+    // croire que la limite n'a jamais existé ; inversé, il raconte la décision.
+    it('l’intérêt de marge SUIT le taux hypothécaire, de 3 % à 12 %', () => {
         const bas = interetMargeSelonTauxHypo(3);
         const haut = interetMargeSelonTauxHypo(12);
 
@@ -85,27 +91,35 @@ describe('[CONSTANTES-MOTEUR-NON-SOURCEES] 1 — le taux de la marge Smith est F
         expect(bas.dette, 'la dette de marge doit avoir crû au-delà des 120 000 $ de départ')
             .toBeGreaterThan(120_000);
 
-        // MESURÉ : 503,74 $ à 3 % contre 500,89 $ à 12 %, soit 0,57 % d'écart — et ce résidu ne
-        // vient PAS du taux de la marge, mais du capital remboursé du mois (`principalPaid`), qui
-        // s'ajoute à la dette juste avant le calcul de l'intérêt.
-        const ecartRelatif = Math.abs(haut.interet - bas.interet) / bas.interet;
-        expect(ecartRelatif).toBeLessThan(0.01);
+        // AVANT ce lot, la borne était `< 1 %` : l'intérêt ne bougeait quasiment pas entre 3 % et
+        // 12 % d'hypothèque (503,74 $ contre 500,89 $), et le résidu ne venait même pas du taux mais
+        // du capital remboursé du mois. C'était la PREUVE du gel.
+        // MAINTENANT, la marge vaut hypothèque + 2 points : elle passe de 5 % à 14 % sur ce balayage,
+        // soit un rapport de 2,8× sur l'intérêt. La borne s'inverse et devient un PLANCHER.
+        const rapport = haut.interet / bas.interet;
+        expect(rapport, `la marge ne suit pas : ${bas.interet.toFixed(2)} $ à 3 % contre ${haut.interet.toFixed(2)} $ à 12 %`)
+            .toBeGreaterThan(2);
 
-        // Le discriminant : une marge qui SUIVRAIT le taux hypothécaire ferait ×4 sur ce balayage.
-        // La borne ci-dessus (1 %) est donc à deux ordres de grandeur du comportement alternatif —
-        // elle ne peut pas passer par accident (`TOLERANCE-VIENT-DE-LA-FONCTION-TESTEE`).
-        const siLaMargeSuivait = bas.interet * (12 / 3);
-        expect(siLaMargeSuivait / bas.interet).toBeGreaterThan(3);
+        // Contre-épreuve chiffrée : le rapport observé doit rester COHÉRENT avec le modèle de taux
+        // (5 % → 14 %), pas seulement « grand ». Une borne haute large empêche ce test de devenir
+        // une bombe si l'écart de 2 points est un jour réglé autrement, tout en refusant l'absurde.
+        expect(rapport).toBeLessThan(4);
     });
 
-    it('la fixture partagée de `realEstateMonth.test.ts` ne PEUT PAS voir ce gel', () => {
-        // `UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR` : le `makeGoal` de ce fichier pose
-        // `mortgageRate: 5` — la valeur EXACTE de la constante de marge. Sous cette fixture, « taux
-        // figé à 5 % » et « taux qui suit l'hypothèque » sont strictement indiscernables. Ce n'est
-        // pas un reproche au fichier voisin : c'est la raison pour laquelle la garde ci-dessus doit
-        // vivre ici, avec sa PROPRE fixture à deux taux écartés.
+    it('l’ambiguïté de la fixture voisine a DISPARU avec le gel — et c’est mesurable', () => {
+        // ⚠️ HISTOIRE DE CE CAS, gardée parce qu'elle illustre `UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-
+        // PEUT-PAS-LE-VOIR`. Le `makeGoal` de `realEstateMonth.test.ts` pose `mortgageRate: 5` —
+        // exactement la valeur qu'avait la constante de marge figée. Sous cette fixture, « taux figé
+        // à 5 % » et « taux qui suit l'hypothèque » étaient STRICTEMENT indiscernables : le fichier
+        // voisin ne pouvait pas voir le gel, quoi qu'il teste.
+        //
+        // Depuis `[SMITH-HELOC-TAUX-FIGE]`, la coïncidence est rompue : à 5 % d'hypothèque la marge
+        // vaut 7 %. La fixture voisine DISCRIMINE donc désormais — et c'est justement elle qui a
+        // rougi au moment du changement, comme elle devait.
         const voisin = lire('tests/services/realEstateMonth.test.ts');
-        expect(voisin).toMatch(/mortgageRate:\s*5\b/);
+        expect(voisin, 'la fixture voisine porte toujours le taux de 5 %').toMatch(/mortgageRate:\s*5\b/);
+        expect(smithHelocAnnualRate(5), 'la marge ne coïncide PLUS avec le taux du prêt')
+            .not.toBeCloseTo(0.05, 10);
     });
 });
 

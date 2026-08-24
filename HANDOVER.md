@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 144) — `[SMITH-HELOC-TAUX-FIGE]` : la marge suit enfin le prêt
+> **Décision Marc du 24/08 : « la marge suit l'hypothèque ».** Le taux du levier Smith n'est plus un
+> littéral figé à 5 % : `smithHelocAnnualRate(goal.mortgageRate)` rend `hypothèque + 2 points`, avec
+> un plancher à 3 % pour le dossier sans taux saisi (sinon marge quasi gratuite = levier
+> artificiellement gagnant, le biais même qu'on corrige).
+> ⚠️ Ce taux n'alimente pas un affichage mais un CLASSEMENT (`useSmithManoeuvre` est dans l'espace de
+> recherche de stratégies) : il décide de ce que l'app RECOMMANDE. Le 5 % figé pouvait passer SOUS le
+> taux du prêt — impossible en pratique, flatteur dans le modèle, et flatteur PRÉCISÉMENT quand les
+> taux montent et que le levier devient dangereux.
+> **Mesuré** : gain du levier à 30 ans — hypothèque 3 % **+639 889 $ inchangé** (non-régression, la
+> marge y vaut 5 % comme avant) · 5 % **+489 760 → +413 769 $** · 8 % **+275 001 → +32 263 $**, soit
+> **242 738 $ d'avantage fantôme retirés**.
+> ⚠️ DIRECTION structurelle, MAGNITUDE assumée : les 2 points ne sont PAS un écart de marché relevé
+> quelque part, et le module le dit plutôt que d'inventer une source.
+> 7 tests neufs, 3 perturbations rouges. **Deux gardes existantes ont rougi, comme elles devaient** :
+> ma garde de LIMITE (« l'intérêt ne suit PAS le taux ») — **INVERSÉE, pas supprimée** : un test de
+> limite qui disparaît laisse croire que la limite n'a jamais existé — et le test voisin de
+> `realEstateMonth`, dont la fixture `mortgageRate: 5` coïncidait EXACTEMENT avec l'ancien taux figé
+> et ne discriminait donc rien. Elle discrimine maintenant.
+> ⚠️ Aucun golden n'a bougé, et c'est VÉRIFIÉ : `useSmithManoeuvre` est faux par défaut, seuls 2
+> fichiers de test l'activent, aucun golden ne l'exerce.
+> Gate vert : **4 691 tests / 425 fichiers** (après rebase sur #707).
 > ## 🟢 Session 2026-08-24 (suite 143) — `[GROSSFROMNET-CREDITS-65]` LIVRÉ (décision Marc : tout câbler)
 > Instruit d'abord, puis livré après arbitrage de Marc (« tout câbler, moteur inclus »).
 > `calculateGrossFromNet` accepte `ageOpts` (optionnel, défaut NEUTRE) et les **quatre** appelants de

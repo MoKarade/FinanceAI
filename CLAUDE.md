@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 684 tests** Vitest
-(424 fichiers de test, mesuré le 2026-08-24). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 691 tests** Vitest
+(425 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -242,6 +242,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   réfutations d'affilée créent une attente de réfutation. Re-mesurer protège de la confiance aveugle
   dans les tickets, pas de la confiance aveugle dans ses propres mesures. Une mesure qui CONFIRME se
   publie autant qu'une réfutation (`NE-PAS-DECLARER-UN-TICKET-FAUX-SANS-COMPARER-LA-MEME-GRANDEUR`).
+- Un **test de LIMITE s'INVERSE, il ne se supprime pas** : quand Marc a levé le gel du taux de marge
+  Smith, la garde qui affirmait « l'intérêt ne suit PAS le taux » est devenue son exact opposé au même
+  endroit, avec son histoire écrite dedans. Supprimée, elle laisserait croire que la limite n'a jamais
+  existé — or c'est cette trace qui empêche de la re-geler « pour simplifier ». Corollaire : une
+  fixture qui COÏNCIDE avec la valeur figée (`mortgageRate: 5` contre une marge figée à 5 %) ne
+  discrimine rien, et la levée du gel le prouve en la faisant enfin rougir
+  (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`).
 - « Le paquet runtime est-il utilisé ? » et « son paquet de TYPES sert-il à quelque chose ? » sont
   deux questions DISTINCTES : `adm-zip` est bien vivant (`mcp/pack.mjs`), mais ce consommateur est un
   `.mjs` que `allowJs: true` SANS `checkJs` n'a jamais typé — les types ne servaient à personne. Se

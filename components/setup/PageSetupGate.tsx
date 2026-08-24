@@ -275,10 +275,17 @@ export const RequirementCard: React.FC<{ req: Requirement; currentTab?: Tab }> =
 
             {ImportComp && (
                 <div className="space-y-3">
-                    <div className="flex items-center gap-3 text-tiny uppercase tracking-widest text-ink-500" aria-hidden="true">
-                        <span className="h-px flex-1 bg-white/10" /> ou importer <span className="h-px flex-1 bg-white/10" />
+                    {/* [A11Y-CHART-HINT-HIDDEN] Le bloc entier était `aria-hidden` : les deux FILETS
+                        sont décoratifs, mais « ou importer » porte le seul indice qu'il existe un
+                        chemin ALTERNATIF à la saisie manuelle. Masquer le tout supprimait donc une
+                        BIFURCATION, pas un ornement. Les filets restent cachés, le libellé nomme
+                        maintenant le groupe qu'il introduit. */}
+                    <div className="flex items-center gap-3 text-tiny uppercase tracking-widest text-ink-500">
+                        <span className="h-px flex-1 bg-white/10" aria-hidden="true" /> ou importer <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
                     </div>
-                    <ImportComp />
+                    <div role="group" aria-label="Ou importer">
+                        <ImportComp />
+                    </div>
                 </div>
             )}
         </div>
@@ -336,6 +343,11 @@ const FullSetupScreen: React.FC<{
                         <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden max-w-[10rem]">
                             <div className="h-full bg-primary rounded-full transition-[width] duration-300" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
                         </div>
+                        {/* [A11Y-CHART-HINT-HIDDEN] Masqué À BON DROIT : le `role="progressbar"`
+                            ci-dessus porte déjà `aria-label` + `aria-valuenow/min/max`. L'exposer
+                            ferait annoncer le compte DEUX fois. Un `aria-hidden` n'est ni bon ni
+                            mauvais en soi — il l'est quand un équivalent accessible existe, et c'est
+                            ça qu'il faut vérifier avant de le retirer. */}
                         <span className="text-meta text-ink-400 font-mono shrink-0" aria-hidden="true">{done}/{total} prêt{done > 1 ? 's' : ''}</span>
                     </div>
                     {onCreateInPage && (

@@ -10,6 +10,43 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Un `aria-hidden` se juge par ce qui existe à côté
+
+- [x] **`[A11Y-CHART-HINT-HIDDEN]`** — livré, mais **le ticket se trompait de défaut**, et c'est le
+  résultat principal du lot.
+  Il annonçait « du contenu instructionnel entièrement soustrait aux lecteurs d'écran » pour la
+  phrase d'aide du graphe Futur (`survol = jour · clic = fige…`). Vérifié : cette phrase est un
+  **DOUBLON** — le conteneur du graphe porte déjà un `aria-label` qui énonce les mêmes gestes. La
+  masquer est correct ; l'exposer ferait annoncer deux fois la même chose.
+  **Le vrai défaut était dans le CONTENU de cet `aria-label`** : il n'énonçait que des gestes de
+  POINTEUR (clic, molette, glisser) — inutilisables par qui ne pointe pas — et ne nommait JAMAIS
+  l'alternative textuelle qui existe pourtant juste après la courbe (`ChartDataTable` sr-only + liste
+  sr-only des jalons). On annonçait donc ce qu'un utilisateur clavier ne peut pas faire, et on lui
+  taisait ce qu'il peut faire. Le libellé renvoie maintenant à l'alternative et étiquette les gestes
+  « à la souris ».
+  ⚠️ **Le libellé a failli citer un titre INEXISTANT** : j'y avais écrit « le tableau *Données de la
+  projection* », alors que sa vraie légende est « Projection du patrimoine net et des comptes, jour
+  par jour » (et diffère au repli mensuel). Renvoyer vers un nom inventé aurait été le même mensonge
+  dans l'autre sens — le renvoi est donc descriptif, pas nominatif.
+  **2e site** (`components/setup/PageSetupGate.tsx`) : le séparateur « ou importer » était masqué
+  ENTIER. Les deux filets sont décoratifs, mais le libellé porte le seul indice qu'il existe un
+  chemin **alternatif** à la saisie manuelle — masquer le tout supprimait une BIFURCATION, pas un
+  ornement. Filets toujours cachés, libellé exposé, bloc d'import nommé (`role="group"`).
+  **3e site, VÉRIFIÉ CONFORME et consigné** : `{done}/{total} prêts` est masqué **à bon droit** — un
+  vrai `role="progressbar"` avec `aria-label` et `aria-valuenow/min/max` le porte déjà. Une garde
+  fige cette décision, sinon un prochain passage « corrigera » un masquage légitime.
+  6 tests, **3 perturbations prouvées rouges** (dont une sur le site conforme, dans le sens
+  « surcorrection »).
+
+Contexte d'origine :
+
+- [ ] **`[A11Y-CHART-HINT-HIDDEN]`** (S, a11y — audit #595) — la phrase d'aide du graphe Futur
+  (« survol = jour · clic = fige · molette = zoom », `FutureProjection.tsx` ~1311) est en
+  `aria-hidden="true"` : du contenu INSTRUCTIONNEL entièrement soustrait aux lecteurs d'écran,
+  pas un glyphe décoratif. Idem, en plus faible, le séparateur « ou importer » de
+  `PageSetupGate.tsx` ~271. Fournir l'équivalent `sr-only` (interactions clavier disponibles :
+  table de données, preset « Aujourd'hui ») au lieu de tout masquer. Préexistant au sweep #595.
+
 ## 2026-08-24 — Un résultat gelé porte enfin ses propres métadonnées
 
 - [x] **`[MC-LABEL-FROZEN]`** — le KPI « Taux de succès » annonçait « Monte Carlo (N itér.) » en

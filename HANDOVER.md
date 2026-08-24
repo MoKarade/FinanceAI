@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 152) — `[A11Y-CHART-HINT-HIDDEN]` : le ticket visait le mauvais défaut
+> ⚠️ **La phrase d'aide du graphe est masquée À BON DROIT** — c'est un DOUBLON de l'`aria-label` du
+> conteneur, l'exposer ferait annoncer deux fois. Le vrai défaut : cet `aria-label` n'énonçait que des
+> gestes de POINTEUR et taisait l'alternative textuelle qui existait déjà juste dessous
+> (`ChartDataTable` sr-only + jalons sr-only). Corrigé côté CONTENU du libellé.
+> ⚠️ J'ai failli y citer un titre INEXISTANT (« le tableau *Données de la projection* ») : la vraie
+> légende est autre, et varie jour/mois. Le renvoi est descriptif, pas nominatif.
+> 2e site : « ou importer » (`PageSetupGate`) masquait une BIFURCATION, pas un ornement → libellé
+> exposé, filets décoratifs toujours cachés, bloc d'import nommé.
+> 3e site du même motif, VÉRIFIÉ CONFORME et figé par une garde : `{done}/{total} prêts` est masqué
+> parce qu'un vrai `role="progressbar"` le porte.
+> 6 tests, **3 perturbations rouges** dont une dans le sens « surcorrection ».
+> Gate vert : **4 740 tests / 432 fichiers**.
+>
 > ## 🟢 Session 2026-08-24 (suite 151) — `[MC-LABEL-FROZEN]` : un résultat gelé porte ses métadonnées
 > Le libellé « Monte Carlo (N itér.) » lisait la CONFIG vivante alors que `results` peut être gelé →
 > il annonçait un nombre qui n'avait pas servi. Le compte voyage désormais avec le résultat :

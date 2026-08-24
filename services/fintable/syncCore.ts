@@ -49,8 +49,11 @@ export function decideCutoverDate(
 
 export interface AppliedPayloads {
     nextState: AppState;
+    /** Transactions RÉELLEMENT écrites — jamais la taille du payload (cf. `[FINTABLE-TXADDED-MENT]`). */
     transactionsAdded: number;
+    /** Vrai seulement si le solde a bougé — `applyCashBalance` ne fait RIEN sous 0,005 $ d'écart. */
     cashUpdated: boolean;
+    /** Les dettes dont au moins un champ a changé — une dette déjà à jour n'y figure pas. */
     debtsUpdated: string[];
     /** Un payload rejeté devient un avertissement LOCAL — jamais un silence, jamais une panne globale. */
     warnings: string[];
@@ -83,10 +86,31 @@ export function applyPayloadsIsolated(
 
     for (const doc of payloads) {
         try {
-            nextState = applyDocument(nextState, doc).nextState;
-            if (doc.kind === 'bank_statement') transactionsAdded += doc.transactions.length;
-            else if (doc.kind === 'cash_balance') cashUpdated = true;
-            else if (doc.kind === 'debt') debtsUpdated.push(doc.name);
+            // ⚠️ [FINTABLE-TXADDED-MENT] Compter ce qui a été ÉCRIT, jamais ce que le payload
+            // PROPOSAIT. `applyBankStatement` écarte les doublons, les montants aberrants et les
+            // lignes malformées : `doc.transactions.length` est un MAJORANT, pas une mesure —
+            // mesuré 3 annoncées / 0 écrites quand le recouvrement est total, c'est-à-dire dans le
+            // cas le PLUS fréquent d'une sync quotidienne. Un compteur qui ment sur une écriture
+            // est pire que pas de compteur : il fait croire que la donnée est arrivée.
+            const avant = nextState;
+            const { nextState: apres, changes } = applyDocument(avant, doc);
+            nextState = apres;
+            if (doc.kind === 'bank_statement') {
+                // Le delta de longueur EST la mesure : `applyBankStatement` ne fait qu'AJOUTER
+                // (`[...existing, ...added]`). `Math.max(0, …)` interdit qu'un futur producteur qui
+                // retirerait des lignes se compte comme un ajout NÉGATIF.
+                const ecrites = (nextState.transactions?.length ?? 0) - (avant.transactions?.length ?? 0);
+                transactionsAdded += Math.max(0, ecrites);
+            } else if (doc.kind === 'cash_balance') {
+                // `applyCashBalance` retourne l'état INCHANGÉ quand l'écart est sous 0,005 $ — le
+                // drapeau posé à `true` faisait afficher « Liquidités : mises à jour » (SystemView)
+                // pour une passe qui n'avait rien touché. `changes` est le registre de l'écriture.
+                cashUpdated = cashUpdated || changes.length > 0;
+            } else if (doc.kind === 'debt') {
+                // Même règle : `applyDebt` rend `changes: []` sur « valeurs déjà à jour ». Une dette
+                // listée comme « mise à jour » alors qu'elle n'a pas bougé est une fausse réussite.
+                if (changes.length > 0) debtsUpdated.push(doc.name);
+            }
         } catch (payloadErr) {
             const reason = payloadErr instanceof Error ? payloadErr.message : String(payloadErr);
             warnings.push(`Payload « ${doc.kind} » NON appliqué : ${reason}`);

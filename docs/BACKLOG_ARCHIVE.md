@@ -10,6 +10,32 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Les compteurs de la sync bancaire disent enfin ce qui a été écrit
+
+- [x] **`[FINTABLE-TXADDED-MENT]`** — `applyPayloadsIsolated` comptait `doc.transactions.length`,
+  la taille du PAYLOAD, alors qu'`applyBankStatement` écarte doublons, montants aberrants et lignes
+  malformées. Le compteur ment donc le plus fort **dans le cas nominal** d'une sync quotidienne
+  (recouvrement total : 3 annoncées, 0 écrites). Il compte désormais le **delta réel** de
+  `nextState.transactions`.
+  ⚠️ **Les deux compteurs VOISINS avaient la même faute** — trouvés en relisant la boucle plutôt que
+  la seule ligne du ticket : `cashUpdated` était posé à `true` même quand `applyCashBalance` ne
+  touche à rien (écart < 0,005 $ → état inchangé, `changes: []`), et `debtsUpdated` listait une
+  dette « déjà à jour ». Les deux sont **affichés** dans `SystemView` (« Liquidités : mises à jour /
+  inchangées »). Ils dérivent maintenant du registre d'écriture (`changes`).
+  ⚠️ L'en-tête de `mcp/runFintableSync.ts` AFFIRMAIT déjà la propriété absente (« ses compteurs
+  décrivent ce qui a réellement été appliqué ») : une doc qui décrit l'intention se lit comme une
+  garantie. Un seul correctif couvre les deux chemins — navigateur et serveur MCP partagent
+  `applyPayloadsIsolated`.
+  6 tests, dont les deux SENS pour le cash et pour la dette. **3 perturbations prouvées rouges.**
+
+Contexte d'origine :
+
+- [ ] **`[FINTABLE-TXADDED-MENT]`** (XS, MOYEN — MESURÉ, audit PR #649) — `transactionsAdded` compte
+  la longueur du PAYLOAD (`syncCore.ts`), pas les écritures réelles ; `applyBankStatement` rend
+  pourtant `added.length`. Mesuré : 3 rapportées / 0 écrites. Le toast « N transaction(s)
+  ajoutée(s) » est donc faux précisément là où le recouvrement est maximal — ironie : ce lot existe
+  pour corriger un compteur qui mentait et en laisse un autre qui ment davantage.
+
 ## 2026-08-24 — Deux trous a11y XS : cible tactile des sous-onglets, Échap sur le rail
 
 - [x] **`[A11Y-SUBTABS-TOUCH-TARGET]`** — les onglets faisaient **28 px** de haut (`py-1.5` = 12 px

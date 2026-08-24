@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 147) — `[FINTABLE-TXADDED-MENT]` : compter l'ÉCRITURE, pas l'intention
+> ⚠️⚠️ **LE HOOK `commit-gate` N'EST PAS INSTALLÉ dans le conteneur de session** : `scripts/hooks/`
+> contient bien `commit-gate.mjs`, mais `core.hooksPath` n'est pas posé et `.git/hooks/` ne contient
+> que les `.sample`. Autrement dit `git commit` **ne lance RIEN** ici — le gate doit être lancé À LA
+> MAIN (`npm run typecheck && npm run lint && npm run test && npm run build`) avant CHAQUE commit.
+> C'est ce trou qui a laissé passer une erreur de typage dans ce lot (un `import type { AppState }`
+> depuis `mcp/ingest/applyDocument` au lieu de `types.ts`) : `vitest` ne TYPE pas, donc la suite
+> était verte, et la CI a rougi au `tsc`. Corrigé, gate complet relancé vert.
+> `applyPayloadsIsolated` comptait la taille du PAYLOAD (`doc.transactions.length`) alors
+> qu'`applyBankStatement` filtre doublons et montants aberrants → 3 annoncées / 0 écrites dans le cas
+> NOMINAL d'une sync quotidienne. Compte désormais le delta réel de `nextState.transactions`.
+> ⚠️ **Relire la BOUCLE et pas la ligne du ticket a payé** : les deux compteurs voisins avaient la
+> même faute. `cashUpdated` était posé même quand `applyCashBalance` no-ope (< 0,005 $ d'écart), et
+> `debtsUpdated` listait une dette « déjà à jour » — or `SystemView` AFFICHE les deux. Ils dérivent
+> maintenant de `changes`, le registre de ce qui a été écrit.
+> ⚠️ L'en-tête de `mcp/runFintableSync.ts` affirmait déjà la propriété que le code n'avait pas.
+> Un seul correctif pour les deux chemins : navigateur et serveur MCP partagent la même fonction.
+> 6 tests (les DEUX sens pour cash et dette), **3 perturbations prouvées rouges**.
+> Gate vert : **4 708 tests / 427 fichiers**. Aucun test existant n'a bougé — vérifié, pas supposé :
+> le scénario de `runFintableSync.test.ts` fait VRAIMENT bouger le solde, donc son `cashUpdated: true`
+> reste vrai sous la nouvelle règle.
+>
 > ## 🟢 Session 2026-08-24 (suite 146) — deux tickets a11y XS : `[A11Y-SUBTABS-TOUCH-TARGET]` + `[A11Y-SIDEBAR-ESC]`
 > **Cible tactile** : les onglets de `SubTabs` faisaient 28 px (12 px de `py-1.5` + 16 px
 > d'interligne) contre 44 px de plancher WCAG 2.5.5 → classe `touch-target`, **une ligne pour trois

@@ -6431,3 +6431,43 @@ Deux garde-fous que ça impose :
 ⚠️ Et la mesure d'abord : le ticket disait le mécanisme « largement fermé » par un correctif
 antérieur. Vérifié en le reproduisant — il est bien vivant dès qu'un doublon échappe au classement.
 « Largement fermé » n'est pas « fermé », et c'est une reproduction qui le dit, pas une lecture.
+
+### `UN-TEST-QUI-PASSE-PAR-DETACHEMENT-PASSE-PAR-ACCIDENT` — 2026-08-24
+
+Le check requis « E2E (Playwright / Chromium) » a échoué **trois fois d'affilée** (une exécution
+et ses deux reprises) sur la PR #722, à `e2e/futurePinchZoom.spec.ts` : « le préset *Tout* doit
+avoir perdu son état actif » recevait `true`. Le diff de cette PR ne touchait ni le graphe ni le
+tactile, et le **rejeu du MÊME sha** est passé vert. Donc : pas une régression — mais surtout,
+pas une raison de se taire.
+
+**Ce que la mesure a dit.** Une sonde locale (3 exécutions, résultats identiques) a horodaté la
+bascule : juste après le `touchmove` à deux doigts, « Tout » est **encore actif** ; il perd sa
+classe **2,1 à 2,3 s plus tard** (2301 / 2124 / 2174 ms). Ce n'est pas une frame ratée : le hook
+planifie la nouvelle fenêtre en `requestAnimationFrame`, puis toute la série est re-tranchée et
+React re-rend — c'est du CALCUL.
+
+**Pourquoi ça passait quand même.** Le test lisait l'état **une seule fois, sans attendre**. Il ne
+passait que parce que, pendant ce recalcul, le bouton se DÉTACHE du DOM : Playwright re-tentait
+alors la résolution du localisateur et finissait par lire la classe d'APRÈS. Le sursis venait donc
+d'un effet de bord du re-rendu, pas de l'assertion. Le jour où le bouton ne se détache pas (runner
+chargé, ordonnancement différent), la lecture unique renvoie l'état d'avant et le test rougit —
+sur un diff qui n'a rien à voir.
+
+**Signal à reconnaître.** Un test qui lit un état APRÈS avoir déclenché quelque chose, sans jamais
+ré-échantillonner, ne teste pas ce qu'il annonce : il teste que la latence de l'outil dépasse la
+latence de l'application. Aucun des deux nombres n'est écrit nulle part, donc rien ne garantit
+l'inégalité — et quand elle s'inverse, l'échec accuse la PR en cours.
+
+**Les deux sens ne se corrigent PAS pareil.**
+- « L'état a CHANGÉ » → `expect.poll`, avec un budget dérivé de la mesure. Ré-échantillonner ne
+  peut que rendre le test plus fidèle.
+- « L'état n'a PAS changé » → surtout pas un `poll` (il serait satisfait par le premier
+  échantillon, c'est-à-dire par l'état d'avant), mais une lecture **après** le budget mesuré.
+  Sans ça, l'assertion reste vraie même pendant un zoom en train de se committer : elle passe
+  toujours, donc elle ne prouve rien.
+
+**Suite de `UN-FLAKE-NON-REPRODUIT-SE-SOLDE-EN-RENDANT-SA-PROCHAINE-OCCURRENCE-LISIBLE`** : ici le
+flake s'est laissé reproduire, non pas en le rejouant (6/6 verts en local), mais en **mesurant la
+grandeur dont il dépend**. Un flake qui refuse de se reproduire n'est pas un flake sans mécanisme :
+c'est un flake dont on n'a pas encore mesuré la course. Le nombre mesuré et le numéro du run sont
+écrits DANS le fichier de test — la prochaine occurrence s'expliquera d'elle-même.

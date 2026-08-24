@@ -280,6 +280,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   grandeur ABSENTE. ⚠️ `?? NaN` sur une valeur annulable transforme « pas de mesure » en « écart de
   valeur » et fait accuser le moteur : exiger la mesure AVANT de comparer, et le prouver en forçant
   l'absence (`UN-FLAKE-NON-REPRODUIT-SE-SOLDE-EN-RENDANT-SA-PROCHAINE-OCCURRENCE-LISIBLE`).
+- Un test E2E qui lit un état **une seule fois** après avoir déclenché quelque chose ne teste pas ce
+  qu'il annonce : il teste que la latence de l'OUTIL dépasse celle de l'app. `futurePinchZoom` ne
+  passait que parce que le bouton se DÉTACHE pendant le recalcul, forçant Playwright à re-résoudre —
+  la bascule mesurée met **2,1 à 2,3 s** (rAF + re-tranchage + rendu), pas une frame. Les deux sens
+  ne se corrigent pas pareil : « l'état a CHANGÉ » → `expect.poll` ; « l'état n'a PAS changé » →
+  lecture APRÈS le budget mesuré (un `poll` y serait satisfait par l'état d'avant, donc vacueux).
+  Et un flake qui refuse de se rejouer n'est pas sans mécanisme : c'est une COURSE non encore mesurée
+  (`UN-TEST-QUI-PASSE-PAR-DETACHEMENT-PASSE-PAR-ACCIDENT`).
 - En élargissant un détecteur, la métrique n'est pas « combien de résultats PERTINENTS » mais
   « combien que RIEN d'autre ne couvrait » : le motif large sortait 16 clés fiscales, dont 14 étaient
   les ÂGES de la table FERR déjà décrits par les 24 entrées de TAUX — fiscales, neuves, et protégeant

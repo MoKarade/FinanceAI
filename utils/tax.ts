@@ -742,6 +742,24 @@ const getIndexedBracketsForYear = (year: number, realDeflator: number = 1) => {
 };
 
 /**
+ * [TAXBRACKETVIZ-ANNEE] Paliers fédéraux et québécois INDEXÉS à `year` — la même table exactement
+ * que celle dont `calculateFiscalReport(gross, …, year)` tire son impôt.
+ *
+ * ⚠️ Exporté pour un usage d'AFFICHAGE (`TaxBracketViz`), et c'est précisément pour ça qu'il ne peut
+ * pas être une copie : dessiner des paliers 2026 sous un total calculé à l'année courante fabriquerait
+ * une incohérence VISIBLE entre des barres et leur propre somme. Le seul moyen sûr est que les deux
+ * lisent la MÊME source (`getIndexedBracketsForYear`, déjà mémoïsée) — ré-indexer côté composant
+ * serait `UNE-FORMULE-MONEY-CRITICAL-RECOPIEE-DIVERGE` au premier changement de règle d'indexation.
+ *
+ * Le `realDeflator` du moteur n'est délibérément PAS exposé : un écran montre des dollars NOMINAUX
+ * (ceux du talon de paie), pas des dollars réels. L'omettre ici est un choix, pas un oubli.
+ */
+export const bracketsForYear = (year: number): { fed: typeof FED_BRACKETS; qc: typeof QC_BRACKETS } => {
+    const { fed, qc } = getIndexedBracketsForYear(Number.isFinite(year) ? year : TAX_BASE_YEAR);
+    return { fed: fed as typeof FED_BRACKETS, qc: qc as typeof QC_BRACKETS };
+};
+
+/**
  * Plafond du 1er palier COMBINÉ (le plus restrictif QC/féd), indexé à `year` (×1,02/an, MÊME
  * indexation que l'impôt réel via getIndexedBracketsForYear). Sert à la récolte de gains
  * (remplir le palier bas en revenu NOMINAL) → cohérent avec le calcul d'impôt du moteur.

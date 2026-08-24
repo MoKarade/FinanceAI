@@ -107,12 +107,16 @@ export const Retirement: React.FC<RetirementProps> = ({
     // PV-5 / PH3 — `updateGoal` retiré avec les éditeurs (le revenu-retraite s'édite dans Profil).
 
     const baseNetAnnual = useMemo(() => config.users.reduce((sum: number, u) => sum + ((u.netSalary || u.salary || 0) * 12), 0), [config]);
+    // [TAXBRACKETVIZ-ANNEE] Une SEULE lecture de l'horloge pour tout l'écran : le brut déduit et les
+    // paliers affichés doivent parler de la même année, et deux `new Date()` séparés pourraient
+    // tomber de part et d'autre d'un 31 décembre.
+    const anneeFiscaleCourante = useMemo(() => new Date().getFullYear(), []);
     const baseGrossAnnual = useMemo(() => config.users.reduce((sum: number, u) => {
         if (u.grossSalary) return sum + (u.grossSalary * 12);
         const netAnnual = (u.netSalary || u.salary || 0) * 12;
         // [GROSSFROMNET-ANNEE-FIGEE] barème de l'année COURANTE, pas 2026 figé.
-        return sum + calculateGrossFromNet(netAnnual, new Date().getFullYear());
-    }, 0), [config]);
+        return sum + calculateGrossFromNet(netAnnual, anneeFiscaleCourante);
+    }, 0), [config, anneeFiscaleCourante]);
 
     const baseMonthlyExpenses = Math.max(0, (baseNetAnnual / 12) - calculatedMonthlySavings);
 
@@ -292,7 +296,11 @@ export const Retirement: React.FC<RetirementProps> = ({
                     <AssetLocationCard annualGrossIncome={baseGrossAnnual} />
 
                     {/* W4.1 — Tax bracket viz */}
-                    <TaxBracketViz annualGrossIncome={baseGrossAnnual} label="revenu actuel" />
+                    {/* [TAXBRACKETVIZ-ANNEE] MÊME année que celle qui a servi à déduire le brut
+                        ci-dessus (`calculateGrossFromNet(net, new Date().getFullYear())`) : c'est la
+                        PAIRE que le ticket avait laissée désaccordée. Passer l'une sans l'autre
+                        reproduirait `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`. */}
+                    <TaxBracketViz annualGrossIncome={baseGrossAnnual} label="revenu actuel" year={anneeFiscaleCourante} />
                 </div>
             </TabPanel>
 

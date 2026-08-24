@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 141) — `[TAXBRACKETVIZ-ANNEE]` : un biais qui COMPOSE
+> Paire recâblée : `TaxBracketViz` reçoit une année **REQUISE** (aucun défaut — un `= 2026` se périme
+> en silence, lire l'horloge dans le composant en ferait une bombe au 1er janvier) et l'utilise pour
+> les **barres ET le total**. Nouvel export `bracketsForYear` (`utils/tax.ts`) qui lit
+> `getIndexedBracketsForYear` — la source dont `calculateFiscalReport` tire son impôt, jamais une
+> copie. Côté `Retirement`, une SEULE lecture d'horloge alimente le brut déduit et les paliers.
+> ⚠️ **Le chiffre du ticket était faux, et sa nature aussi.** « 333 $ (0,4 %) dès 2027, visuellement
+> invisible » → classé FAIBLE. RE-MESURÉ : **+212 $ (1,0 %) en 2027, +874 $ (4,4 %) en 2030,
+> +2 069 $ (11,1 %) en 2035** à 86 968 $ ; **+5 095 $ à 200 000 $ en 2035**. L'écart COMPOSE à
+> ~2 %/an — ce n'est pas un biais fixe, et un point de mesure unique ne pouvait pas le dire.
+> 6 tests neufs, **3 perturbations prouvées rouges**, dont les DEUX demi-correctifs que le ticket
+> interdisait à juste titre (barres figées + total indexé, et l'inverse).
+> ⚠️ **Troisième récidive de `SCAN-QUI-MATCHE-LA-PROSE` dans la même session** : mon assertion
+> « une seule lecture de l'horloge » comptait sur la source BRUTE et trouvait 2 occurrences pour
+> 1 ligne de code — les deux autres étant les commentaires qui expliquent la règle. Désormais règle
+> mécanique : toute assertion de COMPTE ou d'ABSENCE passe par un lecteur décommenté.
+> Gate vert : **4 674 tests / 423 fichiers** (après rebase sur #704).
 > ## 🟢 Session 2026-08-22 (suite 140) — `[AUTOMARGINAL-BASCULE-SILENCIEUSE]` : la fixture qui aveuglait
 > La bascule « CELI d'abord → REER d'abord » de la stratégie par défaut est **RÉELLE** (mesurée : le
 > taux marginal passe de 0,361 à 0,411 entre l'année 8 et l'année 9, et l'ordre bascule LÀ). Le

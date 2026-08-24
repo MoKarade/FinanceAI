@@ -1065,15 +1065,20 @@
   MESSAGE utilisateur de `childrenReee.ts` (`SCAN-QUI-MATCHE-LA-PROSE`, cette fois dans un littéral
   de chaîne — hors de portée de `stripComments`). 3 tests neufs, **3 perturbations prouvées rouges**.
 
-- [ ] **`[TAXBRACKETVIZ-ANNEE]`** (S, FAIBLE — découvert en revue de `[GROSSFROMNET-ANNEE-FIGEE]`) —
-  `components/TaxBracketViz.tsx` trace `FED_BRACKETS`/`QC_BRACKETS` **bruts** (2026, non indexés) et
-  calcule son total par `calculateFiscalReport(gross, 0, 0)` — année 2026 — alors que le brut qu'il
-  reçoit de `Retirement.tsx` est désormais déduit au barème de l'année COURANTE. Paire désaccordée,
-  comme celle corrigée dans `TaxCenter`. **MESURÉ** : 333 $ sur 86 968 (0,4 %) dès 2027 — visuellement
-  invisible sur des barres de paliers, d'où le classement FAIBLE. **Correctif** : passer l'année au
-  composant ET indexer les paliers affichés — un demi-correctif (total indexé, barres non) créerait
-  une incohérence PIRE, entre les barres et leur propre total. Voisin de `[ASSETLOC-YEAR-2026]`.
-
+- [x] **`[TAXBRACKETVIZ-ANNEE]`** ✅ 2026-08-22 — paire recâblée : `TaxBracketViz` reçoit désormais
+  une année **REQUISE** (aucun défaut : un `= 2026` se périme en silence, et lire l'horloge dans le
+  composant en ferait une bombe au 1er janvier), et l'utilise pour les **barres ET le total**.
+  Nouvel export `bracketsForYear` dans `utils/tax.ts`, qui lit `getIndexedBracketsForYear` — la
+  source dont `calculateFiscalReport` tire son impôt, jamais une ré-indexation recopiée.
+  Côté `Retirement`, une SEULE lecture d'horloge alimente maintenant le brut déduit et les paliers.
+  ⚠️ **Le chiffre du ticket était faux, et sa nature aussi.** Il annonçait « 333 $ sur 86 968 (0,4 %)
+  dès 2027 — visuellement invisible, d'où FAIBLE ». RE-MESURÉ sur l'impôt total : **+212 $ (1,0 %)
+  en 2027, +874 $ (4,4 %) en 2030, +2 069 $ (11,1 %) en 2035** à 86 968 $ de brut ; **+5 095 $ à
+  200 000 $ en 2035**. Ce n'est pas un biais FIXE : il COMPOSE à ~2 %/an, comme l'indexation qu'il
+  ignore. À dix ans l'impôt affiché est surévalué de plus de 11 %.
+  6 tests neufs, **3 perturbations prouvées rouges** — dont les DEUX demi-correctifs que le ticket
+  interdisait à juste titre (barres figées + total indexé, et l'inverse), chacun produisant une
+  incohérence visible entre des barres et la somme affichée juste en dessous.
 - [ ] **`[GROSSFROMNET-CREDITS-65]`** (S, FAIBLE — découvert en revue de `[MIGRATE-GROSS-135]`) —
   `calculateGrossFromNet` n'accepte pas d'`ageOpts`, alors que `taxDecember` accorde les crédits
   d'âge à un salarié de 65 ans et plus. Le brut déduit est donc SURESTIMÉ pour cette population.

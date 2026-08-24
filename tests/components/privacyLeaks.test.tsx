@@ -172,7 +172,7 @@ describe('[A11Y-PRIVACY-TAXBRACKET] paliers d\'imposition', () => {
     const INCOME = 91337; // chiffre « unique » : aucun autre nombre de l'écran ne peut l'imiter.
 
     it('mode discret INACTIF : le revenu brut est LISIBLE (le test discrimine)', () => {
-        const { container } = render(<TaxBracketViz annualGrossIncome={INCOME} />);
+        const { container } = render(<TaxBracketViz year={2026} annualGrossIncome={INCOME} />);
         expect(flat(container)).toContain(String(INCOME));
     });
 
@@ -183,10 +183,10 @@ describe('[A11Y-PRIVACY-TAXBRACKET] paliers d\'imposition', () => {
     // indiscernable en mode discret.
     it('mode discret ACTIF : deux revenus très différents rendent un DOM indiscernable', () => {
         setPrivacy(true);
-        const low = render(<TaxBracketViz annualGrossIncome={30000} />);
+        const low = render(<TaxBracketViz year={2026} annualGrossIncome={30000} />);
         const lowRows = low.container.querySelectorAll('.font-mono').length;
         cleanup();
-        const high = render(<TaxBracketViz annualGrossIncome={250000} />);
+        const high = render(<TaxBracketViz year={2026} annualGrossIncome={250000} />);
         const highRows = high.container.querySelectorAll('.font-mono').length;
         expect(highRows, "le nombre de lignes du détail par palier trahissait la tranche de revenu")
             .toBe(lowRows);
@@ -194,7 +194,7 @@ describe('[A11Y-PRIVACY-TAXBRACKET] paliers d\'imposition', () => {
 
     it('mode discret ACTIF : revenu, impôt et détail par palier SORTENT du DOM (attributs compris)', () => {
         setPrivacy(true);
-        const { container } = render(<TaxBracketViz annualGrossIncome={INCOME} />);
+        const { container } = render(<TaxBracketViz year={2026} annualGrossIncome={INCOME} />);
         expect(flat(container), 'le revenu brut fuyait').not.toContain(String(INCOME));
         // Les BORNES de palier sont du droit fiscal PUBLIC : elles doivent RESTER (sinon l'écran
         // perd son intérêt pédagogique et le test ne prouverait qu'un écran vide). La borne est LUE

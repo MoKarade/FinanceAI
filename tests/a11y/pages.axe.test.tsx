@@ -109,7 +109,7 @@ describe('a11y pages (vitest-axe)', () => {
     it('TaxBracketViz — aucune violation serious/critical', async () => {
         const { TaxBracketViz } = await import('../../components/TaxBracketViz');
         const { container } = render(
-            <TaxBracketViz annualGrossIncome={75000} label="Test" />
+            <TaxBracketViz year={2026} annualGrossIncome={75000} label="Test" />
         );
         await expectNoSeriousViolations(container);
     });

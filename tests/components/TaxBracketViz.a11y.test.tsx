@@ -8,7 +8,7 @@ import { TaxBracketViz } from '../../components/TaxBracketViz';
 
 describe('[A11Y-TAXBRACKET] TaxBracketViz', () => {
     it('(a) chaque barre de juridiction est un role="img" avec aria-label descriptif', () => {
-        const { container } = render(<TaxBracketViz annualGrossIncome={90000} />);
+        const { container } = render(<TaxBracketViz year={2026} annualGrossIncome={90000} />);
         const imgs = container.querySelectorAll('[role="img"]');
         expect(imgs.length).toBe(2); // Fédéral + Québec
         for (const img of imgs) {
@@ -22,7 +22,7 @@ describe('[A11Y-TAXBRACKET] TaxBracketViz', () => {
     });
 
     it('(a) fournit une alternative textuelle sr-only (ChartDataTable) avec les paliers', () => {
-        const { container } = render(<TaxBracketViz annualGrossIncome={90000} />);
+        const { container } = render(<TaxBracketViz year={2026} annualGrossIncome={90000} />);
         const srTables = container.querySelectorAll('table.sr-only');
         expect(srTables.length).toBe(2); // une par juridiction
         const captions = Array.from(container.querySelectorAll('caption')).map((c) => c.textContent ?? '');
@@ -32,13 +32,13 @@ describe('[A11Y-TAXBRACKET] TaxBracketViz', () => {
     });
 
     it('(b) le titre de juridiction est un <h3> (pas de saut depuis le <h2> de la Card)', () => {
-        const { container } = render(<TaxBracketViz annualGrossIncome={90000} />);
+        const { container } = render(<TaxBracketViz year={2026} annualGrossIncome={90000} />);
         expect(container.querySelectorAll('h3').length).toBe(2);   // Fédéral + Québec
         expect(container.querySelectorAll('h4').length).toBe(0);   // plus de saut h2→h4
     });
 
     it('(c) plus aucun text-ink-500 (échec AA) dans le rendu', () => {
-        const { container } = render(<TaxBracketViz annualGrossIncome={90000} label="brut annuel" />);
+        const { container } = render(<TaxBracketViz year={2026} annualGrossIncome={90000} label="brut annuel" />);
         expect(container.innerHTML).not.toContain('ink-500');
         expect(container.innerHTML).toContain('ink-400'); // prouve le remplacement, pas juste l'absence
     });

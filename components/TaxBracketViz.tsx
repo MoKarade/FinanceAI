@@ -5,7 +5,9 @@
 
 import React from 'react';
 import { Card } from './ui/Card';
-import { FED_BRACKETS, QC_BRACKETS, calculateFiscalReport } from '../utils/tax';
+// `FED_BRACKETS` reste importé pour son TYPE (`typeof FED_BRACKETS`) ; les VALEURS affichées
+// viennent toutes de `bracketsForYear(year)` — plus aucune table 2026 en dur ici.
+import { FED_BRACKETS, bracketsForYear, calculateFiscalReport } from '../utils/tax';
 import { formatCAD, formatPercent } from '../utils/format';
 import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { PrivateAmount } from './ui/PrivateAmount';
@@ -16,6 +18,19 @@ import { useFinanceStore } from '../store/useFinanceStore';
 interface TaxBracketVizProps {
     annualGrossIncome: number;
     label?: string;
+    /**
+     * [TAXBRACKETVIZ-ANNEE] Année fiscale des paliers ET du total. **REQUISE, sans défaut.**
+     *
+     * ⚠️ Un défaut `= 2026` se PÉRIME en silence, et lire l'horloge ici rendrait le composant
+     * non déterministe — donc ses tests seraient une bombe au 1er janvier
+     * (`UN-DEFAUT-QUI-SE-PERIME-SE-CORRIGE-EN-RENDANT-LE-CHAMP-REQUIS`). En la rendant requise,
+     * le typecheck exige que CHAQUE appelant, présent et futur, dise de quelle année il parle.
+     *
+     * MESURÉ, coût du 2026 figé sur l'impôt total affiché : +212 $ (1,0 %) dès 2027 à 86 968 $ de
+     * brut, +874 $ (4,4 %) en 2030, +2 069 $ (11,1 %) en 2035 — et +5 095 $ à 200 000 $ en 2035.
+     * Ce n'est donc pas un biais fixe : il COMPOSE à ~2 %/an, comme l'indexation qu'il ignore.
+     */
+    year: number;
 }
 
 function computeTaxBreakdown(income: number, brackets: typeof FED_BRACKETS): { perBracket: Array<{ rate: number; income: number; tax: number; from: number; to: number }>; totalTax: number; marginalRate: number; effectiveRate: number } {
@@ -36,7 +51,7 @@ function computeTaxBreakdown(income: number, brackets: typeof FED_BRACKETS): { p
     return { perBracket, totalTax, marginalRate, effectiveRate: income > 0 ? totalTax / income : 0 };
 }
 
-export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome, label }) => {
+export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome, label, year }) => {
     // [AUDIT-SAFETY / revue #608] Ce composant n'avait AUCUNE notion de mode discret : revenu brut,
     // impôt net, détail $ par palier et taux dérivés s'affichaient en clair — y compris dans les
     // `aria-label` et `title`. Frontière retenue : les BORNES et TAUX de palier sont du DROIT FISCAL
@@ -50,11 +65,16 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
     // ferait varier la largeur des barres avec le revenu — une fuite par la géométrie.
     const maxIncome = isPrivacyMode ? 300000 : Math.max(annualGrossIncome * 1.2, 300000);
 
-    const fedBreakdown = computeTaxBreakdown(annualGrossIncome, FED_BRACKETS as never);
-    const qcBreakdown = computeTaxBreakdown(annualGrossIncome, QC_BRACKETS as never);
+    // [TAXBRACKETVIZ-ANNEE] Les barres ET le total lisent la MÊME année. Un demi-correctif — total
+    // indexé, barres figées à 2026 — serait PIRE que le défaut d'origine : il créerait une
+    // incohérence VISIBLE entre des barres et la somme affichée juste en dessous, là où le décalage
+    // actuel est au moins cohérent avec lui-même.
+    const { fed: fedBrackets, qc: qcBrackets } = bracketsForYear(year);
+    const fedBreakdown = computeTaxBreakdown(annualGrossIncome, fedBrackets as never);
+    const qcBreakdown = computeTaxBreakdown(annualGrossIncome, qcBrackets as never);
     // [M4] Total + taux effectif = impôt NET (crédits inclus) via la source unique calculateFiscalReport,
     // PAS la somme brute par palier (surévaluée). Les barres restent brutes (pédagogiques).
-    const report = calculateFiscalReport(annualGrossIncome, 0, 0);
+    const report = calculateFiscalReport(annualGrossIncome, 0, 0, year);
     const netRate = (net: number) => (annualGrossIncome > 0 ? net / annualGrossIncome : 0);
 
     const renderBracketBar = (
@@ -183,8 +203,8 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                     palier (AVANT crédits). Total/effectif = impôt NET (crédits inclus : BPA, abattement QC).
                     Marginal = taux du prochain dollar gagné.
                 </p>
-                {renderBracketBar(FED_BRACKETS as never, 'Fédéral (ARC)', '59, 130, 246', fedBreakdown, report.fedTax)}
-                {renderBracketBar(QC_BRACKETS as never, 'Québec (Revenu Québec)', '236, 72, 153', qcBreakdown, report.qcTax)}
+                {renderBracketBar(fedBrackets as never, 'Fédéral (ARC)', '59, 130, 246', fedBreakdown, report.fedTax)}
+                {renderBracketBar(qcBrackets as never, 'Québec (Revenu Québec)', '236, 72, 153', qcBreakdown, report.qcTax)}
                 <div className="grid grid-cols-2 gap-3 p-3 bg-white/5 rounded border border-white/10">
                     <div>
                         <div className="text-tiny text-ink-400 uppercase tracking-wide">Combiné effectif</div>

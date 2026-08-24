@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 668 tests** Vitest
-(422 fichiers de test, mesuré le 2026-08-22). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 674 tests** Vitest
+(423 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -244,6 +244,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   un test qui PASSE n'a pas forcément raison. L'assertion qui sauve est celle qui vérifie qu'un LEVIER
   change quelque chose — elle rougit exactement quand la mesure devient vacueuse
   (`UNE-FIXTURE-QUI-SATURE-LA-CONTRAINTE-REND-LA-MESURE-AVEUGLE`).
+- **Un écart mesuré à UN point de temps ne dit rien de sa nature** : « 0,4 % dès 2027 » avait classé
+  un ticket FAIBLE, alors que l'écart COMPOSE (il vient d'une indexation ignorée) — mesuré 1,0 % en
+  2027, 4,4 % en 2030, **11,1 % en 2035**. Avant de classer, demander ce qui fait GRANDIR l'écart ;
+  si c'est un facteur annuel, mesurer à ≥3 horizons et classer sur la trajectoire. Même geste que
+  `UN-FACTEUR-PLAT-SUR-UNE-RELATION-CONVEXE`, appliqué à l'axe du TEMPS
+  (`UN-BIAIS-QUI-COMPOSE-N-EST-PAS-UN-BIAIS-FIXE`). ⚠️ Et TROISIÈME récidive de
+  `SCAN-QUI-MATCHE-LA-PROSE` en une session (littéral de chaîne, message utilisateur, puis
+  commentaire) : toute assertion de COMPTE ou d'ABSENCE sur du source passe DÉSORMAIS par un lecteur
+  décommenté avec son anti-vacuité — étape obligatoire, plus un piège à retenir.
 - Un **flake non reproduit** ne se solde ni en le taisant ni en le laissant ouvert : on rend sa
   PROCHAINE occurrence auto-explicative. Réfuter les hypothèses une par une PAR LA MESURE (ici :
   `fileParallelism: false` tue le parallélisme, durées en suite = durées en isolation, RNG graine +

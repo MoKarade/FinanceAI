@@ -5834,3 +5834,51 @@ Trois corollaires :
 3. **Instrumenter le moteur bat six lectures du code.** J'avais lu la ligne, lu ses appelants, vérifié
    le câblage du levier — et conclu faux trois fois de suite. Un `console.log` du booléen litigieux,
    année par année, a tranché en une exécution.
+
+### `UN-BIAIS-QUI-COMPOSE-N-EST-PAS-UN-BIAIS-FIXE` — 2026-08-22
+
+`[TAXBRACKETVIZ-ANNEE]` était classé **FAIBLE** sur la foi d'un chiffre : « 333 $ sur 86 968 (0,4 %)
+dès 2027 — visuellement invisible sur des barres de paliers ». Le classement découlait entièrement de
+ce 0,4 %.
+
+Re-mesuré, le chiffre est faux (212 $, pas 333 $) — mais surtout, **la grandeur n'est pas fixe**.
+L'écart vient d'une indexation ignorée, donc il COMPOSE au même rythme qu'elle :
+
+| brut | 2027 | 2030 | 2035 |
+|---|---|---|---|
+| 60 000 $ | +212 $ (2,0 %) | +693 $ (6,7 %) | +1 283 $ (13,1 %) |
+| 86 968 $ | +212 $ (1,0 %) | +874 $ (4,4 %) | +2 069 $ (11,1 %) |
+| 200 000 $ | +566 $ (0,8 %) | +2 331 $ (3,4 %) | +5 095 $ (7,7 %) |
+
+**La règle** : mesurer un écart à UN point de temps ne dit rien de sa nature. Avant de classer,
+demander « qu'est-ce qui fait grandir cet écart ? ». Si la réponse est un facteur qui s'applique
+chaque année — indexation, inflation, croissance salariale — le mesurer à **au moins trois horizons**
+et classer sur la trajectoire, pas sur le premier point. C'est le même geste que
+`UN-FACTEUR-PLAT-SUR-UNE-RELATION-CONVEXE` demande sur l'axe des montants, appliqué à l'axe du TEMPS.
+
+Deux corollaires du même lot :
+
+1. **Le ticket avait raison sur le demi-correctif, et c'est rare** : indexer le total sans les barres
+   (ou l'inverse) produit une incohérence *visible* entre des barres et la somme affichée juste en
+   dessous — pire que le décalage d'origine, qui était au moins cohérent avec lui-même. Les deux
+   moitiés sont perturbées séparément dans le test, et chacune rougit.
+2. ⚠️ **Troisième récidive de `SCAN-QUI-MATCHE-LA-PROSE` dans la même session.** Mon assertion
+   « une seule lecture de l'horloge » comptait `new Date().getFullYear()` sur la source BRUTE et
+   trouvait 2 occurrences pour 1 ligne de code — les deux autres étant les commentaires qui
+   EXPLIQUENT pourquoi il ne doit y en avoir qu'une. Après le littéral de chaîne (`CoastFIRE`) et le
+   message utilisateur (`(18 ans)`), la conclusion est mécanique et sans exception : **toute
+   assertion de COMPTE ou d'ABSENCE sur du source passe par un lecteur décommenté**, avec son
+   anti-vacuité. Ce n'est plus un piège à retenir, c'est une étape obligatoire.
+
+⚠️ **Et une QUATRIÈME fois, une heure plus tard, sur ma propre garde de rebase.** En résolvant les
+conflits de cette PR, ma vérification « plus aucun marqueur » testait `'<<<<<<<' not in source` — et
+elle échouait sur un fichier propre. La cause : `docs/CONVENTIONS.md` contient une leçon qui **CITE**
+`<<<<<<<` et `>>>>>>>` en prose, précisément parce que des marqueurs oubliés y ont déjà survécu à un
+gate vert. La garde contre les marqueurs se cassait donc sur la doc qui raconte l'incident des
+marqueurs.
+
+Le remède est le même que pour les trois précédentes, et il est trivial une fois vu : **ancrer en
+DÉBUT DE LIGNE** (`/^(<<<<<<<|=======|>>>>>>>)/m`) — c'est exactement la forme que git écrit, et
+aucune prose ne commence une ligne par sept chevrons. La leçon générale se durcit d'un cran : un
+motif qui décrit du BALISAGE doit être ancré sur sa POSITION, pas cherché comme sous-chaîne, sinon il
+matchera toujours la documentation qui explique ce balisage.

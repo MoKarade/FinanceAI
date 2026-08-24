@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Les tranches d'imposition suivent l'année, et le biais COMPOSE
+
+- [x] **`[TAXBRACKETVIZ-ANNEE]`** — `TaxBracketViz` dessinait les paliers 2026 bruts et calculait son
+  total à l'année 2026 par défaut, alors que le brut reçu de `Retirement` est déduit au barème de
+  l'année COURANTE. Paire désaccordée (`CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`).
+  **Livré** : `year` devient une prop **REQUISE** (aucun défaut : un `= 2026` se périme en silence,
+  et lire l'horloge dans le composant en ferait une bombe au 1er janvier), utilisée pour les barres
+  ET le total. Nouvel export `bracketsForYear` dans `utils/tax.ts`, qui lit
+  `getIndexedBracketsForYear` — la source dont `calculateFiscalReport` tire son impôt, jamais une
+  ré-indexation recopiée. Côté `Retirement`, une SEULE lecture d'horloge alimente les deux côtés.
+  ⚠️ **Le chiffre du ticket était faux, et sa NATURE aussi.** « 333 $ sur 86 968 (0,4 %) dès 2027 —
+  visuellement invisible » avait valu le classement FAIBLE. RE-MESURÉ sur l'impôt total :
+  **+212 $ (1,0 %) en 2027, +874 $ (4,4 %) en 2030, +2 069 $ (11,1 %) en 2035** à 86 968 $ de brut,
+  et **+5 095 $ à 200 000 $ en 2035**. L'écart vient d'une indexation ignorée, donc il **COMPOSE** à
+  ~2 %/an : un point de mesure unique ne pouvait pas le dire.
+  6 tests neufs, **3 perturbations prouvées rouges** — dont les DEUX demi-correctifs que le ticket
+  interdisait à juste titre, chacun produisant une incohérence VISIBLE entre des barres et la somme
+  affichée juste en dessous. Gate vert : 4 674 tests / 423 fichiers (après rebase sur #704).
 ## 2026-08-22 — La bascule CELI→REER est réelle, et la fixture qui l'a cachée trois fois
 
 - [x] **`[AUTOMARGINAL-BASCULE-SILENCIEUSE]`** — la bascule est **RÉELLE**, mesurée : `reerFirst`

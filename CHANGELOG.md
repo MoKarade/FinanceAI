@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-24 (les tranches d'imposition suivent enfin l'année en cours)
+
+- L'écran « Tranches d'imposition » de l'onglet Retraite dessinait toujours les **paliers de 2026**
+  et calculait son total à ce barème-là, même en 2030. Comme les paliers montent d'environ 2 %/an,
+  l'impôt affiché était **surévalué** — et l'écart grandit avec le temps : environ 1 % en 2027, 4 %
+  en 2030, **plus de 11 % en 2035** pour un revenu de 87 000 $.
+- Les barres ET le total suivent maintenant la même année, celle en cours. Corriger un seul des deux
+  aurait été pire : les barres et leur propre somme se seraient contredites à l'écran.
 ## [unreleased] — 2026-08-22 (l'app t'explique enfin où elle cotise, et pourquoi ça change)
 
 - L'app choisissait seule entre **cotiser au CELI d'abord ou au REER d'abord**, selon ton taux

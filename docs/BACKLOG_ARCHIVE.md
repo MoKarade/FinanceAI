@@ -10,6 +10,45 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Le facteur d'inflation est validé à l'entrée de décembre, et son repli est DIT
+
+- [x] **`[TAXDEC-INFLATIONFACTOR-AMONT]`** — une seule valeur assainie en tête de
+  `processDecemberTaxFiling`, avec un `logs.push` quand elle remplace une donnée corrompue.
+  ⚠️ **Le ticket sous-estimait la portée** (et ses numéros de ligne étaient périmés — une référence
+  de ligne dans une doc est une dette). Il ne visait que les appels fiscaux passant le facteur comme
+  `realDeflator`, là où `utils/tax.ts` le répare via `safeDeflator`. Or le facteur est AUSSI le
+  **DIVISEUR** d'une dizaine de grandeurs du bloc (salaires, déductions, retraits REER, rentes,
+  pension DB) : à 0, ces divisions rendaient `Infinity` **avant** d'atteindre `utils/tax.ts`, dont le
+  repli ne couvre que la bande de paliers. Deux protections partielles à deux étages ne font pas une
+  protection.
+  Le repli à 1 n'invente rien : c'est la convention DÉJÀ retenue en aval (année non indexée), et le
+  test le prouve par une ÉGALITÉ avec le cas neutre, pas par une plausibilité. Les deux gardes
+  `Number.isFinite` devenues redondantes sur le plancher d'avril ont été retirées avec la raison
+  écrite (le `Math.max(1, …)`, lui, reste : il empêche une déflation de rétrécir le plancher).
+  7 tests, dont les DEUX sens (un facteur sain ne dit rien) et une anti-vacuité qui a **réellement
+  attrapé** une fixture creuse — sans déductions, le solde d'avril valait 0 et trois assertions
+  étaient satisfaites par du vide. **1 perturbation prouvée rouge (5 tests sur 7).**
+
+- [x] **`[FISC-BRACKET-CPI-STRESS]`** — fermé sans code le 2026-08-20 (réponse Marc A7 :
+  « conservateur », statu quo ADR 009), archivé ici comme prévu.
+
+Contexte d'origine :
+
+- [ ] **`[TAXDEC-INFLATIONFACTOR-AMONT]`** (S, FAIBLE — revue #680) — `taxDecember.ts` transmet
+  `ctx.inflationFactor` brut comme `realDeflator` à 5 sites (506, 507, 519, 520, 651) ; la garde
+  vit désormais en AVAL (`calculateAgeAndPensionCredits`, `getIndexedBracketsForYear`) mais un
+  facteur corrompu devrait être dit UNE fois à l'entrée du mois (logs.push, patron L546) plutôt
+  que réparé en silence N fois en aval. Incident `inflationFactor = 0` documenté in situ.
+- [x] **`[FISC-BRACKET-CPI-STRESS]`** — ✅ FERMÉ SANS CODE 2026-08-20 (réponse Marc A7 : **« conservateur »**,
+  statu quo ADR 009 confirmé — les scénarios de stress surestiment l'impôt et c'est ASSUMÉ). → archive à la prochaine PR.
+  Détail historique du finding (panel #556) —
+  post-fix, à `i ≠ 2 %` le barème érode en réel à `(1,02/(1+i))^Δ` alors que l'ARC/RQ indexent au
+  CPI réel, et que PSV (seuil clawback ×(1+i)^Δ) et SRG (gelé en $ réels) sont indexés pleinement →
+  les scénarios de STRESS surestiment l'impôt (mesuré : ttp +106 % à i = 8 %, +76 % à 5,5 %).
+  À i = 2 % (défaut) : aucun effet. Options : indexer les paliers à `simInflation` (fidèle CPI,
+  contredit ADR 009 « ~2 %/an ») vs statu quo documenté (conservateur en stress). Trancher avec
+  Marc avant de coder.
+
 ## 2026-08-24 — Le clamp du crédit d'impôt pour dividendes : limite CONSIGNÉE, pas corrigée
 
 - [x] **`[FISC-CID-CLAMP-EXCEDENT]`** — **décision de Marc : consigner la limite chiffrée**, ne pas

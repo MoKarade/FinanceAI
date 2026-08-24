@@ -6131,3 +6131,42 @@ Corollaire de méthode : la mesure qui tranche n'est pas un point mais un **bala
 × dividende), avec la question posée sous la forme « dans combien de cas le gain serait-il
 ABSORBABLE ? ». Un point unique aurait confirmé le ticket (l'excédent est réel) ou l'aurait réfuté
 (un cas au hasard donne 0 $) — les deux réponses auraient été fausses comme généralité.
+
+
+---
+
+### `DEUX-PROTECTIONS-PARTIELLES-A-DEUX-ETAGES-NE-FONT-PAS-UNE-PROTECTION` — 2026-08-24
+
+`[TAXDEC-INFLATIONFACTOR-AMONT]` demandait de dire UNE fois, à l'entrée du mois, qu'un
+`inflationFactor` est corrompu, plutôt que de le laisser réparer en silence par les gardes aval. Le
+ticket listait cinq sites — ceux qui passent le facteur comme `realDeflator` à `calculateFiscalReport`,
+là où `utils/tax.ts` le rabat sur 1 (`safeDeflator`).
+
+**Ce qu'il manquait** : le même symbole est AUSSI un **diviseur**, une dizaine de fois dans le même
+bloc (`grossMarc / inflationFactor`, déductions, retraits REER, rentes, pension DB…). À 0, ces
+divisions rendent `Infinity` **avant** que le moindre appel fiscal ne soit atteint — la garde aval
+n'en voit rien, puisqu'elle ne protège que la bande de paliers. La protection existante et la
+protection demandée couvraient donc deux moitiés différentes du problème, et leur somme ressemblait
+à une couverture.
+
+**La règle** : quand une donnée d'entrée traverse plusieurs USAGES de natures différentes (paramètre
+d'un appel, diviseur, facteur multiplicatif), la valider à chaque usage est un travail sans fin et
+sans preuve. La question « cette donnée est-elle utilisable ? » se pose **une fois, à l'entrée**, et
+la réponse vaut pour tout le bloc. Chercher tous les usages du symbole avant de conclure au périmètre
+— ici, `grep` en donnait 30 là où le ticket en nommait 5.
+
+Corollaires du même lot :
+
+1. **Le repli ne doit rien inventer.** Rabattre sur 1 = « année non indexée », qui est déjà la
+   convention du repli aval. Le test le prouve par une **ÉGALITÉ** avec le cas neutre, pas par une
+   plausibilité (« les montants ont l'air raisonnables » n'est pas une assertion).
+2. **Durcir l'entrée DÉSARME les gardes aval** (`TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`) :
+   deux `Number.isFinite` sur le plancher d'avril devenaient inatteignables. Les retirer AVEC la
+   raison écrite vaut mieux que les laisser — une garde morte se lit comme une garde vivante. Ce qui
+   reste (`Math.max(1, …)`) a été gardé parce qu'il répond à une AUTRE question : empêcher une
+   déflation de rétrécir le plancher.
+3. **L'anti-vacuité a attrapé ma propre fixture.** Sans déductions, la retenue à la source égale
+   l'impôt, le solde d'avril vaut exactement 0 — et « aucun montant non fini » comme « le repli égale
+   le cas neutre » étaient satisfaits par du VIDE (0 est fini, et 0 égale 0). L'assertion « ce
+   scénario produit bien de l'impôt » n'est pas une formalité : elle est la seule qui distingue un
+   test qui mesure d'un test qui passe.

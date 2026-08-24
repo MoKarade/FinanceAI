@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 149) — `[TAXDEC-INFLATIONFACTOR-AMONT]` : dire une fois plutôt que réparer N fois
+> Le ticket ne visait que les 5 appels fiscaux qui passent le facteur comme `realDeflator` (réparé en
+> aval par `safeDeflator`). ⚠️ **Il manquait l'essentiel** : le facteur est AUSSI le DIVISEUR d'une
+> dizaine de grandeurs du bloc — à 0, elles rendaient `Infinity` AVANT d'atteindre `utils/tax.ts`.
+> Une seule valeur assainie en tête de `processDecemberTaxFiling`, un `logs.push` quand elle
+> remplace une donnée corrompue, et les deux `Number.isFinite` devenus redondants retirés avec leur
+> raison. Repli à 1 = la convention déjà retenue en aval, prouvée par ÉGALITÉ avec le cas neutre.
+> ⚠️ L'anti-vacuité a **attrapé ma propre fixture** : sans déductions, le solde d'avril vaut 0 et
+> trois assertions passaient sur du vide. 7 tests, **1 perturbation rouge sur 5 des 7**.
+> Pas d'entrée CHANGELOG : rien de visible ne change pour un utilisateur dont les données sont saines.
+> Gate vert : **4 720 tests / 429 fichiers**.
+>
 > ## 🟢 Session 2026-08-24 (suite 148) — `[FISC-CID-CLAMP-EXCEDENT]` : limite CONSIGNÉE (décision Marc)
 > Le ticket disait vrai sur le CONSTAT (0 $ d'impôt sur dividendes dans son scénario) et faux sur
 > l'INFÉRENCE : là où le clamp mord, le ménage ne paie **aucun autre impôt**, donc l'excédent

@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-24 (le panneau de détail retient enfin le clavier)
+
+- Dans le panneau « Détail complet » de la courbe Futur, la touche Tab **sortait du panneau** et
+  promenait le focus dans la page de fond — invisible, puisque l'écran est recouvert. La tabulation
+  y tourne maintenant en boucle, comme dans les autres fenêtres de l'app.
+- Au passage, les deux fenêtres qui géraient déjà ce comportement partagent désormais le même code :
+  l'une d'elles ignorait les listes déroulantes et les zones de texte.
+
 ## [unreleased] — 2026-08-24 (la sync bancaire ne gonfle plus ses chiffres)
 
 - Après une synchronisation, le message « N transaction(s) ajoutée(s) » annonçait le nombre de

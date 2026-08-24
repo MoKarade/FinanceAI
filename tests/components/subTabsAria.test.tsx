@@ -106,3 +106,38 @@ describe('[A11Y-SUBTABS-TABPANEL] garde de SOURCE : personne ne recopie le balis
         ).toEqual(EXCEPTIONS_CONNUES);
     });
 });
+
+/**
+ * [A11Y-SUBTABS-TOUCH-TARGET] La CIBLE tactile des onglets, mesurée plutôt que supposée.
+ *
+ * `px-3 py-1.5` + une interligne `text-meta` de 16 px donnent **28 px** de haut : sous le plancher
+ * de 44 px (WCAG 2.5.5, Apple HIG). Le correctif tient dans la classe partagée `touch-target`, et
+ * comme les trois écrans à sous-onglets passent par ce composant, il vaut pour les trois d'un coup.
+ */
+describe('[A11Y-SUBTABS-TOUCH-TARGET] les onglets atteignent le plancher tactile', () => {
+    const TABS = [
+        { id: 'a' as const, label: 'Premier', icon: 'users' as const },
+        { id: 'b' as const, label: 'Second', icon: 'cash' as const },
+    ];
+
+    it('chaque onglet porte la classe de cible tactile', () => {
+        render(<SubTabs idPrefix="tt" label="Sections Test" tabs={TABS} active="a" onSelect={vi.fn()} />);
+        for (const nom of ['Premier', 'Second']) {
+            expect(
+                screen.getByRole('tab', { name: nom }).className,
+                `l'onglet « ${nom} » reste sous le plancher tactile`,
+            ).toContain('touch-target');
+        }
+    });
+
+    it('la classe `touch-target` vaut bien 44 px dans la feuille de style', () => {
+        // ⚠️ ANTI-VACUITÉ, et pas une formalité : une classe utilitaire RENOMMÉE ou supprimée est un
+        // no-op SILENCIEUX (même famille que « un shade hors palette ne génère rien »). Sans cette
+        // vérification, le test ci-dessus resterait vert en ne posant plus aucune contrainte.
+        const css = readFileSync(resolve(__dirname, '..', '..', 'index.css'), 'utf8');
+        const regle = css.match(/\.touch-target\s*\{([^}]*)\}/);
+        expect(regle, '`.touch-target` a disparu de index.css').not.toBeNull();
+        expect(regle?.[1]).toMatch(/min-height:\s*44px/);
+        expect(regle?.[1]).toMatch(/min-width:\s*44px/);
+    });
+});

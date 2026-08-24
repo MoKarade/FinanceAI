@@ -6018,3 +6018,29 @@ absent.
    paire du scan, dont le motif de texte n'acceptait que les échelles numériques (`text-white`,
    `ink-100`) et pas les tokens plats (`dark`). Corrigé en même temps que le fix — sans quoi la
    preuve « 0 offender » aurait été obtenue en cessant de regarder.
+
+
+---
+
+### `UN-DECLENCHEUR-QUI-SE-REDECLENCHE-ANNULE-LA-FERMETURE` — 2026-08-24
+
+`[A11Y-SIDEBAR-ESC]` demandait « un keydown Échap qui replie ». Écrit littéralement — remettre
+`sidebarFocused` (et `sidebarHovered`) à `false` — le correctif est **inerte au clavier**, c'est-à-dire
+exactement pour l'utilisateur que la règle protège : `onFocus` est posé sur l'`aside` entier, donc il
+se redéclenche au Tab suivant et rouvre le rail dans la foulée. Le survol, lui, ne se redéclenche pas
+tant que le pointeur ne sort pas — d'où un correctif qui « marche » à la souris et pas au clavier,
+le pire des deux mondes pour une correction d'accessibilité.
+
+La forme juste est un **VERROU** (`sidebarDismissed`), consulté par l'état dérivé et **levé quand le
+déclencheur cesse réellement** (le pointeur quitte l'aside, ou le focus en sort). Sans cette levée,
+on fabrique le défaut symétrique : un rail définitivement fermé pour le reste de la session.
+
+**La règle** : quand une fermeture doit résister à un déclencheur qui se **répète** (survol, focus,
+intersection, timer), remettre l'état du déclencheur à zéro ne suffit pas — il faut un verrou, et le
+test doit exercer **le déclencheur qui se répète** (ici : Échap *puis* un focus interne). Un test qui
+se contente d'« Échap referme » passe sur le correctif inerte.
+
+Corollaire, même lot (`[A11Y-SUBTABS-TOUCH-TARGET]`) : une garde qui vérifie la **présence d'une
+classe utilitaire** doit vérifier aussi que la classe **fait encore ce qu'elle promet** — `.touch-target`
+renommée ou ramenée à 36 px laisserait le test vert sans contraindre quoi que ce soit. C'est la même
+famille que « un shade hors palette est un no-op silencieux », côté CSS applicatif cette fois.

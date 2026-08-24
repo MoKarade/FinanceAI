@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-24 (les sous-onglets se cliquent au doigt, le rail se ferme avec Échap)
+
+- Les sous-onglets (Profil, Retraite, Budget) faisaient **28 pixels de haut** : trop petits pour le
+  doigt, en dessous du minimum recommandé de 44. Ils l'atteignent maintenant, sur les trois écrans.
+- Le rail de navigation à gauche, qui se déplie quand la souris passe dessus ou quand le clavier y
+  arrive, **ne se refermait pas au clavier**. La touche Échap le replie désormais ; il se rouvre
+  normalement dès que la souris revient dessus.
+
 ## [unreleased] — 2026-08-24 (les boutons de couleur redeviennent lisibles)
 
 - Certains boutons pleins affichaient du **texte blanc sur un fond trop clair** : le bouton orange

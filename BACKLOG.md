@@ -398,20 +398,6 @@
   correctif re-base des goldens et peut changer le CLASSEMENT des stratégies. ⚠️ D'ici là, toute
   mesure d'impact « NW » d'un retraité à gros REER près d'un seuil de palier est non
   représentative (la falaise domine).
-- [ ] **`[TAXDEC-INFLATIONFACTOR-AMONT]`** (S, FAIBLE — revue #680) — `taxDecember.ts` transmet
-  `ctx.inflationFactor` brut comme `realDeflator` à 5 sites (506, 507, 519, 520, 651) ; la garde
-  vit désormais en AVAL (`calculateAgeAndPensionCredits`, `getIndexedBracketsForYear`) mais un
-  facteur corrompu devrait être dit UNE fois à l'entrée du mois (logs.push, patron L546) plutôt
-  que réparé en silence N fois en aval. Incident `inflationFactor = 0` documenté in situ.
-- [x] **`[FISC-BRACKET-CPI-STRESS]`** — ✅ FERMÉ SANS CODE 2026-08-20 (réponse Marc A7 : **« conservateur »**,
-  statu quo ADR 009 confirmé — les scénarios de stress surestiment l'impôt et c'est ASSUMÉ). → archive à la prochaine PR.
-  Détail historique du finding (panel #556) —
-  post-fix, à `i ≠ 2 %` le barème érode en réel à `(1,02/(1+i))^Δ` alors que l'ARC/RQ indexent au
-  CPI réel, et que PSV (seuil clawback ×(1+i)^Δ) et SRG (gelé en $ réels) sont indexés pleinement →
-  les scénarios de STRESS surestiment l'impôt (mesuré : ttp +106 % à i = 8 %, +76 % à 5,5 %).
-  À i = 2 % (défaut) : aucun effet. Options : indexer les paliers à `simInflation` (fidèle CPI,
-  contredit ADR 009 « ~2 %/an ») vs statu quo documenté (conservateur en stress). Trancher avec
-  Marc avant de coder.
 - [ ] **`[FISC-MARGINAL-SPACE]`** (M — panel #556, PRÉ-EXISTANTS, non chiffrés en $) — sites qui
   confrontent un revenu et un barème d'espaces différents via `.marginalRate`/`getMarginalRate`
   (barème 2026 figé : `utils/tax.ts:824` ne passe ni `year` ni `realDeflator`) :

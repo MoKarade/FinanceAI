@@ -388,6 +388,28 @@ export function processDecemberTaxFiling(
         return { newTaxCurrentYear: { ...taxCurrentYearInitial }, logs: [] };
     }
     const logs: string[] = [];
+
+    // [TAXDEC-INFLATIONFACTOR-AMONT] Le facteur d'inflation est validé UNE FOIS, ICI, à l'entrée du
+    // mois de décembre — au lieu d'être réparé en SILENCE N fois en aval.
+    //
+    // ⚠️ Il ne sert pas qu'à indexer les paliers : c'est aussi le DIVISEUR qui ramène en dollars
+    // réels une dizaine de grandeurs de ce bloc (salaires, déductions, retraits REER, rentes,
+    // pension DB…). Un facteur à 0 ou non fini y produisait des `Infinity`/`NaN` AVANT même
+    // d'atteindre `utils/tax.ts`, dont le repli (`safeDeflator`) ne protège que la bande de
+    // paliers. Deux protections partielles à deux étages ne font pas une protection : la seule
+    // question à trancher est « la donnée amont est-elle utilisable ? », et elle se pose une fois.
+    //
+    // Le repli à 1 est la convention DÉJÀ retenue en aval (`safeDeflator`, `utils/tax.ts`) : on
+    // traite l'année comme non indexée plutôt que d'inventer un facteur. Ce qui change, c'est qu'il
+    // est désormais DIT (`logs`), donc visible dans le journal de la projection au lieu d'être
+    // absorbé — un repli légitime reste silencieux, une donnée CORROMPUE doit crier une fois
+    // (`REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION`).
+    const inflationFactor = Number.isFinite(ctx.inflationFactor) && (ctx.inflationFactor as number) > 0
+        ? ctx.inflationFactor
+        : 1;
+    if (inflationFactor !== ctx.inflationFactor) {
+        logs.push(`⚠️ Facteur d'inflation inutilisable (${ctx.inflationFactor}) → replié sur 1 pour tout le mois de décembre ; donnée amont corrompue.`);
+    }
     const taxCurrent = { ...taxCurrentYearInitial };
     // [FA-6-CREDIT-CAP] Impôt sur le revenu BRUT de l'année (salaire/retraite), capturé dans chaque branche.
     // Sert à plafonner le crédit-don non remboursable (il ne peut pas excéder l'impôt par ailleurs dû).
@@ -402,7 +424,7 @@ export function processDecemberTaxFiling(
 
     // [FISC-TAXDEC-INCR] (revue #676, F1) — la pension ADMISSIBLE par conjoint est une SOURCE
     // UNIQUE hissée ici : le bloc retraité §6 la consomme en RÉEL, la bande incrémentale ci-dessous
-    // en NOMINAL (× ctx.inflationFactor). La dupliquer avait déjà un précédent de divergence
+    // en NOMINAL (× inflationFactor). La dupliquer avait déjà un précédent de divergence
     // (UNE-FORMULE-RECOPIEE-DIVERGE).
     const nAdults = Math.max(1, ctx.activeUsersCount);
     // Phase 2 — retraits REER/FERR attribués PAR CONJOINT (accRetraitsReerYearByUser, au
@@ -439,9 +461,9 @@ export function processDecemberTaxFiling(
     // (crédit zéroté en silence). Number.isFinite par valeur, repli 0 conservateur.
     const dbRealUser = (i: number): number => {
         const v = ctx.incomeRetirementDbPerUserMonthly?.[i];
-        return Number.isFinite(v) ? ((v as number) * 12) / ctx.inflationFactor : 0;
+        return Number.isFinite(v) ? ((v as number) * 12) / inflationFactor : 0;
     };
-    const reerRealUser = (i: number): number => (useReerPerUser ? perUserReer![i] : ctx.accRetraitsReerYear / nAdults) / ctx.inflationFactor;
+    const reerRealUser = (i: number): number => (useReerPerUser ? perUserReer![i] : ctx.accRetraitsReerYear / nAdults) / inflationFactor;
     const eligiblePensionFor = (i: number): number => {
         const a = ages[i];
         if (a === undefined) return 0;
@@ -464,9 +486,9 @@ export function processDecemberTaxFiling(
         const grossMarc = ctx.grossMarcBaseAnnual * salaryGrowthFactor;
         const grossAnna = ctx.grossAnnaBaseAnnual * salaryGrowthFactor;
         const totalDeductions = ctx.accRrspYear + ctx.accFhsaYear + ctx.smithInterestDeductibleYear;
-        const grossMarcReal = grossMarc / ctx.inflationFactor;
-        const grossAnnaReal = grossAnna / ctx.inflationFactor;
-        const deductionsReal = totalDeductions / ctx.inflationFactor;
+        const grossMarcReal = grossMarc / inflationFactor;
+        const grossAnnaReal = grossAnna / inflationFactor;
+        const deductionsReal = totalDeductions / inflationFactor;
 
         // [REER-ACTIF-NON-RECONCILIE] — audit 2026-08-19.
         // AVANT : l'assiette de décembre en phase ACTIVE ne contenait QUE le salaire. Les retraits
@@ -498,8 +520,8 @@ export function processDecemberTaxFiling(
             ? Math.max(0, reerByUserActive![i])
             : reerAnnualNominal / nFilersActive);
         // Solo (1 déclarant) : tout le retrait est au principal, rien au « conjoint ».
-        const reerMarcReal = reerShareOf(0) / ctx.inflationFactor;
-        const reerAnnaReal = nFilersActive > 1 ? reerShareOf(1) / ctx.inflationFactor : 0;
+        const reerMarcReal = reerShareOf(0) / inflationFactor;
+        const reerAnnaReal = nFilersActive > 1 ? reerShareOf(1) / inflationFactor : 0;
         // Assiette IMPOSABLE élargie. ⚠️ L'assiette d'EMPLOI reste le SALAIRE SEUL : les cotisations
         // RRQ/RQAP/AE ne portent pas sur un retrait REER, et `employmentIncome` absent vaut
         // `grossIncome` par défaut (cf. FISC-PAYROLL-BASE-INVEST) — l'omettre ici gonflerait les
@@ -526,11 +548,11 @@ export function processDecemberTaxFiling(
         const ageOptsAnna = mkActiveAgeOpts(ctx.ageSpouse);
 
         // [FISC-BRACKET-REALINDEX] revenus en dollars RÉELS (déflatés ci-dessus) → paliers/crédits
-        // ramenés en réel via realDeflator = ctx.inflationFactor (sinon : double indexation, les
+        // ramenés en réel via realDeflator = inflationFactor (sinon : double indexation, les
         // paliers s'élargissaient de ~2 %/an en termes réels → impôt long-terme sous-évalué).
-        const taxMarcReal = taxableMarcReal > 0 ? helpers.calculateFiscalReport(taxableMarcReal, deductionsMarc, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsMarc, grossMarcReal, ctx.inflationFactor).totalTax : 0;
-        const taxAnnaReal = taxableAnnaReal > 0 ? helpers.calculateFiscalReport(taxableAnnaReal, deductionsAnna, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna, grossAnnaReal, ctx.inflationFactor).totalTax : 0;
-        const totalAnnualTax = (taxMarcReal + taxAnnaReal) * ctx.inflationFactor;
+        const taxMarcReal = taxableMarcReal > 0 ? helpers.calculateFiscalReport(taxableMarcReal, deductionsMarc, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsMarc, grossMarcReal, inflationFactor).totalTax : 0;
+        const taxAnnaReal = taxableAnnaReal > 0 ? helpers.calculateFiscalReport(taxableAnnaReal, deductionsAnna, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna, grossAnnaReal, inflationFactor).totalTax : 0;
+        const totalAnnualTax = (taxMarcReal + taxAnnaReal) * inflationFactor;
         grossIncomeTax = totalAnnualTax; // [FA-6-CREDIT-CAP] liability salariale de l'année
 
         // V49: Retenue source (T1213 ou non)
@@ -541,9 +563,9 @@ export function processDecemberTaxFiling(
         // `grossMarcReal` dans les DEUX branches — avec les déductions quand T1213 est actif.
         const deductionsEmployerMarc = ctx.optimizeSourceDeductions ? deductionsMarc : 0;
         const deductionsEmployerAnna = ctx.optimizeSourceDeductions ? deductionsAnna : 0;
-        const taxMarcEmployer = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, deductionsEmployerMarc, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsMarc, grossMarcReal, ctx.inflationFactor).totalTax : 0;
-        const taxAnnaEmployer = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, deductionsEmployerAnna, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna, grossAnnaReal, ctx.inflationFactor).totalTax : 0;
-        const totalEmployerTax = (taxMarcEmployer + taxAnnaEmployer) * ctx.inflationFactor;
+        const taxMarcEmployer = grossMarcReal > 0 ? helpers.calculateFiscalReport(grossMarcReal, deductionsEmployerMarc, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsMarc, grossMarcReal, inflationFactor).totalTax : 0;
+        const taxAnnaEmployer = grossAnnaReal > 0 ? helpers.calculateFiscalReport(grossAnnaReal, deductionsEmployerAnna, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOptsAnna, grossAnnaReal, inflationFactor).totalTax : 0;
+        const totalEmployerTax = (taxMarcEmployer + taxAnnaEmployer) * inflationFactor;
         // [FISC-WHT-92PCT] retenue = 100 % de l'impôt sans déductions (GO Marc 2026-08-01). L'ancien
         // ×0,92 n'était sourcé nulle part et facturait ~8 % de l'impôt salarial EN DOUBLE chaque avril :
         // le netSalary saisi incorpore déjà ~100 % de la retenue réelle (vérifié numériquement,
@@ -575,7 +597,10 @@ export function processDecemberTaxFiling(
             // borne : il doit suivre l'inflation, sinon sa valeur RÉELLE fond (à 30 ans, facteur
             // 1,81 → un plancher de -100 000 $ ne vaut plus que ~-55 000 $ d'aujourd'hui, et
             // tronque donc de plus en plus tôt à mesure que la projection avance).
-            const floor = -APRIL_SETTLEMENT_FLOOR_REAL * (Number.isFinite(ctx.inflationFactor) ? Math.max(1, ctx.inflationFactor) : 1);
+            // [TAXDEC-INFLATIONFACTOR-AMONT] Plus de `Number.isFinite` ici : le facteur est validé À
+            // L'ENTRÉE du mois. `Math.max(1, …)` reste — il ne protège pas d'un NaN, il empêche un
+            // facteur < 1 (déflation) de RÉTRÉCIR le plancher du solde d'avril.
+            const floor = -APRIL_SETTLEMENT_FLOOR_REAL * Math.max(1, inflationFactor);
             taxCurrent.revenu = Math.max(floor, aprilSettlementRaw);
             if (aprilSettlementRaw < floor) {
                 logs.push(`⚠️ Remboursement d'avril tronqué au plancher ${Math.round(floor).toLocaleString('fr-CA')}$ (calculé: ${Math.round(aprilSettlementRaw).toLocaleString('fr-CA')}$)`);
@@ -614,7 +639,7 @@ export function processDecemberTaxFiling(
         const basePensionAnnual = ((ctx.incomeRetirementMonthly - gisMonthlySafe) * 12) + ctx.accRentesYear;
         const taxableAnnual = basePensionAnnual + ctx.accRetraitsReerYear;
         if (taxableAnnual > 0) {
-            const taxableReal = taxableAnnual / ctx.inflationFactor;
+            const taxableReal = taxableAnnual / inflationFactor;
             const n = Math.max(1, ctx.activeUsersCount);
 
             // A1 — impôt PAR CONJOINT sur SON revenu de retraite réel. Quand le moteur
@@ -633,7 +658,7 @@ export function processDecemberTaxFiling(
 
             // Revenus LOCATIFS (accRentesYear = loyers, cf realEstateMonth.ts:355 — PAS des
             // rentes ; non attribuables par conjoint) : part ÉGALE par conjoint, en réel.
-            const rentalRealPerAdult = ctx.accRentesYear / ctx.inflationFactor / n;
+            const rentalRealPerAdult = ctx.accRentesYear / inflationFactor / n;
 
             const taxableRealByUser: number[] = [];
             const eligiblePensionRealByUser: number[] = [];
@@ -641,7 +666,7 @@ export function processDecemberTaxFiling(
                 for (let i = 0; i < n; i++) {
                     // FA-3a : la part de SRG (familial → répartie également) est retirée du
                     // revenu IMPOSABLE de chaque conjoint (perUser[i].total l'inclut).
-                    const pensionRealUser = Math.max(0, ((perUserPension![i] - gisMonthlySafe / n) * 12) / ctx.inflationFactor);
+                    const pensionRealUser = Math.max(0, ((perUserPension![i] - gisMonthlySafe / n) * 12) / inflationFactor);
                     taxableRealByUser.push(pensionRealUser + rentalRealPerAdult + reerRealUser(i));
                     eligiblePensionRealByUser.push(eligiblePensionFor(i));
                 }
@@ -673,7 +698,7 @@ export function processDecemberTaxFiling(
                 for (let i = 0; i < n; i++) {
                     const ageOpts = mkRetiredAgeOpts(ages[i], eligibles[i]);
                     // [FISC-BRACKET-REALINDEX] taxables[i] est en $ RÉELS → paliers/crédits en réel.
-                    t += helpers.calculateFiscalReport(taxables[i], 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOpts, undefined, ctx.inflationFactor).totalTax;
+                    t += helpers.calculateFiscalReport(taxables[i], 0, 0, ctx.loopYear, ctx.enableMonteCarlo, ageOpts, undefined, inflationFactor).totalTax;
                 }
                 return t;
             };
@@ -718,7 +743,7 @@ export function processDecemberTaxFiling(
                 }
             }
 
-            const totalAnnualTax = taxReal * ctx.inflationFactor;
+            const totalAnnualTax = taxReal * inflationFactor;
             grossIncomeTax = totalAnnualTax; // [FA-6-CREDIT-CAP] liability de retraite de l'année
             // Retenue à la source déjà captée sur les retraits REER/FERR de l'année
             // (présente dans le bucket .reer au moment de décembre). On la crédite pour ne
@@ -732,7 +757,10 @@ export function processDecemberTaxFiling(
             if (Number.isFinite(reconciliation) && Math.abs(reconciliation) > 1) {
                 // [ENG-TAXDEC-FLOOR-INDEX] Plancher indexé — miroir EXACT de la phase active
                 // (sinon les deux branches divergeraient au fil des années de projection).
-                const floor = -APRIL_SETTLEMENT_FLOOR_REAL * (Number.isFinite(ctx.inflationFactor) ? Math.max(1, ctx.inflationFactor) : 1);
+                // [TAXDEC-INFLATIONFACTOR-AMONT] Plus de `Number.isFinite` ici : le facteur est validé À
+                // L'ENTRÉE du mois. `Math.max(1, …)` reste — il ne protège pas d'un NaN, il empêche un
+                // facteur < 1 (déflation) de RÉTRÉCIR le plancher du solde d'avril.
+                const floor = -APRIL_SETTLEMENT_FLOOR_REAL * Math.max(1, inflationFactor);
                 taxCurrent.revenu += Math.max(floor, reconciliation);
                 // Panel #558 : troncature journalisée (miroir du plancher de la phase active).
                 if (reconciliation < floor) {
@@ -775,7 +803,7 @@ export function processDecemberTaxFiling(
                 + ctx.accRetraitsReerYear
                 + ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD
                 + annualGrossedUpDivForBases
-            ) / ctx.inflationFactor;
+            ) / inflationFactor;
         } else {
             // Mode actif : revenu brut salarial - déductions REER + FHSA + Smith.
             // FIX audit code-reviewer HIGH 1 : sans soustraction des déductions, RAMQ
@@ -805,7 +833,7 @@ export function processDecemberTaxFiling(
                 : 0;
             // [revue #683 MOYEN-2] même ligne 275 : le dividende majoré du non-enregistré d'un
             // ACTIF entre aussi dans l'assiette RAMQ.
-            familyNetIncome = Math.max(0, grossFamily - deductions + retraitsReer + gainsImposables + annualGrossedUpDivForBases) / ctx.inflationFactor;
+            familyNetIncome = Math.max(0, grossFamily - deductions + retraitsReer + gainsImposables + annualGrossedUpDivForBases) / inflationFactor;
         }
         const ramqPerAdult = calculateRamqPremium(
             familyNetIncome,
@@ -815,9 +843,9 @@ export function processDecemberTaxFiling(
                 exempt: !!ctx.ramqExempt,
             },
             ctx.loopYear,  // indexation seuils + prime max
-            ctx.inflationFactor,  // [FISC-BRACKET-REALINDEX] familyNetIncome est en $ RÉELS → seuils en réel
+            inflationFactor,  // [FISC-BRACKET-REALINDEX] familyNetIncome est en $ RÉELS → seuils en réel
         );
-        const ramqTotal = ramqPerAdult * ctx.activeUsersCount * ctx.inflationFactor;
+        const ramqTotal = ramqPerAdult * ctx.activeUsersCount * inflationFactor;
         if (ramqTotal > 0) {
             taxCurrent.divers += ramqTotal;
             logs.push(`💊 RAMQ médicaments: ${Math.round(ramqTotal).toLocaleString('fr-CA')}$/an (${Math.round(ramqPerAdult)}$/adulte)`);
@@ -852,10 +880,10 @@ export function processDecemberTaxFiling(
             + ctx.accRetraitsReerYear
             + ctx.accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD
             + annualGrossedUpDivForBases
-        ) / ctx.activeUsersCount / ctx.inflationFactor;
+        ) / ctx.activeUsersCount / inflationFactor;
         // [FISC-BRACKET-REALINDEX] individualNetIncome est en $ RÉELS → seuils FSS en réel.
-        const fssPerAdult = calculateFSSPremium(individualNetIncome, ctx.loopYear, ctx.inflationFactor);
-        const fssTotal = fssPerAdult * ctx.activeUsersCount * ctx.inflationFactor;
+        const fssPerAdult = calculateFSSPremium(individualNetIncome, ctx.loopYear, inflationFactor);
+        const fssTotal = fssPerAdult * ctx.activeUsersCount * inflationFactor;
         if (fssTotal > 0) {
             taxCurrent.divers += fssTotal;
             logs.push(`🏥 FSS (ligne 446): ${Math.round(fssTotal).toLocaleString('fr-CA')}$/an (${Math.round(fssPerAdult)}$/adulte)`);
@@ -896,7 +924,7 @@ export function processDecemberTaxFiling(
             // calcul principal (§1) garde `eligiblePensionIncome: 0` — porter la pension d'un
             // seul côté re-créerait l'incohérence que F1 vient de fermer (mesuré ±1 878 $ sur un
             // actif 72+ à retraits REER ; routé [TAXDEC-ACTIF-72-PENSION-CREDIT]).
-            const pensionNominal = ctx.isRetired ? eligiblePensionFor(i) * ctx.inflationFactor : 0;
+            const pensionNominal = ctx.isRetired ? eligiblePensionFor(i) * inflationFactor : 0;
             const mk = (fam: number): AgeCreditOptions | undefined =>
                 a !== undefined && a >= 65
                     ? { age: a, eligiblePensionIncome: pensionNominal, hasSpouse: ctx.activeUsersCount > 1, familyIncome: fam }

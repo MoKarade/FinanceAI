@@ -324,11 +324,6 @@
 
 ---
 
-- [ ] **`[FINTABLE-TXADDED-MENT]`** (XS, MOYEN — MESURÉ, audit PR #649) — `transactionsAdded` compte
-  la longueur du PAYLOAD (`syncCore.ts`), pas les écritures réelles ; `applyBankStatement` rend
-  pourtant `added.length`. Mesuré : 3 rapportées / 0 écrites. Le toast « N transaction(s)
-  ajoutée(s) » est donc faux précisément là où le recouvrement est maximal — ironie : ce lot existe
-  pour corriger un compteur qui mentait et en laisse un autre qui ment davantage.
 - [ ] **`[FINTABLE-ANCRE-LIQUIDITE-GONFLEE]`** (S, MOYEN — MESURÉ, audit PR #649) — un doublon non
   neutralisé gonfle `initialBalances.LIQUIDITE` en silence (mesuré 1000 → 1584 $) : le total présent
   est auto-réparé par le payload `cash_balance`, mais l'ANCRE visible dans Réglages → Comptes porte

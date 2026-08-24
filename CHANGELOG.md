@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-24 (la sync bancaire ne gonfle plus ses chiffres)
+
+- Après une synchronisation, le message « N transaction(s) ajoutée(s) » annonçait le nombre de
+  lignes **reçues de la banque**, pas celles réellement enregistrées. Comme l'app écarte les
+  doublons, il annonçait souvent 3 ajouts pour **zéro** écriture — précisément dans le cas le plus
+  courant, une sync quotidienne qui revoit les mêmes opérations.
+- Même correction pour deux indicateurs voisins de l'écran Système : « Liquidités : mises à jour »
+  s'affichait même quand le solde n'avait pas bougé, et une dette inchangée était listée comme mise
+  à jour.
+
 ## [unreleased] — 2026-08-24 (les sous-onglets se cliquent au doigt, le rail se ferme avec Échap)
 
 - Les sous-onglets (Profil, Retraite, Budget) faisaient **28 pixels de haut** : trop petits pour le

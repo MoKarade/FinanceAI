@@ -6044,3 +6044,60 @@ Corollaire, même lot (`[A11Y-SUBTABS-TOUCH-TARGET]`) : une garde qui vérifie l
 classe utilitaire** doit vérifier aussi que la classe **fait encore ce qu'elle promet** — `.touch-target`
 renommée ou ramenée à 36 px laisserait le test vert sans contraindre quoi que ce soit. C'est la même
 famille que « un shade hors palette est un no-op silencieux », côté CSS applicatif cette fois.
+
+
+---
+
+### `UN-COMPTEUR-QUI-COMPTE-L-INTENTION-MENT-DANS-LE-CAS-NOMINAL` — 2026-08-24
+
+`[FINTABLE-TXADDED-MENT]` : la boucle de sync comptait `doc.transactions.length` — ce que le mapper
+PROPOSAIT — alors que l'applicateur écarte les doublons, les montants aberrants et les lignes
+malformées. L'écart n'est pas un cas limite : il est **maximal quand le recouvrement est total**,
+c'est-à-dire dans le fonctionnement NORMAL d'une sync quotidienne qui revoit les opérations de la
+veille. Mesuré : 3 annoncées, 0 écrites.
+
+**La règle** : un compteur destiné à un humain se dérive de ce qui a été ÉCRIT — delta d'état, ou
+registre d'écriture (`changes`) — jamais de la taille de l'entrée. Un compteur qui ment sur une
+écriture est pire que pas de compteur : il fait croire que la donnée est arrivée, et personne ne va
+vérifier.
+
+⚠️ **Relire la BOUCLE, pas la ligne du ticket.** Les deux compteurs voisins portaient la même faute,
+et le ticket n'en nommait qu'un : `cashUpdated` était posé à `true` même quand l'applicateur retourne
+l'état inchangé (écart sous 0,005 $), `debtsUpdated` listait une dette « déjà à jour ». Les deux sont
+AFFICHÉS (« Liquidités : mises à jour / inchangées »). Même famille que
+`MODULE-ECRIT-HORS-CHECKLIST` : la correction se fait par ÉNUMÉRATION des producteurs du registre,
+jamais site par site.
+
+⚠️ **Une doc peut AFFIRMER la propriété que le code n'a pas.** L'en-tête de `mcp/runFintableSync.ts`
+écrivait déjà « ses compteurs décrivent ce qui a réellement été appliqué ». C'était l'INTENTION du
+lot qui avait introduit l'isolation des payloads, pas une propriété vérifiée — et une fois écrite,
+elle se lit comme une garantie et dispense de regarder. Quand une doc énonce une propriété
+vérifiable, elle mérite un test, sinon elle vieillit en mensonge (`DOC-STALE-IMPOSSIBILITY`, versant
+positif).
+
+
+---
+
+### `LE-GATE-N-EST-PAS-LANCE-SI-LE-HOOK-N-EST-PAS-INSTALLE` — 2026-08-24
+
+Le dépôt fournit `scripts/hooks/commit-gate.mjs` et `CLAUDE.md` §5 dit « avant CHAQUE commit (hook
+`commit-gate`) ». Dans le conteneur de session distante, ce hook **n'est pas branché** :
+`git config core.hooksPath` est vide et `.git/hooks/` ne contient que les `.sample`. `git commit`
+n'exécute donc rien du tout — et il n'y a aucun message pour le dire, puisque c'est précisément
+l'absence de hook.
+
+Ce qui l'a révélé : une PR verte en local, ROUGE en CI sur
+`TS2459: 'AppState' … is not exported`. La cause immédiate est un mauvais chemin d'import dans un
+test (`mcp/ingest/applyDocument` au lieu de `types.ts`), mais la cause STRUCTURELLE est que
+**`vitest` ne fait pas de vérification de types** : lancer la suite ne remplace pas `tsc`, et lancer
+la suite en croyant que le hook a fait le reste laisse passer exactement cette classe d'erreur.
+
+**La règle, dans cet environnement** : lancer le gate EXPLICITEMENT — `npm run typecheck && npm run
+lint && npm run test && npm run build` — avant chaque commit, et ne jamais déduire d'une suite verte
+que le typage l'est. Vérifier l'installation du hook (`git config core.hooksPath`, contenu de
+`.git/hooks/`) fait partie de la reprise de session, au même titre que `git fetch`.
+
+Corollaire : c'est le pendant de `GATE-LOCAL-VERT-CI-ROUGE-PAR-VERSION-DE-NODE`. Là, le gate
+tournait et mesurait le mauvais environnement ; ici, il ne tournait pas du tout. Dans les deux cas,
+le symptôme est le même — « vert chez moi, rouge en CI » — et la question à se poser en premier est
+« qu'est-ce qui a RÉELLEMENT tourné ? », pas « qu'est-ce que le code a de faux ? ».

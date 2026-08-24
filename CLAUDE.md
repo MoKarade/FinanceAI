@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 702 tests** Vitest
-(426 fichiers de test, mesuré le 2026-08-24). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 708 tests** Vitest
+(427 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -613,6 +613,10 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - « Livré, testé, déployé » ≠ **ATTEIGNABLE** : pour une feature gatée par une INTERACTION, compter les
   gestes depuis l'état par défaut et vérifier CHAQUE modalité (souris/doigt/clavier). Un test qui
   boucle pour atteindre l'état testé mesure le coût du chemin (`UX-UNREACHABLE-FEATURE`).
+- Un **compteur montré à l'humain** se dérive de ce qui a été ÉCRIT (delta d'état, registre
+  `changes`), jamais de la taille de l'ENTRÉE : l'écart est maximal dans le cas NOMINAL (une sync qui
+  revoit les mêmes lignes annonçait 3 ajouts pour 0 écriture). Et relire la BOUCLE, pas la ligne du
+  ticket — les deux compteurs voisins avaient la même faute.
 - Un **nom trompeur fabrique des faux findings** → renommer est le vrai correctif.
 - « Moins de texte » se satisfait en SUPPRIMANT de l'information : séparer l'**alerte** (marqueur
   compact, visible partout) du **libellé** (déplaçable en `title`). La garde tient les DEUX

@@ -2385,6 +2385,7 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
     // V42: Run MC on the targeted/selected strategy
     const target = results[selectedIdx] || best;
     let successRate: number | null = null;
+    let mcIterationsRun: number | null = null;
     let fvi: number | null = null;
     let expertMetrics: MonteCarloResult['expertMetrics'] | null = null;
 
@@ -2401,6 +2402,9 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         successRate = mcResult.successRate;
         fvi = mcResult.fvi;
         expertMetrics = mcResult.expertMetrics;
+        // [MC-LABEL-FROZEN] Le compte voyage AVEC le résultat : le libellé de l'écran Futur lisait
+        // la config vivante, donc mentait dès qu'on bougeait le curseur sans relancer.
+        mcIterationsRun = mcResult.iterationsRun;
 
         target.chartData.forEach((d, i) => {
             d.P10 = mcResult.p10Data[i] ?? null;
@@ -2433,6 +2437,7 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
         // (finding panel 2026-07-14). Champ ADDITIF : aucun consommateur existant ne change.
         survivalRatePct: successRate,
         fvi,
+        mcIterationsRun,
         expertMetrics: expertMetrics ?? undefined,
         allResults: results,
         bestStrategyIdx: results.indexOf(best)

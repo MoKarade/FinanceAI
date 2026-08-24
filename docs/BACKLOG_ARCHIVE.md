@@ -10,6 +10,34 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Un résultat gelé porte enfin ses propres métadonnées
+
+- [x] **`[MC-LABEL-FROZEN]`** — le KPI « Taux de succès » annonçait « Monte Carlo (N itér.) » en
+  lisant la **configuration vivante** (`effectiveMcIterations(config.monteCarloIterations)`), alors
+  que `results` peut être **GELÉ** : bouger le curseur d'itérations sans relancer la projection
+  faisait annoncer un nombre qui n'avait jamais servi au calcul montré.
+  Correctif conforme à ce que le ticket proposait : le compte voyage AVEC le résultat —
+  `MonteCarloResult.iterationsRun` (= `allRuns.length`, ce qui a VRAIMENT tourné, pas le paramètre
+  demandé : un futur arrêt anticipé rendrait le second mensonger), propagé en `mcIterationsRun` dans
+  la sortie de projection, lu par le libellé.
+  ⚠️ **Troisième cas, absent du ticket** : un résultat SANS compte (MC désactivé au moment du calcul,
+  ou projection produite avant ce lot) n'emprunte PAS le nombre à la configuration — il affiche
+  « Monte Carlo » sans chiffre. Un libellé incomplet est honnête, un nombre crédible ne l'est pas
+  (no-fake-data).
+  Le libellé est extrait en `mcSublabel` pour être testable : le défaut n'était pas dans le composant
+  mais dans ce qu'on lui PASSAIT. 7 tests (les trois cas du libellé, le compteur du moteur vérifié
+  par DEUX moitiés — champ publié et nombre d'appels observés —, la chaîne par scan).
+  **2 perturbations prouvées rouges.**
+
+Contexte d'origine :
+
+- [ ] **`[MC-LABEL-FROZEN]`** (S, finding financial-integrity #601) — le libellé « Monte Carlo
+  (N itér.) » lit la config LIVE (`effectiveMcIterations(config.monteCarloIterations)`) alors
+  que `results` peut être GELÉ (calculé avec l'ancienne valeur) : changer les itérations sans
+  relancer fait mentir le libellé sur le calcul affiché. Fix propre = porter le nombre
+  d'itérations réellement exécuté DANS `MonteCarloResult` (le libellé lit le résultat, pas la
+  config). Atténué en attendant par le bandeau « Paramètres modifiés ».
+
 ## 2026-08-24 — Le piège à focus devient une source unique (et les deux copies avaient divergé)
 
 - [x] **`[A11Y-FUTUR-DETAIL-FOCUS-TRAP]`** — `FutureDetailModal` avait `role="dialog"

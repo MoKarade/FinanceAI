@@ -55,7 +55,31 @@ export function effectiveMcIterations(requested?: number): number {
     return Math.max(MC_ITERATIONS_MIN, Math.min(MC_ITERATIONS_MAX, requested));
 }
 
+/**
+ * [MC-LABEL-FROZEN] Libellé du KPI « Taux de succès » de l'écran Futur.
+ *
+ * Extrait ici — et pas laissé dans le JSX — pour être testable : le défaut n'était pas dans le
+ * composant mais dans ce QUI lui était passé (`TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`).
+ *
+ * ⚠️ Trois cas, dont un qui n'existait pas avant : un résultat SANS compte (MC désactivé au moment
+ * du calcul, ou projection produite avant ce lot) ne doit PAS emprunter le nombre à la
+ * configuration courante. On affiche alors « Monte Carlo » tout court — un libellé incomplet est
+ * honnête, un nombre faux ne l'est pas (no-fake-data).
+ */
+export const mcSublabel = (runMC: boolean, iterationsRun?: number | null): string => {
+    if (!runMC) return 'Active MC pour calculer';
+    return Number.isFinite(iterationsRun) && (iterationsRun as number) > 0
+        ? `Monte Carlo (${iterationsRun} itér.)`
+        : 'Monte Carlo';
+};
+
 export interface MonteCarloResult {
+    /** [MC-LABEL-FROZEN] Nombre d'itérations RÉELLEMENT exécutées par CE calcul.
+     *  ⚠️ Ce n'est pas le paramètre demandé : c'est `allRuns.length`. Le libellé de l'écran Futur
+     *  lisait la config VIVANTE (`effectiveMcIterations(config.monteCarloIterations)`) alors que le
+     *  résultat affiché peut être GELÉ — changer le curseur sans relancer faisait mentir le libellé
+     *  sur le calcul montré. Un résultat porte donc désormais son propre compte. */
+    iterationsRun: number;
     successRate: number;
     p10Data: number[];
     p50Data: number[];
@@ -231,5 +255,8 @@ export function runMonteCarlo(
         criticalDecadeEndYear: Math.floor(criticalDecadeEndMonth / 12),
     };
 
-    return { successRate, p10Data, p50Data, p90Data, fvi, expertMetrics };
+    // ⚠️ `allRuns.length`, pas `iterations` : c'est ce qui a VRAIMENT tourné. Les deux coïncident
+    // aujourd'hui (la boucle ne s'interrompt pas), mais un futur arrêt anticipé — watchdog, budget
+    // de temps — rendrait le paramètre demandé mensonger, exactement le défaut que ce lot corrige.
+    return { iterationsRun: allRuns.length, successRate, p10Data, p50Data, p90Data, fvi, expertMetrics };
 }

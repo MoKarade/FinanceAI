@@ -758,12 +758,6 @@
 
 ## 🧱 Dette technique
 
-- [ ] **`[MC-LABEL-FROZEN]`** (S, finding financial-integrity #601) — le libellé « Monte Carlo
-  (N itér.) » lit la config LIVE (`effectiveMcIterations(config.monteCarloIterations)`) alors
-  que `results` peut être GELÉ (calculé avec l'ancienne valeur) : changer les itérations sans
-  relancer fait mentir le libellé sur le calcul affiché. Fix propre = porter le nombre
-  d'itérations réellement exécuté DANS `MonteCarloResult` (le libellé lit le résultat, pas la
-  config). Atténué en attendant par le bandeau « Paramètres modifiés ».
 - [ ] **`[A11Y-CHART-HINT-HIDDEN]`** (S, a11y — audit #595) — la phrase d'aide du graphe Futur
   (« survol = jour · clic = fige · molette = zoom », `FutureProjection.tsx` ~1311) est en
   `aria-hidden="true"` : du contenu INSTRUCTIONNEL entièrement soustrait aux lecteurs d'écran,

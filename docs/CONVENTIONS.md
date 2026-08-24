@@ -6197,3 +6197,34 @@ focusable (les flèches Veille/Lendemain ne sont rendues que si `onStepDay` est 
 sans rien prouver. Le plancher `focusables().length > 2` est la seule assertion qui distingue un
 cycle mesuré d'un cycle dégénéré — troisième lot d'affilée où ce genre de plancher attrape MA
 fixture, pas le code.
+
+
+---
+
+### `UN-RESULTAT-GELE-DOIT-PORTER-SES-PROPRES-METADONNEES` — 2026-08-24
+
+`[MC-LABEL-FROZEN]` : le KPI affichait « Monte Carlo (N itér.) » en lisant la CONFIGURATION, pendant
+que le chiffre à côté venait d'un RÉSULTAT qui, lui, peut être gelé. Les deux sources sont correctes
+prises séparément — et elles décrivent deux instants différents dès que l'utilisateur bouge un
+curseur sans relancer.
+
+**La règle** : toute métadonnée qui DÉCRIT un résultat (nombre d'itérations, date de calcul, version
+d'hypothèses, stratégie retenue) voyage AVEC lui, dans sa structure. Lire la config au moment du
+rendu revient à décrire la commande qu'on aurait pu passer, pas le plat qui est sur la table. Le
+signal à repérer : dans un même bloc d'affichage, une valeur vient de `results?.…` et sa voisine de
+`config.…`.
+
+Deux corollaires que ce lot a ajoutés au ticket :
+
+1. **Publier ce qui a tourné, pas ce qu'on a demandé.** `iterationsRun` vaut `allRuns.length`, pas le
+   paramètre `iterations`. Les deux coïncident aujourd'hui ; un arrêt anticipé futur (watchdog,
+   budget de temps) rendrait le second mensonger — et ce serait exactement le défaut qu'on vient de
+   corriger, réapparu par une autre porte.
+2. **Une métadonnée ABSENTE ne s'emprunte pas.** Un résultat produit avant le lot n'a pas de compte :
+   le libellé affiche « Monte Carlo » tout court. Compléter avec la valeur de la config aurait
+   fabriqué précisément le mensonge d'origine, sous couvert de rétrocompatibilité.
+
+Corollaire de test : le défaut ne vivait pas dans le composant mais dans ce qu'on lui PASSAIT
+(`TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`). Extraire le libellé en fonction pure (`mcSublabel`) rend
+les trois cas testables en trois lignes ; le scan de source ne sert plus qu'au maillon du milieu,
+celui qu'on ne peut prouver qu'en faisant tourner une projection entière.

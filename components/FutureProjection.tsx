@@ -99,7 +99,7 @@ import { useSimulationParams, useTodayIsoLocal } from '../hooks/useSimulationPar
 import { buildPastPrefix } from '../services/history/buildPastPrefix';
 import { deriveMilestoneIcons } from '../services/projection/milestoneIcons';
 // [REFONTE-NAV-L2a] Itérations MC réellement exécutées (source unique moteur) pour le libellé.
-import { effectiveMcIterations } from '../services/projection/monteCarlo';
+import { mcSublabel } from '../services/projection/monteCarlo';
 import { ActionPlanDrilldown } from './projection/ActionPlanDrilldown';
 import { ProjectionExplains } from './projection/ProjectionExplains';
 import { StrategyOptimizerPanel } from './projection/StrategyOptimizerPanel';
@@ -1327,9 +1327,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     label="Taux de succès"
                     icon="✓"
                     value={results?.successRate != null ? `${results.successRate}%` : '—'}
-                    // [REFONTE-NAV-L2a] Le nombre RÉEL d'itérations (source unique moteur, clamp
-                    // inclus) — « (100 itér.) » codé en dur mentait dès que le paramètre changeait.
-                    sublabel={runMC ? `Monte Carlo (${effectiveMcIterations(projection.monteCarloIterations)} itér.)` : 'Active MC pour calculer'}
+                    // [MC-LABEL-FROZEN] Le compte vient du RÉSULTAT affiché, jamais de la config
+                    // vivante : `results` peut être GELÉ (curseur bougé sans relance), et lire la
+                    // config faisait alors annoncer un nombre d'itérations qui n'avait pas servi.
+                    // Résultat sans compte (MC non lancé, ou projection d'avant ce lot) → « Monte
+                    // Carlo » SANS chiffre : un « — » honnête vaut mieux qu'un nombre crédible.
+                    sublabel={mcSublabel(runMC, results?.mcIterationsRun as number | null | undefined)}
                     variant={results?.successRate != null && results.successRate >= 80 ? 'success' : results?.successRate != null && results.successRate >= 50 ? 'warning' : 'danger'}
                 />
                 <KPIStat

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { formatCAD } from '../../utils/format';
 import { createPortal } from 'react-dom';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { ComposedChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceDot } from 'recharts';
 import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
 import { splitEventIcon, ClickableEventIcon } from './ProjectionTooltip';
@@ -332,6 +333,13 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
         dialogRef.current?.focus();
         return () => { trigger?.focus(); };
     }, []);
+
+    // [A11Y-FUTUR-DETAIL-FOCUS-TRAP] La modale avait `role="dialog" aria-modal="true"`, le focus au
+    // montage et Échap — mais RIEN ne retenait Tab : la tabulation sortait vers le contenu de fond,
+    // que l'overlay masque à la souris et laisse atteignable au clavier. Le piège vient du hook
+    // partagé plutôt que d'une troisième copie du patron : les deux copies existantes avaient déjà
+    // divergé sur la liste des éléments focusables.
+    useFocusTrap(dialogRef);
 
     const idx = useMemo(
         () => chartData.findIndex((d) => d.monthIndex === point.monthIndex),

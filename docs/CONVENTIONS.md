@@ -6131,3 +6131,34 @@ Corollaire de méthode : la mesure qui tranche n'est pas un point mais un **bala
 × dividende), avec la question posée sous la forme « dans combien de cas le gain serait-il
 ABSORBABLE ? ». Un point unique aurait confirmé le ticket (l'excédent est réel) ou l'aurait réfuté
 (un cas au hasard donne 0 $) — les deux réponses auraient été fausses comme généralité.
+
+
+---
+
+### `DEUX-COPIES-D-UN-PATRON-ONT-DEJA-DIVERGE-LA-TROISIEME-SE-REFUSE` — 2026-08-24
+
+`[A11Y-FUTUR-DETAIL-FOCUS-TRAP]` disait, en toutes lettres : « le dépôt a déjà le patron deux fois ».
+C'était vrai, et c'était l'argument POUR une troisième copie. En allant lire les deux, la conclusion
+s'inverse : elles ne faisaient déjà plus la même chose. `components/ui/Modal.tsx` liste
+`select:not([disabled])` et `textarea:not([disabled])` parmi les éléments focusables ;
+`components/sync/SyncConflictModal.tsx` les avait perdus. Le second dialogue n'en contient aucun
+aujourd'hui — la divergence est donc restée invisible, et le serait restée jusqu'au jour où on y
+ajoute une liste déroulante.
+
+**La règle** : « le patron existe déjà N fois » n'est pas une autorisation de le copier une fois de
+plus, c'est un signal de DÉRIVE à vérifier. Lire les N copies AVANT de choisir : si elles ont
+divergé, le lot n'est plus « ajouter le patron ici » mais « extraire la source unique et rebrancher
+les N ». Le coût est du même ordre ; ce qui change, c'est que la N+1-ième divergence n'aura pas lieu.
+
+**Ce qu'on extrait, et ce qu'on laisse.** Seule la partie DUPLIQUÉE monte dans le hook (le piège Tab
+et le sélecteur). Le focus initial, la touche Échap, le verrou de scroll et la restauration du focus
+restent chez chaque appelant : ils diffèrent LÉGITIMEMENT — le dialogue de conflit de sync n'a
+volontairement pas d'échappatoire, puisqu'il faut choisir. Tout aspirer dans le hook aurait forcé des
+options pour reproduire ces différences, c'est-à-dire déplacé la complexité au lieu de la retirer.
+
+⚠️ **Et l'anti-vacuité a encore payé** : la fixture minimale de la modale n'a qu'UN seul élément
+focusable (les flèches Veille/Lendemain ne sont rendues que si `onStepDay` est fourni). Avec un seul
+élément, `premier === dernier` : le piège boucle sur lui-même et « Tab revient au premier » est vrai
+sans rien prouver. Le plancher `focusables().length > 2` est la seule assertion qui distingue un
+cycle mesuré d'un cycle dégénéré — troisième lot d'affilée où ce genre de plancher attrape MA
+fixture, pas le code.

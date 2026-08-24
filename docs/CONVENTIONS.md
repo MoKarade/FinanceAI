@@ -5882,3 +5882,30 @@ DÉBUT DE LIGNE** (`/^(<<<<<<<|=======|>>>>>>>)/m`) — c'est exactement la form
 aucune prose ne commence une ligne par sept chevrons. La leçon générale se durcit d'un cran : un
 motif qui décrit du BALISAGE doit être ancré sur sa POSITION, pas cherché comme sous-chaîne, sinon il
 matchera toujours la documentation qui explique ce balisage.
+### `UN-PAQUET-DE-TYPES-N-EST-UTILE-QUE-SI-QUELQUE-CHOSE-EST-TYPE` — 2026-08-24
+
+`[DETTE-KNIP-ADMZIP]` posait la bonne question et n'osait pas trancher : knip signalait
+`@types/adm-zip` comme dépendance de développement inutilisée, mais « le paquet `adm-zip` lui-même
+est-il encore employé, auquel cas ses types le sont indirectement, et c'est knip qui a tort ? ».
+
+Les deux propositions sont vraies **en même temps**, et c'est ça le piège. `adm-zip` est bel et bien
+vivant — `mcp/pack.mjs` l'importe, et le script `mcp:pack` l'exécute. Mais ce consommateur est un
+fichier **`.mjs`**, et `tsconfig.json` pose `allowJs: true` **sans `checkJs`** : le fichier est
+INCLUS dans le projet TypeScript et n'est JAMAIS typé. Le paquet de types fournissait donc ses
+déclarations à personne.
+
+**La règle** : « le paquet runtime est-il utilisé ? » et « son paquet de types sert-il à quelque
+chose ? » sont deux questions DISTINCTES. La seconde ne se déduit pas de la première — elle dépend de
+la nature du consommateur (`.ts` typé / `.js` non typé / `.mjs` sous `checkJs: false`) et de la
+configuration du compilateur, pas de la présence de l'import.
+
+**Et elle se tranche par l'EXPÉRIENCE, pas par la lecture** : retirer le paquet et relancer le
+typecheck coûte deux minutes et rend un verdict binaire, là où raisonner sur `allowJs`/`checkJs`
+laisse un doute. Ici : typecheck VERT après retrait, knip ne signale plus **aucune** dépendance
+inutilisée, et le runtime reste intact (`import('adm-zip')` résout, `node --check` passe).
+
+⚠️ **Aucune garde n'a été ajoutée, et c'est le bon choix** : si un jour quelqu'un importe `adm-zip`
+depuis un fichier TypeScript, `tsc` échouera de lui-même sur la déclaration manquante. La protection
+existe déjà — en écrire une seconde serait du bruit
+(`AVANT-D-AJOUTER-LA-GARDE-VERIFIER-QU-ELLE-N-EXISTE-PAS-DEJA`). Un lot peut se terminer sans test
+neuf, à condition de DIRE quel mécanisme existant tient le rôle.

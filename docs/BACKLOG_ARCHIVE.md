@@ -10,6 +10,23 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — `@types/adm-zip` retiré : knip avait raison, et la cause est instruite
+
+- [x] **`[DETTE-KNIP-ADMZIP]`** — le ticket posait la bonne question sans trancher : « le paquet
+  `adm-zip` lui-même est-il encore employé (auquel cas ses types le sont indirectement, et c'est knip
+  qui a tort), ou les deux sont-ils morts ? ». **Les deux propositions étaient vraies en même temps**,
+  et c'est ça le piège. `adm-zip` est bien vivant (`mcp/pack.mjs` l'importe, le script `mcp:pack`
+  l'exécute) — mais ce consommateur est un fichier **`.mjs`**, et `tsconfig.json` pose
+  `allowJs: true` **sans `checkJs`** : le fichier est inclus dans le projet TypeScript et n'est
+  JAMAIS typé. `@types/adm-zip` fournissait donc ses déclarations à personne.
+  Tranché par l'**expérience** plutôt que par la lecture de la config : retrait du paquet →
+  `npm run typecheck` reste **VERT**, et knip ne signale plus **aucune** dépendance inutilisée ; le
+  runtime est intact (`import('adm-zip')` résout, `node --check mcp/pack.mjs` passe).
+  ⚠️ **Aucune garde ajoutée, et c'est délibéré** : si quelqu'un importe un jour `adm-zip` depuis un
+  fichier TypeScript, `tsc` échouera de lui-même sur la déclaration manquante. La protection existe
+  déjà. Un lot peut se terminer sans test neuf, à condition de DIRE quel mécanisme tient le rôle.
+  Gate vert : 4 674 tests / 423 fichiers (après rebase sur #705 ; inchangé par ce lot — aucun test ajouté).
+
 ## 2026-08-24 — Les tranches d'imposition suivent l'année, et le biais COMPOSE
 
 - [x] **`[TAXBRACKETVIZ-ANNEE]`** — `TaxBracketViz` dessinait les paliers 2026 bruts et calculait son

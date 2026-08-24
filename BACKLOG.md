@@ -1547,13 +1547,17 @@
   point → `api/claude/[...path].ts` (fonction Vercel Edge, routée par la plateforme) ressort en
   « fichier inutilisé » alors qu'il est en PROD. Le faux positif aveugle aussi le scan sur du vrai
   code mort futur dans `api/`. Correctif : ajouter `"api/**/*.ts"` à `entry`. [MESURÉ]
-- [ ] **`[DETTE-KNIP-ADMZIP]`** (XS, FAIBLE — découvert en livrant `[DETTE-KNIP-API-ENTRY]`, 2026-08-21) —
-  `knip` signale `@types/adm-zip` comme **dépendance de développement inutilisée**
-  (`package.json:54`). NON traité dans ce lot : hors périmètre du ticket, et il faut d'abord
-  trancher — le paquet `adm-zip` lui-même est-il encore employé (auquel cas ses types le sont
-  indirectement, et c'est knip qui a tort), ou les deux sont-ils morts ? Vérifier AVANT de
-  supprimer : retirer des types encore nécessaires casse le typecheck, retirer un faux positif
-  réintroduit le bruit qu'on vient d'éliminer. [MESURÉ — signalé par l'outil, cause non instruite]
+- [x] **`[DETTE-KNIP-ADMZIP]`** ✅ 2026-08-24 — **knip avait raison**, et la cause est instruite.
+  Le paquet `adm-zip` LUI-MÊME est bien vivant : `mcp/pack.mjs` l'importe, et le script `mcp:pack`
+  l'exécute. Mais ce consommateur est un fichier **`.mjs`**, et `tsconfig.json` pose `allowJs: true`
+  **sans `checkJs`** — le fichier est donc inclus mais **jamais typé**. `@types/adm-zip` fournissait
+  ses déclarations à personne. Vérifié par l'expérience plutôt que par lecture : retrait du paquet →
+  **`npm run typecheck` reste VERT**, et knip ne signale plus **aucune** dépendance inutilisée.
+  Le runtime est intact (`import('adm-zip')` résout, `node --check mcp/pack.mjs` passe).
+  ⚠️ **Aucune garde ajoutée, et c'est délibéré** : si quelqu'un importe un jour `adm-zip` depuis un
+  fichier **TypeScript**, `tsc` échouera de lui-même sur la déclaration manquante. La garde existe
+  déjà, c'est le typecheck (`AVANT-D-AJOUTER-LA-GARDE-VERIFIER-QU-ELLE-N-EXISTE-PAS-DEJA`).
+
 - [ ] **`[DETTE-GODFN-PDF]`** (M, MOYEN) — `generateFinancialReport` fait **615 lignes**
   (`services/pdfReport.ts:265-879`), soit quasi tout le fichier. Correctif : découper par section
   de rapport (`buildHoldingsSection`, `buildDebtSection`…). [MESURÉ]

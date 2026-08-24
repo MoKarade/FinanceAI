@@ -235,6 +235,12 @@ n'est pas réécrire un récit.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
+- « Le paquet runtime est-il utilisé ? » et « son paquet de TYPES sert-il à quelque chose ? » sont
+  deux questions DISTINCTES : `adm-zip` est bien vivant (`mcp/pack.mjs`), mais ce consommateur est un
+  `.mjs` que `allowJs: true` SANS `checkJs` n'a jamais typé — les types ne servaient à personne. Se
+  tranche par l'EXPÉRIENCE (retirer + relancer `typecheck`), jamais en raisonnant sur la config. Et un
+  lot peut finir SANS test neuf, à condition de dire quel mécanisme existant tient le rôle — ici `tsc`
+  lui-même (`UN-PAQUET-DE-TYPES-N-EST-UTILE-QUE-SI-QUELQUE-CHOSE-EST-TYPE`).
 - Quand deux configurations qui DEVRAIENT différer rendent la MÊME sortie, se demander **quelle
   contrainte sature** avant de conclure « le mécanisme n'existe pas » : un surplus de 29 k$/an contre
   un plafond CELI de 8,5 k$ remplissait les deux comptes de toute façon, rendant l'ORDRE de cotisation

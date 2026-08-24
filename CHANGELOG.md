@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-24 (plus de congé parental pour un conjoint qui n'est plus là)
+
+- Après un décès ou un divorce dans la projection, la naissance d'un enfant déclenchait encore le
+  **congé parental du second parent** : l'app retirait son salaire (qu'elle ne créditait plus) et
+  versait à sa place une prestation RQAP. Mesuré sur un scénario complet : **+3 310 $ de revenu
+  mensuel fantôme**.
+- Même correction pour un ménage déjà **à la retraite** : plus de congé parental calculé sur un
+  salaire qui n'est plus versé.
+
 ## [unreleased] — 2026-08-24 (la visite guidée ne pointe plus dans le vide)
 
 - Si un groupe de la navigation était replié, la visite guidée pouvait encadrer un bouton

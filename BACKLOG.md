@@ -262,13 +262,6 @@
   100 k$, droits an 2 = 19 500 $ = 18 000 × 13/12 (+8,33 % une seule fois), puis 18 000 $/an.
   Biais BORNÉ documenté dans `FISCAL_REFERENCE.md` §REER — corriger = décaler l'accumulation ou
   exclure janvier du premier cycle, avec goldens re-basés.
-- [ ] **`[REEE-CONGE-SANS-GARDE-SOLO]`** (S, MOYEN [MESURÉ — revue #679, PRÉEXISTANT, ABSORBÉ]) —
-  `projection.ts` passe `grossAnnaBaseAnnual` BRUT au bloc enfants sans le garde `soloHousehold`
-  appliqué aux 4 autres sites, et sans gate `isRetired` : après décès/divorce (ou avec des jumeaux
-  < 12 mois), le congé retire un salaire jamais crédité → slot 1 NÉGATIF (mesuré −60 k$/an).
-  Le clamp par personne de #679 l'ABSORBE aujourd'hui (et corrige au passage : l'ancien agrégat
-  rongeait les droits de Marc de 8 100 $/an sur des jumeaux) — mais si le congé devient
-  per-parent, le défaut ressort. Corriger le site producteur, pas le consommateur.
 - [ ] **`[FISC-RRSP-LIMITS-PRE2024-DOC]`** (S, doc — audit 2026-08-06) — `RRSP_ANNUAL_LIMITS` porte
   **14 valeurs 2010→2023** (22 000 → 30 780) qui n'apparaissent NULLE PART dans
   `FISCAL_REFERENCE.md` (§REER ne liste que 2024+). Elles pilotent les droits REER HISTORIQUES via
@@ -651,6 +644,16 @@
   prévaut (à confirmer : garder ou retirer la déco 8 h en plus du « se souvenir »). Cadrer
   d'abord le POURQUOI des reconnexions actuelles (instrumentation `[AUTH-DRIVE-STILL-RECONNECT]`
   déjà en place — lire le journal Diagnostics avant de coder).
+- [ ] **`[ENG-DIVORCE-ALLOC-ASSIETTE]`** (S, 🧭 **règle à trancher** — sorti de
+  `[REEE-CONGE-SANS-GARDE-SOLO]`) — après un divorce, `householdGross` reste la somme des DEUX
+  salaires, alors que la récupération des allocations enfants s'y applique (`householdGross >
+  150 000`). Un parent seul se voit donc récupérer ses allocations sur un revenu qui inclut celui de
+  l'ex-conjoint. **MESURÉ** : appliquer `soloHousehold` à cette assiette fait passer l'allocation
+  publiée de **166 $ à 250 $/mois** au mois 36 (scénario divorce du test
+  `[ENG-DIVORCE-BENEFITS-FLUX]`, qui rougit immédiatement).
+  ⚠️ Ce n'est PAS un défaut de câblage mais une question de RÈGLE : quelle assiette de revenu retenir
+  pour les allocations après une séparation, et comment ça s'articule avec la convention « le parent
+  reçoit la moitié » que le test encode aujourd'hui. Écarté du lot de câblage pour cette raison.
 - [ ] **`[TOUR-STEP-GROUPE-REPLIE]`** (S, 🧭 si Marc le veut — reste de `[TOUR-ANCHOR-INVISIBLE]`) —
   depuis que `findVisibleAnchorRect` refuse une ancre `visibility:hidden`, le tour ne pointe plus un
   bouton invisible : il retombe sur sa carte centrée. C'est HONNÊTE, mais l'étape décrit encore un

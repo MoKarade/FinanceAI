@@ -40,6 +40,18 @@ describe('processOneChild — RQAP fantôme (régression parent seul)', () => {
         expect(r.newIncomeAnna).toBeCloseTo(6000, 5); // 72000 / 12
     });
 
+    it('[REEE-CONGE-SANS-GARDE-SOLO] ménage RETRAITÉ : aucun congé, même avec un nourrisson', () => {
+        // `grossAnnaBaseAnnual` est le salaire de BASE : il reste non nul après la retraite (le
+        // moteur cesse simplement de le créditer). Sans la porte `!isRetired`, le bloc RETIRAIT ce
+        // salaire du brut — MESURÉ −5 000 $/mois — et versait une prestation RQAP impossible.
+        const fiscal = vi.fn(fiscalStub);
+        const r = processOneChild(makeChild(), 0, false, 2, baseCtx({ isRetired: true }), fiscal);
+        expect(r.newIncomeAnna).toBeNull();
+        expect(fiscal, 'le congé a été calculé pour un retraité').not.toHaveBeenCalled();
+        expect(r.accGrossDelta ?? 0, 'un salaire a été retiré à un ménage qui n’en touche plus')
+            .toBe(0);
+    });
+
     it('couple mais enfant > 12 mois : plus de RQAP', () => {
         const fiscal = vi.fn(fiscalStub);
         const r = processOneChild(makeChild(), 0, false, 18, baseCtx(), fiscal);

@@ -301,7 +301,13 @@ export function processOneChild(
         // (crédits remboursables QC sur revenu nul) → newIncomeAnna > 0 = revenu d'un
         // 2e parent inexistant. (Le congé du parent seul n'est pas modélisé ici — à
         // faire séparément ; au minimum on ne fabrique plus de revenu.)
-        const annaIsOnMatLeave = childAgeMonths < 12 && grossAnnaBaseAnnual > 0;
+        // [REEE-CONGE-SANS-GARDE-SOLO] `!isRetired` : `grossAnnaBaseAnnual` est le salaire de BASE,
+        // il reste non nul après la retraite (le moteur cesse simplement de le créditer, cf. la
+        // branche `isRetired` de projection.ts). Sans cette porte, un ménage retraité avec un
+        // nourrisson RETIRAIT un salaire qu'il ne touche plus (MESURÉ : −5 000 $/mois de brut) et
+        // recevait une prestation RQAP impossible. Même convention que la cotisation REEE plus bas,
+        // qui est déjà conditionnée à `!isRetired`.
+        const annaIsOnMatLeave = childAgeMonths < 12 && grossAnnaBaseAnnual > 0 && !isRetired;
         if (annaIsOnMatLeave) {
             const yearsElapsed = Math.floor(m / 12);
             const annaGrossAnnual = grossAnnaBaseAnnual * Math.pow(1 + simSalaryGrowth / 100, yearsElapsed);

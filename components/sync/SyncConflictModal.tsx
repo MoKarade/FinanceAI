@@ -6,6 +6,7 @@ import {
     resolveConflict,
     type SyncStatus,
 } from '../../services/sync/syncOrchestrator';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 function formatWhen(ts: number): string {
     if (!ts) return 'date inconnue';
@@ -15,9 +16,6 @@ function formatWhen(ts: number): string {
         return 'date inconnue';
     }
 }
-
-const FOCUSABLE =
-    'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * Modal GLOBAL de résolution de conflit de sync Drive (anti-clobber Marc 2026-07-14).
@@ -46,6 +44,8 @@ export const SyncConflictModal: React.FC = () => {
     const firstBtnRef = useRef<HTMLButtonElement>(null);
     const previousFocusRef = useRef<HTMLElement | null>(null);
 
+    useFocusTrap(dialogRef, !!status.conflict);
+
     useEffect(() => subscribeSyncStatus(setStatus), []);
 
     // Réinitialise l'étape de confirmation quand le conflit se ferme (résolu ailleurs, ou reload).
@@ -60,23 +60,12 @@ export const SyncConflictModal: React.FC = () => {
         const prevOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         const t = setTimeout(() => firstBtnRef.current?.focus(), 50);
-        const onKey = (e: KeyboardEvent): void => {
-            if (e.key !== 'Tab' || !dialogRef.current) return;
-            const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
-            if (focusable.length === 0) return;
-            const first = focusable[0];
-            const last = focusable[focusable.length - 1];
-            if (e.shiftKey) {
-                if (document.activeElement === first) { last.focus(); e.preventDefault(); }
-            } else {
-                if (document.activeElement === last) { first.focus(); e.preventDefault(); }
-            }
-        };
-        document.addEventListener('keydown', onKey);
+        // [A11Y-FUTUR-DETAIL-FOCUS-TRAP] Le piège Tab vient de `useFocusTrap` (source unique). Sa
+        // liste d'éléments focusables inclut `select`/`textarea`, que la copie locale d'ici avait
+        // perdus : un dialogue de conflit qui gagnerait une liste déroulante y aurait fui en silence.
         return () => {
             clearTimeout(t);
             document.body.style.overflow = prevOverflow;
-            document.removeEventListener('keydown', onKey);
             const target = previousFocusRef.current;
             if (target && document.body.contains(target) && typeof target.focus === 'function') target.focus();
         };

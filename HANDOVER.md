@@ -4,6 +4,30 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 145) — `[A11Y-CTA-CONTRASTE-OFFENDERS]` LIVRÉ (décision Marc : corriger les 4 boutons)
+> Teintes choisies **par mesure**, jamais à l'œil. La palette bascule entre le shade 600 et le 700 :
+> le blanc ne passe AA qu'à partir de 700, le `text-dark` seulement jusqu'à 600. D'où la règle
+> retenue — **fond clair → texte sombre** (ambre/vert gardent leur teinte : 2,15 → 9,28 ; 3,19 →
+> 6,25 ; 3,77 → 5,29), **fond saturé → texte blanc + fond d'un cran plus foncé** (`danger-500` →
+> `danger-600`, 3,76 → 4,83). Shades AJOUTÉS : `danger-700` et `info-700`.
+> ⚠️ **Étendre le scan aux SURVOLS a révélé un 5e offender que le ticket ne mentionnait pas** :
+> `text-white` sur `hover:bg-info-500` = **3,68** (`LifeEvents`, `TaxCenter`) — des boutons qui
+> ÉCLAIRCISSENT au survol. Pire, le correctif déjà appliqué à ce motif dans `CeliAssetNudge`
+> (`hover:brightness-110`) vaut **4,44** : toujours sous AA, et logé dans un filtre CSS que AUCUN
+> scan de classes ne peut voir. Corrigé aux trois endroits (`hover:bg-info-700`, 6,70) et remonté
+> comme arbitrage — c'est un dépassement assumé du périmètre littéral du ticket, justifié par le
+> fait que la dernière étape (garde BLOQUANTE) serait sinon rouge à la livraison.
+> **Dernière étape du ticket faite** : la passe CTA de `check-contrast.ts` bascule en `exit(1)`.
+> ⚠️ Mais la CI ne lance PAS ce script (elle lance lint/typecheck/test/build) : l'extraction est
+> sortie dans `scripts/lib/ctaContrast.ts` (source unique) et branchée sur une garde Vitest
+> `tests/a11y/ctaContrast.test.ts`. **2 perturbations prouvées rouges** (remettre `text-white` sur
+> l'ambre ; couper la lecture des survols).
+> Restes routés en `[A11Y-CTA-HORS-SCAN]` (MESURÉS) : `bg-secondary` + blanc = **3,67**
+> (`Button.tsx:18`), `bg-amber-700` + `brightness-110` = **4,28** (`StatementReminder.tsx:87`), et
+> les fonds translucides (angle mort assumé).
+> Gate vert : **4 696 tests / 426 fichiers** (mesuré après rebase sur #708). Mesure finale :
+> 8 paires CTA / 8 conformes.
+>
 > ## 🟢 Session 2026-08-24 (suite 144) — `[SMITH-HELOC-TAUX-FIGE]` : la marge suit enfin le prêt
 > **Décision Marc du 24/08 : « la marge suit l'hypothèque ».** Le taux du levier Smith n'est plus un
 > littéral figé à 5 % : `smithHelocAnnualRate(goal.mortgageRate)` rend `hypothèque + 2 points`, avec

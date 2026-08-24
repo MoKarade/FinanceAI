@@ -5971,3 +5971,50 @@ Deux corollaires du même lot :
    l'exerce. Sans cette vérification, « rien n'a bougé » aurait pu vouloir dire « rien ne couvre ce
    chemin » — ce qui est le contraire d'un feu vert
    (`AUCUN-GOLDEN-N-A-BOUGE-EST-UN-RESULTAT-A-EXPLIQUER`).
+
+---
+
+### `UNE-GARDE-QUI-NE-LIT-QU-UN-ETAT-NE-COUVRE-QUE-CET-ETAT` — 2026-08-24
+
+`[A11Y-CTA-CONTRASTE-OFFENDERS]` demandait de corriger **4 CTA** sous le seuil WCAG AA, puis de
+rendre bloquante la passe « CTA pleins » de `check-contrast.ts`. Les 4 étaient exacts. Ce qui ne
+l'était pas, c'est le PÉRIMÈTRE que le scan donnait à voir.
+
+**Le scan ne lisait que le fond de REPOS** (`bg-…`), jamais `hover:bg-…`. Or WCAG 1.4.3 ne connaît
+aucune exemption « état survolé » : un bouton lisible au repos et illisible au survol n'est pas
+conforme. En étendant la lecture aux survols, deux choses sont tombées d'un coup :
+
+- un **5e offender** que personne ne cherchait — `text-white` sur `hover:bg-info-500` = **3,68**
+  (`LifeEvents.tsx:248`, `TaxCenter.tsx:353`) : des boutons qui ÉCLAIRCISSENT leur fond au survol,
+  donc perdent du contraste exactement au moment où on interagit avec eux ;
+- le fait que `DebtManager.tsx:161` était conforme au repos (`danger-600`, 4,83) et fautif au survol
+  (`danger-500`, 3,76). Le ticket le mentionnait, l'outil ne pouvait pas le voir.
+
+**Le corollaire est plus dur que le constat.** Ce même motif avait DÉJÀ été « corrigé » ailleurs :
+`CeliAssetNudge.tsx` remplaçait `hover:bg-info-500` par `hover:brightness-110`, avec un commentaire
+qui citait le bon ratio (3,68) et le bon seuil. Mesuré : `#2563eb × 1,1` donne **4,44** — toujours
+sous 4,5. Le correctif avait surtout déplacé le défaut **dans un filtre CSS**, c'est-à-dire hors de
+portée de tout scan de classes, présent comme futur. Un défaut invisible se lit comme un défaut
+absent.
+
+**Les règles qui en sortent** :
+
+1. Une garde d'état doit énumérer **tous les états rendus** (repos, survol, focus, désactivé), pas le
+   plus facile à extraire. Sinon elle publie un « 8/8 conformes » qui ne parle que de la moitié du
+   produit.
+2. **Ne jamais corriger avec un mécanisme que la garde ne sait pas lire.** Entre `hover:brightness-110`
+   (filtre, invisible) et `hover:bg-info-700` (classe, lisible ET mesurable), le second vaut mieux
+   même à ratio égal — ici il est en plus meilleur (6,70 contre 4,44).
+3. La palette impose la solution, elle ne se choisit pas au goût : le contraste bascule **entre le
+   shade 600 et le 700**. Le blanc ne passe AA qu'à partir de 700, `text-dark` seulement jusqu'à 600.
+   « Fond clair → texte sombre, fond saturé → texte blanc + un cran plus foncé » n'est pas une
+   préférence esthétique, c'est ce que la mesure laisse comme choix.
+4. ⚠️ **Basculer une garde en bloquant ne suffit pas si rien ne la lance.** `check-contrast` passait
+   en `exit(1)` — mais la CI lance `lint`, `typecheck`, `test`, `build`, jamais ce script. La bascule
+   demandée par le ticket aurait été une garde décorative. D'où l'extraction dans
+   `scripts/lib/ctaContrast.ts` (source unique) et la garde Vitest qui, elle, est dans le gate.
+   Avant de déclarer une garde « active », vérifier **quel point d'application l'exécute**.
+5. Un correctif peut rendre une garde **AVEUGLE** : passer `text-white` → `text-dark` sortait la
+   paire du scan, dont le motif de texte n'acceptait que les échelles numériques (`text-white`,
+   `ink-100`) et pas les tokens plats (`dark`). Corrigé en même temps que le fix — sans quoi la
+   preuve « 0 offender » aurait été obtenue en cessant de regarder.

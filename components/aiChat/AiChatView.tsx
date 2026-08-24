@@ -497,7 +497,7 @@ export const AiChatView: React.FC<AiChatViewProps> = ({ variant, onClose }) => {
                                     onClick={cancel}
                                     aria-label="Annuler la génération"
                                     title="Annuler"
-                                    className="bg-danger-500 hover:bg-danger-400 text-white w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg shadow-danger-500/20 focus-ring"
+                                    className="bg-danger-600 hover:bg-danger-700 text-white w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg shadow-danger-500/20 focus-ring"
                                 >
                                     <Icon name="close" size={16} />
                                 </button>

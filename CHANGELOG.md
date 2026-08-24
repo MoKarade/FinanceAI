@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-24 (les boutons de couleur redeviennent lisibles)
+
+- Certains boutons pleins affichaient du **texte blanc sur un fond trop clair** : le bouton orange
+  « Calculer la projection » descendait à un contraste de **2,15 pour 1**, là où la norme
+  d'accessibilité en demande 4,5. Cinq autres (rouges, verts, jaunes, bleus) étaient entre 3,2 et 3,8.
+- Correction par MESURE, pas à l'œil : les fonds clairs (ambre, vert) gardent leur couleur et passent
+  au **texte sombre** ; les fonds rouges et bleus gardent le texte blanc et **foncent d'un cran**.
+  Leur survol fonce lui aussi au lieu d'éclaircir — un bouton lisible au repos et illisible au survol
+  reste illisible.
+- L'outil de contrôle du contraste lit désormais aussi les **états de survol**, et il **bloque** :
+  un futur bouton sous le seuil fait échouer les tests, il n'est plus seulement signalé.
+
+
 ## [unreleased] — 2026-08-24 (le levier « Smith Manoeuvre » cesse d'être flatteur)
 
 - Quand l'app teste la stratégie **Smith Manoeuvre**, elle supposait que ta marge de crédit coûterait

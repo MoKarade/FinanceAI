@@ -399,7 +399,7 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
               <button
                 onClick={doRestore}
                 disabled={restoreConfirmPhrase !== 'RESTAURER'}
-                className="px-4 py-2 rounded-xl bg-danger-500 hover:bg-danger-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-body font-bold shadow-lg active:scale-95 transition-all"
+                className="px-4 py-2 rounded-xl bg-danger-600 hover:bg-danger-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-body font-bold shadow-lg active:scale-95 transition-all"
               >
                 Restaurer définitivement
               </button>

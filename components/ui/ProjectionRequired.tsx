@@ -60,7 +60,7 @@ export const ProjectionRequired: React.FC<ProjectionRequiredProps> = ({
             </div>
             <button
                 onClick={goToFuture}
-                className="px-4 py-2 rounded-lg bg-warning-500 hover:bg-warning-600 text-white text-meta font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-warning-400"
+                className="px-4 py-2 rounded-lg bg-warning-500 hover:bg-warning-600 text-dark text-meta font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-warning-400"
                 aria-label="Naviguer vers l'onglet Future"
             >
                 Ouvrir Future →

@@ -158,7 +158,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                     extinction. Avec une date de fin, il s'arrête à ce mois-là — et s'il reste un
                                     solde, il est signalé au lieu d'être effacé.
                                 </p>
-                                <button onClick={handleAdd} className="w-full bg-danger-600 hover:bg-danger-500 text-white text-meta font-bold py-2 rounded">Enregistrer</button>
+                                <button onClick={handleAdd} className="w-full bg-danger-600 hover:bg-danger-700 text-white text-meta font-bold py-2 rounded">Enregistrer</button>
                             </div>
                         )}
                         <div className="space-y-3">

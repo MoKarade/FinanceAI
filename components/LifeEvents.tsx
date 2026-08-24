@@ -245,7 +245,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                             <div><label className="text-meta text-ink-300 mb-1 block">Destination</label><input type="text" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newTrip.destination} onChange={e => setNewTrip({ ...newTrip, destination: e.target.value })} /></div>
                             <div><label className="text-meta text-ink-300 mb-1 block">Date</label><input type="date" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newTrip.date} onChange={e => setNewTrip({ ...newTrip, date: e.target.value })} /></div>
                             <div><label className="text-meta text-ink-300 mb-1 block">Coût ($)</label><input type="number" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newTrip.totalCost || ''} onChange={e => setNewTrip({ ...newTrip, totalCost: parseFloat(e.target.value) })} /></div>
-                            <button onClick={handleAdd} className="bg-info-600 hover:bg-info-500 text-white p-2 rounded font-bold h-[42px]">Planifier Voyage</button>
+                            <button onClick={handleAdd} className="bg-info-600 hover:bg-info-700 text-white p-2 rounded font-bold h-[42px]">Planifier Voyage</button>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">

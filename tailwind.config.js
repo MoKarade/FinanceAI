@@ -48,6 +48,10 @@ export default {
           400: '#f87171',
           500: '#ef4444',
           600: '#dc2626',
+          // [A11Y-CTA-CONTRASTE-OFFENDERS 2026-08-24] Survol des CTA rouges : `text-white` sur
+          // `danger-500` ne fait que 3,76 (< 4,5). Les CTA passent en `danger-600` (4,83) et leur
+          // survol descend ici, à 6,47 — mesuré, jamais choisi à l'oeil.
+          700: '#b91c1c',
           bg: 'rgba(239, 68, 68, 0.10)',
           border: 'rgba(239, 68, 68, 0.30)',
         },
@@ -55,6 +59,10 @@ export default {
           400: '#60a5fa',
           500: '#3b82f6',
           600: '#2563eb',
+          // [A11Y-CTA-CONTRASTE-OFFENDERS 2026-08-24] Même raison que `danger-700` : le survol des
+          // CTA bleus ÉCLAIRCISSAIT le fond (`info-500`, blanc à 3,68) ou le passait au filtre
+          // `brightness-110` (4,44) — les deux sous 4,5. Il descend ici : blanc à 6,70.
+          700: '#1d4ed8',
           bg: 'rgba(59, 130, 246, 0.10)',
           border: 'rgba(59, 130, 246, 0.30)',
         },

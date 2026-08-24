@@ -84,9 +84,11 @@ export const CeliAssetNudge: React.FC<CeliAssetNudgeProps> = ({ onAddAsset }) =>
                     <button
                         type="button"
                         onClick={handleAdd}
-                        // [A11Y] survol par luminosité (garde bg-info-600 = 5,17:1 AA) plutôt que
-                        // hover:bg-info-500 (#3b82f6 + blanc = 3,68:1, sous AA en texte 12px).
-                        className="rounded-lg bg-info-600 px-2.5 py-1 text-meta font-bold text-white transition-[filter] hover:brightness-110 focus-ring"
+                        // [A11Y-CTA-CONTRASTE-OFFENDERS] Le survol DESCEND d'un cran (`info-700`,
+                        // blanc à 6,70) au lieu d'éclaircir : `hover:bg-info-500` valait 3,68 et le
+                        // `hover:brightness-110` qui l'avait remplacé 4,44 — sous AA tous les deux,
+                        // et un filtre CSS échappe par construction au scan de `check-contrast`.
+                        className="rounded-lg bg-info-600 px-2.5 py-1 text-meta font-bold text-white transition-colors hover:bg-info-700 focus-ring"
                     >
                         Ajouter mes avoirs CELI
                     </button>

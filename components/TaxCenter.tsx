@@ -350,7 +350,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                     </div>
                     <div className="flex justify-end gap-2">
                         <button onClick={() => setScannedPay(null)} className="text-meta text-ink-300 px-3 py-1.5 hover:text-white transition">Ignorer</button>
-                        <button onClick={applyToProfile} className="bg-info-600 hover:bg-info-500 text-white text-meta font-bold px-4 py-1.5 rounded transition shadow-lg">
+                        <button onClick={applyToProfile} className="bg-info-600 hover:bg-info-700 text-white text-meta font-bold px-4 py-1.5 rounded transition shadow-lg">
                             Appliquer au Profil Principal
                         </button>
                     </div>

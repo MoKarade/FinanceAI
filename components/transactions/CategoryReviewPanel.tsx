@@ -157,13 +157,13 @@ export const CategoryReviewPanel: React.FC<Props> = ({ transactions, review, onC
                                     <div className="flex flex-wrap gap-2 pt-1">
                                         <button
                                             onClick={() => judge(next.id, true)}
-                                            className="px-3 py-2 rounded-lg text-meta font-bold bg-success-600 text-white focus-ring min-h-[24px]"
+                                            className="px-3 py-2 rounded-lg text-meta font-bold bg-success-600 text-dark focus-ring min-h-[24px]"
                                         >
                                             C&apos;est bon
                                         </button>
                                         <button
                                             onClick={() => judge(next.id, false)}
-                                            className="px-3 py-2 rounded-lg text-meta font-bold bg-warning-600 text-white focus-ring min-h-[24px]"
+                                            className="px-3 py-2 rounded-lg text-meta font-bold bg-warning-600 text-dark focus-ring min-h-[24px]"
                                         >
                                             Mal classée
                                         </button>

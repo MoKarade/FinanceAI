@@ -118,7 +118,7 @@ export const SavedProfilesCard: React.FC<SavedProfilesCardProps> = ({ config, se
                         <button
                             type="button"
                             onClick={() => deleteProfile(p)}
-                            className={`ml-2 font-bold px-1.5 rounded ${profileToDelete === p ? 'bg-danger-500 text-white' : 'text-white/50 hover:text-danger-400'}`}
+                            className={`ml-2 font-bold px-1.5 rounded ${profileToDelete === p ? 'bg-danger-600 text-white' : 'text-white/50 hover:text-danger-400'}`}
                             title={profileToDelete === p ? 'Clique encore pour confirmer' : 'Supprimer'}
                             aria-label={profileToDelete === p ? 'Confirmer la suppression' : `Supprimer le profil ${p}`}
                         >

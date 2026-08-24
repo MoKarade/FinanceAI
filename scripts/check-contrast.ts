@@ -22,13 +22,9 @@
 // (protection nulle). On ne teste que les valeurs HEX opaques : les tokens `rgba(...)` (bg/border
 // translucides) exigeraient une composition sur le fond sous-jacent (hors périmètre de ce contrôle).
 import twConfig from '../tailwind.config.js';
+import { contrastRatio, extraireCtaPaires, isOpaqueHex, SEUIL_AA_LARGE, SEUIL_AA_NORMAL } from './lib/ctaContrast.ts';
 
 const COLORS = (twConfig as { theme?: { extend?: { colors?: Record<string, unknown> } } })?.theme?.extend?.colors ?? {};
-
-/** Vrai si une valeur de token est une couleur HEX opaque (`#rrggbb`) — seul cas testable ici. */
-function isOpaqueHex(v: unknown): v is string {
-    return typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v);
-}
 
 // Clés servant de FOND (surfaces) : exclues de l'ensemble « texte » (tester « surface sur surface » = bruit à 1.00).
 const BG_KEYS = ['dark', 'surface', 'surfaceHighlight'] as const;
@@ -60,30 +56,7 @@ if (Object.keys(BACKGROUNDS).length < 3 || Object.keys(TEXT_COLORS).length < 8) 
     process.exit(2);
 }
 
-// --- WCAG contrast calculation ---
-function hexToRgb(hex: string): [number, number, number] {
-    const h = hex.replace('#', '');
-    const r = parseInt(h.slice(0, 2), 16);
-    const g = parseInt(h.slice(2, 4), 16);
-    const b = parseInt(h.slice(4, 6), 16);
-    return [r, g, b];
-}
-
-function luminance([r, g, b]: [number, number, number]): number {
-    const channel = (c: number): number => {
-        const s = c / 255;
-        return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-    };
-    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
-}
-
-function contrastRatio(fg: string, bg: string): number {
-    const lf = luminance(hexToRgb(fg));
-    const lb = luminance(hexToRgb(bg));
-    const lighter = Math.max(lf, lb);
-    const darker = Math.min(lf, lb);
-    return (lighter + 0.05) / (darker + 0.05);
-}
+// Le calcul WCAG lui-même vit dans `scripts/lib/ctaContrast.ts` (source unique, partagée avec la garde).
 
 // --- Audit ---
 type Result = {
@@ -103,8 +76,8 @@ for (const [textName, textHex] of Object.entries(TEXT_COLORS)) {
             text: textName,
             background: bgName,
             ratio,
-            aa_normal: ratio >= 4.5,
-            aa_large: ratio >= 3.0,
+            aa_normal: ratio >= SEUIL_AA_NORMAL,
+            aa_large: ratio >= SEUIL_AA_LARGE,
         });
     }
 }
@@ -132,90 +105,29 @@ failures
     });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// [A11Y-CONTRAST-TOOL-GAP-CTA] Deuxième passe : les CTA PLEINS (`bg-{couleur}-{shade}` + `text-…`).
+// [A11Y-CONTRAST-TOOL-GAP-CTA] Deuxième passe : les CTA PLEINS (`bg-{couleur}-{shade}` + `text-…`),
+// au repos ET au survol. La passe ci-dessus ne teste que `text-*` sur les TROIS fonds de page :
+// un bouton plein (`bg-danger-600` + `text-white`) n'y apparaît jamais — or c'est précisément une
+// combinaison où le contraste peut échouer, et on ne juge pas un contraste à l'oeil.
 //
-// Trou de couverture de l'outil-arbitre, pas un échec constaté : la passe ci-dessus ne teste que
-// `text-*` sur les TROIS fonds de page. Un bouton plein (`bg-danger-600` + `text-white`) n'y
-// apparaît jamais — or c'est précisément une combinaison où le contraste peut échouer, et on ne
-// juge pas un contraste à l'œil.
-//
-// ⚠️ Les paires sont EXTRAITES DU CODE PEINT, jamais devinées : une liste écrite à la main
-// « teste » des combinaisons qui n'existent plus et rate celles qu'on vient d'ajouter — exactement
-// le défaut que l'en-tête de ce fichier décrit pour les tokens (`A11Y-CHECK-CONTRAST-DRIFT`).
-//
-// ⚠️ ANGLE MORT ASSUMÉ, déclaré ici plutôt que découvert plus tard : seuls les `className="…"`
-// LITTÉRAUX sont lus. Une classe construite par interpolation (`` className={`bg-${v}-600`} ``) ou
-// par une fonction utilitaire échappe à ce scan. Le compteur plancher ci-dessous garantit qu'on
-// trouve quand même un volume plausible ; il ne garantit pas l'exhaustivité, et prétendre le
-// contraire serait pire que le trou lui-même.
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-// `__dirname` n'existe PAS en module ES (ce dépôt est `"type": "module"`) — il faut le dériver de
-// `import.meta.url`. Erreur commise ici en écrivant cette passe, attrapée en rejouant l'outil.
-const ICI = dirname(fileURLToPath(import.meta.url));
-
-/** Marche récursive — `readdirSync(recursive)` (Node 18.17+), patron déjà employé par les gardes du
- *  dépôt et dont la compatibilité est prouvée par la CI (cf. GATE-LOCAL-VERT-CI-ROUGE-PAR-VERSION-DE-NODE). */
-function fichiersTsx(racine: string): string[] {
-    try {
-        if (!statSync(racine).isDirectory()) return [];
-    } catch { return []; }
-    return readdirSync(racine, { recursive: true })
-        .map((f) => String(f))
-        .filter((f) => f.endsWith('.tsx'))
-        .map((f) => join(racine, f));
-}
-
-/** Résout un nom de classe Tailwind (`danger-600`, `white`, `ink-100`) en HEX opaque, ou null. */
-function hexDeClasse(nom: string): string | null {
-    if (nom === 'white') return '#ffffff';
-    if (nom === 'black') return '#000000';
-    const plat = COLORS[nom];
-    if (isOpaqueHex(plat)) return plat;
-    const sep = nom.lastIndexOf('-');
-    if (sep <= 0) return null;
-    const famille = COLORS[nom.slice(0, sep)];
-    if (famille && typeof famille === 'object') {
-        const v = (famille as Record<string, unknown>)[nom.slice(sep + 1)];
-        if (isOpaqueHex(v)) return v;
-    }
-    return null;
-}
-
-const CTA_PAIRES = new Map<string, { bg: string; text: string; bgHex: string; textHex: string }>();
-let attributsLus = 0;
-for (const fichier of fichiersTsx(join(ICI, '..', 'components'))) {
-    const src = readFileSync(fichier, 'utf8');
-    for (const m of src.matchAll(/className="([^"]*)"/g)) {
-        attributsLus++;
-        const classes = m[1].split(/\s+/);
-        // Fond PLEIN uniquement : un `bg-…/10` (translucide) exigerait une composition sur le fond
-        // sous-jacent, hors périmètre de ce contrôle (même règle que les tokens `rgba(...)`).
-        const bg = classes.find((c) => /^bg-[a-z]+-\d{3}$/.test(c));
-        const text = classes.find((c) => /^text-(white|black|[a-z]+-\d{2,3})$/.test(c));
-        if (!bg || !text) continue;
-        const bgNom = bg.slice(3);
-        const textNom = text.slice(5);
-        const bgHex = hexDeClasse(bgNom);
-        const textHex = hexDeClasse(textNom);
-        if (!bgHex || !textHex) continue;
-        CTA_PAIRES.set(`${bg}|${text}`, { bg, text, bgHex, textHex });
-    }
-}
+// L'extraction vit dans `scripts/lib/ctaContrast.ts` : elle est PARTAGÉE avec la garde Vitest
+// `tests/a11y/ctaContrast.test.ts`, qui est le vrai point d'application (la CI lance `npm run test`,
+// pas ce script). La dupliquer ici la ferait dériver en silence.
+const { paires: ctaPaires, attributsLus } = extraireCtaPaires();
 
 // Anti-vacuité : sans ce plancher, un motif cassé ou un déplacement de `components/` rendrait la
-// passe VIDE et donc « verte » — le mode de panne exact que ce lot corrige ailleurs.
-if (attributsLus < 200 || CTA_PAIRES.size < 5) {
-    console.error(`check-contrast: passe CTA quasi vide (attributs=${attributsLus}, paires=${CTA_PAIRES.size}) — le scan a-t-il cassé ?`);
+// passe VIDE et donc « verte » — le mode de panne exact que ce lot corrige ailleurs. Le plancher
+// porte surtout sur les ATTRIBUTS LUS (3 494 aujourd'hui) : le nombre de paires DISTINCTES, lui,
+// baisse légitimement quand on converge les teintes, comme ce lot vient de le faire (8 paires).
+if (attributsLus < 200 || ctaPaires.length < 3) {
+    console.error(`check-contrast: passe CTA quasi vide (attributs=${attributsLus}, paires=${ctaPaires.length}) — le scan a-t-il cassé ?`);
     process.exit(2);
 }
 
-const ctaResults: Result[] = [...CTA_PAIRES.values()].map(({ bg, text, bgHex, textHex }) => {
-    const ratio = contrastRatio(textHex, bgHex);
-    return { text, background: bg, ratio, aa_normal: ratio >= 4.5, aa_large: ratio >= 3.0 };
-});
+const ctaResults: Result[] = ctaPaires.map((p) => ({
+    text: p.text, background: p.bg, ratio: p.ratio,
+    aa_normal: p.ratio >= SEUIL_AA_NORMAL, aa_large: p.ratio >= SEUIL_AA_LARGE,
+}));
 
 console.log(`\n## CTA pleins (${ctaResults.length} paires extraites de ${attributsLus} attributs className littéraux)\n`);
 console.log('| Texte | Fond | Ratio | AA normal | AA large |');
@@ -229,15 +141,13 @@ ctaResults
 const ctaFailures = ctaResults.filter(r => !r.aa_normal);
 console.log(`\n- CTA conformes AA texte normal : ${ctaResults.length - ctaFailures.length} / ${ctaResults.length}`);
 
-// ⚠️ Cette passe RAPPORTE mais ne fait PAS échouer le script — choix assumé et daté, pas un oubli.
-// En l'étendant (2026-08-21) elle a révélé 4 offenders PRÉEXISTANTS, dont `text-white` sur
-// `bg-warning-500` à 2,15 (sous le seuil même pour du texte large). Les rendre bloquants tout de
-// suite livrerait un outil ROUGE dès sa première exécution, ce qui apprend à ignorer sa sortie —
-// et corriger 4 couleurs de bouton est une décision d'APPARENCE qui appartient à Marc, pas un
-// correctif mécanique. Les offenders sont routés en `[A11Y-CTA-CONTRASTE-OFFENDERS]`, dont la
-// dernière étape est précisément de basculer ce bloc en `process.exit(1)`.
+// [A11Y-CTA-CONTRASTE-OFFENDERS 2026-08-24] Cette passe est BLOQUANTE depuis que les 4 offenders
+// qu'elle avait révélés sont corrigés (décision de Marc : corriger, pas tolérer). Elle ne l'était
+// pas avant, volontairement : un outil ROUGE dès sa première exécution apprend à ignorer sa sortie.
 if (ctaFailures.length > 0) {
-    console.log(`  ⚠️  ${ctaFailures.length} CTA sous le seuil AA — voir [A11Y-CTA-CONTRASTE-OFFENDERS] (non bloquant pour l'instant).`);
+    console.error(`\n❌ ${ctaFailures.length} CTA sous le seuil AA (${SEUIL_AA_NORMAL}) — corrige la teinte PAR MESURE (un shade hors palette est un no-op silencieux).`);
+    ctaFailures.forEach(r => console.error(`   ${r.text} sur ${r.background} : ${r.ratio.toFixed(2)}`));
+    process.exit(1);
 }
 
 console.log('\n## Tous les ratios\n');

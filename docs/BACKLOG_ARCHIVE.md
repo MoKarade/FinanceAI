@@ -10,6 +10,26 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Le test de pincement passait par accident
+
+- [x] **`[E2E-PINCH-ZOOM-FLAKE]`** — le check requis « E2E (Playwright / Chromium) » a échoué
+  **3 fois d'affilée** (1 exécution + 2 reprises) sur la PR #722, à
+  `e2e/futurePinchZoom.spec.ts` — « le préset *Tout* doit avoir perdu son état actif » recevait
+  `true`. Le diff de cette PR ne touchait **ni le graphe ni le tactile**, et le rejeu du **MÊME
+  sha** est passé VERT : donc pas une régression.
+  **Mécanisme MESURÉ** (sonde locale, 3/3 identiques) : juste après le `touchmove` à 2 doigts,
+  « Tout » est **encore actif** ; la bascule met **2,1 à 2,3 s** (2301 / 2124 / 2174 ms) — le hook
+  planifie la nouvelle fenêtre en `requestAnimationFrame`, puis toute la série est re-tranchée et
+  React re-rend : c'est du CALCUL, pas une frame. Le test lisait l'état **une seule fois, sans
+  attendre**, et ne passait que parce que le bouton se DÉTACHE pendant le recalcul, ce qui forçait
+  Playwright à re-tenter sa résolution. Quand il ne se détache pas, la lecture unique renvoie
+  l'état d'avant.
+  Correctif : attendre la **transition** par `expect.poll` là où l'état doit changer, et — symétrie
+  indispensable — lire **après** le budget mesuré là où l'état ne doit PAS changer (lue tout de
+  suite, cette assertion-là serait vraie même pendant un zoom en cours de commit). La mesure est
+  écrite dans le fichier, avec le numéro du run, pour que la prochaine occurrence soit lisible.
+  Livré 2026-08-24 · PR #723.
+
 ## 2026-08-24 — Le déplacement de l'ancre « Liquidités » cesse d'être invisible
 
 - [x] **`[FINTABLE-ANCRE-LIQUIDITE-GONFLEE]`** — **le mécanisme est encore atteignable**, mesuré

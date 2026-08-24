@@ -47,6 +47,28 @@ function toutIsActive(page: Page) {
     .evaluate((el) => el.className.includes('bg-primary'));
 }
 
+/**
+ * ⚠️ [E2E-PINCH-ZOOM-FLAKE] Ne JAMAIS lire `toutIsActive` d'un seul échantillon après un geste.
+ *
+ * MESURÉ le 2026-08-24 (sonde, 3/3 identiques) : juste après le `touchmove` à 2 doigts, le préset
+ * « Tout » est ENCORE actif — la bascule met **2,1 à 2,3 s** (2301 / 2124 / 2174 ms). `scheduleRange`
+ * du hook passe par `requestAnimationFrame`, puis la fenêtre re-tranche toute la série et React
+ * re-rend : c'est du CALCUL, pas une frame.
+ *
+ * Le test passait quand même, par ACCIDENT : pendant ce recalcul le bouton se détache, donc
+ * `getByRole(...).evaluate` re-tentait et lisait la classe d'APRÈS. Quand il ne se détache pas
+ * (runner chargé, ordonnancement différent), la lecture unique renvoie l'état d'AVANT — c'est
+ * l'échec vu 3 fois d'affilée en CI le 2026-08-24 (run 32788363471, tentative 1), VERT au rejeu du
+ * MÊME sha. Attendre une TRANSITION se fait par `expect.poll` ; vérifier une NON-transition exige
+ * au contraire de laisser passer le budget mesuré avant de lire.
+ */
+const BUDGET_BASCULE_MS = 4_000; // ~2× la bascule mesurée (2,3 s max)
+
+/** La transition a EU LIEU (ré-échantillonne jusqu'au budget — jamais un tir unique). */
+function attendreTout(page: Page, actif: boolean) {
+  return expect.poll(() => toutIsActive(page), { timeout: BUDGET_BASCULE_MS + 4_000 }).toBe(actif);
+}
+
 async function pinch(page: Page, x: number, y: number, scaleFactor: number) {
   const client = await page.context().newCDPSession(page);
   // ⚠️ gestureSourceType: 'touch' OBLIGATOIRE : « default » choisit la source de la PLATEFORME —
@@ -79,7 +101,7 @@ test.describe('Futur — pincement 2 doigts (contexte tactile réel)', () => {
 
     // Écarter les doigts (scaleFactor > 1) → la fenêtre se resserre.
     await pinch(page, cx, cy, 3);
-    expect(await toutIsActive(page)).toBe(false);
+    await attendreTout(page, false);
 
     // La fin du pincement n'a PAS figé de jour (le lever du 2e doigt émet un pointerup crédible).
     await expect(page.locator('[data-frozen-tooltip]')).toHaveCount(0);
@@ -91,7 +113,7 @@ test.describe('Futur — pincement 2 doigts (contexte tactile réel)', () => {
     await pinch(page, cx, cy, 0.5);
     await pinch(page, cx, cy, 0.5);
     await pinch(page, cx, cy, 0.5);
-    expect(await toutIsActive(page)).toBe(true);
+    await attendreTout(page, true);
   });
 
   test('[FUTUR-DAILY-TOUCH] un doigt n’est JAMAIS capturé par le graphe (contrat pan-y)', async ({ page }) => {
@@ -128,6 +150,9 @@ test.describe('Futur — pincement 2 doigts (contexte tactile réel)', () => {
       ['touchstart', [[100, 100]]], ['touchmove', [[100, 160]]], ['touchend', []],
     ]);
     expect(solo).toEqual([false, false, false]);
+    // ⚠️ Lecture APRÈS le budget de bascule : lue immédiatement, cette assertion serait vraie
+    // même si un zoom était en train de se committer (cf. l'en-tête de `attendreTout`).
+    await page.waitForTimeout(BUDGET_BASCULE_MS);
     expect(await toutIsActive(page)).toBe(true);
     await expect(page.locator('[data-frozen-tooltip]')).toHaveCount(0);
 
@@ -137,6 +162,6 @@ test.describe('Futur — pincement 2 doigts (contexte tactile réel)', () => {
       ['touchstart', [[80, 100], [120, 100]]], ['touchmove', [[40, 100], [160, 100]]],
     ]);
     expect(duo).toEqual([true, true]);
-    expect(await toutIsActive(page)).toBe(false);
+    await attendreTout(page, false);
   });
 });

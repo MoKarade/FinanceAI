@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 157) — `[E2E-PINCH-ZOOM-FLAKE]` : le test passait par accident
+> Le check requis E2E a rougi **3 fois d'affilée** sur la PR #722 (`futurePinchZoom.spec.ts`), sur un
+> diff qui ne touchait ni le graphe ni le tactile ; le rejeu du **MÊME sha** est passé vert.
+> **MESURÉ** (sonde, 3/3) : juste après le `touchmove` à 2 doigts, le préset « Tout » est ENCORE
+> actif — la bascule met **2,1 à 2,3 s** (2301 / 2124 / 2174 ms), parce que le hook planifie en rAF
+> puis toute la série est re-tranchée et re-rendue. Le test lisait l'état **une seule fois, sans
+> attendre** : il ne passait que parce que le bouton se DÉTACHE pendant le recalcul, ce qui forçait
+> Playwright à re-tenter sa résolution. Le sursis venait de l'outil, pas de l'assertion.
+> ⚠️ **Les deux sens ne se corrigent pas pareil** : « l'état a changé » → `expect.poll` ; « l'état n'a
+> PAS changé » → lecture APRÈS le budget mesuré (un `poll` y serait satisfait par l'état d'avant).
+> ⚠️ Le flake ne s'est PAS reproduit en rejouant (6/6 verts en local) — il s'est laissé prendre en
+> mesurant la grandeur dont il dépend. La mesure et le n° du run sont écrits DANS le test.
+> Rejeu local du spec corrigé : 4/4 verts. Gate vert : **4 754 tests / 434 fichiers**.
+>
 > ## 🟢 Session 2026-08-24 (suite 156) — `[FINTABLE-ANCRE-LIQUIDITE-GONFLEE]` : rendre visible ce qu'on ne peut pas corriger
 > **Mécanisme encore atteignable**, mesuré AVANT de coder : un doublon qui échappe au classement
 > (`callerClassified`) fait compter une dépense deux fois, et le recalage `cash_balance` l'absorbe en

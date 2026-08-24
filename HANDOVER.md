@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 150) — `[A11Y-FUTUR-DETAIL-FOCUS-TRAP]` : un hook, trois dialogues
+> Le ticket disait « reprends le patron déjà présent deux fois ». ⚠️ **Les deux copies avaient déjà
+> divergé** : `Modal.tsx` liste `select`/`textarea` parmi les éléments focusables, `SyncConflictModal`
+> ne les listait plus. Une troisième copie aurait reproduit la dérive → `hooks/useFocusTrap.ts`
+> (piège Tab SEULEMENT ; focus initial, Échap, verrou de scroll et restauration restent chez
+> l'appelant car ils diffèrent légitimement — le modal de conflit est BLOQUANT par choix).
+> 7 tests : cycle Tab/Shift+Tab vérifié en COMPORTEMENT sur la modale du ticket, câblage des deux
+> autres par scan, et une garde qui interdit une 4e liste locale. **2 perturbations rouges.**
+> ⚠️ L'anti-vacuité a encore attrapé ma fixture : sans les flèches Veille/Lendemain, le dialogue n'a
+> qu'UN élément focusable et le « cycle » boucle sur lui-même sans rien prouver.
+> Gate vert : **4 720 tests / 429 fichiers**.
+>
 > ## 🟢 Session 2026-08-24 (suite 148) — `[FISC-CID-CLAMP-EXCEDENT]` : limite CONSIGNÉE (décision Marc)
 > Le ticket disait vrai sur le CONSTAT (0 $ d'impôt sur dividendes dans son scénario) et faux sur
 > l'INFÉRENCE : là où le clamp mord, le ménage ne paie **aucun autre impôt**, donc l'excédent

@@ -10,6 +10,24 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Le piège à focus devient une source unique (et les deux copies avaient divergé)
+
+- [x] **`[A11Y-FUTUR-DETAIL-FOCUS-TRAP]`** — `FutureDetailModal` avait `role="dialog"
+  aria-modal="true"`, le focus au montage et Échap, mais **rien ne retenait Tab** : la tabulation
+  sortait vers le contenu de fond, que l'overlay masque à la souris et laisse atteignable au clavier.
+  ⚠️ **Le correctif n'est PAS celui que le ticket proposait.** Il suggérait de reprendre « le patron
+  déjà présent deux fois ». Or ces deux copies avaient **déjà divergé** : la liste d'éléments
+  focusables de `components/ui/Modal.tsx` inclut `select` et `textarea`, celle de
+  `components/sync/SyncConflictModal.tsx` les avait perdus — un dialogue de conflit qui gagnerait une
+  liste déroulante aurait fui hors du piège en silence.
+  Extrait dans `hooks/useFocusTrap.ts` (piège Tab **seulement** — focus initial, verrou de scroll,
+  Échap et restauration restent chez l'appelant : ils diffèrent légitimement, le modal de conflit
+  étant volontairement BLOQUANT). Les **trois** dialogues y sont branchés.
+  7 tests : cycle Tab / Shift+Tab vérifié en COMPORTEMENT sur la modale du ticket, câblage des deux
+  autres par scan, plus une garde qui interdit une quatrième liste locale. **2 perturbations prouvées
+  rouges.** ⚠️ L'anti-vacuité a de nouveau attrapé ma fixture : sans les flèches Veille/Lendemain, le
+  dialogue n'a qu'UN élément focusable et le cycle boucle sur lui-même.
+
 ## 2026-08-24 — Le clamp du crédit d'impôt pour dividendes : limite CONSIGNÉE, pas corrigée
 
 - [x] **`[FISC-CID-CLAMP-EXCEDENT]`** — **décision de Marc : consigner la limite chiffrée**, ne pas

@@ -352,10 +352,6 @@
   du moteur le font. Mesuré : un divorcé touche **12 mois de congé parental d'un ex-conjoint parti
   (~36 000 $)**, et le clawback des allocations se calcule sur 183 600 $ au lieu de ~98 400 $. C'est
   la porte de sortie du bug « RQAP fantôme parent seul », déjà fermée pour le célibataire.
-- [ ] **`[A11Y-FUTUR-DETAIL-FOCUS-TRAP]`** (S) — `FutureDetailModal` a `role="dialog"
-  aria-modal="true"`, gère le focus au montage et Échap, mais **ne piège pas Tab** : la tabulation
-  sort vers le contenu de fond masqué par l'overlay. Le dépôt a déjà le patron deux fois dans le
-  même écran (`Modal.tsx`, infobulle figée) — la modale réimplémente son portail et a raté ce bout.
 - [ ] **`[A11Y-RESERVE-CHIP-PROMINENCE]`** (XS) — le TEXTE des pastilles de réserve est à ≈ 9–10:1
   (AA et AAA : OK). C'est le CHIP qui ne ressort pas : fond à ≈ 1,15:1, bordure à ≈ 1,8:1, loin des
   3:1 non-text. L'information reste lisible ; c'est l'effet « saute aux yeux » qui est affaibli.

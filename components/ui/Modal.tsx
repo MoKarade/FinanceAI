@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Icon } from './Icon';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
 
@@ -41,8 +42,6 @@ const SIZE_CLASSES: Record<ModalSize, string> = {
  *  - Lock body scroll quand ouvert (évite scroll arrière-plan)
  *  - Mobile-friendly: w-full max-w-X, p-4 du backdrop pour padding sûr
  */
-const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
 export const Modal: React.FC<ModalProps> = ({
     isOpen, onClose,
     title, subtitle, icon,
@@ -62,6 +61,8 @@ export const Modal: React.FC<ModalProps> = ({
     onCloseRef.current = onClose;
     const titleId = React.useId();
 
+    useFocusTrap(dialogRef, isOpen);
+
     useEffect(() => {
         if (!isOpen) return;
         // P2.2 — save current focus pour le restaurer à la fermeture (a11y keyboard)
@@ -70,18 +71,11 @@ export const Modal: React.FC<ModalProps> = ({
         const prevOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
 
+        // [A11Y-FUTUR-DETAIL-FOCUS-TRAP] Le piège Tab vit désormais dans `useFocusTrap` (source
+        // unique, cf. le hook) : il n'en reste ici que la touche Échap, qui est propre à ce dialogue
+        // (le modal de conflit de sync est volontairement BLOQUANT et n'en a pas).
         const onKey = (e: KeyboardEvent) => {
-            if (closeOnEsc && e.key === 'Escape') { onCloseRef.current(); return; }
-            if (e.key !== 'Tab' || !dialogRef.current) return;
-            const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
-            if (focusable.length === 0) return;
-            const first = focusable[0];
-            const last = focusable[focusable.length - 1];
-            if (e.shiftKey) {
-                if (document.activeElement === first) { last.focus(); e.preventDefault(); }
-            } else {
-                if (document.activeElement === last) { first.focus(); e.preventDefault(); }
-            }
+            if (closeOnEsc && e.key === 'Escape') { onCloseRef.current(); }
         };
         document.addEventListener('keydown', onKey);
         return () => {

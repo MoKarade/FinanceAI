@@ -5938,3 +5938,36 @@ chose ? ».
 Corollaire pratique : une mesure qui CONFIRME un ticket est un résultat à publier au même titre
 qu'une réfutation. Ne rapporter que les réfutations donne, à la longue, une image fausse de la
 qualité du backlog.
+### `UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS` — 2026-08-24
+
+`[SMITH-HELOC-TAUX-FIGE]` a levé une limite que j'avais moi-même consignée trois lots plus tôt : le
+taux de la marge du levier Smith était figé à 5 %, et un test l'affirmait — « l'intérêt de marge ne
+suit PAS le taux hypothécaire, même de 3 % à 12 % », avec sa mesure (503,74 $ contre 500,89 $).
+
+Quand la décision de Marc a rendu ce taux dépendant du prêt, ce test est devenu rouge. Réflexe
+tentant : le supprimer, puisqu'il décrit un comportement qui n'existe plus.
+
+**Il a été INVERSÉ, au même endroit, avec son histoire écrite dedans.** La borne « écart < 1 % »
+devient un plancher « rapport > 2 », et le commentaire raconte la bascule : ce qui était vrai, qui a
+tranché, et ce qui est vrai maintenant.
+
+**Pourquoi** : un test de limite supprimé laisse croire que la limite n'a jamais existé. Or elle a
+existé, elle était documentée, elle avait un coût mesuré — et c'est précisément cette trace qui
+empêche la prochaine session de « re-geler » le taux en croyant simplifier. Le test est le seul
+endroit du dépôt où la limite ET sa levée se lisent au même endroit que le code qu'elles décrivent.
+
+Deux corollaires du même lot :
+
+1. **Une fixture qui coïncide avec la valeur figée ne discrimine RIEN — et la levée le prouve.** Le
+   test voisin posait `mortgageRate: 5`, exactement l'ancien taux de marge : sous cette fixture,
+   « figé à 5 % » et « suit l'hypothèque » étaient indiscernables
+   (`UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR`). Depuis la levée, 5 % d'hypothèque donne
+   7 % de marge : la coïncidence est rompue, la fixture discrimine, et c'est elle qui a rougi au bon
+   moment. La narration du test voisin a été rafraîchie en conséquence — un commentaire qui décrit
+   une situation défunte est une doc périmée comme une autre.
+2. **Les deux seuls tests rouges d'un changement money-critical étaient les deux gardes du
+   comportement d'avant.** Aucun golden n'a bougé, et c'est VÉRIFIÉ plutôt que constaté :
+   `useSmithManoeuvre` est faux par défaut et seuls deux fichiers de test l'activent, aucun golden ne
+   l'exerce. Sans cette vérification, « rien n'a bougé » aurait pu vouloir dire « rien ne couvre ce
+   chemin » — ce qui est le contraire d'un feu vert
+   (`AUCUN-GOLDEN-N-A-BOUGE-EST-UN-RESULTAT-A-EXPLIQUER`).

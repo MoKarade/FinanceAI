@@ -216,8 +216,12 @@ describe('realEstateMonth — chemins-bords', () => {
 
         expect(state.nonReg).toBeCloseTo(500, 6);
         expect(state.nonRegACB).toBeCloseTo(500, 6);
-        // dette Smith = capital 500 + intérêt capitalisé (500 × 0,05/12)
-        const smithInterest = 500 * (0.05 / 12);
+        // dette Smith = capital 500 + intérêt capitalisé.
+        // ⚠️ [SMITH-HELOC-TAUX-FIGE] (2026-08-24) : le taux de la marge n'est plus figé à 5 %, il SUIT
+        // celui du prêt du bien (ici 6 %) + l'écart de 2 points ⇒ 8 %. Le littéral reste écrit en
+        // toutes lettres — c'est le RATCHET : si le modèle de taux change encore, ce test doit rougir
+        // et être relu, pas suivre en silence.
+        const smithInterest = 500 * (0.08 / 12);
         expect(state.smithManoeuvreDebt).toBeCloseTo(500 + smithInterest, 4);
         expect(state.smithInterestDeductibleYear).toBeCloseTo(smithInterest, 4);
     });

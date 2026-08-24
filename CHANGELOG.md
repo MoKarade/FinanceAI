@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-24 (le levier « Smith Manoeuvre » cesse d'être flatteur)
+
+- Quand l'app teste la stratégie **Smith Manoeuvre**, elle supposait que ta marge de crédit coûterait
+  **5 %, quel que soit ton taux hypothécaire**. Or une marge revient toujours plus cher que le prêt
+  qu'elle accompagne : à 8 % d'hypothèque, l'app te prêtait donc de l'argent moins cher que ta
+  banque — et vantait le levier exactement là où il est le plus risqué.
+- La marge suit maintenant **ton taux hypothécaire**. Effet mesuré sur 30 ans : à 8 % d'hypothèque,
+  l'avantage annoncé du levier passe de **+275 000 $ à +32 000 $**. À 3 %, rien ne change.
+- Rappel : ce levier reste une stratégie avancée, et l'app ne le teste que si tu l'actives.
 ## [unreleased] — 2026-08-24 (les crédits d'âge comptent enfin si tu as 65 ans ou plus)
 
 - Quand tu entres seulement ton salaire **net**, l'app en déduit ton brut. Ce calcul **oubliait les

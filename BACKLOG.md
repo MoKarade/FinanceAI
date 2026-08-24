@@ -918,20 +918,28 @@
   autorité ne publie — les y mettre leur prêterait l'autorité d'un texte de loi. ⚠️ Le tri a montré
   que le ticket groupait des enjeux **incomparables** : les deux tickets ci-dessous en sortent.
 
-- [ ] **`[SMITH-HELOC-TAUX-FIGE]`** (S en code, **DÉCISION PRODUIT — arbitrage Marc requis**,
-  **ÉLEVÉ [MESURÉ 2026-08-22]**) — le taux de la marge du levier **Smith Manoeuvre** est figé à 5 %/an
-  et ne suit ni `goal.mortgageRate`, ni l'environnement de taux, ni aucune saisie. Or une marge
-  hypothécaire canadienne est indexée sur le taux préférentiel, donc structurellement AU-DESSUS du
-  prêt qu'elle accompagne. **Ce n'est pas un chiffre d'affichage : `useSmithManoeuvre` fait partie de
-  l'espace de recherche de stratégies** (`strategySpace.ts`, `strategyConfig.ts`), donc ce taux décide
-  de ce que l'app RECOMMANDE. Mesuré sur 30 ans (célibataire 8 000 $/mois, maison 500 k$, hypothèque
-  5 %, rendement 6 %) — gain du levier sur le patrimoine net final : **+533 577 $ à 3 %, +489 760 $ à
-  5 % (valeur actuelle), +326 361 $ à 8 %, +146 425 $ à 10 %** → **343 335 $ d'amplitude**. Et à 10 %
-  la succession passe SOUS le scénario sans levier (2 212 026 $ contre 2 212 234 $) : **le conseil
-  s'inverse**. Question pour Marc : la marge doit-elle suivre `mortgageRate` (+ un écart), devenir une
-  saisie, ou rester figée avec sa limite écrite ? Corriger déplace de l'argent et re-base les goldens.
-  Le gel est aujourd'hui GARDÉ et documenté (`tests/services/modelAssumptions.test.ts`).
-
+- [x] **`[SMITH-HELOC-TAUX-FIGE]`** ✅ 2026-08-24 — **décision Marc : « la marge suit l'hypothèque ».**
+  Le taux de la marge du levier Smith n'est plus un littéral figé à 5 % : `smithHelocAnnualRate(goal.mortgageRate)`
+  rend `hypothèque + 2 points`, avec un plancher à 3 %.
+  ⚠️ **Ce n'est pas un chiffre d'affichage** : `useSmithManoeuvre` est dans l'espace de recherche de
+  stratégies, donc ce taux décide de ce que l'app RECOMMANDE. Le 5 % figé pouvait passer SOUS le taux
+  du prêt — une marge révolvante moins chère que le prêt de premier rang qu'elle accompagne, ce qui
+  est impossible en pratique et flatteur dans le modèle, **précisément quand les taux montent et que
+  le levier devient dangereux**.
+  **Effet MESURÉ** (30 ans, célibataire 8 000 $/mois, maison 500 k$, rendement 6 %), gain du levier :
+  hypothèque 3 % → **+639 889 $ inchangé** (la marge y vaut 5 %, comme avant : non-régression) ;
+  hypothèque 5 % → **+489 760 $ → +413 769 $** ; hypothèque 8 % → **+275 001 $ → +32 263 $**, soit
+  **242 738 $ d'avantage fantôme retirés** au taux le plus élevé.
+  ⚠️ **La DIRECTION est structurelle, la MAGNITUDE est une hypothèse** : les 2 points ne sont pas un
+  écart de marché relevé quelque part, et le module le dit — le documenter comme un « prime + 0,5 »
+  fabriquerait la source qu'on prétend citer.
+  7 tests neufs, **3 perturbations prouvées rouges**. **Deux gardes existantes ont rougi, comme elles
+  devaient** : ma garde de LIMITE de `[CONSTANTES-MOTEUR-NON-SOURCEES]` (« l'intérêt ne suit PAS le
+  taux ») — **INVERSÉE plutôt que supprimée**, un test de limite qui disparaît laisse croire que la
+  limite n'a jamais existé — et le test voisin de `realEstateMonth`, dont la fixture à
+  `mortgageRate: 5` coïncidait exactement avec l'ancien taux figé et ne pouvait donc RIEN discriminer.
+  Elle discrimine maintenant. ⚠️ Aucun golden n'a bougé, et c'est EXPLIQUÉ : `useSmithManoeuvre` est
+  faux par défaut et seuls 2 fichiers de test l'activent — aucun golden ne l'exerce.
 - [ ] **`[COASTFIRE-CROISSANCE-FIGEE]`** (XS, FAIBLE — **portée mesurée NULLE**) — la croissance qui
   actualise la cible CoastFIRE est figée à 5 %/an, indépendante de `projection.returnRate` : deux
   utilisateurs qui projettent 4 % et 9 % obtiennent le même CoastFIRE, alors que la question n'a pas

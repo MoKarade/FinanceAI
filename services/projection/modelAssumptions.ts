@@ -18,19 +18,17 @@
 // bloc homogène — ce qu'elles ne sont pas (`DIAGNOSTIC-GROUPE-A-MOITIE-FAUX`).
 
 /**
- * Taux annuel de la marge de crédit hypothécaire (HELOC) du levier **Smith Manoeuvre**.
- * Lu par `realEstateMonth.ts` : le capital remboursé est ré-emprunté, et cette marge capitalise
- * ses intérêts — lesquels alimentent `smithInterestDeductibleYear`, une déduction RÉELLE de
- * décembre (`taxDecember.ts`), et `smithManoeuvreDebt`, soustraite du patrimoine net
- * (`netWorth.ts`) et de la succession (`estateCalculation.ts`).
+ * ⚠️ [SMITH-HELOC-TAUX-FIGE] — HISTORIQUE, gardé parce qu'il explique une DÉCISION.
  *
- * ⚠️ **Portée MESURÉE — ce n'est pas un chiffre d'affichage, c'est une FONCTION OBJECTIF.**
- * `useSmithManoeuvre` fait partie de l'espace de recherche de stratégies (`strategySpace.ts`,
- * `strategyConfig.ts`) : l'optimiseur ACTIVE ou DÉSACTIVE le levier et classe le résultat. Ce taux
- * décide donc de ce que l'application RECOMMANDE, pas seulement de ce qu'elle montre.
+ * Jusqu'au 2026-08-24, le taux de la marge du levier Smith Manoeuvre était `SMITH_HELOC_ANNUAL_RATE
+ * = 0.05` : un littéral FIGÉ, indépendant du dossier. Il pouvait donc passer SOUS le taux
+ * hypothécaire du bien — une marge révolvante moins chère que le prêt de premier rang qu'elle
+ * accompagne, ce qui est impossible dans la réalité et flatteur dans le modèle.
  *
- * Mesuré sur 30 ans (célibataire, 8 000 $/mois brut, maison 500 k$, hypothèque 5 %, rendement 6 %),
- * gain du levier sur le patrimoine net final selon le taux de la marge :
+ * Ce n'était pas un chiffre d'affichage : `useSmithManoeuvre` fait partie de l'espace de recherche de
+ * stratégies (`strategySpace.ts`, `strategyConfig.ts`), donc ce taux décide de ce que l'application
+ * RECOMMANDE. **Tableau de sensibilité mesuré** (30 ans, célibataire 8 000 $/mois, maison 500 k$,
+ * hypothèque 5 %, rendement 6 %) — gain du levier sur le patrimoine net final selon le taux de marge :
  *
  * | Taux marge | Gain Smith |
  * |---|---|
@@ -39,18 +37,67 @@
  * | 8 %  | +326 361 $ |
  * | 10 % | +146 425 $ |
  *
- * Soit **343 335 $ d'amplitude** sur une plage de taux plausible — et à 10 % la succession passe
- * SOUS celle du scénario sans levier (mesuré : 2 212 026 $ contre 2 212 234 $), c'est-à-dire que le
- * conseil s'INVERSE.
+ * Soit **343 335 $ d'amplitude**, et à 10 % la succession passait SOUS celle du scénario sans levier
+ * (2 212 026 $ contre 2 212 234 $) : le conseil s'INVERSAIT.
  *
- * ⚠️ **LIMITE ASSUMÉE, décision produit en attente (`[SMITH-HELOC-TAUX-FIGE]`).** Ce taux est figé :
- * il ne suit ni `goal.mortgageRate`, ni l'environnement de taux, ni aucune saisie. Or une marge
- * hypothécaire canadienne est indexée sur le taux préférentiel, structurellement AU-DESSUS du prêt
- * hypothécaire qu'elle accompagne — un 5 % gelé est donc optimiste dès que les taux montent, et
- * c'est précisément là que le levier devient dangereux. Le corriger déplace de l'argent et re-base
- * les goldens : c'est un arbitrage de Marc, pas un correctif mécanique.
+ * **Décision Marc du 2026-08-24 : « la marge suit l'hypothèque ».** Le taux est désormais calculé par
+ * `smithHelocAnnualRate` ci-dessous. Effet MESURÉ du changement, à profil identique :
+ *
+ * | Hypothèque | Gain AVANT (marge 5 % figée) | Gain APRÈS (marge = hypo + 2 pts) |
+ * |---|---|---|
+ * | 3 %  | +639 889 $ | +639 889 $ (marge à 5 % : inchangé par construction) |
+ * | 5 %  | +489 760 $ | **+413 769 $** |
+ * | 8 %  | +275 001 $ | **+32 263 $** |
+ *
+ * Jusqu'à **242 738 $ d'avantage fantôme retiré** au taux le plus élevé — exactement là où le levier
+ * est le plus risqué et où le modèle le vantait le plus.
  */
-export const SMITH_HELOC_ANNUAL_RATE = 0.05;
+
+/**
+ * [SMITH-HELOC-TAUX-FIGE] Écart appliqué AU-DESSUS du taux hypothécaire du bien pour obtenir le taux
+ * de la marge (décision Marc, 2026-08-24 : « la marge suit l'hypothèque »).
+ *
+ * ⚠️ **La DIRECTION est structurelle, la MAGNITUDE est une hypothèse.** Une marge de crédit
+ * hypothécaire est un produit *révolvant*, rappelable, et de rang postérieur au prêt de premier rang
+ * qu'elle accompagne : elle se prête donc plus cher que lui. Ça, c'est un fait sur l'instrument, et
+ * c'est ce qui rendait le 5 % figé faux DANS SA FORME — il pouvait passer sous le taux hypothécaire.
+ * Les 2 points retenus, en revanche, ne sont PAS un écart de marché relevé quelque part : c'est un
+ * choix de modèle, rond et volontairement conservateur. Le documenter autrement — en citant un
+ * « prime + 0,5 » ou un écart historique — fabriquerait la source qu'on prétend citer
+ * (`ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE`).
+ *
+ * Le lecteur qui veut juger de ce choix a les DEUX tableaux du bloc historique ci-dessus : la
+ * sensibilité du levier au taux de marge (3 / 5 / 8 / 10 %), et l'effet mesuré de ce lot.
+ */
+export const SMITH_HELOC_SPREAD_OVER_MORTGAGE = 0.02;
+
+/**
+ * [SMITH-HELOC-TAUX-FIGE] Plancher du taux de la marge.
+ *
+ * Un bien dont le taux hypothécaire est absent ou nul (saisie incomplète, bien détenu sans prêt)
+ * donnerait sinon une marge quasi gratuite — donc un levier artificiellement gagnant, exactement le
+ * biais que ce lot corrige. Le plancher rend ce cas conservateur au lieu de flatteur.
+ */
+export const SMITH_HELOC_RATE_FLOOR = 0.03;
+
+/**
+ * [SMITH-HELOC-TAUX-FIGE] Taux ANNUEL de la marge du levier Smith pour un bien donné.
+ *
+ * SOURCE UNIQUE — `realEstateMonth.ts` l'appelle, et rien d'autre ne recompose ce taux. Avant ce lot
+ * il n'y avait pas de fonction du tout : un littéral figé, indépendant du dossier.
+ *
+ * ⚠️ Ce taux n'est pas un chiffre d'affichage. `useSmithManoeuvre` fait partie de l'espace de
+ * recherche de stratégies (`strategySpace.ts`, `strategyConfig.ts`) : il décide de ce que
+ * l'application RECOMMANDE. Le rendre dépendant du dossier était donc l'enjeu du ticket — un 5 % gelé
+ * rendait le levier flatteur précisément quand les taux montent, c'est-à-dire quand il devient
+ * dangereux.
+ *
+ * @param mortgageRatePct taux hypothécaire du bien, en POURCENTAGE (convention de `RealEstateGoal`).
+ */
+export const smithHelocAnnualRate = (mortgageRatePct: number | undefined): number => {
+    const pct = Number.isFinite(mortgageRatePct) ? (mortgageRatePct as number) : 0;
+    return Math.max(SMITH_HELOC_RATE_FLOOR, pct / 100 + SMITH_HELOC_SPREAD_OVER_MORTGAGE);
+};
 
 /**
  * Croissance annuelle supposée pour actualiser la cible FIRE dans le calcul du **CoastFIRE**

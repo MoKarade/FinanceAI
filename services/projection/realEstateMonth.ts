@@ -116,7 +116,7 @@ export interface RealEstateCtx {
 export const DOWNSIZE_RELEASE_PCT = 0.4;
 
 import { handleNonRegSale } from './portfolioOps';
-import { SMITH_HELOC_ANNUAL_RATE } from './modelAssumptions';
+import { smithHelocAnnualRate } from './modelAssumptions';
 
 /**
  * Traite tout l'immobilier pour le mois courant.
@@ -429,7 +429,11 @@ export function processRealEstate(
                 state.smithManoeuvreDebt += principalPaid;
                 state.nonReg += principalPaid;
                 state.nonRegACB += principalPaid;
-                const smithInterest = state.smithManoeuvreDebt * (SMITH_HELOC_ANNUAL_RATE / 12);
+                // [SMITH-HELOC-TAUX-FIGE] Le taux de la marge SUIT désormais celui du prêt du bien
+                // (décision Marc 2026-08-24). Avant : 5 % figé, indépendant du dossier — donc une
+                // marge moins chère que l'hypothèque dès que celle-ci dépassait 5 %, ce qui rendait
+                // le levier flatteur exactement quand il devient dangereux.
+                const smithInterest = state.smithManoeuvreDebt * (smithHelocAnnualRate(goal.mortgageRate) / 12);
                 state.smithManoeuvreDebt += smithInterest;
                 state.smithInterestDeductibleYear += smithInterest;
             }

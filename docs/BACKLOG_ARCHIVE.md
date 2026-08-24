@@ -10,6 +10,27 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Le levier Smith cesse d'être flatteur : la marge suit le prêt
+
+- [x] **`[SMITH-HELOC-TAUX-FIGE]`** — décision Marc : « la marge suit l'hypothèque ». Le taux du
+  levier Smith n'est plus un littéral figé à 5 % ; `smithHelocAnnualRate(goal.mortgageRate)` rend
+  `hypothèque + 2 points`, avec un plancher à 3 % (un bien sans taux saisi donnerait sinon une marge
+  quasi gratuite, donc un levier artificiellement gagnant — le biais même qu'on corrige).
+  ⚠️ Ce taux n'alimente pas un affichage mais un **classement** : `useSmithManoeuvre` fait partie de
+  l'espace de recherche de stratégies, donc il décide de ce que l'app RECOMMANDE. Le 5 % figé pouvait
+  passer SOUS le taux du prêt — une marge révolvante moins chère que le prêt de premier rang qu'elle
+  accompagne, impossible en pratique, et flatteuse **précisément** quand les taux montent.
+  **Mesuré** (30 ans, célibataire 8 000 $/mois, maison 500 k$, rendement 6 %), gain du levier :
+  hypothèque 3 % → **+639 889 $ inchangé** (la marge y vaut 5 %, comme avant : non-régression) ;
+  5 % → **+489 760 $ → +413 769 $** ; 8 % → **+275 001 $ → +32 263 $**, soit **242 738 $ d'avantage
+  fantôme retirés**.
+  ⚠️ La DIRECTION est structurelle, la MAGNITUDE est une hypothèse assumée : les 2 points ne sont pas
+  un écart de marché relevé quelque part, et le module le dit plutôt que d'inventer une source.
+  7 tests neufs, 3 perturbations rouges. **Deux gardes existantes ont rougi, comme elles devaient** :
+  la garde de LIMITE de `[CONSTANTES-MOTEUR-NON-SOURCEES]`, **inversée plutôt que supprimée**, et le
+  test voisin de `realEstateMonth` dont la fixture coïncidait avec l'ancien taux figé.
+  ⚠️ Aucun golden n'a bougé, et c'est VÉRIFIÉ : aucun n'active le levier.
+  Gate vert : 4 691 tests / 425 fichiers (après rebase sur #707).
 ## 2026-08-24 — Les crédits d'âge 65+ entrent enfin dans l'inversion net→brut
 
 - [x] **`[GROSSFROMNET-CREDITS-65]`** — instruit d'abord (mesures + obstacles + trois options), puis

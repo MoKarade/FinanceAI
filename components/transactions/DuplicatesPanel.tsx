@@ -147,7 +147,7 @@ export const DuplicatesPanel: React.FC<Props> = ({
                                 <button
                                     onClick={apply}
                                     disabled={effectiveSelected.size === 0}
-                                    className="px-3 py-2 rounded-lg text-meta font-bold bg-warning-600 text-white disabled:opacity-40 focus-ring min-h-[24px]"
+                                    className="px-3 py-2 rounded-lg text-meta font-bold bg-warning-600 text-dark disabled:opacity-40 focus-ring min-h-[24px]"
                                 >
                                     Marquer {effectiveSelected.size} transaction{effectiveSelected.size > 1 ? 's' : ''} en doublon
                                 </button>

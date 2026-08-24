@@ -21,7 +21,7 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
     // était ~1.2-1.6:1 (quasi invisible). white/40 = minimum qui passe partout avec marge (mesuré,
     // node calc contraste), sans casser l'esthétique sobre. La bordure EST l'affordance de ces variants.
     ghost: 'bg-white/5 text-ink-100 hover:bg-white/10 border border-white/40',
-    danger: 'bg-danger-500 text-white hover:bg-danger-600 border border-transparent shadow-lg',
+    danger: 'bg-danger-600 text-white hover:bg-danger-700 border border-transparent shadow-lg',
     outline: 'bg-transparent text-ink-100 hover:bg-white/5 border border-white/40',
 };
 

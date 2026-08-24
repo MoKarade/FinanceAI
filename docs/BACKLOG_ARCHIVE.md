@@ -10,6 +10,56 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Les CTA passent WCAG AA, et la garde devient bloquante
+
+- [x] **`[A11Y-CTA-CONTRASTE-OFFENDERS]`** — arbitrage de Marc : **corriger les 4 boutons** (plutôt
+  que tolérer l'écart au titre du « texte large »). Teintes choisies PAR MESURE, jamais à l'œil, et
+  la règle qui en sort est simple : **fond clair → texte sombre, fond saturé → texte blanc**, parce
+  que la palette bascule entre le shade 600 et le 700 (le blanc ne passe qu'à partir de 700 ; le
+  sombre ne passe que jusqu'à 600).
+  - `bg-warning-500` / `-600` et `bg-success-600` : `text-white` → **`text-dark`** (2,15 → **9,28**,
+    3,19 → **6,25**, 3,77 → **5,29**). L'ambre et le vert gardent leur teinte.
+  - `bg-danger-500` → **`bg-danger-600`** (3,76 → **4,83**), le blanc reste. Les survols descendent
+    d'un cran au lieu d'éclaircir : `danger-700` **6,47** (shade AJOUTÉ à la palette).
+  - Sites hors scan corrigés au passage parce qu'ils portent la MÊME paire fautive :
+    `ui/Button.tsx:24` (variante `danger`, écrite en littéral de variante) et
+    `profile/SavedProfilesCard.tsx:121` (classe interpolée) — invisibles au scan, pas au grep.
+  ⚠️ **L'extension aux SURVOLS a révélé un 5e offender que personne ne cherchait** : `text-white` sur
+  `hover:bg-info-500` → **3,68** (`LifeEvents.tsx:248`, `TaxCenter.tsx:353`), des boutons qui
+  ÉCLAIRCISSENT leur fond au survol. Et le correctif déjà appliqué à ce motif dans
+  `CeliAssetNudge.tsx` — `hover:brightness-110` — vaut **4,44**, toujours sous 4,5 : il avait déplacé
+  le défaut dans un filtre CSS, hors de portée de tout scan de classes. Les trois passent à
+  `hover:bg-info-700` (**6,70**, shade ajouté).
+  **Dernière étape du ticket livrée** : la passe CTA de `check-contrast.ts` bascule en
+  `process.exit(1)`. Et comme la CI ne lance PAS ce script, l'extraction a été sortie dans
+  `scripts/lib/ctaContrast.ts` (source unique) et branchée sur une garde Vitest
+  `tests/a11y/ctaContrast.test.ts` — 5 tests, dont l'anti-vacuité, la couverture des survols et une
+  contre-preuve que le seuil discrimine. **2 perturbations prouvées rouges.**
+  Mesure finale : **8 paires / 8 conformes**, extraites de 3 494 attributs `className` littéraux.
+
+Contexte d'origine :
+
+- [ ] **`[A11Y-CTA-CONTRASTE-OFFENDERS]`** (S, 🧭 **décision d'APPARENCE — Marc tranche**) — révélé
+  par `[A11Y-CONTRAST-TOOL-GAP-CTA]` en rejouant l'outil étendu : **4 CTA pleins sur 6 échouent
+  WCAG AA** (texte normal, seuil 4,5), tous PRÉEXISTANTS. **Mesuré** :
+  - `text-white` sur `bg-warning-500` → **2,15** ⚠️ échoue même le seuil « texte large » (3,0).
+    Site : `components/ui/ProjectionRequired.tsx:63`.
+  - `text-white` sur `bg-warning-600` → **3,19**. Sites : `ProjectionRequired.tsx:63` (état survol),
+    `transactions/DuplicatesPanel.tsx:150`, `transactions/CategoryReviewPanel.tsx:166`.
+  - `text-white` sur `bg-danger-500` → **3,76**. Sites : `settings/BackupPanel.tsx:402`,
+    `DebtManager.tsx:161` (survol), `aiChat/AiChatView.tsx:500`.
+  - `text-white` sur `bg-success-600` → **3,77**. Site : `transactions/CategoryReviewPanel.tsx:160`.
+  Conformes : `bg-danger-600` (4,83) et `bg-info-600` (5,17).
+  ⚠️ **Pourquoi Marc et pas Claude** : changer la couleur d'un bouton est une décision d'apparence,
+  pas un correctif mécanique — et le dépôt interdit de choisir un shade au jugé (« par MESURE,
+  jamais à l'œil »). Options à trancher : assombrir le fond (700), passer le texte en `text-dark`
+  sur les fonds clairs (le jaune surtout), ou accepter l'écart pour les libellés en gras ≥ 14 px
+  (qui relèvent du seuil « texte large » à 3,0 — ce qui sauverait 3 des 4, mais PAS le 2,15).
+  **Dernière étape une fois tranché** : basculer la passe CTA de `check-contrast.ts` en
+  `process.exit(1)` (elle rapporte sans bloquer aujourd'hui, à dessein et c'est écrit dans le
+  script) pour que la régression devienne impossible.
+
+
 ## 2026-08-24 — Le levier Smith cesse d'être flatteur : la marge suit le prêt
 
 - [x] **`[SMITH-HELOC-TAUX-FIGE]`** — décision Marc : « la marge suit l'hypothèque ». Le taux du

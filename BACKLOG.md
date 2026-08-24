@@ -1366,25 +1366,19 @@
   que `FutureKpiStrip` traite explicitement un `%` comme une donnée financière à masquer. Un % de
   répartition entre conjoints reste une info relationnelle. [MESURÉ]
 
-- [ ] **`[A11Y-CTA-CONTRASTE-OFFENDERS]`** (S, 🧭 **décision d'APPARENCE — Marc tranche**) — révélé
-  par `[A11Y-CONTRAST-TOOL-GAP-CTA]` en rejouant l'outil étendu : **4 CTA pleins sur 6 échouent
-  WCAG AA** (texte normal, seuil 4,5), tous PRÉEXISTANTS. **Mesuré** :
-  - `text-white` sur `bg-warning-500` → **2,15** ⚠️ échoue même le seuil « texte large » (3,0).
-    Site : `components/ui/ProjectionRequired.tsx:63`.
-  - `text-white` sur `bg-warning-600` → **3,19**. Sites : `ProjectionRequired.tsx:63` (état survol),
-    `transactions/DuplicatesPanel.tsx:150`, `transactions/CategoryReviewPanel.tsx:166`.
-  - `text-white` sur `bg-danger-500` → **3,76**. Sites : `settings/BackupPanel.tsx:402`,
-    `DebtManager.tsx:161` (survol), `aiChat/AiChatView.tsx:500`.
-  - `text-white` sur `bg-success-600` → **3,77**. Site : `transactions/CategoryReviewPanel.tsx:160`.
-  Conformes : `bg-danger-600` (4,83) et `bg-info-600` (5,17).
-  ⚠️ **Pourquoi Marc et pas Claude** : changer la couleur d'un bouton est une décision d'apparence,
-  pas un correctif mécanique — et le dépôt interdit de choisir un shade au jugé (« par MESURE,
-  jamais à l'œil »). Options à trancher : assombrir le fond (700), passer le texte en `text-dark`
-  sur les fonds clairs (le jaune surtout), ou accepter l'écart pour les libellés en gras ≥ 14 px
-  (qui relèvent du seuil « texte large » à 3,0 — ce qui sauverait 3 des 4, mais PAS le 2,15).
-  **Dernière étape une fois tranché** : basculer la passe CTA de `check-contrast.ts` en
-  `process.exit(1)` (elle rapporte sans bloquer aujourd'hui, à dessein et c'est écrit dans le
-  script) pour que la régression devienne impossible.
+- [ ] **`[A11Y-CTA-HORS-SCAN]`** (S, FAIBLE, 🧭 **décision d'APPARENCE — Marc tranche**) — angle
+  mort RESTANT de `check-contrast` une fois `[A11Y-CTA-CONTRASTE-OFFENDERS]` livré. Le scan lit les
+  fonds `bg-{famille}-{shade}` et `hover:bg-…` **littéraux** ; trois familles lui échappent encore,
+  et deux sont MESURÉES non conformes :
+  - `bg-secondary` + `text-white` → **3,67** (`components/ui/Button.tsx:18`, variante `secondary`) :
+    token PLAT, hors du motif `-\d{3}` du scan. `text-dark` sur ce même fond vaudrait **5,43**.
+  - `bg-amber-700` + `hover:brightness-110` → **4,28** (`components/StatementReminder.tsx:87`) : un
+    FILTRE CSS échappe par construction à un scan de classes. Le repos (5,02) est conforme, le
+    survol non — c'est exactement le motif corrigé dans `CeliAssetNudge` par le ticket parent.
+  - fonds TRANSLUCIDES (`bg-amber-700/60` + `text-white`, `components/BackupReminder.tsx:126`) :
+    exigent une composition sur le fond sous-jacent, hors périmètre déclaré de l'outil.
+  Correctif proposé : passer les deux premiers à une teinte conforme PAR MESURE (jamais à l'œil),
+  puis étendre le scan aux tokens plats en fond. Le troisième reste un angle mort assumé et écrit.
 
 ### 🔴 IA / Anthropic
 

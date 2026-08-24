@@ -24,8 +24,11 @@ describe('Button', () => {
     });
 
     it('applies the danger variant class', () => {
+        // [A11Y-CTA-CONTRASTE-OFFENDERS 2026-08-24] `danger-600` et non `-500` : `text-white` sur
+        // `danger-500` ne vaut que 3,76 (< 4,5 AA). La teinte est vérifiée en continu par
+        // `tests/a11y/ctaContrast.test.ts` — ici on vérifie seulement que la variante est câblée.
         render(<Button variant="danger">Delete</Button>);
-        expect(screen.getByRole('button').className).toMatch(/bg-danger-500/);
+        expect(screen.getByRole('button').className).toMatch(/bg-danger-600/);
     });
 
     it('renders icon on the left by default', () => {

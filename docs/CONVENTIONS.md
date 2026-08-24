@@ -6228,3 +6228,41 @@ Corollaire de test : le défaut ne vivait pas dans le composant mais dans ce qu'
 (`TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`). Extraire le libellé en fonction pure (`mcSublabel`) rend
 les trois cas testables en trois lignes ; le scan de source ne sert plus qu'au maillon du milieu,
 celui qu'on ne peut prouver qu'en faisant tourner une projection entière.
+
+
+---
+
+### `UN-ARIA-HIDDEN-SE-JUGE-PAR-CE-QUI-EXISTE-A-COTE` — 2026-08-24
+
+`[A11Y-CHART-HINT-HIDDEN]` venait d'un balayage qui avait cherché un MOTIF — du texte porteur de sens
+sous `aria-hidden="true"` — et en avait tiré deux sites. Sur les trois occurrences examinées, le
+motif s'est révélé **trois fois différent** :
+
+| Site | Verdict | Pourquoi |
+|---|---|---|
+| Phrase d'aide du graphe Futur | masquage **correct** | doublon : l'`aria-label` du conteneur énonce déjà les mêmes gestes |
+| « ou importer » (`PageSetupGate`) | masquage **fautif** | c'est le seul indice qu'un chemin ALTERNATIF existe |
+| `{done}/{total} prêts` | masquage **correct** | un vrai `role="progressbar"` porte déjà le compte |
+
+**La règle** : `aria-hidden` n'est ni bon ni mauvais en soi. Il est bon quand un équivalent
+accessible existe À CÔTÉ, fautif quand il est le seul porteur de l'information. Un balayage par motif
+ne peut donc pas conclure — il produit une LISTE À VÉRIFIER, jamais une liste de défauts. Le geste qui
+tranche est de chercher l'équivalent (nom accessible du parent, `role` porteur, table sr-only) avant
+de toucher quoi que ce soit.
+
+**Et le vrai défaut peut être ailleurs que là où le motif pointe.** Ici, le graphe n'avait pas un
+problème de masquage mais de CONTENU : son `aria-label` n'énonçait que des gestes de POINTEUR — clic,
+molette, glisser — à un utilisateur qui, par définition, ne pointe pas ; et il taisait l'alternative
+textuelle qui existait déjà dix lignes plus bas. Annoncer l'inatteignable et taire l'atteignable est
+pire qu'un silence : ça donne l'impression d'un contenu conçu pour quelqu'un d'autre.
+
+⚠️ **Corollaire, sur le renvoi lui-même** : j'ai failli écrire « le tableau *Données de la
+projection* » dans ce libellé. Ce titre n'existe pas — la légende réelle est autre, et diffère selon
+que la courbe est au jour ou au mois. Un renvoi vers un nom inventé aurait fabriqué exactement le
+mensonge qu'on corrigeait. Quand on renvoie vers un élément, ou bien on lit son vrai nom dans le
+code, ou bien on le décrit sans le nommer (`UNE-REFERENCE-DE-LIGNE-DANS-UNE-DOC-EST-UNE-DETTE`,
+même famille : ne pas pointer ce qu'on n'a pas vérifié).
+
+Corollaire de garde : les deux sites CONFORMES sont figés par un test, pas seulement commentés. Sans
+ça, le prochain balayage refera le même faux positif et « corrigera » un masquage légitime — une des
+trois perturbations de ce lot vérifie précisément ce sens-là.

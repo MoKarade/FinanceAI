@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-24 (la courbe explique enfin ce qu'on peut faire sans souris)
+
+- La description de la courbe Futur lue par les lecteurs d'écran n'énonçait que des gestes de
+  **souris** (clic, molette, glisser) et ne mentionnait pas le tableau de données ni la liste de
+  jalons qui existent juste sous la courbe. Elle y renvoie maintenant.
+- Dans l'écran de configuration, le séparateur « ou importer » était invisible pour ces mêmes
+  lecteurs : l'existence d'un **chemin d'import**, en alternative à la saisie manuelle, ne leur était
+  pas annoncée.
+
 ## [unreleased] — 2026-08-24 (le nombre de simulations affiché correspond au calcul montré)
 
 - Sous « Taux de succès », la mention « Monte Carlo (N itér.) » lisait le réglage **courant** :

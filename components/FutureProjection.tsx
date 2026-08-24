@@ -1508,6 +1508,12 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                         </button>
                     </div>
                     <div className="flex items-center gap-2">
+                        {/* [A11Y-CHART-HINT-HIDDEN] `aria-hidden` ASSUMÉ, et vérifié : cette phrase
+                            est un DOUBLON visuel de l'`aria-label` du graphe (plus bas). L'exposer
+                            ferait annoncer deux fois les mêmes gestes. Ce qui manquait n'était pas
+                            une copie sr-only mais le CONTENU de cet `aria-label`, qui n'énonçait que
+                            des gestes de POINTEUR — inutilisables par qui ne pointe pas — sans jamais
+                            nommer l'alternative textuelle qui existe pourtant juste après la courbe. */}
                         <span className="text-tiny text-ink-500 hidden md:block" aria-hidden="true">
                             survol = jour · clic = fige le jour · molette = zoom · glisser = défiler
                         </span>
@@ -1587,7 +1593,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     tabIndex={-1}
                     className={`chart-fullscreen relative w-full h-[55dvh] min-h-[380px] sm:h-[500px] sm:min-h-0 lg:h-[650px] select-none ${zoom.isZoomed && zoom.isPanning ? 'cursor-grabbing' : zoom.isZoomed ? 'cursor-grab' : 'cursor-pointer'}`}
                     role="img"
-                    aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Clic = figer l'infobulle (puis détail complet), molette = zoom, glisser = défiler."
+                    aria-label="Courbe de vie — évolution projetée du patrimoine net et de chaque compte dans le temps. Les mêmes données sont lisibles sous la courbe, sous forme de tableau et de liste de jalons. À la souris : clic = figer l'infobulle (puis détail complet), molette = zoom, glisser = défiler."
                 >
                      {isComputing ? (
                         // Pendant le (re)calcul : on masque la courbe (potentiellement périmée) et on

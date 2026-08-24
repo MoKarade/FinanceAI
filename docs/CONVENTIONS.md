@@ -6344,3 +6344,54 @@ incluses, avec la forme exacte de la commande. On ne clôt pas pour autant sur �
 maintenant » : la cause reste inconnue, donc on rend la classe impossible là où c'est vérifiable,
 plutôt que de parier sur sa disparition (`UN-FLAKE-NON-REPRODUIT-SE-SOLDE-EN-RENDANT-SA-PROCHAINE-OCCURRENCE-LISIBLE`,
 pris en amont : ici, la prochaine occurrence n'aurait plus d'effet).
+
+
+---
+
+### `UN-GARDE-APPLIQUE-A-QUATRE-SITES-SUR-CINQ-EST-UN-SITE-OUBLIE` — 2026-08-24
+
+`[REEE-CONGE-SANS-GARDE-SOLO]`. Le moteur neutralise le salaire du second parent après un décès ou
+un divorce (`soloHousehold ? 0 : grossAnnaBaseAnnual`) — à **quatre** endroits sur cinq. Le
+cinquième, le bloc enfants, recevait la valeur brute. Résultat : le congé parental se déclenchait
+sur un salaire que le ménage ne touche plus.
+
+**Ce que la mesure a montré, et pourquoi elle devait être faite au SCÉNARIO.** Au niveau du module,
+le défaut vaut −5 000 $/mois de brut retiré et +2 436 $/mois de prestation fabriquée. Mais le module
+est *innocent* : il ne peut pas savoir que le second parent a disparu, l'information ne lui parvient
+que par ce que l'appelant lui passe. Un test de `processOneChild` en isolation aurait donc prouvé une
+mécanique correcte pendant que la chaîne fabriquait de l'argent — c'est
+`GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`, dans le sens producteur. Le test qui compte fait
+tourner le vrai moteur : **8 930 $ de revenu mensuel contre 5 620 $**, soit +3 310 $ fantômes.
+
+**La règle** : quand un garde-fou est appliqué N fois dans un fichier, la question n'est pas « est-il
+correct ? » mais « où est le N+1-ième site ? ». Un `grep` du symbole gardé donne la liste complète ;
+la comparer aux sites gardés prend une minute et c'est la seule façon de trouver l'oubli — il ne se
+signale par rien, puisque le code compile et que les tests du module passent.
+
+⚠️ **Corollaire, sur ce qu'un salaire de BASE veut dire.** La deuxième moitié du ticket portait sur
+`isRetired`, et le mécanisme est le même à un mot près : `grossAnnaBaseAnnual` est le salaire *de
+base*, il reste non nul après la retraite — le moteur cesse simplement de le CRÉDITER. Tout
+consommateur qui le lit comme « ce que la personne gagne en ce moment » se trompe. Ici, un ménage
+retraité avec un nourrisson retirait le même salaire fantôme. La porte va dans le module (c'est lui
+qui connaît `isRetired`, et il conditionnait déjà la cotisation REEE de la même façon), pas chez
+l'appelant : chaque correctif se pose là où l'information EXISTE.
+
+⚠️ **Et la perturbation a révélé un trou de couverture, pas seulement validé un correctif** : retirer
+la porte `!isRetired` laissait les 13 tests du module VERTS. Aucun ne couvrait le cas retraité. Une
+perturbation qui ne fait rien rougir ne dit pas « le correctif est inutile » — elle dit « personne ne
+regarde ici », et c'est une garde à écrire.
+
+
+⚠️ **Suite du même lot, écrite après coup parce qu'un test existant l'a imposée.** Par cohérence
+apparente, j'avais appliqué `soloHousehold` à `householdGross` en même temps qu'au salaire. Le test
+de scénario `[ENG-DIVORCE-BENEFITS-FLUX]` a rougi immédiatement : cette valeur ne sert PAS au congé,
+elle sert à la RÉCUPÉRATION des allocations enfants (`householdGross > 150 000`). La baisser fait
+donc MONTER l'allocation d'un parent seul — **166 $ → 250 $/mois** au mois 36. Ce n'est plus un
+défaut de câblage mais une question de RÈGLE (quelle assiette de revenu après une séparation, et
+comment elle s'articule avec la convention « le parent reçoit la moitié »).
+
+**La règle** : deux valeurs qui se ressemblent dans une liste d'arguments n'ont pas forcément le même
+usage. Avant d'étendre un correctif « par cohérence », demander ce que chaque valeur ALIMENTE en aval
+— c'est `RECOPIER-LA-LIGNE-VOISINE` vu depuis l'appelant. Ici le test a joué son rôle exactement
+comme il faut : il n'a pas dit « ton correctif est faux », il a dit « celui-là change autre chose ».
+Le volet est routé (`[ENG-DIVORCE-ALLOC-ASSIETTE]`) avec sa mesure, pas tranché en passant.

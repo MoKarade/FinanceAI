@@ -1663,10 +1663,26 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 child, idx, isFirstMonth, childAgeMonths,
                 {
                     m, loopYear, simSalaryGrowth, simInflation, expenseMultiplier,
-                    isRetired, grossMarcBaseAnnual, grossAnnaBaseAnnual,
+                    isRetired, grossMarcBaseAnnual,
+                    // [REEE-CONGE-SANS-GARDE-SOLO] `soloHousehold` comme aux QUATRE autres sites qui
+                    // passent ce salaire (l. 1197, 1229, 1909, 2114). Il manquait ICI : après décès ou
+                    // divorce, le bloc enfants déclenchait le congé parental sur un salaire que le
+                    // ménage ne touche plus — MESURÉ : −5 000 $/mois de brut RETIRÉ (−60 k$/an, jamais
+                    // crédité) et +2 436 $/mois de prestation RQAP fabriquée pour un parent absent.
+                    // Corriger le PRODUCTEUR, pas le consommateur : le module enfants n'a aucun moyen
+                    // de savoir que le second parent a disparu.
+                    grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual,
                     incomeAnna: _childIncomeAnna,
                     liquid: _childLiquid,
                     reee: _childReee,
+                    // ⚠️ `householdGross` reste la somme des DEUX salaires, volontairement : il ne
+                    // sert PAS au congé mais à la récupération des allocations (`householdGross >
+                    // 150 000`). Y appliquer `soloHousehold` fait BAISSER la récupération, donc
+                    // MONTER les allocations d'un parent seul — mesuré 166 $ → 250 $/mois au mois 36,
+                    // et le test de scénario `[ENG-DIVORCE-BENEFITS-FLUX]` le voit immédiatement.
+                    // C'est une question de RÈGLE (quelle assiette pour les allocations après une
+                    // séparation ?), pas le défaut de câblage que ce lot corrige : routée en
+                    // `[ENG-DIVORCE-ALLOC-ASSIETTE]` plutôt que tranchée en passant.
                     householdGross: grossMarcBaseAnnual + grossAnnaBaseAnnual,
                     trackerScee: tracker.scee, trackerIqee: tracker.iqee,
                     trackerReeeContribLifetime: tracker.contribLifetime ?? 0,

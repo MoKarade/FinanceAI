@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 155) — `[REEE-CONGE-SANS-GARDE-SOLO]` : le congé d'un parent absent
+> `projection.ts` passait `grossAnnaBaseAnnual` BRUT au bloc enfants, sans le `soloHousehold` des
+> QUATRE autres sites. Après décès/divorce, le congé se déclenchait sur un salaire que le ménage ne
+> touche plus. **Mesuré au module** : −5 000 $/mois de brut retiré + 2 436 $/mois de RQAP fabriquée.
+> **Mesuré au SCÉNARIO** (vrai moteur, divorce + naissance pendant la projection) : revenu du mois
+> observé 8 930 $ au lieu de 5 620 $ → **+3 310 $/mois fantômes**. C'est la mesure qui compte : le
+> module ne PEUT pas voir ce défaut, c'est du câblage.
+> ⚠️ Deuxième moitié du ticket, corrigée aussi : porte `!isRetired` manquante — le salaire de BASE
+> reste non nul après la retraite, donc un retraité avec un nourrisson retirait le même fantôme.
+> ⚠️ La perturbation a révélé qu'AUCUN test existant ne couvrait le cas retraité : garde ajoutée.
+> 3 tests (1 scénario + 2 module), **2 perturbations rouges**.
+> ⚠️ **Volet RETIRÉ du lot par un test existant** : j'avais aussi appliqué `soloHousehold` à
+> `householdGross` (cohérence apparente). Or cette valeur sert à la RÉCUPÉRATION des allocations, pas
+> au congé : la baisser fait MONTER l'allocation d'un parent seul (166 $ → 250 $/mois au mois 36) et
+> `[ENG-DIVORCE-BENEFITS-FLUX]` rougit. Question de RÈGLE → `[ENG-DIVORCE-ALLOC-ASSIETTE]`.
+> Gate vert : **4 752 tests / 434 fichiers**.
+>
 > ## 🟢 Session 2026-08-24 (suite 154) — `[GATE-RELATED-RELIABILITY]` : non reproduit, mais rendu impossible
 > ⚠️ **Le symptôme du ticket ne se reproduit plus** : re-mesuré sur Vitest 4.1.8 avec la forme EXACTE
 > de la commande du hook, `vitest related` sélectionne bien `tests/services/monthlyEvents.test.ts`

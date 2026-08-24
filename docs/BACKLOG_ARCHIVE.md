@@ -10,6 +10,44 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Plus de congé parental pour un parent qui n'est plus là
+
+- [x] **`[REEE-CONGE-SANS-GARDE-SOLO]`** — `projection.ts` passait `grossAnnaBaseAnnual` **brut** au
+  bloc enfants, sans le garde `soloHousehold` appliqué aux **quatre** autres sites qui transmettent ce
+  salaire. Après décès ou divorce, le congé parental se déclenchait donc sur un salaire que le ménage
+  ne touche plus.
+  **Mesuré au module** : `accGrossDelta = −5 000 $/mois` (−60 k$/an de brut RETIRÉ, jamais crédité)
+  et **+2 436 $/mois** de prestation RQAP fabriquée pour un parent absent.
+  **Mesuré au SCÉNARIO** (le vrai moteur, divorce + naissance pendant la projection) : le revenu du
+  mois observé passe de 5 620 $ à **8 930 $** sans le correctif — **+3 310 $/mois** de revenu
+  fantôme. C'est cette mesure-là qui compte : le module ne peut pas voir le défaut, qui est un défaut
+  de CÂBLAGE.
+  ⚠️ **Deuxième moitié du ticket, mesurée et corrigée aussi** : la porte `!isRetired` manquait.
+  `grossAnnaBaseAnnual` est le salaire de BASE — il reste non nul après la retraite, le moteur cesse
+  simplement de le créditer. Un ménage retraité avec un nourrisson retirait donc le même salaire
+  fantôme. Le module conditionnait déjà la cotisation REEE à `!isRetired` : même convention.
+  Corrigé au PRODUCTEUR pour la partie solo (le module enfants n'a aucun moyen de savoir que le
+  second parent a disparu), et dans le module pour la retraite (c'est lui qui connaît l'état).
+  3 tests (1 de scénario + 2 de module), **2 perturbations prouvées rouges** — dont une qui a révélé
+  que le cas RETRAITÉ n'était couvert par AUCUN test existant, d'où la garde ajoutée.
+  ⚠️ **Un volet a été RETIRÉ du lot en cours de route, et c'est un test existant qui l'a imposé.**
+  J'avais aussi appliqué `soloHousehold` à `householdGross` — par cohérence apparente. Le test de
+  scénario `[ENG-DIVORCE-BENEFITS-FLUX]` a rougi : cette valeur ne sert pas au congé mais à la
+  RÉCUPÉRATION des allocations, et la baisser fait MONTER l'allocation d'un parent seul (**166 $ →
+  250 $/mois** au mois 36). C'est une question de RÈGLE, pas de câblage → routée en
+  `[ENG-DIVORCE-ALLOC-ASSIETTE]`. Un correctif « cohérent » n'est pas forcément dans le périmètre du
+  défaut qu'on corrige.
+
+Contexte d'origine :
+
+- [ ] **`[REEE-CONGE-SANS-GARDE-SOLO]`** (S, MOYEN [MESURÉ — revue #679, PRÉEXISTANT, ABSORBÉ]) —
+  `projection.ts` passe `grossAnnaBaseAnnual` BRUT au bloc enfants sans le garde `soloHousehold`
+  appliqué aux 4 autres sites, et sans gate `isRetired` : après décès/divorce (ou avec des jumeaux
+  < 12 mois), le congé retire un salaire jamais crédité → slot 1 NÉGATIF (mesuré −60 k$/an).
+  Le clamp par personne de #679 l'ABSORBE aujourd'hui (et corrige au passage : l'ancien agrégat
+  rongeait les droits de Marc de 8 100 $/an sur des jumeaux) — mais si le congé devient
+  per-parent, le défaut ressort. Corriger le site producteur, pas le consommateur.
+
 ## 2026-08-24 — Le gate ciblé lance le test qui porte le nom du module
 
 - [x] **`[GATE-RELATED-RELIABILITY]`** — **le symptôme n'est PAS reproductible**, et c'est le premier

@@ -126,8 +126,13 @@ describe('[TAXBRACKETVIZ-ANNEE] la paire appelant/composant reste accordée', ()
         // pas la présence d'un `new Date()` quelque part.
         const src = lire('components/Retirement.tsx');
         expect(src).toMatch(/const anneeFiscaleCourante = useMemo\(\(\) => new Date\(\)\.getFullYear\(\)/);
+        // ⚠️ Le motif s'arrête à `[,)]` et n'exige PAS que l'appel se termine là : ce qui est gardé,
+        // c'est que la variable PARTAGÉE occupe la position de l'ANNÉE — pas l'arité de l'appel.
+        // Ancrer sur `\)` a rougi au lot suivant, quand `[GROSSFROMNET-CREDITS-65]` a ajouté un 3e
+        // argument sans rien casser de ce que cette garde protège. Une garde doit tenir sur le FAIT
+        // qu'elle défend, pas sur la forme exacte qu'avait le code le jour où on l'a écrite.
         expect(src, 'le brut déduit doit lire la variable partagée')
-            .toMatch(/calculateGrossFromNet\(netAnnual, anneeFiscaleCourante\)/);
+            .toMatch(/calculateGrossFromNet\(netAnnual, anneeFiscaleCourante[,)]/);
         expect(src, 'les paliers doivent lire la MÊME variable')
             .toMatch(/<TaxBracketViz[^>]*year=\{anneeFiscaleCourante\}/);
         // Et plus AUCUNE lecture d'horloge séparée dans ce fichier : deux `new Date()` distincts

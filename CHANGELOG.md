@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-24 (les crédits d'âge comptent enfin si tu as 65 ans ou plus)
+
+- Quand tu entres seulement ton salaire **net**, l'app en déduit ton brut. Ce calcul **oubliait les
+  crédits d'impôt liés à l'âge** (65 ans et plus) : le brut déduit était donc trop élevé, et tout ce
+  qui en découle avec lui.
+- L'écart mord surtout **aux revenus modestes** : environ **3 000 $ de brut en trop** pour un net de
+  30 000 à 36 000 $, soit près de 7 %. Il s'estompe ensuite et disparaît au-delà de ~80 000 $ de net.
+- Corrigé partout où l'app fait ce calcul — écran Retraite, Impôts & Docs, et le moteur de
+  projection. Sans effet si tu saisis directement ton brut, ou si tu as moins de 65 ans.
+
 ## [unreleased] — 2026-08-24 (les tranches d'imposition suivent enfin l'année en cours)
 
 - L'écran « Tranches d'imposition » de l'onglet Retraite dessinait toujours les **paliers de 2026**

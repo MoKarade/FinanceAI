@@ -4,6 +4,30 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 143) — `[GROSSFROMNET-CREDITS-65]` LIVRÉ (décision Marc : tout câbler)
+> Instruit d'abord, puis livré après arbitrage de Marc (« tout câbler, moteur inclus »).
+> `calculateGrossFromNet` accepte `ageOpts` (optionnel, défaut NEUTRE) et les **quatre** appelants de
+> production le passent PAR UTILISATEUR via la source unique `ageOptsForSalaryInversion` — dont
+> `TaxCenter` aux **DEUX bouts** de son aller-retour (les crédits y manquaient des deux côtés, ce qui
+> était au moins cohérent : n'en câbler qu'un aurait été pire) et le socle `computeIncomeBaseline`,
+> dont le type `users` a dû être élargi pour recevoir `age`/`birthYear`.
+> ✅ **Les chiffres du ticket sont EXACTS** (retrouvés au dollar près : +1 904 $ à 36 k$ de net,
+> +1 018 $ à 48 k$, +391 $ à 60 k$). ⚠️ **J'ai failli le déclarer faux** en mesurant côté BRUT
+> (+3 004 $ à 36 k$) alors qu'il annonçait — et NOMMAIT — un écart en NET. Leçon écrite : six
+> réfutations d'affilée créent une attente de réfutation.
+> Mesures ajoutées : l'écart mord surtout EN BAS (+3 041 $ de brut à 30 k$ de net, soit 6,7 %),
+> disparaît au-dessus de ~80 k$ de net, et le cas COUPLE diffère du SOLO (`hasSpouse` doit être passé).
+> Contre-épreuve à 64 ans : écart exactement 0.
+> ⚠️ **AUCUN golden n'a bougé — et c'est EXPLIQUÉ, pas constaté.** L'effet exige les DEUX conditions
+> à la fois (65 ans et plus **ET** aucun brut saisi) ; les fixtures de goldens ont toutes un brut.
+> Deux tests dédiés le prouvent : l'un construit ce profil et vérifie que le brut de base BAISSE,
+> l'autre qu'un 66 ans AVEC brut saisi n'est pas touché. Sans eux, « rien n'a bougé » aurait pu
+> vouloir dire « le câblage est inerte ».
+> 10 tests neufs, **3 perturbations prouvées rouges**. Un 11e test a rougi au passage : ma propre
+> garde de `[TAXBRACKETVIZ-ANNEE]`, ancrée sur l'ARITÉ de l'appel plutôt que sur le fait qu'elle
+> défend — resserrée, avec la raison écrite dedans.
+> Gate vert : **4 684 tests / 424 fichiers**.
+>
 > ## 🟢 Session 2026-08-24 (suite 142) — `[DETTE-KNIP-ADMZIP]` : knip avait raison, cause instruite
 > Le ticket posait la bonne question sans oser trancher : `adm-zip` est-il encore employé (auquel cas
 > ses types le sont indirectement et knip a tort), ou les deux sont-ils morts ? **Les deux

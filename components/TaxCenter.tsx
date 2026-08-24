@@ -12,7 +12,7 @@ import { BudgetConfig, Asset } from '../types';
 import { analyzePayslip } from '../services/claude';
 import { logError } from '../services/errorLogger';
 import { assetValueCad } from '../services/portfolio';
-import { calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
+import { ageOptsForSalaryInversion, calculateFiscalReport, calculateGrossFromNet } from '../services/tax';
 import { estimateTaxableInvestmentIncome } from '../services/taxEstimate';
 import { FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK } from '../utils/tax';
 
@@ -184,20 +184,26 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
             // dont le brut annuel réel est 164 400$ → impôt = 0$ (sous le PBMA).
             const anneeFiscaleCourante = new Date().getFullYear();
             const monthlyGross = u.grossSalary || 0;
+            const ageOptsUser = ageOptsForSalaryInversion(u, anneeFiscaleCourante, config.users.length);
             const uGross = monthlyGross > 0
                 ? monthlyGross * 12
                 // [GROSSFROMNET-ANNEE-FIGEE] ⚠️ Cette année DOIT être la même que celle passée à
                 // `calculateFiscalReport` juste en dessous. Les désaccorder rend l'aller-retour faux :
                 // mesuré 212 $/an d'écart dès 2027, 874 $ en 2030, sur un panneau étiqueté
                 // « Estimation {année courante} ».
-                : calculateGrossFromNet((u.netSalary || 0) * 12, anneeFiscaleCourante);
+                // [GROSSFROMNET-CREDITS-65] ⚠️ Ces `ageOpts` DOIVENT être les mêmes que ceux passés à
+                // `calculateFiscalReport` juste en dessous — même exigence de PAIRE que l'année, et
+                // pour la même raison : ce panneau fait un aller-retour net→brut→impôt. Avant ce lot,
+                // les crédits d'âge manquaient aux DEUX bouts (`undefined /* ageOpts */`), ce qui était
+                // au moins cohérent ; n'en câbler qu'un aurait été pire que le défaut.
+                : calculateGrossFromNet((u.netSalary || 0) * 12, anneeFiscaleCourante, ageOptsUser);
             const splitRatio = 1 / config.users.length;
             const uTotalTaxable = uGross + (investmentTaxData.taxableAddOn * splitRatio);
             // [FISC-PAYROLL-BASE-INVEST] assiette IMPOSABLE = salaire + placement (paliers d'impôt),
             // mais assiette EMPLOI (RRQ/RQAP/AE) = salaire SEUL (uGross) — le placement ne cotise pas.
             const res = calculateFiscalReport(
                 uTotalTaxable, rrspContribution * splitRatio, fhsaContribution * splitRatio,
-                anneeFiscaleCourante, undefined /* skipBreakdown */, undefined /* ageOpts */, uGross /* employmentIncome */,
+                anneeFiscaleCourante, undefined /* skipBreakdown */, ageOptsUser, uGross /* employmentIncome */,
             );
             const refundOrOwe = (alreadyPaidTax * splitRatio) > 0 ? ((alreadyPaidTax * splitRatio) - res.totalTax) : 0;
             return {

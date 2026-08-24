@@ -9,7 +9,7 @@
 // dérivées.
 
 import { mulberry32 } from './helpers';
-import { TAX_BASE_YEAR, calculateCeliRoom, calculateGrossFromNet, getResidencyStartYear, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK, rrqAdjustmentFactor as computeRrqFactor, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, RRSP_ROOM_RATE } from '../../utils/tax';
+import { TAX_BASE_YEAR, ageOptsForSalaryInversion, calculateCeliRoom, calculateGrossFromNet, getResidencyStartYear, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLBACK, rrqAdjustmentFactor as computeRrqFactor, GOV_PENSION_RRQ_SHARE, GOV_PENSION_PSV_SHARE, RRSP_ROOM_RATE } from '../../utils/tax';
 import type { FutureScenarioType } from '../projection';
 
 /**
@@ -147,7 +147,11 @@ export interface IncomeBaselineResult {
  */
 export function computeIncomeBaseline(
     projection: { useTheoretical?: boolean; theoreticalIncome?: number },
-    users: Array<{ netSalary?: number; grossSalary?: number } | undefined>,
+    // [GROSSFROMNET-CREDITS-65] `age`/`birthYear` AJOUTÉS au type : l'âge n'était pas transmis
+    // jusqu'ici, donc l'inversion net→brut du socle ne pouvait PAS accorder les crédits de 65 ans et
+    // plus, quand bien même l'appelant les connaissait. Champs optionnels, absents ⇒ comportement
+    // d'avant à l'octet près.
+    users: Array<{ netSalary?: number; grossSalary?: number; age?: number; birthYear?: number } | undefined>,
     /** Année du barème pour l'inversion net→brut ([GROSSFROMNET-ANNEE-FIGEE]). Défaut NEUTRE. */
     startYear: number = TAX_BASE_YEAR,
 ): IncomeBaselineResult {
@@ -157,14 +161,21 @@ export function computeIncomeBaseline(
     const incomeMarcNetMonthly = useTheo ? (theoIncome * 0.55) : (users[0]?.netSalary || 0);
     const incomeAnnaNetMonthly = useTheo ? (theoIncome * 0.45) : (users[1]?.netSalary || 0);
     // ⚠️ UNITÉS : les salaires du store sont MENSUELS, `calculateGrossFromNet` travaille en ANNUEL.
-    const brutDeduit = (netMensuel: number): number =>
-        (netMensuel > 0 ? calculateGrossFromNet(netMensuel * 12, startYear) : 0);
+    // [GROSSFROMNET-CREDITS-65] Crédits d'âge PAR UTILISATEUR. `activeUsersCount` est dérivé du
+    // nombre d'utilisateurs porteurs d'un revenu — c'est lui qui pilote `hasSpouse`, et le confondre
+    // avec `users.length` sur-créditerait un ménage dont le second membre n'a aucun revenu.
+    const nbUsersActifs = users.filter(u => (u?.netSalary || 0) > 0 || (u?.grossSalary || 0) > 0).length || 1;
+    const brutDeduit = (netMensuel: number, u: typeof users[number]): number =>
+        (netMensuel > 0
+            ? calculateGrossFromNet(netMensuel * 12, startYear,
+                ageOptsForSalaryInversion(u, startYear, nbUsersActifs))
+            : 0);
     const grossMarcBaseAnnual = useTheo
-        ? brutDeduit(incomeMarcNetMonthly)
-        : (users[0]?.grossSalary ? users[0].grossSalary * 12 : brutDeduit(incomeMarcNetMonthly));
+        ? brutDeduit(incomeMarcNetMonthly, users[0])
+        : (users[0]?.grossSalary ? users[0].grossSalary * 12 : brutDeduit(incomeMarcNetMonthly, users[0]));
     const grossAnnaBaseAnnual = useTheo
-        ? brutDeduit(incomeAnnaNetMonthly)
-        : (users[1]?.grossSalary ? users[1].grossSalary * 12 : brutDeduit(incomeAnnaNetMonthly));
+        ? brutDeduit(incomeAnnaNetMonthly, users[1])
+        : (users[1]?.grossSalary ? users[1].grossSalary * 12 : brutDeduit(incomeAnnaNetMonthly, users[1]));
 
     return { incomeMarcNetMonthly, incomeAnnaNetMonthly, grossMarcBaseAnnual, grossAnnaBaseAnnual };
 }

@@ -22,7 +22,7 @@ import { TaxBracketViz } from './TaxBracketViz';
 import { GoalSeekerCard } from './retirement/GoalSeekerCard';
 import { AssetLocationCard } from './retirement/AssetLocationCard';
 import { CurrentCapitalCard } from './retirement/CurrentCapitalCard';
-import { calculateGrossFromNet } from '../services/tax';
+import { ageOptsForSalaryInversion, calculateGrossFromNet } from '../services/tax';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { formatCAD, formatSigned, formatCompactCAD } from '../utils/format';
 import { useShallow } from 'zustand/shallow';
@@ -115,7 +115,10 @@ export const Retirement: React.FC<RetirementProps> = ({
         if (u.grossSalary) return sum + (u.grossSalary * 12);
         const netAnnual = (u.netSalary || u.salary || 0) * 12;
         // [GROSSFROMNET-ANNEE-FIGEE] barème de l'année COURANTE, pas 2026 figé.
-        return sum + calculateGrossFromNet(netAnnual, anneeFiscaleCourante);
+        // [GROSSFROMNET-CREDITS-65] Crédits d'âge PAR UTILISATEUR — un ménage mixte (66 ans + 40 ans)
+        // n'a pas le même brut déduit pour les deux, et `hasSpouse` change le montant QC « vivant seule ».
+        return sum + calculateGrossFromNet(netAnnual, anneeFiscaleCourante,
+            ageOptsForSalaryInversion(u, anneeFiscaleCourante, config.users.length));
     }, 0), [config, anneeFiscaleCourante]);
 
     const baseMonthlyExpenses = Math.max(0, (baseNetAnnual / 12) - calculatedMonthlySavings);

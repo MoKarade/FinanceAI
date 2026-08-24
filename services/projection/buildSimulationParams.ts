@@ -46,7 +46,7 @@ import {
 } from '../history/reconstructPortfolioHistory';
 import { deriveStartingBalancesFromHistory } from '../history/startingBalancesFromHistory';
 import { getEffectivePurchases } from '../../utils/assetPurchases';
-import { TAX_BASE_YEAR, calculateGrossFromNet } from '../../utils/tax';
+import { TAX_BASE_YEAR, ageOptsForSalaryInversion, calculateGrossFromNet } from '../../utils/tax';
 import { isSavingsNature } from '../../utils/budget';
 import { computeCashLedger } from '../startingCash';
 
@@ -112,7 +112,11 @@ export function computeBaseGrossAnnual(users: readonly User[], year: number = TA
     return (users ?? []).reduce((sum, u) => {
         if (u?.grossSalary) return sum + (u.grossSalary * 12);
         const netAnnual = ((u?.netSalary || u?.salary || 0) as number) * 12;
-        return sum + (netAnnual > 0 ? calculateGrossFromNet(netAnnual, year) : 0);
+        // [GROSSFROMNET-CREDITS-65] `users` porte déjà `age`/`birthYear` : les crédits d'âge se
+        // construisent PAR UTILISATEUR, jamais au niveau du ménage.
+        return sum + (netAnnual > 0
+            ? calculateGrossFromNet(netAnnual, year, ageOptsForSalaryInversion(u, year, (users ?? []).length))
+            : 0);
     }, 0);
 }
 

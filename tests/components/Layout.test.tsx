@@ -252,4 +252,66 @@ describe('Layout — nav 6 destinations (REFONTE-NAV Lot 1)', () => {
         expect(container.querySelector(`[data-tour-id="nav-${Tab.DASHBOARD}"]`)).toBeNull();
         expect(screen.queryByText('Accueil')).toBeNull();
     });
+
+    /**
+     * [A11Y-SIDEBAR-ESC] WCAG 1.4.13 (Content on Hover or Focus) — « Dismissable ».
+     *
+     * Le rail se DÉPLIE au survol et au focus. La norme exige qu'on puisse le REFERMER au clavier
+     * sans déplacer le pointeur ni le focus : sinon un utilisateur au clavier, ou qui grossit
+     * l'écran, se retrouve avec un panneau de 288 px qui recouvre le contenu et qu'aucune touche ne
+     * ferme. L'état largeur (`w-72` / `w-16`) est la grandeur PUBLIÉE : c'est elle qu'on vérifie,
+     * pas le drapeau interne.
+     */
+    describe('a11y — le rail latéral se referme avec Échap', () => {
+        const rail = (container: HTMLElement): HTMLElement => {
+            const el = container.querySelector('aside');
+            if (!el) throw new Error('aside introuvable');
+            return el as HTMLElement;
+        };
+
+        it('Échap replie le rail déplié au survol, sans bouger le pointeur', () => {
+            const { container } = render(<Layout {...baseProps} />);
+            const aside = rail(container);
+
+            fireEvent.mouseEnter(aside);
+            expect(aside.className, 'le survol doit déplier le rail').toContain('w-72');
+
+            fireEvent.keyDown(aside, { key: 'Escape' });
+            expect(aside.className, 'Échap doit replier le rail (WCAG 1.4.13)').toContain('w-16');
+        });
+
+        it('Échap tient MALGRÉ un focus interne qui rouvrirait le rail', () => {
+            // Le piège du correctif naïf : `onFocus` se redéclenche au moindre Tab dans le rail.
+            // Sans verrou, le rail se rouvrirait tout seul juste après le Échap.
+            const { container } = render(<Layout {...baseProps} />);
+            const aside = rail(container);
+
+            fireEvent.mouseEnter(aside);
+            fireEvent.keyDown(aside, { key: 'Escape' });
+            fireEvent.focus(aside);
+            expect(aside.className, 'un focus interne ne doit pas annuler le Échap').toContain('w-16');
+        });
+
+        it('le verrou se LÈVE quand le pointeur quitte puis revient', () => {
+            // Une fermeture DÉFINITIVE serait un autre défaut : le rail deviendrait inutilisable à
+            // la souris pour le reste de la session.
+            const { container } = render(<Layout {...baseProps} />);
+            const aside = rail(container);
+
+            fireEvent.mouseEnter(aside);
+            fireEvent.keyDown(aside, { key: 'Escape' });
+            fireEvent.mouseLeave(aside);
+            fireEvent.mouseEnter(aside);
+            expect(aside.className, 'revenir sur le rail doit le rouvrir').toContain('w-72');
+        });
+
+        it('une autre touche ne referme rien', () => {
+            const { container } = render(<Layout {...baseProps} />);
+            const aside = rail(container);
+
+            fireEvent.mouseEnter(aside);
+            fireEvent.keyDown(aside, { key: 'a' });
+            expect(aside.className, 'seule Échap referme').toContain('w-72');
+        });
+    });
 });

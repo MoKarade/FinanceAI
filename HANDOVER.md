@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 146) — deux tickets a11y XS : `[A11Y-SUBTABS-TOUCH-TARGET]` + `[A11Y-SIDEBAR-ESC]`
+> **Cible tactile** : les onglets de `SubTabs` faisaient 28 px (12 px de `py-1.5` + 16 px
+> d'interligne) contre 44 px de plancher WCAG 2.5.5 → classe `touch-target`, **une ligne pour trois
+> écrans** puisque le composant commun existait déjà. ⚠️ La garde relit `index.css` et exige que
+> `.touch-target` déclare 44 px : une classe utilitaire renommée est un **no-op silencieux**, et
+> l'assertion de classe seule resterait verte sans plus rien contraindre.
+> **Échap sur le rail** : WCAG 1.4.13 « Dismissable ». ⚠️ Le correctif naïf (remettre l'état à
+> `false`) est ANNULÉ au Tab suivant — `onFocus` se redéclenche à chaque élément interne du rail.
+> Il faut un VERROU `sidebarDismissed`, levé seulement quand le survol ou le focus quitte réellement
+> l'aside, sinon on fabrique l'autre défaut (rail fermé pour la session). Les libellés repassent en
+> `opacity-0` sans perdre aucun nom accessible (`aria-label` déjà posé quand le rail est replié).
+> **3 perturbations prouvées rouges** : classe retirée · `.touch-target` ramené à 36 px · handler
+> Échap supprimé. Gate vert : **4 702 tests / 426 fichiers**.
+>
 > ## 🟢 Session 2026-08-24 (suite 145) — `[A11Y-CTA-CONTRASTE-OFFENDERS]` LIVRÉ (décision Marc : corriger les 4 boutons)
 > Teintes choisies **par mesure**, jamais à l'œil. La palette bascule entre le shade 600 et le 700 :
 > le blanc ne passe AA qu'à partir de 700, le `text-dark` seulement jusqu'à 600. D'où la règle

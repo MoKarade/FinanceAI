@@ -10,6 +10,38 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Deux trous a11y XS : cible tactile des sous-onglets, Échap sur le rail
+
+- [x] **`[A11Y-SUBTABS-TOUCH-TARGET]`** — les onglets faisaient **28 px** de haut (`py-1.5` = 12 px
+  + 16 px d'interligne `text-meta`) contre les 44 px du plancher WCAG 2.5.5. Corrigé par la classe
+  partagée `touch-target` sur `components/ui/SubTabs.tsx` : **une ligne, trois écrans** (Profil,
+  Retraite, Budget), parce que le composant commun existait déjà.
+  ⚠️ La garde ne se contente PAS de vérifier la classe : elle relit `index.css` et exige que
+  `.touch-target` déclare bien 44 px. Une classe utilitaire renommée est un **no-op silencieux**
+  (même famille que « un shade hors palette ne génère rien ») et le test de classe resterait vert en
+  ne contraignant plus rien.
+
+- [x] **`[A11Y-SIDEBAR-ESC]`** — le rail latéral se déplie au survol/focus et **rien ne le refermait
+  au clavier** (WCAG 1.4.13, « Dismissable »). Échap le replie désormais sans déplacer le pointeur
+  ni le focus.
+  ⚠️ **Le correctif naïf ne marche pas** : remettre `sidebarFocused` à `false` est annulé au Tab
+  suivant, car `onFocus` se redéclenche à chaque élément interne. Il faut un **VERROU**
+  (`sidebarDismissed`), levé quand le survol ou le focus quitte réellement l'aside — sinon on
+  fabrique l'autre défaut : un rail définitivement fermé pour la session.
+  Les libellés repassent en `opacity-0` mais **aucun nom accessible n'est perdu** : chaque item porte
+  déjà un `aria-label` quand le rail est replié.
+  4 tests, dont le sens INVERSE (revenir sur le rail le rouvre) et « une autre touche ne referme
+  rien ». **3 perturbations prouvées rouges.**
+
+Contexte d'origine :
+
+- [ ] **`[A11Y-SUBTABS-TOUCH-TARGET]`** (XS) — les onglets de `SubTabs` font ~28 px de haut (seuil
+  `.touch-target` = 44 px). Pré-existant, mais les TROIS écrans convergent maintenant vers ce seul
+  composant : un correctif, trois surfaces.
+- [ ] **`[A11Y-SIDEBAR-ESC]`** (XS, a11y — audit #598, pré-existant) — la sidebar dépliée au
+  survol/focus n'est pas fermable au clavier (Échap) → gap WCAG 1.4.13 (Dismissable). Ajouter
+  un keydown Échap qui replie (blur/retour du focus au déclencheur).
+
 ## 2026-08-24 — Les CTA passent WCAG AA, et la garde devient bloquante
 
 - [x] **`[A11Y-CTA-CONTRASTE-OFFENDERS]`** — arbitrage de Marc : **corriger les 4 boutons** (plutôt

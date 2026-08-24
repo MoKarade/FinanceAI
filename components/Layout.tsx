@@ -51,7 +51,13 @@ export const Layout: React.FC<LayoutProps> = ({
   // Phase B.1 — sidebar cachée par défaut, expansion au survol + focus clavier.
   const [sidebarHovered, setSidebarHovered] = React.useState(false);
   const [sidebarFocused, setSidebarFocused] = React.useState(false);
-  const isSidebarOpen = sidebarHovered || sidebarFocused;
+  // [A11Y-SIDEBAR-ESC] WCAG 1.4.13 (Dismissable) : un contenu déclenché par le survol ou le focus
+  // doit pouvoir être REFERMÉ au clavier sans déplacer ni le pointeur ni le focus. Un simple
+  // `setSidebarHovered(false)` ne suffit pas — `onMouseEnter` ne se redéclenche pas tant que le
+  // pointeur ne SORT pas, mais `onFocus` se redéclenche au moindre Tab interne et rouvrirait le
+  // rail aussitôt. D'où un VERROU, levé quand le survol ou le focus quitte réellement l'aside.
+  const [sidebarDismissed, setSidebarDismissed] = React.useState(false);
+  const isSidebarOpen = (sidebarHovered || sidebarFocused) && !sidebarDismissed;
 
   // Phase B.2 — accordion : chaque destination multi-onglets peut être dépliée/repliée au clic.
   // Par défaut toutes ouvertes pour ne pas surprendre l'utilisateur.
@@ -218,12 +224,19 @@ export const Layout: React.FC<LayoutProps> = ({
           isSidebarOpen ? 'w-72' : 'w-16'
         }`}
         onMouseEnter={() => setSidebarHovered(true)}
-        onMouseLeave={() => setSidebarHovered(false)}
+        onMouseLeave={() => { setSidebarHovered(false); setSidebarDismissed(false); }}
         onFocus={() => setSidebarFocused(true)}
         onBlur={(e) => {
           // Ne déclenche le collapse que si le focus quitte tout l'aside.
-          if (!e.currentTarget.contains(e.relatedTarget as Node)) setSidebarFocused(false);
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setSidebarFocused(false);
+            setSidebarDismissed(false);
+          }
         }}
+        // [A11Y-SIDEBAR-ESC] Échap replie le rail sans bouger le focus : les libellés repassent en
+        // `opacity-0`, mais les noms accessibles restent (chaque item porte un `aria-label` quand le
+        // rail est replié), donc rien n'est perdu pour un lecteur d'écran.
+        onKeyDown={(e) => { if (e.key === 'Escape') setSidebarDismissed(true); }}
       >
         {/* Brand + privacy toggle */}
         <div className="p-3 pb-2 shrink-0 space-y-2">

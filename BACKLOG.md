@@ -361,9 +361,6 @@
   aria-modal="true"`, gère le focus au montage et Échap, mais **ne piège pas Tab** : la tabulation
   sort vers le contenu de fond masqué par l'overlay. Le dépôt a déjà le patron deux fois dans le
   même écran (`Modal.tsx`, infobulle figée) — la modale réimplémente son portail et a raté ce bout.
-- [ ] **`[A11Y-SUBTABS-TOUCH-TARGET]`** (XS) — les onglets de `SubTabs` font ~28 px de haut (seuil
-  `.touch-target` = 44 px). Pré-existant, mais les TROIS écrans convergent maintenant vers ce seul
-  composant : un correctif, trois surfaces.
 - [ ] **`[A11Y-RESERVE-CHIP-PROMINENCE]`** (XS) — le TEXTE des pastilles de réserve est à ≈ 9–10:1
   (AA et AAA : OK). C'est le CHIP qui ne ressort pas : fond à ≈ 1,15:1, bordure à ≈ 1,8:1, loin des
   3:1 non-text. L'information reste lisible ; c'est l'effet « saute aux yeux » qui est affaibli.
@@ -692,9 +689,6 @@
   via `setConfig` direct, sans diff ni backup ni garde de vraisemblance. Le bouton « Appliquer au
   Profil Principal » donne un geste de confirmation, mais pas le filet. Aligner sur `writeExecutor`
   comme l'a été `PayslipUploadCard`.
-- [ ] **`[A11Y-SIDEBAR-ESC]`** (XS, a11y — audit #598, pré-existant) — la sidebar dépliée au
-  survol/focus n'est pas fermable au clavier (Échap) → gap WCAG 1.4.13 (Dismissable). Ajouter
-  un keydown Échap qui replie (blur/retour du focus au déclencheur).
 - [ ] **`[IA-NAV-LABELS]`** (S) — sidebar w-16 par défaut, libellés opacity-0, icônes cryptiques →
   libellés visibles par défaut (ou rail plus large).
 - [ ] **`[REFONTE-NAV]`** (L, ⏳, GO Marc 2026-08-12) — chantier « tout tourne autour de la courbe

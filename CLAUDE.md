@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 696 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 702 tests** Vitest
 (426 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -589,6 +589,10 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   confrontée par RIEN au runtime : la garde lit la CLASSE (la vérité peinte) et la compare à la
   constante — l'inverse serait circulaire (`STYLE-CONST-DUPLIQUEE`).
 - Un test `.length > 1` sur un **tuple** de longueur fixe est vacueux.
+- Une fermeture (Échap) qui remet à zéro l'état d'un **déclencheur RÉPÉTÉ** (survol, focus) est
+  annulée dès sa prochaine occurrence — il faut un VERROU, levé quand le déclencheur cesse vraiment.
+  Et une garde sur la PRÉSENCE d'une classe utilitaire doit vérifier que la classe **fait encore ce
+  qu'elle promet** (`.touch-target` = 44 px), sinon elle est vacueuse.
 - Une garde qui ne lit que l'état de **REPOS** ne couvre que cet état : au sens WCAG, le texte d'un
   bouton SURVOLÉ est du texte. Et « corriger » avec un mécanisme que la garde ne sait pas lire
   (`hover:brightness-110`, mesuré 4,44) déplace le défaut hors du radar au lieu de le régler.

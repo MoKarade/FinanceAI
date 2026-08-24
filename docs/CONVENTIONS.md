@@ -6101,3 +6101,33 @@ Corollaire : c'est le pendant de `GATE-LOCAL-VERT-CI-ROUGE-PAR-VERSION-DE-NODE`.
 tournait et mesurait le mauvais environnement ; ici, il ne tournait pas du tout. Dans les deux cas,
 le symptôme est le même — « vert chez moi, rouge en CI » — et la question à se poser en premier est
 « qu'est-ce qui a RÉELLEMENT tourné ? », pas « qu'est-ce que le code a de faux ? ».
+
+
+---
+
+### `UN-TICKET-PEUT-AVOIR-RAISON-SUR-LE-CONSTAT-ET-TORT-SUR-L-INFERENCE` — 2026-08-24
+
+`[FISC-CID-CLAMP-EXCEDENT]` : « mesuré : 0 $ d'impôt dividendes sur un couple à 1,5 M$ non-enreg à
+faible autre revenu — l'excédent du CID est perdu ». Le constat est **exact** : l'impôt sur
+dividendes y est bien nul, et l'excédent est bien perdu. L'inférence — « au lieu de réduire l'impôt
+des autres revenus » — suppose qu'il EXISTE un autre impôt à réduire. À ces niveaux de revenu, il
+n'y en a aucun.
+
+Le mécanisme qui borne la portée était visible dans les taux, pas dans le code : le CID effectif vaut
+**24,24 %** du montant majoré, tandis que le plus bas taux marginal combiné **positif** au Québec est
+d'environ **26,5 %**. Au-dessus du seuil d'imposition, l'impôt de la bande dépasse donc TOUJOURS le
+crédit — le clamp ne peut mordre qu'en dessous, là où il n'y a rien à absorber. Balayé : **23
+combinaisons sur 726**, pire cas **251 $/an**.
+
+**La règle** : quand un correctif consiste à LIBÉRER une grandeur (un excédent de crédit, une
+capacité inutilisée, un solde résiduel), la question décisive n'est pas « la grandeur existe-t-elle ?
+» mais « existe-t-il un CONSOMMATEUR pour elle, dans les scénarios où elle existe ? ». Un excédent
+libéré dans un ménage qui ne paie pas d'impôt vaut zéro. Même famille que
+`UNE-FIXTURE-QUI-SATURE-LA-CONTRAINTE-REND-LA-MESURE-AVEUGLE`, prise par l'autre bout : là, une
+contrainte saturée rendait un mécanisme inobservable ; ici, un consommateur absent rend un gain
+inexistant.
+
+Corollaire de méthode : la mesure qui tranche n'est pas un point mais un **balayage croisé** (revenu
+× dividende), avec la question posée sous la forme « dans combien de cas le gain serait-il
+ABSORBABLE ? ». Un point unique aurait confirmé le ticket (l'excédent est réel) ou l'aurait réfuté
+(un cas au hasard donne 0 $) — les deux réponses auraient été fausses comme généralité.

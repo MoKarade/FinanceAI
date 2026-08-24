@@ -375,10 +375,6 @@
   58 k$ d'impôt en double. Point d'accroche évident : `computeAnnualNonRegDividends` (source
   unique du montant). ⚠️ Re-base massif de goldens — lot dédié. Limite assumée documentée
   FISCAL_REFERENCE §6 en attendant.
-- [ ] **`[FISC-CID-CLAMP-EXCEDENT]`** (S, FAIBLE — ex-« voisin » de DIV-DERIVED-BASES) — le clamp
-  `Math.max(0, grossTax − cid)` perd l'excédent annuel de crédit d'impôt pour dividendes au lieu
-  de réduire l'impôt des autres revenus (mesuré : 0 $ d'impôt dividendes sur un couple à 1,5 M$
-  non-enreg à faible autre revenu, avant comme après — l'excédent du CID est perdu).
 - [x] ~~**`[FISC-BAND-AGE-CREDITS]`**~~ ✅ **DOUBLON — LIVRÉ par #676** (`[FISC-TAXDEC-INCR]`,
   2026-08-20) : mêmes bandes §2/§3 sans ageOpts, mêmes chiffres (675,56 $ à 60 k$). Le panel #564
   et le triage 2026-06-16 avaient nommé le même défaut sous deux IDs. Constaté au lot vague 1b.

@@ -125,7 +125,7 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
             // findings de panel qu'elle porte (rejet légitime qui avortait toute la passe ; ordre des
             // payloads qui EST le contrat de `applyCashBalance`).
             const applied = applyPayloadsIsolated(base, payloads);
-            const { transactionsAdded, cashUpdated, debtsUpdated, warnings: applyWarnings } = applied;
+            const { transactionsAdded, cashUpdated, cashAnchorDelta, debtsUpdated, warnings: applyWarnings } = applied;
 
             const report: FintableSyncReport = {
                 at: Date.now(),
@@ -135,6 +135,7 @@ export async function runFintableSync(store: StateStore, opts: FintableSyncOptio
                 transactionsAdded,
                 transfersDetected: mapReport.transferPairs.length,
                 cashUpdated,
+                cashAnchorDelta,
                 debtsUpdated,
                 investmentReferenceCount: mapReport.investmentBalances.length,
                 warnings: [...preflightWarnings, ...mapReport.warnings, ...applyWarnings],

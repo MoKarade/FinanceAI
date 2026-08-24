@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-24 (on voit enfin quand la sync déplace ton solde de départ)
+
+- Ton solde de liquidités est **calculé** (solde de départ + transactions). Quand la banque annonce
+  un total différent, la synchronisation ajuste le **solde de départ** du compte « Liquidités » pour
+  retomber sur le bon total — silencieusement jusqu'ici. Une opération comptée deux fois pouvait donc
+  gonfler ce solde de départ (mesuré : 1 000 $ → 1 300 $) : le total du jour restait juste, mais le
+  montant affiché dans Réglages → Comptes ne correspondait plus à rien, et tout l'historique passé
+  était décalé d'autant.
+- L'écran Système affiche maintenant **de combien** ce solde de départ a été déplacé à la dernière
+  synchronisation. L'ajustement n'est pas supprimé — il est légitime la plupart du temps — mais il
+  n'est plus invisible.
+
 ## [unreleased] — 2026-08-24 (plus de congé parental pour un conjoint qui n'est plus là)
 
 - Après un décès ou un divorce dans la projection, la naissance d'un enfant déclenchait encore le

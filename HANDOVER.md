@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 156) — `[FINTABLE-ANCRE-LIQUIDITE-GONFLEE]` : rendre visible ce qu'on ne peut pas corriger
+> **Mécanisme encore atteignable**, mesuré AVANT de coder : un doublon qui échappe au classement
+> (`callerClassified`) fait compter une dépense deux fois, et le recalage `cash_balance` l'absorbe en
+> déplaçant l'ancre — **1 000 $ → 1 300 $** sur 300 $ comptés deux fois, sans aucun avertissement.
+> ⚠️ **Le lot ne corrige PAS l'ancre, délibérément** : le déplacement est le comportement voulu du
+> recalage (le cash est DÉRIVÉ) ; ce qui est fautif, c'est le silence. Impossible de décider à la
+> place de l'utilisateur si l'écart vient d'un doublon, d'une transaction non importée ou d'une vraie
+> correction bancaire → on MESURE et on PUBLIE (`cashAnchorDelta`, affiché dans Système).
+> ⚠️ Champ additif optionnel : rapport d'avant ce lot → on n'affiche RIEN, jamais « 0 $ ».
+> 2 tests dont le sens inverse, **2 perturbations rouges** (une par sens).
+> Gate vert : **4 754 tests / 434 fichiers**.
+>
 > ## 🟢 Session 2026-08-24 (suite 155) — `[REEE-CONGE-SANS-GARDE-SOLO]` : le congé d'un parent absent
 > `projection.ts` passait `grossAnnaBaseAnnual` BRUT au bloc enfants, sans le `soloHousehold` des
 > QUATRE autres sites. Après décès/divorce, le congé se déclenchait sur un salaire que le ménage ne

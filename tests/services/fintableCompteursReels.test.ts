@@ -71,6 +71,39 @@ describe('[FINTABLE-TXADDED-MENT] les compteurs comptent les ÉCRITURES', () => 
         expect(res.cashUpdated).toBe(true);
     });
 
+    it('[FINTABLE-ANCRE-LIQUIDITE-GONFLEE] le déplacement de l’ancre est MESURÉ et publié', () => {
+        // Le cas du ticket : un doublon qui échappe au classement (`callerClassified` : l'appelant
+        // affirme avoir déjà tranché, donc la dédup par clé ne droppe plus) fait compter la dépense
+        // DEUX fois. Le total présent est ensuite recalé par le payload `cash_balance` — mais en
+        // déplaçant l'ancre, ce qui décale TOUT l'historique passé du même montant.
+        const res = applyPayloadsIsolated(
+            { initialBalances: { LIQUIDITE: 1000 }, transactions: [], debts: [] } as unknown as AppState,
+            [
+                {
+                    kind: 'bank_statement', callerClassified: true,
+                    transactions: [
+                        { date: '2026-07-01', payee: 'Épicerie', amount: -300 },
+                        { date: '2026-07-01', payee: 'Épicerie', amount: -300 },
+                    ],
+                },
+                { kind: 'cash_balance', targetCad: 700 },
+            ],
+        );
+        // Les deux lignes SONT écrites (c'est le sens de `callerClassified`) …
+        expect((res.nextState.transactions ?? []).length).toBe(2);
+        // … et l'ancre a bougé de +300 $ pour absorber la dépense comptée en double.
+        expect((res.nextState.initialBalances as Record<string, number>).LIQUIDITE).toBe(1300);
+        // Ce que ce lot ajoute : le mouvement est MESURÉ et publié, au lieu d'être silencieux.
+        expect(res.cashAnchorDelta).toBeCloseTo(300, 5);
+    });
+
+    it('[FINTABLE-ANCRE-LIQUIDITE-GONFLEE] une passe sans écart ne déplace RIEN (sens inverse)', () => {
+        // Sans cette assertion, un `cashAnchorDelta` qui rendrait n'importe quoi passerait le test
+        // ci-dessus dès qu'il est non nul — et l'écran afficherait une alarme permanente.
+        const res = applyPayloadsIsolated(etatBase(), [{ kind: 'cash_balance', targetCad: 950 }]);
+        expect(res.cashAnchorDelta).toBe(0);
+    });
+
     it('une dette aux mêmes valeurs ne figure pas dans `debtsUpdated`', () => {
         const res = applyPayloadsIsolated(etatBase(), [
             { kind: 'debt', name: 'Visa', balance: 2000, interestRate: 19.9, minimumPayment: 60 },

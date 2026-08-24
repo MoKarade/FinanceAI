@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from './ui/Card';
 import { AppState, FintableSyncReport } from '../types';
+import { formatCAD } from '../utils/format';
 import { getMigrationStatus, getHydrationStatus } from '../store/useFinanceStore';
 import { ErrorLogViewer } from './system/ErrorLogViewer';
 import { AuditLogViewer } from './system/AuditLogViewer';
@@ -299,6 +300,25 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                                     <span className="text-ink-300">Liquidités</span>
                                     <span className="font-mono text-white">{fintableReportSafe.report.cashUpdated ? 'mises à jour' : 'inchangées'}</span>
                                 </div>
+                                {/* [FINTABLE-ANCRE-LIQUIDITE-GONFLEE] Le cash est DÉRIVÉ : pour atteindre le
+                                    solde annoncé par la banque, la sync déplace l'ANCRE du compte
+                                    « Liquidités » — en silence jusqu'ici. Un doublon qui échappe au
+                                    classement la gonfle d'autant (MESURÉ : 1 000 $ → 1 300 $ sur une dépense
+                                    de 300 $ comptée deux fois) : le total présent reste juste, mais l'ancre
+                                    visible dans Réglages → Comptes ne correspond plus à rien et TOUT
+                                    l'historique passé est déplacé. Publier le mouvement ne le corrige pas —
+                                    on ne sait pas POURQUOI l'écart existe — mais il cesse d'être invisible.
+                                    ⚠️ `undefined` = rapport d'AVANT ce lot : on n'affiche RIEN plutôt qu'un
+                                    « 0 $ » qui affirmerait faussement que l'ancre n'a pas bougé. */}
+                                {Number.isFinite(fintableReportSafe.report.cashAnchorDelta)
+                                    && Math.abs(fintableReportSafe.report.cashAnchorDelta as number) >= 0.01 && (
+                                    <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                        <span className="text-ink-300">Ancre « Liquidités » déplacée</span>
+                                        <span className="font-mono text-warning-400">
+                                            {formatCAD(fintableReportSafe.report.cashAnchorDelta as number)}
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="flex items-center justify-between py-2 gap-3">
                                     <span className="text-ink-300 shrink-0">Dettes mises à jour</span>
                                     <span className="font-mono text-white text-right">

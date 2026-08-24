@@ -10,6 +10,51 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Le déplacement de l'ancre « Liquidités » cesse d'être invisible
+
+- [x] **`[FINTABLE-ANCRE-LIQUIDITE-GONFLEE]`** — **le mécanisme est encore atteignable**, mesuré
+  avant d'écrire une ligne de code : un doublon qui échappe au classement (`callerClassified`, où
+  l'appelant affirme avoir déjà tranché — donc la dédup par clé ne droppe plus) fait compter une
+  dépense DEUX fois, et le recalage par `cash_balance` absorbe l'écart en déplaçant l'ancre.
+  **MESURÉ : `initialBalances.LIQUIDITE` passe de 1 000 $ à 1 300 $** sur une dépense de 300 $
+  comptée deux fois, **sans aucun avertissement**.
+  ⚠️ **Ce lot NE corrige PAS l'ancre — et c'est délibéré.** Le déplacement est le comportement VOULU
+  du recalage (le cash est dérivé : `Σ initialBalances + Σ transactions`) ; ce qui est fautif, c'est
+  qu'il soit SILENCIEUX. On ne peut pas décider à la place de l'utilisateur si l'écart vient d'un
+  doublon, d'une transaction pas encore importée ou d'une vraie correction bancaire — donc on le
+  MESURE et on le PUBLIE (`cashAnchorDelta`, affiché dans Système) au lieu de l'absorber. Le total
+  présent reste juste ; ce qui bouge en silence, c'est l'ancre visible dans Réglages → Comptes et
+  TOUT l'historique passé.
+  ⚠️ Champ ADDITIF et optionnel : un rapport d'avant ce lot n'a pas la valeur → l'écran n'affiche
+  RIEN, jamais « 0 $ », qui affirmerait faussement que l'ancre n'a pas bougé (no-fake-data).
+  2 tests, dont le SENS INVERSE (une passe sans écart ne déplace rien — sinon l'écran porterait une
+  alarme permanente). **2 perturbations prouvées rouges**, une par sens.
+
+Contexte d'origine :
+
+- [ ] **`[FINTABLE-ANCRE-LIQUIDITE-GONFLEE]`** (S, MOYEN — MESURÉ, audit PR #649) — un doublon non
+  neutralisé gonfle `initialBalances.LIQUIDITE` en silence (mesuré 1000 → 1584 $) : le total présent
+  est auto-réparé par le payload `cash_balance`, mais l'ANCRE visible dans Réglages → Comptes porte
+  un montant qui ne correspond à rien, et l'HISTORIQUE passé est déplacé d'autant (mesuré +500 $ sur
+  tous les mois antérieurs). ⚠️ Si aucun compte n'a le rôle `cash`, rien ne recale : l'écart cumulé
+  reste sur le solde courant. Largement fermé par le correctif `isDuplicate` de #649, mais le
+  mécanisme reste exposé pour tout doublon qui échappe au classement (cf. les deux tickets ci-dessus).
+
+## 🔴 Money-critical — fiabilité des chiffres
+
+> Analyse fiscale 2026-07-31 (financial-integrity, findings MESURÉS via npx tsx sur le vrai moteur).
+> ⚠️ Un finding = une hypothèse : chaque fix passe par discriminant git-stash + panel adversarial.
+
+### ✅ Panel PR #644 (2026-08-17) — divorce × enfants : NO-GO LEVÉ, tout traité
+
+> ⚠️ **DEUX agents indépendants (`projection-validator`, `financial-integrity`) ont MESURÉ le même
+> défaut**, chacun de son côté et sur le vrai moteur. Ce n'est donc pas une hypothèse de revue.
+> La cause commune : `[ENG-DIVORCE-CHILDREN-REEE]` a ventilé `liquidDelta` par clé de partage,
+> mais PAS `monthlyIncomeDelta`, qui transporte exactement le même mélange de familles. C'est la
+> classe maison « un flux alimente PLUSIEURS registres » — appliquée à la moitié du problème.
+
+### Trouvés par le panel #644 mais PRÉ-EXISTANTS (hors périmètre de la PR)
+
 ## 2026-08-24 — Plus de congé parental pour un parent qui n'est plus là
 
 - [x] **`[REEE-CONGE-SANS-GARDE-SOLO]`** — `projection.ts` passait `grossAnnaBaseAnnual` **brut** au

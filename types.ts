@@ -936,6 +936,10 @@ export interface FintableSyncReport {
   transactionsAdded: number;
   transfersDetected: number;
   cashUpdated: boolean;
+  /** [FINTABLE-ANCRE-LIQUIDITE-GONFLEE] Déplacement de l'ancre `initialBalances.LIQUIDITE` pendant la
+   *  passe ($). Champ ADDITIF : absent des rapports d'avant ce lot — l'UI doit donc traiter
+   *  `undefined` comme « inconnu », jamais comme 0 (no-fake-data). */
+  cashAnchorDelta?: number;
   debtsUpdated: string[];
   investmentReferenceCount: number;
   warnings: string[];

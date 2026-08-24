@@ -6395,3 +6395,39 @@ usage. Avant d'étendre un correctif « par cohérence », demander ce que chaqu
 — c'est `RECOPIER-LA-LIGNE-VOISINE` vu depuis l'appelant. Ici le test a joué son rôle exactement
 comme il faut : il n'a pas dit « ton correctif est faux », il a dit « celui-là change autre chose ».
 Le volet est routé (`[ENG-DIVORCE-ALLOC-ASSIETTE]`) avec sa mesure, pas tranché en passant.
+
+
+---
+
+### `RENDRE-VISIBLE-CE-QU-ON-NE-PEUT-PAS-CORRIGER` — 2026-08-24
+
+`[FINTABLE-ANCRE-LIQUIDITE-GONFLEE]`. Le solde de liquidités est DÉRIVÉ
+(`Σ initialBalances + Σ transactions`). Quand la banque annonce un total différent de celui qu'on
+calcule, le recalage déplace l'ANCRE (`initialBalances.LIQUIDITE`) pour retomber juste. Mesuré : un
+doublon qui échappe au classement fait compter une dépense deux fois et gonfle l'ancre de 300 $
+(1 000 → 1 300), **sans un mot**. Le total du jour reste exact ; ce qui dérive, c'est l'ancre visible
+dans Réglages → Comptes et tout l'historique PASSÉ, décalé du même montant.
+
+Le réflexe est de « corriger l'ancre ». On ne peut pas : l'écart peut venir d'un doublon, d'une
+transaction pas encore importée, d'un décalage de date de valeur ou d'une vraie correction bancaire —
+et rien, dans les données disponibles à ce moment-là, ne permet de trancher. Un correctif qui
+choisirait à la place de l'utilisateur fabriquerait une certitude qu'on n'a pas.
+
+**La règle** : quand un mécanisme est LÉGITIME mais que son effet est invisible, le lot consiste à
+MESURER et PUBLIER l'effet, pas à supprimer le mécanisme. C'est la même famille que
+`TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL` et que « no silent caps » : ce qui est reproché ici
+n'est pas le déplacement, c'est le silence.
+
+Deux garde-fous que ça impose :
+
+1. **Le sens INVERSE se teste.** Une passe sans écart doit publier exactement `0` — sinon l'écran
+   porte une alarme permanente, et une alarme permanente s'ignore
+   (`QUAND-ON-NE-PEUT-PAS-DETECTER-DE-FACON-FIABLE-ON-AVERTIT-SANS-PRETENDRE`).
+2. **Une métadonnée ABSENTE ne vaut pas zéro.** Le champ est additif : un rapport d'avant le lot n'a
+   pas la valeur, et l'écran n'affiche alors RIEN — surtout pas « 0 $ », qui affirmerait faussement
+   que l'ancre n'a pas bougé (`UN-RESULTAT-GELE-DOIT-PORTER-SES-PROPRES-METADONNEES`, même lot de
+   session, même piège).
+
+⚠️ Et la mesure d'abord : le ticket disait le mécanisme « largement fermé » par un correctif
+antérieur. Vérifié en le reproduisant — il est bien vivant dès qu'un doublon échappe au classement.
+« Largement fermé » n'est pas « fermé », et c'est une reproduction qui le dit, pas une lecture.

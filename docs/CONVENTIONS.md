@@ -5798,3 +5798,39 @@ Deux corollaires :
    parallélisme » était plausible et a orienté le travail vers `--shuffle` ; c'est la lecture de
    `vitest.config.ts` — trente secondes — qui a montré qu'il n'y a aucun parallélisme de fichiers.
    Lire la CONFIG avant de lancer l'outil que le ticket recommande.
+
+### `UNE-FIXTURE-QUI-SATURE-LA-CONTRAINTE-REND-LA-MESURE-AVEUGLE` — 2026-08-22
+
+En instruisant `[AUTOMARGINAL-BASCULE-SILENCIEUSE]`, j'ai mesuré l'effet de la bascule
+« CELI d'abord → REER d'abord » sur les cotisations annuelles publiées. Résultat : la sortie de la
+stratégie automatique était, à 1 000 $ près sur 25 ans, **identique** à celle du levier explicite
+`CELI_FIRST`. J'en ai conclu que la bascule n'existait pas et que le ticket était faux.
+
+**Il ne l'était pas. La mesure était aveugle.** L'ordre de cotisation ne décide de rien quand le
+surplus mensuel dépasse le plafond du premier compte : les deux se remplissent de toute façon, et
+seul le reliquat change de destination. Ma fixture avait un surplus de ~29 k$/an contre un plafond
+CELI de ~8,5 k$ — un facteur 3,4. En instrumentant le moteur, la bascule était bien là : `reerFirst`
+passe de `false` à `true` à l'année 9, quand le taux marginal franchit 0,411.
+
+Fixture corrigée (dépenses 4 400 $/mois au lieu de 3 200) : le surplus passe SOUS le plafond CELI, et
+la mesure devient nette — la stratégie automatique suit `CELI_FIRST` les années 0-8 puis
+`REER_FIRST` à partir de l'année 9, tandis que `CELI_FIRST` ne cotise jamais au REER en 20 ans.
+
+**Le signal, repérable sans instrumenter** : deux configurations qui DEVRAIENT différer produisent la
+même sortie. Avant d'en conclure « le mécanisme n'existe pas », se demander **quelle contrainte
+sature** — un plafond, une borne, un clamp — et refaire la mesure sous cette contrainte. Un mécanisme
+n'est observable que là où il est LIMITANT.
+
+Trois corollaires :
+
+1. **C'est le symétrique de `UN-TEST-QUI-ECHOUE-N-A-PAS-FORCEMENT-RAISON`** : un test qui PASSE n'a
+   pas forcément raison non plus. Ici, quatre assertions sur cinq étaient vertes sur une fixture qui
+   ne pouvait rien voir ; c'est la cinquième (le levier explicite doit supprimer la bascule) qui a
+   rougi et sauvé le lot. Une assertion qui vérifie qu'un LEVIER change quelque chose est le meilleur
+   détecteur de fixture saturée, parce qu'elle échoue exactement quand la mesure devient vacueuse.
+2. **La contrainte saturante s'écrit DANS la fixture**, avec son chiffre et sa raison. Sans ça, la
+   prochaine session « simplifiera » les dépenses à une valeur ronde et rendra tout le fichier vert
+   et creux. La perturbation le prouve : remettre 3 200 $ fait rougir le test du levier.
+3. **Instrumenter le moteur bat six lectures du code.** J'avais lu la ligne, lu ses appelants, vérifié
+   le câblage du levier — et conclu faux trois fois de suite. Un `console.log` du booléen litigieux,
+   année par année, a tranché en une exécution.

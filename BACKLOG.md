@@ -1080,13 +1080,26 @@
   **MESURÉ** (salarié de 66 ans, net du modèle − net déclaré) : **+1 904 $/an** à 36 k$ de net,
   +1 018 $ à 48 k$, +392 $ à 60 k$. Un salarié de 65+ sans brut saisi est rare mais pas absurde.
 
-- [ ] **`[AUTOMARGINAL-BASCULE-SILENCIEUSE]`** (XS, FAIBLE — découvert en revue de
-  `[MIGRATE-GROSS-135]`) — pour un déclarant SEUL dont le net est entre **6 175 et 6 700 $/mois**,
-  le brut corrigé fait passer le taux marginal au-dessus de 0,40, et la stratégie `AUTO_MARGINAL`
-  bascule de « CELI d'abord » à « REER d'abord » pour TOUTE la projection
-  (`cashflowAllocation.ts`). La direction est CORRECTE (le vrai marginal est bien > 40 %), mais
-  c'est une discontinuité de comportement qu'aucun libellé n'explique à l'utilisateur.
-  **Correctif possible** : nommer la bascule dans l'explication de la stratégie.
+- [x] **`[AUTOMARGINAL-BASCULE-SILENCIEUSE]`** ✅ 2026-08-22 — la bascule est **RÉELLE** (mesurée),
+  mais le ticket se trompait sur DEUX points.
+  · **« pour TOUTE la projection » est faux.** `marginal` est recalculé CHAQUE mois sur le brut
+    indexé par la croissance salariale. MESURÉ (célibataire 7 000 $/mois, croissance 3 %) : le taux
+    marginal passe de **0,361 à 0,411 entre l'année 8 et l'année 9**, et l'ordre bascule LÀ. À
+    croissance nulle il ne bascule jamais ; à 9 000 $/mois il bascule plus tôt. C'est une
+    **frontière mobile**, pas un état de départ.
+  · **La surface proposée était la mauvaise.** « Nommer la bascule dans l'explication de la
+    stratégie » visait `stratDescription` — rendu en `truncate`, donc invisible
+    (`UX-UNREACHABLE-FEATURE`) — et la seule réponse de FAQ existante parle des **RETRAITS** : y
+    greffer un fait de COTISATION l'aurait rendue fausse. **Livré** : une entrée de FAQ DÉDIÉE à
+    l'ordre de cotisation dans `ProjectionExplains`, rendue en entier, qui nomme le seuil de 40 %
+    ET le fait que l'ordre peut changer en cours de projection sans que l'utilisateur touche à rien.
+  ⚠️ **Découverte de méthode, consignée** : ma première fixture (dépenses 3 200 $/mois) donnait un
+  surplus de ~29 k$/an contre un plafond CELI de ~8,5 k$ — les deux comptes se remplissaient de
+  toute façon et la sortie d'`AUTO_MARGINAL` était à 1 000 $ près identique à `CELI_FIRST` sur 25 ans.
+  J'en avais conclu que la bascule n'existait pas. **C'est la mesure qui était aveugle, saturée.**
+  À 4 400 $/mois de dépenses, le surplus passe sous le plafond CELI et l'ordre devient entièrement
+  observable. 5 tests neufs, **3 perturbations prouvées rouges** — dont la fixture saturante, qui
+  rend rouge le test du levier et démontre le piège.
 
 - [ ] **`[MIGRATE-GROSS-DEJA-PERSISTE]`** (S, MOYEN — découvert en livrant `[MIGRATE-GROSS-135]`) —
   le correctif ne rattrape PAS les utilisateurs dont le brut a **déjà** été fabriqué à 1,35 et

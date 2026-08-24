@@ -10,6 +10,27 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-22 — La bascule CELI→REER est réelle, et la fixture qui l'a cachée trois fois
+
+- [x] **`[AUTOMARGINAL-BASCULE-SILENCIEUSE]`** — la bascule est **RÉELLE**, mesurée : `reerFirst`
+  passe de `false` à `true` à l'année 9, quand le taux marginal franchit 0,411 (célibataire
+  7 000 $/mois, croissance 3 %). Le ticket se trompait sur DEUX points. (1) « Pour TOUTE la
+  projection » est faux — `marginal` est recalculé CHAQUE mois sur le brut indexé : c'est une
+  FRONTIÈRE MOBILE (jamais à croissance nulle, plus tôt à 9 000 $/mois). (2) La surface proposée
+  était mauvaise — `stratDescription` est rendu en `truncate` (invisible,
+  `UX-UNREACHABLE-FEATURE`) et la seule réponse de FAQ existante parle des **RETRAITS** : y greffer
+  un fait de COTISATION l'aurait rendue fausse. **Livré** : une entrée de FAQ DÉDIÉE à l'ordre de
+  cotisation, rendue en entier, qui nomme le seuil de 40 % ET la mobilité.
+  ⚠️⚠️ **La découverte la plus utile du lot est méthodologique.** Ma première fixture (dépenses
+  3 200 $/mois) donnait un surplus de ~29 k$/an contre un plafond CELI de ~8,5 k$ : les deux comptes
+  se remplissaient de toute façon, l'ORDRE devenait inobservable, et la sortie d'`AUTO_MARGINAL`
+  était à 1 000 $ près identique à `CELI_FIRST` sur 25 ans. J'ai conclu **trois fois de suite** que
+  la bascule n'existait pas, en lisant le code, ses appelants et le câblage du levier. C'est
+  l'instrumentation du moteur qui a tranché en une exécution. Fixture corrigée à 4 400 $/mois : le
+  surplus passe sous le plafond, tout devient net.
+  5 tests neufs, **3 perturbations prouvées rouges** — dont la fixture saturante, qui rend rouge le
+  test du levier et inscrit le piège dans le dépôt. Gate vert : 4 668 tests / 422 fichiers.
+
 ## 2026-08-22 — Un flake non reproduit, mais réfuté et rendu lisible
 
 - [x] **`[FLAKE-DIVORCE-INCOME-PHANTOM]`** — le ticket concluait « flake d'ORDRE ou de PARALLÉLISME »

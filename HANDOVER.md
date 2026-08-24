@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 142) — `[DETTE-KNIP-ADMZIP]` : knip avait raison, cause instruite
+> Le ticket posait la bonne question sans oser trancher : `adm-zip` est-il encore employé (auquel cas
+> ses types le sont indirectement et knip a tort), ou les deux sont-ils morts ? **Les deux
+> propositions étaient vraies à la fois.** `adm-zip` est vivant — `mcp/pack.mjs` l'importe et le
+> script `mcp:pack` l'exécute — mais ce consommateur est un **`.mjs`**, et `tsconfig.json` pose
+> `allowJs: true` **sans `checkJs`** : jamais typé. `@types/adm-zip` fournissait ses déclarations à
+> personne.
+> Tranché par l'EXPÉRIENCE, pas par la lecture : retrait → **typecheck VERT**, knip ne signale plus
+> **aucune** dépendance inutilisée, runtime intact (`import('adm-zip')` résout, `node --check` passe).
+> ⚠️ **Aucune garde ajoutée, délibérément** : un futur import depuis un `.ts` fera échouer `tsc` de
+> lui-même. Un lot peut finir sans test neuf, à condition de DIRE quel mécanisme tient le rôle.
+> Gate vert : **4 674 tests / 423 fichiers** (après rebase sur #705 ; inchangé par ce lot — aucun test ajouté).
+>
 > ## 🟢 Session 2026-08-24 (suite 141) — `[TAXBRACKETVIZ-ANNEE]` : un biais qui COMPOSE
 > Paire recâblée : `TaxBracketViz` reçoit une année **REQUISE** (aucun défaut — un `= 2026` se périme
 > en silence, lire l'horloge dans le composant en ferait une bombe au 1er janvier) et l'utilise pour

@@ -763,15 +763,6 @@
   `monthIndex` : deux événements du même mois à des jours DIFFÉRENTS sont décalés verticalement
   alors qu'ils ne se chevauchent plus horizontalement. Empiler par abscisse arrondie (ou par
   proximité de x) plutôt que par mois. Zéro impact $, clic correct — purement visuel.
-- [ ] **`[GATE-RELATED-RELIABILITY]`** (S, outillage — mesuré 2026-08-12) — `vitest related` de la
-  gate ciblée n'a PAS sélectionné `tests/services/monthlyEvents.test.ts` alors que
-  `services/projection/monthlyEvents.ts` était stagé (échec attrapé par la CI seule, 2×
-  dans la même PR #594 avec la garde fiscale). Diagnostiquer pourquoi (chemins quotés ? CWD du
-  hook ? suivi du graphe ?) et soit corriger, soit élargir la gate. En attendant : la CI
-  complète reste l'arbitre (design assumé), les gardes-scan sont déjà forcées.
-
-> Findings code-analyzer 2026-07-31 (preuve fichier:ligne, chacun vérifié par grep) :
-
 - [ ] **`[GODFILE-APPLYDOCUMENT]`** (M — V11, 1er par impact) — `mcp/ingest/applyDocument.ts` 873 l.,
   5 handlers indépendants (:531,597,655,719,792) → split `applyDocument/<type>.ts` + orchestrateur mince.
 - [ ] **`[GODFILE-MCPHTTP]`** (M — V11) — `mcp/http.ts` 710 l. (OAuth+CORS+DNS-guard+dispatch) →

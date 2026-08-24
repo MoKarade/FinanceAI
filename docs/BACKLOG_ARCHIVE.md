@@ -10,6 +10,43 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Le gate ciblé lance le test qui porte le nom du module
+
+- [x] **`[GATE-RELATED-RELIABILITY]`** — **le symptôme n'est PAS reproductible**, et c'est le premier
+  résultat du lot. Le ticket rapportait que `services/projection/monthlyEvents.ts` stagé ne faisait
+  pas sélectionner `tests/services/monthlyEvents.test.ts` par `vitest related` (échec vu en CI seule,
+  2× dans la PR #594). Re-mesuré le 2026-08-24 sur Vitest 4.1.8, avec la forme EXACTE de la commande
+  du hook (guillemets simples) : **le test homonyme est bien sélectionné** — 72 fichiers pour un
+  module stagé, 87 pour deux, cibles incluses dans les deux cas.
+  Plutôt que de clore sur « ça marche maintenant » (la cause reste inconnue), la classe est rendue
+  IMPOSSIBLE là où elle est vérifiable : `scripts/hooks/lib/testsHomonymes.mjs` dérive, pour chaque
+  module stagé, le test qui porte SON nom, et le hook l'ajoute EXPLICITEMENT à la commande — que le
+  graphe d'imports l'ait retrouvé ou non. Même geste que `SCAN_GUARD_TESTS`, pour une autre cause.
+  ⚠️ La fonction vit dans un module SÉPARÉ parce que `commit-gate.mjs` **lit stdin au chargement**
+  (c'est un hook PreToolUse) : l'importer depuis un test BLOQUE le processus — vérifié en essayant.
+  5 tests, dont le sens inverse (un module sans test homonyme ne fabrique rien) et le CÂBLAGE.
+  ⚠️ **Ma garde de câblage était vacueuse — deux fois.** `toMatch(/TESTS_HOMONYMES/)` restait verte
+  sur la perturbation « liste calculée puis inutilisée » (`void TESTS_HOMONYMES;`), et la borner à la
+  LIGNE ne suffisait pas non plus (la perturbation tient sur la même ligne). Il a fallu l'ancrer sur
+  l'INITIALISEUR, borné au premier `;`. Les deux échecs sont écrits dans le test.
+
+- ⚠️ **Correction apportée à `docs/CONVENTIONS.md` dans le même lot** : la leçon
+  `LE-GATE-N-EST-PAS-LANCE-SI-LE-HOOK-N-EST-PAS-INSTALLE`, écrite plus tôt le même jour, donnait la
+  mauvaise cause (`core.hooksPath` vide). `commit-gate.mjs` n'est pas un hook git mais un hook
+  **PreToolUse de Claude Code** déclaré dans `.claude/settings.json`. Le constat opératoire tient, le
+  mécanisme était faux.
+
+Contexte d'origine :
+
+- [ ] **`[GATE-RELATED-RELIABILITY]`** (S, outillage — mesuré 2026-08-12) — `vitest related` de la
+  gate ciblée n'a PAS sélectionné `tests/services/monthlyEvents.test.ts` alors que
+  `services/projection/monthlyEvents.ts` était stagé (échec attrapé par la CI seule, 2×
+  dans la même PR #594 avec la garde fiscale). Diagnostiquer pourquoi (chemins quotés ? CWD du
+  hook ? suivi du graphe ?) et soit corriger, soit élargir la gate. En attendant : la CI
+  complète reste l'arbitre (design assumé), les gardes-scan sont déjà forcées.
+
+> Findings code-analyzer 2026-07-31 (preuve fichier:ligne, chacun vérifié par grep) :
+
 ## 2026-08-24 — Le tour guidé cesse de pointer un bouton invisible
 
 - [x] **`[TOUR-ANCHOR-INVISIBLE]`** — `findVisibleAnchorRect` ne testait que `width/height > 0`. Or

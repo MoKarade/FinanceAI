@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 154) — `[GATE-RELATED-RELIABILITY]` : non reproduit, mais rendu impossible
+> ⚠️ **Le symptôme du ticket ne se reproduit plus** : re-mesuré sur Vitest 4.1.8 avec la forme EXACTE
+> de la commande du hook, `vitest related` sélectionne bien `tests/services/monthlyEvents.test.ts`
+> (72 fichiers pour un module stagé, 87 pour deux). Cause d'origine inconnue.
+> Plutôt que clore sur « ça marche maintenant » : `scripts/hooks/lib/testsHomonymes.mjs` dérive le
+> test qui porte le NOM du module stagé et le hook l'ajoute EXPLICITEMENT — le graphe d'imports n'est
+> plus le seul chemin. Module SÉPARÉ car `commit-gate.mjs` lit stdin au chargement (hook PreToolUse) :
+> l'importer depuis un test bloque le processus.
+> ⚠️ **Ma garde de câblage était vacueuse DEUX fois** (`toMatch(/TESTS_HOMONYMES/)`, puis bornée à la
+> ligne) : la perturbation « calculée mais inutilisée » restait verte. Ancrée sur l'INITIALISEUR.
+> ⚠️ **Correction dans `CONVENTIONS.md`** : la leçon du matin sur le gate donnait la mauvaise cause
+> (`core.hooksPath`) — `commit-gate.mjs` est un hook **PreToolUse Claude Code**, pas un hook git.
+> Gate vert : **4 749 tests / 433 fichiers**.
+>
 > ## 🟢 Session 2026-08-24 (suite 153) — `[TOUR-ANCHOR-INVISIBLE]` : un rect non nul ≠ visible
 > `display:none` donne un rect 0×0 (attrapé), mais **`visibility:hidden` conserve le layout** — le
 > tour spotlightait un bouton invisible dès qu'un groupe de nav était replié à la main. La visibilité

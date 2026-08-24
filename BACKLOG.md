@@ -651,12 +651,12 @@
   prévaut (à confirmer : garder ou retirer la déco 8 h en plus du « se souvenir »). Cadrer
   d'abord le POURQUOI des reconnexions actuelles (instrumentation `[AUTH-DRIVE-STILL-RECONNECT]`
   déjà en place — lire le journal Diagnostics avant de coder).
-- [ ] **`[TOUR-ANCHOR-INVISIBLE]`** (S, a11y — audit #600, pré-existant) — `anchorRect.ts` ne
-  teste que width/height > 0, or `visibility:hidden` CONSERVE le layout : un accordéon replié
-  manuellement + visite guidée relancée → le tour spotlighte un bouton invisible. Fix : le
-  tour force l'ouverture du groupe du step actif, OU `anchorRect` vérifie
-  `getComputedStyle(el).visibility`. Surface élargie par la nav 6 destinations (Configurations
-  = 5 onglets).
+- [ ] **`[TOUR-STEP-GROUPE-REPLIE]`** (S, 🧭 si Marc le veut — reste de `[TOUR-ANCHOR-INVISIBLE]`) —
+  depuis que `findVisibleAnchorRect` refuse une ancre `visibility:hidden`, le tour ne pointe plus un
+  bouton invisible : il retombe sur sa carte centrée. C'est HONNÊTE, mais l'étape décrit encore un
+  contrôle que l'utilisateur doit ouvrir lui-même. L'option (a) du ticket d'origine — le tour force
+  l'ouverture du groupe de l'étape active — la rendrait ATTEIGNABLE, au prix d'un tour qui défait un
+  repli VOLONTAIRE et d'un couplage entre les étapes et l'état de la nav. Décision d'UX : à trancher.
 - [ ] **`[AI-TAXCENTER-APPLY-NOGATE]`** (S, 🔴 découvert en corrigeant `[AI-VISION-PAYSLIP-NOGATE]`) —
   la MÊME faille subsiste sur une 2e surface : `TaxCenter.applyToProfile` (l. ~59-75) écrit le profil
   via `setConfig` direct, sans diff ni backup ni garde de vraisemblance. Le bouton « Appliquer au

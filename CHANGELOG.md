@@ -6,6 +6,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-24 (la visite guidée ne pointe plus dans le vide)
+
+- Si un groupe de la navigation était replié, la visite guidée pouvait encadrer un bouton
+  **invisible** : le halo se posait sur un emplacement vide. Elle affiche maintenant sa carte
+  centrée dans ce cas, au lieu de désigner ce qu'on ne voit pas.
+
 ## [unreleased] — 2026-08-24 (la courbe explique enfin ce qu'on peut faire sans souris)
 
 - La description de la courbe Futur lue par les lecteurs d'écran n'énonçait que des gestes de

@@ -6266,3 +6266,36 @@ même famille : ne pas pointer ce qu'on n'a pas vérifié).
 Corollaire de garde : les deux sites CONFORMES sont figés par un test, pas seulement commentés. Sans
 ça, le prochain balayage refera le même faux positif et « corrigera » un masquage légitime — une des
 trois perturbations de ce lot vérifie précisément ce sens-là.
+
+
+---
+
+### `UN-RECT-NON-NUL-NE-VEUT-PAS-DIRE-VISIBLE` — 2026-08-24
+
+`findVisibleAnchorRect` s'appelait déjà « visible » et ne testait que `width > 0 && height > 0`. Le
+raccourci marchait pour le cas qui l'avait fait naître — la sidebar en `display:none` sur mobile,
+rect 0×0 — et pas pour le suivant : **`visibility:hidden` conserve le layout**. L'ancre garde ses
+dimensions, le test passe, et le tour guidé projette son halo sur un bouton que personne ne voit.
+
+**La règle** : la visibilité est une question de RENDU, pas de géométrie. On la pose au moteur
+(`checkVisibility`, qui couvre display, visibility, `content-visibility` et l'opacité d'un coup) au
+lieu de la déduire d'un symptôme. Un nom de fonction qui promet « visible » doit tenir la promesse
+entière, sinon il masque le trou : ici, le nom était juste, l'implémentation ne l'était pas, et rien
+ne le signalait.
+
+**Corollaire sur le repli.** `checkVisibility` n'existe pas partout (jsdom notamment). Le repli est
+donc ÉCRIT — `getComputedStyle` sur visibility/display — et pas implicite : sans lui, l'environnement
+qui n'a pas la méthode retomberait sur « tout est visible », c'est-à-dire sur une garde MORTE qui
+passe tous les tests. C'est la même famille que `LE-GATE-N-EST-PAS-LANCE-SI-LE-HOOK-N-EST-PAS-INSTALLE` :
+une protection absente ressemble à une protection satisfaite.
+
+**Corollaire de test, vérifié par perturbation** : quand une garde REJETTE des cas, le test qui la
+sauve est celui du SENS INVERSE. Un `estVisible` qui renverrait toujours `false` passe les trois
+assertions « l'ancre masquée est ignorée » et casse le tour partout. Il faut l'assertion « une ancre
+normale reste visible » — et c'est bien elle que la seconde perturbation fait rougir.
+
+⚠️ Et le lot ne prétend pas résoudre l'UX : refuser une ancre invisible fait retomber le tour sur sa
+carte centrée. C'est honnête, mais l'étape décrit encore un contrôle que l'utilisateur doit ouvrir
+lui-même. L'alternative — que le tour ouvre le groupe — défait un repli VOLONTAIRE et couple les
+étapes à l'état de la nav : c'est une décision d'UX, elle est routée en ticket
+(`[TOUR-STEP-GROUPE-REPLIE]`) plutôt que tranchée en passant.

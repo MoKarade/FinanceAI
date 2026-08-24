@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 153) — `[TOUR-ANCHOR-INVISIBLE]` : un rect non nul ≠ visible
+> `display:none` donne un rect 0×0 (attrapé), mais **`visibility:hidden` conserve le layout** — le
+> tour spotlightait un bouton invisible dès qu'un groupe de nav était replié à la main. La visibilité
+> se DEMANDE au moteur (`checkVisibility`), avec repli EXPLICITE sur `getComputedStyle` pour jsdom :
+> sans ce repli, un environnement sans la méthode dirait « tout est visible » et la garde serait morte.
+> 4 tests dont le SENS INVERSE (une ancre normale reste visible) — sans lui, un `estVisible` toujours
+> faux passerait tout le reste. **2 perturbations rouges.**
+> ⚠️ Option (a) du ticket écartée et ROUTÉE (`[TOUR-STEP-GROUPE-REPLIE]`) : ouvrir le groupe
+> automatiquement défait un repli volontaire. Le tour retombe sur sa carte centrée — honnête, mais
+> l'étape décrit encore un contrôle à ouvrir soi-même.
+> Gate vert : **4 744 tests / 432 fichiers**.
+>
 > ## 🟢 Session 2026-08-24 (suite 152) — `[A11Y-CHART-HINT-HIDDEN]` : le ticket visait le mauvais défaut
 > ⚠️ **La phrase d'aide du graphe est masquée À BON DROIT** — c'est un DOUBLON de l'`aria-label` du
 > conteneur, l'exposer ferait annoncer deux fois. Le vrai défaut : cet `aria-label` n'énonçait que des

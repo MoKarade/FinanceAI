@@ -10,6 +10,35 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Le tour guidé cesse de pointer un bouton invisible
+
+- [x] **`[TOUR-ANCHOR-INVISIBLE]`** — `findVisibleAnchorRect` ne testait que `width/height > 0`. Or
+  `display:none` retire l'élément du flux (rect 0×0, attrapé), mais **`visibility:hidden` CONSERVE le
+  layout** : l'ancre garde ses dimensions tout en étant invisible. Un groupe de navigation replié à
+  la main, puis la visite guidée relancée, et le tour projetait son spotlight sur un bouton que
+  l'utilisateur ne voit pas.
+  La visibilité se DEMANDE au moteur de rendu (`checkVisibility`, qui couvre display, visibility,
+  `content-visibility` et l'opacité en une fois) plutôt que de se déduire d'une dimension. Repli
+  EXPLICITE sur `getComputedStyle` là où la méthode n'existe pas (jsdom) : sans lui, l'environnement
+  sans la méthode retomberait sur « tout est visible » et la garde serait morte.
+  4 tests neufs dont **le sens inverse** (une ancre sans style particulier reste visible) — sans
+  celui-là, un `estVisible` toujours faux passerait les trois autres et casserait le tour partout.
+  **2 perturbations prouvées rouges**, la seconde faisant tomber les DEUX sens.
+  ⚠️ **Option (a) du ticket écartée, et routée** en `[TOUR-STEP-GROUPE-REPLIE]` : faire ouvrir le
+  groupe par le tour rendrait l'étape ATTEIGNABLE, mais défait un repli VOLONTAIRE de l'utilisateur
+  et couple les étapes à l'état de la nav. Avec le correctif livré, le tour retombe sur sa carte
+  centrée — honnête, mais l'étape décrit encore un contrôle à ouvrir soi-même. Décision d'UX à
+  trancher, pas un oubli.
+
+Contexte d'origine :
+
+- [ ] **`[TOUR-ANCHOR-INVISIBLE]`** (S, a11y — audit #600, pré-existant) — `anchorRect.ts` ne
+  teste que width/height > 0, or `visibility:hidden` CONSERVE le layout : un accordéon replié
+  manuellement + visite guidée relancée → le tour spotlighte un bouton invisible. Fix : le
+  tour force l'ouverture du groupe du step actif, OU `anchorRect` vérifie
+  `getComputedStyle(el).visibility`. Surface élargie par la nav 6 destinations (Configurations
+  = 5 onglets).
+
 ## 2026-08-24 — Un `aria-hidden` se juge par ce qui existe à côté
 
 - [x] **`[A11Y-CHART-HINT-HIDDEN]`** — livré, mais **le ticket se trompait de défaut**, et c'est le

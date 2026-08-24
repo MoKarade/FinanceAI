@@ -4,6 +4,25 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-22 (suite 140) — `[AUTOMARGINAL-BASCULE-SILENCIEUSE]` : la fixture qui aveuglait
+> La bascule « CELI d'abord → REER d'abord » de la stratégie par défaut est **RÉELLE** (mesurée : le
+> taux marginal passe de 0,361 à 0,411 entre l'année 8 et l'année 9, et l'ordre bascule LÀ). Le
+> ticket se trompait sur deux points : ce n'est PAS « pour toute la projection » (frontière MOBILE,
+> recalculée chaque mois sur le brut indexé), et la surface qu'il proposait était mauvaise
+> (`stratDescription` est rendu en `truncate` → invisible ; la seule FAQ existante parle des
+> RETRAITS, y greffer un fait de COTISATION l'aurait rendue fausse). **Livré** : une entrée de FAQ
+> DÉDIÉE, rendue en entier.
+> ⚠️⚠️ **Découverte de méthode, la plus utile du lot** : ma première fixture (dépenses 3 200 $/mois)
+> donnait un surplus de ~29 k$/an contre un plafond CELI de ~8,5 k$ — les deux comptes se
+> remplissaient de toute façon, l'ORDRE devenait inobservable, et la sortie d'`AUTO_MARGINAL` était à
+> 1 000 $ près identique à `CELI_FIRST` sur 25 ans. **J'ai conclu trois fois de suite que la bascule
+> n'existait pas.** C'est la MESURE qui était aveugle, saturée. À 4 400 $/mois de dépenses, tout
+> devient net. Le signal repérable : deux configurations qui DEVRAIENT différer rendent la même
+> sortie → chercher quelle contrainte SATURE avant de conclure.
+> 5 tests neufs, **3 perturbations prouvées rouges** — dont la fixture saturante elle-même, qui rend
+> rouge le test du levier et démontre le piège dans le dépôt.
+> Gate vert : **4 668 tests / 422 fichiers**.
+>
 > ## 🟢 Session 2026-08-22 (suite 139) — `[FLAKE-DIVORCE-INCOME-PHANTOM]` : non reproduit, mais réfuté
 > Le ticket concluait « flake d'ORDRE ou de PARALLÉLISME » et prescrivait `--repeat` + `--shuffle`.
 > **Non reproduit** — 8 exécutions vertes sur le même commit (5 isolées, 3 suites complètes). Le

@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-22 (l'app t'explique enfin où elle cotise, et pourquoi ça change)
+
+- L'app choisissait seule entre **cotiser au CELI d'abord ou au REER d'abord**, selon ton taux
+  marginal d'impôt — sans jamais te le dire. Pire : ce choix est recalculé chaque année, donc il
+  peut **basculer en cours de projection** quand ton salaire monte, sans que tu aies rien changé.
+- Une nouvelle réponse dans « Comment ça marche » de l'onglet Futur explique la règle (CELI d'abord
+  sous 40 %, REER d'abord au-delà), le fait qu'elle peut changer avec le temps, et comment forcer
+  l'un ou l'autre.
+
 ## [unreleased] — 2026-08-22 (les hypothèses cachées du moteur ont enfin un nom)
 
 - Quatre nombres décidaient de tes projections sans jamais être nommés ni expliqués : le taux de la

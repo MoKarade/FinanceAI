@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 663 tests** Vitest
-(421 fichiers de test, mesuré le 2026-08-22). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 668 tests** Vitest
+(422 fichiers de test, mesuré le 2026-08-22). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -235,6 +235,15 @@ n'est pas réécrire un récit.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
+- Quand deux configurations qui DEVRAIENT différer rendent la MÊME sortie, se demander **quelle
+  contrainte sature** avant de conclure « le mécanisme n'existe pas » : un surplus de 29 k$/an contre
+  un plafond CELI de 8,5 k$ remplissait les deux comptes de toute façon, rendant l'ORDRE de cotisation
+  inobservable — j'ai conclu trois fois de suite que la bascule `AUTO_MARGINAL` était morte, elle
+  basculait bien à l'année 9. Un mécanisme n'est observable que là où il est LIMITANT ; la contrainte
+  saturante s'écrit DANS la fixture avec son chiffre. Symétrique de `UN-TEST-QUI-ECHOUE-N-A-PAS-FORCEMENT-RAISON` :
+  un test qui PASSE n'a pas forcément raison. L'assertion qui sauve est celle qui vérifie qu'un LEVIER
+  change quelque chose — elle rougit exactement quand la mesure devient vacueuse
+  (`UNE-FIXTURE-QUI-SATURE-LA-CONTRAINTE-REND-LA-MESURE-AVEUGLE`).
 - Un **flake non reproduit** ne se solde ni en le taisant ni en le laissant ouvert : on rend sa
   PROCHAINE occurrence auto-explicative. Réfuter les hypothèses une par une PAR LA MESURE (ici :
   `fileParallelism: false` tue le parallélisme, durées en suite = durées en isolation, RNG graine +

@@ -5909,3 +5909,32 @@ depuis un fichier TypeScript, `tsc` échouera de lui-même sur la déclaration m
 existe déjà — en écrire une seconde serait du bruit
 (`AVANT-D-AJOUTER-LA-GARDE-VERIFIER-QU-ELLE-N-EXISTE-PAS-DEJA`). Un lot peut se terminer sans test
 neuf, à condition de DIRE quel mécanisme existant tient le rôle.
+
+### `NE-PAS-DECLARER-UN-TICKET-FAUX-SANS-COMPARER-LA-MEME-GRANDEUR` — 2026-08-24
+
+Six tickets d'affilée avaient un chiffre faux, un diagnostic faux ou la mauvaise surface. Le réflexe
+« re-mesurer avant de coder » est devenu automatique — et il a failli produire sa propre erreur.
+
+En instruisant `[GROSSFROMNET-CREDITS-65]`, j'ai mesuré l'écart côté **BRUT** : +3 004 $ à 36 k$,
+là où le ticket annonçait +1 904 $. Conclusion immédiate et fausse : « septième ticket, chiffres
+sous-estimés d'un facteur 1,6 ». En relisant le ticket, il précisait sa grandeur — *« net du modèle
+− net déclaré »*. Mesuré dans CETTE unité : **+1 904 $ à 36 k$, +1 018 $ à 48 k$, +391 $ à 60 k$**.
+Le ticket était **exact au dollar près**, sur les trois points.
+
+Les deux mesures sont vraies et différentes : un dollar de brut supplémentaire ne rend pas un dollar
+de net, donc l'écart en brut est mécaniquement plus large que l'écart en net.
+
+**La règle** : avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la même grandeur, dans
+la même unité, sur le même scénario**. Un ticket qui NOMME sa grandeur (celui-ci le faisait) mérite
+d'être relu avant d'être contredit.
+
+⚠️ **Et le biais à surveiller est celui que la série précédente installe.** Six réfutations
+consécutives créent une attente de réfutation, et une attente de réfutation trouve des réfutations.
+La discipline « re-mesurer » protège contre la confiance aveugle dans les tickets ; elle ne protège
+pas contre la confiance aveugle dans ses propres mesures. La contre-question à se poser une fois la
+divergence constatée n'est pas « où le ticket s'est-il trompé ? » mais « mesurons-nous la même
+chose ? ».
+
+Corollaire pratique : une mesure qui CONFIRME un ticket est un résultat à publier au même titre
+qu'une réfutation. Ne rapporter que les réfutations donne, à la longue, une image fausse de la
+qualité du backlog.

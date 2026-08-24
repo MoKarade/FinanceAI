@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Les crédits d'âge 65+ entrent enfin dans l'inversion net→brut
+
+- [x] **`[GROSSFROMNET-CREDITS-65]`** — instruit d'abord (mesures + obstacles + trois options), puis
+  livré après arbitrage de Marc : **tout câbler, moteur inclus**.
+  `calculateGrossFromNet` accepte `ageOpts` (optionnel, défaut NEUTRE, même forme que `year`), et les
+  **quatre** appelants de production le passent PAR UTILISATEUR via la source unique
+  `ageOptsForSalaryInversion` : `Retirement`, `TaxCenter` — aux **DEUX bouts** de son aller-retour,
+  car les crédits y manquaient des deux côtés, ce qui était au moins cohérent (n'en câbler qu'un
+  aurait été pire que le défaut) —, `buildSimulationParams`, et le socle `computeIncomeBaseline`,
+  dont le type `users` a dû être élargi pour recevoir `age`/`birthYear` : l'âge ne lui parvenait même
+  pas.
+  ✅ **Les chiffres du ticket étaient exacts au dollar près** (+1 904 $ à 36 k$ de net, +1 018 $ à
+  48 k$, +391 $ à 60 k$). J'ai failli le déclarer faux en mesurant côté BRUT alors qu'il annonçait —
+  et NOMMAIT — un écart en NET ; leçon écrite.
+  Mesures ajoutées : côté brut, **+3 041 $ à 30 k$ de net (6,7 % du net)**, et l'écart **disparaît
+  au-dessus de ~80 k$** — le défaut mordait surtout EN BAS. Le cas COUPLE diffère du SOLO
+  (+2 527 $ contre +3 004 $ à 36 k$) : `hasSpouse` est dérivé du nombre d'ACTIFS, pas de
+  `users.length`. Contre-épreuve à 64 ans : écart exactement 0.
+  ⚠️ **Aucun golden n'a bougé, et c'est EXPLIQUÉ** : l'effet exige 65+ **ET** aucun brut saisi, or les
+  fixtures en ont toutes un. Deux tests construisent le profil manquant pour prouver que le câblage
+  moteur n'est pas inerte.
+  10 tests neufs, **3 perturbations prouvées rouges**. Gate vert : 4 684 tests / 424 fichiers.
+
 ## 2026-08-24 — `@types/adm-zip` retiré : knip avait raison, et la cause est instruite
 
 - [x] **`[DETTE-KNIP-ADMZIP]`** — le ticket posait la bonne question sans trancher : « le paquet

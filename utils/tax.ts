@@ -905,8 +905,58 @@ export const calculateNetFromGross = (monthlyGross: number) => {
  *
  * Paramètre OPTIONNEL à défaut NEUTRE : un appelant qui ne le passe pas obtient exactement le
  * comportement d'avant, donc zéro code de migration et zéro risque de rétrocompat.
+ *
+ * ⚠️ [GROSSFROMNET-CREDITS-65] — `ageOpts` ajouté le 2026-08-24, MÊME forme que `year` ci-dessus :
+ * optionnel, défaut neutre. Sans lui, l'inversion ignorait les crédits d'âge (fédéral + QC, 65 ans
+ * et plus) que `calculateFiscalReport` accorde bel et bien — le brut déduit d'un net saisi était donc
+ * SURESTIMÉ pour cette population.
+ *
+ * MESURÉ (66 ans, solo, barème 2026), écart sur le BRUT déduit : **+3 041 $ à 30 k$ de net (6,7 % du
+ * net), +3 004 $ à 36 k$, +1 982 $ à 48 k$, +635 $ à 60 k$, et 0 $ au-delà de ~80 k$** — les crédits
+ * y sont entièrement résorbés. Le défaut mordait donc surtout EN BAS de l'échelle. Vu autrement (net
+ * réel au brut déduit, moins le net déclaré) : +1 904 $ à 36 k$, +1 018 $ à 48 k$, +391 $ à 60 k$.
+ * Contre-épreuve à 64 ans : écart exactement 0 — c'est bien le seuil légal qui pilote.
+ *
+ * ⚠️ `hasSpouse` compte AUTANT que `age` : absent, il est traité comme SOLO, ce qui ajoute le montant
+ * QC « personne vivant seule ». MESURÉ : +2 527 $ en couple contre +3 004 $ en solo à 36 k$ de net.
+ * Un appelant en mode couple qui l'omet sur-crédite — d'où la construction PAR UTILISATEUR chez
+ * chacun des appelants, jamais un `ageOpts` de ménage.
  */
-export const calculateGrossFromNet = (targetNetAnnual: number, year: number = TAX_BASE_YEAR): number => {
+/**
+ * [GROSSFROMNET-CREDITS-65] Options de crédits d'âge pour l'inversion net→brut d'un SALAIRE.
+ *
+ * Source UNIQUE des quatre appelants de `calculateGrossFromNet` : sans elle, chacun redériverait
+ * l'âge à sa façon et les quatre divergeraient au premier changement de convention
+ * (`UNE-FORMULE-MONEY-CRITICAL-RECOPIEE-DIVERGE`). La dérivation reprend TEL QUEL le patron déjà
+ * employé par le moteur (`setupSimulation.ts`, `projection.ts` : `birthYear || (year - (age || 30))`)
+ * plutôt qu'une variante — le voisin avait déjà tranché.
+ *
+ * ⚠️ `eligiblePensionIncome: 0` est délibéré : on inverse un SALAIRE, pas une rente. Y mettre autre
+ * chose accorderait le crédit de pension à un revenu d'emploi.
+ * ⚠️ `hasSpouse` vient du NOMBRE d'utilisateurs actifs, comme chez `taxJanuary`/`taxDecember` : absent,
+ * il serait traité comme SOLO et ajouterait le montant QC « personne vivant seule » à tort.
+ * ⚠️ Le repli `|| 30` rend un âge sans crédit : un utilisateur sans âge ni année de naissance obtient
+ * donc EXACTEMENT le comportement d'avant ce lot.
+ */
+export const ageOptsForSalaryInversion = (
+    user: { age?: number; birthYear?: number } | undefined,
+    year: number,
+    activeUsersCount: number,
+): AgeCreditOptions => {
+    const anneeSure = Number.isFinite(year) ? year : TAX_BASE_YEAR;
+    const birthYear = user?.birthYear || (anneeSure - (user?.age || 30));
+    return {
+        age: anneeSure - birthYear,
+        eligiblePensionIncome: 0,
+        hasSpouse: activeUsersCount > 1,
+    };
+};
+
+export const calculateGrossFromNet = (
+    targetNetAnnual: number,
+    year: number = TAX_BASE_YEAR,
+    ageOpts?: AgeCreditOptions,
+): number => {
     if (targetNetAnnual <= 0) return 0;
     // GUARD-NAN — même convention que `getMarginalRate` et `calculateFiscalReport` dans ce module :
     // repli BORNÉ et VOLONTAIRE plutôt qu'une propagation silencieuse. Sans ça, `year = NaN` rendait
@@ -920,7 +970,7 @@ export const calculateGrossFromNet = (targetNetAnnual: number, year: number = TA
     // double. Plafond d'expansion (40 doublements ≈ ×10^12) = garde-fou anti-boucle
     // si la fonction n'était pas monotone/atteignable (ne devrait jamais arriver).
     let expand = 0;
-    while (calculateFiscalReport(high, 0, 0, anneeSure).netIncome < targetNetAnnual && expand < 40) {
+    while (calculateFiscalReport(high, 0, 0, anneeSure, false, ageOpts).netIncome < targetNetAnnual && expand < 40) {
         high *= 2;
         expand++;
     }
@@ -929,7 +979,7 @@ export const calculateGrossFromNet = (targetNetAnnual: number, year: number = TA
     let iterations = 0;
     while (iterations < 40) {
         const mid = (low + high) / 2;
-        const net = calculateFiscalReport(mid, 0, 0, anneeSure).netIncome;
+        const net = calculateFiscalReport(mid, 0, 0, anneeSure, false, ageOpts).netIncome;
         if (Math.abs(net - targetNetAnnual) < 1) return mid;
         if (net < targetNetAnnual) {
             low = mid;

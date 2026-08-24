@@ -1079,33 +1079,27 @@
   6 tests neufs, **3 perturbations prouvées rouges** — dont les DEUX demi-correctifs que le ticket
   interdisait à juste titre (barres figées + total indexé, et l'inverse), chacun produisant une
   incohérence visible entre des barres et la somme affichée juste en dessous.
-- [ ] **`[GROSSFROMNET-CREDITS-65]`** (S, FAIBLE — découvert en revue de `[MIGRATE-GROSS-135]`) —
-  `calculateGrossFromNet` n'accepte pas d'`ageOpts`, alors que `taxDecember` accorde les crédits
-  d'âge à un salarié de 65 ans et plus. Le brut déduit est donc SURESTIMÉ pour cette population.
-  **MESURÉ** (salarié de 66 ans, net du modèle − net déclaré) : **+1 904 $/an** à 36 k$ de net,
-  +1 018 $ à 48 k$, +392 $ à 60 k$. Un salarié de 65+ sans brut saisi est rare mais pas absurde.
-
-- [x] **`[AUTOMARGINAL-BASCULE-SILENCIEUSE]`** ✅ 2026-08-22 — la bascule est **RÉELLE** (mesurée),
-  mais le ticket se trompait sur DEUX points.
-  · **« pour TOUTE la projection » est faux.** `marginal` est recalculé CHAQUE mois sur le brut
-    indexé par la croissance salariale. MESURÉ (célibataire 7 000 $/mois, croissance 3 %) : le taux
-    marginal passe de **0,361 à 0,411 entre l'année 8 et l'année 9**, et l'ordre bascule LÀ. À
-    croissance nulle il ne bascule jamais ; à 9 000 $/mois il bascule plus tôt. C'est une
-    **frontière mobile**, pas un état de départ.
-  · **La surface proposée était la mauvaise.** « Nommer la bascule dans l'explication de la
-    stratégie » visait `stratDescription` — rendu en `truncate`, donc invisible
-    (`UX-UNREACHABLE-FEATURE`) — et la seule réponse de FAQ existante parle des **RETRAITS** : y
-    greffer un fait de COTISATION l'aurait rendue fausse. **Livré** : une entrée de FAQ DÉDIÉE à
-    l'ordre de cotisation dans `ProjectionExplains`, rendue en entier, qui nomme le seuil de 40 %
-    ET le fait que l'ordre peut changer en cours de projection sans que l'utilisateur touche à rien.
-  ⚠️ **Découverte de méthode, consignée** : ma première fixture (dépenses 3 200 $/mois) donnait un
-  surplus de ~29 k$/an contre un plafond CELI de ~8,5 k$ — les deux comptes se remplissaient de
-  toute façon et la sortie d'`AUTO_MARGINAL` était à 1 000 $ près identique à `CELI_FIRST` sur 25 ans.
-  J'en avais conclu que la bascule n'existait pas. **C'est la mesure qui était aveugle, saturée.**
-  À 4 400 $/mois de dépenses, le surplus passe sous le plafond CELI et l'ordre devient entièrement
-  observable. 5 tests neufs, **3 perturbations prouvées rouges** — dont la fixture saturante, qui
-  rend rouge le test du levier et démontre le piège.
-
+- [x] **`[GROSSFROMNET-CREDITS-65]`** ✅ 2026-08-24 — **décision Marc : tout câbler, moteur inclus.**
+  `calculateGrossFromNet` accepte désormais `ageOpts` (optionnel, défaut NEUTRE), et les **quatre**
+  appelants de production le passent PAR UTILISATEUR via la source unique
+  `ageOptsForSalaryInversion` — `Retirement`, `TaxCenter` (aux **DEUX bouts** de son aller-retour),
+  `buildSimulationParams`, et le socle `computeIncomeBaseline`, dont le type `users` a dû être élargi
+  pour recevoir `age`/`birthYear`.
+  ✅ **Les chiffres du ticket étaient EXACTS** au dollar près (+1 904 $ à 36 k$ de net, +1 018 $ à
+  48 k$, +391 $ à 60 k$) — j'ai failli le déclarer faux en mesurant côté BRUT alors qu'il annonçait,
+  et NOMMAIT, un écart en NET. Leçon écrite.
+  Mesures ajoutées : côté brut l'écart atteint **+3 041 $ à 30 k$ de net (6,7 % du net)** et
+  **disparaît au-dessus de ~80 k$** — le défaut mordait surtout EN BAS de l'échelle. Le cas COUPLE
+  diffère du SOLO (+2 527 $ contre +3 004 $ à 36 k$) : `hasSpouse` est dérivé du nombre d'ACTIFS, pas
+  de `users.length`, sinon un ménage dont le second membre n'a aucun revenu serait sur-crédité.
+  Contre-épreuve à 64 ans : écart exactement 0.
+  ⚠️ **AUCUN golden n'a bougé — et c'est EXPLIQUÉ, pas constaté** : l'effet exige les DEUX conditions
+  à la fois (65 ans et plus **ET** aucun brut saisi), or les fixtures de goldens ont toutes un brut.
+  Un test dédié construit ce profil pour prouver que le câblage moteur n'est pas inerte, et un autre
+  vérifie qu'un 66 ans AVEC brut saisi n'est pas touché.
+  10 tests neufs, **3 perturbations prouvées rouges** (paramètre non transmis · socle moteur muet ·
+  `hasSpouse` figé). Un 11e test existant a rougi : ma propre garde de `[TAXBRACKETVIZ-ANNEE]`,
+  ancrée sur l'ARITÉ de l'appel — resserrée sur le FAIT qu'elle défend.
 - [ ] **`[MIGRATE-GROSS-DEJA-PERSISTE]`** (S, MOYEN — découvert en livrant `[MIGRATE-GROSS-135]`) —
   le correctif ne rattrape PAS les utilisateurs dont le brut a **déjà** été fabriqué à 1,35 et
   persisté. `migrateUserConfig` fait `u.grossSalary || (…)` : dès que le champ existe, le repli est

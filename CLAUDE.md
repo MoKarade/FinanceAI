@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 674 tests** Vitest
-(423 fichiers de test, mesuré le 2026-08-24). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 684 tests** Vitest
+(424 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -235,6 +235,13 @@ n'est pas réécrire un récit.
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 
+- ⚠️ Avant d'écrire « le ticket se trompe », vérifier qu'on mesure **la MÊME GRANDEUR, dans la même
+  unité** : j'allais déclarer `[GROSSFROMNET-CREDITS-65]` sous-estimé d'un facteur 1,6 en mesurant
+  côté BRUT, alors qu'il annonçait — et nommait — un écart en NET. Mesuré dans son unité, il était
+  exact au dollar près sur trois points. Le biais à surveiller est celui que la série installe : six
+  réfutations d'affilée créent une attente de réfutation. Re-mesurer protège de la confiance aveugle
+  dans les tickets, pas de la confiance aveugle dans ses propres mesures. Une mesure qui CONFIRME se
+  publie autant qu'une réfutation (`NE-PAS-DECLARER-UN-TICKET-FAUX-SANS-COMPARER-LA-MEME-GRANDEUR`).
 - « Le paquet runtime est-il utilisé ? » et « son paquet de TYPES sert-il à quelque chose ? » sont
   deux questions DISTINCTES : `adm-zip` est bien vivant (`mcp/pack.mjs`), mais ce consommateur est un
   `.mjs` que `allowJs: true` SANS `checkJs` n'a jamais typé — les types ne servaient à personne. Se

@@ -273,7 +273,7 @@ export async function runFintableBrowserSync(
         }
         // Isolation PAR PAYLOAD : PARTAGÉE avec le cron (`syncCore`), voir son en-tête.
         const applied = applyPayloadsIsolated(baseState, payloads);
-        const { nextState, transactionsAdded, cashUpdated, debtsUpdated, warnings: applyWarnings } = applied;
+        const { nextState, transactionsAdded, cashUpdated, cashAnchorDelta, debtsUpdated, warnings: applyWarnings } = applied;
 
         const report: FintableSyncReport = {
             at: now(),
@@ -287,6 +287,7 @@ export async function runFintableBrowserSync(
             transactionsAdded,
             transfersDetected: mapReport.transferPairs.length,
             cashUpdated,
+            cashAnchorDelta,
             debtsUpdated,
             investmentReferenceCount: mapReport.investmentBalances.length,
             warnings: [...preflightWarnings, ...mapReport.warnings, ...applyWarnings],

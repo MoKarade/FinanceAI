@@ -53,6 +53,14 @@ export interface AppliedPayloads {
     transactionsAdded: number;
     /** Vrai seulement si le solde a bougé — `applyCashBalance` ne fait RIEN sous 0,005 $ d'écart. */
     cashUpdated: boolean;
+    /** [FINTABLE-ANCRE-LIQUIDITE-GONFLEE] Déplacement TOTAL de l'ancre `initialBalances.LIQUIDITE`
+     *  pendant la passe, en dollars. Le cash est DÉRIVÉ : pour atteindre la cible annoncée par la
+     *  banque, `applyCashBalance` déplace cette ancre — et le faisait en SILENCE. Or un doublon qui
+     *  échappe au classement gonfle l'ancre d'autant (MESURÉ : 1 000 $ → 1 300 $ sur une dépense de
+     *  300 $ comptée deux fois), ce qui déplace TOUT l'historique passé du même montant alors que le
+     *  total présent, lui, reste juste. Publier le déplacement ne le corrige pas : ça le rend
+     *  VISIBLE, ce qui est la seule chose qu'on puisse faire sans savoir POURQUOI l'écart existe. */
+    cashAnchorDelta: number;
     /** Les dettes dont au moins un champ a changé — une dette déjà à jour n'y figure pas. */
     debtsUpdated: string[];
     /** Un payload rejeté devient un avertissement LOCAL — jamais un silence, jamais une panne globale. */
@@ -82,6 +90,7 @@ export function applyPayloadsIsolated(
     const warnings: string[] = [];
     let transactionsAdded = 0;
     let cashUpdated = false;
+    let cashAnchorDelta = 0;
     const debtsUpdated: string[] = [];
 
     for (const doc of payloads) {
@@ -106,6 +115,11 @@ export function applyPayloadsIsolated(
                 // drapeau posé à `true` faisait afficher « Liquidités : mises à jour » (SystemView)
                 // pour une passe qui n'avait rien touché. `changes` est le registre de l'écriture.
                 cashUpdated = cashUpdated || changes.length > 0;
+                // [FINTABLE-ANCRE-LIQUIDITE-GONFLEE] Le déplacement se LIT dans l'état, pas dans le
+                // payload : `targetCad` dit où le total doit arriver, pas de combien l'ancre bouge.
+                const ancreAvant = Number((avant.initialBalances ?? {}).LIQUIDITE) || 0;
+                const ancreApres = Number((nextState.initialBalances ?? {}).LIQUIDITE) || 0;
+                cashAnchorDelta += ancreApres - ancreAvant;
             } else if (doc.kind === 'debt') {
                 // Même règle : `applyDebt` rend `changes: []` sur « valeurs déjà à jour ». Une dette
                 // listée comme « mise à jour » alors qu'elle n'a pas bougé est une fausse réussite.
@@ -117,5 +131,5 @@ export function applyPayloadsIsolated(
         }
     }
 
-    return { nextState, transactionsAdded, cashUpdated, debtsUpdated, warnings };
+    return { nextState, transactionsAdded, cashUpdated, cashAnchorDelta, debtsUpdated, warnings };
 }

@@ -317,29 +317,6 @@
 
 ---
 
-- [ ] **`[FINTABLE-ANCRE-LIQUIDITE-GONFLEE]`** (S, MOYEN — MESURÉ, audit PR #649) — un doublon non
-  neutralisé gonfle `initialBalances.LIQUIDITE` en silence (mesuré 1000 → 1584 $) : le total présent
-  est auto-réparé par le payload `cash_balance`, mais l'ANCRE visible dans Réglages → Comptes porte
-  un montant qui ne correspond à rien, et l'HISTORIQUE passé est déplacé d'autant (mesuré +500 $ sur
-  tous les mois antérieurs). ⚠️ Si aucun compte n'a le rôle `cash`, rien ne recale : l'écart cumulé
-  reste sur le solde courant. Largement fermé par le correctif `isDuplicate` de #649, mais le
-  mécanisme reste exposé pour tout doublon qui échappe au classement (cf. les deux tickets ci-dessus).
-
-## 🔴 Money-critical — fiabilité des chiffres
-
-> Analyse fiscale 2026-07-31 (financial-integrity, findings MESURÉS via npx tsx sur le vrai moteur).
-> ⚠️ Un finding = une hypothèse : chaque fix passe par discriminant git-stash + panel adversarial.
-
-### ✅ Panel PR #644 (2026-08-17) — divorce × enfants : NO-GO LEVÉ, tout traité
-
-> ⚠️ **DEUX agents indépendants (`projection-validator`, `financial-integrity`) ont MESURÉ le même
-> défaut**, chacun de son côté et sur le vrai moteur. Ce n'est donc pas une hypothèse de revue.
-> La cause commune : `[ENG-DIVORCE-CHILDREN-REEE]` a ventilé `liquidDelta` par clé de partage,
-> mais PAS `monthlyIncomeDelta`, qui transporte exactement le même mélange de familles. C'est la
-> classe maison « un flux alimente PLUSIEURS registres » — appliquée à la moitié du problème.
-
-### Trouvés par le panel #644 mais PRÉ-EXISTANTS (hors périmètre de la PR)
-
 - [ ] **`[ENG-DIVORCE-SOLO-HOUSEHOLD-ENFANTS]`** (S, **ÉLEVÉ — MESURÉ**) — le bloc enfants passe
   `grossAnnaBaseAnnual` et `householdGross` SANS condition `soloHousehold`, alors que 5 autres sites
   du moteur le font. Mesuré : un divorcé touche **12 mois de congé parental d'un ex-conjoint parti

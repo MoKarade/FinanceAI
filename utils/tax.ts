@@ -1040,5 +1040,13 @@ export const calculateDividendTax = (
     // 256,50 $/an sur 7 500 $ de dividendes admissibles). Le CID QUÉBEC n'est pas concerné —
     // l'abattement ne touche que le fédéral.
     const cidAmount = grossedUpAmount * (cidFedRate * (1 - QC_FEDERAL_ABATEMENT_RATE) + cidQcRate);
+    // [FISC-CID-CLAMP-EXCEDENT] LIMITE ASSUMÉE, consignée dans FISCAL_REFERENCE.md §3 (« Le CID est
+    // CLAMPÉ par SOURCE ») : le crédit est borné par l'impôt de la BANDE du dividende, pas par
+    // l'impôt TOTAL du ménage. Portée mesurée le 2026-08-24 : le clamp ne mord qu'EN DESSOUS du
+    // seuil d'imposition — le CID effectif (24,24 % du majoré) est inférieur au plus bas taux
+    // marginal positif (~26,5 %) — donc là où il n'y a aucun autre impôt à réduire. 23 combinaisons
+    // sur 726 balayées, pire cas 251 $/an. Ne pas « corriger » sans lire la section : imputer
+    // l'excédent sur l'impôt total oblige à trancher l'ORDRE entre deux crédits non remboursables
+    // (CID et crédit-don `[FA-6-CREDIT-CAP]`), ordre qu'aucune source ne fixe. Décision Marc.
     return Math.max(0, grossTax - cidAmount);
 };

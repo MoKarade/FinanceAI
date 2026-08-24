@@ -250,6 +250,46 @@ Compléments sourcés du même échange :
   impôt étranger (FTC)**. Pour `international`, retenues variables par pays — le taux US sert
   d'approximation standard (hypothèse de modèle, même constante).
 
+#### Le CID est CLAMPÉ par SOURCE — la limite, sa cause, et pourquoi elle ne se corrige pas à l'aveugle
+
+`calculateDividendTax` termine par `Math.max(0, grossTax − cid)` : le crédit d'impôt pour dividendes
+est borné par l'impôt de la **bande du dividende**, pas par l'impôt TOTAL du ménage. Un excédent de
+crédit est donc PERDU au lieu de réduire l'impôt des autres revenus — c'est le ticket
+`[FISC-CID-CLAMP-EXCEDENT]`.
+
+**La cause, et pourquoi la portée est minuscule.** Le CID effectif vaut
+`15,0198 % × (1 − 16,5 %) + 11,7 % = 24,24 %` du montant MAJORÉ (le CID fédéral est abattu, pas le
+CID québécois — cf. `[FISC-DTC-ABATEMENT-ORDER]`). Or le **taux marginal combiné positif le plus
+bas** au Québec est d'environ **26,5 %** (fédéral 15 % abattu = 12,53 % + Québec 14 %). Dès que le
+ménage est au-dessus de son seuil d'imposition, l'impôt de la bande DÉPASSE donc le crédit et le
+clamp ne peut pas mordre. Il ne mord qu'EN DESSOUS du seuil — c'est-à-dire là où il n'y a **aucun
+autre impôt** que l'excédent pourrait réduire.
+
+**MESURÉ le 2026-08-24** (balayage, `utils/tax.ts` en direct) :
+
+| Profil | Balayage | Combinaisons où l'excédent serait ABSORBABLE | Pire cas |
+|---|---|---|---|
+| Retraité 70 ans + conjoint (crédits d'âge) | revenu autre 0 → 60 000 $ par pas de 500 $ × 6 niveaux de dividende | **23 / 726** | **251 $/an** (autre 25 000 $, dividende 2 000 $) |
+| Actif sans crédits d'âge | revenu autre 12 000 → 34 000 $ par pas de 1 000 $ × 4 niveaux | **1 / 92** | **33 $/an** (autre 18 000 $, dividende 5 000 $) |
+
+Dans le scénario que le ticket cite lui-même (couple, 1,5 M$ non-enregistré, **faible autre
+revenu**), l'écart réel est **0 $** : l'impôt sur dividendes y est bien nul, mais l'impôt des autres
+revenus l'est aussi, donc l'excédent n'aurait rien à réduire.
+
+**Ce qu'un « correctif » DÉPLACERAIT** — et c'est la raison de ne pas le faire à l'aveugle :
+
+1. En droit réel, l'excédent de CID **est** perdu : c'est un crédit **non remboursable**, et il n'a
+   **aucun report** (contrairement au crédit-don, reportable 5 ans — non modélisé non plus, cf. §10).
+   Le clamp est donc juste sur le fond ; ce qui est discutable, c'est seulement son ASSIETTE.
+2. Imputer l'excédent sur l'impôt total rendrait le modèle **moins conservateur** pour ≤ 251 $/an.
+3. Il faudrait alors trancher l'**ORDRE** de consommation entre deux crédits non remboursables qui
+   visent la même assiette — le CID et le crédit-don plafonné (`[FA-6-CREDIT-CAP]`, juste en dessous
+   dans `taxDecember`). Cet ordre change qui perd son excédent, et **aucune source ne le fixe** dans
+   notre modèle : ce serait une hypothèse de plus, pas une correction.
+
+**Décision de Marc, 2026-08-24** : consigner la limite, ne pas corriger. Le ticket
+`[FISC-CID-CLAMP-EXCEDENT]` est clos sur cette base.
+
 ### Retenue à la source REER (résident QC, `RRSP_WITHHOLDING_QC`)
 | Tranche du retrait | Féd | QC | Combiné |
 |---|---|---|---|

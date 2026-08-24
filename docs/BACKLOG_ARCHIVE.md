@@ -10,6 +10,31 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Le clamp du crédit d'impôt pour dividendes : limite CONSIGNÉE, pas corrigée
+
+- [x] **`[FISC-CID-CLAMP-EXCEDENT]`** — **décision de Marc : consigner la limite chiffrée**, ne pas
+  corriger. Le ticket avait raison sur son CONSTAT (0 $ d'impôt sur dividendes dans son scénario) et
+  tort sur son INFÉRENCE (« au lieu de réduire l'impôt des autres revenus ») : là où le clamp mord,
+  il n'y a **aucun autre impôt** à réduire.
+  **Mécanisme mesuré** : le CID effectif vaut 24,24 % du montant majoré, sous le plus bas taux
+  marginal combiné positif (~26,5 %) — donc au-dessus du seuil d'imposition, l'impôt de la bande
+  dépasse TOUJOURS le crédit et le clamp ne peut pas mordre.
+  **Balayages (2026-08-24)** : retraité 70 ans + conjoint, revenu autre 0→60 k$ par pas de 500 $ ×
+  6 niveaux de dividende → **23 combinaisons sur 726** où l'excédent serait absorbable, **pire cas
+  251 $/an**. Actif sans crédits d'âge : **1 sur 92**, **33 $/an**. Scénario du ticket : **0 $**.
+  Consigné en §3 de `docs/FISCAL_REFERENCE.md` avec la cause, les bornes, leurs hypothèses, et ce
+  qu'un « correctif » DÉPLACERAIT (il faudrait trancher l'ORDRE entre deux crédits non remboursables
+  visant la même assiette — le CID et le crédit-don `[FA-6-CREDIT-CAP]` — ordre qu'aucune source ne
+  fixe). Garde : `tests/services/cidClampLimiteConsignee.test.ts`, qui vise les MOTS de la cause et
+  jamais le montant. **2 perturbations prouvées rouges.**
+
+Contexte d'origine :
+
+- [ ] **`[FISC-CID-CLAMP-EXCEDENT]`** (S, FAIBLE — ex-« voisin » de DIV-DERIVED-BASES) — le clamp
+  `Math.max(0, grossTax − cid)` perd l'excédent annuel de crédit d'impôt pour dividendes au lieu
+  de réduire l'impôt des autres revenus (mesuré : 0 $ d'impôt dividendes sur un couple à 1,5 M$
+  non-enreg à faible autre revenu, avant comme après — l'excédent du CID est perdu).
+
 ## 2026-08-24 — Les compteurs de la sync bancaire disent enfin ce qui a été écrit
 
 - [x] **`[FINTABLE-TXADDED-MENT]`** — `applyPayloadsIsolated` comptait `doc.transactions.length`,

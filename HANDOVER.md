@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 148) — `[FISC-CID-CLAMP-EXCEDENT]` : limite CONSIGNÉE (décision Marc)
+> Le ticket disait vrai sur le CONSTAT (0 $ d'impôt sur dividendes dans son scénario) et faux sur
+> l'INFÉRENCE : là où le clamp mord, le ménage ne paie **aucun autre impôt**, donc l'excédent
+> n'aurait rien à réduire. Mécanisme : le CID effectif (24,24 % du majoré) est SOUS le plus bas taux
+> marginal combiné positif (~26,5 %), donc au-dessus du seuil l'impôt de la bande dépasse toujours le
+> crédit. Balayages : **23/726** combinaisons absorbables et **251 $/an** au pire (retraité 70 ans +
+> conjoint), **1/92** et **33 $/an** pour un actif, **0 $** dans le scénario du ticket.
+> Consigné en §3 de `FISCAL_REFERENCE.md` avec la cause, les hypothèses et ce qu'un « correctif »
+> déplacerait (l'ORDRE entre deux crédits non remboursables, qu'aucune source ne fixe).
+> Garde sur les MOTS, jamais sur le montant — **2 perturbations prouvées rouges**.
+> Gate vert : **4 713 tests / 428 fichiers**. Lot DOC + commentaire : rien de servi ne change, donc
+> aucun déploiement à vérifier (§6) — le dire plutôt que laisser croire qu'on a vérifié.
+>
 > ## 🟢 Session 2026-08-24 (suite 147) — `[FINTABLE-TXADDED-MENT]` : compter l'ÉCRITURE, pas l'intention
 > ⚠️⚠️ **LE HOOK `commit-gate` N'EST PAS INSTALLÉ dans le conteneur de session** : `scripts/hooks/`
 > contient bien `commit-gate.mjs`, mais `core.hooksPath` n'est pas posé et `.git/hooks/` ne contient

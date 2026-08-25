@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 810 tests** Vitest
-(447 fichiers de test, mesuré le 2026-08-25). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 813 tests** Vitest
+(448 fichiers de test, mesuré le 2026-08-25). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -698,6 +698,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   compact, visible partout) du **libellé** (déplaçable en `title`). La garde tient les DEUX
   exigences ensemble — plafond de prose ET « aucune réserve perdue » — car chacune seule est
   satisfaite par le mauvais moyen (`EPURATION-SUPPRIME-LA-RESERVE`).
+  ⚠️ Corollaire de suppression d'une SURFACE (2026-08-25) : la seule question qui compte avant de
+  couper est **qu'est-ce qui n'existe QUE là ?** Le bouton « Diagnostic » de la carte Budget retirée
+  avait un JUMEAU ailleurs dans l'onglet — la garde exige donc **exactement UN** bouton après coup
+  (doublon parti ET fonction restée) ; un `queryBy(...).toBeNull()` n'aurait pas vu la perte. Deux
+  autres pièges du même lot : **`knip` est AVEUGLE au code dont le seul consommateur est son propre
+  test** (sortie identique au octet près alors que deux helpers venaient de perdre leur dernier
+  appelant de production), et un gain de bundle s'ANNONCE dans les bons termes — le chunk `recharts`
+  était identique au octet près, seul le code de l'onglet a maigri (−6,5 %)
+  (`UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER`).
 - Une **heuristique de TEXTE** (regex sur un libellé) qui coexiste avec du texte UTILISATEUR interpolé
   dans les mêmes libellés produit des faux positifs : toléré sur une pastille visible à l'œil,
   INACCEPTABLE dans un prompt LLM (l'affirmation fausse hérite de l'autorité de la source unique).

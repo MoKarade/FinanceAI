@@ -27,8 +27,13 @@
 - [ ] **`[BUDGET-CATEGORY-INCOME-SIGN]`** (M) — valider que, quand une catégorie de DÉPENSE a des
   montants POSITIFS dans Transactions (une entrée d'argent — ex. remboursement), Budget le traite
   bien comme telle plutôt que comme une dépense.
-- [ ] **`[BUDGET-REMOVE-AMELIORER]`** (S) — retirer la section « Améliorer mon budget » de l'onglet
-  Budget, devenue inutile selon Marc.
+- [ ] **`[UTIL-GOLDENSPLIT-ORPHELIN]`** (XS, découvert en livrant `BUDGET-REMOVE-AMELIORER`) —
+  `computeGoldenSplit`, `GOLDEN_IDEAL` et le type `GoldenSplit` (`utils/budget.ts`) n'ont plus AUCUN
+  consommateur de production depuis le retrait de la carte : leur seul appelant est
+  `tests/utils/budget.test.ts`. ⚠️ **`knip` ne le voit pas** — sortie identique au octet près avant et
+  après (323 lignes, 80 exports inutilisés) : un test suffit à faire passer un export pour vivant.
+  À trancher avec Marc : supprimer (util + ses 5 tests) ou re-brancher ailleurs. Pas supprimé ici —
+  hors périmètre du ticket de retrait.
 - [ ] **`[BUDGET-PREVU-BUG]`** (M, 🔴 possiblement money-critical) — le « budget prévu » semble pas
   à jour et affiche des valeurs impossibles : exemple donné, une entrée d'argent de 18 000 $ prévue
   sur 1 trimestre — irréaliste pour la situation de Marc. À diagnostiquer.

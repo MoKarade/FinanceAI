@@ -62,6 +62,19 @@
 > l'inverse. Attrapé par une pré-assertion, pas par le typage.
 > 9 tests, **5 perturbations rouges sur 5**.
 >
+> ## 🟢 Session 2026-08-25 (suite 173) — `[BUDGET-REMOVE-AMELIORER]` : ce qu'une épuration ne doit PAS emporter
+> Section retirée (demande directe de Marc). ⚠️ **Vérifié avant de couper** : le bouton « Diagnostic »
+> de la carte avait un JUMEAU dans la barre de pilotage — la carte n'en portait qu'un doublon, le
+> diagnostic IA survit. La garde exige **exactement UN** bouton après coup (doublon parti + fonction
+> restée) ; un `queryBy(...).toBeNull()` sur la carte n'aurait pas vu la perte.
+> Disparaissent, et c'était uniques : donut 50/30/20, « répartition réelle », comparatif Réel/Cible/Idéal.
+> **Bundle mesuré** (build propre) : `BudgetWorkspace` **86 865 → 81 251 o** (−6,5 %), dist −5 489 o.
+> ⚠️ Le chunk `recharts` est IDENTIQUE au octet près — d'autres écrans l'importent : ce n'est PAS une
+> victoire de dépendance, et l'annoncer ainsi aurait été un chiffre inventé.
+> 🧭 **Découverte routée** : `computeGoldenSplit`/`GOLDEN_IDEAL` n'ont plus qu'un consommateur — leur
+> propre test. **`knip` ne le voit pas** (sortie identique au octet près) → `[UTIL-GOLDENSPLIT-ORPHELIN]`.
+> 3 tests, 3 perturbations (dont une qui doit rester VERTE : mention en commentaire).
+>
 > ## 🟢 Session 2026-08-25 (suite 168) — `[ENG-DIVORCE-SCALE-UNBOUGHT]` : la mise de fonds évaporée
 > Ticket marqué **« [À vérifier] — non vérifié par perturbation »**, classé FAIBLE. Vérifié : réel,
 > et le dégât n'est pas celui annoncé.

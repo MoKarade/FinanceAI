@@ -33,6 +33,16 @@
 > n'est pas une preuve — seule la spec l'est. Un mock qui encode la même croyance que le code testé
 > ne peut PAS détecter l'erreur commune aux deux.
 >
+> ## 🟢 Session 2026-08-25 (suite 178) — divorce × bien détenu : le trou de couverture est fermé
+> `[TEST-DIVORCE-SANS-IMMOBILIER]` livré. Mécanisme SAIN (mesuré avant d'écrire) : 50 % → équité
+> ×0,5047, intérêt suivant ×0,5000 ; 75 % → ×0,2523 / ×0,2500. Rien corrigé — verrouillé.
+> Leçons de la session appliquées d'office : discriminant à **75 %** (P2 « keep inversé » serait
+> invisible à 50 %), assertion sur l'**intérêt du mois suivant** (prouve l'état moteur, pas
+> l'affichage), pièges `isActive`/`isOwned` re-documentés dans le fichier (P3 : 4 rouges sur NaN).
+> 4 tests, 3 perturbations rouges. Branche poussée AVANT d'écrire (2 réversions de conteneur
+> aujourd'hui), commit poussé avant le gate. (La suite 177, `NetTransferLiquid` toujours nul, est
+> dans la PR #744 — en CI au moment de ce lot.)
+>
 > ## 🔴 Session 2026-08-25 (suite 177) — `NetTransferLiquid` vaut TOUJOURS zéro dans le futur
 > J'avais routé `[ENG-LIQUID-FLUX-FORM]` comme un cas limite (« 7 638,44 $ au mois 324 »). RE-MESURÉ :
 > **le champ est non nul sur 0 des 361 points**. Donc **355 mois sur 360** avec un résiduel > 1 $,

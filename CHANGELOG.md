@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-24 (plus de pastille suspendue au-dessus du vide)
+
+- Sur la courbe Futur, les pastilles d'événement se décalent verticalement quand plusieurs tombent
+  le même mois. Ce décalage était calculé sur **tous** les événements de la projection, avant que
+  l'app n'en sélectionne un nombre lisible : une pastille pouvait donc rester au 2ᵉ ou 3ᵉ étage,
+  perchée au bout d'une longue tige, alors que celles du dessous n'étaient pas affichées.
+- Le décalage est maintenant calculé sur les pastilles réellement montrées. Au passage, la
+  numérotation annoncée par les lecteurs d'écran (« (2) ») désigne enfin des pastilles qui existent.
+
 ## [unreleased] — 2026-08-24 (on voit enfin quand la sync déplace ton solde de départ)
 
 - Ton solde de liquidités est **calculé** (solde de départ + transactions). Quand la banque annonce

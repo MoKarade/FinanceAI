@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-24 (suite 158) — `[FUTUR-DAILY-STACK-X]` : le ticket visait le mauvais défaut
+> Le ticket : « deux événements du même mois à des jours différents sont empilés alors qu'ils ne se
+> chevauchent plus ». **Mesuré** : pastille de 24 px, et à l'horizon PAR DÉFAUT (40 ans) sur un
+> téléphone (390 px), **un mois vaut ≈ 0,7 px** — 15 jours d'écart = ≈ 0,35 px. À cette vue,
+> l'empilement est ce qui rend les pastilles lisibles ; le correctif proposé les aurait SUPERPOSÉES.
+> **Le vrai défaut, trouvé en cherchant celui-là** : le rang d'empilement était attribué AVANT le
+> filtre de fenêtre et AVANT l'écrêtage (24 « vie » / 16 « flux »). Une survivante gardait le rang de
+> ses voisines écrêtées → pastille à 44 ou 68 px de la courbe, **étages vides en dessous**.
+> **Observé dans le vrai composant** (payloads capturés à la frontière recharts) : mois 15, une seule
+> pastille montrée, rang 1. `assignStackIndex` s'applique désormais EN DERNIER.
+> ⚠️ **Mon anti-vacuité a rougi sur MA fixture** : sans événement épinglé, aucun mois ne gardait deux
+> pastilles — « tous les rangs valent 0 » était vrai par construction et ne gardait rien.
+> ⚠️ Reliquat re-cadré `[FUTUR-STACK-ZOOM-AWARE]` : le critère juste est en PIXELS, donc il appartient
+> au rendu (fenêtre visible + largeur), pas au calcul des événements qui ne voit que `chartData`.
+
 > ## 🟢 Session 2026-08-24 (suite 157) — `[E2E-PINCH-ZOOM-FLAKE]` : le test passait par accident
 > Le check requis E2E a rougi **3 fois d'affilée** sur la PR #722 (`futurePinchZoom.spec.ts`), sur un
 > diff qui ne touchait ni le graphe ni le tactile ; le rejeu du **MÊME sha** est passé vert.

@@ -10,6 +10,28 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-24 — Une pastille flottait sur un étage vide
+
+- [x] **`[FUTUR-DAILY-STACK-X]`** — ⚠️ **le ticket visait le mauvais défaut.** Il disait : deux
+  événements du même mois à des jours différents sont empilés « alors qu'ils ne se chevauchent plus
+  horizontalement ». **Mesuré** : la pastille fait 24 px de diamètre et, à l'horizon par défaut
+  (40 ans) sur un écran de téléphone, **un mois vaut ≈ 0,7 px** — deux événements à 15 jours d'écart
+  sont à ≈ 0,35 px l'un de l'autre. À la vue par défaut, l'empilement est ce qui les rend lisibles,
+  et la correction proposée (grouper par abscisse arrondie) les aurait SUPERPOSÉS.
+  **Le vrai défaut, trouvé en cherchant celui-là** : le rang d'empilement était attribué en amont,
+  sur la liste COMPLÈTE des événements — donc AVANT le filtre de fenêtre et AVANT l'écrêtage de
+  densité (24 pastilles « vie », 16 « flux »). Un mois dont l'échantillonnage ne gardait pas la
+  première pastille laissait la survivante au rang 1 ou 2, dessinée 44 ou 68 px au-dessus de la
+  courbe, au bout d'une longue tige, avec un ou deux **étages vides** en dessous. **Observé** dans
+  le vrai composant : mois 15, une seule pastille montrée, rang 1.
+  Correctif : `assignStackIndex` appliqué EN DERNIER, sur ce qui est réellement montré. Effet de
+  bord voulu : la numérotation lue par un lecteur d'écran (« (2) ») désigne enfin des pastilles qui
+  existent. Reliquat re-cadré en `[FUTUR-STACK-ZOOM-AWARE]` (le critère juste est en pixels, donc
+  il appartient au rendu, pas au calcul des événements).
+  2 tests, dont l'anti-vacuité qui a **rougi sur ma propre fixture** (sans événement épinglé, aucun
+  mois ne gardait deux pastilles et l'assertion de contiguïté était vraie par construction).
+  Discrimination prouvée sur le code d'avant. Livré 2026-08-24 · PR #724.
+
 ## 2026-08-24 — Le test de pincement passait par accident
 
 - [x] **`[E2E-PINCH-ZOOM-FLAKE]`** — le check requis « E2E (Playwright / Chromium) » a échoué

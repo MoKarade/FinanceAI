@@ -33,6 +33,21 @@
 > qui bloque tout serait pire que le défaut). 3 tests, **5 perturbations rouges sur 5** — dont le
 > cooldown remis hors du verrou, qui rougit les 3.
 >
+> ## 🟢 Session 2026-08-25 (suite 172) — `[ENG-DIVORCE-FLUX-MUET]` : 50 % ne discrimine pas `keep`
+> Ticket CONFIRMÉ. Résiduel de forme-flux AU MOIS DU DIVORCE : **CELI 119 007,53 $ · REER 91 679,66 $ ·
+> Crypto 15 599,16 $ · Liquidités 12 492,83 $ · REEE 9 088,89 $ · CELIAPP 6 635,66 $** → 0,01 $ après.
+> ⚠️ Le ticket nommait 4 comptes ; **six** sont touchés (CELIAPP et REEE absents du ticket), et
+> `nonReg` — qui y figurait — est **à zéro sur 360 mois**, donc DÉCLARÉ exclu avec sa mesure.
+> ⚠️ **Leçon principale** : à **50 %**, `keep` et `1 − keep` sont indiscernables. Publier la part
+> CONSERVÉE au lieu de la part CÉDÉE laisse le test à 50 % **VERT** (mesuré) — seul le test à 75 %
+> rougit. Une valeur d'essai symétrique rend la garde vacueuse.
+> ⚠️ **Ne déplace AUCUN argent** (bit-identique). L'exclusion `divorceReerWithdrawalMois` de
+> `stepReerByUser` est **inerte aujourd'hui** (consolidation `[reer, 0]` + `reconcileToPool`) : écrite
+> comme telle plutôt que couverte par une fixture absurde. 3ᵉ perturbation muette de la session.
+> 🧭 **Deux découvertes routées, NON corrigées** : `[ENG-CELIAPP-TRANSFERT-FLUX-MUET]` (9 092,54 $ au
+> mois 168, transfert CELIAPP→REER muet des DEUX côtés) et `[ENG-LIQUID-FLUX-FORM]` (7 638,44 $ au
+> mois 324 — le compte Liquidités n'est pas conforme même SANS divorce).
+> 5 tests, 3 perturbations × rouges.
 > ## 🟢 Session 2026-08-25 (suite 171) — `[BUDGET-DRIVE-BANNER-FLASH]` : un booléen pour deux faits opposés
 > « Brièvement » cachait la mesure : la fenêtre fait **≥ 2 500 ms**, écrite dans `App.tsx`
 > (`initSync` publie `configured: true`, puis `setTimeout(runBootSync, 2500)`). Pas une course de rendu.

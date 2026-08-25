@@ -31,6 +31,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   le comportement reste exactement celui d'avant — mieux vaut l'ancien défaut qu'une synchro qui ne
   partirait jamais.
 
+## [unreleased] — 2026-08-25 (interne : le partage du divorce n'efface plus l'argent en silence)
+
+- Dans les simulations Monte-Carlo, quand un divorce se déclenche, la moitié (ou la part choisie) de
+  chaque compte change de main. Le moteur réduisait bien les soldes, mais **ne déclarait nulle part
+  que cet argent était sorti** : sur le mois du divorce, plus de **250 000 $** disparaissaient sans
+  cause visible dans les données internes.
+- Corrigé : la part cédée est désormais publiée comme un mouvement, compte par compte. **Rien ne
+  change à l'écran ni dans tes chiffres** — patrimoine final, REER et CELI sont identiques au
+  centième près. C'est une correction de traçabilité : les vérifications automatiques du moteur
+  peuvent maintenant expliquer chaque dollar qui bouge, y compris pendant un divorce.
+
 ## [unreleased] — 2026-08-25 (plus de fausse alerte « Drive déconnecté » au chargement)
 
 - Au chargement de la page, le bandeau rouge « Non connecté à Google Drive — tes changements ne sont

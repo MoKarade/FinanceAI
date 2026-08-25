@@ -52,6 +52,25 @@
   dont le cooldown remis HORS du verrou. Leçon :
   `UN-VERROU-DOIT-ENVELOPPER-LA-GARDE-PAS-SEULEMENT-LE-TRAVAIL`.
 
+## 2026-08-25 — Le partage du divorce publie enfin ses flux
+
+- [x] **`[ENG-DIVORCE-FLUX-MUET]`** (S) — PR #739, gate vert. Ticket CONFIRMÉ.
+  Le callback de partage multipliait sept pools par `keep` sans publier le moindre flux. Résiduel de
+  forme-flux mesuré AU MOIS DU DIVORCE (fixture MC déterministe, partage 50 %) : **CELI 119 007,53 $ ·
+  REER 91 679,66 $ · Crypto 15 599,16 $ · Liquidités 12 492,83 $ · REEE 9 088,89 $ · CELIAPP 6 635,66 $**.
+  Après : 0,01 $ (arrondi au cent).
+  ⚠️ **Le ticket nommait QUATRE comptes** ; six sont touchés — `CELIAPP` et `REEE` n'y figuraient pas,
+  et `nonReg` (qui y figurait) est resté **à zéro sur les 360 mois**, donc déclaré exclu avec sa mesure.
+  ⚠️ **Pourquoi la garde forme-flux existante ne voyait rien** : elle tourne en DÉTERMINISTE, et
+  `tryDivorce` exige `enableMonteCarlo`. Invariant juste, aveugle à une branche entière.
+  ⚠️ **Ne déplace AUCUN argent** — vérifié bit-identique (patrimoine final 331 014,12 $, REER final
+  175 685,09 $, CELI final 113 506,31 $). `withdrawalREER` a un second consommateur (`stepReerByUser`),
+  d'où une exclusion `divorceReerWithdrawalMois` — **inerte aujourd'hui** (`reerByUser` est consolidé
+  à `[reer, 0]` et `reconcileToPool` ramène à `poolEnd`), écrite comme telle dans le code.
+  5 tests, **3 perturbations rouges sur 3**. Leçon :
+  `UN-PARTAGE-A-50-POURCENT-NE-DISTINGUE-PAS-KEEP-DE-SON-COMPLEMENT` — à 50 %, `keep` et `1 − keep`
+  sont indiscernables ; publier la part CONSERVÉE laissait le test à 50 % VERT.
+  Découvertes routées : `[ENG-CELIAPP-TRANSFERT-FLUX-MUET]`, `[ENG-LIQUID-FLUX-FORM]`.
 ## 2026-08-25 — La bannière « Drive déconnecté » ne ment plus au chargement
 
 - [x] **`[BUDGET-DRIVE-BANNER-FLASH]`** (S) — PR #738, gate vert.

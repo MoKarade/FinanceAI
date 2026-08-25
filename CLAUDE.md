@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 805 tests** Vitest
-(446 fichiers de test, mesuré le 2026-08-25). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 810 tests** Vitest
+(447 fichiers de test, mesuré le 2026-08-25). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -713,6 +713,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Quand un test dépend d'un pas d'échantillonnage ou d'un modulo, la longueur de la fixture est un
   PARAMÈTRE : la calculer et l'asserter dans le test (`expect((N-8) % pas).not.toBe(0)`). Choisie au
   jugé, elle rend le cas vacueux par simple parité — mesuré (`PARITE-QUI-REND-UN-TEST-VACUEUX`).
+- ⚠️ **Dès qu'un test porte sur un facteur ET son complément, la valeur d'essai doit être ASYMÉTRIQUE** :
+  à un partage de divorce de **50 %**, `keep` et `1 − keep` sont indiscernables — publier la part
+  CONSERVÉE au lieu de la part CÉDÉE laissait le test **VERT** (mesuré ; seul 75 % rougit). Et 50 %
+  est justement la valeur qui vient spontanément. Corollaires du même lot : la liste des comptes
+  touchés se tire du CODE qui mute, pas de la prose du ticket (4 annoncés, 6 réels, dont un annoncé
+  resté à ZÉRO sur 360 mois → exclu AVEC sa mesure) ; et une exclusion aujourd'hui INERTE s'écrit
+  comme telle dans le code plutôt que d'être couverte par une fixture absurde
+  (`UN-PARTAGE-A-50-POURCENT-NE-DISTINGUE-PAS-KEEP-DE-SON-COMPLEMENT`).
 - Deux tickets groupés « même classe » n'ont pas forcément le même DÉFAUT : motif de code identique
   (`|| 0`), mais un `.filter(g > 0)` trois lignes plus bas transformait un « faux 0 » en EFFACEMENT
   silencieux — correctifs opposés. Re-dériver le défaut de chaque ticket sur son propre code
@@ -897,6 +905,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Une **métrique recopiée** dans plusieurs docs diverge (41/48/50 sous-modules, deux comptes de tests
   contradictoires dans un MÊME fichier). Ne pas corriger les N copies : en désigner UNE comme source
   et faire pointer les autres (`DOC-METRIQUE-RECOPIEE`).
+- ⚠️ **`| tail` sur la sortie d'un `rebase` cache des CONFLITS** : `tail -10` a coupé deux des quatre
+  lignes `CONFLICT`, et `git add -A && git rebase --continue` a committé `CHANGELOG.md`/`HANDOVER.md`
+  avec leurs marqueurs. Même panne que « `| tail` jette le code de sortie », appliquée au CONTENU :
+  une sortie tronquée par le HAUT se lit comme une sortie complète. Filtrer (`grep CONFLICT`), jamais
+  couper — et après toute résolution, `grep` les marqueurs sur l'arbre AVANT `git add`. C'est
+  `tests/noConflictMarkers.test.ts` qui a sauvé le lot, au gate rejoué APRÈS le rebase : un lot rebasé
+  se re-gate INTÉGRALEMENT (`UN-TAIL-SUR-LA-SORTIE-D-UN-REBASE-CACHE-DES-CONFLITS`).
 
 ### CI (GitHub Actions) — pourquoi un gate vert ne suffit pas
 

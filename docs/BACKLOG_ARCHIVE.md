@@ -52,6 +52,23 @@
   dont le cooldown remis HORS du verrou. Leçon :
   `UN-VERROU-DOIT-ENVELOPPER-LA-GARDE-PAS-SEULEMENT-LE-TRAVAIL`.
 
+## 2026-08-25 — La bannière « Drive déconnecté » ne ment plus au chargement
+
+- [x] **`[BUDGET-DRIVE-BANNER-FLASH]`** (S) — PR #738, gate vert.
+  Le mot « brièvement » du ticket cachait la mesure : la fenêtre fait au moins **2 500 ms**, et elle
+  est écrite en toutes lettres dans `App.tsx` (`initSync` publie `configured: true`, puis
+  `setTimeout(() => { void runBootSync(); }, 2500)`). Ce n'est pas une course de rendu.
+  Le fond : **`connected: false` recouvrait deux faits OPPOSÉS** — « on a essayé et on n'est pas
+  connecté » et « on n'a pas encore essayé ». La bannière lisait le second comme le premier et
+  affirmait « tes changements ne sont PAS sauvegardés » alors que c'était faux.
+  Livré : un champ `resumeSettled` qui pose la question que `connected` ne pose pas, posé dans un
+  `finally` (`runBootSyncTick` a SEPT sorties, `gateSilentResume` six) et `true` **d'entrée** quand
+  il n'y a rien à reprendre — un appareil jamais connecté voit l'invitation TOUT DE SUITE, comme Marc
+  l'a demandé. Deux pièges constatés : `initSync` est appelé DEUX fois au boot (d'où la monotonie), et
+  l'état de module survit d'un test à l'autre (d'où `_resetSyncStatusForTests`).
+  9 tests, **5 perturbations rouges sur 5**, chacune isolant sa garde. Leçon :
+  `UN-DEFAUT-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT`.
+
 ## 2026-08-25 — Après un divorce, la moitié de la mise de fonds s'évaporait à l'achat
 
 - [x] **`[ENG-DIVORCE-SCALE-UNBOUGHT]`** — le ticket était marqué **« [À vérifier] — finding non

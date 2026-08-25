@@ -33,6 +33,20 @@
 > qui bloque tout serait pire que le défaut). 3 tests, **5 perturbations rouges sur 5** — dont le
 > cooldown remis hors du verrou, qui rougit les 3.
 >
+> ## 🟢 Session 2026-08-25 (suite 171) — `[BUDGET-DRIVE-BANNER-FLASH]` : un booléen pour deux faits opposés
+> « Brièvement » cachait la mesure : la fenêtre fait **≥ 2 500 ms**, écrite dans `App.tsx`
+> (`initSync` publie `configured: true`, puis `setTimeout(runBootSync, 2500)`). Pas une course de rendu.
+> Le fond : **`connected: false` recouvrait « on a essayé et non » ET « on n'a pas encore essayé »**.
+> La bannière lisait le second comme le premier → elle affirmait du FAUX.
+> Livré : `resumeSettled`, posé dans un `finally` (7 sorties dans `runBootSyncTick`, 6 dans
+> `gateSilentResume`) et `true` **d'entrée** quand il n'y a rien à reprendre — un appareil jamais
+> connecté voit l'invitation tout de suite (demande explicite de Marc).
+> ⚠️ Deux pièges constatés : `initSync` est appelé DEUX fois au boot (→ monotonie obligatoire), et
+> `_status` est un état de MODULE qui survit d'un test à l'autre (→ `_resetSyncStatusForTests`).
+> ⚠️ Fixture : `readSyncMeta()` rejette une méta partielle → mon « appareil de retour » décrivait
+> l'inverse. Attrapé par une pré-assertion, pas par le typage.
+> 9 tests, **5 perturbations rouges sur 5**.
+>
 > ## 🟢 Session 2026-08-25 (suite 168) — `[ENG-DIVORCE-SCALE-UNBOUGHT]` : la mise de fonds évaporée
 > Ticket marqué **« [À vérifier] — non vérifié par perturbation »**, classé FAIBLE. Vérifié : réel,
 > et le dégât n'est pas celui annoncé.

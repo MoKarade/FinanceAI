@@ -24,6 +24,10 @@ import { hasMeaningfulData } from '../../utils/onboarding';
  *
  * Le conflit (`status.conflict`) est géré par SyncConflictModal (overlay bloquant) → on s'efface pour
  * ne pas doubler l'alerte.
+ *
+ * ⚠️ [BUDGET-DRIVE-BANNER-FLASH] L'alerte « pas connecté » attend `status.resumeSettled` — voir le
+ * commentaire au point de décision plus bas. Elle n'est PAS retardée pour un appareil qui n'a jamais
+ * connecté Drive : là, il n'y a rien à reprendre et l'invitation part tout de suite.
  */
 export const SyncStatusBanner: React.FC = () => {
     const [status, setStatus] = useState<SyncStatus>(getSyncStatus);
@@ -38,7 +42,15 @@ export const SyncStatusBanner: React.FC = () => {
     if (!status.configured || isTestMode) return null;
     if (status.conflict) return null; // le modal de conflit prend le relais
 
-    const disconnected = !status.connected && hasData;
+    // [BUDGET-DRIVE-BANNER-FLASH] ⚠️ `!status.connected` recouvre DEUX faits opposés : « on a essayé
+    // et on n'est pas connecté » et « on n'a pas encore essayé ». Au boot c'est le second, et l'app
+    // affichait quand même « tes changements ne sont PAS sauvegardés » — pendant au moins 2,5 s
+    // (`App.tsx` retarde `runBootSync` de 2 500 ms après un `initSync` qui a déjà publié
+    // `configured: true`). Une alerte qui dit faux, puis disparaît, apprend à ignorer l'alerte.
+    // `resumeSettled` est `true` D'ENTRÉE quand il n'y a rien à reprendre (jamais connecté ici) :
+    // ce test ne retarde donc PAS l'invitation à se connecter, il attend seulement le verdict quand
+    // une reprise silencieuse est réellement en cours.
+    const disconnected = !status.connected && status.resumeSettled && hasData;
     // N'affiche l'alerte « sauvegarde échouée » (dont le bouton Réessayer POUSSE) que pour une vraie
     // erreur de PUSH — jamais pour un pull/boot/connect, sinon « Réessayer » pousserait un local
     // peut-être périmé par-dessus un Drive qu'on n'a justement pas su lire (finding silent-failure 2026-07-14).

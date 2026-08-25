@@ -22,9 +22,6 @@
 > Retours de Marc en bloc, non cadrés — chaque item à cadrer (questions groupées) avant de coder,
 > par ticket ou par petit paquet cohérent.
 
-- [ ] **`[BUDGET-DRIVE-BANNER-FLASH]`** (S) — la bannière « Drive déconnecté » apparaît brièvement
-  au chargement de la page puis disparaît une fois chargée. Marc ne veut PAS qu'elle apparaisse
-  quand ce n'est pas nécessaire (faux « déconnecté » transitoire, pas un vrai état).
 - [ ] **`[BUDGET-TRANSACTIONS-SYNC-AUDIT]`** (M) — Marc n'est pas sûr que Budget s'adapte
   correctement à Transactions : valider (ou corriger) cette synchronisation.
 - [ ] **`[BUDGET-CATEGORY-INCOME-SIGN]`** (M) — valider que, quand une catégorie de DÉPENSE a des

@@ -7020,3 +7020,62 @@ scénario SANS maison tout en paraissant en décrire une.
 
 **Chemin DÉCÈS** : vérifié, RIEN à partager — `trySpouseMortality` ne fait que lever
 `spouseAlive`/`survivorMode`, le survivant hérite, aucun actif n'est multiplié par un facteur.
+
+### `UN-DEFAUT-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT` — 2026-08-25
+
+**Ticket** : `[BUDGET-DRIVE-BANNER-FLASH]` (S) — « la bannière "Drive déconnecté" apparaît brièvement
+au chargement de la page puis disparaît une fois chargée. Marc ne veut PAS qu'elle apparaisse quand
+ce n'est pas nécessaire (faux "déconnecté" transitoire, pas un vrai état) ».
+
+**Le mot "brièvement" cachait la mesure.** Un « flash » évoque une frame, et on cherche un
+tremblement de rendu. Mesuré, la fenêtre est d'au moins **2 500 ms** et elle est écrite en toutes
+lettres dans le code : `App.tsx` appelle `initSync(...)` — qui publie `configured: true` — puis
+`setTimeout(() => { void runBootSync(); }, 2500)`. Pendant tout ce temps, `connected` vaut encore sa
+valeur par DÉFAUT. Avant de chercher une course de rendu, lire l'ORDONNANCEMENT : une bannière qui
+« clignote » peut n'avoir aucun problème de rendu du tout.
+
+**Le fond : un booléen qui recouvre deux faits OPPOSÉS.** `connected: false` voulait dire à la fois
+« on a essayé et on n'est pas connecté » et « on n'a pas encore essayé ». La bannière lisait le
+second comme le premier et affirmait « tes changements ne sont PAS sauvegardés » — une affirmation
+FAUSSE au moment où elle s'affiche. Le correctif n'est pas un délai ni un anti-rebond (qui ne feraient
+que déplacer la fenêtre) : c'est un second champ, `resumeSettled`, qui répond à la question que
+`connected` ne pose pas. Même famille que « *pas encore connu* n'est pas *zéro* », appliquée à un
+booléen d'état plutôt qu'à un montant. ⚠️ Signal réutilisable : **une valeur par défaut lue comme un
+verdict**. Chaque fois qu'un état observable démarre sur un défaut et qu'une UI l'interprète, se
+demander ce que ce défaut AFFIRME.
+
+**Le risque du correctif est SYMÉTRIQUE et pire que le défaut.** Taire une alerte de sauvegarde
+« le temps de vérifier » devient, sur le mauvais chemin, la taire POUR TOUJOURS. Deux garde-fous,
+chacun avec son test :
+- `resumeSettled` est `true` **d'entrée** quand il n'y a rien à reprendre (jamais connecté sur cet
+  appareil, ou Drive non configuré) : l'invitation à se connecter n'est PAS retardée, ce qui était la
+  demande explicite de Marc (« propose de me connecter dès que je ne le suis pas »).
+- Le drapeau est posé dans un **`finally`**, jamais à un point de sortie choisi : `runBootSyncTick` a
+  **sept** sorties (non configuré, jamais connecté, inactivité > 8 h, jeton définitivement perdu,
+  échec transitoire, succès, erreur Drive) et `gateSilentResume` en a six. En couvrir une seule
+  laisserait la bannière muette sur les autres.
+
+**Deux pièges rencontrés, tous deux constatés et non anticipés.**
+1. **La monotonie était nécessaire.** `initSync` est appelé DEUX fois au boot (LoginGate, puis App).
+   Sans `getSyncStatus().resumeSettled || …`, le second appel EFFAÇAIT le verdict que
+   `gateSilentResume` venait de rendre — la bannière repartait pour 2,5 s de silence chez quelqu'un
+   qu'on savait déconnecté. Un drapeau calculé à l'initialisation doit se demander **combien de fois
+   l'initialisation a lieu**.
+2. **La monotonie rend la suite de tests vacueuse.** `_status` est un état de MODULE : en production
+   il repart à zéro à chaque chargement de page, pas entre deux tests Vitest. Le premier test qui
+   passait le drapeau à `true` rendait tous les suivants sans objet — d'où
+   `_resetSyncStatusForTests()`. Un état monotone a besoin d'un point de remise à zéro DE TEST, et
+   son absence ne se voit qu'en lisant les échecs (« expected true to be false » sur une
+   pré-assertion, pas sur l'assertion principale).
+
+**Une fixture partielle mesure le cas OPPOSÉ.** `readSyncMeta()` rejette (→ `null`) toute méta où
+`lastPulledUpdatedAt`, `lastLocalHash` ou `deviceId` manque. Ma fixture « appareil de retour » n'en
+portait aucun : elle décrivait donc un appareil qui n'a JAMAIS connecté Drive — exactement l'inverse.
+Attrapé par la pré-assertion du premier test, pas par le typage (`as never` l'aurait tue).
+
+**Perturbations (5/5, chacune isolant SA garde)** : la bannière ne consulte plus `resumeSettled` → le
+test du flash · `runBootSync` ne tranche plus → les deux tests de sorties · `gateSilentResume` ne
+tranche plus → 2 tests · monotonie retirée → le test des deux `initSync` · « jamais connecté » plus
+réglé d'entrée (le correctif MASQUE l'alerte) → son test dédié. Et le test « la bannière ne s'affiche
+pas » ne se lit JAMAIS seul : son jumeau, mêmes props à `resumeSettled` près, prouve que le composant
+sait afficher l'alerte dans cet état — sans lui, « ne plus jamais alerter » passerait haut la main.

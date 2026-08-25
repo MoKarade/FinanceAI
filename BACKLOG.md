@@ -444,10 +444,6 @@
   moteur mensuel. Écart mesuré 8 364,31 $ au raccord historique↔présent du MÊME écran. Fix :
   intégrer la prime SCHL au principal de `runAmortization` (même `calculateSchlPremium`) + revisiter
   le clamp ≥ 0 (perte d'info underwater), puis re-baseliner les tests d'historique.
-- [ ] **`[ENG-PROPGROWTH-ZERO-INEXPRIMABLE]`** (S, MOYEN — panel #552) — `realEstateMonth.ts:347`
-  `(propertyGrowthRate || 3)` rend une croissance immobilière NULLE inexprimable (0 → 3 %/an).
-  #552 aligne `initPastPurchase` sur cette convention (parité) ; le vrai fix (accepter 0, défaut 3
-  seulement si absent) touche tous les scénarios existants → re-baseliner SCIEMMENT.
 - [ ] **`[ENG-PROPGROWTH-CONFIG-DEAD]`** (S — découverte `[FUZZ-ONETIME-FLOWS]` 2026-08-12,
   [Certain, mesuré au grep]) — `ProjectionConfig.propertyGrowthRate` (types.ts:219) n'est lu par
   AUCUN code de prod : le moteur ne lit que `goal.propertyGrowthRate` (realEstateMonth.ts:354,

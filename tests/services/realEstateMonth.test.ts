@@ -65,6 +65,55 @@ const makeProp = (over: Partial<PropertyStateMutable> = {}): PropertyStateMutabl
 const offset0 = () => 0;
 const noWelcomeTax = () => 0;
 
+/**
+ * [ENG-PROPGROWTH-ZERO-INEXPRIMABLE] Un taux de croissance immobilière de ZÉRO est une SAISIE
+ * légitime — « je ne veux pas parier sur l'appréciation » — et elle était inexprimable.
+ *
+ * ⚠️ MESURÉ : `(goal.propertyGrowthRate || 3)` transformait le 0 en 3 %/an, et le motif existait
+ * à CINQ endroits, dont l'éditeur lui-même (`PropertyConfigurator`) — taper 0 réaffichait 3.
+ * Deux sites voisins étaient déjà corrects (`?? 3` dans la reconstruction d'équité, un paramètre
+ * par défaut dans `services/realEstate.ts`) : c'est le patron appliqué à côté mais pas ici.
+ *
+ * ⚠️ Et NEUF tests de ce fichier déclarent `propertyGrowthRate: 0` — ils tournaient donc à 3 %
+ * depuis toujours. Un seul l'avait remarqué sans le nommer : son assertion était une FOURCHETTE
+ * « + ≤1 mois de croissance » sur une fixture qui dit 0. La fourchette absorbait le défaut.
+ */
+describe('[ENG-PROPGROWTH-ZERO-INEXPRIMABLE] un 0 explicite reste 0', () => {
+    it('croissance 0 : la valeur du bien ne bouge PAS d\'un mois à l\'autre', () => {
+        const state = makeState();
+        const goal = makeGoal({ isPrimaryResidence: true, propertyGrowthRate: 0, mortgageRate: 5 });
+        const prop = makeProp({ isBought: true, mortgage: 0, currentValue: 500_000, calculatedPmt: 0 });
+
+        processRealEstate(state, makeCtx({ m: 12 }), [goal], [prop], offset0, noWelcomeTax);
+
+        expect(prop.currentValue).toBe(500_000);
+    });
+
+    it('taux ABSENT : le défaut 3 %/an s\'applique toujours (le correctif ne l\'a pas tué)', () => {
+        // Anti-vacuité indispensable : remplacer `|| 3` par `?? 3` sans ce test laisserait passer
+        // un `fin(x) ?? 3` — toujours défini, donc défaut MORT et taux absent devenu 0 %.
+        const state = makeState();
+        const goal = makeGoal({ isPrimaryResidence: true, mortgageRate: 5 }); // pas de propertyGrowthRate
+        const prop = makeProp({ isBought: true, mortgage: 0, currentValue: 500_000, calculatedPmt: 0 });
+
+        processRealEstate(state, makeCtx({ m: 12 }), [goal], [prop], offset0, noWelcomeTax);
+
+        // Un douzième de 3 %/an, composé : 500 000 × 1,03^(1/12).
+        expect(prop.currentValue).toBeCloseTo(500_000 * Math.pow(1.03, 1 / 12), 6);
+        expect(prop.currentValue).toBeGreaterThan(500_000);
+    });
+
+    it('les deux cas sont bien DISTINCTS (sinon les deux tests ci-dessus seraient d\'accord par hasard)', () => {
+        const avec = makeProp({ isBought: true, mortgage: 0, currentValue: 500_000, calculatedPmt: 0 });
+        const sans = makeProp({ isBought: true, mortgage: 0, currentValue: 500_000, calculatedPmt: 0 });
+        processRealEstate(makeState(), makeCtx({ m: 12 }),
+            [makeGoal({ isPrimaryResidence: true, propertyGrowthRate: 0, mortgageRate: 5 })], [avec], offset0, noWelcomeTax);
+        processRealEstate(makeState(), makeCtx({ m: 12 }),
+            [makeGoal({ isPrimaryResidence: true, mortgageRate: 5 })], [sans], offset0, noWelcomeTax);
+        expect(sans.currentValue).not.toBe(avec.currentValue);
+    });
+});
+
 describe('realEstateMonth — amortissement (propriété détenue)', () => {
     it('sépare intérêt et capital : intérêt = solde × taux mensuel, capital = PMT − intérêt', () => {
         const state = makeState();
@@ -281,9 +330,15 @@ describe('realEstateMonth — downsizing à la retraite (PH4-FUT-B-4)', () => {
         processRealEstate(state, makeCtx({ m: 12, downsizeThisMonth: true }), [goal], [prop], offset0, noWelcomeTax);
 
         expect(state.liquid).toBeCloseTo(1000 + 160000, 0);   // équité libérée → liquide (cash, pas de croissance)
-        // Bien réduit à 60 % de l'équité (240k), + ≤1 mois de croissance immo appliquée ensuite par la boucle.
-        expect(prop.currentValue).toBeGreaterThan(240000);
-        expect(prop.currentValue).toBeLessThan(241000);
+        // Bien réduit à 60 % de l'équité : EXACTEMENT 240 000 $.
+        // ⚠️ [ENG-PROPGROWTH-ZERO-INEXPRIMABLE] Cette assertion était une FOURCHETTE
+        // (]240 000 ; 241 000[) « + ≤1 mois de croissance immo » — alors que la fixture déclare
+        // `propertyGrowthRate: 0`. Les deux se contredisaient, et c'est la fourchette qui disait
+        // vrai : `(goal.propertyGrowthRate || 3)` transformait le 0 en 3 %/an, donc ce test tournait
+        // à 3 % en croyant tourner à 0. La borne accommodait un mois de croissance que personne
+        // n'avait demandé. Le 0 étant désormais respecté, la valeur est exacte — et si la croissance
+        // revenait, cette égalité rougirait au lieu d'être absorbée par la fourchette.
+        expect(prop.currentValue).toBe(240000);
         expect(prop.mortgage).toBe(0);                        // payé cash
         expect(prop.calculatedPmt).toBe(0);                   // plus de paiement
         expect(state.accCapitalGainsYear).toBe(0);            // EXEMPTION résidence principale

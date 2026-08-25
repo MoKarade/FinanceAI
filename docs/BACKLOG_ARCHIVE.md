@@ -10,6 +10,31 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-25 — Une croissance immobilière de 0 % était inexprimable, y compris dans son propre éditeur
+
+- [x] **`[ENG-PROPGROWTH-ZERO-INEXPRIMABLE]`** — `(goal.propertyGrowthRate || 3)` transformait un 0
+  explicite en 3 %/an. **MESURÉ, et le ticket sous-estimait la portée dans un sens et la
+  surestimait dans l'autre.**
+  **Cinq sites**, pas un : le moteur (`realEstateMonth`), l'initialisation d'un achat passé
+  (`pastPurchaseInit`), deux écrans (`RealEstateWorkspace`, `MultiPropertyComparison`) — et
+  **`PropertyConfigurator`, l'éditeur lui-même** : taper 0 réaffichait 3. La valeur n'était pas
+  seulement ignorée par le calcul, elle était invisible à qui venait de la saisir.
+  ⚠️ **Deux sites voisins étaient DÉJÀ corrects** (`?? 3` dans la reconstruction d'équité, un
+  paramètre par défaut dans `services/realEstate.ts`, `num(v, 3)` dans `rentalMonth`) — le patron
+  juste existait à côté (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`).
+  ⚠️ **NEUF tests déclaraient `propertyGrowthRate: 0`** et tournaient donc à 3 % depuis toujours.
+  Un seul l'avait senti sans le nommer : son assertion était une FOURCHETTE « + ≤1 mois de
+  croissance » posée sur une fixture qui dit 0. La fourchette ABSORBAIT le défaut ; elle est
+  redevenue une égalité exacte.
+  ⚠️ **Le ticket annonçait « touche tous les scénarios existants → re-baseliner sciemment »** :
+  mesuré, **une seule assertion a bougé** sur 4 779 tests. Les huit autres fixtures à 0 n'assertent
+  rien de sensible à la croissance.
+  ⚠️ **Piège évité par la mesure, pas par la relecture** : `fin(goal.propertyGrowthRate) ?? 3` aurait
+  été un non-correctif silencieux — `fin` rend TOUJOURS un nombre, donc le `?? 3` ne se déclenche
+  jamais et un taux absent serait devenu 0 %. Le défaut se passe à `fin` lui-même
+  (`PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`).
+  3 tests, **2 perturbations rouges** (0 effacé · défaut tué). Livré 2026-08-25 · PR #731.
+
 ## 2026-08-25 — Un bouton n'est pas un filet : le centre fiscal écrivait le profil en direct
 
 - [x] **`[AI-TAXCENTER-APPLY-NOGATE]`** — la faille était l'**incohérence entre deux surfaces qui

@@ -28,7 +28,7 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
         const amort = goal.amortization || 25;
         const mort = p - dp;
         const renewR = (goal.renewalRateProjection || 5.0) / 100 / 12;
-        const growth = (goal.propertyGrowthRate || 3.0) / 100;
+        const growth = (goal.propertyGrowthRate ?? 3.0) / 100;
         const numPmt = amort * 12;
         let monthlyPmt = r > 0
             ? (r * mort * Math.pow(1 + r, numPmt)) / (Math.pow(1 + r, numPmt) - 1)

@@ -95,7 +95,10 @@ export function initPastPurchase(goal: RealEstateGoal, monthsSincePurchase: numb
     }
 
     // Convention MOTEUR (realEstateMonth.ts:347) : `(rate || 3)` — un 0 saisi devient 3 %/an.
-    const growthAnnual = (fin(goal.propertyGrowthRate) || 3) / 100;
+    // ⚠️ [ENG-PROPGROWTH-ZERO-INEXPRIMABLE] `fin(v, d)` rend TOUJOURS un nombre : `?? 3` n'y
+    // tomberait JAMAIS, et un taux absent deviendrait 0 % au lieu de 3 %. Le défaut se passe donc à
+    // `fin` lui-même, qui ne se déclenche que sur du NON FINI — et laisse passer un 0 explicite.
+    const growthAnnual = fin(goal.propertyGrowthRate, 3) / 100;
     let currentValue = price * Math.pow(1 + growthAnnual, fin(monthsSincePurchase) / 12);
     const maxValue = fin(goal.maxValue);
     if (maxValue > 0 && currentValue > maxValue) currentValue = maxValue;

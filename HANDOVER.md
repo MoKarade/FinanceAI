@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-25 (suite 165) — `[ENG-PROPGROWTH-ZERO-INEXPRIMABLE]` : un 0 qui n'existait nulle part
+> `(goal.propertyGrowthRate || 3)` transformait un 0 explicite en 3 %/an. **CINQ sites**, pas un —
+> moteur, achat passé, deux écrans, et **l'ÉDITEUR lui-même** : taper 0 réaffichait 3.
+> ⚠️ Deux voisins étaient DÉJÀ corrects (`?? 3`, paramètre par défaut, `num(v, 3)`).
+> ⚠️ **NEUF tests déclaraient `propertyGrowthRate: 0`** et tournaient à 3 % depuis toujours. Un seul
+> l'avait senti sans le nommer : une FOURCHETTE « + ≤1 mois de croissance » sur une fixture qui dit
+> 0 — elle absorbait le défaut. Redevenue une égalité exacte.
+> ⚠️ Le ticket annonçait « touche TOUS les scénarios → re-baseliner sciemment » : mesuré, **une
+> seule assertion a bougé** sur 4 779 tests.
+> ⚠️ **Piège évité par la MESURE** : `fin(goal.propertyGrowthRate) ?? 3` aurait été un non-correctif
+> silencieux (`fin` rend toujours un nombre → défaut MORT, taux absent devenu 0 %). Le défaut se
+> passe à `fin` lui-même. 3 tests, **2 perturbations rouges** (0 effacé · défaut tué).
+>
 > ## 🟢 Session 2026-08-25 (suite 164) — `[AI-TAXCENTER-APPLY-NOGATE]` : un bouton n'est pas un filet
 > La faille était l'**incohérence entre deux surfaces qui font la même chose** : `PayslipUploadCard`
 > avait le filet (diff → confirmation → état frais → backup → écriture), `TaxCenter.applyToProfile`

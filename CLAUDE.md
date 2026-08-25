@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 772 tests** Vitest
-(439 fichiers de test, mesuré le 2026-08-24). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 779 tests** Vitest
+(441 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -806,6 +806,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   qui fuit. Une fixture par branche (`FIXTURE-COMPLETE-CACHE-LE-REPLI`).
 - Une décision de **vie privée** écrite pour UNE sortie se repasse sur TOUTES (PDF, CSV, backup,
   prompt LLM, MCP, logs), et la garde vit au SERVICE, pas au clic (`DECISION-PRIVACY-UNE-SEULE-SORTIE`).
+  ⚠️ Corollaire mesuré le 2026-08-25 : une règle de vie privée **dupliquée avec soin et vérifiée par
+  rien** n'est pas une garantie. Désarmer « mode discret pendant l'attente = écriture refusée »
+  laissait **145 tests verts** sur les deux surfaces qui la portaient. Et quand deux surfaces font la
+  même chose et qu'une seule a le filet (diff + backup + garde), **c'est l'incohérence qui est le
+  bug** : un bouton demande un consentement, il ne donne ni information ni issue
+  (`UN-BOUTON-N-EST-PAS-UN-FILET`). Retirer aussi la PORTE (la prop d'écriture directe), pas
+  seulement cesser de l'emprunter.
 - Masquer une donnée peut **retirer un discriminant** et casser les noms accessibles : le remplacer
   par un discriminant non sensible (`MASQUAGE-RETIRE-UN-DISCRIMINANT`).
 - Une garde qui manque **là où le voisin immédiat en a une** est un signal bien plus fort qu'une

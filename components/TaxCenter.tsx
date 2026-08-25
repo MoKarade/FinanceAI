@@ -1,5 +1,8 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { showToast } from './ui/Toast';
+import { importWithRetry } from '../utils/lazyWithRetry';
+import { useWriteConfirmation } from '../hooks/useWriteConfirmation';
+import { AiChatConfirmModal } from './aiChat/AiChatConfirmModal';
 import { Card } from './ui/Card';
 import { PrivateSliderValue } from './ui/PrivateSliderValue';
 import { maskedSliderAria } from '../utils/privacyAria';
@@ -19,7 +22,6 @@ import { FHSA_ANNUAL_LIMIT_PER_USER, RRSP_ANNUAL_LIMITS, RRSP_ANNUAL_LIMIT_FALLB
 // [Finding financial-integrity #549] Borne du slider REER = plafond de l'ANNÉE COURANTE
 // (source unique utils/tax) — un `max="30000"` en dur dérivait en silence à chaque indexation.
 const RRSP_SLIDER_MAX = RRSP_ANNUAL_LIMITS[new Date().getFullYear()] ?? RRSP_ANNUAL_LIMIT_FALLBACK;
-import { annualSalaryToMonthly } from '../utils/salary';
 import { computeMonthlyActualAverages } from '../utils/budgetSync';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { formatCAD, formatSigned } from '../utils/format';
@@ -27,7 +29,12 @@ import { useFinanceStore } from '../store/useFinanceStore';
 
 interface TaxCenterProps {
     config: BudgetConfig;
-    setConfig?: (c: BudgetConfig) => void;
+    /**
+     * ⚠️ [AI-TAXCENTER-APPLY-NOGATE] RETIRÉ : plus aucun code de cet écran n'écrit la config en
+     * direct. L'application d'un talon de paie passe par `executeWriteTool` (diff → confirmation →
+     * backup → écriture), qui lit et écrit l'état FRAIS lui-même. Laisser la prop en place ferait
+     * croire qu'il existe encore un chemin d'écriture direct — et inviterait à le reprendre.
+     */
     assets?: Asset[];
     apiKey?: string;
 }
@@ -37,7 +44,9 @@ const DRIVE_FOLDER_URL = "https://drive.google.com";
 // Phase 4 A4: les modèles Gemini sont remplacés par Claude Sonnet 4.6
 // (cf services/claude.ts analyzePayslip).
 
-export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets = [], apiKey }) => {
+export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKey }) => {
+    // [AI-TAXCENTER-APPLY-NOGATE] Plomberie PARTAGÉE de la confirmation (diff → clic → apply).
+    const { pendingWrite, requestConfirmation, resolvePendingWrite } = useWriteConfirmation();
 
 
 
@@ -60,22 +69,76 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
 
     const [scannedPay, setScannedPay] = useState<{ gross: number, net: number, tax: number, rrsp: number, freq: string, sourceLabel?: string } | null>(null);
 
-    const applyToProfile = () => {
-        if (!scannedPay || !setConfig) return;
-        const newConfig = { ...config };
-        newConfig.users[0] = {
-            ...newConfig.users[0],
-            // scannedPay.gross/net sont ANNUELS → on STOCKE en MENSUEL (convention canonique).
-            // Avant : le brut annuel était stocké tel quel → moteur ré-annualisait → revenu ~12× trop haut.
-            grossSalary: annualSalaryToMonthly(scannedPay.gross),
-            netSalary: annualSalaryToMonthly(scannedPay.net),
-            // [INCOME-PROVENANCE] La fiche de paie devient LA source du revenu (demande Marc :
-            // « l'onglet impôt dépend seulement des fichiers de paie que je lui mets »).
-            salarySource: { kind: 'payslip', label: scannedPay.sourceLabel, appliedAt: Date.now() },
+    /**
+     * [AI-TAXCENTER-APPLY-NOGATE] Écriture par le chemin STANDARD du dépôt : diff pur → modal de
+     * confirmation → recalcul sur état FRAIS → backup → écriture. Exactement ce qu'a reçu
+     * `PayslipUploadCard` ; cette surface-ci écrivait encore en direct.
+     *
+     * ⚠️ Ce que le geste de confirmation ne remplaçait PAS : il y avait bien un bouton à cliquer,
+     * mais aucun DIFF (on ne voyait pas ce qui allait changer), aucun BACKUP (rien à quoi revenir),
+     * et aucune garde de vraisemblance. Un bouton n'est pas un filet.
+     *
+     * ⚠️ Et le `setConfig` direct portait une MUTATION : `{ ...config }` est une copie de SURFACE,
+     * donc `newConfig.users` restait le MÊME tableau — `newConfig.users[0] = …` écrasait l'état
+     * précédent en place. L'objet auquel un backup ou un `undo` se serait raccroché était déjà
+     * modifié. Le bug disparaît avec le chemin standard, qui ne touche jamais l'état à la main.
+     */
+    const applyToProfile = async () => {
+        if (!scannedPay) return;
+        const [{ executeWriteTool }, { applyPayslipSpec }] = await importWithRetry(
+            () => Promise.all([
+                import('../services/aiTools/writeExecutor'),
+                import('../mcp/tools/applyPayslip.spec'),
+            ]),
+            'taxCenterPayslipWrite',
+        );
+        // Spec du dépôt, ré-estampillée pour CETTE surface : provenance 'payslip' (dépôt in-app)
+        // au lieu du défaut 'mcp'. Le spec attend de l'ANNUEL et stocke en MENSUEL — la conversion
+        // vit à UN seul endroit, plus de `annualSalaryToMonthly` recopié ici.
+        const inAppSpec = {
+            ...applyPayslipSpec,
+            toDocument: (a: Parameters<typeof applyPayslipSpec.toDocument>[0]) => ({
+                ...applyPayslipSpec.toDocument(a),
+                sourceKind: 'payslip' as const,
+            }),
         };
-        setConfig(newConfig);
-        showToast("Configuration mise à jour avec succès !", "success");
-        setScannedPay(null);
+        const toolResult = await executeWriteTool(
+            inAppSpec,
+            {
+                userIndex: 0,
+                grossAnnual: scannedPay.gross,
+                netAnnual: scannedPay.net,
+                // [INCOME-PROVENANCE] étiquette de la source du revenu (même troncature que le
+                // chemin MCP et que `PayslipUploadCard`).
+                // `sourceLabel` est optionnel sur le résultat de l'analyse : sans étiquette, on
+                // n'en INVENTE pas — le spec sait vivre sans (le champ reste absent côté document).
+                ...(scannedPay.sourceLabel ? { employer: scannedPay.sourceLabel.slice(0, 120) } : {}),
+            },
+            requestConfirmation,
+        );
+
+        // Contrat de `executeWriteTool` : un bloc texte JSON. Illisible → on n'affirme RIEN
+        // (jamais un « mis à jour » fabriqué).
+        let applied = false;
+        let refused = false;
+        try {
+            const payload = JSON.parse(toolResult.content[0]?.text ?? '{}') as {
+                applied?: boolean; refusedByUser?: boolean; backupFailed?: boolean;
+            };
+            applied = payload.applied === true;
+            refused = payload.refusedByUser === true || payload.backupFailed === true;
+        } catch (parseErr) {
+            logError({ source: 'ai', severity: 'warning', message: 'Centre fiscal : résultat d\'écriture illisible', error: parseErr });
+        }
+
+        if (applied) {
+            showToast('Configuration mise à jour avec succès !', 'success');
+            setScannedPay(null);
+        } else if (refused) {
+            showToast('Modification annulée — ton profil est inchangé.', 'info');
+        } else {
+            showToast('Rien n\'a été modifié.', 'info');
+        }
     };
 
     // Phase 4 A4: analyse vision déportée dans services/claude.ts
@@ -636,6 +699,12 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, setConfig, assets 
                 </div>
             </div>
 
+            {/* [AI-TAXCENTER-APPLY-NOGATE] Point de contrôle humain : MÊME modal que le chat in-app
+                et que le dépôt de talon (diff avant → après). Toute fermeture = refus ; l'écriture
+                et sa sauvegarde ne partent qu'après « Appliquer ». */}
+            {pendingWrite && (
+                <AiChatConfirmModal preview={pendingWrite} onDecision={resolvePendingWrite} />
+            )}
         </div>
     );
 };

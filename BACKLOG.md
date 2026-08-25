@@ -314,11 +314,16 @@
 
 ---
 
-- [ ] **`[ENG-DIVORCE-SOLO-HOUSEHOLD-ENFANTS]`** (S, **ÉLEVÉ — MESURÉ**) — le bloc enfants passe
-  `grossAnnaBaseAnnual` et `householdGross` SANS condition `soloHousehold`, alors que 5 autres sites
-  du moteur le font. Mesuré : un divorcé touche **12 mois de congé parental d'un ex-conjoint parti
-  (~36 000 $)**, et le clawback des allocations se calcule sur 183 600 $ au lieu de ~98 400 $. C'est
-  la porte de sortie du bug « RQAP fantôme parent seul », déjà fermée pour le célibataire.
+- [ ] **`[ENG-DIVORCE-SOLO-HOUSEHOLD-ENFANTS]`** (S — ⚠️ **À MOITIÉ LIVRÉ, ne pas re-faire**) —
+  ⚠️ Ticket RE-MESURÉ le 2026-08-25 : le volet `grossAnnaBaseAnnual` est **FERMÉ** depuis
+  `[REEE-CONGE-SANS-GARDE-SOLO]` (PR #721) — `services/projection.ts` porte
+  `grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual` au bloc enfants, plus la porte
+  `!isRetired`. Les ~36 000 $ de congé parental fantôme ne sont plus versés.
+  **RESTE** : `householdGross` est toujours la somme des DEUX salaires — délibérément, avec sa raison
+  écrite dans le code. Ce n'est PAS un oubli : baisser cette assiette ferait MONTER l'allocation d'un
+  parent seul (mesuré : 166 $ → 250 $/mois au mois 36), ce qui est une **règle à trancher**, pas un
+  correctif. Suivi en `[ENG-DIVORCE-ALLOC-ASSIETTE]`, en attente de Marc.
+  ⚠️ Laisser ce ticket dans son état d'origine aurait fait re-livrer #721 (classe `PM-STALE-BACKLOG`).
 - [ ] **`[A11Y-RESERVE-CHIP-PROMINENCE]`** (XS) — le TEXTE des pastilles de réserve est à ≈ 9–10:1
   (AA et AAA : OK). C'est le CHIP qui ne ressort pas : fond à ≈ 1,15:1, bordure à ≈ 1,8:1, loin des
   3:1 non-text. L'information reste lisible ; c'est l'effet « saute aux yeux » qui est affaibli.
@@ -634,11 +639,6 @@
   contrôle que l'utilisateur doit ouvrir lui-même. L'option (a) du ticket d'origine — le tour force
   l'ouverture du groupe de l'étape active — la rendrait ATTEIGNABLE, au prix d'un tour qui défait un
   repli VOLONTAIRE et d'un couplage entre les étapes et l'état de la nav. Décision d'UX : à trancher.
-- [ ] **`[AI-TAXCENTER-APPLY-NOGATE]`** (S, 🔴 découvert en corrigeant `[AI-VISION-PAYSLIP-NOGATE]`) —
-  la MÊME faille subsiste sur une 2e surface : `TaxCenter.applyToProfile` (l. ~59-75) écrit le profil
-  via `setConfig` direct, sans diff ni backup ni garde de vraisemblance. Le bouton « Appliquer au
-  Profil Principal » donne un geste de confirmation, mais pas le filet. Aligner sur `writeExecutor`
-  comme l'a été `PayslipUploadCard`.
 - [ ] **`[IA-NAV-LABELS]`** (S) — sidebar w-16 par défaut, libellés opacity-0, icônes cryptiques →
   libellés visibles par défaut (ou rail plus large).
 - [ ] **`[REFONTE-NAV]`** (L, ⏳, GO Marc 2026-08-12) — chantier « tout tourne autour de la courbe

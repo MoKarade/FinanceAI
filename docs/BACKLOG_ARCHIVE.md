@@ -10,6 +10,33 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-25 — Un bouton n'est pas un filet : le centre fiscal écrivait le profil en direct
+
+- [x] **`[AI-TAXCENTER-APPLY-NOGATE]`** — la faille était l'**incohérence entre deux surfaces qui
+  font la même chose** : `PayslipUploadCard` avait reçu le filet (diff → confirmation → recalcul sur
+  état frais → backup → écriture), `TaxCenter.applyToProfile` écrivait encore le profil salarial en
+  direct via `setConfig`. Le bouton « Appliquer au Profil Principal » donnait un geste de
+  confirmation, mais **aucun diff** (on ne voyait pas ce qui changeait), **aucun backup** (rien où
+  revenir), **aucune garde de vraisemblance** — sur le profil qui alimente TOUTE l'app.
+  ⚠️ **Un défaut de plus, trouvé en lisant** : `const newConfig = { ...config }` est une copie de
+  SURFACE, donc `newConfig.users` restait le MÊME tableau et `newConfig.users[0] = …` écrasait
+  l'état précédent **en place**. L'objet auquel un backup ou un `undo` se serait raccroché était
+  déjà modifié. Le bug disparaît avec le chemin standard, qui ne touche jamais l'état à la main.
+  ⚠️ **La prop `setConfig` de `TaxCenter` est RETIRÉE**, pas laissée inerte : la garder ferait croire
+  qu'il existe encore un chemin d'écriture direct, et inviterait à le reprendre.
+  **Extraction préalable, exigée par le dépôt** : la plomberie de confirmation existait DEUX fois, à
+  l'octet près (`useAiChat` + `PayslipUploadCard`). Vérifié avant de bouger — les deux copies
+  n'avaient PAS divergé, donc l'extraction est mécanique. TaxCenter aurait été la troisième
+  (`DEUX-COPIES-D-UN-PATRON-ONT-DEJA-DIVERGE-LA-TROISIEME-SE-REFUSE`) → `hooks/useWriteConfirmation.ts`,
+  qui porte aussi la règle de vie privée (le modal AFFICHE des montants → mode discret pendant
+  l'attente = refus), là où toute nouvelle surface en hérite.
+  ⚠️ **Une perturbation n'a RIEN fait rougir** : désarmer complètement cette règle de vie privée
+  laissait les **145 tests** des deux surfaces au vert. Une garantie que rien ne vérifie n'est pas
+  une garantie → 4 tests neufs sur le contrat du hook.
+  ⚠️ **Et ma propre garde avait un trou, trouvé par perturbation** : `setConfig?.(` — l'appel
+  OPTIONNEL, la forme la plus probable ici — échappait au motif `setConfig\s*\(`. Resserré.
+  7 tests, **4 perturbations rouges**. Livré 2026-08-25 · PR #730.
+
 ## 2026-08-25 — Les RSU ne s'arrêtaient jamais : +1 380 630 $ de patrimoine fantôme
 
 - [x] **`[PH3-c-bis]`** — le ticket rangeait deux choses ensemble ; mesurées, elles n'ont pas du tout

@@ -15,6 +15,7 @@
 //    garde de réentrance par REF (l'état React `isLoading` est une closure périmable).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useWriteConfirmation } from './useWriteConfirmation';
 import type Anthropic from '@anthropic-ai/sdk';
 import { useFinanceStore } from '../store/useFinanceStore';
 import type { WritePreview, WriteDecision } from '../services/aiTools/writeExecutor';
@@ -95,32 +96,14 @@ export function useAiChat(apiKey: string): UseAiChat {
     const inFlightRef = useRef(false);
     // [AITOOLS-D] Écriture en attente de confirmation : le diff pour le modal + le resolver de la
     // promesse sur laquelle writeExecutor attend le clic.
-    const [pendingWrite, setPendingWrite] = useState<WritePreview | null>(null);
-    const writeResolverRef = useRef<((d: WriteDecision) => void) | null>(null);
-
-    const resolvePendingWrite = useCallback((decision: WriteDecision) => {
-        const resolve = writeResolverRef.current;
-        writeResolverRef.current = null;
-        setPendingWrite(null);
-        resolve?.(decision);
-    }, []);
-
-    const requestConfirmation = useCallback((preview: WritePreview): Promise<WriteDecision> => {
-        return new Promise((resolve) => {
-            writeResolverRef.current = resolve;
-            setPendingWrite(preview);
-        });
-    }, []);
+    // [AI-TAXCENTER-APPLY-NOGATE] Plomberie PARTAGÉE — voir `hooks/useWriteConfirmation.ts`.
+    const { pendingWrite, requestConfirmation, resolvePendingWrite, hasPendingWrite, refuserAuDemontage } = useWriteConfirmation();
 
     // [Finding panel sécurité 2026-07-21 — CRITIQUE, mesuré] Le modal de confirmation affiche des
     // MONTANTS. Si le mode discret s'active PENDANT qu'une confirmation est en attente (ex. quelqu'un
     // entre dans la pièce), il faut que la valeur SORTE de l'écran (Loi 25, ADR-5 « masquer = ne pas
     // rendre »). On REFUSE l'écriture en attente (cohérent avec « fermer = refus » : Échap/backdrop/✕)
     // → pendingWrite repasse à null → le modal disparaît. L'utilisateur redemande hors mode discret.
-    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
-    useEffect(() => {
-        if (isPrivacyMode && writeResolverRef.current) resolvePendingWrite('cancel');
-    }, [isPrivacyMode, pendingWrite, resolvePendingWrite]);
 
     const appendMessage = useCallback((msg: AiMessage) => {
         const { aiConversation, setAppState } = useFinanceStore.getState();
@@ -409,9 +392,9 @@ export function useAiChat(apiKey: string): UseAiChat {
     const cancel = useCallback(() => {
         // Une écriture en attente de confirmation est REFUSÉE par l'annulation (le modal se ferme,
         // writeExecutor rend « refusé ») — puis le tour API en vol est interrompu.
-        if (writeResolverRef.current) resolvePendingWrite('cancel');
+        if (hasPendingWrite()) resolvePendingWrite('cancel');
         abortRef.current?.abort(new DOMException('User cancelled', 'AbortError'));
-    }, [resolvePendingWrite]);
+    }, [resolvePendingWrite, hasPendingWrite]);
 
     // [Findings panel — ceinture de démontage] CEINTURE au démontage du PROVIDER (`AiChatProvider`,
     // seul appelant de ce hook depuis AITOOLS-E). ⚠️ Depuis le Lot E, le provider vit au niveau App et
@@ -423,17 +406,15 @@ export function useAiChat(apiKey: string): UseAiChat {
     // `setPendingWrite` ferait un setState sur composant démonté) ; les refs sont stables → deps [].
     useEffect(() => {
         return () => {
-            if (writeResolverRef.current) {
+            if (refuserAuDemontage()) {
                 logError({
                     source: 'ai', severity: 'warning',
                     message: 'Chat in-app : écriture en attente de confirmation abandonnée au démontage du provider — refusée automatiquement.',
                 });
-                writeResolverRef.current('cancel');
-                writeResolverRef.current = null;
             }
             abortRef.current?.abort(new DOMException('Unmounted', 'AbortError'));
         };
-    }, []);
+    }, [refuserAuDemontage]);
 
     const clearConversation = useCallback(() => {
         // Ceinture : ne JAMAIS vider pendant un envoi (la réponse en cours — déjà payée — serait

@@ -6723,3 +6723,46 @@ type est référencé), et pourtant **c'est cette phrase qui maintenait en vie u
 justification de conservation se re-prouve comme n'importe quel constat écrit
 (`DOC-STALE-IMPOSSIBILITY`) — « X est gardé parce que Y le consomme » exige de vérifier que Y
 lui-même sert à quelque chose.
+
+### `UN-BOUTON-N-EST-PAS-UN-FILET` — 2026-08-25
+
+`[AI-TAXCENTER-APPLY-NOGATE]` : la même faille que `[AI-VISION-PAYSLIP-NOGATE]`, sur une seconde
+surface. `PayslipUploadCard` avait reçu le chemin standard — diff pur → modal de confirmation →
+recalcul sur état FRAIS → backup → écriture — et `TaxCenter.applyToProfile` écrivait encore le
+profil salarial en direct.
+
+**Ce que le geste de confirmation ne remplaçait pas.** Il y avait bien un bouton « Appliquer au
+Profil Principal », donc l'écran *avait l'air* protégé. Mais un bouton demande un consentement, il ne
+donne aucune information et ne laisse aucune issue : pas de **diff** (on ne voyait pas ce qui allait
+changer), pas de **backup** (rien où revenir), pas de garde de vraisemblance — sur le profil qui
+alimente toute l'app. Quand deux surfaces font la même chose et qu'une seule a le filet, **c'est
+l'incohérence qui est le bug** : elle rend la protection facultative sans que personne l'ait décidé.
+
+**Un défaut de plus, trouvé en lisant le code qu'on remplace.** `const newConfig = { ...config }` est
+une copie de SURFACE : `newConfig.users` reste le MÊME tableau, donc `newConfig.users[0] = …` écrase
+l'état précédent **en place**. L'objet auquel un backup ou un `undo` se serait raccroché était déjà
+modifié — la protection qu'on s'apprêtait à ajouter aurait sauvegardé une valeur déjà perdue.
+
+**Retirer la porte, pas seulement cesser de l'emprunter.** La prop `setConfig` de `TaxCenter` est
+supprimée. La laisser inerte ferait croire qu'un chemin d'écriture direct existe encore, et
+inviterait la prochaine session à le reprendre — c'est le pendant de
+`ENTREE-D-INVENTAIRE-FANTOME` côté API de composant.
+
+**L'extraction vient AVANT la troisième copie.** La plomberie de confirmation (état du diff, ref du
+résolveur, `requestConfirmation`, `resolvePendingWrite`, refus en mode discret) existait deux fois, à
+l'octet près. Vérifié avant de bouger — les deux copies n'avaient pas divergé, donc l'extraction est
+mécanique et sans arbitrage. La règle de VIE PRIVÉE part avec elle : le modal affiche des montants,
+donc activer le mode discret pendant l'attente refuse l'écriture. Laissée chez chaque appelant, cette
+règle serait à réimplémenter à chaque surface — et une décision de vie privée écrite pour UNE sortie
+se repasse sur TOUTES.
+
+⚠️ **Une perturbation n'a rien fait rougir, et c'était le vrai résultat du lot.** Désarmer
+complètement cette règle de vie privée laissait les **145 tests** des deux surfaces au vert. Elle
+était commentée avec l'incident qui l'avait motivée, dupliquée avec soin… et vérifiée par rien. Une
+garantie que rien ne teste n'est pas une garantie, c'est une intention.
+
+⚠️ **Et ma propre garde avait le même genre de trou.** Le scan « aucune écriture directe » cherchait
+`setConfig\s*\(` — la perturbation qui réintroduit l'écriture sous sa forme la plus probable ici,
+l'appel OPTIONNEL `setConfig?.(`, passait au vert. Un motif d'ABSENCE doit couvrir les SYNTAXES
+d'appel réellement possibles, pas la seule qu'on avait sous les yeux en l'écrivant ; et c'est la
+perturbation, jamais la relecture, qui le dit.

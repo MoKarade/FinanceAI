@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-25 — Les RSU ne s'arrêtaient jamais : +1 380 630 $ de patrimoine fantôme
+
+- [x] **`[PH3-c-bis]`** — le ticket rangeait deux choses ensemble ; mesurées, elles n'ont pas du tout
+  la même gravité (`UN-TICKET-QUI-GROUPE-PAR-LA-SYNTAXE-GROUPE-DES-ENJEUX-INCOMPARABLES`).
+  **1. `rsuYearsRemaining` — un chiffre FAUX, pas une fonctionnalité manquante.** Le moteur lit ce
+  champ depuis toujours (`activeIncome.ts` : `(u.rsuYearsRemaining ?? 99) > yearsElapsed`) et **aucun
+  champ ne l'écrivait** : le repli à 99 ans faisait couler les RSU sur tout l'horizon, sans jamais
+  expirer. **MESURÉ** sur une projection de 40 ans à 24 000 $/an de RSU : **7 273 468 $** de
+  patrimoine final sans durée contre **5 892 838 $** avec un vesting de 4 ans — **1 380 630 $
+  (+23,4 %) de richesse fantôme**, et encore 823 937 $ d'écart à 10 ans de vesting. Son JUMEAU
+  `rsuVestingPerYear` avait son champ depuis toujours, deux lignes plus haut
+  (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`). Champ ajouté à côté de lui.
+  ⚠️ Vider le champ rend `undefined`, jamais `0` : « pas renseigné » et « zéro an » ne sont pas la
+  même chose — un `0` persisté couperait les RSU immédiatement.
+  **2. `futureProvince` / `futureProvinceMoveYear` — retirés.** ⚠️ Le ticket nommait
+  `futureMoveYear`, qui n'existe pas : le champ s'appelle `futureProvinceMoveYear`. Mesuré : **zéro
+  producteur ET zéro consommateur**, et le type `CanadianProvince` n'existait que pour typer le
+  premier. Un commentaire de `types.ts` AFFIRMAIT pourtant « CanadianProvince GARDÉ : consommé par
+  ProjectionConfig.futureProvince » — une justification qui maintenait en vie du code que rien
+  n'appelle. Retrait sûr : champs optionnels, aucune validation stricte au store.
+  3 tests, **2 perturbations rouges** (champ présent mais muet · `0` persisté au lieu d'`undefined`).
+  Livré 2026-08-25 · PR #729.
+
 ## 2026-08-25 — Neuf styles d'infobulle, dont deux blanches dans une app sombre
 
 - [x] **`[DETTE-CHART-THEME-DUP]`** — le ticket disait « dédupliquer les styles inline ».

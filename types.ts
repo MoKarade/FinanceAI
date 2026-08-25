@@ -126,9 +126,6 @@ export interface DocumentMeta {
 
 // PH3-c (2026-06-11) — types compagnons du « profil détaillé » W5.1 purgés avec leurs champs User
 // (zéro consommateur) : HealthRating, Gender, EmploymentType, PensionPlan, MaritalStatus.
-// CanadianProvince GARDÉ : consommé par ProjectionConfig.futureProvince (W2.7 geographic arbitrage).
-export type CanadianProvince =
-  | 'QC' | 'ON' | 'AB' | 'BC' | 'MB' | 'SK' | 'NS' | 'NB' | 'NL' | 'PE' | 'YT' | 'NT' | 'NU';
 // Union partagée pour les comptes enregistrés canadiens (élimine 3 unions divergentes
 // dans Asset, InvestmentAccount, assetLocation).
 export type RegisteredAccountType = 'CELI' | 'CELIAPP' | 'REER' | 'NON-ENREG' | 'CRYPTO' | 'REEE' | 'MARGE' | 'AUTRE';
@@ -340,8 +337,6 @@ export interface ProjectionConfig {
   severanceCapWeeks?: number;         // plafond
 
   // W2.7 — Geographic arbitrage
-  futureProvince?: CanadianProvince;
-  futureProvinceMoveYear?: number;
 
   // W4.3 — Sensitivity analysis
   enableSensitivityAnalysis?: boolean;

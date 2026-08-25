@@ -20,6 +20,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   documentation fiscale **comme une hypothèse**, avec l'écart mesuré face à l'indexation réellement
   observée. Ce n'est pas un chiffre officiel, et ça ne doit pas se lire comme tel.
 
+## [unreleased] — 2026-08-25 (tes RSU s'arrêtent enfin de tomber)
+
+- Si tu avais renseigné un montant de **RSU par an**, la projection te les versait **jusqu'à la fin
+  de l'horizon** — il n'existait aucun endroit pour dire combien d'années de vesting il te reste.
+  Sur 40 ans à 24 000 $/an de RSU, ça gonflait le patrimoine final de **1 380 630 $ (+23,4 %)** par
+  rapport à un vesting réaliste de 4 ans.
+- Un champ **« RSU ans »** est maintenant à côté du montant, dans Profil → Détaillé. Le laisser vide
+  garde le comportement actuel ; le remplir fait expirer les RSU comme dans la vraie vie.
+
 ## [unreleased] — 2026-08-25 (les infobulles des graphiques se ressemblent enfin)
 
 - Les bulles d'information qui apparaissent au survol des graphiques avaient **neuf apparences

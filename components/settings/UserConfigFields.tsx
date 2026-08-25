@@ -163,7 +163,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                 <div className="space-y-2">
                                     {/* PH3-c (+ industry purgé 2026-06-19) — champs profil détaillé morts retirés (aucun consommateur). */}
                                     <div className="text-tiny text-ink-400 uppercase tracking-widest mt-1">Rémunération variable</div>
-                                    <div className="grid grid-cols-3 gap-1">
+                                    <div className="grid grid-cols-4 gap-1">
                                         {/* Bonus en POURCENTAGE : laissé en clair à dessein. Le contrat du mode discret
                                             porte sur les MONTANTS ($) — et le brut auquel ce % s'applique est masqué,
                                             donc le % seul ne reconstitue aucune somme. RSU et revenus secondaires,
@@ -173,6 +173,17 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                             className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                                         <PrivateNumberInput aria-label="RSU vesting annuel" type="number" placeholder="RSU $/an" value={user.rsuVestingPerYear ?? ''}
                                             onChange={e => patch(idx, { rsuVestingPerYear: Number(e.target.value) || undefined })}
+                                            className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
+                                        {/* [PH3-c-bis] Durée du vesting RSU — le moteur la LIT depuis toujours
+                                            (`activeIncome.ts` : `(rsuYearsRemaining ?? 99) > yearsElapsed`) mais AUCUN
+                                            champ ne l'écrivait : le repli à 99 ans faisait couler les RSU sur tout
+                                            l'horizon. MESURÉ sur une projection de 40 ans à 24 000 $/an de RSU :
+                                            7 273 468 $ de patrimoine final sans durée, contre 5 892 838 $ avec un
+                                            vesting de 4 ans — **1 380 630 $ (+23,4 %) de richesse fantôme**.
+                                            Pas un % : un NOMBRE D'ANNÉES, donc pas de masquage (le mode discret porte
+                                            sur les montants, et son voisin `rsuVestingPerYear` est déjà masqué). */}
+                                        <input aria-label="Années de vesting RSU restantes" type="number" min={0} placeholder="RSU ans" value={user.rsuYearsRemaining ?? ''}
+                                            onChange={e => patch(idx, { rsuYearsRemaining: Number(e.target.value) || undefined })}
                                             className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                                         <PrivateNumberInput aria-label="Revenus secondaires annuels" type="number" placeholder="Side income $/an" value={user.sideIncomeAnnual ?? ''}
                                             onChange={e => patch(idx, { sideIncomeAnnual: Number(e.target.value) || undefined })}

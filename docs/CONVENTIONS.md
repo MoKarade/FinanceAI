@@ -6688,3 +6688,38 @@ lecteur** que les offenders. Un scan qui ne trouve rien parce qu'il ne lit rien 
 deviennent sombres. Ce n'est pas une préférence — elles ne surplombaient aucune surface claire,
 elles étaient simplement les seules à ne pas suivre le thème, et aussi hors palette que les douze
 autres. Une décision d'apparence prise en passant se DÉCLARE, même quand elle paraît évidente.
+
+### `UN-CHAMP-LU-PAR-LE-MOTEUR-ET-JAMAIS-SAISI-EST-UN-CHIFFRE-FAUX` — 2026-08-25
+
+`[PH3-c-bis]` était rangé « S, reste » — un ménage de champs orphelins. Mesurés, les deux volets
+n'ont pas du tout la même gravité, et le ticket les groupait par leur SYMPTÔME (« un champ que
+personne ne touche ») plutôt que par leur effet.
+
+**Le volet cher.** `rsuYearsRemaining` n'est pas orphelin : le moteur le lit depuis toujours,
+`activeIncome.ts` faisant `(u.rsuYearsRemaining ?? 99) > yearsElapsed`. Ce qui manquait, c'est le
+PRODUCTEUR — aucun champ de l'interface ne l'écrivait. Le repli à 99 ans faisait donc couler les RSU
+sur tout l'horizon de projection, sans jamais expirer. **Mesuré** sur 40 ans à 24 000 $/an :
+**7 273 468 $** de patrimoine final sans durée contre **5 892 838 $** avec un vesting de 4 ans —
+**1 380 630 $, +23,4 %** — et encore 823 937 $ d'écart avec 10 ans. Son jumeau `rsuVestingPerYear`
+avait son champ depuis toujours, **deux lignes plus haut** dans le même bloc
+(`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`).
+
+La règle : **un champ que le moteur CONSULTE et que l'UI ne demande jamais n'est pas une
+fonctionnalité manquante, c'est un chiffre faux.** La distinction se fait sur le repli : quand
+l'absence du champ mène à une valeur par défaut qui CHANGE un montant, l'utilisateur reçoit un
+résultat précis et faux, sans rien pour le suspecter. Un défaut neutre serait une lacune ; un défaut
+de 99 ans est une affirmation.
+
+Corollaire de saisie : **vider le champ doit rendre `undefined`, jamais `0`.** « Pas renseigné » et
+« zéro an » sont deux réponses différentes, et persister `0` couperait les RSU immédiatement — un
+second chiffre faux, dans l'autre sens. Le test le verrouille explicitement.
+
+**Le volet ménage.** `futureProvince` / `futureProvinceMoveYear` : zéro producteur ET zéro
+consommateur, et le type `CanadianProvince` n'existait que pour typer le premier. Deux détails à
+retenir. D'abord, le ticket nommait `futureMoveYear`, un champ **qui n'existe pas** — vérifier le nom
+avant de conclure quoi que ce soit sur un champ. Ensuite, `types.ts` portait un commentaire affirmant
+« CanadianProvince GARDÉ : consommé par ProjectionConfig.futureProvince » : techniquement vrai (le
+type est référencé), et pourtant **c'est cette phrase qui maintenait en vie un triangle mort**. Une
+justification de conservation se re-prouve comme n'importe quel constat écrit
+(`DOC-STALE-IMPOSSIBILITY`) — « X est gardé parce que Y le consomme » exige de vérifier que Y
+lui-même sert à quelque chose.

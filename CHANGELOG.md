@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-25 (après un divorce, la mensualité de la maison est partagée elle aussi)
+
+- Dans une projection avec divorce, la maison et son hypothèque étaient bien partagées — mais **pas
+  le versement mensuel**. Le divorcé continuait donc de payer la mensualité entière sur un prêt
+  réduit de moitié : **1 169 $ par mois qu'il ne devait plus**, pendant les **48 mois** qui séparent
+  le divorce du renouvellement hypothécaire suivant (c'est lui qui finissait par recalculer le
+  versement). Soit **56 121 $** versés en trop sur la période.
+- Le versement suit maintenant le partage, exactement comme le fait déjà un immeuble locatif.
+- ⚠️ **Conséquence à connaître** : ton patrimoine projeté à 30 ans peut BAISSER après cette
+  correction (de l'ordre de −67 000 $ à 6 % de rendement). Ce n'est pas une régression : payer trop
+  vite une hypothèque à 5 % « enrichissait » le modèle tant que le rendement après impôt restait
+  sous ~9 %. L'app cessait simplement de te faire rembourser une dette que tu n'avais plus.
 ## [unreleased] — 2026-08-25 (deux onglets ouverts ne se battent plus sur ta synchro bancaire)
 
 - La synchro bancaire automatique se déclenche à l'ouverture de l'app, au plus une fois par heure.

@@ -1632,15 +1632,15 @@
 
 #### HIGH — Bloque la fiabilité des chiffres
 
-- [ ] **`[ENG-DIVORCE-PMT-NON-PARTAGEE]`** (S) — au divorce, le callback de `tryDivorce` divise
-  `currentValue` et `mortgage` de chaque bien de `propertiesState` par `keep`, mais **PAS
-  `calculatedPmt`**. Le divorcé paie donc la mensualité ENTIÈRE sur une hypothèque réduite de moitié :
-  le prêt s'amortit ~2× trop vite ET le cashflow est ponctionné d'un montant qu'il ne doit plus.
-  Défaut PRÉEXISTANT (chemin des buts immobiliers), révélé en corrigeant l'oubli symétrique côté
-  locatif — où la mensualité, elle, EST partagée (`[ENG-W5-RENTAL-OFFBALANCE]`, 2026-08-19).
-  ⚠️ **Re-basera des goldens** : mesurer AVANT/APRÈS et écrire l'écart à côté de chaque ancrage,
-  comme pour `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`. Vérifier aussi le chemin DÉCÈS/survivant.
-
+- [ ] **`[TEST-DIVORCE-SANS-IMMOBILIER]`** (S, découvert en livrant `PMT-NON-PARTAGEE`) — **les 16
+  fixtures de divorce du dépôt portent `realEstateGoals: []`**. C'est ce qui explique que le
+  correctif de la mensualité n'ait re-basé AUCUN golden alors qu'il déplace des dizaines de milliers
+  de dollars. `tests/services/divorcePmtPartagee.test.ts` couvre désormais le croisement pour la
+  MENSUALITÉ ; tout le reste du partage (valeur, solde, équité, flux) reste non couvert sur un
+  ménage propriétaire. Fix : une fixture « divorce + maison détenue » réutilisable, et la passer aux
+  gardes de conservation existantes. ⚠️ Piège mesuré : sans `isActive: true` ET `isOwned: true`, le
+  bien n'existe pas du tout (`Immobilier = 0` sur tout l'horizon) et la fixture semble décrire une
+  maison sans en avoir une.
 - [ ] **`[ENG-DIVORCE-FLUX-MUET]`** (S) — le partage de divorce multiplie `celi`/`reer`/`crypto`/
   `nonReg` par `keep` **sans publier de `NetTransfer*`** : la forme-flux est violée sur les 4 comptes.
   **Mesuré (60 runs MC, `divorceAnnualProbability` 0,05) : 2 130 681 $ sur le REER, 1 281 789 $ sur le

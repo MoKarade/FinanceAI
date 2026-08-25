@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 788 tests** Vitest
-(442 fichiers de test, mesuré le 2026-08-24). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 791 tests** Vitest
+(443 fichiers de test, mesuré le 2026-08-25). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -851,6 +851,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   (`UN-INVARIANT-NE-VOIT-PAS-CE-QUI-EST-ABSENT`).
 - Un **stub** documenté « retourne toujours `[]` » peut rester branché des mois sans alerte si le
   mode test nourrit les surfaces en synthétique.
+- ⚠️ Un **verrou posé autour du TRAVAIL** laisse la course là où elle est : dans la GARDE qui décide
+  s'il faut travailler. `localStorage` n'a pas de compare-and-swap — lire puis écrire un cooldown
+  sont DEUX opérations, donc deux onglets passent la garde ensemble. Le verrou enveloppe la décision
+  ET l'action. Corollaires : un verrou sans **repli explicite** là où l'API manque bloque tout (pire
+  que le défaut) ; un nom qui dit « partagé » pour une variable de MODULE fait croire au cross-onglet ;
+  et une assertion « rien n'a été écrit » mesure un sélecteur mort tant qu'un autre cas ne prouve pas
+  que le même sélecteur VOIT une écriture (`UN-VERROU-DOIT-ENVELOPPER-LA-GARDE-PAS-SEULEMENT-LE-TRAVAIL`).
 - Un **aléa dérivé d'un identifiant TECHNIQUE est un aléa MORT** : le choc de taux au renouvellement
   hypothécaire (`(id.charCodeAt(0) % 3 - 1) × 0,015`) vaut ZÉRO partout — l'UI crée `prop_<ts>`, les
   fixtures `p1`, les personas `jc-re1`, tous sur la même valeur. Un préfixe constant écrase l'entropie

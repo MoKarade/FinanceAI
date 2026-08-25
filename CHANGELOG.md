@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-25 (deux onglets ouverts ne se battent plus sur ta synchro bancaire)
+
+- La synchro bancaire automatique se déclenche à l'ouverture de l'app, au plus une fois par heure.
+  Ce compteur d'« une fois par heure » vit dans le navigateur, mais **chaque onglet le lisait puis
+  l'écrivait en deux temps** : deux onglets ouverts en même temps pouvaient donc tous les deux le
+  trouver périmé et lancer leur propre passe. Aucun risque de transaction en double (l'app les
+  dédoublonne), mais les deux passes se disputaient l'écriture de tes soldes — c'est le dernier qui
+  écrit qui gagne.
+- L'app pose maintenant un vrai verrou **partagé entre tous les onglets** : le premier synchronise,
+  les autres renoncent immédiatement au lieu d'attendre. Sur un navigateur qui ne sait pas le faire,
+  le comportement reste exactement celui d'avant — mieux vaut l'ancien défaut qu'une synchro qui ne
+  partirait jamais.
+
 ## [unreleased] — 2026-08-25 (le plafond REER ne fait plus un bond en 2031)
 
 - Au-delà de l'année la plus lointaine que l'ARC a annoncée, l'app doit **estimer** le plafond de

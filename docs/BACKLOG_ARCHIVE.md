@@ -10,6 +10,27 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-25 — La sync bancaire auto se verrouille enfin ENTRE ONGLETS
+
+- [x] **`[FINTABLE-SYNC-XTAB-MUTEX]`** (S, sœur de `STALE-BASE`) — PR #736, gate vert.
+  Le ticket : « le cooldown localStorage n'est PAS un mutex cross-onglet ». **Vérifié EXACT** —
+  `applyDocument` déduplique bien sur `date|montant_en_cents|payee_minuscule`, donc le risque est
+  bien l'intégrité (dernier écrivain du solde) et non le doublon.
+  Ce que le ticket ne disait pas, et qui change le correctif : le verrou existant `_inFlight` est
+  commenté « verrou **PARTAGÉ** auto ↔ manuel » — partagé entre les deux CHEMINS d'un onglet, pas
+  entre onglets (variable de module). Et la course n'est pas le réseau : `localStorage` n'a pas de
+  compare-and-swap, donc `readLastAttempt()` puis `writeLastAttempt(now())` laissent deux onglets
+  lire le même vieil horodatage et passer tous les deux la garde. La fenêtre est la plus large
+  exactement quand elle compte — un navigateur qui restaure deux onglets épinglés les démarre
+  ensemble.
+  Livré : `withCrossTabLock` (API Web Locks, `ifAvailable: true` = on renonce au lieu d'attendre)
+  enveloppant **toutes** les gardes, cooldown compris ; verrou nommé `financeai:fintable-sync` ;
+  repli EXPLICITE quand l'API manque (jsdom, navigateurs anciens, contexte non sécurisé) — un
+  verrou qui bloque tout serait pire que le défaut.
+  3 tests (`tests/services/fintable/autoSyncXtabLock.test.ts`), **5 perturbations rouges sur 5**,
+  dont le cooldown remis HORS du verrou. Leçon :
+  `UN-VERROU-DOIT-ENVELOPPER-LA-GARDE-PAS-SEULEMENT-LE-TRAVAIL`.
+
 ## 2026-08-25 — Après un divorce, la moitié de la mise de fonds s'évaporait à l'achat
 
 - [x] **`[ENG-DIVORCE-SCALE-UNBOUGHT]`** — le ticket était marqué **« [À vérifier] — finding non

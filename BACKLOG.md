@@ -534,10 +534,17 @@
   fausse le budget réel ET la moyenne 12 mois. Ne JAMAIS écrire sans dédoublonnage.
   Prérequis : confirmer avec Marc la profondeur réellement offerte par son plan (mesurer, ne pas
   supposer — 90 j demandés / 30 rendus au dernier test).
-- [ ] **`[FINTABLE-SYNC-XTAB-MUTEX]`** (S, sœur de STALE-BASE, restée ouverte) — le cooldown
-  localStorage n'est PAS un mutex cross-onglet : deux onglets ouverts peuvent lancer une passe
-  simultanée (fenêtre étroite, intégrité seulement — la déduplication de `applyDocument` empêche
-  les doublons, mais les deux passes se battent sur le dernier écrivain du solde).
+- [ ] **`[FINTABLE-SYNC-XTAB-MANUEL]`** (M, découvert en livrant `XTAB-MUTEX` — **NON corrigé, hors
+  périmètre du ticket**) — le verrou cross-onglet (`withCrossTabLock`, Web Locks) n'enveloppe que la
+  passe AUTO. Le bouton « Synchroniser » de `components/settings/FintableSyncCard.tsx:179` ne prend
+  que `acquireFintableSyncLock()`, c'est-à-dire `_inFlight`, une **variable de module** : elle ne
+  protège que l'onglet courant. Chemin réel : l'onglet A lance sa passe auto au boot pendant que
+  Marc clique « Synchroniser » dans l'onglet B → même dégât que le ticket d'origine (dernier écrivain
+  gagne sur soldes/dettes ; pas de doublon, `applyDocument` déduplique).
+  Fix : rendre `withCrossTabLock` GÉNÉRIQUE (`<T>(run, onBusy)`), l'exporter, et envelopper le corps
+  de `handleSync`. ⚠️ Non fait ici à dessein : le corps fait ~85 lignes avec `try/finally`, plusieurs
+  `setState` et le chemin d'ÉCRITURE money-critical — l'extraire mérite son propre lot et sa propre
+  perturbation, pas un « pendant qu'on y est ».
 - [ ] **`[ENG-T1213-NET-MONTHLY]`** (M, MOYEN, pré-existant — mesuré panel #558, −183 598 $/30 ans) —
   activer `optimizeSourceDeductions` (T1213) ANNULE le bénéfice fiscal du REER dans la simulation :
   la retenue modélisée baisse mais le net MENSUEL encaissé (`activeIncome.ts`) ne monte jamais →

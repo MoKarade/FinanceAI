@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 817 tests** Vitest
-(449 fichiers de test, mesuré le 2026-08-25). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 821 tests** Vitest
+(450 fichiers de test, mesuré le 2026-08-25). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -500,11 +500,10 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Un bug confirmé peut viser du code **dont la sortie est jetée** → test de perturbation avant fix.
 - Une garde qui **lit la table de config** pour choisir quoi vérifier est CIRCULAIRE : elle ne peut
   pas détecter une erreur DANS la table.
-- ⚠️ **Un registre RÉCONCILIÉ à une clé rend son arithmétique de flux DÉCORATIVE** : cacher à
-  `stepReerByUser` TOUTES les cotisations REER (`contribution: 0`) laisse **29 tests per-conjoint
-  verts** et `reerByUserFinal` bit-identique — `reconcileToPool(…, poolEnd, shares)` détermine seul la
-  répartition (résultat = `poolEnd × shares`, rapport 10,0000 mesuré sur un couple 10:1). Toute une
-  famille de correctifs passés sur ce registre est peut-être inerte pour la même raison. Devant un
+- ⚠️ ~~Un registre RÉCONCILIÉ à une clé rend son arithmétique de flux DÉCORATIVE~~ — **constat CORRIGÉ
+  quelques heures plus tard, il était TROP LARGE** : cacher à `stepReerByUser` toutes les cotisations
+  REER laissait bien 29 tests verts, mais c'était une propriété de la FIXTURE. Voir l'entrée
+  `UN-COUPLE-DU-MEME-AGE-EPINGLE-LE-REGISTRE-PER-CONJOINT` plus bas. Ce qui RESTE vrai : devant un
   module qui « réconcilie » en sortie, PERTURBER une entrée avant de croire qu'elle compte
   (`UN-REGISTRE-RECONCILIE-A-UNE-CLE-REND-SES-FLUX-DECORATIFS`). Corollaires du même lot : un
   avertissement que je me suis écrit à MOI-MÊME se re-prouve avant d'être suivi — le mien était faux
@@ -733,6 +732,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Quand un test dépend d'un pas d'échantillonnage ou d'un modulo, la longueur de la fixture est un
   PARAMÈTRE : la calculer et l'asserter dans le test (`expect((N-8) % pas).not.toBe(0)`). Choisie au
   jugé, elle rend le cas vacueux par simple parité — mesuré (`PARITE-QUI-REND-UN-TEST-VACUEUX`).
+- ⚠️ **Une perturbation MUETTE dit « la fixture ne l'atteint pas » AVANT de dire « le code ne sert à
+  rien »** — les deux hypothèses expliquent le même silence, et seule la seconde est flatteuse. J'ai
+  choisi la mauvaise et publié qu'un registre était « décoratif » : en fait un couple du MÊME ÂGE
+  l'ÉPINGLE à la clé salariale (semé par `splitByShares`, et retrait au prorata / cotisation par
+  `shares` / `reconcileToPool` préservent tous le rapport). Sous écart d'âge, la même perturbation
+  déplace **+16 123 $** de REER final avec 29 tests verts. **Un paramètre à ÉCART (âge, salaire, date)
+  se teste à écart NON NUL** — la valeur la plus naturelle est souvent la seule qui n'observe rien.
+  Et un constat publié se corrige dans les TROIS endroits où il a été écrit (`CLAUDE.md`, `BACKLOG.md`,
+  corps de PR) (`UN-COUPLE-DU-MEME-AGE-EPINGLE-LE-REGISTRE-PER-CONJOINT`).
 - ⚠️ **Dès qu'un test porte sur un facteur ET son complément, la valeur d'essai doit être ASYMÉTRIQUE** :
   à un partage de divorce de **50 %**, `keep` et `1 − keep` sont indiscernables — publier la part
   CONSERVÉE au lieu de la part CÉDÉE laissait le test **VERT** (mesuré ; seul 75 % rougit). Et 50 %

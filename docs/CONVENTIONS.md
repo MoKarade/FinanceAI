@@ -6766,3 +6766,41 @@ garantie que rien ne teste n'est pas une garantie, c'est une intention.
 l'appel OPTIONNEL `setConfig?.(`, passait au vert. Un motif d'ABSENCE doit couvrir les SYNTAXES
 d'appel réellement possibles, pas la seule qu'on avait sous les yeux en l'écrivant ; et c'est la
 perturbation, jamais la relecture, qui le dit.
+
+### `UN-ZERO-EFFACE-PAR-OU-EST-UNE-SAISIE-QUI-N-EXISTE-NULLE-PART` — 2026-08-25
+
+`(goal.propertyGrowthRate || 3)` : le motif est connu, sa portée l'était moins.
+
+**Cinq sites, dont l'éditeur lui-même.** Le ticket citait le moteur. Mesuré, le même `|| 3` vivait
+aussi dans l'initialisation d'un achat passé, dans deux écrans de comparaison, et surtout dans
+`PropertyConfigurator` — **le champ où l'on saisit la valeur**. Taper 0 y réaffichait 3. Une saisie
+qui disparaît du calcul est un bug ; une saisie qui disparaît **de son propre champ** est un
+mensonge à l'écran : l'utilisateur n'a aucun moyen de constater que sa valeur n'a pas été prise.
+Quand on corrige un `||` sur une valeur SAISIE, chercher d'abord le formulaire.
+
+**Deux voisins étaient déjà corrects** — `?? 3` dans la reconstruction d'équité, un paramètre par
+défaut dans `services/realEstate.ts`, `num(v, 3)` dans le locatif. Le patron juste existait à côté,
+et c'est le signal fort de `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` : le risque était connu, traité
+trois fois, et oublié cinq.
+
+⚠️ **Neuf tests mesuraient autre chose que ce qu'ils déclaraient.** Ils posaient
+`propertyGrowthRate: 0` — manifestement pour neutraliser la croissance et isoler ce qu'ils
+testaient — et tournaient à 3 %/an depuis toujours. Un seul l'avait senti sans le nommer : son
+assertion était une FOURCHETTE, « la valeur + ≤1 mois de croissance », sur une fixture qui dit zéro.
+**Une fourchette qui contredit sa propre fixture est un aveu** : quelqu'un a constaté un mouvement
+inattendu et a élargi la borne au lieu de demander pourquoi. Le correctif rend l'égalité exacte —
+et si la croissance revenait, elle rougirait au lieu d'être absorbée.
+
+⚠️ **Le ticket surestimait la portée et sous-estimait le nombre de sites.** Il annonçait « touche
+tous les scénarios existants → re-baseliner sciemment » ; mesuré, **une seule assertion a bougé sur
+4 779**. Une prédiction de rebase massif se vérifie en lançant la suite, pas en la citant : elle
+sert souvent à repousser un ticket qui coûte en fait une ligne.
+
+⚠️ **Et le remplacement mécanique aurait fabriqué un non-correctif silencieux.** À un des cinq
+sites, l'expression était `fin(goal.propertyGrowthRate) || 3` — or `fin(v, d = 0)` rend TOUJOURS un
+nombre. Écrire `fin(…) ?? 3` y aurait rendu le défaut **inatteignable** : un taux absent serait passé
+de 3 % à 0 %, à l'exact opposé de l'intention. Le défaut se passe à `fin` lui-même (`fin(v, 3)`).
+Même famille que `PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR` : le même geste textuel, appliqué à deux
+contrats différents, donne un correctif d'un côté et une régression de l'autre. La garde qui l'a
+attrapé est le test « taux ABSENT : le défaut s'applique toujours » — sans lui, la substitution
+passait au vert.

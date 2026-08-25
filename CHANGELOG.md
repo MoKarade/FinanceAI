@@ -20,6 +20,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   documentation fiscale **comme une hypothèse**, avec l'écart mesuré face à l'indexation réellement
   observée. Ce n'est pas un chiffre officiel, et ça ne doit pas se lire comme tel.
 
+## [unreleased] — 2026-08-25 (tu peux enfin dire « je ne parie pas sur l'appréciation »)
+
+- Mettre **0 %** de croissance sur un bien immobilier ne servait à rien : l'app le remplaçait par
+  3 %/an — dans la projection, dans les écrans de comparaison, et jusque dans le champ lui-même,
+  qui réaffichait 3 dès que tu tapais 0.
+- Un 0 explicite est maintenant respecté partout. Laisser le champ **vide** garde le comportement
+  d'avant (3 %/an par défaut) : c'est la différence entre « je n'ai pas d'avis » et « je parie sur
+  aucune appréciation ».
+
 ## [unreleased] — 2026-08-25 (le centre fiscal te montre ce qu'il va changer avant de le changer)
 
 - Dans l'onglet Impôts, « Appliquer au Profil Principal » écrasait ton profil salarial **sans rien

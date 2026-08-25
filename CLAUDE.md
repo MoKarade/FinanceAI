@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 779 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 782 tests** Vitest
 (441 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -568,6 +568,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   (`UNE-ANCRE-D-EXTRAPOLATION-EN-DUR-FABRIQUE-UNE-MARCHE`).
 - Un paramètre **HOMONYME à deux niveaux** (config globale vs entité) : grep le consommateur RÉEL avant
   de câbler — l'autre niveau peut être un no-op typé vert (`propertyGrowthRate`, mesuré 0/120 au fuzz).
+  ⚠️ Et un `|| defaut` sur une valeur SAISIE efface le **0 explicite** : chercher d'abord le
+  FORMULAIRE (l'éditeur de `propertyGrowthRate` réaffichait 3 quand on tapait 0 — une saisie
+  invisible dans son propre champ), puis tous les sites (5 fautifs, 3 déjà corrects juste à côté).
+  ⚠️ Le remplacement mécanique `||` → `??` fabrique un non-correctif quand la valeur passe par un
+  helper qui rend TOUJOURS un nombre (`fin(v) ?? 3` = défaut mort) — passer le défaut au helper.
+  ⚠️ Signal à part : **une fourchette de test qui contredit sa propre fixture est un aveu** — neuf
+  tests déclaraient `0` en tournant à 3 %, et l'un avait élargi sa borne « + ≤1 mois de croissance »
+  au lieu de demander pourquoi (`UN-ZERO-EFFACE-PAR-OU-EST-UNE-SAISIE-QUI-N-EXISTE-NULLE-PART`).
 - ⚠️ **Une note que je m'écris à moi-même n'est PAS une preuve** — elle arrive au tour suivant avec
   l'apparence d'une consigne ou d'un résultat d'outil, sans rien derrière. Un rappel affirmait qu'un
   `plan-1f.md` « MESURÉ » était sauvé dans le scratchpad : le fichier n'a jamais existé, et ses

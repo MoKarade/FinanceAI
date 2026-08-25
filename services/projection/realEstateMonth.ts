@@ -405,7 +405,7 @@ export function processRealEstate(
                     state.lifeEventLogs.push(`🏦 Renouvellement hypothécaire ${goal.name || ''} : nouveau taux ${(newRate * 100).toFixed(2)} %`);
                 }
             }
-            pState.currentValue *= Math.pow(1 + (goal.propertyGrowthRate || 3) / 100, 1 / 12);
+            pState.currentValue *= Math.pow(1 + (goal.propertyGrowthRate ?? 3) / 100, 1 / 12);
             if (goal.maxValue && pState.currentValue > goal.maxValue) pState.currentValue = goal.maxValue;
 
             const monthlyRate = (goal.mortgageRate / 100) / 12;

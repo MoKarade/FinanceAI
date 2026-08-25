@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 760 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 762 tests** Vitest
 (436 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -501,6 +501,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Une garde qui **lit la table de config** pour choisir quoi vérifier est CIRCULAIRE : elle ne peut
   pas détecter une erreur DANS la table. Il faut une assertion qui ne la consulte pas (mesuré sur
   `dailyLedger` : un solde reclassé en flux laissait les deux invariants verts).
+  ⚠️ Corollaire livré le 2026-08-25 : la liste que balaie l'assertion non circulaire doit rester
+  ÉCRITE À LA MAIN (la dériver de la table sortirait du balayage le champ qu'un reclassement vient
+  de déclasser), et la table ne se consulte que dans l'AUTRE sens — un 2ᵉ test EXIGE que tout champ
+  déclaré soit balayé OU exclu explicitement. **Il faut les deux** : la liste seule pourrit, le test
+  seul est circulaire. Et « tous les X non nuls » ne veut rien dire hors du contexte de la fixture :
+  la version prescrite du ticket couvrait 13 champs et AUCUN des 11 qu'il nommait, tous à zéro faute
+  de dette/immeuble/enfant dans le scénario
+  (`UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`).
   Même famille : un jeton qui prouve À LA FOIS le problème et le correctif rend la garde AUTO-SATISFAITE.
 - Élargir l'assiette d'un calcul → auditer TOUS les dérivés qui partagent cette base. Et relire
   TOUTE la fonction : un raccourci d'égalité entre deux grandeurs qui viennent de diverger

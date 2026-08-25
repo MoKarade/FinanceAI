@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-25 (suite 160) — `[GARDE-JOUR-ANTICIRCULAIRE-ETROITE]` : le correctif prescrit ne protégeait rien
+> Le ticket voulait « étendre le test de rapport à TOUS les stocks non nuls ». **MESURÉ** : sur la
+> fixture existante ça donne 13 champs et **AUCUN des onze que le ticket nomme** — `DetteTotale`,
+> `rapBalance`, `Immobilier`, `REEE`… valent tous ZÉRO sans dette, sans immeuble et sans enfant.
+> Le vrai correctif était la **FIXTURE**, pas la liste de clés.
+> Fixture riche → garde portée de **5 à 18 soldes**, de **1 jour à 2 644 couples (jour, clé)**.
+> Pire rapport réel **0,995** contre **0,035** pour un solde ventilé : seuil à 0,5.
+> ⚠️ **La liste balayée est ÉCRITE À LA MAIN, délibérément** — la dériver de `FIELD_KIND` sortirait
+> du balayage le champ qu'un reclassement vient de déclasser. `FIELD_KIND` ne sert qu'à EXIGER des
+> ajouts (2ᵉ test), avec **13 exclusions déclarées et motivées**.
+> ⚠️ Le scénario exact du ticket (reclasser `DetteTotale` en flux) rougit enfin, et **seule** la
+> garde neuve l'attrape — les 26 autres tests du fichier restent verts.
+> 2 tests, **2 perturbations rouges**.
+
 > ## 🟢 Session 2026-08-25 (suite 159) — `[FISC-RRSP-EXTRAP-05]` : une marche de 4,5 % dans le plafond REER
 > Le ticket demandait de « sourcer ou requalifier » le `+0,5 pp` d'indexation. Requalifié en
 > **hypothèse de MODÈLE** (§7 de `FISCAL_REFERENCE.md`), avec l'écart MESURÉ contre l'observé :

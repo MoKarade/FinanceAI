@@ -173,6 +173,106 @@ describe('dailyLedger — invariants de raccord (moteur réel)', () => {
         }
     });
 
+    // ── [GARDE-JOUR-ANTICIRCULAIRE-ETROITE] ─────────────────────────────────────────────────
+    //
+    // ⚠️ Le ticket prescrivait « étendre le test de ratio à TOUS les stocks non nuls ». MESURÉ :
+    // appliqué tel quel à la fixture ci-dessus, ça protège **13 champs** et **aucun des onze que
+    // le ticket nomme** — `DetteTotale`, `DettesNonImmo`, `LiquidDebt`, `rapBalance`, `Immobilier`,
+    // `REEE`, `NonReg`, `Crypto`, `reeeContribCum`, `reeeGrantsCum`, `CELIAPPMax` valent tous ZÉRO
+    // dans un scénario sans dette, sans immeuble et sans enfant. Le vrai correctif était la
+    // FIXTURE, pas la liste de clés (`INVARIANT-QUI-NE-PARCOURT-PAS-LA-PHASE`).
+    //
+    // ⚠️ Et la liste balayée est ÉCRITE À LA MAIN, délibérément : c'est tout ce qui rend cette
+    // garde non circulaire. La dériver de `FIELD_KIND` ferait exactement disparaître du balayage
+    // le champ qu'un reclassement stock→flux vient de sortir — le défaut même qu'on protège.
+    // `FIELD_KIND` n'est consulté que pour EXIGER des ajouts (test de complétude plus bas).
+    const params_riches = (): SimulationParams => ({
+        ...makeParams(),
+        liveCSVBalances: { CELI: 30_000, CELIAPP: 12_000, REER: 90_000, NON_ENREG: 40_000, CRYPTO: 8_000, REEE: 6_000 },
+        debts: [{ id: 'd1', name: 'Auto', balance: 22_000, rate: 7, monthlyPayment: 450, isActive: true }] as never,
+        realEstateGoals: [{
+            id: 're1', name: 'Maison', isActive: true, purchaseDate: '2026-02-01',
+            price: 400_000, downPayment: 60_000, mortgageRate: 5, amortization: 25,
+            totalClosingCosts: 6_000, monthlyPayment: 2_100, unrecoverableMonthly: 900,
+            isPrimaryResidence: true,
+        }] as never,
+        childGoals: [{
+            id: 'c1', name: 'Bébé', isActive: true, birthDate: '2024-03-01', initialCost: 2_000,
+            monthlyDiapers: 80, monthlyFood: 200, monthlyClothing: 60, monthlyDaycare: 700,
+            governmentBenefits: 0,
+        }] as never,
+    });
+
+    /** Les soldes que le balayage COUVRE — mesurés non nuls sur la fixture riche. */
+    const SOLDES_BALAYES = [
+        'CELI', 'REER', 'REEE', 'Crypto', 'Immobilier', 'DetteTotale', 'DettesNonImmo',
+        'NetWorth', 'realNetWorth', 'ImpotLatent', 'rapBalance', 'CELIMax', 'REERMax',
+        'reeeContribCum', 'reeeGrantsCum', 'FireTarget', 'CoastFIRE', 'BaristaFIRE',
+    ];
+
+    /**
+     * Ce que la garde ne couvre PAS, chiffré et motivé — un périmètre borné en SILENCE se lit
+     * comme « tout est couvert » (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`).
+     *  • `Liquidites` : la mise de fonds la fait CHANGER DE SIGNE en cours de mois (ratio mesuré
+     *    de −8,7 à 552) — le critère de rapport n'a aucun sens autour de zéro. Elle reste tenue
+     *    par le test de rapport historique ci-dessus, sur un mois calme.
+     *  • `CELIAPP`, `NonReg`, `LiquidDebt`, `CELIAPPMax` : restent à zéro même sur la fixture
+     *    riche (le CELIAPP se transfère, le non-enregistré est absorbé par la mise de fonds).
+     *  • `AccruedTaxRevenu/Gains/Divers/REER` : nuls sur une fenêtre de 5 mois sans règlement.
+     *  • `P10`/`P50`/`P90` : n'existent qu'en Monte Carlo. `lockedNetWorth` : courbe verrouillée.
+     */
+    const SOLDES_NON_COUVERTS = [
+        'Liquidites', 'CELIAPP', 'NonReg', 'LiquidDebt', 'CELIAPPMax',
+        'AccruedTaxRevenu', 'AccruedTaxGains', 'AccruedTaxDivers', 'AccruedTaxREER',
+        'P10', 'P50', 'P90', 'lockedNetWorth',
+    ];
+
+    it('ORDRE DE GRANDEUR ÉLARGI : aucun solde ne se met à valoir un 30e, sur TOUS les jours', () => {
+        const months = (calculateFutureProjection(params_riches(), false, 0).chartData as ProjectionChartPoint[]).slice(0, 6);
+        const days = buildDailyLedger({ months, startYear: 2026, startMonth: 0, dated: DATED });
+        let couples = 0;
+        const vus = new Set<string>();
+        for (const key of SOLDES_BALAYES) {
+            for (let mi = 1; mi < months.length; mi++) {
+                const fin = Number(months[mi][key]);
+                const avant = Number(months[mi - 1][key]);
+                if (!Number.isFinite(fin) || !Number.isFinite(avant)) continue;
+                const plancher = Math.min(Math.abs(fin), Math.abs(avant));
+                // On n'exerce que les mois où le solde est GRAND et de signe CONSTANT : ailleurs le
+                // rapport ne discrimine rien (division par presque zéro, ou passage par zéro).
+                if (plancher < 100 || Math.sign(fin) !== Math.sign(avant)) continue;
+                for (const d of days.filter((x) => x.hostMonthIndex === months[mi].monthIndex)) {
+                    const v = Number(d[key]);
+                    if (!Number.isFinite(v)) continue;
+                    couples++;
+                    vus.add(key);
+                    // Un solde ventilé par erreur vaudrait ~1/28e du mois (mesuré : 0,035).
+                    // Le pire rapport RÉEL de tout le balayage est 0,995 — le seuil à 0,5 laisse
+                    // donc un facteur 2 de marge au vrai, et un facteur 14 au défaut.
+                    expect(Math.abs(v) / plancher, `${key} @ ${d.dayIso}`).toBeGreaterThan(0.5);
+                }
+            }
+        }
+        // Anti-vacuité : la garde doit PROUVER qu'elle a regardé quelque chose. MESURÉ :
+        // 2 644 couples (jour, clé) sur 18 soldes. Des planchers larges, pas les valeurs exactes —
+        // ancrer au point près ferait rougir la garde au premier changement de fixture.
+        expect(couples).toBeGreaterThan(2_000);
+        expect(vus.size).toBeGreaterThanOrEqual(18);
+    });
+
+    it('la liste balayée reste COMPLÈTE : un solde neuf ne peut pas passer inaperçu', () => {
+        // ⚠️ `FIELD_KIND` sert ICI, et seulement ici : à EXIGER des ajouts, jamais à choisir quoi
+        // vérifier. Un champ neuf déclaré « stock » doit atterrir dans l'une des deux listes —
+        // sinon il n'est ni balayé, ni déclaré hors périmètre, c'est-à-dire invisible.
+        const declares = Object.keys(FIELD_KIND).filter((k) => FIELD_KIND[k] === 'stock');
+        const orphelins = declares.filter((k) => !SOLDES_BALAYES.includes(k) && !SOLDES_NON_COUVERTS.includes(k));
+        expect(orphelins, `Solde ni balayé ni déclaré hors périmètre : ${orphelins.join(', ')}`).toEqual([]);
+        // Et dans l'autre sens : pas de clé FANTÔME dans mes listes (un renommage les viderait en
+        // silence, et le balayage deviendrait vide sans que rien ne rougisse).
+        const fantomes = [...SOLDES_BALAYES, ...SOLDES_NON_COUVERTS].filter((k) => !(k in FIELD_KIND));
+        expect(fantomes, `Clé inconnue de FIELD_KIND : ${fantomes.join(', ')}`).toEqual([]);
+    });
+
     it('MONTHLY : un taux est identique tous les jours du mois (jamais divisé)', () => {
         const feb = days.filter((d) => d.dayIso.startsWith('2026-02'));
         const rates = new Set(feb.map((d) => d.marginalTaxRate));

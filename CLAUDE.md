@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 796 tests** Vitest
-(444 fichiers de test, mesuré le 2026-08-25). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 805 tests** Vitest
+(446 fichiers de test, mesuré le 2026-08-25). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -851,6 +851,16 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   (`UN-INVARIANT-NE-VOIT-PAS-CE-QUI-EST-ABSENT`).
 - Un **stub** documenté « retourne toujours `[]` » peut rester branché des mois sans alerte si le
   mode test nourrit les surfaces en synthétique.
+- ⚠️ **Un booléen qui recouvre deux faits OPPOSÉS se corrige en les SÉPARANT**, pas en temporisant :
+  `connected: false` voulait dire « on a essayé et non » ET « on n'a pas encore essayé », et la
+  bannière Drive affirmait du FAUX pendant **≥ 2 500 ms** (`App.tsx` retarde `runBootSync` de 2 500 ms
+  après un `initSync` qui publie déjà `configured: true`). Signal réutilisable : **une valeur par
+  DÉFAUT lue comme un verdict**. ⚠️ Le risque du correctif est symétrique et pire — taire une alerte
+  « le temps de vérifier » la tait POUR TOUJOURS sur le mauvais chemin : poser le drapeau dans un
+  `finally` (7 sorties ici), et le rendre vrai D'ENTRÉE quand il n'y a rien à attendre. Corollaires :
+  un drapeau calculé à l'init doit se demander **combien de fois l'init a lieu** (2× au boot → il faut
+  la monotonie), et un état de MODULE monotone rend la suite de tests vacueuse sans point de remise à
+  zéro (`UN-DEFAUT-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT`).
 - ⚠️ Un **verrou posé autour du TRAVAIL** laisse la course là où elle est : dans la GARDE qui décide
   s'il faut travailler. `localStorage` n'a pas de compare-and-swap — lire puis écrire un cooldown
   sont DEUX opérations, donc deux onglets passent la garde ensemble. Le verrou enveloppe la décision

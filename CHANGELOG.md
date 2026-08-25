@@ -31,6 +31,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   le comportement reste exactement celui d'avant — mieux vaut l'ancien défaut qu'une synchro qui ne
   partirait jamais.
 
+## [unreleased] — 2026-08-25 (plus de fausse alerte « Drive déconnecté » au chargement)
+
+- Au chargement de la page, le bandeau rouge « Non connecté à Google Drive — tes changements ne sont
+  PAS sauvegardés » s'affichait pendant **au moins 2,5 secondes**, puis disparaissait tout seul. Il
+  disait faux : l'app n'avait simplement pas encore essayé de se reconnecter.
+- Le bandeau attend maintenant le résultat de cette tentative avant de parler. **Sauf** si tu n'as
+  jamais connecté Drive sur cet appareil : là, il n'y a rien à attendre et l'invitation à te
+  connecter s'affiche tout de suite, comme avant.
+- L'autre alerte, « échec de la dernière sauvegarde », n'est pas retardée : elle ne peut apparaître
+  que lorsque la connexion est déjà établie.
+
 ## [unreleased] — 2026-08-25 (le plafond REER ne fait plus un bond en 2031)
 
 - Au-delà de l'année la plus lointaine que l'ARC a annoncée, l'app doit **estimer** le plafond de

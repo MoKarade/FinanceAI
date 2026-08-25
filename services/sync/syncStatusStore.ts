@@ -41,9 +41,25 @@ export interface SyncStatus {
      * ÉCLAIRÉ (anti-clobber Marc 2026-07-14) au lieu d'un « garder l'un ou l'autre » à l'aveugle.
      */
     conflictSummary: ConflictSummary | null;
+    /**
+     * [BUDGET-DRIVE-BANNER-FLASH] La tentative de REPRISE silencieuse au boot a-t-elle abouti (dans un
+     * sens ou dans l'autre) ?
+     *
+     * ⚠️ Sans ce drapeau, `connected: false` recouvre DEUX faits opposés : « on a essayé et on n'est
+     * pas connecté » et « on n'a pas encore essayé ». Au boot c'est le second — et l'app l'affichait
+     * comme le premier : `initSync` publie `configured: true` avec `connected` encore à sa valeur par
+     * défaut, alors que `App.tsx` ne lance `runBootSync` que **2 500 ms plus tard**. Un utilisateur
+     * de retour voyait donc « tes changements ne sont PAS sauvegardés » pendant au moins 2,5 s, puis
+     * la bannière disparaissait. Même famille que « pas encore connu ≠ zéro ».
+     *
+     * `true` d'entrée quand il n'y a RIEN à reprendre (jamais connecté sur cet appareil, ou Drive non
+     * configuré) : dans ce cas la bannière doit apparaître TOUT DE SUITE — c'est la demande de Marc
+     * (« propose de me connecter dès que je ne le suis pas »), et la retarder serait le défaut inverse.
+     */
+    resumeSettled: boolean;
 }
 
-let _status: SyncStatus = {
+const _defaultStatus: SyncStatus = {
     configured: false,
     connected: false,
     email: null,
@@ -55,8 +71,22 @@ let _status: SyncStatus = {
     needsPassphrase: false,
     passphraseActive: false,
     conflictSummary: null,
+    resumeSettled: false,
 };
+let _status: SyncStatus = { ..._defaultStatus };
 const _listeners = new Set<(s: SyncStatus) => void>();
+
+/**
+ * Réservé aux TESTS. `_status` est un état de MODULE : en production il repart à zéro à chaque
+ * chargement de page, mais dans une suite Vitest il survit d'un test à l'autre. `resumeSettled` étant
+ * MONOTONE par conception (`initSync` ne le remet jamais à `false`), un test qui l'a fait passer à
+ * `true` rendrait tous les suivants vacueux sans ce point de remise à zéro. Constaté, pas anticipé.
+ */
+export function _resetSyncStatusForTests(): void {
+    _status = { ..._defaultStatus };
+    _listeners.clear();
+}
+
 
 /**
  * @internal — MUTATEUR partagé inter-modules sync uniquement (NE PAS exposer via le barrel public).

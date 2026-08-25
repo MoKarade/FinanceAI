@@ -16,7 +16,7 @@ import { SyncConflictModal } from '../../components/sync/SyncConflictModal';
 const baseStatus = (over: Partial<SyncStatus> = {}): SyncStatus => ({
     configured: true, connected: true, email: 'm@x.co', lastSyncedAt: 0, busy: false,
     conflict: false, error: null, errorPhase: null, needsPassphrase: false, passphraseActive: false,
-    conflictSummary: null, ...over,
+    conflictSummary: null, resumeSettled: true, ...over,
 });
 
 beforeEach(() => { resolveConflictMock.mockClear(); });

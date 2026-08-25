@@ -71,7 +71,7 @@ import { decideOnLoad } from './syncEngine';
 import { hasPassphrase, clearPassphrase } from './passphraseStore';
 import { readSyncMeta, writeSyncMeta, clearSyncMeta } from './syncState';
 import { setGateAuthedThisSession, clearGateAuthedThisSession } from './authGate';
-import { setStatus } from './syncStatusStore';
+import { setStatus, getSyncStatus } from './syncStatusStore';
 import { getLocalPayload, summarizeForConflict } from './syncSnapshot';
 import { currentMeta, readDrive } from './syncMeta';
 import { handleError } from './syncErrors';
@@ -98,6 +98,12 @@ export function initSync(clientId: string | undefined | null): void {
         lastSyncedAt: meta?.lastSyncedAt ?? 0,
         // Réhydrate l'état passphrase depuis sessionStorage (survit à un reload de page).
         passphraseActive: hasPassphrase(),
+        // [BUDGET-DRIVE-BANNER-FLASH] RIEN à reprendre (jamais connecté ici, ou Drive non configuré)
+        // → réglé d'entrée, la bannière peut parler tout de suite. Sinon on attend la tentative.
+        // ⚠️ MONOTONE (`|| déjà réglé`) : `initSync` est appelé DEUX fois au boot (LoginGate puis App),
+        // et sans ce OR le second appel ANNULERAIT le règlement obtenu par `gateSilentResume` — la
+        // bannière repartirait pour 2,5 s de silence chez quelqu'un qu'on sait déconnecté.
+        resumeSettled: getSyncStatus().resumeSettled || !isGoogleAuthConfigured() || !meta?.connectedEmail,
     });
 }
 
@@ -144,6 +150,17 @@ export async function connectAndSync(): Promise<void> {
  * silencieux est le cas NORMAL (1er accès, ou jeton expiré/onglet rouvert).
  */
 export async function gateSilentResume(): Promise<boolean> {
+    // [BUDGET-DRIVE-BANNER-FLASH] Même raison que `runBootSync` : cette fonction a six sorties, et
+    // c'est elle qui tranche EN PREMIER au boot (LoginGate). Quel que soit le verdict, la question
+    // « est-on connecté ? » cesse d'être sans réponse ici.
+    try {
+        return await gateSilentResumeInner();
+    } finally {
+        setStatus({ resumeSettled: true });
+    }
+}
+
+async function gateSilentResumeInner(): Promise<boolean> {
     if (!isGoogleAuthConfigured()) return false;
     // [AUTH-DRIVE-INACTIVITY] Au-delà de 8h sans activité : NE PAS reprendre silencieusement → borne de
     // session (Loi 25). On purge tout jeton résiduel et on renvoie au login (clic pour se reconnecter).
@@ -215,7 +232,14 @@ let _bootSyncInFlight: Promise<void> | null = null;
 /** Sync au boot (silencieux) si l'utilisateur a déjà connecté Drive. Ne bloque jamais l'app. */
 export function runBootSync(): Promise<void> {
     if (_bootSyncInFlight) return _bootSyncInFlight;
-    const run = runBootSyncTick().finally(() => { _bootSyncInFlight = null; });
+    // [BUDGET-DRIVE-BANNER-FLASH] `finally` et pas un point de sortie choisi : `runBootSyncTick` a SEPT
+    // sorties (non configuré, jamais connecté, inactivité, jeton définitivement perdu, transitoire,
+    // succès, erreur Drive). En régler une seule laisserait la bannière muette pour toujours sur les
+    // autres — un correctif qui MASQUE une alerte est pire que le clignotement qu'il corrige.
+    const run = runBootSyncTick().finally(() => {
+        _bootSyncInFlight = null;
+        setStatus({ resumeSettled: true });
+    });
     _bootSyncInFlight = run;
     return run;
 }

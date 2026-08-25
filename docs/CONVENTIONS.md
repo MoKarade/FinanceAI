@@ -6964,3 +6964,59 @@ naturellement.
 bloquant) → (a) rouge · nom de verrou générique → (a) rouge · **cooldown déplacé HORS du verrou**
 (l'état d'avant le ticket) → les 3 rouges, dont `expected [Array(1)] to have a length of +0` sur la
 clé de cooldown, l'assertion qui porte le ticket · repli supprimé → (c) rouge.
+### `LE-SIGNE-D-UN-CORRECTIF-PEUT-DEPENDRE-D-UN-ECART-DE-TAUX` — 2026-08-25
+
+**Ticket** : `[ENG-DIVORCE-PMT-NON-PARTAGEE]` (S) — « au divorce, le callback de `tryDivorce` divise
+`currentValue` et `mortgage` de chaque bien, mais **PAS `calculatedPmt`**. Le divorcé paie donc la
+mensualité ENTIÈRE sur une hypothèque réduite de moitié : le prêt s'amortit ~2× trop vite ET le
+cashflow est ponctionné d'un montant qu'il ne doit plus. ⚠️ **Re-basera des goldens.** »
+
+Le défaut est réel. **Les deux prédictions du ticket sont fausses**, et chacune apprend quelque chose.
+
+**1. « Re-basera des goldens » → ZÉRO golden n'a bougé.** Sur un correctif qui déplace le
+patrimoine final de dizaines de milliers de dollars, c'est le signal déjà nommé
+(`« aucun golden n'a bougé » est un résultat à EXPLIQUER`) : ça ne mesurait pas l'absence d'effet
+mais l'absence de COUVERTURE. Vérifié en une commande — **les 16 fixtures de divorce du dépôt
+portent toutes `realEstateGoals: []`**. Un ticket qui annonce des dégâts collatéraux annonce donc
+aussi, sans le savoir, où regarder quand ils ne viennent pas.
+
+**2. « le prêt s'amortit ~2× trop vite » → seulement pendant 48 mois.** Le renouvellement
+hypothécaire recalcule la mensualité sur le solde RÉEL et sur l'échéance d'origine : il ré-ancre
+tout. Le mois de solde nul est **239 dans les deux cas**. Un mécanisme aval peut BORNER un défaut
+amont — la fenêtre se mesure, elle ne se déduit pas de la formule fautive. Ce qui reste, et qui est
+le vrai dégât : **56 121 $ de sur-paiement** sur ces 48 mois (1 169,18 $/mois qu'il ne doit plus).
+
+**3. La leçon neuve : le patrimoine final BAISSE avec le correctif — et le signe change avec le
+rendement.** Patrimoine à 30 ans, correctif − défaut :
+
+| rendement | 3 % | 5 % | 6 % | 8 % | 10 % |
+|---|---|---|---|---|---|
+| écart | −93 546 $ | −82 643 $ | −66 989 $ | −20 351 $ | **+54 003 $** |
+
+Le défaut équivaut à un **désendettement FORCÉ au taux de l'hypothèque** (5 %) : il « enrichit »
+tant que le rendement après impôt reste sous ~9 %. Le SIGNE de l'écart est donc une propriété de
+l'ÉCART DE TAUX de la fixture, **pas** un argument sur la justesse du correctif. Corollaire de
+méthode : devant un correctif money-critical, ne pas trancher sur « quel chiffre est le plus gros »
+sur UNE fixture — balayer le paramètre qui pourrait retourner le signe, et si le signe se retourne,
+c'est la preuve qu'il ne dit rien de la correction. Ici la question qui tranche est ailleurs, et
+elle est binaire : **le divorcé doit-il encore la mensualité entière sur un prêt réduit de moitié ?**
+Non — et le chemin LOCATIF, trois lignes plus bas dans le même bloc, partage déjà sa mensualité
+(`rs.monthlyPayment *= keep`). C'est l'INCOHÉRENCE entre deux chemins voisins qui est le bug.
+
+**4. L'assertion qui survit aux taux.** Aucun de ces montants n'est ancré : à 30 ans ils bougeraient
+au premier changement de barème (`un artefact connu se SURVEILLE par une borne large`). Les gardes
+visent la RELATION — le rapport **mensualité/solde**, c'est-à-dire l'échéancier, doit traverser le
+divorce inchangé. ⚠️ Sa tolérance vient de la MESURE et non du confort : entre m=11 et m=13 le prêt
+s'amortit deux mois de plus, ce qui fait monter le rapport de 0,53 % — un `toBeCloseTo(1, 2)`
+(0,005) serait rouge sans aucun défaut. Bande retenue : 2 %, contre un écart de 1,0386 sans le
+correctif (52×).
+
+**Perturbations (3 lots, 3 récoltes)** : correctif retiré → 3 rouges · `isActive` retiré de la
+fixture (le bien DISPARAÎT — mesuré `Immobilier = 0` sur tout l'horizon, la fixture décrivait une
+maison sans en avoir une) → 3 rouges · divorce à 0 % → 3 rouges. ⚠️ Le piège `isActive` mérite
+d'être retenu seul : `projection.ts` n'initialise un achat PASSÉ que sous
+`g.isActive && purchaseOffset < 0 && g.isOwned !== false`, et une fixture qui l'oublie mesure un
+scénario SANS maison tout en paraissant en décrire une.
+
+**Chemin DÉCÈS** : vérifié, RIEN à partager — `trySpouseMortality` ne fait que lever
+`spouseAlive`/`survivorMode`, le survivant hérite, aucun actif n'est multiplié par un facteur.

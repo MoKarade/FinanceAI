@@ -848,6 +848,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 ...p,
                 currentValue: p.currentValue * keep,
                 mortgage: p.mortgage * keep,
+                calculatedPmt: p.calculatedPmt * keep,
             } : p));
             // [ENG-W5-RENTAL-OFFBALANCE] Les IMMEUBLES LOCATIFS se partagent comme le reste du
             // patrimoine familial. Oubliés ici, ils survivaient INTACTS au divorce pendant que tous

@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 791 tests** Vitest
-(443 fichiers de test, mesuré le 2026-08-25). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 796 tests** Vitest
+(444 fichiers de test, mesuré le 2026-08-25). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -868,6 +868,16 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   (`UN-ALEA-DERIVE-D-UN-IDENTIFIANT-TECHNIQUE-EST-UN-ALEA-MORT`).
 - Un audit externe/UX headless a un fort taux de faux positifs sur le money-critical — mais
   garder le claim faux comme note de **perception**.
+- ⚠️ **Le SIGNE d'un correctif money-critical peut dépendre d'un ÉCART DE TAUX, pas de sa justesse** :
+  partager la mensualité au divorce (elle ne l'était pas, contrairement au chemin LOCATIF trois
+  lignes plus bas) FAIT BAISSER le patrimoine à 30 ans — −93 546 $ à 3 %, −66 989 $ à 6 %, mais
+  **+54 003 $ à 10 %**. Le défaut équivalait à un désendettement FORCÉ au taux de l'hypothèque.
+  Balayer le paramètre qui pourrait retourner le signe : s'il se retourne, le chiffre ne dit rien de
+  la correction — c'est l'INCOHÉRENCE entre deux chemins voisins qui tranche. Corollaires du même
+  lot : un mécanisme AVAL peut BORNER un défaut amont (le renouvellement ré-ancrait la mensualité →
+  « ~2× trop vite » ne durait que 48 mois, mois de solde nul identique), et un ticket qui annonce
+  « re-basera des goldens » dit aussi où regarder quand aucun ne bouge (les 16 fixtures de divorce
+  portent `realEstateGoals: []`) (`LE-SIGNE-D-UN-CORRECTIF-PEUT-DEPENDRE-D-UN-ECART-DE-TAUX`).
 - Avant de lancer un agent sur « l'état du code », **prouver l'état du code** (`git fetch` + comparer
   à `origin/main`) : un revert de conteneur fait auditer une version morte, et le rapport reste
   PLAUSIBLE — vrais `fichier:ligne`, vraies mesures, mauvaise version (`AUDIT-SUR-TREE-PERIME`).

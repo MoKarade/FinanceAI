@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟠 Session 2026-08-25 (suite 170) — `[ENG-DIVORCE-PMT-NON-PARTAGEE]` : les DEUX prédictions du ticket sont fausses
+> Le défaut est réel (`calculatedPmt` jamais multiplié par `keep`), mais :
+> 1. « Re-basera des goldens » → **zéro golden n'a bougé**. Cause mesurée : **les 16 fixtures de
+>    divorce du dépôt portent `realEstateGoals: []`** → routé `[TEST-DIVORCE-SANS-IMMOBILIER]`.
+> 2. « s'amortit ~2× trop vite » → seulement **48 mois** : le renouvellement ré-ancre la mensualité,
+>    mois de solde nul **239 dans les deux cas**. Vrai dégât : **56 121 $ de sur-paiement**
+>    (1 169,18 $/mois).
+> ⚠️ **À SAVOIR — le patrimoine final BAISSE avec le correctif**, et le SIGNE change avec le
+> rendement (30 ans, correctif − défaut) : 3 % −93 546 $ · 6 % −66 989 $ · 8 % −20 351 $ ·
+> 10 % **+54 003 $**. Le défaut = désendettement FORCÉ à 5 % ; le signe dit l'écart de taux, pas la
+> justesse. Ce qui tranche : le chemin LOCATIF partage DÉJÀ sa mensualité, 3 lignes plus bas.
+> 5 tests, 3 perturbations × 3 rouges. Aucun montant ancré (gardes sur la RELATION mensualité/solde).
+> ⚠️ Piège de fixture : sans `isActive: true` ET `isOwned: true`, le bien n'existe pas
+> (`Immobilier = 0`) et la fixture décrit une maison sans en avoir une.
 > ## 🟢 Session 2026-08-25 (suite 169) — `[FINTABLE-SYNC-XTAB-MUTEX]` : un verrou qui enveloppe la GARDE
 > Ticket **vérifié EXACT** (et non réfuté, pour une fois) : `applyDocument` déduplique bien sur
 > `date|montant_en_cents|payee_minuscule`, donc le risque est l'INTÉGRITÉ (dernier écrivain du solde),

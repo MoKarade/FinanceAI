@@ -10,6 +10,27 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-25 — Le divorcé payait la mensualité ENTIÈRE sur une hypothèque de moitié
+
+- [x] **`[ENG-DIVORCE-PMT-NON-PARTAGEE]`** (S) — PR #737, gate vert.
+  Le défaut est réel : le partage divisait `currentValue` et `mortgage` de chaque bien, jamais
+  `calculatedPmt`. **Les DEUX prédictions du ticket sont fausses**, et chacune a appris quelque chose.
+  1. « Re-basera des goldens » → **zéro golden n'a bougé**, sur un correctif qui déplace le
+     patrimoine final de dizaines de milliers de dollars. Cause mesurée : **les 16 fixtures de
+     divorce du dépôt portent `realEstateGoals: []`** (routé : `[TEST-DIVORCE-SANS-IMMOBILIER]`).
+  2. « le prêt s'amortit ~2× trop vite » → seulement pendant **48 mois**. Le renouvellement
+     hypothécaire recalcule la mensualité sur le solde réel et ré-ancre tout : mois de solde nul
+     **239 dans les deux cas**. Reste le vrai dégât : **56 121 $ de sur-paiement** sur la fenêtre
+     (1 169,18 $/mois que le divorcé ne doit plus).
+  3. ⚠️ **Le patrimoine final BAISSE avec le correctif**, et le signe change avec le rendement
+     (30 ans, correctif − défaut) : 3 % −93 546 $ · 5 % −82 643 $ · 6 % −66 989 $ · 8 % −20 351 $ ·
+     10 % **+54 003 $**. Le défaut équivaut à un désendettement FORCÉ au taux de l'hypothèque (5 %) ;
+     le signe est une propriété de l'écart de taux, pas un argument sur la justesse. Ce qui tranche :
+     le chemin LOCATIF, trois lignes plus bas dans le même bloc, partage DÉJÀ sa mensualité.
+  5 tests (`tests/services/divorcePmtPartagee.test.ts`), **3 perturbations, 3 rouges chacune**.
+  Aucun montant ancré : les gardes visent la RELATION (rapport mensualité/solde = l'échéancier).
+  Chemin DÉCÈS vérifié : rien à partager, le survivant hérite. Leçon :
+  `LE-SIGNE-D-UN-CORRECTIF-PEUT-DEPENDRE-D-UN-ECART-DE-TAUX`.
 ## 2026-08-25 — La sync bancaire auto se verrouille enfin ENTRE ONGLETS
 
 - [x] **`[FINTABLE-SYNC-XTAB-MUTEX]`** (S, sœur de `STALE-BASE`) — PR #736, gate vert.

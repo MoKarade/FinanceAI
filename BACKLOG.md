@@ -564,6 +564,21 @@
   âge et donc potentiellement vacueuses — en particulier vérifier si les exclusions
   `ferrWithdrawalMois` et `divorceReerWithdrawalMois` sont observables sous écart d'âge.
   ⚠️ Toujours PAS testé : `shares = [1, 0]` (après divorce/décès) et les soldes per-conjoint négatifs.
+- [ ] **`[ENG-REERBYUSER-RETRAIT-INERTE]`** (XS, ARBITRAGE — découvert en auditant les gardes
+  per-conjoint) — le terme `withdrawal` de `stepReerByUser` est **ratio-neutre par construction** :
+  retirer au prorata du solde multiplie chaque part par le même facteur, et `reconcileToPool` efface
+  la trace du montant. VÉRIFIÉ à 1 $, 1 000 $, 70 000 $, 300 000 $ et 899 999 $ : répartition
+  identique au **neuvième chiffre**. Seule porte de sortie : `w ≥ Σ prev` (repli sur `shares`).
+  Conséquence : les EXCLUSIONS ajoutées à ce terme au fil des lots (`ferrWithdrawalMois`,
+  `divorceReerWithdrawalMois`) sont **justes mais quasi sans effet** — mesuré en retirant celle de la
+  FERR : **0 $ à âge égal, −141,22 $ à 15 ans d'écart, −1 641,85 $ à 27 ans** (pool 1 755 229,60 $,
+  soit 0,09 %), avec **53 tests verts**.
+  ⚠️ **Décision pour Marc, ne pas trancher seul** : (a) les GARDER telles quelles — elles sont
+  correctes et documentent une intention, mais elles coûtent de la lecture et ont déjà fait croire
+  deux fois à un enjeu qu'elles n'ont pas ; ou (b) les retirer et écrire une seule fois, dans
+  `perUserBalances.ts`, que le terme est ratio-neutre. ⚠️ Ne PAS choisir (b) sans traiter le cas
+  dégénéré : c'est le seul endroit où la double soustraction change quelque chose.
+  Caractérisation verrouillée par `tests/services/stepReerByUserProprietes.test.ts`.
 - [ ] **`[ENG-T1213-NET-MONTHLY]`** (M, MOYEN, pré-existant — mesuré panel #558, −183 598 $/30 ans) —
   activer `optimizeSourceDeductions` (T1213) ANNULE le bénéfice fiscal du REER dans la simulation :
   la retenue modélisée baisse mais le net MENSUEL encaissé (`activeIncome.ts`) ne monte jamais →

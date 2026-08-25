@@ -7286,3 +7286,47 @@ démontre le mécanisme d'épinglage ; facteur FERR identique quel que soit l'â
 0,168, sous le seuil de 0,30. Les seuils sont LARGES et non ancrés : le montant exact bougera au
 premier changement du barème FERR, le mécanisme non. Et le test de LEVIER (plus l'écart d'âge est
 grand, plus le registre s'éloigne de la clé) rougit exactement quand la mesure redevient vacueuse.
+### `DEUX-PARAMETRES-D-UN-MEME-MODULE-N-ONT-PAS-LE-MEME-STATUT` — 2026-08-25
+
+**Troisième lot d'affilée à buter sur `stepReerByUser`** (le registre REER par conjoint), et à chaque
+fois sur la même question mal posée : « est-ce que ce paramètre sert à quelque chose ? » Le module en
+a DEUX, et la réponse n'est pas la même — répondre par un seul « oui » ou un seul « non » était faux
+dans les deux sens.
+
+| | attribution | effet sur la RÉPARTITION | mesuré sur le moteur |
+|---|---|---|---|
+| `withdrawal` | au **prorata du solde** | **AUCUN** (ratio-neutre) | −1 641,85 $ au pire, via le seul cas dégénéré |
+| `contribution` | selon **`shares`** | **oui**, déplace vers la clé | +16 123,13 $ sous écart d'âge |
+
+**Pourquoi `withdrawal` est inerte, et c'est arithmétique, pas une propriété de fixture** : retirer au
+prorata multiplie CHAQUE solde par le même facteur `(1 − w/Σ)`, donc le rapport est inchangé — et
+`reconcileToPool` efface ensuite jusqu'à la trace du montant en remettant Σ à `poolEnd`. VÉRIFIÉ à
+`w` = 1 $, 1 000 $, 70 000 $, 300 000 $ et 899 999 $ sur `[300 000, 630 000]` : **répartition
+identique au neuvième chiffre**. Il n'existe qu'une porte de sortie — `w ≥ Σ prev`, où
+`reconcileToPool` bascule sur son repli et ré-attribue le pool selon `shares`.
+
+**Ce que ça dit des « correctifs » accumulés.** Plusieurs lots ont ajouté des EXCLUSIONS au terme
+`withdrawal` pour éviter une double soustraction (`ferrWithdrawalMois`, `divorceReerWithdrawalMois`).
+Elles sont **justes** — on ne soustrait pas deux fois ce qui a déjà été débité — mais elles n'achètent
+presque rien. Mesuré en retirant l'exclusion FERR du moteur : **0 $ à âge égal**, **−141,22 $** à
+15 ans d'écart, **−1 641,85 $** à 27 ans (sur un pool de 1 755 229,60 $, soit 0,09 %), et **53 tests
+restent VERTS**. Le résiduel ne vient pas du rapport mais du cas dégénéré.
+
+**La règle de méthode.** Avant de juger un paramètre « utile » ou « décoratif », **regarder par quelle
+CLÉ il est attribué** : une attribution proportionnelle au solde est invisible derrière une
+réconciliation ; une attribution par une clé EXTERNE (`shares`) ne l'est pas. La question utile n'est
+pas « ce paramètre a-t-il un effet ? » mais « son attribution peut-elle changer un RAPPORT que la
+sortie conserve ? ».
+
+⚠️ Ce paragraphe PRÉCISE `UN-COUPLE-DU-MEME-AGE-EPINGLE-LE-REGISTRE-PER-CONJOINT` sans l'annuler :
+j'y ai corrigé un « les flux sont décoratifs » trop large. La correction était juste pour
+`contribution` ; elle ne l'était pas pour `withdrawal`. **Deux corrections successives d'un même
+constat, parce que je n'avais pas séparé les deux paramètres** — le vrai défaut de méthode était là,
+pas dans le sens de la conclusion.
+
+**Perturbations (3/3, chacune isolant sa propriété)** : retrait attribué par `shares` au lieu du
+prorata → la répartition bouge (2 tests rouges) · cotisation au prorata au lieu de `shares` → le
+levier s'effondre (l'écart à la clé ne décroît plus) · repli ÉGAL au lieu de `shares` dans le cas
+dégénéré → 0,5 au lieu de 0,4641. La garde du levier (« une cotisation 10× plus grosse rapproche
+plus ») rougit exactement quand la mesure devient vacueuse — un seuil sur un point unique aurait
+survécu à la perturbation 2.

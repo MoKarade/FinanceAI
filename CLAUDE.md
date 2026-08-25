@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 821 tests** Vitest
-(450 fichiers de test, mesuré le 2026-08-25). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 825 tests** Vitest
+(451 fichiers de test, mesuré le 2026-08-25). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -499,17 +499,7 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   rien (`UN-TEST-QUI-ECHOUE-N-A-PAS-FORCEMENT-RAISON`).
 - Un bug confirmé peut viser du code **dont la sortie est jetée** → test de perturbation avant fix.
 - Une garde qui **lit la table de config** pour choisir quoi vérifier est CIRCULAIRE : elle ne peut
-  pas détecter une erreur DANS la table.
-- ⚠️ ~~Un registre RÉCONCILIÉ à une clé rend son arithmétique de flux DÉCORATIVE~~ — **constat CORRIGÉ
-  quelques heures plus tard, il était TROP LARGE** : cacher à `stepReerByUser` toutes les cotisations
-  REER laissait bien 29 tests verts, mais c'était une propriété de la FIXTURE. Voir l'entrée
-  `UN-COUPLE-DU-MEME-AGE-EPINGLE-LE-REGISTRE-PER-CONJOINT` plus bas. Ce qui RESTE vrai : devant un
-  module qui « réconcilie » en sortie, PERTURBER une entrée avant de croire qu'elle compte
-  (`UN-REGISTRE-RECONCILIE-A-UNE-CLE-REND-SES-FLUX-DECORATIFS`). Corollaires du même lot : un
-  avertissement que je me suis écrit à MOI-MÊME se re-prouve avant d'être suivi — le mien était faux
-  et faisait renoncer à un correctif juste ; et un TRANSFERT se garde par l'ÉGALITÉ de ses deux côtés,
-  pas seulement par un résiduel (publier un seul côté peut passer si l'autre est masqué par un flux du
-  même mois). Il faut une assertion qui ne la consulte pas (mesuré sur
+  pas détecter une erreur DANS la table. Il faut une assertion qui ne la consulte pas (mesuré sur
   `dailyLedger` : un solde reclassé en flux laissait les deux invariants verts).
   ⚠️ Corollaire livré le 2026-08-25 : la liste que balaie l'assertion non circulaire doit rester
   ÉCRITE À LA MAIN (la dériver de la table sortirait du balayage le champ qu'un reclassement vient
@@ -520,6 +510,35 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   de dette/immeuble/enfant dans le scénario
   (`UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`).
   Même famille : un jeton qui prouve À LA FOIS le problème et le correctif rend la garde AUTO-SATISFAITE.
+- ⚠️ **Un registre RÉCONCILIÉ à une clé rend son arithmétique de flux DÉCORATIVE** : cacher à
+  `stepReerByUser` TOUTES les cotisations REER (`contribution: 0`) laisse **29 tests per-conjoint
+  verts** et `reerByUserFinal` bit-identique — `reconcileToPool(…, poolEnd, shares)` détermine seul la
+  répartition (résultat = `poolEnd × shares`, rapport 10,0000 mesuré sur un couple 10:1). Toute une
+  famille de correctifs passés sur ce registre est peut-être inerte pour la même raison. Devant un
+  module qui « réconcilie » en sortie, PERTURBER une entrée avant de croire qu'elle compte
+  (`UN-REGISTRE-RECONCILIE-A-UNE-CLE-REND-SES-FLUX-DECORATIFS`). Corollaires du même lot : un
+  avertissement que je me suis écrit à MOI-MÊME se re-prouve avant d'être suivi — le mien était faux
+  et faisait renoncer à un correctif juste ; et un TRANSFERT se garde par l'ÉGALITÉ de ses deux côtés,
+  pas seulement par un résiduel (publier un seul côté peut passer si l'autre est masqué par un flux du
+  même mois).
+- ⚠️ ~~Un registre RÉCONCILIÉ à une clé rend son arithmétique de flux DÉCORATIVE~~ — **constat CORRIGÉ
+  quelques heures plus tard, il était TROP LARGE** : cacher à `stepReerByUser` toutes les cotisations
+  REER laissait bien 29 tests verts, mais c'était une propriété de la FIXTURE. Voir l'entrée
+  `UN-COUPLE-DU-MEME-AGE-EPINGLE-LE-REGISTRE-PER-CONJOINT` plus bas. Ce qui RESTE vrai : devant un
+  module qui « réconcilie » en sortie, PERTURBER une entrée avant de croire qu'elle compte
+  (`UN-REGISTRE-RECONCILIE-A-UNE-CLE-REND-SES-FLUX-DECORATIFS`). Corollaires du même lot : un
+  avertissement que je me suis écrit à MOI-MÊME se re-prouve avant d'être suivi — le mien était faux
+  et faisait renoncer à un correctif juste ; et un TRANSFERT se garde par l'ÉGALITÉ de ses deux côtés,
+  pas seulement par un résiduel (publier un seul côté peut passer si l'autre est masqué par un flux du
+  même mois).
+- ⚠️ **Avant de juger un paramètre « utile » ou « décoratif », regarder par quelle CLÉ il est
+  ATTRIBUÉ** : une attribution proportionnelle au solde est INVISIBLE derrière une réconciliation
+  (`withdrawal` de `stepReerByUser` est ratio-neutre — répartition identique au 9ᵉ chiffre de 1 $ à
+  899 999 $), une attribution par clé EXTERNE (`shares`) ne l'est pas (`contribution` : +16 123 $
+  mesurés sous écart d'âge). La question utile n'est pas « ce paramètre a-t-il un effet ? » mais
+  « son attribution peut-elle changer un RAPPORT que la sortie conserve ? ». J'ai corrigé DEUX fois
+  le même constat faute d'avoir séparé les deux paramètres
+  (`DEUX-PARAMETRES-D-UN-MEME-MODULE-N-ONT-PAS-LE-MEME-STATUT`).
 - Élargir l'assiette d'un calcul → auditer TOUS les dérivés qui partagent cette base. Et relire
   TOUTE la fonction : un raccourci d'égalité entre deux grandeurs qui viennent de diverger
   (`taxEmployer = taxReal`, `employmentIncome` par défaut = `gross`) devient faux en SILENCE — ni

@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-25 (le plafond REER ne fait plus un bond en 2031)
+
+- Au-delà de l'année la plus lointaine que l'ARC a annoncée, l'app doit **estimer** le plafond de
+  cotisation REER des années suivantes. Elle repartait de 2026 tout en affichant des valeurs
+  jusqu'en 2030 : le plafond faisait donc un bond de **+4,5 % en une seule année** entre 2030 et
+  2031, là où il monte d'environ 2 %/an de part et d'autre. Corrigé : l'estimation part maintenant
+  de la dernière année connue.
+- Concrètement, une projection longue t'ouvrait un peu plus de droits REER que ce que l'app
+  elle-même estime — et d'autant plus que l'inflation saisie est élevée (à 5 %, l'écart atteignait
+  5 586 $ de droits pour la seule année 2032).
+- La règle d'estimation (« inflation + 0,5 point ») est maintenant écrite noir sur blanc dans la
+  documentation fiscale **comme une hypothèse**, avec l'écart mesuré face à l'indexation réellement
+  observée. Ce n'est pas un chiffre officiel, et ça ne doit pas se lire comme tel.
+
 ## [unreleased] — 2026-08-24 (plus de pastille suspendue au-dessus du vide)
 
 - Sur la courbe Futur, les pastilles d'événement se décalent verticalement quand plusieurs tombent

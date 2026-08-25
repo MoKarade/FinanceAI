@@ -151,6 +151,12 @@ persistance de tes VRAIES données, je ne code rien avant :
 Je ne peux joindre ni `canada.ca` ni Service Canada (403). Un faux correctif dans un moteur d'impôt
 est pire que le bug : je ne touche à rien sans la source. **Une capture d'écran suffit.**
 
+> ⚠️ **Re-vérifié le 2026-08-25** : toujours bloqué, et pas seulement l'ARC — `canada.ca`,
+> `revenuquebec.ca`, `bankofcanada.ca` et les moteurs de recherche répondent tous **403** au proxy
+> de sortie (relevé dans son journal de refus). Ce n'est donc pas une panne passagère à re-tenter :
+> tant que la politique réseau ne change pas, **aucune** valeur fiscale ne peut être sourcée depuis
+> le conteneur. Je continue à router ici plutôt que d'inventer.
+
 | # | Ce qu'il me faut | Ticket | Impact mesuré |
 |---|---|---|---|
 | B1 | **Règlement 7308(4) LIR**, facteur FERR à **94 ans**. Le code dit 20,00 %, le prescrit serait 18,79 % (le plateau ne commençant qu'à 95). | `[FISC-RRIF-94-FACTOR]` | **+13 726 $** de patrimoine final |
@@ -158,6 +164,10 @@ est pire que le bug : je ne touche à rien sans la source. **Une capture d'écra
 | B3 | **Annexe B** de la déclaration QC : la réduction de 18,75 % de la ligne 361 s'applique-t-elle par conjoint sur le revenu FAMILIAL total ? | `[FISC-LINE361-PERCONJOINT-REDUC]` | ≤ 986 $/an, couple 65+ seulement (**0 $ pour toi aujourd'hui**) |
 | B4 | **Taux ARC des crédits non remboursables** : le code dit 15 %, le 1er palier fédéral est à 14 %. Seule affirmation du doc SANS source. | `[FISC-FED-CREDITRATE-15]` | ~**165 $/pers/an** si faux |
 | B5 | **LIR 146(1), définition de « revenu gagné »** : le revenu NET de location en fait-il partie ? Le moteur ne le compte pas. | `[FISC-RRSP-RENTAL-EARNED]` | ~**4 320 $/an** de droits REER non créés sur 24 k$ de loyer net |
+| B6 | **RAP / HBP — durée de remboursement.** Le moteur étale le remboursement sur **15 ans** (`realEstateMonth.ts`, `state.rapBorrowed / 15`). Vraie règle ARC, mais écrite nulle part dans `FISCAL_REFERENCE.md`. Confirme « 15 ans » et je l'ancre. | `[FISC-RAP-15ANS]` | non mesuré — change la MENSUALITÉ de remboursement, donc le cash disponible |
+| B7 | **RAP / HBP — période de grâce avant le 1ᵉʳ remboursement.** Le moteur applique **5 ans** pour un retrait entre **2022 et 2025**, et **2 ans** sinon (`realEstateMonth.ts`, `graceYears`). Ça ressemble à la mesure du **budget fédéral 2024**. Il me faut les **trois** valeurs : les deux bornes d'années ET la durée de grâce — ⚠️ elles doivent bouger ENSEMBLE, en confirmer une seule laisserait une règle à moitié fausse. | `[FISC-RAP-GRACE-WINDOW]` | non mesuré — décale de 3 ans le début du remboursement |
+| B8 | **REEE — âge de fermeture.** Le moteur ferme le régime à **25 ans** (`childrenReee.ts`, `childAgeMonths === 25 * 12`). Le ticket affirme que le régime réel autorise **35 ans**, mais un ticket n'est pas une source et je ne peux pas vérifier. Deux questions : (1) quel est l'âge réel ? (2) veux-tu qu'on s'aligne, ou qu'on garde 25 comme limite de simulation assumée ? | `[FISC-REEE-AGE-FERMETURE]` | non mesuré — 10 ans de croissance à l'abri en jeu |
+| B9 | **Plafonds REER 2010 → 2023** (14 valeurs, 22 000 → 30 780 $, `utils/tax.ts`). Elles pilotent les droits REER HISTORIQUES, donc de l'argent, et n'apparaissent nulle part dans `FISCAL_REFERENCE.md` (le §7 ne liste que 2024+). Elles ont l'air justes, mais la règle du dépôt dit qu'un chiffre sans source est suspect. Une capture de la page ARC « Plafonds de cotisation REER » suffit. | `[FISC-RRSP-LIMITS-PRE2024-DOC]` | non mesuré — reconstruction des droits accumulés avant le début de la simulation |
 
 ## C. Configuration de comptes — je n'ai pas les accès
 

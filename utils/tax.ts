@@ -612,6 +612,20 @@ export const RRSP_ANNUAL_LIMITS: Record<number, number> = {
     2026: 33810, 2027: 34480, 2028: 35170, 2029: 35870, 2030: 36590,
 };
 
+/**
+ * Dernière année où le plafond REER est CONNU dans la table (annoncé par l'ARC pour 2010-2026,
+ * estimé par le dépôt pour 2027-2030). Miroir EXACT de `LAST_KNOWN_CELI_YEAR` ci-dessus : c'est
+ * depuis cette année-là que `taxJanuary` extrapole.
+ *
+ * ⚠️ [FISC-RRSP-EXTRAP-05] Pourquoi ça ne pouvait pas rester un littéral. L'extrapolation partait
+ * de `RRSP_ANNUAL_LIMITS[2026]` en dur pendant que la table, elle, allait jusqu'à 2030 : les
+ * années 2027-2030 sortaient de la table (≈ 2 %/an) et 2031 repartait de 2026 composé au rythme du
+ * modèle. MESURÉ à inflation 2 % : la couture 2030 → 2031 faisait un bond de **+1 663 $ (+4,54 %)**
+ * en une seule année, contre les ≈ 2 %/an que la table applique de part et d'autre. Ancrer sur la
+ * DERNIÈRE année connue supprime la marche sans toucher aux années déjà tabulées.
+ */
+export const LAST_KNOWN_RRSP_YEAR = Math.max(...Object.keys(RRSP_ANNUAL_LIMITS).map(Number));
+
 // Plafond REER de repli pour une année HORS table (ex. années en sol canadien avant 2010, lors du
 // calcul des droits historiques). Source unique (évite la recopie en dur du 32490 ailleurs —
 // FISC-CONST-LINT). = plafond 2025 ; conserve le comportement existant de setupSimulation.

@@ -787,6 +787,40 @@ moins le facteur d'équivalence, plafonné par `RRSP_ANNUAL_LIMITS`. Source : AR
 > compte 13 mois de revenu gagné (+8,33 % une seule fois, ex. 19 500 au lieu de 18 000 sur
 > 100 k$) ; fenêtre glissante de 12 mois ensuite — la règle ARC stricte est l'année civile N.
 
+> ### Au-delà du barème : `inflation + 0,5 pp` — hypothèse de MODÈLE, PAS une valeur sourcée
+>
+> `taxJanuary.ts` prolonge le plafond au-delà de la dernière année du barème en composant
+> **`inflation simulée + 0,5 pp`** depuis la dernière valeur TABULÉE (`LAST_KNOWN_RRSP_YEAR`,
+> `utils/tax.ts` — même patron que `LAST_KNOWN_CELI_YEAR` juste au-dessus). Le plafond, lui, vient
+> de l'ARC ; **la vitesse à laquelle on le prolonge n'a aucune source** et ne doit pas se lire
+> comme telle. Même nature que le MGA de la RRQ (§6) et que le plafond RQAP (§2).
+>
+> **L'écart, mesuré contre l'indexation réellement observée** (barème officiel du dépôt,
+> 2010 → 2026) :
+>
+> | Fenêtre observée | Croissance annualisée |
+> |---|---|
+> | 2010 → 2026 (16 ans, valeurs officielles) | **2,72 %/an** |
+> | 2021 → 2026 (5 ans) | **3,97 %/an** |
+> | 2026 → 2030 (estimations du dépôt) | **2,00 %/an** |
+> | Modèle, à inflation 2 % | **2,50 %/an** |
+>
+> Autrement dit : le modèle est **sous** l'indexation observée sur longue période, et **au-dessus**
+> du rythme que le dépôt applique lui-même à ses propres estimations 2027-2030. Ce n'est pas
+> « proche de » — c'est un choix assumé, à relire quand le barème officiel s'étendra.
+>
+> ⚠️ **L'ancre a été corrigée le 2026-08-25** (`[FISC-RRSP-EXTRAP-05]`). Elle était le littéral
+> `2026` alors que le barème va jusqu'à 2030 : les années 2027-2030 sortaient de la table (≈ 2 %/an)
+> et 2031 repartait de 2026 composé au rythme du modèle. **MESURÉ à inflation 2 % : la couture
+> 2030 → 2031 sautait de 36 590 $ à 38 252,91 $, soit +4,54 % en une seule année** ; ancrée sur la
+> dernière année connue, elle donne 37 504,75 $ (+2,50 %, exactement la vitesse du modèle). L'écart
+> grandissait avec l'horizon et avec l'inflation saisie — à 5 % d'inflation, 2032 valait 44 188 $
+> contre 38 602 $, soit **5 586 $ de droits fabriqués par la seule ancre**. Garde :
+> `tests/services/rrspCapExtrapolation.test.ts`.
+>
+> ⚠️ La raison de l'inventaire fiscal renvoyait à un « §7.G » qui **n'a jamais existé** dans ce
+> fichier. Une référence fantôme se lit comme « c'est sourcé quelque part » et personne ne vérifie.
+
 ### FERR / RRIF — conversion et retrait minimum (`services/projection/helpers.ts:RRIF_RATES`)
 **Règle ARC.** La conversion REER→FERR est obligatoire **au plus tard à la fin de l'année des
 71 ans**. Mais **aucun retrait minimum n'est dû l'année d'ouverture** du FERR. Pour le cas standard

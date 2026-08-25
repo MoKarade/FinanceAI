@@ -59,8 +59,6 @@ export interface InventoryEntry {
 // comportement attendu d'un registre censé décroître.
 export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     // ── services/projection/taxJanuary.ts ────────────────────────────────────────────────────
-    { file: 'services/projection/taxJanuary.ts', value: '2026', family: 'fiscal',
-      reason: 'Année d’ancrage dans RRSP_ANNUAL_LIMITS pour l’extrapolation au-delà du barème connu.' },
     { file: 'services/projection/taxJanuary.ts', value: '18', family: 'fiscal',
       reason: '[×2] Âge d’ouverture des droits CELI / admissibilité CELIAPP.' },
     { file: 'services/projection/taxJanuary.ts', value: '71', family: 'fiscal',
@@ -509,7 +507,7 @@ export const FISCAL_CONST_INVENTORY: readonly InventoryEntry[] = [
     { file: 'services/projection/retirementIncome.ts', value: '0.5', family: 'fiscal',
       reason: '[≠4] QUATRE LIGNES (le compte de la garde), CINQ littéraux — `survivorRrqFactor` en porte deux sur la même ligne. Deux natures. La quatrième — `survivorPsvFactor = survivorMode ? 0.5 : 1` — était INVISIBLE au scan jusqu’au 2026-08-20 : un littéral en branche de ternaire n’était pas relevé. C’est l’élargissement `[FISC-GUARD-VALEUR-LIEE]` qui l’a fait apparaître, et cette garde qui a exigé qu’on la regarde. `survivorRrqFactor` et `survivorPsvFactor` — facteurs de rente au SURVIVANT : la PSV du défunt cesse (facteur 0,5 sur un couple) et la RRQ est recalculée via `rrqSurvivorPct`. Règles de Service Canada / Retraite Québec, §6. La prime de 0,5 pp au-dessus de l’inflation pour projeter le MGA de la RRQ : celle-là est une hypothèse d’indexation, pas une règle.' },
     { file: 'services/projection/taxJanuary.ts', value: '0.5', family: 'design',
-      reason: 'Prime d’indexation de 0,5 pp au-dessus de l’inflation servant à EXTRAPOLER le plafond REER au-delà de la dernière année connue de `RRSP_ANNUAL_LIMITS` (§7.G). Le plafond lui-même est sourcé ; la vitesse d’extrapolation est une hypothèse de modèle.' },
+      reason: 'Prime d’indexation de 0,5 pp au-dessus de l’inflation servant à EXTRAPOLER le plafond REER au-delà de la dernière année connue de `RRSP_ANNUAL_LIMITS`. Le plafond lui-même est sourcé ; la vitesse d’extrapolation est une hypothèse de MODÈLE, documentée comme telle en §7 « REER — plafonds annuels » avec son écart mesuré contre l’indexation observée. ⚠️ La référence disait « §7.G » — une section qui n’a JAMAIS existé dans FISCAL_REFERENCE.md : une raison qui pointe une ancre fantôme se lit comme « c’est sourcé quelque part » et personne ne vérifie.' },
     { file: 'services/projection/childrenReee.ts', value: '0.5', family: 'design',
       reason: '[≠2] DEUX SENS. La prime de 0,5 pp au-dessus de l’inflation indexant le PLAFOND RQAP (`rqapCapProjected`), même patron que le MGA de la RRQ (§6) ; ajoutée par `[RQAP-CAP-98K]`, et c’est CETTE garde qui l’a attrapée une PR après sa livraison. La demi-part de couches dans le coût mensuel d’un nourrisson, hypothèse de ménage. Homonymes sans rapport, et sans rapport non plus avec le taux d’inclusion des gains en capital.' },
     { file: 'services/projection/realEstateMonth.ts', value: '0.5', family: 'design',

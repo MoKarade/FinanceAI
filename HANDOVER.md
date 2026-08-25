@@ -4,6 +4,17 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟡 Session 2026-08-25 — `[A11Y-BORDER-PROMINENCE-SWEEP]` re-cadré (mesure seule, aucun code)
+> Ticket annoncé « S, 28 sites ». **MESURÉ : 255 occurrences de `border-white/10`** dans
+> `components/`, dont **31 sur un `<input>`/`<select>`/`<textarea>`** (les frontières de contrôle
+> visées par WCAG 1.4.11) et **224 décoratives** (que 1.4.11 n'exige pas à 3:1).
+> Contraste actuel **1,25–1,32** contre **3,00** exigés. ⚠️ **Le réflexe 10 → 20 → 30 NE PEUT PAS
+> marcher** (1,75 · 2,58) : il faut **`white/34`** minimum, ou un jeton opaque (`ink-500` → 3,86–4,33).
+> ⚠️ Le repli « identifiable autrement » ne s'applique pas : un champ `bg-dark` sur carte
+> `bg-surface` fait **1,05**.
+> 🧭 **Aucun code changé — décision d'apparence pour Marc** (3 options écrites au ticket) : repeindre
+> 31 bordières change visiblement le caractère de l'app, et le tri contrôle/décor demande un arbitrage.
+
 > ## 🟢 Session 2026-08-25 (suite 167) — `[ENG-NETTRANSFER-REER-INCOMPLET]` : 1,85 M$ de retraits muets
 > Le ticket : « ne voit ni FERR ni meltdown, écart 330 353 $ ». **RE-MESURÉ** : la moitié FERR était
 > DÉJÀ fermée (#2026-08-19) ; la moitié MELTDOWN était ouverte et **5,6× pire**.

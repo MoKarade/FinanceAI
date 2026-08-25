@@ -608,8 +608,32 @@
   n'apporte rien au manque réel (l'exclusion, maintenant livrée) → **attendre son arbitrage** avant
   tout chantier de navigation. Ne PAS coder le déplacement sans go explicite.
 
-- [ ] **`[A11Y-BORDER-PROMINENCE-SWEEP]`** (S, reste) — passe dédiée inputs/selects (focus:border-*),
-  toggles, dropzones (border-white/10 : Transactions ×16, Investments ×8, Dashboard ×4).
+- [ ] **`[A11Y-BORDER-PROMINENCE-SWEEP]`** (M, 🧭 **décision d'apparence — MESURÉ 2026-08-25**) —
+  ⚠️ **Le ticket disait « S » et annonçait 28 sites. Mesuré : 255 occurrences de `border-white/10`
+  dans `components/`**, dont **31 sur un `<input>`/`<select>`/`<textarea>`** (les vraies frontières
+  de contrôle visées par WCAG 1.4.11) et **224 décoratives** (séparateurs, bordures de cartes — que
+  1.4.11 n'exige PAS à 3:1). Seulement **2** des 31 portent un `focus:border-*`.
+  **Contrastes mesurés** (blanc composé sur les fonds de la palette) :
+
+  | Bordure | sur `dark` | sur `surface` | sur `surfaceHighlight` |
+  |---|---|---|---|
+  | `border-white/10` (actuel) | **1,25** | **1,29** | **1,32** |
+  | `border-white/20` | 1,75 | 1,83 | 1,88 |
+  | `border-white/30` | 2,58 | 2,67 | 2,70 |
+  | **exigence WCAG 1.4.11** | **3,00** | **3,00** | **3,00** |
+
+  ⚠️ **Le réflexe évident — monter l'opacité de 10 à 20 puis 30 — NE PEUT PAS marcher** : il faut
+  **`white/34` minimum** (3,01 / 3,07 / 3,14), soit plus du TRIPLE de l'actuel. Un jeton opaque de la
+  palette passe avec marge : `ink-500 #6a7689` → **3,86 à 4,33**.
+  ⚠️ **Et le repli d'identification ne sauve rien** : un champ `bg-dark` posé sur une carte
+  `bg-surface` fait **1,05** de contraste — le fond ne distingue pas le contrôle non plus, donc
+  l'exemption « identifiable autrement » de 1.4.11 ne s'applique pas.
+  🧭 **Pourquoi c'est ta décision** : passer 31 bordures de 10 % à 34 % (ou à un gris plein) change
+  visiblement le caractère de l'app, et la frontière entre « contrôle » et « décor » demande un
+  arbitrage (les 224 décoratives peuvent rester à 10 %, mais un séparateur de tableau très visible
+  n'est pas le même choix esthétique qu'un champ de saisie).
+  Trois options : (a) `ink-500` sur les 31 contrôles seulement ; (b) `white/34` sur les 31 ;
+  (c) statu quo assumé et documenté comme écart WCAG connu.
 - [ ] **`[UI-RETIREMENT-DEAD-FRAGMENT]`** (XS, cosmétique — retour revue #604) — fragment JSX `<>…</>`
   inutile dans `components/Retirement.tsx` (lignes ~322-434) après le retrait d'un ternaire mort ;
   suppression imposte re-indenter ~110 lignes. Aucun impact fonctionnel ; `eslint` le rate

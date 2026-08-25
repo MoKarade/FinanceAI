@@ -90,6 +90,24 @@
 > propre test. **`knip` ne le voit pas** (sortie identique au octet près) → `[UTIL-GOLDENSPLIT-ORPHELIN]`.
 > 3 tests, 3 perturbations (dont une qui doit rester VERTE : mention en commentaire).
 >
+> ## 🟠 Session 2026-08-25 (suite 175) — je CORRIGE mon propre constat de la suite 174
+> ⚠️ Hier j'ai publié (PR #741) que l'arithmétique de flux du registre REER per-conjoint était
+> « décorative », parce que `contribution: 0` ne faisait rien bouger. **Trop large, et FAUX.**
+> C'était une propriété de la FIXTURE : le registre est semé par `splitByShares(reer, reerShares)`,
+> les trois opérations qui le font vivre PRÉSERVENT le rapport, et `reerShares` ne change qu'au
+> décès/divorce → **couple du MÊME ÂGE = registre épinglé à la clé salariale pour toujours**
+> (mesuré **0,535948** = 8 200/15 300, exactement).
+> Le seul flux NON proportionnel est la FERR (part exacte par âge). Sous écart d'âge : **0,906412**
+> (45/58), **0,962539** (50/65). Et la perturbation déplace alors le REER FINAL du ménage :
+> **+16 123,13 $** — avec les 29 tests per-conjoint VERTS. C'est un TROU DE COUVERTURE, pas du code mort.
+> Livré : 4 tests sur un couple à écart d'âge, **2 perturbations rouges** (FERR au prorata → le
+> registre retombe PILE sur la clé, écart 3,3e-16 ; facteur FERR sans l'âge → 0,168 < seuil 0,30).
+> Seuils LARGES, jamais ancrés. Aucun code moteur touché.
+> ⚠️ **Règle à retenir** : une perturbation muette dit « la fixture ne l'atteint pas » AVANT de dire
+> « le code ne sert à rien ». Et un paramètre à ÉCART se teste à écart NON NUL.
+> 🧭 Reste ouvert (`[ENG-FERR-ECART-AGE-NON-COUVERT]`) : auditer les autres gardes per-conjoint,
+> toutes écrites à âge égal.
+>
 > ## 🟢 Session 2026-08-25 (suite 168) — `[ENG-DIVORCE-SCALE-UNBOUGHT]` : la mise de fonds évaporée
 > Ticket marqué **« [À vérifier] — non vérifié par perturbation »**, classé FAIBLE. Vérifié : réel,
 > et le dégât n'est pas celui annoncé.

@@ -547,6 +547,23 @@
   de `handleSync`. ⚠️ Non fait ici à dessein : le corps fait ~85 lignes avec `try/finally`, plusieurs
   `setState` et le chemin d'ÉCRITURE money-critical — l'extraire mérite son propre lot et sa propre
   perturbation, pas un « pendant qu'on y est ».
+- [ ] **`[ENG-FERR-ECART-AGE-NON-COUVERT]`** (M — ⚠️ **REMPLACE `[ENG-REERBYUSER-FLUX-DECORATIF]`,
+  dont le constat était TROP LARGE et FAUX ; correction MESURÉE le 2026-08-25**) — j'avais écrit que
+  l'arithmétique de flux du registre REER per-conjoint était « décorative », parce qu'une perturbation
+  (`contribution: 0`) ne faisait rien bouger. C'est une propriété de la FIXTURE, pas du module : le
+  registre est semé par `splitByShares(reer, reerShares)`, les trois opérations qui le font vivre
+  (retrait au prorata du solde, cotisation selon `shares`, `reconcileToPool`) PRÉSERVENT le rapport,
+  et `reerShares` ne change qu'au décès/divorce → **sur un couple du MÊME ÂGE, le registre est épinglé
+  à la clé salariale pour toujours** (mesuré 0,535948 = 8 200/15 300, exactement).
+  Le seul flux NON proportionnel est la FERR (part exacte par âge, `ferrGrossByUser`). Sous écart
+  d'âge : **0,906412** (45/58) et **0,962539** (50/65). Et la même perturbation déplace alors le REER
+  FINAL du ménage — **1 220 204,75 $ → 1 236 327,88 $ (+16 123,13 $)** — avec les 29 tests
+  per-conjoint VERTS.
+  ✅ Le trou est fermé côté registre (`tests/services/reerByUserEcartAge.test.ts`).
+  **Reste à faire** : auditer les AUTRES gardes per-conjoint, toutes écrites sur des couples du même
+  âge et donc potentiellement vacueuses — en particulier vérifier si les exclusions
+  `ferrWithdrawalMois` et `divorceReerWithdrawalMois` sont observables sous écart d'âge.
+  ⚠️ Toujours PAS testé : `shares = [1, 0]` (après divorce/décès) et les soldes per-conjoint négatifs.
 - [ ] **`[ENG-T1213-NET-MONTHLY]`** (M, MOYEN, pré-existant — mesuré panel #558, −183 598 $/30 ans) —
   activer `optimizeSourceDeductions` (T1213) ANNULE le bénéfice fiscal du REER dans la simulation :
   la retenue modélisée baisse mais le net MENSUEL encaissé (`activeIncome.ts`) ne monte jamais →
@@ -1643,21 +1660,6 @@
   gardes de conservation existantes. ⚠️ Piège mesuré : sans `isActive: true` ET `isOwned: true`, le
   bien n'existe pas du tout (`Immobilier = 0` sur tout l'horizon) et la fixture semble décrire une
   maison sans en avoir une.
-- [ ] **`[ENG-REERBYUSER-FLUX-DECORATIF]`** (M, découvert en livrant `CELIAPP-TRANSFERT-FLUX-MUET`) —
-  **l'arithmétique de flux du registre REER per-conjoint semble sans effet observable.** Perturbation
-  décisive : forcer `stepReerByUser(..., { contribution: 0 })` — donc lui cacher TOUTES les
-  cotisations REER de tous les mois — laisse **29 tests per-conjoint verts** ET `reerByUserFinal`
-  bit-identique. `reconcileToPool(afterFlows, poolEnd, shares)` détermine seul la répartition à partir
-  de `shares` : le résultat vaut exactement `poolEnd × shares` (rapport 10,0000 mesuré sur un couple
-  20 000 $ / 2 000 $).
-  ⚠️ Conséquence : une FAMILLE de correctifs passés sur ce registre est peut-être inerte pour la même
-  raison — `[ENG-DIVORCE-REGISTRE-PERCONJOINT]`, l'exclusion `ferrWithdrawalMois`, celle du divorce
-  (`divorceReerWithdrawalMois`). Et le registre ne peut alors pas dire QUI a réellement retiré.
-  ⚠️ **Ce qui n'a PAS été testé** : les cas où `shares` vaut `[1, 0]` (après divorce/décès), et ceux
-  où un solde per-conjoint deviendrait négatif. À mesurer AVANT de conclure — c'est peut-être une
-  propriété de ce scénario, pas du module.
-  Fix possible : soit assumer et documenter que la répartition est une CLÉ (et retirer l'arithmétique
-  trompeuse), soit rendre `reconcileToPool` non destructif. Demande un arbitrage.
 - [ ] **`[ENG-LIQUID-FLUX-FORM]`** (M, découvert en livrant `DIVORCE-FLUX-MUET`) — le compte
   **Liquidités n'est pas conforme à la forme-flux**, indépendamment du divorce : résiduel mesuré
   **7 638,44 $ au mois 324**, et de petits résiduels un peu partout (50,85 $ au mois 12, 310 $ au

@@ -7193,6 +7193,12 @@ reste vert (perturbation faite : mention en commentaire → vert, `import { Tool
 cet environnement de test — les scans de source passent par `resolve(process.cwd(), …)`.
 ### `UN-REGISTRE-RECONCILIE-A-UNE-CLE-REND-SES-FLUX-DECORATIFS` — 2026-08-25
 
+> ⚠️ **CORRIGÉE le jour même.** Le point 3 ci-dessous (« les flux du registre per-conjoint sont
+> décoratifs ») est TROP LARGE et faux : c'était une propriété de la FIXTURE (couple du même âge), pas
+> du module. Lire `UN-COUPLE-DU-MEME-AGE-EPINGLE-LE-REGISTRE-PER-CONJOINT`, plus bas, AVANT de citer
+> cette entrée. Les points 1, 2, 4 et 5 restent exacts. Conservée telle quelle : la supprimer
+> effacerait la trace de ce que j'avais conclu trop vite, et c'est justement ce qu'il faut garder.
+
 **Ticket** : `[ENG-CELIAPP-TRANSFERT-FLUX-MUET]` (S, que j'avais routé la veille en livrant
 `[ENG-DIVORCE-FLUX-MUET]`). À la fermeture du CELIAPP (fin des 15 ans, ou 71 ans), le moteur faisait
 `reer += X; celiapp = 0;` sans publier de flux : forme-flux violée des DEUX côtés, du MÊME montant —
@@ -7234,3 +7240,49 @@ garde exige donc aussi que le montant sorti du CELIAPP soit celui entré au REER
 aucun flux → 3 rouges · côté REER seul → 3 · côté CELIAPP seul → 2 · **moitié** du montant → 2.
 ⚠️ Le mois de fermeture est CHERCHÉ dans les données (premier mois où le CELIAPP passe de > 1 $ à 0),
 jamais écrit en dur : un littéral se périmerait au premier réglage de la fixture.
+
+### `UN-COUPLE-DU-MEME-AGE-EPINGLE-LE-REGISTRE-PER-CONJOINT` — 2026-08-25
+
+⚠️ **Ce paragraphe CORRIGE `UN-REGISTRE-RECONCILIE-A-UNE-CLE-REND-SES-FLUX-DECORATIFS`, écrit et
+publié quelques heures plus tôt (PR #741).** La leçon précédente reste en place, avec son titre : la
+supprimer effacerait la trace de ce que j'avais conclu trop vite. Ce qu'elle affirmait — « l'arithmétique
+de flux du registre REER par conjoint est décorative » — est **trop large et FAUX**. Voici la mesure.
+
+**Ce que j'avais observé** : forcer `stepReerByUser(..., { contribution: 0 })`, donc cacher au registre
+TOUTES les cotisations REER de tous les mois, laissait 29 tests per-conjoint verts et
+`reerByUserFinal` bit-identique. J'en avais déduit une propriété du MODULE. C'était une propriété de
+la FIXTURE.
+
+**Le mécanisme réel, et il est arithmétique.** Le registre est semé par
+`splitByShares(reer, reerShares)` — il PART exactement à la clé salariale. Ensuite : un retrait est
+réparti AU PRORATA du solde, une cotisation SELON `shares`, et `reconcileToPool` met à l'échelle. Ces
+trois opérations **préservent le rapport** quand il vaut déjà `shares`. Et `reerShares` est calculé
+une seule fois (il ne change qu'au décès ou au divorce). Sur un couple du MÊME ÂGE, le rapport ne
+quitte donc jamais la clé, et **aucune** perturbation des flux ne peut s'observer.
+MESURÉ (45/45) : part du conjoint 0 = **0,535948**, soit exactement `8 200 / (8 200 + 7 100)`.
+
+**Ce qui casse l'épinglage** est le seul flux NON proportionnel du moteur : la FERR, retirée de la
+part EXACTE de chaque conjoint selon le facteur de SON âge (`ferrGrossByUser`, [ITEM-2C]). Il faut
+donc un ÉCART D'ÂGE **et** de dépasser 71 ans. MESURÉ : 45/58 → **0,906412** · 50/65 → **0,962539**.
+
+**Et ce n'est pas un registre d'affichage** : sous écart d'âge, la même perturbation déplace le REER
+FINAL du ménage — **1 220 204,75 $ → 1 236 327,88 $, +16 123,13 $** — parce que la part de chacun
+conditionne SA FERR de l'année suivante. Les 29 tests per-conjoint restent verts pendant ce mouvement.
+
+**Les trois règles à en tirer.**
+1. **Une perturbation muette dit « la fixture ne l'atteint pas » AVANT de dire « le code ne sert à
+   rien ».** Les deux hypothèses expliquent le même silence ; seule la seconde est flatteuse, et
+   c'est celle que j'ai choisie. Chercher d'abord ce que la fixture rend impossible.
+2. **Un paramètre à ÉCART (âge, salaire, date) doit être testé à écart NON NUL.** Même famille que
+   « à 50 %, `keep` et `1 − keep` sont indiscernables » et que `PARITE-QUI-REND-UN-TEST-VACUEUX` :
+   la valeur la plus naturelle (deux conjoints du même âge) est ici la seule qui n'observe rien.
+3. **Un constat publié se corrige là où il a été écrit.** Il était déjà dans `CLAUDE.md`, dans
+   `BACKLOG.md` et dans le corps d'une PR mergée — trois endroits à reprendre, ce qui est le coût
+   réel d'avoir conclu vite (`DOC-STALE-IMPOSSIBILITY`).
+
+**Perturbations de la garde qui ferme le trou (2/2 rouges, et parlantes)** : FERR retirée AU PRORATA
+au lieu de la part exacte → le registre **retombe pile sur la clé** (écart 3,3 × 10⁻¹⁶), ce qui
+démontre le mécanisme d'épinglage ; facteur FERR identique quel que soit l'âge → l'écart tombe à
+0,168, sous le seuil de 0,30. Les seuils sont LARGES et non ancrés : le montant exact bougera au
+premier changement du barème FERR, le mécanisme non. Et le test de LEVIER (plus l'écart d'âge est
+grand, plus le registre s'éloigne de la clé) rougit exactement quand la mesure redevient vacueuse.

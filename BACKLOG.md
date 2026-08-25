@@ -1643,13 +1643,21 @@
   gardes de conservation existantes. ⚠️ Piège mesuré : sans `isActive: true` ET `isOwned: true`, le
   bien n'existe pas du tout (`Immobilier = 0` sur tout l'horizon) et la fixture semble décrire une
   maison sans en avoir une.
-- [ ] **`[ENG-CELIAPP-TRANSFERT-FLUX-MUET]`** (S, découvert en livrant `DIVORCE-FLUX-MUET`) — au
-  transfert CELIAPP → REER (échéance des 15 ans), **9 092,54 $ changent de compte sans qu'aucun des
-  deux flux ne soit publié** : le résiduel de forme-flux est le MÊME des deux côtés (mois 168 d'une
-  fixture MC 30 ans), signature d'un transfert muet. Même classe que `[ENG-FERR-NETTRANSFER-MUET]`.
-  Fix : publier `withdrawalCELIAPP` ET `contribREER` au point de transfert. ⚠️ Vérifier d'abord si
-  `withdrawalCELIAPP`/`contribREER` ont un consommateur de CALCUL (`contribREER` alimente le registre
-  per-conjoint et l'exclusion de croissance de mi-mois) — ça peut DÉPLACER de l'argent.
+- [ ] **`[ENG-REERBYUSER-FLUX-DECORATIF]`** (M, découvert en livrant `CELIAPP-TRANSFERT-FLUX-MUET`) —
+  **l'arithmétique de flux du registre REER per-conjoint semble sans effet observable.** Perturbation
+  décisive : forcer `stepReerByUser(..., { contribution: 0 })` — donc lui cacher TOUTES les
+  cotisations REER de tous les mois — laisse **29 tests per-conjoint verts** ET `reerByUserFinal`
+  bit-identique. `reconcileToPool(afterFlows, poolEnd, shares)` détermine seul la répartition à partir
+  de `shares` : le résultat vaut exactement `poolEnd × shares` (rapport 10,0000 mesuré sur un couple
+  20 000 $ / 2 000 $).
+  ⚠️ Conséquence : une FAMILLE de correctifs passés sur ce registre est peut-être inerte pour la même
+  raison — `[ENG-DIVORCE-REGISTRE-PERCONJOINT]`, l'exclusion `ferrWithdrawalMois`, celle du divorce
+  (`divorceReerWithdrawalMois`). Et le registre ne peut alors pas dire QUI a réellement retiré.
+  ⚠️ **Ce qui n'a PAS été testé** : les cas où `shares` vaut `[1, 0]` (après divorce/décès), et ceux
+  où un solde per-conjoint deviendrait négatif. À mesurer AVANT de conclure — c'est peut-être une
+  propriété de ce scénario, pas du module.
+  Fix possible : soit assumer et documenter que la répartition est une CLÉ (et retirer l'arithmétique
+  trompeuse), soit rendre `reconcileToPool` non destructif. Demande un arbitrage.
 - [ ] **`[ENG-LIQUID-FLUX-FORM]`** (M, découvert en livrant `DIVORCE-FLUX-MUET`) — le compte
   **Liquidités n'est pas conforme à la forme-flux**, indépendamment du divorce : résiduel mesuré
   **7 638,44 $ au mois 324**, et de petits résiduels un peu partout (50,85 $ au mois 12, 310 $ au

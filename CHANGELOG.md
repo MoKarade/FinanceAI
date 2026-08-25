@@ -53,6 +53,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - L'autre alerte, « échec de la dernière sauvegarde », n'est pas retardée : elle ne peut apparaître
   que lorsque la connexion est déjà établie.
 
+## [unreleased] — 2026-08-25 (interne : la fermeture du CELIAPP n'est plus un mouvement fantôme)
+
+- Quand ton CELIAPP se ferme (au bout de 15 ans, ou à 71 ans), son solde est transféré au REER. Le
+  moteur faisait bien le transfert, mais **ne le déclarait nulle part** : plus de **10 000 $**
+  changeaient de compte sans mouvement visible dans les données internes.
+- Corrigé : la sortie du CELIAPP et l'entrée au REER sont maintenant publiées, du même montant.
+  **Rien ne change dans tes chiffres** — patrimoine et REER finaux identiques au centième près.
 ## [unreleased] — 2026-08-25 (la section « Améliorer mon budget » est retirée)
 
 - Retirée de l'onglet Budget, à ta demande. Partent avec elle : le graphique 50/30/20 théorique, le

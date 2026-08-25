@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 762 tests** Vitest
-(436 fichiers de test, mesuré le 2026-08-24). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 766 tests** Vitest
+(437 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -637,6 +637,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   depuis W5.3, exposé nulle part, et `DebtManager` n'avait que « Ajouter »/« Supprimer » — corriger
   une dette imposait de la détruire. « Créer + supprimer » n'est pas « gérer »
   (`CHAMP-DANS-LE-TYPE-INATTEIGNABLE-DANS-L-UI`).
+  ⚠️ Variante plus TROMPEUSE (2026-08-25) : le champ existe, le moteur le consulte EN PREMIER, un
+  commentaire cite le ticket et 3 tests verrouillent son contrat — mais **aucun producteur n'écrit
+  jamais la valeur** (`'VENTE_IMMO'` : zéro écriture dans tout le dépôt), donc 100 % des événements
+  arrivent sur le chemin de repli, l'heuristique de nom qu'on croyait retirée. Devant un ticket qui
+  semble déjà livré, **grep les PRODUCTEURS, pas les consommateurs** ; et écrire la valeur par DÉFAUT
+  explicitement, jamais l'absence — absent veut dire « je ne sais pas » et relance le repli
+  (`UN-CHAMP-TYPE-SANS-PRODUCTEUR-EST-UNE-INTENTION-JAMAIS-LIVREE`).
 - Une **échéance ne solde pas une dette** : à la fin d'un terme on arrête le paiement, on LAISSE le
   solde résiduel au bilan (l'effacer fabriquerait du patrimoine) et on alerte UNE fois. Et une dette
   pas encore commencée doit sortir AUSSI du bilan — `sumActiveDebts` est une closure définie avant la

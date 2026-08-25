@@ -767,8 +767,6 @@
   aujourd'hui, cible 20-30 (depuis MANUAL_TEST_CHECKLIST.md).
 - [ ] **`[T3]`** (S pour mesurer) — lancer un run coverage pour trancher la cible 64→80 % (jamais
   mesuré depuis ~2350 tests ajoutés).
-- [ ] **`[ENG-LIFEEVENT-VENTE-SUBSTRING]`** (S, racine) — « vente » mot réservé détecté par
-  sous-chaîne sur LifeEvent.name (`applyLifeEvents`) → détection par champ typé, plus de string-matching.
 
 ## 🚀 Gros chantiers (⏳ — plan-first + OK Marc par chantier)
 

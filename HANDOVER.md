@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-25 (suite 167) — `[ENG-NETTRANSFER-REER-INCOMPLET]` : 1,85 M$ de retraits muets
+> Le ticket : « ne voit ni FERR ni meltdown, écart 330 353 $ ». **RE-MESURÉ** : la moitié FERR était
+> DÉJÀ fermée (#2026-08-19) ; la moitié MELTDOWN était ouverte et **5,6× pire**.
+> **MESURÉ sous `MELTDOWN_REER`** : −34 794 $ de REER en un mois pour **802 $** de flux publiés
+> (pire résiduel **35 596,32 $**), **1 849 080,59 $** d'écart cumulé sur 156 mois. Après : **0,10 $**.
+> ⚠️ **Pourquoi la garde ne l'a jamais vu** : le test `[ENG-FERR-NETTRANSFER-MUET]` nomme le BON
+> invariant, mais sa fixture ne demande pas la stratégie `MELTDOWN_REER` — et le meltdown ne
+> s'exécute QUE sous elle. Invariant juste, testé, aveugle à un chemin entier.
+> ⚠️ **Pas le traitement de la FERR pour le per-conjoint** : la FERR est exclue de `stepReerByUser`
+> (part EXACTE par âge) ; le meltdown est attribué AU PRORATA → soustraction au prorata = MÊME règle.
+> ⚠️ **Jambe d'ARRIVÉE laissée muette DÉLIBÉRÉMENT** → 🧭 `[ENG-MELTDOWN-JAMBE-ARRIVEE]` :
+> `contribNonReg` pilote l'exclusion de croissance de mi-mois, donc la publier déplace de l'argent
+> (**−5 045,04 $** mesuré) et fait ROUGIR deux goldens « NEUTRALITÉ NW » posés le 2026-07-31 avec
+> leur preuve. Correction plausible, mais contre un invariant explicite = décision de Marc.
+> Le résiduel restant est BORNÉ par le test pour qu'il ne grandisse pas en silence.
+> 1 test, **2 perturbations rouges**.
+>
 > ## 🟢 Session 2026-08-25 (suite 166) — `[ENG-RENEWAL-M0]` caduque : le choc de taux est MORT
 > ⚠️ **MESURÉ** : le choc de taux au renouvellement vient du PREMIER CARACTÈRE de l'identifiant du
 > bien (`((id.charCodeAt(0) % 3) - 1) * 0,015`) — et il vaut **ZÉRO partout** : UI `prop_<ts>`

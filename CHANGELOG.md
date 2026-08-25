@@ -20,6 +20,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   documentation fiscale **comme une hypothèse**, avec l'écart mesuré face à l'indexation réellement
   observée. Ce n'est pas un chiffre officiel, et ça ne doit pas se lire comme tel.
 
+## [unreleased] — 2026-08-25 (la stratégie « fondre le REER » montre enfin où va l'argent)
+
+- Sous la stratégie de décaissement **« meltdown REER »**, ton solde REER pouvait chuter de 34 794 $
+  en un mois alors que l'app n'affichait que **802 $** de mouvement. Sur un horizon de 35 ans, ça
+  faisait **1,85 M$** de retraits invisibles dans le détail des flux.
+- Ces retraits sont maintenant publiés : l'infobulle et la fiche de détail montrent le vrai
+  mouvement du compte. **Aucun montant de patrimoine ne change** — c'était un problème d'affichage,
+  pas de calcul.
+- ⚠️ Reste connu : l'arrivée de cet argent dans le compte non enregistré n'est pas encore publiée.
+  La corriger changerait un rendement (−5 045 $ sur ce scénario) — c'est une décision, pas une
+  correction évidente, donc elle est notée au backlog plutôt que prise dans ton dos.
+
 ## [unreleased] — 2026-08-25 (le renouvellement d'hypothèque ne t'annonce plus un faux changement)
 
 - Quand un terme hypothécaire de 5 ans arrivait à échéance dans la projection, l'app affichait

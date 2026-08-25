@@ -10,6 +10,32 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-25 — Le meltdown REER vidait 1,85 M$ sans publier un seul flux
+
+- [x] **`[ENG-NETTRANSFER-REER-INCOMPLET]`** — le ticket disait « ne voit ni FERR ni meltdown, écart
+  cumulé 330 353 $ ». **RE-MESURÉ : la moitié FERR était déjà fermée** par
+  `[ENG-FERR-NETTRANSFER-MUET]` (2026-08-19) ; la moitié MELTDOWN était ouverte, et **5,6× pire que
+  le chiffre du ticket**.
+  **MESURÉ sous la stratégie `MELTDOWN_REER`** : le solde REER chutait de 34 794 $ en un mois pour
+  **802 $** de flux publiés (pire résiduel **35 596,32 $**), soit **1 849 080,59 $** d'écart cumulé
+  entre `RetraitREER` (affichage) et `ContribREER − NetTransferREER` (transferts) sur 156 mois.
+  Après correctif : **0,10 $**.
+  ⚠️ **Pourquoi la garde existante ne l'a jamais vu** : le test `[ENG-FERR-NETTRANSFER-MUET]` nomme
+  exactement le bon invariant — les deux registres du retrait REER doivent dire la même chose — mais
+  sa fixture ne demande pas la stratégie `MELTDOWN_REER`, et le meltdown ne s'exécute QUE sous cette
+  stratégie. Invariant juste, nommé, testé, et aveugle à un chemin entier.
+  ⚠️ **Le registre per-conjoint ne subit PAS le traitement de la FERR** : la FERR est exclue de
+  `stepReerByUser` parce qu'elle sort de la part EXACTE de chaque conjoint (facteur RRIF de SON âge) ;
+  le meltdown est attribué AU PRORATA (`addByWeights`), donc le soustraire au prorata est la MÊME
+  règle, pas une seconde. Vérifié : les goldens per-conjoint ne bougent pas.
+  ⚠️ **La jambe d'ARRIVÉE est délibérément LAISSÉE muette** → `[ENG-MELTDOWN-JAMBE-ARRIVEE]`.
+  `contribNonReg` pilote l'exclusion de croissance de mi-mois, donc la publier déplace de l'argent :
+  **−5 045,04 $** de patrimoine final mesuré, et **deux goldens « NEUTRALITÉ NW » rougissent**. La
+  correction paraît juste (de l'argent arrivé le 15 ne devrait pas toucher un mois plein de
+  croissance) mais elle contredit un invariant explicite posé avec sa preuve — c'est une décision,
+  pas un correctif. Le résiduel restant est BORNÉ par le test pour qu'il ne grandisse pas en silence.
+  1 test, **2 perturbations rouges** (jambe muette · publication partielle). Livré 2026-08-25 · PR #733.
+
 ## 2026-08-25 — Le renouvellement hypothécaire annonçait un changement qui n'a jamais lieu
 
 - [x] **`[ENG-RENEWAL-M0]`** — ⚠️ **caduque, remplacé par `[ENG-RENEWAL-CHOC-MORT]`.** Sa prémisse

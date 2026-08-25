@@ -197,6 +197,53 @@ describe('[ENG-INV-FLUXFORM-COVERAGE] toute variation de compte est EXPLIQUÉE p
             .toBeLessThan(CENT_ROUNDING_TOLERANCE);
     });
 
+    it('[ENG-NETTRANSFER-REER-INCOMPLET] le MELTDOWN publie sa jambe de DÉPART', () => {
+        // ⚠️ Ce cas existe parce que la garde FERR juste en dessous ne pouvait pas le voir : sa
+        // fixture ne demande pas la stratégie MELTDOWN_REER, et le meltdown ne s'exécute QUE sous
+        // cette stratégie (`meltdownReer.ts` : `if (strategy !== 'MELTDOWN_REER') return null`).
+        // L'invariant était juste, nommé, testé — et aveugle à un chemin entier.
+        //
+        // MESURÉ avant correctif, sur cette fixture : le solde REER chutait de 34 794 $ en un mois
+        // pour 802 $ de flux publiés (pire résiduel 35 596,32 $), et l'écart cumulé entre
+        // `RetraitREER` et `ContribREER − NetTransferREER` atteignait 1 849 080,59 $ sur 156 mois.
+        // Après : 0,01 $ et 0,10 $ (arrondi au cent).
+        const p = params({ years: 35, withdrawalStrategy: 'MELTDOWN_REER' });
+        const r = calculateFutureProjection({ ...p, retirementGoal: { ...p.retirementGoal, targetAge: 62 } });
+        const data = r.chartData as ProjectionChartPoint[];
+        const rows = data as unknown as Record<string, number>[];
+
+        // Anti-vacuité : sans meltdown effectif, tout ce qui suit serait vrai par abstention.
+        const gros = rows.filter((d) => (Number(d.RetraitREER) || 0) > 10_000);
+        expect(gros.length, 'la fixture ne déclenche jamais le meltdown : rien n\'est mesuré')
+            .toBeGreaterThan(20);
+
+        // ⚠️ SEULE la jambe de DÉPART (REER) est publiée, et c'est un choix MESURÉ, pas un oubli.
+        // Publier la jambe d'ARRIVÉE (`contribNonReg += nonRegAdd`) est le geste symétrique — mais
+        // `contribNonReg` n'est pas qu'un registre d'affichage : `growthApplication` s'en sert comme
+        // base d'exclusion de la croissance de mi-mois (`nonReg - contribNonReg`). L'y ajouter
+        // RETIRE un rendement fantôme et déplace donc de l'argent : MESURÉ **−5 045,04 $** de
+        // patrimoine final (−0,12 %) et −5 198,23 $ de croissance non-enregistrée cumulée, ce qui
+        // fait ROUGIR les deux goldens « NEUTRALITÉ NW » de `projection.meltdownDisplay` et
+        // `projection.totalTaxesPaid`. Correction plausible, décision de Marc → ticket
+        // `[ENG-MELTDOWN-JAMBE-ARRIVEE]`. Le résiduel NonReg restant est donc ATTENDU (mesuré
+        // 25 273,39 $ au pire mois) : on le borne pour qu'il ne GRANDISSE pas en silence.
+        const { max, where } = worstFluxResidual(data);
+        expect(max, `résiduel de flux inattendu sous MELTDOWN_REER — ${where}`)
+            .toBeLessThan(30_000);
+
+        // Les deux registres du retrait REER, eux, concordent mois par mois.
+        let pire = 0;
+        let ou = '(aucun)';
+        for (let i = 0; i < rows.length; i++) {
+            const retrait = Number(rows[i].RetraitREER) || 0;
+            if (retrait <= 0) continue;
+            const transferts = (Number(rows[i].ContribREER) || 0) - (Number(rows[i].NetTransferREER) || 0);
+            const ecart = Math.abs(retrait - transferts);
+            if (ecart > pire) { pire = ecart; ou = `mois ${i} : affichage ${retrait.toFixed(2)} $ vs transferts ${transferts.toFixed(2)} $`; }
+        }
+        expect(pire, `les deux registres divergent — ${ou}`).toBeLessThan(CENT_ROUNDING_TOLERANCE);
+    });
+
     it('[ENG-FERR-NETTRANSFER-MUET] les deux registres du retrait REER disent la MÊME chose', () => {
         // La garde ci-dessus attrape la conséquence (un solde qui bouge sans flux). Celle-ci nomme
         // la CAUSE : deux registres parallèles du même retrait, `RetraitREER` (affichage) et

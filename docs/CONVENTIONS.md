@@ -6843,3 +6843,41 @@ annonce « frappe tout achat » ; mesuré, il ne frappe rien aujourd'hui. Et `[E
 raison sur son constat (renouvellement dès le mois 0) et tort sur son importance : avec un choc nul,
 ce renouvellement ne change ni le PMT ni le taux. Deux tickets voisins, deux portées fausses, la même
 cause — le mécanisme qu'ils décrivent tous les deux ne s'exécute jamais.
+
+### `UN-INVARIANT-JUSTE-PEUT-ETRE-AVEUGLE-A-UNE-STRATEGIE-ENTIERE` — 2026-08-25
+
+`[ENG-NETTRANSFER-REER-INCOMPLET]` annonçait « `NetTransferREER` ne voit ni FERR ni meltdown, écart
+cumulé 330 353 $ ». Re-mesuré : la moitié FERR était **déjà fermée** six jours plus tôt, et la
+moitié meltdown était **5,6× pire** que le chiffre du ticket — **1 849 080,59 $** d'écart cumulé,
+avec un mois où le solde REER chute de 34 794 $ pour **802 $** de flux publiés.
+
+**Ce qui mérite d'être retenu n'est pas le montant, c'est pourquoi rien ne criait.** Le dépôt
+possédait déjà la garde exacte : un test nommé `[ENG-FERR-NETTRANSFER-MUET]` qui vérifie, mois par
+mois, que les deux registres du retrait REER — l'affichage et les transferts — disent la même
+chose. Invariant juste, nommé, commenté, et **aveugle** : sa fixture ne demande pas la stratégie
+`MELTDOWN_REER`, or le meltdown ne s'exécute que sous cette stratégie
+(`if (strategy !== 'MELTDOWN_REER') return null`). Une garde ne couvre pas une BRANCHE que sa
+fixture ne demande jamais — extension directe d'`INVARIANT-QUI-NE-PARCOURT-PAS-LA-PHASE`, ici sur
+l'axe des STRATÉGIES. Quand un module est gardé par un `if (mode !== X) return`, la question à se
+poser est : « quelle fixture demande X ? »
+
+**Un montant, deux registres, deux règles — et il faut savoir laquelle s'applique.** La FERR est
+EXCLUE du registre per-conjoint (`stepReerByUser`) parce qu'elle sort de la part exacte de chaque
+conjoint, calculée avec le facteur RRIF de SON âge. Le meltdown, lui, est attribué **au prorata**
+(`addByWeights`) : le soustraire au prorata dans le registre per-conjoint est donc la MÊME règle,
+pas une seconde. Copier le traitement du voisin sans regarder ce qu'il CORRIGE aurait faussé le
+partage d'un couple à écart d'âge.
+
+⚠️ **La jambe d'arrivée a été laissée muette DÉLIBÉRÉMENT, et c'est le vrai enseignement du lot.**
+Un transfert a deux jambes ; publier la seule jambe de départ paraît incomplet. Mais `contribNonReg`
+n'est pas un registre d'affichage : `growthApplication` s'en sert comme base d'exclusion de la
+croissance de mi-mois. L'alimenter **déplace de l'argent** — mesuré −5 045,04 $ de patrimoine final —
+et fait rougir **deux goldens « NEUTRALITÉ NW »** posés six semaines plus tôt avec leur preuve
+(« bit-identique sur 301 mois × 9 grandeurs »).
+
+La correction paraît juste : de l'argent arrivé le 15 ne devrait pas toucher un mois plein de
+croissance. Mais « paraît juste » contre un invariant EXPLICITE, chiffré et daté, ce n'est pas un
+correctif — c'est une décision. On livre la moitié qui ne déplace rien, on ROUTE l'autre avec sa
+mesure, et on **borne le résiduel restant par un test** pour qu'il ne grandisse pas en silence
+pendant qu'on attend la réponse (`RENDRE-VISIBLE-CE-QU-ON-NE-PEUT-PAS-CORRIGER`). Découper un lot à
+la frontière « ça déplace de l'argent / ça n'en déplace pas » est presque toujours le bon découpage.

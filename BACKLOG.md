@@ -491,11 +491,23 @@
   et le correctif juste, mais il n'est ATTEIGNABLE qu'une fois le choc rendu vivant. Les deux
   tickets se livrent donc ENSEMBLE. Fix : porter le taux courant dans pState (ex. `currentRate`) et
   le consommer pour l'intérêt. Re-baseliner SCIEMMENT.
-- [ ] **`[ENG-NETTRANSFER-REER-INCOMPLET]`** (S — panel #552) — `NetTransferREER`
-  (`monthlyOutput.ts:291` = ContribREER − withdrawalREER) ne voit ni FERR ni meltdown (écart
-  cumulé 330 353 $ vs `RetraitREER` sur 301 mois) ; les deux séries cohabitent dans
-  `ProjectionExplains.tsx:41`. Aligner (ou documenter la sémantique « transferts de la cascade
-  seulement » à l'écran).
+- [ ] **`[ENG-MELTDOWN-JAMBE-ARRIVEE]`** (M, 🧭 **décision de Marc — MESURÉ 2026-08-25**) — le
+  meltdown REER transfère du REER vers le NON-ENREGISTRÉ. La jambe de DÉPART est publiée depuis
+  PR #733 ; la jambe d'ARRIVÉE reste muette : le non-enregistré monte sans flux publié (résiduel
+  mesuré **25 273,39 $** au pire mois sous `MELTDOWN_REER`).
+  ⚠️ **Le geste symétrique DÉPLACE DE L'ARGENT.** `contribNonReg` n'est pas un simple registre
+  d'affichage : `growthApplication` s'en sert comme base d'exclusion de la croissance de mi-mois
+  (`nonReg - contribNonReg`). L'alimenter retire un rendement fantôme sur de l'argent arrivé en
+  cours de mois — **mesuré −5 045,04 $ de patrimoine final (−0,12 %)** et −5 198,23 $ de croissance
+  non-enregistrée cumulée — et fait **ROUGIR deux goldens « NEUTRALITÉ NW »**
+  (`projection.meltdownDisplay`, `projection.totalTaxesPaid`), posés le 2026-07-31 avec la preuve
+  « bit-identique sur 301 mois × 9 grandeurs ».
+  🧭 **La question** : ces goldens verrouillent-ils une VÉRITÉ (« les compteurs d'affichage du
+  meltdown ne touchent jamais le patrimoine ») ou seulement l'état d'alors ? Le rendement retiré
+  paraît être une correction — de l'argent arrivé le 15 ne devrait pas toucher un mois plein de
+  croissance — mais c'est un changement d'argent contre un invariant explicite, donc à trancher.
+  ⚠️ Piste sans arbitrage : séparer le registre PUBLIÉ de la base d'exclusion de croissance, pour
+  publier le flux sans toucher au rendement. Coût : un champ de plus dans l'état mensuel.
 ## 🏦 Sync & données (Fintable, Drive, persistance)
 
 - [ ] **`[DEFAULTS-DRIFT-FINTABLE-FIELDS]`** (S effort, L sévérité — V3, finding code-analyzer

@@ -20,6 +20,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   documentation fiscale **comme une hypothèse**, avec l'écart mesuré face à l'indexation réellement
   observée. Ce n'est pas un chiffre officiel, et ça ne doit pas se lire comme tel.
 
+## [unreleased] — 2026-08-25 (le renouvellement d'hypothèque ne t'annonce plus un faux changement)
+
+- Quand un terme hypothécaire de 5 ans arrivait à échéance dans la projection, l'app affichait
+  « Renouvellement hypothécaire : **nouveau** taux 5,00 % » — alors que l'ancien taux était déjà
+  5,00 %. Elle annonçait un changement qui n'avait pas eu lieu.
+- Le message dit maintenant ce qui s'est réellement passé : **« taux inchangé »**. L'événement reste
+  affiché (le terme est bien échu), mais il n'affirme plus rien de faux.
+- ⚠️ À savoir : l'app **ne modélise pas** la variation de ton taux au renouvellement. C'est une
+  décision à prendre (faut-il la modéliser, et à partir de quelle hypothèse ?) — elle est notée au
+  backlog plutôt que tranchée dans ton dos.
+
 ## [unreleased] — 2026-08-25 (tu peux enfin dire « je ne parie pas sur l'appréciation »)
 
 - Mettre **0 %** de croissance sur un bien immobilier ne servait à rien : l'app le remplaçait par

@@ -6804,3 +6804,42 @@ Même famille que `PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR` : le même geste text
 contrats différents, donne un correctif d'un côté et une régression de l'autre. La garde qui l'a
 attrapé est le test « taux ABSENT : le défaut s'applique toujours » — sans lui, la substitution
 passait au vert.
+
+### `UN-ALEA-DERIVE-D-UN-IDENTIFIANT-TECHNIQUE-EST-UN-ALEA-MORT` — 2026-08-25
+
+Le moteur modélise un « choc » de taux au renouvellement hypothécaire :
+`((pState.id.charCodeAt(0) % 3) - 1) * 0,015` — soit −1,5 pt, 0, ou +1,5 pt selon le premier
+caractère de l'identifiant du bien. L'intention est lisible : donner à chaque propriété un destin
+de renouvellement stable et reproductible, sans générateur aléatoire.
+
+**Mesuré, il vaut zéro partout dans le dépôt.** L'interface crée `prop_<timestamp>` — `'p'` = 112,
+112 % 3 = 1, choc **nul**. Les fixtures de test utilisent `p1` (même `'p'`). Les personas utilisent
+`jc-re1` — `'j'` = 106, également 1. **Aucune propriété atteignable par un utilisateur n'a jamais vu
+son taux bouger au renouvellement.** Le risque de renouvellement — un vrai sujet de planification —
+n'est pas modélisé du tout, alors que le code en a toute l'apparence.
+
+**La classe, et comment la repérer.** Un aléa dérivé d'un identifiant TECHNIQUE hérite de la
+régularité de cet identifiant : un préfixe constant (`prop_`, `re`, `user-`) écrase l'entropie qu'on
+croyait exploiter. Le test à faire tient en une ligne — énumérer les identifiants réellement produits
+et calculer la sortie sur chacun — et il ne s'écrit que si l'on se demande **qui fabrique la clé**,
+pas seulement ce que la formule en fait. Même famille que le paramètre homonyme mesuré 0/120 au fuzz :
+du code vert, testé, et sans effet.
+
+**Un mécanisme mort ment aussi par ses messages.** Le renouvellement journalisait
+« nouveau taux 5,00 % » alors que l'ancien était 5,00 % — un événement qui AFFIRME un changement
+qui n'a pas eu lieu. C'est du no-fake-data, et c'est la seule partie corrigée ici : le message dit
+désormais « taux inchangé ». L'événement reste, parce que le renouvellement, lui, a bien eu lieu ;
+c'est la conséquence annoncée qui était fausse, pas le fait.
+
+⚠️ **Réveiller le mécanisme n'était PAS le correctif à prendre seul.** Le rendre vivant déplace de
+l'argent sur toute projection avec hypothèque, et surtout il EXPOSE un second défaut qui dort
+derrière (`[ENG-RENEWAL-RATE-MISMATCH]` : le PMT est recalculé au nouveau taux, l'intérêt mensuel
+reste à l'ancien). Un correctif qui rend atteignable un bug jusque-là inatteignable est une
+régression tant que le second n'est pas livré — les deux se livrent ensemble, et le choix de
+modéliser ou non ce risque appartient à l'utilisateur, pas au moteur.
+
+⚠️ **Corollaire de backlog** : la portée écrite dans un ticket se re-mesure. `[ENG-RENEWAL-RATE-MISMATCH]`
+annonce « frappe tout achat » ; mesuré, il ne frappe rien aujourd'hui. Et `[ENG-RENEWAL-M0]` avait
+raison sur son constat (renouvellement dès le mois 0) et tort sur son importance : avec un choc nul,
+ce renouvellement ne change ni le PMT ni le taux. Deux tickets voisins, deux portées fausses, la même
+cause — le mécanisme qu'ils décrivent tous les deux ne s'exécute jamais.

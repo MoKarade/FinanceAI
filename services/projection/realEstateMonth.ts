@@ -398,11 +398,27 @@ export function processRealEstate(
             if (monthsSincePurchase > 0 && monthsSincePurchase % 60 === 0) {
                 const remainingMonths = goal.amortization * 12 - monthsSincePurchase;
                 if (remainingMonths > 60 && pState.mortgage > 0) {
+                    // ⚠️ [ENG-RENEWAL-CHOC-MORT] Ce « choc » de taux est dérivé du PREMIER CARACTÈRE
+                    // de l'identifiant du bien — et MESURÉ, il vaut ZÉRO partout dans le dépôt :
+                    // l'UI crée `prop_<timestamp>` ('p' → 112, 112 % 3 = 1 → choc nul), les fixtures
+                    // utilisent `p1` et les personas `jc-re1` ('j' → 106 → 1 → nul aussi). Aucune
+                    // propriété atteignable par un utilisateur n'a jamais vu son taux bouger au
+                    // renouvellement. Le mécanisme n'est PAS corrigé ici : le rendre vivant
+                    // déplacerait de l'argent sur toute projection avec hypothèque et exposerait
+                    // `[ENG-RENEWAL-RATE-MISMATCH]` (l'intérêt reste calculé à l'ANCIEN taux) —
+                    // deux décisions qui appartiennent à Marc. Suivi : `[ENG-RENEWAL-CHOC-MORT]`.
                     const rateShock = ((pState.id.charCodeAt(0) % 3) - 1) * 0.015;
                     const newRate = Math.max(0.01, goal.mortgageRate / 100 + rateShock);
                     const nr = newRate / 12;
                     pState.calculatedPmt = pState.mortgage * nr * Math.pow(1 + nr, remainingMonths) / (Math.pow(1 + nr, remainingMonths) - 1);
-                    state.lifeEventLogs.push(`🏦 Renouvellement hypothécaire ${goal.name || ''} : nouveau taux ${(newRate * 100).toFixed(2)} %`);
+                    // ⚠️ NO-FAKE-DATA : annoncer « nouveau taux 5,00 % » quand l'ancien était 5,00 %
+                    // affirme un changement qui n'a pas eu lieu. Le renouvellement, lui, a bien eu
+                    // lieu (le terme est échu) — on dit donc ce qui s'est PASSÉ, pas ce qu'on aurait
+                    // aimé modéliser. Tant que le choc est nul, c'est la seconde branche qui sort.
+                    const tauxChange = Math.abs(newRate - goal.mortgageRate / 100) > 1e-9;
+                    state.lifeEventLogs.push(tauxChange
+                        ? `🏦 Renouvellement hypothécaire ${goal.name || ''} : nouveau taux ${(newRate * 100).toFixed(2)} %`
+                        : `🏦 Renouvellement hypothécaire ${goal.name || ''} : taux inchangé à ${(newRate * 100).toFixed(2)} %`);
                 }
             }
             pState.currentValue *= Math.pow(1 + (goal.propertyGrowthRate ?? 3) / 100, 1 / 12);

@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-25 — Le renouvellement hypothécaire annonçait un changement qui n'a jamais lieu
+
+- [x] **`[ENG-RENEWAL-M0]`** — ⚠️ **caduque, remplacé par `[ENG-RENEWAL-CHOC-MORT]`.** Sa prémisse
+  est exacte (un bien détenu depuis un multiple exact de 60 mois renouvelle dès le mois 0) mais sans
+  conséquence : le renouvellement est LOGGÉ, et avec un choc de taux nul il ne change ni le PMT ni le
+  taux. Le « PMT −240 $ mesuré » du panel supposait un choc non nul.
+  **Ce que la mesure a trouvé à la place** : le choc de taux au renouvellement est dérivé du PREMIER
+  CARACTÈRE de l'identifiant du bien — `((id.charCodeAt(0) % 3) - 1) * 0,015` — et **il vaut ZÉRO
+  partout dans le dépôt**. L'UI crée `prop_<timestamp>` ('p' → 112, 112 % 3 = 1 → nul), les fixtures
+  utilisent `p1`, les personas `jc-re1` ('j' → 106 → 1). Aucune propriété atteignable par un
+  utilisateur n'a jamais vu son taux bouger au renouvellement.
+  **Livré ici, et rien de plus** (zéro dollar déplacé) : le message ne dit plus « nouveau taux
+  5,00 % » quand l'ancien était 5,00 % — il dit « taux inchangé ». Affirmer un changement qui n'a pas
+  eu lieu viole le no-fake-data ; le renouvellement, lui, a bien eu lieu, donc l'événement reste.
+  ⚠️ **Le mécanisme n'est PAS réveillé** : le rendre vivant déplacerait de l'argent sur toute
+  projection avec hypothèque ET exposerait `[ENG-RENEWAL-RATE-MISMATCH]` (l'intérêt reste calculé à
+  l'ancien taux). Deux décisions qui appartiennent à Marc → `[ENG-RENEWAL-CHOC-MORT]`.
+  ⚠️ **Portée de `[ENG-RENEWAL-RATE-MISMATCH]` corrigée au passage** : il annonce « frappe tout
+  achat » ; mesuré, il ne frappe rien tant que le choc est nul. Bug réel, correctif juste,
+  inatteignable aujourd'hui — les deux tickets se livrent ensemble.
+  2 tests, **2 perturbations rouges** (message inconditionnel · branche vivante tuée).
+  Livré 2026-08-25 · PR #732.
+
 ## 2026-08-25 — Une croissance immobilière de 0 % était inexprimable, y compris dans son propre éditeur
 
 - [x] **`[ENG-PROPGROWTH-ZERO-INEXPRIMABLE]`** — `(goal.propertyGrowthRate || 3)` transformait un 0

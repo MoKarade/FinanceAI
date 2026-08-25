@@ -6564,3 +6564,51 @@ ce jour-là plutôt que supposé depuis une note ancienne : le proxy de sortie r
 `docs/A_FAIRE_MOI.md` avec la question exacte et le site de code, et restent OUVERTS au BACKLOG avec
 leur mention de blocage. ⚠️ Et un ticket n'est pas une source : celui du REEE AFFIRME « le régime
 réel autorise 35 ans » — c'est précisément ce qu'il faut faire confirmer, pas ce qu'on peut écrire.
+
+### `UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL` — 2026-08-25
+
+Le ticket `[GARDE-JOUR-ANTICIRCULAIRE-ETROITE]` avait raison sur le constat et tort sur le
+correctif — et l'écart entre les deux est instructif.
+
+**Le constat, juste.** Des trois invariants de raccord du grand livre au jour, deux LISENT la table
+de classification pour choisir quoi vérifier : ils sont circulaires par construction, un solde
+reclassé en flux sort simplement de leur boucle. Le troisième, non circulaire, ne balayait que
+**5 champs sur ~30**, et sur **un seul jour**.
+
+**Le correctif prescrit — « étendre le test de rapport à TOUS les stocks non nuls » — ne protégeait
+RIEN de ce que le ticket énumérait.** Mesuré avant d'écrire une ligne : appliqué à la fixture
+existante, il couvre 13 champs, et **aucun des onze que le ticket nomme**. `DetteTotale`,
+`DettesNonImmo`, `LiquidDebt`, `rapBalance`, `Immobilier`, `REEE`, `NonReg`, `Crypto`,
+`reeeContribCum`, `reeeGrantsCum`, `CELIAPPMax` valent tous **zéro** dans un scénario sans dette,
+sans immeuble et sans enfant. La contrainte n'était pas la liste de clés : c'était la FIXTURE.
+Même famille que `INVARIANT-QUI-NE-PARCOURT-PAS-LA-PHASE`, mais sur l'axe des ENTITÉS plutôt que
+sur celui du temps — et le signal est le même : *« non nul » est une propriété de la fixture, pas
+du champ.*
+
+Fixture enrichie (dette auto, achat de maison dans la fenêtre, enfant, crypto, non-enregistré) :
+la garde passe de **5 à 18 soldes** et de **1 jour à 2 644 couples (jour, clé)**.
+
+**Le critère de rapport ne survit pas tel quel à l'élargissement.** Rejouer l'outil élargi l'a
+montré tout de suite (`REJOUER-L-OUTIL-ELARGI-AVANT-DE-CROIRE-QU-IL-N-Y-A-RIEN`) : `Liquidites`
+sortait des rapports de **−8,7 à 552** — non pas parce qu'elle est mal classée, mais parce que la
+mise de fonds la fait passer par zéro en cours de mois, et qu'un rapport autour de zéro ne veut
+rien dire. Le remède n'est pas d'élargir la tolérance jusqu'à ne plus rien détecter : c'est de
+n'exercer que les (clé, mois) où le solde est GRAND et de signe CONSTANT, puis de **déclarer,
+chiffrées et motivées, les 13 exclusions** — un périmètre borné en silence se lit comme « tout est
+couvert » (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`). Avec ce filtre, le pire rapport réel est
+**0,995** contre **0,035** pour un solde ventilé par erreur : seuil à 0,5, facteur 2 de marge au
+vrai et facteur 14 au défaut.
+
+**La liste balayée doit rester ÉCRITE À LA MAIN — c'est tout ce qui la rend non circulaire.** La
+dériver de la table de classification ferait sortir du balayage exactement le champ qu'un
+reclassement stock→flux vient de déclasser : la garde disparaîtrait au moment précis où elle
+devrait crier. La table n'est donc consultée que dans l'AUTRE sens, par un second test qui EXIGE
+des ajouts : tout solde déclaré doit se trouver soit dans la liste balayée, soit dans la liste des
+exclusions. Une liste à la main sans ce test de complétude pourrit en silence ; le test sans la
+liste à la main est circulaire. **Il faut les deux.**
+
+**Preuve, pas conviction.** Le scénario que le ticket décrivait comme invisible — reclasser
+`DetteTotale` en flux — rougit désormais, et **seule** la garde neuve l'attrape : les 26 autres
+tests du fichier restent verts, y compris le test de classification explicite (sa liste en dur ne
+contenait pas `DetteTotale`). Deuxième perturbation : un solde neuf ajouté à la table sans être
+déclaré fait rougir le test de complétude.

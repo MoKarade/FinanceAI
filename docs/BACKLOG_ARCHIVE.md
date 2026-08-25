@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-25 — La garde du grand livre au jour ne regardait que 5 soldes sur 30
+
+- [x] **`[GARDE-JOUR-ANTICIRCULAIRE-ETROITE]`** — le ticket avait raison sur le constat (la seule
+  garde NON circulaire ne couvrait que 5 champs, un seul jour) et **se trompait sur le correctif**.
+  Il prescrivait « étendre le test de rapport à TOUS les stocks non nuls ». **MESURÉ** : appliqué
+  tel quel à la fixture existante, ça couvre 13 champs et **aucun des onze que le ticket nomme** —
+  `DetteTotale`, `DettesNonImmo`, `LiquidDebt`, `rapBalance`, `Immobilier`, `REEE`, `NonReg`,
+  `Crypto`, `reeeContribCum`, `reeeGrantsCum`, `CELIAPPMax` valent **tous zéro** dans un scénario
+  sans dette, sans immeuble et sans enfant. Le vrai correctif était la **FIXTURE**, pas la liste
+  de clés (`INVARIANT-QUI-NE-PARCOURT-PAS-LA-PHASE`, encore).
+  Livré : une fixture riche (dette auto, achat de maison, enfant, crypto, non-enregistré) qui porte
+  la garde de **5 à 18 soldes** et de **1 jour à 2 644 couples (jour, clé)**. Le pire rapport réel
+  mesuré est **0,995** contre **0,035** pour un solde ventilé par erreur — seuil posé à 0,5, donc
+  facteur 2 de marge au vrai et facteur 14 au défaut.
+  ⚠️ **La liste balayée reste ÉCRITE À LA MAIN, et c'est le point** : la dériver de `FIELD_KIND`
+  ferait sortir du balayage le champ même qu'un reclassement stock→flux vient de déclasser. Un
+  second test consulte `FIELD_KIND` UNIQUEMENT pour EXIGER des ajouts — tout solde neuf doit
+  atterrir soit dans la liste balayée, soit dans la liste des **13 exclusions déclarées et
+  motivées** (`Liquidites` change de signe pendant la mise de fonds — rapport mesuré de −8,7 à 552).
+  ⚠️ Le scénario EXACT que le ticket décrivait comme invisible — reclasser `DetteTotale` en flux —
+  rougit désormais, et **seule** la garde neuve l'attrape : les 26 autres tests du fichier restent
+  verts. 2 tests, **2 perturbations rouges**. Livré 2026-08-25 · PR #726.
+
 ## 2026-08-25 — Le plafond REER faisait une marche de 4,5 % en une année
 
 - [x] **`[FISC-RRSP-EXTRAP-05]`** — le ticket demandait de « sourcer ou requalifier » le

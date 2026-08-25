@@ -831,16 +831,6 @@
   avec la tuile voisine, qui affiche justement `estateNetWorth`. Correctif : dériver d'un run moteur
   (`savingsMultiplier` existe déjà, cf. `tests/services/projection.savingsLever.test.ts`) ou retirer
   la tuile. [MESURÉ]
-- [ ] **`[GARDE-JOUR-ANTICIRCULAIRE-ETROITE]`** (S, MOYEN) — les deux invariants de raccord
-  (`tests/services/dailyLedger.test.ts:132` et `:146`) **lisent `FIELD_KIND` pour choisir quoi
-  vérifier** → circulaires (déjà documenté). La garde non circulaire (`:160`, « ordre de grandeur »)
-  ne couvre que **5 champs sur ~30 stocks** (`Liquidites, CELI, REER, NonReg, NetWorth`) et **un seul
-  jour** (14 févr. 2026). Ne sont protégés ni par le ratio ni par la liste explicite : `DetteTotale`,
-  `DettesNonImmo`, `LiquidDebt`, `CELIMax`/`REERMax`/`CELIAPPMax`, `rapBalance`, `AccruedTax*`,
-  `realNetWorth`, `reeeContribCum`/`GrantsCum`, `FireTarget`/`CoastFIRE`/`BaristaFIRE`. Écart 0 $
-  aujourd'hui, **mais un reclassement stock→flux de `DetteTotale` passerait les trois tests**.
-  Correctif : étendre le test de ratio à TOUS les stocks non nuls, sur tous les mois de la fenêtre.
-  [MESURÉ — vacuité de couverture, pas un écart $]
 - [x] **`[CONSTANTES-MOTEUR-NON-SOURCEES]`** ✅ 2026-08-22 — les quatre nombres sont nommés et
   documentés dans `services/projection/modelAssumptions.ts` (un 4e site s'est ajouté au tri : le
   multiple 25× existait en DEUX copies anonymes, `projection.ts` et `monthlyOutput.ts`). ⚠️ Ils

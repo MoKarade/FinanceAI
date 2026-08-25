@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-25 (suite 164) — `[AI-TAXCENTER-APPLY-NOGATE]` : un bouton n'est pas un filet
+> La faille était l'**incohérence entre deux surfaces qui font la même chose** : `PayslipUploadCard`
+> avait le filet (diff → confirmation → état frais → backup → écriture), `TaxCenter.applyToProfile`
+> écrivait le profil salarial en DIRECT. Le bouton donnait un geste de confirmation, mais aucun
+> diff, aucun backup, aucune garde — sur le profil qui alimente TOUTE l'app.
+> ⚠️ **Défaut de plus, trouvé en lisant** : `{ ...config }` est une copie de SURFACE → `newConfig.users`
+> restait le MÊME tableau, et `newConfig.users[0] = …` écrasait l'état précédent EN PLACE. L'objet
+> auquel un backup se serait raccroché était déjà modifié.
+> ⚠️ La prop `setConfig` de `TaxCenter` est RETIRÉE, pas laissée inerte.
+> **Extraction préalable** : la plomberie de confirmation existait DEUX fois à l'octet près
+> (`useAiChat` + `PayslipUploadCard`) — vérifié non divergé avant de bouger → `hooks/useWriteConfirmation.ts`,
+> qui porte aussi la règle de vie privée (modal = montants → mode discret pendant l'attente = refus).
+> ⚠️ **Une perturbation n'a RIEN fait rougir** : désarmer cette règle laissait **145 tests** verts.
+> ⚠️ **Ma propre garde avait un trou** : `setConfig?.(` échappait à `setConfig\s*\(`. Trouvé par
+> perturbation, resserré.
+> 7 tests, **4 perturbations rouges**.
+>
+> ⚠️ **BACKLOG corrigé au passage** : `[ENG-DIVORCE-SOLO-HOUSEHOLD-ENFANTS]` décrivait comme ouvert
+> un défaut à MOITIÉ fermé par #721 — re-mesuré, le volet congé parental est livré, seul le volet
+> `householdGross` reste (règle à trancher, `[ENG-DIVORCE-ALLOC-ASSIETTE]`). Le laisser tel quel
+> aurait fait re-livrer #721.
+>
 > ## 🟢 Session 2026-08-25 (suite 163) — `[PH3-c-bis]` : les RSU ne s'arrêtaient jamais
 > Le ticket groupait deux choses de gravité INCOMPARABLE.
 > **1. `rsuYearsRemaining` = un chiffre FAUX.** Le moteur le lit depuis toujours (`activeIncome.ts` :

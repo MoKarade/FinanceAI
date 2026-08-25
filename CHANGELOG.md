@@ -20,6 +20,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   documentation fiscale **comme une hypothèse**, avec l'écart mesuré face à l'indexation réellement
   observée. Ce n'est pas un chiffre officiel, et ça ne doit pas se lire comme tel.
 
+## [unreleased] — 2026-08-25 (le centre fiscal te montre ce qu'il va changer avant de le changer)
+
+- Dans l'onglet Impôts, « Appliquer au Profil Principal » écrasait ton profil salarial **sans rien
+  te montrer** : pas d'aperçu des valeurs avant/après, et aucune sauvegarde de secours. Le bouton
+  demandait bien un clic, mais il n'y avait aucun filet derrière.
+- Ce bouton passe maintenant par le **même point de contrôle** que l'assistant et que le dépôt de
+  talon de paie : un aperçu du changement, une sauvegarde automatique, et une annulation qui laisse
+  ton profil intact. Si tu actives le mode discret pendant que l'aperçu est ouvert, la modification
+  est annulée — l'aperçu affiche des montants.
+
 ## [unreleased] — 2026-08-25 (tes RSU s'arrêtent enfin de tomber)
 
 - Si tu avais renseigné un montant de **RSU par an**, la projection te les versait **jusqu'à la fin

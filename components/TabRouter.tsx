@@ -135,7 +135,7 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                 {activeTab === Tab.TAX && (
                     <PageSetupGate tab={Tab.TAX}>
                         <TaxCenter
-                            config={state.config} setConfig={(c) => setAppState({ config: c })}
+                            config={state.config}
                             assets={state.assets} apiKey={state.apiKeys.anthropic}
                         />
                     </PageSetupGate>

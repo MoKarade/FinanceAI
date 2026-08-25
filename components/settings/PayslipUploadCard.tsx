@@ -1,4 +1,5 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useWriteConfirmation } from '../../hooks/useWriteConfirmation';
 import { Icon } from '../ui/Icon';
 import { analyzePayslip } from '../../services/claude';
 import { showToast } from '../ui/Toast';
@@ -9,7 +10,6 @@ import { logError } from '../../services/errorLogger';
 import { importWithRetry } from '../../utils/lazyWithRetry';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import { AiChatConfirmModal } from '../aiChat/AiChatConfirmModal';
-import type { WritePreview, WriteDecision } from '../../services/aiTools/writeExecutor';
 
 /**
  * Phase C.2 — upload IA de relevé de salaire dans le Hub Configuration.
@@ -36,38 +36,17 @@ interface PayslipUploadCardProps {
 export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUserIndex: initialTarget = 0, className = '' }) => {
     const apiKey = useFinanceStore(s => s.apiKeys.anthropic);
     const config = useFinanceStore(s => s.config);
-    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
 
     const [target, setTarget] = useState<0 | 1>(initialTarget);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [status, setStatus] = useState<string>('');
     const [result, setResult] = useState<{ gross: number; net: number; tax: number; freq: string } | null>(null);
 
-    // [AI-VISION-PAYSLIP-NOGATE] Même mécanique que le chat in-app : le diff attend le clic, la
-    // promesse est résolue par le modal (fermer = refuser, jamais de promesse pendante orpheline).
-    const [pendingWrite, setPendingWrite] = useState<WritePreview | null>(null);
-    const writeResolverRef = useRef<((d: WriteDecision) => void) | null>(null);
-
-    const resolvePendingWrite = useCallback((decision: WriteDecision) => {
-        const resolve = writeResolverRef.current;
-        writeResolverRef.current = null;
-        setPendingWrite(null);
-        resolve?.(decision);
-    }, []);
-
-    const requestConfirmation = useCallback((preview: WritePreview): Promise<WriteDecision> => {
-        return new Promise((resolve) => {
-            writeResolverRef.current = resolve;
-            setPendingWrite(preview);
-        });
-    }, []);
-
-    // [A11Y-PRIVACY-TAXCENTER — fuite jumelle] Le modal de confirmation AFFICHE des montants : si le
-    // mode discret s'active pendant l'attente, l'écriture en attente est REFUSÉE (même règle que
-    // `useAiChat` : « fermer = refus »). L'utilisateur redemande hors mode discret.
-    useEffect(() => {
-        if (isPrivacyMode && writeResolverRef.current) resolvePendingWrite('cancel');
-    }, [isPrivacyMode, pendingWrite, resolvePendingWrite]);
+    // [AI-TAXCENTER-APPLY-NOGATE] Plomberie PARTAGÉE (`useWriteConfirmation`) : elle était écrite
+    // ici ET dans `useAiChat`, à l'octet près. La règle du mode discret — le modal affiche des
+    // montants, donc l'écriture en attente est REFUSÉE si le mode s'active — vit désormais dans le
+    // hook, où toute nouvelle surface en hérite.
+    const { pendingWrite, requestConfirmation, resolvePendingWrite } = useWriteConfirmation();
 
     const isCouple = Boolean(config?.users?.[1]?.name?.trim());
 

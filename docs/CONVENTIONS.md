@@ -7079,3 +7079,76 @@ tranche plus → 2 tests · monotonie retirée → le test des deux `initSync` �
 réglé d'entrée (le correctif MASQUE l'alerte) → son test dédié. Et le test « la bannière ne s'affiche
 pas » ne se lit JAMAIS seul : son jumeau, mêmes props à `resumeSettled` près, prouve que le composant
 sait afficher l'alerte dans cet état — sans lui, « ne plus jamais alerter » passerait haut la main.
+### `UN-PARTAGE-A-50-POURCENT-NE-DISTINGUE-PAS-KEEP-DE-SON-COMPLEMENT` — 2026-08-25
+
+**Ticket** : `[ENG-DIVORCE-FLUX-MUET]` (S) — « le partage de divorce multiplie
+`celi`/`reer`/`crypto`/`nonReg` par `keep` **sans publier de `NetTransfer*`** ». Confirmé, et
+livré : la part cédée alimente désormais `withdrawal<compte>`.
+
+**1. La fixture la plus NATURELLE est aveugle au sens du facteur.** Un divorce se teste
+spontanément à **50 %** — c'est le défaut du produit et le premier chiffre qui vient. Or à 50 %,
+`keep` et `1 − keep` valent la MÊME chose : un correctif qui publierait la part **conservée** au
+lieu de la part **cédée** passe le test discriminant sans broncher. Vérifié par perturbation :
+publier `keep` laisse le test à 50 % **VERT** et ne fait rougir que celui à 75 %. Règle générale :
+**dès qu'un test porte sur un facteur et son complément, la valeur d'essai doit être ASYMÉTRIQUE**.
+Même famille que `PARITE-QUI-REND-UN-TEST-VACUEUX` — un paramètre choisi au jugé rend le cas
+vacueux par simple symétrie.
+
+**2. « Le ticket nomme N comptes » n'est pas « N comptes sont touchés ».** Le ticket en nommait
+quatre (`celi`/`reer`/`crypto`/`nonReg`) ; le callback en multiplie **sept**, et la mesure en montre
+**six** avec un flux publié à corriger — dont `CELIAPP` (6 635,66 $) et `REEE` (9 088,89 $), absents
+du ticket. Et `nonReg`, lui, est resté **à zéro sur les 360 mois** de la fixture (le moteur le vide
+vers les comptes enregistrés dès le mois 0, sur les quatre stratégies essayées) : il est donc
+DÉCLARÉ exclu, avec sa mesure, plutôt que couvert par un flux de 0 $ qui ne prouve rien. La liste se
+tire du CODE qui mute, jamais de la prose du ticket.
+
+**3. Pourquoi la garde forme-flux existante ne voyait rien.** `projection.fluxForm.test.ts` pose le
+bon invariant, en mode DÉTERMINISTE — et `tryDivorce` exige `enableMonteCarlo`. Invariant juste,
+aveugle à une branche entière : même chose que
+`UN-INVARIANT-JUSTE-PEUT-ETRE-AVEUGLE-A-UNE-STRATEGIE-ENTIERE`, sur l'axe Monte-Carlo cette fois.
+Devant un mécanisme gardé par `if (!enableMonteCarlo) return`, demander **quelle fixture l'active**.
+
+**4. Une exclusion INERTE s'écrit, elle ne se camoufle pas en garde.** `withdrawalREER` a un second
+consommateur : `stepReerByUser`, qui re-soustrait au prorata. La part cédée en est donc exclue
+(`UN-MONTANT-DEUX-REGISTRES-DEUX-REGLES`). Mais retirer cette exclusion ne fait rougir **AUCUN** des
+29 tests per-conjoint, et `reerByUserFinal` est identique au centième — parce qu'après un divorce le
+callback consolide `reerByUser = [reer, 0]` et `reconcileToPool` ramène la somme à `poolEnd` de toute
+façon. Elle reste écrite (elle redevient nécessaire dès que `reerShares` cesse d'être `[1, 0]`) et
+c'est **dit dans le code** — une ligne non testable s'écrit comme telle plutôt que d'être couverte
+par une fixture absurde. ⚠️ Troisième fois cette session qu'une perturbation qui ne fait RIEN rougir
+est elle-même le résultat.
+
+**5. Deux défauts PRÉ-EXISTANTS trouvés en balayant l'horizon**, tous deux hors périmètre et routés
+plutôt que corrigés : `[ENG-CELIAPP-TRANSFERT-FLUX-MUET]` (au mois 168, **9 092,54 $** passent du
+CELIAPP au REER sans qu'aucun des deux flux ne soit publié — le résiduel est le MÊME des deux côtés,
+signature d'un transfert) et `[ENG-LIQUID-FLUX-FORM]` (le compte Liquidités n'est pas conforme même
+SANS divorce : 7 638,44 $ au mois 324, 50,85 $ au mois 12). ⚠️ Aucun des deux n'est ASSERTÉ : figer
+leur montant rendrait ROUGE le correctif qui les règle. Ils sont documentés dans l'en-tête du test et
+justifient nommément les comptes exclus du balayage — un périmètre borné en silence se lit comme
+« tout est couvert ».
+
+**Le correctif ne déplace AUCUN argent, et c'est vérifié** : patrimoine final, REER final et CELI
+final bit-identiques (331 014,12 $ / 175 685,09 $ / 113 506,31 $). Contrairement à
+`REGISTRE-D-AFFICHAGE-QUI-PILOTE-UN-CALCUL`, les accumulateurs `withdrawal*` ne sont lus que par
+`buildMonthlyDataPoint` — à l'exception de `withdrawalREER`, traitée au point 4.
+
+### `UN-TAIL-SUR-LA-SORTIE-D-UN-REBASE-CACHE-DES-CONFLITS` — 2026-08-25
+
+Constaté en livrant `[ENG-DIVORCE-FLUX-MUET]`, et payé sur-le-champ. J'ai lancé
+`git rebase origin/main 2>&1 | tail -10`, lu **deux** `CONFLICT`, résolu ces deux fichiers, puis
+`git add -A && git rebase --continue`. Le rebase en avait signalé **quatre** : `tail -10` avait
+coupé les deux premières lignes. Résultat : `CHANGELOG.md` et `HANDOVER.md` ont été committés avec
+leurs marqueurs `<<<<<<< / ======= / >>>>>>>` intacts.
+
+Le mode de panne est le même que celui déjà indexé pour les **codes de sortie** (`| tail` jette le
+statut), mais il porte ici sur le **CONTENU** : une sortie tronquée par le haut se lit comme une
+sortie complète. Deux remèdes, et le second est le vrai :
+1. Ne jamais tronquer la sortie d'une opération dont la LISTE est le résultat (rebase, merge,
+   `git status`). Filtrer (`grep CONFLICT`), pas couper.
+2. **Ne jamais faire confiance à sa propre lecture pour une liste** : après toute résolution, un
+   `grep -rn '^<<<<<<< \|^>>>>>>> \|^=======$'` sur l'arbre, avant `git add`.
+
+⚠️ Ce qui a sauvé le lot est une garde du dépôt, pas ma vigilance : `tests/noConflictMarkers.test.ts`
+a rougi au gate. C'est l'argument le plus concret en faveur de ces gardes « qui ne trouvent jamais
+rien » — celle-ci a trouvé, et le gate rejoué APRÈS le rebase est ce qui lui a donné l'occasion. Un
+lot rebasé se re-gate INTÉGRALEMENT, pas seulement sur les tests qu'on croit concernés.

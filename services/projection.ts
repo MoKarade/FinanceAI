@@ -789,6 +789,13 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
          * fausserait le partage d'un couple à écart d'âge. Un montant, deux registres, deux règles.
          */
         let ferrWithdrawalMois = 0;
+        /**
+         * [ENG-DIVORCE-FLUX-MUET] Part du REER CÉDÉE au divorce ce mois-ci. Même règle que
+         * `ferrWithdrawalMois` : elle DOIT entrer dans `withdrawalREER` (flux publié) et être EXCLUE
+         * de `stepReerByUser`, qui verrait sinon une seconde soustraction sur un registre déjà
+         * consolidé par le callback lui-même.
+         */
+        let divorceReerWithdrawalMois = 0;
 
         // V27: Variables de suivi pour le mois en cours
         let contribCELI = 0, withdrawalCELI = 0;
@@ -824,6 +831,29 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         // 14 itérations sur 101 avec une conjointe âgée. Le défaut préexistait pour les actifs ;
         // le partage des dettes l'aurait AGGRAVÉ (le veuf voyait aussi ses dettes divisées par 2).
         if (spouseAlive && tryDivorce({ m, currentMonthIndex, enableMonteCarlo, rng }, effProj, divorced, (keep) => {
+            // [ENG-DIVORCE-FLUX-MUET] La part CÉDÉE quitte les comptes : c'est un FLUX, et la
+            // forme-flux (« solde(m) − solde(m−1) == MarketGrowth + NetTransfer ») exige qu'il soit
+            // publié. Sans ces sept lignes, des centaines de milliers de dollars disparaissaient sans
+            // aucune cause visible. MESURÉ au mois du divorce, sur une fixture MC déterministe
+            // (partage 50 %) : CELI 119 007,53 $ · REER 91 679,66 $ · Crypto 15 599,16 $ ·
+            // REEE 9 088,89 $ · Liquidités 12 492,83 $ de résiduel inexpliqué.
+            // ⚠️ Capturé AVANT la mise à l'échelle : après, la part cédée n'est plus lisible nulle part.
+            const cede = 1 - keep;
+            withdrawalLiquid += liquid * cede;
+            withdrawalCELI += celi * cede;
+            withdrawalCELIAPP += celiapp * cede;
+            withdrawalNonReg += nonReg * cede;
+            withdrawalCrypto += crypto * cede;
+            withdrawalREEE += reee * cede;
+            // ⚠️ UN MONTANT, DEUX REGISTRES, DEUX RÈGLES. `withdrawalREER` alimente le flux publié
+            // MAIS AUSSI `stepReerByUser`, qui re-soustrait AU PRORATA du registre per-conjoint. Or
+            // ce registre est déjà consolidé plus bas dans CE MÊME callback (`reerByUser = [reer, 0]`,
+            // avec le total DÉJÀ réduit) : laisser passer la part cédée la retirerait DEUX fois.
+            // Même traitement que la FERR (`ferrWithdrawalMois`).
+            const reerCede = reer * cede;
+            withdrawalREER += reerCede;
+            divorceReerWithdrawalMois += reerCede;
+
             liquid *= keep;
             celi *= keep;
             celiapp *= keep;
@@ -2085,7 +2115,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
         reer = g.reer.newVal; growthREER = g.reer.growth; growthPctREER = g.reer.pct;
         // Registre REER par conjoint : retrait pro-rata, cotisation par part salariale, croissance
         // (et RAP/meltdown) absorbées pro-rata par la réconciliation au solde commun final `reer`.
-        reerByUser = stepReerByUser(reerByUser, { withdrawal: withdrawalREER - ferrWithdrawalMois, contribution: contribREER, poolEnd: reer, shares: reerShares });
+        reerByUser = stepReerByUser(reerByUser, { withdrawal: withdrawalREER - ferrWithdrawalMois - divorceReerWithdrawalMois, contribution: contribREER, poolEnd: reer, shares: reerShares });
         nonReg = g.nonReg.newVal; growthNonReg = g.nonReg.growth; growthPctNonReg = g.nonReg.pct;
         crypto = g.crypto.newVal; growthCrypto = g.crypto.growth; growthPctCrypto = g.crypto.pct;
         liquid = g.liquid.newVal; growthLiquid = g.liquid.growth; growthPctLiquid = g.liquid.pct;

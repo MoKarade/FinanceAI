@@ -1638,15 +1638,19 @@
   gardes de conservation existantes. ⚠️ Piège mesuré : sans `isActive: true` ET `isOwned: true`, le
   bien n'existe pas du tout (`Immobilier = 0` sur tout l'horizon) et la fixture semble décrire une
   maison sans en avoir une.
-- [ ] **`[ENG-DIVORCE-FLUX-MUET]`** (S) — le partage de divorce multiplie `celi`/`reer`/`crypto`/
-  `nonReg` par `keep` **sans publier de `NetTransfer*`** : la forme-flux est violée sur les 4 comptes.
-  **Mesuré (60 runs MC, `divorceAnnualProbability` 0,05) : 2 130 681 $ sur le REER, 1 281 789 $ sur le
-  CELI, 219 622 $ sur le Crypto** — trouvé par la garde `mcConservation` du 2026-08-19.
-  ⚠️ **Impact utilisateur NUL aujourd'hui** : le divorce n'existe que sous Monte Carlo, où les points
-  sont réduits à `{NetWorth, monthIndex}` avant publication. Ce devient un vrai défaut le jour où une
-  surface affiche la ventilation d'un run stochastique (ou si le divorce devient déterministe).
-  **Correctif** : dans le callback `tryDivorce` (`projection.ts`), alimenter `withdrawal<compte>` de la
-  part cédée — et vérifier la même chose pour le décès du conjoint (mesuré 212 850 $ sur le REER).
+- [ ] **`[ENG-CELIAPP-TRANSFERT-FLUX-MUET]`** (S, découvert en livrant `DIVORCE-FLUX-MUET`) — au
+  transfert CELIAPP → REER (échéance des 15 ans), **9 092,54 $ changent de compte sans qu'aucun des
+  deux flux ne soit publié** : le résiduel de forme-flux est le MÊME des deux côtés (mois 168 d'une
+  fixture MC 30 ans), signature d'un transfert muet. Même classe que `[ENG-FERR-NETTRANSFER-MUET]`.
+  Fix : publier `withdrawalCELIAPP` ET `contribREER` au point de transfert. ⚠️ Vérifier d'abord si
+  `withdrawalCELIAPP`/`contribREER` ont un consommateur de CALCUL (`contribREER` alimente le registre
+  per-conjoint et l'exclusion de croissance de mi-mois) — ça peut DÉPLACER de l'argent.
+- [ ] **`[ENG-LIQUID-FLUX-FORM]`** (M, découvert en livrant `DIVORCE-FLUX-MUET`) — le compte
+  **Liquidités n'est pas conforme à la forme-flux**, indépendamment du divorce : résiduel mesuré
+  **7 638,44 $ au mois 324**, et de petits résiduels un peu partout (50,85 $ au mois 12, 310 $ au
+  mois 11). C'est pour ça qu'il est exclu du balayage de `divorceFluxPublie.test.ts` et absent des
+  `ACCOUNTS` de `projection.fluxForm.test.ts`. Fix : trouver les producteurs qui mutent `liquid` sans
+  alimenter `contribLiquid`/`withdrawalLiquid`, puis ajouter `Liquidites` aux deux gardes.
   ⚠️ Même piège que `[ENG-FERR-NETTRANSFER-MUET]` : `withdrawalREER` alimente AUSSI `stepReerByUser`
   (partage per-conjoint). Mesurer les goldens AVANT/APRÈS pour prouver qu'aucun dollar ne bouge.
 

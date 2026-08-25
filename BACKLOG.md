@@ -756,9 +756,6 @@
 - [ ] **`[DETTE-UI-PRIMITIVES]`** (unifie `[UI-NO-INPUT-PRIMITIVE]`) (M) — `components/ui/Input|Select|Field` (label+erreur+aria) sur
   les tokens existants + migrer les hotspots (AdvancedProjectionParams 40 inputs, PatrimoineExtended
   19, Onboarding 11, ProjectionControls 10). (≡ CA-08.)
-- [ ] **`[PH3-c-bis]`** (S, reste) — `futureProvince`/`futureMoveYear` orphelins (types.ts:343-344,
-  0 consommateur services/) ; `rsuYearsRemaining` consommé (activeIncome.ts:101) mais AUCUN éditeur
-  UI → auditer W2.7 + éditeur ou retrait.
 - [ ] **`[ENG-RAMQ-FIELDS]`** (S, reste) — assurance médicaments PRIVÉE absente (enfants à charge ✓)
   → champ User + bascule RAMQ/privé dans taxDecember.
 - [ ] **`[T4]`** (M, par lots) — automatiser les tests manuels critiques en Playwright : 8 specs e2e

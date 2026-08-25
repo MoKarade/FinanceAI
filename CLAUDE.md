@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 769 tests** Vitest
-(438 fichiers de test, mesuré le 2026-08-24). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 772 tests** Vitest
+(439 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -652,6 +652,12 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   semble déjà livré, **grep les PRODUCTEURS, pas les consommateurs** ; et écrire la valeur par DÉFAUT
   explicitement, jamais l'absence — absent veut dire « je ne sais pas » et relance le repli
   (`UN-CHAMP-TYPE-SANS-PRODUCTEUR-EST-UNE-INTENTION-JAMAIS-LIVREE`).
+  ⚠️ Et quand le repli CHANGE un montant, ce n'est plus une lacune mais un **chiffre faux** :
+  `rsuYearsRemaining` était lu par le moteur (`?? 99`) sans aucun champ pour l'écrire — les RSU ne
+  s'arrêtaient jamais, **+1 380 630 $ (+23,4 %)** de patrimoine final mesuré sur 40 ans. Le jumeau
+  `rsuVestingPerYear` avait son champ DEUX LIGNES plus haut. Corollaire de saisie : vider un champ
+  rend `undefined`, jamais `0` — « pas renseigné » ≠ « zéro »
+  (`UN-CHAMP-LU-PAR-LE-MOTEUR-ET-JAMAIS-SAISI-EST-UN-CHIFFRE-FAUX`).
 - Une **échéance ne solde pas une dette** : à la fin d'un terme on arrête le paiement, on LAISSE le
   solde résiduel au bilan (l'effacer fabriquerait du patrimoine) et on alerte UNE fois. Et une dette
   pas encore commencée doit sortir AUSSI du bilan — `sumActiveDebts` est une closure définie avant la

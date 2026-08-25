@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-25 (suite 163) — `[PH3-c-bis]` : les RSU ne s'arrêtaient jamais
+> Le ticket groupait deux choses de gravité INCOMPARABLE.
+> **1. `rsuYearsRemaining` = un chiffre FAUX.** Le moteur le lit depuis toujours (`activeIncome.ts` :
+> `(u.rsuYearsRemaining ?? 99) > yearsElapsed`) et **aucun champ ne l'écrivait** → RSU versées sur
+> tout l'horizon. **MESURÉ** (40 ans, 24 000 $/an de RSU) : **7 273 468 $** sans durée contre
+> **5 892 838 $** avec 4 ans de vesting → **1 380 630 $ (+23,4 %) de patrimoine fantôme** ; encore
+> 823 937 $ d'écart à 10 ans. Son JUMEAU `rsuVestingPerYear` avait son champ depuis toujours, DEUX
+> LIGNES plus haut. Champ ajouté à côté de lui.
+> ⚠️ Vider le champ rend `undefined`, jamais `0` — « pas renseigné » ≠ « zéro an ».
+> **2. `futureProvince`/`futureProvinceMoveYear` retirés.** ⚠️ Le ticket nommait `futureMoveYear`,
+> qui n'existe pas. Mesuré : zéro producteur ET zéro consommateur ; `CanadianProvince` n'existait que
+> pour typer le premier. Un commentaire AFFIRMAIT « GARDÉ : consommé par … » — une justification qui
+> maintenait en vie du code que rien n'appelle.
+> 3 tests, **2 perturbations rouges**.
+>
 > ## 🟢 Session 2026-08-25 (suite 162) — `[DETTE-CHART-THEME-DUP]` : la duplication n'était que le symptôme
 > Le ticket disait « dédupliquer les styles inline ». **MESURÉ** : 14 infobulles Recharts, **9 styles
 > distincts**, **six fonds** (`#1e1e1e` ×4, `#151922` ×2, `#1a1a1a` ×2, `#1a1e29`, `#111`, `#0B0E14`

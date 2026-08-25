@@ -7191,3 +7191,46 @@ reste vert (perturbation faite : mention en commentaire → vert, `import { Tool
 → rouge). Anti-vacuité : l'extracteur doit trouver > 10 imports et le témoin `react`.
 ⚠️ Détail d'environnement mesuré : `new URL(..., import.meta.url)` lève `ERR_INVALID_URL_SCHEME` dans
 cet environnement de test — les scans de source passent par `resolve(process.cwd(), …)`.
+### `UN-REGISTRE-RECONCILIE-A-UNE-CLE-REND-SES-FLUX-DECORATIFS` — 2026-08-25
+
+**Ticket** : `[ENG-CELIAPP-TRANSFERT-FLUX-MUET]` (S, que j'avais routé la veille en livrant
+`[ENG-DIVORCE-FLUX-MUET]`). À la fermeture du CELIAPP (fin des 15 ans, ou 71 ans), le moteur faisait
+`reer += X; celiapp = 0;` sans publier de flux : forme-flux violée des DEUX côtés, du MÊME montant —
+**10 470,25 $ au mois 168**. Corrigé en publiant `withdrawalCELIAPP` et `contribREER`.
+
+**1. Le risque annoncé n'était pas le bon, et il fallait le vérifier dans la SOURCE.** J'avais routé
+le ticket en avertissant que `contribREER` alimente « l'exclusion de croissance de mi-mois » — le
+piège qui avait rendu `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]` non neutre en argent. **Faux, vérifié** :
+`growthApplication` applique cette exclusion à `contribNonReg` et `contribREEE`, mais le REER passe
+par `prevREER`. Un avertissement que je me suis écrit à moi-même se re-prouve avant d'être suivi
+(`MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE`), y compris quand il est prudent : la prudence mal placée
+fait renoncer à un correctif juste.
+
+**2. Le vrai second consommateur ne consomme rien.** `contribREER` est bien passé à `stepReerByUser`
+(registre REER par conjoint). Mesuré : patrimoine final et REER final **identiques au centième**, et
+`reerByUserFinal` identique à ~3 × 10⁻¹⁰ $ près — y compris sur un couple **très** asymétrique
+(20 000 $ contre 2 000 $ mensuels, parts 10:1), choisi exprès parce qu'un couple équilibré ne peut
+pas distinguer une répartition d'une autre (`UN-PARTAGE-A-50-POURCENT-…`, appliqué aux parts).
+
+**3. La découverte : le registre per-conjoint est RÉCONCILIÉ, donc ses flux sont décoratifs.**
+Perturbation décisive — forcer `stepReerByUser(..., { contribution: 0 })`, c'est-à-dire lui cacher
+**toutes** les cotisations REER de tous les mois : **29 tests per-conjoint verts** ET
+`reerByUserFinal` bit-identique. Dans ce scénario, `reconcileToPool(afterFlows, poolEnd, shares)`
+détermine seul la répartition à partir de `shares` — le résultat mesuré vaut exactement
+`poolEnd × shares` (rapport 10,0000 sur le couple 10:1). Conséquence à retenir : **toute une famille
+de correctifs passés sur ce registre** (`ENG-DIVORCE-REGISTRE-PERCONJOINT`, l'exclusion
+`ferrWithdrawalMois`, celle du divorce livrée la veille) est potentiellement inerte pour la même
+raison. Routé (`[ENG-REERBYUSER-FLUX-DECORATIF]`) avec ce qui a été mesuré ET ce qui ne l'a pas été :
+je n'ai PAS testé les cas où `shares` vaut `[1, 0]` (après divorce/décès) ni ceux où un solde
+per-conjoint deviendrait négatif.
+
+**4. Un invariant qu'on étend révèle des offenders sans rapport avec son ticket.** Ce défaut n'a pas
+été cherché : il est tombé du balayage d'horizon écrit pour le divorce. Corollaire déjà indexé
+(`REJOUER-L-OUTIL-ELARGI-AVANT-DE-CROIRE-QU-IL-N-Y-A-RIEN`), confirmé ici deux jours de suite.
+
+**5. Un transfert se garde par son ÉGALITÉ, pas seulement par son résiduel.** Publier un seul des
+deux côtés peut passer un test de résiduel si l'autre côté est masqué par un flux du même mois. La
+garde exige donc aussi que le montant sorti du CELIAPP soit celui entré au REER. Perturbations :
+aucun flux → 3 rouges · côté REER seul → 3 · côté CELIAPP seul → 2 · **moitié** du montant → 2.
+⚠️ Le mois de fermeture est CHERCHÉ dans les données (premier mois où le CELIAPP passe de > 1 $ à 0),
+jamais écrit en dur : un littéral se périmerait au premier réglage de la fixture.

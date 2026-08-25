@@ -1474,6 +1474,12 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             if (janResult.celiappTransferToReer > 0) {
                 reer += janResult.celiappTransferToReer;
                 celiapp = 0;
+                // [ENG-CELIAPP-TRANSFERT-FLUX-MUET] La fermeture du CELIAPP (15 ans, ou 71 ans)
+                // DÉPLACE le solde vers le REER. Sans ces deux lignes, l'argent changeait de compte
+                // sans qu'aucun des deux flux ne soit publié : la forme-flux était violée des DEUX
+                // côtés, du MÊME montant (mesuré 9 092,54 $ au mois 168 d'une fixture MC 30 ans).
+                withdrawalCELIAPP += janResult.celiappTransferToReer;
+                contribREER += janResult.celiappTransferToReer;
             }
             if (janResult.rrspRoomReset) {
                 rrspRoom = 0;

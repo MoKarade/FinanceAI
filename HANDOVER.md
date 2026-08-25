@@ -62,6 +62,21 @@
 > l'inverse. Attrapé par une pré-assertion, pas par le typage.
 > 9 tests, **5 perturbations rouges sur 5**.
 >
+> ## 🟠 Session 2026-08-25 (suite 174) — `[ENG-CELIAPP-TRANSFERT-FLUX-MUET]` + une découverte gênante
+> Fermeture du CELIAPP (15 ans / 71 ans) : `reer += X; celiapp = 0;` sans publier de flux → forme-flux
+> violée des DEUX côtés du MÊME montant, **10 470,25 $ au mois 168**. Publié, 0,01 $ après.
+> ⚠️ **L'avertissement que j'avais écrit en routant ce ticket était FAUX** : `contribREER` n'alimente
+> PAS l'exclusion de croissance de mi-mois (elle porte sur `contribNonReg`/`contribREEE` ; le REER
+> passe par `prevREER`). Une note que je m'écris se re-prouve — même quand elle est prudente.
+> ⚠️ Ne déplace AUCUN argent (patrimoine + REER finaux identiques au centième ; `reerByUserFinal` à
+> ~3e-10 $ près, y compris sur un couple 10:1 choisi exprès).
+> 🧭 **DÉCOUVERTE À TRANCHER — `[ENG-REERBYUSER-FLUX-DECORATIF]`** : forcer
+> `stepReerByUser(..., { contribution: 0 })` (cacher TOUTES les cotisations REER) laisse **29 tests
+> per-conjoint verts** et `reerByUserFinal` bit-identique. `reconcileToPool` détermine seul la
+> répartition depuis `shares` (résultat = `poolEnd × shares`, rapport 10,0000 mesuré). ⚠️ Toute une
+> FAMILLE de correctifs passés sur ce registre est peut-être inerte pour la même raison. Non testé :
+> `shares = [1, 0]` (divorce/décès) et les soldes per-conjoint négatifs.
+> 4 tests, 4 perturbations isolant chacune son côté (dont « moitié du montant »).
 > ## 🟢 Session 2026-08-25 (suite 173) — `[BUDGET-REMOVE-AMELIORER]` : ce qu'une épuration ne doit PAS emporter
 > Section retirée (demande directe de Marc). ⚠️ **Vérifié avant de couper** : le bouton « Diagnostic »
 > de la carte avait un JUMEAU dans la barre de pilotage — la carte n'en portait qu'un doublon, le

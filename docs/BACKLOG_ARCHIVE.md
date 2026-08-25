@@ -88,6 +88,22 @@
   9 tests, **5 perturbations rouges sur 5**, chacune isolant sa garde. Leçon :
   `UN-DEFAUT-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT`.
 
+## 2026-08-25 — La fermeture du CELIAPP publie enfin ses deux flux
+
+- [x] **`[ENG-CELIAPP-TRANSFERT-FLUX-MUET]`** (S) — PR #741, gate vert. Ticket que j'avais routé la
+  veille en livrant `[ENG-DIVORCE-FLUX-MUET]` : trouvé par le balayage d'horizon, pas cherché.
+  À la fermeture du CELIAPP (15 ans, ou 71 ans), `reer += X; celiapp = 0;` ne publiait aucun flux →
+  forme-flux violée des DEUX côtés du MÊME montant, **10 470,25 $ au mois 168**. Après : 0,01 $.
+  ⚠️ **L'avertissement que j'avais écrit moi-même était FAUX** : `contribREER` n'alimente PAS
+  l'exclusion de croissance de mi-mois (`growthApplication` l'applique à `contribNonReg`/`contribREEE` ;
+  le REER passe par `prevREER`). Vérifié dans la source avant de livrer.
+  ⚠️ **Ne déplace aucun argent** : patrimoine et REER finaux identiques au centième, `reerByUserFinal`
+  identique à ~3 × 10⁻¹⁰ $ près, y compris sur un couple 10:1 (choisi exprès — un couple équilibré ne
+  distinguerait pas deux répartitions).
+  4 tests, **4 perturbations** isolant chacune son côté (aucun flux → 3 rouges ; REER seul → 3 ;
+  CELIAPP seul → 2 ; MOITIÉ du montant → 2). Leçon :
+  `UN-REGISTRE-RECONCILIE-A-UNE-CLE-REND-SES-FLUX-DECORATIFS`.
+  Découverte routée : `[ENG-REERBYUSER-FLUX-DECORATIF]`.
 ## 2026-08-25 — La section « Améliorer mon budget » est retirée
 
 - [x] **`[BUDGET-REMOVE-AMELIORER]`** (S) — PR #740, gate vert. Demande directe de Marc.

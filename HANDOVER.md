@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-25 (suite 169) — `[FINTABLE-SYNC-XTAB-MUTEX]` : un verrou qui enveloppe la GARDE
+> Ticket **vérifié EXACT** (et non réfuté, pour une fois) : `applyDocument` déduplique bien sur
+> `date|montant_en_cents|payee_minuscule`, donc le risque est l'INTÉGRITÉ (dernier écrivain du solde),
+> pas le doublon.
+> Ce que le ticket ne disait pas : le verrou existant `_inFlight` est commenté « verrou **PARTAGÉ**
+> auto ↔ manuel » — partagé entre les deux CHEMINS d'un onglet, pas entre onglets (variable de
+> module). Et **la course n'est pas le réseau** : `localStorage` n'a pas de compare-and-swap, donc
+> `readLastAttempt()` puis `writeLastAttempt(now())` laissent deux onglets lire le même vieil
+> horodatage et passer tous les deux la garde. Fenêtre la plus large exactement quand elle compte :
+> un navigateur qui restaure deux onglets épinglés les démarre ensemble.
+> Livré : `withCrossTabLock` (Web Locks, `ifAvailable: true` = renoncer au lieu d'attendre)
+> enveloppant **toutes** les gardes, cooldown compris ; repli EXPLICITE si l'API manque (un verrou
+> qui bloque tout serait pire que le défaut). 3 tests, **5 perturbations rouges sur 5** — dont le
+> cooldown remis hors du verrou, qui rougit les 3.
+>
 > ## 🟢 Session 2026-08-25 (suite 168) — `[ENG-DIVORCE-SCALE-UNBOUGHT]` : la mise de fonds évaporée
 > Ticket marqué **« [À vérifier] — non vérifié par perturbation »**, classé FAIBLE. Vérifié : réel,
 > et le dégât n'est pas celui annoncé.

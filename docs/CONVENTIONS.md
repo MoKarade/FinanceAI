@@ -6917,3 +6917,50 @@ prouve la CONSÉQUENCE — « un état semé qu'on divise donne la moitié de l'
 câblage : le moteur pourrait perdre sa garde sans que rien ne rougisse. Le câblage se vérifie à part,
 par un scan ancré sur l'**initialiseur** du `.map` (pas sur le fichier « quelque part »), et la
 perturbation le prouve en retirant la garde du VRAI code.
+
+### `UN-VERROU-DOIT-ENVELOPPER-LA-GARDE-PAS-SEULEMENT-LE-TRAVAIL` — 2026-08-25
+
+**Ticket** : `[FINTABLE-SYNC-XTAB-MUTEX]` (S) — « le cooldown localStorage n'est PAS un mutex
+cross-onglet : deux onglets ouverts peuvent lancer une passe simultanée (fenêtre étroite, intégrité
+seulement — la déduplication de `applyDocument` empêche les doublons, mais les deux passes se
+battent sur le dernier écrivain du solde) ».
+
+**Le ticket est EXACT** — vérifié, pas réfuté. `applyDocument` déduplique bien sur
+`date|montant_en_cents|payee_minuscule` (`services/fintable/mapSnapshot.ts`), donc le risque est
+bien l'intégrité et non le doublon. Après six réfutations d'affilée dans la même session, publier la
+confirmation compte autant que publier une réfutation.
+
+**Ce que le ticket ne dit pas, et qui change le correctif.** Le module portait déjà un verrou,
+`_inFlight`, commenté « Verrou **PARTAGÉ** auto ↔ manuel » — vrai, mais partagé entre les deux
+CHEMINS d'un même onglet, pas entre onglets : c'est une variable de MODULE. Le nom invite à croire
+le contraire (famille `UN-NOM-TROMPEUR-FABRIQUE-DES-FAUX-FINDINGS`). Et surtout : la course visée
+n'est pas le réseau. `localStorage` n'a **pas de compare-and-swap** — `readLastAttempt()` et
+`writeLastAttempt(now())` sont deux opérations distinctes, donc deux onglets lisent le même vieil
+horodatage, passent tous les deux la garde, puis écrivent chacun le leur.
+
+**La règle.** Un verrou posé autour du TRAVAIL laisse la course exactement là où elle est : dans la
+GARDE qui décide s'il faut travailler. Le verrou doit envelopper la décision ET l'action, sinon il
+ne fait que réduire la taille de la fenêtre. Ici : `withCrossTabLock(() =>
+runDailyFintableSyncGuarded(opts))` — toutes les gardes (jeton, mode démo, fraîcheur, cooldown,
+mutex intra-onglet) sont à l'intérieur.
+
+**Le repli est une décision, pas un détail.** L'API Web Locks manque en jsdom, sur les navigateurs
+anciens et hors contexte sécurisé. Sans repli explicite, la sync ne tournerait JAMAIS là où l'API
+manque : **un verrou qui bloque tout est pire que le défaut qu'il corrige**. Le repli s'ÉCRIT
+(`if (!locks) return run()`), et il se teste — c'est même le seul chemin que la suite emprunte
+naturellement.
+
+**Anti-vacuité, deux pièges rencontrés.**
+1. Un faux `LockManager` doit reproduire le contrat de `ifAvailable: true` — verrou libre → le
+   rappel est appelé et sa valeur rendue ; verrou pris → `null` rendu **sans appeler le rappel**.
+   Un faux qui appellerait le rappel dans les deux cas rend le cas « occupé » inobservable.
+2. Une assertion « rien n'a été écrit » (`clesTentative()).toHaveLength(0)`) mesure un sélecteur
+   mort tant qu'un AUTRE cas ne prouve pas que le même sélecteur trouve quelque chose quand
+   l'écriture a lieu. Les deux cas se livrent ensemble, et le sélecteur se repère par le SENS de la
+   clé (`/lastAutoAttempt/`) plutôt qu'en recopiant le littéral du module — une copie ferait passer
+   le test en silence le jour où la clé est renommée.
+
+**Perturbations (5/5 rouges)** : verrou retiré → (a) et (b) rouges · `ifAvailable` retiré (verrou
+bloquant) → (a) rouge · nom de verrou générique → (a) rouge · **cooldown déplacé HORS du verrou**
+(l'état d'avant le ticket) → les 3 rouges, dont `expected [Array(1)] to have a length of +0` sur la
+clé de cooldown, l'assertion qui porte le ticket · repli supprimé → (c) rouge.

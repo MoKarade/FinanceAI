@@ -77,10 +77,63 @@ function isTestModeNow(): boolean {
 }
 
 /**
+ * [FINTABLE-SYNC-XTAB-MUTEX] Verrou CROSS-ONGLET, quand le navigateur sait le faire.
+ *
+ * ⚠️ Ce que le cooldown ne fait PAS. `_inFlight` est une variable de MODULE : elle ne protège que
+ * l'onglet courant. Le cooldown, lui, vit dans `localStorage` (partagé), mais sa lecture et son
+ * écriture sont DEUX opérations : deux onglets peuvent lire le même vieil horodatage, passer tous
+ * les deux la garde, puis écrire chacun le leur. La fenêtre est étroite en usage normal — et large
+ * exactement quand elle compte : un navigateur qui restaure deux onglets épinglés les démarre au
+ * même instant.
+ *
+ * L'API Web Locks donne le mutex réel que `localStorage` ne peut pas offrir (il n'a pas de
+ * compare-and-swap). `ifAvailable: true` = on n'attend PAS : si un autre onglet tient le verrou, on
+ * rend `null` et l'appelant répond « in-flight », exactement comme pour un doublon intra-onglet.
+ *
+ * ⚠️ Repli EXPLICITE quand l'API est absente (jsdom, navigateurs anciens, contexte non sécurisé) :
+ * on exécute quand même, avec les gardes d'avant. Sans ce repli la sync ne tournerait JAMAIS là où
+ * l'API manque — un verrou qui bloque tout est pire que le défaut qu'il corrige. C'est aussi ce
+ * chemin-là que les tests empruntent, donc il est couvert par construction.
+ */
+type LockManagerLike = {
+    request: (
+        name: string,
+        options: { ifAvailable?: boolean },
+        cb: (lock: unknown) => Promise<AutoSyncOutcome>,
+    ) => Promise<AutoSyncOutcome | null>;
+};
+
+function lockManager(): LockManagerLike | null {
+    const nav = (globalThis as { navigator?: { locks?: LockManagerLike } }).navigator;
+    return typeof nav?.locks?.request === 'function' ? nav.locks : null;
+}
+
+const XTAB_LOCK_NAME = 'financeai:fintable-sync';
+
+async function withCrossTabLock(
+    run: () => Promise<AutoSyncOutcome>,
+): Promise<AutoSyncOutcome> {
+    const locks = lockManager();
+    if (!locks) return run();
+    // `ifAvailable` rend `null` SANS appeler le rappel quand le verrou est déjà pris ailleurs.
+    const outcome = await locks.request(XTAB_LOCK_NAME, { ifAvailable: true }, async () => run());
+    return outcome ?? { ran: false, reason: 'in-flight' };
+}
+
+/**
  * Tente la passe quotidienne. Ne LÈVE jamais. Idempotent à l'échelle d'une session (mutex +
- * cooldown) — appelable sans crainte depuis un effet React qui re-tire.
+ * cooldown) et, quand le navigateur expose l'API Web Locks, à l'échelle de TOUS LES ONGLETS.
+ * Appelable sans crainte depuis un effet React qui re-tire.
  */
 export async function maybeRunDailyFintableSync(
+    opts: { now?: () => number } = {},
+): Promise<AutoSyncOutcome> {
+    // ⚠️ Le verrou enveloppe TOUTES les gardes, cooldown compris : le protéger seulement autour du
+    // réseau laisserait la course là où elle est — entre la LECTURE et l'ÉCRITURE du cooldown.
+    return withCrossTabLock(() => runDailyFintableSyncGuarded(opts));
+}
+
+async function runDailyFintableSyncGuarded(
     opts: { now?: () => number } = {},
 ): Promise<AutoSyncOutcome> {
     const now = opts.now ?? (() => Date.now());

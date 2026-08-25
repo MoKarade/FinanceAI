@@ -6509,3 +6509,58 @@ jamais deux événements du même mois : l'assertion « les rangs sont contigus 
 par construction. Il a fallu un événement ÉPINGLÉ (jamais écrêté) posé sur un mois déjà occupé pour
 qu'un rang 1 existe vraiment à l'écran. Une assertion sur un ensemble doit prouver que l'ensemble
 contient le cas qu'elle prétend juger.
+
+### `UNE-ANCRE-D-EXTRAPOLATION-EN-DUR-FABRIQUE-UNE-MARCHE` — 2026-08-25
+
+Le ticket `[FISC-RRSP-EXTRAP-05]` était un ticket de DOCUMENTATION : « l'extrapolation du plafond
+REER ajoute +0,5 %/an à l'inflation, §REER est muette — sourcer ou requalifier ». Il avait raison
+sur le constat, et il ne voyait qu'une moitié de la ligne qu'il citait.
+
+**1. Requalifier, ce n'est pas ranger le chiffre dans la source de vérité.** Le plafond REER vient
+de l'ARC ; la vitesse à laquelle on le PROLONGE au-delà du barème connu ne vient de nulle part.
+Écrire « +0,5 pp » dans `FISCAL_REFERENCE.md` sans dire que c'en est une hypothèse lui aurait donné
+l'autorité d'un texte de loi — la faute exacte de
+`ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE`. Ce qui rend la section honnête, ce
+n'est pas le chiffre mais le TABLEAU de son écart contre l'observé : 2,72 %/an de 2010 à 2026
+(valeurs officielles), 3,97 %/an de 2021 à 2026, 2,00 %/an sur les estimations 2027-2030 que le
+dépôt publie lui-même — contre 2,50 %/an modélisés à 2 % d'inflation. Le modèle est SOUS l'observé
+de longue période et AU-DESSUS du rythme que le dépôt applique à ses propres estimations. « Proche
+de » ne se vérifie pas ; un tableau, si.
+
+**2. Une ligne d'extrapolation porte DEUX paramètres, et le ticket n'en nommait qu'un.** Il y a la
+vitesse, et il y a l'ANCRE depuis laquelle on compose. L'ancre était le littéral `2026` pendant que
+le barème allait jusqu'à `2030` : les années 2027-2030 sortaient de la table (≈ 2 %/an) et 2031
+repartait de 2026 composé au rythme du modèle. **MESURÉ à inflation 2 % : la couture 2030 → 2031
+sautait de 36 590 $ à 38 252,91 $, soit +4,54 % en une seule année** — contre les ≈ 2 %/an appliqués
+de part et d'autre. Ancrée sur la dernière année connue : 37 504,75 $, exactement +2,50 %. Et
+l'erreur GRANDIT avec l'inflation saisie, parce que l'ancre trop lointaine compose le taux sur plus
+d'années : à 5 %, 2032 valait 44 188 $ au lieu de 38 602 $, **5 586 $ de droits fabriqués**.
+Signal à retenir : **une extrapolation qui part d'une année ÉCRITE EN DUR pendant que sa table
+grandit produit une marche silencieuse le jour où la table dépasse l'ancre.** Le patron correct
+existait à trois lignes de là — le CELI ancre déjà sur `LAST_KNOWN_CELI_YEAR`
+(`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`, encore).
+
+**3. Deux goldens ont bougé, et il fallait l'EXPLIQUER avant de les re-baser.** −28 969 $ et
+−47 367 $ (−0,13 % / −0,11 %) sur la seule fixture dont le plafond MORD vraiment — ses salaires sont
+MENSUELS (25 000 $/mois = 300 000 $/an, donc 18 % = 54 000 $) et son horizon de 25 ans dépasse 2030.
+Le signe est le bon : la marche ouvrait des droits que rien ne justifiait. Symétrique utile de
+« aucun golden n'a bougé est un résultat à expliquer » : **des goldens qui bougent PROUVENT que le
+chemin corrigé est couvert** — encore faut-il vérifier que la fixture exerce bien la contrainte, pas
+une grandeur voisine.
+
+**4. Le garde d'obsolescence de l'inventaire a fait son travail sans qu'on le lui demande.**
+Remplacer le littéral `2026` par une constante nommée a instantanément rendu l'entrée
+`taxJanuary.ts::2026` FANTÔME, et le test l'a dit dans les mêmes secondes. C'est exactement le
+comportement attendu d'un registre censé décroître (`ENTREE-D-INVENTAIRE-FANTOME`). Au passage : la
+raison voisine renvoyait à un **« §7.G » qui n'a jamais existé** dans `FISCAL_REFERENCE.md`. Une
+référence fantôme est pire qu'une absence de référence — elle se lit comme « c'est sourcé quelque
+part » et personne ne va vérifier.
+
+**5. Quand la source est INATTEIGNABLE, router vaut mieux qu'inventer — et le RE-MESURER.** Quatre
+tickets voisins (`[FISC-RAP-15ANS]`, `[FISC-RAP-GRACE-WINDOW]`, `[FISC-REEE-AGE-FERMETURE]`,
+`[FISC-RRSP-LIMITS-PRE2024-DOC]`) n'ont qu'un seul correctif possible : citer une règle ARC. Vérifié
+ce jour-là plutôt que supposé depuis une note ancienne : le proxy de sortie répond **403** à
+`canada.ca`, `revenuquebec.ca`, `bankofcanada.ca` et aux moteurs de recherche. Ils partent donc en
+`docs/A_FAIRE_MOI.md` avec la question exacte et le site de code, et restent OUVERTS au BACKLOG avec
+leur mention de blocage. ⚠️ Et un ticket n'est pas une source : celui du REEE AFFIRME « le régime
+réel autorise 35 ans » — c'est précisément ce qu'il faut faire confirmer, pas ce qu'on peut écrire.

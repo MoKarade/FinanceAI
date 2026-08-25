@@ -267,6 +267,7 @@
   `FISCAL_REFERENCE.md` (§REER ne liste que 2024+). Elles pilotent les droits REER HISTORIQUES via
   `setupSimulation.ts:70`, donc de l'argent. Valeurs jugées correctes, mais non sourcées = suspectes
   par la règle du dépôt. Documenter dans le même geste que `[FISC-REF-DEDUP]`.
+  ⚠️ **BLOQUÉ sur une source (2026-08-25)** → routé en `docs/A_FAIRE_MOI.md` **B9**.
 - [ ] **`[FISC-RRSP-FALLBACK-PRE2010]`** (M, MOYEN [MESURÉ — audit 2026-08-06], PRÉ-EXISTANT) —
   `RRSP_ANNUAL_LIMIT_FALLBACK = 32 490 $` (le plafond **2025**) est appliqué à TOUTE année
   **antérieure à 2010** (`setupSimulation.ts:70`). Pour un résident de longue date, chaque année
@@ -275,10 +276,6 @@
   10-19 k$ de droits REER par année pré-2010** pour un haut revenu, donc des déductions supérieures
   au légal. ⚠️ Changement de MODÈLE sur les droits historiques → plan + mesure avant/après, pas un
   fix au fil de l'eau.
-- [ ] **`[FISC-RRSP-EXTRAP-05]`** (S, doc — audit 2026-08-06) — l'extrapolation du plafond REER
-  au-delà du barème connu ajoute **+0,5 %/an** à l'inflation (`taxJanuary.ts:163`). §REER est muette ;
-  le +0,5 % n'est documenté que pour le MGA (§6). Invisible au garde de constantes (`0.5` est classé
-  bénin). Sourcer ou requalifier en hypothèse de modèle assumée.
 - [ ] **`[FISC-RRSP-RENTAL-EARNED]`** (S-M, [Supposition] non chiffrée — audit 2026-08-06) — le
   revenu NET de location est du revenu GAGNÉ au sens de 146(1), mais il alimente `accRentesYear`
   et jamais `accGrossIncomeYear` (`realEstateMonth.ts:397`) → droits REER sous-estimés pour un
@@ -968,6 +965,8 @@
   part** : `FISCAL_REFERENCE.md` ne mentionne ni « 35 ans » ni l'âge de fermeture (vérifié — le §9
   ne couvre que le PRA, le clawback de subventions et les PAE). **Correctif** : une ligne en §9,
   ou aligner sur 35.
+  ⚠️ **BLOQUÉ sur une source (2026-08-25)** → routé en `docs/A_FAIRE_MOI.md` **B8**. Le ticket
+  AFFIRME « 35 ans » — mais un ticket n'est pas une source, et le proxy bloque `canada.ca`.
 
 - [ ] **`[FISC-RAP-GRACE-WINDOW]`** (XS, MOYEN — découvert par `[FISC-GUARD-SCOPE]`, RENOMMÉ en revue :
   il s'appelait `[FISC-RAP-GRACE-WINDOW]`, nom hérité de ma première lecture FAUSSE du code) — la
@@ -976,10 +975,15 @@
   fenêtre, `2` dehors. **Deux bornes d'une vraie règle ARC, absentes de `FISCAL_REFERENCE.md` §8.**
   **Correctif** : sourcer les deux bornes ET la durée de grâce, ou retirer la règle. ⚠️ Les trois
   valeurs doivent bouger ENSEMBLE — en sourcer une seule laisserait une règle à moitié fausse.
+  ⚠️ **BLOQUÉ sur une source (2026-08-25)** → routé en `docs/A_FAIRE_MOI.md` **B7**, les trois
+  valeurs demandées ensemble.
 
 - [ ] **`[FISC-RAP-15ANS]`** (XS, FAIBLE — découvert par `[FISC-GUARD-SCOPE]`) — la durée de
   remboursement du RAP (15 ans, ARC) est en dur dans `services/projection/realEstateMonth.ts:467`
   (`state.rapBorrowed / 15`) et absente de `FISCAL_REFERENCE.md` §7. Vraie règle, non ancrée.
+  ⚠️ **BLOQUÉ sur une source (2026-08-25)** → routé en `docs/A_FAIRE_MOI.md` **B6**. Le proxy de
+  sortie répond 403 à `canada.ca` : écrire un chiffre fiscal non vérifié dans la source de vérité
+  lui donnerait l'autorité d'un texte de loi.
 
 - [x] **`[ASSETLOC-YEAR-2026]`** ✅ LIVRÉ 2026-08-21 (voir docs/BACKLOG_ARCHIVE.md). Contexte d’origine : (XS, FAIBLE — découvert par `[FISC-GUARD-SCOPE]`) —
   `services/projection/assetLocation.ts:135` lit le taux marginal avec une année fiscale de repli

@@ -10,6 +10,39 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-25 — Le plafond REER faisait une marche de 4,5 % en une année
+
+- [x] **`[FISC-RRSP-EXTRAP-05]`** — le ticket demandait de « sourcer ou requalifier » le
+  **`+0,5 pp`** ajouté à l'inflation pour prolonger le plafond REER au-delà du barème. Requalifié :
+  c'est une **hypothèse de MODÈLE**, documentée comme telle en §7 de `FISCAL_REFERENCE.md` avec son
+  écart MESURÉ contre l'indexation réellement observée (2,72 %/an de 2010 à 2026 · 3,97 %/an de 2021
+  à 2026 · 2,00 %/an sur les estimations 2027-2030 du dépôt, contre 2,50 %/an modélisés à 2 %
+  d'inflation). Le plafond vient de l'ARC ; la vitesse à laquelle on le prolonge, non — et la
+  ranger telle quelle dans la source de vérité lui aurait donné l'autorité d'un texte de loi.
+  **Trouvé en écrivant cette doc** : l'extrapolation composait depuis le littéral **2026** alors que
+  le barème va jusqu'à **2030**. Les années 2027-2030 sortaient de la table (≈ 2 %/an) et 2031
+  repartait de 2026 au rythme du modèle. **MESURÉ à inflation 2 % : la couture 2030 → 2031 sautait
+  de 36 590 $ à 38 252,91 $, soit +4,54 % en une seule année** ; ancrée sur la dernière année connue
+  elle donne 37 504,75 $ (+2,50 %, exactement la vitesse du modèle). À 5 % d'inflation, 2032 valait
+  44 188 $ contre 38 602 $ — **5 586 $ de droits fabriqués par la seule ancre**. Le patron correct
+  existait à trois lignes de là : le CELI ancre déjà sur `LAST_KNOWN_CELI_YEAR`.
+  **Deux goldens ont bougé et c'est le bon signe** : −28 969 $ et −47 367 $ (−0,13 % / −0,11 %) sur
+  la seule fixture dont le plafond MORD et dont l'horizon dépasse 2030. Moins de droits fabriqués,
+  donc moins d'abri fiscal.
+  ⚠️ **Le garde d'obsolescence de l'inventaire fiscal a fait son travail tout seul** : l'entrée
+  `taxJanuary.ts::2026` est devenue fantôme au moment même où le littéral disparaissait — retirée.
+  Et la raison voisine renvoyait à un « §7.G » qui n'a **jamais existé** dans `FISCAL_REFERENCE.md`.
+  4 tests, **2 perturbations rouges** (continuité de la couture · câblage de l'ancre).
+  Livré 2026-08-25 · PR #725.
+
+- [x] **Quatre tickets fiscaux ROUTÉS, pas livrés** (`[FISC-RAP-15ANS]`, `[FISC-RAP-GRACE-WINDOW]`,
+  `[FISC-REEE-AGE-FERMETURE]`, `[FISC-RRSP-LIMITS-PRE2024-DOC]`) — leur seul correctif est de
+  SOURCER une règle ARC. **Re-vérifié le 2026-08-25** : le proxy de sortie répond 403 à `canada.ca`,
+  `revenuquebec.ca`, `bankofcanada.ca` et aux moteurs de recherche — ce n'est pas une panne
+  passagère. Écrire un chiffre fiscal non vérifié dans la source de vérité fabriquerait la source
+  qu'on prétend citer. Routés en `docs/A_FAIRE_MOI.md` **B6 à B9**, avec la question exacte et le
+  site de code, et laissés OUVERTS au BACKLOG avec leur mention de blocage.
+
 ## 2026-08-24 — Une pastille flottait sur un étage vide
 
 - [x] **`[FUTUR-DAILY-STACK-X]`** — ⚠️ **le ticket visait le mauvais défaut.** Il disait : deux

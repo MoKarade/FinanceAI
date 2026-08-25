@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 756 tests** Vitest
-(435 fichiers de test, mesuré le 2026-08-24). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 760 tests** Vitest
+(436 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -550,6 +550,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 
 **Avant de coder**
 - Vérifier qu'une feature n'est pas **DÉJÀ faite** (grep le moteur).
+- Une **extrapolation** porte DEUX paramètres — la vitesse ET l'ancre. Une ancre écrite EN DUR
+  pendant que sa table grandit fabrique une MARCHE silencieuse le jour où la table dépasse l'ancre :
+  le plafond REER partait de `2026` alors que le barème va jusqu'à 2030 → couture 2030→2031 mesurée
+  à **+4,54 % en un an** (contre ≈ 2 %/an de part et d'autre), et l'erreur grandit avec l'inflation
+  saisie (5 586 $ de droits fabriqués à 5 %). Ancrer sur la dernière année CONNUE, dérivée de la
+  table. Corollaire doc : requalifier une hypothèse de modèle ne se fait pas en rangeant son chiffre
+  dans `FISCAL_REFERENCE.md` mais en publiant le TABLEAU de son écart contre l'observé
+  (`UNE-ANCRE-D-EXTRAPOLATION-EN-DUR-FABRIQUE-UNE-MARCHE`).
 - Un paramètre **HOMONYME à deux niveaux** (config globale vs entité) : grep le consommateur RÉEL avant
   de câbler — l'autre niveau peut être un no-op typé vert (`propertyGrowthRate`, mesuré 0/120 au fuzz).
 - ⚠️ **Une note que je m'écris à moi-même n'est PAS une preuve** — elle arrive au tour suivant avec

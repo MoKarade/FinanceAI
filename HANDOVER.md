@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-25 (suite 159) — `[FISC-RRSP-EXTRAP-05]` : une marche de 4,5 % dans le plafond REER
+> Le ticket demandait de « sourcer ou requalifier » le `+0,5 pp` d'indexation. Requalifié en
+> **hypothèse de MODÈLE** (§7 de `FISCAL_REFERENCE.md`), avec l'écart MESURÉ contre l'observé :
+> **2,72 %/an** (2010→2026 officiels) · **3,97 %/an** (2021→2026) · **2,00 %/an** (estimations
+> 2027-2030 du dépôt) contre **2,50 %/an** modélisés. Le plafond est de l'ARC ; la vitesse ne l'est
+> pas — la ranger telle quelle lui aurait donné l'autorité d'un texte de loi.
+> **Trouvé en écrivant la doc** : l'extrapolation composait depuis le littéral **2026** alors que le
+> barème va jusqu'à **2030**. MESURÉ : couture 2030 → 2031 = **36 590 $ → 38 252,91 $, +4,54 % en un
+> an** (contre ≈ 2 %/an de part et d'autre) ; ancrée sur la dernière année connue → 37 504,75 $
+> (+2,50 %, la vitesse du modèle). À 5 % d'inflation : **5 586 $ de droits fabriqués** pour 2032.
+> Le patron correct était trois lignes plus haut (`LAST_KNOWN_CELI_YEAR`).
+> ⚠️ **Deux goldens ont bougé** (−28 969 $ / −47 367 $) — re-basés AVEC leur explication : c'est la
+> preuve que le chemin corrigé est couvert, pas un ajustement de confort.
+> ⚠️ Le garde d'obsolescence de l'inventaire a attrapé SEUL l'entrée `taxJanuary.ts::2026` devenue
+> fantôme ; la raison voisine citait un « §7.G » qui n'a jamais existé.
+> ⚠️ **Quatre tickets fiscaux ROUTÉS, pas livrés** (`[FISC-RAP-15ANS]`, `[FISC-RAP-GRACE-WINDOW]`,
+> `[FISC-REEE-AGE-FERMETURE]`, `[FISC-RRSP-LIMITS-PRE2024-DOC]`) : re-mesuré, le proxy répond **403**
+> à `canada.ca`, `revenuquebec.ca`, `bankofcanada.ca`. → `docs/A_FAIRE_MOI.md` **B6-B9**.
+> 4 tests, **2 perturbations rouges**. Gate vert : **4 760 tests / 436 fichiers**.
+>
 > ## 🟢 Session 2026-08-24 (suite 158) — `[FUTUR-DAILY-STACK-X]` : le ticket visait le mauvais défaut
 > Le ticket : « deux événements du même mois à des jours différents sont empilés alors qu'ils ne se
 > chevauchent plus ». **Mesuré** : pastille de 24 px, et à l'horizon PAR DÉFAUT (40 ans) sur un

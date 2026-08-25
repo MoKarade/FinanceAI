@@ -80,11 +80,21 @@ describe('[ENG-DIVORCE-ROOM-COUPLE] les droits enregistrés suivent le nombre de
     // L'écart est NÉGATIF dans les deux cas et croît avec l'horizon et la taille du portefeuille —
     // signature d'un intérêt composé qu'on cesse de créditer à tort. Ce que ces deux cas
     // vérifient (le lot per-conjoint ne perturbe ni le ménage ordinaire ni le décès) reste vrai.
+    // ⚠️ RE-BASÉS le 2026-08-25 par `[FISC-RRSP-EXTRAP-05]`, et c'est un résultat à EXPLIQUER, pas
+    // un ajustement de confort. Cette fixture est l'une des rares où le PLAFOND REER mord vraiment
+    // (les salaires du store sont MENSUELS : 25 000 $/mois = 300 000 $/an, donc 18 % = 54 000 $,
+    // bien au-dessus de tout plafond) et dont l'horizon — 25 ans, soit jusqu'en 2051 — dépasse la
+    // dernière année du barème. Corriger l'ancre de l'extrapolation a supprimé la marche de
+    // +4,54 % à la couture 2030 → 2031 : moins de droits fabriqués, donc moins d'abri fiscal.
+    //   sans divorce ni décès : 22 890 883 → 22 861 914  (−28 969 $, −0,13 %)
+    //   scénario de décès     : 44 476 259 → 44 428 892  (−47 367 $, −0,11 %)
+    // Le SIGNE est le bon sens : la marche ouvrait des droits que rien ne justifiait. Que ces deux
+    // goldens bougent PROUVE au passage que le chemin corrigé est réellement couvert.
     it('sans divorce ni décès, la sortie est INCHANGÉE', () => {
-        expect(Math.round(finalNW({}, false))).toBe(22_890_883);
+        expect(Math.round(finalNW({}, false))).toBe(22_861_914);
     });
 
     it('le scénario de décès n\'est pas perturbé par ce lot', () => {
-        expect(Math.round(finalNW({ modelSurvivor: true }, true))).toBe(44_476_259);
+        expect(Math.round(finalNW({ modelSurvivor: true }, true))).toBe(44_428_892);
     });
 });

@@ -6881,3 +6881,39 @@ correctif — c'est une décision. On livre la moitié qui ne déplace rien, on 
 mesure, et on **borne le résiduel restant par un test** pour qu'il ne grandisse pas en silence
 pendant qu'on attend la réponse (`RENDRE-VISIBLE-CE-QU-ON-NE-PEUT-PAS-CORRIGER`). Découper un lot à
 la frontière « ça déplace de l'argent / ça n'en déplace pas » est presque toujours le bon découpage.
+
+### `UN-ETAT-SEME-N-EST-PAS-UN-ACTIF` — 2026-08-25
+
+Au divorce, le moteur partage le patrimoine : `reer *= keep`, `celi *= keep`, et un `.map` sur
+`propertiesState` qui divise `currentValue` et `mortgage`. Le geste paraît uniforme et complet.
+
+**Il ne l'est pas, parce que tous les biens de `propertiesState` ne sont pas des biens.** Pour une
+propriété pas encore achetée, ces deux champs ne décrivent rien que le couple possède : ce sont les
+**paramètres semés** du futur achat — `currentValue = price`, `mortgage = price − downPayment` —
+que `realEstateMonth` consomme tels quels au moment de l'achat (`const p = pState.mortgage`). Les
+diviser revient à modifier le PLAN, pas le patrimoine.
+
+**Le dégât se mesure sur l'équité, pas sur le principal.** Le ticket annonçait « un achat futur
+post-divorce hériterait d'un principal réduit de moitié » — vrai, mais ce n'est pas là que ça fait
+mal. Mesuré sur un achat de 500 000 $ avec 100 000 $ de mise de fonds, `keep` = 0,5 : le **cash
+sorti reste identique** (105 000 $, il vient de `goal.downPayment`, pas de l'état), tandis que le
+bien obtenu vaut 250 000 $ pour une hypothèque de 199 664 $. L'équité tombe de **100 672 $ à
+50 336 $** : **la moitié de la mise de fonds s'évapore à l'achat**.
+
+**La signature à reconnaître : deux sources pour une même opération.** Le débit vient du BUT, l'actif
+vient de l'ÉTAT. Tant que les deux restent synchronisés, rien ne se voit ; dès qu'un mutateur global
+touche l'un sans l'autre, l'opération devient incohérente et l'argent disparaît sans qu'aucun
+invariant de conservation ne bronche — le cash débité EST bien parti, le bien reçu EST bien inscrit,
+ils ne se correspondent simplement plus. Devant un mutateur global (`*= keep`, décès, événement de
+vie), la question n'est pas « ai-je touché tous les champs ? » mais **« chacun de ces champs
+décrit-il quelque chose qui EXISTE aujourd'hui ? »**
+
+⚠️ **Un ticket marqué « [À vérifier] » mérite sa vérification avant ET après.** Celui-ci l'était
+explicitement (« finding non vérifié par perturbation »), et il avait raison sur le mécanisme, tort
+sur la grandeur touchée, et tort sur la gravité (classé FAIBLE pour 50 336 $).
+
+⚠️ **Le test ne doit pas reproduire le code qu'il juge.** Reproduire le `.map` du divorce localement
+prouve la CONSÉQUENCE — « un état semé qu'on divise donne la moitié de l'équité » — mais pas le
+câblage : le moteur pourrait perdre sa garde sans que rien ne rougisse. Le câblage se vérifie à part,
+par un scan ancré sur l'**initialiseur** du `.map` (pas sur le fichier « quelque part »), et la
+perturbation le prouve en retirant la garde du VRAI code.

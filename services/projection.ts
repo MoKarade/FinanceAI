@@ -834,11 +834,21 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             reee *= keep;
             realEstateEquity *= keep;
             mortgageBalance *= keep;
-            propertiesState = propertiesState.map(p => ({
+            // ⚠️ [ENG-DIVORCE-SCALE-UNBOUGHT] `p.isBought` : on ne partage que les biens RÉELLEMENT
+            // DÉTENUS. Pour un bien pas encore acheté, `currentValue` et `mortgage` ne sont pas des
+            // actifs du couple — ce sont les PARAMÈTRES SEMÉS du futur achat (`price` et
+            // `price − downPayment`), que `realEstateMonth` consomme tels quels au moment de l'achat
+            // (`const p = pState.mortgage`).
+            // MESURÉ sur un achat à 500 000 $ / mise de fonds 100 000 $ après un divorce à `keep`
+            // 0,5 : le cash sorti reste IDENTIQUE (105 000 $, il vient de `goal`, pas de l'état),
+            // mais le bien acheté vaut 250 000 $ pour une hypothèque de 199 664 $ — l'équité obtenue
+            // tombe de 100 672 $ à 50 336 $. **La moitié de la mise de fonds s'évapore à l'achat.**
+            // Deux sources pour une même opération : le débit vient du BUT, l'actif de l'ÉTAT.
+            propertiesState = propertiesState.map(p => (p.isBought ? {
                 ...p,
                 currentValue: p.currentValue * keep,
                 mortgage: p.mortgage * keep,
-            }));
+            } : p));
             // [ENG-W5-RENTAL-OFFBALANCE] Les IMMEUBLES LOCATIFS se partagent comme le reste du
             // patrimoine familial. Oubliés ici, ils survivaient INTACTS au divorce pendant que tous
             // les autres actifs étaient divisés — MESURÉ : équité de 337 224 $ conservée à 100 %

@@ -712,8 +712,6 @@
   DÉDIÉE, avec les tests de l'écran en filet. Chiffré M, pas S.
   ⚠️ En attendant, il reste épinglé dans le CLIQUET de `tests/components/subTabsAria.test.tsx` —
   exception listée et justifiée, jamais silencieuse.
-- [ ] **`[DETTE-CHART-THEME-DUP]`** (S) — tooltip/thème Recharts partagé (`CHART_TOOLTIP_STYLE`
-  inexistant) — dédupliquer les styles inline des graphes.
 - [ ] **`[D6-GRAPH]`** (M, résiduel) — accès clavier aux graphes restants (projections,
   investissements) ; tables sr-only faites pour les donuts Budget.
 

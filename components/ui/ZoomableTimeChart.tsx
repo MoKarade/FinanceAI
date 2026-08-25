@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_ITEM_STYLE } from '../../utils/chartTooltip';
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatCAD } from '../../utils/format';
 import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
@@ -236,8 +237,8 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
                         tickFormatter={(val) => privacyMode ? '***' : yFormatter(val)}
                     />
                     <Tooltip
-                        contentStyle={{ backgroundColor: '#1a1a1a', borderColor: '#333', borderRadius: '8px', fontSize: '12px' }}
-                        itemStyle={{ color: '#fff' }}
+                        contentStyle={CHART_TOOLTIP_STYLE}
+                        itemStyle={CHART_TOOLTIP_ITEM_STYLE}
                         formatter={(val, name) => [tooltipValue(typeof val === 'number' ? val : null, privacyMode, yFormatter), String(name)]}
                         labelFormatter={(label) => new Date(label).toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' })}
                     />

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { CHART_TOOLTIP_STYLE } from '../utils/chartTooltip';
 import { Transaction, BudgetConfig, BudgetCategory, Tab as TabEnum } from '../types';
 import { Card } from './ui/Card';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -1148,7 +1149,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                                     ))}
                                                 </Pie>
                                                 <Legend verticalAlign="bottom" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                                                <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
+                                                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
                                             </PieChart>
                                         </ResponsiveContainer>
                                     </div>
@@ -1176,7 +1177,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                                             ))}
                                                         </Pie>
                                                         <Legend verticalAlign="bottom" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                                                        <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
+                                                        <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
                                                     </PieChart>
                                                 </ResponsiveContainer>
                                             </div>

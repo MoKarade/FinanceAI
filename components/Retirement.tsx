@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { CHART_TOOLTIP_STYLE } from '../utils/chartTooltip';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
 import { ProjectionStaleBanner } from './ui/ProjectionStaleBanner';
@@ -416,7 +417,7 @@ export const Retirement: React.FC<RetirementProps> = ({
                                             <CartesianGrid strokeDasharray="3 3" stroke="#1a1f2e" vertical={false} />
                                             <XAxis dataKey="age" stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `${val}a`} />
                                             <YAxis stroke="#334155" tick={{ fontSize: 10, fill: '#64748b' }} width={50} tickFormatter={maskedTick(isPrivacyMode, (val: number) => formatCompactCAD(val))} />
-                                            <Tooltip contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#1e293b', borderRadius: '10px', color: '#fff' }} formatter={(val: number | string, name: string) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(val)), name]} />
+                                            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(val: number | string, name: string) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(val)), name]} />
                                             <Legend iconType="circle" />
                                             <Area type="monotone" dataKey="IncomeRetirement" fill="#5b82bf20" stroke="#5b82bf" strokeWidth={2} name="Rente Gouv. + PSV" />
                                             <Area type="monotone" dataKey="Income" fill="#4f9d8615" stroke="#4f9d86" strokeWidth={2} name="Revenu Total" />

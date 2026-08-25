@@ -6649,3 +6649,42 @@ est la forme la plus discrète de non-correctif.
    l'ancien comportement perd son intention en silence — et une correction qui fait disparaître une
    capacité sans le dire n'est pas une correction (`EPURATION-SUPPRIME-LA-RESERVE`). L'avertissement
    se teste dans les DEUX sens : une alarme permanente s'ignore.
+
+### `LA-DUPLICATION-EST-PARFOIS-LE-SYMPTOME-PAS-LA-MALADIE` — 2026-08-25
+
+`[DETTE-CHART-THEME-DUP]` demandait de « dédupliquer les styles inline des graphes ». Mesuré avant
+de coder, le décompte raconte une autre histoire : **14 infobulles Recharts, 9 styles distincts**, et
+**six fonds différents** pour ce qui est la même surface — `#1e1e1e` (×4), `#151922` (×2), `#1a1a1a`
+(×2), `#1a1e29`, `#111`, `#0B0E14` (×2). Plus **deux infobulles BLANCHES** (`#fff`, texte noir) dans
+les graphiques de placements, au milieu d'une application sombre.
+
+**Le fait qui reclasse le ticket** : aucun de ces six fonds n'existe dans `tailwind.config.js`. Le
+problème n'était pas que le style soit écrit quatorze fois — c'était qu'aucune des quatorze
+n'utilisait le système de design. Dédupliquer *sans* le voir aurait figé une quinzième valeur
+arbitraire dans une constante, en lui donnant l'autorité d'un choix. Avant d'extraire une source
+unique, se demander **d'où sort la valeur qu'on s'apprête à canoniser** ; si la réponse est « de
+nulle part », l'extraction n'est que la moitié du travail.
+
+**Le token se choisit par ce qu'il NOMME, pas par ressemblance.** Une infobulle est une surface
+ÉLEVÉE au-dessus du fond de page : `surfaceHighlight`, pas `surface` ni `dark`. Et la couleur de
+texte se choisit **par mesure** — `ink-100` sur ce fond donne **14,42**, contre les 4,5 exigés par
+WCAG AA. La garde re-mesure ce ratio à chaque exécution plutôt que de faire confiance au choix
+d'origine.
+
+**Une valeur qui part dans la prop d'un composant TIERS ne peut pas être une classe Tailwind.**
+`contentStyle` est un objet JS lu par Recharts : le système de design ne l'atteint pas, et rien au
+runtime ne confronte la constante aux tokens. C'est la situation de `TOOLTIP_WIDTH`
+(`STYLE-CONST-DUPLIQUEE`) et elle appelle la même réponse — une garde qui lit la CONFIG et exige
+l'égalité. Avec, ici, un second sens : aucun composant ne doit re-peindre un `contentStyle` inline,
+sinon la constante devient un quinzième style parmi quatorze.
+
+⚠️ **Le scan d'absence a besoin de sa double anti-vacuité.** Il lit du source décommenté (une garde
+d'ABSENCE matche sinon la prose qui décrit justement le motif interdit), donc il faut prouver deux
+choses : que le décommenteur n'a pas tout mangé (volume de code restant), et que le motif sait
+trouver quelque chose — le témoin `contentStyle={CHART_TOOLTIP_STYLE}` est cherché par le **même
+lecteur** que les offenders. Un scan qui ne trouve rien parce qu'il ne lit rien passe au vert.
+
+**Ce que j'ai tranché sans feu vert, et pourquoi c'est dit** : les deux infobulles blanches
+deviennent sombres. Ce n'est pas une préférence — elles ne surplombaient aucune surface claire,
+elles étaient simplement les seules à ne pas suivre le thème, et aussi hors palette que les douze
+autres. Une décision d'apparence prise en passant se DÉCLARE, même quand elle paraît évidente.

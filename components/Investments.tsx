@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_ITEM_STYLE } from '../utils/chartTooltip';
 import {
     Asset,
     AppState,
@@ -845,7 +846,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                 />
                                             ))}
                                         </Pie>
-                                        <ReTooltip contentStyle={{ backgroundColor: '#fff', color: '#000', borderRadius: '8px', border: 'none' }} itemStyle={{ color: '#000' }} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
+                                        <ReTooltip contentStyle={CHART_TOOLTIP_STYLE} itemStyle={CHART_TOOLTIP_ITEM_STYLE} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
@@ -907,7 +908,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                 />
                                             ))}
                                         </Pie>
-                                        <ReTooltip contentStyle={{ backgroundColor: '#fff', color: '#000', borderRadius: '8px', border: 'none' }} itemStyle={{ color: '#000' }} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
+                                        <ReTooltip contentStyle={CHART_TOOLTIP_STYLE} itemStyle={CHART_TOOLTIP_ITEM_STYLE} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>

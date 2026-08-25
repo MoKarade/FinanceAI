@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { CHART_TOOLTIP_STYLE } from '../utils/chartTooltip';
 import { Card } from './ui/Card';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { PrivateSliderValue } from './ui/PrivateSliderValue';
@@ -250,7 +251,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                     <XAxis dataKey="month" stroke="#666" tick={{fontSize: 10}} tickFormatter={(m) => `M${m}`} />
                                     <YAxis stroke="#666" tick={{fontSize: 10}} width={40} tickFormatter={maskedTick(isPrivacyMode, (val: number) => `${(val/1000).toFixed(0)}k`)} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }} formatter={(val: number) => (isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val))} />
+                                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(val: number) => (isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val))} />
                                     <Area type="monotone" dataKey="balance" stroke="#ef4444" fill="url(#colorDebt)" name="Solde Restant" strokeWidth={3} />
                                 </AreaChart>
                             </ResponsiveContainer>

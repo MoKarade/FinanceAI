@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 766 tests** Vitest
-(437 fichiers de test, mesuré le 2026-08-24). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 769 tests** Vitest
+(438 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -612,6 +612,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Une **constante JS qui duplique une valeur de style** (`TOOLTIP_WIDTH` vs la classe `w-80`) n'est
   confrontée par RIEN au runtime : la garde lit la CLASSE (la vérité peinte) et la compare à la
   constante — l'inverse serait circulaire (`STYLE-CONST-DUPLIQUEE`).
+  ⚠️ Corollaire de cadrage (2026-08-25) : avant d'extraire une source unique de style, se demander
+  **d'où sort la valeur qu'on canonise**. Les 14 infobulles Recharts portaient 9 styles et SIX fonds,
+  dont deux BLANCS dans une app sombre — et aucun des six n'existait dans `tailwind.config.js`.
+  La duplication n'était que le symptôme : dédupliquer sans le voir aurait figé une 15ᵉ valeur
+  arbitraire. Le token se choisit par ce qu'il NOMME (`surfaceHighlight` = surface élevée), la
+  couleur de texte par MESURE (ratio 14,42), et la garde vaut dans les deux sens — la constante
+  reproduit les tokens ET aucun composant ne re-peint le style inline
+  (`LA-DUPLICATION-EST-PARFOIS-LE-SYMPTOME-PAS-LA-MALADIE`).
 - Un test `.length > 1` sur un **tuple** de longueur fixe est vacueux.
 - Tout indice qui décrit une **POSITION À L'ÉCRAN** se calcule APRÈS le dernier filtre qui retire des
   éléments : le rang d'empilement des pastilles Futur était attribué avant l'écrêtage de densité, donc

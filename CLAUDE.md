@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 825 tests** Vitest
-(451 fichiers de test, mesuré le 2026-08-25). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 828 tests** Vitest
+(452 fichiers de test, mesuré le 2026-08-25). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -546,6 +546,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
 - Un écart CONSTANT dans un test (indépendant de l'entrée qu'on fait varier) n'est presque jamais le
   bug cherché : c'est une grandeur voisine incluse par erreur dans la mesure. Le mettre à zéro pour
   trancher — et creuser quand même, l'écart de 766 $ a révélé un vrai défaut voisin.
+- ⚠️ **Devant un résiduel, demander d'abord SUR COMBIEN DE POINTS, pas « combien »** : j'avais routé
+  un ticket en écrivant « 7 638,44 $ au mois 324, plus de petits résiduels ailleurs » — ça décrit un
+  cas limite. Mesuré, `NetTransferLiquid` est non nul sur **0 des 361 points** (355 mois sur 360 en
+  résiduel, pire 108 608 $) : le champ n'est JAMAIS alimenté. Le montant fait écrire « cas limite »,
+  le COMPTE fait écrire « le champ n'existe pas ». Dans un ticket, mettre la COUVERTURE à côté du
+  montant. Corollaire : **chercher le JUMEAU du champ de l'autre côté d'une frontière** — le passé
+  (`dailyPastLedger`) publie `income − expenses` là où le futur publie zéro, donc le même nom porte
+  deux contrats et quatre surfaces d'UI en héritent
+  (`UN-CHAMP-TOUJOURS-NUL-N-EST-PAS-UN-CAS-LIMITE`).
 - Corriger « le producteur X a oublié le registre Y » → **énumérer TOUS les producteurs** par grep sur
   le registre, pas seulement celui du ticket. `realEstateMonth.ts` a cumulé 4 défauts money-critical
   parce que 4 passes de correction l'ont sauté (`MODULE-ECRIT-HORS-CHECKLIST`).

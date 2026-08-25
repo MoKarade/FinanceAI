@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🔴 Session 2026-08-25 (suite 177) — `NetTransferLiquid` vaut TOUJOURS zéro dans le futur
+> J'avais routé `[ENG-LIQUID-FLUX-FORM]` comme un cas limite (« 7 638,44 $ au mois 324 »). RE-MESURÉ :
+> **le champ est non nul sur 0 des 361 points**. Donc **355 mois sur 360** avec un résiduel > 1 $,
+> pire **108 608,35 $** (mois 360), cumul absolu **864 592,56 $** — fixture ordinaire, sans divorce.
+> Cause : `NetTransferLiquid = contribLiquid − withdrawalLiquid`, et ces accumulateurs ne voient que
+> des chemins marginaux. Vérifié : le résiduel = `(NetSalary − Expenses) − Σcotisations`.
+> ⚠️ **Le même champ a DEUX sens** : `dailyPastLedger.ts` pose `income - expenses` → le PASSÉ publie
+> le vrai cashflow, le FUTUR publie zéro. **Quatre surfaces** le lisent (`ProjectionExplains`,
+> `ProjectionTooltip` qui SOMME tous les `NetTransfer*`, `FutureDetailModal` « Cash (Coussin) »,
+> `yearlyActions` « Cash ») : la ligne de flux du cash affiche 0 sur tout le futur.
+> 🧭 **NON corrigé** : direction déterminée (aligner le futur sur le passé) mais ça fait passer une
+> ligne d'UI constamment nulle à ~10 k$/mois sur 4 surfaces → son propre lot, avec la mesure de chaque
+> consommateur. Livré : la mesure + un **test de LIMITE** qui verrouille le contrat actuel et
+> S'INVERSERA au correctif (sa perturbation EST le correctif : les 3 tests rougissent).
+> ⚠️ Leçon : devant un résiduel, demander d'abord **sur combien de POINTS**, pas « combien ». Le
+> montant fait écrire « cas limite » ; le compte fait écrire « le champ n'est jamais alimenté ».
+> ⚠️ Ce lot a été fait DEUX FOIS : le premier passage (commit local + gate vert) a été effacé par un
+> redémarrage de conteneur PENDANT le rebase — jamais poussé. Règle étendue : POUSSER la branche
+> AVANT `git rebase`, un rebase à conflits est une attente longue qui ne dit pas son nom.
+>
 > ## 🟠 Session 2026-08-25 (suite 176) — `stepReerByUser` : DEUX paramètres, DEUX statuts
 > Troisième lot d'affilée sur ce module, et à chaque fois la même question mal posée (« ce paramètre
 > sert-il à quelque chose ? »). Il en a DEUX, et la réponse diffère :

@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-25 (suite 168) — `[ENG-DIVORCE-SCALE-UNBOUGHT]` : la mise de fonds évaporée
+> Ticket marqué **« [À vérifier] — non vérifié par perturbation »**, classé FAIBLE. Vérifié : réel,
+> et le dégât n'est pas celui annoncé.
+> Le `.map` de partage divisait `currentValue`/`mortgage` de TOUS les biens, y compris non achetés —
+> or pour un bien futur ce sont les **paramètres SEMÉS** de l'achat (`price`, `price − downPayment`),
+> consommés tels quels par `realEstateMonth` (`const p = pState.mortgage`).
+> **MESURÉ** (500 000 $ / mise 100 000 $, keep 0,5) : cash sorti **105 000 $ dans les deux cas**,
+> mais équité **100 672 $ → 50 336 $**. Le débit vient du BUT, l'actif de l'ÉTAT — deux sources pour
+> une même opération, et le divorcé paie plein tarif pour un demi-bien.
+> Le ticket disait « principal réduit de moitié » ; le vrai dégât est sur l'ÉQUITÉ.
+> ⚠️ La reproduction locale du `.map` dans le test ne prouve QUE la conséquence — le câblage réel est
+> vérifié par un scan ancré sur l'INITIALISEUR du `.map`. 3 tests, **2 perturbations rouges**.
+>
 > ## 🟡 Session 2026-08-25 — `[A11Y-BORDER-PROMINENCE-SWEEP]` re-cadré (mesure seule, aucun code)
 > Ticket annoncé « S, 28 sites ». **MESURÉ : 255 occurrences de `border-white/10`** dans
 > `components/`, dont **31 sur un `<input>`/`<select>`/`<textarea>`** (les frontières de contrôle

@@ -10,6 +10,34 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-25 — Après un divorce, la moitié de la mise de fonds s'évaporait à l'achat
+
+- [x] **`[ENG-DIVORCE-SCALE-UNBOUGHT]`** — le ticket était marqué **« [À vérifier] — finding non
+  vérifié par perturbation »** et classé FAIBLE. Vérifié : le chemin est réel, et le dégât n'est pas
+  celui qu'il annonçait.
+  Au divorce, le `.map` de partage divisait `currentValue` et `mortgage` de **tous** les biens, y
+  compris ceux pas encore achetés. Or pour un bien futur, ces deux champs ne sont pas des actifs du
+  couple : ce sont les **paramètres semés** de l'achat à venir (`price` et `price − downPayment`),
+  que `realEstateMonth` consomme tels quels (`const p = pState.mortgage`).
+  **MESURÉ** (achat 500 000 $, mise de fonds 100 000 $, `keep` = 0,5) :
+
+  | | sans divorce | après divorce |
+  |---|---|---|
+  | Cash sorti | 105 000 $ | **105 000 $ — identique** |
+  | Valeur du bien | 500 000 $ | 250 000 $ |
+  | Hypothèque | 399 328 $ | 199 664 $ |
+  | **Équité obtenue** | 100 672 $ | **50 336 $** |
+
+  Le ticket annonçait « un principal réduit de moitié » ; le vrai dégât est sur l'**équité**. Le
+  débit vient du BUT (`goal.downPayment`), l'actif vient de l'ÉTAT — **deux sources pour une même
+  opération**, et le divorcé paie plein tarif pour un demi-bien.
+  Correctif : ne partager que `p.isBought`. 3 tests, **2 perturbations rouges** (garde retirée du
+  vrai code · plus rien n'est partagé).
+  ⚠️ La reproduction locale du `.map` dans le test ne prouve QUE la conséquence — un test qui
+  contient une expression ressemblant au code testé teste sa copie. Le câblage réel est vérifié par
+  un scan de source ancré sur l'**initialiseur** du `.map`, pas sur le fichier « quelque part ».
+  Livré 2026-08-25 · PR #735.
+
 ## 2026-08-25 — Le meltdown REER vidait 1,85 M$ sans publier un seul flux
 
 - [x] **`[ENG-NETTRANSFER-REER-INCOMPLET]`** — le ticket disait « ne voit ni FERR ni meltdown, écart

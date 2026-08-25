@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 785 tests** Vitest
-(441 fichiers de test, mesuré le 2026-08-24). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 788 tests** Vitest
+(442 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -521,6 +521,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   le registre, pas seulement celui du ticket. `realEstateMonth.ts` a cumulé 4 défauts money-critical
   parce que 4 passes de correction l'ont sauté (`MODULE-ECRIT-HORS-CHECKLIST`).
 - Un registre per-conjoint qui devient pilote doit gérer **décès/divorce** (la conservation ne l'attrape pas).
+  ⚠️ Et devant un mutateur global (`*= keep`, décès, événement de vie), la question n'est PAS « ai-je
+  touché tous les champs ? » mais **« chacun décrit-il quelque chose qui EXISTE aujourd'hui ? »** :
+  le partage du divorce divisait aussi les paramètres SEMÉS d'un achat futur (`currentValue = price`,
+  `mortgage = price − downPayment`), que le moteur consomme tels quels à l'achat. Le débit vient du
+  BUT, l'actif de l'ÉTAT — deux sources pour une même opération, et **la moitié de la mise de fonds
+  s'évapore** (mesuré : équité 100 672 $ → 50 336 $ pour un cash sorti IDENTIQUE). Aucun invariant de
+  conservation ne bronche : le cash est bien parti, le bien est bien inscrit, ils ne se correspondent
+  plus (`UN-ETAT-SEME-N-EST-PAS-UN-ACTIF`).
 - ⚠️ La **conservation ne voit pas un impôt jamais facturé** : un flux non prélevé est parfaitement
   conservatif (94 600 $ éludés mesurés, `moneyConservation` 20/20 VERT). Un invariant de FLUX ne
   détecte pas une erreur d'ASSIETTE — il faut recalculer la base imposable indépendamment. Et un

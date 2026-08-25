@@ -20,6 +20,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   documentation fiscale **comme une hypothèse**, avec l'écart mesuré face à l'indexation réellement
   observée. Ce n'est pas un chiffre officiel, et ça ne doit pas se lire comme tel.
 
+## [unreleased] — 2026-08-25 (un achat prévu après un divorce ne perd plus la moitié de ta mise de fonds)
+
+- Dans une projection avec divorce, un achat immobilier **prévu après** la séparation partait avec
+  une maison valant la moitié de son prix et un prêt réduit de moitié — alors que la mise de fonds
+  et les frais étaient débités **en entier**. Sur un achat de 500 000 $ avec 100 000 $ de mise de
+  fonds : 105 000 $ sortaient de tes comptes pour une équité de **50 336 $** au lieu de 100 672 $.
+- Le partage du divorce ne touche plus que les biens **réellement détenus** au moment de la
+  séparation. Un projet d'achat futur garde ses paramètres.
+
 ## [unreleased] — 2026-08-25 (la stratégie « fondre le REER » montre enfin où va l'argent)
 
 - Sous la stratégie de décaissement **« meltdown REER »**, ton solde REER pouvait chuter de 34 794 $

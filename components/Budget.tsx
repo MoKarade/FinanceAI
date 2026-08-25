@@ -1,12 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CHART_TOOLTIP_STYLE } from '../utils/chartTooltip';
 import { Transaction, BudgetConfig, BudgetCategory, Tab as TabEnum } from '../types';
 import { Card } from './ui/Card';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { ProjectionRequired } from './ui/ProjectionRequired';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { PrivateText } from './ui/PrivateText';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import { showToast } from './ui/Toast';
 import { logError } from '../services/errorLogger';
 import { BudgetGroupTable } from './budget/BudgetGroupTable';
@@ -18,14 +16,13 @@ import { Icon } from './ui/Icon';
 import { Pill } from './ui/Pill';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import { formatCAD, formatSigned, formatPercent } from '../utils/format';
+import { formatCAD, formatSigned } from '../utils/format';
 import { useViewContextPublisher } from '../hooks/useViewContextPublisher';
 import type { BudgetViewDetail } from '../services/aiChat/viewContext';
-import { computeBudgetParity, matchTransactionToCategory, computeGoldenSplit, GOLDEN_IDEAL, computeActualByOwner, isSavingsNature, type OrphanCategory } from '../utils/budget';
+import { computeBudgetParity, matchTransactionToCategory, computeActualByOwner, isSavingsNature, type OrphanCategory } from '../utils/budget';
 import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages, computeIncomeBreakdown, computeAvgByItem } from '../utils/budgetSync';
 import { DualKPIStat } from './budget/DualKPIStat';
 import { calculateFiscalReport } from '../utils/tax';
-import { ChartDataTable, type ChartDataColumn } from './ui/ChartDataTable';
 import { MASKED_AMOUNT_LABEL } from '../utils/privacyAria';
 
 interface BudgetProps {
@@ -566,14 +563,6 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         }
         setShowAiModal(true);
     };
-    const goldenRuleData = [
-        { name: 'Besoins', value: groupedItems['Besoin'].reduce((s, i) => s + getDisplayTarget(i), 0), fill: '#5fa88f' },
-        { name: 'Envies', value: groupedItems['Envie'].reduce((s, i) => s + getDisplayTarget(i), 0), fill: '#d8c06a' },
-        { name: 'Épargne Théorique', value: Math.max(0, coupleAnalysis.totalSavings), fill: '#7ba0cf' }
-    ];
-
-    // [A11Y-CHARTS] table de données sr-only pour le donut 50/30/20 (Recharts opaque aux lecteurs d'écran).
-    // Colonne Catégorie visible ; colonne Montant $ masquée en mode privé (parité avec PrivateAmount/blur).
     const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
     // [AUDIT-SAFETY / revue #608, 3e tour] La carte « Santé Financière du Couple » ne consultait
     // JAMAIS le mode discret : décomposition fiscale complète (fédéral, QC, RRQ, AE+RQAP, net
@@ -584,43 +573,6 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // Frontière : les $ sont masqués, ainsi que le TAUX MOYEN d'imposition (il désigne la tranche de
     // revenu). Les ratios de comportement (effort, clé de partage) restent : ils ne disent pas le revenu.
     const maskedAttr = (v: number) => (isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(v));
-    const goldenTotal = goldenRuleData.reduce((s, d) => s + d.value, 0) || 1;
-    const goldenRuleColumns: ChartDataColumn[] = [
-        { key: 'name', label: 'Catégorie' },
-        { key: 'value', label: 'Montant', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0) },
-        { key: 'value', label: 'Part', format: (v) => `${((Number(v) || 0) / goldenTotal * 100).toFixed(1)}%` },
-    ];
-
-    // [PH4-B] Répartition 50/30/20 RÉELLE (dépenses rapprochées) à comparer au THÉORIQUE
-    // (cibles, goldenRuleData) et à l'idéal 50/30/20. Besoins/Envies réels = Σ des réels par
-    // poste du groupe ; Épargne réelle = revenu réel − dépenses réelles (totalSpentDisplay inclut
-    // les orphelins → toute dépense réduit bien l'épargne, même non rapprochée à un poste).
-    const goldenTheo = computeGoldenSplit(goldenRuleData[0].value, goldenRuleData[1].value, goldenRuleData[2].value);
-    const realBesoins = groupedItems['Besoin'].reduce((s, i) => s + (actualsMap[i.name] ?? 0), 0);
-    const realEnvies = groupedItems['Envie'].reduce((s, i) => s + (actualsMap[i.name] ?? 0), 0);
-    // < 0 = dépenses > revenu sur la période. On clampe l'épargne du donut à 0 (un segment
-    // négatif n'a pas de sens), MAIS on le SIGNALE (sinon « 0 % épargne » masque un déficit réel).
-    const realDeficit = totalActualIncomeDisplay - totalSpentDisplay;
-    const realEpargne = Math.max(0, realDeficit);
-    const goldenReal = computeGoldenSplit(realBesoins, realEnvies, realEpargne);
-    const hasRealData = goldenReal.total > 0;
-    const goldenRealData = [
-        { name: 'Besoins', value: goldenReal.besoins, fill: '#5fa88f' },
-        { name: 'Envies', value: goldenReal.envies, fill: '#d8c06a' },
-        { name: 'Épargne réelle', value: goldenReal.epargne, fill: '#7ba0cf' },
-    ];
-    const goldenRealColumns: ChartDataColumn[] = [
-        { key: 'name', label: 'Catégorie' },
-        { key: 'value', label: 'Montant', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v) || 0) },
-        { key: 'value', label: 'Part', format: (v) => `${((Number(v) || 0) / (goldenReal.total || 1) * 100).toFixed(1)}%` },
-    ];
-    // Lignes de comparaison Réel · Cible (budget) · Idéal (50/30/20). `goodWhenHigher` : pour
-    // l'épargne, dépasser l'idéal est BON ; pour besoins/envies, le dépasser est à surveiller.
-    const goldenCompare = [
-        { label: 'Besoins', real: goldenReal.pct.besoins, theo: goldenTheo.pct.besoins, ideal: GOLDEN_IDEAL.besoins, goodWhenHigher: false },
-        { label: 'Envies', real: goldenReal.pct.envies, theo: goldenTheo.pct.envies, ideal: GOLDEN_IDEAL.envies, goodWhenHigher: false },
-        { label: 'Épargne', real: goldenReal.pct.epargne, theo: goldenTheo.pct.epargne, ideal: GOLDEN_IDEAL.epargne, goodWhenHigher: true },
-    ];
 
     // Wiring 2026-05: snapshot final de la projection vivante.
     // Permet de relier "épargne théorique mensuelle" → "patrimoine fin vie".
@@ -1117,109 +1069,6 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     {formatSigned(coupleAnalysis.totalSavings, { withCurrency: true })}
                                 </PrivateAmount>
                                 <div className="text-tiny text-green-200">Potentiel d'épargne combiné (Net)</div>
-                            </div>
-                        </div>
-                    </Card>
-
-                    {/* AMELIORER MON BUDGET & 50/30/20 THEORETICAL */}
-                    <Card title="Améliorer mon budget" className="bg-white/[0.03] border-white/10">
-                        <div className="flex flex-col gap-4">
-                            <button
-                                onClick={handleAiDiagnosis}
-                                className="w-full py-3 bg-primary/15 border border-primary/40 text-primary hover:bg-primary/25 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors active:scale-95"
-                            >
-                                Diagnostic
-                            </button>
-
-                            <div className="pt-2 border-t border-white/5">
-                                <div className="text-meta text-ink-300 text-center mb-2 font-medium">Comparatif visuel 50/30/20</div>
-                                {/* role="img"+aria-label porte le nom accessible ; le SVG Recharts est aria-hidden
-                                    (les données restent dans le ChartDataTable sr-only ci-dessous → AT non privé). */}
-                                <div style={{ width: '100%', height: '180px' }} role="img" aria-label="Donut comparatif 50/30/20 du budget (Besoins, Envies, Épargne théorique)">
-                                    <div aria-hidden="true" style={{ width: '100%', height: '100%' }}>
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={goldenRuleData}
-                                                    cx="50%" cy="50%" innerRadius={40} outerRadius={60}
-                                                    dataKey="value"
-                                                >
-                                                    {goldenRuleData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={entry.fill} stroke="none" />
-                                                    ))}
-                                                </Pie>
-                                                <Legend verticalAlign="bottom" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                                                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-                                <ChartDataTable
-                                    caption="Répartition budgétaire 50/30/20 (Besoins, Envies, Épargne théorique)"
-                                    columns={goldenRuleColumns}
-                                    rows={goldenRuleData}
-                                />
-                            </div>
-
-                            {/* [PH4-B] RÉEL vs théorique : donut des dépenses réelles + comparaison
-                                aux 3 références (Réel · Cible budgétée · Idéal 50/30/20). */}
-                            <div className="pt-2 border-t border-white/5">
-                                <div className="text-meta text-ink-300 text-center mb-2 font-medium">Ta répartition réelle</div>
-                                {hasRealData ? (
-                                    <>
-                                        <div style={{ width: '100%', height: '180px' }} role="img" aria-label="Donut de ta répartition réelle (Besoins, Envies, Épargne réelle)">
-                                            <div aria-hidden="true" style={{ width: '100%', height: '100%' }}>
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <PieChart>
-                                                        <Pie data={goldenRealData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="value">
-                                                            {goldenRealData.map((entry, index) => (
-                                                                <Cell key={`real-cell-${index}`} fill={entry.fill} stroke="none" />
-                                                            ))}
-                                                        </Pie>
-                                                        <Legend verticalAlign="bottom" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                                                        <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
-                                                    </PieChart>
-                                                </ResponsiveContainer>
-                                            </div>
-                                        </div>
-                                        <table className="w-full text-tiny mt-1">
-                                            <caption className="sr-only">Comparaison de ta répartition réelle, de ta cible budgétée et de l'idéal 50/30/20, par catégorie.</caption>
-                                            <thead>
-                                                <tr className="text-ink-400 uppercase tracking-widest">
-                                                    <th scope="col" className="text-left font-bold pb-1">Catégorie</th>
-                                                    <th scope="col" className="text-right font-bold pb-1">Réel</th>
-                                                    <th scope="col" className="text-right font-bold pb-1">Cible</th>
-                                                    <th scope="col" className="text-right font-bold pb-1">Idéal</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {goldenCompare.map(row => {
-                                                    const ecart = row.real - row.ideal;
-                                                    const onTrack = row.goodWhenHigher ? ecart >= -2 : ecart <= 2; // ±2 pts de tolérance
-                                                    return (
-                                                        <tr key={row.label} className="border-t border-white/5">
-                                                            <th scope="row" className="text-left font-medium text-ink-200 py-1">{row.label}</th>
-                                                            <td className={`text-right tabular-nums py-1 font-bold ${onTrack ? 'text-green-400' : 'text-warning-400'}`}>{formatPercent(row.real, 0)}</td>
-                                                            <td className="text-right tabular-nums py-1 text-ink-300">{formatPercent(row.theo, 0)}</td>
-                                                            <td className="text-right tabular-nums py-1 text-ink-400">{formatPercent(row.ideal, 0)}</td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                        {realDeficit < 0 && (
-                                            <p className="text-tiny text-warning-400 mt-1.5 font-medium">Déficit réel de {formatCAD(Math.abs(realDeficit))} sur la période : tu as dépensé plus que ton revenu — l'épargne est ramenée à 0 dans ce graphe.</p>
-                                        )}
-                                        <p className="text-tiny text-ink-400 mt-1.5">« Réel » = tes dépenses rapprochées à un poste ; l'épargne réelle = revenu − dépenses. Vert = proche de l'idéal 50/30/20 (±2 pts) ; orange = écart à surveiller.</p>
-                                        <ChartDataTable
-                                            caption="Ta répartition réelle (Besoins, Envies, Épargne réelle)"
-                                            columns={goldenRealColumns}
-                                            rows={goldenRealData}
-                                        />
-                                    </>
-                                ) : (
-                                    <p className="text-meta text-ink-400 text-center py-4">Pas encore de dépenses rapprochées sur la période — ta répartition réelle s'affichera dès que des transactions correspondront à tes postes.</p>
-                                )}
                             </div>
                         </div>
                     </Card>

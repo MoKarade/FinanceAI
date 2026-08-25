@@ -7152,3 +7152,42 @@ sortie complète. Deux remèdes, et le second est le vrai :
 a rougi au gate. C'est l'argument le plus concret en faveur de ces gardes « qui ne trouvent jamais
 rien » — celle-ci a trouvé, et le gate rejoué APRÈS le rebase est ce qui lui a donné l'occasion. Un
 lot rebasé se re-gate INTÉGRALEMENT, pas seulement sur les tests qu'on croit concernés.
+
+### `UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER` — 2026-08-25
+
+**Ticket** : `[BUDGET-REMOVE-AMELIORER]` (S) — « retirer la section "Améliorer mon budget" de
+l'onglet Budget, devenue inutile selon Marc ». Fait.
+
+**La seule question qui compte avant de supprimer une surface : qu'est-ce qui n'existe QUE là ?**
+La carte contenait un bouton « Diagnostic » (assistant IA). Vérifié avant de couper : il a un JUMEAU
+dans la barre de pilotage, en haut du même onglet — la carte n'en portait qu'un DOUBLON. Sans cette
+vérification, un ticket de nettoyage aurait supprimé une fonctionnalité qu'il ne visait pas.
+La garde qui en découle dit les deux choses d'un coup : `getAllByRole('button', {name: /diagnostic/i})`
+doit rendre **exactement 1** — le doublon est parti ET la fonction est restée. Un
+`queryBy(...).toBeNull()` sur la carte n'aurait pas vu la perte.
+
+**Ce qui disparaît réellement se DÉCLARE** : le donut théorique 50/30/20, la « répartition réelle »
+et le comparatif Réel · Cible · Idéal étaient uniques. C'est bien la demande — mais elle doit être
+écrite dans la PR, pas déduite du titre du ticket.
+
+**⚠️ `knip` est AVEUGLE au code dont le seul consommateur est son propre test.** Après suppression,
+`computeGoldenSplit`, `GOLDEN_IDEAL` et `GoldenSplit` n'ont plus AUCUN consommateur de production —
+seulement `tests/utils/budget.test.ts`. Sortie de `knip` **identique au octet près** avant et après
+(323 lignes, 80 exports inutilisés, 231 types). Un test suffit à faire passer un export pour vivant.
+Corollaire de méthode : après avoir retiré le dernier appelant d'un helper, **grep ses consommateurs
+restants à la main** et regarder s'ils sont tous des tests. Routé (`[UTIL-GOLDENSPLIT-ORPHELIN]`)
+plutôt que supprimé : ce n'est pas le périmètre du ticket.
+
+**Le gain de bundle se MESURE, et se dit dans les bons termes.** `Budget.tsx` n'importe plus Recharts
+du tout, ce qui invite à annoncer « Recharts sort du bundle ». Faux : sur un build PROPRE
+(`rm -rf dist`), le chunk `recharts` est **identique au octet près** (404 617) parce que d'autres
+écrans l'importent encore. Le vrai gain est celui du code de l'onglet : `BudgetWorkspace`
+**86 865 → 81 251 octets** (−5 614, −6,5 %), `dist` total −5 489. Annoncer la dépendance aurait été
+un chiffre inventé sur une intuition d'architecture (`ECRIRE-UN-CHIFFRE-SANS-LE-MESURER`).
+
+**Le scan de frontière d'import s'ancre sur l'IMPORT, jamais sur la mention.** Le motif extrait les
+`from '<module>'` et compare des LISTES ; un commentaire qui raconte l'histoire de la carte retirée
+reste vert (perturbation faite : mention en commentaire → vert, `import { Tooltip } from 'recharts'`
+→ rouge). Anti-vacuité : l'extracteur doit trouver > 10 imports et le témoin `react`.
+⚠️ Détail d'environnement mesuré : `new URL(..., import.meta.url)` lève `ERR_INVALID_URL_SCHEME` dans
+cet environnement de test — les scans de source passent par `resolve(process.cwd(), …)`.

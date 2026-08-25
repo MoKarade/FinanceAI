@@ -88,6 +88,24 @@
   9 tests, **5 perturbations rouges sur 5**, chacune isolant sa garde. Leçon :
   `UN-DEFAUT-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT`.
 
+## 2026-08-25 — La section « Améliorer mon budget » est retirée
+
+- [x] **`[BUDGET-REMOVE-AMELIORER]`** (S) — PR #740, gate vert. Demande directe de Marc.
+  ⚠️ **Vérifié AVANT de couper** : le bouton « Diagnostic » de la carte avait un JUMEAU dans la barre
+  de pilotage du même onglet. Le diagnostic IA ne part donc PAS avec la carte — elle n'en portait
+  qu'un doublon. La garde l'exige explicitement : **exactement UN** bouton « Diagnostic » après coup
+  (le doublon parti ET la fonction restée).
+  Disparaissent réellement, et c'était uniques : le donut théorique 50/30/20, la « répartition
+  réelle » et le comparatif Réel · Cible · Idéal.
+  **Bundle mesuré** sur build PROPRE : `BudgetWorkspace` **86 865 → 81 251 octets** (−5 614, −6,5 %),
+  `dist` total −5 489. ⚠️ Le chunk `recharts` est **identique au octet près** (404 617) : d'autres
+  écrans l'importent encore — ce n'est pas une victoire de dépendance, et le dire autrement aurait
+  été un chiffre inventé.
+  3 tests, **3 perturbations** (carte restaurée → 3 rouges ; import Recharts réintroduit → 1 rouge ;
+  mention en COMMENTAIRE → reste vert). Leçon :
+  `UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER` — dont : **`knip` est aveugle au code
+  dont le seul consommateur est son propre test** (routé : `[UTIL-GOLDENSPLIT-ORPHELIN]`).
+
 ## 2026-08-25 — Après un divorce, la moitié de la mise de fonds s'évaporait à l'achat
 
 - [x] **`[ENG-DIVORCE-SCALE-UNBOUGHT]`** — le ticket était marqué **« [À vérifier] — finding non

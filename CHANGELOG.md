@@ -53,6 +53,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - L'autre alerte, « échec de la dernière sauvegarde », n'est pas retardée : elle ne peut apparaître
   que lorsque la connexion est déjà établie.
 
+## [unreleased] — 2026-08-25 (la section « Améliorer mon budget » est retirée)
+
+- Retirée de l'onglet Budget, à ta demande. Partent avec elle : le graphique 50/30/20 théorique, le
+  graphique « Ta répartition réelle » et le tableau comparatif Réel · Cible · Idéal.
+- **Le bouton « Diagnostic » reste** : il existait en double, et celui de la barre du haut est
+  conservé. Rien de ce que tu utilisais pour lancer l'analyse IA ne change.
+- L'onglet Budget se charge un peu plus vite : son code passe de 86,9 à 81,3 Ko (−6,5 %).
+
 ## [unreleased] — 2026-08-25 (le plafond REER ne fait plus un bond en 2031)
 
 - Au-delà de l'année la plus lointaine que l'ARC a annoncée, l'app doit **estimer** le plafond de

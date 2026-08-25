@@ -78,6 +78,50 @@ const noWelcomeTax = () => 0;
  * depuis toujours. Un seul l'avait remarqué sans le nommer : son assertion était une FOURCHETTE
  * « + ≤1 mois de croissance » sur une fixture qui dit 0. La fourchette absorbait le défaut.
  */
+/**
+ * [ENG-RENEWAL-CHOC-MORT] Le renouvellement hypothécaire n'annonce plus un changement inexistant.
+ *
+ * ⚠️ MESURÉ : le « choc » de taux au renouvellement est dérivé du PREMIER CARACTÈRE de
+ * l'identifiant du bien — `((id.charCodeAt(0) % 3) - 1) * 0,015`. Or tous les identifiants du
+ * dépôt tombent sur la même valeur : l'UI crée `prop_<timestamp>` ('p' → 112, 112 % 3 = 1 → choc
+ * NUL), les fixtures utilisent `p1`, les personas `jc-re1` ('j' → 106 → 1). **Aucune propriété
+ * atteignable par un utilisateur n'a jamais vu son taux bouger au renouvellement.**
+ *
+ * Le mécanisme n'est pas corrigé ici — le rendre vivant déplacerait de l'argent sur toute
+ * projection avec hypothèque et exposerait `[ENG-RENEWAL-RATE-MISMATCH]`. Ce qui est corrigé,
+ * c'est le MESSAGE : « nouveau taux 5,00 % » quand l'ancien était 5,00 % affirme un changement qui
+ * n'a pas eu lieu (no-fake-data). Le renouvellement, lui, a bien eu lieu.
+ */
+describe('[ENG-RENEWAL-CHOC-MORT] le message dit ce qui s\'est passé', () => {
+    const renouvellement = (id: string) => {
+        const state = makeState();
+        const goal = makeGoal({ id, mortgageRate: 5, amortization: 25, isPrimaryResidence: true, propertyGrowthRate: 0 });
+        const prop = makeProp({ id, isBought: true, mortgage: 300_000, currentValue: 500_000, calculatedPmt: 1_800 });
+        // m = 60 = un terme de 5 ans échu, et 240 − 60 = 180 mois restants (> 60, condition du bloc).
+        processRealEstate(state, makeCtx({ m: 60 }), [goal], [prop], offset0, noWelcomeTax);
+        return state.lifeEventLogs.filter((l) => l.includes('Renouvellement'));
+    };
+
+    it('identifiant RÉEL de l\'app (`prop_…`) : choc nul → le message dit « taux INCHANGÉ »', () => {
+        const logs = renouvellement('prop_1787632344299');
+        expect(logs.length, 'le renouvellement doit bien se produire').toBe(1);
+        expect(logs[0]).toContain('taux inchangé');
+        expect(logs[0]).toContain('5,00 %'.replace(',', '.')); // toFixed rend un point décimal
+        expect(logs[0]).not.toContain('nouveau taux');
+    });
+
+    it('identifiant à choc NON nul : le message dit « nouveau taux » (la branche vit toujours)', () => {
+        // Anti-vacuité : sans ce cas, « ne contient pas *nouveau taux* » serait vrai parce que la
+        // phrase a été supprimée, pas parce qu'elle est conditionnée. 'r' → 114 → 114 % 3 = 0 → −1,5 pt.
+        const logs = renouvellement('re1');
+        expect(logs.length).toBe(1);
+        expect(logs[0]).toContain('nouveau taux');
+        expect(logs[0]).not.toContain('inchangé');
+        // Et le taux annoncé est bien DIFFÉRENT de celui du prêt (5 % − 1,5 pt = 3,50 %).
+        expect(logs[0]).toContain('3.50');
+    });
+});
+
 describe('[ENG-PROPGROWTH-ZERO-INEXPRIMABLE] un 0 explicite reste 0', () => {
     it('croissance 0 : la valeur du bien ne bouge PAS d\'un mois à l\'autre', () => {
         const state = makeState();

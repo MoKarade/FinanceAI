@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 782 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 784 tests** Vitest
 (441 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -835,6 +835,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   (`UN-INVARIANT-NE-VOIT-PAS-CE-QUI-EST-ABSENT`).
 - Un **stub** documenté « retourne toujours `[]` » peut rester branché des mois sans alerte si le
   mode test nourrit les surfaces en synthétique.
+- Un **aléa dérivé d'un identifiant TECHNIQUE est un aléa MORT** : le choc de taux au renouvellement
+  hypothécaire (`(id.charCodeAt(0) % 3 - 1) × 0,015`) vaut ZÉRO partout — l'UI crée `prop_<ts>`, les
+  fixtures `p1`, les personas `jc-re1`, tous sur la même valeur. Un préfixe constant écrase l'entropie
+  qu'on croyait exploiter. Se demander **qui fabrique la clé**, puis énumérer les identifiants
+  RÉELLEMENT produits. Corollaire : un mécanisme mort ment aussi par ses MESSAGES (« nouveau taux
+  5,00 % » quand l'ancien était 5,00 %), et le réveiller peut rendre ATTEIGNABLE un second bug qui
+  dormait derrière — les deux se livrent ensemble
+  (`UN-ALEA-DERIVE-D-UN-IDENTIFIANT-TECHNIQUE-EST-UN-ALEA-MORT`).
 - Un audit externe/UX headless a un fort taux de faux positifs sur le money-critical — mais
   garder le claim faux comme note de **perception**.
 - Avant de lancer un agent sur « l'état du code », **prouver l'état du code** (`git fetch` + comparer

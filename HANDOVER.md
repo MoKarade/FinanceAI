@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-25 (suite 166) — `[ENG-RENEWAL-M0]` caduque : le choc de taux est MORT
+> ⚠️ **MESURÉ** : le choc de taux au renouvellement vient du PREMIER CARACTÈRE de l'identifiant du
+> bien (`((id.charCodeAt(0) % 3) - 1) * 0,015`) — et il vaut **ZÉRO partout** : UI `prop_<ts>`
+> ('p' → 112 → 1 → nul), fixtures `p1`, personas `jc-re1` ('j' → 106 → 1). **Le risque de
+> renouvellement n'est pas modélisé du tout.**
+> Livré (zéro dollar déplacé) : le message ne dit plus « nouveau taux 5,00 % » quand l'ancien était
+> 5,00 % — il dit « taux inchangé ». No-fake-data ; le renouvellement, lui, a bien eu lieu.
+> ⚠️ **Mécanisme PAS réveillé** — le rendre vivant déplace de l'argent sur toute projection avec
+> hypothèque ET expose `[ENG-RENEWAL-RATE-MISMATCH]`. 🧭 Deux décisions pour Marc →
+> `[ENG-RENEWAL-CHOC-MORT]` (remplace `[ENG-RENEWAL-M0]`, dont la prémisse est exacte mais sans
+> conséquence).
+> ⚠️ **Portée de `[ENG-RENEWAL-RATE-MISMATCH]` corrigée** : « frappe tout achat » → ne frappe RIEN
+> tant que le choc est nul. Les deux se livrent ensemble.
+> 2 tests, **2 perturbations rouges**.
+>
 > ## 🟢 Session 2026-08-25 (suite 165) — `[ENG-PROPGROWTH-ZERO-INEXPRIMABLE]` : un 0 qui n'existait nulle part
 > `(goal.propertyGrowthRate || 3)` transformait un 0 explicite en 3 %/an. **CINQ sites**, pas un —
 > moteur, achat passé, deux écrans, et **l'ÉDITEUR lui-même** : taper 0 réaffichait 3.

@@ -459,10 +459,24 @@
   achat futur post-divorce hériterait d'un principal réduit de moitié. Sans effet pour un bien
   `isOwned: false` à date passée (l'achat est gaté à jamais). Re-prouver le chemin par mesure
   avant de corriger (finding non vérifié par perturbation).
-- [ ] **`[ENG-RENEWAL-M0]`** (S, FAIBLE — panel #552) — un bien passé détenu depuis un multiple
-  exact de 60 mois subit le RENOUVELLEMENT (choc déterministe `charCodeAt % 3`) dès le mois 0
-  (PMT −240 $ mesuré au 1er point affiché). Préexistant, atteignable au m0 depuis V2'. Option :
-  décaler le 1er renouvellement d'un mois ou seeder le choc à 0 au m0.
+- [ ] **`[ENG-RENEWAL-CHOC-MORT]`** (M, 🧭 **DEUX décisions pour Marc — MESURÉ 2026-08-25**) — le
+  « choc » de taux au renouvellement hypothécaire est dérivé du PREMIER CARACTÈRE de l'identifiant
+  du bien (`((id.charCodeAt(0) % 3) - 1) * 0,015`). **Mesuré : il vaut ZÉRO partout dans le dépôt.**
+  L'UI crée `prop_<timestamp>` ('p' → 112, 112 % 3 = 1 → nul), les fixtures utilisent `p1`, les
+  personas `jc-re1` ('j' → 106 → 1). **Aucune propriété atteignable par un utilisateur n'a jamais vu
+  son taux bouger au renouvellement** — le risque de renouvellement, argument de vente d'un
+  planificateur, n'est pas modélisé du tout.
+  ✅ **Livré en attendant** (PR #732, zéro dollar déplacé) : le message ne dit plus « nouveau taux
+  5,00 % » quand l'ancien était 5,00 % — il dit « taux inchangé ». Affirmer un changement qui n'a pas
+  eu lieu viole le no-fake-data ; le renouvellement, lui, a bien eu lieu.
+  🧭 **Décision 1 — faut-il modéliser le risque de renouvellement ?** Si oui, le choc doit venir
+  d'une SAISIE (taux de renouvellement attendu) ou d'un aléa assumé, jamais du hachage d'un
+  identifiant technique. Si non, retirer le mécanisme et le dire.
+  🧭 **Décision 2 — l'activer expose `[ENG-RENEWAL-RATE-MISMATCH]`** (voir ci-dessous), qui devient
+  alors un vrai bug d'argent. Les deux se livrent ENSEMBLE ou pas du tout.
+  ⚠️ Ce ticket REMPLACE `[ENG-RENEWAL-M0]` (« renouvellement dès le mois 0 »), dont la prémisse est
+  exacte mais sans conséquence : le renouvellement au m0 est LOGGÉ, et avec un choc nul il ne change
+  ni le PMT ni le taux. Rien à corriger de ce côté tant que le choc est mort.
 - [ ] **`[ENG-CELIAPP-RESIDUAL-PASTBUY]`** (S, FAIBLE — panel #552) — un solde CELIAPP résiduel
   n'est plus liquidé quand l'achat est déjà fait (bloc d'achat sauté) ; repli 15 ans/71 ans
   (`taxJanuary.ts:149-153`) → retrait non imposable MANQUÉ (pas de perte de capital). Détecter le
@@ -471,8 +485,12 @@
   au renouvellement hypothécaire, le PMT est recalculé au NOUVEAU taux mais l'intérêt mensuel reste
   à `goal.mortgageRate` (`realEstateMonth.ts:~349`) : renouvellement 4,5 %→3 % mesuré → capital
   551 $/mois seulement, solde encore 211 569 $ après 10 ans sur un prêt censé s'éteindre à 240 mois.
-  Frappe tout achat (futur à m+60, passé dès m0 si multiple de 60). Fix : porter le taux courant
-  dans pState (ex. `currentRate`) et le consommer pour l'intérêt. Re-baseliner SCIEMMENT.
+  ⚠️ **Portée RE-MESURÉE le 2026-08-25** : le ticket dit « frappe tout achat ». En réalité il ne
+  frappe RIEN aujourd'hui — le décalage n'existe que si le taux CHANGE au renouvellement, or le choc
+  de taux vaut zéro pour tout identifiant du dépôt (voir `[ENG-RENEWAL-CHOC-MORT]`). Le bug est réel
+  et le correctif juste, mais il n'est ATTEIGNABLE qu'une fois le choc rendu vivant. Les deux
+  tickets se livrent donc ENSEMBLE. Fix : porter le taux courant dans pState (ex. `currentRate`) et
+  le consommer pour l'intérêt. Re-baseliner SCIEMMENT.
 - [ ] **`[ENG-NETTRANSFER-REER-INCOMPLET]`** (S — panel #552) — `NetTransferREER`
   (`monthlyOutput.ts:291` = ContribREER − withdrawalREER) ne voit ni FERR ni meltdown (écart
   cumulé 330 353 $ vs `RetraitREER` sur 301 mois) ; les deux séries cohabitent dans

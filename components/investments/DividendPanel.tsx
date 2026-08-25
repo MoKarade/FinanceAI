@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_ITEM_STYLE } from '../../utils/chartTooltip';
 import { Card } from '../ui/Card';
 import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
@@ -192,8 +193,8 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                                 <YAxis stroke="#ffffff50" fontSize={10} tickLine={false} axisLine={false} tickFormatter={maskedTick(isPrivacyMode, (val: number) => formatCAD(val))} />
                                 <ReTooltip
                                     cursor={{ fill: '#ffffff05' }}
-                                    contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
-                                    itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                                    contentStyle={CHART_TOOLTIP_STYLE}
+                                    itemStyle={CHART_TOOLTIP_ITEM_STYLE}
                                     labelStyle={{ color: '#9ca3af', fontSize: '10px', marginBottom: '4px' }}
                                     formatter={(val: number) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val || 0), 'Revenu Mensuel']}
                                 />

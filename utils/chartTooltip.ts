@@ -12,6 +12,36 @@
  * portable). Garde qui les confronte : `tests/components/tooltipLargeur.test.ts`.
  */
 export const TOOLTIP_WIDTH = 320;
+
+/**
+ * [DETTE-CHART-THEME-DUP] Style unique des infobulles Recharts (`contentStyle`).
+ *
+ * ⚠️ MESURÉ avant d'écrire cette constante : 14 infobulles dans l'app, **9 styles distincts**, et
+ * **six fonds différents** pour la même surface — `#1e1e1e` (×4), `#151922` (×2), `#1a1a1a` (×2),
+ * `#1a1e29`, `#111`, `#0B0E14` (×2)… et **deux infobulles BLANCHES** (`#fff` sur texte noir) au
+ * milieu d'une app sombre. AUCUN de ces fonds n'existe dans la palette : les 14 étaient peintes à
+ * la main, hors du système de design. Le ticket disait « dédupliquer » ; ce qui se mesure, c'est
+ * qu'aucune n'utilisait les tokens.
+ *
+ * Le fond est `surfaceHighlight` — l'infobulle est une surface ÉLEVÉE au-dessus de `surface`/`dark`,
+ * c'est exactement ce que ce token nomme. Le texte est `ink-100` : **ratio 14,42** sur ce fond
+ * (mesuré, WCAG AA exige 4,5). Choisi par mesure, jamais au jugé.
+ *
+ * ⚠️ Ces valeurs DUPLIQUENT les tokens de `tailwind.config.js` — un `contentStyle` part dans une
+ * prop de composant TIERS, il ne peut pas être une classe Tailwind. Rien au runtime ne les
+ * confronte, donc la garde le fait : `tests/components/chartTooltipTheme.test.ts` lit la config et
+ * exige l'égalité (même patron que `TOOLTIP_WIDTH` ci-dessus).
+ */
+export const CHART_TOOLTIP_STYLE = {
+    backgroundColor: '#15181E',
+    border: '1px solid rgba(255, 255, 255, 0.06)',
+    borderRadius: 8,
+    color: '#e2e8f0',
+} as const;
+
+/** Style des LIGNES de l'infobulle — Recharts ne fait pas hériter la couleur du conteneur. */
+export const CHART_TOOLTIP_ITEM_STYLE = { color: '#e2e8f0' } as const;
+
 /** Décalage horizontal du tooltip vs le curseur (à droite). */
 export const TOOLTIP_OFFSET_X = 16;
 /** Décalage vertical du tooltip vs le curseur (légèrement au-dessus). */

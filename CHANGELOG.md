@@ -20,6 +20,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   documentation fiscale **comme une hypothèse**, avec l'écart mesuré face à l'indexation réellement
   observée. Ce n'est pas un chiffre officiel, et ça ne doit pas se lire comme tel.
 
+## [unreleased] — 2026-08-25 (les infobulles des graphiques se ressemblent enfin)
+
+- Les bulles d'information qui apparaissent au survol des graphiques avaient **neuf apparences
+  différentes** selon l'écran — six teintes de fond, et deux d'entre elles carrément **blanches**
+  (dans les graphiques de placements) au milieu d'une interface sombre.
+- Elles partagent maintenant un seul style, pris dans la palette de l'app, avec un contraste
+  texte/fond mesuré à 14,4 — très au-delà du minimum d'accessibilité.
+
 ## [unreleased] — 2026-08-25 (vendre un bien se coche, ça ne se devine plus dans le nom)
 
 - Jusqu'ici, un événement de vie déclenchait la **vente d'un bien immobilier** dès que son nom

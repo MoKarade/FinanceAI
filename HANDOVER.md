@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-25 (suite 162) — `[DETTE-CHART-THEME-DUP]` : la duplication n'était que le symptôme
+> Le ticket disait « dédupliquer les styles inline ». **MESURÉ** : 14 infobulles Recharts, **9 styles
+> distincts**, **six fonds** (`#1e1e1e` ×4, `#151922` ×2, `#1a1a1a` ×2, `#1a1e29`, `#111`, `#0B0E14`
+> ×2) — et **deux infobulles BLANCHES** (`#fff`, texte noir) dans les graphiques de placements.
+> Surtout : **aucun de ces six fonds n'existe dans `tailwind.config.js`**. Le vrai problème n'était
+> pas la duplication mais qu'AUCUNE infobulle n'utilisait le système de design.
+> Livré : `CHART_TOOLTIP_STYLE` (+ `..._ITEM_STYLE`) dans `utils/chartTooltip.ts`, 14 sites migrés.
+> Fond `surfaceHighlight` (surface ÉLEVÉE au-dessus de `surface`/`dark`), texte `ink-100`,
+> **ratio mesuré 14,42** vs 4,5 exigés. Choisi par MESURE.
+> ⚠️ **Décision d'apparence assumée** : les 2 infobulles blanches deviennent sombres — elles
+> n'étaient pas sur une surface claire, juste les seules hors thème.
+> ⚠️ Garde dans les DEUX sens : la constante reproduit les tokens (lus dans la config) ET aucun
+> composant ne re-peint un `contentStyle` inline (scan décommenté, double anti-vacuité : volume de
+> code restant + témoin retrouvé par le MÊME lecteur que les offenders).
+> 3 tests, **2 perturbations rouges**.
+>
 > ## 🟢 Session 2026-08-25 (suite 161) — `[ENG-LIFEEVENT-VENTE-SUBSTRING]` : un champ typé sans producteur
 > ⚠️ **La moitié moteur était DÉJÀ faite, et c'est ce qui cachait le défaut.** `LifeEvent.eventKind`
 > (`'VENTE_IMMO' | 'NONE'`) existe, le moteur le consulte EN PREMIER, 3 tests verrouillent son

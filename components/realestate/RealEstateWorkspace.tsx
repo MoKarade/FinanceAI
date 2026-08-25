@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { CHART_TOOLTIP_STYLE } from '../../utils/chartTooltip';
 import { formatCAD } from '../../utils/format';
 import { Card } from '../ui/Card';
 import { ProjectionRequired } from '../ui/ProjectionRequired';
@@ -739,7 +740,7 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                                             <AreaChart data={zoom.visibleData}>
                                                 <XAxis dataKey="year" tick={{ fontSize: 10 }} tickFormatter={v => `An ${v}`} />
                                                 <YAxis hide />
-                                                <Tooltip formatter={(v: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCurrency(v)} contentStyle={{ backgroundColor: '#0B0E14', borderColor: '#333' }} />
+                                                <Tooltip formatter={(v: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCurrency(v)} contentStyle={CHART_TOOLTIP_STYLE} />
                                                 <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 11, fontWeight: 'bold' }} />
 
                                                 {(activeGoal.isPrimaryResidence || !activeGoal.isRented) && (

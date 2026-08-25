@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { CHART_TOOLTIP_STYLE } from '../utils/chartTooltip';
 import { Card } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { Icon, type IconName } from './ui/Icon';
@@ -410,7 +411,7 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                                 aria-label={`Répartition estimée du coût de « ${selectedItem.name} » par poste de dépense.`}
                                             >
                                                 <ResponsiveContainer width="100%" height="100%">
-                                                    <PieChart><Pie data={impactAnalysis.insights.breakdown} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={5} dataKey="value">{impactAnalysis.insights.breakdown.map((entry: { name: string; value: number; color: string }, index: number) => (<Cell key={`cell-${index}`} fill={entry.color} stroke="none" />))}</Pie><Tooltip contentStyle={{ backgroundColor: '#111', borderColor: '#333', fontSize: '12px' }} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} /><Legend verticalAlign="middle" align="right" layout="vertical" iconSize={8} wrapperStyle={{ fontSize: '10px' }} /></PieChart>
+                                                    <PieChart><Pie data={impactAnalysis.insights.breakdown} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={5} dataKey="value">{impactAnalysis.insights.breakdown.map((entry: { name: string; value: number; color: string }, index: number) => (<Cell key={`cell-${index}`} fill={entry.color} stroke="none" />))}</Pie><Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} /><Legend verticalAlign="middle" align="right" layout="vertical" iconSize={8} wrapperStyle={{ fontSize: '10px' }} /></PieChart>
                                                 </ResponsiveContainer>
                                             </div>
                                             {/* [A11Y-CHARTS] (LOT 3) — alternative TEXTUELLE (sr-only) au PieChart de

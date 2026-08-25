@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { CHART_TOOLTIP_STYLE } from '../utils/chartTooltip';
 import { formatCAD } from '../utils/format';
 import { Card } from './ui/Card';
 import { PageHeader } from './ui/PageHeader';
@@ -472,7 +473,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                     <XAxis dataKey="age" stroke="#666" tick={{ fontSize: 10 }} label={{ value: 'Âge enfant', position: 'insideBottom', offset: -5, fill: '#666' }} />
                                     <YAxis stroke="#666" tick={{ fontSize: 10 }} tickFormatter={maskedTick(isPrivacyMode, (v: number) => `${(v / 1000).toFixed(0)}k`)} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#151922', borderColor: '#333', borderRadius: 8 }} formatter={(v: number, name: string) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : fmt(Math.abs(v)), name === 'Bénéfices' ? '↩ Allocations' : name]} labelFormatter={l => `Âge ${l} ans`} />
+                                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number, name: string) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : fmt(Math.abs(v)), name === 'Bénéfices' ? '↩ Allocations' : name]} labelFormatter={l => `Âge ${l} ans`} />
                                     <Legend />
                                     <ReferenceLine y={0} stroke="#555" />
                                     <Bar dataKey="Essentiel" stackId="a" fill="#6f72c4" name="Essentiel" />
@@ -556,7 +557,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                     <XAxis dataKey="age" stroke="#666" tick={{ fontSize: 10 }} />
                                     <YAxis stroke="#666" tick={{ fontSize: 10 }} tickFormatter={maskedTick(isPrivacyMode, (v: number) => `${(v / 1000).toFixed(0)}k`)} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#151922', borderColor: '#333', borderRadius: 8 }} formatter={(v: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : fmt(v)} labelFormatter={l => `Âge ${l} ans`} />
+                                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : fmt(v)} labelFormatter={l => `Âge ${l} ans`} />
                                     <Legend />
                                     <Area type="monotone" dataKey="Solde" stroke="#5b82bf" fill="url(#respGrad)" strokeWidth={2} name="Solde Total" />
                                     <Bar dataKey="Subvention" fill="#4f9d86" name="Subventions reçues" />

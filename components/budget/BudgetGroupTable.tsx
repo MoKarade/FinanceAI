@@ -1,4 +1,5 @@
 import React from 'react';
+import { CHART_TOOLTIP_STYLE } from '../../utils/chartTooltip';
 import { BudgetCategory } from '../../types';
 import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
@@ -324,7 +325,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                                 <YAxis stroke="#666" tick={{ fontSize: 10 }} width={30} tickFormatter={maskedTick(isPrivacyMode, (v: number) => String(v))} />
                                                                 <Tooltip
                                                                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                                                                    contentStyle={{ backgroundColor: '#1e1e1e', borderColor: '#333' }}
+                                                                    contentStyle={CHART_TOOLTIP_STYLE}
                                                                     formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)}
                                                                 />
                                                                 <ReferenceLine

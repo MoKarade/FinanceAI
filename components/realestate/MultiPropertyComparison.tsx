@@ -1,4 +1,5 @@
 import React from 'react';
+import { CHART_TOOLTIP_STYLE } from '../../utils/chartTooltip';
 import { Card } from '../ui/Card';
 import { RealEstateGoal } from '../../types';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
@@ -104,7 +105,7 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
                         <XAxis dataKey="year" stroke="#555" tick={{ fontSize: 10 }} tickFormatter={v => `An ${v}`} />
                         <YAxis stroke="#555" tick={{ fontSize: 10 }} tickFormatter={maskedTick(isPrivacyMode, (v: number) => `${(v / 1000).toFixed(0)}k`)} width={50} />
                         <Tooltip
-                            contentStyle={{ backgroundColor: '#1a1e29', borderColor: '#333', borderRadius: '8px', fontSize: '11px' }}
+                            contentStyle={CHART_TOOLTIP_STYLE}
                             formatter={(val: number, name: string) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val), name]}
                             labelFormatter={v => `Année ${v}`}
                         />

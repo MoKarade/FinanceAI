@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-25 — Neuf styles d'infobulle, dont deux blanches dans une app sombre
+
+- [x] **`[DETTE-CHART-THEME-DUP]`** — le ticket disait « dédupliquer les styles inline ».
+  **MESURÉ** : 14 infobulles Recharts, **9 styles distincts**, **six fonds différents** pour la même
+  surface — `#1e1e1e` (×4), `#151922` (×2), `#1a1a1a` (×2), `#1a1e29`, `#111`, `#0B0E14` (×2) — et
+  **deux infobulles BLANCHES** (`#fff`, texte noir), dans les graphiques de placements, au milieu
+  d'une app sombre. Surtout : **aucun de ces six fonds n'existe dans `tailwind.config.js`**. Le
+  problème n'était donc pas la duplication mais le fait qu'aucune infobulle n'utilisait le système
+  de design — la duplication n'en était que le symptôme.
+  Livré : `CHART_TOOLTIP_STYLE` + `CHART_TOOLTIP_ITEM_STYLE` dans `utils/chartTooltip.ts`, appliqués
+  aux 14 sites. Fond = `surfaceHighlight` (l'infobulle est une surface ÉLEVÉE au-dessus de
+  `surface`/`dark` — c'est ce que le token nomme), texte = `ink-100`, **ratio mesuré 14,42** contre
+  les 4,5 exigés par WCAG AA. Choisi par mesure, jamais au jugé.
+  ⚠️ **Décision d'apparence assumée** : les deux infobulles blanches deviennent sombres comme les
+  douze autres. Elles n'étaient pas posées sur une surface claire — elles étaient simplement les
+  seules à ne pas suivre le thème, et tout aussi hors palette que les autres.
+  ⚠️ Ces valeurs DUPLIQUENT les tokens et rien au runtime ne les confronte : un `contentStyle` part
+  dans la prop d'un composant TIERS, il ne peut pas être une classe Tailwind. La garde le fait dans
+  les deux sens — la constante doit reproduire les tokens, ET aucun composant ne doit re-peindre un
+  `contentStyle` inline (scan de source décommenté, avec double anti-vacuité : volume de code
+  restant + témoin retrouvé par le MÊME lecteur que les offenders).
+  3 tests, **2 perturbations rouges**. Livré 2026-08-25 · PR #728.
+
 ## 2026-08-25 — Vendre une maison dépendait d'un mot tapé dans un champ libre
 
 - [x] **`[ENG-LIFEEVENT-VENTE-SUBSTRING]`** — ⚠️ **la moitié moteur était DÉJÀ faite, et c'est ce qui

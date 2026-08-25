@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟠 Session 2026-08-25 (suite 176) — `stepReerByUser` : DEUX paramètres, DEUX statuts
+> Troisième lot d'affilée sur ce module, et à chaque fois la même question mal posée (« ce paramètre
+> sert-il à quelque chose ? »). Il en a DEUX, et la réponse diffère :
+> • **`withdrawal` est ratio-neutre PAR CONSTRUCTION** — retirer au prorata multiplie chaque part par
+>   le même facteur, `reconcileToPool` efface le reste. Vérifié à 1 $, 1 000 $, 70 000 $, 300 000 $ et
+>   899 999 $ : répartition identique au **9ᵉ chiffre**. Seule porte : `w ≥ Σ prev` (repli sur `shares`).
+> • **`contribution` déplace bien la répartition** (attribuée par `shares`) : +16 123 $ sous écart d'âge.
+> ⚠️ Donc les EXCLUSIONS de ce terme (`ferrWithdrawalMois`, `divorceReerWithdrawalMois`) sont JUSTES
+> mais quasi sans effet : **0 $ à âge égal, −141,22 $ à 15 ans, −1 641,85 $ à 27 ans** (0,09 %), avec
+> 53 tests verts → arbitrage routé `[ENG-REERBYUSER-RETRAIT-INERTE]` (garder ou simplifier).
+> ⚠️ **DEUX corrections successives du même constat** parce que je n'avais pas séparé les deux
+> paramètres. Le défaut de méthode était là, pas dans le sens de la conclusion.
+> 4 tests de caractérisation, 3 perturbations rouges. Aucun code moteur touché.
+>
 > ## 🟠 Session 2026-08-25 (suite 170) — `[ENG-DIVORCE-PMT-NON-PARTAGEE]` : les DEUX prédictions du ticket sont fausses
 > Le défaut est réel (`calculatedPmt` jamais multiplié par `keep`), mais :
 > 1. « Re-basera des goldens » → **zéro golden n'a bougé**. Cause mesurée : **les 16 fixtures de

@@ -1666,6 +1666,17 @@
 
 #### HIGH — Bloque la fiabilité des chiffres
 
+- [ ] **`[ENG-LIQUID-FLUX-FORM]`** (M, découvert en livrant `DIVORCE-FLUX-MUET`) — le compte
+  **Liquidités n'est pas conforme à la forme-flux**, indépendamment du divorce : résiduel mesuré
+  **7 638,44 $ au mois 324**, et de petits résiduels un peu partout (50,85 $ au mois 12, 310 $ au
+  mois 11). C'est pour ça qu'il est exclu du balayage de `divorceFluxPublie.test.ts` et absent des
+  `ACCOUNTS` de `projection.fluxForm.test.ts`. Fix : trouver les producteurs qui mutent `liquid` sans
+  alimenter `contribLiquid`/`withdrawalLiquid`, puis ajouter `Liquidites` aux deux gardes.
+  ⚠️ Même piège que `[ENG-FERR-NETTRANSFER-MUET]` : `withdrawalREER` alimente AUSSI `stepReerByUser`
+  (partage per-conjoint). Mesurer les goldens AVANT/APRÈS pour prouver qu'aucun dollar ne bouge.
+
+#### MOYEN
+
 - [ ] **`[TEST-DIVORCE-SANS-IMMOBILIER]`** (S, découvert en livrant `PMT-NON-PARTAGEE`) — **les 16
   fixtures de divorce du dépôt portent `realEstateGoals: []`**. C'est ce qui explique que le
   correctif de la mensualité n'ait re-basé AUCUN golden alors qu'il déplace des dizaines de milliers

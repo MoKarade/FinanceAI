@@ -10,6 +10,18 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-25 — Le partage d'un bien détenu au divorce est enfin couvert par un test
+
+- [x] **`[TEST-DIVORCE-SANS-IMMOBILIER]`** (S) — PR #745, gate vert. Trou de couverture routé par
+  #737 : les 16 fixtures de divorce portaient `realEstateGoals: []`.
+  **Le mécanisme est SAIN, mesuré avant d'écrire** : à 50 %, équité ×0,5047 et intérêt suivant
+  ×0,5000 ; à 75 %, ×0,2523 / ×0,2500. Le lot ne corrige rien — il verrouille.
+  4 tests (`tests/services/divorceImmobilier.test.ts`), fixture réutilisable « ménage
+  propriétaire », **3 perturbations rouges** : partage immobilier retiré (l'état d'avant #735) → 3 ;
+  `keep` inversé sur l'immobilier → 2 (grâce au discriminant à 75 %) ; fixture sans `isActive` → 4
+  (le bien disparaît, `NaN`). L'assertion la plus forte : l'INTÉRÊT du mois suivant, qui prouve que
+  le partage atteint l'état du moteur et pas seulement l'affichage.
+
 ## 2026-08-25 — Le divorcé payait la mensualité ENTIÈRE sur une hypothèque de moitié
 
 - [x] **`[ENG-DIVORCE-PMT-NON-PARTAGEE]`** (S) — PR #737, gate vert.

@@ -7380,3 +7380,27 @@ redémarré PENDANT la résolution, en révertant le clone à un instantané vie
 commit n'avait jamais été poussé. La règle du dépôt (« committer ET POUSSER avant toute attente
 longue ») couvre aussi la fenêtre du REBASE : pousser la branche AVANT `git rebase`, pas seulement
 avant les suites de tests — un rebase à conflits est une attente longue qui ne dit pas son nom.
+### `UN-TROU-DE-COUVERTURE-SE-FERME-AVEC-LA-FIXTURE-QUI-L-A-REVELE` — 2026-08-25
+
+**Ticket** : `[TEST-DIVORCE-SANS-IMMOBILIER]` (S), routé en livrant `[ENG-DIVORCE-PMT-NON-PARTAGEE]`
+(#737) — les 16 fixtures de divorce du dépôt portaient `realEstateGoals: []`, ce qui explique qu'un
+correctif déplaçant des dizaines de milliers de dollars n'ait re-basé aucun golden. #737 avait couvert
+la MENSUALITÉ ; ce lot couvre le reste du partage d'un bien détenu : équité, dette, intérêt.
+
+**Le mécanisme est SAIN — c'est mesuré, pas supposé, et c'est le point.** Depuis #735/#737, le
+partage d'un bien détenu fait ce qu'il doit : équité ×0,5047 à 50 % (0,5 + croissance/amortissement
+du mois), intérêt du mois suivant ×0,5000 exactement, et à 75 % : ×0,2523 / ×0,2500. Un lot de
+couverture n'a pas besoin d'un bug pour exister : il transforme « ça marche aujourd'hui » en « ça ne
+peut plus casser en silence ». La mesure AVANT l'écriture sert de golden honnête — les bandes du test
+encadrent ce qui a été observé, jamais un chiffre théorique.
+
+**Les leçons de la session, appliquées d'office et vérifiées par perturbation** :
+- discriminant à **75 %**, pas 50 % (P2 « keep inversé » : à 50 % elle serait invisible, à 75 % elle
+  rougit 2 tests avec un intérêt ×0,75 au lieu de ×0,25) ;
+- l'assertion la plus forte n'est pas le solde AFFICHÉ mais l'**intérêt du mois suivant** — il prouve
+  que le partage a atteint l'ÉTAT du moteur (`pState.mortgage`), pas seulement l'affichage ;
+- les deux pièges de fixture re-payés cette session sont re-documentés DANS le fichier
+  (`isActive`+`isOwned` obligatoires ; P3 le prouve : sans `isActive`, 4 tests rougissent sur `NaN`).
+
+**Discipline d'infrastructure** : branche POUSSÉE avant toute écriture de test (deux réversions de
+conteneur dans la journée), commit poussé avant le gate.

@@ -20,6 +20,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   documentation fiscale **comme une hypothèse**, avec l'écart mesuré face à l'indexation réellement
   observée. Ce n'est pas un chiffre officiel, et ça ne doit pas se lire comme tel.
 
+## [unreleased] — 2026-08-25 (vendre un bien se coche, ça ne se devine plus dans le nom)
+
+- Jusqu'ici, un événement de vie déclenchait la **vente d'un bien immobilier** dès que son nom
+  contenait le mot « vente ». Un « Vente d'auto » ou une « Vente de garage » revendait donc la
+  maison dans la projection ; à l'inverse, « Je me départis du condo » ne vendait rien.
+- Le formulaire porte maintenant une case **« Cet événement est la vente d'un bien immobilier »**.
+  C'est elle qui décide, plus le nom — et le choix du bien à vendre suit la case. Si le nom parle
+  d'une vente alors que la case n'est pas cochée, l'app te le dit au lieu de deviner.
+- Les événements déjà enregistrés gardent leur comportement actuel : rien à re-saisir.
+- Au passage, les champs « Nom » et « Date » de ce formulaire sont enfin annoncés correctement par
+  les lecteurs d'écran.
+
 ## [unreleased] — 2026-08-24 (plus de pastille suspendue au-dessus du vide)
 
 - Sur la courbe Futur, les pastilles d'événement se décalent verticalement quand plusieurs tombent

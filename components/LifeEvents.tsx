@@ -115,11 +115,19 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                 return;
             }
             setEventError(null);
-            setEvents([...events, { ...newLifeEvent, id: Date.now().toString() } as LifeEvent]);
+            // [ENG-LIFEEVENT-VENTE-SUBSTRING] `eventKind` est écrit EXPLICITEMENT sur tout événement
+            // neuf — jamais laissé absent. Absent = « je ne sais pas », et le moteur retombe alors sur
+            // l'heuristique de nom, qu'on cherche justement à ne plus faire décider. Les événements
+            // déjà enregistrés, eux, restent sans le champ : ils gardent le chemin historique.
+            setEvents([...events, {
+                ...newLifeEvent,
+                eventKind: newLifeEvent.eventKind === 'VENTE_IMMO' ? 'VENTE_IMMO' : 'NONE',
+                id: Date.now().toString(),
+            } as LifeEvent]);
         }
         setIsAdding(false);
         setNewTrip({ destination: '', date: '', totalCost: 0, image: '✈️' });
-        setNewLifeEvent({ type: 'GROS_ACHAT', date: new Date().toISOString().split('T')[0] });
+        setNewLifeEvent({ type: 'GROS_ACHAT', eventKind: 'NONE', date: new Date().toISOString().split('T')[0] });
     };
 
     const handleDelete = (uniqueKey: string) => {
@@ -256,8 +264,12 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                                     <optgroup label="Risques & Aléas"><option value="ACCIDENT">Accident / Santé</option><option value="PERTE_EMPLOI">Perte d'Emploi</option><option value="KRACH">Krach Boursier</option><option value="HERITAGE">Héritage / Gain</option></optgroup>
                                 </select>
                             </div>
-                            <div><label className="text-meta text-ink-300 mb-1 block">Nom</label><input type="text" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.name} onChange={e => setNewLifeEvent({ ...newLifeEvent, name: e.target.value })} /></div>
-                            <div><label className="text-meta text-ink-300 mb-1 block">Date</label><input type="date" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.date} onChange={e => setNewLifeEvent({ ...newLifeEvent, date: e.target.value })} /></div>
+                            {/* ⚠️ `htmlFor`/`id` ajoutés ici : les six autres champs de ce formulaire les portaient déjà
+                                (`lifeevent-amount`, `lifeevent-krach`, `lifeevent-losspct`…) — « Nom » et « Date »
+                                étaient les deux seuls dont l'étiquette n'était liée à RIEN. Un lecteur d'écran
+                                annonçait deux champs sans nom, et un clic sur l'étiquette ne donnait pas le focus. */}
+                            <div><label htmlFor="lifeevent-name" className="text-meta text-ink-300 mb-1 block">Nom</label><input id="lifeevent-name" type="text" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.name} onChange={e => setNewLifeEvent({ ...newLifeEvent, name: e.target.value })} /></div>
+                            <div><label htmlFor="lifeevent-date" className="text-meta text-ink-300 mb-1 block">Date</label><input id="lifeevent-date" type="date" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.date} onChange={e => setNewLifeEvent({ ...newLifeEvent, date: e.target.value })} /></div>
                             {newLifeEvent.type === 'KRACH' ? (
                                 <div><label htmlFor="lifeevent-krach" className="text-meta text-ink-300 mb-1 block">Chute (%)</label><input id="lifeevent-krach" type="number" min={0} max={100} placeholder="Ex: 30" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.impactPercent ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, impactPercent: numOrUndef(e.target.value) })} /></div>
                             ) : INCOME_LOSS_TYPES.includes(newLifeEvent.type as LifeEventType) ? (
@@ -268,7 +280,40 @@ export const LifeEvents: React.FC<LifeEventsProps> = ({ events, setEvents, trave
                             ) : (
                                 <div><label htmlFor="lifeevent-amount" className="text-meta text-ink-300 mb-1 block">Montant ($)</label><input id="lifeevent-amount" type="number" className="w-full bg-dark border border-white/20 rounded p-2 text-white" value={newLifeEvent.impactAmount ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, impactAmount: numOrUndef(e.target.value) })} /></div>
                             )}
-                            {newLifeEvent.name?.toLowerCase().includes('vente') && activeProperties.length >= 2 && (
+                            {/* [ENG-LIFEEVENT-VENTE-SUBSTRING] Vendre un bien est une INTENTION, pas un mot
+                                dans un champ libre. Avant, l'unique déclencheur était « le nom contient
+                                *vente* » — côté moteur ET côté formulaire : « Vente d'auto » ou « Vente de
+                                garage » revendait la MAISON, et « Je me départis du condo » ne vendait rien.
+                                La case écrit `eventKind`, un champ TYPÉ que le moteur consulte en premier. */}
+                            {activeProperties.length >= 1 && (
+                                <div className="lg:col-span-5">
+                                    <label htmlFor="lifeevent-vente" className="flex items-center gap-2 text-meta text-ink-300 cursor-pointer">
+                                        <input
+                                            id="lifeevent-vente"
+                                            type="checkbox"
+                                            className="h-4 w-4 accent-purple-600"
+                                            checked={newLifeEvent.eventKind === 'VENTE_IMMO'}
+                                            onChange={e => setNewLifeEvent(prev => ({
+                                                ...prev,
+                                                eventKind: e.target.checked ? 'VENTE_IMMO' : 'NONE',
+                                                // Décocher retire la cible : un `propertyId` orphelin
+                                                // désignerait un bien que plus rien ne vend.
+                                                propertyId: e.target.checked ? prev.propertyId : undefined,
+                                            }))}
+                                        />
+                                        Cet événement est la <strong>vente d'un bien immobilier</strong>
+                                    </label>
+                                    {/* ⚠️ La RÉSERVE, pas l'automatisme : si le nom parle de vente alors que la case
+                                        est décochée, on le DIT au lieu de deviner. Sans ce rappel, un utilisateur
+                                        habitué à l'ancien comportement perdrait son intention en silence. */}
+                                    {newLifeEvent.eventKind !== 'VENTE_IMMO' && newLifeEvent.name?.toLowerCase().includes('vente') && (
+                                        <p className="text-meta text-amber-300 mt-1" role="status">
+                                            Le nom parle d'une vente, mais la case n'est pas cochée : aucun bien ne sera vendu.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                            {newLifeEvent.eventKind === 'VENTE_IMMO' && activeProperties.length >= 2 && (
                                 <div className="lg:col-span-5">
                                     <label htmlFor="lifeevent-property" className="text-meta text-ink-300 mb-1 block">Bien à vendre (plusieurs biens détectés)</label>
                                     <select id="lifeevent-property" className="w-full bg-dark border border-white/20 rounded p-2 text-white text-meta" value={newLifeEvent.propertyId ?? ''} onChange={e => setNewLifeEvent({ ...newLifeEvent, propertyId: e.target.value || undefined })}>

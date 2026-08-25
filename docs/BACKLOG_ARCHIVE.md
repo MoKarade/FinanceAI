@@ -10,6 +10,33 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-25 — Vendre une maison dépendait d'un mot tapé dans un champ libre
+
+- [x] **`[ENG-LIFEEVENT-VENTE-SUBSTRING]`** — ⚠️ **la moitié moteur était DÉJÀ faite, et c'est ce qui
+  rendait le défaut invisible.** `LifeEvent.eventKind` (`'VENTE_IMMO' | 'NONE'`) existe dans `types.ts`,
+  le moteur le consulte EN PREMIER, et trois tests verrouillent son contrat. **Mesuré** :
+  `'VENTE_IMMO'` n'avait **AUCUN producteur dans tout le dépôt** — seul `mcp/whatIf.ts` écrivait
+  `'NONE'`, deux fois, par prudence. Tout événement créé par l'app arrivait donc au moteur avec
+  `eventKind` absent, c'est-à-dire sur le chemin historique : **la sous-chaîne « vente » dans le nom**.
+  Le contrat était testé, l'appelant n'existait pas (`TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`).
+  ⚠️ **Le formulaire portait la MÊME heuristique**, à deux endroits : le sélecteur « Bien à vendre »
+  n'apparaissait que si le nom contenait « vente ». Conséquence mesurée : « Vente d'auto » ou « Vente
+  de garage » **revendait la maison** (des centaines de milliers de dollars), et « Je me départis du
+  condo » ne vendait rien.
+  Livré : une case à cocher « Cet événement est la vente d'un bien immobilier » qui écrit `eventKind`,
+  et `handleAdd` qui l'écrit **explicitement** sur tout événement neuf (`'NONE'` par défaut — absent
+  voudrait dire « je ne sais pas » et relancerait l'heuristique). Le sélecteur de bien suit désormais
+  la CASE. Décocher efface `propertyId` : une cible orpheline désignerait un bien que plus rien ne vend.
+  ⚠️ **La réserve est DITE, pas devinée** : si le nom parle de vente alors que la case est décochée,
+  un avertissement visible le signale — sans lui, un utilisateur habitué à l'ancien comportement
+  perdrait son intention en silence. Testé dans les DEUX sens (une alarme permanente s'ignore).
+  ⚠️ Le chemin historique reste en place côté moteur pour les événements DÉJÀ enregistrés, qui n'ont
+  pas le champ : rétrocompat exacte, zéro migration.
+  ⚠️ Effet de bord assumé, dans le bloc édité : « Nom » et « Date » étaient les deux seuls champs du
+  formulaire dont l'étiquette n'était liée à aucun `id` — les six autres l'étaient déjà
+  (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`). Un lecteur d'écran annonçait deux champs sans nom.
+  4 tests, **2 perturbations rouges**. Livré 2026-08-25 · PR #727.
+
 ## 2026-08-25 — La garde du grand livre au jour ne regardait que 5 soldes sur 30
 
 - [x] **`[GARDE-JOUR-ANTICIRCULAIRE-ETROITE]`** — le ticket avait raison sur le constat (la seule

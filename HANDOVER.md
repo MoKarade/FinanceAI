@@ -4,6 +4,23 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-25 (suite 161) — `[ENG-LIFEEVENT-VENTE-SUBSTRING]` : un champ typé sans producteur
+> ⚠️ **La moitié moteur était DÉJÀ faite, et c'est ce qui cachait le défaut.** `LifeEvent.eventKind`
+> (`'VENTE_IMMO' | 'NONE'`) existe, le moteur le consulte EN PREMIER, 3 tests verrouillent son
+> contrat. **MESURÉ** : `'VENTE_IMMO'` n'avait **AUCUN producteur dans le dépôt** — seul
+> `mcp/whatIf.ts` écrivait `'NONE'`. Tout événement créé par l'app arrivait donc `eventKind` absent,
+> donc sur le chemin historique : la **sous-chaîne « vente » dans le nom**.
+> ⚠️ Le FORMULAIRE portait la même heuristique : « Vente d'auto » revendait la MAISON, « Je me
+> départis du condo » ne vendait rien.
+> Livré : case à cocher → `eventKind`, écrit EXPLICITEMENT sur tout événement neuf (`'NONE'` par
+> défaut — absent voudrait dire « je ne sais pas »). Le sélecteur de bien suit la CASE ; décocher
+> efface `propertyId`. Rétrocompat : les événements déjà enregistrés n'ont pas le champ → chemin
+> historique intact, zéro migration.
+> ⚠️ La RÉSERVE est dite : nom qui parle de vente + case décochée → avertissement visible, testé dans
+> les DEUX sens (une alarme permanente s'ignore).
+> ⚠️ Effet de bord assumé : « Nom » et « Date » étaient les 2 seuls champs du formulaire sans
+> `htmlFor`/`id` — les 6 autres l'avaient. 4 tests, **2 perturbations rouges**.
+>
 > ## 🟢 Session 2026-08-25 (suite 160) — `[GARDE-JOUR-ANTICIRCULAIRE-ETROITE]` : le correctif prescrit ne protégeait rien
 > Le ticket voulait « étendre le test de rapport à TOUS les stocks non nuls ». **MESURÉ** : sur la
 > fixture existante ça donne 13 champs et **AUCUN des onze que le ticket nomme** — `DetteTotale`,

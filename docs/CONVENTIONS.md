@@ -6612,3 +6612,40 @@ liste à la main est circulaire. **Il faut les deux.**
 tests du fichier restent verts, y compris le test de classification explicite (sa liste en dur ne
 contenait pas `DetteTotale`). Deuxième perturbation : un solde neuf ajouté à la table sans être
 déclaré fait rougir le test de complétude.
+
+### `UN-CHAMP-TYPE-SANS-PRODUCTEUR-EST-UNE-INTENTION-JAMAIS-LIVREE` — 2026-08-25
+
+`[ENG-LIFEEVENT-VENTE-SUBSTRING]` demandait de remplacer une détection par sous-chaîne — « le nom de
+l'événement contient *vente* » — par un champ typé. En ouvrant le code, tout avait l'air fait :
+`LifeEvent.eventKind` (`'VENTE_IMMO' | 'NONE'`) existe dans `types.ts`, le moteur le consulte **en
+premier**, un commentaire porte l'identifiant du ticket, et trois tests verrouillent son contrat.
+
+**C'est exactement ce qui rendait le défaut invisible.** Un `grep` sur les PRODUCTEURS le montre en
+une commande : `'VENTE_IMMO'` n'est écrit **nulle part dans le dépôt**. Le seul écrivain de
+`eventKind` est `mcp/whatIf.ts`, qui pose `'NONE'` deux fois par prudence. Aucun composant d'UI ne
+touche le champ. Donc tout événement créé par l'application arrive au moteur avec `eventKind`
+absent — c'est-à-dire sur le chemin historique, celui de la sous-chaîne. Le contrat était testé,
+**l'appelant n'existait pas** (`TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`, vu ici sous sa forme la
+plus trompeuse : la moitié faite ressemble à la totalité).
+
+Pire : **le formulaire portait la MÊME heuristique**, indépendamment du moteur. Le sélecteur « Bien
+à vendre » n'apparaissait que si le nom contenait « vente ». Deux copies de la même règle de texte,
+à deux étages, sur une action qui déplace des centaines de milliers de dollars — « Vente d'auto » ou
+« Vente de garage » revendait la maison, « Je me départis du condo » ne vendait rien.
+
+**Le geste qui ferme la classe.** Ce n'est pas d'ajouter le champ (il existait), c'est d'en écrire
+la valeur **explicitement, à chaque création**. `'NONE'` par défaut, jamais l'absence : *absent*
+veut dire « je ne sais pas », et le moteur retombe alors précisément sur l'heuristique qu'on
+cherchait à retirer du chemin de décision. Un défaut d'écriture qui reproduit le défaut d'origine
+est la forme la plus discrète de non-correctif.
+
+**Deux réflexes à en tirer.**
+1. Devant un ticket qui semble déjà livré, `grep` les **producteurs** de la valeur, pas ses
+   consommateurs. Un enum dont une branche n'est jamais écrite est du code mort typé — vert au
+   `tsc`, testé, et sans effet. Même famille que le paramètre homonyme mesuré 0/120 au fuzz.
+2. Retirer une heuristique de texte du chemin de décision ne veut pas dire supprimer ce qu'elle
+   savait. Le nom reste un **indice** utile : quand il parle d'une vente et que la case est
+   décochée, on le DIT à l'écran plutôt que de deviner. Sans ce rappel, l'utilisateur habitué à
+   l'ancien comportement perd son intention en silence — et une correction qui fait disparaître une
+   capacité sans le dire n'est pas une correction (`EPURATION-SUPPRIME-LA-RESERVE`). L'avertissement
+   se teste dans les DEUX sens : une alarme permanente s'ignore.

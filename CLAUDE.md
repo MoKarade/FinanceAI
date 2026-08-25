@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 754 tests** Vitest
-(434 fichiers de test, mesuré le 2026-08-24). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 756 tests** Vitest
+(435 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -597,6 +597,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   confrontée par RIEN au runtime : la garde lit la CLASSE (la vérité peinte) et la compare à la
   constante — l'inverse serait circulaire (`STYLE-CONST-DUPLIQUEE`).
 - Un test `.length > 1` sur un **tuple** de longueur fixe est vacueux.
+- Tout indice qui décrit une **POSITION À L'ÉCRAN** se calcule APRÈS le dernier filtre qui retire des
+  éléments : le rang d'empilement des pastilles Futur était attribué avant l'écrêtage de densité, donc
+  une survivante gardait le rang de ses voisines disparues (pastille à 68 px de la courbe, deux étages
+  VIDES en dessous — et un `aria-label` qui annonçait « (3) » pour une pastille seule). Corollaire de
+  cadrage : un critère VISUEL se juge en PIXELS — à l'horizon par défaut (40 ans) sur un téléphone,
+  un mois vaut ≈ 0,7 px, ce qui réfute à lui seul le ticket qui voulait séparer deux événements
+  distants de 15 jours (`UN-RANG-CALCULE-AVANT-L-ECRETAGE-SURVIT-A-SES-VOISINS`).
 - Une fermeture (Échap) qui remet à zéro l'état d'un **déclencheur RÉPÉTÉ** (survol, focus) est
   annulée dès sa prochaine occurrence — il faut un VERROU, levé quand le déclencheur cesse vraiment.
   Et une garde sur la PRÉSENCE d'une classe utilitaire doit vérifier que la classe **fait encore ce

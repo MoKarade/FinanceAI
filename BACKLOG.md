@@ -738,11 +738,18 @@
 
 ## 🧱 Dette technique
 
-- [ ] **`[FUTUR-DAILY-STACK-X]`** (XS, cosmétique — FAIBLE-4 validator #594) — l'empilement
-  vertical des pastilles (`subIdx` de `finalize()` dans `FutureProjection.tsx`) groupe encore par
-  `monthIndex` : deux événements du même mois à des jours DIFFÉRENTS sont décalés verticalement
-  alors qu'ils ne se chevauchent plus horizontalement. Empiler par abscisse arrondie (ou par
-  proximité de x) plutôt que par mois. Zéro impact $, clic correct — purement visuel.
+- [ ] **`[FUTUR-STACK-ZOOM-AWARE]`** (M, cosmétique — reliquat RE-CADRÉ de `[FUTUR-DAILY-STACK-X]`,
+  livré #724) — séparer horizontalement deux pastilles du même mois posées à des jours différents
+  n'est LÉGITIME qu'en vue zoomée, et cette information n'existe pas là où le rang est calculé.
+  **MESURÉ** : la pastille fait 24 px de diamètre (rayon 12 dans `ClickableEventIcon`), 44 px de
+  cible de clic ; à l'horizon PAR DÉFAUT (40 ans = 480 mois, `constants.ts`) sur un écran de
+  téléphone (390 px), **un mois vaut ≈ 0,7 px** — deux événements à 15 jours d'écart sont donc à
+  ≈ 0,35 px l'un de l'autre. Les séparer verticalement n'est pas un défaut à cet horizon : c'est la
+  seule chose qui les rende lisibles. Le critère juste est en PIXELS (`Δx × px/mois ≥ 24`), donc il
+  dépend de la fenêtre de zoom et de la largeur du conteneur — deux grandeurs absentes du calcul
+  actuel, qui ne dépend que de `chartData`. Faire ce lot = déplacer la décision au rendu (fenêtre
+  visible + largeur mesurée), pas changer la clé de groupement. ⚠️ Ne PAS livrer « grouper par
+  abscisse arrondie » : à la vue par défaut, ça superpose les pastilles au lieu de les empiler.
 - [ ] **`[GODFILE-APPLYDOCUMENT]`** (M — V11, 1er par impact) — `mcp/ingest/applyDocument.ts` 873 l.,
   5 handlers indépendants (:531,597,655,719,792) → split `applyDocument/<type>.ts` + orchestrateur mince.
 - [ ] **`[GODFILE-MCPHTTP]`** (M — V11) — `mcp/http.ts` 710 l. (OAuth+CORS+DNS-guard+dispatch) →

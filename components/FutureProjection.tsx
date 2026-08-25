@@ -25,6 +25,7 @@ import { computeForecastAccuracy } from '../services/projection/forecastAccuracy
 import { ForecastAccuracyBadge } from './projection/ForecastAccuracyBadge';
 import { findInsolvencyPoint } from '../utils/insolvency';
 import { sampleEvenly } from '../utils/sampleEvenly';
+import { assignStackIndex } from '../utils/stackEventIcons';
 
 // Sprint 2 PH2 — constante stable pour éviter de créer un nouveau [] à chaque
 // render (qui invaliderait les useMemo deps en aval).
@@ -498,16 +499,13 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         const milestones = deriveMilestoneIcons(chartData);
         lifes.push(...milestones.map((m) => ({ ...m, subIdx: 0, index: 0, pinned: true })));
         // ⚠️ RE-TRI par monthIndex OBLIGATOIRE avant `sampleEvenly` (contrat « tableau ORDONNÉ », finding architect
-        // ÉLEVÉ : un merge non trié casse l'échantillonnage uniforme) + réassignation `subIdx` (empilement vertical
-        // par mois) et `index` (clé unique).
+        // ÉLEVÉ : un merge non trié casse l'échantillonnage uniforme) + `index` (clé unique).
+        // ⚠️ [FUTUR-DAILY-STACK-X] `subIdx` n'est PLUS attribué ici : le rang d'empilement se calcule
+        // sur les pastilles RÉELLEMENT montrées (`assignStackIndex`, après fenêtre + écrêtage). Attribué
+        // ici, il survivait à ses voisins écrêtés et laissait une pastille flotter sur un étage vide.
         const finalize = (arr: ChartEvent[]): ChartEvent[] => {
             const sorted = [...arr].sort((a, b) => a.monthIndex - b.monthIndex);
-            const perMonth: Record<number, number> = {};
-            return sorted.map((e, i) => {
-                const s = perMonth[e.monthIndex] ?? 0;
-                perMonth[e.monthIndex] = s + 1;
-                return { ...e, subIdx: s, index: i };
-            });
+            return sorted.map((e, i) => ({ ...e, subIdx: 0, index: i }));
         };
         return { lifeChartEvents: finalize(lifes), flowChartEvents: finalize(flows) };
     // ⚠️ startYear/startMonth dans les deps (finding ÉLEVÉ revue #594) : l'horloge calendaire
@@ -1238,11 +1236,14 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // [R2] Les événements `pinned` (ex. pastille FIRE) ne sont JAMAIS écrêtés par l'échantillonnage : sinon, en
     // vue dézoomée (au-delà du cap), la pastille FIRE pouvait disparaître en silence (revue adversariale R2).
     // pinned en FIN : rendus en dernier → dessinés AU-DESSUS (SVG painter) si un autre événement tombe le même mois.
-    const shownLifeEvents = [
+    // ⚠️ [FUTUR-DAILY-STACK-X] `assignStackIndex` EN DERNIER : le rang d'empilement décrit ce qui est
+    // à l'écran, pas ce que le moteur a produit. Vie et flux s'empilent dans des sens OPPOSÉS → deux
+    // appels séparés, jamais un rang partagé.
+    const shownLifeEvents = assignStackIndex([
         ...thinEvents(visibleLifeEvents.filter((e) => !e.pinned), MAX_LIFE_ICONS),
         ...visibleLifeEvents.filter((e) => e.pinned),
-    ];
-    const shownFlowEvents = thinEvents(visibleFlowEvents, MAX_FLOW_ICONS);
+    ]);
+    const shownFlowEvents = assignStackIndex(thinEvents(visibleFlowEvents, MAX_FLOW_ICONS));
     const lastMonthIndex = chartData.length > 0 ? chartData[chartData.length - 1].monthIndex : 0;
     // ⚠️ Indices résolus sur `displayData` (= `pastPrefix` + `chartData`) et NON sur `chartData` :
     // c'est `displayData` que `useTimeChartZoom` indexe. Chercher dans `chartData` rendait un indice

@@ -6471,3 +6471,41 @@ flake s'est laissé reproduire, non pas en le rejouant (6/6 verts en local), mai
 grandeur dont il dépend**. Un flake qui refuse de se reproduire n'est pas un flake sans mécanisme :
 c'est un flake dont on n'a pas encore mesuré la course. Le nombre mesuré et le numéro du run sont
 écrits DANS le fichier de test — la prochaine occurrence s'expliquera d'elle-même.
+
+### `UN-RANG-CALCULE-AVANT-L-ECRETAGE-SURVIT-A-SES-VOISINS` — 2026-08-24
+
+Le ticket `[FUTUR-DAILY-STACK-X]` (XS, « cosmétique ») disait : deux événements du même mois posés à
+des jours différents sont décalés verticalement « alors qu'ils ne se chevauchent plus
+horizontalement ». Deux enseignements, et aucun des deux n'est celui du ticket.
+
+**1. Un critère VISUEL se juge en pixels, pas en unités de données.** La pastille fait 24 px de
+diamètre (rayon 12, lu dans le composant) et 44 px de cible de clic. À l'horizon PAR DÉFAUT — 40 ans,
+soit 480 mois — sur l'écran de téléphone qui a motivé la demande d'origine (390 px), **un mois vaut
+≈ 0,7 px**. Deux événements séparés de 15 jours sont donc à ≈ 0,35 px l'un de l'autre. À cette vue,
+l'empilement n'est pas le défaut : c'est la seule chose qui les rende lisibles, et la correction
+prescrite (« grouper par abscisse arrondie ») les aurait SUPERPOSÉS. Avant d'accepter un ticket
+d'apparence, convertir sa prémisse dans l'unité où elle se voit — ici la conversion la réfute.
+
+**2. Le vrai défaut était à côté, et il vit dans l'ORDRE des opérations.** Le rang d'empilement était
+attribué en amont, sur la liste COMPLÈTE des événements : avant le filtre de fenêtre, et surtout
+avant l'écrêtage de densité (24 pastilles « vie », 16 « flux »). Un mois dont l'échantillonnage ne
+gardait pas la première pastille laissait la survivante au rang 1 ou 2 — dessinée 44 ou 68 px
+au-dessus de la courbe, au bout d'une longue tige, avec un ou deux **étages vides** en dessous. Le
+rang survivait à ses voisins. Règle : **tout indice qui décrit une POSITION À L'ÉCRAN se calcule
+après le dernier filtre qui retire des éléments**, jamais sur la source.
+
+**Ce que ça touchait aussi, sans que personne le voie** : l'`aria-label` numérote les pastilles
+(« (2) », « (3) ») à partir de ce même rang. Un lecteur d'écran annonçait donc une deuxième pastille
+là où il n'y en avait qu'une. Un indice périmé ne se contente pas de déplacer un dessin.
+
+**Le test devait OBSERVER, pas reconstruire.** La chaîne testée (construction des événements →
+fenêtre → écrêtage) est exactement ce qu'un test qui la ré-implémente cesserait de vérifier. Les
+`payload` sont donc capturés à la frontière recharts, dans le vrai composant. Discrimination prouvée
+sur le code d'avant : mois 15, une seule pastille montrée, rang 1.
+
+⚠️ **Et l'anti-vacuité a rougi sur MA fixture.** Après correction, tous les rangs valaient 0 — non
+pas parce que le correctif marchait, mais parce que l'échantillonnage uniforme ne garde presque
+jamais deux événements du même mois : l'assertion « les rangs sont contigus depuis 0 » était vraie
+par construction. Il a fallu un événement ÉPINGLÉ (jamais écrêté) posé sur un mois déjà occupé pour
+qu'un rang 1 existe vraiment à l'écran. Une assertion sur un ensemble doit prouver que l'ensemble
+contient le cas qu'elle prétend juger.

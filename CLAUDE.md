@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 784 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 785 tests** Vitest
 (441 fichiers de test, mesuré le 2026-08-24). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -541,6 +541,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   12 ans dont la retraite était à 62 ans — tout le DÉCAISSEMENT était hors de portée. Portée à 35 ans,
   elle a trouvé 131 566 $ de FERR sans flux publié, en déterministe
   (`INVARIANT-QUI-NE-PARCOURT-PAS-LA-PHASE`).
+  ⚠️ Même aveuglement sur l'axe des **STRATÉGIES** (2026-08-25) : la garde « les deux registres du
+  retrait REER disent la même chose » existait, nommée et commentée — mais sa fixture ne demandait
+  pas `MELTDOWN_REER`, et le meltdown ne s'exécute que sous elle (`if (strategy !== X) return null`).
+  **1 849 081 $** d'écart cumulé invisibles. Devant un module gardé par un `if (mode !== X) return`,
+  demander **quelle fixture demande X** (`UN-INVARIANT-JUSTE-PEUT-ETRE-AVEUGLE-A-UNE-STRATEGIE-ENTIERE`).
+  Corollaire de découpage : livrer la moitié qui ne DÉPLACE PAS d'argent, router l'autre avec sa
+  mesure, et BORNER le résiduel restant par un test — un lot se coupe à la frontière
+  « ça déplace de l'argent / ça n'en déplace pas ».
 - ⚠️ Symétrique : remplir un « registre oublié » peut **déplacer de l'argent** si un de ses lecteurs
   est un CALCUL et non un affichage — `contribNonReg` sert aussi de base d'exclusion à la croissance
   de mi-mois : publier le remboursement d'avril a retiré 428 $ de rendement fantôme sur 30 ans.

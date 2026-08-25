@@ -1949,6 +1949,22 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // .reer, une seule fois) et n'atteint PAS chartData (vérifié par grep — panel #554) :
             // son seul rôle restant est le re-crédit CF-2 de cashflowAllocation (NW-neutralité).
             retraitReerMois += meltResult.reerDrawn;
+            // [ENG-NETTRANSFER-REER-INCOMPLET] Registre des TRANSFERTS, oublié ici alors que la FERR
+            // l'a reçu le 2026-08-19 (`[ENG-FERR-NETTRANSFER-MUET]`) : le meltdown est un retrait
+            // REER comme les autres, il doit apparaître dans le flux PUBLIÉ `NetTransferREER`.
+            // MESURÉ sous la stratégie MELTDOWN_REER : le solde REER chutait de 34 794 $ en un mois
+            // pour 802 $ de flux publiés (pire résiduel 35 596,32 $), soit 1 849 080,59 $ d'écart
+            // cumulé entre `RetraitREER` (affichage) et `ContribREER − NetTransferREER` (transferts)
+            // sur 156 mois de retrait. Après : 0,10 $ (arrondi au cent).
+            // ⚠️ Contrairement à la FERR, ce montant N'EST PAS exclu de `stepReerByUser` : la FERR
+            // sort de la part EXACTE de chaque conjoint (facteur RRIF de SON âge), alors que le
+            // meltdown est attribué AU PRORATA (`addByWeights` ci-dessous). Le soustraire au prorata
+            // dans le registre per-conjoint est donc la MÊME règle, pas une seconde.
+            // ⚠️ Publier la jambe d'ARRIVÉE (`contribNonReg += nonRegAdd`) N'EST PAS fait ici : ce
+            // registre pilote l'exclusion de croissance de mi-mois, donc l'alimenter DÉPLACE de
+            // l'argent (mesuré −5 045,04 $ de patrimoine final) et fait rougir deux goldens
+            // « NEUTRALITÉ NW ». Décision de Marc → `[ENG-MELTDOWN-JAMBE-ARRIVEE]`.
+            withdrawalREER += meltResult.reerDrawn;
             rrspWithholdingMois += meltResult.withholding;
             accRetraitsReerYear += meltResult.reerDrawn;
             // 5e source de retrait REER (audit fiscal-accuracy) : attribuer le meltdown par conjoint

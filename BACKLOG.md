@@ -17,6 +17,31 @@
 
 ---
 
+## Découvertes de l'audit `[BUDGET-TRANSACTIONS-SYNC-AUDIT]` (2026-08-26, non corrigées ici — hors scope)
+
+- [ ] 🔧 **`[BUDGET-DUPCOUNT-MESSAGE-FAUX]`** (XS) — `mcp/ingest/applyDocument.ts`, branche
+  « aucune transaction ajoutée » d'`applyBankStatement` : le résumé affiche toujours littéralement
+  « 0 doublon(s) ignoré(s) » même quand `dupCount === 0`, au lieu de l'omettre comme la branche
+  « ajoutée(s) » le fait déjà (`dupCount ? ... : ''`). Préexistant (avant PR #751), touché 3 fois
+  par la refonte de PR #752 sans être vu — finding code-reviewer.
+- [ ] 🔧 **`[BUDGET-CUSTOM-PLAGE-INVERSEE]`** (S) — `components/Budget.tsx` `getDateRange()` CUSTOM
+  ne gère pas une plage inversée (`customEnd < customStart`) : `civilDaysBetween` fait `Math.abs`
+  (le « prévu » reste positif), mais le filtre par chaîne (`t.date >= startStr && t.date <= endStr`)
+  ne matche jamais rien dans ce cas → « réel » toujours 0 $ pendant que « prévu » affiche un chiffre
+  positif. Préexistant, non aggravé par PR #752 — finding code-reviewer. À trancher : bloquer la
+  saisie (date de fin < date de début refusée) ou permuter silencieusement les deux bornes.
+- [ ] 🔧 **`[BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE]`** (S) — `components/Budget.tsx`
+  `handleUpdateItem` : le champ nom d'un poste est en `onChange` (pas `onBlur`), donc renommer
+  « Resto » → « Restaurant » déclenche jusqu'à 5 `setAppState({ transactions })` (réécriture
+  complète du tableau + persist Zustand + push Drive) et 5 toasts en cascade. Aucune perte
+  d'argent (le résultat final est correct), mais du bruit et un coût d'écriture évitable — finding
+  financial-integrity. Correctif probable : débouncer la propagation aux transactions, ou la
+  déplacer en `onBlur` tout en gardant `onChange` pour l'affichage local du champ.
+- [ ] 🔧 **`[MCP-JSDOC-APPLYDEBT-NON-FERME]`** (XS) — `mcp/ingest/applyDocument.ts`, commentaire
+  JSDoc `[DEBT-MCP-PARITE]` juste avant `inferDebtCategory` : pas de `*/` de fermeture, avale le
+  JSDoc suivant. Préexistant (commit #693, confirmé par `git blame`), repéré en lisant le fichier
+  pour PR #752 — finding code-reviewer.
+
 ## 🧭 Vague Budget/Transactions/Investissements (Marc, 2026-08-21)
 
 > Retours de Marc en bloc, non cadrés — chaque item à cadrer (questions groupées) avant de coder,

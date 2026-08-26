@@ -31,6 +31,29 @@
 > d'impôt en revenus (écart mesuré 11,7 % sur une fixture) ; les impôts payés doivent-ils avoir un
 > poste budget (écart d'assiette mesuré 44 %, et le conseil du panneau Parité s'auto-annule sinon).
 > 9 tests neufs, gate vert (4 853 tests). PR #752.
+> ⚠️ **Panel `/review-all` (4 agents), même PR** : `silent-failure-hunter` a trouvé 2 ÉLEVÉ (le
+> refus d'un nom de poste vide était 100 % silencieux — input contrôlé qui « recrache » l'ancien nom
+> sans toast ; et la garde qui filtre les lignes MCP incomplètes, montant/date absents, ne comptait
+> AUCUN rejet — un lot où TOUTES les lignes ont ce défaut rendait « aucune nouvelle transaction. »
+> sans dire que N lignes avaient été soumises), corrigés dans le même lot (toast + nouveau compteur
+> `rejMalformedCount`). `financial-integrity` a ensuite trouvé 1 MOYEN RÉEL sur le `+1` lui-même :
+> le plancher `Math.max(0.1, …)` protégeait `getMultiplier()` CUSTOM contre `diffDays === 0` AVANT
+> le `+1`, mais depuis le `+1` le diviseur est TOUJOURS ≥ 1 — le plancher n'avait plus de rôle et
+> écrasait les plages de 1 à 3 jours vers la MÊME valeur (jusqu'à +204 % d'erreur sur 1 jour), en
+> plus de rendre le commentaire du correctif initial trompeur (il citait ce +204 % comme réglé par
+> le `+1`, alors qu'il ne l'était pas). Plancher retiré. 2 FAIBLE durcis au passage (`fuzzyNameMatch`
+> ne gardait qu'un nom strictement vide, pas fait uniquement d'espaces ; le libellé de
+> `rejMalformedCount` nommait 2 causes sur 3). 4 bugs PRÉEXISTANTS découverts en chemin, non
+> corrigés (hors scope), routés au `BACKLOG.md` : message « 0 doublon(s) » toujours affiché même à
+> zéro, plage Custom inversée jamais gérée, JSDoc non fermé qui avale le suivant, renommage d'un
+> poste qui écrit à chaque frappe (5 réécritures + 5 toasts pour un nom de 5 lettres). 3 tests
+> neufs de plus. ⚠️ **Deuxième incident de perte d'édition dans ce même lot**, cette fois SANS
+> commande destructive identifiée : deux `Edit` réussis (rapportés « updated successfully ») sur
+> `components/Budget.tsx` et `mcp/ingest/applyDocument.ts` n'avaient PAS persisté sur disque au
+> moment de lancer les tests suivants — `git diff --stat` les montrait absents. Cause non
+> déterminée (pas de `git checkout`/`stash` entre les deux). Détecté par la même discipline que le
+> premier incident (`git status`/`git diff` après chaque étape, jamais supposé), corrigé en
+> ré-appliquant et re-vérifiant immédiatement par `grep` après CHAQUE edit avant de continuer.
 >
 > ## 🟢 Session 2026-08-26 — `[BUDGET-INCOME-WINDOW-UTC-OFFBYONE]` : le revenu du 1er disparaissait sous un fuseau négatif
 > Trouvé en diagnostiquant `[BUDGET-PREVU-BUG]` : `incomeBreakdown` comparait `new Date(t.date)`

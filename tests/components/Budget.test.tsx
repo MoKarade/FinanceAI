@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, within } from '@testing-library/react';
 import { Budget } from '../../components/Budget';
 import type { BudgetConfig, BudgetCategory, User, Transaction } from '../../types';
@@ -181,5 +181,50 @@ describe('Budget — refonte UI (Phase C3)', () => {
         // Ventilation salaire / divers visible
         expect(tile.textContent).toMatch(/Salaire/);
         expect(tile.textContent).toMatch(/Divers/);
+    });
+
+    // [BUDGET-INCOME-WINDOW-UTC-OFFBYONE] `incomeBreakdown` comparait `new Date(t.date)` (ancré UTC
+    // minuit) à `start`/`end` (ancrés en heure LOCALE) — sous un fuseau NÉGATIF, ça excluait le 1er
+    // jour de la période. Invisible en CI (conteneur en UTC, où les deux ancrages coïncident) : le
+    // fuseau est un PARAMÈTRE du test, pas un détail d'environnement (leçon
+    // `UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC`).
+    describe('[BUDGET-INCOME-WINDOW-UTC-OFFBYONE] fenêtre revenus vs fuseau horaire', () => {
+        const originalTz = process.env.TZ;
+        beforeEach(() => { process.env.TZ = 'America/Toronto'; });
+        afterEach(() => { process.env.TZ = originalTz; });
+
+        it('un revenu daté du 1er du mois compte, même sous un fuseau à décalage négatif', () => {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const firstOfMonth = `${y}-${m}-01`;
+            const transactions: Transaction[] = [
+                { id: 'i1', date: firstOfMonth, payee: 'X', amount: 500, category: 'Revenus divers' } as unknown as Transaction,
+            ];
+            const { container } = render(<Budget {...baseProps} transactions={transactions} />);
+            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
+                .find((l) => (l.textContent ?? '').includes('Revenus'));
+            const tile = label!.closest('.rounded-card') as HTMLElement;
+            const reel = (tile.querySelector('.text-kpi') as HTMLElement).textContent?.replace(/[^\d]/g, '');
+            expect(reel).toBe('500'); // pas '0' : le 1er du mois n'est plus perdu
+        });
+
+        it('une plage PERSONNALISÉE compte les deux bornes, même sous un fuseau à décalage négatif', () => {
+            // `new Date('2026-08-01')` ancre à UTC minuit ; relu en heure locale sous Toronto
+            // (UTC-4), ça redevenait le 31 juillet AVANT ce correctif (`parseLocalDateStr`).
+            const transactions: Transaction[] = [
+                { id: 'i1', date: '2026-08-01', payee: 'X', amount: 300, category: 'Revenus divers' } as unknown as Transaction,
+                { id: 'i2', date: '2026-08-31', payee: 'X', amount: 200, category: 'Revenus divers' } as unknown as Transaction,
+            ];
+            const { container, getByText, getByLabelText } = render(<Budget {...baseProps} transactions={transactions} />);
+            fireEvent.click(getByText('Custom'));
+            fireEvent.change(getByLabelText('Date de début'), { target: { value: '2026-08-01' } });
+            fireEvent.change(getByLabelText('Date de fin'), { target: { value: '2026-08-31' } });
+            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
+                .find((l) => (l.textContent ?? '').includes('Revenus'));
+            const tile = label!.closest('.rounded-card') as HTMLElement;
+            const reel = (tile.querySelector('.text-kpi') as HTMLElement).textContent?.replace(/[^\d]/g, '');
+            expect(reel).toBe('500'); // 300 + 200, pas '0' ou '300' (une borne perdue)
+        });
     });
 });

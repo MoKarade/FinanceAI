@@ -7492,3 +7492,36 @@ absolue.
 — un crédit y reste invisible (ni ajouté, ni déduit), incohérent avec `monthlyActualsMap` qui le
 déduit désormais. Uniformiser changerait pour la PREMIÈRE fois les montants du tableau Budget
 principal que Marc voit au quotidien — une décision produit, pas un bug à corriger d'office.
+
+## Leçon du lot `[BUDGET-INCOME-WINDOW-UTC-OFFBYONE]` — 2026-08-26 : corriger un défaut fuseau-horaire en révèle presque toujours un second
+
+Le défaut mesuré était simple : `incomeBreakdown` (`components/Budget.tsx`) comparait
+`new Date(t.date) >= start && <= end` — `new Date('YYYY-MM-DD')` ancre à UTC minuit, `start`/`end`
+(`getDateRange()`) sont construits en heure LOCALE. Sous `TZ=America/Toronto` (mesuré ; invisible en
+CI, conteneur en UTC — leçon `UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC`), le 1er jour
+de chaque période disparaissait du revenu réel.
+
+**Le fix évident (aligner sur le filtre des dépenses, qui compare des CHAÎNES) a révélé un second
+défaut, JUMEAU, déjà présent dans ce filtre des dépenses depuis toujours** : `endStr =
+endInclusive.toISOString().split('T')[0]` convertit une fin de journée LOCALE (23:59:59) en UTC
+AVANT de découper la date — sous un fuseau négatif, ça bascule sur le jour calendrier SUIVANT
+(mesuré : 31 août 23:59:59 local à Toronto → 1er septembre 03:59:59 UTC → `endStr` = « 2026-09-01 »,
+un jour de trop). Le filtre des dépenses avait donc TOUJOURS inclus le 1er jour du mois suivant,
+silencieusement, des deux côtés (Mois/Trimestre/Année ET, dans un troisième temps découvert en
+testant le cas `CUSTOM`, la fenêtre personnalisée elle-même : `new Date(customStart)` ancré UTC
+faisait dériver la borne de départ d'un jour dans l'AUTRE sens sous le même fuseau).
+
+**Généralisation : ne jamais utiliser `.toISOString().split('T')[0]` pour convertir une date LOCALE
+en chaîne de calendrier** — ça fait toujours transiter par UTC, donc ça peut faire glisser le jour
+calendrier d'un cran selon le fuseau et l'heure. Le helper correct extrait `getFullYear()`/
+`getMonth()`/`getDate()` DIRECTEMENT, sans jamais passer par une représentation UTC intermédiaire.
+Un correctif fuseau-horaire qui touche une conversion date↔chaîne doit donc auditer TOUTES les
+conversions similaires dans le même fichier, pas seulement celle nommée par le ticket — trois sites
+touchés ici (`incomeBreakdown`, le filtre des dépenses préexistant, et `getDateRange` `CUSTOM`),
+un seul nommé au départ.
+
+**Preuve par perturbation CIBLÉE, pas globale** : un `git stash` du fichier entier aurait annulé les
+DEUX correctifs à la fois et pu masquer une compensation accidentelle entre eux (mesuré : c'est
+exactement ce qui s'est produit pour le test `CUSTOM` — le stash global le laissait VERT, parce que
+les deux défauts se seraient annulés dans ce cas précis). Reverter CHAQUE ligne séparément,
+un correctif à la fois, est la seule façon de prouver que chacun discrimine pour de vrai.

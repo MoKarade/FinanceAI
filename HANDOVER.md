@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-26 — `[BUDGET-INCOME-WINDOW-UTC-OFFBYONE]` : le revenu du 1er disparaissait sous un fuseau négatif
+> Trouvé en diagnostiquant `[BUDGET-PREVU-BUG]` : `incomeBreakdown` comparait `new Date(t.date)`
+> (ancré UTC minuit) à `start`/`end` (heure LOCALE) — sous `TZ=America/Toronto` (mesuré, invisible
+> en CI qui tourne en UTC), le 1er jour de chaque période disparaissait du revenu réel. Fix :
+> `getDateRangeStrings()` + `toLocalDateStr()` (comparaison par CHAÎNE, jamais un aller-retour
+> `.toISOString()` qui décale la FIN de période d'un jour sous un fuseau négatif — bug JUMEAU
+> trouvé en écrivant le correctif, déjà présent dans le filtre des dépenses, corrigé au passage).
+> Le bloc `CUSTOM` de `getDateRange()` avait le MÊME défaut à la source (`new Date(customStart)`) —
+> corrigé avec `parseLocalDateStr()`, sans quoi mon propre fix aurait décalé la plage personnalisée
+> d'un jour dans l'AUTRE sens (mesuré par perturbation ciblée : reverter SEULEMENT ce bloc rougit).
+> 2 tests neufs sous `TZ=America/Toronto`, 2 perturbations confirmées séparément.
+>
 > ## 🟡 Session 2026-08-26 — `[BUDGET-PREVU-BUG]` : diagnostiqué, reproduit exactement, routé à Marc
 > Ticket « À diagnostiquer » — livré tel quel, aucun code changé. Reproduit l'exemple de Marc au
 > dollar près : 3 mois d'historique à 6 000 $/mois de revenu → « prévu » trimestriel = **18 000 $**

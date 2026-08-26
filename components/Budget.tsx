@@ -118,6 +118,16 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // sur un mois passé se calaient sur l'avancement du mois d'aujourd'hui (finding audit).
     const monthProgress = periodOffset === 0 ? (currentDay / daysInMonth) * 100 : 100;
 
+    // [BUDGET-INCOME-WINDOW-UTC-OFFBYONE] `new Date('YYYY-MM-DD')` (les bornes CUSTOM saisies par
+    // l'utilisateur) ancre à UTC minuit — sous un fuseau négatif, le jour LOCAL correspondant est la
+    // veille (mesuré, `TZ=America/Toronto` : « 2026-08-01 » redevient le 31 juillet une fois relu en
+    // heure locale). Les trois autres vues (Mois/Trimestre/Année) construisent déjà leurs bornes en
+    // heure LOCALE (`new Date(année, mois, jour)`) ; celle-ci doit faire pareil pour rester cohérente.
+    const parseLocalDateStr = (s: string): Date => {
+        const [y, m, d] = s.split('-').map(Number);
+        return new Date(y, m - 1, d);
+    };
+
     const getDateRange = () => {
         // Phase D'.6 — applique le periodOffset (négatif = passé, positif = futur)
         if (timeView === 'MONTH') {
@@ -135,9 +145,35 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             const end = new Date(now.getFullYear() + periodOffset, 11, 31, 23, 59, 59);
             return { start, end };
         } else {
-            // Custom : pas de périodes adjacentes, utilise les bornes user.
-            return { start: new Date(customStart), end: new Date(customEnd) };
+            // Custom : pas de périodes adjacentes, utilise les bornes user (heure LOCALE, cf. note ci-dessus).
+            return { start: parseLocalDateStr(customStart), end: parseLocalDateStr(customEnd) };
         }
+    };
+
+    // [BUDGET-INCOME-WINDOW-UTC-OFFBYONE] Date locale → chaîne `YYYY-MM-DD` SANS passer par
+    // `.toISOString()` : cette dernière convertit en UTC d'abord, donc une fin de journée locale
+    // (23:59:59) bascule sur le jour CALENDRIER suivant sous un fuseau négatif (ex. Toronto,
+    // UTC-4 : 31 août 23:59:59 local → 1er septembre 03:59:59 UTC → `endStr` = « 2026-09-01 »,
+    // un jour de TROP). Mesuré, `TZ=America/Toronto` : la comparaison par CHAÎNE reste correcte
+    // uniquement si la chaîne elle-même reflète le jour LOCAL, jamais le jour UTC.
+    const toLocalDateStr = (d: Date): string => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
+
+    // Bornes de période en CHAÎNES `YYYY-MM-DD`, comparables directement à `t.date` (même format).
+    // Ne JAMAIS comparer `t.date` en le reconvertissant en `Date` (`new Date(t.date)` ancre à UTC
+    // minuit) contre `start`/`end` (ancrés en heure LOCALE) — sous un fuseau négatif, ça exclut le
+    // 1er jour de la période (mesuré, `TZ=America/Toronto` : le 1er du mois disparaissait du revenu
+    // réel avant ce correctif, `incomeBreakdown` comparait encore des `Date`).
+    const getDateRangeStrings = () => {
+        const { start, end } = getDateRange();
+        return {
+            startStr: toLocalDateStr(start),
+            endStr: toLocalDateStr(end),
+        };
     };
 
     const getMultiplier = () => {
@@ -188,13 +224,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     }, [config.users]);
 
     const { actualsMap, totalSpent, trendMap, monthlyDataMap, orphanCategories, itemsWithoutTransactions, actualByOwner } = useMemo(() => {
-        const { start, end } = getDateRange();
-        // Ensure end date includes the full day
-        const endInclusive = new Date(end);
-        endInclusive.setHours(23, 59, 59, 999);
-
-        const startStr = start.toISOString().split('T')[0];
-        const endStr = endInclusive.toISOString().split('T')[0];
+        // [BUDGET-INCOME-WINDOW-UTC-OFFBYONE] `getDateRangeStrings()` (jour LOCAL, jamais un
+        // aller-retour UTC) — l'ancien `.toISOString().split('T')[0]` ici même décalait `endStr`
+        // d'un jour sous un fuseau négatif (mesuré, `TZ=America/Toronto`).
+        const { startStr, endStr } = getDateRangeStrings();
 
         const filtered = transactions.filter(t => {
             return t.date >= startStr && t.date <= endStr && t.amount < 0 && !t.isTransfer && !t.isDuplicate;
@@ -348,14 +381,15 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // « le revenu doit correspondre à ma paie réelle / mes fiches, pas au chiffre saisi »). period-aware
     // (periodOffset) comme les dépenses.
     const incomeBreakdown = useMemo(() => {
-        const { start, end } = getDateRange();
-        const inRange = transactions.filter(t => {
-            const d = new Date(t.date);
-            return d >= start && d <= end;
-        });
+        // [BUDGET-INCOME-WINDOW-UTC-OFFBYONE] Comparaison par CHAÎNE `YYYY-MM-DD`, comme le filtre
+        // des dépenses — jamais `new Date(t.date) >= start` : `new Date('YYYY-MM-DD')` ancre à UTC
+        // minuit, `start`/`end` sont en heure LOCALE. Sous un fuseau négatif, ça excluait le 1er
+        // jour de la période (mesuré, `TZ=America/Toronto`).
+        const { startStr, endStr } = getDateRangeStrings();
+        const inRange = transactions.filter(t => t.date >= startStr && t.date <= endStr);
         return computeIncomeBreakdown(inRange);
-    // getDateRange est une fonction locale recréée à chaque render ; ses vraies deps
-    // (timeView, customStart, customEnd, periodOffset) sont listées directement.
+    // getDateRangeStrings (→ getDateRange) est une fonction locale recréée à chaque render ; ses
+    // vraies deps (timeView, customStart, customEnd, periodOffset) sont listées directement.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [transactions, timeView, customStart, customEnd, periodOffset]);
     const totalActualIncomeDisplay = incomeBreakdown.total;

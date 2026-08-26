@@ -10,6 +10,22 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-26 — Le revenu du 1er du mois disparaissait sous un fuseau négatif
+
+- [x] **`[BUDGET-INCOME-WINDOW-UTC-OFFBYONE]`** (XS, découvert en diagnostiquant `BUDGET-PREVU-BUG`)
+  — PR #751, gate vert. `incomeBreakdown` (`components/Budget.tsx`) comparait `new Date(t.date)`
+  (ancré UTC minuit) à `start`/`end` (ancrés en heure LOCALE) — sous un fuseau négatif
+  (`TZ=America/Toronto`, mesuré), ça excluait le 1er jour de la période. Invisible en CI (conteneur
+  en UTC, leçon `UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC`).
+  Fix : `getDateRangeStrings()` (nouveau helper, comparaison par CHAÎNE `YYYY-MM-DD` comme le filtre
+  des dépenses) + `toLocalDateStr()` (jour LOCAL, jamais un aller-retour `.toISOString()` qui décale
+  la fin de période d'un jour sous un fuseau négatif — bug JUMEAU trouvé en écrivant le fix, déjà
+  présent dans le filtre des dépenses). Le bloc `CUSTOM` de `getDateRange()` avait le MÊME défaut à
+  la source (`new Date(customStart)` ancré UTC) — corrigé avec `parseLocalDateStr()`, sans quoi
+  `toLocalDateStr` aurait décalé la plage personnalisée d'un jour dans l'autre sens.
+  2 tests neufs sous `TZ=America/Toronto`, 2 perturbations confirmées (l'une sur le fix principal,
+  l'autre en isolant SEULEMENT le correctif `CUSTOM` — chacune rougit sur son propre défaut).
+
 ## 2026-08-26 — Un remboursement DOUBLAIT l'erreur au lieu de la corriger
 
 - [x] **`[BUDGET-CATEGORY-INCOME-SIGN]`** (M) — PR #749, gate vert.

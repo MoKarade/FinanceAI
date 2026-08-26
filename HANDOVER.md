@@ -24,7 +24,25 @@
 > `mcp/ingest/applyDocument.ts` — JSDoc `[DEBT-MCP-PARITE]` sans `*/` de fermeture, avalait le
 > JSDoc suivant (`inferDebtCategory`) ; fermeture ajoutée. 3 tests neufs, chaque correctif
 > comportemental re-discriminé par perturbation ciblée (revert d'une ligne → rouge → restauré →
-> vert). Gate vert (4 859 tests). PR #753.
+> vert).
+> ⚠️ **Panel `/review-all` (3 agents), même PR** : le debounce du point (3) était lui-même CASSÉ,
+> trouvé indépendamment par `code-reviewer` ET `silent-failure-hunter` — **CRITIQUE** : les refs
+> étaient clées par `index` POSITIONNEL (recalculé à chaque render), pas par `item.id` stable ;
+> supprimer un poste pendant qu'un AUTRE poste (qui hérite de son index) est en renommage pouvait
+> corrompre la catégorie du mauvais poste, ou laisser une catégorie fantôme après suppression.
+> Reclé sur `item.id` ; la suppression annule + flushe tout renommage en vol pour le poste
+> supprimé et réassigne au nom RÉELLEMENT présent dans les transactions, jamais à la frappe
+> abandonnée. **2 ÉLEVÉ** : le nettoyage au démontage annulait le timer sans le FLUSHER (un
+> renommage tapé juste avant de changer d'onglet se perdait en silence) ; et le timer capturait
+> `transactions` par fermeture au moment de la planification (une écriture concurrente — sync/
+> import — pendant les 500 ms aurait été écrasée au flush) — les deux corrigés (flush au
+> démontage, `transactionsRef` toujours à jour). **1 MOYEN** : le libellé de période envoyé au
+> chat IA pour une plage Custom inversée gardait les dates BRUTES (ordre saisi), incohérent avec
+> les montants calculés sur la plage permutée juste à côté ; aligné. 4 tests neufs de plus. 1
+> finding hors-scope (compteurs de rejet MCP non structurés, invisibles à la sync automatisée)
+> routé au `BACKLOG.md`. Leçon `docs/CONVENTIONS.md` : un état différé (timer/ref/cache) associé à
+> un élément d'une liste rendue doit être clé par un id STABLE, jamais par sa position. Gate vert
+> (4 863 tests). PR #753.
 >
 > ## 🟢 Session 2026-08-26 — `[BUDGET-TRANSACTIONS-SYNC-AUDIT]` : audit sync Budget↔Transactions, 4 défauts corrigés
 > Ticket ouvert (« Marc n'est pas sûr que Budget s'adapte correctement à Transactions »), sans

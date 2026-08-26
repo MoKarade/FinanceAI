@@ -12,7 +12,7 @@
 
 ## 2026-08-26 — 4 bugs préexistants routés par le panel de PR #752, corrigés séparément
 
-- [x] **`[BUDGET-DUPCOUNT-MESSAGE-FAUX]`** (XS) — PR #753, gate vert (4 859 tests). Le résumé de
+- [x] **`[BUDGET-DUPCOUNT-MESSAGE-FAUX]`** (XS) — PR #753, gate vert (4 863 tests). Le résumé de
   `applyBankStatement` (`mcp/ingest/applyDocument.ts`) annonçait toujours littéralement « 0
   doublon(s) ignoré(s) » même quand `dupCount === 0`, au lieu de l'omettre. Construction du résumé
   réécrite en phrases nues jointes par `, ` (plus de virgule orpheline possible).
@@ -20,15 +20,29 @@
   (`components/Budget.tsx`) ne gérait pas une plage inversée (fin saisie avant début) :
   `civilDaysBetween` fait `Math.abs` (« prévu » positif) mais le filtre par chaîne ne matchait
   jamais rien (« réel » toujours 0 $). Les deux bornes sont maintenant permutées silencieusement.
+  ⚠️ Finding panel (MOYEN) : le libellé de période envoyé au chat IA gardait les dates BRUTES
+  (ordre saisi) pour une plage inversée, incohérent avec les montants sur la plage permutée —
+  aligné sur `getDateRange()`.
 - [x] **`[BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE]`** (S) — PR #753. Renommer un poste de budget
   écrivait à chaque frappe (`onChange`) : jusqu'à 5 réécritures complètes de `transactions`
   (persist + push Drive) et 5 toasts pour « Resto » → « Restaurant ». Propagation débouncée
   (500 ms), le nom de départ étant figé dès la 1ʳᵉ frappe de la session (pas la valeur
   intermédiaire de la frappe précédente).
+  ⚠️ **Ce débounce était lui-même cassé**, trouvé par le panel `/review-all` — **CRITIQUE**
+  (code-reviewer + silent-failure-hunter, indépendamment) : les refs de debounce étaient clées par
+  `index` POSITIONNEL (recalculé à chaque render), pas par `item.id` stable — supprimer un poste
+  pendant qu'un AUTRE poste (qui hérite de son index) est en renommage pouvait corrompre la
+  catégorie du mauvais poste. Reclé sur `item.id` ; la suppression annule/flushe tout renommage en
+  vol pour le poste supprimé. **2 ÉLEVÉ** : nettoyage au démontage qui annulait sans flusher (perte
+  silencieuse d'un renommage tapé juste avant de changer d'onglet) ; timer capturant `transactions`
+  par fermeture (écriture concurrente écrasée au flush) — corrigés (flush au démontage,
+  `transactionsRef` toujours à jour). 4 tests neufs de plus.
 - [x] **`[MCP-JSDOC-APPLYDEBT-NON-FERME]`** (XS) — PR #753. JSDoc `[DEBT-MCP-PARITE]`
   (`mcp/ingest/applyDocument.ts`) sans `*/` de fermeture, avalait le JSDoc suivant
   (`inferDebtCategory`). Fermeture ajoutée.
-  3 tests neufs, chaque correctif comportemental re-discriminé par perturbation ciblée.
+  7 tests neufs au total (3 + 4 du panel), chaque correctif comportemental re-discriminé par
+  perturbation ciblée. 1 finding hors-scope (compteurs de rejet MCP non structurés) routé au
+  `BACKLOG.md` (`[MCP-REJECTIONS-NON-STRUCTUREES]`).
 
 ## 2026-08-26 — Audit sync Budget ↔ Transactions : 4 défauts trouvés et corrigés
 

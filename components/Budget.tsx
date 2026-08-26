@@ -95,15 +95,46 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const [showAiModal, setShowAiModal] = useState(false);
 
     // [BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE] La propagation du renommage aux transactions (plus bas,
-    // `handleUpdateItem`) est DÉBOUNCÉE : `renameOriginalNameRef` retient le nom encore ACTIF dans
-    // `transactions` (celui d'AVANT la première frappe de la session d'édition en cours), pour que
-    // le renommage final (déclenché après une pause de frappe) parte du bon nom même si l'utilisateur
-    // a tapé plusieurs caractères — sans elle, chaque frappe déclencherait sa propre réécriture
-    // complète du tableau de transactions + un toast (jusqu'à 5 pour « Resto » → « Restaurant »).
-    const renameTimersRef = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
-    const renameOriginalNameRef = useRef<Record<number, string>>({});
+    // `handleUpdateItem`) est DÉBOUNCÉE. Deux findings du panel (code-reviewer + silent-failure-hunter,
+    // même mécanisme trouvé indépendamment) ont montré que le premier jet était CASSÉ :
+    // (1) les refs étaient clées par `index` POSITIONNEL (recalculé à chaque render dans
+    //     `BudgetGroupTable`) — supprimer un poste au-dessus décale les index des suivants, faisant
+    //     hériter un poste totalement différent d'une session de renommage en vol. Clées par `item.id`
+    //     (stable), jamais réutilisé par un autre poste.
+    // (2) le nettoyage au démontage ANNULAIT le timer sans le FLUSHER — un renommage tapé juste avant
+    //     de changer d'onglet se perdait en silence (désync Budget/Transactions découverte seulement
+    //     en revenant). `flushRename` est appelée aussi bien par le timer que par le cleanup.
+    // (3) le timer capturait `transactions` (prop) par fermeture au moment de la PLANIFICATION —
+    //     une écriture concurrente sur `transactions` pendant la fenêtre de 500 ms (sync Fintable,
+    //     import MCP) aurait été écrasée au déclenchement. `transactionsRef` tient toujours la
+    //     dernière valeur (mise à jour à CHAQUE rendu), lue au moment du FLUSH, jamais figée.
+    const renameTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+    const renamePendingRef = useRef<Record<string, { fromName: string; toValue: string }>>({});
+    const transactionsRef = useRef(transactions);
+    transactionsRef.current = transactions;
+
+    const flushRename = (id: string) => {
+        const pending = renamePendingRef.current[id];
+        if (!pending) return;
+        clearTimeout(renameTimersRef.current[id]);
+        delete renameTimersRef.current[id];
+        delete renamePendingRef.current[id];
+        const { fromName, toValue } = pending;
+        const current = transactionsRef.current;
+        const updatedTransactions = current.map(t =>
+            t.category === fromName ? { ...t, category: toValue } : t
+        );
+        const renamedCount = updatedTransactions.filter((t, i) => t.category !== current[i].category).length;
+        if (renamedCount > 0) {
+            setAppState({ transactions: updatedTransactions });
+            showToast(`Catégorie renommée. ${renamedCount} transaction(s) mises à jour.`, 'success');
+        }
+    };
+    // [BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE] FLUSH (pas seulement annuler) au démontage : `renamePendingRef`
+    // est lu au moment du cleanup, jamais figé (deps `[]` mais la fonction relit la ref à jour).
     useEffect(() => () => {
-        Object.values(renameTimersRef.current).forEach(clearTimeout);
+        Object.keys(renamePendingRef.current).forEach(flushRename);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // [BUDGET-TX-CATEGORIES] Le Budget reflète SEULEMENT ET EXACTEMENT les catégories présentes
@@ -587,28 +618,18 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
         // Phase D'.1 — synchro absolue : si rename de catégorie, propage aux
         // transactions qui utilisent l'ancien nom.
-        // [BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE] Débouncé : `oldItem.name` à CETTE frappe est déjà la
-        // valeur de la frappe PRÉCÉDENTE (le champ est contrôlé, `budgetItems` est mis à jour ci-dessus
-        // à chaque frappe) — `renameOriginalNameRef` fige donc le nom encore présent dans
-        // `transactions` dès la 1ʳᵉ frappe de la session, et la réécriture ne part QUE de ce nom-là,
-        // vers la valeur la plus RÉCENTE au moment où le timer se déclenche.
-        if (field === 'name' && typeof value === 'string' && oldItem.name && oldItem.name !== value) {
-            if (renameOriginalNameRef.current[index] === undefined) {
-                renameOriginalNameRef.current[index] = oldItem.name;
-            }
-            const fromName = renameOriginalNameRef.current[index];
-            clearTimeout(renameTimersRef.current[index]);
-            renameTimersRef.current[index] = setTimeout(() => {
-                delete renameOriginalNameRef.current[index];
-                const updatedTransactions = transactions.map(t =>
-                    t.category === fromName ? { ...t, category: value } : t
-                );
-                const renamedCount = updatedTransactions.filter((t, i) => t.category !== transactions[i].category).length;
-                if (renamedCount > 0) {
-                    setAppState({ transactions: updatedTransactions });
-                    showToast(`Catégorie renommée. ${renamedCount} transaction(s) mises à jour.`, 'success');
-                }
-            }, 500);
+        // [BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE] Débouncé, clé = `item.id` (STABLE, jamais un index
+        // positionnel — cf. commentaire plus haut). `oldItem.name` à CETTE frappe est déjà la valeur
+        // de la frappe PRÉCÉDENTE (le champ est contrôlé, `budgetItems` mis à jour ci-dessus à chaque
+        // frappe) : `renamePendingRef` fige le nom encore présent dans `transactions` dès la 1ʳᵉ
+        // frappe de la session, et la réécriture ne part QUE de ce nom-là, vers la valeur la plus
+        // RÉCENTE au moment du flush (timer ou démontage).
+        if (field === 'name' && typeof value === 'string' && oldItem.name && oldItem.name !== value && oldItem.id) {
+            const id = oldItem.id;
+            const fromName = renamePendingRef.current[id]?.fromName ?? oldItem.name;
+            renamePendingRef.current[id] = { fromName, toValue: value };
+            clearTimeout(renameTimersRef.current[id]);
+            renameTimersRef.current[id] = setTimeout(() => flushRename(id), 500);
         }
     };
 
@@ -634,13 +655,27 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         if (confirmDeleteId) {
             const itemToDelete = budgetItems.find(i => i.id === confirmDeleteId);
             setBudgetItems(budgetItems.filter(i => i.id !== confirmDeleteId));
+            // [BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE] finding CRITIQUE (code-reviewer +
+            // silent-failure-hunter) : si un renommage débouncé est encore en vol pour ce poste,
+            // `itemToDelete.name` est déjà la valeur TAPÉE — `transactions`, elle, porte encore le
+            // nom ORIGINAL (`renamePendingRef`, pas encore flushé). Chercher par le nom tapé
+            // manquerait toutes les transactions réelles (0 réassignées, catégorie fantôme jamais
+            // nettoyée) ET laisserait le timer se déclencher plus tard sur un poste qui n'existe
+            // plus. Annuler le timer et réassigner depuis le VRAI nom en cours.
+            const pending = confirmDeleteId ? renamePendingRef.current[confirmDeleteId] : undefined;
+            if (confirmDeleteId) {
+                clearTimeout(renameTimersRef.current[confirmDeleteId]);
+                delete renameTimersRef.current[confirmDeleteId];
+                delete renamePendingRef.current[confirmDeleteId];
+            }
+            const nameInTransactions = pending?.fromName ?? itemToDelete?.name;
             // Phase D'.1 — réassigne les transactions affectées à "Uncategorized"
             // au lieu de les laisser pointer vers une catégorie fantôme.
-            if (itemToDelete?.name) {
-                const affectedCount = transactions.filter(t => t.category === itemToDelete.name).length;
+            if (nameInTransactions) {
+                const affectedCount = transactions.filter(t => t.category === nameInTransactions).length;
                 if (affectedCount > 0) {
                     const updatedTransactions = transactions.map(t =>
-                        t.category === itemToDelete.name ? { ...t, category: 'Uncategorized' } : t
+                        t.category === nameInTransactions ? { ...t, category: 'Uncategorized' } : t
                     );
                     setAppState({ transactions: updatedTransactions });
                     showToast(`Catégorie supprimée. ${affectedCount} transaction(s) déplacée(s) vers "Uncategorized".`, 'info');
@@ -726,14 +761,18 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // le hook (à la source). [Vague 1.5, demande Marc] TOUTES les cartes de la page + la PROVENANCE
     // de chaque chiffre (le chat peut expliquer « d'où ça vient », pas seulement le citer).
     const chatViewDetail = useMemo<BudgetViewDetail>(() => {
-        const { start } = getDateRange();
+        const { start, end } = getDateRange();
+        // [BUDGET-CUSTOM-PLAGE-INVERSEE] finding panel (MOYEN) : `getDateRange()` permute déjà les
+        // bornes CUSTOM inversées pour tous les calculs $ de cet objet — le libellé doit décrire la
+        // MÊME plage, pas les chaînes brutes `customStart`/`customEnd` (qui resteraient dans l'ordre
+        // saisi par erreur), sinon le chat recevrait un texte contradictoire avec les chiffres à côté.
         const periodLabel = timeView === 'MONTH'
             ? new Intl.DateTimeFormat('fr-CA', { month: 'long', year: 'numeric' }).format(start)
             : timeView === 'QUARTER'
                 ? `T${Math.floor(start.getMonth() / 3) + 1} ${start.getFullYear()}`
                 : timeView === 'YEAR'
                     ? String(start.getFullYear())
-                    : `du ${customStart} au ${customEnd}`;
+                    : `du ${toLocalDateStr(start)} au ${toLocalDateStr(end)}`;
         const timeViewLabel = timeView === 'MONTH' ? 'mois'
             : timeView === 'QUARTER' ? 'trimestre'
                 : timeView === 'YEAR' ? 'année' : 'plage personnalisée';

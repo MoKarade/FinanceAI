@@ -662,3 +662,64 @@ qu'un surplus existe, et exposition dans le plan d'action. Le ticket complet est
 
 </details>
 
+## Anomalie GitHub Actions — `ci.yml` ne se déclenche pas pour une branche/PR (2026-08-26)
+
+**Ce que j'ai mesuré** : deux branches successives (`claude/lot-25`, PR #745 fermée, puis
+`claude/lot-25-retry`, PR #748) portant le même contenu (couverture de test divorce/immobilier,
+`docs/CONVENTIONS.md`) n'ont déclenché **aucun run** de `ci.yml` ni `lighthouse.yml` — les deux
+checks requis par la protection de branche sur `main` — malgré plusieurs pushs (dont un rebase +
+force-push qui change le SHA de tête). `CodeQL` (géré par GitHub, hors `.github/workflows/`) tourne
+normalement sur ces mêmes branches. Toutes les autres branches de lot poussées dans la même
+fenêtre (`claude/lot-24`, `-26`, `-27`) ont déclenché `ci.yml` sans problème, souvent en moins d'une
+minute.
+
+**Pourquoi je ne peux pas creuser plus loin seul** : je n'ai pas de visibilité sur les logs de
+livraison de webhooks GitHub (Settings → Webhooks → Recent Deliveries) ni sur les paramètres
+Actions du dépôt/compte (limites de concurrence, règles de désactivation ciblée) depuis cet
+environnement. Le workflow `ci.yml` est listé `state: active`, sans filtre `paths`/`branches`
+inhabituel qui expliquerait une exclusion ciblée.
+
+**Ce qui serait utile de vérifier côté GitHub (toi, ou un accès admin que je n'ai pas)** :
+Settings → Actions → General (limites de concurrence / exécutions en attente), et Settings →
+Webhooks → Recent Deliveries pour voir si l'événement `pull_request` a seulement échoué à être
+livré pour ces deux branches précises, ou n'a jamais été émis.
+
+**État actuel** : PR #748 reste ouverte, auto-merge (squash) armé, gate local vert — elle mergera
+dès que `ci.yml` finit par se déclencher et passer. Je la garde sous surveillance plutôt que de
+continuer à recréer des PR pour « forcer » un run.
+
+## `[BUDGET-CATEGORY-INCOME-SIGN]` — corrigé en partie, une question de PÉRIMÈTRE reste à trancher (2026-08-26)
+
+**Ce qui était cassé, et corrigé** : `computeBudgetParity`/`computeActualByOwner`
+(`utils/budget.ts`) additionnaient un crédit (« Remboursement ») au lieu de le DÉDUIRE du poste
+(`Math.abs` au lieu de `spendAmountOf`) — un remboursement de 250 $ sur une sortie de 400 $
+affichait **650 $** au lieu de **150 $** de « versé ce mois » (Planning › objectifs liés à un poste
+Remboursement). Mesuré, testé (perturbation confirmée : le test rougit sur le code d'avant), corrigé.
+
+**Ce que je n'ai PAS touché, et pourquoi c'est ton choix** : `components/Budget.tsx` (tableau
+principal des postes, répartition par conjoint, tendance 6 mois) filtre les transactions en amont
+avec `t.amount < 0` — un crédit « Remboursement » y est donc totalement **invisible** aujourd'hui
+(ni ajouté, ni déduit), alors que `monthlyActualsMap` (versé ce mois des objectifs) l'inclut et le
+déduit désormais correctement. Les deux écrans ne montrent donc pas la même chose pour un poste
+« Remboursement » : le tableau principal ignore le crédit, l'objectif le déduit.
+
+**La question** : veux-tu que le tableau principal (et la répartition par conjoint, et le graphique
+de tendance) traite AUSSI les crédits « Remboursement » comme une déduction — pour que les deux
+écrans concordent — ou préfères-tu garder le tableau principal « brut » (sorties seulement) et
+réserver la déduction aux objectifs ? Le premier choix changerait pour la première fois les
+montants affichés dans ton tableau Budget principal pour tout poste où des Interac de remboursement
+sont catégorisés « Remboursement » — je ne veux pas décider seul de changer ce que tu vois là.
+
+<details>
+<summary>Détail technique</summary>
+
+- `components/Budget.tsx:200` (`filtered`) et `:205` (`allSpend`) : `t.amount < 0 && !t.isTransfer
+  && !t.isDuplicate` → remplacer par `isSpend(t)` pour inclure/déduire les crédits, comme
+  `monthlyActualsMap` le fait déjà.
+- `components/Budget.tsx:232` (tendance 6 mois) : même filtre `t.amount >= 0` → skip, même
+  changement à appliquer si tu choisis la cohérence.
+- Aucun changement nécessaire à `computeBudgetParity`/`computeActualByOwner` eux-mêmes (déjà
+  corrigés, signature inchangée) — seul le filtre EN AMONT dans `Budget.tsx` déciderait.
+
+</details>
+

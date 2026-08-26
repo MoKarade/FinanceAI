@@ -24,9 +24,6 @@
 
 - [ ] **`[BUDGET-TRANSACTIONS-SYNC-AUDIT]`** (M) — Marc n'est pas sûr que Budget s'adapte
   correctement à Transactions : valider (ou corriger) cette synchronisation.
-- [ ] **`[BUDGET-CATEGORY-INCOME-SIGN]`** (M) — valider que, quand une catégorie de DÉPENSE a des
-  montants POSITIFS dans Transactions (une entrée d'argent — ex. remboursement), Budget le traite
-  bien comme telle plutôt que comme une dépense.
 - [ ] **`[UTIL-GOLDENSPLIT-ORPHELIN]`** (XS, découvert en livrant `BUDGET-REMOVE-AMELIORER`) —
   `computeGoldenSplit`, `GOLDEN_IDEAL` et le type `GoldenSplit` (`utils/budget.ts`) n'ont plus AUCUN
   consommateur de production depuis le retrait de la carte : leur seul appelant est

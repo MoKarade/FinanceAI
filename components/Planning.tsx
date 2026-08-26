@@ -436,7 +436,15 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                                                 <span className="text-tiny text-warning-400 whitespace-nowrap" title={`La catégorie « ${linked} » n'existe plus — relie ou délie l'objectif`}>⚠ Lien invalide</span>
                                             )}
                                             {paidThisMonth != null && (
-                                                <span className="text-tiny text-ink-300 whitespace-nowrap">Versé ce mois&nbsp;: <PrivateAmount as="span" className="font-bold text-info-400">{formatCAD(paidThisMonth)}</PrivateAmount></span>
+                                                // [BUDGET-CATEGORY-INCOME-SIGN] Un poste lié à une catégorie à CRÉDIT
+                                                // (ex. « Remboursement ») peut avoir un net NÉGATIF le mois où les
+                                                // crédits dépassent les sorties — le chiffre est juste, mais « Versé
+                                                // ce mois : −150 $ » lirait comme un bug. Clampé à 0 pour l'affichage
+                                                // (jamais pour le calcul), avec une note qui dit pourquoi.
+                                                <span className="text-tiny text-ink-300 whitespace-nowrap" title={paidThisMonth < 0 ? 'Les remboursements dépassent les dépenses ce mois-ci sur ce poste.' : undefined}>
+                                                    Versé ce mois&nbsp;: <PrivateAmount as="span" className="font-bold text-info-400">{formatCAD(Math.max(0, paidThisMonth))}</PrivateAmount>
+                                                    {paidThisMonth < 0 && <span className="text-ink-500"> (remboursements &gt; dépenses)</span>}
+                                                </span>
                                             )}
                                         </div>
                                         {/* [GOAL-DEADLINE-UI] Échéance VISIBLE et éditable. */}

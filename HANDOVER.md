@@ -4,6 +4,29 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟠 Session 2026-08-26 — `[BUDGET-CATEGORY-INCOME-SIGN]` : un remboursement DOUBLAIT l'erreur
+> Ticket d'audit ("valider que Budget traite bien un crédit sur une catégorie de dépense comme une
+> entrée d'argent") — mesuré avant d'écrire, et le bug était réel : `computeBudgetParity`/
+> `computeActualByOwner` (`utils/budget.ts`) agrégeaient une ligne à crédit (« Remboursement »,
+> `CREDIT_BACK_CATEGORIES`) avec `Math.abs` au lieu de `spendAmountOf` (déjà correct ailleurs dans
+> `spendRules.ts`) — un remboursement de 250 $ sur une sortie de 400 $ affichait **650 $** de
+> « versé ce mois » (objectifs Planning) au lieu de **150 $** : le crédit était ADDITIONNÉ, jamais
+> DÉDUIT. Erreur = 2× le crédit, pas zéro.
+> Fix aux deux fonctions. **Sans effet sur `Budget.tsx`** (tableau principal, répartition par
+> conjoint, tendance 6 mois) : ces trois pré-filtrent `amount < 0` en amont, donc un crédit
+> « Remboursement » y reste invisible (ni ajouté ni déduit) — une incohérence avec
+> `monthlyActualsMap` qui, elle, l'inclut et le déduit maintenant correctement. **Routé à Marc**
+> (`docs/A_FAIRE_MOI.md`) plutôt que tranché seul : uniformiser changerait pour la PREMIÈRE fois les
+> montants affichés dans le tableau principal.
+> 1 test neuf, perturbation confirmée (rouge à 650 $ sur le code d'avant).
+> ⚠️ Panel `/review-all` a trouvé un effet de bord réel du fix (MOYEN, `code-reviewer`) : un poste
+> à crédit peut désormais avoir un net NÉGATIF (crédits > sorties du mois), et `Planning.tsx`
+> affichait `formatCAD` du net brut → « Versé ce mois : −150 $ », lisible comme un bug. Corrigé :
+> clampé à 0 $ à l'AFFICHAGE seulement (jamais le calcul), avec une note « remboursements >
+> dépenses ». 2 tests neufs. JSDoc de `OrphanCategory`/`ActualByOwner`/`computeBudgetParity`
+> corrigée (`financial-integrity`, FAIBLE) : ces champs sont des NETS signés, plus des valeurs
+> absolues depuis ce lot.
+>
 > ## 🔴 Session 2026-08-26 (suite 178) — `[FINTABLE-SYNC-XTAB-MANUEL]` : le mutex cross-onglet de lot 16 ne mutex-ait rien, en vrai navigateur
 > Parti d'une extension de routine (génériciser `withCrossTabLock` pour que le bouton manuel
 > partage le verrou de la passe auto) — et tombé sur un bug bien plus large, confirmé contre la

@@ -9,7 +9,7 @@
 // transactions sans poste, postes sans dépense).
 
 import type { BudgetCategory, Transaction } from '../types';
-import { isSpend } from './spendRules';
+import { isSpend, spendAmountOf } from './spendRules';
 
 /**
  * Rapproche une catégorie de transaction d'un poste de budget. Règle (préservée
@@ -69,7 +69,11 @@ export function matchCategoryToName(
 export interface OrphanCategory {
     /** La catégorie de transaction qui ne matche aucun poste. */
     category: string;
-    /** Total dépensé (valeur absolue) sur cette catégorie dans la fenêtre. */
+    /**
+     * Total NET dépensé sur cette catégorie dans la fenêtre (`spendAmountOf` : sorties positives,
+     * crédits d'une catégorie à crédit en déduction — jamais une valeur absolue depuis
+     * `[BUDGET-CATEGORY-INCOME-SIGN]`). Peut être négatif si les crédits dépassent les sorties.
+     */
     total: number;
 }
 
@@ -94,10 +98,14 @@ export const isSavingsNature = (nature: string): boolean =>
     (nature ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase() === 'epargne';
 
 /**
- * Calcule la parité. `spendTransactions` = dépenses de la FENÊTRE (montant < 0, hors
- * virements/doublons) → réels + orphelins. `allSpendTransactions` = dépenses sur TOUT
- * l'historique → « postes sans dépense » (un poste annuel rapproché une fois n'est PAS
- * sans dépense). Par défaut `allSpendTransactions = spendTransactions`.
+ * Calcule la parité. `spendTransactions` = dépenses de la FENÊTRE (typiquement montant < 0, hors
+ * virements/doublons — mais un appelant peut inclure des lignes à CRÉDIT via `isSpend`, ex.
+ * `monthlyActualsMap` : voir `spendAmountOf`) → réels + orphelins. `allSpendTransactions` =
+ * dépenses sur TOUT l'historique → « postes sans dépense » (un poste annuel rapproché une fois
+ * n'est PAS sans dépense). Par défaut `allSpendTransactions = spendTransactions`.
+ * ⚠️ Agrégation par `spendAmountOf` (net signé), jamais `Math.abs` : un crédit d'une catégorie à
+ * crédit (`isCreditBack`) DÉDUIT du poste plutôt que de s'y additionner — `actualsMap`/`totalSpent`
+ * peuvent donc être négatifs si les crédits dépassent les sorties (`[BUDGET-CATEGORY-INCOME-SIGN]`).
  */
 export function computeBudgetParity(
     spendTransactions: readonly Transaction[],
@@ -109,7 +117,13 @@ export function computeBudgetParity(
     let totalSpent = 0;
 
     for (const t of spendTransactions) {
-        const amount = Math.abs(t.amount);
+        // [BUDGET-CATEGORY-INCOME-SIGN] `spendAmountOf` (= `-t.amount`), jamais `Math.abs` : pour
+        // une ligne à CRÉDIT (`isCreditBack`, ex. « Remboursement »), `Math.abs` additionnait le
+        // crédit au lieu de le DÉDUIRE — un remboursement de 250 $ DOUBLAIT l'erreur au lieu de la
+        // réduire. Sans effet sur un appelant qui pré-filtre déjà `amount < 0` (spendAmountOf et
+        // Math.abs sont identiques pour un montant négatif) ; corrige `monthlyActualsMap`, seul
+        // appelant qui passe des lignes à crédit (via `isSpend`) à ce jour.
+        const amount = spendAmountOf(t);
         totalSpent += amount; // total dépensé = TOUT (rapproché + orphelin), comme avant le refactor
         const match = matchTransactionToCategory(t.category, items);
         if (match) {
@@ -216,17 +230,18 @@ export function resolveTransactionOwner(
 }
 
 export interface ActualByOwner {
-    /** Dépense réelle (valeur absolue) imputée au conjoint 0. */
+    /** Dépense réelle NETTE (`spendAmountOf`, pas une valeur absolue) imputée au conjoint 0. */
     owner0: number;
-    /** Dépense réelle imputée au conjoint 1. */
+    /** Dépense réelle NETTE imputée au conjoint 1. */
     owner1: number;
-    /** Dépense réelle commune / non imputée à un seul conjoint (`Commun` ou orpheline). */
+    /** Dépense réelle NETTE commune / non imputée à un seul conjoint (`Commun` ou orpheline). */
     commun: number;
 }
 
 /**
  * Agrège les dépenses RÉELLES par conjoint sur un lot de transactions de dépense
- * (montant < 0 déjà filtré côté appelant). Pur, testable. Somme en valeur absolue.
+ * (montant < 0 déjà filtré côté appelant — voir note ci-dessous si un futur appelant
+ * inclut des lignes à crédit). Pur, testable.
  */
 export function computeActualByOwner(
     spendTransactions: readonly Transaction[],
@@ -236,7 +251,11 @@ export function computeActualByOwner(
     let owner1 = 0;
     let commun = 0;
     for (const t of spendTransactions) {
-        const amount = Math.abs(t.amount);
+        // [BUDGET-CATEGORY-INCOME-SIGN] Même correctif que `computeBudgetParity` : `spendAmountOf`
+        // plutôt que `Math.abs`, pour ne pas dupliquer le même bug de signe si un futur appelant
+        // passe des lignes à crédit (`isSpend`) au lieu du filtre `amount < 0` actuel. Sans effet
+        // aujourd'hui — le seul appelant (`Budget.tsx`) pré-filtre déjà `amount < 0`.
+        const amount = spendAmountOf(t);
         const owner = resolveTransactionOwner(t, items);
         if (owner === 0) owner0 += amount;
         else if (owner === 1) owner1 += amount;

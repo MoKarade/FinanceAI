@@ -10,6 +10,26 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-26 — Un remboursement DOUBLAIT l'erreur au lieu de la corriger
+
+- [x] **`[BUDGET-CATEGORY-INCOME-SIGN]`** (M) — PR #749, gate vert.
+  Mesuré avant de conclure : `computeBudgetParity`/`computeActualByOwner` (`utils/budget.ts`)
+  agrégeaient une ligne à crédit (« Remboursement », `CREDIT_BACK_CATEGORIES`) avec `Math.abs`
+  au lieu de `spendAmountOf` (déjà correct ailleurs, `utils/spendRules.ts`) — un remboursement de
+  250 $ sur une sortie de 400 $ affichait **650 $** de « versé ce mois » (objectifs Planning) au
+  lieu de **150 $** : le crédit était ADDITIONNÉ, pas DÉDUIT. Erreur = 2× le crédit.
+  Fix : `spendAmountOf(t)` dans les deux fonctions. Sans effet sur `Budget.tsx` (tableau principal,
+  répartition par conjoint, tendance 6 mois) qui pré-filtre `amount < 0` en amont — ces trois-là
+  restent donc dans leur comportement actuel (crédit invisible, ni ajouté ni déduit), une
+  incohérence avec `monthlyActualsMap` routée à Marc (`docs/A_FAIRE_MOI.md`) plutôt que tranchée
+  seule : uniformiser changerait pour la première fois les montants du tableau principal.
+  1 test neuf, perturbation confirmée (rouge à 650 $ sur le code d'avant). Panel `/review-all` :
+  `code-reviewer` (MOYEN) a trouvé qu'un poste à crédit peut désormais afficher un net NÉGATIF
+  (« Versé ce mois : −150 $ ») — clampé à 0 $ à l'affichage dans `Planning.tsx` avec une note
+  explicative, jamais au calcul ; `financial-integrity` (FAIBLE) a confirmé le fix par mesure
+  directe et fait corriger la JSDoc de `OrphanCategory`/`ActualByOwner`/`computeBudgetParity`
+  (NETS signés, plus des valeurs absolues). 2 tests neufs de plus.
+
 ## 2026-08-26 — Le mutex cross-onglet de lot 16 ne mutex-ait rien, en vrai navigateur
 
 - [x] **`[FINTABLE-SYNC-XTAB-MANUEL]`** (M → devenu bien plus large) — PR #747, gate vert.

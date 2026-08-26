@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-26 (un remboursement comptait deux fois contre toi dans Budget)
+
+- Quand une dépense partagée (ex. un Interac envoyé à ta conjointe, catégorisé « Remboursement »)
+  te revenait ensuite en remboursement, le montant remboursé s'AJOUTAIT à ce que Budget affichait
+  comme « versé ce mois » sur l'objectif lié — au lieu de s'en DÉDUIRE. Un remboursement de 250 $
+  sur une sortie de 400 $ affichait 650 $ dépensés au lieu de 150 $ (le vrai coût net).
+- Corrigé : un remboursement réduit maintenant correctement le montant affiché.
+
 ## [unreleased] — 2026-08-26 (le verrou anti-collision entre onglets ne bloquait en réalité personne)
 
 - Le verrou censé empêcher deux onglets de synchroniser ta banque en même temps ne fonctionnait

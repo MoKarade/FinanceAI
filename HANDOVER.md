@@ -15,6 +15,20 @@
 > corrigé avec `parseLocalDateStr()`, sans quoi mon propre fix aurait décalé la plage personnalisée
 > d'un jour dans l'AUTRE sens (mesuré par perturbation ciblée : reverter SEULEMENT ce bloc rougit).
 > 2 tests neufs sous `TZ=America/Toronto`, 2 perturbations confirmées séparément.
+> ⚠️ Panel `/review-all` a trouvé TROIS défauts de plus, même classe, même fichier — tous corrigés
+> dans le même lot : (a) `code-reviewer`, ÉLEVÉ — les valeurs par défaut du champ Custom
+> (`customStart`/`customEnd`) utilisaient encore `.toISOString()`, LE site le plus visible (une
+> valeur affichée directement dans le formulaire) sous un fuseau POSITIF (Europe/Asie/Australie) ;
+> (b) même finding — le libellé des 6 mois de tendance (`trendMap`) avait le même défaut ; (c)
+> `financial-integrity`, MOYEN — `getMultiplier()` en vue Custom comptait un delta de MILLISECONDES
+> entre deux `Date` locales, faussé de ±1 h par un changement d'heure (DST) dans l'intervalle
+> (mesuré : +3,45 % sur un budget cible). `toLocalDateStr`/`parseLocalDateStr`/`civilDaysBetween`
+> déplacés en fonctions MODULE (pas des closures du composant) : ils sont maintenant utilisés dès
+> l'initialisation des `useState`, avant que le corps du composant ait fini de s'exécuter. 2 tests
+> neufs de plus (dont un sous `TZ=Australia/Sydney`, fuseau positif — miroir du premier). Un défaut
+> RÉEL non introduit ici (le stub `parseLocalDateStr` d'un `<input type="date">` vidé donnait
+> silencieusement 0 $ au lieu de planter) a aussi été fermé par un repli sur AUJOURD'HUI plutôt
+> qu'une date invalide propagée.
 >
 > ## 🟡 Session 2026-08-26 — `[BUDGET-PREVU-BUG]` : diagnostiqué, reproduit exactement, routé à Marc
 > Ticket « À diagnostiquer » — livré tel quel, aucun code changé. Reproduit l'exemple de Marc au

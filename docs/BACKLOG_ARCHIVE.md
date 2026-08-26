@@ -25,6 +25,14 @@
   `toLocalDateStr` aurait décalé la plage personnalisée d'un jour dans l'autre sens.
   2 tests neufs sous `TZ=America/Toronto`, 2 perturbations confirmées (l'une sur le fix principal,
   l'autre en isolant SEULEMENT le correctif `CUSTOM` — chacune rougit sur son propre défaut).
+  Panel `/review-all` a trouvé 3 défauts JUMEAUX de plus, corrigés dans le même lot :
+  `code-reviewer` (ÉLEVÉ) — les valeurs par défaut du champ Custom ET le libellé des 6 mois de
+  tendance utilisaient encore `.toISOString()`, cassant sous un fuseau POSITIF (Europe/Asie/
+  Australie) ; `financial-integrity` (MOYEN) — `getMultiplier()` Custom comptait un delta de
+  millisecondes faussé de ±1 h par un changement d'heure (mesuré +3,45 % sur un budget cible),
+  remplacé par un compte de jours CIVILS (`civilDaysBetween`). Les trois helpers déplacés en
+  fonctions MODULE (utilisés dès l'initialisation des `useState`). 2 tests neufs de plus (dont un
+  sous `TZ=Australia/Sydney`, fuseau positif).
 
 ## 2026-08-26 — Un remboursement DOUBLAIT l'erreur au lieu de la corriger
 

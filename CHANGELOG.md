@@ -13,6 +13,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   Budget — un problème de conversion de date interne, sans lien avec la transaction elle-même.
 - Corrigé : les bornes de période et les dates de transaction sont désormais comparées de la même
   façon partout dans Budget.
+- Deux défauts jumeaux corrigés au passage, aussi selon ton fuseau horaire : la plage de dates
+  personnalisée pouvait se pré-remplir avec le mauvais jour à l'ouverture, et un budget cible sur
+  une plage personnalisée traversant un changement d'heure (fin octobre/début novembre) pouvait
+  afficher un chiffre légèrement décalé.
 
 ## [unreleased] — 2026-08-26 (un remboursement comptait deux fois contre toi dans Budget)
 

@@ -7525,3 +7525,29 @@ DEUX correctifs à la fois et pu masquer une compensation accidentelle entre eux
 exactement ce qui s'est produit pour le test `CUSTOM` — le stash global le laissait VERT, parce que
 les deux défauts se seraient annulés dans ce cas précis). Reverter CHAQUE ligne séparément,
 un correctif à la fois, est la seule façon de prouver que chacun discrimine pour de vrai.
+
+**Suite (panel `/review-all`, même lot)** : « auditer TOUTES les conversions similaires dans le
+même fichier » restait incomplet — trois sites de PLUS, même défaut, ont été trouvés en RELISANT le
+diff après coup : (1) les valeurs par défaut de `customStart`/`customEnd` (`useState(new
+Date(...).toISOString().split('T')[0])`) — le site le PLUS visible de tous (une valeur affichée
+directement dans le champ de formulaire à l'ouverture), cassé sous un fuseau **POSITIF** cette
+fois (Europe/Asie/Australie : minuit local RECULE d'un jour en UTC, pas l'inverse) ; (2) le libellé
+des 6 mois de tendance (`d.toISOString().substring(0, 7)`), même défaut, même fichier ; (3) un
+troisième défaut de la MÊME famille mais pas de la même OPÉRATION : `getMultiplier()` en vue
+Custom comptait un delta de MILLISECONDES entre deux `Date` locales pour en déduire un nombre de
+jours — un changement d'heure (DST) dans l'intervalle décale ce delta de ±1 h, que `Math.ceil`
+arrondit en un jour de trop (mesuré +3,45 % sur un budget cible affiché). **Généralisation
+renforcée** : un « site » n'est pas une ligne de code isolée, c'est une CLASSE d'opération
+(« convertir une date locale en clé de calendrier », qu'elle serve à comparer, étiqueter ou
+compter des jours) — grep le PATRON (`.toISOString()` sur une date construite localement, ou un
+delta de `.getTime()` traité comme un nombre de jours), pas seulement le nom du symbole cité par
+le ticket ou le premier correctif. Deux passes de relecture ont chacune trouvé ce que la
+précédente avait manqué : ne pas supposer qu'un audit « exhaustif » l'était.
+
+**Où vivent les helpers, quand ils sont utilisés AVANT que le composant existe** : `toLocalDateStr`
+devait être appelé dans l'INITIALISEUR d'un `useState` (les valeurs par défaut de `customStart`),
+donc AVANT que le reste du corps du composant se soit exécuté — une fonction déclarée plus bas dans
+le même composant (`const toLocalDateStr = ...`) y est en zone morte temporelle (TDZ), une erreur
+qui n'apparaît qu'à l'exécution, jamais au typecheck. Les trois helpers purs ont été remontés au
+niveau MODULE (fonctions `function` hors du composant) — en prime, ils ne sont plus recréés à
+chaque rendu.

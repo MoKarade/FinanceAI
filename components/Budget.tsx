@@ -41,6 +41,47 @@ type TimeView = 'MONTH' | 'QUARTER' | 'YEAR' | 'CUSTOM';
 // main était retiré en quelques clics de navigation (finding panel silent-failure 2026-07-15).
 let _budgetFullSyncDoneThisLoad = false;
 
+// [BUDGET-INCOME-WINDOW-UTC-OFFBYONE] Date locale → chaîne `YYYY-MM-DD` SANS passer par
+// `.toISOString()` : cette dernière convertit en UTC d'abord, donc une fin de journée locale
+// (23:59:59) bascule sur le jour CALENDRIER suivant sous un fuseau négatif (ex. Toronto,
+// UTC-4 : 31 août 23:59:59 local → 1er septembre 03:59:59 UTC → « 2026-09-01 », un jour de
+// TROP), et minuit local peut basculer sur la VEILLE sous un fuseau positif. Fonctions MODULE
+// (pas des closures du composant) : utilisées dès l'initialisation de `useState` (lignes
+// `customStart`/`customEnd`), avant que le corps du composant ait fini de s'exécuter.
+function toLocalDateStr(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+// `new Date('YYYY-MM-DD')` (les bornes CUSTOM saisies par l'utilisateur) ancre à UTC minuit — sous
+// un fuseau négatif, le jour LOCAL correspondant est la veille (mesuré, `TZ=America/Toronto` :
+// « 2026-08-01 » redevient le 31 juillet une fois relu en heure locale). Les vues Mois/Trimestre/
+// Année construisent déjà leurs bornes en heure LOCALE (`new Date(année, mois, jour)`) ; Custom
+// doit faire pareil pour rester cohérent.
+function parseLocalDateStr(s: string): Date {
+    const [y, m, d] = s.split('-').map(Number);
+    // [finding financial-integrity #751] Un `<input type="date">` vidé rend `''` → sans cette
+    // garde, `y`/`m`/`d` valent `NaN` et la date résultante se propage en `toLocalDateStr` sous
+    // la forme « NaN-NaN-NaN », qui rate ensuite TOUTE comparaison de chaîne (`t.date >= ...`)
+    // → 0 $ affiché en silence. Repli sur AUJOURD'HUI (jamais un chiffre financier par défaut,
+    // juste la fenêtre affichée) plutôt qu'une date invalide qui se propage sans avertir.
+    if (!y || !m || !d) return new Date();
+    return new Date(y, m - 1, d);
+}
+
+// Nombre de jours CIVILS entre deux dates LOCALES, via `Date.UTC` des composantes Y/M/D — jamais
+// un delta de millisecondes entre deux `Date` locales : un changement d'heure (DST) dans
+// l'intervalle décale ce delta de ±1 h, ce qui peut faire basculer `Math.ceil` sur un jour de
+// plus (finding financial-integrity, mesuré +3,45 % sur le multiplicateur d'une plage Custom
+// traversant un changement d'heure).
+function civilDaysBetween(a: Date, b: Date): number {
+    const utcA = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+    const utcB = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+    return Math.round(Math.abs(utcB - utcA) / (1000 * 60 * 60 * 24));
+}
+
 export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItems, setBudgetItems, apiKey }) => {
     const [timeView, setTimeView] = useState<TimeView>('MONTH');
     const [inflationSim, setInflationSim] = useState(0);
@@ -107,8 +148,13 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     }, [transactions, budgetItems]);
 
     // Custom Date State
-    const [customStart, setCustomStart] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
-    const [customEnd, setCustomEnd] = useState(new Date().toISOString().split('T')[0]);
+    // [BUDGET-INCOME-WINDOW-UTC-OFFBYONE] `toLocalDateStr`, jamais `.toISOString().split('T')[0]` :
+    // ce dernier convertit en UTC d'abord, donc sous un fuseau POSITIF (Europe/Asie/Australie), le
+    // 1er du mois à minuit LOCAL peut reculer d'un jour en UTC — le champ « Date de début » se
+    // pré-remplirait avec le dernier jour du mois précédent (finding code-reviewer #751 : site le
+    // plus visible, une valeur affichée directement dans le formulaire, pas juste une borne interne).
+    const [customStart, setCustomStart] = useState(toLocalDateStr(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
+    const [customEnd, setCustomEnd] = useState(toLocalDateStr(new Date()));
 
     const now = new Date();
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -117,16 +163,6 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // (periodOffset === 0) utilise l'avancement réel du jour. Sinon les barres de progression par poste
     // sur un mois passé se calaient sur l'avancement du mois d'aujourd'hui (finding audit).
     const monthProgress = periodOffset === 0 ? (currentDay / daysInMonth) * 100 : 100;
-
-    // [BUDGET-INCOME-WINDOW-UTC-OFFBYONE] `new Date('YYYY-MM-DD')` (les bornes CUSTOM saisies par
-    // l'utilisateur) ancre à UTC minuit — sous un fuseau négatif, le jour LOCAL correspondant est la
-    // veille (mesuré, `TZ=America/Toronto` : « 2026-08-01 » redevient le 31 juillet une fois relu en
-    // heure locale). Les trois autres vues (Mois/Trimestre/Année) construisent déjà leurs bornes en
-    // heure LOCALE (`new Date(année, mois, jour)`) ; celle-ci doit faire pareil pour rester cohérente.
-    const parseLocalDateStr = (s: string): Date => {
-        const [y, m, d] = s.split('-').map(Number);
-        return new Date(y, m - 1, d);
-    };
 
     const getDateRange = () => {
         // Phase D'.6 — applique le periodOffset (négatif = passé, positif = futur)
@@ -150,19 +186,6 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         }
     };
 
-    // [BUDGET-INCOME-WINDOW-UTC-OFFBYONE] Date locale → chaîne `YYYY-MM-DD` SANS passer par
-    // `.toISOString()` : cette dernière convertit en UTC d'abord, donc une fin de journée locale
-    // (23:59:59) bascule sur le jour CALENDRIER suivant sous un fuseau négatif (ex. Toronto,
-    // UTC-4 : 31 août 23:59:59 local → 1er septembre 03:59:59 UTC → `endStr` = « 2026-09-01 »,
-    // un jour de TROP). Mesuré, `TZ=America/Toronto` : la comparaison par CHAÎNE reste correcte
-    // uniquement si la chaîne elle-même reflète le jour LOCAL, jamais le jour UTC.
-    const toLocalDateStr = (d: Date): string => {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
-    };
-
     // Bornes de période en CHAÎNES `YYYY-MM-DD`, comparables directement à `t.date` (même format).
     // Ne JAMAIS comparer `t.date` en le reconvertissant en `Date` (`new Date(t.date)` ancre à UTC
     // minuit) contre `start`/`end` (ancrés en heure LOCALE) — sous un fuseau négatif, ça exclut le
@@ -182,8 +205,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             case 'YEAR': return 12;
             case 'CUSTOM': {
                 const { start, end } = getDateRange();
-                const diffTime = Math.abs(end.getTime() - start.getTime());
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const diffDays = civilDaysBetween(start, end);
                 // Normalize to months (approx 30.44 days)
                 return Math.max(0.1, diffDays / 30.44);
             }
@@ -253,7 +275,11 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         const months: { mStr: string; monthName: string }[] = [];
         for (let i = 5; i >= 0; i--) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            months.push({ mStr: d.toISOString().substring(0, 7), monthName: d.toLocaleDateString('fr-CA', { month: 'short' }) });
+            // [BUDGET-INCOME-WINDOW-UTC-OFFBYONE, finding code-reviewer #751] `toLocalDateStr`, pas
+            // `.toISOString()` : sous un fuseau POSITIF (Europe/Asie/Australie), minuit local peut
+            // reculer d'un jour en UTC et faire tomber le 1er du mois dans le mois PRÉCÉDENT,
+            // décalant tout `trendMap`/`monthlyDataMap` d'un cran.
+            months.push({ mStr: toLocalDateStr(d).substring(0, 7), monthName: d.toLocaleDateString('fr-CA', { month: 'short' }) });
         }
         const trends: Record<string, number[]> = {};
         const detailedMonthly: Record<string, { name: string, value: number }[]> = {};

@@ -6,6 +6,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-26 (synchronisation automatique : les lignes de relevé rejetées sont maintenant signalées)
+
+- **Amélioré** : quand une synchronisation automatique rejette une ligne d'un relevé bancaire (date
+  invalide, montant aberrant, ligne incomplète), un avertissement apparaît maintenant dans l'écran
+  de suivi de la synchronisation au lieu de disparaître silencieusement.
+
 ## [unreleased] — 2026-08-26 (Budget : plage inversée, renommage plus léger, message de relevé)
 
 - **Corrigé** : saisir une date de fin personnalisée avant la date de début (Budget) ne vidait plus

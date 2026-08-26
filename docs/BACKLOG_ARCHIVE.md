@@ -10,6 +10,20 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-26 — Les lignes rejetées d'un relevé bancaire deviennent visibles à la sync automatisée
+
+- [x] **`[MCP-REJECTIONS-NON-STRUCTUREES]`** (M) — PR #754, gate vert (4 866 tests). Finding
+  silent-failure-hunter (PR #753) : `applyBankStatement` (`mcp/ingest/applyDocument.ts`) rejette
+  des lignes (montant aberrant, date invalide, ligne incomplète) SANS lever — seulement une
+  phrase dans `ApplyResult.summary`, jamais lue par le chemin de sync automatisé
+  (`services/fintable/syncCore.ts` `applyPayloadsIsolated`, qui ne destructure que
+  `nextState`/`changes`). Une sync quotidienne qui recevait 10 lignes dont 5 rejetées écrivait
+  bien les 5 valides sans qu'aucun signal n'apparaisse nulle part (ni `SystemView`, ni log).
+  Nouveau champ optionnel `ApplyResult.rejectedCount` (montant aberrant + date invalide + ligne
+  malformée, PAS les doublons — un doublon est un résultat ATTENDU d'une sync à fenêtres
+  chevauchantes) ; `applyPayloadsIsolated` pousse un avertissement dans `warnings` (déjà affiché
+  par `SystemView`) quand `rejectedCount > 0`. 3 tests neufs, discriminé par perturbation ciblée.
+
 ## 2026-08-26 — 4 bugs préexistants routés par le panel de PR #752, corrigés séparément
 
 - [x] **`[BUDGET-DUPCOUNT-MESSAGE-FAUX]`** (XS) — PR #753, gate vert (4 863 tests). Le résumé de

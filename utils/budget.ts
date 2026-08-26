@@ -9,7 +9,7 @@
 // transactions sans poste, postes sans dépense).
 
 import type { BudgetCategory, Transaction } from '../types';
-import { isSpend } from './spendRules';
+import { isSpend, spendAmountOf } from './spendRules';
 
 /**
  * Rapproche une catégorie de transaction d'un poste de budget. Règle (préservée
@@ -109,7 +109,13 @@ export function computeBudgetParity(
     let totalSpent = 0;
 
     for (const t of spendTransactions) {
-        const amount = Math.abs(t.amount);
+        // [BUDGET-CATEGORY-INCOME-SIGN] `spendAmountOf` (= `-t.amount`), jamais `Math.abs` : pour
+        // une ligne à CRÉDIT (`isCreditBack`, ex. « Remboursement »), `Math.abs` additionnait le
+        // crédit au lieu de le DÉDUIRE — un remboursement de 250 $ DOUBLAIT l'erreur au lieu de la
+        // réduire. Sans effet sur un appelant qui pré-filtre déjà `amount < 0` (spendAmountOf et
+        // Math.abs sont identiques pour un montant négatif) ; corrige `monthlyActualsMap`, seul
+        // appelant qui passe des lignes à crédit (via `isSpend`) à ce jour.
+        const amount = spendAmountOf(t);
         totalSpent += amount; // total dépensé = TOUT (rapproché + orphelin), comme avant le refactor
         const match = matchTransactionToCategory(t.category, items);
         if (match) {
@@ -226,7 +232,8 @@ export interface ActualByOwner {
 
 /**
  * Agrège les dépenses RÉELLES par conjoint sur un lot de transactions de dépense
- * (montant < 0 déjà filtré côté appelant). Pur, testable. Somme en valeur absolue.
+ * (montant < 0 déjà filtré côté appelant — voir note ci-dessous si un futur appelant
+ * inclut des lignes à crédit). Pur, testable.
  */
 export function computeActualByOwner(
     spendTransactions: readonly Transaction[],
@@ -236,7 +243,11 @@ export function computeActualByOwner(
     let owner1 = 0;
     let commun = 0;
     for (const t of spendTransactions) {
-        const amount = Math.abs(t.amount);
+        // [BUDGET-CATEGORY-INCOME-SIGN] Même correctif que `computeBudgetParity` : `spendAmountOf`
+        // plutôt que `Math.abs`, pour ne pas dupliquer le même bug de signe si un futur appelant
+        // passe des lignes à crédit (`isSpend`) au lieu du filtre `amount < 0` actuel. Sans effet
+        // aujourd'hui — le seul appelant (`Budget.tsx`) pré-filtre déjà `amount < 0`.
+        const amount = spendAmountOf(t);
         const owner = resolveTransactionOwner(t, items);
         if (owner === 0) owner0 += amount;
         else if (owner === 1) owner1 += amount;

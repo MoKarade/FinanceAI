@@ -49,4 +49,18 @@ describe('monthlyActualsMap — [PH4-C] dépense réelle du mois courant par cat
     it('liste vide → map vide', () => {
         expect(monthlyActualsMap([], ITEMS, '2026-06')).toEqual({});
     });
+
+    // [BUDGET-CATEGORY-INCOME-SIGN] `isSpend` inclut déjà les lignes à CRÉDIT d'une catégorie
+    // « Remboursement » (`CREDIT_BACK_CATEGORIES`, décision Marc 2026-07-31) — mais l'agrégation
+    // sous-jacente (`computeBudgetParity`) les ADDITIONNAIT au lieu de les DÉDUIRE (`Math.abs` au
+    // lieu de `spendAmountOf`). Un remboursement de 250 $ sur une sortie de 400 $ affichait 650 $
+    // de « versé ce mois » au lieu de 150 $ — l'erreur vaut DEUX FOIS le crédit, pas zéro.
+    it('[BUDGET-CATEGORY-INCOME-SIGN] un crédit sur une catégorie à crédit DÉDUIT du poste (jamais ne s\'y ADDITIONNE)', () => {
+        const items = [...ITEMS, cat('Remboursement')];
+        const m = monthlyActualsMap([
+            tx({ category: 'Remboursement', amount: -400, date: '2026-06-01' }), // sortie (Interac envoyé)
+            tx({ category: 'Remboursement', amount: 250, date: '2026-06-05' }),  // crédit (on me rembourse)
+        ], items, '2026-06');
+        expect(m['Remboursement']).toBe(150); // 400 − 250, jamais 650 (= 400 + 250, le bug)
+    });
 });

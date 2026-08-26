@@ -7458,3 +7458,37 @@ s'applique à toute API testée uniquement via mock — BroadcastChannel, Indexe
 Permissions), vérifier la spec ou une source externe AVANT d'étendre ou de répliquer ce contrat
 ailleurs dans le code. Un mock isolé qui ne peut jamais être confronté au vrai environnement porte
 la même autorité qu'une supposition — jusqu'à preuve du contraire.
+
+## Leçon du lot `[BUDGET-CATEGORY-INCOME-SIGN]` — 2026-08-26 : une fonction correcte existe déjà, encore faut-il l'appeler au bon endroit
+
+`utils/spendRules.ts` avait DÉJÀ la bonne formule, documentée : `spendAmountOf(t) = -t.amount`,
+explicitement écrite pour qu'un crédit (catégorie « à crédit », ex. « Remboursement ») DÉDUISE le
+poste au lieu de s'y ADDITIONNER — décision Marc du 2026-07-31, déjà appliquée dans
+`utils/budgetSync.ts` pour la cible AUTO d'un poste. Mais `computeBudgetParity` et
+`computeActualByOwner` (`utils/budget.ts`) — les deux fonctions SOEURS qui agrègent le RÉEL —
+utilisaient encore `Math.abs(t.amount)`, écrites (ou jamais mises à jour) avant l'introduction du
+concept de crédit-back. Résultat mesuré : un remboursement de 250 $ sur une sortie de 400 $
+affichait 650 $ (400+250) au lieu de 150 $ (400−250) dans « versé ce mois » des objectifs — l'erreur
+vaut DEUX FOIS le crédit, pas zéro, parce que `Math.abs` ne fait pas juste « ignorer le signe » d'un
+montant déjà positif : il l'ADDITIONNE là où il fallait le SOUSTRAIRE.
+
+**Pourquoi le trou a survécu** : aucun test ne faisait passer une ligne à crédit POSITIVE par
+`computeBudgetParity`/`monthlyActualsMap` — les tests existants de ces fonctions n'utilisaient que
+des montants négatifs (or `computeBudgetParity` a deux appelants : un qui pré-filtre `amount < 0`
+en amont — où `Math.abs` et `spendAmountOf` sont mathématiquement identiques, donc aucun bug
+visible — et `monthlyActualsMap`, seul à passer des lignes `isSpend`-incluses, credits compris).
+
+**Généralisation** : quand une même notion (ici « montant qui compte comme dépense ») a DEUX
+formules dans le dépôt — une correcte et documentée, une autre plus ancienne qui l'ignore — chercher
+activement les AUTRES agrégateurs qui partagent la même base de données (`t.amount`) avant de
+conclure qu'un site isolé est le seul concerné. Un `Math.abs` sur un montant qu'on sait pouvoir être
+positif OU négatif selon le sens réel (crédit vs dépense) est un signal d'alerte : `Math.abs`
+n'est correct QUE si le signe est déjà connu et fixe (ex. un filtre `amount < 0` en amont l'a déjà
+garanti) — sinon c'est `spendAmountOf`-style (signe métier explicite) qu'il faut, jamais la valeur
+absolue.
+
+⚠️ **Ce que je n'ai PAS corrigé, et pourquoi c'est resté une question pour Marc** : `Budget.tsx`
+(tableau principal, répartition par conjoint, tendance 6 mois) filtre encore `amount < 0` en amont
+— un crédit y reste invisible (ni ajouté, ni déduit), incohérent avec `monthlyActualsMap` qui le
+déduit désormais. Uniformiser changerait pour la PREMIÈRE fois les montants du tableau Budget
+principal que Marc voit au quotidien — une décision produit, pas un bug à corriger d'office.

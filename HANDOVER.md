@@ -4,6 +4,34 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-26 — `[BUDGET-TRANSACTIONS-SYNC-AUDIT]` : audit sync Budget↔Transactions, 4 défauts corrigés
+> Ticket ouvert (« Marc n'est pas sûr que Budget s'adapte correctement à Transactions »), sans
+> hypothèse précise. Audit `financial-integrity` (lecture seule) : store/comptes/devises/bornes de
+> période/dépendances `useMemo`/détection d'orphelines confirmés SAINS. Quatre défauts réels
+> trouvés et corrigés : **(1)** `utils/budget.ts` — `fuzzyNameMatch` sans garde sur un nom vide
+> (`x.includes('')` toujours vrai) : un poste de budget vidé absorbait n'importe quelle catégorie
+> via le fuzzy. **(2)** `components/Budget.tsx` — le champ nom d'un poste est un input CONTRÔLÉ qui
+> écrit à chaque frappe ; le vider propageait `category: ''` à TOUTES ses transactions, et retaper
+> le nom ne les récupérait jamais (`oldItem.name` devenu `''`, falsy, ne redéclenchait plus la garde
+> de rename) — refusé à l'écriture. **(3)** `components/Budget.tsx` — `getMultiplier()` en vue
+> Custom comptait les jours civils EXCLUSIFS (`civilDaysBetween`) alors que la sélection est
+> INCLUSIVE des deux bornes (`t.date >= startStr && t.date <= endStr`) : le « prévu » était
+> systématiquement sous-estimé (mesuré −3,2 % sur un mois plein). **(4)** `mcp/ingest/applyDocument.ts`
+> + `applyBankStatement.spec.ts` — aucune validation de date sur une transaction MCP (format NI
+> calendrier) : un LLM produit plusieurs orthographes pour la même date, comptées différemment par
+> le grand livre (mesuré −75 % sur un KPI de fenêtre) ; ceinture Zod + garde runtime ajoutées,
+> comme `applyDebt`. Chaque correctif discriminé par revert CIBLÉ (single-line), pas `git stash`
+> pleine page — un `git checkout` malencontreux pendant une de ces perturbations a effacé les deux
+> fixs de `Budget.tsx` en cours de route, re-appliqués et re-vérifiés à l'identique avant de
+> continuer (leçon : ne jamais `git checkout -- <fichier>` sur un fichier qui porte du travail non
+> commité, même pour annuler une perturbation manuelle — restaurer par un second edit ciblé).
+> **Routé à Marc** (`docs/A_FAIRE_MOI.md`, 3 décisions produit, pas des bugs) : un Interac reçu
+> doit-il être un revenu ou un crédit sur poste (mécanisme `[TX-INTERAC-BUDGET]` actuellement code
+> mort côté producteurs) ; le grand livre doit-il compter les retours marchands/remboursements
+> d'impôt en revenus (écart mesuré 11,7 % sur une fixture) ; les impôts payés doivent-ils avoir un
+> poste budget (écart d'assiette mesuré 44 %, et le conseil du panneau Parité s'auto-annule sinon).
+> 9 tests neufs, gate vert (4 853 tests). PR #752.
+>
 > ## 🟢 Session 2026-08-26 — `[BUDGET-INCOME-WINDOW-UTC-OFFBYONE]` : le revenu du 1er disparaissait sous un fuseau négatif
 > Trouvé en diagnostiquant `[BUDGET-PREVU-BUG]` : `incomeBreakdown` comparait `new Date(t.date)`
 > (ancré UTC minuit) à `start`/`end` (heure LOCALE) — sous `TZ=America/Toronto` (mesuré, invisible

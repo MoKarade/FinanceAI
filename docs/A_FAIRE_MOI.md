@@ -1,5 +1,50 @@
 # À FAIRE — Marc (tâches humaines) + blocages remontés par Claude
 
+- [ ] **[DÉCISION — TX-INTERAC-BUDGET]** (2026-08-26, audit `[BUDGET-TRANSACTIONS-SYNC-AUDIT]`) —
+  un Interac REÇU doit-il être un REVENU ou un CRÉDIT sur le poste de dépense ? Deux décisions déjà
+  prises se contredisent : `spendRules.ts` documente « l'entrant ne devient PAS un revenu … ne
+  jamais recompter un remboursement comme une rentrée » et prévoit un mécanisme dédié
+  (`CREDIT_BACK_CATEGORIES = {'Remboursement'}`), mais AUCUNE règle de catégorisation
+  (`services/import/categoryRules.ts`) ne produit jamais `'Remboursement'` — un Interac reçu est
+  classé `Revenus divers` (compté comme un revenu réel), un Interac envoyé `Autre` (dépense pleine).
+  Mesuré (couple : 600 $ resto payés, 300 $ renvoyés par Interac) : **300 $ de faux revenu, 9,1 %**
+  du revenu affiché du mois — qui alimente la tuile Revenus, le badge Excédentaire/Déficitaire, le
+  KPI Restant et le payload envoyé à l'IA. Les 6 tests de `spendRules.test.ts` testent une
+  combinaison (catégorie `'Remboursement'` + payee `'Virement Interac a Julie'`) que la production
+  ne fabrique jamais.
+  **Deux options** : (a) ajouter une règle de catégorisation qui route les Interac REÇUS vers
+  `'Remboursement'` (active enfin le mécanisme existant, cohérent avec la doc de `spendRules.ts`) ;
+  (b) documenter que `'Revenus divers'` est le bon classement pour un Interac reçu et retirer/
+  requalifier le mécanisme `CREDIT_BACK` mort. Sans trancher, le revenu affiché reste gonflé par
+  tout Interac récurrent (loyer partagé, remboursement de colocataire, etc.).
+
+- [ ] **[DÉCISION — BUDGET-LEDGER-REVENUS-ORPHELINS]** (2026-08-26, même audit) — le grand livre
+  budget (`utils/budgetSync.ts`) signale les DÉPENSES orphelines (catégories de transactions sans
+  poste, panneau Parité) mais AUCUN équivalent côté REVENUS : tout montant positif hors
+  `{Salaire, Revenus divers}` (retour marchand, remboursement d'impôt, dépôt non catégorisé…)
+  disparaît en silence du KPI Revenus, du KPI Restant, du badge Excédentaire/Déficitaire et du
+  payload IA — alors que le MÊME montant apparaît dans le total du grand livre. Mesuré (salaire
+  6 000 $ + retour Amazon 200 $ + dépôt non catégorisé 500 $) : KPI Revenus = 6 000 $, total du
+  grand livre = 6 700 $ sur le MÊME écran (écart 11,7 %), deux « soldes du mois » différents
+  affichés côte à côte. Corollaire : le grand livre affiche des lignes de REVENU nommées
+  « Magasinage » ou « Impôts » (un retour marchand ou un remboursement d'impôt classés comme des
+  rentrées). **À trancher** : le grand livre doit-il compter ces positifs en revenus (et si oui,
+  faut-il un panneau de parité REVENUS symétrique de celui des dépenses) ou doit-il les exclure
+  explicitement (et alors sous quel nom, pour ne pas les perdre silencieusement) ?
+
+- [ ] **[DÉCISION — BUDGET-IMPOTS-POSTE]** (2026-08-26, même audit) — les impôts payés (catégorie
+  `Impôts`, exclue de `isSpend`/`NON_BUDGET_CATEGORIES` parce que la PROJECTION travaille déjà sur
+  un revenu net) faussent la comparaison budget↔réel de l'écran Budget : `totalSpent`/
+  `pastAverages.expenseAvg` comptent TOUS les négatifs (impôts inclus), mais `totalBudgetDisplay`
+  (Σ des cibles des postes) ne peut structurellement pas les inclure puisque `Impôts` est exclu des
+  postes — écart mesuré 44 %, entièrement structurel (le badge affiche « Excédentaire +2 300 $ »
+  quand l'excédent réel est 1 500 $). Pire : si on crée un poste « Impôts » à la main pour le
+  suivre, la synchro auto le SUPPRIME au chargement suivant (il n'a jamais de transaction « Épicerie
+  »-like au sens `isSpend`), rendant le conseil du panneau Parité (« crée un poste du même nom »)
+  auto-annulé pour cette catégorie. **À trancher** : les impôts doivent-ils avoir un poste budget
+  (et alors `isSpend`/la synchro doivent-ils changer), ou l'écran doit-il exclure les impôts des
+  DEUX côtés de la comparaison (réel ET cible) pour rester cohérent ?
+
 - [ ] **[DÉCISION — PROJ-NW-FALAISE-REER]** (2026-08-21) — la cascade de décaissement
   AUTO_MARGINAL a un MUR au sommet du palier 14 % : au-delà, elle vide le CELI avant le REER.
   Mesuré : deux couples identiques à 1 000 $ de REER près finissent à **112 k$ d'écart** (celui

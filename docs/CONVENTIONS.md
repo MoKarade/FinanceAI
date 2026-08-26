@@ -7551,3 +7551,33 @@ le même composant (`const toLocalDateStr = ...`) y est en zone morte temporelle
 qui n'apparaît qu'à l'exécution, jamais au typecheck. Les trois helpers purs ont été remontés au
 niveau MODULE (fonctions `function` hors du composant) — en prime, ils ne sont plus recréés à
 chaque rendu.
+
+## Leçon du lot `[BUDGET-TRANSACTIONS-SYNC-AUDIT]` — 2026-08-26 : un `git checkout -- <fichier>` pendant une perturbation manuelle efface le travail NON commité, pas juste la perturbation
+
+En prouvant qu'un correctif discrimine (revert ciblé d'une seule ligne → test rouge → restauration
+→ test vert), la restauration de la ligne A8 (`components/Budget.tsx`, `getMultiplier` CUSTOM) a
+été faite avec `git checkout -- components/Budget.tsx` au lieu d'un second edit ciblé. Ce fichier
+portait alors DEUX correctifs non commités (A1, le refus du nom vide, ET A8, le `+1` inclusif) :
+`git checkout` restaure TOUT le fichier à sa version `HEAD` (`origin/main`), pas seulement la ligne
+qu'on venait de modifier pour le test. Résultat : les deux correctifs ont disparu d'un coup, sans
+message d'erreur — `git diff --stat` après coup montrait `components/Budget.tsx` absent de la
+liste des fichiers modifiés, seul signal que le fichier était revenu à l'état d'avant le lot.
+
+**Pourquoi ça n'a pas été vu tout de suite** : la commande a « réussi » (code de sortie 0, aucun
+avertissement) — un `git checkout` sur un fichier propre-en-apparence ne distingue pas « annuler ma
+perturbation de test » de « annuler tout le travail du lot ». Le réflexe qui a sauvé la mise ici est
+CELUI DÉJÀ ÉCRIT dans `CLAUDE.md` (§ Git Safety Protocol / Executing actions with care) : vérifier
+`git status`/`git diff --stat` après CHAQUE opération destructive-en-apparence-anodine, pas
+seulement avant. Le diff manquant a été repéré immédiatement après la commande suivante, et les deux
+correctifs ont été ré-appliqués à l'identique (texte recopié depuis cette même conversation) puis
+re-vérifiés par le gate complet — aucune perte finale, mais uniquement parce que la vérification
+post-commande faisait déjà partie du rituel.
+
+**Généralisation** : pour une perturbation manuelle de test (revert ciblé → test → restauration),
+ne JAMAIS utiliser `git checkout -- <fichier>` comme mécanisme de restauration dès que ce fichier
+porte AUTRE CHOSE que la ligne perturbée — la restauration doit être un edit tout aussi CIBLÉ que la
+perturbation elle-même (remettre littéralement la ligne retirée), symétrique dans les deux sens.
+`git checkout` ne redevient sûr pour ce usage que sur un fichier qui ne contient RIEN d'autre que la
+ligne testée — jamais un fichier qui cumule plusieurs correctifs du même lot, ce qui est pourtant le
+cas courant quand plusieurs défauts de la même classe partagent un fichier
+(`GIT-CHECKOUT-PENDANT-UNE-PERTURBATION-EFFACE-TOUT-LE-FICHIER-PAS-LA-PERTURBATION`).

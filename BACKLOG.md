@@ -22,8 +22,6 @@
 > Retours de Marc en bloc, non cadrés — chaque item à cadrer (questions groupées) avant de coder,
 > par ticket ou par petit paquet cohérent.
 
-- [ ] **`[BUDGET-TRANSACTIONS-SYNC-AUDIT]`** (M) — Marc n'est pas sûr que Budget s'adapte
-  correctement à Transactions : valider (ou corriger) cette synchronisation.
 - [ ] **`[UTIL-GOLDENSPLIT-ORPHELIN]`** (XS, découvert en livrant `BUDGET-REMOVE-AMELIORER`) —
   `computeGoldenSplit`, `GOLDEN_IDEAL` et le type `GoldenSplit` (`utils/budget.ts`) n'ont plus AUCUN
   consommateur de production depuis le retrait de la carte : leur seul appelant est

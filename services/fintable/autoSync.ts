@@ -96,11 +96,11 @@ function isTestModeNow(): boolean {
  * chemin-là que les tests empruntent, donc il est couvert par construction.
  */
 type LockManagerLike = {
-    request: (
+    request: <T>(
         name: string,
         options: { ifAvailable?: boolean },
-        cb: (lock: unknown) => Promise<AutoSyncOutcome>,
-    ) => Promise<AutoSyncOutcome | null>;
+        cb: (lock: unknown) => Promise<T>,
+    ) => Promise<T>;
 };
 
 function lockManager(): LockManagerLike | null {
@@ -110,14 +110,37 @@ function lockManager(): LockManagerLike | null {
 
 const XTAB_LOCK_NAME = 'financeai:fintable-sync';
 
-async function withCrossTabLock(
-    run: () => Promise<AutoSyncOutcome>,
-): Promise<AutoSyncOutcome> {
+// Générique : partagé par la passe auto (`maybeRunDailyFintableSync`) ET le bouton manuel
+// (`FintableSyncCard`) — même nom de verrou, donc les deux s'excluent aussi ENTRE ONGLETS.
+export async function withCrossTabLock<T>(
+    run: () => Promise<T>,
+    onBusy: () => T,
+): Promise<T> {
     const locks = lockManager();
     if (!locks) return run();
-    // `ifAvailable` rend `null` SANS appeler le rappel quand le verrou est déjà pris ailleurs.
-    const outcome = await locks.request(XTAB_LOCK_NAME, { ifAvailable: true }, async () => run());
-    return outcome ?? { ran: false, reason: 'in-flight' };
+    try {
+        // ⚠️ [finding code-reviewer, CRITIQUE] Spec Web Locks : sous `ifAvailable`, le rappel est
+        // TOUJOURS invoqué — avec `lock === null` quand le verrou est déjà pris ailleurs, il n'est
+        // PAS sauté. Se fier au retour de `request()` (ex. `outcome ?? onBusy()`) est un piège : un
+        // `run()` qui résout légitimement `undefined` (le cas de `handleSync`, `Promise<void>`)
+        // aurait été pris pour « occupé » à CHAQUE passe réussie. La vérité est le paramètre reçu
+        // PAR le rappel, jamais la valeur rendue par `request()`.
+        return await locks.request<T>(
+            XTAB_LOCK_NAME,
+            { ifAvailable: true },
+            async (lock) => (lock === null ? onBusy() : run()),
+        );
+    } catch (err) {
+        // [finding silent-failure-hunter, ÉLEVÉ] Sans ce filet, un rejet de `locks.request` (échec
+        // d'infra Web Locks, ou une exception qui échapperait au `run()` de l'appelant) remontait
+        // NON journalisé — et pour la carte manuelle, `void handleSync(...)` au clic ne capte rien.
+        logError({
+            source: 'ui', severity: 'error',
+            message: '[FINTABLE-SYNC-XTAB] Verrou cross-onglet : rejet inattendu.',
+            error: err instanceof Error ? err : new Error(String(err)),
+        });
+        throw err;
+    }
 }
 
 /**
@@ -130,7 +153,10 @@ export async function maybeRunDailyFintableSync(
 ): Promise<AutoSyncOutcome> {
     // ⚠️ Le verrou enveloppe TOUTES les gardes, cooldown compris : le protéger seulement autour du
     // réseau laisserait la course là où elle est — entre la LECTURE et l'ÉCRITURE du cooldown.
-    return withCrossTabLock(() => runDailyFintableSyncGuarded(opts));
+    return withCrossTabLock(
+        () => runDailyFintableSyncGuarded(opts),
+        () => ({ ran: false, reason: 'in-flight' }),
+    );
 }
 
 async function runDailyFintableSyncGuarded(

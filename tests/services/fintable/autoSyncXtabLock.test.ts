@@ -21,9 +21,15 @@
  *      le défaut qu'il corrige. jsdom n'implémente pas Web Locks — le test l'ASSERTE plutôt que de
  *      le supposer, sinon il ne mesurerait que l'environnement du jour.
  *
- * ⚠️ Le faux `LockManager` reproduit le contrat réel de `ifAvailable: true` : verrou libre → le
- * rappel est appelé et sa valeur rendue ; verrou pris → `null` rendu SANS appeler le rappel. Un
- * faux qui appellerait le rappel dans les deux cas rendrait le cas (b) inobservable.
+ * ⚠️ [FINTABLE-SYNC-XTAB-MANUEL, 2026-08-26] **Correction d'un contrat FAUX, vérifié contre la
+ * spec.** Ce fichier affirmait ici que « verrou pris → `null` rendu SANS appeler le rappel ». C'est
+ * l'inverse de la spec Web Locks : sous `ifAvailable: true`, le rappel est TOUJOURS invoqué —
+ * avec `lock === null` quand le verrou est déjà pris ailleurs, jamais sauté. Le faux `LockManager`
+ * ci-dessous appelait donc `cb` uniquement quand `libre`, ce qui ne pouvait PAS révéler un
+ * `withCrossTabLock` qui aurait ignoré son paramètre `lock` (exactement le bug généricisé qui a
+ * motivé cette correction : `run()` s'exécutait alors même quand le verrou était pris ailleurs,
+ * dans TOUT navigateur réel — la mutex ne mutex-ait rien). Le faux reproduit maintenant le VRAI
+ * contrat : le rappel est appelé dans les deux cas, avec `{}` (verrou obtenu) ou `null` (occupé).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { maybeRunDailyFintableSync, _resetAutoSyncForTests } from '../../../services/fintable/autoSync';
@@ -58,8 +64,9 @@ function poserVerrou(libre: boolean) {
     const demandes: Array<{ name: string; options: { ifAvailable?: boolean } }> = [];
     const request = vi.fn(async (name: string, options: { ifAvailable?: boolean }, cb: RappelVerrou) => {
         demandes.push({ name, options });
-        if (!libre) return null; // contrat `ifAvailable` : rappel JAMAIS appelé
-        return cb({});
+        // Contrat RÉEL `ifAvailable` (spec Web Locks) : le rappel est TOUJOURS invoqué, avec
+        // `null` au lieu d'un `Lock` quand le verrou est déjà pris ailleurs — jamais sauté.
+        return cb(libre ? {} : null);
     });
     Object.defineProperty(globalThis.navigator, 'locks', {
         value: { request }, configurable: true, writable: true,

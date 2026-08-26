@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-26 — Le mutex cross-onglet de lot 16 ne mutex-ait rien, en vrai navigateur
+
+- [x] **`[FINTABLE-SYNC-XTAB-MANUEL]`** (M → devenu bien plus large) — PR #747, gate vert.
+  Parti d'une extension de routine (`withCrossTabLock` généricisé pour que le bouton manuel
+  partage le verrou de la passe auto), et tombé sur un bug de PRODUCTION dans le mécanisme de
+  lot 16 (`[FINTABLE-SYNC-XTAB-MUTEX]`) lui-même : sous `ifAvailable: true`, la spec Web Locks
+  (vérifiée par recherche web, 3 sources) dit que le rappel est TOUJOURS invoqué, avec
+  `lock === null` quand le verrou est pris ailleurs — jamais sauté. Le code de lot 16 croyait
+  l'inverse (commenté ET testé comme tel) et ignorait ce paramètre, exécutant `run()`
+  inconditionnellement. **En navigateur réel, la mutex ne bloquait donc rien** : deux onglets en
+  collision pouvaient écraser un solde/dette avec des données périmées, exactement le risque que
+  ce verrou devait éliminer. Le test de lot 16 ne l'a jamais vu car son mock encodait la même
+  croyance fausse que le code qu'il couvrait.
+  Fix aux DEUX endroits : `withCrossTabLock<T>(run, onBusy)` vérifie maintenant `lock === null`
+  DANS le rappel (jamais la valeur de retour de `request()`, ambiguë avec un `run()` qui résout
+  légitimement `undefined` — finding CRITIQUE `code-reviewer` sur ce point précis), et
+  `tests/services/fintable/autoSyncXtabLock.test.ts` corrigé pour appeler `cb(null)` au lieu de
+  sauter le rappel. Rejet de `locks.request` maintenant journalisé puis re-levé (finding ÉLEVÉ
+  `silent-failure-hunter`). `handleSync` enveloppe désormais tout son corps du même verrou (garde
+  intra-onglet incluse, `UN-VERROU-DOIT-ENVELOPPER-LA-GARDE-PAS-SEULEMENT-LE-TRAVAIL`).
+  5 tests neufs (dont le cas `undefined` qui aurait laissé filer la régression), 2 corrigés.
+  Leçon dans `docs/CONVENTIONS.md` : un contrat d'API tiers commenté ET testé n'est pas une preuve.
+
 ## 2026-08-25 — Le divorcé payait la mensualité ENTIÈRE sur une hypothèque de moitié
 
 - [x] **`[ENG-DIVORCE-PMT-NON-PARTAGEE]`** (S) — PR #737, gate vert.

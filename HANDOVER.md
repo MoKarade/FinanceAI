@@ -19,6 +19,13 @@
 > (`docs/A_FAIRE_MOI.md`) plutôt que tranché seul : uniformiser changerait pour la PREMIÈRE fois les
 > montants affichés dans le tableau principal.
 > 1 test neuf, perturbation confirmée (rouge à 650 $ sur le code d'avant).
+> ⚠️ Panel `/review-all` a trouvé un effet de bord réel du fix (MOYEN, `code-reviewer`) : un poste
+> à crédit peut désormais avoir un net NÉGATIF (crédits > sorties du mois), et `Planning.tsx`
+> affichait `formatCAD` du net brut → « Versé ce mois : −150 $ », lisible comme un bug. Corrigé :
+> clampé à 0 $ à l'AFFICHAGE seulement (jamais le calcul), avec une note « remboursements >
+> dépenses ». 2 tests neufs. JSDoc de `OrphanCategory`/`ActualByOwner`/`computeBudgetParity`
+> corrigée (`financial-integrity`, FAIBLE) : ces champs sont des NETS signés, plus des valeurs
+> absolues depuis ce lot.
 >
 > ## 🔴 Session 2026-08-26 (suite 178) — `[FINTABLE-SYNC-XTAB-MANUEL]` : le mutex cross-onglet de lot 16 ne mutex-ait rien, en vrai navigateur
 > Parti d'une extension de routine (génériciser `withCrossTabLock` pour que le bouton manuel

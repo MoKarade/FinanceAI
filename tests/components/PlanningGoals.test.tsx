@@ -23,6 +23,7 @@ function renderGoals(over: {
     savingsGoals?: SavingsGoal[];
     budgetItems?: BudgetCategory[];
     setSavingsGoals?: (g: SavingsGoal[]) => void;
+    actualsMap?: Record<string, number>;
 } = {}) {
     const setSavingsGoals = over.setSavingsGoals ?? vi.fn();
     render(
@@ -33,6 +34,7 @@ function renderGoals(over: {
             budgetItems={over.budgetItems ?? []}
             setBudgetItems={vi.fn()}
             config={{} as BudgetConfig}
+            actualsMap={over.actualsMap}
             section="goals"
         />,
     );
@@ -96,5 +98,30 @@ describe('[PH4C-SAVINGS-NATURE] le menu n’offre pas de poste qui ne peut affic
         });
         const select = screen.getByLabelText(/Lier l'objectif Voyage/) as HTMLSelectElement;
         expect([...select.options].map((o) => o.value)).toContain('Fonds d\'urgence');
+    });
+});
+
+describe('[BUDGET-CATEGORY-INCOME-SIGN] « Versé ce mois » sur un poste à crédit net négatif', () => {
+    it('un net négatif (remboursements > dépenses) s\'affiche à 0 $, jamais en négatif, avec une note', () => {
+        // finding code-reviewer #749 : `actualsMap[linked]` peut désormais être négatif pour un
+        // poste lié à une catégorie à crédit (ex. « Remboursement »). Le chiffre est juste, mais
+        // « Versé ce mois : −150 $ » lirait comme un bug — clampé à l'affichage, jamais au calcul.
+        renderGoals({
+            savingsGoals: [goal({ linkedBudgetCategoryName: 'Remboursement' })],
+            budgetItems: [cat('Remboursement', 'Besoin')],
+            actualsMap: { Remboursement: -150 },
+        });
+        expect(screen.getByText(/Versé ce mois/).parentElement?.textContent).toMatch(/0\s?\$/);
+        expect(screen.getByText(/remboursements > dépenses/)).toBeInTheDocument();
+    });
+
+    it('un net positif normal ne montre PAS la note', () => {
+        renderGoals({
+            savingsGoals: [goal({ linkedBudgetCategoryName: 'Épicerie' })],
+            budgetItems: [cat('Épicerie', 'Besoin')],
+            actualsMap: { Épicerie: 150 },
+        });
+        expect(screen.getByText(/Versé ce mois/).parentElement?.textContent).toMatch(/150\s?\$/);
+        expect(screen.queryByText(/remboursements > dépenses/)).not.toBeInTheDocument();
     });
 });

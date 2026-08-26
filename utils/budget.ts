@@ -69,7 +69,11 @@ export function matchCategoryToName(
 export interface OrphanCategory {
     /** La catégorie de transaction qui ne matche aucun poste. */
     category: string;
-    /** Total dépensé (valeur absolue) sur cette catégorie dans la fenêtre. */
+    /**
+     * Total NET dépensé sur cette catégorie dans la fenêtre (`spendAmountOf` : sorties positives,
+     * crédits d'une catégorie à crédit en déduction — jamais une valeur absolue depuis
+     * `[BUDGET-CATEGORY-INCOME-SIGN]`). Peut être négatif si les crédits dépassent les sorties.
+     */
     total: number;
 }
 
@@ -94,10 +98,14 @@ export const isSavingsNature = (nature: string): boolean =>
     (nature ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase() === 'epargne';
 
 /**
- * Calcule la parité. `spendTransactions` = dépenses de la FENÊTRE (montant < 0, hors
- * virements/doublons) → réels + orphelins. `allSpendTransactions` = dépenses sur TOUT
- * l'historique → « postes sans dépense » (un poste annuel rapproché une fois n'est PAS
- * sans dépense). Par défaut `allSpendTransactions = spendTransactions`.
+ * Calcule la parité. `spendTransactions` = dépenses de la FENÊTRE (typiquement montant < 0, hors
+ * virements/doublons — mais un appelant peut inclure des lignes à CRÉDIT via `isSpend`, ex.
+ * `monthlyActualsMap` : voir `spendAmountOf`) → réels + orphelins. `allSpendTransactions` =
+ * dépenses sur TOUT l'historique → « postes sans dépense » (un poste annuel rapproché une fois
+ * n'est PAS sans dépense). Par défaut `allSpendTransactions = spendTransactions`.
+ * ⚠️ Agrégation par `spendAmountOf` (net signé), jamais `Math.abs` : un crédit d'une catégorie à
+ * crédit (`isCreditBack`) DÉDUIT du poste plutôt que de s'y additionner — `actualsMap`/`totalSpent`
+ * peuvent donc être négatifs si les crédits dépassent les sorties (`[BUDGET-CATEGORY-INCOME-SIGN]`).
  */
 export function computeBudgetParity(
     spendTransactions: readonly Transaction[],
@@ -222,11 +230,11 @@ export function resolveTransactionOwner(
 }
 
 export interface ActualByOwner {
-    /** Dépense réelle (valeur absolue) imputée au conjoint 0. */
+    /** Dépense réelle NETTE (`spendAmountOf`, pas une valeur absolue) imputée au conjoint 0. */
     owner0: number;
-    /** Dépense réelle imputée au conjoint 1. */
+    /** Dépense réelle NETTE imputée au conjoint 1. */
     owner1: number;
-    /** Dépense réelle commune / non imputée à un seul conjoint (`Commun` ou orpheline). */
+    /** Dépense réelle NETTE commune / non imputée à un seul conjoint (`Commun` ou orpheline). */
     commun: number;
 }
 

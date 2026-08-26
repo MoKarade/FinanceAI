@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-26 (Budget : nom de poste vidé, plage personnalisée et dates de transaction)
+
+- **Corrigé** : vider entièrement le nom d'un poste de budget ne détache plus ses transactions
+  (l'ancien comportement pouvait les rendre orphelines pour de bon en retapant le nom).
+- **Corrigé** : le montant « prévu » affiché sur une plage de dates personnalisée (onglet Budget)
+  comptait un jour de moins que la vraie durée sélectionnée, le sous-estimant légèrement.
+- **Corrigé** : une transaction importée via l'assistant avec une date mal formée ou invalide
+  (ex. 30 février) est maintenant rejetée proprement plutôt que d'être ajoutée telle quelle.
+- **Corrigé** : essayer de vider le nom d'un poste de budget affichait maintenant un message
+  explicatif au lieu de laisser le champ « ne rien faire » sans raison apparente.
+- **Corrigé** : une plage de dates personnalisée de 1 à 3 jours affichait le même montant « prévu »
+  quelle que soit sa durée réelle ; elle reflète maintenant la durée exacte sélectionnée.
+
 ## [unreleased] — 2026-08-26 (le revenu du 1er du mois pouvait disparaître du Budget)
 
 - Selon ton fuseau horaire, un revenu daté exactement du 1er jour d'un mois, trimestre ou année (ou

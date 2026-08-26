@@ -42,6 +42,15 @@ export function matchTransactionToCategory(
  */
 const fuzzyNameMatch = (categoryLower: string, name: string): boolean => {
     const n = name.toLowerCase();
+    // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Un nom de poste VIDE ne doit jamais matcher : `''.includes(x)`
+    // est toujours faux mais `categoryLower.includes('')` est toujours VRAI — un poste au nom vidé
+    // absorbait alors la PREMIÈRE catégorie rencontrée (mesuré : un poste vidé, resynchronisé,
+    // héritait du nom et de la cible d'un autre poste sans rapport). `.trim()` : un nom fait
+    // uniquement d'espaces a le même défaut (` `.includes(x)` faux, `x.includes(' ')` vrai dès
+    // qu'une catégorie contient une espace) — aligné sur la garde jumelle de `Budget.tsx`
+    // (`value.trim() === ''`), même si aucun producteur actuel n'atteint ce cas (finding
+    // financial-integrity, non exploitable aujourd'hui mais moins fragile à durcir maintenant).
+    if (!n.trim()) return false;
     return n.includes(categoryLower) || categoryLower.includes(n);
 };
 

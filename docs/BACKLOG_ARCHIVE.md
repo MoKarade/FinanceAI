@@ -10,6 +10,42 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-26 — Audit sync Budget ↔ Transactions : 4 défauts trouvés et corrigés
+
+- [x] **`[BUDGET-TRANSACTIONS-SYNC-AUDIT]`** (M) — PR #752 (`claude/lot-29`), gate vert (4 856
+  tests). Ticket ouvert (« Marc n'est pas sûr que Budget s'adapte correctement à Transactions »),
+  sans hypothèse précise. Audit `financial-integrity` (lecture seule, mesures réelles) : 6 pistes
+  vérifiées SAINES (store partagé, comptes, devises, bornes Mois/Trimestre/Année, dépendances des
+  `useMemo`, détection des catégories orphelines), 4 défauts confirmés et corrigés, 3 décisions
+  produit routées à Marc (`docs/A_FAIRE_MOI.md`).
+  Corrigé : **(1)** `utils/budget.ts` — un nom de poste vide matchait N'IMPORTE QUELLE catégorie
+  via `fuzzyNameMatch` (`''.includes(x)` faux mais `x.includes('')` vrai) ; un poste vidé
+  absorbait un autre poste sans rapport. **(2)** `components/Budget.tsx` — vider le nom d'un poste
+  (input contrôlé, écrit à chaque frappe) orphelinait ses transactions SANS retour possible
+  (retaper le nom ne redéclenchait plus la garde de rename, `oldItem.name` devenu `''` = falsy) ;
+  refusé à l'écriture. **(3)** `components/Budget.tsx` — le multiplicateur Custom comptait les
+  jours civils EXCLUSIFS (`civilDaysBetween`) alors que la fenêtre de sélection est INCLUSIVE des
+  deux bornes ; le « prévu » était sous-estimé de ~3 % sur un mois plein (jusqu'à +204 % sur 1
+  jour, via le plancher 0,1). **(4)** `mcp/ingest/applyDocument.ts` +
+  `mcp/tools/applyBankStatement.spec.ts` — la date d'une transaction MCP n'était validée ni au
+  format ni au calendrier (un LLM produit spontanément `31/07/2026`/`2026-7-15`/`2026-02-30` pour
+  la même date, comptées différemment par le grand livre) ; ceinture Zod + garde runtime, comme
+  `applyDebt`.
+  Routé (`docs/A_FAIRE_MOI.md`) : un Interac reçu doit-il être un revenu ou un crédit sur poste
+  (`[TX-INTERAC-BUDGET]`, code mort côté producteurs) ; le grand livre doit-il compter les retours
+  marchands/remboursements d'impôt en revenus (écart mesuré 11,7 % sur une fixture) ; les impôts
+  payés doivent-ils avoir un poste budget (écart d'assiette mesuré 44 %, conseil du panneau Parité
+  auto-annulé sinon).
+  Chaque correctif discriminé par revert CIBLÉ (single-line), pas par `git stash` pleine page.
+  Panel `/review-all` (4 agents) sur le même lot : 2 ÉLEVÉ (`silent-failure-hunter` — refus de nom
+  vide 100 % silencieux ; lignes MCP incomplètes non comptées dans le résumé), 1 MOYEN RÉEL
+  (`financial-integrity` — le plancher `Math.max(0.1, …)` de `getMultiplier()` avait perdu sa
+  raison d'être avec le `+1` et écrasait les plages de 1 à 3 jours vers la même valeur, jusqu'à
+  +204 % d'erreur sur 1 jour ; retiré), 2 FAIBLE durcis (`fuzzyNameMatch` sur un nom fait
+  d'espaces ; libellé du nouveau compteur de rejet MCP). 4 bugs préexistants découverts en chemin,
+  non corrigés, routés au `BACKLOG.md`.
+  12 tests neufs au total.
+
 ## 2026-08-26 — Le revenu du 1er du mois disparaissait sous un fuseau négatif
 
 - [x] **`[BUDGET-INCOME-WINDOW-UTC-OFFBYONE]`** (XS, découvert en diagnostiquant `BUDGET-PREVU-BUG`)

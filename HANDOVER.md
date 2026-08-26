@@ -4,6 +4,57 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-26 — `[BUDGET-TRANSACTIONS-SYNC-AUDIT]` : audit sync Budget↔Transactions, 4 défauts corrigés
+> Ticket ouvert (« Marc n'est pas sûr que Budget s'adapte correctement à Transactions »), sans
+> hypothèse précise. Audit `financial-integrity` (lecture seule) : store/comptes/devises/bornes de
+> période/dépendances `useMemo`/détection d'orphelines confirmés SAINS. Quatre défauts réels
+> trouvés et corrigés : **(1)** `utils/budget.ts` — `fuzzyNameMatch` sans garde sur un nom vide
+> (`x.includes('')` toujours vrai) : un poste de budget vidé absorbait n'importe quelle catégorie
+> via le fuzzy. **(2)** `components/Budget.tsx` — le champ nom d'un poste est un input CONTRÔLÉ qui
+> écrit à chaque frappe ; le vider propageait `category: ''` à TOUTES ses transactions, et retaper
+> le nom ne les récupérait jamais (`oldItem.name` devenu `''`, falsy, ne redéclenchait plus la garde
+> de rename) — refusé à l'écriture. **(3)** `components/Budget.tsx` — `getMultiplier()` en vue
+> Custom comptait les jours civils EXCLUSIFS (`civilDaysBetween`) alors que la sélection est
+> INCLUSIVE des deux bornes (`t.date >= startStr && t.date <= endStr`) : le « prévu » était
+> systématiquement sous-estimé (mesuré −3,2 % sur un mois plein). **(4)** `mcp/ingest/applyDocument.ts`
+> + `applyBankStatement.spec.ts` — aucune validation de date sur une transaction MCP (format NI
+> calendrier) : un LLM produit plusieurs orthographes pour la même date, comptées différemment par
+> le grand livre (mesuré −75 % sur un KPI de fenêtre) ; ceinture Zod + garde runtime ajoutées,
+> comme `applyDebt`. Chaque correctif discriminé par revert CIBLÉ (single-line), pas `git stash`
+> pleine page — un `git checkout` malencontreux pendant une de ces perturbations a effacé les deux
+> fixs de `Budget.tsx` en cours de route, re-appliqués et re-vérifiés à l'identique avant de
+> continuer (leçon : ne jamais `git checkout -- <fichier>` sur un fichier qui porte du travail non
+> commité, même pour annuler une perturbation manuelle — restaurer par un second edit ciblé).
+> **Routé à Marc** (`docs/A_FAIRE_MOI.md`, 3 décisions produit, pas des bugs) : un Interac reçu
+> doit-il être un revenu ou un crédit sur poste (mécanisme `[TX-INTERAC-BUDGET]` actuellement code
+> mort côté producteurs) ; le grand livre doit-il compter les retours marchands/remboursements
+> d'impôt en revenus (écart mesuré 11,7 % sur une fixture) ; les impôts payés doivent-ils avoir un
+> poste budget (écart d'assiette mesuré 44 %, et le conseil du panneau Parité s'auto-annule sinon).
+> 12 tests neufs au total, gate vert (4 856 tests). PR #752.
+> ⚠️ **Panel `/review-all` (4 agents), même PR** : `silent-failure-hunter` a trouvé 2 ÉLEVÉ (le
+> refus d'un nom de poste vide était 100 % silencieux — input contrôlé qui « recrache » l'ancien nom
+> sans toast ; et la garde qui filtre les lignes MCP incomplètes, montant/date absents, ne comptait
+> AUCUN rejet — un lot où TOUTES les lignes ont ce défaut rendait « aucune nouvelle transaction. »
+> sans dire que N lignes avaient été soumises), corrigés dans le même lot (toast + nouveau compteur
+> `rejMalformedCount`). `financial-integrity` a ensuite trouvé 1 MOYEN RÉEL sur le `+1` lui-même :
+> le plancher `Math.max(0.1, …)` protégeait `getMultiplier()` CUSTOM contre `diffDays === 0` AVANT
+> le `+1`, mais depuis le `+1` le diviseur est TOUJOURS ≥ 1 — le plancher n'avait plus de rôle et
+> écrasait les plages de 1 à 3 jours vers la MÊME valeur (jusqu'à +204 % d'erreur sur 1 jour), en
+> plus de rendre le commentaire du correctif initial trompeur (il citait ce +204 % comme réglé par
+> le `+1`, alors qu'il ne l'était pas). Plancher retiré. 2 FAIBLE durcis au passage (`fuzzyNameMatch`
+> ne gardait qu'un nom strictement vide, pas fait uniquement d'espaces ; le libellé de
+> `rejMalformedCount` nommait 2 causes sur 3). 4 bugs PRÉEXISTANTS découverts en chemin, non
+> corrigés (hors scope), routés au `BACKLOG.md` : message « 0 doublon(s) » toujours affiché même à
+> zéro, plage Custom inversée jamais gérée, JSDoc non fermé qui avale le suivant, renommage d'un
+> poste qui écrit à chaque frappe (5 réécritures + 5 toasts pour un nom de 5 lettres). 3 tests
+> neufs de plus. ⚠️ **Deuxième incident de perte d'édition dans ce même lot**, cette fois SANS
+> commande destructive identifiée : deux `Edit` réussis (rapportés « updated successfully ») sur
+> `components/Budget.tsx` et `mcp/ingest/applyDocument.ts` n'avaient PAS persisté sur disque au
+> moment de lancer les tests suivants — `git diff --stat` les montrait absents. Cause non
+> déterminée (pas de `git checkout`/`stash` entre les deux). Détecté par la même discipline que le
+> premier incident (`git status`/`git diff` après chaque étape, jamais supposé), corrigé en
+> ré-appliquant et re-vérifiant immédiatement par `grep` après CHAQUE edit avant de continuer.
+>
 > ## 🟢 Session 2026-08-26 — `[BUDGET-INCOME-WINDOW-UTC-OFFBYONE]` : le revenu du 1er disparaissait sous un fuseau négatif
 > Trouvé en diagnostiquant `[BUDGET-PREVU-BUG]` : `incomeBreakdown` comparait `new Date(t.date)`
 > (ancré UTC minuit) à `start`/`end` (heure LOCALE) — sous `TZ=America/Toronto` (mesuré, invisible

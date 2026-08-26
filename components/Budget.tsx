@@ -205,9 +205,22 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             case 'YEAR': return 12;
             case 'CUSTOM': {
                 const { start, end } = getDateRange();
-                const diffDays = civilDaysBetween(start, end);
+                // [BUDGET-TRANSACTIONS-SYNC-AUDIT] +1 : la fenêtre de sélection est INCLUSIVE des
+                // DEUX bornes (`getDateRangeStrings`, `t.date >= startStr && t.date <= endStr`),
+                // donc une plage de N jours calendaires contient N jours de transactions, pas
+                // `civilDaysBetween` (différence EXCLUSIVE). Sans le +1, le « prévu » était
+                // systématiquement sous-estimé (mesuré −3,2 % sur un mois plein).
+                const diffDays = civilDaysBetween(start, end) + 1;
+                // [BUDGET-TRANSACTIONS-SYNC-AUDIT] finding financial-integrity (MOYEN) : l'ancien
+                // plancher `Math.max(0.1, …)` protégeait contre `diffDays === 0` (plage d'un seul
+                // jour, avant le +1 ci-dessus) — depuis le +1, `diffDays` vaut TOUJOURS ≥ 1, donc le
+                // multiplicateur est TOUJOURS ≥ 1/30,44 ≈ 0,033 : le plancher n'a plus de rôle et ne
+                // faisait plus qu'écraser les petites plages vers 0,1 (mesuré : 1, 2 ET 3 jours
+                // affichaient tous le MÊME « prévu », jusqu'à +204 % d'erreur sur 1 jour). Seule
+                // division par ce multiplicateur dans le fichier (`monthlyTotalSavings`, plus bas)
+                // reste sûre : le minimum possible n'est jamais nul.
                 // Normalize to months (approx 30.44 days)
-                return Math.max(0.1, diffDays / 30.44);
+                return diffDays / 30.44;
             }
             default: return 1;
         }
@@ -527,6 +540,19 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const setAppState = useFinanceStore(s => s.setAppState);
 
     const handleUpdateItem = (index: number, field: keyof BudgetCategory, value: BudgetCategory[keyof BudgetCategory]) => {
+        // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Le champ nom est un input CONTRÔLÉ qui écrit à chaque
+        // frappe (`onChange`, pas `onBlur`) : vider le nom propagerait `category: ''` à TOUTES les
+        // transactions du poste, puis en le retapant `oldItem.name` vaudrait '' (falsy) et la garde
+        // de rename plus bas ne se redéclencherait plus jamais — orphelines pour de bon (mesuré :
+        // 1 200 $ perdus sur une fixture 3 mois). Refuser l'écriture d'un nom vide : le champ
+        // contrôlé revient alors visuellement à l'ancien nom au lieu de se vider.
+        if (field === 'name' && typeof value === 'string' && value.trim() === '') {
+            // [BUDGET-TRANSACTIONS-SYNC-AUDIT] finding silent-failure-hunter (ÉLEVÉ) : le champ est
+            // un input CONTRÔLÉ — sans message, l'utilisateur qui vide le nom pour le retaper voit
+            // juste son clavier « ne pas marcher » (React re-rend l'ancien nom sans explication).
+            showToast('Le nom du poste ne peut pas être vide.', 'info');
+            return;
+        }
         const newItems = [...budgetItems];
         const oldItem = newItems[index];
         newItems[index] = { ...oldItem, [field]: value };

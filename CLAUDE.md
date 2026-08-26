@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 844 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 856 tests** Vitest
 (453 fichiers de test, mesuré le 2026-08-26). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -232,6 +232,9 @@ n'est pas réécrire un récit.
   position d'un marqueur) : masquer les valeurs ne masque pas leur existence.
 - Un flux moteur alimente PLUSIEURS registres (solde/fiscal/per-conjoint/affichage) : un producteur
   nouveau ou corrigé doit alimenter TOUS les registres (meltdown REER, 2026-07-31).
+- Un `git checkout -- <fichier>` utilisé pour ANNULER une perturbation manuelle de test efface TOUT
+  le fichier (retour à `HEAD`), pas seulement la ligne perturbée — dangereux dès que ce fichier
+  porte un AUTRE correctif non commité du même lot (`[BUDGET-TRANSACTIONS-SYNC-AUDIT]`, 2026-08-26).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

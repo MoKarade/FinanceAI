@@ -32,6 +32,15 @@ describe('matchTransactionToCategory — règle unique', () => {
         const items = [cat('Resto du coin'), cat('Resto')];
         expect(matchTransactionToCategory('Resto', items)?.name).toBe('Resto');
     });
+    // [BUDGET-TRANSACTIONS-SYNC-AUDIT] `''.includes(x)` est FAUX mais `x.includes('')` est VRAI :
+    // sans garde sur le nom, un poste vidé (bug UI décrit ailleurs) absorbait N'IMPORTE QUELLE
+    // catégorie via le fuzzy, au lieu de n'en absorber AUCUNE. Discriminant : `git stash` sur
+    // `utils/budget.ts` seul fait échouer ce test (le poste vide matche « Voyages »).
+    it('un poste au nom VIDE ne matche JAMAIS (même en présence d\'un match exact ailleurs)', () => {
+        const items = [cat(''), cat('Voyages')];
+        expect(matchTransactionToCategory('Voyages', items)?.name).toBe('Voyages');
+        expect(matchTransactionToCategory('Crypto', items)).toBeUndefined();
+    });
 });
 
 // [BUDGET-MATCH-UNIFY] Variante noms-seuls : MÊME règle (exact d'abord, sinon premier substring
@@ -48,6 +57,12 @@ describe('matchCategoryToName — même règle au niveau noms', () => {
     });
     it('priorise l\'EXACT sur le substring (parité avec matchTransactionToCategory)', () => {
         expect(matchCategoryToName('Resto', ['Resto du coin', 'Resto'])).toBe('Resto');
+    });
+    // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Même prédicat partagé (`fuzzyNameMatch`) que
+    // matchTransactionToCategory — un nom vide dans la liste ne doit jamais matcher.
+    it('un nom VIDE dans la liste ne matche jamais', () => {
+        expect(matchCategoryToName('Voyages', ['', 'Voyages'])).toBe('Voyages');
+        expect(matchCategoryToName('Crypto', ['', 'Voyages'])).toBeUndefined();
     });
 });
 

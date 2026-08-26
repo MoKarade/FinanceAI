@@ -2,8 +2,10 @@
 // Lot 2 (suite) — fusion pure des 3 nouveaux types : relevé bancaire (dédup), courtage, feuillet fiscal.
 
 import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
 import { applyDocument } from '../../mcp/ingest/applyDocument';
 import { buildDefaultAppState } from '../../mcp/state/loadAppState';
+import { applyBankStatementSpec } from '../../mcp/tools/applyBankStatement.spec';
 import type { AppState } from '../../types';
 
 function state(): AppState {
@@ -97,6 +99,77 @@ describe('applyDocument — relevé bancaire', () => {
             expect(cats[1]).toBe('Non catégorisé');
             expect(cats).not.toContain('Sport'); // la catégorie inventée n'entre JAMAIS
             expect(r.summary).toMatch(/2 catégorie\(s\) non canonique\(s\) re-catégorisée\(s\)/);
+        });
+    });
+
+    // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Un LLM produit spontanément plusieurs orthographes de date
+    // (`2026-07-31T00:00:00Z`, `31/07/2026`, `2026-7-15`, `2026-02-30`) pour la même transaction —
+    // chacune comptée différemment par le grand livre (`slice(0,7)`) et les KPI (comparaison de
+    // chaîne). Deux ceintures : le schéma Zod du tool (à l'entrée) ET la garde runtime dans
+    // `applyDocument` (un appel direct la contourne, leçon MCP-WHATIF).
+    describe('[BUDGET-TRANSACTIONS-SYNC-AUDIT] date de transaction validée à l\'écriture', () => {
+        it('REJETTE (runtime) une date calendairement invalide sans planter les autres lignes du lot', () => {
+            const r = applyDocument(state(), {
+                kind: 'bank_statement',
+                transactions: [
+                    { date: '2026-02-30', payee: 'IGA', amount: -50 }, // 30 février n'existe pas
+                    { date: '2026-02-01', payee: 'Metro', amount: -40 },
+                ],
+            });
+            expect(r.nextState.transactions).toHaveLength(1);
+            expect(r.nextState.transactions[0].payee).toBe('Metro');
+            expect(r.summary).toMatch(/1 date\(s\) invalide\(s\) ignorée/);
+        });
+
+        it('REJETTE (runtime) un format non-ISO (31/07/2026) même si "plausible" à l\'œil', () => {
+            const r = applyDocument(state(), {
+                kind: 'bank_statement',
+                transactions: [{ date: '31/07/2026', payee: 'IGA', amount: -50 }],
+            });
+            expect(r.nextState.transactions).toHaveLength(0);
+        });
+
+        // [finding code-reviewer, MOYEN] Les DEUX causes de rejet (montant aberrant, date invalide)
+        // dans le MÊME lot : verrouille que la concaténation `${rej}${rejDate}${rejMalformed}` du
+        // résumé ne perd ni ne fusionne aucun des deux messages.
+        it('un montant ABERRANT et une date INVALIDE dans le même lot sont rejetés SÉPARÉMENT, chacun nommé dans le résumé', () => {
+            const r = applyDocument(state(), {
+                kind: 'bank_statement',
+                transactions: [
+                    { date: '2026-02-01', payee: 'INJECTION', amount: -1e12 }, // montant aberrant
+                    { date: '2026-02-30', payee: 'IGA', amount: -50 }, // date invalide
+                    { date: '2026-02-02', payee: 'Metro', amount: -40 }, // normal
+                ],
+            });
+            expect(r.nextState.transactions).toHaveLength(1);
+            expect(r.nextState.transactions[0].payee).toBe('Metro');
+            expect(r.summary).toMatch(/1 montant\(s\) aberrant\(s\) ignoré/);
+            expect(r.summary).toMatch(/1 date\(s\) invalide\(s\) ignorée/);
+        });
+
+        // [finding silent-failure-hunter, ÉLEVÉ] Cette garde (ligne AVANT la validation de date)
+        // filtrait déjà trois cas (ligne absente, montant non numérique, date ABSENTE) sans compter
+        // AUCUN d'eux : un lot où TOUTES les lignes ont ce défaut rendait un résumé qui annonce
+        // « aucune nouvelle transaction. » sans dire que N lignes avaient été soumises et rejetées.
+        it('un lot où TOUTES les lignes sont incomplètes (date/montant manquant) le DIT dans le résumé, pas un silence total', () => {
+            const r = applyDocument(state(), {
+                kind: 'bank_statement',
+                transactions: [
+                    { date: '', payee: 'IGA', amount: -50 }, // date absente
+                    { payee: 'Metro', amount: -40 } as unknown as { date: string; payee: string; amount: number }, // date absente
+                ],
+            });
+            expect(r.nextState.transactions).toHaveLength(0);
+            expect(r.summary).toMatch(/2 ligne\(s\) invalide\(s\) ou incomplète\(s\) ignorée/);
+        });
+
+        it('le schéma Zod du tool MCP (ceinture À L\'ENTRÉE) rejette un format non-ISO et une date calendaire invalide, accepte une vraie date', () => {
+            const schema = z.object(applyBankStatementSpec.inputSchema);
+            const base = { transactions: [{ payee: 'IGA', amount: -50, date: '2026-07-31' }] };
+            expect(schema.safeParse(base).success).toBe(true);
+            expect(schema.safeParse({ transactions: [{ ...base.transactions[0], date: '31/07/2026' }] }).success).toBe(false);
+            expect(schema.safeParse({ transactions: [{ ...base.transactions[0], date: '2026-7-15' }] }).success).toBe(false);
+            expect(schema.safeParse({ transactions: [{ ...base.transactions[0], date: '2026-02-30' }] }).success).toBe(false);
         });
     });
 });

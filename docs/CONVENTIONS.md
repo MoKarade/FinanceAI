@@ -7581,3 +7581,32 @@ perturbation elle-même (remettre littéralement la ligne retirée), symétrique
 ligne testée — jamais un fichier qui cumule plusieurs correctifs du même lot, ce qui est pourtant le
 cas courant quand plusieurs défauts de la même classe partagent un fichier
 (`GIT-CHECKOUT-PENDANT-UNE-PERTURBATION-EFFACE-TOUT-LE-FICHIER-PAS-LA-PERTURBATION`).
+
+## Leçon du lot `[BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE]` — 2026-08-26 : débouncer un effet de bord dérivé d'un input CONTRÔLÉ doit figer la valeur de DÉPART séparément, pas la relire à chaque frappe
+
+Le bug : renommer un poste de budget écrivait le tableau complet des transactions (+ persist
+Zustand + push Drive + toast) à CHAQUE frappe, parce que la propagation (`t.category ===
+oldItem.name ? {...t, category: value} : t`) tournait de façon SYNCHRONE dans `handleUpdateItem`.
+Le correctif naïf — entourer le même code d'un `setTimeout` — aurait paru fonctionner en test
+manuel mais aurait été FAUX : `oldItem.name` est lu depuis `budgetItems[index]`, qui est mis à jour
+(`setBudgetItems`) à CHAQUE frappe, AVANT le debounce. Donc à la 2ᵉ frappe d'une session d'édition,
+`oldItem.name` vaut déjà la valeur TAPÉE À LA FRAPPE PRÉCÉDENTE, pas le nom réellement présent dans
+`transactions` — un debounce naïf renommerait alors les transactions depuis un nom qui n'a JAMAIS
+existé dans leur `category`, et `renamedCount` resterait à 0 en silence (aucune transaction ne
+matche jamais, aucun crash, aucun test qui ne teste pas EXPLICITEMENT ce cas ne le voit).
+
+**Le correctif correct fige la valeur de départ dans une ref DÈS LA PREMIÈRE frappe de la session**
+(`if (renameOriginalNameRef.current[index] === undefined) { renameOriginalNameRef.current[index] =
+oldItem.name; }`) et ne la relit plus tant que le debounce n'a pas eu lieu — c'est CETTE valeur figée
+qui sert de clé de correspondance au moment où le timer se déclenche, jamais `oldItem.name` relu à
+ce moment-là (qui serait alors la valeur la PLUS RÉCENTE, pas l'originale).
+
+**Généralisation** : dès qu'un effet de bord dérivé de la valeur d'un input CONTRÔLÉ est débouncé
+(ou throttlé), distinguer explicitement deux valeurs qui se ressemblent mais ne sont PAS
+interchangeables — la valeur ACTUELLE affichée (qui change à chaque frappe, sert à afficher/valider
+en temps réel) et la valeur DE RÉFÉRENCE au moment où le debounce a commencé à courir (qui ne doit
+JAMAIS changer avant que l'effet ne se déclenche, sert de clé de correspondance pour toute donnée
+DÉRIVÉE ailleurs). Le test qui prouve la distinction : simuler PLUSIEURS frappes rapides avant
+d'avancer le temps (`vi.useFakeTimers()` + `vi.advanceTimersByTime`), puis vérifier que l'effet
+utilise bien la valeur D'ORIGINE et la valeur FINALE — jamais une valeur intermédiaire — et qu'il ne
+se déclenche qu'UNE fois (`UN-DEBOUNCE-SUR-INPUT-CONTROLE-DOIT-FIGER-SA-VALEUR-DE-DEPART`).

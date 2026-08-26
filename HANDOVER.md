@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-26 — 4 bugs préexistants routés par le panel de PR #752, corrigés séparément (PR #753)
+> Suite directe de la session `[BUDGET-TRANSACTIONS-SYNC-AUDIT]` ci-dessous : le panel `/review-all`
+> de la PR #752 avait routé 4 défauts PRÉEXISTANTS (non causés par cette PR-là) au `BACKLOG.md`
+> plutôt que de les corriger sur le fait. Traités dans ce lot séparé, chacun sur son propre
+> mécanisme, sans ambiguïté produit : **(1)** `mcp/ingest/applyDocument.ts` — le résumé d'un relevé
+> bancaire annonçait toujours « 0 doublon(s) ignoré(s) » même quand `dupCount === 0` ; construction
+> réécrite en phrases nues jointes par `, ` (plus de virgule orpheline possible quand un segment est
+> vide). **(2)** `components/Budget.tsx` `getDateRange()` CUSTOM — une plage inversée (date de fin
+> saisie avant la date de début) rendait un « prévu » positif (`civilDaysBetween` fait `Math.abs`)
+> pendant que le « réel » restait toujours à 0 $ (le filtre par chaîne ne matchait jamais rien) ;
+> les deux bornes sont maintenant permutées silencieusement, sans message d'erreur pour une faute de
+> frappe bénigne. **(3)** `components/Budget.tsx` `handleUpdateItem` — renommer un poste écrivait à
+> CHAQUE frappe (`onChange`) : jusqu'à 5 réécritures complètes de `transactions` (persist Zustand +
+> push Drive) et 5 toasts pour « Resto » → « Restaurant ». Propagation débouncée (500 ms) ; le nom
+> de départ est figé dès la 1ʳᵉ frappe de la session d'édition (`renameOriginalNameRef`), jamais la
+> valeur intermédiaire de la frappe précédente — sinon un renommage en plusieurs frappes aurait
+> raté les transactions dont la catégorie ne matche que le nom D'ORIGINE. **(4)**
+> `mcp/ingest/applyDocument.ts` — JSDoc `[DEBT-MCP-PARITE]` sans `*/` de fermeture, avalait le
+> JSDoc suivant (`inferDebtCategory`) ; fermeture ajoutée. 3 tests neufs, chaque correctif
+> comportemental re-discriminé par perturbation ciblée (revert d'une ligne → rouge → restauré →
+> vert). Gate vert (4 859 tests). PR #753.
+>
 > ## 🟢 Session 2026-08-26 — `[BUDGET-TRANSACTIONS-SYNC-AUDIT]` : audit sync Budget↔Transactions, 4 défauts corrigés
 > Ticket ouvert (« Marc n'est pas sûr que Budget s'adapte correctement à Transactions »), sans
 > hypothèse précise. Audit `financial-integrity` (lecture seule) : store/comptes/devises/bornes de

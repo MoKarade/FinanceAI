@@ -10,6 +10,26 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-26 — 4 bugs préexistants routés par le panel de PR #752, corrigés séparément
+
+- [x] **`[BUDGET-DUPCOUNT-MESSAGE-FAUX]`** (XS) — PR #753, gate vert (4 859 tests). Le résumé de
+  `applyBankStatement` (`mcp/ingest/applyDocument.ts`) annonçait toujours littéralement « 0
+  doublon(s) ignoré(s) » même quand `dupCount === 0`, au lieu de l'omettre. Construction du résumé
+  réécrite en phrases nues jointes par `, ` (plus de virgule orpheline possible).
+- [x] **`[BUDGET-CUSTOM-PLAGE-INVERSEE]`** (S) — PR #753. `getDateRange()` CUSTOM
+  (`components/Budget.tsx`) ne gérait pas une plage inversée (fin saisie avant début) :
+  `civilDaysBetween` fait `Math.abs` (« prévu » positif) mais le filtre par chaîne ne matchait
+  jamais rien (« réel » toujours 0 $). Les deux bornes sont maintenant permutées silencieusement.
+- [x] **`[BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE]`** (S) — PR #753. Renommer un poste de budget
+  écrivait à chaque frappe (`onChange`) : jusqu'à 5 réécritures complètes de `transactions`
+  (persist + push Drive) et 5 toasts pour « Resto » → « Restaurant ». Propagation débouncée
+  (500 ms), le nom de départ étant figé dès la 1ʳᵉ frappe de la session (pas la valeur
+  intermédiaire de la frappe précédente).
+- [x] **`[MCP-JSDOC-APPLYDEBT-NON-FERME]`** (XS) — PR #753. JSDoc `[DEBT-MCP-PARITE]`
+  (`mcp/ingest/applyDocument.ts`) sans `*/` de fermeture, avalait le JSDoc suivant
+  (`inferDebtCategory`). Fermeture ajoutée.
+  3 tests neufs, chaque correctif comportemental re-discriminé par perturbation ciblée.
+
 ## 2026-08-26 — Audit sync Budget ↔ Transactions : 4 défauts trouvés et corrigés
 
 - [x] **`[BUDGET-TRANSACTIONS-SYNC-AUDIT]`** (M) — PR #752 (`claude/lot-29`), gate vert (4 856

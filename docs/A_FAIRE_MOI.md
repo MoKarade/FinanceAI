@@ -723,3 +723,58 @@ sont catégorisés « Remboursement » — je ne veux pas décider seul de chang
 
 </details>
 
+## `[BUDGET-PREVU-BUG]` — diagnostiqué, deux décisions de méthodologie à trancher (2026-08-26)
+
+Ton exemple (« 18 000 $ prévu sur 1 trimestre — irréaliste ») est **reproduit exactement** :
+un compte avec 3 mois d'historique à 6 000 $/mois de revenu donne `incomeAvg = 6 000 $` × 3
+(multiplicateur trimestre) = **18 000 $**. Le calcul est mathématiquement juste sur ses propres
+termes — le problème est que ces termes ne mesurent pas ce que « prévu » devrait vouloir dire.
+
+**Cause n°1 — la moyenne s'étend sur TOUT l'historique, jamais une fenêtre récente.**
+`fullHistoryMonths()` (`utils/budgetSync.ts:65`) part du PREMIER mois de transaction jamais vu et
+va jusqu'au mois précédent — le dénominateur ne fait que grandir, indéfiniment. Deux défauts
+mesurés : (a) sur un compte récent (peu de mois), un seul mois inhabituel domine complètement la
+moyenne — exactement ton cas ; (b) même sur un historique long, la moyenne réagit très lentement à
+un vrai changement de revenu (mesuré : 12 mois à 6 000 $ puis 6 mois à 3 000 $ → « prévu » encore à
+15 000 $/trimestre contre un réel de 9 000 $, **+67 % qui ne convergera jamais** tant que
+l'historique continue de s'allonger).
+**Ta décision** : veux-tu garder une moyenne PLEINE-HISTOIRE (stable mais lente à s'ajuster), ou
+passer à une fenêtre glissante (3, 6, 12 derniers mois) qui réagit plus vite aux changements réels ?
+Si fenêtre glissante, laquelle ?
+
+**Cause n°2 — des transferts/crédits ponctuels comptent comme du revenu récurrent.**
+`services/import/categoryRules.ts:89-90` route AUTOMATIQUEMENT vers « Revenus divers » (= revenu
+réel, entre dans la moyenne ci-dessus) : `DEPOT DIRECT`, `RISTOURNE`, `INTERET SUR`, `CREDIT
+REMISES`, `VIREMENT INTERAC DE`, `E-TRANSFER RECU`. Certains de ces motifs sont probablement de
+vrais revenus (intérêts, remises) ; d'autres (un Interac reçu, un dépôt direct ponctuel) sont
+peut-être des REMBOURSEMENTS d'une dépense partagée plutôt que du revenu récurrent. Il existe déjà
+une catégorie « Remboursement » prévue pour ça (`CREDIT_BACK_CATEGORIES`, `utils/spendRules.ts:32`,
+et le fix `[BUDGET-CATEGORY-INCOME-SIGN]` de cette même session la traite correctement quand elle
+est utilisée) — mais **aucune règle ne l'écrit jamais** : zéro transaction n'est aujourd'hui
+catégorisée « Remboursement » automatiquement. Mesuré : 900 $/mois d'Interac reçus classés à tort
+en revenu ajoute +2 700 $ au « prévu » trimestriel, ET la dépense correspondante reste comptée en
+entier ailleurs (double comptage dans les deux sens).
+**Ta décision** : parmi `VIREMENT INTERAC DE` / `E-TRANSFER RECU` (les deux motifs les plus
+ambigus), lesquels devraient plutôt aller vers « Remboursement » plutôt que « Revenus divers » ?
+Ou préfères-tu classer ça manuellement transaction par transaction ?
+
+**Cause n°3 (mineure, connexe)** : la « projection fin de mois » compare déjà période PLEINE vs
+période ÉCOULÉE pour le Mois + Dépenses (`components/Budget.tsx:301-304`), mais pas pour
+Trimestre/Année ni pour le Revenu — un écart mesuré d'environ **38 %** en milieu de trimestre/année
+(le prévu couvre toute la période, le réel seulement ce qui est écoulé). Si tu veux la même
+cohérence partout, je peux étendre le mécanisme existant une fois les causes 1-2 tranchées (le
+« prévu » lui-même doit d'abord être fiable avant de l'ajuster à l'avancement de la période).
+
+**Ce que je livre dès que tu trancheras 1 et 2** : `computeMonthlyActualAverages` mis à jour selon
+la méthodologie choisie, une règle « Remboursement » ajoutée aux motifs que tu désignes, et
+l'extension de la normalisation de période si tu la veux.
+
+<details>
+<summary>Ticket d'origine (extrait du BACKLOG)</summary>
+
+- [ ] 🔴 **`[BUDGET-PREVU-BUG]`** (M, possiblement money-critical) — le « budget prévu » semble pas
+  à jour et affiche des valeurs impossibles : exemple donné, une entrée d'argent de 18 000 $ prévue
+  sur 1 trimestre — irréaliste pour la situation de Marc. À diagnostiquer.
+
+</details>
+

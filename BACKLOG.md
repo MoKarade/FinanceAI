@@ -31,9 +31,16 @@
   après (323 lignes, 80 exports inutilisés) : un test suffit à faire passer un export pour vivant.
   À trancher avec Marc : supprimer (util + ses 5 tests) ou re-brancher ailleurs. Pas supprimé ici —
   hors périmètre du ticket de retrait.
-- [ ] **`[BUDGET-PREVU-BUG]`** (M, 🔴 possiblement money-critical) — le « budget prévu » semble pas
-  à jour et affiche des valeurs impossibles : exemple donné, une entrée d'argent de 18 000 $ prévue
-  sur 1 trimestre — irréaliste pour la situation de Marc. À diagnostiquer.
+- [ ] **`[BUDGET-INCOME-WINDOW-UTC-OFFBYONE]`** (XS, découvert en diagnostiquant `BUDGET-PREVU-BUG`)
+  — `incomeBreakdown` (`components/Budget.tsx:350-354`) filtre par `new Date(t.date) >= start &&
+  <= end` (comparaison d'objets `Date`), alors que le filtre des dépenses juste au-dessus
+  (`:196-200`) compare des CHAÎNES `YYYY-MM-DD`. `new Date('YYYY-MM-DD')` est ancré en UTC minuit,
+  `start`/`end` (`getDateRange()`) sont construits en heure LOCALE — sous un fuseau négatif
+  (ex. America/Toronto), ça exclut le 1er jour de la période et inclut le 1er jour du suivant.
+  Invisible en CI (conteneur en UTC, cf. leçon `UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC`).
+  Fix : aligner `incomeBreakdown` sur le même filtre par chaîne que les dépenses (idéalement via un
+  helper `getDateRangeStrings()` partagé, pour ne pas dupliquer la logique une 3e fois). Tester avec
+  `process.env.TZ` fixé à un fuseau négatif, PAS seulement en environnement CI par défaut.
 - [ ] **`[BUDGET-REEL-PREVISIONNEL-OBJECTIF]`** (M) — dans la zone « Revenus / dépenses / fin de
   mois / restant », afficher TROIS valeurs plutôt qu'une : **Réel** / **Prévisionnel** / **Objectif**
   (l'Objectif = les valeurs saisies par Marc dans les cibles de dépense par catégorie).

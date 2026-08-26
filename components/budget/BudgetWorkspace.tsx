@@ -72,7 +72,12 @@ export const BudgetWorkspace: React.FC<BudgetWorkspaceProps> = ({
     // [PH4-C] Dépense réelle rapprochée du MOIS COURANT par catégorie → « versé ce mois » des objectifs liés.
     // Calculé ici (parent) pour le partager avec Planning (frère de Budget). `monthStr` ré-évalué à chaque render
     // (et dans les deps) → réactif au passage de mois, pas figé (revue panel).
-    const monthStr = new Date().toISOString().substring(0, 7);
+    // [BUDGET-TRANSACTIONS-SYNC-AUDIT] `.toISOString()` ancre en UTC : sous un fuseau NÉGATIF
+    // (Amérique), les ~4 dernières heures locales de chaque mois basculaient déjà sur le mois
+    // suivant → `monthlyActualsMap` rendait `{}` et le « versé ce mois » des objectifs affichait
+    // 0 $. Composantes LOCALES, comme `toLocalDateStr` de Budget.tsx (même classe, site différent).
+    const now = new Date();
+    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const monthActualsMap = useMemo(
         () => monthlyActualsMap(transactions, budgetItems, monthStr),
         [transactions, budgetItems, monthStr],

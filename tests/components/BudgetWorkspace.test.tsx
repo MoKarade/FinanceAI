@@ -14,7 +14,8 @@ import { render, screen } from '@testing-library/react';
 import { BudgetWorkspace } from '../../components/budget/BudgetWorkspace';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { TAB_LABELS } from '../../constants';
-import { Tab, type BudgetConfig, type User } from '../../types';
+import { formatCAD } from '../../utils/format';
+import { Tab, type BudgetConfig, type User, type BudgetCategory, type SavingsGoal, type Transaction } from '../../types';
 
 // Mock recharts (jsdom n'a pas de dimensions SVG) — même patron que Budget.test.tsx.
 vi.mock('recharts', async () => {
@@ -115,5 +116,55 @@ describe('[REFONTE-NAV-L5] BudgetWorkspace — deep-link pendingFocus', () => {
         render(<BudgetWorkspace {...baseProps} />);
         expect(screen.getByRole('tab', { name: 'Budget' }).getAttribute('aria-selected')).toBe('true');
         expect(useFinanceStore.getState().pendingFocus).toBeNull();
+    });
+});
+
+// [BUDGET-TRANSACTIONS-SYNC-AUDIT] `monthStr` utilisait `.toISOString().substring(0, 7)` (ancrage
+// UTC) : sous un fuseau NÉGATIF, les dernières heures locales de chaque mois basculaient déjà sur
+// le mois suivant en UTC, donc `monthlyActualsMap` filtrait sur un mois SANS transaction → « versé
+// ce mois » d'un objectif lié affichait 0 $ pendant ~4 h/mois. Seul site encore sur `.toISOString()`
+// pour cette classe de bug (Budget.tsx et HealthIndicator.tsx sont déjà passés aux composantes
+// locales). Discriminant : revenir à `.toISOString().substring(0, 7)` fait échouer ce test (0 $
+// affiché au lieu de 100 $) — vérifié par perturbation ciblée sur cette seule ligne.
+describe('[BUDGET-TRANSACTIONS-SYNC-AUDIT] "versé ce mois" vs fuseau horaire NÉGATIF', () => {
+    const originalTz = process.env.TZ;
+    afterEach(() => {
+        vi.useRealTimers();
+        if (originalTz === undefined) delete process.env.TZ; else process.env.TZ = originalTz;
+    });
+
+    it('le dernier jour du mois en soirée (heure locale) compte encore les dépenses DE CE MOIS, pas du mois suivant', () => {
+        process.env.TZ = 'America/Toronto'; // UTC-4 en août (heure d'été)
+        vi.useFakeTimers();
+        // 31 août 2026, 21 h locale → 01 h UTC le 1er septembre : `.toISOString()` bascule déjà
+        // sur septembre alors qu'on est encore le 31 août à Toronto.
+        vi.setSystemTime(new Date(2026, 7, 31, 21, 0));
+
+        const budgetItems: BudgetCategory[] = [
+            { id: 'b1', name: 'Épicerie', target: 400, frequency: 'Monthly', type: 'Commun', nature: 'Besoin' },
+        ];
+        const transactions: Transaction[] = [
+            { id: 1, date: '2026-08-15', payee: 'IGA', amount: -100, category: 'Épicerie', status: 'processed' } as unknown as Transaction,
+        ];
+        const savingsGoals: SavingsGoal[] = [
+            { id: 'g1', name: 'Coussin épicerie', targetAmount: 1000, currentAmount: 200, deadline: '2027-01-01', icon: 'goal', linkedBudgetCategoryName: 'Épicerie' },
+        ];
+
+        useFinanceStore.setState({
+            pendingFocus: { tab: Tab.BUDGET, section: 'objectifs', expiresAt: Date.now() + 5000 },
+        });
+        render(
+            <BudgetWorkspace
+                {...baseProps}
+                budgetItems={budgetItems}
+                transactions={transactions}
+                savingsGoals={savingsGoals}
+            />
+        );
+        expect(screen.getByText(/Versé ce mois/)).toBeInTheDocument();
+        // 100 $, pas 0 $ : la dépense du 15 août doit compter pour le mois d'AOÛT, encore en cours
+        // à 21 h locale le 31, même si l'horloge UTC a déjà basculé sur septembre. Espace insécable
+        // de `formatCAD` normalisé en espace simple (texte DOM normalisé par le navigateur).
+        expect(screen.getByText(formatCAD(100).replace(/[  ]/g, ' '))).toBeInTheDocument();
     });
 });

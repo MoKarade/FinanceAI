@@ -205,7 +205,13 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             case 'YEAR': return 12;
             case 'CUSTOM': {
                 const { start, end } = getDateRange();
-                const diffDays = civilDaysBetween(start, end);
+                // [BUDGET-TRANSACTIONS-SYNC-AUDIT] +1 : la fenêtre de sélection est INCLUSIVE des
+                // DEUX bornes (`getDateRangeStrings`, `t.date >= startStr && t.date <= endStr`),
+                // donc une plage de N jours calendaires contient N jours de transactions, pas
+                // `civilDaysBetween` (différence EXCLUSIVE). Sans le +1, le « prévu » était
+                // systématiquement sous-estimé (mesuré −3,2 % sur un mois plein, +204 % sur 1 jour
+                // à cause du plancher 0,1 compensant un diviseur trop petit).
+                const diffDays = civilDaysBetween(start, end) + 1;
                 // Normalize to months (approx 30.44 days)
                 return Math.max(0.1, diffDays / 30.44);
             }
@@ -527,6 +533,15 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     const setAppState = useFinanceStore(s => s.setAppState);
 
     const handleUpdateItem = (index: number, field: keyof BudgetCategory, value: BudgetCategory[keyof BudgetCategory]) => {
+        // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Le champ nom est un input CONTRÔLÉ qui écrit à chaque
+        // frappe (`onChange`, pas `onBlur`) : vider le nom propagerait `category: ''` à TOUTES les
+        // transactions du poste, puis en le retapant `oldItem.name` vaudrait '' (falsy) et la garde
+        // de rename plus bas ne se redéclencherait plus jamais — orphelines pour de bon (mesuré :
+        // 1 200 $ perdus sur une fixture 3 mois). Refuser l'écriture d'un nom vide : le champ
+        // contrôlé revient alors visuellement à l'ancien nom au lieu de se vider.
+        if (field === 'name' && typeof value === 'string' && value.trim() === '') {
+            return;
+        }
         const newItems = [...budgetItems];
         const oldItem = newItems[index];
         newItems[index] = { ...oldItem, [field]: value };

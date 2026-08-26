@@ -732,10 +732,18 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
 
     const added: Transaction[] = [];
     let dupCount = 0;
-    let rejCount = 0;
+    let rejCount = 0; // montant aberrant (D9)
+    // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Compteur SÉPARÉ de `rejCount` : les deux causes de rejet ne
+    // sont pas la même information pour l'appelant (un montant aberrant n'est pas une date invalide),
+    // et les fusionner sous « aberrant » rendrait le résumé FAUX sur un rejet de date.
+    let rejDateCount = 0;
     let remapCount = 0;
     for (const tx of doc.transactions ?? []) {
         if (!tx || typeof tx.amount !== 'number' || !tx.date) continue;
+        // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Garde runtime symétrique à `applyBankStatement.spec.ts` —
+        // un appel direct (hors passerelle MCP) contourne Zod, leçon MCP-WHATIF. Sans elle, une date
+        // hors calendrier (`2026-02-30`) ou mal formée passait telle quelle jusqu'au grand livre.
+        if (!isValidIsoDate(tx.date)) { rejDateCount++; continue; }
         if (!plausible(tx.amount, MAX_TXN_AMOUNT)) { rejCount++; continue; } // D9 : montant aberrant ignoré
         const k = txnKey(tx);
         // ⚠️ `callerClassified` : le rattrapage a déjà tranché, avec un invariant d'appariement
@@ -780,6 +788,10 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
         ? { ...state, transactions: [...existing, ...added], lastUpdate: Date.now() }
         : state;
     const rej = rejCount ? `, ${rejCount} montant(s) aberrant(s) ignoré(s)` : '';
+    // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Message SÉPARÉ (pas fusionné dans `rej`) : une date invalide
+    // n'est pas un montant aberrant, et un appelant qui lit « aberrant » sur un rejet de date en
+    // tirerait la mauvaise conclusion (il vérifierait ses montants, jamais son format de date).
+    const rejDate = rejDateCount ? `, ${rejDateCount} date(s) invalide(s) ignorée(s)` : '';
     // [MCP-CATEGORY-ALLOWLIST] Signal honnête : un remap silencieux serait la classe
     // « staleness/attribution silencieuse » — l'appelant doit savoir que ses catégories
     // inventées ont été re-catégorisées par les règles.
@@ -787,8 +799,8 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
         ? `, ${remapCount} catégorie(s) non canonique(s) re-catégorisée(s) par les règles`
         : '';
     const summary = added.length
-        ? `Relevé bancaire : ${added.length} transaction(s) ajoutée(s)${dupCount ? `, ${dupCount} doublon(s) ignoré(s)` : ''}${rej}${remap}.`
-        : `Relevé bancaire : aucune nouvelle transaction${dupCount || rejCount ? ` (${dupCount} doublon(s) ignoré(s)${rej})` : ''}.`;
+        ? `Relevé bancaire : ${added.length} transaction(s) ajoutée(s)${dupCount ? `, ${dupCount} doublon(s) ignoré(s)` : ''}${rej}${rejDate}${remap}.`
+        : `Relevé bancaire : aucune nouvelle transaction${dupCount || rejCount || rejDateCount ? ` (${dupCount} doublon(s) ignoré(s)${rej}${rejDate})` : ''}.`;
     return { nextState, changes, summary };
 }
 

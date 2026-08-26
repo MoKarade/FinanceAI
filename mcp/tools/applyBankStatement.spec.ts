@@ -8,11 +8,19 @@
 import { z } from 'zod';
 import type { WriteToolSpec } from './_toolSpec';
 import { RULE_CATEGORIES } from '../../services/import/categoryRules';
+import { isValidIsoDate } from '../../utils/isoDate';
 
 const inputSchema = {
     accountName: z.string().optional().describe('Nom du compte (ex: « Chèque RBC »).'),
     transactions: z.array(z.object({
-        date: z.string().describe('Date ISO (YYYY-MM-DD).'),
+        // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Format ET validité CALENDAIRE (`utils/isoDate.ts`,
+        // source unique partagée avec `applyDebt.spec.ts`) : sans ça, un LLM produit spontanément
+        // `2026-07-31T00:00:00Z` / `31/07/2026` / `2026-7-15` pour la même date — chacun compté
+        // différemment par le grand livre (`slice(0,7)`) et les KPI (comparaison de chaîne),
+        // jusqu'à 3 totaux différents pour les mêmes lignes (mesuré −75 % sur un KPI de fenêtre).
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(isValidIsoDate, {
+            message: 'Date calendaire invalide (ex. mois > 12 ou jour hors du mois) — pas seulement le format.',
+        }).describe('Date ISO (YYYY-MM-DD), réelle — jamais un autre format ni une date invalide.'),
         payee: z.string().describe('Marchand / description.'),
         amount: z.number().finite().describe('Montant SIGNÉ : négatif = dépense, positif = entrée.'),
         // [MCP-CATEGORY-ALLOWLIST] Liste DÉRIVÉE de RULE_CATEGORIES (jamais re-codée — un exemple

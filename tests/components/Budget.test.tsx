@@ -244,8 +244,13 @@ describe('Budget — refonte UI (Phase C3)', () => {
         it('[finding financial-integrity #751] le multiplicateur Custom compte des jours CIVILS, pas un delta d\'heures autour d\'un changement d\'heure', () => {
             // Nov 2026 : le passage à l'heure d'hiver a lieu le 1er novembre en Amérique du Nord —
             // un delta de MILLISECONDES entre deux `Date` locales (1er → 30 novembre) inclut
-            // l'heure ajoutée par le retour à l'heure normale, arrondi vers le haut par `Math.ceil`
-            // → 30 jours au lieu de 29 (mesuré : 1 000 $/mois → 986 $ au lieu de 953 $, +3,45 %).
+            // l'heure ajoutée par le retour à l'heure normale, arrondi vers le haut par `Math.ceil`.
+            // [BUDGET-TRANSACTIONS-SYNC-AUDIT] La borne « juste » a changé depuis #751 : la fenêtre
+            // de sélection est INCLUSIVE des deux bornes (29 jours d'écart + 1 = 30 jours réels), donc
+            // le multiplicateur correct est 30/30.44 ≈ 986 $ — qui coïncide numériquement, pour CETTE
+            // plage précise, avec l'ancien delta d'heures buggué (30 jours lui aussi, par un mécanisme
+            // sans rapport). Cette plage ne peut donc plus, à elle seule, discriminer une régression
+            // ms-delta : c'est le test DST-libre juste après (Août) qui prouve le +1 inclusif.
             const now = new Date();
             const past = new Date(now.getFullYear(), now.getMonth() - 1, 15);
             const py = past.getFullYear();
@@ -262,9 +267,37 @@ describe('Budget — refonte UI (Phase C3)', () => {
             const tile = label!.closest('.rounded-card') as HTMLElement;
             const prevuEl = tile.querySelector('.text-meta.tabular-nums') as HTMLElement;
             const prevu = Number(prevuEl.textContent?.replace(/[^\d]/g, ''));
-            // Civil (correct) : 1000 × 29/30.44 ≈ 953 $. Ancien calcul (delta d'heures) ≈ 986 $.
-            expect(prevu).toBeGreaterThan(940);
-            expect(prevu).toBeLessThan(970);
+            // 1000 × 30/30.44 ≈ 986 $ (30 jours civils INCLUSIFS, DST-safe).
+            expect(prevu).toBeGreaterThan(970);
+            expect(prevu).toBeLessThan(1000);
+        });
+
+        // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Plage SANS changement d'heure (Août) : isole le défaut
+        // d'inclusivité (finding A8) de toute question de DST. La fenêtre de sélection retient les
+        // DEUX bornes (`t.date >= startStr && t.date <= endStr`), donc 01→31 août = 31 jours réels
+        // de transactions, pas 30 (civilDaysBetween exclusif). Discriminant : revenir à
+        // `civilDaysBetween(start, end)` seul (sans le `+ 1`) rend ce test rouge à ~986 $ au lieu de
+        // ~1 018 $ (mesuré, écart −3,2 % correspondant exactement au tableau de l'audit).
+        it('[BUDGET-TRANSACTIONS-SYNC-AUDIT] le multiplicateur Custom compte les jours INCLUSIFS des deux bornes (01→31 août = 31 jours, pas 30)', () => {
+            const now = new Date();
+            const past = new Date(now.getFullYear(), now.getMonth() - 1, 15);
+            const py = past.getFullYear();
+            const pm = String(past.getMonth() + 1).padStart(2, '0');
+            const transactions: Transaction[] = [
+                { id: 's1', date: `${py}-${pm}-15`, payee: 'X', amount: 1000, category: 'Salaire' } as unknown as Transaction,
+            ];
+            const { getByText, getByLabelText, container } = render(<Budget {...baseProps} transactions={transactions} />);
+            fireEvent.click(getByText('Custom'));
+            fireEvent.change(getByLabelText('Date de début'), { target: { value: '2026-08-01' } });
+            fireEvent.change(getByLabelText('Date de fin'), { target: { value: '2026-08-31' } });
+            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
+                .find((l) => (l.textContent ?? '').includes('Revenus'));
+            const tile = label!.closest('.rounded-card') as HTMLElement;
+            const prevuEl = tile.querySelector('.text-meta.tabular-nums') as HTMLElement;
+            const prevu = Number(prevuEl.textContent?.replace(/[^\d]/g, ''));
+            // 1000 × 31/30.44 ≈ 1 018 $ (inclusif, correct) — pas 1000 × 30/30.44 ≈ 986 $ (exclusif, bug).
+            expect(prevu).toBeGreaterThan(1000);
+            expect(prevu).toBeLessThan(1035);
         });
     });
 
@@ -288,6 +321,39 @@ describe('Budget — refonte UI (Phase C3)', () => {
             const { getByText, getByLabelText } = render(<Budget {...baseProps} />);
             fireEvent.click(getByText('Custom'));
             expect((getByLabelText('Date de fin') as HTMLInputElement).value).toBe('2026-08-01');
+        });
+    });
+
+    // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Le champ nom d'un poste est un input CONTRÔLÉ qui écrit à
+    // CHAQUE frappe (`onChange`) : vider entièrement le nom propagerait `category: ''` à toutes ses
+    // transactions, et retaper un nom ensuite ne les récupérerait jamais (`oldItem.name` devient ''
+    // → la garde de rename ne se redéclenche plus). Discriminant : retirer la garde ajoutée dans
+    // `handleUpdateItem` (un `git stash` ciblé sur ce bloc) fait échouer le 1er `expect` ci-dessous
+    // (`setBudgetItems` serait appelé avec `name: ''`).
+    describe('[BUDGET-TRANSACTIONS-SYNC-AUDIT] vider le nom d\'un poste est refusé', () => {
+        it('un nom vidé (Backspace jusqu\'à \'\') n\'écrit RIEN — ni le poste, ni ses transactions', () => {
+            const setBudgetItemsMock = vi.fn();
+            const transactions: Transaction[] = [
+                { id: 't1', date: '2026-06-01', payee: 'X', amount: -40, category: 'Restaurants' } as unknown as Transaction,
+            ];
+            const { getByDisplayValue } = render(
+                <Budget {...baseProps} transactions={transactions} setBudgetItems={setBudgetItemsMock} />
+            );
+            const input = getByDisplayValue('Restaurants') as HTMLInputElement;
+            fireEvent.change(input, { target: { value: '' } });
+            expect(setBudgetItemsMock).not.toHaveBeenCalled();
+            // Input contrôlé par le prop `budgetItems` (inchangé) → reste affiché tel quel.
+            expect(input.value).toBe('Restaurants');
+        });
+
+        it('un nom fait uniquement d\'espaces est traité comme vide (même refus)', () => {
+            const setBudgetItemsMock = vi.fn();
+            const { getByDisplayValue } = render(
+                <Budget {...baseProps} setBudgetItems={setBudgetItemsMock} />
+            );
+            const input = getByDisplayValue('Restaurants') as HTMLInputElement;
+            fireEvent.change(input, { target: { value: '   ' } });
+            expect(setBudgetItemsMock).not.toHaveBeenCalled();
         });
     });
 });

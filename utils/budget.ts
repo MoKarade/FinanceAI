@@ -42,6 +42,11 @@ export function matchTransactionToCategory(
  */
 const fuzzyNameMatch = (categoryLower: string, name: string): boolean => {
     const n = name.toLowerCase();
+    // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Un nom de poste VIDE ne doit jamais matcher : `''.includes(x)`
+    // est toujours faux mais `categoryLower.includes('')` est toujours VRAI — un poste au nom vidé
+    // absorbait alors la PREMIÈRE catégorie rencontrée (mesuré : un poste vidé, resynchronisé,
+    // héritait du nom et de la cible d'un autre poste sans rapport).
+    if (!n) return false;
     return n.includes(categoryLower) || categoryLower.includes(n);
 };
 

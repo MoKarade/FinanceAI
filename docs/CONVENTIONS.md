@@ -7610,3 +7610,30 @@ DÉRIVÉE ailleurs). Le test qui prouve la distinction : simuler PLUSIEURS frapp
 d'avancer le temps (`vi.useFakeTimers()` + `vi.advanceTimersByTime`), puis vérifier que l'effet
 utilise bien la valeur D'ORIGINE et la valeur FINALE — jamais une valeur intermédiaire — et qu'il ne
 se déclenche qu'UNE fois (`UN-DEBOUNCE-SUR-INPUT-CONTROLE-DOIT-FIGER-SA-VALEUR-DE-DEPART`).
+
+⚠️ **Correction/extension trouvée par le panel `/review-all` (2 agents, indépendamment) sur ce MÊME
+lot** : la leçon ci-dessus couvrait la valeur DE DÉPART, mais pas la CLÉ sous laquelle cette valeur
+est rangée. Le premier jet clait `renameTimersRef`/`renameOriginalNameRef` par `index` — l'index
+POSITIONNEL de l'item dans la liste, recalculé à CHAQUE render (`allItems.findIndex(i => i.id ===
+item.id)`). Supprimer un item situé plus haut dans la liste PENDANT qu'un autre item (plus bas) a
+une session de debounce en vol décale les index de tous les items suivants : un item totalement
+différent hérite alors de la clé encore occupée par l'ancienne session — `clearTimeout` annule le
+VRAI renommage en cours, et le nouveau timer planifié sous cette clé renomme les transactions de
+l'ANCIEN poste vers la valeur tapée pour le NOUVEAU, avec un toast qui ne dit rien de cette
+permutation. Un second défaut, du même refus de traiter la structure de données par sa clé stable :
+supprimer l'item porteur d'une session en vol ne l'annulait ni ne la flushait — le timer orphelin se
+déclenchait plus tard sur un poste qui n'existe plus, et le code de suppression cherchait les
+transactions à réassigner par le nom déjà TAPÉ (`itemToDelete.name`, mis à jour à chaque frappe)
+plutôt que par le nom RÉELLEMENT présent dans `transactions` (encore l'original, le debounce n'ayant
+pas encore flushé) — zéro transaction retrouvée, catégorie fantôme jamais nettoyée.
+
+**Généralisation** : toute structure qui associe un état différé (timer, ref, cache) à un élément
+d'une liste RENDUE doit être clée par un identifiant STABLE de cet élément (`item.id`), jamais par
+sa position dans le tableau — la position n'est stable que tant que rien n'est ajouté/retiré/trié
+au-dessus. Et toute opération qui RETIRE un élément de la liste (suppression, filtre) doit
+explicitement annuler/flusher tout état différé associé à CET id avant de continuer, sinon cet état
+survit à l'élément qui l'a créé et agit sur autre chose. Le test qui le prouve : simuler une
+suppression PENDANT qu'un debounce est en vol pour l'item supprimé (le cas direct) — le simple test
+de non-régression positionnelle (renommer un item stable) ne l'aurait jamais trouvé, ce qui explique
+pourquoi il a fallu deux revues indépendantes du MÊME lot pour le voir
+(`UN-ETAT-DIFFERE-DOIT-ETRE-CLE-PAR-ID-STABLE-PAS-PAR-POSITION`).

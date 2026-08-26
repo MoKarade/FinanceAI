@@ -7380,3 +7380,17 @@ redémarré PENDANT la résolution, en révertant le clone à un instantané vie
 commit n'avait jamais été poussé. La règle du dépôt (« committer ET POUSSER avant toute attente
 longue ») couvre aussi la fenêtre du REBASE : pousser la branche AVANT `git rebase`, pas seulement
 avant les suites de tests — un rebase à conflits est une attente longue qui ne dit pas son nom.
+### `UNE-REPRISE-DE-CONTENEUR-PEUT-LAISSER-NODE_MODULES-INCOMPLET` — 2026-08-26
+
+Constaté en reprenant un lot après une interruption de session (changement de modèle + arrêt
+explicite de Marc, puis reprise). Le `npm install` lancé juste après le premier redémarrage de
+conteneur de la journée avait rendu `NPM=0`, mais `node_modules` était en réalité **incomplet** :
+`@vercel/analytics` totalement absent, `@mokarade/hub-contract` présent mais sans son sous-chemin
+`/endpoint`. Le gate a donc échoué en TYPECHECK (`Cannot find module`) sur du code que le lot ne
+touchait pas — un faux signal qui aurait pu faire chercher un bug inexistant dans le diff.
+
+Remède : `rm -rf node_modules && npm install` (pas un `npm install` incrémental) a résolu le
+problème en une passe (507 paquets). Leçon : **un code de sortie 0 de `npm install` ne garantit pas
+un `node_modules` complet** après une reprise de conteneur — si le typecheck échoue sur un module
+tiers introuvable (`Cannot find module '@scope/pkg'`) alors que le diff ne le touche pas, réinstaller
+proprement AVANT de chercher la cause dans le code applicatif.

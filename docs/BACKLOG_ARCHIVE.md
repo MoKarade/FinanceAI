@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-26 — Les lignes rejetées d'un relevé bancaire deviennent visibles à la sync automatisée
+
+- [x] **`[MCP-REJECTIONS-NON-STRUCTUREES]`** (M) — PR #754, gate vert (4 867 tests). Finding
+  silent-failure-hunter (PR #753) : `applyBankStatement` (`mcp/ingest/applyDocument.ts`) rejette
+  des lignes (montant aberrant, date invalide, ligne incomplète) SANS lever — seulement une
+  phrase dans `ApplyResult.summary`, jamais lue par le chemin de sync automatisé
+  (`services/fintable/syncCore.ts` `applyPayloadsIsolated`, qui ne destructure que
+  `nextState`/`changes`). Une sync quotidienne qui recevait 10 lignes dont 5 rejetées écrivait
+  bien les 5 valides sans qu'aucun signal n'apparaisse nulle part (ni `SystemView`, ni log).
+  Nouveau champ optionnel `ApplyResult.rejectedCount` (montant aberrant + date invalide + ligne
+  malformée, PAS les doublons) ; `applyPayloadsIsolated` pousse un avertissement dans `warnings`
+  (déjà affiché par `SystemView`) quand `rejectedCount > 0`. 3 tests neufs, discriminé par
+  perturbation ciblée.
+  ⚠️ Panel `/review-all` (3 agents), même PR : `code-reviewer` a demandé un test verrouillant que
+  DEUX documents `bank_statement` dans le même lot produisent DEUX avertissements distincts (ajouté).
+  `financial-integrity`, MESURÉ : le commentaire justifiant l'exclusion de `dupCount` affirmait
+  qu'un doublon est « attendu d'une sync à fenêtres chevauchantes » — FAUX sur le seul chemin qui
+  lit le champ (la bascule anti-doublon écarte déjà ce cas en amont, 0 collision mesurée sur 60
+  jours) ; réécrit pour dire ce qui est vérifié : un `dupCount` survivant y désigne surtout une
+  collision INTRA-lot. Décision inchangée, seule sa justification était fausse. Défaut préexistant
+  routé au `BACKLOG.md` (`[FINTABLE-DOUBLON-INTRALOT-SILENCIEUX]`) : deux dépenses réelles
+  identiques le même jour se fusionnent en silence (8,50 $ mesurés).
+
 ## 2026-08-26 — 4 bugs préexistants routés par le panel de PR #752, corrigés séparément
 
 - [x] **`[BUDGET-DUPCOUNT-MESSAGE-FAUX]`** (XS) — PR #753, gate vert (4 863 tests). Le résumé de

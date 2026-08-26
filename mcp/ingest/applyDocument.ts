@@ -215,6 +215,22 @@ export interface ApplyResult {
     nextState: AppState;
     changes: Change[];
     summary: string;
+    /** [MCP-REJECTIONS-NON-STRUCTUREES] Nombre de lignes REJETÉES pour une raison de qualité de
+     *  donnée (montant aberrant, date invalide, ligne incomplète) — PAS les doublons. `summary`
+     *  reste la seule source pour un lecteur LLM (`_writeHelper.ts`/`writeExecutor.ts` le lisent en
+     *  entier), mais un appelant AUTOMATISÉ (`applyPayloadsIsolated`, qui ne lit jamais `summary`)
+     *  a besoin d'un compteur structuré pour ne pas rejeter des lignes en silence à chaque sync.
+     *  ⚠️ [finding financial-integrity, MESURÉ] `dupCount` reste hors de ce compteur parce que
+     *  l'inclure ferait une alarme quasi permanente (mesuré : un lot à recouvrement total, cas
+     *  nominal d'une sync quotidienne, donne `dupCount = 30/30`) — PAS parce qu'un doublon serait
+     *  toujours bénin. Sur le chemin automatisé (`syncCore.ts`), le recouvrement légitime est déjà
+     *  écarté EN AMONT par la bascule anti-doublon (`deriveCutoverDate` : mesuré 0 collision sur 60
+     *  jours balayés) et le rattrapage pose `callerClassified: true` (dédup par clé désactivée,
+     *  `dupCount` toujours 0) — donc un `dupCount > 0` qui survit jusqu'ici désigne surtout une
+     *  collision INTRA-lot (deux dépenses RÉELLES identiques le même jour, `seen` les fusionne),
+     *  un cas différent qui mérite son propre signal, pas une inclusion dans `rejectedCount`.
+     *  Absent (`undefined`) pour les types de document qui n'ont pas de rejet ligne-par-ligne. */
+    rejectedCount?: number;
 }
 
 export function applyDocument(state: AppState, doc: DocumentPayload): ApplyResult {
@@ -818,7 +834,10 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
     const summary = added.length
         ? `Relevé bancaire : ${added.length} transaction(s) ajoutée(s)${rejectionPhrases.length ? `, ${rejectionPhrases.join(', ')}` : ''}.`
         : `Relevé bancaire : aucune nouvelle transaction${rejectionPhrases.length ? ` (${rejectionPhrases.join(', ')})` : ''}.`;
-    return { nextState, changes, summary };
+    // [MCP-REJECTIONS-NON-STRUCTUREES] PAS `dupCount` — voir le JSDoc de `rejectedCount` sur
+    // `ApplyResult` pour la raison MESURÉE (pas juste supposée bénigne).
+    const rejectedCount = rejCount + rejDateCount + rejMalformedCount;
+    return { nextState, changes, summary, ...(rejectedCount > 0 ? { rejectedCount } : {}) };
 }
 
 // ── Relevé de courtage (positions → assets) ──────────────────────────────────

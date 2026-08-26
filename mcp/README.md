@@ -68,6 +68,28 @@ l'écriture, le tool refuse (rien d'écrasé) et invite à relancer. Exposés un
 ### Connexion (amorçage)
 | `connect_drive` | Autorise le Google Drive de l'utilisateur **dans la conversation** (consentement navigateur, client OAuth partagé) — pour l'install `.mcpb` sans terminal |
 
+## Formats de retour
+
+### `ApplyResult` — résultat de l'ingestion d'un document
+
+Tous les tools d'écriture (lot 2) retournent un objet `ApplyResult` :
+
+```typescript
+{
+  nextState: AppState;          // L'état complet après application du document
+  changes: Change[];            // Déltas d'écriture : liste de {field, before, after, note?}
+  summary: string;              // Résumé lisible pour Claude (ex: « 5 transactions ajoutées »)
+  rejectedCount?: number;       // Nombre de lignes rejetées pour qualité de donnée
+                                // (montant aberrant, date invalide, ligne incomplète)
+}
+```
+
+**Notes**
+- `rejectedCount` n'existe que pour les outils qui traitent **ligne par ligne** (`apply_bank_statement`) ; absent pour les autres.
+- **Doublons ne sont pas des rejets** : un doublon est un résultat attendu d'une synchronisation à fenêtres chevauchantes.
+- `rejectedCount > 0` : un avertissement s'affiche dans l'onglet Synchronisation (seulement pour les appelants automatisés comme `applyPayloadsIsolated` qui ne lisent pas le `summary` en texte brut).
+- `summary` reste la seule source pour un lecteur LLM — chaque rejet y est décrit en détail (l'appelant automatisé a besoin du compteur structuré en plus pour afficher l'alerte).
+
 ## Lancement local (stdio)
 
 ```bash

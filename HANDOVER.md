@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-26 — `[MCP-REJECTIONS-NON-STRUCTUREES]` : les rejets d'un relevé bancaire deviennent visibles à la sync automatisée
+> Finding hors-scope routé par le panel de PR #753 : `applyBankStatement` rejette des lignes
+> (montant aberrant, date invalide, ligne incomplète) SANS lever — seulement une phrase dans
+> `ApplyResult.summary`, jamais lue par le chemin de sync automatisé (`applyPayloadsIsolated` ne
+> destructure que `nextState`/`changes`). Une sync quotidienne qui recevait 10 lignes dont 5
+> rejetées écrivait bien les 5 valides sans qu'aucun signal n'apparaisse nulle part (ni
+> `SystemView`, ni log) — exactement la classe de silence que cette session a passé son temps à
+> fermer ailleurs. Nouveau champ optionnel `ApplyResult.rejectedCount` (PAS les doublons) ;
+> `applyPayloadsIsolated` pousse un avertissement dans `warnings` (déjà affiché par `SystemView`).
+> ⚠️ Panel `/review-all` (3 agents) : `financial-integrity` a MESURÉ que le motif d'exclusion de
+> `dupCount` (« attendu d'une sync à fenêtres chevauchantes ») était faux sur le seul chemin qui lit
+> ce champ — la bascule anti-doublon écarte déjà ce cas en amont (0 collision sur 60 jours mesurés),
+> donc un `dupCount` survivant y désigne surtout une collision INTRA-lot. Décision inchangée (exclure
+> `dupCount` reste correct — l'inclure ferait une alarme permanente), commentaire réécrit sur ce qui
+> est vérifié. Défaut préexistant routé au `BACKLOG.md` (`[FINTABLE-DOUBLON-INTRALOT-SILENCIEUX]`) :
+> deux dépenses réelles identiques le même jour se fusionnent en silence (8,50 $ mesurés,
+> `cashAnchorDelta` absorbe l'écart — total juste, ventilation fausse). `code-reviewer` a demandé un
+> test verrouillant que deux documents `bank_statement` du même lot produisent deux avertissements
+> distincts (ajouté). 4 tests neufs au total. Gate vert (4 867 tests). PR #754.
+>
 > ## 🟢 Session 2026-08-26 — 4 bugs préexistants routés par le panel de PR #752, corrigés séparément (PR #753)
 > Suite directe de la session `[BUDGET-TRANSACTIONS-SYNC-AUDIT]` ci-dessous : le panel `/review-all`
 > de la PR #752 avait routé 4 défauts PRÉEXISTANTS (non causés par cette PR-là) au `BACKLOG.md`

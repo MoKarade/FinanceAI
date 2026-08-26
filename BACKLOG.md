@@ -17,17 +17,20 @@
 
 ---
 
-- [ ] 🔧 **`[MCP-REJECTIONS-NON-STRUCTUREES]`** (M, finding silent-failure-hunter PR #753) —
-  `applyDocument.ts` `applyBankStatement` : les compteurs de rejet (`rejCount`/`rejDateCount`/
-  `rejMalformedCount`/`remapCount`) n'existent QUE dans la chaîne de texte `summary` (`ApplyResult`
-  n'a que `nextState / changes / summary`). Le chemin de sync automatisé
-  (`services/fintable/syncCore.ts` `applyPayloadsIsolated`) ne lit jamais `summary`, seulement
-  `nextState`/`changes` — une sync quotidienne qui reçoit 10 lignes dont 5 rejetées écrit bien les
-  5 valides mais ne signale NULLE PART (ni `SystemView.tsx`, ni log) que 5 ont été rejetées.
-  Préexistant (le shape `ApplyResult` est antérieur à ce lot), pas causé par PR #753 mais rendu plus
-  visible par son refactor du résumé. Correctif probable : ajouter des compteurs structurés à
-  `ApplyResult` (ex. `rejections: { duplicate, invalidAmount, invalidDate, malformed,
-  recategorized }`) que `applyPayloadsIsolated` agrège dans `warnings` (visible dans `SystemView`).
+- [ ] 🔧 **`[FINTABLE-DOUBLON-INTRALOT-SILENCIEUX]`** (M, finding financial-integrity PR #754,
+  préexistant) — `applyBankStatement` (`mcp/ingest/applyDocument.ts`) fusionne par la clé
+  `date|montant|payee` : deux dépenses RÉELLES identiques le même jour (ex. 3 cafés à 4,25 $ au
+  même commerçant) n'en écrivent qu'UNE, sans aucun avertissement. Sur le chemin de sync
+  automatisée, le recouvrement LÉGITIME est déjà écarté en amont (bascule anti-doublon
+  `deriveCutoverDate`, mesuré 0 collision sur 60 jours) et le rattrapage désactive la dédup
+  (`callerClassified: true`) — donc un `dupCount > 0` qui survit jusqu'à `applyBankStatement` y
+  désigne surtout une collision INTRA-lot (deux lignes distinctes du mapper, pas un recouvrement de
+  fenêtres). Mesuré : 8,50 $ de dépense réelle perdue, `cashAnchorDelta` absorbe l'écart en silence
+  (le total de liquidités reste juste, la VENTILATION budget/historique est fausse). Correctif
+  proposé (à cadrer) : séparer `dupCount` en `dupExistant` (bénin, déjà présent avant ce lot) et
+  `dupIntraLot` (suspect, deux lignes du MÊME lot entrant), et n'avertir que sur le second — le
+  `seen` initial contient déjà l'existant, tester l'appartenance AVANT le premier `seen.add`
+  distingue les deux cas pour le coût d'une ligne.
 
 ## 🧭 Vague Budget/Transactions/Investissements (Marc, 2026-08-21)
 

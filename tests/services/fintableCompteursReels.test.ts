@@ -118,3 +118,68 @@ describe('[FINTABLE-TXADDED-MENT] les compteurs comptent les ÉCRITURES', () => 
         expect(res.debtsUpdated).toEqual(['Visa']);
     });
 });
+
+// [MCP-REJECTIONS-NON-STRUCTUREES] finding silent-failure-hunter (PR #753) : `applyBankStatement`
+// rejette des lignes SANS lever (`ApplyResult.summary`, texte prose) — mais ce chemin AUTOMATISÉ ne
+// lit jamais `summary`, seulement `nextState`/`changes`. Une sync quotidienne qui écrit les lignes
+// valides et perd les autres en silence n'apparaissait NULLE PART (ni `SystemView`, ni log).
+describe('[MCP-REJECTIONS-NON-STRUCTUREES] les lignes rejetées d\'un relevé accepté deviennent un avertissement', () => {
+    it('un lot avec des lignes rejetées (montant aberrant, date invalide) le dit dans `warnings`', () => {
+        const res = applyPayloadsIsolated(etatBase(), [
+            {
+                kind: 'bank_statement',
+                transactions: [
+                    { date: '2026-07-16', payee: 'Erreur de saisie', amount: -1e9 }, // montant aberrant
+                    { date: '2026-02-30', payee: 'IGA', amount: -50 },               // date invalide
+                    { date: '2026-07-17', payee: 'Café', amount: -4.25 },            // la seule vraie
+                ],
+            },
+        ]);
+        expect(res.transactionsAdded).toBe(1); // écrit quand même la ligne valide (isolation)
+        expect(res.warnings.some(w => w.includes('2 ligne(s) rejetée(s)'))).toBe(true);
+    });
+
+    it('un lot SANS aucune ligne rejetée ne mentionne rien (sens inverse — pas d\'alarme permanente)', () => {
+        const res = applyPayloadsIsolated(etatBase(), [
+            { kind: 'bank_statement', transactions: [{ date: '2026-07-20', payee: 'Café', amount: -4.25 }] },
+        ]);
+        expect(res.warnings).toEqual([]);
+    });
+
+    it('un doublon SEUL (0 vrai rejet) ne compte pas comme un rejet — un doublon est ATTENDU, pas une anomalie', () => {
+        const tx = { date: '2026-07-15', payee: 'Épicerie Metro', amount: -50 }; // déjà dans etatBase()
+        const res = applyPayloadsIsolated(etatBase(), [{ kind: 'bank_statement', transactions: [tx] }]);
+        expect(res.warnings).toEqual([]);
+    });
+
+    // [finding code-reviewer, MOYEN] `warnings` est déclaré UNE fois hors de la boucle `for` de
+    // `applyPayloadsIsolated` — un second document `bank_statement` qui rejette des lignes doit
+    // AJOUTER son propre avertissement, jamais fusionner ni écraser celui du premier (classe
+    // `UN-REGISTRE-RECONCILIE-A-UNE-CLE-REND-SES-FLUX-DECORATIFS`, appliquée ici à un tableau plutôt
+    // qu'à une clé).
+    it('DEUX documents `bank_statement` dans le même lot produisent DEUX avertissements distincts, aucun écrasé', () => {
+        const res = applyPayloadsIsolated(etatBase(), [
+            {
+                kind: 'bank_statement',
+                transactions: [
+                    { date: '2026-07-16', payee: 'A', amount: -1e9 },
+                    { date: '2026-07-17', payee: 'B', amount: -1e9 },
+                    { date: '2026-07-18', payee: 'Vrai 1', amount: -10 },
+                ],
+            },
+            {
+                kind: 'bank_statement',
+                transactions: [
+                    { date: '2026-02-30', payee: 'C', amount: -5 },
+                    { date: '2026-02-31', payee: 'D', amount: -6 },
+                    { date: '2026-13-01', payee: 'E', amount: -7 },
+                    { date: '2026-07-19', payee: 'Vrai 2', amount: -20 },
+                ],
+            },
+        ]);
+        expect(res.transactionsAdded).toBe(2); // les deux lignes réelles, une par document
+        expect(res.warnings).toHaveLength(2);
+        expect(res.warnings.some(w => w.includes('2 ligne(s) rejetée(s)'))).toBe(true);
+        expect(res.warnings.some(w => w.includes('3 ligne(s) rejetée(s)'))).toBe(true);
+    });
+});

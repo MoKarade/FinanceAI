@@ -129,6 +129,24 @@ describe('applyDocument — relevé bancaire', () => {
             expect(r.nextState.transactions).toHaveLength(0);
         });
 
+        // [finding code-reviewer, MOYEN] Les DEUX causes de rejet (montant aberrant, date invalide)
+        // dans le MÊME lot : verrouille que la concaténation `${rej}${rejDate}${rejMalformed}` du
+        // résumé ne perd ni ne fusionne aucun des deux messages.
+        it('un montant ABERRANT et une date INVALIDE dans le même lot sont rejetés SÉPARÉMENT, chacun nommé dans le résumé', () => {
+            const r = applyDocument(state(), {
+                kind: 'bank_statement',
+                transactions: [
+                    { date: '2026-02-01', payee: 'INJECTION', amount: -1e12 }, // montant aberrant
+                    { date: '2026-02-30', payee: 'IGA', amount: -50 }, // date invalide
+                    { date: '2026-02-02', payee: 'Metro', amount: -40 }, // normal
+                ],
+            });
+            expect(r.nextState.transactions).toHaveLength(1);
+            expect(r.nextState.transactions[0].payee).toBe('Metro');
+            expect(r.summary).toMatch(/1 montant\(s\) aberrant\(s\) ignoré/);
+            expect(r.summary).toMatch(/1 date\(s\) invalide\(s\) ignorée/);
+        });
+
         // [finding silent-failure-hunter, ÉLEVÉ] Cette garde (ligne AVANT la validation de date)
         // filtrait déjà trois cas (ligne absente, montant non numérique, date ABSENTE) sans compter
         // AUCUN d'eux : un lot où TOUTES les lignes ont ce défaut rendait un résumé qui annonce
@@ -142,7 +160,7 @@ describe('applyDocument — relevé bancaire', () => {
                 ],
             });
             expect(r.nextState.transactions).toHaveLength(0);
-            expect(r.summary).toMatch(/2 ligne\(s\) incomplète\(s\) ignorée/);
+            expect(r.summary).toMatch(/2 ligne\(s\) invalide\(s\) ou incomplète\(s\) ignorée/);
         });
 
         it('le schéma Zod du tool MCP (ceinture À L\'ENTRÉE) rejette un format non-ISO et une date calendaire invalide, accepte une vraie date', () => {

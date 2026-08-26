@@ -803,8 +803,11 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
     const remap = remapCount
         ? `, ${remapCount} catégorie(s) non canonique(s) re-catégorisée(s) par les règles`
         : '';
+    // [BUDGET-TRANSACTIONS-SYNC-AUDIT] finding financial-integrity (FAIBLE) : la garde compte 3
+    // causes (ligne absente, montant non numérique, date manquante) — libellé générique plutôt que
+    // d'en nommer 2 sur 3 et laisser croire qu'une ligne `null`/non-objet a une « date manquante ».
     const rejMalformed = rejMalformedCount
-        ? `, ${rejMalformedCount} ligne(s) incomplète(s) ignorée(s) (montant ou date manquant)`
+        ? `, ${rejMalformedCount} ligne(s) invalide(s) ou incomplète(s) ignorée(s)`
         : '';
     const anyRejected = dupCount || rejCount || rejDateCount || rejMalformedCount;
     const summary = added.length

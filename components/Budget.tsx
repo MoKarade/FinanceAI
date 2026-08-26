@@ -209,11 +209,18 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                 // DEUX bornes (`getDateRangeStrings`, `t.date >= startStr && t.date <= endStr`),
                 // donc une plage de N jours calendaires contient N jours de transactions, pas
                 // `civilDaysBetween` (différence EXCLUSIVE). Sans le +1, le « prévu » était
-                // systématiquement sous-estimé (mesuré −3,2 % sur un mois plein, +204 % sur 1 jour
-                // à cause du plancher 0,1 compensant un diviseur trop petit).
+                // systématiquement sous-estimé (mesuré −3,2 % sur un mois plein).
                 const diffDays = civilDaysBetween(start, end) + 1;
+                // [BUDGET-TRANSACTIONS-SYNC-AUDIT] finding financial-integrity (MOYEN) : l'ancien
+                // plancher `Math.max(0.1, …)` protégeait contre `diffDays === 0` (plage d'un seul
+                // jour, avant le +1 ci-dessus) — depuis le +1, `diffDays` vaut TOUJOURS ≥ 1, donc le
+                // multiplicateur est TOUJOURS ≥ 1/30,44 ≈ 0,033 : le plancher n'a plus de rôle et ne
+                // faisait plus qu'écraser les petites plages vers 0,1 (mesuré : 1, 2 ET 3 jours
+                // affichaient tous le MÊME « prévu », jusqu'à +204 % d'erreur sur 1 jour). Seule
+                // division par ce multiplicateur dans le fichier (`monthlyTotalSavings`, plus bas)
+                // reste sûre : le minimum possible n'est jamais nul.
                 // Normalize to months (approx 30.44 days)
-                return Math.max(0.1, diffDays / 30.44);
+                return diffDays / 30.44;
             }
             default: return 1;
         }

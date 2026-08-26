@@ -299,6 +299,33 @@ describe('Budget — refonte UI (Phase C3)', () => {
             expect(prevu).toBeGreaterThan(1000);
             expect(prevu).toBeLessThan(1035);
         });
+
+        // [finding financial-integrity, MOYEN] Le plancher `Math.max(0.1, …)` protégeait contre
+        // `diffDays === 0` AVANT le `+1` ci-dessus ; depuis le `+1`, `diffDays` vaut toujours ≥ 1,
+        // donc le plancher n'a plus de rôle et ne fait plus qu'écraser les petites plages vers 0,1 —
+        // 1, 2 ET 3 jours affichaient tous le MÊME « prévu » (jusqu'à +204 % d'erreur sur 1 jour).
+        // Retiré. Discriminant : réintroduire `Math.max(0.1, ...)` fait échouer ce test (100 $ au
+        // lieu de ~33 $).
+        it('[BUDGET-TRANSACTIONS-SYNC-AUDIT] une plage Custom d\'UN SEUL jour n\'est plus écrasée vers le plancher 0,1', () => {
+            const now = new Date();
+            const past = new Date(now.getFullYear(), now.getMonth() - 1, 15);
+            const py = past.getFullYear();
+            const pm = String(past.getMonth() + 1).padStart(2, '0');
+            const transactions: Transaction[] = [
+                { id: 's1', date: `${py}-${pm}-15`, payee: 'X', amount: 1000, category: 'Salaire' } as unknown as Transaction,
+            ];
+            const { getByText, getByLabelText, container } = render(<Budget {...baseProps} transactions={transactions} />);
+            fireEvent.click(getByText('Custom'));
+            fireEvent.change(getByLabelText('Date de début'), { target: { value: '2026-08-15' } });
+            fireEvent.change(getByLabelText('Date de fin'), { target: { value: '2026-08-15' } });
+            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
+                .find((l) => (l.textContent ?? '').includes('Revenus'));
+            const tile = label!.closest('.rounded-card') as HTMLElement;
+            const prevuEl = tile.querySelector('.text-meta.tabular-nums') as HTMLElement;
+            const prevu = Number(prevuEl.textContent?.replace(/[^\d]/g, ''));
+            // 1000 × 1/30.44 ≈ 33 $ (correct, sans plancher) — pas 1000 × 0,1 = 100 $ (plancher).
+            expect(prevu).toBeLessThan(50);
+        });
     });
 
     // [finding code-reviewer #751] Les tests ci-dessus couvrent un fuseau NÉGATIF (Toronto). Le

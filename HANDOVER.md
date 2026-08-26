@@ -30,7 +30,7 @@
 > mort côté producteurs) ; le grand livre doit-il compter les retours marchands/remboursements
 > d'impôt en revenus (écart mesuré 11,7 % sur une fixture) ; les impôts payés doivent-ils avoir un
 > poste budget (écart d'assiette mesuré 44 %, et le conseil du panneau Parité s'auto-annule sinon).
-> 9 tests neufs, gate vert (4 853 tests). PR #752.
+> 12 tests neufs au total, gate vert (4 856 tests). PR #752.
 > ⚠️ **Panel `/review-all` (4 agents), même PR** : `silent-failure-hunter` a trouvé 2 ÉLEVÉ (le
 > refus d'un nom de poste vide était 100 % silencieux — input contrôlé qui « recrache » l'ancien nom
 > sans toast ; et la garde qui filtre les lignes MCP incomplètes, montant/date absents, ne comptait

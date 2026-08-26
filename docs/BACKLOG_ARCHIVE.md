@@ -12,7 +12,7 @@
 
 ## 2026-08-26 — Audit sync Budget ↔ Transactions : 4 défauts trouvés et corrigés
 
-- [x] **`[BUDGET-TRANSACTIONS-SYNC-AUDIT]`** (M) — PR #752 (`claude/lot-29`), gate vert (4 853
+- [x] **`[BUDGET-TRANSACTIONS-SYNC-AUDIT]`** (M) — PR #752 (`claude/lot-29`), gate vert (4 856
   tests). Ticket ouvert (« Marc n'est pas sûr que Budget s'adapte correctement à Transactions »),
   sans hypothèse précise. Audit `financial-integrity` (lecture seule, mesures réelles) : 6 pistes
   vérifiées SAINES (store partagé, comptes, devises, bornes Mois/Trimestre/Année, dépendances des
@@ -37,7 +37,14 @@
   payés doivent-ils avoir un poste budget (écart d'assiette mesuré 44 %, conseil du panneau Parité
   auto-annulé sinon).
   Chaque correctif discriminé par revert CIBLÉ (single-line), pas par `git stash` pleine page.
-  9 tests neufs.
+  Panel `/review-all` (4 agents) sur le même lot : 2 ÉLEVÉ (`silent-failure-hunter` — refus de nom
+  vide 100 % silencieux ; lignes MCP incomplètes non comptées dans le résumé), 1 MOYEN RÉEL
+  (`financial-integrity` — le plancher `Math.max(0.1, …)` de `getMultiplier()` avait perdu sa
+  raison d'être avec le `+1` et écrasait les plages de 1 à 3 jours vers la même valeur, jusqu'à
+  +204 % d'erreur sur 1 jour ; retiré), 2 FAIBLE durcis (`fuzzyNameMatch` sur un nom fait
+  d'espaces ; libellé du nouveau compteur de rejet MCP). 4 bugs préexistants découverts en chemin,
+  non corrigés, routés au `BACKLOG.md`.
+  12 tests neufs au total.
 
 ## 2026-08-26 — Le revenu du 1er du mois disparaissait sous un fuseau négatif
 

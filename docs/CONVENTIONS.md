@@ -7394,3 +7394,42 @@ problème en une passe (507 paquets). Leçon : **un code de sortie 0 de `npm ins
 un `node_modules` complet** après une reprise de conteneur — si le typecheck échoue sur un module
 tiers introuvable (`Cannot find module '@scope/pkg'`) alors que le diff ne le touche pas, réinstaller
 proprement AVANT de chercher la cause dans le code applicatif.
+
+## Leçon du lot `[FINTABLE-SYNC-XTAB-MANUEL]` — 2026-08-26 : un contrat d'API tiers commenté ET testé n'est pas une preuve
+
+Le lot devait être une extension de routine : génériciser `withCrossTabLock` (Web Locks) pour que
+le bouton manuel de sync partage le verrou cross-onglet déjà posé par la passe auto (lot 16,
+`[FINTABLE-SYNC-XTAB-MUTEX]`). Un finding CRITIQUE de `code-reviewer` sur un problème adjacent
+(`outcome ?? onBusy()` traitant un `run()` résolvant `undefined` comme « occupé ») a mené à
+re-vérifier CE QUE `LockManager.request()` rend réellement sous `ifAvailable: true` — et la réponse
+contredisait le code du dépôt.
+
+**Le code de lot 16 croyait** (commenté explicitement, ET encodé dans le mock du test associé) que
+« `request` rend `null` SANS appeler le rappel » quand le verrou est déjà pris ailleurs. **La spec
+Web Locks dit l'inverse** (confirmé par recherche web, 3 sources indépendantes, MDN direct bloqué
+par le proxy) : sous `ifAvailable`, **le rappel est TOUJOURS invoqué** — avec `lock === null` au
+lieu d'un `Lock`, jamais sauté. Le rappel de lot 16 ignorait ce paramètre et appelait `run()`
+inconditionnellement (`async () => run()`) : dans TOUT navigateur réel qui expose Web Locks
+(Chrome, Edge, Firefox 96+, Safari 15.4+ — la majorité du parc), un onglet qui trouvait le verrou
+déjà pris exécutait quand même sa passe complète. **La mutex cross-onglet ne mutex-ait rien depuis
+sa création.**
+
+⚠️ **Pourquoi les tests de lot 16 ne l'ont jamais vu** : leur faux `LockManager`
+(`tests/services/fintable/autoSyncXtabLock.test.ts`) codait la MÊME croyance fausse — `if (!libre)
+return null` sans appeler `cb`. Un mock qui encode la même erreur que le code testé ne PEUT PAS la
+détecter ; il la confirme. « Documenté » et « testé » ne sont pas des preuves d'un contrat externe —
+seule la spec l'est, et jsdom n'implémentant pas Web Locks, aucun test de ce dépôt ne peut jamais
+exercer le VRAI navigateur pour trancher lui-même.
+
+**Correctif, aux DEUX endroits** : `withCrossTabLock` vérifie maintenant `lock === null` DANS le
+rappel (jamais la valeur de retour de `request()`, structurellement ambiguë avec un `run()` qui
+résout légitimement une valeur falsy) ; le mock de lot 16 appelle désormais `cb(libre ? {} : null)`
+dans tous les cas — sans cette seconde correction, il aurait continué à masquer le même trou après
+le fix du code.
+
+**Généralisation** : avant de faire confiance à un commentaire ou un test qui affirme le
+comportement d'une API navigateur non disponible dans jsdom (Web Locks, mais la même logique
+s'applique à toute API testée uniquement via mock — BroadcastChannel, IndexedDB avancé,
+Permissions), vérifier la spec ou une source externe AVANT d'étendre ou de répliquer ce contrat
+ailleurs dans le code. Un mock isolé qui ne peut jamais être confronté au vrai environnement porte
+la même autorité qu'une supposition — jusqu'à preuve du contraire.

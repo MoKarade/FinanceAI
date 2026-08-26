@@ -48,6 +48,10 @@ const ROLE_LABELS: Record<RoleKind, string> = {
 /** Marc, 2026-07-30 : « c'est tout non enregistré pour le moment » → défaut le plus probable. */
 const DEFAULT_REGIME = 'NON-ENREG' as const;
 
+// [finding code-reviewer, FAIBLE] Message identique aux DEUX portes de `handleSync` (intra-onglet
+// et cross-onglet) — une seule constante pour ne plus risquer de les faire diverger.
+const SYNC_BUSY_MESSAGE = 'Une synchronisation est déjà en cours — réessaie dans un instant.';
+
 function roleOf(roles: Record<string, FintableAccountRoleConfig> | undefined, id: string): FintableAccountRoleConfig | undefined {
     return roles?.[id];
 }
@@ -183,7 +187,7 @@ export const FintableSyncCard: React.FC = () => {
         // la fonction, avec le MÊME nom de verrou : les deux surfaces s'excluent désormais aussi
         // entre onglets, pas seulement chacune contre elle-même.
         if (!acquireFintableSyncLock()) {
-            setError('Une synchronisation est déjà en cours — réessaie dans un instant.');
+            setError(SYNC_BUSY_MESSAGE);
             return;
         }
         // ⚠️ [finding silent-failure #649] RÉINITIALISÉE à chaque passe. Sans ça, une liste chargée

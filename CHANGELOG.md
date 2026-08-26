@@ -6,14 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
-## [unreleased] — 2026-08-26 (le bouton « Synchroniser » aussi se coordonne entre onglets)
+## [unreleased] — 2026-08-26 (le verrou anti-collision entre onglets ne bloquait en réalité personne)
 
-- Le verrou qui empêche deux onglets de synchroniser ta banque en même temps ne protégeait que la
-  synchro **automatique** au démarrage. Le bouton « Synchroniser maintenant » de l'écran Réglages
-  ne se coordonnait qu'à l'intérieur d'un seul onglet — un deuxième onglet ouvert pouvait donc
-  encore entrer en collision avec lui (dernier écrivain gagnant sur un solde ou une dette).
-- Le bouton partage maintenant le même verrou que la synchro automatique : les deux se coordonnent
-  entre TOUS les onglets ouverts, pas seulement entre eux-mêmes.
+- Le verrou censé empêcher deux onglets de synchroniser ta banque en même temps ne fonctionnait
+  PAS dans un vrai navigateur : quand un onglet le tenait déjà, l'autre exécutait quand même sa
+  synchro au complet, exactement comme s'il n'y avait pas de verrou. Une collision entre deux
+  onglets pouvait donc bel et bien écraser un solde ou une dette avec des données périmées — le
+  scénario que ce verrou existait justement pour empêcher.
+- Corrigé, avec en prime le bouton « Synchroniser maintenant » de l'écran Réglages qui rejoint
+  maintenant ce même verrou (avant ce lot, il ne se coordonnait qu'à l'intérieur d'un seul onglet).
+- Un rejet inattendu de ce mécanisme est maintenant journalisé dans le journal d'erreurs (Réglages
+  → Diagnostics) au lieu de disparaître sans trace.
 
 ## [unreleased] — 2026-08-25 (après un divorce, la mensualité de la maison est partagée elle aussi)
 

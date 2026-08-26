@@ -4,18 +4,34 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟢 Session 2026-08-26 (suite 178) — `[FINTABLE-SYNC-XTAB-MANUEL]` : la sync manuelle rejoint le verrou cross-onglet
-> Suite directe de `[FINTABLE-SYNC-XTAB-MUTEX]` (suite 169) : `withCrossTabLock` protégeait déjà la
-> passe AUTO (Web Locks, `XTAB_LOCK_NAME`) mais restait privé et monomorphe à `AutoSyncOutcome` — le
-> bouton « Synchroniser » de `FintableSyncCard.tsx` ne prenait que le verrou INTRA-onglet
-> (`acquireFintableSyncLock`), exposé à la même course que le ticket d'origine mais entre onglets.
-> Fait : `withCrossTabLock<T>(run, onBusy)` généricisé et exporté ; `handleSync` enveloppe
-> désormais TOUT son corps (garde intra-onglet incluse, comme prescrit par la leçon
-> `UN-VERROU-DOIT-ENVELOPPER-LA-GARDE-PAS-SEULEMENT-LE-TRAVAIL`) avec le MÊME `XTAB_LOCK_NAME` que
-> l'auto — les deux surfaces s'excluent maintenant aussi entre onglets. 3 tests neufs sur le chemin
-> Web Locks (disponible / pris ailleurs / API absente), mockant `navigator.locks` directement —
-> seule façon de l'exercer, jsdom ne l'expose pas. Aucun code moteur touché, aucune leçon nouvelle
-> (réapplication d'une leçon déjà écrite).
+> ## 🔴 Session 2026-08-26 (suite 178) — `[FINTABLE-SYNC-XTAB-MANUEL]` : le mutex cross-onglet de lot 16 ne mutex-ait rien, en vrai navigateur
+> Parti d'une extension de routine (génériciser `withCrossTabLock` pour que le bouton manuel
+> partage le verrou de la passe auto) — et tombé sur un bug bien plus large, confirmé contre la
+> **spec Web Locks** (recherche web, MDN introuvable directement — proxy — mais confirmé par 3
+> sources indépendantes) : sous `ifAvailable: true`, **le rappel est TOUJOURS invoqué**, avec
+> `lock === null` quand le verrou est déjà pris ailleurs — il n'est **jamais sauté**. Le code de
+> lot 16 (`[FINTABLE-SYNC-XTAB-MUTEX]`) croyait l'inverse (« `request` rend `null` SANS appeler le
+> rappel », commenté et testé comme tel) et son rappel ignorait le paramètre `lock` en l'appelant
+> inconditionnellement (`async () => run()`). Conséquence en **navigateur réel** (Chrome/Edge/
+> Firefox 96+/Safari 15.4+) : quand un onglet tenait déjà le verrou, l'AUTRE onglet exécutait quand
+> même `run()` en entier — la mutex ne bloquait RIEN. Les tests de lot 16 ne l'ont jamais vu parce
+> que leur faux `LockManager` reproduisait la même croyance fausse (`if (!libre) return null`, sans
+> appeler `cb`) : un mock aussi faux que le code qu'il couvrait.
+> ⚠️ Trouvé grâce à un finding CRITIQUE de `code-reviewer` sur un problème ADJACENT (mon
+> `withCrossTabLock<T>` généricisé traitait un `run()` résolvant `undefined` — le cas réel de
+> `Promise<void>` de `handleSync` — comme « occupé », via `outcome ?? onBusy()`) : en creusant POURQUOI
+> la valeur de retour de `request()` pouvait être ambiguë, la vraie forme du contrat est apparue.
+> **Fixé aux DEUX endroits** : `withCrossTabLock` vérifie maintenant `lock === null` *à l'intérieur*
+> du rappel (jamais la valeur de retour de `request()`), et le test de lot 16
+> (`autoSyncXtabLock.test.ts`) a été corrigé pour appeler `cb(null)` au lieu de sauter le rappel —
+> sans ce correctif-là, il aurait continué à masquer le même trou.
+> Aussi fixé : rejet de `locks.request` maintenant journalisé (`logError`) puis re-levé — trouvé par
+> `silent-failure-hunter` (ÉLEVÉ) — plutôt qu'avalé sans trace, ce qui aurait gelé `_inFlight` en
+> silence pour toujours.
+> 5 tests neufs (dont le cas `undefined` qui aurait laissé filer la régression), 2 corrigés.
+> **Leçon → `docs/CONVENTIONS.md`** : un contrat d'API tiers **commenté ET testé** dans le dépôt
+> n'est pas une preuve — seule la spec l'est. Un mock qui encode la même croyance que le code testé
+> ne peut PAS détecter l'erreur commune aux deux.
 >
 > ## 🔴 Session 2026-08-25 (suite 177) — `NetTransferLiquid` vaut TOUJOURS zéro dans le futur
 > J'avais routé `[ENG-LIQUID-FLUX-FORM]` comme un cas limite (« 7 638,44 $ au mois 324 »). RE-MESURÉ :

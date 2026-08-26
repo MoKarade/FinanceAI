@@ -23,7 +23,7 @@ import { PrivateAmount } from '../ui/PrivateAmount';
 import { formatCAD } from '../../utils/format';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { importWithRetry, isChunkLoadError } from '../../utils/lazyWithRetry';
-import { acquireFintableSyncLock, releaseFintableSyncLock } from '../../services/fintable/autoSync';
+import { acquireFintableSyncLock, releaseFintableSyncLock, withCrossTabLock } from '../../services/fintable/autoSync';
 import { saveApiKeys } from '../../services/secureKeyStore';
 import { logError } from '../../services/errorLogger';
 import type { AppState, FintableAccountRoleConfig } from '../../types';
@@ -172,10 +172,16 @@ export const FintableSyncCard: React.FC = () => {
      */
     const [incertaines, setIncertaines] = useState<Array<{ entrante: { date: string; payee: string; amount: number }; existante: { date: string; payee: string; amount: number }; ecartJours: number }>>([]);
 
-    const handleSync = async (backfill = false) => {
+    const handleSync = async (backfill = false) => withCrossTabLock(async () => {
         // [Finding code-reviewer #545, CRITIQUE] Verrou PARTAGÉ avec la sync AUTO : sans lui, une
         // passe manuelle lancée pendant la passe auto (fenêtre réseau de plusieurs secondes)
         // calculerait son patch sur une base figée → dernier-écrivain-gagne sur transactions/soldes.
+        //
+        // ⚠️ [FINTABLE-SYNC-XTAB-MANUEL] Ce verrou intra-onglet ne protège PAS contre un deuxième
+        // ONGLET qui cliquerait « Synchroniser » en même temps — même course que celle qui a motivé
+        // le verrou Web Locks de la sync auto (autoSync.ts). D'où `withCrossTabLock` autour de TOUTE
+        // la fonction, avec le MÊME nom de verrou : les deux surfaces s'excluent désormais aussi
+        // entre onglets, pas seulement chacune contre elle-même.
         if (!acquireFintableSyncLock()) {
             setError('Une synchronisation est déjà en cours — réessaie dans un instant.');
             return;
@@ -260,7 +266,11 @@ export const FintableSyncCard: React.FC = () => {
                 });
             }
         } finally { releaseFintableSyncLock(); setBusy('idle'); }
-    };
+    }, () => {
+        // Onglet perdant : identique au message intra-onglet — Marc n'a pas à savoir LEQUEL des
+        // deux verrous a refusé, seulement qu'une passe est déjà en cours ailleurs.
+        setError('Une synchronisation est déjà en cours — réessaie dans un instant.');
+    });
 
     const unassigned = (accounts ?? []).filter((a) => roleOf(fintableRoles, a.id) === undefined).length;
 

@@ -8,12 +8,13 @@
  * borne les retries) ; (c) échec → SEUL le rapport est écrit (jamais de contenu à moitié) ;
  * (d) succès → patch par delta de référence (le champ modifié atteint le store).
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
     maybeRunDailyFintableSync,
     isDailySyncDue,
     acquireFintableSyncLock,
     releaseFintableSyncLock,
+    withCrossTabLock,
     _resetAutoSyncForTests,
 } from '../../../services/fintable/autoSync';
 import { useFinanceStore } from '../../../store/useFinanceStore';
@@ -122,6 +123,50 @@ describe('maybeRunDailyFintableSync — verrou partagé auto ↔ manuel', () => 
         }
         expect(acquireFintableSyncLock()).toBe(true); // relâché → reprenable
         releaseFintableSyncLock();
+    });
+});
+
+describe('withCrossTabLock — générique (lot 27, partagé auto ↔ manuel ENTRE onglets)', () => {
+    // [FINTABLE-SYNC-XTAB-MANUEL] Généricisé pour que la carte de sync MANUELLE partage le même
+    // verrou Web Locks que la passe auto (`XTAB_LOCK_NAME` identique) — la sonde ici mocke
+    // `navigator.locks` directement, seule façon d'exercer le chemin Web Locks : jsdom ne l'expose
+    // pas, donc toutes les AUTRES passes de ce fichier empruntent déjà le repli sans verrou.
+    const original = (navigator as unknown as { locks?: unknown }).locks;
+    afterEach(() => {
+        const nav = navigator as unknown as { locks?: unknown };
+        if (original === undefined) delete nav.locks; else nav.locks = original;
+    });
+
+    it('verrou disponible : exécute run() et rend sa valeur, jamais onBusy()', async () => {
+        (navigator as unknown as { locks: unknown }).locks = {
+            request: async (_name: string, _opts: unknown, cb: () => Promise<unknown>) => cb(),
+        };
+        const run = vi.fn().mockResolvedValue('ok');
+        const onBusy = vi.fn();
+        const out = await withCrossTabLock(run, onBusy);
+        expect(out).toBe('ok');
+        expect(run).toHaveBeenCalledTimes(1);
+        expect(onBusy).not.toHaveBeenCalled();
+    });
+
+    it('verrou pris par un AUTRE onglet (`request` rend null SANS appeler le rappel) : onBusy(), jamais run()', async () => {
+        (navigator as unknown as { locks: unknown }).locks = { request: async () => null };
+        const run = vi.fn().mockResolvedValue('ok');
+        const onBusy = vi.fn().mockReturnValue('busy');
+        const out = await withCrossTabLock(run, onBusy);
+        expect(out).toBe('busy');
+        expect(run).not.toHaveBeenCalled();
+        expect(onBusy).toHaveBeenCalledTimes(1);
+    });
+
+    it('API Web Locks absente : repli, exécute run() directement', async () => {
+        delete (navigator as unknown as { locks?: unknown }).locks;
+        const run = vi.fn().mockResolvedValue('ok');
+        const onBusy = vi.fn();
+        const out = await withCrossTabLock(run, onBusy);
+        expect(out).toBe('ok');
+        expect(run).toHaveBeenCalledTimes(1);
+        expect(onBusy).not.toHaveBeenCalled();
     });
 });
 

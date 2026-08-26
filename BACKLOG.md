@@ -536,17 +536,6 @@
   fausse le budget réel ET la moyenne 12 mois. Ne JAMAIS écrire sans dédoublonnage.
   Prérequis : confirmer avec Marc la profondeur réellement offerte par son plan (mesurer, ne pas
   supposer — 90 j demandés / 30 rendus au dernier test).
-- [ ] **`[FINTABLE-SYNC-XTAB-MANUEL]`** (M, découvert en livrant `XTAB-MUTEX` — **NON corrigé, hors
-  périmètre du ticket**) — le verrou cross-onglet (`withCrossTabLock`, Web Locks) n'enveloppe que la
-  passe AUTO. Le bouton « Synchroniser » de `components/settings/FintableSyncCard.tsx:179` ne prend
-  que `acquireFintableSyncLock()`, c'est-à-dire `_inFlight`, une **variable de module** : elle ne
-  protège que l'onglet courant. Chemin réel : l'onglet A lance sa passe auto au boot pendant que
-  Marc clique « Synchroniser » dans l'onglet B → même dégât que le ticket d'origine (dernier écrivain
-  gagne sur soldes/dettes ; pas de doublon, `applyDocument` déduplique).
-  Fix : rendre `withCrossTabLock` GÉNÉRIQUE (`<T>(run, onBusy)`), l'exporter, et envelopper le corps
-  de `handleSync`. ⚠️ Non fait ici à dessein : le corps fait ~85 lignes avec `try/finally`, plusieurs
-  `setState` et le chemin d'ÉCRITURE money-critical — l'extraire mérite son propre lot et sa propre
-  perturbation, pas un « pendant qu'on y est ».
 - [ ] **`[ENG-FERR-ECART-AGE-NON-COUVERT]`** (M — ⚠️ **REMPLACE `[ENG-REERBYUSER-FLUX-DECORATIF]`,
   dont le constat était TROP LARGE et FAUX ; correction MESURÉE le 2026-08-25**) — j'avais écrit que
   l'arithmétique de flux du registre REER per-conjoint était « décorative », parce qu'une perturbation

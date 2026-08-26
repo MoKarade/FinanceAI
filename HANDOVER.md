@@ -4,6 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-26 (suite 178) — `[FINTABLE-SYNC-XTAB-MANUEL]` : la sync manuelle rejoint le verrou cross-onglet
+> Suite directe de `[FINTABLE-SYNC-XTAB-MUTEX]` (suite 169) : `withCrossTabLock` protégeait déjà la
+> passe AUTO (Web Locks, `XTAB_LOCK_NAME`) mais restait privé et monomorphe à `AutoSyncOutcome` — le
+> bouton « Synchroniser » de `FintableSyncCard.tsx` ne prenait que le verrou INTRA-onglet
+> (`acquireFintableSyncLock`), exposé à la même course que le ticket d'origine mais entre onglets.
+> Fait : `withCrossTabLock<T>(run, onBusy)` généricisé et exporté ; `handleSync` enveloppe
+> désormais TOUT son corps (garde intra-onglet incluse, comme prescrit par la leçon
+> `UN-VERROU-DOIT-ENVELOPPER-LA-GARDE-PAS-SEULEMENT-LE-TRAVAIL`) avec le MÊME `XTAB_LOCK_NAME` que
+> l'auto — les deux surfaces s'excluent maintenant aussi entre onglets. 3 tests neufs sur le chemin
+> Web Locks (disponible / pris ailleurs / API absente), mockant `navigator.locks` directement —
+> seule façon de l'exercer, jsdom ne l'expose pas. Aucun code moteur touché, aucune leçon nouvelle
+> (réapplication d'une leçon déjà écrite).
+>
 > ## 🔴 Session 2026-08-25 (suite 177) — `NetTransferLiquid` vaut TOUJOURS zéro dans le futur
 > J'avais routé `[ENG-LIQUID-FLUX-FORM]` comme un cas limite (« 7 638,44 $ au mois 324 »). RE-MESURÉ :
 > **le champ est non nul sur 0 des 361 points**. Donc **355 mois sur 360** avec un résiduel > 1 $,

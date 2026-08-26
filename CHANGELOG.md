@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-26 (le bouton « Synchroniser » aussi se coordonne entre onglets)
+
+- Le verrou qui empêche deux onglets de synchroniser ta banque en même temps ne protégeait que la
+  synchro **automatique** au démarrage. Le bouton « Synchroniser maintenant » de l'écran Réglages
+  ne se coordonnait qu'à l'intérieur d'un seul onglet — un deuxième onglet ouvert pouvait donc
+  encore entrer en collision avec lui (dernier écrivain gagnant sur un solde ou une dette).
+- Le bouton partage maintenant le même verrou que la synchro automatique : les deux se coordonnent
+  entre TOUS les onglets ouverts, pas seulement entre eux-mêmes.
+
 ## [unreleased] — 2026-08-25 (après un divorce, la mensualité de la maison est partagée elle aussi)
 
 - Dans une projection avec divorce, la maison et son hypothèque étaient bien partagées — mais **pas

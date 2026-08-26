@@ -4,6 +4,27 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟡 Session 2026-08-26 — `[BUDGET-PREVU-BUG]` : diagnostiqué, reproduit exactement, routé à Marc
+> Ticket « À diagnostiquer » — livré tel quel, aucun code changé. Reproduit l'exemple de Marc au
+> dollar près : 3 mois d'historique à 6 000 $/mois de revenu → « prévu » trimestriel = **18 000 $**
+> (6 000 × 3). Le calcul est juste sur ses propres termes ; le problème est la MÉTHODOLOGIE.
+> Cause n°1 : `fullHistoryMonths()` (`utils/budgetSync.ts:65`) moyenne sur TOUT l'historique depuis
+> le 1er mois jamais vu — dénominateur qui ne fait que grandir, domine par un seul mois inhabituel
+> sur un compte récent, et ne converge JAMAIS vers un changement de revenu réel (mesuré : +67 %
+> d'écart qui persiste indéfiniment sur un historique long avec un vrai changement de revenu).
+> Cause n°2 : `categoryRules.ts:89-90` route des crédits ponctuels (Interac reçu, dépôt direct) vers
+> « Revenus divers » (= revenu récurrent) au lieu de « Remboursement » — qui existe déjà
+> (`CREDIT_BACK_CATEGORIES`) mais n'a **aucun producteur**, zéro transaction n'y est jamais routée.
+> Mesuré : +2 700 $/trimestre de « prévu » fabriqué par un simple Interac récurrent mal classé.
+> Cause n°3 (mineure) : la normalisation période-pleine/période-écoulée existe pour Mois+Dépenses
+> mais pas Trimestre/Année/Revenu (~38 % d'écart mesuré en cours de période).
+> **Routé à Marc** (`docs/A_FAIRE_MOI.md`) : fenêtre de moyenne à choisir (pleine-historique vs
+> glissante) et classification des motifs Interac ambigus — deux décisions produit, pas des bugs à
+> corriger d'office. Un 4e défaut MINEUR et non-ambigu (décalage UTC/local d'un jour sur la fenêtre
+> revenus, `Budget.tsx:350-354`) a été ajouté au `BACKLOG.md` (`[BUDGET-INCOME-WINDOW-UTC-OFFBYONE]`)
+> plutôt que fixé ici — nécessite un test avec `TZ` fixé à un fuseau négatif pour être vérifié
+> correctement, pas une correction précipitée en fin de diagnostic.
+>
 > ## 🟠 Session 2026-08-26 — `[BUDGET-CATEGORY-INCOME-SIGN]` : un remboursement DOUBLAIT l'erreur
 > Ticket d'audit ("valider que Budget traite bien un crédit sur une catégorie de dépense comme une
 > entrée d'argent") — mesuré avant d'écrire, et le bug était réel : `computeBudgetParity`/

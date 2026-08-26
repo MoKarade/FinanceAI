@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Transaction, BudgetConfig, BudgetCategory, Tab as TabEnum } from '../types';
 import { Card } from './ui/Card';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -94,6 +94,18 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
     const [showAiModal, setShowAiModal] = useState(false);
 
+    // [BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE] La propagation du renommage aux transactions (plus bas,
+    // `handleUpdateItem`) est DÉBOUNCÉE : `renameOriginalNameRef` retient le nom encore ACTIF dans
+    // `transactions` (celui d'AVANT la première frappe de la session d'édition en cours), pour que
+    // le renommage final (déclenché après une pause de frappe) parte du bon nom même si l'utilisateur
+    // a tapé plusieurs caractères — sans elle, chaque frappe déclencherait sa propre réécriture
+    // complète du tableau de transactions + un toast (jusqu'à 5 pour « Resto » → « Restaurant »).
+    const renameTimersRef = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+    const renameOriginalNameRef = useRef<Record<number, string>>({});
+    useEffect(() => () => {
+        Object.values(renameTimersRef.current).forEach(clearTimeout);
+    }, []);
+
     // [BUDGET-TX-CATEGORIES] Le Budget reflète SEULEMENT ET EXACTEMENT les catégories présentes
     // dans les Transactions (demande Marc 2026-07-15) : postes manquants ajoutés (cible suggérée
     // = moyenne mensuelle 6 mois, modifiable), postes flou-rapprochables RENOMMÉS (réglages
@@ -182,7 +194,15 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
             return { start, end };
         } else {
             // Custom : pas de périodes adjacentes, utilise les bornes user (heure LOCALE, cf. note ci-dessus).
-            return { start: parseLocalDateStr(customStart), end: parseLocalDateStr(customEnd) };
+            const start = parseLocalDateStr(customStart);
+            const end = parseLocalDateStr(customEnd);
+            // [BUDGET-CUSTOM-PLAGE-INVERSEE] finding code-reviewer : une plage inversée (date de fin
+            // saisie avant la date de début) laissait `civilDaysBetween` rendre un nombre positif
+            // (il fait `Math.abs`) pendant que le filtre par CHAÎNE (`t.date >= startStr && t.date
+            // <= endStr`) ne matchait jamais rien — « prévu » positif, « réel » toujours 0 $. Permuter
+            // silencieusement les deux bornes : l'utilisateur voit la plage qu'il a demandée, dans
+            // l'ordre chronologique, plutôt qu'un message d'erreur pour une faute de frappe bénigne.
+            return start > end ? { start: end, end: start } : { start, end };
         }
     };
 
@@ -567,15 +587,28 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
         // Phase D'.1 — synchro absolue : si rename de catégorie, propage aux
         // transactions qui utilisent l'ancien nom.
+        // [BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE] Débouncé : `oldItem.name` à CETTE frappe est déjà la
+        // valeur de la frappe PRÉCÉDENTE (le champ est contrôlé, `budgetItems` est mis à jour ci-dessus
+        // à chaque frappe) — `renameOriginalNameRef` fige donc le nom encore présent dans
+        // `transactions` dès la 1ʳᵉ frappe de la session, et la réécriture ne part QUE de ce nom-là,
+        // vers la valeur la plus RÉCENTE au moment où le timer se déclenche.
         if (field === 'name' && typeof value === 'string' && oldItem.name && oldItem.name !== value) {
-            const updatedTransactions = transactions.map(t =>
-                t.category === oldItem.name ? { ...t, category: value } : t
-            );
-            const renamedCount = updatedTransactions.filter((t, i) => t.category !== transactions[i].category).length;
-            if (renamedCount > 0) {
-                setAppState({ transactions: updatedTransactions });
-                showToast(`Catégorie renommée. ${renamedCount} transaction(s) mises à jour.`, 'success');
+            if (renameOriginalNameRef.current[index] === undefined) {
+                renameOriginalNameRef.current[index] = oldItem.name;
             }
+            const fromName = renameOriginalNameRef.current[index];
+            clearTimeout(renameTimersRef.current[index]);
+            renameTimersRef.current[index] = setTimeout(() => {
+                delete renameOriginalNameRef.current[index];
+                const updatedTransactions = transactions.map(t =>
+                    t.category === fromName ? { ...t, category: value } : t
+                );
+                const renamedCount = updatedTransactions.filter((t, i) => t.category !== transactions[i].category).length;
+                if (renamedCount > 0) {
+                    setAppState({ transactions: updatedTransactions });
+                    showToast(`Catégorie renommée. ${renamedCount} transaction(s) mises à jour.`, 'success');
+                }
+            }, 500);
         }
     };
 

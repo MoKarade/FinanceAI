@@ -44,6 +44,19 @@ describe('applyDocument — relevé bancaire', () => {
         expect(r.changes.length).toBe(0);
     });
 
+    // [BUDGET-DUPCOUNT-MESSAGE-FAUX] finding code-reviewer : la branche « aucune nouvelle
+    // transaction » annonçait toujours « 0 doublon(s) ignoré(s) » même quand `dupCount === 0` (ex.
+    // un lot rejeté pour une AUTRE raison, ici une date invalide) — au lieu de l'omettre comme la
+    // branche « ajoutée(s) » le fait déjà.
+    it('un rejet SANS aucun doublon ne mentionne pas "0 doublon(s)" dans le résumé', () => {
+        const r = applyDocument(state(), {
+            kind: 'bank_statement',
+            transactions: [{ date: '2026-02-30', payee: 'IGA', amount: -50 }], // date invalide, 0 doublon
+        });
+        expect(r.summary).not.toMatch(/doublon/);
+        expect(r.summary).toMatch(/1 date\(s\) invalide\(s\) ignorée/);
+    });
+
     // [MCP-CATEGORY-ALLOWLIST] La catégorie du tool est du texte LIBRE écrit par l'IA : hors du
     // jeu canonique (postes existants + RULE_CATEGORIES), elle serait absorbée par le fuzzy
     // partagé (« Sport » ⊂ « Tran-sport ») sans trace (finding silent-failure-hunter PR #501).

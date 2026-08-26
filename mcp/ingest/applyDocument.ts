@@ -792,27 +792,32 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
     const nextState: AppState = added.length
         ? { ...state, transactions: [...existing, ...added], lastUpdate: Date.now() }
         : state;
-    const rej = rejCount ? `, ${rejCount} montant(s) aberrant(s) ignoré(s)` : '';
-    // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Message SÉPARÉ (pas fusionné dans `rej`) : une date invalide
-    // n'est pas un montant aberrant, et un appelant qui lit « aberrant » sur un rejet de date en
-    // tirerait la mauvaise conclusion (il vérifierait ses montants, jamais son format de date).
-    const rejDate = rejDateCount ? `, ${rejDateCount} date(s) invalide(s) ignorée(s)` : '';
-    // [MCP-CATEGORY-ALLOWLIST] Signal honnête : un remap silencieux serait la classe
-    // « staleness/attribution silencieuse » — l'appelant doit savoir que ses catégories
-    // inventées ont été re-catégorisées par les règles.
-    const remap = remapCount
-        ? `, ${remapCount} catégorie(s) non canonique(s) re-catégorisée(s) par les règles`
-        : '';
+    // [BUDGET-DUPCOUNT-MESSAGE-FAUX] finding code-reviewer : chaque segment est une PHRASE nue (sans
+    // séparateur), jointe plus bas par `, ` — l'ancienne construction préfixait chaque segment par
+    // `, ` littéral, ce qui laissait une virgule orpheline en tête dès que `dupCount === 0` mais un
+    // AUTRE rejet existait (`(, 1 montant(s) aberrant(s) ignoré(s))`).
+    const dupPhrase = dupCount ? `${dupCount} doublon(s) ignoré(s)` : '';
+    const rejPhrase = rejCount ? `${rejCount} montant(s) aberrant(s) ignoré(s)` : '';
+    // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Message SÉPARÉ (pas fusionné dans `rejPhrase`) : une date
+    // invalide n'est pas un montant aberrant, et un appelant qui lit « aberrant » sur un rejet de
+    // date en tirerait la mauvaise conclusion (il vérifierait ses montants, jamais son format de date).
+    const rejDatePhrase = rejDateCount ? `${rejDateCount} date(s) invalide(s) ignorée(s)` : '';
     // [BUDGET-TRANSACTIONS-SYNC-AUDIT] finding financial-integrity (FAIBLE) : la garde compte 3
     // causes (ligne absente, montant non numérique, date manquante) — libellé générique plutôt que
     // d'en nommer 2 sur 3 et laisser croire qu'une ligne `null`/non-objet a une « date manquante ».
-    const rejMalformed = rejMalformedCount
-        ? `, ${rejMalformedCount} ligne(s) invalide(s) ou incomplète(s) ignorée(s)`
+    const rejMalformedPhrase = rejMalformedCount
+        ? `${rejMalformedCount} ligne(s) invalide(s) ou incomplète(s) ignorée(s)`
         : '';
-    const anyRejected = dupCount || rejCount || rejDateCount || rejMalformedCount;
+    // [MCP-CATEGORY-ALLOWLIST] Signal honnête : un remap silencieux serait la classe
+    // « staleness/attribution silencieuse » — l'appelant doit savoir que ses catégories
+    // inventées ont été re-catégorisées par les règles.
+    const remapPhrase = remapCount
+        ? `${remapCount} catégorie(s) non canonique(s) re-catégorisée(s) par les règles`
+        : '';
+    const rejectionPhrases = [dupPhrase, rejPhrase, rejDatePhrase, rejMalformedPhrase, remapPhrase].filter(Boolean);
     const summary = added.length
-        ? `Relevé bancaire : ${added.length} transaction(s) ajoutée(s)${dupCount ? `, ${dupCount} doublon(s) ignoré(s)` : ''}${rej}${rejDate}${rejMalformed}${remap}.`
-        : `Relevé bancaire : aucune nouvelle transaction${anyRejected ? ` (${dupCount} doublon(s) ignoré(s)${rej}${rejDate}${rejMalformed})` : ''}.`;
+        ? `Relevé bancaire : ${added.length} transaction(s) ajoutée(s)${rejectionPhrases.length ? `, ${rejectionPhrases.join(', ')}` : ''}.`
+        : `Relevé bancaire : aucune nouvelle transaction${rejectionPhrases.length ? ` (${rejectionPhrases.join(', ')})` : ''}.`;
     return { nextState, changes, summary };
 }
 
@@ -886,7 +891,7 @@ const debtKey = (name: string): string => String(name || '').trim().toLowerCase(
  *  une date de dette vient d'un document réel (contrat, relevé) ou d'une saisie DebtManager
  *  (`<input type="date">`), toujours au jour près — jamais un YYYY-MM approximatif. Validation
  *  CALENDAIRE (pas seulement le format) : `utils/isoDate.ts`, source unique partagée avec le
- *  schéma Zod du tool MCP (`applyDebt.spec.ts`) — voir sa doc pour le piège `2026-13-01`.
+ *  schéma Zod du tool MCP (`applyDebt.spec.ts`) — voir sa doc pour le piège `2026-13-01`. */
 
 /** Catégorie inférée du nom quand absente (auto/études/carte → sinon Personal).
  *  Accents strippés une fois (« véhicule » matche `vehic`) ; les mots COURTS sont ancrés `\b…\b` —

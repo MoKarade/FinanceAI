@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, within } from '@testing-library/react';
 import { Budget } from '../../components/Budget';
+import { useFinanceStore } from '../../store/useFinanceStore';
 import type { BudgetConfig, BudgetCategory, User, Transaction } from '../../types';
 import { formatCAD } from '../../utils/format';
 
@@ -326,6 +327,26 @@ describe('Budget — refonte UI (Phase C3)', () => {
             // 1000 × 1/30.44 ≈ 33 $ (correct, sans plancher) — pas 1000 × 0,1 = 100 $ (plancher).
             expect(prevu).toBeLessThan(50);
         });
+
+        // [BUDGET-CUSTOM-PLAGE-INVERSEE] finding code-reviewer : une date de fin saisie AVANT la
+        // date de début (faute de frappe bénigne) laissait `civilDaysBetween` rendre un nombre
+        // positif (il fait `Math.abs`) pendant que le filtre par chaîne ne matchait jamais rien —
+        // « réel » toujours 0 $. Les deux bornes sont maintenant permutées silencieusement.
+        it('une plage Custom INVERSÉE (fin avant début) est permutée silencieusement, pas vidée à 0 $', () => {
+            const transactions: Transaction[] = [
+                { id: 'i1', date: '2026-08-15', payee: 'X', amount: 500, category: 'Revenus divers' } as unknown as Transaction,
+            ];
+            const { getByText, getByLabelText, container } = render(<Budget {...baseProps} transactions={transactions} />);
+            fireEvent.click(getByText('Custom'));
+            // Fin AVANT début, à l'envers.
+            fireEvent.change(getByLabelText('Date de début'), { target: { value: '2026-08-31' } });
+            fireEvent.change(getByLabelText('Date de fin'), { target: { value: '2026-08-01' } });
+            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
+                .find((l) => (l.textContent ?? '').includes('Revenus'));
+            const tile = label!.closest('.rounded-card') as HTMLElement;
+            const reel = (tile.querySelector('.text-kpi') as HTMLElement).textContent?.replace(/[^\d]/g, '');
+            expect(reel).toBe('500'); // pas '0' : la transaction du 15 août est bien dans la plage permutée.
+        });
     });
 
     // [finding code-reviewer #751] Les tests ci-dessus couvrent un fuseau NÉGATIF (Toronto). Le
@@ -387,6 +408,46 @@ describe('Budget — refonte UI (Phase C3)', () => {
             const input = getByDisplayValue('Restaurants') as HTMLInputElement;
             fireEvent.change(input, { target: { value: '   ' } });
             expect(setBudgetItemsMock).not.toHaveBeenCalled();
+        });
+    });
+
+    // [BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE] Renommer un poste déclenchait une réécriture complète
+    // du tableau de transactions (+ un toast) à CHAQUE frappe — jusqu'à 5 pour « Resto » →
+    // « Restaurant ». Débouncé : aucune propagation avant une pause de frappe, une seule ensuite,
+    // partant du VRAI nom encore présent dans les transactions (pas d'une valeur intermédiaire).
+    describe('[BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE] la propagation aux transactions est débouncée', () => {
+        beforeEach(() => { vi.useFakeTimers(); });
+        afterEach(() => {
+            useFinanceStore.setState({ transactions: [] });
+            vi.useRealTimers();
+        });
+
+        it('plusieurs frappes rapides ne propagent RIEN avant la pause, puis UNE seule fois vers la valeur finale', () => {
+            const transactions: Transaction[] = [
+                { id: 't1', date: '2026-06-01', payee: 'X', amount: -40, category: 'Restaurants' } as unknown as Transaction,
+            ];
+            useFinanceStore.setState({ transactions });
+            const toastSpy = vi.fn();
+            window.addEventListener('app-toast', toastSpy);
+            const { getByDisplayValue } = render(<Budget {...baseProps} transactions={transactions} />);
+            const input = getByDisplayValue('Restaurants') as HTMLInputElement;
+
+            // 3 « frappes » successives, comme un input contrôlé les enverrait une par une.
+            fireEvent.change(input, { target: { value: 'Restauran' } });
+            fireEvent.change(input, { target: { value: 'Restaurant' } });
+            fireEvent.change(input, { target: { value: 'Restaurants!' } });
+
+            // Rien avant la pause : ni écriture au store, ni toast.
+            expect(useFinanceStore.getState().transactions[0].category).toBe('Restaurants');
+            expect(toastSpy).not.toHaveBeenCalled();
+
+            vi.advanceTimersByTime(500);
+
+            // Une seule propagation, du nom ORIGINAL ('Restaurants') vers la valeur FINALE tapée —
+            // jamais un renommage intermédiaire ('Restauran' ou 'Restaurant').
+            expect(useFinanceStore.getState().transactions[0].category).toBe('Restaurants!');
+            expect(toastSpy).toHaveBeenCalledTimes(1);
+            window.removeEventListener('app-toast', toastSpy);
         });
     });
 });

@@ -540,6 +540,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         // 1 200 $ perdus sur une fixture 3 mois). Refuser l'écriture d'un nom vide : le champ
         // contrôlé revient alors visuellement à l'ancien nom au lieu de se vider.
         if (field === 'name' && typeof value === 'string' && value.trim() === '') {
+            // [BUDGET-TRANSACTIONS-SYNC-AUDIT] finding silent-failure-hunter (ÉLEVÉ) : le champ est
+            // un input CONTRÔLÉ — sans message, l'utilisateur qui vide le nom pour le retaper voit
+            // juste son clavier « ne pas marcher » (React re-rend l'ancien nom sans explication).
+            showToast('Le nom du poste ne peut pas être vide.', 'info');
             return;
         }
         const newItems = [...budgetItems];

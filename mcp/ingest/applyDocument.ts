@@ -737,9 +737,14 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
     // sont pas la même information pour l'appelant (un montant aberrant n'est pas une date invalide),
     // et les fusionner sous « aberrant » rendrait le résumé FAUX sur un rejet de date.
     let rejDateCount = 0;
+    // [BUDGET-TRANSACTIONS-SYNC-AUDIT] finding silent-failure-hunter (ÉLEVÉ) : cette garde filtrait
+    // trois cas (ligne absente, montant non numérique, date absente) sans compter AUCUN d'eux — un
+    // lot où TOUTES les lignes ont ce défaut rendait `added.length === 0` et un résumé littéralement
+    // « aucune nouvelle transaction. », sans dire qu'il y avait N lignes soumises et rejetées.
+    let rejMalformedCount = 0;
     let remapCount = 0;
     for (const tx of doc.transactions ?? []) {
-        if (!tx || typeof tx.amount !== 'number' || !tx.date) continue;
+        if (!tx || typeof tx.amount !== 'number' || !tx.date) { rejMalformedCount++; continue; }
         // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Garde runtime symétrique à `applyBankStatement.spec.ts` —
         // un appel direct (hors passerelle MCP) contourne Zod, leçon MCP-WHATIF. Sans elle, une date
         // hors calendrier (`2026-02-30`) ou mal formée passait telle quelle jusqu'au grand livre.
@@ -798,9 +803,13 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
     const remap = remapCount
         ? `, ${remapCount} catégorie(s) non canonique(s) re-catégorisée(s) par les règles`
         : '';
+    const rejMalformed = rejMalformedCount
+        ? `, ${rejMalformedCount} ligne(s) incomplète(s) ignorée(s) (montant ou date manquant)`
+        : '';
+    const anyRejected = dupCount || rejCount || rejDateCount || rejMalformedCount;
     const summary = added.length
-        ? `Relevé bancaire : ${added.length} transaction(s) ajoutée(s)${dupCount ? `, ${dupCount} doublon(s) ignoré(s)` : ''}${rej}${rejDate}${remap}.`
-        : `Relevé bancaire : aucune nouvelle transaction${dupCount || rejCount || rejDateCount ? ` (${dupCount} doublon(s) ignoré(s)${rej}${rejDate})` : ''}.`;
+        ? `Relevé bancaire : ${added.length} transaction(s) ajoutée(s)${dupCount ? `, ${dupCount} doublon(s) ignoré(s)` : ''}${rej}${rejDate}${rejMalformed}${remap}.`
+        : `Relevé bancaire : aucune nouvelle transaction${anyRejected ? ` (${dupCount} doublon(s) ignoré(s)${rej}${rejDate}${rejMalformed})` : ''}.`;
     return { nextState, changes, summary };
 }
 

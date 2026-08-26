@@ -129,6 +129,22 @@ describe('applyDocument — relevé bancaire', () => {
             expect(r.nextState.transactions).toHaveLength(0);
         });
 
+        // [finding silent-failure-hunter, ÉLEVÉ] Cette garde (ligne AVANT la validation de date)
+        // filtrait déjà trois cas (ligne absente, montant non numérique, date ABSENTE) sans compter
+        // AUCUN d'eux : un lot où TOUTES les lignes ont ce défaut rendait un résumé qui annonce
+        // « aucune nouvelle transaction. » sans dire que N lignes avaient été soumises et rejetées.
+        it('un lot où TOUTES les lignes sont incomplètes (date/montant manquant) le DIT dans le résumé, pas un silence total', () => {
+            const r = applyDocument(state(), {
+                kind: 'bank_statement',
+                transactions: [
+                    { date: '', payee: 'IGA', amount: -50 }, // date absente
+                    { payee: 'Metro', amount: -40 } as unknown as { date: string; payee: string; amount: number }, // date absente
+                ],
+            });
+            expect(r.nextState.transactions).toHaveLength(0);
+            expect(r.summary).toMatch(/2 ligne\(s\) incomplète\(s\) ignorée/);
+        });
+
         it('le schéma Zod du tool MCP (ceinture À L\'ENTRÉE) rejette un format non-ISO et une date calendaire invalide, accepte une vraie date', () => {
             const schema = z.object(applyBankStatementSpec.inputSchema);
             const base = { transactions: [{ payee: 'IGA', amount: -50, date: '2026-07-31' }] };

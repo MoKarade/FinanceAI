@@ -339,11 +339,17 @@ describe('Budget — refonte UI (Phase C3)', () => {
             const { getByDisplayValue } = render(
                 <Budget {...baseProps} transactions={transactions} setBudgetItems={setBudgetItemsMock} />
             );
+            // [finding silent-failure-hunter, ÉLEVÉ] Le refus doit être SIGNALÉ (toast), pas
+            // seulement silencieux — sinon l'utilisateur voit juste son clavier « ne pas marcher ».
+            const toastSpy = vi.fn();
+            window.addEventListener('app-toast', toastSpy);
             const input = getByDisplayValue('Restaurants') as HTMLInputElement;
             fireEvent.change(input, { target: { value: '' } });
             expect(setBudgetItemsMock).not.toHaveBeenCalled();
             // Input contrôlé par le prop `budgetItems` (inchangé) → reste affiché tel quel.
             expect(input.value).toBe('Restaurants');
+            expect(toastSpy).toHaveBeenCalledTimes(1);
+            window.removeEventListener('app-toast', toastSpy);
         });
 
         it('un nom fait uniquement d\'espaces est traité comme vide (même refus)', () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, within } from '@testing-library/react';
 import { Budget } from '../../components/Budget';
 import type { BudgetConfig, BudgetCategory, User, Transaction } from '../../types';
@@ -181,5 +181,113 @@ describe('Budget — refonte UI (Phase C3)', () => {
         // Ventilation salaire / divers visible
         expect(tile.textContent).toMatch(/Salaire/);
         expect(tile.textContent).toMatch(/Divers/);
+    });
+
+    // [BUDGET-INCOME-WINDOW-UTC-OFFBYONE] `incomeBreakdown` comparait `new Date(t.date)` (ancré UTC
+    // minuit) à `start`/`end` (ancrés en heure LOCALE) — sous un fuseau NÉGATIF, ça excluait le 1er
+    // jour de la période. Invisible en CI (conteneur en UTC, où les deux ancrages coïncident) : le
+    // fuseau est un PARAMÈTRE du test, pas un détail d'environnement (leçon
+    // `UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC`).
+    describe('[BUDGET-INCOME-WINDOW-UTC-OFFBYONE] fenêtre revenus vs fuseau horaire', () => {
+        const originalTz = process.env.TZ;
+        beforeEach(() => { process.env.TZ = 'America/Toronto'; });
+        // [finding financial-integrity #751] `process.env.TZ = undefined` écrit la CHAÎNE
+        // "undefined", pas une absence — `delete` si le TZ n'était pas défini au départ, sinon les
+        // tests suivants tournent sous un fuseau nommé "undefined" plutôt que celui du conteneur.
+        afterEach(() => {
+            if (originalTz === undefined) delete process.env.TZ; else process.env.TZ = originalTz;
+        });
+
+        it('un revenu daté du 1er du mois compte, même sous un fuseau à décalage négatif', () => {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const firstOfMonth = `${y}-${m}-01`;
+            const transactions: Transaction[] = [
+                { id: 'i1', date: firstOfMonth, payee: 'X', amount: 500, category: 'Revenus divers' } as unknown as Transaction,
+            ];
+            const { container } = render(<Budget {...baseProps} transactions={transactions} />);
+            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
+                .find((l) => (l.textContent ?? '').includes('Revenus'));
+            const tile = label!.closest('.rounded-card') as HTMLElement;
+            const reel = (tile.querySelector('.text-kpi') as HTMLElement).textContent?.replace(/[^\d]/g, '');
+            expect(reel).toBe('500'); // pas '0' : le 1er du mois n'est plus perdu
+        });
+
+        it('une plage PERSONNALISÉE compte les deux bornes, même sous un fuseau à décalage négatif', () => {
+            // Vérifie la COHÉRENCE entre `parseLocalDateStr` (bloc CUSTOM) et `toLocalDateStr`
+            // (`getDateRangeStrings`), pas un bug observable en isolation sur CUSTOM : avant ce lot,
+            // `getDateRange` CUSTOM ancrait DÉJÀ en UTC (`new Date(customStart)`), comme le faisait
+            // `incomeBreakdown` — les deux ancrages UTC coïncidaient, donc un `git stash` du fichier
+            // ENTIER laisse ce test VERT (les deux défauts s'annulent, mesuré). La preuve qui compte
+            // est la perturbation CIBLÉE : reverter SEULEMENT `parseLocalDateStr` (en gardant
+            // `toLocalDateStr`) rougit ce test à 300 $ (la borne de fin perdue) — c'est CETTE
+            // combinaison-là (nouveau `toLocalDateStr` + ancien ancrage UTC de CUSTOM) qui aurait pu
+            // exister si les deux correctifs avaient été faits en deux lots séparés.
+            // `new Date('2026-08-01')` ancre à UTC minuit ; relu en heure locale sous Toronto
+            // (UTC-4), ça redevenait le 31 juillet AVANT ce correctif (`parseLocalDateStr`).
+            const transactions: Transaction[] = [
+                { id: 'i1', date: '2026-08-01', payee: 'X', amount: 300, category: 'Revenus divers' } as unknown as Transaction,
+                { id: 'i2', date: '2026-08-31', payee: 'X', amount: 200, category: 'Revenus divers' } as unknown as Transaction,
+            ];
+            const { container, getByText, getByLabelText } = render(<Budget {...baseProps} transactions={transactions} />);
+            fireEvent.click(getByText('Custom'));
+            fireEvent.change(getByLabelText('Date de début'), { target: { value: '2026-08-01' } });
+            fireEvent.change(getByLabelText('Date de fin'), { target: { value: '2026-08-31' } });
+            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
+                .find((l) => (l.textContent ?? '').includes('Revenus'));
+            const tile = label!.closest('.rounded-card') as HTMLElement;
+            const reel = (tile.querySelector('.text-kpi') as HTMLElement).textContent?.replace(/[^\d]/g, '');
+            expect(reel).toBe('500'); // 300 + 200, pas '0' ou '300' (une borne perdue)
+        });
+
+        it('[finding financial-integrity #751] le multiplicateur Custom compte des jours CIVILS, pas un delta d\'heures autour d\'un changement d\'heure', () => {
+            // Nov 2026 : le passage à l'heure d'hiver a lieu le 1er novembre en Amérique du Nord —
+            // un delta de MILLISECONDES entre deux `Date` locales (1er → 30 novembre) inclut
+            // l'heure ajoutée par le retour à l'heure normale, arrondi vers le haut par `Math.ceil`
+            // → 30 jours au lieu de 29 (mesuré : 1 000 $/mois → 986 $ au lieu de 953 $, +3,45 %).
+            const now = new Date();
+            const past = new Date(now.getFullYear(), now.getMonth() - 1, 15);
+            const py = past.getFullYear();
+            const pm = String(past.getMonth() + 1).padStart(2, '0');
+            const transactions: Transaction[] = [
+                { id: 's1', date: `${py}-${pm}-15`, payee: 'X', amount: 1000, category: 'Salaire' } as unknown as Transaction,
+            ];
+            const { getByText, getByLabelText, container } = render(<Budget {...baseProps} transactions={transactions} />);
+            fireEvent.click(getByText('Custom'));
+            fireEvent.change(getByLabelText('Date de début'), { target: { value: '2026-11-01' } });
+            fireEvent.change(getByLabelText('Date de fin'), { target: { value: '2026-11-30' } });
+            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
+                .find((l) => (l.textContent ?? '').includes('Revenus'));
+            const tile = label!.closest('.rounded-card') as HTMLElement;
+            const prevuEl = tile.querySelector('.text-meta.tabular-nums') as HTMLElement;
+            const prevu = Number(prevuEl.textContent?.replace(/[^\d]/g, ''));
+            // Civil (correct) : 1000 × 29/30.44 ≈ 953 $. Ancien calcul (delta d'heures) ≈ 986 $.
+            expect(prevu).toBeGreaterThan(940);
+            expect(prevu).toBeLessThan(970);
+        });
+    });
+
+    // [finding code-reviewer #751] Les tests ci-dessus couvrent un fuseau NÉGATIF (Toronto). Le
+    // même helper (`toLocalDateStr`) doit aussi tenir sous un fuseau POSITIF (Sydney), où le piège
+    // s'inverse : minuit local peut reculer d'un jour en UTC au lieu d'avancer.
+    describe('[BUDGET-INCOME-WINDOW-UTC-OFFBYONE] défauts Custom vs fuseau à décalage POSITIF', () => {
+        const originalTz = process.env.TZ;
+        afterEach(() => {
+            vi.useRealTimers();
+            if (originalTz === undefined) delete process.env.TZ; else process.env.TZ = originalTz;
+        });
+
+        it('les valeurs par défaut de la plage Custom reflètent le jour LOCAL juste après minuit', () => {
+            // `.toISOString().split('T')[0]` (l'ancien code) aurait donné « 2026-07-31 » ici : minuit
+            // local + 30 min à Sydney (UTC+10, hiver austral, pas de DST à cette date) tombe encore la
+            // veille en UTC (14h30 le 31 juillet).
+            process.env.TZ = 'Australia/Sydney';
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date(2026, 7, 1, 0, 30)); // 1er août 2026, 00 h 30 LOCAL
+            const { getByText, getByLabelText } = render(<Budget {...baseProps} />);
+            fireEvent.click(getByText('Custom'));
+            expect((getByLabelText('Date de fin') as HTMLInputElement).value).toBe('2026-08-01');
+        });
     });
 });

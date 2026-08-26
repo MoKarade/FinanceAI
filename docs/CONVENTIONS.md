@@ -7492,3 +7492,62 @@ absolue.
 — un crédit y reste invisible (ni ajouté, ni déduit), incohérent avec `monthlyActualsMap` qui le
 déduit désormais. Uniformiser changerait pour la PREMIÈRE fois les montants du tableau Budget
 principal que Marc voit au quotidien — une décision produit, pas un bug à corriger d'office.
+
+## Leçon du lot `[BUDGET-INCOME-WINDOW-UTC-OFFBYONE]` — 2026-08-26 : corriger un défaut fuseau-horaire en révèle presque toujours un second
+
+Le défaut mesuré était simple : `incomeBreakdown` (`components/Budget.tsx`) comparait
+`new Date(t.date) >= start && <= end` — `new Date('YYYY-MM-DD')` ancre à UTC minuit, `start`/`end`
+(`getDateRange()`) sont construits en heure LOCALE. Sous `TZ=America/Toronto` (mesuré ; invisible en
+CI, conteneur en UTC — leçon `UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC`), le 1er jour
+de chaque période disparaissait du revenu réel.
+
+**Le fix évident (aligner sur le filtre des dépenses, qui compare des CHAÎNES) a révélé un second
+défaut, JUMEAU, déjà présent dans ce filtre des dépenses depuis toujours** : `endStr =
+endInclusive.toISOString().split('T')[0]` convertit une fin de journée LOCALE (23:59:59) en UTC
+AVANT de découper la date — sous un fuseau négatif, ça bascule sur le jour calendrier SUIVANT
+(mesuré : 31 août 23:59:59 local à Toronto → 1er septembre 03:59:59 UTC → `endStr` = « 2026-09-01 »,
+un jour de trop). Le filtre des dépenses avait donc TOUJOURS inclus le 1er jour du mois suivant,
+silencieusement, des deux côtés (Mois/Trimestre/Année ET, dans un troisième temps découvert en
+testant le cas `CUSTOM`, la fenêtre personnalisée elle-même : `new Date(customStart)` ancré UTC
+faisait dériver la borne de départ d'un jour dans l'AUTRE sens sous le même fuseau).
+
+**Généralisation : ne jamais utiliser `.toISOString().split('T')[0]` pour convertir une date LOCALE
+en chaîne de calendrier** — ça fait toujours transiter par UTC, donc ça peut faire glisser le jour
+calendrier d'un cran selon le fuseau et l'heure. Le helper correct extrait `getFullYear()`/
+`getMonth()`/`getDate()` DIRECTEMENT, sans jamais passer par une représentation UTC intermédiaire.
+Un correctif fuseau-horaire qui touche une conversion date↔chaîne doit donc auditer TOUTES les
+conversions similaires dans le même fichier, pas seulement celle nommée par le ticket — trois sites
+touchés ici (`incomeBreakdown`, le filtre des dépenses préexistant, et `getDateRange` `CUSTOM`),
+un seul nommé au départ.
+
+**Preuve par perturbation CIBLÉE, pas globale** : un `git stash` du fichier entier aurait annulé les
+DEUX correctifs à la fois et pu masquer une compensation accidentelle entre eux (mesuré : c'est
+exactement ce qui s'est produit pour le test `CUSTOM` — le stash global le laissait VERT, parce que
+les deux défauts se seraient annulés dans ce cas précis). Reverter CHAQUE ligne séparément,
+un correctif à la fois, est la seule façon de prouver que chacun discrimine pour de vrai.
+
+**Suite (panel `/review-all`, même lot)** : « auditer TOUTES les conversions similaires dans le
+même fichier » restait incomplet — trois sites de PLUS, même défaut, ont été trouvés en RELISANT le
+diff après coup : (1) les valeurs par défaut de `customStart`/`customEnd` (`useState(new
+Date(...).toISOString().split('T')[0])`) — le site le PLUS visible de tous (une valeur affichée
+directement dans le champ de formulaire à l'ouverture), cassé sous un fuseau **POSITIF** cette
+fois (Europe/Asie/Australie : minuit local RECULE d'un jour en UTC, pas l'inverse) ; (2) le libellé
+des 6 mois de tendance (`d.toISOString().substring(0, 7)`), même défaut, même fichier ; (3) un
+troisième défaut de la MÊME famille mais pas de la même OPÉRATION : `getMultiplier()` en vue
+Custom comptait un delta de MILLISECONDES entre deux `Date` locales pour en déduire un nombre de
+jours — un changement d'heure (DST) dans l'intervalle décale ce delta de ±1 h, que `Math.ceil`
+arrondit en un jour de trop (mesuré +3,45 % sur un budget cible affiché). **Généralisation
+renforcée** : un « site » n'est pas une ligne de code isolée, c'est une CLASSE d'opération
+(« convertir une date locale en clé de calendrier », qu'elle serve à comparer, étiqueter ou
+compter des jours) — grep le PATRON (`.toISOString()` sur une date construite localement, ou un
+delta de `.getTime()` traité comme un nombre de jours), pas seulement le nom du symbole cité par
+le ticket ou le premier correctif. Deux passes de relecture ont chacune trouvé ce que la
+précédente avait manqué : ne pas supposer qu'un audit « exhaustif » l'était.
+
+**Où vivent les helpers, quand ils sont utilisés AVANT que le composant existe** : `toLocalDateStr`
+devait être appelé dans l'INITIALISEUR d'un `useState` (les valeurs par défaut de `customStart`),
+donc AVANT que le reste du corps du composant se soit exécuté — une fonction déclarée plus bas dans
+le même composant (`const toLocalDateStr = ...`) y est en zone morte temporelle (TDZ), une erreur
+qui n'apparaît qu'à l'exécution, jamais au typecheck. Les trois helpers purs ont été remontés au
+niveau MODULE (fonctions `function` hors du composant) — en prime, ils ne sont plus recréés à
+chaque rendu.

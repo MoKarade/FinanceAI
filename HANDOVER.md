@@ -4,6 +4,46 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-26 — 4 bugs préexistants routés par le panel de PR #752, corrigés séparément (PR #753)
+> Suite directe de la session `[BUDGET-TRANSACTIONS-SYNC-AUDIT]` ci-dessous : le panel `/review-all`
+> de la PR #752 avait routé 4 défauts PRÉEXISTANTS (non causés par cette PR-là) au `BACKLOG.md`
+> plutôt que de les corriger sur le fait. Traités dans ce lot séparé, chacun sur son propre
+> mécanisme, sans ambiguïté produit : **(1)** `mcp/ingest/applyDocument.ts` — le résumé d'un relevé
+> bancaire annonçait toujours « 0 doublon(s) ignoré(s) » même quand `dupCount === 0` ; construction
+> réécrite en phrases nues jointes par `, ` (plus de virgule orpheline possible quand un segment est
+> vide). **(2)** `components/Budget.tsx` `getDateRange()` CUSTOM — une plage inversée (date de fin
+> saisie avant la date de début) rendait un « prévu » positif (`civilDaysBetween` fait `Math.abs`)
+> pendant que le « réel » restait toujours à 0 $ (le filtre par chaîne ne matchait jamais rien) ;
+> les deux bornes sont maintenant permutées silencieusement, sans message d'erreur pour une faute de
+> frappe bénigne. **(3)** `components/Budget.tsx` `handleUpdateItem` — renommer un poste écrivait à
+> CHAQUE frappe (`onChange`) : jusqu'à 5 réécritures complètes de `transactions` (persist Zustand +
+> push Drive) et 5 toasts pour « Resto » → « Restaurant ». Propagation débouncée (500 ms) ; le nom
+> de départ est figé dès la 1ʳᵉ frappe de la session d'édition (`renameOriginalNameRef`), jamais la
+> valeur intermédiaire de la frappe précédente — sinon un renommage en plusieurs frappes aurait
+> raté les transactions dont la catégorie ne matche que le nom D'ORIGINE. **(4)**
+> `mcp/ingest/applyDocument.ts` — JSDoc `[DEBT-MCP-PARITE]` sans `*/` de fermeture, avalait le
+> JSDoc suivant (`inferDebtCategory`) ; fermeture ajoutée. 3 tests neufs, chaque correctif
+> comportemental re-discriminé par perturbation ciblée (revert d'une ligne → rouge → restauré →
+> vert).
+> ⚠️ **Panel `/review-all` (3 agents), même PR** : le debounce du point (3) était lui-même CASSÉ,
+> trouvé indépendamment par `code-reviewer` ET `silent-failure-hunter` — **CRITIQUE** : les refs
+> étaient clées par `index` POSITIONNEL (recalculé à chaque render), pas par `item.id` stable ;
+> supprimer un poste pendant qu'un AUTRE poste (qui hérite de son index) est en renommage pouvait
+> corrompre la catégorie du mauvais poste, ou laisser une catégorie fantôme après suppression.
+> Reclé sur `item.id` ; la suppression annule + flushe tout renommage en vol pour le poste
+> supprimé et réassigne au nom RÉELLEMENT présent dans les transactions, jamais à la frappe
+> abandonnée. **2 ÉLEVÉ** : le nettoyage au démontage annulait le timer sans le FLUSHER (un
+> renommage tapé juste avant de changer d'onglet se perdait en silence) ; et le timer capturait
+> `transactions` par fermeture au moment de la planification (une écriture concurrente — sync/
+> import — pendant les 500 ms aurait été écrasée au flush) — les deux corrigés (flush au
+> démontage, `transactionsRef` toujours à jour). **1 MOYEN** : le libellé de période envoyé au
+> chat IA pour une plage Custom inversée gardait les dates BRUTES (ordre saisi), incohérent avec
+> les montants calculés sur la plage permutée juste à côté ; aligné. 4 tests neufs de plus. 1
+> finding hors-scope (compteurs de rejet MCP non structurés, invisibles à la sync automatisée)
+> routé au `BACKLOG.md`. Leçon `docs/CONVENTIONS.md` : un état différé (timer/ref/cache) associé à
+> un élément d'une liste rendue doit être clé par un id STABLE, jamais par sa position. Gate vert
+> (4 863 tests). PR #753.
+>
 > ## 🟢 Session 2026-08-26 — `[BUDGET-TRANSACTIONS-SYNC-AUDIT]` : audit sync Budget↔Transactions, 4 défauts corrigés
 > Ticket ouvert (« Marc n'est pas sûr que Budget s'adapte correctement à Transactions »), sans
 > hypothèse précise. Audit `financial-integrity` (lecture seule) : store/comptes/devises/bornes de

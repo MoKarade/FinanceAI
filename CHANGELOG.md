@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-26 (Budget : plage inversée, renommage plus léger, message de relevé)
+
+- **Corrigé** : saisir une date de fin personnalisée avant la date de début (Budget) ne vidait plus
+  silencieusement les montants réels ; les deux dates sont réorganisées automatiquement.
+- **Amélioré** : renommer une catégorie de budget écrit maintenant en une seule fois, une fois la
+  frappe terminée, au lieu de réécrire tes transactions à chaque lettre tapée.
+- **Corrigé** : supprimer un poste de budget juste après l'avoir renommé pouvait mal classer les
+  transactions concernées ; la suppression tient maintenant compte du renommage en cours.
+- **Corrigé** : le résumé d'un import de relevé bancaire n'annonce plus « 0 doublon(s) ignoré(s) »
+  quand il n'y en avait aucun.
+
 ## [unreleased] — 2026-08-26 (Budget : nom de poste vidé, plage personnalisée et dates de transaction)
 
 - **Corrigé** : vider entièrement le nom d'un poste de budget ne détache plus ses transactions

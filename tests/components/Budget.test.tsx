@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, within } from '@testing-library/react';
 import { Budget } from '../../components/Budget';
+import { useFinanceStore } from '../../store/useFinanceStore';
+import { getViewContext, _resetViewContextForTests } from '../../services/aiChat/viewContext';
 import type { BudgetConfig, BudgetCategory, User, Transaction } from '../../types';
 import { formatCAD } from '../../utils/format';
 
@@ -326,6 +329,26 @@ describe('Budget — refonte UI (Phase C3)', () => {
             // 1000 × 1/30.44 ≈ 33 $ (correct, sans plancher) — pas 1000 × 0,1 = 100 $ (plancher).
             expect(prevu).toBeLessThan(50);
         });
+
+        // [BUDGET-CUSTOM-PLAGE-INVERSEE] finding code-reviewer : une date de fin saisie AVANT la
+        // date de début (faute de frappe bénigne) laissait `civilDaysBetween` rendre un nombre
+        // positif (il fait `Math.abs`) pendant que le filtre par chaîne ne matchait jamais rien —
+        // « réel » toujours 0 $. Les deux bornes sont maintenant permutées silencieusement.
+        it('une plage Custom INVERSÉE (fin avant début) est permutée silencieusement, pas vidée à 0 $', () => {
+            const transactions: Transaction[] = [
+                { id: 'i1', date: '2026-08-15', payee: 'X', amount: 500, category: 'Revenus divers' } as unknown as Transaction,
+            ];
+            const { getByText, getByLabelText, container } = render(<Budget {...baseProps} transactions={transactions} />);
+            fireEvent.click(getByText('Custom'));
+            // Fin AVANT début, à l'envers.
+            fireEvent.change(getByLabelText('Date de début'), { target: { value: '2026-08-31' } });
+            fireEvent.change(getByLabelText('Date de fin'), { target: { value: '2026-08-01' } });
+            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
+                .find((l) => (l.textContent ?? '').includes('Revenus'));
+            const tile = label!.closest('.rounded-card') as HTMLElement;
+            const reel = (tile.querySelector('.text-kpi') as HTMLElement).textContent?.replace(/[^\d]/g, '');
+            expect(reel).toBe('500'); // pas '0' : la transaction du 15 août est bien dans la plage permutée.
+        });
     });
 
     // [finding code-reviewer #751] Les tests ci-dessus couvrent un fuseau NÉGATIF (Toronto). Le
@@ -388,5 +411,136 @@ describe('Budget — refonte UI (Phase C3)', () => {
             fireEvent.change(input, { target: { value: '   ' } });
             expect(setBudgetItemsMock).not.toHaveBeenCalled();
         });
+    });
+
+    // [BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE] Renommer un poste déclenchait une réécriture complète
+    // du tableau de transactions (+ un toast) à CHAQUE frappe — jusqu'à 5 pour « Resto » →
+    // « Restaurant ». Débouncé : aucune propagation avant une pause de frappe, une seule ensuite,
+    // partant du VRAI nom encore présent dans les transactions (pas d'une valeur intermédiaire).
+    describe('[BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE] la propagation aux transactions est débouncée', () => {
+        beforeEach(() => { vi.useFakeTimers(); });
+        afterEach(() => {
+            useFinanceStore.setState({ transactions: [] });
+            vi.useRealTimers();
+        });
+
+        it('plusieurs frappes rapides ne propagent RIEN avant la pause, puis UNE seule fois vers la valeur finale', () => {
+            const transactions: Transaction[] = [
+                { id: 't1', date: '2026-06-01', payee: 'X', amount: -40, category: 'Restaurants' } as unknown as Transaction,
+            ];
+            useFinanceStore.setState({ transactions });
+            const toastSpy = vi.fn();
+            window.addEventListener('app-toast', toastSpy);
+            const { getByDisplayValue } = render(<Budget {...baseProps} transactions={transactions} />);
+            const input = getByDisplayValue('Restaurants') as HTMLInputElement;
+
+            // 3 « frappes » successives, comme un input contrôlé les enverrait une par une.
+            fireEvent.change(input, { target: { value: 'Restauran' } });
+            fireEvent.change(input, { target: { value: 'Restaurant' } });
+            fireEvent.change(input, { target: { value: 'Restaurants!' } });
+
+            // Rien avant la pause : ni écriture au store, ni toast.
+            expect(useFinanceStore.getState().transactions[0].category).toBe('Restaurants');
+            expect(toastSpy).not.toHaveBeenCalled();
+
+            vi.advanceTimersByTime(500);
+
+            // Une seule propagation, du nom ORIGINAL ('Restaurants') vers la valeur FINALE tapée —
+            // jamais un renommage intermédiaire ('Restauran' ou 'Restaurant').
+            expect(useFinanceStore.getState().transactions[0].category).toBe('Restaurants!');
+            expect(toastSpy).toHaveBeenCalledTimes(1);
+            window.removeEventListener('app-toast', toastSpy);
+        });
+
+        // [finding CRITIQUE code-reviewer + silent-failure-hunter, trouvé indépendamment par les
+        // deux] Supprimer un poste PENDANT qu'un renommage débouncé est en vol pour ce MÊME poste :
+        // `itemToDelete.name` porte déjà la frappe partielle (budgetItems mis à jour à chaque
+        // frappe), pas le nom réellement présent dans `transactions`. Chercher par la frappe
+        // abandonnée manquerait la transaction réelle (catégorie fantôme jamais nettoyée) ET
+        // laisserait le timer se déclencher plus tard sur un poste qui n'existe plus.
+        it('supprimer un poste pendant son propre renommage en vol réassigne au VRAI nom, pas à la frappe abandonnée', () => {
+            const transactions: Transaction[] = [
+                { id: 't1', date: '2026-06-01', payee: 'X', amount: -40, category: 'Restaurants' } as unknown as Transaction,
+            ];
+            useFinanceStore.setState({ transactions });
+            // `setBudgetItems` STATEFUL (pas le no-op de `baseProps`) : `budgetItems` doit VRAIMENT
+            // refléter la frappe partielle au moment de la suppression, comme en production — sinon
+            // `itemToDelete.name` lirait toujours le nom ORIGINAL et ce test ne discriminerait rien.
+            const Wrapper = () => {
+                const [items, setItems] = useState(defaultBudget);
+                return <Budget {...baseProps} budgetItems={items} setBudgetItems={setItems} transactions={transactions} />;
+            };
+            const { getByDisplayValue, getByText } = render(<Wrapper />);
+            const input = getByDisplayValue('Restaurants') as HTMLInputElement;
+            fireEvent.change(input, { target: { value: 'Restaurant' } }); // frappe partielle, PAS flushée
+            const row = input.closest('tr') as HTMLElement;
+            fireEvent.click(within(row).getByLabelText('Supprimer la catégorie'));
+            fireEvent.click(getByText('Supprimer')); // confirme dans la modale
+            // Réassignée au nom RÉELLEMENT présent dans `transactions` ('Restaurants'), pas à la
+            // frappe abandonnée ('Restaurant', qui n'existe dans AUCUNE transaction).
+            expect(useFinanceStore.getState().transactions[0].category).toBe('Uncategorized');
+            // Le timer annulé ne doit RIEN faire de plus après coup (poste déjà supprimé).
+            vi.advanceTimersByTime(1000);
+            expect(useFinanceStore.getState().transactions[0].category).toBe('Uncategorized');
+        });
+
+        // [finding ÉLEVÉ code-reviewer] Le nettoyage au démontage doit FLUSHER, pas seulement
+        // annuler — sinon un renommage tapé juste avant de changer d'onglet se perd en silence.
+        it('démonter le composant PENDANT le debounce flushe le renommage au lieu de le perdre', () => {
+            const transactions: Transaction[] = [
+                { id: 't1', date: '2026-06-01', payee: 'X', amount: -40, category: 'Restaurants' } as unknown as Transaction,
+            ];
+            useFinanceStore.setState({ transactions });
+            const { getByDisplayValue, unmount } = render(<Budget {...baseProps} transactions={transactions} />);
+            const input = getByDisplayValue('Restaurants') as HTMLInputElement;
+            fireEvent.change(input, { target: { value: 'Restaurant' } });
+            unmount(); // AVANT que le timer de 500 ms n'ait eu la chance de se déclencher
+            expect(useFinanceStore.getState().transactions[0].category).toBe('Restaurant');
+        });
+
+        // [finding ÉLEVÉ silent-failure-hunter] Le timer capturait `transactions` par fermeture au
+        // moment de la PLANIFICATION — une écriture concurrente (import/sync) pendant la fenêtre de
+        // 500 ms aurait été ÉCRASÉE au déclenchement. `transactionsRef` lit toujours la DERNIÈRE
+        // valeur, jamais un instantané figé.
+        it('une écriture concurrente sur les transactions pendant le debounce n\'est pas écrasée au flush', () => {
+            const transactions: Transaction[] = [
+                { id: 1, date: '2026-06-01', payee: 'X', amount: -40, category: 'Restaurants' } as unknown as Transaction,
+            ];
+            useFinanceStore.setState({ transactions });
+            const { getByDisplayValue, rerender } = render(<Budget {...baseProps} transactions={transactions} />);
+            const input = getByDisplayValue('Restaurants') as HTMLInputElement;
+            fireEvent.change(input, { target: { value: 'Restaurant' } });
+
+            // Écriture CONCURRENTE (ex. import Fintable en tâche de fond) : une nouvelle transaction
+            // apparaît, sans rapport avec le renommage en cours.
+            const concurrentTransactions: Transaction[] = [
+                ...transactions,
+                { id: 2, date: '2026-06-02', payee: 'Y', amount: -20, category: 'Loyer' } as unknown as Transaction,
+            ];
+            useFinanceStore.setState({ transactions: concurrentTransactions });
+            rerender(<Budget {...baseProps} transactions={concurrentTransactions} />);
+
+            vi.advanceTimersByTime(500);
+            const final = useFinanceStore.getState().transactions;
+            expect(final).toHaveLength(2); // la transaction concurrente n'a PAS disparu
+            expect(final.find(t => t.id === 2)).toBeDefined();
+            expect(final.find(t => t.id === 1)?.category).toBe('Restaurant'); // le renommage a eu lieu
+        });
+    });
+
+    // [BUDGET-CUSTOM-PLAGE-INVERSEE] finding MOYEN (code-reviewer + silent-failure-hunter) : le
+    // contexte publié au chat (`chatViewDetail`) décrivait la plage Custom avec les chaînes BRUTES
+    // `customStart`/`customEnd`, dans l'ordre SAISI — même inversé — alors que tous les $ du même
+    // objet sont calculés sur la plage PERMUTÉE. Un chat qui recevrait « du 31 août au 1er août »
+    // pour expliquer des chiffres portant sur la plage chronologique inverse serait trompé.
+    it('[BUDGET-CUSTOM-PLAGE-INVERSEE] le contexte publié au chat décrit la plage PERMUTÉE, pas les dates brutes inversées', () => {
+        _resetViewContextForTests();
+        const { getByText, getByLabelText } = render(<Budget {...baseProps} />);
+        fireEvent.click(getByText('Custom'));
+        // Fin AVANT début, à l'envers — comme le test de permutation plus haut.
+        fireEvent.change(getByLabelText('Date de début'), { target: { value: '2026-08-31' } });
+        fireEvent.change(getByLabelText('Date de fin'), { target: { value: '2026-08-01' } });
+        const ctx = getViewContext();
+        expect(ctx?.detail).toMatchObject({ periodLabel: 'du 2026-08-01 au 2026-08-31' });
     });
 });

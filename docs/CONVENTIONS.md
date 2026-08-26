@@ -7581,3 +7581,59 @@ perturbation elle-même (remettre littéralement la ligne retirée), symétrique
 ligne testée — jamais un fichier qui cumule plusieurs correctifs du même lot, ce qui est pourtant le
 cas courant quand plusieurs défauts de la même classe partagent un fichier
 (`GIT-CHECKOUT-PENDANT-UNE-PERTURBATION-EFFACE-TOUT-LE-FICHIER-PAS-LA-PERTURBATION`).
+
+## Leçon du lot `[BUDGET-RENAME-ECRIT-A-CHAQUE-FRAPPE]` — 2026-08-26 : débouncer un effet de bord dérivé d'un input CONTRÔLÉ doit figer la valeur de DÉPART séparément, pas la relire à chaque frappe
+
+Le bug : renommer un poste de budget écrivait le tableau complet des transactions (+ persist
+Zustand + push Drive + toast) à CHAQUE frappe, parce que la propagation (`t.category ===
+oldItem.name ? {...t, category: value} : t`) tournait de façon SYNCHRONE dans `handleUpdateItem`.
+Le correctif naïf — entourer le même code d'un `setTimeout` — aurait paru fonctionner en test
+manuel mais aurait été FAUX : `oldItem.name` est lu depuis `budgetItems[index]`, qui est mis à jour
+(`setBudgetItems`) à CHAQUE frappe, AVANT le debounce. Donc à la 2ᵉ frappe d'une session d'édition,
+`oldItem.name` vaut déjà la valeur TAPÉE À LA FRAPPE PRÉCÉDENTE, pas le nom réellement présent dans
+`transactions` — un debounce naïf renommerait alors les transactions depuis un nom qui n'a JAMAIS
+existé dans leur `category`, et `renamedCount` resterait à 0 en silence (aucune transaction ne
+matche jamais, aucun crash, aucun test qui ne teste pas EXPLICITEMENT ce cas ne le voit).
+
+**Le correctif correct fige la valeur de départ dans une ref DÈS LA PREMIÈRE frappe de la session**
+(`if (renameOriginalNameRef.current[index] === undefined) { renameOriginalNameRef.current[index] =
+oldItem.name; }`) et ne la relit plus tant que le debounce n'a pas eu lieu — c'est CETTE valeur figée
+qui sert de clé de correspondance au moment où le timer se déclenche, jamais `oldItem.name` relu à
+ce moment-là (qui serait alors la valeur la PLUS RÉCENTE, pas l'originale).
+
+**Généralisation** : dès qu'un effet de bord dérivé de la valeur d'un input CONTRÔLÉ est débouncé
+(ou throttlé), distinguer explicitement deux valeurs qui se ressemblent mais ne sont PAS
+interchangeables — la valeur ACTUELLE affichée (qui change à chaque frappe, sert à afficher/valider
+en temps réel) et la valeur DE RÉFÉRENCE au moment où le debounce a commencé à courir (qui ne doit
+JAMAIS changer avant que l'effet ne se déclenche, sert de clé de correspondance pour toute donnée
+DÉRIVÉE ailleurs). Le test qui prouve la distinction : simuler PLUSIEURS frappes rapides avant
+d'avancer le temps (`vi.useFakeTimers()` + `vi.advanceTimersByTime`), puis vérifier que l'effet
+utilise bien la valeur D'ORIGINE et la valeur FINALE — jamais une valeur intermédiaire — et qu'il ne
+se déclenche qu'UNE fois (`UN-DEBOUNCE-SUR-INPUT-CONTROLE-DOIT-FIGER-SA-VALEUR-DE-DEPART`).
+
+⚠️ **Correction/extension trouvée par le panel `/review-all` (2 agents, indépendamment) sur ce MÊME
+lot** : la leçon ci-dessus couvrait la valeur DE DÉPART, mais pas la CLÉ sous laquelle cette valeur
+est rangée. Le premier jet clait `renameTimersRef`/`renameOriginalNameRef` par `index` — l'index
+POSITIONNEL de l'item dans la liste, recalculé à CHAQUE render (`allItems.findIndex(i => i.id ===
+item.id)`). Supprimer un item situé plus haut dans la liste PENDANT qu'un autre item (plus bas) a
+une session de debounce en vol décale les index de tous les items suivants : un item totalement
+différent hérite alors de la clé encore occupée par l'ancienne session — `clearTimeout` annule le
+VRAI renommage en cours, et le nouveau timer planifié sous cette clé renomme les transactions de
+l'ANCIEN poste vers la valeur tapée pour le NOUVEAU, avec un toast qui ne dit rien de cette
+permutation. Un second défaut, du même refus de traiter la structure de données par sa clé stable :
+supprimer l'item porteur d'une session en vol ne l'annulait ni ne la flushait — le timer orphelin se
+déclenchait plus tard sur un poste qui n'existe plus, et le code de suppression cherchait les
+transactions à réassigner par le nom déjà TAPÉ (`itemToDelete.name`, mis à jour à chaque frappe)
+plutôt que par le nom RÉELLEMENT présent dans `transactions` (encore l'original, le debounce n'ayant
+pas encore flushé) — zéro transaction retrouvée, catégorie fantôme jamais nettoyée.
+
+**Généralisation** : toute structure qui associe un état différé (timer, ref, cache) à un élément
+d'une liste RENDUE doit être clée par un identifiant STABLE de cet élément (`item.id`), jamais par
+sa position dans le tableau — la position n'est stable que tant que rien n'est ajouté/retiré/trié
+au-dessus. Et toute opération qui RETIRE un élément de la liste (suppression, filtre) doit
+explicitement annuler/flusher tout état différé associé à CET id avant de continuer, sinon cet état
+survit à l'élément qui l'a créé et agit sur autre chose. Le test qui le prouve : simuler une
+suppression PENDANT qu'un debounce est en vol pour l'item supprimé (le cas direct) — le simple test
+de non-régression positionnelle (renommer un item stable) ne l'aurait jamais trouvé, ce qui explique
+pourquoi il a fallu deux revues indépendantes du MÊME lot pour le voir
+(`UN-ETAT-DIFFERE-DOIT-ETRE-CLE-PAR-ID-STABLE-PAS-PAR-POSITION`).

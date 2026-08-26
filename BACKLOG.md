@@ -1675,17 +1675,26 @@
   gardes de conservation existantes. ⚠️ Piège mesuré : sans `isActive: true` ET `isOwned: true`, le
   bien n'existe pas du tout (`Immobilier = 0` sur tout l'horizon) et la fixture semble décrire une
   maison sans en avoir une.
-- [ ] **`[ENG-LIQUID-FLUX-FORM]`** (M, découvert en livrant `DIVORCE-FLUX-MUET`) — le compte
-  **Liquidités n'est pas conforme à la forme-flux**, indépendamment du divorce : résiduel mesuré
-  **7 638,44 $ au mois 324**, et de petits résiduels un peu partout (50,85 $ au mois 12, 310 $ au
-  mois 11). C'est pour ça qu'il est exclu du balayage de `divorceFluxPublie.test.ts` et absent des
-  `ACCOUNTS` de `projection.fluxForm.test.ts`. Fix : trouver les producteurs qui mutent `liquid` sans
-  alimenter `contribLiquid`/`withdrawalLiquid`, puis ajouter `Liquidites` aux deux gardes.
-  ⚠️ Même piège que `[ENG-FERR-NETTRANSFER-MUET]` : `withdrawalREER` alimente AUSSI `stepReerByUser`
-  (partage per-conjoint). Mesurer les goldens AVANT/APRÈS pour prouver qu'aucun dollar ne bouge.
-
-#### MOYEN
-
+- [ ] **`[ENG-LIQUID-FLUX-FORM]`** (M → **RE-MESURÉ le 2026-08-25, bien plus large que ce que j'avais
+  écrit**) — j'avais routé ce ticket en disant « le compte Liquidités n'est pas conforme à la
+  forme-flux : 7 638,44 $ au mois 324, plus de petits résiduels ailleurs ». Ça décrivait un CAS
+  LIMITE. C'en est un autre : **`NetTransferLiquid` est non nul sur 0 des 361 points** — le champ est
+  CONSTAMMENT zéro. Donc **355 mois sur 360** portent un résiduel > 1 $, pire **108 608,35 $** (mois
+  360), cumul absolu **864 592,56 $**, sur une fixture ordinaire sans divorce ni stress-test.
+  **Cause** : `NetTransferLiquid = contribLiquid − withdrawalLiquid`, et ces accumulateurs ne sont
+  alimentés que par des chemins marginaux (immobilier, objectifs enfants, sauvetage de découvert). Le
+  flux ORDINAIRE — salaire net, dépenses, cotisations — ne les touche jamais. Vérifié : le résiduel
+  vaut EXACTEMENT `(NetSalary − Expenses) − Σcotisations`.
+  ⚠️ **Le même champ a DEUX sens** : `dailyPastLedger.ts` pose `NetTransferLiquid: income - expenses`
+  — le PASSÉ publie le vrai cashflow, le FUTUR publie zéro. **Quatre surfaces** le consomment :
+  `ProjectionExplains`, `ProjectionTooltip` (qui SOMME tous les `NetTransfer*` → total sous-estimé),
+  `FutureDetailModal` (« Cash (Coussin) ») et `yearlyActions` (« Cash »). La ligne de flux du cash
+  affiche donc 0 sur tout l'horizon futur pendant que le solde bouge.
+  **Fix** : aligner le futur sur le passé (la direction est déterminée). ⚠️ Fait passer une ligne
+  d'interface constamment nulle à ~10 k$/mois sur quatre surfaces, et `contribLiquid` traverse
+  `realEstateMonth` et les objectifs enfants → mesurer CHAQUE consommateur avant de livrer.
+  ⚠️ `tests/services/netTransferLiquidVide.test.ts` verrouille le contrat ACTUEL : au correctif, il
+  s'INVERSE là-bas (avec son histoire), il ne se supprime pas.
 - [ ] **`[FISC-UI-MARGINAL-ABATEMENT]`** (S) — « Combiné marginal » de l'UI ≠ taux marginal du moteur.
   `TaxBracketViz.tsx` somme brute (fedRate + qcRate) ignore abattement 16,5 %, alors que
   `getMarginalRate` le fait. Re-code aussi ses propres paliers au lieu de consommer

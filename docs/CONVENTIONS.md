@@ -7330,3 +7330,53 @@ levier s'effondre (l'écart à la clé ne décroît plus) · repli ÉGAL au lieu
 dégénéré → 0,5 au lieu de 0,4641. La garde du levier (« une cotisation 10× plus grosse rapproche
 plus ») rougit exactement quand la mesure devient vacueuse — un seuil sur un point unique aurait
 survécu à la perturbation 2.
+
+### `UN-CHAMP-TOUJOURS-NUL-N-EST-PAS-UN-CAS-LIMITE` — 2026-08-25
+
+**Ticket** : `[ENG-LIQUID-FLUX-FORM]` (M), que j'avais moi-même routé deux lots plus tôt en écrivant
+« le compte Liquidités n'est pas conforme à la forme-flux : **7 638,44 $ au mois 324**, plus de petits
+résiduels ailleurs ». Cette formulation — un gros chiffre, un mois précis, « plus de petits résiduels »
+— décrit un CAS LIMITE. Mesuré, ce n'en est pas un.
+
+**`NetTransferLiquid` est non nul sur 0 des 361 points.** Le champ est CONSTAMMENT zéro. Conséquence :
+**355 mois sur 360** portent un résiduel de forme-flux > 1 $, le pire vaut **108 608,35 $** (mois 360)
+et le cumul absolu **864 592,56 $** — sur une fixture ordinaire, sans divorce ni stress-test.
+
+**La leçon de méthode.** Quand on relève un résiduel, la première question n'est pas « combien ? »
+mais **« sur combien de points ? »**. Un montant unique fait écrire « cas limite » ; le COMPTE fait
+écrire « le champ n'est jamais alimenté ». J'avais le chiffre du pire mois et j'en ai fait une
+étiquette de gravité, alors que la mesure à faire tenait en une ligne — compter les points où le champ
+est non nul. Corollaire de rédaction : dans un ticket, **écrire la COUVERTURE à côté du montant**
+(« N mois sur M »), sinon le prochain lecteur — moi — hérite d'une fausse idée de la forme du défaut.
+
+**La cause, et elle se lit dans le code.** `NetTransferLiquid = contribLiquid − withdrawalLiquid`, et
+ces deux accumulateurs ne sont alimentés que par des chemins marginaux (immobilier, objectifs enfants,
+cascade de sauvetage de découvert). Le flux ORDINAIRE — salaire net encaissé, dépenses payées,
+cotisations sorties — ne les touche jamais. VÉRIFIÉ : le résiduel vaut EXACTEMENT
+`(NetSalary − Expenses) − Σcotisations` (−18,63 $ au mois 6, −30,00 $ au mois 120).
+
+**⚠️ Et le même champ a DEUX sens selon le côté de « aujourd'hui ».** `dailyPastLedger.ts` pose
+`NetTransferLiquid: income - expenses` : le PASSÉ publie le vrai cashflow, le FUTUR publie zéro.
+Quatre surfaces consomment ce champ — `ProjectionExplains`, `ProjectionTooltip` (qui **somme** tous les
+`NetTransfer*`), `FutureDetailModal` (« Cash (Coussin) ») et `yearlyActions` (« Cash »). La ligne de
+flux du cash affiche donc 0 sur tout l'horizon futur pendant que le solde bouge, et le total du
+tooltip sous-estime d'autant. Un champ « toujours nul » d'un côté d'une frontière et « vrai » de
+l'autre est une incohérence de CONTRAT, pas un détail d'invariant : **chercher le jumeau du champ de
+l'autre côté avant de conclure sur son sens**.
+
+**Pourquoi ce lot ne corrige pas, et pourquoi c'est écrit.** La direction est déterminée (aligner le
+futur sur le passé), mais le correctif fait passer une ligne d'interface constamment nulle à
+~10 k$/mois sur quatre surfaces, et `contribLiquid` traverse `realEstateMonth` et les objectifs
+enfants. Le lot se coupe donc à la frontière habituelle « ça déplace ce qui est affiché / ça ne le
+déplace pas ». Ce qui est livré : la MESURE, et un **test de LIMITE** qui verrouille le contrat actuel
+pour qu'il ne dérive pas davantage. ⚠️ Le jour du correctif, ce test s'INVERSE ici même, avec son
+histoire — supprimé, il laisserait croire que la limite n'a jamais existé
+(`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`). Sa perturbation est d'ailleurs le correctif
+lui-même : publier n'importe quoi dans `contribLiquid` fait rougir les trois tests.
+
+**⚠️ Post-scriptum de fiabilité d'infrastructure, payé deux fois le même jour.** Le premier passage de
+ce lot a été PERDU : commit local fait, gate vert, puis rebase avec conflits — et le conteneur a
+redémarré PENDANT la résolution, en révertant le clone à un instantané vieux de plusieurs jours. Le
+commit n'avait jamais été poussé. La règle du dépôt (« committer ET POUSSER avant toute attente
+longue ») couvre aussi la fenêtre du REBASE : pousser la branche AVANT `git rebase`, pas seulement
+avant les suites de tests — un rebase à conflits est une attente longue qui ne dit pas son nom.

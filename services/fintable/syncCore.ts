@@ -102,7 +102,7 @@ export function applyPayloadsIsolated(
             // cas le PLUS fréquent d'une sync quotidienne. Un compteur qui ment sur une écriture
             // est pire que pas de compteur : il fait croire que la donnée est arrivée.
             const avant = nextState;
-            const { nextState: apres, changes } = applyDocument(avant, doc);
+            const { nextState: apres, changes, rejectedCount } = applyDocument(avant, doc);
             nextState = apres;
             if (doc.kind === 'bank_statement') {
                 // Le delta de longueur EST la mesure : `applyBankStatement` ne fait qu'AJOUTER
@@ -110,6 +110,17 @@ export function applyPayloadsIsolated(
                 // retirerait des lignes se compte comme un ajout NÉGATIF.
                 const ecrites = (nextState.transactions?.length ?? 0) - (avant.transactions?.length ?? 0);
                 transactionsAdded += Math.max(0, ecrites);
+                // [MCP-REJECTIONS-NON-STRUCTUREES] `applyBankStatement` rejette des lignes (date
+                // invalide, montant aberrant, ligne incomplète) SANS lever — ce chemin automatisé ne
+                // lit jamais `summary` (texte prose destiné à un lecteur LLM), donc sans ce compteur
+                // structuré, une sync quotidienne écrivait les lignes valides et perdait les autres
+                // en silence, chaque jour, sans qu'aucun humain ne le voie (ni `SystemView`, ni log).
+                if (rejectedCount) {
+                    warnings.push(
+                        `Relevé bancaire : ${rejectedCount} ligne(s) rejetée(s) (date invalide, `
+                        + `montant aberrant ou ligne incomplète) — vérifier la source du relevé.`,
+                    );
+                }
             } else if (doc.kind === 'cash_balance') {
                 // `applyCashBalance` retourne l'état INCHANGÉ quand l'écart est sous 0,005 $ — le
                 // drapeau posé à `true` faisait afficher « Liquidités : mises à jour » (SystemView)

@@ -215,6 +215,14 @@ export interface ApplyResult {
     nextState: AppState;
     changes: Change[];
     summary: string;
+    /** [MCP-REJECTIONS-NON-STRUCTUREES] Nombre de lignes REJETÉES pour une raison de qualité de
+     *  donnée (montant aberrant, date invalide, ligne incomplète) — PAS les doublons, qui sont un
+     *  résultat ATTENDU d'une sync à fenêtres chevauchantes, pas un problème de données. `summary`
+     *  reste la seule source pour un lecteur LLM (`_writeHelper.ts`/`writeExecutor.ts` le lisent en
+     *  entier), mais un appelant AUTOMATISÉ (`applyPayloadsIsolated`, qui ne lit jamais `summary`)
+     *  a besoin d'un compteur structuré pour ne pas rejeter des lignes en silence à chaque sync.
+     *  Absent (`undefined`) pour les types de document qui n'ont pas de rejet ligne-par-ligne. */
+    rejectedCount?: number;
 }
 
 export function applyDocument(state: AppState, doc: DocumentPayload): ApplyResult {
@@ -818,7 +826,11 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
     const summary = added.length
         ? `Relevé bancaire : ${added.length} transaction(s) ajoutée(s)${rejectionPhrases.length ? `, ${rejectionPhrases.join(', ')}` : ''}.`
         : `Relevé bancaire : aucune nouvelle transaction${rejectionPhrases.length ? ` (${rejectionPhrases.join(', ')})` : ''}.`;
-    return { nextState, changes, summary };
+    // [MCP-REJECTIONS-NON-STRUCTUREES] PAS `dupCount` : un doublon est un résultat ATTENDU d'une
+    // sync à fenêtres chevauchantes, pas un problème de qualité de donnée à signaler à l'appelant
+    // automatisé (`applyPayloadsIsolated`, qui lit ce champ, jamais `summary`).
+    const rejectedCount = rejCount + rejDateCount + rejMalformedCount;
+    return { nextState, changes, summary, ...(rejectedCount > 0 ? { rejectedCount } : {}) };
 }
 
 // ── Relevé de courtage (positions → assets) ──────────────────────────────────

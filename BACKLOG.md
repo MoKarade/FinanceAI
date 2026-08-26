@@ -17,18 +17,6 @@
 
 ---
 
-- [ ] 🔧 **`[MCP-REJECTIONS-NON-STRUCTUREES]`** (M, finding silent-failure-hunter PR #753) —
-  `applyDocument.ts` `applyBankStatement` : les compteurs de rejet (`rejCount`/`rejDateCount`/
-  `rejMalformedCount`/`remapCount`) n'existent QUE dans la chaîne de texte `summary` (`ApplyResult`
-  n'a que `nextState / changes / summary`). Le chemin de sync automatisé
-  (`services/fintable/syncCore.ts` `applyPayloadsIsolated`) ne lit jamais `summary`, seulement
-  `nextState`/`changes` — une sync quotidienne qui reçoit 10 lignes dont 5 rejetées écrit bien les
-  5 valides mais ne signale NULLE PART (ni `SystemView.tsx`, ni log) que 5 ont été rejetées.
-  Préexistant (le shape `ApplyResult` est antérieur à ce lot), pas causé par PR #753 mais rendu plus
-  visible par son refactor du résumé. Correctif probable : ajouter des compteurs structurés à
-  `ApplyResult` (ex. `rejections: { duplicate, invalidAmount, invalidDate, malformed,
-  recategorized }`) que `applyPayloadsIsolated` agrège dans `warnings` (visible dans `SystemView`).
-
 ## 🧭 Vague Budget/Transactions/Investissements (Marc, 2026-08-21)
 
 > Retours de Marc en bloc, non cadrés — chaque item à cadrer (questions groupées) avant de coder,

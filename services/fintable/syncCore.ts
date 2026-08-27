@@ -102,7 +102,7 @@ export function applyPayloadsIsolated(
             // cas le PLUS fréquent d'une sync quotidienne. Un compteur qui ment sur une écriture
             // est pire que pas de compteur : il fait croire que la donnée est arrivée.
             const avant = nextState;
-            const { nextState: apres, changes, rejectedCount } = applyDocument(avant, doc);
+            const { nextState: apres, changes, rejectedCount, dupIntraLotCount } = applyDocument(avant, doc);
             nextState = apres;
             if (doc.kind === 'bank_statement') {
                 // Le delta de longueur EST la mesure : `applyBankStatement` ne fait qu'AJOUTER
@@ -119,6 +119,19 @@ export function applyPayloadsIsolated(
                     warnings.push(
                         `Relevé bancaire : ${rejectedCount} ligne(s) rejetée(s) (date invalide, `
                         + `montant aberrant ou ligne incomplète) — vérifier la source du relevé.`,
+                    );
+                }
+                // [FINTABLE-DOUBLON-INTRALOT-SILENCIEUX] Un doublon contre l'EXISTANT reste muet
+                // (recouvrement bénin, cf. commentaire de `ApplyResult.rejectedCount`) — mais un
+                // doublon INTRA-LOT (deux lignes DISTINCTES du même lot qui partagent la même clé)
+                // désigne le plus souvent deux dépenses RÉELLES identiques le même jour, dont une
+                // seule est écrite (mesuré : 8,50 $ perdus sans trace, absorbés en silence par
+                // `cashAnchorDelta`).
+                if (dupIntraLotCount) {
+                    warnings.push(
+                        `Relevé bancaire : ${dupIntraLotCount} doublon(s) SUSPECT(s) au sein du même `
+                        + `lot — vérifier s'il s'agit de dépenses distinctes (ex. deux achats `
+                        + `identiques le même jour).`,
                     );
                 }
             } else if (doc.kind === 'cash_balance') {

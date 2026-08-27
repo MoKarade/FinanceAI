@@ -81,14 +81,17 @@ Tous les tools d'écriture (lot 2) retournent un objet `ApplyResult` :
   summary: string;              // Résumé lisible pour Claude (ex: « 5 transactions ajoutées »)
   rejectedCount?: number;       // Nombre de lignes rejetées pour qualité de donnée
                                 // (montant aberrant, date invalide, ligne incomplète)
+  dupIntraLotCount?: number;    // Sous-ensemble SUSPECT des doublons : deux lignes DISTINCTES
+                                // du même lot entrant qui partagent la même clé (le plus souvent
+                                // deux vraies dépenses identiques le même jour, une seule écrite)
 }
 ```
 
 **Notes**
-- `rejectedCount` n'existe que pour les outils qui traitent **ligne par ligne** (`apply_bank_statement`) ; absent pour les autres.
-- **Doublons ne sont pas des rejets** : un doublon est un résultat attendu d'une synchronisation à fenêtres chevauchantes.
-- `rejectedCount > 0` : un avertissement s'affiche dans l'onglet Synchronisation (seulement pour les appelants automatisés comme `applyPayloadsIsolated` qui ne lisent pas le `summary` en texte brut).
-- `summary` reste la seule source pour un lecteur LLM — chaque rejet y est décrit en détail (l'appelant automatisé a besoin du compteur structuré en plus pour afficher l'alerte).
+- `rejectedCount`/`dupIntraLotCount` n'existent que pour les outils qui traitent **ligne par ligne** (`apply_bank_statement`) ; absents pour les autres.
+- **Un doublon contre l'EXISTANT n'est PAS un rejet** : sur le chemin de sync automatisée, le recouvrement légitime est déjà écarté en amont par la bascule anti-doublon (mesuré : 0 collision sur 60 jours balayés) — l'inclure ferait une alarme quasi permanente. Un doublon INTRA-LOT (deux lignes du même lot, `dupIntraLotCount`) est une nature DIFFÉRENTE : il désigne le plus souvent deux dépenses réelles distinctes, et lève son propre avertissement.
+- `rejectedCount > 0` ou `dupIntraLotCount > 0` : un avertissement s'affiche dans l'onglet Synchronisation (seulement pour les appelants automatisés comme `applyPayloadsIsolated` qui ne lisent pas le `summary` en texte brut).
+- `summary` reste la seule source pour un lecteur LLM — chaque rejet/doublon suspect y est décrit en détail (l'appelant automatisé a besoin des compteurs structurés en plus pour afficher l'alerte).
 
 ## Lancement local (stdio)
 

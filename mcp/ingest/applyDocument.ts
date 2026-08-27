@@ -228,9 +228,17 @@ export interface ApplyResult {
      *  jours balayés) et le rattrapage pose `callerClassified: true` (dédup par clé désactivée,
      *  `dupCount` toujours 0) — donc un `dupCount > 0` qui survit jusqu'ici désigne surtout une
      *  collision INTRA-lot (deux dépenses RÉELLES identiques le même jour, `seen` les fusionne),
-     *  un cas différent qui mérite son propre signal, pas une inclusion dans `rejectedCount`.
+     *  un cas différent qui mérite son propre signal, pas une inclusion dans `rejectedCount` — voir
+     *  `dupIntraLotCount` ci-dessous, qui porte CE signal.
      *  Absent (`undefined`) pour les types de document qui n'ont pas de rejet ligne-par-ligne. */
     rejectedCount?: number;
+    /** [FINTABLE-DOUBLON-INTRALOT-SILENCIEUX] Sous-ensemble SUSPECT des doublons d'un relevé
+     *  bancaire : deux lignes DISTINCTES du même lot entrant partagent la même clé
+     *  (date|montant|payee), contrairement à un doublon contre l'existant (recouvrement légitime,
+     *  bénin). Signale le plus souvent deux dépenses RÉELLES identiques le même jour, écrites
+     *  UNE seule fois — jamais inclus dans `rejectedCount` (nature différente : une collision de
+     *  déduplication, pas une donnée invalide). Absent pour les documents sans notion de doublon. */
+    dupIntraLotCount?: number;
 }
 
 export function applyDocument(state: AppState, doc: DocumentPayload): ApplyResult {
@@ -742,12 +750,22 @@ function buildCategoryAllowlist(state: AppState): Map<string, string> {
 
 function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyResult {
     const existing = (state.transactions ?? []) as Transaction[];
-    const seen = new Set(existing.map(txnKey));
+    // [FINTABLE-DOUBLON-INTRALOT-SILENCIEUX] finding financial-integrity, MESURÉ : `seen` unique
+    // confondait deux cas de nature différente — un doublon contre l'EXISTANT (bénin sur le chemin
+    // automatisé, le recouvrement légitime est déjà écarté en amont par la bascule anti-doublon,
+    // 0 collision mesurée sur 60 jours) et un doublon INTRA-LOT (deux lignes DISTINCTES du même lot
+    // entrant qui partagent la même clé) — qui, lui, désigne le plus souvent deux dépenses RÉELLES
+    // identiques le même jour (mesuré : 3 cafés à 4,25 $, 1 seul écrit, 8,50 $ perdus en silence,
+    // `cashAnchorDelta` absorbe l'écart). Deux ensembles séparés pour pouvoir avertir sur le second
+    // sans déclencher une alarme permanente sur le premier.
+    const existingKeys = new Set(existing.map(txnKey));
+    const seenThisLot = new Set<string>();
     let maxId = existing.reduce((m, t) => Math.max(m, t.id || 0), 0);
     const allowedCategories = buildCategoryAllowlist(state);
 
     const added: Transaction[] = [];
-    let dupCount = 0;
+    let dupCount = 0; // TOTAL (existant + intra-lot) — préserve le libellé `dupPhrase` existant
+    let dupIntraLotCount = 0; // sous-ensemble SUSPECT de dupCount, voir commentaire ci-dessus
     let rejCount = 0; // montant aberrant (D9)
     // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Compteur SÉPARÉ de `rejCount` : les deux causes de rejet ne
     // sont pas la même information pour l'appelant (un montant aberrant n'est pas une date invalide),
@@ -769,8 +787,11 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
         const k = txnKey(tx);
         // ⚠️ `callerClassified` : le rattrapage a déjà tranché, avec un invariant d'appariement
         // unique que cette clé annulerait en supprimant les dépenses réelles surnuméraires.
-        if (!doc.callerClassified && seen.has(k)) { dupCount++; continue; } // déjà présent OU déjà ajouté
-        seen.add(k);
+        if (!doc.callerClassified) {
+            if (existingKeys.has(k)) { dupCount++; continue; } // déjà présent — bénin (recouvrement)
+            if (seenThisLot.has(k)) { dupCount++; dupIntraLotCount++; continue; } // déjà ajouté CE LOT — suspect
+        }
+        seenThisLot.add(k);
         // [TX-CATEGORY-RULES] + [MCP-CATEGORY-ALLOWLIST] Catégorie fournie ACCEPTÉE seulement si
         // canonique (remap vers la casse canonique) ; inconnue ou absente → règles déterministes
         // sur le payee (mêmes règles que l'import CSV de l'app — cohérence app↔MCP), sinon
@@ -813,6 +834,13 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
     // `, ` littéral, ce qui laissait une virgule orpheline en tête dès que `dupCount === 0` mais un
     // AUTRE rejet existait (`(, 1 montant(s) aberrant(s) ignoré(s))`).
     const dupPhrase = dupCount ? `${dupCount} doublon(s) ignoré(s)` : '';
+    // [FINTABLE-DOUBLON-INTRALOT-SILENCIEUX] Signal SÉPARÉ (pas fusionné dans `dupPhrase`) : un
+    // doublon intra-lot est SUSPECT (deux lignes distinctes du même lot, probablement deux vraies
+    // dépenses identiques) alors qu'un doublon contre l'existant est un recouvrement bénin — les
+    // fusionner sous « doublon(s) ignoré(s) » masquerait le seul cas qui mérite d'être vérifié.
+    const dupIntraLotPhrase = dupIntraLotCount
+        ? `${dupIntraLotCount} doublon(s) SUSPECT(s) au sein du même lot (vérifier s'il s'agit de dépenses distinctes)`
+        : '';
     const rejPhrase = rejCount ? `${rejCount} montant(s) aberrant(s) ignoré(s)` : '';
     // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Message SÉPARÉ (pas fusionné dans `rejPhrase`) : une date
     // invalide n'est pas un montant aberrant, et un appelant qui lit « aberrant » sur un rejet de
@@ -830,14 +858,18 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
     const remapPhrase = remapCount
         ? `${remapCount} catégorie(s) non canonique(s) re-catégorisée(s) par les règles`
         : '';
-    const rejectionPhrases = [dupPhrase, rejPhrase, rejDatePhrase, rejMalformedPhrase, remapPhrase].filter(Boolean);
+    const rejectionPhrases = [dupPhrase, dupIntraLotPhrase, rejPhrase, rejDatePhrase, rejMalformedPhrase, remapPhrase].filter(Boolean);
     const summary = added.length
         ? `Relevé bancaire : ${added.length} transaction(s) ajoutée(s)${rejectionPhrases.length ? `, ${rejectionPhrases.join(', ')}` : ''}.`
         : `Relevé bancaire : aucune nouvelle transaction${rejectionPhrases.length ? ` (${rejectionPhrases.join(', ')})` : ''}.`;
     // [MCP-REJECTIONS-NON-STRUCTUREES] PAS `dupCount` — voir le JSDoc de `rejectedCount` sur
     // `ApplyResult` pour la raison MESURÉE (pas juste supposée bénigne).
     const rejectedCount = rejCount + rejDateCount + rejMalformedCount;
-    return { nextState, changes, summary, ...(rejectedCount > 0 ? { rejectedCount } : {}) };
+    return {
+        nextState, changes, summary,
+        ...(rejectedCount > 0 ? { rejectedCount } : {}),
+        ...(dupIntraLotCount > 0 ? { dupIntraLotCount } : {}),
+    };
 }
 
 // ── Relevé de courtage (positions → assets) ──────────────────────────────────

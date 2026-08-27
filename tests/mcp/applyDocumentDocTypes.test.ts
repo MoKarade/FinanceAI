@@ -35,6 +35,11 @@ describe('applyDocument — relevé bancaire', () => {
         expect(added.every((t) => t.status === 'processed')).toBe(true);
         expect(added.find((t) => t.payee === 'Metro')?.accountName).toBe('Chèque');
         expect(r.summary).toMatch(/2 transaction/);
+        // [FINTABLE-DOUBLON-INTRALOT-SILENCIEUX] Ce scénario porte DÉJÀ les deux natures de doublon
+        // (Metro = intra-lot, suspect ; Loyer = vs existant, bénin) — `dupIntraLotCount` ne compte
+        // QUE le premier, jamais le second.
+        expect(r.dupIntraLotCount).toBe(1);
+        expect(r.summary).toMatch(/1 doublon\(s\) SUSPECT\(s\)/);
     });
 
     it('tout en doublon → 0 changement (rien écrit)', () => {

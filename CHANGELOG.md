@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-27 (synchronisation automatique : les doublons suspects sont signalés)
+
+- **Amélioré** : quand une synchronisation automatique fusionne deux transactions identiques du
+  même lot (ex. deux achats de café le même jour au même montant), un avertissement apparaît
+  maintenant dans l'écran de suivi — un simple recouvrement avec une transaction déjà connue,
+  lui, reste silencieux comme avant.
+
 ## [unreleased] — 2026-08-26 (synchronisation automatique : les lignes de relevé rejetées sont maintenant signalées)
 
 - **Amélioré** : quand une synchronisation automatique rejette une ligne d'un relevé bancaire (date

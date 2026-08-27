@@ -10,6 +10,22 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-27 — Un doublon bénin (recouvrement) distingué d'un doublon intra-lot suspect
+
+- [x] **`[FINTABLE-DOUBLON-INTRALOT-SILENCIEUX]`** (M) — PR à venir (branche `claude/lot-29`),
+  gate vert (4 871 tests). Finding financial-integrity (PR #754), routé au `BACKLOG.md` puis
+  traité ici. `applyBankStatement` (`mcp/ingest/applyDocument.ts`) fusionnait par la clé
+  `date|montant|payee` sans distinguer un doublon contre l'EXISTANT (recouvrement légitime,
+  bénin) d'un doublon INTRA-LOT (deux lignes DISTINCTES du même lot entrant — le plus souvent
+  deux vraies dépenses identiques le même jour, dont une seule écrite SANS avertissement).
+  Mesuré : 8,50 $ de dépense réelle perdue en silence, `cashAnchorDelta` absorbe l'écart (total
+  de liquidités juste, ventilation budget/historique faussée).
+  `existingKeys`/`seenThisLot` séparés au lieu d'un seul `seen` ; nouveau champ optionnel
+  `ApplyResult.dupIntraLotCount`, nouvelle phrase de résumé distincte ; `applyPayloadsIsolated`
+  pousse un avertissement SÉPARÉ dans `SystemView` quand `dupIntraLotCount > 0`. `mcp/README.md`
+  mis à jour (nouveau champ + note corrigée sur les doublons). 4 tests neufs, chaque correctif
+  discriminé par perturbation ciblée.
+
 ## 2026-08-26 — Les lignes rejetées d'un relevé bancaire deviennent visibles à la sync automatisée
 
 - [x] **`[MCP-REJECTIONS-NON-STRUCTUREES]`** (M) — PR #754, gate vert (4 867 tests). Finding

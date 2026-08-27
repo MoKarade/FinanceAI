@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-27 — `[FINTABLE-DOUBLON-INTRALOT-SILENCIEUX]` : un doublon bénin distingué d'un doublon intra-lot suspect
+> Finding financial-integrity (PR #754), routé au `BACKLOG.md` puis traité ici.
+> `applyBankStatement` fusionnait par la clé `date|montant|payee` sans distinguer un doublon
+> contre l'EXISTANT (recouvrement légitime, bénin) d'un doublon INTRA-LOT (deux lignes DISTINCTES
+> du même lot entrant — le plus souvent deux vraies dépenses identiques le même jour, dont une
+> seule écrite SANS avertissement). Mesuré : 8,50 $ perdus en silence, `cashAnchorDelta` absorbe
+> l'écart. `existingKeys`/`seenThisLot` séparés au lieu d'un seul `seen` ; nouveau champ optionnel
+> `ApplyResult.dupIntraLotCount`, `applyPayloadsIsolated` pousse un avertissement SÉPARÉ dans
+> `SystemView`. `mcp/README.md` mis à jour. 4 tests neufs, discriminé par perturbation ciblée.
+> ⚠️ **GitHub déconnecté côté outils MCP pendant cette session** (session invalide côté serveur) :
+> le code est committé + poussé sur `claude/lot-29`, mais la PR n'a pas pu être créée/fusionnée —
+> à faire dès que la connexion revient. Gate vert (4 871 tests) sur l'environnement reconstruit
+> (`npm install` refait après un changement de conteneur qui avait un `node_modules` d'une
+> branche différente).
+>
 > ## 🟢 Session 2026-08-26 — `[MCP-REJECTIONS-NON-STRUCTUREES]` : les rejets d'un relevé bancaire deviennent visibles à la sync automatisée
 > Finding hors-scope routé par le panel de PR #753 : `applyBankStatement` rejette des lignes
 > (montant aberrant, date invalide, ligne incomplète) SANS lever — seulement une phrase dans

@@ -25,6 +25,14 @@ export function toFinnhubSymbol(ours: string): string {
     // "NYSE:V" → "V"
     // "TSE:XEQT.TO" → "XEQT.TO" (Finnhub accepte le .TO)
     // "EPA:SAF" → "SAF.PA" (Euronext Paris)
+    // [INVEST-COURS-EXACT-TOUTES-ACTIONS] "ETR:KLA" → "KLA.DE" (Xetra), "BIT:GBS" → "GBS.MI" (Milan) :
+    // ces deux préfixes (notation Google Finance) étaient absents de cette table alors que
+    // `inferCurrency` (plus bas) anticipe DÉJÀ les suffixes `.DE`/`.MI` correspondants — un titre
+    // Xetra/Milan tombait dans le fallback « ticker brut sans suffixe », que Finnhub/Yahoo ne
+    // résolvent pas → cours jamais rafraîchi (silencieux, aucune erreur). ⚠️ Les AUTRES préfixes de
+    // `inferCurrency` (Madrid, Amsterdam, Bruxelles, Lisbonne, Vienne, Dublin, Helsinki) ne sont PAS
+    // ajoutés ici faute de convention de préfixe VÉRIFIÉE (deviner risquerait de router un ticker
+    // vers un AUTRE titre — pire qu'un cours absent) : à ajouter au cas par cas, confirmés.
     if (ours.includes(':')) {
         const [exchange, ticker] = ours.split(':');
         if (exchange === 'NASDAQ' || exchange === 'NYSE') return ticker;
@@ -32,6 +40,8 @@ export function toFinnhubSymbol(ours: string): string {
             return ticker.endsWith('.TO') ? ticker : `${ticker}.TO`;
         }
         if (exchange === 'EPA') return `${ticker}.PA`;
+        if (exchange === 'ETR') return `${ticker}.DE`;
+        if (exchange === 'BIT') return `${ticker}.MI`;
         // Fallback : on tente le ticker brut
         return ticker;
     }
@@ -222,7 +232,9 @@ export class FinnhubProvider implements MarketDataProvider {
         // était étiqueté USD → la garde de devise du refresh des cours skippait à tort TOUTE la
         // poche EUR en « currency-mismatch » (les cours EUR ne se rafraîchissaient jamais).
         if (symbol.startsWith('TSE:') || symbol.startsWith('TSX:')) return 'CAD';
-        if (symbol.startsWith('EPA:')) return 'EUR';
+        // [INVEST-COURS-EXACT-TOUTES-ACTIONS] même préfixes ajoutés à `toFinnhubSymbol` ci-dessus —
+        // sans ce cas, `ETR:KLA`/`BIT:GBS` n'ont pas de `.` (aucun suffixe) et retombaient sur USD.
+        if (symbol.startsWith('EPA:') || symbol.startsWith('ETR:') || symbol.startsWith('BIT:')) return 'EUR';
         const dot = symbol.lastIndexOf('.');
         if (dot > 0) {
             const suffix = symbol.slice(dot + 1).toUpperCase();

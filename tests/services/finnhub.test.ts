@@ -26,6 +26,21 @@ describe('toFinnhubSymbol — mapping des places', () => {
         expect(toFinnhubSymbol('EPA:SAF')).toBe('SAF.PA');
         expect(toFinnhubSymbol('AAPL')).toBe('AAPL');
     });
+
+    // [INVEST-COURS-EXACT-TOUTES-ACTIONS] Xetra/Milan absents de cette table : un titre `ETR:KLA`/
+    // `BIT:GBS` tombait dans le fallback « ticker brut » (`KLA`, `GBS`), que Finnhub/Yahoo ne
+    // résolvent pas (pas de suffixe de place) → cours jamais rafraîchi, silencieusement. Ce test
+    // ÉCHOUE sur l'ancien code (rendait `KLA`/`GBS` au lieu de `KLA.DE`/`GBS.MI`).
+    it('mappe ETR (Xetra) et BIT (Milan) vers leurs suffixes Finnhub/Yahoo', () => {
+        expect(toFinnhubSymbol('ETR:KLA')).toBe('KLA.DE');
+        expect(toFinnhubSymbol('BIT:GBS')).toBe('GBS.MI');
+    });
+
+    it('un préfixe INCONNU (ex. OTCMKTS, place non couverte) retombe sur le ticker brut, jamais un titre AU HASARD', () => {
+        // Aucune place ajoutée sans convention de préfixe VÉRIFIÉE (cf commentaire de toFinnhubSymbol) :
+        // deviner routerait potentiellement vers un AUTRE instrument — pire qu'un cours absent.
+        expect(toFinnhubSymbol('OTCMKTS:ANDXF')).toBe('ANDXF');
+    });
 });
 
 describe('FinnhubProvider — getQuote', () => {
@@ -192,5 +207,10 @@ describe('FinnhubProvider — inferCurrency (via getQuote.currency)', () => {
         expect(await q('EPA:SAF')).toBe('EUR');
         expect(await q('NVDA')).toBe('USD');
         expect(await q('BRK.B')).toBe('USD'); // suffixe de CLASSE d'action US, pas une place boursière
+    });
+
+    it('[INVEST-COURS-EXACT-TOUTES-ACTIONS] préfixes ETR/BIT → EUR (cohérent avec les suffixes .DE/.MI déjà reconnus)', async () => {
+        expect(await q('ETR:KLA')).toBe('EUR');
+        expect(await q('BIT:GBS')).toBe('EUR');
     });
 });

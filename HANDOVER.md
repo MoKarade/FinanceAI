@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-27 — `[INVEST-COURS-EXACT-TOUTES-ACTIONS]` : Xetra/Milan ajoutés au routage des cours
+> `toFinnhubSymbol` ne convertissait que 3 préfixes de place (NASDAQ/NYSE, TSE/TSX, EPA) — tout
+> autre préfixe (dont `ETR:` Xetra et `BIT:` Milan, deux vraies positions de Marc) retombait sur le
+> ticker BRUT sans suffixe, jamais résolu par Finnhub/Yahoo : cours gelé, SANS erreur visible.
+> `inferCurrency` anticipait déjà les suffixes `.DE`/`.MI` correspondants — la table de routage
+> n'avait juste jamais été complétée. Ajouté ETR/BIT aux deux fonctions. Portée volontairement
+> LIMITÉE à ces deux préfixes (les seuls confirmés par des tickers réels) : deviner les autres
+> conventions de préfixe (Madrid, Amsterdam…) risquerait de router vers un AUTRE instrument — pire
+> qu'un cours absent. `OTCMKTS:ANDXF` reste un gap de couverture connu, pas un bug, noté au
+> `BACKLOG.md`. 2 tests neufs, discriminés par perturbation.
+>
+> ## 🟢 Session 2026-08-27 — `[BUDGET-REEL-PREVISIONNEL-OBJECTIF]` : 3e valeur Objectif sur les 4 tuiles Budget
+> Décision Marc (cadrage batch) : ajouter l'Objectif aux TROIS tuiles (Revenus/Dépenses/Fin de
+> mois/Restant), pas seulement Dépenses — a exigé de définir un « objectif de revenu » inexistant
+> côté UI, résolu en réutilisant `fiscalBreakdown.netDisplay` (déjà calculé dans `Budget.tsx`, déjà
+> distingué du réel sous le nom « salaire déclaré »). `DualKPIStat` gagne une prop `objectif?`
+> optionnelle (absente = comportement identique, rétrocompat). 3 tests neufs (présence, valeur
+> exacte de l'Objectif Dépenses, invariant Objectif Restant = Objectif Revenus − Objectif
+> Dépenses), discriminés par perturbation.
+>
 > ## 🟢 Session 2026-08-27 — `[NAV-MERGE-SANTE-FUTUR]` : résumé Santé condensé en tête de Futur
 > Décision Marc confirmée : « Condensé (résumé + lien vers le détail) », pas un déplacement du
 > contenu. Le sous-onglet Santé (Budget → Santé) reste la vue détaillée inchangée ; un nouveau

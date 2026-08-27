@@ -6,6 +6,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-27 (Budget : un troisième chiffre « Objectif » sur les tuiles)
+
+- **Ajouté** : les tuiles Revenus / Dépenses / Fin de mois / Restant du Budget affichent maintenant
+  un troisième chiffre, l'Objectif (le salaire déclaré au profil pour Revenus, la somme des cibles
+  de dépense par catégorie pour Dépenses), à côté du Réel et du Prévisionnel déjà affichés.
+
+## [unreleased] — 2026-08-27 (Investissements : cours exacts pour les titres Xetra et Milan)
+
+- **Corrigé** : les positions cotées à la bourse de Francfort (Xetra) ou de Milan n'affichaient
+  jamais de cours à jour (le cours restait figé, sans message d'erreur). Elles se rafraîchissent
+  maintenant normalement.
+
 ## [unreleased] — 2026-08-27 (Futur : résumé de santé financière en tête de page)
 
 - **Ajouté** : la page Futur affiche maintenant, tout en haut, un résumé condensé du score de

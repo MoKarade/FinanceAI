@@ -10,6 +10,28 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-27 — Xetra (ETR:) et Milan (BIT:) ajoutés au routage des cours exacts
+
+- [x] **`[INVEST-COURS-EXACT-TOUTES-ACTIONS]`** (M) — PR à venir (branche `claude/lot-29`), gate
+  vert (4 851 tests, 453 fichiers). Cause trouvée par investigation (pas de décision Marc requise
+  pour le correctif principal) : `toFinnhubSymbol` (`services/marketData/providers/finnhub.ts`) ne
+  convertit que 3 préfixes (NASDAQ/NYSE, TSE/TSX, EPA) vers le format Finnhub/Yahoo — tout autre
+  préfixe retombe sur le ticker BRUT sans suffixe de place, que Finnhub/Yahoo ne résolvent jamais
+  (silencieux, aucune erreur). `ETR:KLA` (Xetra) et `BIT:GBS` (Milan), deux positions du
+  portefeuille réel de Marc, tombaient dans ce trou. `inferCurrency` (même fichier) anticipait
+  DÉJÀ les suffixes `.DE`/`.MI` correspondants depuis une revue de 2026-07-15 — la table de
+  routage n'avait simplement jamais été complétée avec les préfixes qui y mènent. Ajouté ETR→.DE
+  et BIT→.MI dans `toFinnhubSymbol` ET `inferCurrency` (qui lit le symbole ORIGINAL avant
+  conversion, donc a besoin du même cas de préfixe séparément).
+  ⚠️ Portée volontairement LIMITÉE à ces deux préfixes, confirmés par les tickers RÉELS du ticket :
+  Madrid/Amsterdam/Bruxelles/Lisbonne/Vienne/Dublin/Helsinki (suffixes déjà anticipés par
+  `inferCurrency`) n'ont PAS de convention de préfixe vérifiée dans ce dépôt — deviner risquerait
+  de router un ticker vers un AUTRE instrument, pire qu'un cours absent. `OTCMKTS:ANDXF` (ADR
+  pink-sheet) reste sur le fallback ticker-brut existant : gap de couverture du forfait gratuit,
+  pas un bug de routage — note ajoutée à `[INVEST-PORTFOLIO-DATA-CORRECTION]` dans `BACKLOG.md`.
+  2 tests neufs (`tests/services/finnhub.test.ts`), discriminés par perturbation (revert des deux
+  fonctions → les deux rougissent ; non-régression `OTCMKTS:` confirmée à part).
+
 ## 2026-08-27 — Résumé Santé condensé en tête de Futur
 
 - [x] **`[NAV-MERGE-SANTE-FUTUR]`** (M) — PR à venir (branche `claude/lot-29`), gate vert

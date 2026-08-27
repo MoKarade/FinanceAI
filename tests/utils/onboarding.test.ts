@@ -48,9 +48,9 @@ describe('hasMeaningfulData — reconnaît un PROFIL/retraite restauré (pas que
         expect(hasMeaningfulData({ config: { users: [{ name: '', netSalary: 4000 }] } })).toBe(true);
         expect(hasMeaningfulData({ config: { users: [{ name: '', grossSalary: 5400 }] } })).toBe(true);
     });
-    it('non-vide dès une dette / un objectif d épargne', () => {
+    it('non-vide dès une dette / un événement de vie', () => {
         expect(hasMeaningfulData({ debts: [{ id: 'd' }] })).toBe(true);
-        expect(hasMeaningfulData({ savingsGoals: [{ id: 'g' }] })).toBe(true);
+        expect(hasMeaningfulData({ lifeEvents: [{ id: 'g' }] })).toBe(true);
     });
     it('liste canonique élargie : budget / voyages / assurances comptent aussi (alignée sur la sync)', () => {
         expect(hasMeaningfulData({ budgetItems: [{ id: 'b' }] })).toBe(true);

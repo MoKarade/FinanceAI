@@ -201,7 +201,9 @@ export const BackupPanel: React.FC<BackupPanelProps> = ({ buildPayload }) => {
     safeSet('app_budget', data.budgetItems);
     safeSet('initial_balances', data.initialBalances);
     safeSet('app_assets', data.assets);
-    safeSet('app_savings_goals', data.savingsGoals);
+    // [NAV-REMOVE-OBJECTIFS-TAB] `savingsGoals` retiré du produit — un vieux backup qui en
+    // contient encore (schéma toujours `.optional()` ci-dessus pour rester compatible en
+    // LECTURE) n'écrit plus la clé legacy : rien ne la relit, la restaurer serait inerte.
     safeSet('app_travel_goals', data.travelGoals);
     safeSet('app_debts', data.debts ?? []);
     safeSet('app_investment_acc', data.investmentAccounts ?? []);

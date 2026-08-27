@@ -32,7 +32,7 @@ export const MCP_TEXT_MAX = 200;
 const USER_TEXT_KEYS = new Set([
     'name', 'payee', 'category', 'label', 'employer', 'description',
     'insurer', 'beneficiary', 'destination', 'userNotes',
-    'icon', // [MCP-DIRECT-EDIT Lot 3] SavingsGoal.icon = texte libre ≤8 car. (pas garanti emoji)
+    'icon', // LifeEvent.icon = texte libre ≤8 car. (pas garanti emoji)
 ]);
 
 /**

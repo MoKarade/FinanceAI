@@ -1047,21 +1047,6 @@ const ALL_TYPES = ['BASE', 'LIBERTE_55', 'HYPER_INFLATION', 'WINDFALL', 'ECONOMI
     });
 
     describe('Wiring goals (2026-05)', () => {
-        it('SavingsGoal: une deadline drainante réduit le patrimoine final', () => {
-            const targetDate = '2027-06';
-            const baseline: ProjectionResult = calculateFutureProjection(makeParams({
-                savingsGoals: [],
-            }));
-            const withGoal: ProjectionResult = calculateFutureProjection(makeParams({
-                savingsGoals: [
-                    { id: 'sg1', name: 'Voyage Europe', targetAmount: 15000, currentAmount: 0, deadline: targetDate, icon: '✈️' },
-                ],
-            }));
-            const noBase = baseline.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
-            const goalBase = withGoal.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
-            expect(goalBase!.estateNetWorth).toBeLessThan(noBase!.estateNetWorth!);
-        });
-
         it('FinancialGoal avec targetAccount=CELI: réduit le solde CELI projeté', () => {
             const baseline: ProjectionResult = calculateFutureProjection(makeParams({
                 financialGoals: [],

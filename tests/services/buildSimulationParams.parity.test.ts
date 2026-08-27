@@ -93,7 +93,6 @@ function reactParams(state: AppState, startYear: number, startMonth: number): Si
         charitableGoals: state.charitableGoals ?? [],
         rentalProperties: state.rentalProperties ?? [],
         privateBusinesses: state.privateBusinesses ?? [],
-        savingsGoals: state.savingsGoals ?? [],
         financialGoals: state.financialGoals ?? [],
     };
 }
@@ -142,7 +141,6 @@ describe('Lot 0 — parité buildSimulationParams vs chemin React', () => {
             charitableGoals: state.charitableGoals ?? [],
             rentalProperties: state.rentalProperties ?? [],
             privateBusinesses: state.privateBusinesses ?? [],
-            savingsGoals: state.savingsGoals ?? [],
         };
         const direct = buildSimulationParams(inputs);
         const viaState = buildSimulationParamsFromState(state, {

@@ -34,7 +34,6 @@ export function buildDefaultAppState(): AppState {
         realEstateGoals: [INITIAL_REAL_ESTATE_GOAL],
         childGoal: INITIAL_CHILD_GOAL,
         childGoals: [INITIAL_CHILD_GOAL],
-        savingsGoals: [],
         debts: [],
         travelGoals: [],
         lifeEvents: [],

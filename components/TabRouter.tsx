@@ -102,8 +102,6 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                             budgetItems={state.budgetItems}
                             setBudgetItems={(items) => setAppState({ budgetItems: items })}
                             apiKey={state.apiKeys.anthropic}
-                            savingsGoals={state.savingsGoals}
-                            setSavingsGoals={(goals) => setAppState({ savingsGoals: goals })}
                         />
                     </PageSetupGate>
                 )}
@@ -249,7 +247,6 @@ export const TabRouter: React.FC<TabRouterProps> = ({
                         initialBalances={state.initialBalances} setInitialBalances={(b) => setAppState({ initialBalances: b })}
                         transactions={state.transactions} setTransactions={(t) => setAppState({ transactions: t })}
                         assets={state.assets}
-                        savingsGoals={state.savingsGoals}
                         travelGoals={state.travelGoals}
                         debts={state.debts}
                         investmentAccounts={state.investmentAccounts} investmentTransactions={state.investmentTransactions}

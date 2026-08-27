@@ -54,7 +54,7 @@ type MeaningfulDataState = Partial<Record<DataArrayKey, unknown[]>> & {
  * par défaut → ne comptent pas comme « données saisies ».
  */
 export const DATA_ARRAY_KEYS = [
-    'transactions', 'assets', 'investmentTransactions', 'debts', 'savingsGoals',
+    'transactions', 'assets', 'investmentTransactions', 'debts',
     'financialGoals', 'budgetItems', 'travelGoals', 'lifeEvents', 'insurancePolicies',
     'rentalProperties', 'privateBusinesses', 'charitableGoals',
 ] as const;

@@ -3,7 +3,7 @@ import { logError } from '../services/errorLogger';
 // [PRIV-PAYEE-MODE-DISCRET] Un nom d'abonnement EST un nom de marchand (décision Marc 2026-08-17).
 import { PrivateText } from './ui/PrivateText';
 import { maskPayee } from '../utils/privacyAria';
-import { Transaction, RecurringItem, SavingsGoal, BudgetConfig, BudgetCategory } from '../types';
+import { Transaction, RecurringItem } from '../types';
 import { Card } from './ui/Card';
 import { Icon, type IconName } from './ui/Icon';
 import { ProjectionRequired } from './ui/ProjectionRequired';
@@ -15,7 +15,6 @@ import { detectSubscriptionsAI } from '../services/claude';
 import { buildMerchantProfiles, merchantKey } from '../services/transactions/merchantProfile';
 import { detectSubscriptionAlerts, type SubscriptionAlertInput } from '../services/transactions/subscriptionAlerts';
 import { showToast } from './ui/Toast';
-import { ConfirmModal } from './ui/ConfirmModal';
 import { formatCAD, formatPercent } from '../utils/format';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { mergeSubscriptions, addSubscription, removeSubscription, isPinned, subscriptionKey, dismissSubscription, restoreSubscription, monthlyEquivalent, totalMonthlyCost, totalYearlyCost, isAnnualSubscription, subscriptionDueLabel } from '../utils/subscriptions';
@@ -38,26 +37,13 @@ const EMPTY_DISMISSED: string[] = [];
 
 interface PlanningProps {
     transactions: Transaction[];
-    savingsGoals: SavingsGoal[];
-    setSavingsGoals: (goals: SavingsGoal[]) => void;
-    budgetItems: BudgetCategory[];
-    setBudgetItems: (items: BudgetCategory[]) => void;
-    config: BudgetConfig;
     apiKey?: string;
-    /** G22-N3 — sous-section rendue quand intégré dans Budget :
-     *  'fixed' = Abonnements/Récurrents + Calendrier ; 'goals' = Objectifs ; 'all' = tout. */
-    section?: 'all' | 'fixed' | 'goals';
-    /** [PH4-C] Dépense réelle du MOIS COURANT par catégorie (clé = nom) → « versé ce mois » des objectifs liés. */
-    actualsMap?: Record<string, number>;
 }
 
-export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals = [], setSavingsGoals, budgetItems = [], setBudgetItems: _setBudgetItems, config: _config, apiKey, section = 'all', actualsMap = {} }) => {
+export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [aiSubs, setAiSubs] = useState<RecurringItem[] | null>(null);
-    const [isAddingGoal, setIsAddingGoal] = useState(false);
-    const [confirmDeleteGoalId, setConfirmDeleteGoalId] = useState<string | null>(null);
-    const [newGoal, setNewGoal] = useState<Partial<SavingsGoal>>({ name: '', targetAmount: 0, currentAmount: 0, deadline: '', icon: '💰' });
     // [PH4-F] abonnements ÉPINGLÉS (persistés dans le store) — survivent au reload sans re-détection IA.
     const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
     const pinnedSubs = useFinanceStore(s => s.subscriptions) ?? EMPTY_SUBS;
@@ -173,47 +159,6 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
 
     const changeMonth = (delta: number) => { const newDate = new Date(currentDate); newDate.setMonth(newDate.getMonth() + delta); setCurrentDate(newDate); };
 
-    const handleAddGoal = () => {
-        if (newGoal.name && newGoal.targetAmount) {
-            setSavingsGoals([...savingsGoals, { ...newGoal, id: Date.now().toString() } as SavingsGoal]);
-            setIsAddingGoal(false);
-            setNewGoal({ name: '', targetAmount: 0, currentAmount: 0, deadline: '', icon: '💰', linkedBudgetCategoryName: undefined });
-        }
-    };
-
-    const handleDeleteGoal = (id: string) => { setConfirmDeleteGoalId(id); };
-
-    // [PH4-C] Lier / délier un objectif existant à une catégorie budget (par nom).
-    const updateGoalLink = (id: string, linkedBudgetCategoryName?: string) =>
-        setSavingsGoals(savingsGoals.map(g => g.id === id ? { ...g, linkedBudgetCategoryName } : g));
-
-    // [GOAL-DEADLINE-UI] Éditer / effacer l'échéance d'un objectif EXISTANT.
-    // ⚠️ Plus qu'un confort : `deadline` pilote un DÉCAISSEMENT réel dans la projection, et le tool
-    // MCP `upsert_savings_goal` peut la poser. Sans ce champ à l'écran, une écriture de l'assistant
-    // restait INVISIBLE et IRRÉVERSIBLE côté UI — même classe que [MCP-NETINCOME-MISLEADING] :
-    // une donnée qui AGIT sans que Marc puisse la voir ni la corriger.
-    // ⚠️ `deadline` est un `string` REQUIS dans le modèle, et le formulaire de création utilise
-    // déjà la CHAÎNE VIDE pour « pas d'échéance ». On s'aligne dessus au lieu d'introduire un
-    // second encodage (`undefined`) qui ferait diverger deux chemins d'écriture pour le même sens.
-    const updateGoalDeadline = (id: string, deadline: string) =>
-        setSavingsGoals(savingsGoals.map(g => g.id === id ? { ...g, deadline } : g));
-
-    // [PH4C-SAVINGS-NATURE] Catégories RÉELLEMENT liables à un objectif.
-    // ⚠️ Un poste de nature « Epargne » ne peut afficher que « Versé ce mois : 0 » À PERPÉTUITÉ :
-    // le réel d'un objectif vient de `actualsMap`, qui EXCLUT les virements — or c'est précisément
-    // par virement qu'on alimente un poste d'épargne. Le menu offrait donc un choix qui ne peut
-    // produire que du faux. On le retire plutôt que d'afficher un zéro crédible (no-fake-data).
-    // Une liaison DÉJÀ posée sur un poste épargne reste visible via la branche `linkOrphan`,
-    // pour que Marc puisse la défaire au lieu de la subir en silence.
-    const linkableBudgetItems = budgetItems.filter(c => c.nature !== 'Epargne');
-
-    const doConfirmDeleteGoal = () => {
-        if (confirmDeleteGoalId) {
-            setSavingsGoals(savingsGoals.filter(g => g.id !== confirmDeleteGoalId));
-            setConfirmDeleteGoalId(null);
-        }
-    };
-
     const handleAiAnalysis = async () => {
         setIsAnalyzing(true);
         try {
@@ -234,13 +179,10 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
 
     return (
         <div className="space-y-6 animate-fade-in pb-20">
-            <ConfirmModal isOpen={!!confirmDeleteGoalId} onConfirm={doConfirmDeleteGoal} onCancel={() => setConfirmDeleteGoalId(null)} title="Supprimer l'objectif" message="Supprimer cet objectif d'épargne définitivement ?" confirmLabel="Supprimer" />
-            {section !== 'goals' && (
-            <>
             <div className="flex flex-col md:flex-row justify-between items-end gap-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 p-6 rounded-2xl border border-white/10">
                 <div>
-                    <h2 className="text-3xl font-bold text-white tracking-tight">{section === 'all' ? 'Planification & Charges Fixes' : 'Charges Fixes & Abonnements'}</h2>
-                    <p className="text-ink-300 text-body mt-1">{section === 'all' ? 'Abonnements, Factures Récurrentes & Objectifs.' : 'Abonnements & Factures Récurrentes.'}</p>
+                    <h2 className="text-3xl font-bold text-white tracking-tight">Charges Fixes & Abonnements</h2>
+                    <p className="text-ink-300 text-body mt-1">Abonnements & Factures Récurrentes.</p>
                 </div>
                 <div className="flex gap-4">
                     <div className="text-right"><div className="text-tiny uppercase text-ink-400 font-bold">Fixe Mensuel</div><PrivateAmount as="div" className="text-2xl font-bold text-danger-400">{formatCAD(totalMonthly)}</PrivateAmount></div>
@@ -275,10 +217,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                     </ul>
                 </details>
             )}
-            </>
-            )}
-            <div className={`grid grid-cols-1 gap-6 ${section === 'all' ? 'xl:grid-cols-3' : section === 'fixed' ? 'xl:grid-cols-2' : 'xl:grid-cols-1'}`}>
-                {section !== 'goals' && (
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                 <div className="xl:col-span-1 space-y-6">
                     <Card title="Abonnements & Récurrents" action={
                         <div className="flex gap-2">{!aiSubs ? (<button onClick={handleAiAnalysis} disabled={isAnalyzing} className="text-tiny bg-primary text-dark px-2 py-1 rounded font-bold hover:bg-white disabled:opacity-50">{isAnalyzing ? '...' : 'IA'}</button>) : (<button onClick={() => setAiSubs(null)} className="text-tiny bg-white/10 px-2 py-1 rounded text-ink-300">Reset</button>)}</div>
@@ -346,8 +285,6 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                         </div>
                     </Card>
                 </div>
-                )}
-                {section !== 'goals' && (
                 <div className="xl:col-span-1 space-y-6">
                     <Card title="Calendrier des Factures">
                         <div className="flex justify-between items-center mb-4 bg-white/5 p-2 rounded-lg">
@@ -381,94 +318,6 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, savingsGoals =
                         </div>
                     </Card>
                 </div>
-                )}
-                {section !== 'fixed' && (
-                <div className="xl:col-span-1 space-y-6">
-                    <Card title="Objectifs (Sinking Funds)" action={<button onClick={() => setIsAddingGoal(!isAddingGoal)} className="text-tiny bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white">+ Nouveau</button>}>
-                        {isAddingGoal && (
-                            <div className="mb-4 p-3 bg-white/5 rounded border border-white/10 grid grid-cols-2 gap-2">
-                                <input aria-label="Nom de l'objectif" type="text" placeholder="Nom" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.name} onChange={e => setNewGoal({ ...newGoal, name: e.target.value })} />
-                                <input aria-label="Montant cible (dollars)" type="number" placeholder="Cible $" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.targetAmount || ''} onChange={e => setNewGoal({ ...newGoal, targetAmount: parseFloat(e.target.value) })} />
-                                <input aria-label="Montant actuel (dollars)" type="number" placeholder="Actuel $" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.currentAmount || ''} onChange={e => setNewGoal({ ...newGoal, currentAmount: parseFloat(e.target.value) })} />
-                                <input aria-label="Date d'échéance" type="date" className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.deadline} onChange={e => setNewGoal({ ...newGoal, deadline: e.target.value })} />
-                                {/* [PH4-C] lien optionnel vers une catégorie budget → « versé ce mois » */}
-                                <select aria-label="Lier à une catégorie budget (optionnel)" className="col-span-2 bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white" value={newGoal.linkedBudgetCategoryName ?? ''} onChange={e => setNewGoal({ ...newGoal, linkedBudgetCategoryName: e.target.value || undefined })}>
-                                    <option value="">Lier à une catégorie budget… (optionnel)</option>
-                                    {linkableBudgetItems.map(c => <option key={c.id ?? c.name} value={c.name}>{c.name}</option>)}
-                                </select>
-                                <button onClick={handleAddGoal} className="col-span-2 bg-primary text-dark text-meta font-bold py-1 rounded">Ajouter</button>
-                            </div>
-                        )}
-                        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
-                            {savingsGoals.map(goal => {
-                                const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
-                                const linked = goal.linkedBudgetCategoryName;
-                                const isLinked = linked != null && linked !== '';
-                                // [PH4-C] lien orphelin = catégorie renommée/supprimée → ne PAS afficher « 0 » trompeur (panel silent-failure).
-                                const linkOrphan = isLinked && !budgetItems.some(c => c.name === linked);
-                                // ⚠️ [PH4C-SAVINGS-NATURE] Deux raisons DISTINCTES pour qu'un lien ne soit pas dans le
-                                // menu : la catégorie n'existe plus (orpheline) OU elle est de nature Épargne (retirée
-                                // de l'offre). Sans cette distinction, filtrer l'option rendait une liaison EXISTANTE
-                                // invisible — et le moindre changement du menu l'aurait effacée en silence. Attrapé par
-                                // le test de ce même lot : retirer une option ne doit jamais escamoter une donnée posée.
-                                const linkNotOffered = isLinked && !linkableBudgetItems.some(c => c.name === linked);
-                                const paidThisMonth = isLinked && !linkOrphan ? (actualsMap[linked] ?? 0) : null;
-                                return (
-                                    <div key={goal.id} className="relative p-3 bg-[#1a1a1a] rounded-xl border border-white/5 group">
-                                        <button onClick={() => handleDeleteGoal(goal.id)} aria-label={`Supprimer l'objectif ${goal.name}`} className="absolute top-1 right-1 touch-target flex items-center justify-center text-ink-500 hover:text-danger-500 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity focus-ring rounded"><Icon name="close" size={14} /></button>
-                                        <div className="flex justify-between items-center mb-1">
-                                            <div className="flex items-center gap-2"><Icon name="goal" size={16} className="text-ink-300 shrink-0" /><span className="text-body font-bold text-white">{goal.name}</span></div>
-                                            <span className="text-meta text-ink-300" title="Accumulé / cible">Accumulé <PrivateAmount as="span">{formatCAD(goal.currentAmount)}</PrivateAmount> / {formatCAD(goal.targetAmount)}</span>
-                                        </div>
-                                        <div className="w-full bg-black/50 rounded-full h-1.5"><div className="h-full bg-gradient-to-r from-info-500 to-purple-500 rounded-full" style={{ width: `${Math.min(100, progress)}%` }}></div></div>
-                                        {/* [PH4-C] lien catégorie budget (éditable) + « versé ce mois » = dépense réelle rapprochée du mois courant */}
-                                        <div className="mt-2 flex items-center justify-between gap-2">
-                                            <select aria-label={`Lier l'objectif ${goal.name} à une catégorie budget`} value={linked ?? ''} onChange={e => updateGoalLink(goal.id, e.target.value || undefined)} className="bg-dark border border-white/10 rounded px-1.5 py-1.5 text-tiny text-ink-200 max-w-[55%] focus-ring">
-                                                <option value="">Non lié à une catégorie</option>
-                                                {linkNotOffered && (
-                                                    <option value={linked}>
-                                                        {linked} {linkOrphan ? '(introuvable)' : '(épargne — ne peut rien afficher)'}
-                                                    </option>
-                                                )}
-                                                {linkableBudgetItems.map(c => <option key={c.id ?? c.name} value={c.name}>{c.name}</option>)}
-                                            </select>
-                                            {linkOrphan && (
-                                                <span className="text-tiny text-warning-400 whitespace-nowrap" title={`La catégorie « ${linked} » n'existe plus — relie ou délie l'objectif`}>⚠ Lien invalide</span>
-                                            )}
-                                            {paidThisMonth != null && (
-                                                // [BUDGET-CATEGORY-INCOME-SIGN] Un poste lié à une catégorie à CRÉDIT
-                                                // (ex. « Remboursement ») peut avoir un net NÉGATIF le mois où les
-                                                // crédits dépassent les sorties — le chiffre est juste, mais « Versé
-                                                // ce mois : −150 $ » lirait comme un bug. Clampé à 0 pour l'affichage
-                                                // (jamais pour le calcul), avec une note qui dit pourquoi.
-                                                <span className="text-tiny text-ink-300 whitespace-nowrap" title={paidThisMonth < 0 ? 'Les remboursements dépassent les dépenses ce mois-ci sur ce poste.' : undefined}>
-                                                    Versé ce mois&nbsp;: <PrivateAmount as="span" className="font-bold text-info-400">{formatCAD(Math.max(0, paidThisMonth))}</PrivateAmount>
-                                                    {paidThisMonth < 0 && <span className="text-ink-500"> (remboursements &gt; dépenses)</span>}
-                                                </span>
-                                            )}
-                                        </div>
-                                        {/* [GOAL-DEADLINE-UI] Échéance VISIBLE et éditable. */}
-                                        <div className="mt-2 flex items-center gap-2">
-                                            <label htmlFor={`deadline-${goal.id}`} className="text-tiny text-ink-300 whitespace-nowrap">Échéance</label>
-                                            <input
-                                                id={`deadline-${goal.id}`}
-                                                type="date"
-                                                value={goal.deadline || ''}
-                                                onChange={e => updateGoalDeadline(goal.id, e.target.value)}
-                                                className="bg-dark border border-white/10 rounded px-1.5 py-1.5 text-tiny text-ink-200 focus-ring"
-                                            />
-                                            {/* Pas d'échéance est un état LÉGITIME (objectif sans date), pas une donnée
-                                                manquante : on le DIT au lieu de laisser un champ vide ambigu. */}
-                                            {!goal.deadline && <span className="text-tiny text-ink-400">aucune</span>}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            {savingsGoals.length === 0 && <div className="text-center text-ink-400 text-meta py-4">Aucun objectif.</div>}
-                        </div>
-                    </Card>
-                </div>
-                )}
             </div>
         </div>
     );

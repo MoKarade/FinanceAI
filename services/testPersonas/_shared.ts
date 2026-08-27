@@ -11,7 +11,6 @@ import type { AppState } from '../../types';
  */
 export function emptyCollections(): Partial<AppState> {
     return {
-        savingsGoals: [],
         investmentAccounts: [],
         investmentTransactions: [],
         insurancePolicies: [],

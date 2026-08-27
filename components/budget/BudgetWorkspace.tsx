@@ -2,19 +2,20 @@
 // G22-N3 — regroupe Budget + Planif/Abos en sous-onglets dans l'onglet « Budget ».
 //
 // L'ancien onglet « Planif & Abos » (Planning) est fusionné ici : on ne touche pas
-// aux composants Budget/Planning eux-mêmes, on les compose. Planning rend des
-// sous-sections via sa prop `section` ('fixed' = abonnements/récurrents + calendrier,
-// 'goals' = objectifs d'épargne). Budget et Planning partagent déjà budgetItems/config.
+// au composant Budget lui-même, on le compose avec Planning (charges fixes & abos).
 //
 // [REFONTE-NAV-L5] Le workspace porte désormais l'EN-TÊTE DE PAGE (h1 = TAB_LABELS,
-// commun aux quatre sous-onglets — un seul h1 par destination, comme Transactions)
+// commun aux sous-onglets — un seul h1 par destination, comme Transactions)
 // et consomme le deep-link `pendingFocus` venu de Transactions (« Voir au budget »
 // sur une catégorie → section `poste:<nom>` → sous-onglet Budget + scroll au poste).
+//
+// [NAV-REMOVE-OBJECTIFS-TAB] L'onglet « Objectifs » (savingsGoals) a été retiré du
+// produit (UI + moteur) — décision Marc 2026-08-27. Ce fichier n'a plus que trois
+// sous-onglets : Budget / Charges fixes & Abos / Santé.
 
-import React, { useState, useMemo } from 'react';
-import { Tab, type Transaction, type BudgetConfig, type BudgetCategory, type SavingsGoal } from '../../types';
+import React, { useState } from 'react';
+import { Tab, type Transaction, type BudgetConfig, type BudgetCategory } from '../../types';
 import { TAB_LABELS } from '../../constants';
-import { monthlyActualsMap } from '../../utils/budget';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { usePendingFocus } from '../../utils/usePendingFocus';
 import { Budget } from '../Budget';
@@ -31,16 +32,13 @@ interface BudgetWorkspaceProps {
     budgetItems: BudgetCategory[];
     setBudgetItems: (items: BudgetCategory[]) => void;
     apiKey: string;
-    savingsGoals: SavingsGoal[];
-    setSavingsGoals: (goals: SavingsGoal[]) => void;
 }
 
-type SubTab = 'budget' | 'fixed' | 'goals' | 'sante';
+type SubTab = 'budget' | 'fixed' | 'sante';
 
 const SUB_TABS: ReadonlyArray<{ id: SubTab; label: string; icon: IconName }> = [
     { id: 'budget', label: 'Budget', icon: 'chart' },
     { id: 'fixed', label: 'Charges fixes & Abos', icon: 'clock' },
-    { id: 'goals', label: 'Objectifs', icon: 'goal' },
     { id: 'sante', label: 'Santé', icon: 'health' }, // [PH4-D] indicateur de santé financière ramené du Dashboard
 ];
 
@@ -49,13 +47,12 @@ function subTabForSection(section: string | null | undefined): SubTab | null {
     if (!section) return null;
     if (section.startsWith('poste:')) return 'budget';
     if (section === 'abonnements' || section === 'fixed') return 'fixed';
-    if (section === 'objectifs' || section === 'goals') return 'goals';
     if (section === 'sante') return 'sante';
     return null;
 }
 
 export const BudgetWorkspace: React.FC<BudgetWorkspaceProps> = ({
-    transactions, config, budgetItems, setBudgetItems, apiKey, savingsGoals, setSavingsGoals,
+    transactions, config, budgetItems, setBudgetItems, apiKey,
 }) => {
     // [REFONTE-NAV-L5] Deep-link : démarrer sur le sous-onglet ciblé pour que l'élément
     // `data-focus-section` soit monté quand usePendingFocus tente le scroll (patron Settings).
@@ -69,20 +66,6 @@ export const BudgetWorkspace: React.FC<BudgetWorkspaceProps> = ({
     // Consomme pendingFocus + scroll vers le poste ciblé (one-shot).
     usePendingFocus(Tab.BUDGET);
 
-    // [PH4-C] Dépense réelle rapprochée du MOIS COURANT par catégorie → « versé ce mois » des objectifs liés.
-    // Calculé ici (parent) pour le partager avec Planning (frère de Budget). `monthStr` ré-évalué à chaque render
-    // (et dans les deps) → réactif au passage de mois, pas figé (revue panel).
-    // [BUDGET-TRANSACTIONS-SYNC-AUDIT] `.toISOString()` ancre en UTC : sous un fuseau NÉGATIF
-    // (Amérique), les ~4 dernières heures locales de chaque mois basculaient déjà sur le mois
-    // suivant → `monthlyActualsMap` rendait `{}` et le « versé ce mois » des objectifs affichait
-    // 0 $. Composantes LOCALES, comme `toLocalDateStr` de Budget.tsx (même classe, site différent).
-    const now = new Date();
-    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const monthActualsMap = useMemo(
-        () => monthlyActualsMap(transactions, budgetItems, monthStr),
-        [transactions, budgetItems, monthStr],
-    );
-
     return (
         <div className="space-y-4 stagger-in">
             {/* [REFONTE-NAV-L5] En-tête de page : titre = TAB_LABELS (cohérence de la destination
@@ -90,7 +73,7 @@ export const BudgetWorkspace: React.FC<BudgetWorkspaceProps> = ({
             <PageHeader
                 icon={<Icon name="budget" size={28} />}
                 title={TAB_LABELS[Tab.BUDGET]}
-                subtitle="Budget, charges fixes & abonnements, objectifs et santé — ton argent au quotidien."
+                subtitle="Budget, charges fixes & abonnements et santé — ton argent au quotidien."
             />
 
             <SubTabs<SubTab>
@@ -108,10 +91,7 @@ export const BudgetWorkspace: React.FC<BudgetWorkspaceProps> = ({
                 <Budget transactions={transactions} config={config} budgetItems={budgetItems} setBudgetItems={setBudgetItems} apiKey={apiKey} />
             </TabPanel>
             <TabPanel idPrefix="budget" tab="fixed" when={sub === 'fixed'}>
-                <Planning section="fixed" transactions={transactions} savingsGoals={savingsGoals} setSavingsGoals={setSavingsGoals} budgetItems={budgetItems} setBudgetItems={setBudgetItems} config={config} apiKey={apiKey} />
-            </TabPanel>
-            <TabPanel idPrefix="budget" tab="goals" when={sub === 'goals'}>
-                <Planning section="goals" transactions={transactions} savingsGoals={savingsGoals} setSavingsGoals={setSavingsGoals} budgetItems={budgetItems} setBudgetItems={setBudgetItems} config={config} apiKey={apiKey} actualsMap={monthActualsMap} />
+                <Planning transactions={transactions} apiKey={apiKey} />
             </TabPanel>
             <TabPanel idPrefix="budget" tab="sante" when={sub === 'sante'}>
                 <HealthIndicator />

@@ -36,7 +36,6 @@ import type {
     VehicleReplacement,
     MajorRenovation,
     CharitableGoal,
-    SavingsGoal,
     AppState,
 } from '../../types';
 import type { SimulationParams, LiveCSVBalances } from '../projection';
@@ -89,7 +88,6 @@ export interface BuildSimulationParamsInputs {
     charitableGoals?: CharitableGoal[];
     rentalProperties?: RentalProperty[];
     privateBusinesses?: PrivateBusiness[];
-    savingsGoals?: SavingsGoal[];
 }
 
 /**
@@ -234,7 +232,6 @@ export function buildSimulationParams(inputs: BuildSimulationParamsInputs): Simu
         charitableGoals: inputs.charitableGoals ?? [],
         rentalProperties: inputs.rentalProperties ?? [],
         privateBusinesses: inputs.privateBusinesses ?? [],
-        savingsGoals: inputs.savingsGoals ?? [],
         financialGoals: inputs.financialGoals ?? [],
     };
 }
@@ -299,7 +296,6 @@ export function deriveSimulationInputsFromState(
         charitableGoals: state.charitableGoals ?? [],
         rentalProperties: state.rentalProperties ?? [],
         privateBusinesses: state.privateBusinesses ?? [],
-        savingsGoals: state.savingsGoals ?? [],
     };
 }
 

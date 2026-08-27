@@ -33,7 +33,6 @@ import { applyBrokerStatementSpec } from '../../mcp/tools/applyBrokerStatement.s
 import { applyTaxSlipSpec } from '../../mcp/tools/applyTaxSlip.spec';
 import { setCashSpec } from '../../mcp/tools/setCash.spec';
 import { setBudgetItemSpec } from '../../mcp/tools/setBudgetItem.spec';
-import { upsertSavingsGoalSpec } from '../../mcp/tools/upsertSavingsGoal.spec';
 import { deleteItemSpec } from '../../mcp/tools/deleteItem.spec';
 
 /** Tools de LECTURE exposés au chat in-app. AUCUNE mutation possible par ces handlers. */
@@ -70,7 +69,6 @@ export const WRITE_SPECS: AnyWriteToolSpec[] = [
     applyTaxSlipSpec,
     setCashSpec,
     setBudgetItemSpec,
-    upsertSavingsGoalSpec,
     deleteItemSpec,
 ];
 

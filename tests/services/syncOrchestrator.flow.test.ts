@@ -253,7 +253,6 @@ describe('Push : ce qui est exporté embarque TOUT (demande Marc)', () => {
                 config: { users: [{ name: 'Marc', netSalary: 80000, grossSalary: 108000 }] },
                 retirementGoal: { targetAge: 60, lifeExpectancy: 92 },
                 documents: [{ id: 'doc1' }, { id: 'doc2' }],
-                savingsGoals: [{ id: 's1' }],
             },
             version: 7,
         };

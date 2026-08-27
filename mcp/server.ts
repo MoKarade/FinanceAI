@@ -32,7 +32,6 @@ import { registerApplyTaxSlip } from './tools/applyTaxSlip.tool';
 import { registerApplyDebt } from './tools/applyDebt.tool';
 import { registerSetCash } from './tools/setCash.tool';
 import { registerSetBudgetItem } from './tools/setBudgetItem.tool';
-import { registerUpsertSavingsGoal } from './tools/upsertSavingsGoal.tool';
 import { registerDeleteItem } from './tools/deleteItem.tool';
 import { registerConnectDrive } from './tools/connectDrive.tool';
 import type { StateProvider } from './tools/_dataAware';
@@ -96,7 +95,6 @@ export const createServer = (options: CreateServerOptions = {}): McpServer => {
         registerApplyDebt(server, options.store);
         registerSetCash(server, options.store);
         registerSetBudgetItem(server, options.store);
-        registerUpsertSavingsGoal(server, options.store);
         registerDeleteItem(server, options.store);
     }
 

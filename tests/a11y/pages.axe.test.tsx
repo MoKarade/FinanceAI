@@ -79,7 +79,6 @@ const emptyState: AppState = {
     projection: { years: 30, returnRate: 0.06, inflationRate: 0.02, savingsMode: 'manual', manualContribution: 0, usePortfolioRate: false },
     realEstateGoals: [],
     childGoals: [],
-    savingsGoals: [],
     debts: [],
     travelGoals: [],
     lifeEvents: [],

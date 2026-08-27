@@ -1,13 +1,14 @@
 // tests/services/monthlyEvents.test.ts
 // Couverture des helpers purs de services/projection/monthlyEvents.ts :
-// applyTravelExpenses, applyLifeEvents, applySavingsGoalDeadlines,
-// applyFinancialGoalDeadlines, computeStressTest.
+// applyTravelExpenses, applyLifeEvents, applyFinancialGoalDeadlines, computeStressTest.
+// [NAV-REMOVE-OBJECTIFS-TAB] `applySavingsGoalDeadlines` a été retiré du moteur avec la feature
+// (UI + moteur) — décision Marc 2026-08-27. `GoalDeadlineMutator` reste partagé et testé via
+// `applyFinancialGoalDeadlines`, seul appelant restant.
 
 import { describe, it, expect, vi } from 'vitest';
 import {
     applyTravelExpenses,
     applyLifeEvents,
-    applySavingsGoalDeadlines,
     applyFinancialGoalDeadlines,
     computeStressTest,
     computeIncomeLossFactor,
@@ -15,7 +16,7 @@ import {
 } from '../../services/projection/monthlyEvents';
 import type { PropertyStateMutable, LifeEventMutator, GoalDeadlineMutator } from '../../services/projection/monthlyEvents';
 import { applyCapitalDisposition } from '../../services/projection/portfolioOps';
-import type { TravelGoal, LifeEvent, SavingsGoal, FinancialGoal, ProjectionConfig } from '../../types';
+import type { TravelGoal, LifeEvent, FinancialGoal, ProjectionConfig } from '../../types';
 
 // ── applyTravelExpenses ──────────────────────────────────────────────────────
 
@@ -320,66 +321,6 @@ describe('applyLifeEvents', () => {
     });
 });
 
-// ── applySavingsGoalDeadlines ─────────────────────────────────────────────────
-
-describe('applySavingsGoalDeadlines', () => {
-    const makeState = (liquidBalance: number) => {
-        const s = { expense: 0, balance: liquidBalance };
-        const mutator: GoalDeadlineMutator = {
-            withdrawFromAccount: (_acct: string, amount: number) => {
-                const withdrawn = Math.min(s.balance, amount);
-                s.balance -= withdrawn;
-                return withdrawn;
-            },
-            addExpense: (n: number) => { s.expense += n; },
-            logFlow: vi.fn(),
-        };
-        return { mutator, s };
-    };
-
-    it('retire le manque à combler au mois deadline', () => {
-        // Arrange — cible 10000, déjà 3000, deadline ce mois
-        const goal: SavingsGoal = {
-            id: '1', name: 'Fonds urgence', targetAmount: 10000, currentAmount: 3000, deadline: '2027-06', icon: '💰',
-        };
-        const { mutator, s } = makeState(20000);
-
-        // Act
-        applySavingsGoalDeadlines([goal], '2027-06', 1.0, mutator);
-
-        // Assert — retire 7000 (10000 - 3000)
-        expect(s.expense).toBe(7000);
-    });
-
-    it('n\'agit pas si le goal est déjà atteint', () => {
-        // Arrange — currentAmount >= targetAmount
-        const goal: SavingsGoal = {
-            id: '1', name: 'Déjà atteint', targetAmount: 5000, currentAmount: 5000, deadline: '2027-06', icon: '✅',
-        };
-        const { mutator, s } = makeState(20000);
-
-        // Act
-        applySavingsGoalDeadlines([goal], '2027-06', 1.0, mutator);
-
-        // Assert
-        expect(s.expense).toBe(0);
-    });
-
-    it('ne rien faire si le mois ne correspond pas', () => {
-        // Arrange
-        const goal: SavingsGoal = {
-            id: '1', name: 'Vacances', targetAmount: 8000, currentAmount: 0, deadline: '2027-12', icon: '🏖️',
-        };
-        const { mutator, s } = makeState(20000);
-
-        // Act
-        applySavingsGoalDeadlines([goal], '2027-06', 1.0, mutator);
-
-        // Assert
-        expect(s.expense).toBe(0);
-    });
-});
-
 // ── applyFinancialGoalDeadlines ───────────────────────────────────────────────
 
 describe('applyFinancialGoalDeadlines', () => {
@@ -452,9 +393,12 @@ describe('onGoalShortfall (PV-11a)', () => {
             logFlow: vi.fn(),
             onGoalShortfall,
         };
-        const goal: SavingsGoal = { id: '1', name: 'Auto', targetAmount: 10000, currentAmount: 0, deadline: '2027-01', icon: '🚗' };
+        const goal: FinancialGoal = {
+            id: '1', name: 'Auto', targetAmount: 10000, manualCurrentAmount: 0,
+            deadline: '2027-01', targetAccount: 'NON-ENREG', status: 'active', completed: false, type: 'CUSTOM',
+        };
 
-        applySavingsGoalDeadlines([goal], '2027-01', 1.0, mutator);
+        applyFinancialGoalDeadlines([goal], '2027-01', 1.0, mutator);
 
         expect(onGoalShortfall).toHaveBeenCalledTimes(1);
         expect(onGoalShortfall).toHaveBeenCalledWith('Auto', 10000, 4000);
@@ -466,13 +410,16 @@ describe('onGoalShortfall (PV-11a)', () => {
             withdrawFromAccount: (_a, amount) => amount,
             addExpense: vi.fn(), logFlow: vi.fn(), onGoalShortfall,
         };
-        const goal: SavingsGoal = { id: '1', name: 'OK', targetAmount: 5000, currentAmount: 0, deadline: '2027-02', icon: '✅' };
-        applySavingsGoalDeadlines([goal], '2027-02', 1.0, full);
+        const goal: FinancialGoal = {
+            id: '1', name: 'OK', targetAmount: 5000, manualCurrentAmount: 0,
+            deadline: '2027-02', targetAccount: 'NON-ENREG', status: 'active', completed: false, type: 'CUSTOM',
+        };
+        applyFinancialGoalDeadlines([goal], '2027-02', 1.0, full);
         expect(onGoalShortfall).not.toHaveBeenCalled();
 
         // Sans le hook (appelants tests/hors-moteur) : aucune erreur.
         const minimal: GoalDeadlineMutator = { withdrawFromAccount: () => 0, addExpense: vi.fn(), logFlow: vi.fn() };
-        expect(() => applySavingsGoalDeadlines([goal], '2027-02', 1.0, minimal)).not.toThrow();
+        expect(() => applyFinancialGoalDeadlines([goal], '2027-02', 1.0, minimal)).not.toThrow();
     });
 });
 

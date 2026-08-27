@@ -3,7 +3,7 @@
 // Trois helpers indépendants groupés car ils tournent tous au même moment
 // du loop mensuel (après les dépenses enfants, avant shortfall).
 
-import type { TravelGoal, LifeEvent, ProjectionConfig, SavingsGoal, FinancialGoal } from '../../types';
+import type { TravelGoal, LifeEvent, ProjectionConfig, FinancialGoal } from '../../types';
 import { logErrorThrottled } from '../errorLogger';
 
 // ── Voyages ──────────────────────────────────────────────────────────────────
@@ -252,11 +252,13 @@ export function applyLifeEvents(
     }
 }
 
-// ── Objectifs (SavingsGoal + FinancialGoal) ──────────────────────────────────
-// Wiring 2026-05: ces deux types de goals étaient déclarés en types mais jamais
-// consommés par le moteur. Au mois du deadline, on retire le manque à combler
-// (targetAmount − currentAmount) du compte ciblé (FinancialGoal) ou du liquide
-// (SavingsGoal). Permet à la projection de refléter l'impact des achats prévus.
+// ── Objectifs (FinancialGoal) ─────────────────────────────────────────────────
+// Wiring 2026-05: ce type de goal était déclaré en types mais jamais consommé
+// par le moteur. Au mois du deadline, on retire le manque à combler
+// (targetAmount − manualCurrentAmount) du compte ciblé.
+// [NAV-REMOVE-OBJECTIFS-TAB] Le pendant `SavingsGoal` (cascade depuis liquide,
+// sans compte cible) a été retiré du produit — UI ET moteur — décision Marc
+// 2026-08-27. `GoalDeadlineMutator` reste partagé par `applyFinancialGoalDeadlines`.
 
 export interface GoalDeadlineMutator {
     withdrawFromAccount: (account: 'CELI' | 'REER' | 'NON-ENREG' | 'CRYPTO' | 'LIQUID', amount: number) => number;
@@ -265,28 +267,6 @@ export interface GoalDeadlineMutator {
     /** [PV-11a] — remontée STRUCTURÉE d'un objectif partiellement financé (drawn < visé).
      *  Optionnel : les appelants hors-moteur (tests) peuvent l'omettre. */
     onGoalShortfall?: (goalName: string, asked: number, drawn: number) => void;
-}
-
-export function applySavingsGoalDeadlines(
-    savingsGoals: SavingsGoal[],
-    currentIsoMonth: string,
-    expenseMultiplier: number,
-    state: GoalDeadlineMutator,
-): void {
-    for (const g of savingsGoals) {
-        if (!g.deadline || !g.deadline.startsWith(currentIsoMonth)) continue;
-        const need = Math.max(0, (g.targetAmount || 0) - (g.currentAmount || 0));
-        if (need <= 0) continue;
-        const effective = need * expenseMultiplier;
-        // SavingsGoal n'a pas de compte cible → cascade depuis liquide.
-        const drawn = state.withdrawFromAccount('LIQUID', effective);
-        if (drawn > 0) state.addExpense(drawn);
-        // [PV-10 suivi] log HONNÊTE : montant réellement tiré (pas la cible) + mention du manque.
-        const isShort = effective - drawn > 0.5;
-        if (isShort) state.onGoalShortfall?.(g.name || 'Objectif', effective, drawn);
-        const short = isShort ? ` (visé ${Math.round(effective).toLocaleString('fr-CA')}$ — fonds insuffisants)` : '';
-        state.logFlow(`🎯 Objectif (${g.name}): -${Math.round(Math.max(0, drawn)).toLocaleString('fr-CA')}$${short}`);
-    }
 }
 
 export function applyFinancialGoalDeadlines(

@@ -1,6 +1,6 @@
 // tests/mcp/deleteItem.test.ts
-// [MCP-DIRECT-EDIT Lots 4-5] delete_item — suppression d'un actif (« vente totale »), d'une dette ou
-// d'un objectif. Spec (ADR docs/adr/0009-suppressions-via-mcp-delete-item.md) : correspondance normalisée EXACTE (jamais de fuzzy sur
+// [MCP-DIRECT-EDIT Lots 4-5] delete_item — suppression d'un actif (« vente totale ») ou d'une dette.
+// Spec (ADR docs/adr/0009-suppressions-via-mcp-delete-item.md) : correspondance normalisée EXACTE (jamais de fuzzy sur
 // un geste destructif), ambiguïté → throw, aperçu qui liste les effets, confirmation STRICTE à 2 temps.
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -12,7 +12,7 @@ import { applyDocument, type DeleteItemPayload } from '../../mcp/ingest/applyDoc
 import { FileStateSource, buildDefaultAppState, loadAppStateFromSource } from '../../mcp/state/loadAppState';
 import { makeStateStore, type StateStore } from '../../mcp/state/stateStore';
 import { registerDeleteItem } from '../../mcp/tools/deleteItem.tool';
-import type { AppState, Asset, Debt, SavingsGoal } from '../../types';
+import type { AppState, Asset, Debt } from '../../types';
 
 const baseState = (): AppState => buildDefaultAppState();
 
@@ -26,9 +26,6 @@ function richState(): AppState {
     s.debts = [
         { id: 'debt_1700000000000', name: 'Prêt auto Honda', balance: 12000, interestRate: 6.9, minimumPayment: 300, category: 'Car' },
     ] as Debt[];
-    s.savingsGoals = [
-        { id: 'goal_1700000000000', name: 'Voyage Japon', targetAmount: 8000, currentAmount: 1500, deadline: '2027-06', icon: '✈️' },
-    ] as SavingsGoal[];
     return s;
 }
 
@@ -79,22 +76,15 @@ describe('applyDeleteItem — actif (« vente totale »)', () => {
     });
 });
 
-describe('applyDeleteItem — dette et objectif', () => {
+describe('applyDeleteItem — dette', () => {
     it('supprime la dette par nom (casse/accents ignorés) avec note « NW monte »', () => {
         const { nextState, changes } = applyDocument(richState(), del('debt', '  prêt auto honda '));
         expect(nextState.debts).toHaveLength(0);
         expect(String(changes[0].note)).toMatch(/patrimoine net MONTE/);
     });
 
-    it('supprime l\'objectif avec note « décaissement annulé » (échéance présente)', () => {
-        const { nextState, changes } = applyDocument(richState(), del('savings_goal', 'voyage japon'));
-        expect(nextState.savingsGoals).toHaveLength(0);
-        expect(String(changes[0].note)).toMatch(/6500 \$.*ANNULÉ|ANNULÉ/);
-    });
-
-    it('nom de dette/objectif inconnu → throw explicite', () => {
+    it('nom de dette inconnu → throw explicite', () => {
         expect(() => applyDocument(richState(), del('debt', 'Marge inexistante'))).toThrow(/Aucune dette/);
-        expect(() => applyDocument(richState(), del('savings_goal', 'Inexistant'))).toThrow(/Aucun objectif/);
     });
 
     it('deux dettes à noms équivalents → throw (renommer d\'abord)', () => {

@@ -173,7 +173,6 @@ const DEFAULT_APP_STATE: AppState = {
     realEstateGoals: [INITIAL_REAL_ESTATE_GOAL],
     childGoal: INITIAL_CHILD_GOAL,
     childGoals: [INITIAL_CHILD_GOAL],
-    savingsGoals: [],
     debts: [],
     travelGoals: [],
     lifeEvents: [],
@@ -297,7 +296,6 @@ export const getInitialStateWithMigration = (): AppState => {
         const savedRealEstate = localStorage.getItem('app_real_estate_goal');
         const savedRealEstateArray = localStorage.getItem('app_real_estate_goals');
         const savedChildGoal = localStorage.getItem('app_child_goal');
-        const savedSavingsGoals = localStorage.getItem('app_savings_goals');
         const savedDebts = localStorage.getItem('app_debts');
         const savedTravelGoals = localStorage.getItem('app_travel_goals');
         const savedLifeEvents = localStorage.getItem('app_life_events');
@@ -335,7 +333,6 @@ export const getInitialStateWithMigration = (): AppState => {
             realEstateGoals: realEstateGoals,
             childGoal: savedChildGoal ? JSON.parse(savedChildGoal) : INITIAL_CHILD_GOAL,
             childGoals: savedChildGoal ? [JSON.parse(savedChildGoal)] : [INITIAL_CHILD_GOAL],
-            savingsGoals: savedSavingsGoals ? JSON.parse(savedSavingsGoals) : [],
             // [PH4D-WEIGHTS-STORE] poids santé migrés de l'ancienne clé localStorage vers le store persisté
             // (lecture one-shot ; ensuite ils vivent dans `financeai-storage` via partialize allow-all).
             healthWeights: loadLegacyHealthWeights(),

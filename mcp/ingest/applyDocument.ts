@@ -165,28 +165,13 @@ export interface BudgetItemPayload {
     type?: 'Commun' | 'Perso 1' | 'Perso 2';
 }
 
-/** [MCP-DIRECT-EDIT Lot 3] Objectif d'épargne — ajout OU mise à jour PARTIELLE par nom. */
-export interface SavingsGoalPayload {
-    kind: 'savings_goal';
-    /** Nom de l'objectif (clé d'upsert, normalisée casse/accents). */
-    name: string;
-    /** Montant CIBLE ($ CAD). Requis à l'AJOUT ; optionnel en mise à jour. */
-    targetAmountCad?: number;
-    /** Montant DÉJÀ accumulé ($ CAD). Optionnel (défaut 0 à l'ajout). */
-    currentAmountCad?: number;
-    /** Échéance `YYYY-MM-DD` (ou `YYYY-MM`). Optionnelle. */
-    deadline?: string;
-    /** Emoji d'icône. Optionnel (défaut 💰 à l'ajout). */
-    icon?: string;
-}
-
 /** [MCP-DIRECT-EDIT Lots 4-5] Suppression d'une entité (cf ADR « Suppressions via MCP/IA ») :
  *  correspondance par nom/symbole normalisé EXACT (jamais de fuzzy sur un geste destructif),
  *  ambiguïté → erreur. « Vente totale » d'un titre = suppression (quantity:0 fausserait la courbe
  *  d'historique à vie — holdingsAt compte les purchases). Transactions : DIFFÉRÉ (cash dérivé). */
 export interface DeleteItemPayload {
     kind: 'delete_item';
-    entity: 'asset' | 'debt' | 'savings_goal';
+    entity: 'asset' | 'debt';
     /** Nom (dette/objectif) ou SYMBOLE (actif) de l'entité à supprimer. */
     name: string;
     /** Désambiguïsation d'un actif détenu dans PLUSIEURS comptes (CELI / REER / NON-ENREG…). */
@@ -201,7 +186,6 @@ export type DocumentPayload =
     | DebtPayload
     | CashBalancePayload
     | BudgetItemPayload
-    | SavingsGoalPayload
     | DeleteItemPayload;
 
 export interface Change {
@@ -250,7 +234,6 @@ export function applyDocument(state: AppState, doc: DocumentPayload): ApplyResul
         case 'debt': return applyDebt(state, doc);
         case 'cash_balance': return applyCashBalance(state, doc);
         case 'budget_item': return applyBudgetItem(state, doc);
-        case 'savings_goal': return applySavingsGoal(state, doc);
         case 'delete_item': return applyDeleteItem(state, doc);
         default: {
             const k = (doc as { kind?: string }).kind ?? 'inconnu';
@@ -451,96 +434,7 @@ function applyBudgetItem(state: AppState, doc: BudgetItemPayload): ApplyResult {
     };
 }
 
-// ── Objectif d'épargne — ajout OU mise à jour PARTIELLE par nom ──────────────
-// [MCP-DIRECT-EDIT Lot 3] Même pattern : upsert par nom normalisé, update partiel, bornes D9.
-
-// '' est ACCEPTÉ = « effacer l'échéance » (parité avec l'UI Planning qui autorise une échéance vide).
-const GOAL_DEADLINE_RE = /^(\d{4}-\d{2}(-\d{2})?)?$/;
-
-function applySavingsGoal(state: AppState, doc: SavingsGoalPayload): ApplyResult {
-    const name = String(doc.name || '').trim();
-    if (!name) throw new Error('Nom d\'objectif requis (ex. « Voyage Japon »).');
-    if (doc.targetAmountCad != null && (!plausible(doc.targetAmountCad, MAX_CASH_BALANCE) || doc.targetAmountCad <= 0)) {
-        throw new Error('Montant cible d\'objectif invalide ou aberrant (≤ 0 / non fini / hors bornes). Rien n\'a été écrit.');
-    }
-    if (doc.currentAmountCad != null && (!plausible(doc.currentAmountCad, MAX_CASH_BALANCE) || doc.currentAmountCad < 0)) {
-        throw new Error('Montant accumulé d\'objectif invalide ou aberrant (négatif / non fini / hors bornes). Rien n\'a été écrit.');
-    }
-    if (doc.deadline != null && !GOAL_DEADLINE_RE.test(doc.deadline)) {
-        throw new Error('Échéance d\'objectif invalide : format attendu YYYY-MM-DD (ou YYYY-MM), ou \'\' pour effacer. Rien n\'a été écrit.');
-    }
-    // Bornes calendaires (la regex laisse passer « 2027-13-45 ») : mois 01-12, jour 01-31.
-    if (doc.deadline) {
-        const [, mm, dd] = doc.deadline.split('-');
-        const m = Number(mm), d = dd == null ? 1 : Number(dd);
-        if (m < 1 || m > 12 || d < 1 || d > 31) {
-            throw new Error('Échéance d\'objectif invalide : mois 01-12 et jour 01-31 attendus. Rien n\'a été écrit.');
-        }
-    }
-
-    const goals = (state.savingsGoals ?? []).map((g) => ({ ...g }));
-    const changes: Change[] = [];
-    const key = budgetNameKey(name);
-    const idx = goals.findIndex((g) => budgetNameKey(g.name) === key);
-
-    if (idx >= 0) {
-        const g = goals[idx];
-        if (doc.targetAmountCad != null && doc.targetAmountCad !== g.targetAmount) {
-            changes.push({ field: `objectif « ${g.name} » (cible)`, before: g.targetAmount, after: doc.targetAmountCad });
-            g.targetAmount = doc.targetAmountCad;
-        }
-        if (doc.currentAmountCad != null && doc.currentAmountCad !== g.currentAmount) {
-            changes.push({ field: `objectif « ${g.name} » (accumulé)`, before: g.currentAmount, after: doc.currentAmountCad });
-            g.currentAmount = doc.currentAmountCad;
-        }
-        if (doc.deadline != null && doc.deadline !== g.deadline) {
-            // [Finding MOYEN panel] L'échéance PILOTE un décaissement réel dans la projection
-            // (applySavingsGoalDeadlines retire cible − accumulé du liquide au mois de l'échéance)
-            // → la conséquence $ doit être visible dans l'aperçu de confirmation.
-            const willWithdraw = Math.max(0, (doc.targetAmountCad ?? g.targetAmount) - (doc.currentAmountCad ?? g.currentAmount));
-            changes.push({
-                field: `objectif « ${g.name} » (échéance)`, before: g.deadline, after: doc.deadline,
-                note: doc.deadline
-                    ? `⚠️ la projection retirera ${Math.round(willWithdraw)} $ (cible − accumulé) des liquidités au mois ${doc.deadline.slice(0, 7)}`
-                    : 'échéance effacée : plus aucun décaissement planifié pour cet objectif dans la projection',
-            });
-            g.deadline = doc.deadline;
-        }
-        if (doc.icon != null && doc.icon !== g.icon) {
-            changes.push({ field: `objectif « ${g.name} » (icône)`, before: g.icon, after: doc.icon });
-            g.icon = doc.icon;
-        }
-        if (changes.length === 0) {
-            return { nextState: state, changes: [], summary: `Objectif « ${g.name} » : aucune modification (valeurs identiques).` };
-        }
-        const nextState: AppState = { ...state, savingsGoals: goals, lastUpdate: Date.now() };
-        return { nextState, changes, summary: `Objectif d'épargne « ${g.name} » mis à jour (${changes.length} champ(s)).` };
-    }
-
-    if (doc.targetAmountCad == null) {
-        throw new Error(`Objectif « ${name} » introuvable : pour l'AJOUTER, le montant cible (targetAmountCad) est requis.`);
-    }
-    const added = {
-        id: `goal_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, // horodaté (convention PERSONA-PURGE)
-        name,
-        targetAmount: doc.targetAmountCad,
-        currentAmount: doc.currentAmountCad ?? 0,
-        deadline: doc.deadline ?? '',
-        icon: doc.icon || '💰',
-    };
-    goals.push(added);
-    changes.push({
-        field: `objectif « ${name} »`, before: null,
-        after: `${added.targetAmount} $ (accumulé : ${added.currentAmount} $)`,
-        note: added.deadline
-            ? `⚠️ échéance ${added.deadline} : la projection retirera ${Math.round(Math.max(0, added.targetAmount - added.currentAmount))} $ (cible − accumulé) des liquidités ce mois-là — fournis le montant DÉJÀ épargné (currentAmountCad) s'il y en a un`
-            : undefined,
-    });
-    const nextState: AppState = { ...state, savingsGoals: goals, lastUpdate: Date.now() };
-    return { nextState, changes, summary: `Objectif d'épargne « ${name} » ajouté (cible ${added.targetAmount} $).` };
-}
-
-// ── Suppression d'entité (actif / dette / objectif) — ADR Lots 4-5 ───────────
+// ── Suppression d'entité (actif / dette) — ADR Lots 4-5 ──────────────────────
 // Correspondance NORMALISÉE EXACTE (casse/accents — jamais de fuzzy sur un geste destructif) ;
 // ambiguïté (2 noms équivalents, même symbole dans 2 comptes sans précision) → throw, pas de choix
 // silencieux. L'aperçu LISTE ce qui disparaît + les effets dérivés (NW, courbe, décaissement).
@@ -584,38 +478,20 @@ function applyDeleteItem(state: AppState, doc: DeleteItemPayload): ApplyResult {
         return { nextState, changes, summary: `Actif ${target.symbol} supprimé du portefeuille. Sauvegarde créée avant l'écriture (annulable via Réglages → Sauvegarde).` };
     }
 
-    if (doc.entity === 'debt') {
-        const all = (state.debts ?? []);
-        const matches = all.filter((d) => budgetNameKey(d.name || '') === key);
-        if (matches.length === 0) throw new Error(`Aucune dette nommée « ${name} ». Rien n'a été supprimé.`);
-        if (matches.length > 1) throw new Error(`Plusieurs dettes portent un nom équivalent à « ${name} » : renomme-les d'abord (noms distinctifs). Rien n'a été supprimé.`);
-        const target = matches[0];
-        const changes: Change[] = [{
-            field: `dette « ${target.name} »`,
-            before: `${fmtOrUnavailable(target.balance)} $ à ${target.interestRate} %`,
-            after: 'supprimée',
-            note: '⚠️ le patrimoine net MONTE du solde supprimé — réservé à une dette réellement soldée ou saisie par erreur',
-        }];
-        const nextState: AppState = { ...state, debts: all.filter((d) => d !== target), lastUpdate: Date.now() };
-        return { nextState, changes, summary: `Dette « ${target.name} » supprimée. Sauvegarde créée avant l'écriture (annulable via Réglages → Sauvegarde).` };
-    }
-
-    // savings_goal
-    const all = (state.savingsGoals ?? []);
-    const matches = all.filter((g) => budgetNameKey(g.name || '') === key);
-    if (matches.length === 0) throw new Error(`Aucun objectif nommé « ${name} ». Rien n'a été supprimé.`);
-    if (matches.length > 1) throw new Error(`Plusieurs objectifs portent un nom équivalent à « ${name} » : renomme-les d'abord. Rien n'a été supprimé.`);
+    // debt (seule entité restante après 'asset', ci-dessus)
+    const all = (state.debts ?? []);
+    const matches = all.filter((d) => budgetNameKey(d.name || '') === key);
+    if (matches.length === 0) throw new Error(`Aucune dette nommée « ${name} ». Rien n'a été supprimé.`);
+    if (matches.length > 1) throw new Error(`Plusieurs dettes portent un nom équivalent à « ${name} » : renomme-les d'abord (noms distinctifs). Rien n'a été supprimé.`);
     const target = matches[0];
     const changes: Change[] = [{
-        field: `objectif « ${target.name} »`,
-        before: `${fmtOrUnavailable(target.targetAmount)} $ (accumulé : ${fmtOrUnavailable(target.currentAmount)} $)`,
-        after: 'supprimé',
-        note: target.deadline
-            ? `le décaissement planifié de ${Math.round(Math.max(0, (Number(target.targetAmount) || 0) - (Number(target.currentAmount) || 0)))} $ (échéance ${target.deadline}) est ANNULÉ dans la projection`
-            : undefined,
+        field: `dette « ${target.name} »`,
+        before: `${fmtOrUnavailable(target.balance)} $ à ${target.interestRate} %`,
+        after: 'supprimée',
+        note: '⚠️ le patrimoine net MONTE du solde supprimé — réservé à une dette réellement soldée ou saisie par erreur',
     }];
-    const nextState: AppState = { ...state, savingsGoals: all.filter((g) => g !== target), lastUpdate: Date.now() };
-    return { nextState, changes, summary: `Objectif « ${target.name} » supprimé. Sauvegarde créée avant l'écriture (annulable via Réglages → Sauvegarde).` };
+    const nextState: AppState = { ...state, debts: all.filter((d) => d !== target), lastUpdate: Date.now() };
+    return { nextState, changes, summary: `Dette « ${target.name} » supprimée. Sauvegarde créée avant l'écriture (annulable via Réglages → Sauvegarde).` };
 }
 
 // ── Fiche de paie ────────────────────────────────────────────────────────────

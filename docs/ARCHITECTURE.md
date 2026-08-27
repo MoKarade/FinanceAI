@@ -99,7 +99,7 @@ Règles structurelles :
   budgetItems: BudgetCategory[];
   initialBalances: Record<string, number>;
   realEstateGoals, childGoals, travelGoals, lifeEvents, financialGoals,
-  savingsGoals, debts, retirementGoal, projection, …
+  debts, retirementGoal, projection, …
   // Wirings W5.x
   insurancePolicies, vehicleReplacements, majorRenovations,
   charitableGoals, rentalProperties, privateBusinesses,

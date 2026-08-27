@@ -24,7 +24,6 @@ const ARRAY_SLICES = [
     'investmentAccounts',
     'budgetItems',
     'debts',
-    'savingsGoals',
     'travelGoals',
     'lifeEvents',
     'financialGoals',

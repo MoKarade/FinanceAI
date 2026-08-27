@@ -159,7 +159,7 @@ describe('useFinanceStore', () => {
         store().enableTestMode({
             transactions: [{ id: 'a-tx' } as never],
             debts: [{ id: 'a-debt' } as never],
-            savingsGoals: [{ id: 'a-sg' } as never],
+            lifeEvents: [{ id: 'a-life' } as never],
         }, 'A');
         // B pose UNE autre tranche encore (travelGoals) sans réutiliser celles de A.
         store().enableTestMode({
@@ -171,7 +171,7 @@ describe('useFinanceStore', () => {
         // Seules les tranches de C subsistent ; tout A et B est retombé au défaut.
         expect(store().transactions).toEqual([{ id: 'c-tx' }]);
         expect(store().debts).toEqual([]);          // tranche de A : nettoyée
-        expect(store().savingsGoals).toEqual([]);   // tranche de A : nettoyée
+        expect(store().lifeEvents).toEqual([]);     // tranche de A : nettoyée
         expect(store().travelGoals).toEqual([]);    // tranche de B : nettoyée
         expect(store().activeTestPersonaId).toBe('C');
         expect(store().isTestMode).toBe(true);

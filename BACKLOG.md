@@ -28,9 +28,6 @@
 - [ ] **`[BUDGET-CHARGES-FIXES-REFONTE]`** (L) — « Charges fixes et abonnements » ne fonctionne pas
   assez bien : Marc veut une analyse BEAUCOUP plus approfondie et une interface plus interactive
   et utile (refonte, pas un correctif ponctuel).
-- [ ] **`[INVEST-COURS-EXACT-TOUTES-ACTIONS]`** (M) — Marc veut voir le cours exact, au jour, de
-  TOUTES ses actions — actuellement seulement une PARTIE du portefeuille l'affiche. Étendre à
-  la totalité des positions.
 - [ ] **`[INVEST-PORTFOLIO-DATA-CORRECTION]`** (S, 👤 données réelles de Marc à appliquer) —
   remplacer/corriger les positions du portefeuille pour correspondre EXACTEMENT à l'historique
   d'achat suivant (fourni par Marc, toutes les transactions en **CAD**) :
@@ -48,6 +45,10 @@
   - Visa Inc (NYSE:V) : 12 déc. 2025, 21 actions à 348,37 $ CAD
   ⚠️ Vérifier d'abord l'écart avec les positions actuelles avant d'écraser quoi que ce soit (ne pas
   dupliquer si déjà en partie correct).
+  ⚠️ [INVEST-COURS-EXACT-TOUTES-ACTIONS livré] `ETR:` (Xetra) et `BIT:` (Milan) ont désormais un
+  cours exact. `OTCMKTS:ANDXF` reste un gap de COUVERTURE (forfait gratuit Finnhub/Yahoo, pas un
+  bug de routage) : ce titre pourrait rester sans cours exact — vérifier après saisie, et si besoin
+  entrer son jumeau coté en bourse standard (l'ETF Amundi existe probablement aussi en `EPA:`/`ETR:`).
 
 ---
 

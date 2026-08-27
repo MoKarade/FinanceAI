@@ -82,6 +82,34 @@ describe('Budget — refonte UI (Phase C3)', () => {
         expect(text.match(/Réel \/ Prévu/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
     });
 
+    // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] les 4 tuiles passent de Réel/Prévu à Réel/Prévu/OBJECTIF.
+    // Discriminant : sans `objectif` sur DualKPIStat, `[title="Objectif"]` n'existe nulle part et
+    // le label reste "Réel / Prévu" seul (perturbation : retirer les props `objectif` fait rougir
+    // ce test — vérifié en local).
+    it('[BUDGET-REEL-PREVISIONNEL-OBJECTIF] les 4 tuiles affichent une 3e valeur Objectif', () => {
+        const { container } = render(<Budget {...baseProps} />);
+        const text = container.textContent || '';
+        expect(text.match(/Réel \/ Prévu \/ Objectif/g)?.length ?? 0).toBe(4);
+        const objectifNodes = container.querySelectorAll('[title="Objectif"]');
+        expect(objectifNodes.length).toBe(4);
+    });
+
+    it('[BUDGET-REEL-PREVISIONNEL-OBJECTIF] Objectif Dépenses = somme des cibles de catégorie, Objectif Restant = Objectif Revenus − Objectif Dépenses', () => {
+        const { container } = render(<Budget {...baseProps} />);
+        const parseObjectif = (label: string): number => {
+            const labelNode = [...container.querySelectorAll('.kpi-label')].find((l) => (l.textContent ?? '').includes(label));
+            const tile = labelNode!.closest('div[class*="rounded-card"]');
+            const raw = tile!.querySelector('[title="Objectif"]')!.textContent ?? '';
+            return Number(raw.replace(/[^\d.,-]/g, '').replace(',', '.'));
+        };
+        const revenus = parseObjectif('Revenus');
+        const depenses = parseObjectif('Dépenses');
+        const restant = parseObjectif('Restant');
+        expect(depenses).toBeCloseTo(2200, 0);
+        expect(revenus).toBeGreaterThan(0);
+        expect(restant).toBeCloseTo(revenus - depenses, 0);
+    });
+
     it('affiche le badge Excédentaire/Déficitaire', () => {
         const { container } = render(<Budget {...baseProps} />);
         const text = container.textContent || '';

@@ -969,6 +969,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     icon={<Icon name="money" size={16} />}
                     prevu={pastAverages.incomeAvg * getMultiplier()}
                     reel={totalActualIncomeDisplay}
+                    // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Objectif Revenus = salaire NET déclaré au
+                    // profil (fiscalBreakdown.netDisplay, même source que la carte fiscale plus bas —
+                    // "salaire déclaré", distinct du réel transactionnel par design de cet écran).
+                    objectif={fiscalBreakdown.netDisplay}
                     // [BUDGET-INCOME-REAL] Ventilation demandée par Marc : salaire (paie) vs revenus divers,
                     // depuis les vraies transactions de la période. Remplace « moy. passée » peu informatif.
                     sublabel={`Salaire ${formatCAD(incomeBreakdown.salary)} · Divers ${formatCAD(incomeBreakdown.other)}`}
@@ -979,6 +983,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     icon={<Icon name="debt" size={16} />}
                     prevu={pastAverages.expenseAvg * getMultiplier()}
                     reel={totalSpentDisplay}
+                    // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Objectif = somme des cibles de dépense par
+                    // catégorie (déjà calculée pour le total du Budget, `totalBudgetDisplay`).
+                    objectif={totalBudgetDisplay}
                     sublabel={`Budget = moy. passée (${pastAverages.fullMonths} mois)`}
                     // Aucun mois complet → comparaison NON pertinente : neutre, jamais « danger »
                     // sur un prévu=0 (finding panel : badge rouge + écart 0,0 % contradictoires).
@@ -994,6 +1001,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                         icon={<Icon name="goal" size={16} />}
                         prevu={pastAverages.expenseAvg * getMultiplier()}
                         reel={projectedTotalDisplay}
+                        objectif={totalBudgetDisplay}
                         sublabel="Dépenses au rythme actuel"
                         variant={pastAverages.fullMonths > 0 && projectedTotalDisplay > pastAverages.expenseAvg * getMultiplier() ? 'danger' : 'info'}
                         invertGoodBad
@@ -1004,6 +1012,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     icon={<Icon name="status" size={16} />}
                     prevu={(pastAverages.incomeAvg - pastAverages.expenseAvg) * getMultiplier()}
                     reel={totalActualIncomeDisplay - totalSpentDisplay}
+                    // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Objectif Restant = objectif Revenus −
+                    // objectif Dépenses (les deux mêmes sources que les tuiles ci-dessus).
+                    objectif={fiscalBreakdown.netDisplay - totalBudgetDisplay}
                     sublabel="Revenus − dépenses (réels)"
                     variant={totalActualIncomeDisplay - totalSpentDisplay < 0 ? 'danger' : 'success'}
                 />

@@ -8,6 +8,11 @@ import { PrivateAmount } from '../ui/PrivateAmount';
  * Affiche les deux valeurs côte-à-côte avec écart calculé automatiquement.
  * Indicateur visuel : vert si réel ≤ prévu pour revenus/restant, ou si
  * réel ≤ prévu pour dépenses (mode invertGoodBad).
+ *
+ * [BUDGET-REEL-PREVISIONNEL-OBJECTIF] `objectif` optionnel — une TROISIÈME valeur (cible saisie
+ * par Marc : somme des cibles de dépense par catégorie pour les tuiles de dépenses, salaire
+ * déclaré au profil pour Revenus), affichée à côté de Prévu/Réel sans changer le calcul d'écart
+ * existant (toujours Réel vs Prévu). Absent → comportement IDENTIQUE à avant (rétrocompat).
  */
 
 type Variant = 'primary' | 'success' | 'info' | 'warning' | 'danger';
@@ -17,6 +22,8 @@ interface DualKPIStatProps {
     icon?: React.ReactNode;
     prevu: number;
     reel: number;
+    /** [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Cible saisie (Objectif) — 3e valeur, optionnelle. */
+    objectif?: number;
     sublabel?: string;
     variant?: Variant;
     /** Inverse la logique vert/rouge : true pour Dépenses (moins = mieux). */
@@ -34,6 +41,7 @@ export const DualKPIStat: React.FC<DualKPIStatProps> = ({
     icon,
     prevu,
     reel,
+    objectif,
     sublabel,
     variant = 'info',
     invertGoodBad = false,
@@ -60,7 +68,7 @@ export const DualKPIStat: React.FC<DualKPIStatProps> = ({
                 </span>
             </div>
             {/* [D6-SR] — montants via PrivateAmount (blur visuel + masquage lecteur d'écran). */}
-            <div className="flex items-baseline gap-2">
+            <div className="flex items-baseline gap-2 flex-wrap">
                 <PrivateAmount className="text-kpi text-ink-50 tabular-nums">
                     {formatCAD(reel)}
                 </PrivateAmount>
@@ -68,9 +76,17 @@ export const DualKPIStat: React.FC<DualKPIStatProps> = ({
                 <PrivateAmount className="text-meta text-ink-400 tabular-nums">
                     {formatCAD(prevu)}
                 </PrivateAmount>
+                {objectif !== undefined && (
+                    <>
+                        <span className="text-meta text-ink-500" aria-hidden="true">/</span>
+                        <PrivateAmount className="text-meta text-info-400 tabular-nums" title="Objectif">
+                            {formatCAD(objectif)}
+                        </PrivateAmount>
+                    </>
+                )}
             </div>
             <div className="flex items-center justify-between text-tiny">
-                <span className="text-ink-400">Réel / Prévu</span>
+                <span className="text-ink-400">{objectif !== undefined ? 'Réel / Prévu / Objectif' : 'Réel / Prévu'}</span>
                 {sublabel && <span className="text-ink-400 italic text-right truncate ml-2">{sublabel}</span>}
             </div>
         </div>

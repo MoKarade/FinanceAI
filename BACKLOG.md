@@ -22,13 +22,6 @@
 > Retours de Marc en bloc, non cadrés — chaque item à cadrer (questions groupées) avant de coder,
 > par ticket ou par petit paquet cohérent.
 
-- [ ] **`[UTIL-GOLDENSPLIT-ORPHELIN]`** (XS, découvert en livrant `BUDGET-REMOVE-AMELIORER`) —
-  `computeGoldenSplit`, `GOLDEN_IDEAL` et le type `GoldenSplit` (`utils/budget.ts`) n'ont plus AUCUN
-  consommateur de production depuis le retrait de la carte : leur seul appelant est
-  `tests/utils/budget.test.ts`. ⚠️ **`knip` ne le voit pas** — sortie identique au octet près avant et
-  après (323 lignes, 80 exports inutilisés) : un test suffit à faire passer un export pour vivant.
-  À trancher avec Marc : supprimer (util + ses 5 tests) ou re-brancher ailleurs. Pas supprimé ici —
-  hors périmètre du ticket de retrait.
 - [ ] **`[BUDGET-REEL-PREVISIONNEL-OBJECTIF]`** (M) — dans la zone « Revenus / dépenses / fin de
   mois / restant », afficher TROIS valeurs plutôt qu'une : **Réel** / **Prévisionnel** / **Objectif**
   (l'Objectif = les valeurs saisies par Marc dans les cibles de dépense par catégorie).

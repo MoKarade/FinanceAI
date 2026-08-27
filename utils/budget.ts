@@ -181,42 +181,6 @@ export function monthlyActualsMap(
 }
 
 // ---------------------------------------------------------------------------
-// [PH4-B] Répartition 50/30/20 — théorique (cibles) vs réel (dépenses).
-// ---------------------------------------------------------------------------
-
-/** L'idéal « 50/30/20 » (besoins / envies / épargne), en POURCENTAGE du revenu net. */
-export const GOLDEN_IDEAL = { besoins: 50, envies: 30, epargne: 20 } as const;
-
-export interface GoldenSplit {
-    /** Montants $ (clampés ≥ 0). */
-    besoins: number;
-    envies: number;
-    epargne: number;
-    /** Somme des trois postes — base du donut (100 %). 0 si rien. */
-    total: number;
-    /** Part de chaque poste dans le total, en POURCENTAGE (0 si total = 0 → pas de NaN). */
-    pct: { besoins: number; envies: number; epargne: number };
-}
-
-/**
- * Construit une répartition 50/30/20 à partir de trois montants $ déjà agrégés
- * (besoins, envies, épargne). Pur et sans dépendance au store → utilisé à la fois
- * pour le THÉORIQUE (cibles budgétées) et le RÉEL (dépenses rapprochées + épargne
- * réelle). Clampe les négatifs à 0 (une épargne négative n'a pas de part de donut)
- * et garde `pct` à 0 quand `total` est nul (évite la division par zéro → NaN).
- */
-export function computeGoldenSplit(besoins: number, envies: number, epargne: number): GoldenSplit {
-    const b = Math.max(0, besoins || 0);
-    const e = Math.max(0, envies || 0);
-    const s = Math.max(0, epargne || 0);
-    const total = b + e + s;
-    const pct = total > 0
-        ? { besoins: (b / total) * 100, envies: (e / total) * 100, epargne: (s / total) * 100 }
-        : { besoins: 0, envies: 0, epargne: 0 };
-    return { besoins: b, envies: e, epargne: s, total, pct };
-}
-
-// ---------------------------------------------------------------------------
 // [PH4-E] Attribution des dépenses par conjoint (mode couple).
 // ---------------------------------------------------------------------------
 

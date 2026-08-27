@@ -10,6 +10,41 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-27 — Retrait complet de la feature « Objectifs » (SavingsGoal)
+
+- [x] **`[NAV-REMOVE-OBJECTIFS-TAB]`** (S→devenu M en cours de route) — PR à venir (branche
+  `claude/lot-29`), gate vert (4 845 tests, 452 fichiers). Décision Marc, confirmée DEUX fois : la
+  1ʳᵉ réponse (« Retiré du produit ») visait l'UI ; une cartographie a montré que `savingsGoals`
+  alimentait aussi `applySavingsGoalDeadlines` dans le moteur de projection (décaissement réel au
+  mois de l'échéance) — Marc a confirmé vouloir retirer « VRAIMENT tout (UI + moteur) » une fois
+  informé. Retiré : l'onglet Objectifs de `BudgetWorkspace`/`Planning` (le sous-onglet « Charges
+  fixes & Abos » perd son `section`, ne rend plus que lui-même) ; `applySavingsGoalDeadlines` du
+  moteur (`GoalDeadlineMutator` et `applyFinancialGoalDeadlines` restent intacts, seul appelant
+  restant) ; les deux surfaces MCP (`mcp/server.ts` + `services/aiTools/registry.ts`, fichiers
+  `upsertSavingsGoal.tool.ts`/`.spec.ts` supprimés) ; `applyDocument.ts` (case `savings_goal`,
+  fonction dédiée, `DeleteItemPayload.entity` réduit à `'asset' | 'debt'`) ; `types.ts`
+  (`SavingsGoal`, `AppState.savingsGoals`) ; les deux tables non typées où un champ supprimé passe
+  inaperçu du typecheck (`utils/onboarding.ts` `DATA_ARRAY_KEYS`, `services/personaSanitizer.ts`
+  `ARRAY_SLICES`). Le payload de backup (`BackupPanel.tsx`) garde `savingsGoals` optionnel en
+  LECTURE (vieux fichiers de backup) mais ne le ré-écrit plus (rien ne le relit).
+  Ordre d'exécution délibéré : UI/fixtures de test d'abord, moteur ensuite, `types.ts` en DERNIER
+  pour que le typecheck serve de filet — il a effectivement rattrapé 3 sites oubliés
+  (`services/testPersonas/_shared.ts`, `coupleConfort.ts`, `tests/components/Settings.test.tsx`).
+  `tests/components/PlanningGoals.test.tsx` supprimé (dédié à la feature) ; le test TZ
+  `[BUDGET-TRANSACTIONS-SYNC-AUDIT]` de `BudgetWorkspace.test.tsx` supprimé aussi — son sujet
+  (le calcul `monthStr` local qui alimentait `actualsMap` de l'onglet Objectifs) est devenu du
+  code mort par la suppression, pas juste non testé.
+
+## 2026-08-27 — `computeGoldenSplit`/`GOLDEN_IDEAL` code mort supprimé
+
+- [x] **`[UTIL-GOLDENSPLIT-ORPHELIN]`** (XS) — PR à venir (branche `claude/lot-29`), gate vert.
+  Découvert en livrant `BUDGET-REMOVE-AMELIORER` : `computeGoldenSplit`, `GOLDEN_IDEAL` et le type
+  `GoldenSplit` (`utils/budget.ts`) n'avaient plus aucun consommateur en production, seuls leurs
+  propres tests les exerçaient encore (angle mort connu de `knip`, cf leçon
+  `UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER`). Confirmé supprimable (recommandé
+  et choisi par Marc plutôt que re-brancher) : bloc `[PH4-B]` retiré de `utils/budget.ts` et ses
+  5 tests dédiés de `tests/utils/budget.test.ts`.
+
 ## 2026-08-27 — Un doublon bénin (recouvrement) distingué d'un doublon intra-lot suspect
 
 - [x] **`[FINTABLE-DOUBLON-INTRALOT-SILENCIEUX]`** (M) — PR à venir (branche `claude/lot-29`),

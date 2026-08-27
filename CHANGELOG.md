@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-27 (retrait de l'onglet Objectifs)
+
+- **Retiré** : la fonctionnalité « Objectifs » (objectifs d'épargne — cible, montant accumulé,
+  échéance) a été retirée de l'application, à la demande de Marc. Les cibles de charges fixes et
+  d'abonnements restent inchangées dans leur propre sous-onglet. Une échéance d'objectif qui
+  déclenchait un retrait planifié dans les projections ne le fait plus.
+
 ## [unreleased] — 2026-08-27 (synchronisation automatique : les doublons suspects sont signalés)
 
 - **Amélioré** : quand une synchronisation automatique fusionne deux transactions identiques du

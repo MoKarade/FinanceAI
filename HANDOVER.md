@@ -4,6 +4,32 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-27 — `[NAV-REMOVE-OBJECTIFS-TAB]` + `[UTIL-GOLDENSPLIT-ORPHELIN]` : retrait complet de la feature Objectifs, nettoyage de code mort
+> Suite de « continue et fini tout le backlog ». Deux items livrés dans le même lot :
+> - **`[NAV-REMOVE-OBJECTIFS-TAB]`** : la feature « objectif d'épargne » (`SavingsGoal`) est
+>   RETIRÉE DU PRODUIT — UI et moteur. Demande initiale de Marc lue comme un retrait UI ; une
+>   cartographie a montré que `savingsGoals` pilotait aussi un décaissement RÉEL dans le moteur de
+>   projection (`applySavingsGoalDeadlines`) — Marc a re-confirmé explicitement « retirer VRAIMENT
+>   tout (UI + moteur) » une fois informé (money-critical → jamais deviner, toujours re-demander).
+>   Retiré : l'onglet Objectifs de `BudgetWorkspace`/`Planning`, `applySavingsGoalDeadlines` du
+>   moteur (le `GoalDeadlineMutator` partagé et `applyFinancialGoalDeadlines` restent intacts, seul
+>   appelant restant), les deux surfaces MCP (serveur + registre de tools du chat in-app,
+>   `upsertSavingsGoal.tool.ts`/`.spec.ts` supprimés), `applyDocument.ts` (case + fonction dédiée),
+>   `types.ts` (`SavingsGoal`, `AppState.savingsGoals`), et les deux tables non typées invisibles au
+>   typecheck (`DATA_ARRAY_KEYS`, `ARRAY_SLICES`). `types.ts` traité EN DERNIER : le typecheck a
+>   effectivement rattrapé 3 sites oubliés. `BackupPanel.tsx` garde `savingsGoals` optionnel en
+>   LECTURE (vieux backups) mais ne le ré-écrit plus. `tests/components/PlanningGoals.test.tsx`
+>   supprimé ; le test TZ de `BudgetWorkspace.test.tsx` aussi (son sujet — le calcul local qui
+>   alimentait l'onglet retiré — est devenu du code mort, pas juste non testé).
+> - **`[UTIL-GOLDENSPLIT-ORPHELIN]`** : `computeGoldenSplit`/`GOLDEN_IDEAL`/`GoldenSplit`
+>   (`utils/budget.ts`) confirmés sans consommateur de production, supprimés avec leurs 5 tests.
+>
+> Gate complet vert : `typecheck`, `lint` (0 erreur), **4 845 tests / 452 fichiers**, `build`.
+> ⚠️ **GitHub reste déconnecté côté outils MCP** (session invalide côté serveur, revérifié
+> plusieurs fois cette session) : tout le travail depuis `[MCP-REJECTIONS-NON-STRUCTUREES]`
+> (PR #754 mergée) est committé + poussé sur `claude/lot-29` mais SANS PR — à créer/fusionner dès
+> que la connexion revient (`ToolSearch select:mcp__github__get_me`).
+>
 > ## 🟢 Session 2026-08-27 — `[FINTABLE-DOUBLON-INTRALOT-SILENCIEUX]` : un doublon bénin distingué d'un doublon intra-lot suspect
 > Finding financial-integrity (PR #754), routé au `BACKLOG.md` puis traité ici.
 > `applyBankStatement` fusionnait par la clé `date|montant|payee` sans distinguer un doublon

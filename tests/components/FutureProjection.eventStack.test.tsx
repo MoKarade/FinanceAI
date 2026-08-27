@@ -34,7 +34,7 @@ vi.mock('recharts', async () => {
         XAxis: () => null, YAxis: () => null, Tooltip: () => null, CartesianGrid: () => null,
     };
 });
-vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 vi.mock('../../components/projection/StrategyOptimizerPanel', () => ({
     StrategyOptimizerPanel: ({ onApply }: { onApply?: (c: unknown) => void }) =>
         onApply ? <button type="button" onClick={() => onApply({})}>Appliquer (mock)</button> : null,

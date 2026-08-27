@@ -10,6 +10,30 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-27 — Résumé Santé condensé en tête de Futur
+
+- [x] **`[NAV-MERGE-SANTE-FUTUR]`** (M) — PR à venir (branche `claude/lot-29`), gate vert
+  (4 848 tests, 453 fichiers). Décision Marc, confirmée par choix cliquable : « Condensé (résumé +
+  lien vers le détail) » plutôt qu'un déplacement verbatim du contenu. Le sous-onglet Santé
+  (Budget → Santé, jauge + 6 métriques + réglage des pondérations) reste INCHANGÉ, seule vue
+  détaillée ; un nouveau composant `components/future/FutureHealthSummary.tsx` affiche, en tête de
+  la page Futur, un résumé condensé (score/100 coloré + « Voir le détail → ») qui pointe vers ce
+  même sous-onglet via `navigateWithFocus(Tab.BUDGET, 'sante')` — mécanisme de deep-link déjà câblé
+  et testé (`BudgetWorkspace.test.tsx`), aucune nouvelle plomberie de navigation.
+  Le calcul du score (6 métriques + score pondéré) a été EXTRAIT de `HealthIndicator.tsx` vers
+  `utils/healthScore.ts` (source unique, comportement bit-à-bit identique — les 13 tests
+  `HealthIndicator`/`BudgetWorkspace` restent verts sans modification) : le résumé condensé et la
+  carte détaillée affichent désormais garanti le MÊME score, au lieu de deux calculs qui
+  pourraient diverger. No-fake-data respecté : sans profil renseigné, le résumé invite à saisir le
+  profil plutôt que d'afficher un score 0/100 inventé.
+  ⚠️ Effet de bord découvert en testant : le nouvel import statique dans `FutureProjection.tsx`
+  tire `services/portfolio.ts` (donc `logErrorThrottled`) dans l'arbre de rendu de la page — 3
+  fichiers de test qui montent `<FutureProjection>` avec un mock PARTIEL de
+  `services/errorLogger` (seulement `logError`) plantaient sur un actif sans devise. Mocks
+  complétés (`FutureProjection.persist/.applyReveal/.eventStack.test.tsx`).
+  3 tests neufs (`tests/components/future/FutureHealthSummary.test.tsx`), discriminés par
+  perturbation ciblée (retrait du `onClick` → le test de deep-link rougit).
+
 ## 2026-08-27 — Retrait complet de la feature « Objectifs » (SavingsGoal)
 
 - [x] **`[NAV-REMOVE-OBJECTIFS-TAB]`** (S→devenu M en cours de route) — PR à venir (branche

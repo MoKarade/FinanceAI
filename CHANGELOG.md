@@ -6,6 +6,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-27 (Futur : résumé de santé financière en tête de page)
+
+- **Ajouté** : la page Futur affiche maintenant, tout en haut, un résumé condensé du score de
+  santé financière (0-100) avec un lien vers le détail complet (onglet Budget → Santé, inchangé).
+
 ## [unreleased] — 2026-08-27 (retrait de l'onglet Objectifs)
 
 - **Retiré** : la fonctionnalité « Objectifs » (objectifs d'épargne — cible, montant accumulé,

@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-27 — `[NAV-MERGE-SANTE-FUTUR]` : résumé Santé condensé en tête de Futur
+> Décision Marc confirmée : « Condensé (résumé + lien vers le détail) », pas un déplacement du
+> contenu. Le sous-onglet Santé (Budget → Santé) reste la vue détaillée inchangée ; un nouveau
+> `components/future/FutureHealthSummary.tsx` affiche en tête de Futur un score/100 condensé qui
+> pointe vers ce sous-onglet via `navigateWithFocus(Tab.BUDGET, 'sante')` (deep-link déjà câblé et
+> testé, zéro nouvelle plomberie). Le calcul du score a été EXTRAIT de `HealthIndicator.tsx` vers
+> `utils/healthScore.ts` (source unique — même score garanti aux deux endroits, comportement
+> bit-à-bit identique, 13 tests HealthIndicator/BudgetWorkspace verts sans modification).
+> No-fake-data : sans profil renseigné, le résumé invite à saisir le profil, jamais un score inventé.
+> ⚠️ En testant, découvert que l'import statique dans `FutureProjection.tsx` tire
+> `services/portfolio.ts` (`logErrorThrottled`) dans son arbre de rendu — 3 fichiers de test qui
+> montent `<FutureProjection>` avec un mock PARTIEL de `services/errorLogger` plantaient sur un
+> actif sans devise ; mocks complétés. 3 tests neufs, discriminés par perturbation.
+> Gate complet vert : 453 fichiers, **4 848 tests**, build.
+>
 > ## 🟢 Session 2026-08-27 — `[NAV-REMOVE-OBJECTIFS-TAB]` + `[UTIL-GOLDENSPLIT-ORPHELIN]` : retrait complet de la feature Objectifs, nettoyage de code mort
 > Suite de « continue et fini tout le backlog ». Deux items livrés dans le même lot :
 > - **`[NAV-REMOVE-OBJECTIFS-TAB]`** : la feature « objectif d'épargne » (`SavingsGoal`) est

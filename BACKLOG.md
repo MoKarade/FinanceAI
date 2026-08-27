@@ -28,8 +28,6 @@
 - [ ] **`[BUDGET-CHARGES-FIXES-REFONTE]`** (L) — « Charges fixes et abonnements » ne fonctionne pas
   assez bien : Marc veut une analyse BEAUCOUP plus approfondie et une interface plus interactive
   et utile (refonte, pas un correctif ponctuel).
-- [ ] **`[NAV-MERGE-SANTE-FUTUR]`** (M) — fusionner l'onglet « Santé » dans la page « Futur », tout
-  en haut, combiné avec le reste plutôt qu'en onglet séparé.
 - [ ] **`[INVEST-COURS-EXACT-TOUTES-ACTIONS]`** (M) — Marc veut voir le cours exact, au jour, de
   TOUTES ses actions — actuellement seulement une PARTIE du portefeuille l'affiche. Étendre à
   la totalité des positions.

@@ -10,6 +10,25 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-27 — Objectif ajouté aux 4 tuiles Budget + filet de test manquant comblé
+
+- [x] **`[BUDGET-REEL-PREVISIONNEL-OBJECTIF]`** (M) — PR à venir (branche `claude/lot-29`), gate
+  vert (4 853 tests, 453 fichiers). Cadrage (choix cliquable) : Marc a demandé l'Objectif sur les
+  TROIS tuiles (Revenus/Dépenses/Restant), pas seulement Dépenses — a exigé de définir un
+  « objectif de revenu » qui n'existait pas encore côté UI, résolu en réutilisant
+  `fiscalBreakdown.netDisplay` (déjà calculé dans `Budget.tsx`, déjà distingué du réel
+  transactionnel sous le nom « salaire déclaré »). Objectif par tuile : Revenus =
+  `fiscalBreakdown.netDisplay` · Dépenses / Fin de mois (projection) = `totalBudgetDisplay` (même
+  source pour les deux) · Restant = Objectif Revenus − Objectif Dépenses. `DualKPIStat` gagne une
+  prop `objectif?: number` optionnelle (absente ⇒ comportement bit-à-bit identique, rétrocompat,
+  aucun autre appelant à toucher). 3 tests neufs, discriminés par perturbation.
+  ⚠️ **Découverte en chemin, corrigée dans le même lot** : `components/Planning.tsx` (Charges
+  fixes & Abonnements) n'avait plus AUCUN test de RENDU depuis `[NAV-REMOVE-OBJECTIFS-TAB]`
+  (l'unique fichier qui le montait, `PlanningGoals.test.tsx`, ciblait la section Objectifs
+  retirée — la logique pure restait testée à part). Ajouté
+  `tests/components/Planning.smoke.test.tsx` (rendu de base + détection heuristique d'un
+  abonnement) — baseline avant la refonte `[BUDGET-CHARGES-FIXES-REFONTE]`.
+
 ## 2026-08-27 — Xetra (ETR:) et Milan (BIT:) ajoutés au routage des cours exacts
 
 - [x] **`[INVEST-COURS-EXACT-TOUTES-ACTIONS]`** (M) — PR à venir (branche `claude/lot-29`), gate

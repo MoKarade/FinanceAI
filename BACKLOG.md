@@ -22,12 +22,18 @@
 > Retours de Marc en bloc, non cadrés — chaque item à cadrer (questions groupées) avant de coder,
 > par ticket ou par petit paquet cohérent.
 
-- [ ] **`[BUDGET-REEL-PREVISIONNEL-OBJECTIF]`** (M) — dans la zone « Revenus / dépenses / fin de
-  mois / restant », afficher TROIS valeurs plutôt qu'une : **Réel** / **Prévisionnel** / **Objectif**
-  (l'Objectif = les valeurs saisies par Marc dans les cibles de dépense par catégorie).
 - [ ] **`[BUDGET-CHARGES-FIXES-REFONTE]`** (L) — « Charges fixes et abonnements » ne fonctionne pas
   assez bien : Marc veut une analyse BEAUCOUP plus approfondie et une interface plus interactive
   et utile (refonte, pas un correctif ponctuel).
+  🧭 **Cadrage round 1 (2026-08-27)** : Marc a coché les TROIS irritants proposés (aucun exclu) —
+  détection imprécise (faux positifs/négatifs de l'heuristique + IA), manque d'analyse dans le
+  temps (tendances de prix, évolution de la facture totale), interface peu interactive (liste +
+  calendrier statiques). Portée confirmée large — les trois angles sont à couvrir, pas un sous-
+  ensemble. **Prochaine étape avant de coder** : batch de cadrage DÉTAILLÉ (mockup/wireframe
+  léger si utile) sur CHAQUE axe — ex. quels signaux concrets manquent à la détection, quelles
+  vues d'analyse précises (graphique de tendance ? comparaison mois-à-mois ? projection
+  d'impact ?), quelle interactivité voulue (filtrage, regroupement, drill-down). Effort L : ne
+  pas coder avant d'avoir cette DoD précise.
 - [ ] **`[INVEST-PORTFOLIO-DATA-CORRECTION]`** (S, 👤 données réelles de Marc à appliquer) —
   remplacer/corriger les positions du portefeuille pour correspondre EXACTEMENT à l'historique
   d'achat suivant (fourni par Marc, toutes les transactions en **CAD**) :

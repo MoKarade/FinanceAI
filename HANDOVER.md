@@ -23,6 +23,10 @@
 > optionnelle (absente = comportement identique, rétrocompat). 3 tests neufs (présence, valeur
 > exacte de l'Objectif Dépenses, invariant Objectif Restant = Objectif Revenus − Objectif
 > Dépenses), discriminés par perturbation.
+> ⚠️ Découverte en chemin, corrigée dans le même lot : `components/Planning.tsx` (Charges fixes &
+> Abonnements) n'avait plus AUCUN test de rendu depuis `[NAV-REMOVE-OBJECTIFS-TAB]` — ajouté
+> `tests/components/Planning.smoke.test.tsx`, baseline avant `[BUDGET-CHARGES-FIXES-REFONTE]`.
+> Gate complet vert : 453 fichiers, **4 853 tests**, build.
 >
 > ## 🟢 Session 2026-08-27 — `[NAV-MERGE-SANTE-FUTUR]` : résumé Santé condensé en tête de Futur
 > Décision Marc confirmée : « Condensé (résumé + lien vers le détail) », pas un déplacement du

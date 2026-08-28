@@ -102,7 +102,7 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 
 - **Frontend** : React 19.2 + Vite 8 (Rolldown) + TypeScript 5.8 strict + Tailwind CSS 3
 - **State** : Zustand 5 (avec `persist` + `partialize`, schema v7 + migrations v1→v7)
-- **Tests** : Vitest 4 + @testing-library/react + axe-core (4 874 tests, 457 fichiers)
+- **Tests** : Vitest 4 + @testing-library/react + axe-core (4 884 tests, 459 fichiers)
 - **Validation** : Zod 3
 - **Charts** : Recharts 3 (lazy-loaded)
 - **Backend** : aucun — 100 % navigateur, déploiement statique **Vercel** (`vercel.json`)

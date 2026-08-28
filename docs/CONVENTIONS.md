@@ -7780,3 +7780,54 @@ commentaire de CODE. Re-mesuré : la grandeur qu'il nomme (`calculatedStartingCa
 construction** à 15×120 + 10×50 + 6×30 = 2 480 $ — le chiffre annoncé est au-dessus de son supremum.
 Mesure réelle : 1 168,66 $ d'amplitude sur 50 000 graines, 310,21 $ sur 5. Recopier un chiffre le
 promeut : dans un ticket il se lit comme une revendication, dans le code comme un fait établi.
+
+## Leçon du lot 31 — 2026-08-28 : une garde de sortie ne voit pas ce qui a été absorbé en un nombre plausible
+
+Le lot 30 avait posé `sanitizeNonFinite` : toute métrique de santé au score non fini bascule en
+« — ». Correct, et strictement insuffisant — parce que la question n'est pas « la valeur est-elle
+finie ? » mais « d'où vient-elle ? ». Deux absorptions en amont transformaient une donnée illisible
+en nombre parfaitement fini, donc parfaitement invisible à cette garde :
+
+- le `clamp01` local de `utils/healthRatios.ts` (`Number.isFinite(n) ? n : 0`) ;
+- `totalYearlyCost` de `utils/subscriptions.ts`, qui ÉCARTE un `yearlyCost` non fini du total.
+
+Mesuré avant de coder, et les trois chemins vont dans les **deux sens** — c'est ce qui les rend
+dangereux plutôt qu'imprécis. Une cible de poste `Infinity` donnait `overspend / ∞ = 0`, donc le
+score **PARFAIT de 100** à partir d'un poste corrompu (92,86 sur la même fixture saine). Une dépense
+réelle `NaN` donnait **0**, c'est-à-dire « 100 % de dépassement ». Et un coût d'abonnement illisible,
+simplement retiré de la somme, faisait passer le fardeau de 95 $/mois à 20 $/mois et le score de
+87,3 à **97,3** : jeter un terme rend toujours le total plus PETIT, donc le score MEILLEUR.
+
+**Le geste** est celui que le dépôt indexe déjà sous `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`,
+appliqué ici pour de vrai : exposer **deux portes** plutôt qu'une. `totalYearlyCost` reste la porte
+de LECTURE — un écran qui affiche « X $/mois » a raison d'écarter un coût illisible et de montrer la
+somme des autres — et `totalYearlyCostAudit` ajoute la porte d'ÉCRITURE, qui rend `discarded` pour
+qu'un calcul publiant un score puisse REFUSER. La règle qui en sort se formule sans jargon :
+**afficher peut écarter, calculer doit refuser.** Et le dernier filet ne disparaît pas — il PARLE :
+`clamp01` trace désormais s'il tire, parce qu'il ne devrait plus jamais tirer et qu'un chemin futur
+qui le rétablirait doit crier au lieu de rabattre en silence
+(`UNE-GARDE-DE-SORTIE-NE-VOIT-PAS-CE-QUI-A-ETE-ABSORBE-EN-UN-NOMBRE-PLAUSIBLE`).
+
+## Leçon du lot 31 — 2026-08-28 : prouver qu'un registre est unique, ce n'est pas prouver qu'il est le seul CHEMIN
+
+La garde de parité du lot 30 démontre que les deux registres de tools (serveur MCP et chat in-app)
+déclarent les mêmes choses. Elle ne dit rien de la question d'à côté, qui est celle qui compte pour
+l'utilisateur : **par où les tools arrivent-ils réellement au modèle ?** Aujourd'hui par un seul
+site (`services/aiTools/agentLoop.ts`), mais c'était une propriété de FAIT, testée par rien. Une
+fonctionnalité future qui construirait son propre `tools:` échapperait à la parité (qui regarde
+`mcp/server.ts`) comme à `noMcpSdkInSpecs` (qui vise l'import du SDK, pas le paramètre) — des outils
+exposés au modèle sans jumeau côté MCP, sans un seul test rouge.
+
+La garde fige donc trois faits mesurés, et surtout sa **contre-épreuve** : le site autorisé doit
+vraiment construire son tableau DEPUIS le registre et ne fabriquer aucun `input_schema` littéral —
+sans ça, « un seul site » ne garantirait rien sur ce qu'il déclare.
+
+**Corollaire sur ce qui NE mérite pas de machinerie.** Le même panel demandait de lier
+`spec.kind === 'write'` à l'endroit d'enregistrement dans `mcp/server.ts`. Or la parité
+comportementale fait DÉJÀ rougir ce cas : le vrai risque n'est pas la détection, c'est la
+**réparation** — les deux gestes les plus naturels pour faire reverdir le test (inscrire le tool
+dans `READ_SPECS`, ou dans les exclusions) masqueraient sa nature d'écriture au lieu de la rétablir.
+Ça ne se corrige pas avec un test de plus mais avec une phrase à l'endroit où quelqu'un lira l'échec.
+**Quand un défaut est déjà détecté et que seul le réflexe de correction est fautif, la bonne
+livraison est un commentaire, pas de la machinerie**
+(`UN-REGISTRE-UNIQUE-N-EST-PAS-UN-CHEMIN-UNIQUE`).

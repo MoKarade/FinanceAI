@@ -34,17 +34,15 @@
   vues d'analyse précises (graphique de tendance ? comparaison mois-à-mois ? projection
   d'impact ?), quelle interactivité voulue (filtrage, regroupement, drill-down). Effort L : ne
   pas coder avant d'avoir cette DoD précise.
-- [ ] **`[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]`** (S — findings silent-failure-hunter + financial-integrity
-  MESURÉS, panel PR #756, PRÉ-EXISTANT) — deux métriques de santé traversent des absorptions
-  SILENCIEUSES avant d'atteindre la garde `sanitizeNonFinite` : le `clamp01` local de
-  `utils/healthRatios.ts` (`Number.isFinite(n) ? n : 0`) et `totalYearlyCost` de
-  `utils/subscriptions.ts`. Une entrée corrompue devient un `0` FINI — donc crédible, donc invisible
-  à la garde de sortie, et sans aucune trace. Mesuré (poids par défaut) : `budgetItems[].target =
-  Infinity` → total **28** ; `= NaN` → **56** ; `subscriptions[].yearlyCost = Infinity` → **84** ;
-  `debts[].balance = Infinity` → **84** — dans tous les cas `available: true`, aucun `logError`.
-  Classe `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`. ⚠️ Ces absorptions ont d'autres
-  consommateurs : grep-les AVANT de durcir (la garde d'entrée de `computeSubscriptionLoadScore` a été
-  durcie au lot 30, elle n'avait qu'un seul consommateur de production).
+- [ ] **`[GUARD-STRIPCOMMENTS-CONSOLIDER]`** (S — dette relevée au lot 31) — le dépôt porte SIX
+  décommenteurs `stripComments` recopiés (`tests/aiTools/specFiniteGuard.test.ts`,
+  `tests/services/assetFxGuard.test.ts`, `utils/fiscalConstGuardV2.ts`, `utils/chartDataSumGuard.ts`,
+  `utils/fiscalConstantsGuard.ts`…), dont deux portent EN COMMENTAIRE la leçon
+  `GUARD-STRIPCOMMENTS-DUPLIQUE` qui interdit de les dupliquer. Le lot 31 a créé le premier
+  EXPORTÉ (`tests/helpers/source.ts`, avec son anti-vacuité `readCodeOnly`) et l'a branché sur la
+  garde neuve UNIQUEMENT — migrer les six existants est le travail restant. ⚠️ Chacun a sa propre
+  signature (certains rendent `string`, d'autres `string[]`) : la migration change le CONTRAT de
+  ses appelants, elle ne se fait pas par `replace`.
 - [ ] **`[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`** (M — finding code-reviewer, panel PR #756,
   PRÉ-EXISTANT) — le vecteur de corruption traité au lot 30 (`JSON.parse` rend `Infinity` depuis un
   blob Drive/backup contenant `1e999`) n'est neutralisé QU'À l'affichage Santé. Le même `netSalary:
@@ -55,16 +53,6 @@
   corrompu est nettement plus grave que le score d'écran corrigé. **La garde doit vivre à la
   FRONTIÈRE de chargement** (store / restauration Drive), pas fichier par fichier —
   classe `DECISION-PRIVACY-UNE-SEULE-SORTIE` appliquée à la validation d'entrée.
-- [ ] **`[AITOOLS-CALLSITE-UNIQUE-GARDE]`** (S — findings ai-reviewer, panel PR #756) — deux trous
-  que `[MCP-WRITE-PARITY-GUARD]` (lot 30) ne ferme pas, aucun n'étant un défaut observé aujourd'hui :
-  (a) `services/aiTools/agentLoop.ts` est le SEUL site qui déclare un tableau `tools` à l'API
-  Anthropic, mais c'est une propriété de FAIT, non testée — un futur second site avec son propre
-  `tools:` échapperait à toutes les gardes ; remède = une garde de source « seul `agentLoop.ts`
-  importe `toAnthropicTools` », même patron que `tests/aiTools/noMcpSdkInSpecs.test.ts`.
-  (b) Rien ne lie `spec.kind === 'write'` à l'ENDROIT où le tool est enregistré dans `mcp/server.ts`
-  (bloc `if (options.store)`) : un tool d'écriture branché hors de ce bloc ferait rougir la parité,
-  mais la correction « naturelle » (l'ajouter à `READ_SPECS` ou à `SERVER_ONLY`) masquerait sa vraie
-  nature. Vérifié : les 8 tools d'écriture actuels sont bien dans le bloc conditionnel.
 - [ ] **`[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE]`** (S — findings silent-failure-hunter,
   panel PR #756) — trois angles morts de restitution de l'état « donnée corrompue » introduit au
   lot 30 : (a) `components/future/FutureHealthSummary.tsx` n'affiche que le score global — une

@@ -10,6 +10,56 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-28 — Lot 31 : fermeture des angles morts du lot 30 (absorptions silencieuses, site d'appel unique)
+
+- [ ] **`[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]`** (S — findings silent-failure-hunter + financial-integrity
+  MESURÉS, panel PR #756, PRÉ-EXISTANT) — deux métriques de santé traversent des absorptions
+  SILENCIEUSES avant d'atteindre la garde `sanitizeNonFinite` : le `clamp01` local de
+  `utils/healthRatios.ts` (`Number.isFinite(n) ? n : 0`) et `totalYearlyCost` de
+  `utils/subscriptions.ts`. Une entrée corrompue devient un `0` FINI — donc crédible, donc invisible
+  à la garde de sortie, et sans aucune trace. Mesuré (poids par défaut) : `budgetItems[].target =
+  Infinity` → total **28** ; `= NaN` → **56** ; `subscriptions[].yearlyCost = Infinity` → **84** ;
+  `debts[].balance = Infinity` → **84** — dans tous les cas `available: true`, aucun `logError`.
+  Classe `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`. ⚠️ Ces absorptions ont d'autres
+  consommateurs : grep-les AVANT de durcir (la garde d'entrée de `computeSubscriptionLoadScore` a été
+  durcie au lot 30, elle n'avait qu'un seul consommateur de production).
+  ✅ **Livré lot 31** (`claude/lot-31`), gate vert (4 884 tests, 459 fichiers). Les trois chemins RE-MESURÉS avant de coder, et ils vont
+  dans les DEUX sens — c'est ce qui rend l'absorption dangereuse plutôt qu'imprécise : cible de
+  poste `Infinity` → score 92,86 → **100** (parfait, depuis un poste corrompu) ; dépense réelle
+  `NaN`/`Infinity` → 92,86 → **0** (« 100 % de dépassement ») ; coût d'abo `NaN`/`Infinity` →
+  95 $/mois jetés à 20 $/mois, score 87,3 → **97,3**. Tous FINIS, donc invisibles à la garde de
+  SORTIE du lot 30. Correctif conforme à `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL` : deux
+  portes — `totalYearlyCost` (LIRE : l'écran Planning garde le droit d'afficher la somme des abos
+  lisibles) et `totalYearlyCostAudit` (ÉCRIRE : un calcul qui publie un score REFUSE). Gardes
+  d'ENTRÉE tracées dans `computeBudgetParityScore` et `computeSubscriptionLoadScore` ; le
+  `clamp01` local reste comme DERNIER filet mais TRACE désormais s'il tire. 6 tests, discriminés
+  par deux perturbations (3 rouges puis 2 rouges).
+
+- [ ] **`[AITOOLS-CALLSITE-UNIQUE-GARDE]`** (S — findings ai-reviewer, panel PR #756) — deux trous
+  que `[MCP-WRITE-PARITY-GUARD]` (lot 30) ne ferme pas, aucun n'étant un défaut observé aujourd'hui :
+  (a) `services/aiTools/agentLoop.ts` est le SEUL site qui déclare un tableau `tools` à l'API
+  Anthropic, mais c'est une propriété de FAIT, non testée — un futur second site avec son propre
+  `tools:` échapperait à toutes les gardes ; remède = une garde de source « seul `agentLoop.ts`
+  importe `toAnthropicTools` », même patron que `tests/aiTools/noMcpSdkInSpecs.test.ts`.
+  (b) Rien ne lie `spec.kind === 'write'` à l'ENDROIT où le tool est enregistré dans `mcp/server.ts`
+  (bloc `if (options.store)`) : un tool d'écriture branché hors de ce bloc ferait rougir la parité,
+  mais la correction « naturelle » (l'ajouter à `READ_SPECS` ou à `SERVER_ONLY`) masquerait sa vraie
+  nature. Vérifié : les 8 tools d'écriture actuels sont bien dans le bloc conditionnel.
+  ✅ **Livré lot 31** (volet a). `tests/aiTools/anthropicCallsiteGuard.test.ts` balaie les 200+
+  fichiers de production et fige trois faits : seul `agentLoop.ts` importe `toAnthropicTools` ;
+  les sites d'appel du SDK sont exactement les deux mesurés (`agentLoop.ts`, `claude.ts`) ; et
+  `claude.ts` ne déclare aucun `tools:`. Contre-épreuve incluse — le site autorisé doit vraiment
+  construire son tableau DEPUIS le registre et ne fabriquer aucun `input_schema` littéral, sinon
+  « un seul site » ne garantirait rien sur ce qu'il déclare. Toutes les assertions d'ABSENCE
+  lisent la source DÉCOMMENTÉE avec anti-vacuité (`tests/helpers/source.ts`) — ce fichier
+  EXPLIQUE le motif qu'il interdit. 2 perturbations, 2 rouges.
+  ⚠️ **Volet (b) NON livré, et délibérément** : lier `spec.kind === 'write'` à l'endroit
+  d'enregistrement dans `mcp/server.ts` demanderait de mapper `registerX` → `.tool.ts` → spec,
+  alors que la parité comportementale du lot 30 fait DÉJÀ rougir le cas. Le vrai risque n'est pas
+  la détection mais la RÉPARATION (ajouter le tool à `READ_SPECS` ou à `SERVER_ONLY` ferait
+  reverdir en masquant sa nature) — c'est donc un commentaire nommant ce piège qui a été posé
+  dans `tests/mcp/writeToolParity.test.ts`, pas de la machinerie.
+
 ## 2026-08-28 — Lot 30 : garde de parité des tools d'écriture, score de santé non fini, persona par défaut reproductible
 
 > ⚠️ **Panel `/review-all` (5 agents) sur la PR #756 — 4 défauts CAUSÉS ou LIMITÉS par ce lot, tous

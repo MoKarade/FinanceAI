@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-28 (fiabilité, suite : deux métriques de santé qui inventaient un score)
+
+- **Corrigé** : deux métriques de Santé financière fabriquaient un score plausible à partir d'une
+  donnée illisible, sans rien signaler. « Adhérence au budget » affichait **100/100** (score
+  parfait) si la cible d'un poste était corrompue, et **0/100** (« 100 % de dépassement ») si une
+  dépense l'était. « Poids des abonnements » **montait** de 87 à 97 quand un abonnement avait un
+  coût illisible — parce que ce coût était simplement écarté du total, ce qui allégeait le fardeau.
+  Les trois cas affichent maintenant « — » et laissent une trace.
+- **Note** : l'écran « Charges fixes » continue, lui, d'afficher la somme des abonnements lisibles —
+  c'est le bon comportement pour un écran ; ce sont les *calculs* qui doivent refuser.
+
 ## [unreleased] — 2026-08-28 (fiabilité : score de santé, parité des outils IA, données de test reproductibles)
 
 - **Corrigé** : le score de Santé financière pouvait afficher « NaN/100 » (sur les deux écrans qui

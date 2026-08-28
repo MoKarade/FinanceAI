@@ -1,12 +1,38 @@
 import type { BudgetCategory, RecurringItem } from '../types';
 import { isSavingsNature } from './budget';
-import { totalMonthlyCost } from './subscriptions';
+import { totalMonthlyCost, totalYearlyCostAudit } from './subscriptions';
+import { logErrorThrottled } from '../services/errorLogger';
 
 // [PH4D-BUDGET-RATIOS] Deux ratios budgétaires PURS pour l'indicateur de santé financière.
 // Score 0-100 (100 = idéal). `null` quand la donnée de base manque (rien à mesurer) → l'UI affiche
 // un état « requis » plutôt qu'un 0 inventé. Pas de dépendance au store → testable unitairement.
 
-const clamp01 = (n: number): number => Math.max(0, Math.min(100, Number.isFinite(n) ? n : 0));
+/**
+ * [HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] Le repli `: 0` est le DERNIER filet, plus la garde. Il
+ * absorbait un `NaN` en `0` — un score FINI et donc CRÉDIBLE (« 100 % de dépassement ») que la
+ * garde de sortie `sanitizeNonFinite` (`utils/healthScore.ts`) ne peut structurellement pas voir.
+ * Les vraies gardes sont désormais à l'ENTRÉE des deux fonctions ci-dessous ; ce filet ne devrait
+ * plus jamais tirer, donc il le DIT quand il tire (sinon un chemin futur se rétablirait en silence).
+ */
+const clamp01 = (n: number): number => {
+    if (!Number.isFinite(n)) {
+        logErrorThrottled('health-ratios-clamp-non-fini', {
+            source: 'storage', severity: 'warning',
+            message: 'Ratios de santé : score intermédiaire non fini rabattu à 0 — une garde d\'entrée a été contournée',
+        });
+        return 0;
+    }
+    return Math.max(0, Math.min(100, n));
+};
+
+/** Refus TRACÉ d'un score : `null` (l'UI rend « — ») + une ligne de diagnostic. Jamais un nombre. */
+function nonFiniteRefusal(quoi: string): null {
+    logErrorThrottled(`health-ratios-entree-non-finie:${quoi}`, {
+        source: 'storage', severity: 'warning',
+        message: `Ratios de santé : ${quoi} — valeur non exploitable, score non calculé`,
+    });
+    return null;
+}
 
 /** Cible MENSUELLE d'un poste budget (normalise la fréquence — mêmes facteurs que `Budget.tsx`). */
 export function monthlyTargetOf(item: Pick<BudgetCategory, 'target' | 'frequency'>): number {
@@ -52,9 +78,16 @@ export function computeBudgetParityScore(
     for (const item of budgetItems) {
         if (isSavingsNature(item.nature)) continue; // épargne = virements, pas des dépenses comparables
         const target = monthlyTargetOf(item);
+        // [HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] Garde d'ENTRÉE : une cible ou une dépense non finie
+        // ne se rabat pas, elle REFUSE. Les deux sens ont été mesurés et chacun fabrique un score
+        // parfaitement plausible : `target: Infinity` rendait 100 (`overspend/∞ = 0` — score
+        // PARFAIT à partir d'un poste corrompu), et une dépense réelle `NaN`/`Infinity` rendait
+        // 0 via le clamp (« 100 % de dépassement »). Aucun n'était visible d'une garde de sortie.
+        if (!Number.isFinite(target)) return nonFiniteRefusal('cible de poste budget');
         if (target <= 0) continue;
         budgetTotal += target;
         const actual = actualsMap[item.name] ?? 0;
+        if (!Number.isFinite(actual)) return nonFiniteRefusal('dépense réelle rapprochée');
         overspend += Math.max(0, actual - target);
     }
     if (budgetTotal <= 0) return null;
@@ -92,6 +125,12 @@ export function computeSubscriptionLoadScore(
     monthlyIncome: number,
 ): number | null {
     if (!Number.isFinite(monthlyIncome) || monthlyIncome <= 0) return null;
+    // [HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] Porte d'ÉCRITURE : un coût annuel illisible était JETÉ
+    // du total, donc le fardeau paraissait plus LÉGER et le score MEILLEUR (mesuré : 95 $/mois →
+    // 20 $/mois, score 87,3 → 97,3, sans une ligne de trace). Un calcul qui publie un score doit
+    // refuser ; l'écran de Planning, lui, garde le droit d'afficher la somme des abos lisibles.
+    const { discarded } = totalYearlyCostAudit(subscriptions);
+    if (discarded > 0) return nonFiniteRefusal(`${discarded} abonnement(s) au coût annuel illisible`);
     const load = subscriptionsMonthlyCost(subscriptions) / monthlyIncome;
     return clamp01(100 * (1 - load / SUBSCRIPTION_LOAD_CEILING));
 }

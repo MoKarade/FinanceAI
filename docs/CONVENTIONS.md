@@ -8069,6 +8069,19 @@ est inutile.
   consommateur ne mute aujourd'hui. Ce qu'il faut alors écrire, c'est ça — pas un bénéfice imaginé.
   Les deux moitiés (type `readonly` + fabrique) visent des choses différentes : l'une rend la faute
   impossible à ÉCRIRE, l'autre la rend INOFFENSIVE quand on la contourne par un `as`.
+- **Une affirmation de non-régression est une affirmation comme une autre — elle se vérifie.**
+  J'avais écrit, pour rassurer sur le coût de la fabrique dans un `useMemo` : « la référence ne
+  change donc que là où elle changeait déjà ». Faux, et le panel l'a relevé : avant, une
+  ré-exécution du memo qui retombait sur la branche vide rendait la MÊME constante, donc l'aval ne
+  bougeait pas ; désormais elle rend un objet neuf. Et le recalcul aval n'est pas gratuit —
+  `buildPastPrefix` rejoue `reconstructCashHistory` sur toutes les transactions, un travail qui ne
+  dépend pas des points. ⚠️ Le rapport de l'agent proposait une justification (« `fxRates` n'est mis
+  à jour qu'une fois au boot ») que j'ai failli recopier : vérifiée, `calculatedStartingCash` dépend
+  de `[initialBalances, transactions]` et PAS de `fxRates`, donc l'argument ne tenait pas. Un
+  rapport d'agent n'est pas une source, y compris quand son finding est juste. Ce qui s'écrit à la
+  place, c'est la BORNE établie soi-même : le cas « aucun actif » seulement, déclenché par un
+  changement de référence d'une des quatre dépendances du memo, donc un recalcul ponctuel et jamais
+  une boucle — avec, dans le code, où regarder si ce hook apparaît un jour dans un profil.
 - **La variante ACTIVE de la classe se cachait ailleurs, dans une copie SUPERFICIELLE.**
   `components/Investments.tsx` initialise ses cibles de rééquilibrage avec `DEFAULT_TARGET_MODEL`
   telle quelle, puis fait `[...targetModel]` avant d'écrire `newModel[i].targetPct` — le spread

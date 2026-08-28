@@ -34,9 +34,20 @@ import type { Asset } from '../types';
  * partagée par toutes les instances du hook et tous les rendus : un tri posé sur `points` par
  * n'importe quel consommateur y restait pour la vie du processus.
  *
- * ⚠️ La construction fraîche ne coûte AUCUN rendu de plus : elle est à l'intérieur du `useMemo`, qui
- * ne se réexécute qu'au changement de ses dépendances — exactement comme avant. La référence ne
- * change donc que là où elle changeait déjà.
+ * ⚠️ Ce que ça change vraiment pour les rendus — la première version de ce commentaire affirmait
+ * « la référence ne change que là où elle changeait déjà », et c'était FAUX (finding code-reviewer).
+ * Avant, une ré-exécution du `useMemo` qui retombait sur la branche vide rendait la MÊME constante,
+ * donc l'aval ne bougeait pas ; désormais elle rend un `points` neuf. Les consommateurs qui
+ * mémoïsent sur `pastHistory.points` (`useSimulationParams`, `FutureProjection`) recalculent donc à
+ * chaque ré-exécution du memo sur cette branche — et ce recalcul n'est pas gratuit : `buildPastPrefix`
+ * rejoue `reconstructCashHistory` sur toutes les transactions, un travail qui ne dépend pas des points.
+ *
+ * C'est assumé, et voici la borne exacte : ça ne concerne QUE le cas « aucun actif », et il faut pour
+ * cela qu'une des quatre dépendances du memo (`assets`, `fxRates`, `fetched`, `isTestMode`) change de
+ * référence — `fetched` ne bouge pas sans actif (le fetch sort tôt), donc en pratique le boot et la
+ * bascule du mode test. Un recalcul ponctuel, jamais une boucle. Stabiliser la référence par instance
+ * (un `useRef`) coûterait un mécanisme de plus pour un gain non mesuré ; si un jour ce hook apparaît
+ * dans un profil, c'est ici qu'il faut regarder.
  */
 const emptyResult = (): PortfolioHistoryResult => ({ points: [], coverage: 1, firstDate: null });
 

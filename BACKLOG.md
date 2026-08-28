@@ -47,6 +47,20 @@
   ⚠️ Le correctif n'est pas mécanique : `raw` est une CHAÎNE déjà formatée, donc l'envelopper dans
   `PrivateAmount` masquerait aussi la prose autour du montant. Il faut probablement séparer le
   montant du libellé dans `HealthMetricRow` avant de pouvoir masquer l'un sans l'autre.
+- [ ] **`[HISTORY-OBJET-VIDE-PARTAGE]`** (S — finding financial-integrity MESURÉ, panel PR #759,
+  PRÉ-EXISTANT) — même classe que `[TEST-PERSONA-FIXTURE-PARTAGEE]` (lot 33), encore vivante en
+  production : `services/history/dayTransactions.ts` et `services/history/monthCategories.ts`
+  déclarent chacun une constante de module `VIDE` (`{ counted: [], excluded: [], netCounted: 0 }`)
+  et la RENVOIENT telle quelle sur le chemin « aucune transaction ». Mesuré : deux appels rendent
+  le même objet (`===`), tableaux compris ; après un `push` sur un résultat vide, un NOUVEL appel
+  voit `counted.length = 1` et `netCounted = −999 999`, côté catégories `depenses.length = 1` et
+  `totalDepenses = 999 999`.
+  ⚠️ **Latent, pas actif** : l'unique consommateur (`components/projection/FutureDetailModal.tsx`)
+  lit sans muter — aucun `.sort/.push/.reverse/.splice`. Mais le type rendu n'est PAS `readonly` :
+  le premier tri d'affichage ajouté sur ces listes empoisonne définitivement le chemin « aucune
+  transaction », avec des montants FANTÔMES dans le détail du jour et la ventilation mensuelle.
+  Correctif : construire l'objet à chaque appel, ou typer le retour `Readonly<…>` + `ReadonlyArray`
+  (le second rend l'erreur impossible à écrire, le premier la rend inoffensive).
 - [ ] **`[GUARD-STRIPCOMMENTS-CONSOLIDER]`** (S — dette relevée au lot 31) — le dépôt porte SIX
   décommenteurs `stripComments` recopiés (`tests/aiTools/specFiniteGuard.test.ts`,
   `tests/services/assetFxGuard.test.ts`, `utils/fiscalConstGuardV2.ts`, `utils/chartDataSumGuard.ts`,
@@ -89,9 +103,21 @@
   du store, restauration Drive, ou `buildSimulationParams` ? (ii) QUE fait-elle d'une valeur
   mauvaise : refuser la projection, borner la valeur, ou tracer et continuer ? Chaque réponse a un
   coût différent pour l'utilisateur. Convention §7 : plan court + OK de Marc avant de coder.
+  ✅ **IMPACT du mode `NaN` CHIFFRÉ** (financial-integrity, panel PR #759) : sur le persona par
+  défaut, 30 ans, `savingsMode: 'budget'`, rendement 5 %, inflation 2 % — le patrimoine net final
+  passe de **6 742 127 $ à −403 059 $**, soit **−7 145 187 $**, avec **0 valeur non finie sur les
+  361 points de `chartData`**. C'est le plus grave des deux modes, précisément parce que rien ne
+  le signale : `Infinity` finit par se voir, `NaN` absorbé en 0 produit une projection lisse et
+  entièrement fausse. Ce chiffre est la grandeur d'arbitrage de la fourche ci-dessous.
   ⚠️ **Reproduire la mesure avant de s'en servir** (`MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE`) : test
   jetable appelant `buildSimulationParamsFromState(state, { startYear: 2026, startMonth: 0 })` puis
-  `Object.entries(params).filter(([,v]) => typeof v === 'number' && !Number.isFinite(v))`.
+  un scan **RÉCURSIF** des non-finis. ⚠️ Un scan de PREMIER NIVEAU
+  (`Object.entries(params).filter(…)`) ment sur le cas `NaN` : il annonce « aucun non fini » alors
+  que `params.config === state.config` (passage par RÉFÉRENCE, `buildSimulationParams.ts`), donc
+  `config.users[0].netSalary` VAUT `NaN` dans les paramètres — et c'est cette valeur-là qui pilote
+  le moteur. La colonne « aucun » du tableau ci-dessus vaut donc **au premier niveau seulement**.
+  C'est la classe que le lot 33 combat, retrouvée dans ma propre méthode de reproduction
+  (finding financial-integrity, panel PR #759).
   ⚠️ **Cloner l'état par cas** : une première version de cette mesure était FAUSSE
   (`grossSalary: Infinity` semblait aussi écraser le net à 52 800) parce que les builds du persona
   partageaient leurs objets — cf. `[TEST-PERSONA-FIXTURE-PARTAGEE]`, corrigé au lot 33.

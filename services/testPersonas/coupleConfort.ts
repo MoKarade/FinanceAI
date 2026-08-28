@@ -27,8 +27,9 @@ import { generateTestTransactions } from '../testTransactions';
 /**
  * [TEST-PERSONA-FIXTURE-PARTAGEE] Copie PROFONDE des constantes partagées. Sans elle, ce persona
  * — le seul des sept dans ce cas, et c'est le persona PAR DÉFAUT — rendait à chaque appel les
- * MÊMES objets (`config`, `budgetItems`, `assets`, `debts`, `retirementGoal` : identité stricte
- * mesurée entre deux `build()`), donc toute mutation d'un consommateur contaminait tous les
+ * MÊMES objets — les **DIX** champs réutilisés depuis des constantes de module, pas cinq :
+ * `config`, `budgetItems`, `assets`, `debts`, `retirementGoal`, `realEstateGoals`, `childGoals`,
+ * `travelGoals`, `lifeEvents`, `financialGoals` (identité stricte mesurée entre deux `build()`), donc toute mutation d'un consommateur contaminait tous les
  * suivants dans le même processus. Mesuré : écrire `config.users[0].netSalary = 999` sur un build
  * change la valeur lue par le build SUIVANT (5 200 → 999).
  *

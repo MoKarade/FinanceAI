@@ -7943,8 +7943,8 @@ Ce lot n'était pas au backlog : il vient d'une mesure qui m'a menti. En instrui
 paramètres du moteur, un cas par ligne. Le troisième cas — `grossSalary: Infinity`, qui ne touche
 pas au net — annonçait `baseNetAnnual = 52 800` au lieu de 115 200. Aucune explication dans le code
 lu. La vraie cause était deux lignes plus haut : `buildCoupleConfort` rendait les **mêmes objets**
-à chaque appel (`config`, `budgetItems`, `assets`, `debts`, `retirementGoal` identiques au sens de
-`===` entre deux `build()`), donc la corruption du cas précédent survivait dans le suivant.
+à chaque appel — les dix champs réutilisés depuis des constantes de module, identiques au sens de
+`===` entre deux `build()` —, donc la corruption du cas précédent survivait dans le suivant.
 
 **Ce qui rend cette classe dangereuse**, c'est qu'elle ne produit aucun rouge. Un test qui partage
 sa fixture ne casse pas : il mesure autre chose que ce qu'il annonce, et publie un chiffre
@@ -7959,8 +7959,15 @@ minute. Et côté producteur, une fixture réutilisable se construit FRAÎCHE : 
 PROFONDE, parce que `{ ...CONFIG }` partage encore le tableau `users` et `[...ASSETS]` partage
 encore chaque actif — or c'est exactement à ce niveau qu'on mute.
 
-**Corollaire de périmètre.** Mesuré sur les sept personas : un seul était touché — et c'était le
-persona **par défaut**, exactement la même cible que `[TEST-PERSONA-NON-DETERMINISTE]` au lot 30.
+**Corollaire de périmètre — et de mesure trop étroite.** Mon premier relevé comparait l'identité de
+PREMIER NIVEAU et concluait « un seul persona touché ». C'était faux, et la faute est instructive :
+le test d'identité est structurellement **aveugle à une copie superficielle**, puisqu'un littéral
+`config` neuf à chaque appel suffit à le satisfaire tout en partageant encore `users[0]`. Étendu à
+la PROFONDEUR sur les sept personas — ce que le panel a exigé —, il a révélé que les **six autres**
+partageaient eux aussi leur `User`. Une garde qui ne teste que le niveau où l'on a déjà corrigé
+mesure son propre correctif ; les offenders révélés en l'élargissant sont le vrai périmètre
+(`REJOUER-L-OUTIL-ELARGI-AVANT-DE-CROIRE-QU-IL-N-Y-A-RIEN`). Le persona **par défaut** restait le
+plus atteint (dix champs), exactement la même cible que `[TEST-PERSONA-NON-DETERMINISTE]` au lot 30.
 Deux fois de suite, le défaut d'outillage s'est logé dans le fixture que tout le monde prend sans
 réfléchir. Quand un défaut de cette famille apparaît, vérifier D'ABORD le chemin par défaut : c'est
 celui dont personne ne relit jamais la construction

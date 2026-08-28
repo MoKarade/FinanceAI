@@ -16,7 +16,12 @@ const nadia: User = {
 
 export function buildAutonomeMonoparentale(): Partial<AppState> {
     return {
-        config: { users: [nadia] as unknown as BudgetConfig['users'], splitMode: '50/50' },
+        // [TEST-PERSONA-FIXTURE-PARTAGEE] Les `User` sont des constantes de MODULE : les mettre
+        // telles quelles dans la config faisait partager `config.users[0]` entre deux `build()`
+        // — mesuré sur les SIX personas non-`couple-confort`. Le test d'identité de premier
+        // niveau ne le voyait pas (le littéral `config` est neuf à chaque appel) ; seul le
+        // contrôle de PROFONDEUR l'attrape (finding financial-integrity, panel PR #759).
+        config: { users: structuredClone([nadia]) as unknown as BudgetConfig['users'], splitMode: '50/50' },
         budgetItems: [
             { id: 'na-b1', name: 'Loyer', target: 1500, nature: 'Besoin', frequency: 'Monthly' },
             { id: 'na-b2', name: 'Épicerie', target: 600, nature: 'Besoin', frequency: 'Monthly' },

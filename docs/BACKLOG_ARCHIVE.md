@@ -10,6 +10,31 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-28 — Lot 34 : le résultat « aucune donnée » était un objet partagé, en production
+
+- [x] **`[HISTORY-OBJET-VIDE-PARTAGE]`** (S — finding financial-integrity, panel PR #759,
+  PRÉ-EXISTANT) — même classe que `[TEST-PERSONA-FIXTURE-PARTAGEE]` (lot 33), mais vivante en
+  PRODUCTION : `services/history/dayTransactions.ts` et `services/history/monthCategories.ts`
+  déclaraient chacun une constante de module `VIDE` et la RENVOYAIENT telle quelle. Deux appels
+  rendaient le même objet, tableaux compris — donc un `push` ou un `sort` posé par un consommateur
+  sur ce résultat restait là pour la vie du processus, et tous les appels suivants voyaient des
+  données qu'ils n'avaient jamais lues.
+  ✅ **Livré lot 34** (`claude/lot-34`), gate vert. Les DEUX moitiés du correctif, qui ne se
+  remplacent pas : le type `readonly`/`ReadonlyArray` rend la faute impossible à ÉCRIRE (le
+  typecheck refuse `.push`/`.sort` sur le résultat), la FABRIQUE la rend inoffensive sur les
+  chemins qui échappent au typecheck (`as`, JS non typé, un consommateur qui reconstruit le type).
+  ⚠️ **Le périmètre du ticket était incomplet** : le même scan, élargi à tout le dépôt, a sorti un
+  TROISIÈME site de la classe exacte — `hooks/usePastPortfolioHistory.ts`, dont le chemin « aucun
+  actif » renvoyait aussi une constante de module, partagée par toutes les instances du hook.
+  Corrigé dans le même lot ; le `readonly` sur `PortfolioHistoryResult` a coûté **zéro** erreur de
+  typecheck, ce qui confirme au passage qu'aucun consommateur ne mute aujourd'hui.
+  ⚠️ **Et le ticket nommait mal le chemin.** Il disait « aucune transaction » : c'est plus large que
+  la réalité. Une LISTE VIDE est `truthy`, donc `[]` traversait déjà la boucle et construisait un
+  objet neuf — elle n'a jamais été concernée. Le retour partagé était celui des ENTRÉES
+  INUTILISABLES (liste absente, ou date trop courte pour être découpée). Mesuré : ma première
+  version du test, écrite avec `[]` d'après le ticket, passait **sur le code d'avant** — une garde
+  vacueuse. Réécrite avec `null`, elle rougit 5/5 puis 2/2 sur le code d'avant.
+
 ## 2026-08-28 — Lot 33 : le persona par défaut partageait ses fixtures entre deux builds
 
 - [x] **`[TEST-PERSONA-FIXTURE-PARTAGEE]`** (S — DÉCOUVERT EN MESURANT, lot 33) —

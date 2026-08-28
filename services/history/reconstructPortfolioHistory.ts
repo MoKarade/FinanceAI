@@ -46,11 +46,11 @@ export interface PortfolioHistoryPoint {
     InvestedValue: number;
 }
 export interface PortfolioHistoryResult {
-    points: PortfolioHistoryPoint[];
+    readonly points: ReadonlyArray<PortfolioHistoryPoint>;
     /** Part de la valeur finale adossée à de vrais prix historiques (0..1). */
-    coverage: number;
+    readonly coverage: number;
     /** Date de la 1re donnée réelle (1er achat connu), ou null. */
-    firstDate: string | null;
+    readonly firstDate: string | null;
 }
 
 const fxToCad = (currency: string, fx: Record<string, number>): number => {

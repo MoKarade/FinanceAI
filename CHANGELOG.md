@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-28 (fiabilité : le résultat « aucune donnée » était réutilisé d'un appel à l'autre)
+
+- **Corrigé** : trois endroits qui, faute de donnée à traiter, renvoyaient toujours le MÊME objet
+  vide — la liste des transactions d'une journée, la ventilation des dépenses d'un mois, et
+  l'historique du portefeuille. Aucun écran n'affichait de chiffre faux aujourd'hui, mais la
+  première fonction d'affichage qui aurait trié ou complété une de ces listes l'aurait fait pour
+  TOUS les autres appels de la session : une journée sans transaction se serait mise à montrer
+  celles d'une autre, avec son total. Chacun construit désormais son propre résultat, et le type
+  interdit maintenant d'y écrire.
+
 ## [unreleased] — 2026-08-28 (accessibilité et assistant : dire POURQUOI une donnée manque)
 
 - **Amélioré** : dans la carte Santé financière, une métrique indisponible annonçait toujours

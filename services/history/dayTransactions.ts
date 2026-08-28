@@ -19,9 +19,9 @@ import type { Transaction } from '../../types';
 
 export interface DayTransactionsResult {
     /** Transactions qui MEUVENT la courbe ce jour-là (base d'exclusion du registre). */
-    counted: Transaction[];
+    readonly counted: ReadonlyArray<Transaction>;
     /** Doublons et virements internes : affichés, mais hors du calcul — chacun avec sa raison. */
-    excluded: Array<{ txn: Transaction; reason: 'doublon' | 'virement interne' }>;
+    readonly excluded: ReadonlyArray<{ txn: Transaction; reason: 'doublon' | 'virement interne' }>;
     /**
      * Σ des `counted` : le FLUX DE TRÉSORERIE net du jour (= `Income − Expenses` du registre).
      *
@@ -33,10 +33,22 @@ export interface DayTransactionsResult {
      * raison exacte. Promettre « le mouvement de la courbe » aurait envoyé la prochaine session
      * chercher une réconciliation avec `NetWorth[j] − NetWorth[j−1]` qui n'existe pas.
      */
-    netCounted: number;
+    readonly netCounted: number;
 }
 
-const VIDE: DayTransactionsResult = { counted: [], excluded: [], netCounted: 0 };
+/**
+ * [HISTORY-OBJET-VIDE-PARTAGE] Une FABRIQUE, pas une constante. Le chemin des ENTRÉES INUTILISABLES
+ * (liste absente, ou date trop courte pour être découpée — une liste VIDE, elle, est `truthy` et
+ * traverse la boucle) renvoyait une constante de MODULE : deux appels rendaient le même objet, donc
+ * un `push` sur un résultat vide se retrouvait dans TOUS les appels vides suivants du processus :
+ * une journée sans aucune transaction affichait celles d'un autre appel, avec son total.
+ *
+ * Les deux moitiés du correctif visent des choses différentes et ne se remplacent pas : le type
+ * `readonly` rend la faute impossible à ÉCRIRE (le typecheck refuse `.push`/`.sort` sur le
+ * résultat), la fabrique la rend INOFFENSIVE si quelqu'un la contourne (`as`, JS non typé, un
+ * consommateur futur qui reconstruit le type à la main).
+ */
+const vide = (): DayTransactionsResult => ({ counted: [], excluded: [], netCounted: 0 });
 
 /**
  * Transactions datées de `dayIso` ('YYYY-MM-DD'), séparées entre celles qui comptent et celles qui
@@ -51,11 +63,11 @@ export function transactionsOnDay(
     transactions: ReadonlyArray<Transaction> | null | undefined,
     dayIso: string | null | undefined,
 ): DayTransactionsResult {
-    if (!transactions || !dayIso || dayIso.length < 10) return VIDE;
+    if (!transactions || !dayIso || dayIso.length < 10) return vide();
     const jour = dayIso.slice(0, 10);
 
     const counted: Transaction[] = [];
-    const excluded: DayTransactionsResult['excluded'] = [];
+    const excluded: Array<{ txn: Transaction; reason: 'doublon' | 'virement interne' }> = [];
     let netCounted = 0;
 
     for (const t of transactions) {

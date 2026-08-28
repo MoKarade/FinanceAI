@@ -28,7 +28,17 @@ import {
 } from '../services/history/reconstructPortfolioHistory';
 import type { Asset } from '../types';
 
-const EMPTY_RESULT: PortfolioHistoryResult = { points: [], coverage: 1, firstDate: null };
+/**
+ * [HISTORY-OBJET-VIDE-PARTAGE] Une FABRIQUE, pas une constante — troisième site de la même classe,
+ * celui que le ticket ne nommait pas. Le chemin « aucun actif » renvoyait une constante de MODULE,
+ * partagée par toutes les instances du hook et tous les rendus : un tri posé sur `points` par
+ * n'importe quel consommateur y restait pour la vie du processus.
+ *
+ * ⚠️ La construction fraîche ne coûte AUCUN rendu de plus : elle est à l'intérieur du `useMemo`, qui
+ * ne se réexécute qu'au changement de ses dépendances — exactement comme avant. La référence ne
+ * change donc que là où elle changeait déjà.
+ */
+const emptyResult = (): PortfolioHistoryResult => ({ points: [], coverage: 1, firstDate: null });
 
 // ── [PH2-c-1] Cache de fetch au niveau MODULE (partagé entre instances) ──────
 type FetchedMap = Record<string, Array<{ date: string; price: number }>>;
@@ -89,7 +99,7 @@ export function usePastPortfolioHistory(): UsePastPortfolioHistoryResult {
     // le cache Finnhub — un fetch réel résolu APRÈS la bascule en test polluerait sinon la fixture
     // d'un symbole partagé (XEQT réel vs XEQT persona) → fuite réel→test.
     const result = useMemo<PortfolioHistoryResult>(() => {
-        if (!assets || assets.length === 0) return EMPTY_RESULT;
+        if (!assets || assets.length === 0) return emptyResult();
         const minimal = assets.map((a) => toMinimal(a, isTestMode ? undefined : fetched[a.symbol]));
         return reconstructPortfolioHistory(minimal, fxRates as Record<string, number>);
     }, [assets, fxRates, fetched, isTestMode]);

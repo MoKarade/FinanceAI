@@ -8027,3 +8027,54 @@ faites ainsi peuvent différer sans que ni l'une ni l'autre ne soit reproductibl
   dépôt a déjà la leçon sous `UN-PARAMÈTRE-HOMONYME-À-DEUX-NIVEAUX` ; elle vaut aussi pour les
   paramètres d'un protocole de mesure, pas seulement pour le code de production
   (`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE`).
+
+---
+
+## Lot 34 (2026-08-28) — une LISTE VIDE n'est pas le chemin « vide »
+
+`[HISTORY-OBJET-VIDE-PARTAGE]`, la même classe que le lot 33 mais en **production** : trois
+fonctions renvoyaient, faute de donnée exploitable, une **constante de module**. Deux appels
+rendaient le même objet, tableaux compris, donc un `push` ou un `sort` posé par un consommateur y
+restait pour la vie du processus.
+
+**Le vrai enseignement n'est pas le correctif — il est dans ma première tentative de test.**
+
+Le ticket décrivait le chemin fautif comme « aucune transaction ». J'ai écrit la garde d'après cette
+phrase, avec `transactionsOnDay([], '2026-03-04')`. Elle passait. Elle passait aussi **sur le code
+d'avant** : une garde parfaitement vacueuse, verte pour la mauvaise raison.
+
+La cause tient en un mot : **`[]` est `truthy`**. `if (!transactions) return VIDE` ne se déclenche
+donc jamais sur une liste vide — celle-ci traverse la boucle et construit déjà un objet neuf. Le
+retour partagé était celui des **entrées inutilisables** : liste ABSENTE (`null`/`undefined`), ou
+date trop courte pour être découpée. Réécrite avec `null`, la garde rougit 5/5 puis 2/2 sur le code
+d'avant.
+
+**Le geste** : le nom qu'un ticket donne à un chemin est une PARAPHRASE, pas sa condition. Avant
+d'écrire la fixture, lire le `if` et instancier la valeur qui le rend vrai. « Vide », « absent »,
+« manquant » et « invalide » se ressemblent en français et se distinguent en JavaScript — et c'est
+la famille `!x` qui piège, parce que `[]`, `{}` et `'0'` y sont du bon côté quand l'intuition les
+met du mauvais. Le contrôle est toujours le même : **la perturbation doit rougir**, et si elle ne
+rougit pas, la première hypothèse est que la fixture n'atteint pas le chemin — jamais que le code
+est inutile.
+
+**Trois corollaires du même lot :**
+
+- **Le périmètre d'un ticket de CLASSE est une borne inférieure.** Rejoué à l'échelle du dépôt, le
+  même scan a sorti un TROISIÈME site identique (`hooks/usePastPortfolioHistory.ts`, chemin « aucun
+  actif »), que le ticket ne nommait pas. Un ticket qui dit « même classe que X » invite
+  explicitement à re-scanner (`REJOUER-L-OUTIL-ELARGI-AVANT-DE-CROIRE-QU-IL-N-Y-A-RIEN`).
+- **Une garde de TYPE qui ne coûte aucune erreur ne prouve rien sur le présent — c'est son objet.**
+  Passer `PortfolioHistoryResult` en `readonly` a rendu **zéro** erreur de typecheck. Ce n'est pas
+  le signe qu'elle est inutile : elle est PRÉVENTIVE, et le zéro mesure justement qu'aucun
+  consommateur ne mute aujourd'hui. Ce qu'il faut alors écrire, c'est ça — pas un bénéfice imaginé.
+  Les deux moitiés (type `readonly` + fabrique) visent des choses différentes : l'une rend la faute
+  impossible à ÉCRIRE, l'autre la rend INOFFENSIVE quand on la contourne par un `as`.
+- **La variante ACTIVE de la classe se cachait ailleurs, dans une copie SUPERFICIELLE.**
+  `components/Investments.tsx` initialise ses cibles de rééquilibrage avec `DEFAULT_TARGET_MODEL`
+  telle quelle, puis fait `[...targetModel]` avant d'écrire `newModel[i].targetPct` — le spread
+  copie le tableau, jamais ses éléments, donc l'édition réécrit la constante du module.
+  **Mesuré** : après une édition à 77, un remontage NEUF sans persistance affiche `77,30,15,10,5`
+  au lieu de `40,30,15,10,5`. Routé sans correctif (`[INVEST-CIBLES-DEFAUT-MUTEES]`, convention §6 :
+  bug pré-existant hors périmètre). Signal réutilisable : **un spread de tableau devant une écriture
+  indexée est toujours suspect** — `[...a]` puis `a[i].champ = v` est une copie qui ne copie pas ce
+  qu'on s'apprête à muter (`UNE-LISTE-VIDE-N-EST-PAS-LE-CHEMIN-VIDE`).

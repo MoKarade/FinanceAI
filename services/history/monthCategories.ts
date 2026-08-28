@@ -23,16 +23,16 @@
 import type { Transaction } from '../../types';
 
 export interface CategoryTotal {
-    categorie: string;
+    readonly categorie: string;
     /** Somme des SORTIES de la catégorie, en valeur POSITIVE (convention `Expenses` du moteur). */
-    montant: number;
+    readonly montant: number;
     /** Nombre de transactions agrégées — une catégorie à 1 ligne ne se lit pas comme une à 40. */
-    nombre: number;
+    readonly nombre: number;
 }
 
 export interface MonthCategoriesResult {
     /** Catégories de DÉPENSE, triées par montant décroissant (la plus lourde d'abord). */
-    depenses: CategoryTotal[];
+    readonly depenses: ReadonlyArray<CategoryTotal>;
     /**
      * Σ de TOUTES les dépenses du mois — y compris celles sans catégorie.
      *
@@ -44,14 +44,25 @@ export interface MonthCategoriesResult {
      * Le total inclut bien tout (l'argent EST sorti) ; c'est `montantSansCategorie` qui referme
      * l'écart, exposé comme une LIGNE et jamais comme une catégorie « Autre » inventée.
      */
-    totalDepenses: number;
+    readonly totalDepenses: number;
     /** Nombre de transactions de dépense sans catégorie exploitable. */
-    sansCategorie: number;
+    readonly sansCategorie: number;
     /** Σ des dépenses sans catégorie. `Σ(depenses) + montantSansCategorie === totalDepenses`. */
-    montantSansCategorie: number;
+    readonly montantSansCategorie: number;
 }
 
-const VIDE: MonthCategoriesResult = { depenses: [], totalDepenses: 0, sansCategorie: 0, montantSansCategorie: 0 };
+/**
+ * [HISTORY-OBJET-VIDE-PARTAGE] Une FABRIQUE, pas une constante — même correctif que
+ * `transactionsOnDay`, et pour la même raison : le chemin des ENTRÉES INUTILISABLES (liste absente,
+ * ou mois trop court) renvoyait une constante de MODULE, donc un tri ou un `push` posé par un
+ * consommateur sur ce résultat survivait dans tous les appels suivants du processus.
+ *
+ * ⚠️ Ce module est le PLUS exposé des deux : il rend déjà une liste TRIÉE (`depenses`), donc la
+ * chose la plus naturelle qu'un consommateur puisse vouloir en faire — la re-trier autrement — est
+ * exactement le geste qui l'empoisonnait. Le type `readonly` refuse désormais `.sort()` en place à
+ * l'écriture ; la fabrique protège les chemins qui échappent au typecheck.
+ */
+const vide = (): MonthCategoriesResult => ({ depenses: [], totalDepenses: 0, sansCategorie: 0, montantSansCategorie: 0 });
 
 /**
  * Ventile par catégorie les DÉPENSES du mois `monthIso` (`YYYY-MM`).
@@ -64,7 +75,7 @@ export function monthCategories(
     transactions: ReadonlyArray<Transaction> | null | undefined,
     monthIso: string | null | undefined,
 ): MonthCategoriesResult {
-    if (!transactions || !monthIso || monthIso.length < 7) return VIDE;
+    if (!transactions || !monthIso || monthIso.length < 7) return vide();
     const mois = monthIso.slice(0, 7);
 
     const parCategorie = new Map<string, { montant: number; nombre: number }>();

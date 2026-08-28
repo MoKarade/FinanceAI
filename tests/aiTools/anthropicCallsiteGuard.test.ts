@@ -11,9 +11,12 @@
 // des outils exposés au modèle sans jumeau côté MCP, sans un seul test rouge (finding ai-reviewer,
 // panel PR #756).
 //
-// Toutes les assertions d'ABSENCE lisent la source DÉCOMMENTÉE avec son anti-vacuité — ce fichier
-// EXPLIQUE le motif qu'il interdit, donc un scan naïf rougirait sur sa propre doc
-// (leçon `SCAN-QUI-MATCHE-LA-PROSE`).
+// Tout est lu DÉCOMMENTÉ — ce fichier EXPLIQUE le motif qu'il interdit, et `api/_lib/relay.ts`
+// mentionne `messages.stream(` dans un COMMENTAIRE : un scan naïf rougirait sur de la prose
+// (leçon `SCAN-QUI-MATCHE-LA-PROSE`). Précision de portée : l'anti-vacuité `readCodeOnly` (témoin
+// + ratio de code restant) couvre les deux assertions qui affirment qu'AUCUN autre motif ne
+// matche ; les deux comparaisons de LISTE exacte n'en ont pas besoin — un décommentage qui
+// viderait un fichier les ferait échouer, pas réussir à vide.
 
 import { describe, it, expect } from 'vitest';
 import { readdirSync, statSync } from 'node:fs';

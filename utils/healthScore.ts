@@ -1,6 +1,7 @@
 import type { BudgetConfig, BudgetCategory, Debt, Asset, Transaction, RecurringItem, HealthWeights } from '../types';
 import { computeBudgetParity } from './budget';
-import { computeBudgetParityScore, computeSubscriptionLoadScore, subscriptionsMonthlyCost, monthlyConsumptionExpenses } from './healthRatios';
+import { computeBudgetParityScore, computeSubscriptionLoadScore, subscriptionsMonthlyCost, monthlyConsumptionExpenses, budgetParityInputsUsable } from './healthRatios';
+import { totalYearlyCostAudit } from './subscriptions';
 import { formatPercent, formatCAD, formatNumber } from './format';
 import { computeCurrentLiquidity, computeInvestmentsValue, computeTotalDebt } from '../services/portfolio';
 import { logErrorThrottled } from '../services/errorLogger';
@@ -95,6 +96,12 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
     // ET postes ÉPARGNE EXCLUS (virements, pas des dépenses) → taux d'épargne + coussin justes et cohérents
     // avec la parité budget / Budget.tsx (cf `monthlyConsumptionExpenses`).
     const monthlyExpenses = monthlyConsumptionExpenses(budgetItems || []);
+    // [HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] Un total de dépenses illisible rend NON MESURABLES les
+    // deux métriques qui en dépendent. On propage `NaN` plutôt que de calculer sur une valeur
+    // fausse : le point de passage unique `sanitizeNonFinite` (plus bas) le convertit en « — ».
+    // Sans ça, `monthlyExpenses > 0` était FAUX pour un `NaN` et le coussin retombait sur un `0`
+    // parfaitement crédible — « 0 mois de coussin » — que rien ne distinguait d'une vraie détresse.
+    const expensesUsable = Number.isFinite(monthlyExpenses);
     // Liquidités = cash de TOUS les comptes, via la source unique computeCurrentLiquidity.
     const liquidity = computeCurrentLiquidity(initialBalances, transactions);
     // [DEBT-SUM-DUP, audit 2026-07-16] Source unique (garde isFinite incluse) au lieu du reduce local.
@@ -106,11 +113,11 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
 
     // 1. Taux d'épargne
     const savingsRateRaw = monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : 0;
-    const savingsRateScore = clamp01((savingsRateRaw / 20) * 100); // 20% = 100 score
+    const savingsRateScore = expensesUsable ? clamp01((savingsRateRaw / 20) * 100) : NaN; // 20% = 100 score
 
     // 2. Couverture coussin (mois)
     const emergencyMonths = monthlyExpenses > 0 ? liquidity / monthlyExpenses : 0;
-    const emergencyScore = clamp01((emergencyMonths / 6) * 100); // 6 mois = 100 score
+    const emergencyScore = expensesUsable ? clamp01((emergencyMonths / 6) * 100) : NaN; // 6 mois = 100 score
 
     // 3. Ratio dette/actif (inversé — moins c'est haut, mieux c'est)
     const debtAssetsRatio = totalAssets > 0 ? (totalDebts / totalAssets) * 100 : (totalDebts > 0 ? 100 : 0);
@@ -138,11 +145,19 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
     const hasMatchedActuals = Object.keys(prevParity.actualsMap).length > 0;
     const hadSpending = prevParity.totalSpent > 0;
     const budgetParityScore = hasMatchedActuals ? computeBudgetParityScore(prevParity.actualsMap, budgetItems) : null;
+    // [HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] Un refus pour DONNÉE ILLISIBLE ne doit pas hériter du
+    // message de l'état vide voisin : la métrique disait « Dépenses non rapprochées à un poste
+    // budget » alors que les dépenses ÉTAIENT rapprochées — un diagnostic faux qui envoie corriger
+    // le mauvais champ (finding financial-integrity, panel PR #757). Le prédicat est la SOURCE
+    // UNIQUE partagée avec `computeBudgetParityScore`, pour que les deux ne puissent pas diverger.
+    const budgetInputsUsable = budgetParityInputsUsable(prevParity.actualsMap, budgetItems);
     const budgetParityRaw = budgetParityScore != null
         ? 'Mois précédent : dépenses réelles vs cibles'
-        : hadSpending
-            ? 'Dépenses non rapprochées à un poste budget'
-            : 'Pas encore de dépenses à comparer';
+        : !budgetInputsUsable
+            ? 'Cible ou dépense illisible — corrige le poste dans Budget'
+            : hadSpending
+                ? 'Dépenses non rapprochées à un poste budget'
+                : 'Pas encore de dépenses à comparer';
 
     // 6. Poids des abonnements épinglés — coût MENSUEL (yearlyCost/12, pas de ×12) / revenu net mensuel.
     //    Aucun abo ÉPINGLÉ → indisponible (cohérent avec FIRE/budget) : un 100 « aucun fardeau » serait
@@ -155,6 +170,9 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
     const subscriptionLoadScore = subscriptions.length > 0
         ? computeSubscriptionLoadScore(subscriptions, monthlyIncome)
         : null;
+    // Même correctif de LIBELLÉ : un refus pour coût illisible affichait « Revenu requis » alors
+    // que le revenu était parfaitement valide (finding financial-integrity, panel PR #757).
+    const subsDiscarded = totalYearlyCostAudit(subscriptions).discarded;
 
     return sanitizeNonFinite([
         {
@@ -200,9 +218,11 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
             raw: budgetParityRaw,
             help: budgetParityScore != null
                 ? "Cible 100% : tu restes dans tes cibles par poste (hors épargne). Le score baisse avec le dépassement."
-                : hadSpending
-                    ? "Tes dépenses du mois dernier ne correspondent à aucun poste budget — vérifie les noms de tes postes."
-                    : "Catégorise des dépenses sur un mois complet pour mesurer ton adhérence au budget.",
+                : !budgetInputsUsable
+                    ? "Un poste de budget porte une cible, ou une dépense rapprochée, qui n'est pas un nombre exploitable. Corrige-la dans Budget pour réactiver la mesure."
+                    : hadSpending
+                        ? "Tes dépenses du mois dernier ne correspondent à aucun poste budget — vérifie les noms de tes postes."
+                        : "Catégorise des dépenses sur un mois complet pour mesurer ton adhérence au budget.",
             available: budgetParityScore != null,
         },
         {
@@ -213,8 +233,12 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
                 ? `${formatCAD(subMonthly)}/mois (${formatPercent(subLoadPct, 1)} du revenu net)`
                 : subscriptions.length === 0
                     ? 'Aucun abonnement épinglé'
-                    : 'Revenu requis',
-            help: "Cible <15% du revenu net en abonnements épinglés. Épingle tes abos dans « Charges fixes ».",
+                    : subsDiscarded > 0
+                        ? `${subsDiscarded} abonnement(s) au coût illisible — corrige-les dans Charges fixes`
+                        : 'Revenu requis',
+            help: subsDiscarded > 0
+                ? "Un abonnement épinglé porte un coût annuel qui n'est pas un nombre exploitable. Tant qu'il est là, le poids des abonnements ne peut pas être mesuré : un coût écarté rendrait le fardeau artificiellement LÉGER (mesuré : +7 points de score global chez un abonné lourd)."
+                : "Cible <15% du revenu net en abonnements épinglés. Épingle tes abos dans « Charges fixes ».",
             available: subscriptionLoadScore != null,
         },
     ]);

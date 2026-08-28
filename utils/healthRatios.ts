@@ -25,18 +25,35 @@ const clamp01 = (n: number): number => {
     return Math.max(0, Math.min(100, n));
 };
 
-/** Refus TRACÉ d'un score : `null` (l'UI rend « — ») + une ligne de diagnostic. Jamais un nombre. */
-function nonFiniteRefusal(quoi: string): null {
-    logErrorThrottled(`health-ratios-entree-non-finie:${quoi}`, {
+/**
+ * Refus TRACÉ d'un score : `null` (l'UI rend « — ») + une ligne de diagnostic. Jamais un nombre.
+ *
+ * ⚠️ La SIGNATURE de throttle est la `cause` seule, jamais le détail : `logErrorThrottled` garde un
+ * `Set` de module non purgé côté navigateur, donc une signature qui embarquerait une valeur
+ * VARIABLE (« 2 abonnements… » puis « 3 abonnements… ») cesserait de dédupliquer la CLASSE
+ * d'erreur pour ne dédupliquer que le compte exact — une ligne de journal par valeur rencontrée
+ * (finding code-reviewer, panel PR #757). Le détail vit dans le message, qui n'est pas la clé.
+ */
+function nonFiniteRefusal(cause: string, detail = ''): null {
+    logErrorThrottled(`health-ratios-entree-non-finie:${cause}`, {
         source: 'storage', severity: 'warning',
-        message: `Ratios de santé : ${quoi} — valeur non exploitable, score non calculé`,
+        message: `Ratios de santé : ${cause}${detail ? ` (${detail})` : ''} — valeur non exploitable, score non calculé`,
     });
     return null;
 }
 
 /** Cible MENSUELLE d'un poste budget (normalise la fréquence — mêmes facteurs que `Budget.tsx`). */
 export function monthlyTargetOf(item: Pick<BudgetCategory, 'target' | 'frequency'>): number {
-    const t = item.target || 0;
+    // [HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] `item.target || 0` absorbait un `NaN` en **0** — `NaN`
+    // est falsy — donc un poste corrompu DISPARAISSAIT du calcul, en amont de toute garde et sans
+    // une ligne de trace : mesuré, un poste de 1 500 $/mois s'évaporait (dépenses de consommation
+    // 2 100 $ → 600 $) et l'adhérence au budget passait de 92,86 à 91,67. La garde d'entrée de
+    // `computeBudgetParityScore` ne pouvait rien voir : elle recevait un `0` parfaitement fini.
+    // Distinction `REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION` : un champ ABSENT est de la
+    // rétrocompatibilité (un vieux blob Drive sans `target`) → `0`, silence légitime ; un champ
+    // PRÉSENT mais non fini est une CORRUPTION → on propage `NaN` jusqu'à la garde, qui refuse.
+    if (item.target === undefined || item.target === null) return 0;
+    const t = Number.isFinite(item.target) ? item.target : NaN;
     switch (item.frequency) {
         case 'Yearly': return t / 12;
         case 'Weekly': return t * 4.33;
@@ -53,10 +70,48 @@ export function monthlyTargetOf(item: Pick<BudgetCategory, 'target' | 'frequency
  * et `Budget.tsx`. Pur.
  */
 export function monthlyConsumptionExpenses(budgetItems: readonly BudgetCategory[]): number {
+    // [HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] Rend `NaN` dès qu'UN poste est illisible, et jamais une
+    // somme partielle : ce total alimente le taux d'épargne ET le coussin d'urgence
+    // (`utils/healthScore.ts`), deux métriques que ce champ corrompu empoisonnait sans que rien ne
+    // le voie. Mesuré avec `target: Infinity` — la somme valait `Infinity` et les deux scores
+    // tombaient à **0** (« tu épargnes 0 % », « 0 mois de coussin ») : deux chiffres alarmants,
+    // plausibles et faux. L'effet sur le score GLOBAL dépend de la fixture, donc il se cite avec
+    // elle : sur `[Loyer 1500, Épicerie 600]`, net 5 000 $/mois, 20 000 $ de liquidités, cible FIRE
+    // 1 M$, aucun abo ni transaction, poids par défaut → **74 → 21** (un ticket ou un commentaire
+    // qui donne un score sans sa fixture n'est pas re-dérivable — leçon du lot 30).
+    //
+    // La propagation est celle de l'addition, sans garde ici : `monthlyTargetOf` NORMALISE déjà
+    // toute cible illisible en `NaN` (jamais `±Infinity`), et `NaN` contamine une somme. Une
+    // sortie anticipée `if (!Number.isFinite(t)) return NaN` a été écrite puis RETIRÉE — aucune
+    // perturbation ne la faisait rougir, elle était morte. Le contrat de la paire
+    // (`monthlyTargetOf` normalise, la somme propage) est verrouillé par test.
     return budgetItems.reduce(
         (sum, b) => (isSavingsNature(b.nature) ? sum : sum + monthlyTargetOf(b)),
         0,
     );
+}
+
+/**
+ * [HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] Les entrées de la parité budget sont-elles LISIBLES ?
+ * Exporté parce que deux appelants ont besoin de la MÊME réponse et ne doivent pas la recalculer
+ * chacun de son côté : `computeBudgetParityScore` (pour refuser) et `utils/healthScore.ts` (pour
+ * choisir le bon LIBELLÉ). Sans ce partage, le refus héritait du message de l'état vide voisin —
+ * « Dépenses non rapprochées à un poste budget » alors que les dépenses ÉTAIENT rapprochées, ce
+ * qui envoie l'utilisateur corriger le mauvais champ (finding financial-integrity, panel PR #757).
+ * Un score faux remplacé par un diagnostic faux n'est pas un progrès.
+ */
+export function budgetParityInputsUsable(
+    actualsMap: Record<string, number>,
+    budgetItems: readonly BudgetCategory[],
+): boolean {
+    for (const item of budgetItems) {
+        if (isSavingsNature(item.nature)) continue;
+        const target = monthlyTargetOf(item);
+        if (!Number.isFinite(target)) return false;
+        if (target <= 0) continue;
+        if (!Number.isFinite(actualsMap[item.name] ?? 0)) return false;
+    }
+    return true;
 }
 
 /**
@@ -73,6 +128,12 @@ export function computeBudgetParityScore(
     actualsMap: Record<string, number>,
     budgetItems: readonly BudgetCategory[],
 ): number | null {
+    // Le REFUS passe par le prédicat partagé — même définition de « lisible » ici et au choix du
+    // libellé côté `healthScore`. La cause exacte reste tracée ci-dessous.
+    if (!budgetParityInputsUsable(actualsMap, budgetItems)) {
+        const cibleFautive = budgetItems.some((i) => !isSavingsNature(i.nature) && !Number.isFinite(monthlyTargetOf(i)));
+        return nonFiniteRefusal(cibleFautive ? 'cible de poste budget' : 'dépense réelle rapprochée');
+    }
     let budgetTotal = 0;
     let overspend = 0;
     for (const item of budgetItems) {
@@ -83,12 +144,9 @@ export function computeBudgetParityScore(
         // parfaitement plausible : `target: Infinity` rendait 100 (`overspend/∞ = 0` — score
         // PARFAIT à partir d'un poste corrompu), et une dépense réelle `NaN`/`Infinity` rendait
         // 0 via le clamp (« 100 % de dépassement »). Aucun n'était visible d'une garde de sortie.
-        if (!Number.isFinite(target)) return nonFiniteRefusal('cible de poste budget');
         if (target <= 0) continue;
         budgetTotal += target;
-        const actual = actualsMap[item.name] ?? 0;
-        if (!Number.isFinite(actual)) return nonFiniteRefusal('dépense réelle rapprochée');
-        overspend += Math.max(0, actual - target);
+        overspend += Math.max(0, (actualsMap[item.name] ?? 0) - target);
     }
     if (budgetTotal <= 0) return null;
     return clamp01(100 * (1 - overspend / budgetTotal));
@@ -130,7 +188,7 @@ export function computeSubscriptionLoadScore(
     // 20 $/mois, score 87,3 → 97,3, sans une ligne de trace). Un calcul qui publie un score doit
     // refuser ; l'écran de Planning, lui, garde le droit d'afficher la somme des abos lisibles.
     const { discarded } = totalYearlyCostAudit(subscriptions);
-    if (discarded > 0) return nonFiniteRefusal(`${discarded} abonnement(s) au coût annuel illisible`);
+    if (discarded > 0) return nonFiniteRefusal('abonnement au coût annuel illisible', `${discarded} écarté(s)`);
     const load = subscriptionsMonthlyCost(subscriptions) / monthlyIncome;
     return clamp01(100 * (1 - load / SUBSCRIPTION_LOAD_CEILING));
 }

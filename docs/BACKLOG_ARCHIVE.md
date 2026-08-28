@@ -12,7 +12,7 @@
 
 ## 2026-08-28 — Lot 31 : fermeture des angles morts du lot 30 (absorptions silencieuses, site d'appel unique)
 
-- [ ] **`[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]`** (S — findings silent-failure-hunter + financial-integrity
+- [x] **`[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]`** (S — findings silent-failure-hunter + financial-integrity
   MESURÉS, panel PR #756, PRÉ-EXISTANT) — deux métriques de santé traversent des absorptions
   SILENCIEUSES avant d'atteindre la garde `sanitizeNonFinite` : le `clamp01` local de
   `utils/healthRatios.ts` (`Number.isFinite(n) ? n : 0`) et `totalYearlyCost` de
@@ -23,7 +23,7 @@
   Classe `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`. ⚠️ Ces absorptions ont d'autres
   consommateurs : grep-les AVANT de durcir (la garde d'entrée de `computeSubscriptionLoadScore` a été
   durcie au lot 30, elle n'avait qu'un seul consommateur de production).
-  ✅ **Livré lot 31** (`claude/lot-31`), gate vert (4 884 tests, 459 fichiers). Les trois chemins RE-MESURÉS avant de coder, et ils vont
+  ✅ **Livré lot 31** (`claude/lot-31`), gate vert (4 888 tests, 459 fichiers). Les trois chemins RE-MESURÉS avant de coder, et ils vont
   dans les DEUX sens — c'est ce qui rend l'absorption dangereuse plutôt qu'imprécise : cible de
   poste `Infinity` → score 92,86 → **100** (parfait, depuis un poste corrompu) ; dépense réelle
   `NaN`/`Infinity` → 92,86 → **0** (« 100 % de dépassement ») ; coût d'abo `NaN`/`Infinity` →
@@ -34,8 +34,29 @@
   d'ENTRÉE tracées dans `computeBudgetParityScore` et `computeSubscriptionLoadScore` ; le
   `clamp01` local reste comme DERNIER filet mais TRACE désormais s'il tire. 6 tests, discriminés
   par deux perturbations (3 rouges puis 2 rouges).
+  ⚠️ **Le panel a trouvé que le premier jet fermait UN quart du trou.** Le même champ
+  (`budgetItems[].target`) empoisonnait QUATRE métriques, pas une : `monthlyTargetOf` faisait
+  `item.target || 0`, donc un `NaN` (falsy) était rabattu à **0** et le poste DISPARAISSAIT en
+  amont de toute garde — un poste de 1 500 $/mois évaporé, adhérence 92,86 → 91,67, aucune trace ;
+  et `monthlyConsumptionExpenses`, sans garde, propageait `Infinity` jusqu'au taux d'épargne et au
+  coussin d'urgence, qui tombaient tous deux à **0** (« tu épargnes 0 % », « 0 mois de coussin »)
+  avec un score global de 74 → **21**. Corrigé dans le même lot : `monthlyTargetOf` distingue
+  désormais le champ ABSENT (rétrocompat → 0, silence légitime) du champ PRÉSENT non fini
+  (corruption → `NaN` propagé jusqu'à la garde), et `healthScore` rend les deux métriques
+  dépendantes non mesurables. Mesuré après : les quatre affichent « — », le cas sain est
+  inchangé (74).
+  ⚠️ **Et un troisième tour a montré que le refus mentait à son tour** : la métrique refusée
+  héritait du message de l'état VIDE voisin — « Dépenses non rapprochées à un poste budget » alors
+  qu'elles l'étaient, « Revenu requis » alors que le revenu valait 5 000 $/mois. Un score faux
+  remplacé par un diagnostic faux n'est pas un progrès : les deux libellés nomment désormais leur
+  vraie cause, et le prédicat `budgetParityInputsUsable` est EXPORTÉ pour que le calcul et le
+  libellé ne puissent pas diverger. Consigné aussi : le refus n'est **pas neutre en risque** — il
+  retire la métrique du dénominateur, donc il pénalise l'abonné léger (−3 pts) et **flatte de
+  +7 points** l'abonné lourd dont la métrique valait 0/100 (mesuré par financial-integrity).
+  Rétrocompat prouvée au bit près sur 65 000 configurations saines, avec contrôle de sensibilité
+  (un mutant à 1e-6 sort 3 389 écarts, le lot en sort 0).
 
-- [ ] **`[AITOOLS-CALLSITE-UNIQUE-GARDE]`** (S — findings ai-reviewer, panel PR #756) — deux trous
+- [x] **`[AITOOLS-CALLSITE-UNIQUE-GARDE]`** (S — findings ai-reviewer, panel PR #756) — deux trous
   que `[MCP-WRITE-PARITY-GUARD]` (lot 30) ne ferme pas, aucun n'étant un défaut observé aujourd'hui :
   (a) `services/aiTools/agentLoop.ts` est le SEUL site qui déclare un tableau `tools` à l'API
   Anthropic, mais c'est une propriété de FAIT, non testée — un futur second site avec son propre

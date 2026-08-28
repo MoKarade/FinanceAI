@@ -7831,3 +7831,34 @@ dans `READ_SPECS`, ou dans les exclusions) masqueraient sa nature d'écriture au
 **Quand un défaut est déjà détecté et que seul le réflexe de correction est fautif, la bonne
 livraison est un commentaire, pas de la machinerie**
 (`UN-REGISTRE-UNIQUE-N-EST-PAS-UN-CHEMIN-UNIQUE`).
+
+## Leçon du lot 31 (revue) — 2026-08-28 : compter les métriques touchées par le CHAMP, pas par la fonction corrigée
+
+Le premier jet de `[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]` corrigeait `computeBudgetParityScore` et
+`computeSubscriptionLoadScore`, et le CHANGELOG annonçait « deux métriques ». Le panel a montré que
+c'était un quart du trou : le même champ, `budgetItems[].target`, en empoisonnait **quatre**.
+
+Deux mécanismes distincts, et le premier est le plus vicieux. `monthlyTargetOf` faisait
+`item.target || 0` — or **`NaN` est falsy**, donc une cible corrompue était rabattue à `0` *avant*
+d'atteindre ma garde d'entrée toute neuve, qui recevait un `0` parfaitement fini et ne voyait rien.
+Effet mesuré : un poste de 1 500 $/mois **disparaissait** du calcul (dépenses de consommation
+2 100 $ → 600 $), l'adhérence passait de 92,86 à 91,67, sans une ligne de trace. Le second : le même
+total alimente le taux d'épargne et le coussin d'urgence via `monthlyConsumptionExpenses`, qui
+n'avait aucune garde — avec `target: Infinity`, les deux tombaient à **0** (« tu épargnes 0 % de ton
+revenu », « 0 mois de coussin ») et le score global chutait de 74 à **21**. Trois chiffres alarmants,
+plausibles et faux, sur les deux surfaces qui affichent la santé.
+
+**Le geste** : devant une entrée corrompue, la question n'est pas « quelle fonction ai-je
+corrigée ? » mais **« qui LIT ce champ ? »** — un grep du champ, pas de la fonction. C'est le même
+raisonnement que `MODULE-ECRIT-HORS-CHECKLIST` et que « un flux moteur alimente PLUSIEURS
+registres », appliqué à une donnée de saisie. Et deux corollaires payés dans le même lot :
+
+- **`|| 0` sur une valeur qui peut être `NaN` est une absorption, pas un défaut** — elle transforme
+  « je ne sais pas » en « zéro » *en amont* de la garde qu'on vient d'écrire. Le remède distingue le
+  champ ABSENT (rétrocompatibilité d'un vieux blob → `0`, silence légitime) du champ PRÉSENT non
+  fini (corruption → propager jusqu'à la garde), exactement `REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION`.
+- **Une ligne qu'aucune perturbation ne fait rougir se retire.** J'avais ajouté une sortie anticipée
+  `if (!Number.isFinite(t)) return NaN` dans la somme ; elle était morte, parce que `monthlyTargetOf`
+  normalise déjà en amont. Elle est partie, et le commentaire dit pourquoi — une branche défensive
+  non testable rassure sans protéger
+  (`COMPTER-LES-METRIQUES-PAR-LE-CHAMP-PAS-PAR-LA-FONCTION-CORRIGEE`).

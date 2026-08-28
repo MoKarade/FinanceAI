@@ -17,7 +17,7 @@
 // un score REFUSE). Le refus est `null` — l'état « — » que l'UI rend déjà — jamais un nombre.
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { computeBudgetParityScore, computeSubscriptionLoadScore, subscriptionsMonthlyCost } from '../../utils/healthRatios';
+import { computeBudgetParityScore, computeSubscriptionLoadScore, subscriptionsMonthlyCost, monthlyConsumptionExpenses, budgetParityInputsUsable } from '../../utils/healthRatios';
 import { totalYearlyCost, totalYearlyCostAudit } from '../../utils/subscriptions';
 import { clearErrors, filterErrors, __resetErrorThrottle } from '../../services/errorLogger';
 import type { BudgetCategory, RecurringItem } from '../../types';
@@ -57,14 +57,55 @@ describe('[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] les entrées non finies REFUSENT 
         expect(warnings()).toHaveLength(0); // aucune fausse alerte sur le cas nominal
     });
 
-    it('cible de poste NON FINIE → null (elle rendait le score PARFAIT de 100)', () => {
-        // `target: Infinity` → `overspend / ∞ = 0` → 100. Un poste corrompu certifiait
-        // « tu tiens parfaitement tes cibles ».
-        expect(computeBudgetParityScore(ACTUALS, items(Infinity))).toBeNull();
+    it('cible de poste NON FINIE → null, quel que soit le SIGNE et y compris NaN', () => {
+        // Trois valeurs, trois mécanismes distincts — c'est pour ça qu'elles sont toutes testées :
+        //  · `Infinity` → `overspend / ∞ = 0` → **100**. Un poste corrompu certifiait « tu tiens
+        //    parfaitement tes cibles ».
+        //  · `NaN` → `item.target || 0` le rabattait à **0** (NaN est falsy), donc le poste
+        //    DISPARAISSAIT du calcul en amont de toute garde : dépenses de consommation 2 100 $ →
+        //    600 $, adhérence 92,86 → 91,67, aucune trace. La garde recevait un 0 parfaitement fini.
+        //  · `-Infinity` était déjà INERTE (`if (target <= 0) continue`) : il est refusé quand même,
+        //    choix FAIL-CLOSED assumé — traiter une cible illisible comme un poste à 0 $ la fait
+        //    ressembler à une saisie légitime.
+        for (const bad of [Infinity, NaN, -Infinity]) {
+            __resetErrorThrottle();
+            expect(computeBudgetParityScore(ACTUALS, items(bad)), `cible ${String(bad)}`).toBeNull();
+        }
         expect(warnings().some((e) => e.message.includes('cible de poste'))).toBe(true);
+        // Rétrocompat : un champ ABSENT n'est PAS une corruption (vieux blob Drive sans `target`)
+        // → il vaut 0 et le score se calcule sur les autres postes, sans alerte.
+        __resetErrorThrottle();
+        clearErrors();
+        const sansCible = [{ ...items(1500)[0], target: undefined as unknown as number }, items(1500)[1]];
+        expect(computeBudgetParityScore(ACTUALS, sansCible)).not.toBeNull();
+        expect(warnings()).toHaveLength(0);
     });
 
-    it('dépense réelle NON FINIE → null (elle rendait 0, soit « 100 % de dépassement »)', () => {
+    it('le total des DÉPENSES DE CONSOMMATION rend NaN dès un poste illisible, jamais une somme amputée', () => {
+        // Ce total alimente le taux d'épargne ET le coussin d'urgence. Mesuré avec `Infinity` : la
+        // somme valait `Infinity`, les deux scores tombaient à 0 (« tu épargnes 0 % », « 0 mois de
+        // coussin ») et le score global passait de 74 à 21 — trois chiffres alarmants et faux.
+        expect(monthlyConsumptionExpenses(items(1500))).toBe(2100); // anti-vacuité : le cas sain SOMME
+        // Un SEUL sentinelle pour « inexploitable » : `NaN`, jamais `±Infinity`. Sans la sortie
+        // anticipée, `Infinity + 600` rendrait `Infinity` — non fini lui aussi, donc le
+        // comportement AVAL serait identique, mais le contrat de la fonction dirait alors « je
+        // rends l'un des trois non-finis » au lieu de « je rends NaN ». Un consommateur futur qui
+        // testerait `> 0` (et non `isFinite`) verrait `Infinity` passer et `NaN` non : c'est
+        // exactement ce piège que la normalisation ferme.
+        for (const bad of [Infinity, NaN, -Infinity]) {
+            expect(monthlyConsumptionExpenses(items(bad)), `poste ${String(bad)}`).toBeNaN();
+        }
+        // Et surtout : jamais une somme PARTIELLE (600, la valeur de l'autre poste) — un total
+        // amputé est un nombre fini, donc crédible, donc invisible à toute garde de sortie.
+        expect(monthlyConsumptionExpenses(items(NaN))).not.toBe(600);
+    });
+
+    it('dépense réelle NON FINIE → null, quel que soit le sens de l\'erreur', () => {
+        // Les trois valeurs ne produisaient PAS le même faux résultat, et c'est pour ça qu'elles
+        // sont toutes là : `NaN` et `+Infinity` rendaient **0** (« 100 % de dépassement »), tandis
+        // que `-Infinity` rendait **97,619** — `Math.max(0, -∞ - 1500)` vaut 0, donc aucun
+        // dépassement compté, donc un score presque parfait. Deux directions opposées pour la même
+        // corruption ; ranger les trois sous « → 0 » aurait été faux (finding financial-integrity).
         for (const bad of [NaN, Infinity, -Infinity]) {
             __resetErrorThrottle();
             expect(computeBudgetParityScore({ ...ACTUALS, Loyer: bad }, items(1500))).toBeNull();
@@ -78,6 +119,21 @@ describe('[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] les entrées non finies REFUSENT 
             expect(computeSubscriptionLoadScore(subs(bad), 5000)).toBeNull();
         }
         expect(warnings().some((e) => e.message.includes('abonnement'))).toBe(true);
+    });
+
+    it('le refus expose sa PROPRE cause, jamais le message de l\'état vide voisin', () => {
+        // Un score faux remplacé par un diagnostic faux n'est pas un progrès : avant ce correctif,
+        // un refus pour donnée illisible héritait de « Dépenses non rapprochées à un poste budget »
+        // (alors qu'elles l'étaient) et de « Revenu requis » (alors que le revenu était valide) —
+        // deux phrases qui envoient l'utilisateur corriger le mauvais champ.
+        // Le prédicat `budgetParityInputsUsable` est la SOURCE UNIQUE partagée par le calcul et par
+        // le choix du libellé : ils ne peuvent pas diverger.
+        expect(budgetParityInputsUsable(ACTUALS, items(1500))).toBe(true);   // anti-vacuité
+        expect(budgetParityInputsUsable(ACTUALS, items(NaN))).toBe(false);
+        expect(budgetParityInputsUsable({ ...ACTUALS, Loyer: NaN }, items(1500))).toBe(false);
+        // Et il répond bien la MÊME chose que le calcul : lisible ⇔ score non nul.
+        expect(computeBudgetParityScore(ACTUALS, items(1500))).not.toBeNull();
+        expect(computeBudgetParityScore(ACTUALS, items(NaN))).toBeNull();
     });
 
     it('les DEUX portes existent : le total LIT (et écarte), l\'audit compte ce qui a été écarté', () => {

@@ -7862,3 +7862,47 @@ registres », appliqué à une donnée de saisie. Et deux corollaires payés dan
   normalise déjà en amont. Elle est partie, et le commentaire dit pourquoi — une branche défensive
   non testable rassure sans protéger
   (`COMPTER-LES-METRIQUES-PAR-LE-CHAMP-PAS-PAR-LA-FONCTION-CORRIGEE`).
+
+## Leçon du lot 31 (quatre passes) — 2026-08-28 : quand chaque correctif fabrique le suivant, c'est la MÉTHODE de correction qui est en cause
+
+Neuf défauts sur un seul lot, tous à moi, et — c'est le fait qui compte — **chacun né du correctif
+de la passe précédente**. La chaîne se lit d'un bloc :
+
+1. Je pose une garde de SORTIE (lot 30) qui filtre le non-fini.
+2. Elle ne voit pas ce qui est absorbé en un nombre plausible → je pose des gardes d'ENTRÉE.
+3. Elles arrivent trop tard : `item.target || 0` rabat un `NaN` (falsy) en `0` **avant** elles, et
+   trois métriques voisines lisent le même champ sans aucune garde → je durcis `monthlyTargetOf` et
+   je propage.
+4. Le refus hérite alors du message de l'état VIDE voisin : « Revenu requis » avec un revenu valide,
+   « Dépenses non rapprochées » alors qu'elles l'étaient → **un score faux remplacé par un
+   diagnostic faux n'est pas un progrès**. J'extrais `budgetParityInputsUsable` en source unique.
+5. Le nouveau libellé masque à son tour la vraie cause quand le revenu manque → je re-dérive la
+   condition… **en la recopiant**, trois fois, dont deux dans la même fonction.
+6. Cette copie est exactement la duplication que l'étape 4 venait d'éviter, une métrique plus loin.
+
+Le motif ne se voit qu'en le regardant de haut : à chaque tour j'ai corrigé **le symptôme là où il
+apparaissait**, avec le geste local le moins cher. Or les six étapes ont la même forme —
+« une information sur l'état de la donnée doit voyager d'un producteur vers plusieurs
+consommateurs » — et le geste local ne l'a jamais servie. Ce qui a fini par tenir, ce sont les
+**prédicats exportés** (`budgetParityInputsUsable`, `incomeUsableForRatios`) : une définition, tous
+les consommateurs, y compris celui qui ne calcule pas mais qui CHOISIT LE LIBELLÉ. Le libellé est un
+consommateur de la même vérité que le calcul, et l'oublier fabrique précisément le mensonge qu'on
+croyait corriger.
+
+**Trois règles réutilisables**, chacune payée une fois ici :
+
+- **La garde arrive à l'endroit où la donnée est encore reconnaissable.** Une garde de sortie ne voit
+  pas un fini plausible ; une garde d'entrée ne voit pas ce qu'un `|| 0` a rabattu avant elle. Avant
+  d'écrire la garde, demander **où la valeur perd son identité**, et se placer en amont de ce point.
+- **Compter les consommateurs par le CHAMP, pas par la fonction qu'on corrige.** Un grep de
+  `budgetItems[].target` sortait quatre métriques ; un grep de la fonction corrigée en sortait une.
+- **Un correctif de diagnostic se re-relit comme un correctif de calcul.** Les messages « Revenu
+  requis » / « Dépenses non rapprochées » n'ont déplacé aucun dollar et ont pourtant envoyé
+  l'utilisateur corriger le mauvais champ deux fois de suite. Un texte affiché est une AFFIRMATION :
+  il se prouve comme un chiffre (`UN-CORRECTIF-LOCAL-REPETE-EST-LE-SIGNE-D-UNE-SOURCE-UNIQUE-MANQUANTE`).
+
+**Corollaire de méthode, sur les passes elles-mêmes.** Le dépôt écrit déjà « trois passes, trois
+récoltes » ; ce lot en a demandé quatre, et la quatrième a été lancée avec une question NOMMÉE
+(« mon dernier test est-il circulaire ? ») plutôt qu'un mandat général. Une passe qui cherche
+« quelque chose » trouve du bruit ; une passe qui cherche **le défaut que le correctif précédent a
+pu créer** trouve ce défaut. Le doute qui la déclenche vaut d'être écrit dans le prompt.

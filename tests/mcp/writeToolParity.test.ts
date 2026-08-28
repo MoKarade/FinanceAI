@@ -100,8 +100,15 @@ describe('[MCP-WRITE-PARITY-GUARD] serveur MCP ↔ registre du chat in-app', () 
         for (const name of SERVER_ONLY) {
             expect(withoutStore.some((t) => t.name === name), `exclusion périmée : « ${name} » n'est plus exposé`).toBe(true);
         }
+        // Même ordre que le test WRITE ci-dessus, et pour la même raison : l'ÉGALITÉ porte la garde,
+        // le plancher de volume vient APRÈS. Ce test jumeau avait gardé l'ordre inverse — un retrait
+        // dans `READ_SPECS` y aurait rougi sur « expected 10 to be >= 11 » au lieu du vrai message
+        // de parité (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`, 3e passe panel PR #756).
+        expect(
+            serverReadNames,
+            'un tool de lecture existe dans UN SEUL des deux registres (hors exclusions déclarées)',
+        ).toEqual(registryReadNames);
         expect(registryReadNames.length).toBeGreaterThanOrEqual(11);
-        expect(serverReadNames).toEqual(registryReadNames);
     });
 
     it('la DESCRIPTION servie par le serveur est celle de la spec (aucune divergence de contrat pour le LLM)', async () => {

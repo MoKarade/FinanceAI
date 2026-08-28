@@ -7754,12 +7754,16 @@ qui produisent un fini PLAUSIBLE lui échappent par construction** — il faut l
 
 ## Leçon du lot 30 (revue) — 2026-08-28 : un `replace` global d'un jeton de code réécrit aussi le COMMENTAIRE qui le nomme
 
-Pour seeder `services/testTransactions.ts`, j'ai remplacé ses six `Math.random()` par `rand()` avec
-un `s.replace('Math.random()', 'rand()')` global, en asseyant le compte (`assert n == 6`). Le compte
-était juste, la substitution ne l'était pas : mon propre en-tête venait d'être écrit et contenait
+Pour seeder `services/testTransactions.ts`, j'ai remplacé ses `Math.random()` par `rand()` avec un
+`s.replace('Math.random()', 'rand()')` global, en asseyant le compte (`assert n == 6`). L'assertion
+est passée — et c'est le cœur du piège : le fichier n'en portait que **CINQ** dans son code (re-compté
+à `origin/main`). Le sixième était mon propre en-tête, écrit deux minutes plus tôt, qui contenait
 « Ce générateur utilisait `Math.random()` NU » — devenu « utilisait `rand()` NU », une phrase qui ne
 veut plus rien dire et qui a été **commitée puis poussée**. L'assertion de compte ne protège de rien
-ici : elle compte les occurrences, pas leur NATURE. C'est la variante « code » de
+ici — pire, elle a **certifié** la substitution : elle comptait 5 occurrences de code + 1 de prose et
+trouvait bien 6. Une assertion de compte mesure des occurrences, jamais leur NATURE ; quand le motif
+compté existe des deux côtés de la frontière code/commentaire, elle valide exactement ce qu'elle
+devrait interdire. (Et le « six » est resté faux dans trois documents jusqu'à la 3e passe du panel.) C'est la variante « code » de
 `UN-REMPLACEMENT-GLOBAL-DANS-UNE-ARCHIVE-FALSIFIE-UN-RECIT` : là-bas le global falsifiait un récit
 daté, ici il falsifie la prose qui EXPLIQUE le changement — et d'autant plus facilement que la bonne
 façon de documenter un motif qu'on retire est justement de l'écrire.

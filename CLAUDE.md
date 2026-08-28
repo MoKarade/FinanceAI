@@ -323,7 +323,8 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   jour (`UN-REMPLACEMENT-GLOBAL-DANS-UNE-ARCHIVE-FALSIFIE-UN-RECIT`).
 - Variante CODE du même piège : un `replace` GLOBAL d'un jeton (`Math.random()` → `rand()`) réécrit
   aussi le COMMENTAIRE qui le nomme — mon en-tête est devenu « utilisait `rand()` NU », commité et
-  poussé, et l'assertion de COMPTE (`n == 6`) ne protège de rien (elle compte, elle ne trie pas).
+  poussé. ⚠️ L'assertion de COMPTE n'a pas protégé, elle a **certifié** : `n == 6` était vrai parce
+  qu'elle additionnait 5 occurrences de CODE et 1 de PROSE (le fichier n'en portait que cinq).
   Remplacer sur la source DÉCOMMENTÉE, ou relire le DIFF et non l'intention
   (`UN-REPLACE-GLOBAL-DE-JETON-REECRIT-LE-COMMENTAIRE-QUI-LE-NOMME`).
 - Une **fixture aux mauvais NOMS DE CHAMPS est une fixture VIDE**, en silence : `{ amount, frequency:

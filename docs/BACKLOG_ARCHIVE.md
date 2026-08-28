@@ -80,7 +80,7 @@
   Conséquence directe : **toute comparaison avant/après sur ce persona est impossible sans graine**
   — le panel a dû injecter un LCG pour obtenir sa preuve bit-identique. C'est le persona qu'un
   audit prend spontanément. Fix : graine injectable (le dépôt a déjà ce patron pour Monte Carlo).
-  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 874 tests, 457 fichiers). Les 6
+  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 874 tests, 457 fichiers). Les 5
   `Math.random()` de `services/testTransactions.ts` passent à un mulberry32 seedé, graine par
   défaut 42 (même convention que `buildPersonaTransactions`) et surchargeable. Le PRNG est
   RÉUTILISÉ depuis `services/testPersonas/transactions.ts` (désormais exporté) plutôt que

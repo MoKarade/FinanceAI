@@ -1,6 +1,6 @@
 // tests/services/testTransactionsDeterministe.test.ts
 //
-// [TEST-PERSONA-NON-DETERMINISTE] `generateTestTransactions` tirait 6 valeurs à `Math.random()`
+// [TEST-PERSONA-NON-DETERMINISTE] `generateTestTransactions` tirait 5 valeurs à `Math.random()`
 // NU, et c'est le générateur du persona PAR DÉFAUT `couple-confort` — celui qu'un audit prend
 // spontanément. Deux exécutions du MÊME code donnaient deux jeux de montants différents, donc
 // aucune comparaison avant/après possible sans injecter une graine à la main (ce que le panel de la

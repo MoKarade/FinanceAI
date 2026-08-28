@@ -47,6 +47,48 @@
   ⚠️ Le correctif n'est pas mécanique : `raw` est une CHAÎNE déjà formatée, donc l'envelopper dans
   `PrivateAmount` masquerait aussi la prose autour du montant. Il faut probablement séparer le
   montant du libellé dans `HealthMetricRow` avant de pouvoir masquer l'un sans l'autre.
+- [ ] **`[HISTORY-OBJET-VIDE-PARTAGE]`** (S — finding financial-integrity MESURÉ, panel PR #759,
+  PRÉ-EXISTANT) — même classe que `[TEST-PERSONA-FIXTURE-PARTAGEE]` (lot 33), encore vivante en
+  production : `services/history/dayTransactions.ts` et `services/history/monthCategories.ts`
+  déclarent chacun une constante de module `VIDE` (`{ counted: [], excluded: [], netCounted: 0 }`)
+  et la RENVOIENT telle quelle sur le chemin « aucune transaction ». Mesuré : deux appels rendent
+  le même objet (`===`), tableaux compris ; après un `push` sur un résultat vide, un NOUVEL appel
+  voit `counted.length = 1` et `netCounted = −999 999`, côté catégories `depenses.length = 1` et
+  `totalDepenses = 999 999`.
+  ⚠️ **Latent, pas actif** : l'unique consommateur (`components/projection/FutureDetailModal.tsx`)
+  lit sans muter — aucun `.sort/.push/.reverse/.splice`. Mais le type rendu n'est PAS `readonly` :
+  le premier tri d'affichage ajouté sur ces listes empoisonne définitivement le chemin « aucune
+  transaction », avec des montants FANTÔMES dans le détail du jour et la ventilation mensuelle.
+  Correctif : construire l'objet à chaque appel, ou typer le retour `Readonly<…>` + `ReadonlyArray`
+  (le second rend l'erreur impossible à écrire, le premier la rend inoffensive).
+- [ ] **`[ENG-RETURNRATE-SINGULIER-NON-CABLE]`** (S — découvert en instruisant, panel PR #759) —
+  `projection.returnRate` (SINGULIER) ne pilote AUCUNE croissance du moteur : `computeScenarioOverrides`
+  (`services/projection/setupSimulation.ts`) lit `projection.returnRates`, la carte par compte, et
+  jamais le singulier. Vérifié par grep : ses seuls lecteurs sont `components/realestate/RealEstateWorkspace.tsx`
+  et `components/TabRouter.tsx` — de l'UI, pas le moteur. Même famille que le bug documenté dans ce
+  même fichier (« lisait `projection.rates`… toujours undefined », 2026-05-22), et que
+  `[PARAMÈTRE-HOMONYME-À-DEUX-NIVEAUX]` du `CLAUDE.md`.
+  ⚠️ **Il a bien DEUX consommateurs réels, tous deux côté UI** — mon énumération « seulement
+  `RealEstateWorkspace` et `TabRouter` » était incomplète : `TabRouter.tsx:217` ne fait que
+  TRANSMETTRE le champ, via `LifeProjects.tsx`, jusqu'à `components/LifeEvents.tsx:94`, où
+  `rate = returnRate / 100` est composé sur 20 ans pour produire le « coût d'opportunité » AFFICHÉ
+  à l'utilisateur. Retirer ou recâbler le champ touche donc aussi `LifeProjects.tsx` et
+  `LifeEvents.tsx` (finding silent-failure-hunter, 3e passe PR #759).
+  ⚠️ **Amplitude bien plus large que le seul protocole de mesure** : des dizaines de fixtures de
+  test (`tests/services/*.test.ts`, `tests/components/*.test.tsx`) fixent `returnRate: 6` (ou 4, 5)
+  sans jamais fixer `returnRates` — elles tournent donc silencieusement sur les taux par défaut
+  (7 / 6,5 / 6,5 / 10 / 3), pas sur celui qu'elles croient fixer. À vérifier avant de conclure
+  qu'un de ces tests mesure ce qu'il annonce.
+  ⚠️ **À NE PAS confondre avec `[COASTFIRE-CROISSANCE-FIGEE]`**, qui cite la même phrase
+  « indépendant de `projection.returnRate` » : celui-là vise un CONSOMMATEUR figé à 5 %/an et
+  lui-même sans lecteur ; celui-ci vise le CHAMP SOURCE, qui n'alimente aucune croissance du
+  moteur. Câbler l'un ne règle pas l'autre — et le second rappelle qu'un champ câblé reste sans
+  effet si ses lecteurs n'en ont pas.
+  ⚠️ **Ce n'est pas un ticket « nettoyer un champ mort »** : il a déjà fait dérailler DEUX mesures
+  money-critical (panel PR #759), qui croyaient simuler à 5 % et tournaient en réalité sur les taux
+  par défaut. Avant de coder : établir si le champ doit être RETIRÉ (et l'UI recâblée sur
+  `returnRates`) ou CÂBLÉ (et alors il faut décider ce qu'il écrase de la carte par compte) — la
+  réponse change ce que voit l'utilisateur, donc elle se demande à Marc.
 - [ ] **`[GUARD-STRIPCOMMENTS-CONSOLIDER]`** (S — dette relevée au lot 31) — le dépôt porte SIX
   décommenteurs `stripComments` recopiés (`tests/aiTools/specFiniteGuard.test.ts`,
   `tests/services/assetFxGuard.test.ts`, `utils/fiscalConstGuardV2.ts`, `utils/chartDataSumGuard.ts`,
@@ -71,6 +113,60 @@
   corrompu est nettement plus grave que le score d'écran corrigé. **La garde doit vivre à la
   FRONTIÈRE de chargement** (store / restauration Drive), pas fichier par fichier —
   classe `DECISION-PRIVACY-UNE-SEULE-SORTIE` appliquée à la validation d'entrée.
+  ✅ **INSTRUIT (lot 33) — mesuré, pas déduit.** `buildSimulationParamsFromState` sur le persona
+  `couple-confort`, en listant les champs numériques NON FINIS des paramètres rendus (fixtures
+  clonées par cas — voir l'avertissement plus bas) :
+  | Donnée corrompue | `baseNetAnnual` | `baseGrossAnnual` | Champs non finis |
+  |---|---|---|---|
+  | *(sain)* | 115 200 | 164 400 | — |
+  | `netSalary: Infinity` | **Infinity** | 164 400 | `baseNetAnnual`, `baseMonthlyExpenses` (= `NaN`) |
+  | `netSalary: NaN` | **52 800** | 164 400 | *aucun* |
+  | `grossSalary: Infinity` | 115 200 | **Infinity** | `baseGrossAnnual` |
+  Les DEUX modes de panne existent donc à la frontière du moteur, et ils sont OPPOSÉS : `Infinity`
+  se propage (et `∞ − ∞` fabrique un `NaN` dans les dépenses mensuelles), tandis que `NaN` est
+  ABSORBÉ — le salaire de l'utilisateur 0 (5 200 $/mois, soit **62 400 $/an**) s'évapore sans une
+  trace, et rien dans les paramètres ne paraît anormal. C'est la paire décrite par la leçon du
+  lot 31, un cran plus grave : la projection entière en dépend, pas un score d'écran.
+  ⚠️ **Fourche à trancher AVANT de coder** (money-critical, M) — (i) OÙ vit la garde : hydratation
+  du store, restauration Drive, ou `buildSimulationParams` ? (ii) QUE fait-elle d'une valeur
+  mauvaise : refuser la projection, borner la valeur, ou tracer et continuer ? Chaque réponse a un
+  coût différent pour l'utilisateur. Convention §7 : plan court + OK de Marc avant de coder.
+  ⚠️ **IMPACT du mode `NaN` : ORDRE DE GRANDEUR seulement, le chiffre exact n'est PAS reproductible.**
+  Deux agents ont mesuré le même scénario annoncé (persona par défaut, 30 ans, `savingsMode:
+  'budget'`, inflation 2 %) et ont obtenu des résultats DIFFÉRENTS : `6 742 127 $ → −403 059 $`
+  (delta −7 145 186 $) contre `7 236 428 $ → 286 795 $` (delta −6 949 633 $) — **6,83 % d'écart sur
+  la base, 2,81 % sur les deltas** (recalculé à la main ; j'avais recopié « ~7 % » et « ~10 % » du
+  rapport, dont le second confondait deux grandeurs, et un delta faux d'un dollar). Ce n'est pas de
+  l'arrondi : les deux mesures ne décrivent pas le même scénario. **Ce qui est SOLIDE et suffit à trancher la
+  fourche** : les deux mesures s'accordent sur l'ordre de grandeur (**environ −7 M$**, soit la
+  quasi-totalité du patrimoine projeté) ET sur le fait qualitatif décisif — **0 valeur non finie
+  sur les 361 points de `chartData`**. C'est le plus grave des deux modes précisément parce que
+  rien ne le signale : `Infinity` finit par se voir, `NaN` absorbé en 0 produit une projection
+  lisse et entièrement fausse.
+  ⚠️ **Cause probable de l'écart, à trancher avant de re-mesurer** [Probable] : le paramètre
+  « rendement 5 % » des deux protocoles a été passé en `projection.returnRate` (SINGULIER) — or
+  `computeScenarioOverrides` (`services/projection/setupSimulation.ts`) lit `projection.returnRates`
+  (la carte PAR COMPTE) et **jamais** le singulier (vérifié : les seuls lecteurs de `returnRate` sont
+  `RealEstateWorkspace.tsx`, et `TabRouter.tsx` qui le TRANSMET jusqu'à `LifeEvents.tsx` où il
+  pilote un vrai calcul montré à l'utilisateur — voir le ticket dédié). Les deux mesures ont donc probablement
+  tourné sur les taux par défaut (7 / 6,5 / 6,5 / 10 / 3), et leurs autres paramètres non déclarés
+  divergeaient. **Avant de citer un montant exact, écrire un script de reproduction COMMITTÉ** qui
+  fixe explicitement tous les paramètres, `returnRates` compris — un jetable ne se relance pas.
+  ⚠️ **Leçon payée ici** : j'ai publié ces chiffres avec un ✅ « CHIFFRÉ » sur la foi d'un rapport
+  d'agent, sans les mesurer moi-même. Un rapport d'agent n'est pas une source, exactement comme un
+  ticket n'en est pas une.
+  ⚠️ **Reproduire la mesure avant de s'en servir** (`MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE`) : test
+  jetable appelant `buildSimulationParamsFromState(state, { startYear: 2026, startMonth: 0 })` puis
+  un scan **RÉCURSIF** des non-finis. ⚠️ Un scan de PREMIER NIVEAU
+  (`Object.entries(params).filter(…)`) ment sur le cas `NaN` : il annonce « aucun non fini » alors
+  que `params.config === state.config` (passage par RÉFÉRENCE, `buildSimulationParams.ts`), donc
+  `config.users[0].netSalary` VAUT `NaN` dans les paramètres — et c'est cette valeur-là qui pilote
+  le moteur. La colonne « aucun » du tableau ci-dessus vaut donc **au premier niveau seulement**.
+  C'est la classe que le lot 33 combat, retrouvée dans ma propre méthode de reproduction
+  (finding financial-integrity, panel PR #759).
+  ⚠️ **Cloner l'état par cas** : une première version de cette mesure était FAUSSE
+  (`grossSalary: Infinity` semblait aussi écraser le net à 52 800) parce que les builds du persona
+  partageaient leurs objets — cf. `[TEST-PERSONA-FIXTURE-PARTAGEE]`, corrigé au lot 33.
 - [ ] **`[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE]`** (S — findings silent-failure-hunter,
   panel PR #756) — trois angles morts de restitution de l'état « donnée corrompue » introduit au
   lot 30 : (a) `components/future/FutureHealthSummary.tsx` n'affiche que le score global — une

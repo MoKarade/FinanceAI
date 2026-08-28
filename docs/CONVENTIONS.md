@@ -7935,3 +7935,95 @@ faisant VARIER avec l'état réel, pas en l'allongeant. Et une explication qui n
 `title` sur un élément non focusable n'est pas accessible du tout — la rendre aussi en `sr-only`
 coûte une ligne et ne dépend plus d'un survol
 (`UN-FAIT-SUR-LA-DONNEE-DOIT-ATTEINDRE-TOUS-SES-CANAUX`).
+
+## Leçon du lot 33 — 2026-08-28 : une fixture partagée ne fait pas échouer un test, elle en fabrique un FAUX
+
+Ce lot n'était pas au backlog : il vient d'une mesure qui m'a menti. En instruisant
+`[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`, je relevais l'effet de trois corruptions sur les
+paramètres du moteur, un cas par ligne. Le troisième cas — `grossSalary: Infinity`, qui ne touche
+pas au net — annonçait `baseNetAnnual = 52 800` au lieu de 115 200. Aucune explication dans le code
+lu. La vraie cause était deux lignes plus haut : `buildCoupleConfort` rendait les **mêmes objets**
+à chaque appel — les dix champs réutilisés depuis des constantes de module, identiques au sens de
+`===` entre deux `build()` —, donc la corruption du cas précédent survivait dans le suivant.
+
+**Ce qui rend cette classe dangereuse**, c'est qu'elle ne produit aucun rouge. Un test qui partage
+sa fixture ne casse pas : il mesure autre chose que ce qu'il annonce, et publie un chiffre
+plausible. J'ai failli écrire ce 52 800 dans un ticket money-critical — il y serait devenu un fait.
+Ce qui l'a attrapé, c'est la seule discipline qui vaille ici : **re-mesurer avant de citer**
+(`MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE`), et se demander *pourquoi* un chiffre surprend au lieu de
+le recopier.
+
+**Le geste** : quand un relevé multi-cas donne un résultat qu'aucune lecture du code n'explique,
+soupçonner l'ISOLATION avant le code testé — cloner l'état par cas et refaire le relevé coûte une
+minute. Et côté producteur, une fixture réutilisable se construit FRAÎCHE : la copie doit être
+PROFONDE, parce que `{ ...CONFIG }` partage encore le tableau `users` et `[...ASSETS]` partage
+encore chaque actif — or c'est exactement à ce niveau qu'on mute.
+
+**Corollaire de périmètre — et de mesure trop étroite.** Mon premier relevé comparait l'identité de
+PREMIER NIVEAU et concluait « un seul persona touché ». C'était faux, et la faute est instructive :
+le test d'identité est structurellement **aveugle à une copie superficielle**, puisqu'un littéral
+`config` neuf à chaque appel suffit à le satisfaire tout en partageant encore `users[0]`. Étendu à
+la PROFONDEUR sur les sept personas — ce que le panel a exigé —, il a révélé que les **six autres**
+partageaient eux aussi leur `User`. Une garde qui ne teste que le niveau où l'on a déjà corrigé
+mesure son propre correctif ; les offenders révélés en l'élargissant sont le vrai périmètre
+(`REJOUER-L-OUTIL-ELARGI-AVANT-DE-CROIRE-QU-IL-N-Y-A-RIEN`). Le persona **par défaut** restait le
+plus atteint (dix champs), exactement la même cible que `[TEST-PERSONA-NON-DETERMINISTE]` au lot 30.
+Deux fois de suite, le défaut d'outillage s'est logé dans le fixture que tout le monde prend sans
+réfléchir. Quand un défaut de cette famille apparaît, vérifier D'ABORD le chemin par défaut : c'est
+celui dont personne ne relit jamais la construction
+(`UNE-FIXTURE-PARTAGEE-NE-CASSE-PAS-UN-TEST-ELLE-LE-REND-FAUX`).
+
+### Corollaire du lot 33 — un COMPTE écrit sans être compté
+
+Le panel a relevé que j'avais écrit « `structuredClone` sur les **sept** constantes réutilisées »
+alors qu'il y en a **dix** — le sept était le nombre des PERSONAS, correct trois lignes plus haut,
+recopié au mauvais endroit. Troisième compte faux de la session après « les 6 `Math.random()` »
+(il y en avait cinq, le sixième était mon propre commentaire) et le « 74 → 21 » cité sans sa
+fixture.
+
+Le motif est stable et il n'a rien à voir avec l'attention : **un nombre écrit à côté d'un autre
+nombre du même texte se contamine**. Le remède n'est pas de « faire attention », c'est de compter
+avec la machine au moment d'écrire — `grep -c`, `wc -l`, une assertion — et de ne jamais reprendre
+un chiffre voisin de mémoire. Un compte est une mesure comme une autre
+(`UN-COMPTE-ECRIT-SANS-ETRE-COMPTE-EST-FAUX-UNE-FOIS-SUR-TROIS`).
+
+### Corollaire du lot 33 — un rapport d'AGENT n'est pas une source, exactement comme un ticket
+
+Le dépôt écrit depuis longtemps « un ticket n'est pas une source, même quand il dit MESURÉ ». Ce
+lot ajoute le cas voisin, et il coûte pareil : j'ai publié dans `BACKLOG.md`, avec un ✅ **CHIFFRÉ**,
+un impact de « 6 742 127 $ → −403 059 $, soit −7 145 187 $ » sur la foi d'un rapport d'agent, sans
+l'avoir mesuré moi-même. La passe suivante a rejoué le même scénario annoncé et obtenu
+**7 236 428 $ → 286 795 $** — 6,83 % d'écart sur la base, 2,81 % sur les deltas. Deux mesures, deux
+résultats, aucun reproductible à partir de ce qui était écrit.
+
+⚠️ **Et la suite est le vrai enseignement.** Dans le paragraphe même où je consignais « ne recopie
+pas un chiffre que tu n'as pas mesuré », j'en ai recopié **trois** du rapport de l'agent : un
+« ~10 % d'écart sur le delta » qui ne se recalcule pas (l'écart réel entre les deux deltas est
+2,81 % — le 10 % comparait deux ratios *delta/base*, une grandeur jamais nommée), un delta faux
+d'un dollar (`6 742 127 − (−403 059) = 7 145 186`, pas 187), et une énumération de lecteurs
+présentée comme « vérifiée par grep » qui manquait un consommateur RÉEL (`TabRouter` ne fait que
+transmettre le champ jusqu'à `LifeEvents.tsx`, où il pilote un coût d'opportunité affiché).
+
+Écrire la règle ne l'applique pas. Ce qui l'applique, c'est de faire le calcul **dans le même
+geste que l'écriture** — ouvrir la calculette sur les deux nombres qu'on aligne, refaire le grep
+qu'on dit avoir fait. La règle se respecte à l'endroit précis où on la formule, ou pas du tout.
+
+La cause s'est révélée instructive : les deux protocoles disaient « rendement 5 % » et passaient
+`projection.returnRate` — **un champ que le moteur ne lit pas** (`computeScenarioOverrides` lit
+`projection.returnRates`, la carte par compte). Les deux tournaient donc sur les taux par défaut,
+avec d'autres paramètres non déclarés qui divergeaient. Un paramètre qu'on croit fixer et qui
+n'atteint rien ne rend pas la mesure bruyante : il la rend **muette et fausse**, et deux mesures
+faites ainsi peuvent différer sans que ni l'une ni l'autre ne soit reproductible.
+
+**Trois règles qui en sortent :**
+
+- **Ce qui survit à un désaccord de mesure, c'est l'ordre de grandeur et le fait QUALITATIF.** Ici,
+  les deux accords qui suffisent à trancher la fourche : ≈ −7 M$ (la quasi-totalité du patrimoine
+  projeté) et **0 valeur non finie sur 361 points**. Publier ça, pas un montant au dollar.
+- **Un montant money-critical cité dans le dépôt exige un script de reproduction COMMITTÉ**, qui
+  fixe explicitement TOUS les paramètres. Un test jetable ne se relance pas, et « le scénario était
+  X » n'est pas un protocole tant que chaque paramètre n'y est pas nommé avec sa valeur.
+- **Avant de citer un paramètre de mesure, vérifier qu'il est CÂBLÉ** — grep son lecteur réel. Le
+  dépôt a déjà la leçon sous `UN-PARAMÈTRE-HOMONYME-À-DEUX-NIVEAUX` ; elle vaut aussi pour les
+  paramètres d'un protocole de mesure, pas seulement pour le code de production
+  (`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE`).

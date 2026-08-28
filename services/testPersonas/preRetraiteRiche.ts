@@ -20,7 +20,12 @@ const robert: User = {
 
 export function buildPreRetraiteRiche(): Partial<AppState> {
     return {
-        config: { users: [diane, robert], splitMode: '50/50' },
+        // [TEST-PERSONA-FIXTURE-PARTAGEE] Les `User` sont des constantes de MODULE : les mettre
+        // telles quelles dans la config faisait partager `config.users[0]` entre deux `build()`
+        // — mesuré sur les SIX personas non-`couple-confort`. Le test d'identité de premier
+        // niveau ne le voyait pas (le littéral `config` est neuf à chaque appel) ; seul le
+        // contrôle de PROFONDEUR l'attrape (finding financial-integrity, panel PR #759).
+        config: { users: structuredClone([diane, robert]), splitMode: '50/50' },
         budgetItems: [
             { id: 'pr-b1', name: 'Maison (taxes + entretien)', target: 900, nature: 'Besoin', frequency: 'Monthly' },
             { id: 'pr-b2', name: 'Épicerie', target: 800, nature: 'Besoin', frequency: 'Monthly' },

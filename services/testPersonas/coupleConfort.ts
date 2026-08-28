@@ -24,11 +24,29 @@ import {
 } from '../testGoals';
 import { generateTestTransactions } from '../testTransactions';
 
+/**
+ * [TEST-PERSONA-FIXTURE-PARTAGEE] Copie PROFONDE des constantes partagées. Sans elle, ce persona
+ * — le seul des sept dans ce cas, et c'est le persona PAR DÉFAUT — rendait à chaque appel les
+ * MÊMES objets — les **DIX** champs réutilisés depuis des constantes de module, pas cinq :
+ * `config`, `budgetItems`, `assets`, `debts`, `retirementGoal`, `realEstateGoals`, `childGoals`,
+ * `travelGoals`, `lifeEvents`, `financialGoals` (identité stricte mesurée entre deux `build()`), donc toute mutation d'un consommateur contaminait tous les
+ * suivants dans le même processus. Mesuré : écrire `config.users[0].netSalary = 999` sur un build
+ * change la valeur lue par le build SUIVANT (5 200 → 999).
+ *
+ * Ce n'est pas théorique — ça a faussé une mesure de cette session : deux cas d'un même relevé
+ * partageaient une corruption, et le second affichait un `baseNetAnnual` de 52 800 au lieu de
+ * 115 200 sans que rien ne l'explique. Un fixture partagé ne casse pas un test, il en fabrique
+ * un FAUX, ce qui est pire. Les six autres personas construisent déjà des littéraux frais.
+ *
+ * `structuredClone` plutôt qu'un spread : `{ ...TEST_CONFIG }` partagerait encore le tableau
+ * `users`, et `[...TEST_ASSETS]` partagerait encore chaque actif — or c'est justement à ce
+ * niveau-là qu'on mute.
+ */
 export function buildCoupleConfort(): Partial<AppState> {
     return {
-        config: TEST_CONFIG,
-        budgetItems: TEST_BUDGET_ITEMS,
-        assets: TEST_ASSETS,
+        config: structuredClone(TEST_CONFIG),
+        budgetItems: structuredClone(TEST_BUDGET_ITEMS),
+        assets: structuredClone(TEST_ASSETS),
         initialBalances: {
             CELI: 32000,
             REER: 12500,
@@ -37,13 +55,13 @@ export function buildCoupleConfort(): Partial<AppState> {
             LIQUIDITE: 8500,
         },
         transactions: generateTestTransactions(),
-        debts: TEST_DEBTS,
-        retirementGoal: TEST_RETIREMENT,
-        realEstateGoals: TEST_REAL_ESTATE,
-        childGoals: TEST_CHILD_GOALS,
-        travelGoals: TEST_TRAVEL,
-        lifeEvents: TEST_LIFE_EVENTS,
-        financialGoals: TEST_FINANCIAL_GOALS,
+        debts: structuredClone(TEST_DEBTS),
+        retirementGoal: structuredClone(TEST_RETIREMENT),
+        realEstateGoals: structuredClone(TEST_REAL_ESTATE),
+        childGoals: structuredClone(TEST_CHILD_GOALS),
+        travelGoals: structuredClone(TEST_TRAVEL),
+        lifeEvents: structuredClone(TEST_LIFE_EVENTS),
+        financialGoals: structuredClone(TEST_FINANCIAL_GOALS),
         investmentAccounts: [],
         investmentTransactions: [],
         insurancePolicies: [],

@@ -10,6 +10,37 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-28 — Lot 33 : le persona par défaut partageait ses fixtures entre deux builds
+
+- [x] **`[TEST-PERSONA-FIXTURE-PARTAGEE]`** (S — DÉCOUVERT EN MESURANT, lot 33) —
+  `buildCoupleConfort` rendait les MÊMES objets à chaque appel : les DIX champs réutilisés depuis
+  des constantes de module étaient identiques au sens de `===` entre deux `build()`, parce que
+  le persona réutilisait les constantes de module `TEST_CONFIG`/`TEST_ASSETS`/… Toute mutation d'un
+  consommateur contaminait donc tous les suivants dans le même processus — mesuré : écrire
+  `config.users[0].netSalary = 999` sur un build change ce que lit le build SUIVANT (5 200 → 999).
+  ⚠️ **C'est le persona PAR DÉFAUT**, celui qu'un audit prend spontanément — exactement la même
+  cible que `[TEST-PERSONA-NON-DETERMINISTE]` au lot 30. Les six autres personas construisaient
+  déjà des littéraux frais ; seul celui-là était touché (mesuré sur les sept).
+  ⚠️ **Trouvé parce qu'il m'a menti** : en instruisant `[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`,
+  deux cas d'un même relevé se sont partagé une corruption et le second annonçait un
+  `baseNetAnnual` de 52 800 au lieu de 115 200, sans rien pour l'expliquer. Un fixture partagé ne
+  fait pas ÉCHOUER un test : il en fabrique un FAUX, et rien n'alerte.
+  ✅ **Livré lot 33** (`claude/lot-33`), gate vert (4 897 tests, 460 fichiers). `structuredClone` sur les DIX constantes réutilisées (recompté ; j'avais écrit « sept », le nombre des PERSONAS) —
+  et pas un spread : `{ ...TEST_CONFIG }` partagerait encore le tableau `users`, `[...TEST_ASSETS]`
+  partagerait encore chaque actif, or c'est à ce niveau-là qu'on mute. Deux tests : identité
+  stricte sur les SEPT personas (avec anti-vacuité sur le nombre de champs inspectés), et la
+  conséquence observable — muter un build ne change pas ce que lit le suivant, en surface ET en
+  profondeur. Discriminé aux deux niveaux : références partagées → 2 rouges, copie superficielle →
+  1 rouge (le cas de profondeur).
+  ⚠️ **Le panel a montré que le périmètre était plus large que je ne l'avais mesuré** : mon premier
+  relevé comparait l'identité de PREMIER NIVEAU et concluait « un seul persona touché ». Faux — en
+  étendant le contrôle de PROFONDEUR aux sept (ce que le panel a demandé, parce que le test
+  d'identité est structurellement aveugle à une copie superficielle), les **SIX autres** partagent
+  `config.users[0]` : chacun déclare ses `User` en constante de module et les met tels quels dans
+  une config pourtant neuve à chaque appel. Corrigé sur les sept. Classe
+  `REJOUER-L-OUTIL-ELARGI-AVANT-DE-CROIRE-QU-IL-N-Y-A-RIEN` : les offenders révélés par la garde
+  élargie SONT le vrai périmètre, et la garde de profondeur boucle désormais sur tous les personas.
+
 ## 2026-08-28 — Lot 32 : la vérité sur une donnée corrompue atteint enfin TOUS ses lecteurs
 
 - [x] **`[MCP-SCRUB-NAN-DEVIENT-NULL]`** (XS — finding silent-failure-hunter, panel PR #757,

@@ -34,6 +34,28 @@
   vues d'analyse précises (graphique de tendance ? comparaison mois-à-mois ? projection
   d'impact ?), quelle interactivité voulue (filtrage, regroupement, drill-down). Effort L : ne
   pas coder avant d'avoir cette DoD précise.
+- [ ] **`[TEST-PERSONA-NON-DETERMINISTE]`** (S, **ÉLEVÉ en gêne d'outillage** — finding
+  projection-validator MESURÉ, panel PR #755, PRÉ-EXISTANT) — `services/testTransactions.ts:42-52`
+  utilise `Math.random()` NU. `couple-confort`, le persona PAR DÉFAUT, est le seul à consommer
+  `generateTestTransactions()` → `calculatedStartingCash` change à CHAQUE appel. Mesuré : 5
+  exécutions du MÊME code donnent 5 `finalNetWorth` distincts, amplitude **3 088,55 $** (0,028 %).
+  Conséquence directe : **toute comparaison avant/après sur ce persona est impossible sans graine**
+  — le panel a dû injecter un LCG pour obtenir sa preuve bit-identique. C'est le persona qu'un
+  audit prend spontanément. Fix : graine injectable (le dépôt a déjà ce patron pour Monte Carlo).
+- [ ] **`[ENG-GOALS-HORS-TOTALEXPENSES]`** (S, FAIBLE [Probable] — finding projection-validator
+  MESURÉ, panel PR #755, PRÉ-EXISTANT) — un tirage d'objectif n'entre PAS dans `totalExpenses` :
+  mesuré, base et `FinancialGoal` équivalent donnent tous deux `totalExpenses` =
+  2 959 741,7505609933 alors que `finalNetWorth` chute de **215 045,84 $**. Pas un trou de
+  conservation (l'argent sort de `liquid` et est publié en `withdrawalLiquid`, le NW baisse) mais
+  un registre de REPORTING qui ignore une sortie réelle. Mécanisme probable : `addExpense` est un
+  no-op dans le `goalMutator` (`services/projection.ts`, « déjà soustrait du compte ciblé ») — le
+  fait MESURÉ est l'écart, pas sa cause. Vérifier qui LIT `totalExpenses` avant de corriger.
+- [ ] **`[ENG-GOALSHORTFALLS-CHAMP-MORT]`** (XS, FAIBLE — finding projection-validator, panel
+  PR #755) — `goalShortfalls` (`services/projection.ts`, `services/projection/types.ts`) n'a
+  **zéro consommateur** : grep exhaustif `.ts`/`.tsx`/`.md`, aucune UI, aucun outil MCP, aucun
+  prompt IA, aucune doc technique — seulement deux mentions narratives en archive. Candidat
+  `knip`/nettoyage. ⚠️ Le champ reste ALIMENTÉ correctement, ce n'est pas un bug : juste du code
+  publié que personne ne lit (même classe que `[UTIL-GOLDENSPLIT-ORPHELIN]`).
 - [ ] **`[MCP-WRITE-PARITY-GUARD]`** (S — finding ai-reviewer, panel PR #755, PRÉ-EXISTANT) —
   `tests/aiTools/registryParity.test.ts` n'assure l'exhaustivité que sur `READ_SPECS`
   (`s.kind === 'read'`). AUCUN test ne compare les tools d'ÉCRITURE enregistrés côté serveur MCP

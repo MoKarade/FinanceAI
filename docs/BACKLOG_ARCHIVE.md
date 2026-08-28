@@ -22,7 +22,7 @@
   corrigée au lot 31 (qui produisait le TEXTE « NaN $ » dans une note lue par l'humain) : ici c'est
   le canal MACHINE, et le symptôme est l'inverse — pas trop d'information, mais une absence
   fabriquée. Le rendu côté humain est déjà honnête (`AiChatConfirmModal` rend « — »).
-  ✅ **Livré lot 32** (`claude/lot-32`), gate vert (4 893 tests, 459 fichiers). `scrubValue` convertit un nombre NON FINI en chaîne
+  ✅ **Livré lot 32** (`claude/lot-32`), gate vert (4 895 tests, 459 fichiers). `scrubValue` convertit un nombre NON FINI en chaîne
   explicite « — (valeur non exploitable) » : elle survit à la sérialisation, donc le modèle lit
   « corrompue » au lieu de « absente ». Symptôme INVERSE de la fuite corrigée au lot 31 — là on en
   disait trop (« NaN $ » dans une phrase pour un humain), ici on fabriquait une absence dans le

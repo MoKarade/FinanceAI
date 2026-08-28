@@ -34,6 +34,19 @@
   vues d'analyse précises (graphique de tendance ? comparaison mois-à-mois ? projection
   d'impact ?), quelle interactivité voulue (filtrage, regroupement, drill-down). Effort L : ne
   pas coder avant d'avoir cette DoD précise.
+- [ ] **`[HEALTH-MONTANTS-HORS-PRIVATEAMOUNT]`** (S — finding code-reviewer, panel PR #758,
+  PRÉ-EXISTANT) — `components/dashboard/HealthIndicator.tsx` affiche des MONTANTS en clair
+  (`subMonthly` dans « X $/mois », `fireTarget` dans « cible Future : X $ », via le `raw` des
+  métriques construit par `utils/healthScore.ts`) **sans passer par `PrivateAmount`**, alors que le
+  reste du dépôt applique cette discipline strictement (`FutureKpiStrip`, `Budget`…). Grep confirmé :
+  ni `HealthIndicator.tsx` ni `utils/healthScore.ts` n'ont la moindre occurrence de
+  `isPrivacyMode`/`PrivateAmount`. Donc le mode discret ne masque RIEN sur cette carte.
+  ⚠️ Pré-existant, **pas** introduit par le lot 32 : ce texte visible était identique avant. Le lot
+  a seulement vérifié que son `aria-label` neuf ne CRÉE pas de fuite — il ne s'active que sur les
+  métriques indisponibles, dont les libellés sont des textes statiques sans montant (mesuré).
+  ⚠️ Le correctif n'est pas mécanique : `raw` est une CHAÎNE déjà formatée, donc l'envelopper dans
+  `PrivateAmount` masquerait aussi la prose autour du montant. Il faut probablement séparer le
+  montant du libellé dans `HealthMetricRow` avant de pouvoir masquer l'un sans l'autre.
 - [ ] **`[GUARD-STRIPCOMMENTS-CONSOLIDER]`** (S — dette relevée au lot 31) — le dépôt porte SIX
   décommenteurs `stripComments` recopiés (`tests/aiTools/specFiniteGuard.test.ts`,
   `tests/services/assetFxGuard.test.ts`, `utils/fiscalConstGuardV2.ts`, `utils/chartDataSumGuard.ts`,
@@ -86,7 +99,7 @@
   `aria-describedby`, et faire varier l'`aria-label` (`${m.label} : ${m.raw}`).
   ⚠️ NON corrigé au lot 31 délibérément : `HealthIndicator.tsx` n'est pas touché par ce lot, et
   c'est du scope non demandé (règle « proposer ≠ faire »).
-  ✅ **Volets (b), (d) et (e) livrés au lot 32** (`claude/lot-32`, gate vert 4 893 tests) : l'`aria-label` du score porte
+  ✅ **Volets (b), (d) et (e) livrés au lot 32** (`claude/lot-32`, gate vert 4 895 tests) : l'`aria-label` du score porte
   désormais la VRAIE cause (`m.raw`) au lieu de « donnée indisponible » pour tous les états ;
   `aria-describedby` ASSOCIE le score à sa ligne de détail (sans quoi un lecteur d'écran qui
   navigue par éléments, et non au fil du texte, ne la rencontre jamais) ; et la JUSTIFICATION

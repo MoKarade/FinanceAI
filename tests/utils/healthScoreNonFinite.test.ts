@@ -234,6 +234,48 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         }
     });
 
+    it('[garde de vie privée] aucun MONTANT dans le `raw` d\'une métrique INDISPONIBLE', () => {
+        // Depuis le lot 32, le `raw` d'une métrique indisponible part dans l'`aria-label` du score
+        // — un ATTRIBUT, canal par lequel le dépôt a déjà vu fuir une valeur sensible. Mesuré : ça
+        // ne fuit rien aujourd'hui, mais uniquement parce qu'AUCUN `raw` de la branche
+        // `available:false` ne porte de montant. C'est un fait ACCIDENTEL du contenu actuel, que
+        // rien ne verrouille : une future métrique qui écrirait « il te manque 1 234 $ » dans son
+        // état indisponible fuirait aussitôt dans l'attribut (finding security-privacy, PR #758).
+        // La garde vise les MONTANTS ($, %, décimales), pas les compteurs — « 1 abonnement(s) au
+        // coût illisible » est un décompte, pas une donnée financière.
+        const MONTANT = /[$%]|\d+[.,]\d/;
+        const fixtures: Array<[string, Partial<HealthScoreInputs>]> = [
+            ['sans projection ni abo', {}],
+            ['revenu Infinity', { config: { users: [{ name: 'Moi', netSalary: Infinity }] } as unknown as HealthScoreInputs['config'] }],
+            ['poste illisible', { budgetItems: [{ ...inputs().budgetItems[0], target: NaN }] as unknown as HealthScoreInputs['budgetItems'] }],
+            ['abo illisible', { subscriptions: [
+                { payee: 'Gym', yearlyCost: Infinity, averageAmount: 75, dayOfMonth: 5, category: 'Abo', lastDate: '2026-08-05' },
+            ] as unknown as HealthScoreInputs['subscriptions'] }],
+            // ⚠️ Ces deux-là ont été ajoutées APRÈS coup : une première version de cette garde était
+            // MUETTE à la perturbation, parce qu'aucune de ses fixtures n'atteignait les libellés
+            // « Aucun abonnement épinglé » (la fixture porte des abos) ni « Projection requise »
+            // (elle porte une cible FIRE). Un état non atteint n'est pas un état protégé.
+            ['aucun abonnement', { subscriptions: [] as unknown as HealthScoreInputs['subscriptions'] }],
+            ['sans projection FIRE', { projectionFireTarget: 0 }],
+        ];
+        const vus = new Set<string>();
+        let avecMontant = 0;
+        for (const [nom, over] of fixtures) {
+            for (const r of computeHealthMetrics(inputs(over))) {
+                if (r.available) { if (MONTANT.test(r.raw)) avecMontant++; continue; }
+                vus.add(r.id);
+                expect(MONTANT.test(r.raw), `${nom} · ${r.id} : montant dans un état indisponible → « ${r.raw} »`).toBe(false);
+            }
+        }
+        // Anti-vacuité DOUBLE : la garde a bien vu des métriques indisponibles (sinon elle ne
+        // vérifie rien), ET le motif RECONNAÎT des montants là où il y en a (sinon il est mort).
+        // ⚠️ `debtRatio` n'y figure pas et c'est NORMAL, pas un oubli : ses trois entrées
+        // (liquidités, dettes, placements) sont déjà durcies à la source, donc il n'a aucun état
+        // indisponible atteignable. L'écrire vaut mieux que fabriquer une fixture absurde.
+        expect([...vus].sort()).toEqual(['budgetParity', 'emergencyFund', 'fireProgress', 'savingsRate', 'subscriptionLoad']);
+        expect(avecMontant).toBeGreaterThan(0);
+    });
+
     it('[ceinture] computeHealthTotalScore ignore une ligne non finie venue d\'ailleurs', () => {
         // La fonction est exportée : elle ne peut pas supposer que ses lignes viennent
         // de `computeHealthMetrics`.

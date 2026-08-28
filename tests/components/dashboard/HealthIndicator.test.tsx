@@ -172,6 +172,20 @@ describe('HealthIndicator', () => {
         expect(document.getElementById(describedBy!)!.textContent).toContain('Épingle tes abos');
     });
 
+    it('deux instances montées ensemble ne se volent pas leurs `id` de description', () => {
+        // Un `id` dupliqué casse `aria-describedby` EN SILENCE : le lecteur d'écran suit la
+        // première occurrence, donc la seconde carte décrirait le score de la première. Un seul
+        // montage existe aujourd'hui (`BudgetWorkspace`), mais la panne serait invisible le jour
+        // où il y en aurait deux — d'où `useId` (finding code-reviewer, panel PR #758).
+        render(<><HealthIndicator /><HealthIndicator /></>);
+        const decrits = screen.getAllByText('—')
+            .map((el) => el.getAttribute('aria-describedby'))
+            .filter((v): v is string => Boolean(v));
+        expect(decrits.length).toBeGreaterThan(1); // anti-vacuité : deux cartes ont bien décrit
+        expect(new Set(decrits).size).toBe(decrits.length); // aucun id partagé entre instances
+        for (const id of decrits) expect(document.getElementById(id)).toBeTruthy();
+    });
+
     it('changement de slider sauvegarde dans le store', () => {
         // [PH4D-WEIGHTS-STORE] la sauvegarde va dans le store persisté (avant : localStorage).
         render(<HealthIndicator />);

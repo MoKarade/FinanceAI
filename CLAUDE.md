@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 867 tests** Vitest
-(453 fichiers de test, mesuré le 2026-08-26). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 856 tests** Vitest
+(454 fichiers de test, mesuré le 2026-08-28). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -50,7 +50,7 @@ i18next · jspdf. Prod : **Vercel**.
 
 Structure **PLATE** (pas de `src/`) : racine `App.tsx`, `index.tsx`, `constants.ts`, `types.ts`,
 `i18n.ts` ; dossiers `components/ hooks/ services/ store/ utils/ locales/ mcp/ e2e/ tests/
-scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (50 sous-modules).
+scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (54 sous-modules).
 
 ⚠️ Hoister un import au niveau App tire ses deps dans le bundle de BOOT → lazy-charger
 (`lazyWithRetry` + Suspense) tout composant/service app-level qui importe du lourd.
@@ -235,6 +235,9 @@ n'est pas réécrire un récit.
 - Un `git checkout -- <fichier>` utilisé pour ANNULER une perturbation manuelle de test efface TOUT
   le fichier (retour à `HEAD`), pas seulement la ligne perturbée — dangereux dès que ce fichier
   porte un AUTRE correctif non commité du même lot (`[BUDGET-TRANSACTIONS-SYNC-AUDIT]`, 2026-08-26).
+- Un nouvel IMPORT STATIQUE dans un composant très monté en test élargit silencieusement le contrat
+  de mock de TOUS les fichiers qui le montent — rejouer chaque montage après l'ajout, pas seulement
+  le nouveau test (`[NAV-MERGE-SANTE-FUTUR]`, 2026-08-27).
 
 Quand une tâche touche un de ces terrains, **lire la section correspondante avant de coder**.
 

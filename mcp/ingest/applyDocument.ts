@@ -165,29 +165,14 @@ export interface BudgetItemPayload {
     type?: 'Commun' | 'Perso 1' | 'Perso 2';
 }
 
-/** [MCP-DIRECT-EDIT Lot 3] Objectif d'épargne — ajout OU mise à jour PARTIELLE par nom. */
-export interface SavingsGoalPayload {
-    kind: 'savings_goal';
-    /** Nom de l'objectif (clé d'upsert, normalisée casse/accents). */
-    name: string;
-    /** Montant CIBLE ($ CAD). Requis à l'AJOUT ; optionnel en mise à jour. */
-    targetAmountCad?: number;
-    /** Montant DÉJÀ accumulé ($ CAD). Optionnel (défaut 0 à l'ajout). */
-    currentAmountCad?: number;
-    /** Échéance `YYYY-MM-DD` (ou `YYYY-MM`). Optionnelle. */
-    deadline?: string;
-    /** Emoji d'icône. Optionnel (défaut 💰 à l'ajout). */
-    icon?: string;
-}
-
 /** [MCP-DIRECT-EDIT Lots 4-5] Suppression d'une entité (cf ADR « Suppressions via MCP/IA ») :
  *  correspondance par nom/symbole normalisé EXACT (jamais de fuzzy sur un geste destructif),
  *  ambiguïté → erreur. « Vente totale » d'un titre = suppression (quantity:0 fausserait la courbe
  *  d'historique à vie — holdingsAt compte les purchases). Transactions : DIFFÉRÉ (cash dérivé). */
 export interface DeleteItemPayload {
     kind: 'delete_item';
-    entity: 'asset' | 'debt' | 'savings_goal';
-    /** Nom (dette/objectif) ou SYMBOLE (actif) de l'entité à supprimer. */
+    entity: 'asset' | 'debt';
+    /** Nom (dette) ou SYMBOLE (actif) de l'entité à supprimer. */
     name: string;
     /** Désambiguïsation d'un actif détenu dans PLUSIEURS comptes (CELI / REER / NON-ENREG…). */
     accountType?: string;
@@ -201,7 +186,6 @@ export type DocumentPayload =
     | DebtPayload
     | CashBalancePayload
     | BudgetItemPayload
-    | SavingsGoalPayload
     | DeleteItemPayload;
 
 export interface Change {
@@ -228,9 +212,17 @@ export interface ApplyResult {
      *  jours balayés) et le rattrapage pose `callerClassified: true` (dédup par clé désactivée,
      *  `dupCount` toujours 0) — donc un `dupCount > 0` qui survit jusqu'ici désigne surtout une
      *  collision INTRA-lot (deux dépenses RÉELLES identiques le même jour, `seen` les fusionne),
-     *  un cas différent qui mérite son propre signal, pas une inclusion dans `rejectedCount`.
+     *  un cas différent qui mérite son propre signal, pas une inclusion dans `rejectedCount` — voir
+     *  `dupIntraLotCount` ci-dessous, qui porte CE signal.
      *  Absent (`undefined`) pour les types de document qui n'ont pas de rejet ligne-par-ligne. */
     rejectedCount?: number;
+    /** [FINTABLE-DOUBLON-INTRALOT-SILENCIEUX] Sous-ensemble SUSPECT des doublons d'un relevé
+     *  bancaire : deux lignes DISTINCTES du même lot entrant partagent la même clé
+     *  (date|montant|payee), contrairement à un doublon contre l'existant (recouvrement légitime,
+     *  bénin). Signale le plus souvent deux dépenses RÉELLES identiques le même jour, écrites
+     *  UNE seule fois — jamais inclus dans `rejectedCount` (nature différente : une collision de
+     *  déduplication, pas une donnée invalide). Absent pour les documents sans notion de doublon. */
+    dupIntraLotCount?: number;
 }
 
 export function applyDocument(state: AppState, doc: DocumentPayload): ApplyResult {
@@ -242,7 +234,6 @@ export function applyDocument(state: AppState, doc: DocumentPayload): ApplyResul
         case 'debt': return applyDebt(state, doc);
         case 'cash_balance': return applyCashBalance(state, doc);
         case 'budget_item': return applyBudgetItem(state, doc);
-        case 'savings_goal': return applySavingsGoal(state, doc);
         case 'delete_item': return applyDeleteItem(state, doc);
         default: {
             const k = (doc as { kind?: string }).kind ?? 'inconnu';
@@ -443,96 +434,7 @@ function applyBudgetItem(state: AppState, doc: BudgetItemPayload): ApplyResult {
     };
 }
 
-// ── Objectif d'épargne — ajout OU mise à jour PARTIELLE par nom ──────────────
-// [MCP-DIRECT-EDIT Lot 3] Même pattern : upsert par nom normalisé, update partiel, bornes D9.
-
-// '' est ACCEPTÉ = « effacer l'échéance » (parité avec l'UI Planning qui autorise une échéance vide).
-const GOAL_DEADLINE_RE = /^(\d{4}-\d{2}(-\d{2})?)?$/;
-
-function applySavingsGoal(state: AppState, doc: SavingsGoalPayload): ApplyResult {
-    const name = String(doc.name || '').trim();
-    if (!name) throw new Error('Nom d\'objectif requis (ex. « Voyage Japon »).');
-    if (doc.targetAmountCad != null && (!plausible(doc.targetAmountCad, MAX_CASH_BALANCE) || doc.targetAmountCad <= 0)) {
-        throw new Error('Montant cible d\'objectif invalide ou aberrant (≤ 0 / non fini / hors bornes). Rien n\'a été écrit.');
-    }
-    if (doc.currentAmountCad != null && (!plausible(doc.currentAmountCad, MAX_CASH_BALANCE) || doc.currentAmountCad < 0)) {
-        throw new Error('Montant accumulé d\'objectif invalide ou aberrant (négatif / non fini / hors bornes). Rien n\'a été écrit.');
-    }
-    if (doc.deadline != null && !GOAL_DEADLINE_RE.test(doc.deadline)) {
-        throw new Error('Échéance d\'objectif invalide : format attendu YYYY-MM-DD (ou YYYY-MM), ou \'\' pour effacer. Rien n\'a été écrit.');
-    }
-    // Bornes calendaires (la regex laisse passer « 2027-13-45 ») : mois 01-12, jour 01-31.
-    if (doc.deadline) {
-        const [, mm, dd] = doc.deadline.split('-');
-        const m = Number(mm), d = dd == null ? 1 : Number(dd);
-        if (m < 1 || m > 12 || d < 1 || d > 31) {
-            throw new Error('Échéance d\'objectif invalide : mois 01-12 et jour 01-31 attendus. Rien n\'a été écrit.');
-        }
-    }
-
-    const goals = (state.savingsGoals ?? []).map((g) => ({ ...g }));
-    const changes: Change[] = [];
-    const key = budgetNameKey(name);
-    const idx = goals.findIndex((g) => budgetNameKey(g.name) === key);
-
-    if (idx >= 0) {
-        const g = goals[idx];
-        if (doc.targetAmountCad != null && doc.targetAmountCad !== g.targetAmount) {
-            changes.push({ field: `objectif « ${g.name} » (cible)`, before: g.targetAmount, after: doc.targetAmountCad });
-            g.targetAmount = doc.targetAmountCad;
-        }
-        if (doc.currentAmountCad != null && doc.currentAmountCad !== g.currentAmount) {
-            changes.push({ field: `objectif « ${g.name} » (accumulé)`, before: g.currentAmount, after: doc.currentAmountCad });
-            g.currentAmount = doc.currentAmountCad;
-        }
-        if (doc.deadline != null && doc.deadline !== g.deadline) {
-            // [Finding MOYEN panel] L'échéance PILOTE un décaissement réel dans la projection
-            // (applySavingsGoalDeadlines retire cible − accumulé du liquide au mois de l'échéance)
-            // → la conséquence $ doit être visible dans l'aperçu de confirmation.
-            const willWithdraw = Math.max(0, (doc.targetAmountCad ?? g.targetAmount) - (doc.currentAmountCad ?? g.currentAmount));
-            changes.push({
-                field: `objectif « ${g.name} » (échéance)`, before: g.deadline, after: doc.deadline,
-                note: doc.deadline
-                    ? `⚠️ la projection retirera ${Math.round(willWithdraw)} $ (cible − accumulé) des liquidités au mois ${doc.deadline.slice(0, 7)}`
-                    : 'échéance effacée : plus aucun décaissement planifié pour cet objectif dans la projection',
-            });
-            g.deadline = doc.deadline;
-        }
-        if (doc.icon != null && doc.icon !== g.icon) {
-            changes.push({ field: `objectif « ${g.name} » (icône)`, before: g.icon, after: doc.icon });
-            g.icon = doc.icon;
-        }
-        if (changes.length === 0) {
-            return { nextState: state, changes: [], summary: `Objectif « ${g.name} » : aucune modification (valeurs identiques).` };
-        }
-        const nextState: AppState = { ...state, savingsGoals: goals, lastUpdate: Date.now() };
-        return { nextState, changes, summary: `Objectif d'épargne « ${g.name} » mis à jour (${changes.length} champ(s)).` };
-    }
-
-    if (doc.targetAmountCad == null) {
-        throw new Error(`Objectif « ${name} » introuvable : pour l'AJOUTER, le montant cible (targetAmountCad) est requis.`);
-    }
-    const added = {
-        id: `goal_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, // horodaté (convention PERSONA-PURGE)
-        name,
-        targetAmount: doc.targetAmountCad,
-        currentAmount: doc.currentAmountCad ?? 0,
-        deadline: doc.deadline ?? '',
-        icon: doc.icon || '💰',
-    };
-    goals.push(added);
-    changes.push({
-        field: `objectif « ${name} »`, before: null,
-        after: `${added.targetAmount} $ (accumulé : ${added.currentAmount} $)`,
-        note: added.deadline
-            ? `⚠️ échéance ${added.deadline} : la projection retirera ${Math.round(Math.max(0, added.targetAmount - added.currentAmount))} $ (cible − accumulé) des liquidités ce mois-là — fournis le montant DÉJÀ épargné (currentAmountCad) s'il y en a un`
-            : undefined,
-    });
-    const nextState: AppState = { ...state, savingsGoals: goals, lastUpdate: Date.now() };
-    return { nextState, changes, summary: `Objectif d'épargne « ${name} » ajouté (cible ${added.targetAmount} $).` };
-}
-
-// ── Suppression d'entité (actif / dette / objectif) — ADR Lots 4-5 ───────────
+// ── Suppression d'entité (actif / dette) — ADR Lots 4-5 ──────────────────────
 // Correspondance NORMALISÉE EXACTE (casse/accents — jamais de fuzzy sur un geste destructif) ;
 // ambiguïté (2 noms équivalents, même symbole dans 2 comptes sans précision) → throw, pas de choix
 // silencieux. L'aperçu LISTE ce qui disparaît + les effets dérivés (NW, courbe, décaissement).
@@ -576,38 +478,27 @@ function applyDeleteItem(state: AppState, doc: DeleteItemPayload): ApplyResult {
         return { nextState, changes, summary: `Actif ${target.symbol} supprimé du portefeuille. Sauvegarde créée avant l'écriture (annulable via Réglages → Sauvegarde).` };
     }
 
-    if (doc.entity === 'debt') {
-        const all = (state.debts ?? []);
-        const matches = all.filter((d) => budgetNameKey(d.name || '') === key);
-        if (matches.length === 0) throw new Error(`Aucune dette nommée « ${name} ». Rien n'a été supprimé.`);
-        if (matches.length > 1) throw new Error(`Plusieurs dettes portent un nom équivalent à « ${name} » : renomme-les d'abord (noms distinctifs). Rien n'a été supprimé.`);
-        const target = matches[0];
-        const changes: Change[] = [{
-            field: `dette « ${target.name} »`,
-            before: `${fmtOrUnavailable(target.balance)} $ à ${target.interestRate} %`,
-            after: 'supprimée',
-            note: '⚠️ le patrimoine net MONTE du solde supprimé — réservé à une dette réellement soldée ou saisie par erreur',
-        }];
-        const nextState: AppState = { ...state, debts: all.filter((d) => d !== target), lastUpdate: Date.now() };
-        return { nextState, changes, summary: `Dette « ${target.name} » supprimée. Sauvegarde créée avant l'écriture (annulable via Réglages → Sauvegarde).` };
+    // ⚠️ [NAV-REMOVE-OBJECTIFS-TAB] Ceinture métier — un appel DIRECT du handler contourne Zod
+    // (même patron que `applyCashBalance`/`applyBudgetItem` dans ce fichier). Avant le retrait des
+    // objectifs, une valeur d'`entity` inattendue retombait sur `savingsGoals` ; elle retomberait
+    // désormais sur les DETTES — un geste destructif au rayon d'impact bien supérieur. On refuse
+    // explicitement au lieu de deviner.
+    if (doc.entity !== 'debt') {
+        throw new Error(`Type d'entité non supporté pour une suppression : « ${String(doc.entity)} ». Attendu : asset ou debt. Rien n'a été supprimé.`);
     }
-
-    // savings_goal
-    const all = (state.savingsGoals ?? []);
-    const matches = all.filter((g) => budgetNameKey(g.name || '') === key);
-    if (matches.length === 0) throw new Error(`Aucun objectif nommé « ${name} ». Rien n'a été supprimé.`);
-    if (matches.length > 1) throw new Error(`Plusieurs objectifs portent un nom équivalent à « ${name} » : renomme-les d'abord. Rien n'a été supprimé.`);
+    const all = (state.debts ?? []);
+    const matches = all.filter((d) => budgetNameKey(d.name || '') === key);
+    if (matches.length === 0) throw new Error(`Aucune dette nommée « ${name} ». Rien n'a été supprimé.`);
+    if (matches.length > 1) throw new Error(`Plusieurs dettes portent un nom équivalent à « ${name} » : renomme-les d'abord (noms distinctifs). Rien n'a été supprimé.`);
     const target = matches[0];
     const changes: Change[] = [{
-        field: `objectif « ${target.name} »`,
-        before: `${fmtOrUnavailable(target.targetAmount)} $ (accumulé : ${fmtOrUnavailable(target.currentAmount)} $)`,
-        after: 'supprimé',
-        note: target.deadline
-            ? `le décaissement planifié de ${Math.round(Math.max(0, (Number(target.targetAmount) || 0) - (Number(target.currentAmount) || 0)))} $ (échéance ${target.deadline}) est ANNULÉ dans la projection`
-            : undefined,
+        field: `dette « ${target.name} »`,
+        before: `${fmtOrUnavailable(target.balance)} $ à ${target.interestRate} %`,
+        after: 'supprimée',
+        note: '⚠️ le patrimoine net MONTE du solde supprimé — réservé à une dette réellement soldée ou saisie par erreur',
     }];
-    const nextState: AppState = { ...state, savingsGoals: all.filter((g) => g !== target), lastUpdate: Date.now() };
-    return { nextState, changes, summary: `Objectif « ${target.name} » supprimé. Sauvegarde créée avant l'écriture (annulable via Réglages → Sauvegarde).` };
+    const nextState: AppState = { ...state, debts: all.filter((d) => d !== target), lastUpdate: Date.now() };
+    return { nextState, changes, summary: `Dette « ${target.name} » supprimée. Sauvegarde créée avant l'écriture (annulable via Réglages → Sauvegarde).` };
 }
 
 // ── Fiche de paie ────────────────────────────────────────────────────────────
@@ -742,12 +633,22 @@ function buildCategoryAllowlist(state: AppState): Map<string, string> {
 
 function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyResult {
     const existing = (state.transactions ?? []) as Transaction[];
-    const seen = new Set(existing.map(txnKey));
+    // [FINTABLE-DOUBLON-INTRALOT-SILENCIEUX] finding financial-integrity, MESURÉ : `seen` unique
+    // confondait deux cas de nature différente — un doublon contre l'EXISTANT (bénin sur le chemin
+    // automatisé, le recouvrement légitime est déjà écarté en amont par la bascule anti-doublon,
+    // 0 collision mesurée sur 60 jours) et un doublon INTRA-LOT (deux lignes DISTINCTES du même lot
+    // entrant qui partagent la même clé) — qui, lui, désigne le plus souvent deux dépenses RÉELLES
+    // identiques le même jour (mesuré : 3 cafés à 4,25 $, 1 seul écrit, 8,50 $ perdus en silence,
+    // `cashAnchorDelta` absorbe l'écart). Deux ensembles séparés pour pouvoir avertir sur le second
+    // sans déclencher une alarme permanente sur le premier.
+    const existingKeys = new Set(existing.map(txnKey));
+    const seenThisLot = new Set<string>();
     let maxId = existing.reduce((m, t) => Math.max(m, t.id || 0), 0);
     const allowedCategories = buildCategoryAllowlist(state);
 
     const added: Transaction[] = [];
-    let dupCount = 0;
+    let dupCount = 0; // TOTAL (existant + intra-lot) — préserve le libellé `dupPhrase` existant
+    let dupIntraLotCount = 0; // sous-ensemble SUSPECT de dupCount, voir commentaire ci-dessus
     let rejCount = 0; // montant aberrant (D9)
     // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Compteur SÉPARÉ de `rejCount` : les deux causes de rejet ne
     // sont pas la même information pour l'appelant (un montant aberrant n'est pas une date invalide),
@@ -769,8 +670,11 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
         const k = txnKey(tx);
         // ⚠️ `callerClassified` : le rattrapage a déjà tranché, avec un invariant d'appariement
         // unique que cette clé annulerait en supprimant les dépenses réelles surnuméraires.
-        if (!doc.callerClassified && seen.has(k)) { dupCount++; continue; } // déjà présent OU déjà ajouté
-        seen.add(k);
+        if (!doc.callerClassified) {
+            if (existingKeys.has(k)) { dupCount++; continue; } // déjà présent — bénin (recouvrement)
+            if (seenThisLot.has(k)) { dupCount++; dupIntraLotCount++; continue; } // déjà ajouté CE LOT — suspect
+        }
+        seenThisLot.add(k);
         // [TX-CATEGORY-RULES] + [MCP-CATEGORY-ALLOWLIST] Catégorie fournie ACCEPTÉE seulement si
         // canonique (remap vers la casse canonique) ; inconnue ou absente → règles déterministes
         // sur le payee (mêmes règles que l'import CSV de l'app — cohérence app↔MCP), sinon
@@ -813,6 +717,13 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
     // `, ` littéral, ce qui laissait une virgule orpheline en tête dès que `dupCount === 0` mais un
     // AUTRE rejet existait (`(, 1 montant(s) aberrant(s) ignoré(s))`).
     const dupPhrase = dupCount ? `${dupCount} doublon(s) ignoré(s)` : '';
+    // [FINTABLE-DOUBLON-INTRALOT-SILENCIEUX] Signal SÉPARÉ (pas fusionné dans `dupPhrase`) : un
+    // doublon intra-lot est SUSPECT (deux lignes distinctes du même lot, probablement deux vraies
+    // dépenses identiques) alors qu'un doublon contre l'existant est un recouvrement bénin — les
+    // fusionner sous « doublon(s) ignoré(s) » masquerait le seul cas qui mérite d'être vérifié.
+    const dupIntraLotPhrase = dupIntraLotCount
+        ? `${dupIntraLotCount} doublon(s) SUSPECT(s) au sein du même lot (vérifier s'il s'agit de dépenses distinctes)`
+        : '';
     const rejPhrase = rejCount ? `${rejCount} montant(s) aberrant(s) ignoré(s)` : '';
     // [BUDGET-TRANSACTIONS-SYNC-AUDIT] Message SÉPARÉ (pas fusionné dans `rejPhrase`) : une date
     // invalide n'est pas un montant aberrant, et un appelant qui lit « aberrant » sur un rejet de
@@ -830,14 +741,18 @@ function applyBankStatement(state: AppState, doc: BankStatementPayload): ApplyRe
     const remapPhrase = remapCount
         ? `${remapCount} catégorie(s) non canonique(s) re-catégorisée(s) par les règles`
         : '';
-    const rejectionPhrases = [dupPhrase, rejPhrase, rejDatePhrase, rejMalformedPhrase, remapPhrase].filter(Boolean);
+    const rejectionPhrases = [dupPhrase, dupIntraLotPhrase, rejPhrase, rejDatePhrase, rejMalformedPhrase, remapPhrase].filter(Boolean);
     const summary = added.length
         ? `Relevé bancaire : ${added.length} transaction(s) ajoutée(s)${rejectionPhrases.length ? `, ${rejectionPhrases.join(', ')}` : ''}.`
         : `Relevé bancaire : aucune nouvelle transaction${rejectionPhrases.length ? ` (${rejectionPhrases.join(', ')})` : ''}.`;
     // [MCP-REJECTIONS-NON-STRUCTUREES] PAS `dupCount` — voir le JSDoc de `rejectedCount` sur
     // `ApplyResult` pour la raison MESURÉE (pas juste supposée bénigne).
     const rejectedCount = rejCount + rejDateCount + rejMalformedCount;
-    return { nextState, changes, summary, ...(rejectedCount > 0 ? { rejectedCount } : {}) };
+    return {
+        nextState, changes, summary,
+        ...(rejectedCount > 0 ? { rejectedCount } : {}),
+        ...(dupIntraLotCount > 0 ? { dupIntraLotCount } : {}),
+    };
 }
 
 // ── Relevé de courtage (positions → assets) ──────────────────────────────────

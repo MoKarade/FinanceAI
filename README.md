@@ -84,7 +84,7 @@ relu ment en silence. Un compteur se lit dans la CI.)*
 L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Résumé :
 
 - Pas de backend. L'app vit côté navigateur, persiste localement (localStorage + IndexedDB chiffré), et appelle Anthropic, Finnhub et CoinGecko directement depuis le client.
-- Le moteur de projection (`services/projection.ts` + `services/projection/` — 48 sous-modules, mesuré 2026-08-12) est le coeur de l'app. Voir [`docs/PROJECTION.md`](docs/PROJECTION.md) pour les détails.
+- Le moteur de projection (`services/projection.ts` + `services/projection/` — 54 sous-modules) est le coeur de l'app. Voir [`docs/PROJECTION.md`](docs/PROJECTION.md) pour les détails.
 - Le state global est Zustand v5 + persist (schema v7 avec migrations v1→v7).
 - `services/eraContext.ts` est dormant (MCP-only) — l'UI Era a été retirée.
 
@@ -102,7 +102,7 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 
 - **Frontend** : React 19.2 + Vite 8 (Rolldown) + TypeScript 5.8 strict + Tailwind CSS 3
 - **State** : Zustand 5 (avec `persist` + `partialize`, schema v7 + migrations v1→v7)
-- **Tests** : Vitest 4 + @testing-library/react + axe-core (4 867 tests, 453 fichiers)
+- **Tests** : Vitest 4 + @testing-library/react + axe-core (4 856 tests, 454 fichiers)
 - **Validation** : Zod 3
 - **Charts** : Recharts 3 (lazy-loaded)
 - **Backend** : aucun — 100 % navigateur, déploiement statique **Vercel** (`vercel.json`)

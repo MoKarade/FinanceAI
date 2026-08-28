@@ -7637,3 +7637,33 @@ suppression PENDANT qu'un debounce est en vol pour l'item supprimé (le cas dire
 de non-régression positionnelle (renommer un item stable) ne l'aurait jamais trouvé, ce qui explique
 pourquoi il a fallu deux revues indépendantes du MÊME lot pour le voir
 (`UN-ETAT-DIFFERE-DOIT-ETRE-CLE-PAR-ID-STABLE-PAS-PAR-POSITION`).
+
+## Leçon du lot `[NAV-MERGE-SANTE-FUTUR]` — 2026-08-27 : un nouvel IMPORT STATIQUE change le contrat de mock de TOUS les tests qui montent le composant
+
+Le bug de test (pas de production) : ajouter `import { FutureHealthSummary } from
+'./future/FutureHealthSummary'` en tête de `FutureProjection.tsx` — un import statique ordinaire,
+pour un petit composant sans dépendance lourde (pas de recharts, pas de justification à le mettre
+derrière un `lazyWithRetry`) — a fait planter TROIS fichiers de test qui montent
+`<FutureProjection>` (`FutureProjection.persist/.applyReveal/.eventStack.test.tsx`), avec l'erreur
+`No "logErrorThrottled" export is defined on the "services/errorLogger" mock`. Chaîne : le nouveau
+composant appelle `computeHealthMetrics` (`utils/healthScore.ts`) → `computeInvestmentsValue`
+(`services/portfolio.ts`) → `assetValueCad`, qui journalise via `logErrorThrottled` dès qu'un actif
+de la fixture n'a pas de `currency`. Ces trois fichiers mockaient `services/errorLogger` en
+PARTIEL — `{ logError: vi.fn() }` seulement — parce que c'était SUFFISANT au moment où ils ont été
+écrits : `FutureProjection.tsx` n'atteignait alors jamais `services/portfolio.ts` par CE chemin.
+Deux autres fichiers qui montent le même composant (`smoke`, `pastDebtFreeze`) n'ont pas planté,
+simplement parce que leur fixture d'actifs ne contient aucun actif sans devise — un silence qui
+aurait pu faire croire, à tort, que « les autres montages du composant sont OK ».
+
+**Généralisation** : un mock PARTIEL d'un module (`vi.mock(..., () => ({ seulementCeciExporté }))`)
+n'est pas une garantie stable — c'est un instantané de ce que le composant testé atteignait
+TRANSITIVEMENT au moment où le mock a été écrit. Ajouter un import statique à un composant très
+testé (5+ fichiers montent `FutureProjection` seule) élargit silencieusement son arbre de
+dépendances, et donc la liste des exports que CHAQUE mock partiel de ce composant doit couvrir —
+aucun outil ne le signale avant l'exécution (ni `tsc`, ni le lint, le mock étant syntaxiquement
+valide). Le geste correct après avoir ajouté un import à un composant largement monté en test :
+**grep tous les fichiers qui le montent** (`grep -rl "<NomDuComposant"` sur `tests/`), les REJOUER
+un par un (pas seulement le nouveau test écrit pour la feature), et compléter tout mock partiel
+d'un module désormais atteint par le nouveau chemin — trois fichiers ici, zéro détecté par
+`typecheck`/`lint`, seule l'exécution des tests l'a révélé
+(`UN-IMPORT-STATIQUE-ELARGIT-LE-CONTRAT-DE-MOCK-DE-TOUT-CE-QUI-MONTE-LE-COMPOSANT`).

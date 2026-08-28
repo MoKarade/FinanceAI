@@ -412,6 +412,20 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     };
 
     const totalBudgetDisplay = budgetItems.reduce((sum, item) => sum + getDisplayTarget(item), 0);
+    // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Assiette de l'OBJECTIF des tuiles de dépenses. Deux
+    // différences DÉLIBÉRÉES avec `totalBudgetDisplay` ci-dessus, chacune mesurée par le panel :
+    //  1. postes ÉPARGNE EXCLUS — le « réel » d'en face filtre `isTransfer`, donc une cotisation
+    //     CELI ne peut STRUCTURELLEMENT jamais y apparaître : garder sa cible dans l'objectif
+    //     comparait deux assiettes différentes (mesuré : Réel 1 500 $ contre Objectif 2 000 $, soit
+    //     un « sous le budget » permanent de 500 $/mois). Aligne enfin `Budget.tsx` sur la règle que
+    //     `utils/healthRatios.ts` affirmait DÉJÀ suivre ici (`monthlyConsumptionExpenses`).
+    //  2. cible NON indexée par le simulateur d'inflation — un chiffre étiqueté « Objectif » se lit
+    //     comme une valeur SAISIE ; la faire bouger avec un curseur situé 60 lignes plus bas, hors
+    //     du champ visuel des tuiles, en fait une valeur simulée qui ne dit plus son nom
+    //     (mesuré : 2 200 $ → 2 370 $ à +10 %). `getBaseMonthlyTarget` ignore `inflationSim`.
+    const totalSpendObjectifDisplay = budgetItems
+        .filter((item) => !isSavingsNature(item.nature))
+        .reduce((sum, item) => sum + getBaseMonthlyTarget(item), 0) * getMultiplier();
     // [PH4-A/F1] Total dépensé = TOUTES les dépenses (postes rapprochés + orphelins), via
     // `totalSpent` — préserve le total d'AVANT le refactor (les orphelins comptent dans le réel).
     // `actualsMap` ne contient plus les orphelins → on NE somme PLUS ses valeurs ici.
@@ -465,6 +479,13 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // déjà ses paramètres — l'ajouter directement causerait une recréation infinie.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [usersIncome, timeView, customStart, customEnd]);
+
+    // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] no-fake-data : `fiscalBreakdown` dérive le net du SEUL
+    // `grossSalary` (`if (grossAnnual <= 0) continue`). Une fiche de paie importée qui ne porte que
+    // le NET (`mcp/ingest/applyDocument.ts`) laisse donc `grossSalary` à 0 → l'objectif vaudrait
+    // « 0 $ » et le reste-à-vivre objectif serait NÉGATIF. `undefined` = la 3e valeur est omise
+    // proprement par `DualKPIStat`, ce qui est l'aveu honnête plutôt qu'un zéro crédible.
+    const incomeObjectifDisplay = fiscalBreakdown.grossDisplay > 0 ? fiscalBreakdown.netDisplay : undefined;
 
     // [BUDGET-INCOME-REAL 2026-07-16] Revenu RÉEL = ventilé SALAIRE (paie) vs REVENUS DIVERS depuis les
     // transactions de la période (catégories de revenu réel), PAS le salaire d'onboarding (demande Marc :
@@ -969,6 +990,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     icon={<Icon name="money" size={16} />}
                     prevu={pastAverages.incomeAvg * getMultiplier()}
                     reel={totalActualIncomeDisplay}
+                    // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Objectif Revenus = salaire NET déclaré au
+                    // profil (fiscalBreakdown.netDisplay, même source que la carte fiscale plus bas —
+                    // "salaire déclaré", distinct du réel transactionnel par design de cet écran).
+                    objectif={incomeObjectifDisplay}
                     // [BUDGET-INCOME-REAL] Ventilation demandée par Marc : salaire (paie) vs revenus divers,
                     // depuis les vraies transactions de la période. Remplace « moy. passée » peu informatif.
                     sublabel={`Salaire ${formatCAD(incomeBreakdown.salary)} · Divers ${formatCAD(incomeBreakdown.other)}`}
@@ -979,6 +1004,9 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     icon={<Icon name="debt" size={16} />}
                     prevu={pastAverages.expenseAvg * getMultiplier()}
                     reel={totalSpentDisplay}
+                    // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Objectif = somme des cibles de dépense par
+                    // catégorie, hors ÉPARGNE et hors simulateur d'inflation (cf. sa définition).
+                    objectif={totalSpendObjectifDisplay}
                     sublabel={`Budget = moy. passée (${pastAverages.fullMonths} mois)`}
                     // Aucun mois complet → comparaison NON pertinente : neutre, jamais « danger »
                     // sur un prévu=0 (finding panel : badge rouge + écart 0,0 % contradictoires).
@@ -994,6 +1022,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                         icon={<Icon name="goal" size={16} />}
                         prevu={pastAverages.expenseAvg * getMultiplier()}
                         reel={projectedTotalDisplay}
+                        objectif={totalSpendObjectifDisplay}
                         sublabel="Dépenses au rythme actuel"
                         variant={pastAverages.fullMonths > 0 && projectedTotalDisplay > pastAverages.expenseAvg * getMultiplier() ? 'danger' : 'info'}
                         invertGoodBad
@@ -1004,6 +1033,10 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     icon={<Icon name="status" size={16} />}
                     prevu={(pastAverages.incomeAvg - pastAverages.expenseAvg) * getMultiplier()}
                     reel={totalActualIncomeDisplay - totalSpentDisplay}
+                    // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Objectif Restant = objectif Revenus −
+                    // objectif Dépenses (les deux MÊMES sources que les tuiles ci-dessus, donc
+                    // l'identité affichée tient). Objectif Revenus absent ⇒ pas d'objectif de reste.
+                    objectif={incomeObjectifDisplay === undefined ? undefined : incomeObjectifDisplay - totalSpendObjectifDisplay}
                     sublabel="Revenus − dépenses (réels)"
                     variant={totalActualIncomeDisplay - totalSpentDisplay < 0 ? 'danger' : 'success'}
                 />

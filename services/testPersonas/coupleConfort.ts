@@ -41,7 +41,6 @@ export function buildCoupleConfort(): Partial<AppState> {
         travelGoals: TEST_TRAVEL,
         lifeEvents: TEST_LIFE_EVENTS,
         financialGoals: TEST_FINANCIAL_GOALS,
-        savingsGoals: [],
         investmentAccounts: [],
         investmentTransactions: [],
         insurancePolicies: [],

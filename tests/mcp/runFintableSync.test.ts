@@ -13,7 +13,7 @@ function baseState(over: Partial<AppState> = {}): AppState {
     return {
         transactions: [], assets: [], investmentTransactions: [], investmentAccounts: [],
         budgetItems: [], config: {} as AppState['config'], projection: {} as AppState['projection'],
-        realEstateGoals: [], childGoals: [], savingsGoals: [], debts: [], travelGoals: [],
+        realEstateGoals: [], childGoals: [], debts: [], travelGoals: [],
         lifeEvents: [], retirementGoal: {} as AppState['retirementGoal'], financialGoals: [],
         initialBalances: {}, apiKeys: { anthropic: '', finnhub: '' },
         fxRates: { USD: 1, EUR: 1, CAD: 1 }, lastUpdate: 0, categorizationRules: [], aiConversation: [],

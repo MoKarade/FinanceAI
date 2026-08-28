@@ -84,7 +84,6 @@ export const Retirement: React.FC<RetirementProps> = ({
         charitableGoals: s.charitableGoals ?? EMPTY_ARRAY,
         rentalProperties: s.rentalProperties ?? EMPTY_ARRAY,
         privateBusinesses: s.privateBusinesses ?? EMPTY_ARRAY,
-        savingsGoals: s.savingsGoals ?? EMPTY_ARRAY,
         financialGoals: s.financialGoals ?? EMPTY_ARRAY,
     })));
     // Phase C.3 — `lifeExpectancy` lu depuis le store (retirementGoal). Le Hub

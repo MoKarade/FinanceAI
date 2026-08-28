@@ -92,7 +92,7 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
         projection, config, realEstateGoals, debts, childGoals, travelGoals, lifeEvents,
         retirementGoal, financialGoals, budgetItems, initialBalances, transactions,
         insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals,
-        rentalProperties, privateBusinesses, savingsGoals,
+        rentalProperties, privateBusinesses,
     } = useFinanceStore(useShallow((st) => ({
         projection: st.projection,
         config: st.config,
@@ -112,7 +112,6 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
         charitableGoals: st.charitableGoals ?? EMPTY_ARRAY,
         rentalProperties: st.rentalProperties ?? EMPTY_ARRAY,
         privateBusinesses: st.privateBusinesses ?? EMPTY_ARRAY,
-        savingsGoals: st.savingsGoals ?? EMPTY_ARRAY,
     })));
 
     // PH2-c-1 (résolu) : ce hook est monté 2× quand Futur est ouvert (ProjectionEngine + FutureProjection),
@@ -174,8 +173,7 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
         charitableGoals,
         rentalProperties,
         privateBusinesses,
-        savingsGoals,
-    }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, budgetItems, calculatedMonthlySavings, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, savingsGoals, financialGoals, startYear, startMonth]);
+    }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, budgetItems, calculatedMonthlySavings, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, financialGoals, startYear, startMonth]);
 
     return { params, pastHistory, liveCSVBalances, calculatedStartingCash, startYear, startMonth, todayMonthIndex };
 }

@@ -32,7 +32,12 @@ export const MCP_TEXT_MAX = 200;
 const USER_TEXT_KEYS = new Set([
     'name', 'payee', 'category', 'label', 'employer', 'description',
     'insurer', 'beneficiary', 'destination', 'userNotes',
-    'icon', // [MCP-DIRECT-EDIT Lot 3] SavingsGoal.icon = texte libre ≤8 car. (pas garanti emoji)
+    // [NAV-REMOVE-OBJECTIFS-TAB] `icon` justifiait `SavingsGoal.icon`, feature retirée. La clé RESTE,
+    // mais à titre PRÉVENTIF (même patron que insurer/beneficiary/destination ci-dessus) : vérifié le
+    // 2026-08-27, AUCUN tool data-aware n'expose de champ `icon` aujourd'hui. Candidat le plus proche
+    // si ça change : `LifeEvent.icon` (texte libre, pas garanti emoji), construit par `mcp/whatIf.ts`
+    // mais jamais sérialisé brut. Ne pas réécrire ce commentaire en affirmant un consommateur vivant.
+    'icon',
 ]);
 
 /**

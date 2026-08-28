@@ -183,3 +183,56 @@ describe('[MCP-REJECTIONS-NON-STRUCTUREES] les lignes rejetées d\'un relevé ac
         expect(res.warnings.some(w => w.includes('3 ligne(s) rejetée(s)'))).toBe(true);
     });
 });
+
+// [FINTABLE-DOUBLON-INTRALOT-SILENCIEUX] finding financial-integrity (routé au BACKLOG depuis
+// PR #754, traité ici) : `applyBankStatement` fusionnait par la clé date|montant|payee sans
+// distinguer un doublon contre l'EXISTANT (recouvrement légitime, bénin) d'un doublon INTRA-LOT
+// (deux lignes DISTINCTES du même lot entrant — le plus souvent deux VRAIES dépenses identiques
+// le même jour, dont une seule était écrite, SANS avertissement).
+describe('[FINTABLE-DOUBLON-INTRALOT-SILENCIEUX] un doublon INTRA-LOT (suspect) est distingué d\'un doublon contre l\'existant (bénin)', () => {
+    it('deux lignes IDENTIQUES du même lot (aucune n\'existe déjà) : 1 seule écrite, avertissement SUSPECT levé', () => {
+        const res = applyPayloadsIsolated(etatBase(), [{
+            kind: 'bank_statement',
+            transactions: [
+                { date: '2026-07-20', payee: 'Café Union', amount: -4.25 },
+                { date: '2026-07-20', payee: 'Café Union', amount: -4.25 }, // même clé, ligne DISTINCTE du lot
+            ],
+        }]);
+        expect(res.transactionsAdded).toBe(1);
+        expect(res.warnings.some(w => w.includes('1 doublon(s) SUSPECT'))).toBe(true);
+    });
+
+    it('un doublon contre l\'EXISTANT (pas intra-lot) ne déclenche PAS l\'avertissement suspect (sens inverse)', () => {
+        // Même scénario que le test « un doublon SEUL » plus haut : la ligne entrante duplique
+        // une transaction DÉJÀ présente dans l'état — recouvrement légitime, pas intra-lot.
+        const tx = { date: '2026-07-15', payee: 'Épicerie Metro', amount: -50 }; // déjà dans etatBase()
+        const res = applyPayloadsIsolated(etatBase(), [{ kind: 'bank_statement', transactions: [tx] }]);
+        expect(res.warnings).toEqual([]);
+    });
+
+    it('trois lignes identiques (2 doublons intra-lot) : le compte est EXACT, pas juste "au moins un"', () => {
+        const res = applyPayloadsIsolated(etatBase(), [{
+            kind: 'bank_statement',
+            transactions: [
+                { date: '2026-07-20', payee: 'Café Union', amount: -4.25 },
+                { date: '2026-07-20', payee: 'Café Union', amount: -4.25 },
+                { date: '2026-07-20', payee: 'Café Union', amount: -4.25 },
+            ],
+        }]);
+        expect(res.transactionsAdded).toBe(1);
+        expect(res.warnings.some(w => w.includes('2 doublon(s) SUSPECT'))).toBe(true);
+    });
+
+    it('`callerClassified` désactive la dédup ENTIÈREMENT : aucun avertissement suspect (le rattrapage a déjà tranché)', () => {
+        const res = applyPayloadsIsolated(etatBase(), [{
+            kind: 'bank_statement',
+            callerClassified: true,
+            transactions: [
+                { date: '2026-07-20', payee: 'Café Union', amount: -4.25 },
+                { date: '2026-07-20', payee: 'Café Union', amount: -4.25 },
+            ],
+        }]);
+        expect(res.transactionsAdded).toBe(2); // les deux SONT écrites (c'est le sens de callerClassified)
+        expect(res.warnings).toEqual([]);
+    });
+});

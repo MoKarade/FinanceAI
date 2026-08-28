@@ -54,9 +54,9 @@ describe('computeIsEmpty — profil / données de planification (fix 2026-05-29)
         expect(computeIsEmpty({ state: { config: { users: [{ name: '', netSalary: 4000 }] } } })).toBe(false);
         expect(computeIsEmpty({ state: { config: { users: [{ name: '', grossSalary: 5400 }] } } })).toBe(false);
     });
-    it('NON-vide dès qu un tableau de données a un élément (dettes, objectifs d épargne…)', () => {
+    it('NON-vide dès qu un tableau de données a un élément (dettes, voyages…)', () => {
         expect(computeIsEmpty({ state: { debts: [{ id: 'd' }] } })).toBe(false);
-        expect(computeIsEmpty({ state: { savingsGoals: [{ id: 'g' }] } })).toBe(false);
+        expect(computeIsEmpty({ state: { travelGoals: [{ id: 'g' }] } })).toBe(false);
     });
     it('VIDE si seuls des tableaux à 1 entrée PAR DÉFAUT sont présents (realEstateGoals/childGoals)', () => {
         // Ces tableaux contiennent une entrée par défaut → ne doivent PAS compter comme « non-vide ».

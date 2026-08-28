@@ -10,6 +10,121 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-27 — Objectif ajouté aux 4 tuiles Budget + filet de test manquant comblé
+
+- [x] **`[BUDGET-REEL-PREVISIONNEL-OBJECTIF]`** (M) — PR #755 (lot 29), gate
+  vert (4 853 tests, 453 fichiers). Cadrage (choix cliquable) : Marc a demandé l'Objectif sur les
+  TROIS tuiles (Revenus/Dépenses/Restant), pas seulement Dépenses — a exigé de définir un
+  « objectif de revenu » qui n'existait pas encore côté UI, résolu en réutilisant
+  `fiscalBreakdown.netDisplay` (déjà calculé dans `Budget.tsx`, déjà distingué du réel
+  transactionnel sous le nom « salaire déclaré »). Objectif par tuile : Revenus =
+  `fiscalBreakdown.netDisplay` · Dépenses / Fin de mois (projection) = `totalBudgetDisplay` (même
+  source pour les deux) · Restant = Objectif Revenus − Objectif Dépenses. `DualKPIStat` gagne une
+  prop `objectif?: number` optionnelle (absente ⇒ comportement bit-à-bit identique, rétrocompat,
+  aucun autre appelant à toucher). 3 tests neufs, discriminés par perturbation.
+  ⚠️ **Découverte en chemin, corrigée dans le même lot** : `components/Planning.tsx` (Charges
+  fixes & Abonnements) n'avait plus AUCUN test de RENDU depuis `[NAV-REMOVE-OBJECTIFS-TAB]`
+  (l'unique fichier qui le montait, `PlanningGoals.test.tsx`, ciblait la section Objectifs
+  retirée — la logique pure restait testée à part). Ajouté
+  `tests/components/Planning.smoke.test.tsx` (rendu de base + détection heuristique d'un
+  abonnement) — baseline avant la refonte `[BUDGET-CHARGES-FIXES-REFONTE]`.
+
+## 2026-08-27 — Xetra (ETR:) et Milan (BIT:) ajoutés au routage des cours exacts
+
+- [x] **`[INVEST-COURS-EXACT-TOUTES-ACTIONS]`** (M) — PR #755 (lot 29), gate
+  vert (4 853 tests, 453 fichiers). Cause trouvée par investigation (pas de décision Marc requise
+  pour le correctif principal) : `toFinnhubSymbol` (`services/marketData/providers/finnhub.ts`) ne
+  convertit que 3 préfixes (NASDAQ/NYSE, TSE/TSX, EPA) vers le format Finnhub/Yahoo — tout autre
+  préfixe retombe sur le ticker BRUT sans suffixe de place, que Finnhub/Yahoo ne résolvent jamais
+  (silencieux, aucune erreur). `ETR:KLA` (Xetra) et `BIT:GBS` (Milan), deux positions du
+  portefeuille réel de Marc, tombaient dans ce trou. `inferCurrency` (même fichier) anticipait
+  DÉJÀ les suffixes `.DE`/`.MI` correspondants depuis une revue de 2026-07-15 — la table de
+  routage n'avait simplement jamais été complétée avec les préfixes qui y mènent. Ajouté ETR→.DE
+  et BIT→.MI dans `toFinnhubSymbol` ET `inferCurrency` (qui lit le symbole ORIGINAL avant
+  conversion, donc a besoin du même cas de préfixe séparément).
+  ⚠️ Portée volontairement LIMITÉE à ces deux préfixes, confirmés par les tickers RÉELS du ticket :
+  Madrid/Amsterdam/Bruxelles/Lisbonne/Vienne/Dublin/Helsinki (suffixes déjà anticipés par
+  `inferCurrency`) n'ont PAS de convention de préfixe vérifiée dans ce dépôt — deviner risquerait
+  de router un ticker vers un AUTRE instrument, pire qu'un cours absent. `OTCMKTS:ANDXF` (ADR
+  pink-sheet) reste sur le fallback ticker-brut existant : gap de couverture du forfait gratuit,
+  pas un bug de routage — note ajoutée à `[INVEST-PORTFOLIO-DATA-CORRECTION]` dans `BACKLOG.md`.
+  2 tests neufs (`tests/services/finnhub.test.ts`), discriminés par perturbation (revert des deux
+  fonctions → les deux rougissent ; non-régression `OTCMKTS:` confirmée à part).
+
+## 2026-08-27 — Résumé Santé condensé en tête de Futur
+
+- [x] **`[NAV-MERGE-SANTE-FUTUR]`** (M) — PR #755 (lot 29), gate vert
+  (4 853 tests, 453 fichiers). Décision Marc, confirmée par choix cliquable : « Condensé (résumé +
+  lien vers le détail) » plutôt qu'un déplacement verbatim du contenu. Le sous-onglet Santé
+  (Budget → Santé, jauge + 6 métriques + réglage des pondérations) reste INCHANGÉ, seule vue
+  détaillée ; un nouveau composant `components/future/FutureHealthSummary.tsx` affiche, en tête de
+  la page Futur, un résumé condensé (score/100 coloré + « Voir le détail → ») qui pointe vers ce
+  même sous-onglet via `navigateWithFocus(Tab.BUDGET, 'sante')` — mécanisme de deep-link déjà câblé
+  et testé (`BudgetWorkspace.test.tsx`), aucune nouvelle plomberie de navigation.
+  Le calcul du score (6 métriques + score pondéré) a été EXTRAIT de `HealthIndicator.tsx` vers
+  `utils/healthScore.ts` (source unique, comportement bit-à-bit identique — les 13 tests
+  `HealthIndicator`/`BudgetWorkspace` restent verts sans modification) : le résumé condensé et la
+  carte détaillée affichent désormais garanti le MÊME score, au lieu de deux calculs qui
+  pourraient diverger. No-fake-data respecté : sans profil renseigné, le résumé invite à saisir le
+  profil plutôt que d'afficher un score 0/100 inventé.
+  ⚠️ Effet de bord découvert en testant : le nouvel import statique dans `FutureProjection.tsx`
+  tire `services/portfolio.ts` (donc `logErrorThrottled`) dans l'arbre de rendu de la page — 3
+  fichiers de test qui montent `<FutureProjection>` avec un mock PARTIEL de
+  `services/errorLogger` (seulement `logError`) plantaient sur un actif sans devise. Mocks
+  complétés (`FutureProjection.persist/.applyReveal/.eventStack.test.tsx`).
+  3 tests neufs (`tests/components/future/FutureHealthSummary.test.tsx`), discriminés par
+  perturbation ciblée (retrait du `onClick` → le test de deep-link rougit).
+
+## 2026-08-27 — Retrait complet de la feature « Objectifs » (SavingsGoal)
+
+- [x] **`[NAV-REMOVE-OBJECTIFS-TAB]`** (S→devenu M en cours de route) — PR #755 (lot 29), gate vert (4 853 tests, 453 fichiers). Décision Marc, confirmée DEUX fois : la
+  1ʳᵉ réponse (« Retiré du produit ») visait l'UI ; une cartographie a montré que `savingsGoals`
+  alimentait aussi `applySavingsGoalDeadlines` dans le moteur de projection (décaissement réel au
+  mois de l'échéance) — Marc a confirmé vouloir retirer « VRAIMENT tout (UI + moteur) » une fois
+  informé. Retiré : l'onglet Objectifs de `BudgetWorkspace`/`Planning` (le sous-onglet « Charges
+  fixes & Abos » perd son `section`, ne rend plus que lui-même) ; `applySavingsGoalDeadlines` du
+  moteur (`GoalDeadlineMutator` et `applyFinancialGoalDeadlines` restent intacts, seul appelant
+  restant) ; les deux surfaces MCP (`mcp/server.ts` + `services/aiTools/registry.ts`, fichiers
+  `upsertSavingsGoal.tool.ts`/`.spec.ts` supprimés) ; `applyDocument.ts` (case `savings_goal`,
+  fonction dédiée, `DeleteItemPayload.entity` réduit à `'asset' | 'debt'`) ; `types.ts`
+  (`SavingsGoal`, `AppState.savingsGoals`) ; les deux tables non typées où un champ supprimé passe
+  inaperçu du typecheck (`utils/onboarding.ts` `DATA_ARRAY_KEYS`, `services/personaSanitizer.ts`
+  `ARRAY_SLICES`). Le payload de backup (`BackupPanel.tsx`) garde `savingsGoals` optionnel en
+  LECTURE (vieux fichiers de backup) mais ne le ré-écrit plus (rien ne le relit).
+  Ordre d'exécution délibéré : UI/fixtures de test d'abord, moteur ensuite, `types.ts` en DERNIER
+  pour que le typecheck serve de filet — il a effectivement rattrapé 3 sites oubliés
+  (`services/testPersonas/_shared.ts`, `coupleConfort.ts`, `tests/components/Settings.test.tsx`).
+  `tests/components/PlanningGoals.test.tsx` supprimé (dédié à la feature) ; le test TZ
+  `[BUDGET-TRANSACTIONS-SYNC-AUDIT]` de `BudgetWorkspace.test.tsx` supprimé aussi — son sujet
+  (le calcul `monthStr` local qui alimentait `actualsMap` de l'onglet Objectifs) est devenu du
+  code mort par la suppression, pas juste non testé.
+
+## 2026-08-27 — `computeGoldenSplit`/`GOLDEN_IDEAL` code mort supprimé
+
+- [x] **`[UTIL-GOLDENSPLIT-ORPHELIN]`** (XS) — PR #755 (lot 29), gate vert (4 853 tests, 453 fichiers).
+  Découvert en livrant `BUDGET-REMOVE-AMELIORER` : `computeGoldenSplit`, `GOLDEN_IDEAL` et le type
+  `GoldenSplit` (`utils/budget.ts`) n'avaient plus aucun consommateur en production, seuls leurs
+  propres tests les exerçaient encore (angle mort connu de `knip`, cf leçon
+  `UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER`). Confirmé supprimable (recommandé
+  et choisi par Marc plutôt que re-brancher) : bloc `[PH4-B]` retiré de `utils/budget.ts` et ses
+  5 tests dédiés de `tests/utils/budget.test.ts`.
+
+## 2026-08-27 — Un doublon bénin (recouvrement) distingué d'un doublon intra-lot suspect
+
+- [x] **`[FINTABLE-DOUBLON-INTRALOT-SILENCIEUX]`** (M) — PR à venir (branche `claude/lot-29`),
+  gate vert (4 871 tests). Finding financial-integrity (PR #754), routé au `BACKLOG.md` puis
+  traité ici. `applyBankStatement` (`mcp/ingest/applyDocument.ts`) fusionnait par la clé
+  `date|montant|payee` sans distinguer un doublon contre l'EXISTANT (recouvrement légitime,
+  bénin) d'un doublon INTRA-LOT (deux lignes DISTINCTES du même lot entrant — le plus souvent
+  deux vraies dépenses identiques le même jour, dont une seule écrite SANS avertissement).
+  Mesuré : 8,50 $ de dépense réelle perdue en silence, `cashAnchorDelta` absorbe l'écart (total
+  de liquidités juste, ventilation budget/historique faussée).
+  `existingKeys`/`seenThisLot` séparés au lieu d'un seul `seen` ; nouveau champ optionnel
+  `ApplyResult.dupIntraLotCount`, nouvelle phrase de résumé distincte ; `applyPayloadsIsolated`
+  pousse un avertissement SÉPARÉ dans `SystemView` quand `dupIntraLotCount > 0`. `mcp/README.md`
+  mis à jour (nouveau champ + note corrigée sur les doublons). 4 tests neufs, chaque correctif
+  discriminé par perturbation ciblée.
+
 ## 2026-08-26 — Les lignes rejetées d'un relevé bancaire deviennent visibles à la sync automatisée
 
 - [x] **`[MCP-REJECTIONS-NON-STRUCTUREES]`** (M) — PR #754, gate vert (4 867 tests). Finding

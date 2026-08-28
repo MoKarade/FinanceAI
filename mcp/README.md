@@ -36,7 +36,7 @@ ta source d'état ») au lieu de planter.
 
 | Tool | Répond à |
 |------|----------|
-| `get_financial_overview` | Patrimoine net, liquidités, placements, ventilation par compte (CELI/REER/CELIAPP/REEE/non-enregistré/crypto), revenu/dépenses/cashflow mensuels, dette totale, objectifs actifs |
+| `get_financial_overview` | Patrimoine net, liquidités, placements, ventilation par compte (CELI/REER/CELIAPP/REEE/non-enregistré/crypto), revenu/dépenses/cashflow mensuels, dette totale |
 | `get_holdings` | Liste les PLACEMENTS individuels (chaque titre) : symbole, nom, quantité, prix natif (USD/EUR/CAD), devise, **valeur CAD** (source unique `assetValueCad`), compte, rendement — trié par valeur, avec total et ventilation par compte. Répond à « qu'est-ce que je détiens », « ma plus grosse position », « combien en CELI » |
 | `get_projection` | Projection long terme sur SES vraies données (valeur nette dans le temps, âge d'épuisement éventuel). `includeSeries: true` → série ANNUELLE exacte (patrimoine nominal/réel, comptes, dettes, par âge) pour tracer des graphiques |
 | `simulate_what_if` | « Si j'achète une voiture demain ? » — changements HYPOTHÉTIQUES (achat ponctuel ou financé, salaire ±, dépense récurrente, nouvelle dette, achat immobilier) simulés sur SES vraies données : le moteur roule 2× (avec/sans) → deltas de patrimoine à 1/2/5/10/20 ans, impact FIRE/impôts, hypothèses explicites, séries annuelles base+scénario pour graphiques comparés. Aucun chiffre inventé : tout sort du moteur |
@@ -62,8 +62,7 @@ l'écriture, le tool refuse (rien d'écrasé) et invite à relancer. Exposés un
 | `apply_debt` | Dette RÉELLE (prêt auto, carte, perso) — ajout ou mise à jour PAR NOM, PARTIELLE (seuls les champs fournis changent ; même nom = écrasement, jamais de doublon). Champs optionnels `debtKind`/`startDate`/`termEndDate` [DEBT-MCP-PARITE] : sans `startDate` la projection sert la dette dès le mois 0 (comme avant) ; avec, elle attend cette date (prêt signé, premier paiement futur). ⚠️ Dettes déjà contractées seulement : un achat FUTUR/hypothétique dont le solde/taux ne sont pas encore connus passe par `simulate_what_if` |
 | `set_cash` | Ajuste le solde de LIQUIDITÉS (cash) à une cible en $ CAD. Cash DÉRIVÉ → delta sur le compte `LIQUIDITE` des soldes de départ (visible Réglages → Comptes), transactions intactes, idempotent. ⚠️ **Confirmation à 2 temps** : sans `confirm:true`, renvoie un APERÇU (avant→après) SANS écrire ; n'applique qu'après accord explicite de l'utilisateur |
 | `set_budget_item` | Ajoute ou met à jour PAR NOM un poste de budget (cible/fréquence/nature/répartition, update PARTIEL). ⚠️ Éditer la cible décroche la cible auto-gérée (`autoTarget:false`). Confirmation à 2 temps (`confirm`) |
-| `upsert_savings_goal` | Ajoute ou met à jour PAR NOM un objectif d'épargne (cible/accumulé/échéance/icône, update PARTIEL). Confirmation à 2 temps (`confirm`) |
-| `delete_item` | SUPPRIME un actif (= vente totale, la position ET sa contribution passée à la courbe disparaissent), une dette (le NW monte) ou un objectif (décaissement annulé). Correspondance EXACTE (ambiguïté → erreur), confirmation 2 temps STRICTE + sauvegarde avant. Détail : ADR docs/adr/ |
+| `delete_item` | SUPPRIME un actif (= vente totale, la position ET sa contribution passée à la courbe disparaissent) ou une dette (le NW monte). Correspondance EXACTE (ambiguïté → erreur), confirmation 2 temps STRICTE + sauvegarde avant. Détail : ADR docs/adr/ |
 
 ### Connexion (amorçage)
 | `connect_drive` | Autorise le Google Drive de l'utilisateur **dans la conversation** (consentement navigateur, client OAuth partagé) — pour l'install `.mcpb` sans terminal |
@@ -81,14 +80,17 @@ Tous les tools d'écriture (lot 2) retournent un objet `ApplyResult` :
   summary: string;              // Résumé lisible pour Claude (ex: « 5 transactions ajoutées »)
   rejectedCount?: number;       // Nombre de lignes rejetées pour qualité de donnée
                                 // (montant aberrant, date invalide, ligne incomplète)
+  dupIntraLotCount?: number;    // Sous-ensemble SUSPECT des doublons : deux lignes DISTINCTES
+                                // du même lot entrant qui partagent la même clé (le plus souvent
+                                // deux vraies dépenses identiques le même jour, une seule écrite)
 }
 ```
 
 **Notes**
-- `rejectedCount` n'existe que pour les outils qui traitent **ligne par ligne** (`apply_bank_statement`) ; absent pour les autres.
-- **Doublons ne sont pas des rejets** : un doublon est un résultat attendu d'une synchronisation à fenêtres chevauchantes.
-- `rejectedCount > 0` : un avertissement s'affiche dans l'onglet Synchronisation (seulement pour les appelants automatisés comme `applyPayloadsIsolated` qui ne lisent pas le `summary` en texte brut).
-- `summary` reste la seule source pour un lecteur LLM — chaque rejet y est décrit en détail (l'appelant automatisé a besoin du compteur structuré en plus pour afficher l'alerte).
+- `rejectedCount`/`dupIntraLotCount` n'existent que pour les outils qui traitent **ligne par ligne** (`apply_bank_statement`) ; absents pour les autres.
+- **Un doublon contre l'EXISTANT n'est PAS un rejet** : sur le chemin de sync automatisée, le recouvrement légitime est déjà écarté en amont par la bascule anti-doublon (mesuré : 0 collision sur 60 jours balayés) — l'inclure ferait une alarme quasi permanente. Un doublon INTRA-LOT (deux lignes du même lot, `dupIntraLotCount`) est une nature DIFFÉRENTE : il désigne le plus souvent deux dépenses réelles distinctes, et lève son propre avertissement.
+- `rejectedCount > 0` ou `dupIntraLotCount > 0` : un avertissement s'affiche dans l'onglet Synchronisation (seulement pour les appelants automatisés comme `applyPayloadsIsolated` qui ne lisent pas le `summary` en texte brut).
+- `summary` reste la seule source pour un lecteur LLM — chaque rejet/doublon suspect y est décrit en détail (l'appelant automatisé a besoin des compteurs structurés en plus pour afficher l'alerte).
 
 ## Lancement local (stdio)
 
@@ -442,7 +444,7 @@ Cloud Run, lit Fintable, et écrit dans Drive — 100 % en arrière-plan.
   aucune date figée à maintenir. Un rapport (`AppState.fintableSyncReport`) est **TOUJOURS écrit**
   (succès ou échec) : comptes vus, tx ajoutées, virements internes détectés, cash/dettes mis à
   jour, avertissements, erreur — visible dans l'app (Réglages), sans notification proactive
-  (choix Marc). Ne touche QUE ce que le mapper produit : budgets, objectifs, dettes saisies
+  (choix Marc). Ne touche QUE ce que le mapper produit : budgets, dettes saisies
   manuellement (hors solde) restent intacts.
 - **Activation** : définir `FINANCEAI_FINTABLE_SYNC_SECRET` (≥16 caractères — refus de démarrer
   sinon), **DISTINCT** de `FINANCEAI_REFRESH_SECRET` (périmètre différent : celui-ci autorise

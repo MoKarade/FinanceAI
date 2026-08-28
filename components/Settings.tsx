@@ -17,7 +17,7 @@ import { PageHeader } from './ui/PageHeader';
 import { Icon, type IconName } from './ui/Icon';
 import { SubTabs, TabPanel } from './ui/SubTabs';
 import {
-  AppState, BudgetCategory, Transaction, Asset, SavingsGoal, TravelGoal, Debt,
+  AppState, BudgetCategory, Transaction, Asset, TravelGoal, Debt,
   InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal,
   RealEstateGoal, ChildGoal, Tab,
 } from '../types';
@@ -46,7 +46,6 @@ interface SettingsProps {
   transactions: Transaction[];
   setTransactions?: (t: Transaction[]) => void;
   assets: Asset[];
-  savingsGoals: SavingsGoal[];
   travelGoals: TravelGoal[];
   debts?: Debt[];
   investmentAccounts?: InvestmentAccount[];
@@ -96,7 +95,6 @@ export const Settings: React.FC<SettingsProps> = ({
   budgetItems,
   onImportData,
   assets,
-  savingsGoals,
   travelGoals,
   debts = [],
   investmentAccounts = [],
@@ -141,7 +139,6 @@ export const Settings: React.FC<SettingsProps> = ({
     budgetItems,
     assets,
     initialBalances,
-    savingsGoals,
     travelGoals,
     debts,
     investmentAccounts,

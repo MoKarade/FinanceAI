@@ -17,45 +17,70 @@
 
 ---
 
-- [ ] 🔧 **`[FINTABLE-DOUBLON-INTRALOT-SILENCIEUX]`** (M, finding financial-integrity PR #754,
-  préexistant) — `applyBankStatement` (`mcp/ingest/applyDocument.ts`) fusionne par la clé
-  `date|montant|payee` : deux dépenses RÉELLES identiques le même jour (ex. 3 cafés à 4,25 $ au
-  même commerçant) n'en écrivent qu'UNE, sans aucun avertissement. Sur le chemin de sync
-  automatisée, le recouvrement LÉGITIME est déjà écarté en amont (bascule anti-doublon
-  `deriveCutoverDate`, mesuré 0 collision sur 60 jours) et le rattrapage désactive la dédup
-  (`callerClassified: true`) — donc un `dupCount > 0` qui survit jusqu'à `applyBankStatement` y
-  désigne surtout une collision INTRA-lot (deux lignes distinctes du mapper, pas un recouvrement de
-  fenêtres). Mesuré : 8,50 $ de dépense réelle perdue, `cashAnchorDelta` absorbe l'écart en silence
-  (le total de liquidités reste juste, la VENTILATION budget/historique est fausse). Correctif
-  proposé (à cadrer) : séparer `dupCount` en `dupExistant` (bénin, déjà présent avant ce lot) et
-  `dupIntraLot` (suspect, deux lignes du MÊME lot entrant), et n'avertir que sur le second — le
-  `seen` initial contient déjà l'existant, tester l'appartenance AVANT le premier `seen.add`
-  distingue les deux cas pour le coût d'une ligne.
-
 ## 🧭 Vague Budget/Transactions/Investissements (Marc, 2026-08-21)
 
 > Retours de Marc en bloc, non cadrés — chaque item à cadrer (questions groupées) avant de coder,
 > par ticket ou par petit paquet cohérent.
 
-- [ ] **`[UTIL-GOLDENSPLIT-ORPHELIN]`** (XS, découvert en livrant `BUDGET-REMOVE-AMELIORER`) —
-  `computeGoldenSplit`, `GOLDEN_IDEAL` et le type `GoldenSplit` (`utils/budget.ts`) n'ont plus AUCUN
-  consommateur de production depuis le retrait de la carte : leur seul appelant est
-  `tests/utils/budget.test.ts`. ⚠️ **`knip` ne le voit pas** — sortie identique au octet près avant et
-  après (323 lignes, 80 exports inutilisés) : un test suffit à faire passer un export pour vivant.
-  À trancher avec Marc : supprimer (util + ses 5 tests) ou re-brancher ailleurs. Pas supprimé ici —
-  hors périmètre du ticket de retrait.
-- [ ] **`[BUDGET-REEL-PREVISIONNEL-OBJECTIF]`** (M) — dans la zone « Revenus / dépenses / fin de
-  mois / restant », afficher TROIS valeurs plutôt qu'une : **Réel** / **Prévisionnel** / **Objectif**
-  (l'Objectif = les valeurs saisies par Marc dans les cibles de dépense par catégorie).
 - [ ] **`[BUDGET-CHARGES-FIXES-REFONTE]`** (L) — « Charges fixes et abonnements » ne fonctionne pas
   assez bien : Marc veut une analyse BEAUCOUP plus approfondie et une interface plus interactive
   et utile (refonte, pas un correctif ponctuel).
-- [ ] **`[NAV-REMOVE-OBJECTIFS-TAB]`** (S) — retirer l'onglet « Objectifs ».
-- [ ] **`[NAV-MERGE-SANTE-FUTUR]`** (M) — fusionner l'onglet « Santé » dans la page « Futur », tout
-  en haut, combiné avec le reste plutôt qu'en onglet séparé.
-- [ ] **`[INVEST-COURS-EXACT-TOUTES-ACTIONS]`** (M) — Marc veut voir le cours exact, au jour, de
-  TOUTES ses actions — actuellement seulement une PARTIE du portefeuille l'affiche. Étendre à
-  la totalité des positions.
+  🧭 **Cadrage round 1 (2026-08-27)** : Marc a coché les TROIS irritants proposés (aucun exclu) —
+  détection imprécise (faux positifs/négatifs de l'heuristique + IA), manque d'analyse dans le
+  temps (tendances de prix, évolution de la facture totale), interface peu interactive (liste +
+  calendrier statiques). Portée confirmée large — les trois angles sont à couvrir, pas un sous-
+  ensemble. **Prochaine étape avant de coder** : batch de cadrage DÉTAILLÉ (mockup/wireframe
+  léger si utile) sur CHAQUE axe — ex. quels signaux concrets manquent à la détection, quelles
+  vues d'analyse précises (graphique de tendance ? comparaison mois-à-mois ? projection
+  d'impact ?), quelle interactivité voulue (filtrage, regroupement, drill-down). Effort L : ne
+  pas coder avant d'avoir cette DoD précise.
+- [ ] **`[TEST-PERSONA-NON-DETERMINISTE]`** (S, **ÉLEVÉ en gêne d'outillage** — finding
+  projection-validator MESURÉ, panel PR #755, PRÉ-EXISTANT) — `services/testTransactions.ts:42-52`
+  utilise `Math.random()` NU. `couple-confort`, le persona PAR DÉFAUT, est le seul à consommer
+  `generateTestTransactions()` → `calculatedStartingCash` change à CHAQUE appel. Mesuré : 5
+  exécutions du MÊME code donnent 5 `finalNetWorth` distincts, amplitude **3 088,55 $** (0,028 %).
+  Conséquence directe : **toute comparaison avant/après sur ce persona est impossible sans graine**
+  — le panel a dû injecter un LCG pour obtenir sa preuve bit-identique. C'est le persona qu'un
+  audit prend spontanément. Fix : graine injectable (le dépôt a déjà ce patron pour Monte Carlo).
+- [ ] **`[ENG-GOALS-HORS-TOTALEXPENSES]`** (S, FAIBLE [Probable] — finding projection-validator
+  MESURÉ, panel PR #755, PRÉ-EXISTANT) — un tirage d'objectif n'entre PAS dans `totalExpenses` :
+  mesuré, base et `FinancialGoal` équivalent donnent tous deux `totalExpenses` =
+  2 959 741,7505609933 alors que `finalNetWorth` chute de **215 045,84 $**. Pas un trou de
+  conservation (l'argent sort de `liquid` et est publié en `withdrawalLiquid`, le NW baisse) mais
+  un registre de REPORTING qui ignore une sortie réelle. Mécanisme probable : `addExpense` est un
+  no-op dans le `goalMutator` (`services/projection.ts`, « déjà soustrait du compte ciblé ») — le
+  fait MESURÉ est l'écart, pas sa cause. Vérifier qui LIT `totalExpenses` avant de corriger.
+- [ ] **`[ENG-GOALSHORTFALLS-CHAMP-MORT]`** (XS, FAIBLE — finding projection-validator, panel
+  PR #755) — `goalShortfalls` (`services/projection.ts`, `services/projection/types.ts`) n'a
+  **zéro consommateur** : grep exhaustif `.ts`/`.tsx`/`.md`, aucune UI, aucun outil MCP, aucun
+  prompt IA, aucune doc technique — seulement deux mentions narratives en archive. Candidat
+  `knip`/nettoyage. ⚠️ Le champ reste ALIMENTÉ correctement, ce n'est pas un bug : juste du code
+  publié que personne ne lit (même classe que `[UTIL-GOLDENSPLIT-ORPHELIN]`).
+- [ ] **`[MCP-WRITE-PARITY-GUARD]`** (S — finding ai-reviewer, panel PR #755, PRÉ-EXISTANT) —
+  `tests/aiTools/registryParity.test.ts` n'assure l'exhaustivité que sur `READ_SPECS`
+  (`s.kind === 'read'`). AUCUN test ne compare les tools d'ÉCRITURE enregistrés côté serveur MCP
+  (`mcp/server.ts`, bloc `if (options.store)`) à `WRITE_SPECS` (`services/aiTools/registry.ts`).
+  Les deux fichiers compilent indépendamment → un tool d'écriture ajouté ou retiré d'UN SEUL des
+  deux registres ne serait vu ni par `tsc`, ni par le lint, ni par le gate. Risque concret : un
+  geste destructif (`delete_item`-like) exposé côté MCP mais absent du chat in-app, ou l'inverse,
+  sans aucun test rouge. Même classe que `[DEFAULTS-DRIFT-FINTABLE-FIELDS]` (test unidirectionnel).
+  ⚠️ Le retrait de `upsert_savings_goal` (PR #755) a été fait symétriquement à la main et VÉRIFIÉ —
+  ce ticket ferme le trou pour la prochaine fois, il ne corrige pas un bug actuel.
+- [ ] **`[HEALTH-SCORE-NAN-SILENCIEUX]`** (XS — finding silent-failure-hunter, panel PR #755,
+  PRÉ-EXISTANT) — `clamp01` (`utils/healthScore.ts`) ne neutralise pas `NaN`
+  (`Math.max(0, Math.min(100, NaN)) === NaN`), et les 3 métriques toujours `available: true`
+  (taux d'épargne, coussin, ratio dette/actif) n'ont aucune garde d'entrée. Une entrée corrompue en
+  amont afficherait littéralement « Santé financière : NaN/100 », sans `logError`. Pas une
+  violation stricte du no-fake-data (NaN n'est pas un « 0 $ crédible »), mais un affichage cassé
+  et muet. ⚠️ Défaut d'ORIGINE de `HealthIndicator.tsx` : l'extraction de `utils/healthScore.ts`
+  (PR #755) l'a seulement DUPLIQUÉ vers une 2e surface d'affichage, doublant son exposition.
+- [ ] **`[BUDGET-DEUX-NETS-MEME-ECRAN]`** (S — finding financial-integrity, panel PR #755,
+  PRÉ-EXISTANT) — deux « net » de PROVENANCE différente coexistent sur l'écran Budget :
+  l'Objectif Revenus affiche le net RECALCULÉ depuis le brut par `calculateFiscalReport`
+  (4 846 $ mesuré sur la fixture) tandis que la carte de répartition du couple et le score de
+  santé affichent `netSalary × multiplier` (5 000 $) — 154 $/mois, 3,1 % d'écart. Aucun des deux
+  n'est faux ; c'est leur COEXISTENCE non expliquée qui trompe. Trancher : une source unique, ou
+  une mention de provenance visible sur chacun.
 - [ ] **`[INVEST-PORTFOLIO-DATA-CORRECTION]`** (S, 👤 données réelles de Marc à appliquer) —
   remplacer/corriger les positions du portefeuille pour correspondre EXACTEMENT à l'historique
   d'achat suivant (fourni par Marc, toutes les transactions en **CAD**) :
@@ -73,6 +98,10 @@
   - Visa Inc (NYSE:V) : 12 déc. 2025, 21 actions à 348,37 $ CAD
   ⚠️ Vérifier d'abord l'écart avec les positions actuelles avant d'écraser quoi que ce soit (ne pas
   dupliquer si déjà en partie correct).
+  ⚠️ [INVEST-COURS-EXACT-TOUTES-ACTIONS livré] `ETR:` (Xetra) et `BIT:` (Milan) ont désormais un
+  cours exact. `OTCMKTS:ANDXF` reste un gap de COUVERTURE (forfait gratuit Finnhub/Yahoo, pas un
+  bug de routage) : ce titre pourrait rester sans cours exact — vérifier après saisie, et si besoin
+  entrer son jumeau coté en bourse standard (l'ETF Amundi existe probablement aussi en `EPA:`/`ETR:`).
 
 ---
 

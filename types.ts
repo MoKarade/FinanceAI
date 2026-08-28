@@ -554,18 +554,6 @@ export interface ChildGoal {
   respContribution?: number;
 }
 
-export interface SavingsGoal {
-  id: string;
-  name: string;
-  targetAmount: number;
-  currentAmount: number;
-  deadline: string;
-  icon: string;
-  /** [PH4-C] Lien optionnel vers une catégorie budget (par NOM = clé d'`actualsMap`) : permet d'afficher
-   *  « versé ce mois » (dépense réelle rapprochée) à côté de l'accumulé (`currentAmount`) et de la cible. Additif. */
-  linkedBudgetCategoryName?: string;
-}
-
 /** [PH4D-WEIGHTS-STORE] Pondérations des ratios de l'indicateur de santé financière (`HealthIndicator`).
  *  [PH4D-BUDGET-RATIOS] étendu de 4 à 6 : ajout de `budgetParity` (adhérence au budget) et `subscriptionLoad`
  *  (poids des abonnements). Rétrocompat : un état persisté à 4 champs est complété par les défauts à la lecture. */
@@ -780,7 +768,6 @@ export interface AppState {
   realEstateGoals: RealEstateGoal[];
   childGoal?: ChildGoal;
   childGoals: ChildGoal[];
-  savingsGoals: SavingsGoal[];
   /** [PH4D-WEIGHTS-STORE] Pondérations de l'indicateur de santé financière (somme libre, normalisée à l'affichage).
    *  Migré de l'ancienne clé localStorage `healthIndicator:weights:v1` vers le store persisté. Optionnel (additif) :
    *  le store l'initialise toujours (`loadLegacyHealthWeights`), mais un vieil état persisté peut ne pas l'avoir → fallback. */

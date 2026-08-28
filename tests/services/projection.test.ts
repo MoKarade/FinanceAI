@@ -1047,21 +1047,6 @@ const ALL_TYPES = ['BASE', 'LIBERTE_55', 'HYPER_INFLATION', 'WINDFALL', 'ECONOMI
     });
 
     describe('Wiring goals (2026-05)', () => {
-        it('SavingsGoal: une deadline drainante réduit le patrimoine final', () => {
-            const targetDate = '2027-06';
-            const baseline: ProjectionResult = calculateFutureProjection(makeParams({
-                savingsGoals: [],
-            }));
-            const withGoal: ProjectionResult = calculateFutureProjection(makeParams({
-                savingsGoals: [
-                    { id: 'sg1', name: 'Voyage Europe', targetAmount: 15000, currentAmount: 0, deadline: targetDate, icon: '✈️' },
-                ],
-            }));
-            const noBase = baseline.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
-            const goalBase = withGoal.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE');
-            expect(goalBase!.estateNetWorth).toBeLessThan(noBase!.estateNetWorth!);
-        });
-
         it('FinancialGoal avec targetAccount=CELI: réduit le solde CELI projeté', () => {
             const baseline: ProjectionResult = calculateFutureProjection(makeParams({
                 financialGoals: [],
@@ -1077,6 +1062,44 @@ const ALL_TYPES = ['BASE', 'LIBERTE_55', 'HYPER_INFLATION', 'WINDFALL', 'ECONOMI
             const noBaseCeli = noBase!.chartData[30]?.CELI ?? 0;
             const goalBaseCeli = goalBase!.chartData[30]?.CELI ?? 0;
             expect(goalBaseCeli).toBeLessThan(noBaseCeli);
+        });
+
+        // [NAV-REMOVE-OBJECTIFS-TAB] COUVERTURE RESTAURÉE — finding projection-validator (MESURÉ).
+        // Le test retiré avec la feature était le SEUL du dépôt à exercer la sous-branche
+        // `fromLiquid` du `goalMutator` (`services/projection.ts`). Ce code SURVIT au retrait et
+        // porte le clamp PV-11 `Math.min(Math.max(0, liquid), remaining)` — la garde qui empêche un
+        // objectif d'« effacer » un découvert sans le payer.
+        // ⚠️ `FinancialGoal.targetAccount` n'admet PAS `'LIQUID'` (seul le mutateur le connaît) : la
+        // branche n'est donc atteignable que par `'NON-ENREG'`, qui puise D'ABORD dans le liquide.
+        // ⚠️ Les 4 tests `'NON-ENREG'` existants ne la couvrent pas : avec `fromLiquid` à 0, le tirage
+        // bascule entièrement sur `handleNonRegSale` et leurs assertions (« le solde baisse ») restent
+        // vraies. Il faut viser l'observable PROPRE à cette jambe : le cumul de `withdrawalLiquid`.
+        // DISCRIMINANT vérifié : muter `fromLiquid` à 0 fait rougir CE test et lui seul.
+        it('FinancialGoal NON-ENREG : le tirage puise D\'ABORD dans les liquidités (jambe fromLiquid)', () => {
+            // Observable de la jambe LIQUIDE : le creux du solde `Liquidites`. Il n'existe pas de
+            // série `withdrawalLiquid` publiée (`NetTransferLiquid` est un champ mort connu, cf.
+            // `[UN-CHAMP-TOUJOURS-NUL-N-EST-PAS-UN-CAS-LIMITE]` au BACKLOG) — on vise donc le SOLDE,
+            // qui est la grandeur publiée que ce tirage déplace réellement.
+            const minLiquid = (r: ProjectionResult): number =>
+                Math.min(...r.chartData.map((p) => (p as { Liquidites?: number }).Liquidites ?? Infinity));
+
+            const baseline: ProjectionResult = calculateFutureProjection(makeParams({ financialGoals: [] }));
+            const withGoal: ProjectionResult = calculateFutureProjection(makeParams({
+                financialGoals: [
+                    { id: 'fg-liq', name: 'Voyage Europe', type: 'CUSTOM' as const, targetAmount: 15000, deadline: '2027-06', targetAccount: 'NON-ENREG' },
+                ],
+            }));
+            const noBase = baseline.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE')!;
+            const goalBase = withGoal.allResults!.find((s: ProjectionResult) => s.stratType === 'BASE')!;
+
+            // L'objectif a COÛTÉ quelque chose (anti-vacuité : sans ça, comparer deux scénarios
+            // identiques satisferait n'importe quelle inégalité large). Mesuré : −18 710 $.
+            expect(goalBase.estateNetWorth).toBeLessThan(noBase.estateNetWorth!);
+            // Et ce coût passe par la jambe LIQUIDE. Mesuré au mois de l'échéance (juin 2027) :
+            // Liquidités 30 956 $ → 17 175 $, soit −13 780 $, pendant que `NonReg` reste à 0 —
+            // la totalité du tirage vient donc de `fromLiquid`. Avec la mutation `fromLiquid = 0`,
+            // il n'y a rien à vendre côté non-enregistré et le solde liquide ne bouge plus.
+            expect(minLiquid(goalBase)).toBeLessThan(minLiquid(noBase) - 5000);
         });
     });
 });

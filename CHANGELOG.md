@@ -6,6 +6,37 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-27 (Budget : un troisième chiffre « Objectif » sur les tuiles)
+
+- **Ajouté** : les tuiles Revenus / Dépenses / Fin de mois / Restant du Budget affichent maintenant
+  un troisième chiffre, l'Objectif (le salaire déclaré au profil pour Revenus, la somme des cibles
+  de dépense par catégorie pour Dépenses), à côté du Réel et du Prévisionnel déjà affichés.
+
+## [unreleased] — 2026-08-27 (Investissements : cours exacts pour les titres Xetra et Milan)
+
+- **Corrigé** : les positions cotées à la bourse de Francfort (Xetra) ou de Milan n'affichaient
+  jamais de cours à jour (le cours restait figé, sans message d'erreur). Elles se rafraîchissent
+  maintenant normalement.
+
+## [unreleased] — 2026-08-27 (Futur : résumé de santé financière en tête de page)
+
+- **Ajouté** : la page Futur affiche maintenant, tout en haut, un résumé condensé du score de
+  santé financière (0-100) avec un lien vers le détail complet (onglet Budget → Santé, inchangé).
+
+## [unreleased] — 2026-08-27 (retrait de l'onglet Objectifs)
+
+- **Retiré** : la fonctionnalité « Objectifs » (objectifs d'épargne — cible, montant accumulé,
+  échéance) a été retirée de l'application, à la demande de Marc. Les cibles de charges fixes et
+  d'abonnements restent inchangées dans leur propre sous-onglet. Une échéance d'objectif qui
+  déclenchait un retrait planifié dans les projections ne le fait plus.
+
+## [unreleased] — 2026-08-27 (synchronisation automatique : les doublons suspects sont signalés)
+
+- **Amélioré** : quand une synchronisation automatique fusionne deux transactions identiques du
+  même lot (ex. deux achats de café le même jour au même montant), un avertissement apparaît
+  maintenant dans l'écran de suivi — un simple recouvrement avec une transaction déjà connue,
+  lui, reste silencieux comme avant.
+
 ## [unreleased] — 2026-08-26 (synchronisation automatique : les lignes de relevé rejetées sont maintenant signalées)
 
 - **Amélioré** : quand une synchronisation automatique rejette une ligne d'un relevé bancaire (date

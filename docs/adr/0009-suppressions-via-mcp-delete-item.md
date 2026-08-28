@@ -1,5 +1,10 @@
 # ADR — Suppressions via MCP/IA : `delete_item` (actif / dette / objectif), transactions DIFFÉRÉES (`MCP-DIRECT-EDIT` Lots 4-5, 2026-07-29)
 
+> **Mise à jour 2026-08-27** (`[NAV-REMOVE-OBJECTIFS-TAB]`) : la feature « objectif d'épargne »
+> (`SavingsGoal`) a été retirée du produit — UI ET moteur. `delete_item.entity` ne porte plus que
+> `'asset' | 'debt'` ; le contenu ci-dessous décrit la décision D'ORIGINE (3 entités) et n'est pas
+> rafraîchi ailleurs — c'est un récit de ce qui a été décidé le 2026-07-29.
+
 **Contexte** : Marc veut « changer tout avec MCP juste en le demandant », avec confirmation. Les lots 1-3
 couvrent cash/budget/objectifs en upsert. Restent la « vente totale d'un titre » (Lot 4) et la
 suppression (Lot 5) — des gestes DESTRUCTIFS, jusqu'ici réservés à l'UI.

@@ -30,7 +30,6 @@ const makeState = (overrides: Partial<AppState> = {}): AppState => ({
     },
     realEstateGoals: [],
     childGoals: [],
-    savingsGoals: [],
     debts: [],
     travelGoals: [],
     lifeEvents: [],

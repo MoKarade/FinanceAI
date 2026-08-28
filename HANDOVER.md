@@ -4,6 +4,106 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-28 — Lot 29 : panel `/review-all` (7 agents) et PR #755
+> Les cinq tickets du lot 29 (voir entrées ci-dessous) ont été passés au panel complet à la
+> reconnexion de GitHub. **6 défauts CAUSÉS par le lot, tous corrigés dans la PR** : 3 dans la
+> nouvelle tuile Objectif du Budget (assiette incluant l'épargne alors que le réel filtre les
+> virements — 500 $/mois d'écart mesuré ; « 0 $ » crédible quand la paie est importée en net seul ;
+> objectif indexé par le simulateur d'inflation), une garde manquante sur `delete_item` (toute
+> `entity` inattendue tombait désormais sur les DETTES au lieu des objectifs — rayon d'impact
+> aggravé sur un geste irréversible), 3 correctifs a11y, et une **perte de couverture moteur** :
+> le test supprimé avec la feature était le SEUL à exercer la jambe `fromLiquid` du `goalMutator`,
+> code qui SURVIT et porte le clamp anti-découvert PV-11 (couverture restaurée, discriminée par la
+> mutation exacte du panel).
+> ⚠️ **Preuve que le moteur est intact** : 7 personas × 481 points × 105 champs, `md5` identique
+> HEAD vs `main` — et la preuve DISCRIMINE (retirer `financialGoals` déplace 93 511 $), donc
+> l'égalité n'est pas vacueuse. Explication du « rien n'a bougé » : aucune fixture n'exerçait le
+> chemin retiré.
+> 6 findings PRÉ-EXISTANTS mesurés par le panel, routés au `BACKLOG.md` sans les corriger :
+> `MCP-WRITE-PARITY-GUARD`, `TEST-PERSONA-NON-DETERMINISTE` (⚠️ `Math.random()` nu rend le persona
+> PAR DÉFAUT non reproductible — amplitude 3 088 $ : toute mesure avant/après y est impossible sans
+> graine), `ENG-GOALS-HORS-TOTALEXPENSES`, `ENG-GOALSHORTFALLS-CHAMP-MORT`,
+> `HEALTH-SCORE-NAN-SILENCIEUX`, `BUDGET-DEUX-NETS-MEME-ECRAN`.
+> Gate complet vert : **454 fichiers, 4 856 tests**, typecheck + lint + build. CI GitHub verte
+> (6/6 checks, dont E2E Playwright et le gate sur Node 20).
+>
+> ## 🟢 Session 2026-08-27 — `[INVEST-COURS-EXACT-TOUTES-ACTIONS]` : Xetra/Milan ajoutés au routage des cours
+> `toFinnhubSymbol` ne convertissait que 3 préfixes de place (NASDAQ/NYSE, TSE/TSX, EPA) — tout
+> autre préfixe (dont `ETR:` Xetra et `BIT:` Milan, deux vraies positions de Marc) retombait sur le
+> ticker BRUT sans suffixe, jamais résolu par Finnhub/Yahoo : cours gelé, SANS erreur visible.
+> `inferCurrency` anticipait déjà les suffixes `.DE`/`.MI` correspondants — la table de routage
+> n'avait juste jamais été complétée. Ajouté ETR/BIT aux deux fonctions. Portée volontairement
+> LIMITÉE à ces deux préfixes (les seuls confirmés par des tickers réels) : deviner les autres
+> conventions de préfixe (Madrid, Amsterdam…) risquerait de router vers un AUTRE instrument — pire
+> qu'un cours absent. `OTCMKTS:ANDXF` reste un gap de couverture connu, pas un bug, noté au
+> `BACKLOG.md`. 2 tests neufs, discriminés par perturbation.
+>
+> ## 🟢 Session 2026-08-27 — `[BUDGET-REEL-PREVISIONNEL-OBJECTIF]` : 3e valeur Objectif sur les 4 tuiles Budget
+> Décision Marc (cadrage batch) : ajouter l'Objectif aux TROIS tuiles (Revenus/Dépenses/Fin de
+> mois/Restant), pas seulement Dépenses — a exigé de définir un « objectif de revenu » inexistant
+> côté UI, résolu en réutilisant `fiscalBreakdown.netDisplay` (déjà calculé dans `Budget.tsx`, déjà
+> distingué du réel sous le nom « salaire déclaré »). `DualKPIStat` gagne une prop `objectif?`
+> optionnelle (absente = comportement identique, rétrocompat). 3 tests neufs (présence, valeur
+> exacte de l'Objectif Dépenses, invariant Objectif Restant = Objectif Revenus − Objectif
+> Dépenses), discriminés par perturbation.
+> ⚠️ Découverte en chemin, corrigée dans le même lot : `components/Planning.tsx` (Charges fixes &
+> Abonnements) n'avait plus AUCUN test de rendu depuis `[NAV-REMOVE-OBJECTIFS-TAB]` — ajouté
+> `tests/components/Planning.smoke.test.tsx`, baseline avant `[BUDGET-CHARGES-FIXES-REFONTE]`.
+> Gate complet vert : 453 fichiers, **4 853 tests**, build.
+>
+> ## 🟢 Session 2026-08-27 — `[NAV-MERGE-SANTE-FUTUR]` : résumé Santé condensé en tête de Futur
+> Décision Marc confirmée : « Condensé (résumé + lien vers le détail) », pas un déplacement du
+> contenu. Le sous-onglet Santé (Budget → Santé) reste la vue détaillée inchangée ; un nouveau
+> `components/future/FutureHealthSummary.tsx` affiche en tête de Futur un score/100 condensé qui
+> pointe vers ce sous-onglet via `navigateWithFocus(Tab.BUDGET, 'sante')` (deep-link déjà câblé et
+> testé, zéro nouvelle plomberie). Le calcul du score a été EXTRAIT de `HealthIndicator.tsx` vers
+> `utils/healthScore.ts` (source unique — même score garanti aux deux endroits, comportement
+> bit-à-bit identique, 13 tests HealthIndicator/BudgetWorkspace verts sans modification).
+> No-fake-data : sans profil renseigné, le résumé invite à saisir le profil, jamais un score inventé.
+> ⚠️ En testant, découvert que l'import statique dans `FutureProjection.tsx` tire
+> `services/portfolio.ts` (`logErrorThrottled`) dans son arbre de rendu — 3 fichiers de test qui
+> montent `<FutureProjection>` avec un mock PARTIEL de `services/errorLogger` plantaient sur un
+> actif sans devise ; mocks complétés. 3 tests neufs, discriminés par perturbation.
+> Gate complet vert : 453 fichiers, **4 848 tests**, build.
+>
+> ## 🟢 Session 2026-08-27 — `[NAV-REMOVE-OBJECTIFS-TAB]` + `[UTIL-GOLDENSPLIT-ORPHELIN]` : retrait complet de la feature Objectifs, nettoyage de code mort
+> Suite de « continue et fini tout le backlog ». Deux items livrés dans le même lot :
+> - **`[NAV-REMOVE-OBJECTIFS-TAB]`** : la feature « objectif d'épargne » (`SavingsGoal`) est
+>   RETIRÉE DU PRODUIT — UI et moteur. Demande initiale de Marc lue comme un retrait UI ; une
+>   cartographie a montré que `savingsGoals` pilotait aussi un décaissement RÉEL dans le moteur de
+>   projection (`applySavingsGoalDeadlines`) — Marc a re-confirmé explicitement « retirer VRAIMENT
+>   tout (UI + moteur) » une fois informé (money-critical → jamais deviner, toujours re-demander).
+>   Retiré : l'onglet Objectifs de `BudgetWorkspace`/`Planning`, `applySavingsGoalDeadlines` du
+>   moteur (le `GoalDeadlineMutator` partagé et `applyFinancialGoalDeadlines` restent intacts, seul
+>   appelant restant), les deux surfaces MCP (serveur + registre de tools du chat in-app,
+>   `upsertSavingsGoal.tool.ts`/`.spec.ts` supprimés), `applyDocument.ts` (case + fonction dédiée),
+>   `types.ts` (`SavingsGoal`, `AppState.savingsGoals`), et les deux tables non typées invisibles au
+>   typecheck (`DATA_ARRAY_KEYS`, `ARRAY_SLICES`). `types.ts` traité EN DERNIER : le typecheck a
+>   effectivement rattrapé 3 sites oubliés. `BackupPanel.tsx` garde `savingsGoals` optionnel en
+>   LECTURE (vieux backups) mais ne le ré-écrit plus. `tests/components/PlanningGoals.test.tsx`
+>   supprimé ; le test TZ de `BudgetWorkspace.test.tsx` aussi (son sujet — le calcul local qui
+>   alimentait l'onglet retiré — est devenu du code mort, pas juste non testé).
+> - **`[UTIL-GOLDENSPLIT-ORPHELIN]`** : `computeGoldenSplit`/`GOLDEN_IDEAL`/`GoldenSplit`
+>   (`utils/budget.ts`) confirmés sans consommateur de production, supprimés avec leurs 5 tests.
+>
+> Gate complet vert : `typecheck`, `lint` (0 erreur), **4 853 tests / 453 fichiers**, `build`.
+> ✅ **GitHub reconnecté** : la PR est en cours de création (`claude/lot-29` → squash-merge sur `main`).
+>
+> ## 🟢 Session 2026-08-27 — `[FINTABLE-DOUBLON-INTRALOT-SILENCIEUX]` : un doublon bénin distingué d'un doublon intra-lot suspect
+> Finding financial-integrity (PR #754), routé au `BACKLOG.md` puis traité ici.
+> `applyBankStatement` fusionnait par la clé `date|montant|payee` sans distinguer un doublon
+> contre l'EXISTANT (recouvrement légitime, bénin) d'un doublon INTRA-LOT (deux lignes DISTINCTES
+> du même lot entrant — le plus souvent deux vraies dépenses identiques le même jour, dont une
+> seule écrite SANS avertissement). Mesuré : 8,50 $ perdus en silence, `cashAnchorDelta` absorbe
+> l'écart. `existingKeys`/`seenThisLot` séparés au lieu d'un seul `seen` ; nouveau champ optionnel
+> `ApplyResult.dupIntraLotCount`, `applyPayloadsIsolated` pousse un avertissement SÉPARÉ dans
+> `SystemView`. `mcp/README.md` mis à jour. 4 tests neufs, discriminé par perturbation ciblée.
+> ⚠️ **GitHub déconnecté côté outils MCP pendant cette session** (session invalide côté serveur) :
+> le code est committé + poussé sur `claude/lot-29`, mais la PR n'a pas pu être créée/fusionnée —
+> à faire dès que la connexion revient. Gate vert (4 871 tests) sur l'environnement reconstruit
+> (`npm install` refait après un changement de conteneur qui avait un `node_modules` d'une
+> branche différente).
+>
 > ## 🟢 Session 2026-08-26 — `[MCP-REJECTIONS-NON-STRUCTUREES]` : les rejets d'un relevé bancaire deviennent visibles à la sync automatisée
 > Finding hors-scope routé par le panel de PR #753 : `applyBankStatement` rejette des lignes
 > (montant aberrant, date invalide, ligne incomplète) SANS lever — seulement une phrase dans

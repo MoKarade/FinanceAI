@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchTransactionToCategory, matchCategoryToName, computeBudgetParity, computeGoldenSplit, GOLDEN_IDEAL, resolveTransactionOwner, computeActualByOwner } from '../../utils/budget';
+import { matchTransactionToCategory, matchCategoryToName, computeBudgetParity, resolveTransactionOwner, computeActualByOwner } from '../../utils/budget';
 import type { BudgetCategory, Transaction } from '../../types';
 
 const cat = (name: string, nature: BudgetCategory['nature'] = 'Besoin'): BudgetCategory =>
@@ -137,45 +137,6 @@ describe('computeBudgetParity', () => {
         expect(Object.keys(actualsMap)).toHaveLength(0);
         expect(orphanCategories).toHaveLength(0);
         expect(itemsWithoutTransactions.map((i) => i.name)).toEqual(['Épicerie', 'Restaurants', 'Loyer']);
-    });
-});
-
-describe('computeGoldenSplit — répartition 50/30/20 (PH4-B)', () => {
-    it('calcule total + parts en % à partir de trois montants', () => {
-        const g = computeGoldenSplit(5000, 3000, 2000);
-        expect(g.total).toBe(10000);
-        expect(g.pct.besoins).toBeCloseTo(50, 5);
-        expect(g.pct.envies).toBeCloseTo(30, 5);
-        expect(g.pct.epargne).toBeCloseTo(20, 5);
-    });
-
-    it('clampe les montants négatifs à 0 (épargne négative = aucune part)', () => {
-        const g = computeGoldenSplit(5000, 2000, -1000);
-        expect(g.epargne).toBe(0);
-        expect(g.total).toBe(7000); // l'épargne négative ne compte pas
-        expect(g.pct.epargne).toBe(0);
-        expect(g.pct.besoins).toBeCloseTo((5000 / 7000) * 100, 5);
-    });
-
-    it('total = 0 → parts toutes à 0 (pas de division par zéro / NaN)', () => {
-        const g = computeGoldenSplit(0, 0, 0);
-        expect(g.total).toBe(0);
-        expect(g.pct.besoins).toBe(0);
-        expect(g.pct.envies).toBe(0);
-        expect(g.pct.epargne).toBe(0);
-        expect(Number.isNaN(g.pct.besoins)).toBe(false);
-    });
-
-    it('l\'idéal 50/30/20 somme bien à 100', () => {
-        expect(GOLDEN_IDEAL.besoins + GOLDEN_IDEAL.envies + GOLDEN_IDEAL.epargne).toBe(100);
-    });
-
-    it('tolère NaN/undefined en entrée (→ 0, pas de propagation)', () => {
-        const g = computeGoldenSplit(NaN, undefined as unknown as number, 500);
-        expect(g.besoins).toBe(0);
-        expect(g.envies).toBe(0);
-        expect(g.epargne).toBe(500);
-        expect(g.total).toBe(500);
     });
 });
 

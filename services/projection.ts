@@ -1,5 +1,5 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
-import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, SavingsGoal, FinancialGoal } from '../types';
+import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, FinancialGoal } from '../types';
 import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, CAPITAL_GAINS_INCLUSION_STANDARD, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
 import { RRIF_RATES, welcomeTax, NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './projection/helpers';
 import { salaryShares, splitByShares, stepReerByUser, addByWeights } from './projection/perUserBalances';
@@ -28,7 +28,7 @@ import { computeActiveIncome } from './projection/activeIncome';
 import { processReerMeltdown } from './projection/meltdownReer';
 import { initPastPurchase } from './projection/pastPurchaseInit';
 import { SCHL_AMORT_MAX_INSURED_STANDARD } from './realEstate';
-import { applyTravelExpenses, applyLifeEvents, computeStressTest, applySavingsGoalDeadlines, applyFinancialGoalDeadlines, computeIncomeLossFactor } from './projection/monthlyEvents';
+import { applyTravelExpenses, applyLifeEvents, computeStressTest, applyFinancialGoalDeadlines, computeIncomeLossFactor } from './projection/monthlyEvents';
 import { computeLatentTax } from './projection/latentTax';
 import { computeGlidepathRates } from './projection/glidepathRates';
 import { processCashflowAllocation, type CashflowState } from './projection/cashflowAllocation';
@@ -94,8 +94,6 @@ export interface SimulationParams {
     charitableGoals?: CharitableGoal[];
     rentalProperties?: RentalProperty[];
     privateBusinesses?: PrivateBusiness[];
-    // Wiring 2026-05: goals jusqu'ici inutilisés par le moteur.
-    savingsGoals?: SavingsGoal[];
     financialGoals?: FinancialGoal[];
 }
 
@@ -125,7 +123,7 @@ export interface ScenarioDiagnostics {
 }
 
 const runScenario = (params: SimulationParams, strategy: AllocationStrategy, enableMonteCarlo = false, delayPensions = false, mcIterationIndex = 0, scenarioType: FutureScenarioType = 'BASE', overrides: EngineOverrides = {}, diagnostics: ScenarioDiagnostics = {}) => {
-    const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [], savingsGoals = [], financialGoals = [] } = params;
+    const { projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, baseGrossAnnual, baseNetAnnual, currentRentExpense, baseMonthlyExpenses, startYear = 2026, startMonth = 0, insurancePolicies = [], vehicleReplacements = [], majorRenovations = [], charitableGoals = [], rentalProperties = [], privateBusinesses = [], financialGoals = [] } = params;
     
     // Cycle 22 split: RNG seedé déterministique → ./projection/setupSimulation
     const rng = buildSeededRng(scenarioType, strategy, mcIterationIndex);
@@ -1799,7 +1797,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             logFlow: (s, day?: number) => logEvent(flowEventsLog, s, day),
         });
 
-        // Wiring 2026-05: SavingsGoal et FinancialGoal aux deadlines.
+        // Wiring 2026-05: FinancialGoal aux deadlines (SavingsGoal retiré du produit — NAV-REMOVE-OBJECTIFS-TAB).
         const goalMutator = {
             withdrawFromAccount: (account: 'CELI' | 'REER' | 'NON-ENREG' | 'CRYPTO' | 'LIQUID', amount: number): number => {
                 let remaining = amount;
@@ -1850,7 +1848,6 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
                 goalShortfallTotal += Math.max(0, asked - Math.max(0, drawn));
             },
         };
-        applySavingsGoalDeadlines(savingsGoals, currentIsoMonth, expenseMultiplier, goalMutator);
         applyFinancialGoalDeadlines(financialGoals, currentIsoMonth, expenseMultiplier, goalMutator);
         // [ENG-STRESSTEST-GROWTH-UNREGISTERED] Le krach et la reprise MUTENT les soldes — c'est bien
         // un mouvement de MARCHÉ, exactement comme le rendement mensuel. Ils n'alimentaient pourtant

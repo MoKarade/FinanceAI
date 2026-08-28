@@ -108,8 +108,8 @@ export const isSavingsNature = (nature: string): boolean =>
 
 /**
  * Calcule la parité. `spendTransactions` = dépenses de la FENÊTRE (typiquement montant < 0, hors
- * virements/doublons — mais un appelant peut inclure des lignes à CRÉDIT via `isSpend`, ex.
- * `monthlyActualsMap` : voir `spendAmountOf`) → réels + orphelins. `allSpendTransactions` =
+ * virements/doublons — mais un appelant PEUT inclure des lignes à CRÉDIT via `isSpend` : voir
+ * `spendAmountOf`) → réels + orphelins. `allSpendTransactions` =
  * dépenses sur TOUT l'historique → « postes sans dépense » (un poste annuel rapproché une fois
  * n'est PAS sans dépense). Par défaut `allSpendTransactions = spendTransactions`.
  * ⚠️ Agrégation par `spendAmountOf` (net signé), jamais `Math.abs` : un crédit d'une catégorie à
@@ -130,8 +130,12 @@ export function computeBudgetParity(
         // une ligne à CRÉDIT (`isCreditBack`, ex. « Remboursement »), `Math.abs` additionnait le
         // crédit au lieu de le DÉDUIRE — un remboursement de 250 $ DOUBLAIT l'erreur au lieu de la
         // réduire. Sans effet sur un appelant qui pré-filtre déjà `amount < 0` (spendAmountOf et
-        // Math.abs sont identiques pour un montant négatif) ; corrige `monthlyActualsMap`, seul
-        // appelant qui passe des lignes à crédit (via `isSpend`) à ce jour.
+        // Math.abs sont identiques pour un montant négatif).
+        // ⚠️ [NAV-REMOVE-OBJECTIFS-TAB] L'appelant qui MOTIVAIT ce correctif (`monthlyActualsMap`,
+        // seul à passer des lignes à crédit via `isSpend`) est parti avec l'onglet Objectifs. La
+        // règle RESTE : elle est correcte pour tout futur appelant qui inclurait des crédits, et
+        // `spendAmountOf` est la source unique du signe. Ne pas la « simplifier » en `Math.abs`
+        // sous prétexte qu'aucun appelant n'exerce ce chemin aujourd'hui.
         const amount = spendAmountOf(t);
         totalSpent += amount; // total dépensé = TOUT (rapproché + orphelin), comme avant le refactor
         const match = matchTransactionToCategory(t.category, items);
@@ -160,61 +164,11 @@ export function computeBudgetParity(
     return { actualsMap, totalSpent, orphanCategories, itemsWithoutTransactions };
 }
 
-/**
- * [PH4-C] Dépense réelle rapprochée par catégorie pour UN mois donné (clé = nom de catégorie).
- * Sert au « versé ce mois » des objectifs d'épargne liés à une catégorie budget. Pur, testable.
- * Réutilise la MÊME règle de rapprochement que la parité budget (`computeBudgetParity`) → cohérence.
- * @param monthStr préfixe ISO du mois, ex. '2026-06'.
- */
-export function monthlyActualsMap(
-    transactions: readonly Transaction[],
-    items: readonly BudgetCategory[],
-    monthStr: string,
-): Record<string, number> {
-    // [TX-INTERAC-BUDGET] `isSpend` (source unique, budgetSync) plutôt qu'un `amount < 0` local :
-    // il inclut les CRÉDITS des catégories à crédit (« on me rembourse ») qui viennent en déduction
-    // du poste. Un filtre local divergerait de la moyenne historique du même poste.
-    const monthSpend = transactions.filter(
-        (t) => typeof t.date === 'string' && t.date.startsWith(monthStr) && isSpend(t),
-    );
-    return computeBudgetParity(monthSpend, items).actualsMap;
-}
-
-// ---------------------------------------------------------------------------
-// [PH4-B] Répartition 50/30/20 — théorique (cibles) vs réel (dépenses).
-// ---------------------------------------------------------------------------
-
-/** L'idéal « 50/30/20 » (besoins / envies / épargne), en POURCENTAGE du revenu net. */
-export const GOLDEN_IDEAL = { besoins: 50, envies: 30, epargne: 20 } as const;
-
-export interface GoldenSplit {
-    /** Montants $ (clampés ≥ 0). */
-    besoins: number;
-    envies: number;
-    epargne: number;
-    /** Somme des trois postes — base du donut (100 %). 0 si rien. */
-    total: number;
-    /** Part de chaque poste dans le total, en POURCENTAGE (0 si total = 0 → pas de NaN). */
-    pct: { besoins: number; envies: number; epargne: number };
-}
-
-/**
- * Construit une répartition 50/30/20 à partir de trois montants $ déjà agrégés
- * (besoins, envies, épargne). Pur et sans dépendance au store → utilisé à la fois
- * pour le THÉORIQUE (cibles budgétées) et le RÉEL (dépenses rapprochées + épargne
- * réelle). Clampe les négatifs à 0 (une épargne négative n'a pas de part de donut)
- * et garde `pct` à 0 quand `total` est nul (évite la division par zéro → NaN).
- */
-export function computeGoldenSplit(besoins: number, envies: number, epargne: number): GoldenSplit {
-    const b = Math.max(0, besoins || 0);
-    const e = Math.max(0, envies || 0);
-    const s = Math.max(0, epargne || 0);
-    const total = b + e + s;
-    const pct = total > 0
-        ? { besoins: (b / total) * 100, envies: (e / total) * 100, epargne: (s / total) * 100 }
-        : { besoins: 0, envies: 0, epargne: 0 };
-    return { besoins: b, envies: e, epargne: s, total, pct };
-}
+// [NAV-REMOVE-OBJECTIFS-TAB] `monthlyActualsMap` retiré avec la feature qu'elle servait : son
+// unique consommateur de production était le « versé ce mois » des objectifs d'épargne liés à une
+// catégorie budget. Orpheline dès le retrait de l'onglet — même classe que `computeGoldenSplit`
+// (`[UTIL-GOLDENSPLIT-ORPHELIN]`, retiré dans ce même lot), et invisible à `knip` tant que son
+// propre test la référençait encore.
 
 // ---------------------------------------------------------------------------
 // [PH4-E] Attribution des dépenses par conjoint (mode couple).

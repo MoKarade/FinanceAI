@@ -25,7 +25,7 @@ vi.mock('recharts', async () => {
         XAxis: () => null, YAxis: () => null, Tooltip: () => null, CartesianGrid: () => null,
     };
 });
-vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 
 // Stratégie « gagnante » qui change À LA FOIS projection (emergencyFundMonths, useSmithManoeuvre,
 // appliedReturnProfile…) ET retirementGoal (targetAge, targetMonthlyIncome, + rrqStartAge/psvStartAge

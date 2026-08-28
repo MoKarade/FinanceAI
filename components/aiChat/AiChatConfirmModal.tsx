@@ -24,7 +24,6 @@ const WRITE_TOOL_LABELS: Record<string, string> = {
     // technique brut « delete_item » en sous-titre du modal — libellés clairs pour les 4 tools).
     set_cash: 'Ajustement des liquidités',
     set_budget_item: 'Poste de budget',
-    upsert_savings_goal: 'Objectif d\'épargne',
     delete_item: 'SUPPRESSION',
 };
 

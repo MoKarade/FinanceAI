@@ -28,7 +28,7 @@ vi.mock('recharts', async () => {
         XAxis: () => null, YAxis: () => null, Tooltip: () => null, CartesianGrid: () => null,
     };
 });
-vi.mock('../../services/errorLogger', () => ({ logError: vi.fn() }));
+vi.mock('../../services/errorLogger', () => ({ logError: vi.fn(), logErrorThrottled: vi.fn() }));
 // Store IDB mocké et OBSERVABLE (jsdom n'a pas d'indexedDB ; le round-trip IDB réel est prouvé à part
 // dans tests/services/lockedProjectionStore.test.ts avec fake-indexeddb). Permet d'asserter les APPELS
 // (ex. garde mode-test sur clearRevealedProjection). load → 'empty' = comportement jsdom d'origine.

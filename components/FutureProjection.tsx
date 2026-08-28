@@ -8,6 +8,9 @@ import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { resolveDaySeriesIndex, type DaySeriesPoint } from '../utils/daySeriesIndex';
 import { hasForeignCurrencyAssets } from '../services/portfolio';
 const FutureHistorySection = lazyWithRetry(() => import('./future/FutureHistorySection'), 'FutureHistorySection');
+// [NAV-MERGE-SANTE-FUTUR] Résumé condensé de Santé, en tête de page — léger (pas de recharts),
+// import statique (pas de justification à le mettre derrière un lazy comme FutureHistorySection).
+import { FutureHealthSummary } from './future/FutureHealthSummary';
 import { PageHeader } from './ui/PageHeader';
 import { Badge } from './ui/Badge';
 import { KPIStat } from './ui/KPIStat';
@@ -1296,6 +1299,10 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
                     />
                 }
             />
+
+            {/* [NAV-MERGE-SANTE-FUTUR] Résumé condensé, toujours visible (pas de gate curveVisible :
+                le score de santé ne dépend pas d'une projection calculée). */}
+            <FutureHealthSummary />
 
             {/* Hero KPI strip — PH4 : caché tant que la projection n'est pas calculée explicitement
                 (cf revealedSig) ; sinon les chiffres projetés s'affichaient sans geste de l'utilisateur. */}

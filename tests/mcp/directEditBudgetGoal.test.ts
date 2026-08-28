@@ -1,20 +1,21 @@
 // tests/mcp/directEditBudgetGoal.test.ts
-// [MCP-DIRECT-EDIT Lots 2-3] set_budget_item + upsert_savings_goal — upsert PAR NOM (casse/accents
+// [MCP-DIRECT-EDIT Lot 2] set_budget_item — upsert PAR NOM (casse/accents
 // ignorés), update PARTIEL, bornes D9 + gardes non-fini côté MÉTIER (bypass-Zod, leçon MCP-WHATIF),
 // idempotence au retry, et confirmation à 2 temps au niveau tool (dry-run sans écriture).
-// Discriminant clé Lot 2 : éditer la CIBLE pose `autoTarget: false` (BUDGET-TX-CATEGORIES).
+// Discriminant clé : éditer la CIBLE pose `autoTarget: false` (BUDGET-TX-CATEGORIES).
+// [NAV-REMOVE-OBJECTIFS-TAB] Le volet `upsert_savings_goal` (Lot 3) de ce fichier a été retiré
+// avec la feature (UI + moteur + tools MCP) — décision Marc 2026-08-27.
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { applyDocument, type BudgetItemPayload, type SavingsGoalPayload } from '../../mcp/ingest/applyDocument';
+import { applyDocument, type BudgetItemPayload } from '../../mcp/ingest/applyDocument';
 import { FileStateSource, buildDefaultAppState, loadAppStateFromSource } from '../../mcp/state/loadAppState';
 import { makeStateStore, type StateStore } from '../../mcp/state/stateStore';
 import { registerSetBudgetItem } from '../../mcp/tools/setBudgetItem.tool';
-import { registerUpsertSavingsGoal } from '../../mcp/tools/upsertSavingsGoal.tool';
-import type { AppState, BudgetCategory, SavingsGoal } from '../../types';
+import type { AppState, BudgetCategory } from '../../types';
 
 const baseState = (): AppState => buildDefaultAppState();
 
@@ -27,18 +28,8 @@ function withBudget(): AppState {
     return s;
 }
 
-function withGoal(): AppState {
-    const s = baseState();
-    s.savingsGoals = [
-        { id: 'goal_1700000000000', name: 'Voyage Japon', targetAmount: 8000, currentAmount: 1500, deadline: '2027-06-01', icon: '✈️' },
-    ] satisfies SavingsGoal[];
-    return s;
-}
-
 const budgetDoc = (over: Partial<BudgetItemPayload> = {}): BudgetItemPayload =>
     ({ kind: 'budget_item', name: 'Épicerie', ...over });
-const goalDoc = (over: Partial<SavingsGoalPayload> = {}): SavingsGoalPayload =>
-    ({ kind: 'savings_goal', name: 'Voyage Japon', ...over });
 
 describe('applyBudgetItem — mise à jour PAR NOM (partielle, idempotente)', () => {
     it('édite la CIBLE d\'un poste auto-géré → target changé ET autoTarget décroché (false)', () => {
@@ -130,74 +121,6 @@ describe('applyBudgetItem — mise à jour PAR NOM (partielle, idempotente)', ()
     });
 });
 
-describe('applySavingsGoal — mise à jour PAR NOM (partielle, idempotente)', () => {
-    it('update PARTIEL : seul le champ fourni change, les autres restent intacts', () => {
-        const { nextState, changes } = applyDocument(withGoal(), goalDoc({ currentAmountCad: 2500 }));
-        const g = nextState.savingsGoals.find((x) => x.name === 'Voyage Japon')!;
-        expect(g.currentAmount).toBe(2500);
-        expect(g.targetAmount).toBe(8000);   // intact
-        expect(g.deadline).toBe('2027-06-01'); // intact
-        expect(changes).toHaveLength(1);
-    });
-
-    it('matche le nom sans casse/accents, retry identique → 0 changement', () => {
-        const first = applyDocument(withGoal(), goalDoc({ name: 'voyage japon', targetAmountCad: 9000 }));
-        expect(first.nextState.savingsGoals).toHaveLength(1);
-        expect(first.nextState.savingsGoals[0].targetAmount).toBe(9000);
-        const second = applyDocument(first.nextState, goalDoc({ name: 'voyage japon', targetAmountCad: 9000 }));
-        expect(second.changes).toHaveLength(0);
-    });
-
-    it('AJOUT : cible requise ; défauts currentAmount 0 / icône 💰 / id horodaté goal_', () => {
-        expect(() => applyDocument(baseState(), goalDoc({ name: 'Fonds urgence' })))
-            .toThrow(/introuvable.*requis/s);
-        const { nextState } = applyDocument(baseState(), goalDoc({ name: 'Fonds urgence', targetAmountCad: 15000 }));
-        const g = nextState.savingsGoals.find((x) => x.name === 'Fonds urgence')!;
-        expect(g.targetAmount).toBe(15000);
-        expect(g.currentAmount).toBe(0);
-        expect(g.icon).toBe('💰');
-        expect(g.id).toMatch(/^goal_\d+_[a-z0-9]+$/);
-    });
-
-    it('REJETTE : montants non finis/aberrants, cible ≤ 0, accumulé négatif, échéance mal formée', () => {
-        for (const t of [0, -5, Infinity, NaN, 200_000_000]) {
-            expect(() => applyDocument(withGoal(), goalDoc({ targetAmountCad: t }))).toThrow(/invalide|aberrant/i);
-        }
-        expect(() => applyDocument(withGoal(), goalDoc({ currentAmountCad: -1 }))).toThrow(/invalide|aberrant/i);
-        expect(() => applyDocument(withGoal(), goalDoc({ deadline: 'juin 2027' }))).toThrow(/Échéance|format/i);
-        expect(() => applyDocument(withGoal(), goalDoc({ deadline: '2027-6-1' }))).toThrow(/Échéance|format/i);
-        // Bornes calendaires (la regex seule laissait passer « 2027-13-45 », finding panel).
-        expect(() => applyDocument(withGoal(), goalDoc({ deadline: '2027-13-01' }))).toThrow(/mois|jour/i);
-        expect(() => applyDocument(withGoal(), goalDoc({ deadline: '2027-12-45' }))).toThrow(/mois|jour/i);
-        // YYYY-MM accepté.
-        const ok = applyDocument(withGoal(), goalDoc({ deadline: '2027-12' }));
-        expect(ok.nextState.savingsGoals[0].deadline).toBe('2027-12');
-    });
-
-    it("'' = EFFACER (échéance/icône) — finding panel : un test truthy dans toDocument l'avalait", () => {
-        // Handler : '' efface l'échéance (parité UI Planning) et l'icône.
-        const cleared = applyDocument(withGoal(), goalDoc({ deadline: '', icon: '' }));
-        expect(cleared.nextState.savingsGoals[0].deadline).toBe('');
-        expect(cleared.nextState.savingsGoals[0].icon).toBe('');
-        expect(cleared.changes).toHaveLength(2);
-        // toDocument (spec) : '' doit SURVIVRE au mapping (pas de test de vérité qui l'avale).
-        // À l'AJOUT en revanche, '' d'icône retombe sur 💰 (défaut honnête).
-        const added = applyDocument(baseState(), goalDoc({ name: 'Neuf', targetAmountCad: 100, icon: '' }));
-        expect(added.nextState.savingsGoals[0].icon).toBe('💰');
-    });
-});
-
-describe('upsertSavingsGoalSpec.toDocument — \'\' survit au mapping (finding ÉLEVÉ panel)', () => {
-    it("deadline:'' et icon:'' fournis explicitement sont PRÉSENTS dans le DocumentPayload", async () => {
-        const { upsertSavingsGoalSpec } = await import('../../mcp/tools/upsertSavingsGoal.spec');
-        const doc = upsertSavingsGoalSpec.toDocument({ name: 'Voyage Japon', deadline: '', icon: '' }) as SavingsGoalPayload;
-        expect(doc.deadline).toBe('');  // un test truthy (`args.deadline ?`) l'avalait en silence
-        expect(doc.icon).toBe('');
-        // Et le confirm reste EXCLU du document.
-        expect('confirm' in doc).toBe(false);
-    });
-});
-
 describe('applyBudgetItem — garde ménage solo (Perso 2)', () => {
     it("rejette « Perso 2 » quand aucun 2ᵉ conjoint n'est NOMMÉ (contenu, pas longueur du tuple)", () => {
         const solo = withBudget();
@@ -223,7 +146,7 @@ function capture(register: (s: McpServer, st: StateStore) => void, store: StateS
     return cap;
 }
 
-describe('set_budget_item / upsert_savings_goal — confirmation à 2 temps (bout en bout)', () => {
+describe('set_budget_item — confirmation à 2 temps (bout en bout)', () => {
     let dir: string;
     let file: string;
     beforeEach(async () => {
@@ -247,19 +170,6 @@ describe('set_budget_item / upsert_savings_goal — confirmation à 2 temps (bou
         expect(out.backupPath).toBeTruthy();
         const reloaded = await loadAppStateFromSource(new FileStateSource(file));
         expect(reloaded.budgetItems.find((x) => x.name === 'Resto')!.target).toBe(250);
-    });
-
-    it('upsert_savings_goal : 1er appel = APERÇU sans écriture ; confirm:true = écrit', async () => {
-        const store = makeStateStore(new FileStateSource(file), { ttlMs: 0 });
-        const h = capture(registerUpsertSavingsGoal, store);
-        const preview = JSON.parse((await h({ name: 'Fonds urgence', targetAmountCad: 15000 })).content[0].text);
-        expect(preview.applied).toBe(false);
-        expect(preview.preview).toBe(true);
-        expect((await loadAppStateFromSource(new FileStateSource(file))).savingsGoals ?? []).toHaveLength(0);
-        const out = JSON.parse((await h({ name: 'Fonds urgence', targetAmountCad: 15000, confirm: true })).content[0].text);
-        expect(out.applied).toBe(true);
-        const reloaded = await loadAppStateFromSource(new FileStateSource(file));
-        expect(reloaded.savingsGoals.find((x) => x.name === 'Fonds urgence')!.targetAmount).toBe(15000);
     });
 
     it('source non inscriptible → erreur claire, pas de crash', async () => {

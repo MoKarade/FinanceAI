@@ -7667,3 +7667,58 @@ un par un (pas seulement le nouveau test écrit pour la feature), et compléter 
 d'un module désormais atteint par le nouveau chemin — trois fichiers ici, zéro détecté par
 `typecheck`/`lint`, seule l'exécution des tests l'a révélé
 (`UN-IMPORT-STATIQUE-ELARGIT-LE-CONTRAT-DE-MOCK-DE-TOUT-CE-QUI-MONTE-LE-COMPOSANT`).
+
+---
+
+## Leçon du lot 30 — 2026-08-28 : une fixture aux mauvais NOMS DE CHAMPS est absorbée en silence, et fait conclure « déjà durci »
+
+En instruisant `[HEALTH-SCORE-NAN-SILENCIEUX]`, j'ai sondé huit entrées de `computeHealthMetrics`
+pour savoir lesquelles produisent réellement un score `NaN`. Verdict de la première passe : « une
+seule, `netSalary: Infinity` — le poste de budget corrompu (`NaN`, `Infinity`) est absorbé en
+amont ». C'était faux comme raisonnement, même si la conclusion l'était par accident : ma fixture
+écrivait `{ amount: 1500, frequency: 'monthly', nature: 'BESOIN' }` alors que `BudgetCategory` porte
+`{ target, frequency: 'Monthly', type, nature: 'Besoin' }`. Aucun de ces trois champs n'existait.
+`monthlyTargetOf` lit `item.target || 0` → le poste valait **0 $**, donc `monthlyExpenses = 0`, donc
+le perturber n'atteignait strictement rien. Le total du cas « sain » était 51 au lieu de 83, et je
+n'ai vu l'écart qu'en écrivant une assertion sur une AUTRE métrique (le coussin d'urgence, à 0 alors
+que la fixture porte 20 000 $ de liquidités contre 1 500 $/mois de dépenses).
+
+Ce qui rend la panne silencieuse est la conjonction de deux choses banales : le `as unknown as` que
+tout test écrit pour fabriquer une fixture partielle (il désactive exactement le contrôle qui aurait
+crié), et les `|| 0` défensifs du code de production (qui transforment « champ absent » en « zéro
+légitime »). Les deux sont justifiés séparément ; ensemble ils font qu'une fixture entièrement
+fictive se comporte comme une fixture vide, sans une ligne d'alerte.
+
+**Le geste** : avant de conclure quoi que ce soit d'une perturbation, asserter que la fixture rend
+la grandeur INTERMÉDIAIRE visée non nulle — ici « le coussin d'urgence est > 0 sur le cas sain ».
+C'est la même famille que `UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL` et que
+`UNE-FIXTURE-QUI-SATURE-LA-CONTRAINTE-REND-LA-MESURE-AVEUGLE`, mais la cause est en amont des deux :
+là-bas la fixture exerçait le chemin sans le rendre observable, ici elle ne l'exerçait pas du tout.
+Et le symptôme est reconnaissable : **une perturbation MUETTE sur une entrée dont on sait qu'elle
+compte** (`UNE-FIXTURE-AUX-MAUVAIS-NOMS-DE-CHAMPS-EST-UNE-FIXTURE-VIDE`).
+
+## Leçon du lot 30 — 2026-08-28 : l'assertion qui PORTE la garde se place avant le plancher de volume
+
+`[MCP-WRITE-PARITY-GUARD]` compare les tools d'écriture enregistrés par le serveur MCP à
+`WRITE_SPECS`. Écrite dans l'ordre naturel — plancher de volume (`length >= 8`, réflexe
+`FISC-CONST-LINT`) puis égalité des deux listes — la garde a bien rougi à la perturbation « retirer
+`setCashSpec` du registre », mais **sur le mauvais message** : `expected 7 to be greater than or
+equal to 8`. Un lecteur pressé conclut « il manque un tool quelque part » et cherche un ajout, alors
+que le défaut est une DIVERGENCE entre deux registres. Vitest s'arrête à la première assertion
+fausse : celle qui parle en premier est celle qu'on lit.
+
+Règle : dans un test à plusieurs assertions, l'ordre n'est pas cosmétique — **l'assertion qui porte
+le contrat passe d'abord, les planchers d'anti-vacuité ensuite**. Ils gardent toute leur valeur
+(ils rougissent quand le contrat devient vacueux, par exemple si les DEUX listes se vidaient
+ensemble), mais ils ne doivent pas intercepter le diagnostic du cas nominal d'échec. Vérifié par
+perturbation : après réordonnancement, le même retrait rend
+`expected [ …(7) ] to deeply equal [ …(6) ]` avec le message métier
+(`L-ASSERTION-QUI-PORTE-LA-GARDE-PASSE-AVANT-LE-PLANCHER-DE-VOLUME`).
+
+**Corollaire de méthode, mesuré dans le même lot** : la parité entre deux registres de tools se
+prouve par le COMPORTEMENT, pas par un scan de source. Le test démarre le vrai `createServer()`
+sur un `InMemoryTransport` et lui demande `tools/list`, exactement comme le ferait claude.ai — un
+`registerX(server, options.store)` présent dans le source mais neutralisé (garde, exception,
+enregistrement conditionnel) ne peut donc pas se cacher derrière un `grep`. Le même appel sert à
+vérifier que la DESCRIPTION servie au modèle est bien celle de la spec : un `.tool.ts` qui
+réécrirait la sienne donnerait deux contrats pour un même tool selon la surface.

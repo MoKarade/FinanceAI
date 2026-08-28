@@ -3,6 +3,7 @@ import { computeBudgetParity } from './budget';
 import { computeBudgetParityScore, computeSubscriptionLoadScore, subscriptionsMonthlyCost, monthlyConsumptionExpenses } from './healthRatios';
 import { formatPercent, formatCAD, formatNumber } from './format';
 import { computeCurrentLiquidity, computeInvestmentsValue, computeTotalDebt } from '../services/portfolio';
+import { logErrorThrottled } from '../services/errorLogger';
 
 // [NAV-MERGE-SANTE-FUTUR] Extrait de `components/dashboard/HealthIndicator.tsx` (Phase D.6) pour
 // SOURCE UNIQUE : la carte détaillée (Santé, sous-onglet Budget) et le résumé condensé (Futur)
@@ -10,6 +11,42 @@ import { computeCurrentLiquidity, computeInvestmentsValue, computeTotalDebt } fr
 // `SyncStaleBanner`/`MCP-NETINCOME-MISLEADING`). Comportement inchangé, extraction PURE.
 
 const clamp01 = (x: number) => Math.max(0, Math.min(100, x));
+
+/**
+ * [HEALTH-SCORE-NAN-SILENCIEUX] `clamp01` ne neutralise PAS `NaN` (`Math.max(0, Math.min(100, NaN))`
+ * vaut `NaN`), et une seule métrique non finie contamine le score pondéré : les deux surfaces
+ * (carte détaillée du sous-onglet Santé, résumé condensé de Futur) afficheraient littéralement
+ * « NaN/100 », sans aucune trace.
+ *
+ * Chemin MESURÉ le 2026-08-28 : `netSalary: Infinity` — que `|| 0` ne rattrape pas (Infinity est
+ * truthy) et que `JSON.parse` PRODUIT à partir d'un blob Drive/backup contenant `1e999` — donne
+ * `savingsRateRaw = (∞ − dépenses) / ∞ = NaN`, donc `total = NaN`. Les autres entrées testées
+ * (montant de poste, soldes, prix d'actif, cible FIRE) sont déjà durcies en amont.
+ *
+ * Le correctif est un point de passage UNIQUE appliqué à la liste finale, pas un `?? 0` par
+ * métrique : `0` serait un score CRÉDIBLE inventé (règle no-fake-data), alors qu'`available:false`
+ * est l'état « — » que l'UI sait déjà rendre, et qui EXCLUT la métrique du score pondéré. Étant
+ * posé sur la sortie, il couvre aussi toute métrique AJOUTÉE plus tard.
+ */
+function sanitizeNonFinite(rows: HealthMetricRow[]): HealthMetricRow[] {
+    const invalides = rows.filter((r) => !Number.isFinite(r.value)).map((r) => r.id);
+    if (invalides.length === 0) return rows;
+    logErrorThrottled(`health-score-non-fini:${invalides.join(',')}`, {
+        // 'storage' comme pour `healthWeights` : l'origine d'une valeur non finie est une donnée
+        // SAISIE ou RESTAURÉE corrompue, pas une panne de calcul.
+        source: 'storage', severity: 'warning',
+        message: `Santé financière : ${invalides.length} métrique(s) au score non fini, exclue(s) du total`,
+        context: { metriques: invalides },
+    });
+    return rows.map((r) => (Number.isFinite(r.value) ? r : {
+        ...r,
+        value: 0,
+        available: false, // → l'UI affiche « — » et le total pondéré l'ignore
+        raw: 'Donnée invalide (valeur non finie)',
+        help: 'Une donnée source de cette métrique n\'est pas un nombre exploitable (infinie ou absente). '
+            + 'Corrige-la dans Réglages (revenus, soldes, postes) pour réactiver la mesure.',
+    }));
+}
 
 export interface HealthMetricRow {
     id: keyof HealthWeights;
@@ -108,7 +145,7 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
         ? computeSubscriptionLoadScore(subscriptions, monthlyIncome)
         : null;
 
-    return [
+    return sanitizeNonFinite([
         {
             id: 'savingsRate' as const,
             label: "Taux d'épargne",
@@ -169,14 +206,17 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
             help: "Cible <15% du revenu net en abonnements épinglés. Épingle tes abos dans « Charges fixes ».",
             available: subscriptionLoadScore != null,
         },
-    ];
+    ]);
 }
 
 /** Score global pondéré. N'inclut que les métriques DISPONIBLES (numérateur ET dénominateur) :
  *  une métrique sans donnée (ex. FIRE sans projection, budget sans dépenses) ne doit pas peser
  *  comme un 0 qui écraserait le score. Normalisé par la somme des poids des seules métriques comptées. */
 export function computeHealthTotalScore(metrics: readonly HealthMetricRow[], weights: HealthWeights): number {
-    const counted = metrics.filter(m => m.available);
+    // `Number.isFinite` en CEINTURE : `computeHealthMetrics` assainit déjà sa sortie, mais cette
+    // fonction est exportée et peut recevoir des lignes d'une autre provenance — une seule valeur
+    // non finie rendrait tout le score `NaN`.
+    const counted = metrics.filter(m => m.available && Number.isFinite(m.value));
     const weightedSum = counted.reduce((sum, m) => sum + m.value * (weights[m.id] || 0), 0);
     const totalWeight = counted.reduce((sum, m) => sum + (weights[m.id] || 0), 0);
     return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;

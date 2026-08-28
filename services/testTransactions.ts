@@ -2,10 +2,26 @@
 //
 // Génération de transactions de test (60 entrées sur 3 mois).
 // Extrait de testFixtures.ts (DT4) — ne jamais charger au boot.
+//
+// [TEST-PERSONA-NON-DETERMINISTE] Ce générateur utilisait `rand()` NU. Or il alimente
+// `couple-confort`, le persona PAR DÉFAUT — celui qu'un audit prend spontanément : deux exécutions
+// du MÊME code donnaient deux `calculatedStartingCash` différents (amplitude MESURÉE 3 088,55 $ sur
+// 5 tirages, soit 0,028 % du patrimoine final). Conséquence : AUCUNE comparaison avant/après
+// n'était possible sur ce persona sans injecter une graine à la main.
+// Le générateur est donc seedé par DÉFAUT (mulberry32, patron déjà employé par son voisin
+// `testPersonas/transactions.ts` et par le Monte Carlo), avec une graine surchargeable pour
+// produire des jeux distincts quand on le veut vraiment.
+// ⚠️ Reste non reproductible d'un JOUR à l'autre : les dates sont relatives à `new Date()`
+// (comme chez son voisin, volontairement — le passé reconstruit doit toucher aujourd'hui).
 
 import type { Transaction } from '../types';
+import { mulberry32 } from './testPersonas/transactions';
 
-export function generateTestTransactions(): Transaction[] {
+/** Graine par défaut — même valeur que `buildPersonaTransactions`, pour une seule convention. */
+const DEFAULT_SEED = 42;
+
+export function generateTestTransactions(seed: number = DEFAULT_SEED): Transaction[] {
+    const rand = mulberry32(seed);
     const out: Transaction[] = [];
     const now = new Date();
     let idCounter = 1;
@@ -39,17 +55,17 @@ export function generateTestTransactions(): Transaction[] {
     // Épicerie (~5/mois)
     const epiceries = ['Provigo', 'IGA', 'Costco', 'Métro', 'Maxi'];
     for (let i = 0; i < 15; i++) {
-        const days = Math.floor(Math.random() * 90);
+        const days = Math.floor(rand() * 90);
         const merchant = epiceries[i % epiceries.length];
-        out.push(mk(days, `${merchant} #${1000 + i}`, -(45 + Math.random() * 120), 'Épicerie'));
+        out.push(mk(days, `${merchant} #${1000 + i}`, -(45 + rand() * 120), 'Épicerie'));
     }
     // Restaurants
     for (let i = 0; i < 10; i++) {
-        out.push(mk(Math.floor(Math.random() * 90), `Restaurant ${['Tim Hortons', 'Subway', "St-Hubert", 'Pizza Salvatoré'][i % 4]}`, -(15 + Math.random() * 50), 'Restaurants'));
+        out.push(mk(Math.floor(rand() * 90), `Restaurant ${['Tim Hortons', 'Subway', "St-Hubert", 'Pizza Salvatoré'][i % 4]}`, -(15 + rand() * 50), 'Restaurants'));
     }
     // Transport
     for (let i = 0; i < 6; i++) {
-        out.push(mk(15 * i + 7, 'Station Esso', -(55 + Math.random() * 30), 'Transport'));
+        out.push(mk(15 * i + 7, 'Station Esso', -(55 + rand() * 30), 'Transport'));
     }
     // Investissements (transferts)
     for (let i = 0; i < 3; i++) {

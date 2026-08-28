@@ -34,14 +34,6 @@
   vues d'analyse précises (graphique de tendance ? comparaison mois-à-mois ? projection
   d'impact ?), quelle interactivité voulue (filtrage, regroupement, drill-down). Effort L : ne
   pas coder avant d'avoir cette DoD précise.
-- [ ] **`[TEST-PERSONA-NON-DETERMINISTE]`** (S, **ÉLEVÉ en gêne d'outillage** — finding
-  projection-validator MESURÉ, panel PR #755, PRÉ-EXISTANT) — `services/testTransactions.ts:42-52`
-  utilise `Math.random()` NU. `couple-confort`, le persona PAR DÉFAUT, est le seul à consommer
-  `generateTestTransactions()` → `calculatedStartingCash` change à CHAQUE appel. Mesuré : 5
-  exécutions du MÊME code donnent 5 `finalNetWorth` distincts, amplitude **3 088,55 $** (0,028 %).
-  Conséquence directe : **toute comparaison avant/après sur ce persona est impossible sans graine**
-  — le panel a dû injecter un LCG pour obtenir sa preuve bit-identique. C'est le persona qu'un
-  audit prend spontanément. Fix : graine injectable (le dépôt a déjà ce patron pour Monte Carlo).
 - [ ] **`[ENG-GOALS-HORS-TOTALEXPENSES]`** (S, FAIBLE [Probable] — finding projection-validator
   MESURÉ, panel PR #755, PRÉ-EXISTANT) — un tirage d'objectif n'entre PAS dans `totalExpenses` :
   mesuré, base et `FinancialGoal` équivalent donnent tous deux `totalExpenses` =
@@ -56,24 +48,11 @@
   prompt IA, aucune doc technique — seulement deux mentions narratives en archive. Candidat
   `knip`/nettoyage. ⚠️ Le champ reste ALIMENTÉ correctement, ce n'est pas un bug : juste du code
   publié que personne ne lit (même classe que `[UTIL-GOLDENSPLIT-ORPHELIN]`).
-- [ ] **`[MCP-WRITE-PARITY-GUARD]`** (S — finding ai-reviewer, panel PR #755, PRÉ-EXISTANT) —
-  `tests/aiTools/registryParity.test.ts` n'assure l'exhaustivité que sur `READ_SPECS`
-  (`s.kind === 'read'`). AUCUN test ne compare les tools d'ÉCRITURE enregistrés côté serveur MCP
-  (`mcp/server.ts`, bloc `if (options.store)`) à `WRITE_SPECS` (`services/aiTools/registry.ts`).
-  Les deux fichiers compilent indépendamment → un tool d'écriture ajouté ou retiré d'UN SEUL des
-  deux registres ne serait vu ni par `tsc`, ni par le lint, ni par le gate. Risque concret : un
-  geste destructif (`delete_item`-like) exposé côté MCP mais absent du chat in-app, ou l'inverse,
-  sans aucun test rouge. Même classe que `[DEFAULTS-DRIFT-FINTABLE-FIELDS]` (test unidirectionnel).
-  ⚠️ Le retrait de `upsert_savings_goal` (PR #755) a été fait symétriquement à la main et VÉRIFIÉ —
-  ce ticket ferme le trou pour la prochaine fois, il ne corrige pas un bug actuel.
-- [ ] **`[HEALTH-SCORE-NAN-SILENCIEUX]`** (XS — finding silent-failure-hunter, panel PR #755,
-  PRÉ-EXISTANT) — `clamp01` (`utils/healthScore.ts`) ne neutralise pas `NaN`
-  (`Math.max(0, Math.min(100, NaN)) === NaN`), et les 3 métriques toujours `available: true`
-  (taux d'épargne, coussin, ratio dette/actif) n'ont aucune garde d'entrée. Une entrée corrompue en
-  amont afficherait littéralement « Santé financière : NaN/100 », sans `logError`. Pas une
-  violation stricte du no-fake-data (NaN n'est pas un « 0 $ crédible »), mais un affichage cassé
-  et muet. ⚠️ Défaut d'ORIGINE de `HealthIndicator.tsx` : l'extraction de `utils/healthScore.ts`
-  (PR #755) l'a seulement DUPLIQUÉ vers une 2e surface d'affichage, doublant son exposition.
+  ⚠️ **Arbitrage requis avant de coder** (constat lot 30, 2026-08-28) : le ticket prescrit la
+  suppression, mais le champ porte une information UTILE à l'utilisateur (« ton but n'a pas pu
+  être financé, il manquait X $ »). Supprimer et exposer sont deux livraisons opposées, et la
+  seconde est du scope que Marc n'a pas demandé. À trancher : (a) supprimer le champ mort, ou
+  (b) le rendre visible sur Futur — le producteur est correct dans les deux cas.
 - [ ] **`[BUDGET-DEUX-NETS-MEME-ECRAN]`** (S — finding financial-integrity, panel PR #755,
   PRÉ-EXISTANT) — deux « net » de PROVENANCE différente coexistent sur l'écran Budget :
   l'Objectif Revenus affiche le net RECALCULÉ depuis le brut par `calculateFiscalReport`

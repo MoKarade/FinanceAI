@@ -18,6 +18,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { computeHealthMetrics, computeHealthTotalScore, colorForHealthScore, HEALTH_SCORE_UNKNOWN_COLORS, type HealthMetricRow, type HealthScoreInputs } from '../../utils/healthScore';
 import { clearErrors, filterErrors, __resetErrorThrottle } from '../../services/errorLogger';
 import type { HealthWeights } from '../../types';
+import { formatCAD, formatNumber, formatPercent } from '../../utils/format';
 
 const WEIGHTS: HealthWeights = {
     savingsRate: 25, emergencyFund: 25, debtRatio: 20,
@@ -241,9 +242,18 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         // `available:false` ne porte de montant. C'est un fait ACCIDENTEL du contenu actuel, que
         // rien ne verrouille : une future métrique qui écrirait « il te manque 1 234 $ » dans son
         // état indisponible fuirait aussitôt dans l'attribut (finding security-privacy, PR #758).
-        // La garde vise les MONTANTS ($, %, décimales), pas les compteurs — « 1 abonnement(s) au
-        // coût illisible » est un décompte, pas une donnée financière.
-        const MONTANT = /[$%]|\d+[.,]\d/;
+        // La garde vise les MONTANTS, pas les compteurs — « 1 abonnement(s) au coût illisible » est
+        // un décompte, pas une donnée financière.
+        // ⚠️ `\d{3,}` n'est pas décoratif : MESURÉ, `formatNumber(1234)` rend « 1 234 » — ni `$`,
+        // ni `%`, ni décimale, donc un `raw` du genre « Il manque ${formatNumber(gap)} » passait
+        // sous le radar de la 1re version de ce motif (finding code-reviewer, 2e passe PR #758).
+        // Le séparateur de milliers est une espace INSÉCABLE, donc « 1 234 » contient bien un
+        // groupe de 3 chiffres — c'est lui qu'on attrape.
+        // ⚠️ Limite ASSUMÉE et bornée : un montant rond < 100 sans symbole (« 95 ») reste
+        // indétectable, il est indiscernable d'un compteur. On préfère ce trou étroit à une garde
+        // qui rougirait sur « 1 abonnement(s) ». Les vrais montants du dépôt passent tous par
+        // `formatCAD` (qui suffixe « $ ») ou `formatPercent` (« % ») — mesuré.
+        const MONTANT = /[$%]|\d+[.,]\d|\d{3,}/;
         const fixtures: Array<[string, Partial<HealthScoreInputs>]> = [
             ['sans projection ni abo', {}],
             ['revenu Infinity', { config: { users: [{ name: 'Moi', netSalary: Infinity }] } as unknown as HealthScoreInputs['config'] }],
@@ -274,6 +284,12 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         // indisponible atteignable. L'écrire vaut mieux que fabriquer une fixture absurde.
         expect([...vus].sort()).toEqual(['budgetParity', 'emergencyFund', 'fireProgress', 'savingsRate', 'subscriptionLoad']);
         expect(avecMontant).toBeGreaterThan(0);
+        // Le motif reconnaît les DEUX formats de montant que le dépôt produit réellement, et
+        // laisse passer les compteurs — sans ça, « aucun montant trouvé » ne voudrait rien dire.
+        expect(MONTANT.test(formatCAD(1234))).toBe(true);      // « 1 234 $ »
+        expect(MONTANT.test(formatNumber(1234))).toBe(true);   // « 1 234 » — le trou de la 1re version
+        expect(MONTANT.test(formatPercent(1.9, 1))).toBe(true); // « 1,9 % »
+        expect(MONTANT.test('12 abonnement(s) au coût illisible')).toBe(false); // un décompte reste permis
     });
 
     it('[ceinture] computeHealthTotalScore ignore une ligne non finie venue d\'ailleurs', () => {

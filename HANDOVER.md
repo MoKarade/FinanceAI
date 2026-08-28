@@ -25,7 +25,7 @@
 >   Volet (b) non livré délibérément — la parité comportementale du lot 30 détecte déjà le cas ; le
 >   risque est la RÉPARATION, donc un commentaire a été posé là où quelqu'un lira l'échec.
 >
-> Gate LOCAL vert : typecheck 0, lint 0 erreur, **4 890 tests / 459 fichiers**, build 0.
+> Gate LOCAL vert : typecheck 0, lint 0 erreur, **4 891 tests / 459 fichiers**, build 0.
 > ⚠️ **PR #757 NON mergée** au moment de ce handover ; CI en cours, auto-merge pas encore armé.
 >
 > ## 🟢 Session 2026-08-28 — Lot 30 : livraison de 3 findings pré-existants du panel PR #755 (PR #756)

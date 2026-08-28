@@ -34,6 +34,16 @@
   vues d'analyse précises (graphique de tendance ? comparaison mois-à-mois ? projection
   d'impact ?), quelle interactivité voulue (filtrage, regroupement, drill-down). Effort L : ne
   pas coder avant d'avoir cette DoD précise.
+- [ ] **`[MCP-SCRUB-NAN-DEVIENT-NULL]`** (XS — finding silent-failure-hunter, panel PR #757,
+  PRÉ-EXISTANT) — le champ `before` d'un `change` MCP porte une valeur BRUTE, non formatée. Quand
+  elle est corrompue (`NaN`), `scrubValue` (`mcp/tools/scrubWriteResult.ts`) ne la touche pas — il
+  ne sanitize que les chaînes — et `JSON.stringify` la sérialise en **`null`** vers le modèle. Le
+  modèle lit donc « pas de valeur précédente » là où la vérité est « valeur précédente corrompue » :
+  deux faits opposés confondus dans le même symbole, classe
+  `UN-DEFAUT-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT`. ⚠️ Distinct de la fuite
+  corrigée au lot 31 (qui produisait le TEXTE « NaN $ » dans une note lue par l'humain) : ici c'est
+  le canal MACHINE, et le symptôme est l'inverse — pas trop d'information, mais une absence
+  fabriquée. Le rendu côté humain est déjà honnête (`AiChatConfirmModal` rend « — »).
 - [ ] **`[GUARD-STRIPCOMMENTS-CONSOLIDER]`** (S — dette relevée au lot 31) — le dépôt porte SIX
   décommenteurs `stripComments` recopiés (`tests/aiTools/specFiniteGuard.test.ts`,
   `tests/services/assetFxGuard.test.ts`, `utils/fiscalConstGuardV2.ts`, `utils/chartDataSumGuard.ts`,

@@ -162,6 +162,21 @@ export function subscriptionsMonthlyCost(subscriptions: readonly RecurringItem[]
     return totalMonthlyCost(subscriptions);
 }
 
+/**
+ * [HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] Le revenu mensuel est-il exploitable comme DÉNOMINATEUR ?
+ * Exporté pour la même raison que `budgetParityInputsUsable` : `utils/healthScore.ts` a besoin de
+ * la MÊME réponse pour choisir le bon libellé, et une copie littérale de l'expression finit par
+ * diverger — la 3e passe du panel PR #757 a trouvé cette condition écrite à TROIS endroits, dont
+ * deux dans la même fonction. Si l'une bougeait sans les autres, le refus se remettrait à dire
+ * « corrige tes abonnements » là où il faut saisir un salaire : exactement le défaut que la 2e
+ * passe venait de corriger, réintroduit par la méthode qui l'a corrigé.
+ * ⚠️ `Number.isFinite` en plus de `> 0` : `Infinity > 0` est VRAI, et un revenu infini donnait un
+ * score PARFAIT (`coût / ∞ = 0`).
+ */
+export function incomeUsableForRatios(monthlyIncome: number): boolean {
+    return Number.isFinite(monthlyIncome) && monthlyIncome > 0;
+}
+
 /** Plafond du poids des abonnements : à `SUBSCRIPTION_LOAD_CEILING` × le revenu net mensuel, le score tombe à 0. */
 export const SUBSCRIPTION_LOAD_CEILING = 0.15; // 15 % du revenu net
 
@@ -182,7 +197,7 @@ export function computeSubscriptionLoadScore(
     subscriptions: readonly RecurringItem[],
     monthlyIncome: number,
 ): number | null {
-    if (!Number.isFinite(monthlyIncome) || monthlyIncome <= 0) return null;
+    if (!incomeUsableForRatios(monthlyIncome)) return null;
     // [HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] Porte d'ÉCRITURE : un coût annuel illisible était JETÉ
     // du total, donc le fardeau paraissait plus LÉGER et le score MEILLEUR (mesuré : 95 $/mois →
     // 20 $/mois, score 87,3 → 97,3, sans une ligne de trace). Un calcul qui publie un score doit

@@ -1,6 +1,6 @@
 import type { BudgetConfig, BudgetCategory, Debt, Asset, Transaction, RecurringItem, HealthWeights } from '../types';
 import { computeBudgetParity } from './budget';
-import { computeBudgetParityScore, computeSubscriptionLoadScore, subscriptionsMonthlyCost, monthlyConsumptionExpenses, budgetParityInputsUsable } from './healthRatios';
+import { computeBudgetParityScore, computeSubscriptionLoadScore, subscriptionsMonthlyCost, monthlyConsumptionExpenses, budgetParityInputsUsable, incomeUsableForRatios } from './healthRatios';
 import { totalYearlyCostAudit } from './subscriptions';
 import { formatPercent, formatCAD, formatNumber } from './format';
 import { computeCurrentLiquidity, computeInvestmentsValue, computeTotalDebt } from '../services/portfolio';
@@ -165,7 +165,7 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
     const subMonthly = subscriptionsMonthlyCost(subscriptions);
     // Même garde d'entrée que `computeSubscriptionLoadScore` : un revenu `Infinity` rendrait 0,0 %,
     // un libellé FAUX affiché à l'utilisateur (finding financial-integrity, panel PR #756).
-    const incomeUsable = Number.isFinite(monthlyIncome) && monthlyIncome > 0;
+    const incomeUsable = incomeUsableForRatios(monthlyIncome);
     const subLoadPct = incomeUsable ? (subMonthly / monthlyIncome) * 100 : 0;
     const subscriptionLoadScore = subscriptions.length > 0
         ? computeSubscriptionLoadScore(subscriptions, monthlyIncome)
@@ -178,8 +178,9 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
     // abonnements » alors que la vraie cause est le revenu manquant. Re-dériver `discarded` sans
     // reproduire cette priorité recréait le défaut qu'on vient de corriger, une métrique plus loin
     // (finding code-reviewer, 2e passe panel PR #757).
-    const subsIncomeUsable = Number.isFinite(monthlyIncome) && monthlyIncome > 0;
-    const subsDiscarded = subsIncomeUsable ? totalYearlyCostAudit(subscriptions).discarded : 0;
+    // Même prédicat que la garde d'entrée de `computeSubscriptionLoadScore` — UNE définition, pas
+    // trois copies (finding code-reviewer, 3e passe panel PR #757).
+    const subsDiscarded = incomeUsable ? totalYearlyCostAudit(subscriptions).discarded : 0;
 
     return sanitizeNonFinite([
         {

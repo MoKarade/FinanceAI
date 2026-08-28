@@ -23,7 +23,7 @@
   Classe `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`. ⚠️ Ces absorptions ont d'autres
   consommateurs : grep-les AVANT de durcir (la garde d'entrée de `computeSubscriptionLoadScore` a été
   durcie au lot 30, elle n'avait qu'un seul consommateur de production).
-  ✅ **Livré lot 31** (`claude/lot-31`), gate vert (4 890 tests, 459 fichiers). Les trois chemins RE-MESURÉS avant de coder, et ils vont
+  ✅ **Livré lot 31** (`claude/lot-31`), gate vert (4 891 tests, 459 fichiers). Les trois chemins RE-MESURÉS avant de coder, et ils vont
   dans les DEUX sens — c'est ce qui rend l'absorption dangereuse plutôt qu'imprécise : cible de
   poste `Infinity` → score 92,86 → **100** (parfait, depuis un poste corrompu) ; dépense réelle
   `NaN`/`Infinity` → 92,86 → **0** (« 100 % de dépassement ») ; coût d'abo `NaN`/`Infinity` →
@@ -67,6 +67,14 @@
   épingle ses abos d'abord) se voyait dire « corrige tes abonnements ». Retiré aussi : le
   « +7 points » que j'avais écrit dans une chaîne LUE PAR L'UTILISATEUR, non re-dérivable — la
   direction du biais est un fait de structure, le chiffre non.
+  ⚠️ **Et une TROISIÈME passe a trouvé que le correctif de la deuxième s'était corrigé lui-même de
+  travers** : en réparant le masquage de « Revenu requis », j'avais recopié
+  `Number.isFinite(monthlyIncome) && monthlyIncome > 0` au lieu de la partager — TROIS copies de la
+  même condition, dont deux dans la même fonction. Rien ne les liait : la première qui bougeait
+  seule remettait le refus à dire « corrige tes abonnements » là où il faut saisir un salaire,
+  c'est-à-dire exactement le défaut que ce correctif venait de fermer, réintroduit par la méthode
+  qui l'a fermé. `incomeUsableForRatios` est désormais la source unique, et le test vérifie que le
+  SCORE suit exactement le prédicat (sans ce lien, une source unique ne prouve rien).
 
 - [x] **`[AITOOLS-CALLSITE-UNIQUE-GARDE]`** (S — findings ai-reviewer, panel PR #756) — deux trous
   que `[MCP-WRITE-PARITY-GUARD]` (lot 30) ne ferme pas, aucun n'étant un défaut observé aujourd'hui :

@@ -17,7 +17,7 @@
 // un score REFUSE). Le refus est `null` — l'état « — » que l'UI rend déjà — jamais un nombre.
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { computeBudgetParityScore, computeSubscriptionLoadScore, subscriptionsMonthlyCost, monthlyConsumptionExpenses, budgetParityInputsUsable } from '../../utils/healthRatios';
+import { computeBudgetParityScore, computeSubscriptionLoadScore, subscriptionsMonthlyCost, monthlyConsumptionExpenses, budgetParityInputsUsable, incomeUsableForRatios } from '../../utils/healthRatios';
 import { totalYearlyCost, totalYearlyCostAudit } from '../../utils/subscriptions';
 import { clearErrors, filterErrors, __resetErrorThrottle } from '../../services/errorLogger';
 import type { BudgetCategory, RecurringItem } from '../../types';
@@ -119,6 +119,25 @@ describe('[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] les entrées non finies REFUSENT 
             expect(computeSubscriptionLoadScore(subs(bad), 5000)).toBeNull();
         }
         expect(warnings().some((e) => e.message.includes('abonnement'))).toBe(true);
+    });
+
+    it('`incomeUsableForRatios` est la SEULE définition de « revenu exploitable » (une, pas trois)', () => {
+        // La condition était écrite à trois endroits, dont deux dans la même fonction : si l'une
+        // bougeait sans les autres, le refus se remettrait à dire « corrige tes abonnements » là
+        // où il faut saisir un salaire — le défaut que la passe précédente venait de corriger,
+        // réintroduit par la méthode qui l'a corrigé (finding code-reviewer, 3e passe).
+        expect(incomeUsableForRatios(5000)).toBe(true);   // anti-vacuité : le cas nominal passe
+        expect(incomeUsableForRatios(0)).toBe(false);
+        expect(incomeUsableForRatios(-1)).toBe(false);
+        expect(incomeUsableForRatios(NaN)).toBe(false);
+        expect(incomeUsableForRatios(Infinity)).toBe(false); // `Infinity > 0` est VRAI — le piège
+        // Et le score suit EXACTEMENT le prédicat : c'est ce lien qui rend la source unique utile.
+        for (const income of [5000, 0, -1, NaN, Infinity]) {
+            expect(
+                computeSubscriptionLoadScore(subs(900), income) !== null,
+                `revenu ${String(income)} : le score doit suivre le prédicat`,
+            ).toBe(incomeUsableForRatios(income));
+        }
     });
 
     it('le refus expose sa PROPRE cause, jamais le message de l\'état vide voisin', () => {

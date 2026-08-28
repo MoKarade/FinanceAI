@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-28 — Lot 32 : la vérité sur une donnée corrompue atteint enfin TOUS ses lecteurs
+
+- [x] **`[MCP-SCRUB-NAN-DEVIENT-NULL]`** (XS — finding silent-failure-hunter, panel PR #757,
+  PRÉ-EXISTANT) — le champ `before` d'un `change` MCP porte une valeur BRUTE, non formatée. Quand
+  elle est corrompue (`NaN`), `scrubValue` (`mcp/tools/scrubWriteResult.ts`) ne la touche pas — il
+  ne sanitize que les chaînes — et `JSON.stringify` la sérialise en **`null`** vers le modèle. Le
+  modèle lit donc « pas de valeur précédente » là où la vérité est « valeur précédente corrompue » :
+  deux faits opposés confondus dans le même symbole, classe
+  `UN-DEFAUT-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT`. ⚠️ Distinct de la fuite
+  corrigée au lot 31 (qui produisait le TEXTE « NaN $ » dans une note lue par l'humain) : ici c'est
+  le canal MACHINE, et le symptôme est l'inverse — pas trop d'information, mais une absence
+  fabriquée. Le rendu côté humain est déjà honnête (`AiChatConfirmModal` rend « — »).
+  ✅ **Livré lot 32** (`claude/lot-32`), gate vert (4 893 tests, 459 fichiers). `scrubValue` convertit un nombre NON FINI en chaîne
+  explicite « — (valeur non exploitable) » : elle survit à la sérialisation, donc le modèle lit
+  « corrompue » au lieu de « absente ». Symptôme INVERSE de la fuite corrigée au lot 31 — là on en
+  disait trop (« NaN $ » dans une phrase pour un humain), ici on fabriquait une absence dans le
+  canal machine. Le test vérifie les deux sens : le non-fini devient la chaîne, et un `null`
+  EXPLICITE (absence légitime) reste `null`.
+
+> Les deux items de ce lot ferment la même question, qui est celle de la leçon du lot 31 : une
+> information sur l'état de la donnée doit atteindre TOUS ses consommateurs — le calcul, le
+> libellé visuel, le nom accessible, et le modèle. Chacun avait sa propre façon de la perdre.
+
 ## 2026-08-28 — Lot 31 : fermeture des angles morts du lot 30 (absorptions silencieuses, site d'appel unique)
 
 - [x] **`[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]`** (S — findings silent-failure-hunter + financial-integrity

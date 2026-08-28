@@ -34,16 +34,6 @@
   vues d'analyse précises (graphique de tendance ? comparaison mois-à-mois ? projection
   d'impact ?), quelle interactivité voulue (filtrage, regroupement, drill-down). Effort L : ne
   pas coder avant d'avoir cette DoD précise.
-- [ ] **`[MCP-SCRUB-NAN-DEVIENT-NULL]`** (XS — finding silent-failure-hunter, panel PR #757,
-  PRÉ-EXISTANT) — le champ `before` d'un `change` MCP porte une valeur BRUTE, non formatée. Quand
-  elle est corrompue (`NaN`), `scrubValue` (`mcp/tools/scrubWriteResult.ts`) ne la touche pas — il
-  ne sanitize que les chaînes — et `JSON.stringify` la sérialise en **`null`** vers le modèle. Le
-  modèle lit donc « pas de valeur précédente » là où la vérité est « valeur précédente corrompue » :
-  deux faits opposés confondus dans le même symbole, classe
-  `UN-DEFAUT-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT`. ⚠️ Distinct de la fuite
-  corrigée au lot 31 (qui produisait le TEXTE « NaN $ » dans une note lue par l'humain) : ici c'est
-  le canal MACHINE, et le symptôme est l'inverse — pas trop d'information, mais une absence
-  fabriquée. Le rendu côté humain est déjà honnête (`AiChatConfirmModal` rend « — »).
 - [ ] **`[GUARD-STRIPCOMMENTS-CONSOLIDER]`** (S — dette relevée au lot 31) — le dépôt porte SIX
   décommenteurs `stripComments` recopiés (`tests/aiTools/specFiniteGuard.test.ts`,
   `tests/services/assetFxGuard.test.ts`, `utils/fiscalConstGuardV2.ts`, `utils/chartDataSumGuard.ts`,
@@ -96,6 +86,18 @@
   `aria-describedby`, et faire varier l'`aria-label` (`${m.label} : ${m.raw}`).
   ⚠️ NON corrigé au lot 31 délibérément : `HealthIndicator.tsx` n'est pas touché par ce lot, et
   c'est du scope non demandé (règle « proposer ≠ faire »).
+  ✅ **Volets (b), (d) et (e) livrés au lot 32** (`claude/lot-32`, gate vert 4 893 tests) : l'`aria-label` du score porte
+  désormais la VRAIE cause (`m.raw`) au lieu de « donnée indisponible » pour tous les états ;
+  `aria-describedby` ASSOCIE le score à sa ligne de détail (sans quoi un lecteur d'écran qui
+  navigue par éléments, et non au fil du texte, ne la rencontre jamais) ; et la JUSTIFICATION
+  (`m.help`) ne dépend plus d'un survol — elle est dans le nom accessible en `sr-only`, le
+  `title` restant pour la souris. Discriminé par perturbation (retour à l'état d'avant → rouge).
+  ⬜ **Restent OUVERTS** : (a) `FutureHealthSummary` n'affiche que le score global, donc une
+  exclusion pour corruption y est visuellement identique à une exclusion légitime — c'est un
+  choix de DENSITÉ à trancher, pas un correctif mécanique ; (c) `logErrorThrottled` garde un
+  `Set` de module jamais purgé côté navigateur, donc une corruption qui guérit puis RÉCIDIVE
+  dans la même session est muette la 2e fois — le remède touche l'`errorLogger` partagé par
+  tout le dépôt, il ne se glisse pas dans un lot d'a11y.
 - [ ] **`[ENG-GOALS-HORS-TOTALEXPENSES]`** (S, FAIBLE [Probable] — finding projection-validator
   MESURÉ, panel PR #755, PRÉ-EXISTANT) — un tirage d'objectif n'entre PAS dans `totalExpenses` :
   mesuré, base et `FinancialGoal` équivalent donnent tous deux `totalExpenses` =

@@ -159,7 +159,19 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                             <div key={m.id} className="group">
                                 <div className="flex items-center justify-between text-meta">
                                     <span className="text-ink-300 truncate" title={m.help}>{m.label}</span>
-                                    <span className={`font-mono font-bold shrink-0 ${m.available ? mColors.text : 'text-ink-400'}`} aria-label={m.available ? undefined : `${m.label} : donnée indisponible`}>{m.available ? Math.round(m.value) : '—'}</span>
+                                    {/* [HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE] L'`aria-label` disait
+                                        « donnée indisponible » pour TOUS les états indisponibles — y compris,
+                                        depuis le lot 31, « ta donnée est corrompue, va la corriger ». Trois
+                                        situations aux actions opposées annoncées d'une seule phrase. Il porte
+                                        désormais la vraie raison (`m.raw`), et `aria-describedby` ASSOCIE
+                                        explicitement le score à sa ligne de détail — sans quoi un lecteur
+                                        d'écran qui navigue par éléments, et non au fil du texte, ne la
+                                        rencontre jamais (audit a11y, panel PR #757). */}
+                                    <span
+                                        className={`font-mono font-bold shrink-0 ${m.available ? mColors.text : 'text-ink-400'}`}
+                                        aria-label={m.available ? undefined : `${m.label} : ${m.raw}`}
+                                        aria-describedby={`health-detail-${m.id}`}
+                                    >{m.available ? Math.round(m.value) : '—'}</span>
                                 </div>
                                 <div className="flex items-center gap-2 mt-0.5">
                                     <div className="flex-1 h-1 bg-black/40 rounded-full overflow-hidden">
@@ -170,7 +182,15 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                                     </div>
                                     <span className="text-tiny text-ink-400 font-mono shrink-0 tabular-nums">{weights[m.id]}%</span>
                                 </div>
-                                <div className="text-tiny text-ink-400 mt-0.5">{m.raw}</div>
+                                {/* `m.help` ne transitait QUE par l'attribut `title` du libellé, sur un
+                                    `<span>` non focusable : hors clavier, invisible au tactile, et non
+                                    annoncé de façon fiable par un lecteur d'écran (WCAG 1.4.13, audit a11y
+                                    panel PR #757). Le `title` reste pour la souris ; la justification est
+                                    désormais AUSSI dans le nom accessible, en `sr-only`, donc elle ne
+                                    dépend plus d'un survol. */}
+                                <div id={`health-detail-${m.id}`} className="text-tiny text-ink-400 mt-0.5">
+                                    {m.raw}<span className="sr-only"> — {m.help}</span>
+                                </div>
                             </div>
                         );
                     })}

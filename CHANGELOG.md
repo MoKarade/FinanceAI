@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-28 (accessibilité et assistant : dire POURQUOI une donnée manque)
+
+- **Amélioré** : dans la carte Santé financière, une métrique indisponible annonçait toujours
+  « donnée indisponible » aux lecteurs d'écran, quelle que soit la raison — que la donnée soit
+  simplement absente ou qu'elle soit corrompue et à corriger. Elle annonce maintenant la vraie
+  raison, et l'explication détaillée (jusque-là visible seulement en survolant à la souris) est
+  désormais lue sans avoir à survoler.
+- **Corrigé** : quand l'assistant Claude propose une modification, une valeur d'origine corrompue
+  lui était transmise comme « aucune valeur », au lieu de « valeur corrompue ». Il pouvait donc
+  décrire un ajout là où il s'agissait d'une correction.
+
 ## [unreleased] — 2026-08-28 (fiabilité, suite : deux métriques de santé qui inventaient un score)
 
 - **Corrigé** : quatre métriques de Santé financière fabriquaient un score plausible à partir d'une

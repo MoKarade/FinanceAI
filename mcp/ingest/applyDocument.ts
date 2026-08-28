@@ -356,6 +356,16 @@ function applyBudgetItem(state: AppState, doc: BudgetItemPayload): ApplyResult {
     // premier est retenu — le signaler plutôt que de laisser croire à une mise à jour de l'autre.
     const twinCount = items.filter((b) => budgetNameKey(b.name) === key).length;
     const twinNote = twinCount > 1 ? ` ⚠️ ${twinCount} postes ont un nom équivalent — le premier a été retenu.` : '';
+    // [HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] `monthlyTargetOf` PROPAGE désormais une cible illisible
+    // en `NaN` au lieu de l'absorber en `0` (c'est tout l'objet du correctif). Les diffs ci-dessous
+    // lisent `b.target`, la cible DÉJÀ en état, que rien n'a validée — contrairement à
+    // `doc.targetCad`, passé par `plausible()`. Sans ce formateur, la note montrée à l'utilisateur
+    // avant qu'il confirme une écriture dirait littéralement « passe de NaN $ à X $ » : ni un
+    // « 0 $ » faussement crédible (proscrit par le no-fake-data) ni un « — » honnête, juste une
+    // fuite technique (finding code-reviewer, 2e passe panel PR #757).
+    const montantLabel = (n: unknown): string => (Number.isFinite(n) ? `${Math.round(n as number)} $` : '— (cible non exploitable)');
+    const monthlyTargetLabel = (item: Parameters<typeof monthlyTargetOf>[0]): string => montantLabel(monthlyTargetOf(item));
+
 
     if (idx >= 0) {
         const b = items[idx];
@@ -363,7 +373,7 @@ function applyBudgetItem(state: AppState, doc: BudgetItemPayload): ApplyResult {
             const freq = doc.frequency ?? b.frequency;
             changes.push({
                 field: `poste « ${b.name} » (cible)`, before: b.target,
-                after: `${doc.targetCad} $ / ${freq} (≈ ${Math.round(monthlyTargetOf({ target: doc.targetCad, frequency: freq }))} $/mois)`,
+                after: `${doc.targetCad} $ / ${freq} (≈ ${monthlyTargetLabel({ target: doc.targetCad, frequency: freq })}/mois)`,
                 note: (b.autoTarget ? 'cible auto-gérée décrochée (édition manuelle)' : undefined),
             });
             b.target = doc.targetCad;
@@ -375,8 +385,8 @@ function applyBudgetItem(state: AppState, doc: BudgetItemPayload): ApplyResult {
             // (cible mensuelle effective ÷12, +épargne fabriquée dans toute la projection).
             changes.push({
                 field: `poste « ${b.name} » (fréquence)`, before: b.frequency, after: doc.frequency,
-                note: `la cible mensuelle effective passe de ${Math.round(monthlyTargetOf(b))} $ à `
-                    + `${Math.round(monthlyTargetOf({ target: b.target, frequency: doc.frequency }))} $ (cible inchangée : ${b.target} $)`,
+                note: `la cible mensuelle effective passe de ${monthlyTargetLabel(b)} à `
+                    + `${monthlyTargetLabel({ target: b.target, frequency: doc.frequency })} (cible inchangée : ${montantLabel(b.target)})`,
             });
             b.frequency = doc.frequency;
             b.autoTarget = false;
@@ -423,7 +433,7 @@ function applyBudgetItem(state: AppState, doc: BudgetItemPayload): ApplyResult {
         : `⚠️ aucune transaction de catégorie « ${name} » : le poste sera RETIRÉ au prochain chargement de l'app tant qu'aucune dépense ne s'y rattache (le budget suit les catégories observées).`;
     changes.push({
         field: `poste « ${name} »`, before: null,
-        after: `${added.target} $ / ${added.frequency} (≈ ${Math.round(monthlyTargetOf(added))} $/mois)`,
+        after: `${added.target} $ / ${added.frequency} (≈ ${monthlyTargetLabel(added)}/mois)`,
         note: orphanNote ?? 'nouveau poste — rapproché des dépenses réelles de la catégorie du même nom (un nom proche peut être auto-renommé vers la catégorie observée)',
     });
     const nextState: AppState = { ...state, budgetItems: items, lastUpdate: Date.now() };

@@ -172,7 +172,14 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
         : null;
     // Même correctif de LIBELLÉ : un refus pour coût illisible affichait « Revenu requis » alors
     // que le revenu était parfaitement valide (finding financial-integrity, panel PR #757).
-    const subsDiscarded = totalYearlyCostAudit(subscriptions).discarded;
+    // ⚠️ Et l'ORDRE compte, dans les deux sens : `computeSubscriptionLoadScore` teste le REVENU
+    // AVANT les abonnements, donc un utilisateur sans revenu saisi (cas très courant — on épingle
+    // ses abos avant de remplir son salaire) et un abo illisible se serait vu dire « corrige tes
+    // abonnements » alors que la vraie cause est le revenu manquant. Re-dériver `discarded` sans
+    // reproduire cette priorité recréait le défaut qu'on vient de corriger, une métrique plus loin
+    // (finding code-reviewer, 2e passe panel PR #757).
+    const subsIncomeUsable = Number.isFinite(monthlyIncome) && monthlyIncome > 0;
+    const subsDiscarded = subsIncomeUsable ? totalYearlyCostAudit(subscriptions).discarded : 0;
 
     return sanitizeNonFinite([
         {
@@ -236,8 +243,13 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
                     : subsDiscarded > 0
                         ? `${subsDiscarded} abonnement(s) au coût illisible — corrige-les dans Charges fixes`
                         : 'Revenu requis',
+            // ⚠️ Aucun chiffre dans ce texte : il est LU par l'utilisateur, donc il aurait l'autorité
+            // d'une mesure. Le « +7 points » que j'y avais écrit venait d'une fixture précise du
+            // panel et n'était re-dérivable par personne — même classe que le chiffre recopié d'un
+            // ticket au lot 30. La direction du biais, elle, est un fait de structure : un coût
+            // écarté ne peut qu'ALLÉGER le fardeau, donc flatter le score.
             help: subsDiscarded > 0
-                ? "Un abonnement épinglé porte un coût annuel qui n'est pas un nombre exploitable. Tant qu'il est là, le poids des abonnements ne peut pas être mesuré : un coût écarté rendrait le fardeau artificiellement LÉGER (mesuré : +7 points de score global chez un abonné lourd)."
+                ? "Un abonnement épinglé porte un coût annuel qui n'est pas un nombre exploitable. Tant qu'il est là, le poids des abonnements n'est pas mesuré : écarter ce coût rendrait le fardeau artificiellement plus léger, donc le score meilleur qu'il ne l'est."
                 : "Cible <15% du revenu net en abonnements épinglés. Épingle tes abos dans « Charges fixes ».",
             available: subscriptionLoadScore != null,
         },

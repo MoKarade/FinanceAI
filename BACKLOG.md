@@ -43,6 +43,11 @@
   garde neuve UNIQUEMENT — migrer les six existants est le travail restant. ⚠️ Chacun a sa propre
   signature (certains rendent `string`, d'autres `string[]`) : la migration change le CONTRAT de
   ses appelants, elle ne se fait pas par `replace`.
+  ⚠️ **À durcir AVANT l'adoption large** (finding code-reviewer, 2e passe panel PR #757) :
+  l'implémentation exportée est naïve — elle ne distingue pas un `//` ou un `/* */` à l'intérieur
+  d'une CHAÎNE littérale (une URL `https://…` par exemple). Aucun impact aujourd'hui (vérifié :
+  aucun fichier balayé par `anthropicCallsiteGuard` n'en contient), mais elle devient la référence
+  de six migrations — c'est là qu'un décommenteur aveugle à la syntaxe coûte cher.
 - [ ] **`[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`** (M — finding code-reviewer, panel PR #756,
   PRÉ-EXISTANT) — le vecteur de corruption traité au lot 30 (`JSON.parse` rend `Infinity` depuis un
   blob Drive/backup contenant `1e999`) n'est neutralisé QU'À l'affichage Santé. Le même `netSalary:

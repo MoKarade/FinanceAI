@@ -204,6 +204,18 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         expect(load.available).toBe(false);
         expect(load.raw).toContain('illisible');
         expect(load.raw).not.toContain('Revenu requis');
+
+        // ⚠️ ORDRE des causes : sans revenu saisi (cas très courant — on épingle ses abos avant de
+        // remplir son salaire), la vraie cause est le REVENU, pas l'abonnement. Sans cette
+        // priorité, le correctif ci-dessus recréait le défaut qu'il corrige, une métrique plus
+        // loin : « corrige tes abonnements » là où il fallait saisir un salaire.
+        const sansRevenu = computeHealthMetrics(inputs({
+            transactions, budgetItems, subscriptions: subsKo,
+            config: { users: [{ name: 'Moi', netSalary: 0 }] } as unknown as HealthScoreInputs['config'],
+        }));
+        const loadSansRevenu = find(sansRevenu, 'subscriptionLoad');
+        expect(loadSansRevenu.available).toBe(false);
+        expect(loadSansRevenu.raw).toBe('Revenu requis');
     });
 
     it('[ceinture] computeHealthTotalScore ignore une ligne non finie venue d\'ailleurs', () => {

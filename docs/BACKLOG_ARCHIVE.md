@@ -23,7 +23,7 @@
   Classe `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`. ⚠️ Ces absorptions ont d'autres
   consommateurs : grep-les AVANT de durcir (la garde d'entrée de `computeSubscriptionLoadScore` a été
   durcie au lot 30, elle n'avait qu'un seul consommateur de production).
-  ✅ **Livré lot 31** (`claude/lot-31`), gate vert (4 888 tests, 459 fichiers). Les trois chemins RE-MESURÉS avant de coder, et ils vont
+  ✅ **Livré lot 31** (`claude/lot-31`), gate vert (4 890 tests, 459 fichiers). Les trois chemins RE-MESURÉS avant de coder, et ils vont
   dans les DEUX sens — c'est ce qui rend l'absorption dangereuse plutôt qu'imprécise : cible de
   poste `Infinity` → score 92,86 → **100** (parfait, depuis un poste corrompu) ; dépense réelle
   `NaN`/`Infinity` → 92,86 → **0** (« 100 % de dépassement ») ; coût d'abo `NaN`/`Infinity` →
@@ -55,6 +55,18 @@
   +7 points** l'abonné lourd dont la métrique valait 0/100 (mesuré par financial-integrity).
   Rétrocompat prouvée au bit près sur 65 000 configurations saines, avec contrôle de sensibilité
   (un mutant à 1e-6 sort 3 389 écarts, le lot en sort 0).
+  ⚠️ **Une DEUXIÈME passe a trouvé deux défauts de plus, tous deux causés par les correctifs de la
+  première** — « trois passes, trois récoltes », vérifié une fois de plus. (i) Rendre
+  `monthlyTargetOf` honnête faisait FUITER `NaN` dans le texte de diff que l'assistant IA montre
+  AVANT une écriture (« la cible mensuelle effective passe de NaN $ à X $ ») : ces notes lisent
+  `b.target`, la cible DÉJÀ en état, que rien ne valide — contrairement à `doc.targetCad`, passé
+  par `plausible()`. Formateur honnête aux 4 sites. (ii) Le nouveau libellé « abonnement illisible »
+  MASQUAIT « Revenu requis » : `computeSubscriptionLoadScore` teste le revenu AVANT les abos, et
+  re-dériver `discarded` sans reproduire cette priorité recréait, une métrique plus loin, le défaut
+  de diagnostic qu'on venait de corriger — un utilisateur sans salaire saisi (cas courant : on
+  épingle ses abos d'abord) se voyait dire « corrige tes abonnements ». Retiré aussi : le
+  « +7 points » que j'avais écrit dans une chaîne LUE PAR L'UTILISATEUR, non re-dérivable — la
+  direction du biais est un fait de structure, le chiffre non.
 
 - [x] **`[AITOOLS-CALLSITE-UNIQUE-GARDE]`** (S — findings ai-reviewer, panel PR #756) — deux trous
   que `[MCP-WRITE-PARITY-GUARD]` (lot 30) ne ferme pas, aucun n'étant un défaut observé aujourd'hui :

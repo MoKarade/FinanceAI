@@ -141,6 +141,99 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         expect(computeHealthTotalScore(rows, zero)).toBeNull();
     });
 
+    it('un poste de budget illisible rend « — » le taux d\'épargne ET le coussin, pas des 0 alarmants', () => {
+        // [HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] Le MÊME champ corrompu empoisonnait quatre métriques,
+        // pas une. Mesuré sur `target: Infinity` avant correctif : taux d'épargne **0**
+        // (« tu épargnes 0 % de ton revenu »), coussin **0** (« 0 mois »), et le score global
+        // tombait de 74 à **21** — trois chiffres alarmants, plausibles et faux, sur les DEUX
+        // surfaces qui affichent la santé.
+        const sain = computeHealthMetrics(inputs());
+        const g = (rows: HealthMetricRow[], id: string) => rows.find((r) => r.id === id)!;
+        // Anti-vacuité : sur le cas sain, les deux métriques sont bien COMPTÉES et non nulles.
+        expect(g(sain, 'savingsRate').available).toBe(true);
+        expect(g(sain, 'emergencyFund').available).toBe(true);
+        expect(g(sain, 'emergencyFund').value).toBeGreaterThan(0);
+
+        for (const bad of [Infinity, NaN, -Infinity]) {
+            const items = [{ ...inputs().budgetItems[0], target: bad }];
+            const rows = computeHealthMetrics(inputs({ budgetItems: items }));
+            expect(g(rows, 'savingsRate').available, `épargne sous target ${String(bad)}`).toBe(false);
+            expect(g(rows, 'emergencyFund').available, `coussin sous target ${String(bad)}`).toBe(false);
+            expect(Number.isFinite(computeHealthTotalScore(rows, WEIGHTS) ?? 0)).toBe(true);
+        }
+    });
+
+    it('un refus affiche sa PROPRE cause, pas le message de l\'état vide voisin', () => {
+        // [finding financial-integrity, panel PR #757] Le lot remplaçait un score faux par un
+        // DIAGNOSTIC faux : « Revenu requis » alors que le revenu valait 5 000 $/mois, et
+        // « Dépenses non rapprochées à un poste budget » alors qu'elles l'étaient. L'utilisateur
+        // partait corriger le mauvais champ.
+        const d = new Date();
+        const prev = new Date(d.getFullYear(), d.getMonth() - 1, 10);
+        const ym = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+        const transactions = [
+            { id: 't1', date: `${ym}-05`, payee: 'Proprio', amount: -1600, category: 'Loyer' },
+            { id: 't2', date: `${ym}-08`, payee: 'IGA', amount: -650, category: 'Épicerie' },
+        ] as unknown as HealthScoreInputs['transactions'];
+        const budgetItems = [
+            { id: 'b1', name: 'Loyer', target: 1500, frequency: 'Monthly', type: 'Commun', nature: 'Besoin' },
+            { id: 'b2', name: 'Épicerie', target: 600, frequency: 'Monthly', type: 'Commun', nature: 'Besoin' },
+        ] as unknown as HealthScoreInputs['budgetItems'];
+        const find = (rows: HealthMetricRow[], id: string) => rows.find((r) => r.id === id)!;
+
+        // Anti-vacuité : sur la fixture SAINE, les deux métriques sont bien COMPTÉES — sans ça,
+        // « le message a changé » serait satisfait par des métriques toujours indisponibles.
+        const sain = computeHealthMetrics(inputs({ transactions, budgetItems }));
+        expect(find(sain, 'budgetParity').available).toBe(true);
+        expect(find(sain, 'subscriptionLoad').available).toBe(true);
+
+        // Cible illisible → le libellé nomme la CIBLE, pas le rapprochement.
+        const bad = budgetItems.map((b, i) => (i === 0 ? { ...b, target: NaN } : b)) as typeof budgetItems;
+        const pollue = computeHealthMetrics(inputs({ transactions, budgetItems: bad }));
+        const parity = find(pollue, 'budgetParity');
+        expect(parity.available).toBe(false);
+        expect(parity.raw).toContain('illisible');
+        expect(parity.raw).not.toContain('non rapprochées');
+
+        // Coût d'abo illisible → le libellé nomme l'ABONNEMENT, pas le revenu.
+        const subsKo = [
+            { payee: 'Netflix', yearlyCost: 240, averageAmount: 20, dayOfMonth: 5, category: 'Abo', lastDate: '2026-08-05' },
+            { payee: 'Gym', yearlyCost: Infinity, averageAmount: 75, dayOfMonth: 5, category: 'Abo', lastDate: '2026-08-05' },
+        ] as unknown as HealthScoreInputs['subscriptions'];
+        const load = find(computeHealthMetrics(inputs({ transactions, budgetItems, subscriptions: subsKo })), 'subscriptionLoad');
+        expect(load.available).toBe(false);
+        expect(load.raw).toContain('illisible');
+        expect(load.raw).not.toContain('Revenu requis');
+
+        // ⚠️ ORDRE des causes : sans revenu saisi (cas très courant — on épingle ses abos avant de
+        // remplir son salaire), la vraie cause est le REVENU, pas l'abonnement. Sans cette
+        // priorité, le correctif ci-dessus recréait le défaut qu'il corrige, une métrique plus
+        // loin : « corrige tes abonnements » là où il fallait saisir un salaire.
+        const sansRevenu = computeHealthMetrics(inputs({
+            transactions, budgetItems, subscriptions: subsKo,
+            config: { users: [{ name: 'Moi', netSalary: 0 }] } as unknown as HealthScoreInputs['config'],
+        }));
+        const loadSansRevenu = find(sansRevenu, 'subscriptionLoad');
+        expect(loadSansRevenu.available).toBe(false);
+        expect(loadSansRevenu.raw).toBe('Revenu requis');
+
+        // ⚠️ Le cas qui exerce VRAIMENT la source unique `incomeUsableForRatios` (finding
+        // code-reviewer, 4e passe) : `netSalary: 0` ne suffit pas — `0 > 0` est déjà faux sans
+        // `Number.isFinite`, donc une copie dé-factorisée qui aurait PERDU le `isFinite` passerait
+        // quand même. Il faut un revenu NON FINI croisé avec un abo illisible : c'est la seule
+        // combinaison où les deux conditions divergent, donc la seule qui prouve que les trois
+        // anciennes copies sont bien retombées sur une définition unique.
+        for (const netSalary of [Infinity, NaN]) {
+            const croise = computeHealthMetrics(inputs({
+                transactions, budgetItems, subscriptions: subsKo,
+                config: { users: [{ name: 'Moi', netSalary }] } as unknown as HealthScoreInputs['config'],
+            }));
+            const l = find(croise, 'subscriptionLoad');
+            expect(l.available, `revenu ${String(netSalary)} + abo illisible`).toBe(false);
+            expect(l.raw, `revenu ${String(netSalary)} : la cause est le REVENU, pas l'abonnement`).toBe('Revenu requis');
+        }
+    });
+
     it('[ceinture] computeHealthTotalScore ignore une ligne non finie venue d\'ailleurs', () => {
         // La fonction est exportée : elle ne peut pas supposer que ses lignes viennent
         // de `computeHealthMetrics`.

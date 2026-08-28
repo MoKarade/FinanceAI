@@ -31,6 +31,36 @@ function withBudget(): AppState {
 const budgetDoc = (over: Partial<BudgetItemPayload> = {}): BudgetItemPayload =>
     ({ kind: 'budget_item', name: 'Épicerie', ...over });
 
+describe('[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] aucune fuite de « NaN » dans le diff montré à l\'utilisateur', () => {
+    // `monthlyTargetOf` PROPAGE désormais une cible illisible en `NaN` au lieu de l'absorber en `0`
+    // (c'est l'objet du correctif côté santé). Ces notes-là lisent `b.target`, la cible DÉJÀ en
+    // état, que rien n'a validée — contrairement à `doc.targetCad`, passé par `plausible()`. Sans
+    // formateur, la note disait littéralement « passe de NaN $ à X $ » dans l'aperçu que
+    // l'utilisateur lit AVANT de confirmer une écriture : ni un « 0 $ » faussement crédible, ni un
+    // « — » honnête (finding code-reviewer, 2e passe panel PR #757).
+    const corrompu = (): AppState => {
+        const s = withBudget();
+        (s.budgetItems[0] as { target: number }).target = NaN;
+        return s;
+    };
+
+    it('une cible EXISTANTE illisible rend « — », jamais « NaN »', () => {
+        const { changes } = applyDocument(corrompu(), budgetDoc({ frequency: 'Yearly' }));
+        const texte = JSON.stringify(changes);
+        expect(texte).not.toContain('NaN');
+        expect(texte).toContain('non exploitable');
+    });
+
+    it('anti-vacuité : sur une cible SAINE, la note porte bien un montant chiffré', () => {
+        // Sans ce cas, « pas de NaN » serait satisfait par un diff qui n'afficherait plus rien.
+        const { changes } = applyDocument(withBudget(), budgetDoc({ frequency: 'Yearly' }));
+        const note = String(changes.find((c) => c.field.includes('fréquence'))?.note ?? '');
+        expect(note).toContain('550 $');   // cible mensuelle avant
+        expect(note).toContain('46 $');    // 550 / 12 arrondi
+        expect(note).not.toContain('non exploitable');
+    });
+});
+
 describe('applyBudgetItem — mise à jour PAR NOM (partielle, idempotente)', () => {
     it('édite la CIBLE d\'un poste auto-géré → target changé ET autoTarget décroché (false)', () => {
         const { nextState, changes } = applyDocument(withBudget(), budgetDoc({ targetCad: 600 }));

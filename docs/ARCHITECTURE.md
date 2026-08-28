@@ -331,8 +331,8 @@ Toutes les PR doivent passer **typecheck + tests + build**. Le pipeline CI
 
 ## 10. Pour aller plus loin
 
-- [CLAUDE_MEMORY.md](CLAUDE_MEMORY.md) — mémoire de session inter-PC : reprendre vite (lire en premier)
-- [SESSION_HANDOVER.md](SESSION_HANDOVER.md) — vue d'ensemble + roadmap + recommandations
+- [../HANDOVER.md](../HANDOVER.md) — état courant + reprise rapide (lire EN PREMIER)
 - [PROJECTION.md](PROJECTION.md) — détail du moteur de projection (9 phases mensuelles, scénarios, MC)
 - [WIRING_NOTES.md](WIRING_NOTES.md) — wirings inter-onglets, `lastProjection`, deep-links
+- [../BACKLOG.md](../BACKLOG.md) — tâches ouvertes de Claude
 - [adr/](adr/) — Architecture Decision Records (décisions structurantes)

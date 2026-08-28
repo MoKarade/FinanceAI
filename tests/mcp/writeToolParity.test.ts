@@ -29,6 +29,15 @@ import { toAnthropicTools } from '../../services/aiTools/toAnthropicTools';
  */
 const SERVER_ONLY = ['ping', 'connect_drive'] as const;
 
+// ⚠️ Piège de RÉPARATION, pas de détection (finding ai-reviewer, panel PR #756) : rien ne lie
+// `spec.kind === 'write'` à l'ENDROIT où le tool est enregistré dans `mcp/server.ts`. Un tool
+// d'écriture branché hors du bloc `if (options.store)` apparaîtrait dans `withoutStore`, donc la
+// parité ci-dessous rougirait — mais les deux « corrections » les plus naturelles pour la faire
+// reverdir (l'ajouter à `READ_SPECS`, ou l'inscrire dans `SERVER_ONLY`) masqueraient sa nature
+// d'écriture au lieu de la rétablir. Devant un échec de ce test, la question à se poser est
+// « ce tool ÉCRIT-il ? », jamais « comment faire passer le test ? ».
+// Vérifié au 2026-08-28 : les 8 tools d'écriture sont bien dans le bloc conditionnel.
+
 /**
  * Normalise un JSON Schema pour comparer les DEUX convertisseurs. Les specs partagent le même objet
  * zod, mais chaque surface le rend avec son propre convertisseur : le SDK MCP en interne côté

@@ -4,6 +4,30 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-08-28 — Lot 31 : deux métriques de santé qui inventaient un score (PR #757, EN COURS)
+> Les deux angles morts que le panel du lot 30 avait laissés ouverts, tous deux PRÉ-EXISTANTS :
+> - **`[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]`** : la garde de SORTIE du lot 30 filtre le non-fini,
+>   donc elle ne voit rien de ce qui a été ABSORBÉ en un nombre plausible en amont. Trois chemins
+>   mesurés, dans les deux sens : cible de poste `Infinity` → score 92,86 → **100** (parfait, depuis
+>   un poste corrompu) ; dépense réelle `NaN` → **0** (« 100 % de dépassement ») ; coût d'abo
+>   illisible JETÉ de la somme → 95 $/mois ramenés à 20 $/mois, score 87,3 → **97,3**. Correctif à
+>   DEUX portes : `totalYearlyCost` reste la porte de LECTURE (elle rend le TOTAL et écarte — c'est
+>   le bon comportement pour un écran), `totalYearlyCostAudit` ajoute la porte d'ÉCRITURE avec son
+>   compte de termes écartés, et `computeBudgetParityScore` / `computeSubscriptionLoadScore`
+>   REFUSENT (`null` → « — ») au lieu de se rabattre. Règle : **afficher peut écarter, calculer doit
+>   refuser.** Le `clamp01` local reste comme dernier filet mais TRACE désormais s'il tire.
+> - **`[AITOOLS-CALLSITE-UNIQUE-GARDE]` (volet a)** : `tests/aiTools/anthropicCallsiteGuard.test.ts`
+>   fige que **`services/aiTools/agentLoop.ts` est le SEUL site qui déclare des tools à l'API
+>   Anthropic** (pas `mcp/server.ts`, qui ne parle pas à l'API), avec sa contre-épreuve — ce site
+>   doit construire son tableau DEPUIS le registre et ne fabriquer aucun `input_schema` littéral.
+>   `tests/helpers/source.ts` est le PREMIER décommenteur EXPORTÉ du dépôt (les six copies
+>   existantes sont routées au backlog : leur migration change le contrat de leurs appelants).
+>   Volet (b) non livré délibérément — la parité comportementale du lot 30 détecte déjà le cas ; le
+>   risque est la RÉPARATION, donc un commentaire a été posé là où quelqu'un lira l'échec.
+>
+> Gate LOCAL vert : typecheck 0, lint 0 erreur, **4 891 tests / 459 fichiers**, build 0.
+> ⚠️ **PR #757 NON mergée** au moment de ce handover ; CI en cours, auto-merge pas encore armé.
+>
 > ## 🟢 Session 2026-08-28 — Lot 30 : livraison de 3 findings pré-existants du panel PR #755 (PR #756)
 > Les trois findings routés par le panel de PR #755 ont été implémentés isolément, chacun sur son mécanisme :
 > - **`[MCP-WRITE-PARITY-GUARD]`** : garde comportementale `tests/mcp/writeToolParity.test.ts` — démarre le VRAI serveur MCP sur un transport en mémoire et vérifie que les tools d'écriture du serveur (`mcp/server.ts`) sont EXACTEMENT identiques à ceux du registre du chat in-app (`WRITE_SPECS`) et vice-versa. Parité bidirectionnelle + descriptions, exclusions `ping`/`connect_drive` déclarées et validées.

@@ -122,12 +122,31 @@ export function subscriptionDueLabel(
     return ['Le', String(sub.dayOfMonth), month, '· annuel'].filter(Boolean).join(' ');
 }
 
-/** Total ANNUEL des abos = Σ yearlyCost (chaque abo déjà annualisé correctement). */
-export function totalYearlyCost(subs: readonly RecurringItem[]): number {
-    return subs.reduce((acc, s) => {
+/**
+ * [HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT] Total annuel des abos AVEC l'inventaire de ce qui a été
+ * ÉCARTÉ. Deux portes plutôt qu'une (leçon `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`) :
+ *   - le TOTAL, pour LIRE — un écran qui affiche « X $/mois » a raison d'écarter un coût
+ *     illisible et de montrer la somme des autres ;
+ *   - `discarded`, pour ÉCRIRE — un CALCUL qui produit un score doit pouvoir REFUSER, parce
+ *     qu'un terme jeté fait un total plus PETIT, donc un score meilleur, sans rien qui crie.
+ * Mesuré sur `computeSubscriptionLoadScore` : un `yearlyCost: Infinity` (ou `NaN`) faisait passer
+ * le coût mensuel de 95 $ à 20 $ et le score de 87,3 à **97,3**, `available: true`, aucune trace.
+ */
+export function totalYearlyCostAudit(subs: readonly RecurringItem[]): { total: number; discarded: number } {
+    let total = 0;
+    let discarded = 0;
+    for (const s of subs) {
         const y = Number(s.yearlyCost);
-        return acc + (Number.isFinite(y) ? y : 0);
-    }, 0);
+        if (Number.isFinite(y)) total += y;
+        else discarded++;
+    }
+    return { total, discarded };
+}
+
+/** Total ANNUEL des abos = Σ yearlyCost (chaque abo déjà annualisé correctement). Porte de LECTURE :
+ *  écarte silencieusement un coût non fini. Pour un CALCUL, passer par `totalYearlyCostAudit`. */
+export function totalYearlyCost(subs: readonly RecurringItem[]): number {
+    return totalYearlyCostAudit(subs).total;
 }
 
 /** Total MENSUEL équivalent = Σ monthlyEquivalent = totalYearlyCost/12 (pas de ×12 d'un annuel). */

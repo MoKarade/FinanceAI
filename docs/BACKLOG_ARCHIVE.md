@@ -10,6 +10,105 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-28 — Lot 31 : fermeture des angles morts du lot 30 (absorptions silencieuses, site d'appel unique)
+
+- [x] **`[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]`** (S — findings silent-failure-hunter + financial-integrity
+  MESURÉS, panel PR #756, PRÉ-EXISTANT) — deux métriques de santé traversent des absorptions
+  SILENCIEUSES avant d'atteindre la garde `sanitizeNonFinite` : le `clamp01` local de
+  `utils/healthRatios.ts` (`Number.isFinite(n) ? n : 0`) et `totalYearlyCost` de
+  `utils/subscriptions.ts`. Une entrée corrompue devient un `0` FINI — donc crédible, donc invisible
+  à la garde de sortie, et sans aucune trace. Mesuré (poids par défaut) : `budgetItems[].target =
+  Infinity` → total **28** ; `= NaN` → **56** ; `subscriptions[].yearlyCost = Infinity` → **84** ;
+  `debts[].balance = Infinity` → **84** — dans tous les cas `available: true`, aucun `logError`.
+  Classe `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`. ⚠️ Ces absorptions ont d'autres
+  consommateurs : grep-les AVANT de durcir (la garde d'entrée de `computeSubscriptionLoadScore` a été
+  durcie au lot 30, elle n'avait qu'un seul consommateur de production).
+  ✅ **Livré lot 31** (`claude/lot-31`), gate vert (4 891 tests, 459 fichiers). Les trois chemins RE-MESURÉS avant de coder, et ils vont
+  dans les DEUX sens — c'est ce qui rend l'absorption dangereuse plutôt qu'imprécise : cible de
+  poste `Infinity` → score 92,86 → **100** (parfait, depuis un poste corrompu) ; dépense réelle
+  `NaN`/`Infinity` → 92,86 → **0** (« 100 % de dépassement ») ; coût d'abo `NaN`/`Infinity` →
+  95 $/mois jetés à 20 $/mois, score 87,3 → **97,3**. Tous FINIS, donc invisibles à la garde de
+  SORTIE du lot 30. Correctif conforme à `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL` : deux
+  portes — `totalYearlyCost` (LIRE : l'écran Planning garde le droit d'afficher la somme des abos
+  lisibles) et `totalYearlyCostAudit` (ÉCRIRE : un calcul qui publie un score REFUSE). Gardes
+  d'ENTRÉE tracées dans `computeBudgetParityScore` et `computeSubscriptionLoadScore` ; le
+  `clamp01` local reste comme DERNIER filet mais TRACE désormais s'il tire. 6 tests, discriminés
+  par deux perturbations (3 rouges puis 2 rouges).
+  ⚠️ **Le panel a trouvé que le premier jet fermait UN quart du trou.** Le même champ
+  (`budgetItems[].target`) empoisonnait QUATRE métriques, pas une : `monthlyTargetOf` faisait
+  `item.target || 0`, donc un `NaN` (falsy) était rabattu à **0** et le poste DISPARAISSAIT en
+  amont de toute garde — un poste de 1 500 $/mois évaporé, adhérence 92,86 → 91,67, aucune trace ;
+  et `monthlyConsumptionExpenses`, sans garde, propageait `Infinity` jusqu'au taux d'épargne et au
+  coussin d'urgence, qui tombaient tous deux à **0** (« tu épargnes 0 % », « 0 mois de coussin »)
+  avec un score global de 74 → **21**. Corrigé dans le même lot : `monthlyTargetOf` distingue
+  désormais le champ ABSENT (rétrocompat → 0, silence légitime) du champ PRÉSENT non fini
+  (corruption → `NaN` propagé jusqu'à la garde), et `healthScore` rend les deux métriques
+  dépendantes non mesurables. Mesuré après : les quatre affichent « — », le cas sain est
+  inchangé (74).
+  ⚠️ **Et un troisième tour a montré que le refus mentait à son tour** : la métrique refusée
+  héritait du message de l'état VIDE voisin — « Dépenses non rapprochées à un poste budget » alors
+  qu'elles l'étaient, « Revenu requis » alors que le revenu valait 5 000 $/mois. Un score faux
+  remplacé par un diagnostic faux n'est pas un progrès : les deux libellés nomment désormais leur
+  vraie cause, et le prédicat `budgetParityInputsUsable` est EXPORTÉ pour que le calcul et le
+  libellé ne puissent pas diverger. Consigné aussi : le refus n'est **pas neutre en risque** — il
+  retire la métrique du dénominateur, donc il pénalise l'abonné léger (−3 pts) et **flatte de
+  +7 points** l'abonné lourd dont la métrique valait 0/100 (mesuré par financial-integrity).
+  Rétrocompat prouvée au bit près sur 65 000 configurations saines, avec contrôle de sensibilité
+  (un mutant à 1e-6 sort 3 389 écarts, le lot en sort 0).
+  ⚠️ **Une DEUXIÈME passe a trouvé deux défauts de plus, tous deux causés par les correctifs de la
+  première** — « trois passes, trois récoltes », vérifié une fois de plus. (i) Rendre
+  `monthlyTargetOf` honnête faisait FUITER `NaN` dans le texte de diff que l'assistant IA montre
+  AVANT une écriture (« la cible mensuelle effective passe de NaN $ à X $ ») : ces notes lisent
+  `b.target`, la cible DÉJÀ en état, que rien ne valide — contrairement à `doc.targetCad`, passé
+  par `plausible()`. Formateur honnête aux 4 sites. (ii) Le nouveau libellé « abonnement illisible »
+  MASQUAIT « Revenu requis » : `computeSubscriptionLoadScore` teste le revenu AVANT les abos, et
+  re-dériver `discarded` sans reproduire cette priorité recréait, une métrique plus loin, le défaut
+  de diagnostic qu'on venait de corriger — un utilisateur sans salaire saisi (cas courant : on
+  épingle ses abos d'abord) se voyait dire « corrige tes abonnements ». Retiré aussi : le
+  « +7 points » que j'avais écrit dans une chaîne LUE PAR L'UTILISATEUR, non re-dérivable — la
+  direction du biais est un fait de structure, le chiffre non.
+  ⚠️ **Et une TROISIÈME passe a trouvé que le correctif de la deuxième s'était corrigé lui-même de
+  travers** : en réparant le masquage de « Revenu requis », j'avais recopié
+  `Number.isFinite(monthlyIncome) && monthlyIncome > 0` au lieu de la partager — TROIS copies de la
+  même condition, dont deux dans la même fonction. Rien ne les liait : la première qui bougeait
+  seule remettait le refus à dire « corrige tes abonnements » là où il faut saisir un salaire,
+  c'est-à-dire exactement le défaut que ce correctif venait de fermer, réintroduit par la méthode
+  qui l'a fermé. `incomeUsableForRatios` est désormais la source unique, et le test vérifie que le
+  SCORE suit exactement le prédicat (sans ce lien, une source unique ne prouve rien).
+  ⚠️ **QUATRIÈME passe** — lancée avec une question NOMMÉE (« mon dernier test est-il
+  circulaire ? ») plutôt qu'un mandat général. Réponse : pas circulaire, mais il n'exerçait qu'UN
+  des trois anciens sites. Les deux copies qui vivaient dans `healthScore.ts` n'étaient touchées
+  par aucun test, parce que `netSalary: 0` ne discrimine RIEN — `0 > 0` est déjà faux sans
+  `Number.isFinite`. Seul un revenu NON FINI croisé avec un abonnement illisible fait diverger les
+  deux conditions, donc seul ce cas prouve que les trois copies sont retombées sur une définition
+  unique. Ajouté, et il rougit bien sur une copie dé-factorisée. Aucun changement de code de
+  production : la 4e passe se solde par le test qui manquait.
+
+- [x] **`[AITOOLS-CALLSITE-UNIQUE-GARDE]`** (S — findings ai-reviewer, panel PR #756) — deux trous
+  que `[MCP-WRITE-PARITY-GUARD]` (lot 30) ne ferme pas, aucun n'étant un défaut observé aujourd'hui :
+  (a) `services/aiTools/agentLoop.ts` est le SEUL site qui déclare un tableau `tools` à l'API
+  Anthropic, mais c'est une propriété de FAIT, non testée — un futur second site avec son propre
+  `tools:` échapperait à toutes les gardes ; remède = une garde de source « seul `agentLoop.ts`
+  importe `toAnthropicTools` », même patron que `tests/aiTools/noMcpSdkInSpecs.test.ts`.
+  (b) Rien ne lie `spec.kind === 'write'` à l'ENDROIT où le tool est enregistré dans `mcp/server.ts`
+  (bloc `if (options.store)`) : un tool d'écriture branché hors de ce bloc ferait rougir la parité,
+  mais la correction « naturelle » (l'ajouter à `READ_SPECS` ou à `SERVER_ONLY`) masquerait sa vraie
+  nature. Vérifié : les 8 tools d'écriture actuels sont bien dans le bloc conditionnel.
+  ✅ **Livré lot 31** (volet a). `tests/aiTools/anthropicCallsiteGuard.test.ts` balaie les 200+
+  fichiers de production et fige trois faits : seul `agentLoop.ts` importe `toAnthropicTools` ;
+  les sites d'appel du SDK sont exactement les deux mesurés (`agentLoop.ts`, `claude.ts`) ; et
+  `claude.ts` ne déclare aucun `tools:`. Contre-épreuve incluse — le site autorisé doit vraiment
+  construire son tableau DEPUIS le registre et ne fabriquer aucun `input_schema` littéral, sinon
+  « un seul site » ne garantirait rien sur ce qu'il déclare. Toutes les assertions d'ABSENCE
+  lisent la source DÉCOMMENTÉE avec anti-vacuité (`tests/helpers/source.ts`) — ce fichier
+  EXPLIQUE le motif qu'il interdit. 2 perturbations, 2 rouges.
+  ⚠️ **Volet (b) NON livré, et délibérément** : lier `spec.kind === 'write'` à l'endroit
+  d'enregistrement dans `mcp/server.ts` demanderait de mapper `registerX` → `.tool.ts` → spec,
+  alors que la parité comportementale du lot 30 fait DÉJÀ rougir le cas. Le vrai risque n'est pas
+  la détection mais la RÉPARATION (ajouter le tool à `READ_SPECS` ou à `SERVER_ONLY` ferait
+  reverdir en masquant sa nature) — c'est donc un commentaire nommant ce piège qui a été posé
+  dans `tests/mcp/writeToolParity.test.ts`, pas de la machinerie.
+
 ## 2026-08-28 — Lot 30 : garde de parité des tools d'écriture, score de santé non fini, persona par défaut reproductible
 
 > ⚠️ **Panel `/review-all` (5 agents) sur la PR #756 — 4 défauts CAUSÉS ou LIMITÉS par ce lot, tous

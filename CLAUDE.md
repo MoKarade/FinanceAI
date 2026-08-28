@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 874 tests** Vitest
-(457 fichiers de test, mesuré le 2026-08-28). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 891 tests** Vitest
+(459 fichiers de test, mesuré le 2026-08-28). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -417,6 +417,19 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   un fini PLAUSIBLE** — `Infinity > 0` est vrai, donc `95/∞ = 0` donnait le score PARFAIT 100 et le
   libellé faux « 0,0 % du revenu net » ; `> 0` ne remplace jamais `Number.isFinite`, et la garde
   doit être à l'ENTRÉE (`UN-CORRECTIF-PEUT-RENDRE-ATTEIGNABLE-UNE-BRANCHE-MORTE`).
+- ⚠️⚠️ **Neuf défauts sur un lot, chacun né du correctif de la passe PRÉCÉDENTE** (lot 31, quatre
+  passes) : garde de sortie aveugle au fini plausible → gardes d'entrée → arrivées APRÈS le
+  `|| 0` qui rabat un `NaN` (et trois métriques voisines lisaient le même champ sans garde) → le
+  refus hérite du message de l'état VIDE voisin (« Revenu requis » avec un revenu valide) → et le
+  correctif de ce libellé RECOPIE la condition au lieu de la partager, trois fois. Quand la
+  correction locale se répète, **c'est qu'il manque une SOURCE UNIQUE** : ici deux prédicats
+  exportés (`budgetParityInputsUsable`, `incomeUsableForRatios`) consommés par le calcul ET par le
+  choix du libellé — un libellé est un consommateur de la même vérité qu'un chiffre. Trois règles :
+  la garde se place là où la donnée est encore RECONNAISSABLE (en amont du `|| 0`) ; on compte les
+  consommateurs par le CHAMP, pas par la fonction corrigée (4 métriques vs 1) ; un correctif de
+  DIAGNOSTIC se re-relit comme un correctif de calcul — un texte affiché est une affirmation, il
+  envoie l'utilisateur corriger le mauvais champ
+  (`UN-CORRECTIF-LOCAL-REPETE-EST-LE-SIGNE-D-UNE-SOURCE-UNIQUE-MANQUANTE`).
 - ⚠️ **La tranche retirée d'une assiette doit être la grandeur RÉELLE, pas l'estimé de saisie** :
   soustraire l'estimé non indexé, sans prorata et sans SRG d'un revenu nominal faisait −29 % sur le
   seul dénominateur — rien ne crie. Signal : **la même variable indexée à 40 lignes d'écart et pas

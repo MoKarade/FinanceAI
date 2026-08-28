@@ -7780,3 +7780,129 @@ commentaire de CODE. Re-mesuré : la grandeur qu'il nomme (`calculatedStartingCa
 construction** à 15×120 + 10×50 + 6×30 = 2 480 $ — le chiffre annoncé est au-dessus de son supremum.
 Mesure réelle : 1 168,66 $ d'amplitude sur 50 000 graines, 310,21 $ sur 5. Recopier un chiffre le
 promeut : dans un ticket il se lit comme une revendication, dans le code comme un fait établi.
+
+## Leçon du lot 31 — 2026-08-28 : une garde de sortie ne voit pas ce qui a été absorbé en un nombre plausible
+
+Le lot 30 avait posé `sanitizeNonFinite` : toute métrique de santé au score non fini bascule en
+« — ». Correct, et strictement insuffisant — parce que la question n'est pas « la valeur est-elle
+finie ? » mais « d'où vient-elle ? ». Deux absorptions en amont transformaient une donnée illisible
+en nombre parfaitement fini, donc parfaitement invisible à cette garde :
+
+- le `clamp01` local de `utils/healthRatios.ts` (`Number.isFinite(n) ? n : 0`) ;
+- `totalYearlyCost` de `utils/subscriptions.ts`, qui ÉCARTE un `yearlyCost` non fini du total.
+
+Mesuré avant de coder, et les trois chemins vont dans les **deux sens** — c'est ce qui les rend
+dangereux plutôt qu'imprécis. Une cible de poste `Infinity` donnait `overspend / ∞ = 0`, donc le
+score **PARFAIT de 100** à partir d'un poste corrompu (92,86 sur la même fixture saine). Une dépense
+réelle `NaN` donnait **0**, c'est-à-dire « 100 % de dépassement ». Et un coût d'abonnement illisible,
+simplement retiré de la somme, faisait passer le fardeau de 95 $/mois à 20 $/mois et le score de
+87,3 à **97,3** : jeter un terme rend toujours le total plus PETIT, donc le score MEILLEUR.
+
+**Le geste** est celui que le dépôt indexe déjà sous `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`,
+appliqué ici pour de vrai : exposer **deux portes** plutôt qu'une. `totalYearlyCost` reste la porte
+de LECTURE — un écran qui affiche « X $/mois » a raison d'écarter un coût illisible et de montrer la
+somme des autres — et `totalYearlyCostAudit` ajoute la porte d'ÉCRITURE, qui rend `discarded` pour
+qu'un calcul publiant un score puisse REFUSER. La règle qui en sort se formule sans jargon :
+**afficher peut écarter, calculer doit refuser.** Et le dernier filet ne disparaît pas — il PARLE :
+`clamp01` trace désormais s'il tire, parce qu'il ne devrait plus jamais tirer et qu'un chemin futur
+qui le rétablirait doit crier au lieu de rabattre en silence
+(`UNE-GARDE-DE-SORTIE-NE-VOIT-PAS-CE-QUI-A-ETE-ABSORBE-EN-UN-NOMBRE-PLAUSIBLE`).
+
+## Leçon du lot 31 — 2026-08-28 : prouver qu'un registre est unique, ce n'est pas prouver qu'il est le seul CHEMIN
+
+La garde de parité du lot 30 démontre que les deux registres de tools (serveur MCP et chat in-app)
+déclarent les mêmes choses. Elle ne dit rien de la question d'à côté, qui est celle qui compte pour
+l'utilisateur : **par où les tools arrivent-ils réellement au modèle ?** Aujourd'hui par un seul
+site (`services/aiTools/agentLoop.ts`), mais c'était une propriété de FAIT, testée par rien. Une
+fonctionnalité future qui construirait son propre `tools:` échapperait à la parité (qui regarde
+`mcp/server.ts`) comme à `noMcpSdkInSpecs` (qui vise l'import du SDK, pas le paramètre) — des outils
+exposés au modèle sans jumeau côté MCP, sans un seul test rouge.
+
+La garde fige donc trois faits mesurés, et surtout sa **contre-épreuve** : le site autorisé doit
+vraiment construire son tableau DEPUIS le registre et ne fabriquer aucun `input_schema` littéral —
+sans ça, « un seul site » ne garantirait rien sur ce qu'il déclare.
+
+**Corollaire sur ce qui NE mérite pas de machinerie.** Le même panel demandait de lier
+`spec.kind === 'write'` à l'endroit d'enregistrement dans `mcp/server.ts`. Or la parité
+comportementale fait DÉJÀ rougir ce cas : le vrai risque n'est pas la détection, c'est la
+**réparation** — les deux gestes les plus naturels pour faire reverdir le test (inscrire le tool
+dans `READ_SPECS`, ou dans les exclusions) masqueraient sa nature d'écriture au lieu de la rétablir.
+Ça ne se corrige pas avec un test de plus mais avec une phrase à l'endroit où quelqu'un lira l'échec.
+**Quand un défaut est déjà détecté et que seul le réflexe de correction est fautif, la bonne
+livraison est un commentaire, pas de la machinerie**
+(`UN-REGISTRE-UNIQUE-N-EST-PAS-UN-CHEMIN-UNIQUE`).
+
+## Leçon du lot 31 (revue) — 2026-08-28 : compter les métriques touchées par le CHAMP, pas par la fonction corrigée
+
+Le premier jet de `[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]` corrigeait `computeBudgetParityScore` et
+`computeSubscriptionLoadScore`, et le CHANGELOG annonçait « deux métriques ». Le panel a montré que
+c'était un quart du trou : le même champ, `budgetItems[].target`, en empoisonnait **quatre**.
+
+Deux mécanismes distincts, et le premier est le plus vicieux. `monthlyTargetOf` faisait
+`item.target || 0` — or **`NaN` est falsy**, donc une cible corrompue était rabattue à `0` *avant*
+d'atteindre ma garde d'entrée toute neuve, qui recevait un `0` parfaitement fini et ne voyait rien.
+Effet mesuré : un poste de 1 500 $/mois **disparaissait** du calcul (dépenses de consommation
+2 100 $ → 600 $), l'adhérence passait de 92,86 à 91,67, sans une ligne de trace. Le second : le même
+total alimente le taux d'épargne et le coussin d'urgence via `monthlyConsumptionExpenses`, qui
+n'avait aucune garde — avec `target: Infinity`, les deux tombaient à **0** (« tu épargnes 0 % de ton
+revenu », « 0 mois de coussin ») et le score global chutait de 74 à **21**. Trois chiffres alarmants,
+plausibles et faux, sur les deux surfaces qui affichent la santé.
+
+**Le geste** : devant une entrée corrompue, la question n'est pas « quelle fonction ai-je
+corrigée ? » mais **« qui LIT ce champ ? »** — un grep du champ, pas de la fonction. C'est le même
+raisonnement que `MODULE-ECRIT-HORS-CHECKLIST` et que « un flux moteur alimente PLUSIEURS
+registres », appliqué à une donnée de saisie. Et deux corollaires payés dans le même lot :
+
+- **`|| 0` sur une valeur qui peut être `NaN` est une absorption, pas un défaut** — elle transforme
+  « je ne sais pas » en « zéro » *en amont* de la garde qu'on vient d'écrire. Le remède distingue le
+  champ ABSENT (rétrocompatibilité d'un vieux blob → `0`, silence légitime) du champ PRÉSENT non
+  fini (corruption → propager jusqu'à la garde), exactement `REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION`.
+- **Une ligne qu'aucune perturbation ne fait rougir se retire.** J'avais ajouté une sortie anticipée
+  `if (!Number.isFinite(t)) return NaN` dans la somme ; elle était morte, parce que `monthlyTargetOf`
+  normalise déjà en amont. Elle est partie, et le commentaire dit pourquoi — une branche défensive
+  non testable rassure sans protéger
+  (`COMPTER-LES-METRIQUES-PAR-LE-CHAMP-PAS-PAR-LA-FONCTION-CORRIGEE`).
+
+## Leçon du lot 31 (quatre passes) — 2026-08-28 : quand chaque correctif fabrique le suivant, c'est la MÉTHODE de correction qui est en cause
+
+Neuf défauts sur un seul lot, tous à moi, et — c'est le fait qui compte — **chacun né du correctif
+de la passe précédente**. La chaîne se lit d'un bloc :
+
+1. Je pose une garde de SORTIE (lot 30) qui filtre le non-fini.
+2. Elle ne voit pas ce qui est absorbé en un nombre plausible → je pose des gardes d'ENTRÉE.
+3. Elles arrivent trop tard : `item.target || 0` rabat un `NaN` (falsy) en `0` **avant** elles, et
+   trois métriques voisines lisent le même champ sans aucune garde → je durcis `monthlyTargetOf` et
+   je propage.
+4. Le refus hérite alors du message de l'état VIDE voisin : « Revenu requis » avec un revenu valide,
+   « Dépenses non rapprochées » alors qu'elles l'étaient → **un score faux remplacé par un
+   diagnostic faux n'est pas un progrès**. J'extrais `budgetParityInputsUsable` en source unique.
+5. Le nouveau libellé masque à son tour la vraie cause quand le revenu manque → je re-dérive la
+   condition… **en la recopiant**, trois fois, dont deux dans la même fonction.
+6. Cette copie est exactement la duplication que l'étape 4 venait d'éviter, une métrique plus loin.
+
+Le motif ne se voit qu'en le regardant de haut : à chaque tour j'ai corrigé **le symptôme là où il
+apparaissait**, avec le geste local le moins cher. Or les six étapes ont la même forme —
+« une information sur l'état de la donnée doit voyager d'un producteur vers plusieurs
+consommateurs » — et le geste local ne l'a jamais servie. Ce qui a fini par tenir, ce sont les
+**prédicats exportés** (`budgetParityInputsUsable`, `incomeUsableForRatios`) : une définition, tous
+les consommateurs, y compris celui qui ne calcule pas mais qui CHOISIT LE LIBELLÉ. Le libellé est un
+consommateur de la même vérité que le calcul, et l'oublier fabrique précisément le mensonge qu'on
+croyait corriger.
+
+**Trois règles réutilisables**, chacune payée une fois ici :
+
+- **La garde arrive à l'endroit où la donnée est encore reconnaissable.** Une garde de sortie ne voit
+  pas un fini plausible ; une garde d'entrée ne voit pas ce qu'un `|| 0` a rabattu avant elle. Avant
+  d'écrire la garde, demander **où la valeur perd son identité**, et se placer en amont de ce point.
+- **Compter les consommateurs par le CHAMP, pas par la fonction qu'on corrige.** Un grep de
+  `budgetItems[].target` sortait quatre métriques ; un grep de la fonction corrigée en sortait une.
+- **Un correctif de diagnostic se re-relit comme un correctif de calcul.** Les messages « Revenu
+  requis » / « Dépenses non rapprochées » n'ont déplacé aucun dollar et ont pourtant envoyé
+  l'utilisateur corriger le mauvais champ deux fois de suite. Un texte affiché est une AFFIRMATION :
+  il se prouve comme un chiffre (`UN-CORRECTIF-LOCAL-REPETE-EST-LE-SIGNE-D-UNE-SOURCE-UNIQUE-MANQUANTE`).
+
+**Corollaire de méthode, sur les passes elles-mêmes.** Le dépôt écrit déjà « trois passes, trois
+récoltes » ; ce lot en a demandé quatre, et la quatrième a été lancée avec une question NOMMÉE
+(« mon dernier test est-il circulaire ? ») plutôt qu'un mandat général. Une passe qui cherche
+« quelque chose » trouve du bruit ; une passe qui cherche **le défaut que le correctif précédent a
+pu créer** trouve ce défaut. Le doute qui la déclenche vaut d'être écrit dans le prompt.

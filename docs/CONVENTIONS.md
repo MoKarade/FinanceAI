@@ -7986,3 +7986,32 @@ nombre du même texte se contamine**. Le remède n'est pas de « faire attention
 avec la machine au moment d'écrire — `grep -c`, `wc -l`, une assertion — et de ne jamais reprendre
 un chiffre voisin de mémoire. Un compte est une mesure comme une autre
 (`UN-COMPTE-ECRIT-SANS-ETRE-COMPTE-EST-FAUX-UNE-FOIS-SUR-TROIS`).
+
+### Corollaire du lot 33 — un rapport d'AGENT n'est pas une source, exactement comme un ticket
+
+Le dépôt écrit depuis longtemps « un ticket n'est pas une source, même quand il dit MESURÉ ». Ce
+lot ajoute le cas voisin, et il coûte pareil : j'ai publié dans `BACKLOG.md`, avec un ✅ **CHIFFRÉ**,
+un impact de « 6 742 127 $ → −403 059 $, soit −7 145 187 $ » sur la foi d'un rapport d'agent, sans
+l'avoir mesuré moi-même. La passe suivante a rejoué le même scénario annoncé et obtenu
+**7 236 428 $ → 286 795 $** — ~7 % d'écart sur la base, ~10 % sur le delta. Deux mesures, deux
+résultats, aucun reproductible à partir de ce qui était écrit.
+
+La cause s'est révélée instructive : les deux protocoles disaient « rendement 5 % » et passaient
+`projection.returnRate` — **un champ que le moteur ne lit pas** (`computeScenarioOverrides` lit
+`projection.returnRates`, la carte par compte). Les deux tournaient donc sur les taux par défaut,
+avec d'autres paramètres non déclarés qui divergeaient. Un paramètre qu'on croit fixer et qui
+n'atteint rien ne rend pas la mesure bruyante : il la rend **muette et fausse**, et deux mesures
+faites ainsi peuvent différer sans que ni l'une ni l'autre ne soit reproductible.
+
+**Trois règles qui en sortent :**
+
+- **Ce qui survit à un désaccord de mesure, c'est l'ordre de grandeur et le fait QUALITATIF.** Ici,
+  les deux accords qui suffisent à trancher la fourche : ≈ −7 M$ (la quasi-totalité du patrimoine
+  projeté) et **0 valeur non finie sur 361 points**. Publier ça, pas un montant au dollar.
+- **Un montant money-critical cité dans le dépôt exige un script de reproduction COMMITTÉ**, qui
+  fixe explicitement TOUS les paramètres. Un test jetable ne se relance pas, et « le scénario était
+  X » n'est pas un protocole tant que chaque paramètre n'y est pas nommé avec sa valeur.
+- **Avant de citer un paramètre de mesure, vérifier qu'il est CÂBLÉ** — grep son lecteur réel. Le
+  dépôt a déjà la leçon sous `UN-PARAMÈTRE-HOMONYME-À-DEUX-NIVEAUX` ; elle vaut aussi pour les
+  paramètres d'un protocole de mesure, pas seulement pour le code de production
+  (`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE`).

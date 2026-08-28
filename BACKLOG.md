@@ -61,6 +61,18 @@
   transaction », avec des montants FANTÔMES dans le détail du jour et la ventilation mensuelle.
   Correctif : construire l'objet à chaque appel, ou typer le retour `Readonly<…>` + `ReadonlyArray`
   (le second rend l'erreur impossible à écrire, le premier la rend inoffensive).
+- [ ] **`[ENG-RETURNRATE-SINGULIER-NON-CABLE]`** (S — découvert en instruisant, panel PR #759) —
+  `projection.returnRate` (SINGULIER) ne pilote AUCUNE croissance du moteur : `computeScenarioOverrides`
+  (`services/projection/setupSimulation.ts`) lit `projection.returnRates`, la carte par compte, et
+  jamais le singulier. Vérifié par grep : ses seuls lecteurs sont `components/realestate/RealEstateWorkspace.tsx`
+  et `components/TabRouter.tsx` — de l'UI, pas le moteur. Même famille que le bug documenté dans ce
+  même fichier (« lisait `projection.rates`… toujours undefined », 2026-05-22), et que
+  `[PARAMÈTRE-HOMONYME-À-DEUX-NIVEAUX]` du `CLAUDE.md`.
+  ⚠️ **Ce n'est pas un ticket « nettoyer un champ mort »** : il a déjà fait dérailler DEUX mesures
+  money-critical (panel PR #759), qui croyaient simuler à 5 % et tournaient en réalité sur les taux
+  par défaut. Avant de coder : établir si le champ doit être RETIRÉ (et l'UI recâblée sur
+  `returnRates`) ou CÂBLÉ (et alors il faut décider ce qu'il écrase de la carte par compte) — la
+  réponse change ce que voit l'utilisateur, donc elle se demande à Marc.
 - [ ] **`[GUARD-STRIPCOMMENTS-CONSOLIDER]`** (S — dette relevée au lot 31) — le dépôt porte SIX
   décommenteurs `stripComments` recopiés (`tests/aiTools/specFiniteGuard.test.ts`,
   `tests/services/assetFxGuard.test.ts`, `utils/fiscalConstGuardV2.ts`, `utils/chartDataSumGuard.ts`,
@@ -103,12 +115,27 @@
   du store, restauration Drive, ou `buildSimulationParams` ? (ii) QUE fait-elle d'une valeur
   mauvaise : refuser la projection, borner la valeur, ou tracer et continuer ? Chaque réponse a un
   coût différent pour l'utilisateur. Convention §7 : plan court + OK de Marc avant de coder.
-  ✅ **IMPACT du mode `NaN` CHIFFRÉ** (financial-integrity, panel PR #759) : sur le persona par
-  défaut, 30 ans, `savingsMode: 'budget'`, rendement 5 %, inflation 2 % — le patrimoine net final
-  passe de **6 742 127 $ à −403 059 $**, soit **−7 145 187 $**, avec **0 valeur non finie sur les
-  361 points de `chartData`**. C'est le plus grave des deux modes, précisément parce que rien ne
-  le signale : `Infinity` finit par se voir, `NaN` absorbé en 0 produit une projection lisse et
-  entièrement fausse. Ce chiffre est la grandeur d'arbitrage de la fourche ci-dessous.
+  ⚠️ **IMPACT du mode `NaN` : ORDRE DE GRANDEUR seulement, le chiffre exact n'est PAS reproductible.**
+  Deux agents ont mesuré le même scénario annoncé (persona par défaut, 30 ans, `savingsMode:
+  'budget'`, inflation 2 %) et ont obtenu des résultats DIFFÉRENTS : `6 742 127 $ → −403 059 $`
+  (delta −7 145 187 $) contre `7 236 428 $ → 286 795 $` (delta −6 949 633 $) — ~7 % d'écart sur la
+  base, ~10 % sur le delta. Ce n'est pas de l'arrondi. **Ce qui est SOLIDE et suffit à trancher la
+  fourche** : les deux mesures s'accordent sur l'ordre de grandeur (**environ −7 M$**, soit la
+  quasi-totalité du patrimoine projeté) ET sur le fait qualitatif décisif — **0 valeur non finie
+  sur les 361 points de `chartData`**. C'est le plus grave des deux modes précisément parce que
+  rien ne le signale : `Infinity` finit par se voir, `NaN` absorbé en 0 produit une projection
+  lisse et entièrement fausse.
+  ⚠️ **Cause probable de l'écart, à trancher avant de re-mesurer** [Probable] : le paramètre
+  « rendement 5 % » des deux protocoles a été passé en `projection.returnRate` (SINGULIER) — or
+  `computeScenarioOverrides` (`services/projection/setupSimulation.ts`) lit `projection.returnRates`
+  (la carte PAR COMPTE) et **jamais** le singulier (vérifié : les seuls lecteurs de `returnRate` sont
+  `RealEstateWorkspace.tsx` et `TabRouter.tsx`, côté UI). Les deux mesures ont donc probablement
+  tourné sur les taux par défaut (7 / 6,5 / 6,5 / 10 / 3), et leurs autres paramètres non déclarés
+  divergeaient. **Avant de citer un montant exact, écrire un script de reproduction COMMITTÉ** qui
+  fixe explicitement tous les paramètres, `returnRates` compris — un jetable ne se relance pas.
+  ⚠️ **Leçon payée ici** : j'ai publié ces chiffres avec un ✅ « CHIFFRÉ » sur la foi d'un rapport
+  d'agent, sans les mesurer moi-même. Un rapport d'agent n'est pas une source, exactement comme un
+  ticket n'en est pas une.
   ⚠️ **Reproduire la mesure avant de s'en servir** (`MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE`) : test
   jetable appelant `buildSimulationParamsFromState(state, { startYear: 2026, startMonth: 0 })` puis
   un scan **RÉCURSIF** des non-finis. ⚠️ Un scan de PREMIER NIVEAU

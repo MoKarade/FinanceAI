@@ -341,6 +341,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   **soupçonner l'ISOLATION avant le code testé**. La copie doit être PROFONDE (`{ ...CONFIG }`
   partage encore `users`). Et c'était le persona PAR DÉFAUT — deuxième défaut d'outillage d'affilée
   sur lui (`UNE-FIXTURE-PARTAGEE-NE-CASSE-PAS-UN-TEST-ELLE-LE-REND-FAUX`).
+- ⚠️ **Un rapport d'AGENT n'est pas une source**, exactement comme un ticket : j'ai publié un impact
+  money-critical avec un ✅ « CHIFFRÉ » sur la foi d'un panel, sans le mesurer — la passe suivante a
+  rejoué le MÊME scénario annoncé et trouvé ~10 % d'écart sur le delta. Cause : les deux protocoles
+  fixaient `projection.returnRate`, **un champ que le moteur ne lit pas** (`computeScenarioOverrides`
+  lit `returnRates`, la carte par compte). Un paramètre non câblé ne rend pas la mesure bruyante, il
+  la rend MUETTE et fausse. Ce qui survit à un désaccord de mesure, c'est l'**ordre de grandeur** et
+  le **fait qualitatif** (ici ≈ −7 M$ et « 0 valeur non finie sur 361 points ») — publier ça, pas un
+  montant au dollar ; et un montant cité dans le dépôt exige un script de reproduction **committé**
+  qui nomme CHAQUE paramètre avec sa valeur (`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE`).
 - Quand un fait **ne peut pas être établi de façon fiable** (deux structures sans identifiant
   commun), ne pas l'affirmer ET ne pas se taire : avertir sur un fait STRUCTUREL vérifiable et
   laisser la conclusion à l'utilisateur. Une détection par NOM raterait en silence et donnerait une

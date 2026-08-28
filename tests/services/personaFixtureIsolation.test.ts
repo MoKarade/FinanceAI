@@ -43,6 +43,7 @@ describe('[TEST-PERSONA-FIXTURE-PARTAGEE] deux builds d\'un persona ne partagent
         // (`{ ...CONFIG }` rend bien un objet neuf, tout en partageant encore `users`). Il boucle
         // donc sur les SEPT personas, pas sur le seul persona par défaut — sinon une régression en
         // spread sur un des six autres passerait au vert (finding financial-integrity, PR #759).
+        let profondeurVerifiee = 0;
         for (const persona of TEST_PERSONAS) {
             const avant = (persona.build() as AppState).config.users[0].netSalary;
             expect(avant, `${persona.id} : salaire de référence`).toBeGreaterThan(0); // anti-vacuité
@@ -55,7 +56,12 @@ describe('[TEST-PERSONA-FIXTURE-PARTAGEE] deux builds d\'un persona ne partagent
 
             // Même contrôle dans un TABLEAU : `[...ASSETS]` partagerait encore chaque élément.
             const assets = (persona.build() as AppState).assets;
-            if (assets.length === 0) continue; // certains personas n'ont pas d'actifs — le dire
+            // Défensif : AUCUN persona n'a de tableau d'actifs vide aujourd'hui (mesuré : 5, 1, 4,
+            // 1, 3, 2, 2). Le compteur ci-dessous rend visible le jour où l'un en manquerait —
+            // sans lui, un persona à `assets: []` ferait taire en silence son contrôle de
+            // profondeur (finding code-reviewer, 2e passe PR #759).
+            if (assets.length === 0) continue;
+            profondeurVerifiee++;
             const qteAvant = assets[0].quantity;
             const mute2 = persona.build() as AppState;
             (mute2.assets[0] as { quantity: number }).quantity = 12345;
@@ -64,5 +70,8 @@ describe('[TEST-PERSONA-FIXTURE-PARTAGEE] deux builds d\'un persona ne partagent
                 `${persona.id} : muter un build a changé le suivant (assets[0])`,
             ).toBe(qteAvant);
         }
+        // Anti-vacuité du balayage : tous les personas ont bien traversé le contrôle de PROFONDEUR
+        // sur les actifs, pas seulement celui sur `config.users`.
+        expect(profondeurVerifiee).toBe(TEST_PERSONAS.length);
     });
 });

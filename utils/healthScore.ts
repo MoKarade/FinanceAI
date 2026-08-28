@@ -25,8 +25,16 @@ const clamp01 = (x: number) => Math.max(0, Math.min(100, x));
  *
  * Le correctif est un point de passage UNIQUE appliqué à la liste finale, pas un `?? 0` par
  * métrique : `0` serait un score CRÉDIBLE inventé (règle no-fake-data), alors qu'`available:false`
- * est l'état « — » que l'UI sait déjà rendre, et qui EXCLUT la métrique du score pondéré. Étant
- * posé sur la sortie, il couvre aussi toute métrique AJOUTÉE plus tard.
+ * est l'état « — » que l'UI sait déjà rendre, et qui EXCLUT la métrique du score pondéré.
+ *
+ * ⚠️ **Portée exacte** (finding silent-failure-hunter, panel PR #756) : cette garde voit ce qui
+ * arrive ICI non fini. Elle ne voit donc PAS `budgetParity` ni `subscriptionLoad`, dont les
+ * producteurs (`clamp01` local de `utils/healthRatios.ts`, `totalYearlyCost` de
+ * `utils/subscriptions.ts`) absorbent déjà un `NaN` en `0` SILENCIEUSEMENT en amont — un `0`
+ * crédible qui se lit « 100 % de dépassement ». Classe `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`,
+ * pré-existante à ce lot, routée au BACKLOG (`[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]`) plutôt que
+ * corrigée ici : ces deux absorptions ont d'autres consommateurs. Ne pas lire « couvre toute
+ * métrique » — lire « couvre toute métrique dont la valeur ARRIVE non finie ».
  */
 function sanitizeNonFinite(rows: HealthMetricRow[]): HealthMetricRow[] {
     const invalides = rows.filter((r) => !Number.isFinite(r.value)).map((r) => r.id);
@@ -140,7 +148,10 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
     //    Aucun abo ÉPINGLÉ → indisponible (cohérent avec FIRE/budget) : un 100 « aucun fardeau » serait
     //    trompeur car l'utilisateur a peut-être des abos non épinglés (détectés à la volée seulement).
     const subMonthly = subscriptionsMonthlyCost(subscriptions);
-    const subLoadPct = monthlyIncome > 0 ? (subMonthly / monthlyIncome) * 100 : 0;
+    // Même garde d'entrée que `computeSubscriptionLoadScore` : un revenu `Infinity` rendrait 0,0 %,
+    // un libellé FAUX affiché à l'utilisateur (finding financial-integrity, panel PR #756).
+    const incomeUsable = Number.isFinite(monthlyIncome) && monthlyIncome > 0;
+    const subLoadPct = incomeUsable ? (subMonthly / monthlyIncome) * 100 : 0;
     const subscriptionLoadScore = subscriptions.length > 0
         ? computeSubscriptionLoadScore(subscriptions, monthlyIncome)
         : null;
@@ -211,16 +222,30 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
 
 /** Score global pondéré. N'inclut que les métriques DISPONIBLES (numérateur ET dénominateur) :
  *  une métrique sans donnée (ex. FIRE sans projection, budget sans dépenses) ne doit pas peser
- *  comme un 0 qui écraserait le score. Normalisé par la somme des poids des seules métriques comptées. */
-export function computeHealthTotalScore(metrics: readonly HealthMetricRow[], weights: HealthWeights): number {
+ *  comme un 0 qui écraserait le score. Normalisé par la somme des poids des seules métriques comptées.
+ *
+ *  ⚠️ Rend **`null`** quand RIEN n'est mesurable (aucune métrique disponible, ou des poids tous à
+ *  zéro) — jamais `0`. Le repli `: 0` d'avant était une branche MORTE tant que les trois métriques
+ *  de base (`savingsRate`, `emergencyFund`, `debtRatio`) étaient déclarées `available: true` en dur ;
+ *  `sanitizeNonFinite` vient justement de rendre ce chemin ATTEIGNABLE (une corruption large peut
+ *  désormais les exclure toutes les trois). Or `0` s'affiche « 0/100 » avec l'anneau ROUGE
+ *  (`colorForHealthScore(0)`) : l'utilisateur lirait « santé critique » là où la vraie réponse est
+ *  « on ne peut rien mesurer » (mesuré : total 0, palette `stroke-danger-400`). Le type union force
+ *  `tsc` à exiger la branche honnête sur CHAQUE surface d'affichage, présente et future
+ *  (finding silent-failure-hunter, panel PR #756). */
+export function computeHealthTotalScore(metrics: readonly HealthMetricRow[], weights: HealthWeights): number | null {
     // `Number.isFinite` en CEINTURE : `computeHealthMetrics` assainit déjà sa sortie, mais cette
     // fonction est exportée et peut recevoir des lignes d'une autre provenance — une seule valeur
     // non finie rendrait tout le score `NaN`.
     const counted = metrics.filter(m => m.available && Number.isFinite(m.value));
     const weightedSum = counted.reduce((sum, m) => sum + m.value * (weights[m.id] || 0), 0);
     const totalWeight = counted.reduce((sum, m) => sum + (weights[m.id] || 0), 0);
-    return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
+    return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : null;
 }
+
+/** Palette NEUTRE pour « aucun score mesurable ». Surtout pas celle de `colorForHealthScore(0)`,
+ *  qui est la palette DANGER — un état « on ne sait pas » ne se peint pas en alarme rouge. */
+export const HEALTH_SCORE_UNKNOWN_COLORS = { ring: 'stroke-ink-500', text: 'text-ink-400', bg: 'bg-white/5' } as const;
 
 export function colorForHealthScore(score: number): { ring: string; text: string; bg: string } {
     if (score >= 70) return { ring: 'stroke-success-400', text: 'text-emerald-300', bg: 'bg-success-500/10' };

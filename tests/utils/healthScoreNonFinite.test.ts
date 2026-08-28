@@ -15,7 +15,7 @@
 // et une trace `logError` au lieu du silence.
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { computeHealthMetrics, computeHealthTotalScore, type HealthMetricRow, type HealthScoreInputs } from '../../utils/healthScore';
+import { computeHealthMetrics, computeHealthTotalScore, colorForHealthScore, HEALTH_SCORE_UNKNOWN_COLORS, type HealthMetricRow, type HealthScoreInputs } from '../../utils/healthScore';
 import { clearErrors, filterErrors, __resetErrorThrottle } from '../../services/errorLogger';
 import type { HealthWeights } from '../../types';
 
@@ -32,7 +32,11 @@ function inputs(overrides: Partial<HealthScoreInputs> = {}): HealthScoreInputs {
         assets: [],
         initialBalances: { LIQUIDITE: 20000 },
         transactions: [],
-        subscriptions: [],
+        // ⚠️ Abonnements ÉPINGLÉS non vides (finding financial-integrity, panel PR #756) : avec
+        // `subscriptions: []`, `subscriptionLoad` est `available:false` par construction et toute
+        // assertion à son sujet est VACUEUSE — or c'est précisément la métrique qui fabriquait un
+        // score parfait sous revenu `Infinity` (classe `UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`).
+        subscriptions: [{ id: 's1', name: 'Netflix', yearlyCost: 240 }, { id: 's2', name: 'Gym', yearlyCost: 900 }] as unknown as HealthScoreInputs['subscriptions'],
         fxRates: { USD: 1.35 },
         projectionFireTarget: 1_000_000,
         ...overrides,
@@ -78,7 +82,7 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
     it('les AUTRES métriques restent intactes (l\'assainissement est ciblé, pas un reset global)', () => {
         const sain = computeHealthMetrics(inputs());
         const pollue = computeHealthMetrics(infiniteSalary());
-        for (const id of ['emergencyFund', 'debtRatio', 'fireProgress'] as const) {
+        for (const id of ['emergencyFund', 'debtRatio', 'fireProgress', 'budgetParity'] as const) {
             const a = sain.find((r) => r.id === id)!;
             const b = pollue.find((r) => r.id === id)!;
             expect(b.available, `${id} ne doit pas être dégradée`).toBe(a.available);
@@ -87,6 +91,25 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         // Et la mesure DISCRIMINE : ces métriques-là sont bien disponibles et non nulles.
         expect(pollue.find((r) => r.id === 'emergencyFund')!.available).toBe(true);
         expect(pollue.find((r) => r.id === 'emergencyFund')!.value).toBeGreaterThan(0);
+    });
+
+    it('le POIDS DES ABONNEMENTS ne fabrique plus un 100 parfait sous revenu Infinity', () => {
+        // Finding financial-integrity MESURÉ : `Infinity > 0` est VRAI, donc
+        // `computeSubscriptionLoadScore` calculait `95 / Infinity = 0` → score PARFAIT 100 (au lieu
+        // de 87) avec le libellé « 0,0 % du revenu net », un fait FAUX. Valeur FINIE, donc
+        // `sanitizeNonFinite` ne pouvait structurellement pas la voir : c'est la garde d'ENTRÉE
+        // qui devait refuser.
+        const sain = computeHealthMetrics(inputs()).find((r) => r.id === 'subscriptionLoad')!;
+        const pollue = computeHealthMetrics(infiniteSalary()).find((r) => r.id === 'subscriptionLoad')!;
+        // Anti-vacuité : sur le cas sain la métrique est bien COMPTÉE, avec un score strictement
+        // intermédiaire (ni 0 ni 100) — sinon « ce n'est plus 100 » ne dirait rien.
+        expect(sain.available).toBe(true);
+        expect(sain.value).toBeGreaterThan(0);
+        expect(sain.value).toBeLessThan(100);
+        expect(sain.raw).toContain('du revenu net');
+        // Sous corruption : exclue, et surtout PAS un 100 compté au dénominateur.
+        expect(pollue.available).toBe(false);
+        expect(pollue.raw).not.toContain('0,0 % du revenu net');
     });
 
     it('une trace est écrite (le silence était le vrai défaut), et une SEULE malgré N appels', () => {
@@ -98,6 +121,24 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         expect(traces).toHaveLength(1); // throttlé par signature : un re-rendu ne spamme pas le journal
         expect(traces[0].message).toContain('Santé financière');
         expect((traces[0].context as { metriques?: string[] })?.metriques).toEqual(['savingsRate']);
+    });
+
+    it('AUCUNE métrique mesurable → `null`, JAMAIS 0 (qui s\'afficherait « 0/100 » en ROUGE)', () => {
+        // Chemin RENDU ATTEIGNABLE par sanitizeNonFinite : avant ce lot, les trois métriques de base
+        // étaient `available: true` en dur, donc `counted` ne pouvait pas être vide et le repli
+        // `: 0` était une branche MORTE. Une corruption large peut désormais les exclure toutes.
+        const rows = computeHealthMetrics(inputs()).map((r) => ({ ...r, available: false }));
+        expect(computeHealthTotalScore(rows, WEIGHTS)).toBeNull();
+        // Et la contre-épreuve : `0` aurait été peint en DANGER (« santé critique » à tort).
+        expect(colorForHealthScore(0).ring).toContain('danger');
+        expect(HEALTH_SCORE_UNKNOWN_COLORS.ring).not.toContain('danger');
+    });
+
+    it('des poids TOUS à zéro rendent aussi `null` (dénominateur nul, rien de mesurable)', () => {
+        const rows = computeHealthMetrics(inputs());
+        expect(rows.some((r) => r.available)).toBe(true); // anti-vacuité : il y a bien des métriques
+        const zero = { savingsRate: 0, emergencyFund: 0, debtRatio: 0, fireProgress: 0, budgetParity: 0, subscriptionLoad: 0 };
+        expect(computeHealthTotalScore(rows, zero)).toBeNull();
     });
 
     it('[ceinture] computeHealthTotalScore ignore une ligne non finie venue d\'ailleurs', () => {

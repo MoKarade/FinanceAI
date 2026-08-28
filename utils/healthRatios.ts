@@ -76,13 +76,22 @@ export const SUBSCRIPTION_LOAD_CEILING = 0.15; // 15 % du revenu net
 
 /**
  * Score du POIDS des abonnements (0-100). 100 = abos négligeables ; 0 = abos ≥ 15 % du revenu net mensuel.
- * Aucun abonnement → coût 0 → score 100 (pas de fardeau). `null` si revenu ≤ 0 (rien à rapporter). Pur.
+ * Aucun abonnement → coût 0 → score 100 (pas de fardeau). `null` si le revenu n'est pas un nombre
+ * exploitable (≤ 0, ou non fini) — rien à rapporter. Pur.
+ *
+ * ⚠️ `Number.isFinite` en plus de `> 0` (finding financial-integrity MESURÉ, panel PR #756) :
+ * `Infinity > 0` est VRAI, donc un revenu `Infinity` — que `JSON.parse` produit à partir d'un blob
+ * Drive/backup contenant `1e999` — donnait `load = 95 / Infinity = 0`, donc le score PARFAIT de
+ * **100** au lieu de 87, avec le libellé « 0,0 % du revenu net » qui affirme un fait faux. Mesuré :
+ * +8 points sur le total pondéré (67 au lieu de 75 après correction, contre 75 sur le cas sain).
+ * `sanitizeNonFinite` (`utils/healthScore.ts`) ne peut structurellement PAS l'attraper : 100 est un
+ * nombre fini. C'est la garde d'ENTRÉE qui doit refuser, pas la garde de sortie.
  */
 export function computeSubscriptionLoadScore(
     subscriptions: readonly RecurringItem[],
     monthlyIncome: number,
 ): number | null {
-    if (!(monthlyIncome > 0)) return null;
+    if (!Number.isFinite(monthlyIncome) || monthlyIncome <= 0) return null;
     const load = subscriptionsMonthlyCost(subscriptions) / monthlyIncome;
     return clamp01(100 * (1 - load / SUBSCRIPTION_LOAD_CEILING));
 }

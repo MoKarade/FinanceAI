@@ -7,6 +7,9 @@
 //
 // C'est le persona PAR DÉFAUT (`DEFAULT_PERSONA_ID`) du Mode Test depuis toujours —
 // conservé à l'identique pour ne casser aucun consommateur ni les baselines E2E.
+// ⚠️ Une exception depuis [TEST-PERSONA-NON-DETERMINISTE] (lot 30) : `generateTestTransactions`
+// est désormais SEEDÉ, donc ses montants ont changé UNE fois. Les baselines visées ci-dessus
+// sont les `@visual` (hors gate CI, tolérance 2 %, déjà dépendantes de `new Date()`).
 
 import type { AppState } from '../../types';
 import { TEST_CONFIG } from '../testConfig';

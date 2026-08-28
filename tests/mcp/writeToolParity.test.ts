@@ -18,6 +18,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createServer } from '../../mcp/server';
 import { makeStateStore } from '../../mcp/state/stateStore';
 import { READ_SPECS, WRITE_SPECS } from '../../services/aiTools/registry';
+import { toAnthropicTools } from '../../services/aiTools/toAnthropicTools';
 
 /**
  * Tools que le serveur MCP expose et que le chat in-app n'a PAS à exposer — exclusions
@@ -28,14 +29,35 @@ import { READ_SPECS, WRITE_SPECS } from '../../services/aiTools/registry';
  */
 const SERVER_ONLY = ['ping', 'connect_drive'] as const;
 
-async function listServerTools(withStore: boolean): Promise<Array<{ name: string; description?: string }>> {
+/**
+ * Normalise un JSON Schema pour comparer les DEUX convertisseurs. Les specs partagent le même objet
+ * zod, mais chaque surface le rend avec son propre convertisseur : le SDK MCP en interne côté
+ * serveur, `zod-to-json-schema` côté `toAnthropicTools`. MESURÉ sur les 19 tools : la sortie est
+ * identique partout SAUF deux écarts de MÉTA, tous deux sans effet sur ce que le modèle peut
+ * produire — et aucun autre :
+ *   - `$schema` : posé par `zod-to-json-schema`, retiré par `toAnthropicTools` (hors contrat
+ *     `Tool.InputSchema` d'Anthropic) ; présent côté MCP.
+ *   - `additionalProperties: false` sur les 3 tools à schéma VIDE (`get_financial_overview`,
+ *     `get_holdings`, `get_next_best_actions`) : le SDK MCP l'omet quand il n'y a aucune propriété.
+ * On neutralise EXACTEMENT ces deux-là — donc toute divergence de `properties`, de `type`, de
+ * `required` ou de `description` fait rougir la garde (finding ai-reviewer, panel PR #756).
+ */
+function normalizeSchema(raw: unknown): unknown {
+    const schema = { ...(raw as Record<string, unknown>) };
+    delete schema.$schema;
+    const props = (schema.properties ?? {}) as Record<string, unknown>;
+    if (Object.keys(props).length === 0) delete schema.additionalProperties;
+    return schema;
+}
+
+async function listServerTools(withStore: boolean): Promise<Array<{ name: string; description?: string; inputSchema?: unknown }>> {
     const server = createServer(withStore ? { store: makeStateStore(null) } : {});
     const client = new Client({ name: 'test-parity', version: '0' });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
     const { tools } = await client.listTools();
     await client.close();
-    return tools.map((t) => ({ name: t.name, description: t.description }));
+    return tools.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema }));
 }
 
 describe('[MCP-WRITE-PARITY-GUARD] serveur MCP ↔ registre du chat in-app', () => {
@@ -86,6 +108,24 @@ describe('[MCP-WRITE-PARITY-GUARD] serveur MCP ↔ registre du chat in-app', () 
         for (const spec of [...READ_SPECS, ...WRITE_SPECS]) {
             expect(byName.get(spec.name), `« ${spec.name} » absent du serveur MCP`).toBeDefined();
             expect(byName.get(spec.name), `description divergente pour « ${spec.name} »`).toBe(spec.description);
+        }
+    });
+
+    it('le SCHÉMA D\'ENTRÉE servi par les deux surfaces est le même (hors deux écarts de méta mesurés)', async () => {
+        // 3e branche du contrat que le modèle lit — après le nom et la description. Les deux
+        // surfaces partent du MÊME objet zod mais passent par DEUX convertisseurs indépendants :
+        // une divergence de rendu (unions, `required`, `.refine()`) ferait que le modèle génère un
+        // appel valide sur une surface et invalide sur l'autre. Aucune écriture incorrecte
+        // silencieuse (les deux re-valident au vrai schéma zod) — de la friction, pas de la corruption.
+        const withStore = await listServerTools(true);
+        const byName = new Map(withStore.map((t) => [t.name, t.inputSchema]));
+        const specs = [...READ_SPECS, ...WRITE_SPECS];
+        expect(specs.length).toBeGreaterThanOrEqual(19); // anti-vacuité : la boucle balaie bien tout
+        for (const spec of specs) {
+            expect(
+                normalizeSchema(byName.get(spec.name)),
+                `schéma d'entrée divergent pour « ${spec.name} » entre le serveur MCP et le chat in-app`,
+            ).toEqual(normalizeSchema(toAnthropicTools([spec])[0].input_schema));
         }
     });
 });

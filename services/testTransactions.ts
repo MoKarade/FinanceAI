@@ -3,11 +3,15 @@
 // Génération de transactions de test (60 entrées sur 3 mois).
 // Extrait de testFixtures.ts (DT4) — ne jamais charger au boot.
 //
-// [TEST-PERSONA-NON-DETERMINISTE] Ce générateur utilisait `rand()` NU. Or il alimente
+// [TEST-PERSONA-NON-DETERMINISTE] Ce générateur utilisait `Math.random()` NU. Or il alimente
 // `couple-confort`, le persona PAR DÉFAUT — celui qu'un audit prend spontanément : deux exécutions
-// du MÊME code donnaient deux `calculatedStartingCash` différents (amplitude MESURÉE 3 088,55 $ sur
-// 5 tirages, soit 0,028 % du patrimoine final). Conséquence : AUCUNE comparaison avant/après
-// n'était possible sur ce persona sans injecter une graine à la main.
+// du MÊME code donnaient deux `calculatedStartingCash` différents. Conséquence : AUCUNE comparaison
+// avant/après n'était possible sur ce persona sans injecter une graine à la main.
+// ⚠️ Le ticket annonçait « amplitude MESURÉE 3 088,55 $ » : ce chiffre n'est pas retrouvable sur la
+// grandeur qu'il nomme, dont l'étendue est BORNÉE par construction à 15×120 + 10×50 + 6×30 = 2 480 $
+// (épicerie / restaurants / transport sont les seuls tirages). Re-mesuré : amplitude 1 168,66 $ sur
+// 50 000 graines, 310,21 $ sur 5. Ce qui motive ce lot est la NON-REPRODUCTIBILITÉ, pas le montant —
+// un ticket n'est pas une source (finding financial-integrity, panel PR #756).
 // Le générateur est donc seedé par DÉFAUT (mulberry32, patron déjà employé par son voisin
 // `testPersonas/transactions.ts` et par le Monte Carlo), avec une graine surchargeable pour
 // produire des jeux distincts quand on le veut vraiment.

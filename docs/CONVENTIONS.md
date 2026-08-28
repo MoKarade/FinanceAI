@@ -7722,3 +7722,57 @@ sur un `InMemoryTransport` et lui demande `tools/list`, exactement comme le fera
 enregistrement conditionnel) ne peut donc pas se cacher derrière un `grep`. Le même appel sert à
 vérifier que la DESCRIPTION servie au modèle est bien celle de la spec : un `.tool.ts` qui
 réécrirait la sienne donnerait deux contrats pour un même tool selon la surface.
+
+## Leçon du lot 30 (revue) — 2026-08-28 : un correctif peut RENDRE ATTEIGNABLE une branche morte, et c'est là que se cache la régression
+
+`sanitizeNonFinite` bascule une métrique de santé au score non fini en `available: false`. Correct
+en soi — et le panel a trouvé que ça réveillait une branche que personne ne surveillait :
+`computeHealthTotalScore` finissait par `return totalWeight > 0 ? Math.round(...) : 0`. Ce `: 0`
+était **mort** tant que `savingsRate`, `emergencyFund` et `debtRatio` étaient déclarées
+`available: true` **en dur** — `counted` ne pouvait jamais être vide. Mon correctif est exactement
+ce qui peut désormais les exclure toutes les trois. Or ce `0` s'affiche « 0/100 », peint par
+`colorForHealthScore(0)`, c'est-à-dire la palette **DANGER** : l'utilisateur lit « santé critique »
+là où la réponse honnête est « on ne peut rien mesurer ». Le défaut d'avant (un `NaN` visible) était
+moins nuisible que le repli qui l'a remplacé — `UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`,
+version « la branche n'existait pas encore ».
+
+**Le geste** : après avoir élargi l'ensemble des états qu'une fonction peut produire, relire ses
+CONSOMMATEURS en se demandant lequel avait un repli jusque-là inatteignable. Et le correctif n'est
+pas un meilleur nombre : c'est un **type** (`number | null`), qui fait exiger la branche honnête par
+`tsc` sur chaque surface d'affichage, présente et future — même geste que
+`UN-DEFAUT-QUI-SE-PERIME-SE-CORRIGE-EN-RENDANT-LE-CHAMP-REQUIS`
+(`UN-CORRECTIF-PEUT-RENDRE-ATTEIGNABLE-UNE-BRANCHE-MORTE`).
+
+**Corollaire, trouvé dans le même lot** : une garde de SORTIE ne voit que ce qui lui arrive cassé.
+`computeSubscriptionLoadScore` gardait son entrée par `if (!(monthlyIncome > 0)) return null` — or
+`Infinity > 0` est **vrai**, donc `95 / Infinity = 0` et le score devenait **100**, un score parfait
+fabriqué à partir de la donnée corrompue, avec le libellé « 0,0 % du revenu net » qui affirme un
+fait faux (mesuré : +8 points sur le total pondéré). `sanitizeNonFinite` ne pouvait structurellement
+pas l'attraper : 100 est un nombre fini. **Quand une garde de sortie filtre le non-fini, les entrées
+qui produisent un fini PLAUSIBLE lui échappent par construction** — il faut la garde d'ENTRÉE, et
+`> 0` ne remplace jamais `Number.isFinite` (`UNE-GARDE-DE-SORTIE-NE-VOIT-PAS-UN-FINI-PLAUSIBLE`).
+
+## Leçon du lot 30 (revue) — 2026-08-28 : un `replace` global d'un jeton de code réécrit aussi le COMMENTAIRE qui le nomme
+
+Pour seeder `services/testTransactions.ts`, j'ai remplacé ses six `Math.random()` par `rand()` avec
+un `s.replace('Math.random()', 'rand()')` global, en asseyant le compte (`assert n == 6`). Le compte
+était juste, la substitution ne l'était pas : mon propre en-tête venait d'être écrit et contenait
+« Ce générateur utilisait `Math.random()` NU » — devenu « utilisait `rand()` NU », une phrase qui ne
+veut plus rien dire et qui a été **commitée puis poussée**. L'assertion de compte ne protège de rien
+ici : elle compte les occurrences, pas leur NATURE. C'est la variante « code » de
+`UN-REMPLACEMENT-GLOBAL-DANS-UNE-ARCHIVE-FALSIFIE-UN-RECIT` : là-bas le global falsifiait un récit
+daté, ici il falsifie la prose qui EXPLIQUE le changement — et d'autant plus facilement que la bonne
+façon de documenter un motif qu'on retire est justement de l'écrire.
+
+**Le geste** : un remplacement global d'un jeton de code se fait sur la source **décommentée**, ou
+se borne au corps de la fonction, ou s'assortit d'une relecture du DIFF (pas de l'intention). Même
+famille que `SCAN-QUI-MATCHE-LA-PROSE`, dans l'autre sens : là on LISAIT de la prose en croyant lire
+du code, ici on ÉCRIT dans la prose en croyant n'écrire que du code
+(`UN-REPLACE-GLOBAL-DE-JETON-REECRIT-LE-COMMENTAIRE-QUI-LE-NOMME`).
+
+**Corollaire, même lot** : « un ticket n'est pas une source, même quand il dit MESURÉ » était déjà
+écrit ici — et je l'ai re-commis en recopiant le « amplitude MESURÉE 3 088,55 $ » du ticket dans un
+commentaire de CODE. Re-mesuré : la grandeur qu'il nomme (`calculatedStartingCash`) est **bornée par
+construction** à 15×120 + 10×50 + 6×30 = 2 480 $ — le chiffre annoncé est au-dessus de son supremum.
+Mesure réelle : 1 168,66 $ d'amplitude sur 50 000 graines, 310,21 $ sur 5. Recopier un chiffre le
+promeut : dans un ticket il se lit comme une revendication, dans le code comme un fait établi.

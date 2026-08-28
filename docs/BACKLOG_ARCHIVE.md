@@ -12,6 +12,26 @@
 
 ## 2026-08-28 — Lot 30 : garde de parité des tools d'écriture, score de santé non fini, persona par défaut reproductible
 
+> ⚠️ **Panel `/review-all` (5 agents) sur la PR #756 — 4 défauts CAUSÉS ou LIMITÉS par ce lot, tous
+> corrigés dans la même PR, aucun trouvé par le gate.** (a) `computeHealthTotalScore` retombait sur
+> `0` quand plus rien n'est mesurable : branche MORTE avant le lot (les trois métriques de base
+> étaient `available:true` en dur, donc `counted` ne pouvait pas être vide), **rendue ATTEIGNABLE**
+> par `sanitizeNonFinite` — et `0` s'affiche « 0/100 » avec l'anneau ROUGE, soit « santé critique »
+> pour dire « on ne sait pas ». Corrigé en `number | null`, ce qui fait exiger la branche honnête par
+> `tsc` sur chaque surface. Classe `UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`.
+> (b) Sur la MÊME corruption (`netSalary: Infinity`), `computeSubscriptionLoadScore` rendait le score
+> PARFAIT de 100 au lieu de 87 (`Infinity > 0` est vrai → `95/∞ = 0`) avec le libellé faux « 0,0 % du
+> revenu net » — mesuré +8 points sur le total. La garde de SORTIE ne pouvait structurellement pas le
+> voir : 100 est un nombre fini. C'est la garde d'ENTRÉE qui devait refuser. (c) Ma fixture de test
+> portait `subscriptions: []`, ce qui rendait cette métrique inobservable — l'assertion « les autres
+> métriques restent intactes » était vacueuse pour elle (`UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`).
+> (d) J'avais recopié le « 3 088,55 $ » du ticket dans le CODE : il n'est pas retrouvable sur la
+> grandeur qu'il nomme, bornée par construction à 2 480 $ et re-mesurée à 1 168,66 $ sur 50 000
+> graines. Un ticket n'est pas une source, même quand il dit « MESURÉ ».
+> Quatre findings pré-existants routés au `BACKLOG.md` plutôt que corrigés ici
+> (`[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]`, `[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`,
+> `[AITOOLS-CALLSITE-UNIQUE-GARDE]`, `[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE]`).
+
 - [x] **`[MCP-WRITE-PARITY-GUARD]`** (S — finding ai-reviewer, panel PR #755, PRÉ-EXISTANT) —
   `tests/aiTools/registryParity.test.ts` n'assure l'exhaustivité que sur `READ_SPECS`
   (`s.kind === 'read'`). AUCUN test ne compare les tools d'ÉCRITURE enregistrés côté serveur MCP
@@ -22,7 +42,7 @@
   sans aucun test rouge. Même classe que `[DEFAULTS-DRIFT-FINTABLE-FIELDS]` (test unidirectionnel).
   ⚠️ Le retrait de `upsert_savings_goal` (PR #755) a été fait symétriquement à la main et VÉRIFIÉ —
   ce ticket ferme le trou pour la prochaine fois, il ne corrige pas un bug actuel.
-  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 869 tests, 457 fichiers). Garde
+  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 873 tests, 457 fichiers). Garde
   `tests/mcp/writeToolParity.test.ts` : elle démarre le VRAI `createServer()` sur un
   `InMemoryTransport` et lui demande `tools/list` — mesure COMPORTEMENTALE, pas un scan de source
   (un `registerX` neutralisé ne peut pas se cacher derrière un grep). Trois volets : parité
@@ -40,7 +60,7 @@
   violation stricte du no-fake-data (NaN n'est pas un « 0 $ crédible »), mais un affichage cassé
   et muet. ⚠️ Défaut d'ORIGINE de `HealthIndicator.tsx` : l'extraction de `utils/healthScore.ts`
   (PR #755) l'a seulement DUPLIQUÉ vers une 2e surface d'affichage, doublant son exposition.
-  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 869 tests, 457 fichiers). Chemin MESURÉ
+  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 873 tests, 457 fichiers). Chemin MESURÉ
   avant de coder : sur 8 entrées sondées (montant de poste NaN/Infinity, soldes, prix d'actif,
   cible FIRE, dette), **une seule** contamine encore le total — `netSalary: Infinity`, que `|| 0`
   ne rattrape pas (Infinity est truthy) et que `JSON.parse` PRODUIT depuis un blob contenant
@@ -60,7 +80,7 @@
   Conséquence directe : **toute comparaison avant/après sur ce persona est impossible sans graine**
   — le panel a dû injecter un LCG pour obtenir sa preuve bit-identique. C'est le persona qu'un
   audit prend spontanément. Fix : graine injectable (le dépôt a déjà ce patron pour Monte Carlo).
-  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 869 tests, 457 fichiers). Les 6
+  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 873 tests, 457 fichiers). Les 6
   `Math.random()` de `services/testTransactions.ts` passent à un mulberry32 seedé, graine par
   défaut 42 (même convention que `buildPersonaTransactions`) et surchargeable. Le PRNG est
   RÉUTILISÉ depuis `services/testPersonas/transactions.ts` (désormais exporté) plutôt que

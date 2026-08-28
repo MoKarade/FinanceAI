@@ -2,9 +2,12 @@
 //
 // [TEST-PERSONA-NON-DETERMINISTE] `generateTestTransactions` tirait 6 valeurs à `Math.random()`
 // NU, et c'est le générateur du persona PAR DÉFAUT `couple-confort` — celui qu'un audit prend
-// spontanément. Deux exécutions du MÊME code donnaient deux jeux de montants différents :
-// amplitude MESURÉE de 3 088,55 $ sur le patrimoine final (5 tirages), donc aucune comparaison
-// avant/après possible sans injecter une graine à la main (ce que le panel de la PR #755 a dû faire).
+// spontanément. Deux exécutions du MÊME code donnaient deux jeux de montants différents, donc
+// aucune comparaison avant/après possible sans injecter une graine à la main (ce que le panel de la
+// PR #755 a dû faire).
+//
+// ⚠️ Le « 3 088,55 $ » du ticket n'est pas retrouvable sur `calculatedStartingCash`, borné par
+// construction à 2 480 $. Re-mesuré : 1 168,66 $ sur 50 000 graines (finding financial-integrity).
 //
 // Ce test verrouille la reproductibilité SANS la rendre vacueuse : une graine différente doit
 // produire des montants différents, sinon l'égalité serait satisfaite par un générateur constant.

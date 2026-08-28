@@ -253,7 +253,21 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         // indétectable, il est indiscernable d'un compteur. On préfère ce trou étroit à une garde
         // qui rougirait sur « 1 abonnement(s) ». Les vrais montants du dépôt passent tous par
         // `formatCAD` (qui suffixe « $ ») ou `formatPercent` (« % ») — mesuré.
+        // ⚠️ PÉRIMÈTRE : la garde lit `raw`, PAS `help` — et c'est un choix, pas un oubli
+        // (finding silent-failure-hunter, 3e passe PR #758). Les `help` contiennent des `%` par
+        // conception (« Cible 20%+ », « Cible <15% du revenu net », « Cible 0%... >50% ») : ce sont
+        // des SEUILS statiques, jamais une valeur de l'utilisateur, donc étendre le motif à `help`
+        // le ferait rougir sur presque toutes les métriques sans qu'aucune ne fuie. La condition
+        // qui rend ce choix valide est que `help` reste STATIQUE. ⚠️ Le jour où une métrique y
+        // interpolerait une vraie valeur, cette garde ne la verrait pas — et le lot 32 vient
+        // justement de faire transiter `help` par un nouveau canal DOM (`sr-only`). Si `help`
+        // cesse d'être statique, il faut l'inclure ici ET sortir les seuils du motif.
         const MONTANT = /[$%]|\d+[.,]\d|\d{3,}/;
+        // Verrou du présupposé : aucun `help` ne porte de valeur interpolée aujourd'hui. On le
+        // prouve par l'absence de montant FORMATÉ (`formatCAD`/`formatNumber` produisent un groupe
+        // de 3 chiffres ou un « $ ») — les seuils littéraux « 20% », « 15% », « 50% » restent, eux,
+        // parfaitement permis. Ce test rougira quand l'hypothèse cessera d'être vraie.
+        const VALEUR_FORMATEE = /\$|\d+[.,]\d|\d{3,}/;
         const fixtures: Array<[string, Partial<HealthScoreInputs>]> = [
             ['sans projection ni abo', {}],
             ['revenu Infinity', { config: { users: [{ name: 'Moi', netSalary: Infinity }] } as unknown as HealthScoreInputs['config'] }],
@@ -275,6 +289,10 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
                 if (r.available) { if (MONTANT.test(r.raw)) avecMontant++; continue; }
                 vus.add(r.id);
                 expect(MONTANT.test(r.raw), `${nom} · ${r.id} : montant dans un état indisponible → « ${r.raw} »`).toBe(false);
+                expect(
+                    VALEUR_FORMATEE.test(r.help),
+                    `${nom} · ${r.id} : « help » porte une valeur formatée — il n'est plus statique, la garde doit l'inclure → « ${r.help} »`,
+                ).toBe(false);
             }
         }
         // Anti-vacuité DOUBLE : la garde a bien vu des métriques indisponibles (sinon elle ne

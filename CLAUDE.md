@@ -50,7 +50,7 @@ i18next · jspdf. Prod : **Vercel**.
 
 Structure **PLATE** (pas de `src/`) : racine `App.tsx`, `index.tsx`, `constants.ts`, `types.ts`,
 `i18n.ts` ; dossiers `components/ hooks/ services/ store/ utils/ locales/ mcp/ e2e/ tests/
-scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (50 sous-modules).
+scripts/ docs/`. Cœur : `services/projection.ts` + `services/projection/` (54 sous-modules).
 
 ⚠️ Hoister un import au niveau App tire ses deps dans le bundle de BOOT → lazy-charger
 (`lazyWithRetry` + Suspense) tout composant/service app-level qui importe du lourd.

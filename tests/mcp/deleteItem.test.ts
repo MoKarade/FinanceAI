@@ -87,6 +87,19 @@ describe('applyDeleteItem — dette', () => {
         expect(() => applyDocument(richState(), del('debt', 'Marge inexistante'))).toThrow(/Aucune dette/);
     });
 
+    // [NAV-REMOVE-OBJECTIFS-TAB] Ceinture métier sur un geste DESTRUCTIF. Avant le retrait des
+    // objectifs, une `entity` inattendue retombait sur `savingsGoals` ; sans garde elle retomberait
+    // désormais sur les DETTES — rayon d'impact bien supérieur. Zod protège les deux appelants
+    // connus, mais `applyDocument` est exporté et appelable directement (même raison que la ceinture
+    // de `applyCashBalance`/`applyBudgetItem`). Discriminant : sans le `if (doc.entity !== 'debt')`,
+    // ce cas SUPPRIME « Prêt auto Honda » au lieu de lever.
+    it('une entity INATTENDUE lève, et ne supprime SURTOUT pas une dette par défaut', () => {
+        const s = richState();
+        const rogue = { kind: 'delete_item', entity: 'savings_goal', name: 'Prêt auto Honda' } as unknown as DeleteItemPayload;
+        expect(() => applyDocument(s, rogue)).toThrow(/non supporté.*savings_goal|Attendu : asset ou debt/);
+        expect(s.debts).toHaveLength(1); // état d'entrée non muté
+    });
+
     it('deux dettes à noms équivalents → throw (renommer d\'abord)', () => {
         const s = richState();
         s.debts = [...s.debts, { id: 'debt_1700000000001', name: 'PRÊT AUTO HONDA', balance: 1, interestRate: 1, minimumPayment: 1, category: 'Car' } as Debt];

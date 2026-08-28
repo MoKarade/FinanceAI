@@ -172,7 +172,7 @@ export interface BudgetItemPayload {
 export interface DeleteItemPayload {
     kind: 'delete_item';
     entity: 'asset' | 'debt';
-    /** Nom (dette/objectif) ou SYMBOLE (actif) de l'entité à supprimer. */
+    /** Nom (dette) ou SYMBOLE (actif) de l'entité à supprimer. */
     name: string;
     /** Désambiguïsation d'un actif détenu dans PLUSIEURS comptes (CELI / REER / NON-ENREG…). */
     accountType?: string;
@@ -478,7 +478,14 @@ function applyDeleteItem(state: AppState, doc: DeleteItemPayload): ApplyResult {
         return { nextState, changes, summary: `Actif ${target.symbol} supprimé du portefeuille. Sauvegarde créée avant l'écriture (annulable via Réglages → Sauvegarde).` };
     }
 
-    // debt (seule entité restante après 'asset', ci-dessus)
+    // ⚠️ [NAV-REMOVE-OBJECTIFS-TAB] Ceinture métier — un appel DIRECT du handler contourne Zod
+    // (même patron que `applyCashBalance`/`applyBudgetItem` dans ce fichier). Avant le retrait des
+    // objectifs, une valeur d'`entity` inattendue retombait sur `savingsGoals` ; elle retomberait
+    // désormais sur les DETTES — un geste destructif au rayon d'impact bien supérieur. On refuse
+    // explicitement au lieu de deviner.
+    if (doc.entity !== 'debt') {
+        throw new Error(`Type d'entité non supporté pour une suppression : « ${String(doc.entity)} ». Attendu : asset ou debt. Rien n'a été supprimé.`);
+    }
     const all = (state.debts ?? []);
     const matches = all.filter((d) => budgetNameKey(d.name || '') === key);
     if (matches.length === 0) throw new Error(`Aucune dette nommée « ${name} ». Rien n'a été supprimé.`);

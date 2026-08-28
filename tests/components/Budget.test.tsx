@@ -83,14 +83,15 @@ describe('Budget — refonte UI (Phase C3)', () => {
     });
 
     // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] les 4 tuiles passent de Réel/Prévu à Réel/Prévu/OBJECTIF.
-    // Discriminant : sans `objectif` sur DualKPIStat, `[title="Objectif"]` n'existe nulle part et
+    // Discriminant : sans `objectif` sur DualKPIStat, aucun libellé « Objectif : » n'existe et
     // le label reste "Réel / Prévu" seul (perturbation : retirer les props `objectif` fait rougir
     // ce test — vérifié en local).
     it('[BUDGET-REEL-PREVISIONNEL-OBJECTIF] les 4 tuiles affichent une 3e valeur Objectif', () => {
         const { container } = render(<Budget {...baseProps} />);
         const text = container.textContent || '';
         expect(text.match(/Réel \/ Prévu \/ Objectif/g)?.length ?? 0).toBe(4);
-        const objectifNodes = container.querySelectorAll('[title="Objectif"]');
+        // [a11y panel] Le libellé est un `sr-only` INLINE (plus un `title` HTML, non fiable sur un span).
+        const objectifNodes = [...container.querySelectorAll('.sr-only')].filter((n) => (n.textContent ?? '').startsWith('Objectif'));
         expect(objectifNodes.length).toBe(4);
     });
 
@@ -99,15 +100,66 @@ describe('Budget — refonte UI (Phase C3)', () => {
         const parseObjectif = (label: string): number => {
             const labelNode = [...container.querySelectorAll('.kpi-label')].find((l) => (l.textContent ?? '').includes(label));
             const tile = labelNode!.closest('div[class*="rounded-card"]');
-            const raw = tile!.querySelector('[title="Objectif"]')!.textContent ?? '';
+            const srLabel = [...tile!.querySelectorAll('.sr-only')].find((n) => (n.textContent ?? '').startsWith('Objectif'));
+            // Le montant est le texte du PARENT, moins le préfixe sr-only « Objectif : ».
+            const raw = (srLabel!.parentElement!.textContent ?? '').replace(/^\s*Objectif\s*:\s*/, '');
             return Number(raw.replace(/[^\d.,-]/g, '').replace(',', '.'));
         };
         const revenus = parseObjectif('Revenus');
         const depenses = parseObjectif('Dépenses');
         const restant = parseObjectif('Restant');
-        expect(depenses).toBeCloseTo(2200, 0);
+        // 1500 (Loyer, Besoin) + 200 (Restaurants, Envie). Le poste CELI (500, nature Épargne) est
+        // EXCLU : le « réel » d'en face filtre `isTransfer`, donc une cotisation d'épargne ne peut
+        // structurellement jamais y apparaître — l'inclure comparait deux assiettes différentes
+        // (finding financial-integrity MESURÉ : « sous le budget » permanent de 500 $/mois).
+        expect(depenses).toBeCloseTo(1700, 0);
         expect(revenus).toBeGreaterThan(0);
         expect(restant).toBeCloseTo(revenus - depenses, 0);
+    });
+
+    // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] no-fake-data — findings financial-integrity MESURÉS.
+    it('grossSalary absent (paie importée en NET seul) → PAS d\'objectif de revenu, jamais un « 0 $ » crédible', () => {
+        // `fiscalBreakdown` dérive le net du SEUL grossSalary : sans lui, l'objectif valait 0 $ et
+        // l'objectif de reste-à-vivre était NÉGATIF. Chemin réel : mcp/ingest/applyDocument.ts
+        // écrit netSalary sans toucher grossSalary quand la fiche ne porte que le net.
+        const netOnly = {
+            ...baseProps,
+            config: {
+                ...defaultConfig,
+                users: [
+                    { ...defaultConfig.users[0], grossSalary: 0, netSalary: 5000 },
+                    { ...defaultConfig.users[1], grossSalary: 0, netSalary: 0 },
+                ],
+            } as BudgetConfig,
+        };
+        const { container } = render(<Budget {...netOnly} />);
+        const objectifs = [...container.querySelectorAll('.sr-only')].filter((n) => (n.textContent ?? '').startsWith('Objectif'));
+        // Dépenses + Fin de mois gardent leur objectif (cibles saisies) ; Revenus et Restant l'OMETTENT.
+        const labelDe = (name: string) => {
+            const l = [...container.querySelectorAll('.kpi-label')].find((x) => (x.textContent ?? '').includes(name));
+            return l!.closest('div[class*="rounded-card"]')!;
+        };
+        expect(labelDe('Revenus').querySelector('.sr-only')).toBeNull();
+        expect(labelDe('Restant').querySelector('.sr-only')).toBeNull();
+        expect(objectifs.length).toBeGreaterThan(0); // les tuiles de dépenses en ont toujours un
+        expect(container.textContent).not.toMatch(/Objectif\s*:\s*0\s?\$/);
+    });
+
+    it('[BUDGET-REEL-PREVISIONNEL-OBJECTIF] l\'Objectif est une cible SAISIE : le simulateur d\'inflation ne le bouge pas', () => {
+        // `getDisplayTarget` indexe par `inflationSim` ; l'Objectif passe par `getBaseMonthlyTarget`,
+        // qui ne l'indexe pas. Mesuré avant correctif : 2 200 $ → 2 370 $ à +10 %.
+        const { container } = render(<Budget {...baseProps} />);
+        const readObjectif = () => {
+            const l = [...container.querySelectorAll('.kpi-label')].find((x) => (x.textContent ?? '').includes('Dépenses'));
+            const tile = l!.closest('div[class*="rounded-card"]')!;
+            const sr = [...tile.querySelectorAll('.sr-only')].find((n) => (n.textContent ?? '').startsWith('Objectif'));
+            return Number((sr!.parentElement!.textContent ?? '').replace(/^\s*Objectif\s*:\s*/, '').replace(/[^\d.,-]/g, '').replace(',', '.'));
+        };
+        const avant = readObjectif();
+        const slider = container.querySelector('input[type="range"]');
+        expect(slider).not.toBeNull();
+        fireEvent.change(slider!, { target: { value: '10' } });
+        expect(readObjectif()).toBeCloseTo(avant, 0);
     });
 
     it('affiche le badge Excédentaire/Déficitaire', () => {

@@ -84,7 +84,7 @@ relu ment en silence. Un compteur se lit dans la CI.)*
 L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Résumé :
 
 - Pas de backend. L'app vit côté navigateur, persiste localement (localStorage + IndexedDB chiffré), et appelle Anthropic, Finnhub et CoinGecko directement depuis le client.
-- Le moteur de projection (`services/projection.ts` + `services/projection/` — 48 sous-modules, mesuré 2026-08-12) est le coeur de l'app. Voir [`docs/PROJECTION.md`](docs/PROJECTION.md) pour les détails.
+- Le moteur de projection (`services/projection.ts` + `services/projection/` — 54 sous-modules) est le coeur de l'app. Voir [`docs/PROJECTION.md`](docs/PROJECTION.md) pour les détails.
 - Le state global est Zustand v5 + persist (schema v7 avec migrations v1→v7).
 - `services/eraContext.ts` est dormant (MCP-only) — l'UI Era a été retirée.
 

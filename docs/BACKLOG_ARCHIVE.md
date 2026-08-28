@@ -12,7 +12,7 @@
 
 ## 2026-08-27 — Objectif ajouté aux 4 tuiles Budget + filet de test manquant comblé
 
-- [x] **`[BUDGET-REEL-PREVISIONNEL-OBJECTIF]`** (M) — PR à venir (branche `claude/lot-29`), gate
+- [x] **`[BUDGET-REEL-PREVISIONNEL-OBJECTIF]`** (M) — PR #755 (lot 29), gate
   vert (4 853 tests, 453 fichiers). Cadrage (choix cliquable) : Marc a demandé l'Objectif sur les
   TROIS tuiles (Revenus/Dépenses/Restant), pas seulement Dépenses — a exigé de définir un
   « objectif de revenu » qui n'existait pas encore côté UI, résolu en réutilisant
@@ -31,8 +31,8 @@
 
 ## 2026-08-27 — Xetra (ETR:) et Milan (BIT:) ajoutés au routage des cours exacts
 
-- [x] **`[INVEST-COURS-EXACT-TOUTES-ACTIONS]`** (M) — PR à venir (branche `claude/lot-29`), gate
-  vert (4 851 tests, 453 fichiers). Cause trouvée par investigation (pas de décision Marc requise
+- [x] **`[INVEST-COURS-EXACT-TOUTES-ACTIONS]`** (M) — PR #755 (lot 29), gate
+  vert (4 853 tests, 453 fichiers). Cause trouvée par investigation (pas de décision Marc requise
   pour le correctif principal) : `toFinnhubSymbol` (`services/marketData/providers/finnhub.ts`) ne
   convertit que 3 préfixes (NASDAQ/NYSE, TSE/TSX, EPA) vers le format Finnhub/Yahoo — tout autre
   préfixe retombe sur le ticker BRUT sans suffixe de place, que Finnhub/Yahoo ne résolvent jamais
@@ -53,8 +53,8 @@
 
 ## 2026-08-27 — Résumé Santé condensé en tête de Futur
 
-- [x] **`[NAV-MERGE-SANTE-FUTUR]`** (M) — PR à venir (branche `claude/lot-29`), gate vert
-  (4 848 tests, 453 fichiers). Décision Marc, confirmée par choix cliquable : « Condensé (résumé +
+- [x] **`[NAV-MERGE-SANTE-FUTUR]`** (M) — PR #755 (lot 29), gate vert
+  (4 853 tests, 453 fichiers). Décision Marc, confirmée par choix cliquable : « Condensé (résumé +
   lien vers le détail) » plutôt qu'un déplacement verbatim du contenu. Le sous-onglet Santé
   (Budget → Santé, jauge + 6 métriques + réglage des pondérations) reste INCHANGÉ, seule vue
   détaillée ; un nouveau composant `components/future/FutureHealthSummary.tsx` affiche, en tête de
@@ -77,8 +77,7 @@
 
 ## 2026-08-27 — Retrait complet de la feature « Objectifs » (SavingsGoal)
 
-- [x] **`[NAV-REMOVE-OBJECTIFS-TAB]`** (S→devenu M en cours de route) — PR à venir (branche
-  `claude/lot-29`), gate vert (4 845 tests, 452 fichiers). Décision Marc, confirmée DEUX fois : la
+- [x] **`[NAV-REMOVE-OBJECTIFS-TAB]`** (S→devenu M en cours de route) — PR #755 (lot 29), gate vert (4 853 tests, 453 fichiers). Décision Marc, confirmée DEUX fois : la
   1ʳᵉ réponse (« Retiré du produit ») visait l'UI ; une cartographie a montré que `savingsGoals`
   alimentait aussi `applySavingsGoalDeadlines` dans le moteur de projection (décaissement réel au
   mois de l'échéance) — Marc a confirmé vouloir retirer « VRAIMENT tout (UI + moteur) » une fois
@@ -102,7 +101,7 @@
 
 ## 2026-08-27 — `computeGoldenSplit`/`GOLDEN_IDEAL` code mort supprimé
 
-- [x] **`[UTIL-GOLDENSPLIT-ORPHELIN]`** (XS) — PR à venir (branche `claude/lot-29`), gate vert.
+- [x] **`[UTIL-GOLDENSPLIT-ORPHELIN]`** (XS) — PR #755 (lot 29), gate vert (4 853 tests, 453 fichiers).
   Découvert en livrant `BUDGET-REMOVE-AMELIORER` : `computeGoldenSplit`, `GOLDEN_IDEAL` et le type
   `GoldenSplit` (`utils/budget.ts`) n'avaient plus aucun consommateur en production, seuls leurs
   propres tests les exerçaient encore (angle mort connu de `knip`, cf leçon

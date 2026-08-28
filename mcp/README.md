@@ -36,7 +36,7 @@ ta source d'état ») au lieu de planter.
 
 | Tool | Répond à |
 |------|----------|
-| `get_financial_overview` | Patrimoine net, liquidités, placements, ventilation par compte (CELI/REER/CELIAPP/REEE/non-enregistré/crypto), revenu/dépenses/cashflow mensuels, dette totale, objectifs actifs |
+| `get_financial_overview` | Patrimoine net, liquidités, placements, ventilation par compte (CELI/REER/CELIAPP/REEE/non-enregistré/crypto), revenu/dépenses/cashflow mensuels, dette totale |
 | `get_holdings` | Liste les PLACEMENTS individuels (chaque titre) : symbole, nom, quantité, prix natif (USD/EUR/CAD), devise, **valeur CAD** (source unique `assetValueCad`), compte, rendement — trié par valeur, avec total et ventilation par compte. Répond à « qu'est-ce que je détiens », « ma plus grosse position », « combien en CELI » |
 | `get_projection` | Projection long terme sur SES vraies données (valeur nette dans le temps, âge d'épuisement éventuel). `includeSeries: true` → série ANNUELLE exacte (patrimoine nominal/réel, comptes, dettes, par âge) pour tracer des graphiques |
 | `simulate_what_if` | « Si j'achète une voiture demain ? » — changements HYPOTHÉTIQUES (achat ponctuel ou financé, salaire ±, dépense récurrente, nouvelle dette, achat immobilier) simulés sur SES vraies données : le moteur roule 2× (avec/sans) → deltas de patrimoine à 1/2/5/10/20 ans, impact FIRE/impôts, hypothèses explicites, séries annuelles base+scénario pour graphiques comparés. Aucun chiffre inventé : tout sort du moteur |
@@ -444,7 +444,7 @@ Cloud Run, lit Fintable, et écrit dans Drive — 100 % en arrière-plan.
   aucune date figée à maintenir. Un rapport (`AppState.fintableSyncReport`) est **TOUJOURS écrit**
   (succès ou échec) : comptes vus, tx ajoutées, virements internes détectés, cash/dettes mis à
   jour, avertissements, erreur — visible dans l'app (Réglages), sans notification proactive
-  (choix Marc). Ne touche QUE ce que le mapper produit : budgets, objectifs, dettes saisies
+  (choix Marc). Ne touche QUE ce que le mapper produit : budgets, dettes saisies
   manuellement (hors solde) restent intacts.
 - **Activation** : définir `FINANCEAI_FINTABLE_SYNC_SECRET` (≥16 caractères — refus de démarrer
   sinon), **DISTINCT** de `FINANCEAI_REFRESH_SECRET` (périmètre différent : celui-ci autorise

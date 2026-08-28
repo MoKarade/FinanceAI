@@ -63,11 +63,8 @@
 > - **`[UTIL-GOLDENSPLIT-ORPHELIN]`** : `computeGoldenSplit`/`GOLDEN_IDEAL`/`GoldenSplit`
 >   (`utils/budget.ts`) confirmés sans consommateur de production, supprimés avec leurs 5 tests.
 >
-> Gate complet vert : `typecheck`, `lint` (0 erreur), **4 845 tests / 452 fichiers**, `build`.
-> ⚠️ **GitHub reste déconnecté côté outils MCP** (session invalide côté serveur, revérifié
-> plusieurs fois cette session) : tout le travail depuis `[MCP-REJECTIONS-NON-STRUCTUREES]`
-> (PR #754 mergée) est committé + poussé sur `claude/lot-29` mais SANS PR — à créer/fusionner dès
-> que la connexion revient (`ToolSearch select:mcp__github__get_me`).
+> Gate complet vert : `typecheck`, `lint` (0 erreur), **4 853 tests / 453 fichiers**, `build`.
+> ✅ **GitHub reconnecté** : la PR est en cours de création (`claude/lot-29` → squash-merge sur `main`).
 >
 > ## 🟢 Session 2026-08-27 — `[FINTABLE-DOUBLON-INTRALOT-SILENCIEUX]` : un doublon bénin distingué d'un doublon intra-lot suspect
 > Finding financial-integrity (PR #754), routé au `BACKLOG.md` puis traité ici.

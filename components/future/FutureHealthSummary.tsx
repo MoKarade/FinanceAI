@@ -54,11 +54,16 @@ export const FutureHealthSummary: React.FC = () => {
             <button
                 type="button"
                 onClick={goToDetail}
-                className="w-full flex items-center gap-2 rounded-card border border-white/10 bg-white/5 px-4 py-2.5 text-left hover:bg-white/10 transition-colors focus-ring"
+                // [a11y panel] Même contrat que la branche AVEC score : nom accessible porté par
+                // `aria-label` (le glyphe « → » serait épelé s'il restait dans le nom calculé), tout
+                // le contenu visible en `aria-hidden`. `touch-target` : le padding seul donne ~36 px,
+                // sous le plancher de 44 px appliqué partout ailleurs (cf. `ui/SubTabs.tsx`).
+                aria-label="Renseigne ton profil pour voir ta santé financière. Voir le détail."
+                className="touch-target w-full flex items-center gap-2 rounded-card border border-white/10 bg-white/5 px-4 py-2.5 text-left hover:bg-white/10 transition-colors focus-ring"
             >
                 <Icon name="health" size={16} className="text-ink-400 shrink-0" aria-hidden="true" />
-                <span className="text-meta text-ink-300 flex-1">Renseigne ton profil pour voir ta santé financière.</span>
-                <span className="text-tiny text-ink-400 shrink-0">Voir le détail →</span>
+                <span className="text-meta text-ink-300 flex-1" aria-hidden="true">Renseigne ton profil pour voir ta santé financière.</span>
+                <span className="text-tiny text-ink-400 shrink-0" aria-hidden="true">Voir le détail →</span>
             </button>
         );
     }
@@ -70,7 +75,7 @@ export const FutureHealthSummary: React.FC = () => {
             type="button"
             onClick={goToDetail}
             aria-label={`Santé financière : ${totalScore} sur 100. Voir le détail.`}
-            className="w-full flex items-center gap-3 rounded-card border border-white/10 bg-white/5 px-4 py-2.5 text-left hover:bg-white/10 transition-colors focus-ring"
+            className="touch-target w-full flex items-center gap-3 rounded-card border border-white/10 bg-white/5 px-4 py-2.5 text-left hover:bg-white/10 transition-colors focus-ring"
         >
             <Icon name="health" size={16} className={`${colors.text} shrink-0`} aria-hidden="true" />
             <span className="text-meta text-ink-200 flex-1" aria-hidden="true">

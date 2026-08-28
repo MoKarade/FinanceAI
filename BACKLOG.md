@@ -34,6 +34,31 @@
   vues d'analyse précises (graphique de tendance ? comparaison mois-à-mois ? projection
   d'impact ?), quelle interactivité voulue (filtrage, regroupement, drill-down). Effort L : ne
   pas coder avant d'avoir cette DoD précise.
+- [ ] **`[MCP-WRITE-PARITY-GUARD]`** (S — finding ai-reviewer, panel PR #755, PRÉ-EXISTANT) —
+  `tests/aiTools/registryParity.test.ts` n'assure l'exhaustivité que sur `READ_SPECS`
+  (`s.kind === 'read'`). AUCUN test ne compare les tools d'ÉCRITURE enregistrés côté serveur MCP
+  (`mcp/server.ts`, bloc `if (options.store)`) à `WRITE_SPECS` (`services/aiTools/registry.ts`).
+  Les deux fichiers compilent indépendamment → un tool d'écriture ajouté ou retiré d'UN SEUL des
+  deux registres ne serait vu ni par `tsc`, ni par le lint, ni par le gate. Risque concret : un
+  geste destructif (`delete_item`-like) exposé côté MCP mais absent du chat in-app, ou l'inverse,
+  sans aucun test rouge. Même classe que `[DEFAULTS-DRIFT-FINTABLE-FIELDS]` (test unidirectionnel).
+  ⚠️ Le retrait de `upsert_savings_goal` (PR #755) a été fait symétriquement à la main et VÉRIFIÉ —
+  ce ticket ferme le trou pour la prochaine fois, il ne corrige pas un bug actuel.
+- [ ] **`[HEALTH-SCORE-NAN-SILENCIEUX]`** (XS — finding silent-failure-hunter, panel PR #755,
+  PRÉ-EXISTANT) — `clamp01` (`utils/healthScore.ts`) ne neutralise pas `NaN`
+  (`Math.max(0, Math.min(100, NaN)) === NaN`), et les 3 métriques toujours `available: true`
+  (taux d'épargne, coussin, ratio dette/actif) n'ont aucune garde d'entrée. Une entrée corrompue en
+  amont afficherait littéralement « Santé financière : NaN/100 », sans `logError`. Pas une
+  violation stricte du no-fake-data (NaN n'est pas un « 0 $ crédible »), mais un affichage cassé
+  et muet. ⚠️ Défaut d'ORIGINE de `HealthIndicator.tsx` : l'extraction de `utils/healthScore.ts`
+  (PR #755) l'a seulement DUPLIQUÉ vers une 2e surface d'affichage, doublant son exposition.
+- [ ] **`[BUDGET-DEUX-NETS-MEME-ECRAN]`** (S — finding financial-integrity, panel PR #755,
+  PRÉ-EXISTANT) — deux « net » de PROVENANCE différente coexistent sur l'écran Budget :
+  l'Objectif Revenus affiche le net RECALCULÉ depuis le brut par `calculateFiscalReport`
+  (4 846 $ mesuré sur la fixture) tandis que la carte de répartition du couple et le score de
+  santé affichent `netSalary × multiplier` (5 000 $) — 154 $/mois, 3,1 % d'écart. Aucun des deux
+  n'est faux ; c'est leur COEXISTENCE non expliquée qui trompe. Trancher : une source unique, ou
+  une mention de provenance visible sur chacun.
 - [ ] **`[INVEST-PORTFOLIO-DATA-CORRECTION]`** (S, 👤 données réelles de Marc à appliquer) —
   remplacer/corriger les positions du portefeuille pour correspondre EXACTEMENT à l'historique
   d'achat suivant (fourni par Marc, toutes les transactions en **CAD**) :

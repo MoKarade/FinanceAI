@@ -79,8 +79,13 @@ export const DualKPIStat: React.FC<DualKPIStatProps> = ({
                 {objectif !== undefined && (
                     <>
                         <span className="text-meta text-ink-500" aria-hidden="true">/</span>
-                        <PrivateAmount className="text-meta text-info-400 tabular-nums" title="Objectif">
-                            {formatCAD(objectif)}
+                        {/* [a11y panel] Libellé `sr-only` INLINE plutôt qu'un `title` HTML : sur un
+                            `<span>` générique, `title` n'est ni annoncé de façon fiable ni atteignable
+                            au clavier — le 3e chiffre n'aurait aucun lien programmatique avec le mot
+                            « Objectif » de la légende, d'autant que `flex-wrap` peut casser la
+                            correspondance positionnelle en petite largeur. */}
+                        <PrivateAmount className="text-meta text-info-400 tabular-nums">
+                            <span className="sr-only">Objectif : </span>{formatCAD(objectif)}
                         </PrivateAmount>
                     </>
                 )}

@@ -4,7 +4,34 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟦 Session 2026-08-28 — Lot 31 : deux métriques de santé qui inventaient un score (PR #757, EN COURS)
+> ## 🟦 Session 2026-08-28 — Lot 34 : le résultat « aucune donnée » était un objet PARTAGÉ (PR à ouvrir)
+> `[HISTORY-OBJET-VIDE-PARTAGE]` — même classe que le lot 33, mais en **production**. Trois sites
+> renvoyaient une constante de MODULE faute de donnée exploitable : `transactionsOnDay`,
+> `monthCategories`, et — **absent du ticket, trouvé en rejouant le scan sur tout le dépôt** —
+> `usePastPortfolioHistory`. Deux appels rendaient le même objet, tableaux compris ; un `push` ou un
+> `sort` posé par un consommateur y restait pour la vie du processus.
+> - **Correctif en deux moitiés qui ne se remplacent pas** : le type `readonly`/`ReadonlyArray` rend
+>   la faute impossible à ÉCRIRE (`npm run typecheck` refuse `.push`/`.sort`), la FABRIQUE la rend
+>   inoffensive sur les chemins qui échappent au typecheck. Le `readonly` a coûté **zéro** erreur —
+>   ce zéro mesure qu'aucun consommateur ne mute aujourd'hui ; la garde est PRÉVENTIVE.
+> - ⚠️ **Le ticket nommait mal le chemin, et ma première garde était VACUEUSE** : il disait « aucune
+>   transaction », mais `[]` est `truthy` et traversait déjà la boucle. Le retour partagé était celui
+>   des ENTRÉES INUTILISABLES (`null`, ou date trop courte). Écrite avec `[]`, la garde passait **sur
+>   le code d'avant** ; réécrite avec `null`, elle rougit 5/5 puis 2/2.
+> - **Routé sans correctif** : `[INVEST-CIBLES-DEFAUT-MUTEES]` — la variante ACTIVE de la même
+>   classe. `components/Investments.tsx` fait `[...targetModel]` (copie SUPERFICIELLE) avant
+>   `newModel[i].targetPct = …`, donc éditer une cible réécrit `DEFAULT_TARGET_MODEL` en place.
+>   **Mesuré** : après une édition à 77, un remontage NEUF sans persistance affiche `77,30,15,10,5`
+>   au lieu de `40,30,15,10,5`. Pré-existant, hors périmètre (convention §6).
+>
+> ## 🧭 En attente d'un OK de Marc — `[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`
+> Money-critical, instruit et MESURÉ au lot 33 (voir le corps de la PR #759 pour le tableau), mais
+> **non codé délibérément** : il porte une fourche que je ne tranche pas seul. (i) OÙ vit la garde —
+> hydratation du store, restauration Drive, ou `buildSimulationParams` ? (ii) QUE fait-elle d'une
+> valeur mauvaise — refuser la projection, borner, ou tracer et continuer ? Convention §7 : plan
+> court + OK avant de coder.
+>
+> ## 🟢 Session 2026-08-28 — Lot 31 : deux métriques de santé qui inventaient un score (PR #757, MERGÉE)
 > Les deux angles morts que le panel du lot 30 avait laissés ouverts, tous deux PRÉ-EXISTANTS :
 > - **`[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]`** : la garde de SORTIE du lot 30 filtre le non-fini,
 >   donc elle ne voit rien de ce qui a été ABSORBÉ en un nombre plausible en amont. Trois chemins
@@ -26,7 +53,8 @@
 >   risque est la RÉPARATION, donc un commentaire a été posé là où quelqu'un lira l'échec.
 >
 > Gate LOCAL vert : typecheck 0, lint 0 erreur, **4 891 tests / 459 fichiers**, build 0.
-> ⚠️ **PR #757 NON mergée** au moment de ce handover ; CI en cours, auto-merge pas encore armé.
+> ✅ PR #757 mergée (`be51412`), déploiement Vercel de production `READY` vérifié. Les lots 32
+> (PR #758, `224cd86`) et 33 (PR #759, `0b8eb84`) ont suivi, tous deux mergés et déployés `READY`.
 >
 > ## 🟢 Session 2026-08-28 — Lot 30 : livraison de 3 findings pré-existants du panel PR #755 (PR #756)
 > Les trois findings routés par le panel de PR #755 ont été implémentés isolément, chacun sur son mécanisme :

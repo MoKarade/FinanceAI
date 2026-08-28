@@ -28,7 +28,28 @@ import {
 } from '../services/history/reconstructPortfolioHistory';
 import type { Asset } from '../types';
 
-const EMPTY_RESULT: PortfolioHistoryResult = { points: [], coverage: 1, firstDate: null };
+/**
+ * [HISTORY-OBJET-VIDE-PARTAGE] Une FABRIQUE, pas une constante — troisième site de la même classe,
+ * celui que le ticket ne nommait pas. Le chemin « aucun actif » renvoyait une constante de MODULE,
+ * partagée par toutes les instances du hook et tous les rendus : un tri posé sur `points` par
+ * n'importe quel consommateur y restait pour la vie du processus.
+ *
+ * ⚠️ Ce que ça change vraiment pour les rendus — la première version de ce commentaire affirmait
+ * « la référence ne change que là où elle changeait déjà », et c'était FAUX (finding code-reviewer).
+ * Avant, une ré-exécution du `useMemo` qui retombait sur la branche vide rendait la MÊME constante,
+ * donc l'aval ne bougeait pas ; désormais elle rend un `points` neuf. Les consommateurs qui
+ * mémoïsent sur `pastHistory.points` (`useSimulationParams`, `FutureProjection`) recalculent donc à
+ * chaque ré-exécution du memo sur cette branche — et ce recalcul n'est pas gratuit : `buildPastPrefix`
+ * rejoue `reconstructCashHistory` sur toutes les transactions, un travail qui ne dépend pas des points.
+ *
+ * C'est assumé, et voici la borne exacte : ça ne concerne QUE le cas « aucun actif », et il faut pour
+ * cela qu'une des quatre dépendances du memo (`assets`, `fxRates`, `fetched`, `isTestMode`) change de
+ * référence — `fetched` ne bouge pas sans actif (le fetch sort tôt), donc en pratique le boot et la
+ * bascule du mode test. Un recalcul ponctuel, jamais une boucle. Stabiliser la référence par instance
+ * (un `useRef`) coûterait un mécanisme de plus pour un gain non mesuré ; si un jour ce hook apparaît
+ * dans un profil, c'est ici qu'il faut regarder.
+ */
+const emptyResult = (): PortfolioHistoryResult => ({ points: [], coverage: 1, firstDate: null });
 
 // ── [PH2-c-1] Cache de fetch au niveau MODULE (partagé entre instances) ──────
 type FetchedMap = Record<string, Array<{ date: string; price: number }>>;
@@ -89,7 +110,7 @@ export function usePastPortfolioHistory(): UsePastPortfolioHistoryResult {
     // le cache Finnhub — un fetch réel résolu APRÈS la bascule en test polluerait sinon la fixture
     // d'un symbole partagé (XEQT réel vs XEQT persona) → fuite réel→test.
     const result = useMemo<PortfolioHistoryResult>(() => {
-        if (!assets || assets.length === 0) return EMPTY_RESULT;
+        if (!assets || assets.length === 0) return emptyResult();
         const minimal = assets.map((a) => toMinimal(a, isTestMode ? undefined : fetched[a.symbol]));
         return reconstructPortfolioHistory(minimal, fxRates as Record<string, number>);
     }, [assets, fxRates, fetched, isTestMode]);

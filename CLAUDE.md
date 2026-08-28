@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 897 tests** Vitest
-(460 fichiers de test, mesuré le 2026-08-28). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 904 tests** Vitest
+(462 fichiers de test, mesuré le 2026-08-28). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -333,6 +333,17 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   failli conclure « déjà durci ». Le `as unknown as` désactive le contrôle, les `|| 0` de production
   absorbent le reste. Asserter que la fixture rend la grandeur INTERMÉDIAIRE non nulle AVANT de
   conclure d'une perturbation muette (`UNE-FIXTURE-AUX-MAUVAIS-NOMS-DE-CHAMPS-EST-UNE-FIXTURE-VIDE`).
+- **Le nom qu'un ticket donne à un chemin est une PARAPHRASE, pas sa condition** : « aucune
+  transaction » désignait en fait les ENTRÉES INUTILISABLES, parce que **`[]` est `truthy`** et
+  traverse déjà la boucle. Ma garde écrite d'après cette phrase passait **sur le code d'avant** —
+  vacueuse. Lire le `if` et instancier la valeur qui le rend vrai ; « vide », « absent » et
+  « invalide » se ressemblent en français et se distinguent en JavaScript. Corollaires : le
+  périmètre d'un ticket de CLASSE est une borne inférieure (un 3ᵉ site identique est sorti du scan
+  rejoué), une garde de TYPE qui ne coûte AUCUNE erreur mesure qu'aucun consommateur ne mute
+  aujourd'hui — c'est préventif, et ça s'écrit tel quel —, et **un spread de tableau devant une
+  écriture indexée est toujours suspect** (`[...a]` puis `a[i].champ = v` ne copie pas ce qu'on
+  mute : mesuré, éditer une cible d'allocation réécrivait la constante de module des défauts)
+  (`UNE-LISTE-VIDE-N-EST-PAS-LE-CHEMIN-VIDE`).
 - Une **fixture PARTAGÉE** ne fait pas échouer un test : elle en fabrique un FAUX, sans rouge nulle
   part. `buildCoupleConfort` rendait les MÊMES objets à chaque `build()` (constantes de module
   réutilisées), donc la corruption d'un cas survivait dans le suivant — un relevé annonçait

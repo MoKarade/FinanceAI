@@ -47,20 +47,22 @@
   ⚠️ Le correctif n'est pas mécanique : `raw` est une CHAÎNE déjà formatée, donc l'envelopper dans
   `PrivateAmount` masquerait aussi la prose autour du montant. Il faut probablement séparer le
   montant du libellé dans `HealthMetricRow` avant de pouvoir masquer l'un sans l'autre.
-- [ ] **`[HISTORY-OBJET-VIDE-PARTAGE]`** (S — finding financial-integrity MESURÉ, panel PR #759,
-  PRÉ-EXISTANT) — même classe que `[TEST-PERSONA-FIXTURE-PARTAGEE]` (lot 33), encore vivante en
-  production : `services/history/dayTransactions.ts` et `services/history/monthCategories.ts`
-  déclarent chacun une constante de module `VIDE` (`{ counted: [], excluded: [], netCounted: 0 }`)
-  et la RENVOIENT telle quelle sur le chemin « aucune transaction ». Mesuré : deux appels rendent
-  le même objet (`===`), tableaux compris ; après un `push` sur un résultat vide, un NOUVEL appel
-  voit `counted.length = 1` et `netCounted = −999 999`, côté catégories `depenses.length = 1` et
-  `totalDepenses = 999 999`.
-  ⚠️ **Latent, pas actif** : l'unique consommateur (`components/projection/FutureDetailModal.tsx`)
-  lit sans muter — aucun `.sort/.push/.reverse/.splice`. Mais le type rendu n'est PAS `readonly` :
-  le premier tri d'affichage ajouté sur ces listes empoisonne définitivement le chemin « aucune
-  transaction », avec des montants FANTÔMES dans le détail du jour et la ventilation mensuelle.
-  Correctif : construire l'objet à chaque appel, ou typer le retour `Readonly<…>` + `ReadonlyArray`
-  (le second rend l'erreur impossible à écrire, le premier la rend inoffensive).
+- [ ] **`[INVEST-CIBLES-DEFAUT-MUTEES]`** (S — MESURÉ, découvert en élargissant le scan du lot 34,
+  PRÉ-EXISTANT et **ACTIF, pas latent**) — `components/Investments.tsx` initialise l'état des cibles
+  de rééquilibrage avec la constante de module `DEFAULT_TARGET_MODEL` **telle quelle** quand
+  `projection.investmentTargetPcts` est absent, puis le `onChange` du champ « Allocation cible
+  (pourcentage) » fait `[...targetModel]` — une copie **SUPERFICIELLE** — avant d'écrire
+  `newModel[i].targetPct`. L'élément muté EST donc celui de la constante : éditer une cible réécrit
+  le modèle par défaut du module, **définitivement, pour la vie du processus**.
+  **Mesuré** (montage, édition d'une cible à 77, démontage, remontage NEUF avec les mêmes props et
+  aucune persistance) : le remontage affiche `77,30,15,10,5` au lieu de `40,30,15,10,5`.
+  ⚠️ Ce n'est visible qu'une fois `investmentTargetPcts` ABSENT après une édition dans la même
+  session — reset de configuration, bascule de persona en mode test, import d'une autre config :
+  Marc y verrait ses anciennes valeurs présentées comme les défauts du modèle.
+  Correctif probable : copie PROFONDE à l'initialisation de l'état (`structuredClone`) **et** un
+  `onChange` qui ne mute pas l'élément (`map` avec `{ ...m, targetPct }`) — la copie superficielle
+  est aussi une mutation d'état React, qui n'est correcte que par accident ici.
+  ⚠️ **Non corrigé délibérément** : bug pré-existant hors du périmètre du lot 34 (convention §6).
 - [ ] **`[ENG-RETURNRATE-SINGULIER-NON-CABLE]`** (S — découvert en instruisant, panel PR #759) —
   `projection.returnRate` (SINGULIER) ne pilote AUCUNE croissance du moteur : `computeScenarioOverrides`
   (`services/projection/setupSimulation.ts`) lit `projection.returnRates`, la carte par compte, et

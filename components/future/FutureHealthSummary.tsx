@@ -16,7 +16,7 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 import { useProjectionSelector } from '../../hooks/useProjectionSelector';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { normalizeHealthWeights } from '../../utils/healthWeights';
-import { computeHealthMetrics, computeHealthTotalScore, colorForHealthScore } from '../../utils/healthScore';
+import { computeHealthMetrics, computeHealthTotalScore, colorForHealthScore, HEALTH_SCORE_UNKNOWN_COLORS } from '../../utils/healthScore';
 import { Icon } from '../ui/Icon';
 
 const selectFireTarget = (chart: ReadonlyArray<{ FireTarget?: number }>): number =>
@@ -63,6 +63,28 @@ export const FutureHealthSummary: React.FC = () => {
             >
                 <Icon name="health" size={16} className="text-ink-400 shrink-0" aria-hidden="true" />
                 <span className="text-meta text-ink-300 flex-1" aria-hidden="true">Renseigne ton profil pour voir ta santé financière.</span>
+                <span className="text-tiny text-ink-400 shrink-0" aria-hidden="true">Voir le détail →</span>
+            </button>
+        );
+    }
+
+    // [Finding silent-failure-hunter, panel PR #756] `null` = AUCUNE métrique mesurable (corruption
+    // large qui exclut jusqu'aux trois métriques de base). Afficher « 0/100 » y serait un score
+    // crédible ET faux, peint en ROUGE par `colorForHealthScore(0)` — l'utilisateur lirait « santé
+    // critique » là où la réponse honnête est « rien de mesurable ». Même traitement que `!hasData`,
+    // avec un libellé qui distingue la CAUSE (donnée invalide, actionnable) de l'absence de profil.
+    if (totalScore === null) {
+        return (
+            <button
+                type="button"
+                onClick={goToDetail}
+                aria-label="Santé financière : aucune donnée exploitable. Voir le détail."
+                className="touch-target w-full flex items-center gap-2 rounded-card border border-white/10 bg-white/5 px-4 py-2.5 text-left hover:bg-white/10 transition-colors focus-ring"
+            >
+                <Icon name="health" size={16} className={`${HEALTH_SCORE_UNKNOWN_COLORS.text} shrink-0`} aria-hidden="true" />
+                <span className="text-meta text-ink-300 flex-1" aria-hidden="true">
+                    Santé financière : <span className="font-bold text-ink-400">—</span> (aucune donnée exploitable)
+                </span>
                 <span className="text-tiny text-ink-400 shrink-0" aria-hidden="true">Voir le détail →</span>
             </button>
         );

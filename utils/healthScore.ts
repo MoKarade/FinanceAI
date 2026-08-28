@@ -3,6 +3,7 @@ import { computeBudgetParity } from './budget';
 import { computeBudgetParityScore, computeSubscriptionLoadScore, subscriptionsMonthlyCost, monthlyConsumptionExpenses } from './healthRatios';
 import { formatPercent, formatCAD, formatNumber } from './format';
 import { computeCurrentLiquidity, computeInvestmentsValue, computeTotalDebt } from '../services/portfolio';
+import { logErrorThrottled } from '../services/errorLogger';
 
 // [NAV-MERGE-SANTE-FUTUR] Extrait de `components/dashboard/HealthIndicator.tsx` (Phase D.6) pour
 // SOURCE UNIQUE : la carte détaillée (Santé, sous-onglet Budget) et le résumé condensé (Futur)
@@ -10,6 +11,50 @@ import { computeCurrentLiquidity, computeInvestmentsValue, computeTotalDebt } fr
 // `SyncStaleBanner`/`MCP-NETINCOME-MISLEADING`). Comportement inchangé, extraction PURE.
 
 const clamp01 = (x: number) => Math.max(0, Math.min(100, x));
+
+/**
+ * [HEALTH-SCORE-NAN-SILENCIEUX] `clamp01` ne neutralise PAS `NaN` (`Math.max(0, Math.min(100, NaN))`
+ * vaut `NaN`), et une seule métrique non finie contamine le score pondéré : les deux surfaces
+ * (carte détaillée du sous-onglet Santé, résumé condensé de Futur) afficheraient littéralement
+ * « NaN/100 », sans aucune trace.
+ *
+ * Chemin MESURÉ le 2026-08-28 : `netSalary: Infinity` — que `|| 0` ne rattrape pas (Infinity est
+ * truthy) et que `JSON.parse` PRODUIT à partir d'un blob Drive/backup contenant `1e999` — donne
+ * `savingsRateRaw = (∞ − dépenses) / ∞ = NaN`, donc `total = NaN`. Les autres entrées testées
+ * (montant de poste, soldes, prix d'actif, cible FIRE) sont déjà durcies en amont.
+ *
+ * Le correctif est un point de passage UNIQUE appliqué à la liste finale, pas un `?? 0` par
+ * métrique : `0` serait un score CRÉDIBLE inventé (règle no-fake-data), alors qu'`available:false`
+ * est l'état « — » que l'UI sait déjà rendre, et qui EXCLUT la métrique du score pondéré.
+ *
+ * ⚠️ **Portée exacte** (finding silent-failure-hunter, panel PR #756) : cette garde voit ce qui
+ * arrive ICI non fini. Elle ne voit donc PAS `budgetParity` ni `subscriptionLoad`, dont les
+ * producteurs (`clamp01` local de `utils/healthRatios.ts`, `totalYearlyCost` de
+ * `utils/subscriptions.ts`) absorbent déjà un `NaN` en `0` SILENCIEUSEMENT en amont — un `0`
+ * crédible qui se lit « 100 % de dépassement ». Classe `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`,
+ * pré-existante à ce lot, routée au BACKLOG (`[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]`) plutôt que
+ * corrigée ici : ces deux absorptions ont d'autres consommateurs. Ne pas lire « couvre toute
+ * métrique » — lire « couvre toute métrique dont la valeur ARRIVE non finie ».
+ */
+function sanitizeNonFinite(rows: HealthMetricRow[]): HealthMetricRow[] {
+    const invalides = rows.filter((r) => !Number.isFinite(r.value)).map((r) => r.id);
+    if (invalides.length === 0) return rows;
+    logErrorThrottled(`health-score-non-fini:${invalides.join(',')}`, {
+        // 'storage' comme pour `healthWeights` : l'origine d'une valeur non finie est une donnée
+        // SAISIE ou RESTAURÉE corrompue, pas une panne de calcul.
+        source: 'storage', severity: 'warning',
+        message: `Santé financière : ${invalides.length} métrique(s) au score non fini, exclue(s) du total`,
+        context: { metriques: invalides },
+    });
+    return rows.map((r) => (Number.isFinite(r.value) ? r : {
+        ...r,
+        value: 0,
+        available: false, // → l'UI affiche « — » et le total pondéré l'ignore
+        raw: 'Donnée invalide (valeur non finie)',
+        help: 'Une donnée source de cette métrique n\'est pas un nombre exploitable (infinie ou absente). '
+            + 'Corrige-la dans Réglages (revenus, soldes, postes) pour réactiver la mesure.',
+    }));
+}
 
 export interface HealthMetricRow {
     id: keyof HealthWeights;
@@ -103,12 +148,15 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
     //    Aucun abo ÉPINGLÉ → indisponible (cohérent avec FIRE/budget) : un 100 « aucun fardeau » serait
     //    trompeur car l'utilisateur a peut-être des abos non épinglés (détectés à la volée seulement).
     const subMonthly = subscriptionsMonthlyCost(subscriptions);
-    const subLoadPct = monthlyIncome > 0 ? (subMonthly / monthlyIncome) * 100 : 0;
+    // Même garde d'entrée que `computeSubscriptionLoadScore` : un revenu `Infinity` rendrait 0,0 %,
+    // un libellé FAUX affiché à l'utilisateur (finding financial-integrity, panel PR #756).
+    const incomeUsable = Number.isFinite(monthlyIncome) && monthlyIncome > 0;
+    const subLoadPct = incomeUsable ? (subMonthly / monthlyIncome) * 100 : 0;
     const subscriptionLoadScore = subscriptions.length > 0
         ? computeSubscriptionLoadScore(subscriptions, monthlyIncome)
         : null;
 
-    return [
+    return sanitizeNonFinite([
         {
             id: 'savingsRate' as const,
             label: "Taux d'épargne",
@@ -169,18 +217,35 @@ export function computeHealthMetrics(inputs: HealthScoreInputs): HealthMetricRow
             help: "Cible <15% du revenu net en abonnements épinglés. Épingle tes abos dans « Charges fixes ».",
             available: subscriptionLoadScore != null,
         },
-    ];
+    ]);
 }
 
 /** Score global pondéré. N'inclut que les métriques DISPONIBLES (numérateur ET dénominateur) :
  *  une métrique sans donnée (ex. FIRE sans projection, budget sans dépenses) ne doit pas peser
- *  comme un 0 qui écraserait le score. Normalisé par la somme des poids des seules métriques comptées. */
-export function computeHealthTotalScore(metrics: readonly HealthMetricRow[], weights: HealthWeights): number {
-    const counted = metrics.filter(m => m.available);
+ *  comme un 0 qui écraserait le score. Normalisé par la somme des poids des seules métriques comptées.
+ *
+ *  ⚠️ Rend **`null`** quand RIEN n'est mesurable (aucune métrique disponible, ou des poids tous à
+ *  zéro) — jamais `0`. Le repli `: 0` d'avant était une branche MORTE tant que les trois métriques
+ *  de base (`savingsRate`, `emergencyFund`, `debtRatio`) étaient déclarées `available: true` en dur ;
+ *  `sanitizeNonFinite` vient justement de rendre ce chemin ATTEIGNABLE (une corruption large peut
+ *  désormais les exclure toutes les trois). Or `0` s'affiche « 0/100 » avec l'anneau ROUGE
+ *  (`colorForHealthScore(0)`) : l'utilisateur lirait « santé critique » là où la vraie réponse est
+ *  « on ne peut rien mesurer » (mesuré : total 0, palette `stroke-danger-400`). Le type union force
+ *  `tsc` à exiger la branche honnête sur CHAQUE surface d'affichage, présente et future
+ *  (finding silent-failure-hunter, panel PR #756). */
+export function computeHealthTotalScore(metrics: readonly HealthMetricRow[], weights: HealthWeights): number | null {
+    // `Number.isFinite` en CEINTURE : `computeHealthMetrics` assainit déjà sa sortie, mais cette
+    // fonction est exportée et peut recevoir des lignes d'une autre provenance — une seule valeur
+    // non finie rendrait tout le score `NaN`.
+    const counted = metrics.filter(m => m.available && Number.isFinite(m.value));
     const weightedSum = counted.reduce((sum, m) => sum + m.value * (weights[m.id] || 0), 0);
     const totalWeight = counted.reduce((sum, m) => sum + (weights[m.id] || 0), 0);
-    return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
+    return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : null;
 }
+
+/** Palette NEUTRE pour « aucun score mesurable ». Surtout pas celle de `colorForHealthScore(0)`,
+ *  qui est la palette DANGER — un état « on ne sait pas » ne se peint pas en alarme rouge. */
+export const HEALTH_SCORE_UNKNOWN_COLORS = { ring: 'stroke-ink-500', text: 'text-ink-400', bg: 'bg-white/5' } as const;
 
 export function colorForHealthScore(score: number): { ring: string; text: string; bg: string } {
     if (score >= 70) return { ring: 'stroke-success-400', text: 'text-emerald-300', bg: 'bg-success-500/10' };

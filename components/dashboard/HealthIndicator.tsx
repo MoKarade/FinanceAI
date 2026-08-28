@@ -4,7 +4,7 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 import { DEFAULT_HEALTH_WEIGHTS, normalizeHealthWeights } from '../../utils/healthWeights';
 // [NAV-MERGE-SANTE-FUTUR] Calcul des métriques/score EXTRAIT vers `utils/healthScore.ts` (source
 // unique) : le résumé condensé de Futur (`FutureHealthSummary`) doit afficher le MÊME score.
-import { computeHealthMetrics, computeHealthTotalScore, colorForHealthScore, type HealthMetricRow } from '../../utils/healthScore';
+import { computeHealthMetrics, computeHealthTotalScore, colorForHealthScore, HEALTH_SCORE_UNKNOWN_COLORS, type HealthMetricRow } from '../../utils/healthScore';
 import { useHasUserData } from '../../utils/useHasUserData';
 import { EmptyDataPrompt } from '../ui/EmptyDataPrompt';
 import { Icon } from '../ui/Icon';
@@ -83,7 +83,10 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
         );
     }
 
-    const colors = colorForHealthScore(totalScore);
+    // [Finding silent-failure-hunter, panel PR #756] `null` = aucune métrique mesurable. On peint
+    // NEUTRE et on affiche « — » : la palette de `colorForHealthScore(0)` est celle du DANGER, et
+    // un anneau rouge à 0/100 dirait « santé critique » au lieu de « rien de mesurable ».
+    const colors = totalScore === null ? HEALTH_SCORE_UNKNOWN_COLORS : colorForHealthScore(totalScore);
 
     const handleWeightChange = (id: keyof HealthWeights, value: number) => {
         setAppState({ healthWeights: { ...weights, [id]: Math.max(0, Math.min(100, value)) } });
@@ -98,7 +101,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
     // Géométrie du donut SVG (rayon 56, stroke 8)
     const RADIUS = 56;
     const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-    const dashOffset = CIRCUMFERENCE * (1 - totalScore / 100);
+    const dashOffset = totalScore === null ? CIRCUMFERENCE : CIRCUMFERENCE * (1 - totalScore / 100); // null → anneau VIDE
 
     return (
         <div className={`rounded-card border border-white/10 bg-white/5 p-4 ${className}`}>
@@ -143,7 +146,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                         />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <div className={`text-2xl font-black ${colors.text} tabular-nums`}>{totalScore}</div>
+                        <div className={`text-2xl font-black ${colors.text} tabular-nums`}>{totalScore ?? '—'}</div>
                         <div className="text-tiny text-ink-400">/ 100</div>
                     </div>
                 </div>

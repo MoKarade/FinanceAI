@@ -33,7 +33,11 @@ export interface PersonaTxProfile {
 }
 
 // PRNG seedé déterministe (mulberry32) — variance reproductible d'un build à l'autre.
-function mulberry32(seed: number): () => number {
+// Exporté depuis [TEST-PERSONA-NON-DETERMINISTE] pour que `services/testTransactions.ts` (le
+// générateur LEGACY du persona par défaut) le RÉUTILISE au lieu d'ajouter une 4e copie. On ne
+// prend PAS celui de `services/projection/helpers.ts` : cet import tirerait `services/realEstate`
+// dans le graphe des personas pour six lignes d'arithmétique.
+export function mulberry32(seed: number): () => number {
     let a = seed >>> 0;
     return () => {
         a = (a + 0x6d2b79f5) | 0;

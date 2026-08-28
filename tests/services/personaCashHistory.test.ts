@@ -33,7 +33,8 @@ function startingCash(balances: Record<string, number> | undefined, txs: Transac
 
 describe('Personas — passé de cash sur 24 mois (plausible, no-fake)', () => {
     // 'couple-confort' est le persona PAR DÉFAUT historique : il réutilise les
-    // fixtures legacy (generateTestTransactions, ~3 mois, Math.random non seedé),
+    // fixtures legacy (generateTestTransactions, ~3 mois ; désormais SEEDÉ depuis
+    // [TEST-PERSONA-NON-DETERMINISTE], lot 30 — le générateur reste distinct des 24 mois),
     // conservées telles quelles pour ne pas casser les baselines E2E. Sa continuité
     // passé↔futur est garantie autrement (démarrage « aujourd'hui » + reconstruction
     // du portefeuille). Sa migration vers le générateur 24 mois est un suivi

@@ -6,6 +6,26 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-28 (fiabilité : score de santé, parité des outils IA, données de test reproductibles)
+
+- **Corrigé** : le score de Santé financière pouvait afficher « NaN/100 » (sur les deux écrans qui
+  le montrent) si une donnée source était corrompue — par exemple un revenu restauré depuis une
+  sauvegarde contenant un nombre trop grand pour être représenté. La métrique concernée affiche
+  désormais « — » comme n'importe quelle donnée manquante, le score global reste lisible, les
+  autres métriques sont intactes, et l'incident est journalisé au lieu d'être muet.
+- **Ajouté** : un test vérifie que les outils d'ÉCRITURE proposés à Claude sont EXACTEMENT les
+  mêmes des deux côtés (assistant intégré à l'app et connecteur claude.ai). Un outil ajouté ou
+  retiré d'un seul côté était jusqu'ici invisible pour tous les contrôles automatiques.
+- **Corrigé** : le jeu de données de démonstration par défaut (« Couple à l'aise ») tirait ses
+  montants au hasard à chaque chargement — deux ouvertures de l'app donnaient deux patrimoines
+  différents. Il est désormais reproductible.
+- **Corrigé** (trouvé par la relecture du correctif ci-dessus) : avec la même donnée corrompue, la
+  métrique « Poids des abonnements » affichait au contraire un score PARFAIT et le texte « 0,0 % du
+  revenu net », un chiffre faux. Elle est maintenant traitée comme les autres.
+- **Corrigé** : quand plus AUCUNE métrique n'est mesurable, la Santé financière affiche « — » en
+  couleur neutre au lieu de « 0/100 » avec l'anneau rouge, qui se lisait « santé critique ».
+
+
 ## [unreleased] — 2026-08-27 (Budget : un troisième chiffre « Objectif » sur les tuiles)
 
 - **Ajouté** : les tuiles Revenus / Dépenses / Fin de mois / Restant du Budget affichent maintenant

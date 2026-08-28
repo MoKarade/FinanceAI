@@ -10,6 +10,88 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-28 — Lot 30 : garde de parité des tools d'écriture, score de santé non fini, persona par défaut reproductible
+
+> ⚠️ **Panel `/review-all` (5 agents) sur la PR #756 — 4 défauts CAUSÉS ou LIMITÉS par ce lot, tous
+> corrigés dans la même PR, aucun trouvé par le gate.** (a) `computeHealthTotalScore` retombait sur
+> `0` quand plus rien n'est mesurable : branche MORTE avant le lot (les trois métriques de base
+> étaient `available:true` en dur, donc `counted` ne pouvait pas être vide), **rendue ATTEIGNABLE**
+> par `sanitizeNonFinite` — et `0` s'affiche « 0/100 » avec l'anneau ROUGE, soit « santé critique »
+> pour dire « on ne sait pas ». Corrigé en `number | null`, ce qui fait exiger la branche honnête par
+> `tsc` sur chaque surface. Classe `UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`.
+> (b) Sur la MÊME corruption (`netSalary: Infinity`), `computeSubscriptionLoadScore` rendait le score
+> PARFAIT de 100 au lieu de 87 (`Infinity > 0` est vrai → `95/∞ = 0`) avec le libellé faux « 0,0 % du
+> revenu net » — mesuré +8 points sur le total. La garde de SORTIE ne pouvait structurellement pas le
+> voir : 100 est un nombre fini. C'est la garde d'ENTRÉE qui devait refuser. (c) Ma fixture de test
+> portait `subscriptions: []`, ce qui rendait cette métrique inobservable — l'assertion « les autres
+> métriques restent intactes » était vacueuse pour elle (`UNE-GARDE-NE-COUVRE-QUE-CE-QUE-SA-FIXTURE-REND-NON-NUL`).
+> (d) J'avais recopié le « 3 088,55 $ » du ticket dans le CODE : il n'est pas retrouvable sur la
+> grandeur qu'il nomme, bornée par construction à 2 480 $ et re-mesurée à 1 168,66 $ sur 50 000
+> graines. Un ticket n'est pas une source, même quand il dit « MESURÉ ».
+> Quatre findings pré-existants routés au `BACKLOG.md` plutôt que corrigés ici
+> (`[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]`, `[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`,
+> `[AITOOLS-CALLSITE-UNIQUE-GARDE]`, `[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE]`).
+
+- [x] **`[MCP-WRITE-PARITY-GUARD]`** (S — finding ai-reviewer, panel PR #755, PRÉ-EXISTANT) —
+  `tests/aiTools/registryParity.test.ts` n'assure l'exhaustivité que sur `READ_SPECS`
+  (`s.kind === 'read'`). AUCUN test ne compare les tools d'ÉCRITURE enregistrés côté serveur MCP
+  (`mcp/server.ts`, bloc `if (options.store)`) à `WRITE_SPECS` (`services/aiTools/registry.ts`).
+  Les deux fichiers compilent indépendamment → un tool d'écriture ajouté ou retiré d'UN SEUL des
+  deux registres ne serait vu ni par `tsc`, ni par le lint, ni par le gate. Risque concret : un
+  geste destructif (`delete_item`-like) exposé côté MCP mais absent du chat in-app, ou l'inverse,
+  sans aucun test rouge. Même classe que `[DEFAULTS-DRIFT-FINTABLE-FIELDS]` (test unidirectionnel).
+  ⚠️ Le retrait de `upsert_savings_goal` (PR #755) a été fait symétriquement à la main et VÉRIFIÉ —
+  ce ticket ferme le trou pour la prochaine fois, il ne corrige pas un bug actuel.
+  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 874 tests, 457 fichiers). Garde
+  `tests/mcp/writeToolParity.test.ts` : elle démarre le VRAI `createServer()` sur un
+  `InMemoryTransport` et lui demande `tools/list` — mesure COMPORTEMENTALE, pas un scan de source
+  (un `registerX` neutralisé ne peut pas se cacher derrière un grep). Trois volets : parité
+  bidirectionnelle des tools d'ÉCRITURE (serveur avec magasin MOINS serveur sans magasin ≡
+  `WRITE_SPECS`), parité des tools de LECTURE hors deux exclusions déclarées ET vérifiées non
+  périmées (`ping`, `connect_drive`), et égalité des DESCRIPTIONS servies au modèle. Discriminée
+  par 3 perturbations : retrait côté serveur → rouge, retrait côté registre → rouge, description
+  réécrite dans un `.tool.ts` → rouge.
+
+- [x] **`[HEALTH-SCORE-NAN-SILENCIEUX]`** (XS — finding silent-failure-hunter, panel PR #755,
+  PRÉ-EXISTANT) — `clamp01` (`utils/healthScore.ts`) ne neutralise pas `NaN`
+  (`Math.max(0, Math.min(100, NaN)) === NaN`), et les 3 métriques toujours `available: true`
+  (taux d'épargne, coussin, ratio dette/actif) n'ont aucune garde d'entrée. Une entrée corrompue en
+  amont afficherait littéralement « Santé financière : NaN/100 », sans `logError`. Pas une
+  violation stricte du no-fake-data (NaN n'est pas un « 0 $ crédible »), mais un affichage cassé
+  et muet. ⚠️ Défaut d'ORIGINE de `HealthIndicator.tsx` : l'extraction de `utils/healthScore.ts`
+  (PR #755) l'a seulement DUPLIQUÉ vers une 2e surface d'affichage, doublant son exposition.
+  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 874 tests, 457 fichiers). Chemin MESURÉ
+  avant de coder : sur 8 entrées sondées (montant de poste NaN/Infinity, soldes, prix d'actif,
+  cible FIRE, dette), **une seule** contamine encore le total — `netSalary: Infinity`, que `|| 0`
+  ne rattrape pas (Infinity est truthy) et que `JSON.parse` PRODUIT depuis un blob contenant
+  `1e999`. Correctif : un point de passage UNIQUE `sanitizeNonFinite` sur la liste finale (donc
+  couvrant aussi toute métrique AJOUTÉE plus tard) qui bascule la métrique en `available:false`
+  — l'état « — » que l'UI rend déjà — au lieu d'un `?? 0` qui serait un score CRÉDIBLE inventé
+  (no-fake-data), plus `logErrorThrottled` (une trace, pas N par re-rendu). Ceinture `isFinite`
+  dans `computeHealthTotalScore`, qui est exporté et peut recevoir des lignes d'ailleurs.
+  6 tests ; sur le code d'AVANT, 4 rougissent (dont `expected NaN to be 80`) et 2 restent verts
+  par conception (anti-vacuité + non-régression des autres métriques).
+
+- [x] **`[TEST-PERSONA-NON-DETERMINISTE]`** (S, **ÉLEVÉ en gêne d'outillage** — finding
+  projection-validator MESURÉ, panel PR #755, PRÉ-EXISTANT) — `services/testTransactions.ts:42-52`
+  utilise `Math.random()` NU. `couple-confort`, le persona PAR DÉFAUT, est le seul à consommer
+  `generateTestTransactions()` → `calculatedStartingCash` change à CHAQUE appel. Mesuré : 5
+  exécutions du MÊME code donnent 5 `finalNetWorth` distincts, amplitude **3 088,55 $** (0,028 %).
+  Conséquence directe : **toute comparaison avant/après sur ce persona est impossible sans graine**
+  — le panel a dû injecter un LCG pour obtenir sa preuve bit-identique. C'est le persona qu'un
+  audit prend spontanément. Fix : graine injectable (le dépôt a déjà ce patron pour Monte Carlo).
+  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 874 tests, 457 fichiers). Les 5
+  `Math.random()` de `services/testTransactions.ts` passent à un mulberry32 seedé, graine par
+  défaut 42 (même convention que `buildPersonaTransactions`) et surchargeable. Le PRNG est
+  RÉUTILISÉ depuis `services/testPersonas/transactions.ts` (désormais exporté) plutôt que
+  recopié une 4e fois — et pas pris dans `services/projection/helpers.ts`, dont l'import
+  tirerait `services/realEstate` dans le graphe des personas pour six lignes d'arithmétique.
+  4 tests, anti-vacuité incluse (deux graines différentes DOIVENT diverger, et la variance
+  intra-tirage doit survivre) ; 2 rougissent au retour à `Math.random()`.
+  ⚠️ **Reste ouvert, hors périmètre du ticket** : les dates restent relatives à `new Date()`,
+  donc le persona n'est pas reproductible d'un JOUR à l'autre — choix délibéré et identique
+  chez son voisin (le passé reconstruit doit toucher aujourd'hui).
+
 ## 2026-08-27 — Objectif ajouté aux 4 tuiles Budget + filet de test manquant comblé
 
 - [x] **`[BUDGET-REEL-PREVISIONNEL-OBJECTIF]`** (M) — PR #755 (lot 29), gate

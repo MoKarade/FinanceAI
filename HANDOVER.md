@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-28 — Lot 30 : livraison de 3 findings pré-existants du panel PR #755 (PR #756)
+> Les trois findings routés par le panel de PR #755 ont été implémentés isolément, chacun sur son mécanisme :
+> - **`[MCP-WRITE-PARITY-GUARD]`** : garde comportementale `tests/mcp/writeToolParity.test.ts` — démarre le VRAI serveur MCP sur un transport en mémoire et vérifie que les tools d'écriture du serveur (`mcp/server.ts`) sont EXACTEMENT identiques à ceux du registre du chat in-app (`WRITE_SPECS`) et vice-versa. Parité bidirectionnelle + descriptions, exclusions `ping`/`connect_drive` déclarées et validées.
+> - **`[HEALTH-SCORE-NAN-SILENCIEUX]`** : `utils/healthScore.ts` `sanitizeNonFinite` — bascule toute métrique au score non fini (ex. `netSalary: Infinity` restaurée depuis un backup) en `available:false` + trace throttlée (source 'storage', sévérité 'warning'). Également ceinture `Number.isFinite` dans `computeHealthTotalScore`. Chemin mesuré : `netSalary: Infinity` → `savingsRateRaw = NaN` → score total NaN.
+> - **`[TEST-PERSONA-NON-DETERMINISTE]`** : `services/testTransactions.ts` seedé — le générateur utilisait `Math.random()` NU, rendant le persona `couple-confort` (PAR DÉFAUT) non reproductible. Fixes : mulberry32 avec graine 42 par défaut (même convention que `testPersonas/transactions.ts` et Monte Carlo), surchargeable. Dates toujours relatives à `new Date()` (volontaire, le passé doit toucher aujourd'hui).
+> **Panel `/review-all` (5 agents) sur la PR #756 — 4 défauts CAUSÉS ou LIMITÉS par le lot, corrigés dans la PR** :
+> (a) `computeHealthTotalScore` retombait sur `0` quand plus rien n'est mesurable — branche MORTE avant
+> le lot (les 3 métriques de base étaient `available:true` en dur), rendue ATTEIGNABLE par
+> `sanitizeNonFinite` ; `0` s'affiche « 0/100 » avec l'anneau ROUGE. Corrigé en `number | null`, ce qui
+> force `tsc` à exiger la branche honnête sur chaque surface. (b) `computeSubscriptionLoadScore`
+> fabriquait un score PARFAIT de 100 sous revenu `Infinity` (`Infinity > 0` est vrai → `95/∞ = 0`), avec
+> le libellé faux « 0,0 % du revenu net » — garde d'ENTRÉE durcie (`Number.isFinite`) ; la garde de
+> SORTIE ne pouvait pas le voir, 100 est un nombre fini. (c) Ma fixture de test portait
+> `subscriptions: []`, ce qui rendait cette métrique inobservable — abonnements épinglés ajoutés.
+> (d) Le « 3 088,55 $ » du ticket, que j'avais recopié dans le code, n'est pas retrouvable :
+> `calculatedStartingCash` est borné par construction à 2 480 $, re-mesuré à 1 168,66 $ sur 50 000
+> graines. Un ticket n'est pas une source.
+>
+> Gate complet vert : **457 fichiers, 4 874 tests**, typecheck + lint + build.
+>
 > ## 🟢 Session 2026-08-28 — Lot 29 : panel `/review-all` (7 agents) et PR #755
 > Les cinq tickets du lot 29 (voir entrées ci-dessous) ont été passés au panel complet à la
 > reconnexion de GitHub. **6 défauts CAUSÉS par le lot, tous corrigés dans la PR** : 3 dans la
@@ -21,7 +41,7 @@
 > chemin retiré.
 > 6 findings PRÉ-EXISTANTS mesurés par le panel, routés au `BACKLOG.md` sans les corriger :
 > `MCP-WRITE-PARITY-GUARD`, `TEST-PERSONA-NON-DETERMINISTE` (⚠️ `Math.random()` nu rend le persona
-> PAR DÉFAUT non reproductible — amplitude 3 088 $ : toute mesure avant/après y est impossible sans
+> PAR DÉFAUT non reproductible : toute mesure avant/après y est impossible sans
 > graine), `ENG-GOALS-HORS-TOTALEXPENSES`, `ENG-GOALSHORTFALLS-CHAMP-MORT`,
 > `HEALTH-SCORE-NAN-SILENCIEUX`, `BUDGET-DEUX-NETS-MEME-ECRAN`.
 > Gate complet vert : **454 fichiers, 4 856 tests**, typecheck + lint + build. CI GitHub verte

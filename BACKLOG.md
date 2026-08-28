@@ -34,14 +34,47 @@
   vues d'analyse précises (graphique de tendance ? comparaison mois-à-mois ? projection
   d'impact ?), quelle interactivité voulue (filtrage, regroupement, drill-down). Effort L : ne
   pas coder avant d'avoir cette DoD précise.
-- [ ] **`[TEST-PERSONA-NON-DETERMINISTE]`** (S, **ÉLEVÉ en gêne d'outillage** — finding
-  projection-validator MESURÉ, panel PR #755, PRÉ-EXISTANT) — `services/testTransactions.ts:42-52`
-  utilise `Math.random()` NU. `couple-confort`, le persona PAR DÉFAUT, est le seul à consommer
-  `generateTestTransactions()` → `calculatedStartingCash` change à CHAQUE appel. Mesuré : 5
-  exécutions du MÊME code donnent 5 `finalNetWorth` distincts, amplitude **3 088,55 $** (0,028 %).
-  Conséquence directe : **toute comparaison avant/après sur ce persona est impossible sans graine**
-  — le panel a dû injecter un LCG pour obtenir sa preuve bit-identique. C'est le persona qu'un
-  audit prend spontanément. Fix : graine injectable (le dépôt a déjà ce patron pour Monte Carlo).
+- [ ] **`[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]`** (S — findings silent-failure-hunter + financial-integrity
+  MESURÉS, panel PR #756, PRÉ-EXISTANT) — deux métriques de santé traversent des absorptions
+  SILENCIEUSES avant d'atteindre la garde `sanitizeNonFinite` : le `clamp01` local de
+  `utils/healthRatios.ts` (`Number.isFinite(n) ? n : 0`) et `totalYearlyCost` de
+  `utils/subscriptions.ts`. Une entrée corrompue devient un `0` FINI — donc crédible, donc invisible
+  à la garde de sortie, et sans aucune trace. Mesuré (poids par défaut) : `budgetItems[].target =
+  Infinity` → total **28** ; `= NaN` → **56** ; `subscriptions[].yearlyCost = Infinity` → **84** ;
+  `debts[].balance = Infinity` → **84** — dans tous les cas `available: true`, aucun `logError`.
+  Classe `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`. ⚠️ Ces absorptions ont d'autres
+  consommateurs : grep-les AVANT de durcir (la garde d'entrée de `computeSubscriptionLoadScore` a été
+  durcie au lot 30, elle n'avait qu'un seul consommateur de production).
+- [ ] **`[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`** (M — finding code-reviewer, panel PR #756,
+  PRÉ-EXISTANT) — le vecteur de corruption traité au lot 30 (`JSON.parse` rend `Infinity` depuis un
+  blob Drive/backup contenant `1e999`) n'est neutralisé QU'À l'affichage Santé. Le même `netSalary:
+  Infinity` atteint le MOTEUR sans garde : `u?.netSalary || u?.salary || 0` ne le rattrape pas
+  (`Infinity` est truthy) → `netAnnual = Infinity × 12` et cascade. Aucun schéma Zod à l'hydratation
+  du store (`store/useFinanceStore.ts` fait le même `|| 0` sans `isFinite`), aucune garde `isFinite`
+  dans `services/projection/buildSimulationParams.ts` ni `setupSimulation.ts`. Un Futur entièrement
+  corrompu est nettement plus grave que le score d'écran corrigé. **La garde doit vivre à la
+  FRONTIÈRE de chargement** (store / restauration Drive), pas fichier par fichier —
+  classe `DECISION-PRIVACY-UNE-SEULE-SORTIE` appliquée à la validation d'entrée.
+- [ ] **`[AITOOLS-CALLSITE-UNIQUE-GARDE]`** (S — findings ai-reviewer, panel PR #756) — deux trous
+  que `[MCP-WRITE-PARITY-GUARD]` (lot 30) ne ferme pas, aucun n'étant un défaut observé aujourd'hui :
+  (a) `services/aiTools/agentLoop.ts` est le SEUL site qui déclare un tableau `tools` à l'API
+  Anthropic, mais c'est une propriété de FAIT, non testée — un futur second site avec son propre
+  `tools:` échapperait à toutes les gardes ; remède = une garde de source « seul `agentLoop.ts`
+  importe `toAnthropicTools` », même patron que `tests/aiTools/noMcpSdkInSpecs.test.ts`.
+  (b) Rien ne lie `spec.kind === 'write'` à l'ENDROIT où le tool est enregistré dans `mcp/server.ts`
+  (bloc `if (options.store)`) : un tool d'écriture branché hors de ce bloc ferait rougir la parité,
+  mais la correction « naturelle » (l'ajouter à `READ_SPECS` ou à `SERVER_ONLY`) masquerait sa vraie
+  nature. Vérifié : les 8 tools d'écriture actuels sont bien dans le bloc conditionnel.
+- [ ] **`[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE]`** (S — findings silent-failure-hunter,
+  panel PR #756) — trois angles morts de restitution de l'état « donnée corrompue » introduit au
+  lot 30 : (a) `components/future/FutureHealthSummary.tsx` n'affiche que le score global — une
+  métrique exclue pour CORRUPTION y est visuellement identique à une exclue pour absence légitime
+  (FIRE non calculé), alors que la première est ACTIONNABLE ; (b) `HealthIndicator.tsx` annonce le
+  même `aria-label` « donnée indisponible » dans les deux cas (le texte visuel `raw` distingue, pas
+  l'accessibilité) ; (c) `logErrorThrottled` a un `Set` de module jamais purgé côté navigateur —
+  une corruption qui disparaît puis RÉCIDIVE dans la même session (onglet ouvert des jours) est
+  muette la 2e fois, alors que le serveur MCP appelle `__resetErrorThrottle()` à chaque requête
+  précisément pour ça.
 - [ ] **`[ENG-GOALS-HORS-TOTALEXPENSES]`** (S, FAIBLE [Probable] — finding projection-validator
   MESURÉ, panel PR #755, PRÉ-EXISTANT) — un tirage d'objectif n'entre PAS dans `totalExpenses` :
   mesuré, base et `FinancialGoal` équivalent donnent tous deux `totalExpenses` =
@@ -56,24 +89,11 @@
   prompt IA, aucune doc technique — seulement deux mentions narratives en archive. Candidat
   `knip`/nettoyage. ⚠️ Le champ reste ALIMENTÉ correctement, ce n'est pas un bug : juste du code
   publié que personne ne lit (même classe que `[UTIL-GOLDENSPLIT-ORPHELIN]`).
-- [ ] **`[MCP-WRITE-PARITY-GUARD]`** (S — finding ai-reviewer, panel PR #755, PRÉ-EXISTANT) —
-  `tests/aiTools/registryParity.test.ts` n'assure l'exhaustivité que sur `READ_SPECS`
-  (`s.kind === 'read'`). AUCUN test ne compare les tools d'ÉCRITURE enregistrés côté serveur MCP
-  (`mcp/server.ts`, bloc `if (options.store)`) à `WRITE_SPECS` (`services/aiTools/registry.ts`).
-  Les deux fichiers compilent indépendamment → un tool d'écriture ajouté ou retiré d'UN SEUL des
-  deux registres ne serait vu ni par `tsc`, ni par le lint, ni par le gate. Risque concret : un
-  geste destructif (`delete_item`-like) exposé côté MCP mais absent du chat in-app, ou l'inverse,
-  sans aucun test rouge. Même classe que `[DEFAULTS-DRIFT-FINTABLE-FIELDS]` (test unidirectionnel).
-  ⚠️ Le retrait de `upsert_savings_goal` (PR #755) a été fait symétriquement à la main et VÉRIFIÉ —
-  ce ticket ferme le trou pour la prochaine fois, il ne corrige pas un bug actuel.
-- [ ] **`[HEALTH-SCORE-NAN-SILENCIEUX]`** (XS — finding silent-failure-hunter, panel PR #755,
-  PRÉ-EXISTANT) — `clamp01` (`utils/healthScore.ts`) ne neutralise pas `NaN`
-  (`Math.max(0, Math.min(100, NaN)) === NaN`), et les 3 métriques toujours `available: true`
-  (taux d'épargne, coussin, ratio dette/actif) n'ont aucune garde d'entrée. Une entrée corrompue en
-  amont afficherait littéralement « Santé financière : NaN/100 », sans `logError`. Pas une
-  violation stricte du no-fake-data (NaN n'est pas un « 0 $ crédible »), mais un affichage cassé
-  et muet. ⚠️ Défaut d'ORIGINE de `HealthIndicator.tsx` : l'extraction de `utils/healthScore.ts`
-  (PR #755) l'a seulement DUPLIQUÉ vers une 2e surface d'affichage, doublant son exposition.
+  ⚠️ **Arbitrage requis avant de coder** (constat lot 30, 2026-08-28) : le ticket prescrit la
+  suppression, mais le champ porte une information UTILE à l'utilisateur (« ton but n'a pas pu
+  être financé, il manquait X $ »). Supprimer et exposer sont deux livraisons opposées, et la
+  seconde est du scope que Marc n'a pas demandé. À trancher : (a) supprimer le champ mort, ou
+  (b) le rendre visible sur Futur — le producteur est correct dans les deux cas.
 - [ ] **`[BUDGET-DEUX-NETS-MEME-ECRAN]`** (S — finding financial-integrity, panel PR #755,
   PRÉ-EXISTANT) — deux « net » de PROVENANCE différente coexistent sur l'écran Budget :
   l'Objectif Revenus affiche le net RECALCULÉ depuis le brut par `calculateFiscalReport`

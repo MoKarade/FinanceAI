@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 856 tests** Vitest
-(454 fichiers de test, mesuré le 2026-08-28). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 874 tests** Vitest
+(457 fichiers de test, mesuré le 2026-08-28). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -321,6 +321,18 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   précédentes — leur chiffre était vrai À LEUR DATE. Cibler la ligne du lot courant par index
   ASSERTÉ. Les documents sans date (en-tête `CLAUDE.md`) sont l'inverse : eux portent la valeur du
   jour (`UN-REMPLACEMENT-GLOBAL-DANS-UNE-ARCHIVE-FALSIFIE-UN-RECIT`).
+- Variante CODE du même piège : un `replace` GLOBAL d'un jeton (`Math.random()` → `rand()`) réécrit
+  aussi le COMMENTAIRE qui le nomme — mon en-tête est devenu « utilisait `rand()` NU », commité et
+  poussé. ⚠️ L'assertion de COMPTE n'a pas protégé, elle a **certifié** : `n == 6` était vrai parce
+  qu'elle additionnait 5 occurrences de CODE et 1 de PROSE (le fichier n'en portait que cinq).
+  Remplacer sur la source DÉCOMMENTÉE, ou relire le DIFF et non l'intention
+  (`UN-REPLACE-GLOBAL-DE-JETON-REECRIT-LE-COMMENTAIRE-QUI-LE-NOMME`).
+- Une **fixture aux mauvais NOMS DE CHAMPS est une fixture VIDE**, en silence : `{ amount, frequency:
+  'monthly', nature: 'BESOIN' }` contre un type qui porte `{ target, frequency: 'Monthly', nature:
+  'Besoin' }` donne 0 $ via `item.target || 0`, et perturber ce poste n'atteint plus rien — j'ai
+  failli conclure « déjà durci ». Le `as unknown as` désactive le contrôle, les `|| 0` de production
+  absorbent le reste. Asserter que la fixture rend la grandeur INTERMÉDIAIRE non nulle AVANT de
+  conclure d'une perturbation muette (`UNE-FIXTURE-AUX-MAUVAIS-NOMS-DE-CHAMPS-EST-UNE-FIXTURE-VIDE`).
 - Quand un fait **ne peut pas être établi de façon fiable** (deux structures sans identifiant
   commun), ne pas l'affirmer ET ne pas se taire : avertir sur un fait STRUCTUREL vérifiable et
   laisser la conclusion à l'utilisateur. Une détection par NOM raterait en silence et donnerait une
@@ -396,6 +408,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   avenir : X », donc le rendre dépendant de l'état final a fait basculer le conseil de décaissement
   au gré du curseur d'horizon. Grepper qui TRIE/compare/maximise une grandeur, pas seulement qui
   l'affiche, et mesurer le CLASSEMENT avant/après (`UN-CORRECTIF-PEUT-ETRE-PIRE-QUE-LE-DEFAUT-SUR-UNE-BRANCHE`).
+- ⚠️ **Un correctif peut RENDRE ATTEIGNABLE une branche MORTE** — et c'est là que se cache la
+  régression : `sanitizeNonFinite` peut désormais exclure les 3 métriques de santé jusque-là
+  `available:true` en dur, réveillant un `: 0` qui s'affiche « 0/100 » en palette DANGER (« santé
+  critique » pour dire « on ne sait pas »). Après avoir élargi l'ensemble des états qu'une fonction
+  produit, relire ses CONSOMMATEURS pour trouver le repli jusque-là inatteignable ; le correctif est
+  un TYPE (`number | null`), pas un meilleur nombre. Corollaire : **une garde de SORTIE ne voit pas
+  un fini PLAUSIBLE** — `Infinity > 0` est vrai, donc `95/∞ = 0` donnait le score PARFAIT 100 et le
+  libellé faux « 0,0 % du revenu net » ; `> 0` ne remplace jamais `Number.isFinite`, et la garde
+  doit être à l'ENTRÉE (`UN-CORRECTIF-PEUT-RENDRE-ATTEIGNABLE-UNE-BRANCHE-MORTE`).
 - ⚠️ **La tranche retirée d'une assiette doit être la grandeur RÉELLE, pas l'estimé de saisie** :
   soustraire l'estimé non indexé, sans prorata et sans SRG d'un revenu nominal faisait −29 % sur le
   seul dénominateur — rien ne crie. Signal : **la même variable indexée à 40 lignes d'écart et pas

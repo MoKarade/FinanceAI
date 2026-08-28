@@ -216,6 +216,22 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
         const loadSansRevenu = find(sansRevenu, 'subscriptionLoad');
         expect(loadSansRevenu.available).toBe(false);
         expect(loadSansRevenu.raw).toBe('Revenu requis');
+
+        // ⚠️ Le cas qui exerce VRAIMENT la source unique `incomeUsableForRatios` (finding
+        // code-reviewer, 4e passe) : `netSalary: 0` ne suffit pas — `0 > 0` est déjà faux sans
+        // `Number.isFinite`, donc une copie dé-factorisée qui aurait PERDU le `isFinite` passerait
+        // quand même. Il faut un revenu NON FINI croisé avec un abo illisible : c'est la seule
+        // combinaison où les deux conditions divergent, donc la seule qui prouve que les trois
+        // anciennes copies sont bien retombées sur une définition unique.
+        for (const netSalary of [Infinity, NaN]) {
+            const croise = computeHealthMetrics(inputs({
+                transactions, budgetItems, subscriptions: subsKo,
+                config: { users: [{ name: 'Moi', netSalary }] } as unknown as HealthScoreInputs['config'],
+            }));
+            const l = find(croise, 'subscriptionLoad');
+            expect(l.available, `revenu ${String(netSalary)} + abo illisible`).toBe(false);
+            expect(l.raw, `revenu ${String(netSalary)} : la cause est le REVENU, pas l'abonnement`).toBe('Revenu requis');
+        }
     });
 
     it('[ceinture] computeHealthTotalScore ignore une ligne non finie venue d\'ailleurs', () => {

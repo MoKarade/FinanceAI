@@ -75,6 +75,14 @@
   c'est-à-dire exactement le défaut que ce correctif venait de fermer, réintroduit par la méthode
   qui l'a fermé. `incomeUsableForRatios` est désormais la source unique, et le test vérifie que le
   SCORE suit exactement le prédicat (sans ce lien, une source unique ne prouve rien).
+  ⚠️ **QUATRIÈME passe** — lancée avec une question NOMMÉE (« mon dernier test est-il
+  circulaire ? ») plutôt qu'un mandat général. Réponse : pas circulaire, mais il n'exerçait qu'UN
+  des trois anciens sites. Les deux copies qui vivaient dans `healthScore.ts` n'étaient touchées
+  par aucun test, parce que `netSalary: 0` ne discrimine RIEN — `0 > 0` est déjà faux sans
+  `Number.isFinite`. Seul un revenu NON FINI croisé avec un abonnement illisible fait diverger les
+  deux conditions, donc seul ce cas prouve que les trois copies sont retombées sur une définition
+  unique. Ajouté, et il rougit bien sur une copie dé-factorisée. Aucun changement de code de
+  production : la 4e passe se solde par le test qui manquait.
 
 - [x] **`[AITOOLS-CALLSITE-UNIQUE-GARDE]`** (S — findings ai-reviewer, panel PR #756) — deux trous
   que `[MCP-WRITE-PARITY-GUARD]` (lot 30) ne ferme pas, aucun n'étant un défaut observé aujourd'hui :

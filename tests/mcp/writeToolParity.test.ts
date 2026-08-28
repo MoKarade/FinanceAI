@@ -45,8 +45,12 @@ const SERVER_ONLY = ['ping', 'connect_drive'] as const;
 function normalizeSchema(raw: unknown): unknown {
     const schema = { ...(raw as Record<string, unknown>) };
     delete schema.$schema;
+    // Condition sur la VALEUR exacte mesurée (`false`), pas seulement sur « schéma vide » : sinon
+    // la même clause avalerait aussi un futur `additionalProperties: true` (permissif) posé par une
+    // seule des deux surfaces — un vrai changement de contrat de validation, pas un écart de méta
+    // (finding code-reviewer, 2e passe panel PR #756).
     const props = (schema.properties ?? {}) as Record<string, unknown>;
-    if (Object.keys(props).length === 0) delete schema.additionalProperties;
+    if (schema.additionalProperties === false && Object.keys(props).length === 0) delete schema.additionalProperties;
     return schema;
 }
 

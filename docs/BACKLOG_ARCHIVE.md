@@ -42,7 +42,7 @@
   sans aucun test rouge. Même classe que `[DEFAULTS-DRIFT-FINTABLE-FIELDS]` (test unidirectionnel).
   ⚠️ Le retrait de `upsert_savings_goal` (PR #755) a été fait symétriquement à la main et VÉRIFIÉ —
   ce ticket ferme le trou pour la prochaine fois, il ne corrige pas un bug actuel.
-  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 873 tests, 457 fichiers). Garde
+  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 874 tests, 457 fichiers). Garde
   `tests/mcp/writeToolParity.test.ts` : elle démarre le VRAI `createServer()` sur un
   `InMemoryTransport` et lui demande `tools/list` — mesure COMPORTEMENTALE, pas un scan de source
   (un `registerX` neutralisé ne peut pas se cacher derrière un grep). Trois volets : parité
@@ -60,7 +60,7 @@
   violation stricte du no-fake-data (NaN n'est pas un « 0 $ crédible »), mais un affichage cassé
   et muet. ⚠️ Défaut d'ORIGINE de `HealthIndicator.tsx` : l'extraction de `utils/healthScore.ts`
   (PR #755) l'a seulement DUPLIQUÉ vers une 2e surface d'affichage, doublant son exposition.
-  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 873 tests, 457 fichiers). Chemin MESURÉ
+  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 874 tests, 457 fichiers). Chemin MESURÉ
   avant de coder : sur 8 entrées sondées (montant de poste NaN/Infinity, soldes, prix d'actif,
   cible FIRE, dette), **une seule** contamine encore le total — `netSalary: Infinity`, que `|| 0`
   ne rattrape pas (Infinity est truthy) et que `JSON.parse` PRODUIT depuis un blob contenant
@@ -80,7 +80,7 @@
   Conséquence directe : **toute comparaison avant/après sur ce persona est impossible sans graine**
   — le panel a dû injecter un LCG pour obtenir sa preuve bit-identique. C'est le persona qu'un
   audit prend spontanément. Fix : graine injectable (le dépôt a déjà ce patron pour Monte Carlo).
-  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 873 tests, 457 fichiers). Les 6
+  ✅ **Livré lot 30** (`claude/lot-30`), gate vert (4 874 tests, 457 fichiers). Les 6
   `Math.random()` de `services/testTransactions.ts` passent à un mulberry32 seedé, graine par
   défaut 42 (même convention que `buildPersonaTransactions`) et surchargeable. Le PRNG est
   RÉUTILISÉ depuis `services/testPersonas/transactions.ts` (désormais exporté) plutôt que

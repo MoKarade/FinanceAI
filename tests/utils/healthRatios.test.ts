@@ -119,6 +119,22 @@ describe('computeSubscriptionLoadScore — [PH4D-BUDGET-RATIOS] poids des abos',
         expect(computeSubscriptionLoadScore([sub(240)], 0)).toBeNull();
         expect(computeSubscriptionLoadScore([sub(240)], -100)).toBeNull();
     });
+
+    it('revenu NON FINI → null, jamais un score fabriqué (finding financial-integrity, panel PR #756)', () => {
+        // `Infinity > 0` est VRAI : l'ancienne garde `!(monthlyIncome > 0)` le laissait passer, puis
+        // `20 / Infinity = 0` donnait le score PARFAIT de 100 — un fini PLAUSIBLE, donc invisible à
+        // toute garde de SORTIE. `JSON.parse('{"netSalary":1e999}')` PRODUIT cette valeur.
+        expect(computeSubscriptionLoadScore([sub(240)], Infinity)).toBeNull();
+        expect(computeSubscriptionLoadScore([sub(240)], -Infinity)).toBeNull();
+        expect(computeSubscriptionLoadScore([sub(240)], NaN)).toBeNull();
+        expect(computeSubscriptionLoadScore([sub(240)], -0)).toBeNull(); // rétrocompat : déjà null avant
+        // Anti-vacuité : le MÊME appel sur un revenu fini rend bien un score compté, strictement
+        // entre 0 et 100 — sinon « c'est null » serait satisfait par une fonction toujours nulle.
+        const sain = computeSubscriptionLoadScore([sub(4500)], 5000);
+        expect(sain).not.toBeNull();
+        expect(sain!).toBeGreaterThan(0);
+        expect(sain!).toBeLessThan(100);
+    });
     it('le plafond est bien 15%', () => {
         expect(SUBSCRIPTION_LOAD_CEILING).toBe(0.15);
     });

@@ -22,7 +22,7 @@
 > `calculatedStartingCash` est borné par construction à 2 480 $, re-mesuré à 1 168,66 $ sur 50 000
 > graines. Un ticket n'est pas une source.
 >
-> Gate complet vert : **457 fichiers, 4 873 tests**, typecheck + lint + build.
+> Gate complet vert : **457 fichiers, 4 874 tests**, typecheck + lint + build.
 >
 > ## 🟢 Session 2026-08-28 — Lot 29 : panel `/review-all` (7 agents) et PR #755
 > Les cinq tickets du lot 29 (voir entrées ci-dessous) ont été passés au panel complet à la

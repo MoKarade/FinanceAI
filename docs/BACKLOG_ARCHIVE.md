@@ -25,7 +25,7 @@
   deux cas d'un même relevé se sont partagé une corruption et le second annonçait un
   `baseNetAnnual` de 52 800 au lieu de 115 200, sans rien pour l'expliquer. Un fixture partagé ne
   fait pas ÉCHOUER un test : il en fabrique un FAUX, et rien n'alerte.
-  ✅ **Livré lot 33** (`claude/lot-33`), gate vert (4 897 tests, 460 fichiers). `structuredClone` sur les sept constantes réutilisées —
+  ✅ **Livré lot 33** (`claude/lot-33`), gate vert (4 897 tests, 460 fichiers). `structuredClone` sur les DIX constantes réutilisées (recompté ; j'avais écrit « sept », le nombre des PERSONAS) —
   et pas un spread : `{ ...TEST_CONFIG }` partagerait encore le tableau `users`, `[...TEST_ASSETS]`
   partagerait encore chaque actif, or c'est à ce niveau-là qu'on mute. Deux tests : identité
   stricte sur les SEPT personas (avec anti-vacuité sur le nombre de champs inspectés), et la

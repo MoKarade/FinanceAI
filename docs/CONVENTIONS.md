@@ -7965,3 +7965,17 @@ Deux fois de suite, le défaut d'outillage s'est logé dans le fixture que tout 
 réfléchir. Quand un défaut de cette famille apparaît, vérifier D'ABORD le chemin par défaut : c'est
 celui dont personne ne relit jamais la construction
 (`UNE-FIXTURE-PARTAGEE-NE-CASSE-PAS-UN-TEST-ELLE-LE-REND-FAUX`).
+
+### Corollaire du lot 33 — un COMPTE écrit sans être compté
+
+Le panel a relevé que j'avais écrit « `structuredClone` sur les **sept** constantes réutilisées »
+alors qu'il y en a **dix** — le sept était le nombre des PERSONAS, correct trois lignes plus haut,
+recopié au mauvais endroit. Troisième compte faux de la session après « les 6 `Math.random()` »
+(il y en avait cinq, le sixième était mon propre commentaire) et le « 74 → 21 » cité sans sa
+fixture.
+
+Le motif est stable et il n'a rien à voir avec l'attention : **un nombre écrit à côté d'un autre
+nombre du même texte se contamine**. Le remède n'est pas de « faire attention », c'est de compter
+avec la machine au moment d'écrire — `grep -c`, `wc -l`, une assertion — et de ne jamais reprendre
+un chiffre voisin de mémoire. Un compte est une mesure comme une autre
+(`UN-COMPTE-ECRIT-SANS-ETRE-COMPTE-EST-FAUX-UNE-FOIS-SUR-TROIS`).

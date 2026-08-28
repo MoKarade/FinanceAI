@@ -4,6 +4,29 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-28 — Lot 29 : panel `/review-all` (7 agents) et PR #755
+> Les cinq tickets du lot 29 (voir entrées ci-dessous) ont été passés au panel complet à la
+> reconnexion de GitHub. **6 défauts CAUSÉS par le lot, tous corrigés dans la PR** : 3 dans la
+> nouvelle tuile Objectif du Budget (assiette incluant l'épargne alors que le réel filtre les
+> virements — 500 $/mois d'écart mesuré ; « 0 $ » crédible quand la paie est importée en net seul ;
+> objectif indexé par le simulateur d'inflation), une garde manquante sur `delete_item` (toute
+> `entity` inattendue tombait désormais sur les DETTES au lieu des objectifs — rayon d'impact
+> aggravé sur un geste irréversible), 3 correctifs a11y, et une **perte de couverture moteur** :
+> le test supprimé avec la feature était le SEUL à exercer la jambe `fromLiquid` du `goalMutator`,
+> code qui SURVIT et porte le clamp anti-découvert PV-11 (couverture restaurée, discriminée par la
+> mutation exacte du panel).
+> ⚠️ **Preuve que le moteur est intact** : 7 personas × 481 points × 105 champs, `md5` identique
+> HEAD vs `main` — et la preuve DISCRIMINE (retirer `financialGoals` déplace 93 511 $), donc
+> l'égalité n'est pas vacueuse. Explication du « rien n'a bougé » : aucune fixture n'exerçait le
+> chemin retiré.
+> 6 findings PRÉ-EXISTANTS mesurés par le panel, routés au `BACKLOG.md` sans les corriger :
+> `MCP-WRITE-PARITY-GUARD`, `TEST-PERSONA-NON-DETERMINISTE` (⚠️ `Math.random()` nu rend le persona
+> PAR DÉFAUT non reproductible — amplitude 3 088 $ : toute mesure avant/après y est impossible sans
+> graine), `ENG-GOALS-HORS-TOTALEXPENSES`, `ENG-GOALSHORTFALLS-CHAMP-MORT`,
+> `HEALTH-SCORE-NAN-SILENCIEUX`, `BUDGET-DEUX-NETS-MEME-ECRAN`.
+> Gate complet vert : **454 fichiers, 4 856 tests**, typecheck + lint + build. CI GitHub verte
+> (6/6 checks, dont E2E Playwright et le gate sur Node 20).
+>
 > ## 🟢 Session 2026-08-27 — `[INVEST-COURS-EXACT-TOUTES-ACTIONS]` : Xetra/Milan ajoutés au routage des cours
 > `toFinnhubSymbol` ne convertissait que 3 préfixes de place (NASDAQ/NYSE, TSE/TSX, EPA) — tout
 > autre préfixe (dont `ETR:` Xetra et `BIT:` Milan, deux vraies positions de Marc) retombait sur le

@@ -4,6 +4,13 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟢 Session 2026-08-28 — Lot 30 : livraison de 3 findings pré-existants du panel PR #755 (PR #756)
+> Les trois findings routés par le panel de PR #755 ont été implémentés isolément, chacun sur son mécanisme :
+> - **`[MCP-WRITE-PARITY-GUARD]`** : garde comportementale `tests/mcp/writeToolParity.test.ts` — démarre le VRAI serveur MCP sur un transport en mémoire et vérifie que les tools d'écriture du serveur (`mcp/server.ts`) sont EXACTEMENT identiques à ceux du registre du chat in-app (`WRITE_SPECS`) et vice-versa. Parité bidirectionnelle + descriptions, exclusions `ping`/`connect_drive` déclarées et validées.
+> - **`[HEALTH-SCORE-NAN-SILENCIEUX]`** : `utils/healthScore.ts` `sanitizeNonFinite` — bascule toute métrique au score non fini (ex. `netSalary: Infinity` restaurée depuis un backup) en `available:false` + trace throttlée (source 'storage', sévérité 'warning'). Également ceinture `Number.isFinite` dans `computeHealthTotalScore`. Chemin mesuré : `netSalary: Infinity` → `savingsRateRaw = NaN` → score total NaN.
+> - **`[TEST-PERSONA-NON-DETERMINISTE]`** : `services/testTransactions.ts` seedé — le générateur utilisait `Math.random()` NU, rendant le persona `couple-confort` (PAR DÉFAUT) non reproductible (amplitude mesurée 3 088,55 $ sur 5 tirages). Fixes : mulberry32 avec graine 42 par défaut (même convention que `testPersonas/transactions.ts` et Monte Carlo), surchargeable. Dates toujours relatives à `new Date()` (volontaire, le passé doit toucher aujourd'hui).
+> Gate complet vert : **457 fichiers, 4 869 tests**, typecheck + lint + build.
+>
 > ## 🟢 Session 2026-08-28 — Lot 29 : panel `/review-all` (7 agents) et PR #755
 > Les cinq tickets du lot 29 (voir entrées ci-dessous) ont été passés au panel complet à la
 > reconnexion de GitHub. **6 défauts CAUSÉS par le lot, tous corrigés dans la PR** : 3 dans la

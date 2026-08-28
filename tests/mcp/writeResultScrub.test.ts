@@ -28,6 +28,28 @@ describe('scrubWriteResultForModel (helper partagé app + MCP)', () => {
         expect(serialized).not.toContain('<');
         expect(out.changes[0].after).toBe(5000); // les valeurs non-string passent intactes
     });
+
+    it('[MCP-SCRUB-NAN-DEVIENT-NULL] un nombre NON FINI ne se sérialise plus en `null` vers le modèle', () => {
+        // `JSON.stringify(NaN)` vaut `null` : le modèle lisait « pas de valeur précédente » là où la
+        // vérité est « valeur précédente CORROMPUE ». Deux faits opposés dans le même symbole — et
+        // c'est le canal MACHINE qui mentait, le canal humain rendant déjà « — »
+        // (`AiChatConfirmModal`). Symptôme inverse de la fuite « NaN $ » corrigée au lot 31 : là on
+        // en disait trop, ici on fabriquait une absence.
+        const out = scrubWriteResultForModel('Poste modifié', [
+            { field: 'poste « Épicerie » (cible)', before: NaN, after: 600 },
+            { field: 'poste « Loyer » (cible)', before: Infinity, after: 1500 },
+        ]);
+        const serialized = JSON.stringify(out);
+        // Anti-vacuité : le cas SAIN passe toujours intact, sinon « pas de null » serait satisfait
+        // par un scrub qui transformerait tout en chaîne.
+        expect(out.changes[0].after).toBe(600);
+        expect(serialized).not.toContain('null');
+        expect(out.changes[0].before).toBe('— (valeur non exploitable)');
+        expect(out.changes[1].before).toBe('— (valeur non exploitable)');
+        // Et une absence LÉGITIME reste une absence : `null` explicite n'est pas une corruption.
+        const legit = scrubWriteResultForModel('Poste ajouté', [{ field: 'nouveau', before: null, after: 300 }]);
+        expect(legit.changes[0].before).toBeNull();
+    });
 });
 
 describe('runApply (serveur MCP) — le tool_result renvoyé à claude.ai est scrubé', () => {

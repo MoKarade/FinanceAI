@@ -7906,3 +7906,32 @@ récoltes » ; ce lot en a demandé quatre, et la quatrième a été lancée ave
 (« mon dernier test est-il circulaire ? ») plutôt qu'un mandat général. Une passe qui cherche
 « quelque chose » trouve du bruit ; une passe qui cherche **le défaut que le correctif précédent a
 pu créer** trouve ce défaut. Le doute qui la déclenche vaut d'être écrit dans le prompt.
+
+## Leçon du lot 32 — 2026-08-28 : un même défaut de vérité a autant de formes qu'il a de canaux
+
+Le lot 31 s'était soldé sur une règle — « quand la correction locale se répète, c'est qu'il manque
+une source unique » — et sur un constat non résolu : la vérité « cette donnée est corrompue »
+n'atteignait pas tous ses lecteurs. Le lot 32 finit le travail, et ce qui frappe est que **le même
+défaut prend une forme opposée selon le canal** :
+
+- vers le **modèle** (`scrubWriteResult`), un `NaN` se sérialisait en `null` : on fabriquait une
+  ABSENCE là où il fallait signaler une corruption — trop peu d'information ;
+- vers l'**humain**, la même donnée avait produit au lot 31 un « NaN $ » en toutes lettres dans une
+  phrase — trop d'information, et de la mauvaise sorte ;
+- vers le **lecteur d'écran**, elle produisait « donnée indisponible » pour trois états aux actions
+  opposées — de l'information juste, mais indifférenciée.
+
+Trois canaux, trois façons de perdre la même vérité, et aucune qui ressemble aux autres. D'où le
+geste : après avoir corrigé un défaut de VÉRITÉ sur une donnée, **énumérer les canaux par lesquels
+elle sort** — calcul, texte visible, nom accessible, sérialisation vers un modèle, journal — et
+vérifier chacun séparément. C'est `DECISION-PRIVACY-UNE-SEULE-SORTIE` retourné : là-bas une règle
+écrite pour une sortie devait se repasser sur toutes ; ici c'est un FAIT sur la donnée qui doit
+atteindre toutes ses sorties.
+
+**Corollaire sur le nom accessible.** Un `aria-label` constant qui recouvre plusieurs états est le
+pendant exact d'un booléen qui recouvre deux faits opposés
+(`UN-DEFAUT-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT`) : il se corrige en le
+faisant VARIER avec l'état réel, pas en l'allongeant. Et une explication qui ne transite que par un
+`title` sur un élément non focusable n'est pas accessible du tout — la rendre aussi en `sr-only`
+coûte une ligne et ne dépend plus d'un survol
+(`UN-FAIT-SUR-LA-DONNEE-DOIT-ATTEINDRE-TOUS-SES-CANAUX`).

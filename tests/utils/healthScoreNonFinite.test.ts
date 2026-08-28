@@ -18,6 +18,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { computeHealthMetrics, computeHealthTotalScore, colorForHealthScore, HEALTH_SCORE_UNKNOWN_COLORS, type HealthMetricRow, type HealthScoreInputs } from '../../utils/healthScore';
 import { clearErrors, filterErrors, __resetErrorThrottle } from '../../services/errorLogger';
 import type { HealthWeights } from '../../types';
+import { formatCAD, formatNumber, formatPercent } from '../../utils/format';
 
 const WEIGHTS: HealthWeights = {
     savingsRate: 25, emergencyFund: 25, debtRatio: 20,
@@ -232,6 +233,81 @@ describe('[HEALTH-SCORE-NAN-SILENCIEUX] une métrique non finie n\'empoisonne pl
             expect(l.available, `revenu ${String(netSalary)} + abo illisible`).toBe(false);
             expect(l.raw, `revenu ${String(netSalary)} : la cause est le REVENU, pas l'abonnement`).toBe('Revenu requis');
         }
+    });
+
+    it('[garde de vie privée] aucun MONTANT dans le `raw` d\'une métrique INDISPONIBLE', () => {
+        // Depuis le lot 32, le `raw` d'une métrique indisponible part dans l'`aria-label` du score
+        // — un ATTRIBUT, canal par lequel le dépôt a déjà vu fuir une valeur sensible. Mesuré : ça
+        // ne fuit rien aujourd'hui, mais uniquement parce qu'AUCUN `raw` de la branche
+        // `available:false` ne porte de montant. C'est un fait ACCIDENTEL du contenu actuel, que
+        // rien ne verrouille : une future métrique qui écrirait « il te manque 1 234 $ » dans son
+        // état indisponible fuirait aussitôt dans l'attribut (finding security-privacy, PR #758).
+        // La garde vise les MONTANTS, pas les compteurs — « 1 abonnement(s) au coût illisible » est
+        // un décompte, pas une donnée financière.
+        // ⚠️ `\d{3,}` n'est pas décoratif : MESURÉ, `formatNumber(1234)` rend « 1 234 » — ni `$`,
+        // ni `%`, ni décimale, donc un `raw` du genre « Il manque ${formatNumber(gap)} » passait
+        // sous le radar de la 1re version de ce motif (finding code-reviewer, 2e passe PR #758).
+        // Le séparateur de milliers est une espace INSÉCABLE, donc « 1 234 » contient bien un
+        // groupe de 3 chiffres — c'est lui qu'on attrape.
+        // ⚠️ Limite ASSUMÉE et bornée : un montant rond < 100 sans symbole (« 95 ») reste
+        // indétectable, il est indiscernable d'un compteur. On préfère ce trou étroit à une garde
+        // qui rougirait sur « 1 abonnement(s) ». Les vrais montants du dépôt passent tous par
+        // `formatCAD` (qui suffixe « $ ») ou `formatPercent` (« % ») — mesuré.
+        // ⚠️ PÉRIMÈTRE : la garde lit `raw`, PAS `help` — et c'est un choix, pas un oubli
+        // (finding silent-failure-hunter, 3e passe PR #758). Les `help` contiennent des `%` par
+        // conception (« Cible 20%+ », « Cible <15% du revenu net », « Cible 0%... >50% ») : ce sont
+        // des SEUILS statiques, jamais une valeur de l'utilisateur, donc étendre le motif à `help`
+        // le ferait rougir sur presque toutes les métriques sans qu'aucune ne fuie. La condition
+        // qui rend ce choix valide est que `help` reste STATIQUE. ⚠️ Le jour où une métrique y
+        // interpolerait une vraie valeur, cette garde ne la verrait pas — et le lot 32 vient
+        // justement de faire transiter `help` par un nouveau canal DOM (`sr-only`). Si `help`
+        // cesse d'être statique, il faut l'inclure ici ET sortir les seuils du motif.
+        const MONTANT = /[$%]|\d+[.,]\d|\d{3,}/;
+        // Verrou du présupposé : aucun `help` ne porte de valeur interpolée aujourd'hui. On le
+        // prouve par l'absence de montant FORMATÉ (`formatCAD`/`formatNumber` produisent un groupe
+        // de 3 chiffres ou un « $ ») — les seuils littéraux « 20% », « 15% », « 50% » restent, eux,
+        // parfaitement permis. Ce test rougira quand l'hypothèse cessera d'être vraie.
+        const VALEUR_FORMATEE = /\$|\d+[.,]\d|\d{3,}/;
+        const fixtures: Array<[string, Partial<HealthScoreInputs>]> = [
+            ['sans projection ni abo', {}],
+            ['revenu Infinity', { config: { users: [{ name: 'Moi', netSalary: Infinity }] } as unknown as HealthScoreInputs['config'] }],
+            ['poste illisible', { budgetItems: [{ ...inputs().budgetItems[0], target: NaN }] as unknown as HealthScoreInputs['budgetItems'] }],
+            ['abo illisible', { subscriptions: [
+                { payee: 'Gym', yearlyCost: Infinity, averageAmount: 75, dayOfMonth: 5, category: 'Abo', lastDate: '2026-08-05' },
+            ] as unknown as HealthScoreInputs['subscriptions'] }],
+            // ⚠️ Ces deux-là ont été ajoutées APRÈS coup : une première version de cette garde était
+            // MUETTE à la perturbation, parce qu'aucune de ses fixtures n'atteignait les libellés
+            // « Aucun abonnement épinglé » (la fixture porte des abos) ni « Projection requise »
+            // (elle porte une cible FIRE). Un état non atteint n'est pas un état protégé.
+            ['aucun abonnement', { subscriptions: [] as unknown as HealthScoreInputs['subscriptions'] }],
+            ['sans projection FIRE', { projectionFireTarget: 0 }],
+        ];
+        const vus = new Set<string>();
+        let avecMontant = 0;
+        for (const [nom, over] of fixtures) {
+            for (const r of computeHealthMetrics(inputs(over))) {
+                if (r.available) { if (MONTANT.test(r.raw)) avecMontant++; continue; }
+                vus.add(r.id);
+                expect(MONTANT.test(r.raw), `${nom} · ${r.id} : montant dans un état indisponible → « ${r.raw} »`).toBe(false);
+                expect(
+                    VALEUR_FORMATEE.test(r.help),
+                    `${nom} · ${r.id} : « help » porte une valeur formatée — il n'est plus statique, la garde doit l'inclure → « ${r.help} »`,
+                ).toBe(false);
+            }
+        }
+        // Anti-vacuité DOUBLE : la garde a bien vu des métriques indisponibles (sinon elle ne
+        // vérifie rien), ET le motif RECONNAÎT des montants là où il y en a (sinon il est mort).
+        // ⚠️ `debtRatio` n'y figure pas et c'est NORMAL, pas un oubli : ses trois entrées
+        // (liquidités, dettes, placements) sont déjà durcies à la source, donc il n'a aucun état
+        // indisponible atteignable. L'écrire vaut mieux que fabriquer une fixture absurde.
+        expect([...vus].sort()).toEqual(['budgetParity', 'emergencyFund', 'fireProgress', 'savingsRate', 'subscriptionLoad']);
+        expect(avecMontant).toBeGreaterThan(0);
+        // Le motif reconnaît les DEUX formats de montant que le dépôt produit réellement, et
+        // laisse passer les compteurs — sans ça, « aucun montant trouvé » ne voudrait rien dire.
+        expect(MONTANT.test(formatCAD(1234))).toBe(true);      // « 1 234 $ »
+        expect(MONTANT.test(formatNumber(1234))).toBe(true);   // « 1 234 » — le trou de la 1re version
+        expect(MONTANT.test(formatPercent(1.9, 1))).toBe(true); // « 1,9 % »
+        expect(MONTANT.test('12 abonnement(s) au coût illisible')).toBe(false); // un décompte reste permis
     });
 
     it('[ceinture] computeHealthTotalScore ignore une ligne non finie venue d\'ailleurs', () => {

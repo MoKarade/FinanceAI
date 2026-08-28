@@ -28,7 +28,19 @@ import type { Change } from '../ingest/applyDocument';
 // MCP-PROMPT-SCRUB (les notes rédigées par le code ne doivent pas subir un cap conçu pour l'autre).
 const WRITE_TEXT_MAX = 400;
 
-const scrubValue = (v: unknown): unknown => (typeof v === 'string' ? sanitizePromptText(v, WRITE_TEXT_MAX) : v);
+/**
+ * [MCP-SCRUB-NAN-DEVIENT-NULL] Un nombre NON FINI (`NaN`, `±Infinity`) se sérialise en **`null`**
+ * par `JSON.stringify` — le modèle lit donc « pas de valeur précédente » là où la vérité est
+ * « valeur précédente CORROMPUE ». Deux faits opposés confondus dans un même symbole, classe
+ * `UN-DEFAUT-QUI-RECOUVRE-DEUX-FAITS-OPPOSES-SE-CORRIGE-EN-LES-SEPARANT`. Le canal HUMAIN est déjà
+ * honnête (`AiChatConfirmModal` rend « — »), c'est le canal MACHINE qui fabriquait une absence.
+ * On rend une chaîne EXPLICITE : elle survit à la sérialisation, et le modèle peut la relayer.
+ */
+const scrubValue = (v: unknown): unknown => {
+    if (typeof v === 'string') return sanitizePromptText(v, WRITE_TEXT_MAX);
+    if (typeof v === 'number' && !Number.isFinite(v)) return '— (valeur non exploitable)';
+    return v;
+};
 
 export function scrubChangesForModel(changes: Change[]): Change[] {
     return changes.map((c) => ({

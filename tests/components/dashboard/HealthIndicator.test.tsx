@@ -134,6 +134,58 @@ describe('HealthIndicator', () => {
         expect(screen.getByText(/\d+[.,]\d+\s+mois/)).toBeInTheDocument();
     });
 
+    it('[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE] le nom accessible porte la VRAIE cause, pas « donnée indisponible »', () => {
+        // L'`aria-label` disait « <métrique> : donnée indisponible » pour TOUS les états
+        // indisponibles — y compris, depuis le lot 31, « ta donnée est corrompue, va la corriger ».
+        // Trois situations aux ACTIONS opposées annoncées d'une seule phrase, alors que le texte
+        // visuel, lui, les distinguait déjà (audit a11y, panel PR #757).
+        useFinanceStore.setState({
+            config: {
+                ...initialState.config,
+                users: [
+                    { ...initialState.config.users[0], name: 'Bob', netSalary: 5000, grossSalary: 6000 },
+                    { ...initialState.config.users[1], name: '' },
+                ],
+            },
+            budgetItems: [{ id: 'rent', name: 'Loyer', target: 2000, nature: 'Besoin', frequency: 'Monthly' } as never],
+            debts: [], assets: [], transactions: [], subscriptions: [],
+            initialBalances: { 'Compte chèque BMO': 24000 },
+        });
+        render(<HealthIndicator />);
+        // Anti-vacuité : au moins une métrique est INDISPONIBLE ici (aucun abo épinglé, pas de
+        // projection FIRE) — sinon l'assertion ci-dessous porterait sur un ensemble vide.
+        const indispos = screen.getAllByText('—');
+        expect(indispos.length).toBeGreaterThan(0);
+
+        // Plus AUCUN nom accessible générique : chacun nomme sa raison.
+        expect(screen.queryByLabelText(/donnée indisponible/i)).not.toBeInTheDocument();
+        expect(screen.getByLabelText(/Poids des abonnements : Aucun abonnement épinglé/i)).toBeInTheDocument();
+
+        // Et le score est ASSOCIÉ à sa ligne de détail : sans `aria-describedby`, un lecteur
+        // d'écran qui navigue par éléments (et non au fil du texte) ne la rencontre jamais.
+        const score = screen.getByLabelText(/Poids des abonnements : Aucun abonnement épinglé/i);
+        const describedBy = score.getAttribute('aria-describedby');
+        expect(describedBy).toBeTruthy();
+        expect(document.getElementById(describedBy!)).toBeTruthy();
+
+        // La JUSTIFICATION (`help`) ne dépend plus d'un survol : elle est dans le nom accessible.
+        expect(document.getElementById(describedBy!)!.textContent).toContain('Épingle tes abos');
+    });
+
+    it('deux instances montées ensemble ne se volent pas leurs `id` de description', () => {
+        // Un `id` dupliqué casse `aria-describedby` EN SILENCE : le lecteur d'écran suit la
+        // première occurrence, donc la seconde carte décrirait le score de la première. Un seul
+        // montage existe aujourd'hui (`BudgetWorkspace`), mais la panne serait invisible le jour
+        // où il y en aurait deux — d'où `useId` (finding code-reviewer, panel PR #758).
+        render(<><HealthIndicator /><HealthIndicator /></>);
+        const decrits = screen.getAllByText('—')
+            .map((el) => el.getAttribute('aria-describedby'))
+            .filter((v): v is string => Boolean(v));
+        expect(decrits.length).toBeGreaterThan(1); // anti-vacuité : deux cartes ont bien décrit
+        expect(new Set(decrits).size).toBe(decrits.length); // aucun id partagé entre instances
+        for (const id of decrits) expect(document.getElementById(id)).toBeTruthy();
+    });
+
     it('changement de slider sauvegarde dans le store', () => {
         // [PH4D-WEIGHTS-STORE] la sauvegarde va dans le store persisté (avant : localStorage).
         render(<HealthIndicator />);

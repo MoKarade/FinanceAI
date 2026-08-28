@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useId, useMemo, useState } from 'react';
 import type { HealthWeights, RecurringItem } from '../../types';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { DEFAULT_HEALTH_WEIGHTS, normalizeHealthWeights } from '../../utils/healthWeights';
@@ -51,6 +51,11 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
     const weights = useMemo(() => normalizeHealthWeights(storedWeights), [storedWeights]);
     const setAppState = useFinanceStore(s => s.setAppState);
     const [showSettings, setShowSettings] = useState(false);
+    // [HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE] Préfixe d'`id` UNIQUE par instance :
+    // `aria-describedby` pointe vers un `id`, et un `id` dupliqué le casse EN SILENCE (le
+    // lecteur d'écran suit la première occurrence). Un seul montage aujourd'hui
+    // (`BudgetWorkspace`), mais rien ne l'empêche demain — et la panne serait invisible.
+    const detailIdPrefix = useId();
 
     const config = useFinanceStore(s => s.config);
     const budgetItems = useFinanceStore(s => s.budgetItems);
@@ -159,7 +164,19 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                             <div key={m.id} className="group">
                                 <div className="flex items-center justify-between text-meta">
                                     <span className="text-ink-300 truncate" title={m.help}>{m.label}</span>
-                                    <span className={`font-mono font-bold shrink-0 ${m.available ? mColors.text : 'text-ink-400'}`} aria-label={m.available ? undefined : `${m.label} : donnée indisponible`}>{m.available ? Math.round(m.value) : '—'}</span>
+                                    {/* [HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE] L'`aria-label` disait
+                                        « donnée indisponible » pour TOUS les états indisponibles — y compris,
+                                        depuis le lot 31, « ta donnée est corrompue, va la corriger ». Trois
+                                        situations aux actions opposées annoncées d'une seule phrase. Il porte
+                                        désormais la vraie raison (`m.raw`), et `aria-describedby` ASSOCIE
+                                        explicitement le score à sa ligne de détail — sans quoi un lecteur
+                                        d'écran qui navigue par éléments, et non au fil du texte, ne la
+                                        rencontre jamais (audit a11y, panel PR #757). */}
+                                    <span
+                                        className={`font-mono font-bold shrink-0 ${m.available ? mColors.text : 'text-ink-400'}`}
+                                        aria-label={m.available ? undefined : `${m.label} : ${m.raw}`}
+                                        aria-describedby={`${detailIdPrefix}-${m.id}`}
+                                    >{m.available ? Math.round(m.value) : '—'}</span>
                                 </div>
                                 <div className="flex items-center gap-2 mt-0.5">
                                     <div className="flex-1 h-1 bg-black/40 rounded-full overflow-hidden">
@@ -170,7 +187,17 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                                     </div>
                                     <span className="text-tiny text-ink-400 font-mono shrink-0 tabular-nums">{weights[m.id]}%</span>
                                 </div>
-                                <div className="text-tiny text-ink-400 mt-0.5">{m.raw}</div>
+                                {/* `m.help` ne transitait QUE par l'attribut `title` du libellé, sur un
+                                    `<span>` non focusable : hors clavier, invisible au tactile, et non
+                                    annoncé de façon fiable par un lecteur d'écran sur un élément sans rôle
+                                    (audit a11y, panel PR #757). Le `title` reste pour la souris ; la
+                                    justification est désormais AUSSI dans la description accessible, en
+                                    `sr-only`, donc elle ne dépend plus d'un survol — ce qui retire du même
+                                    coup la question WCAG 1.4.13 (contenu déclenché au survol), puisque
+                                    l'information ne dépend plus du tooltip pour exister. */}
+                                <div id={`${detailIdPrefix}-${m.id}`} className="text-tiny text-ink-400 mt-0.5">
+                                    {m.raw}<span className="sr-only"> — {m.help}</span>
+                                </div>
                             </div>
                         );
                     })}

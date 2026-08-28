@@ -71,6 +71,30 @@
   corrompu est nettement plus grave que le score d'écran corrigé. **La garde doit vivre à la
   FRONTIÈRE de chargement** (store / restauration Drive), pas fichier par fichier —
   classe `DECISION-PRIVACY-UNE-SEULE-SORTIE` appliquée à la validation d'entrée.
+  ✅ **INSTRUIT (lot 33) — mesuré, pas déduit.** `buildSimulationParamsFromState` sur le persona
+  `couple-confort`, en listant les champs numériques NON FINIS des paramètres rendus (fixtures
+  clonées par cas — voir l'avertissement plus bas) :
+  | Donnée corrompue | `baseNetAnnual` | `baseGrossAnnual` | Champs non finis |
+  |---|---|---|---|
+  | *(sain)* | 115 200 | 164 400 | — |
+  | `netSalary: Infinity` | **Infinity** | 164 400 | `baseNetAnnual`, `baseMonthlyExpenses` (= `NaN`) |
+  | `netSalary: NaN` | **52 800** | 164 400 | *aucun* |
+  | `grossSalary: Infinity` | 115 200 | **Infinity** | `baseGrossAnnual` |
+  Les DEUX modes de panne existent donc à la frontière du moteur, et ils sont OPPOSÉS : `Infinity`
+  se propage (et `∞ − ∞` fabrique un `NaN` dans les dépenses mensuelles), tandis que `NaN` est
+  ABSORBÉ — le salaire de l'utilisateur 0 (5 200 $/mois, soit **62 400 $/an**) s'évapore sans une
+  trace, et rien dans les paramètres ne paraît anormal. C'est la paire décrite par la leçon du
+  lot 31, un cran plus grave : la projection entière en dépend, pas un score d'écran.
+  ⚠️ **Fourche à trancher AVANT de coder** (money-critical, M) — (i) OÙ vit la garde : hydratation
+  du store, restauration Drive, ou `buildSimulationParams` ? (ii) QUE fait-elle d'une valeur
+  mauvaise : refuser la projection, borner la valeur, ou tracer et continuer ? Chaque réponse a un
+  coût différent pour l'utilisateur. Convention §7 : plan court + OK de Marc avant de coder.
+  ⚠️ **Reproduire la mesure avant de s'en servir** (`MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE`) : test
+  jetable appelant `buildSimulationParamsFromState(state, { startYear: 2026, startMonth: 0 })` puis
+  `Object.entries(params).filter(([,v]) => typeof v === 'number' && !Number.isFinite(v))`.
+  ⚠️ **Cloner l'état par cas** : une première version de cette mesure était FAUSSE
+  (`grossSalary: Infinity` semblait aussi écraser le net à 52 800) parce que les builds du persona
+  partageaient leurs objets — cf. `[TEST-PERSONA-FIXTURE-PARTAGEE]`, corrigé au lot 33.
 - [ ] **`[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE]`** (S — findings silent-failure-hunter,
   panel PR #756) — trois angles morts de restitution de l'état « donnée corrompue » introduit au
   lot 30 : (a) `components/future/FutureHealthSummary.tsx` n'affiche que le score global — une

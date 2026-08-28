@@ -7935,3 +7935,33 @@ faisant VARIER avec l'état réel, pas en l'allongeant. Et une explication qui n
 `title` sur un élément non focusable n'est pas accessible du tout — la rendre aussi en `sr-only`
 coûte une ligne et ne dépend plus d'un survol
 (`UN-FAIT-SUR-LA-DONNEE-DOIT-ATTEINDRE-TOUS-SES-CANAUX`).
+
+## Leçon du lot 33 — 2026-08-28 : une fixture partagée ne fait pas échouer un test, elle en fabrique un FAUX
+
+Ce lot n'était pas au backlog : il vient d'une mesure qui m'a menti. En instruisant
+`[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`, je relevais l'effet de trois corruptions sur les
+paramètres du moteur, un cas par ligne. Le troisième cas — `grossSalary: Infinity`, qui ne touche
+pas au net — annonçait `baseNetAnnual = 52 800` au lieu de 115 200. Aucune explication dans le code
+lu. La vraie cause était deux lignes plus haut : `buildCoupleConfort` rendait les **mêmes objets**
+à chaque appel (`config`, `budgetItems`, `assets`, `debts`, `retirementGoal` identiques au sens de
+`===` entre deux `build()`), donc la corruption du cas précédent survivait dans le suivant.
+
+**Ce qui rend cette classe dangereuse**, c'est qu'elle ne produit aucun rouge. Un test qui partage
+sa fixture ne casse pas : il mesure autre chose que ce qu'il annonce, et publie un chiffre
+plausible. J'ai failli écrire ce 52 800 dans un ticket money-critical — il y serait devenu un fait.
+Ce qui l'a attrapé, c'est la seule discipline qui vaille ici : **re-mesurer avant de citer**
+(`MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE`), et se demander *pourquoi* un chiffre surprend au lieu de
+le recopier.
+
+**Le geste** : quand un relevé multi-cas donne un résultat qu'aucune lecture du code n'explique,
+soupçonner l'ISOLATION avant le code testé — cloner l'état par cas et refaire le relevé coûte une
+minute. Et côté producteur, une fixture réutilisable se construit FRAÎCHE : la copie doit être
+PROFONDE, parce que `{ ...CONFIG }` partage encore le tableau `users` et `[...ASSETS]` partage
+encore chaque actif — or c'est exactement à ce niveau qu'on mute.
+
+**Corollaire de périmètre.** Mesuré sur les sept personas : un seul était touché — et c'était le
+persona **par défaut**, exactement la même cible que `[TEST-PERSONA-NON-DETERMINISTE]` au lot 30.
+Deux fois de suite, le défaut d'outillage s'est logé dans le fixture que tout le monde prend sans
+réfléchir. Quand un défaut de cette famille apparaît, vérifier D'ABORD le chemin par défaut : c'est
+celui dont personne ne relit jamais la construction
+(`UNE-FIXTURE-PARTAGEE-NE-CASSE-PAS-UN-TEST-ELLE-LE-REND-FAUX`).

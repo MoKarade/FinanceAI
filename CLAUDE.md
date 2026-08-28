@@ -343,7 +343,7 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   sur lui (`UNE-FIXTURE-PARTAGEE-NE-CASSE-PAS-UN-TEST-ELLE-LE-REND-FAUX`).
 - ⚠️ **Un rapport d'AGENT n'est pas une source**, exactement comme un ticket : j'ai publié un impact
   money-critical avec un ✅ « CHIFFRÉ » sur la foi d'un panel, sans le mesurer — la passe suivante a
-  rejoué le MÊME scénario annoncé et trouvé ~10 % d'écart sur le delta. Cause : les deux protocoles
+  rejoué le MÊME scénario annoncé et trouvé 6,83 % d'écart sur la base. Cause : les deux protocoles
   fixaient `projection.returnRate`, **un champ que le moteur ne lit pas** (`computeScenarioOverrides`
   lit `returnRates`, la carte par compte). Un paramètre non câblé ne rend pas la mesure bruyante, il
   la rend MUETTE et fausse. Ce qui survit à un désaccord de mesure, c'est l'**ordre de grandeur** et

@@ -68,6 +68,22 @@
   et `components/TabRouter.tsx` — de l'UI, pas le moteur. Même famille que le bug documenté dans ce
   même fichier (« lisait `projection.rates`… toujours undefined », 2026-05-22), et que
   `[PARAMÈTRE-HOMONYME-À-DEUX-NIVEAUX]` du `CLAUDE.md`.
+  ⚠️ **Il a bien DEUX consommateurs réels, tous deux côté UI** — mon énumération « seulement
+  `RealEstateWorkspace` et `TabRouter` » était incomplète : `TabRouter.tsx:217` ne fait que
+  TRANSMETTRE le champ, via `LifeProjects.tsx`, jusqu'à `components/LifeEvents.tsx:94`, où
+  `rate = returnRate / 100` est composé sur 20 ans pour produire le « coût d'opportunité » AFFICHÉ
+  à l'utilisateur. Retirer ou recâbler le champ touche donc aussi `LifeProjects.tsx` et
+  `LifeEvents.tsx` (finding silent-failure-hunter, 3e passe PR #759).
+  ⚠️ **Amplitude bien plus large que le seul protocole de mesure** : des dizaines de fixtures de
+  test (`tests/services/*.test.ts`, `tests/components/*.test.tsx`) fixent `returnRate: 6` (ou 4, 5)
+  sans jamais fixer `returnRates` — elles tournent donc silencieusement sur les taux par défaut
+  (7 / 6,5 / 6,5 / 10 / 3), pas sur celui qu'elles croient fixer. À vérifier avant de conclure
+  qu'un de ces tests mesure ce qu'il annonce.
+  ⚠️ **À NE PAS confondre avec `[COASTFIRE-CROISSANCE-FIGEE]`**, qui cite la même phrase
+  « indépendant de `projection.returnRate` » : celui-là vise un CONSOMMATEUR figé à 5 %/an et
+  lui-même sans lecteur ; celui-ci vise le CHAMP SOURCE, qui n'alimente aucune croissance du
+  moteur. Câbler l'un ne règle pas l'autre — et le second rappelle qu'un champ câblé reste sans
+  effet si ses lecteurs n'en ont pas.
   ⚠️ **Ce n'est pas un ticket « nettoyer un champ mort »** : il a déjà fait dérailler DEUX mesures
   money-critical (panel PR #759), qui croyaient simuler à 5 % et tournaient en réalité sur les taux
   par défaut. Avant de coder : établir si le champ doit être RETIRÉ (et l'UI recâblée sur
@@ -118,8 +134,10 @@
   ⚠️ **IMPACT du mode `NaN` : ORDRE DE GRANDEUR seulement, le chiffre exact n'est PAS reproductible.**
   Deux agents ont mesuré le même scénario annoncé (persona par défaut, 30 ans, `savingsMode:
   'budget'`, inflation 2 %) et ont obtenu des résultats DIFFÉRENTS : `6 742 127 $ → −403 059 $`
-  (delta −7 145 187 $) contre `7 236 428 $ → 286 795 $` (delta −6 949 633 $) — ~7 % d'écart sur la
-  base, ~10 % sur le delta. Ce n'est pas de l'arrondi. **Ce qui est SOLIDE et suffit à trancher la
+  (delta −7 145 186 $) contre `7 236 428 $ → 286 795 $` (delta −6 949 633 $) — **6,83 % d'écart sur
+  la base, 2,81 % sur les deltas** (recalculé à la main ; j'avais recopié « ~7 % » et « ~10 % » du
+  rapport, dont le second confondait deux grandeurs, et un delta faux d'un dollar). Ce n'est pas de
+  l'arrondi : les deux mesures ne décrivent pas le même scénario. **Ce qui est SOLIDE et suffit à trancher la
   fourche** : les deux mesures s'accordent sur l'ordre de grandeur (**environ −7 M$**, soit la
   quasi-totalité du patrimoine projeté) ET sur le fait qualitatif décisif — **0 valeur non finie
   sur les 361 points de `chartData`**. C'est le plus grave des deux modes précisément parce que
@@ -129,7 +147,8 @@
   « rendement 5 % » des deux protocoles a été passé en `projection.returnRate` (SINGULIER) — or
   `computeScenarioOverrides` (`services/projection/setupSimulation.ts`) lit `projection.returnRates`
   (la carte PAR COMPTE) et **jamais** le singulier (vérifié : les seuls lecteurs de `returnRate` sont
-  `RealEstateWorkspace.tsx` et `TabRouter.tsx`, côté UI). Les deux mesures ont donc probablement
+  `RealEstateWorkspace.tsx`, et `TabRouter.tsx` qui le TRANSMET jusqu'à `LifeEvents.tsx` où il
+  pilote un vrai calcul montré à l'utilisateur — voir le ticket dédié). Les deux mesures ont donc probablement
   tourné sur les taux par défaut (7 / 6,5 / 6,5 / 10 / 3), et leurs autres paramètres non déclarés
   divergeaient. **Avant de citer un montant exact, écrire un script de reproduction COMMITTÉ** qui
   fixe explicitement tous les paramètres, `returnRates` compris — un jetable ne se relance pas.

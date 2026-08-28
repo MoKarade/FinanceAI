@@ -7993,8 +7993,20 @@ Le dépôt écrit depuis longtemps « un ticket n'est pas une source, même quan
 lot ajoute le cas voisin, et il coûte pareil : j'ai publié dans `BACKLOG.md`, avec un ✅ **CHIFFRÉ**,
 un impact de « 6 742 127 $ → −403 059 $, soit −7 145 187 $ » sur la foi d'un rapport d'agent, sans
 l'avoir mesuré moi-même. La passe suivante a rejoué le même scénario annoncé et obtenu
-**7 236 428 $ → 286 795 $** — ~7 % d'écart sur la base, ~10 % sur le delta. Deux mesures, deux
+**7 236 428 $ → 286 795 $** — 6,83 % d'écart sur la base, 2,81 % sur les deltas. Deux mesures, deux
 résultats, aucun reproductible à partir de ce qui était écrit.
+
+⚠️ **Et la suite est le vrai enseignement.** Dans le paragraphe même où je consignais « ne recopie
+pas un chiffre que tu n'as pas mesuré », j'en ai recopié **trois** du rapport de l'agent : un
+« ~10 % d'écart sur le delta » qui ne se recalcule pas (l'écart réel entre les deux deltas est
+2,81 % — le 10 % comparait deux ratios *delta/base*, une grandeur jamais nommée), un delta faux
+d'un dollar (`6 742 127 − (−403 059) = 7 145 186`, pas 187), et une énumération de lecteurs
+présentée comme « vérifiée par grep » qui manquait un consommateur RÉEL (`TabRouter` ne fait que
+transmettre le champ jusqu'à `LifeEvents.tsx`, où il pilote un coût d'opportunité affiché).
+
+Écrire la règle ne l'applique pas. Ce qui l'applique, c'est de faire le calcul **dans le même
+geste que l'écriture** — ouvrir la calculette sur les deux nombres qu'on aligne, refaire le grep
+qu'on dit avoir fait. La règle se respecte à l'endroit précis où on la formule, ou pas du tout.
 
 La cause s'est révélée instructive : les deux protocoles disaient « rendement 5 % » et passaient
 `projection.returnRate` — **un champ que le moteur ne lit pas** (`computeScenarioOverrides` lit

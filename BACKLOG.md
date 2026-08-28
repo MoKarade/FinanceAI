@@ -63,6 +63,24 @@
   une corruption qui disparaît puis RÉCIDIVE dans la même session (onglet ouvert des jours) est
   muette la 2e fois, alors que le serveur MCP appelle `__resetErrorThrottle()` à chaque requête
   précisément pour ça.
+  ⚠️ **Élargi et re-mesuré par l'audit a11y du lot 31** (panel PR #757) — le mécanisme est
+  PRÉ-EXISTANT, mais le lot 31 y a fait passer du contenu ACTIONNABLE, ce qui change l'enjeu :
+  · **(d, ÉLEVÉ, WCAG 1.4.13)** `HealthIndicator.tsx` rend `m.help` UNIQUEMENT via l'attribut
+  `title` d'un `<span>` **non focusable** (pas de `tabIndex`, pas de rôle) : le texte n'est
+  atteignable ni au clavier (rien ne peut le déclencher), ni au tactile (`title` ne s'affiche pas
+  sans survol), et un lecteur d'écran ne l'annonce pas de façon fiable sur un élément sans rôle.
+  L'INSTRUCTION reste accessible — elle est dans `m.raw`, texte visible et lu en linéaire — c'est
+  la JUSTIFICATION qui se perd. Correctif : rendre `help` visible, ou derrière un bouton
+  `aria-expanded`/`aria-describedby` focusable ; ⚠️ un simple `tabIndex="0"` sur le span ne suffit
+  pas (il rendrait le tooltip focusable sans régler la fiabilité SR).
+  · **(e, MOYEN, WCAG 1.3.1 / 4.1.2)** L'`aria-label` du score reste textuellement IDENTIQUE
+  (« <métrique> : donnée indisponible ») pour trois états désormais sémantiquement distincts, dont
+  un qui dit « corrige tes données MAINTENANT ». Le texte `raw` n'est pas perdu (il est lu en
+  navigation linéaire) mais rien ne l'ASSOCIE au score : ni `aria-describedby`, ni regroupement.
+  Un correctif d'une ligne règle les deux — donner un `id` au `<div>` de `raw`, le référencer en
+  `aria-describedby`, et faire varier l'`aria-label` (`${m.label} : ${m.raw}`).
+  ⚠️ NON corrigé au lot 31 délibérément : `HealthIndicator.tsx` n'est pas touché par ce lot, et
+  c'est du scope non demandé (règle « proposer ≠ faire »).
 - [ ] **`[ENG-GOALS-HORS-TOTALEXPENSES]`** (S, FAIBLE [Probable] — finding projection-validator
   MESURÉ, panel PR #755, PRÉ-EXISTANT) — un tirage d'objectif n'entre PAS dans `totalExpenses` :
   mesuré, base et `FinancialGoal` équivalent donnent tous deux `totalExpenses` =

@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-08-29 — Lot 43 : des cibles de 16 px sur des actions destructives
+> `[A11Y-TOUCH-TARGET-TINY]` — 10 boutons corrigés (le ticket en citait 6, dont 2 faux), dont
+> **4 sans aucun nom accessible** : ils s'annonçaient « × bouton » sur une suppression.
+> - **Patron `p-2 -m-2`**, pas `touch-target` partout : il agrandit la cible de 8 px par bord et
+>   annule le décalage visuel. ⚠️ Il ne vaut que pour un contrôle SANS fond ni bordure — sur la
+>   pastille bordée de `KPIStat` il grossissait le cercle lui-même. Ce cas est EXEMPTÉ (WCAG 2.5.8
+>   exempte une cible en ligne dans un bloc de texte) et documenté sur place.
+> - ⚠️⚠️ **Le recenseur s'est trompé QUATRE fois avant d'être juste**, toujours sur du parsing JSX à
+>   la regex : accolades non retirées récursivement (4 boutons manqués), `min-w-[24px]` non reconnu
+>   (2 faux positifs), libellé dynamique `{title}` compté comme « pas de texte » (7 faux positifs),
+>   et un `indexOf('>')` qui tombait sur la flèche d'une lambda. La version finale est un petit
+>   automate. **Un recenseur se vérifie autant que le code qu'il recense.**
+> - Garde : `tests/guards/touchTargetGuard.test.ts`, sur deux axes (taille, nom accessible).
+> - **Reste ouvert dans la famille** : `[A11Y-FOCUS-INDICATOR-MISSING]` (6 sites annoncés — à
+>   recenser avant de coder, comme les deux lots précédents l'ont montré).
+
 > ## 🟦 Session 2026-08-29 — Lot 42 : deux commandes qu'on ne pouvait pas atteindre
 > `[A11Y-DELETE-SPAN-NO-KEYBOARD]` (CRITIQUE) + `[A11Y-HOVER-ONLY-ACTIONS]` (ÉLEVÉ), tous deux
 > mesurés par l'audit et vérifiés contre le vrai code avant correctif.

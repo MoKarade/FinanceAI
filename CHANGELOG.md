@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-29 (Accessibilité : des cibles trop petites pour le doigt)
+
+- **Corrigé** : dix boutons de suppression n'offraient qu'une cible d'environ 16 pixels — le glyphe
+  « × » ou une petite icône, sans aucune marge autour. Sur un écran tactile, viser à côté était
+  facile, et l'action à côté était souvent destructive. La zone cliquable est maintenant d'au moins
+  24 pixels partout, sans que rien ne bouge à l'écran.
+- **Corrigé** : quatre de ces boutons n'avaient aucun nom lisible par un lecteur d'écran — ils
+  s'annonçaient « × bouton ». Ils disent maintenant ce qu'ils suppriment.
+
 ## [unreleased] — 2026-08-29 (Accessibilité : deux commandes qu'on ne pouvait pas atteindre)
 
 - **Corrigé** : le « × » qui supprime une propriété, dans les onglets de l'atelier immobilier, était

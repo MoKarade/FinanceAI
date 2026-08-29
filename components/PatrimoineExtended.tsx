@@ -88,7 +88,7 @@ export const InsurancePanel: React.FC<{
                             onChange={e => update(i, { expiryDate: e.target.value })}
                             className="col-span-1 bg-dark border border-border rounded px-0.5 py-1 text-tiny text-white"
                         />
-                        <button onClick={() => remove(i)} className="col-span-1 text-danger-400 text-body hover:text-red-300" title="Supprimer">×</button>
+                        <button onClick={() => remove(i)} className="col-span-1 text-danger-400 text-body hover:text-red-300 p-2 -m-2" title="Supprimer" aria-label="Supprimer cette police">×</button>
                     </div>
                 ))}
                 <button onClick={add} className="text-meta bg-info-500/20 border border-info-500/40 rounded px-2 py-1 text-blue-300 hover:bg-info-500/30">
@@ -207,7 +207,7 @@ export const BusinessPanel: React.FC<{
                         <input aria-label="Pourcentage détenu" type="number" placeholder="% détenu" value={b.ownershipPct} onChange={e => update(i, { ownershipPct: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-1 text-meta text-white" />
                         <PrivateNumberInput aria-label="Juste valeur marchande (dollars)" type="number" placeholder="JVM $" value={b.estimatedValue || ''} onChange={e => update(i, { estimatedValue: Number(e.target.value) || 0 })} className="bg-dark border border-border rounded px-1 py-1 text-meta text-white" />
                         <PrivateNumberInput aria-label="Dividende annuel (dollars)" type="number" placeholder="Div annuel $" value={b.annualDividend || ''} onChange={e => update(i, { annualDividend: Number(e.target.value) || undefined })} className="bg-dark border border-border rounded px-1 py-1 text-meta text-white" />
-                        <button onClick={() => remove(i)} className="text-danger-400 hover:text-red-300">×</button>
+                        <button onClick={() => remove(i)} className="text-danger-400 hover:text-red-300 p-2 -m-2" aria-label="Supprimer cet immeuble locatif">×</button>
                     </div>
                 ))}
                 <button onClick={add} className="text-meta bg-purple-500/20 border border-purple-500/40 rounded px-2 py-1 text-purple-300 hover:bg-purple-500/30">+ Ajouter une société</button>
@@ -244,7 +244,7 @@ export const CyclicalGoalsPanel: React.FC<{
                         <div key={v.id} className="flex gap-1 mb-1">
                             <input aria-label="Fréquence de remplacement (années)" type="number" placeholder="Tous les N ans" value={v.cyclYears} onChange={e => { const next = [...vehicles]; next[i] = { ...v, cyclYears: Number(e.target.value) || 0 }; onVehicles(next); }} className="w-16 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                             <PrivateNumberInput aria-label="Coût estimé du véhicule (dollars)" type="number" placeholder="Coût $" value={v.costEstimate} onChange={e => { const next = [...vehicles]; next[i] = { ...v, costEstimate: Number(e.target.value) || 0 }; onVehicles(next); }} className="flex-1 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                            <button onClick={() => { const next = [...vehicles]; next.splice(i, 1); onVehicles(next); }} className="text-danger-400 text-meta">×</button>
+                            <button onClick={() => { const next = [...vehicles]; next.splice(i, 1); onVehicles(next); }} className="text-danger-400 text-meta p-2 -m-2" aria-label="Supprimer ce remplacement de véhicule">×</button>
                         </div>
                     ))}
                     <button onClick={() => onVehicles([...vehicles, { id: newId(), cyclYears: 8, costEstimate: 30000 }])} className="text-tiny text-info-400 hover:text-blue-300">+ Ajouter</button>
@@ -256,7 +256,7 @@ export const CyclicalGoalsPanel: React.FC<{
                         <div key={r.id} className="flex gap-1 mb-1">
                             <input aria-label="Date de la rénovation" type="date" value={r.date} onChange={e => { const next = [...renovations]; next[i] = { ...r, date: e.target.value }; onRenovations(next); }} className="bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
                             <PrivateNumberInput aria-label="Coût de la rénovation (dollars)" type="number" placeholder="Coût $" value={r.cost} onChange={e => { const next = [...renovations]; next[i] = { ...r, cost: Number(e.target.value) || 0 }; onRenovations(next); }} className="flex-1 bg-dark border border-border rounded px-1 py-0.5 text-tiny text-white" />
-                            <button onClick={() => { const next = [...renovations]; next.splice(i, 1); onRenovations(next); }} className="text-danger-400 text-meta">×</button>
+                            <button onClick={() => { const next = [...renovations]; next.splice(i, 1); onRenovations(next); }} className="text-danger-400 text-meta p-2 -m-2" aria-label="Supprimer cette rénovation">×</button>
                         </div>
                     ))}
                     <button onClick={() => onRenovations([...renovations, { id: newId(), date: '', cost: 20000 }])} className="text-tiny text-info-400 hover:text-blue-300">+ Ajouter</button>
@@ -274,7 +274,7 @@ export const CyclicalGoalsPanel: React.FC<{
                                 <input type="checkbox" checked={c.donateAppreciatedSecurities ?? false} onChange={e => { const next = [...charity]; next[i] = { ...c, donateAppreciatedSecurities: e.target.checked }; onCharity(next); }} />
                                 titres*
                             </label>
-                            <button onClick={() => { const next = [...charity]; next.splice(i, 1); onCharity(next); }} className="text-danger-400 text-meta">×</button>
+                            <button onClick={() => { const next = [...charity]; next.splice(i, 1); onCharity(next); }} className="text-danger-400 text-meta p-2 -m-2" aria-label="Supprimer ce don planifié">×</button>
                         </div>
                     ))}
                     <button onClick={() => onCharity([...charity, { id: newId(), annualAmount: 1000 }])} className="text-tiny text-info-400 hover:text-blue-300">+ Ajouter</button>

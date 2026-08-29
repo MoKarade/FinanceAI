@@ -207,7 +207,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                             <button
                                 type="button"
                                 onClick={() => { const next = [...holdings]; next.splice(i, 1); setHoldings(next); }}
-                                className="col-span-1 text-danger-400 text-meta hover:text-red-300"
+                                className="col-span-1 text-danger-400 text-meta hover:text-red-300 p-2 -m-2"
                                 aria-label="Supprimer cette ligne"
                             >
                                 ×

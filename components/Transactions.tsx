@@ -618,7 +618,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                         <Icon name="chevron-right" size={12} className="text-ink-500 hidden sm:inline shrink-0" />
                                         <PrivateText quoi="categorie" className="text-ink-100 bg-white/10 px-2 py-0.5 rounded font-bold truncate max-w-[120px]">{rule.category}</PrivateText>
                                         <button onClick={() => handleApplyRuleNow(rule)} aria-label={`Appliquer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 text-ink-300 hover:text-primary transition-all text-tiny font-bold ml-1">Appliquer</button>
-                                        <button onClick={() => handleDeleteRule(rule.id)} aria-label={`Supprimer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 inline-flex text-danger-400 hover:text-danger-500 transition-all ml-1"><Icon name="close" size={13} /></button>
+                                        <button onClick={() => handleDeleteRule(rule.id)} aria-label={`Supprimer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 inline-flex text-danger-400 hover:text-danger-500 transition-all ml-1 p-2 -m-1"><Icon name="close" size={13} /></button>
                                     </div>
                                 ))}
                             </div>

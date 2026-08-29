@@ -193,9 +193,29 @@ describe('[A11Y-PRIVACY-PATRIMOINE-ETENDU] garde de source : tout champ « (doll
         return out;
     };
 
-    /** Tous les `aria-label` du fichier, sans hypothèse sur la balise ni l'ordre des attributs. */
-    const tousLesLibelles = () =>
-        [...propre.matchAll(/aria-label="([^"]*)"/g)].map((m) => m[1]);
+    /**
+     * Tous les `aria-label` portés par un CONTRÔLE DE SAISIE, sans hypothèse sur l'ordre des
+     * attributs — c'est ce que la garde ci-dessous compare à ce que `controles()` sait voir.
+     *
+     * ⚠️ Les `<button>` sont exclus, et l'exclusion a une histoire : cette fonction collectait
+     * TOUS les `aria-label` du fichier, ce qui était équivalent tant qu'aucun bouton n'y était
+     * nommé. `[A11Y-TOUCH-TARGET-TINY]` (lot 43) a ajouté cinq `aria-label` sur les boutons de
+     * suppression — quatre n'avaient AUCUN nom accessible et s'annonçaient « × bouton » — et la
+     * garde les a aussitôt dénoncés comme « champs échappant au scan ». Elle avait raison sur les
+     * faits et tort sur le sens : ce sont des ACTIONS, pas des montants à masquer en mode discret.
+     * La balise porteuse est donc lue explicitement, plutôt que supposée.
+     */
+    const tousLesLibelles = () => {
+        const out: string[] = [];
+        for (const m of propre.matchAll(/aria-label="([^"]*)"/g)) {
+            const avant = propre.slice(0, m.index ?? 0);
+            const baliseOuvrante = avant.lastIndexOf('<');
+            const nomBalise = propre.slice(baliseOuvrante + 1).match(/^\/?\s*([A-Za-z][\w.]*)/)?.[1] ?? '';
+            if (nomBalise === 'button') continue;
+            out.push(m[1]);
+        }
+        return out;
+    };
 
     // ⚠️ LA garde de la garde — comparaison d'ENSEMBLES, pas de CARDINALITÉS.
     // La regex de `controles()` exige que `aria-label` soit le PREMIER attribut de la balise. Un

@@ -42,8 +42,11 @@
   sur toutes les surfaces qui dépendent de la projection, donc une seule publication les couvre — et
   son message habituel (« ouvrez Future ») est REMPLACÉ, parce qu'ouvrir Future ne répare pas une
   donnée corrompue (classe `DECISION-PRIVACY-UNE-SEULE-SORTIE`).
-  ⚠️ Périmètre borné aux champs que la frontière LIT et PRODUIT : étendre le scan à l'état entier
-  refuserait la projection pour un champ décoratif, ce qui serait pire que le défaut.
+  ⚠️ ~~Périmètre borné aux champs que la frontière LIT et PRODUIT~~ — **RENVERSÉ aux 3ᵉ et 4ᵉ
+  passes** (voir la note de fin d'entrée) : le scan porte sur les paramètres ASSEMBLÉS, intégralement,
+  avec ses exclusions déclarées. Le raisonnement d'origine confondait les PARAMÈTRES et l'ÉTAT — un
+  point d'historique de prix n'entre pas dans les paramètres (mesuré : 149 nœuds, inchangés avec
+  500 actifs et 5 000 transactions).
   ⚠️ **CINQ trous trouvés par le panel money-critical, tous reproduits avant correction** — et aucun
   faux positif, ce qui est rare sur ce code (~1/3 habituellement) :
   1. `currentRentExpense` est PRODUIT par la frontière et n'était pas scanné → un poste « Logement »
@@ -68,6 +71,23 @@
      a échoué… l'erreur a été journalisée », trois affirmations fausses à la fois (aucun calcul lancé,
      rien de journalisé, et « désactive Monte-Carlo » ne répare rien). Corrigé, et une trace THROTTLÉE
      a été ajoutée : le patron jumeau `HARDEN-NETWORTH-NAN` fait les DEUX, signal ET trace.
+  ⚠️⚠️ **Suite du même lot — QUATRE passes au total, PR #764 mergée le 2026-08-29** (`6e52e86`) :
+  · **3ᵉ passe, le pire défaut du lot** : le « filet récursif » scannait SON ARGUMENT — un littéral de
+    huit clés construit au site d'appel — donc la liste blanche n'avait pas disparu, elle avait monté
+    d'un cran. `projection.inflationRate = NaN` → 0 refus, **−98,8 %**. Seize tests verts sur un
+    mécanisme inopérant, et l'affirmation fausse propagée jusque dans `CLAUDE.md`.
+  · **4ᵉ passe** : l'inversion n'a pas supprimé la liste, elle lui a fait **changer d'AXE** — des clés
+    vers les TYPES. Une chaîne dans un champ monétaire traverse (`typeof !== 'number'`) : **−52 %**
+    sur un montant de projet immobilier, **−68 M$** sur `inflationRate = "2"`, 0 refus, 0 non-fini
+    publié. Correctif à la SOURCE → `[BACKUP-SCHEMA-NON-TYPE]` ROUTÉ au BACKLOG, non corrigé ici.
+  · Corrigés au même tour : le libellé annonçait « un réglage de la projection » pour une DETTE (carte
+    conteneur → nom lisible, repli classé `cause` pour qu'un défaut inconnu soit bruyant) ; la même
+    phrase répétée pour deux champs du même conteneur ; le contrôle « 0 refus sur les 7 personas »
+    qui mesurait un objet plus ÉTROIT que la production (aucun persona ne porte `projection`) ; et
+    les chiffres −93 %/−29 %, écrits d'après un rapport d'agent, qui valent **−98,8 %** et **−16,3 %**.
+  · **Deux scripts committés** portent les chiffres : `mesureFrontiereMoteur.ts` (le défaut, moteur
+    lancé) et `mesureGardeFrontiere.ts` (le coût de la garde — 39 états légitimes → **0 faux refus**,
+    ~24 µs/appel, pas de mémoïsation). Gate : **4 962 tests / 469 fichiers**, 0 échec.
 
 ## 2026-08-29 — Lot 37 : un décommenteur qui mangeait le code après une URL
 

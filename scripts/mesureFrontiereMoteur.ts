@@ -20,6 +20,8 @@
 //
 // Run : `npx tsx scripts/mesureFrontiereMoteur.ts`
 import { buildSimulationParamsFromState } from '../services/projection/buildSimulationParams.ts';
+import { calculateFutureProjection } from '../services/projection.ts';
+import type { SimulationParams } from '../services/projection.ts';
 import { buildCoupleConfort } from '../services/testPersonas/coupleConfort.ts';
 import type { AppState } from '../types.ts';
 
@@ -45,6 +47,11 @@ const etatSain = (): AppState => {
 
 /** Scan RÉCURSIF : rend le chemin de chaque nombre non fini atteignable depuis `racine`. */
 function nonFinis(racine: unknown, chemin = '', vus = new WeakSet<object>()): string[] {
+    // ⚠️ Le RELEVÉ DE REFUS est exclu du scan, sinon il se compte lui-même : la garde y recopie les
+    // valeurs fautives TELLES QUELLES, et le scan les relève une seconde fois sous
+    // `entreesRefusees.0.valeur`. Le tableau annonçait alors trois non-finis là où la donnée n'en
+    // porte qu'un — un instrument qui mesure sa propre trace.
+    if (chemin.startsWith('entreesRefusees')) return [];
     if (typeof racine === 'number') return Number.isFinite(racine) ? [] : [`${chemin} = ${racine}`];
     if (racine === null || typeof racine !== 'object') return [];
     if (vus.has(racine)) return [];
@@ -61,9 +68,31 @@ const CAS: Array<{ nom: string; corrompre?: (e: AppState) => void }> = [
     { nom: 'netSalary: Infinity', corrompre: (e) => { (e.config.users[0] as unknown as Record<string, unknown>).netSalary = Infinity; } },
     { nom: 'netSalary: NaN', corrompre: (e) => { (e.config.users[0] as unknown as Record<string, unknown>).netSalary = NaN; } },
     { nom: 'grossSalary: Infinity', corrompre: (e) => { (e.config.users[0] as unknown as Record<string, unknown>).grossSalary = Infinity; } },
+    // ⚠️ Les deux cas AJOUTÉS APRÈS COUP, et la raison de leur ajout est une leçon en soi : leurs
+    // pourcentages (« −93 % », « −29 % ») avaient été gravés dans le commit, dans `CLAUDE.md` ET
+    // dans `docs/CONVENTIONS.md` sur la foi d'un rapport d'agent, sans passer par ce script. Une
+    // 4ᵉ passe les a re-mesurés sous le protocole d'ici et a trouvé autre chose. Un chiffre du
+    // dépôt vit dans le script qui le produit (`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE`).
+    { nom: 'projection.inflationRate: NaN', corrompre: (e) => { (e.projection as unknown as Record<string, unknown>).inflationRate = NaN; } },
+    { nom: 'projection.returnRates.celi: NaN', corrompre: (e) => {
+        const p = e.projection as unknown as Record<string, unknown>;
+        p.returnRates = { ...(p.returnRates as Record<string, number>), celi: NaN };
+    } },
 ];
 
+/** Le patrimoine final, mesuré en FAISANT TOURNER le moteur — la seule chose qui autorise un « % ».
+ *  ⚠️ Le moteur est appelé DIRECTEMENT, sans passer par le blocage de `ProjectionEngine` : c'est le
+ *  défaut d'AVANT la garde qu'on mesure ici, pas le comportement d'aujourd'hui. */
+const patrimoineFinal = (params: SimulationParams): number | undefined => {
+    const r = calculateFutureProjection(params, false);
+    // ⚠️ Le champ est OPTIONNEL : on rend `undefined` tel quel plutôt qu'un `0` de repli. Un « 0 $ »
+    // crédible dans une mesure d'écart est exactement le genre de faux que ce ticket combat.
+    return r.finalNetWorth;
+};
+
 console.log(`scénario : ${JSON.stringify(SCENARIO)}\n`);
+/** Le patrimoine du cas sain, posé au premier tour — les écarts s'y rapportent. */
+let reference: number | null = null;
 for (const cas of CAS) {
     // ⚠️ Un état NEUF par cas — jamais un état partagé qu'on « répare » entre deux mesures.
     const etat = etatSain();
@@ -77,4 +106,13 @@ for (const cas of CAS) {
     console.log(`    baseGrossAnnual = ${(params as { baseGrossAnnual: number }).baseGrossAnnual}`);
     console.log(`    non finis, PREMIER NIVEAU : ${premierNiveau.length ? premierNiveau.join(', ') : '(aucun)'}`);
     console.log(`    non finis, RÉCURSIF       : ${recursif.length ? recursif.join(', ') : '(aucun)'}`);
+    const final = patrimoineFinal(params);
+    if (reference === null && final !== undefined) reference = final;
+    const montant = final === undefined ? '—' : `${Math.round(final).toLocaleString('fr-CA')} $`;
+    const ecart = final === undefined || reference === null || reference === 0
+        ? null
+        : ((final - reference) / reference) * 100;
+    console.log(`    patrimoine final = ${montant}`
+        + (cas.nom === '(sain)' ? ' (référence)' : ecart === null ? '' : ` — écart ${ecart >= 0 ? '+' : ''}${ecart.toFixed(1)} %`));
+    console.log(`    refus de la garde ACTUELLE : ${(params as unknown as { entreesRefusees?: unknown[] }).entreesRefusees?.length ?? 0}`);
 }

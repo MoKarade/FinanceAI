@@ -1411,6 +1411,22 @@
 
 ### 🔴 Argent — valeurs fausses ou silencieuses
 
+- [ ] **`[BACKUP-SCHEMA-NON-TYPE]`** (M, CRITIQUE) — le schéma de restauration valide les conteneurs
+  money-critical en `z.unknown()` / `z.array(z.unknown())` (`components/settings/BackupPanel.tsx:18-40`) :
+  aucune contrainte de TYPE. Une valeur restaurée depuis un backup ou un blob Drive peut donc revenir
+  en **chaîne** dans un champ monétaire, et une chaîne traverse toute l'arithmétique sans jamais
+  devenir non finie. ⚠️ **La garde d'entrée du moteur ne la voit pas** : `verifierEntreesMoteur`
+  scanne la FINITUDE de tout l'objet des paramètres, mais le TYPE seulement sur les champs nommés
+  (`estMontantIllisible` : `netSalary`, `grossSalary`, `salary`, `budgetItems[].target`). Le filet
+  récursif teste `typeof === 'number'` et sort sur tout le reste. **MESURÉ** (4ᵉ passe du lot 38,
+  persona `couple-confort`, horizon 30 ans) : une chaîne dans un montant de projet immobilier →
+  **−52 %** de patrimoine final (−3 095 835 $), `projection.inflationRate = "2"` → **−68 M$**, chaque
+  fois avec **0 refus** et **0 valeur non finie publiée sur 361 points** — le mode « absorbé », celui
+  où rien ne crie. Correctif à la SOURCE, pas un cinquième ajout à la garde : typer les conteneurs
+  (`z.number().finite()` par champ monétaire) dans le schéma de restauration. Le même geste ferme le
+  cas voisin du **champ ABSENT** (`acc + undefined` = `NaN`), aujourd'hui refusé par un dérivé dont
+  le libellé ne nomme aucun champ corrigeable — déjà noté dans `verifierEntreesMoteur.ts`. [MESURÉ]
+
 ### 🔴 Interface — atteignabilité et clavier
 
 - [ ] **`[A11Y-DELETE-SPAN-NO-KEYBOARD]`** (S, CRITIQUE) — le « Supprimer la propriété » d'un onglet

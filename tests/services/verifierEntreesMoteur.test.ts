@@ -34,11 +34,65 @@ describe('[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] la frontière refuse une entr�
     it('ne refuse RIEN sur les sept personas — le cas nominal reste calculable', () => {
         // Anti-vacuité de la garde entière : si elle refusait un état sain, elle casserait l'app.
         // Les sept sont balayés parce que « le persona par défaut passe » ne dit rien des autres.
-        const refuses = TEST_PERSONAS.map((p) => ({
-            id: p.id,
-            refus: params(p.build() as AppState).entreesRefusees ?? [],
-        }));
+        // ⚠️ `projection` est AJOUTÉE à chaque persona, et c'est le cœur du contrôle depuis que le
+        // scan porte sur les params complets : aucun persona ne porte `projection` (le store
+        // l'apporte au montage), donc sans cette ligne ce test mesurait un objet plus ÉTROIT que la
+        // production — et laissait hors contrôle la plus grosse surface que le lot vient d'ajouter.
+        // C'est la classe de défaut que le lot corrige, re-commise dans le test qui devait le
+        // prouver (`MESURER-SUR-UN-OBJET-PLUS-ETROIT-QUE-LA-PRODUCTION`).
+        const refuses = TEST_PERSONAS.map((p) => {
+            const etat = p.build() as AppState;
+            etat.projection = { ...INITIAL_PROJECTION } as AppState['projection'];
+            return { id: p.id, refus: params(etat).entreesRefusees ?? [] };
+        });
         expect(refuses).toHaveLength(7);
+        expect(refuses.filter((r) => r.refus.length > 0)).toEqual([]);
+    });
+
+    // ⚠️ CANARI D'ÉLARGISSEMENT, et il faut dire ce qu'il est. Les tests au-dessus prouvent que la
+    // garde ATTRAPE ; celui-ci prouve qu'elle n'attrape pas TROP — le risque propre à l'inversion
+    // (scanner tout l'objet plutôt qu'énumérer les champs). Il ne discrimine pas une régression
+    // présente, il attrape la future : un canari se déclare comme tel plutôt que de se faire passer
+    // pour une preuve (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+    //
+    // Les sept personas sont des ménages COMPLETS : ils ne disent rien du seul état que tout nouvel
+    // utilisateur traverse — l'app neuve — ni des configurations qui produisent un `0/0` HONNÊTE, la
+    // seule façon crédible qu'un état légitime rende un `NaN`. `scripts/mesureGardeFrontiere.ts`
+    // (committé) balaie les 39 cas ; ceux gardés ici sont ceux dont un refus casserait l'app.
+    //
+    // ⚠️ Sa SPÉCIFICITÉ est mesurée, pas supposée : ajouter à `buildSimulationParams` un dérivé
+    // plausible en `0/0` — `tauxEpargne = (net − dépenses) / net` — rend ce test ROUGE et laisse
+    // les sept personas VERTS. Sans lui, l'élargissement passerait la CI. (Une première version de
+    // la perturbation écrivait `inputs.baseNetAnnual`, un champ qui n'existe pas à ce point : elle
+    // rendait `NaN` partout et rougissait tout, ce qui n'aurait rien prouvé de la spécificité.)
+    it('ne refuse RIEN sur un état DÉGRADÉ mais légitime — app neuve et `0/0` honnêtes', () => {
+        const neuve: AppState = {
+            ...(buildCoupleConfort() as AppState),
+            assets: [], transactions: [], accounts: [], budgetItems: [],
+            debts: [], realEstate: [], goals: [],
+        } as AppState;
+        neuve.config.users.forEach((u) => {
+            (u as unknown as Record<string, unknown>).netSalary = 0;
+            (u as unknown as Record<string, unknown>).grossSalary = 0;
+        });
+
+        const zeroSurZero = etatAvecProjection();
+        // Quantité 0 ET prix 0 : un rendement de 0/0, sans une seule donnée corrompue.
+        zeroSurZero.assets.forEach((a) => {
+            (a as unknown as Record<string, unknown>).quantity = 0;
+            (a as unknown as Record<string, unknown>).buyPrice = 0;
+            (a as unknown as Record<string, unknown>).currentPrice = 0;
+        });
+        // Retraite à l'âge courant : zéro an d'accumulation au dénominateur.
+        zeroSurZero.config.users.forEach((u) => {
+            (u as unknown as Record<string, unknown>).retirementAge = (u as unknown as { age?: number }).age ?? 35;
+        });
+
+        const cas: Array<{ nom: string; etat: AppState }> = [
+            { nom: 'app neuve, sans emploi ni données', etat: neuve },
+            { nom: '0/0 honnêtes (actif nul, retraite immédiate)', etat: zeroSurZero },
+        ];
+        const refuses = cas.map((c) => ({ nom: c.nom, refus: params(c.etat).entreesRefusees ?? [] }));
         expect(refuses.filter((r) => r.refus.length > 0)).toEqual([]);
     });
 
@@ -117,7 +171,9 @@ describe('[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] le filet récursif', () => {
     // ⚠️ CES TESTS MANQUAIENT, et c'est leur absence qui a laissé passer le pire défaut du lot : le
     // « filet récursif » ne scannait que l'objet de huit clés construit pour l'appeler, donc les
     // deux canaux que le commit annonçait fermer restaient ouverts (`projection.inflationRate = NaN`
-    // → 0 refus et −93 % de patrimoine). Vingt-quatre tests passaient au vert sur un filet inopérant.
+    // → 0 refus et −98,8 % de patrimoine). SEIZE tests passaient au vert sur un filet inopérant — le
+    // commit disait « vingt-quatre », qui est le compte du fichier APRÈS le lot : même un chiffre
+    // d'auto-critique se compte au lieu de s'estimer.
     // Un mécanisme central sans test est un mécanisme dont personne ne sait s'il fonctionne.
 
     it('attrape un réglage de PROJECTION, qu\'aucune liste nommée ne couvre', () => {
@@ -129,7 +185,9 @@ describe('[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] le filet récursif', () => {
 
     it('descend dans les objets IMBRIQUÉS — le mode absorbé n\'y publie aucun non-fini', () => {
         // `returnRates.celi = NaN` ne produit AUCUNE valeur non finie en sortie (mesuré) : la courbe
-        // reste lisse et le patrimoine baisse de ~29 %. Seul un scan de l'ENTRÉE peut le voir.
+        // reste lisse et le patrimoine baisse de **16,3 %** (`scripts/mesureFrontiereMoteur.ts`, qui
+        // porte ce cas depuis la 4ᵉ passe ; « ~29 % » venait d'un rapport d'agent non re-mesuré).
+        // Seul un scan de l'ENTRÉE peut le voir.
         const etat = etatAvecProjection();
         const proj = etat.projection as unknown as Record<string, unknown>;
         proj.returnRates = { ...(proj.returnRates as Record<string, unknown>), celi: Number.NaN };
@@ -158,10 +216,84 @@ describe('[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] le filet récursif', () => {
 
     it('déduplique les DEUX notations du même champ', () => {
         // Le filet écrit `config.users.0.netSalary`, les listes nommées `config.users[0].netSalary`.
+        // ⚠️ Test de NON-RÉGRESSION, pas preuve de ce lot : `canonique` existait déjà au commit
+        // précédent, donc celui-ci était VERT avant — il discrimine bien `canonique` (neutralisée →
+        // rouge), pas la contribution du filet. Le dire évite de le compter comme une preuve de plus.
         const etat = buildCoupleConfort() as AppState;
         (etat.config.users[0] as unknown as Record<string, unknown>).netSalary = Infinity;
         const chemins = (params(etat).entreesRefusees ?? []).map((r) => r.chemin);
         expect(chemins.filter((c) => c.includes('netSalary'))).toEqual(['config.users[0].netSalary']);
+    });
+
+    // ⚠️ LE TEST QUI MANQUAIT — et qui n'est pas circulaire. Les cinq au-dessus nomment `projection`
+    // et `config` : une re-restriction future du scan à `{config, projection, dérivés}` les
+    // laisserait tous VERTS, alors que c'est exactement la faute que ce lot a commise trois fois.
+    // Celui-ci ne consulte aucune liste du module : il énumère les clés de l'objet RÉELLEMENT
+    // assemblé et exige un refus pour chacune. Le jour où un conteneur sort du scan, il rougit —
+    // sans qu'on ait pensé à ce conteneur-là.
+    it('refuse un non-fini dans CHAQUE conteneur des params, sans en nommer aucun', () => {
+        const assembles = params(etatAvecProjection()) as unknown as Record<string, unknown>;
+
+        /** Remplace la PREMIÈRE feuille numérique atteignable par `NaN`. Rend `false` s'il n'y en a pas. */
+        const corrompre = (n: unknown): boolean => {
+            if (n === null || typeof n !== 'object') return false;
+            for (const [cle, val] of Object.entries(n as Record<string, unknown>)) {
+                if (typeof val === 'number' && Number.isFinite(val)) {
+                    (n as Record<string, unknown>)[cle] = Number.NaN;
+                    return true;
+                }
+                if (corrompre(val)) return true;
+            }
+            return false;
+        };
+
+        const testes: string[] = [];
+        const muets: string[] = [];
+        for (const cle of Object.keys(assembles)) {
+            if (cle === 'entreesRefusees') continue;   // le relevé lui-même, exclu du filet par contrat
+            const copie = structuredClone(assembles) as Record<string, unknown>;
+            if (typeof copie[cle] === 'number') copie[cle] = Number.NaN;
+            else if (!corrompre(copie[cle])) continue;   // ce conteneur ne porte aucun nombre : rien à prouver
+            testes.push(cle);
+            const refus = verifierEntreesMoteur(copie);
+            if (!refus.some((r) => r.chemin.startsWith(cle))) muets.push(cle);
+        }
+
+        // Anti-vacuité : si l'énumération ne trouvait rien à corrompre, la boucle passerait à vide.
+        expect(testes.length).toBeGreaterThan(8);
+        expect(muets).toEqual([]);
+    });
+
+    it('nomme le CONTENEUR, pas « un réglage de la projection » pour une dette', () => {
+        // Mesuré avant correctif : `debts[0].interestRate = NaN` s'annonçait « un réglage de la
+        // projection est illisible » — l'utilisateur part corriger le mauvais écran. Un libellé qui
+        // nomme le mauvais endroit est pire qu'un libellé vague.
+        const etat = etatAvecProjection();
+        (etat.debts[0] as unknown as Record<string, unknown>).interestRate = Number.NaN;
+        const refus = params(etat).entreesRefusees ?? [];
+        expect(messageDeRefus(refus)).toContain('dettes');
+        expect(messageDeRefus(refus)).not.toContain('réglage de la projection');
+    });
+
+    it('classe CAUSE ce qu\'il ne sait pas nommer — un défaut bruyant, jamais tu', () => {
+        // `derive` fait TAIRE un refus dès qu'une cause est nommée ailleurs. Un conteneur inconnu
+        // classé `derive` reproduirait donc le scénario que `role` existe pour empêcher.
+        const refus = verifierEntreesMoteur({ conteneurInexistant: { montant: Number.NaN } });
+        expect(refus.map((r) => r.role)).toEqual(['cause']);
+        expect(refus[0].libelle).not.toContain('conteneurInexistant');
+    });
+
+    it('ne répète PAS le même libellé pour deux champs du même conteneur', () => {
+        // Les chemins DIFFÈRENT, donc la déduplication amont ne peut rien : deux dettes illisibles
+        // donnaient « … est illisible et … est illisible », la même phrase deux fois.
+        const etat = etatAvecProjection();
+        const dette = etat.debts[0] as unknown as Record<string, unknown>;
+        dette.interestRate = Number.NaN;
+        dette.balance = Number.NaN;
+        const refus = params(etat).entreesRefusees ?? [];
+        expect(refus.length).toBeGreaterThan(1);   // deux refus…
+        const msg = messageDeRefus(refus);
+        expect(msg.match(/dettes/g) ?? []).toHaveLength(1);   // …mais une seule phrase
     });
 
     it('garde la valeur fautive TELLE QUELLE, sans fabriquer un NaN', () => {

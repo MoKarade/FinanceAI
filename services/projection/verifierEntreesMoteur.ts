@@ -34,10 +34,35 @@
 //     exactement ce que `no-fake-data` interdit), pas de trace silencieuse (le défaut a vécu
 //     jusqu'ici précisément parce que rien ne le signalait).
 //
-// PÉRIMÈTRE — ce module vérifie ce que `buildSimulationParams` LIT et PRODUIT, pas l'état entier.
-// Étendre la vérification à tout l'objet refuserait la projection pour un champ décoratif (un point
-// d'historique de prix, par exemple), ce qui serait pire que le défaut. Les autres surfaces ont
-// leurs propres gardes (`assetFxGuard`, les durcissements `HARDEN-*-NAN`).
+// PÉRIMÈTRE — ce module scanne INTÉGRALEMENT les paramètres assemblés, et rien d'autre.
+//
+// ⚠️ La note qui tenait ici disait l'INVERSE : « ne pas étendre la vérification à tout l'objet, ça
+// refuserait la projection pour un champ décoratif — un point d'historique de prix, par exemple ».
+// Le raisonnement confondait les PARAMÈTRES et l'ÉTAT. Un point d'historique de prix n'est pas dans
+// les paramètres : MESURÉ, l'objet remis au moteur compte 149 nœuds, et il en compte toujours 149
+// avec 500 actifs et 5 000 transactions dans l'état — ces collections n'y entrent pas. Scanner tout
+// l'objet est donc à la fois sûr et BORNÉ, alors que la liste blanche que cette note justifiait a
+// laissé passer cinq canaux money-critical en trois passes (détail au filet récursif, plus bas).
+// Ce qui reste hors périmètre, c'est l'ÉTAT : les autres surfaces ont leurs propres gardes
+// (`assetFxGuard`, les durcissements `HARDEN-*-NAN`).
+//
+// ⚠️ Les deux risques de ce choix sont MESURÉS, pas supposés :
+//   · FAUX REFUS — 39 états légitimes (l'état initial du store, les 7 personas, 31 dégradations :
+//     salaires à 0, budget vide ou absent, aucun actif/compte/dette/immeuble, `projection` absente,
+//     `years = 0`, et les générateurs de `0/0` — quantité 0 et prix 0, retraite = âge actuel,
+//     historique vide, CAGR sur un seul point) : **zéro refus**.
+//   · COÛT — ~24 µs par appel sur un ménage nominal (assiette de 149 nœuds), contre ~130 µs pour
+//     l'assemblage qui l'appelle et 300 ms de debounce en amont.
+//     ⚠️ Ce coût est INSENSIBLE aux collections lourdes — 500 actifs et 5 000 transactions le
+//     laissent à 149 nœuds, parce qu'elles n'entrent pas dans les paramètres — mais il n'est PAS
+//     constant : 40 dettes et 60 événements de vie le portent à 806 nœuds et ~92 µs. « Le coût ne
+//     grandit pas avec les données » aurait donc été trop large ; ce qui tient, c'est qu'il reste
+//     à trois ordres de grandeur sous le debounce. Aucune mémoïsation nécessaire — sa clé et son
+//     invalidation coûteraient plus que le scan.
+//
+// Les deux mesures ci-dessus se re-dérivent par `scripts/mesureGardeFrontiere.ts` (committé), qui
+// nomme chaque état testé — un chiffre cité dans le dépôt sans script est un chiffre invérifiable
+// (`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE`).
 
 /** Un champ d'entrée inexploitable, avec de quoi le dire à l'utilisateur ET le retrouver dans le code. */
 export interface EntreeRefusee {
@@ -255,37 +280,88 @@ export function verifierEntreesMoteur(
         // aurait corrigé le salaire nommé, relancé, et se serait fait refuser pour une cause tue :
         // exactement le scénario que le champ `role` a été introduit pour empêcher, re-commis par
         // le mécanisme censé le respecter (finding 3e passe, #764).
-        const corrigible = /^(config\.users|budgetItems)\b/.test(chemin);
-        refus.push({
-            role: corrigible ? 'cause' : 'derive',
-            chemin,
-            // ⚠️ JAMAIS le chemin technique dans le libellé : il est montré à l'écran sur toutes les
-            // surfaces. Le chemin reste dans `chemin`, pour le journal et les tests.
-            libelle: corrigible
-                ? 'une valeur de ton profil est illisible'
-                : 'un réglage de la projection est illisible',
-            valeur,
-        });
+        // ⚠️ JAMAIS le chemin technique dans le libellé : il est montré à l'écran sur toutes les
+        // surfaces. Le chemin reste dans `chemin`, pour le journal et les tests.
+        const c = CONTENEURS.find((x) => x.prefixe.test(chemin)) ?? CONTENEUR_INCONNU;
+        refus.push({ role: c.role, chemin, libelle: c.libelle, valeur });
     }
 
     return refus;
 }
 
 /**
- * Tout nombre non fini atteignable depuis `racine`, avec son chemin.
+ * Ce que le filet DIT quand il attrape un champ qu'aucune liste nommée ne couvre : le CONTENEUR d'où
+ * vient le chemin, en mots de l'écran.
  *
- * ⚠️ AUCUNE exclusion pour l'instant, et c'est un choix mesuré : les sept personas rendent zéro
- * résultat. Le jour où un champ légitimement non fini apparaît, il s'ajoute ICI avec sa raison
- * écrite — un filtre se déclare et se motive, sinon un périmètre borné en silence se lit comme
- * « tout est couvert » (`AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`).
+ * ⚠️ Le jet précédent tranchait en DEUX (`config.users|budgetItems` → « une valeur de ton profil »,
+ * tout le reste → « un réglage de la projection »), et les deux moitiés étaient fausses :
+ *   · `budgetItems` a QUITTÉ l'objet scanné pour voyager dans `contexte` — mesuré,
+ *     `'budgetItems' in params` vaut `false`. Cette moitié de la condition était MORTE.
+ *   · une dette, un projet immobilier ou un objectif de retraite illisible s'annonçait comme « un
+ *     réglage de la projection » — factuellement FAUX, et l'utilisateur part corriger le mauvais
+ *     écran. Un libellé qui nomme le mauvais endroit est pire qu'un libellé vague.
+ *
+ * ⚠️ Cette carte est une liste — mais PAS du même genre que celle qui a été retirée. Elle ne décide
+ * pas ce qui est VÉRIFIÉ (le filet scanne tout, sans exception) ; elle décide seulement ce qu'on
+ * SAIT DIRE. Un conteneur qui n'y figure pas est quand même refusé, avec `CONTENEUR_INCONNU`. Une
+ * liste dont l'oubli dégrade le message ne peut pas rouvrir un canal money-critical ; c'est
+ * exactement ce que la liste blanche d'avant ne garantissait pas.
+ */
+const CONTENEURS: ReadonlyArray<{ prefixe: RegExp; libelle: string; role: 'cause' | 'derive' }> = [
+    { prefixe: /^config\.users\b/, libelle: 'une valeur de ton profil est illisible', role: 'cause' },
+    { prefixe: /^config\b/, libelle: 'un réglage du partage de budget est illisible', role: 'cause' },
+    { prefixe: /^projection\b/, libelle: 'un réglage de la projection est illisible', role: 'cause' },
+    { prefixe: /^debts\b/, libelle: 'un montant de l\'une de tes dettes est illisible', role: 'cause' },
+    { prefixe: /^realEstateGoals\b/, libelle: 'un montant de l\'un de tes projets immobiliers est illisible', role: 'cause' },
+    { prefixe: /^rentalProperties\b/, libelle: 'un montant de l\'un de tes immeubles locatifs est illisible', role: 'cause' },
+    { prefixe: /^retirementGoal\b/, libelle: 'un montant de ton objectif de retraite est illisible', role: 'cause' },
+    { prefixe: /^childGoals\b/, libelle: 'un montant de l\'un de tes objectifs pour un enfant est illisible', role: 'cause' },
+    { prefixe: /^travelGoals\b/, libelle: 'un montant de l\'un de tes voyages est illisible', role: 'cause' },
+    { prefixe: /^lifeEvents\b/, libelle: 'un montant de l\'un de tes événements de vie est illisible', role: 'cause' },
+    { prefixe: /^insurancePolicies\b/, libelle: 'un montant de l\'une de tes assurances est illisible', role: 'cause' },
+    { prefixe: /^vehicleReplacements\b/, libelle: 'un montant de l\'un de tes remplacements de véhicule est illisible', role: 'cause' },
+    { prefixe: /^majorRenovations\b/, libelle: 'un montant de l\'une de tes rénovations est illisible', role: 'cause' },
+    { prefixe: /^charitableGoals\b/, libelle: 'un montant de l\'un de tes dons planifiés est illisible', role: 'cause' },
+    { prefixe: /^privateBusinesses\b/, libelle: 'un montant de l\'une de tes entreprises est illisible', role: 'cause' },
+    { prefixe: /^financialGoals\b/, libelle: 'un montant de l\'un de tes objectifs financiers est illisible', role: 'cause' },
+    { prefixe: /^liveCSVBalances\b/, libelle: 'un solde importé est illisible', role: 'cause' },
+];
+
+/**
+ * Le repli, et il est délibérément classé `cause`.
+ *
+ * ⚠️ `derive` est le rôle qui fait TAIRE un refus dès qu'une cause est nommée ailleurs
+ * (`messageDeRefus`). Mettre un conteneur inconnu en `derive` reproduirait donc le scénario que le
+ * champ `role` existe pour empêcher : corriger le salaire qu'on vous nomme, relancer, et se faire
+ * refuser pour une cause que rien n'a nommée. Le défaut doit être bruyant, pas silencieux — le pire
+ * cas est alors une phrase vague EN PLUS, jamais une erreur tue.
+ */
+const CONTENEUR_INCONNU = { libelle: 'une valeur de tes données est illisible', role: 'cause' } as const;
+
+/**
+ * Ce que le filet récursif NE relève PAS, chemin par chemin, avec la raison.
+ *
+ * ⚠️ Une exclusion se DÉCLARE et se MOTIVE ici, jamais en silence. Ce commentaire a lui-même porté
+ * « AUCUNE exclusion pour l'instant » alors que la liste en contenait déjà une : une prose qui
+ * décrit un filtre au lieu de le lire se périme au premier ajout, et se lit alors comme « tout est
+ * couvert » (`AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`). Le contrôle du périmètre est la mesure de
+ * faux refus en tête de module, pas la taille de cette liste.
  */
 const EXCLUSIONS_DU_FILET: ReadonlyArray<{ chemin: RegExp; raison: string }> = [
     {
         chemin: /^entreesRefusees\b/,
+        // ⚠️ CEINTURE INATTEIGNABLE, annotée comme telle : `buildSimulationParams` ajoute ce champ
+        // APRÈS le scan, et la garde n'a qu'un appelant de production — le relevé ne peut donc pas
+        // se retrouver dans l'objet scanné. Elle reste parce qu'un second appelant coûterait cher à
+        // découvrir par ce chemin (la garde relèverait ses propres valeurs fautives recopiées), mais
+        // une garde morte s'ANNOTE, sinon elle compte comme protection au prochain inventaire
+        // (`UNE-GARDE-QUI-NE-PEUT-PAS-TIRER-N-EST-PAS-UNE-PROTECTION`). Le même piège a mordu
+        // `scripts/mesureFrontiereMoteur.ts`, dont le scan se comptait lui-même.
         raison: 'le relevé lui-même, si jamais des paramètres déjà refusés repassaient par la garde',
     },
 ];
 
+/** Tout nombre non fini atteignable depuis `racine`, avec son chemin — hors exclusions déclarées. */
 function nonFinisRecursifs(
     racine: unknown,
     chemin = '',
@@ -317,7 +393,12 @@ export function messageDeRefus(refus: ReadonlyArray<EntreeRefusee>): string {
     if (refus.length === 0) return '';
     const causes = refus.filter((r) => r.role === 'cause');
     const aMontrer = causes.length > 0 ? causes : refus;
-    const liste = aMontrer.map((r) => r.libelle);
+    // ⚠️ DÉDUPLICATION DES LIBELLÉS, et pas seulement des chemins. Deux champs distincts du même
+    // conteneur rendent le MÊME libellé (c'est le principe de la carte : elle nomme le conteneur,
+    // pas le champ) — sans ce `Set`, deux dettes illisibles donnaient « un montant de l'une de tes
+    // dettes est illisible ET un montant de l'une de tes dettes est illisible ». La déduplication
+    // des chemins, en amont, ne pouvait pas l'attraper : les chemins, eux, DIFFÈRENT.
+    const liste = [...new Set(aMontrer.map((r) => r.libelle))];
     const enumeration = liste.length === 1
         ? liste[0]
         : `${liste.slice(0, -1).join(', ')} et ${liste[liste.length - 1]}`;

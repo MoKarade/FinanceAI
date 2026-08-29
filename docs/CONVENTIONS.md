@@ -8483,18 +8483,26 @@ un littéral de huit clés construit au site d'appel. La liste blanche n'avait p
 monté d'un cran — du module vers `buildSimulationParams`.
 
 Conséquence mesurée : les deux canaux que le commit précédent annonçait fermer étaient toujours
-ouverts. `projection.inflationRate = NaN` → **0 refus, −93 % de patrimoine**.
-`projection.returnRates.celi = NaN` → 0 refus, −29 %, et **zéro valeur non finie publiée** — le mode
+ouverts. `projection.inflationRate = NaN` → **0 refus, −98,8 % de patrimoine**.
+`projection.returnRates.celi = NaN` → 0 refus, −16,3 %, et **zéro valeur non finie publiée** — le mode
 « absorbé » que l'en-tête du module décrit comme le plus grave, servi tel quel à un LLM.
 
+⚠️ Ces deux pourcentages ont d'abord été écrits **−93 %** et **−29 %**, sur la foi d'un rapport
+d'agent, sans passer par le script committé du ticket. La 4ᵉ passe les a re-mesurés sous le protocole
+de `scripts/mesureFrontiereMoteur.ts` — qui a depuis été ÉTENDU à ces deux cas, précisément pour
+qu'ils ne puissent plus diverger. Les faits qualitatifs (0 refus, 0 non-fini publié) étaient exacts ;
+les montants, non (`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE`).
+
 **Le geste** : une garde se branche sur l'objet réellement remis en aval, jamais sur une projection
-de cet objet construite pour elle. Ici, scanner les `SimulationParams` ASSEMBLÉS supprime la liste à
-tenir à jour — il n'y a plus rien à oublier. Corollaire de typage : la garde reçoit un
+de cet objet construite pour elle. Ici, scanner les `SimulationParams` ASSEMBLÉS supprime la liste
+de CLÉS à tenir à jour. ⚠️ Mais **pas toute liste** — voir le corollaire de la 4ᵉ passe plus bas :
+elle a changé d'axe, des clés vers les TYPES. Corollaire de typage : la garde reçoit un
 `Readonly<Record<string, unknown>>` et non `SimulationParams`, précisément pour qu'elle ne puisse pas
 redevenir dépendante de la FORME.
 
-**Et la cause profonde de l'aveuglement : le mécanisme central n'avait AUCUN test.** Vingt-quatre
-tests passaient au vert sur un filet inopérant ; ils couvraient les listes nommées, le prédicat de
+**Et la cause profonde de l'aveuglement : le mécanisme central n'avait AUCUN test.** Seize tests
+passaient au vert sur un filet inopérant (le commit disait « vingt-quatre » — le compte du fichier
+APRÈS le lot, pas avant : même un chiffre d'auto-critique se compte) ; ils couvraient les listes nommées, le prédicat de
 type, l'élision — tout sauf le mécanisme que le commit présentait comme sa contribution principale.
 Un test discriminant tenait en trois lignes (une clé hors listes nommées à `NaN` → au moins un
 refus) et il aurait été rouge. **Ce qu'on ne teste pas, on ne sait pas si ça marche — surtout quand
@@ -8513,3 +8521,57 @@ Trois défauts plus fins, du même tour :
 - **Une valeur fautive FABRIQUÉE** : `valeur` était typée `number` et un non-nombre y devenait `NaN`,
   donc le journal envoyait chercher un `NaN` là où la donnée est une chaîne. `no-fake-data` vaut
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
+
+
+### Corollaire du lot 38, 4e passe — une liste blanche ne disparaît pas, elle change d'AXE
+
+`INVERSER-LA-GARDE-NE-SUPPRIME-PAS-LA-LISTE-ELLE-LUI-FAIT-CHANGER-D-AXE`
+
+J'avais écrit — code, commit, `CLAUDE.md`, ici — que scanner l'objet assemblé « supprime la liste à
+tenir à jour : il n'y a plus rien à oublier ». **Faux.** Le filet couvre la FINITUDE de tout l'objet ;
+le TYPE, lui, n'est vérifié que sur quatre champs NOMMÉS. `nonFinisRecursifs` teste
+`typeof === 'number'` et sort sur tout le reste, donc **une chaîne dans un champ monétaire traverse**.
+La liste blanche n'avait pas disparu : elle était passée des CLÉS aux TYPES, et le vecteur est le
+même `JSON.parse` non typé (le schéma de restauration valide ces conteneurs en `z.unknown()`).
+
+MESURÉ, persona `couple-confort`, 30 ans : une chaîne dans un montant de projet immobilier →
+**−52 %** (−3 095 835 $) ; `projection.inflationRate = "2"` → **−68 M$**. Chaque fois **0 refus** et
+**0 valeur non finie publiée**. Le correctif tient à la SOURCE — typer le schéma de restauration —
+et surtout pas dans un cinquième ajout à la garde : c'est ce réflexe-là qui a produit les trois
+premières passes (`[BACKUP-SCHEMA-NON-TYPE]`).
+
+**Quand une liste est-elle acceptable, alors ?** La carte des conteneurs ajoutée à ce tour en est
+une, et elle est saine : elle ne décide pas ce qui est VÉRIFIÉ, seulement ce qu'on SAIT DIRE. Un
+conteneur absent de la carte est quand même refusé, avec un libellé générique. **Le test n'est pas
+« reste-t-il une liste ? » mais « qu'est-ce que son oubli coûte ? »** — un message moins précis, ou
+un canal money-critical rouvert.
+
+Quatre autres défauts du même tour, tous du même genre — une affirmation plus large que ce qui a été
+mesuré :
+
+- **Un libellé qui nomme le MAUVAIS endroit est pire qu'un libellé vague.** Le filet tranchait en
+  deux : « une valeur de ton profil » ou « un réglage de la projection ». Une dette illisible
+  s'annonçait donc comme un réglage de projection, envoyant Marc sur le mauvais écran. Et la moitié
+  `budgetItems` de la condition était MORTE — ces postes ont quitté l'objet scanné pour voyager dans
+  `contexte` (mesuré : `'budgetItems' in params === false`). Une condition écrite d'après l'intention
+  se relit contre l'objet réel.
+- **La déduplication des CHEMINS ne déduplique pas les LIBELLÉS.** Dès qu'un libellé nomme le
+  conteneur et non le champ, deux champs fautifs du même conteneur rendent deux fois la même phrase :
+  « un montant de l'une de tes dettes est illisible **et** un montant de l'une de tes dettes est
+  illisible ». Dédupliquer se fait sur ce qui est MONTRÉ.
+- **« Zéro refus sur les sept personas » ne prouvait rien de la surface ajoutée** : aucun persona ne
+  porte `projection` (le store l'apporte au montage). Le contrôle portait donc sur un objet plus
+  ÉTROIT que la production — la classe de défaut même que le lot corrigeait, re-commise dans le test
+  qui devait le prouver. Corollaire mesurable : l'assiette passe de 132 à 149 nœuds rien qu'en
+  ajoutant `projection` (`MESURER-SUR-UN-OBJET-PLUS-ETROIT-QUE-LA-PRODUCTION`).
+- **Deux pourcentages gravés dans trois fichiers sur la foi d'un rapport d'agent** (−93 %, −29 %) :
+  re-mesurés sous le protocole du script committé, ils valent **−98,8 %** et **−16,3 %**. Les faits
+  qualitatifs étaient exacts, les montants non. Le script a été ÉTENDU à ces deux cas pour qu'ils ne
+  puissent plus diverger — un chiffre du dépôt vit dans le script qui le produit.
+
+**Et le test qui manquait.** Les cinq tests du filet nomment tous `projection` ou `config` : une
+re-restriction du scan à `{config, projection, dérivés}` les laisserait VERTS. Le test ajouté
+n'invoque aucune liste du module — il énumère `Object.keys()` des paramètres ASSEMBLÉS, corrompt une
+feuille numérique de chaque conteneur et exige un refus pour chacun. Vérifié : cette re-restriction
+le rend ROUGE alors que les cinq autres restent verts. **Une garde qui se dit exhaustive se teste par
+énumération de l'objet, pas par échantillon de ses champs connus.**

@@ -4,7 +4,7 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟦 Session 2026-08-29 — Lot 38 : une entrée illisible ne produit plus de projection (PR à ouvrir)
+> ## 🟦 Session 2026-08-29 — Lot 38 : une entrée illisible ne produit plus de projection (PR #764, ouverte)
 > `[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]` — **Marc a tranché la fourche** (2026-08-29) : la garde
 > vit à la frontière `buildSimulationParams`, et elle REFUSE en NOMMANT le champ.
 > - **Mesure re-dérivée par script COMMITTÉ** (`scripts/mesureFrontiereMoteur.ts`) : `netSalary: NaN`
@@ -23,6 +23,29 @@
 >   structurellement MORT alors que la vraie porte existait (`termesFautifs`) ; quatre des cinq
 >   appelants du moteur qui ignoraient le refus (MCP servait −96 % à un LLM) ; et l'écran Futur qui
 >   affirmait « l'erreur a été journalisée » alors que rien ne l'était. Les cinq corrigés.
+>
+> - ⚠️⚠️ **QUATRE passes de panel, et la forme de la garde a été INVERSÉE en cours de route.** Trois
+>   passes ont trouvé trois canaux money-critical absents de la liste blanche des champs à vérifier
+>   (`currentRentExpense`, les postes de budget, puis `projection.*` et `liveCSVBalances`, de −52 %
+>   à −98,8 %). Le correctif n'est pas un quatrième ajout mais l'INVERSION : **scanner tout l'objet
+>   des paramètres, et déclarer les exclusions**. ⚠️ Le piège de la 3ᵉ passe est le pire du lot : mon
+>   « filet récursif » scannait SON ARGUMENT — un littéral de huit clés construit au site d'appel —
+>   donc la liste blanche n'avait pas disparu, elle avait monté d'un cran. 16 tests verts sur un
+>   filet inopérant, et l'affirmation fausse propagée jusque dans `CLAUDE.md`.
+> - ⚠️ **La 4ᵉ passe a montré que l'inversion ne supprime pas la liste — elle lui fait changer d'AXE.**
+>   Le filet couvre la FINITUDE de tout l'objet ; le TYPE n'est vérifié que sur 4 champs nommés. Une
+>   **chaîne** dans un champ monétaire traverse : mesuré, −52 % sur un montant de projet immobilier,
+>   −68 M$ sur `inflationRate = "2"`, chaque fois 0 refus et 0 non-fini publié. Correctif à la SOURCE
+>   → `[BACKUP-SCHEMA-NON-TYPE]` au BACKLOG (le schéma de restauration valide en `z.unknown()`).
+> - **Corrigé au même tour** : le libellé nommait « un réglage de la projection » pour une DETTE
+>   (mauvais écran) → carte conteneur → nom lisible ; `messageDeRefus` répétait la même phrase pour
+>   deux champs du même conteneur → dédup des LIBELLÉS, pas seulement des chemins ; le contrôle
+>   « zéro refus sur les 7 personas » mesurait un objet plus ÉTROIT que la prod (aucun persona ne
+>   porte `projection`) ; et les chiffres −93 %/−29 % gravés dans 3 fichiers d'après un rapport
+>   d'agent valent en fait **−98,8 %** et **−16,3 %** (`scripts/mesureFrontiereMoteur.ts` étendu).
+> - **Deux scripts committés** portent les chiffres du lot : `mesureFrontiereMoteur.ts` (le défaut)
+>   et `mesureGardeFrontiere.ts` (le coût de la garde — 39 états légitimes → **0 faux refus** ;
+>   ~24 µs/appel, insensible aux collections lourdes : pas de mémoïsation).
 >
 > ## 🟢 Session 2026-08-29 — Lot 37 : un décommenteur qui mangeait le code après une URL (PR #763, MERGÉE)
 > `[GUARD-STRIPCOMMENTS-CONSOLIDER]` — les décommenteurs `stripComments` recopiés du dépôt étaient
@@ -83,12 +106,12 @@
 >   **Mesuré** : après une édition à 77, un remontage NEUF sans persistance affiche `77,30,15,10,5`
 >   au lieu de `40,30,15,10,5`. Pré-existant, hors périmètre (convention §6).
 >
-> ## 🧭 En attente d'un OK de Marc — `[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`
-> Money-critical, instruit et MESURÉ au lot 33 (voir le corps de la PR #759 pour le tableau), mais
-> **non codé délibérément** : il porte une fourche que je ne tranche pas seul. (i) OÙ vit la garde —
-> hydratation du store, restauration Drive, ou `buildSimulationParams` ? (ii) QUE fait-elle d'une
-> valeur mauvaise — refuser la projection, borner, ou tracer et continuer ? Convention §7 : plan
-> court + OK avant de coder.
+> ## ✅ Fourche TRANCHÉE (2026-08-29) — `[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`
+> La question restée ouverte depuis le lot 33 : (i) OÙ vit la garde ? (ii) QUE fait-elle ? **Marc a
+> répondu** : à la frontière `buildSimulationParams` — « le point de passage UNIQUE de toutes les
+> entrées vers le moteur » — et elle **refuse en nommant le champ** (ni bornage, ni trace
+> silencieuse). Livré au lot 38 ci-dessus. Gardé ici parce que c'est une décision de Marc, pas une
+> tâche : elle contraint toute garde future sur ce chemin.
 >
 > ## 🟢 Session 2026-08-28 — Lot 31 : deux métriques de santé qui inventaient un score (PR #757, MERGÉE)
 > Les deux angles morts que le panel du lot 30 avait laissés ouverts, tous deux PRÉ-EXISTANTS :

@@ -282,6 +282,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // contaminerait sinon `d.balance` (NaN persistant via l'amortissement) → `rawNetWorth` = NaN →
     // patrimoine net cassé SILENCIEUSEMENT (graphe vide). On normalise à 0 et on JOURNALISE
     // l'anomalie (jamais avalée). [silent-failure-hunter, money-critical 2026-06-16]
+    //
+    // ⚠️ DEVENUE INATTEIGNABLE POUR LE CAS `NaN` depuis `[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`
+    // (lot 38) : `verifierEntreesMoteur` scanne les paramètres assemblés — `debts` compris — et
+    // REFUSE la projection avant qu'on arrive ici. Les deux politiques sont contradictoires
+    // (normaliser à 0 vs refuser en nommant le champ) et c'est la seconde qui a été retenue par
+    // Marc : un « 0 $ » crédible est pire qu'un refus honnête. Le code reste en ceinture pour un
+    // appelant qui n'aurait pas traversé la frontière (tests, scripts de mesure), mais il ne compte
+    // PLUS comme protection dans un inventaire — une garde morte s'annote, sinon elle se fait
+    // recompter (`UNE-GARDE-QUI-NE-PEUT-PAS-TIRER-N-EST-PAS-UNE-PROTECTION`).
     let activeDebts = (debts || []).filter(d => !!d).map(d => {
         const balance = Number.isFinite(d.balance) ? d.balance : 0;
         const interestRate = Number.isFinite(d.interestRate) ? d.interestRate : 0;

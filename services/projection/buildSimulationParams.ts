@@ -257,12 +257,22 @@ export function buildSimulationParams(inputs: BuildSimulationParamsInputs): Simu
     // Le jet précédent passait à la garde un littéral de huit clés — donc son « filet récursif »
     // ne voyait que ces huit-là, et les DEUX canaux que le commit annonçait fermer
     // (`liveCSVBalances` et les réglages de `projection`) restaient grands ouverts : mesuré,
-    // `projection.inflationRate = NaN` rendait 0 refus et −93 % de patrimoine, `returnRates.celi`
-    // 0 refus et −29 % SANS une seule valeur non finie publiée. La liste blanche n'avait pas
+    // `projection.inflationRate = NaN` rendait 0 refus et −98,8 % de patrimoine, `returnRates.celi`
+    // 0 refus et −16,3 % SANS une seule valeur non finie publiée. La liste blanche n'avait pas
     // disparu, elle avait monté d'un cran — du module vers son site d'appel.
+    // (Ces deux pourcentages sont ceux de `scripts/mesureFrontiereMoteur.ts`, étendu à ces cas ;
+    // le commit les avait d'abord écrits « −93 % » et « −29 % » d'après un rapport d'agent.)
     //
     // Scanner l'objet réellement remis au moteur est la seule formulation qui ne puisse pas
-    // re-diverger : il n'y a plus de liste à tenir à jour. `SimulationParams` ne contient ni les
+    // re-diverger sur les CLÉS : il n'y a plus de liste de champs à tenir à jour.
+    //
+    // ⚠️ « Plus de liste » tout court serait FAUX, et l'écrire ainsi a été le finding critique de la
+    // 4ᵉ passe. Le filet couvre la FINITUDE de tout l'objet ; le TYPE, lui, n'est vérifié que sur
+    // les champs nommés (`estMontantIllisible`). Une chaîne dans un champ monétaire traverse —
+    // mesuré, un montant de projet immobilier en chaîne fait **−52 %**, zéro refus, zéro valeur non
+    // finie publiée — et le vecteur est le même `JSON.parse` non typé, `BackupPanel` validant ces
+    // conteneurs en `z.unknown()`. Le correctif tient à la SOURCE (typer le schéma de restauration),
+    // pas dans un cinquième ajout ici : `[BACKUP-SCHEMA-NON-TYPE]` au BACKLOG. `SimulationParams` ne contient ni les
     // transactions ni les actifs, donc le coût reste borné (mesuré : quelques dizaines de µs contre
     // 300 ms de debounce et ~150 ms de moteur).
     const entreesRefusees = verifierEntreesMoteur(assembles as unknown as Readonly<Record<string, unknown>>, {

@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 957 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 962 tests** Vitest
 (469 fichiers de test, mesuré le 2026-08-29). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -777,12 +777,24 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   ⚠️⚠️ Et « scanner tout » se vérifie sur l'OBJET SCANNÉ : mon premier filet « récursif » lisait le
   littéral de huit clés construit pour l'appeler, donc la liste blanche n'avait pas disparu — elle
   avait monté d'un cran, du module vers son site d'appel, et les deux canaux que j'annonçais fermer
-  restaient ouverts (`projection.inflationRate = NaN` → 0 refus, **−93 %**). Une garde se branche sur
+  restaient ouverts (`projection.inflationRate = NaN` → 0 refus, **−98,8 %**). Une garde se branche sur
   l'objet réellement remis en aval, jamais sur une projection de cet objet.
   ⚠️ Deux corollaires : un prédicat de finitude est aveugle au TYPE (le vecteur est un `JSON.parse`
   non typé — `"1e999"` en chaîne traverse sans jamais devenir non fini, −95 % mesuré), et **un
-  mécanisme central sans test est un mécanisme dont personne ne sait s'il fonctionne** : 24 tests
+  mécanisme central sans test est un mécanisme dont personne ne sait s'il fonctionne** : seize tests
   étaient verts sur ce filet inopérant (`CINQ-TROUS-DANS-UNE-GARDE-ET-AUCUN-FAUX-POSITIF`).
+  ⚠️⚠️ **Et l'inversion elle-même n'a pas supprimé la liste — elle lui a fait changer d'AXE** (4ᵉ passe) :
+  scanner tout couvre la FINITUDE de tout l'objet, mais le TYPE n'est vérifié que sur les champs
+  NOMMÉS. Une chaîne dans un champ monétaire traverse le filet (`typeof !== 'number'` → on descend
+  ou on sort), et le vecteur est le même `JSON.parse` non typé : mesuré, une chaîne dans un montant
+  de projet immobilier fait **−52 %**, zéro refus, zéro non-fini publié. Le correctif est à la
+  SOURCE (typer le schéma de restauration), pas dans un cinquième ajout à la garde
+  (`[BACKUP-SCHEMA-NON-TYPE]`). Le bon test n'est pas « reste-t-il une liste ? » mais **« qu'est-ce
+  que son oubli coûte ? »** — un message moins précis se tolère, un canal money-critical rouvert non
+  (`INVERSER-LA-GARDE-NE-SUPPRIME-PAS-LA-LISTE-ELLE-LUI-FAIT-CHANGER-D-AXE`).
+  ⚠️ Corollaire de MESURE : « zéro refus sur les sept personas » ne prouvait rien de la surface
+  ajoutée — **aucun persona ne porte `projection`** (le store l'apporte au montage), donc le contrôle
+  portait sur un objet plus ÉTROIT que la production. Un contrôle se fait sur l'objet de PROD.
 - **Une garde qui ne peut pas TIRER n'est pas une protection** : mon contrôle sur le solde de départ
   était structurellement mort (le ledger écarte les non-finis et rend toujours un total fini),
   pendant que la corruption passait — la vraie porte existait déjà (`termesFautifs`,

@@ -1084,6 +1084,35 @@
   ⚠️ Toucher à la VAN re-base des goldens ET peut déplacer le classement de `compareLifeScenarios` —
   vérifier le classement à 25/28/30/33/35 ans avant/après, comme #671 l'a fait.
 
+  ⚠️⚠️ **INSTRUIT ET CHIFFRÉ le 2026-08-29, correctif TENTÉ puis REMIS — lire avant de recommencer.**
+  · **Le finding est CONFIRMÉ**, par interception des entrées réelles de `computeEstateNetWorth`
+    (fixture couple 45 ans, horizon 25 ans, inflation 2 %) :
+
+    | rente | estimé indexé (base actuelle) | réellement versée | ratio |
+    |---|---|---|---|
+    | RRQ | 3 609 $/mois | 2 310 $/mois | **0,640** |
+    | PSV | 2 297 $/mois | 2 297 $/mois | 1,000 |
+    | **total** | **5 906 $/mois** | **4 607 $/mois** | **0,780** |
+
+    Soit **22 % de VAN surévaluée**, et c'est le **RRQ SEUL** qui diverge — le PSV colle au centime.
+    C'est la signature exacte du prorata de gains/résidence, comme le ticket l'annonçait.
+  · **Piège d'unité à ne pas rater** : la rente réelle est DÉJÀ en dollars nominaux de l'année
+    finale ; seule la branche ESTIMÉ doit s'indexer. La ré-indexer la gonflerait de ×1,64.
+  · ⚠️ **MAIS le correctif ne se limite PAS à changer la base de la VAN**, et c'est pour ça qu'il a
+    été remis plutôt que livré à moitié. Changer `rrqExpected`/`psvExpected` seuls fait tomber
+    **5 tests d'`[ESTATE-NPV-07]`** qui ne sont PAS des goldens : ce sont des invariants de
+    CONCEPTION. `rentesValorisees` (ce que la VAN valorise) et `rentesReellesAnnuelles` (l'assiette
+    imposable) sont couplées par un « complément » ajouté au contexte fiscal, dont l'unique raison
+    d'être est d'assurer la CONTINUITÉ du facteur d'impôt au démarrage d'une rente. Baser la VAN sur
+    le réel rend ce complément ~nul en phase de rente — ce qui est probablement plus juste — mais
+    **change la sémantique du facteur**, donc les preuves du lot #671. Le vrai périmètre est le
+    COUPLE (VAN, assiette), pas une base. Classe `UN-FLUX-ALIMENTE-PLUSIEURS-REGISTRES`.
+  · **Ce qu'il reste à trancher** : (i) en phase de rente, le contexte fiscal devient le revenu réel
+    seul — est-ce voulu ? (ii) la branche PRÉ-retraite garde forcément l'estimé indexé (aucune rente
+    versée) : les deux régimes cohabitent, il faut que la frontière reste continue ; (iii) le SRG est
+    inclus dans `.psv` et réellement versé — le garder dans la VAN (flux reçu) tout en le retranchant
+    de l'assiette (non imposable) est défendable, mais suppose qu'il reste versé sur tout l'horizon.
+
 - [ ] **`[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`** (M, MOYEN — découvert en revue de `[ESTATE-NPV-07]`, PR #671) —
   le facteur net d'impôt de la VAN se calcule sur le revenu de retraite d'UN SEUL point (l'année
   finale) alors qu'il valorise 25 ans de rentes. #671 a retenu un contexte **structurel**

@@ -796,6 +796,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   ⚠️ Corollaire de MESURE : « zéro refus sur les sept personas » ne prouvait rien de la surface
   ajoutée — **aucun persona ne porte `projection`** (le store l'apporte au montage), donc le contrôle
   portait sur un objet plus ÉTROIT que la production. Un contrôle se fait sur l'objet de PROD.
+- **Des tests rouges qui encodent une CONCEPTION ne se re-basent pas** : un golden qui rougit dit
+  « la valeur a changé, confirme-la » ; un invariant qui rougit dit « ton changement contredit une
+  décision ». Même couleur dans la sortie — les séparer demande de LIRE ce que le test affirme.
+  Vécu sur `[ESTATE-NPV-BASE-REELLE]` : le finding est réel et chiffré (22 % de VAN surévaluée,
+  RRQ seul, signature du prorata), mais changer la base de la VAN fait tomber 5 invariants du lot
+  précédent — le vrai périmètre est le COUPLE (VAN, assiette), pas une base. Correctif REMIS et
+  ticket enrichi plutôt que livré à moitié : un demi-correctif money-critical déplace un chiffre
+  faux au lieu de le corriger (`DES-TESTS-ROUGES-QUI-ENCODENT-UNE-CONCEPTION-NE-SE-RE-BASENT-PAS`).
 - **Le contexte d'un défaut CSS vit chez l'ANCÊTRE** : `outline-none` sans remplacement est un vrai
   défaut WCAG — sauf quand le conteneur porte `focus-within:`, ce qu'un scan par ligne ne voit pas
   (4 faux positifs sur 13 candidats, plus un compensé par `focus:bg-`). Corollaires : le correctif se

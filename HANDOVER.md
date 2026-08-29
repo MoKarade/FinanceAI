@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟡 Session 2026-08-29 — `[ESTATE-NPV-BASE-REELLE]` : INSTRUIT et CHIFFRÉ, correctif REMIS
+> Le finding est **confirmé** par interception des entrées réelles de `computeEstateNetWorth` :
+> RRQ 3 609 $/mois (estimé indexé) contre **2 310 $ réellement versés** — ratio 0,640 —, PSV
+> identique au centime. **22 % de VAN surévaluée**, et c'est le RRQ SEUL qui diverge : la signature
+> exacte du prorata de gains/résidence.
+> - ⚠️ **Le correctif n'est PAS « changer la base de deux variables »** : ça fait tomber CINQ tests
+>   d'`[ESTATE-NPV-07]` qui ne sont pas des goldens mais des **invariants de conception** — la VAN et
+>   l'assiette imposable sont couplées par un « complément » qui assure la continuité du facteur
+>   d'impôt au démarrage d'une rente. Le vrai périmètre est le COUPLE (VAN, assiette).
+> - ⚠️ **Piège d'unité** : la rente réelle est DÉJÀ en dollars nominaux de l'année finale — la
+>   ré-indexer la gonfle de ×1,64. Seule la branche estimé s'indexe.
+> - Mesure, piège et trois points à trancher sont écrits **dans le ticket** (`BACKLOG.md`) : la
+>   prochaine session part de là, elle n'a pas à re-mesurer.
+> - **Rien n'a été livré côté moteur** : l'arbre est revenu propre, les 40 tests d'`estateCalculation`
+>   sont verts. Un demi-correctif money-critical déplace un chiffre faux au lieu de le corriger.
+
 > ## 🟦 Session 2026-08-29 — Lot 44 : un focus retiré sans rien à la place
 > `[A11Y-FOCUS-INDICATOR-MISSING]` — 9 contrôles portaient `outline-none` sans aucun remplacement
 > visuel : en navigation clavier, rien n'indiquait où on se trouvait (WCAG 2.4.7).

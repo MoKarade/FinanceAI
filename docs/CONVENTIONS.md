@@ -8523,6 +8523,35 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 45 (remis) — cinq tests rouges qui ne sont pas des goldens
+
+`DES-TESTS-ROUGES-QUI-ENCODENT-UNE-CONCEPTION-NE-SE-RE-BASENT-PAS`
+
+`[ESTATE-NPV-BASE-REELLE]` annonçait une VAN de rentes publiques bâtie sur l'estimé de saisie plutôt
+que sur la rente réellement versée. **Confirmé et chiffré** par interception des entrées réelles de
+`computeEstateNetWorth` : RRQ 3 609 $/mois indexé contre 2 310 $ versés (ratio 0,640), PSV identique
+au centime — **22 % de VAN surévaluée**, et la signature exacte du prorata de gains/résidence.
+
+Le correctif paraissait mécanique : changer la base de deux variables. Il fait tomber **cinq tests**
+du lot `[ESTATE-NPV-07]` — et ces tests **ne sont pas des goldens à re-baser**. Ils encodent un
+INVARIANT DE CONCEPTION : la VAN et l'assiette imposable sont couplées par un « complément » ajouté
+au contexte fiscal, dont l'unique raison d'être est d'assurer la continuité du facteur d'impôt au
+démarrage d'une rente. Baser la VAN sur le réel rend ce complément quasi nul en phase de rente — ce
+qui est probablement plus juste — mais change la SÉMANTIQUE du facteur, donc les preuves du lot
+précédent.
+
+**La distinction qui compte** : un golden qui rougit dit « la valeur a changé, confirme-la » ; un
+invariant qui rougit dit « ton changement contredit une décision de conception ». Les deux ont la
+même couleur dans la sortie de test. Les séparer demande de LIRE ce que le test affirme, pas de
+compter combien sont rouges — et la réponse décide entre « re-baser » et « re-penser ».
+
+**Le geste retenu** : revenir à l'état propre et consigner dans le ticket la mesure, le piège
+d'unité (la rente réelle est déjà nominale à l'année finale — la ré-indexer la gonfle de ×1,64), le
+vrai périmètre (le COUPLE VAN/assiette, pas une base) et les trois points à trancher. Un
+demi-correctif sur du money-critical coûte plus cher que pas de correctif : il déplace un chiffre
+faux au lieu de le corriger, et il efface la trace du problème d'origine
+(`UN-FLUX-ALIMENTE-PLUSIEURS-REGISTRES`, la classe déjà connue du meltdown REER).
+
 ### Lot 44 — le remplacement peut venir du PARENT, et un scan par ligne ne le voit pas
 
 `LE-CONTEXTE-D-UN-DEFAUT-CSS-VIT-CHEZ-L-ANCETRE`

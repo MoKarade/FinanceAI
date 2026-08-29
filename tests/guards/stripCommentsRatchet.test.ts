@@ -91,14 +91,24 @@ describe('[GUARD-STRIPCOMMENTS-CONSOLIDER] canari : aucun fichier n\'est ENGLOUT
     // L'invariant JUSTE ne demande aucun seuil : le décommenteur durci protège des littéraux, donc
     // il garde TOUJOURS au moins autant de code que le naïf — sauf s'il engloutit. La comparaison
     // est donc son propre étalon, et elle reste vraie quelle que soit la prose du fichier.
-    it('le durci ne garde JAMAIS moins de code que le naïf', () => {
+    // ⚠️ La comparaison se fait LIGNE PAR LIGNE, pas sur le ratio du fichier. La 5e passe du panel a
+    // démontré l'angle mort de la version globale : deux défauts INDÉPENDANTS dans le même fichier
+    // se compensent — le naïf perdait beaucoup sur un gabarit portant des `//`, le durci engloutissait
+    // ailleurs, et comme le durci gardait quand même plus AU TOTAL, le canari restait vert sur un
+    // fichier bel et bien avalé. Deux pertes qui n'ont aucun rapport ne se comparent pas en agrégat.
+    // Par ligne, elles ne peuvent plus se masquer l'une l'autre.
+    it('le durci ne blanchit JAMAIS une ligne que le naïf gardait', () => {
+        const nonBlancs = (t: string) => t.replace(/\s/g, '').length;
         const suspects: string[] = [];
         for (const f of fichiersSource(RACINE)) {
             const raw = readFileSync(f, 'utf8');
-            const durci = partDeCodeRestante(raw, stripComments(raw));
-            const naive = partDeCodeRestante(raw, naif(raw));
-            if (durci < naive) {
-                suspects.push(`${f.slice(RACINE.length + 1)} : durci ${(durci * 100).toFixed(1)} % < naïf ${(naive * 100).toFixed(1)} %`);
+            const lignesDurci = stripComments(raw).split('\n');
+            const lignesNaif = naif(raw).split('\n');
+            for (let i = 0; i < lignesNaif.length; i++) {
+                if (nonBlancs(lignesDurci[i] ?? '') < nonBlancs(lignesNaif[i])) {
+                    suspects.push(`${f.slice(RACINE.length + 1)}:${i + 1}`);
+                    break; // une ligne suffit à condamner le fichier : pas de liste à rallonge
+                }
             }
         }
         expect(suspects, `fichiers où le durci perd du code que le naïf gardait :\n${suspects.join('\n')}`).toEqual([]);

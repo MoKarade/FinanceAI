@@ -103,6 +103,22 @@ describe('[GUARD-STRIPCOMMENTS-CONSOLIDER] stripComments', () => {
         expect(stripComments('const s = `x`; // note')).toBe('const s = `x`;        ');
     });
 
+    it('un run précédé d\'un MOT-CLÉ est préfixe, pas postfixe', () => {
+        // 5e passe. Un mot-clé se termine par une lettre, donc la classe « peut terminer une
+        // expression » l'acceptait — à tort : `return ++x` est un incrément PRÉFIXE. Combiné à une
+        // classe de caractères portant la séquence d'ouverture d'un bloc, le `/` mal classé faisait
+        // ENGLOUTIR tout le reste du fichier.
+        const src = "function t(x: string) {\n    return ++/[/*]/.test(x);\n}\nconst APRES = 'survivre';\n";
+        expect(stripComments(src)).toContain("const APRES = 'survivre';");
+    });
+
+    it('reconnaît un identifiant ACCENTUÉ comme fin d\'expression', () => {
+        // 5e passe, l'autre sens : `\w` ne matche pas les lettres accentuées sans le drapeau `u`.
+        // Dans un dépôt qui écrit tout en français, un identifiant accentué est plausible — et il
+        // faisait survivre le commentaire de fin de ligne dans la sortie « décommentée ».
+        expect(stripComments('const r = café++ / 2; // note')).toBe('const r = café++ / 2;        ');
+    });
+
     it('ne mange pas le reste du fichier sur une chaîne non terminée', () => {
         // Une apostrophe orpheline (français dans un commentaire mal formé, fichier tronqué…) ne
         // doit pas transformer le reste du fichier en littéral.

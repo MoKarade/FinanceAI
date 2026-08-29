@@ -22,6 +22,24 @@
 // décommenteur sert ailleurs. C'est la raison pour laquelle le ticket exigeait de durcir AVANT
 // l'adoption large.
 
+// ⚠️⚠️ CE MODULE EST UNE HEURISTIQUE, ET IL LE RESTERA — lire ceci avant d'y ajouter un cas.
+//
+// Cinq passes de panel ont trouvé cinq défauts réels, chacun dans le correctif de la précédente :
+// `a++ / 2`, puis `a++ + <regex>`, puis `x+++<regex>`, puis tout le JSX auto-fermant, puis un run
+// précédé d'un mot-clé et un identifiant accentué. Le flux ne tarit pas, et il n'y a aucune raison
+// qu'il tarisse : décider si un `/` ouvre une regex ou une division exige, en toute rigueur, le
+// contexte grammatical — donc un vrai analyseur.
+//
+// Ce module ne PEUT PAS en utiliser un : `utils/chartDataSumGuard.ts` l'importe et part dans le
+// bundle du navigateur, et `typescript` est une devDependency. La contrainte même qui a fixé
+// l'emplacement de ce fichier (pur, sans `node:fs`, atteignable depuis le bundle) interdit la
+// solution structurelle. On ne poursuit donc pas l'approximation : on la BORNE et on la surveille.
+//
+// Le filet est `tests/guards/stripCommentsRatchet.test.ts`, dont le canari compare LIGNE PAR LIGNE
+// ce que ce module garde à ce que garderait la version naïve. Il est la vraie garantie du lot ;
+// l'heuristique n'en est que la meilleure approximation atteignable sous la contrainte. Un cas neuf
+// se corrige ici SI le canari ou un test le montre — jamais par anticipation d'un cas exotique.
+
 type Etat = 'code' | 'ligne' | 'bloc' | 'apostrophe' | 'guillemet' | 'gabarit' | 'regex';
 
 /** Un `/` ouvre une REGEX (et non une division) si ce qui précède ne peut pas terminer une
@@ -67,7 +85,16 @@ type Etat = 'code' | 'ligne' | 'bloc' | 'apostrophe' | 'guillemet' | 'gabarit' |
  *  `tests/guards/stripCommentsRatchet.test.ts` mesure la part de code restante FICHIER PAR FICHIER :
  *  l'agrégat du dépôt ne bougerait pas d'un fichier avalé. Une garantie fausse écrite sur un outil
  *  qui sert de source unique est pire que pas de garantie (4e passe du panel). */
-const PEUT_TERMINER_UNE_EXPRESSION = /[\w$)\]}"'`]/;
+const PEUT_TERMINER_UNE_EXPRESSION = /[\p{L}\p{N}_$)\]}"'`]/u;
+
+/** Un MOT-CLÉ se termine par une lettre, donc `PEUT_TERMINER_UNE_EXPRESSION` l'accepte — à tort :
+ *  `return ++x` est un incrément PRÉFIXE, il n'y a rien à incrémenter à gauche. Sans cette liste,
+ *  `return ++<regex>` faisait classer le `/` en division et engloutissait la suite du fichier
+ *  (5e passe du panel, mesuré). */
+const MOTS_CLES_AVANT_UNE_EXPRESSION = new Set([
+    'return', 'typeof', 'void', 'delete', 'yield', 'throw', 'case', 'new', 'in', 'of', 'await',
+    'else', 'do', 'instanceof',
+]);
 const SIGNES_D_INCREMENT = new Set(['+', '-']);
 
 /**
@@ -121,7 +148,14 @@ export function stripComments(source: string): string {
         // que le run touche quelque chose qui peut terminer une expression (4e passe du panel).
         let avant = debut - 1;
         while (avant >= 0 && /\s/.test(source[avant])) avant--;
-        return avant >= 0 && PEUT_TERMINER_UNE_EXPRESSION.test(source[avant]);
+        if (avant < 0 || !PEUT_TERMINER_UNE_EXPRESSION.test(source[avant])) return false;
+        // Un mot-clé se termine aussi par une lettre : on remonte le mot entier pour le distinguer
+        // d'un identifiant. `\p{L}` avec le drapeau `u` — `\w` seul laisserait passer un identifiant
+        // ACCENTUÉ, plausible dans un dépôt qui écrit tout en français (5e passe du panel).
+        let motDebut = avant;
+        while (motDebut > 0 && /[\p{L}\p{N}_$]/u.test(source[motDebut - 1])) motDebut--;
+        const mot = source.slice(motDebut, avant + 1);
+        return !MOTS_CLES_AVANT_UNE_EXPRESSION.has(mot);
     };
     const finDExpression = () =>
         PEUT_TERMINER_UNE_EXPRESSION.test(dernierSignificatif) || suitUnIncrementPostfixe();

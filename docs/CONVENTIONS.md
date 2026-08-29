@@ -8317,3 +8317,37 @@ Dernier détail qui vaut d'être noté : ce canari a besoin de la version naïve
 comparaison, donc le fichier de garde contient lui-même un décommenteur — et le ratchet l'a
 détecté, ce qui était le bon comportement. L'exemption est déclarée AVEC sa raison, à côté de celle
 de la source unique (`UNE-GARANTIE-FAUSSE-EST-PIRE-QUE-PAS-DE-GARANTIE`).
+
+
+### Corollaire du lot 37, 5e passe — quand une contrainte interdit la bonne solution, livrer le FILET
+
+Cinquième passe, cinquième défaut réel dans le correctif de la quatrième : un run de signes précédé
+d'un MOT-CLÉ (`return ++<regex>` — un mot-clé finit par une lettre, donc il « pouvait terminer une
+expression »), un identifiant ACCENTUÉ que `\w` ne matche pas sans le drapeau `u` (dans un dépôt qui
+écrit tout en français), et surtout **un angle mort du canari lui-même**.
+
+**L'angle mort du canari mérite d'être retenu** : je comparais le code gardé par le durci à celui
+gardé par le naïf, en RATIO DE FICHIER. Deux défauts indépendants dans le même fichier se
+compensent — le naïf perdait beaucoup sur un gabarit portant des `//`, le durci engloutissait
+ailleurs, et comme le durci gardait plus AU TOTAL, la garde restait verte sur un fichier bel et bien
+avalé. **Deux pertes sans rapport ne se comparent pas en agrégat.** Ramené LIGNE PAR LIGNE, le même
+invariant devient insensible à la compensation — et il pointe la ligne fautive.
+
+**Mais la vraie leçon est de cadrage, et elle arrive cinq passes trop tard.** Décider si un `/` ouvre
+une regex ou une division exige le contexte grammatical, donc un vrai analyseur. Or ce module ne peut
+pas en utiliser un : il est importé par une garde qui part dans le bundle du navigateur, et
+`typescript` est une devDependency. **La contrainte qui a fixé son emplacement — pure, sans
+`node:fs`, atteignable depuis le bundle — interdit la solution correcte.** Ce n'était pas un détail
+d'implémentation à découvrir en chemin : c'était la question à poser au moment de choisir
+l'approche.
+
+Quand une contrainte interdit la solution correcte, la livraison n'est pas une meilleure
+approximation — c'est le **FILET** qui rend visible le jour où l'approximation se trompe, plus la
+limite écrite là où quelqu'un la lira avant d'ajouter un cas. Le canari est donc la vraie livraison
+du lot 37 ; l'automate n'est que la meilleure approximation atteignable sous contrainte.
+
+⚠️ Corollaire de conduite : cinq passes sur le même mécanisme, chacune productive, c'est le signal
+qu'il faut **arrêter d'itérer et reformuler le problème** — pas la preuve qu'une sixième vaudrait
+le coup. Les cinq défauts trouvés étaient tous DORMANTS (zéro occurrence dans le dépôt) ; ce qui a
+vraiment changé de main, c'est le filet
+(`QUAND-UNE-CONTRAINTE-INTERDIT-LA-BONNE-SOLUTION-LIVRER-LE-FILET`).

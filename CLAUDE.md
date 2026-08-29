@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 962 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 983 tests** Vitest
 (469 fichiers de test, mesuré le 2026-08-29). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -796,6 +796,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   ⚠️ Corollaire de MESURE : « zéro refus sur les sept personas » ne prouvait rien de la surface
   ajoutée — **aucun persona ne porte `projection`** (le store l'apporte au montage), donc le contrôle
   portait sur un objet plus ÉTROIT que la production. Un contrôle se fait sur l'objet de PROD.
+- **Une liste se dérive de CHAQUE surface qu'elle garde** : ma liste des champs textuels croisait
+  deux sources (les types, les états du dépôt) — mais les deux regardaient l'`AppState`, et la garde
+  protège AUSSI le format de backup. Le premier test réaliste a refusé `version: '3.2'`, une clé
+  légitime. ⚠️ Corollaires du même lot : **le point de branchement se lit dans le code de la lib**
+  (`migrate` de zustand n'est appelé que si la version DIFFÈRE — une garde posée là est inopérante
+  pour le blob de tous les jours ; c'est `merge` qui passe à chaque fois) ; **un test qui écrit sur
+  un champ INEXISTANT rend un faux « ça passe »** ; et un contrôle d'anti-vacuité placé APRÈS un cas
+  d'échec peut lire l'état du précédent (`getHydrationStatus` est monotone)
+  (`UNE-LISTE-SE-DERIVE-DE-CHAQUE-SURFACE-QU-ELLE-GARDE`).
 - **Une garde qui ne peut pas TIRER n'est pas une protection** : mon contrôle sur le solde de départ
   était structurellement mort (le ledger écarte les non-finis et rend toujours un total fini),
   pendant que la corruption passait — la vraie porte existait déjà (`termesFautifs`,

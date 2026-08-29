@@ -1411,43 +1411,31 @@
 
 ### 🔴 Argent — valeurs fausses ou silencieuses
 
-- [ ] **`[BACKUP-SCHEMA-NON-TYPE]`** (M, CRITIQUE) — ⚠️ **l'ID nomme UN vecteur, il y en a DEUX** (le
-  ticket a été écrit à chaud à la 4ᵉ passe du lot 38 et prescrivait le mauvais endroit pour la moitié
-  du canal ; l'ID est conservé parce qu'il est déjà cité dans `CLAUDE.md`, `docs/CONVENTIONS.md` et
-  un commit mergé, mais **lire la correction ci-dessous avant de coder**) :
-  · **Backup JSON** (`components/settings/BackupPanel.tsx:18-45`) — `debts`, `realEstateGoals`,
-    `retirementGoal`, `childGoals`, `lifeEvents`, `travelGoals`, `insurancePolicies`,
-    `rentalProperties`, `privateBusinesses`, `vehicleReplacements`, `majorRenovations`,
-    `charitableGoals`, `financialGoals` en `z.unknown()`.
-  · **Blob du store** (`financeai-storage` : localStorage ET sync Drive) — `createJSONStorage` fait un
-    `JSON.parse` sans AUCUNE validation de type, et `partialize` persiste tout sauf six champs
-    transitoires. C'est **le seul** vecteur de `projection` : `buildBackupPayload`
-    (`components/Settings.tsx:134-159`) ne l'exporte pas, donc durcir `BackupPanel` seul laisserait
-    le canal à −68 M$ grand ouvert.
-  Aucun des deux ne porte de contrainte de TYPE. Une valeur restaurée depuis un backup ou un blob Drive peut donc revenir
-  en **chaîne** dans un champ monétaire, et une chaîne traverse toute l'arithmétique sans jamais
-  devenir non finie. ⚠️ **La garde d'entrée du moteur ne la voit pas** : `verifierEntreesMoteur`
-  scanne la FINITUDE de tout l'objet des paramètres, mais le TYPE seulement sur les champs nommés
-  (`estMontantIllisible` : `netSalary`, `grossSalary`, `salary`, `budgetItems[].target`). Le filet
-  récursif teste `typeof === 'number'` et sort sur tout le reste. **MESURÉ** (4ᵉ passe du lot 38,
-  persona `couple-confort`, horizon 30 ans) : une chaîne dans un montant de projet immobilier →
-  **−52 %** de patrimoine final (−3 095 835 $), `projection.inflationRate = "2"` → **−68 M$**, chaque
-  fois avec **0 refus** et **0 valeur non finie publiée sur 361 points** — le mode « absorbé », celui
-  où rien ne crie. Correctif à la SOURCE, pas un cinquième ajout à la garde : typer les conteneurs
-  (`z.number().finite()` par champ monétaire) dans le schéma de restauration. Le même geste ferme le
-  cas voisin du **champ ABSENT** (`acc + undefined` = `NaN`), aujourd'hui refusé par un dérivé dont
-  le libellé ne nomme aucun champ corrigeable — déjà noté dans `verifierEntreesMoteur.ts`. [MESURÉ]
-  ⚠️ **FOURCHE, à trancher avant de coder** — et elle CONTREDIT une décision écrite dans le fichier :
-  `BackupPanel` dit en toutes lettres « c'est un chemin de RESTAURATION : on préfère accepter large
-  plutôt que rejeter un backup légitime ». Sa justification vise la FORME (un enregistrement qui a
-  évolué, des champs inconnus) — pas le TYPE d'un montant, où « accepter large » veut dire accepter
-  un chiffre faux. Reste à décider ce qu'on fait d'un fichier non conforme : refuser tout, ou
-  restaurer le reste en nommant ce qui est écarté (ce second choix rouvre `no-fake-data` — un état
-  partiellement restauré est un état que personne n'a saisi). Coût mesuré de l'option « schéma
-  complet » : **150 champs numériques sur 14 conteneurs**, soit un doublon des types TS qui dérivera
-  (`DOC-METRIQUE-RECOPIEE` appliqué au code). Une piste moins chère existe et s'évalue d'abord :
-  lister les champs TEXTE (petits, stables) plutôt que les 150 champs numériques — l'oubli coûte
-  alors un faux refus BRUYANT au lieu d'un canal ouvert en silence.
+- [ ] **`[STORE-HYDRATION-STATUS-MONOTONE]`** (S, MOYEN, PRÉEXISTANT) — `getHydrationStatus()` ne
+  redevient JAMAIS sain : `onRehydrateStorage` pose `failed: true` (`store/useFinanceStore.ts:739`)
+  et aucun chemin ne le remet à `false` sur une réhydratation réussie. Effet en PRODUCTION :
+  `services/sync/syncPull.ts:97` appelle `persist.rehydrate()` après un pull Drive, donc **restaurer
+  une sauvegarde saine laisse la bannière « ne rien saisir, restaurer un backup » affichée** alors
+  que tout est réparé — Marc croit son état encore corrompu. Trouvé en écrivant le contrôle
+  d'anti-vacuité de `[BACKUP-SCHEMA-NON-TYPE]` : un cas sain placé après un cas d'échec lisait le
+  statut du précédent (d'où le fichier `tests/store/hydrationTypes.test.ts`, séparé pour cette
+  raison). Correctif : remettre `_hydrationStatus` à `{ failed: false, error: null }` dans la branche
+  `if (!error)` d'`onRehydrateStorage`, plus un test qui enchaîne échec → succès. [MESURÉ]
+
+- [ ] **`[BACKUP-TEXTE-INCONNU-REFUSE]`** (S, FAIBLE) — limite ASSUMÉE de la garde de type livrée au
+  lot 41 : elle refuse une chaîne sous une clé que l'app ne connaît pas encore, donc un backup
+  produit par une version **plus récente** et portant un nouveau champ textuel ne se restaurerait
+  pas. Accepté parce que (1) le cas suppose de restaurer un fichier plus récent que l'app qui le
+  lit, (2) tout champ texte ajouté au produit entre dans `types.ts` et fait rougir le canari en CI,
+  (3) l'alternative — lister les champs numériques — échoue en SILENCE sur le money-critical. À
+  revoir si le cas se présente vraiment. Le raisonnement complet est dans
+  `tests/components/backupSchemaTypes.test.ts`.
+
+- [ ] **`[BACKUP-BOOLEEN-DANS-UN-MONTANT]`** (S, FAIBLE) — la garde de type du lot 41 ferme le canal
+  mesuré (la CHAÎNE) mais pas son voisin : `true + 1 === 2`, donc un booléen dans un champ monétaire
+  passerait encore. Le fermer demande une seconde liste — celle des champs booléens — qui n'a pas
+  été mesurée, d'où le choix de le consigner plutôt que de le traiter à la va-vite. Aucun écart $
+  mesuré à ce jour : c'est une hypothèse, pas un défaut constaté.
 
 ### 🔴 Interface — atteignabilité et clavier
 

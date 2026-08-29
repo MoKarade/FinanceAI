@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-29 (Sauvegardes : du texte dans un montant ne se restaure plus)
+
+- **Corrigé** : un montant enregistré sous forme de texte — ça arrive après une sauvegarde ou une
+  synchronisation qui a mal tourné — était accepté tel quel et traversait tous les calculs sans que
+  rien ne le signale. Contrairement à une valeur manifestement cassée, un texte ne produit aucun
+  chiffre aberrant : la courbe reste lisse et le total, lui, est faux (mesuré : jusqu'à 52 % de
+  patrimoine en moins sur un seul montant mal enregistré). L'app refuse désormais de restaurer un
+  fichier ou un état dans ce cas, et **nomme le champ** à corriger plutôt que d'inventer une valeur.
+  Rien n'est modifié quand un refus a lieu : la sauvegarde reste intacte.
+
 ## [unreleased] — 2026-08-29 (Futur : une donnée illisible ne produit plus de projection)
 
 - **Corrigé** : une valeur de salaire devenue illisible — ça arrive après une restauration de

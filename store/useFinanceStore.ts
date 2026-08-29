@@ -5,6 +5,7 @@ import { INITIAL_BUDGET, INITIAL_CONFIG, INITIAL_PROJECTION, INITIAL_REAL_ESTATE
 import type { ProjectionResult } from '../services/projection/types';
 import { quotaStorage } from '../services/quotaStorage';
 import { logError } from '../services/errorLogger';
+import { verifierTypesRestaures, resumeTechniqueDesFautifs } from '../services/verifierTypesRestaures';
 import { saveLockedProjection, clearLockedProjection } from '../services/lockedProjectionStore';
 import { loadLegacyHealthWeights } from '../utils/healthWeights';
 import { calculateGrossFromNet } from '../utils/tax';
@@ -704,6 +705,30 @@ export const useFinanceStore = create<FinanceState>()(
             // Le strip <7 (cf migrate) reste pour nettoyer les blobs de l'ère buggée (≤ v6).
             version: 7,
             migrate: migratePersistedState,
+            // [BACKUP-SCHEMA-NON-TYPE] La garde de TYPE, posée sur `merge` et NON sur `migrate`.
+            //
+            // ⚠️ Le point de branchement se lit dans le code de zustand, pas dans l'intuition :
+            // `migrate` n'est appelé QUE si la version du blob DIFFÈRE de la version courante
+            // (`middleware.js` : `deserializedStorageValue.version !== options.version`). Un blob
+            // v7 — le cas NORMAL, celui de tous les jours — ne le traverse jamais. `merge`, lui,
+            // est appelé à CHAQUE réhydratation. Poser la garde dans `migrate` l'aurait rendue
+            // inopérante précisément pour l'état que Marc a réellement sur son disque.
+            //
+            // Lever ici est le comportement VOULU, pas un accident : l'exception est attrapée par
+            // zustand et transmise à `onRehydrateStorage(undefined, e)` — donc journal critique,
+            // bannière « ne rien saisir, restaurer un backup », état par défaut chargé, et le blob
+            // laissé INTACT dans localStorage pour diagnostic. Le filet [STORE-REHYDRATE-SILENT]
+            // existait déjà ; on lui donne une raison de plus de se déclencher.
+            merge: (persistedState, currentState) => {
+                const fautifs = verifierTypesRestaures(persistedState);
+                if (fautifs.length > 0) {
+                    // Le résumé est fabriqué par le module de la garde, pas ici : un second site de
+                    // formatage dérive, et il porterait des littéraux (un plafond de citations) dans
+                    // un fichier dont l'inventaire des constantes surveille chaque nombre.
+                    throw new Error(`Données persistées illisibles — ${resumeTechniqueDesFautifs(fautifs)}`);
+                }
+                return { ...currentState, ...(persistedState as object) };
+            },
             // [STORE-REHYDRATE-SILENT] Le FILET : sans ce callback, toute erreur de parse/migration est
             // JETÉE par zustand (l'app démarre vierge, zéro trace). Ici : journal CRITIQUE + statut lu par
             // App (toast « ne rien saisir, restaurer un backup ») et SystemView. On ne tente PAS de

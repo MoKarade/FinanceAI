@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 906 tests** Vitest
-(463 fichiers de test, mesuré le 2026-08-28). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 909 tests** Vitest
+(464 fichiers de test, mesuré le 2026-08-29). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -762,6 +762,20 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   annulée dès sa prochaine occurrence — il faut un VERROU, levé quand le déclencheur cesse vraiment.
   Et une garde sur la PRÉSENCE d'une classe utilitaire doit vérifier que la classe **fait encore ce
   qu'elle promet** (`.touch-target` = 44 px), sinon elle est vacueuse.
+- **Une région live montée CONDITIONNELLEMENT n'annonce pas de façon fiable** : `role="status"` posé
+  sur un nœud inséré au moment où il doit parler rate la PREMIÈRE transition — la seule qui compte.
+  Le conteneur reste monté et on VIDE son texte (trois exemples corrects dans le dépôt, dont un qui
+  écrit la règle). ⚠️ J'avais copié le voisin IMMÉDIAT, qui portait le même défaut : quand un patron
+  existe en plusieurs exemplaires, copier celui qui porte sa JUSTIFICATION écrite. Et la garde doit
+  asserter que le conteneur existe **déjà quand il n'y a rien à annoncer**, sinon elle est satisfaite
+  par la version fautive (`COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`).
+- **N tests rouges sur le code d'avant ne font pas N preuves** : mes trois gardes a11y rougissaient
+  3/3, mais DEUX rougissaient pour la raison de la TROISIÈME — le correctif du nom accessible change
+  le sélecteur, donc le test du `role="status"` échouait sur « champ introuvable » avant d'observer
+  quoi que ce soit. La preuve se fait en N perturbations SÉPARÉES, le contrôle étant que **seul** le
+  test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
+  le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
+  pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
 - Une garde qui ne lit que l'état de **REPOS** ne couvre que cet état : au sens WCAG, le texte d'un
   bouton SURVOLÉ est du texte. Et « corriger » avec un mécanisme que la garde ne sait pas lire
   (`hover:brightness-110`, mesuré 4,44) déplace le défaut hors du radar au lieu de le régler.

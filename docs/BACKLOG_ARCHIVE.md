@@ -10,6 +10,25 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-29 — Lot 36 : trois oublis d'accessibilité dans le bloc Rééquilibrage
+
+- [x] **`[A11Y-REBALANCE-CIBLES]`** (S — findings a11y-auditor, panel PR #761, PRÉ-EXISTANTS depuis
+  le 2026-07-31) — trois défauts du bloc « Rééquilibrage » de `components/Investments.tsx`, tous
+  vérifiés contre le code avant d'être écrits, et tous **des oublis LOCAUX plutôt que des
+  conventions manquantes** — le dépôt applique déjà les trois patrons ailleurs :
+  1. Les **cinq** champs de cible partageaient le nom accessible `Allocation cible (pourcentage)`,
+     le libellé du secteur n'étant qu'un `div` voisin jamais lié programmatiquement (échec SC 2.4.6).
+     Le nom porte désormais le secteur.
+  2. L'alerte « Le total des cibles doit être de 100% » n'avait ni `role` ni `aria-live` : elle
+     n'existait qu'à l'œil (échec SC 4.1.3). `role="status"` repris tel quel du bloc
+     `justificationsError`, quelques lignes plus haut dans la MÊME fonction.
+  3. Le bouton bascule « Modifier Cibles » / « Terminer » ne portait son état que dans son TEXTE
+     (SC 4.1.2). `aria-pressed` ajouté — il était déjà employé quatre fois dans ce fichier.
+  ✅ **Livré lot 36** (`claude/lot-36`), gate vert. Trois tests, chacun prouvé par une perturbation
+  qui ne touche QU'À son mécanisme.
+  ⚠️ **Pas de finding sur le mouvement** : `animate-pulse` est déjà neutralisé par la règle globale
+  `@media (prefers-reduced-motion: reduce)` d'`index.css` — vérifié, rien à corriger de ce côté.
+
 ## 2026-08-28 — Lot 35 : éditer une cible d'allocation réécrivait le modèle par défaut
 
 - [x] **`[INVEST-CIBLES-DEFAUT-MUTEES]`** (S — MESURÉ, découvert en élargissant le scan du lot 34) —

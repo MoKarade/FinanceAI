@@ -51,6 +51,27 @@ function lireCode(chemin: string): string {
     return code;
 }
 
+/**
+ * Retire les balises en profondeur, jusqu'au point fixe.
+ *
+ * ⚠️ Une seule passe de `replace(/<[^>]*>/g, '')` est INCOMPLÈTE — c'est le motif que CodeQL
+ * signale en « incomplete multi-character sanitization » (2 alertes HIGH sur la première version de
+ * ce fichier) : sur `<scr<script>ipt>`, la passe unique retire la balise intérieure et RECOMPOSE la
+ * balise extérieure. Ici le résultat n'est jamais rendu — on compte des boutons dans du source —
+ * donc l'alerte n'est pas exploitable, mais elle a raison sur le fond : boucler jusqu'au point fixe
+ * coûte trois lignes et retire à la fois le défaut et le signal. Une alerte qu'on fait taire par
+ * exemption reviendra sur le prochain fichier qui copie ce motif.
+ */
+function sansBalises(texte: string): string {
+    let courant = texte;
+    for (let i = 0; i < 10; i++) {
+        const suivant = courant.replace(/<[^<>]*>/g, '');
+        if (suivant === courant) break;
+        courant = suivant;
+    }
+    return courant;
+}
+
 /** Retire les accolades JSX en profondeur — une seule passe laisse le code des `onClick`. */
 function sansAccolades(bloc: string): string {
     let courant = bloc;
@@ -125,8 +146,8 @@ function boutonsIconeSeule(): Bouton[] {
             // qu'une flèche ou rien. Troisième faux positif de ce recenseur en trois itérations, ce
             // qui dit quelque chose sur les scans heuristiques de JSX : chacun se paie d'une
             // vérification à la main des cas qu'il sort.
-            const texteDynamique = /\{[^{}]*\}/.test(contenu.replace(/<[^>]*>/g, ''));
-            const texte = sansAccolades(contenu).replace(/<[^>]+>/g, '').trim();
+            const texteDynamique = /\{[^{}]*\}/.test(sansBalises(contenu));
+            const texte = sansBalises(sansAccolades(contenu)).trim();
             const iconeSeule = icones.length > 0 && texte === '' && !texteDynamique && Math.min(...icones) <= 18;
             const glyphe = icones.length === 0 && !texteDynamique && texte.length > 0 && texte.length <= 2;
             if (!iconeSeule && !glyphe) continue;

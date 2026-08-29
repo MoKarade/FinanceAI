@@ -10,6 +10,49 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-29 — Lot 42 : deux commandes qu'on ne pouvait pas atteindre
+
+- [x] **`[A11Y-DELETE-SPAN-NO-KEYBOARD]`** (S, CRITIQUE) — le « Supprimer la propriété » d'un onglet
+  est un `<span role="button">` sans `tabIndex` ni `onKeyDown`
+  (`components/realestate/RealEstateWorkspace.tsx:463-470`) : **impossible à activer au clavier**
+  (WCAG 2.1.1). ⚠️ **Le correctif évident est FAUX** : ce span est IMBRIQUÉ dans le `<button>`
+  d'onglet, donc le convertir en `<button>` produirait un `<button>` dans un `<button>` = HTML
+  invalide. Il faut soit **sortir** le contrôle du bouton d'onglet (frère dans un conteneur), soit
+  ajouter `tabIndex={0}` + `onKeyDown` Entrée/Espace sur le span. Pattern de référence correct :
+  `components/projection/ProjectionTooltip.tsx:510-535`. [MESURÉ, reco corrigée par Claude]
+  ✅ **Livré lot 42**, par l'option 1 du ticket — **sortir** le contrôle du bouton d'onglet, deux
+  boutons FRÈRES dans une pilule. L'option 2 (`tabIndex` + `onKeyDown` sur le span) aurait laissé un
+  contrôle interactif descendant d'un `<button>`, ce que la spec interdit, et Entrée/Espace auraient
+  déclenché les DEUX actions : sélectionner l'onglet ET supprimer le bien. Le ticket avait raison de
+  signaler que le correctif évident était faux.
+  · Le nouveau bouton porte `touch-target` (44×44, `index.css`) dès sa création : une action
+    DESTRUCTIVE dont la cible fait 13 px serait un offender de plus pour `[A11Y-TOUCH-TARGET-TINY]`.
+  · ⚠️ Les lignes citées par le ticket (`463-470`) étaient périmées — le contrôle vivait en `545`.
+    Normal sur un ticket qui a vécu ; le retrouver coûte un grep, le croire coûte un faux constat.
+  · Discrimination : remettre le span imbriqué → 2 des 3 tests rouges. Le 3ᵉ (activer → confirmation)
+    passait DÉJÀ avant, `fireEvent.click` déclenchant aussi le `onClick` d'un span — annoté comme
+    non-régression et non comme preuve.
+
+- [x] **`[A11Y-HOVER-ONLY-ACTIONS]`** (M, ÉLEVÉ) — 5 actions en `opacity-0 group-hover:opacity-100`
+  **sans variante `md:`** : invisibles et non-découvrables sur écran tactile (pas de `:hover`), le
+  seul rattrapage étant `focus:` (clavier). `components/budget/BudgetGroupTable.tsx:290`
+  (supprimer une catégorie) · `components/DebtManager.tsx:135` (supprimer une dette) ·
+  `components/aiChat/AiConversationList.tsx:213` · `components/Planning.tsx:328,333,418`.
+  Le pattern correct existe déjà dans le dépôt : `components/Transactions.tsx:609`
+  (`md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100` — visible sur mobile,
+  masqué au survol en desktop seulement). Correctif : calquer. [MESURÉ]
+  ✅ **Livré lot 42** : `md:opacity-0 md:group-hover:opacity-100` sur les 7 actions concernées,
+  en calquant le pattern sain de `components/Transactions.tsx`.
+  · ⚠️ **Le ticket annonçait 5 sites ; le scan en a trouvé 8** — dont `components/Investments.tsx`,
+    absent du ticket, ET dont l'un ne devait justement PAS être corrigé : un halo décoratif
+    (`blur-3xl`) que rendre permanent sur mobile aurait ajouté un voile au lieu de révéler une
+    commande. Le ticket citait aussi `Planning.tsx:418`, qui n'existe plus. **Le vrai périmètre se
+    recense, il ne se cite pas** — et il contient parfois un faux offender.
+  · Garde de non-régression : `tests/guards/hoverOnlyActionsGuard.test.ts`, avec son exclusion
+    DÉCLARÉE et motivée pour le décoratif, une preuve de volume (≥ 5 occurrences saines) et un
+    contrôle que chaque exclusion correspond encore à du code réel. Discrimination : remettre un seul
+    site en hover-only → la garde le nomme, fichier et ligne.
+
 ## 2026-08-29 — Lot 41 : du texte dans un montant ne se restaure plus
 
 - [x] **`[BACKUP-SCHEMA-NON-TYPE]`** (M, CRITIQUE) — ⚠️ **l'ID nomme UN vecteur, il y en a DEUX** (le

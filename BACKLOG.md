@@ -1439,22 +1439,6 @@
 
 ### 🔴 Interface — atteignabilité et clavier
 
-- [ ] **`[A11Y-DELETE-SPAN-NO-KEYBOARD]`** (S, CRITIQUE) — le « Supprimer la propriété » d'un onglet
-  est un `<span role="button">` sans `tabIndex` ni `onKeyDown`
-  (`components/realestate/RealEstateWorkspace.tsx:463-470`) : **impossible à activer au clavier**
-  (WCAG 2.1.1). ⚠️ **Le correctif évident est FAUX** : ce span est IMBRIQUÉ dans le `<button>`
-  d'onglet, donc le convertir en `<button>` produirait un `<button>` dans un `<button>` = HTML
-  invalide. Il faut soit **sortir** le contrôle du bouton d'onglet (frère dans un conteneur), soit
-  ajouter `tabIndex={0}` + `onKeyDown` Entrée/Espace sur le span. Pattern de référence correct :
-  `components/projection/ProjectionTooltip.tsx:510-535`. [MESURÉ, reco corrigée par Claude]
-- [ ] **`[A11Y-HOVER-ONLY-ACTIONS]`** (M, ÉLEVÉ) — 5 actions en `opacity-0 group-hover:opacity-100`
-  **sans variante `md:`** : invisibles et non-découvrables sur écran tactile (pas de `:hover`), le
-  seul rattrapage étant `focus:` (clavier). `components/budget/BudgetGroupTable.tsx:290`
-  (supprimer une catégorie) · `components/DebtManager.tsx:135` (supprimer une dette) ·
-  `components/aiChat/AiConversationList.tsx:213` · `components/Planning.tsx:328,333,418`.
-  Le pattern correct existe déjà dans le dépôt : `components/Transactions.tsx:609`
-  (`md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100` — visible sur mobile,
-  masqué au survol en desktop seulement). Correctif : calquer. [MESURÉ]
 - [ ] **`[A11Y-TOUCH-TARGET-TINY]`** (S, ÉLEVÉ) — boutons de suppression sans aucun padding, hit-box
   ≈16×16 px (sous le minimum AA 24×24 de WCAG 2.5.8, loin des 44×44 visés) : `components/Travel.tsx:116`,
   `components/PatrimoineExtended.tsx:88,141,177` (la 177 n'a **ni `aria-label` ni `title`** : son nom

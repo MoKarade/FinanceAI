@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-08-29 — Lot 42 : deux commandes qu'on ne pouvait pas atteindre
+> `[A11Y-DELETE-SPAN-NO-KEYBOARD]` (CRITIQUE) + `[A11Y-HOVER-ONLY-ACTIONS]` (ÉLEVÉ), tous deux
+> mesurés par l'audit et vérifiés contre le vrai code avant correctif.
+> - **Le « × » d'un onglet de propriété** était un `<span role="button">` sans `tabIndex`, IMBRIQUÉ
+>   dans le `<button>` d'onglet : inatteignable au clavier, et interdit par la spec. Correctif =
+>   l'option 1 du ticket, **sortir** le contrôle (deux boutons frères dans une pilule). ⚠️ L'option 2
+>   (`tabIndex` + `onKeyDown` sur le span) aurait laissé l'imbrication ET fait déclencher les DEUX
+>   actions par Entrée/Espace.
+> - **7 actions en `opacity-0 group-hover:` sans `md:`** — invisibles au doigt. Calquées sur le
+>   pattern sain de `Transactions.tsx`.
+> - ⚠️ **Le ticket annonçait 5 sites, le scan en a montré 8** — dont un que le ticket ne nommait pas
+>   (`Investments.tsx`) et un qu'il ne fallait PAS corriger (un halo décoratif `blur-3xl`). Les
+>   numéros de ligne des deux tickets étaient périmés. **Le vrai périmètre se recense, il ne se
+>   cite pas** — et il contient parfois un faux offender.
+> - Garde de non-régression : `tests/guards/hoverOnlyActionsGuard.test.ts` (exclusion déclarée +
+>   motivée, preuve de volume, contrôle que chaque exclusion correspond encore à du code réel).
+> - **Restent ouverts dans la même famille** : `[A11Y-TOUCH-TARGET-TINY]` (6 sites) et
+>   `[A11Y-FOCUS-INDICATOR-MISSING]` (6 sites) — d'une autre nature, gardés hors de ce lot pour
+>   qu'il reste relisible.
+
 > ## 🟦 Session 2026-08-29 — Lot 41 : du texte dans un montant ne se restaure plus
 > `[BACKUP-SCHEMA-NON-TYPE]` — la suite directe de la 4ᵉ passe du lot 38, sur les DEUX décisions de
 > Marc (2026-08-29) : **refuser et nommer le champ**, et **lister les champs TEXTE**.

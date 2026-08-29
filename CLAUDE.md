@@ -796,6 +796,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   ⚠️ Corollaire de MESURE : « zéro refus sur les sept personas » ne prouvait rien de la surface
   ajoutée — **aucun persona ne porte `projection`** (le store l'apporte au montage), donc le contrôle
   portait sur un objet plus ÉTROIT que la production. Un contrôle se fait sur l'objet de PROD.
+- **Le périmètre d'un ticket se RECENSE, il ne se cite pas** : un ticket a11y annonçait 5 sites, le
+  scan en a montré 8 — un fichier non nommé, un site disparu, et **un faux offender** (un halo
+  décoratif qu'il ne fallait surtout pas « corriger »). Les numéros de ligne d'un vieux ticket sont
+  périmés par construction. ⚠️ Corollaire inverse : quand un ticket explique *pourquoi* la solution
+  évidente est fausse, cette phrase vaut plus que sa description du défaut — ici, mettre `tabIndex`
+  sur le span aurait laissé un contrôle interactif dans un `<button>` et fait déclencher DEUX
+  actions par Entrée (`UN-PERIMETRE-CITE-N-EST-PAS-UN-PERIMETRE-RECENSE`).
 - **Une liste se dérive de CHAQUE surface qu'elle garde** : ma liste des champs textuels croisait
   deux sources (les types, les états du dépôt) — mais les deux regardaient l'`AppState`, et la garde
   protège AUSSI le format de backup. Le premier test réaliste a refusé `version: '3.2'`, une clé

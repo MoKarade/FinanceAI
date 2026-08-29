@@ -8523,6 +8523,39 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 42 — le périmètre d'un ticket se RECENSE, et il contient parfois un faux offender
+
+`UN-PERIMETRE-CITE-N-EST-PAS-UN-PERIMETRE-RECENSE`
+
+`[A11Y-HOVER-ONLY-ACTIONS]` annonçait « 5 actions » et listait ses fichiers avec des numéros de
+ligne. Le scan avant correctif en a trouvé **8** dans 5 fichiers. Trois écarts, chacun instructif :
+
+- un fichier que le ticket ne nommait pas du tout (`components/Investments.tsx`) ;
+- un site cité qui n'existe plus (`Planning.tsx:418`) — tous les numéros de ligne des deux tickets
+  a11y étaient périmés, ce qui est normal pour un ticket qui a vécu, mais coûte un faux constat si
+  on le croit au lieu de le retrouver ;
+- et surtout **un faux offender** : l'occurrence d'`Investments.tsx` est un halo DÉCORATIF
+  (`blur-3xl`). La « corriger » aurait rendu un voile permanent sur mobile — un dégât, pas une
+  correction. Un recensement ne sert pas seulement à trouver ce que le ticket a manqué ; il sert
+  aussi à éviter de traiter ce qui n'est pas le sujet.
+
+La garde de non-régression porte donc son exclusion **déclarée et motivée**, avec un test qui vérifie
+que l'exclusion correspond encore à du code réel — une exemption périmée laisse croire qu'un cas est
+traité alors que le code a changé sous elle (patron repris de `[FISC-CONST-GUARD-V2]`).
+
+**Et le corollaire du ticket CRITIQUE** : `[A11Y-DELETE-SPAN-NO-KEYBOARD]` prévenait lui-même que
+« le correctif évident est FAUX ». Il avait raison, et c'est assez rare pour être noté : ajouter
+`tabIndex` + `onKeyDown` au `<span role="button">` aurait laissé un contrôle interactif descendant
+d'un `<button>` — interdit par la spec — et Entrée/Espace auraient déclenché les DEUX actions,
+sélectionner l'onglet et supprimer le bien. Sortir le contrôle règle l'atteignabilité clavier ET
+l'imbrication d'un seul geste. Quand un ticket dit *pourquoi* une solution est fausse, cette phrase
+vaut plus que sa description du défaut.
+
+⚠️ Dernier détail de méthode : sur les trois tests écrits pour ce correctif, **un ne discriminait
+pas** — `fireEvent.click` déclenche aussi le `onClick` d'un `<span>`, donc il passait avant comme
+après. Il reste, annoté comme non-régression fonctionnelle et non comme preuve
+(`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+
 ### Lot 41 — une liste se dérive de CHAQUE surface qu'elle garde
 
 `UNE-LISTE-SE-DERIVE-DE-CHAQUE-SURFACE-QU-ELLE-GARDE`

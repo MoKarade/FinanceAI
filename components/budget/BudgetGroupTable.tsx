@@ -188,7 +188,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                 className="bg-transparent text-white font-medium focus:border-primary outline-none w-full text-body placeholder-ink-400"
                                                 onClick={(e) => e.stopPropagation()}
                                             />
-                                            <div className="flex gap-2 mt-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                            <div className="flex gap-2 mt-1 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                                                 <select
                                                     value={item.frequency}
                                                     onChange={(e) => onUpdateItem(idx, 'frequency', e.target.value)}
@@ -288,7 +288,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                             <button
                                                 type="button"
                                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDeleteItem(item.id); }}
-                                                className="inline-flex text-ink-500 hover:text-danger-500 p-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                                                className="inline-flex text-ink-500 hover:text-danger-500 p-1 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-opacity"
                                                 title="Supprimer la catégorie"
                                                 aria-label="Supprimer la catégorie"
                                             >

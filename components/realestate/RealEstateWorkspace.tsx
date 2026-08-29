@@ -526,29 +526,49 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
             <div className="flex flex-wrap items-center gap-2">
                 {visibleGoals.map((g, idx) => {
                     const isActive = activeGoalId === g.id;
+                    const nomAffiche = g.name || (g.isPrimaryResidence ? 'Résidence' : `Propriété ${idx + 1}`);
                     return (
-                        <button
+                        // [A11Y-DELETE-SPAN-NO-KEYBOARD] Les deux commandes sont des FRÈRES dans une
+                        // pilule, pas l'une DANS l'autre.
+                        //
+                        // ⚠️ Le correctif évident — ajouter `tabIndex` et `onKeyDown` au `<span
+                        // role="button">` — aurait été FAUX : un contrôle interactif imbriqué dans un
+                        // `<button>` est interdit par la spec (contenu interactif dans un descendant
+                        // de bouton), et Entrée/Espace auraient déclenché les DEUX actions, la
+                        // sélection de l'onglet et la suppression. Sortir le contrôle règle
+                        // l'atteignabilité clavier ET l'imbrication d'un seul geste.
+                        //
+                        // Les classes de pilule passent au conteneur pour que l'apparence ne bouge
+                        // pas ; chaque bouton garde son propre `focus-ring`, sinon la tabulation
+                        // traverserait deux commandes en n'en signalant qu'une.
+                        <div
                             key={g.id}
-                            onClick={() => setActiveGoalId(g.id)}
-                            className={`px-4 py-2 rounded-pill border transition-all flex items-center gap-2 text-meta font-bold focus-ring ${
+                            className={`rounded-pill border transition-all flex items-center text-meta font-bold ${
                                 isActive
                                     ? 'bg-info-bg border-info-500 text-info-400'
                                     : 'bg-white/5 border-white/10 text-ink-300 hover:bg-white/10'
                             }`}
                         >
-                            <span className="inline-flex items-center gap-1.5"><Icon name="real-estate" size={14} />{g.name || (g.isPrimaryResidence ? 'Résidence' : `Propriété ${idx + 1}`)}</span>
-                            {g.isActive && <span className="w-2 h-2 rounded-full bg-success-500 animate-pulse" aria-label="active" />}
+                            <button
+                                onClick={() => setActiveGoalId(g.id)}
+                                className="px-4 py-2 flex items-center gap-2 rounded-pill focus-ring"
+                            >
+                                <span className="inline-flex items-center gap-1.5"><Icon name="real-estate" size={14} />{nomAffiche}</span>
+                                {g.isActive && <span className="w-2 h-2 rounded-full bg-success-500 animate-pulse" aria-label="active" />}
+                            </button>
                             {allGoals.length > 1 && (
-                                <span
-                                    onClick={(e) => { e.stopPropagation(); deleteGoal(g.id); }}
-                                    className="ml-2 text-ink-400 hover:text-danger-400 cursor-pointer"
-                                    role="button"
-                                    aria-label={`Supprimer ${g.name}`}
+                                <button
+                                    type="button"
+                                    onClick={() => deleteGoal(g.id)}
+                                    // `touch-target` (index.css) porte la hit-box au minimum WCAG 2.5.8 :
+                                    // l'icône fait 13 px, la cible d'une action DESTRUCTIVE ne peut pas.
+                                    className="touch-target pr-3 pl-1 text-ink-400 hover:text-danger-400 rounded-pill focus-ring"
+                                    aria-label={`Supprimer ${nomAffiche}`}
                                 >
                                     <Icon name="close" size={13} />
-                                </span>
+                                </button>
                             )}
-                        </button>
+                        </div>
                     );
                 })}
                 <button

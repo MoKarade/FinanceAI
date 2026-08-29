@@ -3,7 +3,7 @@
 //
 // Ils ont en commun d'être des oublis LOCAUX, pas des conventions manquantes : le dépôt applique
 // déjà les trois patrons ailleurs — `role="status"` quelques lignes plus haut dans la MÊME
-// fonction (`justificationsError`), et `aria-pressed` cinq fois dans ce même fichier. C'est la
+// fonction (`justificationsError`), et `aria-pressed` quatre fois dans ce même fichier. C'est la
 // classe `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`, celle où le risque était connu, traité une fois,
 // et le site d'à côté oublié.
 //
@@ -81,11 +81,20 @@ describe('[A11Y-REBALANCE-CIBLES] le bloc Rééquilibrage', () => {
         // Le modèle par défaut somme à 100 : pas d'alerte tant qu'on n'a rien cassé.
         expect(alerteDuTotal()).toBeUndefined();
 
+        // ⚠️ Mais le CONTENEUR, lui, doit déjà être là — vidé, pas démonté. Un nœud portant
+        // `role="status"` inséré au moment où il doit annoncer n'est pas annoncé de façon fiable,
+        // et c'est précisément la PREMIÈRE transition qui compte ici. Cette assertion est ce qui
+        // empêche un futur refactor de re-conditionner le montage sans rien faire rougir : sans
+        // elle, la version « montée seulement quand le total est faux » passe aussi.
+        const regionsAvant = screen.getAllByRole('status').length;
+
         const champs = screen.getAllByLabelText(/^Allocation cible pour /) as HTMLInputElement[];
         fireEvent.change(champs[0], { target: { value: '77' } });
 
         // Sans `role="status"`, ce texte existe à l'écran mais n'est annoncé à personne : c'est
         // exactement ce que la requête PAR RÔLE distingue d'une requête par texte.
+        // Le nombre de régions annoncées n'a PAS bougé : c'est la même région, remplie.
+        expect(screen.getAllByRole('status')).toHaveLength(regionsAvant);
         const alerte = alerteDuTotal();
         expect(alerte).toBeDefined();
         expect(alerte!.textContent).toMatch(/137/); // 77 + 30 + 15 + 10 + 5

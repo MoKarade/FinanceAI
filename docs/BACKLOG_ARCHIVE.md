@@ -23,7 +23,7 @@
      n'existait qu'à l'œil (échec SC 4.1.3). `role="status"` repris tel quel du bloc
      `justificationsError`, quelques lignes plus haut dans la MÊME fonction.
   3. Le bouton bascule « Modifier Cibles » / « Terminer » ne portait son état que dans son TEXTE
-     (SC 4.1.2). `aria-pressed` ajouté — il était déjà employé cinq fois dans ce fichier.
+     (SC 4.1.2). `aria-pressed` ajouté — il était déjà employé quatre fois dans ce fichier.
   ✅ **Livré lot 36** (`claude/lot-36`), gate vert. Trois tests, chacun prouvé par une perturbation
   qui ne touche QU'À son mécanisme.
   ⚠️ **Pas de finding sur le mouvement** : `animate-pulse` est déjà neutralisé par la règle globale

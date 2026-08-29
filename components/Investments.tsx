@@ -1093,7 +1093,9 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     // [A11Y-REBALANCE-CIBLES] Bascule, pas action ponctuelle : tout le bloc change de
                                     // forme selon cet état. Il n'était porté que par le TEXTE du bouton, donc
                                     // invisible à qui interroge l'état du contrôle plutôt que son nom. Le patron
-                                    // `aria-pressed` est déjà employé cinq fois dans ce fichier.
+                                    // `aria-pressed` était déjà employé QUATRE fois dans ce fichier (compté sur
+                                    // la source DÉCOMMENTÉE : un grep naïf en rend cinq, le cinquième étant une
+                                    // mention en commentaire — `SCAN-QUI-MATCHE-LA-PROSE`).
                                     aria-pressed={isRebalanceEdit}
                                     onClick={() => setIsRebalanceEdit(!isRebalanceEdit)}
                                     className="px-3 py-1.5 bg-violet-600/20 text-violet-300 border border-violet-500/30 rounded-lg text-meta font-bold hover:bg-violet-600 hover:text-white transition-colors"
@@ -1106,15 +1108,29 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             </div>
                         </div>
 
-                        {isRebalanceEdit && sumTargets !== 100 && (
-                            // [A11Y-REBALANCE-CIBLES] `role="status"` : sans lui, taper une valeur qui casse
-                            // le total n'était annoncé à personne — l'alerte n'existait qu'à l'œil. Le patron
-                            // est repris tel quel du bloc `justificationsError`, quelques lignes plus haut dans
-                            // cette même fonction (classe PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI).
+                        {isRebalanceEdit && (
+                            // [A11Y-REBALANCE-CIBLES] Région live PERMANENTE : le conteneur reste MONTÉ tant
+                            // qu'on édite, et seul son TEXTE change (WCAG 4.1.3). Un nœud fraîchement inséré
+                            // qui porte `role="status"` n'est pas annoncé de façon fiable — c'est justement la
+                            // PREMIÈRE transition, celle où l'utilisateur casse le total, qui se perdrait.
+                            // ⚠️ Le premier jet copiait le bloc `justificationsError` voisin, qui a le même
+                            // défaut : copier le voisin immédiat n'est pas copier le BON patron. Les trois
+                            // régions live correctes du dépôt (`CategoryReviewPanel`, `StockChart`,
+                            // `ImportBankStatement`) montent toutes leur conteneur en permanence et le VIDENT.
+                            // `polite` et non `alert` : la valeur se tape chiffre par chiffre, un rôle assertif
+                            // interromprait la saisie à chaque frappe.
                             // `animate-pulse` est déjà neutralisé par la règle globale
                             // `@media (prefers-reduced-motion: reduce)` d'`index.css` — rien à ajouter ici.
-                            <div role="status" className="text-danger-400 text-meta font-bold mb-4 bg-red-900/20 p-3 rounded-lg border border-danger-500/20 animate-pulse flex items-center gap-2">
-                                <Icon name="alert" size={14} /> Le total des cibles doit être de 100% (Actuel : {sumTargets}%)
+                            <div
+                                role="status"
+                                aria-live="polite"
+                                className={sumTargets !== 100
+                                    ? 'text-danger-400 text-meta font-bold mb-4 bg-red-900/20 p-3 rounded-lg border border-danger-500/20 animate-pulse flex items-center gap-2'
+                                    : 'sr-only'}
+                            >
+                                {sumTargets !== 100 && (
+                                    <><Icon name="alert" size={14} /> Le total des cibles doit être de 100% (Actuel : {sumTargets}%)</>
+                                )}
                             </div>
                         )}
 

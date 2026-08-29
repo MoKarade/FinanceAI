@@ -762,6 +762,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   annulée dès sa prochaine occurrence — il faut un VERROU, levé quand le déclencheur cesse vraiment.
   Et une garde sur la PRÉSENCE d'une classe utilitaire doit vérifier que la classe **fait encore ce
   qu'elle promet** (`.touch-target` = 44 px), sinon elle est vacueuse.
+- **Une région live montée CONDITIONNELLEMENT n'annonce pas de façon fiable** : `role="status"` posé
+  sur un nœud inséré au moment où il doit parler rate la PREMIÈRE transition — la seule qui compte.
+  Le conteneur reste monté et on VIDE son texte (trois exemples corrects dans le dépôt, dont un qui
+  écrit la règle). ⚠️ J'avais copié le voisin IMMÉDIAT, qui portait le même défaut : quand un patron
+  existe en plusieurs exemplaires, copier celui qui porte sa JUSTIFICATION écrite. Et la garde doit
+  asserter que le conteneur existe **déjà quand il n'y a rien à annoncer**, sinon elle est satisfaite
+  par la version fautive (`COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`).
 - **N tests rouges sur le code d'avant ne font pas N preuves** : mes trois gardes a11y rougissaient
   3/3, mais DEUX rougissaient pour la raison de la TROISIÈME — le correctif du nom accessible change
   le sélecteur, donc le test du `role="status"` échouait sur « champ introuvable » avant d'observer

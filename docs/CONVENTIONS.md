@@ -8154,7 +8154,35 @@ exactement la même chose (un `div` sans rôle n'entre jamais dans cette liste) 
 nombre de régions vivant ailleurs dans la page.
 
 **Et sur le fond** : les trois défauts étaient des oublis LOCAUX, pas des conventions manquantes.
-`role="status"` existait quelques lignes plus haut dans la même fonction, `aria-pressed` cinq fois
+`role="status"` existait quelques lignes plus haut dans la même fonction, `aria-pressed` quatre fois
 dans le même fichier. C'est `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`, et c'est un signal bien plus fort
 qu'une absence isolée : le risque était connu, traité une fois, et le site d'à côté oublié
 (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+
+
+### Corollaire du lot 36 — deux fautes trouvées par la passe de vérification
+
+**1. « Copier le voisin » n'est pas « copier le bon patron ».** Mon `role="status"` était posé sur un
+conteneur MONTÉ conditionnellement — un nœud fraîchement inséré qui porte une région live n'est pas
+annoncé de façon fiable, et c'est justement la PREMIÈRE transition (celle où l'utilisateur casse le
+total) qui se perdait. J'avais repris le bloc `justificationsError`, voisin immédiat… qui a le même
+défaut. Le dépôt porte pourtant TROIS régions live correctes (`CategoryReviewPanel`, `StockChart`,
+`ImportBankStatement`), toutes avec un conteneur permanent qu'on VIDE, et l'une d'elles écrit la
+règle en toutes lettres : « Région live PERMANENTE : n'en changer que le texte (WCAG 4.1.3) ».
+J'ai donc invoqué `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` en le re-commettant : le voisin le plus
+PROCHE n'est pas le plus CORRECT, et quand un patron existe en plusieurs exemplaires, c'est celui
+qui porte sa justification écrite qu'il faut copier. ⚠️ Et la garde ne voyait rien : `role="status"`
+était bien présent une fois le nœud monté. Il a fallu asserter que **le conteneur existe DÉJÀ quand
+il n'y a rien à annoncer** — mesuré, re-conditionner le montage fait alors rougir 1 test sur 3.
+Choix de rôle assumé : `polite` et non `alert`, parce que la valeur se tape chiffre par chiffre et
+qu'un rôle assertif interromprait la saisie à chaque frappe.
+
+**2. `SCAN-QUI-MATCHE-LA-PROSE`, quatrième récidive — dans un comptage fait pour VÉRIFIER un agent.**
+J'ai écrit « `aria-pressed` est déjà employé cinq fois dans ce fichier » d'après un `grep -c`. Sur la
+source DÉCOMMENTÉE et ancrée sur la forme d'un attribut (`aria-pressed=`), il y en avait **quatre** :
+le cinquième était une mention en commentaire. Le chiffre est parti dans cinq documents, dont
+`CLAUDE.md` et ce fichier-ci. L'ironie est le vrai enseignement : le dépôt EXIGE déjà de décommenter
+avant toute assertion de compte, je venais de l'écrire deux lots plus tôt, et je l'ai re-commis dans
+le geste même de contrôler un rapport d'agent. Un comptage à la main n'est pas plus fiable qu'un
+comptage d'agent — c'est l'OUTIL qui l'est, et `tests/helpers/source.ts` existe pour ça
+(`COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`).

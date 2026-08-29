@@ -8,7 +8,7 @@
 > `[A11Y-REBALANCE-CIBLES]` — les trois findings routés par le panel du lot 35, tous PRÉ-EXISTANTS
 > depuis le 2026-07-31 et tous des oublis LOCAUX : cinq champs de cible au même nom accessible,
 > alerte du total sans `role="status"` (le patron était quelques lignes plus haut dans la MÊME
-> fonction), bouton bascule sans `aria-pressed` (déjà employé cinq fois dans ce fichier).
+> fonction), bouton bascule sans `aria-pressed` (déjà employé quatre fois dans ce fichier).
 > - ⚠️ **Leçon de méthode du lot** : mes trois tests rougissaient bien tous sur le code d'avant,
 >   mais DEUX rougissaient pour la raison du TROISIÈME — le sélecteur du nom accessible. Trois
 >   perturbations séparées ont été nécessaires, dont une qui SATISFAIT encore le sélecteur (cinq

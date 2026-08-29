@@ -210,7 +210,7 @@ export const AiConversationList: React.FC<AiConversationListProps> = ({ isLoadin
                                 onClick={() => armDelete(c.id, c.title)}
                                 disabled={isLoading}
                                 aria-label={`Supprimer la conversation ${c.title}`}
-                                className="min-w-[28px] min-h-[28px] inline-flex items-center justify-center rounded-lg text-ink-400 hover:text-danger-400 hover:bg-white/5 focus-ring opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                                className="min-w-[28px] min-h-[28px] inline-flex items-center justify-center rounded-lg text-ink-400 hover:text-danger-400 hover:bg-white/5 focus-ring md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
                             >
                                 <Icon name="trash" size={13} />
                             </button>

@@ -264,12 +264,12 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
                                         {isPinned(pinnedSubs, sub) ? (
                                             <button onClick={() => handleUnpinSub(sub)} aria-label={`Désépingler ${maskPayee(sub.payee, isPrivacyMode)}`} title="Épinglé — cliquer pour retirer" className="text-tiny font-bold text-primary hover:text-danger-400 px-2 py-1.5 rounded transition-colors">Épinglé</button>
                                         ) : (
-                                            <button onClick={() => handlePinSub(sub)} aria-label={`Épingler ${maskPayee(sub.payee, isPrivacyMode)}`} title="Épingler — le garder après actualisation" className="text-tiny text-ink-400 hover:text-primary px-2 py-1.5 rounded transition-all opacity-0 group-hover:opacity-100 focus:opacity-100">Épingler</button>
+                                            <button onClick={() => handlePinSub(sub)} aria-label={`Épingler ${maskPayee(sub.payee, isPrivacyMode)}`} title="Épingler — le garder après actualisation" className="text-tiny text-ink-400 hover:text-primary px-2 py-1.5 rounded transition-all md:opacity-0 md:group-hover:opacity-100 focus:opacity-100">Épingler</button>
                                         )}
                                         {/* [SUBS-TAB] Refuser un faux positif — sinon il revient à CHAQUE actualisation.
                                             HORS du ternaire épinglé/non : refuser vaut dans les deux états (le handler
                                             désépingle en même temps, pour ne pas laisser deux vérités contradictoires). */}
-                                        <button onClick={() => handleDismissSub(sub)} aria-label={`${maskPayee(sub.payee, isPrivacyMode)} n'est pas un abonnement`} title="Ce n'est pas un abonnement — ne plus le proposer" className="text-tiny text-ink-400 hover:text-danger-400 px-2 py-1.5 rounded transition-all opacity-0 group-hover:opacity-100 focus:opacity-100">Pas un abo</button>
+                                        <button onClick={() => handleDismissSub(sub)} aria-label={`${maskPayee(sub.payee, isPrivacyMode)} n'est pas un abonnement`} title="Ce n'est pas un abonnement — ne plus le proposer" className="text-tiny text-ink-400 hover:text-danger-400 px-2 py-1.5 rounded transition-all md:opacity-0 md:group-hover:opacity-100 focus:opacity-100">Pas un abo</button>
                                         <div className="text-right"><PrivateAmount as="div" className="font-bold text-white">{formatCAD(monthlyEquivalent(sub))}</PrivateAmount><div className="text-tiny text-ink-400">/mois</div></div>
                                     </div>
                                 </div>

@@ -6,6 +6,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-29 (Accessibilité : deux commandes qu'on ne pouvait pas atteindre)
+
+- **Corrigé** : le « × » qui supprime une propriété, dans les onglets de l'atelier immobilier, était
+  impossible à activer au clavier — il fallait une souris. C'est maintenant un vrai bouton, à côté de
+  l'onglet plutôt qu'à l'intérieur, avec une zone de clic assez grande pour le doigt.
+- **Corrigé** : sept actions n'apparaissaient qu'au survol de la souris — supprimer une catégorie de
+  budget, modifier ou supprimer une dette, supprimer une conversation, épingler un abonnement. Sur
+  téléphone ou tablette, où le survol n'existe pas, elles étaient tout simplement invisibles. Elles
+  sont désormais visibles en permanence sur petit écran, et ne se masquent au survol que sur
+  ordinateur.
+
 ## [unreleased] — 2026-08-29 (Sauvegardes : du texte dans un montant ne se restaure plus)
 
 - **Corrigé** : un montant enregistré sous forme de texte — ça arrive après une sauvegarde ou une

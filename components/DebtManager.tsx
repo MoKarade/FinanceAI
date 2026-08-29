@@ -206,8 +206,8 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                             <div className="text-right">
                                                 <PrivateAmount as="div" className="font-mono text-danger-400 font-bold">{formatCAD(d.balance)}</PrivateAmount>
                                                 <div className="flex gap-2 justify-end">
-                                                    <button onClick={() => startEdit(d)} className="text-tiny text-ink-400 hover:text-white opacity-0 group-hover:opacity-100 focus:opacity-100 focus-ring transition-opacity">Modifier</button>
-                                                    <button onClick={() => handleDelete(d.id)} className="text-tiny text-ink-400 hover:text-danger-500 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-ring transition-opacity">Supprimer</button>
+                                                    <button onClick={() => startEdit(d)} className="text-tiny text-ink-400 hover:text-white md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 focus-ring transition-opacity">Modifier</button>
+                                                    <button onClick={() => handleDelete(d.id)} className="text-tiny text-ink-400 hover:text-danger-500 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 focus-ring transition-opacity">Supprimer</button>
                                                 </div>
                                             </div>
                                         </div>

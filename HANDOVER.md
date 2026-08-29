@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟡 Session 2026-08-29 — `[PERF-MARKETDATA-DYNIMPORT-INERTE]` : INSTRUIT, pas codé
+> Le défaut est **confirmé par un build propre** : les marqueurs du module (`api.coingecko.com`,
+> `finnhub.io`, `canAttemptQuote`) sont dans **`index-*.js`, le chunk d'ENTRÉE (293 Ko)** — 67 Ko de
+> sources qui partent au boot pour rien. Périmètre exact : **4 sites**, ceux que le build nomme.
+> - ⚠️ **Mais la conversion mécanique introduirait une COURSE SILENCIEUSE** : `App.tsx` configure le
+>   provider (`finnhubKey`) dans un effet, `getQuote` est appelé dans trois autres fichiers. Rendre
+>   la configuration asynchrone n'ordonne plus ces gestes — une cotation partie avant la pose de la
+>   clé échoue ou se replie **sans rien dire**.
+> - **La piste à retenir** : faire du module le porteur de sa configuration (promesse de chargement
+>   mémoïsée que `getQuote` attend), pour que le correctif vive DANS
+>   `services/marketData/index.ts` au lieu d'être dispersé chez quatre appelants. L'ordre est alors
+>   garanti par construction.
+> - Mesure, périmètre et risque sont écrits **dans le ticket** : la prochaine session part de là.
+
 > ## ⚪ Session 2026-08-29 — Lot 48 : `[PERF-ENG-INCOMELOSS-DATESTR]` était CADUQUE
 > Le cœur du ticket était **déjà livré** par `[PERF-ENGINE-ISOSTRING-HOTLOOP]` (2026-08-21) :
 > `computeIncomeLossFactor` ne contient plus aucun `toISOString()`, et le commentaire du code porte

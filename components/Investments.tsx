@@ -1424,7 +1424,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         aria-label={`Région pour ${asset.id}`}
                                         value={asset.region}
                                         onChange={(e) => handleAssetMetaChange(asset.id, 'region', e.target.value)}
-                                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-tiny text-ink-200 outline-none hover:bg-white/10 cursor-pointer transition-colors"
+                                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-tiny text-ink-200 outline-none focus:border-primary/50 transition-colors hover:bg-white/10 cursor-pointer transition-colors"
                                     >
                                         {CANONICAL_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
                                         {!CANONICAL_REGIONS.includes(asset.region as never) && <option value={asset.region}>{asset.region}</option>}
@@ -1433,7 +1433,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         aria-label={`Secteur pour ${asset.id}`}
                                         value={asset.sector}
                                         onChange={(e) => handleAssetMetaChange(asset.id, 'sector', e.target.value)}
-                                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-tiny text-ink-200 outline-none hover:bg-white/10 cursor-pointer transition-colors"
+                                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-tiny text-ink-200 outline-none focus:border-primary/50 transition-colors hover:bg-white/10 cursor-pointer transition-colors"
                                     >
                                         {CANONICAL_SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
                                         {!CANONICAL_SECTORS.includes(asset.sector as never) && <option value={asset.sector}>{asset.sector}</option>}
@@ -1442,7 +1442,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         aria-label={`Type de compte pour ${asset.id}`}
                                         value={accountType}
                                         onChange={(e) => handleAssetAccountChange(asset.id, e.target.value)}
-                                        className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-tiny text-ink-200 font-bold outline-none hover:bg-white/10 cursor-pointer transition-colors"
+                                        className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-tiny text-ink-200 font-bold outline-none focus:border-primary/50 transition-colors hover:bg-white/10 cursor-pointer transition-colors"
                                     >
                                         <option value="CELI">CELI</option>
                                         <option value="REER">REER</option>

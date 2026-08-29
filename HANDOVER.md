@@ -4,6 +4,24 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-08-29 — Lot 44 : un focus retiré sans rien à la place
+> `[A11Y-FOCUS-INDICATOR-MISSING]` — 9 contrôles portaient `outline-none` sans aucun remplacement
+> visuel : en navigation clavier, rien n'indiquait où on se trouvait (WCAG 2.4.7).
+> - **DEUX patrons selon le contexte**, et c'est le point du lot : `focus-within:` sur le CONTENEUR
+>   quand le champ vit dans une pilule ou une barre (un conteneur couvre plusieurs champs, et
+>   l'anneau ne déborde pas) — c'est ce que le dépôt fait déjà ailleurs ; `focus-visible:ring-2` ou
+>   `focus:border-primary/50` sur le CONTRÔLE quand il n'a pas de conteneur dédié.
+> - ⚠️ **Premier ticket de la série sans aucun faux site** — ses 6 sites sont tous réels (lignes
+>   décalées). Il en manquait 3.
+> - ⚠️ Le recensement a écarté **4 faux positifs que seul le PARENT révèle** (deux `focus-within:`
+>   préexistants, deux conteneurs `tabIndex={-1}` à focus programmatique) et un cinquième compensé
+>   par `focus:bg-white/10`, que le premier filtre ne cherchait pas.
+> - Garde : `tests/guards/focusIndicatorGuard.test.ts`, bâtie sur une LISTE d'exemptions nominatives
+>   plutôt que sur une remontée aux ancêtres JSX — parser des ancêtres à la regex est ce qui a coûté
+>   quatre itérations au recenseur du lot 43.
+> - **La famille a11y de l'audit est close** : les quatre tickets (`DELETE-SPAN`, `HOVER-ONLY`,
+>   `TOUCH-TARGET`, `FOCUS-INDICATOR`) sont livrés, chacun avec sa garde de non-régression.
+
 > ## 🟦 Session 2026-08-29 — Lot 43 : des cibles de 16 px sur des actions destructives
 > `[A11Y-TOUCH-TARGET-TINY]` — 10 boutons corrigés (le ticket en citait 6, dont 2 faux), dont
 > **4 sans aucun nom accessible** : ils s'annonçaient « × bouton » sur une suppression.

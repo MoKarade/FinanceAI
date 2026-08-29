@@ -192,7 +192,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                 <select
                                                     value={item.frequency}
                                                     onChange={(e) => onUpdateItem(idx, 'frequency', e.target.value)}
-                                                    className="text-tiny text-ink-400 bg-black border border-white/10 rounded px-1 outline-none cursor-pointer hover:text-white"
+                                                    className="text-tiny text-ink-400 bg-black border border-white/10 rounded px-1 outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer hover:text-white"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <option value="Weekly">Hebdo</option>
@@ -203,7 +203,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                 <select
                                                     value={item.type}
                                                     onChange={(e) => onUpdateItem(idx, 'type', e.target.value)}
-                                                    className="text-tiny text-ink-400 bg-black border border-white/10 rounded px-1 outline-none cursor-pointer hover:text-white"
+                                                    className="text-tiny text-ink-400 bg-black border border-white/10 rounded px-1 outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer hover:text-white"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <option value="Commun">Commun</option>
@@ -228,7 +228,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                                         type="number"
                                                         value={item.target}
                                                         onChange={(e) => onUpdateItem(idx, 'target', parseFloat(e.target.value) || 0)}
-                                                        className={`bg-transparent text-right w-20 outline-none font-mono ${timeView !== 'MONTH' ? 'text-ink-400 text-meta' : 'text-white'}`}
+                                                        className={`bg-transparent text-right w-20 outline-none focus-visible:ring-2 focus-visible:ring-primary rounded font-mono ${timeView !== 'MONTH' ? 'text-ink-400 text-meta' : 'text-white'}`}
                                                         aria-label={`Montant de base — ${item.name}`}
                                                         title="Modifier le montant de base"
                                                         onClick={(e) => e.stopPropagation()}

@@ -8523,6 +8523,33 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 44 — le remplacement peut venir du PARENT, et un scan par ligne ne le voit pas
+
+`LE-CONTEXTE-D-UN-DEFAUT-CSS-VIT-CHEZ-L-ANCETRE`
+
+`outline-none` sans remplacement visuel est un défaut WCAG 2.4.7 net. Mais **le remplacement se pose
+souvent sur le conteneur** : `focus-within:border-primary/50` sur la barre qui entoure le champ. Un
+scan ligne à ligne voit alors un défaut là où le code est sain — quatre fois sur treize candidats
+dans ce lot, plus un cinquième compensé par `focus:bg-white/10` que le premier filtre ne cherchait
+pas.
+
+Deux conséquences, et la seconde est la plus utile :
+
+1. **Le correctif se choisit selon le contexte, pas uniformément.** Pour un champ dans une pilule ou
+   une barre, `focus-within:` sur le conteneur couvre plusieurs champs d'un coup et évite qu'un
+   anneau déborde d'une bordure serrée ; pour un contrôle sans conteneur dédié, l'anneau va sur le
+   contrôle. Les deux patrons existaient déjà dans le dépôt — les calquer valait mieux que d'en
+   inventer un troisième.
+2. **La garde de non-régression est bâtie sur une LISTE d'exemptions nominatives**, pas sur une
+   remontée aux ancêtres. Ce n'est pas de la paresse : parser des ancêtres JSX à la regex est
+   exactement ce qui a coûté quatre itérations au recenseur du lot 43. Une liste dont l'oubli est
+   BRUYANT — un cas nouveau fait rougir la CI, et sa lecture manuelle prend quelques secondes —
+   vaut mieux qu'un automate subtil dont les faux positifs finiraient par le faire désactiver.
+
+⚠️ À noter pour la suite : c'est le **premier ticket de la série a11y qui ne cite aucun faux site**.
+Les trois précédents en avaient. Un ticket n'est ni fiable ni douteux par nature ; c'est le
+recensement qui tranche, et il coûte quelques minutes.
+
 ### Lot 43 — un recenseur se vérifie autant que le code qu'il recense
 
 `UN-RECENSEUR-SE-VERIFIE-AUTANT-QUE-LE-CODE-QU-IL-RECENSE`

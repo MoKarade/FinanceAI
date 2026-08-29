@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 991 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 993 tests** Vitest
 (469 fichiers de test, mesuré le 2026-08-29). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -796,6 +796,12 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   ⚠️ Corollaire de MESURE : « zéro refus sur les sept personas » ne prouvait rien de la surface
   ajoutée — **aucun persona ne porte `projection`** (le store l'apporte au montage), donc le contrôle
   portait sur un objet plus ÉTROIT que la production. Un contrôle se fait sur l'objet de PROD.
+- **Le contexte d'un défaut CSS vit chez l'ANCÊTRE** : `outline-none` sans remplacement est un vrai
+  défaut WCAG — sauf quand le conteneur porte `focus-within:`, ce qu'un scan par ligne ne voit pas
+  (4 faux positifs sur 13 candidats, plus un compensé par `focus:bg-`). Corollaires : le correctif se
+  choisit selon le contexte (conteneur vs contrôle), et la garde se bâtit sur une LISTE d'exemptions
+  nominatives — un automate qui remonte les ancêtres JSX finit désactivé par ses faux positifs
+  (`LE-CONTEXTE-D-UN-DEFAUT-CSS-VIT-CHEZ-L-ANCETRE`).
 - **Un recenseur se vérifie autant que le code qu'il recense** : mon scan des cibles tactiles s'est
   trompé QUATRE fois avant d'être juste — accolades JSX non retirées récursivement (4 boutons
   manqués), `min-w-[24px]` non reconnu (2 faux positifs sur du code déjà sain), libellé dynamique

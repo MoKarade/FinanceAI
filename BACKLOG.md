@@ -1439,11 +1439,6 @@
 
 ### 🔴 Interface — atteignabilité et clavier
 
-- [ ] **`[A11Y-FOCUS-INDICATOR-MISSING]`** (S, MOYEN) — `outline-none` **sans aucun remplacement
-  visuel** (ni `focus:border-*`, ni `focus:ring-*`, ni `focus-within` parent) sur
-  `components/Budget.tsx:826,828` (dates de période personnalisée), `components/Investments.tsx:1348,1357,1366`
-  (3 `<select>`), `components/ui/CommandPalette.tsx:163`. Ailleurs le dépôt compense
-  systématiquement (`PageSetupGate.tsx:239`, `AiChatView.tsx:462` sont sains). WCAG 2.4.7. [MESURÉ]
 - [ ] **`[A11Y-CONTRAST-ANGLE-MORT-541]`** (M, ÉLEVÉ — **trouvé par Claude en recoupant deux rapports**)
   — `scripts/check-contrast.ts` n'itère que sur la palette du projet (`COLORS` de
   `tailwind.config.js` : `ink`, `success`, `warning`, `danger`, `info`, `primary` — vérifié l:39-51).

@@ -151,7 +151,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, a
                 className="w-full max-w-xl mx-4 bg-surface border border-white/10 rounded-card shadow-2xl overflow-hidden"
                 onClick={e => e.stopPropagation()}
             >
-                <div className="px-4 py-3 border-b border-white/10">
+                <div className="px-4 py-3 border-b border-white/10 focus-within:border-primary/50 transition-colors">
                     <input
                         ref={inputRef}
                         type="text"

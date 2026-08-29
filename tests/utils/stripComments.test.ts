@@ -72,6 +72,12 @@ describe('[GUARD-STRIPCOMMENTS-CONSOLIDER] stripComments', () => {
         // l'inverse de la promesse se produisait.
         expect(stripComments('a++ / 2; // note')).toBe('a++ / 2;        ');
         expect(stripComments('a-- / 2; // note')).toBe('a-- / 2;        ');
+        // ⚠️ Le défaut INVERSE, introduit par le premier correctif et trouvé par la 2e passe du
+        // panel : deux opérateurs `+` séparés par une espace ne forment PAS un `++`, et ce qui suit
+        // est un VRAI littéral de regex. Lu comme une division, l'automate restait collé en état
+        // `regex` et avalait le commentaire. C'est l'ADJACENCE des deux signes dans la source qui
+        // départage — et c'est le seul cas qui distingue les deux versions du correctif.
+        expect(stripComments('a++ + /b*/.test(y); // note')).toBe('a++ + /b*/.test(y);        ');
         // Contre-épreuve : le cas voisin qui marchait déjà, et une vraie regex en tête d'expression.
         expect(stripComments('a() / 2; // note')).toBe('a() / 2;        ');
         expect(stripComments('const re = /a\\/b/; // note')).toBe('const re = /a\\/b/;        ');

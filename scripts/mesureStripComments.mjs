@@ -20,9 +20,15 @@ import { fileURLToPath } from 'node:url';
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const IGNORES = new Set(['node_modules', '.git', 'dist', 'coverage', '.vercel', 'e2e-results', 'playwright-report']);
 
-/** PARAMÈTRE 1 — la version NAÏVE mesurée : celle des copies d'`utils/`, qui BLANCHIT (les copies
- *  de `tests/` supprimaient ; le compte de fichiers différents est le même, seul le total de
- *  caractères varierait). */
+/** PARAMÈTRE 1 — la version NAÏVE mesurée : celle des copies d'`utils/`, qui BLANCHIT.
+ *
+ *  ⚠️ Ce choix N'EST PAS neutre, contrairement à ce que la première version de ce commentaire
+ *  affirmait (« le compte de fichiers différents serait le même »). MESURÉ, les deux variantes ne
+ *  sont pas comparables du tout : la variante des copies de `tests/`, qui SUPPRIME, change la
+ *  longueur de tout fichier portant un commentaire — donc quasiment tous — et le compte de
+ *  « fichiers différents » explose pour une raison sans aucun rapport avec le défaut mesuré.
+ *  Écrire une équivalence non vérifiée dans le commentaire du script qui existe pour remplacer les
+ *  affirmations non vérifiées par une mesure : c'est la faute même que ce fichier corrige. */
 const naif = (s) => s
     .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
     .replace(/\/\/[^\n]*/g, (m) => ' '.repeat(m.length));

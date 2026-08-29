@@ -29,14 +29,24 @@ type Etat = 'code' | 'ligne' | 'bloc' | 'apostrophe' | 'guillemet' | 'gabarit' |
  *  traiter une division comme une regex sur UNE ligne, jamais d'avaler un fichier (l'état `regex`
  *  se referme sur le `\n`).
  *
- *  ⚠️ Elle regarde les DEUX derniers caractères significatifs, pas un seul. Avec un seul, `a++ / 2`
- *  se lisait comme une ouverture de regex — le dernier caractère est `+` — et le commentaire qui
- *  suivait sur la même ligne survivait dans la sortie « décommentée ». C'est précisément le défaut
- *  que ce module existe pour empêcher : une garde d'absence se serait mise à matcher de la PROSE.
- *  Trouvé par le panel (PR #763), reproduit avant correction : `'a++ / 2; // note'` rendait la
- *  chaîne inchangée, là où `'a() / 2; // note'` blanchissait bien. */
+ *  ⚠️ Elle reconnaît aussi `++`/`--` POSTFIXÉS, qui terminent une expression : avec le seul dernier
+ *  caractère, `a++ / 2` se lisait comme une ouverture de regex — le dernier caractère est `+` — et
+ *  le commentaire qui suivait survivait dans la sortie « décommentée ». C'est précisément le défaut
+ *  que ce module existe pour empêcher : une garde d'absence se remettrait à matcher de la PROSE.
+ *
+ *  ⚠️⚠️ Et le premier correctif a introduit le défaut INVERSE, trouvé par la 2e passe du panel : en
+ *  regardant « les deux derniers caractères SIGNIFICATIFS », il confondait le token `++` avec deux
+ *  opérateurs `+` séparés par une espace. Or `a++ + /b…/.test(y)` (avec un vrai littéral de regex
+ *  après le second `+`) est du JS valide : traité comme une division, l'automate restait collé en
+ *  état `regex` et avalait le commentaire suivant. D'où l'exigence d'ADJACENCE dans la source — les
+ *  deux caractères doivent se toucher, ce qui est la définition d'un token `++`. Mesuré dans les
+ *  deux sens, avant et après correction.
+ *
+ *  ⚠️ Et l'exemple ne peut pas s'écrire littéralement ici : la séquence de fermeture d'un commentaire
+ *  de bloc apparaît dans ce regex, et elle a refermé ce commentaire-ci au premier jet. Le module
+ *  documente donc un piège de syntaxe dans lequel sa propre documentation est tombée. */
 const PEUT_TERMINER_UNE_EXPRESSION = /[\w$)\]]/;
-const INCREMENTS = new Set(['++', '--']);
+const SIGNES_D_INCREMENT = new Set(['+', '-']);
 
 /**
  * Retire les commentaires en préservant la GÉOMÉTRIE du fichier : chaque caractère de commentaire
@@ -55,17 +65,23 @@ export function stripComments(source: string): string {
     const gabarits: number[] = [];
     let profondeurAccolades = 0;
     let dernierSignificatif = '';
-    let avantDernierSignificatif = '';
+    let dernierSignificatifIndex = -1;
 
     const blanchir = (c: string) => out.push(c === '\n' ? '\n' : ' ');
-    const garder = (c: string) => {
+    const garder = (c: string, index: number) => {
         out.push(c);
-        if (!/\s/.test(c)) { avantDernierSignificatif = dernierSignificatif; dernierSignificatif = c; }
+        if (!/\s/.test(c)) { dernierSignificatif = c; dernierSignificatifIndex = index; }
     };
-    /** `++`/`--` postfixés terminent une expression, donc le `/` qui suit est une DIVISION. */
+    /** Un `++`/`--` POSTFIXÉ termine une expression, donc le `/` qui suit est une DIVISION. Les deux
+     *  signes doivent être ADJACENTS dans la source : sans cette condition, `a++ + /regex/` — deux
+     *  opérateurs distincts — serait lu comme un incrément et le vrai regex passerait pour une
+     *  division. C'est ce que la 2e passe du panel a démasqué. */
+    const suitUnIncrementPostfixe = () =>
+        SIGNES_D_INCREMENT.has(dernierSignificatif)
+        && dernierSignificatifIndex > 0
+        && source[dernierSignificatifIndex - 1] === dernierSignificatif;
     const finDExpression = () =>
-        PEUT_TERMINER_UNE_EXPRESSION.test(dernierSignificatif)
-        || INCREMENTS.has(avantDernierSignificatif + dernierSignificatif);
+        PEUT_TERMINER_UNE_EXPRESSION.test(dernierSignificatif) || suitUnIncrementPostfixe();
 
     for (let i = 0; i < source.length; i++) {
         const c = source[i];
@@ -82,24 +98,24 @@ export function stripComments(source: string): string {
             case 'apostrophe':
             case 'guillemet': {
                 const fin = etat === 'apostrophe' ? "'" : '"';
-                garder(c);
-                if (c === '\\') { const n = source[++i]; if (n !== undefined) garder(n); }
+                garder(c, i);
+                if (c === '\\') { const n = source[++i]; if (n !== undefined) garder(n, i); }
                 else if (c === fin || c === '\n') etat = 'code'; // `\n` : chaîne non terminée, on ne mange pas le reste
                 break;
             }
             case 'gabarit':
-                garder(c);
-                if (c === '\\') { const n = source[++i]; if (n !== undefined) garder(n); }
+                garder(c, i);
+                if (c === '\\') { const n = source[++i]; if (n !== undefined) garder(n, i); }
                 else if (c === '`') etat = 'code';
-                else if (c === '$' && suivant === '{') { garder(suivant); i++; gabarits.push(profondeurAccolades); profondeurAccolades++; etat = 'code'; }
+                else if (c === '$' && suivant === '{') { garder(suivant, i + 1); i++; gabarits.push(profondeurAccolades); profondeurAccolades++; etat = 'code'; }
                 break;
             case 'regex':
-                garder(c);
-                if (c === '\\') { const n = source[++i]; if (n !== undefined) garder(n); }
+                garder(c, i);
+                if (c === '\\') { const n = source[++i]; if (n !== undefined) garder(n, i); }
                 else if (c === '[') { // classe de caractères : un `/` y est du contenu
                     while (i + 1 < source.length && source[i + 1] !== ']') {
-                        const n = source[++i]; garder(n);
-                        if (n === '\\' && i + 1 < source.length) garder(source[++i]);
+                        const n = source[++i]; garder(n, i);
+                        if (n === '\\' && i + 1 < source.length) garder(source[++i], i);
                     }
                 } else if (c === '/' || c === '\n') etat = 'code';
                 break;
@@ -107,12 +123,12 @@ export function stripComments(source: string): string {
             default:
                 if (c === '/' && suivant === '/') { blanchir(c); blanchir(suivant); i++; etat = 'ligne'; }
                 else if (c === '/' && suivant === '*') { blanchir(c); blanchir(suivant); i++; etat = 'bloc'; }
-                else if (c === "'") { garder(c); etat = 'apostrophe'; }
-                else if (c === '"') { garder(c); etat = 'guillemet'; }
-                else if (c === '`') { garder(c); etat = 'gabarit'; }
-                else if (c === '/' && !finDExpression()) { garder(c); etat = 'regex'; }
+                else if (c === "'") { garder(c, i); etat = 'apostrophe'; }
+                else if (c === '"') { garder(c, i); etat = 'guillemet'; }
+                else if (c === '`') { garder(c, i); etat = 'gabarit'; }
+                else if (c === '/' && !finDExpression()) { garder(c, i); etat = 'regex'; }
                 else {
-                    garder(c);
+                    garder(c, i);
                     if (c === '{') profondeurAccolades++;
                     else if (c === '}') {
                         profondeurAccolades--;

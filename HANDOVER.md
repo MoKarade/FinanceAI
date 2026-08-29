@@ -22,6 +22,12 @@
 > - **Routé sans correctif** : `[STORE-HYDRATION-STATUS-MONOTONE]` (la bannière « restaurer un
 >   backup » reste affichée après une restauration réussie — effet en prod via `syncPull`),
 >   `[BACKUP-TEXTE-INCONNU-REFUSE]`, `[BACKUP-BOOLEEN-DANS-UN-MONTANT]`.
+> - ⚠️⚠️ **LE HOOK `commit-gate` N'EST PAS INSTALLÉ dans une session Claude Code web** :
+>   `.git/hooks/` ne contient que les `.sample` et `core.hooksPath` est vide, donc `git commit` passe
+>   SANS rien vérifier. Le `CLAUDE.md` présente ce hook comme le filet non négociable ; le croire
+>   actif ici, c'est croire à une vérification qui n'a pas lieu. **Lancer le gate à la main avant
+>   chaque commit** (`npm run typecheck && npm run lint && npm run test && npm run build`) ; la CI
+>   GitHub reste le seul filet automatique.
 > - ⚠️ **Piège d'ENVIRONNEMENT, pas du dépôt** : `npm run typecheck` peut échouer sur
 >   `Cannot find module '@mokarade/hub-contract/endpoint'` — `node_modules` porte alors une version
 >   antérieure au commit épinglé dans `package.json`. Correctif local :

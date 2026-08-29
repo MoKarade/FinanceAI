@@ -734,7 +734,22 @@ export const useFinanceStore = create<FinanceState>()(
             // App (toast « ne rien saisir, restaurer un backup ») et SystemView. On ne tente PAS de
             // réparer/écraser le blob (il reste intact dans localStorage pour diagnostic/récupération).
             onRehydrateStorage: () => (_state, error) => {
-                if (!error) return;
+                // [STORE-HYDRATION-STATUS-MONOTONE] Une réhydratation RÉUSSIE remet le statut à sain.
+                //
+                // ⚠️ Sans cette ligne, le statut était MONOTONE : une fois `failed`, il le restait
+                // pour la durée du module. Effet en PRODUCTION, pas théorique — `services/sync/syncPull.ts`
+                // appelle `persist.rehydrate()` après un pull Drive : Marc voyait donc la bannière
+                // « ne rien saisir, restaurer un backup » RESTER affichée après avoir justement
+                // restauré une sauvegarde saine. Le remède affiché survivait à la guérison, et rien
+                // ne lui disait que c'était réparé.
+                //
+                // ⚠️ Ça n'efface AUCUNE trace : l'incident est journalisé en critique par `logError`
+                // ci-dessous, et le journal est ce qui garde l'historique. Ce statut-ci décrit
+                // l'état COURANT du store pour l'afficher — deux registres, deux durées de vie.
+                if (!error) {
+                    _hydrationStatus = { failed: false, error: null };
+                    return;
+                }
                 _hydrationStatus = { failed: true, error: String(error) };
                 logError({
                     source: 'storage', severity: 'critical',

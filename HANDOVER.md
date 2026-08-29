@@ -4,6 +4,30 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-08-29 — Lot 41 : du texte dans un montant ne se restaure plus
+> `[BACKUP-SCHEMA-NON-TYPE]` — la suite directe de la 4ᵉ passe du lot 38, sur les DEUX décisions de
+> Marc (2026-08-29) : **refuser et nommer le champ**, et **lister les champs TEXTE**.
+> - **Le raisonnement de l'arbitrage**, à garder : les deux listes n'échouent pas dans le même sens.
+>   Oublier un champ NUMÉRIQUE rouvre un canal money-critical EN SILENCE ; oublier un champ TEXTE
+>   donne un faux refus BRUYANT, qu'un canari transforme en échec de CI.
+> - **Un module, deux vecteurs** (`services/verifierTypesRestaures.ts`) : le `superRefine` du
+>   `BackupSchema` (les deux chemins d'import y convergent) et le **`merge`** du store.
+>   ⚠️ **Pas `migrate`** : lu dans `zustand/middleware.js`, il n'est appelé que si la version du blob
+>   DIFFÈRE — un blob v7, le cas de tous les jours, ne le traverse jamais.
+> - **7 canaux fermés** (dont `inflationRate = "2"` → −68 M$ et un montant immobilier en texte →
+>   −52 %), **0 faux refus** sur 8 états + 4 dégradations.
+> - ⚠️ **La liste a failli rater sa deuxième surface** : dérivée des types et des états du dépôt —
+>   qui regardent tous deux l'`AppState` — elle a refusé `version: '3.2'` au premier test sur un
+>   fichier de backup. Une liste se dérive de CHAQUE surface qu'elle garde.
+> - **Routé sans correctif** : `[STORE-HYDRATION-STATUS-MONOTONE]` (la bannière « restaurer un
+>   backup » reste affichée après une restauration réussie — effet en prod via `syncPull`),
+>   `[BACKUP-TEXTE-INCONNU-REFUSE]`, `[BACKUP-BOOLEEN-DANS-UN-MONTANT]`.
+> - ⚠️ **Piège d'ENVIRONNEMENT, pas du dépôt** : `npm run typecheck` peut échouer sur
+>   `Cannot find module '@mokarade/hub-contract/endpoint'` — `node_modules` porte alors une version
+>   antérieure au commit épinglé dans `package.json`. Correctif local :
+>   `npm install '@mokarade/hub-contract@github:MoKarade/hub-contract#<sha du package.json>' --no-save`.
+>   La CI, elle, est verte : ne pas chercher la cause dans le code.
+
 > ## 🟦 Session 2026-08-29 — Lot 38 : une entrée illisible ne produit plus de projection (PR #764, ouverte)
 > `[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]` — **Marc a tranché la fourche** (2026-08-29) : la garde
 > vit à la frontière `buildSimulationParams`, et elle REFUSE en NOMMANT le champ.

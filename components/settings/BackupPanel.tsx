@@ -7,8 +7,16 @@ import { downloadBackup, readBackupFile, defaultBackupFilename, CloudBackupError
 import { markBackupDone } from '../../services/backupReminder';
 import { logAudit } from '../../services/auditLog';
 import { MIN_PASSPHRASE_LENGTH } from '../../services/sync/syncOrchestrator';
+import { verifierTypesRestaures, messageDeRefusTypes } from '../../services/verifierTypesRestaures';
 
-const BackupSchema = z.object({
+/**
+ * ⚠️ EXPORTÉ pour être testable directement. Monter `BackupPanel` en test tirerait Card, Toast et
+ * les services de sauvegarde pour vérifier une règle de validation pure ; le dépôt a déjà tranché ce
+ * genre d'arbitrage en scannant le source (`hydrationNet.test.ts`), mais un scan ne prouve pas qu'un
+ * backup fautif est REFUSÉ — il prouve qu'un appel est écrit. Ici la règle est testée pour ce
+ * qu'elle fait.
+ */
+export const BackupSchema = z.object({
   version: z.string().optional(),
   timestamp: z.number().optional(),
   apiKeys: z.object({
@@ -57,7 +65,32 @@ const BackupSchema = z.object({
 }).refine(
   (data) => data.version !== undefined || data.transactions !== undefined,
   { message: "doit contenir au moins 'version' ou 'transactions'" }
-);
+).superRefine((data, ctx) => {
+  // [BACKUP-SCHEMA-NON-TYPE] La garde de TYPE, posée sur le SCHÉMA et non sur chaque appelant.
+  //
+  // ⚠️ Elle contredit délibérément la note « Tier 🟡 » ci-dessus (« c'est un chemin de RESTAURATION :
+  // on préfère accepter large plutôt que rejeter un backup légitime »), et Marc a tranché dans ce
+  // sens le 2026-08-29. La justification d'origine vise la FORME — un enregistrement qui a évolué,
+  // des champs inconnus — et elle reste vraie SAUF sur un point, qu'il faut dire plutôt que taire :
+  // une chaîne sous une clé que l'app ne connaît pas encore est désormais refusée, donc un backup
+  // produit par une version PLUS RÉCENTE et portant un nouveau champ textuel ne se restaurerait pas
+  // (`[BACKUP-TEXTE-INCONNU-REFUSE]`, avec le raisonnement complet dans
+  // `tests/components/backupSchemaTypes.test.ts`). Cette tolérance ne vaut pas
+  // pour le TYPE d'un montant, où « accepter large » veut dire accepter un chiffre FAUX : mesuré,
+  // une chaîne dans un montant de projet immobilier fait −52 % de patrimoine final, sans qu'aucune
+  // valeur non finie n'apparaisse nulle part.
+  //
+  // Le contrôle vit ICI plutôt que dans les deux fonctions d'import parce que les deux — fichier
+  // clair et fichier chiffré — passent par `BackupSchema.safeParse`. Un point de passage unique se
+  // vérifie en comptant les appelants ; ils sont deux, et ils convergent ici.
+  const fautifs = verifierTypesRestaures(data);
+  if (fautifs.length === 0) return;
+  ctx.addIssue({
+    code: z.ZodIssueCode.custom,
+    path: fautifs[0].chemin.split('.'),
+    message: messageDeRefusTypes(fautifs),
+  });
+});
 
 type BackupData = z.infer<typeof BackupSchema>;
 

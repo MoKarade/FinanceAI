@@ -10,6 +10,70 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-29 — Lot 41 : du texte dans un montant ne se restaure plus
+
+- [x] **`[BACKUP-SCHEMA-NON-TYPE]`** (M, CRITIQUE) — ⚠️ **l'ID nomme UN vecteur, il y en a DEUX** (le
+  ticket a été écrit à chaud à la 4ᵉ passe du lot 38 et prescrivait le mauvais endroit pour la moitié
+  du canal ; l'ID est conservé parce qu'il est déjà cité dans `CLAUDE.md`, `docs/CONVENTIONS.md` et
+  un commit mergé, mais **lire la correction ci-dessous avant de coder**) :
+  · **Backup JSON** (`components/settings/BackupPanel.tsx:18-45`) — `debts`, `realEstateGoals`,
+    `retirementGoal`, `childGoals`, `lifeEvents`, `travelGoals`, `insurancePolicies`,
+    `rentalProperties`, `privateBusinesses`, `vehicleReplacements`, `majorRenovations`,
+    `charitableGoals`, `financialGoals` en `z.unknown()`.
+  · **Blob du store** (`financeai-storage` : localStorage ET sync Drive) — `createJSONStorage` fait un
+    `JSON.parse` sans AUCUNE validation de type, et `partialize` persiste tout sauf six champs
+    transitoires. C'est **le seul** vecteur de `projection` : `buildBackupPayload`
+    (`components/Settings.tsx:134-159`) ne l'exporte pas, donc durcir `BackupPanel` seul laisserait
+    le canal à −68 M$ grand ouvert.
+  Aucun des deux ne porte de contrainte de TYPE. Une valeur restaurée depuis un backup ou un blob Drive peut donc revenir
+  en **chaîne** dans un champ monétaire, et une chaîne traverse toute l'arithmétique sans jamais
+  devenir non finie. ⚠️ **La garde d'entrée du moteur ne la voit pas** : `verifierEntreesMoteur`
+  scanne la FINITUDE de tout l'objet des paramètres, mais le TYPE seulement sur les champs nommés
+  (`estMontantIllisible` : `netSalary`, `grossSalary`, `salary`, `budgetItems[].target`). Le filet
+  récursif teste `typeof === 'number'` et sort sur tout le reste. **MESURÉ** (4ᵉ passe du lot 38,
+  persona `couple-confort`, horizon 30 ans) : une chaîne dans un montant de projet immobilier →
+  **−52 %** de patrimoine final (−3 095 835 $), `projection.inflationRate = "2"` → **−68 M$**, chaque
+  fois avec **0 refus** et **0 valeur non finie publiée sur 361 points** — le mode « absorbé », celui
+  où rien ne crie. Correctif à la SOURCE, pas un cinquième ajout à la garde : typer les conteneurs
+  (`z.number().finite()` par champ monétaire) dans le schéma de restauration. Le même geste ferme le
+  cas voisin du **champ ABSENT** (`acc + undefined` = `NaN`), aujourd'hui refusé par un dérivé dont
+  le libellé ne nomme aucun champ corrigeable — déjà noté dans `verifierEntreesMoteur.ts`. [MESURÉ]
+  ⚠️ **FOURCHE, à trancher avant de coder** — et elle CONTREDIT une décision écrite dans le fichier :
+  `BackupPanel` dit en toutes lettres « c'est un chemin de RESTAURATION : on préfère accepter large
+  plutôt que rejeter un backup légitime ». Sa justification vise la FORME (un enregistrement qui a
+  évolué, des champs inconnus) — pas le TYPE d'un montant, où « accepter large » veut dire accepter
+  un chiffre faux. Reste à décider ce qu'on fait d'un fichier non conforme : refuser tout, ou
+  restaurer le reste en nommant ce qui est écarté (ce second choix rouvre `no-fake-data` — un état
+  partiellement restauré est un état que personne n'a saisi). Coût mesuré de l'option « schéma
+  complet » : **150 champs numériques sur 14 conteneurs**, soit un doublon des types TS qui dérivera
+  (`DOC-METRIQUE-RECOPIEE` appliqué au code). Une piste moins chère existe et s'évalue d'abord :
+  lister les champs TEXTE (petits, stables) plutôt que les 150 champs numériques — l'oubli coûte
+  alors un faux refus BRUYANT au lieu d'un canal ouvert en silence.
+  ✅ **Livré lot 41**, sur les DEUX décisions de Marc (2026-08-29) : **refuser et nommer le champ**
+  (jamais coercer `"15000"` en 15000 — `no-fake-data`), et **lister les champs TEXTE** plutôt que les
+  champs numériques, parce que les deux listes n'échouent pas dans le même sens : oublier un champ
+  NUMÉRIQUE rouvre un canal money-critical en SILENCE, oublier un champ TEXTE donne un faux refus
+  BRUYANT que le canari transforme en échec de CI.
+  · **Un seul module pour les deux vecteurs** (`services/verifierTypesRestaures.ts`), câblé au
+    `superRefine` du `BackupSchema` (les deux chemins d'import y convergent) et au **`merge`** du
+    store — pas à `migrate` : lu dans `zustand/middleware.js`, `migrate` n'est appelé QUE si la
+    version du blob diffère, donc un blob v7 (le cas de tous les jours) ne le traverse jamais.
+  · **Les 7 canaux mesurés sont fermés**, dont les deux plus gros : `projection.inflationRate = "2"`
+    (−68 M$) et un montant de projet immobilier en texte (−52 %, −3 095 835 $).
+  · **Zéro faux refus** sur 8 états (état initial du store + 7 personas) et 4 dégradations.
+  · **Liste dérivée de TROIS sources**, pas écrite à la main : les types (85 noms, alias résolus),
+    les clés portant réellement une chaîne dans les états du dépôt (34, dont 4 absents des types —
+    `Transaction.id` est déclaré `number` mais les fixtures produisent `'test-tx-1'`), et les clés
+    propres au FORMAT DE BACKUP (`version`, `gemini`, `lunchMoney`) — cette troisième source ayant
+    été ajoutée APRÈS qu'un premier test réaliste ait refusé `version: '3.2'`.
+  · **Trois découvertes routées sans correctif** : `[STORE-HYDRATION-STATUS-MONOTONE]` (la bannière
+    « restaurer un backup » reste affichée après une restauration réussie — effet en production via
+    `syncPull`), `[BACKUP-TEXTE-INCONNU-REFUSE]` (limite assumée de la liste texte) et
+    `[BACKUP-BOOLEEN-DANS-UN-MONTANT]` (`true + 1 === 2`, non mesuré).
+  · Discrimination prouvée mécanisme par mécanisme : élément de tableau qui n'hérite plus de la clé
+    de son tableau → 1 rouge ; `balance` ajouté à la liste texte → 4 rouges ; dédup du message
+    retirée → 1 rouge ; `merge` retiré du store → le test du blob v7 rouge.
+
 ## 2026-08-29 — Lot 38 : une entrée illisible ne produit plus de projection
 
 - [x] **`[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`** (M — finding code-reviewer, panel PR #756,

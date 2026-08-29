@@ -8523,6 +8523,50 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 41 — une liste se dérive de CHAQUE surface qu'elle garde
+
+`UNE-LISTE-SE-DERIVE-DE-CHAQUE-SURFACE-QU-ELLE-GARDE`
+
+Marc a tranché la fourche laissée par la 4ᵉ passe du lot 38 : **refuser et nommer le champ**, et
+**lister les champs TEXTE** plutôt que les champs numériques. Le raisonnement de cet arbitrage tient
+en une phrase — les deux listes n'échouent pas dans le même sens. Oublier un champ NUMÉRIQUE rouvre
+un canal money-critical en silence ; oublier un champ TEXTE donne un faux refus BRUYANT, qu'un
+canari transforme en échec de CI avant qu'il n'atteigne qui que ce soit.
+
+**Ce qui a failli rater.** J'ai dérivé la liste de deux sources — les champs textuels de `types.ts`
+(85 noms, alias de types résolus) et les clés portant réellement une chaîne dans les états du dépôt
+(34 noms). Les deux couvrent le même vecteur : l'`AppState`. Le premier test écrit sur un **fichier
+de sauvegarde** réaliste a refusé `version: '3.2'` — une clé du FORMAT DE BACKUP, qui n'existe dans
+aucun `AppState`. La garde protège deux surfaces ; je n'en avais inventorié qu'une, la plus
+familière. Une liste se dérive de chaque surface qu'elle garde, et « j'ai croisé deux sources » ne
+vaut rien si les deux regardent au même endroit.
+
+Trois autres pièges du même lot, chacun payé une fois :
+
+- **Le point de branchement se lit dans le code de la bibliothèque, pas dans l'intuition.** Poser la
+  garde dans `migrate` semblait évident (c'est le point d'entrée du blob persisté). Lecture de
+  `zustand/middleware.js` : `migrate` n'est appelé QUE si la version du blob diffère de la version
+  courante. Un blob v7 — celui que Marc a sur son disque tous les jours — ne le traverse jamais. La
+  garde y aurait été inopérante précisément pour le cas normal. `merge`, lui, est appelé à chaque
+  réhydratation. Cinq minutes de lecture contre un lot entier de fausse protection.
+- **Un test qui écrit sur un champ INEXISTANT rend un faux « ça passe ».** Ma première mesure du
+  canal à −52 % écrivait `realEstate[0].closingCosts` : le tableau est absent du persona et le champ
+  s'appelle `totalClosingCosts`, dans `realEstateGoals`. Le cas rendait « aucun refus » — un trou
+  apparent, dans un lot dont le sujet est justement de trouver des trous. Un test de perturbation
+  doit d'abord prouver que la perturbation a EU LIEU.
+- **Un contrôle d'anti-vacuité placé après un cas d'échec peut lire l'état du précédent.**
+  `getHydrationStatus()` ne redevient jamais sain : une fois `failed`, il le reste pour la durée du
+  module. Mon cas sain, écrit après le cas d'échec, échouait sans rapport avec ce qu'il testait —
+  d'où un fichier de test séparé. Le défaut lui-même est PRÉEXISTANT et il a un effet en production
+  (`syncPull` réhydrate après un pull Drive, donc la bannière « restaurer un backup » survit à la
+  restauration) : routé en `[STORE-HYDRATION-STATUS-MONOTONE]`, pas corrigé dans ce lot.
+
+**Et la limite, dite plutôt que tue** : lister les champs texte resserre la tolérance de FORME dans
+un cas — une chaîne sous une clé que l'app ne connaît pas encore est refusée, donc un backup produit
+par une version plus récente ne se restaurerait pas. C'est écrit dans le test, dans le schéma, et
+routé (`[BACKUP-TEXTE-INCONNU-REFUSE]`). Une garde dont on connaît le domaine de validité vaut mieux
+qu'une garde dont on affirme qu'elle n'a pas de coût.
+
 ### Corollaire du lot 38, 4e passe — une liste blanche ne disparaît pas, elle change d'AXE
 
 `INVERSER-LA-GARDE-NE-SUPPRIME-PAS-LA-LISTE-ELLE-LUI-FAIT-CHANGER-D-AXE`

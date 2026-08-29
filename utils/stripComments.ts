@@ -24,10 +24,19 @@
 
 type Etat = 'code' | 'ligne' | 'bloc' | 'apostrophe' | 'guillemet' | 'gabarit' | 'regex';
 
-/** Un `/` ouvre une REGEX (et non une division) si le dernier caractère significatif ne peut pas
- *  terminer une expression. Heuristique standard, suffisante ici : le pire cas d'une erreur de
- *  jugement est de traiter une division comme une regex sur une ligne, jamais d'avaler un fichier. */
+/** Un `/` ouvre une REGEX (et non une division) si ce qui précède ne peut pas terminer une
+ *  expression. Heuristique standard, suffisante ici : le pire cas d'une erreur de jugement est de
+ *  traiter une division comme une regex sur UNE ligne, jamais d'avaler un fichier (l'état `regex`
+ *  se referme sur le `\n`).
+ *
+ *  ⚠️ Elle regarde les DEUX derniers caractères significatifs, pas un seul. Avec un seul, `a++ / 2`
+ *  se lisait comme une ouverture de regex — le dernier caractère est `+` — et le commentaire qui
+ *  suivait sur la même ligne survivait dans la sortie « décommentée ». C'est précisément le défaut
+ *  que ce module existe pour empêcher : une garde d'absence se serait mise à matcher de la PROSE.
+ *  Trouvé par le panel (PR #763), reproduit avant correction : `'a++ / 2; // note'` rendait la
+ *  chaîne inchangée, là où `'a() / 2; // note'` blanchissait bien. */
 const PEUT_TERMINER_UNE_EXPRESSION = /[\w$)\]]/;
+const INCREMENTS = new Set(['++', '--']);
 
 /**
  * Retire les commentaires en préservant la GÉOMÉTRIE du fichier : chaque caractère de commentaire
@@ -46,9 +55,17 @@ export function stripComments(source: string): string {
     const gabarits: number[] = [];
     let profondeurAccolades = 0;
     let dernierSignificatif = '';
+    let avantDernierSignificatif = '';
 
     const blanchir = (c: string) => out.push(c === '\n' ? '\n' : ' ');
-    const garder = (c: string) => { out.push(c); if (!/\s/.test(c)) dernierSignificatif = c; };
+    const garder = (c: string) => {
+        out.push(c);
+        if (!/\s/.test(c)) { avantDernierSignificatif = dernierSignificatif; dernierSignificatif = c; }
+    };
+    /** `++`/`--` postfixés terminent une expression, donc le `/` qui suit est une DIVISION. */
+    const finDExpression = () =>
+        PEUT_TERMINER_UNE_EXPRESSION.test(dernierSignificatif)
+        || INCREMENTS.has(avantDernierSignificatif + dernierSignificatif);
 
     for (let i = 0; i < source.length; i++) {
         const c = source[i];
@@ -93,7 +110,7 @@ export function stripComments(source: string): string {
                 else if (c === "'") { garder(c); etat = 'apostrophe'; }
                 else if (c === '"') { garder(c); etat = 'guillemet'; }
                 else if (c === '`') { garder(c); etat = 'gabarit'; }
-                else if (c === '/' && !PEUT_TERMINER_UNE_EXPRESSION.test(dernierSignificatif)) { garder(c); etat = 'regex'; }
+                else if (c === '/' && !finDExpression()) { garder(c); etat = 'regex'; }
                 else {
                     garder(c);
                     if (c === '{') profondeurAccolades++;

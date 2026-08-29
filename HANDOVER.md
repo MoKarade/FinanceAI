@@ -6,9 +6,10 @@
 >
 > ## 🟦 Session 2026-08-29 — Lot 37 : un décommenteur qui mangeait le code après une URL (PR à ouvrir)
 > `[GUARD-STRIPCOMMENTS-CONSOLIDER]` — les décommenteurs `stripComments` recopiés du dépôt étaient
-> tous NAÏFS : un `//` dans un littéral de chaîne ampute la ligne. **Mesuré sur les 956 fichiers :
-> 60 rendent une sortie différente, 8 722 caractères de code étaient jetés** — et l'un des fichiers
-> mutilés était lui-même une garde.
+> tous NAÏFS : un `//` dans un littéral de chaîne ampute la ligne. Une soixantaine de fichiers en
+> sortent différents, pour ~8 800 caractères de code jetés — `scripts/mesureStripComments.mjs`
+> (committé) re-dérive le compte, qui bouge avec l'arbre. L'un des fichiers mutilés était lui-même
+> une garde.
 > - Source unique : `utils/stripComments.ts`, un automate qui protège chaînes, gabarits et regex.
 >   PUR et dans `utils/` parce que `chartDataSumGuard` part dans le bundle du navigateur ; il
 >   **BLANCHIT** au lieu de supprimer (les gardes fiscales reportent des numéros de ligne) ; donc

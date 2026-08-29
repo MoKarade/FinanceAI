@@ -63,6 +63,20 @@ describe('[GUARD-STRIPCOMMENTS-CONSOLIDER] stripComments', () => {
         expect(out).toContain('const t = 3;');
     });
 
+    it('traite `a++ / 2` comme une DIVISION, pas comme une ouverture de regex', () => {
+        // Trouvé par le panel (PR #763). Avec une heuristique à UN seul caractère, le `+` de `a++`
+        // ne pouvant pas terminer une expression, le `/` ouvrait un faux état regex — et le
+        // commentaire qui suivait survivait dans la sortie « décommentée ». C'est exactement le
+        // défaut que ce module existe pour empêcher : une garde d'absence se remettrait à matcher
+        // de la PROSE. Aucun code n'était perdu (l'état se referme sur le saut de ligne), mais
+        // l'inverse de la promesse se produisait.
+        expect(stripComments('a++ / 2; // note')).toBe('a++ / 2;        ');
+        expect(stripComments('a-- / 2; // note')).toBe('a-- / 2;        ');
+        // Contre-épreuve : le cas voisin qui marchait déjà, et une vraie regex en tête d'expression.
+        expect(stripComments('a() / 2; // note')).toBe('a() / 2;        ');
+        expect(stripComments('const re = /a\\/b/; // note')).toBe('const re = /a\\/b/;        ');
+    });
+
     it('ne mange pas le reste du fichier sur une chaîne non terminée', () => {
         // Une apostrophe orpheline (français dans un commentaire mal formé, fichier tronqué…) ne
         // doit pas transformer le reste du fichier en littéral.

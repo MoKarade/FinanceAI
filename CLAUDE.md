@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 921 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 922 tests** Vitest
 (466 fichiers de test, mesuré le 2026-08-29). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -929,8 +929,9 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   mention : la garde protège le code, la prose garde le droit de raconter l'histoire
   (`SCAN-QUI-MATCHE-LA-PROSE`).
   ⚠️ Et un décommenteur par REGEX est faux : `'https://…'` contient `//`, donc il ampute la ligne —
-  mesuré, **60 fichiers** du dépôt en sortent différents et 8 722 caractères de code étaient jetés,
-  dont ceux d'une garde qui se mutilait elle-même. La source unique est `utils/stripComments.ts`
+  une soixantaine de fichiers du dépôt en sortent différents (`scripts/mesureStripComments.mjs`
+  re-dérive le compte ; un agrégat sur un arbre mouvant se cite par sa COMMANDE, pas par son
+  chiffre), dont ceux d'une garde qui se mutilait elle-même. La source unique est `utils/stripComments.ts`
   (automate, pur, sans `node:fs` — il doit rester atteignable depuis le bundle). Elle **BLANCHIT**
   au lieu de supprimer, parce que les gardes qui reportent un numéro de ligne l'exigent : avant
   d'unifier N copies, comparer leurs CONTRATS. Corollaire : l'anti-vacuité ne peut plus se mesurer

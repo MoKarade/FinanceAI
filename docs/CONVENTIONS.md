@@ -8195,10 +8195,19 @@ comptage d'agent — c'est l'OUTIL qui l'est, et `tests/helpers/source.ts` exist
 tous fondés sur deux `replace` naïfs. Un `//` dans un littéral de chaîne — une URL, donc — ampute la
 ligne à partir de là.
 
-**Ce n'était pas théorique, et le chiffre le dit mieux que l'argument** : sur les 956 fichiers du
-dépôt, **60** rendent une sortie différente entre le naïf et le durci, et le naïf jetait **8 722
-caractères de code réel**. Le pire cas est `services/aiTools/registry.ts` (1 380 caractères). Et
-l'un des fichiers mutilés était lui-même **une garde** — elle scannait sa propre source amputée.
+**Ce n'était pas théorique** : une soixantaine de fichiers du dépôt rendent une sortie différente
+entre le naïf et le durci, pour de l'ordre de 8 800 caractères de code jetés. Le pire cas est
+`services/aiTools/registry.ts`, à **1 380 caractères** — et l'un des fichiers mutilés était lui-même
+**une garde**, qui scannait donc sa propre source amputée.
+
+⚠️ **Ces deux agrégats ne se citent pas au chiffre près, et c'est une leçon en soi.** Le panel les a
+recalculés et obtenu autre chose que moi ; les deux mesures étaient justes, portant sur des
+INSTANTANÉS différents de l'arbre — chaque fichier ajouté au lot déplace le total. D'où
+`scripts/mesureStripComments.mjs`, **committé**, qui nomme ses deux paramètres (la liste de fichiers
+et la version naïve de référence). Un chiffre agrégé sur un arbre mouvant se remplace par la
+COMMANDE qui le re-dérive : une commande périmée échoue bruyamment, un chiffre périmé se lit comme
+un fait. Restent citables tels quels : le pire cas (stable, reproduit à l'identique par le panel) et
+le fait qualitatif.
 
 `utils/fiscalConstantsGuard.ts` DOCUMENTAIT le défaut en le jugeant acceptable : « cas irréaliste en
 code fiscal ». C'était vrai **pour lui** et faux dès que le même décommenteur sert ailleurs — une

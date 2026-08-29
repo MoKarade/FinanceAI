@@ -14,9 +14,10 @@
 
 - [x] **`[GUARD-STRIPCOMMENTS-CONSOLIDER]`** (S annoncé, M réel — dette relevée au lot 31) — le dépôt
   portait des décommenteurs `stripComments` recopiés, tous NAÏFS : un `//` dans un littéral de chaîne
-  ampute la ligne. **Mesuré sur les 956 fichiers du dépôt : 60 rendent une sortie différente entre le
-  naïf et le durci, et le naïf jetait 8 722 caractères de code réel** (pire cas
-  `services/aiTools/registry.ts`, 1 380). L'un des fichiers mutilés était lui-même une garde.
+  ampute la ligne. Une soixantaine de fichiers du dépôt en sortent différents, pour de l'ordre de
+  8 800 caractères de code jetés — **`scripts/mesureStripComments.mjs` (committé) re-dérive le
+  compte**, les agrégats bougeant avec l'arbre. Pire cas stable : `services/aiTools/registry.ts`,
+  1 380 caractères. Et l'un des fichiers mutilés était lui-même une garde.
   ✅ **Livré lot 37** : `utils/stripComments.ts`, un automate qui protège les littéraux de chaîne,
   les gabarits (interpolations imbriquées comprises) et les expressions régulières. Neuf tests de
   SYNTAXE, dont trois rougissent sur la version naïve.

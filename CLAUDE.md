@@ -788,7 +788,8 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   NOMMÉS. Une chaîne dans un champ monétaire traverse le filet (`typeof !== 'number'` → on descend
   ou on sort), et le vecteur est le même `JSON.parse` non typé : mesuré, une chaîne dans un montant
   de projet immobilier fait **−52 %**, zéro refus, zéro non-fini publié. Le correctif est à la
-  SOURCE (typer le schéma de restauration), pas dans un cinquième ajout à la garde
+  SOURCE — et il y a DEUX sources non validées, pas une : le backup JSON et le blob du store
+  (`financeai-storage`, le seul vecteur de `projection`) —, pas dans un cinquième ajout à la garde
   (`[BACKUP-SCHEMA-NON-TYPE]`). Le bon test n'est pas « reste-t-il une liste ? » mais **« qu'est-ce
   que son oubli coûte ? »** — un message moins précis se tolère, un canal money-critical rouvert non
   (`INVERSER-LA-GARDE-NE-SUPPRIME-PAS-LA-LISTE-ELLE-LUI-FAIT-CHANGER-D-AXE`).

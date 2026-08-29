@@ -1440,17 +1440,6 @@
 
 ### 🔴 Argent — valeurs fausses ou silencieuses
 
-- [ ] **`[STORE-HYDRATION-STATUS-MONOTONE]`** (S, MOYEN, PRÉEXISTANT) — `getHydrationStatus()` ne
-  redevient JAMAIS sain : `onRehydrateStorage` pose `failed: true` (`store/useFinanceStore.ts:739`)
-  et aucun chemin ne le remet à `false` sur une réhydratation réussie. Effet en PRODUCTION :
-  `services/sync/syncPull.ts:97` appelle `persist.rehydrate()` après un pull Drive, donc **restaurer
-  une sauvegarde saine laisse la bannière « ne rien saisir, restaurer un backup » affichée** alors
-  que tout est réparé — Marc croit son état encore corrompu. Trouvé en écrivant le contrôle
-  d'anti-vacuité de `[BACKUP-SCHEMA-NON-TYPE]` : un cas sain placé après un cas d'échec lisait le
-  statut du précédent (d'où le fichier `tests/store/hydrationTypes.test.ts`, séparé pour cette
-  raison). Correctif : remettre `_hydrationStatus` à `{ failed: false, error: null }` dans la branche
-  `if (!error)` d'`onRehydrateStorage`, plus un test qui enchaîne échec → succès. [MESURÉ]
-
 - [ ] **`[BACKUP-TEXTE-INCONNU-REFUSE]`** (S, FAIBLE) — limite ASSUMÉE de la garde de type livrée au
   lot 41 : elle refuse une chaîne sous une clé que l'app ne connaît pas encore, donc un backup
   produit par une version **plus récente** et portant un nouveau champ textuel ne se restaurerait

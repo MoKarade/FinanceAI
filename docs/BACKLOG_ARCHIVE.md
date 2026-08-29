@@ -10,6 +10,33 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-29 — Lot 46 : le remède affiché survivait à la guérison
+
+- [x] **`[STORE-HYDRATION-STATUS-MONOTONE]`** (S, MOYEN, PRÉEXISTANT) — `getHydrationStatus()` ne
+  redevient JAMAIS sain : `onRehydrateStorage` pose `failed: true` (`store/useFinanceStore.ts:739`)
+  et aucun chemin ne le remet à `false` sur une réhydratation réussie. Effet en PRODUCTION :
+  `services/sync/syncPull.ts:97` appelle `persist.rehydrate()` après un pull Drive, donc **restaurer
+  une sauvegarde saine laisse la bannière « ne rien saisir, restaurer un backup » affichée** alors
+  que tout est réparé — Marc croit son état encore corrompu. Trouvé en écrivant le contrôle
+  d'anti-vacuité de `[BACKUP-SCHEMA-NON-TYPE]` : un cas sain placé après un cas d'échec lisait le
+  statut du précédent (d'où le fichier `tests/store/hydrationTypes.test.ts`, séparé pour cette
+  raison). Correctif : remettre `_hydrationStatus` à `{ failed: false, error: null }` dans la branche
+  `if (!error)` d'`onRehydrateStorage`, plus un test qui enchaîne échec → succès. [MESURÉ]
+  ✅ **Livré lot 46** — une ligne de code, un test, et une trace qui reste. `onRehydrateStorage`
+  remet `_hydrationStatus` à `{ failed: false, error: null }` sur une réhydratation réussie, au lieu
+  de sortir sur `if (!error) return;`.
+  · **Aucune trace n'est perdue** : l'incident est journalisé en critique par `logError`, et c'est le
+    journal qui garde l'historique. Ce statut décrit l'état COURANT du store pour l'AFFICHER — deux
+    registres, deux durées de vie. Confondre les deux, c'était garder une bannière allumée pour se
+    souvenir d'un incident réglé.
+  · Test discriminant : échec (blob illisible) PUIS succès (blob sain), exactement la séquence que
+    `syncPull` produit. Sur le code d'avant, il rougit. La perturbation a été vérifiée par `assert`
+    AVANT la mesure (leçon du lot 43).
+  · **Bénéfice collatéral mesuré** : les tests de réhydratation ne dépendent plus de leur ORDRE. Le
+    fichier `tests/store/hydrationTypes.test.ts` avait été séparé au lot 41 *à cause* de cette
+    monotonie — son en-tête est mis à jour plutôt que laissé mentir, mais le fichier n'est pas
+    refusionné (déplacement gratuit, et son premier `describe` teste justement la réversibilité).
+
 ## 2026-08-29 — Lot 44 : un focus retiré sans rien à la place
 
 - [x] **`[A11Y-FOCUS-INDICATOR-MISSING]`** (S, MOYEN) — `outline-none` **sans aucun remplacement

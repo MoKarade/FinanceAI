@@ -4,6 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-08-29 — Lot 46 : le remède affiché survivait à la guérison
+> `[STORE-HYDRATION-STATUS-MONOTONE]` — trouvé en écrivant un contrôle d'anti-vacuité au lot 41,
+> corrigé ici. `getHydrationStatus()` ne redevenait jamais sain : une fois `failed`, il le restait
+> pour la durée du module.
+> - **Effet réel en production** : `services/sync/syncPull.ts:97` appelle `persist.rehydrate()` après
+>   un pull Drive, donc restaurer une sauvegarde saine laissait la bannière « ne rien saisir,
+>   restaurer un backup » affichée alors que tout était réparé.
+> - Correctif : une ligne (`_hydrationStatus` remis à zéro sur succès). **Aucune trace perdue** —
+>   l'incident reste journalisé en critique ; le statut décrit l'état COURANT pour l'afficher, le
+>   journal garde l'historique. Deux registres, deux durées de vie.
+> - Bénéfice collatéral : les tests de réhydratation ne dépendent plus de leur ORDRE. L'en-tête de
+>   `tests/store/hydrationTypes.test.ts`, qui justifiait sa séparation par cette monotonie, est mis
+>   à jour plutôt que laissé mentir.
+
 > ## 🟡 Session 2026-08-29 — `[ESTATE-NPV-BASE-REELLE]` : INSTRUIT et CHIFFRÉ, correctif REMIS
 > Le finding est **confirmé** par interception des entrées réelles de `computeEstateNetWorth` :
 > RRQ 3 609 $/mois (estimé indexé) contre **2 310 $ réellement versés** — ratio 0,640 —, PSV

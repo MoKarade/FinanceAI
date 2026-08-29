@@ -8523,6 +8523,29 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 46 — un statut d'AFFICHAGE n'est pas un journal
+
+`UN-STATUT-D-AFFICHAGE-N-EST-PAS-UN-JOURNAL`
+
+`getHydrationStatus()` ne redevenait jamais sain : `onRehydrateStorage` posait `failed: true` et
+sortait sur `if (!error) return;` sans jamais remettre le statut. Effet réel : `syncPull` réhydrate
+après un pull Drive, donc **restaurer une sauvegarde saine laissait la bannière « ne rien saisir,
+restaurer un backup » affichée** — le remède survivait à la guérison, et rien ne disait que c'était
+réparé.
+
+La question qu'il fallait se poser avant de corriger : **est-ce qu'effacer ce statut perd une
+information ?** Non — l'incident est journalisé en critique par `logError`, et c'est le journal qui
+garde l'historique. Ce statut-ci décrit l'état **courant** du store pour l'afficher. Deux registres,
+deux durées de vie ; les confondre revenait à garder une alarme allumée pour se souvenir d'un
+incident réglé.
+
+⚠️ **Ce défaut a été trouvé en écrivant un contrôle d'anti-vacuité** (lot 41), pas en cherchant un
+bug : un cas « sain » placé après un cas d'échec lisait le statut du précédent et échouait sans
+rapport avec ce qu'il testait. J'avais alors isolé le fichier de test et routé le ticket. Corollaire
+mesuré au moment du correctif : les tests de réhydratation ne dépendent **plus** de leur ordre — et
+l'en-tête qui justifiait la séparation du fichier a donc été mis à jour plutôt que laissé mentir.
+Une raison qui a vécu se réécrit, sinon elle enseigne un état du monde qui n'existe plus.
+
 ### Lot 45 (remis) — cinq tests rouges qui ne sont pas des goldens
 
 `DES-TESTS-ROUGES-QUI-ENCODENT-UNE-CONCEPTION-NE-SE-RE-BASENT-PAS`

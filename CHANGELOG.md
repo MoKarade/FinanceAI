@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-29 (L'avertissement « restaurer un backup » disparaît une fois réparé)
+
+- **Corrigé** : quand l'app n'arrivait pas à relire tes données au démarrage, elle affichait « ne
+  rien saisir, restaurer un backup » — à juste titre. Mais une fois la sauvegarde restaurée, le
+  message **restait affiché** jusqu'au rechargement de la page, alors que tout était réparé. Il
+  s'efface maintenant dès que les données se relisent normalement.
+
 ## [unreleased] — 2026-08-29 (Accessibilité : neuf champs qui ne montraient pas le focus)
 
 - **Corrigé** : neuf champs et listes déroulantes ne montraient rien quand on les atteignait au

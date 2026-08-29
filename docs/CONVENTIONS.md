@@ -8120,3 +8120,41 @@ avec les mêmes props et un `setProjection` qui n'écrit nulle part. C'est plus 
 assertion sur la constante, mais c'est aussi ce qui rend l'assertion non ambiguë : le seul canal par
 lequel la valeur éditée pourrait revenir est précisément celui qu'on accuse
 (`UNE-LISTE-VIDE-N-EST-PAS-LE-CHEMIN-VIDE`, corollaire).
+
+---
+
+## Lot 36 (2026-08-29) — trois tests rouges ne font pas trois preuves
+
+`[A11Y-REBALANCE-CIBLES]`, les trois findings d'accessibilité routés par le panel du lot 35. Le
+correctif tient en trois attributs. La leçon est entièrement dans la façon de le PROUVER.
+
+Rejoués sur le code d'avant, mes trois tests rougissaient — 3/3, ce qui ressemble à une preuve de
+discrimination complète. Elle ne l'était pas : **deux d'entre eux rougissaient pour la raison du
+troisième.** Le correctif du nom accessible change le sélecteur (`Allocation cible (pourcentage)` →
+`Allocation cible pour <secteur> (pourcentage)`), donc le test du `role="status"`, qui doit d'abord
+atteindre un champ pour casser le total, échouait sur « champ introuvable » bien avant d'observer
+quoi que ce soit sur l'annonce. Il aurait été tout aussi rouge si le `role="status"` avait été
+livré.
+
+**Le geste** : quand un lot corrige N mécanismes, la preuve se fait en N perturbations SÉPARÉES,
+chacune ne touchant qu'un mécanisme, et le contrôle est que **seul le test correspondant rougit**.
+Mesuré ici : retirer `role="status"` → 1 rouge sur 3 ; retirer `aria-pressed` → 1 rouge sur 3.
+Restaurer le code d'avant en bloc n'établit que « quelque chose a changé ».
+
+**Corollaire, pour l'anti-vacuité d'une assertion de DISTINCTION** : perturber vers une valeur qui
+casse le sélecteur ne prouve rien de l'assertion elle-même. Il faut perturber vers une valeur qui
+**satisfait encore le sélecteur** tout en violant ce qu'on affirme — ici cinq noms commençant tous
+par le bon préfixe mais identiques entre eux, ce qui laisse `getAllByLabelText` en trouver cinq et
+ne fait rougir que `new Set(noms).size === 5`. C'est la seule perturbation qui distingue « le nom a
+changé » de « les noms sont distincts ».
+
+**Corollaire de sélecteur** : `getByRole('status')` a rendu « plusieurs éléments trouvés » — l'écran
+porte d'autres régions annoncées. Filtrer `getAllByRole('status')` sur le texte attendu teste
+exactement la même chose (un `div` sans rôle n'entre jamais dans cette liste) sans dépendre du
+nombre de régions vivant ailleurs dans la page.
+
+**Et sur le fond** : les trois défauts étaient des oublis LOCAUX, pas des conventions manquantes.
+`role="status"` existait quelques lignes plus haut dans la même fonction, `aria-pressed` cinq fois
+dans le même fichier. C'est `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`, et c'est un signal bien plus fort
+qu'une absence isolée : le risque était connu, traité une fois, et le site d'à côté oublié
+(`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).

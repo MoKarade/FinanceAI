@@ -4,7 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟦 Session 2026-08-28 — Lot 35 : éditer une cible d'allocation réécrivait le modèle par défaut (PR à ouvrir)
+> ## 🟦 Session 2026-08-29 — Lot 36 : trois oublis d'accessibilité dans le bloc Rééquilibrage (PR à ouvrir)
+> `[A11Y-REBALANCE-CIBLES]` — les trois findings routés par le panel du lot 35, tous PRÉ-EXISTANTS
+> depuis le 2026-07-31 et tous des oublis LOCAUX : cinq champs de cible au même nom accessible,
+> alerte du total sans `role="status"` (le patron était quelques lignes plus haut dans la MÊME
+> fonction), bouton bascule sans `aria-pressed` (déjà employé cinq fois dans ce fichier).
+> - ⚠️ **Leçon de méthode du lot** : mes trois tests rougissaient bien tous sur le code d'avant,
+>   mais DEUX rougissaient pour la raison du TROISIÈME — le sélecteur du nom accessible. Trois
+>   perturbations séparées ont été nécessaires, dont une qui SATISFAIT encore le sélecteur (cinq
+>   noms identiques commençant par le bon préfixe) pour prouver que l'assertion de distinction n'est
+>   pas vacueuse.
+>
+> ## 🟢 Session 2026-08-28 — Lot 35 : éditer une cible d'allocation réécrivait le modèle par défaut (PR #761, MERGÉE)
 > `[INVEST-CIBLES-DEFAUT-MUTEES]` — la variante **ACTIVE** de la classe du lot 34, routée par ce
 > lot-là et livrée ici. `[...targetModel]` copie le TABLEAU, jamais ses ÉLÉMENTS : l'écriture
 > `newModel[i].targetPct` atteignait donc l'objet de `DEFAULT_TARGET_MODEL`, la constante de module.

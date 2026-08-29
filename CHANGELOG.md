@@ -6,6 +6,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-29 (Investissements : le bloc Rééquilibrage au lecteur d'écran)
+
+- **Amélioré** : dans « Allocation & rééquilibrage », les cinq champs de cible s'annonçaient tous
+  « Allocation cible (pourcentage) » — impossible, à l'oreille, de savoir lequel était lequel. Ils
+  nomment maintenant leur secteur.
+- **Corrigé** : l'avertissement « le total des cibles doit être de 100 % » n'était visible qu'à
+  l'œil ; il est désormais annoncé quand il apparaît. Et le bouton « Modifier Cibles » indique
+  maintenant s'il est actif autrement que par son seul libellé.
+
 ## [unreleased] — 2026-08-28 (Investissements : éditer une cible réécrivait le modèle par défaut)
 
 - **Corrigé** : dans « Allocation & rééquilibrage », modifier une cible en pourcentage réécrivait le

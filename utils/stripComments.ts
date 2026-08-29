@@ -52,9 +52,21 @@ type Etat = 'code' | 'ligne' | 'bloc' | 'apostrophe' | 'guillemet' | 'gabarit' |
  *  forme. Aucun n'était suivi d'un commentaire de fin de ligne — donc rien n'était perdu
  *  aujourd'hui — mais c'était la forme la plus RÉPANDUE du défaut, pas la plus rare.
  *
- *  Borne assumée : une accolade fermante peut aussi terminer un BLOC (`if (…) { … }`), après quoi
- *  un `/` serait une regex. Le cas est rarissime en pratique et l'erreur reste bornée à la ligne
- *  (l'état `regex` se referme sur le `\n`) ; l'inverse — casser tout le JSX du dépôt — ne l'est pas. */
+ *  Borne assumée : une accolade fermante — ou une parenthèse, `if (cond) /re/.exec(x)` — peut aussi
+ *  terminer un BLOC plutôt qu'une expression, après quoi un `/` serait une vraie regex lue comme une
+ *  division. Le cas est rarissime (aucune occurrence dans le dépôt, vérifié) et le compromis inverse
+ *  — casser tout le JSX — serait bien pire.
+ *
+ *  ⚠️⚠️ MAIS l'erreur n'est PAS « bornée à la ligne », contrairement à ce que la première version de
+ *  ce paragraphe affirmait. Cette borne ne vaut que dans l'AUTRE sens (une division prise pour une
+ *  regex : l'état `regex` se referme bien sur le `\n`). Dans CE sens-ci, l'automate reste en `code`
+ *  et lit le CONTENU de la regex comme du code — or une classe de caractères peut légalement porter
+ *  la séquence d'ouverture d'un commentaire de bloc, qui n'est alors refermée que par le prochain
+ *  marqueur littéral, éventuellement jamais. MESURÉ : le reste du fichier est blanchi, et une garde
+ *  bâtie dessus devient aveugle SANS rien de rouge. C'est pourquoi le test canari de
+ *  `tests/guards/stripCommentsRatchet.test.ts` mesure la part de code restante FICHIER PAR FICHIER :
+ *  l'agrégat du dépôt ne bougerait pas d'un fichier avalé. Une garantie fausse écrite sur un outil
+ *  qui sert de source unique est pire que pas de garantie (4e passe du panel). */
 const PEUT_TERMINER_UNE_EXPRESSION = /[\w$)\]}"'`]/;
 const SIGNES_D_INCREMENT = new Set(['+', '-']);
 
@@ -99,9 +111,17 @@ export function stripComments(source: string): string {
      */
     const suitUnIncrementPostfixe = () => {
         if (!SIGNES_D_INCREMENT.has(dernierSignificatif)) return false;
-        let n = 0;
-        for (let k = dernierSignificatifIndex; k >= 0 && source[k] === dernierSignificatif; k--) n++;
-        return n % 2 === 0;
+        let debut = dernierSignificatifIndex;
+        while (debut > 0 && source[debut - 1] === dernierSignificatif) debut--;
+        const longueurDuRun = dernierSignificatifIndex - debut + 1;
+        if (longueurDuRun % 2 !== 0) return false;
+        // ⚠️ La parité ne suffit pas : elle dit que le run SE TERMINE par un `++` complet, pas qu'il
+        // est POSTFIXÉ. Dans `a + ++/re/…`, le run est préfixe — ce qui le précède est un opérateur,
+        // donc il n'y a rien à incrémenter à gauche et le `/` ouvre une vraie regex. On exige donc
+        // que le run touche quelque chose qui peut terminer une expression (4e passe du panel).
+        let avant = debut - 1;
+        while (avant >= 0 && /\s/.test(source[avant])) avant--;
+        return avant >= 0 && PEUT_TERMINER_UNE_EXPRESSION.test(source[avant]);
     };
     const finDExpression = () =>
         PEUT_TERMINER_UNE_EXPRESSION.test(dernierSignificatif) || suitUnIncrementPostfixe();

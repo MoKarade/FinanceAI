@@ -20,8 +20,19 @@ import { stripComments, partDeCodeRestante } from '../../utils/stripComments';
 const RACINE = join(__dirname, '..', '..');
 const IGNORES = new Set(['node_modules', '.git', 'dist', 'coverage', '.vercel', 'e2e-results', 'playwright-report']);
 
-/** La SOURCE UNIQUE elle-même — le seul fichier autorisé à contenir un décommenteur. */
-const SOURCE_UNIQUE = 'utils/stripComments.ts';
+/**
+ * Les seuls fichiers autorisés à contenir un décommenteur, chacun avec sa raison — un filtre se
+ * déclare et se motive, sinon un périmètre borné en silence se lit comme « tout est couvert »
+ * (`AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`).
+ *
+ * ⚠️ Le second est ce fichier-ci, et il ne s'exempte pas par confort : le canari ci-dessus a BESOIN
+ * de la version naïve comme point de COMPARAISON. Sans cette entrée, la garde se détecte elle-même
+ * — ce qu'elle a fait au premier jet, et c'était le bon comportement.
+ */
+const DECOMMENTEURS_AUTORISES = new Set([
+    'utils/stripComments.ts',                        // la source unique
+    'tests/guards/stripCommentsRatchet.test.ts',     // le point de comparaison du canari
+]);
 
 /** Ce qui trahit un décommenteur, quelle que soit sa signature : un `replace` dont le motif décrit
  *  un commentaire. Les trois formes couvrent bloc et ligne ; aucune n'apparaît ailleurs. */
@@ -48,7 +59,7 @@ function decommenteursPrives(): string[] {
         const code = stripComments(raw);
         brutTotal += raw.replace(/\s/g, '').length;
         codeTotal += code.replace(/\s/g, '').length;
-        if (relatif === SOURCE_UNIQUE) continue;
+        if (DECOMMENTEURS_AUTORISES.has(relatif)) continue;
         if (MOTIFS_DE_DECOMMENTEUR.some((m) => m.test(code))) trouves.push(relatif);
     }
     // Anti-vacuité AGRÉGÉE (par fichier elle serait fausse dès qu'un fichier est surtout de la
@@ -57,6 +68,42 @@ function decommenteursPrives(): string[] {
     expect(codeTotal / brutTotal).toBeGreaterThan(0.5);
     return trouves.sort();
 }
+
+/** La version NAÏVE, uniquement comme POINT DE COMPARAISON du canari ci-dessous. */
+const naif = (src: string): string => src
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+    .replace(/\/\/[^\n]*/g, (m) => ' '.repeat(m.length));
+
+describe('[GUARD-STRIPCOMMENTS-CONSOLIDER] canari : aucun fichier n\'est ENGLOUTI', () => {
+    // ⚠️ Pourquoi FICHIER PAR FICHIER. Quand l'automate classe une vraie regex comme une division,
+    // il lit son CONTENU comme du code — et une classe de caractères peut légalement porter la
+    // séquence d'ouverture d'un commentaire de bloc. Il ouvre alors un faux commentaire que seul un
+    // marqueur littéral referme, éventuellement jamais : tout le reste du fichier est blanchi, et la
+    // garde bâtie dessus devient aveugle SANS rien de rouge (`UN-INVARIANT-NE-VOIT-PAS-CE-QUI-EST-ABSENT`).
+    // L'anti-vacuité AGRÉGÉE du ratchet ne peut pas le voir : un fichier avalé ne déplace pas le
+    // ratio d'un dépôt de plusieurs millions de caractères.
+    //
+    // ⚠️ Et pourquoi pas un SEUIL. Mon premier jet exigeait « au moins 15 % de code restant », choisi
+    // au jugé — or `services/projection/modelAssumptions.ts` est légitimement à 6,6 % (c'est de la
+    // documentation exécutable). Un seuil arbitraire sur une grandeur dont la distribution n'a pas
+    // été mesurée naît faux, exactement comme le plafond du ratchet plus bas.
+    //
+    // L'invariant JUSTE ne demande aucun seuil : le décommenteur durci protège des littéraux, donc
+    // il garde TOUJOURS au moins autant de code que le naïf — sauf s'il engloutit. La comparaison
+    // est donc son propre étalon, et elle reste vraie quelle que soit la prose du fichier.
+    it('le durci ne garde JAMAIS moins de code que le naïf', () => {
+        const suspects: string[] = [];
+        for (const f of fichiersSource(RACINE)) {
+            const raw = readFileSync(f, 'utf8');
+            const durci = partDeCodeRestante(raw, stripComments(raw));
+            const naive = partDeCodeRestante(raw, naif(raw));
+            if (durci < naive) {
+                suspects.push(`${f.slice(RACINE.length + 1)} : durci ${(durci * 100).toFixed(1)} % < naïf ${(naive * 100).toFixed(1)} %`);
+            }
+        }
+        expect(suspects, `fichiers où le durci perd du code que le naïf gardait :\n${suspects.join('\n')}`).toEqual([]);
+    });
+});
 
 describe('[GUARD-STRIPCOMMENTS-CONSOLIDER] ratchet des décommenteurs privés', () => {
     // MESURÉ le 2026-08-29, APRÈS la migration des trois gardes d'`utils/` (celles qui devaient

@@ -8282,3 +8282,38 @@ Enfin, un ordre de grandeur qui varie encore : le script committé rend 59 fichi
 caractères après ces correctifs, contre 61 / 8 835 avant. C'est normal et c'est le but — le durci
 change, donc l'écart au naïf change. La commande reste la source, jamais le nombre
 (`TROIS-PASSES-TROIS-FORMULATIONS-FAUSSES-DE-LA-MEME-REGLE`).
+
+
+### Corollaire du lot 37, 4e passe — une GARANTIE fausse est pire que pas de garantie
+
+J'avais écrit, en assumant la borne du compromis : « l'erreur reste bornée à la ligne (l'état
+`regex` se referme sur le `\n`) ». **C'est vrai dans un sens et faux dans l'autre**, et je n'avais
+vérifié que celui qui m'arrangeait.
+
+- Division prise pour une REGEX → l'état `regex` se referme bien sur le saut de ligne. Borné.
+- Vraie regex prise pour une DIVISION → l'automate reste en `code` et lit le CONTENU de la regex
+  comme du code. Or une classe de caractères peut légalement porter la séquence d'ouverture d'un
+  commentaire de bloc, qui n'est alors refermée que par le prochain marqueur littéral —
+  éventuellement jamais. **Mesuré : tout le reste du fichier est blanchi**, et une garde bâtie
+  dessus devient aveugle sans que rien ne rougisse.
+
+Sur un module qui sert de SOURCE UNIQUE à trois gardes fiscales, une garantie écrite et fausse est
+plus dangereuse que l'absence de garantie : elle dispense la prochaine session de vérifier.
+
+**Ce qui protège vraiment n'est pas un meilleur commentaire, c'est un CANARI — et il ne pouvait pas
+être agrégé.** L'anti-vacuité du ratchet compare le code restant à l'échelle du dépôt : un fichier
+avalé sur plusieurs millions de caractères ne déplace pas le ratio. Il fallait la mesure FICHIER PAR
+FICHIER.
+
+⚠️ Et mon premier canari posait un SEUIL au jugé (« au moins 15 % de code restant »), qui a rougi
+immédiatement sur `services/projection/modelAssumptions.ts`, légitimement à **6,6 %** — c'est de la
+documentation exécutable. Deuxième seuil inventé du même lot après le plafond du ratchet. **La
+formulation juste ne demande aucun seuil** : le décommenteur durci protège des littéraux, donc il
+garde TOUJOURS au moins autant de code que le naïf — sauf s'il engloutit. La comparaison est son
+propre étalon et reste vraie quelle que soit la proportion de prose du fichier. Devant une garde qui
+réclame un seuil, chercher d'abord l'INVARIANT qui s'en passe.
+
+Dernier détail qui vaut d'être noté : ce canari a besoin de la version naïve comme point de
+comparaison, donc le fichier de garde contient lui-même un décommenteur — et le ratchet l'a
+détecté, ce qui était le bon comportement. L'exemption est déclarée AVEC sa raison, à côté de celle
+de la source unique (`UNE-GARANTIE-FAUSSE-EST-PIRE-QUE-PAS-DE-GARANTIE`).

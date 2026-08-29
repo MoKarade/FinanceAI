@@ -75,20 +75,17 @@
   par défaut. Avant de coder : établir si le champ doit être RETIRÉ (et l'UI recâblée sur
   `returnRates`) ou CÂBLÉ (et alors il faut décider ce qu'il écrase de la carte par compte) — la
   réponse change ce que voit l'utilisateur, donc elle se demande à Marc.
-- [ ] **`[GUARD-STRIPCOMMENTS-CONSOLIDER]`** (S — dette relevée au lot 31) — le dépôt porte SIX
-  décommenteurs `stripComments` recopiés (`tests/aiTools/specFiniteGuard.test.ts`,
-  `tests/services/assetFxGuard.test.ts`, `utils/fiscalConstGuardV2.ts`, `utils/chartDataSumGuard.ts`,
-  `utils/fiscalConstantsGuard.ts`…), dont deux portent EN COMMENTAIRE la leçon
-  `GUARD-STRIPCOMMENTS-DUPLIQUE` qui interdit de les dupliquer. Le lot 31 a créé le premier
-  EXPORTÉ (`tests/helpers/source.ts`, avec son anti-vacuité `readCodeOnly`) et l'a branché sur la
-  garde neuve UNIQUEMENT — migrer les six existants est le travail restant. ⚠️ Chacun a sa propre
-  signature (certains rendent `string`, d'autres `string[]`) : la migration change le CONTRAT de
-  ses appelants, elle ne se fait pas par `replace`.
-  ⚠️ **À durcir AVANT l'adoption large** (finding code-reviewer, 2e passe panel PR #757) :
-  l'implémentation exportée est naïve — elle ne distingue pas un `//` ou un `/* */` à l'intérieur
-  d'une CHAÎNE littérale (une URL `https://…` par exemple). Aucun impact aujourd'hui (vérifié :
-  aucun fichier balayé par `anthropicCallsiteGuard` n'en contient), mais elle devient la référence
-  de six migrations — c'est là qu'un décommenteur aveugle à la syntaxe coûte cher.
+- [ ] **`[GUARD-STRIPCOMMENTS-MIGRER-LES-TESTS]`** (S — reste du lot 37) — la source unique existe
+  (`utils/stripComments.ts`, durcie), et les TROIS gardes d'`utils/` la consomment. Restent **15**
+  décommenteurs privés, tous dans des fichiers de TEST — compte MESURÉ par le ratchet
+  `tests/guards/stripCommentsRatchet.test.ts`, qui imprime la liste à jour quand il rougit (elle
+  n'est pas recopiée ici : une liste dans une doc pourrit).
+  ⚠️ La migration n'est pas un `replace` : les signatures DIFFÈRENT (certaines rendent `string[]`,
+  d'autres `string`) et chacune change le contrat de ses appelants. Se fait fichier par fichier, en
+  rejouant le test concerné à chaque fois.
+  ⚠️ **Dernière étape du ticket** : basculer le ratchet de « compter » à « interdire » (plafond → 0),
+  ce qui est le seul état qui empêche la classe de revenir. Aujourd'hui il naît non bloquant AVEC sa
+  raison datée dans le code, comme l'exige la convention pour une garde qui rougirait à la livraison.
 - [ ] **`[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`** (M — finding code-reviewer, panel PR #756,
   PRÉ-EXISTANT) — le vecteur de corruption traité au lot 30 (`JSON.parse` rend `Infinity` depuis un
   blob Drive/backup contenant `1e999`) n'est neutralisé QU'À l'affichage Santé. Le même `netSalary:

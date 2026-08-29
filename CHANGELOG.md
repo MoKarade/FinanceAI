@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-29 (outillage interne : les garde-fous lisaient mal le code)
+
+- **Interne, sans effet visible** : plusieurs garde-fous automatiques du projet retiraient les
+  commentaires du code avant de l'analyser, mais confondaient une adresse web (`https://…`) avec le
+  début d'un commentaire — ils cessaient donc de lire la ligne à partir de là. Mesuré : 60 fichiers
+  concernés, et l'un des garde-fous se mutilait lui-même. Ils partagent désormais une seule
+  implémentation, qui comprend la syntaxe.
+
 ## [unreleased] — 2026-08-29 (Investissements : le bloc Rééquilibrage au lecteur d'écran)
 
 - **Amélioré** : dans « Allocation & rééquilibrage », les cinq champs de cible s'annonçaient tous

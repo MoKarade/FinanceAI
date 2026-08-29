@@ -21,6 +21,8 @@
 // même valeur dans le même fichier passe. C'est le bon compromis — la classe d'erreur visée est
 // « une constante fiscale NOUVELLE apparaît », pas « elle est dupliquée ».
 
+import { stripComments } from './stripComments';
+
 /** Familles de tri — le classement est le cœur du ticket, pas le scan. */
 export type FiscalConstFamily =
     /** Vrai paramètre fiscal ARC/RQ : DOIT finir dans `docs/FISCAL_REFERENCE.md`. */
@@ -644,12 +646,10 @@ export interface ConstHit {
     text: string;
 }
 
-function stripComments(source: string): string[] {
-    return source
-        .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
-        .split('\n')
-        .map((l) => l.replace(/\/\/.*$/, ''));
-}
+/** [GUARD-STRIPCOMMENTS-CONSOLIDER] Découpe en lignes le source décommenté par la SOURCE UNIQUE
+ *  (`utils/stripComments.ts`). La copie locale d'avant était aveugle aux littéraux de chaîne : un
+ *  `//` dans une URL amputait la ligne, donc une constante fiscale placée après y échappait. */
+const lignesDeCode = (source: string): string[] => stripComments(source).split('\n');
 
 /**
  * Relève les littéraux numériques en position SIGNIFIANTE dans un module fiscal.
@@ -660,7 +660,7 @@ function stripComments(source: string): string[] {
  */
 export function findFiscalConstants(source: string): ConstHit[] {
     const out: ConstHit[] = [];
-    stripComments(source).forEach((line, i) => {
+    lignesDeCode(source).forEach((line, i) => {
         for (const m of line.matchAll(/(?<![\w.$])(\d+(?:_\d+)*(?:\.\d+)?(?:e-?\d+)?)(?![\w.$])/g)) {
             const value = m[1].replace(/_/g, '');
             if (BENIGN.has(value)) continue;

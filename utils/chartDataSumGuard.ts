@@ -17,6 +17,8 @@
 //
 // Module PUR (aucun accès disque) : le scan LIVE vit dans `tests/mcp/chartDataSumGuard.test.ts`.
 
+import { stripComments } from './stripComments';
+
 /**
  * Champs de `ProjectionChartPoint` qui sont des FLUX de revenu de retraite.
  *
@@ -47,13 +49,10 @@ export interface SumViolation {
     text: string;
 }
 
-/** Retire les commentaires (bloc + ligne) — un exemple en commentaire n'est pas du code. */
-function stripComments(source: string): string[] {
-    return source
-        .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
-        .split('\n')
-        .map((l) => l.replace(/\/\/.*$/, ''));
-}
+/** [GUARD-STRIPCOMMENTS-CONSOLIDER] Découpe en lignes le source décommenté par la SOURCE UNIQUE
+ *  (`utils/stripComments.ts`) — un exemple en commentaire n'est pas du code. La copie locale
+ *  d'avant amputait toute ligne portant une URL dans une chaîne. */
+const lignesDeCode = (source: string): string[] => stripComments(source).split('\n');
 
 /**
  * Détecte les additions de flux dans un source.
@@ -77,7 +76,7 @@ export function findChartDataSums(
     // pas sur la ligne strippée (qui vient justement de la supprimer). Ce piège est passé au test
     // du premier coup : le garde ignorait toutes les exemptions en silence.
     const raw = source.split('\n');
-    const lines = stripComments(source);
+    const lines = lignesDeCode(source);
     const nameRe = new RegExp(`(?<![\\w$])(${fields.join('|')})(?![\\w$])`, 'g');
 
     lines.forEach((line, i) => {

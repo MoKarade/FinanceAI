@@ -8186,3 +8186,57 @@ avant toute assertion de compte, je venais de l'écrire deux lots plus tôt, et 
 le geste même de contrôler un rapport d'agent. Un comptage à la main n'est pas plus fiable qu'un
 comptage d'agent — c'est l'OUTIL qui l'est, et `tests/helpers/source.ts` existe pour ça
 (`COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`).
+
+---
+
+## Lot 37 (2026-08-29) — le décommenteur mangeait le code après une URL
+
+`[GUARD-STRIPCOMMENTS-CONSOLIDER]`. Le dépôt portait des décommenteurs `stripComments` recopiés,
+tous fondés sur deux `replace` naïfs. Un `//` dans un littéral de chaîne — une URL, donc — ampute la
+ligne à partir de là.
+
+**Ce n'était pas théorique, et le chiffre le dit mieux que l'argument** : sur les 956 fichiers du
+dépôt, **60** rendent une sortie différente entre le naïf et le durci, et le naïf jetait **8 722
+caractères de code réel**. Le pire cas est `services/aiTools/registry.ts` (1 380 caractères). Et
+l'un des fichiers mutilés était lui-même **une garde** — elle scannait sa propre source amputée.
+
+`utils/fiscalConstantsGuard.ts` DOCUMENTAIT le défaut en le jugeant acceptable : « cas irréaliste en
+code fiscal ». C'était vrai **pour lui** et faux dès que le même décommenteur sert ailleurs — une
+justification locale ne survit pas à l'extraction en source unique. C'est le préalable que le ticket
+avait raison d'exiger : durcir AVANT l'adoption large.
+
+**Trois décisions de conception, chacune imposée par une contrainte, pas par le goût :**
+
+- **Le module est PUR et vit dans `utils/`.** `utils/chartDataSumGuard.ts` est importé par un
+  composant, donc il part dans le bundle du navigateur : un helper sous `tests/` (qui touche
+  `node:fs`) lui serait inatteignable. Avant d'extraire une source unique, vérifier que chaque site
+  peut l'appeler avec ce dont il dispose (`HELPER-INAPPELABLE-PAR-SON-CONSOMMATEUR`).
+- **Il BLANCHIT au lieu de supprimer.** Les copies d'`utils/` remplaçaient les commentaires par des
+  espaces — les gardes fiscales reportent des numéros de ligne, `chartDataSumGuard` travaille ligne
+  à ligne — là où celle de `tests/` supprimait purement. **Deux contrats, pas un.** Blanchir est le
+  sur-ensemble : qui n'a pas besoin des positions ne perd rien, l'inverse aurait cassé en silence
+  les gardes qui pointent une ligne. Avant d'unifier N copies, comparer leurs CONTRATS, pas leurs
+  intentions.
+- **Donc l'anti-vacuité change de grandeur.** Puisqu'on blanchit, la longueur est inchangée par
+  construction : le `code.length / raw.length` de la version précédente vaudrait **toujours 1**, et
+  l'anti-vacuité serait elle-même vacueuse. Elle compte désormais les caractères NON BLANCS. Une
+  garde de vacuité doit être re-dérivée quand la fonction qu'elle surveille change de forme.
+
+**« Aucune garde fiscale n'a bougé » est un résultat EXPLIQUÉ, pas un feu vert** : les 21 modules de
+`FISCAL_MODULES` sont tous inchangés par le durcissement (mesuré, un par un). Aucun ne porte d'URL.
+Le durcissement est donc *préventif* sur ce périmètre et *curatif* ailleurs — et c'est ça qu'il faut
+écrire, plutôt que de laisser croire qu'on a corrigé un faux négatif fiscal.
+
+**Corollaires :**
+
+- **Le périmètre annoncé était, une fois de plus, une borne inférieure** : le ticket disait SIX
+  copies ; le ratchet en compte **15** rien que dans les fichiers de test, après migration des trois
+  gardes d'`utils/`. Et mon premier scan d'inventaire avait des FAUX NÉGATIFS — il ratait justement
+  les trois copies que le ticket nommait, dont la forme multi-lignes échappait à mon motif. Un
+  inventaire se valide en vérifiant qu'il retrouve les cas DÉJÀ CONNUS.
+- **Un plafond de ratchet se COMPTE, il ne s'estime pas.** J'ai écrit `PLAFOND = 12` au jugé avant
+  de mesurer 15 : un ratchet dont le plafond est faux naît soit rouge, soit trop lâche — dans les
+  deux cas il ne protège rien.
+- La garde naît **non bloquante** sur les copies restantes, avec sa raison datée dans le code : leur
+  migration change le contrat de leurs appelants, donc elle appartient à un ticket de correction. Le
+  basculement en interdiction en sera la dernière étape (`UN-DECOMMENTEUR-NAIF-MANGE-LE-CODE-APRES-UNE-URL`).

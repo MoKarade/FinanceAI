@@ -10,6 +10,32 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-29 — Lot 37 : un décommenteur qui mangeait le code après une URL
+
+- [x] **`[GUARD-STRIPCOMMENTS-CONSOLIDER]`** (S annoncé, M réel — dette relevée au lot 31) — le dépôt
+  portait des décommenteurs `stripComments` recopiés, tous NAÏFS : un `//` dans un littéral de chaîne
+  ampute la ligne. **Mesuré sur les 956 fichiers du dépôt : 60 rendent une sortie différente entre le
+  naïf et le durci, et le naïf jetait 8 722 caractères de code réel** (pire cas
+  `services/aiTools/registry.ts`, 1 380). L'un des fichiers mutilés était lui-même une garde.
+  ✅ **Livré lot 37** : `utils/stripComments.ts`, un automate qui protège les littéraux de chaîne,
+  les gabarits (interpolations imbriquées comprises) et les expressions régulières. Neuf tests de
+  SYNTAXE, dont trois rougissent sur la version naïve.
+  ⚠️ **Trois décisions de conception, chacune imposée par une contrainte réelle** :
+  1. Le module est **pur** (aucun `node:fs`) et vit dans `utils/`, parce que `utils/chartDataSumGuard.ts`
+     est importé par un COMPOSANT et part donc dans le bundle du navigateur : un helper sous `tests/`
+     lui serait inatteignable (`HELPER-INAPPELABLE-PAR-SON-CONSOMMATEUR`).
+  2. Il **BLANCHIT** au lieu de supprimer — les copies d'`utils/` remplaçaient par des espaces (les
+     gardes fiscales reportent des numéros de ligne), là où celle de `tests/` supprimait. Blanchir est
+     le sur-ensemble ; l'inverse aurait cassé en silence les gardes qui pointent une position.
+  3. Donc l'anti-vacuité ne peut plus se mesurer sur la LONGUEUR (inchangée par construction, le
+     ratio vaudrait toujours 1) : `partDeCodeRestante` compte les caractères NON BLANCS.
+  **« Aucune garde fiscale n'a bougé » est un résultat EXPLIQUÉ** : les 21 modules de `FISCAL_MODULES`
+  sont tous inchangés par le durcissement (mesuré) — aucun ne porte d'URL. Le durcissement est donc
+  préventif sur ce périmètre, et curatif ailleurs.
+  ⚠️ **Périmètre restant routé** (`[GUARD-STRIPCOMMENTS-MIGRER-LES-TESTS]`) : le ticket annonçait SIX
+  copies ; il en reste **15**, toutes dans des fichiers de test, comptées par un ratchet neuf. Et
+  j'ai d'abord écrit ce plafond au JUGÉ (12) avant de le mesurer — un plafond de ratchet se compte.
+
 ## 2026-08-29 — Lot 36 : trois oublis d'accessibilité dans le bloc Rééquilibrage
 
 - [x] **`[A11Y-REBALANCE-CIBLES]`** (S — findings a11y-auditor, panel PR #761, PRÉ-EXISTANTS depuis

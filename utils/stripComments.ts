@@ -44,8 +44,18 @@ type Etat = 'code' | 'ligne' | 'bloc' | 'apostrophe' | 'guillemet' | 'gabarit' |
  *
  *  ⚠️ Et l'exemple ne peut pas s'écrire littéralement ici : la séquence de fermeture d'un commentaire
  *  de bloc apparaît dans ce regex, et elle a refermé ce commentaire-ci au premier jet. Le module
- *  documente donc un piège de syntaxe dans lequel sa propre documentation est tombée. */
-const PEUT_TERMINER_UNE_EXPRESSION = /[\w$)\]]/;
+ *  documente donc un piège de syntaxe dans lequel sa propre documentation est tombée.
+ *
+ *  ⚠️ La classe inclut `}`, `"`, `'` et `` ` `` — sans eux, **tout JSX auto-fermant** ouvrait un faux
+ *  état regex : dans `<Icon className="a" />`, le caractère avant le `/` est un guillemet, et dans
+ *  `<Icon n={1} />` c'est une accolade. Mesuré : 90 fichiers `.tsx` du dépôt portent la première
+ *  forme. Aucun n'était suivi d'un commentaire de fin de ligne — donc rien n'était perdu
+ *  aujourd'hui — mais c'était la forme la plus RÉPANDUE du défaut, pas la plus rare.
+ *
+ *  Borne assumée : une accolade fermante peut aussi terminer un BLOC (`if (…) { … }`), après quoi
+ *  un `/` serait une regex. Le cas est rarissime en pratique et l'erreur reste bornée à la ligne
+ *  (l'état `regex` se referme sur le `\n`) ; l'inverse — casser tout le JSX du dépôt — ne l'est pas. */
+const PEUT_TERMINER_UNE_EXPRESSION = /[\w$)\]}"'`]/;
 const SIGNES_D_INCREMENT = new Set(['+', '-']);
 
 /**
@@ -72,14 +82,27 @@ export function stripComments(source: string): string {
         out.push(c);
         if (!/\s/.test(c)) { dernierSignificatif = c; dernierSignificatifIndex = index; }
     };
-    /** Un `++`/`--` POSTFIXÉ termine une expression, donc le `/` qui suit est une DIVISION. Les deux
-     *  signes doivent être ADJACENTS dans la source : sans cette condition, `a++ + /regex/` — deux
-     *  opérateurs distincts — serait lu comme un incrément et le vrai regex passerait pour une
-     *  division. C'est ce que la 2e passe du panel a démasqué. */
-    const suitUnIncrementPostfixe = () =>
-        SIGNES_D_INCREMENT.has(dernierSignificatif)
-        && dernierSignificatifIndex > 0
-        && source[dernierSignificatifIndex - 1] === dernierSignificatif;
+    /**
+     * Un `++`/`--` POSTFIXÉ termine une expression, donc le `/` qui suit est une DIVISION.
+     *
+     * Ce qui départage n'est pas l'adjacence de DEUX signes mais la PARITÉ du run de signes
+     * identiques qui se touchent dans la source, parce que JS tokenise gloutonnement de gauche à
+     * droite : `x++` est un run de 2 (pair) → le dernier signe appartient bien à un `++`, donc fin
+     * d'expression ; `x+++` est un run de 3 (impair) → il se lit `x`, `++`, puis un `+` binaire
+     * SEUL, et ce qui suit est un vrai littéral de regex.
+     *
+     * ⚠️ Les trois versions de cette fonction ont été fausses, chacune dans le sens inverse de la
+     * précédente : un seul caractère (`a++ / 2` pris pour une regex), puis deux caractères
+     * significatifs (`a++ + <regex>` pris pour une division), puis deux caractères adjacents
+     * (`x+++<regex>` pris pour une division). Trois passes de panel, trois récoltes. La parité est
+     * la première formulation qui décrit la RÈGLE de tokenisation au lieu d'en approcher un cas.
+     */
+    const suitUnIncrementPostfixe = () => {
+        if (!SIGNES_D_INCREMENT.has(dernierSignificatif)) return false;
+        let n = 0;
+        for (let k = dernierSignificatifIndex; k >= 0 && source[k] === dernierSignificatif; k--) n++;
+        return n % 2 === 0;
+    };
     const finDExpression = () =>
         PEUT_TERMINER_UNE_EXPRESSION.test(dernierSignificatif) || suitUnIncrementPostfixe();
 

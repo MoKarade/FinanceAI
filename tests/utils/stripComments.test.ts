@@ -83,6 +83,26 @@ describe('[GUARD-STRIPCOMMENTS-CONSOLIDER] stripComments', () => {
         expect(stripComments('const re = /a\\/b/; // note')).toBe('const re = /a\\/b/;        ');
     });
 
+    it('lit la PARITÉ du run de signes, pas seulement deux caractères adjacents', () => {
+        // 3e passe du panel. JS tokenise gloutonnement de gauche à droite : `x+++` se lit `x`, `++`,
+        // puis un `+` binaire SEUL — donc ce qui suit est un vrai littéral de regex. Un run PAIR
+        // termine une expression (`x++`), un run IMPAIR non. Vérifié contre le vrai parseur : le
+        // commentaire de ces lignes est bien un commentaire en JS réel.
+        expect(stripComments('const r = x+++/b*/.test(x); // note')).toBe('const r = x+++/b*/.test(x);        ');
+        expect(stripComments('const r = x---/b*/.test(x); // note')).toBe('const r = x---/b*/.test(x);        ');
+    });
+
+    it('ne casse pas le JSX auto-fermant — la forme la PLUS répandue du défaut', () => {
+        // Dans `<Icon className="a" />`, le caractère avant le `/` est un guillemet ; dans
+        // `<Icon n={1} />`, une accolade. Ni l'un ni l'autre ne terminait « une expression » selon
+        // la première classe, donc le `/` ouvrait un faux état regex et tout commentaire de fin de
+        // ligne survivait. Mesuré : 90 fichiers `.tsx` du dépôt portent la première forme — le
+        // défaut était le plus répandu des trois, pas le plus exotique.
+        expect(stripComments('const el = <Icon className="a" />; // note')).toBe('const el = <Icon className="a" />;        ');
+        expect(stripComments('const el = <Icon n={1} />; // note')).toBe('const el = <Icon n={1} />;        ');
+        expect(stripComments('const s = `x`; // note')).toBe('const s = `x`;        ');
+    });
+
     it('ne mange pas le reste du fichier sur une chaîne non terminée', () => {
         // Une apostrophe orpheline (français dans un commentaire mal formé, fichier tronqué…) ne
         // doit pas transformer le reste du fichier en littéral.

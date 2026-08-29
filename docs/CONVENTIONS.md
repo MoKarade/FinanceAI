@@ -8249,3 +8249,36 @@ Le durcissement est donc *préventif* sur ce périmètre et *curatif* ailleurs �
 - La garde naît **non bloquante** sur les copies restantes, avec sa raison datée dans le code : leur
   migration change le contrat de leurs appelants, donc elle appartient à un ticket de correction. Le
   basculement en interdiction en sera la dernière étape (`UN-DECOMMENTEUR-NAIF-MANGE-LE-CODE-APRES-UNE-URL`).
+
+
+### Corollaire du lot 37 — trois passes, trois formulations fausses de la MÊME règle
+
+L'heuristique « ce `/` ouvre-t-il une regex ou est-ce une division ? » a été fausse **trois fois de
+suite**, chaque correctif produisant l'erreur inverse du précédent :
+
+| Version | Règle | Ce qu'elle casse |
+|---|---|---|
+| 1 | le dernier caractère significatif | `a++ / 2` → regex (faux) |
+| 2 | les deux derniers caractères significatifs | `a++ + <regex>` → division (faux) |
+| 3 | les deux derniers caractères ADJACENTS | `x+++<regex>` → division (faux) |
+| 4 | la **PARITÉ** du run de signes adjacents | — |
+
+**Le motif est plus intéressant que le bug** : les versions 1 à 3 approchaient un CAS ; la version 4
+énonce la RÈGLE (JS tokenise gloutonnement de gauche à droite, donc un run pair de signes se termine
+par un `++` complet et un run impair laisse un opérateur seul). Tant qu'on corrige le contre-exemple
+qu'on vient de recevoir, on produit le contre-exemple suivant. Le signal qu'on est dans ce piège :
+**chaque correctif est décrit par une longueur** (« un caractère », « deux caractères », « deux
+caractères adjacents ») plutôt que par le mécanisme qu'il modélise.
+
+**Et le défaut le plus RÉPANDU n'est apparu qu'à la troisième passe** : `PEUT_TERMINER_UNE_EXPRESSION`
+ne contenait ni guillemet ni accolade fermante, donc **tout JSX auto-fermant** (`<Icon className="a" />`,
+`<Icon n={1} />`) ouvrait un faux état regex — 90 fichiers `.tsx` du dépôt portent la première forme.
+Les trois passes s'étaient concentrées sur `++`/`--`, qui n'existe nulle part dans le dépôt. On
+cherche le cas exotique parce qu'il est intellectuellement saillant, pas parce qu'il est fréquent :
+devant une heuristique de syntaxe, **compter les occurrences RÉELLES de chaque forme** avant de
+décider laquelle mérite un test.
+
+Enfin, un ordre de grandeur qui varie encore : le script committé rend 59 fichiers et 9 232
+caractères après ces correctifs, contre 61 / 8 835 avant. C'est normal et c'est le but — le durci
+change, donc l'écart au naïf change. La commande reste la source, jamais le nombre
+(`TROIS-PASSES-TROIS-FORMULATIONS-FAUSSES-DE-LA-MEME-REGLE`).

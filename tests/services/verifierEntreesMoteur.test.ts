@@ -9,6 +9,7 @@ import { verifierEntreesMoteur, messageDeRefus } from '../../services/projection
 import { buildSimulationParamsFromState } from '../../services/projection/buildSimulationParams';
 import { buildCoupleConfort } from '../../services/testPersonas/coupleConfort';
 import { TEST_PERSONAS } from '../../services/testPersonas';
+import { INITIAL_PROJECTION } from '../../constants';
 import type { AppState } from '../../types';
 
 /** ⚠️ Un état NEUF par cas — jamais partagé. Une première version de la mesure de ce ticket était
@@ -19,6 +20,15 @@ const etatAvec = (champ: 'netSalary' | 'grossSalary' | 'salary', valeur: number)
     return etat;
 };
 const params = (etat: AppState) => buildSimulationParamsFromState(etat, { startYear: 2026, startMonth: 0 });
+
+/** ⚠️ Le persona ne porte PAS `projection` (le store l'apporte au montage). Une fixture qui l'omet
+ *  fait échouer les tests du filet sur la fixture et non sur le code — le piège
+ *  `UNE-FIXTURE-AUX-MAUVAIS-NOMS-DE-CHAMPS-EST-UNE-FIXTURE-VIDE`, vu ici en direct. */
+const etatAvecProjection = (): AppState => {
+    const etat = buildCoupleConfort() as AppState;
+    etat.projection = { ...INITIAL_PROJECTION } as AppState['projection'];
+    return etat;
+};
 
 describe('[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] la frontière refuse une entrée illisible', () => {
     it('ne refuse RIEN sur les sept personas — le cas nominal reste calculable', () => {
@@ -76,10 +86,10 @@ describe('[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] la frontière refuse une entr�
         // `computeCashLedger` ÉCARTE les valeurs non finies et rend toujours un total FINI : un
         // contrôle sur `calculatedStartingCash` ne peut donc jamais tirer. C'est l'inventaire des
         // termes jetés qui protège (`TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`).
-        const refus = verifierEntreesMoteur({
-            calculatedStartingCash: 102_254,   // fini : le total ne trahit rien
-            termesFautifsCash: [{ origine: 'initialBalances', cle: 'CELI', valeur: Infinity }],
-        });
+        const refus = verifierEntreesMoteur(
+            { calculatedStartingCash: 102_254 },   // fini : le total ne trahit rien
+            { termesFautifsCash: [{ origine: 'initialBalances', cle: 'CELI', valeur: Infinity }] },
+        );
         expect(refus.map((r) => r.chemin)).toEqual(['initialBalances.CELI']);
         expect(refus[0].libelle).toContain('CELI');
     });
@@ -100,6 +110,63 @@ describe('[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] la frontière refuse une entr�
         // vide, changerait cette signature pour tout le monde et invaliderait les calculs en vol.
         const p = params(buildCoupleConfort() as AppState);
         expect('entreesRefusees' in p).toBe(false);
+    });
+});
+
+describe('[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] le filet récursif', () => {
+    // ⚠️ CES TESTS MANQUAIENT, et c'est leur absence qui a laissé passer le pire défaut du lot : le
+    // « filet récursif » ne scannait que l'objet de huit clés construit pour l'appeler, donc les
+    // deux canaux que le commit annonçait fermer restaient ouverts (`projection.inflationRate = NaN`
+    // → 0 refus et −93 % de patrimoine). Vingt-quatre tests passaient au vert sur un filet inopérant.
+    // Un mécanisme central sans test est un mécanisme dont personne ne sait s'il fonctionne.
+
+    it('attrape un réglage de PROJECTION, qu\'aucune liste nommée ne couvre', () => {
+        const etat = etatAvecProjection();
+        (etat.projection as unknown as Record<string, unknown>).inflationRate = Number.NaN;
+        const chemins = params(etat).entreesRefusees?.map((r) => r.chemin) ?? [];
+        expect(chemins).toContain('projection.inflationRate');
+    });
+
+    it('descend dans les objets IMBRIQUÉS — le mode absorbé n\'y publie aucun non-fini', () => {
+        // `returnRates.celi = NaN` ne produit AUCUNE valeur non finie en sortie (mesuré) : la courbe
+        // reste lisse et le patrimoine baisse de ~29 %. Seul un scan de l'ENTRÉE peut le voir.
+        const etat = etatAvecProjection();
+        const proj = etat.projection as unknown as Record<string, unknown>;
+        proj.returnRates = { ...(proj.returnRates as Record<string, unknown>), celi: Number.NaN };
+        expect(params(etat).entreesRefusees?.map((r) => r.chemin)).toContain('projection.returnRates.celi');
+    });
+
+    it('ne met JAMAIS le chemin technique dans le libellé montré', () => {
+        const etat = etatAvecProjection();
+        (etat.projection as unknown as Record<string, unknown>).inflationRate = Number.NaN;
+        const msg = messageDeRefus(params(etat).entreesRefusees ?? []);
+        expect(msg).not.toContain('projection.');
+        expect(msg).toContain('réglage de la projection');
+    });
+
+    it('classe CAUSE un champ de profil que le filet attrape, pas `derive`', () => {
+        // Sinon `messageDeRefus` le tait dès qu'un salaire est aussi fautif, et Marc corrige le
+        // salaire pour se faire refuser sur une cause que rien ne lui a nommée.
+        const etat = buildCoupleConfort() as AppState;
+        const u = etat.config.users[0] as unknown as Record<string, unknown>;
+        u.netSalary = Number.NaN;
+        u.facteurEquivalence = Number.NaN;
+        const refus = params(etat).entreesRefusees ?? [];
+        const cible = refus.find((r) => r.chemin === 'config.users[0].facteurEquivalence');
+        expect(cible?.role).toBe('cause');
+    });
+
+    it('déduplique les DEUX notations du même champ', () => {
+        // Le filet écrit `config.users.0.netSalary`, les listes nommées `config.users[0].netSalary`.
+        const etat = buildCoupleConfort() as AppState;
+        (etat.config.users[0] as unknown as Record<string, unknown>).netSalary = Infinity;
+        const chemins = (params(etat).entreesRefusees ?? []).map((r) => r.chemin);
+        expect(chemins.filter((c) => c.includes('netSalary'))).toEqual(['config.users[0].netSalary']);
+    });
+
+    it('garde la valeur fautive TELLE QUELLE, sans fabriquer un NaN', () => {
+        const refus = verifierEntreesMoteur({ config: { users: [{ netSalary: '1e999' }] } });
+        expect(refus[0].valeur).toBe('1e999');
     });
 });
 
@@ -153,13 +220,22 @@ describe('[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] le message nomme le champ', ()
         expect(params(etat).entreesRefusees?.map((r) => r.chemin)).toContain('budgetItems[1].target');
     });
 
-    it('ne refuse PAS un poste non budgété (`null`/absent) — état légitime', () => {
-        // Le pendant du test ci-dessus : « pas renseigné » n'est pas « illisible ». Sans cette
-        // assertion, durcir le prédicat casserait l'app sur un cas nominal du formulaire.
+    it('ne refuse PAS un poste à `null` — « non budgété » n\'est pas « illisible »', () => {
+        // Sans cette assertion, durcir le prédicat casserait l'app sur un cas nominal du formulaire.
         const etat = buildCoupleConfort() as AppState;
-        const poste = (etat.budgetItems as unknown as Array<Record<string, unknown>>)[0];
-        poste.target = null;
+        (etat.budgetItems as unknown as Array<Record<string, unknown>>)[0].target = null;
         expect(params(etat).entreesRefusees ?? []).toEqual([]);
+    });
+
+    it('refuse en revanche un poste dont le champ est ABSENT — et le titre d\'avant mentait', () => {
+        // ⚠️ Le test précédent s'intitulait « (`null`/absent) » et ne testait que `null`. Mesuré :
+        // `null` est inoffensif (`acc + null` vaut `acc`), un champ ABSENT donne `acc + undefined`
+        // = `NaN`, donc la projection EST refusée — via un dérivé qui ne nomme rien de corrigeable.
+        // Le refus est juste (la donnée est inexploitable) ; c'est le libellé qui manque de
+        // précision, et c'est consigné comme tel plutôt que caché derrière un titre inexact.
+        const etat = buildCoupleConfort() as AppState;
+        delete (etat.budgetItems as unknown as Array<Record<string, unknown>>)[0].target;
+        expect(params(etat).entreesRefusees?.map((r) => r.chemin)).toContain('baseMonthlyExpenses');
     });
 
     it('accorde le verbe au pluriel sur une grandeur au pluriel', () => {

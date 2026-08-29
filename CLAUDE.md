@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 950 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 957 tests** Vitest
 (469 fichiers de test, mesuré le 2026-08-29). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -773,10 +773,16 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   garde d'entrée énumérait les champs à vérifier, et trois passes ont trouvé trois canaux
   money-critical manquants (−95 % à −99 %). Le correctif n'est pas un quatrième ajout mais
   l'INVERSION : scanner tout ce qui est produit, et **déclarer les exclusions** — autorisé par une
-  mesure (zéro non-fini sur les sept personas), jamais par confiance. ⚠️ Corollaire : un prédicat de
-  finitude est aveugle au TYPE, or le vecteur d'entrée est un `JSON.parse` non typé — `"1e999"` en
-  chaîne traverse sans jamais devenir non fini (−95 % mesuré), et `null` doit rester légitime
-  (`CINQ-TROUS-DANS-UNE-GARDE-ET-AUCUN-FAUX-POSITIF`).
+  mesure (zéro non-fini sur les sept personas), jamais par confiance.
+  ⚠️⚠️ Et « scanner tout » se vérifie sur l'OBJET SCANNÉ : mon premier filet « récursif » lisait le
+  littéral de huit clés construit pour l'appeler, donc la liste blanche n'avait pas disparu — elle
+  avait monté d'un cran, du module vers son site d'appel, et les deux canaux que j'annonçais fermer
+  restaient ouverts (`projection.inflationRate = NaN` → 0 refus, **−93 %**). Une garde se branche sur
+  l'objet réellement remis en aval, jamais sur une projection de cet objet.
+  ⚠️ Deux corollaires : un prédicat de finitude est aveugle au TYPE (le vecteur est un `JSON.parse`
+  non typé — `"1e999"` en chaîne traverse sans jamais devenir non fini, −95 % mesuré), et **un
+  mécanisme central sans test est un mécanisme dont personne ne sait s'il fonctionne** : 24 tests
+  étaient verts sur ce filet inopérant (`CINQ-TROUS-DANS-UNE-GARDE-ET-AUCUN-FAUX-POSITIF`).
 - **Une garde qui ne peut pas TIRER n'est pas une protection** : mon contrôle sur le solde de départ
   était structurellement mort (le ledger écarte les non-finis et rend toujours un total fini),
   pendant que la corruption passait — la vraie porte existait déjà (`termesFautifs`,

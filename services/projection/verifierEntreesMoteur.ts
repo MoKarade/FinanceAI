@@ -58,8 +58,15 @@ export interface EntreeRefusee {
     readonly chemin: string;
     /** Phrase montrée à l'utilisateur, qui NOMME la personne et le champ. */
     readonly libelle: string;
-    /** La valeur fautive, telle quelle — `Infinity`, `-Infinity` ou `NaN`. */
-    readonly valeur: number;
+    /**
+     * La valeur fautive TELLE QUELLE — `Infinity`, `NaN`, mais aussi une chaîne, un booléen ou un
+     * objet quand c'est le TYPE qui est mauvais.
+     *
+     * ⚠️ Elle était typée `number` et un non-nombre y était converti en `NaN` : le journal exporté
+     * envoyait alors Marc chercher un `NaN` là où la donnée est une chaîne — une valeur FABRIQUÉE
+     * dans un flux de diagnostic, ce que `no-fake-data` vise aussi (finding 3e passe).
+     */
+    readonly valeur: unknown;
 }
 
 /** Ce que la garde inspecte chez chaque utilisateur, avec le nom montré à l'écran. */
@@ -81,8 +88,16 @@ const estNonFini = (v: unknown): v is number => typeof v === 'number' && !Number
  * MESURÉ, l'épargne mensuelle tombe à 0 et le patrimoine final à **−95 %**, sans un seul refus.
  * `estNonFini` seul ne pouvait pas le voir — même dégât que le `NaN` du salaire, autre type.
  *
- * ⚠️ `null`/`undefined` sont EXCLUS volontairement : « poste non budgété » est un état légitime que
- * le formulaire produit, et le refuser casserait l'app pour un cas nominal.
+ * ⚠️ `null` et `undefined` sont exclus ICI volontairement : « poste non budgété » est un état
+ * légitime que le formulaire produit, et le refuser casserait l'app pour un cas nominal.
+ *
+ * ⚠️⚠️ Mais ATTENTION à ce que ça veut dire, parce que la première version de ce commentaire
+ * affirmait plus : `null` est bien inoffensif (`acc + null` vaut `acc`), alors qu'un champ ABSENT
+ * fait `acc + undefined` = `NaN` — donc la projection EST refusée, par le dérivé
+ * `baseMonthlyExpenses`, avec un message qui ne nomme aucun champ corrigeable. Ce module n'y peut
+ * rien seul : le refus est correct (la donnée est bien inexploitable), c'est le LIBELLÉ qui manque
+ * de précision. Consigné plutôt que corrigé à la va-vite — le vrai correctif est de traiter
+ * l'absence à la source, dans le schéma de restauration.
  */
 const estMontantIllisible = (v: unknown): boolean =>
     v !== null && v !== undefined && (typeof v !== 'number' || !Number.isFinite(v));
@@ -110,20 +125,26 @@ const nommer = (u: { name?: unknown } | undefined, index: number): string => {
  * personas du dépôt (aucun ne produit de valeur non finie). Un tableau non vide doit EMPÊCHER le
  * calcul : une projection sur une entrée illisible est un chiffre faux et crédible.
  */
-export function verifierEntreesMoteur(params: {
-    config?: { users?: ReadonlyArray<unknown> } | null;
-    budgetItems?: ReadonlyArray<unknown> | null;
-    /** Termes que `computeCashLedgerDetailed` a ÉCARTÉS du solde de départ — voir plus bas. */
-    termesFautifsCash?: ReadonlyArray<{ origine: string; cle: string; valeur: unknown }> | null;
-    baseNetAnnual?: number;
-    baseGrossAnnual?: number;
-    baseMonthlyExpenses?: number;
-    calculatedStartingCash?: number;
-    currentRentExpense?: number;
-}): EntreeRefusee[] {
+export function verifierEntreesMoteur(
+    /**
+     * Les paramètres ASSEMBLÉS — l'objet réellement remis au moteur, scanné intégralement.
+     *
+     * Typé en `Readonly<Record<string, unknown>>` et non en `SimulationParams` : la garde ne doit
+     * rien savoir de la FORME des paramètres, sans quoi elle redeviendrait une liste à tenir à jour
+     * — la faute même que cette version corrige. Les champs nommés ci-dessous sont lus par
+     * indexation, avec leur type vérifié à l'usage.
+     */
+    params: Readonly<Record<string, unknown>>,
+    /** Ce que la frontière SEULE connaît et qui ne voyage pas dans les paramètres. */
+    contexte?: {
+        budgetItems?: ReadonlyArray<unknown> | null;
+        /** Termes que `computeCashLedgerDetailed` a ÉCARTÉS du solde de départ. */
+        termesFautifsCash?: ReadonlyArray<{ origine: string; cle: string; valeur: unknown }> | null;
+    },
+): EntreeRefusee[] {
     const refus: EntreeRefusee[] = [];
 
-    const users = params.config?.users ?? [];
+    const users = (params.config as { users?: ReadonlyArray<unknown> } | undefined)?.users ?? [];
     users.forEach((brut, i) => {
         const u = brut as Record<string, unknown> | undefined;
         for (const { cle, nom } of CHAMPS_UTILISATEUR) {
@@ -133,7 +154,7 @@ export function verifierEntreesMoteur(params: {
                     role: 'cause',
                     chemin: `config.users[${i}].${cle}`,
                     libelle: `${nom} ${nommer(u, i)} est illisible`,
-                    valeur: typeof v === 'number' ? v : Number.NaN,
+                    valeur: v,
                 });
             }
         }
@@ -146,7 +167,7 @@ export function verifierEntreesMoteur(params: {
     // C'est le mode « absorbé » de l'en-tête, par `Math.max` au lieu de `|| 0` — même mécanique,
     // écart bien plus grand. La frontière LIT ces postes (`computeCurrentRentExpense` et
     // `computeMonthlySavings`), donc ils sont dans son périmètre.
-    (params.budgetItems ?? []).forEach((brut, i) => {
+    (contexte?.budgetItems ?? []).forEach((brut, i) => {
         const item = brut as Record<string, unknown> | undefined;
         if (estMontantIllisible(item?.target)) {
             const nom = typeof item?.name === 'string' && item.name.trim() !== '' ? item.name.trim() : `n° ${i + 1}`;
@@ -154,7 +175,7 @@ export function verifierEntreesMoteur(params: {
                 role: 'cause',
                 chemin: `budgetItems[${i}].target`,
                 libelle: `le montant du poste « ${nom} » est illisible`,
-                valeur: typeof item!.target === 'number' ? item!.target : Number.NaN,
+                valeur: item!.target,
             });
         }
     });
@@ -166,14 +187,14 @@ export function verifierEntreesMoteur(params: {
     // module concerné y répond déjà : `computeCashLedgerDetailed()` expose l'inventaire des termes
     // écartés PRÉCISÉMENT pour que l'appelant qui veut REFUSER le puisse. C'est cette porte-là qu'il
     // faut consommer — le total ne dit rien de ce qu'il a jeté.
-    for (const t of params.termesFautifsCash ?? []) {
+    for (const t of contexte?.termesFautifsCash ?? []) {
         refus.push({
             role: 'cause',
             chemin: `${t.origine}.${t.cle}`,
             libelle: t.origine === 'transaction'
                 ? `le montant d'une transaction est illisible (${t.cle})`
                 : `le solde du compte ${t.cle} est illisible`,
-            valeur: typeof t.valeur === 'number' ? t.valeur : Number.NaN,
+            valeur: t.valeur,
         });
     }
 
@@ -229,10 +250,20 @@ export function verifierEntreesMoteur(params: {
         const chemin = canonique(brut);
         if (dejaVu.has(chemin)) continue;
         dejaVu.add(chemin);
+        // ⚠️ Le rôle se déduit de l'ORIGINE, pas d'un défaut. Le premier filet marquait tout en
+        // `derive`, y compris `config.users[0].facteurEquivalence` — un champ de FORMULAIRE. Marc
+        // aurait corrigé le salaire nommé, relancé, et se serait fait refuser pour une cause tue :
+        // exactement le scénario que le champ `role` a été introduit pour empêcher, re-commis par
+        // le mécanisme censé le respecter (finding 3e passe, #764).
+        const corrigible = /^(config\.users|budgetItems)\b/.test(chemin);
         refus.push({
-            role: 'derive',
+            role: corrigible ? 'cause' : 'derive',
             chemin,
-            libelle: `une valeur du calcul est illisible (${chemin})`,
+            // ⚠️ JAMAIS le chemin technique dans le libellé : il est montré à l'écran sur toutes les
+            // surfaces. Le chemin reste dans `chemin`, pour le journal et les tests.
+            libelle: corrigible
+                ? 'une valeur de ton profil est illisible'
+                : 'un réglage de la projection est illisible',
             valeur,
         });
     }
@@ -250,9 +281,8 @@ export function verifierEntreesMoteur(params: {
  */
 const EXCLUSIONS_DU_FILET: ReadonlyArray<{ chemin: RegExp; raison: string }> = [
     {
-        chemin: /^termesFautifsCash\b/,
-        raison: 'INVENTAIRE des termes déjà écartés, pas une donnée du calcul — le filet y verrait '
-            + 'les valeurs fautives qu\'on vient précisément de relever, et les compterait deux fois.',
+        chemin: /^entreesRefusees\b/,
+        raison: 'le relevé lui-même, si jamais des paramètres déjà refusés repassaient par la garde',
     },
 ];
 

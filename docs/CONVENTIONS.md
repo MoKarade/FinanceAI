@@ -8473,3 +8473,43 @@ même champ est refusé deux fois sous deux orthographes, et le message le rép�
   réponse au LLM. Une classe d'erreur avec un champ `motif` donne à l'appelant de quoi faire ce que
   le contrat demande ; un préfixe de chaîne ne fait que l'espérer
   (`QUAND-LA-LISTE-BLANCHE-EST-LA-MAUVAISE-FORME`).
+
+
+### Corollaire du lot 38, 3e passe — « scanner tout » se vérifie sur l'OBJET SCANNÉ
+
+J'avais écrit — dans le code, dans le commit, dans `CLAUDE.md` et ici — que le module « scanne
+récursivement TOUT ce que la frontière produit ». **C'était faux.** Le filet lisait son ARGUMENT :
+un littéral de huit clés construit au site d'appel. La liste blanche n'avait pas disparu, elle avait
+monté d'un cran — du module vers `buildSimulationParams`.
+
+Conséquence mesurée : les deux canaux que le commit précédent annonçait fermer étaient toujours
+ouverts. `projection.inflationRate = NaN` → **0 refus, −93 % de patrimoine**.
+`projection.returnRates.celi = NaN` → 0 refus, −29 %, et **zéro valeur non finie publiée** — le mode
+« absorbé » que l'en-tête du module décrit comme le plus grave, servi tel quel à un LLM.
+
+**Le geste** : une garde se branche sur l'objet réellement remis en aval, jamais sur une projection
+de cet objet construite pour elle. Ici, scanner les `SimulationParams` ASSEMBLÉS supprime la liste à
+tenir à jour — il n'y a plus rien à oublier. Corollaire de typage : la garde reçoit un
+`Readonly<Record<string, unknown>>` et non `SimulationParams`, précisément pour qu'elle ne puisse pas
+redevenir dépendante de la FORME.
+
+**Et la cause profonde de l'aveuglement : le mécanisme central n'avait AUCUN test.** Vingt-quatre
+tests passaient au vert sur un filet inopérant ; ils couvraient les listes nommées, le prédicat de
+type, l'élision — tout sauf le mécanisme que le commit présentait comme sa contribution principale.
+Un test discriminant tenait en trois lignes (une clé hors listes nommées à `NaN` → au moins un
+refus) et il aurait été rouge. **Ce qu'on ne teste pas, on ne sait pas si ça marche — surtout quand
+c'est ce dont on est le plus fier.**
+
+Trois défauts plus fins, du même tour :
+
+- **Le filet reproduisait le bug qu'il devait respecter** : il marquait `derive` tout ce qu'il
+  attrapait, y compris `config.users[0].facteurEquivalence` — un champ de FORMULAIRE. Marc aurait
+  corrigé le salaire nommé, relancé, et se serait fait refuser pour une cause tue : exactement le
+  scénario que le champ `role` avait été introduit pour empêcher, re-commis par le mécanisme censé
+  le respecter. Le rôle se déduit désormais de l'ORIGINE du chemin.
+- **Le chemin technique arrivait à l'écran** (`une valeur du calcul est illisible (config.users[0]…)`)
+  alors que le module s'interdit ça et qu'un test l'assure — l'assertion ne tenait que parce
+  qu'aucun test n'exerçait le chemin du filet.
+- **Une valeur fautive FABRIQUÉE** : `valeur` était typée `number` et un non-nombre y devenait `NaN`,
+  donc le journal envoyait chercher un `NaN` là où la donnée est une chaîne. `no-fake-data` vaut
+  aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).

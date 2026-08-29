@@ -226,21 +226,7 @@ export function buildSimulationParams(inputs: BuildSimulationParamsInputs): Simu
     // la saisie, la restauration Drive, l'import et le mode test. Elle REFUSE et NOMME le champ ;
     // borner fabriquerait un chiffre plausible et faux, tracer en silence laisserait le défaut
     // invisible — c'est précisément ce qui l'a laissé vivre jusqu'ici.
-    const entreesRefusees = verifierEntreesMoteur({
-        config: inputs.config as unknown as { users?: ReadonlyArray<unknown> },
-        baseNetAnnual,
-        baseGrossAnnual,
-        baseMonthlyExpenses,
-        calculatedStartingCash: inputs.calculatedStartingCash,
-        currentRentExpense,
-        budgetItems: inputs.budgetItems,
-        termesFautifsCash: inputs.termesFautifsCash,
-    });
-
-    return {
-        // Omis quand il n'y a rien à refuser : le champ reste absent sur le chemin nominal, donc
-        // la signature JSON des params (clé de dédup du moteur) ne bouge pas d'un octet.
-        ...(entreesRefusees.length > 0 ? { entreesRefusees } : {}),
+    const assembles: SimulationParams = {
         projection: inputs.projection,
         calculatedStartingCash: inputs.calculatedStartingCash,
         liveCSVBalances: inputs.liveCSVBalances,
@@ -265,6 +251,28 @@ export function buildSimulationParams(inputs: BuildSimulationParamsInputs): Simu
         privateBusinesses: inputs.privateBusinesses ?? [],
         financialGoals: inputs.financialGoals ?? [],
     };
+
+    // ⚠️ La vérification porte sur les paramètres ASSEMBLÉS, pas sur un objet reconstruit pour elle.
+    //
+    // Le jet précédent passait à la garde un littéral de huit clés — donc son « filet récursif »
+    // ne voyait que ces huit-là, et les DEUX canaux que le commit annonçait fermer
+    // (`liveCSVBalances` et les réglages de `projection`) restaient grands ouverts : mesuré,
+    // `projection.inflationRate = NaN` rendait 0 refus et −93 % de patrimoine, `returnRates.celi`
+    // 0 refus et −29 % SANS une seule valeur non finie publiée. La liste blanche n'avait pas
+    // disparu, elle avait monté d'un cran — du module vers son site d'appel.
+    //
+    // Scanner l'objet réellement remis au moteur est la seule formulation qui ne puisse pas
+    // re-diverger : il n'y a plus de liste à tenir à jour. `SimulationParams` ne contient ni les
+    // transactions ni les actifs, donc le coût reste borné (mesuré : quelques dizaines de µs contre
+    // 300 ms de debounce et ~150 ms de moteur).
+    const entreesRefusees = verifierEntreesMoteur(assembles as unknown as Readonly<Record<string, unknown>>, {
+        budgetItems: inputs.budgetItems,
+        termesFautifsCash: inputs.termesFautifsCash,
+    });
+
+    // Omis quand il n'y a rien à refuser : le champ reste absent sur le chemin nominal, donc la
+    // signature JSON des params (clé de dédup du moteur) ne bouge pas d'un octet.
+    return entreesRefusees.length > 0 ? { ...assembles, entreesRefusees } : assembles;
 }
 
 /**

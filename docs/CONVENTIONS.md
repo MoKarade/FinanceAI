@@ -8523,6 +8523,38 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 47 — retirer un calcul jeté se prouve avant de se faire
+
+`RETIRER-UN-CALCUL-JETE-SE-PROUVE-AVANT-DE-SE-FAIRE`
+
+Le dépôt connaît déjà le piège inverse — « un bug confirmé peut viser du code dont la sortie est
+jetée » — et il a un jumeau : **supprimer** un calcul dont la sortie est jetée n'est sûr que si l'on
+prouve d'abord qu'il ne fait *rien d'autre* que produire cette sortie. Deux vérifications, pas une
+intuition :
+
+1. **Compter les lecteurs de chaque grandeur.** Les sept du bloc (`impotLatent`, `dividendIncome`,
+   `taxableInvIncome`, `marginalTaxRate`, `effectiveTaxRate`, `reeeContribCum`, `reeeGrantsCum`)
+   apparaissent exactement deux fois : leur déclaration et le `data.push`. Une seule occurrence de
+   plus ailleurs aurait changé la nature du lot.
+2. **Vérifier la pureté du producteur.** `computeLatentTax` se déclare « Pure Function + injection
+   `calculateFiscalReport` » — et cette déclaration a été confrontée au code, pas crue sur parole.
+
+Puis **prouver l'équivalence de sortie** : empreinte de `chartData` avant/après, sur trois graines
+Monte Carlo et sur le scénario hors MC. Bit-identique.
+
+**La condition de saut s'EXPORTE, elle ne se recopie pas.** `buildMonthlyDataPoint` allège le point
+sous MC *sauf si* `verboseMonthlyPoints` ; l'appelant doit sauter exactement dans les mêmes cas.
+Deux écritures de cette condition divergeraient en silence — des champs calculés pour rien, ou pire,
+un point verbeux privé de ses champs. Le test le démontre : brancher l'appelant sur le seul
+`enableMonteCarlo` fait rougir le cas verbeux, et rien d'autre.
+
+**Et un test de perf se fait par ESPION, pas par chronomètre.** Un seuil de durée en CI est instable
+et muet sur la cause ; « `computeLatentTax` n'est appelé aucune fois » est binaire, rapide et
+discriminant. Le chiffre du gain, lui, se mesure hors CI et se cite dans le commit — ici
+**18,65 → 16,45 ms/scénario, −11,8 %**, contre 4,6 % annoncés par le ticket. ⚠️ Le test vérifie les
+DEUX sens : sans le cas « appelé hors MC », un `computeLatentTax` débranché partout donnerait le
+même vert.
+
 ### Lot 46 — un statut d'AFFICHAGE n'est pas un journal
 
 `UN-STATUT-D-AFFICHAGE-N-EST-PAS-UN-JOURNAL`

@@ -2122,15 +2122,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 > Mesures réelles (Node profiling CPU V8 + micro-bench isolés). NO O(n²) trouvé.
 > Le coût dominant = volume itérations (mois × MC × configs), pas un algorithme mal choisi.
 
-- [ ] 🔴 **`[PERF-ENG-LATENT-MC-WASTE]`** (S) — `computeLatentTax` + bloc fiscal Tier-3 calculés PUIS
-  JETÉS en mode Monte Carlo (**5–10 % du temps MC mesuré**). `buildMonthlyDataPoint` garde déjà `if
-  (enableMonteCarlo) return {NetWorth, monthIndex}` → sous MC tout `impotLatent`, `dividendIncome`,
-  etc. est ignoré, mais le calcul (3× `calculateFiscalReport`) reste d'abord. **Mesuré : 301 ms
-  gaspillés sur 6532 ms total MC (4,6 %),** ≈ 2.5-4 s sur `calculateStrategySearch` (52 s total).
-  **Correctif** : entourer bloc `1614-1648` d'un `if (!enableMonteCarlo) {...}` avec valeurs neutres
-  en branche MC. Test : force `runMC=true` et vérifie `chartData` contient uniquement
-  `{NetWorth, monthIndex}`.
-
 - [ ] **`[PERF-ENG-INCOMELOSS-DATESTR]`** (S) — `computeIncomeLossFactor` reforme date en chaîne à
   CHAQUE mois actif, sans vérifier événements. `toISOString() + substring() + split()` répété 4M fois
   sur 30×MC(100). **Mesure : 530 ticks CPU (2,6 % du profil),** comparable à `computeRetirementIncome`.

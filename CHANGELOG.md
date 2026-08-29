@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-29 (Les simulations Monte-Carlo sont ~12 % plus rapides)
+
+- **Amélioré** : lors des simulations Monte-Carlo — celles qui rejouent ton avenir des centaines de
+  fois pour estimer les probabilités —, l'app calculait à chaque mois des chiffres qu'elle n'affiche
+  pas dans ce mode (impôt latent, dividendes, taux d'imposition), puis les jetait. Elle ne les
+  calcule plus. Mesuré : **−12 % de temps par simulation**, sans le moindre changement de résultat.
+
 ## [unreleased] — 2026-08-29 (L'avertissement « restaurer un backup » disparaît une fois réparé)
 
 - **Corrigé** : quand l'app n'arrivait pas à relire tes données au démarrage, elle affichait « ne

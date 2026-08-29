@@ -34,7 +34,7 @@ import { computeLatentTax } from './projection/latentTax';
 import { computeGlidepathRates } from './projection/glidepathRates';
 import { processCashflowAllocation, type CashflowState } from './projection/cashflowAllocation';
 import { processRealEstate, type RealEstateState } from './projection/realEstateMonth';
-import { buildMonthlyDataPoint } from './projection/monthlyOutput';
+import { buildMonthlyDataPoint, estPointAllege } from './projection/monthlyOutput';
 import { FIRE_TARGET_MULTIPLE } from './projection/modelAssumptions';
 import { computeRawNetWorth } from './projection/netWorth';
 import { applyMonthlyGrowth } from './projection/growthApplication';
@@ -2188,59 +2188,83 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             hasHitFire = true;
         }
 
-        // Cycle 17 split: impôt latent → ./projection/latentTax
-        // FISC-LATENT-RE — inclure le gain latent des immeubles LOCATIFS (RP exclue, exempte au décès),
-        // pour cohérence avec le bilan successoral (même Σ que realEstateLatentGain plus bas, estateCalculation).
-        const realEstateLatentGainNow = propertiesState
-            .filter(p => p.isBought && !p.isSold && !p.isPrimaryResidence)
-            .reduce((s, p) => s + Math.max(0, p.currentValue - (p.cost ?? 0)), 0);
-        const impotLatent = computeLatentTax(
-            // [ENG-DIVORCE-LATENTTAX] `activeUsersCount` est ici un NOMBRE DE DÉCLARANTS : il
-            // divise le revenu pour calculer l'impôt d'UNE déclaration, puis le remultiplie. Après
-            // un divorce, tout le patrimoine latent pèse sur UNE seule déclaration, donc sur des
-            // paliers plus élevés. Passer 2 lissait la facture sur deux têtes fictives — mesuré :
-            // impôt latent −337 063 $ au lieu de −390 189 $, soit **53 126 $ sous-estimés**, et un
-            // patrimoine net d'impôt affiché d'autant trop haut.
-            // Même famille que `taxFilers` (dépôt fiscal) et `taxJanuary` : ces trois-là doivent
-            // dire la même chose, sinon la prochaine correction n'en bougera qu'une.
-            { m, loopYear, simInflation, simSalaryGrowth, isRetired, activeUsersCount: taxFilers,
-              grossMarcBaseAnnual,
-              // Le salaire d'un ex-conjoint parti ne fait plus partie de l'assiette — même motif
-              // qu'au dépôt de décembre et au meltdown REER.
-              grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual,
-              accRentesYear, incomeRetirement,
-              reer, nonReg, nonRegACB, crypto, cryptoACB, realEstateLatentGain: realEstateLatentGainNow, enableMonteCarlo },
-            calculateFiscalReport,
-        );
+        // [PERF-ENG-LATENT-MC-WASTE] Ce bloc entier n'alimente QUE le point mensuel détaillé —
+        // impôt latent, dividendes, revenus de placement imposables, taux marginal et effectif,
+        // cumuls REEE. Sous Monte Carlo, `buildMonthlyDataPoint` ne rend que `{ NetWorth, monthIndex }` :
+        // tout ceci était calculé puis JETÉ, à chaque mois de chaque itération.
+        //
+        // ⚠️ Le saut est sûr parce que ces grandeurs n'ont AUCUN autre lecteur — vérifié une par une :
+        // chacune est déclarée ici et lue uniquement dans le `data.push` ci-dessous — et parce que
+        // `computeLatentTax` est une fonction PURE (son en-tête le dit, et elle ne fait qu'appeler
+        // `calculateFiscalReport`, injecté). Retirer un calcul dont la sortie est jetée n'est sûr
+        // que si l'on a d'abord prouvé qu'il ne fait rien d'autre que produire cette sortie.
+        //
+        // ⚠️ La condition vient de `estPointAllege`, la MÊME que celle de `buildMonthlyDataPoint` —
+        // importée, pas recopiée. Deux écritures de cette condition divergeraient en silence : des
+        // champs calculés pour rien, ou un point verbeux privé de ses champs.
+        const pointAllege = estPointAllege(enableMonteCarlo, diagnostics.verboseMonthlyPoints);
+        let impotLatent = 0;
+        let reeeContribCum = 0;
+        let reeeGrantsCum = 0;
+        let dividendIncome = 0;
+        let taxableInvIncome = 0;
+        let marginalTaxRate = 0;
+        let effectiveTaxRate = 0;
+        if (!pointAllege) {
+            // Cycle 17 split: impôt latent → ./projection/latentTax
+            // FISC-LATENT-RE — inclure le gain latent des immeubles LOCATIFS (RP exclue, exempte au décès),
+            // pour cohérence avec le bilan successoral (même Σ que realEstateLatentGain plus bas, estateCalculation).
+            const realEstateLatentGainNow = propertiesState
+                .filter(p => p.isBought && !p.isSold && !p.isPrimaryResidence)
+                .reduce((s, p) => s + Math.max(0, p.currentValue - (p.cost ?? 0)), 0);
+            impotLatent = computeLatentTax(
+                // [ENG-DIVORCE-LATENTTAX] `activeUsersCount` est ici un NOMBRE DE DÉCLARANTS : il
+                // divise le revenu pour calculer l'impôt d'UNE déclaration, puis le remultiplie. Après
+                // un divorce, tout le patrimoine latent pèse sur UNE seule déclaration, donc sur des
+                // paliers plus élevés. Passer 2 lissait la facture sur deux têtes fictives — mesuré :
+                // impôt latent −337 063 $ au lieu de −390 189 $, soit **53 126 $ sous-estimés**, et un
+                // patrimoine net d'impôt affiché d'autant trop haut.
+                // Même famille que `taxFilers` (dépôt fiscal) et `taxJanuary` : ces trois-là doivent
+                // dire la même chose, sinon la prochaine correction n'en bougera qu'une.
+                { m, loopYear, simInflation, simSalaryGrowth, isRetired, activeUsersCount: taxFilers,
+                  grossMarcBaseAnnual,
+                  // Le salaire d'un ex-conjoint parti ne fait plus partie de l'assiette — même motif
+                  // qu'au dépôt de décembre et au meltdown REER.
+                  grossAnnaBaseAnnual: soloHousehold ? 0 : grossAnnaBaseAnnual,
+                  accRentesYear, incomeRetirement,
+                  reer, nonReg, nonRegACB, crypto, cryptoACB, realEstateLatentGain: realEstateLatentGainNow, enableMonteCarlo },
+                calculateFiscalReport,
+            );
 
-        // Centralisation Phase 3 Tier 2 — cumul REEE (somme sur tous les enfants)
-        const reeeContribCum = Object.values(reeeTracker).reduce((s, t) => s + (t.contribLifetime ?? 0), 0);
-        const reeeGrantsCum = Object.values(reeeTracker).reduce((s, t) => s + (t.scee ?? 0) + (t.iqee ?? 0), 0);
+            // Centralisation Phase 3 Tier 2 — cumul REEE (somme sur tous les enfants)
+            reeeContribCum = Object.values(reeeTracker).reduce((s, t) => s + (t.contribLifetime ?? 0), 0);
+            reeeGrantsCum = Object.values(reeeTracker).reduce((s, t) => s + (t.scee ?? 0) + (t.iqee ?? 0), 0);
 
-        // Centralisation Phase 3 Tier 3 — dividendes mensuels + revenus de
-        // placement imposables (50% des gains capital + 100% des dividendes).
-        // Approximation : rendement non-reg × 30% × balance, divisé par 12.
-        // [FISC-DIV-DERIVED-BASES] 3e copie de la formule remplacée par la source unique.
-        const dividendIncome = computeAnnualNonRegDividends(nonReg, baseRates.nonReg ?? 0) / 12;
-        const taxableInvIncome = dividendIncome + (accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD) / 12;
+            // Centralisation Phase 3 Tier 3 — dividendes mensuels + revenus de
+            // placement imposables (50% des gains capital + 100% des dividendes).
+            // Approximation : rendement non-reg × 30% × balance, divisé par 12.
+            // [FISC-DIV-DERIVED-BASES] 3e copie de la formule remplacée par la source unique.
+            dividendIncome = computeAnnualNonRegDividends(nonReg, baseRates.nonReg ?? 0) / 12;
+            taxableInvIncome = dividendIncome + (accCapitalGainsYear * CAPITAL_GAINS_INCLUSION_STANDARD) / 12;
 
-        // Phase 3 Tier 3 — taux d'imposition marginal et effectif (PAR ADULTE)
-        // Source : calculateFiscalReport sur le revenu brut annuel courant.
-        // En retraite : on combine pensions + retraits REER pour le calcul.
-        // [ENG-DIVORCE-DISPLAY-RATES] Après un divorce, ce taux AFFICHÉ additionnait encore les deux
-        // salaires puis divisait par 2 : il montrait le taux d'un ménage qui n'existe plus. Les deux
-        // gestes du lot s'appliquent ici comme partout — `taxFilers` au dénominateur, salaire de
-        // l'ex retiré du numérateur. C'est une sortie d'AFFICHAGE (taux marginal/effectif du point
-        // mensuel), pas une assiette de calcul : rien d'autre n'en dépend.
-        const grossHouseholdAnnual = grossMarcBaseAnnual + (soloHousehold ? 0 : grossAnnaBaseAnnual);
-        const grossPerUserAnnual = isRetired
-            ? (incomeRetirement * 12 + accRetraitsReerYear) / Math.max(1, taxFilers)
-            : grossHouseholdAnnual / Math.max(1, taxFilers);
-        const fiscalReportTier3 = grossPerUserAnnual > 0
-            ? calculateFiscalReport(grossPerUserAnnual, 0, 0, loopYear, true /* skip breakdown pour perf */)
-            : null;
-        const marginalTaxRate = fiscalReportTier3 ? fiscalReportTier3.marginalRate * 100 : 0;
-        const effectiveTaxRate = fiscalReportTier3 ? fiscalReportTier3.averageRate : 0;
+            // Phase 3 Tier 3 — taux d'imposition marginal et effectif (PAR ADULTE)
+            // Source : calculateFiscalReport sur le revenu brut annuel courant.
+            // En retraite : on combine pensions + retraits REER pour le calcul.
+            // [ENG-DIVORCE-DISPLAY-RATES] Après un divorce, ce taux AFFICHÉ additionnait encore les deux
+            // salaires puis divisait par 2 : il montrait le taux d'un ménage qui n'existe plus. Les deux
+            // gestes du lot s'appliquent ici comme partout — `taxFilers` au dénominateur, salaire de
+            // l'ex retiré du numérateur. C'est une sortie d'AFFICHAGE (taux marginal/effectif du point
+            // mensuel), pas une assiette de calcul : rien d'autre n'en dépend.
+            const grossHouseholdAnnual = grossMarcBaseAnnual + (soloHousehold ? 0 : grossAnnaBaseAnnual);
+            const grossPerUserAnnual = isRetired
+                ? (incomeRetirement * 12 + accRetraitsReerYear) / Math.max(1, taxFilers)
+                : grossHouseholdAnnual / Math.max(1, taxFilers);
+            const fiscalReportTier3 = grossPerUserAnnual > 0
+                ? calculateFiscalReport(grossPerUserAnnual, 0, 0, loopYear, true /* skip breakdown pour perf */)
+                : null;
+            marginalTaxRate = fiscalReportTier3 ? fiscalReportTier3.marginalRate * 100 : 0;
+            effectiveTaxRate = fiscalReportTier3 ? fiscalReportTier3.averageRate : 0;
+        }
 
         // Cycle 21 split: assemblage data.push → ./projection/monthlyOutput
         data.push(buildMonthlyDataPoint({

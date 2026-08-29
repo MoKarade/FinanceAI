@@ -41,6 +41,19 @@
 
 /** Un champ d'entrée inexploitable, avec de quoi le dire à l'utilisateur ET le retrouver dans le code. */
 export interface EntreeRefusee {
+    /**
+     * `cause` = un champ que l'utilisateur peut corriger dans un formulaire ; `derive` = une
+     * grandeur calculée à partir de lui.
+     *
+     * ⚠️ Porté à la SOURCE, et pas déduit du préfixe du chemin comme au premier jet : ce filtre
+     * (`chemin.startsWith('config.users')`) était juste tant que les salaires étaient les seules
+     * causes, et il est devenu FAUX dès qu'on a ajouté les postes de budget et les soldes — il les
+     * classait en dérivés, donc `messageDeRefus` les taisait quand un salaire était aussi fautif.
+     * Marc aurait corrigé le salaire, relancé, et se serait fait refuser pour une cause que rien ne
+     * lui avait nommée. Une heuristique de TEXTE sur une donnée qui peut porter le fait
+     * structurellement (`TEXT-HEURISTIC-OVER-USER-TEXT`).
+     */
+    readonly role: 'cause' | 'derive';
     /** Chemin technique, pour le journal et les tests (ex. `config.users[0].netSalary`). */
     readonly chemin: string;
     /** Phrase montrée à l'utilisateur, qui NOMME la personne et le champ. */
@@ -59,6 +72,22 @@ const CHAMPS_UTILISATEUR = [
 const estNonFini = (v: unknown): v is number => typeof v === 'number' && !Number.isFinite(v);
 
 /**
+ * Une valeur MONÉTAIRE inexploitable : non finie, ou d'un type qui n'est pas un nombre.
+ *
+ * ⚠️ Pourquoi le TYPE compte autant que la finitude. Le vecteur décrit en tête de ce module est un
+ * `JSON.parse` de blob Drive ou de backup, et le schéma de restauration valide `budgetItems` en
+ * `z.array(z.unknown())` — aucune contrainte de forme. Une valeur y revient donc aussi bien en
+ * `string` qu'en nombre, et `"1e999"` traverse l'arithmétique sans jamais devenir non finie :
+ * MESURÉ, l'épargne mensuelle tombe à 0 et le patrimoine final à **−95 %**, sans un seul refus.
+ * `estNonFini` seul ne pouvait pas le voir — même dégât que le `NaN` du salaire, autre type.
+ *
+ * ⚠️ `null`/`undefined` sont EXCLUS volontairement : « poste non budgété » est un état légitime que
+ * le formulaire produit, et le refuser casserait l'app pour un cas nominal.
+ */
+const estMontantIllisible = (v: unknown): boolean =>
+    v !== null && v !== undefined && (typeof v !== 'number' || !Number.isFinite(v));
+
+/**
  * « Marc » si l'utilisateur est nommé, « du profil 2 » sinon — jamais un index technique nu.
  *
  * ⚠️ Rend la forme DÉJÀ ÉLIDÉE, parce que les libellés l'insèrent après « de » : sans ça on lisait
@@ -67,7 +96,11 @@ const estNonFini = (v: unknown): v is number => typeof v === 'number' && !Number
  */
 const nommer = (u: { name?: unknown } | undefined, index: number): string => {
     const nom = typeof u?.name === 'string' ? u.name.trim() : '';
-    return nom !== '' ? `de ${nom}` : `du profil ${index + 1}`;
+    if (nom === '') return `du profil ${index + 1}`;
+    // ⚠️ Élision devant une voyelle ou un `h` muet : « de Alex » se lit mal, et le premier correctif
+    // d'élision ne traitait que le cas du rang (« de le profil 1 »). Un texte montré à Marc se relit
+    // en entier, pas seulement sur la partie qu'on vient de corriger.
+    return /^[aeiouyàâäéèêëîïôöùûüh]/i.test(nom) ? `d'${nom}` : `de ${nom}`;
 };
 
 /**
@@ -95,11 +128,12 @@ export function verifierEntreesMoteur(params: {
         const u = brut as Record<string, unknown> | undefined;
         for (const { cle, nom } of CHAMPS_UTILISATEUR) {
             const v = u?.[cle];
-            if (estNonFini(v)) {
+            if (estMontantIllisible(v)) {
                 refus.push({
+                    role: 'cause',
                     chemin: `config.users[${i}].${cle}`,
                     libelle: `${nom} ${nommer(u, i)} est illisible`,
-                    valeur: v,
+                    valeur: typeof v === 'number' ? v : Number.NaN,
                 });
             }
         }
@@ -114,12 +148,13 @@ export function verifierEntreesMoteur(params: {
     // `computeMonthlySavings`), donc ils sont dans son périmètre.
     (params.budgetItems ?? []).forEach((brut, i) => {
         const item = brut as Record<string, unknown> | undefined;
-        if (estNonFini(item?.target)) {
+        if (estMontantIllisible(item?.target)) {
             const nom = typeof item?.name === 'string' && item.name.trim() !== '' ? item.name.trim() : `n° ${i + 1}`;
             refus.push({
+                role: 'cause',
                 chemin: `budgetItems[${i}].target`,
                 libelle: `le montant du poste « ${nom} » est illisible`,
-                valeur: item!.target as number,
+                valeur: typeof item!.target === 'number' ? item!.target : Number.NaN,
             });
         }
     });
@@ -133,6 +168,7 @@ export function verifierEntreesMoteur(params: {
     // faut consommer — le total ne dit rien de ce qu'il a jeté.
     for (const t of params.termesFautifsCash ?? []) {
         refus.push({
+            role: 'cause',
             chemin: `${t.origine}.${t.cle}`,
             libelle: t.origine === 'transaction'
                 ? `le montant d'une transaction est illisible (${t.cle})`
@@ -167,10 +203,78 @@ export function verifierEntreesMoteur(params: {
     for (const d of derives) {
         const v = (params as Record<string, unknown>)[d.cle];
         const accord = 'pluriel' in d && d.pluriel ? 'sont illisibles' : 'est illisible';
-        if (estNonFini(v)) refus.push({ chemin: d.cle, libelle: `${d.nom} ${accord}`, valeur: v });
+        if (estNonFini(v)) refus.push({ role: 'derive', chemin: d.cle, libelle: `${d.nom} ${accord}`, valeur: v });
+    }
+
+    // ⚠️⚠️ LE FILET RÉCURSIF — et la raison pour laquelle il a fallu inverser la logique.
+    //
+    // Les listes ci-dessus énumèrent ce qu'on VÉRIFIE. Trois passes de panel ont montré, trois fois,
+    // que cette énumération est incomplète : `currentRentExpense` (produit deux lignes plus haut),
+    // puis les postes de budget, puis `liveCSVBalances` et les réglages de `projection` — tous
+    // money-critical, tous oubliés, chacun mesuré à des écarts de −95 % à −99 %. C'est
+    // `CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG` trois fois d'affilée : ce n'est plus une erreur,
+    // c'est la preuve que la forme « liste blanche » ne convient pas ici.
+    //
+    // On scanne donc TOUT ce que la frontière produit, et on déclare ce qu'on EXCLUT. Le risque que
+    // ça refuse un état légitime a été MESURÉ avant d'écrire une ligne : sur les sept personas, ce
+    // scan récursif complet rend **zéro** valeur non finie. Les listes nommées restent au-dessus,
+    // non par redondance mais parce qu'elles seules savent NOMMER le champ à l'utilisateur — le
+    // filet, lui, dit seulement « quelque chose ne va pas, et voici où ».
+    // ⚠️ Notation CANONIQUE avant de dédupliquer : le filet écrit `config.users.0.netSalary` là où
+    // les listes nommées écrivent `config.users[0].netSalary`. Sans ça, le même champ est relevé
+    // deux fois sous deux orthographes — et le message à l'écran le répète.
+    const canonique = (c: string) => c.replace(/\.(\d+)(?=\.|$)/g, '[$1]');
+    const dejaVu = new Set(refus.map((r) => canonique(r.chemin)));
+    for (const [brut, valeur] of nonFinisRecursifs(params)) {
+        const chemin = canonique(brut);
+        if (dejaVu.has(chemin)) continue;
+        dejaVu.add(chemin);
+        refus.push({
+            role: 'derive',
+            chemin,
+            libelle: `une valeur du calcul est illisible (${chemin})`,
+            valeur,
+        });
     }
 
     return refus;
+}
+
+/**
+ * Tout nombre non fini atteignable depuis `racine`, avec son chemin.
+ *
+ * ⚠️ AUCUNE exclusion pour l'instant, et c'est un choix mesuré : les sept personas rendent zéro
+ * résultat. Le jour où un champ légitimement non fini apparaît, il s'ajoute ICI avec sa raison
+ * écrite — un filtre se déclare et se motive, sinon un périmètre borné en silence se lit comme
+ * « tout est couvert » (`AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`).
+ */
+const EXCLUSIONS_DU_FILET: ReadonlyArray<{ chemin: RegExp; raison: string }> = [
+    {
+        chemin: /^termesFautifsCash\b/,
+        raison: 'INVENTAIRE des termes déjà écartés, pas une donnée du calcul — le filet y verrait '
+            + 'les valeurs fautives qu\'on vient précisément de relever, et les compterait deux fois.',
+    },
+];
+
+function nonFinisRecursifs(
+    racine: unknown,
+    chemin = '',
+    vus = new WeakSet<object>(),
+    acc: Array<[string, number]> = [],
+): Array<[string, number]> {
+    if (typeof racine === 'number') {
+        if (!Number.isFinite(racine) && !EXCLUSIONS_DU_FILET.some((e) => e.chemin.test(chemin))) {
+            acc.push([chemin, racine]);
+        }
+        return acc;
+    }
+    if (racine === null || typeof racine !== 'object') return acc;
+    if (vus.has(racine)) return acc;   // les params portent des références partagées (`config`)
+    vus.add(racine);
+    for (const [cle, val] of Object.entries(racine as Record<string, unknown>)) {
+        nonFinisRecursifs(val, chemin ? `${chemin}.${cle}` : cle, vus, acc);
+    }
+    return acc;
 }
 
 /**
@@ -181,7 +285,7 @@ export function verifierEntreesMoteur(params: {
  */
 export function messageDeRefus(refus: ReadonlyArray<EntreeRefusee>): string {
     if (refus.length === 0) return '';
-    const causes = refus.filter((r) => r.chemin.startsWith('config.users'));
+    const causes = refus.filter((r) => r.role === 'cause');
     const aMontrer = causes.length > 0 ? causes : refus;
     const liste = aMontrer.map((r) => r.libelle);
     const enumeration = liste.length === 1

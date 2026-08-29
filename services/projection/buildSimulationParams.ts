@@ -48,7 +48,7 @@ import { deriveStartingBalancesFromHistory } from '../history/startingBalancesFr
 import { getEffectivePurchases } from '../../utils/assetPurchases';
 import { TAX_BASE_YEAR, ageOptsForSalaryInversion, calculateGrossFromNet } from '../../utils/tax';
 import { isSavingsNature } from '../../utils/budget';
-import { computeCashLedger } from '../startingCash';
+import { computeCashLedger, computeCashLedgerDetailed } from '../startingCash';
 
 /**
  * Loyer mensuel par défaut quand aucune ligne de budget « loyer / rent /
@@ -309,7 +309,16 @@ export function deriveSimulationInputsFromState(
         projection: state.projection,
         config: state.config,
         liveCSVBalances: derivePortfolioStartingBalances(state.assets ?? [], state.fxRates ?? {}),
-        calculatedStartingCash: computeStartingCash(state.initialBalances ?? {}, state.transactions ?? []),
+        // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] ⚠️ Le ledger DÉTAILLÉ, comme dans le hook. Sans lui,
+        // le chemin MCP restait nu sur le canal cash alors que le chemin navigateur était protégé :
+        // mesuré, `initialBalances.CELI = NaN` passait sans refus et rendait 7 082 228 $ au lieu de
+        // 7 270 228 $ (−188 000 $) à un LLM, `isError` à faux. Le correctif précédent affirmait
+        // fermer ce canal pour les deux surfaces ; il n'en fermait qu'une (finding 2e passe, #764).
+        // Un seul parcours des transactions sert les deux besoins (le total et l'inventaire).
+        ...(() => {
+            const ledger = computeCashLedgerDetailed(state.initialBalances ?? {}, (state.transactions ?? []) as Transaction[]);
+            return { calculatedStartingCash: ledger.cash, termesFautifsCash: ledger.termesFautifs };
+        })(),
         realEstateGoals: state.realEstateGoals ?? [],
         debts: state.debts ?? [],
         childGoals: state.childGoals ?? [],

@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 948 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 950 tests** Vitest
 (469 fichiers de test, mesuré le 2026-08-29). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -769,6 +769,14 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   existe en plusieurs exemplaires, copier celui qui porte sa JUSTIFICATION écrite. Et la garde doit
   asserter que le conteneur existe **déjà quand il n'y a rien à annoncer**, sinon elle est satisfaite
   par la version fautive (`COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`).
+- **Trois oublis d'affilée dans une liste blanche disent que c'est la FORME qui est fausse** : ma
+  garde d'entrée énumérait les champs à vérifier, et trois passes ont trouvé trois canaux
+  money-critical manquants (−95 % à −99 %). Le correctif n'est pas un quatrième ajout mais
+  l'INVERSION : scanner tout ce qui est produit, et **déclarer les exclusions** — autorisé par une
+  mesure (zéro non-fini sur les sept personas), jamais par confiance. ⚠️ Corollaire : un prédicat de
+  finitude est aveugle au TYPE, or le vecteur d'entrée est un `JSON.parse` non typé — `"1e999"` en
+  chaîne traverse sans jamais devenir non fini (−95 % mesuré), et `null` doit rester légitime
+  (`CINQ-TROUS-DANS-UNE-GARDE-ET-AUCUN-FAUX-POSITIF`).
 - **Une garde qui ne peut pas TIRER n'est pas une protection** : mon contrôle sur le solde de départ
   était structurellement mort (le ledger écarte les non-finis et rend toujours un total fini),
   pendant que la corruption passait — la vraie porte existait déjà (`termesFautifs`,

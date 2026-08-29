@@ -8433,3 +8433,43 @@ inventaire futur (`UNE-GARDE-QUI-NE-PEUT-PAS-TIRER-N-EST-PAS-UNE-PROTECTION`).
   tout ce qui l'affiche. Et l'absence de trace se corrige en faisant **les deux** — signal utilisateur
   ET journal throttlé, comme le patron jumeau `HARDEN-NETWORTH-NAN`, jamais l'un contre l'autre
   (`CINQ-TROUS-DANS-UNE-GARDE-ET-AUCUN-FAUX-POSITIF`).
+
+### Corollaire du lot 38, 2e passe — quand la LISTE BLANCHE est la mauvaise forme
+
+La deuxième passe a confirmé que les cinq correctifs tenaient (aucun appelant cassé, clé de dédup
+byte-identique au bit près sur les sept personas, annotation du contrôle mort exacte) — et elle a
+trouvé **quatre canaux de plus**, dont un à −95 % et un à −98,8 %.
+
+**Le compte est le signal.** Trois passes, trois fois le même diagnostic : `currentRentExpense`,
+puis les postes de budget, puis `liveCSVBalances` et les réglages de `projection`. Chaque correctif
+ajoutait une ligne à une énumération, et la passe suivante trouvait la ligne manquante. Au troisième
+tour, ce n'est plus une erreur d'inattention : **c'est la forme « liste blanche » qui ne convient pas
+à ce problème**. Une garde d'entrée doit couvrir ce qu'elle ne sait pas encore nommer.
+
+**L'inversion** : scanner récursivement tout ce que la frontière produit, et déclarer les
+EXCLUSIONS. Ce qui autorise ce choix n'est pas la confiance mais une mesure faite AVANT d'écrire la
+ligne — le scan récursif complet rend **zéro** valeur non finie sur les sept personas, donc il ne
+refuse aucun état légitime connu. Les listes nommées restent au-dessus, non par redondance mais
+parce qu'elles seules savent NOMMER le champ à l'utilisateur ; le filet, lui, dit « quelque chose ne
+va pas, et voici où ». ⚠️ Et il a fallu une notation CANONIQUE pour les dédupliquer : le filet écrit
+`config.users.0.netSalary` là où la liste écrit `config.users[0].netSalary` — sans normalisation, le
+même champ est refusé deux fois sous deux orthographes, et le message le répète.
+
+**Trois leçons plus fines du même tour :**
+
+- **Un prédicat de finitude est aveugle au TYPE.** Le vecteur de ce ticket est un `JSON.parse` de
+  blob non typé (le schéma de restauration valide `budgetItems` en `z.array(z.unknown())`) : une
+  valeur y revient aussi bien en `string`. `"1e999"` traverse toute l'arithmétique sans jamais
+  devenir non fini — mesuré, épargne mensuelle à 0 et patrimoine final à **−95 %**, sans un refus.
+  Le prédicat juste est « montant inexploitable », pas « nombre non fini ». Avec son pendant : `null`
+  et l'absence restent LÉGITIMES (« poste non budgété »), et les refuser casserait le cas nominal.
+- **Un correctif « pour les deux surfaces » se vérifie sur les deux.** J'avais câblé l'inventaire des
+  termes de cash dans le hook (navigateur) en écrivant que le canal était fermé ; le chemin MCP est
+  resté nu, et servait −188 000 $ à un LLM avec `isError` à faux. Le correctif qui affirme couvrir
+  deux chemins doit être mesuré sur chacun.
+- **Une sentinelle de chaîne exige un traitement chez l'appelant — sinon elle fuit.** J'avais préfixé
+  le message d'un marqueur `__PROJECTION_ENTREE_REFUSEE__` « destiné à être découpé », et aucun
+  appelant ne le découpait : le marqueur technique arrivait intact sous les yeux de Marc et dans la
+  réponse au LLM. Une classe d'erreur avec un champ `motif` donne à l'appelant de quoi faire ce que
+  le contrat demande ; un préfixe de chaîne ne fait que l'espérer
+  (`QUAND-LA-LISTE-BLANCHE-EST-LA-MAUVAISE-FORME`).

@@ -94,9 +94,21 @@ const _inflight = new Map<string, Promise<ProjectionResult>>();
 /** Erreur sentinelle : la projection a été annulée par l'appelant (pas un échec). */
 export const PROJECTION_CANCELLED = '__PROJECTION_CANCELLED__';
 
-/** Erreur sentinelle : une ENTRÉE du moteur est illisible — le calcul n'a pas été lancé. Le message
- *  qui suit ce préfixe nomme le champ, et il est destiné à être montré tel quel. */
-export const PROJECTION_ENTREE_REFUSEE = '__PROJECTION_ENTREE_REFUSEE__';
+/**
+ * Erreur levée quand une ENTRÉE du moteur est illisible : le calcul n'a pas été lancé.
+ *
+ * ⚠️ Une CLASSE, pas un préfixe de chaîne. Le premier jet posait une sentinelle
+ * `__PROJECTION_ENTREE_REFUSEE__` en tête du message en écrivant qu'il « est destiné à être montré
+ * tel quel » — or aucun appelant ne la découpait, donc le marqueur technique arrivait intact sous
+ * les yeux de Marc ET dans la réponse servie au LLM. Un contrat qui exige un traitement chez
+ * l'appelant doit lui donner de quoi le faire : ici `motif`, déjà prêt à afficher.
+ */
+export class ProjectionEntreeRefuseeError extends Error {
+    constructor(public readonly motif: string) {
+        super(motif);
+        this.name = 'ProjectionEntreeRefuseeError';
+    }
+}
 
 export function runProjectionAsync(
     params: SimulationParams,
@@ -121,10 +133,16 @@ export function runProjectionAsync(
     // annoncé à **−96 %**, sans un mot d'avertissement. Un chiffre faux servi à un LLM hérite de
     // l'autorité de la source unique, et `no-fake-data` l'interdit « y compris dans un prompt IA ».
     //
-    // La garde est ici plutôt que recopiée cinq fois : c'est le seul endroit que tous traversent.
+    // La garde est ici plutôt que recopiée : c'est le point commun des CINQ appelants ASYNCHRONES.
+    // ⚠️ Le moteur en compte sept : `goalSeek` et `drawdownOptimizer` appellent `calculateFutureProjection`
+    // en DIRECT. Ils sont protégés autrement — leur seule surface (`GoalSeekerCard`) est montée par
+    // `Retirement`, qui rend `<ProjectionRequired>` tant que `lastProjection` est nul, et un refus
+    // met justement `lastProjection` à nul. C'est une protection par GATE, pas par cette garde : le
+    // dire, plutôt que d'écrire « tous » et de laisser croire à une couverture qu'on n'a pas
+    // (la leçon « compter les appelants avant d'écrire unique » vient de ce lot — autant l'appliquer).
     // Sur le chemin nominal le champ est ABSENT, donc ce test ne coûte rien et ne change rien.
     if (params.entreesRefusees && params.entreesRefusees.length > 0) {
-        return Promise.reject(new Error(`${PROJECTION_ENTREE_REFUSEE} ${messageDeRefus(params.entreesRefusees)}`));
+        return Promise.reject(new ProjectionEntreeRefuseeError(messageDeRefus(params.entreesRefusees)));
     }
     // Clé EFFECTIVE = dedupKey (signature de contenu de l'appelant) + TOUT ce qui distingue le
     // calcul. Sans ça, un futur appelant réutilisant la même dedupKey avec un runMC/selectedIdx

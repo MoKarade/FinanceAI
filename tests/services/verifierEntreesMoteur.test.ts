@@ -108,7 +108,9 @@ describe('[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] le message nomme le champ', ()
         const p = params(etatAvec('netSalary', Number.NaN));
         const msg = messageDeRefus(p.entreesRefusees ?? []);
         expect(msg).toContain('salaire net');
-        expect(msg).toContain('Alex (test)');       // le nom réel du persona, pas « users[0] »
+        // ⚠️ Élidé : « de Alex » se lit mal. Le premier correctif d'élision ne traitait que le rang.
+        expect(msg).toContain("d'Alex (test)");
+        expect(msg).not.toContain('de Alex');
         expect(msg).not.toContain('config.users');  // jamais de chemin technique à l'écran
     });
 
@@ -137,6 +139,27 @@ describe('[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] le message nomme le champ', ()
         // ⚠️ Forme ÉLIDÉE : le libellé s'écrivait « de le profil 1 » au premier jet. Un texte montré
         // à l'utilisateur se relit comme une phrase (finding panel #764).
         expect(refus[0].libelle).toBe('le salaire net du profil 1 est illisible');
+    });
+
+    it('refuse une valeur du bon TYPE mais illisible — une string dans un champ monétaire', () => {
+        // ⚠️ Le prédicat d'origine ne regardait que la finitude, or le vecteur du ticket est un
+        // `JSON.parse` non typé : une valeur revient aussi bien en `string`. Mesuré, `"1e999"` dans
+        // un poste de budget traversait sans jamais devenir non fini — épargne mensuelle à 0 et
+        // patrimoine final à −95 %, sans un seul refus.
+        const etat = buildCoupleConfort() as AppState;
+        const poste = (etat.budgetItems as unknown as Array<Record<string, unknown>>)
+            .find((b) => /picerie/i.test(String(b.name)));
+        poste!.target = '1e999';
+        expect(params(etat).entreesRefusees?.map((r) => r.chemin)).toContain('budgetItems[1].target');
+    });
+
+    it('ne refuse PAS un poste non budgété (`null`/absent) — état légitime', () => {
+        // Le pendant du test ci-dessus : « pas renseigné » n'est pas « illisible ». Sans cette
+        // assertion, durcir le prédicat casserait l'app sur un cas nominal du formulaire.
+        const etat = buildCoupleConfort() as AppState;
+        const poste = (etat.budgetItems as unknown as Array<Record<string, unknown>>)[0];
+        poste.target = null;
+        expect(params(etat).entreesRefusees ?? []).toEqual([]);
     });
 
     it('accorde le verbe au pluriel sur une grandeur au pluriel', () => {

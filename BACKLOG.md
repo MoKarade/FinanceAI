@@ -2122,13 +2122,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 > Mesures réelles (Node profiling CPU V8 + micro-bench isolés). NO O(n²) trouvé.
 > Le coût dominant = volume itérations (mois × MC × configs), pas un algorithme mal choisi.
 
-- [ ] **`[PERF-ENG-INCOMELOSS-DATESTR]`** (S) — `computeIncomeLossFactor` reforme date en chaîne à
-  CHAQUE mois actif, sans vérifier événements. `toISOString() + substring() + split()` répété 4M fois
-  sur 30×MC(100). **Mesure : 530 ticks CPU (2,6 % du profil),** comparable à `computeRetirementIncome`.
-  **Correctif** : retour anticipé si `lifeEvents.length === 0` (majorité des ménages sans perte de
-  revenu), remplacer `toISOString().substring(0,7)` par arithmétique entière `getUTC*()` (pas
-  d'allocation chaîne), parser événement date via slice + Number.
-
 - [ ] **`[PERF-BOOT-HYDRATE-CHAIN]`** (M/L) — hydratation historique/prix/profil chaînées en SÉRIE :
   chaque passe a sa PROPRE boucle pacée 2500 ms → 3 passes totales = 3×N×2500 ms pour N titres.
   Pour 20 titres : **jusqu'à ~150 s** avant dernier titre complet vs ~50 s si entrelaçé. **⚠️ NE PAS

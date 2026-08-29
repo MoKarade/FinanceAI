@@ -10,6 +10,29 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-29 — Lot 48 : un ticket de performance déjà livré par un autre
+
+- [x] **`[PERF-ENG-INCOMELOSS-DATESTR]`** (S) — `computeIncomeLossFactor` reforme date en chaîne à
+  CHAQUE mois actif, sans vérifier événements. `toISOString() + substring() + split()` répété 4M fois
+  sur 30×MC(100). **Mesure : 530 ticks CPU (2,6 % du profil),** comparable à `computeRetirementIncome`.
+  **Correctif** : retour anticipé si `lifeEvents.length === 0` (majorité des ménages sans perte de
+  revenu), remplacer `toISOString().substring(0,7)` par arithmétique entière `getUTC*()` (pas
+  d'allocation chaîne), parser événement date via slice + Number.
+  ❌ **CADUQUE — le cœur du correctif était DÉJÀ LIVRÉ** par `[PERF-ENGINE-ISOSTRING-HOTLOOP]`
+  (2026-08-21, plus haut dans cette archive). `computeIncomeLossFactor` ne contient plus aucun
+  `toISOString().substring(0,7).split('-')` : il calcule `getUTCFullYear() * 12 + getUTCMonth()`, et
+  le commentaire du code porte l'ID du lot qui l'a fait. Vérifié avant toute ligne de code, comme le
+  prescrit « vérifier qu'une feature n'est pas DÉJÀ faite ».
+  · **Les deux tickets décrivaient le même défaut sous deux IDs** — dont un cite « 530 ticks CPU,
+    2,6 % du profil », un chiffre qui n'a plus d'objet puisqu'il mesurait la construction de chaîne
+    disparue. Un backlog qui garde deux entrées pour un défaut en promet une de trop.
+  · **Le seul résidu était le retour anticipé sur `lifeEvents` vide**, et il ne vaut pas un lot :
+    micro-mesuré 24,5 → 6,9 ns par appel, soit ~17,6 ns × 360 000 appels ≈ **6 ms** sur une recherche
+    de stratégie de 52 s — **0,01 %**. Le mesurer coûtait moins cher que d'en débattre ; l'écrire
+    évite qu'un prochain passage le reprenne pour un gain.
+  · Classe `PM-STALE-BACKLOG` : ce n'est pas le premier doublon, et la parade est la même — grep le
+    code AVANT de coder, et faire confiance au commentaire qui porte un ID de lot.
+
 ## 2026-08-29 — Lot 47 : un bloc fiscal calculé puis jeté à chaque mois de chaque itération
 
 - [x] 🔴 **`[PERF-ENG-LATENT-MC-WASTE]`** (S) — `computeLatentTax` + bloc fiscal Tier-3 calculés PUIS

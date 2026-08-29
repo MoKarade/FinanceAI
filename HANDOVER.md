@@ -4,6 +4,18 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## ⚪ Session 2026-08-29 — Lot 48 : `[PERF-ENG-INCOMELOSS-DATESTR]` était CADUQUE
+> Le cœur du ticket était **déjà livré** par `[PERF-ENGINE-ISOSTRING-HOTLOOP]` (2026-08-21) :
+> `computeIncomeLossFactor` ne contient plus aucun `toISOString()`, et le commentaire du code porte
+> l'ID du lot qui l'a fait. Vérifié avant d'écrire une ligne.
+> - ⚠️ **Le coût du doublon n'est pas le ticket en trop, c'est son CHIFFRE** : « 530 ticks CPU,
+>   2,6 % du profil » mesurait la construction de chaîne disparue. Repris tel quel, il aurait
+>   justifié un lot pour un gain nul — et un lot « réussi » sans rien avoir accéléré.
+> - Le seul résidu (retour anticipé sur `lifeEvents` vide) a été **micro-mesuré** : ~6 ms sur une
+>   recherche de stratégie de 52 s, soit **0,01 %**. Ne vaut pas un lot ; c'est écrit pour qu'un
+>   prochain passage ne le reprenne pas.
+> - Aucun code touché — ticket coché caduque, archive et leçon mises à jour.
+
 > ## 🟦 Session 2026-08-29 — Lot 47 : un bloc fiscal calculé puis jeté, à chaque mois de chaque itération
 > `[PERF-ENG-LATENT-MC-WASTE]` — sous Monte Carlo, `buildMonthlyDataPoint` ne rend que
 > `{ NetWorth, monthIndex }`, mais l'appelant calculait quand même l'impôt latent, les dividendes,

@@ -8523,6 +8523,29 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 48 — deux IDs pour un seul défaut, et un chiffre qui n'a plus d'objet
+
+`UN-TICKET-PEUT-DECRIRE-UN-DEFAUT-DEJA-CORRIGE-SOUS-UN-AUTRE-ID`
+
+`[PERF-ENG-INCOMELOSS-DATESTR]` décrivait un `toISOString().substring(0,7).split('-')` exécuté à
+chaque mois dans `computeIncomeLossFactor`. Premier réflexe avant de coder : lire la fonction. Elle
+calcule `getUTCFullYear() * 12 + getUTCMonth()` depuis le 2026-08-21 — et **le commentaire du code
+porte l'ID du lot qui l'a fait** (`[PERF-ENGINE-ISOSTRING-HOTLOOP]`). Deux tickets, un seul défaut,
+déjà corrigé.
+
+Ce qui rend le doublon coûteux, ce n'est pas le ticket en trop : c'est **le chiffre qu'il porte**.
+« 530 ticks CPU, 2,6 % du profil » mesurait précisément la construction de chaîne qui a disparu.
+Repris tel quel, il aurait justifié un lot pour un gain nul — et un lot livré « avec succès » sans
+rien avoir accéléré.
+
+Le résidu réel — un retour anticipé quand `lifeEvents` est vide — a été **micro-mesuré plutôt que
+débattu** : 24,5 → 6,9 ns par appel, soit ~6 ms sur une recherche de stratégie de 52 s, **0,01 %**.
+Ça ne vaut pas un lot, et l'écrire évite qu'un prochain passage le reprenne pour un gain.
+
+**La parade tient en une ligne** : grep le code avant de coder, et faire confiance à un commentaire
+qui porte un ID de lot — c'est précisément à ça qu'ils servent. Classe `PM-STALE-BACKLOG`, déjà
+connue du dépôt ; ce lot en est la confirmation, pas la découverte.
+
 ### Lot 47 — retirer un calcul jeté se prouve avant de se faire
 
 `RETIRER-UN-CALCUL-JETE-SE-PROUVE-AVANT-DE-SE-FAIRE`

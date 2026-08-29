@@ -4,7 +4,19 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟦 Session 2026-08-28 — Lot 34 : le résultat « aucune donnée » était un objet PARTAGÉ (PR à ouvrir)
+> ## 🟦 Session 2026-08-28 — Lot 35 : éditer une cible d'allocation réécrivait le modèle par défaut (PR à ouvrir)
+> `[INVEST-CIBLES-DEFAUT-MUTEES]` — la variante **ACTIVE** de la classe du lot 34, routée par ce
+> lot-là et livrée ici. `[...targetModel]` copie le TABLEAU, jamais ses ÉLÉMENTS : l'écriture
+> `newModel[i].targetPct` atteignait donc l'objet de `DEFAULT_TARGET_MODEL`, la constante de module.
+> **Mesuré avant correctif** : après une édition à 77, un remontage NEUF sans persistance affichait
+> `77,30,15,10,5` au lieu de `40,30,15,10,5`.
+> - Trois changements complémentaires : constante typée `ReadonlyArray<Readonly<…>>` (l'écriture
+>   indexée devient impossible à ÉCRIRE), initialisation par `.map` dans les DEUX branches (l'état
+>   ne référence plus jamais le modèle), éditeur qui REMPLACE l'entrée au lieu de la muter.
+> - La preuve passe par le CHEMIN COMPLET (édition → démontage → remontage neuf), jamais par une
+>   lecture de la constante, qui n'est pas exportée. 2/2 rouges sur le code d'avant.
+>
+> ## 🟢 Session 2026-08-28 — Lot 34 : le résultat « aucune donnée » était un objet PARTAGÉ (PR #760, MERGÉE)
 > `[HISTORY-OBJET-VIDE-PARTAGE]` — même classe que le lot 33, mais en **production**. Trois sites
 > renvoyaient une constante de MODULE faute de donnée exploitable : `transactionsOnDay`,
 > `monthCategories`, et — **absent du ticket, trouvé en rejouant le scan sur tout le dépôt** —
@@ -18,7 +30,8 @@
 >   transaction », mais `[]` est `truthy` et traversait déjà la boucle. Le retour partagé était celui
 >   des ENTRÉES INUTILISABLES (`null`, ou date trop courte). Écrite avec `[]`, la garde passait **sur
 >   le code d'avant** ; réécrite avec `null`, elle rougit 5/5 puis 2/2.
-> - **Routé sans correctif** : `[INVEST-CIBLES-DEFAUT-MUTEES]` — la variante ACTIVE de la même
+> - ✅ Mergée (`7c7b0f9`), déploiement Vercel de production `READY` vérifié.
+> - **Routé sans correctif, puis LIVRÉ au lot 35** : `[INVEST-CIBLES-DEFAUT-MUTEES]` — la variante ACTIVE de la même
 >   classe. `components/Investments.tsx` fait `[...targetModel]` (copie SUPERFICIELLE) avant
 >   `newModel[i].targetPct = …`, donc éditer une cible réécrit `DEFAULT_TARGET_MODEL` en place.
 >   **Mesuré** : après une édition à 77, un remontage NEUF sans persistance affiche `77,30,15,10,5`

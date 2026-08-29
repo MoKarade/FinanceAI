@@ -122,7 +122,23 @@ interface DividendItem extends AllocationItem {
     amountPerPayout: number;
 }
 
-const DEFAULT_TARGET_MODEL: Array<{ id: string; label: string; targetPct: number; sectors: string[]; icon: IconName; color: string }> = [
+/**
+ * [INVEST-CIBLES-DEFAUT-MUTEES] Le MODÈLE de référence, en lecture seule — même classe que le lot 34
+ * (`[HISTORY-OBJET-VIDE-PARTAGE]`), mais c'était ici la variante ACTIVE : quand
+ * `projection.investmentTargetPcts` est absent, l'état des cibles était initialisé avec CE tableau
+ * tel quel, et l'éditeur faisait `[...targetModel]` — un spread qui copie le TABLEAU, jamais ses
+ * ÉLÉMENTS — avant d'écrire `newModel[i].targetPct`. L'objet muté était donc celui du module.
+ *
+ * Mesuré avant correctif : après avoir porté une cible à 77, un remontage NEUF du composant sans
+ * aucune persistance affichait `77,30,15,10,5` au lieu de `40,30,15,10,5` — les « défauts » du
+ * modèle n'étaient plus ceux du modèle, pour toute la session.
+ *
+ * Le `readonly` n'est pas décoratif : c'est lui qui rend l'écriture indexée impossible à ÉCRIRE
+ * (le typecheck la refuse). La copie fraîche à l'initialisation, elle, garantit qu'aucun état ne
+ * référence plus jamais ce tableau — les deux visent des choses différentes.
+ */
+type TargetModelEntry = Readonly<{ id: string; label: string; targetPct: number; sectors: ReadonlyArray<string>; icon: IconName; color: string }>;
+const DEFAULT_TARGET_MODEL: ReadonlyArray<TargetModelEntry> = [
     { id: 'index', label: 'Index Mondial (CW8)', targetPct: 40, sectors: ['Index'], icon: 'globe', color: '#8a7cc0' },
     { id: 'tech', label: 'Technologie', targetPct: 30, sectors: ['Technologie'], icon: 'cpu', color: '#5b82bf' },
     { id: 'ind_fin', label: 'Industrie & Finance', targetPct: 15, sectors: ['Industrie', 'Finance'], icon: 'factory', color: '#c2974f' },
@@ -201,12 +217,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
         }
     }, [horizonData.corrupt]);
 
-    const [targetModel, setTargetModelLocal] = useState(() => {
+    const [targetModel, setTargetModelLocal] = useState<ReadonlyArray<TargetModelEntry>>(() => {
         const pcts = projection?.investmentTargetPcts;
-        if (!pcts) return DEFAULT_TARGET_MODEL;
-        return DEFAULT_TARGET_MODEL.map(m => ({ ...m, targetPct: pcts[m.id] ?? m.targetPct }));
+        // ⚠️ `.map` même sans `pcts` : rendre `DEFAULT_TARGET_MODEL` tel quel ferait de l'état une
+        // référence VERS la constante du module (cf. le commentaire de sa déclaration).
+        return DEFAULT_TARGET_MODEL.map(m => ({ ...m, targetPct: pcts?.[m.id] ?? m.targetPct }));
     });
-    const setTargetModel = (model: typeof DEFAULT_TARGET_MODEL) => {
+    const setTargetModel = (model: ReadonlyArray<TargetModelEntry>) => {
         setTargetModelLocal(model);
         const pcts: Record<string, number> = {};
         model.forEach(m => { pcts[m.id] = m.targetPct; });
@@ -1116,9 +1133,10 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                                     className="w-16 bg-black/50 border border-violet-500/30 rounded px-2 py-0.5 text-white font-bold outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all text-right"
                                                                     value={item.targetPct}
                                                                     onChange={(e) => {
-                                                                        const newModel = [...targetModel];
-                                                                        newModel[i].targetPct = Number(e.target.value);
-                                                                        setTargetModel(newModel);
+                                                                        // Remplace l'ENTRÉE, ne la mute pas : `[...targetModel]` copiait le
+                                                                        // tableau et laissait ses éléments partagés (`[INVEST-CIBLES-DEFAUT-MUTEES]`).
+                                                                        const cible = Number(e.target.value);
+                                                                        setTargetModel(targetModel.map((m, idx) => (idx === i ? { ...m, targetPct: cible } : m)));
                                                                     }}
                                                                 />
                                                                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-300 pointer-events-none text-tiny">%</span>

@@ -6,6 +6,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-28 (Investissements : éditer une cible réécrivait le modèle par défaut)
+
+- **Corrigé** : dans « Allocation & rééquilibrage », modifier une cible en pourcentage réécrivait le
+  modèle de référence de l'app — pas seulement tes valeurs. Et ça survivait à tout, sauf à un
+  rechargement de la page : changer de sous-onglet ou revenir plus tard n'y changeait rien. Tout
+  retour à un état sans cibles enregistrées (remise à zéro de la configuration, bascule de persona,
+  import d'une autre configuration) présentait alors tes anciennes valeurs comme si c'étaient les
+  défauts du modèle. Les défauts sont désormais intouchables, et l'éditeur remplace la ligne au lieu de la
+  modifier sur place.
+
 ## [unreleased] — 2026-08-28 (fiabilité : le résultat « aucune donnée » était réutilisé d'un appel à l'autre)
 
 - **Corrigé** : trois endroits qui, faute de donnée à traiter, renvoyaient toujours le MÊME objet

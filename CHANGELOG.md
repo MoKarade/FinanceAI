@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-29 (Accessibilité : neuf champs qui ne montraient pas le focus)
+
+- **Corrigé** : neuf champs et listes déroulantes ne montraient rien quand on les atteignait au
+  clavier — les dates de période personnalisée du budget, la recherche de la palette de commandes,
+  trois contrôles du tableau de budget et les trois menus de classement des placements. En navigation
+  au clavier, plus rien n'indiquait où on se trouvait. Ils s'entourent désormais d'un liseré, comme
+  le reste de l'app.
+
 ## [unreleased] — 2026-08-29 (Accessibilité : des cibles trop petites pour le doigt)
 
 - **Corrigé** : dix boutons de suppression n'offraient qu'une cible d'environ 16 pixels — le glyphe

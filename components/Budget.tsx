@@ -954,7 +954,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                             </div>
                         )}
                         {timeView === 'CUSTOM' && (
-                            <div className="flex items-center gap-1 bg-white/5 rounded-pill p-1 border border-white/10">
+                            <div className="flex items-center gap-1 bg-white/5 rounded-pill p-1 border border-white/10 focus-within:border-primary/50 transition-colors">
                                 <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-transparent text-ink-100 text-meta border-none outline-none w-24" aria-label="Date de début" />
                                 <span className="text-ink-400">-</span>
                                 <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-transparent text-ink-100 text-meta border-none outline-none w-24" aria-label="Date de fin" />

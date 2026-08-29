@@ -10,6 +10,34 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-29 — Lot 44 : un focus retiré sans rien à la place
+
+- [x] **`[A11Y-FOCUS-INDICATOR-MISSING]`** (S, MOYEN) — `outline-none` **sans aucun remplacement
+  visuel** (ni `focus:border-*`, ni `focus:ring-*`, ni `focus-within` parent) sur
+  `components/Budget.tsx:826,828` (dates de période personnalisée), `components/Investments.tsx:1348,1357,1366`
+  (3 `<select>`), `components/ui/CommandPalette.tsx:163`. Ailleurs le dépôt compense
+  systématiquement (`PageSetupGate.tsx:239`, `AiChatView.tsx:462` sont sains). WCAG 2.4.7. [MESURÉ]
+  ✅ **Livré lot 44** — 9 contrôles corrigés, par DEUX patrons selon le contexte, et c'est le point
+  intéressant du lot :
+  · **`focus-within:` sur le CONTENEUR** pour les champs qui vivent dans une pilule ou une barre
+    (`Budget` × 2 champs de période, `CommandPalette`) — un seul conteneur couvre plusieurs champs, et
+    l'anneau ne déborde pas d'une bordure serrée. C'est le patron que le dépôt emploie déjà
+    (`PageSetupGate`, barre du chat) ; le calquer valait mieux que d'en inventer un.
+  · **`focus-visible:ring-2` / `focus:border-primary/50` sur le CONTRÔLE** pour ceux qui n'ont pas de
+    conteneur dédié (3 dans `BudgetGroupTable`, 3 `<select>` dans `Investments`).
+  · ⚠️ **Pour la première fois de la série, le ticket ne citait AUCUN faux site** — ses 6 sites sont
+    tous réels (numéros de ligne décalés, comme toujours). Il en manquait 3 (`BudgetGroupTable`).
+  · ⚠️ Le recensement a écarté **4 faux positifs** que seul un examen du PARENT révèle :
+    `PageSetupGate` et la barre du chat sont couverts par un `focus-within:` préexistant ;
+    `FutureProjection` et `AiConversationList` sont des conteneurs `tabIndex={-1}` ciblés par un
+    focus PROGRAMMATIQUE, hors ordre de tabulation — un anneau y serait du bruit sans utilisateur.
+    Et `AddStockForm` compense par `focus:bg-white/10`, que le premier filtre ne cherchait pas.
+  · Garde : `tests/guards/focusIndicatorGuard.test.ts`. ⚠️ Elle est bâtie sur une LISTE d'exemptions
+    nominatives et non sur une remontée aux ancêtres : le remplacement peut venir du parent, et
+    parser des ancêtres JSX à la regex est exactement ce qui a coûté quatre itérations au recenseur
+    du lot 43. Un cas nouveau est bruyant, sa lecture manuelle prend quelques secondes.
+    Discrimination : retirer la compensation d'un `<select>` → la garde le nomme, fichier et ligne.
+
 ## 2026-08-29 — Lot 43 : des cibles de 16 px sur des actions destructives
 
 - [x] **`[A11Y-TOUCH-TARGET-TINY]`** (S, ÉLEVÉ) — boutons de suppression sans aucun padding, hit-box

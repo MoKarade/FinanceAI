@@ -40,20 +40,20 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                         {projection.stressTestEnabled && (
                             <>
                                 <div>
-                                    <label className="text-tiny text-ink-300">Année du krach (depuis aujourd'hui)</label>
-                                    <input type="number" value={projection.stressTestYear ?? 5} onChange={e => updateProj('stressTestYear', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-stressTestYear" className="text-tiny text-ink-300">Année du krach (depuis aujourd'hui)</label>
+                                    <input id="app-stressTestYear" type="number" value={projection.stressTestYear ?? 5} onChange={e => updateProj('stressTestYear', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
-                                    <label className="text-tiny text-ink-300">Chute bourse (%)</label>
-                                    <input type="number" value={projection.stressTestDrop ?? 30} onChange={e => updateProj('stressTestDrop', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-stressTestDrop" className="text-tiny text-ink-300">Chute bourse (%)</label>
+                                    <input id="app-stressTestDrop" type="number" value={projection.stressTestDrop ?? 30} onChange={e => updateProj('stressTestDrop', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
-                                    <label className="text-tiny text-ink-300">Durée récupération (mois)</label>
-                                    <input type="number" value={projection.stressTestRecoveryMonths ?? 24} onChange={e => updateProj('stressTestRecoveryMonths', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-stressTestRecoveryMonths" className="text-tiny text-ink-300">Durée récupération (mois)</label>
+                                    <input id="app-stressTestRecoveryMonths" type="number" value={projection.stressTestRecoveryMonths ?? 24} onChange={e => updateProj('stressTestRecoveryMonths', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
-                                    <label className="text-tiny text-ink-300">Choc inflation additionnel (pp)</label>
-                                    <input type="number" step="0.5" value={projection.stressTestInflationShock ?? 0} onChange={e => updateProj('stressTestInflationShock', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-stressTestInflationShock" className="text-tiny text-ink-300">Choc inflation additionnel (pp)</label>
+                                    <input id="app-stressTestInflationShock" type="number" step="0.5" value={projection.stressTestInflationShock ?? 0} onChange={e => updateProj('stressTestInflationShock', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                             </>
                         )}
@@ -93,13 +93,13 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                     <h4 className="text-meta font-bold uppercase tracking-widest text-ink-200 mb-2">Monte Carlo & Bootstrap</h4>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="text-tiny text-ink-300">Itérations Monte Carlo</label>
-                            <input type="number" min={MC_ITERATIONS_MIN} max={MC_ITERATIONS_MAX} step={50} value={projection.monteCarloIterations ?? MC_ITERATIONS_DEFAULT} onChange={e => updateProj('monteCarloIterations', Number(e.target.value))} className="w-full bg-dark border border-violet-500/20 rounded px-2 py-1 text-meta text-white" />
+                            <label htmlFor="app-monteCarloIterations" className="text-tiny text-ink-300">Itérations Monte Carlo</label>
+                            <input id="app-monteCarloIterations" type="number" min={MC_ITERATIONS_MIN} max={MC_ITERATIONS_MAX} step={50} value={projection.monteCarloIterations ?? MC_ITERATIONS_DEFAULT} onChange={e => updateProj('monteCarloIterations', Number(e.target.value))} className="w-full bg-dark border border-violet-500/20 rounded px-2 py-1 text-meta text-white" />
                             <p className="text-tiny text-ink-400 mt-1">100 = défaut, 500+ pour précision queues</p>
                         </div>
                         <div>
-                            <label className="text-tiny text-ink-300">Taille bloc bootstrap (mois)</label>
-                            <input type="number" min={12} max={120} step={12} value={projection.bootstrapBlockSize ?? 24} onChange={e => updateProj('bootstrapBlockSize', Number(e.target.value))} className="w-full bg-dark border border-violet-500/20 rounded px-2 py-1 text-meta text-white" />
+                            <label htmlFor="app-bootstrapBlockSize" className="text-tiny text-ink-300">Taille bloc bootstrap (mois)</label>
+                            <input id="app-bootstrapBlockSize" type="number" min={12} max={120} step={12} value={projection.bootstrapBlockSize ?? 24} onChange={e => updateProj('bootstrapBlockSize', Number(e.target.value))} className="w-full bg-dark border border-violet-500/20 rounded px-2 py-1 text-meta text-white" />
                             <p className="text-tiny text-ink-400 mt-1">24 = défaut (préserve corrélation 2 ans)</p>
                         </div>
                     </div>
@@ -112,17 +112,17 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {projection.divorceEnabled && <>
                                 <div>
-                                    <label className="text-tiny text-ink-300">Divorce: proba annuelle %</label>
-                                    <input type="number" step="0.1" value={(projection.divorceAnnualProbability ?? 0.015) * 100} onChange={e => updateProj('divorceAnnualProbability', Number(e.target.value) / 100)} className="w-full bg-dark border border-rose-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-divorceAnnualProbability" className="text-tiny text-ink-300">Divorce: proba annuelle %</label>
+                                    <input id="app-divorceAnnualProbability" type="number" step="0.1" value={(projection.divorceAnnualProbability ?? 0.015) * 100} onChange={e => updateProj('divorceAnnualProbability', Number(e.target.value) / 100)} className="w-full bg-dark border border-rose-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
-                                    <label className="text-tiny text-ink-300">Split patrimoine %</label>
+                                    <label htmlFor="app-divorceSplitPct" className="text-tiny text-ink-300">Split patrimoine %</label>
                                     {/* [ENG-DIVORCE-SPLITPCT-UNBOUNDED] `min`/`max` posent la borne
                                         NATIVE (steppers, validation), et `clampSplitPct` la garantit
                                         pour de vrai : un `<input type="number">` accepte parfaitement
                                         une valeur hors bornes tapée au clavier ou collée. La source
                                         unique est celle du moteur — pas de seconde règle ici. */}
-                                    <input type="number" min={0} max={100} value={projection.divorceSplitPct ?? DIVORCE_SPLIT_PCT_DEFAULT} onChange={e => updateProj('divorceSplitPct', clampSplitPct(Number(e.target.value)))} className="w-full bg-dark border border-rose-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <input type="number" id="app-divorceSplitPct" min={0} max={100} value={projection.divorceSplitPct ?? DIVORCE_SPLIT_PCT_DEFAULT} onChange={e => updateProj('divorceSplitPct', clampSplitPct(Number(e.target.value)))} className="w-full bg-dark border border-rose-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
                                     <label htmlFor="app-divorceAlimonyMonthly" className="text-tiny text-ink-300">Pension alimentaire $/mois</label>
@@ -131,22 +131,22 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                             </>}
                             {projection.ltdEnabled && <>
                                 <div>
-                                    <label className="text-tiny text-ink-300">LTD: proba annuelle %</label>
-                                    <input type="number" step="0.1" value={(projection.ltdAnnualProbability ?? 0.005) * 100} onChange={e => updateProj('ltdAnnualProbability', Number(e.target.value) / 100)} className="w-full bg-dark border border-yellow-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-ltdAnnualProbability" className="text-tiny text-ink-300">LTD: proba annuelle %</label>
+                                    <input id="app-ltdAnnualProbability" type="number" step="0.1" value={(projection.ltdAnnualProbability ?? 0.005) * 100} onChange={e => updateProj('ltdAnnualProbability', Number(e.target.value) / 100)} className="w-full bg-dark border border-yellow-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
-                                    <label className="text-tiny text-ink-300">% revenu maintenu</label>
-                                    <input type="number" value={projection.ltdIncomeReplacementPct ?? 60} onChange={e => updateProj('ltdIncomeReplacementPct', Number(e.target.value))} className="w-full bg-dark border border-yellow-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-ltdIncomeReplacementPct" className="text-tiny text-ink-300">% revenu maintenu</label>
+                                    <input id="app-ltdIncomeReplacementPct" type="number" value={projection.ltdIncomeReplacementPct ?? 60} onChange={e => updateProj('ltdIncomeReplacementPct', Number(e.target.value))} className="w-full bg-dark border border-yellow-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
-                                    <label className="text-tiny text-ink-300">Durée invalidité (mois)</label>
-                                    <input type="number" value={projection.ltdDurationMonths ?? 24} onChange={e => updateProj('ltdDurationMonths', Number(e.target.value))} className="w-full bg-dark border border-yellow-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-ltdDurationMonths" className="text-tiny text-ink-300">Durée invalidité (mois)</label>
+                                    <input id="app-ltdDurationMonths" type="number" value={projection.ltdDurationMonths ?? 24} onChange={e => updateProj('ltdDurationMonths', Number(e.target.value))} className="w-full bg-dark border border-yellow-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                             </>}
                             {projection.criticalIllnessEnabled && <>
                                 <div>
-                                    <label className="text-tiny text-ink-300">CI: proba annuelle %</label>
-                                    <input type="number" step="0.1" value={(projection.ciAnnualProbability ?? 0.003) * 100} onChange={e => updateProj('ciAnnualProbability', Number(e.target.value) / 100)} className="w-full bg-dark border border-pink-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-ciAnnualProbability" className="text-tiny text-ink-300">CI: proba annuelle %</label>
+                                    <input id="app-ciAnnualProbability" type="number" step="0.1" value={(projection.ciAnnualProbability ?? 0.003) * 100} onChange={e => updateProj('ciAnnualProbability', Number(e.target.value) / 100)} className="w-full bg-dark border border-pink-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
                                     <label htmlFor="app-ciPayoutAmount" className="text-tiny text-ink-300">Capital forfaitaire reçu $</label>
@@ -163,36 +163,36 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                                     <PrivateNumberInput type="number" id="app-inheritanceExpectedAmount" value={projection.inheritanceExpectedAmount ?? 0} onChange={e => updateProj('inheritanceExpectedAmount', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
-                                    <label className="text-tiny text-ink-300">À l'âge</label>
-                                    <input type="number" value={projection.inheritanceExpectedAtAge ?? 60} onChange={e => updateProj('inheritanceExpectedAtAge', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-inheritanceExpectedAtAge" className="text-tiny text-ink-300">À l'âge</label>
+                                    <input id="app-inheritanceExpectedAtAge" type="number" value={projection.inheritanceExpectedAtAge ?? 60} onChange={e => updateProj('inheritanceExpectedAtAge', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
-                                    <label className="text-tiny text-ink-300">Incertitude ± années</label>
-                                    <input type="number" value={projection.inheritanceUncertaintyYears ?? 5} onChange={e => updateProj('inheritanceUncertaintyYears', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-inheritanceUncertaintyYears" className="text-tiny text-ink-300">Incertitude ± années</label>
+                                    <input id="app-inheritanceUncertaintyYears" type="number" value={projection.inheritanceUncertaintyYears ?? 5} onChange={e => updateProj('inheritanceUncertaintyYears', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
-                                    <label className="text-tiny text-ink-300">Probabilité 0-1</label>
-                                    <input type="number" step="0.1" min={0} max={1} value={projection.inheritanceProbability ?? 0.8} onChange={e => updateProj('inheritanceProbability', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-inheritanceProbability" className="text-tiny text-ink-300">Probabilité 0-1</label>
+                                    <input id="app-inheritanceProbability" type="number" step="0.1" min={0} max={1} value={projection.inheritanceProbability ?? 0.8} onChange={e => updateProj('inheritanceProbability', Number(e.target.value))} className="w-full bg-dark border border-warning-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                             </>}
                             {projection.jobLossEnabled && <>
                                 <div>
-                                    <label className="text-tiny text-ink-300">Perte emploi: proba annuelle %</label>
-                                    <input type="number" step="0.5" value={(projection.jobLossAnnualProbability ?? 0.03) * 100} onChange={e => updateProj('jobLossAnnualProbability', Number(e.target.value) / 100)} className="w-full bg-dark border border-orange-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-jobLossAnnualProbability" className="text-tiny text-ink-300">Perte emploi: proba annuelle %</label>
+                                    <input id="app-jobLossAnnualProbability" type="number" step="0.5" value={(projection.jobLossAnnualProbability ?? 0.03) * 100} onChange={e => updateProj('jobLossAnnualProbability', Number(e.target.value) / 100)} className="w-full bg-dark border border-orange-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
-                                    <label className="text-tiny text-ink-300">Durée chômage (mois)</label>
-                                    <input type="number" value={projection.jobLossDurationMonths ?? 6} onChange={e => updateProj('jobLossDurationMonths', Number(e.target.value))} className="w-full bg-dark border border-orange-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-jobLossDurationMonths" className="text-tiny text-ink-300">Durée chômage (mois)</label>
+                                    <input id="app-jobLossDurationMonths" type="number" value={projection.jobLossDurationMonths ?? 6} onChange={e => updateProj('jobLossDurationMonths', Number(e.target.value))} className="w-full bg-dark border border-orange-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                             </>}
                             {projection.modelSurvivor && <>
                                 <div>
-                                    <label className="text-tiny text-ink-300">Survivant: % RRQ versé</label>
-                                    <input type="number" value={projection.rrqSurvivorPct ?? 60} onChange={e => updateProj('rrqSurvivorPct', Number(e.target.value))} className="w-full bg-dark border border-slate-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-rrqSurvivorPct" className="text-tiny text-ink-300">Survivant: % RRQ versé</label>
+                                    <input id="app-rrqSurvivorPct" type="number" value={projection.rrqSurvivorPct ?? 60} onChange={e => updateProj('rrqSurvivorPct', Number(e.target.value))} className="w-full bg-dark border border-slate-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                                 <div>
-                                    <label className="text-tiny text-ink-300">% DB conjoint conservé</label>
-                                    <input type="number" value={projection.spouseDbSurvivorPct ?? 60} onChange={e => updateProj('spouseDbSurvivorPct', Number(e.target.value))} className="w-full bg-dark border border-slate-500/20 rounded px-2 py-1 text-meta text-white" />
+                                    <label htmlFor="app-spouseDbSurvivorPct" className="text-tiny text-ink-300">% DB conjoint conservé</label>
+                                    <input id="app-spouseDbSurvivorPct" type="number" value={projection.spouseDbSurvivorPct ?? 60} onChange={e => updateProj('spouseDbSurvivorPct', Number(e.target.value))} className="w-full bg-dark border border-slate-500/20 rounded px-2 py-1 text-meta text-white" />
                                 </div>
                             </>}
                         </div>
@@ -205,8 +205,8 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                     {projection.snowbirdEnabled && (
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="text-tiny text-ink-300">Mois passés à l'étranger/an</label>
-                                <input type="number" value={projection.snowbirdMonthsPerYear ?? 5} onChange={e => updateProj('snowbirdMonthsPerYear', Number(e.target.value))} className="w-full bg-dark border border-cyan-500/20 rounded px-2 py-1 text-meta text-white" />
+                                <label htmlFor="app-snowbirdMonthsPerYear" className="text-tiny text-ink-300">Mois passés à l'étranger/an</label>
+                                <input id="app-snowbirdMonthsPerYear" type="number" value={projection.snowbirdMonthsPerYear ?? 5} onChange={e => updateProj('snowbirdMonthsPerYear', Number(e.target.value))} className="w-full bg-dark border border-cyan-500/20 rounded px-2 py-1 text-meta text-white" />
                             </div>
                             <div>
                                 <label htmlFor="app-snowbirdExtraMonthlyCost" className="text-tiny text-ink-300">Surcoût mensuel ($)</label>
@@ -229,24 +229,24 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                             <PrivateNumberInput type="number" id="app-boomerangSupportMonthly" value={projection.boomerangSupportMonthly ?? 0} onChange={e => updateProj('boomerangSupportMonthly', Number(e.target.value))} className="w-full bg-dark border border-success-500/20 rounded px-2 py-1 text-meta text-white" />
                         </div>
                         <div>
-                            <label className="text-tiny text-emerald-300">Début (âge user)</label>
-                            <input type="number" value={projection.boomerangStartAge ?? 0} onChange={e => updateProj('boomerangStartAge', Number(e.target.value))} className="w-full bg-dark border border-success-500/20 rounded px-2 py-1 text-meta text-white" />
+                            <label htmlFor="app-boomerangStartAge" className="text-tiny text-emerald-300">Début (âge user)</label>
+                            <input id="app-boomerangStartAge" type="number" value={projection.boomerangStartAge ?? 0} onChange={e => updateProj('boomerangStartAge', Number(e.target.value))} className="w-full bg-dark border border-success-500/20 rounded px-2 py-1 text-meta text-white" />
                         </div>
                         <div>
-                            <label className="text-tiny text-emerald-300">Durée (mois)</label>
-                            <input type="number" value={projection.boomerangDurationMonths ?? 0} onChange={e => updateProj('boomerangDurationMonths', Number(e.target.value))} className="w-full bg-dark border border-success-500/20 rounded px-2 py-1 text-meta text-white" />
+                            <label htmlFor="app-boomerangDurationMonths" className="text-tiny text-emerald-300">Durée (mois)</label>
+                            <input id="app-boomerangDurationMonths" type="number" value={projection.boomerangDurationMonths ?? 0} onChange={e => updateProj('boomerangDurationMonths', Number(e.target.value))} className="w-full bg-dark border border-success-500/20 rounded px-2 py-1 text-meta text-white" />
                         </div>
                         <div>
                             <label htmlFor="app-caregivingMonthly" className="text-tiny text-emerald-300">Caregiving $/mois</label>
                             <PrivateNumberInput type="number" id="app-caregivingMonthly" value={projection.caregivingMonthly ?? 0} onChange={e => updateProj('caregivingMonthly', Number(e.target.value))} className="w-full bg-dark border border-success-500/20 rounded px-2 py-1 text-meta text-white" />
                         </div>
                         <div>
-                            <label className="text-tiny text-emerald-300">Début (âge user)</label>
-                            <input type="number" value={projection.caregivingStartAge ?? 0} onChange={e => updateProj('caregivingStartAge', Number(e.target.value))} className="w-full bg-dark border border-success-500/20 rounded px-2 py-1 text-meta text-white" />
+                            <label htmlFor="app-caregivingStartAge" className="text-tiny text-emerald-300">Début (âge user)</label>
+                            <input id="app-caregivingStartAge" type="number" value={projection.caregivingStartAge ?? 0} onChange={e => updateProj('caregivingStartAge', Number(e.target.value))} className="w-full bg-dark border border-success-500/20 rounded px-2 py-1 text-meta text-white" />
                         </div>
                         <div>
-                            <label className="text-tiny text-emerald-300">Durée (mois)</label>
-                            <input type="number" value={projection.caregivingDurationMonths ?? 0} onChange={e => updateProj('caregivingDurationMonths', Number(e.target.value))} className="w-full bg-dark border border-success-500/20 rounded px-2 py-1 text-meta text-white" />
+                            <label htmlFor="app-caregivingDurationMonths" className="text-tiny text-emerald-300">Durée (mois)</label>
+                            <input id="app-caregivingDurationMonths" type="number" value={projection.caregivingDurationMonths ?? 0} onChange={e => updateProj('caregivingDurationMonths', Number(e.target.value))} className="w-full bg-dark border border-success-500/20 rounded px-2 py-1 text-meta text-white" />
                         </div>
                     </div>
                 </div>
@@ -300,12 +300,12 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                     <p className="text-tiny text-ink-400 mb-2 italic">Override des taux par défaut (crypto/cash absents de la grille principale).</p>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="text-tiny text-ink-300">Rendement crypto annuel (%)</label>
-                            <input type="number" step="0.5" value={projection.returnRates?.crypto ?? 10} onChange={e => updateProj('returnRates', { ...projection.returnRates, crypto: Number(e.target.value) })} className="w-full bg-dark border border-teal-500/20 rounded px-2 py-1 text-meta text-white" />
+                            <label htmlFor="app-returnRates-crypto" className="text-tiny text-ink-300">Rendement crypto annuel (%)</label>
+                            <input id="app-returnRates-crypto" type="number" step="0.5" value={projection.returnRates?.crypto ?? 10} onChange={e => updateProj('returnRates', { ...projection.returnRates, crypto: Number(e.target.value) })} className="w-full bg-dark border border-teal-500/20 rounded px-2 py-1 text-meta text-white" />
                         </div>
                         <div>
-                            <label className="text-tiny text-ink-300">Rendement cash/HISA annuel (%)</label>
-                            <input type="number" step="0.1" value={projection.returnRates?.cash ?? 3} onChange={e => updateProj('returnRates', { ...projection.returnRates, cash: Number(e.target.value) })} className="w-full bg-dark border border-teal-500/20 rounded px-2 py-1 text-meta text-white" />
+                            <label htmlFor="app-returnRates-cash" className="text-tiny text-ink-300">Rendement cash/HISA annuel (%)</label>
+                            <input id="app-returnRates-cash" type="number" step="0.1" value={projection.returnRates?.cash ?? 3} onChange={e => updateProj('returnRates', { ...projection.returnRates, cash: Number(e.target.value) })} className="w-full bg-dark border border-teal-500/20 rounded px-2 py-1 text-meta text-white" />
                         </div>
                     </div>
                 </div>

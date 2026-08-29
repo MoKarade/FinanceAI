@@ -17,7 +17,10 @@
 //
 // ⚠️ Les `<label>` de ce fichier n'étaient associés à AUCUN champ (ni `htmlFor`/`id`, ni
 // enveloppement). Les 14 boutons masqués auraient donc été ANONYMES et indistinguables — la leçon
-// `BudgetGroupTable` de #629. L'association est câblée pour ces 14 champs, et testée.
+// `BudgetGroupTable` de #629. L'association a été câblée pour ces 14 champs, et testée.
+// ⚠️ Depuis `[A11Y-LABELS-PARAMS-AVANCES]` (lot 50), les **40** champs du fichier sont câblés, pas
+// seulement les 14 montants : le préfixe `app-` ne désigne donc plus « un montant ». Les assertions
+// de ce fichier visent les 14 ids de `MONTANTS`, jamais le préfixe.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, cleanup, act, fireEvent } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
@@ -172,7 +175,14 @@ describe('[A11Y-PRIVACY-PARAMS-AVANCES] nom accessible des champs masqués', () 
             .map((el) => el?.getAttribute('aria-label') ?? el?.textContent ?? '');
         expect(noms).toHaveLength(14);
         // Le nom vient du <label htmlFor>, donc hors du bouton : on compare les libellés visibles.
-        const libelles = [...container.querySelectorAll('label[for^="app-"]')].map((l) => l.textContent ?? '');
+        // ⚠️ Le sélecteur vise les 14 ids de MONTANTS, PAS le préfixe `app-` : depuis
+        // `[A11Y-LABELS-PARAMS-AVANCES]` (lot 50), les 40 champs du fichier portent ce préfixe, et
+        // `label[for^="app-"]` en remontait 36. Le préfixe n'a jamais désigné « les montants » — il
+        // le faisait par ACCIDENT, parce que seuls les montants avaient été câblés. Un sélecteur qui
+        // se trouve juste ne dit pas ce qu'il vise ; celui-ci le dit.
+        const libelles = Object.keys(MONTANTS)
+            .map((cle) => container.querySelector(`label[for="app-${cle}"]`)?.textContent ?? '')
+            .filter((t) => t !== '');
         expect(libelles, 'un champ montant a perdu son <label>').toHaveLength(14);
         expect(new Set(libelles).size, 'deux champs montants portent le MÊME libellé').toBe(14);
     });

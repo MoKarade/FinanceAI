@@ -1411,9 +1411,20 @@
 
 ### 🔴 Argent — valeurs fausses ou silencieuses
 
-- [ ] **`[BACKUP-SCHEMA-NON-TYPE]`** (M, CRITIQUE) — le schéma de restauration valide les conteneurs
-  money-critical en `z.unknown()` / `z.array(z.unknown())` (`components/settings/BackupPanel.tsx:18-40`) :
-  aucune contrainte de TYPE. Une valeur restaurée depuis un backup ou un blob Drive peut donc revenir
+- [ ] **`[BACKUP-SCHEMA-NON-TYPE]`** (M, CRITIQUE) — ⚠️ **l'ID nomme UN vecteur, il y en a DEUX** (le
+  ticket a été écrit à chaud à la 4ᵉ passe du lot 38 et prescrivait le mauvais endroit pour la moitié
+  du canal ; l'ID est conservé parce qu'il est déjà cité dans `CLAUDE.md`, `docs/CONVENTIONS.md` et
+  un commit mergé, mais **lire la correction ci-dessous avant de coder**) :
+  · **Backup JSON** (`components/settings/BackupPanel.tsx:18-45`) — `debts`, `realEstateGoals`,
+    `retirementGoal`, `childGoals`, `lifeEvents`, `travelGoals`, `insurancePolicies`,
+    `rentalProperties`, `privateBusinesses`, `vehicleReplacements`, `majorRenovations`,
+    `charitableGoals`, `financialGoals` en `z.unknown()`.
+  · **Blob du store** (`financeai-storage` : localStorage ET sync Drive) — `createJSONStorage` fait un
+    `JSON.parse` sans AUCUNE validation de type, et `partialize` persiste tout sauf six champs
+    transitoires. C'est **le seul** vecteur de `projection` : `buildBackupPayload`
+    (`components/Settings.tsx:134-159`) ne l'exporte pas, donc durcir `BackupPanel` seul laisserait
+    le canal à −68 M$ grand ouvert.
+  Aucun des deux ne porte de contrainte de TYPE. Une valeur restaurée depuis un backup ou un blob Drive peut donc revenir
   en **chaîne** dans un champ monétaire, et une chaîne traverse toute l'arithmétique sans jamais
   devenir non finie. ⚠️ **La garde d'entrée du moteur ne la voit pas** : `verifierEntreesMoteur`
   scanne la FINITUDE de tout l'objet des paramètres, mais le TYPE seulement sur les champs nommés
@@ -1426,6 +1437,17 @@
   (`z.number().finite()` par champ monétaire) dans le schéma de restauration. Le même geste ferme le
   cas voisin du **champ ABSENT** (`acc + undefined` = `NaN`), aujourd'hui refusé par un dérivé dont
   le libellé ne nomme aucun champ corrigeable — déjà noté dans `verifierEntreesMoteur.ts`. [MESURÉ]
+  ⚠️ **FOURCHE, à trancher avant de coder** — et elle CONTREDIT une décision écrite dans le fichier :
+  `BackupPanel` dit en toutes lettres « c'est un chemin de RESTAURATION : on préfère accepter large
+  plutôt que rejeter un backup légitime ». Sa justification vise la FORME (un enregistrement qui a
+  évolué, des champs inconnus) — pas le TYPE d'un montant, où « accepter large » veut dire accepter
+  un chiffre faux. Reste à décider ce qu'on fait d'un fichier non conforme : refuser tout, ou
+  restaurer le reste en nommant ce qui est écarté (ce second choix rouvre `no-fake-data` — un état
+  partiellement restauré est un état que personne n'a saisi). Coût mesuré de l'option « schéma
+  complet » : **150 champs numériques sur 14 conteneurs**, soit un doublon des types TS qui dérivera
+  (`DOC-METRIQUE-RECOPIEE` appliqué au code). Une piste moins chère existe et s'évalue d'abord :
+  lister les champs TEXTE (petits, stables) plutôt que les 150 champs numériques — l'oubli coûte
+  alors un faux refus BRUYANT au lieu d'un canal ouvert en silence.
 
 ### 🔴 Interface — atteignabilité et clavier
 

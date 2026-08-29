@@ -8536,9 +8536,19 @@ même `JSON.parse` non typé (le schéma de restauration valide ces conteneurs e
 
 MESURÉ, persona `couple-confort`, 30 ans : une chaîne dans un montant de projet immobilier →
 **−52 %** (−3 095 835 $) ; `projection.inflationRate = "2"` → **−68 M$**. Chaque fois **0 refus** et
-**0 valeur non finie publiée**. Le correctif tient à la SOURCE — typer le schéma de restauration —
+**0 valeur non finie publiée**. Le correctif tient à la SOURCE — typer les entrées non validées —
 et surtout pas dans un cinquième ajout à la garde : c'est ce réflexe-là qui a produit les trois
 premières passes (`[BACKUP-SCHEMA-NON-TYPE]`).
+
+⚠️ **Et le ticket que j'ai écrit à chaud nommait le mauvais endroit pour la moitié du canal** — la
+faute que ce même lot venait de corriger dans un libellé d'écran, re-commise dans un ticket deux
+heures plus tard. Il prescrivait « typer le schéma de restauration », c'est-à-dire `BackupPanel`.
+Or `buildBackupPayload` n'exporte PAS `projection` : le canal à −68 M$ passe par le blob du store
+(`financeai-storage`, `createJSONStorage` = `JSON.parse` sans validation, persisté en localStorage
+ET poussé sur Drive). Durcir le backup seul l'aurait laissé grand ouvert, avec un ticket coché.
+**Un vecteur se vérifie en lisant le PRODUCTEUR du fichier, pas le nom du schéma qui le lit** — et
+la vérification prend une minute (`grep buildBackupPayload`), contre un lot entier passé au mauvais
+endroit.
 
 **Quand une liste est-elle acceptable, alors ?** La carte des conteneurs ajoutée à ce tour en est
 une, et elle est saine : elle ne décide pas ce qui est VÉRIFIÉ, seulement ce qu'on SAIT DIRE. Un

@@ -14,6 +14,8 @@
 // La liste est AUTO-EXTRAITE des fichiers source à chaque run → reste en phase avec les valeurs
 // chaque année (aucune liste figée à maintenir).
 
+import { stripComments } from './stripComments';
+
 /** Littéral à ignorer sur une ligne portant ce marqueur (faux positif légitime documenté). */
 export const FISCAL_CONST_ESCAPE = 'fiscal-const-ok';
 
@@ -21,21 +23,13 @@ const DISTINCTIVE_INT = /(?<![\d.])\d{5,}(?![\d.])/g;          // ≥ 5 chiffres
 const DISTINCTIVE_RATE = /(?<![\d.])0\.\d{4}(?![\d])/g;        // 0.dddd (4 décimales exactement)
 
 /**
- * Remplace les commentaires (`//…` et `/* … *\/`) par des espaces, en PRÉSERVANT les sauts de ligne
- * (donc les numéros de ligne). Indispensable : sans ça, les numéros de ligne de formulaire ARC cités
- * en commentaire (« ARC ligne 23500 ») polluent à la fois l'extraction ET le scan (faux positifs des
- * deux côtés). On ne raisonne JAMAIS sur du texte de commentaire ici.
+ * [GUARD-STRIPCOMMENTS-CONSOLIDER] Décommentage délégué à la SOURCE UNIQUE (`utils/stripComments.ts`).
  *
- * ⚠️ Angle mort assumé (pas de parser TS) : un `//` DANS une string (`"http://…/58523"`) est traité
- * comme un commentaire → le reste de la ligne est stripé. Conséquence = un littéral fiscal placé
- * APRÈS un `//` dans une string échapperait au scan (faux négatif). Cas irréaliste en code fiscal
- * (personne ne met un seuil dans une URL) ; un seuil dans une string normale, lui, reste détecté.
+ * ⚠️ La copie locale qui vivait ici DOCUMENTAIT son propre défaut — « un `//` dans une string strippe
+ * le reste de la ligne… cas irréaliste en code fiscal ». C'était vrai POUR ELLE, et faux dès que le
+ * même décommenteur sert ailleurs : 37 fichiers du dépôt portent une URL dans un littéral de chaîne
+ * (mesuré). La source unique protège les littéraux, donc la réserve n'a plus lieu d'être.
  */
-function stripComments(source: string): string {
-    return source
-        .replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
-        .replace(/\/\/[^\n]*/g, m => ' '.repeat(m.length));
-}
 
 /**
  * Extrait les littéraux fiscaux DISTINCTIFS (non-collisionnables) des sources fiscales.

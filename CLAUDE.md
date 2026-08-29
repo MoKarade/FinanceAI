@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 909 tests** Vitest
-(464 fichiers de test, mesuré le 2026-08-29). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 927 tests** Vitest
+(466 fichiers de test, mesuré le 2026-08-29). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -928,6 +928,25 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   sinon « rien ne référence X » se prouve à partir de « il n'y a plus rien ». Ne PAS interdire la
   mention : la garde protège le code, la prose garde le droit de raconter l'histoire
   (`SCAN-QUI-MATCHE-LA-PROSE`).
+- **Quand une contrainte interdit la BONNE solution, la livraison est le FILET, pas une meilleure
+  approximation** : décider si un `/` ouvre une regex exige un analyseur, mais `utils/stripComments.ts`
+  est importé par une garde qui part dans le BUNDLE et `typescript` est une devDependency — la
+  contrainte qui fixe l'emplacement du module interdit sa solution correcte. Cinq passes de panel,
+  cinq défauts réels et tous DORMANTS ; ce qui a changé de main, c'est le canari. ⚠️ Et son premier
+  jet comparait le code gardé en RATIO DE FICHIER : deux défauts sans rapport se compensaient et il
+  restait vert sur un fichier avalé — **deux pertes indépendantes ne se comparent pas en agrégat**,
+  le même invariant ligne par ligne est insensible. Signal de conduite : cinq passes productives sur
+  un même mécanisme disent de REFORMULER le problème, pas d'en faire une sixième
+  (`QUAND-UNE-CONTRAINTE-INTERDIT-LA-BONNE-SOLUTION-LIVRER-LE-FILET`).
+  ⚠️ Et un décommenteur par REGEX est faux : `'https://…'` contient `//`, donc il ampute la ligne —
+  une soixantaine de fichiers du dépôt en sortent différents (`scripts/mesureStripComments.mjs`
+  re-dérive le compte ; un agrégat sur un arbre mouvant se cite par sa COMMANDE, pas par son
+  chiffre), dont ceux d'une garde qui se mutilait elle-même. La source unique est `utils/stripComments.ts`
+  (automate, pur, sans `node:fs` — il doit rester atteignable depuis le bundle). Elle **BLANCHIT**
+  au lieu de supprimer, parce que les gardes qui reportent un numéro de ligne l'exigent : avant
+  d'unifier N copies, comparer leurs CONTRATS. Corollaire : l'anti-vacuité ne peut plus se mesurer
+  sur la longueur (inchangée par construction) mais sur les caractères NON BLANCS
+  (`UN-DECOMMENTEUR-NAIF-MANGE-LE-CODE-APRES-UNE-URL`).
   ⚠️ Et avant d'écrire un utilitaire de scan, **grep le CONCEPT, pas le symbole** : le dépôt avait
   déjà SIX décommenteurs, aucun exporté, dont deux portant en commentaire la leçon exacte que je
   venais de repayer — l'un ayant même choisi le même nom de helper (`GUARD-STRIPCOMMENTS-DUPLIQUE`).

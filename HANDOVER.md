@@ -4,7 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟦 Session 2026-08-29 — Lot 36 : trois oublis d'accessibilité dans le bloc Rééquilibrage (PR à ouvrir)
+> ## 🟦 Session 2026-08-29 — Lot 37 : un décommenteur qui mangeait le code après une URL (PR à ouvrir)
+> `[GUARD-STRIPCOMMENTS-CONSOLIDER]` — les décommenteurs `stripComments` recopiés du dépôt étaient
+> tous NAÏFS : un `//` dans un littéral de chaîne ampute la ligne. Une soixantaine de fichiers en
+> sortent différents, pour ~8 800 caractères de code jetés — `scripts/mesureStripComments.mjs`
+> (committé) re-dérive le compte, qui bouge avec l'arbre. L'un des fichiers mutilés était lui-même
+> une garde.
+> - Source unique : `utils/stripComments.ts`, un automate qui protège chaînes, gabarits et regex.
+>   PUR et dans `utils/` parce que `chartDataSumGuard` part dans le bundle du navigateur ; il
+>   **BLANCHIT** au lieu de supprimer (les gardes fiscales reportent des numéros de ligne) ; donc
+>   l'anti-vacuité compte les caractères NON BLANCS et plus la longueur, qui est désormais constante.
+> - « Aucune garde fiscale n'a bougé » est EXPLIQUÉ : les 21 modules de `FISCAL_MODULES` sont
+>   inchangés par le durcissement (mesuré). Préventif ici, curatif ailleurs.
+> - **Reste routé** (`[GUARD-STRIPCOMMENTS-MIGRER-LES-TESTS]`) : 15 copies dans des fichiers de test,
+>   comptées par un ratchet neuf, non bloquant par conception. Le ticket en annonçait six.
+>
+> ## 🟢 Session 2026-08-29 — Lot 36 : trois oublis d'accessibilité dans le bloc Rééquilibrage (PR #762, MERGÉE)
 > `[A11Y-REBALANCE-CIBLES]` — les trois findings routés par le panel du lot 35, tous PRÉ-EXISTANTS
 > depuis le 2026-07-31 et tous des oublis LOCAUX : cinq champs de cible au même nom accessible,
 > alerte du total sans `role="status"` (le patron était quelques lignes plus haut dans la MÊME

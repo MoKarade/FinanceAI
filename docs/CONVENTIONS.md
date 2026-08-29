@@ -8186,3 +8186,168 @@ avant toute assertion de compte, je venais de l'écrire deux lots plus tôt, et 
 le geste même de contrôler un rapport d'agent. Un comptage à la main n'est pas plus fiable qu'un
 comptage d'agent — c'est l'OUTIL qui l'est, et `tests/helpers/source.ts` existe pour ça
 (`COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`).
+
+---
+
+## Lot 37 (2026-08-29) — le décommenteur mangeait le code après une URL
+
+`[GUARD-STRIPCOMMENTS-CONSOLIDER]`. Le dépôt portait des décommenteurs `stripComments` recopiés,
+tous fondés sur deux `replace` naïfs. Un `//` dans un littéral de chaîne — une URL, donc — ampute la
+ligne à partir de là.
+
+**Ce n'était pas théorique** : une soixantaine de fichiers du dépôt rendent une sortie différente
+entre le naïf et le durci, pour de l'ordre de 8 800 caractères de code jetés. Le pire cas est
+`services/aiTools/registry.ts`, à **1 380 caractères** — et l'un des fichiers mutilés était lui-même
+**une garde**, qui scannait donc sa propre source amputée.
+
+⚠️ **Ces deux agrégats ne se citent pas au chiffre près, et c'est une leçon en soi.** Le panel les a
+recalculés et obtenu autre chose que moi ; les deux mesures étaient justes, portant sur des
+INSTANTANÉS différents de l'arbre — chaque fichier ajouté au lot déplace le total. D'où
+`scripts/mesureStripComments.mjs`, **committé**, qui nomme ses deux paramètres (la liste de fichiers
+et la version naïve de référence). Un chiffre agrégé sur un arbre mouvant se remplace par la
+COMMANDE qui le re-dérive : une commande périmée échoue bruyamment, un chiffre périmé se lit comme
+un fait. Restent citables tels quels : le pire cas (stable, reproduit à l'identique par le panel) et
+le fait qualitatif.
+
+`utils/fiscalConstantsGuard.ts` DOCUMENTAIT le défaut en le jugeant acceptable : « cas irréaliste en
+code fiscal ». C'était vrai **pour lui** et faux dès que le même décommenteur sert ailleurs — une
+justification locale ne survit pas à l'extraction en source unique. C'est le préalable que le ticket
+avait raison d'exiger : durcir AVANT l'adoption large.
+
+**Trois décisions de conception, chacune imposée par une contrainte, pas par le goût :**
+
+- **Le module est PUR et vit dans `utils/`.** `utils/chartDataSumGuard.ts` est importé par un
+  composant, donc il part dans le bundle du navigateur : un helper sous `tests/` (qui touche
+  `node:fs`) lui serait inatteignable. Avant d'extraire une source unique, vérifier que chaque site
+  peut l'appeler avec ce dont il dispose (`HELPER-INAPPELABLE-PAR-SON-CONSOMMATEUR`).
+- **Il BLANCHIT au lieu de supprimer.** Les copies d'`utils/` remplaçaient les commentaires par des
+  espaces — les gardes fiscales reportent des numéros de ligne, `chartDataSumGuard` travaille ligne
+  à ligne — là où celle de `tests/` supprimait purement. **Deux contrats, pas un.** Blanchir est le
+  sur-ensemble : qui n'a pas besoin des positions ne perd rien, l'inverse aurait cassé en silence
+  les gardes qui pointent une ligne. Avant d'unifier N copies, comparer leurs CONTRATS, pas leurs
+  intentions.
+- **Donc l'anti-vacuité change de grandeur.** Puisqu'on blanchit, la longueur est inchangée par
+  construction : le `code.length / raw.length` de la version précédente vaudrait **toujours 1**, et
+  l'anti-vacuité serait elle-même vacueuse. Elle compte désormais les caractères NON BLANCS. Une
+  garde de vacuité doit être re-dérivée quand la fonction qu'elle surveille change de forme.
+
+**« Aucune garde fiscale n'a bougé » est un résultat EXPLIQUÉ, pas un feu vert** : les 21 modules de
+`FISCAL_MODULES` sont tous inchangés par le durcissement (mesuré, un par un). Aucun ne porte d'URL.
+Le durcissement est donc *préventif* sur ce périmètre et *curatif* ailleurs — et c'est ça qu'il faut
+écrire, plutôt que de laisser croire qu'on a corrigé un faux négatif fiscal.
+
+**Corollaires :**
+
+- **Le périmètre annoncé était, une fois de plus, une borne inférieure** : le ticket disait SIX
+  copies ; le ratchet en compte **15** rien que dans les fichiers de test, après migration des trois
+  gardes d'`utils/`. Et mon premier scan d'inventaire avait des FAUX NÉGATIFS — il ratait justement
+  les trois copies que le ticket nommait, dont la forme multi-lignes échappait à mon motif. Un
+  inventaire se valide en vérifiant qu'il retrouve les cas DÉJÀ CONNUS.
+- **Un plafond de ratchet se COMPTE, il ne s'estime pas.** J'ai écrit `PLAFOND = 12` au jugé avant
+  de mesurer 15 : un ratchet dont le plafond est faux naît soit rouge, soit trop lâche — dans les
+  deux cas il ne protège rien.
+- La garde naît **non bloquante** sur les copies restantes, avec sa raison datée dans le code : leur
+  migration change le contrat de leurs appelants, donc elle appartient à un ticket de correction. Le
+  basculement en interdiction en sera la dernière étape (`UN-DECOMMENTEUR-NAIF-MANGE-LE-CODE-APRES-UNE-URL`).
+
+
+### Corollaire du lot 37 — trois passes, trois formulations fausses de la MÊME règle
+
+L'heuristique « ce `/` ouvre-t-il une regex ou est-ce une division ? » a été fausse **trois fois de
+suite**, chaque correctif produisant l'erreur inverse du précédent :
+
+| Version | Règle | Ce qu'elle casse |
+|---|---|---|
+| 1 | le dernier caractère significatif | `a++ / 2` → regex (faux) |
+| 2 | les deux derniers caractères significatifs | `a++ + <regex>` → division (faux) |
+| 3 | les deux derniers caractères ADJACENTS | `x+++<regex>` → division (faux) |
+| 4 | la **PARITÉ** du run de signes adjacents | — |
+
+**Le motif est plus intéressant que le bug** : les versions 1 à 3 approchaient un CAS ; la version 4
+énonce la RÈGLE (JS tokenise gloutonnement de gauche à droite, donc un run pair de signes se termine
+par un `++` complet et un run impair laisse un opérateur seul). Tant qu'on corrige le contre-exemple
+qu'on vient de recevoir, on produit le contre-exemple suivant. Le signal qu'on est dans ce piège :
+**chaque correctif est décrit par une longueur** (« un caractère », « deux caractères », « deux
+caractères adjacents ») plutôt que par le mécanisme qu'il modélise.
+
+**Et le défaut le plus RÉPANDU n'est apparu qu'à la troisième passe** : `PEUT_TERMINER_UNE_EXPRESSION`
+ne contenait ni guillemet ni accolade fermante, donc **tout JSX auto-fermant** (`<Icon className="a" />`,
+`<Icon n={1} />`) ouvrait un faux état regex — 90 fichiers `.tsx` du dépôt portent la première forme.
+Les trois passes s'étaient concentrées sur `++`/`--`, qui n'existe nulle part dans le dépôt. On
+cherche le cas exotique parce qu'il est intellectuellement saillant, pas parce qu'il est fréquent :
+devant une heuristique de syntaxe, **compter les occurrences RÉELLES de chaque forme** avant de
+décider laquelle mérite un test.
+
+Enfin, un ordre de grandeur qui varie encore : le script committé rend 59 fichiers et 9 232
+caractères après ces correctifs, contre 61 / 8 835 avant. C'est normal et c'est le but — le durci
+change, donc l'écart au naïf change. La commande reste la source, jamais le nombre
+(`TROIS-PASSES-TROIS-FORMULATIONS-FAUSSES-DE-LA-MEME-REGLE`).
+
+
+### Corollaire du lot 37, 4e passe — une GARANTIE fausse est pire que pas de garantie
+
+J'avais écrit, en assumant la borne du compromis : « l'erreur reste bornée à la ligne (l'état
+`regex` se referme sur le `\n`) ». **C'est vrai dans un sens et faux dans l'autre**, et je n'avais
+vérifié que celui qui m'arrangeait.
+
+- Division prise pour une REGEX → l'état `regex` se referme bien sur le saut de ligne. Borné.
+- Vraie regex prise pour une DIVISION → l'automate reste en `code` et lit le CONTENU de la regex
+  comme du code. Or une classe de caractères peut légalement porter la séquence d'ouverture d'un
+  commentaire de bloc, qui n'est alors refermée que par le prochain marqueur littéral —
+  éventuellement jamais. **Mesuré : tout le reste du fichier est blanchi**, et une garde bâtie
+  dessus devient aveugle sans que rien ne rougisse.
+
+Sur un module qui sert de SOURCE UNIQUE à trois gardes fiscales, une garantie écrite et fausse est
+plus dangereuse que l'absence de garantie : elle dispense la prochaine session de vérifier.
+
+**Ce qui protège vraiment n'est pas un meilleur commentaire, c'est un CANARI — et il ne pouvait pas
+être agrégé.** L'anti-vacuité du ratchet compare le code restant à l'échelle du dépôt : un fichier
+avalé sur plusieurs millions de caractères ne déplace pas le ratio. Il fallait la mesure FICHIER PAR
+FICHIER.
+
+⚠️ Et mon premier canari posait un SEUIL au jugé (« au moins 15 % de code restant »), qui a rougi
+immédiatement sur `services/projection/modelAssumptions.ts`, légitimement à **6,6 %** — c'est de la
+documentation exécutable. Deuxième seuil inventé du même lot après le plafond du ratchet. **La
+formulation juste ne demande aucun seuil** : le décommenteur durci protège des littéraux, donc il
+garde TOUJOURS au moins autant de code que le naïf — sauf s'il engloutit. La comparaison est son
+propre étalon et reste vraie quelle que soit la proportion de prose du fichier. Devant une garde qui
+réclame un seuil, chercher d'abord l'INVARIANT qui s'en passe.
+
+Dernier détail qui vaut d'être noté : ce canari a besoin de la version naïve comme point de
+comparaison, donc le fichier de garde contient lui-même un décommenteur — et le ratchet l'a
+détecté, ce qui était le bon comportement. L'exemption est déclarée AVEC sa raison, à côté de celle
+de la source unique (`UNE-GARANTIE-FAUSSE-EST-PIRE-QUE-PAS-DE-GARANTIE`).
+
+
+### Corollaire du lot 37, 5e passe — quand une contrainte interdit la bonne solution, livrer le FILET
+
+Cinquième passe, cinquième défaut réel dans le correctif de la quatrième : un run de signes précédé
+d'un MOT-CLÉ (`return ++<regex>` — un mot-clé finit par une lettre, donc il « pouvait terminer une
+expression »), un identifiant ACCENTUÉ que `\w` ne matche pas sans le drapeau `u` (dans un dépôt qui
+écrit tout en français), et surtout **un angle mort du canari lui-même**.
+
+**L'angle mort du canari mérite d'être retenu** : je comparais le code gardé par le durci à celui
+gardé par le naïf, en RATIO DE FICHIER. Deux défauts indépendants dans le même fichier se
+compensent — le naïf perdait beaucoup sur un gabarit portant des `//`, le durci engloutissait
+ailleurs, et comme le durci gardait plus AU TOTAL, la garde restait verte sur un fichier bel et bien
+avalé. **Deux pertes sans rapport ne se comparent pas en agrégat.** Ramené LIGNE PAR LIGNE, le même
+invariant devient insensible à la compensation — et il pointe la ligne fautive.
+
+**Mais la vraie leçon est de cadrage, et elle arrive cinq passes trop tard.** Décider si un `/` ouvre
+une regex ou une division exige le contexte grammatical, donc un vrai analyseur. Or ce module ne peut
+pas en utiliser un : il est importé par une garde qui part dans le bundle du navigateur, et
+`typescript` est une devDependency. **La contrainte qui a fixé son emplacement — pure, sans
+`node:fs`, atteignable depuis le bundle — interdit la solution correcte.** Ce n'était pas un détail
+d'implémentation à découvrir en chemin : c'était la question à poser au moment de choisir
+l'approche.
+
+Quand une contrainte interdit la solution correcte, la livraison n'est pas une meilleure
+approximation — c'est le **FILET** qui rend visible le jour où l'approximation se trompe, plus la
+limite écrite là où quelqu'un la lira avant d'ajouter un cas. Le canari est donc la vraie livraison
+du lot 37 ; l'automate n'est que la meilleure approximation atteignable sous contrainte.
+
+⚠️ Corollaire de conduite : cinq passes sur le même mécanisme, chacune productive, c'est le signal
+qu'il faut **arrêter d'itérer et reformuler le problème** — pas la preuve qu'une sixième vaudrait
+le coup. Les cinq défauts trouvés étaient tous DORMANTS (zéro occurrence dans le dépôt) ; ce qui a
+vraiment changé de main, c'est le filet
+(`QUAND-UNE-CONTRAINTE-INTERDIT-LA-BONNE-SOLUTION-LIVRER-LE-FILET`).

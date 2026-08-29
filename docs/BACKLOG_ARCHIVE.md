@@ -10,6 +10,26 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-28 — Lot 35 : éditer une cible d'allocation réécrivait le modèle par défaut
+
+- [x] **`[INVEST-CIBLES-DEFAUT-MUTEES]`** (S — MESURÉ, découvert en élargissant le scan du lot 34) —
+  la variante **ACTIVE** de la classe `[HISTORY-OBJET-VIDE-PARTAGE]`. Quand
+  `projection.investmentTargetPcts` est absent, l'état des cibles de rééquilibrage était initialisé
+  avec la constante de module `DEFAULT_TARGET_MODEL` **telle quelle**, et l'éditeur faisait
+  `[...targetModel]` — un spread qui copie le TABLEAU, jamais ses ÉLÉMENTS — avant d'écrire
+  `newModel[i].targetPct`. L'objet muté était donc celui du module.
+  **Mesuré avant correctif** : après avoir porté une cible à 77, un remontage NEUF du composant avec
+  les mêmes props et aucune persistance affichait `77,30,15,10,5` au lieu de `40,30,15,10,5`.
+  ✅ **Livré lot 35** (`claude/lot-35`), gate vert. Trois changements qui ne se remplacent pas :
+  la constante est typée `ReadonlyArray<Readonly<…>>` — ce qui rend l'écriture indexée impossible à
+  ÉCRIRE, le typecheck la refuse ; l'initialisation passe par un `.map` **dans les deux branches**,
+  donc l'état ne référence plus jamais le modèle ; et l'éditeur REMPLACE l'entrée
+  (`map` + `{ ...m, targetPct }`) au lieu de la muter.
+  ⚠️ Le test le prouve par le CHEMIN COMPLET (édition → démontage → remontage neuf), jamais en
+  lisant la constante — qui n'est pas exportée. Sur le code d'avant, les deux cas rougissent, et le
+  second révèle au passage que la contamination traversait la frontière des TESTS : il héritait du
+  77 laissé par le premier.
+
 ## 2026-08-28 — Lot 34 : le résultat « aucune donnée » était un objet partagé, en production
 
 - [x] **`[HISTORY-OBJET-VIDE-PARTAGE]`** (S — finding financial-integrity, panel PR #759,

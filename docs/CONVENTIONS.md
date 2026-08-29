@@ -8091,3 +8091,32 @@ est inutile.
   bug pré-existant hors périmètre). Signal réutilisable : **un spread de tableau devant une écriture
   indexée est toujours suspect** — `[...a]` puis `a[i].champ = v` est une copie qui ne copie pas ce
   qu'on s'apprête à muter (`UNE-LISTE-VIDE-N-EST-PAS-LE-CHEMIN-VIDE`).
+
+
+---
+
+## Lot 35 (2026-08-28) — la contamination traverse la frontière des TESTS
+
+`[INVEST-CIBLES-DEFAUT-MUTEES]`, la variante ACTIVE de la classe du lot 34, livrée juste après lui.
+Le mécanisme était déjà nommé — **un spread de tableau devant une écriture indexée est toujours
+suspect** — et la mesure était déjà faite. Ce lot n'ajoute donc qu'une observation, mais elle est
+utile parce qu'elle est GRATUITE.
+
+En rejouant les deux cas du test neuf sur le code d'avant, le second a rougi sur une valeur que
+**le premier avait laissée** : il attendait `40,30,25,10,5` et lisait `77,30,25,10,5`. La mutation
+de la constante de module ne survit pas seulement d'un montage à l'autre — elle survit d'un **cas de
+test** à l'autre, puisque les deux partagent le processus. C'est le même signal que
+`UNE-FIXTURE-PARTAGEE-NE-CASSE-PAS-UN-TEST-ELLE-LE-REND-FAUX`, vu depuis l'autre bout : là-bas la
+contamination fabriquait un test faux, ici elle sert de preuve supplémentaire.
+
+**Le geste** : quand deux cas d'un même fichier de test échouent avec des valeurs qui se
+CONTAMINENT, ne pas corriger l'ordre des cas — c'est le code testé qui partage un état de module.
+Et l'inverse vaut comme contrôle : si un test de non-partage passe alors qu'il est seul dans son
+fichier, ajouter un second cas qui le suit est un moyen très bon marché d'élargir sa portée.
+
+**Corollaire de preuve** : la constante fautive n'est pas exportée, donc rien ne permet de
+l'observer directement. La preuve passe par le CHEMIN COMPLET — éditer, démonter, remonter à neuf
+avec les mêmes props et un `setProjection` qui n'écrit nulle part. C'est plus long à écrire qu'une
+assertion sur la constante, mais c'est aussi ce qui rend l'assertion non ambiguë : le seul canal par
+lequel la valeur éditée pourrait revenir est précisément celui qu'on accuse
+(`UNE-LISTE-VIDE-N-EST-PAS-LE-CHEMIN-VIDE`, corollaire).

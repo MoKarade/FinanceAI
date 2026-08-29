@@ -8390,3 +8390,46 @@ temps** — ici avec des faux timers, qui le franchissent de façon déterminist
 Et le contrôle qui rend l'assertion lisible est le cas SAIN dans le même budget : sans lui, un
 espion jamais câblé donnerait exactement le même vert
 (`UNE-PERTURBATION-PEUT-ETRE-MUETTE-PAR-DEBOUNCE`).
+
+### Corollaire du lot 38 — cinq trous dans une garde, et aucun faux positif
+
+Le panel money-critical a trouvé **cinq** trous dans une garde de 100 lignes, tous reproduits avant
+correction et **aucun faux positif** — ce qui est rare sur ce code, où environ un tiers des findings
+sont habituellement faux. Ils se rangent en trois familles, et chacune a sa leçon.
+
+**1. Une liste d'inclusion se relit contre son propre critère.** Mon module annonçait couvrir « ce
+que la frontière LIT et PRODUIT », et omettait `currentRentExpense` — produit deux lignes plus haut
+dans la même fonction. C'est `CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG` : la phrase de périmètre
+était juste, l'énumération ne la respectait pas. Avant de livrer une garde, relire sa LISTE contre
+sa propre définition, pas contre l'intention qui l'a écrite.
+
+**2. Le mode « absorbé » a plusieurs opérateurs.** J'avais documenté le `|| 0` qui rabat un `NaN`.
+Le canal budget faisait pire avec `Math.max(0, revenus − dépenses)` : un poste à `Infinity` donne
+`−Infinity`, que `Math.max` rabat sur **0** — fini, crédible, et l'épargne mensuelle passe de 5 370 $
+à zéro sans un seul non-fini nulle part. Quand on ferme une classe de défaut, chercher tous les
+opérateurs qui la produisent, pas seulement celui du ticket : `|| 0`, `?? 0`, `Math.max`, `Math.min`,
+un `clamp`, un `filter` qui écarte.
+
+**3. Une garde qui ne peut pas tirer n'est pas une protection.** Mon contrôle sur
+`calculatedStartingCash` était structurellement mort : `computeCashLedger` écarte les non-finis et
+rend toujours un total fini. Pendant ce temps la corruption passait. La vraie porte existait déjà —
+`computeCashLedgerDetailed().termesFautifs` — et le dépôt en portait déjà la leçon sous
+`TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL` : deux portes, le total pour LIRE, l'inventaire des
+termes écartés pour REFUSER. J'ai consommé la mauvaise. Le contrôle mort est conservé en ceinture
+mais **annoté comme inatteignable** : le laisser muet le ferait passer pour une protection dans tout
+inventaire futur (`UNE-GARDE-QUI-NE-PEUT-PAS-TIRER-N-EST-PAS-UNE-PROTECTION`).
+
+**Et deux leçons de portée :**
+
+- **« Le point de passage unique » se vérifie en comptant les appelants.** J'ai posé la garde dans
+  `ProjectionEngine` en la décrivant comme couvrant tout — elle couvrait **1 appelant sur 5**. Les
+  trois outils MCP servaient un patrimoine à −96 % à un LLM, ce que `no-fake-data` interdit
+  explicitement « y compris dans un prompt IA ». La garde est descendue au point d'entrée réellement
+  commun (`runProjectionAsync`). Avant d'écrire « unique » dans un commentaire, grepper les appelants.
+- **Un message d'erreur générique devient faux quand on élargit son statut.** En réutilisant
+  `projectionStatus === 'error'` pour le refus, j'ai rendu fausses trois affirmations de l'écran
+  Futur d'un coup : « le calcul a échoué » (aucun calcul lancé), « l'erreur a été journalisée » (rien
+  ne l'était), « désactive Monte-Carlo » (sans effet). Élargir le domaine d'un état oblige à relire
+  tout ce qui l'affiche. Et l'absence de trace se corrige en faisant **les deux** — signal utilisateur
+  ET journal throttlé, comme le patron jumeau `HARDEN-NETWORTH-NAN`, jamais l'un contre l'autre
+  (`CINQ-TROUS-DANS-UNE-GARDE-ET-AUCUN-FAUX-POSITIF`).

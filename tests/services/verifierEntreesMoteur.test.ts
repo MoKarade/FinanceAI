@@ -57,6 +57,44 @@ describe('[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] la frontière refuse une entr�
         expect(p.entreesRefusees?.map((r) => r.chemin)).toContain('config.users[0].grossSalary');
     });
 
+    it('refuse un POSTE DE BUDGET illisible — le canal au plus gros écart', () => {
+        // ⚠️ Ce canal manquait au premier jet, et il portait le pire écart mesuré :
+        // `computeMonthlySavings` finit par `Math.max(0, revenus − dépenses)`, donc un poste à
+        // `Infinity` donne `−Infinity` que `Math.max` rabat sur **0** — fini, crédible et faux.
+        // Mesuré avant correctif : l'épargne mensuelle passait de 5 370 $ à 0 sans un seul refus.
+        const etat = buildCoupleConfort() as AppState;
+        const poste = (etat.budgetItems as unknown as Array<Record<string, unknown>>)
+            .find((b) => /picerie/i.test(String(b.name)));
+        expect(poste).toBeDefined();          // anti-vacuité : la fixture porte bien ce poste
+        poste!.target = Infinity;
+        const p = params(etat);
+        expect(p.entreesRefusees?.map((r) => r.chemin)).toContain('budgetItems[1].target');
+        expect(messageDeRefus(p.entreesRefusees ?? [])).toContain('Épicerie');
+    });
+
+    it('refuse un terme ÉCARTÉ du solde de départ — le total seul ne peut rien dire', () => {
+        // `computeCashLedger` ÉCARTE les valeurs non finies et rend toujours un total FINI : un
+        // contrôle sur `calculatedStartingCash` ne peut donc jamais tirer. C'est l'inventaire des
+        // termes jetés qui protège (`TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`).
+        const refus = verifierEntreesMoteur({
+            calculatedStartingCash: 102_254,   // fini : le total ne trahit rien
+            termesFautifsCash: [{ origine: 'initialBalances', cle: 'CELI', valeur: Infinity }],
+        });
+        expect(refus.map((r) => r.chemin)).toEqual(['initialBalances.CELI']);
+        expect(refus[0].libelle).toContain('CELI');
+    });
+
+    it('refuse `currentRentExpense`, produit par la frontière et oublié au premier jet', () => {
+        const etat = buildCoupleConfort() as AppState;
+        const logement = (etat.budgetItems as unknown as Array<Record<string, unknown>>)
+            .find((b) => /logement|loyer/i.test(String(b.name)));
+        expect(logement).toBeDefined();
+        logement!.target = Infinity;
+        const p = params(etat);
+        // Le poste ET la grandeur dérivée sont relevés : deux chemins, une seule cause.
+        expect(p.entreesRefusees?.map((r) => r.chemin)).toContain('currentRentExpense');
+    });
+
     it('OMET le champ quand il n\'y a rien à refuser — la signature des params ne bouge pas', () => {
         // La clé de dédup du moteur est `JSON.stringify(params)` : un champ toujours présent, même
         // vide, changerait cette signature pour tout le monde et invaliderait les calculs en vol.
@@ -96,6 +134,13 @@ describe('[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] le message nomme le champ', ()
 
     it('nomme un profil SANS nom par son rang, jamais par un index technique', () => {
         const refus = verifierEntreesMoteur({ config: { users: [{ netSalary: Number.NaN }] } });
-        expect(refus[0].libelle).toContain('le profil 1');
+        // ⚠️ Forme ÉLIDÉE : le libellé s'écrivait « de le profil 1 » au premier jet. Un texte montré
+        // à l'utilisateur se relit comme une phrase (finding panel #764).
+        expect(refus[0].libelle).toBe('le salaire net du profil 1 est illisible');
+    });
+
+    it('accorde le verbe au pluriel sur une grandeur au pluriel', () => {
+        const refus = verifierEntreesMoteur({ baseMonthlyExpenses: Number.NaN });
+        expect(refus[0].libelle).toBe('les dépenses mensuelles de base sont illisibles');
     });
 });

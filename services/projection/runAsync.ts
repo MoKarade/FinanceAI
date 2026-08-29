@@ -7,6 +7,7 @@
 //    croisés (le worker répondait FIFO sans corrélation).
 //  - terminate() + recréation au prochain appel si le worker crash.
 
+import { messageDeRefus } from './verifierEntreesMoteur';
 import type {
     SimulationParams,
     ProjectionResult,
@@ -93,6 +94,10 @@ const _inflight = new Map<string, Promise<ProjectionResult>>();
 /** Erreur sentinelle : la projection a été annulée par l'appelant (pas un échec). */
 export const PROJECTION_CANCELLED = '__PROJECTION_CANCELLED__';
 
+/** Erreur sentinelle : une ENTRÉE du moteur est illisible — le calcul n'a pas été lancé. Le message
+ *  qui suit ce préfixe nomme le champ, et il est destiné à être montré tel quel. */
+export const PROJECTION_ENTREE_REFUSEE = '__PROJECTION_ENTREE_REFUSEE__';
+
 export function runProjectionAsync(
     params: SimulationParams,
     runMC: boolean = false,
@@ -107,6 +112,20 @@ export function runProjectionAsync(
     // sa vie, et un appel légitime suivant recréera la sienne.
     const signal = opts?.signal;
     if (signal?.aborted) return Promise.reject(new Error(PROJECTION_CANCELLED));
+    // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] Le refus s'applique ICI, au point d'entrée COMMUN du
+    // moteur, et pas seulement dans `ProjectionEngine`.
+    //
+    // ⚠️ Pourquoi : `ProjectionEngine` n'est qu'UN des cinq appelants. Les trois outils MCP
+    // (`get_projection`, `get_retirement_outlook`, `simulate_what_if`) et `StressTestPanel`
+    // passaient outre — mesuré sur `get_projection` avec un salaire net `NaN` : patrimoine final
+    // annoncé à **−96 %**, sans un mot d'avertissement. Un chiffre faux servi à un LLM hérite de
+    // l'autorité de la source unique, et `no-fake-data` l'interdit « y compris dans un prompt IA ».
+    //
+    // La garde est ici plutôt que recopiée cinq fois : c'est le seul endroit que tous traversent.
+    // Sur le chemin nominal le champ est ABSENT, donc ce test ne coûte rien et ne change rien.
+    if (params.entreesRefusees && params.entreesRefusees.length > 0) {
+        return Promise.reject(new Error(`${PROJECTION_ENTREE_REFUSEE} ${messageDeRefus(params.entreesRefusees)}`));
+    }
     // Clé EFFECTIVE = dedupKey (signature de contenu de l'appelant) + TOUT ce qui distingue le
     // calcul. Sans ça, un futur appelant réutilisant la même dedupKey avec un runMC/selectedIdx
     // différent recevrait SILENCIEUSEMENT la projection de l'autre mode (re-raccrochage à la

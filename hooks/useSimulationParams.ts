@@ -8,7 +8,7 @@
 // `useDerivedFinancials` (App) — on évite de le recalculer ici.
 
 import { useMemo, useSyncExternalStore } from 'react';
-import { computeCashLedger } from '../services/startingCash';
+import { computeCashLedgerDetailed } from '../services/startingCash';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { useShallow } from 'zustand/shallow';
 import { buildSimulationParams } from '../services/projection/buildSimulationParams';
@@ -129,10 +129,14 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
     // `ProjectionEngine`, donc le cash de départ de toute la projection : elle faisait
     // `Number(v) || 0` sans la moindre trace, alors que le patron `HARDEN-*-NAN` est appliqué
     // 65 lignes plus haut dans `portfolio.ts` et dans `computeRawNetWorth`.
-    const calculatedStartingCash = useMemo(
-        () => computeCashLedger(initialBalances, transactions as Transaction[]),
+    // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] La variante DÉTAILLÉE : le total ne dit rien de ce que
+    // le ledger a écarté, et c'est justement l'inventaire des termes jetés qui permet de REFUSER
+    // (`TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL` — deux portes, une pour lire, une pour écrire).
+    const ledgerCash = useMemo(
+        () => computeCashLedgerDetailed(initialBalances, transactions as Transaction[]),
         [initialBalances, transactions],
     );
+    const calculatedStartingCash = ledgerCash.cash;
 
     // La projection démarre AUJOURD'HUI (mois courant), pas au 1er janvier en dur :
     // passé reconstruit et futur projeté se rejoignent au point « aujourd'hui ».
@@ -156,6 +160,7 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
         config,
         liveCSVBalances,
         calculatedStartingCash,
+        termesFautifsCash: ledgerCash.termesFautifs,
         realEstateGoals,
         debts,
         childGoals,
@@ -173,7 +178,7 @@ export function useSimulationParams(calculatedMonthlySavings: number): Simulatio
         charitableGoals,
         rentalProperties,
         privateBusinesses,
-    }), [projection, calculatedStartingCash, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, budgetItems, calculatedMonthlySavings, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, financialGoals, startYear, startMonth]);
+    }), [projection, calculatedStartingCash, ledgerCash.termesFautifs, liveCSVBalances, realEstateGoals, debts, childGoals, travelGoals, lifeEvents, retirementGoal, config, budgetItems, calculatedMonthlySavings, insurancePolicies, vehicleReplacements, majorRenovations, charitableGoals, rentalProperties, privateBusinesses, financialGoals, startYear, startMonth]);
 
     return { params, pastHistory, liveCSVBalances, calculatedStartingCash, startYear, startMonth, todayMonthIndex };
 }

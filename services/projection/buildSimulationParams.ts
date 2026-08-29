@@ -70,6 +70,17 @@ export interface BuildSimulationParamsInputs {
     liveCSVBalances: LiveCSVBalances;
     /** Cash de départ = Σ initialBalances + Σ transactions (hors transfert/doublon). */
     calculatedStartingCash: number;
+    /**
+     * [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] Termes que `computeCashLedgerDetailed` a ÉCARTÉS du
+     * total ci-dessus. Optionnel : sans lui, le comportement est celui d'avant.
+     *
+     * ⚠️ Il est indispensable parce que `calculatedStartingCash` seul ne peut RIEN dire : le ledger
+     * écarte les valeurs non finies et rend toujours un total fini, donc « le total est fini » ne
+     * prouve pas « aucune donnée n'a été jetée ». C'est la leçon
+     * `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL` : il faut DEUX portes, le total pour lire et
+     * l'inventaire des termes écartés pour refuser. `startingCash.ts` expose déjà la seconde.
+     */
+    termesFautifsCash?: ReadonlyArray<{ origine: string; cle: string; valeur: unknown }>;
     realEstateGoals: RealEstateGoal[];
     debts: Debt[];
     childGoals: ChildGoal[];
@@ -221,6 +232,9 @@ export function buildSimulationParams(inputs: BuildSimulationParamsInputs): Simu
         baseGrossAnnual,
         baseMonthlyExpenses,
         calculatedStartingCash: inputs.calculatedStartingCash,
+        currentRentExpense,
+        budgetItems: inputs.budgetItems,
+        termesFautifsCash: inputs.termesFautifsCash,
     });
 
     return {

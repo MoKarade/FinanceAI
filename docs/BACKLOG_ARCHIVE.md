@@ -42,8 +42,32 @@
   sur toutes les surfaces qui dépendent de la projection, donc une seule publication les couvre — et
   son message habituel (« ouvrez Future ») est REMPLACÉ, parce qu'ouvrir Future ne répare pas une
   donnée corrompue (classe `DECISION-PRIVACY-UNE-SEULE-SORTIE`).
-  ⚠️ Périmètre volontairement borné aux champs que la frontière LIT et PRODUIT : étendre le scan à
-  l'état entier refuserait la projection pour un champ décoratif, ce qui serait pire que le défaut.
+  ⚠️ Périmètre borné aux champs que la frontière LIT et PRODUIT : étendre le scan à l'état entier
+  refuserait la projection pour un champ décoratif, ce qui serait pire que le défaut.
+  ⚠️ **CINQ trous trouvés par le panel money-critical, tous reproduits avant correction** — et aucun
+  faux positif, ce qui est rare sur ce code (~1/3 habituellement) :
+  1. `currentRentExpense` est PRODUIT par la frontière et n'était pas scanné → un poste « Logement »
+     à `Infinity` publiait **515 valeurs non finies** sans un seul refus. Le module se réclamait de
+     « ce que la frontière LIT et PRODUIT » et en omettait un : une liste d'inclusion se relit contre
+     son propre critère, pas contre l'intention qui l'a écrite.
+  2. Le canal **BUDGET** laissait passer le mode « absorbé » avec un écart bien PIRE que celui fermé :
+     `computeMonthlySavings` finit par `Math.max(0, revenus − dépenses)`, donc un poste à `Infinity`
+     donne `−Infinity` que `Math.max` rabat sur **0**. Mesuré : épargne mensuelle 5 370 $ → 0, fini,
+     crédible, aucun refus. Même mécanique que le `|| 0` de l'en-tête, par un autre opérateur.
+  3. Le contrôle sur `calculatedStartingCash` était une **garde MORTE** : `computeCashLedger` écarte
+     les non-finis et rend toujours un total fini, donc il ne pouvait jamais tirer — pendant que la
+     corruption passait. La vraie porte existait déjà (`computeCashLedgerDetailed().termesFautifs`),
+     exactement ce que prescrit `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`. Le contrôle mort est
+     conservé en ceinture, mais ANNOTÉ comme inatteignable — le laisser muet le ferait passer pour
+     une protection.
+  4. **Quatre des cinq appelants du moteur** ignoraient le refus : trois outils MCP et
+     `StressTestPanel`. Mesuré sur `get_projection` avec un salaire `NaN` : patrimoine final annoncé
+     à **−96 %**, sans un mot — un chiffre faux servi à un LLM hérite de l'autorité de la source
+     unique. La garde est passée au point d'entrée COMMUN (`runProjectionAsync`) plutôt que recopiée.
+  5. L'onglet **Futur** — le seul écran qui n'affiche pas `ProjectionRequired` — montrait « le calcul
+     a échoué… l'erreur a été journalisée », trois affirmations fausses à la fois (aucun calcul lancé,
+     rien de journalisé, et « désactive Monte-Carlo » ne répare rien). Corrigé, et une trace THROTTLÉE
+     a été ajoutée : le patron jumeau `HARDEN-NETWORTH-NAN` fait les DEUX, signal ET trace.
 
 ## 2026-08-29 — Lot 37 : un décommenteur qui mangeait le code après une URL
 

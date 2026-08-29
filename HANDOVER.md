@@ -17,6 +17,13 @@
 >   300 ms, donc lire l'espion dès que le statut bascule mesurait la latence, pas la garde. « L'appel
 >   n'a PAS eu lieu » se lit APRÈS le budget de temps (faux timers).
 >
+> - ⚠️ **Le panel a trouvé CINQ trous dans la garde, tous reproduits, aucun faux positif** :
+>   `currentRentExpense` produit et non scanné (515 non-finis publiés) ; le canal BUDGET où
+>   `Math.max(0, …)` absorbe un `Infinity` (épargne 5 370 $ → 0) ; le contrôle du solde de départ
+>   structurellement MORT alors que la vraie porte existait (`termesFautifs`) ; quatre des cinq
+>   appelants du moteur qui ignoraient le refus (MCP servait −96 % à un LLM) ; et l'écran Futur qui
+>   affirmait « l'erreur a été journalisée » alors que rien ne l'était. Les cinq corrigés.
+>
 > ## 🟢 Session 2026-08-29 — Lot 37 : un décommenteur qui mangeait le code après une URL (PR #763, MERGÉE)
 > `[GUARD-STRIPCOMMENTS-CONSOLIDER]` — les décommenteurs `stripComments` recopiés du dépôt étaient
 > tous NAÏFS : un `//` dans un littéral de chaîne ampute la ligne. Une soixantaine de fichiers en

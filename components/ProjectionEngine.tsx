@@ -1,4 +1,5 @@
 // components/ProjectionEngine.tsx
+import { journaliserRefus } from '../services/projection/verifierEntreesMoteur';
 import { messageDeRefus } from '../services/projection/verifierEntreesMoteur';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -66,10 +67,13 @@ const ProjectionEngineInner: React.FC<ProjectionEngineProps> = ({ calculatedMont
     // à chaque rendu sur le chemin NOMINAL (le champ est absent quand il n'y a rien à refuser), ce
     // qui aurait fait re-tourner l'effet de publication à chaque render. Une chaîne se compare par
     // valeur — `null` sur le chemin nominal, donc l'effet ne bouge plus.
-    const messageRefus = useMemo(
-        () => (params.entreesRefusees?.length ? messageDeRefus(params.entreesRefusees) : null),
+    const refus = useMemo(
+        () => (params.entreesRefusees?.length
+            ? { entrees: params.entreesRefusees, message: messageDeRefus(params.entreesRefusees) }
+            : null),
         [params.entreesRefusees],
     );
+    const messageRefus = refus?.message ?? null;
 
     useEffect(() => {
         if (!reqsMet || messageRefus) return;
@@ -119,6 +123,14 @@ const ProjectionEngineInner: React.FC<ProjectionEngineProps> = ({ calculatedMont
             // un onglet qui semble simplement vide.
             setLastProjection(null);
             setProjectionStatus('error');
+            // ⚠️ ET une trace. Mon commentaire d'origine justifiait l'absence de journalisation par
+            // « tracer en silence laisserait le défaut invisible » — argument valable contre un log
+            // SANS signal utilisateur, pas contre le log tout court. Le patron jumeau du dépôt
+            // (`HARDEN-NETWORTH-NAN`, `services/projection/netWorth.ts`) fait les DEUX, et pour une
+            // raison concrète : si la donnée est corrigée ou écrasée avant que Marc n'ouvre l'écran
+            // concerné, il ne reste AUCUNE trace exportable de l'incident. Throttlé par signature —
+            // le refus est réévalué à chaque rendu tant que la corruption dure (finding panel #764).
+            journaliserRefus(refus?.entrees);
             // Le MOTIF va au store : `ProjectionRequired` est monté sur toutes les surfaces qui
             // dépendent de la projection, donc une seule publication les couvre toutes — plutôt
             // qu'un message recopié écran par écran (classe `DECISION-PRIVACY-UNE-SEULE-SORTIE`).
@@ -133,7 +145,7 @@ const ProjectionEngineInner: React.FC<ProjectionEngineProps> = ({ calculatedMont
             // Résultat en erreur (chartData vide) : NE PAS publier (no-fake-data), mais signaler à l'UI.
             setProjectionStatus('error');
         }
-    }, [results, reqsMet, messageRefus, setLastProjection, setProjectionStatus, setProjectionRefus]);
+    }, [results, reqsMet, refus, messageRefus, setLastProjection, setProjectionStatus, setProjectionRefus]);
 
     return null;
 };

@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 944 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 948 tests** Vitest
 (469 fichiers de test, mesuré le 2026-08-29). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -769,6 +769,15 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   existe en plusieurs exemplaires, copier celui qui porte sa JUSTIFICATION écrite. Et la garde doit
   asserter que le conteneur existe **déjà quand il n'y a rien à annoncer**, sinon elle est satisfaite
   par la version fautive (`COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`).
+- **Une garde qui ne peut pas TIRER n'est pas une protection** : mon contrôle sur le solde de départ
+  était structurellement mort (le ledger écarte les non-finis et rend toujours un total fini),
+  pendant que la corruption passait — la vraie porte existait déjà (`termesFautifs`,
+  `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`). Une garde morte se retire ou s'ANNOTE, sinon elle
+  compte comme protection dans tout inventaire futur. ⚠️ Deux corollaires du même lot : le mode
+  « absorbé » a plusieurs OPÉRATEURS (`Math.max(0, …)` rabat `−Infinity` sur 0 exactement comme
+  `|| 0` rabat un `NaN` — écart mesuré bien plus grand), et **« le point de passage unique » se
+  vérifie en comptant les appelants** (la mienne en couvrait 1 sur 5 ; les outils MCP servaient −96 %
+  à un LLM) (`CINQ-TROUS-DANS-UNE-GARDE-ET-AUCUN-FAUX-POSITIF`).
 - **« L'appel n'a PAS eu lieu » se lit APRÈS le budget de temps** : ma garde espionnait le moteur et
   asserait `not.toHaveBeenCalled()` dès que le statut basculait — elle passait aussi SANS le
   blocage, le lancement étant debouncé à 300 ms. Le test mesurait la latence. Faux timers, plus le

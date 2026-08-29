@@ -288,7 +288,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
                                             <button
                                                 type="button"
                                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDeleteItem(item.id); }}
-                                                className="inline-flex text-ink-500 hover:text-danger-500 p-1 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                                                className="inline-flex text-ink-500 hover:text-danger-500 p-2 -m-1 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition-opacity"
                                                 title="Supprimer la catégorie"
                                                 aria-label="Supprimer la catégorie"
                                             >

@@ -10,6 +10,38 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-29 — Lot 43 : des cibles de 16 px sur des actions destructives
+
+- [x] **`[A11Y-TOUCH-TARGET-TINY]`** (S, ÉLEVÉ) — boutons de suppression sans aucun padding, hit-box
+  ≈16×16 px (sous le minimum AA 24×24 de WCAG 2.5.8, loin des 44×44 visés) : `components/Travel.tsx:116`,
+  `components/PatrimoineExtended.tsx:88,141,177` (la 177 n'a **ni `aria-label` ni `title`** : son nom
+  accessible est le glyphe « × » seul), `components/retirement/AssetLocationCard.tsx:206`,
+  `components/Investments.tsx:1335`. Risque de mis-tap sur une action destructive. Correctif :
+  appliquer `.touch-target` (déjà défini `index.css:360`) + l'`aria-label` manquant. [MESURÉ]
+  ✅ **Livré lot 43** — 10 boutons corrigés, dont **4 sans aucun nom accessible** (le ticket n'en
+  signalait qu'un) : leur nom accessible était le glyphe « × » seul, donc un lecteur d'écran
+  annonçait « × bouton » sur une suppression.
+  · **Patron retenu : `p-2 -m-2`**, pas `touch-target` partout. Il agrandit la zone cliquable de 8 px
+    sur chaque bord et annule le décalage visuel par la marge négative — la mise en page ne bouge
+    pas. ⚠️ Il ne vaut que pour un contrôle SANS fond ni bordure : essayé sur la pastille d'aide
+    bordée de `KPIStat`, il grossissait le cercle lui-même (32 px au lieu de 16) au lieu de la seule
+    zone cliquable. Ce cas est EXEMPTÉ et documenté — WCAG 2.5.8 exempte explicitement une cible en
+    ligne dans un bloc de texte.
+  · ⚠️ **Le ticket citait 6 sites, le recensement en a trouvé 10** — et 2 des 6 étaient FAUX : la
+    ligne `Investments.tsx:1335` désigne le halo décoratif déjà écarté au lot 42, et
+    `PatrimoineExtended.tsx:177` un paragraphe de texte. Deuxième lot d'affilée où le périmètre cité
+    diverge du périmètre réel.
+  · ⚠️⚠️ **Et le recenseur s'est trompé QUATRE fois avant d'être juste**, chaque fois sur du parsing
+    JSX à la regex : accolades non retirées récursivement (4 boutons manqués) ; `min-w-[24px]`
+    ignoré (2 faux positifs sur des boutons déjà corrigés) ; libellé DYNAMIQUE `{title}` compté
+    comme « pas de texte » (7 faux positifs) ; et un `indexOf('>')` qui tombait sur la flèche d'une
+    lambda `(e) => …` et coupait le bouton en plein attribut. Le correctif final est un petit
+    automate, pas une regex. **Un recenseur se vérifie autant que le code qu'il recense.**
+  · Garde de non-régression : `tests/guards/touchTargetGuard.test.ts`, sur DEUX axes (taille de
+    cible, nom accessible), avec exemption déclarée + motivée et contrôle qu'elle reste réelle.
+    Discrimination : retirer la hit-box d'un site → nommé, fichier et ligne ; retirer un `aria-label`
+    → nommé aussi.
+
 ## 2026-08-29 — Lot 42 : deux commandes qu'on ne pouvait pas atteindre
 
 - [x] **`[A11Y-DELETE-SPAN-NO-KEYBOARD]`** (S, CRITIQUE) — le « Supprimer la propriété » d'un onglet

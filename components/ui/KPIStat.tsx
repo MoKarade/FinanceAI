@@ -76,7 +76,13 @@ export const KPIStat: React.FC<KPIStatProps> = ({
                         <Tooltip content={tooltip}>
                             {/* aria-label COURT (action) : le contenu est livré par l'aria-describedby du Tooltip,
                                 pas par ce label (sinon double lecture SR). NE PAS combiner `tooltip` avec `onClick`
-                                (le déclencheur serait un bouton imbriqué). */}
+                                (le déclencheur serait un bouton imbriqué).
+                                ⚠️ [A11Y-TOUCH-TARGET-TINY] Ce cercle fait 16 px et le reste : WCAG 2.5.8 exempte
+                                explicitement une cible EN LIGNE dans un bloc de texte, ce qu'est cette pastille
+                                d'aide posée à côté du libellé. L'élargir avec `p-2 -m-2` a été essayé et REJETÉ :
+                                le bouton porte une bordure visible, donc le padding grossit le cercle lui-même
+                                (32 px au lieu de 16) au lieu d'agrandir seulement la zone cliquable. Le patron
+                                `p-* -m-*` ne vaut que pour un contrôle SANS fond ni bordure. */}
                             <button
                                 type="button"
                                 aria-label="Aide sur ce montant"

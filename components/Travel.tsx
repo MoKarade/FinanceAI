@@ -113,7 +113,7 @@ export const Travel: React.FC<TravelProps> = ({ travelGoals, setTravelGoals }) =
                             <div className="p-5">
                                 <div className="flex justify-between items-start mb-2">
                                     <h3 className="text-xl font-bold text-white">{trip.destination}</h3>
-                                    <button onClick={() => handleDelete(trip.id)} aria-label="Supprimer le voyage" className="inline-flex text-ink-500 hover:text-danger-500 transition-colors"><Icon name="trash" size={16} /></button>
+                                    <button onClick={() => handleDelete(trip.id)} aria-label="Supprimer le voyage" className="inline-flex text-ink-500 hover:text-danger-500 transition-colors p-2 -m-2"><Icon name="trash" size={16} /></button>
                                 </div>
 
                                 <div className="text-body text-ink-300 mb-4 flex items-center gap-1.5">

@@ -8523,6 +8523,36 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 43 — un recenseur se vérifie autant que le code qu'il recense
+
+`UN-RECENSEUR-SE-VERIFIE-AUTANT-QUE-LE-CODE-QU-IL-RECENSE`
+
+Le lot 42 a montré qu'un périmètre cité diverge du périmètre réel. Le lot 43 montre la suite : **le
+scan qui établit ce périmètre se trompe aussi**, et il faut le vérifier avec la même méfiance.
+
+Quatre erreurs successives, toutes sur du parsing JSX à la regex, chacune trouvée en relisant à la
+main les cas que l'outil sortait :
+
+| Erreur | Effet |
+|---|---|
+| accolades JSX retirées en UNE passe | `{() => { … }}` est imbriqué : le « texte » d'un bouton contenait du code → **4 boutons manqués** |
+| `min-w-[24px]` non reconnu | la syntaxe arbitraire de Tailwind est celle que le dépôt emploie pour dimensionner une cible → **2 faux positifs sur des boutons déjà corrigés** |
+| libellé DYNAMIQUE `{title}` traité comme « pas de texte » | un bouton nommé par son texte devenait « icône seule » → **7 faux positifs** |
+| `indexOf('>')` pour trouver la fin de la balise | tombe sur la flèche d'une lambda `(e) => …` et coupe le bouton en plein attribut → le seul cas EXEMPTÉ disparaissait du scan |
+
+La version finale n'est plus une regex mais un petit automate qui compte accolades et guillemets.
+La leçon n'est pas « il fallait mieux écrire la regex » : c'est qu'**un scan heuristique sur du JSX
+se paie d'une vérification à la main de chaque cas qu'il sort**, dans les deux sens — ce qu'il
+signale et ce qu'il ne signale pas. Un scan qu'on croit sur parole remplace une liste fausse par une
+autre.
+
+**Le patron de correctif, et son domaine de validité.** `p-2 -m-2` agrandit la zone cliquable de 8 px
+par bord et annule le décalage par la marge négative : la mise en page ne bouge pas. ⚠️ Il ne vaut
+que pour un contrôle **sans fond ni bordure**. Essayé sur la pastille d'aide bordée de `KPIStat`, il
+grossissait le cercle lui-même — 32 px au lieu de 16. Ce cas est exempté plutôt que forcé : WCAG
+2.5.8 exempte explicitement une cible **en ligne** dans un bloc de texte. Une règle générale a un
+domaine de validité, et l'écrire vaut mieux que de tordre le cas qui en sort.
+
 ### Lot 42 — le périmètre d'un ticket se RECENSE, et il contient parfois un faux offender
 
 `UN-PERIMETRE-CITE-N-EST-PAS-UN-PERIMETRE-RECENSE`

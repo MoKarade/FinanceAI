@@ -796,6 +796,12 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   ⚠️ Corollaire de MESURE : « zéro refus sur les sept personas » ne prouvait rien de la surface
   ajoutée — **aucun persona ne porte `projection`** (le store l'apporte au montage), donc le contrôle
   portait sur un objet plus ÉTROIT que la production. Un contrôle se fait sur l'objet de PROD.
+- **Un recenseur se vérifie autant que le code qu'il recense** : mon scan des cibles tactiles s'est
+  trompé QUATRE fois avant d'être juste — accolades JSX non retirées récursivement (4 boutons
+  manqués), `min-w-[24px]` non reconnu (2 faux positifs sur du code déjà sain), libellé dynamique
+  `{title}` compté comme « pas de texte » (7 faux positifs), `indexOf('>')` tombant sur la flèche
+  d'une lambda. Un scan heuristique sur du JSX se paie d'une relecture à la main de CE QU'IL SORT
+  **et** de ce qu'il ne sort pas (`UN-RECENSEUR-SE-VERIFIE-AUTANT-QUE-LE-CODE-QU-IL-RECENSE`).
 - **Le périmètre d'un ticket se RECENSE, il ne se cite pas** : un ticket a11y annonçait 5 sites, le
   scan en a montré 8 — un fichier non nommé, un site disparu, et **un faux offender** (un halo
   décoratif qu'il ne fallait surtout pas « corriger »). Les numéros de ligne d'un vieux ticket sont

@@ -1439,12 +1439,6 @@
 
 ### 🔴 Interface — atteignabilité et clavier
 
-- [ ] **`[A11Y-TOUCH-TARGET-TINY]`** (S, ÉLEVÉ) — boutons de suppression sans aucun padding, hit-box
-  ≈16×16 px (sous le minimum AA 24×24 de WCAG 2.5.8, loin des 44×44 visés) : `components/Travel.tsx:116`,
-  `components/PatrimoineExtended.tsx:88,141,177` (la 177 n'a **ni `aria-label` ni `title`** : son nom
-  accessible est le glyphe « × » seul), `components/retirement/AssetLocationCard.tsx:206`,
-  `components/Investments.tsx:1335`. Risque de mis-tap sur une action destructive. Correctif :
-  appliquer `.touch-target` (déjà défini `index.css:360`) + l'`aria-label` manquant. [MESURÉ]
 - [ ] **`[A11Y-FOCUS-INDICATOR-MISSING]`** (S, MOYEN) — `outline-none` **sans aucun remplacement
   visuel** (ni `focus:border-*`, ni `focus:ring-*`, ni `focus-within` parent) sur
   `components/Budget.tsx:826,828` (dates de période personnalisée), `components/Investments.tsx:1348,1357,1366`

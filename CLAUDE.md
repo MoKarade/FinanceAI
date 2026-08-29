@@ -796,6 +796,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   ⚠️ Corollaire de MESURE : « zéro refus sur les sept personas » ne prouvait rien de la surface
   ajoutée — **aucun persona ne porte `projection`** (le store l'apporte au montage), donc le contrôle
   portait sur un objet plus ÉTROIT que la production. Un contrôle se fait sur l'objet de PROD.
+- **Un déplacement d'import qui rend ASYNCHRONE n'est pas un déplacement** : convertir quatre imports
+  statiques de `marketData` en `import()` sortirait 67 Ko du chunk d'entrée — mais
+  `configureMarketDataProvider` (effet réactif à la clé API) et `getQuote` (trois autres fichiers) ne
+  seraient plus ordonnés : une cotation avant la pose de la clé se replie **sans rien dire**. La
+  bonne forme se déduit du risque — faire du MODULE le porteur de sa configuration (promesse
+  mémoïsée), au lieu de disperser des `await` chez les appelants
+  (`PERF-REFACTOR-A-RISQUE-DE-COURSE`).
 - **Un ticket peut décrire un défaut DÉJÀ corrigé sous un autre ID** — et le coût n'est pas le
   ticket en trop, c'est **le chiffre qu'il porte** : « 530 ticks CPU, 2,6 % du profil » mesurait une
   construction de chaîne supprimée trois semaines plus tôt. Repris tel quel, il aurait justifié un

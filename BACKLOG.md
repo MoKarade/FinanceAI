@@ -1595,6 +1595,32 @@
   build, jamais l'intention lue dans le code**. Correctif : supprimer les imports statiques (les
   passer en `import()` ou en `import type`), puis re-vérifier par un build propre. [MESURÉ — sortie
   de `rm -rf dist && npm run build` du 2026-08-19]
+
+  ⚠️⚠️ **INSTRUIT le 2026-08-29 — mesuré, périmètre établi, et UN RISQUE identifié qui interdit la
+  conversion mécanique.** Lire avant de coder.
+  · **Le défaut est TOUJOURS présent et le gain est réel** : build propre refait, l'avertissement
+    sort à l'identique, et les marqueurs spécifiques du module (`api.coingecko.com`, `finnhub.io`,
+    `canAttemptQuote`, `configureMarketDataProvider`) sont bien dans **`index-*.js`, le chunk
+    d'ENTRÉE de 293 Ko** — pas dans un chunk paresseux. Sources concernées : **67 Ko / 1 436 lignes**
+    (`services/marketData/` + ses providers).
+  · **Périmètre EXACT : 4 sites**, ceux que le build nomme — `App.tsx:31`, `Investments.tsx:33`,
+    `AddStockForm.tsx:4`, `usePastPortfolioHistory.ts:22`. Les autres imports du dossier sont soit
+    des `import type` (n'émettent rien), soit des sous-modules `providers/*`, soit du `mcp/` (hors
+    bundle navigateur). Tous les quatre vivent dans un `useEffect` ou un handler : techniquement
+    convertibles en `await import()`.
+  · ⚠️ **MAIS il y a une COURSE, et elle serait SILENCIEUSE.** `App.tsx:332` appelle
+    `configureMarketDataProvider({ finnhubKey })` dans un effet réactif à la clé API ; `getQuote` est
+    appelé ailleurs (`App.tsx:591`, `Investments`, `AddStockForm`). Rendre la configuration
+    asynchrone n'ordonne plus ces deux gestes : une cotation partie avant que la clé ne soit posée
+    échouerait ou se replierait sur un autre provider **sans rien dire**. C'est un chemin de
+    production vivant, et le mode de panne est exactement celui que `no-fake-data` et
+    « erreurs avalées » visent.
+  · **Ce qu'il faut donc décider avant de coder** : comment garantir l'ordre. Une piste — faire du
+    module lui-même le porteur de sa configuration (une promesse de chargement mémoïsée que
+    `getQuote` attend), plutôt que de disperser des `await import()` chez quatre appelants. Le
+    correctif serait alors DANS `services/marketData/index.ts`, pas chez ses consommateurs.
+  · Classe `PERF-REFACTOR-A-RISQUE-DE-COURSE` : un déplacement d'import qui rend asynchrone ce qui
+    ne l'était pas n'est jamais mécanique.
 - [ ] **`[PERF-ENGINE-MC-WASTED-LOGSTRINGS]`** (M, FAIBLE) — sous Monte Carlo, `buildMonthlyDataPoint`
   retourne bien un point allégé (déjà optimisé), mais tout le travail amont qui construit
   `flowEventsLog`/`lifeEventsLog` (~40 sites) s'exécute quand même — messages **entièrement jetés** en

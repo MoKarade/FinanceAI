@@ -8523,6 +8523,32 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 49 (instruit) — déplacer un import n'est pas mécanique quand il rend asynchrone
+
+`PERF-REFACTOR-A-RISQUE-DE-COURSE`
+
+`[PERF-MARKETDATA-DYNIMPORT-INERTE]` est **confirmé par le build** : quatre imports statiques
+annulent les deux `import()`, et les marqueurs du module (`api.coingecko.com`, `finnhub.io`,
+`canAttemptQuote`) sont bien dans le chunk d'**entrée** de 293 Ko — 67 Ko de sources qui partent au
+boot pour rien. Le périmètre est net : quatre sites, tous dans un `useEffect` ou un handler, donc
+tous « techniquement convertibles ».
+
+**Et c'est là que la conversion mécanique devient dangereuse.** `App.tsx` appelle
+`configureMarketDataProvider({ finnhubKey })` dans un effet réactif à la clé API ; `getQuote` est
+appelé ailleurs, dans trois autres fichiers. Rendre la configuration asynchrone **n'ordonne plus ces
+deux gestes** : une cotation partie avant que la clé ne soit posée échouerait ou se replierait sur un
+autre provider — **sans rien dire**. Un chemin de production vivant, et le mode de panne exact que
+`no-fake-data` et « ne pas avaler les erreurs » visent.
+
+**La bonne forme se déduit du risque** : plutôt que disperser des `await import()` chez quatre
+appelants, faire du module le porteur de sa propre configuration — une promesse de chargement
+mémoïsée que `getQuote` attend. Le correctif vit alors DANS `services/marketData/index.ts`, et
+l'ordre est garanti par construction au lieu d'être espéré chez chaque consommateur.
+
+**La règle générale** : un déplacement d'import qui transforme un appel synchrone en appel
+asynchrone n'est jamais un déplacement. Il introduit un ordre là où il n'y en avait pas besoin, et
+l'absence d'ordre se manifeste par une panne intermittente et muette — la pire à diagnostiquer.
+
 ### Lot 48 — deux IDs pour un seul défaut, et un chiffre qui n'a plus d'objet
 
 `UN-TICKET-PEUT-DECRIRE-UN-DEFAUT-DEJA-CORRIGE-SOUS-UN-AUTRE-ID`

@@ -796,6 +796,12 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   ⚠️ Corollaire de MESURE : « zéro refus sur les sept personas » ne prouvait rien de la surface
   ajoutée — **aucun persona ne porte `projection`** (le store l'apporte au montage), donc le contrôle
   portait sur un objet plus ÉTROIT que la production. Un contrôle se fait sur l'objet de PROD.
+- **Un ticket peut décrire un défaut DÉJÀ corrigé sous un autre ID** — et le coût n'est pas le
+  ticket en trop, c'est **le chiffre qu'il porte** : « 530 ticks CPU, 2,6 % du profil » mesurait une
+  construction de chaîne supprimée trois semaines plus tôt. Repris tel quel, il aurait justifié un
+  lot pour un gain nul. Parade : grep le code AVANT de coder, et faire confiance à un commentaire
+  qui porte un ID de lot — c'est à ça qu'ils servent
+  (`UN-TICKET-PEUT-DECRIRE-UN-DEFAUT-DEJA-CORRIGE-SOUS-UN-AUTRE-ID`, classe `PM-STALE-BACKLOG`).
 - **Retirer un calcul JETÉ se prouve avant de se faire** (jumeau du piège « un bug peut viser du code
   dont la sortie est jetée ») : compter les lecteurs de CHAQUE grandeur, vérifier la pureté du
   producteur contre le code, puis prouver l'équivalence de sortie par empreinte. ⚠️ La condition de

@@ -8351,3 +8351,227 @@ qu'il faut **arrêter d'itérer et reformuler le problème** — pas la preuve q
 le coup. Les cinq défauts trouvés étaient tous DORMANTS (zéro occurrence dans le dépôt) ; ce qui a
 vraiment changé de main, c'est le filet
 (`QUAND-UNE-CONTRAINTE-INTERDIT-LA-BONNE-SOLUTION-LIVRER-LE-FILET`).
+
+---
+
+## Lot 38 (2026-08-29) — la garde d'entrée du moteur, et une preuve muette par debounce
+
+`[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`, tranché par Marc après instruction : la garde vit à la
+frontière `buildSimulationParams`, et elle **refuse en nommant le champ**.
+
+**Ce que la mesure re-dérivée confirme** (script committé, `scripts/mesureFrontiereMoteur.ts`) : les
+deux modes de panne sont opposés, et c'est le silencieux qui est grave. `netSalary: Infinity` se
+propage jusqu'à `baseNetAnnual` et fabrique un `NaN` dans les dépenses — ça finit par se voir.
+`netSalary: NaN` est **absorbé** par le `|| 0` : `baseNetAnnual` passe de 115 200 à **52 800**,
+62 400 $/an s'évaporent, aucun paramètre ne paraît anormal et la courbe reste lisse. Rien ne crie.
+
+**Trois décisions de conception qui valent au-delà de ce ticket :**
+
+- **La garde EFFACE, elle ne se contente pas de s'abstenir.** Ne plus recalculer laisserait la
+  projection publiée AVANT la corruption comme source unique de tous les écrans, sans rien pour dire
+  qu'elle est périmée. « Ne pas produire de faux » et « retirer le faux déjà produit » sont deux
+  gestes distincts ; seul le second protège l'utilisateur qui a l'écran ouvert.
+- **Le motif est publié au STORE, jamais recopié écran par écran.** `ProjectionRequired` est monté
+  sur toutes les surfaces qui dépendent de la projection : une seule publication les couvre toutes
+  (`DECISION-PRIVACY-UNE-SEULE-SORTIE`). Et il **remplace** le message habituel au lieu de s'y
+  ajouter — « ouvrez Future pour calculer » envoie cliquer en boucle sur un bouton qui ne répare pas
+  une donnée corrompue. Le test l'exige explicitement : le bouton ne doit PLUS être là.
+- **Le périmètre du scan est borné à ce que la frontière LIT et PRODUIT.** Étendre la vérification à
+  l'état entier attraperait un `NaN` décoratif — un point d'historique de prix — et refuserait toute
+  la projection pour ça. Une garde trop large est un défaut, pas une sécurité de plus.
+
+⚠️ **La leçon de test : une perturbation muette par DEBOUNCE.** Ma première preuve du blocage
+espionnait `runProjectionAsync` et asserait `not.toHaveBeenCalled()` dès que le statut basculait à
+`error`. Elle passait — et elle passait AUSSI quand je retirais le blocage, parce que le lancement
+du calcul est debouncé à 300 ms : le test lisait l'espion avant que l'appel n'ait eu lieu de toute
+façon. Il mesurait la latence, pas la garde. C'est `UN-TEST-QUI-PASSE-PAR-DETACHEMENT-PASSE-PAR-ACCIDENT`
+vu depuis l'autre bout : **pour « l'appel n'a PAS eu lieu », la lecture se fait APRÈS le budget de
+temps** — ici avec des faux timers, qui le franchissent de façon déterministe plutôt qu'en dormant.
+Et le contrôle qui rend l'assertion lisible est le cas SAIN dans le même budget : sans lui, un
+espion jamais câblé donnerait exactement le même vert
+(`UNE-PERTURBATION-PEUT-ETRE-MUETTE-PAR-DEBOUNCE`).
+
+### Corollaire du lot 38 — cinq trous dans une garde, et aucun faux positif
+
+Le panel money-critical a trouvé **cinq** trous dans une garde de 100 lignes, tous reproduits avant
+correction et **aucun faux positif** — ce qui est rare sur ce code, où environ un tiers des findings
+sont habituellement faux. Ils se rangent en trois familles, et chacune a sa leçon.
+
+**1. Une liste d'inclusion se relit contre son propre critère.** Mon module annonçait couvrir « ce
+que la frontière LIT et PRODUIT », et omettait `currentRentExpense` — produit deux lignes plus haut
+dans la même fonction. C'est `CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG` : la phrase de périmètre
+était juste, l'énumération ne la respectait pas. Avant de livrer une garde, relire sa LISTE contre
+sa propre définition, pas contre l'intention qui l'a écrite.
+
+**2. Le mode « absorbé » a plusieurs opérateurs.** J'avais documenté le `|| 0` qui rabat un `NaN`.
+Le canal budget faisait pire avec `Math.max(0, revenus − dépenses)` : un poste à `Infinity` donne
+`−Infinity`, que `Math.max` rabat sur **0** — fini, crédible, et l'épargne mensuelle passe de 5 370 $
+à zéro sans un seul non-fini nulle part. Quand on ferme une classe de défaut, chercher tous les
+opérateurs qui la produisent, pas seulement celui du ticket : `|| 0`, `?? 0`, `Math.max`, `Math.min`,
+un `clamp`, un `filter` qui écarte.
+
+**3. Une garde qui ne peut pas tirer n'est pas une protection.** Mon contrôle sur
+`calculatedStartingCash` était structurellement mort : `computeCashLedger` écarte les non-finis et
+rend toujours un total fini. Pendant ce temps la corruption passait. La vraie porte existait déjà —
+`computeCashLedgerDetailed().termesFautifs` — et le dépôt en portait déjà la leçon sous
+`TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL` : deux portes, le total pour LIRE, l'inventaire des
+termes écartés pour REFUSER. J'ai consommé la mauvaise. Le contrôle mort est conservé en ceinture
+mais **annoté comme inatteignable** : le laisser muet le ferait passer pour une protection dans tout
+inventaire futur (`UNE-GARDE-QUI-NE-PEUT-PAS-TIRER-N-EST-PAS-UNE-PROTECTION`).
+
+**Et deux leçons de portée :**
+
+- **« Le point de passage unique » se vérifie en comptant les appelants.** J'ai posé la garde dans
+  `ProjectionEngine` en la décrivant comme couvrant tout — elle couvrait **1 appelant sur 5**. Les
+  trois outils MCP servaient un patrimoine à −96 % à un LLM, ce que `no-fake-data` interdit
+  explicitement « y compris dans un prompt IA ». La garde est descendue au point d'entrée réellement
+  commun (`runProjectionAsync`). Avant d'écrire « unique » dans un commentaire, grepper les appelants.
+- **Un message d'erreur générique devient faux quand on élargit son statut.** En réutilisant
+  `projectionStatus === 'error'` pour le refus, j'ai rendu fausses trois affirmations de l'écran
+  Futur d'un coup : « le calcul a échoué » (aucun calcul lancé), « l'erreur a été journalisée » (rien
+  ne l'était), « désactive Monte-Carlo » (sans effet). Élargir le domaine d'un état oblige à relire
+  tout ce qui l'affiche. Et l'absence de trace se corrige en faisant **les deux** — signal utilisateur
+  ET journal throttlé, comme le patron jumeau `HARDEN-NETWORTH-NAN`, jamais l'un contre l'autre
+  (`CINQ-TROUS-DANS-UNE-GARDE-ET-AUCUN-FAUX-POSITIF`).
+
+### Corollaire du lot 38, 2e passe — quand la LISTE BLANCHE est la mauvaise forme
+
+La deuxième passe a confirmé que les cinq correctifs tenaient (aucun appelant cassé, clé de dédup
+byte-identique au bit près sur les sept personas, annotation du contrôle mort exacte) — et elle a
+trouvé **quatre canaux de plus**, dont un à −95 % et un à −98,8 %.
+
+**Le compte est le signal.** Trois passes, trois fois le même diagnostic : `currentRentExpense`,
+puis les postes de budget, puis `liveCSVBalances` et les réglages de `projection`. Chaque correctif
+ajoutait une ligne à une énumération, et la passe suivante trouvait la ligne manquante. Au troisième
+tour, ce n'est plus une erreur d'inattention : **c'est la forme « liste blanche » qui ne convient pas
+à ce problème**. Une garde d'entrée doit couvrir ce qu'elle ne sait pas encore nommer.
+
+**L'inversion** : scanner récursivement tout ce que la frontière produit, et déclarer les
+EXCLUSIONS. Ce qui autorise ce choix n'est pas la confiance mais une mesure faite AVANT d'écrire la
+ligne — le scan récursif complet rend **zéro** valeur non finie sur les sept personas, donc il ne
+refuse aucun état légitime connu. Les listes nommées restent au-dessus, non par redondance mais
+parce qu'elles seules savent NOMMER le champ à l'utilisateur ; le filet, lui, dit « quelque chose ne
+va pas, et voici où ». ⚠️ Et il a fallu une notation CANONIQUE pour les dédupliquer : le filet écrit
+`config.users.0.netSalary` là où la liste écrit `config.users[0].netSalary` — sans normalisation, le
+même champ est refusé deux fois sous deux orthographes, et le message le répète.
+
+**Trois leçons plus fines du même tour :**
+
+- **Un prédicat de finitude est aveugle au TYPE.** Le vecteur de ce ticket est un `JSON.parse` de
+  blob non typé (le schéma de restauration valide `budgetItems` en `z.array(z.unknown())`) : une
+  valeur y revient aussi bien en `string`. `"1e999"` traverse toute l'arithmétique sans jamais
+  devenir non fini — mesuré, épargne mensuelle à 0 et patrimoine final à **−95 %**, sans un refus.
+  Le prédicat juste est « montant inexploitable », pas « nombre non fini ». Avec son pendant : `null`
+  et l'absence restent LÉGITIMES (« poste non budgété »), et les refuser casserait le cas nominal.
+- **Un correctif « pour les deux surfaces » se vérifie sur les deux.** J'avais câblé l'inventaire des
+  termes de cash dans le hook (navigateur) en écrivant que le canal était fermé ; le chemin MCP est
+  resté nu, et servait −188 000 $ à un LLM avec `isError` à faux. Le correctif qui affirme couvrir
+  deux chemins doit être mesuré sur chacun.
+- **Une sentinelle de chaîne exige un traitement chez l'appelant — sinon elle fuit.** J'avais préfixé
+  le message d'un marqueur `__PROJECTION_ENTREE_REFUSEE__` « destiné à être découpé », et aucun
+  appelant ne le découpait : le marqueur technique arrivait intact sous les yeux de Marc et dans la
+  réponse au LLM. Une classe d'erreur avec un champ `motif` donne à l'appelant de quoi faire ce que
+  le contrat demande ; un préfixe de chaîne ne fait que l'espérer
+  (`QUAND-LA-LISTE-BLANCHE-EST-LA-MAUVAISE-FORME`).
+
+
+### Corollaire du lot 38, 3e passe — « scanner tout » se vérifie sur l'OBJET SCANNÉ
+
+J'avais écrit — dans le code, dans le commit, dans `CLAUDE.md` et ici — que le module « scanne
+récursivement TOUT ce que la frontière produit ». **C'était faux.** Le filet lisait son ARGUMENT :
+un littéral de huit clés construit au site d'appel. La liste blanche n'avait pas disparu, elle avait
+monté d'un cran — du module vers `buildSimulationParams`.
+
+Conséquence mesurée : les deux canaux que le commit précédent annonçait fermer étaient toujours
+ouverts. `projection.inflationRate = NaN` → **0 refus, −98,8 % de patrimoine**.
+`projection.returnRates.celi = NaN` → 0 refus, −16,3 %, et **zéro valeur non finie publiée** — le mode
+« absorbé » que l'en-tête du module décrit comme le plus grave, servi tel quel à un LLM.
+
+⚠️ Ces deux pourcentages ont d'abord été écrits **−93 %** et **−29 %**, sur la foi d'un rapport
+d'agent, sans passer par le script committé du ticket. La 4ᵉ passe les a re-mesurés sous le protocole
+de `scripts/mesureFrontiereMoteur.ts` — qui a depuis été ÉTENDU à ces deux cas, précisément pour
+qu'ils ne puissent plus diverger. Les faits qualitatifs (0 refus, 0 non-fini publié) étaient exacts ;
+les montants, non (`UN-RAPPORT-D-AGENT-N-EST-PAS-UNE-SOURCE`).
+
+**Le geste** : une garde se branche sur l'objet réellement remis en aval, jamais sur une projection
+de cet objet construite pour elle. Ici, scanner les `SimulationParams` ASSEMBLÉS supprime la liste
+de CLÉS à tenir à jour. ⚠️ Mais **pas toute liste** — voir le corollaire de la 4ᵉ passe plus bas :
+elle a changé d'axe, des clés vers les TYPES. Corollaire de typage : la garde reçoit un
+`Readonly<Record<string, unknown>>` et non `SimulationParams`, précisément pour qu'elle ne puisse pas
+redevenir dépendante de la FORME.
+
+**Et la cause profonde de l'aveuglement : le mécanisme central n'avait AUCUN test.** Seize tests
+passaient au vert sur un filet inopérant (le commit disait « vingt-quatre » — le compte du fichier
+APRÈS le lot, pas avant : même un chiffre d'auto-critique se compte) ; ils couvraient les listes nommées, le prédicat de
+type, l'élision — tout sauf le mécanisme que le commit présentait comme sa contribution principale.
+Un test discriminant tenait en trois lignes (une clé hors listes nommées à `NaN` → au moins un
+refus) et il aurait été rouge. **Ce qu'on ne teste pas, on ne sait pas si ça marche — surtout quand
+c'est ce dont on est le plus fier.**
+
+Trois défauts plus fins, du même tour :
+
+- **Le filet reproduisait le bug qu'il devait respecter** : il marquait `derive` tout ce qu'il
+  attrapait, y compris `config.users[0].facteurEquivalence` — un champ de FORMULAIRE. Marc aurait
+  corrigé le salaire nommé, relancé, et se serait fait refuser pour une cause tue : exactement le
+  scénario que le champ `role` avait été introduit pour empêcher, re-commis par le mécanisme censé
+  le respecter. Le rôle se déduit désormais de l'ORIGINE du chemin.
+- **Le chemin technique arrivait à l'écran** (`une valeur du calcul est illisible (config.users[0]…)`)
+  alors que le module s'interdit ça et qu'un test l'assure — l'assertion ne tenait que parce
+  qu'aucun test n'exerçait le chemin du filet.
+- **Une valeur fautive FABRIQUÉE** : `valeur` était typée `number` et un non-nombre y devenait `NaN`,
+  donc le journal envoyait chercher un `NaN` là où la donnée est une chaîne. `no-fake-data` vaut
+  aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
+
+
+### Corollaire du lot 38, 4e passe — une liste blanche ne disparaît pas, elle change d'AXE
+
+`INVERSER-LA-GARDE-NE-SUPPRIME-PAS-LA-LISTE-ELLE-LUI-FAIT-CHANGER-D-AXE`
+
+J'avais écrit — code, commit, `CLAUDE.md`, ici — que scanner l'objet assemblé « supprime la liste à
+tenir à jour : il n'y a plus rien à oublier ». **Faux.** Le filet couvre la FINITUDE de tout l'objet ;
+le TYPE, lui, n'est vérifié que sur quatre champs NOMMÉS. `nonFinisRecursifs` teste
+`typeof === 'number'` et sort sur tout le reste, donc **une chaîne dans un champ monétaire traverse**.
+La liste blanche n'avait pas disparu : elle était passée des CLÉS aux TYPES, et le vecteur est le
+même `JSON.parse` non typé (le schéma de restauration valide ces conteneurs en `z.unknown()`).
+
+MESURÉ, persona `couple-confort`, 30 ans : une chaîne dans un montant de projet immobilier →
+**−52 %** (−3 095 835 $) ; `projection.inflationRate = "2"` → **−68 M$**. Chaque fois **0 refus** et
+**0 valeur non finie publiée**. Le correctif tient à la SOURCE — typer le schéma de restauration —
+et surtout pas dans un cinquième ajout à la garde : c'est ce réflexe-là qui a produit les trois
+premières passes (`[BACKUP-SCHEMA-NON-TYPE]`).
+
+**Quand une liste est-elle acceptable, alors ?** La carte des conteneurs ajoutée à ce tour en est
+une, et elle est saine : elle ne décide pas ce qui est VÉRIFIÉ, seulement ce qu'on SAIT DIRE. Un
+conteneur absent de la carte est quand même refusé, avec un libellé générique. **Le test n'est pas
+« reste-t-il une liste ? » mais « qu'est-ce que son oubli coûte ? »** — un message moins précis, ou
+un canal money-critical rouvert.
+
+Quatre autres défauts du même tour, tous du même genre — une affirmation plus large que ce qui a été
+mesuré :
+
+- **Un libellé qui nomme le MAUVAIS endroit est pire qu'un libellé vague.** Le filet tranchait en
+  deux : « une valeur de ton profil » ou « un réglage de la projection ». Une dette illisible
+  s'annonçait donc comme un réglage de projection, envoyant Marc sur le mauvais écran. Et la moitié
+  `budgetItems` de la condition était MORTE — ces postes ont quitté l'objet scanné pour voyager dans
+  `contexte` (mesuré : `'budgetItems' in params === false`). Une condition écrite d'après l'intention
+  se relit contre l'objet réel.
+- **La déduplication des CHEMINS ne déduplique pas les LIBELLÉS.** Dès qu'un libellé nomme le
+  conteneur et non le champ, deux champs fautifs du même conteneur rendent deux fois la même phrase :
+  « un montant de l'une de tes dettes est illisible **et** un montant de l'une de tes dettes est
+  illisible ». Dédupliquer se fait sur ce qui est MONTRÉ.
+- **« Zéro refus sur les sept personas » ne prouvait rien de la surface ajoutée** : aucun persona ne
+  porte `projection` (le store l'apporte au montage). Le contrôle portait donc sur un objet plus
+  ÉTROIT que la production — la classe de défaut même que le lot corrigeait, re-commise dans le test
+  qui devait le prouver. Corollaire mesurable : l'assiette passe de 132 à 149 nœuds rien qu'en
+  ajoutant `projection` (`MESURER-SUR-UN-OBJET-PLUS-ETROIT-QUE-LA-PRODUCTION`).
+- **Deux pourcentages gravés dans trois fichiers sur la foi d'un rapport d'agent** (−93 %, −29 %) :
+  re-mesurés sous le protocole du script committé, ils valent **−98,8 %** et **−16,3 %**. Les faits
+  qualitatifs étaient exacts, les montants non. Le script a été ÉTENDU à ces deux cas pour qu'ils ne
+  puissent plus diverger — un chiffre du dépôt vit dans le script qui le produit.
+
+**Et le test qui manquait.** Les cinq tests du filet nomment tous `projection` ou `config` : une
+re-restriction du scan à `{config, projection, dérivés}` les laisserait VERTS. Le test ajouté
+n'invoque aucune liste du module — il énumère `Object.keys()` des paramètres ASSEMBLÉS, corrompt une
+feuille numérique de chaque conteneur et exige un refus pour chacun. Vérifié : cette re-restriction
+le rend ROUGE alors que les cinq autres restent verts. **Une garde qui se dit exhaustive se teste par
+énumération de l'objet, pas par échantillon de ses champs connus.**

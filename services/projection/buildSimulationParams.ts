@@ -16,6 +16,7 @@
 // avec exactement les mêmes valeurs (ses hooks alimentent l'objet `inputs`),
 // et un test de PARITÉ verrouille l'égalité.
 
+import { verifierEntreesMoteur } from './verifierEntreesMoteur';
 import type {
     BudgetConfig,
     BudgetCategory,
@@ -47,7 +48,7 @@ import { deriveStartingBalancesFromHistory } from '../history/startingBalancesFr
 import { getEffectivePurchases } from '../../utils/assetPurchases';
 import { TAX_BASE_YEAR, ageOptsForSalaryInversion, calculateGrossFromNet } from '../../utils/tax';
 import { isSavingsNature } from '../../utils/budget';
-import { computeCashLedger } from '../startingCash';
+import { computeCashLedger, computeCashLedgerDetailed } from '../startingCash';
 
 /**
  * Loyer mensuel par défaut quand aucune ligne de budget « loyer / rent /
@@ -69,6 +70,17 @@ export interface BuildSimulationParamsInputs {
     liveCSVBalances: LiveCSVBalances;
     /** Cash de départ = Σ initialBalances + Σ transactions (hors transfert/doublon). */
     calculatedStartingCash: number;
+    /**
+     * [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] Termes que `computeCashLedgerDetailed` a ÉCARTÉS du
+     * total ci-dessus. Optionnel : sans lui, le comportement est celui d'avant.
+     *
+     * ⚠️ Il est indispensable parce que `calculatedStartingCash` seul ne peut RIEN dire : le ledger
+     * écarte les valeurs non finies et rend toujours un total fini, donc « le total est fini » ne
+     * prouve pas « aucune donnée n'a été jetée ». C'est la leçon
+     * `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL` : il faut DEUX portes, le total pour lire et
+     * l'inventaire des termes écartés pour refuser. `startingCash.ts` expose déjà la seconde.
+     */
+    termesFautifsCash?: ReadonlyArray<{ origine: string; cle: string; valeur: unknown }>;
     realEstateGoals: RealEstateGoal[];
     debts: Debt[];
     childGoals: ChildGoal[];
@@ -209,7 +221,12 @@ export function buildSimulationParams(inputs: BuildSimulationParamsInputs): Simu
     const baseMonthlyExpenses = baseNetAnnual / 12 - inputs.calculatedMonthlySavings;
     const currentRentExpense = computeCurrentRentExpense(inputs.budgetItems);
 
-    return {
+    // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] La garde d'entrée vit ICI — décision de Marc
+    // (2026-08-29) : c'est le point de passage UNIQUE vers le moteur, donc une seule garde couvre
+    // la saisie, la restauration Drive, l'import et le mode test. Elle REFUSE et NOMME le champ ;
+    // borner fabriquerait un chiffre plausible et faux, tracer en silence laisserait le défaut
+    // invisible — c'est précisément ce qui l'a laissé vivre jusqu'ici.
+    const assembles: SimulationParams = {
         projection: inputs.projection,
         calculatedStartingCash: inputs.calculatedStartingCash,
         liveCSVBalances: inputs.liveCSVBalances,
@@ -234,6 +251,38 @@ export function buildSimulationParams(inputs: BuildSimulationParamsInputs): Simu
         privateBusinesses: inputs.privateBusinesses ?? [],
         financialGoals: inputs.financialGoals ?? [],
     };
+
+    // ⚠️ La vérification porte sur les paramètres ASSEMBLÉS, pas sur un objet reconstruit pour elle.
+    //
+    // Le jet précédent passait à la garde un littéral de huit clés — donc son « filet récursif »
+    // ne voyait que ces huit-là, et les DEUX canaux que le commit annonçait fermer
+    // (`liveCSVBalances` et les réglages de `projection`) restaient grands ouverts : mesuré,
+    // `projection.inflationRate = NaN` rendait 0 refus et −98,8 % de patrimoine, `returnRates.celi`
+    // 0 refus et −16,3 % SANS une seule valeur non finie publiée. La liste blanche n'avait pas
+    // disparu, elle avait monté d'un cran — du module vers son site d'appel.
+    // (Ces deux pourcentages sont ceux de `scripts/mesureFrontiereMoteur.ts`, étendu à ces cas ;
+    // le commit les avait d'abord écrits « −93 % » et « −29 % » d'après un rapport d'agent.)
+    //
+    // Scanner l'objet réellement remis au moteur est la seule formulation qui ne puisse pas
+    // re-diverger sur les CLÉS : il n'y a plus de liste de champs à tenir à jour.
+    //
+    // ⚠️ « Plus de liste » tout court serait FAUX, et l'écrire ainsi a été le finding critique de la
+    // 4ᵉ passe. Le filet couvre la FINITUDE de tout l'objet ; le TYPE, lui, n'est vérifié que sur
+    // les champs nommés (`estMontantIllisible`). Une chaîne dans un champ monétaire traverse —
+    // mesuré, un montant de projet immobilier en chaîne fait **−52 %**, zéro refus, zéro valeur non
+    // finie publiée — et le vecteur est le même `JSON.parse` non typé, `BackupPanel` validant ces
+    // conteneurs en `z.unknown()`. Le correctif tient à la SOURCE (typer le schéma de restauration),
+    // pas dans un cinquième ajout ici : `[BACKUP-SCHEMA-NON-TYPE]` au BACKLOG. `SimulationParams` ne contient ni les
+    // transactions ni les actifs, donc le coût reste borné (mesuré : quelques dizaines de µs contre
+    // 300 ms de debounce et ~150 ms de moteur).
+    const entreesRefusees = verifierEntreesMoteur(assembles as unknown as Readonly<Record<string, unknown>>, {
+        budgetItems: inputs.budgetItems,
+        termesFautifsCash: inputs.termesFautifsCash,
+    });
+
+    // Omis quand il n'y a rien à refuser : le champ reste absent sur le chemin nominal, donc la
+    // signature JSON des params (clé de dédup du moteur) ne bouge pas d'un octet.
+    return entreesRefusees.length > 0 ? { ...assembles, entreesRefusees } : assembles;
 }
 
 /**
@@ -278,7 +327,16 @@ export function deriveSimulationInputsFromState(
         projection: state.projection,
         config: state.config,
         liveCSVBalances: derivePortfolioStartingBalances(state.assets ?? [], state.fxRates ?? {}),
-        calculatedStartingCash: computeStartingCash(state.initialBalances ?? {}, state.transactions ?? []),
+        // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] ⚠️ Le ledger DÉTAILLÉ, comme dans le hook. Sans lui,
+        // le chemin MCP restait nu sur le canal cash alors que le chemin navigateur était protégé :
+        // mesuré, `initialBalances.CELI = NaN` passait sans refus et rendait 7 082 228 $ au lieu de
+        // 7 270 228 $ (−188 000 $) à un LLM, `isError` à faux. Le correctif précédent affirmait
+        // fermer ce canal pour les deux surfaces ; il n'en fermait qu'une (finding 2e passe, #764).
+        // Un seul parcours des transactions sert les deux besoins (le total et l'inventaire).
+        ...(() => {
+            const ledger = computeCashLedgerDetailed(state.initialBalances ?? {}, (state.transactions ?? []) as Transaction[]);
+            return { calculatedStartingCash: ledger.cash, termesFautifsCash: ledger.termesFautifs };
+        })(),
         realEstateGoals: state.realEstateGoals ?? [],
         debts: state.debts ?? [],
         childGoals: state.childGoals ?? [],

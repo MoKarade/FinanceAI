@@ -1,4 +1,6 @@
 // components/ProjectionEngine.tsx
+import { journaliserRefus } from '../services/projection/verifierEntreesMoteur';
+import { messageDeRefus } from '../services/projection/verifierEntreesMoteur';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { runProjectionAsync, PROJECTION_CANCELLED } from '../services/projection/runAsync';
@@ -41,6 +43,7 @@ const ProjectionEngineInner: React.FC<ProjectionEngineProps> = ({ calculatedMont
     const runMC = useFinanceStore((s) => s.projectionRunMC);
     const setLastProjection = useFinanceStore((s) => s.setLastProjection);
     const setProjectionStatus = useFinanceStore((s) => s.setProjectionStatus);
+    const setProjectionRefus = useFinanceStore((s) => s.setProjectionRefus);
     // Souscription ÉTROITE à un booléen dérivé : ne re-render que quand le verrou de setup bascule.
     const reqsMet = useFinanceStore((s) => FUTURE_REQ_IDS.every((id) => REQUIREMENTS[id].isMet(s)));
 
@@ -55,8 +58,25 @@ const ProjectionEngineInner: React.FC<ProjectionEngineProps> = ({ calculatedMont
     }, [params]);
 
     // PH2-c-3 — calcul (déterministe OU Monte-Carlo selon runMC) dans un Web Worker, debounce 300 ms.
+    // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] Deuxième condition de refus, à côté de `reqsMet` et
+    // pour la même raison no-fake-data : une entrée illisible ne doit pas produire de projection.
+    // Le patron est repris de la garde voisine — ne pas calculer, ne rien publier, laisser l'UI
+    // dire pourquoi. ⚠️ La différence avec `reqsMet` est le MESSAGE : « ouvre Future » ne répare
+    // pas une donnée corrompue, il faut nommer le champ (d'où `entreesRefusees` dans les params).
+    // ⚠️ Mémoïsé, et réduit à une CHAÎNE : `params.entreesRefusees ?? []` fabriquait un tableau neuf
+    // à chaque rendu sur le chemin NOMINAL (le champ est absent quand il n'y a rien à refuser), ce
+    // qui aurait fait re-tourner l'effet de publication à chaque render. Une chaîne se compare par
+    // valeur — `null` sur le chemin nominal, donc l'effet ne bouge plus.
+    const refus = useMemo(
+        () => (params.entreesRefusees?.length
+            ? { entrees: params.entreesRefusees, message: messageDeRefus(params.entreesRefusees) }
+            : null),
+        [params.entreesRefusees],
+    );
+    const messageRefus = refus?.message ?? null;
+
     useEffect(() => {
-        if (!reqsMet) return;
+        if (!reqsMet || messageRefus) return;
         // [HARDEN-SNAPSHOT-RACE] AbortController en plus du flag `cancelled` : le flag protège les
         // `setState` tardifs, l'abort DÉTACHE la requête elle-même (params changés, démontage).
         // ⚠️ La dédup PH2-b est préservée par construction : l'abort ne rejette qu'une promesse
@@ -82,7 +102,7 @@ const ProjectionEngineInner: React.FC<ProjectionEngineProps> = ({ calculatedMont
                 });
         }, 300);
         return () => { cancelled = true; controller.abort(); clearTimeout(timer); };
-    }, [params, runMC, reqsMet, mcDedupKey, setProjectionStatus]);
+    }, [params, runMC, reqsMet, messageRefus, mcDedupKey, setProjectionStatus]);
 
     const results = asyncResults;
 
@@ -92,8 +112,32 @@ const ProjectionEngineInner: React.FC<ProjectionEngineProps> = ({ calculatedMont
             // Setup incomplet (ou redevenu incomplet) → on efface la source : pas de projection bidon.
             setLastProjection(null);
             setProjectionStatus('idle');
+            setProjectionRefus(null);
             return;
         }
+        if (messageRefus) {
+            // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] ⚠️ EFFACER, pas seulement s'abstenir de
+            // recalculer : une projection publiée AVANT que la donnée ne devienne illisible
+            // resterait la source unique de tous les écrans, et rien ne dirait qu'elle est périmée.
+            // Le statut passe à `error` — l'utilisateur doit voir qu'il se passe quelque chose, pas
+            // un onglet qui semble simplement vide.
+            setLastProjection(null);
+            setProjectionStatus('error');
+            // ⚠️ ET une trace. Mon commentaire d'origine justifiait l'absence de journalisation par
+            // « tracer en silence laisserait le défaut invisible » — argument valable contre un log
+            // SANS signal utilisateur, pas contre le log tout court. Le patron jumeau du dépôt
+            // (`HARDEN-NETWORTH-NAN`, `services/projection/netWorth.ts`) fait les DEUX, et pour une
+            // raison concrète : si la donnée est corrigée ou écrasée avant que Marc n'ouvre l'écran
+            // concerné, il ne reste AUCUNE trace exportable de l'incident. Throttlé par signature —
+            // le refus est réévalué à chaque rendu tant que la corruption dure (finding panel #764).
+            journaliserRefus(refus?.entrees);
+            // Le MOTIF va au store : `ProjectionRequired` est monté sur toutes les surfaces qui
+            // dépendent de la projection, donc une seule publication les couvre toutes — plutôt
+            // qu'un message recopié écran par écran (classe `DECISION-PRIVACY-UNE-SEULE-SORTIE`).
+            setProjectionRefus(messageRefus);
+            return;
+        }
+        setProjectionRefus(null); // plus rien à refuser : ne pas laisser un motif périmé à l'écran
         if (results && Array.isArray(results.chartData) && results.chartData.length > 0) {
             setLastProjection(results);
             setProjectionStatus(results._hasError ? 'error' : 'idle');
@@ -101,7 +145,7 @@ const ProjectionEngineInner: React.FC<ProjectionEngineProps> = ({ calculatedMont
             // Résultat en erreur (chartData vide) : NE PAS publier (no-fake-data), mais signaler à l'UI.
             setProjectionStatus('error');
         }
-    }, [results, reqsMet, setLastProjection, setProjectionStatus]);
+    }, [results, reqsMet, refus, messageRefus, setLastProjection, setProjectionStatus, setProjectionRefus]);
 
     return null;
 };

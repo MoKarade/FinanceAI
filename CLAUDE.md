@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 927 tests** Vitest
-(466 fichiers de test, mesuré le 2026-08-29). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 962 tests** Vitest
+(469 fichiers de test, mesuré le 2026-08-29). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -769,6 +769,48 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   existe en plusieurs exemplaires, copier celui qui porte sa JUSTIFICATION écrite. Et la garde doit
   asserter que le conteneur existe **déjà quand il n'y a rien à annoncer**, sinon elle est satisfaite
   par la version fautive (`COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`).
+- **Trois oublis d'affilée dans une liste blanche disent que c'est la FORME qui est fausse** : ma
+  garde d'entrée énumérait les champs à vérifier, et trois passes ont trouvé trois canaux
+  money-critical manquants (−95 % à −99 %). Le correctif n'est pas un quatrième ajout mais
+  l'INVERSION : scanner tout ce qui est produit, et **déclarer les exclusions** — autorisé par une
+  mesure (zéro non-fini sur les sept personas), jamais par confiance.
+  ⚠️⚠️ Et « scanner tout » se vérifie sur l'OBJET SCANNÉ : mon premier filet « récursif » lisait le
+  littéral de huit clés construit pour l'appeler, donc la liste blanche n'avait pas disparu — elle
+  avait monté d'un cran, du module vers son site d'appel, et les deux canaux que j'annonçais fermer
+  restaient ouverts (`projection.inflationRate = NaN` → 0 refus, **−98,8 %**). Une garde se branche sur
+  l'objet réellement remis en aval, jamais sur une projection de cet objet.
+  ⚠️ Deux corollaires : un prédicat de finitude est aveugle au TYPE (le vecteur est un `JSON.parse`
+  non typé — `"1e999"` en chaîne traverse sans jamais devenir non fini, −95 % mesuré), et **un
+  mécanisme central sans test est un mécanisme dont personne ne sait s'il fonctionne** : seize tests
+  étaient verts sur ce filet inopérant (`CINQ-TROUS-DANS-UNE-GARDE-ET-AUCUN-FAUX-POSITIF`).
+  ⚠️⚠️ **Et l'inversion elle-même n'a pas supprimé la liste — elle lui a fait changer d'AXE** (4ᵉ passe) :
+  scanner tout couvre la FINITUDE de tout l'objet, mais le TYPE n'est vérifié que sur les champs
+  NOMMÉS. Une chaîne dans un champ monétaire traverse le filet (`typeof !== 'number'` → on descend
+  ou on sort), et le vecteur est le même `JSON.parse` non typé : mesuré, une chaîne dans un montant
+  de projet immobilier fait **−52 %**, zéro refus, zéro non-fini publié. Le correctif est à la
+  SOURCE (typer le schéma de restauration), pas dans un cinquième ajout à la garde
+  (`[BACKUP-SCHEMA-NON-TYPE]`). Le bon test n'est pas « reste-t-il une liste ? » mais **« qu'est-ce
+  que son oubli coûte ? »** — un message moins précis se tolère, un canal money-critical rouvert non
+  (`INVERSER-LA-GARDE-NE-SUPPRIME-PAS-LA-LISTE-ELLE-LUI-FAIT-CHANGER-D-AXE`).
+  ⚠️ Corollaire de MESURE : « zéro refus sur les sept personas » ne prouvait rien de la surface
+  ajoutée — **aucun persona ne porte `projection`** (le store l'apporte au montage), donc le contrôle
+  portait sur un objet plus ÉTROIT que la production. Un contrôle se fait sur l'objet de PROD.
+- **Une garde qui ne peut pas TIRER n'est pas une protection** : mon contrôle sur le solde de départ
+  était structurellement mort (le ledger écarte les non-finis et rend toujours un total fini),
+  pendant que la corruption passait — la vraie porte existait déjà (`termesFautifs`,
+  `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL`). Une garde morte se retire ou s'ANNOTE, sinon elle
+  compte comme protection dans tout inventaire futur. ⚠️ Deux corollaires du même lot : le mode
+  « absorbé » a plusieurs OPÉRATEURS (`Math.max(0, …)` rabat `−Infinity` sur 0 exactement comme
+  `|| 0` rabat un `NaN` — écart mesuré bien plus grand), et **« le point de passage unique » se
+  vérifie en comptant les appelants** (la mienne en couvrait 1 sur 5 ; les outils MCP servaient −96 %
+  à un LLM) (`CINQ-TROUS-DANS-UNE-GARDE-ET-AUCUN-FAUX-POSITIF`).
+- **« L'appel n'a PAS eu lieu » se lit APRÈS le budget de temps** : ma garde espionnait le moteur et
+  asserait `not.toHaveBeenCalled()` dès que le statut basculait — elle passait aussi SANS le
+  blocage, le lancement étant debouncé à 300 ms. Le test mesurait la latence. Faux timers, plus le
+  cas SAIN dans le même budget comme contrôle (sans lui, un espion jamais câblé donne le même vert).
+  ⚠️ Corollaire de garde d'ENTRÉE : refuser ne suffit pas, il faut **EFFACER** ce qui a déjà été
+  publié — sinon la valeur calculée avant la corruption reste la source unique de tous les écrans
+  (`UNE-PERTURBATION-PEUT-ETRE-MUETTE-PAR-DEBOUNCE`).
 - **N tests rouges sur le code d'avant ne font pas N preuves** : mes trois gardes a11y rougissaient
   3/3, mais DEUX rougissaient pour la raison de la TROISIÈME — le correctif du nom accessible change
   le sélecteur, donc le test du `role="status"` échouait sur « champ introuvable » avant d'observer

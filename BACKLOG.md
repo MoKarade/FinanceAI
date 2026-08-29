@@ -86,70 +86,6 @@
   ⚠️ **Dernière étape du ticket** : basculer le ratchet de « compter » à « interdire » (plafond → 0),
   ce qui est le seul état qui empêche la classe de revenir. Aujourd'hui il naît non bloquant AVEC sa
   raison datée dans le code, comme l'exige la convention pour une garde qui rougirait à la livraison.
-- [ ] **`[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`** (M — finding code-reviewer, panel PR #756,
-  PRÉ-EXISTANT) — le vecteur de corruption traité au lot 30 (`JSON.parse` rend `Infinity` depuis un
-  blob Drive/backup contenant `1e999`) n'est neutralisé QU'À l'affichage Santé. Le même `netSalary:
-  Infinity` atteint le MOTEUR sans garde : `u?.netSalary || u?.salary || 0` ne le rattrape pas
-  (`Infinity` est truthy) → `netAnnual = Infinity × 12` et cascade. Aucun schéma Zod à l'hydratation
-  du store (`store/useFinanceStore.ts` fait le même `|| 0` sans `isFinite`), aucune garde `isFinite`
-  dans `services/projection/buildSimulationParams.ts` ni `setupSimulation.ts`. Un Futur entièrement
-  corrompu est nettement plus grave que le score d'écran corrigé. **La garde doit vivre à la
-  FRONTIÈRE de chargement** (store / restauration Drive), pas fichier par fichier —
-  classe `DECISION-PRIVACY-UNE-SEULE-SORTIE` appliquée à la validation d'entrée.
-  ✅ **INSTRUIT (lot 33) — mesuré, pas déduit.** `buildSimulationParamsFromState` sur le persona
-  `couple-confort`, en listant les champs numériques NON FINIS des paramètres rendus (fixtures
-  clonées par cas — voir l'avertissement plus bas) :
-  | Donnée corrompue | `baseNetAnnual` | `baseGrossAnnual` | Champs non finis |
-  |---|---|---|---|
-  | *(sain)* | 115 200 | 164 400 | — |
-  | `netSalary: Infinity` | **Infinity** | 164 400 | `baseNetAnnual`, `baseMonthlyExpenses` (= `NaN`) |
-  | `netSalary: NaN` | **52 800** | 164 400 | *aucun* |
-  | `grossSalary: Infinity` | 115 200 | **Infinity** | `baseGrossAnnual` |
-  Les DEUX modes de panne existent donc à la frontière du moteur, et ils sont OPPOSÉS : `Infinity`
-  se propage (et `∞ − ∞` fabrique un `NaN` dans les dépenses mensuelles), tandis que `NaN` est
-  ABSORBÉ — le salaire de l'utilisateur 0 (5 200 $/mois, soit **62 400 $/an**) s'évapore sans une
-  trace, et rien dans les paramètres ne paraît anormal. C'est la paire décrite par la leçon du
-  lot 31, un cran plus grave : la projection entière en dépend, pas un score d'écran.
-  ⚠️ **Fourche à trancher AVANT de coder** (money-critical, M) — (i) OÙ vit la garde : hydratation
-  du store, restauration Drive, ou `buildSimulationParams` ? (ii) QUE fait-elle d'une valeur
-  mauvaise : refuser la projection, borner la valeur, ou tracer et continuer ? Chaque réponse a un
-  coût différent pour l'utilisateur. Convention §7 : plan court + OK de Marc avant de coder.
-  ⚠️ **IMPACT du mode `NaN` : ORDRE DE GRANDEUR seulement, le chiffre exact n'est PAS reproductible.**
-  Deux agents ont mesuré le même scénario annoncé (persona par défaut, 30 ans, `savingsMode:
-  'budget'`, inflation 2 %) et ont obtenu des résultats DIFFÉRENTS : `6 742 127 $ → −403 059 $`
-  (delta −7 145 186 $) contre `7 236 428 $ → 286 795 $` (delta −6 949 633 $) — **6,83 % d'écart sur
-  la base, 2,81 % sur les deltas** (recalculé à la main ; j'avais recopié « ~7 % » et « ~10 % » du
-  rapport, dont le second confondait deux grandeurs, et un delta faux d'un dollar). Ce n'est pas de
-  l'arrondi : les deux mesures ne décrivent pas le même scénario. **Ce qui est SOLIDE et suffit à trancher la
-  fourche** : les deux mesures s'accordent sur l'ordre de grandeur (**environ −7 M$**, soit la
-  quasi-totalité du patrimoine projeté) ET sur le fait qualitatif décisif — **0 valeur non finie
-  sur les 361 points de `chartData`**. C'est le plus grave des deux modes précisément parce que
-  rien ne le signale : `Infinity` finit par se voir, `NaN` absorbé en 0 produit une projection
-  lisse et entièrement fausse.
-  ⚠️ **Cause probable de l'écart, à trancher avant de re-mesurer** [Probable] : le paramètre
-  « rendement 5 % » des deux protocoles a été passé en `projection.returnRate` (SINGULIER) — or
-  `computeScenarioOverrides` (`services/projection/setupSimulation.ts`) lit `projection.returnRates`
-  (la carte PAR COMPTE) et **jamais** le singulier (vérifié : les seuls lecteurs de `returnRate` sont
-  `RealEstateWorkspace.tsx`, et `TabRouter.tsx` qui le TRANSMET jusqu'à `LifeEvents.tsx` où il
-  pilote un vrai calcul montré à l'utilisateur — voir le ticket dédié). Les deux mesures ont donc probablement
-  tourné sur les taux par défaut (7 / 6,5 / 6,5 / 10 / 3), et leurs autres paramètres non déclarés
-  divergeaient. **Avant de citer un montant exact, écrire un script de reproduction COMMITTÉ** qui
-  fixe explicitement tous les paramètres, `returnRates` compris — un jetable ne se relance pas.
-  ⚠️ **Leçon payée ici** : j'ai publié ces chiffres avec un ✅ « CHIFFRÉ » sur la foi d'un rapport
-  d'agent, sans les mesurer moi-même. Un rapport d'agent n'est pas une source, exactement comme un
-  ticket n'en est pas une.
-  ⚠️ **Reproduire la mesure avant de s'en servir** (`MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE`) : test
-  jetable appelant `buildSimulationParamsFromState(state, { startYear: 2026, startMonth: 0 })` puis
-  un scan **RÉCURSIF** des non-finis. ⚠️ Un scan de PREMIER NIVEAU
-  (`Object.entries(params).filter(…)`) ment sur le cas `NaN` : il annonce « aucun non fini » alors
-  que `params.config === state.config` (passage par RÉFÉRENCE, `buildSimulationParams.ts`), donc
-  `config.users[0].netSalary` VAUT `NaN` dans les paramètres — et c'est cette valeur-là qui pilote
-  le moteur. La colonne « aucun » du tableau ci-dessus vaut donc **au premier niveau seulement**.
-  C'est la classe que le lot 33 combat, retrouvée dans ma propre méthode de reproduction
-  (finding financial-integrity, panel PR #759).
-  ⚠️ **Cloner l'état par cas** : une première version de cette mesure était FAUSSE
-  (`grossSalary: Infinity` semblait aussi écraser le net à 52 800) parce que les builds du persona
-  partageaient leurs objets — cf. `[TEST-PERSONA-FIXTURE-PARTAGEE]`, corrigé au lot 33.
 - [ ] **`[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE]`** (S — findings silent-failure-hunter,
   panel PR #756) — trois angles morts de restitution de l'état « donnée corrompue » introduit au
   lot 30 : (a) `components/future/FutureHealthSummary.tsx` n'affiche que le score global — une
@@ -1474,6 +1410,22 @@
   ticket d'origine ne les listait pas.
 
 ### 🔴 Argent — valeurs fausses ou silencieuses
+
+- [ ] **`[BACKUP-SCHEMA-NON-TYPE]`** (M, CRITIQUE) — le schéma de restauration valide les conteneurs
+  money-critical en `z.unknown()` / `z.array(z.unknown())` (`components/settings/BackupPanel.tsx:18-40`) :
+  aucune contrainte de TYPE. Une valeur restaurée depuis un backup ou un blob Drive peut donc revenir
+  en **chaîne** dans un champ monétaire, et une chaîne traverse toute l'arithmétique sans jamais
+  devenir non finie. ⚠️ **La garde d'entrée du moteur ne la voit pas** : `verifierEntreesMoteur`
+  scanne la FINITUDE de tout l'objet des paramètres, mais le TYPE seulement sur les champs nommés
+  (`estMontantIllisible` : `netSalary`, `grossSalary`, `salary`, `budgetItems[].target`). Le filet
+  récursif teste `typeof === 'number'` et sort sur tout le reste. **MESURÉ** (4ᵉ passe du lot 38,
+  persona `couple-confort`, horizon 30 ans) : une chaîne dans un montant de projet immobilier →
+  **−52 %** de patrimoine final (−3 095 835 $), `projection.inflationRate = "2"` → **−68 M$**, chaque
+  fois avec **0 refus** et **0 valeur non finie publiée sur 361 points** — le mode « absorbé », celui
+  où rien ne crie. Correctif à la SOURCE, pas un cinquième ajout à la garde : typer les conteneurs
+  (`z.number().finite()` par champ monétaire) dans le schéma de restauration. Le même geste ferme le
+  cas voisin du **champ ABSENT** (`acc + undefined` = `NaN`), aujourd'hui refusé par un dérivé dont
+  le libellé ne nomme aucun champ corrigeable — déjà noté dans `verifierEntreesMoteur.ts`. [MESURÉ]
 
 ### 🔴 Interface — atteignabilité et clavier
 

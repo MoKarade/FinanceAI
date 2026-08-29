@@ -80,3 +80,61 @@ describe('ProjectionEngine (PH2-c) — moteur app-level, source unique', () => {
         );
     });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] Le refus d'une entrée illisible.
+//
+// ⚠️ Ce bloc teste le comportement que la garde d'entrée EXISTE pour produire, et qu'aucun test de
+// `verifierEntreesMoteur` ne peut prouver : le moteur ne calcule pas, ET la projection déjà publiée
+// est EFFACÉE. Le second point est le plus important — sans lui, une courbe calculée avant que la
+// donnée ne devienne illisible resterait la source unique de tous les écrans, sans rien pour dire
+// qu'elle est périmée.
+describe('ProjectionEngine — entrée illisible à la frontière (ENG-INFINITY)', () => {
+    afterEach(() => cleanup());
+
+    const monterAvecPersona = (corrompre?: (etat: Record<string, unknown>) => void) => {
+        const persona = getPersonaOrDefault(DEFAULT_PERSONA_ID);
+        const etat = persona.build() as Record<string, unknown>;
+        corrompre?.(etat);
+        act(() => {
+            useFinanceStore.getState().enableTestMode(etat as never, persona.id);
+            useFinanceStore.setState({ projectionRunMC: false, lastProjection: null, projectionStatus: 'idle' });
+        });
+        return render(<ProjectionEngine calculatedMonthlySavings={2000} />);
+    };
+
+    const corrompreLeNet = (valeur: number) => (etat: Record<string, unknown>) => {
+        const config = etat.config as { users: Array<Record<string, unknown>> };
+        config.users[0].netSalary = valeur;
+    };
+
+    it('ne publie AUCUNE projection quand le salaire net est NaN — le mode absorbé', async () => {
+        // C'est le cas dangereux : sans garde, la projection se calcule sans erreur et publie une
+        // courbe lisse où 62 400 $/an ont disparu. Ici elle ne doit pas exister du tout.
+        monterAvecPersona(corrompreLeNet(Number.NaN));
+
+        await waitFor(
+            () => expect(useFinanceStore.getState().projectionStatus).toBe('error'),
+            { timeout: 4000 },
+        );
+        expect(useFinanceStore.getState().lastProjection).toBeNull();
+    });
+
+    it('EFFACE une projection déjà publiée quand la donnée devient illisible', async () => {
+        // Le vrai scénario : Marc a une projection valide à l'écran, puis une restauration Drive
+        // ramène une valeur corrompue. La courbe d'avant ne doit pas survivre.
+        monterAvecPersona();
+        await waitFor(
+            () => expect(useFinanceStore.getState().lastProjection).not.toBeNull(),
+            { timeout: 4000 },
+        );
+        cleanup();
+
+        monterAvecPersona(corrompreLeNet(Infinity));
+        await waitFor(
+            () => expect(useFinanceStore.getState().lastProjection).toBeNull(),
+            { timeout: 4000 },
+        );
+        expect(useFinanceStore.getState().projectionStatus).toBe('error');
+    });
+});

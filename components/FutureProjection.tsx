@@ -265,6 +265,9 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // garde d'erreur).
     const isComputing = useFinanceStore(s => s.projectionStatus === 'computing');
     const hasError = useFinanceStore(s => s.projectionStatus === 'error');
+    // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] Motif du refus, publié par `ProjectionEngine` — il
+    // NOMME le champ fautif, là où le message générique ci-dessous n'oriente vers rien.
+    const projectionRefus = useFinanceStore(s => s.projectionRefus);
 
     // PH2-c — résultat LU depuis la SOURCE UNIQUE (publiée par ProjectionEngine, app-level).
     // Plus aucun calcul ni repli local : la courbe affichée EST celle du moteur (sauf GEL, ci-dessous).
@@ -1209,12 +1212,22 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // `projectionStatus` à 'error'. On affiche donc une erreur honnête depuis ce statut plutôt que
     // de rendre un graphe à $0. Dashboard/Investments/Budget gardent la dernière projection valide.
     if (hasError) {
+        // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] ⚠️ `projectionStatus === 'error'` recouvre
+        // désormais DEUX causes très différentes, et cet écran est le SEUL à ne pas les distinguer :
+        // les six autres onglets passent par `ProjectionRequired`, qui nomme le champ. Or c'est ici
+        // qu'on vient chercher « pourquoi ma projection ne marche plus ». Pire, le conseil
+        // « désactive Monte-Carlo » est une fausse piste devant une entrée illisible — il ne répare
+        // rien (finding panel #764).
         return <div className="p-8 text-center bg-surface/50 rounded-2xl border border-red-500/20 space-y-2">
             <div className="text-2xl" aria-hidden="true">⚠️</div>
-            <div className="text-red-400 font-bold">Le calcul de la projection a échoué.</div>
+            <div className="text-red-400 font-bold">
+                {projectionRefus ? 'Donnée illisible' : 'Le calcul de la projection a échoué.'}
+            </div>
             <div className="text-sm text-ink-300 max-w-md mx-auto">
-                Vérifie tes paramètres (revenus, dépenses, comptes, objectifs). L'erreur a été
-                journalisée.{runMC ? ' Tu peux aussi désactiver le mode Monte-Carlo et réessayer.' : ''}
+                {projectionRefus ?? (<>
+                    Vérifie tes paramètres (revenus, dépenses, comptes, objectifs). L'erreur a été
+                    journalisée.{runMC ? ' Tu peux aussi désactiver le mode Monte-Carlo et réessayer.' : ''}
+                </>)}
             </div>
         </div>;
     }

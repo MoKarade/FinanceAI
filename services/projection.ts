@@ -1,4 +1,5 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
+import type { EntreeRefusee } from './projection/verifierEntreesMoteur';
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, FinancialGoal } from '../types';
 import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, CAPITAL_GAINS_INCLUSION_STANDARD, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
 import { RRIF_RATES, welcomeTax, NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './projection/helpers';
@@ -71,6 +72,16 @@ export interface LiveCSVBalances {
 }
 
 export interface SimulationParams {
+    /**
+     * [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] Entrées inexploitables relevées à la frontière du
+     * moteur (`buildSimulationParams`). Non vide ⇒ la projection NE DOIT PAS être calculée : une
+     * valeur non finie y produit soit un `Infinity` qui se propage, soit — pire — un `NaN` absorbé
+     * en 0 qui rend une courbe lisse et entièrement fausse (mesuré : 62 400 $/an évaporés sans une
+     * seule valeur non finie sur les 361 points publiés).
+     *
+     * Champ ADDITIF et optionnel : absent, le comportement est bit-identique à avant.
+     */
+    entreesRefusees?: readonly EntreeRefusee[];
     projection: ProjectionConfig;
     calculatedStartingCash: number;
     liveCSVBalances: LiveCSVBalances;
@@ -271,6 +282,15 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     // contaminerait sinon `d.balance` (NaN persistant via l'amortissement) → `rawNetWorth` = NaN →
     // patrimoine net cassé SILENCIEUSEMENT (graphe vide). On normalise à 0 et on JOURNALISE
     // l'anomalie (jamais avalée). [silent-failure-hunter, money-critical 2026-06-16]
+    //
+    // ⚠️ DEVENUE INATTEIGNABLE POUR LE CAS `NaN` depuis `[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`
+    // (lot 38) : `verifierEntreesMoteur` scanne les paramètres assemblés — `debts` compris — et
+    // REFUSE la projection avant qu'on arrive ici. Les deux politiques sont contradictoires
+    // (normaliser à 0 vs refuser en nommant le champ) et c'est la seconde qui a été retenue par
+    // Marc : un « 0 $ » crédible est pire qu'un refus honnête. Le code reste en ceinture pour un
+    // appelant qui n'aurait pas traversé la frontière (tests, scripts de mesure), mais il ne compte
+    // PLUS comme protection dans un inventaire — une garde morte s'annote, sinon elle se fait
+    // recompter (`UNE-GARDE-QUI-NE-PEUT-PAS-TIRER-N-EST-PAS-UNE-PROTECTION`).
     let activeDebts = (debts || []).filter(d => !!d).map(d => {
         const balance = Number.isFinite(d.balance) ? d.balance : 0;
         const interestRate = Number.isFinite(d.interestRate) ? d.interestRate : 0;

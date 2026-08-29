@@ -6,6 +6,20 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-29 (Futur : une donnée illisible ne produit plus de projection)
+
+- **Corrigé** : une valeur de salaire devenue illisible — ça arrive après une restauration de
+  sauvegarde ou une synchronisation Drive — traversait tout le calcul sans que rien ne le signale.
+  Selon le cas, la projection partait à l'infini, ou bien, plus insidieux, **elle effaçait
+  simplement le salaire** et affichait une courbe parfaitement lisse et entièrement fausse (mesuré :
+  62 400 $/an disparus, sans un seul chiffre anormal à l'écran). Désormais la projection est refusée
+  et le message **nomme la personne et le champ** à corriger, au lieu d'inviter à ouvrir Futur — ce
+  qui ne réparait rien. La projection précédente est effacée plutôt que laissée en place.
+- **Amélioré** : le message de refus **nomme maintenant le bon endroit**. Une dette, un projet
+  immobilier ou un objectif de retraite dont un montant est illisible s'annonçait « un réglage de la
+  projection est illisible » — ce qui envoyait corriger le mauvais écran. Et quand deux montants du
+  même endroit étaient en cause, la phrase était répétée telle quelle ; elle ne l'est plus.
+
 ## [unreleased] — 2026-08-29 (outillage interne : les garde-fous lisaient mal le code)
 
 - **Interne, sans effet visible** : plusieurs garde-fous automatiques du projet retiraient les

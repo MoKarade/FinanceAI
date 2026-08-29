@@ -34,6 +34,17 @@
 // (`true + 1 === 2`) passerait encore — le fermer demanderait une seconde liste, celle des champs
 // booléens, qui n'a pas été mesurée. Consigné au BACKLOG plutôt que traité à la va-vite.
 
+// ⚠️ COÛT, mesuré — et il est de nature OPPOSÉE à celui de la garde du moteur, qu'il ne faut pas
+// confondre avec elle. Celle du lot 38 scanne les `SimulationParams`, un objet BORNÉ (149 nœuds, que
+// le portefeuille grossisse ou non). Celle-ci scanne l'ÉTAT ENTIER, donc son coût est LINÉAIRE en
+// nombre de transactions : 0,12 ms sur un ménage nominal, 6 ms à 5 000 transactions, 62 ms à 50 000.
+//
+// C'est acceptable parce que le moment n'est pas le même : elle tourne au BOOT (le `merge` de
+// zustand), à chaque `persist.rehydrate()` — donc après un pull Drive — et à l'import d'un backup.
+// Jamais dans une boucle de rendu ni à la frappe. Mais l'écrire « négligeable » sans le nombre
+// serait la même approximation que « le coût ne grandit pas avec les données », corrigée au lot 38 :
+// il grandit, simplement à un endroit où on peut le payer.
+
 /** Un champ dont le TYPE est inexploitable, avec de quoi le nommer à l'écran ET le retrouver. */
 export interface ChampMalType {
     /** Chemin technique complet, pour le journal et les tests (ex. `realEstateGoals[0].closingCosts`). */

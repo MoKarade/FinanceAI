@@ -108,6 +108,32 @@ describe('[BACKUP-SCHEMA-NON-TYPE] ce qui NE doit pas être refusé', () => {
         }
     });
 
+    it('ne refuse rien sur l\'HISTORIQUE DE CHAT — une surface qu\'aucun persona ne porte', () => {
+        // ⚠️ Le cas qui manquait à la mesure initiale. Les personas ne portent aucune conversation,
+        // alors que `partialize` les persiste : la surface la plus riche en TEXTE libre de l'app
+        // n'était donc couverte par aucun contrôle. Elle passe — mais grâce à la dérivation depuis
+        // `types.ts`, pas grâce aux états mesurés. C'est la même leçon que `version: '3.2'` :
+        // une liste se vérifie sur chaque surface qu'elle garde, pas sur la plus familière.
+        const etatAvecChat = {
+            ...(etat() as unknown as Record<string, unknown>),
+            aiConversations: [{
+                id: 'c1',
+                title: 'Ma retraite ?',
+                createdAt: '2026-01-01T00:00:00Z',
+                updatedAt: '2026-01-02T00:00:00Z',
+                model: 'sonnet',
+                messages: [
+                    { role: 'user', text: 'Puis-je prendre ma retraite à 60 ans ?', timestamp: '2026-01-01T00:00:00Z', id: 'm1' },
+                    { role: 'model', text: 'Voici la réponse…', timestamp: '2026-01-01T00:01:00Z', id: 'm2', toolsUsed: ['Situation fiscale'] },
+                ],
+            }],
+            activeAiConversationId: 'c1',
+            aiChatModel: 'sonnet',
+            aiChatCostUsdTotal: 0.42,
+        };
+        expect(verifierTypesRestaures(etatAvecChat).map((f) => f.chemin)).toEqual([]);
+    });
+
     it('ne refuse pas un TABLEAU de chaînes — ses éléments sont jugés sur la clé du tableau', () => {
         // Sans cette règle, `tags: ['a','b']` verrait ses éléments jugés sur la clé `'0'`, absente de
         // la liste : toute liste de textes de l'app deviendrait un refus.

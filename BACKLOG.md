@@ -47,6 +47,28 @@
   ⚠️ Le correctif n'est pas mécanique : `raw` est une CHAÎNE déjà formatée, donc l'envelopper dans
   `PrivateAmount` masquerait aussi la prose autour du montant. Il faut probablement séparer le
   montant du libellé dans `HealthMetricRow` avant de pouvoir masquer l'un sans l'autre.
+- [ ] **`[A11Y-REBALANCE-CIBLES]`** (S — findings a11y-auditor, panel PR #761, PRÉ-EXISTANTS depuis
+  le 2026-07-31, **vérifiés un par un contre le code**) — trois défauts d'accessibilité dans le bloc
+  « Rééquilibrage » de `components/Investments.tsx`, aucun introduit par le lot 35 (son diff ne
+  touche ni un attribut, ni une classe, ni un `aria-*`) :
+  1. 🟠 **Les cinq champs de cible partagent le MÊME nom accessible** — un seul
+     `aria-label="Allocation cible (pourcentage)"` littéral, rendu dans le `.map` des cinq entrées du
+     modèle (Index Mondial, Technologie, Industrie & Finance, Or & Matières, Liquidités). Le libellé
+     du secteur est un `div` voisin, jamais lié programmatiquement. En mode formulaire (NVDA/JAWS) ou
+     dans le rotor VoiceOver, on entend cinq fois la même chose sans pouvoir distinguer les secteurs.
+     Échec **SC 2.4.6**. Correctif : interpoler `item.label` dans l'`aria-label`, ou `aria-labelledby`.
+  2. 🟠 **L'alerte « Le total des cibles doit être de 100% » n'est pas annoncée** — le `div` n'a ni
+     `role="status"` ni `aria-live`, donc taper une valeur qui casse le total ne produit aucune
+     annonce. Échec **SC 4.1.3**. ⚠️ Classe `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` : le bloc
+     `justificationsError`, quelques lignes plus haut dans la MÊME fonction, porte déjà
+     `<p role="status">`. Le patron est là, il n'a pas été appliqué ici.
+  3. 🟡 **Le bouton « Modifier Cibles » / « Terminer » n'expose pas son état** — c'est une bascule
+     (tout le bloc change de forme), mais l'état n'est porté que par le TEXTE, sans `aria-pressed`.
+     ⚠️ Même signal que le point 2, et je l'ai mesuré : `aria-pressed` est déjà employé **cinq fois**
+     dans ce fichier — le rapport d'agent disait seulement « absent », ce qui aurait fait passer un
+     oubli local pour une convention manquante.
+  ✅ **Pas de finding sur le mouvement** : `animate-pulse` est bien neutralisé par la règle globale
+  `@media (prefers-reduced-motion: reduce)` d'`index.css`, vérifiée.
 - [ ] **`[ENG-RETURNRATE-SINGULIER-NON-CABLE]`** (S — découvert en instruisant, panel PR #759) —
   `projection.returnRate` (SINGULIER) ne pilote AUCUNE croissance du moteur : `computeScenarioOverrides`
   (`services/projection/setupSimulation.ts`) lit `projection.returnRates`, la carte par compte, et

@@ -8351,3 +8351,42 @@ qu'il faut **arrêter d'itérer et reformuler le problème** — pas la preuve q
 le coup. Les cinq défauts trouvés étaient tous DORMANTS (zéro occurrence dans le dépôt) ; ce qui a
 vraiment changé de main, c'est le filet
 (`QUAND-UNE-CONTRAINTE-INTERDIT-LA-BONNE-SOLUTION-LIVRER-LE-FILET`).
+
+---
+
+## Lot 38 (2026-08-29) — la garde d'entrée du moteur, et une preuve muette par debounce
+
+`[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`, tranché par Marc après instruction : la garde vit à la
+frontière `buildSimulationParams`, et elle **refuse en nommant le champ**.
+
+**Ce que la mesure re-dérivée confirme** (script committé, `scripts/mesureFrontiereMoteur.ts`) : les
+deux modes de panne sont opposés, et c'est le silencieux qui est grave. `netSalary: Infinity` se
+propage jusqu'à `baseNetAnnual` et fabrique un `NaN` dans les dépenses — ça finit par se voir.
+`netSalary: NaN` est **absorbé** par le `|| 0` : `baseNetAnnual` passe de 115 200 à **52 800**,
+62 400 $/an s'évaporent, aucun paramètre ne paraît anormal et la courbe reste lisse. Rien ne crie.
+
+**Trois décisions de conception qui valent au-delà de ce ticket :**
+
+- **La garde EFFACE, elle ne se contente pas de s'abstenir.** Ne plus recalculer laisserait la
+  projection publiée AVANT la corruption comme source unique de tous les écrans, sans rien pour dire
+  qu'elle est périmée. « Ne pas produire de faux » et « retirer le faux déjà produit » sont deux
+  gestes distincts ; seul le second protège l'utilisateur qui a l'écran ouvert.
+- **Le motif est publié au STORE, jamais recopié écran par écran.** `ProjectionRequired` est monté
+  sur toutes les surfaces qui dépendent de la projection : une seule publication les couvre toutes
+  (`DECISION-PRIVACY-UNE-SEULE-SORTIE`). Et il **remplace** le message habituel au lieu de s'y
+  ajouter — « ouvrez Future pour calculer » envoie cliquer en boucle sur un bouton qui ne répare pas
+  une donnée corrompue. Le test l'exige explicitement : le bouton ne doit PLUS être là.
+- **Le périmètre du scan est borné à ce que la frontière LIT et PRODUIT.** Étendre la vérification à
+  l'état entier attraperait un `NaN` décoratif — un point d'historique de prix — et refuserait toute
+  la projection pour ça. Une garde trop large est un défaut, pas une sécurité de plus.
+
+⚠️ **La leçon de test : une perturbation muette par DEBOUNCE.** Ma première preuve du blocage
+espionnait `runProjectionAsync` et asserait `not.toHaveBeenCalled()` dès que le statut basculait à
+`error`. Elle passait — et elle passait AUSSI quand je retirais le blocage, parce que le lancement
+du calcul est debouncé à 300 ms : le test lisait l'espion avant que l'appel n'ait eu lieu de toute
+façon. Il mesurait la latence, pas la garde. C'est `UN-TEST-QUI-PASSE-PAR-DETACHEMENT-PASSE-PAR-ACCIDENT`
+vu depuis l'autre bout : **pour « l'appel n'a PAS eu lieu », la lecture se fait APRÈS le budget de
+temps** — ici avec des faux timers, qui le franchissent de façon déterministe plutôt qu'en dormant.
+Et le contrôle qui rend l'assertion lisible est le cas SAIN dans le même budget : sans lui, un
+espion jamais câblé donnerait exactement le même vert
+(`UNE-PERTURBATION-PEUT-ETRE-MUETTE-PAR-DEBOUNCE`).

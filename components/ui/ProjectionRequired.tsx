@@ -27,6 +27,28 @@ export const ProjectionRequired: React.FC<ProjectionRequiredProps> = ({
 }) => {
     const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
     const goToFuture = () => navigateWithFocus?.(Tab.FUTURE);
+    // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] Une ENTRÉE illisible n'est pas une projection « pas
+    // encore calculée » : ouvrir Future ne la répare pas, et laisser le message habituel enverrait
+    // Marc cliquer en boucle sur un bouton sans effet. Ce composant étant monté sur toutes les
+    // surfaces qui dépendent de la projection, le motif publié par `ProjectionEngine` les couvre
+    // toutes d'un coup — plutôt qu'un message recopié écran par écran.
+    const refus = useFinanceStore(s => s.projectionRefus);
+
+    if (refus) {
+        return variant === 'inline' ? (
+            <span className="text-tiny text-danger-400 italic" role="status">{refus}</span>
+        ) : (
+            <div
+                className="rounded-xl border border-danger-500/30 bg-danger-500/5 p-6 text-center"
+                role="status"
+                aria-live="polite"
+            >
+                <Icon name="alert" size={28} className="mb-2 text-danger-400" />
+                <div className="text-meta font-bold text-danger-400 mb-1">Donnée illisible</div>
+                <div className="text-tiny text-ink-300 max-w-md mx-auto">{refus}</div>
+            </div>
+        );
+    }
 
     if (variant === 'inline') {
         return (

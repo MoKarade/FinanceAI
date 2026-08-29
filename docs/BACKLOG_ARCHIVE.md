@@ -10,6 +10,41 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-29 — Lot 38 : une entrée illisible ne produit plus de projection
+
+- [x] **`[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`** (M — finding code-reviewer, panel PR #756,
+  PRÉ-EXISTANT) — `JSON.parse` rend `Infinity` depuis un blob Drive ou un backup contenant `1e999`,
+  et rien ne le rattrapait avant le moteur : `u?.netSalary || 0` ne filtre pas (`Infinity` est
+  truthy, `NaN` tombe silencieusement sur le repli). Le lot 30 avait neutralisé ce vecteur À
+  L'AFFICHAGE de la carte Santé seulement.
+  ✅ **Livré lot 38**, sur les DEUX décisions de Marc (2026-08-29) :
+  · **OÙ** — à la frontière `buildSimulationParams`, le point de passage UNIQUE vers le moteur : une
+    seule garde couvre saisie, restauration Drive, import et mode test. Elle n'empêche pas qu'un
+    état corrompu soit PERSISTÉ, seulement qu'il produise une projection — compromis assumé et écrit.
+  · **QUOI** — REFUSER et NOMMER le champ (« le salaire net de Alex est illisible »), jamais borner
+    (fabriquer une valeur plausible est ce que `no-fake-data` interdit) ni tracer en silence (c'est
+    précisément ce qui a laissé le défaut vivre).
+  **Mesure re-dérivée par `scripts/mesureFrontiereMoteur.ts`** (committé, il nomme chaque paramètre
+  du scénario — le ticket portait deux mesures divergentes dont les protocoles fixaient
+  `projection.returnRate`, un champ que le moteur ne lit pas) :
+  | donnée corrompue | `baseNetAnnual` | non finis au 1er niveau |
+  |---|---|---|
+  | *(sain)* | 115 200 | — |
+  | `netSalary: Infinity` | Infinity | `baseNetAnnual`, `baseMonthlyExpenses` (`NaN`) |
+  | `netSalary: NaN` | **52 800** | *aucun* |
+  | `grossSalary: Infinity` | 115 200 | `baseGrossAnnual` |
+  ⚠️ **Le mode `NaN` est le grave** : 62 400 $/an s'évaporent, aucun paramètre ne paraît anormal, la
+  courbe reste lisse. `Infinity` finit par se voir ; `NaN` non.
+  ⚠️ **La garde EFFACE la projection déjà publiée**, elle ne se contente pas de ne plus recalculer :
+  une courbe calculée avant que la donnée ne devienne illisible resterait sinon la source unique de
+  tous les écrans, sans rien pour dire qu'elle est périmée.
+  ⚠️ **Le motif est publié au STORE**, pas recopié écran par écran : `ProjectionRequired` est monté
+  sur toutes les surfaces qui dépendent de la projection, donc une seule publication les couvre — et
+  son message habituel (« ouvrez Future ») est REMPLACÉ, parce qu'ouvrir Future ne répare pas une
+  donnée corrompue (classe `DECISION-PRIVACY-UNE-SEULE-SORTIE`).
+  ⚠️ Périmètre volontairement borné aux champs que la frontière LIT et PRODUIT : étendre le scan à
+  l'état entier refuserait la projection pour un champ décoratif, ce qui serait pire que le défaut.
+
 ## 2026-08-29 — Lot 37 : un décommenteur qui mangeait le code après une URL
 
 - [x] **`[GUARD-STRIPCOMMENTS-CONSOLIDER]`** (S annoncé, M réel — dette relevée au lot 31) — le dépôt

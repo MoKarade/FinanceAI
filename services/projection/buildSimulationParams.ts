@@ -16,6 +16,7 @@
 // avec exactement les mêmes valeurs (ses hooks alimentent l'objet `inputs`),
 // et un test de PARITÉ verrouille l'égalité.
 
+import { verifierEntreesMoteur } from './verifierEntreesMoteur';
 import type {
     BudgetConfig,
     BudgetCategory,
@@ -209,7 +210,23 @@ export function buildSimulationParams(inputs: BuildSimulationParamsInputs): Simu
     const baseMonthlyExpenses = baseNetAnnual / 12 - inputs.calculatedMonthlySavings;
     const currentRentExpense = computeCurrentRentExpense(inputs.budgetItems);
 
+    // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] La garde d'entrée vit ICI — décision de Marc
+    // (2026-08-29) : c'est le point de passage UNIQUE vers le moteur, donc une seule garde couvre
+    // la saisie, la restauration Drive, l'import et le mode test. Elle REFUSE et NOMME le champ ;
+    // borner fabriquerait un chiffre plausible et faux, tracer en silence laisserait le défaut
+    // invisible — c'est précisément ce qui l'a laissé vivre jusqu'ici.
+    const entreesRefusees = verifierEntreesMoteur({
+        config: inputs.config as unknown as { users?: ReadonlyArray<unknown> },
+        baseNetAnnual,
+        baseGrossAnnual,
+        baseMonthlyExpenses,
+        calculatedStartingCash: inputs.calculatedStartingCash,
+    });
+
     return {
+        // Omis quand il n'y a rien à refuser : le champ reste absent sur le chemin nominal, donc
+        // la signature JSON des params (clé de dédup du moteur) ne bouge pas d'un octet.
+        ...(entreesRefusees.length > 0 ? { entreesRefusees } : {}),
         projection: inputs.projection,
         calculatedStartingCash: inputs.calculatedStartingCash,
         liveCSVBalances: inputs.liveCSVBalances,

@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 927 tests** Vitest
-(466 fichiers de test, mesuré le 2026-08-29). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 944 tests** Vitest
+(469 fichiers de test, mesuré le 2026-08-29). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -769,6 +769,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   existe en plusieurs exemplaires, copier celui qui porte sa JUSTIFICATION écrite. Et la garde doit
   asserter que le conteneur existe **déjà quand il n'y a rien à annoncer**, sinon elle est satisfaite
   par la version fautive (`COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`).
+- **« L'appel n'a PAS eu lieu » se lit APRÈS le budget de temps** : ma garde espionnait le moteur et
+  asserait `not.toHaveBeenCalled()` dès que le statut basculait — elle passait aussi SANS le
+  blocage, le lancement étant debouncé à 300 ms. Le test mesurait la latence. Faux timers, plus le
+  cas SAIN dans le même budget comme contrôle (sans lui, un espion jamais câblé donne le même vert).
+  ⚠️ Corollaire de garde d'ENTRÉE : refuser ne suffit pas, il faut **EFFACER** ce qui a déjà été
+  publié — sinon la valeur calculée avant la corruption reste la source unique de tous les écrans
+  (`UNE-PERTURBATION-PEUT-ETRE-MUETTE-PAR-DEBOUNCE`).
 - **N tests rouges sur le code d'avant ne font pas N preuves** : mes trois gardes a11y rougissaient
   3/3, mais DEUX rougissaient pour la raison de la TROISIÈME — le correctif du nom accessible change
   le sélecteur, donc le test du `role="status"` échouait sur « champ introuvable » avant d'observer

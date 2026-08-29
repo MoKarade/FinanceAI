@@ -41,6 +41,12 @@ export interface FinanceState extends AppState {
      *  Transitoire (NON persisté) : tout onglet peut afficher « recalcul… » / erreur sans
      *  tenir l'état de calcul localement. */
     projectionStatus: ProjectionStatus;
+    /** [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] Phrase à montrer quand une ENTRÉE du moteur est
+     *  illisible (valeur non finie restaurée d'un backup, d'une sync Drive, d'un import). Elle NOMME
+     *  le champ et la personne : « ouvre Future » ne répare pas une donnée corrompue.
+     *  `null` = rien à refuser. Transitoire (NON persisté) : c'est un état DÉRIVÉ de l'état
+     *  persisté, le sauvegarder le ferait survivre à la correction du champ. */
+    projectionRefus: string | null;
     /** PH2-d — courbe VERROUILLÉE : snapshot complet d'un ProjectionResult choisi par l'utilisateur.
      *  TRANSITOIRE en mémoire (NON dans le persist localStorage — trop gros) ; persisté CHIFFRÉ en
      *  IndexedDB (services/lockedProjectionStore) et restauré au boot si `isProjectionLocked`. */
@@ -72,6 +78,7 @@ export interface FinanceState extends AppState {
     setLastProjection: (r: ProjectionResult | null) => void;
     setProjectionRunMC: (v: boolean) => void;
     setProjectionStatus: (s: ProjectionStatus) => void;
+    setProjectionRefus: (m: string | null) => void;
     /** PH2-d — verrouille la courbe courante (snapshot mémoire + persistance IndexedDB chiffrée). */
     lockProjection: (r: ProjectionResult) => void;
     /** PH2-d — déverrouille (efface le snapshot mémoire ET l'entrée IndexedDB). */
@@ -513,6 +520,7 @@ export const useFinanceStore = create<FinanceState>()(
             lastProjection: null,
             projectionRunMC: true,
             projectionStatus: 'idle',
+            projectionRefus: null,
             lockedProjection: null,
             isProjectionLocked: false,
             revealedProjectionSig: null,
@@ -538,6 +546,7 @@ export const useFinanceStore = create<FinanceState>()(
             setLastProjection: (r) => set({ lastProjection: r }),
             setProjectionRunMC: (v) => set({ projectionRunMC: v }),
             setProjectionStatus: (s) => set({ projectionStatus: s }),
+            setProjectionRefus: (m) => set({ projectionRefus: m }),
             // PH2-d — verrou : état sync (source de vérité = Zustand) + persistance IndexedDB best-effort.
             // Fire-and-forget VOULU : le set d'UI ne doit pas attendre une écriture disque, et une écriture
             // ratée n'invalide pas le verrou en mémoire (l'IDB n'est qu'un cache de RESTAURATION au reload).
@@ -721,6 +730,7 @@ export const useFinanceStore = create<FinanceState>()(
                     isPrivacyMode: _isPrivacyMode,
                     lastProjection: _lastProjection,
                     projectionStatus: _projectionStatus,
+                    projectionRefus: _projectionRefus,
                     lockedProjection: _lockedProjection,
                     pendingFocus: _pendingFocus,
                     ...persistable

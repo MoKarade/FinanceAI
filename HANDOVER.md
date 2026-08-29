@@ -4,7 +4,20 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
-> ## 🟦 Session 2026-08-29 — Lot 37 : un décommenteur qui mangeait le code après une URL (PR à ouvrir)
+> ## 🟦 Session 2026-08-29 — Lot 38 : une entrée illisible ne produit plus de projection (PR à ouvrir)
+> `[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]` — **Marc a tranché la fourche** (2026-08-29) : la garde
+> vit à la frontière `buildSimulationParams`, et elle REFUSE en NOMMANT le champ.
+> - **Mesure re-dérivée par script COMMITTÉ** (`scripts/mesureFrontiereMoteur.ts`) : `netSalary: NaN`
+>   rend `baseNetAnnual = 52 800` au lieu de 115 200 — 62 400 $/an évaporés, **aucun** non-fini au
+>   premier niveau, courbe lisse et entièrement fausse. C'est le mode grave ; `Infinity` se voit.
+> - La garde **EFFACE** la projection déjà publiée, elle ne se contente pas de ne plus recalculer.
+> - Le motif est publié au STORE (`projectionRefus`) et `ProjectionRequired` REMPLACE son message
+>   habituel : « ouvre Future » ne répare pas une donnée corrompue.
+> - ⚠️ Leçon de test du lot : ma première preuve du blocage était MUETTE — le calcul est debouncé à
+>   300 ms, donc lire l'espion dès que le statut bascule mesurait la latence, pas la garde. « L'appel
+>   n'a PAS eu lieu » se lit APRÈS le budget de temps (faux timers).
+>
+> ## 🟢 Session 2026-08-29 — Lot 37 : un décommenteur qui mangeait le code après une URL (PR #763, MERGÉE)
 > `[GUARD-STRIPCOMMENTS-CONSOLIDER]` — les décommenteurs `stripComments` recopiés du dépôt étaient
 > tous NAÏFS : un `//` dans un littéral de chaîne ampute la ligne. Une soixantaine de fichiers en
 > sortent différents, pour ~8 800 caractères de code jetés — `scripts/mesureStripComments.mjs`

@@ -1,4 +1,5 @@
 // services/projection.ts — moteur de projection financière (migré depuis utils/useFutureSimulation.ts)
+import type { EntreeRefusee } from './projection/verifierEntreesMoteur';
 import { ProjectionConfig, RealEstateGoal, ChildGoal, TravelGoal, LifeEvent, Debt, RetirementGoal, BudgetConfig as Config, InsurancePolicy, VehicleReplacement, MajorRenovation, CharitableGoal, RentalProperty, PrivateBusiness, FinancialGoal } from '../types';
 import { calculateFiscalReport, getMarginalRate, calculateDividendTax, getDividendGrossUpRate, calculateGrossWithholdingRRSP, getResidencyStartYear, CAPITAL_GAINS_INCLUSION_STANDARD, FHSA_ANNUAL_LIMIT_PER_USER, FHSA_LIFETIME_LIMIT_PER_USER } from '../utils/tax';
 import { RRIF_RATES, welcomeTax, NONREG_DIVIDEND_DISTRIBUTION_SHARE } from './projection/helpers';
@@ -71,6 +72,16 @@ export interface LiveCSVBalances {
 }
 
 export interface SimulationParams {
+    /**
+     * [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] Entrées inexploitables relevées à la frontière du
+     * moteur (`buildSimulationParams`). Non vide ⇒ la projection NE DOIT PAS être calculée : une
+     * valeur non finie y produit soit un `Infinity` qui se propage, soit — pire — un `NaN` absorbé
+     * en 0 qui rend une courbe lisse et entièrement fausse (mesuré : 62 400 $/an évaporés sans une
+     * seule valeur non finie sur les 361 points publiés).
+     *
+     * Champ ADDITIF et optionnel : absent, le comportement est bit-identique à avant.
+     */
+    entreesRefusees?: readonly EntreeRefusee[];
     projection: ProjectionConfig;
     calculatedStartingCash: number;
     liveCSVBalances: LiveCSVBalances;

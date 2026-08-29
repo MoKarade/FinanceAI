@@ -10,6 +10,38 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-08-29 — Lot 47 : un bloc fiscal calculé puis jeté à chaque mois de chaque itération
+
+- [x] 🔴 **`[PERF-ENG-LATENT-MC-WASTE]`** (S) — `computeLatentTax` + bloc fiscal Tier-3 calculés PUIS
+  JETÉS en mode Monte Carlo (**5–10 % du temps MC mesuré**). `buildMonthlyDataPoint` garde déjà `if
+  (enableMonteCarlo) return {NetWorth, monthIndex}` → sous MC tout `impotLatent`, `dividendIncome`,
+  etc. est ignoré, mais le calcul (3× `calculateFiscalReport`) reste d'abord. **Mesuré : 301 ms
+  gaspillés sur 6532 ms total MC (4,6 %),** ≈ 2.5-4 s sur `calculateStrategySearch` (52 s total).
+  **Correctif** : entourer bloc `1614-1648` d'un `if (!enableMonteCarlo) {...}` avec valeurs neutres
+  en branche MC. Test : force `runMC=true` et vérifie `chartData` contient uniquement
+  `{NetWorth, monthIndex}`.
+  ✅ **Livré lot 47**, avec un gain **MEILLEUR que l'estimation du ticket** : mesuré
+  **18,65 → 16,45 ms/scénario** (médiane de 3 exécutions de 80 scénarios Monte Carlo, persona
+  `couple-confort`, 30 ans), soit **−11,8 %** là où le ticket annonçait 4,6 %.
+  · **Le saut est prouvé sûr avant d'être fait** : chacune des sept grandeurs (`impotLatent`,
+    `dividendIncome`, `taxableInvIncome`, `marginalTaxRate`, `effectiveTaxRate`, `reeeContribCum`,
+    `reeeGrantsCum`) a été comptée — déclarée ici, lue uniquement dans le `data.push` —, et
+    `computeLatentTax` est PURE (son en-tête le dit, elle ne fait qu'appeler `calculateFiscalReport`,
+    injecté). Retirer un calcul dont la sortie est jetée n'est sûr QUE si l'on prouve d'abord qu'il
+    ne fait rien d'autre que produire cette sortie.
+  · **Sortie bit-identique** avant/après, vérifiée par empreinte sur `chartData` : 3 itérations MC
+    (graines 0, 1, 7) ET le scénario hors MC.
+  · ⚠️ **La condition est EXPORTÉE, pas recopiée** (`estPointAllege`, dans `monthlyOutput.ts`) :
+    `buildMonthlyDataPoint` allège le point sous MC **sauf si `verboseMonthlyPoints`**. Deux
+    écritures de cette condition divergeraient en SILENCE — des champs calculés pour rien, ou pire,
+    un point verbeux privé de ses champs. Le test le prouve : brancher sur le seul
+    `enableMonteCarlo` fait rougir le cas `verboseMonthlyPoints`.
+  · **Test par ESPION, pas par chronomètre** : un test de perf chronométré est instable en CI et ne
+    dit pas pourquoi c'est plus rapide ; l'absence d'appel est binaire. Et il vérifie les DEUX sens —
+    appelé hors MC et sous MC verbeux, sinon un `computeLatentTax` débranché partout donnerait le
+    même vert. Discrimination : neutraliser le saut → 1 rouge ; recopier la condition sans
+    `verboseMonthlyPoints` → 1 autre rouge.
+
 ## 2026-08-29 — Lot 46 : le remède affiché survivait à la guérison
 
 - [x] **`[STORE-HYDRATION-STATUS-MONOTONE]`** (S, MOYEN, PRÉEXISTANT) — `getHydrationStatus()` ne

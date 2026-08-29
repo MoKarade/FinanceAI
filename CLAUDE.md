@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 994 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 997 tests** Vitest
 (469 fichiers de test, mesuré le 2026-08-29). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -796,6 +796,13 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   ⚠️ Corollaire de MESURE : « zéro refus sur les sept personas » ne prouvait rien de la surface
   ajoutée — **aucun persona ne porte `projection`** (le store l'apporte au montage), donc le contrôle
   portait sur un objet plus ÉTROIT que la production. Un contrôle se fait sur l'objet de PROD.
+- **Retirer un calcul JETÉ se prouve avant de se faire** (jumeau du piège « un bug peut viser du code
+  dont la sortie est jetée ») : compter les lecteurs de CHAQUE grandeur, vérifier la pureté du
+  producteur contre le code, puis prouver l'équivalence de sortie par empreinte. ⚠️ La condition de
+  saut s'EXPORTE, jamais ne se recopie — deux écritures divergent en silence. Et un test de perf se
+  fait par ESPION (« appelé zéro fois »), pas par chronomètre : binaire, stable en CI, et il vérifie
+  les DEUX sens, sinon un producteur débranché partout donne le même vert
+  (`RETIRER-UN-CALCUL-JETE-SE-PROUVE-AVANT-DE-SE-FAIRE`).
 - **Des tests rouges qui encodent une CONCEPTION ne se re-basent pas** : un golden qui rougit dit
   « la valeur a changé, confirme-la » ; un invariant qui rougit dit « ton changement contredit une
   décision ». Même couleur dans la sortie — les séparer demande de LIRE ce que le test affirme.

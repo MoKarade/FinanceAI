@@ -177,12 +177,24 @@ export interface MonthlyOutputCtx {
  * En mode déterministe, calcule CoastFIRE / BaristaFIRE et retourne
  * le ProjectionChartPoint complet (~50 champs).
  */
+/**
+ * Le point mensuel est-il ALLÉGÉ, c'est-à-dire réduit à `{ NetWorth, monthIndex }` ?
+ *
+ * ⚠️ Exporté pour que l'APPELANT puisse sauter les calculs dont ce point ne garde rien
+ * (`[PERF-ENG-LATENT-MC-WASTE]`) — et exporté plutôt que recopié : deux écritures de la même
+ * condition finissent par diverger, et la divergence serait SILENCIEUSE (des champs calculés pour
+ * rien, ou pire, un point verbeux privé de ses champs). Une condition qui gouverne deux endroits
+ * vit à un seul.
+ */
+export const estPointAllege = (enableMonteCarlo: boolean, verboseMonthlyPoints?: boolean): boolean =>
+    enableMonteCarlo && verboseMonthlyPoints !== true;
+
 export function buildMonthlyDataPoint(ctx: MonthlyOutputCtx): ProjectionChartPoint {
     const { m, retirementMonthIndex, fireTargetNetWorth, futureFireTarget,
         simInflation, expenseMultiplier, effectiveBaseExpenses,
         enableMonteCarlo, rawNetWorth, verboseMonthlyPoints } = ctx;
 
-    if (enableMonteCarlo && verboseMonthlyPoints !== true) {
+    if (estPointAllege(enableMonteCarlo, verboseMonthlyPoints)) {
         return { NetWorth: Number(rawNetWorth.toFixed(2)), monthIndex: m };
     }
 

@@ -4,6 +4,22 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-08-29 — Lot 47 : un bloc fiscal calculé puis jeté, à chaque mois de chaque itération
+> `[PERF-ENG-LATENT-MC-WASTE]` — sous Monte Carlo, `buildMonthlyDataPoint` ne rend que
+> `{ NetWorth, monthIndex }`, mais l'appelant calculait quand même l'impôt latent, les dividendes,
+> les taux marginal/effectif et les cumuls REEE.
+> - **Gain MESURÉ, meilleur que le ticket** : **18,65 → 16,45 ms/scénario** (médiane de 3 × 80
+>   scénarios), soit **−11,8 %** contre 4,6 % annoncés. Sortie **bit-identique** (empreinte sur
+>   `chartData`, 3 graines MC + hors MC).
+> - ⚠️ **Le saut a été prouvé sûr AVANT d'être fait** : les 7 grandeurs comptées une par une (aucun
+>   lecteur hors du `data.push`), et `computeLatentTax` est pure. Retirer un calcul dont la sortie
+>   est jetée n'est sûr que si l'on prouve qu'il ne fait rien d'autre.
+> - ⚠️ **La condition est EXPORTÉE (`estPointAllege`), pas recopiée** : le point reste DÉTAILLÉ sous
+>   MC quand `verboseMonthlyPoints` est vrai. Deux écritures divergeraient en silence — le test le
+>   prouve, brancher sur le seul `enableMonteCarlo` le fait rougir.
+> - Test par ESPION (`computeLatentTax` appelé ou non), pas par chronomètre : instable en CI et
+>   muet sur la cause. Vérifie les deux sens.
+
 > ## 🟦 Session 2026-08-29 — Lot 46 : le remède affiché survivait à la guérison
 > `[STORE-HYDRATION-STATUS-MONOTONE]` — trouvé en écrivant un contrôle d'anti-vacuité au lot 41,
 > corrigé ici. `getHydrationStatus()` ne redevenait jamais sain : une fois `failed`, il le restait

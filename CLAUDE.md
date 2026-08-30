@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **4 997 tests** Vitest
-(469 fichiers de test, mesuré le 2026-08-29). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 000 tests** Vitest
+(478 fichiers de test, mesuré le 2026-08-29). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -830,6 +830,18 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   choisit selon le contexte (conteneur vs contrôle), et la garde se bâtit sur une LISTE d'exemptions
   nominatives — un automate qui remonte les ancêtres JSX finit désactivé par ses faux positifs
   (`LE-CONTEXTE-D-UN-DEFAUT-CSS-VIT-CHEZ-L-ANCETRE`).
+- **Un attribut PRÉSENT ne prouve pas qu'il désigne la bonne chose** : dériver chaque `id` de la clé
+  du champ a posé deux fois `app-returnRates` (clé `projection.returnRates`, commune au rendement
+  crypto et au cash) — les deux labels pointaient le MÊME contrôle, et un scan d'orphelins n'y voyait
+  rien puisque chaque label avait bien son `htmlFor` vers un `id` existant. Présence et UNICITÉ sont
+  deux assertions distinctes. Interroger le nom ACCESSIBLE (`getByLabelText`), jamais l'attribut.
+  ⚠️ Et quand une convention n'est appliquée qu'à un SOUS-ENSEMBLE, chercher le besoin technique qui
+  l'a introduite : les 14 champs monétaires du même fichier étaient câblés pour le mode discret, les
+  26 autres pas — le besoin technique délimitait exactement la couverture. ⚠️ Corollaire symétrique :
+  un test voisin sélectionnait `label[for^="app-"]` et exigeait 14 — le préfixe ne désignait « les
+  montants » que par ACCIDENT, et le lot l'a fait passer à 36. **Un test qui rougit sur un lot qui ne
+  touche pas son objet mesurait un PROXY** : re-dériver le sélecteur de l'ensemble qu'il prétend
+  couvrir, jamais rebaser son compte (`UN-ATTRIBUT-PRESENT-NE-PROUVE-PAS-QU-IL-DESIGNE-LA-BONNE-CHOSE`).
 - **Un recenseur se vérifie autant que le code qu'il recense** : mon scan des cibles tactiles s'est
   trompé QUATRE fois avant d'être juste — accolades JSX non retirées récursivement (4 boutons
   manqués), `min-w-[24px]` non reconnu (2 faux positifs sur du code déjà sain), libellé dynamique

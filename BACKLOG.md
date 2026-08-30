@@ -2085,14 +2085,25 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
   AUSSI une faiblesse mesurée par le panel : le tooltip `title` ne s'affiche qu'au SURVOL souris
   dans Chrome/Edge — un utilisateur voyant naviguant au CLAVIER n'a aucun indice visuel de
   « cliquer pour modifier ». Traiter les deux ensemble, pas séparément.
-- [ ] **`[A11Y-LABELS-PARAMS-AVANCES]`** (S, découvert en livrant le ticket ci-dessus) — les **26
-  champs NON monétaires** de `components/AdvancedProjectionParams.tsx` n'ont toujours AUCUNE
-  association `<label>`↔champ : ni `htmlFor`/`id`, ni enveloppement. Leur nom accessible est donc
-  VIDE (WCAG 4.1.2). Défaut PRÉEXISTANT, sans rapport avec le mode discret — les 14 champs
-  monétaires ont été câblés parce que le masquage l'exigeait, pas les autres. Le geste est
-  mécanique (un `id` + un `htmlFor` par champ) ; c'est le volume qui l'a sorti du périmètre.
-  ⚠️ Le même trou existe probablement dans les autres panneaux de Réglages : greper
-  `<label className=` non suivi de `htmlFor` AVANT de chiffrer.
+- [ ] **`[A11Y-LABELS-RESTE-DU-DEPOT]`** (M, ÉLEVÉ — **RECENSÉ** 2026-08-29 en livrant
+  `[A11Y-LABELS-PARAMS-AVANCES]`) — le même défaut vit dans **16 autres fichiers, 59 labels** sans
+  `htmlFor` NI enveloppement : leur champ n'a aucun nom accessible (WCAG 4.1.2). Le ticket précédent
+  soupçonnait le trou (« le même trou existe probablement dans les autres panneaux ») ; il est
+  maintenant compté, fichier par fichier :
+  `ProjectionControls` 13 · `PropertyConfigurator` 12 · `ChildPlanning` 6 · `AddStockForm` 5 ·
+  `LifeEvents` 4 · `RealEstateWorkspace` 3 · `TaxCenter` 3 · `Travel` 3 · `AuditLogViewer` 2 ·
+  `ErrorLogViewer` 2 · puis 1 chacun dans `Budget`, `BudgetGroupTable`, `BackupPanel`,
+  `GoalSeekerCard`, `DebtManager`, `ImportBrokerPositions`.
+  ⚠️ **Le recenseur est à RE-DÉRIVER — le lot 50 n'en a committé aucun** (son script était jetable,
+  et la garde livrée est un test de RENDU, pas un scan de source). Sa règle, elle, est acquise : un
+  `<label>` sans `htmlFor` qui ENVELOPPE son champ est parfaitement valide, donc un comptage brut
+  `grep -c '<label'` vs `grep -c htmlFor` donne 40 vs 14 sur `AdvancedProjectionParams` là où le vrai
+  chiffre est 26. Les 59 ci-dessus sortent du recenseur corrigé, relu à la main.
+  ⚠️ **Et vérifier l'UNICITÉ des `id` posés** : au lot 50, deux champs de rendement ont d'abord reçu
+  le même `app-returnRates` (la clé venait de `projection.returnRates`, commune aux deux) — les deux
+  labels pointaient alors le même contrôle, et un scan d'orphelins n'y voyait rien puisque chaque
+  label avait bien son `htmlFor`. Un attribut présent ne prouve pas qu'il désigne la bonne chose.
+  Le geste reste mécanique ; c'est le volume et ces deux pièges qui font le lot. [MESURÉ]
 
 - [ ] 🔴 **`[A11Y-PRIVACY-SCAN-GLOBAL]`** (M, **DÉCOUVERT PAR MESURE** 2026-08-14) — construire la
   garde de source `formatCAD` au niveau du DÉPÔT, comme `chartPrivacyScan.test.ts` le fait déjà pour

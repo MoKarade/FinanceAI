@@ -6,6 +6,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-08-29 (Accessibilité : 26 réglages avancés enfin nommés au lecteur d'écran)
+
+- **Corrigé** : dans « Paramètres avancés » de la projection, 26 champs n'étaient reliés à aucune
+  étiquette — le texte était bien affiché à l'écran, mais rien ne disait au navigateur qu'il
+  désignait ce champ-là. Un lecteur d'écran annonçait donc « zone d'édition » sans dire laquelle,
+  sur des réglages qui pilotent toute la projection (chute de bourse, rendements par compte, options
+  de divorce, de maladie grave…). Chaque champ porte maintenant son nom.
+
 ## [unreleased] — 2026-08-29 (Les simulations Monte-Carlo sont ~12 % plus rapides)
 
 - **Amélioré** : lors des simulations Monte-Carlo — celles qui rejouent ton avenir des centaines de

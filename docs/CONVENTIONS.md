@@ -8523,6 +8523,64 @@ Trois défauts plus fins, du même tour :
   aussi dans un flux de diagnostic (`SCANNER-TOUT-SE-VERIFIE-SUR-L-OBJET-SCANNE`).
 
 
+### Lot 50 — un attribut présent ne prouve pas qu'il désigne la bonne chose
+
+`UN-ATTRIBUT-PRESENT-NE-PROUVE-PAS-QU-IL-DESIGNE-LA-BONNE-CHOSE`
+
+`[A11Y-LABELS-PARAMS-AVANCES]` : dans `components/AdvancedProjectionParams.tsx`, 26 `<label>`
+n'étaient reliés à aucun champ — ni `htmlFor`/`id`, ni enveloppement. Le texte s'affichait bien à
+l'écran ; il ne désignait rien pour le navigateur. Nom accessible **vide** au sens WCAG 4.1.2, sur
+des réglages qui pilotent toute la projection (chute de bourse, rendements par compte, options de
+divorce et de maladie grave).
+
+**Le travail était fait à MOITIÉ, et la moitié faite était la plus visible.** Les 14 champs
+MONÉTAIRES du même fichier portaient déjà la convention `app-<clé>` — non par souci d'accessibilité,
+mais parce que le masquage du mode discret l'exigeait. Un besoin technique avait payé
+l'accessibilité par accident sur une moitié du fichier, et personne n'avait regardé l'autre. Signal
+réutilisable : **quand une convention n'est appliquée qu'à un sous-ensemble, chercher le besoin
+technique qui l'a introduite — il délimite exactement ce qui a été couvert**, et rien d'autre.
+
+**Et le piège du correctif lui-même.** Mon premier passage a dérivé chaque `id` de la clé du champ, et
+posé deux fois `id="app-returnRates"` : la clé `projection.returnRates` est commune au rendement
+crypto et au rendement cash. Les deux labels pointaient alors le **même** contrôle — le second champ
+n'avait toujours pas de nom — et un scan d'orphelins n'y voyait rien, puisque chaque label avait bien
+son `htmlFor` et que chaque `htmlFor` trouvait bien un `id` existant. Un attribut présent ne prouve
+pas qu'il désigne la bonne chose. D'où un **deuxième test dédié à l'UNICITÉ des `id`** : la garde de
+présence et la garde d'unicité sont deux assertions distinctes, et seule la seconde attrape cette
+classe.
+
+**Deux règles de test en sont sorties**, appliquées ici :
+
+- **Interroger le nom ACCESSIBLE, pas la présence d'un attribut.** `getByLabelText` traverse la
+  chaîne complète (`label[for]` → `id` réellement présent → contrôle unique) ; un
+  `toHaveAttribute('htmlFor')` se satisfait d'un pointeur cassé ou dupliqué.
+- **Le seuil d'anti-vacuité se MESURE, il ne se choisit pas.** J'avais écrit
+  `toBeGreaterThan(20)` alors que ce montage rend exactement 20 champs : le test échouait sur son
+  propre garde-fou. Le chiffre mesuré est désormais écrit dans le commentaire à côté de l'assertion,
+  avec la configuration qui le produit (les trois sections conditionnelles activées).
+
+Discrimination prouvée sur **deux axes séparés**, chaque perturbation vérifiée par `assert` AVANT la
+mesure (leçon de la perturbation qui n'avait pas eu lieu) : retirer un `htmlFor` → 2 rouges ;
+dupliquer un `id` → 2 rouges.
+
+**Et le lot a cassé un test voisin — pour la meilleure des raisons.**
+`AdvancedProjectionParams.privacy.test.tsx` affirmait « les 14 champs montants gardent chacun leur
+libellé » en sélectionnant `label[for^="app-"]` et en exigeant **14**. Le préfixe `app-` n'a jamais
+désigné « les montants » : il le faisait par ACCIDENT, parce que seuls les montants avaient été
+câblés. Câbler les 26 autres a fait passer ce sélecteur de 14 à 36 — le test rougit sans qu'aucun
+montant n'ait perdu quoi que ce soit. **Un sélecteur qui se trouve juste ne dit pas ce qu'il vise** ;
+le correctif est de le faire dériver de l'ENSEMBLE qu'il prétend couvrir (les 14 ids de `MONTANTS`),
+pas de rebaser son compte. Symptôme réutilisable : un test qui rougit sur un lot qui ne touche PAS
+son objet mesurait un PROXY, pas son objet. C'est le même défaut que le doublon d'`id` ci-dessus,
+vu de l'autre côté — un attribut ne prouve pas ce qu'on lui fait dire.
+
+**Le reste du dépôt a été RECENSÉ, pas cité** : 59 labels orphelins dans 16 fichiers
+(`ProjectionControls` 13, `PropertyConfigurator` 12, `ChildPlanning` 6, `AddStockForm` 5,
+`LifeEvents` 4, puis `RealEstateWorkspace`, `TaxCenter`, `Travel` 3 chacun, `AuditLogViewer` et
+`ErrorLogViewer` 2, et 1 dans six autres). Routé en `[A11Y-LABELS-RESTE-DU-DEPOT]` avec le détail par
+fichier et les deux pièges — le doublon d'`id` et la moitié déjà câblée — plutôt que livré à la
+va-vite dans le même lot.
+
 ### Lot 49 (instruit) — déplacer un import n'est pas mécanique quand il rend asynchrone
 
 `PERF-REFACTOR-A-RISQUE-DE-COURSE`

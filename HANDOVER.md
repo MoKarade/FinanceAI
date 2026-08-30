@@ -4,6 +4,28 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-08-29 — Lot 50 : 26 réglages avancés sans nom accessible
+> `[A11Y-LABELS-PARAMS-AVANCES]` — dans `components/AdvancedProjectionParams.tsx`, 26 `<label>`
+> n'étaient reliés à aucun champ (ni `htmlFor`/`id`, ni enveloppement). Nom accessible VIDE au sens
+> WCAG 4.1.2, sur des réglages qui pilotent toute la projection.
+> - ⚠️ **Le travail était fait à MOITIÉ, et la moitié faite était la plus visible** : les 14 champs
+>   MONÉTAIRES du même fichier étaient déjà câblés `app-<clé>` — parce que le masquage du mode
+>   discret l'exigeait. Un besoin technique avait payé l'accessibilité par accident sur une moitié
+>   du fichier, et personne n'avait regardé l'autre.
+> - ⚠️ **Un attribut présent ne prouve pas qu'il désigne la bonne chose** : mon premier passage a
+>   posé `id="app-returnRates"` sur DEUX champs (la clé `projection.returnRates` est commune au
+>   rendement crypto et au rendement cash). Les deux labels pointaient alors le même contrôle — le
+>   second champ n'avait toujours pas de nom, et un scan d'orphelins n'y voyait rien puisque chaque
+>   label avait bien son `htmlFor`. D'où un 2ᵉ test dédié à l'UNICITÉ des `id`.
+> - Discrimination prouvée sur deux axes séparés (retirer un `htmlFor` → 2 rouges ; dupliquer un
+>   `id` → 2 rouges), chaque perturbation vérifiée par `assert` AVANT la mesure.
+> - ⚠️ **Un test voisin a rougi — et il avait raison de rougir** : le test du mode discret comptait
+>   `label[for^="app-"]` et exigeait 14. Le préfixe ne désignait « les montants » que par ACCIDENT
+>   (seuls eux étaient câblés) ; il en remonte 36 maintenant. Sélecteur re-dérivé de l'ensemble qu'il
+>   prétend couvrir — les 14 ids de `MONTANTS` — plutôt que son compte rebasé.
+> - **Reste du dépôt recensé** : **59 labels orphelins dans 16 fichiers**, routés dans
+>   `[A11Y-LABELS-RESTE-DU-DEPOT]` avec le détail par fichier et les deux pièges.
+
 > ## 🟡 Session 2026-08-29 — `[PERF-MARKETDATA-DYNIMPORT-INERTE]` : INSTRUIT, pas codé
 > Le défaut est **confirmé par un build propre** : les marqueurs du module (`api.coingecko.com`,
 > `finnhub.io`, `canAttemptQuote`) sont dans **`index-*.js`, le chunk d'ENTRÉE (293 Ko)** — 67 Ko de

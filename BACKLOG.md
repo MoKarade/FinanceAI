@@ -2105,10 +2105,6 @@ vers une session de cadrage dédiée (batch de questions habituel) avant d'écri
 - [ ] **`[A11Y-PRIVACY-ONBOARDING]`** (XS, cohérence) — `components/Onboarding.tsx` : mêmes champs non
   masqués, mais NON exploitable (overlay `fixed inset-0 z-[9999]` qui recouvre le bouton du mode
   discret → impossible de l'activer pendant l'onboarding). À aligner par cohérence, pas en urgence.
-- [ ] **`[A11Y-TOUCH-DELETE-ICONS]`** (S) — 3 boutons suppression icône-seule < 44×44 px (Travel,
-  Investments, BudgetGroupTable). Projet a `.touch-target` utilisée ailleurs. **Correctif** : ajouter
-  `touch-target` (ou `min-h-[44px] min-w-[44px]`) aux 3 boutons.
-
 - [ ] **`[A11Y-TABSTATE-TAXCENTER]`** (S) — TaxCenter bascule Global/Conjoint sans `aria-pressed`/`aria-current`.
   SR ne sait pas quelle vue est active. **Correctif** : `aria-pressed={viewUser === 'all'}` (ou pattern
   `tablist` déjà présent ailleurs).

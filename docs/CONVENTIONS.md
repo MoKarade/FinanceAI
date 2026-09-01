@@ -9668,3 +9668,58 @@ surface RÉELLE de l'utilisateur, pas seulement sur celle qu'on vient de compren
 rôles de comptes Fintable ; aucun état du dépôt n'en portait — exactement la même cécité que la
 première vague, sur un champ voisin. Après avoir corrigé un oubli de liste blanche, la question
 suivante est « quelle AUTRE surface de cet utilisateur n'est portée par aucune fixture ? ».
+
+
+### Lot 63 (2026-09-01) — une garde qui réduit deux dimensions à une mesure le mauvais objet
+
+`UNE-GARDE-QUI-REDUIT-DEUX-DIMENSIONS-A-UNE-MESURE-LE-MAUVAIS-OBJET`
+
+`tests/guards/touchTargetGuard.test.ts` existe depuis le lot des cibles tactiles, il est né d'un
+recensement soigné, et son en-tête raconte déjà quatre faux pas de son propre recenseur. Il laissait
+pourtant passer quatre boutons sous le minimum WCAG 2.5.8.
+
+Son `cibleSuffisante` faisait ceci :
+
+```ts
+const padding = Math.max(...paddings);
+return tailleContenu + 2 * padding >= 24;
+```
+
+Une cible tactile a **deux** dimensions. `px-1.5 py-1` autour d'une icône de 14 px fait **26 × 22** ;
+cette formule la mesurait 26 × 26. Même faute sur les dimensions imposées : un `w-8` seul rendait
+`true` quelle que soit la hauteur.
+
+La réduction est tentante parce qu'elle **simplifie le code de la garde** — un nombre au lieu de
+deux, un `>=` au lieu de deux. Mais elle ne simplifie pas la mesure : elle en change l'objet. Le
+signal réutilisable est mécanique : **une garde dont le sujet a plusieurs dimensions (px × px,
+min et max, avant et après) et qui rend un seul nombre a réduit quelque part**, et la réduction est
+toujours du côté favorable au code testé.
+
+Ce qu'a donné l'élargissement, mesuré :
+
+| Site | Cible réelle | Manque |
+|---|---|---|
+| `components/Budget.tsx` (période précédente) | 31 × 23 | hauteur, 1 px |
+| `components/Budget.tsx` (période suivante) | 31 × 23 | hauteur, 1 px |
+| `components/Investments.tsx` (retirer une position) | 26 × 22 | hauteur, 2 px |
+| `components/settings/AutoBackupPanel.tsx` (supprimer un backup) | 30 × 22 | hauteur, 2 px |
+
+**Les quatre manquent sur le MÊME axe**, ce qui est la signature du défaut : `py-` est presque
+toujours plus petit que `px-` sur un bouton, donc fusionner les deux axes par un `max` revient à
+mesurer la largeur et à l'appeler « la cible ». Corrigés en `py-1` → `py-1.5` (+4 px), sans toucher
+`px-`.
+
+⚠️ Et le ticket, pour la treizième fois d'affilée, avait un périmètre faux — dans les **deux** sens :
+il nommait `Travel` et `BudgetGroupTable`, tous deux **déjà corrigés** (`p-2 -m-2`, `p-2 -m-1`), et
+ratait trois des quatre sites réels. `UN-PERIMETRE-CITE-N-EST-PAS-UN-PERIMETRE-RECENSE`, appliqué
+cette fois à un ticket dont l'outil de recensement **existait déjà** : le recenser ne suffisait pas,
+il fallait d'abord se demander ce que l'outil ne sait pas voir.
+
+L'assertion qui verrouille est écrite sur la fonction elle-même, avec le cas réel et son symétrique
+(trop court en largeur), plus les deux cas qui doivent rester verts (`p-2 -m-2`, `touch-target`).
+Elle ancre le FAIT — les deux axes atteignent 24 — et pas la forme du code.
+
+⚠️ **Note d'outillage du même lot** : `enable_pr_auto_merge` ne déclenche pas sur ce dépôt. Les PR
+#791 et #792 sont restées ouvertes avec `mergeable_state: clean` et les six checks verts, pendant
+qu'un incident bloquait Marc. La fusion se fait à la main (`merge_pull_request`, squash) dès le vert,
+et l'auto-merge ne se compte pas comme une étape franchie.

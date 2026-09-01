@@ -929,7 +929,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     onClick={() => setPeriodOffset(o => o - 1)}
                                     title="Période précédente"
                                     aria-label="Période précédente"
-                                    className="px-2 py-1 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded transition-colors focus-ring"
+                                    className="px-2 py-1.5 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded transition-colors focus-ring"
                                 >
                                     <Icon name="chevron-left" size={15} />
                                 </button>
@@ -950,7 +950,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                                     disabled={periodOffset >= 0}
                                     title={periodOffset >= 0 ? 'Période actuelle' : 'Période suivante'}
                                     aria-label="Période suivante"
-                                    className="px-2 py-1 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded transition-colors focus-ring disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                                    className="px-2 py-1.5 text-ink-300 hover:text-ink-100 hover:bg-white/10 rounded transition-colors focus-ring disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
                                 >
                                     <Icon name="chevron-right" size={15} />
                                 </button>

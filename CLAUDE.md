@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 078 tests** Vitest
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 079 tests** Vitest
 (488 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
@@ -1053,6 +1053,16 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Une garde qui réduit DEUX dimensions à UNE mesure le mauvais objet** : `cibleSuffisante`
+  prenait le `Math.max` des paddings et l'appliquait aux deux axes, donc elle voyait 26×26 un bouton
+  de **26×22** — et un `w-8` seul la rendait verte quelle que soit la HAUTEUR. Mesurée par AXE, elle
+  a sorti **4** sites réels (tous trop courts en hauteur seulement, de 1 à 2 px), là où le ticket en
+  nommait trois dont **deux déjà corrigés**. La réduction est tentante parce qu'elle simplifie le
+  code de la garde ; elle change la GRANDEUR mesurée. Signal : une garde dont le sujet a plusieurs
+  dimensions (px×px, min/max, avant/après) et qui rend un seul nombre
+  (`UNE-GARDE-QUI-REDUIT-DEUX-DIMENSIONS-A-UNE-MESURE-LE-MAUVAIS-OBJET`). Corollaire d'outillage :
+  `enable_pr_auto_merge` **ne déclenche pas** sur ce dépôt — deux PR (#791, #792) sont restées
+  ouvertes en `mergeable_state: clean` avec les six checks verts ; fusionner à la main dès le vert.
 - Une garde qui ne lit que l'état de **REPOS** ne couvre que cet état : au sens WCAG, le texte d'un
   bouton SURVOLÉ est du texte. Et « corriger » avec un mécanisme que la garde ne sait pas lire
   (`hover:brightness-110`, mesuré 4,44) déplace le défaut hors du radar au lieu de le régler.

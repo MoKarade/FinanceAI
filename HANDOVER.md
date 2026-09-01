@@ -25,6 +25,12 @@
 >   refus BRUYANT » attrapé par la CI. Le raisonnement tenait pour les surfaces que la CI porte —
 >   pas pour celles qu'elle ne porte pas. Et un faux refus n'est pas bruyant quand il vide l'écran :
 >   il ressemble à une perte de données.
+> - ⚠️ **Le diagnostic était lui aussi cassé, et c'est ce qui rendait l'incident opaque** :
+>   `SystemView` tronquait la ligne à **80 caractères**, or le seul préfixe du message en fait 95.
+>   La coupe tombait EXACTEMENT avant les chemins des champs fautifs — la seule partie exploitable,
+>   dans l'écran qu'on demande à l'utilisateur d'ouvrir. `PLAFOND_CITATIONS` bornait déjà le message
+>   à cinq chemins : la troncature était une SECONDE borne sur la même grandeur, et c'est la plus
+>   bête qui gagnait. Constante partagée + test du pire cas.
 > - **Non tranché, laissé à Marc** : faut-il qu'un champ inattendu fasse échouer TOUTE la
 >   réhydratation, ou seulement signaler le champ ? Voir `[HYDRATATION-REFUS-TOUT-OU-RIEN]`.
 

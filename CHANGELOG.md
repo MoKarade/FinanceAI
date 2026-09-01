@@ -21,6 +21,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
   révélée, ni de mode test — donc trois champs bien réels n'y figuraient pas. La liste se dérive
   désormais du **contrat de données lui-même**, sur ses deux surfaces, et un test le vérifie : un
   champ textuel absent de la liste fait maintenant échouer la CI au lieu de vider ton app.
+- **Corrigé aussi, et ça t'aurait bloqué** : l'écran Système, censé te dire QUEL champ pose problème,
+  coupait son message à 80 caractères — soit **juste avant** les noms des champs. La seule
+  information utile du diagnostic était invisible, dans l'écran même qu'on te demande d'ouvrir.
 - **Ce qui reste vrai** : un vrai fichier corrompu est toujours refusé, et toujours nommé.
 
 ## [unreleased] — 2026-09-01 (Les deux graphiques du budget deviennent lisibles au lecteur d'écran)

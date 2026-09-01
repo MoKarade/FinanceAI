@@ -4,6 +4,7 @@ import { Card } from './ui/Card';
 import { AppState, FintableSyncReport } from '../types';
 import { formatCAD } from '../utils/format';
 import { getMigrationStatus, getHydrationStatus } from '../store/useFinanceStore';
+import { LONGUEUR_MAX_DIAGNOSTIC } from '../services/verifierTypesRestaures';
 import { ErrorLogViewer } from './system/ErrorLogViewer';
 import { AuditLogViewer } from './system/AuditLogViewer';
 import { Icon } from './ui/Icon';
@@ -66,7 +67,10 @@ const computeDiagnostics = (state: AppState): LogLine[] => {
     const hydration = getHydrationStatus();
     if (hydration.failed) {
         lines.push({
-            text: stamp(`STATE_MGR: ERREUR de réhydratation du store (blob intact, état par défaut chargé) — ${hydration.error?.slice(0, 80)}`),
+            // ⚠️ La troncature était à 80 caractères — juste AVANT les chemins des champs fautifs,
+            // c'est-à-dire avant la seule information exploitable de tout le diagnostic. Mesuré
+            // pendant l'incident du 2026-09-01, dans l'écran qu'on demande à l'utilisateur d'ouvrir.
+            text: stamp(`STATE_MGR: ERREUR de réhydratation du store (blob intact, état par défaut chargé) — ${hydration.error?.slice(0, LONGUEUR_MAX_DIAGNOSTIC)}`),
             level: 'err',
         });
     } else {

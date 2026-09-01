@@ -830,6 +830,17 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   choisit selon le contexte (conteneur vs contrôle), et la garde se bâtit sur une LISTE d'exemptions
   nominatives — un automate qui remonte les ancêtres JSX finit désactivé par ses faux positifs
   (`LE-CONTEXTE-D-UN-DEFAUT-CSS-VIT-CHEZ-L-ANCETRE`).
+- **Une exclusion de périmètre se justifie par ce que le fichier CONTIENT, jamais par son RÔLE** :
+  `services/projection.ts` était exclu du ratchet fiscal parce que « c'est l'orchestrateur, le travail
+  fiscal vit dans les sous-modules ». Vrai des BARÈMES, faux des **bornes d'âge**, qui se décident
+  dans la boucle — quatre règles légales y vivaient sans clé (18 résidence PSV, 65 fin
+  d'accumulation, 60 taux au survivant, 70 report RRQ). Un rôle bien décrit rend l'exclusion d'autant
+  moins relue. ⚠️ Et une clé `(fichier, valeur)` FUSIONNE les sens : `65` y recouvre trois règles
+  légales ET un défaut de saisie ; la marque `[≠N]` compte les OCCURRENCES, pas les sens.
+  ⚠️ Corollaire d'outillage, 2ᵉ fois en deux lots : **un contrôle de perturbation doit viser la même
+  PORTÉE que la perturbation** — mon `assert` cherchait la chaîne retirée dans tout le fichier, où
+  elle figure aussi dans vingt entrées d'inventaire, et a donc levé sur un retrait réussi
+  (`UN-PERIMETRE-EXCLU-SE-JUSTIFIE-PAR-CE-QU-IL-CONTIENT-PAS-PAR-SON-ROLE`).
 - **Un outil plus CORRECT casse ce qui dépendait de son approximation** : consolider les 15
   décommenteurs ad hoc vers `utils/stripComments.ts` a fait perdre une paire label/champ à une garde
   (40 → **39**, en silence) — la source unique est un décommenteur JS, elle blanchit le bloc mais

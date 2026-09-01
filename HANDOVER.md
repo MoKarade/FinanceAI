@@ -4,6 +4,26 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 66 : cinq surfaces recouvraient l'app sans se déclarer
+> `[A11Y-MODAL-GUIDE-NODIALOG]` — ticket : 1 site (`GuideModal`). Réels : **5** — `GuideModal`, les
+> **trois** dialogues de `settings/BackupPanel.tsx`, et `auth/PassphraseGate.tsx`.
+> - **Migrés vers `ui/Modal`** : GuideModal + les 3 de BackupPanel (piège Tab, Échap, restauration du
+>   focus, verrou de défilement). `PassphraseGate` déclare `role="dialog"`/`aria-modal` À LA MAIN, et
+>   c'est délibéré : il n'a AUCUNE fermeture, la primitive n'a rien à lui apporter.
+> - ⚠️ **La primitive a dû grandir AVANT la migration** : les 3 dialogues de BackupPanel posaient
+>   `autoFocus` sur leur champ de passphrase, que le focus différé du ✕ (50 ms) leur reprenait.
+>   `Modal` accepte maintenant `initialFocusRef`. Migrer sans ça aurait livré une régression d'usage
+>   sous couvert d'accessibilité — **une primitive qui impose son focus initial n'est pas prête à
+>   accueillir un dialogue de SAISIE**.
+> - ⚠️ **Un test a rougi sans que son objet bouge** : `GuideModal.test` visait `/Fermer le guide/`,
+>   le libellé de l'ancien bouton manuel. Il mesurait la FORME → ré-ancré sur le bouton de fermeture
+>   DU dialogue. Non rebasé, re-dérivé.
+> - **Exemptions déclarées** : `Onboarding` (prise de contrôle de l'écran, rien derrière à rendre
+>   inerte) et le tiroir mobile de `Layout` (`role="navigation"` — un menu n'est pas un dialogue).
+> - ⚠️ **Contre-témoin de la garde** : un écran MIGRÉ disparaît du scan (il n'a plus de
+>   `fixed inset-0`), donc un test de présence ne dirait rien de lui. Sa moitié manquante est
+>   vérifiée autrement : il consomme la primitive, et n'a pas repris d'overlay à lui.
+
 > ## 🟦 Session 2026-09-01 — Lot 65 : le 4ᵉ bandeau d'onglets était resté à part
 > `[A11Y-TABLIST-NO-PANEL]` — `FutureProjection` rejoint le motif de `components/ui/SubTabs.tsx` :
 > `tabId`/`panelId` partagés, un `TabPanel` unique, et le clavier APG.

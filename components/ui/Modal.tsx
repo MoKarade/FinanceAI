@@ -13,6 +13,16 @@ interface ModalProps {
     size?: ModalSize;
     closeOnBackdrop?: boolean;
     closeOnEsc?: boolean;
+    /**
+     * Élément à focaliser à l'ouverture, à la place du bouton ✕.
+     *
+     * ⚠️ [A11Y-MODAL-GUIDE-NODIALOG] Sans ça, migrer une modale de SAISIE vers cette primitive est
+     * une régression : les trois dialogues de `BackupPanel` posaient `autoFocus` sur leur champ de
+     * passphrase, et le focus différé du ✕ (50 ms) le leur reprenait — l'utilisateur devait cliquer
+     * dans un champ qui venait de s'ouvrir pour lui. Le motif ARIA demande un focus initial
+     * PERTINENT, pas systématiquement le bouton de fermeture.
+     */
+    initialFocusRef?: React.RefObject<HTMLElement | null>;
     /** Slot pour des actions à droite du titre (ex: actions secondaires). */
     headerActions?: React.ReactNode;
     /** Footer slot — affiché en bas, séparé par un border-top. */
@@ -48,6 +58,7 @@ export const Modal: React.FC<ModalProps> = ({
     size = 'md',
     closeOnBackdrop = true,
     closeOnEsc = true,
+    initialFocusRef,
     headerActions, footer,
     className = '', children,
 }) => {
@@ -67,7 +78,7 @@ export const Modal: React.FC<ModalProps> = ({
         if (!isOpen) return;
         // P2.2 — save current focus pour le restaurer à la fermeture (a11y keyboard)
         previousFocusRef.current = (document.activeElement as HTMLElement | null) ?? null;
-        const t = setTimeout(() => closeBtnRef.current?.focus(), 50);
+        const t = setTimeout(() => (initialFocusRef?.current ?? closeBtnRef.current)?.focus(), 50);
         const prevOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
 
@@ -88,7 +99,7 @@ export const Modal: React.FC<ModalProps> = ({
                 target.focus();
             }
         };
-    }, [isOpen, closeOnEsc]);
+    }, [isOpen, closeOnEsc, initialFocusRef]);
 
     if (!isOpen) return null;
 

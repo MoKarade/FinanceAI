@@ -50,13 +50,24 @@ export const PassphraseGate: React.FC<{ status: SyncStatus }> = ({ status }) => 
         showToast('Déconnecté de Drive. Tes données locales sont conservées.', 'info');
     };
 
+    const titreId = React.useId();
+
     return (
+        // [A11Y-MODAL-GUIDE-NODIALOG] Ce gate recouvre l'app sans être une `<Modal>`, et c'est
+        // VOULU : il n'a pas de fermeture (pas de ✕, pas d'Échap, pas de clic-dehors) — la seule
+        // sortie est de déverrouiller ou de se déconnecter de Drive, explicitement. Il lui manquait
+        // en revanche ce qui ne dépend pas de la fermeture : dire qu'il est un dialogue, et lequel.
+        // `aria-modal` annonce que le reste de la page est hors d'atteinte ; sans lui, un lecteur
+        // d'écran laisse parcourir l'application recouverte comme si de rien n'était.
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-dark/95 backdrop-blur-sm p-4">
             <form
                 onSubmit={onSubmit}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titreId}
                 className="w-full max-w-md space-y-4 rounded-2xl border border-warning-500/30 bg-black/60 p-6 shadow-2xl"
             >
-                <div className="text-lg font-bold text-amber-300">Coffre verrouillé</div>
+                <div id={titreId} className="text-lg font-bold text-amber-300">Coffre verrouillé</div>
                 <p className="text-body text-ink-200 leading-snug">
                     La sauvegarde trouvée dans ton Google Drive est <strong>chiffrée</strong>. Saisis ta passphrase
                     pour la déverrouiller et restaurer tes données.

@@ -10,6 +10,26 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 66 : cinq surfaces recouvraient l'app sans se déclarer (PR #796)
+
+- [x] **`[A11Y-MODAL-GUIDE-NODIALOG]`** — 2026-09-01, PR #796. Le ticket nommait `GuideModal` ; le
+  recensement a trouvé **cinq** surfaces sans sémantique de dialogue : `GuideModal`, les **trois**
+  dialogues de `settings/BackupPanel.tsx`, et `auth/PassphraseGate.tsx`.
+- **Migrés vers `ui/Modal`** : `GuideModal` + les trois de `BackupPanel` (ils gagnent piège Tab,
+  Échap, restauration du focus, verrou de défilement). `PassphraseGate` déclare `role="dialog"` +
+  `aria-modal` **à la main**, et c'est délibéré : il n'a AUCUNE fermeture, la primitive n'a rien à
+  lui apporter.
+- ⚠️ **La primitive a dû grandir d'abord** : les trois dialogues de `BackupPanel` posaient
+  `autoFocus` sur leur champ de passphrase, et le focus différé du ✕ (50 ms) le leur reprenait.
+  `Modal` accepte désormais `initialFocusRef` — migrer sans ça aurait été une régression d'usage
+  livrée sous couvert d'accessibilité.
+- ⚠️ **Deux exemptions déclarées** : `Onboarding` (prise de contrôle de l'écran — rien derrière à
+  rendre inerte) et le tiroir mobile de `Layout` (`role="navigation"`, un menu n'est pas un
+  dialogue). Un test refuse une exemption périmée.
+- **Gardes** : `tests/guards/dialogSemantiqueGuard.test.ts` (+ un contre-témoin : les écrans migrés
+  DISPARAISSENT du scan, donc leur passage par la primitive se vérifie autrement) et deux cas de
+  rendu dans `tests/components/GuideModal.test.tsx`.
+
 ## 2026-09-01 — Lot 65 : le quatrième bandeau d'onglets était resté à part (PR #795)
 
 - [x] **`[A11Y-TABLIST-NO-PANEL]`** — 2026-09-01, PR #795. ⚠️ **Pour une fois le périmètre du ticket

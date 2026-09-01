@@ -1,8 +1,8 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planif financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite,
-assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 092 tests** Vitest
-(491 fichiers de test, mesuré le 2026-09-01). Tout en français.
+assistant Claude). 100 % navigateur, pas de backend. TS strict, **5 097 tests** Vitest
+(492 fichiers de test, mesuré le 2026-09-01). Tout en français.
 
 > **Ce fichier se charge à CHAQUE session — il reste COURT, pour de vrai.**
 > Le détail (leçons, incidents, pièges, rationnels) vit dans **`docs/CONVENTIONS.md`**,
@@ -1053,6 +1053,16 @@ Quand une tâche touche un de ces terrains, **lire la section correspondante ava
   test visé rougit. ⚠️ Et pour une assertion de DISTINCTION, la perturbation doit **satisfaire encore
   le sélecteur** (cinq noms au bon préfixe mais identiques) — sinon elle prouve « le nom a changé »,
   pas « les noms sont distincts » (`TROIS-TESTS-ROUGES-NE-FONT-PAS-TROIS-PREUVES`).
+- ⚠️ **Une primitive qui impose son focus initial n'est pas prête à accueillir un dialogue de
+  SAISIE** : `ui/Modal` focalise le ✕ après 50 ms ; les trois dialogues de `BackupPanel` posaient
+  `autoFocus` sur leur champ de passphrase, et la migration le leur aurait repris — une régression
+  d'usage livrée SOUS COUVERT d'accessibilité. La primitive grandit AVANT la migration
+  (`initialFocusRef`), jamais l'inverse. Signal : avant de migrer vers une primitive, lister ce que
+  l'appelant faisait que la primitive DÉCIDE à sa place
+  (`UNE-PRIMITIVE-QUI-IMPOSE-SON-FOCUS-N-ACCUEILLE-PAS-UN-DIALOGUE-DE-SAISIE`). ⚠️ Corollaire de
+  garde : un écran MIGRÉ **disparaît** du scan qui cherchait le défaut (plus de `fixed inset-0`) —
+  un test de présence ne dit alors rien de lui. Sa moitié se vérifie à l'envers : il consomme la
+  primitive, et il n'a pas repris d'overlay à lui.
 - ⚠️ **Un motif se re-perd par l'écran qui ressemble le MOINS aux autres** : `ui/SubTabs.tsx` est né
   de trois copies divergentes et les a corrigées — mais `FutureProjection`, dont l'habillage diffère
   (emoji au lieu d'icônes), est resté à part avec un motif ARIA incomplet. La bonne règle n'est pas

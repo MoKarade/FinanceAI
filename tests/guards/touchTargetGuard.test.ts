@@ -107,22 +107,48 @@ function finBaliseOuvrante(bloc: string): number {
     return bloc.indexOf('>');
 }
 
-/** La cible réelle en px : contenu + 2 × padding, ou la dimension imposée. */
-function cibleSuffisante(classes: string, tailleContenu: number): boolean {
-    if (classes.includes('touch-target')) return true;
-    for (const m of classes.matchAll(/\b[wh]-(\d+)\b/g)) {
-        if (Number(m[1]) * 4 >= 24) return true;
-    }
+/**
+ * La cible réelle en px, **PAR AXE** : contenu + 2 × padding de cet axe, ou la dimension imposée.
+ *
+ * ⚠️ Le premier jet prenait le `Math.max` des paddings et l'appliquait aux DEUX axes. Une cible
+ * n'est pas carrée : `px-1.5 py-1` autour d'une icône de 14 px fait **26 × 22**, et cette version
+ * la mesurait 26 × 26 — donc verte. C'est exactement le bouton « Retirer cette position »
+ * d'`Investments.tsx`, resté sous WCAG 2.5.8 malgré une garde écrite pour ça. Même faute côté
+ * dimensions : un `w-8` seul rendait `true` quelle que soit la HAUTEUR.
+ *
+ * ⚠️ Les deux axes se rendent séparément, sans les fusionner : un appelant qui n'a qu'un booléen ne
+ * peut pas dire QUEL côté manque, et c'est cette information qui désigne la classe à corriger
+ * (`py-` plutôt que `px-`).
+ */
+function cibleParAxe(classes: string, tailleContenu: number): { largeur: number; hauteur: number } {
+    if (classes.includes('touch-target')) return { largeur: 44, hauteur: 44 };
+    let largeur = tailleContenu;
+    let hauteur = tailleContenu;
+    const impose = (axe: 'w' | 'h', px: number) => {
+        if (axe === 'w') largeur = Math.max(largeur, px);
+        else hauteur = Math.max(hauteur, px);
+    };
+    for (const m of classes.matchAll(/\b([wh])-(\d+)\b/g)) impose(m[1] as 'w' | 'h', Number(m[2]) * 4);
     // ⚠️ La syntaxe ARBITRAIRE de Tailwind (`min-w-[24px]`) est celle que le dépôt emploie déjà pour
     // dimensionner une cible tactile. Ne pas la reconnaître faisait rendre DEUX faux positifs par
     // cette garde — sur des boutons précisément corrigés pour ça. Une garde qui ignore la forme
     // employée par le code qu'elle surveille accuse le code sain.
-    for (const m of classes.matchAll(/\bmin-[wh]-\[(\d+)px\]/g)) {
-        if (Number(m[1]) >= 24) return true;
+    for (const m of classes.matchAll(/\bmin-([wh])-\[(\d+)px\]/g)) impose(m[1] as 'w' | 'h', Number(m[2]));
+    // `p-N` porte sur les deux axes, `px-N` sur la largeur, `py-N` sur la hauteur.
+    for (const m of classes.matchAll(/\bp([xy]?)-(\d+(?:\.\d+)?)\b/g)) {
+        const px = Number(m[2]) * 4;
+        if (m[1] !== 'y') largeur += 2 * px;
+        if (m[1] !== 'x') hauteur += 2 * px;
     }
-    const paddings = [...classes.matchAll(/\bp[xy]?-(\d+(?:\.\d+)?)\b/g)].map((m) => Number(m[1]) * 4);
-    const padding = paddings.length > 0 ? Math.max(...paddings) : 0;
-    return tailleContenu + 2 * padding >= 24;
+    return { largeur, hauteur };
+}
+
+const MINIMUM_WCAG_PX = 24;
+
+/** Les DEUX axes doivent atteindre le minimum — pas le plus grand des deux. */
+function cibleSuffisante(classes: string, tailleContenu: number): boolean {
+    const { largeur, hauteur } = cibleParAxe(classes, tailleContenu);
+    return largeur >= MINIMUM_WCAG_PX && hauteur >= MINIMUM_WCAG_PX;
 }
 
 interface Bouton { chemin: string; ligne: number; classes: string; nomme: boolean; taille: number }
@@ -171,7 +197,10 @@ describe('[A11Y-TOUCH-TARGET-TINY] cibles tactiles des actions icône-seule', ()
         const offenders = boutons
             .filter((b) => !cibleSuffisante(b.classes, b.taille))
             .filter((b) => !EXCLUSIONS.some((e) => b.chemin.endsWith(`/${e.fichier}`) && b.classes.includes(e.jeton)))
-            .map((b) => `${b.chemin}:${b.ligne} (cible ≈ ${b.taille} px)`);
+            .map((b) => {
+                const { largeur, hauteur } = cibleParAxe(b.classes, b.taille);
+                return `${b.chemin}:${b.ligne} (cible ≈ ${largeur}×${hauteur} px, minimum ${MINIMUM_WCAG_PX})`;
+            });
 
         // ANTI-VACUITÉ : le scan doit trouver de quoi juger. Un « aucun offender » sur un scan qui
         // ne reconnaît plus un seul bouton icône-seule ne prouverait rien.
@@ -185,6 +214,25 @@ describe('[A11Y-TOUCH-TARGET-TINY] cibles tactiles des actions icône-seule', ()
         // seul, donc un lecteur d'écran annonçait « × bouton » sur une action destructive.
         const anonymes = boutonsIconeSeule().filter((b) => !b.nomme).map((b) => `${b.chemin}:${b.ligne}`);
         expect(anonymes, `Bouton(s) sans aria-label ni title :\n${anonymes.join('\n')}`).toEqual([]);
+    });
+
+    it('les deux AXES sont mesurés séparément — une cible n\'est pas carrée', () => {
+        // ⚠️ Ce que la garde affirmait AVANT ce lot : `Math.max` des paddings, appliqué aux deux
+        // axes. Elle déclarait donc 26×26 un bouton qui fait 26×22, et laissait passer les QUATRE
+        // sites que son élargissement a révélés (Budget ×2, Investments, AutoBackupPanel) — tous
+        // trop courts en HAUTEUR uniquement, de 1 à 2 px. Un ticket qui en nommait trois, dont deux
+        // déjà corrigés et un seul réel.
+        expect(cibleParAxe('inline-flex px-1.5 py-1 rounded-lg', 14)).toEqual({ largeur: 26, hauteur: 22 });
+        expect(cibleSuffisante('inline-flex px-1.5 py-1 rounded-lg', 14)).toBe(false);
+        // Le cas symétrique : trop court en LARGEUR, la garde doit refuser aussi.
+        expect(cibleSuffisante('px-0.5 py-2 rounded', 14)).toBe(false);
+        // `p-N` porte les deux axes ; le patron du dépôt (`p-2 -m-2`) reste vert.
+        expect(cibleParAxe('p-2 -m-2', 16)).toEqual({ largeur: 32, hauteur: 32 });
+        // ⚠️ Une dimension IMPOSÉE ne vaut que pour SON axe : `w-8` seul laissait la garde verte
+        // quelle que soit la hauteur.
+        expect(cibleSuffisante('w-8', 14)).toBe(false);
+        expect(cibleSuffisante('w-8 h-8', 14)).toBe(true);
+        expect(cibleSuffisante('touch-target', 12)).toBe(true);
     });
 
     it('chaque exemption est RÉELLE — une exemption périmée se retire', () => {

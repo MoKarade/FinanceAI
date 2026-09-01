@@ -1411,7 +1411,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                                 onClick={() => { setConfirmDeleteId(asset.id); window.setTimeout(() => setConfirmDeleteId(c => (c === asset.id ? null : c)), 3000); }}
                                                 aria-label={`Retirer la position ${savedAsset.symbol}`}
                                                 title="Retirer cette position"
-                                                className="inline-flex text-ink-500 hover:text-danger-400 px-1.5 py-1 rounded-lg transition-colors"
+                                                className="inline-flex text-ink-500 hover:text-danger-400 px-1.5 py-1.5 rounded-lg transition-colors"
                                             >
                                                 <Icon name="trash" size={14} />
                                             </button>

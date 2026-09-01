@@ -10,6 +10,17 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-01 — Lot 63 : la garde des cibles tactiles mesurait un carré (PR #793)
+
+- [x] **`[A11Y-TOUCH-DELETE-ICONS]`** — 2026-09-01, PR #793. Le ticket nommait 3 sites (Travel,
+  Investments, BudgetGroupTable) : deux étaient DÉJÀ corrigés (`p-2 -m-2`, `p-2 -m-1`) et le
+  périmètre réel était ailleurs. **C'est la garde `tests/guards/touchTargetGuard.test.ts` qui était
+  aveugle** : son `cibleSuffisante` prenait le `Math.max` des paddings et l'appliquait aux DEUX
+  axes, donc elle mesurait 26×26 un bouton de 26×22. Mesurée par axe, elle a révélé **4** sites
+  réels — `Budget.tsx` ×2 (31×23), `Investments.tsx` (26×22), `AutoBackupPanel.tsx` (30×22) —, tous
+  trop courts en HAUTEUR seulement, de 1 à 2 px sous le minimum WCAG 2.5.8 (24 px). Corrigés en
+  `py-1` → `py-1.5`.
+
 ## 2026-09-01 — Lot 62 : ma garde était satisfaite par mon propre commentaire (PR #789)
 
 - [x] **`[A11Y-BUDGETGROUP-CHART-NOALT]`** (S) — ✅ **Livré**, avec sa garde.

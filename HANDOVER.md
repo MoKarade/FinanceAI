@@ -4,6 +4,21 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-01 — Lot 63 : la garde des cibles tactiles mesurait un CARRÉ
+> `[A11Y-TOUCH-DELETE-ICONS]` — 4 boutons sous le minimum WCAG 2.5.8 (24 px), corrigés `py-1` →
+> `py-1.5` : `Budget.tsx` ×2 (31×23), `Investments.tsx` (26×22), `AutoBackupPanel.tsx` (30×22).
+> - ⚠️ **Le défaut était dans la GARDE, pas dans le ticket.** `cibleSuffisante` prenait le `Math.max`
+>   des paddings et l'appliquait aux DEUX axes : elle voyait 26×26 un bouton de 26×22, et un `w-8`
+>   seul la rendait verte quelle que soit la hauteur. Mesurée PAR AXE, elle sort 4 offenders — tous
+>   trop courts en HAUTEUR seulement, ce qui est la signature du défaut (`py-` < `px-` presque
+>   toujours, donc fusionner par un `max` revient à mesurer la largeur).
+> - ⚠️ Périmètre du ticket faux **dans les deux sens** (13ᵉ d'affilée) : il nommait `Travel` et
+>   `BudgetGroupTable`, tous deux DÉJÀ corrigés, et ratait 3 des 4 sites réels.
+> - Assertion neuve écrite sur la fonction, avec le cas réel, son symétrique (trop court en LARGEUR)
+>   et les deux cas qui doivent rester verts (`p-2 -m-2`, `touch-target`).
+> - ⚠️ **Outillage** : `enable_pr_auto_merge` NE DÉCLENCHE PAS sur ce dépôt — #791 et #792 sont
+>   restées ouvertes en `mergeable_state: clean`, tous checks verts. Fusionner à la main dès le vert.
+
 > ## 🔴 Session 2026-09-01 — INCIDENT : l'app s'ouvrait VIDE, garde de type trop stricte
 > Marc : « j'ai perdu mes données, tout est vide alors que j'avais beaucoup de sauvegardes ».
 > **Rien n'était perdu.** `verifierTypesRestaures` (la garde de type de `[BACKUP-SCHEMA-NON-TYPE]`)

@@ -6,6 +6,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
 ---
 
+## [unreleased] — 2026-09-01 (Quatre boutons trop petits pour le doigt)
+
+- **Corrigé** : quatre boutons à icône étaient **trop courts en hauteur** pour être visés au doigt
+  sans risque — les deux flèches de navigation de période du Budget, le bouton « retirer cette
+  position » des Placements, et le bouton « supprimer ce backup » des réglages. Il leur manquait 1 à
+  2 pixels sur la norme d'accessibilité (24 px minimum). Tous les quatre étaient des actions faciles
+  à toucher par erreur, dont deux **destructives**.
+- **Pourquoi ils étaient passés inaperçus** : un contrôle automatique surveille pourtant ça depuis
+  plusieurs semaines. Il mesurait la cible comme si elle était **carrée** — il prenait la plus grande
+  des deux marges et l'appliquait aux deux côtés. Un bouton de 26 × 22 px lui apparaissait donc en
+  26 × 26, et passait. Le contrôle mesure désormais chaque côté séparément, et il a révélé ces quatre
+  cas d'un coup.
+
 ## [unreleased] — 2026-09-01 (CORRECTIF URGENT : l'app s'ouvrait vide alors que rien n'était perdu)
 
 - **Corrigé** : l'app pouvait s'ouvrir **entièrement vide** — sans qu'aucune donnée n'ait été perdue.

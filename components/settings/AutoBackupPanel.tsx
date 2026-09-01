@@ -175,7 +175,7 @@ export const AutoBackupPanel: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => setConfirmDelete(entry)}
-                                    className="px-2 py-1 text-tiny text-danger-400 hover:text-red-300 transition-colors focus-ring rounded"
+                                    className="px-2 py-1.5 text-tiny text-danger-400 hover:text-red-300 transition-colors focus-ring rounded"
                                     title="Supprimer ce backup"
                                     aria-label={`Supprimer le backup du ${formatDate(entry.timestamp)}`}
                                 >
